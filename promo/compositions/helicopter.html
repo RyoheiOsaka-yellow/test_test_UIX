@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1920px; height: 1080px; overflow: hidden;
+        background: #06080d;
+        font-family: "Helvetica Neue", "Hiragino Kaku Gothic ProN", sans-serif;
+        color: #cfe7ff;
+      }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+
+      .bg {
+        position: absolute; inset: 0;
+        background:
+          radial-gradient(ellipse at 50% 60%, rgba(80,140,210,0.18) 0%, rgba(6,8,13,0) 60%),
+          linear-gradient(180deg, #0a1220 0%, #06080d 70%, #02040a 100%);
+      }
+      .bg-grid {
+        position: absolute; inset: 0;
+        background-image:
+          linear-gradient(rgba(120,180,230,0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(120,180,230,0.06) 1px, transparent 1px);
+        background-size: 64px 64px;
+        mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+        -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+      }
+      .vignette {
+        position: absolute; inset: 0;
+        background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%);
+        pointer-events: none;
+      }
+
+      #stage { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+      #stage canvas { width: 1920px !important; height: 1080px !important; display: block; }
+
+      .hud {
+        position: absolute;
+        color: rgba(200,225,255,0.7);
+        font-family: "Helvetica Neue", "Inter", sans-serif;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+        font-weight: 300;
+      }
+      .hud-tl { top: 56px; left: 64px; font-size: 22px; }
+      .hud-tl .tag { color: #6ea8e0; letter-spacing: 6px; }
+      .hud-tl .title { color: #e6f1ff; font-size: 36px; letter-spacing: 8px; margin-top: 6px; font-weight: 500; }
+      .hud-br { bottom: 56px; right: 64px; font-size: 20px; text-align: right; }
+      .hud-br .label { color: #6ea8e0; font-size: 14px; letter-spacing: 6px; }
+      .hud-br .value { color: #cfe7ff; font-size: 28px; letter-spacing: 4px; margin-top: 4px; font-weight: 400; }
+      .hud-bl { bottom: 56px; left: 64px; font-size: 18px; letter-spacing: 6px; color: rgba(160,200,235,0.55); }
+
+      .crosshair {
+        position: absolute; left: 50%; top: 50%;
+        width: 96px; height: 96px;
+        transform: translate(-50%, -50%);
+        opacity: 0.35;
+      }
+      .crosshair::before, .crosshair::after { content: ""; position: absolute; background: #6ea8e0; }
+      .crosshair::before { left: 50%; top: 0; width: 1px; height: 100%; transform: translateX(-50%); }
+      .crosshair::after  { top: 50%; left: 0; height: 1px; width: 100%; transform: translateY(-50%); }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="helicopter"
+      data-start="0"
+      data-duration="10"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div class="bg clip" id="bg" data-start="0" data-duration="10" data-track-index="0"></div>
+      <div class="bg-grid clip" id="bgGrid" data-start="0" data-duration="10" data-track-index="1"></div>
+      <div id="stage" class="clip" data-start="0" data-duration="10" data-track-index="5"></div>
+      <div class="crosshair clip" id="crosshair" data-start="0" data-duration="10" data-track-index="10"></div>
+      <div class="hud hud-tl clip" id="hudTL" data-start="0" data-duration="10" data-track-index="11">
+        <div class="tag">— WIREFRAME / TAKEOFF</div>
+        <div class="title">UH-60 STYLE • LINE STUDY</div>
+      </div>
+      <div class="hud hud-br clip" id="hudBR" data-start="0" data-duration="10" data-track-index="12">
+        <div class="label">ALTITUDE</div>
+        <div class="value" id="altVal">0.0 m</div>
+      </div>
+      <div class="hud hud-bl clip" id="hudBL" data-start="0" data-duration="10" data-track-index="13">T+ <span id="tVal">00.0</span> s</div>
+      <div class="vignette clip" id="vignette" data-start="0" data-duration="10" data-track-index="20"></div>
+    </div>
+
+    <script>
+      (function () {
+        var stage = document.getElementById("stage");
+        var W = 1920, H = 1080;
+
+        var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(1);
+        renderer.setSize(W, H, false);
+        renderer.setClearColor(0x000000, 0);
+        stage.appendChild(renderer.domElement);
+
+        var scene = new THREE.Scene();
+        var camera = new THREE.PerspectiveCamera(35, W / H, 0.1, 200);
+        camera.position.set(8, 3.2, 11);
+        camera.lookAt(0, 1.6, 0);
+
+        var lineMain   = new THREE.LineBasicMaterial({ color: 0xeaf3ff, transparent: true, opacity: 0.92 });
+        var lineAccent = new THREE.LineBasicMaterial({ color: 0x6ea8e0, transparent: true, opacity: 0.85 });
+        var lineRotor  = new THREE.LineBasicMaterial({ color: 0xffd7a8, transparent: true, opacity: 0.95 });
+        var lineFloor  = new THREE.LineBasicMaterial({ color: 0x274363, transparent: true, opacity: 0.55 });
+
+        function wire(geo, mat) {
+          return new THREE.LineSegments(new THREE.WireframeGeometry(geo), mat);
+        }
+        function edge(geo, mat, angle) {
+          return new THREE.LineSegments(new THREE.EdgesGeometry(geo, angle == null ? 12 : angle), mat);
+        }
+
+        // ground grid
+        var ground = new THREE.GridHelper(40, 20, 0x274363, 0x1a2a40);
+        ground.material.transparent = true;
+        ground.material.opacity = 0.55;
+        scene.add(ground);
+
+        // horizon ring
+        (function () {
+          var r = 6, seg = 64, pts = [];
+          for (var i = 0; i <= seg; i++) {
+            var a = (i / seg) * Math.PI * 2;
+            pts.push(new THREE.Vector3(Math.cos(a) * r, 0.01, Math.sin(a) * r));
+          }
+          var g = new THREE.BufferGeometry().setFromPoints(pts);
+          scene.add(new THREE.Line(g, lineFloor));
+        })();
+
+        // helicopter root + an inner "shake" group so vibration doesn't fight GSAP tweens
+        var heli = new THREE.Group();
+        scene.add(heli);
+        var body = new THREE.Group();
+        heli.add(body);
+
+        // fuselage
+        (function () {
+          var g = new THREE.IcosahedronGeometry(1, 1);
+          g.scale(1.55, 1.05, 1.25);
+          var m = wire(g, lineMain);
+          m.position.set(0, 1.65, 0);
+          body.add(m);
+        })();
+
+        // canopy
+        (function () {
+          var g = new THREE.SphereGeometry(0.85, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55);
+          g.scale(1.0, 1.0, 1.15);
+          var m = wire(g, lineAccent);
+          m.position.set(1.05, 1.78, 0);
+          m.rotation.z = -Math.PI * 0.06;
+          body.add(m);
+        })();
+
+        // nose cone
+        (function () {
+          var g = new THREE.ConeGeometry(0.55, 0.9, 10, 1);
+          var m = wire(g, lineMain);
+          m.rotation.z = -Math.PI / 2;
+          m.position.set(1.85, 1.62, 0);
+          body.add(m);
+        })();
+
+        // tail boom
+        (function () {
+          var g = new THREE.CylinderGeometry(0.18, 0.32, 3.6, 10, 1, false);
+          var m = wire(g, lineMain);
+          m.rotation.z = Math.PI / 2;
+          m.position.set(-2.3, 1.78, 0);
+          body.add(m);
+        })();
+
+        // vertical fin
+        (function () {
+          var shape = new THREE.Shape();
+          shape.moveTo(0, 0);
+          shape.lineTo(0.9, 0.2);
+          shape.lineTo(1.1, 0.95);
+          shape.lineTo(0.15, 0.7);
+          shape.lineTo(0, 0);
+          var g = new THREE.ExtrudeGeometry(shape, { depth: 0.08, bevelEnabled: false });
+          g.translate(-0.55, -0.05, -0.04);
+          var m = edge(g, lineMain, 1);
+          m.position.set(-3.4, 1.85, 0);
+          body.add(m);
+        })();
+
+        // horizontal stabilizer
+        (function () {
+          var g = new THREE.BoxGeometry(0.7, 0.06, 1.5);
+          var m = edge(g, lineMain, 1);
+          m.position.set(-3.45, 1.95, 0);
+          body.add(m);
+        })();
+
+        // skids
+        function addSkid(z) {
+          var tube = new THREE.CylinderGeometry(0.07, 0.07, 2.8, 8, 1, false);
+          var t = wire(tube, lineMain);
+          t.rotation.z = Math.PI / 2;
+          t.position.set(0.1, 0.18, z);
+          body.add(t);
+          var tip = new THREE.CylinderGeometry(0.07, 0.05, 0.5, 8, 1, false);
+          var tp = wire(tip, lineMain);
+          tp.rotation.z = Math.PI / 2 + 0.45;
+          tp.position.set(1.55, 0.28, z);
+          body.add(tp);
+          var strutGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.0, 6, 1, false);
+          var s1 = wire(strutGeo, lineMain);
+          s1.position.set(0.7, 0.7, z * 0.65);
+          s1.rotation.x = (z > 0 ? 1 : -1) * 0.45;
+          body.add(s1);
+          var s2 = wire(strutGeo, lineMain);
+          s2.position.set(-0.5, 0.7, z * 0.65);
+          s2.rotation.x = (z > 0 ? 1 : -1) * 0.45;
+          body.add(s2);
+        }
+        addSkid(0.85);
+        addSkid(-0.85);
+
+        // rotor mast
+        (function () {
+          var g = new THREE.CylinderGeometry(0.09, 0.11, 0.55, 8, 1, false);
+          var m = wire(g, lineMain);
+          m.position.set(0, 2.6, 0);
+          body.add(m);
+        })();
+
+        // main rotor hub + blades
+        var rotorHub = new THREE.Group();
+        rotorHub.position.set(0, 2.95, 0);
+        body.add(rotorHub);
+        (function () {
+          var g = new THREE.CylinderGeometry(0.18, 0.18, 0.12, 10, 1, false);
+          rotorHub.add(wire(g, lineRotor));
+        })();
+        for (var i = 0; i < 4; i++) {
+          var blade = new THREE.Group();
+          var g = new THREE.BoxGeometry(5.2, 0.04, 0.32);
+          var m = edge(g, lineRotor, 1);
+          m.position.set(2.4, 0, 0);
+          blade.add(m);
+          blade.rotation.y = (i / 4) * Math.PI * 2;
+          rotorHub.add(blade);
+        }
+
+        // tail rotor
+        var tailRotor = new THREE.Group();
+        tailRotor.position.set(-3.45, 1.9, 0.32);
+        body.add(tailRotor);
+        (function () {
+          var g = new THREE.CylinderGeometry(0.12, 0.12, 0.1, 8, 1, false);
+          var m = wire(g, lineRotor);
+          m.rotation.x = Math.PI / 2;
+          tailRotor.add(m);
+        })();
+        for (var j = 0; j < 4; j++) {
+          var tblade = new THREE.Group();
+          var tg = new THREE.BoxGeometry(1.1, 0.025, 0.12);
+          var tm = edge(tg, lineRotor, 1);
+          tm.position.set(0.55, 0, 0);
+          tblade.add(tm);
+          tblade.rotation.z = (j / 4) * Math.PI * 2;
+          tailRotor.add(tblade);
+        }
+
+        // engine block accent
+        (function () {
+          var g = new THREE.BoxGeometry(1.5, 0.55, 0.95);
+          var m = edge(g, lineAccent, 1);
+          m.position.set(-0.55, 2.4, 0);
+          body.add(m);
+        })();
+
+        // rotor disc (motion-blur ring)
+        var rotorDisc = (function () {
+          var pts = [], r = 2.7, seg = 96;
+          for (var i = 0; i <= seg; i++) {
+            var a = (i / seg) * Math.PI * 2;
+            pts.push(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r));
+          }
+          var g = new THREE.BufferGeometry().setFromPoints(pts);
+          var mat = new THREE.LineBasicMaterial({ color: 0xffd7a8, transparent: true, opacity: 0 });
+          var line = new THREE.Line(g, mat);
+          line.position.copy(rotorHub.position);
+          body.add(line);
+          return line;
+        })();
+
+        // ground shadow ellipse
+        var shadow = (function () {
+          var pts = [], seg = 48;
+          for (var i = 0; i <= seg; i++) {
+            var a = (i / seg) * Math.PI * 2;
+            pts.push(new THREE.Vector3(Math.cos(a) * 2.4, 0.02, Math.sin(a) * 1.1));
+          }
+          var g = new THREE.BufferGeometry().setFromPoints(pts);
+          var mat = new THREE.LineBasicMaterial({ color: 0x6ea8e0, transparent: true, opacity: 0.55 });
+          return new THREE.Line(g, mat);
+        })();
+        scene.add(shadow);
+
+        var altEl = document.getElementById("altVal");
+        var tEl = document.getElementById("tVal");
+
+        window.__timelines = window.__timelines || {};
+        var tl = gsap.timeline({ paused: true, defaults: { ease: "power2.inOut" } });
+
+        // spin speed state (radians/sec scale)
+        var spin = { main: 0, tail: 0 };
+
+        tl.to(spin, { main: 8,  tail: 24,  duration: 2.0, ease: "power1.in" }, 0);
+        tl.to(spin, { main: 38, tail: 90,  duration: 1.5, ease: "power2.out" }, 2.0);
+        tl.to(rotorDisc.material, { opacity: 0.45, duration: 1.2 }, 2.2);
+
+        // takeoff
+        tl.to(heli.position, { y: 3.2, duration: 3.0, ease: "power2.out" }, 3.5);
+        tl.to(body.rotation, { x: -0.12, duration: 1.4, ease: "power2.inOut" }, 3.6);
+        tl.to(body.rotation, { x: -0.04, duration: 1.4, ease: "power2.inOut" }, 5.0);
+        tl.to(shadow.scale,  { x: 1.6, y: 1.6, z: 1.6, duration: 3.0, ease: "power2.out" }, 3.5);
+        tl.to(shadow.material, { opacity: 0.18, duration: 3.0 }, 3.5);
+
+        // climb out + bank
+        tl.to(heli.position, { y: 6.4, x: -1.8, z: -3.2, duration: 3.5, ease: "power1.out" }, 6.5);
+        tl.to(heli.rotation, { z: 0.18, y: 0.45, duration: 3.5, ease: "power2.inOut" }, 6.5);
+        tl.to(spin, { main: 60, tail: 140, duration: 3.5, ease: "none" }, 6.5);
+
+        tl.to(camera.position, { y: 4.4, duration: 4.0, ease: "sine.inOut" }, 5.0);
+
+        // master render tween (runs full duration, paints each tick)
+        tl.to({}, {
+          duration: 10,
+          ease: "none",
+          onUpdate: function () {
+            var t = tl.time();
+
+            rotorHub.rotation.y = spin.main * t * 0.35;
+            tailRotor.rotation.x = spin.tail * t * 0.18;
+
+            // body vibration while rotors spool, decays after lift-off
+            var ramp = Math.max(0, Math.min(1, (t - 1.2) / 0.8));
+            var calm = Math.max(0, 1 - Math.max(0, (t - 4.0) / 1.5));
+            var vib = ramp * calm;
+            body.position.x = (Math.sin(t * 41.0) * 0.012 + Math.sin(t * 23.0) * 0.008) * vib;
+            body.position.y = (Math.cos(t * 37.0) * 0.012) * vib;
+
+            // shadow tracks heli xz
+            shadow.position.x = heli.position.x;
+            shadow.position.z = heli.position.z;
+
+            // HUD
+            var altMeters = Math.max(0, heli.position.y) * 3.6;
+            if (altEl) altEl.textContent = altMeters.toFixed(1) + " m";
+            if (tEl) tEl.textContent = t.toFixed(1);
+
+            camera.lookAt(0, 1.6, 0);
+            renderer.render(scene, camera);
+          }
+        }, 0);
+
+        renderer.render(scene, camera);
+
+        window.__timelines["helicopter"] = tl;
+
+        // Standalone preview fallback: when opened directly (no hyperframes runtime),
+        // play the timeline so the takeoff animation is visible in a plain browser.
+        if (!window.__hyperframes) {
+          tl.play(0);
+        }
+      })();
+    </script>
+  </body>
+</html>
