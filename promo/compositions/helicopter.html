@@ -842,8 +842,11 @@
 
         window.__timelines["helicopter"] = tl;
 
-        // Standalone preview fallback
-        if (!window.__hyperframes) {
+        // Standalone preview fallback — autoplay when loaded as a top-level page
+        // (direct URL or file://). When this file is embedded as a sub-composition
+        // inside the studio's iframe driver, leave the timeline paused so the runtime
+        // can scrub it.
+        if (window.top === window) {
           tl.play(0);
         }
       })();
