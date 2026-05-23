@@ -508,7 +508,6 @@
           var line2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2), mat2);
           line2.position.copy(rotorHub.position);
           body.add(line2);
-          rotorDisc.inner = line2;
           return { outer: line, inner: line2 };
         })();
 
