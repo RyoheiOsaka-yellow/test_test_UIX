@@ -9,8 +9,8 @@
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body {
         width: 1920px; height: 1080px; overflow: hidden;
-        background: #06080d;
-        font-family: "Helvetica Neue", "Hiragino Kaku Gothic ProN", sans-serif;
+        background: #05080f;
+        font-family: "Helvetica Neue", "Inter", "Hiragino Kaku Gothic ProN", sans-serif;
         color: #cfe7ff;
       }
       #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
@@ -18,21 +18,30 @@
       .bg {
         position: absolute; inset: 0;
         background:
-          radial-gradient(ellipse at 50% 60%, rgba(80,140,210,0.18) 0%, rgba(6,8,13,0) 60%),
-          linear-gradient(180deg, #0a1220 0%, #06080d 70%, #02040a 100%);
+          radial-gradient(ellipse at 50% 55%, rgba(80,140,210,0.16) 0%, rgba(5,8,15,0) 60%),
+          linear-gradient(180deg, #0a1424 0%, #060a14 70%, #02050a 100%);
       }
       .bg-grid {
         position: absolute; inset: 0;
         background-image:
           linear-gradient(rgba(120,180,230,0.06) 1px, transparent 1px),
           linear-gradient(90deg, rgba(120,180,230,0.06) 1px, transparent 1px);
-        background-size: 64px 64px;
-        mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
-        -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+        background-size: 48px 48px;
+        mask-image: radial-gradient(ellipse at center, #000 25%, transparent 78%);
+        -webkit-mask-image: radial-gradient(ellipse at center, #000 25%, transparent 78%);
+      }
+      .bg-grid-fine {
+        position: absolute; inset: 0;
+        background-image:
+          linear-gradient(rgba(120,180,230,0.025) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(120,180,230,0.025) 1px, transparent 1px);
+        background-size: 12px 12px;
+        mask-image: radial-gradient(ellipse at center, #000 15%, transparent 60%);
+        -webkit-mask-image: radial-gradient(ellipse at center, #000 15%, transparent 60%);
       }
       .vignette {
         position: absolute; inset: 0;
-        background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%);
+        background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.65) 100%);
         pointer-events: none;
       }
 
@@ -49,21 +58,27 @@
       }
       .hud-tl { top: 56px; left: 64px; font-size: 22px; }
       .hud-tl .tag { color: #6ea8e0; letter-spacing: 6px; }
-      .hud-tl .title { color: #e6f1ff; font-size: 36px; letter-spacing: 8px; margin-top: 6px; font-weight: 500; }
-      .hud-br { bottom: 56px; right: 64px; font-size: 20px; text-align: right; }
-      .hud-br .label { color: #6ea8e0; font-size: 14px; letter-spacing: 6px; }
-      .hud-br .value { color: #cfe7ff; font-size: 28px; letter-spacing: 4px; margin-top: 4px; font-weight: 400; }
-      .hud-bl { bottom: 56px; left: 64px; font-size: 18px; letter-spacing: 6px; color: rgba(160,200,235,0.55); }
+      .hud-tl .title { color: #e6f1ff; font-size: 32px; letter-spacing: 7px; margin-top: 6px; font-weight: 500; }
+      .hud-tl .sub { color: rgba(160,200,235,0.55); font-size: 14px; letter-spacing: 5px; margin-top: 8px; }
 
-      .crosshair {
-        position: absolute; left: 50%; top: 50%;
-        width: 96px; height: 96px;
-        transform: translate(-50%, -50%);
-        opacity: 0.35;
-      }
-      .crosshair::before, .crosshair::after { content: ""; position: absolute; background: #6ea8e0; }
-      .crosshair::before { left: 50%; top: 0; width: 1px; height: 100%; transform: translateX(-50%); }
-      .crosshair::after  { top: 50%; left: 0; height: 1px; width: 100%; transform: translateY(-50%); }
+      .hud-tr { top: 56px; right: 64px; font-size: 14px; text-align: right; letter-spacing: 5px; color: rgba(160,200,235,0.55); }
+      .hud-tr .row { display: flex; justify-content: flex-end; gap: 16px; margin-top: 6px; }
+      .hud-tr .k { color: #6ea8e0; }
+      .hud-tr .v { color: #e6f1ff; }
+
+      .hud-br { bottom: 56px; right: 64px; font-size: 20px; text-align: right; }
+      .hud-br .label { color: #6ea8e0; font-size: 12px; letter-spacing: 6px; }
+      .hud-br .value { color: #cfe7ff; font-size: 28px; letter-spacing: 4px; margin-top: 4px; font-weight: 400; }
+      .hud-br .stack > div + div { margin-top: 18px; }
+
+      .hud-bl { bottom: 56px; left: 64px; font-size: 16px; letter-spacing: 6px; color: rgba(160,200,235,0.55); }
+      .hud-bl .row { margin-top: 6px; color: #cfe7ff; font-size: 22px; }
+
+      .corner { position: absolute; width: 36px; height: 36px; border: 1px solid rgba(110,168,224,0.4); }
+      .corner.tl { top: 32px; left: 32px; border-right: none; border-bottom: none; }
+      .corner.tr { top: 32px; right: 32px; border-left: none; border-bottom: none; }
+      .corner.bl { bottom: 32px; left: 32px; border-right: none; border-top: none; }
+      .corner.br { bottom: 32px; right: 32px; border-left: none; border-top: none; }
     </style>
   </head>
   <body>
@@ -75,19 +90,47 @@
       data-width="1920"
       data-height="1080"
     >
-      <div class="bg clip" id="bg" data-start="0" data-duration="10" data-track-index="0"></div>
-      <div class="bg-grid clip" id="bgGrid" data-start="0" data-duration="10" data-track-index="1"></div>
-      <div id="stage" class="clip" data-start="0" data-duration="10" data-track-index="5"></div>
-      <div class="crosshair clip" id="crosshair" data-start="0" data-duration="10" data-track-index="10"></div>
-      <div class="hud hud-tl clip" id="hudTL" data-start="0" data-duration="10" data-track-index="11">
-        <div class="tag">— WIREFRAME / TAKEOFF</div>
-        <div class="title">UH-60 STYLE • LINE STUDY</div>
+      <div class="bg clip"           id="bg"      data-start="0" data-duration="10" data-track-index="0"></div>
+      <div class="bg-grid clip"      id="bgGrid"  data-start="0" data-duration="10" data-track-index="1"></div>
+      <div class="bg-grid-fine clip" id="bgFine"  data-start="0" data-duration="10" data-track-index="2"></div>
+
+      <div id="stage" class="clip"   data-start="0" data-duration="10" data-track-index="5"></div>
+
+      <div id="cornerTL" class="corner tl clip" data-start="0" data-duration="10" data-track-index="11"></div>
+      <div id="cornerTR" class="corner tr clip" data-start="0" data-duration="10" data-track-index="12"></div>
+      <div id="cornerBL" class="corner bl clip" data-start="0" data-duration="10" data-track-index="13"></div>
+      <div id="cornerBR" class="corner br clip" data-start="0" data-duration="10" data-track-index="14"></div>
+
+      <div id="hudTL" class="hud hud-tl clip" data-start="0" data-duration="10" data-track-index="15">
+        <div class="tag">— TECHNICAL STUDY / TAKEOFF</div>
+        <div class="title">SIKORSKY UH-60 BLACKHAWK</div>
+        <div class="sub">4-BLADE • TWIN GE T700-401C • LINE DRAWING</div>
       </div>
-      <div class="hud hud-br clip" id="hudBR" data-start="0" data-duration="10" data-track-index="12">
-        <div class="label">ALTITUDE</div>
-        <div class="value" id="altVal">0.0 m</div>
+
+      <div id="hudTR" class="hud hud-tr clip" data-start="0" data-duration="10" data-track-index="16">
+        SCALE 1:48 · WIREFRAME RENDER
+        <div class="row"><span class="k">DWG</span><span class="v">UH-60M / 24A</span></div>
+        <div class="row"><span class="k">SHEET</span><span class="v">03 OF 12</span></div>
       </div>
-      <div class="hud hud-bl clip" id="hudBL" data-start="0" data-duration="10" data-track-index="13">T+ <span id="tVal">00.0</span> s</div>
+
+      <div id="hudBR" class="hud hud-br clip" data-start="0" data-duration="10" data-track-index="17">
+        <div class="stack">
+          <div>
+            <div class="label">ALTITUDE AGL</div>
+            <div class="value" id="altVal">0.0 m</div>
+          </div>
+          <div>
+            <div class="label">ROTOR RPM</div>
+            <div class="value" id="rpmVal">000</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="hudBL" class="hud hud-bl clip" data-start="0" data-duration="10" data-track-index="18">
+        T+ <span id="tVal">00.0</span> s
+        <div class="row" id="phaseVal">IDLE</div>
+      </div>
+
       <div class="vignette clip" id="vignette" data-start="0" data-duration="10" data-track-index="20"></div>
     </div>
 
@@ -103,266 +146,695 @@
         stage.appendChild(renderer.domElement);
 
         var scene = new THREE.Scene();
-        var camera = new THREE.PerspectiveCamera(35, W / H, 0.1, 200);
-        camera.position.set(8, 3.2, 11);
-        camera.lookAt(0, 1.6, 0);
+        var camera = new THREE.PerspectiveCamera(32, W / H, 0.1, 400);
+        camera.position.set(11, 4.2, 13);
+        camera.lookAt(0, 2.0, -1.5);
 
-        var lineMain   = new THREE.LineBasicMaterial({ color: 0xeaf3ff, transparent: true, opacity: 0.92 });
-        var lineAccent = new THREE.LineBasicMaterial({ color: 0x6ea8e0, transparent: true, opacity: 0.85 });
-        var lineRotor  = new THREE.LineBasicMaterial({ color: 0xffd7a8, transparent: true, opacity: 0.95 });
-        var lineFloor  = new THREE.LineBasicMaterial({ color: 0x274363, transparent: true, opacity: 0.55 });
+        // ---- materials ----
+        // Hierarchy: hull (bright), structural (soft), accent (cool blue), rotor (warm),
+        // panel-line (very faint).
+        var mHull   = new THREE.LineBasicMaterial({ color: 0xeaf3ff, transparent: true, opacity: 0.95 });
+        var mStruct = new THREE.LineBasicMaterial({ color: 0xb7d1ec, transparent: true, opacity: 0.78 });
+        var mAccent = new THREE.LineBasicMaterial({ color: 0x6ea8e0, transparent: true, opacity: 0.85 });
+        var mRotor  = new THREE.LineBasicMaterial({ color: 0xffc98a, transparent: true, opacity: 0.95 });
+        var mPanel  = new THREE.LineBasicMaterial({ color: 0x9fc1e2, transparent: true, opacity: 0.35 });
+        var mFloor  = new THREE.LineBasicMaterial({ color: 0x274363, transparent: true, opacity: 0.55 });
+        var mGhost  = new THREE.LineBasicMaterial({ color: 0xffc98a, transparent: true, opacity: 0.0 });
 
+        // ---- helpers ----
+        function edges(geo, mat, angle) {
+          return new THREE.LineSegments(new THREE.EdgesGeometry(geo, angle == null ? 18 : angle), mat);
+        }
         function wire(geo, mat) {
           return new THREE.LineSegments(new THREE.WireframeGeometry(geo), mat);
         }
-        function edge(geo, mat, angle) {
-          return new THREE.LineSegments(new THREE.EdgesGeometry(geo, angle == null ? 12 : angle), mat);
+        function lineLoop(points, mat) {
+          var g = new THREE.BufferGeometry().setFromPoints(points);
+          return new THREE.LineLoop(g, mat);
         }
+        function lineStrip(points, mat) {
+          var g = new THREE.BufferGeometry().setFromPoints(points);
+          return new THREE.Line(g, mat);
+        }
+        function v(x, y, z) { return new THREE.Vector3(x, y, z); }
 
-        // ground grid
-        var ground = new THREE.GridHelper(40, 20, 0x274363, 0x1a2a40);
+        // ---- ground reference ----
+        var ground = new THREE.GridHelper(60, 30, 0x2a4a6e, 0x172a44);
         ground.material.transparent = true;
         ground.material.opacity = 0.55;
         scene.add(ground);
 
-        // horizon ring
-        (function () {
-          var r = 6, seg = 64, pts = [];
+        // Pad / takeoff zone rings
+        function ring(r, seg, mat, y) {
+          var pts = [];
           for (var i = 0; i <= seg; i++) {
             var a = (i / seg) * Math.PI * 2;
-            pts.push(new THREE.Vector3(Math.cos(a) * r, 0.01, Math.sin(a) * r));
+            pts.push(v(Math.cos(a) * r, y == null ? 0.01 : y, Math.sin(a) * r));
           }
           var g = new THREE.BufferGeometry().setFromPoints(pts);
-          scene.add(new THREE.Line(g, lineFloor));
+          return new THREE.Line(g, mat);
+        }
+        scene.add(ring(6.0, 96, mFloor));
+        scene.add(ring(8.2, 96, mFloor));
+        // Crosshair "H" on the pad
+        (function () {
+          var pts = [];
+          pts.push(v(-1.4, 0.02, -2.2)); pts.push(v(-1.4, 0.02, 2.2));
+          pts.push(v( 1.4, 0.02, -2.2)); pts.push(v( 1.4, 0.02, 2.2));
+          pts.push(v(-1.4, 0.02, 0));    pts.push(v( 1.4, 0.02, 0));
+          var g = new THREE.BufferGeometry().setFromPoints(pts);
+          scene.add(new THREE.LineSegments(g, mFloor));
         })();
 
-        // helicopter root + an inner "shake" group so vibration doesn't fight GSAP tweens
+        // ============================================================
+        // HELICOPTER
+        // ============================================================
         var heli = new THREE.Group();
         scene.add(heli);
-        var body = new THREE.Group();
+        var body = new THREE.Group(); // for vibration without fighting tweens
         heli.add(body);
 
-        // fuselage
-        (function () {
-          var g = new THREE.IcosahedronGeometry(1, 1);
-          g.scale(1.55, 1.05, 1.25);
-          var m = wire(g, lineMain);
-          m.position.set(0, 1.65, 0);
+        // Forward direction is +X. Up is +Y. Wingspan is Z.
+        // Cabin centerline at y=2.0, length ~9m, span ~2.4m wide, ~2.0m tall.
+
+        // ---------- Fuselage core ----------
+        // The fuselage is built from several axial sections, then panel/cut lines are
+        // drawn on top as Line strips so the silhouette stays readable.
+
+        // Main cabin: rounded box (chamfered) from x=-1.4 .. +1.6, y=1.1 .. 3.0, z=-1.2 .. +1.2
+        (function cabin() {
+          // Long midsection
+          var g = new THREE.BoxGeometry(3.0, 1.85, 2.35);
+          var m = edges(g, mHull, 1);
+          m.position.set(0.1, 2.05, 0);
           body.add(m);
+
+          // Cabin chamfer / "shoulder" rails — two top rails to soften the roof
+          var rail = [v(-1.4, 2.95, -1.10), v( 1.6, 2.95, -1.10)];
+          body.add(lineStrip(rail, mHull));
+          body.add(lineStrip([v(-1.4, 2.95,  1.10), v( 1.6, 2.95,  1.10)], mHull));
+
+          // Belly chines
+          body.add(lineStrip([v(-1.4, 1.18, -1.05), v( 1.6, 1.18, -1.05)], mPanel));
+          body.add(lineStrip([v(-1.4, 1.18,  1.05), v( 1.6, 1.18,  1.05)], mPanel));
+
+          // Door cut — port side
+          body.add(lineLoop([
+            v(-0.45, 1.22,  1.181), v( 0.95, 1.22,  1.181),
+            v( 0.95, 2.80,  1.181), v(-0.45, 2.80,  1.181)
+          ], mAccent));
+          // Cabin window (sliding door window)
+          body.add(lineLoop([
+            v(-0.30, 2.10,  1.182), v( 0.78, 2.10,  1.182),
+            v( 0.78, 2.65,  1.182), v(-0.30, 2.65,  1.182)
+          ], mAccent));
+
+          // Door cut — starboard side (mirror)
+          body.add(lineLoop([
+            v(-0.45, 1.22, -1.181), v( 0.95, 1.22, -1.181),
+            v( 0.95, 2.80, -1.181), v(-0.45, 2.80, -1.181)
+          ], mAccent));
+          body.add(lineLoop([
+            v(-0.30, 2.10, -1.182), v( 0.78, 2.10, -1.182),
+            v( 0.78, 2.65, -1.182), v(-0.30, 2.65, -1.182)
+          ], mAccent));
+
+          // Stencil-style panel lines (rivet rows)
+          for (var i = -2; i <= 4; i++) {
+            var x = -1.3 + i * 0.38;
+            if (x > 1.55) break;
+            body.add(lineStrip([v(x, 1.20,  1.183), v(x, 2.05,  1.183)], mPanel));
+            body.add(lineStrip([v(x, 1.20, -1.183), v(x, 2.05, -1.183)], mPanel));
+          }
         })();
 
-        // canopy
-        (function () {
-          var g = new THREE.SphereGeometry(0.85, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.55);
-          g.scale(1.0, 1.0, 1.15);
-          var m = wire(g, lineAccent);
-          m.position.set(1.05, 1.78, 0);
-          m.rotation.z = -Math.PI * 0.06;
-          body.add(m);
+        // ---------- Cockpit nose (forward of cabin) ----------
+        (function cockpit() {
+          // Cockpit is a forward-tapering box with angled windscreen
+          // Base box, x from 1.6 .. 2.9
+          var bottom = [
+            v(1.6, 1.18,  1.05), v(2.85, 1.42,  0.55),
+            v(2.85, 1.42, -0.55), v(1.6, 1.18, -1.05)
+          ];
+          body.add(lineLoop(bottom, mHull));
+          // Top edge of cockpit (sits where windscreen meets roof at ~y 2.95 -> tapers down)
+          var top = [
+            v(1.6, 2.95,  0.90), v(2.65, 2.45,  0.50),
+            v(2.65, 2.45, -0.50), v(1.6, 2.95, -0.90)
+          ];
+          body.add(lineLoop(top, mHull));
+          // Windscreen frame — chin to top, port
+          body.add(lineStrip([v(2.85, 1.42,  0.55), v(2.65, 2.45,  0.50)], mHull));
+          body.add(lineStrip([v(2.85, 1.42, -0.55), v(2.65, 2.45, -0.50)], mHull));
+          // Cabin-to-cockpit junction verticals
+          body.add(lineStrip([v(1.6, 1.18,  1.05), v(1.6, 2.95,  0.90)], mHull));
+          body.add(lineStrip([v(1.6, 1.18, -1.05), v(1.6, 2.95, -0.90)], mHull));
+
+          // Windscreen central frame
+          body.add(lineStrip([v(2.75, 1.90,  0),    v(2.65, 2.45,  0)], mAccent));
+          body.add(lineStrip([v(1.6,  2.95,  0),    v(2.65, 2.45,  0)], mAccent));
+
+          // Windscreen wiper hint
+          body.add(lineStrip([v(2.55, 2.05,  0.30), v(2.40, 2.32,  0.20)], mPanel));
+          body.add(lineStrip([v(2.55, 2.05, -0.30), v(2.40, 2.32, -0.20)], mPanel));
+
+          // Pilot side windows (forward door)
+          body.add(lineLoop([
+            v(1.65, 1.85,  0.95), v(2.20, 1.78,  0.78),
+            v(2.20, 2.55,  0.74), v(1.65, 2.70,  0.92)
+          ], mAccent));
+          body.add(lineLoop([
+            v(1.65, 1.85, -0.95), v(2.20, 1.78, -0.78),
+            v(2.20, 2.55, -0.74), v(1.65, 2.70, -0.92)
+          ], mAccent));
+
+          // Pilot door cut
+          body.add(lineStrip([v(1.62, 1.20,  1.04), v(1.62, 2.95,  0.90)], mAccent));
+          body.add(lineStrip([v(1.62, 1.20, -1.04), v(1.62, 2.95, -0.90)], mAccent));
+
+          // Nose / chin radome
+          var rad = new THREE.SphereGeometry(0.42, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55);
+          rad.scale(1.0, 0.85, 1.0);
+          rad.rotateZ(-Math.PI / 2);
+          var radE = edges(rad, mAccent, 1);
+          radE.position.set(2.95, 1.45, 0);
+          body.add(radE);
+
+          // FLIR ball under nose
+          var flir = new THREE.SphereGeometry(0.22, 12, 8);
+          var flirE = edges(flir, mAccent, 1);
+          flirE.position.set(2.55, 1.05, 0);
+          body.add(flirE);
+          // FLIR yoke
+          body.add(lineStrip([v(2.40, 1.18,  0.22), v(2.70, 1.18,  0.22)], mAccent));
+          body.add(lineStrip([v(2.40, 1.18, -0.22), v(2.70, 1.18, -0.22)], mAccent));
+          body.add(lineStrip([v(2.40, 1.18,  0.22), v(2.40, 1.05,  0)], mAccent));
+          body.add(lineStrip([v(2.40, 1.18, -0.22), v(2.40, 1.05,  0)], mAccent));
+
+          // Pitot tubes on nose tip
+          body.add(lineStrip([v(2.92, 1.62,  0.18), v(3.30, 1.66,  0.18)], mHull));
+          body.add(lineStrip([v(2.92, 1.62, -0.18), v(3.30, 1.66, -0.18)], mHull));
+          // Pitot vertical struts
+          body.add(lineStrip([v(3.20, 1.66,  0.18), v(3.20, 1.50,  0.18)], mHull));
+          body.add(lineStrip([v(3.20, 1.66, -0.18), v(3.20, 1.50, -0.18)], mHull));
         })();
 
-        // nose cone
-        (function () {
-          var g = new THREE.ConeGeometry(0.55, 0.9, 10, 1);
-          var m = wire(g, lineMain);
-          m.rotation.z = -Math.PI / 2;
-          m.position.set(1.85, 1.62, 0);
-          body.add(m);
+        // ---------- Engine cowlings on top (twin GE T700) ----------
+        (function cowlings() {
+          function nacelle(z) {
+            // Outer cowling: half-cylinder lying along X
+            var g = new THREE.CylinderGeometry(0.42, 0.42, 1.6, 14, 1, false, 0, Math.PI);
+            var m = edges(g, mHull, 12);
+            m.rotation.z = Math.PI / 2;
+            m.rotation.x = Math.PI / 2;
+            m.position.set(-0.55, 3.18, z);
+            body.add(m);
+
+            // Intake ring (forward)
+            var intake = new THREE.TorusGeometry(0.38, 0.04, 6, 18, Math.PI);
+            var iE = edges(intake, mAccent, 1);
+            iE.rotation.y = Math.PI / 2;
+            iE.position.set(0.25, 3.18, z);
+            body.add(iE);
+
+            // Exhaust IR suppressor (aft)
+            var ex = new THREE.CylinderGeometry(0.32, 0.40, 0.50, 12, 1, false);
+            var exE = edges(ex, mAccent, 1);
+            exE.rotation.z = Math.PI / 2;
+            exE.position.set(-1.55, 3.18, z);
+            body.add(exE);
+
+            // Top panel line
+            body.add(lineStrip([
+              v( 0.25, 3.55, z),
+              v(-1.40, 3.55, z)
+            ], mPanel));
+          }
+          nacelle( 0.55);
+          nacelle(-0.55);
+
+          // Inter-nacelle hump (transmission deck)
+          var deck = new THREE.BoxGeometry(1.2, 0.25, 0.95);
+          var deckE = edges(deck, mHull, 1);
+          deckE.position.set(-0.30, 3.10, 0);
+          body.add(deckE);
+
+          // APU exhaust pipe (top left rear)
+          var apu = new THREE.CylinderGeometry(0.08, 0.08, 0.35, 8, 1, false);
+          var apuE = edges(apu, mAccent, 1);
+          apuE.rotation.z = Math.PI / 4;
+          apuE.position.set(-1.80, 3.35, 0.45);
+          body.add(apuE);
         })();
 
-        // tail boom
-        (function () {
-          var g = new THREE.CylinderGeometry(0.18, 0.32, 3.6, 10, 1, false);
-          var m = wire(g, lineMain);
-          m.rotation.z = Math.PI / 2;
-          m.position.set(-2.3, 1.78, 0);
-          body.add(m);
-        })();
-
-        // vertical fin
-        (function () {
-          var shape = new THREE.Shape();
-          shape.moveTo(0, 0);
-          shape.lineTo(0.9, 0.2);
-          shape.lineTo(1.1, 0.95);
-          shape.lineTo(0.15, 0.7);
-          shape.lineTo(0, 0);
-          var g = new THREE.ExtrudeGeometry(shape, { depth: 0.08, bevelEnabled: false });
-          g.translate(-0.55, -0.05, -0.04);
-          var m = edge(g, lineMain, 1);
-          m.position.set(-3.4, 1.85, 0);
-          body.add(m);
-        })();
-
-        // horizontal stabilizer
-        (function () {
-          var g = new THREE.BoxGeometry(0.7, 0.06, 1.5);
-          var m = edge(g, lineMain, 1);
-          m.position.set(-3.45, 1.95, 0);
-          body.add(m);
-        })();
-
-        // skids
-        function addSkid(z) {
-          var tube = new THREE.CylinderGeometry(0.07, 0.07, 2.8, 8, 1, false);
-          var t = wire(tube, lineMain);
-          t.rotation.z = Math.PI / 2;
-          t.position.set(0.1, 0.18, z);
-          body.add(t);
-          var tip = new THREE.CylinderGeometry(0.07, 0.05, 0.5, 8, 1, false);
-          var tp = wire(tip, lineMain);
-          tp.rotation.z = Math.PI / 2 + 0.45;
-          tp.position.set(1.55, 0.28, z);
-          body.add(tp);
-          var strutGeo = new THREE.CylinderGeometry(0.05, 0.05, 1.0, 6, 1, false);
-          var s1 = wire(strutGeo, lineMain);
-          s1.position.set(0.7, 0.7, z * 0.65);
-          s1.rotation.x = (z > 0 ? 1 : -1) * 0.45;
-          body.add(s1);
-          var s2 = wire(strutGeo, lineMain);
-          s2.position.set(-0.5, 0.7, z * 0.65);
-          s2.rotation.x = (z > 0 ? 1 : -1) * 0.45;
-          body.add(s2);
-        }
-        addSkid(0.85);
-        addSkid(-0.85);
-
-        // rotor mast
-        (function () {
-          var g = new THREE.CylinderGeometry(0.09, 0.11, 0.55, 8, 1, false);
-          var m = wire(g, lineMain);
-          m.position.set(0, 2.6, 0);
-          body.add(m);
-        })();
-
-        // main rotor hub + blades
+        // ---------- Rotor mast, head, swashplate, pitch links ----------
         var rotorHub = new THREE.Group();
-        rotorHub.position.set(0, 2.95, 0);
+        rotorHub.position.set(-0.1, 3.65, 0);
         body.add(rotorHub);
-        (function () {
-          var g = new THREE.CylinderGeometry(0.18, 0.18, 0.12, 10, 1, false);
-          rotorHub.add(wire(g, lineRotor));
-        })();
-        for (var i = 0; i < 4; i++) {
-          var blade = new THREE.Group();
-          var g = new THREE.BoxGeometry(5.2, 0.04, 0.32);
-          var m = edge(g, lineRotor, 1);
-          m.position.set(2.4, 0, 0);
-          blade.add(m);
-          blade.rotation.y = (i / 4) * Math.PI * 2;
-          rotorHub.add(blade);
-        }
 
-        // tail rotor
-        var tailRotor = new THREE.Group();
-        tailRotor.position.set(-3.45, 1.9, 0.32);
-        body.add(tailRotor);
-        (function () {
-          var g = new THREE.CylinderGeometry(0.12, 0.12, 0.1, 8, 1, false);
-          var m = wire(g, lineRotor);
-          m.rotation.x = Math.PI / 2;
-          tailRotor.add(m);
-        })();
-        for (var j = 0; j < 4; j++) {
-          var tblade = new THREE.Group();
-          var tg = new THREE.BoxGeometry(1.1, 0.025, 0.12);
-          var tm = edge(tg, lineRotor, 1);
-          tm.position.set(0.55, 0, 0);
-          tblade.add(tm);
-          tblade.rotation.z = (j / 4) * Math.PI * 2;
-          tailRotor.add(tblade);
-        }
+        (function rotorAssembly() {
+          // Mast (fixed part — does not spin)
+          var mast = new THREE.CylinderGeometry(0.10, 0.12, 0.85, 12, 1, false);
+          var mastE = edges(mast, mHull, 1);
+          mastE.position.set(-0.1, 3.22, 0);
+          body.add(mastE);
 
-        // engine block accent
-        (function () {
-          var g = new THREE.BoxGeometry(1.5, 0.55, 0.95);
-          var m = edge(g, lineAccent, 1);
-          m.position.set(-0.55, 2.4, 0);
-          body.add(m);
+          // Lower fixed swashplate (non-rotating)
+          var swashLow = new THREE.TorusGeometry(0.32, 0.04, 8, 28);
+          var swashLowE = edges(swashLow, mAccent, 1);
+          swashLowE.rotation.x = Math.PI / 2;
+          swashLowE.position.set(-0.1, 3.52, 0);
+          body.add(swashLowE);
+          // 3 control rods (cyclic + collective)
+          var rodGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.55, 6, 1, false);
+          for (var k = 0; k < 3; k++) {
+            var a = (k / 3) * Math.PI * 2;
+            var rd = edges(rodGeo, mAccent, 1);
+            rd.position.set(-0.1 + Math.cos(a) * 0.34, 3.25, Math.sin(a) * 0.34);
+            body.add(rd);
+          }
+
+          // ---- rotating parts (rotorHub) ----
+          // Upper rotating swashplate
+          var swashUp = new THREE.TorusGeometry(0.34, 0.04, 8, 28);
+          var swashUpE = edges(swashUp, mRotor, 1);
+          swashUpE.rotation.x = Math.PI / 2;
+          rotorHub.add(swashUpE);
+
+          // Pitch links from upper swashplate to blade roots (4)
+          var pitchLink = new THREE.CylinderGeometry(0.022, 0.022, 0.42, 6, 1, false);
+          for (var i = 0; i < 4; i++) {
+            var ang = (i / 4) * Math.PI * 2 + Math.PI / 4;
+            var link = edges(pitchLink, mRotor, 1);
+            link.position.set(Math.cos(ang) * 0.34, 0.20, Math.sin(ang) * 0.34);
+            link.rotation.z = -0.18;
+            rotorHub.add(link);
+          }
+
+          // Rotor head: central hub + 4 spider arms
+          var hubCyl = new THREE.CylinderGeometry(0.22, 0.22, 0.18, 14, 1, false);
+          rotorHub.add(edges(hubCyl, mRotor, 1));
+
+          // Star plate / elastomeric bearings layer
+          var starPts = [];
+          var sN = 4, sR = 0.28;
+          for (var s = 0; s <= sN; s++) {
+            var sa = (s / sN) * Math.PI * 2;
+            starPts.push(v(Math.cos(sa) * sR, 0.10, Math.sin(sa) * sR));
+          }
+          rotorHub.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(starPts), mRotor));
+
+          // 4 arms
+          for (var a2 = 0; a2 < 4; a2++) {
+            var arm = new THREE.Group();
+            arm.rotation.y = (a2 / 4) * Math.PI * 2;
+            rotorHub.add(arm);
+
+            // Blade grip cuff
+            var grip = new THREE.CylinderGeometry(0.085, 0.085, 0.42, 10, 1, false);
+            var gripE = edges(grip, mRotor, 1);
+            gripE.rotation.z = Math.PI / 2;
+            gripE.position.set(0.35, 0.05, 0);
+            arm.add(gripE);
+
+            // Pitch horn (small arm out the side of cuff)
+            var horn = new THREE.BoxGeometry(0.12, 0.04, 0.18);
+            var hornE = edges(horn, mRotor, 1);
+            hornE.position.set(0.35, 0.18, 0.16);
+            arm.add(hornE);
+
+            // Blade — tapered using ExtrudeGeometry of a thin airfoil-like shape
+            var blShape = new THREE.Shape();
+            blShape.moveTo(0,    -0.18);
+            blShape.lineTo(5.6,  -0.10);
+            blShape.lineTo(5.7,   0.00);
+            blShape.lineTo(5.6,   0.10);
+            blShape.lineTo(0,     0.18);
+            blShape.lineTo(0,    -0.18);
+            var blGeo = new THREE.ExtrudeGeometry(blShape, { depth: 0.03, bevelEnabled: false });
+            blGeo.translate(0, 0, -0.015);
+            var blE = edges(blGeo, mRotor, 1);
+            blE.position.set(0.6, 0.06, 0);
+            // slight blade twist / coning
+            blE.rotation.x = -0.05;
+            arm.add(blE);
+
+            // Blade tip cap detail (swept tip line)
+            var tip = [v(5.7, 0.08, 0.0), v(6.0, 0.04, -0.10), v(6.0, 0.04, 0.10), v(5.7, 0.08, 0.0)];
+            var tipGroup = new THREE.Group();
+            tipGroup.position.set(0.6, 0.06, 0);
+            tipGroup.add(lineLoop(tip, mRotor));
+            arm.add(tipGroup);
+          }
         })();
 
-        // rotor disc (motion-blur ring)
+        // ---- spinning rotor disc (motion-blur ring) ----
         var rotorDisc = (function () {
-          var pts = [], r = 2.7, seg = 96;
+          var pts = [], r = 6.2, seg = 128;
           for (var i = 0; i <= seg; i++) {
             var a = (i / seg) * Math.PI * 2;
-            pts.push(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r));
+            pts.push(v(Math.cos(a) * r, 0, Math.sin(a) * r));
           }
-          var g = new THREE.BufferGeometry().setFromPoints(pts);
-          var mat = new THREE.LineBasicMaterial({ color: 0xffd7a8, transparent: true, opacity: 0 });
-          var line = new THREE.Line(g, mat);
+          var line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mGhost);
           line.position.copy(rotorHub.position);
           body.add(line);
-          return line;
+          // an inner ghost ring
+          var pts2 = [], r2 = 3.0;
+          for (var j = 0; j <= seg; j++) {
+            var b = (j / seg) * Math.PI * 2;
+            pts2.push(v(Math.cos(b) * r2, 0, Math.sin(b) * r2));
+          }
+          var mat2 = mGhost.clone();
+          var line2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2), mat2);
+          line2.position.copy(rotorHub.position);
+          body.add(line2);
+          rotorDisc.inner = line2;
+          return { outer: line, inner: line2 };
         })();
 
-        // ground shadow ellipse
+        // ---------- Tail boom ----------
+        (function tailBoom() {
+          // Tapered boom: cylinder with different radii
+          var boomGeo = new THREE.CylinderGeometry(0.20, 0.42, 4.0, 16, 1, false);
+          var boomE = edges(boomGeo, mHull, 1);
+          boomE.rotation.z = Math.PI / 2;
+          boomE.position.set(-3.45, 2.10, 0);
+          body.add(boomE);
+
+          // Spine line along top of boom
+          body.add(lineStrip([v(-1.45, 2.45, 0), v(-5.40, 2.20, 0)], mPanel));
+
+          // Strake (small fin under boom)
+          var strake = new THREE.BoxGeometry(1.4, 0.05, 0.16);
+          var strakeE = edges(strake, mAccent, 1);
+          strakeE.position.set(-4.20, 1.75, 0);
+          body.add(strakeE);
+
+          // Tail boom panel lines (3 rings)
+          for (var i = 0; i < 3; i++) {
+            var x = -2.50 - i * 0.8;
+            var ringPts = [];
+            var ringR = 0.36 - i * 0.06;
+            for (var j = 0; j <= 24; j++) {
+              var a = (j / 24) * Math.PI * 2;
+              ringPts.push(v(x, 2.10 + Math.cos(a) * ringR, Math.sin(a) * ringR));
+            }
+            body.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ringPts), mPanel));
+          }
+
+          // Stabilator (horizontal control surface) — slight downward angle
+          var stab = new THREE.BoxGeometry(0.45, 0.05, 2.4);
+          var stabE = edges(stab, mHull, 1);
+          stabE.position.set(-5.10, 2.05, 0);
+          stabE.rotation.x = 0.05; // slight anhedral feel
+          body.add(stabE);
+          // Stab tip plates
+          body.add(edges(new THREE.BoxGeometry(0.30, 0.20, 0.05), mAccent, 1).translateX(-5.10).translateY(2.13).translateZ( 1.18));
+          body.add(edges(new THREE.BoxGeometry(0.30, 0.20, 0.05), mAccent, 1).translateX(-5.10).translateY(2.13).translateZ(-1.18));
+        })();
+
+        // ---------- Tail pylon (vertical fin) + canted tail rotor ----------
+        var tailRotor = new THREE.Group();
+        (function tailPylon() {
+          // Swept pylon shape — extrude a triangular-ish outline upward
+          var shape = new THREE.Shape();
+          shape.moveTo(0,    0);
+          shape.lineTo(1.10, 0.10);
+          shape.lineTo(1.05, 0.85);
+          shape.lineTo(0.55, 1.55);
+          shape.lineTo(0.10, 1.55);
+          shape.lineTo(0,    0);
+          var geo = new THREE.ExtrudeGeometry(shape, { depth: 0.16, bevelEnabled: false });
+          geo.translate(-0.55, 0, -0.08);
+          var py = edges(geo, mHull, 6);
+          py.position.set(-5.30, 2.10, 0);
+          body.add(py);
+
+          // Tail rotor gearbox bulge (small box on side of pylon, canted 20° from vertical)
+          var gb = new THREE.BoxGeometry(0.32, 0.32, 0.36);
+          var gbE = edges(gb, mAccent, 1);
+          gbE.position.set(-5.35, 3.30, 0.30);
+          gbE.rotation.x = -0.35;
+          body.add(gbE);
+
+          // Tail rotor assembly — canted 20° from vertical
+          tailRotor.position.set(-5.35, 3.40, 0.50);
+          tailRotor.rotation.x = -0.35;
+          body.add(tailRotor);
+
+          // Tail hub
+          var th = new THREE.CylinderGeometry(0.10, 0.10, 0.18, 12, 1, false);
+          var thE = edges(th, mRotor, 1);
+          thE.rotation.x = Math.PI / 2;
+          tailRotor.add(thE);
+
+          // 4 tail blades
+          for (var i = 0; i < 4; i++) {
+            var bl = new THREE.Group();
+            // tapered blade
+            var s = new THREE.Shape();
+            s.moveTo(0,    -0.07);
+            s.lineTo(1.10, -0.05);
+            s.lineTo(1.15,  0);
+            s.lineTo(1.10,  0.05);
+            s.lineTo(0,     0.07);
+            s.lineTo(0,    -0.07);
+            var bg = new THREE.ExtrudeGeometry(s, { depth: 0.012, bevelEnabled: false });
+            bg.translate(0, 0, -0.006);
+            var bE = edges(bg, mRotor, 1);
+            bE.position.set(0.15, 0, 0);
+            bl.add(bE);
+            bl.rotation.z = (i / 4) * Math.PI * 2;
+            tailRotor.add(bl);
+          }
+        })();
+
+        // ---------- Landing gear (wheeled tricycle) ----------
+        (function gear() {
+          // Nose wheel — forward, single
+          var nsStrut = new THREE.CylinderGeometry(0.045, 0.045, 0.55, 8, 1, false);
+          var ns = edges(nsStrut, mHull, 1);
+          ns.position.set(2.10, 0.78, 0);
+          body.add(ns);
+          var noseWheel = new THREE.TorusGeometry(0.22, 0.07, 8, 18);
+          var nwE = edges(noseWheel, mAccent, 1);
+          nwE.rotation.y = Math.PI / 2;
+          nwE.position.set(2.10, 0.46, 0);
+          body.add(nwE);
+          var noseHub = new THREE.CylinderGeometry(0.06, 0.06, 0.16, 10, 1, false);
+          var nhE = edges(noseHub, mAccent, 1);
+          nhE.rotation.z = Math.PI / 2;
+          nhE.position.set(2.10, 0.46, 0);
+          body.add(nhE);
+
+          // Main wheels — aft of cabin, twin oleo struts on each side
+          function mainGear(z) {
+            // upper trailing arm
+            var arm = new THREE.CylinderGeometry(0.055, 0.055, 0.95, 8, 1, false);
+            var armE = edges(arm, mHull, 1);
+            armE.position.set(-1.10, 0.95, z);
+            armE.rotation.z = -0.45;
+            body.add(armE);
+
+            // oleo strut (shorter, more vertical)
+            var oleo = new THREE.CylinderGeometry(0.05, 0.05, 0.70, 8, 1, false);
+            var oleoE = edges(oleo, mHull, 1);
+            oleoE.position.set(-0.55, 0.92, z);
+            body.add(oleoE);
+
+            // Wheel
+            var wheel = new THREE.TorusGeometry(0.28, 0.09, 8, 20);
+            var wE = edges(wheel, mAccent, 1);
+            wE.rotation.y = Math.PI / 2;
+            wE.position.set(-1.55, 0.42, z);
+            body.add(wE);
+            var hub = new THREE.CylinderGeometry(0.08, 0.08, 0.20, 10, 1, false);
+            var hE = edges(hub, mAccent, 1);
+            hE.rotation.z = Math.PI / 2;
+            hE.position.set(-1.55, 0.42, z);
+            body.add(hE);
+          }
+          mainGear( 1.30);
+          mainGear(-1.30);
+
+          // Tail wheel (small, under tail boom near pylon)
+          var tw = new THREE.TorusGeometry(0.12, 0.04, 6, 14);
+          var twE = edges(tw, mAccent, 1);
+          twE.rotation.y = Math.PI / 2;
+          twE.position.set(-5.05, 1.55, 0);
+          body.add(twE);
+          var twStrut = new THREE.CylinderGeometry(0.025, 0.025, 0.35, 6, 1, false);
+          var twsE = edges(twStrut, mHull, 1);
+          twsE.position.set(-5.05, 1.78, 0);
+          body.add(twsE);
+        })();
+
+        // ---------- Stub wings (ESSS) — optional, adds menace ----------
+        (function stubs() {
+          function stub(z) {
+            var g = new THREE.BoxGeometry(0.55, 0.12, 0.85);
+            var e = edges(g, mAccent, 1);
+            e.position.set(-0.30, 2.30, z);
+            body.add(e);
+            // pylon hardpoint
+            var p = new THREE.BoxGeometry(0.18, 0.18, 0.30);
+            var pe = edges(p, mAccent, 1);
+            pe.position.set(-0.30, 2.16, z + (z > 0 ? 0.35 : -0.35));
+            body.add(pe);
+          }
+          stub( 1.55);
+          stub(-1.55);
+        })();
+
+        // ---------- Antennas + small detail ----------
+        (function details() {
+          // UHF blade antenna on top behind nacelles
+          var ant = new THREE.BoxGeometry(0.06, 0.30, 0.02);
+          var aE = edges(ant, mHull, 1);
+          aE.position.set(-2.00, 3.45, 0);
+          body.add(aE);
+
+          // Blade antenna under belly
+          var ant2 = new THREE.BoxGeometry(0.05, 0.20, 0.02);
+          var a2E = edges(ant2, mHull, 1);
+          a2E.position.set(0.60, 1.02, 0);
+          body.add(a2E);
+
+          // HF wire antenna from cabin top to tail fin
+          body.add(lineStrip([v(-1.40, 3.05, 0), v(-5.10, 3.20, 0)], mAccent));
+
+          // Refueling probe forward of nose
+          var probe = new THREE.CylinderGeometry(0.025, 0.025, 1.4, 6, 1, false);
+          var probeE = edges(probe, mHull, 1);
+          probeE.rotation.z = Math.PI / 2;
+          probeE.position.set(3.60, 1.55, 0);
+          body.add(probeE);
+          // probe tip
+          var tip = new THREE.SphereGeometry(0.05, 8, 6);
+          var tipE = edges(tip, mAccent, 1);
+          tipE.position.set(4.30, 1.55, 0);
+          body.add(tipE);
+
+          // Crew step under door
+          body.add(lineStrip([v(0.40, 0.85,  1.18), v(0.40, 0.85,  1.45)], mAccent));
+          body.add(lineStrip([v(0.40, 0.85,  1.45), v(0.20, 0.85,  1.45)], mAccent));
+          body.add(lineStrip([v(0.20, 0.85,  1.45), v(0.20, 0.85,  1.18)], mAccent));
+          body.add(lineStrip([v(0.40, 0.85, -1.18), v(0.40, 0.85, -1.45)], mAccent));
+          body.add(lineStrip([v(0.40, 0.85, -1.45), v(0.20, 0.85, -1.45)], mAccent));
+          body.add(lineStrip([v(0.20, 0.85, -1.45), v(0.20, 0.85, -1.18)], mAccent));
+
+          // Cabin floor under door
+          body.add(lineStrip([v(-0.45, 1.20,  1.18), v( 0.95, 1.20,  1.18)], mPanel));
+        })();
+
+        // ---------- Construction reference lines (technical drawing flair) ----------
+        (function construction() {
+          var dash = new THREE.LineDashedMaterial({
+            color: 0x3a5a82, transparent: true, opacity: 0.45,
+            dashSize: 0.18, gapSize: 0.12
+          });
+          // Centerline axis through fuselage
+          var axis = lineStrip([v(4.6, 2.10, 0), v(-5.7, 2.10, 0)], dash);
+          axis.computeLineDistances();
+          scene.add(axis);
+
+          // Rotor axis (vertical through hub)
+          var vax = lineStrip([v(-0.10, 0.0, 0), v(-0.10, 4.8, 0)], dash);
+          vax.computeLineDistances();
+          scene.add(vax);
+        })();
+
+        // ---------- Ground shadow ellipse ----------
         var shadow = (function () {
-          var pts = [], seg = 48;
+          var pts = [], seg = 64;
           for (var i = 0; i <= seg; i++) {
             var a = (i / seg) * Math.PI * 2;
-            pts.push(new THREE.Vector3(Math.cos(a) * 2.4, 0.02, Math.sin(a) * 1.1));
+            pts.push(v(Math.cos(a) * 4.5, 0.02, Math.sin(a) * 1.7));
           }
           var g = new THREE.BufferGeometry().setFromPoints(pts);
           var mat = new THREE.LineBasicMaterial({ color: 0x6ea8e0, transparent: true, opacity: 0.55 });
-          return new THREE.Line(g, mat);
+          var line = new THREE.Line(g, mat);
+          return line;
         })();
         scene.add(shadow);
 
-        var altEl = document.getElementById("altVal");
-        var tEl = document.getElementById("tVal");
+        // ============================================================
+        // TIMELINE
+        // ============================================================
+        var altEl   = document.getElementById("altVal");
+        var rpmEl   = document.getElementById("rpmVal");
+        var tEl     = document.getElementById("tVal");
+        var phaseEl = document.getElementById("phaseVal");
 
         window.__timelines = window.__timelines || {};
         var tl = gsap.timeline({ paused: true, defaults: { ease: "power2.inOut" } });
 
-        // spin speed state (radians/sec scale)
+        // rotor speed state (radians/sec scale)
         var spin = { main: 0, tail: 0 };
 
-        tl.to(spin, { main: 8,  tail: 24,  duration: 2.0, ease: "power1.in" }, 0);
-        tl.to(spin, { main: 38, tail: 90,  duration: 1.5, ease: "power2.out" }, 2.0);
-        tl.to(rotorDisc.material, { opacity: 0.45, duration: 1.2 }, 2.2);
+        // Phase 0–2: spool up
+        tl.to(spin, { main: 6, tail: 18, duration: 2.0, ease: "power1.in" }, 0);
 
-        // takeoff
-        tl.to(heli.position, { y: 3.2, duration: 3.0, ease: "power2.out" }, 3.5);
-        tl.to(body.rotation, { x: -0.12, duration: 1.4, ease: "power2.inOut" }, 3.6);
-        tl.to(body.rotation, { x: -0.04, duration: 1.4, ease: "power2.inOut" }, 5.0);
-        tl.to(shadow.scale,  { x: 1.6, y: 1.6, z: 1.6, duration: 3.0, ease: "power2.out" }, 3.5);
-        tl.to(shadow.material, { opacity: 0.18, duration: 3.0 }, 3.5);
+        // Phase 2–3.5: full operating speed; vibration peaks
+        tl.to(spin, { main: 36, tail: 95, duration: 1.5, ease: "power2.out" }, 2.0);
+        tl.to(rotorDisc.outer.material, { opacity: 0.40, duration: 1.2 }, 2.2);
+        tl.to(rotorDisc.inner.material, { opacity: 0.22, duration: 1.2 }, 2.2);
 
-        // climb out + bank
-        tl.to(heli.position, { y: 6.4, x: -1.8, z: -3.2, duration: 3.5, ease: "power1.out" }, 6.5);
-        tl.to(heli.rotation, { z: 0.18, y: 0.45, duration: 3.5, ease: "power2.inOut" }, 6.5);
-        tl.to(spin, { main: 60, tail: 140, duration: 3.5, ease: "none" }, 6.5);
+        // Phase 3.5–6.5: lift off — climb, nose-down then level
+        tl.to(heli.position, { y: 3.4, duration: 3.0, ease: "power2.out" }, 3.5);
+        tl.to(body.rotation, { x: -0.10, duration: 1.4, ease: "power2.inOut" }, 3.6);
+        tl.to(body.rotation, { x: -0.03, duration: 1.4, ease: "power2.inOut" }, 5.0);
+        tl.to(shadow.scale,  { x: 1.7, y: 1.7, z: 1.7, duration: 3.0, ease: "power2.out" }, 3.5);
+        tl.to(shadow.material, { opacity: 0.16, duration: 3.0 }, 3.5);
 
-        tl.to(camera.position, { y: 4.4, duration: 4.0, ease: "sine.inOut" }, 5.0);
+        // Phase 6.5–10: climb out + bank away
+        tl.to(heli.position, { y: 6.6, x: -2.2, z: -3.6, duration: 3.5, ease: "power1.out" }, 6.5);
+        tl.to(heli.rotation, { z: 0.20, y: 0.50, duration: 3.5, ease: "power2.inOut" }, 6.5);
+        tl.to(spin, { main: 58, tail: 145, duration: 3.5, ease: "none" }, 6.5);
 
-        // master render tween (runs full duration, paints each tick)
+        // Camera follow: slight pull-back & rise
+        tl.to(camera.position, { y: 5.4, x: 12.5, duration: 4.0, ease: "sine.inOut" }, 5.0);
+
+        // Master per-frame: spin rotors, vibration, HUD, render
         tl.to({}, {
           duration: 10,
           ease: "none",
           onUpdate: function () {
             var t = tl.time();
 
-            rotorHub.rotation.y = spin.main * t * 0.35;
-            tailRotor.rotation.x = spin.tail * t * 0.18;
+            rotorHub.rotation.y  = spin.main * t * 0.35;
+            tailRotor.rotation.z = spin.tail * t * 0.18;
 
             // body vibration while rotors spool, decays after lift-off
             var ramp = Math.max(0, Math.min(1, (t - 1.2) / 0.8));
             var calm = Math.max(0, 1 - Math.max(0, (t - 4.0) / 1.5));
             var vib = ramp * calm;
-            body.position.x = (Math.sin(t * 41.0) * 0.012 + Math.sin(t * 23.0) * 0.008) * vib;
-            body.position.y = (Math.cos(t * 37.0) * 0.012) * vib;
+            body.position.x = (Math.sin(t * 41.0) * 0.010 + Math.sin(t * 23.0) * 0.006) * vib;
+            body.position.y = (Math.cos(t * 37.0) * 0.010) * vib;
+
+            // gear retraction hint after liftoff — droop the trailing arms slightly (cosmetic)
+            // (skipped — wheels stay extended for the duration of this short shot)
 
             // shadow tracks heli xz
             shadow.position.x = heli.position.x;
             shadow.position.z = heli.position.z;
 
-            // HUD
+            // HUD readouts
             var altMeters = Math.max(0, heli.position.y) * 3.6;
             if (altEl) altEl.textContent = altMeters.toFixed(1) + " m";
+            // Rotor RPM (UH-60 main rotor ~258 RPM at 100% Nr) — map spin.main 0..58 to 0..258
+            if (rpmEl) rpmEl.textContent = Math.round((spin.main / 58) * 258).toString().padStart(3, "0");
             if (tEl) tEl.textContent = t.toFixed(1);
+            if (phaseEl) {
+              var phase = "IDLE";
+              if (t >= 2.0 && t < 3.5) phase = "GROUND TAXI · ROTORS 100%";
+              else if (t >= 3.5 && t < 6.5) phase = "LIFT OFF";
+              else if (t >= 6.5) phase = "TRANSITION TO FORWARD FLIGHT";
+              else if (t >= 0.4) phase = "ENGINE START · SPOOL UP";
+              phaseEl.textContent = phase;
+            }
 
-            camera.lookAt(0, 1.6, 0);
+            camera.lookAt(0, 2.0, -1.5);
             renderer.render(scene, camera);
           }
         }, 0);
@@ -371,8 +843,7 @@
 
         window.__timelines["helicopter"] = tl;
 
-        // Standalone preview fallback: when opened directly (no hyperframes runtime),
-        // play the timeline so the takeoff animation is visible in a plain browser.
+        // Standalone preview fallback
         if (!window.__hyperframes) {
           tl.play(0);
         }
