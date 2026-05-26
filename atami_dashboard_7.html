@@ -14,6 +14,7 @@
 <script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.30/dist.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@deck.gl/geo-layers@9.0.30/dist.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@deck.gl/mapbox@9.0.30/dist.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-delaunay@6/dist/d3-delaunay.min.js"></script>
 
 <style>
 :root {
@@ -494,10 +495,10 @@ body::after {
   border-left: 1px solid var(--line);
   background: var(--ink-2);
   overflow-y: auto;
-  padding: 20px 18px 40px;
+  padding: 22px 20px 44px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
   transition: opacity 0.3s, padding 0.6s;
   white-space: nowrap;
 }
@@ -533,7 +534,7 @@ body::after {
 .metric-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
 }
 .metric-card {
   background: var(--card-bg);
@@ -1063,6 +1064,61 @@ function generateScatter(scene) {
 
 const SCATTER_BY_SCENE = [0, 1, 2, 3].map(generateScatter);
 
+// ============================================
+//  ポリゴンメッシュ (Voronoi セル) ── 密度をクリーンに表現
+//  各ホットスポットの勢力圏を多角形に切り、シーン毎にセル内ポイントの
+//  重みを集計して "高さ + 色" で見せる
+// ============================================
+const ATAMI_BOUNDS = [139.040, 35.060, 139.115, 35.140];
+
+function pointInPolygon(p, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0], yi = poly[i][1];
+    const xj = poly[j][0], yj = poly[j][1];
+    if (((yi > p[1]) !== (yj > p[1])) &&
+        (p[0] < (xj - xi) * (p[1] - yi) / (yj - yi) + xi)) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+let VORONOI_CELLS = [];
+let MESH_BY_SCENE = [[], [], [], []];
+
+function buildVoronoi() {
+  if (typeof d3 === 'undefined' || !d3.Delaunay) return;
+  const points = HOTSPOTS.map(h => [h.lng, h.lat]);
+  const delaunay = d3.Delaunay.from(points);
+  const voronoi = delaunay.voronoi(ATAMI_BOUNDS);
+  VORONOI_CELLS = HOTSPOTS.map((h, i) => {
+    const cell = voronoi.cellPolygon(i);
+    return cell ? { polygon: cell, hotspot: h } : null;
+  }).filter(Boolean);
+
+  // シーン毎に Voronoi セル内ポイントの重みを集計
+  MESH_BY_SCENE = SCATTER_BY_SCENE.map(pts => {
+    return VORONOI_CELLS.map(cell => {
+      let weightSum = 0;
+      let count = 0;
+      for (const p of pts) {
+        if (pointInPolygon(p.position, cell.polygon)) {
+          weightSum += p.weight;
+          count++;
+        }
+      }
+      return {
+        polygon: cell.polygon,
+        hotspot: cell.hotspot,
+        weight: weightSum,
+        count,
+      };
+    });
+  });
+}
+buildVoronoi();
+
 function generateAtamiBlocks() {
   const random = makeRng(1717);
   const blocks = [];
@@ -1410,81 +1466,78 @@ map.on('load', () => {
 // ============================================
 const STATIC_LAYER_CACHE = {};
 
+function meshColorFor(weight, maxW) {
+  const t = Math.min(1, weight / (maxW || 1));
+  // [青灰] → [砂色] → [朱] のクールウォーム補間
+  const stops = [
+    [148, 192, 204],
+    [212, 165, 116],
+    [200,  70,  58],
+  ];
+  const seg = t < 0.5 ? 0 : 1;
+  const u = t < 0.5 ? t * 2 : (t - 0.5) * 2;
+  const a = stops[seg], b = stops[seg + 1];
+  return [
+    Math.round(a[0] + (b[0]-a[0]) * u),
+    Math.round(a[1] + (b[1]-a[1]) * u),
+    Math.round(a[2] + (b[2]-a[2]) * u),
+    195,
+  ];
+}
+
 function buildStaticLayers(scene) {
   const baseLayers = [];
-  const data = SCATTER_BY_SCENE[scene];
+  const mesh = (MESH_BY_SCENE[scene] && MESH_BY_SCENE[scene].length > 0)
+    ? MESH_BY_SCENE[scene]
+    : VORONOI_CELLS.map(c => ({ ...c, weight: c.hotspot.weight * 100 }));
+  const maxW = Math.max(1, ...mesh.map(c => c.weight));
 
-  // 1) 地のヒートマップ (柔らかいグロー)。真上ビューでも美しい。
-  baseLayers.push(
-    new deck.HeatmapLayer({
-      id: `heat-${scene}`,
-      data,
-      getPosition: d => d.position,
-      getWeight: d => d.weight,
-      radiusPixels: scene === 2 ? 60 : scene === 1 ? 38 : 46,
-      intensity: scene === 2 ? 1.4 : scene === 1 ? 0.75 : 1.0,
-      threshold: 0.03,
-      colorRange: [
-        [220, 232, 236,  20],
-        [148, 192, 204, 110],
-        [212, 165, 116, 180],
-        [212, 110,  72, 215],
-        [200,  70,  58, 235],
-      ],
-    })
-  );
+  // メイン: ポリゴンメッシュ (Voronoi セル, ワイヤーフレームで mesh 感)
+  if (mesh.length > 0) {
+    baseLayers.push(
+      new deck.PolygonLayer({
+        id: `mesh-${scene}`,
+        data: mesh,
+        getPolygon: d => d.polygon,
+        getFillColor: d => meshColorFor(d.weight, maxW),
+        getLineColor: [255, 248, 232, 220],
+        getElevation: d => (d.weight / maxW) * 220 + 6,
+        extruded: true,
+        wireframe: true,
+        filled: true,
+        stroked: true,
+        lineWidthMinPixels: 1,
+        elevationScale: 1,
+        material: {
+          ambient: 0.7, diffuse: 0.55, shininess: 12,
+          specularColor: [255, 230, 200],
+        },
+        pickable: false,
+      })
+    );
+  }
 
-  // 2) ヘキサゴンビン (棒ではなく "ハニカム起伏"。真上では平らな六角タイル、
-  //    斜めでは滑らかな高さで密度を立体表現)
+  // スポット名ラベル (どこが何かが地図上で分かる)
   baseLayers.push(
-    new deck.HexagonLayer({
-      id: `hex-${scene}`,
-      data,
-      getPosition: d => d.position,
-      getElevationWeight: d => d.weight,
-      getColorWeight: d => d.weight,
-      radius: 40,             // メートル単位の六角サイズ
-      coverage: 0.88,
-      extruded: true,
-      elevationScale: 30,
-      elevationRange: [0, 180],
-      pickable: false,
-      opacity: 0.72,
-      colorRange: [
-        [ 96, 128, 144, 120],
-        [128, 168, 178, 170],
-        [212, 165, 116, 210],
-        [212, 110,  72, 230],
-        [200,  70,  58, 240],
-      ],
-      material: {
-        ambient: 0.7,
-        diffuse: 0.55,
-        shininess: 8,
-        specularColor: [255, 230, 200],
-      },
-    })
-  );
-
-  // 3) スポット位置の "丸" マーカー (棒ではなく円)
-  baseLayers.push(
-    new deck.ScatterplotLayer({
-      id: `marks-${scene}`,
+    new deck.TextLayer({
+      id: `labels-${scene}`,
       data: HOTSPOTS,
       getPosition: d => [d.lng, d.lat],
-      getRadius: d => 14 + d.weight * 22,
-      radiusUnits: 'pixels',
-      radiusMinPixels: 6,
-      radiusMaxPixels: 38,
-      lineWidthMinPixels: 1.5,
-      stroked: true,
-      filled: true,
-      getFillColor: d => {
-        if (d.weight > 0.75) return [200, 70, 58, 235];
-        if (d.weight > 0.5)  return [212, 165, 116, 225];
-        return [74, 138, 154, 215];
-      },
-      getLineColor: [255, 248, 232, 235],
+      getText: d => d.name,
+      getSize: 11,
+      getColor: [30, 30, 38, 235],
+      getPixelOffset: [0, -6],
+      sizeUnits: 'pixels',
+      background: true,
+      backgroundPadding: [4, 2, 4, 2],
+      getBackgroundColor: [255, 248, 232, 220],
+      getBorderColor: [200, 70, 58, 180],
+      getBorderWidth: 0.6,
+      fontFamily: 'IBM Plex Sans JP, system-ui, sans-serif',
+      fontWeight: 500,
+      characterSet: 'auto',
+      billboard: true,
+      pickable: false,
     })
   );
 
@@ -1587,7 +1640,7 @@ const SCENES = [
   {
     eyebrow: 'SCENE 01 / NOW',
     title: 'いま、熱海に滞在する人',
-    legend: '滞在人口密度 / 100m メッシュ',
+    legend: '滞在密度 / ポリゴンメッシュ',
     hero: [
       { label:'CURRENT', value:'26,400', unit:'人', delta:'↗ +12.4% YoY', deltaType:'up' },
       { label:'CROWD SCORE', value:'0.72', unit:'/1.0', delta:'⚠ 混雑注意', deltaType:'down' },
