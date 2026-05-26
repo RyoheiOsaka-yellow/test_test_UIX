@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>QR AR ビル</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #000;
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #app { position: relative; width: 100vw; height: 100vh; }
+  #video {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    background: #000;
+  }
+  #three {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  #status {
+    position: absolute; top: 16px; left: 16px; right: 16px;
+    color: #fff;
+    background: rgba(0,0,0,0.55);
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+  }
+  #qr-link {
+    position: absolute; bottom: 24px; left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.35);
+    padding: 10px 18px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-size: 14px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: none;
+  }
+  #start {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 20px;
+    background: linear-gradient(160deg, #14213d, #000814);
+    color: #fff; padding: 24px;
+    text-align: center;
+  }
+  #start h1 { font-size: 24px; font-weight: 700; letter-spacing: 0.02em; }
+  #start p { font-size: 14px; color: #b8c4d6; max-width: 320px; line-height: 1.7; }
+  #start button {
+    padding: 14px 32px;
+    border-radius: 999px;
+    border: none;
+    background: #4c8bf5;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(76,139,245,0.35);
+  }
+  #start a { color: #7aa6f7; font-size: 14px; text-decoration: none; }
+  #start a:hover { text-decoration: underline; }
+  .hint { font-size: 12px; color: #8b97ad; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <video id="video" playsinline muted></video>
+  <canvas id="three"></canvas>
+  <div id="status">QRコードを探しています...</div>
+  <a id="qr-link" href="qr.html" target="_blank" rel="noopener">テスト用QRを開く</a>
+
+  <div id="start">
+    <h1>QR コード AR ビル</h1>
+    <p>カメラで QR コードを読み取ると、その位置に 3D のビルが立ち上がります。</p>
+    <button id="startBtn">カメラを起動する</button>
+    <a href="qr.html">テスト用 QR コードを表示</a>
+    <div class="hint">※ カメラ利用には HTTPS または localhost が必要です</div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+(function () {
+  const video = document.getElementById('video');
+  const overlay = document.getElementById('three');
+  const statusEl = document.getElementById('status');
+  const startScreen = document.getElementById('start');
+  const startBtn = document.getElementById('startBtn');
+  const qrLink = document.getElementById('qr-link');
+
+  const scanCanvas = document.createElement('canvas');
+  const scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true });
+
+  let renderer, scene, camera, building;
+  let smoothCenter = null;
+  let smoothScale = null;
+  let smoothAngle = 0;
+  let lastDetectedAt = 0;
+
+  function initThree() {
+    renderer = new THREE.WebGLRenderer({ canvas: overlay, alpha: true, antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    resizeRenderer();
+
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(45, overlay.clientWidth / overlay.clientHeight, 0.1, 100);
+    camera.position.set(0, 1.6, 3.6);
+    camera.lookAt(0, 1.0, 0);
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+
+    const key = new THREE.DirectionalLight(0xffffff, 0.95);
+    key.position.set(3, 6, 4);
+    scene.add(key);
+
+    const rim = new THREE.DirectionalLight(0x88aaff, 0.4);
+    rim.position.set(-4, 2, -3);
+    scene.add(rim);
+
+    building = buildBuilding();
+    building.visible = false;
+    scene.add(building);
+  }
+
+  function buildBuilding() {
+    const group = new THREE.Group();
+
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0x2a3340, roughness: 0.8 });
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.06, 1.3), baseMat);
+    base.position.y = 0.03;
+    group.add(base);
+
+    const floors = 9;
+    const floorH = 0.22;
+    const towerW = 0.85;
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0xd6dee8, roughness: 0.55, metalness: 0.1 });
+    const glassMat = new THREE.MeshStandardMaterial({
+      color: 0x274160, roughness: 0.25, metalness: 0.5,
+      emissive: 0x1a2a44, emissiveIntensity: 0.7,
+    });
+
+    for (let i = 0; i < floors; i++) {
+      const taper = 1 - i * 0.045;
+      const w = towerW * taper;
+      const floor = new THREE.Mesh(new THREE.BoxGeometry(w, floorH * 0.82, w), wallMat);
+      floor.position.y = 0.06 + i * floorH + (floorH * 0.82) / 2;
+      group.add(floor);
+
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(w * 1.005, floorH * 0.16, w * 1.005), glassMat);
+      strip.position.y = 0.06 + i * floorH + floorH * 0.92;
+      group.add(strip);
+    }
+
+    const topY = 0.06 + floors * floorH;
+    const roof = new THREE.Mesh(
+      new THREE.BoxGeometry(towerW * (1 - floors * 0.045) * 0.7, 0.08, towerW * (1 - floors * 0.045) * 0.7),
+      baseMat
+    );
+    roof.position.y = topY + 0.04;
+    group.add(roof);
+
+    const spire = new THREE.Mesh(
+      new THREE.ConeGeometry(0.1, 0.5, 16),
+      new THREE.MeshStandardMaterial({ color: 0xff6b6b, roughness: 0.4 })
+    );
+    spire.position.y = topY + 0.08 + 0.25;
+    group.add(spire);
+
+    const antenna = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, 0.3, 8),
+      new THREE.MeshStandardMaterial({ color: 0x222222 })
+    );
+    antenna.position.y = spire.position.y + 0.25 + 0.15;
+    group.add(antenna);
+
+    const tipLight = new THREE.Mesh(
+      new THREE.SphereGeometry(0.025, 12, 12),
+      new THREE.MeshStandardMaterial({ color: 0xff3344, emissive: 0xff2233, emissiveIntensity: 1.2 })
+    );
+    tipLight.position.y = antenna.position.y + 0.16;
+    group.add(tipLight);
+    group.userData.tipLight = tipLight;
+
+    return group;
+  }
+
+  function resizeRenderer() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    renderer.setSize(w, h, false);
+    if (camera) {
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+  }
+  window.addEventListener('resize', resizeRenderer);
+
+  async function startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+      });
+      video.srcObject = stream;
+      await video.play();
+      startScreen.style.display = 'none';
+      statusEl.style.display = 'block';
+      qrLink.style.display = 'block';
+      initThree();
+      requestAnimationFrame(tick);
+    } catch (e) {
+      alert('カメラを起動できませんでした:\n' + (e && e.message ? e.message : e));
+    }
+  }
+
+  function detectQR() {
+    if (!video.videoWidth) return null;
+    const targetW = 480;
+    const scale = targetW / video.videoWidth;
+    const w = targetW;
+    const h = Math.round(video.videoHeight * scale);
+    if (scanCanvas.width !== w || scanCanvas.height !== h) {
+      scanCanvas.width = w;
+      scanCanvas.height = h;
+    }
+    scanCtx.drawImage(video, 0, 0, w, h);
+    const img = scanCtx.getImageData(0, 0, w, h);
+    const code = jsQR(img.data, w, h, { inversionAttempts: 'dontInvert' });
+    if (!code || !code.location) return null;
+    const loc = code.location;
+    return {
+      data: code.data,
+      tl: { x: loc.topLeftCorner.x / w, y: loc.topLeftCorner.y / h },
+      tr: { x: loc.topRightCorner.x / w, y: loc.topRightCorner.y / h },
+      bl: { x: loc.bottomLeftCorner.x / w, y: loc.bottomLeftCorner.y / h },
+      br: { x: loc.bottomRightCorner.x / w, y: loc.bottomRightCorner.y / h },
+    };
+  }
+
+  function videoToScreen(nx, ny) {
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    const cw = overlay.clientWidth;
+    const ch = overlay.clientHeight;
+    const videoRatio = vw / vh;
+    const canvasRatio = cw / ch;
+    let drawW, drawH, offX, offY;
+    if (canvasRatio > videoRatio) {
+      drawW = cw;
+      drawH = cw / videoRatio;
+      offX = 0;
+      offY = (ch - drawH) / 2;
+    } else {
+      drawH = ch;
+      drawW = ch * videoRatio;
+      offX = (cw - drawW) / 2;
+      offY = 0;
+    }
+    return { x: offX + nx * drawW, y: offY + ny * drawH };
+  }
+
+  const _ray = new THREE.Raycaster();
+  const _plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const _target = new THREE.Vector3();
+  const _ndc = new THREE.Vector2();
+
+  function placeBuilding(det) {
+    const tl = videoToScreen(det.tl.x, det.tl.y);
+    const tr = videoToScreen(det.tr.x, det.tr.y);
+    const br = videoToScreen(det.br.x, det.br.y);
+    const bl = videoToScreen(det.bl.x, det.bl.y);
+
+    const cx = (tl.x + tr.x + br.x + bl.x) / 4;
+    const cy = (tl.y + tr.y + br.y + bl.y) / 4;
+    const sizePx = (Math.hypot(tr.x - tl.x, tr.y - tl.y) + Math.hypot(br.x - bl.x, br.y - bl.y)) / 2;
+    const angle = Math.atan2(tr.y - tl.y, tr.x - tl.x);
+
+    const alpha = 0.35;
+    if (!smoothCenter) {
+      smoothCenter = { x: cx, y: cy };
+      smoothScale = sizePx;
+      smoothAngle = angle;
+    } else {
+      smoothCenter.x += (cx - smoothCenter.x) * alpha;
+      smoothCenter.y += (cy - smoothCenter.y) * alpha;
+      smoothScale += (sizePx - smoothScale) * alpha;
+      let da = angle - smoothAngle;
+      while (da > Math.PI) da -= 2 * Math.PI;
+      while (da < -Math.PI) da += 2 * Math.PI;
+      smoothAngle += da * alpha;
+    }
+
+    const cw = overlay.clientWidth;
+    const ch = overlay.clientHeight;
+    _ndc.set((smoothCenter.x / cw) * 2 - 1, -(smoothCenter.y / ch) * 2 + 1);
+    _ray.setFromCamera(_ndc, camera);
+    const hit = _ray.ray.intersectPlane(_plane, _target);
+    if (!hit) return;
+
+    const depth = camera.position.distanceTo(_target);
+    const vFOV = THREE.MathUtils.degToRad(camera.fov);
+    const worldHeightAtDepth = 2 * Math.tan(vFOV / 2) * depth;
+    const worldPerPixel = worldHeightAtDepth / ch;
+    const desiredBaseWorld = smoothScale * worldPerPixel;
+    const buildingBaseSize = 1.3;
+    const s = Math.max(0.05, desiredBaseWorld / buildingBaseSize);
+
+    building.position.x = _target.x;
+    building.position.z = _target.z;
+    building.scale.setScalar(s);
+    building.rotation.y = -smoothAngle;
+    building.visible = true;
+  }
+
+  let t0 = performance.now();
+  function tick(now) {
+    requestAnimationFrame(tick);
+    const dt = (now - t0) / 1000;
+    t0 = now;
+
+    if (video.readyState >= 2) {
+      const det = detectQR();
+      if (det) {
+        lastDetectedAt = now;
+        statusEl.textContent = '検出: ' + (det.data ? det.data : '(QRを認識中)');
+        placeBuilding(det);
+      } else if (building && now - lastDetectedAt > 700) {
+        building.visible = false;
+        statusEl.textContent = 'QRコードを探しています...';
+      }
+    }
+
+    if (building && building.visible) {
+      building.position.y = Math.sin(now * 0.003) * 0.02;
+      const tip = building.userData.tipLight;
+      if (tip) {
+        tip.material.emissiveIntensity = 0.6 + (Math.sin(now * 0.006) * 0.5 + 0.5) * 0.9;
+      }
+    }
+
+    renderer.render(scene, camera);
+  }
+
+  startBtn.addEventListener('click', startCamera);
+})();
+</script>
+</body>
+</html>
