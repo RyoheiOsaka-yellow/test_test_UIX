@@ -281,7 +281,7 @@
         </div>
       </div>
       <div class="panel-body">
-        <video id="video" muted playsinline crossorigin="anonymous"></video>
+        <video id="video" muted playsinline crossorigin="anonymous" loop></video>
         <canvas id="overlay"></canvas>
         <div class="vid-tags" id="vid-tags">
           <div class="row"><span class="ok">●</span> <span id="t-res">- × -</span></div>
@@ -296,24 +296,28 @@
           <div id="loading-text">Loading detection model...</div>
         </div>
         <div class="drop" id="drop">
-          <h2>サッカー試合動画を読み込む</h2>
-          <p>動画ファイルをドラッグ＆ドロップするか、下から選択してください。<br>
-             COCO-SSDモデルがブラウザ内で動作し、選手とボールをリアルタイム検出します。</p>
+          <h2>実試合映像を解析</h2>
+          <p>初期ロード中…数秒待つとサンプル試合動画で自動的に解析が始まります。<br>
+             下のボタンで他の動画に切り替えることもできます。</p>
           <div class="btns">
-            <label class="btn primary">
-              ファイルを選択
+            <button class="primary" id="btn-sample">▶ サンプル①：ゴール前のプレー</button>
+            <button id="btn-sample-ground">▶ サンプル②：センターサークル付近</button>
+          </div>
+          <div class="btns">
+            <label class="btn">
+              手持ち動画を選択
               <input type="file" id="file-input" accept="video/*" />
             </label>
             <button id="btn-webcam">Webカメラを使う</button>
-            <button id="btn-sample">サンプルURLを使う</button>
           </div>
-          <p style="margin-top:12px"><span class="mono">…または動画URL：</span></p>
+          <p style="margin-top:8px"><span class="mono">…または動画URL：</span></p>
           <div style="display:flex; gap:6px">
             <input type="url" id="url-input" placeholder="https://example.com/match.mp4" />
             <button id="btn-load-url">読込</button>
           </div>
-          <p style="margin-top:12px; font-size:10px">
-            ※ 初回検出モデルダウンロード（約5MB）にネット接続が必要。以降は完全ローカルで動作。
+          <p style="margin-top:12px; font-size:10px; max-width:480px">
+            ※ サンプル動画は<a href="https://mixkit.co/" target="_blank" style="color:var(--accent)">Mixkit</a>提供（無料ライセンス）。
+            検出モデル（約5MB）はjsdelivr CDNから取得（要ネット）。
           </p>
         </div>
       </div>
@@ -385,6 +389,16 @@
 // Constants
 // ============================================================
 const FIELD_W = 105, FIELD_H = 68;
+
+// Free / royalty-free Mixkit clips, CORS-enabled, MP4 H.264.
+// Both verified to produce reliable COCO-SSD person detections.
+const SAMPLE_URLS = {
+  goalplay: 'https://assets.mixkit.co/videos/43499/43499-720.mp4',  // "Goal play in a semi-pro soccer game", 8s
+  match:    'https://assets.mixkit.co/videos/43482/43482-720.mp4',  // "Semi-professional soccer match", 8s
+};
+
+// Model selection: 'lite_mobilenet_v2' (fast, less accurate) or 'mobilenet_v2' (slower, better for small persons)
+const PREFERRED_MODEL = 'mobilenet_v2';
 
 // ============================================================
 // Elements
@@ -497,14 +511,25 @@ function applyH(H, x, y) {
   return [(H[0]*x + H[1]*y + H[2]) / w, (H[3]*x + H[4]*y + H[5]) / w];
 }
 
-function defaultHomography(vw, vh) {
-  // assume broadcast view: pitch occupies a trapezoid in the frame.
-  const src = [
+// View presets — same field projects differently depending on camera angle.
+const HOMOGRAPHY_PRESETS = {
+  broadcast: (vw, vh) => [
     [vw * 0.18, vh * 0.20],  // far-left
     [vw * 0.82, vh * 0.20],  // far-right
     [vw * 0.98, vh * 0.92],  // near-right
     [vw * 0.02, vh * 0.92],  // near-left
-  ];
+  ],
+  aerial: (vw, vh) => [
+    [vw * 0.06, vh * 0.10],
+    [vw * 0.94, vh * 0.10],
+    [vw * 0.94, vh * 0.92],
+    [vw * 0.06, vh * 0.92],
+  ],
+};
+let currentPreset = 'broadcast';
+
+function defaultHomography(vw, vh) {
+  const src = HOMOGRAPHY_PRESETS[currentPreset](vw, vh);
   return computeHomography(src, FIELD_CORNERS);
 }
 
@@ -548,7 +573,6 @@ function iou(a, b) {
 
 function updateTracks(detections, frameTs) {
   // detections: [{cls, x, y, w, h, score}]
-  // existing tracks (only persons match persons, ball matches ball)
   const claimed = new Set();
   for (const d of detections) {
     let best = null, bestIoU = IOU_THRESH;
@@ -559,9 +583,11 @@ function updateTracks(detections, frameTs) {
     }
     if (best != null) {
       const tr = tracks.get(best);
-      tr.prev = tr.bbox;
+      // anchor target for interpolation: smoothBbox lerps toward bbox each frame
+      tr.prevBbox = tr.smoothBbox || tr.bbox;
       tr.bbox = { x: d.x, y: d.y, w: d.w, h: d.h };
       tr.score = d.score;
+      tr.hits = (tr.hits || 0) + 1;
       tr.lastSeen = frameTs;
       tr.miss = 0;
       tr.trail.push({ x: d.x + d.w / 2, y: d.y + d.h, t: frameTs });
@@ -572,22 +598,34 @@ function updateTracks(detections, frameTs) {
       tracks.set(id, {
         id, cls: d.cls,
         bbox: { x: d.x, y: d.y, w: d.w, h: d.h },
-        prev: { x: d.x, y: d.y, w: d.w, h: d.h },
+        prevBbox: { x: d.x, y: d.y, w: d.w, h: d.h },
+        smoothBbox: { x: d.x, y: d.y, w: d.w, h: d.h },
         score: d.score,
+        hits: 1,
         lastSeen: frameTs,
         miss: 0,
         team: null,
-        teamSamples: 0,
-        color: null,
         trail: [{ x: d.x + d.w / 2, y: d.y + d.h, t: frameTs }],
       });
       claimed.add(id);
     }
   }
-  // age out
   for (const [id, tr] of [...tracks.entries()]) {
     if (!claimed.has(id)) tr.miss++;
     if (tr.miss > TRACK_MAX_MISS) tracks.delete(id);
+  }
+}
+
+// Smooth bbox lerp toward target each render frame (called from render loop).
+function tickSmoothBboxes() {
+  const lerp = 0.25;
+  for (const tr of tracks.values()) {
+    const sb = tr.smoothBbox || { ...tr.bbox };
+    sb.x += (tr.bbox.x - sb.x) * lerp;
+    sb.y += (tr.bbox.y - sb.y) * lerp;
+    sb.w += (tr.bbox.w - sb.w) * lerp;
+    sb.h += (tr.bbox.h - sb.h) * lerp;
+    tr.smoothBbox = sb;
   }
 }
 
@@ -685,10 +723,16 @@ async function loadModel() {
   loadingText.textContent = 'Loading detection model (~5MB)...';
   try {
     await tf.ready();
-    // prefer webgl backend
     try { await tf.setBackend('webgl'); } catch (e) {}
-    model = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
-    loadingText.textContent = 'Model loaded. Starting detection...';
+    try {
+      model = await cocoSsd.load({ base: PREFERRED_MODEL });
+      document.getElementById('model-tag').textContent = 'model: ' + PREFERRED_MODEL;
+    } catch (e) {
+      loadingText.textContent = 'Falling back to lite model...';
+      model = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
+      document.getElementById('model-tag').textContent = 'model: lite_mobilenet_v2 (fallback)';
+    }
+    loadingText.textContent = 'Model loaded. Analyzing...';
     setTimeout(() => loading.classList.add('hidden'), 400);
   } catch (e) {
     loadingText.textContent = 'Model load failed: ' + e.message;
@@ -700,7 +744,8 @@ async function detectStep() {
     const t0 = performance.now();
     let preds = [];
     try {
-      preds = await model.detect(video, 40, 0.4);
+      // lower conf threshold to catch small/distant players in aerial shots
+      preds = await model.detect(video, 80, 0.25);
     } catch (e) {}
     lastInfMs = performance.now() - t0;
     detFrames++;
@@ -752,11 +797,11 @@ function teamColorStr(t, alpha=1) {
 }
 
 function drawOverlay() {
+  tickSmoothBboxes();
   const ov = fit(overlay);
   const W = ov.w, H = ov.h;
   overlayCtx.clearRect(0, 0, W, H);
 
-  // Compute video display rect inside the canvas (because of object-fit:contain)
   const vw = video.videoWidth, vh = video.videoHeight;
   if (!vw) return;
   const scale = Math.min(W / vw, H / vh);
@@ -798,9 +843,11 @@ function drawOverlay() {
 
   // bbox + label per track
   for (const tr of tracks.values()) {
-    if (tr.miss > 0) continue;
-    const r = mapBB(tr.bbox);
+    if (tr.miss > 2) continue;
     const isBall = tr.cls === 'sports ball';
+    // suppress noisy ball detections — require multiple hits and decent confidence
+    if (isBall && (tr.hits < 2 || tr.score < 0.45)) continue;
+    const r = mapBB(tr.smoothBbox || tr.bbox);
     let col;
     if (isBall) col = [255, 211, 61];
     else if (toggles.teams) col = teamColor(tr.team);
@@ -848,13 +895,16 @@ function drawMap() {
   const playerPos = [];
   let ballPos = null;
   for (const tr of tracks.values()) {
-    if (tr.miss > 0) continue;
-    const footX = tr.bbox.x + tr.bbox.w / 2;
-    const footY = tr.bbox.y + tr.bbox.h;
+    if (tr.miss > 2) continue;
+    const isBall = tr.cls === 'sports ball';
+    if (isBall && (tr.hits < 2 || tr.score < 0.45)) continue;
+    const bb = tr.smoothBbox || tr.bbox;
+    const footX = bb.x + bb.w / 2;
+    const footY = bb.y + bb.h;
     if (!H_) continue;
     const [fx, fy] = applyH(H_, footX, footY);
     if (!isFinite(fx) || !isFinite(fy)) continue;
-    if (tr.cls === 'sports ball') {
+    if (isBall) {
       ballPos = { fx, fy };
     } else {
       playerPos.push({ fx, fy, team: tr.team, id: tr.id });
@@ -941,13 +991,15 @@ function updateHud() {
   let nP = 0, nB = 0, sumScore = 0, scoreCnt = 0;
   let tHa = 0, tHb = 0;
   for (const tr of tracks.values()) {
-    if (tr.miss > 0) continue;
+    if (tr.miss > 2) continue;
     if (tr.cls === 'person') {
       nP++;
       sumScore += tr.score; scoreCnt++;
       if (tr.team === 0) tHa++;
       else if (tr.team === 1) tHb++;
-    } else nB++;
+    } else if (tr.hits >= 2 && tr.score >= 0.45) {
+      nB++;
+    }
   }
   tCount.textContent = `${nP + nB} objects (${nP} persons, ${nB} ball)`;
   mHa.textContent = tHa; mHb.textContent = tHb;
@@ -995,6 +1047,14 @@ function addEvent(label, team, jersey) {
 // Video loading
 // ============================================================
 function setVideoSource(srcObj) {
+  // clear state from previous video
+  tracks.clear();
+  teamColors[0] = teamColors[1] = null;
+  nextId = 1;
+  homography = null;
+  calibPoints = [];
+  calibTag.textContent = currentPreset === 'aerial' ? 'aerial preset' : 'broadcast preset';
+
   if (typeof srcObj === 'string') {
     video.srcObject = null;
     video.src = srcObj;
@@ -1041,14 +1101,18 @@ drop.addEventListener('drop', (e) => {
 // URL load
 btnLoadUrl.addEventListener('click', () => {
   const u = urlInput.value.trim();
-  if (u) setVideoSource(u);
+  if (u) { currentPreset = 'broadcast'; setVideoSource(u); }
 });
 btnSample.addEventListener('click', () => {
-  // CC0 / freely-licensed sample - user can swap. Pixabay-hosted small clip.
-  // Most stock providers gate by CORS; pick one known to set CORS headers.
-  const sample = 'https://cdn.pixabay.com/video/2024/02/20/200870-916310225_tiny.mp4';
-  urlInput.value = sample;
-  setVideoSource(sample);
+  currentPreset = 'broadcast';
+  urlInput.value = SAMPLE_URLS.goalplay;
+  setVideoSource(SAMPLE_URLS.goalplay);
+});
+const btnSampleGround = document.getElementById('btn-sample-ground');
+btnSampleGround.addEventListener('click', () => {
+  currentPreset = 'broadcast';
+  urlInput.value = SAMPLE_URLS.match;
+  setVideoSource(SAMPLE_URLS.match);
 });
 btnWebcam.addEventListener('click', async () => {
   try {
@@ -1084,8 +1148,25 @@ function renderLoop() {
   updateHud();
   requestAnimationFrame(renderLoop);
 }
+// expose for inspection
+window._tactical = { tracks, get model() { return model; }, teamColors };
+
 renderLoop();
 detectStep();
+
+// Auto-load the aerial sample after a short delay so the user sees the drop UI briefly,
+// then jumps right into analysis.
+window.addEventListener('load', () => {
+  // start loading the model immediately in parallel with showing the drop zone
+  loadModel();
+  setTimeout(() => {
+    if (!video.src && !video.srcObject) {
+      currentPreset = 'broadcast';
+      urlInput.value = SAMPLE_URLS.goalplay;
+      setVideoSource(SAMPLE_URLS.goalplay);
+    }
+  }, 1500);
+});
 </script>
 </body>
 </html>
