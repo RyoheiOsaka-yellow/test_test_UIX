@@ -1124,7 +1124,7 @@ function generateTrips() {
 
 let tripsData = generateTrips();
 let carTripsData = [];
-let trainTripsData = buildTrainTrips();
+let trainTripsData = []; // buildTrainTrips() の定義後に代入する (TDZ 回避)
 let currentTime = 0;
 let TRIP_LOOP = 4000;
 let TRIP_SPEED = 0.3; // currentTime per real ms
@@ -1281,6 +1281,7 @@ function buildTrainTrips() {
   }
   return trips;
 }
+trainTripsData = buildTrainTrips();
 
 // ============================================
 //  地図初期化 (MapLibre + OpenFreeMap / API キー不要)
