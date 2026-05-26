@@ -227,9 +227,9 @@
   // Rises UP from (cx, cy). baseWidth = footprint width in screen pixels.
   function drawBuilding(cx, cy, baseWidth, time) {
     const w = baseWidth;
-    const h = baseWidth * 2.6;        // total height
+    const h = baseWidth * 1.9;        // total height (shorter so it stays in view)
     const d = baseWidth * 0.32;       // depth (iso offset)
-    const floors = 10;
+    const floors = 8;
 
     ctx.save();
     ctx.translate(cx, cy);
@@ -417,9 +417,50 @@
 
     // Draw building if we have a smoothed position.
     if (sCx !== null && sSize !== null) {
+      // DEBUG: always-visible bright marker so we can confirm the drawing pipeline
+      // reaches this point with a valid position. If the user sees this marker but
+      // no building, the building rendering itself has a problem.
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 50, 50, 0.9)';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(sCx, sCy, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Vertical arrow pointing UP from QR position (where building grows)
+      ctx.strokeStyle = 'rgba(255, 50, 50, 0.95)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(sCx, sCy);
+      ctx.lineTo(sCx, sCy - 60);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255, 50, 50, 0.95)';
+      ctx.beginPath();
+      ctx.moveTo(sCx, sCy - 70);
+      ctx.lineTo(sCx - 8, sCy - 56);
+      ctx.lineTo(sCx + 8, sCy - 56);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
       // Building base width tied to QR size; minimum size for visibility.
-      const baseWidth = Math.max(60, sSize);
+      let baseWidth = Math.max(80, sSize);
+      // Scale down so the building (h = baseWidth * 1.9) fits in the space above QR.
+      const availableAbove = Math.max(60, sCy - 16);
+      const desiredHeight = baseWidth * 1.9;
+      if (desiredHeight > availableAbove) {
+        baseWidth = (availableAbove / 1.9);
+      }
+      // Cap maximum base width too (avoid overwhelming the screen).
+      baseWidth = Math.min(baseWidth, window.innerWidth * 0.6);
       drawBuilding(sCx, sCy, baseWidth, now);
+
+      // Append render info to status for debugging.
+      const sizeInfoTxt =
+        ' | bldg ' + Math.round(baseWidth) + 'x' + Math.round(baseWidth * 1.9) +
+        ' @ (' + Math.round(sCx) + ',' + Math.round(sCy) + ')';
+      statusText.textContent += sizeInfoTxt;
     }
   }
 
