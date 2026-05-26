@@ -48,6 +48,17 @@
     letter-spacing: 0.04em;
   }
   header .brand .accent { color: var(--accent); }
+  header .mode-tabs { display: flex; margin-left: 16px; gap: 4px; }
+  .tab {
+    background: var(--panel-2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    padding: 4px 12px; border-radius: 3px; cursor: pointer;
+    font-size: 12px; text-decoration: none;
+  }
+  .tab.on { background: var(--accent); color: #0b0e14; border-color: var(--accent); }
+  .tab:hover { color: var(--accent); }
+  .tab.on:hover { color: #0b0e14; }
   header .match {
     display: flex; align-items: center; gap: 12px;
     margin-left: 24px;
@@ -284,6 +295,10 @@
 <div class="app">
   <header>
     <div class="brand">⚽ <span class="accent">tactical</span>·engine</div>
+    <div class="mode-tabs">
+      <span class="tab on">Simulation</span>
+      <a class="tab" href="demo-video.html">Real Video</a>
+    </div>
     <div class="match">
       <span class="team home">HOME FC</span>
       <span class="mono">vs</span>
