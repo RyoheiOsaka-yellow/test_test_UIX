@@ -19,24 +19,11 @@
     object-fit: cover;
     background: #000;
   }
-  #debug {
+  #overlay {
     position: absolute; inset: 0;
     width: 100%; height: 100%;
     pointer-events: none;
   }
-  #building-wrap {
-    position: absolute;
-    left: 0; top: 0;
-    transform-origin: 50% 100%;
-    pointer-events: none;
-    will-change: transform;
-    display: none;
-    transition: opacity 0.15s ease-out;
-    opacity: 0;
-  }
-  #building-wrap.visible { opacity: 1; }
-  #three { display: block; }
-
   #status {
     position: absolute; top: 16px; left: 16px; right: 16px;
     color: #fff;
@@ -53,7 +40,6 @@
   }
   .badge.ok { background: #2ecc71; color: #000; }
   .badge.ng { background: #e74c3c; color: #fff; }
-
   #qr-link {
     position: absolute; bottom: 24px; left: 50%;
     transform: translateX(-50%);
@@ -68,7 +54,6 @@
     z-index: 10;
     pointer-events: auto;
   }
-
   #start {
     position: absolute; inset: 0;
     display: flex; flex-direction: column;
@@ -99,8 +84,7 @@
 <body>
 <div id="app">
   <video id="video" playsinline muted autoplay></video>
-  <canvas id="debug"></canvas>
-  <div id="building-wrap"><canvas id="three"></canvas></div>
+  <canvas id="overlay"></canvas>
   <div id="status"><span class="badge ng" id="badge">検索中</span><span id="statusText">カメラ起動中...</span></div>
   <a id="qr-link" href="qr.html" target="_blank" rel="noopener">テスト用QRを開く</a>
 
@@ -117,148 +101,36 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script>
 (function () {
-  const video       = document.getElementById('video');
-  const debugCanvas = document.getElementById('debug');
-  const debugCtx    = debugCanvas.getContext('2d');
-  const threeCanvas = document.getElementById('three');
-  const wrap        = document.getElementById('building-wrap');
-  const statusEl    = document.getElementById('status');
-  const statusText  = document.getElementById('statusText');
-  const badge       = document.getElementById('badge');
-  const startScreen = document.getElementById('start');
-  const startBtn    = document.getElementById('startBtn');
-  const qrLink      = document.getElementById('qr-link');
+  const video      = document.getElementById('video');
+  const overlay    = document.getElementById('overlay');
+  const ctx        = overlay.getContext('2d');
+  const statusEl   = document.getElementById('status');
+  const statusText = document.getElementById('statusText');
+  const badge      = document.getElementById('badge');
+  const startScreen= document.getElementById('start');
+  const startBtn   = document.getElementById('startBtn');
+  const qrLink     = document.getElementById('qr-link');
 
   const scanCanvas = document.createElement('canvas');
   const scanCtx    = scanCanvas.getContext('2d', { willReadFrequently: true });
 
-  // Building "sticker" canvas: fixed pixel size, rendered once and scaled via CSS.
-  const STK_W = 360;
-  const STK_H = 600;
-  // The building base in this canvas occupies roughly BUILDING_BASE_PX wide
-  // when the QR sticker is at scale 1. We measure it empirically — set such that
-  // the base sits on the bottom-center of the canvas.
-  const BUILDING_BASE_PX = 220;
-
-  let renderer, scene, camera, building;
-
-  // QR smoothing state
-  let smoothCx = null, smoothCy = null, smoothSize = null, smoothAngle = 0;
+  // Smoothing
+  let sCx = null, sCy = null, sSize = null, sAngle = 0;
   let lastDetectedAt = 0;
   let lastCorners = null;
 
-  function initThree() {
-    threeCanvas.width  = STK_W * (window.devicePixelRatio || 1);
-    threeCanvas.height = STK_H * (window.devicePixelRatio || 1);
-    threeCanvas.style.width  = STK_W + 'px';
-    threeCanvas.style.height = STK_H + 'px';
-
-    wrap.style.width  = STK_W + 'px';
-    wrap.style.height = STK_H + 'px';
-
-    renderer = new THREE.WebGLRenderer({ canvas: threeCanvas, alpha: true, antialias: true });
-    renderer.setPixelRatio(window.devicePixelRatio || 1);
-    renderer.setSize(STK_W, STK_H, false);
-
-    scene  = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(28, STK_W / STK_H, 0.1, 100);
-    // Looking slightly down and to the side for a clear 3D feel.
-    camera.position.set(2.2, 2.4, 5.5);
-    camera.lookAt(0, 1.4, 0);
-
-    scene.add(new THREE.AmbientLight(0xffffff, 0.65));
-    const key = new THREE.DirectionalLight(0xffffff, 1.1);
-    key.position.set(3, 6, 4);
-    scene.add(key);
-    const rim = new THREE.DirectionalLight(0x88aaff, 0.5);
-    rim.position.set(-3, 1.5, -2);
-    scene.add(rim);
-
-    building = buildBuilding();
-    scene.add(building);
-
-    // Optional: drop shadow plate (subtle, sits at base).
-    const shadowGeo = new THREE.CircleGeometry(0.95, 32);
-    const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25 });
-    const shadow = new THREE.Mesh(shadowGeo, shadowMat);
-    shadow.rotation.x = -Math.PI / 2;
-    shadow.position.y = 0.005;
-    scene.add(shadow);
-  }
-
-  function buildBuilding() {
-    const group = new THREE.Group();
-
-    const baseMat  = new THREE.MeshStandardMaterial({ color: 0x2a3340, roughness: 0.8 });
-    const wallMat  = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.55, metalness: 0.1 });
-    const glassMat = new THREE.MeshStandardMaterial({
-      color: 0x3a5d8f, roughness: 0.25, metalness: 0.5,
-      emissive: 0x1a2a44, emissiveIntensity: 0.6,
-    });
-
-    const base = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.08, 1.3), baseMat);
-    base.position.y = 0.04;
-    group.add(base);
-
-    const floors  = 10;
-    const floorH  = 0.24;
-    const towerW  = 0.9;
-    for (let i = 0; i < floors; i++) {
-      const taper = 1 - i * 0.04;
-      const w = towerW * taper;
-      const f = new THREE.Mesh(new THREE.BoxGeometry(w, floorH * 0.82, w), wallMat);
-      f.position.y = 0.08 + i * floorH + (floorH * 0.82) / 2;
-      group.add(f);
-
-      const strip = new THREE.Mesh(new THREE.BoxGeometry(w * 1.005, floorH * 0.16, w * 1.005), glassMat);
-      strip.position.y = 0.08 + i * floorH + floorH * 0.92;
-      group.add(strip);
-    }
-
-    const topY = 0.08 + floors * floorH;
-    const roofW = towerW * (1 - floors * 0.04) * 0.7;
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(roofW, 0.08, roofW), baseMat);
-    roof.position.y = topY + 0.04;
-    group.add(roof);
-
-    const spire = new THREE.Mesh(
-      new THREE.ConeGeometry(0.1, 0.55, 16),
-      new THREE.MeshStandardMaterial({ color: 0xff6b6b, roughness: 0.4 })
-    );
-    spire.position.y = topY + 0.08 + 0.28;
-    group.add(spire);
-
-    const antenna = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.012, 0.012, 0.3, 8),
-      new THREE.MeshStandardMaterial({ color: 0x222222 })
-    );
-    antenna.position.y = spire.position.y + 0.28 + 0.15;
-    group.add(antenna);
-
-    const tipLight = new THREE.Mesh(
-      new THREE.SphereGeometry(0.035, 12, 12),
-      new THREE.MeshStandardMaterial({ color: 0xff3344, emissive: 0xff2233, emissiveIntensity: 1.4 })
-    );
-    tipLight.position.y = antenna.position.y + 0.18;
-    group.add(tipLight);
-    group.userData.tipLight = tipLight;
-
-    return group;
-  }
-
-  function resizeDebug() {
+  function resizeOverlay() {
     const w = window.innerWidth, h = window.innerHeight;
     const dpr = window.devicePixelRatio || 1;
-    debugCanvas.width  = w * dpr;
-    debugCanvas.height = h * dpr;
-    debugCanvas.style.width  = w + 'px';
-    debugCanvas.style.height = h + 'px';
-    debugCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    overlay.width  = w * dpr;
+    overlay.height = h * dpr;
+    overlay.style.width  = w + 'px';
+    overlay.style.height = h + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-  window.addEventListener('resize', resizeDebug);
+  window.addEventListener('resize', resizeOverlay);
 
   async function startCamera() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -287,9 +159,7 @@
       startScreen.style.display = 'none';
       statusEl.style.display = 'block';
       qrLink.style.display = 'block';
-      wrap.style.display = 'block';
-      resizeDebug();
-      initThree();
+      resizeOverlay();
       requestAnimationFrame(tick);
     } catch (e) {
       alert('カメラを起動できませんでした:\n' + (e && e.message ? e.message : e));
@@ -322,8 +192,7 @@
   function videoToScreen(nx, ny) {
     const vw = video.videoWidth, vh = video.videoHeight;
     const cw = window.innerWidth, ch = window.innerHeight;
-    const videoRatio = vw / vh;
-    const canvasRatio = cw / ch;
+    const videoRatio = vw / vh, canvasRatio = cw / ch;
     let drawW, drawH, offX, offY;
     if (canvasRatio > videoRatio) {
       drawW = cw; drawH = cw / videoRatio;
@@ -335,102 +204,223 @@
     return { x: offX + nx * drawW, y: offY + ny * drawH };
   }
 
-  function drawDebug(corners) {
-    debugCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  function drawDetectionOutline(corners) {
     if (!corners) return;
     const pts = [corners.tl, corners.tr, corners.br, corners.bl].map(p => videoToScreen(p.x, p.y));
-    debugCtx.lineWidth = 4;
-    debugCtx.strokeStyle = '#2ecc71';
-    debugCtx.fillStyle = 'rgba(46, 204, 113, 0.18)';
-    debugCtx.beginPath();
-    pts.forEach((s, i) => i === 0 ? debugCtx.moveTo(s.x, s.y) : debugCtx.lineTo(s.x, s.y));
-    debugCtx.closePath();
-    debugCtx.fill();
-    debugCtx.stroke();
-    debugCtx.fillStyle = '#2ecc71';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#2ecc71';
+    ctx.fillStyle = 'rgba(46, 204, 113, 0.18)';
+    ctx.beginPath();
+    pts.forEach((s, i) => i === 0 ? ctx.moveTo(s.x, s.y) : ctx.lineTo(s.x, s.y));
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#2ecc71';
     pts.forEach(s => {
-      debugCtx.beginPath();
-      debugCtx.arc(s.x, s.y, 6, 0, Math.PI * 2);
-      debugCtx.fill();
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, 6, 0, Math.PI * 2);
+      ctx.fill();
     });
   }
 
-  function placeBuilding(det) {
-    const pts = [det.tl, det.tr, det.br, det.bl].map(p => videoToScreen(p.x, p.y));
-    const cx = (pts[0].x + pts[1].x + pts[2].x + pts[3].x) / 4;
-    const cy = (pts[0].y + pts[1].y + pts[2].y + pts[3].y) / 4;
-    const sizePx = (Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y)
-                   + Math.hypot(pts[2].x - pts[3].x, pts[2].y - pts[3].y)) / 2;
-    const angle = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x);
+  // ---- 2D Building drawing ----
+  // Rises UP from (cx, cy). baseWidth = footprint width in screen pixels.
+  function drawBuilding(cx, cy, baseWidth, time) {
+    const w = baseWidth;
+    const h = baseWidth * 2.6;        // total height
+    const d = baseWidth * 0.32;       // depth (iso offset)
+    const floors = 10;
 
-    const a = 0.4;
-    if (smoothCx === null) {
-      smoothCx = cx; smoothCy = cy; smoothSize = sizePx; smoothAngle = angle;
-    } else {
-      smoothCx += (cx - smoothCx) * a;
-      smoothCy += (cy - smoothCy) * a;
-      smoothSize += (sizePx - smoothSize) * a;
-      let da = angle - smoothAngle;
-      while (da > Math.PI) da -= 2 * Math.PI;
-      while (da < -Math.PI) da += 2 * Math.PI;
-      smoothAngle += da * a;
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // Ground shadow (ellipse)
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(d * 0.35, d * 0.15, w * 0.62, w * 0.22, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ---- Right side face (darker) ----
+    const sideGrad = ctx.createLinearGradient(w/2, 0, w/2 + d, -d);
+    sideGrad.addColorStop(0, '#7d8896');
+    sideGrad.addColorStop(1, '#5a6573');
+    ctx.fillStyle = sideGrad;
+    ctx.beginPath();
+    ctx.moveTo(w/2, 0);
+    ctx.lineTo(w/2 + d, -d);
+    ctx.lineTo(w/2 + d, -h - d);
+    ctx.lineTo(w/2, -h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Side windows (small)
+    ctx.fillStyle = 'rgba(58, 93, 143, 0.85)';
+    for (let i = 0; i < floors; i++) {
+      const y0 = -h + (i + 0.25) * (h / floors);
+      const y1 = -h + (i + 0.55) * (h / floors);
+      // trapezoid window strip on side
+      const xTop = w/2 + d * (1 - (i + 0.25) / floors * 0); // simplified
+      ctx.beginPath();
+      ctx.moveTo(w/2 + d * 0.15, y0 - d * 0.15);
+      ctx.lineTo(w/2 + d * 0.85, y0 - d * 0.85);
+      ctx.lineTo(w/2 + d * 0.85, y1 - d * 0.85);
+      ctx.lineTo(w/2 + d * 0.15, y1 - d * 0.15);
+      ctx.closePath();
+      ctx.fill();
     }
 
-    // Position the building canvas so its bottom-center is at the QR center,
-    // scaled so that the building's base footprint matches the QR's screen size.
-    const scale = Math.max(0.18, smoothSize / BUILDING_BASE_PX);
-    const tx = smoothCx - STK_W / 2;
-    const ty = smoothCy - STK_H;
-    wrap.style.transform =
-      `translate(${tx}px, ${ty}px) scale(${scale})`;
-    wrap.classList.add('visible');
-  }
+    // ---- Front face ----
+    const frontGrad = ctx.createLinearGradient(-w/2, -h, w/2, 0);
+    frontGrad.addColorStop(0, '#f1f5fa');
+    frontGrad.addColorStop(1, '#c1ccd9');
+    ctx.fillStyle = frontGrad;
+    ctx.fillRect(-w/2, -h, w, h);
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.strokeRect(-w/2, -h, w, h);
 
-  function hideBuilding() {
-    wrap.classList.remove('visible');
+    // Window strips on front
+    for (let i = 0; i < floors; i++) {
+      const y = -h + (i + 0.25) * (h / floors);
+      // glass
+      ctx.fillStyle = '#3a5d8f';
+      ctx.fillRect(-w/2 + w*0.08, y, w * 0.84, h/floors * 0.35);
+      // highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.fillRect(-w/2 + w*0.08, y, w * 0.84, h/floors * 0.07);
+    }
+    // Entrance
+    ctx.fillStyle = '#2a3340';
+    ctx.fillRect(-w*0.12, -h/floors*0.7, w*0.24, h/floors*0.7);
+
+    // ---- Top face ----
+    const topGrad = ctx.createLinearGradient(0, -h - d, 0, -h);
+    topGrad.addColorStop(0, '#3a4555');
+    topGrad.addColorStop(1, '#2a3340');
+    ctx.fillStyle = topGrad;
+    ctx.beginPath();
+    ctx.moveTo(-w/2, -h);
+    ctx.lineTo(w/2, -h);
+    ctx.lineTo(w/2 + d, -h - d);
+    ctx.lineTo(-w/2 + d, -h - d);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.stroke();
+
+    // ---- Spire ----
+    const spireTopX = d * 0.5;
+    const spireTopY = -h - d - baseWidth * 0.5;
+    ctx.fillStyle = '#ff6b6b';
+    ctx.beginPath();
+    ctx.moveTo(-w * 0.13, -h);
+    ctx.lineTo(w * 0.13, -h);
+    ctx.lineTo(w * 0.13 + d * 0.5, -h - d * 0.5);
+    ctx.lineTo(-w * 0.13 + d * 0.5, -h - d * 0.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(0, -h);
+    ctx.lineTo(spireTopX, spireTopY);
+    ctx.lineTo(w * 0.13 + d * 0.5, -h - d * 0.5);
+    ctx.closePath();
+    ctx.fillStyle = '#d95252';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(0, -h);
+    ctx.lineTo(spireTopX, spireTopY);
+    ctx.lineTo(-w * 0.13 + d * 0.5, -h - d * 0.5);
+    ctx.closePath();
+    ctx.fillStyle = '#ff8585';
+    ctx.fill();
+
+    // ---- Antenna ----
+    const antTopX = spireTopX;
+    const antTopY = spireTopY - baseWidth * 0.35;
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = Math.max(1.5, baseWidth * 0.012);
+    ctx.beginPath();
+    ctx.moveTo(spireTopX, spireTopY);
+    ctx.lineTo(antTopX, antTopY);
+    ctx.stroke();
+
+    // Tip light (pulsating)
+    const pulse = 0.6 + (Math.sin(time * 0.006) * 0.5 + 0.5) * 0.4;
+    ctx.fillStyle = '#ff3344';
+    ctx.shadowColor = '#ff3344';
+    ctx.shadowBlur = baseWidth * 0.25 * pulse;
+    ctx.beginPath();
+    ctx.arc(antTopX, antTopY, baseWidth * 0.05, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.restore();
   }
 
   function tick(now) {
     requestAnimationFrame(tick);
 
-    if (video.readyState >= 2) {
-      const det = detectQR();
-      if (det) {
-        lastDetectedAt = now;
-        lastCorners = det;
-        badge.className = 'badge ok';
-        badge.textContent = '検出';
-        const px = Math.round(
-          Math.hypot(
-            (det.tr.x - det.tl.x) * video.videoWidth,
-            (det.tr.y - det.tl.y) * video.videoHeight
-          )
-        );
-        statusText.textContent = (det.data || '(QR)') + ' / size: ' + px + 'px';
-        placeBuilding(det);
-      } else if (now - lastDetectedAt > 600) {
-        lastCorners = null;
-        badge.className = 'badge ng';
-        badge.textContent = '検索中';
-        statusText.textContent = 'QRコードを探しています... (' + video.videoWidth + 'x' + video.videoHeight + ')';
-        hideBuilding();
-      }
-    } else {
+    // Clear overlay each frame.
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+    if (video.readyState < 2) {
       statusText.textContent = 'カメラ初期化中... (readyState=' + video.readyState + ')';
+      return;
     }
 
-    drawDebug(lastCorners);
+    const det = detectQR();
+    if (det) {
+      lastDetectedAt = now;
+      lastCorners = det;
+      badge.className = 'badge ok';
+      badge.textContent = '検出';
+      const px = Math.round(
+        Math.hypot(
+          (det.tr.x - det.tl.x) * video.videoWidth,
+          (det.tr.y - det.tl.y) * video.videoHeight
+        )
+      );
+      statusText.textContent = (det.data || '(QR)') + ' / size: ' + px + 'px';
 
-    // Tip light flicker.
-    if (building && building.userData.tipLight) {
-      building.userData.tipLight.material.emissiveIntensity =
-        0.7 + (Math.sin(now * 0.005) * 0.5 + 0.5) * 1.0;
+      // Compute screen-space metrics.
+      const pts = [det.tl, det.tr, det.br, det.bl].map(p => videoToScreen(p.x, p.y));
+      const cx = (pts[0].x + pts[1].x + pts[2].x + pts[3].x) / 4;
+      const cy = (pts[0].y + pts[1].y + pts[2].y + pts[3].y) / 4;
+      const sizePx = (Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y)
+                    + Math.hypot(pts[2].x - pts[3].x, pts[2].y - pts[3].y)) / 2;
+      const angle = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x);
+
+      const a = 0.45;
+      if (sCx === null) {
+        sCx = cx; sCy = cy; sSize = sizePx; sAngle = angle;
+      } else {
+        sCx += (cx - sCx) * a;
+        sCy += (cy - sCy) * a;
+        sSize += (sizePx - sSize) * a;
+        let da = angle - sAngle;
+        while (da > Math.PI) da -= 2 * Math.PI;
+        while (da < -Math.PI) da += 2 * Math.PI;
+        sAngle += da * a;
+      }
+    } else if (now - lastDetectedAt > 600) {
+      lastCorners = null;
+      sCx = sCy = sSize = null;
+      badge.className = 'badge ng';
+      badge.textContent = '検索中';
+      statusText.textContent = 'QRコードを探しています... (' + video.videoWidth + 'x' + video.videoHeight + ')';
     }
-    // Subtle rotation for life.
-    if (building) {
-      building.rotation.y = Math.sin(now * 0.0005) * 0.25;
+
+    // Draw outline (debug visualization).
+    drawDetectionOutline(lastCorners);
+
+    // Draw building if we have a smoothed position.
+    if (sCx !== null && sSize !== null) {
+      // Building base width tied to QR size; minimum size for visibility.
+      const baseWidth = Math.max(60, sSize);
+      drawBuilding(sCx, sCy, baseWidth, now);
     }
-    if (renderer) renderer.render(scene, camera);
   }
 
   startBtn.addEventListener('click', startCamera);
