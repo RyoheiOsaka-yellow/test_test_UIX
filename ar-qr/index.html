@@ -19,11 +19,24 @@
     object-fit: cover;
     background: #000;
   }
-  #debug, #three {
+  #debug {
     position: absolute; inset: 0;
     width: 100%; height: 100%;
     pointer-events: none;
   }
+  #building-wrap {
+    position: absolute;
+    left: 0; top: 0;
+    transform-origin: 50% 100%;
+    pointer-events: none;
+    will-change: transform;
+    display: none;
+    transition: opacity 0.15s ease-out;
+    opacity: 0;
+  }
+  #building-wrap.visible { opacity: 1; }
+  #three { display: block; }
+
   #status {
     position: absolute; top: 16px; left: 16px; right: 16px;
     color: #fff;
@@ -31,17 +44,16 @@
     padding: 10px 14px;
     border-radius: 10px;
     font-size: 13px;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     display: none;
     z-index: 10;
   }
-  #status .badge {
-    display: inline-block; padding: 2px 8px; border-radius: 999px;
+  .badge {
+    display: inline-block; padding: 2px 10px; border-radius: 999px;
     font-size: 11px; font-weight: 700; margin-right: 8px;
   }
-  .badge.ok  { background: #2ecc71; color: #000; }
-  .badge.ng  { background: #e74c3c; color: #fff; }
+  .badge.ok { background: #2ecc71; color: #000; }
+  .badge.ng { background: #e74c3c; color: #fff; }
+
   #qr-link {
     position: absolute; bottom: 24px; left: 50%;
     transform: translateX(-50%);
@@ -52,12 +64,11 @@
     border-radius: 999px;
     text-decoration: none;
     font-size: 14px;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
     display: none;
     z-index: 10;
     pointer-events: auto;
   }
+
   #start {
     position: absolute; inset: 0;
     display: flex; flex-direction: column;
@@ -68,7 +79,7 @@
     text-align: center;
     z-index: 20;
   }
-  #start h1 { font-size: 24px; font-weight: 700; letter-spacing: 0.02em; }
+  #start h1 { font-size: 24px; font-weight: 700; }
   #start p { font-size: 14px; color: #b8c4d6; max-width: 320px; line-height: 1.7; }
   #start button {
     padding: 14px 32px;
@@ -82,7 +93,6 @@
     box-shadow: 0 8px 24px rgba(76,139,245,0.35);
   }
   #start a { color: #7aa6f7; font-size: 14px; text-decoration: none; }
-  #start a:hover { text-decoration: underline; }
   .hint { font-size: 12px; color: #8b97ad; margin-top: 4px; line-height: 1.6; }
 </style>
 </head>
@@ -90,7 +100,7 @@
 <div id="app">
   <video id="video" playsinline muted autoplay></video>
   <canvas id="debug"></canvas>
-  <canvas id="three"></canvas>
+  <div id="building-wrap"><canvas id="three"></canvas></div>
   <div id="status"><span class="badge ng" id="badge">検索中</span><span id="statusText">カメラ起動中...</span></div>
   <a id="qr-link" href="qr.html" target="_blank" rel="noopener">テスト用QRを開く</a>
 
@@ -101,7 +111,7 @@
     <a href="qr.html">テスト用 QR コードを表示</a>
     <div class="hint">
       ※ カメラ利用には HTTPS または localhost が必要です<br>
-      ※ うまく検出されない時は、QR が画面いっぱいに大きく映るように近づけてください
+      ※ QR が画面いっぱいに映るくらい近づけると検出しやすいです
     </div>
   </div>
 </div>
@@ -110,50 +120,73 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script>
 (function () {
-  const video = document.getElementById('video');
-  const overlay = document.getElementById('three');
+  const video       = document.getElementById('video');
   const debugCanvas = document.getElementById('debug');
-  const debugCtx = debugCanvas.getContext('2d');
-  const statusEl = document.getElementById('status');
-  const statusText = document.getElementById('statusText');
-  const badge = document.getElementById('badge');
+  const debugCtx    = debugCanvas.getContext('2d');
+  const threeCanvas = document.getElementById('three');
+  const wrap        = document.getElementById('building-wrap');
+  const statusEl    = document.getElementById('status');
+  const statusText  = document.getElementById('statusText');
+  const badge       = document.getElementById('badge');
   const startScreen = document.getElementById('start');
-  const startBtn = document.getElementById('startBtn');
-  const qrLink = document.getElementById('qr-link');
+  const startBtn    = document.getElementById('startBtn');
+  const qrLink      = document.getElementById('qr-link');
 
   const scanCanvas = document.createElement('canvas');
-  const scanCtx = scanCanvas.getContext('2d', { willReadFrequently: true });
+  const scanCtx    = scanCanvas.getContext('2d', { willReadFrequently: true });
+
+  // Building "sticker" canvas: fixed pixel size, rendered once and scaled via CSS.
+  const STK_W = 360;
+  const STK_H = 600;
+  // The building base in this canvas occupies roughly BUILDING_BASE_PX wide
+  // when the QR sticker is at scale 1. We measure it empirically — set such that
+  // the base sits on the bottom-center of the canvas.
+  const BUILDING_BASE_PX = 220;
 
   let renderer, scene, camera, building;
-  let smoothCenter = null;
-  let smoothScale = null;
-  let smoothAngle = 0;
+
+  // QR smoothing state
+  let smoothCx = null, smoothCy = null, smoothSize = null, smoothAngle = 0;
   let lastDetectedAt = 0;
   let lastCorners = null;
-  let frameCount = 0;
 
   function initThree() {
-    renderer = new THREE.WebGLRenderer({ canvas: overlay, alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    resizeRenderer();
+    threeCanvas.width  = STK_W * (window.devicePixelRatio || 1);
+    threeCanvas.height = STK_H * (window.devicePixelRatio || 1);
+    threeCanvas.style.width  = STK_W + 'px';
+    threeCanvas.style.height = STK_H + 'px';
 
-    scene = new THREE.Scene();
-    // Orthographic in screen pixels so we can place the building right at the QR location.
-    camera = new THREE.PerspectiveCamera(40, overlay.clientWidth / overlay.clientHeight, 0.1, 100);
-    camera.position.set(0, 0, 5);
-    camera.lookAt(0, 0, 0);
+    wrap.style.width  = STK_W + 'px';
+    wrap.style.height = STK_H + 'px';
+
+    renderer = new THREE.WebGLRenderer({ canvas: threeCanvas, alpha: true, antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio || 1);
+    renderer.setSize(STK_W, STK_H, false);
+
+    scene  = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(28, STK_W / STK_H, 0.1, 100);
+    // Looking slightly down and to the side for a clear 3D feel.
+    camera.position.set(2.2, 2.4, 5.5);
+    camera.lookAt(0, 1.4, 0);
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.65));
-    const key = new THREE.DirectionalLight(0xffffff, 1.0);
-    key.position.set(2, 5, 4);
+    const key = new THREE.DirectionalLight(0xffffff, 1.1);
+    key.position.set(3, 6, 4);
     scene.add(key);
     const rim = new THREE.DirectionalLight(0x88aaff, 0.5);
-    rim.position.set(-3, 1, -2);
+    rim.position.set(-3, 1.5, -2);
     scene.add(rim);
 
     building = buildBuilding();
-    building.visible = false;
     scene.add(building);
+
+    // Optional: drop shadow plate (subtle, sits at base).
+    const shadowGeo = new THREE.CircleGeometry(0.95, 32);
+    const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25 });
+    const shadow = new THREE.Mesh(shadowGeo, shadowMat);
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.005;
+    scene.add(shadow);
   }
 
   function buildBuilding() {
@@ -170,9 +203,9 @@
     base.position.y = 0.04;
     group.add(base);
 
-    const floors = 10;
-    const floorH = 0.24;
-    const towerW = 0.9;
+    const floors  = 10;
+    const floorH  = 0.24;
+    const towerW  = 0.9;
     for (let i = 0; i < floors; i++) {
       const taper = 1 - i * 0.04;
       const w = towerW * taper;
@@ -186,10 +219,8 @@
     }
 
     const topY = 0.08 + floors * floorH;
-    const roof = new THREE.Mesh(
-      new THREE.BoxGeometry(towerW * (1 - floors * 0.04) * 0.7, 0.08, towerW * (1 - floors * 0.04) * 0.7),
-      baseMat
-    );
+    const roofW = towerW * (1 - floors * 0.04) * 0.7;
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(roofW, 0.08, roofW), baseMat);
     roof.position.y = topY + 0.04;
     group.add(roof);
 
@@ -208,32 +239,26 @@
     group.add(antenna);
 
     const tipLight = new THREE.Mesh(
-      new THREE.SphereGeometry(0.03, 12, 12),
+      new THREE.SphereGeometry(0.035, 12, 12),
       new THREE.MeshStandardMaterial({ color: 0xff3344, emissive: 0xff2233, emissiveIntensity: 1.4 })
     );
     tipLight.position.y = antenna.position.y + 0.18;
     group.add(tipLight);
     group.userData.tipLight = tipLight;
 
-    // Pivot so the base of the building is at the group's origin's "ground" (y=0).
     return group;
   }
 
-  function resizeRenderer() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    renderer.setSize(w, h, false);
-    debugCanvas.width = w * (window.devicePixelRatio || 1);
-    debugCanvas.height = h * (window.devicePixelRatio || 1);
-    debugCanvas.style.width = w + 'px';
+  function resizeDebug() {
+    const w = window.innerWidth, h = window.innerHeight;
+    const dpr = window.devicePixelRatio || 1;
+    debugCanvas.width  = w * dpr;
+    debugCanvas.height = h * dpr;
+    debugCanvas.style.width  = w + 'px';
     debugCanvas.style.height = h + 'px';
-    debugCtx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
-    if (camera) {
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-    }
+    debugCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-  window.addEventListener('resize', resizeRenderer);
+  window.addEventListener('resize', resizeDebug);
 
   async function startCamera() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -251,23 +276,19 @@
             height: { ideal: 1080 },
           },
         });
-      } catch (e1) {
-        // fallback: any camera
+      } catch (_e) {
         stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
       }
       video.srcObject = stream;
       await video.play();
-
-      // Wait until videoWidth is available
       if (!video.videoWidth) {
-        await new Promise((res) => {
-          video.addEventListener('loadedmetadata', res, { once: true });
-        });
+        await new Promise((res) => video.addEventListener('loadedmetadata', res, { once: true }));
       }
-
       startScreen.style.display = 'none';
       statusEl.style.display = 'block';
       qrLink.style.display = 'block';
+      wrap.style.display = 'block';
+      resizeDebug();
       initThree();
       requestAnimationFrame(tick);
     } catch (e) {
@@ -277,14 +298,12 @@
 
   function detectQR() {
     if (!video.videoWidth) return null;
-    // Higher resolution = better detection for screen-displayed QR codes.
     const targetW = Math.min(720, video.videoWidth);
     const scale = targetW / video.videoWidth;
     const w = Math.round(video.videoWidth * scale);
     const h = Math.round(video.videoHeight * scale);
     if (scanCanvas.width !== w || scanCanvas.height !== h) {
-      scanCanvas.width = w;
-      scanCanvas.height = h;
+      scanCanvas.width = w; scanCanvas.height = h;
     }
     scanCtx.drawImage(video, 0, 0, w, h);
     const img = scanCtx.getImageData(0, 0, w, h);
@@ -301,139 +320,100 @@
   }
 
   function videoToScreen(nx, ny) {
-    const vw = video.videoWidth;
-    const vh = video.videoHeight;
-    const cw = overlay.clientWidth;
-    const ch = overlay.clientHeight;
+    const vw = video.videoWidth, vh = video.videoHeight;
+    const cw = window.innerWidth, ch = window.innerHeight;
     const videoRatio = vw / vh;
     const canvasRatio = cw / ch;
     let drawW, drawH, offX, offY;
     if (canvasRatio > videoRatio) {
-      drawW = cw;
-      drawH = cw / videoRatio;
-      offX = 0;
-      offY = (ch - drawH) / 2;
+      drawW = cw; drawH = cw / videoRatio;
+      offX = 0; offY = (ch - drawH) / 2;
     } else {
-      drawH = ch;
-      drawW = ch * videoRatio;
-      offX = (cw - drawW) / 2;
-      offY = 0;
+      drawH = ch; drawW = ch * videoRatio;
+      offX = (cw - drawW) / 2; offY = 0;
     }
     return { x: offX + nx * drawW, y: offY + ny * drawH };
   }
 
   function drawDebug(corners) {
-    const cw = overlay.clientWidth;
-    const ch = overlay.clientHeight;
-    debugCtx.clearRect(0, 0, cw, ch);
+    debugCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
     if (!corners) return;
-    const pts = [corners.tl, corners.tr, corners.br, corners.bl];
+    const pts = [corners.tl, corners.tr, corners.br, corners.bl].map(p => videoToScreen(p.x, p.y));
     debugCtx.lineWidth = 4;
     debugCtx.strokeStyle = '#2ecc71';
     debugCtx.fillStyle = 'rgba(46, 204, 113, 0.18)';
     debugCtx.beginPath();
-    pts.forEach((p, i) => {
-      const s = videoToScreen(p.x, p.y);
-      if (i === 0) debugCtx.moveTo(s.x, s.y); else debugCtx.lineTo(s.x, s.y);
-    });
+    pts.forEach((s, i) => i === 0 ? debugCtx.moveTo(s.x, s.y) : debugCtx.lineTo(s.x, s.y));
     debugCtx.closePath();
     debugCtx.fill();
     debugCtx.stroke();
-    // corner dots
     debugCtx.fillStyle = '#2ecc71';
-    pts.forEach((p) => {
-      const s = videoToScreen(p.x, p.y);
+    pts.forEach(s => {
       debugCtx.beginPath();
       debugCtx.arc(s.x, s.y, 6, 0, Math.PI * 2);
       debugCtx.fill();
     });
   }
 
-  // Place building in screen space: convert pixel (x,y) on screen to world coords at z=0 plane.
-  const _ray = new THREE.Raycaster();
-  const _plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-  const _target = new THREE.Vector3();
-  const _ndc = new THREE.Vector2();
-
   function placeBuilding(det) {
-    const tl = videoToScreen(det.tl.x, det.tl.y);
-    const tr = videoToScreen(det.tr.x, det.tr.y);
-    const br = videoToScreen(det.br.x, det.br.y);
-    const bl = videoToScreen(det.bl.x, det.bl.y);
+    const pts = [det.tl, det.tr, det.br, det.bl].map(p => videoToScreen(p.x, p.y));
+    const cx = (pts[0].x + pts[1].x + pts[2].x + pts[3].x) / 4;
+    const cy = (pts[0].y + pts[1].y + pts[2].y + pts[3].y) / 4;
+    const sizePx = (Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y)
+                   + Math.hypot(pts[2].x - pts[3].x, pts[2].y - pts[3].y)) / 2;
+    const angle = Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x);
 
-    const cx = (tl.x + tr.x + br.x + bl.x) / 4;
-    const cy = (tl.y + tr.y + br.y + bl.y) / 4;
-    const sizePx = (Math.hypot(tr.x - tl.x, tr.y - tl.y) + Math.hypot(br.x - bl.x, br.y - bl.y)) / 2;
-    const angle = Math.atan2(tr.y - tl.y, tr.x - tl.x);
-
-    const alpha = 0.4;
-    if (!smoothCenter) {
-      smoothCenter = { x: cx, y: cy };
-      smoothScale = sizePx;
-      smoothAngle = angle;
+    const a = 0.4;
+    if (smoothCx === null) {
+      smoothCx = cx; smoothCy = cy; smoothSize = sizePx; smoothAngle = angle;
     } else {
-      smoothCenter.x += (cx - smoothCenter.x) * alpha;
-      smoothCenter.y += (cy - smoothCenter.y) * alpha;
-      smoothScale += (sizePx - smoothScale) * alpha;
+      smoothCx += (cx - smoothCx) * a;
+      smoothCy += (cy - smoothCy) * a;
+      smoothSize += (sizePx - smoothSize) * a;
       let da = angle - smoothAngle;
       while (da > Math.PI) da -= 2 * Math.PI;
       while (da < -Math.PI) da += 2 * Math.PI;
-      smoothAngle += da * alpha;
+      smoothAngle += da * a;
     }
 
-    const cw = overlay.clientWidth;
-    const ch = overlay.clientHeight;
-    _ndc.set((smoothCenter.x / cw) * 2 - 1, -(smoothCenter.y / ch) * 2 + 1);
-    _ray.setFromCamera(_ndc, camera);
-    const hit = _ray.ray.intersectPlane(_plane, _target);
-    if (!hit) return;
+    // Position the building canvas so its bottom-center is at the QR center,
+    // scaled so that the building's base footprint matches the QR's screen size.
+    const scale = Math.max(0.18, smoothSize / BUILDING_BASE_PX);
+    const tx = smoothCx - STK_W / 2;
+    const ty = smoothCy - STK_H;
+    wrap.style.transform =
+      `translate(${tx}px, ${ty}px) scale(${scale})`;
+    wrap.classList.add('visible');
+  }
 
-    // World units per pixel at z=0 depth (where the building sits).
-    const depth = Math.abs(camera.position.z); // plane at z=0
-    const vFOV = THREE.MathUtils.degToRad(camera.fov);
-    const worldHeightAtDepth = 2 * Math.tan(vFOV / 2) * depth;
-    const worldPerPixel = worldHeightAtDepth / ch;
-
-    // We want building's "footprint" width to be roughly 1.4x the QR size on screen,
-    // so it visibly overlaps the QR while still feeling grounded.
-    const buildingBase = 1.3;
-    const desiredWorldWidth = Math.max(20, smoothScale) * 1.4 * worldPerPixel;
-    const s = desiredWorldWidth / buildingBase;
-
-    // Place building so its base center is at the QR center (in world coords).
-    // Since the building geometry has its base at y≈0, offset by half its scaled depth
-    // so it grows upward from the QR. We simply set y to target.y (no offset; base is at y=0 of group).
-    building.position.set(_target.x, _target.y, 0);
-    building.scale.setScalar(s);
-    building.rotation.y = -smoothAngle;
-    building.visible = true;
+  function hideBuilding() {
+    wrap.classList.remove('visible');
   }
 
   function tick(now) {
     requestAnimationFrame(tick);
-    frameCount++;
 
     if (video.readyState >= 2) {
-      // Detect every frame (jsQR is fast at 720p).
       const det = detectQR();
       if (det) {
         lastDetectedAt = now;
         lastCorners = det;
         badge.className = 'badge ok';
         badge.textContent = '検出';
-        statusText.textContent = (det.data || '(QR)') + ' / size: ' + Math.round(
+        const px = Math.round(
           Math.hypot(
             (det.tr.x - det.tl.x) * video.videoWidth,
             (det.tr.y - det.tl.y) * video.videoHeight
           )
-        ) + 'px';
+        );
+        statusText.textContent = (det.data || '(QR)') + ' / size: ' + px + 'px';
         placeBuilding(det);
       } else if (now - lastDetectedAt > 600) {
-        if (building) building.visible = false;
         lastCorners = null;
         badge.className = 'badge ng';
         badge.textContent = '検索中';
-        statusText.textContent = 'QRコードを探しています... カメラを QR に近づけてください (' + video.videoWidth + 'x' + video.videoHeight + ')';
+        statusText.textContent = 'QRコードを探しています... (' + video.videoWidth + 'x' + video.videoHeight + ')';
+        hideBuilding();
       }
     } else {
       statusText.textContent = 'カメラ初期化中... (readyState=' + video.readyState + ')';
@@ -441,19 +421,16 @@
 
     drawDebug(lastCorners);
 
-    if (building && building.visible) {
-      const t = now * 0.001;
-      // Subtle bob and twinkle.
-      const baseY = building.position.y;
-      const bob = Math.sin(t * 2.0) * 0.01;
-      building.position.y = baseY; // (placeBuilding sets it each frame; nothing to add here)
-      const tip = building.userData.tipLight;
-      if (tip) {
-        tip.material.emissiveIntensity = 0.7 + (Math.sin(t * 5) * 0.5 + 0.5) * 1.0;
-      }
+    // Tip light flicker.
+    if (building && building.userData.tipLight) {
+      building.userData.tipLight.material.emissiveIntensity =
+        0.7 + (Math.sin(now * 0.005) * 0.5 + 0.5) * 1.0;
     }
-
-    renderer.render(scene, camera);
+    // Subtle rotation for life.
+    if (building) {
+      building.rotation.y = Math.sin(now * 0.0005) * 0.25;
+    }
+    if (renderer) renderer.render(scene, camera);
   }
 
   startBtn.addEventListener('click', startCamera);
