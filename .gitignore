@@ -2,3 +2,10 @@ node_modules/
 .cache/
 *.log
 .DS_Store
+
+# poc
+.venv/
+__pycache__/
+*.pt
+*.mp4
+poc/tracks.json
