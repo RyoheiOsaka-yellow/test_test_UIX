@@ -59,13 +59,8 @@ html, body {
 }
 
 body::after {
-  content: '';
-  position: fixed; inset: 0;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.05 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  pointer-events: none;
-  z-index: 9999;
-  mix-blend-mode: overlay;
-  opacity: 0.5;
+  /* 軽量化のため fullscreen blend ノイズは撤去 (合成負荷の主原因) */
+  display: none;
 }
 
 /* === レイアウト (折り畳み対応 grid) === */
@@ -760,20 +755,19 @@ body::after {
 }
 .walk-dot.active { background: var(--shu); width: 24px; border-radius: 3px; }
 
-/* === タイムオブデイ別 オーバーレイ === */
+/* === タイムオブデイ別 オーバーレイ (mix-blend-mode を撤去、単純なアルファ合成へ) === */
 .time-tint {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 4;
-  mix-blend-mode: multiply;
   transition: background 1.2s ease;
   background: transparent;
 }
-.time-tint.morning { background: rgba(255, 220, 180, 0.18); }
+.time-tint.morning { background: rgba(255, 200, 140, 0.10); }
 .time-tint.noon    { background: transparent; }
-.time-tint.evening { background: rgba(255, 140, 80, 0.22); }
-.time-tint.night   { background: rgba(20, 30, 60, 0.40); mix-blend-mode: multiply; }
+.time-tint.evening { background: rgba(255, 110, 60, 0.14); }
+.time-tint.night   { background: rgba(15, 25, 55, 0.32); }
 
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -937,8 +931,9 @@ body::after {
     </div>
 
     <div class="map-controls">
-      <button class="map-btn" onclick="map.zoomIn()">+</button>
-      <button class="map-btn" onclick="map.zoomOut()">−</button>
+      <button class="map-btn" onclick="map.zoomIn()" title="ズームイン">+</button>
+      <button class="map-btn" onclick="map.zoomOut()" title="ズームアウト">−</button>
+      <button class="map-btn" id="viewToggleBtn" onclick="toggleViewAngle()" title="真上 / 斜め 切替">◰</button>
       <button class="map-btn" onclick="resetView()" title="リセット">⟲</button>
     </div>
   </main>
@@ -1254,11 +1249,11 @@ map.on('load', () => {
     console.warn('3D buildings unavailable:', e);
   }
 
-  // === deck.gl overlay ===
+  // === deck.gl overlay (interleaved: MapLibre と同じ WebGL context を共有)
+  //    canvas が1枚になり、毎フレームの合成同期ジッタが消える
   deckOverlay = new deck.MapboxOverlay({
     layers: [],
-    useDevicePixels: false,
-    interleaved: false,
+    interleaved: true,
   });
   map.addControl(deckOverlay);
   renderScene(0);
@@ -1283,66 +1278,79 @@ const STATIC_LAYER_CACHE = {};
 
 function buildStaticLayers(scene) {
   const baseLayers = [];
+  const data = SCATTER_BY_SCENE[scene];
 
-  // Heatmap (全シーン共通の地)
+  // 1) 地のヒートマップ (柔らかいグロー)。真上ビューでも美しい。
   baseLayers.push(
     new deck.HeatmapLayer({
       id: `heat-${scene}`,
-      data: SCATTER_BY_SCENE[scene],
+      data,
       getPosition: d => d.position,
       getWeight: d => d.weight,
-      radiusPixels: scene === 2 ? 60 : scene === 1 ? 40 : 48,
-      intensity: scene === 2 ? 1.5 : scene === 1 ? 0.8 : 1.0,
-      threshold: 0.04,
+      radiusPixels: scene === 2 ? 60 : scene === 1 ? 38 : 46,
+      intensity: scene === 2 ? 1.4 : scene === 1 ? 0.75 : 1.0,
+      threshold: 0.03,
       colorRange: [
-        [180, 210, 220, 50],
-        [100, 160, 180, 120],
-        [212, 165, 116, 190],
-        [200, 70, 58, 230],
+        [220, 232, 236,  20],
+        [148, 192, 204, 110],
+        [212, 165, 116, 180],
+        [212, 110,  72, 215],
+        [200,  70,  58, 235],
       ],
     })
   );
 
-  // ハロー (地面の光輪)
+  // 2) ヘキサゴンビン (棒ではなく "ハニカム起伏"。真上では平らな六角タイル、
+  //    斜めでは滑らかな高さで密度を立体表現)
   baseLayers.push(
-    new deck.ScatterplotLayer({
-      id: `halos-${scene}`,
-      data: HOTSPOTS,
-      getPosition: d => [d.lng, d.lat],
-      getRadius: d => 40 + d.weight * 60,
-      getFillColor: d => {
-        if (d.weight > 0.75) return [200, 70, 58, 35];
-        if (d.weight > 0.5)  return [212, 165, 116, 30];
-        return [74, 138, 154, 28];
+    new deck.HexagonLayer({
+      id: `hex-${scene}`,
+      data,
+      getPosition: d => d.position,
+      getElevationWeight: d => d.weight,
+      getColorWeight: d => d.weight,
+      radius: 40,             // メートル単位の六角サイズ
+      coverage: 0.88,
+      extruded: true,
+      elevationScale: 30,
+      elevationRange: [0, 180],
+      pickable: false,
+      opacity: 0.72,
+      colorRange: [
+        [ 96, 128, 144, 120],
+        [128, 168, 178, 170],
+        [212, 165, 116, 210],
+        [212, 110,  72, 230],
+        [200,  70,  58, 240],
+      ],
+      material: {
+        ambient: 0.7,
+        diffuse: 0.55,
+        shininess: 8,
+        specularColor: [255, 230, 200],
       },
-      stroked: false,
-      filled: true,
     })
   );
 
-  // 3D ピラー
+  // 3) スポット位置の "丸" マーカー (棒ではなく円)
   baseLayers.push(
-    new deck.ColumnLayer({
-      id: `pillars-${scene}`,
+    new deck.ScatterplotLayer({
+      id: `marks-${scene}`,
       data: HOTSPOTS,
       getPosition: d => [d.lng, d.lat],
-      diskResolution: 16,
-      radius: 22,
-      extruded: true,
-      pickable: true,
-      elevationScale: 1,
+      getRadius: d => 14 + d.weight * 22,
+      radiusUnits: 'pixels',
+      radiusMinPixels: 6,
+      radiusMaxPixels: 38,
+      lineWidthMinPixels: 1.5,
+      stroked: true,
+      filled: true,
       getFillColor: d => {
-        if (d.weight > 0.75) return [200, 70, 58, 230];
-        if (d.weight > 0.5)  return [212, 165, 116, 220];
-        return [74, 138, 154, 210];
+        if (d.weight > 0.75) return [200, 70, 58, 235];
+        if (d.weight > 0.5)  return [212, 165, 116, 225];
+        return [74, 138, 154, 215];
       },
-      getElevation: d => d.weight * 180 + 20,
-      material: {
-        ambient: 0.6,
-        diffuse: 0.6,
-        shininess: 16,
-        specularColor: [255, 230, 200],
-      },
+      getLineColor: [255, 248, 232, 235],
     })
   );
 
@@ -1712,7 +1720,26 @@ function switchScene(idx) {
 }
 
 function resetView() {
-  map.flyTo({ center: ATAMI_CENTER, zoom: 14.2, pitch: 60, bearing: -18, duration: 1200 });
+  map.flyTo({
+    center: ATAMI_CENTER, zoom: 14.2, pitch: 60, bearing: -18,
+    duration: 1400,
+    curve: 1.4,
+    easing: t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2,
+  });
+}
+
+// 真上 (pitch 0) / 斜め (pitch 60) のトグル
+let isTopDown = false;
+function toggleViewAngle() {
+  isTopDown = !isTopDown;
+  const btn = document.getElementById('viewToggleBtn');
+  if (btn) btn.textContent = isTopDown ? '◳' : '◰';
+  map.easeTo({
+    pitch: isTopDown ? 0 : 60,
+    bearing: isTopDown ? 0 : -18,
+    duration: 1100,
+    easing: t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2,
+  });
 }
 
 // ============================================
