@@ -201,7 +201,7 @@
     background: var(--panel);
     border-top: 1px solid var(--border);
     padding: 10px 16px;
-    display: flex; align-items: center; gap: 12px;
+    display: grid; gap: 6px;
   }
   footer button {
     background: var(--panel-2); color: var(--text);
@@ -350,33 +350,49 @@
           <div class="label">Team B players</div>
           <div class="value mono"><span id="m-hb">0</span></div>
         </div>
+        <div class="metric home">
+          <div class="label">Passes H</div>
+          <div class="value mono"><span id="m-pass-h">0</span></div>
+        </div>
+        <div class="metric away">
+          <div class="label">Passes A</div>
+          <div class="value mono"><span id="m-pass-a">0</span></div>
+        </div>
         <div class="metric">
-          <div class="label">Det. confidence</div>
-          <div class="value mono"><span id="m-conf">-</span></div>
+          <div class="label">Press events</div>
+          <div class="value mono"><span id="m-press">0</span></div>
+        </div>
+        <div class="metric">
+          <div class="label">Turnovers</div>
+          <div class="value mono"><span id="m-turn">0</span></div>
+        </div>
+        <div class="metric">
+          <div class="label">Holder</div>
+          <div class="value mono" style="font-size:14px"><span id="m-holder">—</span></div>
         </div>
         <div class="metric">
           <div class="label">Inference</div>
           <div class="value mono"><span id="m-inf">-</span><span class="unit">ms</span></div>
         </div>
-        <div class="metric">
-          <div class="label">Ball detected</div>
-          <div class="value mono"><span id="m-ball">no</span></div>
-        </div>
-        <div class="metric">
-          <div class="label">Tracks active</div>
-          <div class="value mono"><span id="m-tracks">0</span></div>
-        </div>
       </div>
+      <div style="padding:0 10px 4px; font-size:10px; color:var(--text-dim); text-transform:uppercase">Possession</div>
       <div class="bar"><div class="home-share" id="bar-h" style="width:50%"></div><div class="away-share" id="bar-a" style="width:50%"></div></div>
-      <div class="panel-head" style="border-top:1px solid var(--border)"><span>Events</span></div>
+      <div class="bar-label" style="display:flex; justify-content:space-between; padding:0 10px 6px; font-size:11px; font-variant-numeric:tabular-nums">
+        <span style="color:var(--home)"><span id="m-poss-h">50</span>%</span>
+        <span style="color:var(--away)"><span id="m-poss-a">50</span>%</span>
+      </div>
+      <div class="panel-head" style="border-top:1px solid var(--border)"><span>Detected Events</span></div>
       <div class="events" id="events"></div>
     </aside>
   </main>
 
-  <footer>
-    <button id="btn-play">⏵</button>
-    <div class="scrubber" id="scrubber"><div class="progress" id="progress"></div></div>
-    <span class="mono" id="tl-time">00:00 / 00:00</span>
+  <footer style="grid-template-rows: auto 18px">
+    <div style="display:flex; align-items:center; gap:12px">
+      <button id="btn-play">⏵</button>
+      <div class="scrubber" id="scrubber" style="flex:1"><div class="progress" id="progress"></div></div>
+      <span class="mono" id="tl-time">00:00 / 00:00</span>
+    </div>
+    <div id="ev-track" style="position:relative; height:18px; background:var(--panel-2); border-radius:3px; margin-left:48px; margin-right:64px"></div>
   </footer>
 </div>
 
@@ -431,10 +447,14 @@ const tFps = document.getElementById('t-fps');
 const tCount = document.getElementById('t-count');
 const mHa = document.getElementById('m-ha');
 const mHb = document.getElementById('m-hb');
-const mConf = document.getElementById('m-conf');
 const mInf = document.getElementById('m-inf');
-const mBall = document.getElementById('m-ball');
-const mTracks = document.getElementById('m-tracks');
+const mPassH = document.getElementById('m-pass-h');
+const mPassA = document.getElementById('m-pass-a');
+const mPress = document.getElementById('m-press');
+const mTurn = document.getElementById('m-turn');
+const mHolder = document.getElementById('m-holder');
+const mPossH = document.getElementById('m-poss-h');
+const mPossA = document.getElementById('m-poss-a');
 const barH = document.getElementById('bar-h');
 const barA = document.getElementById('bar-a');
 
@@ -710,6 +730,317 @@ function colDist(a, b) {
 }
 
 // ============================================================
+// Event detection — derives meaningful tactical events from
+// raw tracks: ball holder, passes, turnovers, presses, recoveries.
+// ============================================================
+const matchState = {
+  ballPos: null,         // {fx, fy} in pitch meters (smoothed)
+  ballPosT: 0,           // when ballPos was last refreshed
+  holderId: null,        // track id of player with the ball
+  holderTeam: null,      // 0 or 1
+  holderSince: 0,        // video time when current possession started
+  pressActive: false,    // is a press currently registered
+  pressStartedAt: -10,
+  lastEventAt: -10,
+  possAccum: [0, 0],     // seconds of possession per team
+  stats: {
+    passesH: 0, passesA: 0,
+    turnoversH: 0, turnoversA: 0,
+    presses: 0,
+    recoveriesH: 0, recoveriesA: 0,
+  },
+  recentPasses: [],      // {from:{x,y}, to:{x,y}, team, t} — for arrow overlay
+};
+
+function projectFoot(tr, H_) {
+  const bb = tr.smoothBbox || tr.bbox;
+  return applyH(H_, bb.x + bb.w / 2, bb.y + bb.h);
+}
+
+function projectCenter(tr, H_) {
+  const bb = tr.smoothBbox || tr.bbox;
+  return applyH(H_, bb.x + bb.w / 2, bb.y + bb.h / 2);
+}
+
+// Returns ball position in pitch coords, smoothed across detected frames.
+// When ball is not detected, falls back to "huddle center" — the median
+// position of the densest cluster of players from both teams.
+function inferBallPos(H_, now) {
+  if (!H_) return null;
+  // 1) detected ball
+  let ballTr = null;
+  for (const tr of tracks.values()) {
+    if (tr.cls !== 'sports ball') continue;
+    if (tr.miss > 2 || tr.hits < 2 || tr.score < 0.45) continue;
+    if (!ballTr || tr.score > ballTr.score) ballTr = tr;
+  }
+  let target = null;
+  if (ballTr) {
+    const [fx, fy] = projectCenter(ballTr, H_);
+    if (isFinite(fx) && isFinite(fy)) target = { fx, fy, src: 'detected' };
+  }
+  // 2) huddle fallback: closest opposing-team pair
+  if (!target) {
+    let bestPair = null, bestD = Infinity;
+    const persons = [];
+    for (const tr of tracks.values()) {
+      if (tr.cls !== 'person' || tr.miss > 2 || tr.team == null) continue;
+      const [fx, fy] = projectFoot(tr, H_);
+      if (!isFinite(fx) || !isFinite(fy)) continue;
+      persons.push({ tr, fx, fy });
+    }
+    for (let i = 0; i < persons.length; i++) {
+      for (let j = i + 1; j < persons.length; j++) {
+        if (persons[i].tr.team === persons[j].tr.team) continue;
+        const d = Math.hypot(persons[i].fx - persons[j].fx, persons[i].fy - persons[j].fy);
+        if (d < bestD) { bestD = d; bestPair = [persons[i], persons[j]]; }
+      }
+    }
+    if (bestPair && bestD < 5) {
+      target = {
+        fx: (bestPair[0].fx + bestPair[1].fx) / 2,
+        fy: (bestPair[0].fy + bestPair[1].fy) / 2,
+        src: 'huddle',
+      };
+    }
+  }
+  if (!target) return matchState.ballPos;  // keep last known
+  // EMA smooth
+  if (!matchState.ballPos) {
+    matchState.ballPos = { fx: target.fx, fy: target.fy };
+  } else {
+    matchState.ballPos.fx += (target.fx - matchState.ballPos.fx) * 0.5;
+    matchState.ballPos.fy += (target.fy - matchState.ballPos.fy) * 0.5;
+  }
+  matchState.ballPos.src = target.src;
+  matchState.ballPosT = now;
+  return matchState.ballPos;
+}
+
+function nearestPlayer(toFx, toFy, H_, opts = {}) {
+  let best = null, bestD = Infinity;
+  for (const tr of tracks.values()) {
+    if (tr.cls !== 'person' || tr.miss > 2) continue;
+    if (opts.team != null && tr.team !== opts.team) continue;
+    if (opts.notTeam != null && tr.team === opts.notTeam) continue;
+    const [fx, fy] = projectFoot(tr, H_);
+    if (!isFinite(fx)) continue;
+    const d = Math.hypot(fx - toFx, fy - toFy);
+    if (d < bestD) { bestD = d; best = { tr, fx, fy, d }; }
+  }
+  return best;
+}
+
+// Screen-space nearest player to a screen point. Used for holder/press when
+// homography is uncertain (default trapezoid is often off for arbitrary videos).
+function nearestPlayerScreen(sx, sy, opts = {}) {
+  let best = null, bestD = Infinity;
+  for (const tr of tracks.values()) {
+    if (tr.cls !== 'person' || tr.miss > 2) continue;
+    if (opts.team != null && tr.team !== opts.team) continue;
+    if (opts.notTeam != null && tr.team === opts.notTeam) continue;
+    const bb = tr.smoothBbox || tr.bbox;
+    const cx = bb.x + bb.w / 2, cy = bb.y + bb.h * 0.85;
+    const d = Math.hypot(cx - sx, cy - sy);
+    if (d < bestD) { bestD = d; best = { tr, sx: cx, sy: cy, d, bb }; }
+  }
+  return best;
+}
+
+// Best-effort ball screen position from detected ball OR huddle midpoint.
+function ballScreenPos() {
+  let best = null;
+  for (const tr of tracks.values()) {
+    if (tr.cls !== 'sports ball') continue;
+    if (tr.miss > 2 || tr.hits < 2 || tr.score < 0.45) continue;
+    if (!best || tr.score > best.score) best = tr;
+  }
+  if (best) {
+    const bb = best.smoothBbox || best.bbox;
+    return { sx: bb.x + bb.w / 2, sy: bb.y + bb.h / 2 };
+  }
+  // huddle fallback: closest pair across teams
+  const persons = [];
+  for (const tr of tracks.values()) {
+    if (tr.cls !== 'person' || tr.miss > 2 || tr.team == null) continue;
+    const bb = tr.smoothBbox || tr.bbox;
+    persons.push({ tr, sx: bb.x + bb.w / 2, sy: bb.y + bb.h * 0.85 });
+  }
+  let bestPair = null, bestD = Infinity;
+  for (let i = 0; i < persons.length; i++) {
+    for (let j = i + 1; j < persons.length; j++) {
+      if (persons[i].tr.team === persons[j].tr.team) continue;
+      const d = Math.hypot(persons[i].sx - persons[j].sx, persons[i].sy - persons[j].sy);
+      if (d < bestD) { bestD = d; bestPair = persons; }
+    }
+  }
+  if (bestPair) {
+    let smallestI = 0, smallestJ = 1, sd = Infinity;
+    for (let i = 0; i < persons.length; i++) {
+      for (let j = i + 1; j < persons.length; j++) {
+        if (persons[i].tr.team === persons[j].tr.team) continue;
+        const d = Math.hypot(persons[i].sx - persons[j].sx, persons[i].sy - persons[j].sy);
+        if (d < sd) { sd = d; smallestI = i; smallestJ = j; }
+      }
+    }
+    if (sd < 200) {
+      return {
+        sx: (persons[smallestI].sx + persons[smallestJ].sx) / 2,
+        sy: (persons[smallestI].sy + persons[smallestJ].sy) / 2,
+      };
+    }
+  }
+  return null;
+}
+
+function updateEvents(now) {
+  const vw = video.videoWidth, vh = video.videoHeight;
+  let H_ = homography;
+  if (!H_ && vw) H_ = defaultHomography(vw, vh);
+  if (!H_) return;
+
+  // Drive holder/event detection in SCREEN space so it's robust even if the
+  // default homography is wildly off for the loaded video. Pitch coords are
+  // still computed (for the map) but not used for the holder gate.
+  const bScreen = ballScreenPos();
+  if (!bScreen) return;
+  inferBallPos(H_, now);  // refresh ballPos for map rendering
+
+  // holder radius in pixels (~ player bbox width)
+  const HOLDER_PX = Math.max(80, vh * 0.12);
+  const near = nearestPlayerScreen(bScreen.sx, bScreen.sy);
+  if (!near || near.d > HOLDER_PX) return;
+
+  const newId = near.tr.id;
+  const newTeam = near.tr.team;
+  const prevId = matchState.holderId;
+  const prevTeam = matchState.holderTeam;
+
+  // possession accumulation (per frame)
+  if (newTeam != null) matchState.possAccum[newTeam] += 1 / 30;
+
+  if (prevId == null) {
+    matchState.holderId = newId;
+    matchState.holderTeam = newTeam;
+    matchState.holderSince = now;
+    return;
+  }
+
+  if (newId === prevId) return;  // same holder, nothing to emit
+
+  // possession change. Find prev holder pos for arrow rendering (in pitch coords).
+  const prevTr = tracks.get(prevId);
+  let fromPos = null, toPos = null;
+  if (prevTr) {
+    const [pfx, pfy] = projectFoot(prevTr, H_);
+    if (isFinite(pfx)) fromPos = { fx: pfx, fy: pfy };
+  }
+  const [nfx, nfy] = projectFoot(near.tr, H_);
+  if (isFinite(nfx)) toPos = { fx: nfx, fy: nfy };
+
+  // Require holder to be stable for >0.3s before counting it as a real change
+  // (suppresses ID-switch noise).
+  if (now - matchState.holderSince < 0.3) {
+    matchState.holderId = newId;
+    matchState.holderTeam = newTeam;
+    matchState.holderSince = now;
+    return;
+  }
+
+  // Cooldown between events to avoid double-counting around contested balls
+  if (now - matchState.lastEventAt < 0.4) {
+    matchState.holderId = newId;
+    matchState.holderTeam = newTeam;
+    matchState.holderSince = now;
+    return;
+  }
+
+  const sameTeam = newTeam != null && newTeam === prevTeam;
+  if (sameTeam) {
+    // PASS (within same team)
+    if (newTeam === 0) matchState.stats.passesH++;
+    else matchState.stats.passesA++;
+    addRichEvent('PASS', newTeam, {
+      from: prevTr ? prevTr.id : '?',
+      to: near.tr.id,
+    });
+    if (fromPos && toPos) {
+      matchState.recentPasses.push({
+        from: fromPos, to: toPos,
+        team: newTeam, t: now,
+      });
+      while (matchState.recentPasses.length > 30) matchState.recentPasses.shift();
+    }
+  } else {
+    // TURNOVER (lost to opponent)
+    if (prevTeam === 0) matchState.stats.turnoversH++;
+    else if (prevTeam === 1) matchState.stats.turnoversA++;
+    if (newTeam === 0) matchState.stats.recoveriesH++;
+    else if (newTeam === 1) matchState.stats.recoveriesA++;
+    addRichEvent('TURNOVER', newTeam, {
+      from: prevTr ? prevTr.id : '?',
+      to: near.tr.id,
+    });
+  }
+  matchState.lastEventAt = now;
+  matchState.holderId = newId;
+  matchState.holderTeam = newTeam;
+  matchState.holderSince = now;
+}
+
+function updatePress(now) {
+  if (matchState.holderId == null) { matchState.pressActive = false; return; }
+  const holder = tracks.get(matchState.holderId);
+  if (!holder) return;
+
+  const vh = video.videoHeight || 720;
+  const PRESS_PX = Math.max(60, vh * 0.1);
+  const bb = holder.smoothBbox || holder.bbox;
+  const hx = bb.x + bb.w / 2, hy = bb.y + bb.h * 0.85;
+  const opp = nearestPlayerScreen(hx, hy, { notTeam: holder.team });
+  if (!opp) { matchState.pressActive = false; return; }
+
+  if (opp.d < PRESS_PX) {
+    if (!matchState.pressActive && now - matchState.pressStartedAt > 1.5) {
+      matchState.pressActive = true;
+      matchState.pressStartedAt = now;
+      matchState.stats.presses++;
+      addRichEvent('PRESS', opp.tr.team, { from: opp.tr.id, to: holder.id });
+    }
+  } else {
+    matchState.pressActive = false;
+  }
+}
+
+function addRichEvent(type, team, meta) {
+  const t = video.currentTime || 0;
+  const teamCls = team === 0 ? 'home' : (team === 1 ? 'away' : 'info');
+  const icon = { PASS: '→', TURNOVER: '⇄', PRESS: '!', SHOT: '◎', RECOVERY: '↻' }[type] || '●';
+  const detail = meta && meta.from !== undefined
+    ? `#${meta.from} → #${meta.to}`
+    : '';
+  const el = document.createElement('div');
+  el.className = 'event ' + teamCls;
+  el.innerHTML = `<span class="time mono">${formatTime(t)}</span><span class="icon">${icon}</span><span>${type} <span style="color:var(--text-dim)">${detail}</span></span>`;
+  eventsEl.insertBefore(el, eventsEl.firstChild);
+  while (eventsEl.children.length > 40) eventsEl.removeChild(eventsEl.lastChild);
+  // timeline marker
+  if (window._evTrack) {
+    const dur = video.duration || 1;
+    const m = document.createElement('div');
+    m.className = 'ev-marker';
+    m.style.position = 'absolute';
+    m.style.top = '3px';
+    m.style.width = '2px';
+    m.style.height = '12px';
+    m.style.borderRadius = '1px';
+    m.style.background = team === 0 ? 'var(--home)' : (team === 1 ? 'var(--away)' : 'var(--accent)');
+    m.style.left = ((t / dur) * 100) + '%';
+    window._evTrack.appendChild(m);
+  }
+}
+
+// ============================================================
 // Detection loop
 // ============================================================
 let model = null;
@@ -765,11 +1096,12 @@ async function detectStep() {
       });
     }
     updateTracks(dets, video.currentTime);
-    // jersey colors
-    if (Math.random() < 0.3) {
-      for (const tr of tracks.values()) sampleJerseyColor(tr);
-      clusterTeams();
-    }
+    // jersey colors — sample every detection cycle so newly seen tracks get classified quickly
+    for (const tr of tracks.values()) sampleJerseyColor(tr);
+    clusterTeams();
+    // event detection on top of tracks
+    updateEvents(video.currentTime);
+    updatePress(video.currentTime);
   }
   requestAnimationFrame(detectStep);
 }
@@ -870,6 +1202,39 @@ function drawOverlay() {
       overlayCtx.fillStyle = '#0b0e14';
       overlayCtx.fillText(label, r.x + 3, r.y - 4);
     }
+
+    // BALL badge on possession holder
+    if (!isBall && tr.id === matchState.holderId) {
+      overlayCtx.fillStyle = '#ffd33d';
+      const bx = r.x + r.w / 2 - 14, by = r.y + r.h + 2;
+      overlayCtx.fillRect(bx, by, 28, 12);
+      overlayCtx.fillStyle = '#0b0e14';
+      overlayCtx.font = 'bold 9px ui-monospace';
+      overlayCtx.fillText('BALL', bx + 4, by + 9);
+    }
+
+    // Press ring on the defender pressing the holder
+    if (matchState.pressActive && tr.team != null && matchState.holderTeam != null
+        && tr.team !== matchState.holderTeam) {
+      const holder = tracks.get(matchState.holderId);
+      if (holder) {
+        // is this track the nearest opponent? approximated by checking small distance
+        const hb = holder.smoothBbox || holder.bbox;
+        const tb = tr.smoothBbox || tr.bbox;
+        const dx = (hb.x + hb.w / 2) - (tb.x + tb.w / 2);
+        const dy = (hb.y + hb.h) - (tb.y + tb.h);
+        const d2d = Math.hypot(dx, dy);
+        if (d2d < Math.max(hb.w, hb.h) * 3) {
+          overlayCtx.strokeStyle = 'rgba(255,138,61,0.9)';
+          overlayCtx.lineWidth = 2;
+          overlayCtx.setLineDash([3, 3]);
+          overlayCtx.beginPath();
+          overlayCtx.arc(r.x + r.w / 2, r.y + r.h / 2, Math.max(r.w, r.h) * 0.9, 0, Math.PI * 2);
+          overlayCtx.stroke();
+          overlayCtx.setLineDash([]);
+        }
+      }
+    }
   }
 }
 
@@ -953,12 +1318,44 @@ function drawMap() {
   const ccr = (9.15 / FIELD_W) * fw;
   mapCtx.beginPath(); mapCtx.arc(cx, cy, ccr, 0, Math.PI * 2); mapCtx.stroke();
 
+  // recent pass arrows (last 6 seconds)
+  const now = video.currentTime || 0;
+  for (const ps of matchState.recentPasses) {
+    const age = now - ps.t;
+    if (age < 0 || age > 6) continue;
+    const a = 1 - age / 6;
+    const x1 = pad + (ps.from.fx / FIELD_W) * fw;
+    const y1 = pad + (ps.from.fy / FIELD_H) * fh;
+    const x2 = pad + (ps.to.fx / FIELD_W) * fw;
+    const y2 = pad + (ps.to.fy / FIELD_H) * fh;
+    const [cr, cg, cb] = teamColor(ps.team);
+    mapCtx.strokeStyle = `rgba(${cr},${cg},${cb},${a * 0.85})`;
+    mapCtx.lineWidth = 1 + a * 1.5;
+    mapCtx.beginPath(); mapCtx.moveTo(x1, y1); mapCtx.lineTo(x2, y2); mapCtx.stroke();
+    // arrowhead
+    const ang = Math.atan2(y2 - y1, x2 - x1);
+    const ah = 6;
+    mapCtx.beginPath();
+    mapCtx.moveTo(x2, y2);
+    mapCtx.lineTo(x2 - Math.cos(ang - 0.4) * ah, y2 - Math.sin(ang - 0.4) * ah);
+    mapCtx.lineTo(x2 - Math.cos(ang + 0.4) * ah, y2 - Math.sin(ang + 0.4) * ah);
+    mapCtx.closePath();
+    mapCtx.fillStyle = `rgba(${cr},${cg},${cb},${a * 0.85})`;
+    mapCtx.fill();
+  }
+
   // players
   for (const p of playerPos) {
     if (p.fx < -5 || p.fx > FIELD_W + 5 || p.fy < -5 || p.fy > FIELD_H + 5) continue;
     const x = pad + (p.fx / FIELD_W) * fw;
     const y = pad + (p.fy / FIELD_H) * fh;
     const [cr, cg, cb] = teamColor(p.team);
+    // holder highlight
+    if (p.id === matchState.holderId) {
+      mapCtx.strokeStyle = '#ffd33d';
+      mapCtx.lineWidth = 2;
+      mapCtx.beginPath(); mapCtx.arc(x, y, 11, 0, Math.PI * 2); mapCtx.stroke();
+    }
     mapCtx.fillStyle = `rgb(${cr},${cg},${cb})`;
     mapCtx.strokeStyle = '#0b0e14';
     mapCtx.lineWidth = 1;
@@ -972,9 +1369,12 @@ function drawMap() {
     mapCtx.textAlign = 'start'; mapCtx.textBaseline = 'alphabetic';
   }
 
-  if (ballPos && toggles.ball) {
-    const x = pad + (ballPos.fx / FIELD_W) * fw;
-    const y = pad + (ballPos.fy / FIELD_H) * fh;
+  // ball: prefer inferred (matchState.ballPos), fall back to raw detection
+  const showBall = toggles.ball;
+  const bp = matchState.ballPos || ballPos;
+  if (bp && showBall) {
+    const x = pad + (bp.fx / FIELD_W) * fw;
+    const y = pad + (bp.fy / FIELD_H) * fh;
     mapCtx.fillStyle = '#ffd33d';
     mapCtx.beginPath(); mapCtx.arc(x, y, 4, 0, Math.PI * 2); mapCtx.fill();
     mapCtx.strokeStyle = '#0b0e14'; mapCtx.lineWidth = 1; mapCtx.stroke();
@@ -1003,14 +1403,30 @@ function updateHud() {
   }
   tCount.textContent = `${nP + nB} objects (${nP} persons, ${nB} ball)`;
   mHa.textContent = tHa; mHb.textContent = tHb;
-  mTracks.textContent = tracks.size;
-  mConf.textContent = scoreCnt ? (sumScore / scoreCnt).toFixed(2) : '-';
   mInf.textContent = lastInfMs.toFixed(0);
-  mBall.textContent = nB > 0 ? 'yes' : 'no';
-  const total = tHa + tHb;
-  if (total > 0) {
-    barH.style.width = (tHa / total * 100) + '%';
-    barA.style.width = (tHb / total * 100) + '%';
+
+  // event-driven metrics
+  const s = matchState.stats;
+  mPassH.textContent = s.passesH;
+  mPassA.textContent = s.passesA;
+  mPress.textContent = s.presses;
+  mTurn.textContent = s.turnoversH + s.turnoversA;
+  if (matchState.holderId != null) {
+    const t = matchState.holderTeam;
+    const cls = t === 0 ? 'home' : (t === 1 ? 'away' : '');
+    mHolder.innerHTML = `<span style="color:var(--${cls})">#${matchState.holderId}</span>`;
+  } else {
+    mHolder.textContent = '—';
+  }
+  // possession % over accumulated seconds
+  const ph = matchState.possAccum[0], pa = matchState.possAccum[1];
+  const totalPoss = ph + pa;
+  if (totalPoss > 0.1) {
+    const pctH = Math.round(ph / totalPoss * 100);
+    mPossH.textContent = pctH;
+    mPossA.textContent = 100 - pctH;
+    barH.style.width = pctH + '%';
+    barA.style.width = (100 - pctH) + '%';
   }
   // clock
   const t = Math.floor(video.currentTime || 0);
@@ -1054,6 +1470,21 @@ function setVideoSource(srcObj) {
   homography = null;
   calibPoints = [];
   calibTag.textContent = currentPreset === 'aerial' ? 'aerial preset' : 'broadcast preset';
+  // reset match state (event detection)
+  matchState.ballPos = null;
+  matchState.holderId = null;
+  matchState.holderTeam = null;
+  matchState.possAccum = [0, 0];
+  matchState.recentPasses.length = 0;
+  matchState.stats.passesH = 0;
+  matchState.stats.passesA = 0;
+  matchState.stats.turnoversH = 0;
+  matchState.stats.turnoversA = 0;
+  matchState.stats.presses = 0;
+  matchState.stats.recoveriesH = 0;
+  matchState.stats.recoveriesA = 0;
+  eventsEl.innerHTML = '';
+  if (window._evTrack) window._evTrack.innerHTML = '';
 
   if (typeof srcObj === 'string') {
     video.srcObject = null;
@@ -1149,7 +1580,8 @@ function renderLoop() {
   requestAnimationFrame(renderLoop);
 }
 // expose for inspection
-window._tactical = { tracks, get model() { return model; }, teamColors };
+window._tactical = { tracks, get model() { return model; }, teamColors, matchState };
+window._evTrack = document.getElementById('ev-track');
 
 renderLoop();
 detectStep();
