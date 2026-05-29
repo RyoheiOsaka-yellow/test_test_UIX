@@ -279,7 +279,7 @@ body::after {
 /* === ステージ === */
 .stage {
   position: relative;
-  background: #e6e1d6;
+  background: #0c1422;
   overflow: hidden;
   display: grid;
   grid-template-columns: 1fr;
@@ -289,11 +289,11 @@ body::after {
 .map-pane {
   position: relative;
   overflow: hidden;
-  background: #e6e1d6;
+  background: #0c1422;
 }
 #paneB {
   display: none;
-  border-left: 2px solid var(--ink);
+  border-left: 2px solid #1c2c48;
 }
 .stage.compare-on #paneB { display: block; }
 #map, #mapB {
@@ -1608,6 +1608,75 @@ map.on('error', (e) => {
   console.warn('Map error:', e && e.error);
 });
 
+// ============================================
+//  ブループリント (線描画) スタイル
+//  positron をロード後に再着色し、塗りを落として
+//  道路・建物・海岸線を細い線だけで描く製図風に変換する
+// ============================================
+const BP_BG      = '#0c1422';   // 深い藍墨の背景
+const BP_WATER   = '#10203a';   // 海・川は一段暗い面
+const BP_LINE    = '#445d84';   // 道路など一般の線
+const BP_BUILD   = '#5b73a0';   // 建物の輪郭線 (やや明るく)
+const BP_LABEL   = '#8fb3d6';   // ラベル文字
+
+function applyBlueprint(m) {
+  const style = m.getStyle();
+  if (!style || !style.layers) return;
+  style.layers.forEach(layer => {
+    const id = layer.id;
+    const sl = layer['source-layer'];
+    try {
+      if (layer.type === 'background') {
+        m.setPaintProperty(id, 'background-color', BP_BG);
+      } else if (layer.type === 'fill') {
+        if (sl === 'water') {
+          m.setPaintProperty(id, 'fill-color', BP_WATER);
+          m.setPaintProperty(id, 'fill-opacity', 0.95);
+        } else {
+          m.setPaintProperty(id, 'fill-opacity', 0); // 塗りは消して線描画に
+        }
+      } else if (layer.type === 'line') {
+        m.setPaintProperty(id, 'line-color', BP_LINE);
+        m.setPaintProperty(id, 'line-opacity', 0.8);
+      } else if (layer.type === 'symbol') {
+        try { m.setPaintProperty(id, 'text-color', BP_LABEL); } catch (e) {}
+        try { m.setPaintProperty(id, 'text-halo-color', BP_BG); } catch (e) {}
+        try { m.setPaintProperty(id, 'text-halo-width', 1.2); } catch (e) {}
+      }
+    } catch (e) { /* 一部レイヤーは式が固定で変更不可。無視 */ }
+  });
+}
+
+// 建物フットプリントの輪郭線 (押し出しの代わり)
+function addBuildingOutline(m, layerId) {
+  try {
+    const bL = m.getStyle().layers.find(l => l['source-layer'] === 'building');
+    if (bL && !m.getLayer(layerId)) {
+      m.addLayer({
+        id: layerId,
+        source: bL.source,
+        'source-layer': 'building',
+        type: 'line',
+        minzoom: 13,
+        paint: {
+          'line-color': BP_BUILD,
+          'line-width': ['interpolate', ['linear'], ['zoom'], 13, 0.3, 16, 1.1],
+          'line-opacity': 0.85,
+        },
+      });
+    }
+  } catch (e) {}
+}
+
+const BP_SKY = {
+  'sky-color': '#0a1120',
+  'sky-horizon-blend': 0.6,
+  'horizon-color': '#1c2c48',
+  'horizon-fog-blend': 0.5,
+  'fog-color': '#0c1422',
+  'fog-ground-blend': 0.6,
+};
+
 map.on('load', () => {
   // === 地形3D化 (Mapzen terrarium tiles, no API key) ===
   try {
@@ -1625,63 +1694,17 @@ map.on('load', () => {
     console.warn('Terrain unavailable:', e);
   }
 
-  // === スカイ (MapLibre sky layer) ===
+  // === 線描画スタイルに変換 + 建物輪郭線 ===
+  applyBlueprint(map);
+  addBuildingOutline(map, 'building-lines');
+
+  // === スカイ (ブループリント調) ===
   try {
     if (!map.getLayer('sky')) {
-      map.addLayer({
-        id: 'sky',
-        type: 'sky',
-        paint: {
-          'sky-color': '#cfe3ee',
-          'sky-horizon-blend': 0.5,
-          'horizon-color': '#f4ebd9',
-          'horizon-fog-blend': 0.5,
-          'fog-color': '#f0e8d8',
-          'fog-ground-blend': 0.5,
-        },
-      });
+      map.addLayer({ id: 'sky', type: 'sky', paint: BP_SKY });
     }
   } catch (e) {
     console.warn('Sky unavailable:', e);
-  }
-
-  // === 3D 建物 (OpenFreeMap の building source-layer を押し出す) ===
-  try {
-    const buildingsLayer = map.getStyle().layers.find(l =>
-      l['source-layer'] === 'building'
-    );
-    if (buildingsLayer && !map.getLayer('3d-buildings')) {
-      map.addLayer({
-        id: '3d-buildings',
-        source: buildingsLayer.source,
-        'source-layer': 'building',
-        type: 'fill-extrusion',
-        minzoom: 13,
-        paint: {
-          'fill-extrusion-color': [
-            'interpolate', ['linear'],
-            ['coalesce', ['get', 'render_height'], ['get', 'height'], 8],
-            0,   '#f0ebde',
-            10,  '#e6dfce',
-            25,  '#d6cdb8',
-            50,  '#bfb39a',
-            100, '#9d8f73',
-          ],
-          'fill-extrusion-height': [
-            'interpolate', ['linear'], ['zoom'],
-            13,   0,
-            14.5, ['coalesce', ['get', 'render_height'], ['get', 'height'], 8],
-          ],
-          'fill-extrusion-base': [
-            'coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0
-          ],
-          'fill-extrusion-opacity': 0.85,
-          'fill-extrusion-vertical-gradient': false,
-        },
-      });
-    }
-  } catch (e) {
-    console.warn('3D buildings unavailable:', e);
   }
 
   // === deck.gl overlay ===
@@ -1784,11 +1807,11 @@ function contourBands(scene) {
   const k = scene === 2 ? 1.7 : scene === 1 ? 0.8 : scene === 3 ? 0.7 : 1.0;
   const b = (lo, hi) => [lo * k, hi * k];
   return [
-    { threshold: b(1.5,  4),  color: [120, 162, 182,  70], zIndex: 1 },
-    { threshold: b(4,    8),  color: [150, 188, 168, 110], zIndex: 2 },
-    { threshold: b(8,   14),  color: [212, 184, 120, 150], zIndex: 3 },
-    { threshold: b(14,  22),  color: [216, 132,  86, 185], zIndex: 4 },
-    { threshold: b(22, 1e6),  color: [200,  70,  58, 215], zIndex: 5 },
+    { threshold: b(1.5,  4),  color: [110, 170, 200, 110], zIndex: 1 },
+    { threshold: b(4,    8),  color: [150, 200, 175, 150], zIndex: 2 },
+    { threshold: b(8,   14),  color: [224, 196, 128, 185], zIndex: 3 },
+    { threshold: b(14,  22),  color: [228, 140,  92, 210], zIndex: 4 },
+    { threshold: b(22, 1e6),  color: [214,  78,  64, 235], zIndex: 5 },
   ];
 }
 
@@ -1809,7 +1832,7 @@ function buildStaticLayers(scene) {
       cellSize: 70,
       contours: contourBands(scene),
       gpuAggregation: true,
-      opacity: 0.78,
+      opacity: 0.85,
       pickable: false,
     })
   );
@@ -2525,26 +2548,12 @@ function initMapB() {
       mapB.setTerrain({ source: 'terrain-dem-b', exaggeration: 1.1 });
     } catch (e) {}
 
+    // 線描画スタイル + 建物輪郭線 (A面と統一)
+    applyBlueprint(mapB);
+    addBuildingOutline(mapB, 'building-lines-b');
     try {
-      const bL = mapB.getStyle().layers.find(l => l['source-layer'] === 'building');
-      if (bL) {
-        mapB.addLayer({
-          id: '3d-buildings-b',
-          source: bL.source,
-          'source-layer': 'building',
-          type: 'fill-extrusion',
-          minzoom: 13,
-          paint: {
-            'fill-extrusion-color': '#cfc6b1',
-            'fill-extrusion-height': [
-              'interpolate', ['linear'], ['zoom'],
-              13, 0,
-              14.5, ['coalesce', ['get', 'render_height'], ['get', 'height'], 8],
-            ],
-            'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
-            'fill-extrusion-opacity': 0.8,
-          },
-        });
+      if (!mapB.getLayer('sky-b')) {
+        mapB.addLayer({ id: 'sky-b', type: 'sky', paint: BP_SKY });
       }
     } catch (e) {}
 
@@ -2630,38 +2639,35 @@ function setTimeMode(mode) {
   });
   timeTintEl.className = 'time-tint ' + mode;
 
-  // sky layer (MapLibre): 時間帯で色を変える
+  // sky layer: ブループリント調 (時間帯で藍〜橙へ)
   const skyMap = {
-    morning: { sky: '#fce4c8', horizon: '#ffd9b3', fog: '#f7d8b9' },
-    noon:    { sky: '#cfe3ee', horizon: '#f4ebd9', fog: '#f0e8d8' },
-    evening: { sky: '#f7a878', horizon: '#e35d4a', fog: '#c9694e' },
-    night:   { sky: '#1a2440', horizon: '#2c3658', fog: '#3a4570' },
+    morning: { sky: '#13243f', horizon: '#3a4a66', fog: '#16243c' },
+    noon:    { sky: '#0a1120', horizon: '#1c2c48', fog: '#0c1422' },
+    evening: { sky: '#1a1830', horizon: '#5a3a48', fog: '#241826' },
+    night:   { sky: '#070b16', horizon: '#101a30', fog: '#070b16' },
   };
-  if (map.getLayer('sky')) {
-    const s = skyMap[mode];
-    try {
-      map.setPaintProperty('sky', 'sky-color', s.sky);
-      map.setPaintProperty('sky', 'horizon-color', s.horizon);
-      map.setPaintProperty('sky', 'fog-color', s.fog);
-    } catch (e) { /* ignore */ }
-  }
+  const s = skyMap[mode];
+  ['sky', 'sky-b'].forEach(skyId => {
+    [map, mapB].forEach(mm => {
+      if (mm && mm.getLayer && mm.getLayer(skyId)) {
+        try {
+          mm.setPaintProperty(skyId, 'sky-color', s.sky);
+          mm.setPaintProperty(skyId, 'horizon-color', s.horizon);
+          mm.setPaintProperty(skyId, 'fog-color', s.fog);
+        } catch (e) {}
+      }
+    });
+  });
 
-  // 3D建物の色を時間帯で変える
-  if (map.getLayer('3d-buildings')) {
-    const colorMap = {
-      morning: ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], ['get', 'height'], 8],
-        0, '#f5ecdc', 25, '#e5d2b3', 50, '#c8a380', 100, '#a07c5e'],
-      noon: ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], ['get', 'height'], 8],
-        0, '#f0ebde', 25, '#d6cdb8', 50, '#bfb39a', 100, '#9d8f73'],
-      evening: ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], ['get', 'height'], 8],
-        0, '#f0d4b8', 25, '#d4a07a', 50, '#b07050', 100, '#7d4830'],
-      night: ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], ['get', 'height'], 8],
-        0, '#5a5868', 25, '#3e3d4d', 50, '#2a2935', 100, '#1a1925'],
-    };
-    try {
-      map.setPaintProperty('3d-buildings', 'fill-extrusion-color', colorMap[mode]);
-    } catch (e) { /* ignore */ }
-  }
+  // 建物輪郭線の色を時間帯で変える
+  const lineColor = {
+    morning: '#6a82ad', noon: '#5b73a0', evening: '#9a6f7e', night: '#3d4f74',
+  }[mode];
+  [['map', map, 'building-lines'], ['mapB', mapB, 'building-lines-b']].forEach(([_, mm, lid]) => {
+    if (mm && mm.getLayer && mm.getLayer(lid)) {
+      try { mm.setPaintProperty(lid, 'line-color', lineColor); } catch (e) {}
+    }
+  });
 }
 
 // ============================================
