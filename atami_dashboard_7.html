@@ -1779,22 +1779,16 @@ function setPinned(idx) {
   renderPanel(currentScene);
 }
 
-function meshColorFor(weight, maxW) {
-  const t = Math.min(1, weight / (maxW || 1));
-  // [青灰] → [砂色] → [朱] のクールウォーム補間
-  const stops = [
-    [148, 192, 204],
-    [212, 165, 116],
-    [200,  70,  58],
-  ];
-  const seg = t < 0.5 ? 0 : 1;
-  const u = t < 0.5 ? t * 2 : (t - 0.5) * 2;
-  const a = stops[seg], b = stops[seg + 1];
+// 滞留密度のコンター(等高線バンド)設定。シーンの強度差を吸収するため倍率で調整。
+function contourBands(scene) {
+  const k = scene === 2 ? 1.7 : scene === 1 ? 0.8 : scene === 3 ? 0.7 : 1.0;
+  const b = (lo, hi) => [lo * k, hi * k];
   return [
-    Math.round(a[0] + (b[0]-a[0]) * u),
-    Math.round(a[1] + (b[1]-a[1]) * u),
-    Math.round(a[2] + (b[2]-a[2]) * u),
-    195,
+    { threshold: b(1.5,  4),  color: [120, 162, 182,  70], zIndex: 1 },
+    { threshold: b(4,    8),  color: [150, 188, 168, 110], zIndex: 2 },
+    { threshold: b(8,   14),  color: [212, 184, 120, 150], zIndex: 3 },
+    { threshold: b(14,  22),  color: [216, 132,  86, 185], zIndex: 4 },
+    { threshold: b(22, 1e6),  color: [200,  70,  58, 215], zIndex: 5 },
   ];
 }
 
@@ -1803,31 +1797,60 @@ function buildStaticLayers(scene) {
   const mesh = (MESH_BY_SCENE[scene] && MESH_BY_SCENE[scene].length > 0)
     ? MESH_BY_SCENE[scene]
     : VORONOI_CELLS.map(c => ({ ...c, weight: c.hotspot.weight * 100 }));
-  const maxW = Math.max(1, ...mesh.map(c => c.weight));
 
-  // メイン: ポリゴンメッシュ (Voronoi セル, ワイヤーフレームで mesh 感)
+  // メイン: 滞留密度の等高線バンド (地形図のように溜まりの輪郭・広がりを表現)
+  baseLayers.push(
+    new deck.ContourLayer({
+      id: `dwell-${scene}`,
+      data: SCATTER_BY_SCENE[scene],
+      getPosition: d => d.position,
+      getWeight: d => d.weight,
+      aggregation: 'SUM',
+      cellSize: 70,
+      contours: contourBands(scene),
+      gpuAggregation: true,
+      opacity: 0.78,
+      pickable: false,
+    })
+  );
+
+  // 溜まりのピーク輪郭を細い等高線で重ねてシャープに
+  baseLayers.push(
+    new deck.ContourLayer({
+      id: `dwell-lines-${scene}`,
+      data: SCATTER_BY_SCENE[scene],
+      getPosition: d => d.position,
+      getWeight: d => d.weight,
+      aggregation: 'SUM',
+      cellSize: 70,
+      contours: (() => {
+        const k = scene === 2 ? 1.7 : scene === 1 ? 0.8 : scene === 3 ? 0.7 : 1.0;
+        return [
+          { threshold: 8 * k,  color: [255, 248, 232, 120], strokeWidth: 1 },
+          { threshold: 16 * k, color: [255, 248, 232, 170], strokeWidth: 1.5 },
+          { threshold: 24 * k, color: [200, 70, 58, 220],    strokeWidth: 2 },
+        ];
+      })(),
+      gpuAggregation: true,
+      pickable: false,
+    })
+  );
+
+  // 当たり判定専用の透明セル (hover ツールチップ / click ピンを維持)
   if (mesh.length > 0) {
     baseLayers.push(
       new deck.PolygonLayer({
-        id: `mesh-${scene}`,
+        id: `pick-${scene}`,
         data: mesh,
         getPolygon: d => d.polygon,
-        getFillColor: d => meshColorFor(d.weight, maxW),
-        getLineColor: [255, 248, 232, 220],
-        getElevation: d => (d.weight / maxW) * 220 + 6,
-        extruded: true,
-        wireframe: true,
+        getFillColor: [0, 0, 0, 0],
+        getLineColor: [0, 0, 0, 0],
+        extruded: false,
         filled: true,
-        stroked: true,
-        lineWidthMinPixels: 1,
-        elevationScale: 1,
-        material: {
-          ambient: 0.7, diffuse: 0.55, shininess: 12,
-          specularColor: [255, 230, 200],
-        },
+        stroked: false,
         pickable: true,
         autoHighlight: true,
-        highlightColor: [255, 245, 220, 110],
+        highlightColor: [255, 245, 220, 60],
         onHover: handleMeshHover,
         onClick: handleMeshClick,
       })
@@ -2060,7 +2083,7 @@ const SCENES = [
   {
     eyebrow: 'SCENE 01 / NOW',
     title: 'いま、熱海に滞在する人',
-    legend: '滞在密度 / ポリゴンメッシュ',
+    legend: '滞留密度 / 等高線コンター',
     hero: [
       { label:'CURRENT', value:'26,400', unit:'人', delta:'↗ +12.4% YoY', deltaType:'up' },
       { label:'CROWD SCORE', value:'0.72', unit:'/1.0', delta:'⚠ 混雑注意', deltaType:'down' },
@@ -2127,7 +2150,7 @@ const SCENES = [
   {
     eyebrow: 'SCENE 03 / EVENT',
     title: '花火大会の人流効果',
-    legend: '滞在人口密度 / イベント時',
+    legend: '滞留密度 / 等高線 (イベント時)',
     hero: [
       { label:'PEAK', value:'63,800', unit:'人', delta:'↗ ×2.4 通常比', deltaType:'up' },
       { label:'SPILLOVER', value:'1.83', unit:'億円', delta:'1日換算', deltaType:'flat' },
@@ -2160,7 +2183,7 @@ const SCENES = [
   {
     eyebrow: 'SCENE 04 / LOYALTY',
     title: 'リピーターの行動特性',
-    legend: '滞在分布 / リピーター層のみ',
+    legend: '滞留密度 / 等高線 (リピーター層)',
     hero: [
       { label:'REPEAT RATE', value:'22.7', unit:'%', delta:'↗ +3.1pt YoY', deltaType:'up' },
       { label:'LTV', value:'58,200', unit:'円', delta:'リピーター推定', deltaType:'flat' },
