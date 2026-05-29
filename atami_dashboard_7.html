@@ -553,21 +553,45 @@ body::after {
   padding: 10px 14px;
   font-family: var(--font-mono);
   display: flex; align-items: center; gap: 12px;
-  min-width: 260px;
+  width: 320px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.06);
 }
+.timeline-main { flex: 1; min-width: 0; }
+.timeline-toprow { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
 .timeline-label {
   font-size: 9px;
   letter-spacing: 0.2em;
   color: var(--muted);
 }
 .timeline-value {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--ink);
+  letter-spacing: 0.04em;
+}
+.time-scrub {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #2c3658 0%, #4a8a9a 25%, #d4a574 50%, #c8463a 70%, #2c3658 100%);
+  outline: none; cursor: pointer;
+}
+.time-scrub::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--ink); border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3); cursor: pointer;
+}
+.time-scrub::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--ink); border: 2px solid #fff; cursor: pointer;
+}
+.timeline-ticks {
+  display: flex; justify-content: space-between;
+  font-size: 8px; color: var(--muted); margin-top: 3px;
 }
 .timeline-play {
-  width: 24px; height: 24px;
+  width: 26px; height: 26px; flex-shrink: 0;
   border-radius: 50%;
   border: 1px solid var(--ink-3);
   background: transparent;
@@ -1029,6 +1053,32 @@ body::after {
 }
 .pinned-close:hover { color: var(--bone); border-color: var(--bone-3); }
 
+/* OD (流入/流出) ブロック */
+.od-block { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.od-col {
+  background: rgba(245,241,234,0.03);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 8px 9px;
+}
+.od-head {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.12em;
+  margin-bottom: 6px;
+}
+.od-head.od-in  { color: #6fb0d8; }
+.od-head.od-out { color: #f5946a; }
+.od-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 10.5px;
+  padding: 2px 0;
+  color: var(--bone);
+}
+.od-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 6px; }
+.od-val { font-family: var(--font-mono); font-size: 9.5px; color: var(--bone-3); flex-shrink: 0; }
+.od-empty { color: var(--muted); }
+
 /* === 「気づき」カード (洞察優先レイアウト) === */
 .insight-card {
   background: linear-gradient(135deg, rgba(212,165,116,0.10), rgba(245,241,234,0.04));
@@ -1105,10 +1155,10 @@ body::after {
         <span>LIVE — <b id="lastUpdate" style="color:var(--bone)">12:48 JST</b></span>
       </span>
       <div class="time-mode">
-        <button class="time-mode-btn" data-time="morning" onclick="setTimeMode('morning')">朝</button>
-        <button class="time-mode-btn active" data-time="noon" onclick="setTimeMode('noon')">昼</button>
-        <button class="time-mode-btn" data-time="evening" onclick="setTimeMode('evening')">夕</button>
-        <button class="time-mode-btn" data-time="night" onclick="setTimeMode('night')">夜</button>
+        <button class="time-mode-btn" data-time="morning" onclick="jumpTimeOfDay('morning')">朝</button>
+        <button class="time-mode-btn active" data-time="noon" onclick="jumpTimeOfDay('noon')">昼</button>
+        <button class="time-mode-btn" data-time="evening" onclick="jumpTimeOfDay('evening')">夕</button>
+        <button class="time-mode-btn" data-time="night" onclick="jumpTimeOfDay('night')">夜</button>
       </div>
     </div>
     <div class="topbar-right">
@@ -1221,9 +1271,17 @@ body::after {
     </div>
 
     <div class="timeline">
-      <span class="timeline-label">SNAPSHOT</span>
-      <span class="timeline-value" id="timelineValue">2026.05.24 SUN 12:48</span>
       <button class="timeline-play" id="playBtn" onclick="togglePlay()">▶</button>
+      <div class="timeline-main">
+        <div class="timeline-toprow">
+          <span class="timeline-label">TIME OF DAY</span>
+          <span class="timeline-value" id="timelineValue">12:00</span>
+        </div>
+        <input type="range" id="timeScrub" class="time-scrub"
+               min="0" max="1439" step="5" value="720"
+               oninput="onScrub(+this.value)" />
+        <div class="timeline-ticks"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+      </div>
     </div>
 
     <div class="legend">
@@ -1258,19 +1316,44 @@ const TERRAIN_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{
 
 // 熱海の主要スポット
 const HOTSPOTS = [
-  { name: '熱海駅',          lng: 139.0759, lat: 35.1056, weight: 1.00 },
-  { name: '平和通り商店街',    lng: 139.0764, lat: 35.1048, weight: 0.92 },
-  { name: '仲見世商店街',      lng: 139.0769, lat: 35.1038, weight: 0.85 },
-  { name: 'サンビーチ',        lng: 139.0810, lat: 35.0995, weight: 0.78 },
-  { name: '熱海銀座',          lng: 139.0788, lat: 35.1015, weight: 0.70 },
-  { name: '起雲閣',            lng: 139.0729, lat: 35.0950, weight: 0.55 },
-  { name: 'MOA美術館',        lng: 139.0830, lat: 35.1108, weight: 0.50 },
-  { name: '来宮神社',          lng: 139.0682, lat: 35.1040, weight: 0.62 },
-  { name: '熱海城',            lng: 139.0857, lat: 35.0928, weight: 0.45 },
-  { name: '伊豆山神社',        lng: 139.0903, lat: 35.1180, weight: 0.32 },
-  { name: '渚親水公園',        lng: 139.0805, lat: 35.1018, weight: 0.58 },
-  { name: '糸川遊歩道',        lng: 139.0775, lat: 35.0998, weight: 0.40 },
+  { name: '熱海駅',          lng: 139.0759, lat: 35.1056, weight: 1.00, cat: 'station'  },
+  { name: '平和通り商店街',    lng: 139.0764, lat: 35.1048, weight: 0.92, cat: 'shopping' },
+  { name: '仲見世商店街',      lng: 139.0769, lat: 35.1038, weight: 0.85, cat: 'shopping' },
+  { name: 'サンビーチ',        lng: 139.0810, lat: 35.0995, weight: 0.78, cat: 'beach'    },
+  { name: '熱海銀座',          lng: 139.0788, lat: 35.1015, weight: 0.70, cat: 'shopping' },
+  { name: '起雲閣',            lng: 139.0729, lat: 35.0950, weight: 0.55, cat: 'culture'  },
+  { name: 'MOA美術館',        lng: 139.0830, lat: 35.1108, weight: 0.50, cat: 'culture'  },
+  { name: '来宮神社',          lng: 139.0682, lat: 35.1040, weight: 0.62, cat: 'shrine'   },
+  { name: '熱海城',            lng: 139.0857, lat: 35.0928, weight: 0.45, cat: 'culture'  },
+  { name: '伊豆山神社',        lng: 139.0903, lat: 35.1180, weight: 0.32, cat: 'shrine'   },
+  { name: '渚親水公園',        lng: 139.0805, lat: 35.1018, weight: 0.58, cat: 'park'     },
+  { name: '糸川遊歩道',        lng: 139.0775, lat: 35.0998, weight: 0.40, cat: 'park'     },
 ];
+
+// 時間帯モデル: カテゴリ別の1日の活動リズム (0..~1.1) + 全体の活動量
+function dayCurve(bumps) {
+  const arr = [];
+  for (let h = 0; h < 24; h++) {
+    let v = 0.05;
+    bumps.forEach(b => { v += b.w * Math.exp(-((h - b.h) ** 2) / (2 * b.s * b.s)); });
+    arr.push(v);
+  }
+  return arr;
+}
+const CAT_CURVE = {
+  station:  dayCurve([{ h: 8,  w: 1.0, s: 1.6 }, { h: 17, w: 1.0, s: 1.9 }]), // 通勤・到着波
+  shopping: dayCurve([{ h: 13, w: 1.0, s: 2.8 }]),                            // 昼〜夕
+  beach:    dayCurve([{ h: 13, w: 1.1, s: 2.4 }]),                            // 日中
+  culture:  dayCurve([{ h: 13, w: 0.9, s: 2.5 }]),                            // 開館中
+  shrine:   dayCurve([{ h: 10, w: 1.0, s: 2.0 }]),                            // 午前
+  park:     dayCurve([{ h: 8,  w: 0.7, s: 1.6 }, { h: 17, w: 0.85, s: 1.9 }]),// 朝散歩・夕涼み
+  bg:       dayCurve([{ h: 13, w: 0.6, s: 5.0 }]),
+};
+const HOURLY_ACTIVITY = [
+  0.12,0.09,0.07,0.06,0.07,0.12, 0.22,0.40,0.60,0.75,0.85,0.93,
+  1.00,0.98,0.90,0.86,0.88,0.93, 0.96,0.82,0.60,0.40,0.26,0.17,
+];
+let currentHour = 12;
 
 function makeRng(seed) {
   let s = seed >>> 0;
@@ -1293,6 +1376,7 @@ function generateScatter(scene) {
       pts.push({
         position: [h.lng + Math.cos(a)*r, h.lat + Math.sin(a)*r],
         weight: h.weight * (0.4 + random() * 0.6),
+        cat: h.cat,
       });
     }
   });
@@ -1303,12 +1387,22 @@ function generateScatter(scene) {
         ATAMI_CENTER[1] + (random()-0.5) * 0.03,
       ],
       weight: random() * 0.15,
+      cat: 'bg',
     });
   }
   return pts;
 }
 
 const SCATTER_BY_SCENE = [0, 1, 2, 3].map(generateScatter);
+
+// 時刻に応じてポイント重みをカテゴリ別カーブで変調 (滞留の時間変化)
+function hourlyScatter(scene, hour) {
+  const base = SCATTER_BY_SCENE[scene];
+  return base.map(p => {
+    const curve = CAT_CURVE[p.cat] || CAT_CURVE.bg;
+    return { position: p.position, weight: p.weight * curve[hour] };
+  });
+}
 
 // ============================================
 //  ポリゴンメッシュ (Voronoi セル) ── 密度をクリーンに表現
@@ -1800,6 +1894,69 @@ function handleMeshClick(info) {
 function setPinned(idx) {
   pinnedSpotIdx = idx;
   renderPanel(currentScene);
+  renderScene(currentScene); // OD アークを即時反映
+}
+
+// ============================================
+//  OD (Origin-Destination) マトリクス
+//  近接 × 重み × シードノイズ で合成。i→j の流動量。
+// ============================================
+const OD_MATRIX = (() => {
+  const rng = makeRng(990099);
+  const n = HOTSPOTS.length;
+  const M = [];
+  for (let i = 0; i < n; i++) {
+    M[i] = [];
+    for (let j = 0; j < n; j++) {
+      if (i === j) { M[i][j] = 0; continue; }
+      const a = HOTSPOTS[i], b = HOTSPOTS[j];
+      const dx = a.lng - b.lng, dy = a.lat - b.lat;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const prox = Math.exp(-dist / 0.012);          // 近いほど流動大
+      M[i][j] = Math.round(a.weight * b.weight * prox * 1200 * (0.4 + rng() * 0.8));
+    }
+  }
+  return M;
+})();
+
+// 指定スポットの 流出(out) / 流入(in) アーク用データ + ランキング
+function odFlowsFor(idx) {
+  const center = [HOTSPOTS[idx].lng, HOTSPOTS[idx].lat];
+  const out = [], inn = [];
+  HOTSPOTS.forEach((h, j) => {
+    if (j === idx) return;
+    const p = [h.lng, h.lat];
+    if (OD_MATRIX[idx][j] > 0) out.push({ from: center, to: p, v: OD_MATRIX[idx][j], name: h.name });
+    if (OD_MATRIX[j][idx] > 0) inn.push({ from: p, to: center, v: OD_MATRIX[j][idx], name: h.name });
+  });
+  return { out, in: inn };
+}
+
+// 流入/流出の上位ランキング (パネル用)
+function odRanking(idx) {
+  const { out, in: inn } = odFlowsFor(idx);
+  const top = (arr) => arr.slice().sort((a, b) => b.v - a.v).slice(0, 3);
+  return { out: top(out), in: top(inn) };
+}
+
+// ピンカード内の OD ランキング HTML
+function odCardHtml(idx) {
+  const { out, in: inn } = odRanking(idx);
+  const rows = (arr) => arr.map(r =>
+    `<div class="od-row"><span class="od-name">${r.name}</span><span class="od-val">${r.v.toLocaleString()}</span></div>`
+  ).join('') || '<div class="od-row od-empty">—</div>';
+  return `
+    <div class="od-block">
+      <div class="od-col">
+        <div class="od-head od-in">▼ 流入元 TOP3</div>
+        ${rows(inn)}
+      </div>
+      <div class="od-col">
+        <div class="od-head od-out">▲ 流出先 TOP3</div>
+        ${rows(out)}
+      </div>
+    </div>
+  `;
 }
 
 // 滞留密度のコンター(等高線バンド)設定。シーンの強度差を吸収するため倍率で調整。
@@ -1815,17 +1972,18 @@ function contourBands(scene) {
   ];
 }
 
-function buildStaticLayers(scene) {
+function buildStaticLayers(scene, hour) {
   const baseLayers = [];
   const mesh = (MESH_BY_SCENE[scene] && MESH_BY_SCENE[scene].length > 0)
     ? MESH_BY_SCENE[scene]
     : VORONOI_CELLS.map(c => ({ ...c, weight: c.hotspot.weight * 100 }));
+  const dwellData = hourlyScatter(scene, hour);
 
   // メイン: 滞留密度の等高線バンド (地形図のように溜まりの輪郭・広がりを表現)
   baseLayers.push(
     new deck.ContourLayer({
-      id: `dwell-${scene}`,
-      data: SCATTER_BY_SCENE[scene],
+      id: `dwell-${scene}-${hour}`,
+      data: dwellData,
       getPosition: d => d.position,
       getWeight: d => d.weight,
       aggregation: 'SUM',
@@ -1840,8 +1998,8 @@ function buildStaticLayers(scene) {
   // 溜まりのピーク輪郭を細い等高線で重ねてシャープに
   baseLayers.push(
     new deck.ContourLayer({
-      id: `dwell-lines-${scene}`,
-      data: SCATTER_BY_SCENE[scene],
+      id: `dwell-lines-${scene}-${hour}`,
+      data: dwellData,
       getPosition: d => d.position,
       getWeight: d => d.weight,
       aggregation: 'SUM',
@@ -1908,10 +2066,11 @@ function buildStaticLayers(scene) {
 }
 
 function getStaticLayers(scene) {
-  if (!STATIC_LAYER_CACHE[scene]) {
-    STATIC_LAYER_CACHE[scene] = buildStaticLayers(scene);
+  const key = scene + '_' + currentHour;
+  if (!STATIC_LAYER_CACHE[key]) {
+    STATIC_LAYER_CACHE[key] = buildStaticLayers(scene, currentHour);
   }
-  return STATIC_LAYER_CACHE[scene];
+  return STATIC_LAYER_CACHE[key];
 }
 
 function makeTripsLayer(id, data, opts = {}) {
@@ -1937,19 +2096,21 @@ function makeTripsLayer(id, data, opts = {}) {
 
 function getDynamicLayers() {
   const layers = [];
+  const act = HOURLY_ACTIVITY[currentHour];          // 時間帯で交通量をスケール
+  const n = (base) => Math.max(1, Math.round(base * (0.35 + act * 0.65)));
 
   // --- 経路を流れるエージェント (ドット) = 人/車/電車の動きを高再現度で可視化 ---
   if (activeLayers.people) {
     layers.push(...makeAgentLayers('agents-people',
-      buildAgents(tripsData, 7), [255, 150, 92], { core: 2.6, halo: 7 }));
+      buildAgents(tripsData, n(7)), [255, 150, 92], { core: 2.6, halo: 7 }));
   }
   if (activeLayers.cars) {
     layers.push(...makeAgentLayers('agents-cars',
-      buildAgents(carTripsData, 4), [86, 166, 216], { core: 3.4, halo: 9 }));
+      buildAgents(carTripsData, n(4)), [86, 166, 216], { core: 3.4, halo: 9 }));
   }
   if (activeLayers.rail) {
     layers.push(...makeAgentLayers('agents-rail',
-      buildAgents(trainTripsData, 2), [228, 206, 132], { core: 4.4, halo: 12 }));
+      buildAgents(trainTripsData, n(2)), [228, 206, 132], { core: 4.4, halo: 12 }));
   }
 
   // --- 軌跡ライン (TripsLayer) は控えめに。動きの主役はエージェント(ドット)。---
@@ -1964,6 +2125,35 @@ function getDynamicLayers() {
   if (activeLayers.rail) {
     layers.push(makeTripsLayer('trips-rail', trainTripsData, {
       widthMin: 3, widthMax: 8, opacity: 0.4, trailLength: Math.max(400, TRIP_LOOP * 0.15),
+    }));
+  }
+
+  // --- OD分析: ピン留めスポットの流入/流出アーク ---
+  if (pinnedSpotIdx >= 0) {
+    const od = odFlowsFor(pinnedSpotIdx);
+    layers.push(new deck.ArcLayer({
+      id: 'od-out',
+      data: od.out,
+      getSourcePosition: d => d.from,
+      getTargetPosition: d => d.to,
+      getSourceColor: [255, 150, 92, 230],
+      getTargetColor: [255, 150, 92, 30],
+      getWidth: d => 1 + Math.sqrt(d.v) * 0.5,
+      getHeight: 0.5,
+      greatCircle: false,
+      parameters: { depthTest: false },
+    }));
+    layers.push(new deck.ArcLayer({
+      id: 'od-in',
+      data: od.in,
+      getSourcePosition: d => d.from,
+      getTargetPosition: d => d.to,
+      getSourceColor: [86, 166, 216, 40],
+      getTargetColor: [86, 166, 216, 230],
+      getWidth: d => 1 + Math.sqrt(d.v) * 0.5,
+      getHeight: 0.7,
+      greatCircle: false,
+      parameters: { depthTest: false },
     }));
   }
   return layers;
@@ -2282,6 +2472,7 @@ function renderPanel(scene) {
             <div class="pinned-value" style="color:${change>=0?'#9bb86f':'#c8463a'}">${change>=0?'+':''}${change}<span class="pinned-unit">%</span></div>
           </div>
         </div>
+        ${odCardHtml(pinnedSpotIdx)}
         <button class="pinned-close" onclick="setPinned(-1)">✕ unpin</button>
       </div>
     `;
@@ -2671,25 +2862,58 @@ function setTimeMode(mode) {
 }
 
 // ============================================
-//  タイムライン再生
+//  タイムスクラブ (24h) — 滞留と交通量を時刻で駆動
 // ============================================
+let scrubMinutes = 720; // 12:00
+
+function modeForHour(h) {
+  if (h >= 5 && h < 10) return 'morning';
+  if (h >= 10 && h < 16) return 'noon';
+  if (h >= 16 && h < 19) return 'evening';
+  return 'night';
+}
+
+// 時刻(分)を適用: 滞留コンター再構築 + 時間帯トーン + ラベル更新
+function applyScrub(minutes, opts = {}) {
+  scrubMinutes = ((minutes % 1440) + 1440) % 1440;
+  const hour = Math.floor(scrubMinutes / 60);
+  const mm = String(Math.floor(scrubMinutes % 60)).padStart(2, '0');
+  const hh = String(hour).padStart(2, '0');
+  const tv = document.getElementById('timelineValue');
+  if (tv) tv.textContent = `${hh}:${mm}`;
+  const slider = document.getElementById('timeScrub');
+  if (slider && opts.syncSlider) slider.value = scrubMinutes;
+
+  if (hour !== currentHour) {
+    currentHour = hour;
+    setTimeMode(modeForHour(hour));        // 空・トーン・建物線色
+    renderScene(currentScene);             // 滞留コンターを再構築 (cache: scene_hour)
+    if (compareOn) updateBLayers();
+  }
+}
+
+function onScrub(minutes) {
+  if (playing) togglePlay();               // 手動操作で再生停止
+  applyScrub(minutes);
+}
+
+// 朝/昼/夕/夜ボタン → 代表時刻へジャンプ (滞留も連動)
+function jumpTimeOfDay(mode) {
+  const repHour = { morning: 8, noon: 13, evening: 17, night: 22 }[mode] ?? 12;
+  if (playing) togglePlay();
+  applyScrub(repHour * 60, { syncSlider: true });
+}
+
 let playing = false;
 let playTimer = null;
 function togglePlay() {
   playing = !playing;
   const btn = document.getElementById('playBtn');
-  btn.textContent = playing ? '❚❚' : '▶';
+  if (btn) btn.textContent = playing ? '❚❚' : '▶';
   if (playing) {
-    let t = 12;
     playTimer = setInterval(() => {
-      t = (t + 1) % 24;
-      const h = String(t).padStart(2,'0');
-      document.getElementById('timelineValue').textContent = `2026.05.24 SUN ${h}:00`;
-      if (t >= 5 && t < 10) setTimeMode('morning');
-      else if (t >= 10 && t < 16) setTimeMode('noon');
-      else if (t >= 16 && t < 19) setTimeMode('evening');
-      else setTimeMode('night');
-    }, 1200);
+      applyScrub(scrubMinutes + 10, { syncSlider: true }); // 10分/tick
+    }, 120);
   } else {
     clearInterval(playTimer);
   }
