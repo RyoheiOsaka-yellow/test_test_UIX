@@ -1428,8 +1428,11 @@ let tripsData = generateTrips();
 let carTripsData = [];
 let trainTripsData = []; // buildTrainTrips() の定義後に代入する (TDZ 回避)
 let currentTime = 0;
+let agentClock = 0;          // 単調増加クロック (エージェント用、ループ境界のジャンプを排除)
 let TRIP_LOOP = 4000;
-let TRIP_SPEED = 0.3; // currentTime per real ms
+// timestamps は MS_PER_DEGREE で一定速度にベイク済み。
+// TRIP_SPEED は「timestamp 単位 / 実ms」。小さいほどゆっくり自然に流れる。
+let TRIP_SPEED = 0.04;
 
 // データレイヤー ON/OFF。人流/車両/鉄道を独立に切替できる
 const activeLayers = { people: true, cars: false, rail: false };
@@ -1538,7 +1541,7 @@ async function buildCarTrips() {
     ))
   );
   const trips = [];
-  const MS_PER_DEGREE = 7000; // 車 ~40km/h相当 (徒歩の約3倍速)
+  const MS_PER_DEGREE = 8000; // 車: 徒歩の約2.5倍速
   results.forEach((coords, i) => {
     if (!coords || coords.length < 2) return;
     const plan = CAR_PLAN[i];
@@ -1572,7 +1575,7 @@ const TRAIN_COLOR = [212, 200, 140];
 
 function buildTrainTrips() {
   const trips = [];
-  const MS_PER_DEGREE = 1500; // 電車は速い
+  const MS_PER_DEGREE = 3500; // 電車: 徒歩の約6倍速 (速すぎず自然に)
   const NUM_TRAINS = 6;
   for (let i = 0; i < NUM_TRAINS; i++) {
     const reverse = i % 2 === 1;
@@ -1903,18 +1906,18 @@ function getDynamicLayers() {
       buildAgents(trainTripsData, 2), [228, 206, 132], { core: 4.4, halo: 12 }));
   }
 
-  // --- 軌跡ライン (TripsLayer) ---
+  // --- 軌跡ライン (TripsLayer) は控えめに。動きの主役はエージェント(ドット)。---
   if (activeLayers.people && currentScene === 1) {
-    layers.push(makeTripsLayer('trips-people', tripsData));
+    layers.push(makeTripsLayer('trips-people', tripsData, { opacity: 0.4 }));
   }
   if (activeLayers.cars) {
     layers.push(makeTripsLayer('trips-cars', carTripsData, {
-      widthMin: 3, widthMax: 8, trailLength: Math.max(500, TRIP_LOOP * 0.2),
+      widthMin: 2, widthMax: 6, opacity: 0.4, trailLength: Math.max(500, TRIP_LOOP * 0.2),
     }));
   }
   if (activeLayers.rail) {
     layers.push(makeTripsLayer('trips-rail', trainTripsData, {
-      widthMin: 4, widthMax: 10, trailLength: Math.max(400, TRIP_LOOP * 0.15),
+      widthMin: 3, widthMax: 8, opacity: 0.4, trailLength: Math.max(400, TRIP_LOOP * 0.15),
     }));
   }
   return layers;
@@ -1938,22 +1941,30 @@ function interpAt(path, ts, localT) {
   return path[n-1];
 }
 
-// 各トリップに perTrip 体のエージェントを等間隔で連続フロー配置 → 群衆の流れに見える
+// 各トリップに perTrip 体のエージェントを等間隔で連続フロー配置。
+// 重要: 位置は経路長で正規化せず、timestamp 空間を agentClock で一定レートに進める
+// → どの経路でも実際の移動速度が一定になり、自然な人/車/電車の流れになる。
 function buildAgents(trips, perTrip) {
   const pts = [];
   for (const t of trips) {
     const ts = t.timestamps;
     const n = ts.length;
     if (n < 2) continue;
-    const D = ts[n-1] - ts[0];
-    if (D <= 0) continue;
+    const t0 = ts[0], tN = ts[n - 1];
+    const dur = tN - t0;
+    if (dur <= 0) continue;
+    const gap = dur * 0.3;            // サイクル間の間隔 (連続的に湧き出す)
+    const cycle = dur + gap;
+    const step = cycle / perTrip;     // エージェント同士を時間軸で等間隔に
+    const FADE = 0.1;                 // 出入り口でのフェード幅 (なめらかな登場/退場)
     for (let a = 0; a < perTrip; a++) {
-      const u = ((currentTime / D) + a / perTrip) % 1;     // 0..1 を連続ループ
-      const localT = ts[0] + u * D;
+      const phase = (agentClock + a * step) % cycle;
+      if (phase > dur) continue;      // gap 区間 = 経路上にいない
+      const localT = t0 + phase;
       const p = interpAt(t.path, ts, localT);
-      // 進行方向の端では薄くフェード (出入りを自然に)
+      const u = phase / dur;
       const edge = Math.min(u, 1 - u);
-      const alpha = edge < 0.06 ? edge / 0.06 : 1;
+      const alpha = edge < FADE ? edge / FADE : 1;
       pts.push({ position: p, weight: t.weight || 0.6, alpha });
     }
   }
@@ -2029,7 +2040,10 @@ function startTripAnimation() {
       activeLayers.people || activeLayers.cars || activeLayers.rail;
 
     if (anyAnimating) {
-      currentTime = (currentTime + dt * TRIP_SPEED) % TRIP_LOOP;
+      const adv = dt * TRIP_SPEED;
+      agentClock += adv;                                  // 単調増加 (ジャンプなし)
+      if (agentClock > 1e9) agentClock = agentClock % 1e6; // 桁あふれ予防
+      currentTime = (currentTime + adv) % TRIP_LOOP;      // TripsLayer 用ループ
       deckOverlay.setProps({
         layers: [...getStaticLayers(currentScene), ...getDynamicLayers()],
       });
