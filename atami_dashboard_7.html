@@ -1688,6 +1688,7 @@ map.on('load', () => {
     layers: [],
     interleaved: false,
     useDevicePixels: false,
+    effects: buildLightingEffects(),
   });
   map.addControl(deckOverlay);
   renderScene(0);
@@ -1708,7 +1709,30 @@ map.on('load', () => {
 });
 
 // ============================================
-//  シーンレイヤー (静的レイヤーをキャッシュ、TripsLayer のみ毎フレーム差し替え)
+//  ライティング (3D メッシュ/建物の陰影で立体感を強調)
+// ============================================
+function buildLightingEffects() {
+  try {
+    if (!deck.LightingEffect || !deck.AmbientLight || !deck.DirectionalLight) return [];
+    const ambient = new deck.AmbientLight({ color: [255, 250, 240], intensity: 1.5 });
+    const sun = new deck.DirectionalLight({
+      color: [255, 240, 220],
+      intensity: 2.0,
+      direction: [-0.7, -0.4, -1.0],
+    });
+    const fill = new deck.DirectionalLight({
+      color: [200, 220, 255],
+      intensity: 0.8,
+      direction: [0.6, 0.5, -0.8],
+    });
+    return [new deck.LightingEffect({ ambient, sun, fill })];
+  } catch (e) {
+    return [];
+  }
+}
+
+// ============================================
+//  シーンレイヤー (静的レイヤーをキャッシュ、動的レイヤーのみ毎フレーム差し替え)
 // ============================================
 const STATIC_LAYER_CACHE = {};
 
@@ -1864,6 +1888,22 @@ function makeTripsLayer(id, data, opts = {}) {
 
 function getDynamicLayers() {
   const layers = [];
+
+  // --- 経路を流れるエージェント (ドット) = 人/車/電車の動きを高再現度で可視化 ---
+  if (activeLayers.people) {
+    layers.push(...makeAgentLayers('agents-people',
+      buildAgents(tripsData, 7), [255, 150, 92], { core: 2.6, halo: 7 }));
+  }
+  if (activeLayers.cars) {
+    layers.push(...makeAgentLayers('agents-cars',
+      buildAgents(carTripsData, 4), [86, 166, 216], { core: 3.4, halo: 9 }));
+  }
+  if (activeLayers.rail) {
+    layers.push(...makeAgentLayers('agents-rail',
+      buildAgents(trainTripsData, 2), [228, 206, 132], { core: 4.4, halo: 12 }));
+  }
+
+  // --- 軌跡ライン (TripsLayer) ---
   if (activeLayers.people && currentScene === 1) {
     layers.push(makeTripsLayer('trips-people', tripsData));
   }
@@ -1878,6 +1918,84 @@ function getDynamicLayers() {
     }));
   }
   return layers;
+}
+
+// 経路 (cumulative timestamps) 上の localT における位置を線形補間
+function interpAt(path, ts, localT) {
+  const n = ts.length;
+  if (n < 2) return path[0];
+  if (localT <= ts[0]) return path[0];
+  if (localT >= ts[n-1]) return path[n-1];
+  // 線形探索 (経路点数は十数程度なので十分高速)
+  for (let i = 1; i < n; i++) {
+    if (localT <= ts[i]) {
+      const span = ts[i] - ts[i-1] || 1;
+      const f = (localT - ts[i-1]) / span;
+      const a = path[i-1], b = path[i];
+      return [a[0] + (b[0]-a[0]) * f, a[1] + (b[1]-a[1]) * f];
+    }
+  }
+  return path[n-1];
+}
+
+// 各トリップに perTrip 体のエージェントを等間隔で連続フロー配置 → 群衆の流れに見える
+function buildAgents(trips, perTrip) {
+  const pts = [];
+  for (const t of trips) {
+    const ts = t.timestamps;
+    const n = ts.length;
+    if (n < 2) continue;
+    const D = ts[n-1] - ts[0];
+    if (D <= 0) continue;
+    for (let a = 0; a < perTrip; a++) {
+      const u = ((currentTime / D) + a / perTrip) % 1;     // 0..1 を連続ループ
+      const localT = ts[0] + u * D;
+      const p = interpAt(t.path, ts, localT);
+      // 進行方向の端では薄くフェード (出入りを自然に)
+      const edge = Math.min(u, 1 - u);
+      const alpha = edge < 0.06 ? edge / 0.06 : 1;
+      pts.push({ position: p, weight: t.weight || 0.6, alpha });
+    }
+  }
+  return pts;
+}
+
+// ハロー(柔らかい光) + コア(明点) の 2 層でドットに発光感を与える
+function makeAgentLayers(id, data, color, size) {
+  const [r, g, b] = color;
+  return [
+    new deck.ScatterplotLayer({
+      id: id + '-halo',
+      data,
+      getPosition: d => d.position,
+      getRadius: d => size.halo * (0.7 + (d.weight || 0.5) * 0.6),
+      radiusUnits: 'pixels',
+      radiusMinPixels: size.halo * 0.6,
+      radiusMaxPixels: size.halo * 1.6,
+      getFillColor: d => [r, g, b, Math.round(60 * (d.alpha ?? 1))],
+      stroked: false,
+      filled: true,
+      parameters: { depthTest: false },
+      updateTriggers: { getFillColor: currentTime },
+    }),
+    new deck.ScatterplotLayer({
+      id: id + '-core',
+      data,
+      getPosition: d => d.position,
+      getRadius: d => size.core * (0.8 + (d.weight || 0.5) * 0.5),
+      radiusUnits: 'pixels',
+      radiusMinPixels: size.core * 0.7,
+      radiusMaxPixels: size.core * 1.8,
+      getFillColor: d => [
+        Math.min(255, r + 40), Math.min(255, g + 40), Math.min(255, b + 40),
+        Math.round(235 * (d.alpha ?? 1)),
+      ],
+      stroked: false,
+      filled: true,
+      parameters: { depthTest: false },
+      updateTriggers: { getFillColor: currentTime },
+    }),
+  ];
 }
 
 function renderScene(idx) {
@@ -1908,9 +2026,7 @@ function startTripAnimation() {
     if (!deckOverlay) { requestAnimationFrame(tick); return; }
 
     const anyAnimating =
-      (activeLayers.people && currentScene === 1) ||
-      activeLayers.cars ||
-      activeLayers.rail;
+      activeLayers.people || activeLayers.cars || activeLayers.rail;
 
     if (anyAnimating) {
       currentTime = (currentTime + dt * TRIP_SPEED) % TRIP_LOOP;
