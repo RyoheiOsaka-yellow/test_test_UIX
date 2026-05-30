@@ -300,8 +300,9 @@
           <p>初期ロード中…数秒待つとサンプル試合動画で自動的に解析が始まります。<br>
              下のボタンで他の動画に切り替えることもできます。</p>
           <div class="btns">
-            <button class="primary" id="btn-sample">▶ サンプル①：ゴール前のプレー</button>
-            <button id="btn-sample-ground">▶ サンプル②：センターサークル付近</button>
+            <button class="primary" id="btn-sample">▶ 実試合①：ゴール前のプレー</button>
+            <button id="btn-sample-ground">▶ 実試合②：センターサークル付近</button>
+            <button id="btn-sample-buildup">▶ 実試合③：ビルドアップ</button>
           </div>
           <div class="btns">
             <label class="btn">
@@ -329,7 +330,8 @@
         <span class="tag" id="calib-tag">default trapezoid</span>
         <div class="spacer"></div>
         <div class="overlay-toggles" id="map-toggles">
-          <span class="toggle on" data-v="control">pitch control</span>
+          <span class="toggle on" data-v="movement">movement</span>
+          <span class="toggle" data-v="control">pitch control</span>
           <span class="toggle" data-v="heat">heat</span>
           <span class="toggle on" data-v="ball">ball</span>
         </div>
@@ -411,6 +413,7 @@ const FIELD_W = 105, FIELD_H = 68;
 const SAMPLE_URLS = {
   goalplay: 'https://assets.mixkit.co/videos/43499/43499-720.mp4',  // "Goal play in a semi-pro soccer game", 8s
   match:    'https://assets.mixkit.co/videos/43482/43482-720.mp4',  // "Semi-professional soccer match", 8s
+  buildup:  'https://assets.mixkit.co/videos/43481/43481-720.mp4',  // "Soccer game between two teams", 5s
 };
 
 // Model selection: 'lite_mobilenet_v2' (fast, less accurate) or 'mobilenet_v2' (slower, better for small persons)
@@ -463,7 +466,7 @@ const barA = document.getElementById('bar-a');
 // ============================================================
 const toggles = {
   bbox: true, ids: true, teams: true, trails: false, calib: false,
-  control: true, heat: false, ball: true
+  movement: true, control: false, heat: false, ball: true
 };
 document.querySelectorAll('.toggle').forEach(t => {
   t.addEventListener('click', () => {
@@ -1141,11 +1144,36 @@ async function detectStep() {
     // jersey colors — sample every detection cycle so newly seen tracks get classified quickly
     for (const tr of tracks.values()) sampleJerseyColor(tr);
     clusterTeams();
+    // record bird's-eye movement history (pitch coords) per player
+    recordPitchTrails(video.currentTime);
     // event detection on top of tracks
     updateEvents(video.currentTime);
     updatePress(video.currentTime);
   }
   requestAnimationFrame(detectStep);
+}
+
+// Project each active player's foot to pitch coords and append to their
+// movement history, used to draw the bird's-eye trails on the 2D map.
+const PITCH_TRAIL_MAX = 240;   // ~ up to a few minutes of detections
+function recordPitchTrails(now) {
+  const vw = video.videoWidth, vh = video.videoHeight;
+  const H_ = homography || (vw ? defaultHomography(vw, vh) : null);
+  if (!H_) return;
+  for (const tr of tracks.values()) {
+    if (tr.cls !== 'person' || tr.miss > 0) continue;
+    const bb = tr.smoothBbox || tr.bbox;
+    const [fx, fy] = applyH(H_, bb.x + bb.w / 2, bb.y + bb.h);
+    if (!isFinite(fx) || !isFinite(fy)) continue;
+    if (fx < -5 || fx > FIELD_W + 5 || fy < -5 || fy > FIELD_H + 5) continue;
+    if (!tr.pitchTrail) tr.pitchTrail = [];
+    const last = tr.pitchTrail[tr.pitchTrail.length - 1];
+    // skip near-duplicate points so the path stays clean
+    if (!last || Math.hypot(last.fx - fx, last.fy - fy) > 0.4) {
+      tr.pitchTrail.push({ fx, fy, t: now });
+      if (tr.pitchTrail.length > PITCH_TRAIL_MAX) tr.pitchTrail.shift();
+    }
+  }
 }
 
 // ============================================================
@@ -1390,6 +1418,33 @@ function drawMap() {
   const ccr = (9.15 / FIELD_W) * fw;
   mapCtx.beginPath(); mapCtx.arc(cx, cy, ccr, 0, Math.PI * 2); mapCtx.stroke();
 
+  // bird's-eye movement trails: each player's path over time, team-colored,
+  // fading from faint (old) to bright (recent).
+  if (toggles.movement) {
+    mapCtx.lineWidth = 2;
+    mapCtx.lineCap = 'round';
+    mapCtx.lineJoin = 'round';
+    for (const tr of tracks.values()) {
+      if (tr.cls !== 'person' || !tr.pitchTrail || tr.pitchTrail.length < 2) continue;
+      const [cr, cg, cb] = teamColor(tr.team);
+      const pts = tr.pitchTrail;
+      const n = pts.length;
+      for (let i = 1; i < n; i++) {
+        const a = (i / n) * 0.85;   // older segments more transparent
+        const x1 = pad + (pts[i - 1].fx / FIELD_W) * fw;
+        const y1 = pad + (pts[i - 1].fy / FIELD_H) * fh;
+        const x2 = pad + (pts[i].fx / FIELD_W) * fw;
+        const y2 = pad + (pts[i].fy / FIELD_H) * fh;
+        mapCtx.strokeStyle = `rgba(${cr},${cg},${cb},${a})`;
+        mapCtx.beginPath();
+        mapCtx.moveTo(x1, y1);
+        mapCtx.lineTo(x2, y2);
+        mapCtx.stroke();
+      }
+    }
+    mapCtx.lineCap = 'butt';
+  }
+
   // recent pass arrows (last 6 seconds)
   const now = video.currentTime || 0;
   for (const ps of matchState.recentPasses) {
@@ -1618,6 +1673,12 @@ btnSampleGround.addEventListener('click', () => {
   currentPreset = 'broadcast';
   urlInput.value = SAMPLE_URLS.match;
   setVideoSource(SAMPLE_URLS.match);
+});
+const btnSampleBuildup = document.getElementById('btn-sample-buildup');
+btnSampleBuildup.addEventListener('click', () => {
+  currentPreset = 'broadcast';
+  urlInput.value = SAMPLE_URLS.buildup;
+  setVideoSource(SAMPLE_URLS.buildup);
 });
 btnWebcam.addEventListener('click', async () => {
   try {
