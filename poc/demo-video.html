@@ -603,8 +603,16 @@ function updateTracks(detections, frameTs) {
     }
     if (best != null) {
       const tr = tracks.get(best);
-      // anchor target for interpolation: smoothBbox lerps toward bbox each frame
-      tr.prevBbox = tr.smoothBbox || tr.bbox;
+      // estimate velocity (px/sec) of the bbox center for motion prediction
+      const now = performance.now();
+      const dt = (now - tr.lastDetWall) / 1000;
+      if (dt > 0.001 && dt < 1.0) {
+        const vx = ((d.x + d.w / 2) - (tr.bbox.x + tr.bbox.w / 2)) / dt;
+        const vy = ((d.y + d.h / 2) - (tr.bbox.y + tr.bbox.h / 2)) / dt;
+        tr.vx = tr.vx * 0.6 + vx * 0.4;
+        tr.vy = tr.vy * 0.6 + vy * 0.4;
+      }
+      tr.lastDetWall = now;
       tr.bbox = { x: d.x, y: d.y, w: d.w, h: d.h };
       tr.score = d.score;
       tr.hits = (tr.hits || 0) + 1;
@@ -618,8 +626,10 @@ function updateTracks(detections, frameTs) {
       tracks.set(id, {
         id, cls: d.cls,
         bbox: { x: d.x, y: d.y, w: d.w, h: d.h },
-        prevBbox: { x: d.x, y: d.y, w: d.w, h: d.h },
         smoothBbox: { x: d.x, y: d.y, w: d.w, h: d.h },
+        vx: 0, vy: 0,
+        lastDetWall: performance.now(),
+        appear: 0,                 // fade-in progress 0..1
         score: d.score,
         hits: 1,
         lastSeen: frameTs,
@@ -636,17 +646,36 @@ function updateTracks(detections, frameTs) {
   }
 }
 
-// Smooth bbox lerp toward target each render frame (called from render loop).
-function tickSmoothBboxes() {
-  const lerp = 0.25;
+// Advance smoothed bbox each render frame using motion prediction +
+// time-based exponential smoothing (frame-rate independent).
+const MAX_PREDICT_S = 0.4;   // cap how far we extrapolate between detections
+const SMOOTH_TAU_S = 0.08;   // smoothing time constant
+function tickSmoothBboxes(dt) {
+  const now = performance.now();
+  const playing = !video.paused && !video.ended;
+  const k = 1 - Math.exp(-Math.max(dt, 0.001) / SMOOTH_TAU_S);
   for (const tr of tracks.values()) {
-    const sb = tr.smoothBbox || { ...tr.bbox };
-    sb.x += (tr.bbox.x - sb.x) * lerp;
-    sb.y += (tr.bbox.y - sb.y) * lerp;
-    sb.w += (tr.bbox.w - sb.w) * lerp;
-    sb.h += (tr.bbox.h - sb.h) * lerp;
-    tr.smoothBbox = sb;
+    const sb = tr.smoothBbox || (tr.smoothBbox = { ...tr.bbox });
+    // predicted target: last detection advanced by its velocity
+    let tx = tr.bbox.x, ty = tr.bbox.y;
+    if (playing && tr.miss <= 2 && (tr.vx || tr.vy)) {
+      const since = Math.min((now - tr.lastDetWall) / 1000, MAX_PREDICT_S);
+      tx += tr.vx * since;
+      ty += tr.vy * since;
+    }
+    sb.x += (tx - sb.x) * k;
+    sb.y += (ty - sb.y) * k;
+    sb.w += (tr.bbox.w - sb.w) * k;
+    sb.h += (tr.bbox.h - sb.h) * k;
+    // fade-in over ~250ms
+    tr.appear = Math.min(1, (tr.appear || 0) + dt / 0.25);
   }
+}
+
+// Render alpha for a track: fades in on appearance, fades out as it is missed.
+function lifeAlpha(tr) {
+  const fadeOut = tr.miss > 0 ? Math.max(0, 1 - tr.miss / 4) : 1;
+  return Math.min(1, tr.appear || 0) * fadeOut;
 }
 
 // ============================================================
@@ -704,13 +733,26 @@ function clusterTeams() {
     teamColors[0] = { ...bestA.c };
     teamColors[1] = { ...bestB.c };
   }
-  // assign each to nearest centroid
+  // assign each to nearest centroid, with hysteresis to stop color flicker:
+  // a player only switches teams once the other centroid has been clearly
+  // closer for several consecutive cycles.
   const acc = [[0,0,0,0], [0,0,0,0]];
   for (const s of samples) {
     const d0 = colDist(s.c, teamColors[0]);
     const d1 = colDist(s.c, teamColors[1]);
-    const t = d0 <= d1 ? 0 : 1;
-    s.tr.team = t;
+    const nearest = d0 <= d1 ? 0 : 1;
+    const margin = Math.abs(d0 - d1);
+    const tr = s.tr;
+    if (tr.team == null) {
+      tr.team = nearest;
+      tr.teamFlip = 0;
+    } else if (nearest !== tr.team && margin > 20) {
+      tr.teamFlip = (tr.teamFlip || 0) + 1;
+      if (tr.teamFlip >= 4) { tr.team = nearest; tr.teamFlip = 0; }
+    } else {
+      tr.teamFlip = 0;
+    }
+    const t = tr.team;
     acc[t][0] += s.c.r; acc[t][1] += s.c.g; acc[t][2] += s.c.b; acc[t][3]++;
   }
   // update centroids (slow EMA so they don't oscillate)
@@ -1112,8 +1154,13 @@ async function detectStep() {
 function fit(canvas) {
   const rect = canvas.getBoundingClientRect();
   const dpr = window.devicePixelRatio || 1;
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
+  const W = Math.round(rect.width * dpr), H = Math.round(rect.height * dpr);
+  // only resize the backing store when dimensions actually change —
+  // assigning canvas.width every frame reallocates + clears it (jank).
+  if (canvas.width !== W || canvas.height !== H) {
+    canvas.width = W;
+    canvas.height = H;
+  }
   canvas.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
   return { w: rect.width, h: rect.height };
 }
@@ -1128,8 +1175,40 @@ function teamColorStr(t, alpha=1) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+// Pitch-control surface is computed at low resolution into an offscreen
+// canvas a few times per second, then blitted (smoothed) onto the map.
+// This removes per-frame shimmer and the 1600 fillRect calls, and the
+// upscaling smoothing turns the blocky cells into a soft gradient.
+const PC_COLS = 64, PC_ROWS = 42;
+const pcCanvas = document.createElement('canvas');
+pcCanvas.width = PC_COLS; pcCanvas.height = PC_ROWS;
+const pcCtx = pcCanvas.getContext('2d');
+let pcLastCompute = 0;
+function computePitchControl(playerPos) {
+  const img = pcCtx.createImageData(PC_COLS, PC_ROWS);
+  const data = img.data;
+  for (let r = 0; r < PC_ROWS; r++) {
+    for (let c = 0; c < PC_COLS; c++) {
+      const fx = (c + 0.5) / PC_COLS * FIELD_W;
+      const fy = (r + 0.5) / PC_ROWS * FIELD_H;
+      let best = null, bestD = Infinity;
+      for (const p of playerPos) {
+        const dx = p.fx - fx, dy = p.fy - fy;
+        const d = dx * dx + dy * dy;
+        if (d < bestD) { bestD = d; best = p; }
+      }
+      const idx = (r * PC_COLS + c) * 4;
+      if (!best || best.team == null) { data[idx + 3] = 0; continue; }
+      const alpha = Math.min(0.55, 0.45 / (1 + Math.sqrt(bestD) * 0.12));
+      const [cr, cg, cb] = teamColor(best.team);
+      data[idx] = cr; data[idx + 1] = cg; data[idx + 2] = cb;
+      data[idx + 3] = alpha * 255;
+    }
+  }
+  pcCtx.putImageData(img, 0, 0);
+}
+
 function drawOverlay() {
-  tickSmoothBboxes();
   const ov = fit(overlay);
   const W = ov.w, H = ov.h;
   overlayCtx.clearRect(0, 0, W, H);
@@ -1180,6 +1259,8 @@ function drawOverlay() {
     // suppress noisy ball detections — require multiple hits and decent confidence
     if (isBall && (tr.hits < 2 || tr.score < 0.45)) continue;
     const r = mapBB(tr.smoothBbox || tr.bbox);
+    const a = lifeAlpha(tr);
+    if (a <= 0.01) continue;
     let col;
     if (isBall) col = [255, 211, 61];
     else if (toggles.teams) col = teamColor(tr.team);
@@ -1187,7 +1268,7 @@ function drawOverlay() {
     const [cr, cg, cb] = col;
 
     if (toggles.bbox) {
-      overlayCtx.strokeStyle = `rgba(${cr},${cg},${cb},0.95)`;
+      overlayCtx.strokeStyle = `rgba(${cr},${cg},${cb},${0.95 * a})`;
       overlayCtx.lineWidth = isBall ? 2 : 1.4;
       overlayCtx.strokeRect(r.x, r.y, r.w, r.h);
     }
@@ -1197,9 +1278,9 @@ function drawOverlay() {
         : `#${tr.id} ${tr.score.toFixed(2)}`;
       overlayCtx.font = '10px ui-monospace';
       const tw = overlayCtx.measureText(label).width + 6;
-      overlayCtx.fillStyle = `rgba(${cr},${cg},${cb},0.95)`;
+      overlayCtx.fillStyle = `rgba(${cr},${cg},${cb},${0.95 * a})`;
       overlayCtx.fillRect(r.x, r.y - 13, tw, 12);
-      overlayCtx.fillStyle = '#0b0e14';
+      overlayCtx.fillStyle = `rgba(11,14,20,${a})`;
       overlayCtx.fillText(label, r.x + 3, r.y - 4);
     }
 
@@ -1272,30 +1353,21 @@ function drawMap() {
     if (isBall) {
       ballPos = { fx, fy };
     } else {
-      playerPos.push({ fx, fy, team: tr.team, id: tr.id });
+      playerPos.push({ fx, fy, team: tr.team, id: tr.id, alpha: lifeAlpha(tr) });
     }
   }
 
-  // pitch control (Voronoi-like cells)
+  // pitch control: recompute a few times/sec, blit smoothed every frame
   if (toggles.control && playerPos.length > 0) {
-    const cols = 50, rows = 32;
-    const cellW = fw / cols, cellH = fh / rows;
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const fx = (c + 0.5) / cols * FIELD_W;
-        const fy = (r + 0.5) / rows * FIELD_H;
-        let best = null, bestD = Infinity;
-        for (const p of playerPos) {
-          const d = Math.hypot(p.fx - fx, p.fy - fy);
-          if (d < bestD) { bestD = d; best = p; }
-        }
-        if (!best || best.team == null) continue;
-        const alpha = Math.min(0.55, 0.45 / (1 + bestD * 0.12));
-        const [cr, cg, cb] = teamColor(best.team);
-        mapCtx.fillStyle = `rgba(${cr},${cg},${cb},${alpha})`;
-        mapCtx.fillRect(pad + c * cellW, pad + r * cellH, cellW + 0.5, cellH + 0.5);
-      }
+    const nowW = performance.now();
+    if (nowW - pcLastCompute > 120) {
+      computePitchControl(playerPos);
+      pcLastCompute = nowW;
     }
+    const prevSmooth = mapCtx.imageSmoothingEnabled;
+    mapCtx.imageSmoothingEnabled = true;
+    mapCtx.drawImage(pcCanvas, pad, pad, fw, fh);
+    mapCtx.imageSmoothingEnabled = prevSmooth;
   }
 
   // field lines
@@ -1347,6 +1419,8 @@ function drawMap() {
   // players
   for (const p of playerPos) {
     if (p.fx < -5 || p.fx > FIELD_W + 5 || p.fy < -5 || p.fy > FIELD_H + 5) continue;
+    const a = p.alpha != null ? p.alpha : 1;
+    if (a <= 0.01) continue;
     const x = pad + (p.fx / FIELD_W) * fw;
     const y = pad + (p.fy / FIELD_H) * fh;
     const [cr, cg, cb] = teamColor(p.team);
@@ -1356,13 +1430,13 @@ function drawMap() {
       mapCtx.lineWidth = 2;
       mapCtx.beginPath(); mapCtx.arc(x, y, 11, 0, Math.PI * 2); mapCtx.stroke();
     }
-    mapCtx.fillStyle = `rgb(${cr},${cg},${cb})`;
-    mapCtx.strokeStyle = '#0b0e14';
+    mapCtx.fillStyle = `rgba(${cr},${cg},${cb},${a})`;
+    mapCtx.strokeStyle = `rgba(11,14,20,${a})`;
     mapCtx.lineWidth = 1;
     mapCtx.beginPath();
     mapCtx.arc(x, y, 7, 0, Math.PI * 2);
     mapCtx.fill(); mapCtx.stroke();
-    mapCtx.fillStyle = '#0b0e14';
+    mapCtx.fillStyle = `rgba(11,14,20,${a})`;
     mapCtx.font = 'bold 9px ui-monospace';
     mapCtx.textAlign = 'center'; mapCtx.textBaseline = 'middle';
     mapCtx.fillText(p.id, x, y);
@@ -1573,7 +1647,12 @@ scrubber.addEventListener('click', (e) => {
 // ============================================================
 // Render loop
 // ============================================================
+let lastRenderWall = performance.now();
 function renderLoop() {
+  const now = performance.now();
+  const dt = (now - lastRenderWall) / 1000;
+  lastRenderWall = now;
+  tickSmoothBboxes(dt);     // advance motion model once per rendered frame
   drawOverlay();
   drawMap();
   updateHud();
