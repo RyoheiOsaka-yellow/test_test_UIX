@@ -30,7 +30,7 @@
 
 ### `demo-video.html` — 実写映像版
 
-実際の試合動画を読み込んで、ブラウザ内で **TensorFlow.js + COCO-SSD (MobileNet v2)** を動かしリアルタイム検出するデモ。サーバ不要・Pythonセットアップ不要、Webブラウザだけで完結。
+実際の試合動画を読み込んで、ブラウザ内で **サッカー特化 YOLOv8 (ONNX, 4クラス) → onnxruntime-web** を動かしリアルタイム検出するデモ。汎用COCO-SSDが取れなかった `referee` / `goalkeeper` / `player` / `ball` を区別。読み込み失敗時はCOCO-SSDへ自動フォールバック。サーバ不要・Pythonセットアップ不要、Webブラウザだけで完結。
 
 **操作**
 1. ダウンロードした `demo-video.html` をブラウザで開く
@@ -39,7 +39,8 @@
 4. 選手・ボールに bbox + track ID が自動付与され、2Dマップに投影される
 
 **含まれる処理**
-- **物体検出**：COCO-SSD (MobileNet v2) で `person` / `sports ball` を毎フレーム検出（精度優先、`lite_mobilenet_v2` にフォールバック可）
+- **物体検出（メイン）**：[uisikdag/yolo-v8-football-players-detection](https://huggingface.co/uisikdag/yolo-v8-football-players-detection) を ONNX (640×640, opset12) にエクスポートし、onnxruntime-web (WASM-SIMD) で実行。4クラス（ball / goalkeeper / player / referee）、mAP@0.5 = 0.785。前処理（640正規化）→ NCHW テンソル → 推論 → クラス毎 NMS まで JS 実装
+- **物体検出（フォールバック）**：ONNXモデルがロードできない場合は COCO-SSD (MobileNet v2) に自動切替
 - **トラッキング**：IoU greedy matching で永続的な track ID 付与、検出フレーム間は bbox を線形補間して滑らかに表示
 - **チーム識別**：bbox 上部のジャージ色を EMA でサンプリング → 最初に最も離れた2点でk-means初期化 → オンラインクラスタリング
 - **ホモグラフィ**：4-point DLT。デフォルトは broadcast view を仮定したトラペゾイド。「calibrate」モードでピッチ4隅をクリックすれば任意の視点に対応
@@ -71,8 +72,12 @@
 **実映像で精度を出すコツ**
 - 固定広角（Veo型）または放送級の中継映像が最適
 - 検出が落ちる場合は「calibrate」でピッチ4隅をクリック → 正確なホモグラフィに更新（移動軌跡も正確になる）
-- **完全俯瞰（ドローン/タクティカルカメラ）の映像では COCO-SSD は選手をほぼ検出できない**（汎用モデルが標準サイズの人物で学習されており、小さく写る選手に弱い）。22人が小さく写る本物の放送俯瞰映像を解析するには、SoccerNet 等でファインチューンしたサッカー特化モデル（YOLOv8/v11 → onnxruntime-web）への差し替えが必要
-- 推論速度は GPU 搭載のChrome/Edgeで 30-100ms/frame 程度。CPU only ではかなり遅くなる
+- 完全俯瞰（ドローン/タクティカルカメラ）の映像は、サッカー特化モデルでも検出数が落ちる（学習データの多くが放送/グラウンドレベル視点）。ベンチでは地上アングルで 5-17 人検出、俯瞰では 1-2 人。さらに上を目指すなら SoccerNet で追加ファインチューン推奨
+- 推論速度：onnxruntime-web の WASM-SIMD で 100-300ms/frame（実機ブラウザ）。WebGPU 実行プロバイダが利用可能なら 30-80ms/frame まで短縮可能
+
+**モデルファイル**
+- `models/soccer-yolov8.onnx`（約43MB）。ローカル配置とCDNフォールバック（jsdelivr経由のGitHub raw）の両対応
+- 元の `.pt` 重みは [HuggingFace](https://huggingface.co/uisikdag/yolo-v8-football-players-detection) より取得し、`ultralytics` の `model.export(format='onnx')` で変換
 
 ## M1: detect_track.py
 

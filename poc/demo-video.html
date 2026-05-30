@@ -398,6 +398,8 @@
   </footer>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.0/dist/ort.min.js"></script>
+<script>if (window.ort) { ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.0/dist/'; }</script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
 <script>
@@ -418,6 +420,18 @@ const SAMPLE_URLS = {
 
 // Model selection: 'lite_mobilenet_v2' (fast, less accurate) or 'mobilenet_v2' (slower, better for small persons)
 const PREFERRED_MODEL = 'mobilenet_v2';
+
+// Soccer-specialized YOLOv8 (trained on football data, 4 classes).
+// Same-origin first (poc/models/...), then jsDelivr fallback that
+// proxies GitHub raw with CORS.
+const SOCCER_MODEL_PATHS = [
+  'models/soccer-yolov8.onnx',
+  'https://cdn.jsdelivr.net/gh/RyoheiOsaka-yellow/test_test_uix@claude/elegant-darwin-JXdUg/poc/models/soccer-yolov8.onnx',
+];
+const SOCCER_CLASSES = ['ball', 'goalkeeper', 'player', 'referee'];
+const SOCCER_INPUT_SIZE = 640;
+const SOCCER_SCORE_THRESH = 0.30;
+const SOCCER_NMS_IOU = 0.5;
 
 // ============================================================
 // Elements
@@ -1088,40 +1102,162 @@ function addRichEvent(type, team, meta) {
 // ============================================================
 // Detection loop
 // ============================================================
-let model = null;
+let model = null;              // coco-ssd fallback handle
+let soccerSession = null;      // onnxruntime-web InferenceSession (preferred)
+let activeBackend = 'none';    // 'soccer' | 'coco' | 'none'
 let lastInfMs = 0;
 let detFps = 0;
 let detFrames = 0;
 let detLastFpsAt = performance.now();
 
+// scratch canvas for resizing video → 640×640 model input
+const inputCanvas = document.createElement('canvas');
+inputCanvas.width = SOCCER_INPUT_SIZE; inputCanvas.height = SOCCER_INPUT_SIZE;
+const inputCtx = inputCanvas.getContext('2d', { willReadFrequently: true });
+
+async function tryLoadSoccerModel() {
+  if (!window.ort) return false;
+  for (const url of SOCCER_MODEL_PATHS) {
+    try {
+      loadingText.textContent = 'Loading soccer-specialized model (~43MB)…';
+      soccerSession = await ort.InferenceSession.create(url, {
+        executionProviders: ['wasm'],
+        graphOptimizationLevel: 'all',
+      });
+      document.getElementById('model-tag').textContent = 'model: YOLOv8-football (4 classes)';
+      return true;
+    } catch (e) {
+      // try next URL
+    }
+  }
+  return false;
+}
+
+async function loadCocoFallback() {
+  await tf.ready();
+  try { await tf.setBackend('webgl'); } catch (e) {}
+  try {
+    model = await cocoSsd.load({ base: PREFERRED_MODEL });
+    document.getElementById('model-tag').textContent = 'model: ' + PREFERRED_MODEL + ' (generic)';
+  } catch (e) {
+    model = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
+    document.getElementById('model-tag').textContent = 'model: lite_mobilenet_v2 (generic, fallback)';
+  }
+}
+
 async function loadModel() {
   loading.classList.remove('hidden');
-  loadingText.textContent = 'Loading detection model (~5MB)...';
+  loadingText.textContent = 'Loading detection model…';
   try {
-    await tf.ready();
-    try { await tf.setBackend('webgl'); } catch (e) {}
-    try {
-      model = await cocoSsd.load({ base: PREFERRED_MODEL });
-      document.getElementById('model-tag').textContent = 'model: ' + PREFERRED_MODEL;
-    } catch (e) {
-      loadingText.textContent = 'Falling back to lite model...';
-      model = await cocoSsd.load({ base: 'lite_mobilenet_v2' });
-      document.getElementById('model-tag').textContent = 'model: lite_mobilenet_v2 (fallback)';
+    if (await tryLoadSoccerModel()) {
+      activeBackend = 'soccer';
+    } else {
+      loadingText.textContent = 'Soccer model unavailable, using generic detector…';
+      await loadCocoFallback();
+      activeBackend = 'coco';
     }
-    loadingText.textContent = 'Model loaded. Analyzing...';
+    loadingText.textContent = 'Model loaded. Analyzing…';
     setTimeout(() => loading.classList.add('hidden'), 400);
   } catch (e) {
     loadingText.textContent = 'Model load failed: ' + e.message;
   }
 }
 
+// Map YOLO-football class strings to the existing tracker's two classes,
+// so the rest of the pipeline (tracking, team clustering, events) is reused.
+function mapSoccerClassToTracker(cls) {
+  if (cls === 'ball') return 'sports ball';
+  // players / goalkeepers / referees all flow as "person"; team clustering
+  // by jersey color will separate them, and referees get filtered out later
+  // if their cluster is consistently off-team.
+  return 'person';
+}
+
+function iouSimple(a, b) {
+  const ax2 = a.x + a.w, ay2 = a.y + a.h;
+  const bx2 = b.x + b.w, by2 = b.y + b.h;
+  const ix = Math.max(0, Math.min(ax2, bx2) - Math.max(a.x, b.x));
+  const iy = Math.max(0, Math.min(ay2, by2) - Math.max(a.y, b.y));
+  const inter = ix * iy;
+  const union = a.w * a.h + b.w * b.h - inter;
+  return union > 0 ? inter / union : 0;
+}
+
+// Run YOLOv8 ONNX on the current video frame and return tracker-shaped
+// detections in original video pixel coordinates.
+async function detectWithSoccer() {
+  const vw = video.videoWidth, vh = video.videoHeight;
+  if (!vw) return [];
+  // resize (stretch) to 640×640 — letterboxing would be more accurate but
+  // adds complexity; for broadcast 16:9 sources the stretch effect is small.
+  inputCtx.drawImage(video, 0, 0, SOCCER_INPUT_SIZE, SOCCER_INPUT_SIZE);
+  const img = inputCtx.getImageData(0, 0, SOCCER_INPUT_SIZE, SOCCER_INPUT_SIZE).data;
+  const N = SOCCER_INPUT_SIZE * SOCCER_INPUT_SIZE;
+  const data = new Float32Array(3 * N);
+  for (let i = 0; i < N; i++) {
+    data[i]         = img[i * 4]     / 255;
+    data[i +     N] = img[i * 4 + 1] / 255;
+    data[i + 2 * N] = img[i * 4 + 2] / 255;
+  }
+  const tensor = new ort.Tensor('float32', data, [1, 3, SOCCER_INPUT_SIZE, SOCCER_INPUT_SIZE]);
+  const inputName = soccerSession.inputNames[0];
+  const outputs = await soccerSession.run({ [inputName]: tensor });
+  const out = outputs[soccerSession.outputNames[0]];
+  // shape [1, 4+nc, 8400] — 4 box + nc class scores per anchor
+  const arr = out.data;
+  const nc = SOCCER_CLASSES.length;
+  const anchors = out.dims[2];
+  const sx = vw / SOCCER_INPUT_SIZE, sy = vh / SOCCER_INPUT_SIZE;
+  const raw = [];
+  for (let i = 0; i < anchors; i++) {
+    let bestC = 0, bestS = 0;
+    for (let c = 0; c < nc; c++) {
+      const s = arr[(4 + c) * anchors + i];
+      if (s > bestS) { bestS = s; bestC = c; }
+    }
+    if (bestS < SOCCER_SCORE_THRESH) continue;
+    const cx = arr[0 * anchors + i], cy = arr[1 * anchors + i];
+    const w  = arr[2 * anchors + i], h  = arr[3 * anchors + i];
+    raw.push({
+      sourceCls: SOCCER_CLASSES[bestC],
+      cls: mapSoccerClassToTracker(SOCCER_CLASSES[bestC]),
+      x: (cx - w / 2) * sx, y: (cy - h / 2) * sy,
+      w: w * sx, h: h * sy,
+      score: bestS,
+    });
+  }
+  // per-class NMS
+  raw.sort((a, b) => b.score - a.score);
+  const kept = [];
+  for (const d of raw) {
+    let dup = false;
+    for (const k of kept) {
+      if (k.sourceCls !== d.sourceCls) continue;
+      if (iouSimple(d, k) > SOCCER_NMS_IOU) { dup = true; break; }
+    }
+    if (!dup) kept.push(d);
+  }
+  return kept;
+}
+
 async function detectStep() {
-  if (model && !video.paused && !video.ended && video.readyState >= 2) {
+  if ((soccerSession || model) && !video.paused && !video.ended && video.readyState >= 2) {
     const t0 = performance.now();
-    let preds = [];
+    let dets = [];
     try {
-      // lower conf threshold to catch small/distant players in aerial shots
-      preds = await model.detect(video, 80, 0.25);
+      if (activeBackend === 'soccer') {
+        dets = await detectWithSoccer();
+      } else {
+        const preds = await model.detect(video, 80, 0.25);
+        for (const p of preds) {
+          if (p.class !== 'person' && p.class !== 'sports ball') continue;
+          dets.push({
+            cls: p.class,
+            x: p.bbox[0], y: p.bbox[1], w: p.bbox[2], h: p.bbox[3],
+            score: p.score,
+          });
+        }
+      }
     } catch (e) {}
     lastInfMs = performance.now() - t0;
     detFrames++;
@@ -1129,16 +1265,6 @@ async function detectStep() {
       detFps = detFrames * 1000 / (performance.now() - detLastFpsAt);
       detFrames = 0;
       detLastFpsAt = performance.now();
-    }
-    // filter classes
-    const dets = [];
-    for (const p of preds) {
-      if (p.class !== 'person' && p.class !== 'sports ball') continue;
-      dets.push({
-        cls: p.class,
-        x: p.bbox[0], y: p.bbox[1], w: p.bbox[2], h: p.bbox[3],
-        score: p.score,
-      });
     }
     updateTracks(dets, video.currentTime);
     // jersey colors — sample every detection cycle so newly seen tracks get classified quickly
@@ -1720,7 +1846,11 @@ function renderLoop() {
   requestAnimationFrame(renderLoop);
 }
 // expose for inspection
-window._tactical = { tracks, get model() { return model; }, teamColors, matchState };
+window._tactical = {
+  tracks, get model() { return model; }, teamColors, matchState,
+  get backend() { return activeBackend; }, get soccerSession() { return soccerSession; },
+  get lastInfMs() { return lastInfMs; },
+};
 window._evTrack = document.getElementById('ev-track');
 
 renderLoop();
