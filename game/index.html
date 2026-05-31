@@ -7,10 +7,10 @@
 <style>
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{ margin:0; height:100%; }
-  :root{ --crimson:#c4142a; --gold:#d9b66f; --silver:#cfd2d6; }
+  :root{ --crimson:#ff2e7e; --pink:#ff2e7e; --cyan:#27e6ff; --gold:#ffd86b; --silver:#dbe6ff; }
   body{
-    background:radial-gradient(circle at 50% -8%, #160a07 0%, #000 65%); color:#fff;
-    font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+    background:radial-gradient(circle at 50% 6%, #241a66 0%, #0e0a2e 45%, #05030f 100%); color:#fff;
+    font-family:"Hiragino Maru Gothic ProN","Hiragino Maru Gothic Pro","Yu Gothic",system-ui,"Rounded Mplus 1c",sans-serif;
     display:flex; flex-direction:column; align-items:center;
     min-height:100vh; min-height:100dvh; user-select:none; overflow-x:hidden; overscroll-behavior:none;
     padding-bottom:env(safe-area-inset-bottom);
@@ -21,70 +21,75 @@
   .crest{ display:inline-flex; align-items:center; gap:10px; justify-content:center; padding:4px 14px; }
   .crest .snake{ font-size:28px; filter:grayscale(1) brightness(1.6); }
   .crest .snake.l{ transform:scaleX(-1); }
-  .crest .dh{ font-family:"Times New Roman",serif; font-weight:700; font-size:28px; }
-  .crest .dh b{ color:var(--silver); }
-  .tagline{ color:var(--crimson); font-style:italic; font-weight:800; font-size:13px; letter-spacing:1px; }
-  .jptitle{ font-size:24px; letter-spacing:4px; font-weight:800; margin-top:2px;
-    background:linear-gradient(180deg,#fff,#9aa0a6); -webkit-background-clip:text; background-clip:text; color:transparent; }
-  .sub{ font-size:10px; letter-spacing:2px; color:#8a8f96; margin-top:2px; }
-  .divider{ width:240px; height:1px; margin:8px auto 0; background:linear-gradient(90deg,transparent,var(--gold),transparent); }
+  .crest .dh{ font-family:"Times New Roman",serif; font-weight:700; font-size:28px; text-shadow:0 0 10px #27e6ff88; }
+  .crest .dh b{ color:var(--cyan); }
+  .tagline{ color:var(--pink); font-style:italic; font-weight:800; font-size:13px; letter-spacing:1px; text-shadow:0 0 12px #ff2e7eaa; }
+  .jptitle{ font-size:24px; letter-spacing:3px; font-weight:800; margin-top:2px;
+    background:linear-gradient(90deg,#ff5fb0,#27e6ff); -webkit-background-clip:text; background-clip:text; color:transparent;
+    filter:drop-shadow(0 0 10px #ff2e7e55) drop-shadow(0 0 14px #27e6ff44); }
+  .sub{ font-size:10px; letter-spacing:2px; color:#8fa3c8; margin-top:2px; }
+  .divider{ width:240px; height:2px; margin:8px auto 0; border-radius:2px; background:linear-gradient(90deg,transparent,#ff2e7e,#27e6ff,transparent); box-shadow:0 0 10px #27e6ff66; }
 
   #wrap{ position:relative; }
-  canvas#cv{ background:#0a0705; border:1px solid #2a2018; border-radius:10px; box-shadow:0 12px 40px #000, inset 0 0 50px #000; touch-action:none; display:block; }
+  canvas#cv{ background:#0b0826; border:2px solid rgba(39,230,255,.45); border-radius:18px;
+    box-shadow:0 0 26px rgba(39,230,255,.22), 0 0 40px rgba(255,46,126,.12), 0 12px 40px #000, inset 0 0 60px #05030f; touch-action:none; display:block; }
   #fx{ position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:60; background:transparent; border:0; }
 
   /* HUD */
   #hud{ width:100%; max-width:480px; margin:8px auto 0; display:flex; flex-direction:column; gap:8px; padding:0 8px; }
   #stats{ display:flex; justify-content:center; gap:8px; flex-wrap:wrap; }
-  .stat{ background:#140d08; border:1px solid #2c2018; border-radius:6px; padding:6px 14px; text-align:center; min-width:84px; }
-  .stat .lab{ font-size:9px; letter-spacing:2px; color:#8a8f96; }
+  .stat{ background:rgba(255,255,255,.05); border:1px solid rgba(39,230,255,.35); border-radius:16px; padding:6px 14px; text-align:center; min-width:84px;
+    box-shadow:0 0 14px rgba(39,230,255,.15), inset 0 0 14px rgba(39,230,255,.05); }
+  .stat .lab{ font-size:9px; letter-spacing:2px; color:var(--cyan); }
   .stat .val{ font-size:20px; font-weight:800; font-variant-numeric:tabular-nums; }
-  .stat .val.score{ color:var(--gold); } .stat .val.best{ color:var(--crimson); }
-  #msg{ text-align:center; font-size:15px; min-height:22px; font-weight:700; color:#e7e2da; }
+  .stat .val.score{ color:var(--gold); text-shadow:0 0 10px #ffd86b88; } .stat .val.best{ color:var(--pink); text-shadow:0 0 10px #ff2e7e88; }
+  #msg{ text-align:center; font-size:15px; min-height:22px; font-weight:800; color:#eaf3ff; text-shadow:0 0 8px #27e6ff55; }
   #controls{ display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap; }
-  button{ font-family:inherit; background:var(--crimson); color:#fff; border:1px solid #e0556a; border-radius:5px;
-    padding:9px 18px; font-size:14px; font-weight:800; letter-spacing:1px; cursor:pointer; box-shadow:0 3px 12px #c4142a55; transition:transform .05s; }
-  button:active{ transform:translateY(2px); }
-  button.ghost{ background:#1a120c; color:#cfd2d6; border-color:#33271d; box-shadow:none; }
-  .hint{ font-size:11px; color:#8a8f96; text-align:center; line-height:1.7; max-width:480px; padding:10px 12px 20px; }
+  button{ font-family:inherit; background:linear-gradient(180deg,#ff66ad,#ff2e7e); color:#fff; border:1px solid #ff9ac7; border-radius:999px;
+    padding:10px 20px; font-size:14px; font-weight:800; letter-spacing:1px; cursor:pointer; box-shadow:0 0 18px #ff2e7e66, 0 4px 0 #b81e5e; transition:transform .06s, box-shadow .06s; }
+  button:active{ transform:translateY(3px); box-shadow:0 0 18px #ff2e7e66, 0 1px 0 #b81e5e; }
+  button.ghost{ background:rgba(255,255,255,.06); color:#dff6ff; border:1px solid rgba(39,230,255,.45); box-shadow:0 0 12px rgba(39,230,255,.18); }
+  .hint{ font-size:11px; color:#8fa3c8; text-align:center; line-height:1.7; max-width:480px; padding:10px 12px 20px; }
 
   /* 全画面モーダル */
   .overlay{ position:fixed; inset:0; display:none; z-index:50; overflow-y:auto; -webkit-overflow-scrolling:touch;
-    background:radial-gradient(circle at 50% 30%, #1a0c08f5 0%, #000000fc 75%); text-align:center; }
+    background:radial-gradient(circle at 50% 28%, #2a1f72f2 0%, #0e0a2efb 65%, #05030ffd 100%); text-align:center; }
   .overlay.show{ display:flex; align-items:center; justify-content:center; animation:fade .35s ease; }
+  .overlay.show .ovinner{ animation:pop .4s cubic-bezier(.2,1.4,.4,1) both; }
   @keyframes fade{ from{opacity:0} to{opacity:1} }
+  @keyframes pop{ from{opacity:0; transform:scale(.86) translateY(10px);} to{opacity:1; transform:none;} }
   .ovinner{ margin:auto; width:100%; max-width:430px; display:flex; flex-direction:column; align-items:center;
     padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom)); }
   .overlay .ovlogo{ width:min(250px,64vw); height:auto; margin-bottom:6px; filter:drop-shadow(0 4px 18px #000); }
   .overlay .bottle{ font-size:clamp(40px,11vw,52px); margin-bottom:4px; filter:drop-shadow(0 0 18px #d9b66f88); }
-  .overlay h2{ margin:0; font-size:clamp(22px,7vw,30px); letter-spacing:3px; background:linear-gradient(180deg,#fff,#9aa0a6); -webkit-background-clip:text; background-clip:text; color:transparent; }
-  .overlay .crazy{ color:var(--crimson); font-style:italic; font-weight:800; font-size:clamp(17px,5vw,21px); margin:5px 0; text-shadow:0 0 16px #c4142a99; }
-  .overlay .lead{ color:#cfc9c0; font-size:clamp(12px,3.4vw,14px); margin:5px 0; line-height:1.7; }
-  .overlay .bigscore{ font-size:clamp(40px,13vw,56px); font-weight:900; color:var(--gold); margin:6px 0 0; text-shadow:0 2px 0 #000; }
+  .overlay h2{ margin:0; font-size:clamp(22px,7vw,30px); letter-spacing:2px; background:linear-gradient(90deg,#ff5fb0,#27e6ff); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 0 10px #ff2e7e55); }
+  .overlay .crazy{ color:var(--pink); font-style:italic; font-weight:800; font-size:clamp(17px,5vw,21px); margin:5px 0; text-shadow:0 0 16px #ff2e7eaa; }
+  .overlay .lead{ color:#d4ddf2; font-size:clamp(12px,3.4vw,14px); margin:5px 0; line-height:1.7; }
+  .overlay .bigscore{ font-size:clamp(40px,13vw,56px); font-weight:900; color:var(--gold); margin:6px 0 0; text-shadow:0 0 18px #ffd86b88, 0 2px 0 #000; }
   .overlay .judge{ font-size:20px; font-weight:800; letter-spacing:2px; margin:2px 0 4px; }
   .overlay .promo{ font-size:11px; color:#7a7f86; letter-spacing:2px; margin-top:14px; }
   .overlay.celebrate .bottle, .overlay.celebrate .ovlogo, .overlay.celebrate .prizehero{ animation:glow 1s ease-in-out infinite alternate; }
-  @keyframes glow{ from{ filter:drop-shadow(0 0 10px #d9b66f88); } to{ filter:drop-shadow(0 0 28px #ffd76e) drop-shadow(0 0 48px #c4142a); } }
+  @keyframes glow{ from{ filter:drop-shadow(0 0 10px #27e6ff88); } to{ filter:drop-shadow(0 0 26px #ff5fb0) drop-shadow(0 0 46px #27e6ff); } }
 
   /* 景品まわり */
   .prizehero{ font-size:clamp(46px,14vw,64px); margin:2px 0; }
-  .prizename{ font-size:clamp(18px,5.4vw,24px); font-weight:900; color:#fff; letter-spacing:1px; }
-  .prizeget{ color:var(--gold); font-weight:800; font-size:13px; letter-spacing:2px; margin-top:2px; }
-  .prizenext{ font-size:12px; color:#9aa0a6; margin:6px 0 2px; }
+  .prizename{ font-size:clamp(18px,5.4vw,24px); font-weight:900; color:#fff; letter-spacing:1px; text-shadow:0 0 14px #27e6ff66; }
+  .prizeget{ color:var(--gold); font-weight:800; font-size:13px; letter-spacing:2px; margin-top:2px; text-shadow:0 0 10px #ffd86b88; }
+  .prizenext{ font-size:12px; color:#9fb1d6; margin:6px 0 2px; }
   .tiers{ width:min(300px,86%); margin:10px auto 4px; }
-  .tiers .tt{ color:var(--gold); letter-spacing:2px; font-size:11px; margin-bottom:4px; }
-  .tierrow{ display:flex; justify-content:space-between; gap:8px; padding:5px 10px; border-bottom:1px solid #ffffff10; color:#cfc9c0; font-size:13px; }
-  .tierrow.got{ background:#c4142a22; color:#fff; border-radius:5px; font-weight:800; }
-  .tierrow .tmin{ color:#8a8f96; white-space:nowrap; }
-  .coupon{ background:linear-gradient(180deg,#1c0d0a,#120907); border:1px dashed var(--gold); border-radius:10px; padding:10px 14px; margin:6px 0 10px; }
-  .coupon .ctitle{ color:var(--gold); font-size:12px; letter-spacing:1px; }
+  .tiers .tt{ color:var(--cyan); letter-spacing:2px; font-size:11px; margin-bottom:4px; }
+  .tierrow{ display:flex; justify-content:space-between; gap:8px; padding:6px 10px; border-bottom:1px solid #ffffff12; color:#cfd8ec; font-size:13px; border-radius:8px; }
+  .tierrow.got{ background:rgba(255,46,126,.16); color:#fff; font-weight:800; box-shadow:0 0 12px rgba(255,46,126,.3), inset 0 0 0 1px rgba(255,46,126,.4); }
+  .tierrow .tmin{ color:#8fa3c8; white-space:nowrap; }
+  .coupon{ background:rgba(39,230,255,.06); border:1px dashed var(--cyan); border-radius:12px; padding:10px 14px; margin:6px 0 10px; box-shadow:0 0 16px rgba(39,230,255,.18); }
+  .coupon .ctitle{ color:var(--cyan); font-size:12px; letter-spacing:1px; }
   .coupon .ccode{ display:flex; align-items:center; gap:8px; justify-content:center; margin:6px 0 2px; }
-  .coupon .ccode span{ font-family:ui-monospace,monospace; font-size:clamp(16px,5vw,20px); font-weight:900; letter-spacing:2px; color:#fff; white-space:nowrap; }
-  .coupon .ccode button{ background:var(--gold); color:#3a2a0c; border:none; border-radius:5px; padding:5px 10px; font-size:11px; font-weight:800; }
-  .coupon .cnote{ font-size:10px; color:#9aa0a6; }
+  .coupon .ccode span{ font-family:ui-monospace,monospace; font-size:clamp(16px,5vw,20px); font-weight:900; letter-spacing:2px; color:#fff; white-space:nowrap; text-shadow:0 0 10px #27e6ff88; }
+  .coupon .ccode button{ background:linear-gradient(180deg,#5cf0ff,#27e6ff); color:#053; border:none; border-radius:8px; padding:5px 10px; font-size:11px; font-weight:800; }
+  .coupon .cnote{ font-size:10px; color:#9fb1d6; }
   .cta{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:12px; }
-  .ctabtn{ text-decoration:none; font-size:13px; font-weight:800; padding:9px 16px; border-radius:6px; border:1px solid #33271d; background:#1a120c; color:#cfd2d6; }
-  .ctabtn.buy{ background:var(--gold); color:#3a2a0c; border-color:#e7cf88; }
+  .ctabtn{ text-decoration:none; font-size:13px; font-weight:800; padding:10px 18px; border-radius:999px; border:1px solid rgba(39,230,255,.45); background:rgba(255,255,255,.06); color:#dff6ff; box-shadow:0 0 12px rgba(39,230,255,.18); }
+  .ctabtn.buy{ background:linear-gradient(180deg,#ffe48f,#ffd86b); color:#3a2a0c; border-color:#ffe9a6; box-shadow:0 0 16px #ffd86b66; }
 
   @media (max-width:480px){
     .crest .snake,.crest .dh{ font-size:22px; } .jptitle{ font-size:20px; } .sub{ font-size:8px; }
@@ -396,52 +401,70 @@
   }
 
   // ===== 紙吹雪 =====
-  let confetti=[]; const CC=['#c4142a','#d9b66f','#ffffff','#9cc05e','#ffd76e'];
+  let confetti=[]; const CC=['#ff2e7e','#27e6ff','#ffd86b','#7CFFB0','#ffffff'];
   function burstConfetti(n){ for(let i=0;i<n;i++) confetti.push({ x:FXW*Math.random(), y:-10-Math.random()*60, vx:(Math.random()-.5)*3, vy:2.5+Math.random()*4, size:5+Math.random()*6, rot:Math.random()*6.28, vr:(Math.random()-.5)*.4, color:CC[(Math.random()*CC.length)|0], sway:Math.random()*6.28 }); }
   function drawConfetti(){ fxc.clearRect(0,0,FXW,FXH); if(!confetti.length) return; for(let i=confetti.length-1;i>=0;i--){ const p=confetti[i]; p.sway+=.1; p.x+=p.vx+Math.sin(p.sway)*.6; p.y+=p.vy; p.vy+=.04; p.rot+=p.vr; if(p.y>FXH+20){ confetti.splice(i,1); continue; } fxc.save(); fxc.translate(p.x,p.y); fxc.rotate(p.rot); fxc.fillStyle=p.color; fxc.fillRect(-p.size/2,-p.size/2,p.size,p.size*.6); fxc.restore(); } }
 
   // ===== 描画 =====
+  // 目+ほっぺ（共通の可愛い表情）
+  function cuteFace(eyeY,eyeDx,blushY){
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.ellipse(-eyeDx,eyeY,2.6,3.3,0,0,6.28); ctx.fill(); ctx.beginPath(); ctx.ellipse(eyeDx,eyeY,2.6,3.3,0,0,6.28); ctx.fill();
+    ctx.fillStyle='#1b1b24'; ctx.beginPath(); ctx.ellipse(-eyeDx,eyeY+.4,1.2,2.1,0,0,6.28); ctx.fill(); ctx.beginPath(); ctx.ellipse(eyeDx,eyeY+.4,1.2,2.1,0,0,6.28); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(-eyeDx-.7,eyeY-1,.7,0,6.28); ctx.fill(); ctx.beginPath(); ctx.arc(eyeDx-.7,eyeY-1,.7,0,6.28); ctx.fill();
+    ctx.fillStyle='rgba(255,120,170,.55)'; ctx.beginPath(); ctx.arc(-eyeDx-2,blushY,2,0,6.28); ctx.fill(); ctx.beginPath(); ctx.arc(eyeDx+2,blushY,2,0,6.28); ctx.fill();
+  }
   function drawBoard(){
-    // 盤面背景
-    const g=ctx.createLinearGradient(0,TOP,0,H); g.addColorStop(0,'#1b120c'); g.addColorStop(1,'#0c0805');
+    // 盤面背景（濃紺グラデ＋うっすらネオングロー）
+    const g=ctx.createLinearGradient(0,TOP,0,H); g.addColorStop(0,'#1a1556'); g.addColorStop(1,'#0a0826');
     ctx.fillStyle=g; ctx.fillRect(L,TOP,R-L,H-TOP);
-    // 枠
-    ctx.strokeStyle='#5a4427'; ctx.lineWidth=2; ctx.strokeRect(L,TOP,R-L,H-TOP);
+    const rg=ctx.createRadialGradient(W/2,260,20,W/2,260,260); rg.addColorStop(0,'rgba(255,46,126,.10)'); rg.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=rg; ctx.fillRect(L,TOP,R-L,H-TOP);
+    // ネオン枠
+    ctx.save(); ctx.shadowColor='#27e6ff'; ctx.shadowBlur=12; ctx.strokeStyle='rgba(39,230,255,.7)'; ctx.lineWidth=2; ctx.strokeRect(L+1,TOP+1,R-L-2,H-TOP-2); ctx.restore();
     // ブランド刻印
-    ctx.save(); ctx.globalAlpha=.10; ctx.fillStyle='#d9b66f'; ctx.textAlign='center'; ctx.font='italic 700 30px "Times New Roman",serif';
+    ctx.save(); ctx.globalAlpha=.10; ctx.fillStyle='#9fb6ff'; ctx.textAlign='center'; ctx.font='italic 700 30px "Times New Roman",serif';
     ctx.fillText('Double H', W/2, 300); ctx.font='12px serif'; ctx.fillText('HABU × HERB', W/2, 320); ctx.restore(); ctx.textAlign='left';
     // 下部チャンネル（得点）
-    for(let i=0;i<CHAN_N;i++){ const cx=L+CHAN_W*(i+0.5);
-      ctx.fillStyle=(i===2)?'#3a1414':'#16100a'; ctx.fillRect(L+CHAN_W*i+2, H-88, CHAN_W-4, 88);
-      ctx.fillStyle=(i===2)?'#ffd76e':'#9aa0a6'; ctx.textAlign='center'; ctx.font='bold 12px sans-serif';
-      ctx.fillText(CHAN_PTS[i], cx, H-14); }
+    for(let i=0;i<CHAN_N;i++){ const cx=L+CHAN_W*(i+0.5), jp=(i===2);
+      ctx.fillStyle=jp?'rgba(255,46,126,.16)':'rgba(39,230,255,.05)'; ctx.fillRect(L+CHAN_W*i+2, H-88, CHAN_W-4, 88);
+      ctx.save(); ctx.shadowColor=jp?'#ff2e7e':'#27e6ff'; ctx.shadowBlur=8; ctx.fillStyle=jp?'#ffd86b':'#7fe9ff'; ctx.textAlign='center'; ctx.font='bold 12px sans-serif';
+      ctx.fillText(CHAN_PTS[i], cx, H-14); ctx.restore(); }
     ctx.textAlign='left';
-    for(const p of posts){ ctx.fillStyle='#6a532c'; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.28); ctx.fill(); }
-    // 発射口（下・上向き）
-    ctx.fillStyle='#2a2018'; ctx.beginPath(); ctx.arc(LAUNCH.x,LAUNCH.y,15,0,6.28); ctx.fill();
-    ctx.strokeStyle='#c4142a'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(LAUNCH.x,LAUNCH.y,15,0,6.28); ctx.stroke();
-    ctx.fillStyle='#c4142a'; ctx.beginPath(); ctx.moveTo(LAUNCH.x,LAUNCH.y-9); ctx.lineTo(LAUNCH.x-5,LAUNCH.y-2); ctx.lineTo(LAUNCH.x+5,LAUNCH.y-2); ctx.closePath(); ctx.fill();
+    for(const p of posts){ ctx.save(); ctx.shadowColor='#27e6ff'; ctx.shadowBlur=8; ctx.fillStyle='#9fe9ff'; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.28); ctx.fill(); ctx.restore(); }
+    // 発射口（下・上向き）ネオンリング
+    ctx.save(); ctx.shadowColor='#ff2e7e'; ctx.shadowBlur=12;
+    ctx.fillStyle='#1a1240'; ctx.beginPath(); ctx.arc(LAUNCH.x,LAUNCH.y,15,0,6.28); ctx.fill();
+    ctx.strokeStyle='#ff5fb0'; ctx.lineWidth=2.5; ctx.beginPath(); ctx.arc(LAUNCH.x,LAUNCH.y,15,0,6.28); ctx.stroke();
+    ctx.fillStyle='#27e6ff'; ctx.beginPath(); ctx.moveTo(LAUNCH.x,LAUNCH.y-9); ctx.lineTo(LAUNCH.x-5,LAUNCH.y-2); ctx.lineTo(LAUNCH.x+5,LAUNCH.y-2); ctx.closePath(); ctx.fill(); ctx.restore();
   }
   function drawHabu(p){ const t=performance.now()/1000; ctx.save(); ctx.translate(p.x,p.y);
-    if(p.flash>0){ ctx.shadowColor='#fff'; ctx.shadowBlur=18*p.flash; }
+    ctx.shadowColor=p.flash>0?'#fff':'#7CFFB0'; ctx.shadowBlur=p.flash>0?20:9;
     ctx.rotate(Math.sin(t*2+p.x)*.05);
-    for(let r=0;r<2;r++){ const rr=p.r-r*5; ctx.lineWidth=5; ctx.strokeStyle=r%2?'#7c9646':'#9cc05e'; ctx.beginPath(); ctx.arc(0,0,rr,.2+r*.5,6.28+r*.5); ctx.stroke(); }
-    ctx.fillStyle='#54702c'; for(let i=0;i<6;i++){ const a=i*1.0+p.x; ctx.beginPath(); ctx.ellipse(Math.cos(a)*(p.r-3),Math.sin(a)*(p.r-3),2,1.3,a,0,6.28); ctx.fill(); }
-    ctx.fillStyle='#abce6c'; ctx.beginPath(); ctx.moveTo(0,p.r*0.5+5); ctx.lineTo(-6,p.r*0.5-6); ctx.quadraticCurveTo(0,p.r*0.5-10,6,p.r*0.5-6); ctx.closePath(); ctx.fill();
-    ctx.fillStyle='#f5e34a'; ctx.beginPath(); ctx.arc(-3,p.r*0.5-3,1.6,0,6.28); ctx.fill(); ctx.beginPath(); ctx.arc(3,p.r*0.5-3,1.6,0,6.28); ctx.fill();
+    const g=ctx.createRadialGradient(-3,-4,2,0,0,p.r); g.addColorStop(0,'#c9f59a'); g.addColorStop(1,'#56b23f');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,p.r,0,6.28); ctx.fill(); ctx.shadowBlur=0;
+    ctx.strokeStyle='#3f7a2a'; ctx.lineWidth=1.4; ctx.beginPath(); ctx.arc(0,0,p.r-0.7,0,6.28); ctx.stroke();
+    cuteFace(-2,4,3); ctx.strokeStyle='#ff4d6a'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(0,3.6); ctx.lineTo(0,6.4); ctx.stroke();
     ctx.restore(); }
-  function drawHerb(p){ ctx.save(); ctx.translate(p.x,p.y); if(p.flash>0){ ctx.shadowColor='#9cff7a'; ctx.shadowBlur=18*p.flash; }
-    ctx.fillStyle='#3f8f3a'; ctx.beginPath(); ctx.arc(0,0,p.r,0,6.28); ctx.fill();
-    ctx.strokeStyle='#bdf6a0'; ctx.lineWidth=2; for(let i=0;i<5;i++){ const a=i*1.256; ctx.beginPath(); ctx.moveTo(0,0); ctx.quadraticCurveTo(Math.cos(a)*p.r*0.7,Math.sin(a)*p.r*0.7-3,Math.cos(a)*p.r,Math.sin(a)*p.r); ctx.stroke(); }
-    ctx.restore(); }
-  function drawBottle(p){ ctx.save(); ctx.translate(p.x,p.y); if(p.flash>0){ ctx.shadowColor='#ffd76e'; ctx.shadowBlur=22*p.flash; }
-    ctx.fillStyle='#d9b66f'; ctx.beginPath(); ctx.arc(0,0,p.r,0,6.28); ctx.fill();
-    ctx.fillStyle='#3a2a0c'; ctx.font='bold 14px serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('H', 0,1);
-    ctx.textAlign='left'; ctx.textBaseline='alphabetic'; ctx.restore(); }
-  function drawMongoose(b){ ctx.save(); ctx.translate(b.x,b.y); ctx.rotate(b.roll);
-    const g=ctx.createRadialGradient(-3,-3,2,0,0,b.r); g.addColorStop(0,'#c9ad84'); g.addColorStop(1,'#7d5a32');
-    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,b.r,0,6.28); ctx.fill();
-    ctx.fillStyle='#1c1c1c'; ctx.beginPath(); ctx.arc(-3,b.r*.3,1.3,0,6.28); ctx.fill(); ctx.beginPath(); ctx.arc(3,b.r*.3,1.3,0,6.28); ctx.fill();
+  function drawHerb(p){ ctx.save(); ctx.translate(p.x,p.y); ctx.shadowColor=p.flash>0?'#fff':'#9cff7a'; ctx.shadowBlur=p.flash>0?20:9;
+    const g=ctx.createRadialGradient(-3,-4,2,0,0,p.r); g.addColorStop(0,'#9be86a'); g.addColorStop(1,'#2f8f3a');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,p.r,0,6.28); ctx.fill(); ctx.shadowBlur=0;
+    // 小さな葉っぱ
+    ctx.fillStyle='#bff59a'; ctx.beginPath(); ctx.ellipse(-3,-p.r+1,3,5,-0.5,0,6.28); ctx.fill(); ctx.beginPath(); ctx.ellipse(3,-p.r+1,3,5,0.5,0,6.28); ctx.fill();
+    cuteFace(-1,4,3.5); ctx.restore(); }
+  function drawBottle(p){ ctx.save(); ctx.translate(p.x,p.y); ctx.shadowColor=p.flash>0?'#fff':'#ffd86b'; ctx.shadowBlur=p.flash>0?24:12;
+    const g=ctx.createRadialGradient(-3,-4,2,0,0,p.r); g.addColorStop(0,'#ffe9a6'); g.addColorStop(1,'#e6b53e');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,p.r,0,6.28); ctx.fill(); ctx.shadowBlur=0;
+    ctx.fillStyle='#5a3a0c'; ctx.font='900 15px "Times New Roman",serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('H', 0,1);
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+    ctx.fillStyle='rgba(255,255,255,.7)'; ctx.beginPath(); ctx.arc(-p.r*.4,-p.r*.45,2,0,6.28); ctx.fill(); ctx.restore(); }
+  function drawMongoose(b){ ctx.save(); ctx.translate(b.x,b.y);
+    ctx.shadowColor='#ffd86b'; ctx.shadowBlur=10; ctx.rotate(b.roll);
+    const g=ctx.createRadialGradient(-3,-3,2,0,0,b.r); g.addColorStop(0,'#e7cfa0'); g.addColorStop(1,'#9c7140');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,b.r,0,6.28); ctx.fill(); ctx.shadowBlur=0;
+    // 耳
+    ctx.fillStyle='#86603a'; ctx.beginPath(); ctx.arc(-b.r*.7,-b.r*.7,3,0,6.28); ctx.fill(); ctx.beginPath(); ctx.arc(b.r*.7,-b.r*.7,3,0,6.28); ctx.fill();
+    cuteFace(-0.5,3.4,2.6);
+    ctx.fillStyle='#2a1a0c'; ctx.beginPath(); ctx.arc(0,2.6,1.1,0,6.28); ctx.fill();
     ctx.restore(); }
   function drawAim(){
     const dragging=!!aim;
@@ -451,23 +474,25 @@
     ctx.save();
     // 重力アークの予測（上へ）
     let x=LAUNCH.x,y=LAUNCH.y-12, vx=Math.cos(angle)*sp, vy=Math.sin(angle)*sp;
-    for(let i=0;i<40;i++){ vy+=GRAV; x+=vx; y+=vy; if(y<TOP+4||x<L||x>R) break; if(i%2===0){ ctx.fillStyle=`rgba(255,210,120,${.8-i/52})`; ctx.beginPath(); ctx.arc(x,y,2.6,0,6.28); ctx.fill(); } }
+    ctx.shadowColor='#27e6ff'; ctx.shadowBlur=8;
+    for(let i=0;i<40;i++){ vy+=GRAV; x+=vx; y+=vy; if(y<TOP+4||x<L||x>R) break; if(i%2===0){ ctx.fillStyle=`rgba(${i<14?'255,95,176':'120,235,255'},${.85-i/52})`; ctx.beginPath(); ctx.arc(x,y,2.6,0,6.28); ctx.fill(); } }
+    ctx.shadowBlur=0;
     // 砲口の向き
-    ctx.strokeStyle='#ffd76e'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(LAUNCH.x,LAUNCH.y); ctx.lineTo(LAUNCH.x+Math.cos(angle)*30,LAUNCH.y+Math.sin(angle)*30); ctx.stroke();
+    ctx.strokeStyle='#27e6ff'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(LAUNCH.x,LAUNCH.y); ctx.lineTo(LAUNCH.x+Math.cos(angle)*30,LAUNCH.y+Math.sin(angle)*30); ctx.stroke();
     if(dragging){
       // 引っぱりバンド＋ハンドル
-      ctx.strokeStyle='rgba(255,255,255,.45)'; ctx.lineWidth=2; ctx.setLineDash([5,5]);
+      ctx.strokeStyle='rgba(255,95,176,.6)'; ctx.lineWidth=2; ctx.setLineDash([5,5]);
       ctx.beginPath(); ctx.moveTo(LAUNCH.x,LAUNCH.y); ctx.lineTo(aim.px,aim.py); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle='rgba(255,255,255,.5)'; ctx.beginPath(); ctx.arc(aim.px,aim.py,7,0,6.28); ctx.fill();
+      ctx.fillStyle='rgba(255,95,176,.7)'; ctx.beginPath(); ctx.arc(aim.px,aim.py,7,0,6.28); ctx.fill();
       // パワーメーター（発射口の上）
       const bw=120, bx=LAUNCH.x-bw/2, by=LAUNCH.y-30;
-      ctx.fillStyle='#0008'; ctx.fillRect(bx,by,bw,7);
-      ctx.fillStyle=power<.6?'#9cc05e':(power<.85?'#d9b66f':'#c4142a'); ctx.fillRect(bx,by,bw*power,7);
+      ctx.fillStyle='#0006'; ctx.fillRect(bx,by,bw,7);
+      ctx.fillStyle=power<.6?'#7CFFB0':(power<.85?'#ffd86b':'#ff2e7e'); ctx.fillRect(bx,by,bw*power,7);
     } else {
       // 休止時のガイド（点滅）：下に引く動作を示す
       const t=(Math.sin(performance.now()/280)+1)/2;
-      ctx.globalAlpha=.55+t*.45; ctx.fillStyle='#ffd76e'; ctx.textAlign='center'; ctx.font='bold 12px sans-serif';
-      ctx.fillText('⬇ 引いて離す', LAUNCH.x+34, LAUNCH.y+5); ctx.textAlign='left'; ctx.globalAlpha=1;
+      ctx.globalAlpha=.55+t*.45; ctx.fillStyle='#7fe9ff'; ctx.shadowColor='#27e6ff'; ctx.shadowBlur=8; ctx.textAlign='center'; ctx.font='bold 12px sans-serif';
+      ctx.fillText('⬇ 引いて離す', LAUNCH.x+38, LAUNCH.y+5); ctx.textAlign='left'; ctx.shadowBlur=0; ctx.globalAlpha=1;
     }
     ctx.restore();
   }
