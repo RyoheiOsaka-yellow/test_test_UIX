@@ -20,6 +20,7 @@
 
   /* ===== ブランドヘッダー（紋章風） ===== */
   #brand{ text-align:center; margin:14px 0 6px; }
+  #brandLogo{ width:min(300px,72vw); height:auto; display:block; margin:0 auto 2px; filter:drop-shadow(0 4px 18px #000); }
   .crest{
     display:inline-flex; align-items:center; gap:10px; justify-content:center;
     padding:6px 18px; position:relative;
@@ -65,6 +66,7 @@
   .overlay.show{ display:flex; animation:fade .35s ease; }
   @keyframes fade{ from{opacity:0} to{opacity:1} }
   .overlay .bottle{ font-size:clamp(40px,11vw,54px); margin-bottom:6px; filter:drop-shadow(0 0 18px #d9b66f88); }
+  .overlay .ovlogo{ width:min(260px,66vw); height:auto; margin-bottom:8px; filter:drop-shadow(0 4px 18px #000); }
   .overlay h2{ margin:0; font-size:clamp(22px,7vw,30px); letter-spacing:4px; background:linear-gradient(180deg,#fff,#9aa0a6); -webkit-background-clip:text; background-clip:text; color:transparent; }
   .overlay .lead{ color:#cfc9c0; font-size:clamp(12px,3.4vw,14px); margin:6px 0 2px; }
   .overlay .crazy{ color:var(--crimson); font-style:italic; font-weight:800; font-size:clamp(18px,5.4vw,22px); margin:6px 0; text-shadow:0 0 16px #c4142a99; }
@@ -100,12 +102,15 @@
 </head>
 <body>
   <div id="brand">
-    <div class="crest">
+    <img id="brandLogo" src="assets/logo.png" alt="Double H — HABU×HERB"
+         onload="var c=document.getElementById('crestFb'),t=document.getElementById('taglineFb');if(c)c.style.display='none';if(t)t.style.display='none';"
+         onerror="this.style.display='none'">
+    <div class="crest" id="crestFb">
       <span class="snake l">🐍</span>
       <span class="dh">Double <b>H</b></span>
       <span class="snake">🐍</span>
     </div>
-    <div class="tagline">Let's be Crazy!!</div>
+    <div class="tagline" id="taglineFb">Let's be Crazy!!</div>
     <div class="jptitle">ハブハブハーブ</div>
     <div class="sub">HABU × HERB ・ AWAMORI LIQUEUR ・ PRODUCT OF OKINAWA</div>
     <div class="divider"></div>
@@ -116,7 +121,9 @@
 
     <!-- スタート -->
     <div class="overlay" id="startOv">
-      <div class="bottle">🍾</div>
+      <img class="ovlogo" src="assets/logo.png" alt="Double H"
+           onerror="this.style.display='none';var b=document.getElementById('startBottle');if(b)b.style.display='block'">
+      <div class="bottle" id="startBottle" style="display:none">🍾</div>
       <h2>ハブハブハーブ</h2>
       <div class="crazy">Let's be Crazy!!</div>
       <div class="lead">あなたはまだ、その誘惑を知らない。</div>

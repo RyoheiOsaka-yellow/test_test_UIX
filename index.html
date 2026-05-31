@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ハブハブハーブ｜Double H ・ HABU×HERB</title>
+<meta name="description" content="Double H（HABU×HERB）公式ミニゲーム「ハブハブハーブ」。マングースを転がしてハブを倒せ。Let's be Crazy!!">
+<meta property="og:title" content="ハブハブハーブ｜Double H">
+<meta property="og:description" content="マングースを転がしてハブを倒せ。2投でハイスコアを狙うDouble H公式ミニゲーム。">
+<meta property="og:type" content="website">
+<style>
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; }
+  body{
+    background:#000; color:#fff; min-height:100vh; min-height:100dvh;
+    font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
+    display:flex; flex-direction:column; align-items:center;
+    padding:24px 14px calc(28px + env(safe-area-inset-bottom)); text-align:center;
+    background:radial-gradient(circle at 50% -8%, #160a07 0%, #000 65%);
+  }
+  :root{ --crimson:#c4142a; --gold:#d9b66f; --silver:#cfd2d6; }
+  .logo{ width:min(420px,82vw); margin:6px auto 2px; }
+  .logo img{ width:100%; height:auto; display:block; filter:drop-shadow(0 6px 24px #000); }
+  /* ロゴ未配置時のフォールバック */
+  .fallback{ display:none; }
+  .fallback.show{ display:block; }
+  .fallback .crest{ display:flex; align-items:center; justify-content:center; gap:10px; }
+  .fallback .snake{ font-size:34px; filter:grayscale(1) brightness(1.6); }
+  .fallback .snake.l{ transform:scaleX(-1); }
+  .fallback .dh{ font-family:"Times New Roman",serif; font-weight:700; font-size:34px; }
+  .fallback .dh b{ color:var(--silver); }
+  .tagline{ color:var(--crimson); font-style:italic; font-weight:800; font-size:clamp(15px,4.6vw,20px); letter-spacing:1px; margin:6px 0 0; text-shadow:0 0 14px #c4142a66; }
+  .jptitle{ font-size:clamp(26px,8vw,40px); letter-spacing:6px; font-weight:800; margin:8px 0 0;
+    background:linear-gradient(180deg,#fff,#9aa0a6); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .sub{ font-size:clamp(9px,2.6vw,11px); letter-spacing:3px; color:#8a8f96; margin-top:4px; }
+  .lead{ color:#cfc9c0; font-size:clamp(13px,3.6vw,15px); line-height:1.9; margin:16px 0 4px; }
+  .divider{ width:min(280px,70vw); height:1px; margin:14px auto; background:linear-gradient(90deg,transparent,var(--gold),transparent); }
+  .play{ display:inline-block; margin:10px auto 2px; padding:16px 46px; font-size:20px; font-weight:900; letter-spacing:3px;
+    color:#fff; background:var(--crimson); border:1px solid #e0556a; border-radius:6px; text-decoration:none;
+    box-shadow:0 6px 22px #c4142a66; transition:transform .06s; }
+  .play:active{ transform:translateY(2px); }
+  .play .arrow{ font-style:normal; }
+
+  .card{ width:min(420px,90vw); margin:22px auto 0; background:#0c0805; border:1px solid #2a2018; border-radius:14px; padding:20px 18px; }
+  .card h2{ margin:0 0 4px; font-size:15px; letter-spacing:2px; color:var(--gold); }
+  .card .note{ font-size:11px; color:#8a8f96; margin:0 0 14px; }
+  .qrbox{ width:min(220px,58vw); aspect-ratio:1/1; margin:0 auto; background:#fff; border-radius:10px; padding:12px; }
+  .qrbox svg{ display:block; }
+  .qrurl{ font-family:ui-monospace,monospace; font-size:11px; color:#9aa0a6; word-break:break-all; margin-top:12px; }
+
+  .share{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:16px; }
+  .share a, .share button{ font-family:inherit; cursor:pointer; text-decoration:none; font-size:13px; font-weight:700;
+    padding:10px 16px; border-radius:6px; border:1px solid #33271d; background:#1a120c; color:#cfd2d6; }
+  .share a:active, .share button:active{ transform:translateY(1px); }
+
+  footer{ margin-top:26px; font-size:10px; letter-spacing:2px; color:#5f646b; line-height:1.8; }
+  .crazy{ color:var(--crimson); font-style:italic; font-weight:800; }
+</style>
+</head>
+<body>
+
+  <div class="logo">
+    <img src="game/assets/logo.png" alt="Double H — HABU×HERB"
+         onerror="this.style.display='none';document.getElementById('fb').classList.add('show')">
+    <div class="fallback" id="fb">
+      <div class="crest"><span class="snake l">🐍</span><span class="dh">Double <b>H</b></span><span class="snake">🐍</span></div>
+    </div>
+  </div>
+
+  <div class="tagline">Let's be Crazy!!</div>
+  <div class="jptitle">ハブハブハーブ</div>
+  <div class="sub">HABU × HERB ・ AWAMORI LIQUEUR ・ PRODUCT OF OKINAWA</div>
+
+  <p class="lead">あなたはまだ、その誘惑を知らない。<br>マングースを転がして、2投でハブを倒せ。</p>
+
+  <a class="play" href="game/">▶ 遊 ぶ <i class="arrow">🐍</i></a>
+
+  <div class="divider"></div>
+
+  <div class="card">
+    <h2>📱 スマホで読み取って今すぐプレイ</h2>
+    <p class="note">店頭POP・イベント・SNS配布用QRコード</p>
+    <div class="qrbox">
+      <svg viewBox="0 0 37 37" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"><path stroke="#0a0705" d="M2 2.5h7m1 0h1m1 0h1m2 0h2m1 0h6m1 0h1m2 0h7m-33 1h1m5 0h1m1 0h6m2 0h1m1 0h1m2 0h1m1 0h2m1 0h1m5 0h1m-33 1h1m1 0h3m1 0h1m4 0h1m4 0h2m1 0h1m4 0h1m1 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m1 0h3m1 0h1m1 0h1m1 0h1m2 0h1m2 0h1m3 0h1m1 0h3m1 0h1m-33 1h1m1 0h3m1 0h1m4 0h2m1 0h1m2 0h1m2 0h3m1 0h1m1 0h1m1 0h3m1 0h1m-33 1h1m5 0h1m3 0h1m2 0h2m3 0h2m2 0h1m1 0h1m1 0h1m5 0h1m-33 1h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7m-25 1h1m2 0h1m2 0h1m2 0h2m1 0h1m1 0h3m-25 1h1m1 0h2m1 0h3m1 0h2m1 0h1m1 0h1m1 0h6m4 0h1m2 0h1m1 0h2m-32 1h1m2 0h1m3 0h2m6 0h1m1 0h4m1 0h1m2 0h2m1 0h2m1 0h1m-32 1h1m4 0h2m6 0h1m1 0h2m4 0h2m1 0h5m2 0h1m-33 1h1m1 0h4m2 0h3m1 0h4m2 0h3m1 0h1m4 0h1m1 0h1m1 0h2m-32 1h4m1 0h1m3 0h1m1 0h1m2 0h1m2 0h2m1 0h5m1 0h3m-29 1h1m3 0h1m4 0h2m1 0h1m2 0h1m1 0h1m1 0h3m1 0h2m1 0h1m2 0h2m-30 1h2m2 0h1m1 0h3m2 0h1m1 0h2m1 0h4m4 0h1m1 0h1m1 0h1m-30 1h3m4 0h2m6 0h1m1 0h5m2 0h2m2 0h2m-30 1h6m5 0h1m1 0h2m2 0h6m1 0h2m1 0h3m-31 1h1m1 0h1m8 0h5m1 0h1m3 0h1m1 0h2m1 0h1m1 0h2m1 0h2m-29 1h5m1 0h1m3 0h2m1 0h1m2 0h1m1 0h1m4 0h2m1 0h2m-32 1h2m2 0h1m2 0h1m3 0h1m2 0h3m3 0h1m1 0h1m1 0h2m2 0h1m2 0h2m-32 1h1m1 0h4m1 0h3m1 0h4m2 0h2m1 0h1m1 0h2m2 0h1m1 0h2m-31 1h1m2 0h1m1 0h1m5 0h1m1 0h1m1 0h1m1 0h3m1 0h3m1 0h2m5 0h1m-29 1h1m1 0h1m7 0h1m1 0h3m1 0h2m1 0h2m1 0h3m2 0h2m-32 1h5m3 0h2m1 0h3m1 0h1m2 0h1m3 0h5m1 0h1m2 0h1m-33 1h1m1 0h1m1 0h1m1 0h2m1 0h1m2 0h1m2 0h1m1 0h1m1 0h1m2 0h7m-21 1h2m1 0h1m2 0h2m1 0h1m1 0h1m3 0h2m3 0h2m1 0h1m-32 1h7m1 0h1m10 0h2m2 0h2m1 0h1m1 0h1m-29 1h1m5 0h1m1 0h1m1 0h2m1 0h2m1 0h1m2 0h1m1 0h4m3 0h3m-31 1h1m1 0h3m1 0h1m2 0h1m1 0h1m5 0h1m1 0h1m1 0h8m1 0h1m-31 1h1m1 0h3m1 0h1m1 0h1m2 0h4m2 0h2m1 0h1m1 0h2m3 0h1m1 0h2m1 0h1m-33 1h1m1 0h3m1 0h1m1 0h1m2 0h2m4 0h1m2 0h2m3 0h3m1 0h1m-30 1h1m5 0h1m2 0h1m1 0h1m1 0h6m1 0h1m1 0h1m2 0h5m2 0h1m-33 1h7m1 0h3m4 0h1m1 0h2m2 0h1m1 0h1m1 0h1m2 0h1m1 0h1"/></svg>
+    </div>
+    <div class="qrurl" id="qrurl">https://ryoheiosaka-yellow.github.io/test_test_uix/</div>
+    <div class="share">
+      <a id="shareX" target="_blank" rel="noopener">𝕏 でシェア</a>
+      <a id="shareLine" target="_blank" rel="noopener">LINE で送る</a>
+      <button id="copyBtn">🔗 URLをコピー</button>
+    </div>
+  </div>
+
+  <footer>
+    DOUBLE H ・ HABU×HERB ・ AWAMORI LIQUEUR<br>
+    <span class="crazy">Let's be Crazy!!</span> ・ PRODUCT OF OKINAWA
+  </footer>
+
+<script>
+  // 実際のホスティングURLに合わせて共有リンクを動的生成（QR画像は配置先URL固定）
+  const url = location.href.replace(/index\.html?$/,'');
+  const text = "ハブハブハーブ｜Double H — マングースを転がしてハブを倒せ！Let's be Crazy!!";
+  document.getElementById('shareX').href  = "https://twitter.com/intent/tweet?text="+encodeURIComponent(text)+"&url="+encodeURIComponent(url)+"&hashtags=ハブハブハーブ,DoubleH";
+  document.getElementById('shareLine').href= "https://social-plugins.line.me/lineit/share?url="+encodeURIComponent(url);
+  document.getElementById('copyBtn').addEventListener('click', async (e)=>{
+    try{ await navigator.clipboard.writeText(url); e.target.textContent="✅ コピーしました"; setTimeout(()=>e.target.textContent="🔗 URLをコピー",1600); }
+    catch(_){ e.target.textContent=url; }
+  });
+</script>
+</body>
+</html>
