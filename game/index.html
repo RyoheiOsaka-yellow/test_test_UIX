@@ -60,10 +60,13 @@
   button.ghost{ background:#1a120c; color:#cfd2d6; border-color:#33271d; box-shadow:none; }
   .hint{ font-size:11px; color:#8a8f96; text-align:center; line-height:1.7; max-width:480px; padding:10px 12px 20px; }
 
-  /* ===== オーバーレイ ===== */
-  .overlay{ position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center;
-    background:radial-gradient(circle at 50% 35%, #1a0c08ee 0%, #000000f7 70%); border-radius:8px; text-align:center; padding:20px; }
-  .overlay.show{ display:flex; animation:fade .35s ease; }
+  /* ===== オーバーレイ（全画面モーダル・はみ出しはスクロール） ===== */
+  .overlay{ position:fixed; inset:0; display:none; z-index:50; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    background:radial-gradient(circle at 50% 30%, #1a0c08f5 0%, #000000fc 75%); text-align:center; }
+  .overlay.show{ display:flex; align-items:center; justify-content:center; animation:fade .35s ease; }
+  /* margin:auto により、内容が画面より高くても上端が切れずスクロール可能 */
+  .ovinner{ margin:auto; width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center;
+    padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom)); }
   @keyframes fade{ from{opacity:0} to{opacity:1} }
   .overlay .bottle{ font-size:clamp(40px,11vw,54px); margin-bottom:6px; filter:drop-shadow(0 0 18px #d9b66f88); }
   .overlay .ovlogo{ width:min(260px,66vw); height:auto; margin-bottom:8px; filter:drop-shadow(0 4px 18px #000); }
@@ -75,8 +78,8 @@
   .overlay .bestline{ font-size:13px; color:#9aa0a6; margin:4px 0 10px; }
   .overlay .promo{ font-size:11px; color:#7a7f86; letter-spacing:2px; margin-top:14px; }
 
-  /* エフェクト用キャンバス（紙吹雪。オーバーレイより前面・背景は透明に） */
-  #fx{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:20;
+  /* エフェクト用キャンバス（紙吹雪。全画面・最前面・背景透明） */
+  #fx{ position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:60;
        background:transparent; border:0; box-shadow:none; }
 
   /* ストライク時のボトル/ロゴ発光 */
@@ -94,7 +97,7 @@
   .coupon{ background:linear-gradient(180deg,#1c0d0a,#120907); border:1px dashed var(--gold); border-radius:10px; padding:10px 14px; margin:4px 0 12px; }
   .coupon .ctitle{ color:var(--gold); font-size:12px; letter-spacing:1px; }
   .coupon .ccode{ display:flex; align-items:center; gap:8px; justify-content:center; margin:6px 0 2px; }
-  .coupon .ccode span{ font-family:ui-monospace,monospace; font-size:20px; font-weight:900; letter-spacing:2px; color:#fff; }
+  .coupon .ccode span{ font-family:ui-monospace,monospace; font-size:clamp(16px,5vw,20px); font-weight:900; letter-spacing:2px; color:#fff; white-space:nowrap; }
   .coupon .ccode button{ background:var(--gold); color:#3a2a0c; border:none; border-radius:5px; padding:5px 10px; font-size:11px; font-weight:800; cursor:pointer; }
   .coupon .cnote{ font-size:10px; color:#9aa0a6; }
 
@@ -150,6 +153,7 @@
 
     <!-- スタート -->
     <div class="overlay" id="startOv">
+     <div class="ovinner">
       <img class="ovlogo" src="assets/logo.png" alt="Double H"
            onerror="this.style.display='none';var b=document.getElementById('startBottle');if(b)b.style.display='block'">
       <div class="bottle" id="startBottle" style="display:none">🍾</div>
@@ -160,10 +164,12 @@
       <div class="rankbox" id="startRank"></div>
       <button id="startBtn">は じ め る</button>
       <div class="promo">DOUBLE H ・ HABU×HERB</div>
+     </div>
     </div>
 
     <!-- 結果 -->
     <div class="overlay" id="resultOv">
+     <div class="ovinner">
       <div class="bottle" id="resBottle">🍾</div>
       <div class="judge" id="resJudge"></div>
       <div class="crazy" id="resCrazy" style="display:none">Let's be Crazy!!</div>
@@ -184,6 +190,7 @@
         <a id="ctaShop" class="ctabtn buy" target="_blank" rel="noopener">🛒 購入する</a>
       </div>
       <div class="promo">DOUBLE H ・ Product of OKINAWA</div>
+     </div>
     </div>
   </div>
 
@@ -233,9 +240,11 @@
   setTimeout(fit,300);                  // フォント読込後の保険
   ctx.scale(DPR,DPR);
 
-  // エフェクト用キャンバス（紙吹雪）
+  // エフェクト用キャンバス（紙吹雪・全画面）
   const fx=document.getElementById('fx'), fxc=fx.getContext('2d');
-  fx.width=W*DPR; fx.height=H*DPR; fxc.scale(DPR,DPR);
+  let FXW=window.innerWidth, FXH=window.innerHeight;
+  function resizeFx(){ FXW=window.innerWidth; FXH=window.innerHeight; fx.width=FXW*DPR; fx.height=FXH*DPR; fxc.setTransform(DPR,0,0,DPR,0,0); }
+  resizeFx(); window.addEventListener('resize',resizeFx); window.addEventListener('orientationchange',()=>setTimeout(resizeFx,250));
 
   // ===== キャンペーン設定（ここのURL/コードを差し替えるだけ）=====
   const CONFIG={
@@ -268,13 +277,17 @@
   function renderRank(elId, myScore, myRank){
     const el=document.getElementById(elId); if(!el) return;
     if(ranking.length===0){ el.innerHTML=''; return; }
-    let rows='';
-    ranking.forEach((s,i)=>{
+    const TOP=5; let rows='';
+    ranking.slice(0,TOP).forEach((s,i)=>{
       const me=(myRank===i+1 && s===myScore);
       const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.';
       rows+=`<div class="rankrow${me?' me':''}"><span class="rk">${medal}</span><span>${s} 点${me?' ◀ 今回':''}</span></div>`;
     });
-    el.innerHTML=`<div class="rt">🏆 ランキング BEST ${ranking.length}</div>${rows}`;
+    // 自分が6位以下なら自分の行も追記
+    if(myRank>TOP && myRank<=10){
+      rows+=`<div class="rankrow me"><span class="rk">${myRank}.</span><span>${myScore} 点 ◀ 今回</span></div>`;
+    }
+    el.innerHTML=`<div class="rt">🏆 ランキング TOP${Math.min(TOP,ranking.length)}</div>${rows}`;
   }
 
   // ===== オーディオ =====
@@ -451,19 +464,19 @@
   const CONF_COLORS=['#c4142a','#d9b66f','#ffffff','#9cc05e','#ffd76e'];
   function burstConfetti(n){
     for(let i=0;i<n;i++){
-      confetti.push({ x:W*Math.random(), y:-10-Math.random()*60,
-        vx:(Math.random()-0.5)*3, vy:2+Math.random()*3.5,
-        size:4+Math.random()*5, rot:Math.random()*6.28, vr:(Math.random()-0.5)*0.4,
+      confetti.push({ x:FXW*Math.random(), y:-10-Math.random()*60,
+        vx:(Math.random()-0.5)*3, vy:2.5+Math.random()*4,
+        size:5+Math.random()*6, rot:Math.random()*6.28, vr:(Math.random()-0.5)*0.4,
         color:CONF_COLORS[(Math.random()*CONF_COLORS.length)|0], sway:Math.random()*6.28 });
     }
   }
   function drawConfetti(){
-    fxc.clearRect(0,0,W,H);
+    fxc.clearRect(0,0,FXW,FXH);
     if(confetti.length===0) return;
     for(let i=confetti.length-1;i>=0;i--){
       const p=confetti[i];
       p.sway+=0.1; p.x+=p.vx+Math.sin(p.sway)*0.6; p.y+=p.vy; p.vy+=0.04; p.rot+=p.vr;
-      if(p.y>H+20){ confetti.splice(i,1); continue; }
+      if(p.y>FXH+20){ confetti.splice(i,1); continue; }
       fxc.save(); fxc.translate(p.x,p.y); fxc.rotate(p.rot); fxc.fillStyle=p.color;
       fxc.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6); fxc.restore();
     }
