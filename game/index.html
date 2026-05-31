@@ -148,6 +148,7 @@
     <div id="msg">マングースを後ろに引いて、離して転がそう！</div>
     <div id="controls">
       <div class="spin">カーブ <input type="range" id="spin" min="-100" max="100" value="0"></div>
+      <button id="musicBtn" class="ghost">🎵 音楽 OFF</button>
       <button id="soundBtn" class="ghost">🔈 音</button>
       <button id="resetBtn" class="ghost">最初から</button>
     </div>
@@ -199,17 +200,62 @@
 
   // ===== オーディオ =====
   let actx=null, soundOn=true;
-  function audio(){ if(!actx){ try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return actx; }
+  function audio(){ if(!actx){ try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(actx&&actx.state==='suspended') actx.resume(); return actx; }
   function blip(f,d,t='sine',v=0.2,s=null){ if(!soundOn) return; const a=audio(); if(!a) return;
     const o=a.createOscillator(),g=a.createGain(); o.type=t; o.frequency.value=f;
     if(s) o.frequency.exponentialRampToValueAtTime(s,a.currentTime+d);
     g.gain.value=v; g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+d); o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime+d); }
   const sndThrow=()=>blip(220,.25,'sawtooth',.12,90);
-  const sndHit=v=>{ blip(120+Math.min(v,12)*18,.12,'square',Math.min(.06+v*.01,.2)); blip(70,.1,'triangle',.12); };
+  const sndHit=v=>{ blip(120+Math.min(v,12)*18,.12,'square',Math.min(.06+v*.01,.2)); blip(70,.1,'triangle',.12); if(navigator.vibrate&&v>3) navigator.vibrate(Math.min(35,Math.round(v*4))); };
   const sndPin=()=>blip(330,.08,'square',.08);
-  const sndStrike=()=>[523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>blip(f,.28,'triangle',.18),i*85));
-  const sndSpare=()=>[523,784].forEach((f,i)=>setTimeout(()=>blip(f,.22,'triangle',.16),i*110));
+  const sndStrike=()=>{ [523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>blip(f,.28,'triangle',.18),i*85)); if(navigator.vibrate) navigator.vibrate([0,40,40,70]); };
+  const sndSpare=()=>{ [523,784].forEach((f,i)=>setTimeout(()=>blip(f,.22,'triangle',.16),i*110)); if(navigator.vibrate) navigator.vibrate(60); };
   const sndGutter=()=>blip(180,.3,'sine',.12,80);
+
+  // ===== インド風BGM（WebAudio合成・外部音源なし）=====
+  let musicOn=false, musicUserOff=false, musicGain=null, droneNodes=[], schedTimer=null, nextTime=0, mstep=0;
+  const TEMPO=96, SUB=60/TEMPO/2, BASE=146.83;          // D3基準
+  const SCALE=[0,1,4,5,7,8,11];                          // ラーガ(バイラヴ)風スケール
+  const noteHz=(deg,oct)=>BASE*Math.pow(2,(SCALE[((deg%7)+7)%7]+12*(oct+Math.floor(deg/7)))/12);
+  const GE =[1,0,0,1, 0,0,1,0, 1,0,0,1, 0,1,0,0];        // 低い太鼓(ゲ)
+  const NA =[0,0,1,0, 1,0,0,1, 0,1,1,0, 1,0,1,1];        // 高い太鼓(ナ)
+  const MEL=[0,-1,1,2, -1,1,0,-1, 4,-1,2,1, -1,0,-1,-1]; // 旋律(音度, -1=休符)
+  function tabla(time,type){ const a=actx; if(!a) return;
+    if(type==='ge'){ const o=a.createOscillator(),g=a.createGain();
+      o.type='sine'; o.frequency.setValueAtTime(150,time); o.frequency.exponentialRampToValueAtTime(68,time+.18);
+      g.gain.setValueAtTime(.0001,time); g.gain.exponentialRampToValueAtTime(.16,time+.005); g.gain.exponentialRampToValueAtTime(.0001,time+.26);
+      o.connect(g).connect(musicGain); o.start(time); o.stop(time+.3);
+    } else { const o=a.createOscillator(),g=a.createGain(),bp=a.createBiquadFilter();
+      o.type='triangle'; o.frequency.setValueAtTime(360,time); o.frequency.exponentialRampToValueAtTime(210,time+.05);
+      bp.type='bandpass'; bp.frequency.value=330; bp.Q.value=2.5;
+      g.gain.setValueAtTime(.0001,time); g.gain.exponentialRampToValueAtTime(.1,time+.003); g.gain.exponentialRampToValueAtTime(.0001,time+.09);
+      o.connect(bp).connect(g).connect(musicGain); o.start(time); o.stop(time+.1); } }
+  function pluck(time,hz,vol){ const a=actx; if(!a) return;
+    const o=a.createOscillator(),o2=a.createOscillator(),g=a.createGain(),lp=a.createBiquadFilter();
+    o.type='sawtooth'; o2.type='triangle'; o.frequency.value=hz; o2.frequency.value=hz*2.005;
+    lp.type='lowpass'; lp.frequency.setValueAtTime(2600,time); lp.frequency.exponentialRampToValueAtTime(650,time+.45);
+    g.gain.setValueAtTime(.0001,time); g.gain.exponentialRampToValueAtTime(vol,time+.01); g.gain.exponentialRampToValueAtTime(.0001,time+.5);
+    o.connect(lp); o2.connect(lp); lp.connect(g).connect(musicGain); o.start(time); o2.start(time); o.stop(time+.55); o2.stop(time+.55); }
+  function startDrone(){ const a=actx; if(!a) return;
+    [[0,-1],[4,-1],[0,0]].forEach(([d,o],k)=>{ const osc=a.createOscillator(),g=a.createGain(),lp=a.createBiquadFilter();
+      osc.type='sawtooth'; osc.frequency.value=noteHz(d,o); lp.type='lowpass'; lp.frequency.value=520;
+      g.gain.value=0; osc.connect(lp).connect(g).connect(musicGain); osc.start();
+      g.gain.linearRampToValueAtTime(k===2?.018:.045,a.currentTime+1.6); droneNodes.push({osc,g}); }); }
+  function scheduler(){ const a=actx; if(!a||!musicOn) return;
+    while(nextTime < a.currentTime+0.13){
+      if(GE[mstep]) tabla(nextTime,'ge');
+      if(NA[mstep]) tabla(nextTime,'na');
+      const m=MEL[mstep]; if(m!==-1) pluck(nextTime,noteHz(m,1),.07);
+      nextTime+=SUB; mstep=(mstep+1)%16;
+    } }
+  function startMusic(){ const a=audio(); if(!a) return;
+    if(!musicGain){ musicGain=a.createGain(); musicGain.gain.value=.55; musicGain.connect(a.destination); }
+    musicOn=true; mstep=0; nextTime=a.currentTime+0.1; startDrone();
+    clearInterval(schedTimer); schedTimer=setInterval(scheduler,25);
+    const b=document.getElementById('musicBtn'); if(b) b.textContent='🎵 音楽 ON'; }
+  function stopMusic(){ musicOn=false; clearInterval(schedTimer); schedTimer=null; const a=actx;
+    if(a) droneNodes.forEach(n=>{ try{ n.g.gain.cancelScheduledValues(a.currentTime); n.g.gain.linearRampToValueAtTime(.0001,a.currentTime+.4); n.osc.stop(a.currentTime+.5);}catch(e){} });
+    droneNodes=[]; const b=document.getElementById('musicBtn'); if(b) b.textContent='🎵 音楽 OFF'; }
 
   // ===== ピン/ボール =====
   function pinTriangle(){ const cx=LANE.x+LANE.w/2, sy=LANE.top+44, dx=30, dy=30, a=[];
@@ -223,6 +269,7 @@
     newRack(); placeBall(); state=S.AIM;
     setMsg("マングースを後ろに引いて、離して転がそう！");
     hide('startOv'); hide('resultOv'); updateStats();
+    if(!musicOn && !musicUserOff) startMusic();   // 初回ゲーム開始でBGM自動再生
   }
   function fullReset(){ state=S.START; show('startOv'); document.getElementById('startBest').textContent='ベストスコア: '+best; updateStats(); }
 
@@ -377,8 +424,9 @@
 
   document.getElementById('startBtn').addEventListener('click',startGame);
   document.getElementById('retryBtn').addEventListener('click',startGame);
-  document.getElementById('resetBtn').addEventListener('click',fullReset);
+  document.getElementById('resetBtn').addEventListener('click',startGame);   // 最初から＝即リスタート
   document.getElementById('soundBtn').addEventListener('click',e=>{ soundOn=!soundOn; e.target.textContent=soundOn?'🔈 音':'🔇 消音'; if(soundOn) audio(); });
+  document.getElementById('musicBtn').addEventListener('click',()=>{ if(musicOn){ musicUserOff=true; stopMusic(); } else { musicUserOff=false; startMusic(); } });
 
   // 初期表示
   document.getElementById('startBest').textContent='ベストスコア: '+best;
