@@ -186,25 +186,6 @@
     </div>
   </div>
 
-  <div id="hud">
-    <div id="stats">
-      <div class="stat"><div class="lab">のこり球</div><div class="val" id="ballsVal">3</div></div>
-      <div class="stat"><div class="lab">SCORE</div><div class="val score" id="scoreVal">0</div></div>
-      <div class="stat"><div class="lab">BEST</div><div class="val best" id="bestVal">0</div></div>
-    </div>
-    <div id="msg">⬇ 発射口を下に引いて、離すと上へ発射！</div>
-    <div id="controls">
-      <button id="launchBtn">発 射</button>
-      <button id="musicBtn" class="ghost">🎵 音楽 OFF</button>
-      <button id="soundBtn" class="ghost">🔈 音</button>
-      <button id="resetBtn" class="ghost">最初から</button>
-    </div>
-  </div>
-  <p class="hint">
-    🖱️ 下の発射口を<b>下方向に引っぱって離すと、上へ発射</b>（引く距離＝強さ／斜めに引くと角度がつく）。「発射」ボタンやスペースキーでもOK。<br>
-    🐍ハブ=100点、🌿ハーブ=300点、🍾ボトル=1000点。落ちた先の<b>下のチャンネル</b>でボーナス（中央ほど高得点）。<br>
-    <b>1プレイ3球</b>、合計点に応じて景品GET！
-  </p>
 
 <script>
 (()=>{
@@ -316,7 +297,7 @@
   }
 
   function newBall(){ ball=null; aim=null; state=S.AIM; ballScore=0; restAngle=-Math.PI/2;
-    setMsg(`第${4-ballsLeft}球｜⬇ 下に引いて離す（または発射ボタン）`); updateStats(); }
+    setMsg(`第${4-ballsLeft}球｜⬇ 下に引いて離す`); updateStats(); }
 
   function startGame(){
     ballsLeft=3; total=0; ballScore=0; buildBoard();
@@ -533,18 +514,36 @@
     }
     ctx.restore();
   }
+  function drawHUD(){
+    // スコア（左上）
+    ctx.save(); ctx.shadowColor='#ffd86b'; ctx.shadowBlur=8; ctx.fillStyle='#ffd86b';
+    ctx.font='900 20px sans-serif'; ctx.textAlign='left'; ctx.fillText(String(total), L+2, 22); ctx.restore();
+    ctx.fillStyle='#7fe9ff'; ctx.font='bold 9px sans-serif'; ctx.fillText('SCORE', L+2, 33);
+    ctx.fillStyle='#8fa3c8'; ctx.font='bold 10px sans-serif'; ctx.textAlign='left'; ctx.fillText('BEST '+best, L+70, 21);
+    // のこり球（右上・ドット）
+    const left=(state===S.OVER?0:ballsLeft);
+    ctx.textAlign='right'; ctx.fillStyle='#8fa3c8'; ctx.font='bold 9px sans-serif'; ctx.fillText('のこり', R-2-3*16, 12);
+    for(let i=0;i<3;i++){ const cx=R-8-i*16, on=i<left;
+      ctx.beginPath(); ctx.arc(cx,18,5,0,6.28);
+      if(on){ ctx.save(); ctx.shadowColor='#ff2e7e'; ctx.shadowBlur=8; ctx.fillStyle='#ff5fb0'; ctx.fill(); ctx.restore(); }
+      else { ctx.fillStyle='rgba(255,255,255,.18)'; ctx.fill(); } }
+    ctx.textAlign='left';
+    // メッセージ（中央・盤面上部）
+    if(msgText){ ctx.save(); ctx.shadowColor='#27e6ff'; ctx.shadowBlur=6; ctx.fillStyle='#eaf3ff';
+      ctx.font='bold 13px sans-serif'; ctx.textAlign='center'; ctx.fillText(msgText, W/2, 50); ctx.restore(); ctx.textAlign='left'; }
+  }
   function draw(){ ctx.save(); if(shake>.3) ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
     ctx.clearRect(-20,-20,W+40,H+40); drawBoard();
     for(const p of pegs){ if(p.type==='habu') drawHabu(p); else if(p.type==='herb') drawHerb(p); else drawBottle(p); }
     if(ball) drawMongoose(ball);
     if(state===S.AIM) drawAim();
-    // 今球の獲得
-    ctx.fillStyle='#e7e2dacc'; ctx.font='bold 12px sans-serif'; ctx.textAlign='right'; ctx.fillText('この球 +'+ballScore, R-4, TOP-10); ctx.textAlign='left';
+    drawHUD();
     ctx.restore(); }
 
-  // ===== UI =====
-  const msgEl=document.getElementById('msg'); const setMsg=t=>msgEl.textContent=t;
-  function updateStats(){ document.getElementById('ballsVal').textContent=(state===S.OVER?0:ballsLeft); document.getElementById('scoreVal').textContent=total; document.getElementById('bestVal').textContent=best; }
+  // ===== UI（HUDは盤面内に描画）=====
+  let msgText='';
+  const setMsg=t=>{ msgText=t; };
+  function updateStats(){ /* 盤面内 drawHUD で描画 */ }
   function renderTiers(elId, score){ const el=document.getElementById(elId); if(!el) return; let rows='';
     [...CONFIG.prizes].reverse().forEach(t=>{ const got=score>=t.min; rows+=`<div class="tierrow${got?' got':''}"><span>${t.emoji} ${t.name}</span><span class="tmin">${t.min===0?'参加賞':t.min+'点〜'}</span></div>`; });
     el.innerHTML=`<div class="tt">🎁 景品ラインナップ</div>${rows}`; }
@@ -557,10 +556,6 @@
   document.getElementById('howStartBtn').addEventListener('click',startGame);    // あそびかた → ゲーム
   document.getElementById('howBackBtn').addEventListener('click',showTop);
   document.getElementById('retryBtn').addEventListener('click',startGame);
-  document.getElementById('resetBtn').addEventListener('click',showTop);         // 最初から → TOP
-  document.getElementById('launchBtn').addEventListener('click',()=>{ if(state===S.AIM) launch(restAngle,0.72); });
-  document.getElementById('soundBtn').addEventListener('click',e=>{ soundOn=!soundOn; e.target.textContent=soundOn?'🔈 音':'🔇 消音'; if(soundOn) audio(); });
-  document.getElementById('musicBtn').addEventListener('click',()=>{ if(musicOn){ musicUserOff=true; stopMusic(); } else { musicUserOff=false; startMusic(); } });
   document.getElementById('ctaSite').href=CONFIG.siteUrl; document.getElementById('ctaShop').href=CONFIG.shopUrl;
   document.getElementById('couponCode').textContent=CONFIG.couponCode;
   document.getElementById('couponCopy').addEventListener('click',async e=>{ try{ await navigator.clipboard.writeText(CONFIG.couponCode); e.target.textContent='✅'; setTimeout(()=>e.target.textContent='コピー',1500);}catch(_){ } });
