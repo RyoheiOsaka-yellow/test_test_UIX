@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>ハブハブハーブ｜Double H</title>
 <style>
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -12,7 +12,9 @@
     color:#fff;
     font-family:"Hiragino Mincho ProN","Yu Mincho",serif;
     display:flex; flex-direction:column; align-items:center;
-    min-height:100%; user-select:none; overflow-x:hidden;
+    min-height:100vh; min-height:100dvh;
+    user-select:none; overflow-x:hidden; overscroll-behavior:none;
+    padding-bottom:env(safe-area-inset-bottom);
   }
   :root{ --crimson:#c4142a; --gold:#d9b66f; --silver:#cfd2d6; }
 
@@ -62,14 +64,38 @@
     background:radial-gradient(circle at 50% 35%, #1a0c08ee 0%, #000000f7 70%); border-radius:8px; text-align:center; padding:20px; }
   .overlay.show{ display:flex; animation:fade .35s ease; }
   @keyframes fade{ from{opacity:0} to{opacity:1} }
-  .overlay .bottle{ font-size:54px; margin-bottom:6px; filter:drop-shadow(0 0 18px #d9b66f88); }
-  .overlay h2{ margin:0; font-size:30px; letter-spacing:4px; background:linear-gradient(180deg,#fff,#9aa0a6); -webkit-background-clip:text; background-clip:text; color:transparent; }
-  .overlay .lead{ color:#cfc9c0; font-size:14px; margin:6px 0 2px; }
-  .overlay .crazy{ color:var(--crimson); font-style:italic; font-weight:800; font-size:22px; margin:6px 0; text-shadow:0 0 16px #c4142a99; }
-  .overlay .bigscore{ font-size:56px; font-weight:900; color:var(--gold); margin:6px 0 0; text-shadow:0 2px 0 #000; }
+  .overlay .bottle{ font-size:clamp(40px,11vw,54px); margin-bottom:6px; filter:drop-shadow(0 0 18px #d9b66f88); }
+  .overlay h2{ margin:0; font-size:clamp(22px,7vw,30px); letter-spacing:4px; background:linear-gradient(180deg,#fff,#9aa0a6); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .overlay .lead{ color:#cfc9c0; font-size:clamp(12px,3.4vw,14px); margin:6px 0 2px; }
+  .overlay .crazy{ color:var(--crimson); font-style:italic; font-weight:800; font-size:clamp(18px,5.4vw,22px); margin:6px 0; text-shadow:0 0 16px #c4142a99; }
+  .overlay .bigscore{ font-size:clamp(40px,13vw,56px); font-weight:900; color:var(--gold); margin:6px 0 0; text-shadow:0 2px 0 #000; }
   .overlay .judge{ font-size:20px; font-weight:800; letter-spacing:2px; margin:2px 0 4px; }
   .overlay .bestline{ font-size:13px; color:#9aa0a6; margin:4px 0 14px; }
   .overlay .promo{ font-size:11px; color:#7a7f86; letter-spacing:2px; margin-top:14px; }
+
+  /* ===== スマホ最適化 ===== */
+  @media (max-width:480px){
+    .crest{ gap:6px; padding:4px 10px; }
+    .crest .snake{ font-size:24px; }
+    .crest .dh{ font-size:24px; }
+    .jptitle{ font-size:22px; letter-spacing:4px; }
+    .sub{ font-size:8px; letter-spacing:1.5px; }
+    .divider{ width:180px; }
+    #brand{ margin:8px 0 4px; }
+    .stat{ min-width:70px; padding:5px 10px; }
+    .stat .val{ font-size:18px; }
+    button{ padding:11px 18px; }            /* タップしやすく */
+    input[type=range]{ width:96px; height:26px; }
+    .hint{ font-size:10px; line-height:1.5; padding:8px 10px 12px; }
+  }
+  /* 縦の短い端末（横向き等）ではヒント/装飾を省いて盤面優先 */
+  @media (max-height:720px){
+    .hint{ display:none; }
+    .sub{ display:none; }
+    .divider{ display:none; }
+    #brand{ margin:6px 0 2px; }
+    #hud{ margin-top:6px; gap:5px; }
+  }
 </style>
 </head>
 <body>
@@ -138,8 +164,25 @@
   const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
   const W=420,H=600, DPR=Math.min(window.devicePixelRatio||1,2);
   cv.width=W*DPR; cv.height=H*DPR;
-  function fit(){ const c=Math.min(W,window.innerWidth-16); cv.style.width=c+'px'; cv.style.height=(c*H/W)+'px'; }
-  fit(); window.addEventListener('resize',fit); ctx.scale(DPR,DPR);
+  function fit(){
+    // 横幅と「残りの縦スペース」の両方に収まるよう、アスペクト比を保って算出
+    const brand=document.getElementById('brand'), hud=document.getElementById('hud'), hint=document.querySelector('.hint');
+    const reserve=(brand?brand.offsetHeight:0)+(hud?hud.offsetHeight:0)+((hint&&getComputedStyle(hint).display!=='none')?hint.offsetHeight:0)+26;
+    const maxW=window.innerWidth-12;
+    const maxH=Math.max(240, window.innerHeight-reserve);
+    const ar=W/H;
+    let w=Math.min(maxW, W);
+    let h=w/ar;
+    if(h>maxH){ h=maxH; w=h*ar; }
+    cv.style.width=w+'px'; cv.style.height=h+'px';
+  }
+  fit();
+  window.addEventListener('resize',fit);
+  window.addEventListener('orientationchange',()=>setTimeout(fit,250));
+  requestAnimationFrame(fit);           // レイアウト確定後に再計算
+  window.addEventListener('load',fit);
+  setTimeout(fit,300);                  // フォント読込後の保険
+  ctx.scale(DPR,DPR);
 
   const LANE={ x:62, w:296, top:50, foul:520 };
   const GUTTER=20, PLAY_L=LANE.x+GUTTER, PLAY_R=LANE.x+LANE.w-GUTTER;
