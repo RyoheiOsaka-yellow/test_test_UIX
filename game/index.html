@@ -91,9 +91,8 @@
   .ctabtn{ text-decoration:none; font-size:13px; font-weight:800; padding:10px 18px; border-radius:999px; border:1px solid rgba(39,230,255,.45); background:rgba(255,255,255,.06); color:#dff6ff; box-shadow:0 0 12px rgba(39,230,255,.18); }
   .ctabtn.buy{ background:linear-gradient(180deg,#ffe48f,#ffd86b); color:#3a2a0c; border-color:#ffe9a6; box-shadow:0 0 16px #ffd86b66; }
 
-  /* プレイ中はヘッダー・説明文を隠して盤面を最大化 */
+  /* プレイ中はヘッダーを隠して盤面を最大化（ヒントは残す＝引きしろにもなる）*/
   body.playing #brand{ display:none; }
-  body.playing .hint{ display:none; }
   body.playing #wrap{ margin-top:6px; }
 
   /* あそびかた（説明）画面 */
@@ -186,6 +185,10 @@
     </div>
   </div>
 
+  <p class="hint">
+    ⬇ 発射口を<b>下に引っぱって離す</b>と上へ発射（引く距離＝強さ／斜めに引くと角度）。<br>
+    🐍ハブ100・🌿ハーブ300・🍾ボトル1000、落ちた先の<b>下のチャンネル</b>でボーナス（中央ほど高得点）。
+  </p>
 
 <script>
 (()=>{
@@ -225,8 +228,8 @@
 
   // ===== 物理・盤面 =====
   const L=22, R=398, TOP=30, BALL_R=9;
-  const GRAV=0.16, AIR=0.999, REST=0.5, BUMP_REST=0.74, MAXV=12, STOP=0.2, MAXPULL=120;
-  const LAUNCH={ x:210, y:H-46 };   // 発射口は下・上へ撃つ
+  const GRAV=0.16, AIR=0.999, REST=0.5, BUMP_REST=0.74, MAXV=12, STOP=0.2, MAXPULL=80;
+  const LAUNCH={ x:210, y:H-78 };   // 発射口は下・上へ撃つ（少し上げて引きしろを確保）
   const SCORE_HABU=100, SCORE_HERB=300, SCORE_BOTTLE=1000;
   const CHAN_PTS=[200,500,1500,500,200];           // 下部チャンネル（5分割・中央が最高）
   const CHAN_N=CHAN_PTS.length, CHAN_W=(R-L)/CHAN_N;
