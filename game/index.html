@@ -75,8 +75,9 @@
   .overlay .bestline{ font-size:13px; color:#9aa0a6; margin:4px 0 10px; }
   .overlay .promo{ font-size:11px; color:#7a7f86; letter-spacing:2px; margin-top:14px; }
 
-  /* エフェクト用キャンバス（紙吹雪。オーバーレイより前面） */
-  #fx{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:20; }
+  /* エフェクト用キャンバス（紙吹雪。オーバーレイより前面・背景は透明に） */
+  #fx{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:20;
+       background:transparent; border:0; box-shadow:none; }
 
   /* ストライク時のボトル/ロゴ発光 */
   .overlay.celebrate .bottle, .overlay.celebrate .ovlogo{ animation:glow 1s ease-in-out infinite alternate; }
