@@ -72,8 +72,35 @@
   .overlay .crazy{ color:var(--crimson); font-style:italic; font-weight:800; font-size:clamp(18px,5.4vw,22px); margin:6px 0; text-shadow:0 0 16px #c4142a99; }
   .overlay .bigscore{ font-size:clamp(40px,13vw,56px); font-weight:900; color:var(--gold); margin:6px 0 0; text-shadow:0 2px 0 #000; }
   .overlay .judge{ font-size:20px; font-weight:800; letter-spacing:2px; margin:2px 0 4px; }
-  .overlay .bestline{ font-size:13px; color:#9aa0a6; margin:4px 0 14px; }
+  .overlay .bestline{ font-size:13px; color:#9aa0a6; margin:4px 0 10px; }
   .overlay .promo{ font-size:11px; color:#7a7f86; letter-spacing:2px; margin-top:14px; }
+
+  /* エフェクト用キャンバス（紙吹雪。オーバーレイより前面） */
+  #fx{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:20; }
+
+  /* ストライク時のボトル/ロゴ発光 */
+  .overlay.celebrate .bottle, .overlay.celebrate .ovlogo{ animation:glow 1s ease-in-out infinite alternate; }
+  @keyframes glow{ from{ filter:drop-shadow(0 0 10px #d9b66f88); } to{ filter:drop-shadow(0 0 28px #ffd76e) drop-shadow(0 0 48px #c4142a); } }
+
+  /* ランキング */
+  .rankbox{ width:min(280px,80%); margin:4px auto 12px; font-size:12px; }
+  .rankbox .rt{ color:var(--gold); letter-spacing:2px; font-size:11px; margin-bottom:4px; }
+  .rankrow{ display:flex; justify-content:space-between; padding:2px 8px; border-bottom:1px solid #ffffff10; color:#cfc9c0; font-variant-numeric:tabular-nums; }
+  .rankrow.me{ background:#c4142a22; color:#fff; border-radius:4px; font-weight:800; }
+  .rankrow .rk{ color:#8a8f96; width:28px; text-align:left; }
+
+  /* クーポン */
+  .coupon{ background:linear-gradient(180deg,#1c0d0a,#120907); border:1px dashed var(--gold); border-radius:10px; padding:10px 14px; margin:4px 0 12px; }
+  .coupon .ctitle{ color:var(--gold); font-size:12px; letter-spacing:1px; }
+  .coupon .ccode{ display:flex; align-items:center; gap:8px; justify-content:center; margin:6px 0 2px; }
+  .coupon .ccode span{ font-family:ui-monospace,monospace; font-size:20px; font-weight:900; letter-spacing:2px; color:#fff; }
+  .coupon .ccode button{ background:var(--gold); color:#3a2a0c; border:none; border-radius:5px; padding:5px 10px; font-size:11px; font-weight:800; cursor:pointer; }
+  .coupon .cnote{ font-size:10px; color:#9aa0a6; }
+
+  /* CTA */
+  .cta{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-top:12px; }
+  .ctabtn{ text-decoration:none; font-size:13px; font-weight:800; padding:9px 16px; border-radius:6px; border:1px solid #33271d; background:#1a120c; color:#cfd2d6; }
+  .ctabtn.buy{ background:var(--gold); color:#3a2a0c; border-color:#e7cf88; }
 
   /* ===== スマホ最適化 ===== */
   @media (max-width:480px){
@@ -118,6 +145,7 @@
 
   <div id="wrap">
     <canvas id="cv"></canvas>
+    <canvas id="fx"></canvas>
 
     <!-- スタート -->
     <div class="overlay" id="startOv">
@@ -128,7 +156,7 @@
       <div class="crazy">Let's be Crazy!!</div>
       <div class="lead">あなたはまだ、その誘惑を知らない。</div>
       <div class="lead">マングースを転がして、2投でハブを倒せ。</div>
-      <div class="bestline" id="startBest">ベストスコア: 0</div>
+      <div class="rankbox" id="startRank"></div>
       <button id="startBtn">は じ め る</button>
       <div class="promo">DOUBLE H ・ HABU×HERB</div>
     </div>
@@ -141,7 +169,19 @@
       <div class="bigscore" id="resScore">0</div>
       <div class="bestline" id="resBest"></div>
       <div class="lead" id="resLead"></div>
+      <!-- ストライク特典クーポン -->
+      <div class="coupon" id="resCoupon" style="display:none">
+        <div class="ctitle">🎁 STRIKE 特典クーポン</div>
+        <div class="ccode"><span id="couponCode">CRAZY-HABU</span><button id="couponCopy">コピー</button></div>
+        <div class="cnote">店頭・オンラインでご提示ください</div>
+      </div>
+      <div class="rankbox" id="resRank"></div>
       <button id="retryBtn">も う 一 回</button>
+      <!-- キャンペーン導線 -->
+      <div class="cta">
+        <a id="ctaSite" class="ctabtn" target="_blank" rel="noopener">🌐 公式サイト</a>
+        <a id="ctaShop" class="ctabtn buy" target="_blank" rel="noopener">🛒 購入する</a>
+      </div>
       <div class="promo">DOUBLE H ・ Product of OKINAWA</div>
     </div>
   </div>
@@ -192,6 +232,17 @@
   setTimeout(fit,300);                  // フォント読込後の保険
   ctx.scale(DPR,DPR);
 
+  // エフェクト用キャンバス（紙吹雪）
+  const fx=document.getElementById('fx'), fxc=fx.getContext('2d');
+  fx.width=W*DPR; fx.height=H*DPR; fxc.scale(DPR,DPR);
+
+  // ===== キャンペーン設定（ここのURL/コードを差し替えるだけ）=====
+  const CONFIG={
+    siteUrl:  'https://example.com/doubleh',        // 公式サイト
+    shopUrl:  'https://example.com/doubleh/buy',     // 購入ページ
+    couponCode: 'CRAZY-HABU',                        // ストライク特典コード
+  };
+
   const LANE={ x:62, w:296, top:50, foul:520 };
   const GUTTER=20, PLAY_L=LANE.x+GUTTER, PLAY_R=LANE.x+LANE.w-GUTTER;
   const BALL_R=16, PIN_R=14, BALL_MASS=4, PIN_MASS=1;
@@ -201,9 +252,29 @@
   let state=S.START;
   let ball=null, pins=[], fallen=[], aim=null, spinInput=0, settleTimer=0, shake=0;
 
-  // ===== スコア（2投1ゲーム）=====
+  // ===== スコア（2投1ゲーム）＋ 端末内ランキング =====
   let throwNum=1, knockedTotal=0, pinsAtRollStart=10, score=0;
-  let best=+(localStorage.getItem('hhh_best')||0);
+  let ranking=loadRanking();
+  let best=ranking[0]||0;
+  function loadRanking(){ try{ const r=JSON.parse(localStorage.getItem('hhh_ranking')||'[]'); return Array.isArray(r)?r.slice(0,10):[]; }catch(_){ return []; } }
+  function saveScore(s){
+    ranking.push(s); ranking.sort((a,b)=>b-a); ranking=ranking.slice(0,10);
+    localStorage.setItem('hhh_ranking', JSON.stringify(ranking));
+    best=ranking[0]||0;
+    // 今回の順位（同点は上位優先で最初の一致）
+    return ranking.indexOf(s)+1;   // 1..10、圏外は…後段で判定
+  }
+  function renderRank(elId, myScore, myRank){
+    const el=document.getElementById(elId); if(!el) return;
+    if(ranking.length===0){ el.innerHTML=''; return; }
+    let rows='';
+    ranking.forEach((s,i)=>{
+      const me=(myRank===i+1 && s===myScore);
+      const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.';
+      rows+=`<div class="rankrow${me?' me':''}"><span class="rk">${medal}</span><span>${s} 点${me?' ◀ 今回':''}</span></div>`;
+    });
+    el.innerHTML=`<div class="rt">🏆 ランキング BEST ${ranking.length}</div>${rows}`;
+  }
 
   // ===== オーディオ =====
   let actx=null, soundOn=true;
@@ -275,10 +346,11 @@
     throwNum=1; knockedTotal=0; score=0;
     newRack(); placeBall(); state=S.AIM;
     setMsg("マングースを後ろに引いて、離して転がそう！");
+    confetti=[]; document.getElementById('resultOv').classList.remove('celebrate');
     hide('startOv'); hide('resultOv'); updateStats();
     if(!musicOn && !musicUserOff) startMusic();   // 初回ゲーム開始でBGM自動再生
   }
-  function fullReset(){ state=S.START; show('startOv'); document.getElementById('startBest').textContent='ベストスコア: '+best; updateStats(); }
+  function fullReset(){ state=S.START; renderRank('startRank',-1,-1); show('startOv'); updateStats(); }
 
   // ===== 入力 =====
   function pos(e){ const r=cv.getBoundingClientRect(); const t=e.touches?e.touches[0]:e;
@@ -349,22 +421,51 @@
     if(kind==='strike'){ score=200; sndStrike(); }
     else if(kind==='spare'){ score=150; sndSpare(); }
     else score=knockedTotal*10;
-    const isBest = score>best; if(isBest){ best=score; localStorage.setItem('hhh_best',best); }
+    const prevBest=best;
+    const myRank=saveScore(score);                 // ランキングに登録
+    const isBest=(score>=prevBest && score>0 && myRank===1);
     updateStats();
 
     // 結果オーバーレイ
+    const ov=document.getElementById('resultOv');
     const judge=document.getElementById('resJudge'), crazy=document.getElementById('resCrazy'),
           bottle=document.getElementById('resBottle'), lead=document.getElementById('resLead'),
-          bestline=document.getElementById('resBest');
+          bestline=document.getElementById('resBest'), coupon=document.getElementById('resCoupon');
     document.getElementById('resScore').textContent=score;
-    crazy.style.display='none';
-    if(kind==='strike'){ judge.textContent='🔥 STRIKE 🔥'; judge.style.color='var(--crimson)'; crazy.style.display='block'; bottle.textContent='🍾'; lead.textContent='全部なぎ倒した！その誘惑、知ってしまったな。'; }
-    else if(kind==='spare'){ judge.textContent='✨ SPARE ✨'; judge.style.color='var(--gold)'; bottle.textContent='🥃'; lead.textContent='見事な2投。Double H で乾杯。'; }
+    crazy.style.display='none'; coupon.style.display='none'; ov.classList.remove('celebrate');
+    if(kind==='strike'){ judge.textContent='🔥 STRIKE 🔥'; judge.style.color='var(--crimson)'; crazy.style.display='block'; bottle.textContent='🍾'; lead.textContent='全部なぎ倒した！その誘惑、知ってしまったな。';
+      coupon.style.display='block'; ov.classList.add('celebrate'); burstConfetti(160); }    // ストライク特典＆紙吹雪
+    else if(kind==='spare'){ judge.textContent='✨ SPARE ✨'; judge.style.color='var(--gold)'; bottle.textContent='🥃'; lead.textContent='見事な2投。Double H で乾杯。'; burstConfetti(80); }
     else if(knockedTotal===0){ judge.textContent='GUTTER…'; judge.style.color='#8a8f96'; bottle.textContent='🐍'; lead.textContent='ハブは無傷。出直してこい。'; }
     else { judge.textContent=knockedTotal+' 匹 撃破'; judge.style.color='#cfd2d6'; bottle.textContent='🥃'; lead.textContent='まだ伸びる。もう一回いこう。'; }
-    bestline.textContent = isBest ? '🏆 ベスト更新！' : ('BEST: '+best);
+    bestline.textContent = isBest ? '🏆 ベスト更新！ 第1位' : (myRank>=1&&myRank<=10 ? `ランキング 第${myRank}位` : 'BEST: '+best);
+    if(isBest && kind!=='strike') burstConfetti(120);
+    renderRank('resRank', score, myRank);
     setMsg(kind==='strike'?'🔥 ストライク！':kind==='spare'?'✨ スペア！':knockedTotal+'匹 倒した');
     show('resultOv');
+  }
+
+  // ===== 紙吹雪エフェクト =====
+  let confetti=[];
+  const CONF_COLORS=['#c4142a','#d9b66f','#ffffff','#9cc05e','#ffd76e'];
+  function burstConfetti(n){
+    for(let i=0;i<n;i++){
+      confetti.push({ x:W*Math.random(), y:-10-Math.random()*60,
+        vx:(Math.random()-0.5)*3, vy:2+Math.random()*3.5,
+        size:4+Math.random()*5, rot:Math.random()*6.28, vr:(Math.random()-0.5)*0.4,
+        color:CONF_COLORS[(Math.random()*CONF_COLORS.length)|0], sway:Math.random()*6.28 });
+    }
+  }
+  function drawConfetti(){
+    fxc.clearRect(0,0,W,H);
+    if(confetti.length===0) return;
+    for(let i=confetti.length-1;i>=0;i--){
+      const p=confetti[i];
+      p.sway+=0.1; p.x+=p.vx+Math.sin(p.sway)*0.6; p.y+=p.vy; p.vy+=0.04; p.rot+=p.vr;
+      if(p.y>H+20){ confetti.splice(i,1); continue; }
+      fxc.save(); fxc.translate(p.x,p.y); fxc.rotate(p.rot); fxc.fillStyle=p.color;
+      fxc.fillRect(-p.size/2,-p.size/2,p.size,p.size*0.6); fxc.restore();
+    }
   }
 
   // ===== 描画 =====
@@ -427,7 +528,7 @@
   const show=id=>document.getElementById(id).classList.add('show');
   const hide=id=>document.getElementById(id).classList.remove('show');
 
-  function loop(){ step(); if(state!==S.START) draw(); requestAnimationFrame(loop); }
+  function loop(){ step(); if(state!==S.START) draw(); drawConfetti(); requestAnimationFrame(loop); }
 
   document.getElementById('startBtn').addEventListener('click',startGame);
   document.getElementById('retryBtn').addEventListener('click',startGame);
@@ -435,8 +536,16 @@
   document.getElementById('soundBtn').addEventListener('click',e=>{ soundOn=!soundOn; e.target.textContent=soundOn?'🔈 音':'🔇 消音'; if(soundOn) audio(); });
   document.getElementById('musicBtn').addEventListener('click',()=>{ if(musicOn){ musicUserOff=true; stopMusic(); } else { musicUserOff=false; startMusic(); } });
 
+  // キャンペーン導線・クーポン
+  document.getElementById('ctaSite').href=CONFIG.siteUrl;
+  document.getElementById('ctaShop').href=CONFIG.shopUrl;
+  document.getElementById('couponCode').textContent=CONFIG.couponCode;
+  document.getElementById('couponCopy').addEventListener('click',async e=>{
+    try{ await navigator.clipboard.writeText(CONFIG.couponCode); e.target.textContent='✅'; setTimeout(()=>e.target.textContent='コピー',1500); }catch(_){ }
+  });
+
   // 初期表示
-  document.getElementById('startBest').textContent='ベストスコア: '+best;
+  renderRank('startRank',-1,-1);
   updateStats(); show('startOv'); loop();
 })();
 </script>
