@@ -156,7 +156,7 @@
       <div class="stat"><div class="lab">SCORE</div><div class="val score" id="scoreVal">0</div></div>
       <div class="stat"><div class="lab">BEST</div><div class="val best" id="bestVal">0</div></div>
     </div>
-    <div id="msg">下から狙って発射！ ハブに当てて高得点！</div>
+    <div id="msg">⬇ 発射口を下に引いて、離すと上へ発射！</div>
     <div id="controls">
       <button id="launchBtn">発 射</button>
       <button id="musicBtn" class="ghost">🎵 音楽 OFF</button>
@@ -165,8 +165,8 @@
     </div>
   </div>
   <p class="hint">
-    🖱️ 盤面を<b>ドラッグして狙いを定め、離すと発射</b>（または「発射」ボタン／スペースキー）。<br>
-    🐍ハブ=100点、🌿ハーブ=300点、🍾ボトル=1000点。下のチャンネルに落ちるとボーナス（中央ほど高得点）。<br>
+    🖱️ 下の発射口を<b>下方向に引っぱって離すと、上へ発射</b>（引く距離＝強さ／斜めに引くと角度がつく）。「発射」ボタンやスペースキーでもOK。<br>
+    🐍ハブ=100点、🌿ハーブ=300点、🍾ボトル=1000点。落ちた先の<b>下のチャンネル</b>でボーナス（中央ほど高得点）。<br>
     <b>1プレイ3球</b>、合計点に応じて景品GET！
   </p>
 
@@ -208,8 +208,8 @@
 
   // ===== 物理・盤面 =====
   const L=22, R=398, TOP=30, BALL_R=9;
-  const GRAV=0.16, AIR=0.999, REST=0.5, BUMP_REST=0.74, MAXV=12, STOP=0.2;
-  const LAUNCH=new (function(){ this.x=210; this.y=54; })();
+  const GRAV=0.16, AIR=0.999, REST=0.5, BUMP_REST=0.74, MAXV=12, STOP=0.2, MAXPULL=120;
+  const LAUNCH={ x:210, y:H-46 };   // 発射口は下・上へ撃つ
   const SCORE_HABU=100, SCORE_HERB=300, SCORE_BOTTLE=1000;
   const CHAN_PTS=[200,500,1500,500,200];           // 下部チャンネル（5分割・中央が最高）
   const CHAN_N=CHAN_PTS.length, CHAN_W=(R-L)/CHAN_N;
@@ -217,6 +217,7 @@
   const S={ START:'start', AIM:'aim', BALL:'ball', OVER:'over' };
   let state=S.START;
   let ball=null, pegs=[], aim=null, shake=0, posts=[];
+  let restAngle=-Math.PI/2;   // キーボード/ボタン発射の角度（真上）
   let ballsLeft=3, total=0, ballScore=0;
   let best=+(localStorage.getItem('hhh_pin_best')||0);
 
@@ -259,8 +260,8 @@
   // ===== 盤面生成 =====
   function buildBoard(){
     pegs=[]; posts=[];
-    // ハブのバンパー：千鳥配置
-    const x0=L+44, x1=R-44, y0=150, y1=470, cols=6, rows=7;
+    // ハブのバンパー：千鳥配置（盤面の中〜上）
+    const x0=L+44, x1=R-44, y0=120, y1=430, cols=6, rows=7;
     for(let r=0;r<rows;r++){
       const off=(r%2)? (x1-x0)/(cols-1)/2 : 0;
       for(let c=0;c<cols;c++){
@@ -272,14 +273,14 @@
         pegs.push({ x, y, r:13, type, flash:0, cd:0 });
       }
     }
-    // ボトル・ジャックポット（発射口の真下を避け、左上に配置）
-    pegs.push({ x:150, y:108, r:15, type:'bottle', flash:0, cd:0 });
-    // 下部チャンネルの仕切りポスト
-    for(let i=1;i<CHAN_N;i++) posts.push({ x:L+CHAN_W*i, y:540, r:7 });
+    // ボトル・ジャックポット（最上段の高得点ターゲット・中央を外す）
+    pegs.push({ x:150, y:84, r:15, type:'bottle', flash:0, cd:0 });
+    // 下部チャンネルの仕切りポスト（発射の中央ゲートは空けておく）
+    for(let i=1;i<CHAN_N;i++) posts.push({ x:L+CHAN_W*i, y:H-100, r:7 });
   }
 
-  function newBall(){ ball=null; aim=null; state=S.AIM; ballScore=0;
-    setMsg(`第 ${4-ballsLeft} 球：狙って発射！`); updateStats(); }
+  function newBall(){ ball=null; aim=null; state=S.AIM; ballScore=0; restAngle=-Math.PI/2;
+    setMsg(`第${4-ballsLeft}球｜⬇ 下に引いて離す（または発射ボタン）`); updateStats(); }
 
   function startGame(){
     ballsLeft=3; total=0; ballScore=0; buildBoard();
@@ -289,23 +290,27 @@
   }
   function fullReset(){ state=S.START; renderTiers('startTiers',-1); show('startOv'); updateStats(); }
 
-  // ===== 入力 =====
+  // ===== 入力（スリングショット：下に引いて離す＝上へ発射）=====
   function pos(e){ const r=cv.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return { x:(t.clientX-r.left)*(W/r.width), y:(t.clientY-r.top)*(H/r.height) }; }
-  function aimAngleTo(p){ // 発射点から下向きコーン(±55°)にクランプ
-    let a=Math.atan2(p.y-LAUNCH.y, p.x-LAUNCH.x);
-    const lo=Math.PI/2-0.96, hi=Math.PI/2+0.96; if(a<lo)a=lo; if(a>hi)a=hi; return a; }
-  function down(e){ audio(); if(state!==S.AIM) return; aim=aimAngleTo(pos(e)); e.preventDefault(); }
-  function move(e){ if(state!==S.AIM||aim==null) return; aim=aimAngleTo(pos(e)); e.preventDefault(); }
-  function up(e){ if(state!==S.AIM||aim==null) return; launch(aim); e.preventDefault(); }
+  function clampUp(a){ const lo=-Math.PI/2-0.96, hi=-Math.PI/2+0.96; return Math.max(lo,Math.min(hi,a)); }
+  function computeAim(){ // 引いた逆向き（=上）に飛ばす
+    const dx=LAUNCH.x-aim.px, dy=LAUNCH.y-aim.py; aim.dist=Math.hypot(dx,dy);
+    aim.angle=clampUp(Math.atan2(dy,dx)); aim.power=Math.min(aim.dist,MAXPULL)/MAXPULL; restAngle=aim.angle; }
+  function down(e){ audio(); if(state!==S.AIM) return; const p=pos(e); aim={px:p.x,py:p.y,dist:0,angle:restAngle,power:0}; computeAim(); setMsg('ねらい中… 離して発射！'); e.preventDefault(); }
+  function move(e){ if(state!==S.AIM||!aim) return; const p=pos(e); aim.px=p.x; aim.py=p.y; computeAim(); e.preventDefault(); }
+  function up(e){ if(state!==S.AIM||!aim) return; const a=aim; aim=null;
+    if(a.dist<12){ setMsg('⬇ 下に引いて離すと発射！'); return; }   // ほぼ引いてなければキャンセル
+    launch(a.angle, a.power); e.preventDefault(); }
   cv.addEventListener('mousedown',down); window.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
   cv.addEventListener('touchstart',down,{passive:false}); window.addEventListener('touchmove',move,{passive:false}); window.addEventListener('touchend',up,{passive:false});
   window.addEventListener('keydown',e=>{ if(state!==S.AIM) return;
-    if(e.key==='ArrowLeft'){ aim=(aim==null?Math.PI/2:aim)-0.07; aim=Math.max(Math.PI/2-0.96,aim); }
-    if(e.key==='ArrowRight'){ aim=(aim==null?Math.PI/2:aim)+0.07; aim=Math.min(Math.PI/2+0.96,aim); }
-    if(e.key===' '){ e.preventDefault(); launch(aim==null?Math.PI/2:aim); } });
+    if(e.key==='ArrowLeft'){ restAngle=clampUp(restAngle-0.06); }
+    if(e.key==='ArrowRight'){ restAngle=clampUp(restAngle+0.06); }
+    if(e.key===' '){ e.preventDefault(); launch(restAngle,0.72); } });
 
-  function launch(a){
-    const sp=6.4; ball={ x:LAUNCH.x, y:LAUNCH.y+10, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp, r:BALL_R, roll:0 };
+  function launch(a,power){
+    const sp=5.2+power*5.6;
+    ball={ x:LAUNCH.x, y:LAUNCH.y-12, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp, r:BALL_R, roll:0 };
     aim=null; state=S.BALL; ballScore=0; sndLaunch(); setMsg('ゴロゴロ…');
   }
 
@@ -405,16 +410,17 @@
     // ブランド刻印
     ctx.save(); ctx.globalAlpha=.10; ctx.fillStyle='#d9b66f'; ctx.textAlign='center'; ctx.font='italic 700 30px "Times New Roman",serif';
     ctx.fillText('Double H', W/2, 300); ctx.font='12px serif'; ctx.fillText('HABU × HERB', W/2, 320); ctx.restore(); ctx.textAlign='left';
-    // 発射口
-    ctx.fillStyle='#2a2018'; ctx.beginPath(); ctx.arc(LAUNCH.x,LAUNCH.y,14,0,6.28); ctx.fill();
-    ctx.strokeStyle='#c4142a'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(LAUNCH.x,LAUNCH.y,14,0,6.28); ctx.stroke();
-    // 下部チャンネル
+    // 下部チャンネル（得点）
     for(let i=0;i<CHAN_N;i++){ const cx=L+CHAN_W*(i+0.5);
-      ctx.fillStyle=(i===2)?'#3a1414':'#16100a'; ctx.fillRect(L+CHAN_W*i+2, 560, CHAN_W-4, H-560);
+      ctx.fillStyle=(i===2)?'#3a1414':'#16100a'; ctx.fillRect(L+CHAN_W*i+2, H-88, CHAN_W-4, 88);
       ctx.fillStyle=(i===2)?'#ffd76e':'#9aa0a6'; ctx.textAlign='center'; ctx.font='bold 12px sans-serif';
-      ctx.fillText(CHAN_PTS[i], cx, 600); }
+      ctx.fillText(CHAN_PTS[i], cx, H-14); }
     ctx.textAlign='left';
     for(const p of posts){ ctx.fillStyle='#6a532c'; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.28); ctx.fill(); }
+    // 発射口（下・上向き）
+    ctx.fillStyle='#2a2018'; ctx.beginPath(); ctx.arc(LAUNCH.x,LAUNCH.y,15,0,6.28); ctx.fill();
+    ctx.strokeStyle='#c4142a'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(LAUNCH.x,LAUNCH.y,15,0,6.28); ctx.stroke();
+    ctx.fillStyle='#c4142a'; ctx.beginPath(); ctx.moveTo(LAUNCH.x,LAUNCH.y-9); ctx.lineTo(LAUNCH.x-5,LAUNCH.y-2); ctx.lineTo(LAUNCH.x+5,LAUNCH.y-2); ctx.closePath(); ctx.fill();
   }
   function drawHabu(p){ const t=performance.now()/1000; ctx.save(); ctx.translate(p.x,p.y);
     if(p.flash>0){ ctx.shadowColor='#fff'; ctx.shadowBlur=18*p.flash; }
@@ -437,11 +443,34 @@
     ctx.fillStyle=g; ctx.beginPath(); ctx.arc(0,0,b.r,0,6.28); ctx.fill();
     ctx.fillStyle='#1c1c1c'; ctx.beginPath(); ctx.arc(-3,b.r*.3,1.3,0,6.28); ctx.fill(); ctx.beginPath(); ctx.arc(3,b.r*.3,1.3,0,6.28); ctx.fill();
     ctx.restore(); }
-  function drawAim(){ if(aim==null) return; // 重力アークの予測
-    let x=LAUNCH.x,y=LAUNCH.y+10, vx=Math.cos(aim)*6.4, vy=Math.sin(aim)*6.4; ctx.save();
-    for(let i=0;i<26;i++){ vy+=GRAV; x+=vx; y+=vy; if(y>H-60||x<L||x>R) break; if(i%2===0){ ctx.fillStyle=`rgba(255,210,120,${.7-i/40})`; ctx.beginPath(); ctx.arc(x,y,2.6,0,6.28); ctx.fill(); } }
+  function drawAim(){
+    const dragging=!!aim;
+    const angle=dragging?aim.angle:restAngle;
+    const power=dragging?aim.power:0.62;
+    const sp=5.2+power*5.6;
+    ctx.save();
+    // 重力アークの予測（上へ）
+    let x=LAUNCH.x,y=LAUNCH.y-12, vx=Math.cos(angle)*sp, vy=Math.sin(angle)*sp;
+    for(let i=0;i<40;i++){ vy+=GRAV; x+=vx; y+=vy; if(y<TOP+4||x<L||x>R) break; if(i%2===0){ ctx.fillStyle=`rgba(255,210,120,${.8-i/52})`; ctx.beginPath(); ctx.arc(x,y,2.6,0,6.28); ctx.fill(); } }
     // 砲口の向き
-    ctx.strokeStyle='#ffd76e'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(LAUNCH.x,LAUNCH.y); ctx.lineTo(LAUNCH.x+Math.cos(aim)*26,LAUNCH.y+Math.sin(aim)*26); ctx.stroke(); ctx.restore(); }
+    ctx.strokeStyle='#ffd76e'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(LAUNCH.x,LAUNCH.y); ctx.lineTo(LAUNCH.x+Math.cos(angle)*30,LAUNCH.y+Math.sin(angle)*30); ctx.stroke();
+    if(dragging){
+      // 引っぱりバンド＋ハンドル
+      ctx.strokeStyle='rgba(255,255,255,.45)'; ctx.lineWidth=2; ctx.setLineDash([5,5]);
+      ctx.beginPath(); ctx.moveTo(LAUNCH.x,LAUNCH.y); ctx.lineTo(aim.px,aim.py); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle='rgba(255,255,255,.5)'; ctx.beginPath(); ctx.arc(aim.px,aim.py,7,0,6.28); ctx.fill();
+      // パワーメーター（発射口の上）
+      const bw=120, bx=LAUNCH.x-bw/2, by=LAUNCH.y-30;
+      ctx.fillStyle='#0008'; ctx.fillRect(bx,by,bw,7);
+      ctx.fillStyle=power<.6?'#9cc05e':(power<.85?'#d9b66f':'#c4142a'); ctx.fillRect(bx,by,bw*power,7);
+    } else {
+      // 休止時のガイド（点滅）：下に引く動作を示す
+      const t=(Math.sin(performance.now()/280)+1)/2;
+      ctx.globalAlpha=.55+t*.45; ctx.fillStyle='#ffd76e'; ctx.textAlign='center'; ctx.font='bold 12px sans-serif';
+      ctx.fillText('⬇ 引いて離す', LAUNCH.x+34, LAUNCH.y+5); ctx.textAlign='left'; ctx.globalAlpha=1;
+    }
+    ctx.restore();
+  }
   function draw(){ ctx.save(); if(shake>.3) ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
     ctx.clearRect(-20,-20,W+40,H+40); drawBoard();
     for(const p of pegs){ if(p.type==='habu') drawHabu(p); else if(p.type==='herb') drawHerb(p); else drawBottle(p); }
