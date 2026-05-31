@@ -91,6 +91,20 @@
   .ctabtn{ text-decoration:none; font-size:13px; font-weight:800; padding:10px 18px; border-radius:999px; border:1px solid rgba(39,230,255,.45); background:rgba(255,255,255,.06); color:#dff6ff; box-shadow:0 0 12px rgba(39,230,255,.18); }
   .ctabtn.buy{ background:linear-gradient(180deg,#ffe48f,#ffd86b); color:#3a2a0c; border-color:#ffe9a6; box-shadow:0 0 16px #ffd86b66; }
 
+  /* プレイ中はヘッダー・説明文を隠して盤面を最大化 */
+  body.playing #brand{ display:none; }
+  body.playing .hint{ display:none; }
+  body.playing #wrap{ margin-top:6px; }
+
+  /* あそびかた（説明）画面 */
+  .steps{ width:min(340px,90%); margin:12px auto 14px; display:flex; flex-direction:column; gap:10px; }
+  .step{ display:flex; align-items:center; gap:12px; text-align:left; background:rgba(255,255,255,.05);
+    border:1px solid rgba(39,230,255,.3); border-radius:14px; padding:10px 14px; box-shadow:0 0 12px rgba(39,230,255,.12); }
+  .step .ic{ font-size:26px; flex:0 0 auto; filter:drop-shadow(0 0 8px #27e6ff66); }
+  .step div{ font-size:13px; line-height:1.5; color:#dfe7f7; }
+  .step b{ color:#fff; }
+  .overlay .stepbtns{ display:flex; flex-direction:column; gap:8px; align-items:center; }
+
   @media (max-width:480px){
     .crest .snake,.crest .dh{ font-size:22px; } .jptitle{ font-size:20px; } .sub{ font-size:8px; }
     .stat{ min-width:70px; padding:5px 10px; } .stat .val{ font-size:18px; }
@@ -125,8 +139,25 @@
       <div class="crazy">Let's be Crazy!!</div>
       <div class="lead">マングースを発射！ ハブに当てて高得点。<br><b>1プレイ3球</b>。合計点で景品をGETしよう。</div>
       <div class="tiers" id="startTiers"></div>
-      <button id="startBtn">は じ め る</button>
+      <button id="startBtn">▶ は じ め る</button>
       <div class="promo">DOUBLE H ・ HABU×HERB</div>
+     </div>
+    </div>
+
+    <!-- あそびかた（説明）-->
+    <div class="overlay" id="howOv">
+     <div class="ovinner">
+      <h2>あそびかた</h2>
+      <div class="steps">
+        <div class="step"><span class="ic">⬇️</span><div><b>発射口を下に引いて、離す</b>と上へ発射。引いた距離＝強さ／斜めで角度。</div></div>
+        <div class="step"><span class="ic">🐍</span><div>🐍ハブ <b>100</b>・🌿ハーブ <b>300</b>・🍾ボトル <b>1000</b> に当てて高得点！</div></div>
+        <div class="step"><span class="ic">🎯</span><div>落ちた先の<b>下のチャンネル</b>でボーナス（中央ほど高得点）。</div></div>
+        <div class="step"><span class="ic">🎁</span><div><b>1プレイ3球</b>。合計点に応じて景品をGET！</div></div>
+      </div>
+      <div class="stepbtns">
+        <button id="howStartBtn">ゲームスタート ▶</button>
+        <button id="howBackBtn" class="ghost">← もどる</button>
+      </div>
      </div>
     </div>
 
@@ -179,7 +210,7 @@
 (()=>{
   "use strict";
   const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
-  const W=420,H=640, DPR=Math.min(window.devicePixelRatio||1,2);
+  const W=420,H=720, DPR=Math.min(window.devicePixelRatio||1,2);
   cv.width=W*DPR; cv.height=H*DPR;
   function fit(){
     const brand=document.getElementById('brand'), hud=document.getElementById('hud'), hint=document.querySelector('.hint');
@@ -266,7 +297,7 @@
   function buildBoard(){
     pegs=[]; posts=[];
     // ハブのバンパー：千鳥配置（盤面の中〜上）
-    const x0=L+44, x1=R-44, y0=120, y1=430, cols=6, rows=7;
+    const x0=L+44, x1=R-44, y0=118, y1=512, cols=6, rows=8;
     for(let r=0;r<rows;r++){
       const off=(r%2)? (x1-x0)/(cols-1)/2 : 0;
       for(let c=0;c<cols;c++){
@@ -290,10 +321,16 @@
   function startGame(){
     ballsLeft=3; total=0; ballScore=0; buildBoard();
     confetti=[]; document.getElementById('resultOv').classList.remove('celebrate');
-    hide('startOv'); hide('resultOv'); newBall();
+    hide('startOv'); hide('howOv'); hide('resultOv');
+    document.body.classList.add('playing'); fit();   // 盤面を全体に拡大
+    newBall();
     if(!musicOn && !musicUserOff) startMusic();
   }
-  function fullReset(){ state=S.START; renderTiers('startTiers',-1); show('startOv'); updateStats(); }
+  // 画面遷移：TOP（タイトル）→ あそびかた → ゲーム
+  function showTop(){ state=S.START; document.body.classList.remove('playing');
+    hide('howOv'); hide('resultOv'); renderTiers('startTiers',-1); show('startOv'); updateStats(); fit(); }
+  function showHowto(){ audio(); hide('startOv'); hide('resultOv'); show('howOv'); }
+  function fullReset(){ showTop(); }
 
   // ===== 入力（スリングショット：下に引いて離す＝上へ発射）=====
   function pos(e){ const r=cv.getBoundingClientRect(); const t=e.touches?e.touches[0]:e; return { x:(t.clientX-r.left)*(W/r.width), y:(t.clientY-r.top)*(H/r.height) }; }
@@ -516,10 +553,12 @@
 
   function loop(){ step(); if(state!==S.START) draw(); drawConfetti(); requestAnimationFrame(loop); }
 
-  document.getElementById('startBtn').addEventListener('click',startGame);
+  document.getElementById('startBtn').addEventListener('click',showHowto);       // TOP → あそびかた
+  document.getElementById('howStartBtn').addEventListener('click',startGame);    // あそびかた → ゲーム
+  document.getElementById('howBackBtn').addEventListener('click',showTop);
   document.getElementById('retryBtn').addEventListener('click',startGame);
-  document.getElementById('resetBtn').addEventListener('click',startGame);
-  document.getElementById('launchBtn').addEventListener('click',()=>{ if(state===S.AIM) launch(aim==null?Math.PI/2:aim); });
+  document.getElementById('resetBtn').addEventListener('click',showTop);         // 最初から → TOP
+  document.getElementById('launchBtn').addEventListener('click',()=>{ if(state===S.AIM) launch(restAngle,0.72); });
   document.getElementById('soundBtn').addEventListener('click',e=>{ soundOn=!soundOn; e.target.textContent=soundOn?'🔈 音':'🔇 消音'; if(soundOn) audio(); });
   document.getElementById('musicBtn').addEventListener('click',()=>{ if(musicOn){ musicUserOff=true; stopMusic(); } else { musicUserOff=false; startMusic(); } });
   document.getElementById('ctaSite').href=CONFIG.siteUrl; document.getElementById('ctaShop').href=CONFIG.shopUrl;
