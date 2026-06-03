@@ -939,6 +939,54 @@ body::after {
 .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right { display: none; }
 .mapboxgl-ctrl-bottom-left, .mapboxgl-ctrl-bottom-right { display: none; }
 
+/* === シナリオ編集 (建物の削除/復元で人流影響を確認) === */
+.scenario-bar {
+  position: absolute;
+  top: 86px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: rgba(20, 30, 50, 0.94);
+  border: 1px solid rgba(228, 80, 70, 0.4);
+  border-radius: 4px;
+  padding: 9px 14px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  color: var(--bone);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.30);
+}
+.sb-icon { color: #e45046; font-size: 13px; }
+.sb-label { color: var(--bone-3); }
+.sb-count { color: var(--bone); }
+.sb-count b { color: #ff8978; font-weight: 500; font-size: 12px; }
+.sb-btn {
+  background: transparent;
+  border: 1px solid rgba(245,241,234,0.18);
+  color: var(--bone-3);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.15em;
+  padding: 3px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.sb-btn:hover { background: var(--bone); color: var(--ink); border-color: var(--bone); }
+.sb-btn-warn:hover { background: #e45046; color: var(--bone); border-color: #e45046; }
+.sb-mcp {
+  font-size: 8.5px;
+  letter-spacing: 0.18em;
+  color: rgba(245,241,234,0.4);
+  margin-left: 6px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(245,241,234,0.12);
+}
+.app.scenario-mode .stage { cursor: crosshair; }
+.app.scenario-mode #scenarioBtn { background: #c8463a; color: var(--bone); border-color: #c8463a; }
+
 /* === マップ ツールチップ (hover で詳細) === */
 .map-tooltip {
   position: absolute;
@@ -1163,6 +1211,7 @@ body::after {
     </div>
     <div class="topbar-right">
       <button class="compare-btn" id="compareBtn" onclick="toggleCompare()" title="A/B 比較ビュー">⇆ 比較</button>
+      <button class="compare-btn" id="scenarioBtn" onclick="toggleScenarioMode()" title="シナリオ編集: 建物を削除して人流影響を確認">✎ シナリオ</button>
       <span class="partner-tag">POWERED BY <b>LocationMind xPop</b></span>
       <span class="partner-tag">DELIVERED BY <b>YELLOW Inc.</b></span>
     </div>
@@ -1298,6 +1347,15 @@ body::after {
     </div>
 
     <div class="map-tooltip" id="mapTooltip"></div>
+
+    <div class="scenario-bar" id="scenarioBar" style="display:none">
+      <span class="sb-icon">✎</span>
+      <span class="sb-label">シナリオ編集 — 建物クリックで削除候補に</span>
+      <span class="sb-count"><b id="scenarioCount">0</b> 棟</span>
+      <button class="sb-btn" onclick="undoScenario()">↶ 取消</button>
+      <button class="sb-btn sb-btn-warn" onclick="resetScenario()">リセット</button>
+      <span class="sb-mcp">via plateau-creative-mcp (demo)</span>
+    </div>
   </main>
 
   <aside class="panel" id="panel"></aside>
@@ -1396,11 +1454,19 @@ function generateScatter(scene) {
 const SCATTER_BY_SCENE = [0, 1, 2, 3].map(generateScatter);
 
 // 時刻に応じてポイント重みをカテゴリ別カーブで変調 (滞留の時間変化)
+// + シナリオ削除建物の足元では滞留重みを大きく減衰 (人流影響シミュレーション)
 function hourlyScatter(scene, hour) {
   const base = SCATTER_BY_SCENE[scene];
+  const edits = scenarioEdits;
   return base.map(p => {
     const curve = CAT_CURVE[p.cat] || CAT_CURVE.bg;
-    return { position: p.position, weight: p.weight * curve[hour] };
+    let w = p.weight * curve[hour];
+    if (edits.length > 0) {
+      for (let i = 0; i < edits.length; i++) {
+        if (pointInPolygon(p.position, edits[i].polygon)) { w *= 0.2; break; }
+      }
+    }
+    return { position: p.position, weight: w };
   });
 }
 
@@ -1530,6 +1596,64 @@ let TRIP_SPEED = 0.04;
 
 // データレイヤー ON/OFF。人流/車両/鉄道を独立に切替できる
 const activeLayers = { people: true, cars: false, rail: false };
+
+// ============================================
+//  シナリオ編集 (PLATEAU MCP 風カウンターファクト)
+//  現状は OSM 由来の建物に対する削除シナリオ。
+//  本番: 建物データソースを PLATEAU LOD2 (GeoJSON/3D Tiles) に差し替え、
+//        scenarioAddEdit() を plateau-creative-mcp の delete_buildings 呼び出しに置換。
+// ============================================
+let scenarioMode = false;
+let scenarioEdits = [];     // [{polygon: [[lng,lat],...], id?}]
+let scenarioVersion = 0;
+
+function toggleScenarioMode() {
+  scenarioMode = !scenarioMode;
+  document.getElementById('app').classList.toggle('scenario-mode', scenarioMode);
+  const btn = document.getElementById('scenarioBtn');
+  if (btn) btn.classList.toggle('active', scenarioMode);
+  updateScenarioBar();
+}
+
+function updateScenarioBar() {
+  const bar = document.getElementById('scenarioBar');
+  if (bar) bar.style.display = scenarioMode ? 'flex' : 'none';
+  const c = document.getElementById('scenarioCount');
+  if (c) c.textContent = scenarioEdits.length;
+}
+
+function invalidateDwellCache() {
+  Object.keys(STATIC_LAYER_CACHE).forEach(k => delete STATIC_LAYER_CACHE[k]);
+}
+
+function scenarioAddEdit(polygon) {
+  scenarioEdits.push({ polygon });
+  scenarioVersion++;
+  invalidateDwellCache();
+  renderScene(currentScene);
+  if (compareOn) updateBLayers();
+  updateScenarioBar();
+}
+
+function resetScenario() {
+  if (scenarioEdits.length === 0) return;
+  scenarioEdits = [];
+  scenarioVersion++;
+  invalidateDwellCache();
+  renderScene(currentScene);
+  if (compareOn) updateBLayers();
+  updateScenarioBar();
+}
+
+function undoScenario() {
+  if (scenarioEdits.length === 0) return;
+  scenarioEdits.pop();
+  scenarioVersion++;
+  invalidateDwellCache();
+  renderScene(currentScene);
+  if (compareOn) updateBLayers();
+  updateScenarioBar();
+}
 
 // ============================================
 //  実ルーティング (OSRM 公開サーバー / 徒歩プロファイル)
@@ -1762,6 +1886,23 @@ function addBuildingOutline(m, layerId) {
   } catch (e) {}
 }
 
+// 建物クリック判定用の透明フィルレイヤー (シナリオ編集モード用)
+function addBuildingPick(m, layerId) {
+  try {
+    const bL = m.getStyle().layers.find(l => l['source-layer'] === 'building');
+    if (bL && !m.getLayer(layerId)) {
+      m.addLayer({
+        id: layerId,
+        source: bL.source,
+        'source-layer': 'building',
+        type: 'fill',
+        minzoom: 13,
+        paint: { 'fill-color': '#000', 'fill-opacity': 0 },
+      });
+    }
+  } catch (e) {}
+}
+
 const BP_SKY = {
   'sky-color': '#0a1120',
   'sky-horizon-blend': 0.6,
@@ -1788,9 +1929,10 @@ map.on('load', () => {
     console.warn('Terrain unavailable:', e);
   }
 
-  // === 線描画スタイルに変換 + 建物輪郭線 ===
+  // === 線描画スタイルに変換 + 建物輪郭線 + 当たり判定 ===
   applyBlueprint(map);
   addBuildingOutline(map, 'building-lines');
+  addBuildingPick(map, 'building-pick');
 
   // === スカイ (ブループリント調) ===
   try {
@@ -1813,6 +1955,25 @@ map.on('load', () => {
   map.addControl(deckOverlay);
   renderScene(0);
   startTripAnimation();
+
+  // === シナリオ編集モード: 建物クリックで削除候補に追加 ===
+  // ※本番では PLATEAU LOD2 を背景に、ここで plateau-creative-mcp の
+  //   delete_buildings ツールを呼び出してサーバ側で正規化された編集を取得する
+  map.on('click', (e) => {
+    if (!scenarioMode) return;
+    const feats = map.queryRenderedFeatures(e.point, { layers: ['building-pick'] });
+    if (!feats.length) return;
+    const g = feats[0].geometry;
+    let ring = null;
+    if (g.type === 'Polygon')      ring = g.coordinates[0];
+    else if (g.type === 'MultiPolygon') ring = g.coordinates[0][0];
+    if (ring && ring.length >= 3) scenarioAddEdit(ring);
+  });
+  map.on('mousemove', (e) => {
+    if (!scenarioMode) return;
+    const feats = map.queryRenderedFeatures(e.point, { layers: ['building-pick'] });
+    map.getCanvas().style.cursor = feats.length ? 'crosshair' : '';
+  });
 
   // === 実ルート (OSRM) を非同期取得して差し替え ===
   // 徒歩 (人流) と 車両 を並行で取得
@@ -2066,7 +2227,7 @@ function buildStaticLayers(scene, hour) {
 }
 
 function getStaticLayers(scene) {
-  const key = scene + '_' + currentHour;
+  const key = scene + '_' + currentHour + '_' + scenarioVersion;
   if (!STATIC_LAYER_CACHE[key]) {
     STATIC_LAYER_CACHE[key] = buildStaticLayers(scene, currentHour);
   }
@@ -2125,6 +2286,23 @@ function getDynamicLayers() {
   if (activeLayers.rail) {
     layers.push(makeTripsLayer('trips-rail', trainTripsData, {
       widthMin: 3, widthMax: 8, opacity: 0.4, trailLength: Math.max(400, TRIP_LOOP * 0.15),
+    }));
+  }
+
+  // --- シナリオ編集: 削除した建物のゴースト表示 ---
+  if (scenarioEdits.length > 0) {
+    layers.push(new deck.PolygonLayer({
+      id: 'scenario-edits',
+      data: scenarioEdits,
+      getPolygon: d => d.polygon,
+      getFillColor: [12, 20, 34, 235],   // 下のビル線を覆い隠す
+      getLineColor: [228, 80, 70, 235],
+      lineWidthMinPixels: 1.5,
+      stroked: true,
+      filled: true,
+      extruded: false,
+      pickable: false,
+      parameters: { depthTest: false },
     }));
   }
 
@@ -2742,6 +2920,7 @@ function initMapB() {
     // 線描画スタイル + 建物輪郭線 (A面と統一)
     applyBlueprint(mapB);
     addBuildingOutline(mapB, 'building-lines-b');
+    addBuildingPick(mapB, 'building-pick-b');
     try {
       if (!mapB.getLayer('sky-b')) {
         mapB.addLayer({ id: 'sky-b', type: 'sky', paint: BP_SKY });
