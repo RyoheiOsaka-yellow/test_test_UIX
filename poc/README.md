@@ -39,8 +39,15 @@
 4. 選手・ボールに bbox + track ID が自動付与され、2Dマップに投影される
 
 **含まれる処理**
-- **物体検出（メイン）**：[uisikdag/yolo-v8-football-players-detection](https://huggingface.co/uisikdag/yolo-v8-football-players-detection) を ONNX (640×640, opset12) にエクスポートし、onnxruntime-web (WASM-SIMD) で実行。4クラス（ball / goalkeeper / player / referee）、mAP@0.5 = 0.785。前処理（640正規化）→ NCHW テンソル → 推論 → クラス毎 NMS まで JS 実装
+- **物体検出（メイン）**：[uisikdag/yolo-v8-football-players-detection](https://huggingface.co/uisikdag/yolo-v8-football-players-detection) を ONNX (640×640, opset12) にエクスポートし、onnxruntime-web で実行
+  - 実行プロバイダ：**WebGPU → WASM の順に自動試行**（対応ブラウザでGPUアクセラレーション）
+  - 前処理：**レターボックス**でアスペクト比保持（ストレッチによる小物体検出劣化を回避）→ NCHW float32 [1,3,640,640]
+  - 後処理：人物系3クラス（player/goalkeeper/referee）はクラス横断NMSで二重検出を抑制、ballは独立NMS
+  - クラス：ball / goalkeeper / player / referee（mAP@0.5 = 0.785）
+  - 役割安定化：トラックごとに sourceCls の投票履歴を保持し、多数決で表示
 - **物体検出（フォールバック）**：ONNXモデルがロードできない場合は COCO-SSD (MobileNet v2) に自動切替
+- **referee 分離**：審判はジャージ色クラスタリングから除外し、専用色（黄）で描画 → チーム判定が引っ張られない
+- **scoreboard / lower-third**：上部に放送風スコアボード（チーム名・累積ポゼッション・ハーフ・試合時計）、左下にイベントティッカー（PASS/PRESS等発生時にチーム色でフラッシュ）
 - **トラッキング**：IoU greedy matching で永続的な track ID 付与、検出フレーム間は bbox を線形補間して滑らかに表示
 - **チーム識別**：bbox 上部のジャージ色を EMA でサンプリング → 最初に最も離れた2点でk-means初期化 → オンラインクラスタリング
 - **ホモグラフィ**：4-point DLT。デフォルトは broadcast view を仮定したトラペゾイド。「calibrate」モードでピッチ4隅をクリックすれば任意の視点に対応
@@ -62,6 +69,7 @@
   - Pitch Control は低解像度オフスクリーン → スムージング拡大で柔らかいグラデーション（毎フレーム1600回の塗りを廃止し、約8回/秒に間引き）
   - canvas のバッキングストアはサイズ変化時のみ再確保（毎フレームの再アロケート/クリアによる jank を解消）
 - **俯瞰の移動軌跡（movement）**：検出した各選手をピッチ座標に投影し、移動経路を時系列で蓄積 → 2Dマップにチーム色で描画。古い区間ほど薄く、直近の動きが濃く見える。「どの選手がどう動いたか」を俯瞰で確認できる
+- **ヒートマップ（heat）**：選手位置を時間とともに累積、約30秒で半減する指数減衰を入れて直近の活動を強調。緑→黄→赤のグラデーション
 
 **バンドルされているサンプル（すべて実際のセミプロ試合映像）**
 - 実試合①：Mixkit 43499 "Goal play"（8秒、5-6人 + ボール）
@@ -69,11 +77,31 @@
 - 実試合③：Mixkit 43481 "Two teams"（5秒）
 - いずれも CORS 対応の royalty-free 配信（[Mixkit License](https://mixkit.co/license/)）
 
+**ボタン・トグル早見表**
+
+| 場所 | 名前 | 動作 | 遷移 |
+|---|---|---|---|
+| ヘッダ | Simulation | 同フォルダ `demo.html` を開く（ダミー試合シミュレーション） | ✔ ページ内遷移 |
+| ヘッダ | Real Video | 現在ページ | — |
+| 映像 | bbox | 検出枠ON/OFF | — |
+| 映像 | IDs | `#ID GK/REF score` ラベル表示 | — |
+| 映像 | teams | チーム色 vs 単色（緑） | — |
+| 映像 | trails | スクリーン空間の選手軌跡 | — |
+| 映像 | calibrate | クリックで有効化、4隅クリックでホモグラフィ更新 | — |
+| マップ | movement | 俯瞰の各選手軌跡 | — |
+| マップ | pitch control | 支配領域グラデーション | — |
+| マップ | heat | 滞在密度ヒートマップ | — |
+| マップ | ball | 推定ボール位置 | — |
+| 中央 | 実試合①②③ | Mixkit CDN から動画ストリーム取得 | ページ内のみ |
+| 中央 | 手持ち動画 / Webカメラ | ローカル動画／カメラを使用 | — |
+| 中央 | Mixkit ↗ | mixkit.co を新タブで開く（**唯一の外部遷移**） | ↗ 外部新規タブ |
+| フッタ | ⏵/⏸ | 再生/一時停止 | — |
+
 **実映像で精度を出すコツ**
 - 固定広角（Veo型）または放送級の中継映像が最適
 - 検出が落ちる場合は「calibrate」でピッチ4隅をクリック → 正確なホモグラフィに更新（移動軌跡も正確になる）
-- 完全俯瞰（ドローン/タクティカルカメラ）の映像は、サッカー特化モデルでも検出数が落ちる（学習データの多くが放送/グラウンドレベル視点）。ベンチでは地上アングルで 5-17 人検出、俯瞰では 1-2 人。さらに上を目指すなら SoccerNet で追加ファインチューン推奨
-- 推論速度：onnxruntime-web の WASM-SIMD で 100-300ms/frame（実機ブラウザ）。WebGPU 実行プロバイダが利用可能なら 30-80ms/frame まで短縮可能
+- 完全俯瞰（ドローン/タクティカルカメラ）の映像は、サッカー特化モデルでも検出数が落ちる（学習データの多くが放送/グラウンドレベル視点）。ベンチでは地上アングルで 17-22 人検出、俯瞰では 1-2 人。さらに上を目指すなら SoccerNet で追加ファインチューン推奨
+- 推論速度：onnxruntime-web の WASM-SIMD で 100-300ms/frame（実機ブラウザ）。WebGPU 実行プロバイダが利用可能な Chrome 113+ で 30-80ms/frame まで短縮可能
 
 **モデルファイル**
 - `models/soccer-yolov8.onnx`（約43MB）。ローカル配置とCDNフォールバック（jsdelivr経由のGitHub raw）の両対応
