@@ -1,0 +1,1505 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>みんなの元気玉 ｜ ホーム開幕戦 参加型PR企画（動作デモ v2）</title>
+<meta property="og:title" content="みんなの元気玉 ｜ 東部20市町の「がんばれ」をひとつの光に">
+<meta property="og:description" content="玉を押し続けると元気がたまる。あなたの応援がホーム開幕戦のスタジアムに届きます。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#001129;
+  --night-2:#00204a;
+  --navy:#002F6C;
+  --navy-2:#0F4C81;
+  --cyan:#00A0E9;
+  --glow:#7FE8FF;
+  --paper:#EAF4FC;
+  --paper-dim:#8FAFCB;
+  --line:rgba(127,232,255,.18);
+  --heat:#FFB547;
+  --x-black:#0f1419;
+  --line-green:#06C755;
+  --fb-blue:#1877F2;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0; background:var(--night); color:var(--paper);
+  font-family:'Noto Sans JP','Zen Kaku Gothic New',sans-serif;
+  line-height:1.8; -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px;}
+@media(max-width:640px){.wrap{padding:0 16px;}}
+
+/* ---------- ヘッダ ---------- */
+.topbar{
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(0,47,108,.55),rgba(0,17,41,0));
+}
+.topbar-in{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0;flex-wrap:wrap;}
+.brand{display:flex;align-items:center;gap:12px;}
+.brand-mark{
+  width:34px;height:34px;border-radius:50%;
+  background:radial-gradient(circle at 32% 28%,#fff,var(--glow) 35%,var(--cyan) 62%,var(--navy) 100%);
+  box-shadow:0 0 18px rgba(0,160,233,.6);flex:none;
+}
+.brand-name{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;font-size:17px;letter-spacing:.02em;line-height:1.3;}
+.brand-sub{font-size:11px;color:var(--paper-dim);letter-spacing:.08em;line-height:1.3;}
+.top-right{display:flex;align-items:center;gap:10px;}
+.demo-flag{
+  font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:12px;letter-spacing:.16em;
+  color:var(--night);background:var(--heat);padding:3px 10px;border-radius:2px;
+}
+
+/* ---------- ステージ ---------- */
+.stage{position:relative;padding:34px 0 8px;}
+.stage::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(720px 420px at 50% 34%,rgba(0,160,233,.16),transparent 66%),
+    radial-gradient(500px 320px at 88% 4%,rgba(15,76,129,.30),transparent 70%);
+}
+.stage-head{text-align:center;position:relative;margin-bottom:6px;}
+.eyebrow{
+  font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:13px;letter-spacing:.24em;
+  color:var(--glow);display:inline-block;margin-bottom:8px;
+}
+h1{
+  font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;
+  font-size:clamp(30px,6vw,54px);line-height:1.22;margin:0 0 10px;letter-spacing:.01em;
+}
+h1 em{font-style:normal;color:var(--glow);text-shadow:0 0 26px rgba(127,232,255,.55);}
+.lede{color:var(--paper-dim);font-size:14.5px;margin:0 auto;max-width:600px;}
+
+/* HUD */
+.hud{
+  display:flex;justify-content:center;gap:0;flex-wrap:wrap;
+  margin:22px auto 4px;position:relative;
+}
+.hud-cell{padding:0 26px;text-align:center;border-right:1px solid var(--line);}
+.hud-cell:last-child{border-right:none;}
+@media(max-width:560px){.hud-cell{padding:0 14px;}}
+.hud-num{
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:clamp(28px,6vw,42px);
+  line-height:1;letter-spacing:.01em;color:#fff;display:block;
+  font-variant-numeric:tabular-nums;
+}
+.hud-num.pop{animation:pop .45s cubic-bezier(.2,1.6,.4,1);}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.16);color:var(--glow)}100%{transform:scale(1)}}
+.hud-label{font-size:10.5px;letter-spacing:.14em;color:var(--paper-dim);}
+
+/* キャンバス */
+.ball-area{position:relative;width:100%;max-width:620px;margin:0 auto;}
+#ball{display:block;width:100%;height:auto;touch-action:none;cursor:pointer;}
+.hint{
+  position:absolute;left:50%;bottom:2px;transform:translateX(-50%);
+  font-size:12px;color:var(--paper-dim);letter-spacing:.06em;white-space:nowrap;
+  transition:opacity .4s;pointer-events:none;
+}
+.hint.hide{opacity:0;}
+
+/* コンボ表示 */
+.combo-tag{
+  position:absolute;top:8%;right:4%;pointer-events:none;
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:clamp(18px,4vw,30px);
+  color:var(--heat);letter-spacing:.06em;text-shadow:0 0 18px rgba(255,181,71,.5);
+  opacity:0;transform:scale(.8) rotate(-6deg);transition:opacity .25s,transform .25s;
+}
+.combo-tag.on{opacity:1;transform:scale(1) rotate(-6deg);}
+.combo-tag small{display:block;font-size:.45em;color:var(--paper);letter-spacing:.14em;text-align:right;}
+
+/* メッセージカード（粒をクリック） */
+.msg-pop{
+  position:absolute;z-index:6;min-width:200px;max-width:260px;
+  background:rgba(0,32,74,.94);border:1px solid var(--line);
+  border-radius:10px;padding:12px 14px;
+  box-shadow:0 12px 40px rgba(0,0,0,.55);
+  transform:translate(-50%,-118%);opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.msg-pop.on{opacity:1;pointer-events:auto;}
+.msg-pop .mp-text{font-size:13.5px;line-height:1.7;margin:0 0 8px;}
+.msg-pop .mp-meta{font-size:11px;color:var(--paper-dim);letter-spacing:.04em;margin-bottom:8px;}
+.mp-like{
+  font:inherit;font-size:11.5px;color:var(--glow);background:rgba(127,232,255,.10);
+  border:1px solid var(--line);border-radius:99px;padding:4px 12px;cursor:pointer;transition:.2s;
+}
+.mp-like:hover{background:rgba(127,232,255,.22);}
+.mp-like[disabled]{opacity:.5;cursor:default;}
+
+/* 目標ゲージ */
+.goal{max-width:620px;margin:6px auto 0;}
+.goal-top{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;color:var(--paper-dim);letter-spacing:.06em;margin-bottom:6px;}
+.goal-top b{font-family:'Barlow Condensed',sans-serif;font-size:15px;color:var(--glow);font-weight:600;letter-spacing:.04em;}
+.goal-bar{height:6px;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden;}
+.goal-fill{height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,var(--navy-2),var(--cyan) 55%,var(--glow));transition:width .8s cubic-bezier(.2,.8,.3,1);}
+.kick-clock{
+  text-align:center;margin:14px auto 0;font-size:12px;color:var(--paper-dim);letter-spacing:.1em;
+}
+.kick-clock b{
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:20px;color:#fff;
+  letter-spacing:.06em;font-variant-numeric:tabular-nums;margin:0 4px;
+}
+
+/* ---------- 共通セクション ---------- */
+section.blk{padding:64px 0;border-top:1px solid var(--line);position:relative;}
+.sec-label{
+  font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:12px;letter-spacing:.22em;
+  color:var(--cyan);margin-bottom:8px;
+}
+h2{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;font-size:clamp(21px,3.4vw,29px);margin:0 0 10px;line-height:1.4;}
+.sec-note{color:var(--paper-dim);font-size:13.5px;margin:0 0 30px;max-width:640px;}
+
+/* ---------- 投稿フォーム ---------- */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;max-width:720px;}
+@media(max-width:640px){.form-grid{grid-template-columns:1fr;}}
+.field{display:flex;flex-direction:column;gap:6px;}
+.field.full{grid-column:1/-1;}
+label{font-size:11.5px;letter-spacing:.1em;color:var(--paper-dim);}
+input,select,textarea{
+  font:inherit;font-size:14px;color:#fff;background:rgba(255,255,255,.05);
+  border:1px solid var(--line);border-radius:8px;padding:11px 13px;outline:none;
+  transition:border-color .2s,background .2s;width:100%;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--cyan);background:rgba(0,160,233,.10);}
+select option{background:#00204a;color:#fff;}
+textarea{resize:vertical;min-height:76px;line-height:1.7;}
+.count{font-size:11px;color:var(--paper-dim);text-align:right;font-family:'Barlow Condensed',sans-serif;letter-spacing:.06em;}
+.count.over{color:var(--heat);}
+.btn{
+  font:inherit;font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;font-size:15px;
+  color:var(--night);background:linear-gradient(100deg,var(--glow),var(--cyan));
+  border:none;border-radius:99px;padding:13px 34px;cursor:pointer;letter-spacing:.06em;
+  box-shadow:0 6px 24px rgba(0,160,233,.34);transition:transform .12s,box-shadow .2s,opacity .2s;
+}
+.btn:hover{box-shadow:0 8px 32px rgba(0,160,233,.5);}
+.btn:active{transform:scale(.97);}
+.btn[disabled]{opacity:.4;cursor:default;box-shadow:none;}
+.btn-ghost{
+  font:inherit;font-size:12.5px;color:var(--paper-dim);background:none;
+  border:1px solid var(--line);border-radius:99px;padding:7px 18px;cursor:pointer;transition:color .2s,border-color .2s;
+}
+.btn-ghost:hover{color:var(--glow);border-color:var(--cyan);}
+.form-foot{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:6px;}
+.thanks{font-size:13px;color:var(--glow);opacity:0;transition:opacity .3s;}
+.thanks.on{opacity:1;}
+
+/* ---------- SNSシェア ---------- */
+.share-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:36px;align-items:start;}
+@media(max-width:860px){.share-layout{grid-template-columns:1fr;}}
+.share-bar{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 6px;}
+.share-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  font:inherit;font-size:13px;font-weight:700;color:#fff;
+  border:none;border-radius:99px;padding:10px 20px;cursor:pointer;
+  letter-spacing:.04em;transition:transform .12s,filter .2s;
+}
+.share-btn:hover{filter:brightness(1.15);}
+.share-btn:active{transform:scale(.96);}
+.share-btn svg{width:16px;height:16px;fill:currentColor;flex:none;}
+.share-btn.x{background:var(--x-black);border:1px solid rgba(255,255,255,.22);}
+.share-btn.line{background:var(--line-green);}
+.share-btn.fb{background:var(--fb-blue);}
+.share-btn.native{background:var(--navy-2);border:1px solid var(--line);}
+.share-btn.copy{background:none;border:1px solid var(--line);color:var(--paper-dim);}
+.share-btn.copy:hover{color:var(--glow);border-color:var(--cyan);}
+.share-btn .bonus{
+  font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:11px;letter-spacing:.08em;
+  color:var(--night);background:var(--heat);border-radius:99px;padding:1px 7px;
+}
+.share-btn.done .bonus{background:rgba(255,255,255,.3);color:#fff;}
+.hashtags{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+.tag-chip{
+  font-size:12px;color:var(--glow);background:rgba(0,160,233,.12);
+  border:1px solid var(--line);border-radius:99px;padding:3px 12px;cursor:pointer;transition:.2s;
+}
+.tag-chip:hover{background:rgba(0,160,233,.25);}
+.card-preview{
+  border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  background:var(--night-2);box-shadow:0 14px 40px rgba(0,0,0,.4);
+}
+.card-preview canvas{display:block;width:100%;height:auto;}
+.card-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
+
+/* ---------- ファンフィード ---------- */
+.feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+.post-card{
+  border:1px solid var(--line);border-radius:12px;padding:16px 16px 12px;
+  background:rgba(0,47,108,.20);display:flex;flex-direction:column;gap:10px;
+  animation:rise .5s cubic-bezier(.2,.9,.3,1) both;
+}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.post-head{display:flex;align-items:center;gap:10px;}
+.avatar{
+  width:34px;height:34px;border-radius:50%;flex:none;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;font-size:14px;color:#fff;
+}
+.post-name{font-size:13px;font-weight:700;line-height:1.3;}
+.post-meta{font-size:10.5px;color:var(--paper-dim);letter-spacing:.04em;line-height:1.4;}
+.post-city{
+  margin-left:auto;font-size:10px;letter-spacing:.06em;color:var(--night);
+  background:var(--glow);padding:2px 9px;border-radius:99px;font-weight:700;flex:none;
+}
+.post-text{font-size:13.5px;line-height:1.75;flex:1;}
+.post-foot{display:flex;align-items:center;gap:8px;border-top:1px solid rgba(127,232,255,.10);padding-top:10px;}
+.like-btn{
+  font:inherit;font-size:12px;color:var(--paper-dim);background:none;border:none;
+  cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:2px 6px;border-radius:8px;
+  transition:color .2s,background .2s;font-variant-numeric:tabular-nums;
+}
+.like-btn:hover{color:#ff7f9e;background:rgba(255,127,158,.08);}
+.like-btn.liked{color:#ff7f9e;}
+.like-btn .hh{font-size:14px;line-height:1;}
+.post-share{
+  font:inherit;font-size:11px;color:var(--paper-dim);background:none;
+  border:1px solid var(--line);border-radius:99px;padding:3px 12px;cursor:pointer;
+  margin-left:auto;transition:.2s;
+}
+.post-share:hover{color:var(--glow);border-color:var(--cyan);}
+
+/* ---------- マップ ---------- */
+.map-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:40px;align-items:start;}
+@media(max-width:900px){.map-layout{grid-template-columns:1fr;gap:28px;}}
+.map-box{background:radial-gradient(520px 460px at 46% 40%,rgba(0,47,108,.5),rgba(0,17,41,0));border-radius:14px;}
+#mapSvg{width:100%;height:auto;display:block;overflow:visible;}
+.hex{cursor:pointer;transition:transform .18s;transform-origin:center;transform-box:fill-box;}
+.hex-shape{stroke:rgba(127,232,255,.30);stroke-width:1.2;transition:fill .5s,stroke .2s;}
+.hex:hover .hex-shape{stroke:#fff;stroke-width:2;}
+.hex.sel .hex-shape{stroke:var(--heat);stroke-width:2.4;}
+.hex-name{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;font-size:14px;fill:#fff;text-anchor:middle;pointer-events:none;}
+.hex-name.sm{font-size:11.5px;}
+.hex-suf{font-size:9px;fill:rgba(255,255,255,.55);text-anchor:middle;pointer-events:none;}
+.hex-val{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:12px;fill:var(--glow);text-anchor:middle;pointer-events:none;letter-spacing:.04em;}
+.legend{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--paper-dim);letter-spacing:.08em;margin-top:14px;}
+.legend-bar{height:6px;width:150px;border-radius:99px;background:linear-gradient(90deg,#00214d,#0F4C81,#00A0E9,#7FE8FF);}
+
+/* ランキング */
+.rank-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.rank-title{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;font-size:15px;}
+.toggle{display:flex;border:1px solid var(--line);border-radius:99px;overflow:hidden;}
+.toggle button{
+  font:inherit;font-size:11.5px;letter-spacing:.06em;color:var(--paper-dim);
+  background:none;border:none;padding:6px 13px;cursor:pointer;transition:.2s;
+}
+.toggle button.on{background:var(--cyan);color:var(--night);font-weight:700;}
+.rank-list{list-style:none;margin:0;padding:0;}
+.rank-list li{
+  display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:10px;
+  padding:9px 4px;border-bottom:1px solid rgba(127,232,255,.10);cursor:pointer;transition:background .2s;
+}
+.rank-list li:hover{background:rgba(0,160,233,.08);}
+.rank-list li.sel{background:rgba(255,181,71,.10);}
+.rank-no{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;color:var(--paper-dim);text-align:center;}
+.rank-list li:nth-child(1) .rank-no{color:var(--heat);}
+.rank-city{font-size:13.5px;}
+.rank-val{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:15px;color:var(--glow);font-variant-numeric:tabular-nums;}
+.rank-foot{font-size:11px;color:var(--paper-dim);margin-top:12px;line-height:1.7;}
+.city-detail{
+  margin-top:18px;border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+  background:rgba(0,47,108,.28);
+}
+.city-detail h4{margin:0 0 6px;font-size:14px;font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;}
+.city-detail p{margin:0;font-size:12px;color:var(--paper-dim);line-height:1.8;}
+
+/* ---------- 横断幕ティッカー ---------- */
+.ticker{
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:linear-gradient(90deg,rgba(0,47,108,.6),rgba(0,17,41,.2),rgba(0,47,108,.6));
+  overflow:hidden;padding:14px 0;position:relative;
+}
+.ticker-track{display:flex;gap:0;width:max-content;animation:slide 46s linear infinite;}
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ticker:hover .ticker-track{animation-play-state:paused;}
+.tk-item{display:flex;align-items:center;gap:9px;padding:0 26px;white-space:nowrap;font-size:13.5px;}
+.tk-city{font-size:10.5px;letter-spacing:.08em;color:var(--night);background:var(--glow);padding:2px 8px;border-radius:99px;font-weight:700;}
+.tk-sep{color:rgba(127,232,255,.3);}
+
+/* ---------- 仕組み ---------- */
+.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+@media(max-width:820px){.flow{grid-template-columns:1fr;}}
+.flow-card{border:1px solid var(--line);border-radius:12px;padding:22px 20px;background:rgba(0,47,108,.20);}
+.flow-step{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:.18em;color:var(--cyan);margin-bottom:8px;}
+.flow-card h3{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;font-size:16px;margin:0 0 8px;}
+.flow-card p{margin:0;font-size:13px;color:var(--paper-dim);line-height:1.85;}
+
+/* ---------- モーダル ---------- */
+.modal-bg{
+  position:fixed;inset:0;z-index:40;background:rgba(0,10,25,.78);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  opacity:0;pointer-events:none;transition:opacity .25s;
+  backdrop-filter:blur(4px);
+}
+.modal-bg.on{opacity:1;pointer-events:auto;}
+.modal{
+  width:100%;max-width:520px;max-height:92vh;overflow:auto;
+  background:linear-gradient(180deg,#032a58,#001b3d);
+  border:1px solid var(--line);border-radius:16px;padding:26px 24px;
+  box-shadow:0 30px 90px rgba(0,0,0,.6);
+  transform:translateY(14px);transition:transform .25s;
+}
+.modal-bg.on .modal{transform:none;}
+.modal h3{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;font-size:19px;margin:0 0 6px;}
+.modal .m-sub{font-size:12.5px;color:var(--paper-dim);margin:0 0 16px;line-height:1.8;}
+.modal .card-preview{margin-bottom:4px;}
+.m-close{
+  position:sticky;top:0;float:right;margin:-6px -4px 0 0;
+  font-size:20px;line-height:1;color:var(--paper-dim);background:none;border:none;cursor:pointer;
+}
+.m-close:hover{color:#fff;}
+
+/* ---------- トースト・紙吹雪 ---------- */
+.toast{
+  position:fixed;left:50%;bottom:28px;z-index:60;transform:translateX(-50%) translateY(16px);
+  background:rgba(0,32,74,.95);border:1px solid var(--cyan);border-radius:99px;
+  padding:10px 24px;font-size:13.5px;color:#fff;box-shadow:0 10px 34px rgba(0,0,0,.5);
+  opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;white-space:nowrap;max-width:92vw;
+  overflow:hidden;text-overflow:ellipsis;
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+#fx{position:fixed;inset:0;z-index:50;pointer-events:none;}
+
+footer{padding:44px 0 60px;border-top:1px solid var(--line);}
+.foot-row{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;}
+.foot-note{font-size:11.5px;color:var(--paper-dim);line-height:1.9;max-width:720px;}
+:focus-visible{outline:2px solid var(--glow);outline-offset:3px;}
+@media(prefers-reduced-motion:reduce){
+  .ticker-track{animation:none;}
+  *{transition-duration:.01ms !important;animation-duration:.01ms !important;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap topbar-in">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">みんなの元気玉</div>
+        <div class="brand-sub">HOME OPENER SUPPORT PROJECT</div>
+      </div>
+    </div>
+    <div class="top-right">
+      <button class="btn-ghost" id="sndBtn" aria-label="効果音の切り替え">🔇 SOUND OFF</button>
+      <span class="demo-flag">DEMO v2 / 動作イメージ</span>
+    </div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="wrap">
+    <div class="stage-head">
+      <span class="eyebrow">EAST SHIZUOKA 20 CITIES &amp; TOWNS</span>
+      <h1>東部20市町の「がんばれ」を、<br><em>ひとつの光</em>に。</h1>
+      <p class="lede">玉を押し続けると元気がたまります。手を離すと、あなたの元気が加わります。連続で送るとコンボボーナス！</p>
+    </div>
+
+    <div class="hud">
+      <div class="hud-cell"><span class="hud-num" id="hudEnergy">0</span><span class="hud-label">TOTAL ENERGY</span></div>
+      <div class="hud-cell"><span class="hud-num" id="hudMsg">0</span><span class="hud-label">MESSAGES</span></div>
+      <div class="hud-cell"><span class="hud-num" id="hudCity">0<small style="font-size:.5em">/20</small></span><span class="hud-label">CITIES LIT</span></div>
+      <div class="hud-cell"><span class="hud-num" id="hudShare">0</span><span class="hud-label">SHARES</span></div>
+    </div>
+
+    <div class="ball-area" id="ballArea">
+      <canvas id="ball" width="1240" height="1000"></canvas>
+      <div class="combo-tag" id="comboTag"></div>
+      <div class="hint" id="hint">押し続けてチャージ → 離して発射／光の粒をタップでメッセージが読めます</div>
+      <div class="msg-pop" id="msgPop">
+        <p class="mp-text" id="mpText"></p>
+        <div class="mp-meta" id="mpMeta"></div>
+        <button class="mp-like" id="mpLike">♥ この声援に共感（+10）</button>
+      </div>
+    </div>
+
+    <div class="goal">
+      <div class="goal-top">
+        <span>ホーム開幕までの目標</span>
+        <span><b id="goalNow">0</b> / 100,000 ENERGY</span>
+      </div>
+      <div class="goal-bar"><div class="goal-fill" id="goalFill"></div></div>
+      <div class="kick-clock">KICKOFF まで <b id="cdDays">—</b>日 <b id="cdTime">--:--:--</b></div>
+    </div>
+  </div>
+</div>
+
+<div class="ticker" aria-label="届いた応援メッセージ">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<section class="blk">
+  <div class="wrap">
+    <div class="sec-label">02 — MESSAGE</div>
+    <h2>応援メッセージを送る</h2>
+    <p class="sec-note">送られたメッセージは元気玉のなかで一粒の光になります。粒をタップすると、誰かの声がそのまま読めます。投稿後はそのままSNSでシェアできます。</p>
+
+    <div class="form-grid">
+      <div class="field">
+        <label for="fName">ニックネーム（任意）</label>
+        <input id="fName" type="text" maxlength="12" placeholder="例）ぬまづサポ">
+      </div>
+      <div class="field">
+        <label for="fCity">お住まいの市町</label>
+        <select id="fCity"></select>
+      </div>
+      <div class="field">
+        <label for="fTo">届け先</label>
+        <select id="fTo">
+          <option value="チーム全員へ">チーム全員へ</option>
+          <option value="監督・スタッフへ">監督・スタッフへ</option>
+          <option value="#7 の選手へ">#7 の選手へ</option>
+          <option value="#9 の選手へ">#9 の選手へ</option>
+          <option value="#10 の選手へ">#10 の選手へ</option>
+          <option value="#18 の選手へ">#18 の選手へ</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="fPlace">参加方法</label>
+        <select id="fPlace">
+          <option value="web">WEBから（×1.0）</option>
+          <option value="real">会場・店頭のQRから（×2.0）</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label for="fText">メッセージ（40文字まで）</label>
+        <textarea id="fText" maxlength="40" placeholder="開幕戦、スタジアムで待ってます！"></textarea>
+        <div class="count" id="fCount">0 / 40</div>
+      </div>
+    </div>
+    <div class="form-foot">
+      <button class="btn" id="sendBtn">元気を送る</button>
+      <span class="thanks" id="thanks">ありがとうございます！元気玉に光が加わりました。</span>
+    </div>
+  </div>
+</section>
+
+<section class="blk">
+  <div class="wrap">
+    <div class="sec-label">03 — SNS SHARE</div>
+    <h2>元気をSNSで広げる</h2>
+    <p class="sec-note">シェアするたびに元気玉へボーナスエナジーが加算されます（各SNS 1回まで／デモ）。シェアカードはあなたのメッセージ入りで自動生成され、画像として保存できます。</p>
+
+    <div class="share-layout">
+      <div>
+        <div class="share-bar" id="mainShareBar"></div>
+        <div class="hashtags" id="hashtagRow"></div>
+        <p class="rank-foot" style="margin-top:16px">
+          シェアリンクには「?ref=share&amp;city=◯◯」が付き、リンク経由で開いた人には +50 ENERGY の入場ボーナス。
+          「誰かのシェア → 新しい参加」の連鎖をデータで追える設計です。
+        </p>
+      </div>
+      <div>
+        <div class="card-preview"><canvas id="cardMain" width="1200" height="630" role="img" aria-label="シェアカードのプレビュー"></canvas></div>
+        <div class="card-actions">
+          <button class="btn-ghost" id="cardRefresh">最新の投稿でカードを作り直す</button>
+          <button class="btn-ghost" id="cardSave">画像を保存（PNG）</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="blk">
+  <div class="wrap">
+    <div class="sec-label">04 — FAN FEED</div>
+    <h2>みんなの声（ファンフィード）</h2>
+    <p class="sec-note">届いたばかりの応援がSNS風のタイムラインに並びます。♥で共感するとその市町に +10 ENERGY。共感も立派な応援です。</p>
+    <div class="feed" id="feedList"></div>
+    <div style="margin-top:20px;text-align:center"><button class="btn-ghost" id="feedMore">もっと見る</button></div>
+  </div>
+</section>
+
+<section class="blk">
+  <div class="wrap">
+    <div class="sec-label">05 — HEAT MAP</div>
+    <h2>東部20市町 応援ヒートマップ</h2>
+    <p class="sec-note">どの市町から、どれだけの元気が届いているか。市町をタップすると詳細が出ます。人口規模の差が出ないよう「人口10万人あたり」の密度でも見られます。</p>
+
+    <div class="map-layout">
+      <div>
+        <div class="map-box"><svg id="mapSvg" viewBox="0 0 500 700" role="img" aria-label="東部20市町のヒートマップ"></svg></div>
+        <div class="legend"><span>少</span><div class="legend-bar"></div><span>多</span></div>
+      </div>
+      <div>
+        <div class="rank-head">
+          <div class="rank-title">市町ランキング</div>
+          <div class="toggle">
+            <button id="tabTotal" class="on">総エナジー</button>
+            <button id="tabDens">密度</button>
+          </div>
+        </div>
+        <ol class="rank-list" id="rankList"></ol>
+        <p class="rank-foot">「密度」＝人口10万人あたりのエナジー。人口はデモ用の概数です。小さな町でも上位に入れる設計にしています。</p>
+        <div class="city-detail" id="cityDetail">
+          <h4>市町を選ぶと表示されます</h4>
+          <p>マップまたはランキングから選択してください。</p>
+        </div>
+        <div style="margin-top:18px"><button class="btn-ghost" id="resetBtn">デモデータをリセット</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="blk">
+  <div class="wrap">
+    <div class="sec-label">06 — HOW IT WORKS</div>
+    <h2>開幕までの3つの場面</h2>
+    <p class="sec-note">WEBで集め、当日に炸裂させ、あとに残す。この3段構えで「参加して終わり」にしません。SNSシェアの連鎖が「集める」を加速させます。</p>
+    <div class="flow">
+      <div class="flow-card">
+        <div class="flow-step">BEFORE</div>
+        <h3>集める</h3>
+        <p>WEB・SNSに加え、市役所／商店／スポンサー店舗／スクールにQRポスターを設置。会場QR経由は2倍加算、SNSシェアにはボーナス加算。シェアリンク経由の新規参加も追跡し、拡散の連鎖を可視化します。</p>
+      </div>
+      <div class="flow-card">
+        <div class="flow-step">MATCH DAY</div>
+        <h3>爆発させる</h3>
+        <p>キックオフ直前、場内ビジョンに元気玉を投影。来場者が一斉にタップして玉が炸裂する演出。抜粋メッセージを場内アナウンスで読み上げ、その瞬間の動画をハッシュタグ付きで拡散します。</p>
+      </div>
+      <div class="flow-card">
+        <div class="flow-step">AFTER</div>
+        <h3>残す</h3>
+        <p>全参加者の名前を敷き詰めた実物のフラッグを制作しクラブハウスに掲出。市町別の参加データ・SNS到達データはそのまま各自治体・スポンサーへの報告資料になります。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-row">
+    <p class="foot-note">
+      ※ 本ページは動作イメージの確認用デモです。表示中の数値・メッセージはサンプルで、データはご覧の端末内にのみ保存されます（他の方の画面には反映されません）。<br>
+      ※ SNSシェアは各サービスの共有画面を開くのみで、自動投稿は行いません。本番運用では、全参加者の合算・不適切投稿のフィルタと承認・重複対策・OGP画像のサーバー側生成が必要です。届け先の選手名・開幕日はデモ用の仮置きです。
+    </p>
+    <span class="demo-flag">DEMO</span>
+  </div>
+</footer>
+
+<!-- 投稿後シェアモーダル -->
+<div class="modal-bg" id="shareModal" role="dialog" aria-modal="true" aria-label="シェアのご案内">
+  <div class="modal">
+    <button class="m-close" id="modalClose" aria-label="閉じる">×</button>
+    <h3>元気、届きました！⚽</h3>
+    <p class="m-sub">あなたのメッセージ入りシェアカードができました。SNSで広げると、元気玉にボーナスエナジーが加算されます。</p>
+    <div class="card-preview"><canvas id="cardModal" width="1200" height="630"></canvas></div>
+    <div class="share-bar" id="modalShareBar"></div>
+    <div class="card-actions">
+      <button class="btn-ghost" id="modalSave">画像を保存（PNG）</button>
+      <button class="btn-ghost" id="modalSkip">あとでシェアする</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="fx"></canvas>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ===================== データ定義 ===================== */
+// col,row：地理関係をおおまかに反映したタイル配置
+var CITIES = [
+  {n:"小山",     s:"町", col:3, row:0, pop:1.8},
+  {n:"富士宮",   s:"市", col:0, row:1, pop:12.7},
+  {n:"御殿場",   s:"市", col:2, row:1, pop:8.6},
+  {n:"富士",     s:"市", col:0, row:2, pop:24.5},
+  {n:"裾野",     s:"市", col:2, row:2, pop:5.0},
+  {n:"長泉",     s:"町", col:2, row:3, pop:4.3},
+  {n:"三島",     s:"市", col:3, row:3, pop:10.6},
+  {n:"沼津",     s:"市", col:1, row:4, pop:18.6},
+  {n:"清水",     s:"町", col:2, row:4, pop:3.2},
+  {n:"函南",     s:"町", col:3, row:4, pop:3.6},
+  {n:"熱海",     s:"市", col:4, row:4, pop:3.3},
+  {n:"伊豆の国", s:"市", col:2, row:5, pop:4.6},
+  {n:"伊東",     s:"市", col:4, row:5, pop:6.4},
+  {n:"西伊豆",   s:"町", col:1, row:6, pop:0.7},
+  {n:"伊豆",     s:"市", col:2, row:6, pop:2.8},
+  {n:"東伊豆",   s:"町", col:4, row:6, pop:1.1},
+  {n:"松崎",     s:"町", col:1, row:7, pop:0.6},
+  {n:"河津",     s:"町", col:3, row:7, pop:0.6},
+  {n:"南伊豆",   s:"町", col:2, row:8, pop:0.7},
+  {n:"下田",     s:"市", col:3, row:8, pop:1.9}
+];
+var GOAL = 100000;
+var KICKOFF = new Date(2027,2,7,14,0,0); // 仮：2027/3/7 14:00 KICKOFF
+var KEY = "azul_genki_demo_v2";
+var HASHTAGS = ["#みんなの元気玉","#アスルクラロ沼津","#静岡東部20市町"];
+var SHARE_MSG = "東部20市町の「がんばれ」をひとつの光に。ホーム開幕戦へ向けてエナジー充填中⚽";
+
+var SAMPLE_TEXT = [
+  "開幕戦、スタジアムで待ってます！","今年こそ絶対いける。信じてます","声が枯れるまで応援します",
+  "沼津から愛を込めて","うちの子が背番号を覚えました","去年の悔しさ、全部ぶつけよう",
+  "職場のみんなで応援してます","初観戦です。よろしくお願いします","雨でも雪でも行きます",
+  "アスルがあるから月曜も頑張れる","地元から声援送ります","勝っても負けても大好きです",
+  "スタジアムの空気が好きです","家族3人で応援に行きます","開幕ダッシュ決めよう！",
+  "遠くからだけど心は隣にいます","今年は昇格の年にしよう","子どもの憧れでいてください",
+  "商店街のみんなで待ってます","一緒に歴史をつくりましょう","おじいちゃんもテレビの前で応援",
+  "選手のみんな、けがだけは気をつけて","青い空、青いユニフォーム","今年もよろしくお願いします！"
+];
+var SAMPLE_NAME = ["ぬまづサポ","青い風","ヨシ","みかん農家","かずき","おかん","三島の熱男","たけ","ゆうか","","ハルパパ","めぐ","","名無しのサポーター","こまち","RIKU",""];
+var TO_LIST = ["チーム全員へ","監督・スタッフへ","#7 の選手へ","#9 の選手へ","#10 の選手へ","#18 の選手へ"];
+
+/* ===================== 状態 ===================== */
+var state = null;
+function seed(){
+  var rnd = mulberry(20260804);
+  var energy = {}, msgs = [], people = 0;
+  CITIES.forEach(function(c){
+    // 人口に緩く相関＋クラブ本拠地補正
+    var base = c.pop * (140 + rnd()*260);
+    if(c.n==="沼津") base *= 2.1;
+    if(c.n==="三島"||c.n==="裾野"||c.n==="長泉"||c.n==="清水") base *= 1.35;
+    energy[c.n] = Math.round(base);
+    people += Math.round(base/38);
+  });
+  for(var i=0;i<46;i++){
+    var c = CITIES[Math.floor(rnd()*CITIES.length)];
+    msgs.push({
+      name: SAMPLE_NAME[Math.floor(rnd()*SAMPLE_NAME.length)],
+      city: c.n,
+      to:   TO_LIST[Math.floor(rnd()*TO_LIST.length)],
+      text: SAMPLE_TEXT[Math.floor(rnd()*SAMPLE_TEXT.length)],
+      ts:   Date.now() - Math.floor(rnd()*86400000*12),
+      likes: Math.floor(rnd()*14),
+      mine: false
+    });
+  }
+  msgs.sort(function(a,b){return a.ts-b.ts;});
+  return {energy:energy, msgs:msgs, people:people, shares:0, shared:{}, milestones:[]};
+}
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(raw){ var o=JSON.parse(raw); if(o&&o.energy){ o.shares=o.shares||0; o.shared=o.shared||{}; o.milestones=o.milestones||[]; return o; } }
+  }catch(e){}
+  var s = seed(); save(s); return s;
+}
+function save(s){ try{ localStorage.setItem(KEY, JSON.stringify(s)); }catch(e){} }
+state = load();
+
+function totalEnergy(){ var t=0; for(var k in state.energy) t+=state.energy[k]; return t; }
+function litCount(){ var n=0; CITIES.forEach(function(c){ if(state.energy[c.n]>0) n++; }); return n; }
+function myLatestMsg(){
+  for(var i=state.msgs.length-1;i>=0;i--){ if(state.msgs[i].mine) return state.msgs[i]; }
+  return null;
+}
+
+/* ===================== サウンド ===================== */
+var sndOn = false;
+try{ sndOn = localStorage.getItem("azul_genki_snd")==="1"; }catch(e){}
+var actx = null;
+function beep(freq, dur, delay, type, gain){
+  if(!sndOn) return;
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    var t0 = actx.currentTime + (delay||0);
+    var o = actx.createOscillator(), g = actx.createGain();
+    o.type = type||"sine"; o.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain||0.12, t0+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0+(dur||0.25));
+    o.connect(g); g.connect(actx.destination);
+    o.start(t0); o.stop(t0+(dur||0.25)+0.05);
+  }catch(e){}
+}
+function sndFire(k){ beep(320+k*400,0.28,0,"triangle",0.15); beep(640+k*500,0.22,0.05,"sine",0.08); }
+function sndPost(){ beep(523,0.15,0,"sine",0.1); beep(784,0.2,0.1,"sine",0.1); }
+function sndMilestone(){ beep(523,0.18,0,"triangle",0.14); beep(659,0.18,0.12,"triangle",0.14); beep(784,0.3,0.24,"triangle",0.16); }
+var sndBtn = document.getElementById("sndBtn");
+function renderSnd(){ sndBtn.textContent = sndOn ? "🔊 SOUND ON" : "🔇 SOUND OFF"; }
+sndBtn.addEventListener("click", function(){
+  sndOn = !sndOn;
+  try{ localStorage.setItem("azul_genki_snd", sndOn?"1":"0"); }catch(e){}
+  renderSnd(); if(sndOn) beep(659,0.12,0,"sine",0.08);
+});
+renderSnd();
+
+/* ===================== トースト・紙吹雪 ===================== */
+var toastEl = document.getElementById("toast"), toastTimer = null;
+function showToast(text){
+  toastEl.textContent = text;
+  toastEl.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ toastEl.classList.remove("on"); }, 3400);
+}
+var fx = document.getElementById("fx"), fctx = fx.getContext("2d"), confetti = [], fxRunning = false;
+function sizeFx(){ fx.width = innerWidth; fx.height = innerHeight; }
+sizeFx(); addEventListener("resize", sizeFx);
+function popConfetti(n){
+  var colors = ["#7FE8FF","#00A0E9","#FFB547","#ffffff","#0F4C81"];
+  for(var i=0;i<n;i++){
+    confetti.push({
+      x: innerWidth*(0.2+Math.random()*0.6), y: innerHeight*0.25,
+      vx:(Math.random()-0.5)*14, vy:-6-Math.random()*9,
+      w:5+Math.random()*6, h:8+Math.random()*8,
+      rot:Math.random()*Math.PI, vr:(Math.random()-0.5)*0.3,
+      c:colors[Math.floor(Math.random()*colors.length)], life:1
+    });
+  }
+  if(!fxRunning){ fxRunning = true; requestAnimationFrame(fxLoop); }
+}
+function fxLoop(){
+  fctx.clearRect(0,0,fx.width,fx.height);
+  for(var i=confetti.length-1;i>=0;i--){
+    var p = confetti[i];
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.32; p.vx*=0.985; p.rot+=p.vr; p.life-=0.006;
+    if(p.life<=0 || p.y>fx.height+30){ confetti.splice(i,1); continue; }
+    fctx.save(); fctx.translate(p.x,p.y); fctx.rotate(p.rot);
+    fctx.globalAlpha = Math.min(1,p.life*1.6);
+    fctx.fillStyle = p.c; fctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+    fctx.restore();
+  }
+  if(confetti.length){ requestAnimationFrame(fxLoop); } else { fxRunning=false; fctx.clearRect(0,0,fx.width,fx.height); }
+}
+
+/* ===================== HUD ===================== */
+var elE=document.getElementById("hudEnergy"), elM=document.getElementById("hudMsg"),
+    elC=document.getElementById("hudCity"), elS=document.getElementById("hudShare"),
+    elGoalNow=document.getElementById("goalNow"), elGoalFill=document.getElementById("goalFill");
+
+var shownEnergy = totalEnergy();
+function fmt(n){ return Math.round(n).toLocaleString("ja-JP"); }
+function renderHUD(pop){
+  elM.textContent = fmt(state.msgs.length);
+  elC.innerHTML = litCount()+'<small style="font-size:.5em">/20</small>';
+  elS.textContent = fmt(state.shares);
+  var t = totalEnergy();
+  elGoalNow.textContent = fmt(t);
+  elGoalFill.style.width = Math.min(100, t/GOAL*100).toFixed(2)+"%";
+  if(pop){ elE.classList.remove("pop"); void elE.offsetWidth; elE.classList.add("pop"); }
+}
+// カウントアップ演出
+(function tickCounter(){
+  var t = totalEnergy();
+  if(Math.abs(shownEnergy-t) > 0.5){ shownEnergy += (t-shownEnergy)*0.12; }
+  else shownEnergy = t;
+  elE.textContent = fmt(shownEnergy);
+  requestAnimationFrame(tickCounter);
+})();
+renderHUD();
+
+/* キックオフまで秒単位カウントダウン */
+var cdDays=document.getElementById("cdDays"), cdTime=document.getElementById("cdTime");
+function pad(n){ return (n<10?"0":"")+n; }
+function tickClock(){
+  var diff = KICKOFF - new Date();
+  if(diff<=0){ cdDays.textContent="0"; cdTime.textContent="KICKOFF!"; return; }
+  var d = Math.floor(diff/86400000);
+  var h = Math.floor(diff%86400000/3600000), m = Math.floor(diff%3600000/60000), s2 = Math.floor(diff%60000/1000);
+  cdDays.textContent = d;
+  cdTime.textContent = pad(h)+":"+pad(m)+":"+pad(s2);
+}
+tickClock(); setInterval(tickClock,1000);
+
+/* ===================== マイルストーン ===================== */
+var MILESTONES = [0.25,0.5,0.75,1.0];
+function checkMilestones(){
+  var t = totalEnergy();
+  MILESTONES.forEach(function(k){
+    var id = Math.round(k*100);
+    if(t >= GOAL*k && state.milestones.indexOf(id)<0){
+      state.milestones.push(id); save(state);
+      popConfetti(k>=1?220:120);
+      sndMilestone();
+      showToast(k>=1 ? "🎉 目標の100,000 ENERGY を達成！開幕戦で炸裂させよう！" : "🎉 目標の"+id+"％を突破！この調子で開幕まで走ろう！");
+    }
+  });
+}
+
+/* ===================== 元気玉キャンバス ===================== */
+var cv = document.getElementById("ball"), ctx = cv.getContext("2d");
+var CW = cv.width, CH = cv.height, CX = CW/2, CY = CH*0.47;
+var holding=false, charge=0, bursts=[], streaks=[], sparks=[];
+var particles = [];
+var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function rebuildParticles(){
+  particles = [];
+  var list = state.msgs.slice(-110);
+  for(var i=0;i<list.length;i++){
+    particles.push({
+      msg:list[i],
+      a: (i*137.508)*Math.PI/180,          // 黄金角で均等配置
+      tilt: Math.acos(1-2*((i+0.5)/list.length)),
+      r: 0.62+((i*0.37)%1)*0.34,
+      sp: 0.00022+((i*0.11)%1)*0.00028,
+      px:0, py:0, pr:0, vis:0, born:0
+    });
+  }
+}
+rebuildParticles();
+
+function ballRadius(){
+  var t = totalEnergy();
+  return 150 + Math.min(150, Math.pow(t/GOAL,0.55)*150);
+}
+
+function draw(now){
+  ctx.clearRect(0,0,CW,CH);
+  var R = ballRadius();
+  var chargeK = charge/100;
+
+  // 外周のオーラ
+  var aura = ctx.createRadialGradient(CX,CY,R*0.4,CX,CY,R*2.5);
+  aura.addColorStop(0,"rgba(0,160,233,"+(0.20+chargeK*0.22)+")");
+  aura.addColorStop(0.45,"rgba(0,47,108,0.16)");
+  aura.addColorStop(1,"rgba(0,17,41,0)");
+  ctx.fillStyle=aura; ctx.beginPath(); ctx.arc(CX,CY,R*2.5,0,7); ctx.fill();
+
+  // 発射エフェクト
+  for(var b=bursts.length-1;b>=0;b--){
+    var bu=bursts[b], age=(now-bu.t)/900;
+    if(age>1){ bursts.splice(b,1); continue; }
+    var rr = R + age*R*2.4, al = (1-age)*0.55;
+    ctx.strokeStyle="rgba(127,232,255,"+al+")"; ctx.lineWidth=(1-age)*10+1;
+    ctx.beginPath(); ctx.arc(CX,CY,rr,0,7); ctx.stroke();
+  }
+
+  // 流れ込む光（投稿時）
+  for(var s=streaks.length-1;s>=0;s--){
+    var st=streaks[s], k=(now-st.t)/1400;
+    if(k>1){ streaks.splice(s,1); continue; }
+    var e = 1-Math.pow(1-k,3);
+    var x = st.x0+(CX-st.x0)*e, y = st.y0+(CY-st.y0)*e;
+    var g = ctx.createLinearGradient(st.x0,st.y0,x,y);
+    g.addColorStop(0,"rgba(127,232,255,0)"); g.addColorStop(1,"rgba(255,255,255,"+(1-k)*0.9+")");
+    ctx.strokeStyle=g; ctx.lineWidth=5; ctx.lineCap="round";
+    ctx.beginPath(); ctx.moveTo(st.x0+(x-st.x0)*0.72, st.y0+(y-st.y0)*0.72); ctx.lineTo(x,y); ctx.stroke();
+    ctx.fillStyle="rgba(255,255,255,"+(1-k)+")"; ctx.beginPath(); ctx.arc(x,y,7*(1-k*0.5),0,7); ctx.fill();
+    if(k<0.7){
+      ctx.font="600 30px 'Zen Kaku Gothic New',sans-serif"; ctx.textAlign="center";
+      ctx.fillStyle="rgba(127,232,255,"+(0.85-k)+")";
+      ctx.fillText(st.label, st.x0, st.y0-22);
+    }
+  }
+
+  // 本体
+  var core = ctx.createRadialGradient(CX-R*0.22,CY-R*0.26,R*0.05,CX,CY,R*(1+chargeK*0.10));
+  core.addColorStop(0,"rgba(255,255,255,"+(0.95)+")");
+  core.addColorStop(0.22,"rgba(127,232,255,0.85)");
+  core.addColorStop(0.55,"rgba(0,160,233,0.55)");
+  core.addColorStop(0.85,"rgba(15,76,129,0.30)");
+  core.addColorStop(1,"rgba(0,47,108,0)");
+  ctx.fillStyle=core; ctx.beginPath(); ctx.arc(CX,CY,R*(1.12+chargeK*0.10),0,7); ctx.fill();
+
+  // 粒（＝メッセージ）
+  ctx.textAlign="center";
+  for(var i=0;i<particles.length;i++){
+    var p=particles[i];
+    p.a += p.sp*(reduce?0:16.6) * (1+chargeK*2.2);
+    var pull = 1 - chargeK*0.30;
+    var rr2 = R*p.r*pull;
+    var sx = Math.sin(p.tilt)*Math.cos(p.a), sy = Math.cos(p.tilt)*0.72, sz = Math.sin(p.tilt)*Math.sin(p.a);
+    var depth = (sz+1)/2;
+    p.px = CX + sx*rr2; p.py = CY + sy*rr2 + Math.sin(p.a*0.7)*rr2*0.28;
+    p.pr = 4+depth*6.5;
+    p.vis = 0.35+depth*0.65;
+    var fresh = p.born ? Math.max(0,1-(now-p.born)/1200) : 0;
+    ctx.fillStyle="rgba(255,255,255,"+(p.vis*0.9)+")";
+    ctx.beginPath(); ctx.arc(p.px,p.py,p.pr*(1+fresh*1.8),0,7); ctx.fill();
+    if(depth>0.55||fresh>0){
+      ctx.fillStyle="rgba(127,232,255,"+(p.vis*0.28+fresh*0.5)+")";
+      ctx.beginPath(); ctx.arc(p.px,p.py,p.pr*2.6*(1+fresh),0,7); ctx.fill();
+    }
+  }
+
+  // チャージリング
+  if(charge>0){
+    ctx.strokeStyle="rgba(255,255,255,0.14)"; ctx.lineWidth=9;
+    ctx.beginPath(); ctx.arc(CX,CY,R*1.42,0,7); ctx.stroke();
+    ctx.strokeStyle="#7FE8FF"; ctx.lineWidth=9; ctx.lineCap="round";
+    ctx.beginPath(); ctx.arc(CX,CY,R*1.42,-Math.PI/2,-Math.PI/2+chargeK*Math.PI*2); ctx.stroke();
+    ctx.font="700 46px 'Barlow Condensed',sans-serif"; ctx.fillStyle="#7FE8FF"; ctx.textAlign="center";
+    var comboMul = 1 + combo*0.1;
+    ctx.fillText("+"+Math.round(charge*3*comboMul), CX, CY+R*1.42+64);
+  }
+
+  // 火花
+  for(var k2=sparks.length-1;k2>=0;k2--){
+    var sp=sparks[k2]; sp.x+=sp.vx; sp.y+=sp.vy; sp.vy+=0.12; sp.life-=0.016;
+    if(sp.life<=0){ sparks.splice(k2,1); continue; }
+    ctx.fillStyle="rgba(255,255,255,"+sp.life+")";
+    ctx.beginPath(); ctx.arc(sp.x,sp.y,sp.life*5,0,7); ctx.fill();
+  }
+
+  if(holding) charge = Math.min(100, charge+1.5);
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+function addEnergy(city, amount){
+  state.energy[city] = (state.energy[city]||0) + amount;
+  state.people += 1;
+  save(state); renderHUD(true); renderMap(); renderRank();
+  checkMilestones();
+}
+
+/* コンボ */
+var combo = 0, lastFire = 0, comboTimer = null;
+var comboTag = document.getElementById("comboTag");
+function renderCombo(){
+  if(combo>0){
+    comboTag.innerHTML = "COMBO ×"+(combo+1)+'<small>BONUS +'+(combo*10)+"%</small>";
+    comboTag.classList.add("on");
+  }else{
+    comboTag.classList.remove("on");
+  }
+}
+function fireBurst(){
+  var now = performance.now();
+  if(now - lastFire < 3200){ combo = Math.min(combo+1, 9); } else { combo = 0; }
+  lastFire = now;
+  clearTimeout(comboTimer);
+  comboTimer = setTimeout(function(){ combo = 0; renderCombo(); }, 3200);
+  renderCombo();
+
+  var comboMul = 1 + combo*0.1;
+  var amt = Math.round(charge*3*comboMul);
+  if(amt<=0) return;
+  var city = citySel.value;
+  bursts.push({t:performance.now()});
+  for(var i=0;i<26;i++){
+    var a=Math.random()*Math.PI*2, v=3+Math.random()*7;
+    sparks.push({x:CX,y:CY,vx:Math.cos(a)*v,vy:Math.sin(a)*v-2,life:0.6+Math.random()*0.4});
+  }
+  sndFire(charge/100);
+  addEnergy(city, amt);
+  charge=0;
+}
+
+/* 押す／離す */
+var ballArea=document.getElementById("ballArea"), hint=document.getElementById("hint");
+var moved=false, downT=0;
+cv.addEventListener("pointerdown", function(e){
+  e.preventDefault(); holding=true; moved=false; downT=performance.now();
+  hint.classList.add("hide");
+  cv.setPointerCapture && cv.setPointerCapture(e.pointerId);
+});
+function release(e){
+  if(!holding) return;
+  holding=false;
+  var dur = performance.now()-downT;
+  if(dur<240){ hitTest(e); charge=0; }   // 短いタップ＝粒を読む
+  else fireBurst();
+}
+cv.addEventListener("pointerup", release);
+cv.addEventListener("pointercancel", function(){ holding=false; charge=0; });
+cv.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+cv.addEventListener("keydown", function(e){ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); charge=60; fireBurst(); } });
+cv.setAttribute("tabindex","0");
+cv.setAttribute("aria-label","元気玉。押し続けてチャージ、離して発射します");
+
+/* 粒タップでメッセージ表示＋共感 */
+var msgPop=document.getElementById("msgPop"), mpText=document.getElementById("mpText"),
+    mpMeta=document.getElementById("mpMeta"), mpLike=document.getElementById("mpLike");
+var popMsg=null;
+function hitTest(e){
+  var rect=cv.getBoundingClientRect();
+  var scale=CW/rect.width;
+  var x=(e.clientX-rect.left)*scale, y=(e.clientY-rect.top)*scale;
+  var best=null,bd=1e9;
+  for(var i=0;i<particles.length;i++){
+    var p=particles[i], d=Math.hypot(p.px-x,p.py-y);
+    if(d<bd && d<Math.max(26,p.pr*3.4)){ bd=d; best=p; }
+  }
+  if(best){
+    var m=best.msg;
+    popMsg=m;
+    mpText.textContent = "「"+m.text+"」";
+    mpMeta.textContent = (m.name||"名無しのサポーター")+"／"+m.city+"　→　"+m.to;
+    mpLike.disabled=false;
+    mpLike.textContent="♥ この声援に共感（+10）";
+    msgPop.style.left=(best.px/scale)+"px";
+    msgPop.style.top=(best.py/scale)+"px";
+    msgPop.classList.add("on");
+  }else{
+    msgPop.classList.remove("on");
+  }
+}
+mpLike.addEventListener("click", function(){
+  if(!popMsg || mpLike.disabled) return;
+  popMsg.likes=(popMsg.likes||0)+1;
+  addEnergy(popMsg.city,10);
+  renderFeed();
+  mpLike.disabled=true;
+  mpLike.textContent="♥ 共感を送りました！";
+  beep(700,0.1,0,"sine",0.07);
+});
+document.addEventListener("pointerdown", function(e){ if(!msgPop.contains(e.target)&&e.target!==cv) msgPop.classList.remove("on"); });
+
+/* ===================== フォーム ===================== */
+var citySel=document.getElementById("fCity"), fText=document.getElementById("fText"),
+    fCount=document.getElementById("fCount"), sendBtn=document.getElementById("sendBtn"),
+    thanks=document.getElementById("thanks");
+CITIES.slice().sort(function(a,b){return b.pop-a.pop;}).forEach(function(c){
+  var o=document.createElement("option"); o.value=c.n; o.textContent=c.n+c.s; citySel.appendChild(o);
+});
+citySel.value="沼津";
+fText.addEventListener("input", function(){
+  var l=fText.value.length;
+  fCount.textContent=l+" / 40";
+  fCount.classList.toggle("over", l>=40);
+});
+sendBtn.addEventListener("click", function(){
+  var txt=fText.value.trim();
+  if(!txt){ fText.focus(); fText.placeholder="ひとことだけでも大丈夫です"; return; }
+  var mult = document.getElementById("fPlace").value==="real" ? 2 : 1;
+  var m={ name:document.getElementById("fName").value.trim(), city:citySel.value,
+          to:document.getElementById("fTo").value, text:txt, ts:Date.now(), likes:0, mine:true };
+  state.msgs.push(m);
+  addEnergy(m.city, 120*mult);
+  rebuildParticles();
+  if(particles.length) particles[particles.length-1].born=performance.now();
+  // マップから玉へ光が流れる演出
+  streaks.push({t:performance.now(), x0:CX+(Math.random()*2-1)*520, y0:CH*0.9, label:m.city+"から"});
+  buildTicker(); renderFeed();
+  sndPost();
+  fText.value=""; fCount.textContent="0 / 40";
+  thanks.classList.add("on");
+  setTimeout(function(){ thanks.classList.remove("on"); }, 3200);
+  // シェアモーダルを開く（カード生成込み）
+  openShareModal(m);
+});
+
+/* ===================== SNSシェア ===================== */
+var PLATFORMS = [
+  {id:"x",     label:"X でポスト",  cls:"x",
+   icon:'<svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>'},
+  {id:"line",  label:"LINE で送る", cls:"line",
+   icon:'<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 5.66 2 10.15c0 4.02 3.57 7.39 8.39 8.03.33.07.77.22.89.5.1.26.07.66.03.92l-.14.86c-.04.26-.2 1.01.89.55 1.09-.46 5.87-3.46 8.01-5.92C21.53 13.4 22 11.85 22 10.15 22 5.66 17.52 2 12 2zM8.39 12.85H6.35a.53.53 0 0 1-.53-.53V8.24a.53.53 0 0 1 1.06 0v3.55h1.51a.53.53 0 1 1 0 1.06zm1.94-.53a.53.53 0 0 1-1.06 0V8.24a.53.53 0 0 1 1.06 0v4.08zm4.9 0a.53.53 0 0 1-.36.5.54.54 0 0 1-.17.03.53.53 0 0 1-.42-.21l-2.09-2.84v2.52a.53.53 0 0 1-1.06 0V8.24a.53.53 0 0 1 .36-.5.54.54 0 0 1 .17-.03c.16 0 .32.08.42.21l2.09 2.84V8.24a.53.53 0 0 1 1.06 0v4.08zm3.3-2.57a.53.53 0 1 1 0 1.06h-1.51v.98h1.51a.53.53 0 1 1 0 1.06h-2.04a.53.53 0 0 1-.53-.53V8.24c0-.29.24-.53.53-.53h2.04a.53.53 0 1 1 0 1.06h-1.51v.98h1.51z"/></svg>'},
+  {id:"fb",    label:"シェア",      cls:"fb",
+   icon:'<svg viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12S0 5.446 0 12.073c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>'},
+  {id:"native",label:"その他のアプリ", cls:"native",
+   icon:'<svg viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 1 0-3-3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 1 0 0 6c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65a2.92 2.92 0 1 0 2.92-2.92z"/></svg>'},
+  {id:"copy",  label:"リンクをコピー", cls:"copy",
+   icon:'<svg viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>'}
+];
+var SHARE_BONUS = 100;
+
+function pageUrl(){
+  return location.href.split("?")[0].split("#")[0];
+}
+function shareUrl(city){
+  return pageUrl()+"?ref=share&city="+encodeURIComponent(city||citySel.value);
+}
+function shareText(m){
+  var body = m ? "「"+m.text+"」— "+m.city+"から元気を送りました⚽" : SHARE_MSG;
+  return "【みんなの元気玉】"+body+" "+HASHTAGS.join(" ");
+}
+function grantShareBonus(platform){
+  state.shares += 1;
+  if(!state.shared[platform]){
+    state.shared[platform] = true;
+    addEnergy(citySel.value, SHARE_BONUS);
+    save(state);
+    showToast("シェアありがとうございます！ +"+SHARE_BONUS+" ENERGY（"+citySel.value+"）");
+    popConfetti(60);
+  }else{
+    save(state); renderHUD(true);
+    showToast("シェアありがとうございます！（ボーナスは各SNS初回のみ）");
+  }
+  renderShareBars();
+}
+function doShare(platform, m){
+  var text = shareText(m), url = shareUrl(m && m.city);
+  if(platform==="x"){
+    open("https://twitter.com/intent/tweet?text="+encodeURIComponent(text)+"&url="+encodeURIComponent(url),"_blank","noopener,width=560,height=640");
+    grantShareBonus("x");
+  }else if(platform==="line"){
+    open("https://line.me/R/share?text="+encodeURIComponent(text+" "+url),"_blank","noopener,width=560,height=640");
+    grantShareBonus("line");
+  }else if(platform==="fb"){
+    open("https://www.facebook.com/sharer/sharer.php?u="+encodeURIComponent(url)+"&quote="+encodeURIComponent(text),"_blank","noopener,width=560,height=640");
+    grantShareBonus("fb");
+  }else if(platform==="native"){
+    if(navigator.share){
+      navigator.share({title:"みんなの元気玉", text:text, url:url})
+        .then(function(){ grantShareBonus("native"); })
+        .catch(function(){});
+    }else{
+      showToast("この端末では共有メニューを利用できません");
+    }
+  }else if(platform==="copy"){
+    var full = text+" "+url;
+    var done = function(){ grantShareBonus("copy"); showToast("シェア文とリンクをコピーしました！"); };
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(full).then(done, function(){ fallbackCopy(full); done(); });
+    }else{ fallbackCopy(full); done(); }
+  }
+}
+function fallbackCopy(text){
+  var ta=document.createElement("textarea");
+  ta.value=text; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); }catch(e){}
+  document.body.removeChild(ta);
+}
+function buildShareBar(el, msgGetter){
+  el.innerHTML="";
+  PLATFORMS.forEach(function(p){
+    if(p.id==="native" && !navigator.share && !navigator.clipboard) return;
+    var b=document.createElement("button");
+    b.className="share-btn "+p.cls+(state.shared[p.id]?" done":"");
+    b.innerHTML=p.icon+"<span>"+p.label+"</span>"
+      +(p.id!=="native" || navigator.share ? '<span class="bonus">'+(state.shared[p.id]?"済":"+"+SHARE_BONUS)+"</span>" : "");
+    b.addEventListener("click", function(){ doShare(p.id, msgGetter()); });
+    el.appendChild(b);
+  });
+}
+var mainShareBar=document.getElementById("mainShareBar"), modalShareBar=document.getElementById("modalShareBar");
+function renderShareBars(){
+  buildShareBar(mainShareBar, function(){ return myLatestMsg(); });
+  buildShareBar(modalShareBar, function(){ return modalMsg || myLatestMsg(); });
+}
+renderShareBars();
+
+/* ハッシュタグチップ（クリックでコピー） */
+var hashtagRow=document.getElementById("hashtagRow");
+HASHTAGS.forEach(function(h){
+  var c=document.createElement("button");
+  c.className="tag-chip"; c.type="button"; c.textContent=h;
+  c.addEventListener("click", function(){
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(h); }
+    else fallbackCopy(h);
+    showToast(h+" をコピーしました");
+  });
+  hashtagRow.appendChild(c);
+});
+
+/* ===================== シェアカード生成 ===================== */
+function roundRect(g,x,y,w,h,r){
+  g.beginPath();
+  g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r);
+  g.arcTo(x,y+h,x,y,r); g.arcTo(x,y,x+w,y,r); g.closePath();
+}
+function wrapJa(text, per){
+  var lines=[], cur="";
+  for(var i=0;i<text.length;i++){
+    cur+=text[i];
+    if(cur.length>=per){ lines.push(cur); cur=""; }
+  }
+  if(cur) lines.push(cur);
+  return lines;
+}
+function drawCard(canvas, m){
+  var g=canvas.getContext("2d");
+  var W=canvas.width, H=canvas.height;
+  // 背景
+  var bg=g.createLinearGradient(0,0,W,H);
+  bg.addColorStop(0,"#032a58"); bg.addColorStop(0.55,"#001b3d"); bg.addColorStop(1,"#001129");
+  g.fillStyle=bg; g.fillRect(0,0,W,H);
+  // 元気玉（右側）
+  var bx=W*0.79, by=H*0.44, R=190;
+  var aura=g.createRadialGradient(bx,by,R*0.3,bx,by,R*2.2);
+  aura.addColorStop(0,"rgba(0,160,233,0.35)"); aura.addColorStop(1,"rgba(0,17,41,0)");
+  g.fillStyle=aura; g.beginPath(); g.arc(bx,by,R*2.2,0,7); g.fill();
+  var core=g.createRadialGradient(bx-R*0.25,by-R*0.3,R*0.05,bx,by,R);
+  core.addColorStop(0,"rgba(255,255,255,0.97)");
+  core.addColorStop(0.25,"rgba(127,232,255,0.9)");
+  core.addColorStop(0.6,"rgba(0,160,233,0.6)");
+  core.addColorStop(1,"rgba(0,47,108,0)");
+  g.fillStyle=core; g.beginPath(); g.arc(bx,by,R*1.1,0,7); g.fill();
+  // 粒
+  for(var i=0;i<40;i++){
+    var a=i*137.508*Math.PI/180, rr=R*(0.35+((i*0.37)%1)*0.75);
+    var px=bx+Math.cos(a)*rr, py=by+Math.sin(a)*rr*0.8;
+    g.fillStyle="rgba(255,255,255,"+(0.35+((i*0.61)%1)*0.6)+")";
+    g.beginPath(); g.arc(px,py,2.5+((i*0.29)%1)*5,0,7); g.fill();
+  }
+  // 見出し
+  g.textAlign="left";
+  g.fillStyle="#7FE8FF";
+  g.font="600 26px 'Barlow Condensed','Noto Sans JP',sans-serif";
+  g.fillText("EAST SHIZUOKA 20 CITIES & TOWNS — HOME OPENER", 70, 92);
+  g.fillStyle="#fff";
+  g.font="900 58px 'Zen Kaku Gothic New','Noto Sans JP',sans-serif";
+  g.fillText("みんなの元気玉", 66, 165);
+  // メッセージ
+  var msg = m || {text:SHARE_MSG.replace("⚽",""), city:"東部20市町", name:""};
+  var lines = wrapJa("「"+msg.text+"」", 16);
+  g.font="700 44px 'Zen Kaku Gothic New','Noto Sans JP',sans-serif";
+  g.fillStyle="rgba(234,244,252,0.96)";
+  var ty=H*0.44;
+  lines.slice(0,3).forEach(function(l,i){ g.fillText(l, 70, ty+i*62); });
+  // 差出人
+  g.font="500 26px 'Noto Sans JP',sans-serif";
+  g.fillStyle="#8FAFCB";
+  g.fillText((msg.name||"サポーター")+"（"+msg.city+"）より", 72, ty+lines.slice(0,3).length*62+26);
+  // ハッシュタグバー
+  g.fillStyle="rgba(0,160,233,0.16)";
+  roundRect(g,66,H-118,W-132,62,31); g.fill();
+  g.strokeStyle="rgba(127,232,255,0.35)"; g.lineWidth=1.5;
+  roundRect(g,66,H-118,W-132,62,31); g.stroke();
+  g.fillStyle="#7FE8FF";
+  g.font="700 27px 'Noto Sans JP',sans-serif";
+  g.fillText(HASHTAGS.join("　"), 96, H-76);
+  // ゲージ
+  var t=totalEnergy(), k=Math.min(1,t/GOAL);
+  g.fillStyle="rgba(255,255,255,0.12)";
+  roundRect(g,66,H-160,W-132,10,5); g.fill();
+  var gr=g.createLinearGradient(66,0,66+(W-132)*k,0);
+  gr.addColorStop(0,"#0F4C81"); gr.addColorStop(1,"#7FE8FF");
+  g.fillStyle=gr;
+  roundRect(g,66,H-160,Math.max(14,(W-132)*k),10,5); g.fill();
+  g.fillStyle="#8FAFCB"; g.font="600 20px 'Barlow Condensed',sans-serif";
+  g.textAlign="right";
+  g.fillText(fmt(t)+" / "+fmt(GOAL)+" ENERGY", W-70, H-172);
+  g.textAlign="left";
+}
+var cardMain=document.getElementById("cardMain"), cardModal=document.getElementById("cardModal");
+function refreshMainCard(){ drawCard(cardMain, myLatestMsg()); }
+function saveCard(canvas){
+  try{
+    var a=document.createElement("a");
+    a.download="genkidama_share.png";
+    a.href=canvas.toDataURL("image/png");
+    a.click();
+    showToast("シェアカードを保存しました。SNSに添付して投稿してね！");
+  }catch(e){ showToast("画像の保存に失敗しました"); }
+}
+document.getElementById("cardRefresh").addEventListener("click", refreshMainCard);
+document.getElementById("cardSave").addEventListener("click", function(){ saveCard(cardMain); });
+// フォント読み込み後に描画
+if(document.fonts && document.fonts.ready){ document.fonts.ready.then(refreshMainCard); }
+refreshMainCard();
+
+/* ===================== シェアモーダル ===================== */
+var shareModal=document.getElementById("shareModal"), modalMsg=null, scrollAfterClose=false;
+function openShareModal(m){
+  modalMsg=m;
+  scrollAfterClose=true;
+  drawCard(cardModal, m);
+  renderShareBars();
+  shareModal.classList.add("on");
+}
+function closeShareModal(){
+  if(!shareModal.classList.contains("on")) return;
+  shareModal.classList.remove("on");
+  if(scrollAfterClose){
+    scrollAfterClose=false;
+    ballArea.scrollIntoView({behavior:"smooth",block:"center"});
+  }
+}
+document.getElementById("modalClose").addEventListener("click", closeShareModal);
+document.getElementById("modalSkip").addEventListener("click", closeShareModal);
+document.getElementById("modalSave").addEventListener("click", function(){ saveCard(cardModal); });
+shareModal.addEventListener("click", function(e){ if(e.target===shareModal) closeShareModal(); });
+document.addEventListener("keydown", function(e){ if(e.key==="Escape") closeShareModal(); });
+
+/* ===================== ファンフィード ===================== */
+var feedList=document.getElementById("feedList"), feedShown=9;
+var likedSet={};
+try{ likedSet=JSON.parse(sessionStorage.getItem("azul_genki_liked")||"{}"); }catch(e){}
+function saveLiked(){ try{ sessionStorage.setItem("azul_genki_liked", JSON.stringify(likedSet)); }catch(e){} }
+function timeAgo(ts){
+  var d=Date.now()-ts;
+  if(d<60000) return "たった今";
+  if(d<3600000) return Math.floor(d/60000)+"分前";
+  if(d<86400000) return Math.floor(d/3600000)+"時間前";
+  return Math.floor(d/86400000)+"日前";
+}
+function avatarColor(name){
+  var h=0; for(var i=0;i<name.length;i++) h=(h*31+name.charCodeAt(i))|0;
+  var hue=((h%360)+360)%360;
+  return "hsl("+hue+",55%,42%)";
+}
+function renderFeed(){
+  feedList.innerHTML="";
+  var list=state.msgs.slice().reverse().slice(0,feedShown);
+  list.forEach(function(m){
+    var idx=state.msgs.indexOf(m);
+    var name=m.name||"名無しのサポーター";
+    var card=document.createElement("article");
+    card.className="post-card";
+    var liked=!!likedSet[idx];
+    card.innerHTML=
+      '<div class="post-head">'
+      +'<div class="avatar" style="background:'+avatarColor(name)+'">'+esc(name.charAt(0)||"?")+'</div>'
+      +'<div><div class="post-name">'+esc(name)+(m.mine?' <span style="color:var(--heat);font-size:10px">あなた</span>':"")+'</div>'
+      +'<div class="post-meta">'+timeAgo(m.ts)+'・'+esc(m.to)+'</div></div>'
+      +'<span class="post-city">'+esc(m.city)+'</span></div>'
+      +'<p class="post-text">'+esc(m.text)+'</p>'
+      +'<div class="post-foot">'
+      +'<button class="like-btn'+(liked?" liked":"")+'" aria-label="共感する"><span class="hh">'+(liked?"♥":"♡")+'</span><span class="lc">'+(m.likes||0)+'</span></button>'
+      +'<button class="post-share">Xでシェア</button>'
+      +'</div>';
+    var likeBtn=card.querySelector(".like-btn");
+    likeBtn.addEventListener("click", function(){
+      if(likedSet[idx]) return;
+      likedSet[idx]=true; saveLiked();
+      m.likes=(m.likes||0)+1;
+      addEnergy(m.city,10);
+      likeBtn.classList.add("liked");
+      likeBtn.querySelector(".hh").textContent="♥";
+      likeBtn.querySelector(".lc").textContent=m.likes;
+      beep(700,0.1,0,"sine",0.07);
+      showToast(m.city+"に +10 ENERGY！共感も応援になります");
+    });
+    card.querySelector(".post-share").addEventListener("click", function(){ doShare("x", m); });
+    feedList.appendChild(card);
+  });
+  document.getElementById("feedMore").style.display = feedShown>=state.msgs.length ? "none" : "";
+}
+document.getElementById("feedMore").addEventListener("click", function(){
+  feedShown+=9; renderFeed();
+});
+renderFeed();
+
+/* ===================== マップ ===================== */
+var SVGNS="http://www.w3.org/2000/svg";
+var HS=48, HW=Math.sqrt(3)*HS, HSTEP=HS*1.5;
+var mapSvg=document.getElementById("mapSvg"), selCity=null, rankMode="total";
+function hexPath(cx,cy){
+  var d="";
+  for(var i=0;i<6;i++){
+    var a=Math.PI/180*(60*i-90);
+    var x=cx+HS*Math.cos(a), y=cy+HS*Math.sin(a);
+    d+=(i?"L":"M")+x.toFixed(1)+","+y.toFixed(1);
+  }
+  return d+"Z";
+}
+function cityPos(c){
+  return { x: 46 + c.col*HW + (c.row%2?HW/2:0), y: 60 + c.row*HSTEP };
+}
+function heatColor(k){
+  // 0→濃紺 / 1→白青
+  var stops=[[0,34,77],[15,76,129],[0,160,233],[127,232,255]];
+  var t=Math.min(1,Math.max(0,k))*(stops.length-1);
+  var i=Math.floor(t), f=t-i; if(i>=stops.length-1){i=stops.length-2;f=1;}
+  var a=stops[i], b=stops[i+1];
+  return "rgb("+Math.round(a[0]+(b[0]-a[0])*f)+","+Math.round(a[1]+(b[1]-a[1])*f)+","+Math.round(a[2]+(b[2]-a[2])*f)+")";
+}
+function buildMap(){
+  mapSvg.innerHTML="";
+  CITIES.forEach(function(c){
+    var p=cityPos(c);
+    var g=document.createElementNS(SVGNS,"g");
+    g.setAttribute("class","hex"); g.setAttribute("data-city",c.n);
+    g.setAttribute("tabindex","0"); g.setAttribute("role","button");
+    g.setAttribute("aria-label",c.n+c.s);
+    var path=document.createElementNS(SVGNS,"path");
+    path.setAttribute("d",hexPath(p.x,p.y)); path.setAttribute("class","hex-shape");
+    g.appendChild(path);
+    var t1=document.createElementNS(SVGNS,"text");
+    t1.setAttribute("class","hex-name"+(c.n.length>3?" sm":"")); t1.setAttribute("x",p.x); t1.setAttribute("y",p.y-4);
+    t1.textContent=c.n; g.appendChild(t1);
+    var t2=document.createElementNS(SVGNS,"text");
+    t2.setAttribute("class","hex-suf"); t2.setAttribute("x",p.x); t2.setAttribute("y",p.y+9);
+    t2.textContent=c.s; g.appendChild(t2);
+    var t3=document.createElementNS(SVGNS,"text");
+    t3.setAttribute("class","hex-val"); t3.setAttribute("x",p.x); t3.setAttribute("y",p.y+26);
+    g.appendChild(t3);
+    g.addEventListener("click",function(){ selectCity(c.n); });
+    g.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "){e.preventDefault();selectCity(c.n);} });
+    mapSvg.appendChild(g);
+  });
+}
+function renderMap(){
+  var max=0; CITIES.forEach(function(c){ max=Math.max(max,state.energy[c.n]||0); });
+  CITIES.forEach(function(c){
+    var g=mapSvg.querySelector('[data-city="'+c.n+'"]');
+    if(!g) return;
+    var v=state.energy[c.n]||0;
+    var k=max? Math.pow(v/max,0.6):0;
+    g.querySelector(".hex-shape").setAttribute("fill",heatColor(k));
+    g.querySelector(".hex-val").textContent=fmt(v);
+    g.classList.toggle("sel", selCity===c.n);
+  });
+}
+function selectCity(n){
+  selCity=n; citySel.value=n; renderMap(); renderRank();
+  var c=CITIES.filter(function(x){return x.n===n;})[0];
+  var v=state.energy[n]||0, tot=totalEnergy();
+  var cnt=state.msgs.filter(function(m){return m.city===n;}).length;
+  var d=document.getElementById("cityDetail");
+  d.innerHTML="<h4>"+c.n+c.s+"</h4><p>エナジー "+fmt(v)+"（全体の"+(tot?(v/tot*100).toFixed(1):0)+"％）／メッセージ "+cnt+"件<br>"
+   +"人口10万人あたり "+fmt(v/(c.pop*10))+" ／ 順位 "+(rankArray().findIndex(function(x){return x.n===n;})+1)+"位（"+(rankMode==="total"?"総エナジー":"密度")+"）</p>";
+}
+buildMap(); renderMap();
+
+/* ランキング */
+function rankArray(){
+  return CITIES.map(function(c){
+    var v=state.energy[c.n]||0;
+    return {n:c.n,s:c.s,v:v,d:v/(c.pop*10)};
+  }).sort(function(a,b){ return rankMode==="total" ? b.v-a.v : b.d-a.d; });
+}
+function renderRank(){
+  var arr=rankArray(), ol=document.getElementById("rankList");
+  ol.innerHTML="";
+  arr.slice(0,10).forEach(function(r,i){
+    var li=document.createElement("li");
+    li.className = (selCity===r.n?"sel":"");
+    li.innerHTML='<span class="rank-no">'+(i+1)+'</span><span class="rank-city">'+r.n+r.s+'</span>'
+      +'<span class="rank-val">'+fmt(rankMode==="total"?r.v:r.d)+'</span>';
+    li.addEventListener("click",function(){ selectCity(r.n); });
+    ol.appendChild(li);
+  });
+}
+renderRank();
+document.getElementById("tabTotal").addEventListener("click",function(){
+  rankMode="total"; this.classList.add("on"); document.getElementById("tabDens").classList.remove("on"); renderRank();
+});
+document.getElementById("tabDens").addEventListener("click",function(){
+  rankMode="dens"; this.classList.add("on"); document.getElementById("tabTotal").classList.remove("on"); renderRank();
+});
+
+/* ===================== ティッカー ===================== */
+function buildTicker(){
+  var track=document.getElementById("tickerTrack");
+  var recent=state.msgs.slice(-24).reverse();
+  var html="";
+  for(var rep=0;rep<2;rep++){
+    recent.forEach(function(m){
+      html+='<span class="tk-item"><span class="tk-city">'+m.city+'</span>'
+        +'<span>'+esc(m.text)+'</span><span class="tk-sep">／</span>'
+        +'<span style="color:var(--paper-dim);font-size:12px">'+esc(m.name||"名無しのサポーター")+'</span></span>';
+    });
+  }
+  track.innerHTML=html;
+}
+function esc(s){ return String(s).replace(/[<>&"]/g,function(c){return {"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c];}); }
+buildTicker();
+
+/* ===================== リセット ===================== */
+document.getElementById("resetBtn").addEventListener("click",function(){
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  try{ sessionStorage.removeItem("azul_genki_liked"); }catch(e){}
+  likedSet={};
+  state=load(); rebuildParticles(); renderHUD(true); renderMap(); renderRank(); buildTicker(); renderFeed(); renderShareBars(); refreshMainCard();
+  selCity=null;
+  document.getElementById("cityDetail").innerHTML="<h4>市町を選ぶと表示されます</h4><p>マップまたはランキングから選択してください。</p>";
+});
+
+/* ===================== 流入パラメータ ===================== */
+(function(){
+  var qs;
+  try{ qs=new URLSearchParams(location.search); }catch(e){ return; }
+  var city=qs.get("city");
+  if(city && CITIES.some(function(c){return c.n===city;})){ citySel.value=city; }
+  if(qs.get("ref")==="share"){
+    var got=false;
+    try{ got=sessionStorage.getItem("azul_genki_refbonus")==="1"; }catch(e){}
+    if(!got){
+      try{ sessionStorage.setItem("azul_genki_refbonus","1"); }catch(e){}
+      addEnergy(citySel.value, 50);
+      setTimeout(function(){
+        showToast("シェアリンクから参加ありがとう！ +50 ENERGY（"+citySel.value+"）");
+        popConfetti(80);
+      }, 600);
+    }
+  }
+})();
+
+})();
+</script>
+</body>
+</html>
