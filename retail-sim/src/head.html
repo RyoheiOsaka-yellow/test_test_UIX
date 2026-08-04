@@ -383,6 +383,8 @@ button { font-family: inherit; }
           <input type="range" id="ctl-novrate" min="10" max="80" step="5" value="35" />
         </div>
         <label class="row"><input type="checkbox" id="ctl-endcap" checked /><span class="chip" style="background:#d55181"></span>販促什器（エンド／催事台）</label>
+        <label class="row"><input type="checkbox" id="ctl-signage" checked /><span class="chip" style="background:#e29ec0"></span>店内サイネージ出稿</label>
+        <label class="row"><input type="checkbox" id="ctl-dynp" /><span class="chip chip-outline"></span>AIダイナミックプライシング</label>
         <div class="slider-row">
           <div class="slider-label"><span>店前人流レベル</span><b id="v-traffic">1.0×</b></div>
           <input type="range" id="ctl-traffic" min="50" max="200" step="10" value="100" />
@@ -412,7 +414,7 @@ button { font-family: inherit; }
   <div id="beacon" class="ovl">
     <div class="ovl-head" data-collapse>
       <span class="dot"></span>
-      <div class="t">BEACON LOG</div><div class="sub">店内行動サンプル</div>
+      <div class="t">AIカメラ／ビーコン LOG</div><div class="sub">店内行動サンプル</div>
       <button class="tgl">−</button>
     </div>
     <div class="ovl-body"><div id="beacon-lines"></div></div>
@@ -538,6 +540,11 @@ button { font-family: inherit; }
           <div class="fun-deck-label">下段（個人・実購買）— 店頭ノベルティCP</div>
           <div class="fun-deck lower" id="fun-lower"></div>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-ccollapse>クロスメディア接触 × 販促商品購買率<span class="hint">FamilyMartVision実証（最大1.7倍）と整合</span><span class="ctgl">▾</span></div>
+        <div class="card-body"><div id="cross-body"></div></div>
       </div>
 
       <div class="card">

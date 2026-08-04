@@ -42,10 +42,11 @@ function expectedComponents() {
   const foot = footVisitors * buyRate * basket;
   const seasonal = baseline * 0.055;
   const adInc = adIncVisits * buyRate * basket + exposed * promotedShelf().price * 0.15;
+  const sigInc = S.signage ? visitors * 0.58 * promotedShelf().price * (FKEY === 'depato' ? 0.011 : 0.02) : 0;
   const treated = S.novelty ? visitors * 0.85 * S.novRate : 0;
   const novInc = treated * (0.10 * promotedShelf().price + buyRate * basket * 0.05);
-  const total = baseline + foot + seasonal + adInc + novInc;
-  return { visitors, visitorsNoAd, adIncVisits, exposed, treated, baseline, foot, seasonal, adInc, novInc, total };
+  const total = baseline + foot + seasonal + adInc + sigInc + novInc;
+  return { visitors, visitorsNoAd, adIncVisits, exposed, treated, baseline, foot, seasonal, adInc, sigInc, novInc, total };
 }
 
 function dayFrac() { return curveCumFrac(STATS.simSec); }
@@ -64,7 +65,7 @@ function computeProjection() {
   return {
     visitors, totalRevenue,
     baseline: e.baseline * scale, foot: e.foot * scale, seasonal: e.seasonal * scale,
-    adInc: e.adInc * scale, novInc: e.novInc * scale,
+    adInc: e.adInc * scale, sigInc: e.sigInc * scale, novInc: e.novInc * scale,
     adIncVisits: e.adIncVisits * (visitors / e.visitors),
     exposed: e.exposed, treated: e.treated,
   };
@@ -194,6 +195,7 @@ function drawWaterfall() {
   const items = [
     { label: 'ベースライン', sub: '広告なしでも来た分', v: p.baseline, color: COL.neutral, conf: 'hi' },
     { label: 'デジタル広告', sub: 'ジオリフト校正済み増分', v: p.adInc, color: COL.s2, conf: S.budget > 0 ? 'hi' : 'lo' },
+    { label: '店内サイネージ', sub: 'FamilyMartVision型 店内接触増分', v: p.sigInc, color: '#e29ec0', conf: S.signage ? 'md' : 'lo' },
     { label: 'ノベルティ', sub: 'RCT実測ベース', v: p.novInc, color: COL.s3, conf: novLive.conf },
     { label: '人流（来店環境）', sub: '経路B: γ×人流偏差', v: p.foot, color: COL.s4, conf: 'md' },
     { label: '季節要因', sub: '8月・猛暑補正', v: p.seasonal, color: COL.neutral2, conf: 'lo' },
@@ -243,6 +245,7 @@ function drawWaterfall() {
   document.getElementById('wf-legend').innerHTML =
     `<span class="li"><span class="sw" style="background:${COL.neutral}"></span>自然発生</span>` +
     `<span class="li"><span class="sw" style="background:${COL.s2}"></span>デジタル広告</span>` +
+    `<span class="li"><span class="sw" style="background:#e29ec0"></span>店内サイネージ</span>` +
     `<span class="li"><span class="sw" style="background:${COL.s3}"></span>店頭ノベルティ</span>` +
     `<span class="li"><span class="sw" style="background:${COL.s4}"></span>人流</span>` +
     `<span class="li"><span class="sw" style="background:${COL.s1}"></span>合計</span>`;
@@ -292,7 +295,7 @@ function renderFunnel() {
   document.getElementById('fun-lower').innerHTML = [
     { l: 'ノベルティ受取', v: fmtNum(nv.treat * SF()), s: sfNote + '・無作為割付' },
     { l: '対象商品 購買', v: fmtNum(nv.treatBuy * SF()), s: sfNote + '・POS紐付け' },
-    { l: '再来店（予測）', v: fmtNum(STATS.returns * SF()), s: 'CRM接続で実測化' },
+    { l: '再来店（予測）', v: fmtNum(STATS.returns * SF()), s: FKEY === 'depato' ? 'エムアイカード型ID-POSで実測化' : 'CRM接続で実測化' },
   ].map(x => `<div class="fun-stage"><div class="f-label">${x.l}</div><div class="f-value">${x.v}</div><div class="f-sub">${x.s}</div></div>`).join('');
 }
 
@@ -394,6 +397,36 @@ document.getElementById('cv-time').addEventListener('mousemove', e => {
   } else hideTip();
 });
 document.getElementById('cv-time').addEventListener('mouseleave', hideTip);
+
+/* ---------- クロスメディア接触分析 ---------- */
+function renderCross() {
+  const el = document.getElementById('cross-body');
+  if (!el) return;
+  const c = STATS.cross;
+  const groups = [
+    ['非接触', c.none, COL.neutral],
+    ['デジタル広告のみ', c.ad, COL.s2],
+    ['店内サイネージのみ', c.sig, '#e29ec0'],
+    ['広告 × サイネージ', c.both, COL.good],
+  ];
+  const baseRate = c.none.n > 3 ? c.none.buy / c.none.n : 0;
+  const maxRate = Math.max(...groups.map(([, g]) => g.n > 3 ? g.buy / g.n : 0), 0.01);
+  el.innerHTML = groups.map(([label, g, color]) => {
+    const rate = g.n > 3 ? g.buy / g.n : 0;
+    const lift = baseRate > 0 && g.n > 3 ? rate / baseRate : 0;
+    return `
+      <div class="sd-frow"><span class="fl" style="width:118px">${label}</span>
+        <span class="fb"><div style="width:${Math.max(3, rate / maxRate * 100)}%;background:${color}"></div></span>
+        <span class="fv" style="width:104px">${g.n > 3 ? fmtPct(rate) : '収集中'}
+          <span style="color:var(--text-faint);font-weight:400">${lift > 0 && label !== '非接触' ? ` ×${lift.toFixed(1)}` : ''}</span></span></div>
+      <div class="mde-text" style="margin:-2px 0 4px 126px">n=${fmtNum(g.n * SF())}（購買者ベース・${SF() > 1 ? 'サンプル×' + SF() + '拡大' : '実数'}）</div>`;
+  }).join('') + `
+    <div class="mde-text" style="margin-top:6px;line-height:1.6">
+      販促商品の購買率を接触チャネル組合せ別に実測。モデルはFamilyMartVision実証（クロスメディア接触で商品購買伸長率 最大約1.7倍・
+      <a href="https://www.family.co.jp/company/news_releases/2025/20250321_01.html" target="_blank" style="color:var(--accent)">ファミリーマート 2025年3月リリース</a>）と、
+      サントリーのAIカメラ売場DX（<a href="https://markezine.jp/article/detail/46227" target="_blank" style="color:var(--accent)">MarkeZine</a>）を参考に較正。
+    </div>`;
+}
 
 /* ---------- 棚別テーブル ---------- */
 function renderShelfTable() {
@@ -501,7 +534,12 @@ function renderStock() {
       eta: heavy ? '夕方 追加補充推奨' : '安定（自動補充）', alert: heavy, color: COL.s1,
     });
   });
-  document.getElementById('stock-body').innerHTML = rows.map(r => `
+  const dynLine = S.dynPricing
+    ? (typeof dynPricingActive === 'function' && dynPricingActive()
+      ? `<div class="mde-text" style="margin-top:5px;color:var(--status-warn);font-weight:600">⚡ AIダイナミックプライシング作動中: 17時以降・消化遅延のため自動値下げ -15%（トライアル型）</div>`
+      : `<div class="mde-text" style="margin-top:5px">AIダイナミックプライシング: 待機中（17時以降・在庫消化が遅い場合に自動値下げ）</div>`)
+    : '';
+  document.getElementById('stock-body').innerHTML = dynLine + rows.map(r => `
     <div class="stock-row">
       <span class="s-name">${r.name}</span>
       <span class="s-bar"><div style="width:${(r.pct * 100).toFixed(0)}%;background:${r.color}"></div></span>
@@ -642,12 +680,29 @@ function renderBenchmark() {
           <td style="padding:4px 5px;color:var(--text-secondary);border-bottom:1px solid #eef2f7">${b.sim}</td>
         </tr>`).join('')}</tbody>
     </table>
+    <div style="font-size:11px;font-weight:700;color:var(--text-secondary);letter-spacing:.08em;margin:10px 0 4px">組み込んだ店頭DX・リテールメディアの実例（実名）</div>
+    <table style="width:100%;border-collapse:collapse;font-size:10.5px">
+      <tbody>
+        <tr><td style="padding:4px 5px;font-weight:600;color:var(--text-primary);border-bottom:1px solid #eef2f7;white-space:nowrap">ファミリーマート<br>FamilyMartVision</td>
+          <td style="padding:4px 5px;color:var(--text-secondary);border-bottom:1px solid #eef2f7">全国約10,800店の店内サイネージ網。認知率55.5%（2025年）。JR東日本企画との実証でクロスメディア接触時の商品購買伸長率が最大約1.7倍。→ 本シミュの「店内サイネージ出稿」トグルとクロスメディア係数（広告×サイネージ=×1.7）に反映。</td></tr>
+        <tr><td style="padding:4px 5px;font-weight:600;color:var(--text-primary);border-bottom:1px solid #eef2f7">サントリー<br>AIカメラ売場DX</td>
+          <td style="padding:4px 5px;color:var(--text-secondary);border-bottom:1px solid #eef2f7">AIカメラで棚前滞在時間などショッパー行動を可視化し、行動パターン別プロモーションと店頭サイネージのA/Bテストを実施。→ 本シミュの棚前視線・滞在計測（AIカメラ／ビーコンLOG）と棚割シミュレーターの発想元。</td></tr>
+        <tr><td style="padding:4px 5px;font-weight:600;color:var(--text-primary);border-bottom:1px solid #eef2f7">トライアル<br>Retail AI</td>
+          <td style="padding:4px 5px;color:var(--text-secondary);border-bottom:1px solid #eef2f7">店内AIカメラ約700台で棚前行動を分析し棚割へ反映。AIカメラ連動の自動値下げ（ダイナミックプライシング）を実運用。→ 本シミュの「AIダイナミックプライシング」トグル（17時以降・消化遅延で-15%）に反映。</td></tr>
+        <tr><td style="padding:4px 5px;font-weight:600;color:var(--text-primary)">三越伊勢丹<br>広告メディア事業</td>
+          <td style="padding:4px 5px;color:var(--text-secondary)">大型ビジョン・店内サイネージ・エムアイカード媒体等を広告枠として外販（百貨店リテールメディア）。イベント出店支援も提供。→ 百貨店モードの催事プロモ台・ID-POS実測表記に反映。</td></tr>
+      </tbody>
+    </table>
     <div class="mde-text" style="margin-top:7px;line-height:1.7">
       出典（実名）:
       <a href="https://www.jfa-fc.or.jp/particle/320.html" target="_blank" style="color:var(--accent)">日本フランチャイズチェーン協会（JFA）コンビニエンスストア統計</a>（客単価748.5円=2025年11月・既存店）／
       <a href="https://www.ryutsuu.biz/strategy/r102113.html" target="_blank" style="color:var(--accent)">流通ニュース</a>・<a href="https://diamond-rm.net/market/accounting/515637/" target="_blank" style="color:var(--accent)">ダイヤモンド・チェーンストア</a>（セブン‐イレブン70.3万／ローソン60.3万／ファミリーマート57.3万円=2025年度上期 全店平均日販）／
       <a href="https://www.meti.go.jp/statistics/tyo/syoudou/result/kakuho_2.html" target="_blank" style="color:var(--accent)">経済産業省 商業動態統計</a>（百貨店の飲食料品構成比28.3%）／
-      <a href="https://toyokeizai.net/articles/-/665558" target="_blank" style="color:var(--accent)">東洋経済オンライン</a>（伊勢丹新宿本店 2022年度売上 過去最高）。
+      <a href="https://toyokeizai.net/articles/-/665558" target="_blank" style="color:var(--accent)">東洋経済オンライン</a>（伊勢丹新宿本店 2022年度売上 過去最高）／
+      <a href="https://www.family.co.jp/company/news_releases/2025/20250321_01.html" target="_blank" style="color:var(--accent)">ファミリーマート ニュースリリース</a>（クロスメディア実証）／
+      <a href="https://markezine.jp/article/detail/46227" target="_blank" style="color:var(--accent)">MarkeZine</a>（サントリー AIカメラ売場DX）／
+      <a href="https://business.nikkei.com/atcl/gen/19/00096/092500148/" target="_blank" style="color:var(--accent)">日経ビジネス</a>（トライアル AIカメラ自動値下げ）／
+      <a href="https://www.imhds.co.jp/biz-solution/business/miad/index.html" target="_blank" style="color:var(--accent)">三越伊勢丹グループ 広告メディアガイド</a>。
       数値はデモ用に丸めたダミーデータであり、実在チェーン・店舗の実績値そのものではありません。
     </div>`;
 }
@@ -690,6 +745,8 @@ function bindControls() {
     refreshCharts();
   });
   $('ctl-endcap').addEventListener('change', e => { S.endcap = e.target.checked; refreshCharts(); });
+  $('ctl-signage').addEventListener('change', e => { S.signage = e.target.checked; refreshCharts(); });
+  $('ctl-dynp').addEventListener('change', e => { S.dynPricing = e.target.checked; });
   ['shelfheat', 'floorheat', 'cones', 'trails', 'labels'].forEach(k => {
     $('ly-' + k).addEventListener('change', e => S.layers[k] = e.target.checked);
   });
@@ -771,7 +828,7 @@ function refreshDash() {
   renderMiniKPI(); renderBeacon();
   if (selectedShelfId) renderShelfDetail();
   if (activeView === 'analytics') {
-    renderKPIs(); renderFunnel(); renderShelfTable(); renderNovelty(); renderStock(); renderBenchmark();
+    renderKPIs(); renderFunnel(); renderCross(); renderShelfTable(); renderNovelty(); renderStock(); renderBenchmark();
   }
 }
 

@@ -38,6 +38,8 @@ function normalCI95(p, n) {
 /* ---------- シナリオ状態 ---------- */
 const S = {
   budget: 40, novelty: true, novRate: 0.35, traffic: 1.0, endcap: true,
+  signage: true,        // 店内サイネージ出稿（FamilyMartVision型）
+  dynPricing: false,    // AIダイナミックプライシング（トライアル型）
   speed: 3, paused: false,
   layers: { shelfheat: true, floorheat: true, cones: false, trails: false, labels: true },
 };
@@ -213,6 +215,7 @@ const STATS = {
   day: 15, simSec: 10 * 3600,
   visitors: 0, adVisitors: 0, buyers: 0, revenue: 0, promoUnits: 0,
   nov: { treat: 0, ctrl: 0, treatBuy: 0, ctrlBuy: 0, treatRev: 0, ctrlRev: 0 },
+  cross: { none: { n: 0, buy: 0 }, ad: { n: 0, buy: 0 }, sig: { n: 0, buy: 0 }, both: { n: 0, buy: 0 } },
   shelves: {}, buckets: [], adStoreVisits: 0, returns: 0, applied: 0,
 };
 function resetShelfStats() {
@@ -266,6 +269,10 @@ const AD_PROMO_MULT = 1.7;
 const ENDCAP_ATTENTION = 1.9;
 // 棚割シミュレーターから反映される係数（視線・転換の倍率）
 const PLANO = { attn: 1, conv: 1 };
+// AIダイナミックプライシング: 17時以降・在庫消化が遅い場合に自動値下げ（-15%）
+function dynPricingActive() {
+  return S.dynPricing && STATS.simSec >= 17 * 3600 && stockState.units > stockState.cap * 0.45;
+}
 
 let agentSeq = 0;
 class Agent {
@@ -277,6 +284,8 @@ class Agent {
     this.heading = -Math.PI / 2;
     this.speed = 0.85 + rng() * 0.35;
     this.adExposed = rng() < adExposureShare();
+    // 店内サイネージ接触（FamilyMartVision 認知率55.5%を丸めて58%）
+    this.sigExposed = S.signage && rng() < 0.58;
     this.hasNovelty = false; this.novGroup = null;
     this.basket = []; this.revenue = 0;
     this.gazeMap = {}; this.passSet = {};
@@ -294,6 +303,7 @@ class Agent {
       for (const s of cand) { r -= s.pop; if (r <= 0) { if (!picked.includes(s)) picked.push(s); break; } }
     }
     if (this.adExposed && rng() < 0.72) picked.push(promotedShelf());
+    else if (this.sigExposed && rng() < 0.26) picked.push(promotedShelf());
     else if (rng() < (S.endcap ? 0.16 : 0.07)) picked.push(promotedShelf());
     if (wanderer) picked.push(SHELVES[Math.floor(rng() * Math.min(SHELVES.length, 12))]);
 
@@ -337,10 +347,15 @@ class Agent {
       if (rng() < 0.62) {
         st.picks++;
         let pBuy = shelf.base;
+        let priceMult = 1;
         if (shelf === promotedShelf()) {
           pBuy *= PLANO.conv;                       // 棚割シミュレーターの反映
-          if (this.adExposed) pBuy *= AD_PROMO_MULT;
+          // クロスメディア接触効果（FamilyMartVision実証: 複数媒体接触で最大約1.7倍）
+          if (this.adExposed && this.sigExposed) pBuy *= 1.7;
+          else if (this.adExposed) pBuy *= 1.45;
+          else if (this.sigExposed) pBuy *= 1.2;
           if (this.hasNovelty) pBuy *= (1 + NOV_TRUE_LIFT);
+          if (dynPricingActive()) { pBuy *= 1.3; priceMult = 0.85; }   // トライアル型 自動値下げ
         } else if (this.hasNovelty) pBuy *= 1.06;
         if (rng() < clamp(pBuy, 0, 0.96)) {
           const isPromo = shelf === promotedShelf();
@@ -348,7 +363,7 @@ class Agent {
             stockState.missed += STORE.sampleFactor;   // 在庫内生性: 品切れ中の機会損失（実数換算）
           } else {
             st.purchases++;
-            const price = shelf.price * (0.8 + rng() * 0.5);
+            const price = shelf.price * (0.8 + rng() * 0.5) * priceMult;
             this.basket.push(shelf.id); this.revenue += price;
             if (isPromo) {
               STATS.promoUnits++;
@@ -379,6 +394,8 @@ class Agent {
         const b = Math.floor((STATS.simSec - 10 * 3600) / 1800);
         if (b >= 0 && b < STATS.buckets.length) STATS.buckets[b] += this.revenue;
         const boughtPromo = this.basket.includes(promotedShelf().id);
+        const cg = this.adExposed && this.sigExposed ? 'both' : (this.adExposed ? 'ad' : (this.sigExposed ? 'sig' : 'none'));
+        STATS.cross[cg].n++; if (boughtPromo) STATS.cross[cg].buy++;
         if (this.novGroup === 'treat') { if (boughtPromo) STATS.nov.treatBuy++; STATS.nov.treatRev += this.revenue; }
         if (this.novGroup === 'ctrl') { if (boughtPromo) STATS.nov.ctrlBuy++; STATS.nov.ctrlRev += this.revenue; }
         const pReturn = 0.22 * (this.hasNovelty ? 1.35 : 1);
@@ -677,6 +694,46 @@ function mkStaff(x, z, ry) {
   storeGroup.add(g);
 }
 
+/* 店内サイネージ（リテールメディア）パネル */
+let signageGroup = null;
+function makeScreen(w, h) {
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 72;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 128, 72);
+  grad.addColorStop(0, '#d55181'); grad.addColorStop(1, '#0f9fba');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, 128, 72);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '700 20px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('NEW', 64, 30);
+  ctx.font = '600 13px sans-serif';
+  ctx.fillText(STORE.promoName, 64, 52);
+  const tex = new THREE.CanvasTexture(c);
+  return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+}
+function buildSignage() {
+  signageGroup = new THREE.Group();
+  const spots = [];
+  // 入口サイネージ（ポールスタンド）+ レジ上 + 販促什器横
+  STORE.entrances.forEach(e => spots.push({ x: e.x + 1.6, z: e.z - 0.9, y: 1.6, w: 0.9, h: 0.55, pole: true }));
+  STORE.counters.forEach(c => spots.push({ x: c.x, z: c.z + 0.05, y: c.h + 1.05, w: 1.6, h: 0.9 }));
+  const ps = shelfById[STORE.promoted.mainId];
+  if (ps) spots.push({ x: ps.pos[0] + 1.1, z: ps.pos[2] + (ps.normal[2] || 0) * 0.6, y: 1.5, w: 0.8, h: 0.5, pole: true });
+  spots.forEach(sp => {
+    const scr = makeScreen(sp.w, sp.h);
+    scr.position.set(sp.x, sp.y, sp.z);
+    signageGroup.add(scr);
+    const frame = neonEdges(new THREE.BoxGeometry(sp.w + 0.06, sp.h + 0.06, 0.03), 0x45586e, 0.7);
+    frame.position.copy(scr.position); signageGroup.add(frame);
+    if (sp.pole) {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, sp.y, 8),
+        new THREE.MeshLambertMaterial({ color: 0x8593a3 }));
+      pole.position.set(sp.x, sp.y / 2, sp.z); signageGroup.add(pole);
+    }
+  });
+  storeGroup.add(signageGroup);
+}
+
 /* 施設ごとの作り込みディテール */
 function buildFacilityExtras() {
   const W = STORE.floorW, D = STORE.floorD, H = STORE.wallH;
@@ -942,6 +999,7 @@ function buildStore() {
   }
 
   buildFacilityExtras();
+  buildSignage();
 
   // ノベルティスタンド
   novStandGroup = new THREE.Group();
@@ -1244,6 +1302,7 @@ function resetDayCounters() {
   STATS.visitors = 0; STATS.adVisitors = 0; STATS.buyers = 0; STATS.revenue = 0; STATS.promoUnits = 0;
   STATS.adStoreVisits = 0; STATS.returns = 0; STATS.applied = 0;
   STATS.nov = { treat: 0, ctrl: 0, treatBuy: 0, ctrlBuy: 0, treatRev: 0, ctrlRev: 0 };
+  STATS.cross = { none: { n: 0, buy: 0 }, ad: { n: 0, buy: 0 }, sig: { n: 0, buy: 0 }, both: { n: 0, buy: 0 } };
   resetShelfStats();
   STATS.buckets = STATS.buckets.map(() => 0);
   if (heat.grid) heat.grid.fill(0);
@@ -1318,6 +1377,7 @@ function updateVisuals(realDt) {
   if (heat.plane) heat.plane.visible = S.layers.floorheat;
   if (novStandGroup) novStandGroup.visible = S.novelty;
   if (promoGroup) promoGroup.visible = S.endcap;
+  if (signageGroup) signageGroup.visible = S.signage;
 
   heatTimer += realDt;
   if (heatTimer > 0.5 && S.layers.floorheat) { heatTimer = 0; redrawHeat(); }
