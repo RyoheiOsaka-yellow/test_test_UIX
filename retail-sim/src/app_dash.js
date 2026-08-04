@@ -41,7 +41,8 @@ function expectedComponents() {
   const baseline = visitors0 * buyRate * basket;
   const foot = footVisitors * buyRate * basket;
   const seasonal = baseline * 0.055;
-  const adInc = adIncVisits * buyRate * basket + exposed * promotedShelf().price * 0.15;
+  const geoCal = (window.GEO && GEO.calibrated) ? GEO.calibFactor : 1;
+  const adInc = (adIncVisits * buyRate * basket + exposed * promotedShelf().price * 0.15) * geoCal;
   const sigInc = S.signage ? visitors * 0.58 * promotedShelf().price * (FKEY === 'depato' ? 0.011 : 0.02) : 0;
   const treated = S.novelty ? visitors * 0.85 * S.novRate : 0;
   const novInc = treated * (0.10 * promotedShelf().price + buyRate * basket * 0.05);
@@ -96,7 +97,7 @@ function renderKPIs() {
     { label: '棚前 視線獲得率', value: fmtPct(gazeRate), ci: '±' + fmtPct(normalCI95(gazeRate, Math.max(t.passes, 1)), 1), conf: t.passes > 200 ? 'hi' : 'md' },
     { label: '立寄→購買 転換率', value: fmtPct(cvr), ci: '±' + fmtPct(normalCI95(cvr, Math.max(t.stops, 1)), 1), conf: t.stops > 120 ? 'hi' : 'md' },
     { label: '本日売上 着地', value: fmtYen(p.totalRevenue), ci: '±' + fmtYen(p.totalRevenue * 0.09), conf: 'md' },
-    { label: '推計 iROAS', value: iroas ? iroas.toFixed(2) + '×' : '—', ci: iroas ? '±' + (iroas * 0.22).toFixed(2) : '広告OFF', conf: S.budget > 0 ? 'hi' : 'lo' },
+    { label: '推計 iROAS' + ((window.GEO && GEO.calibrated) ? '（実験校正済）' : ''), value: iroas ? iroas.toFixed(2) + '×' : '—', ci: iroas ? '±' + (iroas * ((window.GEO && GEO.calibrated) ? 0.10 : 0.22)).toFixed(2) : '広告OFF', conf: S.budget > 0 ? 'hi' : 'lo' },
   ];
   document.getElementById('kpi-grid').innerHTML = kpis.map(k => `
     <div class="kpi">
@@ -717,10 +718,12 @@ function renderBeacon() {
 function switchView(view) {
   activeView = view;
   document.querySelectorAll('#view-seg button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-  document.getElementById('page-analytics').classList.toggle('active', view === 'analytics');
-  document.getElementById('page-shelf').classList.toggle('active', view === 'shelf');
+  ['analytics', 'shelf', 'plan', 'studio'].forEach(v =>
+    document.getElementById('page-' + v).classList.toggle('active', view === v));
   if (view === 'analytics') requestAnimationFrame(() => { refreshCharts(); refreshDash(); });
   if (view === 'shelf' && window.renderShelfSim) requestAnimationFrame(() => window.renderShelfSim());
+  if (view === 'plan' && window.renderPlanPage) requestAnimationFrame(() => window.renderPlanPage());
+  if (view === 'studio' && window.renderStudioPage) requestAnimationFrame(() => window.renderStudioPage());
 }
 
 function bindControls() {

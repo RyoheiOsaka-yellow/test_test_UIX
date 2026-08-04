@@ -325,15 +325,21 @@ window.__shelfFacilityReset = function () {
   document.getElementById('sp-suggest').classList.remove('show');
 };
 
-(function bindShelfControls() {
+function renderPopRadio() {
   const popWrap = document.getElementById('sp-pop');
   popWrap.innerHTML = Object.entries(SHELF_POPS).map(([k, v]) =>
     `<button data-pop="${k}" class="${k === SP.pop ? 'active' : ''}">${v.label}${v.cost ? `（${v.cost}円/日）` : ''}</button>`).join('');
+}
+window.renderPopRadio = renderPopRadio;
+
+(function bindShelfControls() {
+  const popWrap = document.getElementById('sp-pop');
+  renderPopRadio();
   popWrap.addEventListener('click', e => {
     const b = e.target.closest('button[data-pop]');
     if (!b) return;
     SP.pop = b.dataset.pop;
-    popWrap.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+    renderPopRadio();
     renderShelfSim();
   });
   document.getElementById('sp-faces').addEventListener('input', e => {

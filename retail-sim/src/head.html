@@ -90,11 +90,39 @@ button { font-family: inherit; }
 /* ---- pages ---- */
 #page-3d { position: fixed; top: 54px; left: 0; right: 0; bottom: 0; }
 #view3d { position: absolute; inset: 0; }
-#page-analytics, #page-shelf {
+#page-analytics, #page-shelf, #page-plan, #page-studio {
   position: fixed; top: 54px; left: 0; right: 0; bottom: 0; z-index: 30;
   overflow-y: auto; background: var(--bg); display: none;
 }
-#page-analytics.active, #page-shelf.active { display: block; }
+#page-analytics.active, #page-shelf.active, #page-plan.active, #page-studio.active { display: block; }
+
+/* ---- エリア・予算 / AI STUDIO ---- */
+.geo-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 14px; }
+@media (max-width: 900px) { .geo-grid { grid-template-columns: 1fr; } }
+.power-box { border: 1px solid var(--panel-border); border-radius: 9px; padding: 9px 12px; margin: 8px 0; background: #f8fafc; font-size: 11px; line-height: 1.6; }
+.power-box .pv { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.power-ok { color: var(--status-good); }
+.power-ng { color: var(--status-bad); }
+.media-row { display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 3px 0; color: var(--text-secondary); }
+.media-row .ml { width: 120px; flex: none; font-weight: 600; color: var(--text-primary); }
+.media-row .mb { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.media-row .bar { height: 8px; border-radius: 4px; }
+.media-row .mv { width: 130px; text-align: right; font-variant-numeric: tabular-nums; flex: none; font-size: 10px; }
+.st-input { width: 100%; padding: 7px 10px; border: 1px solid var(--panel-border); border-radius: 7px; font-size: 12.5px; margin: 3px 0 9px; font-family: inherit; background: #fff; color: var(--text-primary); }
+.st-label { font-size: 10px; color: var(--text-muted); letter-spacing: .08em; }
+#cv-creative { border: 1px solid var(--panel-border); border-radius: 10px; width: 100%; max-width: 380px; display: block; margin: 0 auto; }
+.studio-score { text-align: center; margin: 10px 0 4px; }
+.studio-score .sv { font-size: 22px; font-weight: 700; }
+.gal { display: flex; flex-wrap: wrap; gap: 10px; }
+.gal .g-item { width: 118px; border: 1px solid var(--panel-border); border-radius: 8px; overflow: hidden; background: #fff; }
+.gal .g-item img { width: 100%; display: block; }
+.gal .g-meta { font-size: 9px; color: var(--text-muted); padding: 4px 6px; }
+.ab-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.ab-cell { text-align: center; border: 1px solid var(--panel-border); border-radius: 9px; padding: 8px; }
+.ab-cell img { width: 100%; border-radius: 6px; }
+.ab-cell .win { font-size: 11px; font-weight: 700; margin-top: 4px; }
+.chipset { display: flex; gap: 4px; justify-content: center; margin-top: 3px; flex-wrap: wrap; }
+.chipset span { font-size: 8.5px; border: 1px solid var(--panel-border); border-radius: 999px; padding: 1px 6px; color: var(--text-muted); }
 
 /* ---- 棚割シミュレーター ---- */
 .sp-radio { display: flex; flex-wrap: wrap; gap: 5px; margin: 4px 0 8px; }
@@ -347,8 +375,10 @@ button { font-family: inherit; }
     <button data-fac="depato">百貨店</button>
   </div>
   <div class="seg" id="view-seg">
-    <button data-view="3d" class="active">3Dシミュレーション</button>
-    <button data-view="shelf">棚割シミュレーター</button>
+    <button data-view="3d" class="active">3Dビュー</button>
+    <button data-view="shelf">棚割</button>
+    <button data-view="plan">エリア・予算</button>
+    <button data-view="studio">AI STUDIO</button>
     <button data-view="analytics">分析ボード</button>
   </div>
   <div id="clockbox">
@@ -489,6 +519,115 @@ button { font-family: inherit; }
       <div class="card span2">
         <div class="card-title">参考データ（実名・出典）<span class="hint">モデル係数の根拠</span></div>
         <div class="card-body" id="sp-ref"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="page-plan">
+  <div class="an-inner">
+    <div class="an-head">
+      <div class="an-client">エリア実験・予算配分</div>
+      <div class="an-store">ジオリフト実験設計（AREA MAP）／ 限界iROAS均等化ソルバー ／ 店舗別γ地域補正</div>
+    </div>
+    <div class="an-badges">
+      <span class="badge type">横断軸A: オフライン統合</span>
+      <span class="badge type">L3-1: 予算配分最適化</span>
+      <span class="badge on" id="geo-badge" style="display:none">✓ ジオリフト校正 適用中</span>
+    </div>
+    <div class="an-grid">
+      <div class="card span2">
+        <div class="card-title">ジオリフト実験設計 — AREA MAP<span class="hint">エリアをクリック: 処置(赤)→対照(青)→除外(グレー)→解除</span></div>
+        <div class="card-body">
+          <div class="geo-grid">
+            <div>
+              <div class="chart-wrap"><canvas id="cv-map" height="330"></canvas></div>
+              <div class="legend" id="map-legend"></div>
+            </div>
+            <div>
+              <div class="slider-row">
+                <div class="slider-label"><span>実験予算（追加投下）</span><b id="v-geobudget">300万円</b></div>
+                <input type="range" id="geo-budget" min="50" max="800" step="50" value="300" />
+              </div>
+              <div class="sp-btnrow" style="margin-top:2px">
+                <button id="geo-propose" class="ghost">候補を自動提案</button>
+                <button id="geo-start">実験を開始（14日間）</button>
+                <button id="geo-clear" class="ghost">クリア</button>
+              </div>
+              <div class="power-box" id="geo-power"></div>
+              <div class="chart-wrap"><canvas id="cv-geo" height="150"></canvas></div>
+              <div id="geo-result"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">予算配分シミュレーション（L3-1）<span class="hint">限界iROAS均等化・逐次配分ソルバー</span></div>
+        <div class="card-body">
+          <div class="sp-radio" id="alloc-mode">
+            <button data-mode="normal" class="active">通常モード（±30%）</button>
+            <button data-mode="aggressive">攻めモード（制約なし）</button>
+          </div>
+          <div id="alloc-body"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">店舗別γ — 地域補正マップ（L2）<span class="hint">人流が広告効果を増幅する度合い</span></div>
+        <div class="card-body" id="gamma-body"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="page-studio">
+  <div class="an-inner">
+    <div class="an-head">
+      <div class="an-client">AI STUDIO</div>
+      <div class="an-store">販促クリエイティブ自動生成 — テンプレート×勝ちそう度×A/B派生（Canvas描画・PNG書き出し）</div>
+    </div>
+    <div class="an-badges">
+      <span class="badge type">L4: 生成層</span>
+      <span class="badge est">勝ちそう度: scripted（将来は実データ駆動）</span>
+    </div>
+    <div class="an-grid">
+      <div class="card">
+        <div class="card-title">クリエイティブ設定</div>
+        <div class="card-body">
+          <div class="st-label">テンプレート</div>
+          <div class="sp-radio" id="st-template"></div>
+          <div class="st-label">商品名</div>
+          <input class="st-input" id="st-name" value="" />
+          <div class="st-label">キャッチコピー</div>
+          <input class="st-input" id="st-copy" value="今だけ、新登場。" />
+          <div class="st-label">価格（円）</div>
+          <input class="st-input" id="st-price" type="number" value="240" />
+          <div class="st-label">カラースキーム</div>
+          <div class="sp-radio" id="st-scheme"></div>
+          <div class="sp-btnrow">
+            <button id="st-generate">生成する</button>
+            <button id="st-ab" class="ghost">A/B自動作成</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">プレビュー・勝ちそう度</div>
+        <div class="card-body">
+          <canvas id="cv-creative" width="760" height="960"></canvas>
+          <div class="studio-score" id="st-score"></div>
+          <div class="sp-btnrow" style="justify-content:center">
+            <button id="st-download" class="ghost">PNG保存</button>
+            <button id="st-apply">棚割シミュレーターのPOPに適用</button>
+          </div>
+          <div id="ab-area"></div>
+        </div>
+      </div>
+
+      <div class="card span2">
+        <div class="card-title">生成ギャラリー<span class="hint">クリックでプレビューに復元</span></div>
+        <div class="card-body"><div class="gal" id="studio-gallery"></div></div>
       </div>
     </div>
   </div>
