@@ -264,6 +264,8 @@ function arrivalRatePerMin() {
 const NOV_TRUE_LIFT = 0.32;
 const AD_PROMO_MULT = 1.7;
 const ENDCAP_ATTENTION = 1.9;
+// 棚割シミュレーターから反映される係数（視線・転換の倍率）
+const PLANO = { attn: 1, conv: 1 };
 
 let agentSeq = 0;
 class Agent {
@@ -336,6 +338,7 @@ class Agent {
         st.picks++;
         let pBuy = shelf.base;
         if (shelf === promotedShelf()) {
+          pBuy *= PLANO.conv;                       // 棚割シミュレーターの反映
           if (this.adExposed) pBuy *= AD_PROMO_MULT;
           if (this.hasNovelty) pBuy *= (1 + NOV_TRUE_LIFT);
         } else if (this.hasNovelty) pBuy *= 1.06;
@@ -460,7 +463,7 @@ function senseGaze(agent, interval) {
     const nx = s.normal[0], nz = s.normal[2];
     if ((agent.x - gx) * nx + (agent.z - gz) * nz < 0) continue;
     let w = interval * (1 - d / GAZE_DIST);
-    if (s.promoted && S.endcap) w *= ENDCAP_ATTENTION;
+    if (s.promoted && S.endcap) w *= ENDCAP_ATTENTION * PLANO.attn;
     STATS.shelves[s.id].gazeSec += w;
     agent.gazeMap[s.id] = (agent.gazeMap[s.id] || 0) + interval;
     if (agent.gazeMap[s.id] >= 1.0 && !agent['gz_' + s.id] && d < 2.4) {

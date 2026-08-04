@@ -642,9 +642,13 @@ function renderBenchmark() {
           <td style="padding:4px 5px;color:var(--text-secondary);border-bottom:1px solid #eef2f7">${b.sim}</td>
         </tr>`).join('')}</tbody>
     </table>
-    <div class="mde-text" style="margin-top:7px;line-height:1.6">
-      出典: 日本フランチャイズチェーン協会 コンビニエンスストア統計（2025年）／各社決算（2025年度上期 全店平均日販）／経済産業省 商業動態統計（百貨店の飲食料品構成比）／報道各社（伊勢丹新宿 年商）。
-      数値はデモ用に丸めたダミーデータであり、実在チェーン・店舗の実績を示すものではありません。
+    <div class="mde-text" style="margin-top:7px;line-height:1.7">
+      出典（実名）:
+      <a href="https://www.jfa-fc.or.jp/particle/320.html" target="_blank" style="color:var(--accent)">日本フランチャイズチェーン協会（JFA）コンビニエンスストア統計</a>（客単価748.5円=2025年11月・既存店）／
+      <a href="https://www.ryutsuu.biz/strategy/r102113.html" target="_blank" style="color:var(--accent)">流通ニュース</a>・<a href="https://diamond-rm.net/market/accounting/515637/" target="_blank" style="color:var(--accent)">ダイヤモンド・チェーンストア</a>（セブン‐イレブン70.3万／ローソン60.3万／ファミリーマート57.3万円=2025年度上期 全店平均日販）／
+      <a href="https://www.meti.go.jp/statistics/tyo/syoudou/result/kakuho_2.html" target="_blank" style="color:var(--accent)">経済産業省 商業動態統計</a>（百貨店の飲食料品構成比28.3%）／
+      <a href="https://toyokeizai.net/articles/-/665558" target="_blank" style="color:var(--accent)">東洋経済オンライン</a>（伊勢丹新宿本店 2022年度売上 過去最高）。
+      数値はデモ用に丸めたダミーデータであり、実在チェーン・店舗の実績値そのものではありません。
     </div>`;
 }
 
@@ -659,7 +663,9 @@ function switchView(view) {
   activeView = view;
   document.querySelectorAll('#view-seg button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   document.getElementById('page-analytics').classList.toggle('active', view === 'analytics');
+  document.getElementById('page-shelf').classList.toggle('active', view === 'shelf');
   if (view === 'analytics') requestAnimationFrame(() => { refreshCharts(); refreshDash(); });
+  if (view === 'shelf' && window.renderShelfSim) requestAnimationFrame(() => window.renderShelfSim());
 }
 
 function bindControls() {
@@ -715,7 +721,9 @@ function bindControls() {
       document.querySelectorAll('#facility-seg button').forEach(x => x.classList.toggle('active', x === b));
       loadFacility(b.dataset.fac);
       Object.keys(actionState).forEach(k => delete actionState[k]);
+      if (window.__shelfFacilityReset) window.__shelfFacilityReset();
       refreshDash(); refreshCharts(); renderActions();
+      if (activeView === 'shelf' && window.renderShelfSim) window.renderShelfSim();
     });
   });
   // オーバーレイ折り畳み（ヘッダクリック）
