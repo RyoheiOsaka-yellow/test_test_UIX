@@ -93,7 +93,7 @@ h1 em{font-style:normal;color:var(--glow);text-shadow:0 0 26px rgba(127,232,255,
 .hud-label{font-size:10.5px;letter-spacing:.14em;color:var(--paper-dim);}
 
 /* キャンバス */
-.ball-area{position:relative;width:100%;max-width:780px;margin:0 auto;}
+.ball-area{position:relative;width:100%;max-width:830px;margin:0 auto;}
 #ball{display:block;width:100%;height:auto;touch-action:none;cursor:pointer;}
 .hint{
   position:absolute;left:50%;bottom:2px;transform:translateX(-50%);
@@ -463,7 +463,7 @@ footer{padding:44px 0 60px;border-top:1px solid var(--line);}
     </div>
 
     <div class="ball-area" id="ballArea">
-      <canvas id="ball" width="1240" height="1000"></canvas>
+      <canvas id="ball" width="1240" height="1200"></canvas>
       <div class="combo-tag" id="comboTag"></div>
       <div class="hint" id="hint">押し続けてチャージ → 離して発射／光の粒をタップでメッセージが読めます</div>
       <div class="msg-pop" id="msgPop">
@@ -877,7 +877,7 @@ function checkMilestones(){
 
 /* ===================== 元気玉キャンバス ===================== */
 var cv = document.getElementById("ball"), ctx = cv.getContext("2d");
-var CW = cv.width, CH = cv.height, CX = CW/2, CY = CH*0.47;
+var CW = cv.width, CH = cv.height, CX = CW/2, CY = CH*0.477;
 var holding=false, charge=0, bursts=[], streaks=[], sparks=[];
 var particles = [];
 var squash=0, squashV=0;   // 押しへこみのバネ物理
@@ -901,7 +901,7 @@ rebuildParticles();
 
 function ballRadius(){
   var t = totalEnergy();
-  return 168 + Math.min(152, Math.pow(t/GOAL,0.55)*152);
+  return 215 + Math.min(193, Math.pow(t/GOAL,0.55)*193);
 }
 
 function draw(now){
@@ -989,12 +989,12 @@ function draw(now){
   // チャージリング
   if(charge>0){
     ctx.strokeStyle="rgba(255,255,255,0.14)"; ctx.lineWidth=9;
-    ctx.beginPath(); ctx.arc(CX,cy2,R*1.38,0,7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(CX,cy2,R*1.33,0,7); ctx.stroke();
     ctx.strokeStyle="#7FE8FF"; ctx.lineWidth=9; ctx.lineCap="round";
-    ctx.beginPath(); ctx.arc(CX,cy2,R*1.38,-Math.PI/2,-Math.PI/2+chargeK*Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(CX,cy2,R*1.33,-Math.PI/2,-Math.PI/2+chargeK*Math.PI*2); ctx.stroke();
     ctx.font="700 46px 'Barlow Condensed',sans-serif"; ctx.fillStyle="#7FE8FF"; ctx.textAlign="center";
     var comboMul = 1 + combo*0.1;
-    ctx.fillText("+"+Math.round(charge*3*comboMul), CX, Math.min(CH-14, cy2+R*1.38+64));
+    ctx.fillText("+"+Math.round(charge*3*comboMul), CX, Math.min(CH-16, cy2+R*1.33+62));
   }
 
   // 火花
