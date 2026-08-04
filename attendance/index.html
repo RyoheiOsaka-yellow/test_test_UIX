@@ -48,7 +48,9 @@ body{
 .num{font-family:"Outfit",sans-serif;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
 
 /* ---------- header ---------- */
-.masthead{padding:34px 0 10px}
+.masthead{padding:34px 0 10px;display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+.mast-text{flex:1;min-width:0}
+.club-logo{width:100px;height:auto;flex-shrink:0;margin-top:4px;filter:drop-shadow(0 8px 16px rgba(0,47,108,.22))}
 .eyebrow{
   font-family:"Outfit",sans-serif;font-weight:700;font-size:12px;letter-spacing:.22em;
   color:var(--cyan);text-transform:uppercase;
@@ -281,11 +283,31 @@ tr.best td:first-child::after{content:" 👑";font-size:12px}
 .demo-btns button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
 footer{padding:40px 0 64px;font-size:12px;color:#8AA3B8;text-align:center}
 
+/* ---------- share ---------- */
+.share-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:22px;align-items:start}
+.share-preview{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--sky);min-height:120px}
+.share-preview img{display:block;width:100%;height:auto}
+.share-text{
+  font-size:13.5px;color:#3A5876;background:var(--sky);border-radius:14px;padding:13px 16px;line-height:1.8;
+}
+.share-btns{display:flex;flex-direction:column;gap:9px;margin-top:14px}
+.share-btns button{
+  display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:999px;
+  font-family:inherit;font-weight:700;font-size:13.5px;cursor:pointer;border:1px solid var(--line);
+  background:#fff;color:var(--navy);transition:.2s;
+}
+.share-btns button:hover{background:var(--sky)}
+.share-btns button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+.share-btns .primary{background:var(--navy);border-color:var(--navy);color:#fff}
+.share-btns .primary:hover{background:var(--navy-2);border-color:var(--navy-2)}
+
 @media(max-width:860px){
   :root{--dh:62px;--dw:45px}
   .dots{grid-template-columns:repeat(25,1fr)}
   .pace{grid-template-columns:1fr}
   .board{padding:30px 16px 24px;border-radius:26px}
+  .club-logo{width:66px}
+  .share-grid{grid-template-columns:1fr}
 }
 @media(prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important}
@@ -297,9 +319,41 @@ footer{padding:40px 0 64px;font-size:12px;color:#8AA3B8;text-align:center}
 <div class="wrap">
 
   <header class="masthead">
-    <div class="eyebrow">AZUL CLARO NUMAZU <span>／ 2026 SEASON</span></div>
-    <h1>みんなで積み上げる、<br>来場者数。</h1>
-    <p class="lead">ホームゲームに足を運んでくれた人の数を、シーズンを通して積み上げています。3万人はJリーグ昇格の目安ライン。ここをみんなで越えて、その先へ。</p>
+    <div class="mast-text">
+      <div class="eyebrow">AZUL CLARO NUMAZU <span>／ 2026 SEASON</span></div>
+      <h1>みんなで積み上げる、<br>来場者数。</h1>
+      <p class="lead">ホームゲームに足を運んでくれた人の数を、シーズンを通して積み上げています。3万人はJリーグ昇格の目安ライン。ここをみんなで越えて、その先へ。</p>
+    </div>
+    <!-- クラブエンブレム（デモ用にSVGで再現。公式ロゴ画像を使う場合は
+         この<svg>ごと <img id="clubLogo" src="ロゴ.png" alt="アスルクラロ沼津"> に差し替えでOK。
+         シェア画像にも自動で反映されます -->
+    <svg id="clubLogo" class="club-logo" viewBox="0 0 200 252" role="img" aria-label="アスルクラロ沼津 エンブレム">
+      <defs>
+        <clipPath id="lgClipCyan"><path d="M100 8 C 82 16 48 21 26 18 C 21 64 18 122 33 164 C 47 202 74 229 100 242 C 126 229 153 202 167 164 C 182 122 179 64 174 18 C 152 21 118 16 100 8 Z" transform="translate(13 15.6) scale(.87)"/></clipPath>
+        <clipPath id="lgClipWhite"><path d="M100 8 C 82 16 48 21 26 18 C 21 64 18 122 33 164 C 47 202 74 229 100 242 C 126 229 153 202 167 164 C 182 122 179 64 174 18 C 152 21 118 16 100 8 Z" transform="translate(6 7.5) scale(.94)"/></clipPath>
+      </defs>
+      <!-- 外枠（黒）→白→シアンの3層シールド -->
+      <path d="M100 8 C 82 16 48 21 26 18 C 21 64 18 122 33 164 C 47 202 74 229 100 242 C 126 229 153 202 167 164 C 182 122 179 64 174 18 C 152 21 118 16 100 8 Z" fill="#0A0A0A"/>
+      <path d="M100 8 C 82 16 48 21 26 18 C 21 64 18 122 33 164 C 47 202 74 229 100 242 C 126 229 153 202 167 164 C 182 122 179 64 174 18 C 152 21 118 16 100 8 Z" transform="translate(6 7.5) scale(.94)" fill="#FFFFFF"/>
+      <path d="M100 8 C 82 16 48 21 26 18 C 21 64 18 122 33 164 C 47 202 74 229 100 242 C 126 229 153 202 167 164 C 182 122 179 64 174 18 C 152 21 118 16 100 8 Z" transform="translate(13 15.6) scale(.87)" fill="#00A0E9"/>
+      <!-- 富士山 -->
+      <g clip-path="url(#lgClipCyan)">
+        <polygon points="18,172 72,112 88,132 102,116 182,172" fill="#FFFFFF"/>
+      </g>
+      <!-- a- レターマーク -->
+      <text x="86" y="112" text-anchor="middle" font-family="Outfit,Arial,sans-serif" font-weight="800" font-size="92" fill="#FFFFFF">a</text>
+      <rect x="118" y="58" width="36" height="13" rx="2" fill="#FFFFFF"/>
+      <rect x="122" y="96" width="26" height="13" rx="2" fill="#FFFFFF"/>
+      <!-- azul claro バンド -->
+      <g clip-path="url(#lgClipWhite)">
+        <rect x="0" y="196" width="200" height="60" fill="#FFFFFF"/>
+      </g>
+      <rect x="10" y="168" width="180" height="28" rx="3" fill="#16309C" stroke="#FFFFFF" stroke-width="3"/>
+      <text x="100" y="189" text-anchor="middle" font-family="Outfit,Arial,sans-serif" font-weight="800" font-style="italic" font-size="21" letter-spacing="1" fill="#FFFFFF">azul claro</text>
+      <!-- 1990 -->
+      <rect x="63" y="203" width="74" height="24" rx="5" fill="#0A0A0A"/>
+      <text x="100" y="221" text-anchor="middle" font-family="Outfit,Arial,sans-serif" font-weight="800" font-size="17" letter-spacing="2" fill="#FFFFFF">1990</text>
+    </svg>
   </header>
 
   <div class="board">
@@ -373,6 +427,27 @@ footer{padding:40px 0 64px;font-size:12px;color:#8AA3B8;text-align:center}
           </thead>
           <tbody id="tbody"></tbody>
         </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="fx">
+    <div class="sec-head">
+      <h2>この記録をシェア</h2>
+      <span class="sec-note">いまの積み上がりを、そのまま画像にしてSNSへ</span>
+    </div>
+    <div class="card">
+      <div class="share-grid">
+        <div class="share-preview"><img id="shareImg" alt="シェア画像プレビュー"></div>
+        <div>
+          <p class="share-text" id="shareText"></p>
+          <div class="share-btns">
+            <button type="button" class="primary" id="shareNative">📤 画像をシェア／保存する</button>
+            <button type="button" id="shareX">𝕏 でポストする</button>
+            <button type="button" id="shareLine">💬 LINEで送る</button>
+            <button type="button" id="shareCopy">🔗 テキストとリンクをコピー</button>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -1024,11 +1099,168 @@ function finishSim(total){
   setCounterTarget(total);
   renderDots(total); renderChart(total, false); renderChips(total);
   renderSub(); renderPace(); animatePaceNums(); renderTable();
-  revealProjection(); updateSimBtn();
+  revealProjection(); updateSimBtn(); refreshShare();
   /* プリセットと状態がずれるので選択表示を解除 */
   demoBtns.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed","false"));
 }
 simBtn.addEventListener("click", simulateNext);
+
+/* ---------- SNSシェア ----------
+   いまの累計からシェア文面と1200x630のシェア画像を自動生成する。
+   ヘッダーのロゴ（#clubLogo）を差し替えれば画像にも自動反映される。 */
+const SHARE_URL = location.protocol.startsWith("http") ? location.href : "https://www.azul-claro.co.jp/";
+const HASHTAGS = "#アスルクラロ沼津 #みんなで積み上げる来場者数";
+let logoImgPromise = null, lastCardBlob = null;
+
+function buildShareText(){
+  const s = state();
+  const next = SEASON.goals.find(g => s.total < g.value);
+  const goalPart = next
+    ? `${next.name}（${yen(next.value)}人）まで あと${yen(next.value - s.total)}人。`
+    : "今シーズンの全目標を達成しました！ありがとうございます！";
+  return `🔵⚪ アスルクラロ沼津 ホームゲーム累計来場者数は ${yen(s.total)}人！${goalPart}スタジアムで会いましょう🏟️ ${HASHTAGS}`;
+}
+function getLogoImage(){
+  if(logoImgPromise) return logoImgPromise;
+  logoImgPromise = new Promise(resolve=>{
+    const el = document.getElementById("clubLogo");
+    const img = new Image();
+    img.onload = ()=>resolve(img);
+    img.onerror = ()=>resolve(null);
+    if(el && el.tagName.toLowerCase() === "svg"){
+      const xml = new XMLSerializer().serializeToString(el);
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
+    } else if(el && el.src){
+      img.src = el.src;
+    } else resolve(null);
+  });
+  return logoImgPromise;
+}
+function rr(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+async function drawShareCard(){
+  const s = state();
+  const W = 1200, H = 630;
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext("2d");
+
+  /* 背景（ボードと同じ世界観） */
+  const bg = ctx.createLinearGradient(0,0,W*.55,H);
+  bg.addColorStop(0,"#0F4C81"); bg.addColorStop(.58,"#002F6C"); bg.addColorStop(1,"#00214D");
+  ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+  const glow = ctx.createRadialGradient(W*.14,0,60, W*.14,0,720);
+  glow.addColorStop(0,"rgba(0,160,233,.4)"); glow.addColorStop(1,"rgba(0,160,233,0)");
+  ctx.fillStyle = glow; ctx.fillRect(0,0,W,H);
+
+  /* ロゴ（左上） */
+  const logo = await getLogoImage();
+  const LW = 128;
+  if(logo) ctx.drawImage(logo, 64, 52, LW, LW * 1.26);
+
+  /* 見出し */
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#7FD6F7";
+  ctx.font = "700 26px Outfit, Arial, sans-serif";
+  ctx.fillText("AZUL CLARO NUMAZU ／ 2026 SEASON", 230, 106);
+  ctx.fillStyle = "#BFE3F7";
+  ctx.font = "700 30px 'Zen Maru Gothic', sans-serif";
+  ctx.fillText("ホームゲーム累計来場者数", 230, 156);
+
+  /* 大きな数字 */
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = "800 168px Outfit, Arial, sans-serif";
+  const numStr = yen(s.total);
+  const numW = ctx.measureText(numStr).width;
+  ctx.fillText(numStr, 64, 380);
+  ctx.font = "900 54px 'Zen Maru Gothic', sans-serif";
+  ctx.fillText("人", 64 + numW + 18, 378);
+
+  /* 次の目標 */
+  const next = SEASON.goals.find(g => s.total < g.value);
+  ctx.fillStyle = "#BFE3F7";
+  ctx.font = "700 32px 'Zen Maru Gothic', sans-serif";
+  ctx.fillText(
+    next ? `${next.name}（${yen(next.value)}人）まで あと ${yen(next.value - s.total)}人` : "今シーズンの全目標を達成！🎉",
+    64, 448);
+
+  /* 進捗バー（最終目標 5万人まで） */
+  const maxGoal = SEASON.goals[SEASON.goals.length-1].value;
+  const bx = 64, bw = W - 128, by = 500, bh = 30;
+  rr(ctx,bx,by,bw,bh,15); ctx.fillStyle = "rgba(255,255,255,.14)"; ctx.fill();
+  const fw = Math.max(bh, bw * Math.min(1, s.total / maxGoal));
+  const fg = ctx.createLinearGradient(bx,0,bx+fw,0);
+  fg.addColorStop(0,"#7FD6F7"); fg.addColorStop(1,"#00A0E9");
+  rr(ctx,bx,by,fw,bh,15); ctx.fillStyle = fg; ctx.fill();
+  /* 目標の目盛り */
+  SEASON.goals.forEach(g=>{
+    const gx = bx + bw * (g.value / maxGoal);
+    ctx.fillStyle = s.total >= g.value ? "#FFB03A" : "rgba(255,255,255,.55)";
+    ctx.fillRect(gx-2, by-8, 4, bh+16);
+    ctx.font = "700 22px Outfit, Arial, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(`${(g.value/10000).toFixed(1).replace(".0","")}万`, Math.min(gx, W-40), by-18);
+    ctx.textAlign = "left";
+  });
+
+  /* フッター */
+  ctx.fillStyle = "rgba(191,227,247,.75)";
+  ctx.font = "700 24px 'Zen Maru Gothic', sans-serif";
+  ctx.fillText(`${PLAYED}試合終了時点`, 64, 592);
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#7FD6F7";
+  ctx.font = "700 24px 'Zen Maru Gothic', sans-serif";
+  ctx.fillText("#みんなで積み上げる来場者数", W-64, 592);
+  ctx.textAlign = "left";
+  return cv;
+}
+async function refreshShare(){
+  document.getElementById("shareText").textContent = buildShareText();
+  try{
+    const cv = await drawShareCard();
+    document.getElementById("shareImg").src = cv.toDataURL("image/png");
+    cv.toBlob(b=>{ lastCardBlob = b; }, "image/png");
+  }catch(e){ /* canvasが使えない環境ではテキスト共有のみ */ }
+}
+function flashBtn(btn, label){
+  const orig = btn.textContent;
+  btn.textContent = label;
+  setTimeout(()=>{ btn.textContent = orig; }, 1600);
+}
+document.getElementById("shareX").addEventListener("click", ()=>{
+  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(buildShareText())}&url=${encodeURIComponent(SHARE_URL)}`, "_blank", "noopener");
+});
+document.getElementById("shareLine").addEventListener("click", ()=>{
+  window.open(`https://line.me/R/share?text=${encodeURIComponent(buildShareText() + " " + SHARE_URL)}`, "_blank", "noopener");
+});
+document.getElementById("shareCopy").addEventListener("click", e=>{
+  navigator.clipboard.writeText(buildShareText() + " " + SHARE_URL)
+    .then(()=>flashBtn(e.currentTarget, "✔ コピーしました"))
+    .catch(()=>flashBtn(e.currentTarget, "コピーできませんでした"));
+});
+document.getElementById("shareNative").addEventListener("click", async e=>{
+  const btn = e.currentTarget;
+  if(lastCardBlob && navigator.canShare && navigator.canShare({ files: [new File([lastCardBlob],"azul.png",{type:"image/png"})] })){
+    try{
+      await navigator.share({
+        files: [new File([lastCardBlob], "azul-attendance.png", {type:"image/png"})],
+        text: buildShareText()
+      });
+      return;
+    }catch(err){ if(err && err.name === "AbortError") return; }
+  }
+  /* Web Share非対応（PCなど）はPNGダウンロード */
+  const a = document.createElement("a");
+  a.href = document.getElementById("shareImg").src;
+  a.download = "azul-attendance.png";
+  a.click();
+  flashBtn(btn, "✔ 画像を保存しました");
+});
 
 /* ---------- scroll reveal & セクションごとの再生 ---------- */
 let localRafs = {};
@@ -1069,11 +1301,13 @@ const io = new IntersectionObserver(entries=>{
 function renderAll(){
   buildChart(); buildChips();
   renderSub(); renderPace(); renderTable(); updateSimBtn();
+  refreshShare();
   play();
 }
 buildCounter();
 buildDots();
 renderAll();
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(refreshShare);
 document.querySelectorAll("section.fx").forEach(s=>io.observe(s));
 
 document.getElementById("replay").addEventListener("click", play);
