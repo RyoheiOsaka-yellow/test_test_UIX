@@ -12,6 +12,7 @@ const COL = {
   text: '#45586e', dark: '#16283c', faint: '#8a99ad', grid: 'rgba(22,40,60,0.08)',
 };
 let activeView = '3d';
+const SF = () => STORE.sampleFactor;   // ビーコンサンプリング拡大係数
 
 /* ---------- 確信度ラベル ---------- */
 function confChip(level) {
@@ -57,8 +58,8 @@ function blend(liveDaily, analytic) {
 function computeProjection() {
   const e = expectedComponents();
   const f = dayFrac();
-  const totalRevenue = blend(STATS.revenue / f, e.total);
-  const visitors = blend(STATS.visitors / f, e.visitors);
+  const totalRevenue = blend(STATS.revenue * SF() / f, e.total);
+  const visitors = blend(STATS.visitors * SF() / f, e.visitors);
   const scale = totalRevenue / e.total;
   return {
     visitors, totalRevenue,
@@ -128,13 +129,13 @@ function renderShelfDetail() {
   const gazeRate = st.passes ? st.gazes / st.passes : 0;
   const stopRate = st.gazes ? st.stops / st.gazes : 0;
   const cvr = st.stops ? st.purchases / st.stops : 0;
-  const maxV = Math.max(st.passes, 1);
+  const maxV = Math.max(st.passes * SF(), 1);
   const isPromo = s === promotedShelf();
   const funnel = [
-    ['通過', st.passes, COL.neutral],
-    ['視線獲得', st.gazes, COL.s1],
-    ['立寄', st.stops, COL.s4],
-    ['購買', st.purchases, COL.good],
+    ['通過', st.passes * SF(), COL.neutral],
+    ['視線獲得', st.gazes * SF(), COL.s1],
+    ['立寄', st.stops * SF(), COL.s4],
+    ['購買', st.purchases * SF(), COL.good],
   ];
   panel.classList.add('open');
   document.getElementById('sd-body').innerHTML = `
@@ -150,12 +151,12 @@ function renderShelfDetail() {
       <div class="sd-m"><div class="l">視線獲得率</div><div class="v">${fmtPct(gazeRate, 0)}</div></div>
       <div class="sd-m"><div class="l">視線→立寄</div><div class="v">${fmtPct(stopRate, 0)}</div></div>
       <div class="sd-m"><div class="l">立寄→購買</div><div class="v">${fmtPct(cvr, 0)}</div></div>
-      <div class="sd-m"><div class="l">累計視線時間</div><div class="v">${Math.round(st.gazeSec)}s</div></div>
+      <div class="sd-m"><div class="l">累計視線時間</div><div class="v">${fmtNum(st.gazeSec * SF())}s</div></div>
     </div>
     ${isPromo ? `<div class="sd-frow"><span class="fl">在庫</span>
       <span class="fb"><div style="width:${(stockState.units / stockState.cap * 100).toFixed(0)}%;background:${COL.s2}"></div></span>
       <span class="fv">${stockState.units}/${stockState.cap}</span></div>` : ''}
-    <div class="sd-note">ビーコン粒度の実測サンプル。数値は本日累計（ライブ集計・推定バッジ）。</div>`;
+    <div class="sd-note">ビーコン粒度の実測サンプル。数値は本日累計${SF() > 1 ? `（1/${SF()}サンプリング×拡大推計）` : ''}（ライブ集計・推定バッジ）。</div>`;
 }
 window.__renderShelfDetail = renderShelfDetail;
 
@@ -280,17 +281,18 @@ function renderFunnel() {
   ].map(x => `<div class="fun-stage"><div class="f-label">${x.l}</div><div class="f-value">${x.v}</div><div class="f-sub">${x.s}</div></div>`).join('');
 
   const expPromo = p.exposed * 0.72 * 0.62 * 0.46 * dayFrac();
-  const obsPromo = STATS.promoUnits;
+  const obsPromo = STATS.promoUnits * SF();
   let badge;
   if (S.budget === 0 || expPromo < 5) badge = `<span class="badge est">突合: 判定待ち（サンプル収集中）</span>`;
   else if (obsPromo > expPromo * 0.55) badge = `<span class="badge on">↕ 突合: 整合（来店増→購買が伴っている）</span>`;
   else badge = `<span class="badge warnb">↕ 突合: 乖離 — 来店は増えたが購買が伴わない</span>`;
   document.getElementById('fun-mid').innerHTML = badge;
 
+  const sfNote = SF() > 1 ? `サンプル×${SF()}拡大` : '実数';
   document.getElementById('fun-lower').innerHTML = [
-    { l: 'ノベルティ受取', v: fmtNum(nv.treat), s: '実数・無作為割付' },
-    { l: '対象商品 購買', v: fmtNum(nv.treatBuy), s: '実数・POS紐付け' },
-    { l: '再来店（予測）', v: fmtNum(STATS.returns), s: 'CRM接続で実測化' },
+    { l: 'ノベルティ受取', v: fmtNum(nv.treat * SF()), s: sfNote + '・無作為割付' },
+    { l: '対象商品 購買', v: fmtNum(nv.treatBuy * SF()), s: sfNote + '・POS紐付け' },
+    { l: '再来店（予測）', v: fmtNum(STATS.returns * SF()), s: 'CRM接続で実測化' },
   ].map(x => `<div class="fun-stage"><div class="f-label">${x.l}</div><div class="f-value">${x.v}</div><div class="f-sub">${x.s}</div></div>`).join('');
 }
 
@@ -310,7 +312,7 @@ function drawTimeChart() {
   const fc = [];
   for (let i = 1; i <= 3; i++) {
     const dow = (STATS.day + i - 1) % 7;
-    fc.push(e.total * (dow >= 5 ? 1.16 : 1.0));
+    fc.push(e.total * (dow >= 5 ? STORE.weekendFactor : 1.0));
   }
   const pts = [...hist.map(hh => hh.revenue), p.totalRevenue, ...fc];
   const maxV = Math.max(...pts) * 1.14;
@@ -406,9 +408,9 @@ function renderShelfTable() {
   document.getElementById('shelf-tbody').innerHTML = rows.slice(0, 10).map(r => `
     <tr class="srow" data-shelf="${r.s.id}">
       <td><span class="sname">${r.s.promoted ? '<span class="promo-tag">販促</span>' : ''}${r.s.name}</span></td>
-      <td>${fmtNum(r.st.passes)}</td>
+      <td>${fmtNum(r.st.passes * SF())}</td>
       <td>${fmtPct(r.gazeRate, 0)}</td>
-      <td>${fmtNum(r.st.stops)}</td>
+      <td>${fmtNum(r.st.stops * SF())}</td>
       <td>${fmtPct(r.cvr, 0)}</td>
       <td><span class="heatbar" style="width:${Math.max(4, (r.st.gazeSec / maxGaze) * 56)}px"></span></td>
     </tr>`).join('');
@@ -470,14 +472,15 @@ function renderNovelty() {
     </div>
     <div class="mde-bar"><div style="width:${(sigProgress * 100).toFixed(0)}%"></div></div>
     <div class="mde-text">有意判定まで ${(sigProgress * 100).toFixed(0)}% ・ 現サンプルの検出可能最小効果（MDE）: ${(r.mde * 100).toFixed(1)}pt</div>
-    <div class="mde-text" style="margin-top:3px">客単価: 処置 ${fmtYenFull(r.spend1)} / 対照 ${fmtYenFull(r.spend0)}（参考・推定バッジ）</div>`;
+    <div class="mde-text" style="margin-top:3px">客単価: 処置 ${fmtYenFull(r.spend1)} / 対照 ${fmtYenFull(r.spend0)}（参考・推定バッジ）</div>
+    ${SF() > 1 ? `<div class="mde-text" style="margin-top:3px">検定はビーコン計測サンプル（1/${SF()}）の実数 n で実施。全体推計は×${SF()}拡大。</div>` : ''}`;
 }
 
 /* ---------- 消費予測・在庫 ---------- */
 function renderStock() {
   const hoursLeft = Math.max(22 - STATS.simSec / 3600, 0);
   const elapsedH = Math.max(STATS.simSec / 3600 - 10, 0.2);
-  const promoRate = STATS.promoUnits / elapsedH;
+  const promoRate = STATS.promoUnits * SF() / elapsedH;
   const eta = promoRate > 0.1 ? stockState.units / promoRate : Infinity;
   const rows = [];
   const etaStr = isFinite(eta)
@@ -491,9 +494,10 @@ function renderStock() {
   const others = SHELVES.filter(s => !s.promoted && s.pop > 0.09).slice(0, 2);
   others.forEach(s => {
     const st = STATS.shelves[s.id];
-    const heavy = st.purchases > (FKEY === 'depato' ? 120 : 40);
+    const sold = st.purchases * SF();
+    const heavy = sold > (FKEY === 'depato' ? 5200 : 40);
     rows.push({
-      name: s.name, pct: clamp(1 - st.purchases / (FKEY === 'depato' ? 400 : 150), 0, 1),
+      name: s.name, pct: clamp(1 - sold / (FKEY === 'depato' ? 16000 : 150), 0, 1),
       eta: heavy ? '夕方 追加補充推奨' : '安定（自動補充）', alert: heavy, color: COL.s1,
     });
   });
@@ -539,7 +543,7 @@ function buildActions() {
       key: 'endcap-on', priority: 'high', category: '売場',
       title: FKEY === 'depato' ? '催事プロモ台を設置' : 'エンド陳列を導入（販促棚）',
       reason: 'シミュレーション上、販促什器は棚前視線を約1.9倍化。広告接触客の指名来店の受け皿として棚内フェイスでは取りこぼしが発生。',
-      impact: { metric: '販促商品販売', delta: Math.round(STATS.promoUnits * 0.9 + 18), ci: 8 },
+      impact: { metric: '販促商品販売', delta: Math.round(STATS.promoUnits * SF() * 0.9 + 18), ci: Math.round(8 * SF()) },
       confidence: 0.81, source: 'creative / shelf-sim',
     });
   } else {
@@ -547,7 +551,7 @@ function buildActions() {
       key: 'endcap-expand', priority: 'med', category: '売場',
       title: FKEY === 'depato' ? '第2催事スペースへ横展開' : 'G3エンドへ横展開（クロスMD）',
       reason: '既存売場の立寄客と販促商品購買層の重なりが視線データで確認できる。第2接触機会の追加が有効と推計。',
-      impact: { metric: '販促商品販売', delta: Math.round(Math.max(STATS.promoUnits, 10) * 0.35), ci: 6 },
+      impact: { metric: '販促商品販売', delta: Math.round(Math.max(STATS.promoUnits * SF(), 10) * 0.35), ci: Math.round(6 * SF()) },
       confidence: 0.66, source: 'shelf-sim',
     });
   }
@@ -619,6 +623,30 @@ document.getElementById('actions').addEventListener('click', e => {
   actionState[b.dataset.act] = { status: b.dataset.op, execSimSec: STATS.simSec };
   renderActions();
 });
+
+/* ---------- ベンチマーク較正カード ---------- */
+function renderBenchmark() {
+  const el = document.getElementById('benchmark-body');
+  if (!el) return;
+  el.innerHTML = `
+    <table id="bench-table" style="width:100%;border-collapse:collapse;font-size:10.5px">
+      <thead><tr>
+        <th style="text-align:left;font-weight:500;font-size:9px;color:var(--text-faint);padding:2px 5px;border-bottom:1px solid var(--panel-border)">項目</th>
+        <th style="text-align:left;font-weight:500;font-size:9px;color:var(--text-faint);padding:2px 5px;border-bottom:1px solid var(--panel-border)">公開統計（実データ）</th>
+        <th style="text-align:left;font-weight:500;font-size:9px;color:var(--text-faint);padding:2px 5px;border-bottom:1px solid var(--panel-border)">本シミュレーションの設定</th>
+      </tr></thead>
+      <tbody>${STORE.benchmark.map(b => `
+        <tr>
+          <td style="padding:4px 5px;color:var(--text-primary);font-weight:600;border-bottom:1px solid #eef2f7;white-space:nowrap">${b.k}</td>
+          <td style="padding:4px 5px;color:var(--text-secondary);border-bottom:1px solid #eef2f7">${b.real}</td>
+          <td style="padding:4px 5px;color:var(--text-secondary);border-bottom:1px solid #eef2f7">${b.sim}</td>
+        </tr>`).join('')}</tbody>
+    </table>
+    <div class="mde-text" style="margin-top:7px;line-height:1.6">
+      出典: 日本フランチャイズチェーン協会 コンビニエンスストア統計（2025年）／各社決算（2025年度上期 全店平均日販）／経済産業省 商業動態統計（百貨店の飲食料品構成比）／報道各社（伊勢丹新宿 年商）。
+      数値はデモ用に丸めたダミーデータであり、実在チェーン・店舗の実績を示すものではありません。
+    </div>`;
+}
 
 /* ---------- BEACON LOG ---------- */
 function renderBeacon() {
@@ -735,7 +763,7 @@ function refreshDash() {
   renderMiniKPI(); renderBeacon();
   if (selectedShelfId) renderShelfDetail();
   if (activeView === 'analytics') {
-    renderKPIs(); renderFunnel(); renderShelfTable(); renderNovelty(); renderStock();
+    renderKPIs(); renderFunnel(); renderShelfTable(); renderNovelty(); renderStock(); renderBenchmark();
   }
 }
 

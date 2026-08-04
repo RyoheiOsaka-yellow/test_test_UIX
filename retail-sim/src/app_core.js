@@ -21,8 +21,10 @@ let histRng = mulberry32(910);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 function fmtYen(v) {
-  if (Math.abs(v) >= 1e8) return (v / 1e8).toFixed(2) + '億円';
-  if (Math.abs(v) >= 1e4) return '¥' + Math.round(v / 1e3).toLocaleString() + 'k';
+  const a = Math.abs(v);
+  if (a >= 1e8) return (v / 1e8).toFixed(2) + '億円';
+  if (a >= 1e6) return Math.round(v / 1e4).toLocaleString() + '万円';
+  if (a >= 1e4) return '¥' + Math.round(v / 1e3).toLocaleString() + 'k';
   return '¥' + Math.round(v).toLocaleString();
 }
 function fmtYenFull(v) { return '¥' + Math.round(v).toLocaleString(); }
@@ -47,8 +49,18 @@ const STORES = {
     key: 'conbini', label: 'コンビニ', client: 'コンビニチェーンA',
     storeName: '新宿駅前店', promoName: '新商品グミX',
     floorW: 16, floorD: 10, wallH: 2.7,
-    arrivalBase: 2.3, buyRate: 0.54, basket: 470, reachPerBudget: 1150,
+    // 公開統計ベースの較正: JFA客単価748.5円(2025/11既存店)・大手3社日販57-70万円
+    // 駅前型を想定し デイタイム(10-22時)客数≈1,220人・購買転換62%・日販(デイタイム)≈56万円
+    arrivalBase: 1.41, buyRate: 0.62, basket: 745, reachPerBudget: 1150,
+    sampleFactor: 1, weekendFactor: 0.93,
     maxAgents: 46, stockCap: 240, heatW: 64, heatH: 40,
+    benchmark: [
+      { k: '平均客単価', real: '748.5円（JFA 2025年11月・既存店）', sim: '745円' },
+      { k: '平均日販', real: 'セブン70.3万 / ローソン60.3万 / ファミマ57.3万円（2025年度上期・全店平均）', sim: 'デイタイム(10-22時)約56万円 ≒ 24h換算 約75万円の駅前型' },
+      { k: 'レジ通過客数', real: '日販÷客単価 ≈ 870〜940人/日（24h）', sim: '約755人（10-22時）' },
+      { k: '来店→購買転換', real: '約6割（業界通説）', sim: '62%' },
+      { k: '売場規模', real: '標準店 売場約120㎡・約3,000SKU', sim: '16×10m・14売場' },
+    ],
     entrances: [{ x: -3.3, z: 4.55 }],
     registers: [{ x: 4.2, z: 4.15 }],
     counters: [{ x: 4.2, z: 3.55, w: 2.8, d: 0.6, h: 1.0 }],
@@ -89,8 +101,19 @@ const STORES = {
     key: 'depato', label: '百貨店', client: '百貨店グループB',
     storeName: '新宿本店 デパ地下フロア', promoName: '新作スイーツX',
     floorW: 30, floorD: 18, wallH: 3.4,
-    arrivalBase: 5.0, buyRate: 0.48, basket: 1450, reachPerBudget: 2000,
-    maxAgents: 90, stockCap: 160, heatW: 96, heatH: 58,
+    // 公開統計ベースの較正: 百貨店販売額の食料品構成比28.3%・旗艦店(伊勢丹新宿)年商約3,900億円
+    // 旗艦店級デパ地下を想定: フロア来店≈5.8万人/日・購買転換55%・客単価2,500円 → 日販≈0.8億円
+    // 3D表示・ビーコン集計は 1/40 サンプリング（ダッシュボードは拡大推計）
+    arrivalBase: 67, buyRate: 0.55, basket: 2500, reachPerBudget: 2000,
+    sampleFactor: 40, weekendFactor: 1.35,
+    maxAgents: 90, stockCap: 1600, heatW: 96, heatH: 58,
+    benchmark: [
+      { k: '食料品構成比', real: '百貨店販売額の28.3%（商業動態統計）', sim: 'デパ地下フロア単体を対象' },
+      { k: '旗艦店規模', real: '伊勢丹新宿 年商約3,900億円（2022年度・過去最高）', sim: '食品フロア日販 約0.8億円で較正' },
+      { k: 'デパ地下客単価', real: '約2,000〜3,000円（各種調査）', sim: '2,500円' },
+      { k: 'フロア来店', real: '旗艦店で数万人/日規模', sim: '約5.8万人/日・3D表示は1/40サンプリング' },
+      { k: '週末係数', real: '百貨店は土日祝に集中', sim: '土日 +35%' },
+    ],
     entrances: [{ x: 0, z: 8.5 }, { x: -13, z: 8.5 }],
     registers: [{ x: 4.8, z: 6.5 }, { x: -4.8, z: 6.5 }],
     counters: [
@@ -319,14 +342,14 @@ class Agent {
         if (rng() < clamp(pBuy, 0, 0.96)) {
           const isPromo = shelf === promotedShelf();
           if (isPromo && stockState.units <= 0) {
-            stockState.missed++;   // 在庫内生性: 品切れ中の機会損失
+            stockState.missed += STORE.sampleFactor;   // 在庫内生性: 品切れ中の機会損失（実数換算）
           } else {
             st.purchases++;
             const price = shelf.price * (0.8 + rng() * 0.5);
             this.basket.push(shelf.id); this.revenue += price;
             if (isPromo) {
               STATS.promoUnits++;
-              stockState.units = Math.max(0, stockState.units - 1);
+              stockState.units = Math.max(0, stockState.units - STORE.sampleFactor);
               if (rng() < 0.12) beacon(`客#${this.id} 販促商品を購入 ${fmtYenFull(price)}`, 'seg-buy');
             }
           }
@@ -455,7 +478,7 @@ function genHistory() {
   const base = historyBase();
   for (let d = 1; d <= 14; d++) {
     const week = (d - 1) % 7;
-    const weekend = week >= 5 ? 1.18 : 1.0;
+    const weekend = week >= 5 ? STORE.weekendFactor : 1.0;
     const cpOn = d >= 9;
     HISTORY.push({
       day: d,
@@ -619,6 +642,137 @@ function neonEdges(geom, color, opacity) {
   return new THREE.LineSegments(e, new THREE.LineBasicMaterial({ color, transparent: true, opacity: opacity != null ? opacity : EDGE_OPACITY }));
 }
 
+function makeTileTexture(c1, c2) {
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = c1; ctx.fillRect(0, 0, 64, 64);
+  ctx.fillStyle = c2; ctx.fillRect(0, 0, 32, 32); ctx.fillRect(32, 32, 32, 32);
+  ctx.strokeStyle = 'rgba(120,140,165,0.18)'; ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, 32, 32); ctx.strokeRect(32.5, 32.5, 31, 31);
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.LinearMipMapLinearFilter;
+  return tex;
+}
+
+/* 店員（静的エージェント） */
+function mkStaff(x, z, ry) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.17, 0.9, 10),
+    new THREE.MeshLambertMaterial({ color: 0x51657d }));
+  body.position.y = 0.45; g.add(body);
+  const apron = new THREE.Mesh(new THREE.CylinderGeometry(0.145, 0.175, 0.4, 10),
+    new THREE.MeshLambertMaterial({ color: 0xe8ecf2 }));
+  apron.position.y = 0.42; g.add(apron);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8),
+    new THREE.MeshLambertMaterial({ color: 0xf1e0cd }));
+  head.position.y = 1.02; g.add(head);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.125, 0.125, 0.05, 10),
+    new THREE.MeshLambertMaterial({ color: 0x2c8fa5 }));
+  cap.position.y = 1.12; g.add(cap);
+  g.position.set(x, 0, z); g.rotation.y = ry || 0;
+  storeGroup.add(g);
+}
+
+/* 施設ごとの作り込みディテール */
+function buildFacilityExtras() {
+  const W = STORE.floorW, D = STORE.floorD, H = STORE.wallH;
+  if (FKEY === 'conbini') {
+    // ファサード帯（ブランドストライプ・前面と側面のみ控えめに）
+    [[0, D / 2, 0, W], [-W / 2, 0, Math.PI / 2, D], [W / 2, 0, Math.PI / 2, D]].forEach(([x, z, ry, len]) => {
+      const band = new THREE.Mesh(new THREE.BoxGeometry(len, 0.2, 0.1), new THREE.MeshLambertMaterial({ color: 0x7fc6d6 }));
+      band.position.set(x, H - 0.12, z); band.rotation.y = ry; storeGroup.add(band);
+      const band2 = new THREE.Mesh(new THREE.BoxGeometry(len, 0.05, 0.11), new THREE.MeshLambertMaterial({ color: 0xdd8aa8 }));
+      band2.position.set(x, H - 0.26, z); band2.rotation.y = ry; storeGroup.add(band2);
+    });
+    // イートインカウンター（左壁前方）＋スツール
+    const eat = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.95, 2.0), new THREE.MeshLambertMaterial({ color: 0xe9d9c4 }));
+    eat.position.set(-7.6, 0.48, 3.1); storeGroup.add(eat);
+    const ee = neonEdges(eat.geometry, EDGE_COLOR, 0.4); ee.position.copy(eat.position); storeGroup.add(ee);
+    [2.5, 3.7].forEach(z => {
+      const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.14, 0.55, 10), new THREE.MeshLambertMaterial({ color: 0xb9c7d6 }));
+      stool.position.set(-6.9, 0.28, z); storeGroup.add(stool);
+    });
+    // 買い物カゴスタック（入口脇）
+    for (let i = 0; i < 3; i++) {
+      const bk = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.12, 0.32), new THREE.MeshLambertMaterial({ color: 0x2fa8c9 }));
+      bk.position.set(-4.5, 0.1 + i * 0.13, 4.1); storeGroup.add(bk);
+    }
+    // コーヒーマシン（レジ横）
+    const cm = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.55, 0.4), new THREE.MeshLambertMaterial({ color: 0x3a4656 }));
+    cm.position.set(5.5, 1.28, 3.55); storeGroup.add(cm);
+    // ATM（前面右）
+    const atm = new THREE.Mesh(new THREE.BoxGeometry(0.62, 1.25, 0.5), new THREE.MeshLambertMaterial({ color: 0xc7d2de }));
+    atm.position.set(0.4, 0.63, 4.5); storeGroup.add(atm);
+    const atmScr = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.24), new THREE.MeshBasicMaterial({ color: 0x2c8fa5 }));
+    atmScr.position.set(0.4, 1.05, 4.24); atmScr.rotation.x = -0.4; storeGroup.add(atmScr);
+    // 歩道・車道・駐車枠
+    const walk = new THREE.Mesh(new THREE.PlaneGeometry(W + 6, 2.2), new THREE.MeshLambertMaterial({ color: 0xcfd8e2 }));
+    walk.rotation.x = -Math.PI / 2; walk.position.set(0, -0.015, D / 2 + 1.15); storeGroup.add(walk);
+    const road = new THREE.Mesh(new THREE.PlaneGeometry(W + 6, 3.4), new THREE.MeshLambertMaterial({ color: 0x9aa5b1 }));
+    road.rotation.x = -Math.PI / 2; road.position.set(0, -0.018, D / 2 + 3.9); storeGroup.add(road);
+    for (let i = -3; i <= 3; i++) {
+      const dash = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.12), new THREE.MeshBasicMaterial({ color: 0xe8edf2 }));
+      dash.rotation.x = -Math.PI / 2; dash.position.set(i * 2.6, -0.01, D / 2 + 3.9); storeGroup.add(dash);
+    }
+    // 店員（レジ内側）
+    mkStaff(3.6, 3.0, Math.PI);
+    mkStaff(4.9, 3.0, Math.PI);
+  } else {
+    // 構造柱
+    [[-8, -4], [8, -4], [-8, 4], [8, 4]].forEach(([x, z]) => {
+      const col = new THREE.Mesh(new THREE.BoxGeometry(0.55, H, 0.55), new THREE.MeshLambertMaterial({ color: 0xf3f1ec }));
+      col.position.set(x, H / 2, z); storeGroup.add(col);
+      const ce = neonEdges(col.geometry, 0x9aa8b8, 0.5); ce.position.copy(col.position); storeGroup.add(ce);
+    });
+    // エスカレーター（右奥コーナー）
+    const esc = new THREE.Group();
+    [-0.65, 0.65].forEach(off => {
+      const ramp = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.16, 5.6), new THREE.MeshLambertMaterial({ color: 0xb9c3cf }));
+      ramp.position.set(off, 1.0, 0); ramp.rotation.x = off < 0 ? -0.35 : 0.35;
+      esc.add(ramp);
+      [-0.5, 0.5].forEach(rz => {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.5, 5.4), new THREE.MeshLambertMaterial({ color: 0x8593a3, transparent: true, opacity: 0.55 }));
+        rail.position.set(off + rz * 0.49, 1.45, 0); rail.rotation.x = off < 0 ? -0.35 : 0.35;
+        esc.add(rail);
+      });
+    });
+    esc.position.set(12.3, 0, -5.6); esc.rotation.y = 0;
+    storeGroup.add(esc);
+    const escLb = makeLabel('エスカレーター（上階へ）', '#5a6b80');
+    escLb.position.set(12.3, 3.2, -5.6); storeGroup.add(escLb); labelSprites.push(escLb);
+    // 吊りバナー（ゾーンサイン）
+    [
+      ['スイーツ・洋菓子', '#ffffff', 'rgba(213,81,129,0.92)', -6, -6.8],
+      ['惣菜・デリカ', '#ffffff', 'rgba(201,133,0,0.92)', -6.4, -1],
+      ['ベーカリー・グロサリー', '#ffffff', 'rgba(15,159,186,0.92)', 6.5, -6.8],
+    ].forEach(([txt, fg, bg, x, z]) => {
+      const bn = makeLabel(txt, fg, bg);
+      bn.position.set(x, H - 0.55, z); bn.scale.multiplyScalar(1.35);
+      storeGroup.add(bn); labelSprites.push(bn);
+    });
+    // 壁面カウンターのブランドファシア（色帯サイン）
+    const fasciaColor = { gift: 0xc9a227, fresh: 0xd66a6a, food: 0xe07b39, drink: 0x3f8fd6, daily: 0x8fb3d9 };
+    SHELVES.filter(s => s.kind === 'wall').forEach(s => {
+      const alongX = s.normal[2] !== 0;
+      const fw = (alongX ? s.size[0] : s.size[2]) * 0.86;
+      const geo = alongX ? new THREE.BoxGeometry(fw, 0.32, 0.1) : new THREE.BoxGeometry(0.1, 0.32, fw);
+      const f = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: fasciaColor[s.cat] || 0x8fa3b8 }));
+      f.position.set(
+        s.pos[0] + s.normal[0] * 0.15,
+        s.size[1] + 0.62,
+        s.pos[2] + s.normal[2] * 0.15
+      );
+      storeGroup.add(f);
+    });
+    // 店員（島ケース内側・レジ）
+    SHELVES.filter(s => s.kind === 'island-case').forEach(s => {
+      mkStaff(s.pos[0] + (rng() - 0.5) * 1.2, s.pos[2] - s.normal[2] * 1.15, Math.atan2(s.normal[0], s.normal[2]));
+    });
+    STORE.counters.forEach(c => mkStaff(c.x - 0.5, c.z - 0.75, Math.PI));
+  }
+}
+
 function makeLabel(text, colorText, colorBg) {
   const c = document.createElement('canvas');
   let ctx = c.getContext('2d');
@@ -657,10 +811,13 @@ function buildStore() {
   shelfMeshes = {}; labelSprites = []; pickMeshes = []; promoGroup = null; novStandGroup = null;
   const W = STORE.floorW, D = STORE.floorD, H = STORE.wallH;
 
-  // 外周グラウンド・床
+  // 外周グラウンド・床（タイルテクスチャ）
   const outer = new THREE.Mesh(new THREE.PlaneGeometry(220, 220), new THREE.MeshLambertMaterial({ color: 0xdde4ec }));
   outer.rotation.x = -Math.PI / 2; outer.position.y = -0.03; storeGroup.add(outer);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshLambertMaterial({ color: 0xf7f9fb }));
+  const tileTex = makeTileTexture(FKEY === 'depato' ? '#f6f4ef' : '#f7f9fb', FKEY === 'depato' ? '#efece5' : '#f0f3f7');
+  tileTex.wrapS = tileTex.wrapT = THREE.RepeatWrapping;
+  tileTex.repeat.set(W / (FKEY === 'depato' ? 2.4 : 1.2), D / (FKEY === 'depato' ? 2.4 : 1.2));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshLambertMaterial({ map: tileTex }));
   floor.rotation.x = -Math.PI / 2; storeGroup.add(floor);
   const grid = new THREE.GridHelper(Math.max(W, D), Math.max(W, D), 0xd3dce6, 0xe4eaf1);
   grid.position.y = 0.004; grid.material.transparent = true; grid.material.opacity = 0.7;
@@ -745,8 +902,8 @@ function buildStore() {
   });
 
   // 棚
-  const productBoxes = [];
-  SHELVES.forEach(s => buildShelf(s, productBoxes));
+  const productBoxes = [], productCyls = [];
+  SHELVES.forEach(s => buildShelf(s, productBoxes, productCyls));
 
   // 商品 InstancedMesh
   if (productBoxes.length) {
@@ -764,6 +921,24 @@ function buildStore() {
     if (im.instanceColor) im.instanceColor.needsUpdate = true;
     storeGroup.add(im);
   }
+  // 飲料・酒類はボトル型（円筒）で表現
+  if (productCyls.length) {
+    const geo = new THREE.CylinderGeometry(0.055, 0.055, 0.21, 8);
+    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const im2 = new THREE.InstancedMesh(geo, mat, productCyls.length);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), sc = new THREE.Vector3();
+    q.identity();
+    productCyls.forEach((b, i) => {
+      p.set(b.x, b.y, b.z); sc.set(1, 0.8 + (i % 5) * 0.12, 1);
+      m4.compose(p, q, sc); im2.setMatrixAt(i, m4);
+      im2.setColorAt(i, new THREE.Color(b.color));
+    });
+    im2.instanceMatrix.needsUpdate = true;
+    if (im2.instanceColor) im2.instanceColor.needsUpdate = true;
+    storeGroup.add(im2);
+  }
+
+  buildFacilityExtras();
 
   // ノベルティスタンド
   novStandGroup = new THREE.Group();
@@ -781,7 +956,7 @@ function buildStore() {
   scene.add(storeGroup);
 }
 
-function buildShelf(s, productBoxes) {
+function buildShelf(s, productBoxes, productCyls) {
   const g = new THREE.Group();
   const [w, h, d] = s.size;
   const isPromo = !!s.promoted;
@@ -808,7 +983,7 @@ function buildShelf(s, productBoxes) {
           x: s.pos[0] - w / 2 + 0.25 + i * ((w - 0.5) / Math.max(n - 1, 1)),
           y: 0.60, z: s.pos[2] + zOff,
           sx: 0.2 + rng() * 0.06, sy: 0.12 + rng() * 0.1, sz: 0.2 + rng() * 0.05,
-          color: colors[Math.floor(rng() * colors.length)], ry: (rng() - 0.5) * 0.4,
+          color: colors[Math.floor(i / 2 + row) % colors.length], ry: (rng() - 0.5) * 0.4,
         });
       }
     }
@@ -845,11 +1020,13 @@ function buildShelf(s, productBoxes) {
       const n = Math.floor((d - 0.3) / 0.24);
       for (let i = 0; i < n; i++) {
         const along = -d / 2 + 0.22 + i * ((d - 0.44) / Math.max(n - 1, 1));
-        productBoxes.push({
+        const item = {
           x: s.pos[0] + s.normal[0] * 0.28, y: y + 0.09, z: s.pos[2] + along,
           sx: 0.15 + rng() * 0.05, sy: 0.13 + rng() * 0.09, sz: 0.15 + rng() * 0.04,
-          color: colors[Math.floor(rng() * colors.length)],
-        });
+          color: colors[(Math.floor(i / 3) + t) % colors.length],
+        };
+        if (s.cat === 'drink') { item.y = y + 0.105; productCyls.push(item); }
+        else productBoxes.push(item);
       }
     }
   } else {
@@ -897,13 +1074,15 @@ function buildShelf(s, productBoxes) {
       const n = Math.floor((length - 0.3) / 0.24);
       for (let i = 0; i < n; i++) {
         const along = -length / 2 + 0.22 + i * ((length - 0.44) / Math.max(n - 1, 1));
-        productBoxes.push({
+        const item = {
           x: s.pos[0] + (alongX ? along : s.normal[0] * prodOffset),
           y,
           z: s.pos[2] + (alongX ? s.normal[2] * prodOffset : along),
           sx: 0.15 + rng() * 0.05, sy: 0.13 + rng() * 0.09, sz: 0.15 + rng() * 0.04,
-          color: colors[Math.floor(rng() * colors.length)],
-        });
+          color: colors[(Math.floor(i / 3) + t) % colors.length],
+        };
+        if (s.cat === 'drink') { item.y = y + 0.105; productCyls.push(item); }
+        else productBoxes.push(item);
       }
     }
   }
@@ -1021,7 +1200,8 @@ function updateShelfHeatVisual() {
 let arrivalCarry = 0, gazeTimer = 0, heatTimer = 0, shelfHeatTimer = 0;
 
 function simStep(simDt) {
-  const perSec = arrivalRatePerMin() / 60;
+  // 3Dへ出すエージェントはサンプリング（ダッシュボードは sampleFactor 倍で拡大推計）
+  const perSec = arrivalRatePerMin() / 60 / STORE.sampleFactor;
   arrivalCarry += perSec * simDt;
   while (arrivalCarry >= 1) {
     arrivalCarry -= 1;
