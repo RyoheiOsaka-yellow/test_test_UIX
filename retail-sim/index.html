@@ -3,41 +3,42 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>xAD 店頭販促シミュレーション — コンビニ消費者行動プロトタイプ</title>
+<title>xAD 店頭販促シミュレーション — 消費者行動プロトタイプ</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  color-scheme: dark;
-  --bg: #04050c;
-  --surface-1: #0a1224;
-  --panel: rgba(8, 12, 24, 0.86);
-  --panel-border: rgba(120, 180, 255, 0.22);
-  --text-primary: #eaf4ff;
-  --text-secondary: #c6d4e8;
-  --text-muted: #6f7f95;
-  --text-faint: #55667e;
-  --accent: #00e5ff;          /* 3Dシーン用ネオン（チャート系列には使わない） */
-  --series-1: #0f9fba;        /* 主指標・売上・通常客 */
-  --series-2: #d55181;        /* デジタル広告 */
-  --series-3: #c98500;        /* ノベルティ・店頭販促 */
-  --series-4: #9085e9;        /* 人流・立地 */
-  --neutral-bar: #64748b;     /* ベースライン */
-  --neutral-bar2: #475569;    /* 季節 */
-  --status-good: #199e70;     /* 確信度 高 / 校正済み */
-  --status-warn: #e8b04b;     /* 確信度 中 / 要サンプル */
-  --status-bad: #e5484d;      /* 警告 */
-  --status-mute: #8b98ab;     /* 確信度 低 / 互角 */
+  color-scheme: light;
+  --bg: #eef2f7;
+  --surface-1: #ffffff;
+  --panel-border: #d8e1ec;
+  --text-primary: #16283c;
+  --text-secondary: #45586e;
+  --text-muted: #7a8ba0;
+  --text-faint: #9aa9bc;
+  --accent: #0f9fba;
+  --series-1: #0f9fba;   /* 主指標・売上・通常客 */
+  --series-2: #d55181;   /* デジタル広告 */
+  --series-3: #c98500;   /* ノベルティ・店頭販促 */
+  --series-4: #9085e9;   /* 人流・立地 */
+  --neutral-bar: #64748b;
+  --neutral-bar2: #94a3b8;
+  --status-good: #147a55;
+  --status-warn: #a36a06;
+  --status-bad: #c53030;
+  --status-mute: #64748b;
+  --shadow: 0 2px 10px rgba(22, 40, 60, .08);
 }
 
 html, body {
   width: 100%; height: 100%; overflow: hidden;
   background: var(--bg);
   font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
-  color: #dfe8f5;
+  color: var(--text-primary);
   font-size: 13px;
 }
 canvas { display: block; }
+button { font-family: inherit; }
 
 /* ---- loading ---- */
 #loading {
@@ -47,226 +48,261 @@ canvas { display: block; }
 }
 #loading.hide { opacity: 0; pointer-events: none; }
 .loading-inner { text-align: center; }
-.loading-title {
-  font-size: 20px; letter-spacing: 0.35em; color: #9fd8ff; margin-bottom: 18px;
-  text-shadow: 0 0 12px rgba(0, 229, 255, 0.6);
-}
+.loading-title { font-size: 20px; letter-spacing: .3em; color: var(--accent); margin-bottom: 14px; font-weight: 700; }
 .loading-sub { font-size: 11px; color: var(--text-muted); letter-spacing: .12em; }
 
 /* ---- top bar ---- */
 #topbar {
-  position: fixed; top: 0; left: 0; right: 424px; z-index: 20;
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 14px;
-  background: linear-gradient(180deg, rgba(4,5,12,.92), rgba(4,5,12,0));
-  pointer-events: none;
+  position: fixed; top: 0; left: 0; right: 0; height: 54px; z-index: 40;
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 16px;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--panel-border);
+  box-shadow: var(--shadow);
 }
-#topbar > * { pointer-events: auto; }
-.brand { display: flex; flex-direction: column; }
-.brand-title {
-  font-size: 15px; font-weight: 700; letter-spacing: .14em; color: var(--text-primary);
-  text-shadow: 0 0 10px rgba(0,229,255,.35);
+.brand-title { font-size: 15px; font-weight: 700; letter-spacing: .1em; color: var(--text-primary); white-space: nowrap; }
+.brand-sub { font-size: 8.5px; letter-spacing: .18em; color: var(--text-muted); margin-top: 1px; white-space: nowrap; }
+
+.seg {
+  display: inline-flex; border: 1px solid var(--panel-border); border-radius: 8px; overflow: hidden;
+  background: #f2f5f9;
 }
-.brand-sub { font-size: 9px; letter-spacing: .22em; color: #5f7ba0; margin-top: 1px; }
-.badge {
-  font-size: 10px; padding: 3px 8px; border-radius: 999px; letter-spacing: .06em;
-  border: 1px solid var(--panel-border); color: var(--text-secondary);
-  background: rgba(10,18,36,.7); white-space: nowrap;
+.seg button {
+  font-size: 12px; padding: 6px 13px; border: none; cursor: pointer; background: transparent;
+  color: var(--text-secondary); white-space: nowrap;
 }
-.badge.on { border-color: rgba(25,158,112,.7); color: #4fd6a5; }
-.badge.est { border-color: rgba(232,176,75,.55); color: var(--status-warn); }
-.badge.type { border-color: rgba(213,81,129,.6); color: #e987ab; }
-#clockbox {
-  margin-left: auto; display: flex; align-items: center; gap: 8px;
-  background: var(--panel); border: 1px solid var(--panel-border);
-  border-radius: 8px; padding: 5px 10px;
-}
+.seg button.active { background: var(--accent); color: #fff; font-weight: 600; }
+.seg button:not(.active):hover { color: var(--text-primary); background: #e7edf4; }
+
+#clockbox { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 #sim-day { font-size: 10px; color: var(--text-muted); letter-spacing: .08em; }
 #sim-clock {
-  font-size: 17px; font-weight: 700; color: var(--accent);
-  font-variant-numeric: tabular-nums; text-shadow: 0 0 8px rgba(0,229,255,.5);
+  font-size: 18px; font-weight: 700; color: var(--accent);
+  font-variant-numeric: tabular-nums; min-width: 52px; text-align: center;
 }
 .spd-btn, #btn-pause {
-  font-size: 11px; padding: 4px 9px; border-radius: 6px; cursor: pointer;
-  background: rgba(15,25,48,.9); color: var(--text-secondary);
-  border: 1px solid var(--panel-border);
+  font-size: 11px; padding: 5px 9px; border-radius: 6px; cursor: pointer;
+  background: #f2f5f9; color: var(--text-secondary); border: 1px solid var(--panel-border);
 }
-.spd-btn.active { color: var(--accent); border-color: rgba(0,229,255,.6); box-shadow: 0 0 8px rgba(0,229,255,.25); }
+.spd-btn.active { color: #fff; background: var(--accent); border-color: var(--accent); font-weight: 600; }
 #btn-pause { min-width: 58px; }
 
-/* ---- left control panel ---- */
-#panel {
-  position: fixed; top: 64px; left: 14px; z-index: 10; width: 232px;
-  max-height: calc(100vh - 200px); overflow-y: auto; scrollbar-width: thin;
-  padding: 13px 15px 11px;
-  background: var(--panel); border: 1px solid var(--panel-border); border-radius: 10px;
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-  user-select: none;
+/* ---- pages ---- */
+#page-3d { position: fixed; top: 54px; left: 0; right: 0; bottom: 0; }
+#view3d { position: absolute; inset: 0; }
+#page-analytics {
+  position: fixed; top: 54px; left: 0; right: 0; bottom: 0; z-index: 30;
+  overflow-y: auto; background: var(--bg); display: none;
 }
-.panel-title { font-size: 13px; font-weight: 600; letter-spacing: .14em; color: var(--text-primary); }
-.panel-sub { font-size: 9px; letter-spacing: .2em; color: #5f7ba0; margin: 2px 0 8px; }
-.panel-sep { height: 1px; background: rgba(120,180,255,.16); margin: 8px 0; }
-.sec-title { font-size: 10px; letter-spacing: .12em; color: #7d93b5; margin: 4px 0 5px; }
+#page-analytics.active { display: block; }
+.an-inner { max-width: 1180px; margin: 0 auto; padding: 18px 20px 40px; }
+.an-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+.an-client { font-size: 18px; font-weight: 700; }
+.an-store { font-size: 12px; color: var(--text-muted); }
+.an-badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 14px; }
+.an-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+.an-grid .span2 { grid-column: 1 / -1; }
+@media (max-width: 900px) { .an-grid { grid-template-columns: 1fr; } }
+
+.badge {
+  font-size: 10px; padding: 3px 9px; border-radius: 999px; letter-spacing: .05em;
+  border: 1px solid var(--panel-border); color: var(--text-secondary); background: var(--surface-1);
+  white-space: nowrap;
+}
+.badge.on { border-color: rgba(20,122,85,.45); color: var(--status-good); background: #f0faf5; }
+.badge.est { border-color: rgba(163,106,6,.4); color: var(--status-warn); background: #fdf8ee; }
+.badge.type { border-color: rgba(213,81,129,.45); color: #b03a66; background: #fdf2f6; }
+.badge.warnb { border-color: rgba(197,48,48,.45); color: var(--status-bad); background: #fdf1f1; }
+
+/* ---- floating overlays (3D page) ---- */
+.ovl {
+  position: absolute; z-index: 10;
+  background: rgba(255,255,255,.94); border: 1px solid var(--panel-border); border-radius: 10px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.ovl-head {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; cursor: pointer; user-select: none;
+}
+.ovl-head .t { font-size: 12px; font-weight: 700; letter-spacing: .08em; color: var(--text-primary); }
+.ovl-head .sub { font-size: 8.5px; letter-spacing: .16em; color: var(--text-faint); }
+.ovl-head .tgl {
+  margin-left: auto; width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--panel-border);
+  background: #f2f5f9; color: var(--text-secondary); font-size: 11px; line-height: 1; cursor: pointer;
+}
+.ovl.collapsed .ovl-body { display: none; }
+.ovl-body { padding: 2px 14px 12px; }
+
+#panel { top: 14px; left: 14px; width: 246px; max-height: calc(100% - 240px); display: flex; flex-direction: column; }
+#panel .ovl-body { overflow-y: auto; scrollbar-width: thin; }
+#panel details { border-top: 1px solid #edf1f6; padding: 4px 0 6px; }
+#panel details:first-of-type { border-top: none; }
+#panel summary {
+  list-style: none; cursor: pointer; font-size: 10.5px; letter-spacing: .1em; color: var(--text-muted);
+  padding: 5px 0 3px; font-weight: 600; display: flex; align-items: center;
+}
+#panel summary::-webkit-details-marker { display: none; }
+#panel summary::after { content: '▾'; margin-left: auto; font-size: 9px; color: var(--text-faint); }
+#panel details:not([open]) summary::after { content: '▸'; }
 .row {
-  display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 3px 0;
+  display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 3.5px 0;
   cursor: pointer; color: var(--text-secondary);
 }
-.row:hover { color: #fff; }
-.row input[type='checkbox'] { accent-color: #00b7d9; cursor: pointer; }
-.row .val { margin-left: auto; font-size: 10px; color: var(--accent); font-variant-numeric: tabular-nums; }
-.slider-row { padding: 2px 0 6px; }
-.slider-row input[type='range'] { width: 100%; accent-color: #00b7d9; cursor: pointer; }
-.slider-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); }
-.slider-label b { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
-.chip { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; box-shadow: 0 0 6px currentColor; }
+.row:hover { color: var(--text-primary); }
+.row input[type='checkbox'] { accent-color: var(--accent); cursor: pointer; }
+.slider-row { padding: 2px 0 7px; }
+.slider-row input[type='range'] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+.slider-label { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--text-secondary); }
+.slider-label b { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+.chip { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.chip-outline { background: transparent !important; border: 1.5px solid var(--text-faint); }
 .cam-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 2px; }
 .cam-grid button {
   font-size: 11px; padding: 5px 0; border-radius: 6px; cursor: pointer;
-  background: rgba(15,25,48,.9); color: var(--text-secondary); border: 1px solid var(--panel-border);
+  background: #f2f5f9; color: var(--text-secondary); border: 1px solid var(--panel-border);
 }
-.cam-grid button:hover { color: var(--accent); border-color: rgba(0,229,255,.5); }
-.note { font-size: 9px; color: var(--text-faint); line-height: 1.5; margin-top: 6px; }
+.cam-grid button:hover { color: var(--accent); border-color: var(--accent); }
+.note { font-size: 9px; color: var(--text-faint); line-height: 1.55; margin-top: 7px; }
 
-/* ---- beacon log ---- */
-#beacon {
-  position: fixed; left: 14px; bottom: 14px; z-index: 10; width: 340px;
-  background: var(--panel); border: 1px solid var(--panel-border); border-radius: 10px;
-  padding: 9px 12px 8px; backdrop-filter: blur(8px);
-  font-size: 10.5px; line-height: 1.55;
-}
-#beacon .sec-title { margin: 0 0 4px; display: flex; align-items: center; gap: 6px; }
-#beacon .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--status-good); box-shadow: 0 0 6px var(--status-good); animation: blink 1.6s infinite; }
+#beacon { left: 14px; bottom: 14px; width: 330px; }
+#beacon .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--status-good); animation: blink 1.6s infinite; }
 @keyframes blink { 50% { opacity: .3; } }
-#beacon-lines { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+#beacon-lines { font-size: 10.5px; line-height: 1.6; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 #beacon-lines .t { color: var(--text-faint); margin-right: 5px; }
-#beacon-lines .seg-ad { color: #e987ab; }
+#beacon-lines .seg-ad { color: #b03a66; }
 #beacon-lines .seg-nov { color: var(--status-warn); }
-#beacon-lines .seg-buy { color: #4fd6a5; }
+#beacon-lines .seg-buy { color: var(--status-good); }
 
-/* ---- dashboard (right column) ---- */
-#dash {
-  position: fixed; top: 0; right: 0; bottom: 0; width: 424px; z-index: 30;
-  overflow-y: auto; scrollbar-width: thin;
-  background: linear-gradient(180deg, rgba(7,11,22,.97), rgba(5,8,17,.97));
-  border-left: 1px solid var(--panel-border);
-  padding: 12px 14px 24px;
+/* mini KPI strip (3D page bottom-right) */
+#mini-kpi {
+  position: absolute; right: 14px; bottom: 14px; z-index: 10;
+  display: flex; gap: 8px;
 }
-.dash-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-.dash-client { font-size: 14px; font-weight: 700; color: var(--text-primary); letter-spacing: .06em; }
-.dash-store { font-size: 11px; color: var(--text-muted); }
-.dash-badges { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0 10px; }
+.mk {
+  background: rgba(255,255,255,.94); border: 1px solid var(--panel-border); border-radius: 9px;
+  box-shadow: var(--shadow); padding: 7px 12px 6px; min-width: 104px;
+}
+.mk .m-label { font-size: 9px; color: var(--text-muted); }
+.mk .m-value { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-primary); }
+.mk .m-sub { font-size: 8.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
 
+/* shelf detail (3D page right) */
+#shelf-detail { top: 14px; right: 14px; width: 268px; display: none; }
+#shelf-detail.open { display: block; }
+.sd-name { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 7px; }
+.sd-cat { font-size: 10px; color: var(--text-muted); margin: 1px 0 8px; }
+.sd-frow { display: flex; align-items: center; gap: 8px; font-size: 11px; padding: 2.5px 0; color: var(--text-secondary); }
+.sd-frow .fl { width: 62px; flex: none; }
+.sd-frow .fb { flex: 1; height: 8px; border-radius: 4px; background: #eef2f7; overflow: hidden; }
+.sd-frow .fb > div { height: 100%; border-radius: 4px; background: var(--series-1); }
+.sd-frow .fv { width: 56px; text-align: right; font-variant-numeric: tabular-nums; flex: none; }
+.sd-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 4px 0 8px; }
+.sd-m { background: #f5f8fb; border-radius: 7px; padding: 6px 9px; }
+.sd-m .l { font-size: 9px; color: var(--text-muted); }
+.sd-m .v { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sd-note { font-size: 9.5px; color: var(--text-faint); line-height: 1.5; }
+.promo-tag { font-size: 9px; color: #b03a66; border: 1px solid rgba(213,81,129,.5); padding: 0 5px; border-radius: 4px; background: #fdf2f6; }
+
+/* ---- cards（分析ページ） ---- */
 .card {
-  background: var(--surface-1); border: 1px solid var(--panel-border); border-radius: 10px;
-  padding: 10px 12px; margin-bottom: 10px;
+  background: var(--surface-1); border: 1px solid var(--panel-border); border-radius: 12px;
+  padding: 12px 14px; box-shadow: var(--shadow);
 }
 .card-title {
-  font-size: 11px; font-weight: 600; letter-spacing: .12em; color: #9db4d6;
-  display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+  font-size: 11.5px; font-weight: 700; letter-spacing: .1em; color: var(--text-secondary);
+  display: flex; align-items: center; gap: 6px; margin-bottom: 9px; cursor: pointer; user-select: none;
 }
-.card-title .hint { margin-left: auto; font-size: 9px; color: var(--text-faint); font-weight: 400; letter-spacing: .04em; }
+.card-title .hint { margin-left: auto; font-size: 9px; color: var(--text-faint); font-weight: 400; letter-spacing: .03em; }
+.card-title .ctgl { font-size: 9px; color: var(--text-faint); margin-left: 6px; }
+.card.collapsed .card-body { display: none; }
 
-/* KPI grid */
-#kpi-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
-.kpi {
-  background: rgba(13,20,40,.8); border: 1px solid rgba(120,180,255,.14); border-radius: 8px;
-  padding: 7px 8px 6px;
-}
-.kpi .k-label { font-size: 9px; color: var(--text-muted); letter-spacing: .05em; }
-.kpi .k-value { font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 2px 0 1px; font-variant-numeric: tabular-nums; }
+#kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+@media (max-width: 900px) { #kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+.kpi { background: #f7f9fc; border: 1px solid #e6ecf3; border-radius: 9px; padding: 8px 10px 7px; }
+.kpi .k-label { font-size: 9px; color: var(--text-muted); letter-spacing: .04em; }
+.kpi .k-value { font-size: 17px; font-weight: 700; color: var(--text-primary); margin: 2px 0 1px; font-variant-numeric: tabular-nums; }
 .kpi .k-ci { font-size: 8.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
-.conf { display: inline-flex; align-items: center; gap: 3px; font-size: 8.5px; padding: 1px 5px; border-radius: 999px; margin-top: 3px; border: 1px solid; }
-.conf-hi { color: #4fd6a5; border-color: rgba(25,158,112,.5); }
-.conf-md { color: var(--status-warn); border-color: rgba(232,176,75,.45); }
-.conf-lo { color: var(--status-mute); border-color: rgba(139,152,171,.4); }
+.conf { display: inline-flex; align-items: center; gap: 3px; font-size: 8.5px; padding: 1px 6px; border-radius: 999px; margin-top: 4px; border: 1px solid; background: #fff; }
+.conf-hi { color: var(--status-good); border-color: rgba(20,122,85,.4); }
+.conf-md { color: var(--status-warn); border-color: rgba(163,106,6,.4); }
+.conf-lo { color: var(--status-mute); border-color: rgba(100,116,139,.35); }
 
-/* funnel */
-.fun-deck { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; margin-bottom: 4px; }
-.fun-stage {
-  background: rgba(13,20,40,.8); border-radius: 7px; padding: 6px 8px; text-align: center;
-  border-top: 2px solid var(--series-2); position: relative;
-}
+.fun-deck { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin-bottom: 4px; }
+.fun-stage { background: #f7f9fc; border: 1px solid #e6ecf3; border-radius: 8px; padding: 7px 9px; text-align: center; border-top: 3px solid var(--series-2); }
 .fun-deck.lower .fun-stage { border-top-color: var(--series-3); }
 .fun-stage .f-label { font-size: 9px; color: var(--text-muted); }
-.fun-stage .f-value { font-size: 14px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.fun-stage .f-value { font-size: 15px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .fun-stage .f-sub { font-size: 8.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
-.fun-mid { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 3px 0; font-size: 9.5px; }
-.fun-deck-label { font-size: 9px; color: var(--text-faint); letter-spacing: .08em; margin: 2px 0 3px; }
+.fun-mid { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 4px 0; font-size: 9.5px; }
+.fun-deck-label { font-size: 9px; color: var(--text-faint); letter-spacing: .08em; margin: 3px 0 4px; }
 
-/* charts */
 .chart-wrap { position: relative; }
 .chart-wrap canvas { width: 100%; display: block; }
 #tooltip {
   position: fixed; z-index: 90; pointer-events: none; display: none;
-  background: rgba(10,16,32,.96); border: 1px solid var(--panel-border); border-radius: 7px;
-  padding: 6px 9px; font-size: 10.5px; color: var(--text-secondary); line-height: 1.5;
-  box-shadow: 0 4px 16px rgba(0,0,0,.5); white-space: nowrap; font-variant-numeric: tabular-nums;
+  background: #ffffff; border: 1px solid var(--panel-border); border-radius: 7px;
+  padding: 6px 10px; font-size: 10.5px; color: var(--text-secondary); line-height: 1.5;
+  box-shadow: 0 6px 20px rgba(22,40,60,.16); white-space: nowrap; font-variant-numeric: tabular-nums;
 }
-.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font-size: 9.5px; color: var(--text-secondary); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 7px; font-size: 9.5px; color: var(--text-secondary); }
 .legend .li { display: inline-flex; align-items: center; gap: 5px; }
 .legend .sw { width: 9px; height: 9px; border-radius: 2px; }
 
-/* shelf table */
-#shelf-table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+#shelf-table { width: 100%; border-collapse: collapse; font-size: 11px; }
 #shelf-table th {
-  text-align: right; font-weight: 400; font-size: 9px; color: var(--text-faint);
-  padding: 2px 4px; border-bottom: 1px solid rgba(120,180,255,.14); letter-spacing: .04em;
+  text-align: right; font-weight: 500; font-size: 9px; color: var(--text-faint);
+  padding: 2px 5px; border-bottom: 1px solid var(--panel-border); letter-spacing: .04em;
 }
 #shelf-table th:first-child, #shelf-table td:first-child { text-align: left; }
-#shelf-table td { padding: 3.5px 4px; text-align: right; color: var(--text-secondary); font-variant-numeric: tabular-nums; border-bottom: 1px solid rgba(120,180,255,.06); }
+#shelf-table td { padding: 4px 5px; text-align: right; color: var(--text-secondary); font-variant-numeric: tabular-nums; border-bottom: 1px solid #eef2f7; }
 #shelf-table tr.srow { cursor: pointer; }
-#shelf-table tr.srow:hover td { background: rgba(0,183,217,.07); color: #fff; }
-#shelf-table .sname { display: flex; align-items: center; gap: 5px; }
-#shelf-table .heatbar { display: inline-block; height: 5px; border-radius: 3px; background: var(--series-1); vertical-align: middle; }
-#shelf-table .promo-tag { font-size: 8px; color: #e987ab; border: 1px solid rgba(213,81,129,.5); padding: 0 4px; border-radius: 3px; }
+#shelf-table tr.srow:hover td { background: #f0f7fa; color: var(--text-primary); }
+#shelf-table .sname { display: flex; align-items: center; gap: 6px; }
+#shelf-table .heatbar { display: inline-block; height: 6px; border-radius: 3px; background: var(--series-1); vertical-align: middle; }
 
-/* novelty experiment */
-.exp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 7px; }
-.exp-cell { background: rgba(13,20,40,.8); border-radius: 7px; padding: 6px 9px; }
+.exp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 8px; }
+.exp-cell { background: #f7f9fc; border: 1px solid #e6ecf3; border-radius: 8px; padding: 7px 10px; }
 .exp-cell .e-label { font-size: 9px; color: var(--text-muted); }
-.exp-cell .e-value { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.exp-cell .e-value { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .exp-lift { text-align: center; padding: 6px 0 2px; }
-.exp-lift .lift-v { font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.exp-lift .lift-v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .exp-lift .lift-ci { font-size: 9.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
-.mde-bar { height: 5px; border-radius: 3px; background: rgba(120,180,255,.12); overflow: hidden; margin: 6px 0 3px; }
+.mde-bar { height: 6px; border-radius: 3px; background: #eef2f7; overflow: hidden; margin: 7px 0 4px; }
 .mde-bar > div { height: 100%; background: var(--series-3); border-radius: 3px; transition: width .5s; }
-.mde-text { font-size: 9px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
-.exp-off { font-size: 10.5px; color: var(--text-faint); line-height: 1.6; padding: 4px 0; }
+.mde-text { font-size: 9.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.exp-off { font-size: 11px; color: var(--text-muted); line-height: 1.65; padding: 4px 0; }
 
-/* stock panel */
-.stock-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 10.5px; }
-.stock-row .s-name { width: 118px; color: var(--text-secondary); flex: none; }
-.stock-row .s-bar { flex: 1; height: 6px; border-radius: 3px; background: rgba(120,180,255,.1); overflow: hidden; }
-.stock-row .s-bar > div { height: 100%; border-radius: 3px; background: var(--series-1); transition: width .5s; }
-.stock-row .s-eta { width: 92px; text-align: right; color: var(--text-faint); font-size: 9px; flex: none; font-variant-numeric: tabular-nums; }
-.stock-alert { color: var(--status-warn) !important; }
+.stock-row { display: flex; align-items: center; gap: 9px; padding: 4.5px 0; font-size: 11px; }
+.stock-row .s-name { width: 132px; color: var(--text-secondary); flex: none; }
+.stock-row .s-bar { flex: 1; height: 7px; border-radius: 4px; background: #eef2f7; overflow: hidden; }
+.stock-row .s-bar > div { height: 100%; border-radius: 4px; background: var(--series-1); transition: width .5s; }
+.stock-row .s-eta { width: 118px; text-align: right; color: var(--text-muted); font-size: 9.5px; flex: none; font-variant-numeric: tabular-nums; }
+.stock-alert { color: var(--status-warn) !important; font-weight: 600; }
 
-/* action cards */
 .action {
-  border: 1px solid rgba(120,180,255,.16); border-left: 3px solid var(--status-mute);
-  border-radius: 8px; padding: 8px 10px; margin-bottom: 7px; background: rgba(13,20,40,.7);
+  border: 1px solid var(--panel-border); border-left: 4px solid var(--status-mute);
+  border-radius: 9px; padding: 9px 11px; margin-bottom: 8px; background: #fbfcfe;
 }
 .action.p-high { border-left-color: var(--status-bad); }
 .action.p-med { border-left-color: var(--status-warn); }
 .action .a-head { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
-.action .a-pri { font-size: 8.5px; padding: 1px 5px; border-radius: 3px; letter-spacing: .05em; }
-.action.p-high .a-pri { color: #ff9b9e; border: 1px solid rgba(229,72,77,.5); }
-.action.p-med .a-pri { color: var(--status-warn); border: 1px solid rgba(232,176,75,.5); }
-.action.p-low .a-pri { color: var(--status-mute); border: 1px solid rgba(139,152,171,.4); }
+.action .a-pri { font-size: 8.5px; padding: 1px 6px; border-radius: 4px; letter-spacing: .05em; font-weight: 700; }
+.action.p-high .a-pri { color: var(--status-bad); border: 1px solid rgba(197,48,48,.4); background: #fdf1f1; }
+.action.p-med .a-pri { color: var(--status-warn); border: 1px solid rgba(163,106,6,.4); background: #fdf8ee; }
+.action.p-low .a-pri { color: var(--status-mute); border: 1px solid rgba(100,116,139,.3); background: #f5f7fa; }
 .action .a-cat { font-size: 8.5px; color: var(--text-faint); }
-.action .a-title { font-size: 12px; font-weight: 600; color: var(--text-primary); }
-.action .a-reason { font-size: 10px; color: var(--text-muted); line-height: 1.5; margin: 3px 0 5px; }
-.action .a-impact { font-size: 10px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
-.action .a-foot { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.action .a-title { font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+.action .a-reason { font-size: 10.5px; color: var(--text-muted); line-height: 1.55; margin: 3px 0 5px; }
+.action .a-impact { font-size: 10.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.action .a-foot { display: flex; align-items: center; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
 .action .a-btns { margin-left: auto; display: flex; gap: 5px; }
 .action .a-btns button {
-  font-size: 9.5px; padding: 3px 8px; border-radius: 5px; cursor: pointer;
-  background: rgba(15,25,48,.9); color: var(--text-secondary); border: 1px solid var(--panel-border);
+  font-size: 9.5px; padding: 3px 9px; border-radius: 5px; cursor: pointer;
+  background: #fff; color: var(--text-secondary); border: 1px solid var(--panel-border);
 }
-.action .a-btns button:hover { color: var(--accent); }
-.action .a-done { font-size: 9px; color: #4fd6a5; }
-
-table.data-alt { display: none; }
+.action .a-btns button:hover { color: var(--accent); border-color: var(--accent); }
+.action .a-done { font-size: 9px; color: var(--status-good); }
 </style>
 </head>
 <body data-palette="#0f9fba,#d55181,#c98500,#9085e9">
@@ -278,137 +314,172 @@ table.data-alt { display: none; }
   </div>
 </div>
 
-<div id="view3d"></div>
-
 <header id="topbar">
-  <div class="brand">
+  <div>
     <div class="brand-title">xAD｜店頭販促シミュレーション</div>
-    <div class="brand-sub">CONSUMER BEHAVIOR × O2O MEASUREMENT PROTOTYPE</div>
+    <div class="brand-sub">CONSUMER BEHAVIOR × O2O MEASUREMENT</div>
   </div>
-  <span class="badge type">販促ボード</span>
-  <span class="badge on">人流 ON</span>
-  <span class="badge on">販促CP ON</span>
-  <span class="badge on" id="badge-pos">POS連携・校正済み</span>
+  <div class="seg" id="facility-seg">
+    <button data-fac="conbini" class="active">コンビニ</button>
+    <button data-fac="depato">百貨店</button>
+  </div>
+  <div class="seg" id="view-seg">
+    <button data-view="3d" class="active">3Dシミュレーション</button>
+    <button data-view="analytics">分析ボード</button>
+  </div>
   <div id="clockbox">
     <span id="sim-day">DAY 15</span>
     <span id="sim-clock">10:00</span>
-    <button class="spd-btn" data-spd="5">×5</button>
-    <button class="spd-btn active" data-spd="15">×15</button>
+    <button class="spd-btn" data-spd="1">×1</button>
+    <button class="spd-btn active" data-spd="3">×3</button>
+    <button class="spd-btn" data-spd="10">×10</button>
     <button class="spd-btn" data-spd="30">×30</button>
     <button id="btn-pause">❚❚ 停止</button>
   </div>
 </header>
 
-<div id="panel">
-  <div class="panel-title">シナリオ設定</div>
-  <div class="panel-sub">SCENARIO CONTROLS</div>
+<div id="page-3d">
+  <div id="view3d"></div>
 
-  <div class="sec-title">デジタルキャンペーン連動</div>
-  <div class="slider-row">
-    <div class="slider-label"><span>週次広告予算</span><b id="v-budget">40万円</b></div>
-    <input type="range" id="ctl-budget" min="0" max="100" step="5" value="40" />
-  </div>
-
-  <div class="sec-title">店頭施策</div>
-  <label class="row"><input type="checkbox" id="ctl-novelty" checked /><span class="chip" style="color:#c98500;background:#c98500"></span>ノベルティ配布（RCT）</label>
-  <div class="slider-row" id="novrate-row">
-    <div class="slider-label"><span>配布率（無作為）</span><b id="v-novrate">35%</b></div>
-    <input type="range" id="ctl-novrate" min="10" max="80" step="5" value="35" />
-  </div>
-  <label class="row"><input type="checkbox" id="ctl-endcap" checked /><span class="chip" style="color:#d55181;background:#d55181"></span>エンド陳列（販促棚）</label>
-
-  <div class="sec-title">人流（来店環境）</div>
-  <div class="slider-row">
-    <div class="slider-label"><span>店前人流レベル</span><b id="v-traffic">1.0×</b></div>
-    <input type="range" id="ctl-traffic" min="50" max="200" step="10" value="100" />
-  </div>
-
-  <div class="panel-sep"></div>
-  <div class="sec-title">レイヤー表示</div>
-  <label class="row"><input type="checkbox" id="ly-shelfheat" checked /><span class="chip" style="color:#17e0ff;background:linear-gradient(90deg,#0b2030,#17e0ff)"></span>棚別 視線ヒート</label>
-  <label class="row"><input type="checkbox" id="ly-floorheat" checked /><span class="chip" style="color:#17e0ff;background:linear-gradient(90deg,#0b2030,#17e0ff)"></span>回遊ヒートマップ（床）</label>
-  <label class="row"><input type="checkbox" id="ly-cones" /><span class="chip chip-outline"></span>視線コーン</label>
-  <label class="row"><input type="checkbox" id="ly-trails" checked /><span class="chip chip-outline"></span>動線トレイル</label>
-  <label class="row"><input type="checkbox" id="ly-labels" checked /><span class="chip chip-outline"></span>棚ラベル</label>
-
-  <div class="panel-sep"></div>
-  <div class="sec-title">カメラ</div>
-  <div class="cam-grid">
-    <button data-cam="over">俯瞰</button>
-    <button data-cam="entrance">入口</button>
-    <button data-cam="promo">販促棚</button>
-    <button data-cam="follow">客を追従</button>
-  </div>
-  <div class="note">ドラッグ: 回転 ／ ホイール: ズーム ／ 右ドラッグ: 平行移動。シナリオ変更は即時にシミュレーションと推計へ反映されます（デモはscriptedデータ＋ライブ集計）。</div>
-</div>
-
-<div id="beacon">
-  <div class="sec-title"><span class="dot"></span>BEACON LOG — 店内行動サンプル</div>
-  <div id="beacon-lines"></div>
-</div>
-
-<aside id="dash">
-  <div class="dash-head">
-    <div>
-      <div class="dash-client">コンビニチェーンA</div>
-      <div class="dash-store">新宿駅前店 ｜ 事業ライン: 小売（販促×人流×POS）</div>
+  <div id="panel" class="ovl">
+    <div class="ovl-head" data-collapse>
+      <div><div class="t">シミュレーション設定</div><div class="sub">SCENARIO / LAYERS / CAMERA</div></div>
+      <button class="tgl">−</button>
+    </div>
+    <div class="ovl-body">
+      <details open>
+        <summary>シナリオ</summary>
+        <div class="slider-row">
+          <div class="slider-label"><span>週次デジタル広告予算</span><b id="v-budget">40万円</b></div>
+          <input type="range" id="ctl-budget" min="0" max="100" step="5" value="40" />
+        </div>
+        <label class="row"><input type="checkbox" id="ctl-novelty" checked /><span class="chip" style="background:#c98500"></span>ノベルティ配布（RCT）</label>
+        <div class="slider-row" id="novrate-row">
+          <div class="slider-label"><span>配布率（無作為）</span><b id="v-novrate">35%</b></div>
+          <input type="range" id="ctl-novrate" min="10" max="80" step="5" value="35" />
+        </div>
+        <label class="row"><input type="checkbox" id="ctl-endcap" checked /><span class="chip" style="background:#d55181"></span>販促什器（エンド／催事台）</label>
+        <div class="slider-row">
+          <div class="slider-label"><span>店前人流レベル</span><b id="v-traffic">1.0×</b></div>
+          <input type="range" id="ctl-traffic" min="50" max="200" step="10" value="100" />
+        </div>
+      </details>
+      <details open>
+        <summary>レイヤー表示</summary>
+        <label class="row"><input type="checkbox" id="ly-shelfheat" checked /><span class="chip" style="background:linear-gradient(90deg,#dbe7f5,#1d6fb8)"></span>棚別 視線ヒート</label>
+        <label class="row"><input type="checkbox" id="ly-floorheat" checked /><span class="chip" style="background:linear-gradient(90deg,#dbe7f5,#1d6fb8)"></span>回遊ヒートマップ（床）</label>
+        <label class="row"><input type="checkbox" id="ly-cones" /><span class="chip chip-outline"></span>視線コーン</label>
+        <label class="row"><input type="checkbox" id="ly-trails" /><span class="chip chip-outline"></span>動線トレイル</label>
+        <label class="row"><input type="checkbox" id="ly-labels" checked /><span class="chip chip-outline"></span>売場ラベル</label>
+      </details>
+      <details>
+        <summary>カメラ</summary>
+        <div class="cam-grid">
+          <button data-cam="over">俯瞰</button>
+          <button data-cam="entrance">入口</button>
+          <button data-cam="promo">販促什器</button>
+          <button data-cam="follow">客を追従</button>
+        </div>
+        <div class="note">ドラッグ: 回転 ／ ホイール: ズーム ／ 右ドラッグ: 平行移動 ／ 棚クリック: 売場詳細</div>
+      </details>
     </div>
   </div>
-  <div class="dash-badges">
-    <span class="badge type">広告タイプ: 販促</span>
-    <span class="badge on">校正済み: ジオリフト連携</span>
-    <span class="badge est" id="badge-nov-mode">ノベルティ: RCT実施中</span>
+
+  <div id="beacon" class="ovl">
+    <div class="ovl-head" data-collapse>
+      <span class="dot"></span>
+      <div class="t">BEACON LOG</div><div class="sub">店内行動サンプル</div>
+      <button class="tgl">−</button>
+    </div>
+    <div class="ovl-body"><div id="beacon-lines"></div></div>
   </div>
 
-  <div class="card">
-    <div class="card-title">主要KPI（本日着地予測）<span class="hint">点推定 ± 95%CI ＋ 確信度</span></div>
-    <div id="kpi-grid"></div>
+  <div id="shelf-detail" class="ovl">
+    <div class="ovl-head" style="cursor:default">
+      <div class="t">売場詳細</div>
+      <button class="tgl" id="sd-close">×</button>
+    </div>
+    <div class="ovl-body" id="sd-body"></div>
   </div>
 
-  <div class="card">
-    <div class="card-title">成果分解ウォーターフォール<span class="hint">L1: 広告の手柄と自然発生の分離</span></div>
-    <div class="chart-wrap"><canvas id="cv-waterfall" height="230"></canvas></div>
-    <div class="legend" id="wf-legend"></div>
-  </div>
+  <div id="mini-kpi"></div>
+</div>
 
-  <div class="card">
-    <div class="card-title">O2O FUNNEL — 二重接続<span class="hint">上段=因果推計 / 下段=実測</span></div>
-    <div class="fun-deck-label">上段（集団・因果）— デジタル広告</div>
-    <div class="fun-deck upper" id="fun-upper"></div>
-    <div class="fun-mid" id="fun-mid"></div>
-    <div class="fun-deck-label">下段（個人・実購買）— 店頭ノベルティCP</div>
-    <div class="fun-deck lower" id="fun-lower"></div>
-  </div>
+<div id="page-analytics">
+  <div class="an-inner">
+    <div class="an-head">
+      <div class="an-client" id="an-client">コンビニチェーンA</div>
+      <div class="an-store" id="an-store">新宿駅前店 ｜ 事業ライン: 小売（販促×人流×POS）</div>
+    </div>
+    <div class="an-badges">
+      <span class="badge type">広告タイプ: 販促</span>
+      <span class="badge on">人流 ON</span>
+      <span class="badge on">販促CP ON</span>
+      <span class="badge on">POS連携・校正済み</span>
+      <span class="badge on">校正: ジオリフト連携</span>
+      <span class="badge est" id="badge-nov-mode">ノベルティ: RCT実施中</span>
+    </div>
 
-  <div class="card">
-    <div class="card-title">売上時系列＋着地予測<span class="hint">実績14日＋予測3日</span></div>
-    <div class="chart-wrap"><canvas id="cv-time" height="170"></canvas></div>
-    <div class="legend" id="time-legend"></div>
-  </div>
+    <div class="an-grid">
+      <div class="card span2">
+        <div class="card-title" data-ccollapse>主要KPI（本日着地予測）<span class="hint">点推定 ± 95%CI ＋ 確信度</span><span class="ctgl">▾</span></div>
+        <div class="card-body"><div id="kpi-grid"></div></div>
+      </div>
 
-  <div class="card">
-    <div class="card-title">棚別 視線・立寄・転換<span class="hint">行クリックでカメラ移動</span></div>
-    <table id="shelf-table">
-      <thead><tr><th>棚</th><th>通過</th><th>視線率</th><th>立寄</th><th>転換率</th><th>視線ヒート</th></tr></thead>
-      <tbody id="shelf-tbody"></tbody>
-    </table>
-  </div>
+      <div class="card">
+        <div class="card-title" data-ccollapse>成果分解ウォーターフォール<span class="hint">L1: 広告の手柄と自然発生の分離</span><span class="ctgl">▾</span></div>
+        <div class="card-body">
+          <div class="chart-wrap"><canvas id="cv-waterfall" height="240"></canvas></div>
+          <div class="legend" id="wf-legend"></div>
+        </div>
+      </div>
 
-  <div class="card">
-    <div class="card-title">ノベルティ配布 効果検証（RCT）<span class="hint">処置群 vs 対照群</span></div>
-    <div id="novelty-body"></div>
-  </div>
+      <div class="card">
+        <div class="card-title" data-ccollapse>売上時系列＋着地予測<span class="hint">実績14日＋予測3日</span><span class="ctgl">▾</span></div>
+        <div class="card-body">
+          <div class="chart-wrap"><canvas id="cv-time" height="240"></canvas></div>
+          <div class="legend" id="time-legend"></div>
+        </div>
+      </div>
 
-  <div class="card">
-    <div class="card-title">消費予測・在庫アラート<span class="hint">推計エンジン: 校正済み</span></div>
-    <div id="stock-body"></div>
-  </div>
+      <div class="card">
+        <div class="card-title" data-ccollapse>O2O FUNNEL — 二重接続<span class="hint">上段=因果推計 / 下段=実測</span><span class="ctgl">▾</span></div>
+        <div class="card-body">
+          <div class="fun-deck-label">上段（集団・因果）— デジタル広告</div>
+          <div class="fun-deck upper" id="fun-upper"></div>
+          <div class="fun-mid" id="fun-mid"></div>
+          <div class="fun-deck-label">下段（個人・実購買）— 店頭ノベルティCP</div>
+          <div class="fun-deck lower" id="fun-lower"></div>
+        </div>
+      </div>
 
-  <div class="card">
-    <div class="card-title">AI アクション<span class="hint">優先度付き打ち手</span></div>
-    <div id="actions"></div>
+      <div class="card">
+        <div class="card-title" data-ccollapse>棚別 視線・立寄・転換<span class="hint">行クリックで3Dカメラ移動</span><span class="ctgl">▾</span></div>
+        <div class="card-body">
+          <table id="shelf-table">
+            <thead><tr><th>売場</th><th>通過</th><th>視線率</th><th>立寄</th><th>転換率</th><th>視線ヒート</th></tr></thead>
+            <tbody id="shelf-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-ccollapse>ノベルティ配布 効果検証（RCT）<span class="hint">処置群 vs 対照群</span><span class="ctgl">▾</span></div>
+        <div class="card-body"><div id="novelty-body"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-ccollapse>消費予測・在庫アラート<span class="hint">推計エンジン: 校正済み</span><span class="ctgl">▾</span></div>
+        <div class="card-body"><div id="stock-body"></div></div>
+      </div>
+
+      <div class="card span2">
+        <div class="card-title" data-ccollapse>AI アクション<span class="hint">優先度付き打ち手（実行→効果確認）</span><span class="ctgl">▾</span></div>
+        <div class="card-body"><div id="actions"></div></div>
+      </div>
+    </div>
   </div>
-</aside>
+</div>
 
 <div id="tooltip"></div>
 
@@ -423,10 +494,10 @@ table.data-alt { display: none; }
 </script>
 <script>
 /* =========================================================================
-   xAD 店頭販促シミュレーション プロトタイプ
-   - 3D店舗（Three.js）＋エージェントベース消費者行動モデル
+   xAD 店頭販促シミュレーション プロトタイプ v2
+   - 3D店舗（Three.js・ライトトーン・細線ワイヤーフレーム＋商品陳列）
+   - 施設切替（コンビニ / 百貨店デパ地下）・棚クリックで売場詳細
    - 棚ごとの視線検知 / 店内回遊 / 消費予測 / ノベルティRCT / デジタルCP連動
-   - ダッシュボードは xAD 販促ボード仕様（scripted + ライブ集計）
    ========================================================================= */
 'use strict';
 
@@ -440,8 +511,8 @@ function mulberry32(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-const rng = mulberry32(20260804);          // 挙動用（毎ロード同一で scripted 感を担保）
-const histRng = mulberry32(910);           // 過去14日 scripted データ用
+const rng = mulberry32(20260804);
+let histRng = mulberry32(910);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const lerp = (a, b, t) => a + (b - a) * t;
 function fmtYen(v) {
@@ -452,69 +523,135 @@ function fmtYen(v) {
 function fmtYenFull(v) { return '¥' + Math.round(v).toLocaleString(); }
 function fmtPct(v, d = 1) { return (v * 100).toFixed(d) + '%'; }
 function fmtNum(v) { return Math.round(v).toLocaleString(); }
-function normalCI95(p, n) { // 二項比率の95%CI半幅
+function normalCI95(p, n) {
   if (n <= 0) return 0;
   return 1.96 * Math.sqrt(Math.max(p * (1 - p), 1e-6) / n);
 }
 
 /* ---------- シナリオ状態 ---------- */
 const S = {
-  budget: 40,        // 万円/週 デジタルCP予算
-  novelty: true,     // ノベルティ配布 ON
-  novRate: 0.35,     // 配布率（無作為割付）
-  traffic: 1.0,      // 店前人流レベル
-  endcap: true,      // エンド陳列
-  speed: 15,         // sim秒 / 実秒
-  paused: false,
-  layers: { shelfheat: true, floorheat: true, cones: false, trails: true, labels: true },
+  budget: 40, novelty: true, novRate: 0.35, traffic: 1.0, endcap: true,
+  speed: 3, paused: false,
+  layers: { shelfheat: true, floorheat: true, cones: false, trails: false, labels: true },
 };
 
-/* ---------- 店舗レイアウト ---------- */
-// 座標系: x∈[-8,8], z∈[-5,5]（m）。入口は前面 z=+5 の x=-3.3。
-const FLOOR_W = 16, FLOOR_D = 10;
-const ENTRANCE = { x: -3.3, z: 4.55 };
-const REGISTER = { x: 4.2, z: 4.3, payAt: { x: 4.2, z: 4.15 } };
-const NOV_STAND = { x: -1.7, z: 3.6 };
+/* ---------- 施設定義 ---------- */
+// shelf.kind: wall | gondola-side | island-case | endcap | counter
+const STORES = {
+  conbini: {
+    key: 'conbini', label: 'コンビニ', client: 'コンビニチェーンA',
+    storeName: '新宿駅前店', promoName: '新商品グミX',
+    floorW: 16, floorD: 10, wallH: 2.7,
+    arrivalBase: 2.3, buyRate: 0.54, basket: 470, reachPerBudget: 1150,
+    maxAgents: 46, stockCap: 240, heatW: 64, heatH: 40,
+    entrances: [{ x: -3.3, z: 4.55 }],
+    registers: [{ x: 4.2, z: 4.15 }],
+    counters: [{ x: 4.2, z: 3.55, w: 2.8, d: 0.6, h: 1.0 }],
+    novStand: { x: -1.7, z: 3.6 },
+    doors: [{ x: -3.3, w: 1.9 }],
+    nodeXs: [-5.5, -1.5, 1.5, 6.2],
+    nodeZs: [-3.5, 2.7, 4.35],
+    gondolas: [
+      { x: -3, z: -0.6, w: 0.9, d: 4.0, h: 1.5 },
+      { x: 0, z: -0.6, w: 0.9, d: 4.0, h: 1.5 },
+      { x: 3, z: -0.6, w: 0.9, d: 4.0, h: 1.5 },
+    ],
+    promoted: { mainId: 'endG2', fallbackId: 'drink' },
+    camPresets: {
+      over: { theta: -0.5, phi: 0.9, r: 17, tx: 0, ty: 0, tz: 0.6 },
+      entrance: { theta: Math.PI - 0.35, phi: 1.22, r: 9, tx: -2.2, ty: 0.4, tz: 2.2 },
+      promo: { theta: 0.15, phi: 1.02, r: 7.5, tx: 0, ty: 0.5, tz: 1.6 },
+    },
+    shelves: [
+      { id: 'chill', name: '弁当・チルド', cat: 'food', kind: 'wall', pos: [-4.5, 0, -4.5], size: [5.0, 1.8, 0.72], normal: [0, 0, 1], approach: [-4.5, -3.5], base: 0.62, price: 620, pop: 0.30 },
+      { id: 'drink', name: '飲料リーチイン', cat: 'drink', kind: 'wall', pos: [2.5, 0, -4.5], size: [5.0, 1.9, 0.72], normal: [0, 0, 1], approach: [2.5, -3.5], base: 0.58, price: 210, pop: 0.26 },
+      { id: 'frozen', name: '冷凍・アイス', cat: 'drink', kind: 'wall', pos: [7.55, 0, -1.4], size: [0.72, 1.6, 3.8], normal: [-1, 0, 0], approach: [6.6, -1.4], base: 0.42, price: 300, pop: 0.10 },
+      { id: 'daily', name: '日用品・衛生', cat: 'daily', kind: 'wall', pos: [7.55, 0, 2.3], size: [0.72, 1.7, 2.6], normal: [-1, 0, 0], approach: [6.6, 2.3], base: 0.35, price: 450, pop: 0.07 },
+      { id: 'mag', name: '雑誌・書籍', cat: 'mag', kind: 'wall', pos: [-7.55, 0, 0.6], size: [0.72, 1.5, 3.2], normal: [1, 0, 0], approach: [-6.6, 0.6], base: 0.18, price: 700, pop: 0.08 },
+      { id: 'bread', name: 'パン・スイーツ', cat: 'food', kind: 'wall', pos: [-6.6, 0, 4.55], size: [2.6, 1.5, 0.66], normal: [0, 0, -1], approach: [-6.6, 3.6], base: 0.48, price: 260, pop: 0.14 },
+      { id: 'g1L', name: '菓子', cat: 'snack', kind: 'gondola-side', pos: [-3.45, 0, -0.6], size: [0.1, 1.5, 4.0], normal: [-1, 0, 0], approach: [-4.2, -0.6], base: 0.45, price: 180, pop: 0.13 },
+      { id: 'g1R', name: 'スナック・珍味', cat: 'snack', kind: 'gondola-side', pos: [-2.55, 0, -0.6], size: [0.1, 1.5, 4.0], normal: [1, 0, 0], approach: [-1.8, -0.6], base: 0.42, price: 200, pop: 0.10 },
+      { id: 'g2L', name: 'カップ麺', cat: 'food', kind: 'gondola-side', pos: [-0.45, 0, -0.6], size: [0.1, 1.5, 4.0], normal: [-1, 0, 0], approach: [-1.2, -0.6], base: 0.40, price: 240, pop: 0.10 },
+      { id: 'g2R', name: '加工食品・レトルト', cat: 'food', kind: 'gondola-side', pos: [0.45, 0, -0.6], size: [0.1, 1.5, 4.0], normal: [1, 0, 0], approach: [1.2, -0.6], base: 0.33, price: 380, pop: 0.07 },
+      { id: 'g3L', name: '酒類', cat: 'drink', kind: 'gondola-side', pos: [2.55, 0, -0.6], size: [0.1, 1.5, 4.0], normal: [-1, 0, 0], approach: [1.8, -0.6], base: 0.50, price: 520, pop: 0.11 },
+      { id: 'g3R', name: '健康食品・美容', cat: 'daily', kind: 'gondola-side', pos: [3.45, 0, -0.6], size: [0.1, 1.5, 4.0], normal: [1, 0, 0], approach: [4.2, -0.6], base: 0.28, price: 880, pop: 0.05 },
+      { id: 'endG2', name: '販促エンド（新商品グミX）', cat: 'promo', kind: 'endcap', pos: [0, 0, 1.95], size: [1.1, 1.4, 0.55], normal: [0, 0, 1], approach: [0, 2.85], base: 0.46, price: 240, pop: 0.0, promoted: true },
+      { id: 'hot', name: 'レジ横ホットスナック', cat: 'food', kind: 'counter', pos: [4.2, 0, 3.55], size: [2.8, 1.0, 0.6], normal: [0, 0, 1], approach: [4.2, 4.35], base: 0.30, price: 190, pop: 0.0, counter: true },
+    ],
+  },
 
-// 棚定義: pos=中心, size=[w,h,d], normal=正面方向, approach=立寄位置
-const SHELVES = [
-  { id: 'chill',  name: '弁当・チルド',       cat: 'food',  pos: [-4.5, 0, -4.5], size: [5.0, 1.8, 0.75], normal: [0, 0, 1],  approach: [-4.5, -3.5], base: 0.62, price: 620, pop: 0.30 },
-  { id: 'drink',  name: '飲料リーチイン',     cat: 'drink', pos: [2.5, 0, -4.5],  size: [5.0, 1.9, 0.75], normal: [0, 0, 1],  approach: [2.5, -3.5],  base: 0.58, price: 210, pop: 0.26 },
-  { id: 'frozen', name: '冷凍・アイス',       cat: 'food',  pos: [7.55, 0, -1.4], size: [0.75, 1.6, 3.8], normal: [-1, 0, 0], approach: [6.6, -1.4],  base: 0.42, price: 300, pop: 0.10 },
-  { id: 'daily',  name: '日用品・衛生',       cat: 'daily', pos: [7.55, 0, 2.3],  size: [0.75, 1.7, 2.6], normal: [-1, 0, 0], approach: [6.6, 2.3],   base: 0.35, price: 450, pop: 0.07 },
-  { id: 'mag',    name: '雑誌・書籍',         cat: 'mag',   pos: [-7.55, 0, 0.6], size: [0.75, 1.5, 3.2], normal: [1, 0, 0],  approach: [-6.6, 0.6],  base: 0.18, price: 700, pop: 0.08 },
-  { id: 'bread',  name: 'パン・スイーツ',     cat: 'food',  pos: [-6.6, 0, 4.55], size: [2.6, 1.5, 0.7],  normal: [0, 0, -1], approach: [-6.6, 3.6],  base: 0.48, price: 260, pop: 0.14 },
-  { id: 'g1L',    name: '菓子',               cat: 'snack', pos: [-3.45, 0, -0.6], size: [0.1, 1.5, 4.0], normal: [-1, 0, 0], approach: [-4.2, -0.6], base: 0.45, price: 180, pop: 0.13, gondola: 'G1' },
-  { id: 'g1R',    name: 'スナック・珍味',     cat: 'snack', pos: [-2.55, 0, -0.6], size: [0.1, 1.5, 4.0], normal: [1, 0, 0],  approach: [-1.8, -0.6], base: 0.42, price: 200, pop: 0.10, gondola: 'G1' },
-  { id: 'g2L',    name: 'カップ麺',           cat: 'food',  pos: [-0.45, 0, -0.6], size: [0.1, 1.5, 4.0], normal: [-1, 0, 0], approach: [-1.2, -0.6], base: 0.40, price: 240, pop: 0.10, gondola: 'G2' },
-  { id: 'g2R',    name: '加工食品・レトルト', cat: 'food',  pos: [0.45, 0, -0.6],  size: [0.1, 1.5, 4.0], normal: [1, 0, 0],  approach: [1.2, -0.6],  base: 0.33, price: 380, pop: 0.07, gondola: 'G2' },
-  { id: 'g3L',    name: '酒類',               cat: 'drink', pos: [2.55, 0, -0.6],  size: [0.1, 1.5, 4.0], normal: [-1, 0, 0], approach: [1.8, -0.6],  base: 0.50, price: 520, pop: 0.11, gondola: 'G3' },
-  { id: 'g3R',    name: '健康食品・美容',     cat: 'daily', pos: [3.45, 0, -0.6],  size: [0.1, 1.5, 4.0], normal: [1, 0, 0],  approach: [4.2, -0.6],  base: 0.28, price: 880, pop: 0.05, gondola: 'G3' },
-  { id: 'endG2',  name: '販促エンド（新商品グミX）', cat: 'promo', pos: [0, 0, 1.95], size: [1.1, 1.4, 0.55], normal: [0, 0, 1], approach: [0, 2.85], base: 0.46, price: 240, pop: 0.0, promoted: true },
-  { id: 'hot',    name: 'レジ横ホットスナック', cat: 'food', pos: [4.2, 0, 3.55],  size: [2.8, 1.1, 0.6],  normal: [0, 0, 1],  approach: [4.2, 4.35],  base: 0.30, price: 190, pop: 0.0, counter: true },
-];
-const shelfById = {}; SHELVES.forEach(s => shelfById[s.id] = s);
-function promotedShelf() { return S.endcap ? shelfById.endG2 : shelfById.drink; }
+  depato: {
+    key: 'depato', label: '百貨店', client: '百貨店グループB',
+    storeName: '新宿本店 デパ地下フロア', promoName: '新作スイーツX',
+    floorW: 30, floorD: 18, wallH: 3.4,
+    arrivalBase: 5.0, buyRate: 0.48, basket: 1450, reachPerBudget: 2000,
+    maxAgents: 90, stockCap: 160, heatW: 96, heatH: 58,
+    entrances: [{ x: 0, z: 8.5 }, { x: -13, z: 8.5 }],
+    registers: [{ x: 4.8, z: 6.5 }, { x: -4.8, z: 6.5 }],
+    counters: [
+      { x: 4.8, z: 5.9, w: 2.6, d: 0.6, h: 1.0 },
+      { x: -4.8, z: 5.9, w: 2.6, d: 0.6, h: 1.0 },
+    ],
+    novStand: { x: 1.6, z: 7.4 },
+    doors: [{ x: 0, w: 2.6 }, { x: -13, w: 2.2 }],
+    nodeXs: [-13, -6.4, 0, 6.4, 13],
+    nodeZs: [-6.5, -2, 2.5, 6.9],
+    gondolas: [],
+    promoted: { mainId: 'promoDais', fallbackId: 'patisserie' },
+    camPresets: {
+      over: { theta: -0.4, phi: 0.85, r: 28, tx: 0, ty: 0, tz: 0.5 },
+      entrance: { theta: Math.PI - 0.3, phi: 1.2, r: 13, tx: 0, ty: 0.5, tz: 5.5 },
+      promo: { theta: 0.2, phi: 1.0, r: 9, tx: 3.2, ty: 0.5, tz: 4.2 },
+    },
+    shelves: [
+      { id: 'patisserie', name: '洋菓子ギフト', cat: 'gift', kind: 'wall', pos: [-9, 0, -8.55], size: [5.5, 2.0, 0.8], normal: [0, 0, 1], approach: [-9, -7.3], base: 0.38, price: 1800, pop: 0.13 },
+      { id: 'wagashi', name: '和菓子', cat: 'gift', kind: 'wall', pos: [-1.5, 0, -8.55], size: [5.0, 2.0, 0.8], normal: [0, 0, 1], approach: [-1.5, -7.3], base: 0.34, price: 1400, pop: 0.10 },
+      { id: 'bakery', name: 'ベーカリー', cat: 'food', kind: 'wall', pos: [6.5, 0, -8.55], size: [5.5, 1.9, 0.8], normal: [0, 0, 1], approach: [6.5, -7.3], base: 0.52, price: 680, pop: 0.14 },
+      { id: 'fish', name: '鮮魚', cat: 'fresh', kind: 'wall', pos: [-14.55, 0, -3.2], size: [0.8, 1.6, 4.5], normal: [1, 0, 0], approach: [-13.3, -3.2], base: 0.30, price: 1600, pop: 0.07 },
+      { id: 'meat', name: '精肉', cat: 'fresh', kind: 'wall', pos: [-14.55, 0, 2.8], size: [0.8, 1.6, 4.5], normal: [1, 0, 0], approach: [-13.3, 2.8], base: 0.32, price: 2100, pop: 0.07 },
+      { id: 'wine', name: 'ワイン・酒', cat: 'drink', kind: 'wall', pos: [14.55, 0, -3.2], size: [0.8, 2.0, 4.5], normal: [-1, 0, 0], approach: [13.3, -3.2], base: 0.36, price: 2600, pop: 0.08 },
+      { id: 'tea', name: '紅茶・珈琲ギフト', cat: 'gift', kind: 'wall', pos: [14.55, 0, 2.8], size: [0.8, 1.8, 4.5], normal: [-1, 0, 0], approach: [13.3, 2.8], base: 0.26, price: 1500, pop: 0.06 },
+      { id: 'deli', name: '惣菜デリ', cat: 'food', kind: 'island-case', pos: [-9.6, 0, -4.25], size: [2.8, 1.1, 1.4], normal: [0, 0, 1], approach: [-9.6, -2.7], base: 0.44, price: 980, pop: 0.12 },
+      { id: 'cheese', name: 'チーズ・グロサリー', cat: 'food', kind: 'island-case', pos: [-3.2, 0, -4.25], size: [2.8, 1.1, 1.4], normal: [0, 0, 1], approach: [-3.2, -2.7], base: 0.30, price: 1200, pop: 0.07 },
+      { id: 'tsukudani', name: '佃煮・乾物', cat: 'food', kind: 'island-case', pos: [3.2, 0, -4.25], size: [2.8, 1.1, 1.4], normal: [0, 0, 1], approach: [3.2, -2.7], base: 0.24, price: 900, pop: 0.05 },
+      { id: 'grocery', name: 'グロサリー・調味料', cat: 'daily', kind: 'island-case', pos: [9.6, 0, -4.25], size: [2.8, 1.1, 1.4], normal: [0, 0, 1], approach: [9.6, -2.7], base: 0.30, price: 850, pop: 0.06 },
+      { id: 'salad', name: 'サラダ・フルーツ', cat: 'fresh', kind: 'island-case', pos: [-9.6, 0, 0.25], size: [2.8, 1.1, 1.4], normal: [0, 0, 1], approach: [-9.6, 1.8], base: 0.40, price: 750, pop: 0.09 },
+      { id: 'bento', name: '弁当・寿司', cat: 'food', kind: 'island-case', pos: [-3.2, 0, 0.25], size: [2.8, 1.1, 1.4], normal: [0, 0, 1], approach: [-3.2, 1.8], base: 0.50, price: 1100, pop: 0.13 },
+      { id: 'kashi', name: '菓子ギフト', cat: 'gift', kind: 'island-case', pos: [3.2, 0, 0.25], size: [2.8, 1.1, 1.4], normal: [0, 0, 1], approach: [3.2, 1.8], base: 0.38, price: 1300, pop: 0.08 },
+      { id: 'meika', name: '銘菓・土産', cat: 'gift', kind: 'island-case', pos: [9.6, 0, 0.25], size: [2.8, 1.1, 1.4], normal: [0, 0, 1], approach: [9.6, 1.8], base: 0.32, price: 1000, pop: 0.07 },
+      { id: 'promoDais', name: '催事プロモ台（新作スイーツX）', cat: 'promo', kind: 'island-case', pos: [3.2, 0, 4.7], size: [2.6, 1.1, 1.3], normal: [0, 0, 1], approach: [3.2, 5.8], base: 0.42, price: 1200, pop: 0.0, promoted: true },
+    ],
+  },
+};
 
-// 通路グラフ
-const NODE_XS = [-5.5, -1.5, 1.5, 6.2];
-const NODE_ZS = [-3.5, 2.7, 4.35];
-const NODES = [];
-NODE_ZS.forEach((z, zi) => NODE_XS.forEach((x, xi) => NODES.push({ id: NODES.length, x, z, xi, zi })));
-const EDGES = {}; // id -> [id]
-NODES.forEach(n => EDGES[n.id] = []);
-NODES.forEach(a => NODES.forEach(b => {
-  if (a.id >= b.id) return;
-  const rowAdj = a.zi === b.zi && Math.abs(a.xi - b.xi) === 1;
-  const colAdj = a.xi === b.xi && Math.abs(a.zi - b.zi) === 1;
-  if (rowAdj || colAdj) { EDGES[a.id].push(b.id); EDGES[b.id].push(a.id); }
-}));
+let FKEY = 'conbini';
+let STORE = STORES.conbini;
+let SHELVES = STORE.shelves;
+let shelfById = {};
+function rebuildShelfIndex() { shelfById = {}; SHELVES.forEach(s => shelfById[s.id] = s); }
+rebuildShelfIndex();
+function promotedShelf() { return S.endcap ? shelfById[STORE.promoted.mainId] : shelfById[STORE.promoted.fallbackId]; }
+
+/* ---------- 通路グラフ ---------- */
+let NODES = [], EDGES = {};
+function buildGraph() {
+  NODES = []; EDGES = {};
+  STORE.nodeZs.forEach((z, zi) => STORE.nodeXs.forEach((x, xi) => NODES.push({ id: NODES.length, x, z, xi, zi })));
+  NODES.forEach(n => EDGES[n.id] = []);
+  NODES.forEach(a => NODES.forEach(b => {
+    if (a.id >= b.id) return;
+    const rowAdj = a.zi === b.zi && Math.abs(a.xi - b.xi) === 1;
+    const colAdj = a.xi === b.xi && Math.abs(a.zi - b.zi) === 1;
+    if (rowAdj || colAdj) { EDGES[a.id].push(b.id); EDGES[b.id].push(a.id); }
+  }));
+}
+buildGraph();
 function nearestNode(x, z) {
   let best = null, bd = 1e9;
   NODES.forEach(n => { const d = (n.x - x) ** 2 + (n.z - z) ** 2; if (d < bd) { bd = d; best = n; } });
   return best;
 }
-function nodePath(fromId, toId) { // BFS
+function nodePath(fromId, toId) {
   if (fromId === toId) return [fromId];
   const prev = {}; const q = [fromId]; prev[fromId] = -1;
   while (q.length) {
@@ -528,32 +665,33 @@ function nodePath(fromId, toId) { // BFS
   }
   return [fromId];
 }
-function routePoints(from, to) { // {x,z} -> waypoint list
+function routePoints(from, to) {
   const a = nearestNode(from.x, from.z), b = nearestNode(to.x, to.z);
   const ids = nodePath(a.id, b.id);
   const pts = ids.map(id => ({ x: NODES[id].x, z: NODES[id].z }));
   pts.push({ x: to.x, z: to.z });
-  // 始点に近すぎる先頭ノードは捨てる
   if (pts.length > 1 && Math.hypot(pts[0].x - from.x, pts[0].z - from.z) < 0.4) pts.shift();
   return pts;
+}
+function nearestOf(list, x, z) {
+  let best = list[0], bd = 1e9;
+  list.forEach(p => { const d = (p.x - x) ** 2 + (p.z - z) ** 2; if (d < bd) { bd = d; best = p; } });
+  return best;
 }
 
 /* ---------- 集計ステート ---------- */
 function freshShelfStats() { return { passes: 0, gazes: 0, gazeSec: 0, stops: 0, picks: 0, purchases: 0 }; }
 const STATS = {
-  day: 15,
-  simSec: 10 * 3600,           // 10:00 スタート（秒）
-  visitors: 0, adVisitors: 0,
-  buyers: 0, revenue: 0,
-  promoUnits: 0,
+  day: 15, simSec: 10 * 3600,
+  visitors: 0, adVisitors: 0, buyers: 0, revenue: 0, promoUnits: 0,
   nov: { treat: 0, ctrl: 0, treatBuy: 0, ctrlBuy: 0, treatRev: 0, ctrlRev: 0 },
-  shelves: {},                  // id -> stats
-  buckets: [],                  // 30分毎 revenue
-  adStoreVisits: 0,             // 広告接触者来店数
-  returns: 0,                   // 再来店（予約分カウント）
-  applied: 0,                   // CP応募（=ノベルティQR登録扱い）
+  shelves: {}, buckets: [], adStoreVisits: 0, returns: 0, applied: 0,
 };
-SHELVES.forEach(s => STATS.shelves[s.id] = freshShelfStats());
+function resetShelfStats() {
+  STATS.shelves = {};
+  SHELVES.forEach(s => STATS.shelves[s.id] = freshShelfStats());
+}
+resetShelfStats();
 for (let i = 0; i < 24; i++) STATS.buckets.push(0);
 
 const BEACON_LINES = [];
@@ -563,49 +701,60 @@ function beacon(msg, cls) {
   if (BEACON_LINES.length > 7) BEACON_LINES.shift();
 }
 
+/* 在庫（販促商品） */
+const stockState = { units: 240, cap: 240, missed: 0 };
+
 /* ---------- 消費者行動モデル ---------- */
-// 到着率(人/sim分): 時間帯カーブ × 人流 × 広告リフト
 function arrivalCurve(hour) {
   if (hour < 7) return 0.25;
-  if (hour < 9) return 1.25;          // 通勤
+  if (hour < 9) return 1.25;
   if (hour < 11) return 0.75;
-  if (hour < 14) return hour < 12 ? 1.1 : 1.9;  // 昼ピーク
+  if (hour < 14) return hour < 12 ? 1.1 : 1.9;
   if (hour < 17) return 0.8;
-  if (hour < 20) return 1.55;         // 夕ピーク
+  if (hour < 20) return 1.55;
   if (hour < 23) return 0.85;
   return 0.35;
 }
-function adReachLift() { return 0.35 * (S.budget / 100); }        // 来店リフト（人流経路B相当）
-function adExposureShare() { return 0.06 + 0.26 * (S.budget / 100); } // 来店者のうち広告接触済み比率
+function curveCumFrac(simSec) {
+  const t = clamp((simSec - 10 * 3600) / 3600, 0, 12);
+  let acc = 0, total = 0;
+  for (let i = 0; i < 48; i++) {
+    const h = 10 + (i + 0.5) * 0.25;
+    const v = arrivalCurve(h) * 0.25;
+    total += v;
+    if (h - 10 < t) acc += v;
+  }
+  return clamp(acc / total, 0.001, 1);
+}
+function adReachLift() { return 0.35 * (S.budget / 100); }
+function adExposureShare() { return 0.06 + 0.26 * (S.budget / 100); }
 function arrivalRatePerMin() {
   const hour = STATS.simSec / 3600;
-  return 2.3 * arrivalCurve(hour) * S.traffic * (1 + adReachLift());
+  return STORE.arrivalBase * arrivalCurve(hour) * S.traffic * (1 + adReachLift());
 }
 
-const NOV_TRUE_LIFT = 0.32;   // ノベルティの真の購買率リフト（モデル既定値・検証対象）
-const AD_PROMO_MULT = 1.7;    // 広告接触者の販促商品購買倍率
-const ENDCAP_ATTENTION = 1.9; // エンド陳列の視線・立寄倍率
+const NOV_TRUE_LIFT = 0.32;
+const AD_PROMO_MULT = 1.7;
+const ENDCAP_ATTENTION = 1.9;
 
 let agentSeq = 0;
 class Agent {
   constructor() {
     this.id = ++agentSeq;
-    this.x = ENTRANCE.x + (rng() - 0.5) * 0.6;
-    this.z = ENTRANCE.z;
-    this.heading = -Math.PI / 2; // -z向き
+    const ent = STORE.entrances[Math.floor(rng() * STORE.entrances.length)];
+    this.x = ent.x + (rng() - 0.5) * 0.6;
+    this.z = ent.z;
+    this.heading = -Math.PI / 2;
     this.speed = 0.85 + rng() * 0.35;
     this.adExposed = rng() < adExposureShare();
     this.hasNovelty = false; this.novGroup = null;
     this.basket = []; this.revenue = 0;
-    this.gazeMap = {};      // shelfId -> sec（ユニーク視線判定）
-    this.passSet = {};
+    this.gazeMap = {}; this.passSet = {};
     this.state = 'plan'; this.wait = 0; this.wp = [];
     this.targetShelf = null; this.plan = [];
-    this.trail = [];
-    this.done = false;
-    this.mesh = null; this.cone = null; this.trailLine = null;
+    this.done = false; this.walkPhase = rng() * 6.28;
+    this.mesh = null;
 
-    // 買い回り計画
     const wanderer = rng() < 0.18;
     const n = wanderer ? 0 : 1 + Math.floor(rng() * 3);
     const cand = SHELVES.filter(s => !s.promoted && !s.counter && s.pop > 0);
@@ -614,13 +763,10 @@ class Agent {
       let r = rng() * cand.reduce((a, s) => a + s.pop, 0);
       for (const s of cand) { r -= s.pop; if (r <= 0) { if (!picked.includes(s)) picked.push(s); break; } }
     }
-    // 広告接触者は販促商品を目的地に追加（指名来店）
     if (this.adExposed && rng() < 0.72) picked.push(promotedShelf());
-    else if (rng() < (S.endcap ? 0.16 : 0.07)) picked.push(promotedShelf()); // 自然立寄
-    if (wanderer) { // ぶらり客: 通路2本を回遊
-      picked.push(SHELVES[Math.floor(rng() * 12)]);
-    }
-    // 近い順に並べる（簡易TSP: 入口からの貪欲）
+    else if (rng() < (S.endcap ? 0.16 : 0.07)) picked.push(promotedShelf());
+    if (wanderer) picked.push(SHELVES[Math.floor(rng() * Math.min(SHELVES.length, 12))]);
+
     let cur = { x: this.x, z: this.z };
     while (picked.length) {
       let bi = 0, bd = 1e9;
@@ -636,41 +782,39 @@ class Agent {
   nextLeg() {
     if (this.plan.length) {
       const s = this.plan.shift();
-      if (s.id === 'endG2' && !S.endcap) { this.nextLeg(); return; }
+      if (s.promoted && !S.endcap && s.id === STORE.promoted.mainId) { this.nextLeg(); return; }
       this.targetShelf = s;
       this.wp = routePoints(this, { x: s.approach[0], z: s.approach[1] });
       this.state = 'walk';
     } else if (!this.paid && this.basket.length) {
       this.targetShelf = null;
-      this.wp = routePoints(this, REGISTER.payAt);
+      const reg = nearestOf(STORE.registers, this.x, this.z);
+      this.wp = routePoints(this, reg);
       this.state = 'toRegister';
     } else {
       this.targetShelf = null;
-      this.wp = routePoints(this, ENTRANCE);
+      const ext = nearestOf(STORE.entrances, this.x, this.z);
+      this.wp = routePoints(this, ext);
       this.state = 'exit';
     }
   }
 
   dwellAt(shelf, dt) {
     this.wait -= dt;
-    // 視線を注ぎ続ける
     this.faceShelf(shelf);
     if (this.wait <= 0) {
-      // 手に取り→購買判定
       const st = STATS.shelves[shelf.id];
-      const pPick = 0.62;
-      if (rng() < pPick) {
+      if (rng() < 0.62) {
         st.picks++;
         let pBuy = shelf.base;
-        if (shelf.promoted || (shelf === promotedShelf())) {
+        if (shelf === promotedShelf()) {
           if (this.adExposed) pBuy *= AD_PROMO_MULT;
           if (this.hasNovelty) pBuy *= (1 + NOV_TRUE_LIFT);
-        } else if (this.hasNovelty) pBuy *= 1.06; // 併売のごく小さい波及
+        } else if (this.hasNovelty) pBuy *= 1.06;
         if (rng() < clamp(pBuy, 0, 0.96)) {
           const isPromo = shelf === promotedShelf();
           if (isPromo && stockState.units <= 0) {
-            // 在庫内生性: 品切れ中は買いたくても買えない（広告効果でなく在庫制約 → 機会損失として記録）
-            stockState.missed++;
+            stockState.missed++;   // 在庫内生性: 品切れ中の機会損失
           } else {
             st.purchases++;
             const price = shelf.price * (0.8 + rng() * 0.5);
@@ -692,10 +836,9 @@ class Agent {
     this.heading = Math.atan2(dx, dz);
   }
 
-  update(dt) { // dt: sim秒
+  update(dt) {
     if (this.done) return;
     if (this.state === 'plan') { this.nextLeg(); return; }
-
     if (this.state === 'dwell') { this.dwellAt(this.dwellShelf, dt); return; }
     if (this.state === 'pay') {
       this.wait -= dt;
@@ -704,11 +847,9 @@ class Agent {
         STATS.buyers++; STATS.revenue += this.revenue;
         const b = Math.floor((STATS.simSec - 10 * 3600) / 1800);
         if (b >= 0 && b < STATS.buckets.length) STATS.buckets[b] += this.revenue;
-        // ノベルティRCTの成果計上（販促商品購買が主要アウトカム）
         const boughtPromo = this.basket.includes(promotedShelf().id);
         if (this.novGroup === 'treat') { if (boughtPromo) STATS.nov.treatBuy++; STATS.nov.treatRev += this.revenue; }
         if (this.novGroup === 'ctrl') { if (boughtPromo) STATS.nov.ctrlBuy++; STATS.nov.ctrlRev += this.revenue; }
-        // 再来店モデル: 購買者は再来店確率↑、ノベルティでさらに↑
         const pReturn = 0.22 * (this.hasNovelty ? 1.35 : 1);
         if (rng() < pReturn) STATS.returns++;
         this.nextLeg();
@@ -716,7 +857,6 @@ class Agent {
       return;
     }
 
-    // 歩行
     if (!this.wp.length) { this.nextLeg(); return; }
     const t = this.wp[0];
     const dx = t.x - this.x, dz = t.z - this.z;
@@ -725,7 +865,6 @@ class Agent {
       this.wp.shift();
       if (!this.wp.length) {
         if (this.state === 'walk' && this.targetShelf) {
-          // 立寄（滞在）
           const s = this.targetShelf;
           STATS.shelves[s.id].stops++;
           this.dwellShelf = s; this.state = 'dwell';
@@ -733,7 +872,7 @@ class Agent {
           if (rng() < 0.05) beacon(`客#${this.id} 「${s.name}」に立寄`, this.hasNovelty ? 'seg-nov' : '');
         } else if (this.state === 'toRegister') {
           this.state = 'pay'; this.wait = 20 + rng() * 30;
-          STATS.shelves.hot && this.maybeImpulseHot();
+          this.maybeImpulseCounter();
         } else if (this.state === 'exit') {
           this.done = true;
         }
@@ -747,14 +886,12 @@ class Agent {
     while (dh > Math.PI) dh -= 2 * Math.PI; while (dh < -Math.PI) dh += 2 * Math.PI;
     this.heading += dh * Math.min(1, dt * 6);
 
-    // ノベルティスタンド通過時の無作為配布
     if (S.novelty && this.novGroup === null) {
-      const dn = Math.hypot(this.x - NOV_STAND.x, this.z - NOV_STAND.z);
+      const dn = Math.hypot(this.x - STORE.novStand.x, this.z - STORE.novStand.z);
       if (dn < 2.0) {
         if (rng() < S.novRate) {
           this.novGroup = 'treat'; this.hasNovelty = true;
           STATS.nov.treat++; STATS.applied++;
-          // サンプリングによる興味喚起 → 販促棚への立寄が増える（RCTが測る総合効果の一部）
           const promo = promotedShelf();
           if (!this.plan.includes(promo) && !this.basket.includes(promo.id) && rng() < 0.4) this.plan.push(promo);
           if (rng() < 0.1) beacon(`客#${this.id} ノベルティ受取（処置群）`, 'seg-nov');
@@ -765,35 +902,33 @@ class Agent {
     }
   }
 
-  maybeImpulseHot() {
-    const hot = shelfById.hot;
-    if (rng() < 0.3) {
-      STATS.shelves.hot.stops++; STATS.shelves.hot.picks++;
-      if (rng() < hot.base) {
-        STATS.shelves.hot.purchases++;
-        const price = hot.price * (0.9 + rng() * 0.3);
-        this.basket.push('hot'); this.revenue += price;
+  maybeImpulseCounter() {
+    const counter = SHELVES.find(s => s.counter);
+    if (counter && rng() < 0.3) {
+      const st = STATS.shelves[counter.id];
+      st.stops++; st.picks++;
+      if (rng() < counter.base) {
+        st.purchases++;
+        const price = counter.price * (0.9 + rng() * 0.3);
+        this.basket.push(counter.id); this.revenue += price;
       }
     }
   }
 }
 
-/* 視線・通過検知（0.25 sim秒間隔） */
+/* 視線・通過検知 */
 const GAZE_DIST = 2.9, GAZE_COS = Math.cos(45 * Math.PI / 180);
 function senseGaze(agent, interval) {
   for (const s of SHELVES) {
-    if (s.id === 'endG2' && !S.endcap) continue;
+    if (s.promoted && !S.endcap && s.id === STORE.promoted.mainId) continue;
     const gx = s.pos[0], gz = s.pos[2];
     const dx = gx - agent.x, dz = gz - agent.z;
     const d = Math.hypot(dx, dz);
     if (d > GAZE_DIST) continue;
-    // 通過（棚前 2.2m 以内）
     if (d < 2.2 && !agent.passSet[s.id]) { agent.passSet[s.id] = 1; STATS.shelves[s.id].passes++; }
-    // 視野角: heading は atan2(dx,dz)
     const hx = Math.sin(agent.heading), hz = Math.cos(agent.heading);
     const cos = (dx * hx + dz * hz) / (d || 1e-6);
     if (cos < GAZE_COS) continue;
-    // 棚正面側にいるか
     const nx = s.normal[0], nz = s.normal[2];
     if ((agent.x - gx) * nx + (agent.z - gz) * nz < 0) continue;
     let w = interval * (1 - d / GAZE_DIST);
@@ -806,77 +941,78 @@ function senseGaze(agent, interval) {
   }
 }
 
-/* 在庫（販促商品） */
-const stockState = { units: 240, cap: 240, missed: 0, restockedAt: null };
-
-/* 到着カーブの累積割合（着地予測の按分に使用。線形按分だと昼ピーク直後に過大推計になる） */
-function curveCumFrac(simSec) {
-  const t = clamp((simSec - 10 * 3600) / 3600, 0, 12);
-  let acc = 0, total = 0;
-  for (let i = 0; i < 48; i++) {
-    const h = 10 + (i + 0.5) * 0.25;
-    const v = arrivalCurve(h) * 0.25;
-    total += v;
-    if (h - 10 < t) acc += v;
-  }
-  return clamp(acc / total, 0.001, 1);
-}
-
 /* ---------- 過去14日 scripted 日次データ ---------- */
-// デフォルトシナリオ相当の日次売上を生成。Day9 にデジタルCP開始の構造変化を仕込む。
-const HISTORY = [];
-(function genHistory() {
+let HISTORY = [];
+function historyBase() { return STORE.arrivalBase * 60 * 14.4 * STORE.buyRate * STORE.basket * 0.86; }
+function genHistory() {
+  HISTORY = [];
+  histRng = mulberry32(910 + (FKEY === 'depato' ? 77 : 0));
+  const base = historyBase();
   for (let d = 1; d <= 14; d++) {
     const week = (d - 1) % 7;
     const weekend = week >= 5 ? 1.18 : 1.0;
     const cpOn = d >= 9;
-    const base = 418000;
-    const noise = (histRng() - 0.5) * 40000;
-    const cpLift = cpOn ? 66000 + (histRng() - 0.5) * 14000 : 0;
-    const foot = 40000 * Math.sin(d / 3.1) * 0.5 + (histRng() - 0.5) * 18000;
     HISTORY.push({
       day: d,
-      revenue: Math.round(base * weekend + noise + cpLift + foot),
-      cpOn,
-      anomaly: d === 9,
+      revenue: Math.round(base * weekend + (histRng() - 0.5) * base * 0.09
+        + (cpOn ? base * 0.155 + (histRng() - 0.5) * base * 0.03 : 0)
+        + base * 0.09 * Math.sin(d / 3.1) * 0.5),
+      cpOn, anomaly: d === 9,
     });
   }
-})();
+}
+genHistory();
 
 /* ---------- Three.js シーン ---------- */
 let renderer, scene, camera, camState;
+let storeGroup = null;
 const agents = [];
 let followTarget = null;
-const heat = { grid: new Float32Array(64 * 40), canvas: null, tex: null, dirty: 0 };
-let shelfMeshes = {}, labelSprites = [], novStandGroup = null, endcapGroup = null;
+const heat = { grid: null, canvas: null, tex: null, plane: null, w: 64, h: 40 };
+let shelfMeshes = {}, labelSprites = [], novStandGroup = null, promoGroup = null;
+let pickMeshes = [];
+let selectedShelfId = null;
+
+const CAT_PRODUCT_COLORS = {
+  food:  [0xe07b39, 0xc9a227, 0x9fbf3b, 0xd6543f],
+  drink: [0x3f8fd6, 0x45b3a2, 0xd6c23f, 0x7a5fd0],
+  snack: [0xd6543f, 0xe0a03c, 0x8459c9, 0x3f9fd6],
+  daily: [0x8fb3d9, 0xb9c9d9, 0x76c7b5, 0xd9a3b7],
+  mag:   [0x66748c, 0xa3b1c9, 0xcdd6e4, 0x8b95ad],
+  promo: [0xe36ba0, 0xf0a0c3, 0xd5519a, 0xef8fb5],
+  gift:  [0xc9a227, 0xa06fd0, 0x5fa8d9, 0xd66a8a],
+  fresh: [0xd66a6a, 0xe0a03c, 0x7fbf5f, 0xcfc39a],
+};
+const EDGE_COLOR = 0x5c7186, EDGE_OPACITY = 0.45;
 
 function initThree() {
   const container = document.getElementById('view3d');
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(container.clientWidth, container.clientHeight);
   container.appendChild(renderer.domElement);
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x04050c);
-  scene.fog = new THREE.Fog(0x04050c, 26, 60);
+  scene.background = new THREE.Color(0xe9eef5);
+  scene.fog = new THREE.Fog(0xe9eef5, 40, 95);
 
-  camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 200);
-  camState = { theta: -0.5, phi: 0.96, r: 17, tx: 0, ty: 0, tz: 0.6 };
+  camera = new THREE.PerspectiveCamera(50, container.clientWidth / container.clientHeight, 0.1, 300);
+  camState = Object.assign({}, STORE.camPresets.over);
   applyCam();
 
-  scene.add(new THREE.AmbientLight(0x8899bb, 0.55));
-  const dir = new THREE.DirectionalLight(0xcfe8ff, 0.75);
-  dir.position.set(8, 14, 6); scene.add(dir);
-  const p1 = new THREE.PointLight(0x00b7d9, 0.5, 22); p1.position.set(0, 4.5, 0); scene.add(p1);
-  const p2 = new THREE.PointLight(0xd55181, 0.35, 14); p2.position.set(0, 3, 2.4); scene.add(p2);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xd4dce6, 0.55));
+  const dir = new THREE.DirectionalLight(0xffffff, 0.65);
+  dir.position.set(12, 22, 10); scene.add(dir);
 
   buildStore();
   bindCamControls();
+  bindPicking();
   window.addEventListener('resize', () => {
-    camera.aspect = (window.innerWidth) / window.innerHeight;
+    const c = document.getElementById('view3d');
+    camera.aspect = c.clientWidth / c.clientHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(c.clientWidth, c.clientHeight);
   });
 }
 
@@ -890,15 +1026,17 @@ function applyCam() {
   camera.lookAt(tx, ty, tz);
 }
 
+let dragMoved = 0;
 function bindCamControls() {
   const el = renderer.domElement;
   let drag = null;
   el.addEventListener('contextmenu', e => e.preventDefault());
-  el.addEventListener('mousedown', e => { drag = { b: e.button, x: e.clientX, y: e.clientY }; followTarget = null; });
+  el.addEventListener('mousedown', e => { drag = { b: e.button, x: e.clientX, y: e.clientY }; dragMoved = 0; followTarget = null; });
   window.addEventListener('mouseup', () => drag = null);
   window.addEventListener('mousemove', e => {
     if (!drag) return;
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    dragMoved += Math.abs(dx) + Math.abs(dy);
     drag.x = e.clientX; drag.y = e.clientY;
     if (drag.b === 0) {
       camState.theta -= dx * 0.005;
@@ -911,180 +1049,86 @@ function bindCamControls() {
     applyCam();
   });
   el.addEventListener('wheel', e => {
-    camState.r = clamp(camState.r * (1 + Math.sign(e.deltaY) * 0.08), 4, 40);
+    camState.r = clamp(camState.r * (1 + Math.sign(e.deltaY) * 0.08), 3.5, 60);
     applyCam();
   }, { passive: true });
 }
 
-const CAM_PRESETS = {
-  over:     { theta: -0.5, phi: 0.96, r: 17, tx: 0, ty: 0, tz: 0.6 },
-  entrance: { theta: Math.PI - 0.35, phi: 1.25, r: 9, tx: -2.2, ty: 0.4, tz: 2.2 },
-  promo:    { theta: 0.15, phi: 1.05, r: 7.5, tx: 0, ty: 0.5, tz: 1.6 },
-};
 let camTween = null;
 function tweenCam(to) {
   followTarget = null;
-  const from = Object.assign({}, camState);
-  camTween = { from, to, t: 0 };
+  camTween = { from: Object.assign({}, camState), to, t: 0 };
 }
 function focusShelf(id) {
   const s = shelfById[id];
   if (!s) return;
   tweenCam({
     theta: Math.atan2(s.normal[0], s.normal[2]),
-    phi: 1.12, r: 6,
+    phi: 1.1, r: FKEY === 'depato' ? 8 : 6,
     tx: s.pos[0] + s.normal[0] * 0.5, ty: 0.6, tz: s.pos[2] + s.normal[2] * 0.5,
   });
 }
 
+/* 棚クリック（売場詳細） */
+const raycaster = new THREE.Raycaster();
+const mouseNDC = new THREE.Vector2();
+function pickShelfAt(clientX, clientY) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouseNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  mouseNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouseNDC, camera);
+  const hits = raycaster.intersectObjects(pickMeshes, false);
+  return hits.length ? hits[0].object.userData.shelfId : null;
+}
+let hoverTick = 0;
+function bindPicking() {
+  const el = renderer.domElement;
+  el.addEventListener('click', e => {
+    if (dragMoved > 6) return;
+    const id = pickShelfAt(e.clientX, e.clientY);
+    if (id) { selectShelf(id); focusShelf(id); }
+  });
+  el.addEventListener('mousemove', e => {
+    const now = performance.now();
+    if (now - hoverTick < 120) return;
+    hoverTick = now;
+    el.style.cursor = pickShelfAt(e.clientX, e.clientY) ? 'pointer' : 'grab';
+  });
+}
+function selectShelf(id) {
+  if (selectedShelfId && shelfMeshes[selectedShelfId]) {
+    const prev = shelfMeshes[selectedShelfId];
+    prev.edge.material.color.set(shelfById[selectedShelfId] && shelfById[selectedShelfId].promoted ? 0xd55181 : EDGE_COLOR);
+    prev.edge.material.opacity = shelfById[selectedShelfId] && shelfById[selectedShelfId].promoted ? 0.85 : EDGE_OPACITY;
+  }
+  selectedShelfId = id;
+  if (id && shelfMeshes[id]) {
+    shelfMeshes[id].edge.material.color.set(0x0f9fba);
+    shelfMeshes[id].edge.material.opacity = 1.0;
+  }
+  if (window.__renderShelfDetail) window.__renderShelfDetail();
+}
+
 function neonEdges(geom, color, opacity) {
   const e = new THREE.EdgesGeometry(geom);
-  return new THREE.LineSegments(e, new THREE.LineBasicMaterial({ color, transparent: true, opacity: opacity || 0.75 }));
+  return new THREE.LineSegments(e, new THREE.LineBasicMaterial({ color, transparent: true, opacity: opacity != null ? opacity : EDGE_OPACITY }));
 }
 
-function buildStore() {
-  // 床
-  const floorMat = new THREE.MeshStandardMaterial({ color: 0x0a1120, roughness: 0.9, metalness: 0.1 });
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(FLOOR_W, FLOOR_D), floorMat);
-  floor.rotation.x = -Math.PI / 2; scene.add(floor);
-  // 床グリッド
-  const grid = new THREE.GridHelper(40, 40, 0x123, 0x0e1a30);
-  grid.position.y = 0.005; grid.material.transparent = true; grid.material.opacity = 0.5; scene.add(grid);
-  // 外周の街っぽい床
-  const outer = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), new THREE.MeshBasicMaterial({ color: 0x04060f }));
-  outer.rotation.x = -Math.PI / 2; outer.position.y = -0.02; scene.add(outer);
-
-  // 回遊ヒートマップ用テクスチャ
-  heat.canvas = document.createElement('canvas');
-  heat.canvas.width = 64; heat.canvas.height = 40;
-  heat.tex = new THREE.CanvasTexture(heat.canvas);
-  const heatPlane = new THREE.Mesh(
-    new THREE.PlaneGeometry(FLOOR_W, FLOOR_D),
-    new THREE.MeshBasicMaterial({ map: heat.tex, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending })
-  );
-  heatPlane.rotation.x = -Math.PI / 2; heatPlane.position.y = 0.02;
-  heatPlane.name = 'heatPlane'; scene.add(heatPlane);
-  heat.plane = heatPlane;
-
-  // 壁（ネオン枠）
-  const wallH = 2.6;
-  const wallGeo = new THREE.BoxGeometry(FLOOR_W, wallH, 0.1);
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0x0c1526, transparent: true, opacity: 0.35, roughness: 0.6 });
-  const mkWall = (w, d, x, z, ry) => {
-    const g = new THREE.BoxGeometry(w, wallH, 0.1);
-    const m = new THREE.Mesh(g, wallMat.clone());
-    m.position.set(x, wallH / 2, z); m.rotation.y = ry || 0; scene.add(m);
-    const e = neonEdges(g, 0x2a5f8f, 0.8); e.position.copy(m.position); e.rotation.y = m.rotation.y; scene.add(e);
-  };
-  mkWall(FLOOR_W, 0.1, 0, -FLOOR_D / 2, 0);                        // 奥
-  mkWall(FLOOR_D, 0.1, -FLOOR_W / 2, 0, Math.PI / 2);              // 左
-  mkWall(FLOOR_D, 0.1, FLOOR_W / 2, 0, Math.PI / 2);               // 右
-  // 前面はドア開口: 左右セグメント
-  mkWall(3.4, 0.1, -6.3, FLOOR_D / 2, 0);
-  mkWall(9.4, 0.1, 3.3, FLOOR_D / 2, 0);
-  // 入口マット
-  const mat = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.3), new THREE.MeshBasicMaterial({ color: 0x00b7d9, transparent: true, opacity: 0.18 }));
-  mat.rotation.x = -Math.PI / 2; mat.position.set(ENTRANCE.x, 0.015, 4.45); scene.add(mat);
-
-  // 棚
-  SHELVES.forEach(s => {
-    const g = new THREE.Group();
-    const isGondolaSide = !!s.gondola;
-    const w = isGondolaSide ? 0.42 : s.size[0];
-    const geoW = s.size[0] < 0.2 ? 0.42 : s.size[0];
-    const geo = new THREE.BoxGeometry(
-      s.normal[0] !== 0 ? (s.size[0] < 1 ? s.size[0] : s.size[0]) : geoW,
-      s.size[1],
-      s.normal[2] !== 0 ? s.size[2] : s.size[2]
-    );
-    // 位置: ゴンドラ側面棚は半身
-    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
-      color: 0x16324a, roughness: 0.55, metalness: 0.2,
-      emissive: 0x06131f, emissiveIntensity: 1,
-    }));
-    mesh.position.set(s.pos[0] - (isGondolaSide ? s.normal[0] * 0 : 0), s.size[1] / 2, s.pos[2]);
-    g.add(mesh);
-    const edge = neonEdges(geo, s.promoted ? 0xff5fa2 : 0x2f81c7, s.promoted ? 0.95 : 0.55);
-    edge.position.copy(mesh.position); g.add(edge);
-    // 段板ライン
-    for (let i = 1; i <= 3; i++) {
-      const y = (s.size[1] / 4) * i;
-      const shelfLine = new THREE.Mesh(
-        new THREE.BoxGeometry(
-          (s.normal[2] !== 0 ? Math.max(geoW - 0.06, 0.2) : 0.02),
-          0.02,
-          (s.normal[0] !== 0 ? Math.max(s.size[2] - 0.06, 0.2) : 0.02)
-        ),
-        new THREE.MeshBasicMaterial({ color: 0x1c4668 })
-      );
-      shelfLine.position.set(
-        mesh.position.x + s.normal[0] * (geoW / 2 + 0.01),
-        y,
-        mesh.position.z + s.normal[2] * ((s.normal[2] !== 0 ? s.size[2] : s.size[2]) / 2 + 0.01)
-      );
-      g.add(shelfLine);
-    }
-    if (s.promoted) {
-      // 販促POP
-      const pop = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.34),
-        new THREE.MeshBasicMaterial({ color: 0xff5fa2, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
-      pop.position.set(s.pos[0], s.size[1] + 0.45, s.pos[2]);
-      g.add(pop);
-      endcapGroup = g;
-    }
-    scene.add(g);
-    shelfMeshes[s.id] = { group: g, mesh, edge };
-
-    // ラベルスプライト
-    const label = makeLabel(s.name, s.promoted ? '#ff9ec4' : '#9fd8ff');
-    label.position.set(s.pos[0] + s.normal[0] * 0.7, s.size[1] + 0.35, s.pos[2] + s.normal[2] * 0.7);
-    if (s.promoted) g.add(label); else scene.add(label);
-    labelSprites.push(label);
-  });
-
-  // ゴンドラ本体（G1-G3の筐体）
-  ['G1', 'G2', 'G3'].forEach((gname, i) => {
-    const x = [-3, 0, 3][i];
-    const geo = new THREE.BoxGeometry(0.9, 1.5, 4.0);
-    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x10263c, roughness: 0.6, emissive: 0x05101c }));
-    m.position.set(x, 0.75, -0.6); scene.add(m);
-    const e = neonEdges(geo, 0x2f81c7, 0.5); e.position.copy(m.position); scene.add(e);
-  });
-
-  // レジカウンター
-  const regGeo = new THREE.BoxGeometry(2.8, 1.0, 0.6);
-  const reg = new THREE.Mesh(regGeo, new THREE.MeshStandardMaterial({ color: 0x142c44, emissive: 0x061520 }));
-  reg.position.set(4.2, 0.5, 3.55); scene.add(reg);
-  const rege = neonEdges(regGeo, 0x36d6a5, 0.8); rege.position.copy(reg.position); scene.add(rege);
-  const regLabel = makeLabel('レジ', '#7be8c4'); regLabel.position.set(4.2, 1.9, 3.55); scene.add(regLabel); labelSprites.push(regLabel);
-
-  // ノベルティスタンド
-  novStandGroup = new THREE.Group();
-  const standGeo = new THREE.CylinderGeometry(0.36, 0.44, 1.05, 8);
-  const stand = new THREE.Mesh(standGeo, new THREE.MeshStandardMaterial({ color: 0x3a2c10, emissive: 0x2a1c05, roughness: 0.5 }));
-  stand.position.set(NOV_STAND.x, 0.52, NOV_STAND.z); novStandGroup.add(stand);
-  const se = neonEdges(standGeo, 0xe8b04b, 0.9); se.position.copy(stand.position); novStandGroup.add(se);
-  const flagGeo = new THREE.PlaneGeometry(0.55, 0.75);
-  const flag = new THREE.Mesh(flagGeo, new THREE.MeshBasicMaterial({ color: 0xe8b04b, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
-  flag.position.set(NOV_STAND.x, 1.6, NOV_STAND.z); novStandGroup.add(flag);
-  const novLabel = makeLabel('ノベルティ配布', '#ffd98a'); novLabel.position.set(NOV_STAND.x, 2.15, NOV_STAND.z);
-  novStandGroup.add(novLabel);
-  scene.add(novStandGroup);
-}
-
-function makeLabel(text, color) {
+function makeLabel(text, colorText, colorBg) {
   const c = document.createElement('canvas');
-  const ctx = c.getContext('2d');
+  let ctx = c.getContext('2d');
   ctx.font = '600 26px "Hiragino Kaku Gothic ProN", sans-serif';
   const w = Math.ceil(ctx.measureText(text).width) + 26;
   c.width = w; c.height = 44;
-  const ctx2 = c.getContext('2d');
-  ctx2.font = '600 26px "Hiragino Kaku Gothic ProN", sans-serif';
-  ctx2.fillStyle = 'rgba(6,10,22,0.72)';
-  ctx2.beginPath(); ctx2.roundRect(0, 0, w, 44, 9); ctx2.fill();
-  ctx2.fillStyle = color;
-  ctx2.textBaseline = 'middle';
-  ctx2.fillText(text, 13, 23);
+  ctx = c.getContext('2d');
+  ctx.font = '600 26px "Hiragino Kaku Gothic ProN", sans-serif';
+  ctx.fillStyle = colorBg || 'rgba(255,255,255,0.88)';
+  ctx.strokeStyle = 'rgba(90,110,135,0.35)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(1, 1, w - 2, 42, 9); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = colorText || '#2c3e55';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 13, 23);
   const tex = new THREE.CanvasTexture(c);
   tex.minFilter = THREE.LinearFilter;
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
@@ -1092,96 +1136,378 @@ function makeLabel(text, color) {
   return sp;
 }
 
+/* ---------- 店舗構築 ---------- */
+function disposeObject(root) {
+  root.traverse(o => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) {
+      (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.map) m.map.dispose(); m.dispose(); });
+    }
+  });
+}
+
+function buildStore() {
+  if (storeGroup) { scene.remove(storeGroup); disposeObject(storeGroup); }
+  storeGroup = new THREE.Group();
+  shelfMeshes = {}; labelSprites = []; pickMeshes = []; promoGroup = null; novStandGroup = null;
+  const W = STORE.floorW, D = STORE.floorD, H = STORE.wallH;
+
+  // 外周グラウンド・床
+  const outer = new THREE.Mesh(new THREE.PlaneGeometry(220, 220), new THREE.MeshLambertMaterial({ color: 0xdde4ec }));
+  outer.rotation.x = -Math.PI / 2; outer.position.y = -0.03; storeGroup.add(outer);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), new THREE.MeshLambertMaterial({ color: 0xf7f9fb }));
+  floor.rotation.x = -Math.PI / 2; storeGroup.add(floor);
+  const grid = new THREE.GridHelper(Math.max(W, D), Math.max(W, D), 0xd3dce6, 0xe4eaf1);
+  grid.position.y = 0.004; grid.material.transparent = true; grid.material.opacity = 0.7;
+  storeGroup.add(grid);
+  const floorEdge = neonEdges(new THREE.BoxGeometry(W, 0.01, D), 0x8aa0b8, 0.8);
+  floorEdge.position.y = 0.01; storeGroup.add(floorEdge);
+
+  // 回遊ヒートマップ
+  heat.w = STORE.heatW; heat.h = STORE.heatH;
+  heat.grid = new Float32Array(heat.w * heat.h);
+  heat.canvas = document.createElement('canvas');
+  heat.canvas.width = heat.w; heat.canvas.height = heat.h;
+  if (heat.tex) heat.tex.dispose();
+  heat.tex = new THREE.CanvasTexture(heat.canvas);
+  heat.plane = new THREE.Mesh(
+    new THREE.PlaneGeometry(W, D),
+    new THREE.MeshBasicMaterial({ map: heat.tex, transparent: true, opacity: 0.9, depthWrite: false })
+  );
+  heat.plane.rotation.x = -Math.PI / 2; heat.plane.position.y = 0.02;
+  storeGroup.add(heat.plane);
+
+  // 壁（ガラス調・細線）
+  const wallMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.22 });
+  const mkWall = (w, x, z, ry) => {
+    const g = new THREE.BoxGeometry(w, H, 0.08);
+    const m = new THREE.Mesh(g, wallMat.clone());
+    m.position.set(x, H / 2, z); m.rotation.y = ry || 0; storeGroup.add(m);
+    const e = neonEdges(g, 0x8aa0b8, 0.65); e.position.copy(m.position); e.rotation.y = m.rotation.y; storeGroup.add(e);
+    const nMull = Math.floor(w / 2.2);
+    for (let i = 1; i <= nMull; i++) {
+      const mull = new THREE.Mesh(new THREE.BoxGeometry(0.03, H, 0.09), new THREE.MeshBasicMaterial({ color: 0xa9bacc }));
+      mull.position.set(-w / 2 + (w / (nMull + 1)) * i, H / 2, 0);
+      const holder = new THREE.Group();
+      holder.add(mull); holder.position.set(x, 0, z); holder.rotation.y = ry || 0;
+      storeGroup.add(holder);
+    }
+  };
+  mkWall(W, 0, -D / 2, 0);
+  mkWall(D, -W / 2, 0, Math.PI / 2);
+  mkWall(D, W / 2, 0, Math.PI / 2);
+  const doors = STORE.doors.slice().sort((a, b) => a.x - b.x);
+  let cursor = -W / 2;
+  doors.forEach(dr => {
+    const segW = (dr.x - dr.w / 2) - cursor;
+    if (segW > 0.05) mkWall(segW, cursor + segW / 2, D / 2, 0);
+    cursor = dr.x + dr.w / 2;
+    const mat = new THREE.Mesh(new THREE.PlaneGeometry(dr.w, 1.3), new THREE.MeshBasicMaterial({ color: 0x0f9fba, transparent: true, opacity: 0.14 }));
+    mat.rotation.x = -Math.PI / 2; mat.position.set(dr.x, 0.015, D / 2 - 0.1); storeGroup.add(mat);
+  });
+  const lastW = W / 2 - cursor;
+  if (lastW > 0.05) mkWall(lastW, cursor + lastW / 2, D / 2, 0);
+  const sign = makeLabel(STORE.label + '　' + STORE.storeName, '#0f6f83', 'rgba(255,255,255,0.95)');
+  sign.position.set(STORE.doors[0].x, H + 1.0, D / 2 + 0.3);
+  storeGroup.add(sign);
+
+  // 天井照明
+  const lightRows = FKEY === 'depato' ? 3 : 2;
+  for (let r = 0; r < lightRows; r++) {
+    const z = -D / 2 + (D / (lightRows + 1)) * (r + 1);
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(W * 0.82, 0.05, 0.18), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    bar.position.set(0, H - 0.25, z); storeGroup.add(bar);
+    const be = neonEdges(bar.geometry, 0xc9d4e0, 0.5); be.position.copy(bar.position); storeGroup.add(be);
+  }
+
+  // ゴンドラ本体
+  STORE.gondolas.forEach(g => {
+    const geo = new THREE.BoxGeometry(g.w, g.h, g.d);
+    const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: 0xf2f5f8 }));
+    m.position.set(g.x, g.h / 2, g.z); storeGroup.add(m);
+    const e = neonEdges(geo, EDGE_COLOR, 0.5); e.position.copy(m.position); storeGroup.add(e);
+  });
+
+  // レジカウンター
+  STORE.counters.forEach(c => {
+    const geo = new THREE.BoxGeometry(c.w, c.h, c.d);
+    const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: 0xeef2f6 }));
+    m.position.set(c.x, c.h / 2, c.z); storeGroup.add(m);
+    const e = neonEdges(geo, 0x3f9b82, 0.8); e.position.copy(m.position); storeGroup.add(e);
+    const lb = makeLabel('レジ', '#1d7a5f'); lb.position.set(c.x, c.h + 0.9, c.z); storeGroup.add(lb); labelSprites.push(lb);
+    const pos2 = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.3, 0.2), new THREE.MeshLambertMaterial({ color: 0x45586e }));
+    pos2.position.set(c.x - c.w / 4, c.h + 0.15, c.z); storeGroup.add(pos2);
+  });
+
+  // 棚
+  const productBoxes = [];
+  SHELVES.forEach(s => buildShelf(s, productBoxes));
+
+  // 商品 InstancedMesh
+  if (productBoxes.length) {
+    const geo = new THREE.BoxGeometry(1, 1, 1);
+    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    const im = new THREE.InstancedMesh(geo, mat, productBoxes.length);
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), p = new THREE.Vector3(), sc = new THREE.Vector3(), eu = new THREE.Euler();
+    productBoxes.forEach((b, i) => {
+      eu.set(0, b.ry || 0, 0); q.setFromEuler(eu);
+      p.set(b.x, b.y, b.z); sc.set(b.sx, b.sy, b.sz);
+      m4.compose(p, q, sc); im.setMatrixAt(i, m4);
+      im.setColorAt(i, new THREE.Color(b.color));
+    });
+    im.instanceMatrix.needsUpdate = true;
+    if (im.instanceColor) im.instanceColor.needsUpdate = true;
+    storeGroup.add(im);
+  }
+
+  // ノベルティスタンド
+  novStandGroup = new THREE.Group();
+  const standGeo = new THREE.CylinderGeometry(0.34, 0.42, 1.0, 10);
+  const stand = new THREE.Mesh(standGeo, new THREE.MeshLambertMaterial({ color: 0xf5e3c0 }));
+  stand.position.set(STORE.novStand.x, 0.5, STORE.novStand.z); novStandGroup.add(stand);
+  const se = neonEdges(standGeo, 0xc98500, 0.8); se.position.copy(stand.position); novStandGroup.add(se);
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.55, 0.72),
+    new THREE.MeshBasicMaterial({ color: 0xe8b04b, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+  flag.position.set(STORE.novStand.x, 1.55, STORE.novStand.z); novStandGroup.add(flag);
+  const novLabel = makeLabel('ノベルティ配布', '#8a5c05');
+  novLabel.position.set(STORE.novStand.x, 2.1, STORE.novStand.z); novStandGroup.add(novLabel);
+  storeGroup.add(novStandGroup);
+
+  scene.add(storeGroup);
+}
+
+function buildShelf(s, productBoxes) {
+  const g = new THREE.Group();
+  const [w, h, d] = s.size;
+  const isPromo = !!s.promoted;
+  const bodyColor = isPromo ? 0xfdf1f6 : 0xfbfcfe;
+
+  let bodyGeo = null, bodyPos = null;
+  if (s.kind === 'island-case') {
+    const base = new THREE.Mesh(new THREE.BoxGeometry(w, 0.5, d), new THREE.MeshLambertMaterial({ color: bodyColor }));
+    base.position.set(s.pos[0], 0.25, s.pos[2]); g.add(base);
+    const glassGeo = new THREE.BoxGeometry(w, 0.55, d);
+    const glass = new THREE.Mesh(glassGeo, new THREE.MeshLambertMaterial({ color: 0xdfeaf4, transparent: true, opacity: 0.28 }));
+    glass.position.set(s.pos[0], 0.78, s.pos[2]); g.add(glass);
+    const ge = neonEdges(glassGeo, isPromo ? 0xd55181 : EDGE_COLOR, isPromo ? 0.85 : EDGE_OPACITY);
+    ge.position.copy(glass.position); g.add(ge);
+    base.userData.shelfId = s.id; glass.userData.shelfId = s.id;
+    pickMeshes.push(base, glass);
+    shelfMeshes[s.id] = { group: g, mesh: base, edge: ge };
+    for (let row = 0; row < 2; row++) {
+      const zOff = (row - 0.5) * d * 0.42;
+      const n = Math.floor(w / 0.34);
+      const colors = CAT_PRODUCT_COLORS[s.cat] || CAT_PRODUCT_COLORS.food;
+      for (let i = 0; i < n; i++) {
+        productBoxes.push({
+          x: s.pos[0] - w / 2 + 0.25 + i * ((w - 0.5) / Math.max(n - 1, 1)),
+          y: 0.60, z: s.pos[2] + zOff,
+          sx: 0.2 + rng() * 0.06, sy: 0.12 + rng() * 0.1, sz: 0.2 + rng() * 0.05,
+          color: colors[Math.floor(rng() * colors.length)], ry: (rng() - 0.5) * 0.4,
+        });
+      }
+    }
+  } else if (s.kind === 'counter') {
+    const n = Math.floor(w / 0.3);
+    const colors = CAT_PRODUCT_COLORS[s.cat] || CAT_PRODUCT_COLORS.food;
+    for (let i = 0; i < n; i++) {
+      productBoxes.push({
+        x: s.pos[0] - w / 2 + 0.3 + i * ((w - 0.6) / Math.max(n - 1, 1)),
+        y: 1.08, z: s.pos[2],
+        sx: 0.16, sy: 0.12 + rng() * 0.06, sz: 0.16,
+        color: colors[Math.floor(rng() * colors.length)],
+      });
+    }
+    const hit = new THREE.Mesh(new THREE.BoxGeometry(w, 1.2, d), new THREE.MeshBasicMaterial({ visible: false }));
+    hit.position.set(s.pos[0], 0.6, s.pos[2]); g.add(hit);
+    hit.userData.shelfId = s.id; pickMeshes.push(hit);
+    const dummyEdge = neonEdges(new THREE.BoxGeometry(0.01, 0.01, 0.01), EDGE_COLOR, 0);
+    g.add(dummyEdge);
+    shelfMeshes[s.id] = { group: g, mesh: hit, edge: dummyEdge };
+  } else if (s.kind === 'gondola-side') {
+    bodyGeo = new THREE.BoxGeometry(0.42, h, d);
+    bodyPos = new THREE.Vector3(s.pos[0], h / 2, s.pos[2]);
+    const mesh = new THREE.Mesh(bodyGeo, new THREE.MeshLambertMaterial({ color: bodyColor }));
+    mesh.position.copy(bodyPos); g.add(mesh);
+    const edge = neonEdges(bodyGeo, isPromo ? 0xd55181 : EDGE_COLOR, isPromo ? 0.85 : EDGE_OPACITY);
+    edge.position.copy(bodyPos); g.add(edge);
+    mesh.userData.shelfId = s.id; pickMeshes.push(mesh);
+    shelfMeshes[s.id] = { group: g, mesh, edge };
+    const tiers = 3;
+    const colors = CAT_PRODUCT_COLORS[s.cat] || CAT_PRODUCT_COLORS.food;
+    for (let t = 1; t <= tiers; t++) {
+      const y = (h / (tiers + 1)) * t;
+      const n = Math.floor((d - 0.3) / 0.24);
+      for (let i = 0; i < n; i++) {
+        const along = -d / 2 + 0.22 + i * ((d - 0.44) / Math.max(n - 1, 1));
+        productBoxes.push({
+          x: s.pos[0] + s.normal[0] * 0.28, y: y + 0.09, z: s.pos[2] + along,
+          sx: 0.15 + rng() * 0.05, sy: 0.13 + rng() * 0.09, sz: 0.15 + rng() * 0.04,
+          color: colors[Math.floor(rng() * colors.length)],
+        });
+      }
+    }
+  } else {
+    // wall / endcap: 背面パネル + 台座 + 棚板 + 商品（商品が正面から見える開放型什器）
+    const alongX = s.normal[2] !== 0;
+    const length = alongX ? w : d;
+    const depth = alongX ? d : w;
+    // 台座
+    const plinth = new THREE.Mesh(new THREE.BoxGeometry(w, 0.22, d), new THREE.MeshLambertMaterial({ color: 0xe8edf3 }));
+    plinth.position.set(s.pos[0], 0.11, s.pos[2]); g.add(plinth);
+    // 背面パネル（ヒートティント対象）
+    const bpGeo = alongX ? new THREE.BoxGeometry(w, h, 0.14) : new THREE.BoxGeometry(0.14, h, d);
+    const back = new THREE.Mesh(bpGeo, new THREE.MeshLambertMaterial({ color: bodyColor }));
+    back.position.set(
+      s.pos[0] - s.normal[0] * (depth / 2 - 0.07),
+      h / 2,
+      s.pos[2] - s.normal[2] * (depth / 2 - 0.07)
+    );
+    g.add(back);
+    // 外形ワイヤーフレーム（細線）+ 不可視ピックボックス
+    const frameGeo = new THREE.BoxGeometry(w, h, d);
+    const edge = neonEdges(frameGeo, isPromo ? 0xd55181 : EDGE_COLOR, isPromo ? 0.85 : EDGE_OPACITY);
+    edge.position.set(s.pos[0], h / 2, s.pos[2]); g.add(edge);
+    const hit = new THREE.Mesh(frameGeo, new THREE.MeshBasicMaterial({ visible: false }));
+    hit.position.set(s.pos[0], h / 2, s.pos[2]); g.add(hit);
+    hit.userData.shelfId = s.id; pickMeshes.push(hit);
+    shelfMeshes[s.id] = { group: g, mesh: back, edge };
+
+    const prodOffset = depth * 0.08;
+    const tiers = h > 1.7 ? 4 : 3;
+    const colors = CAT_PRODUCT_COLORS[s.cat] || CAT_PRODUCT_COLORS.food;
+    for (let t = 1; t <= tiers; t++) {
+      const y = 0.22 + ((h - 0.35) / tiers) * (t - 1) + 0.12;
+      // 棚板（プレート）
+      const board = new THREE.Mesh(
+        alongX ? new THREE.BoxGeometry(length - 0.1, 0.03, depth * 0.6) : new THREE.BoxGeometry(depth * 0.6, 0.03, length - 0.1),
+        new THREE.MeshLambertMaterial({ color: 0xdfe6ee })
+      );
+      board.position.set(
+        s.pos[0] + s.normal[0] * prodOffset * 0.5,
+        y - 0.09,
+        s.pos[2] + s.normal[2] * prodOffset * 0.5
+      );
+      g.add(board);
+      const n = Math.floor((length - 0.3) / 0.24);
+      for (let i = 0; i < n; i++) {
+        const along = -length / 2 + 0.22 + i * ((length - 0.44) / Math.max(n - 1, 1));
+        productBoxes.push({
+          x: s.pos[0] + (alongX ? along : s.normal[0] * prodOffset),
+          y,
+          z: s.pos[2] + (alongX ? s.normal[2] * prodOffset : along),
+          sx: 0.15 + rng() * 0.05, sy: 0.13 + rng() * 0.09, sz: 0.15 + rng() * 0.04,
+          color: colors[Math.floor(rng() * colors.length)],
+        });
+      }
+    }
+  }
+
+  if (isPromo) {
+    const pop = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.32),
+      new THREE.MeshBasicMaterial({ color: 0xe36ba0, transparent: true, opacity: 0.85, side: THREE.DoubleSide }));
+    pop.position.set(s.pos[0], (s.kind === 'island-case' ? 1.5 : h + 0.4), s.pos[2]);
+    g.add(pop);
+    promoGroup = g;
+  }
+
+  const label = makeLabel(s.name, isPromo ? '#b03a66' : '#2c3e55');
+  label.position.set(s.pos[0] + s.normal[0] * 0.7, (s.kind === 'island-case' ? 1.35 : h + 0.32), s.pos[2] + s.normal[2] * 0.7);
+  if (isPromo) g.add(label); else storeGroup.add(label);
+  labelSprites.push(label);
+
+  storeGroup.add(g);
+}
+
 /* エージェント3D表現 */
 function makeAgentMesh(agent) {
   const g = new THREE.Group();
-  const color = agent.adExposed ? 0xd55181 : 0x18b7d9;
+  const color = agent.adExposed ? 0xd55181 : 0x0f9fba;
   const body = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.14, 0.17, 0.9, 8),
-    new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.35, roughness: 0.5 })
+    new THREE.CylinderGeometry(0.13, 0.16, 0.85, 10),
+    new THREE.MeshLambertMaterial({ color })
   );
-  body.position.y = 0.45; g.add(body);
+  body.position.y = 0.43; g.add(body);
+  agent.bodyMesh = body;
   const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.13, 10, 8),
-    new THREE.MeshStandardMaterial({ color: 0xdfe8f5, emissive: 0x445566, emissiveIntensity: 0.25 })
+    new THREE.SphereGeometry(0.125, 12, 10),
+    new THREE.MeshLambertMaterial({ color: 0xf1e0cd })
   );
-  head.position.y = 1.05; g.add(head);
-  // 視線コーン
-  const coneGeo = new THREE.ConeGeometry(1.5, 2.8, 20, 1, true);
-  const cone = new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({
-    color: agent.adExposed ? 0xff5fa2 : 0x00e5ff, transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide,
-  }));
-  cone.rotation.x = Math.PI / 2;
+  head.position.y = 1.0; g.add(head);
+  const cone = new THREE.Mesh(
+    new THREE.ConeGeometry(1.4, 2.7, 20, 1, true),
+    new THREE.MeshBasicMaterial({ color: agent.adExposed ? 0xd55181 : 0x0f9fba, transparent: true, opacity: 0.07, depthWrite: false, side: THREE.DoubleSide })
+  );
+  cone.rotation.x = Math.PI / 2; cone.position.z = 1.35;
   const coneHolder = new THREE.Group();
-  coneHolder.add(cone); cone.position.z = 1.4;
-  coneHolder.position.y = 1.0;
-  coneHolder.visible = false;
-  g.add(coneHolder);
-  agent.coneHolder = coneHolder;
-  // ノベルティリング（受取後に表示）
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.03, 8, 20),
-    new THREE.MeshBasicMaterial({ color: 0xe8b04b, transparent: true, opacity: 0.9 }));
-  ring.rotation.x = Math.PI / 2; ring.position.y = 0.12; ring.visible = false;
+  coneHolder.add(cone); coneHolder.position.y = 0.95; coneHolder.visible = false;
+  g.add(coneHolder); agent.coneHolder = coneHolder;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.035, 8, 20),
+    new THREE.MeshBasicMaterial({ color: 0xc98500 }));
+  ring.rotation.x = Math.PI / 2; ring.position.y = 0.06; ring.visible = false;
   g.add(ring); agent.ring = ring;
+  const dwellDot = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0x0f9fba }));
+  dwellDot.position.y = 1.35; dwellDot.visible = false;
+  g.add(dwellDot); agent.dwellDot = dwellDot;
   scene.add(g);
   agent.mesh = g;
-  // トレイル
   const tGeo = new THREE.BufferGeometry();
   const tPos = new Float32Array(40 * 3);
   tGeo.setAttribute('position', new THREE.BufferAttribute(tPos, 3));
   const tLine = new THREE.Line(tGeo, new THREE.LineBasicMaterial({
-    color: agent.adExposed ? 0xd55181 : 0x1290b0, transparent: true, opacity: 0.4,
+    color: agent.adExposed ? 0xd55181 : 0x5aa8bd, transparent: true, opacity: 0.35,
   }));
-  tLine.frustumCulled = false;
+  tLine.frustumCulled = false; tLine.visible = false;
   scene.add(tLine);
   agent.trailLine = tLine; agent.trailPos = tPos; agent.trailLen = 0;
 }
 
 function disposeAgent(agent) {
-  if (agent.mesh) { scene.remove(agent.mesh); agent.mesh.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); }
+  if (agent.mesh) { scene.remove(agent.mesh); disposeObject(agent.mesh); }
   if (agent.trailLine) { scene.remove(agent.trailLine); agent.trailLine.geometry.dispose(); agent.trailLine.material.dispose(); }
 }
 
-/* ヒートマップ描画 */
-function heatColor(v) { // v 0..1 → シアン単色ランプ
-  const r = Math.round(lerp(6, 60, v));
-  const g = Math.round(lerp(16, 200, v));
-  const b = Math.round(lerp(28, 255, v));
+/* ヒートマップ描画（ライト床向け・単色ブルーランプ） */
+function heatColor(v) {
+  const r = Math.round(lerp(159, 29, v));
+  const g = Math.round(lerp(196, 111, v));
+  const b = Math.round(lerp(232, 184, v));
   return [r, g, b];
 }
 function redrawHeat() {
   const ctx = heat.canvas.getContext('2d');
-  const img = ctx.createImageData(64, 40);
+  const img = ctx.createImageData(heat.w, heat.h);
   let max = 8;
   for (let i = 0; i < heat.grid.length; i++) if (heat.grid[i] > max) max = heat.grid[i];
   for (let i = 0; i < heat.grid.length; i++) {
     const v = Math.pow(clamp(heat.grid[i] / max, 0, 1), 0.6);
     const [r, g, b] = heatColor(v);
     img.data[i * 4] = r; img.data[i * 4 + 1] = g; img.data[i * 4 + 2] = b;
-    img.data[i * 4 + 3] = Math.round(v * 210);
+    img.data[i * 4 + 3] = Math.round(v * 185);
   }
   ctx.putImageData(img, 0, 0);
   heat.tex.needsUpdate = true;
 }
 
-/* 棚ヒート（視線量→発光） */
+/* 棚ヒート（視線量 → 白→ブルーのティント） */
+const heatTint = new THREE.Color();
 function updateShelfHeatVisual() {
   let max = 20;
   SHELVES.forEach(s => { const g = STATS.shelves[s.id].gazeSec; if (g > max) max = g; });
   SHELVES.forEach(s => {
-    const sm = shelfMeshes[s.id]; if (!sm) return;
+    const sm = shelfMeshes[s.id]; if (!sm || !sm.mesh.material) return;
+    if (!sm.mesh.material.color) return;
     const v = clamp(STATS.shelves[s.id].gazeSec / max, 0, 1);
     if (S.layers.shelfheat) {
-      const c = new THREE.Color().setRGB(
-        lerp(0.03, 0.16, v) + (s.promoted ? 0.06 : 0),
-        lerp(0.07, 0.75, v),
-        lerp(0.12, 1.0, v)
+      heatTint.setRGB(
+        lerp(0.985, 0.31, v),
+        lerp(0.99, 0.70, v),
+        lerp(1.0, 0.82, v)
       );
-      sm.mesh.material.emissive = c;
-      sm.mesh.material.emissiveIntensity = lerp(0.25, 1.15, v);
+      sm.mesh.material.color.copy(heatTint);
     } else {
-      sm.mesh.material.emissive = new THREE.Color(0x06131f);
-      sm.mesh.material.emissiveIntensity = 1;
+      sm.mesh.material.color.set(s.promoted ? 0xfdf1f6 : 0xfbfcfe);
     }
   });
 }
@@ -1190,19 +1516,17 @@ function updateShelfHeatVisual() {
 let arrivalCarry = 0, gazeTimer = 0, heatTimer = 0, shelfHeatTimer = 0;
 
 function simStep(simDt) {
-  // 到着（ポアソン近似）
   const perSec = arrivalRatePerMin() / 60;
   arrivalCarry += perSec * simDt;
   while (arrivalCarry >= 1) {
     arrivalCarry -= 1;
-    if (agents.length < 46) {
+    if (agents.length < STORE.maxAgents) {
       const a = new Agent();
       makeAgentMesh(a);
       agents.push(a);
     }
   }
-  // エージェント更新
-  const sub = Math.max(1, Math.ceil(simDt / 0.5)); // 大きな simDt は分割して挙動を安定化
+  const sub = Math.max(1, Math.ceil(simDt / 0.5));
   const stepDt = simDt / sub;
   for (let k = 0; k < sub; k++) {
     agents.forEach(a => a.update(stepDt));
@@ -1210,82 +1534,108 @@ function simStep(simDt) {
     if (gazeTimer >= 0.25) {
       const iv = gazeTimer; gazeTimer = 0;
       agents.forEach(a => { if (!a.done) senseGaze(a, iv); });
-      // 回遊ヒート蓄積
       agents.forEach(a => {
         if (a.done) return;
-        const gx = Math.floor((a.x + FLOOR_W / 2) / FLOOR_W * 64);
-        const gz = Math.floor((a.z + FLOOR_D / 2) / FLOOR_D * 40);
-        if (gx >= 0 && gx < 64 && gz >= 0 && gz < 40) heat.grid[gz * 64 + gx] += iv;
+        const gx = Math.floor((a.x + STORE.floorW / 2) / STORE.floorW * heat.w);
+        const gz = Math.floor((a.z + STORE.floorD / 2) / STORE.floorD * heat.h);
+        if (gx >= 0 && gx < heat.w && gz >= 0 && gz < heat.h) heat.grid[gz * heat.w + gx] += iv;
       });
     }
   }
-  // 退店処理
   for (let i = agents.length - 1; i >= 0; i--) {
     if (agents[i].done) { if (followTarget === agents[i]) followTarget = null; disposeAgent(agents[i]); agents.splice(i, 1); }
   }
   STATS.simSec += simDt;
-  if (STATS.simSec >= 22 * 3600) { // 閉店 → 翌日
+  if (STATS.simSec >= 22 * 3600) {
     STATS.simSec = 10 * 3600;
     rolloverDay();
   }
 }
 
+function resetDayCounters() {
+  STATS.visitors = 0; STATS.adVisitors = 0; STATS.buyers = 0; STATS.revenue = 0; STATS.promoUnits = 0;
+  STATS.adStoreVisits = 0; STATS.returns = 0; STATS.applied = 0;
+  STATS.nov = { treat: 0, ctrl: 0, treatBuy: 0, ctrlBuy: 0, treatRev: 0, ctrlRev: 0 };
+  resetShelfStats();
+  STATS.buckets = STATS.buckets.map(() => 0);
+  if (heat.grid) heat.grid.fill(0);
+  stockState.cap = STORE.stockCap; stockState.units = STORE.stockCap; stockState.missed = 0;
+  agents.slice().forEach(a => disposeAgent(a));
+  agents.length = 0;
+  followTarget = null;
+}
+
 function rolloverDay() {
-  // 本日実績を履歴に確定し、翌日へ（scripted 波形に接続）
   const proj = window.__computeProjection ? window.__computeProjection() : null;
   HISTORY.push({ day: STATS.day, revenue: Math.round(proj ? proj.totalRevenue : STATS.revenue), cpOn: S.budget > 0, anomaly: false, live: true });
   if (HISTORY.length > 20) HISTORY.shift();
   STATS.day++;
-  STATS.visitors = 0; STATS.adVisitors = 0; STATS.buyers = 0; STATS.revenue = 0; STATS.promoUnits = 0;
-  STATS.adStoreVisits = 0; STATS.returns = 0; STATS.applied = 0;
-  STATS.nov = { treat: 0, ctrl: 0, treatBuy: 0, ctrlBuy: 0, treatRev: 0, ctrlRev: 0 };
-  SHELVES.forEach(s => STATS.shelves[s.id] = freshShelfStats());
-  STATS.buckets = STATS.buckets.map(() => 0);
-  heat.grid.fill(0);
-  stockState.units = stockState.cap; stockState.missed = 0; stockState.restockedAt = null;
-  agents.slice().forEach(a => { disposeAgent(a); });
-  agents.length = 0;
+  resetDayCounters();
   document.getElementById('sim-day').textContent = 'DAY ' + STATS.day;
+}
+
+/* ---------- 施設切替 ---------- */
+function loadFacility(key) {
+  FKEY = key; STORE = STORES[key];
+  SHELVES = STORE.shelves;
+  rebuildShelfIndex();
+  buildGraph();
+  selectShelf(null);
+  STATS.day = 15; STATS.simSec = 10 * 3600;
+  resetDayCounters();
+  genHistory();
+  buildStore();
+  camState = Object.assign({}, STORE.camPresets.over);
+  camTween = null; applyCam();
+  document.getElementById('sim-day').textContent = 'DAY ' + STATS.day;
+  document.getElementById('an-client').textContent = STORE.client;
+  document.getElementById('an-store').textContent = STORE.storeName + ' ｜ 事業ライン: 小売（販促×人流×POS）';
+  // ウォームアップ（12:30 まで先行実行してデータを貯める）
+  while (STATS.simSec < 12.5 * 3600) simStep(30);
 }
 
 /* 3D表示更新（毎フレーム） */
 function updateVisuals(realDt) {
+  const time = performance.now() / 1000;
   agents.forEach(a => {
     if (!a.mesh) return;
     a.mesh.position.set(a.x, 0, a.z);
     a.mesh.rotation.y = a.heading;
+    const walking = a.state === 'walk' || a.state === 'toRegister' || a.state === 'exit';
+    a.bodyMesh.position.y = 0.43 + (walking ? Math.abs(Math.sin(time * 7 + a.walkPhase)) * 0.035 : 0);
     a.coneHolder.visible = S.layers.cones && !a.done;
     if (a.ring) a.ring.visible = a.hasNovelty;
-    // トレイル
+    if (a.dwellDot) {
+      a.dwellDot.visible = a.state === 'dwell';
+      if (a.dwellDot.visible) a.dwellDot.scale.setScalar(1 + Math.sin(time * 5) * 0.25);
+    }
     if (S.layers.trails) {
       a.trailLine.visible = true;
       a.trailTick = (a.trailTick || 0) + realDt;
       if (a.trailTick > 0.08) {
         a.trailTick = 0;
         if (a.trailLen < 40) a.trailLen++;
-        // shift
         for (let i = a.trailLen - 1; i > 0; i--) {
           a.trailPos[i * 3] = a.trailPos[(i - 1) * 3];
           a.trailPos[i * 3 + 1] = a.trailPos[(i - 1) * 3 + 1];
           a.trailPos[i * 3 + 2] = a.trailPos[(i - 1) * 3 + 2];
         }
-        a.trailPos[0] = a.x; a.trailPos[1] = 0.06; a.trailPos[2] = a.z;
-        for (let i = a.trailLen; i < 40; i++) { a.trailPos[i * 3] = a.x; a.trailPos[i * 3 + 1] = 0.06; a.trailPos[i * 3 + 2] = a.z; }
+        a.trailPos[0] = a.x; a.trailPos[1] = 0.05; a.trailPos[2] = a.z;
+        for (let i = a.trailLen; i < 40; i++) { a.trailPos[i * 3] = a.x; a.trailPos[i * 3 + 1] = 0.05; a.trailPos[i * 3 + 2] = a.z; }
         a.trailLine.geometry.attributes.position.needsUpdate = true;
       }
     } else a.trailLine.visible = false;
   });
   labelSprites.forEach(l => l.visible = S.layers.labels);
-  heat.plane.visible = S.layers.floorheat;
+  if (heat.plane) heat.plane.visible = S.layers.floorheat;
   if (novStandGroup) novStandGroup.visible = S.novelty;
-  if (endcapGroup) endcapGroup.visible = S.endcap;
+  if (promoGroup) promoGroup.visible = S.endcap;
 
   heatTimer += realDt;
   if (heatTimer > 0.5 && S.layers.floorheat) { heatTimer = 0; redrawHeat(); }
   shelfHeatTimer += realDt;
   if (shelfHeatTimer > 0.8) { shelfHeatTimer = 0; updateShelfHeatVisual(); }
 
-  // カメラ tween / follow
   if (camTween) {
     camTween.t += realDt * 2.2;
     const t = Math.min(1, camTween.t);
@@ -1309,62 +1659,55 @@ function pickFollowTarget() {
 }
 
 /* =========================================================================
-   xAD ダッシュボード層
+   xAD ダッシュボード層 v2（ライトテーマ・分析ボードページ）
    - 推計（点推定±CI＋確信度）/ ウォーターフォール / O2O二重接続ファネル
    - 時系列＋着地予測 / 棚別テーブル / ノベルティRCT検証 / 消費予測 / AIアクション
+   - 3Dページ: ミニKPI＋売場詳細パネル
    ========================================================================= */
 
-const CSS = getComputedStyle(document.documentElement);
 const COL = {
   s1: '#0f9fba', s2: '#d55181', s3: '#c98500', s4: '#9085e9',
-  neutral: '#64748b', neutral2: '#475569',
-  good: '#199e70', warn: '#e8b04b', bad: '#e5484d', mute: '#8b98ab',
-  text: '#c6d4e8', faint: '#55667e', grid: 'rgba(120,180,255,0.10)',
+  neutral: '#64748b', neutral2: '#94a3b8',
+  good: '#147a55', warn: '#a36a06', bad: '#c53030', mute: '#64748b',
+  text: '#45586e', dark: '#16283c', faint: '#8a99ad', grid: 'rgba(22,40,60,0.08)',
 };
+let activeView = '3d';
 
 /* ---------- 確信度ラベル ---------- */
 function confChip(level) {
   const map = {
-    hi: ['conf-hi', '●', '確信度 高・推奨'],
-    md: ['conf-md', '●', '確信度 中・要サンプル'],
-    lo: ['conf-lo', '●', '確信度 低・互角'],
+    hi: ['conf-hi', '確信度 高・推奨'],
+    md: ['conf-md', '確信度 中・要サンプル'],
+    lo: ['conf-lo', '確信度 低・互角'],
   };
-  const [cls, dot, label] = map[level];
-  return `<span class="conf ${cls}">${dot} ${label}</span>`;
+  const [cls, label] = map[level];
+  return `<span class="conf ${cls}">● ${label}</span>`;
 }
 function confShort(level) {
-  return { hi: ['#4fd6a5', '高'], md: ['#e8b04b', '中'], lo: ['#8b98ab', '低'] }[level];
+  return { hi: [COL.good, '高'], md: [COL.warn, '中'], lo: [COL.mute, '低'] }[level];
 }
 
-/* ---------- 推計（分析仕様の統一推計モデルの簡易版） ----------
-   成果 = ベースライン + デジタル広告増分 + 店頭ノベルティ増分 + 人流寄与 + 季節
-   ライブ集計と解析的期待値をブレンド（少データで動く→賢くなる）      */
-const AVG_CURVE_HOURS = 14.4;          // arrivalCurve の 10-22時 積分
-const BASE_BUY_RATE = 0.54, AVG_BASKET = 470;
-
+/* ---------- 推計（統一推計モデルの簡易版） ---------- */
 function expectedComponents() {
-  const b = S.budget / 100;
-  const visitors0 = 2.3 * 60 * AVG_CURVE_HOURS;                 // traffic=1, 広告なし
+  const visitors0 = STORE.arrivalBase * 60 * 14.4;
   const footVisitors = visitors0 * (S.traffic - 1);
   const visitorsNoAd = visitors0 * S.traffic;
   const adIncVisits = visitorsNoAd * adReachLift();
   const visitors = visitorsNoAd + adIncVisits;
   const exposed = visitors * adExposureShare();
+  const buyRate = STORE.buyRate, basket = STORE.basket;
 
-  const baseline = visitors0 * BASE_BUY_RATE * AVG_BASKET;
-  const foot = footVisitors * BASE_BUY_RATE * AVG_BASKET;
-  const seasonal = 26000;                                        // scripted: 8月・猛暑要因
-  const adInc = adIncVisits * BASE_BUY_RATE * AVG_BASKET + exposed * 36;
+  const baseline = visitors0 * buyRate * basket;
+  const foot = footVisitors * buyRate * basket;
+  const seasonal = baseline * 0.055;
+  const adInc = adIncVisits * buyRate * basket + exposed * promotedShelf().price * 0.15;
   const treated = S.novelty ? visitors * 0.85 * S.novRate : 0;
-  // ノベルティ効果 = 興味喚起による立寄増 × 購買率リフト + わずかな併売波及
-  const novInc = treated * (0.10 * 240 + BASE_BUY_RATE * AVG_BASKET * 0.05);
+  const novInc = treated * (0.10 * promotedShelf().price + buyRate * basket * 0.05);
   const total = baseline + foot + seasonal + adInc + novInc;
   return { visitors, visitorsNoAd, adIncVisits, exposed, treated, baseline, foot, seasonal, adInc, novInc, total };
 }
 
-function dayFrac() {
-  return curveCumFrac(STATS.simSec);   // 到着カーブの累積割合（線形按分の過大推計を回避）
-}
+function dayFrac() { return curveCumFrac(STATS.simSec); }
 function blend(liveDaily, analytic) {
   const f = dayFrac();
   const w = clamp((f - 0.03) * 2.2, 0, 0.85);
@@ -1374,10 +1717,8 @@ function blend(liveDaily, analytic) {
 function computeProjection() {
   const e = expectedComponents();
   const f = dayFrac();
-  const liveRev = STATS.revenue / f;
-  const liveVis = STATS.visitors / f;
-  const totalRevenue = blend(liveRev, e.total);
-  const visitors = blend(liveVis, e.visitors);
+  const totalRevenue = blend(STATS.revenue / f, e.total);
+  const visitors = blend(STATS.visitors / f, e.visitors);
   const scale = totalRevenue / e.total;
   return {
     visitors, totalRevenue,
@@ -1390,22 +1731,28 @@ function computeProjection() {
 window.__computeProjection = computeProjection;
 
 /* ---------- KPI ---------- */
+function shelfTotals() {
+  let passes = 0, gazes = 0, stops = 0, purch = 0;
+  SHELVES.forEach(s => {
+    const st = STATS.shelves[s.id];
+    passes += st.passes; gazes += st.gazes; stops += st.stops; purch += st.purchases;
+  });
+  return { passes, gazes, stops, purch };
+}
+
 function renderKPIs() {
   const p = computeProjection();
-  const sh = STATS.shelves;
-  let passes = 0, gazes = 0, stops = 0, purch = 0;
-  SHELVES.forEach(s => { passes += sh[s.id].passes; gazes += sh[s.id].gazes; stops += sh[s.id].stops; purch += sh[s.id].purchases; });
-  const gazeRate = passes ? gazes / passes : 0;
-  const cvr = stops ? purch / stops : 0;
-  const weeklyAdRev = p.adInc * 7;
+  const t = shelfTotals();
+  const gazeRate = t.passes ? t.gazes / t.passes : 0;
+  const cvr = t.stops ? t.purch / t.stops : 0;
   const budgetYen = S.budget * 1e4;
-  const iroas = budgetYen > 0 ? weeklyAdRev / budgetYen : 0;
+  const iroas = budgetYen > 0 ? (p.adInc * 7) / budgetYen : 0;
 
   const kpis = [
     { label: '来店者数（予測）', value: fmtNum(p.visitors) + '人', ci: '±' + fmtNum(p.visitors * 0.06), conf: 'hi' },
     { label: '広告増分来店', value: '+' + fmtNum(p.adIncVisits) + '人', ci: '±' + fmtNum(p.adIncVisits * 0.18), conf: S.budget > 0 ? 'hi' : 'lo' },
-    { label: '棚前 視線獲得率', value: fmtPct(gazeRate), ci: '±' + fmtPct(normalCI95(gazeRate, Math.max(passes, 1)), 1), conf: passes > 200 ? 'hi' : 'md' },
-    { label: '立寄→購買 転換率', value: fmtPct(cvr), ci: '±' + fmtPct(normalCI95(cvr, Math.max(stops, 1)), 1), conf: stops > 120 ? 'hi' : 'md' },
+    { label: '棚前 視線獲得率', value: fmtPct(gazeRate), ci: '±' + fmtPct(normalCI95(gazeRate, Math.max(t.passes, 1)), 1), conf: t.passes > 200 ? 'hi' : 'md' },
+    { label: '立寄→購買 転換率', value: fmtPct(cvr), ci: '±' + fmtPct(normalCI95(cvr, Math.max(t.stops, 1)), 1), conf: t.stops > 120 ? 'hi' : 'md' },
     { label: '本日売上 着地', value: fmtYen(p.totalRevenue), ci: '±' + fmtYen(p.totalRevenue * 0.09), conf: 'md' },
     { label: '推計 iROAS', value: iroas ? iroas.toFixed(2) + '×' : '—', ci: iroas ? '±' + (iroas * 0.22).toFixed(2) : '広告OFF', conf: S.budget > 0 ? 'hi' : 'lo' },
   ];
@@ -1418,10 +1765,65 @@ function renderKPIs() {
     </div>`).join('');
 }
 
+/* ---------- ミニKPI（3Dページ） ---------- */
+function renderMiniKPI() {
+  const p = computeProjection();
+  const r = noveltyStatsCalc();
+  const items = [
+    { l: '来店（予測）', v: fmtNum(p.visitors) + '人', s: '±' + fmtNum(p.visitors * 0.06) },
+    { l: '広告増分来店', v: '+' + fmtNum(p.adIncVisits), s: '校正済み' },
+    { l: '売上着地', v: fmtYen(p.totalRevenue), s: '±9%' },
+    { l: 'RCTリフト', v: r.ready ? (r.d >= 0 ? '+' : '') + (r.d * 100).toFixed(1) + 'pt' : '収集中', s: r.ready ? 'z=' + r.z.toFixed(1) : (S.novelty ? `n=${r.n1 + r.n0}` : 'OFF') },
+  ];
+  document.getElementById('mini-kpi').innerHTML = items.map(i =>
+    `<div class="mk"><div class="m-label">${i.l}</div><div class="m-value">${i.v}</div><div class="m-sub">${i.s}</div></div>`).join('');
+}
+
+/* ---------- 売場詳細パネル（3Dページ・棚クリック） ---------- */
+function renderShelfDetail() {
+  const panel = document.getElementById('shelf-detail');
+  if (!selectedShelfId || !shelfById[selectedShelfId]) { panel.classList.remove('open'); return; }
+  const s = shelfById[selectedShelfId];
+  const st = STATS.shelves[s.id];
+  const gazeRate = st.passes ? st.gazes / st.passes : 0;
+  const stopRate = st.gazes ? st.stops / st.gazes : 0;
+  const cvr = st.stops ? st.purchases / st.stops : 0;
+  const maxV = Math.max(st.passes, 1);
+  const isPromo = s === promotedShelf();
+  const funnel = [
+    ['通過', st.passes, COL.neutral],
+    ['視線獲得', st.gazes, COL.s1],
+    ['立寄', st.stops, COL.s4],
+    ['購買', st.purchases, COL.good],
+  ];
+  panel.classList.add('open');
+  document.getElementById('sd-body').innerHTML = `
+    <div class="sd-name">${s.name}${isPromo ? '<span class="promo-tag">販促対象</span>' : ''}</div>
+    <div class="sd-cat">カテゴリ: ${s.cat} ｜ 平均単価 ¥${s.price.toLocaleString()}</div>
+    <div class="sd-fun">
+      ${funnel.map(([l, v, c]) => `
+        <div class="sd-frow"><span class="fl">${l}</span>
+          <span class="fb"><div style="width:${Math.max(3, v / maxV * 100)}%;background:${c}"></div></span>
+          <span class="fv">${fmtNum(v)}</span></div>`).join('')}
+    </div>
+    <div class="sd-metrics">
+      <div class="sd-m"><div class="l">視線獲得率</div><div class="v">${fmtPct(gazeRate, 0)}</div></div>
+      <div class="sd-m"><div class="l">視線→立寄</div><div class="v">${fmtPct(stopRate, 0)}</div></div>
+      <div class="sd-m"><div class="l">立寄→購買</div><div class="v">${fmtPct(cvr, 0)}</div></div>
+      <div class="sd-m"><div class="l">累計視線時間</div><div class="v">${Math.round(st.gazeSec)}s</div></div>
+    </div>
+    ${isPromo ? `<div class="sd-frow"><span class="fl">在庫</span>
+      <span class="fb"><div style="width:${(stockState.units / stockState.cap * 100).toFixed(0)}%;background:${COL.s2}"></div></span>
+      <span class="fv">${stockState.units}/${stockState.cap}</span></div>` : ''}
+    <div class="sd-note">ビーコン粒度の実測サンプル。数値は本日累計（ライブ集計・推定バッジ）。</div>`;
+}
+window.__renderShelfDetail = renderShelfDetail;
+
 /* ---------- canvas ヘルパ ---------- */
 function setupCanvas(cv, cssH) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const w = cv.parentElement.clientWidth;
+  if (w <= 0) return null;
   cv.width = w * dpr; cv.height = cssH * dpr;
   cv.style.height = cssH + 'px';
   const ctx = cv.getContext('2d');
@@ -1441,24 +1843,26 @@ function hideTip() { tipEl.style.display = 'none'; }
 let wfHits = [];
 function drawWaterfall() {
   const cv = document.getElementById('cv-waterfall');
-  const { ctx, w, h } = setupCanvas(cv, 230);
+  const setup = setupCanvas(cv, 240);
+  if (!setup) return;
+  const { ctx, w, h } = setup;
   ctx.clearRect(0, 0, w, h);
   const p = computeProjection();
 
   const novLive = noveltyStatsCalc();
   const items = [
-    { key: 'base', label: 'ベースライン', sub: '広告なしでも来た分', v: p.baseline, color: COL.neutral, conf: 'hi' },
-    { key: 'ad', label: 'デジタル広告', sub: 'ジオリフト校正済み増分', v: p.adInc, color: COL.s2, conf: S.budget > 0 ? 'hi' : 'lo' },
-    { key: 'nov', label: 'ノベルティ', sub: 'RCT実測ベース', v: p.novInc, color: COL.s3, conf: novLive.conf },
-    { key: 'foot', label: '人流（来店環境）', sub: '経路B: γ×人流偏差', v: p.foot, color: COL.s4, conf: 'md' },
-    { key: 'sea', label: '季節要因', sub: '8月・猛暑補正', v: p.seasonal, color: COL.neutral2, conf: 'lo' },
+    { label: 'ベースライン', sub: '広告なしでも来た分', v: p.baseline, color: COL.neutral, conf: 'hi' },
+    { label: 'デジタル広告', sub: 'ジオリフト校正済み増分', v: p.adInc, color: COL.s2, conf: S.budget > 0 ? 'hi' : 'lo' },
+    { label: 'ノベルティ', sub: 'RCT実測ベース', v: p.novInc, color: COL.s3, conf: novLive.conf },
+    { label: '人流（来店環境）', sub: '経路B: γ×人流偏差', v: p.foot, color: COL.s4, conf: 'md' },
+    { label: '季節要因', sub: '8月・猛暑補正', v: p.seasonal, color: COL.neutral2, conf: 'lo' },
   ];
   const total = items.reduce((a, i) => a + i.v, 0);
 
-  const mL = 8, mR = 8, mT = 14, mB = 44;
+  const mL = 8, mR = 8, mT = 16, mB = 46;
   const plotW = w - mL - mR, plotH = h - mT - mB;
   const n = items.length + 1;
-  const bw = Math.min(52, plotW / n - 10);
+  const bw = Math.min(64, plotW / n - 12);
   const gap = (plotW - bw * n) / (n + 1);
   const maxV = total * 1.06;
   const y0 = mT + plotH;
@@ -1466,39 +1870,34 @@ function drawWaterfall() {
 
   wfHits = [];
   let cum = 0;
-  ctx.font = '9px sans-serif';
   items.forEach((it, i) => {
     const x = mL + gap + (bw + gap) * i;
     const yTop = yOf(cum + it.v), yBot = yOf(cum);
     ctx.fillStyle = it.color;
     roundBarTop(ctx, x, yTop, bw, Math.max(yBot - yTop, 2), 4);
-    // コネクタ
-    ctx.strokeStyle = 'rgba(198,212,232,0.25)'; ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = 'rgba(70,90,110,0.3)'; ctx.setLineDash([3, 3]);
     ctx.beginPath(); ctx.moveTo(x + bw, yTop); ctx.lineTo(x + bw + gap, yTop); ctx.stroke();
     ctx.setLineDash([]);
-    // 値ラベル
-    ctx.fillStyle = '#eaf4ff'; ctx.textAlign = 'center'; ctx.font = '600 10px sans-serif';
+    ctx.fillStyle = COL.dark; ctx.textAlign = 'center'; ctx.font = '600 10.5px sans-serif';
     ctx.fillText(fmtYen(it.v), x + bw / 2, yTop - 5);
-    // 名前・確信度
-    ctx.fillStyle = COL.text; ctx.font = '9px sans-serif';
-    ctx.fillText(it.label, x + bw / 2, y0 + 13);
+    ctx.fillStyle = COL.text; ctx.font = '9.5px sans-serif';
+    ctx.fillText(it.label, x + bw / 2, y0 + 14);
     const [cc, cl] = confShort(it.conf);
     ctx.fillStyle = cc;
-    ctx.fillText('● ' + cl, x + bw / 2, y0 + 26);
-    wfHits.push({ x, y: yTop, w: bw, h: yBot - yTop, it, cum });
+    ctx.fillText('● ' + cl, x + bw / 2, y0 + 28);
+    wfHits.push({ x, y: yTop, w: bw, h: yBot - yTop, it });
     cum += it.v;
   });
-  // 合計バー
   const x = mL + gap + (bw + gap) * items.length;
   const yTop = yOf(total);
   ctx.fillStyle = COL.s1;
   roundBarTop(ctx, x, yTop, bw, y0 - yTop, 4);
-  ctx.fillStyle = '#eaf4ff'; ctx.font = '700 10.5px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillStyle = COL.dark; ctx.font = '700 11px sans-serif'; ctx.textAlign = 'center';
   ctx.fillText(fmtYen(total), x + bw / 2, yTop - 5);
-  ctx.fillStyle = COL.text; ctx.font = '9px sans-serif';
-  ctx.fillText('総売上（予測）', x + bw / 2, y0 + 13);
-  ctx.fillStyle = '#4fd6a5'; ctx.fillText('点推定±9%', x + bw / 2, y0 + 26);
-  wfHits.push({ x, y: yTop, w: bw, h: y0 - yTop, it: { label: '総売上（本日着地予測）', sub: '全要因合計', v: total, conf: 'md' }, cum: 0 });
+  ctx.fillStyle = COL.text; ctx.font = '9.5px sans-serif';
+  ctx.fillText('総売上（予測）', x + bw / 2, y0 + 14);
+  ctx.fillStyle = COL.good; ctx.fillText('点推定±9%', x + bw / 2, y0 + 28);
+  wfHits.push({ x, y: yTop, w: bw, h: y0 - yTop, it: { label: '総売上（本日着地予測）', sub: '全要因合計', v: total, conf: 'md' } });
 
   document.getElementById('wf-legend').innerHTML =
     `<span class="li"><span class="sw" style="background:${COL.neutral}"></span>自然発生</span>` +
@@ -1517,7 +1916,7 @@ function roundBarTop(ctx, x, y, w, h, r) {
 document.getElementById('cv-waterfall').addEventListener('mousemove', e => {
   const rect = e.target.getBoundingClientRect();
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  const hit = wfHits.find(h => mx >= h.x && mx <= h.x + h.w && my >= h.y - 14 && my <= h.y + h.h);
+  const hit = wfHits.find(hh => mx >= hh.x && mx <= hh.x + hh.w && my >= hh.y - 14 && my <= hh.y + hh.h);
   if (hit) {
     const ciPct = { hi: 0.08, md: 0.16, lo: 0.28 }[hit.it.conf] || 0.15;
     showTip(e.clientX, e.clientY,
@@ -1531,22 +1930,21 @@ function renderFunnel() {
   const p = computeProjection();
   const nv = STATS.nov;
   const budgetYen = S.budget * 1e4;
-  const reach = Math.round(S.budget * 1150);
+  const reach = Math.round(S.budget * STORE.reachPerBudget);
   const iroas = budgetYen > 0 ? (p.adInc * 7) / budgetYen : 0;
 
   document.getElementById('fun-upper').innerHTML = [
-    { l: '広告接触（リーチ）', v: fmtNum(reach), s: '週次・媒体計', },
+    { l: '広告接触（リーチ）', v: fmtNum(reach), s: '週次・媒体計' },
     { l: '増分来店', v: '+' + fmtNum(p.adIncVisits) + '人/日', s: '±' + fmtNum(p.adIncVisits * 0.18) + ' 校正済み' },
     { l: 'iROAS', v: iroas ? iroas.toFixed(2) + '×' : '—', s: iroas ? '±' + (iroas * 0.22).toFixed(2) : '広告OFF' },
   ].map(x => `<div class="fun-stage"><div class="f-label">${x.l}</div><div class="f-value">${x.v}</div><div class="f-sub">${x.s}</div></div>`).join('');
 
-  // 突合: 上段推計の販促商品期待購買 vs 下段実測
   const expPromo = p.exposed * 0.72 * 0.62 * 0.46 * dayFrac();
   const obsPromo = STATS.promoUnits;
   let badge;
   if (S.budget === 0 || expPromo < 5) badge = `<span class="badge est">突合: 判定待ち（サンプル収集中）</span>`;
   else if (obsPromo > expPromo * 0.55) badge = `<span class="badge on">↕ 突合: 整合（来店増→購買が伴っている）</span>`;
-  else badge = `<span class="badge" style="border-color:rgba(229,72,77,.5);color:#ff9b9e">↕ 突合: 乖離 — 来店は増えたが購買が伴わない</span>`;
+  else badge = `<span class="badge warnb">↕ 突合: 乖離 — 来店は増えたが購買が伴わない</span>`;
   document.getElementById('fun-mid').innerHTML = badge;
 
   document.getElementById('fun-lower').innerHTML = [
@@ -1560,7 +1958,9 @@ function renderFunnel() {
 let timeHits = [];
 function drawTimeChart() {
   const cv = document.getElementById('cv-time');
-  const { ctx, w, h } = setupCanvas(cv, 170);
+  const setup = setupCanvas(cv, 240);
+  if (!setup) return;
+  const { ctx, w, h } = setup;
   ctx.clearRect(0, 0, w, h);
   const p = computeProjection();
   const e = expectedComponents();
@@ -1570,71 +1970,63 @@ function drawTimeChart() {
   const fc = [];
   for (let i = 1; i <= 3; i++) {
     const dow = (STATS.day + i - 1) % 7;
-    const weekend = dow >= 5 ? 1.16 : 1.0;
-    fc.push(e.total * weekend);
+    fc.push(e.total * (dow >= 5 ? 1.16 : 1.0));
   }
   const pts = [...hist.map(hh => hh.revenue), p.totalRevenue, ...fc];
-  const maxV = Math.max(...pts, ...fc.map(v => v * 1.16)) * 1.12;
+  const maxV = Math.max(...pts) * 1.14;
   const minV = Math.min(...pts) * 0.82;
 
-  const mL = 40, mR = 8, mT = 10, mB = 20;
+  const mL = 46, mR = 10, mT = 12, mB = 22;
   const plotW = w - mL - mR, plotH = h - mT - mB;
   const N = pts.length;
   const xOf = i => mL + (i / (N - 1)) * plotW;
   const yOf = v => mT + plotH - ((v - minV) / (maxV - minV)) * plotH;
 
-  // グリッド・軸
-  ctx.strokeStyle = COL.grid; ctx.fillStyle = COL.faint; ctx.font = '8.5px sans-serif'; ctx.textAlign = 'right';
+  ctx.strokeStyle = COL.grid; ctx.fillStyle = COL.faint; ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
   for (let g = 0; g <= 3; g++) {
     const v = minV + (maxV - minV) * (g / 3);
     const y = yOf(v);
     ctx.beginPath(); ctx.moveTo(mL, y); ctx.lineTo(w - mR, y); ctx.stroke();
-    ctx.fillText(fmtYen(v), mL - 4, y + 3);
+    ctx.fillText(fmtYen(v), mL - 5, y + 3);
   }
 
-  // CP開始マーカー（異常検知）
   const cpIdx = hist.findIndex(hh => hh.anomaly);
   if (cpIdx >= 0) {
     const x = xOf(cpIdx);
-    ctx.strokeStyle = 'rgba(213,81,129,0.5)'; ctx.setLineDash([4, 3]);
+    ctx.strokeStyle = 'rgba(213,81,129,0.45)'; ctx.setLineDash([4, 3]);
     ctx.beginPath(); ctx.moveTo(x, mT); ctx.lineTo(x, mT + plotH); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = COL.s2; ctx.textAlign = 'center'; ctx.font = '8.5px sans-serif';
-    ctx.fillText('▲ CP開始', x, mT + 8);
+    ctx.fillStyle = COL.s2; ctx.textAlign = 'center'; ctx.font = '9px sans-serif';
+    ctx.fillText('▲ CP開始', x, mT + 9);
   }
 
-  // 予測バンド
   ctx.beginPath();
   const bandIdx = [todayIdx, todayIdx + 1, todayIdx + 2, todayIdx + 3];
   const bandVals = [p.totalRevenue, ...fc];
   bandIdx.forEach((bi, k) => { const x = xOf(bi), y = yOf(bandVals[k] * (1 + 0.09 + k * 0.025)); k === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
-  for (let k = bandIdx.length - 1; k >= 0; k--) { ctx.lineTo(xOf(bandIdx[k]), yOf(bandVals[k] * (1 - 0.09 - k * 0.025))); }
+  for (let k = bandIdx.length - 1; k >= 0; k--) ctx.lineTo(xOf(bandIdx[k]), yOf(bandVals[k] * (1 - 0.09 - k * 0.025)));
   ctx.closePath();
-  ctx.fillStyle = 'rgba(15,159,186,0.12)'; ctx.fill();
+  ctx.fillStyle = 'rgba(15,159,186,0.10)'; ctx.fill();
 
-  // 実績ライン
   ctx.strokeStyle = COL.s1; ctx.lineWidth = 2; ctx.beginPath();
   hist.forEach((hh, i) => { const x = xOf(i), y = yOf(hh.revenue); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); });
   ctx.lineTo(xOf(todayIdx), yOf(p.totalRevenue));
   ctx.stroke();
-  // 予測ライン（破線）
   ctx.setLineDash([5, 4]); ctx.beginPath();
   ctx.moveTo(xOf(todayIdx), yOf(p.totalRevenue));
   fc.forEach((v, k) => ctx.lineTo(xOf(todayIdx + 1 + k), yOf(v)));
   ctx.stroke(); ctx.setLineDash([]);
   ctx.lineWidth = 1;
 
-  // 本日ポイント
   const tx = xOf(todayIdx), ty = yOf(p.totalRevenue);
-  ctx.fillStyle = '#04050c'; ctx.strokeStyle = COL.s1; ctx.lineWidth = 2;
+  ctx.fillStyle = '#ffffff'; ctx.strokeStyle = COL.s1; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.arc(tx, ty, 4.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   ctx.lineWidth = 1;
-  ctx.fillStyle = '#eaf4ff'; ctx.font = '600 9px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillStyle = COL.dark; ctx.font = '600 9.5px sans-serif'; ctx.textAlign = 'center';
   ctx.fillText('本日', tx, ty - 9);
 
-  // x軸ラベル
-  ctx.fillStyle = COL.faint; ctx.font = '8px sans-serif';
-  [0, 6, 13].forEach(i => { if (hist[i]) ctx.fillText('D' + hist[i].day, xOf(i), h - 6); });
-  ctx.fillText('+3日', xOf(N - 1), h - 6);
+  ctx.fillStyle = COL.faint; ctx.font = '8.5px sans-serif';
+  [0, 6, 13].forEach(i => { if (hist[i]) ctx.fillText('D' + hist[i].day, xOf(i), h - 7); });
+  ctx.fillText('+3日', xOf(N - 1), h - 7);
 
   timeHits = pts.map((v, i) => ({
     x: xOf(i), y: yOf(v), v,
@@ -1645,7 +2037,7 @@ function drawTimeChart() {
 
   document.getElementById('time-legend').innerHTML =
     `<span class="li"><span class="sw" style="background:${COL.s1}"></span>日次売上 実績</span>` +
-    `<span class="li"><span class="sw" style="background:rgba(15,159,186,.35)"></span>予測±区間</span>` +
+    `<span class="li"><span class="sw" style="background:rgba(15,159,186,.25)"></span>予測±区間</span>` +
     `<span class="li" style="color:${COL.s2}">▲ 異常検知イベント</span>`;
 }
 document.getElementById('cv-time').addEventListener('mousemove', e => {
@@ -1664,26 +2056,29 @@ document.getElementById('cv-time').addEventListener('mouseleave', hideTip);
 /* ---------- 棚別テーブル ---------- */
 function renderShelfTable() {
   const rows = SHELVES
-    .filter(s => !(s.id === 'endG2' && !S.endcap))
+    .filter(s => !(s.promoted && !S.endcap && s.id === STORE.promoted.mainId))
     .map(s => {
       const st = STATS.shelves[s.id];
       return { s, st, gazeRate: st.passes ? st.gazes / st.passes : 0, cvr: st.stops ? st.purchases / st.stops : 0 };
     })
     .sort((a, b) => b.st.gazeSec - a.st.gazeSec);
   const maxGaze = Math.max(...rows.map(r => r.st.gazeSec), 1);
-  document.getElementById('shelf-tbody').innerHTML = rows.slice(0, 9).map(r => `
+  document.getElementById('shelf-tbody').innerHTML = rows.slice(0, 10).map(r => `
     <tr class="srow" data-shelf="${r.s.id}">
       <td><span class="sname">${r.s.promoted ? '<span class="promo-tag">販促</span>' : ''}${r.s.name}</span></td>
       <td>${fmtNum(r.st.passes)}</td>
       <td>${fmtPct(r.gazeRate, 0)}</td>
       <td>${fmtNum(r.st.stops)}</td>
       <td>${fmtPct(r.cvr, 0)}</td>
-      <td><span class="heatbar" style="width:${Math.max(4, (r.st.gazeSec / maxGaze) * 52)}px"></span></td>
+      <td><span class="heatbar" style="width:${Math.max(4, (r.st.gazeSec / maxGaze) * 56)}px"></span></td>
     </tr>`).join('');
 }
 document.getElementById('shelf-tbody').addEventListener('click', e => {
   const tr = e.target.closest('.srow');
-  if (tr) focusShelf(tr.dataset.shelf);
+  if (!tr) return;
+  switchView('3d');
+  selectShelf(tr.dataset.shelf);
+  focusShelf(tr.dataset.shelf);
 });
 
 /* ---------- ノベルティRCT検証 ---------- */
@@ -1699,7 +2094,7 @@ function noveltyStatsCalc() {
   const pbar = (nv.treatBuy + nv.ctrlBuy) / (n1 + n0);
   const mde = 2.8 * Math.sqrt(Math.max(pbar * (1 - pbar), 1e-4) * (1 / n1 + 1 / n0));
   const conf = z >= 1.96 ? 'hi' : (z >= 1.0 ? 'md' : 'lo');
-  const spend1 = nv.treatRev / Math.max(nv.treat - 0, 1), spend0 = nv.ctrlRev / Math.max(n0, 1);
+  const spend1 = nv.treatRev / Math.max(n1, 1), spend0 = nv.ctrlRev / Math.max(n0, 1);
   return { ready: true, n1, n0, p1, p0, d, se, z, rel, mde, conf, spend1, spend0 };
 }
 
@@ -1708,7 +2103,7 @@ function renderNovelty() {
   const badge = document.getElementById('badge-nov-mode');
   if (!S.novelty) {
     badge.textContent = 'ノベルティ: 停止中';
-    el.innerHTML = `<div class="exp-off">配布OFF。左パネルの「ノベルティ配布（RCT）」をONにすると、来店客を無作為に処置群/対照群へ割付け、対象商品の購買率リフトを統計検定します（グレーアウト＝接続導線の思想）。</div>`;
+    el.innerHTML = `<div class="exp-off">配布OFF。「ノベルティ配布（RCT）」をONにすると、来店客を無作為に処置群/対照群へ割付け、対象商品の購買率リフトを統計検定します。</div>`;
     return;
   }
   badge.textContent = 'ノベルティ: RCT実施中';
@@ -1717,12 +2112,12 @@ function renderNovelty() {
     el.innerHTML = `<div class="exp-off">サンプル収集中… 処置群 ${r.n1}人 / 対照群 ${r.n0}人（各5人以上で検定開始）</div>`;
     return;
   }
-  const liftColor = r.conf === 'hi' ? '#4fd6a5' : (r.conf === 'md' ? COL.warn : COL.mute);
+  const liftColor = r.conf === 'hi' ? COL.good : (r.conf === 'md' ? COL.warn : COL.mute);
   const sigProgress = clamp(Math.abs(r.z) / 1.96, 0, 1);
   el.innerHTML = `
     <div class="exp-grid">
       <div class="exp-cell"><div class="e-label">処置群（受取）n=${fmtNum(r.n1)}</div>
-        <div class="e-value" style="color:#eaf4ff">${fmtPct(r.p1)}</div>
+        <div class="e-value">${fmtPct(r.p1)}</div>
         <div class="e-label">対象商品購買率</div></div>
       <div class="exp-cell"><div class="e-label">対照群 n=${fmtNum(r.n0)}</div>
         <div class="e-value" style="color:${COL.text}">${fmtPct(r.p0)}</div>
@@ -1740,33 +2135,35 @@ function renderNovelty() {
 
 /* ---------- 消費予測・在庫 ---------- */
 function renderStock() {
-  const f = dayFrac();
   const hoursLeft = Math.max(22 - STATS.simSec / 3600, 0);
   const elapsedH = Math.max(STATS.simSec / 3600 - 10, 0.2);
-  const promoRate = STATS.promoUnits / elapsedH; // 個/h
+  const promoRate = STATS.promoUnits / elapsedH;
   const eta = promoRate > 0.1 ? stockState.units / promoRate : Infinity;
-  const promoName = promotedShelf().name;
   const rows = [];
   const etaStr = isFinite(eta)
-    ? (eta < hoursLeft
-      ? `本日 ${fmtClock(STATS.simSec + eta * 3600)} 欠品予測`
-      : `残 ${(eta).toFixed(1)}h で消化`)
+    ? (eta < hoursLeft ? `本日 ${fmtClock(STATS.simSec + eta * 3600)} 欠品予測` : `残 ${eta.toFixed(1)}h で消化`)
     : '消化データ収集中';
   rows.push({
-    name: '新商品グミX（販促）', pct: stockState.units / stockState.cap,
+    name: STORE.promoName + '（販促）', pct: stockState.units / stockState.cap,
     eta: stockState.units <= 0 ? `欠品中・機会損失 ${stockState.missed}件` : etaStr,
     alert: stockState.units <= 0 || (isFinite(eta) && eta < hoursLeft), color: COL.s2,
   });
-  const chill = STATS.shelves.chill, drink = STATS.shelves.drink;
-  rows.push({ name: '弁当・チルド', pct: clamp(1 - (chill.purchases / 150), 0, 1), eta: chill.purchases > 40 ? '18時台 追加補充推奨' : '安定', alert: chill.purchases > 40, color: COL.s1 });
-  rows.push({ name: '飲料', pct: clamp(1 - (drink.purchases / 220), 0, 1), eta: '安定（自動補充）', alert: false, color: COL.s1 });
+  const others = SHELVES.filter(s => !s.promoted && s.pop > 0.09).slice(0, 2);
+  others.forEach(s => {
+    const st = STATS.shelves[s.id];
+    const heavy = st.purchases > (FKEY === 'depato' ? 120 : 40);
+    rows.push({
+      name: s.name, pct: clamp(1 - st.purchases / (FKEY === 'depato' ? 400 : 150), 0, 1),
+      eta: heavy ? '夕方 追加補充推奨' : '安定（自動補充）', alert: heavy, color: COL.s1,
+    });
+  });
   document.getElementById('stock-body').innerHTML = rows.map(r => `
     <div class="stock-row">
       <span class="s-name">${r.name}</span>
       <span class="s-bar"><div style="width:${(r.pct * 100).toFixed(0)}%;background:${r.color}"></div></span>
       <span class="s-eta ${r.alert ? 'stock-alert' : ''}">${r.eta}</span>
     </div>`).join('') +
-    `<div class="mde-text" style="margin-top:5px">消化予測 = ライブ購買レート × デジタルCP・人流の先行指標（推定バッジ）。欠品予測時は補充とフェイス拡大を提案。</div>`;
+    `<div class="mde-text" style="margin-top:6px">消化予測 = ライブ購買レート × デジタルCP・人流の先行指標（推定バッジ）。欠品中は機会損失（在庫内生性）を別カウント。</div>`;
 }
 function fmtClock(sec) {
   const hh = Math.floor(sec / 3600), mm = Math.floor((sec % 3600) / 60);
@@ -1774,12 +2171,12 @@ function fmtClock(sec) {
 }
 
 /* ---------- AI アクションカード ---------- */
-const actionState = {};   // key -> {status, execSimSec}
+const actionState = {};
 function buildActions() {
   const p = computeProjection();
   const r = noveltyStatsCalc();
+  const promoUnit = FKEY === 'depato' ? '個' : '個';
   const list = [];
-  // 1: 予算
   if (S.budget < 70) {
     list.push({
       key: 'budget-up', priority: 'high', category: '予算',
@@ -1797,25 +2194,23 @@ function buildActions() {
       confidence: 0.74, source: 'L3-1',
     });
   }
-  // 2: 売場
   if (!S.endcap) {
     list.push({
       key: 'endcap-on', priority: 'high', category: '売場',
-      title: 'エンド陳列を導入（販促棚）',
-      reason: 'シミュレーション上、エンド陳列は棚前視線を約1.9倍化。広告接触客の指名来店の受け皿として棚内フェイスでは取りこぼしが発生。',
+      title: FKEY === 'depato' ? '催事プロモ台を設置' : 'エンド陳列を導入（販促棚）',
+      reason: 'シミュレーション上、販促什器は棚前視線を約1.9倍化。広告接触客の指名来店の受け皿として棚内フェイスでは取りこぼしが発生。',
       impact: { metric: '販促商品販売', delta: Math.round(STATS.promoUnits * 0.9 + 18), ci: 8 },
       confidence: 0.81, source: 'creative / shelf-sim',
     });
   } else {
     list.push({
       key: 'endcap-expand', priority: 'med', category: '売場',
-      title: 'G3エンドへ横展開（酒類×グミX クロスMD）',
-      reason: '酒類棚の立寄客と販促商品購買層の重なりが視線データで確認できる。第2エンドでの接触機会追加が有効と推計。',
+      title: FKEY === 'depato' ? '第2催事スペースへ横展開' : 'G3エンドへ横展開（クロスMD）',
+      reason: '既存売場の立寄客と販促商品購買層の重なりが視線データで確認できる。第2接触機会の追加が有効と推計。',
       impact: { metric: '販促商品販売', delta: Math.round(Math.max(STATS.promoUnits, 10) * 0.35), ci: 6 },
       confidence: 0.66, source: 'shelf-sim',
     });
   }
-  // 3: ノベルティ
   if (S.novelty && r.ready && r.conf === 'hi') {
     list.push({
       key: 'nov-scale', priority: 'high', category: '店頭CP',
@@ -1891,7 +2286,14 @@ function renderBeacon() {
     `<div><span class="t">${l.t}</span><span class="${l.cls || ''}">${l.msg}</span></div>`).join('');
 }
 
-/* ---------- コントロール ---------- */
+/* ---------- ビュー・施設切替 / 折り畳み ---------- */
+function switchView(view) {
+  activeView = view;
+  document.querySelectorAll('#view-seg button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  document.getElementById('page-analytics').classList.toggle('active', view === 'analytics');
+  if (view === 'analytics') requestAnimationFrame(() => { refreshCharts(); refreshDash(); });
+}
+
 function bindControls() {
   const $ = id => document.getElementById(id);
   $('ctl-budget').addEventListener('input', e => {
@@ -1931,13 +2333,49 @@ function bindControls() {
     b.addEventListener('click', () => {
       const c = b.dataset.cam;
       if (c === 'follow') pickFollowTarget();
-      else tweenCam(CAM_PRESETS[c]);
+      else tweenCam(Object.assign({}, STORE.camPresets[c]));
     });
   });
+  // ビュー切替
+  document.querySelectorAll('#view-seg button').forEach(b => {
+    b.addEventListener('click', () => switchView(b.dataset.view));
+  });
+  // 施設切替
+  document.querySelectorAll('#facility-seg button').forEach(b => {
+    b.addEventListener('click', () => {
+      if (b.dataset.fac === FKEY) return;
+      document.querySelectorAll('#facility-seg button').forEach(x => x.classList.toggle('active', x === b));
+      loadFacility(b.dataset.fac);
+      Object.keys(actionState).forEach(k => delete actionState[k]);
+      refreshDash(); refreshCharts(); renderActions();
+    });
+  });
+  // オーバーレイ折り畳み（ヘッダクリック）
+  document.querySelectorAll('.ovl-head[data-collapse]').forEach(head => {
+    head.addEventListener('click', () => {
+      const ovl = head.closest('.ovl');
+      ovl.classList.toggle('collapsed');
+      head.querySelector('.tgl').textContent = ovl.classList.contains('collapsed') ? '+' : '−';
+    });
+  });
+  // カード折り畳み
+  document.querySelectorAll('.card-title[data-ccollapse]').forEach(title => {
+    title.addEventListener('click', () => {
+      const card = title.closest('.card');
+      card.classList.toggle('collapsed');
+      title.querySelector('.ctgl').textContent = card.classList.contains('collapsed') ? '▸' : '▾';
+      if (!card.classList.contains('collapsed')) refreshCharts();
+    });
+  });
+  // 売場詳細を閉じる
+  document.getElementById('sd-close').addEventListener('click', () => selectShelf(null));
   window.addEventListener('resize', refreshCharts);
 }
 
-function refreshCharts() { drawWaterfall(); drawTimeChart(); }
+function refreshCharts() {
+  if (activeView !== 'analytics') return;
+  drawWaterfall(); drawTimeChart();
+}
 
 /* ---------- メインループ ---------- */
 let lastT = performance.now();
@@ -1945,25 +2383,31 @@ function tick(t) {
   const realDt = Math.min((t - lastT) / 1000, 0.06);
   lastT = t;
   if (!S.paused) simStep(realDt * S.speed);
-  updateVisuals(realDt);
-  renderer.render(scene, camera);
+  if (activeView === '3d') {
+    updateVisuals(realDt);
+    renderer.render(scene, camera);
+  }
   document.getElementById('sim-clock').textContent = fmtClock(STATS.simSec);
   requestAnimationFrame(tick);
 }
 
 function refreshDash() {
-  renderKPIs(); renderFunnel(); renderShelfTable(); renderNovelty(); renderStock(); renderBeacon();
+  renderMiniKPI(); renderBeacon();
+  if (selectedShelfId) renderShelfDetail();
+  if (activeView === 'analytics') {
+    renderKPIs(); renderFunnel(); renderShelfTable(); renderNovelty(); renderStock();
+  }
 }
 
 /* ---------- 起動 ---------- */
 initThree();
 bindControls();
 document.getElementById('sim-day').textContent = 'DAY ' + STATS.day;
-// ウォームアップ: 開店直後の空状態を避けるため 45 sim分 を先に回す
-for (let i = 0; i < 90; i++) simStep(30);
-refreshDash(); refreshCharts(); renderActions();
+// ウォームアップ: 12:30 まで先行実行してダッシュボードにデータを貯める
+while (STATS.simSec < 12.5 * 3600) simStep(30);
+refreshDash(); renderActions();
 setInterval(refreshDash, 1000);
-setInterval(refreshCharts, 2500);
+setInterval(() => { if (activeView === 'analytics') { renderKPIs(); renderFunnel(); renderShelfTable(); renderNovelty(); renderStock(); refreshCharts(); } }, 2500);
 setInterval(renderActions, 4000);
 requestAnimationFrame(tick);
 setTimeout(() => document.getElementById('loading').classList.add('hide'), 500);
