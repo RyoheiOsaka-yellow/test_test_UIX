@@ -20,7 +20,7 @@ body{font-family:var(--jp);background:var(--bg);color:var(--txt);overflow:hidden
 canvas{display:block}
 
 /* ===== Header ===== */
-#hdr{position:fixed;top:0;left:0;right:0;height:52px;display:flex;align-items:center;gap:14px;
+#hdr{position:fixed;top:0;left:0;right:0;min-height:52px;display:flex;align-items:center;gap:14px;
   padding:0 16px;background:linear-gradient(180deg,rgba(13,15,20,.92),rgba(13,15,20,.75) 70%,transparent);
   z-index:30;pointer-events:none}
 #hdr>*{pointer-events:auto}
@@ -28,8 +28,8 @@ canvas{display:block}
 .brand .x{font-family:var(--mono);font-size:19px;font-weight:600;color:#ffffff;letter-spacing:.5px}
 .brand .nm{font-size:12px;color:var(--sub);letter-spacing:.08em}
 .hdr-title{font-size:13px;font-weight:700;letter-spacing:.06em;color:var(--txt);border-left:2px solid var(--brex);padding-left:10px}
-#lvl-crumb{display:flex;gap:6px;margin-left:auto;font-family:var(--mono);font-size:11px}
-.crumb{padding:5px 12px;border-radius:20px;border:1px solid var(--line);color:var(--sub);cursor:pointer;
+#lvl-crumb{display:flex;gap:5px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end;font-family:var(--mono);font-size:11px}
+.crumb{padding:5px 9px;border-radius:20px;border:1px solid var(--line);color:var(--sub);cursor:pointer;
   letter-spacing:.06em;transition:.2s;background:rgba(21,24,33,.8)}
 .crumb.active{border-color:var(--brex);color:var(--brex);background:rgba(255,138,30,.1)}
 .crumb:hover{color:var(--txt)}
@@ -166,12 +166,12 @@ canvas{display:block}
 
 <div id="hdr">
   <div class="brand"><span class="x">XBUILD</span></div>
-  <div class="hdr-title">静岡市中央体育館 デジタルツイン — ベルテックス静岡 ホームゲーム <span style="font-size:10px;color:var(--sub);font-weight:400">※OSM実データ＋一部仮説モデル</span></div>
+  <div class="hdr-title">静岡市中央体育館 デジタルツイン — ベルテックス静岡 ホームゲーム <span style="font-size:10px;color:var(--sub);font-weight:400">※OSM実データ＋仮説モデル</span></div>
   <div id="lvl-crumb">
-    <div class="crumb active" data-lvl="site">L0 サイト俯瞰</div>
-    <div class="crumb" data-lvl="plaza">L1 エントランス</div>
-    <div class="crumb" data-lvl="arena">L2 アリーナ内部</div>
-    <div class="crumb" id="pc-toggle" title="点群/ワイヤーフレーム表示">◆ 点群ビュー</div>
+    <div class="crumb active" data-lvl="site" title="サイト俯瞰">L0 俯瞰</div>
+    <div class="crumb" data-lvl="plaza" title="エントランス広場">L1 広場</div>
+    <div class="crumb" data-lvl="arena" title="アリーナ内部">L2 内部</div>
+    <div class="crumb" id="pc-toggle" title="点群/ワイヤーフレーム表示">◆ 点群</div>
   </div>
 </div>
 
@@ -648,15 +648,21 @@ const brexEdgeLine = (function brexEdge(){
 })();
 /* サイン */
 function makeLabel(text, size=18, color='#ff8a1e'){
-  const cv = document.createElement('canvas'); cv.width=512; cv.height=128;
+  /* テキスト幅を実測してキャンバス幅を自動調整（長い名称でも見切れない） */
+  const cv = document.createElement('canvas');
+  const meas = cv.getContext('2d');
+  meas.font = `700 64px 'Noto Sans JP', sans-serif`;
+  const tw = meas.measureText(text).width;
+  cv.width = Math.min(2048, Math.max(256, Math.ceil(tw) + 48));
+  cv.height = 128;
   const c = cv.getContext('2d');
   c.font = `700 64px 'Noto Sans JP', sans-serif`;
   c.fillStyle = color; c.textAlign='center'; c.textBaseline='middle';
   c.shadowColor='rgba(0,0,0,.7)'; c.shadowBlur=14;
-  c.fillText(text, 256, 64);
+  c.fillText(text, cv.width/2, 64);
   const tex = new THREE.CanvasTexture(cv);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:false}));
-  sp.scale.set(size*4, size, 1);
+  sp.scale.set(size*(cv.width/128), size, 1);
   return sp;
 }
 const arenaLabel = makeLabel('静岡市中央体育館');
@@ -1594,7 +1600,9 @@ const roadGraph = (function(){
     out.reverse();
     return out;
   }
-  return {path};
+  let _links = 0;
+  nodes.forEach(v=>{ _links += v.adj.size; });
+  return {path, stats:{nodes:nodes.size, links:Math.round(_links/2)}};
 })();
 
 /* 出発地: 西川田駅 + 駐車場3箇所 → エントランスゲート */
@@ -2521,7 +2529,7 @@ function renderFlowSec(){
 function renderPanel(){
   if(level==='site'){
     pb.innerHTML = `
-      <div class="sec"><div class="sec-t"><b>L0</b> サイト人流 — 静岡市中央体育館・駿府城エリア広域</div>
+      <div class="sec"><div class="sec-t"><b>L0</b> サイト人流 — 中央体育館・駿府城エリア</div>
         <div class="kpi-grid" id="kpi-site"></div></div>
       <div class="sec"><div class="sec-t">レイヤー</div>
         <div class="row-btns" id="layer-chips">
@@ -2967,8 +2975,8 @@ function addCrumb(id, txt, title){
   crumbBar.appendChild(d); return d;
 }
 const vpsBtn=addCrumb('vps-toggle','📷 VPS','カメラ画像 → 3Dマップ位置合わせ（MultiSet Query Mode風）');
-const odBtn =addCrumb('od-toggle','◎ OD分析','来場者OD × ガウスKDE');
-const crBtn =addCrumb('cross-toggle','⇄ クロス分析','静岡観光 × ベルテックス興行');
+const odBtn =addCrumb('od-toggle','◎ OD','来場者OD × ガウスKDE');
+const crBtn =addCrumb('cross-toggle','⇄ クロス','静岡観光 × ベルテックス興行');
 
 /* ================================================================
    1) VPS ローカライズ可視化
@@ -3706,7 +3714,7 @@ function updateChevrons(dt){
 /* ---------- ヘッダーボタン ---------- */
 const tourBtn=(function(){
   const d=document.createElement('div');
-  d.className='crumb'; d.id='tour-toggle'; d.textContent='🗾 観光導線';
+  d.className='crumb'; d.id='tour-toggle'; d.textContent='🗾 観光';
   d.title='静岡駅ハブ → 清水・日本平・駿府城・富士・熱海（仮ルート）';
   document.getElementById('lvl-crumb').appendChild(d);
   return d;
@@ -3762,162 +3770,6 @@ applyTourVis();
 })();
 
 
-/* ================= 📐 図面(blueprint)モード — Stage D 非破壊追加 =================
-   BIMビューア再現: 通り芯 X1..X7 × Y1..Y5 / FL 1FL・2FL・3FL・RFL /
-   ピンクワイヤ柱梁スラブ階段 / 緑軸ラベル / 橙FLラベル / 白背景 /
-   視点: 俯瞰・平面・立面・断面(clippingPlane)・回転(自動オービット) */
-(function(){
-const BP = { on:false, orbit:false, clip:false, saved:null, ui:null };
-const PINK = 0xff4fa3;
-const R36 = 36*Math.PI/180, _c = Math.cos(R36), _s = Math.sin(R36);
-/* 構造ローカル座標 (a=長軸, b=短軸) → world */
-function W(a, b, y){ return new THREE.Vector3(MAIN_C.x + a*_c - b*_s, y, MAIN_C.z - a*_s - b*_c); }
-
-const XA = [-54,-36,-18,0,18,36,54];              // X1..X7 @18m
-const YB = [-40,-20,0,20,40];                     // Y1..Y5 @20m
-const FLS = [['1FL',0,'±0'],['2FL',6,'+6,000'],['3FL',11.5,'+11,500'],['RFL',21,'+21,000']];
-
-const bpGroup = new THREE.Group(); bpGroup.visible = false; scene.add(bpGroup);
-const bpMats = [];
-function bpMat(m){ bpMats.push(m); return m; }
-const segPos = [];
-function seg(p, q){ segPos.push(p.x,p.y,p.z, q.x,q.y,q.z); }
-
-/* 柱: 各通り芯交点に二重縦線 (0→RFL) */
-XA.forEach(a=> YB.forEach(b=>{
-  seg(W(a-0.45,b,0), W(a-0.45,b,21));
-  seg(W(a+0.45,b,0), W(a+0.45,b,21));
-}));
-/* 梁: 2FL/3FL/RFL の各レベルで格子 */
-FLS.slice(1).forEach(([,y])=>{
-  YB.forEach(b=> seg(W(-54,b,y), W(54,b,y)));
-  XA.forEach(a=> seg(W(a,-40,y), W(a,40,y)));
-});
-/* スラブ外形: 全FL */
-FLS.forEach(([,y])=>{
-  const c4 = [W(-60,-46,y), W(60,-46,y), W(60,46,y), W(-60,46,y)];
-  for(let i=0;i<4;i++) seg(c4[i], c4[(i+1)%4]);
-});
-/* 階段コア ×2 (a=±47, 8×5m): コア縦材 + 各FL踊り場 + フライト斜材 */
-[-47, 47].forEach(a0=>{
-  const cn = [[a0-4,-2.5],[a0+4,-2.5],[a0+4,2.5],[a0-4,2.5]];
-  cn.forEach(([a,b])=> seg(W(a,b,0), W(a,b,21)));
-  FLS.forEach(([,y])=>{ for(let i=0;i<4;i++) seg(W(cn[i][0],cn[i][1],y), W(cn[(i+1)%4][0],cn[(i+1)%4][1],y)); });
-  for(let i=0;i<FLS.length-1;i++){
-    const y0=FLS[i][1], y1=FLS[i+1][1], ym=(y0+y1)/2, d=(i%2? -1:1);
-    seg(W(a0-3.4, d*1.2, y0), W(a0+3.4, d*1.2, ym));   // 上りフライト
-    seg(W(a0+3.4, -d*1.2, ym), W(a0-3.4, -d*1.2, y1)); // 折返しフライト
-    seg(W(a0+3.4, d*1.2, ym), W(a0+3.4, -d*1.2, ym));  // 中間踊り場
-  }
-});
-const segGeo = new THREE.BufferGeometry();
-segGeo.setAttribute('position', new THREE.Float32BufferAttribute(segPos, 3));
-bpGroup.add(new THREE.LineSegments(segGeo, bpMat(new THREE.LineBasicMaterial({color:PINK}))));
-
-/* スラブ面 (淡ピンク・両面) */
-FLS.forEach(([,y])=>{
-  const g = new THREE.PlaneGeometry(120, 92);
-  const m = new THREE.Mesh(g, bpMat(new THREE.MeshBasicMaterial({color:0xffdcee, transparent:true, opacity:0.28, side:THREE.DoubleSide, depthWrite:false})));
-  m.rotation.x = -Math.PI/2; m.rotation.z = 0;
-  m.position.copy(W(0,0,y)); m.rotation.y = 0;
-  m.rotateOnWorldAxis(new THREE.Vector3(0,1,0), R36);
-  bpGroup.add(m);
-});
-/* 白図面グリッド */
-const gh = new THREE.GridHelper(420, 42, 0xc7cfda, 0xe3e8ef);
-gh.position.set(MAIN_C.x, -0.05, MAIN_C.z); gh.rotation.y = R36;
-gh.material.transparent = true; gh.material.opacity = 0.9; bpMats.push(gh.material);
-bpGroup.add(gh);
-
-/* 軸ラベル(緑) / FLラベル(橙) */
-XA.forEach((a,i)=>{ const sp = makeLabel('X'+(i+1), 8, '#2ecf8f'); sp.position.copy(W(a,-50,1.2)); bpGroup.add(sp); });
-YB.forEach((b,i)=>{ const sp = makeLabel('Y'+(i+1), 8, '#2ecf8f'); sp.position.copy(W(-62,b,1.2)); bpGroup.add(sp); });
-FLS.forEach(([nm,y,off])=>{ const sp = makeLabel(nm+' '+off, 9, '#ff8a1e'); sp.position.copy(W(64,46,y+0.8)); bpGroup.add(sp); });
-bpGroup.traverse(o=>{ if(o.material && o.material.isSpriteMaterial) bpMats.push(o.material); });
-
-/* 断面クリッピング (Y軸系に垂直、中心で切断) */
-const clipN = new THREE.Vector3(-_s, 0, -_c).normalize();
-const clipPlane = new THREE.Plane(clipN, -clipN.dot(W(0,0,0)));
-renderer.localClippingEnabled = true;
-
-/* ---- UI: ヘッダートグル + 視点バー ---- */
-const bpBtn = document.createElement('div');
-bpBtn.className = 'crumb'; bpBtn.id = 'bp-toggle'; bpBtn.title = '構造フレーム図面モード';
-bpBtn.textContent = '📐 図面';
-document.getElementById('lvl-crumb').appendChild(bpBtn);
-
-const bar = document.createElement('div');
-bar.id = 'bp-bar';
-bar.style.cssText = 'display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);gap:8px;z-index:60;background:#fff;border:1px solid #e3e8ef;border-radius:10px;padding:8px 10px;box-shadow:0 6px 24px rgba(20,30,60,.14);font:600 12px "Noto Sans JP",sans-serif';
-const VIEWS = [
-  ['俯瞰', ()=> flyTo(W(0,0,8), 300, 0.92, -0.62)],
-  ['平面', ()=> flyTo(W(0,0,0), 320, 0.125, -R36)],
-  ['立面', ()=> flyTo(W(0,0,10), 260, 1.44, -R36 + Math.PI/2)],
-  ['断面', ()=> setClip(!BP.clip)],
-  ['回転', ()=> setOrbit(!BP.orbit)],
-];
-const barBtns = {};
-VIEWS.forEach(([nm, fn])=>{
-  const b = document.createElement('button');
-  b.textContent = nm;
-  b.style.cssText = 'border:1px solid #d6dde6;background:#f6f8fb;color:#26314a;border-radius:7px;padding:6px 12px;cursor:pointer;font:inherit';
-  b.onclick = fn; bar.appendChild(b); barBtns[nm] = b;
-});
-document.body.appendChild(bar);
-function markBtn(nm, on){ barBtns[nm].style.background = on ? '#ffe4f1' : '#f6f8fb'; barBtns[nm].style.borderColor = on ? '#ff4fa3' : '#d6dde6'; }
-function setClip(on){
-  BP.clip = on;
-  bpMats.forEach(m=> m.clippingPlanes = on ? [clipPlane] : []);
-  markBtn('断面', on);
-  if(on) flyTo(W(0,-140,12), 210, 1.30, -R36 + Math.PI/2);
-}
-function setOrbit(on){ BP.orbit = on; markBtn('回転', on); }
-(function bpOrbitLoop(){
-  requestAnimationFrame(bpOrbitLoop);
-  if(BP.on && BP.orbit){ ctrl.sph.theta -= 0.0038; ctrl.apply(); }
-})();
-
-/* ---- モード出入り ---- */
-const HIDE_IDS = ['timeline','panel','panel-tab','enter-hint','tip'];
-function bpHideScene(){
-  scene.children.forEach(o=>{ if(o !== bpGroup && !o.isLight) o.visible = false; });
-  scene.background = new THREE.Color(0xf5f7fa);
-  scene.fog.near = 99000; scene.fog.far = 99999;
-  bpGroup.visible = true;
-}
-function bpEnter(){
-  if(BP.on) return;
-  BP.on = true;
-  BP.saved = { vis: scene.children.map(o=>[o, o.visible]),
-               bg: scene.background, fogN: scene.fog.near, fogF: scene.fog.far,
-               ui: HIDE_IDS.map(id=>{ const el = document.getElementById(id); return [el, el ? el.style.display : '']; }) };
-  BP.saved.ui.forEach(([el])=>{ if(el) el.style.display = 'none'; });
-  bpHideScene();
-  bar.style.display = 'flex';
-  bpBtn.classList.add('active');
-  flyTo(W(0,0,8), 300, 0.92, -0.62);
-  toast('📐 図面モード: 構造フレーム（計画段階の想定モデル）', 3200);
-}
-function bpExit(){
-  if(!BP.on) return;
-  BP.on = false; setOrbit(false); setClip(false);
-  BP.saved.vis.forEach(([o,v])=> o.visible = v);
-  scene.background = BP.saved.bg;
-  scene.fog.near = BP.saved.fogN; scene.fog.far = BP.saved.fogF;
-  BP.saved.ui.forEach(([el,d])=>{ if(el) el.style.display = d; });
-  bpGroup.visible = false;
-  bar.style.display = 'none';
-  bpBtn.classList.remove('active');
-  applyPCVisibility();
-}
-bpBtn.addEventListener('click', ()=>{ if(BP.on){ bpExit(); setLevel(level, false); } else bpEnter(); });
-
-/* ---- 非破壊wrap（追加順維持: Main→Tour→Parking→…→Blueprint 最後尾） ---- */
-const _setLevel_BP = setLevel;
-setLevel = function(lv, fly){ if(BP.on) bpExit(); _setLevel_BP(lv, fly); };
-const _applyPCVis_BP = applyPCVisibility;
-applyPCVisibility = function(){ _applyPCVis_BP(); if(BP.on) bpHideScene(); };
-})();
 
 
 /* ================= 🏆 UNITE2026 ピッチパネル — 非破壊追加 =================
@@ -4008,7 +3860,6 @@ const DEMOS = {
     toast('実演1: 開場16:00〜の来場動線・キッチンカー待ち行列', 3000);
   },
   demoTour(){          /* 回遊・宿泊: 観光導線 ON + クロス分析モーダル */
-    if(inBP()) document.getElementById('bp-toggle').click();
     setLevel('site', false);
     const tb = document.getElementById('tour-toggle');
     if(tb && !tb.classList.contains('active')) tb.click();
@@ -4021,12 +3872,13 @@ const DEMOS = {
     if(!timeState.playing) document.getElementById('tl-play').click();
     toast('実演3: TIP OFF時のコートサイドLED・壁面看板・リボンビジョン露出', 3400);
   },
-  demoPlan(){          /* 運営計画: 図面モード */
-    if(!inBP()) document.getElementById('bp-toggle').click();
-    toast('実演4: 構造フレーム図面モード — 運営計画・テナント要件の検討基盤', 3400);
+  demoPlan(){          /* 運営計画: 県域パートナータウン網 */
+    setLevel('site', false);
+    const kb = document.getElementById('ken-toggle');
+    if(kb && !kb.classList.contains('active')) kb.click();
+    toast('実演4: 県域パートナータウン網 — 広域展開・運営計画の検討基盤', 3400);
   },
   demoEngage(){        /* 参画率: OD分析(居住地×来場) */
-    if(inBP()) document.getElementById('bp-toggle').click();
     setLevel('site', false);
     const ob = document.getElementById('od-toggle');
     if(ob && !ob.classList.contains('active')) ob.click();
@@ -4048,7 +3900,7 @@ let kenMode = false, kenTilesBuilt = false;
 const kenGroup = new THREE.Group(); kenGroup.visible = false; scene.add(kenGroup);
 
 /* ホームタウン協定エリア（協定名つき） */
-const KEN_CITIES = [{"n":"浜松市","a":"スポーツを通じた地域活性化に関する協定","p":[-60078,-30087]},{"n":"富士市","a":"スポーツを通じた地域づくりに関する連携協定","p":[26565,20028]},{"n":"焼津市","a":"ハートビートタウン協定","p":[-5657,-12737]},{"n":"掛川市","a":"ダイバーシティスポーツタウン協定","p":[-35273,-23664]},{"n":"菊川市","a":"パートナータウン協定（16自治体目）","p":[-27387,-24877]}];
+const KEN_CITIES = [{"n":"静岡市","a":"ホームタウン（本拠地）","p":[-195,-686]},{"n":"浜松市","a":"スポーツを通じた地域活性化に関する協定","p":[-60078,-30088]},{"n":"沼津市","a":"フレンドリータウン協定","p":[43642,12700]},{"n":"三島市","a":"連携協定（協定名は公表情報確認中）","p":[48670,15247]},{"n":"富士市","a":"チャレンジタウン協定（スポーツを通じた地域づくりに関する連携協定）","p":[26566,20028]},{"n":"富士宮市","a":"連携協定（協定名は公表情報確認中）","p":[21553,26817]},{"n":"島田市","a":"連携協定（協定名は公表情報確認中）","p":[-19225,-16858]},{"n":"焼津市","a":"ハートビートタウン協定","p":[-5657,-12737]},{"n":"藤枝市","a":"ふじえだドリームタウン協定","p":[-11607,-12703]},{"n":"牧之原市","a":"アクションスポーツタウン協定","p":[-16996,-32820]},{"n":"川根本町","a":"連携協定（協定名は公表情報確認中）","p":[-27666,7270]},{"n":"掛川市","a":"ダイバーシティスポーツタウン協定","p":[-35274,-23665]},{"n":"菊川市","a":"パートナータウン協定（16自治体目）","p":[-27387,-24878]}];
 /* アリーナ（全て黄色 / home=静岡市中央体育館） */
 const KEN_VENUES = [{"n":"静岡市中央体育館","c":"静岡市葵区駿府町 — 現ホームアリーナ（試合日 約2,600人）","p":[0,0],"home":true},{"n":"このはなアリーナ","c":"草薙総合運動場体育館（静岡市駿河区栗原）","p":[4050,628]},{"n":"北里アリーナ富士","c":"富士市大淵","p":[27895,23801]},{"n":"香陵アリーナ","c":"沼津市総合体育館（沼津市御幸町）","p":[43761,12681]},{"n":"静岡県武道館","c":"藤枝市前島","p":[-12169,-15167]},{"n":"浜松アリーナ","c":"浜松市中央区和田町","p":[-56381,-29326]}];
 /* 広域動線（東海道新幹線・JR東海道本線・東名・新東名・国道1号 — OSM実データ簡略化） */
@@ -4082,7 +3934,7 @@ KEN_VENUES.forEach(v=>{
   pad.position.set(x, 130, z);
   kenGroup.add(pad);
   beam(x, z, 0xf5c400, v.home ? 320 : 190, v.home ? 11000 : 8000, v.home ? 0.6 : 0.42);
-  const lb = makeLabel(v.n.length > 14 ? v.n.slice(0, 14) + '…' : v.n, 2050, '#f5c400');
+  const lb = makeLabel(v.n, 2050, '#f5c400');
   lb.position.set(x, (v.home ? 11000 : 8000) + 1400, z);
   kenGroup.add(lb);
 });
@@ -4167,7 +4019,7 @@ function buildKenTiles(){
 const kenBtn = (function(){
   const d = document.createElement('div');
   d.className = 'crumb'; d.id = 'ken-toggle'; d.textContent = '🏟 県域';
-  d.title = 'ベルテックス圏ネットワーク（ホームタウン協定5市・アリーナ6館・広域動線）';
+  d.title = 'パートナータウン網16自治体・アリーナ6館・広域動線・経済波及効果';
   document.getElementById('lvl-crumb').appendChild(d);
   return d;
 })();
@@ -4184,7 +4036,7 @@ function setKenMode(on){
     scene.fog.near = 42000; scene.fog.far = 430000;
     camera.far = 800000; camera.updateProjectionMatrix();
     flyTo(new THREE.Vector3(-16000, 0, 4000), 126000, 0.60, -0.15, 1600);
-    toast('県域ビュー: ホームタウン協定5市＋アリーナ6館＋広域動線（新幹線・東海道線・東名・新東名・国1）', 3800);
+    toast('県域ビュー: パートナータウン網16自治体＋アリーナ6館＋広域動線＋経済効果', 3800);
   } else {
     ctrl.maxR = KEN_SAVE.maxR || 4400;
     scene.fog.near = KEN_SAVE.fogN || 1900; scene.fog.far = KEN_SAVE.fogF || 4800;
@@ -4213,10 +4065,10 @@ function kenPanelHTML(){
     +'<div class="dot" style="background:#ff8a1e"></div>'
     +'<div style="flex:1">'+c.n
     +'<span class="desc">'+c.a+'</span></div></button>').join('');
-  return '<div class="sec" id="ken-sec"><div class="sec-t"><b>🏟 県域</b> — ベルテックス静岡 ホームタウンネットワーク（実位置）</div>'
+  return '<div class="sec" id="ken-sec"><div class="sec-t"><b>🏟 県域</b> — パートナータウン網 16自治体</div>'
    +'<div class="sec-t" style="margin-top:2px">アリーナ 6館（黄）</div>'
    +'<div class="mode-list">'+vRows+'</div>'
-   +'<div class="sec-t" style="margin-top:8px">ホームタウン協定エリア 5市（オレンジ）</div>'
+   +'<div class="sec-t" style="margin-top:8px">パートナータウン網 — 締結16自治体（判明13を表示・オレンジ）</div>'
    +'<div class="mode-list">'+cRows+'</div>'
    +'<div class="legend" style="margin-top:7px">'
    +'<div class="li"><div class="sw" style="background:#4da3ff"></div>東海道新幹線</div>'
@@ -4224,8 +4076,28 @@ function kenPanelHTML(){
    +'<div class="li"><div class="sw" style="background:#3ddc84"></div>東名高速道路</div>'
    +'<div class="li"><div class="sw" style="background:#35d0c0"></div>新東名高速道路</div>'
    +'<div class="li"><div class="sw" style="background:#9aa5c0"></div>国道1号</div></div>'
-   +'<div class="hint" style="margin-top:7px">黄ビーム＝アリーナ、オレンジ＝ホームタウン協定自治体。'
-   +'アークはホーム（静岡市中央体育館）からの展開網。動線はOSM実形状。クリックで各拠点へ視点移動。</div></div>';
+   +kenEconHTML()
+   +'<div class="hint" style="margin-top:7px">黄ビーム＝アリーナ、オレンジ＝パートナータウン協定自治体。'
+   +'アークはホーム（静岡市中央体育館）からの展開網。動線はOSM実形状。クリックで各拠点へ視点移動。'
+   +'※連携協定は県内16自治体（クラブ公表）。協定名が公表情報から特定できた13自治体を表示中、残り3自治体は確認でき次第追加。</div></div>';
+}
+/* 💴 経済波及効果（モデル値＋公表試算） */
+function kenEconHTML(){
+  const spendGame = FLOWS.reduce((s,f)=>s + FLOW_ATTEND*f.share*(f.spend||0), 0);
+  const stayYen = (typeof TOURISM !== 'undefined' && TOURISM.stayYen) ? TOURISM.stayYen() : 0;
+  const direct = spendGame + stayYen;
+  const games = (typeof TOURISM !== 'undefined' && TOURISM.homeGames) ? TOURISM.homeGames : 30;
+  const annual = direct * games;
+  const k=(v,l)=>'<div class="kpi"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>';
+  return '<div class="sec-t" style="margin-top:8px">💴 経済波及効果（可視化）</div>'
+   +'<div class="kpi-grid">'
+   +k('¥'+Math.round(direct/10000).toLocaleString()+'<small> 万</small>','試合日 直接消費（回遊＋宿泊・モデル値）')
+   +k('¥'+(annual/100000000).toFixed(1)+'<small> 億</small>','年間換算（ホーム'+games+'試合・モデル値）')
+   +k('2,600<small> 人</small>','試合日収容（固定席984＋仮設）')
+   +k('5,000<small> 億円超</small>','新アリーナ構想 30年経済波及（静岡市試算）')
+   +'</div>'
+   +'<div class="hint" style="margin-top:5px">回遊・宿泊は本ツインの仮説モデル値（決済・xPop実データ接続で実測化可能）。'
+   +'収容人数はB.LEAGUE公式アリーナ情報、30年5,000億円超は新アリーナ構想に関する静岡市試算の公表値。</div>';
 }
 function bindKenPanel(){
   const sec = document.getElementById('ken-sec');
@@ -4243,6 +4115,405 @@ const baseRenderPanelKen = renderPanel;
 renderPanel = function(){
   baseRenderPanelKen();
   if(kenMode && level==='site'){ pb.insertAdjacentHTML('afterbegin', kenPanelHTML()); bindKenPanel(); }
+};
+})();
+
+/* ================================================================
+   ▼ 拡張モジュール: 🚶 デッキ・歩行者動線 — 駅→アリーナ アプローチネットワーク
+   渋谷駅3D方式: 歩行者ネットワーク（ノード/リンク）＋経路＋流動粒子
+================================================================ */
+(function(){
+'use strict';
+let pedMode = false;
+const pdGroup = new THREE.Group(); pdGroup.visible = false; scene.add(pdGroup);
+
+/* 歩行者ネットワークのグロー強調（歩行者専用=ピンク / 歩道・自転車道=ティール） */
+(function glowNet(){
+  function seg(cls, color, op, y){
+    const pts = [];
+    SCENE_DATA.roads.filter(r=>r.c===cls).forEach(r=>{
+      for(let i=0;i<r.p.length-1;i++){
+        pts.push(new THREE.Vector3(r.p[i][0], y, -r.p[i][1]), new THREE.Vector3(r.p[i+1][0], y, -r.p[i+1][1]));
+      }
+    });
+    pdGroup.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({color, transparent:true, opacity:op, blending:THREE.AdditiveBlending, depthWrite:false})));
+  }
+  seg(3, 0xff8cc0, 0.85, 2.2);
+  seg(4, 0x3fd0b8, 0.5, 2.0);
+})();
+
+/* アプローチルート（駅・駐車場 → エントランス）: 平行2重線＋起点ラベル */
+const PD_ROUTES = [];
+ORIGINS.forEach(o=>{
+  const wp = o.path;
+  const perp = [];
+  for(let i=0;i<wp.length;i++){
+    const a = wp[Math.max(0,i-1)], b = wp[Math.min(wp.length-1,i+1)];
+    const dx = b[0]-a[0], dz = b[1]-a[1], L = Math.hypot(dx,dz)||1;
+    perp.push([-dz/L, dx/L]);
+  }
+  [-3.2, 3.2].forEach(off=>{
+    const pv = wp.map((p,i)=>new THREE.Vector3(p[0]+perp[i][0]*off, 2.6, p[1]+perp[i][1]*off));
+    pdGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pv),
+      new THREE.LineBasicMaterial({color:o.color, transparent:true, opacity:0.9})));
+  });
+  const walkMin = Math.max(1, Math.round(o.total/80));
+  const lb = makeLabel(o.name+' → アリーナ '+Math.round(o.total)+'m・徒歩約'+walkMin+'分', 11,
+    '#'+o.color.toString(16).padStart(6,'0'));
+  lb.position.set(wp[0][0], 46, wp[0][1]);
+  pdGroup.add(lb);
+  PD_ROUTES.push({o, walkMin});
+});
+
+/* 流動シェブロン粒子 */
+const pdChev = [];
+(function(){
+  const cgeo = new THREE.ConeGeometry(3.2, 9, 5);
+  ORIGINS.forEach(o=>{
+    const cmat = new THREE.MeshBasicMaterial({color:o.color, transparent:true, opacity:0.9});
+    const n = Math.max(3, Math.round(o.total/180));
+    for(let i=0;i<n;i++){
+      const m = new THREE.Mesh(cgeo, cmat);
+      pdGroup.add(m);
+      pdChev.push({o, m, u:i/n});
+    }
+  });
+})();
+const pdUP = new THREE.Vector3(0,1,0);
+function pdSample(o, d){
+  const seg = o.seg, wp = o.path;
+  let lo = 0, hi = seg.length-1;
+  while(lo < hi-1){ const mid = (lo+hi)>>1; if(seg[mid] <= d) lo = mid; else hi = mid; }
+  const k = (d-seg[lo]) / Math.max(0.001, seg[lo+1]-seg[lo]);
+  return [wp[lo][0]+(wp[lo+1][0]-wp[lo][0])*k, wp[lo][1]+(wp[lo+1][1]-wp[lo][1])*k,
+          wp[lo+1][0]-wp[lo][0], wp[lo+1][1]-wp[lo][1]];
+}
+let pdLast = performance.now();
+(function pdLoop(now){
+  requestAnimationFrame(pdLoop);
+  const dt = Math.min(0.1, (now-pdLast)/1000); pdLast = now;
+  if(!pdGroup.visible) return;
+  pdChev.forEach(c=>{
+    c.u += dt*38/c.o.total;
+    if(c.u >= 1) c.u -= 1;
+    const s = pdSample(c.o, c.u*c.o.total);
+    c.m.position.set(s[0], 4.5, s[1]);
+    c.m.quaternion.setFromUnitVectors(pdUP, new THREE.Vector3(s[2],0,s[3]).normalize());
+  });
+})(performance.now());
+
+/* ボタン・パネル */
+const pdBtn = (function(){
+  const d = document.createElement('div');
+  d.className = 'crumb'; d.id = 'pd-toggle'; d.textContent = '🚶 動線';
+  d.title = 'デッキ・歩行者動線ネットワーク（駅→アリーナ アプローチ）';
+  document.getElementById('lvl-crumb').appendChild(d);
+  return d;
+})();
+function setPedMode(on){
+  if(on && level === 'arena') setLevel('site', false);
+  pedMode = on;
+  pdBtn.classList.toggle('active', on);
+  pdGroup.visible = on && level !== 'arena';
+  if(on) toast('歩行者動線: 駅・駐車場→アリーナのアプローチ経路と歩行者ネットワークを表示', 3200);
+  renderPanel();
+}
+pdBtn.onclick = ()=> setPedMode(!pedMode);
+const _setLevel_PD = setLevel;
+setLevel = function(lv, fly){ _setLevel_PD(lv, fly); pdGroup.visible = pedMode && lv !== 'arena'; };
+function pdPanelHTML(){
+  const st = roadGraph.stats || {nodes:'—', links:'—'};
+  const rows = PD_ROUTES.map((r,i)=>
+    '<button class="mode-btn" data-pd="'+i+'" style="padding:6px 9px">'
+    +'<div class="dot" style="background:#'+r.o.color.toString(16).padStart(6,'0')+'"></div>'
+    +'<div style="flex:1">'+r.o.name+'　<b style="color:var(--txt)">徒歩約'+r.walkMin+'分</b>'
+    +'<span class="desc">'+Math.round(r.o.total)+'m ｜ 実道路ネットワーク経由（A*探索）</span></div></button>').join('');
+  return '<div class="sec" id="pd-sec"><div class="sec-t"><b>🚶 デッキ・歩行者動線</b> — アプローチネットワーク</div>'
+   +'<div class="mode-list">'+rows+'</div>'
+   +'<div class="kpi-grid" style="margin-top:7px">'
+   +'<div class="kpi"><div class="v">'+st.nodes.toLocaleString()+'</div><div class="l">歩行ネットワーク ノード</div></div>'
+   +'<div class="kpi"><div class="v">'+st.links.toLocaleString()+'</div><div class="l">リンク（OSM実データ）</div></div>'
+   +'</div>'
+   +'<div class="hint" style="margin-top:7px">ピンク＝歩行者専用（商店街）、ティール＝歩道・自転車道。'
+   +'矢羽はアプローチ流動。渋谷駅構内図3Dと同方式（ノード・リンクの歩行ネットワーク＋最短経路探索）。クリックで経路へ視点移動。</div></div>';
+}
+function bindPdPanel(){
+  const sec = document.getElementById('pd-sec');
+  if(!sec) return;
+  sec.querySelectorAll('[data-pd]').forEach(b=> b.onclick = ()=>{
+    const o = PD_ROUTES[+b.dataset.pd].o;
+    const mid = o.path[Math.floor(o.path.length/2)];
+    flyTo(new THREE.Vector3(mid[0], 0, mid[1]), Math.max(600, o.total*0.9), 0.8, -0.6, 1200);
+  });
+}
+const _renderPanel_PD = renderPanel;
+renderPanel = function(){
+  _renderPanel_PD();
+  if(pedMode && level !== 'arena'){ pb.insertAdjacentHTML('afterbegin', pdPanelHTML()); bindPdPanel(); }
+};
+})();
+
+/* ================================================================
+   ▼ 拡張モジュール: 🚗 周辺渋滞シミュレーション — タイムライン連動（仮説モデル）
+================================================================ */
+(function(){
+'use strict';
+let congMode = false;
+const cgGroup = new THREE.Group(); cgGroup.visible = false; scene.add(cgGroup);
+const sm = (a,b,x)=>{ const t = Math.max(0, Math.min(1, (x-a)/(b-a))); return t*t*(3-2*t); };
+
+/* 対象セグメント: 幹線・補助幹線の2.1km圏 */
+const CG_SEGS = [];
+SCENE_DATA.roads.forEach(r=>{
+  if(r.c !== 1 && r.c !== 2) return;
+  for(let i=0;i<r.p.length-1;i++){
+    const a = r.p[i], b = r.p[i+1];
+    const mx = (a[0]+b[0])/2, my = (a[1]+b[1])/2;
+    const d = Math.hypot(mx, my);
+    if(d > 2100) continue;
+    CG_SEGS.push({a, b, d, cls:r.c, h:(((Math.round(mx)*73856093) ^ (Math.round(my)*19349663)) >>> 0) % 100});
+  }
+});
+const CG_STATS = {jam:0, busy:0, total:CG_SEGS.length, level:0};
+const cgMats = [
+  new THREE.LineBasicMaterial({color:0x3ddc84, transparent:true, opacity:0.5}),
+  new THREE.LineBasicMaterial({color:0xffc84a, transparent:true, opacity:0.9}),
+  new THREE.LineBasicMaterial({color:0xff5a3d, transparent:true, opacity:1.0}),
+];
+const cgLines = [null, null, null];
+function congLevel(s, t){
+  const rush = sm(105,165,t)*(1-sm(255,315,t));     /* 16:45-19:15 夕ラッシュ */
+  const arr  = sm(55,175,t)*(1-sm(185,215,t));      /* 来場サージ */
+  const dep  = sm(326,352,t)*(1-sm(400,440,t));     /* 退場サージ（20:26〜） */
+  const prox = Math.max(0, 1 - s.d/2100);
+  return 0.16 + 0.34*rush*(s.cls===2?1:0.72) + (0.7*arr + 1.05*dep)*prox*(0.45 + 0.55*s.h/100);
+}
+let cgLastT = -99;
+function rebuildCong(force){
+  const t = timeState.min;
+  if(!force && Math.abs(t-cgLastT) < 2) return;
+  cgLastT = t;
+  const buckets = [[],[],[]];
+  CG_SEGS.forEach(s=>{
+    const v = congLevel(s, t);
+    buckets[v < 0.40 ? 0 : (v < 0.60 ? 1 : 2)].push(s);
+  });
+  for(let bi=0; bi<3; bi++){
+    if(cgLines[bi]){ cgGroup.remove(cgLines[bi]); cgLines[bi].geometry.dispose(); }
+    const pts = [];
+    buckets[bi].forEach(s=>{
+      pts.push(new THREE.Vector3(s.a[0], 2.9+bi*0.2, -s.a[1]), new THREE.Vector3(s.b[0], 2.9+bi*0.2, -s.b[1]));
+    });
+    cgLines[bi] = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), cgMats[bi]);
+    cgGroup.add(cgLines[bi]);
+  }
+  CG_STATS.busy = buckets[1].length; CG_STATS.jam = buckets[2].length;
+  const el = document.getElementById('cg-kpi');
+  if(el) el.innerHTML = cgKpiInner();
+}
+/* 駐車場入口の滞留ビーコン */
+const cgBeacons = [];
+ORIGINS.filter(o=>o.name.indexOf('駐車場')===0).forEach(o=>{
+  const bc = new THREE.Mesh(new THREE.CylinderGeometry(9, 13, 30, 8, 1, true),
+    new THREE.MeshBasicMaterial({color:0xff5a3d, transparent:true, opacity:0.0, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
+  bc.position.set(o.x, 15, o.z);
+  cgGroup.add(bc);
+  cgBeacons.push(bc);
+});
+(function cgLoop(){
+  requestAnimationFrame(cgLoop);
+  if(!congMode || !cgGroup.visible) return;
+  rebuildCong(false);
+  const t = timeState.min;
+  const surge = Math.max(sm(55,175,t)*(1-sm(185,215,t)), sm(326,352,t)*(1-sm(400,440,t)));
+  cgBeacons.forEach((b,i)=>{ b.material.opacity = 0.55*surge*(0.7+0.3*Math.sin(performance.now()/300+i)); });
+})();
+
+const cgBtn = (function(){
+  const d = document.createElement('div');
+  d.className = 'crumb'; d.id = 'cg-toggle'; d.textContent = '🚗 渋滞';
+  d.title = '周辺道路の渋滞シミュレーション（タイムライン連動・仮説モデル）';
+  document.getElementById('lvl-crumb').appendChild(d);
+  return d;
+})();
+function setCongMode(on){
+  if(on && level === 'arena') setLevel('site', false);
+  congMode = on;
+  cgBtn.classList.toggle('active', on);
+  cgGroup.visible = on && level !== 'arena';
+  if(on){ rebuildCong(true); toast('渋滞シミュレーション: タイムライン（来場/退場サージ＋夕ラッシュ）連動の仮説モデル', 3400); }
+  renderPanel();
+}
+cgBtn.onclick = ()=> setCongMode(!congMode);
+const _setLevel_CG = setLevel;
+setLevel = function(lv, fly){ _setLevel_CG(lv, fly); cgGroup.visible = congMode && lv !== 'arena'; };
+function cgKpiInner(){
+  const pct = (n)=> CG_STATS.total ? Math.round(100*n/CG_STATS.total) : 0;
+  return '<div class="kpi"><div class="v">'+pct(CG_STATS.jam)+'<small> %</small></div><div class="l">渋滞区間（赤）</div></div>'
+   +'<div class="kpi"><div class="v">'+pct(CG_STATS.busy)+'<small> %</small></div><div class="l">混雑区間（黄）</div></div>';
+}
+function cgPanelHTML(){
+  return '<div class="sec" id="cg-sec"><div class="sec-t"><b>🚗 周辺渋滞</b> — 試合日シミュレーション（仮説）</div>'
+   +'<div class="kpi-grid" id="cg-kpi">'+cgKpiInner()+'</div>'
+   +'<div class="legend" style="margin-top:7px">'
+   +'<div class="li"><div class="sw" style="background:#3ddc84"></div>順調</div>'
+   +'<div class="li"><div class="sw" style="background:#ffc84a"></div>混雑</div>'
+   +'<div class="li"><div class="sw" style="background:#ff5a3d"></div>渋滞</div>'
+   +'<div class="li"><div class="sw" style="background:#ff5a3d;border-radius:50%"></div>駐車場入口 滞留</div></div>'
+   +'<div class="hint" style="margin-top:7px">タイムライン連動: 夕ラッシュ（16:45-19:15）＋来場サージ（〜18:05）＋退場サージ（20:26〜）を'
+   +'幹線・補助幹線に重畳した<b>仮説モデル</b>。ETC2.0プローブ・信号データ接続で実測化できます。▶再生で時間変化を確認。</div></div>';
+}
+const _renderPanel_CG = renderPanel;
+renderPanel = function(){
+  _renderPanel_CG();
+  if(congMode && level !== 'arena'){ pb.insertAdjacentHTML('afterbegin', cgPanelHTML()); }
+};
+})();
+
+/* ================================================================
+   ▼ 拡張モジュール: 🆘 避難シミュレーション — アリーナ→指定緊急避難場所
+   出典: 静岡市 広域避難地・一時避難地一覧（駿府城公園=広域避難地/浅間神社=避難場所）
+================================================================ */
+(function(){
+'use strict';
+let evMode = false, evT = 0, evRunning = false;
+const evGroup = new THREE.Group(); evGroup.visible = false; scene.add(evGroup);
+const EV_ATT = 2600, EV_N = 420, EV_SPEED = 24;   /* 実24倍速 */
+const EV_SITES = [
+ {n:'駿府城公園（広域避難地）',   p:[-186,262],   share:0.50, col:0x3ddc84},
+ {n:'静岡浅間神社（避難場所）',   p:[-871,-200],  share:0.20, col:0x35d0c0},
+ {n:'城北公園（一時避難地）',     p:[-588,-860],  share:0.15, col:0x8fd0ff},
+ {n:'常磐公園（一時避難地）',     p:[-429,1278],  share:0.15, col:0xffd166},
+];
+/* 目的地マーカー＋経路 */
+EV_SITES.forEach(s=>{
+  let pth = roadGraph.path(GATE.x, GATE.z, s.p[0], s.p[1]);
+  if(!pth || pth.length < 2) pth = [[GATE.x, GATE.z], [s.p[0], s.p[1]]];
+  pth.unshift([MAIN_C.x, MAIN_C.z]);
+  let total = 0; const seg = [0];
+  for(let i=1;i<pth.length;i++){ total += Math.hypot(pth[i][0]-pth[i-1][0], pth[i][1]-pth[i-1][1]); seg.push(total); }
+  s.path = pth; s.seg = seg; s.total = total;
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pth.map(p=>new THREE.Vector3(p[0], 2.0, p[1]))),
+    new THREE.LineBasicMaterial({color:s.col, transparent:true, opacity:0.75}));
+  evGroup.add(line);
+  const bk = new THREE.Mesh(new THREE.CylinderGeometry(10, 16, 46, 8, 1, true),
+    new THREE.MeshBasicMaterial({color:s.col, transparent:true, opacity:0.45, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
+  bk.position.set(s.p[0], 23, s.p[1]);
+  evGroup.add(bk);
+  const lb = makeLabel('🆘 '+s.n, 12, '#'+s.col.toString(16).padStart(6,'0'));
+  lb.position.set(s.p[0], 62, s.p[1]);
+  evGroup.add(lb);
+});
+/* エージェント（1粒子 ≒ 6.2人） */
+const evAgents = [];
+(function(){
+  let si = 0, acc = 0;
+  for(let i=0;i<EV_N;i++){
+    while(si < EV_SITES.length-1 && i/EV_N >= acc + EV_SITES[si].share){ acc += EV_SITES[si].share; si++; }
+    evAgents.push({
+      site: EV_SITES[si],
+      spawn: (i%7)/7 * 420 + Math.floor(i/7)*1.1,   /* 0〜7分で順次退場 */
+      speed: 1.0 + (i*2654435761 % 100)/100 * 0.4,  /* 1.0〜1.4 m/s */
+      done: false, doneAt: 0,
+    });
+  }
+})();
+const evMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(3.4, 5, 4),
+  new THREE.MeshBasicMaterial({transparent:true, opacity:0.95}), EV_N);
+evMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+evGroup.add(evMesh);
+const _evM = new THREE.Matrix4(), _evC = new THREE.Color();
+evAgents.forEach((a,i)=>{ _evC.setHex(a.site.col); evMesh.setColorAt(i, _evC); });
+if(evMesh.instanceColor) evMesh.instanceColor.needsUpdate = true;
+function evSample(s, d){
+  const seg = s.seg, wp = s.path;
+  let lo = 0, hi = seg.length-1;
+  while(lo < hi-1){ const mid = (lo+hi)>>1; if(seg[mid] <= d) lo = mid; else hi = mid; }
+  const k = (d-seg[lo]) / Math.max(0.001, seg[lo+1]-seg[lo]);
+  return [wp[lo][0]+(wp[lo+1][0]-wp[lo][0])*k, wp[lo][1]+(wp[lo+1][1]-wp[lo][1])*k];
+}
+let evLast = performance.now();
+(function evLoop(now){
+  requestAnimationFrame(evLoop);
+  const dt = Math.min(0.3, (now-evLast)/1000); evLast = now;
+  if(!evMode || !evGroup.visible || !evRunning) return;
+  evT += dt * EV_SPEED;
+  let done = 0, sumT = 0;
+  evAgents.forEach((a,i)=>{
+    const w = Math.max(0, evT - a.spawn);
+    const d = Math.min(a.site.total, w * a.speed);
+    if(d >= a.site.total && !a.done){ a.done = true; a.doneAt = evT; }
+    if(a.done){ done++; sumT += a.doneAt; }
+    const p = evSample(a.site, d);
+    _evM.setPosition(p[0], 2.6, p[1]);
+    evMesh.setMatrixAt(i, _evM);
+  });
+  evMesh.instanceMatrix.needsUpdate = true;
+  if(done === EV_N) evRunning = false;
+  const el = document.getElementById('ev-kpi');
+  if(el){
+    const pct = Math.round(100*done/EV_N);
+    const avg = done ? (sumT/done/60) : 0;
+    el.innerHTML = evKpiInner(pct, avg);
+    const bar = document.getElementById('ev-bar');
+    if(bar) bar.style.width = pct + '%';
+  }
+})(performance.now());
+function evKpiInner(pct, avg){
+  return '<div class="kpi"><div class="v">'+Math.floor(evT/60)+':'+String(Math.floor(evT%60)).padStart(2,'0')+'</div><div class="l">経過（実時間換算）</div></div>'
+   +'<div class="kpi"><div class="v">'+pct+'<small> %</small></div><div class="l">避難完了（'+Math.round(EV_ATT*pct/100).toLocaleString()+'/'+EV_ATT.toLocaleString()+'人）</div></div>'
+   +'<div class="kpi"><div class="v">'+avg.toFixed(1)+'<small> 分</small></div><div class="l">平均避難時間（完了者）</div></div>'
+   +'<div class="kpi"><div class="v">4</div><div class="l">避難先（市指定避難地等）</div></div>';
+}
+const evBtn = (function(){
+  const d = document.createElement('div');
+  d.className = 'crumb'; d.id = 'ev-toggle'; d.textContent = '🆘 避難';
+  d.title = '避難シミュレーション（アリーナ→駿府城公園ほか指定緊急避難場所）';
+  document.getElementById('lvl-crumb').appendChild(d);
+  return d;
+})();
+function evReset(){
+  evT = 0; evRunning = true;
+  evAgents.forEach(a=>{ a.done = false; a.doneAt = 0; });
+}
+function setEvMode(on){
+  if(on && level === 'arena') setLevel('site', false);
+  evMode = on;
+  evBtn.classList.toggle('active', on);
+  evGroup.visible = on && level !== 'arena';
+  if(on){
+    evReset();
+    flyTo(new THREE.Vector3(-300, 0, 300), 2400, 0.8, -0.6, 1400);
+    toast('避難シミュレーション: 満員2,600人 → 駿府城公園（広域避難地）ほか4箇所へ 24倍速', 3800);
+  }
+  renderPanel();
+}
+evBtn.onclick = ()=> setEvMode(!evMode);
+const _setLevel_EV = setLevel;
+setLevel = function(lv, fly){ _setLevel_EV(lv, fly); evGroup.visible = evMode && lv !== 'arena'; };
+function evPanelHTML(){
+  const rows = EV_SITES.map((s,i)=>
+    '<div class="li"><div class="sw" style="background:#'+s.col.toString(16).padStart(6,'0')+'"></div>'
+    +s.n+'　<b style="color:var(--txt)">'+Math.round(s.share*100)+'%</b>　'
+    +Math.round(s.total)+'m</div>').join('');
+  return '<div class="sec" id="ev-sec"><div class="sec-t"><b>🆘 避難シミュレーション</b> — 満員時 2,600人</div>'
+   +'<div class="kpi-grid" id="ev-kpi">'+evKpiInner(0,0)+'</div>'
+   +'<div style="height:8px;border-radius:4px;background:var(--panel2);margin-top:7px;overflow:hidden">'
+   +'<div id="ev-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#ff5a3d,#ffc84a,#3ddc84);transition:width .3s"></div></div>'
+   +'<div class="legend" style="margin-top:7px">'+rows+'</div>'
+   +'<button class="mode-btn" id="ev-restart" style="margin-top:7px;justify-content:center"><b>⟲ 再実行</b></button>'
+   +'<div class="hint" style="margin-top:7px">駿府城公園は静岡市指定の<b>広域避難地</b>、浅間神社は避難場所（静岡市公表の避難地一覧より）。'
+   +'配分シェア・歩行速度（1.0〜1.4m/s）は仮説。経路は実道路ネットワークのA*探索。群集密度・滞留を含む本格解析はシミュレータ接続で拡張できます。</div></div>';
+}
+const _renderPanel_EV = renderPanel;
+renderPanel = function(){
+  _renderPanel_EV();
+  if(evMode && level !== 'arena'){
+    pb.insertAdjacentHTML('afterbegin', evPanelHTML());
+    const rb = document.getElementById('ev-restart');
+    if(rb) rb.onclick = evReset;
+  }
 };
 })();
 
