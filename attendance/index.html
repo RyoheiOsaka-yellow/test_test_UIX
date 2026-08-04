@@ -301,6 +301,55 @@ footer{padding:40px 0 64px;font-size:12px;color:#8AA3B8;text-align:center}
 .share-btns .primary{background:var(--navy);border-color:var(--navy);color:#fff}
 .share-btns .primary:hover{background:var(--navy-2);border-color:var(--navy-2)}
 
+/* ---------- よそうゲーム ---------- */
+.predict{border:2px dashed var(--cyan-lt);margin-top:14px}
+.p-head{font-weight:900;color:var(--navy);font-size:16.5px}
+.p-val{font-family:"Outfit",sans-serif;font-weight:800;font-size:46px;color:var(--cyan);margin:8px 0 0;line-height:1.1}
+.p-val small{font-size:16px;color:#5C7A97;font-weight:700;margin-left:4px}
+#predSlider{width:100%;accent-color:var(--cyan);height:34px;cursor:pointer;margin-top:4px}
+.p-hint{font-size:12.5px;color:#6E8AA6}
+.p-btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.p-btns button{
+  padding:11px 20px;border-radius:999px;border:1px solid var(--line);background:#fff;
+  font-family:inherit;font-weight:700;font-size:13.5px;color:var(--navy);cursor:pointer;transition:.2s;
+}
+.p-btns button:hover{background:var(--sky)}
+.p-btns button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+.p-btns .p-go{background:var(--navy);border-color:var(--navy);color:#fff}
+.p-btns .p-go:hover{background:var(--navy-2);border-color:var(--navy-2)}
+.p-stats{margin-top:12px;font-size:12.5px;color:#6E8AA6}
+.p-cmp{font-size:15px;margin-top:10px}
+.p-cmp b{font-family:"Outfit",sans-serif;font-weight:800;font-size:24px;color:var(--navy)}
+.p-title{
+  font-weight:900;font-size:clamp(24px,4.5vw,34px);margin-top:10px;color:var(--navy);
+  opacity:0;transform:scale(.55);transition:opacity .45s cubic-bezier(.34,1.7,.64,1),transform .45s cubic-bezier(.34,1.7,.64,1);
+}
+.p-title.gold{color:#C9821A}
+.p-title.in{opacity:1;transform:scale(1)}
+
+/* ---------- アチーブメントバッジ ---------- */
+.badges{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}
+.badge{
+  background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px 14px;text-align:center;
+  transition:opacity .35s,filter .35s,border-color .35s,box-shadow .35s;
+}
+.badge .b-icon{font-size:36px;line-height:1;display:block}
+.badge h4{font-size:13.5px;color:var(--navy);font-weight:900;margin-top:9px}
+.badge p{font-size:11.5px;color:#8AA3B8;margin-top:4px;line-height:1.55}
+.badge.locked{opacity:.42;filter:grayscale(1)}
+.badge.earned{border-color:var(--gold);box-shadow:0 10px 22px -16px rgba(255,176,58,.9)}
+.badge.earned .b-icon{animation:chippop .55s cubic-bezier(.34,1.8,.64,1)}
+
+/* ---------- toast ---------- */
+.toasts{position:fixed;right:16px;bottom:16px;z-index:100;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{
+  background:var(--navy);color:#fff;padding:12px 18px;border-radius:14px;font-size:13.5px;
+  box-shadow:0 14px 30px -12px rgba(0,47,108,.75);
+  opacity:0;transform:translateX(36px);transition:opacity .35s,transform .35s;
+}
+.toast.in{opacity:1;transform:none}
+.toast b{color:#FFD98E}
+
 @media(max-width:860px){
   :root{--dh:62px;--dw:45px}
   .dots{grid-template-columns:repeat(25,1fr)}
@@ -308,6 +357,7 @@ footer{padding:40px 0 64px;font-size:12px;color:#8AA3B8;text-align:center}
   .board{padding:30px 16px 24px;border-radius:26px}
   .club-logo{width:66px}
   .share-grid{grid-template-columns:1fr}
+  .badges{grid-template-columns:repeat(2,1fr)}
 }
 @media(prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important}
@@ -367,6 +417,31 @@ footer{padding:40px 0 64px;font-size:12px;color:#8AA3B8;text-align:center}
   <div class="actions">
     <button class="replay" id="replay" type="button">↻ もう一度、1人から積み上げる</button>
     <button class="simbtn" id="simBtn" type="button">▶ 次の試合をライブで体験</button>
+  </div>
+
+  <!-- よそうゲーム（ライブ体験の前に表示される） -->
+  <div class="card predict" id="predictPanel" hidden>
+    <div id="predictAsk">
+      <div class="p-head" id="predHead"></div>
+      <div class="p-val num"><span id="predVal">3,000</span><small>人</small></div>
+      <input type="range" id="predSlider" min="1000" max="6000" step="50" value="3000" aria-label="入場者数の予想">
+      <div class="p-hint" id="predHint"></div>
+      <div class="p-btns">
+        <button type="button" class="p-go" id="predGo">🎯 この予想でキックオフ！</button>
+        <button type="button" id="predSkip">予想せずに観る</button>
+      </div>
+      <div class="p-stats" id="predStats"></div>
+    </div>
+    <div id="predictResult" hidden>
+      <div class="p-head" id="predResHead"></div>
+      <div class="p-cmp" id="predResCmp"></div>
+      <div class="p-title" id="predResTitle"></div>
+      <div class="p-btns">
+        <button type="button" class="p-go" id="predShare">📤 この結果をシェア画像にする</button>
+        <button type="button" id="predClose">とじる</button>
+      </div>
+      <div class="p-stats" id="predResStats"></div>
+    </div>
   </div>
 
   <section class="fx">
@@ -433,6 +508,14 @@ footer{padding:40px 0 64px;font-size:12px;color:#8AA3B8;text-align:center}
 
   <section class="fx">
     <div class="sec-head">
+      <h2>アチーブメント</h2>
+      <span class="sec-note">このページでの体験でバッジがたまります（<span id="badgeCount">0 / 8</span>）</span>
+    </div>
+    <div class="badges" id="badges"></div>
+  </section>
+
+  <section class="fx">
+    <div class="sec-head">
       <h2>この記録をシェア</h2>
       <span class="sec-note">いまの積み上がりを、そのまま画像にしてSNSへ</span>
     </div>
@@ -455,12 +538,17 @@ footer{padding:40px 0 64px;font-size:12px;color:#8AA3B8;text-align:center}
   <div class="demo">
     <p>【デモ用・公開時は削除します】表示状態を切り替えて確認できます。「▶ 次の試合をライブで体験」で、観客が入場していく様子をシミュレーションできます。</p>
     <div class="demo-btns" id="demoBtns"></div>
+    <div class="demo-btns" style="margin-top:9px">
+      <button type="button" id="resetProgress">バッジと予想記録をリセット</button>
+    </div>
   </div>
 
   <footer>
     数値はすべてダミーデータです。／ アスルクラロ沼津
   </footer>
 </div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
 
 <script>
 /* ===================== ここだけ書き換えれば OK ===================== */
@@ -829,6 +917,7 @@ function chartPoint(ev){
   }
   tipEl.innerHTML = html;
   tipEl.classList.add("show");
+  award("explorer");
   const card = tipEl.parentElement;
   const cr = card.getBoundingClientRect();
   let tx = ev.clientX - cr.left + 14;
@@ -909,7 +998,11 @@ function celebrate(goal){
 }
 function checkMilestones(prev, v){
   SEASON.goals.forEach(g=>{
-    if(prev < g.value && v >= g.value) celebrate(g);
+    if(prev < g.value && v >= g.value){
+      celebrate(g);
+      if(g.value === 30000) award("witness30");
+      if(g.value === 45000) award("witness45");
+    }
   });
 }
 
@@ -1046,10 +1139,12 @@ function updateSimBtn(){
     simBtn.textContent = `▶ 次の試合をライブで体験（第${next.round}節 vs ${next.vs}）`;
   }
 }
-function simulateNext(){
+let simMatch = null;
+function startSim(){
   if(simActive || masterActive) return;
   const next = SEASON.matches[PLAYED];
   if(!next) return;
+  simMatch = next;
   simActive = true;
   simBtn.disabled = true;
   document.getElementById("replay").disabled = true;
@@ -1102,8 +1197,15 @@ function finishSim(total){
   revealProjection(); updateSimBtn(); refreshShare();
   /* プリセットと状態がずれるので選択表示を解除 */
   demoBtns.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed","false"));
+  award("live");
+  if(pendingPred != null && simMatch) showPredResult(simMatch);
 }
-simBtn.addEventListener("click", simulateNext);
+simBtn.addEventListener("click", ()=>{
+  if(simActive || masterActive) return;
+  const next = SEASON.matches[PLAYED];
+  if(!next) return;
+  openPredict(next);   /* まず予想ゲームを表示。予想 or スキップでキックオフ */
+});
 
 /* ---------- SNSシェア ----------
    いまの累計からシェア文面と1200x630のシェア画像を自動生成する。
@@ -1118,7 +1220,12 @@ function buildShareText(){
   const goalPart = next
     ? `${next.name}（${yen(next.value)}人）まで あと${yen(next.value - s.total)}人。`
     : "今シーズンの全目標を達成しました！ありがとうございます！";
-  return `🔵⚪ アスルクラロ沼津 ホームゲーム累計来場者数は ${yen(s.total)}人！${goalPart}スタジアムで会いましょう🏟️ ${HASHTAGS}`;
+  let predPart = "";
+  if(lastPrediction && lastPrediction.inShare){
+    const lp = lastPrediction;
+    predPart = `第${lp.round}節は${yen(lp.pred)}人と予想→結果${yen(lp.actual)}人（誤差${lp.diffPct}%）で「${lp.title}」！`;
+  }
+  return `🔵⚪ アスルクラロ沼津 ホームゲーム累計来場者数は ${yen(s.total)}人！${goalPart}${predPart}スタジアムで会いましょう🏟️ ${HASHTAGS}`;
 }
 function getLogoImage(){
   if(logoImgPromise) return logoImgPromise;
@@ -1208,10 +1315,16 @@ async function drawShareCard(){
     ctx.textAlign = "left";
   });
 
-  /* フッター */
+  /* フッター（予想結果があればそちらを優先表示） */
   ctx.fillStyle = "rgba(191,227,247,.75)";
   ctx.font = "700 24px 'Zen Maru Gothic', sans-serif";
-  ctx.fillText(`${PLAYED}試合終了時点`, 64, 592);
+  let footLeft = `${PLAYED}試合終了時点`;
+  if(typeof earned !== "undefined" && earned.size) footLeft += ` ・ 🏅 バッジ ${earned.size}/${BADGES.length}`;
+  if(typeof lastPrediction !== "undefined" && lastPrediction && lastPrediction.inShare){
+    ctx.fillStyle = "#FFD98E";
+    footLeft = `🎯 第${lastPrediction.round}節 予想${yen(lastPrediction.pred)}人 → 結果${yen(lastPrediction.actual)}人（誤差${lastPrediction.diffPct}%）${lastPrediction.title}`;
+  }
+  ctx.fillText(footLeft, 64, 592);
   ctx.textAlign = "right";
   ctx.fillStyle = "#7FD6F7";
   ctx.font = "700 24px 'Zen Maru Gothic', sans-serif";
@@ -1261,6 +1374,167 @@ document.getElementById("shareNative").addEventListener("click", async e=>{
   a.click();
   flashBtn(btn, "✔ 画像を保存しました");
 });
+
+/* ---------- アチーブメントバッジ ----------
+   ページ内の体験でバッジが解禁される。獲得状況はブラウザに保存。 */
+const BADGES = [
+  { id:"replay",    icon:"🔁", name:"積み上げの目撃者",   desc:"「もう一度、1人から積み上げる」を再生する" },
+  { id:"explorer",  icon:"🔍", name:"データ研究家",       desc:"グラフのバーにふれて試合の詳細を見る" },
+  { id:"live",      icon:"📺", name:"ライブ観戦デビュー", desc:"「次の試合をライブで体験」を最後まで観る" },
+  { id:"predict",   icon:"🎯", name:"初よそう",           desc:"よそうゲームに参加する" },
+  { id:"sharp",     icon:"👁️", name:"ドンピシャの眼",     desc:"誤差3%以内で入場者数を当てる" },
+  { id:"witness30", icon:"🎉", name:"3万人の目撃者",      desc:"昇格ライン突破の瞬間に立ち会う" },
+  { id:"witness45", icon:"🏆", name:"4.5万の証人",        desc:"みんなの目標達成の瞬間に立ち会う" },
+  { id:"sharer",    icon:"📣", name:"拡散サポーター",     desc:"この記録をシェアする" }
+];
+let earned = new Set();
+try{ earned = new Set(JSON.parse(localStorage.getItem("azul_badges") || "[]")); }catch(e){}
+const toastsEl = document.getElementById("toasts");
+function toast(html){
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.innerHTML = html;
+  toastsEl.appendChild(t);
+  requestAnimationFrame(()=>t.classList.add("in"));
+  setTimeout(()=>{ t.classList.remove("in"); setTimeout(()=>t.remove(), 400); }, 3800);
+}
+function renderBadges(){
+  document.getElementById("badges").innerHTML = BADGES.map(b=>{
+    const got = earned.has(b.id);
+    return `<div class="badge ${got?"earned":"locked"}">
+      <span class="b-icon">${b.icon}</span><h4>${b.name}</h4><p>${got?"獲得済み！":b.desc}</p></div>`;
+  }).join("");
+  document.getElementById("badgeCount").textContent = `${earned.size} / ${BADGES.length}`;
+}
+function award(id){
+  if(earned.has(id)) return;
+  earned.add(id);
+  try{ localStorage.setItem("azul_badges", JSON.stringify([...earned])); }catch(e){}
+  renderBadges();
+  const b = BADGES.find(x=>x.id === id);
+  if(b) toast(`🏅 バッジ獲得！ <b>${b.icon} ${b.name}</b>`);
+  refreshShare();
+}
+renderBadges();
+document.querySelector(".share-btns").addEventListener("click", e=>{
+  if(e.target.closest("button")) award("sharer");
+});
+document.getElementById("replay").addEventListener("click", ()=>award("replay"));
+document.getElementById("resetProgress").addEventListener("click", ()=>{
+  try{ localStorage.removeItem("azul_badges"); localStorage.removeItem("azul_pred"); }catch(e){}
+  earned.clear();
+  predStatsData = { n:0, best:null, hits:0 };
+  lastPrediction = null;
+  renderBadges(); refreshShare();
+  toast("バッジと予想記録をリセットしました");
+});
+
+/* ---------- 来場者数よそうゲーム ----------
+   ライブ体験の前に入場者数を予想 → 観戦後に結果発表。
+   参加履歴（回数・ベスト誤差・的中数）はブラウザに保存。 */
+const predictPanel  = document.getElementById("predictPanel");
+const predictAsk    = document.getElementById("predictAsk");
+const predictResult = document.getElementById("predictResult");
+const predSlider    = document.getElementById("predSlider");
+const predValEl     = document.getElementById("predVal");
+let pendingPred = null, lastPrediction = null;
+let predStatsData = { n:0, best:null, hits:0 };
+try{ predStatsData = JSON.parse(localStorage.getItem("azul_pred")) || predStatsData; }catch(e){}
+
+function predStatsText(){
+  if(!predStatsData.n) return "はじめての挑戦です。今季平均あたりが狙い目…？";
+  return `これまで ${predStatsData.n}回参加 ／ ベスト誤差 ${predStatsData.best}% ／ 誤差3%以内 ${predStatsData.hits}回`;
+}
+predSlider.addEventListener("input", ()=>{ predValEl.textContent = yen(+predSlider.value); });
+
+function openPredict(next){
+  const s = state();
+  const avg = s.avg || 3000;
+  document.getElementById("predHead").textContent = `🎯 よそうゲーム：第${next.round}節 vs ${next.vs}、今日は何人入る？`;
+  document.getElementById("predHint").textContent =
+    `ヒント：今季平均 ${yen(avg)}人 ／ 今季最多 ${yen(Math.max(...s.played.map(m=>m.attendance), 0))}人`;
+  predSlider.value = Math.round(avg / 50) * 50;
+  predValEl.textContent = yen(+predSlider.value);
+  document.getElementById("predStats").textContent = predStatsText();
+  predictAsk.hidden = false;
+  predictResult.hidden = true;
+  predictPanel.hidden = false;
+  predictPanel.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+}
+document.getElementById("predGo").addEventListener("click", ()=>{
+  pendingPred = +predSlider.value;
+  award("predict");
+  predictPanel.hidden = true;
+  startSim();
+});
+document.getElementById("predSkip").addEventListener("click", ()=>{
+  pendingPred = null;
+  predictPanel.hidden = true;
+  startSim();
+});
+document.getElementById("predClose").addEventListener("click", ()=>{ predictPanel.hidden = true; });
+document.getElementById("predShare").addEventListener("click", e=>{
+  if(lastPrediction) lastPrediction.inShare = true;
+  refreshShare();
+  flashBtn(e.currentTarget, "✔ シェア画像に反映しました");
+  document.getElementById("shareImg").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+});
+
+function showPredResult(match){
+  const predv = pendingPred;
+  pendingPred = null;
+  const actual = match.attendance;
+  const diffPct = Math.abs(predv - actual) / actual * 100;
+  const d1 = Math.round(diffPct * 10) / 10;
+  let title, gold = false;
+  if(diffPct <= 1){ title = "👑 神予想！"; gold = true; }
+  else if(diffPct <= 3){ title = "🎯 ドンピシャ級！"; gold = true; }
+  else if(diffPct <= 8){ title = "⚽ いいセン読み！"; }
+  else if(diffPct <= 15){ title = "🌊 おしい！"; }
+  else { title = "🔭 次こそ！"; }
+
+  predStatsData.n++;
+  if(predStatsData.best == null || d1 < predStatsData.best) predStatsData.best = d1;
+  if(diffPct <= 3) predStatsData.hits++;
+  try{ localStorage.setItem("azul_pred", JSON.stringify(predStatsData)); }catch(e){}
+  lastPrediction = { round: match.round, vs: match.vs, pred: predv, actual, diffPct: d1, title, inShare: false };
+  if(diffPct <= 3) award("sharp");
+
+  document.getElementById("predResHead").textContent = `📣 結果発表 — 第${match.round}節 vs ${match.vs}`;
+  const titleEl = document.getElementById("predResTitle");
+  titleEl.textContent = title;
+  titleEl.classList.toggle("gold", gold);
+  titleEl.classList.remove("in");
+  document.getElementById("predResStats").textContent = predStatsText();
+  predictAsk.hidden = true;
+  predictResult.hidden = false;
+  predictPanel.hidden = false;
+  predictPanel.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+
+  const cmpEl = document.getElementById("predResCmp");
+  if(reduceMotion){
+    cmpEl.innerHTML = `あなたの予想 <b>${yen(predv)}人</b> → 実際 <b>${yen(actual)}人</b>（誤差 ${d1}%）`;
+    titleEl.classList.add("in");
+    return;
+  }
+  /* ドラムロール発表 */
+  const dur = 1600, t0 = performance.now();
+  const ease = t => 1 - Math.pow(1 - t, 3);
+  function step(now){
+    const p = Math.min(1, (now - t0) / dur);
+    const v = actual * ease(p);
+    cmpEl.innerHTML = `あなたの予想 <b>${yen(predv)}人</b> → 実際 <b>${yen(v)}人</b>${p < 1 ? "…" : `（誤差 ${d1}%）`}`;
+    if(p < 1) requestAnimationFrame(step);
+    else {
+      titleEl.classList.add("in");
+      if(gold){
+        const br = confCanvas.parentElement.getBoundingClientRect();
+        burst(br.width*0.5, br.height*0.5, 80);
+      }
+    }
+  }
+  requestAnimationFrame(step);
+}
 
 /* ---------- scroll reveal & セクションごとの再生 ---------- */
 let localRafs = {};
@@ -1320,6 +1594,8 @@ demoBtns.addEventListener("click", e=>{
   const b = e.target.closest("button"); if(!b || simActive) return;
   PLAYED = +b.dataset.played;
   demoBtns.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", x===b));
+  predictPanel.hidden = true;
+  pendingPred = null;
   renderAll();
 });
 </script>
