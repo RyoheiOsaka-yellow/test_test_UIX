@@ -43,10 +43,9 @@ body{
 }
 .topbar-in{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0;flex-wrap:wrap;}
 .brand{display:flex;align-items:center;gap:12px;}
-.brand-mark{
-  width:34px;height:34px;border-radius:50%;
-  background:radial-gradient(circle at 32% 28%,#fff,var(--glow) 35%,var(--cyan) 62%,var(--navy) 100%);
-  box-shadow:0 0 18px rgba(0,160,233,.6);flex:none;
+.brand-logo{
+  width:40px;height:auto;flex:none;
+  filter:drop-shadow(0 2px 10px rgba(0,160,233,.45));
 }
 .brand-name{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;font-size:17px;letter-spacing:.02em;line-height:1.3;}
 .brand-sub{font-size:11px;color:var(--paper-dim);letter-spacing:.08em;line-height:1.3;}
@@ -94,7 +93,7 @@ h1 em{font-style:normal;color:var(--glow);text-shadow:0 0 26px rgba(127,232,255,
 .hud-label{font-size:10.5px;letter-spacing:.14em;color:var(--paper-dim);}
 
 /* キャンバス */
-.ball-area{position:relative;width:100%;max-width:620px;margin:0 auto;}
+.ball-area{position:relative;width:100%;max-width:780px;margin:0 auto;}
 #ball{display:block;width:100%;height:auto;touch-action:none;cursor:pointer;}
 .hint{
   position:absolute;left:50%;bottom:2px;transform:translateX(-50%);
@@ -226,27 +225,38 @@ textarea{resize:vertical;min-height:76px;line-height:1.7;}
 .card-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
 
 /* ---------- ファンフィード ---------- */
-.feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+.feed-wrap{position:relative;}
+.feed-wrap.collapsed{max-height:296px;overflow:hidden;}
+.feed-wrap.collapsed::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:120px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,17,41,0),var(--night) 90%);
+}
+.feed{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:10px;}
 .post-card{
-  border:1px solid var(--line);border-radius:12px;padding:16px 16px 12px;
-  background:rgba(0,47,108,.20);display:flex;flex-direction:column;gap:10px;
+  border:1px solid var(--line);border-radius:10px;padding:12px 14px 8px;
+  background:rgba(0,47,108,.20);display:flex;flex-direction:column;gap:8px;
   animation:rise .5s cubic-bezier(.2,.9,.3,1) both;
 }
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-.post-head{display:flex;align-items:center;gap:10px;}
+.post-head{display:flex;align-items:center;gap:8px;min-width:0;}
 .avatar{
-  width:34px;height:34px;border-radius:50%;flex:none;
+  width:28px;height:28px;border-radius:50%;flex:none;
   display:flex;align-items:center;justify-content:center;
-  font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;font-size:14px;color:#fff;
+  font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;font-size:12px;color:#fff;
 }
-.post-name{font-size:13px;font-weight:700;line-height:1.3;}
-.post-meta{font-size:10.5px;color:var(--paper-dim);letter-spacing:.04em;line-height:1.4;}
+.post-id{min-width:0;}
+.post-name{font-size:12px;font-weight:700;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.post-meta{font-size:10px;color:var(--paper-dim);letter-spacing:.03em;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .post-city{
   margin-left:auto;font-size:10px;letter-spacing:.06em;color:var(--night);
   background:var(--glow);padding:2px 9px;border-radius:99px;font-weight:700;flex:none;
 }
-.post-text{font-size:13.5px;line-height:1.75;flex:1;}
-.post-foot{display:flex;align-items:center;gap:8px;border-top:1px solid rgba(127,232,255,.10);padding-top:10px;}
+.post-text{
+  font-size:12.5px;line-height:1.65;flex:1;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.post-foot{display:flex;align-items:center;gap:8px;border-top:1px solid rgba(127,232,255,.10);padding-top:8px;}
+.feed-foot{display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap;}
 .like-btn{
   font:inherit;font-size:12px;color:var(--paper-dim);background:none;border:none;
   cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:2px 6px;border-radius:8px;
@@ -367,6 +377,30 @@ footer{padding:44px 0 60px;border-top:1px solid var(--line);}
 .foot-row{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;}
 .foot-note{font-size:11.5px;color:var(--paper-dim);line-height:1.9;max-width:720px;}
 :focus-visible{outline:2px solid var(--glow);outline-offset:3px;}
+
+/* ---------- モバイル最適化 ---------- */
+@media(max-width:520px){
+  .hud{display:grid;grid-template-columns:1fr 1fr;gap:16px 0;max-width:340px;}
+  .hud-cell{border-right:none;padding:0 6px;}
+  section.blk{padding:44px 0;}
+  .share-btn{padding:9px 14px;font-size:12px;}
+  .share-btn svg{width:14px;height:14px;}
+  .modal{padding:20px 16px;}
+  .hint{white-space:normal;width:92%;font-size:11px;line-height:1.5;}
+  .kick-clock b{font-size:17px;}
+  .demo-flag{font-size:10px;letter-spacing:.1em;padding:2px 8px;}
+  .btn-ghost{padding:6px 14px;font-size:11.5px;}
+  .msg-pop{min-width:170px;max-width:210px;}
+  .brand-logo{width:34px;}
+  .brand-name{font-size:15px;}
+  .feed{grid-template-columns:1fr 1fr;}
+  .toast{white-space:normal;text-align:center;border-radius:14px;line-height:1.6;}
+}
+@media(max-width:380px){
+  .feed{grid-template-columns:1fr;}
+  .form-foot{justify-content:center;}
+  .btn{width:100%;}
+}
 @media(prefers-reduced-motion:reduce){
   .ticker-track{animation:none;}
   *{transition-duration:.01ms !important;animation-duration:.01ms !important;}
@@ -378,7 +412,29 @@ footer{padding:44px 0 60px;border-top:1px solid var(--line);}
 <div class="topbar">
   <div class="wrap topbar-in">
     <div class="brand">
-      <div class="brand-mark"></div>
+      <svg class="brand-logo" viewBox="0 0 200 236" role="img" aria-label="アスルクラロ沼津 クラブエンブレム">
+        <defs>
+          <path id="cshield" d="M100 4 C134 17 168 18 189 10 C198 76 192 154 100 232 C8 154 2 76 11 10 C32 18 66 17 100 4 Z"/>
+          <clipPath id="clipW"><use href="#cshield" transform="translate(100 120) scale(.945) translate(-100 -120)"/></clipPath>
+          <clipPath id="clipI"><use href="#cshield" transform="translate(100 120) scale(.885) translate(-100 -120)"/></clipPath>
+        </defs>
+        <use href="#cshield" fill="#0b0b0b"/>
+        <use href="#cshield" fill="#fff" transform="translate(100 120) scale(.945) translate(-100 -120)"/>
+        <use href="#cshield" fill="#00A0E9" transform="translate(100 120) scale(.885) translate(-100 -120)"/>
+        <g clip-path="url(#clipI)">
+          <path d="M4 150 L62 90 L84 114 L106 90 L136 122 L164 150 Z" fill="#fff"/>
+        </g>
+        <g clip-path="url(#clipW)">
+          <rect x="0" y="148" width="200" height="26" fill="#0b3a8f"/>
+          <rect x="0" y="174" width="200" height="62" fill="#fff"/>
+        </g>
+        <text x="100" y="167" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="21" font-weight="900" font-style="italic" fill="#fff" letter-spacing="1">azul claro</text>
+        <text x="100" y="193" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="900" fill="#0b0b0b">1990</text>
+        <g fill="#fff">
+          <text x="90" y="112" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="86" font-weight="900" font-style="italic">a</text>
+          <rect x="118" y="52" width="36" height="14" rx="7"/>
+        </g>
+      </svg>
       <div>
         <div class="brand-name">みんなの元気玉</div>
         <div class="brand-sub">HOME OPENER SUPPORT PROJECT</div>
@@ -509,8 +565,13 @@ footer{padding:44px 0 60px;border-top:1px solid var(--line);}
     <div class="sec-label">04 — FAN FEED</div>
     <h2>みんなの声（ファンフィード）</h2>
     <p class="sec-note">届いたばかりの応援がSNS風のタイムラインに並びます。♥で共感するとその市町に +10 ENERGY。共感も立派な応援です。</p>
-    <div class="feed" id="feedList"></div>
-    <div style="margin-top:20px;text-align:center"><button class="btn-ghost" id="feedMore">もっと見る</button></div>
+    <div class="feed-wrap collapsed" id="feedWrap">
+      <div class="feed" id="feedList"></div>
+    </div>
+    <div class="feed-foot">
+      <button class="btn-ghost" id="feedToggle">すべての声を見る</button>
+      <button class="btn-ghost" id="feedMore" style="display:none">もっと見る</button>
+    </div>
   </div>
 </section>
 
@@ -819,6 +880,7 @@ var cv = document.getElementById("ball"), ctx = cv.getContext("2d");
 var CW = cv.width, CH = cv.height, CX = CW/2, CY = CH*0.47;
 var holding=false, charge=0, bursts=[], streaks=[], sparks=[];
 var particles = [];
+var squash=0, squashV=0;   // 押しへこみのバネ物理
 var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function rebuildParticles(){
@@ -839,13 +901,23 @@ rebuildParticles();
 
 function ballRadius(){
   var t = totalEnergy();
-  return 150 + Math.min(150, Math.pow(t/GOAL,0.55)*150);
+  return 168 + Math.min(152, Math.pow(t/GOAL,0.55)*152);
 }
 
 function draw(now){
   ctx.clearRect(0,0,CW,CH);
-  var R = ballRadius();
   var chargeK = charge/100;
+
+  // 押しへこみ（バネで追従→離すとプルンと戻る）＋呼吸
+  var sqTarget = holding ? (0.10 + chargeK*0.18) : 0;
+  squashV += (sqTarget - squash) * 0.16;
+  squashV *= 0.80;
+  squash += squashV;
+  squash = Math.max(-0.32, Math.min(0.5, squash));
+  var sqx = 1 + squash*0.38, sqy = 1 - squash*0.52;
+  var breathe = reduce ? 1 : 1 + Math.sin(now/850)*0.013;
+  var R = ballRadius()*breathe;
+  var cy2 = CY + squash*R*0.18;
 
   // 外周のオーラ
   var aura = ctx.createRadialGradient(CX,CY,R*0.4,CX,CY,R*2.5);
@@ -881,7 +953,9 @@ function draw(now){
     }
   }
 
-  // 本体
+  // 本体（へこみ変形はtransformで適用）
+  ctx.save();
+  ctx.translate(CX, cy2); ctx.scale(sqx, sqy); ctx.translate(-CX, -CY);
   var core = ctx.createRadialGradient(CX-R*0.22,CY-R*0.26,R*0.05,CX,CY,R*(1+chargeK*0.10));
   core.addColorStop(0,"rgba(255,255,255,"+(0.95)+")");
   core.addColorStop(0.22,"rgba(127,232,255,0.85)");
@@ -889,6 +963,7 @@ function draw(now){
   core.addColorStop(0.85,"rgba(15,76,129,0.30)");
   core.addColorStop(1,"rgba(0,47,108,0)");
   ctx.fillStyle=core; ctx.beginPath(); ctx.arc(CX,CY,R*(1.12+chargeK*0.10),0,7); ctx.fill();
+  ctx.restore();
 
   // 粒（＝メッセージ）
   ctx.textAlign="center";
@@ -899,7 +974,7 @@ function draw(now){
     var rr2 = R*p.r*pull;
     var sx = Math.sin(p.tilt)*Math.cos(p.a), sy = Math.cos(p.tilt)*0.72, sz = Math.sin(p.tilt)*Math.sin(p.a);
     var depth = (sz+1)/2;
-    p.px = CX + sx*rr2; p.py = CY + sy*rr2 + Math.sin(p.a*0.7)*rr2*0.28;
+    p.px = CX + sx*rr2*sqx; p.py = cy2 + (sy*rr2 + Math.sin(p.a*0.7)*rr2*0.28)*sqy;
     p.pr = 4+depth*6.5;
     p.vis = 0.35+depth*0.65;
     var fresh = p.born ? Math.max(0,1-(now-p.born)/1200) : 0;
@@ -914,12 +989,12 @@ function draw(now){
   // チャージリング
   if(charge>0){
     ctx.strokeStyle="rgba(255,255,255,0.14)"; ctx.lineWidth=9;
-    ctx.beginPath(); ctx.arc(CX,CY,R*1.42,0,7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(CX,cy2,R*1.38,0,7); ctx.stroke();
     ctx.strokeStyle="#7FE8FF"; ctx.lineWidth=9; ctx.lineCap="round";
-    ctx.beginPath(); ctx.arc(CX,CY,R*1.42,-Math.PI/2,-Math.PI/2+chargeK*Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(CX,cy2,R*1.38,-Math.PI/2,-Math.PI/2+chargeK*Math.PI*2); ctx.stroke();
     ctx.font="700 46px 'Barlow Condensed',sans-serif"; ctx.fillStyle="#7FE8FF"; ctx.textAlign="center";
     var comboMul = 1 + combo*0.1;
-    ctx.fillText("+"+Math.round(charge*3*comboMul), CX, CY+R*1.42+64);
+    ctx.fillText("+"+Math.round(charge*3*comboMul), CX, Math.min(CH-14, cy2+R*1.38+64));
   }
 
   // 火花
@@ -973,6 +1048,7 @@ function fireBurst(){
   sndFire(charge/100);
   addEnergy(city, amt);
   charge=0;
+  squashV = -0.30;   // 発射の反動でプルンと伸びる
 }
 
 /* 押す／離す */
@@ -980,6 +1056,7 @@ var ballArea=document.getElementById("ballArea"), hint=document.getElementById("
 var moved=false, downT=0;
 cv.addEventListener("pointerdown", function(e){
   e.preventDefault(); holding=true; moved=false; downT=performance.now();
+  squashV += 0.12;   // 触れた瞬間にペコッとへこむ
   hint.classList.add("hide");
   cv.setPointerCapture && cv.setPointerCapture(e.pointerId);
 });
@@ -1175,6 +1252,18 @@ HASHTAGS.forEach(function(h){
 });
 
 /* ===================== シェアカード生成 ===================== */
+// ページ内のエンブレムSVGを画像化してカードにも描く
+var logoImg = new Image();
+(function(){
+  var svgEl = document.querySelector(".brand-logo");
+  if(!svgEl) return;
+  var src = svgEl.outerHTML
+    .replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')
+    .replace(/class="brand-logo"\s*/,'');
+  logoImg.onload = function(){ refreshMainCard(); };
+  logoImg.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(src);
+})();
+
 function roundRect(g,x,y,w,h,r){
   g.beginPath();
   g.moveTo(x+r,y); g.arcTo(x+w,y,x+w,y+h,r); g.arcTo(x+w,y+h,x,y+h,r);
@@ -1253,6 +1342,10 @@ function drawCard(canvas, m){
   g.textAlign="right";
   g.fillText(fmt(t)+" / "+fmt(GOAL)+" ENERGY", W-70, H-172);
   g.textAlign="left";
+  // クラブエンブレム（右上）
+  if(logoImg.complete && logoImg.naturalWidth){
+    g.drawImage(logoImg, W-136, 34, 92, 108.6);
+  }
 }
 var cardMain=document.getElementById("cardMain"), cardModal=document.getElementById("cardModal");
 function refreshMainCard(){ drawCard(cardMain, myLatestMsg()); }
@@ -1295,7 +1388,9 @@ shareModal.addEventListener("click", function(e){ if(e.target===shareModal) clos
 document.addEventListener("keydown", function(e){ if(e.key==="Escape") closeShareModal(); });
 
 /* ===================== ファンフィード ===================== */
-var feedList=document.getElementById("feedList"), feedShown=9;
+var feedList=document.getElementById("feedList"), feedWrap=document.getElementById("feedWrap"),
+    feedToggle=document.getElementById("feedToggle"), feedMoreBtn=document.getElementById("feedMore");
+var feedOpen=false, feedShown=24, FEED_PREVIEW=8;
 var likedSet={};
 try{ likedSet=JSON.parse(sessionStorage.getItem("azul_genki_liked")||"{}"); }catch(e){}
 function saveLiked(){ try{ sessionStorage.setItem("azul_genki_liked", JSON.stringify(likedSet)); }catch(e){} }
@@ -1313,7 +1408,10 @@ function avatarColor(name){
 }
 function renderFeed(){
   feedList.innerHTML="";
-  var list=state.msgs.slice().reverse().slice(0,feedShown);
+  var total=state.msgs.length;
+  var limit = feedOpen ? feedShown : FEED_PREVIEW;
+  feedWrap.classList.toggle("collapsed", !feedOpen);
+  var list=state.msgs.slice().reverse().slice(0,limit);
   list.forEach(function(m){
     var idx=state.msgs.indexOf(m);
     var name=m.name||"名無しのサポーター";
@@ -1323,7 +1421,7 @@ function renderFeed(){
     card.innerHTML=
       '<div class="post-head">'
       +'<div class="avatar" style="background:'+avatarColor(name)+'">'+esc(name.charAt(0)||"?")+'</div>'
-      +'<div><div class="post-name">'+esc(name)+(m.mine?' <span style="color:var(--heat);font-size:10px">あなた</span>':"")+'</div>'
+      +'<div class="post-id"><div class="post-name">'+esc(name)+(m.mine?' <span style="color:var(--heat);font-size:10px">あなた</span>':"")+'</div>'
       +'<div class="post-meta">'+timeAgo(m.ts)+'・'+esc(m.to)+'</div></div>'
       +'<span class="post-city">'+esc(m.city)+'</span></div>'
       +'<p class="post-text">'+esc(m.text)+'</p>'
@@ -1346,10 +1444,19 @@ function renderFeed(){
     card.querySelector(".post-share").addEventListener("click", function(){ doShare("x", m); });
     feedList.appendChild(card);
   });
-  document.getElementById("feedMore").style.display = feedShown>=state.msgs.length ? "none" : "";
+  feedToggle.textContent = feedOpen ? "声を畳む" : "すべての声を見る（全"+total+"件）";
+  feedMoreBtn.style.display = (feedOpen && feedShown<total) ? "" : "none";
 }
-document.getElementById("feedMore").addEventListener("click", function(){
-  feedShown+=9; renderFeed();
+feedToggle.addEventListener("click", function(){
+  feedOpen=!feedOpen;
+  if(!feedOpen){
+    feedShown=24;
+    feedWrap.scrollIntoView({behavior:"smooth",block:"start"});
+  }
+  renderFeed();
+});
+feedMoreBtn.addEventListener("click", function(){
+  feedShown+=24; renderFeed();
 });
 renderFeed();
 
