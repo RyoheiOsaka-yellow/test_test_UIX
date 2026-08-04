@@ -40,6 +40,8 @@ const S = {
   budget: 40, novelty: true, novRate: 0.35, traffic: 1.0, endcap: true,
   signage: true,        // 店内サイネージ出稿（FamilyMartVision型）
   dynPricing: false,    // AIダイナミックプライシング（トライアル型）
+  weather: 'normal',    // 天候シグナル（状態型）: hot | normal | rain
+  rival: false,         // 近隣競合セール（人流流出イベント）
   speed: 3, paused: false,
   layers: { shelfheat: true, floorheat: true, cones: false, trails: false, labels: true },
 };
@@ -64,7 +66,8 @@ const STORES = {
       { k: '売場規模', real: '標準店 売場約120㎡・約3,000SKU', sim: '16×10m・14売場' },
     ],
     entrances: [{ x: -3.3, z: 4.55 }],
-    registers: [{ x: 4.2, z: 4.15 }],
+    registers: [{ x: 4.6, z: 4.15 }, { x: 3.6, z: 4.15 }],
+    queueDirs: [[0.55, 0.06], [-0.55, 0.06]],
     counters: [{ x: 4.2, z: 3.55, w: 2.8, d: 0.6, h: 1.0 }],
     novStand: { x: -1.7, z: 3.6 },
     doors: [{ x: -3.3, w: 1.9 }],
@@ -118,6 +121,7 @@ const STORES = {
     ],
     entrances: [{ x: 0, z: 8.5 }, { x: -13, z: 8.5 }],
     registers: [{ x: 4.8, z: 6.5 }, { x: -4.8, z: 6.5 }],
+    queueDirs: [[0.12, 0.58], [-0.12, 0.58]],
     counters: [
       { x: 4.8, z: 5.9, w: 2.6, d: 0.6, h: 1.0 },
       { x: -4.8, z: 5.9, w: 2.6, d: 0.6, h: 1.0 },
@@ -216,8 +220,14 @@ const STATS = {
   visitors: 0, adVisitors: 0, buyers: 0, revenue: 0, promoUnits: 0,
   nov: { treat: 0, ctrl: 0, treatBuy: 0, ctrlBuy: 0, treatRev: 0, ctrlRev: 0 },
   cross: { none: { n: 0, buy: 0 }, ad: { n: 0, buy: 0 }, sig: { n: 0, buy: 0 }, both: { n: 0, buy: 0 } },
+  personas: {}, balked: 0, balkedRev: 0, waitSum: 0, waitN: 0, maxQueue: 0, reg2Opened: false,
   shelves: {}, buckets: [], adStoreVisits: 0, returns: 0, applied: 0,
 };
+function resetPersonaStats() {
+  STATS.personas = {};
+  ['commuter', 'homemaker', 'student', 'senior', 'inbound'].forEach(k => STATS.personas[k] = { n: 0, buyers: 0, revenue: 0 });
+}
+resetPersonaStats();
 function resetShelfStats() {
   STATS.shelves = {};
   SHELVES.forEach(s => STATS.shelves[s.id] = freshShelfStats());
@@ -259,9 +269,10 @@ function curveCumFrac(simSec) {
 }
 function adReachLift() { return 0.35 * (S.budget / 100); }
 function adExposureShare() { return 0.06 + 0.26 * (S.budget / 100); }
+function envMult() { return WEATHER[S.weather].arrival * (S.rival ? 0.85 : 1); }
 function arrivalRatePerMin() {
   const hour = STATS.simSec / 3600;
-  return STORE.arrivalBase * arrivalCurve(hour) * S.traffic * (1 + adReachLift());
+  return STORE.arrivalBase * arrivalCurve(hour) * S.traffic * envMult() * (1 + adReachLift());
 }
 
 const NOV_TRUE_LIFT = 0.32;
@@ -274,6 +285,64 @@ function dynPricingActive() {
   return S.dynPricing && STATS.simSec >= 17 * 3600 && stockState.units > stockState.cap * 0.45;
 }
 
+/* 天候シグナル（統一推計モデルの「状態型」の具体例） */
+const WEATHER = {
+  hot:    { label: '晴れ・猛暑35℃', short: '猛暑', arrival: 0.95, seasonal: 0.085, bg: 0xf2ecdd,
+            cats: { drink: 1.45, snack: 1.05, food: 0.85, fresh: 0.9, daily: 1.0, gift: 1.0, mag: 1.0, promo: 1.1 } },
+  normal: { label: '晴れ・26℃', short: '平常', arrival: 1.0, seasonal: 0.055, bg: 0xe9eef5,
+            cats: { drink: 1.0, snack: 1.0, food: 1.0, fresh: 1.0, daily: 1.0, gift: 1.0, mag: 1.0, promo: 1.0 } },
+  rain:   { label: '雨・22℃', short: '雨', arrival: 0.78, seasonal: 0.02, bg: 0xdfe5ee,
+            cats: { drink: 0.85, snack: 1.0, food: 1.1, fresh: 1.0, daily: 1.4, gift: 0.9, mag: 1.1, promo: 0.95 } },
+};
+function weatherCat(cat) { return WEATHER[S.weather].cats[cat] || 1; }
+
+/* ペルソナ（顧客セグメント軸） */
+const PERSONAS = {
+  commuter:  { key: 'commuter', label: '通勤・オフィス', color: 0x0f9fba, speed: 1.15, dwell: 0.6, stops: [1, 2], buy: 1.0, priceMult: 1.0,
+               aff: { drink: 1.5, food: 1.25, snack: 0.8, gift: 0.6, fresh: 0.6, daily: 0.7, mag: 0.9 } },
+  homemaker: { key: 'homemaker', label: '主婦/主夫・ファミリー', color: 0xe07b39, speed: 0.85, dwell: 1.25, stops: [2, 4], buy: 1.1, priceMult: 1.0,
+               aff: { food: 1.4, fresh: 1.5, daily: 1.3, drink: 0.9, snack: 1.0, gift: 0.9, mag: 0.6 } },
+  student:   { key: 'student', label: '学生・若年', color: 0x7a5fd0, speed: 1.05, dwell: 1.0, stops: [1, 3], buy: 0.9, priceMult: 0.85,
+               aff: { snack: 1.7, drink: 1.3, food: 1.0, mag: 1.2, gift: 0.5, fresh: 0.4, daily: 0.5 } },
+  senior:    { key: 'senior', label: 'シニア', color: 0x64748b, speed: 0.65, dwell: 1.4, stops: [2, 3], buy: 1.0, priceMult: 0.95,
+               aff: { food: 1.2, fresh: 1.3, mag: 1.1, gift: 1.0, drink: 0.8, snack: 0.7, daily: 1.1 } },
+  inbound:   { key: 'inbound', label: 'インバウンド', color: 0x45b3a2, speed: 0.9, dwell: 1.6, stops: [2, 4], buy: 1.15, priceMult: 1.3,
+               aff: { gift: 1.8, snack: 1.4, drink: 1.1, food: 1.0, fresh: 0.6, daily: 0.4, mag: 0.5 } },
+};
+function personaWeights(hour) {
+  const w = {
+    commuter: hour < 10 ? 2.0 : hour < 12 ? 0.8 : hour < 14 ? 2.2 : hour < 17 ? 0.7 : hour < 19.5 ? 2.0 : 1.0,
+    homemaker: hour >= 10 && hour < 16 ? 1.6 : 0.6,
+    student: hour >= 15 && hour < 19 ? 1.8 : 0.5,
+    senior: hour >= 10 && hour < 15 ? 1.4 : 0.4,
+    inbound: hour >= 11 && hour < 20 ? 0.6 : 0.2,
+  };
+  if (FKEY === 'depato') {
+    w.commuter *= 0.5; w.homemaker *= 1.6; w.senior *= 1.5; w.inbound *= 3.0; w.student *= 0.7;
+  }
+  return w;
+}
+function pickPersona() {
+  const w = personaWeights(STATS.simSec / 3600);
+  let sum = 0; Object.values(w).forEach(v => sum += v);
+  let r = rng() * sum;
+  for (const k of Object.keys(w)) { r -= w[k]; if (r <= 0) return PERSONAS[k]; }
+  return PERSONAS.commuter;
+}
+
+/* レジ（待ち行列・機会損失） */
+let REGS = [];
+function buildRegs() {
+  REGS = STORE.registers.map((r, i) => ({
+    x: r.x, z: r.z,
+    dir: (STORE.queueDirs && STORE.queueDirs[i]) || [0, 0.55],
+    open: i === 0 || FKEY === 'depato',
+    queue: [],
+  }));
+}
+function balkThreshold() { return FKEY === 'depato' ? 7 : 5; }
+buildRegs();
+
 let agentSeq = 0;
 class Agent {
   constructor() {
@@ -282,7 +351,9 @@ class Agent {
     this.x = ent.x + (rng() - 0.5) * 0.6;
     this.z = ent.z;
     this.heading = -Math.PI / 2;
-    this.speed = 0.85 + rng() * 0.35;
+    this.persona = pickPersona();
+    this.speed = (0.85 + rng() * 0.35) * this.persona.speed;
+    STATS.personas[this.persona.key].n++;
     this.adExposed = rng() < adExposureShare();
     // 店内サイネージ接触（FamilyMartVision 認知率55.5%を丸めて58%）
     this.sigExposed = S.signage && rng() < 0.58;
@@ -294,13 +365,15 @@ class Agent {
     this.done = false; this.walkPhase = rng() * 6.28;
     this.mesh = null;
 
-    const wanderer = rng() < 0.18;
-    const n = wanderer ? 0 : 1 + Math.floor(rng() * 3);
+    const wanderer = rng() < 0.15;
+    const [smin, smax] = this.persona.stops;
+    const n = wanderer ? 0 : smin + Math.floor(rng() * (smax - smin + 1));
     const cand = SHELVES.filter(s => !s.promoted && !s.counter && s.pop > 0);
+    const effPop = s => s.pop * (this.persona.aff[s.cat] || 1) * weatherCat(s.cat);
     const picked = [];
     for (let i = 0; i < n; i++) {
-      let r = rng() * cand.reduce((a, s) => a + s.pop, 0);
-      for (const s of cand) { r -= s.pop; if (r <= 0) { if (!picked.includes(s)) picked.push(s); break; } }
+      let r = rng() * cand.reduce((a, s) => a + effPop(s), 0);
+      for (const s of cand) { r -= effPop(s); if (r <= 0) { if (!picked.includes(s)) picked.push(s); break; } }
     }
     if (this.adExposed && rng() < 0.72) picked.push(promotedShelf());
     else if (this.sigExposed && rng() < 0.26) picked.push(promotedShelf());
@@ -316,7 +389,7 @@ class Agent {
     }
     STATS.visitors++;
     if (this.adExposed) { STATS.adVisitors++; STATS.adStoreVisits++; }
-    if (rng() < 0.06) beacon(`客#${this.id} 入店${this.adExposed ? '（広告接触）' : ''}`, this.adExposed ? 'seg-ad' : '');
+    if (rng() < 0.06) beacon(`客#${this.id}（${this.persona.label}）入店${this.adExposed ? '・広告接触' : ''}`, this.adExposed ? 'seg-ad' : '');
   }
 
   nextLeg() {
@@ -328,8 +401,11 @@ class Agent {
       this.state = 'walk';
     } else if (!this.paid && this.basket.length) {
       this.targetShelf = null;
-      const reg = nearestOf(STORE.registers, this.x, this.z);
-      this.wp = routePoints(this, reg);
+      const open = REGS.filter(r => r.open);
+      let best = open[0];
+      open.forEach(r => { if (r.queue.length < best.queue.length) best = r; });
+      this.reg = best;
+      this.wp = routePoints(this, best);
       this.state = 'toRegister';
     } else {
       this.targetShelf = null;
@@ -346,8 +422,8 @@ class Agent {
       const st = STATS.shelves[shelf.id];
       if (rng() < 0.62) {
         st.picks++;
-        let pBuy = shelf.base;
-        let priceMult = 1;
+        let pBuy = shelf.base * this.persona.buy * Math.sqrt(weatherCat(shelf.cat));
+        let priceMult = this.persona.priceMult;
         if (shelf === promotedShelf()) {
           pBuy *= PLANO.conv;                       // 棚割シミュレーターの反映
           // クロスメディア接触効果（FamilyMartVision実証: 複数媒体接触で最大約1.7倍）
@@ -386,11 +462,31 @@ class Agent {
     if (this.done) return;
     if (this.state === 'plan') { this.nextLeg(); return; }
     if (this.state === 'dwell') { this.dwellAt(this.dwellShelf, dt); return; }
+    if (this.state === 'queue') {
+      const reg = this.reg;
+      const idx = reg.queue.indexOf(this);
+      const tx = reg.x + reg.dir[0] * idx, tz = reg.z + reg.dir[1] * idx;
+      const dx = tx - this.x, dz = tz - this.z;
+      const d = Math.hypot(dx, dz);
+      if (d > 0.12) {
+        const step = Math.min(this.speed * dt, d);
+        this.x += (dx / d) * step; this.z += (dz / d) * step;
+        this.heading = Math.atan2(dx, dz);
+      } else if (idx === 0) {
+        this.state = 'pay'; this.wait = 20 + rng() * 30;
+        STATS.waitSum += STATS.simSec - this.queueJoin; STATS.waitN++;
+        this.heading = Math.atan2(-reg.dir[0], -reg.dir[1]);
+      }
+      return;
+    }
     if (this.state === 'pay') {
       this.wait -= dt;
       if (this.wait <= 0) {
+        if (this.reg) { const qi = this.reg.queue.indexOf(this); if (qi >= 0) this.reg.queue.splice(qi, 1); }
         this.paid = true;
         STATS.buyers++; STATS.revenue += this.revenue;
+        STATS.personas[this.persona.key].buyers++;
+        STATS.personas[this.persona.key].revenue += this.revenue;
         const b = Math.floor((STATS.simSec - 10 * 3600) / 1800);
         if (b >= 0 && b < STATS.buckets.length) STATS.buckets[b] += this.revenue;
         const boughtPromo = this.basket.includes(promotedShelf().id);
@@ -416,11 +512,21 @@ class Agent {
           const s = this.targetShelf;
           STATS.shelves[s.id].stops++;
           this.dwellShelf = s; this.state = 'dwell';
-          this.wait = 10 + rng() * 20;
+          this.wait = (10 + rng() * 20) * this.persona.dwell;
           if (rng() < 0.05) beacon(`客#${this.id} 「${s.name}」に立寄`, this.hasNovelty ? 'seg-nov' : '');
         } else if (this.state === 'toRegister') {
-          this.state = 'pay'; this.wait = 20 + rng() * 30;
-          this.maybeImpulseCounter();
+          const reg = this.reg || REGS[0];
+          if (reg.queue.length >= balkThreshold() && rng() < 0.45) {
+            // 行列を見て離脱（機会損失）
+            STATS.balked++; STATS.balkedRev += this.revenue;
+            if (rng() < 0.25) beacon(`客#${this.id} 行列を見て退店（機会損失 ${fmtYenFull(this.revenue)}）`, 'seg-ad');
+            this.revenue = 0; this.basket = []; this.paid = true;
+            this.nextLeg();
+          } else {
+            reg.queue.push(this);
+            this.state = 'queue'; this.queueJoin = STATS.simSec;
+            this.maybeImpulseCounter();
+          }
         } else if (this.state === 'exit') {
           this.done = true;
         }
@@ -1167,13 +1273,18 @@ function buildShelf(s, productBoxes, productCyls) {
 /* エージェント3D表現 */
 function makeAgentMesh(agent) {
   const g = new THREE.Group();
-  const color = agent.adExposed ? 0xd55181 : 0x0f9fba;
+  const color = agent.persona.color;
   const body = new THREE.Mesh(
     new THREE.CylinderGeometry(0.13, 0.16, 0.85, 10),
     new THREE.MeshLambertMaterial({ color })
   );
   body.position.y = 0.43; g.add(body);
   agent.bodyMesh = body;
+  if (agent.adExposed) {  // 広告接触はピンクリングで表示
+    const adRing = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.028, 8, 18),
+      new THREE.MeshBasicMaterial({ color: 0xd55181 }));
+    adRing.rotation.x = Math.PI / 2; adRing.position.y = 0.78; g.add(adRing);
+  }
   const head = new THREE.Mesh(
     new THREE.SphereGeometry(0.125, 12, 10),
     new THREE.MeshLambertMaterial({ color: 0xf1e0cd })
@@ -1181,7 +1292,7 @@ function makeAgentMesh(agent) {
   head.position.y = 1.0; g.add(head);
   const cone = new THREE.Mesh(
     new THREE.ConeGeometry(1.4, 2.7, 20, 1, true),
-    new THREE.MeshBasicMaterial({ color: agent.adExposed ? 0xd55181 : 0x0f9fba, transparent: true, opacity: 0.07, depthWrite: false, side: THREE.DoubleSide })
+    new THREE.MeshBasicMaterial({ color: agent.persona.color, transparent: true, opacity: 0.07, depthWrite: false, side: THREE.DoubleSide })
   );
   cone.rotation.x = Math.PI / 2; cone.position.z = 1.35;
   const coneHolder = new THREE.Group();
@@ -1201,7 +1312,7 @@ function makeAgentMesh(agent) {
   const tPos = new Float32Array(40 * 3);
   tGeo.setAttribute('position', new THREE.BufferAttribute(tPos, 3));
   const tLine = new THREE.Line(tGeo, new THREE.LineBasicMaterial({
-    color: agent.adExposed ? 0xd55181 : 0x5aa8bd, transparent: true, opacity: 0.35,
+    color: agent.persona.color, transparent: true, opacity: 0.35,
   }));
   tLine.frustumCulled = false; tLine.visible = false;
   scene.add(tLine);
@@ -1209,6 +1320,7 @@ function makeAgentMesh(agent) {
 }
 
 function disposeAgent(agent) {
+  if (agent.reg) { const qi = agent.reg.queue.indexOf(agent); if (qi >= 0) agent.reg.queue.splice(qi, 1); }
   if (agent.mesh) { scene.remove(agent.mesh); disposeObject(agent.mesh); }
   if (agent.trailLine) { scene.remove(agent.trailLine); agent.trailLine.geometry.dispose(); agent.trailLine.material.dispose(); }
 }
@@ -1258,7 +1370,7 @@ function updateShelfHeatVisual() {
 }
 
 /* ---------- シミュレーションループ ---------- */
-let arrivalCarry = 0, gazeTimer = 0, heatTimer = 0, shelfHeatTimer = 0;
+let arrivalCarry = 0, gazeTimer = 0, heatTimer = 0, shelfHeatTimer = 0, lastWeatherBg = 'normal';
 
 function simStep(simDt) {
   // 3Dへ出すエージェントはサンプリング（ダッシュボードは sampleFactor 倍で拡大推計）
@@ -1291,6 +1403,13 @@ function simStep(simDt) {
   for (let i = agents.length - 1; i >= 0; i--) {
     if (agents[i].done) { if (followTarget === agents[i]) followTarget = null; disposeAgent(agents[i]); agents.splice(i, 1); }
   }
+  // レジ行列: 混雑検知で2番レジを自動開放（コンビニ）
+  const totalQ = REGS.reduce((a, r) => a + r.queue.length, 0);
+  if (totalQ > STATS.maxQueue) STATS.maxQueue = totalQ;
+  if (FKEY === 'conbini' && REGS[1] && !REGS[1].open && REGS[0].queue.length >= 4) {
+    REGS[1].open = true; STATS.reg2Opened = true;
+    beacon('混雑検知: レジ2番を自動開放', 'seg-buy');
+  }
   STATS.simSec += simDt;
   if (STATS.simSec >= 22 * 3600) {
     STATS.simSec = 10 * 3600;
@@ -1303,6 +1422,9 @@ function resetDayCounters() {
   STATS.adStoreVisits = 0; STATS.returns = 0; STATS.applied = 0;
   STATS.nov = { treat: 0, ctrl: 0, treatBuy: 0, ctrlBuy: 0, treatRev: 0, ctrlRev: 0 };
   STATS.cross = { none: { n: 0, buy: 0 }, ad: { n: 0, buy: 0 }, sig: { n: 0, buy: 0 }, both: { n: 0, buy: 0 } };
+  resetPersonaStats();
+  STATS.balked = 0; STATS.balkedRev = 0; STATS.waitSum = 0; STATS.waitN = 0; STATS.maxQueue = 0; STATS.reg2Opened = false;
+  REGS.forEach(r => { r.queue.length = 0; if (FKEY === 'conbini') r.open = r === REGS[0]; });
   resetShelfStats();
   STATS.buckets = STATS.buckets.map(() => 0);
   if (heat.grid) heat.grid.fill(0);
@@ -1327,6 +1449,7 @@ function loadFacility(key) {
   SHELVES = STORE.shelves;
   rebuildShelfIndex();
   buildGraph();
+  buildRegs();
   selectShelf(null);
   STATS.day = 15; STATS.simSec = 10 * 3600;
   resetDayCounters();
@@ -1348,7 +1471,7 @@ function updateVisuals(realDt) {
     if (!a.mesh) return;
     a.mesh.position.set(a.x, 0, a.z);
     a.mesh.rotation.y = a.heading;
-    const walking = a.state === 'walk' || a.state === 'toRegister' || a.state === 'exit';
+    const walking = a.state === 'walk' || a.state === 'toRegister' || a.state === 'exit' || a.state === 'queue';
     a.bodyMesh.position.y = 0.43 + (walking ? Math.abs(Math.sin(time * 7 + a.walkPhase)) * 0.035 : 0);
     a.coneHolder.visible = S.layers.cones && !a.done;
     if (a.ring) a.ring.visible = a.hasNovelty;
@@ -1378,6 +1501,11 @@ function updateVisuals(realDt) {
   if (novStandGroup) novStandGroup.visible = S.novelty;
   if (promoGroup) promoGroup.visible = S.endcap;
   if (signageGroup) signageGroup.visible = S.signage;
+  if (lastWeatherBg !== S.weather) {
+    lastWeatherBg = S.weather;
+    scene.background = new THREE.Color(WEATHER[S.weather].bg);
+    scene.fog.color = new THREE.Color(WEATHER[S.weather].bg);
+  }
 
   heatTimer += realDt;
   if (heatTimer > 0.5 && S.layers.floorheat) { heatTimer = 0; redrawHeat(); }

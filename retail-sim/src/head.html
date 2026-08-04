@@ -415,6 +415,13 @@ button { font-family: inherit; }
         <label class="row"><input type="checkbox" id="ctl-endcap" checked /><span class="chip" style="background:#d55181"></span>販促什器（エンド／催事台）</label>
         <label class="row"><input type="checkbox" id="ctl-signage" checked /><span class="chip" style="background:#e29ec0"></span>店内サイネージ出稿</label>
         <label class="row"><input type="checkbox" id="ctl-dynp" /><span class="chip chip-outline"></span>AIダイナミックプライシング</label>
+        <div class="sec-title" style="font-size:10px;color:var(--text-muted);letter-spacing:.1em;margin:8px 0 2px">天候（状態型シグナル）</div>
+        <div class="sp-radio" id="ctl-weather">
+          <button data-w="hot">猛暑35℃</button>
+          <button data-w="normal" class="active">晴れ26℃</button>
+          <button data-w="rain">雨22℃</button>
+        </div>
+        <label class="row"><input type="checkbox" id="ctl-rival" /><span class="chip" style="background:#c53030"></span>近隣競合セール開催</label>
         <div class="slider-row">
           <div class="slider-label"><span>店前人流レベル</span><b id="v-traffic">1.0×</b></div>
           <input type="range" id="ctl-traffic" min="50" max="200" step="10" value="100" />
@@ -427,6 +434,15 @@ button { font-family: inherit; }
         <label class="row"><input type="checkbox" id="ly-cones" /><span class="chip chip-outline"></span>視線コーン</label>
         <label class="row"><input type="checkbox" id="ly-trails" /><span class="chip chip-outline"></span>動線トレイル</label>
         <label class="row"><input type="checkbox" id="ly-labels" checked /><span class="chip chip-outline"></span>売場ラベル</label>
+        <div class="note" style="margin-top:4px">
+          ペルソナ凡例:
+          <span style="color:#0f9fba">●通勤</span>
+          <span style="color:#e07b39">●主婦/主夫</span>
+          <span style="color:#7a5fd0">●学生</span>
+          <span style="color:#64748b">●シニア</span>
+          <span style="color:#45b3a2">●訪日客</span><br>
+          ピンクリング=広告接触 ／ 金リング=ノベルティ
+        </div>
       </details>
       <details>
         <summary>カメラ</summary>
@@ -699,6 +715,16 @@ button { font-family: inherit; }
       <div class="card">
         <div class="card-title" data-ccollapse>ノベルティ配布 効果検証（RCT）<span class="hint">処置群 vs 対照群</span><span class="ctgl">▾</span></div>
         <div class="card-body"><div id="novelty-body"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-ccollapse>顧客セグメント（ペルソナ）<span class="hint">時間帯で構成が変化</span><span class="ctgl">▾</span></div>
+        <div class="card-body"><div id="persona-body"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-ccollapse>レジ・オペレーション<span class="hint">待ち行列と機会損失</span><span class="ctgl">▾</span></div>
+        <div class="card-body"><div id="regops-body"></div></div>
       </div>
 
       <div class="card">

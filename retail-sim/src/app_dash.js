@@ -30,7 +30,7 @@ function confShort(level) {
 
 /* ---------- 推計（統一推計モデルの簡易版） ---------- */
 function expectedComponents() {
-  const visitors0 = STORE.arrivalBase * 60 * 14.4;
+  const visitors0 = STORE.arrivalBase * 60 * 14.4 * envMult();
   const footVisitors = visitors0 * (S.traffic - 1);
   const visitorsNoAd = visitors0 * S.traffic;
   const adIncVisits = visitorsNoAd * adReachLift();
@@ -40,7 +40,7 @@ function expectedComponents() {
 
   const baseline = visitors0 * buyRate * basket;
   const foot = footVisitors * buyRate * basket;
-  const seasonal = baseline * 0.055;
+  const seasonal = baseline * WEATHER[S.weather].seasonal;
   const geoCal = (window.GEO && GEO.calibrated) ? GEO.calibFactor : 1;
   const adInc = (adIncVisits * buyRate * basket + exposed * promotedShelf().price * 0.15) * geoCal;
   const sigInc = S.signage ? visitors * 0.58 * promotedShelf().price * (FKEY === 'depato' ? 0.011 : 0.02) : 0;
@@ -199,7 +199,7 @@ function drawWaterfall() {
     { label: '店内サイネージ', sub: 'FamilyMartVision型 店内接触増分', v: p.sigInc, color: '#e29ec0', conf: S.signage ? 'md' : 'lo' },
     { label: 'ノベルティ', sub: 'RCT実測ベース', v: p.novInc, color: COL.s3, conf: novLive.conf },
     { label: '人流（来店環境）', sub: '経路B: γ×人流偏差', v: p.foot, color: COL.s4, conf: 'md' },
-    { label: '季節要因', sub: '8月・猛暑補正', v: p.seasonal, color: COL.neutral2, conf: 'lo' },
+    { label: '季節・天候（' + WEATHER[S.weather].short + '）', sub: '状態型シグナル: ' + WEATHER[S.weather].label, v: p.seasonal, color: COL.neutral2, conf: 'lo' },
   ];
   const total = items.reduce((a, i) => a + i.v, 0);
 
@@ -621,6 +621,34 @@ function buildActions() {
       confidence: 0.7, source: 'RCT / design',
     });
   }
+  // 天候・競合・レジのイベント駆動アクション
+  if (S.weather === 'hot') {
+    list.push({
+      key: 'weather-hot', priority: 'high', category: '天候連動',
+      title: '冷ケース前サイネージ強化＆飲料・アイス発注増',
+      reason: '猛暑シグナル検知。飲料カテゴリ需要+45%・アイス系+80%の推計。天候は状態型シグナルとして推計モデルの季節項に自動反映済み。',
+      impact: { metric: '飲料売上', delta: Math.round(p.totalRevenue * 0.04 / 100), ci: Math.round(p.totalRevenue * 0.015 / 100) },
+      confidence: 0.78, source: 'weather / L1-1',
+    });
+  }
+  if (S.rival) {
+    list.push({
+      key: 'rival-defense', priority: 'high', category: '競合対応',
+      title: '競合セール検知: 防衛CP（予算+20万・サイネージ枠増）',
+      reason: '近隣競合のセールにより推定人流-15%。流出抑止には店頭接点の強化が有効。ジオリフトの対照エリアで競合影響を分離可能。',
+      impact: { metric: '流出防止', delta: Math.round(p.visitors * 0.06), ci: Math.round(p.visitors * 0.03) },
+      confidence: 0.62, source: 'competitor / geolift',
+    });
+  }
+  if (STATS.balked * SF() > (FKEY === 'depato' ? 400 : 15)) {
+    list.push({
+      key: 'queue-staff', priority: 'med', category: 'オペレーション',
+      title: 'ピーク帯のレジ増員（行列離脱の抑制）',
+      reason: `行列離脱が${fmtNum(STATS.balked * SF())}人発生（推定${fmtYen(STATS.balkedRev * SF())}の機会損失）。昼・夕ピークのレジ人員追加で回収可能。`,
+      impact: { metric: '機会損失回収', delta: Math.round(STATS.balked * SF() * 0.7), ci: Math.round(STATS.balked * SF() * 0.25) },
+      confidence: 0.72, source: 'queue-sim',
+    });
+  }
   return list;
 }
 
@@ -708,6 +736,49 @@ function renderBenchmark() {
     </div>`;
 }
 
+/* ---------- 顧客セグメント（ペルソナ） ---------- */
+function renderPersona() {
+  const el = document.getElementById('persona-body');
+  if (!el) return;
+  const tot = Math.max(Object.values(STATS.personas).reduce((a, p) => a + p.n, 0), 1);
+  const colors = { commuter: '#0f9fba', homemaker: '#e07b39', student: '#7a5fd0', senior: '#64748b', inbound: '#45b3a2' };
+  el.innerHTML = Object.entries(STATS.personas).map(([k, p]) => {
+    const P = PERSONAS[k];
+    const share = p.n / tot;
+    const buyRate = p.n ? p.buyers / p.n : 0;
+    const basket = p.buyers ? p.revenue / p.buyers : 0;
+    return `
+      <div class="media-row">
+        <span class="ml" style="width:138px;color:${colors[k]}">● ${P.label}</span>
+        <span class="mb"><span class="bar" style="width:${(share * 100).toFixed(0)}%;background:${colors[k]}"></span></span>
+        <span class="mv" style="width:150px">構成 ${fmtPct(share, 0)} ・ n=${fmtNum(p.n * SF())}<br>
+          <span style="color:var(--text-faint)">購買率${fmtPct(buyRate, 0)} ・ 客単価${basket ? fmtYenFull(basket) : '—'}</span></span>
+      </div>`;
+  }).join('') + `
+    <div class="mde-text" style="margin-top:6px">時間帯でペルソナ構成が変化（昼・夕=通勤、日中=主婦/主夫・シニア、夕方=学生。百貨店は訪日客・シニア比率が上昇）。動線・滞在時間・カテゴリ選好・客単価がペルソナ別に異なる。</div>`;
+}
+
+/* ---------- レジ・オペレーション ---------- */
+function renderRegops() {
+  const el = document.getElementById('regops-body');
+  if (!el) return;
+  const avgWait = STATS.waitN ? STATS.waitSum / STATS.waitN : 0;
+  const rows = REGS.map((r, i) => `
+    <div class="media-row">
+      <span class="ml">レジ${i + 1}番</span>
+      <span class="mb"><span class="bar" style="width:${clamp(r.queue.length / 8 * 100, 2, 100)}%;background:${r.queue.length >= 4 ? COL.warn : COL.s1}"></span></span>
+      <span class="mv">${r.open ? '稼働中 ・ 行列 ' + r.queue.length + '人' : '閉鎖中'}</span>
+    </div>`).join('');
+  const lost = STATS.balkedRev * SF();
+  el.innerHTML = rows + `
+    <div class="sp-kpis" style="margin-top:8px">
+      <div class="kpi"><div class="k-label">平均待ち時間</div><div class="k-value">${avgWait.toFixed(0)}秒</div><div class="k-ci">n=${fmtNum(STATS.waitN * SF())}</div></div>
+      <div class="kpi"><div class="k-label">最大行列</div><div class="k-value">${STATS.maxQueue}人</div><div class="k-ci">${STATS.reg2Opened ? 'レジ2番 自動開放済み' : '—'}</div></div>
+      <div class="kpi"><div class="k-label">行列離脱（機会損失）</div><div class="k-value" style="color:${STATS.balked > 0 ? COL.bad : 'inherit'}">${fmtNum(STATS.balked * SF())}人</div><div class="k-ci">推定 ${fmtYen(lost)} 相当</div></div>
+    </div>
+    <div class="mde-text">行列が${FKEY === 'depato' ? 7 : 5}人以上のとき約45%が購入を諦めて退店（balking）。混雑検知でレジを自動開放。ピーク帯の人員計画の検証に使用。</div>`;
+}
+
 /* ---------- BEACON LOG ---------- */
 function renderBeacon() {
   document.getElementById('beacon-lines').innerHTML = BEACON_LINES.map(l =>
@@ -750,6 +821,19 @@ function bindControls() {
   $('ctl-endcap').addEventListener('change', e => { S.endcap = e.target.checked; refreshCharts(); });
   $('ctl-signage').addEventListener('change', e => { S.signage = e.target.checked; refreshCharts(); });
   $('ctl-dynp').addEventListener('change', e => { S.dynPricing = e.target.checked; });
+  document.getElementById('ctl-weather').addEventListener('click', e => {
+    const b = e.target.closest('button[data-w]');
+    if (!b) return;
+    S.weather = b.dataset.w;
+    document.querySelectorAll('#ctl-weather button').forEach(x => x.classList.toggle('active', x === b));
+    beacon(`天候シグナル更新: ${WEATHER[S.weather].label}`, '');
+    refreshCharts();
+  });
+  $('ctl-rival').addEventListener('change', e => {
+    S.rival = e.target.checked;
+    if (S.rival) beacon('競合店セールを検知（推定人流 -15%）', 'seg-ad');
+    refreshCharts(); renderActions();
+  });
   ['shelfheat', 'floorheat', 'cones', 'trails', 'labels'].forEach(k => {
     $('ly-' + k).addEventListener('change', e => S.layers[k] = e.target.checked);
   });
@@ -832,6 +916,7 @@ function refreshDash() {
   if (selectedShelfId) renderShelfDetail();
   if (activeView === 'analytics') {
     renderKPIs(); renderFunnel(); renderCross(); renderShelfTable(); renderNovelty(); renderStock(); renderBenchmark();
+    renderPersona(); renderRegops();
   }
 }
 
