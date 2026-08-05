@@ -166,6 +166,7 @@ canvas{display:block}
 
 <div id="hdr">
   <div class="brand"><span class="x">XBUILD</span></div>
+  <select id="arena-switch" title="アリーナ切替" style="background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:4px 6px;font-size:11px;font-family:var(--jp)"><option value="index.html">静岡市中央体育館</option><option value="konohana.html">このはなアリーナ</option><option value="kitasato-fuji.html">北里アリーナ富士</option><option value="koryo.html">香陵アリーナ</option><option value="budokan.html">静岡県武道館</option><option value="hamamatsu.html">浜松アリーナ</option></select>
   <div class="hdr-title">静岡市中央体育館 デジタルツイン — ベルテックス静岡 ホームゲーム <span style="font-size:10px;color:var(--sub);font-weight:400">※OSM実データ＋仮説モデル</span></div>
   <div id="lvl-crumb">
     <div class="crumb active" data-lvl="site" title="サイト俯瞰">L0 俯瞰</div>
@@ -1641,7 +1642,7 @@ const ORIGINS = [];
 const FLOW_ATTEND = 2600;
 const FLOWS = [
   {name:'JR静岡駅 直帰',         share:0.24, color:0x4da3ff, spend:0},
-  {name:'静鉄新静岡 直帰',       share:0.15, color:0xffa24a, spend:0},
+  {name:'新静岡駅 直帰',        share:0.15, color:0xffa24a, spend:0},
   {name:'車 直帰（駐車場）',     share:0.33, color:0x3ddc84, spend:0},
   {name:'呉服町・青葉 飲食',     share:0.10, color:0xffd166, spend:3800, poi:'呉服町名店街'},
   {name:'新静岡セノバ 回遊',     share:0.10, color:0xe87ca0, spend:2600, poi:'新静岡セノバ'},
@@ -1663,7 +1664,7 @@ function buildFlows(){
       const p = SCENE_DATA.pois.find(q=>q.n===f.poi);
       t = [p.p[0], -p.p[1]];
     } else if(f.name.indexOf('JR')===0){ t = [stn.p[0], -stn.p[1]]; }
-    else if(f.name.indexOf('静鉄')===0){ t = [SCENE_DATA.lrt.p[0], -SCENE_DATA.lrt.p[1]]; }
+    else if(SCENE_DATA.lrt && f.name.indexOf(SCENE_DATA.lrt.name)===0){ t = [SCENE_DATA.lrt.p[0], -SCENE_DATA.lrt.p[1]]; }
     else { const pk = ORIGINS.find(o=>o.name==='駐車場A') || ORIGINS[ORIGINS.length-1]; t = [pk.x, pk.z]; }
     let pth = roadGraph.path(src[0], src[1], t[0], t[1]);
     if(!pth || pth.length < 2) pth = [src, t];
@@ -3899,6 +3900,7 @@ dw.querySelectorAll('button[data-demo]').forEach(b=>
 let kenMode = false, kenTilesBuilt = false;
 const kenGroup = new THREE.Group(); kenGroup.visible = false; scene.add(kenGroup);
 
+const KEN_FILES = {"静岡市中央体育館":"index.html","このはなアリーナ":"konohana.html","北里アリーナ富士":"kitasato-fuji.html","香陵アリーナ":"koryo.html","静岡県武道館":"budokan.html","浜松アリーナ":"hamamatsu.html"};
 /* ホームタウン協定エリア（協定名つき） */
 const KEN_CITIES = [{"n":"静岡市","a":"ホームタウン（本拠地）","p":[-195,-686]},{"n":"浜松市","a":"スポーツを通じた地域活性化に関する協定","p":[-60078,-30088]},{"n":"沼津市","a":"フレンドリータウン協定","p":[43642,12700]},{"n":"三島市","a":"連携協定（協定名は公表情報確認中）","p":[48670,15247]},{"n":"富士市","a":"チャレンジタウン協定（スポーツを通じた地域づくりに関する連携協定）","p":[26566,20028]},{"n":"富士宮市","a":"連携協定（協定名は公表情報確認中）","p":[21553,26817]},{"n":"島田市","a":"連携協定（協定名は公表情報確認中）","p":[-19225,-16858]},{"n":"焼津市","a":"ハートビートタウン協定","p":[-5657,-12737]},{"n":"藤枝市","a":"ふじえだドリームタウン協定","p":[-11607,-12703]},{"n":"牧之原市","a":"アクションスポーツタウン協定","p":[-16996,-32820]},{"n":"川根本町","a":"連携協定（協定名は公表情報確認中）","p":[-27666,7270]},{"n":"掛川市","a":"ダイバーシティスポーツタウン協定","p":[-35274,-23665]},{"n":"菊川市","a":"パートナータウン協定（16自治体目）","p":[-27387,-24878]}];
 /* アリーナ（全て黄色 / home=静岡市中央体育館） */
@@ -4077,6 +4079,9 @@ function kenPanelHTML(){
    +'<div class="li"><div class="sw" style="background:#35d0c0"></div>新東名高速道路</div>'
    +'<div class="li"><div class="sw" style="background:#9aa5c0"></div>国道1号</div></div>'
    +kenEconHTML()
+   +'<div class="row-btns" style="margin-top:7px">'
+   +Object.keys(KEN_FILES).map(k=>'<a class="chip" style="text-decoration:none" href="'+KEN_FILES[k]+'">'+k+' ↗</a>').join('')
+   +'</div>'
    +'<div class="hint" style="margin-top:7px">黄ビーム＝アリーナ、オレンジ＝パートナータウン協定自治体。'
    +'アークはホーム（静岡市中央体育館）からの展開網。動線はOSM実形状。クリックで各拠点へ視点移動。'
    +'※連携協定は県内16自治体（クラブ公表）。協定名が公表情報から特定できた13自治体を表示中、残り3自治体は確認でき次第追加。</div></div>';
@@ -4515,6 +4520,14 @@ renderPanel = function(){
     if(rb) rb.onclick = evReset;
   }
 };
+})();
+
+/* アリーナ切替 */
+(function(){
+  const sel = document.getElementById('arena-switch');
+  const cur = (location.pathname.split('/').pop() || 'index.html');
+  [...sel.options].forEach(o=>{ if(o.value === cur) o.selected = true; });
+  sel.onchange = ()=>{ location.href = sel.value; };
 })();
 
 /* 初期化 */
