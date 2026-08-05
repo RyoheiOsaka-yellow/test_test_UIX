@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XBUILD | ベルテックス静岡 6アリーナ統合ビュー</title>
+<style>
+:root{
+  --bg:#0d0f14; --panel:#151821; --panel2:#1c2030; --line:#2a3044;
+  --txt:#e8eaf2; --sub:#8b93a8; --brand:#ff8a1e;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:'Noto Sans JP',sans-serif;background:var(--bg);color:var(--txt);display:flex;flex-direction:column;overflow:hidden}
+#bar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+#bar .brand{font-weight:700;font-size:15px;letter-spacing:.5px}
+#bar .brand b{color:var(--brand)}
+#bar .sub{font-size:10.5px;color:var(--sub)}
+#tabs{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.tab{padding:6px 12px;border-radius:18px;border:1px solid var(--line);color:var(--sub);cursor:pointer;
+  font-size:11.5px;background:var(--panel2);transition:.18s;white-space:nowrap}
+.tab:hover{color:var(--txt)}
+.tab.active{border-color:var(--brand);color:var(--brand);background:rgba(255,138,30,.12)}
+#frame-wrap{flex:1;position:relative;background:#0d0f14}
+iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+#loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:var(--sub);font-size:13px;pointer-events:none;opacity:0;transition:opacity .2s}
+#loading.on{opacity:1}
+</style>
+</head>
+<body>
+<div id="bar">
+  <div class="brand">XBUILD <b>| ベルテックス静岡 アリーナネットワーク</b></div>
+  <div class="sub">6アリーナ デジタルツイン統合ビュー — タブでアリーナを切替（各ツイン内の県域・動線・渋滞・避難・OD等はそのまま操作できます）</div>
+  <div id="tabs"></div>
+</div>
+<div id="frame-wrap">
+  <iframe id="fr" src="index.html?embed=1" title="arena twin"></iframe>
+  <div id="loading">読み込み中…</div>
+</div>
+<script>
+const ARENAS = [
+  ['静岡市中央体育館', 'index.html',        'HOME'],
+  ['このはなアリーナ', 'konohana.html',     null],
+  ['北里アリーナ富士', 'kitasato-fuji.html', null],
+  ['香陵アリーナ',     'koryo.html',        null],
+  ['静岡県武道館',     'budokan.html',      null],
+  ['浜松アリーナ',     'hamamatsu.html',    null],
+];
+const tabs = document.getElementById('tabs');
+const fr = document.getElementById('fr');
+const loading = document.getElementById('loading');
+ARENAS.forEach(([name, file, badge], i)=>{
+  const d = document.createElement('div');
+  d.className = 'tab' + (i === 0 ? ' active' : '');
+  d.textContent = name + (badge ? ' ★' : '');
+  d.title = name + (badge ? '（現ホームアリーナ）' : '');
+  d.onclick = ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    d.classList.add('active');
+    loading.classList.add('on');
+    fr.src = file + '?embed=1';
+  };
+  tabs.appendChild(d);
+});
+fr.addEventListener('load', ()=> loading.classList.remove('on'));
+</script>
+</body>
+</html>

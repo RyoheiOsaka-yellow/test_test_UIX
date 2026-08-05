@@ -3966,11 +3966,65 @@ let kenMetric = 'visit';
 let kenCityW = [];            /* 正規化ウェイト（パネル・アーク・粒子で共有） */
 let kenRevealT = 99;          /* モードON時のアーク段階表示タイマ */
 
-function kenArcCurve(px, py){
-  const a = new THREE.Vector3(0, 200, 0), b = new THREE.Vector3(px, 200, -py);
+function kenArcCurve(px, py, fromTarget){
+  /* fromTarget=true: 連携先→ホーム（グラデーション帯が現在地へ流れる） */
+  const home = new THREE.Vector3(0, 200, 0), tgt = new THREE.Vector3(px, 200, -py);
+  const a = fromTarget ? tgt : home, b = fromTarget ? home : tgt;
   const d = a.distanceTo(b);
   const mid = a.clone().add(b).multiplyScalar(0.5); mid.y = 1800 + d*0.11;
   return {curve: new THREE.QuadraticBezierCurve3(a, mid, b), len: d};
+}
+/* OD分析と同表現のグラデーションアーク（粒子なし・位相帯で向きを表現） */
+function kenArcMesh(curve, radius, colv){
+  const geo = new THREE.TubeGeometry(curve, 64, radius, 6, false);
+  const uni = {uCol:{value:new THREE.Color(colv)}, uTime:{value:Math.random()*4}, uAct:{value:0}};
+  const mat = new THREE.ShaderMaterial({
+    uniforms:uni, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide,
+    vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader:[
+      'varying vec2 vUv; uniform vec3 uCol; uniform float uTime,uAct;',
+      'void main(){',
+      '  float band=pow(0.5+0.5*sin((vUv.x*3.0-uTime)*6.28318),3.0);',
+      '  float head=smoothstep(0.0,0.06,vUv.x)*smoothstep(1.0,0.94,vUv.x);',
+      '  float a=uAct*(0.10+0.55*band)*head;',
+      '  gl_FragColor=vec4(uCol*(0.55+0.75*band), a);',
+      '}'].join('\n')
+  });
+  return {mesh: new THREE.Mesh(geo, mat), uni};
+}
+/* KDE風ソフトブロブ（指標値に応じた面的ヒート） */
+const kenBlobTex = (function(){
+  const cv = document.createElement('canvas'); cv.width = 256; cv.height = 256;
+  const c = cv.getContext('2d');
+  const g = c.createRadialGradient(128,128,0,128,128,126);
+  g.addColorStop(0, 'rgba(255,255,255,0.9)');
+  g.addColorStop(0.4, 'rgba(255,255,255,0.4)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  c.fillStyle = g; c.fillRect(0,0,256,256);
+  return new THREE.CanvasTexture(cv);
+})();
+const KEN_BLOBS = [];
+function rebuildKenBlobs(){
+  KEN_BLOBS.forEach(b=>{ kenGroup.remove(b.m); b.m.geometry.dispose(); b.m.material.dispose(); });
+  KEN_BLOBS.length = 0;
+  const maxW = Math.max(...kenCityW, 0.0001);
+  KEN_CITIES.forEach((c,i)=>{
+    const wn = kenCityW[i] / maxW;
+    const r = 2600 + 10500 * Math.pow(wn, 0.65);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(r*2, r*2),
+      new THREE.MeshBasicMaterial({map:kenBlobTex, color:0xff7a1e, transparent:true, opacity:0,
+        blending:THREE.AdditiveBlending, depthWrite:false}));
+    m.rotation.x = -Math.PI/2;
+    m.position.set(c.p[0], 90, -c.p[1]);
+    kenGroup.add(m);
+    KEN_BLOBS.push({m, target:0.15 + 0.27*wn, order:i});
+  });
+  const hm = new THREE.Mesh(new THREE.PlaneGeometry(15000, 15000),
+    new THREE.MeshBasicMaterial({map:kenBlobTex, color:0xf5c400, transparent:true, opacity:0,
+      blending:THREE.AdditiveBlending, depthWrite:false}));
+  hm.rotation.x = -Math.PI/2; hm.position.set(0, 95, 0);
+  kenGroup.add(hm);
+  KEN_BLOBS.push({m:hm, target:0.3, order:2});
 }
 function cityWeights(metric){
   const raw = KEN_CITIES.map(c=>{
@@ -3984,91 +4038,32 @@ function cityWeights(metric){
 /* アーク実体（都市=オレンジ・指標駆動 / アリーナ=イエロー・開催網） */
 const KEN_ARCS = [];   /* {tube, curve, len, w, col, targetOp, order} */
 function rebuildKenArcs(){
-  KEN_ARCS.forEach(e=>{ kenGroup.remove(e.tube); e.tube.geometry.dispose(); });
+  KEN_ARCS.forEach(e=>{ kenGroup.remove(e.tube); e.tube.geometry.dispose(); e.tube.material.dispose(); });
   KEN_ARCS.length = 0;
   kenCityW = cityWeights(kenMetric);
   const maxW = Math.max(...kenCityW);
   let order = 0;
   KEN_VENUES.filter(v=>!v.home).forEach(v=>{
-    const {curve, len} = kenArcCurve(v.p[0], v.p[1]);
+    const {curve, len} = kenArcCurve(v.p[0], v.p[1], false);   /* ホーム→開催アリーナ */
     if(len < 1500) return;
-    const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 170, 6, false),
-      new THREE.MeshBasicMaterial({color:0xf5c400, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false}));
-    kenGroup.add(tube);
-    KEN_ARCS.push({tube, curve, len, w:0.5, col:0xf5c400, targetOp:0.42, order:order++});
+    const {mesh, uni} = kenArcMesh(curve, 240, 0xf5c400);
+    kenGroup.add(mesh);
+    KEN_ARCS.push({tube:mesh, uni, len, w:0.5, targetOp:0.8, order:order++});
   });
   KEN_CITIES.forEach((c,i)=>{
-    const {curve, len} = kenArcCurve(c.p[0], c.p[1]);
+    const {curve, len} = kenArcCurve(c.p[0], c.p[1], true);    /* 連携先→ホーム */
     if(len < 1500) return;
     const wn = kenCityW[i] / maxW;                       /* 0..1 */
-    const r = 90 + 560 * Math.pow(wn, 0.75);
-    const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, r, 6, false),
-      new THREE.MeshBasicMaterial({color:0xff8a1e, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false}));
-    kenGroup.add(tube);
-    KEN_ARCS.push({tube, curve, len, w:wn, col:0xff8a1e, targetOp:0.22 + 0.38*wn, order:order++, city:i});
+    const r = 110 + 640 * Math.pow(wn, 0.75);
+    const {mesh, uni} = kenArcMesh(curve, r, 0xff8a1e);
+    kenGroup.add(mesh);
+    KEN_ARCS.push({tube:mesh, uni, len, w:wn, targetOp:0.5 + 0.5*wn, order:order++, city:i});
     const cv = CITY_VIS[i];
     if(cv){ cv.baseS = 0.75 + 2.6 * Math.pow(wn, 0.8); }
   });
-  assignKenParticles();
+  rebuildKenBlobs();
 }
-/* 粒子フロー: 都市→ホーム=来場・連携(オレンジ) / ホーム→アリーナ=開催網(イエロー) */
-const KEN_PARTS = 340;
-const kenPartMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(300, 6, 5),
-  new THREE.MeshBasicMaterial({transparent:true, opacity:0.95, blending:THREE.AdditiveBlending, depthWrite:false}), KEN_PARTS);
-kenPartMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-kenGroup.add(kenPartMesh);
-const kenAgents = [];
-const _kpM = new THREE.Matrix4(), _kpC = new THREE.Color(), _kpV = new THREE.Vector3();
-function assignKenParticles(){
-  kenAgents.length = 0;
-  const cityArcs = KEN_ARCS.filter(a=>a.city !== undefined);
-  const venueArcs = KEN_ARCS.filter(a=>a.city === undefined);
-  const wSum = cityArcs.reduce((s,a)=>s+a.w, 0) || 1;
-  const nCity = Math.round(KEN_PARTS * 0.72), nVen = KEN_PARTS - nCity;
-  let k = 0;
-  cityArcs.forEach(a=>{
-    const n = Math.max(2, Math.round(nCity * a.w / wSum));
-    for(let j=0;j<n && k<nCity;j++,k++)
-      kenAgents.push({arc:a, u:Math.random(), dir:-1, col:0xffa24a, sp:(0.55+Math.random()*0.5)});
-  });
-  while(k < nCity && cityArcs.length){ kenAgents.push({arc:cityArcs[k%cityArcs.length], u:Math.random(), dir:-1, col:0xffa24a, sp:0.8}); k++; }
-  for(let j=0;j<nVen;j++){
-    const a = venueArcs[j % Math.max(1, venueArcs.length)];
-    if(!a) break;
-    kenAgents.push({arc:a, u:Math.random(), dir:1, col:0xf5c400, sp:(0.55+Math.random()*0.5)});
-  }
-  kenAgents.forEach((g,i)=>{ _kpC.setHex(g.col); kenPartMesh.setColorAt(i, _kpC); });
-  kenPartMesh.count = kenAgents.length;
-  if(kenPartMesh.instanceColor) kenPartMesh.instanceColor.needsUpdate = true;
-}
-/* 広域動線を走る車両粒子（新幹線・在来線=高速 / 高速道・国道=中速） */
-const KEN_MOVERS = [];
-(function buildMovers(){
-  KEN_LINES.forEach(L=>{
-    const segs = L.segs.map(sg=>{
-      let len = 0; const cum = [0];
-      for(let i=1;i<sg.length;i++){ len += Math.hypot(sg[i][0]-sg[i-1][0], sg[i][1]-sg[i-1][1]); cum.push(len); }
-      return {sg, cum, len};
-    }).filter(s=>s.len > 15000).sort((a,b)=>b.len-a.len).slice(0, 2);
-    segs.forEach(s=>{
-      const n = Math.min(4, Math.max(1, Math.round(s.len/45000)));
-      for(let i=0;i<n;i++){
-        const m = new THREE.Mesh(new THREE.SphereGeometry(L.rail ? 330 : 260, 6, 5),
-          new THREE.MeshBasicMaterial({color:L.c, transparent:true, opacity:0.95, blending:THREE.AdditiveBlending, depthWrite:false}));
-        kenGroup.add(m);
-        KEN_MOVERS.push({m, s, u:i/n, sp:(L.rail ? 16000 : 8000), y:L.rail ? 320 : 190, dir:(i%2? 1:-1)});
-      }
-    });
-  });
-})();
-function moverPos(s, d){
-  const cum = s.cum, sg = s.sg;
-  let lo = 0, hi = cum.length-1;
-  while(lo < hi-1){ const mid = (lo+hi)>>1; if(cum[mid] <= d) lo = mid; else hi = mid; }
-  const k = (d-cum[lo]) / Math.max(0.001, cum[lo+1]-cum[lo]);
-  return [sg[lo][0]+(sg[lo+1][0]-sg[lo][0])*k, sg[lo][1]+(sg[lo+1][1]-sg[lo][1])*k];
-}
-/* アニメーションループ（県域表示中のみ） */
+/* アニメーションループ（県域表示中のみ・OD分析同様の静かな表現） */
 let kenLast = performance.now();
 (function kenLoop(now){
   requestAnimationFrame(kenLoop);
@@ -4076,32 +4071,28 @@ let kenLast = performance.now();
   if(!kenGroup.visible) return;
   kenRevealT += dt;
   const t = now/1000;
-  /* アーク: 段階的リビール + 揺らぎ */
+  /* アーク: 段階的リビール + ゆっくり流れるグラデーション帯（向き＝連携先→ホーム / ホーム→開催館） */
   KEN_ARCS.forEach(e=>{
     const reveal = Math.max(0, Math.min(1, (kenRevealT - e.order*0.06) / 0.7));
-    e.tube.material.opacity = e.targetOp * reveal * (0.82 + 0.18*Math.sin(t*1.7 + e.order));
+    e.uni.uAct.value = e.targetOp * reveal;
+    e.uni.uTime.value += dt * 0.30;
   });
-  /* 粒子 */
-  kenAgents.forEach((g,i)=>{
-    g.u += dt * g.sp * 22000 / Math.max(9000, g.arc.len);
-    if(g.u >= 1) g.u -= 1;
-    const uu = g.dir === 1 ? g.u : 1 - g.u;
-    g.arc.curve.getPoint(uu, _kpV);
-    _kpM.setPosition(_kpV.x, _kpV.y + 150, _kpV.z);
-    kenPartMesh.setMatrixAt(i, _kpM);
+  /* KDE風ブロブ: フェードイン + 静かな呼吸 */
+  KEN_BLOBS.forEach(b=>{
+    const reveal = Math.max(0, Math.min(1, (kenRevealT - b.order*0.05) / 0.8));
+    b.m.material.opacity = b.target * reveal * (0.92 + 0.08*Math.sin(t*0.7 + b.order));
   });
-  kenPartMesh.instanceMatrix.needsUpdate = true;
-  /* 都市リング パルス + ビーム明滅 */
+  /* 都市リング: 静かなパルス */
   CITY_VIS.forEach((cv,i)=>{
-    const s = cv.baseS * (1 + 0.09*Math.sin(t*2.1 + i*1.3));
+    const s = cv.baseS * (1 + 0.05*Math.sin(t*1.1 + i*1.3));
     cv.ring.scale.set(s, s, 1);
-    cv.ring.material.opacity = 0.4 + 0.25*(0.5 + 0.5*Math.sin(t*2.1 + i*1.3));
-    cv.beam.material.opacity = 0.22 + 0.18*(0.5 + 0.5*Math.sin(t*1.6 + i));
+    cv.ring.material.opacity = 0.45 + 0.15*(0.5 + 0.5*Math.sin(t*1.1 + i*1.3));
+    cv.beam.material.opacity = 0.26 + 0.10*(0.5 + 0.5*Math.sin(t*0.9 + i));
   });
   VENUE_VIS.forEach((vv,i)=>{
-    vv.beam.material.opacity = (vv.home ? 0.5 : 0.32) + 0.16*(0.5 + 0.5*Math.sin(t*2.4 + i*0.9));
+    vv.beam.material.opacity = (vv.home ? 0.5 : 0.34) + 0.10*(0.5 + 0.5*Math.sin(t*1.2 + i*0.9));
   });
-  homeSpin.rotation.z = t * 0.6;
+  homeSpin.rotation.z = t * 0.35;
 })(performance.now());
 rebuildKenArcs();
 /* 広域動線: 実形状ライン＋主要区間チューブ＋路線名ラベル */
@@ -4209,9 +4200,9 @@ setLevel = function(lv, fly){
 
 /* --- パネル --- */
 const KEN_METRIC_DEF = {
-  net:   {l:'ネットワーク',   d:'アーク＝協定・開催ネットワークの<b>接続</b>（均等表示）。オレンジ粒子＝連携先→ホームの活動・来場フロー、黄粒子＝ホーム→各アリーナの開催網。'},
-  visit: {l:'来場圏 推計',    d:'アークの太さ・粒子量・リング径＝<b>来場圏シェア推計</b>。人口×距離のグラビティモデル（人口/(距離+8km)^1.5 を正規化・仮説）。'},
-  econ:  {l:'経済効果 推計',  d:'アークの太さ・粒子量＝<b>試合日消費の地域配分推計</b>（来場圏シェア×来場者数×平均消費'+KEN_SPEND_AVG.toLocaleString()+'円・仮説）。'},
+  net:   {l:'ネットワーク',   d:'アーク＝協定・開催ネットワークの<b>接続</b>（均等表示）。オレンジのグラデーション帯＝連携先→ホームの活動・来場動線、黄＝ホーム→各アリーナの開催網（帯の流れが向き）。'},
+  visit: {l:'来場圏 推計',    d:'アークの太さ・ヒートの広がり＝<b>来場圏シェア推計</b>。人口×距離のグラビティモデル（人口/(距離+8km)^1.5 を正規化・仮説）。'},
+  econ:  {l:'経済効果 推計',  d:'アークの太さ・ヒートの広がり＝<b>試合日消費の地域配分推計</b>（来場圏シェア×来場者数×平均消費'+KEN_SPEND_AVG.toLocaleString()+'円・仮説）。'},
 };
 function kenCityVal(i){
   const w = kenCityW[i] || 0;
@@ -4257,8 +4248,8 @@ function kenPanelHTML(){
    +Object.keys(KEN_FILES).map(k=>'<a class="chip" style="text-decoration:none" href="'+KEN_FILES[k]+'">'+k+' ↗</a>').join('')
    +'</div>'
    +'<div class="hint" style="margin-top:7px">黄ビーム＝アリーナ、オレンジ＝パートナータウン協定自治体。'
-   +'<b>アーク＝現在地アリーナ⇄連携先の結び付き</b>で、太さ・流れる粒子の量が上の指標チップで選んだ推計値を表します（リング径も連動）。'
-   +'走る光点は新幹線・在来線・高速道の交通流。動線はOSM実形状。クリックで各拠点へ視点移動。'
+   +'<b>アーク＝現在地アリーナ⇄連携先の結び付き</b>（OD分析と同じグラデーション帯表現・帯の流れが向き）。'
+   +'太さと面的ヒートの広がりが上の指標チップで選んだ推計値を表します。新幹線・在来線・高速道はOSM実形状ライン。クリックで各拠点へ視点移動。'
    +'※連携協定は県内16自治体（クラブ公表）。協定名が公表情報から特定できた13自治体を表示中、残り3自治体は確認でき次第追加。</div></div>';
 }
 /* 💴 経済波及効果（モデル値＋公表試算） */
@@ -4709,6 +4700,7 @@ renderPanel = function(){
 /* アリーナ切替 */
 (function(){
   const sel = document.getElementById('arena-switch');
+  if(location.search.indexOf('embed') >= 0) sel.style.display = 'none';
   const cur = (location.pathname.split('/').pop() || 'index.html');
   [...sel.options].forEach(o=>{ if(o.value === cur) o.selected = true; });
   sel.onchange = ()=>{ location.href = sel.value; };
