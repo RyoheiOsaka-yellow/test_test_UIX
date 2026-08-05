@@ -50,20 +50,34 @@ const ARENAS = [
 const tabs = document.getElementById('tabs');
 const fr = document.getElementById('fr');
 const loading = document.getElementById('loading');
+const tabEls = [];
+function setTab(file, navigate){
+  const idx = ARENAS.findIndex(a=>a[1] === file);
+  if(idx < 0) return;
+  tabEls.forEach((t, i)=> t.classList.toggle('active', i === idx));
+  if(navigate){
+    loading.classList.add('on');
+    fr.src = file + '?embed=1';
+  }
+  try{ history.replaceState(null, '', '#' + file); }catch(e){}
+}
 ARENAS.forEach(([name, file, badge], i)=>{
   const d = document.createElement('div');
   d.className = 'tab' + (i === 0 ? ' active' : '');
   d.textContent = name + (badge ? ' ★' : '');
   d.title = name + (badge ? '（現ホームアリーナ）' : '');
-  d.onclick = ()=>{
-    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-    d.classList.add('active');
-    loading.classList.add('on');
-    fr.src = file + '?embed=1';
-  };
+  d.onclick = ()=> setTab(file, true);
   tabs.appendChild(d);
+  tabEls.push(d);
 });
 fr.addEventListener('load', ()=> loading.classList.remove('on'));
+/* ページ内リンク（県域チップ・セレクタ）でのアリーナ移動をタブに同期 */
+addEventListener('message', e=>{
+  if(e.data && e.data.arenaFile) setTab(e.data.arenaFile, false);
+});
+/* #hamamatsu.html などのディープリンク */
+const h = location.hash.replace('#','');
+if(h && ARENAS.some(a=>a[1] === h)) setTab(h, true);
 </script>
 </body>
 </html>

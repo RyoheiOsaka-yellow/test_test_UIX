@@ -4247,7 +4247,7 @@ function kenPanelHTML(){
    +'<div class="li"><div class="sw" style="background:#9aa5c0"></div>国道1号</div></div>'
    +kenEconHTML()
    +'<div class="row-btns" style="margin-top:7px">'
-   +Object.keys(KEN_FILES).map(k=>'<a class="chip" style="text-decoration:none" href="'+KEN_FILES[k]+'">'+k+' ↗</a>').join('')
+   +Object.keys(KEN_FILES).map(k=>'<a class="chip" style="text-decoration:none" data-af="'+KEN_FILES[k]+'" href="'+KEN_FILES[k]+(location.search.indexOf('embed')>=0?'?embed=1':'')+'">'+k+' ↗</a>').join('')
    +'</div>'
    +'<div class="hint" style="margin-top:7px">黄ビーム＝アリーナ、オレンジ＝パートナータウン協定自治体。'
    +'<b>アーク＝現在地アリーナ⇄連携先の結び付き</b>（OD分析と同じグラデーション帯表現・帯の流れが向き）。'
@@ -4283,6 +4283,9 @@ function bindKenPanel(){
     const c = KEN_CITIES[+b.dataset.kc];
     flyTo(new THREE.Vector3(c.p[0], 0, -c.p[1]), 20000, 0.85, -0.5, 1400);
   });
+  sec.querySelectorAll('[data-af]').forEach(a=> a.addEventListener('click', ()=>{
+    try{ if(parent !== window) parent.postMessage({arenaFile: a.dataset.af}, '*'); }catch(e){}
+  }));
   sec.querySelectorAll('[data-km]').forEach(b=> b.onclick = ()=>{
     kenMetric = b.dataset.km;
     kenRevealT = 0.4;
@@ -4705,7 +4708,10 @@ renderPanel = function(){
   if(location.search.indexOf('embed') >= 0) sel.style.display = 'none';
   const cur = (location.pathname.split('/').pop() || 'index.html');
   [...sel.options].forEach(o=>{ if(o.value === cur) o.selected = true; });
-  sel.onchange = ()=>{ location.href = sel.value; };
+  sel.onchange = ()=>{
+    try{ if(parent !== window) parent.postMessage({arenaFile: sel.value}, '*'); }catch(e){}
+    location.href = sel.value + (location.search.indexOf('embed') >= 0 ? '?embed=1' : '');
+  };
 })();
 
 /* 初期化 */

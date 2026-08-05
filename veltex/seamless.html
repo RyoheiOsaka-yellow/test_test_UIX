@@ -509,7 +509,8 @@ function focusArena(i, keepTour){
     + '<div class="row">所在地: <b>' + a.city + '</b></div>'
     + '<div class="row">規模: <b>' + a.cap + '</b></div>'
     + '<div class="row">周辺: 建物 <b>' + a.bldg.length + '</b>棟 / 幹線 <b>' + a.roads.length + '</b>本（OSM実データ）</div>'
-    + '<a href="' + a.file + '">詳細ツインを開く（人流・渋滞・避難など） ↗</a>';
+    + '<a href="all.html#' + a.file + '" target="_blank" rel="noopener">フル機能ツインを開く（点群・人流・渋滞・避難などタブUI） ↗</a>'
+    + '<div class="row" style="margin-top:5px;font-size:9.5px">※ all.html・各アリーナHTMLと同じフォルダに置いてください</div>';
   toast(a.name + ' へ移動中 — ズームで航空写真が高精細化します', 2600);
 }
 
