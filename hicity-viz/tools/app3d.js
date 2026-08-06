@@ -730,5 +730,5 @@ addEventListener('resize', () => {
 setReplayDay(replayDay);
 applyVisibility(); applyExpand(); applyScenario();
 applyViewMode('points');
-$('loading').style.display = 'none';
+const _ld = $('loading'); if (_ld) _ld.style.display = 'none';
 requestAnimationFrame(loop);

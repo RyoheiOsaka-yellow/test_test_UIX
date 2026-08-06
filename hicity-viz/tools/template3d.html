@@ -6,8 +6,6 @@
 html,body{width:100%;height:100%;overflow:hidden;background:#04050c;
   font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;color:#dfe8f5}
 canvas{display:block}
-#loading{position:fixed;inset:0;z-index:100;background:#04050c;display:flex;align-items:center;justify-content:center}
-.loading-title{font-size:19px;letter-spacing:.3em;color:#9fd8ff;text-shadow:0 0 12px rgba(0,229,255,.6)}
 #panel{position:fixed;top:14px;left:14px;z-index:10;width:236px;max-height:calc(100vh - 28px);
   overflow-y:auto;scrollbar-width:thin;padding:14px 16px 12px;background:rgba(8,12,24,.84);
   border:1px solid rgba(120,180,255,.22);border-radius:10px;backdrop-filter:blur(8px);user-select:none}
@@ -53,8 +51,6 @@ input[type=range]{width:100%;accent-color:#00b7d9;cursor:pointer}
 #credit{position:fixed;right:10px;top:8px;z-index:10;font-size:10px;color:#5f7095;text-align:right;line-height:1.5}
 @media (max-width:768px){#panel{width:200px;padding:10px 12px 8px}#stats{width:210px}}
 </style>
-
-<div id="loading"><div class="loading-title">HANEDA INNOVATION CITY 3D</div></div>
 
 <div id="panel">
   <div class="panel-title">羽田イノベーションシティ 3D</div>
