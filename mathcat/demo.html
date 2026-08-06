@@ -1,0 +1,816 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mathcat — Interactive Math Engine</title>
+<style>
+  :root {
+    --bg: #f8fafd;
+    --grid: rgba(47, 84, 224, 0.08);
+    --grid-major: rgba(47, 84, 224, 0.16);
+    --ink: #131c33;
+    --muted: #5b6684;
+    --accent: #2f54e0;
+    --accent-soft: rgba(47, 84, 224, 0.1);
+    --warm: #c4472e;
+    --panel: #ffffff;
+    --panel-edge: #dde3f0;
+    --code-bg: #eef1f8;
+    --mono: "SF Mono", "Cascadia Code", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0f1d;
+      --grid: rgba(122, 148, 255, 0.07);
+      --grid-major: rgba(122, 148, 255, 0.14);
+      --ink: #e7ebf7;
+      --muted: #939cba;
+      --accent: #7a94ff;
+      --accent-soft: rgba(122, 148, 255, 0.12);
+      --warm: #ff7a5c;
+      --panel: #111830;
+      --panel-edge: #232d4d;
+      --code-bg: #0e1428;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f8fafd;
+    --grid: rgba(47, 84, 224, 0.08);
+    --grid-major: rgba(47, 84, 224, 0.16);
+    --ink: #131c33;
+    --muted: #5b6684;
+    --accent: #2f54e0;
+    --accent-soft: rgba(47, 84, 224, 0.1);
+    --warm: #c4472e;
+    --panel: #ffffff;
+    --panel-edge: #dde3f0;
+    --code-bg: #eef1f8;
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0f1d;
+    --grid: rgba(122, 148, 255, 0.07);
+    --grid-major: rgba(122, 148, 255, 0.14);
+    --ink: #e7ebf7;
+    --muted: #939cba;
+    --accent: #7a94ff;
+    --accent-soft: rgba(122, 148, 255, 0.12);
+    --warm: #ff7a5c;
+    --panel: #111830;
+    --panel-edge: #232d4d;
+    --code-bg: #0e1428;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--ink);
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 100% 24px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 24px 100%,
+      linear-gradient(var(--grid-major) 1px, transparent 1px) 0 0 / 100% 120px,
+      linear-gradient(90deg, var(--grid-major) 1px, transparent 1px) 0 0 / 120px 100%,
+      var(--bg);
+  }
+  main { max-width: 880px; margin: 0 auto; padding: 0 24px 96px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 56px 0 0;
+  }
+  h1 {
+    font-family: var(--mono);
+    font-size: clamp(34px, 6vw, 54px);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin: 8px 0 12px;
+    text-wrap: balance;
+  }
+  h1 .cursor { color: var(--accent); }
+  .lede { max-width: 60ch; color: var(--muted); font-size: 18px; margin: 0 0 32px; }
+
+  h2 {
+    font-family: var(--mono);
+    font-size: 20px;
+    letter-spacing: -0.01em;
+    margin: 72px 0 4px;
+  }
+  h2::before { content: "∴ "; color: var(--accent); }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 20px; max-width: 62ch; }
+
+  p { max-width: 65ch; }
+
+  .stage {
+    position: relative;
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    background: var(--panel);
+    overflow: hidden;
+  }
+  .stage canvas { display: block; width: 100%; height: auto; cursor: grab; touch-action: none; }
+  .stage canvas:active { cursor: grabbing; }
+  .hud {
+    position: absolute;
+    left: 12px;
+    bottom: 10px;
+    display: flex;
+    gap: 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+  }
+  .hud b { color: var(--accent); font-weight: 600; }
+  .hint {
+    position: absolute; right: 12px; bottom: 10px;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    pointer-events: none;
+  }
+
+  .goals { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 14px; }
+  .goals li { padding-left: 28px; position: relative; max-width: 70ch; }
+  .goals li::before { content: "⟡"; position: absolute; left: 0; color: var(--accent); }
+  .goals b { font-family: var(--mono); font-size: 15px; }
+
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  pre .c { color: var(--muted); }
+  pre .k { color: var(--accent); }
+  pre .w { color: var(--warm); }
+
+  .easing-grid { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+  .easing-grid button {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 6px 12px;
+    border: 1px solid var(--panel-edge);
+    border-radius: 999px;
+    background: var(--panel);
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .easing-grid button:hover { border-color: var(--accent); color: var(--ink); }
+  .easing-grid button[aria-pressed="true"] {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .easing-grid button:focus-visible,
+  .stage canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .strips { display: grid; gap: 14px; }
+  .strip-label {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 5px;
+  }
+  .strips canvas {
+    display: block; width: 100%; height: 34px;
+    border-radius: 4px; border: 1px solid var(--panel-edge);
+  }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--panel-edge); border-radius: 6px; background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--panel-edge); }
+  tr:last-child td { border-bottom: none; }
+  th {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); font-weight: 600;
+  }
+  td.num { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+  td.op { font-family: var(--mono); color: var(--accent); }
+  .bar { display: inline-block; height: 8px; background: var(--accent); border-radius: 2px; vertical-align: middle; opacity: 0.85; }
+
+  .scope { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .scope > div { background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 6px; padding: 18px 20px; }
+  .scope h3 { font-family: var(--mono); font-size: 13px; margin: 0 0 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .scope .in h3 { color: var(--accent); }
+  .scope .out h3 { color: var(--warm); }
+  .scope ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14px; }
+  .scope li { margin: 3px 0; }
+
+  footer {
+    margin-top: 80px; padding-top: 24px;
+    border-top: 1px solid var(--panel-edge);
+    font-family: var(--mono); font-size: 13px; color: var(--muted);
+    display: flex; flex-wrap: wrap; gap: 8px 24px;
+  }
+  a { color: var(--accent); }
+  @media (prefers-reduced-motion: reduce) {
+    .hint { display: none; }
+  }
+</style>
+
+<main>
+  <p class="eyebrow">pmndrs initiative 04 · status: active</p>
+  <h1>mathcat<span class="cursor">_</span><br>an interactive math engine</h1>
+  <p class="lede">
+    Math is core to everything interactive — from geometry to collision to color — yet
+    JavaScript lacks a high-performance kernel. mathcat is a common convention both agents
+    and people can use to write the math that powers inspiring apps on the web.
+  </p>
+
+  <div class="stage">
+    <canvas id="sphere" width="1600" height="760" tabindex="0" aria-label="Interactive point sphere demo. Drag to rotate."></canvas>
+    <div class="hud">
+      <span><b id="fps">60</b> fps</span>
+      <span><b id="pts">0</b> points / frame</span>
+      <span><b>0</b> allocations / frame</span>
+    </div>
+    <div class="hint">drag to rotate</div>
+  </div>
+  <p class="sub" style="margin-top:10px">
+    Every frame above runs on the mathcat kernel: <code>random.onSphere</code> seeds the cloud once,
+    then <code>quat.multiply</code>, <code>mat4.compose</code>, <code>mat4.multiply</code> and
+    <code>vec3.transformMat4</code> move every point through pre-allocated arrays — zero garbage per frame.
+  </p>
+
+  <h2>Goals</h2>
+  <ul class="goals">
+    <li><b>Predictable performance.</b> Allocation-free operations and a documented usage contract
+      designed to preserve monomorphic, optimizable call sites, validated through reproducible benchmarks.</li>
+    <li><b>Portable.</b> Efficiently interoperates with WebGL, WebGPU, Wasm, Three.js, etc., so that
+      the handoff between math kernel and framework is simple.</li>
+    <li><b>Minimal.</b> A lean, tree-shakable kernel containing only the primitives needed to build
+      interactive algorithms.</li>
+    <li><b>Data-oriented.</b> Operates on caller-owned data through data-in, data-out functions
+      without owning the data lifecycle.</li>
+    <li><b>Readability.</b> Core math operations stay readable, so even code not written by a person
+      can reasonably be reviewed.</li>
+  </ul>
+
+  <h2>The usage contract</h2>
+  <p class="sub">Every function has the same shape: write into <code>out</code>, return <code>out</code>, never allocate.</p>
+  <pre><code><span class="c">// Setup: allocate once, own the lifecycle.</span>
+<span class="k">const</span> position = <span class="k">new</span> Float32Array(3)
+<span class="k">const</span> rotation = quat.create()
+<span class="k">const</span> world    = <span class="k">new</span> Float32Array(16)
+
+<span class="c">// Per frame: zero allocations.</span>
+vec3.scaleAndAdd(position, position, velocity, dt)
+quat.setAxisAngle(rotation, UP, easing.cubicOut(t) * Math.PI)
+mat4.compose(world, position, rotation, SCALE)
+
+<span class="c">// Handoff to the GPU is a plain buffer — no conversion layer.</span>
+gl.<span class="w">uniformMatrix4fv</span>(location, <span class="k">false</span>, world)</code></pre>
+
+  <h2>easing — timing functions, live</h2>
+  <p class="sub">Each curve below is plotted and animated by the <code>easing</code> module itself.</p>
+  <div class="easing-grid" id="easing-buttons" role="group" aria-label="Choose an easing function"></div>
+  <div class="stage"><canvas id="easing" width="1600" height="560" aria-label="Easing curve plot"></canvas></div>
+
+  <h2>color — one module, three ramps</h2>
+  <div class="strips">
+    <div>
+      <div class="strip-label">color.fromHsl — hue sweep</div>
+      <canvas id="strip-hsl" width="1200" height="40"></canvas>
+    </div>
+    <div>
+      <div class="strip-label">color.lerp in sRGB (muddy midpoint)</div>
+      <canvas id="strip-srgb" width="1200" height="40"></canvas>
+    </div>
+    <div>
+      <div class="strip-label">srgbToLinear → lerp → linearToSrgb (physically sane)</div>
+      <canvas id="strip-linear" width="1200" height="40"></canvas>
+    </div>
+  </div>
+
+  <h2>Benchmarks</h2>
+  <p class="sub">2,000,000 iterations per case on Node 22 (<code>npm run bench</code>), heap growth ≈ 0 across every hot loop.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>operation</th><th style="text-align:right">ops / second</th><th aria-hidden="true"></th></tr></thead>
+      <tbody id="bench-rows"></tbody>
+    </table>
+  </div>
+
+  <h2>Scope</h2>
+  <div class="scope">
+    <div class="in">
+      <h3>In scope</h3>
+      <ul>
+        <li>vectors, rotations, matrices</li>
+        <li>computational geometry</li>
+        <li>noise functions</li>
+        <li>color operations</li>
+        <li>randomization</li>
+        <li>timing / easing functions</li>
+        <li>visualizations</li>
+      </ul>
+    </div>
+    <div class="out">
+      <h3>Out of scope</h3>
+      <ul>
+        <li>non-generalizable mathematics</li>
+        <li>non-spatial data structures</li>
+        <li>spatial traversal systems</li>
+        <li>data management layers</li>
+      </ul>
+    </div>
+  </div>
+
+  <footer>
+    <span>lead: @isaac_mason_ (navcat · crashcat · gpucat)</span>
+    <a href="https://github.com/pmndrs/org/blob/main/initiatives/04-interactive-math-engine.md">initiative →</a>
+    <a href="https://discord.com/invite/poimandres">discord →</a>
+  </footer>
+</main>
+
+<script>
+'use strict';
+/* ------------------------------------------------------------------ */
+/* The mathcat kernel, ported verbatim from mathcat/src (types erased) */
+/* ------------------------------------------------------------------ */
+const EPSILON = 0.000001;
+
+const vec3 = {
+  create: () => [0, 0, 0],
+  set: (out, x, y, z) => { out[0] = x; out[1] = y; out[2] = z; return out; },
+  lerp: (out, a, b, t) => {
+    out[0] = a[0] + (b[0] - a[0]) * t;
+    out[1] = a[1] + (b[1] - a[1]) * t;
+    out[2] = a[2] + (b[2] - a[2]) * t;
+    return out;
+  },
+  transformMat4: (out, a, m) => {
+    const x = a[0], y = a[1], z = a[2];
+    const w = m[3] * x + m[7] * y + m[11] * z + m[15] || 1;
+    out[0] = (m[0] * x + m[4] * y + m[8] * z + m[12]) / w;
+    out[1] = (m[1] * x + m[5] * y + m[9] * z + m[13]) / w;
+    out[2] = (m[2] * x + m[6] * y + m[10] * z + m[14]) / w;
+    return out;
+  },
+};
+
+const quat = {
+  create: () => [0, 0, 0, 1],
+  setAxisAngle: (out, axis, rad) => {
+    const half = rad * 0.5, s = Math.sin(half);
+    out[0] = axis[0] * s; out[1] = axis[1] * s; out[2] = axis[2] * s;
+    out[3] = Math.cos(half);
+    return out;
+  },
+  multiply: (out, a, b) => {
+    const ax = a[0], ay = a[1], az = a[2], aw = a[3];
+    const bx = b[0], by = b[1], bz = b[2], bw = b[3];
+    out[0] = ax * bw + aw * bx + ay * bz - az * by;
+    out[1] = ay * bw + aw * by + az * bx - ax * bz;
+    out[2] = az * bw + aw * bz + ax * by - ay * bx;
+    out[3] = aw * bw - ax * bx - ay * by - az * bz;
+    return out;
+  },
+  normalize: (out, a) => {
+    const len = Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2] + a[3] * a[3]);
+    const inv = len > EPSILON ? 1 / len : 0;
+    out[0] = a[0] * inv; out[1] = a[1] * inv; out[2] = a[2] * inv; out[3] = a[3] * inv;
+    return out;
+  },
+};
+
+const mat4 = {
+  create: () => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+  multiply: (out, a, b) => {
+    const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+    const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+    const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+    const a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+    for (let c = 0; c < 4; c++) {
+      const b0 = b[c * 4], b1 = b[c * 4 + 1], b2 = b[c * 4 + 2], b3 = b[c * 4 + 3];
+      out[c * 4] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+      out[c * 4 + 1] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+      out[c * 4 + 2] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+      out[c * 4 + 3] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+    }
+    return out;
+  },
+  compose: (out, translation, rotation, scale) => {
+    const x = rotation[0], y = rotation[1], z = rotation[2], w = rotation[3];
+    const x2 = x + x, y2 = y + y, z2 = z + z;
+    const xx = x * x2, xy = x * y2, xz = x * z2;
+    const yy = y * y2, yz = y * z2, zz = z * z2;
+    const wx = w * x2, wy = w * y2, wz = w * z2;
+    const sx = scale[0], sy = scale[1], sz = scale[2];
+    out[0] = (1 - (yy + zz)) * sx; out[1] = (xy + wz) * sx; out[2] = (xz - wy) * sx; out[3] = 0;
+    out[4] = (xy - wz) * sy; out[5] = (1 - (xx + zz)) * sy; out[6] = (yz + wx) * sy; out[7] = 0;
+    out[8] = (xz + wy) * sz; out[9] = (yz - wx) * sz; out[10] = (1 - (xx + yy)) * sz; out[11] = 0;
+    out[12] = translation[0]; out[13] = translation[1]; out[14] = translation[2]; out[15] = 1;
+    return out;
+  },
+  perspective: (out, fovy, aspect, near, far) => {
+    const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
+    out[0] = f / aspect; out[1] = 0; out[2] = 0; out[3] = 0;
+    out[4] = 0; out[5] = f; out[6] = 0; out[7] = 0;
+    out[8] = 0; out[9] = 0; out[10] = (far + near) * nf; out[11] = -1;
+    out[12] = 0; out[13] = 0; out[14] = 2 * far * near * nf; out[15] = 0;
+    return out;
+  },
+  lookAt: (out, eye, target, up) => {
+    let zx = eye[0] - target[0], zy = eye[1] - target[1], zz = eye[2] - target[2];
+    let len = Math.sqrt(zx * zx + zy * zy + zz * zz);
+    if (len > 0) { zx /= len; zy /= len; zz /= len; }
+    let xx = up[1] * zz - up[2] * zy, xy = up[2] * zx - up[0] * zz, xz = up[0] * zy - up[1] * zx;
+    len = Math.sqrt(xx * xx + xy * xy + xz * xz);
+    if (len > 0) { xx /= len; xy /= len; xz /= len; }
+    const yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
+    out[0] = xx; out[1] = yx; out[2] = zx; out[3] = 0;
+    out[4] = xy; out[5] = yy; out[6] = zy; out[7] = 0;
+    out[8] = xz; out[9] = yz; out[10] = zz; out[11] = 0;
+    out[12] = -(xx * eye[0] + xy * eye[1] + xz * eye[2]);
+    out[13] = -(yx * eye[0] + yy * eye[1] + yz * eye[2]);
+    out[14] = -(zx * eye[0] + zy * eye[1] + zz * eye[2]);
+    out[15] = 1;
+    return out;
+  },
+};
+
+const color = {
+  create: () => [0, 0, 0],
+  fromHsl: (out, h, s, l) => {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1 / 6) return p + (q - p) * 6 * t;
+      if (t < 1 / 2) return q;
+      if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+      return p;
+    };
+    if (s === 0) { out[0] = out[1] = out[2] = l; return out; }
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    out[0] = hue2rgb(p, q, h + 1 / 3);
+    out[1] = hue2rgb(p, q, h);
+    out[2] = hue2rgb(p, q, h - 1 / 3);
+    return out;
+  },
+  lerp: (out, a, b, t) => {
+    out[0] = a[0] + (b[0] - a[0]) * t;
+    out[1] = a[1] + (b[1] - a[1]) * t;
+    out[2] = a[2] + (b[2] - a[2]) * t;
+    return out;
+  },
+  srgbToLinear: (out, a) => {
+    for (let i = 0; i < 3; i++) {
+      const c = a[i];
+      out[i] = c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    }
+    return out;
+  },
+  linearToSrgb: (out, a) => {
+    for (let i = 0; i < 3; i++) {
+      const c = a[i];
+      out[i] = c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055;
+    }
+    return out;
+  },
+};
+
+const random = {
+  createRng: (seed) => {
+    let state = seed >>> 0;
+    return () => {
+      state = (state + 0x6d2b79f5) >>> 0;
+      let t = state;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  },
+  onSphere: (out, rng) => {
+    const z = rng() * 2 - 1;
+    const angle = rng() * Math.PI * 2;
+    const r = Math.sqrt(1 - z * z);
+    out[0] = r * Math.cos(angle);
+    out[1] = r * Math.sin(angle);
+    out[2] = z;
+    return out;
+  },
+};
+
+const easing = {
+  linear: (t) => t,
+  quadIn: (t) => t * t,
+  quadOut: (t) => t * (2 - t),
+  quadInOut: (t) => (t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2),
+  cubicIn: (t) => t * t * t,
+  cubicOut: (t) => 1 - (1 - t) ** 3,
+  cubicInOut: (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2),
+  expoOut: (t) => (t === 1 ? 1 : 1 - 2 ** (-10 * t)),
+  elasticOut: (t) => {
+    if (t === 0 || t === 1) return t;
+    const c = (2 * Math.PI) / 3;
+    return 2 ** (-10 * t) * Math.sin((t * 10 - 0.75) * c) + 1;
+  },
+  bounceOut: (t) => {
+    const n = 7.5625, d = 2.75;
+    if (t < 1 / d) return n * t * t;
+    if (t < 2 / d) { t -= 1.5 / d; return n * t * t + 0.75; }
+    if (t < 2.5 / d) { t -= 2.25 / d; return n * t * t + 0.9375; }
+    t -= 2.625 / d;
+    return n * t * t + 0.984375;
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/* Shared helpers                                                      */
+/* ------------------------------------------------------------------ */
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+/* ------------------------------------------------------------------ */
+/* Hero: a rotating point sphere, allocation-free per frame            */
+/* ------------------------------------------------------------------ */
+{
+  const canvas = document.getElementById('sphere');
+  const ctx = canvas.getContext('2d');
+  const N = 1400;
+
+  // Setup: allocate once, own the lifecycle (the mathcat contract).
+  const rng = random.createRng(20260806);
+  const points = new Float32Array(N * 3);
+  const tmp = new Float32Array(3);
+  for (let i = 0; i < N; i++) {
+    random.onSphere(tmp, rng);
+    const r = 0.72 + 0.28 * (i % 7 === 0 ? 1 : rng() ** 0.25); // shells + surface
+    points[i * 3] = tmp[0] * r;
+    points[i * 3 + 1] = tmp[1] * r;
+    points[i * 3 + 2] = tmp[2] * r;
+  }
+
+  const rotation = quat.create();
+  const spin = quat.create();
+  const model = mat4.create();
+  const view = mat4.create();
+  const proj = mat4.create();
+  const viewProj = mat4.create();
+  const mvp = mat4.create();
+  const modelView = mat4.create();
+  const eye = [0, 0.35, 2.6];
+  const origin = [0, 0, 0];
+  const up = [0, 1, 0];
+  const one = [1, 1, 1];
+  const yAxis = [0, 1, 0];
+  const xAxis = [1, 0, 0];
+  const cA = color.create(), cB = color.create(), cMix = color.create();
+
+  let velX = 0, velY = reducedMotion ? 0 : 0.25; // rad/s
+  let dragging = false, lastX = 0, lastY = 0;
+  let frames = 0, fpsTime = performance.now();
+  document.getElementById('pts').textContent = String(N);
+
+  canvas.addEventListener('pointerdown', (e) => {
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    velY = (e.clientX - lastX) * 0.12;
+    velX = (e.clientY - lastY) * 0.12;
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  canvas.addEventListener('pointerup', () => { dragging = false; });
+
+  let prev = performance.now();
+  const frame = (now) => {
+    const dt = Math.min((now - prev) / 1000, 0.05);
+    prev = now;
+
+    // Integrate rotation: quat ops only, into pre-allocated arrays.
+    quat.setAxisAngle(spin, yAxis, velY * dt);
+    quat.multiply(rotation, spin, rotation);
+    quat.setAxisAngle(spin, xAxis, velX * dt);
+    quat.multiply(rotation, spin, rotation);
+    quat.normalize(rotation, rotation);
+    if (!dragging) {
+      velX *= 0.97;
+      velY = reducedMotion ? velY * 0.97 : velY * 0.97 + 0.25 * 0.03;
+    }
+
+    const w = canvas.width, h = canvas.height;
+    mat4.compose(model, origin, rotation, one);
+    mat4.lookAt(view, eye, origin, up);
+    mat4.perspective(proj, Math.PI / 4, w / h, 0.1, 10);
+    mat4.multiply(viewProj, proj, view);
+    mat4.multiply(mvp, viewProj, model);
+    mat4.multiply(modelView, view, model);
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Accent → warm gradient by depth, via the color module.
+    const accent = cssVar('--accent');
+    const warm = cssVar('--warm');
+    hexToColor(cA, accent);
+    hexToColor(cB, warm);
+
+    // View-space distance of the cloud's center, for a linear depth ramp.
+    const eyeDist = Math.sqrt(eye[0] * eye[0] + eye[1] * eye[1] + eye[2] * eye[2]);
+
+    for (let i = 0; i < N; i++) {
+      const x = points[i * 3], y = points[i * 3 + 1], z = points[i * 3 + 2];
+      // Linear depth from view-space z (NDC z is too nonlinear to shade with).
+      const zView = modelView[2] * x + modelView[6] * y + modelView[10] * z + modelView[14];
+      const depth = Math.min(Math.max((eyeDist + 1 + zView) / 2, 0), 1); // 1 = near
+      tmp[0] = x; tmp[1] = y; tmp[2] = z;
+      vec3.transformMat4(tmp, tmp, mvp);
+      if (tmp[2] < -1 || tmp[2] > 1) continue;
+      const sx = (tmp[0] * 0.5 + 0.5) * w;
+      const sy = (1 - (tmp[1] * 0.5 + 0.5)) * h;
+      color.lerp(cMix, cB, cA, depth);
+      ctx.globalAlpha = 0.3 + depth * 0.7;
+      ctx.fillStyle = rgb(cMix);
+      const s = 1.5 + depth * 4.5;
+      ctx.fillRect(sx - s / 2, sy - s / 2, s, s);
+    }
+    ctx.globalAlpha = 1;
+
+    frames++;
+    if (now - fpsTime > 500) {
+      document.getElementById('fps').textContent = String(Math.round(frames * 1000 / (now - fpsTime)));
+      frames = 0; fpsTime = now;
+    }
+    requestAnimationFrame(frame);
+  };
+
+  const hexToColor = (out, hex) => {
+    // Accepts #rgb or #rrggbb from CSS custom properties.
+    let h = hex.replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    const n = parseInt(h, 16);
+    out[0] = ((n >> 16) & 255) / 255;
+    out[1] = ((n >> 8) & 255) / 255;
+    out[2] = (n & 255) / 255;
+    return out;
+  };
+  const rgb = (c) =>
+    `rgb(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)})`;
+
+  requestAnimationFrame(frame);
+}
+
+/* ------------------------------------------------------------------ */
+/* Easing playground                                                   */
+/* ------------------------------------------------------------------ */
+{
+  const names = Object.keys(easing);
+  let current = 'cubicInOut';
+  const bar = document.getElementById('easing-buttons');
+  for (const name of names) {
+    const b = document.createElement('button');
+    b.textContent = name;
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(name === current));
+    b.addEventListener('click', () => {
+      current = name;
+      for (const el of bar.children) el.setAttribute('aria-pressed', String(el.textContent === name));
+    });
+    bar.appendChild(b);
+  }
+
+  const canvas = document.getElementById('easing');
+  const ctx = canvas.getContext('2d');
+  let t0 = performance.now();
+
+  const draw = (now) => {
+    const w = canvas.width, h = canvas.height;
+    const pad = 70;
+    const fn = easing[current];
+    const accent = cssVar('--accent');
+    const warm = cssVar('--warm');
+    const muted = cssVar('--muted');
+
+    ctx.clearRect(0, 0, w, h);
+
+    // Axes.
+    ctx.strokeStyle = muted;
+    ctx.globalAlpha = 0.35;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad, pad * 0.6);
+    ctx.lineTo(pad, h - pad);
+    ctx.lineTo(w - pad * 2.2, h - pad);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    const plotW = w - pad * 3.4;
+    const plotH = h - pad * 1.8;
+    const X = (t) => pad + t * plotW;
+    const Y = (v) => h - pad - v * plotH;
+
+    // Curve.
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let i = 0; i <= 200; i++) {
+      const t = i / 200;
+      const v = fn(t);
+      if (i === 0) ctx.moveTo(X(t), Y(v)); else ctx.lineTo(X(t), Y(v));
+    }
+    ctx.stroke();
+
+    // Animated dot on the curve + falling ball on the right.
+    const cycle = reducedMotion ? 0.62 : ((now - t0) / 1800) % 1.3;
+    const t = Math.min(cycle, 1);
+    const v = fn(t);
+    ctx.fillStyle = warm;
+    ctx.beginPath();
+    ctx.arc(X(t), Y(v), 9, 0, Math.PI * 2);
+    ctx.fill();
+
+    const laneX = w - pad * 1.3;
+    ctx.strokeStyle = muted;
+    ctx.globalAlpha = 0.35;
+    ctx.beginPath();
+    ctx.moveTo(laneX, Y(0));
+    ctx.lineTo(laneX, Y(1));
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = accent;
+    ctx.beginPath();
+    ctx.arc(laneX, Y(v), 13, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (!reducedMotion) requestAnimationFrame(draw);
+  };
+  if (reducedMotion) {
+    draw(performance.now());
+    bar.addEventListener('click', () => draw(performance.now()));
+  } else {
+    requestAnimationFrame(draw);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Color ramps                                                         */
+/* ------------------------------------------------------------------ */
+{
+  const c = color.create(), a = color.create(), b = color.create();
+  const la = color.create(), lb = color.create(), lm = color.create();
+
+  const paint = (id, fill) => {
+    const canvas = document.getElementById(id);
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    for (let x = 0; x < w; x++) {
+      fill(x / (w - 1));
+      ctx.fillStyle = `rgb(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)})`;
+      ctx.fillRect(x, 0, 1, h);
+    }
+  };
+
+  paint('strip-hsl', (t) => color.fromHsl(c, t, 0.85, 0.55));
+
+  color.fromHsl(a, 0.62, 0.9, 0.5);  // blue
+  color.fromHsl(b, 0.08, 0.95, 0.55); // orange
+  paint('strip-srgb', (t) => color.lerp(c, a, b, t));
+
+  color.srgbToLinear(la, a);
+  color.srgbToLinear(lb, b);
+  paint('strip-linear', (t) => {
+    color.lerp(lm, la, lb, t);
+    color.linearToSrgb(c, lm);
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Benchmark table (numbers measured via `npm run bench`, Node 22)     */
+/* ------------------------------------------------------------------ */
+{
+  const rows = [
+    ['vec3.add', 220258689],
+    ['vec3.cross', 95348177],
+    ['vec3.normalize', 80328928],
+    ['vec3.transformQuat', 80359380],
+    ['quat.multiply', 70743449],
+    ['vec3.transformMat4', 57576336],
+    ['mat4.invert', 23379053],
+    ['mat4.multiply', 22058068],
+    ['quat.slerp', 21425790],
+  ];
+  const max = rows[0][1];
+  const tbody = document.getElementById('bench-rows');
+  for (const [name, ops] of rows) {
+    const tr = document.createElement('tr');
+    const barWidth = Math.round((ops / max) * 160);
+    tr.innerHTML =
+      `<td class="op">${name}</td>` +
+      `<td class="num">${ops.toLocaleString('en-US')}</td>` +
+      `<td><span class="bar" style="width:${barWidth}px"></span></td>`;
+    tbody.appendChild(tr);
+  }
+}
+</script>
