@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { buildStations, buildRouteGraph, findRoute, buildTrains, buildRidership } from './stations_build.js';
+import { buildStations, buildRouteGraph, findRoute, buildTrains, buildRidership, buildDwell } from './stations_build.js';
 import { buildArea, buildGsiTiles } from './area_build.js';
 
 const D = window.__HIC;
@@ -145,6 +145,30 @@ const RG = buildRouteGraph(toLocal);
 /* 駅勢圏 人流ヒート */
 const RIDER = buildRidership(toLocal, W, RG.nodes);
 scene.add(RIDER.group);
+
+/* エリア滞留ヒート(昼夜間人口・時間帯推計) */
+const DWELL = buildDwell(toLocal, W);
+scene.add(DWELL.group);
+
+/* ランドマーク */
+{
+  const LANDMARKS = [
+    ['大田区役所', 139.7167, 35.5617], ['大田市場', 139.7700, 35.5790],
+    ['池上本門寺', 139.7047, 35.5787], ['ボートレース平和島', 139.7357, 35.5817],
+    ['大森ふるさとの浜辺公園', 139.7400, 35.5760], ['大田区産業プラザPiO', 139.7238, 35.5589],
+    ['羽田クロノゲート', 139.7350, 35.5478], ['多摩川ガス橋緑地', 139.6830, 35.5680],
+  ];
+  for (const [name, lon, lat] of LANDMARKS) {
+    const [x, y] = toLocal(lon, lat);
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(2.6, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xb8c8e8, transparent: true, opacity: 0.85 }));
+    dot.position.copy(W(x, y, 3));
+    context.add(dot);
+    const sp = labelSprite(name, '#a8b8d8', 0.68);
+    sp.position.copy(W(x, y, 14));
+    context.add(sp);
+  }
+}
 const routeGroup = new THREE.Group();
 scene.add(routeGroup);
 function drawRoute(route) {
@@ -362,7 +386,7 @@ const state = {
   playing: true, speed: 240, simT: 9.5 * 3600,
   area: { bld: true, roads: true, osmrail: true, water: true, aero: true, boundary: true, gsi: false },
   stations: true, rail3d: true, future: true,
-  trains: true, ridership: true,
+  trains: true, ridership: true, dwell: true,
   viewMode: 'points',   // points | photo | both
 };
 function applyViewMode(mode) {
@@ -392,6 +416,7 @@ function applyVisibility() {
   ST3D.futureGroup.visible = state.future;
   TRAINS.group.visible = state.trains;
   RIDER.group.visible = state.ridership;
+  DWELL.group.visible = state.dwell;
 }
 function applyExpand() {
   for (const F of FLOORS)
@@ -559,13 +584,16 @@ function updateParticles() {
   $('chk-future')?.addEventListener('change', e => { state.future = e.target.checked; applyVisibility(); });
   $('chk-trains')?.addEventListener('change', e => { state.trains = e.target.checked; applyVisibility(); });
   $('chk-ridership')?.addEventListener('change', e => { state.ridership = e.target.checked; applyVisibility(); });
+  $('chk-dwell')?.addEventListener('change', e => { state.dwell = e.target.checked; applyVisibility(); });
 
   // 駅フライト
   const fr = $('fly-row');
   if (fr) {
     const items = [['hic', 'HICity'], ['tenkubashi', '天空橋'], ['hnd-t3', '空港T3'], ['hnd-t12', '空港T1・T2'],
-                   ['keikyu-kamata', '京急蒲田'], ['kamata', '蒲田'], ['otorii', '大鳥居'], ['omori', '大森'], ['oimachi', '大井町']];
-    fr.innerHTML = items.map(([id, l]) => `<button data-fly="${id}">${l}</button>`).join('');
+                   ['keikyu-kamata', '京急蒲田'], ['kamata', '蒲田'], ['otorii', '大鳥居'], ['omori', '大森'], ['oimachi', '大井町'],
+                   ['shin-kamata', '新駅:東急蒲田地下'], ['shin-keikyu-kamata', '新駅:京急蒲田地下']];
+    fr.innerHTML = items.map(([id, l]) =>
+      `<button data-fly="${id}"${id.startsWith('shin-') ? ' style="color:#ff6b7a;border-color:rgba(255,45,68,.45)"' : ''}>${l}</button>`).join('');
     fr.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
       if (b.dataset.fly === 'hic') { flyTo(CENTER, 380); return; }
       const t = ST3D.flyTargets[b.dataset.fly];
@@ -641,6 +669,7 @@ addEventListener('pointermove', ev => {
       const objs = [...(state.stations ? ST3D.pickables : [])];
       if (state.future) objs.push(...ST3D.futureGroup.children.filter(o => o.userData.info));
       if (state.ridership) objs.push(...RIDER.pickables);
+      if (state.dwell) objs.push(...DWELL.pickables);
       ray.params.Line = { threshold: 8 };
       const sh = ray.intersectObjects(objs, false);
       if (sh.length) {
@@ -678,6 +707,7 @@ function loop(now) {
   updateParticles();
   if (state.trains) TRAINS.update(state.simT, state.future);
   if (state.ridership) RIDER.update(state.simT);
+  if (state.dwell) DWELL.update(state.simT);
   updateFly(now);
   controls.update();
   renderer.render(scene, camera);

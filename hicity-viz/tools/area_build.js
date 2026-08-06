@@ -132,6 +132,60 @@ export function buildArea(A, W) {
   addLines(layers.roads, r1, 0x7c8cb8, 0.5, 0.55);
   ribbon(layers.roads, r0, 8, 0x3a4a74, 0.9, 0.6);
   addLines(layers.roads, r0, 0xc8d4f4, 0.85, 0.75);
+  // 首都高(自動車専用道): 高架リボン+橋脚
+  {
+    const mways = A.motorway || [];
+    ribbon(layers.roads, mways, 8, 0x4a5a86, 0.95, 9);
+    addLines(layers.roads, mways, 0xdfe8ff, 0.9, 9.4);
+    const pierGeo = new THREE.CylinderGeometry(1.3, 1.5, 9, 8);
+    const pierMat = new THREE.MeshBasicMaterial({ color: 0x39445f, transparent: true, opacity: 0.85 });
+    const piers = [];
+    for (const wway of mways) {
+      let acc = 0;
+      for (let i = 0; i + 1 < wway.length; i++) {
+        const dx = wway[i + 1][0] - wway[i][0], dy = wway[i + 1][1] - wway[i][1];
+        const seg = Math.hypot(dx, dy);
+        let d = 30 - acc;
+        while (d < seg) {
+          piers.push([wway[i][0] + dx * d / seg, wway[i][1] + dy * d / seg]);
+          d += 30;
+        }
+        acc = (acc + seg) % 30;
+      }
+    }
+    const im = new THREE.InstancedMesh(pierGeo, pierMat, piers.length);
+    const m4 = new THREE.Matrix4();
+    piers.forEach((p, i) => { m4.setPosition(p[0], 4.5, -p[1]); im.setMatrixAt(i, m4); });
+    im.frustumCulled = false;
+    layers.roads.add(im);
+  }
+
+  /* ---- 公園・緑地 ---- */
+  {
+    const matG = new THREE.MeshBasicMaterial({ color: 0x14301e, transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide });
+    const treePos = [], tc = new THREE.Color(0x2e7a4a);
+    const treeCol = [];
+    for (const ring of (A.green || [])) {
+      if (ring.length < 4) continue;
+      const sh = new THREE.Shape(ring.map(p => new THREE.Vector2(p[0], -p[1])));
+      const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), matG);
+      m.rotation.x = -Math.PI / 2; m.position.y = 0.2;
+      layers.water.add(m);   // 緑地は水域レイヤーと同居(自然系レイヤー)
+      for (let i = 0; i < ring.length - 1; i += 2) {
+        treePos.push(ring[i][0], 2.2, -ring[i][1]);
+        treeCol.push(tc.r, tc.g, tc.b);
+      }
+    }
+    if (treePos.length) {
+      const g2 = new THREE.BufferGeometry();
+      g2.setAttribute('position', new THREE.BufferAttribute(new Float32Array(treePos), 3));
+      g2.setAttribute('color', new THREE.BufferAttribute(new Float32Array(treeCol), 3));
+      const tp = new THREE.Points(g2, new THREE.PointsMaterial({
+        size: 2.4, vertexColors: true, transparent: true, opacity: 0.8, depthWrite: false }));
+      tp.frustumCulled = false;
+      layers.water.add(tp);
+    }
+  }
 
   /* ---- 鉄道(OSM実線形, 地表の下敷き) ---- */
   addLines(layers.osmrail, A.rail || [], 0xb8c4de, 0.4, 0.6);

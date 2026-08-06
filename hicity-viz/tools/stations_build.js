@@ -182,6 +182,11 @@ export function buildStations(toLocal, W, labelSprite) {
         const big = labelSprite(lv.name.split(' — ')[0], '#ff6b7a', 1.0);
         big.position.set(0, bh + 4, 0);
         lg.add(big);
+        // フライト対象として登録
+        flyTargets['shin-' + st.id] = {
+          pos: sg.position.clone().add(new THREE.Vector3(lv.dx || 0, lv.z, -(lv.dy || 0))),
+          name: lv.name.split(' — ')[0],
+        };
         // X線表示(地面・建物越しに見えるように)
         lg.traverse(o => { if (o.material && !o.isSprite) { o.material.depthTest = false; o.renderOrder = 6; } });
       }
@@ -494,6 +499,77 @@ export function buildRidership(toLocal, W, nodes) {
     }
   }
   return { group, update, pickables: items.flatMap(i => [i.disc, i.bar]) };
+}
+
+/* ============ エリア滞留ヒート(昼夜間人口ベースの時間帯推計) ============ */
+/* 夜間人口[千人]は国勢調査・区統計の地区人口からの概算。大田区全体: 人口約75万人・
+   昼夜間人口比率約99(2020国勢調査)。type別の時間帯カーブで滞在人口を推計 */
+export const DWELL_AREAS = [
+  ['蒲田駅周辺(商業)', 139.7160, 35.5624, 620, 25, 'retail'],
+  ['大森駅周辺(商業)', 139.7280, 35.5885, 520, 18, 'retail'],
+  ['西蒲田・池上(住宅)', 139.7060, 35.5690, 850, 55, 'res'],
+  ['東蒲田・京急蒲田', 139.7260, 35.5595, 620, 35, 'mixed'],
+  ['糀谷・羽田(住宅・町工場)', 139.7380, 35.5525, 850, 60, 'mixed'],
+  ['六郷(住宅)', 139.7100, 35.5455, 850, 55, 'res'],
+  ['矢口・下丸子(住宅・工業)', 139.6900, 35.5640, 850, 55, 'mixed'],
+  ['久が原・千鳥(住宅)', 139.6840, 35.5800, 800, 60, 'res'],
+  ['雪谷・調布地区(住宅)', 139.6740, 35.5930, 750, 55, 'res'],
+  ['馬込(住宅)', 139.7060, 35.5930, 800, 60, 'res'],
+  ['大森南・東糀谷(工業混在)', 139.7440, 35.5700, 700, 25, 'mixed'],
+  ['平和島・昭和島(物流)', 139.7500, 35.5780, 950, 3, 'ind'],
+  ['京浜島・城南島(物流)', 139.7780, 35.5880, 900, 2, 'ind'],
+  ['羽田空港(ターミナル)', 139.7750, 35.5480, 1500, 5, 'airport'],
+  ['天空橋・HICity', 139.7550, 35.5490, 380, 1.5, 'office'],
+];
+const DWELL_CURVE = {  // 滞在人口 = 夜間人口 × 係数(概算)
+  res:     [1,1,1,1,1,.97,.88,.72,.6,.56,.55,.55,.55,.56,.58,.63,.72,.83,.93,.98,1,1,1,1],
+  retail:  [.5,.42,.4,.4,.42,.55,.8,1.1,1.4,1.6,1.8,1.95,2.05,2,1.9,1.9,2,2.15,2.25,2,1.6,1.2,.85,.6],
+  mixed:   [.9,.9,.9,.9,.9,.9,.85,.8,.8,.82,.85,.85,.85,.85,.85,.85,.88,.92,.95,.95,.95,.93,.9,.9],
+  ind:     [.1,.08,.08,.08,.12,.3,.9,2.5,3.6,3.8,3.8,3.5,3.4,3.7,3.7,3.5,3,2,1,.5,.3,.2,.15,.1],
+  airport: [1.2,.8,.6,.6,1.2,3,6,8,9,9,9,9,9,9,9,9,9,9.5,9.5,9,7.5,5.5,3.5,2],
+  office:  [.3,.2,.2,.2,.3,.8,2.5,6,8,7,6.5,6.5,7,6.5,6,6,6.5,7,6,3.5,2,1.2,.7,.4],
+};
+export function buildDwell(toLocal, W) {
+  const group = new THREE.Group();
+  // 放射グラデーションのテクスチャ
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128;
+  const cx2 = cv.getContext('2d');
+  const gr = cx2.createRadialGradient(64, 64, 4, 64, 64, 62);
+  gr.addColorStop(0, 'rgba(255,255,255,0.9)');
+  gr.addColorStop(0.55, 'rgba(255,255,255,0.35)');
+  gr.addColorStop(1, 'rgba(255,255,255,0)');
+  cx2.fillStyle = gr; cx2.fillRect(0, 0, 128, 128);
+  const tex = new THREE.CanvasTexture(cv);
+  const ramp = t => {
+    const a = new THREE.Color(0x14406e), b = new THREE.Color(0x00b7d9), c = new THREE.Color(0xf5c400), d = new THREE.Color(0xff6b5e);
+    return t < 0.4 ? a.clone().lerp(b, t / 0.4) : t < 0.75 ? b.clone().lerp(c, (t - 0.4) / 0.35) : c.clone().lerp(d, Math.min(1, (t - 0.75) / 0.25));
+  };
+  const items = [];
+  for (const [name, lon, lat, radius, nightK, type] of DWELL_AREAS) {
+    const [x, y] = toLocal(lon, lat);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(radius * 2, radius * 2),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.4, depthWrite: false, blending: THREE.AdditiveBlending }));
+    m.rotation.x = -Math.PI / 2;
+    m.position.copy(W(x, y, 1.4));
+    m.userData.info = { station: name, level: '', future: false };
+    group.add(m);
+    items.push({ m, nightK, type, radius, name });
+  }
+  function update(simT) {
+    const h = Math.floor(simT / 3600) % 24;
+    const frac = (simT / 3600) % 1;
+    for (const it of items) {
+      const cv2 = DWELL_CURVE[it.type];
+      const w = cv2[h] * (1 - frac) + cv2[(h + 1) % 24] * frac;
+      const popK = it.nightK * w;
+      const density = popK * 1000 / (Math.PI * (it.radius / 1000) ** 2 * 1e6) * 1e4; // 人/ha
+      const t = Math.min(1, density / 260);
+      it.m.material.color = ramp(t);
+      it.m.material.opacity = 0.14 + 0.4 * t;
+      it.m.userData.info.level = `滞在 約${popK >= 10 ? Math.round(popK) : popK.toFixed(1)}千人(${h}時台・推計)｜夜間人口 約${it.nightK}千人ベース`;
+    }
+  }
+  return { group, update, pickables: items.map(i => i.m) };
 }
 
 /* ============ 経路検索(簡易・所要時間は目安) ============ */

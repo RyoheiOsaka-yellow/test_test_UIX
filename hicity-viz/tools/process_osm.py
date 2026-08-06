@@ -69,20 +69,30 @@ for el in load('stations'):
         sta.append([t.get('name', ''), round(x, 1), round(y, 1)])
 out['stations'] = sta
 
-# roads by class
-CLS = {'motorway': 0, 'motorway_link': 0, 'trunk': 0, 'trunk_link': 0,
-       'primary': 1, 'primary_link': 1, 'secondary': 1, 'secondary_link': 1,
+# roads by class ('m'=首都高等の自動車専用道は高架表示用に分離)
+CLS = {'motorway': 'm', 'motorway_link': 'm', 'trunk': 0, 'trunk_link': 0,
+       'primary': 0, 'primary_link': 0, 'secondary': 1, 'secondary_link': 1,
        'tertiary': 2, 'unclassified': 2, 'residential': 2}
-roads = {0: [], 1: [], 2: []}
+roads = {0: [], 1: [], 2: [], 'm': []}
 for src in ('roads', 'roads_major', 'roads_minor0', 'roads_minor1'):
     for el in load(src):
         if 'geometry' not in el: continue
         c = CLS.get(el.get('tags', {}).get('highway'))
         if c is None: continue
-        q = 1 if c < 2 else 2
-        r = ring_local(el['geometry'], q=q, min_seg=2 if c < 2 else 4)
+        q = 1 if c == 'm' or c < 2 else 2
+        r = ring_local(el['geometry'], q=q, min_seg=2 if (c == 'm' or c < 2) else 4)
         if len(r) > 1: roads[c].append(r)
 out['roads'] = [roads[0], roads[1], roads[2]]
+out['motorway'] = roads['m']
+
+# 公園・緑地
+green = []
+for el in load('green'):
+    if 'geometry' not in el: continue
+    r = ring_local(el['geometry'], q=2)
+    if len(r) >= 4:
+        green.append(r)
+out['green'] = green
 
 # water polygons + coastline
 wfill, wline = [], []
