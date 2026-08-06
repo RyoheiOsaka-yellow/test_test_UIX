@@ -40,7 +40,7 @@
     button:hover { background: #dde6f2; }
     button.active { background: #3d7bfd; color: #fff; }
     button .key { font-weight: normal; font-size: 11px; opacity: .55; margin-left: 5px; }
-    #stateLabel {
+    #stateLabel, #charLabel {
       align-self: center; font-size: 12px; color: #7a8699; min-width: 72px; text-align: center;
     }
     .sep { width: 1px; background: #d4dce8; margin: 4px 2px; }
@@ -56,12 +56,17 @@
       <div id="hint">
         ドラッグ: 360°回転 / ホイール: ズーム / 右ドラッグ: 移動<br>
         キー: <b>1</b> 待機 <b>2</b> 走る <b>3</b> ダンス / <b>Space</b> はねる
-        <b>S</b> スピン <b>W</b> 手をふる <b>B</b> おじぎ <b>F</b> バク宙 / <b>R</b> 自動回転
+        <b>S</b> スピン <b>W</b> 手をふる <b>B</b> おじぎ <b>F</b> バク宙 /
+        <b>C</b> キャラ切替 <b>R</b> 自動回転
       </div>
     </div>
   </div>
 
   <div id="controls">
+    <span id="charLabel">おまつり WINKY</span>
+    <button id="btnCharUchiwa" class="active">おまつり<span class="key">C</span></button>
+    <button id="btnCharBat">野球<span class="key">C</span></button>
+    <span class="sep"></span>
     <span id="stateLabel">状態: 待機</span>
     <button id="btnIdle" class="active">待機<span class="key">1</span></button>
     <button id="btnRun">走る<span class="key">2</span></button>
