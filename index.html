@@ -165,6 +165,12 @@ float carve(float v, float w) {
   return smoothstep(w, 0.0, abs(v));
 }
 
+// 丸断面の隆線：粘土紐のように中心が高く盛り上がり、縁へ丸く落ちる
+float bead(float v, float w) {
+  float u = abs(v) / w;
+  return sqrt(max(1.0 - u * u, 0.0));
+}
+
 // ---- 紋様モチーフ（q はセル中心基準 -0.5..0.5、w は基準線幅）----
 // 線幅をノイズで揺らし、手で盛った隆帯・引いた沈線の不均一さを出す
 
@@ -176,7 +182,7 @@ float motifSpiral(vec2 q, float seed, float w) {
   float freq = 17.0 + 21.0 * fract(seed * 3.71);
   float v = sin(a * arms + r * freq + seed * TAU);
   float wob = 0.55 + 0.9 * vnoise(q * 7.0 + seed * 41.0);
-  return carve(v, w * wob) * smoothstep(0.55, 0.45, r);
+  return bead(v, w * wob) * smoothstep(0.55, 0.45, r);
 }
 
 // S 字連結渦巻文（左右で巻きが逆の一対の渦）
@@ -187,7 +193,7 @@ float motifSSpiral(vec2 q, float seed, float w) {
   float a = atan(p.y, p.x);
   float v = sin(side * a * 2.0 + r * (22.0 + 16.0 * fract(seed * 5.31)));
   float wob = 0.55 + 0.9 * vnoise(q * 6.0 + seed * 31.0);
-  return carve(v, w * wob) * smoothstep(0.34, 0.27, r);
+  return bead(v, w * wob) * smoothstep(0.34, 0.27, r);
 }
 
 // 同心円文
@@ -195,7 +201,7 @@ float motifRings(vec2 q, float seed, float w) {
   float r = length(q);
   float v = sin(r * (24.0 + 30.0 * fract(seed * 5.17)) + seed * TAU);
   float wob = 0.55 + 0.9 * vnoise(q * 8.0 + seed * 23.0);
-  return carve(v, w * wob) * smoothstep(0.55, 0.45, r);
+  return bead(v, w * wob) * smoothstep(0.55, 0.45, r);
 }
 
 // 縄目（撚糸文）
@@ -203,7 +209,7 @@ float motifCord(vec2 q, float seed, float w) {
   vec2 p = q * rot(floor(fract(seed * 9.71) * 4.0) * PI * 0.25);
   float v = sin(p.y * 28.0 + sin(p.x * 20.0) * 1.35);
   float wob = 0.6 + 0.8 * vnoise(p * 9.0 + seed * 53.0);
-  return carve(v, w * wob);
+  return bead(v, w * wob);
 }
 
 // 波状沈線
@@ -211,7 +217,17 @@ float motifWave(vec2 q, float seed, float w) {
   vec2 p = q * rot(fract(seed * 3.13) * PI);
   float v = sin(p.y * 22.0 + abs(fract(p.x * 3.0) - 0.5) * 8.5);
   float wob = 0.6 + 0.8 * vnoise(p * 8.0 + seed * 47.0);
-  return carve(v, w * wob);
+  return bead(v, w * wob);
+}
+
+// 刺突文（丸い点の打刻を並べる）
+float motifDots(vec2 q, float seed, float w) {
+  vec2 g = q * (5.0 + 4.0 * fract(seed * 3.31));
+  vec2 id = floor(g);
+  vec2 f = fract(g) - 0.5;
+  float rnd = hash21(id + seed * 10.0);
+  float r = length(f) / (0.26 + 0.18 * rnd);
+  return sqrt(max(1.0 - r * r, 0.0)) * step(rnd, 0.82) * smoothstep(0.52, 0.42, length(q));
 }
 
 // 条線（細い平行沈線）
@@ -229,24 +245,33 @@ vec3 layerPat(vec2 uv, float sc, vec2 seedOff) {
   vec2 q = fract(g) - 0.5;
 
   float seed = hash21(id + seedOff);
-  vec2 qr = q * rot(floor(seed * 8.0) * PI * 0.25);
+  // 向きは完全に自由、モチーフの大きさもセルごとにばらつかせる
+  vec2 qr = q * rot(seed * TAU);
+  qr *= 0.78 + 0.55 * fract(seed * 13.77);
 
   // 線の太さ：細い沈線〜太い隆帯までセルごとにばらつかせる
   float w = mix(0.16, 0.62, pow(fract(seed * 29.31), 1.4));
 
   float m;
   float k = fract(seed * 43.7);
-  if      (k < 0.24) m = motifSpiral(qr, seed, w);
-  else if (k < 0.44) m = motifSSpiral(qr, seed, w);
-  else if (k < 0.56) m = motifRings(qr, seed, w);
-  else if (k < 0.76) m = motifCord(qr, seed, w);
-  else if (k < 0.90) m = motifWave(qr, seed, w);
+  if      (k < 0.20) m = motifSpiral(qr, seed, w);
+  else if (k < 0.38) m = motifSSpiral(qr, seed, w);
+  else if (k < 0.50) m = motifRings(qr, seed, w);
+  else if (k < 0.66) m = motifCord(qr, seed, w);
+  else if (k < 0.78) m = motifWave(qr, seed, w);
+  else if (k < 0.88) m = motifDots(qr, seed, w);
   else               m = motifStria(qr, seed, w);
 
-  // 区画の枠線（隆帯）。存在も太さもセルごとに揺らす
+  // 手を休めたような線の途切れ（一部のセルのみ）
+  if (fract(seed * 61.7) < 0.35) {
+    float brk = smoothstep(0.16, 0.5, vnoise(qr * (2.5 + 3.0 * fract(seed * 7.71)) + seed * 77.0));
+    m *= mix(0.08, 1.0, brk);
+  }
+
+  // 区画の枠線（丸断面の隆帯）。存在も太さもセルごとに揺らす
   float edge = max(abs(q.x), abs(q.y));
-  float border = smoothstep(0.43, 0.478, edge) * smoothstep(0.5, 0.492, edge);
-  border *= 0.4 + 0.7 * fract(seed * 8.93);
+  float border = bead(edge - 0.468, 0.036 + 0.025 * fract(seed * 5.51));
+  border *= step(fract(seed * 8.93), 0.72) * (0.5 + 0.5 * fract(seed * 21.3));
 
   float accent = step(fract(seed * 17.31), 0.3);
 
@@ -266,7 +291,7 @@ vec3 pattern(vec2 uv, float lod) {
   vec2 q = uv * 0.4 + (vec2(vnoise(uv * 0.45 + vec2(2.0, 9.0)), vnoise(uv * 0.45 + vec2(11.0, 4.0))) - 0.5) * 2.2;
   float fv = sin(q.y * 3.4 + q.x * 1.5);
   float widthMod = 0.09 + 0.32 * vnoise(uv * 0.7 + vec2(5.5, 1.2));
-  float thick = carve(fv, widthMod);
+  float thick = bead(fv, widthMod);
   float micro = carve(sin(q.x * 9.0 + q.y * 22.0), 0.55) * thick;
   float thin = carve(abs(fv) - 0.55, 0.055);
   m.x += thick * 0.45 + micro * 0.3;
@@ -310,7 +335,9 @@ vec3 camPath(float s) {
 // 紋様の殻に、別スケールのジャイロイドで大きな窓を開ける。
 // 窓越しに奥の殻が何層も見え、前後の重なりが生まれる
 float map(vec3 p, vec3 ro) {
-  float shell = (abs(gyr(p * GS)) - 0.28) / (GS * 2.0);
+  // 手びねりのうねり：壁面自体を低周波でゆがませる
+  float hand = sin(p.x * 1.9 + sin(p.y * 1.3)) * sin(p.y * 1.7 + sin(p.z * 1.5)) * sin(p.z * 2.1 + sin(p.x * 1.1)) * 0.14;
+  float shell = (abs(gyr(p * GS) + hand) - 0.28) / (GS * 2.3);
   float cutter = (abs(gyr(p * 0.155 + vec3(4.0, 2.0, 7.0))) - 0.42) / (0.155 * 2.0);
   float d = max(shell, -cutter);
   // カメラの周囲は常に空けて、壁をすり抜けるときの暗転を防ぐ
@@ -379,20 +406,39 @@ void main() {
     float lod = smoothstep(30.0, 6.0, t);
     vec3 m = surfPattern(p, lod);
 
-    // 素地：闇に沈む土器の肌
-    float diff = max(dot(n, -rd), 0.0);
-    float atten = 1.0 / (1.0 + t * t * 0.03);
-    col = (uColA * 0.10 + uColB * 0.04) * (0.25 + 0.75 * diff) * atten;
+    // 線の高さで法線を歪め、丸い粘土紐の盛り上がりとして陰影を付ける
+    float bLod = smoothstep(24.0, 4.0, t);
+    if (bLod > 0.02) {
+      float e2 = 0.03;
+      vec3 tb1 = normalize(cross(n, vec3(0.577, 0.31, 0.755)));
+      vec3 tb2 = cross(n, tb1);
+      vec3 mx = surfPattern(p + tb1 * e2, lod);
+      vec3 my = surfPattern(p + tb2 * e2, lod);
+      float h0 = m.x + m.y;
+      n = normalize(n - (tb1 * (mx.x + mx.y - h0) + tb2 * (my.x + my.y - h0)) * 1.7 * bLod);
+    }
 
-    // 刻線のネオン発光
-    float lineA = pow(min(m.x, 1.5), 1.1);
-    float lineB = pow(min(m.y, 1.5), 1.1);
+    // ほぼヘッドライト + わずかに斜め上からの光
+    vec3 L = normalize(-rd + vec3(0.22, 0.34, 0.1));
+    float diff = max(dot(n, L), 0.0);
+    float atten = 1.0 / (1.0 + t * t * 0.03);
+
+    // 素地：闇に沈む土器の肌（隆線の陰影が乗る）
+    col = (uColA * 0.11 + uColB * 0.05) * (0.18 + 0.82 * diff) * atten;
+
+    // 丸い隆線の頂を滑る鏡面ハイライト
+    float spec = pow(max(dot(reflect(rd, n), L), 0.0), 26.0);
+    col += (uColA * 0.45 + uColB * 0.45 + vec3(0.28)) * spec * 0.55 * atten;
+
+    // 刻線のネオン発光：丸断面の中心（頂）ほど強く光る
+    float lineA = pow(min(m.x, 1.6), 1.25);
+    float lineB = pow(min(m.y, 1.6), 1.25);
     float pulse = 0.86 + 0.14 * sin(uTime * 0.6 + p.z * 0.3);
     float eAtten = 1.0 / (1.0 + t * 0.13);
-    col += (uColA * lineA + uColB * lineB) * pulse * eAtten * 2.2;
+    col += (uColA * lineA + uColB * lineB) * pulse * eAtten * (0.7 + 0.3 * diff) * 3.0;
 
     // 窓の縁や曲面の稜線を照らすリムライト
-    float rim = pow(1.0 - diff, 3.0);
+    float rim = pow(1.0 - max(dot(n, -rd), 0.0), 3.0);
     col += (uColA * 0.55 + uColB * 0.45) * rim * 0.22 * atten;
   }
 
