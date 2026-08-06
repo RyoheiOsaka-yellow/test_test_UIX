@@ -313,6 +313,141 @@ export function buildStations(toLocal, W, labelSprite) {
   return { group, futureGroup, railGroup, pickables, flyTargets };
 }
 
+/* ============ 列車運行シミュレーション(運転間隔ダイヤ・目安) ============ */
+const HEADWAY = {  // 時間帯別の運転間隔[分] (0=運行なし)。実ダイヤを参考にした目安
+  'jr-keihin':      h => h < 5 ? 0 : h < 7 ? 6 : h < 9 ? 3.5 : h < 16 ? 5 : h < 20 ? 4 : h < 24 ? 7 : 0,
+  'keikyu-main':    h => h < 5 ? 0 : h < 7 ? 8 : h < 9 ? 4 : h < 17 ? 7 : h < 20 ? 5 : h < 24 ? 9 : 0,
+  'keikyu-airport': h => h < 5 ? 0 : h < 7 ? 9 : h < 9 ? 5 : h < 17 ? 8 : h < 20 ? 6 : h < 24 ? 10 : 0,
+  'monorail':       h => h < 5 ? 0 : h < 7 ? 8 : h < 9 ? 4 : h < 18 ? 5.5 : h < 21 ? 5 : h < 24 ? 9 : 0,
+  'tokyu-tamagawa': h => h < 5 ? 0 : h < 7 ? 9 : h < 9 ? 5 : h < 17 ? 7.5 : h < 20 ? 6 : h < 24 ? 10 : 0,
+  'tokyu-ikegami':  h => h < 5 ? 0 : h < 7 ? 9 : h < 9 ? 5 : h < 17 ? 7.5 : h < 20 ? 6 : h < 24 ? 10 : 0,
+  'rinkai':         h => h < 5 ? 0 : h < 7 ? 10 : h < 9 ? 5 : h < 17 ? 8 : h < 20 ? 6 : h < 24 ? 10 : 0,
+  'asakusa':        h => h < 5 ? 0 : h < 7 ? 9 : h < 9 ? 4.5 : h < 17 ? 7 : h < 20 ? 5 : h < 24 ? 9 : 0,
+  'shinkuko-1':     h => h < 5 ? 0 : h < 7 ? 10 : h < 9 ? 6 : h < 20 ? 8 : h < 24 ? 10 : 0,
+  'shinkuko-2':     h => h < 5 ? 0 : h < 7 ? 10 : h < 9 ? 6 : h < 20 ? 8 : h < 24 ? 10 : 0,
+};
+export function buildTrains(toLocal, W) {
+  const group = new THREE.Group();
+  const sims = [];
+  RAIL_LINES.forEach((line, li) => {
+    const pts = line.pts.map(([lon, lat, z]) => { const [x, y] = toLocal(lon, lat); return W(x, y, z + 1.6); });
+    const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.1);
+    const len = curve.getLength();
+    const geo = new THREE.BoxGeometry(3.4, 3.4, 42);
+    const mat = new THREE.MeshBasicMaterial({ color: line.color, transparent: true, opacity: line.future ? 0.95 : 0.85 });
+    const CAP = 26;
+    const im = new THREE.InstancedMesh(geo, mat, CAP);
+    im.frustumCulled = false;
+    im.userData.future = !!line.future;
+    group.add(im);
+    sims.push({ line, curve, len, im, CAP, phase: li * 47 });
+  });
+  const m4 = new THREE.Matrix4();
+  const q = new THREE.Quaternion();
+  const up = new THREE.Vector3(0, 1, 0);
+  const Zaxis = new THREE.Vector3(0, 0, 1);
+  function update(simT, showFuture) {
+    for (const s of sims) {
+      const hw = (HEADWAY[s.line.id] || (() => 8))(Math.floor(simT / 3600) % 24) * 60;
+      const speed = (s.line.speed || 40) / 3.6;      // m/s
+      const T = s.len / speed;
+      let w = 0;
+      if (hw > 0 && (!s.im.userData.future || showFuture)) {
+        for (const dir of [0, 1]) {
+          const ph = s.phase + dir * hw * 0.5;
+          const k0 = Math.ceil((simT - ph - T) / hw), k1 = Math.floor((simT - ph) / hw);
+          for (let k = k0; k <= k1 && w < s.CAP; k++) {
+            const u = (simT - ph - k * hw) / T;
+            if (u < 0 || u > 1) continue;
+            const uu = dir ? 1 - u : u;
+            const p = s.curve.getPointAt(uu);
+            const tan = s.curve.getTangentAt(uu);
+            if (dir) tan.negate();
+            tan.y = 0; tan.normalize();
+            q.setFromUnitVectors(Zaxis, tan);
+            m4.compose(p, q, new THREE.Vector3(1, 1, 1));
+            s.im.setMatrixAt(w++, m4);
+          }
+        }
+      }
+      s.im.count = w;
+      s.im.instanceMatrix.needsUpdate = true;
+    }
+  }
+  return { group, update };
+}
+
+/* ============ 駅勢圏 人流ヒート(乗降人員×時間帯・概算) ============ */
+/* 乗降人員[人/日]: 京急2024年度公表値ほか、複合駅・他社局は概算 */
+export const RIDERSHIP = [
+  ['蒲田', 260000, 'commuter', 'JR+東急 概算'], ['京急蒲田', 61303, 'commuter', '京急 2024年度'],
+  ['大森', 135000, 'commuter', 'JR 概算'], ['大井町', 370000, 'commuter', 'JR+りんかい+東急 概算'],
+  ['天空橋', 8000, 'office', 'HICity開業後 概算'], ['穴守稲荷', 20698, 'commuter', '京急 2024年度'],
+  ['大鳥居', 30660, 'commuter', '京急 2024年度'], ['糀谷', 26000, 'commuter', '概算'],
+  ['羽田空港第3ターミナル', 56000, 'airport', '京急36,613+モノレール概算'],
+  ['羽田空港第1・第2ターミナル', 150000, 'airport', '京急111,697+モノレール概算'],
+  ['平和島', 30000, 'commuter', '概算'], ['大森町', 15000, 'commuter', '概算'],
+  ['梅屋敷', 13000, 'commuter', '概算'], ['雑色', 29000, 'commuter', '概算'],
+  ['六郷土手', 14000, 'commuter', '概算'], ['池上', 36000, 'commuter', '概算'],
+  ['蓮沼', 9000, 'commuter', '概算'], ['矢口渡', 12000, 'commuter', '概算'],
+  ['武蔵新田', 14000, 'commuter', '概算'], ['下丸子', 15000, 'commuter', '概算'],
+  ['鵜の木', 8000, 'commuter', '概算'], ['久が原', 12000, 'commuter', '概算'],
+  ['千鳥町', 9000, 'commuter', '概算'], ['御嶽山', 14000, 'commuter', '概算'],
+  ['雪が谷大塚', 17000, 'commuter', '概算'], ['大森海岸', 6000, 'commuter', '概算'],
+  ['立会川', 15000, 'commuter', '概算'], ['流通センター', 12000, 'office', '概算'],
+  ['昭和島', 2500, 'office', '概算'], ['整備場', 2000, 'office', '概算'],
+  ['新整備場', 4000, 'office', '概算'], ['西馬込', 26000, 'commuter', '概算'],
+  ['馬込', 14000, 'commuter', '概算'],
+];
+// 時間帯係数(合計≈1になる正規化前の形状): 通勤=朝夕ピーク / 空港=日中フラット / 業務=日中
+const PROFILE = {
+  commuter: h => { const p = [.1,.05,.03,.03,.05,.3,1.2,2.6,2.2,1,.7,.7,.8,.7,.7,.8,1,1.6,2.2,1.8,1.2,.9,.6,.3]; return p[h] || 0; },
+  airport:  h => { const p = [.3,.15,.1,.1,.3,.8,1.3,1.5,1.4,1.3,1.3,1.3,1.3,1.3,1.4,1.4,1.4,1.5,1.5,1.4,1.2,1,.8,.5]; return p[h] || 0; },
+  office:   h => { const p = [.05,.03,.03,.03,.05,.2,.8,1.8,2.4,1.6,1,1,1.2,1,.9,.9,1,1.4,1.8,1.2,.7,.4,.2,.1]; return p[h] || 0; },
+};
+export function buildRidership(toLocal, W, nodes) {
+  const group = new THREE.Group();
+  const items = [];
+  const ramp = t => {
+    const a = new THREE.Color(0x123a66), b = new THREE.Color(0x00b7d9), c = new THREE.Color(0xffc94d), d = new THREE.Color(0xff6b5e);
+    return t < 0.45 ? a.clone().lerp(b, t / 0.45) : t < 0.8 ? b.clone().lerp(c, (t - 0.45) / 0.35) : c.clone().lerp(d, Math.min(1, (t - 0.8) / 0.2));
+  };
+  for (const [name, R, prof, src] of RIDERSHIP) {
+    const nd = nodes[name];
+    if (!nd) continue;
+    const radius = 90 + Math.sqrt(R) * 0.55;
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(radius, 40),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.24, depthWrite: false, side: THREE.DoubleSide }));
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.copy(W(nd.x, nd.y, 0.9));
+    disc.userData.info = { station: name, level: `乗降 約${R.toLocaleString()}人/日(${src})`, future: false };
+    group.add(disc);
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 1, 14),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.8 }));
+    bar.position.copy(W(nd.x + 34, nd.y + 20, 0));
+    bar.userData.info = disc.userData.info;
+    group.add(bar);
+    items.push({ R, prof, disc, bar });
+  }
+  function update(simT) {
+    const h = Math.floor(simT / 3600) % 24;
+    const frac = (simT / 3600) % 1;
+    for (const it of items) {
+      const f = PROFILE[it.prof];
+      const w = f(h) * (1 - frac) + f((h + 1) % 24) * frac;   // 時間内補間
+      const inten = Math.min(1, (it.R / 370000) * 0.55 + 0.45 * (w / 2.6));
+      const col = ramp(inten * Math.min(1, w / 1.4));
+      it.disc.material.color = col;
+      it.disc.material.opacity = 0.08 + 0.3 * Math.min(1, w / 2.6);
+      const hgt = Math.max(1.5, it.R / 370000 * 160 * (0.25 + 0.75 * w / 2.6));
+      it.bar.scale.y = hgt;
+      it.bar.position.y = hgt / 2 + 0.5;
+      it.bar.material.color = col;
+    }
+  }
+  return { group, update, pickables: items.flatMap(i => [i.disc, i.bar]) };
+}
+
 /* ============ 経路検索(簡易・所要時間は目安) ============ */
 export function buildRouteGraph(toLocal) {
   // ノード: 駅名 → ローカル座標

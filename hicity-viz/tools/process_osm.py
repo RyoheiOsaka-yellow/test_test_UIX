@@ -126,9 +126,8 @@ out['taxiways'] = tw
 out['aprons'] = ap
 
 # buildings: near = full ring, far = oriented bbox
-NEAR_R = 1500.0   # 全形状で保持
-MID_R = 3500.0    # OBBで全棟保持
-# それ以遠: 小規模建物(概ね戸建て)は間引き
+NEAR_R = 2000.0   # 全形状で保持
+# それ以遠: 全棟を方向付きBBoxで保持(Int16バイナリ→base64)
 near, far = [], []
 nb = 0
 seen_ids = set()
@@ -161,11 +160,18 @@ for name in bld_files:
             xs = [ (p[0]-cx)*ca - (p[1]-cy)*sa for p in pts]
             ys = [ (p[0]-cx)*sa + (p[1]-cy)*ca for p in pts]
             w = max(xs)-min(xs); l = max(ys)-min(ys)
-            if w < 2 or l < 2: continue
-            if dist > MID_R and w * l < 80 and h < 12: continue  # 遠方の小規模建物は省略
-            far.append([round(cx), round(cy), round(w), round(l), round(math.degrees(ang)) % 180, round(h)])
+            if w < 1.5 or l < 1.5: continue
+            far.append((cx, cy, w, l, math.degrees(ang) % 180, h))
 out['bldNear'] = near
-out['bldFar'] = [v for b in far for v in b]  # flat array, stride 6
+# far: Int16 stride6 (cx/2m, cy/2m, w*2(0.5m), l*2, ang(deg), h*2) → base64
+import struct, base64
+buf = bytearray()
+for cx, cy, w, l, ang, h in far:
+    buf += struct.pack('<6h', int(round(cx/2)), int(round(cy/2)),
+                       min(32767, int(round(w*2))), min(32767, int(round(l*2))),
+                       int(round(ang)), min(32767, int(round(h*2))))
+out['bldFarB64'] = base64.b64encode(bytes(buf)).decode()
+out['bldFarN'] = len(far)
 
 json.dump(out, open(f'{SP}/area.json', 'w'), separators=(',', ':'))
 print('buildings total', nb, 'near', len(near), 'far', len(far))

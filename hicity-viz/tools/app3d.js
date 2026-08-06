@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { buildStations, buildRouteGraph, findRoute } from './stations_build.js';
+import { buildStations, buildRouteGraph, findRoute, buildTrains, buildRidership } from './stations_build.js';
 import { buildArea, buildGsiTiles } from './area_build.js';
 
 const D = window.__HIC;
@@ -135,8 +135,16 @@ function ensureGsi() {
 const ST3D = buildStations(toLocal, W, labelSprite);
 scene.add(ST3D.group, ST3D.futureGroup, ST3D.railGroup);
 
+/* 列車運行シミュレーション */
+const TRAINS = buildTrains(toLocal, W);
+scene.add(TRAINS.group);
+
 /* 経路検索 */
 const RG = buildRouteGraph(toLocal);
+
+/* 駅勢圏 人流ヒート */
+const RIDER = buildRidership(toLocal, W, RG.nodes);
+scene.add(RIDER.group);
 const routeGroup = new THREE.Group();
 scene.add(routeGroup);
 function drawRoute(route) {
@@ -354,6 +362,7 @@ const state = {
   playing: true, speed: 240, simT: 9.5 * 3600,
   area: { bld: true, roads: true, osmrail: true, water: true, aero: true, boundary: true, gsi: false },
   stations: true, rail3d: true, future: true,
+  trains: true, ridership: true,
   viewMode: 'points',   // points | photo | both
 };
 function applyViewMode(mode) {
@@ -381,6 +390,8 @@ function applyVisibility() {
   ST3D.group.visible = state.stations;
   ST3D.railGroup.visible = state.rail3d;
   ST3D.futureGroup.visible = state.future;
+  TRAINS.group.visible = state.trains;
+  RIDER.group.visible = state.ridership;
 }
 function applyExpand() {
   for (const F of FLOORS)
@@ -546,6 +557,8 @@ function updateParticles() {
   $('chk-stations')?.addEventListener('change', e => { state.stations = e.target.checked; applyVisibility(); });
   $('chk-rail3d')?.addEventListener('change', e => { state.rail3d = e.target.checked; applyVisibility(); });
   $('chk-future')?.addEventListener('change', e => { state.future = e.target.checked; applyVisibility(); });
+  $('chk-trains')?.addEventListener('change', e => { state.trains = e.target.checked; applyVisibility(); });
+  $('chk-ridership')?.addEventListener('change', e => { state.ridership = e.target.checked; applyVisibility(); });
 
   // 駅フライト
   const fr = $('fly-row');
@@ -624,9 +637,10 @@ addEventListener('pointermove', ev => {
     if (!state.heatOn) { tt.style.display = 'none'; return; }
     ray.setFromCamera(mouse, camera);
     // 駅構造・新空港線
-    if (state.stations || state.future) {
+    if (state.stations || state.future || state.ridership) {
       const objs = [...(state.stations ? ST3D.pickables : [])];
       if (state.future) objs.push(...ST3D.futureGroup.children.filter(o => o.userData.info));
+      if (state.ridership) objs.push(...RIDER.pickables);
       ray.params.Line = { threshold: 8 };
       const sh = ray.intersectObjects(objs, false);
       if (sh.length) {
@@ -662,6 +676,8 @@ function loop(now) {
     if (state.simT > 86400) state.simT -= 86400;
   }
   updateParticles();
+  if (state.trains) TRAINS.update(state.simT, state.future);
+  if (state.ridership) RIDER.update(state.simT);
   updateFly(now);
   controls.update();
   renderer.render(scene, camera);

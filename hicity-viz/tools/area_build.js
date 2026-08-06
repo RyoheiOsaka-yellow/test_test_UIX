@@ -21,11 +21,17 @@ export function buildArea(A, W) {
   {
     const pos = [], col = [];
     const c = new THREE.Color();
-    // far: oriented bbox perimeter points (roof ring + mid ring)
-    const F = A.bldFar || [];
+    // far: oriented bbox perimeter points (Int16 base64: cx/2m, cy/2m, w*2, l*2, ang, h*2)
+    let F = new Int16Array(0);
+    if (A.bldFarB64) {
+      const bin = atob(A.bldFarB64);
+      const u8 = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      F = new Int16Array(u8.buffer);
+    } else if (A.bldFar) F = A.bldFar;
     for (let i = 0; i < F.length; i += 6) {
-      const cx = F[i], cy = F[i + 1], w = F[i + 2], l = F[i + 3];
-      const ang = F[i + 4] * Math.PI / 180, h = F[i + 5];
+      const cx = F[i] * 2, cy = F[i + 1] * 2, w = F[i + 2] / 2, l = F[i + 3] / 2;
+      const ang = F[i + 4] * Math.PI / 180, h = F[i + 5] / 2;
       const ca = Math.cos(ang), sa = Math.sin(ang);
       const per = 2 * (w + l);
       const step = per > 160 ? 7 : per > 90 ? 6 : 5;
