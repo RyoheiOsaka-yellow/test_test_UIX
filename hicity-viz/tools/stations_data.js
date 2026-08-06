@@ -123,7 +123,7 @@ export const MINOR_STATIONS = [
    style: solid | dashed / future: 構想(赤) */
 export const RAIL_LINES = [
   {
-    id: 'keikyu-main', name: '京急本線', color: 0xff5a5a,
+    id: 'keikyu-main', name: '京急本線', color: 0xff5a5a, speed: 50,
     pts: [
       [139.7387, 35.5983, 8], [139.7357, 35.5875, 8], [139.7349, 35.5789, 8],
       [139.7327, 35.5723, 8], [139.7266, 35.5666, 8], [139.7231, 35.5611, 12],
@@ -131,7 +131,7 @@ export const RAIL_LINES = [
     ],
   },
   {
-    id: 'keikyu-airport', name: '京急空港線', color: 0xff8a8a,
+    id: 'keikyu-airport', name: '京急空港線', color: 0xff8a8a, speed: 45,
     pts: [
       [139.7231, 35.5611, 12], [139.7333, 35.5560, 8], [139.7420, 35.5495, -13],
       [139.7470, 35.5518, 0], [139.7539, 35.5494, -16], [139.7687, 35.5444, -14],
@@ -139,7 +139,7 @@ export const RAIL_LINES = [
     ],
   },
   {
-    id: 'monorail', name: '東京モノレール', color: 0x4da3ff,
+    id: 'monorail', name: '東京モノレール', color: 0x4da3ff, speed: 45,
     pts: [
       [139.7521, 35.5786, 10], [139.7470, 35.5723, 10], [139.7461, 35.5556, 6],
       [139.7539, 35.5494, -10], [139.7600, 35.5462, -6], [139.7687, 35.5444, 12],
@@ -147,7 +147,7 @@ export const RAIL_LINES = [
     ],
   },
   {
-    id: 'jr-keihin', name: 'JR京浜東北線・東海道線', color: 0x7fd8a8,
+    id: 'jr-keihin', name: 'JR京浜東北線・東海道線', color: 0x7fd8a8, speed: 55,
     pts: [
       [139.7340, 35.6075, 0], [139.7280, 35.5885, 2], [139.7231, 35.5787, 2],
       [139.7160, 35.5624, 0], [139.7080, 35.5480, 4],
@@ -158,14 +158,14 @@ export const RAIL_LINES = [
     pts: [[139.7340, 35.6075, -26], [139.7450, 35.6090, -30]],
   },
   {
-    id: 'tokyu-tamagawa', name: '東急多摩川線', color: 0xffb0d0,
+    id: 'tokyu-tamagawa', name: '東急多摩川線', color: 0xffb0d0, speed: 35,
     pts: [
       [139.7160, 35.5624, 0], [139.7107, 35.5646, 0], [139.7000, 35.5563, 0],
       [139.6929, 35.5605, 0], [139.6852, 35.5661, 0], [139.6785, 35.5723, 0],
     ],
   },
   {
-    id: 'tokyu-ikegami', name: '東急池上線', color: 0xd0a8ff,
+    id: 'tokyu-ikegami', name: '東急池上線', color: 0xd0a8ff, speed: 35,
     pts: [
       [139.7160, 35.5624, 0], [139.7107, 35.5646, 0], [139.7042, 35.5717, 0],
       [139.6957, 35.5761, 0], [139.6851, 35.5810, 0], [139.6788, 35.5857, 0],
@@ -178,7 +178,7 @@ export const RAIL_LINES = [
   },
   /* ---- 新空港線(蒲蒲線) 構想・未開業 — 大田区公表の整備案(縦断面図)に基づく想定 ---- */
   {
-    id: 'shinkuko-1', name: '新空港線 第1期 [矢口渡〜京急蒲田・構想]', color: 0xff2d44, future: true,
+    id: 'shinkuko-1', name: '新空港線 第1期 [矢口渡〜京急蒲田・構想]', color: 0xff2d44, future: true, speed: 45,
     tunnel: true, portal: { lon: 139.7022, lat: 35.5578, label: '地下化区間 坑口(想定)' },
     desc: '整備案: 矢口渡駅の先で東急多摩川線から地下化し、多摩川線直下を通って東急蒲田地下駅(新設)→京急蒲田地下駅(新設)へ 約1.7km',
     pts: [
@@ -193,7 +193,7 @@ export const RAIL_LINES = [
     ],
   },
   {
-    id: 'shinkuko-2', name: '新空港線 第2期 [京急蒲田〜大鳥居・構想]', color: 0xff2d44, future: true, dashed: true,
+    id: 'shinkuko-2', name: '新空港線 第2期 [京急蒲田〜大鳥居・構想]', color: 0xff2d44, future: true, dashed: true, speed: 45,
     tunnel: true,
     desc: '整備案: 京急蒲田地下駅から産業道路・空港線直下を東進、糀谷駅直下(通過)を経て大鳥居駅で京急空港線に接続',
     pts: [

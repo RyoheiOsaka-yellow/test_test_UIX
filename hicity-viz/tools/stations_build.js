@@ -241,3 +241,101 @@ export function buildStations(toLocal, W, labelSprite) {
 
   return { group, futureGroup, railGroup, pickables, flyTargets };
 }
+
+/* ============ 経路検索(簡易・所要時間は目安) ============ */
+export function buildRouteGraph(toLocal) {
+  // ノード: 駅名 → ローカル座標
+  const nodes = {};
+  for (const st of STATIONS) { const [x, y] = toLocal(st.lon, st.lat); nodes[st.name] = { x, y, major: st.major }; }
+  for (const [name, lon, lat] of MINOR_STATIONS) { const [x, y] = toLocal(lon, lat); nodes[name] = { x, y, major: false }; }
+  // モノレール空港側端点を第1・第2ターミナル駅ノードへ吸着させる別名座標
+  const ALIAS = [[139.7830, 35.5440, '羽田空港第1・第2ターミナル'], [139.7877, 35.5498, '羽田空港第1・第2ターミナル']];
+  const lineGroupOf = id => id.startsWith('shinkuko') ? 'shinkuko' : id;
+  const edges = [];
+  for (const line of RAIL_LINES) {
+    const pts = line.pts.map(([lon, lat, z]) => { const [x, y] = toLocal(lon, lat); return { x, y, z, lon, lat }; });
+    let prevNode = null, prevIdx = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const p = pts[i];
+      let hit = null, best = 130;
+      for (const [name, nd] of Object.entries(nodes)) {
+        const d = Math.hypot(nd.x - p.x, nd.y - p.y);
+        if (d < best) { best = d; hit = name; }
+      }
+      if (!hit) for (const [alon, alat, name] of ALIAS)
+        if (Math.abs(p.lon - alon) < 1e-4 && Math.abs(p.lat - alat) < 1e-4) hit = name;
+      if (hit) {
+        if (prevNode && hit !== prevNode) {
+          let dist = 0;
+          for (let k = prevIdx; k < i; k++)
+            dist += Math.hypot(pts[k + 1].x - pts[k].x, pts[k + 1].y - pts[k].y);
+          const seg = pts.slice(prevIdx, i + 1).map(q => [q.x, q.y, q.z]);
+          edges.push({ a: prevNode, b: hit, line: line.id, lg: lineGroupOf(line.id),
+                       name: line.name, future: !!line.future, dist, seg });
+        }
+        prevNode = hit; prevIdx = i;
+      }
+    }
+  }
+  // 徒歩連絡(900m以内の駅間、道のり係数1.3)
+  const names = Object.keys(nodes);
+  for (let i = 0; i < names.length; i++)
+    for (let j = i + 1; j < names.length; j++) {
+      const a = nodes[names[i]], b = nodes[names[j]];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (d < 900) {
+        edges.push({ a: names[i], b: names[j], line: 'walk', lg: 'walk', name: '徒歩',
+                     future: false, dist: d * 1.3,
+                     seg: [[a.x, a.y, 1], [b.x, b.y, 1]] });
+      }
+    }
+  const speeds = {}; for (const l of RAIL_LINES) speeds[l.id] = l.speed || 40;
+  speeds.walk = 4.8;
+  return { nodes, edges, speeds };
+}
+
+const TRANSFER_MIN = (g1, g2) => {
+  if (g1 === null || g1 === g2) return 0;
+  if (g1 === 'walk' || g2 === 'walk') return 1;             // 改札出入り
+  const pair = [g1, g2].sort().join('|');
+  if (pair === 'keikyu-airport|keikyu-main') return 1;      // 直通多数
+  if (pair === 'shinkuko|tokyu-tamagawa') return 0;         // 直通前提(構想)
+  if (pair === 'keikyu-airport|shinkuko') return 1;         // 第2期直通(構想)
+  return 4;                                                 // 乗換
+};
+
+export function findRoute(graph, from, to, useFuture) {
+  const adj = {};
+  for (const e of graph.edges) {
+    if (e.future && !useFuture) continue;
+    (adj[e.a] ||= []).push({ ...e, to: e.b });
+    (adj[e.b] ||= []).push({ ...e, to: e.a, seg: [...e.seg].reverse() });
+  }
+  const key = (n, g) => n + '|' + g;
+  const distMap = { [key(from, 'null')]: 0 };
+  const prev = {};
+  const pq = [[0, from, 'null']];
+  let goal = null;
+  while (pq.length) {
+    pq.sort((a, b) => a[0] - b[0]);
+    const [d, n, g] = pq.shift();
+    if (d > (distMap[key(n, g)] ?? 1e18)) continue;
+    if (n === to) { goal = key(n, g); break; }
+    for (const e of (adj[n] || [])) {
+      const ride = e.dist / 1000 / (graph.speeds[e.line] || 40) * 60 + (e.line === 'walk' ? 0 : 0.8);
+      const nd = d + TRANSFER_MIN(g === 'null' ? null : g, e.lg) + ride;
+      const k2 = key(e.to, e.lg);
+      if (nd < (distMap[k2] ?? 1e18)) {
+        distMap[k2] = nd; prev[k2] = { from: key(n, g), edge: e };
+        pq.push([nd, e.to, e.lg]);
+      }
+    }
+  }
+  if (!goal) return null;
+  const path = [];
+  let cur = goal;
+  while (prev[cur]) { path.unshift(prev[cur].edge); cur = prev[cur].from; }
+  const lines = [];
+  for (const e of path) if (!lines.length || lines[lines.length - 1] !== e.name) lines.push(e.name);
+  return { minutes: Math.round(distMap[goal]), edges: path, lines };
+}

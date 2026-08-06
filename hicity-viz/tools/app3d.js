@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { buildStations } from './stations_build.js';
+import { buildStations, buildRouteGraph, findRoute } from './stations_build.js';
 import { buildArea, buildGsiTiles } from './area_build.js';
 
 const D = window.__HIC;
@@ -120,6 +120,38 @@ function ensureGsi() {
 /* ---------------- 駅構造 + 路線3D + 新空港線(構想) ---------------- */
 const ST3D = buildStations(toLocal, W, labelSprite);
 scene.add(ST3D.group, ST3D.futureGroup, ST3D.railGroup);
+
+/* 経路検索 */
+const RG = buildRouteGraph(toLocal);
+const routeGroup = new THREE.Group();
+scene.add(routeGroup);
+function drawRoute(route) {
+  routeGroup.clear();
+  if (!route) return;
+  for (const e of route.edges) {
+    const pts = e.seg.map(([x, y, z]) => W(x, y, z + 1.5));
+    const isWalk = e.line === 'walk';
+    const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.1);
+    const smooth = isWalk ? pts : curve.getPoints(Math.max(8, pts.length * 8));
+    const geo = new THREE.BufferGeometry().setFromPoints(smooth);
+    const col = e.future ? 0xff2d44 : isWalk ? 0xdfe8f5 : 0x00ffd0;
+    if (isWalk) {
+      const wl = new THREE.Line(geo, new THREE.LineDashedMaterial({ color: col, transparent: true, opacity: 0.9, dashSize: 5, gapSize: 4 }));
+      wl.computeLineDistances();
+      routeGroup.add(wl);
+      continue;
+    }
+    routeGroup.add(new THREE.Line(geo, new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 1 })));
+    const glow = new THREE.Line(geo.clone(), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.3 }));
+    glow.position.y += 0.6;
+    routeGroup.add(glow);
+    // 通過点マーカー
+    const m = new THREE.Mesh(new THREE.SphereGeometry(3, 10, 10),
+      new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.9 }));
+    m.position.copy(pts[0]);
+    routeGroup.add(m);
+  }
+}
 
 /* カメラ フライト */
 let flyTween = null;
@@ -497,6 +529,35 @@ function updateParticles() {
       const t = ST3D.flyTargets[b.dataset.fly];
       if (t) flyTo(t.pos, 420);
     }));
+  }
+  // 経路検索UI
+  {
+    const names = Object.keys(RG.nodes);
+    names.sort((a, b) => (RG.nodes[b].major ? 1 : 0) - (RG.nodes[a].major ? 1 : 0) || a.localeCompare(b, 'ja'));
+    const opts = names.map(n => `<option value="${n}">${n}</option>`).join('');
+    $('rt-from').innerHTML = opts; $('rt-to').innerHTML = opts;
+    $('rt-from').value = '蒲田'; $('rt-to').value = '羽田空港第3ターミナル';
+    const run = () => {
+      const from = $('rt-from').value, to = $('rt-to').value;
+      if (from === to) { $('rt-result').textContent = '出発と到着が同じです'; drawRoute(null); return; }
+      const rNow = findRoute(RG, from, to, false);
+      const rFut = findRoute(RG, from, to, true);
+      const useF = $('rt-future').checked;
+      const chosen = useF ? rFut : rNow;
+      drawRoute(chosen);
+      if (!chosen) { $('rt-result').textContent = '経路が見つかりません'; return; }
+      let html = `<b>${from} → ${to}</b><br>経由: ${chosen.lines.join(' / ')}<br>`;
+      if (rNow && rFut && rFut.minutes < rNow.minutes) {
+        html += `現行 約${rNow.minutes}分 ／ <span style="color:#ff6b7a">新空港線利用 約${rFut.minutes}分 (−${rNow.minutes - rFut.minutes}分・構想)</span>`;
+      } else if (chosen) {
+        html += `所要 約${chosen.minutes}分`;
+        if (useF && rFut && rNow && rFut.minutes >= rNow.minutes) html += '(新空港線による短縮なし)';
+      }
+      $('rt-result').innerHTML = html;
+    };
+    $('rt-go').addEventListener('click', run);
+    $('rt-future').addEventListener('change', () => { if ($('rt-result').textContent) run(); });
+    $('rt-clear').addEventListener('click', () => { drawRoute(null); $('rt-result').textContent = ''; });
   }
   $('bld-count') && ($('bld-count').textContent =
     (areaLayers.bld.userData.count ? Math.round(areaLayers.bld.children[0].geometry.attributes.position.count / 1000) + 'k点' : ''));
