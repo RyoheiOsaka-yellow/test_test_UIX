@@ -1,0 +1,32 @@
+{
+  "name": "mathcat",
+  "version": "0.1.0",
+  "description": "A lean, allocation-free, data-oriented math kernel for interactive apps on the web.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./vec2": "./src/vec2.ts",
+    "./vec3": "./src/vec3.ts",
+    "./quat": "./src/quat.ts",
+    "./mat4": "./src/mat4.ts",
+    "./color": "./src/color.ts",
+    "./random": "./src/random.ts",
+    "./easing": "./src/easing.ts"
+  },
+  "scripts": {
+    "test": "node --test 'test/*.test.ts'",
+    "bench": "node bench/bench.ts"
+  },
+  "keywords": [
+    "math",
+    "vector",
+    "quaternion",
+    "matrix",
+    "data-oriented",
+    "allocation-free",
+    "webgl",
+    "webgpu"
+  ],
+  "license": "MIT"
+}
