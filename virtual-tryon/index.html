@@ -494,8 +494,11 @@
     <h3>✨ AI生成試着の設定</h3>
     <p>写真品質の試着合成には Google Gemini(画像編集AI)を使います。
       <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>
-      で無料のAPIキーを取得し、下に貼り付けてください。キーはこのブラウザの localStorage にのみ保存され、
-      画像とともに Google のAPIへ直接送信されます(それ以外には送信されません)。</p>
+      でAPIキーを取得し、下に貼り付けてください。キーはこのブラウザの localStorage にのみ保存され、
+      画像とともに Google のAPIへ直接送信されます(それ以外には送信されません)。
+      <b>注意:</b> 画像生成モデルは無料枠の対象外のため、キーのプロジェクトで
+      <a href="https://console.cloud.google.com/billing" target="_blank" rel="noopener">課金の有効化</a>
+      が必要です(1枚あたり数円程度)。</p>
     <input type="password" id="apiKeyInput" placeholder="AIza… で始まるGemini APIキー" autocomplete="off">
     <div class="row">
       <button class="btn" id="btnSettingsCancel">閉じる</button>
@@ -1078,7 +1081,7 @@ const GEN_PROMPT =
   "camera framing, background and lighting exactly. The garment must fit the body naturally " +
   "with realistic drape, folds, occlusion and shadows. Photorealistic output, no text or watermark.";
 
-const GEN_MODELS = ["gemini-2.5-flash-image", "gemini-2.5-flash-image-preview"];
+const GEN_MODELS = ["gemini-3.1-flash-image", "gemini-2.5-flash-image"];
 
 async function generateTryOn(g) {
   if (!AI.key) { openSettings(); return; }
@@ -1104,13 +1107,18 @@ async function generateTryOn(g) {
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
         { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": AI.key }, body });
       if (my !== AI.seq) return;           /* superseded by a newer drop */
-      if (res.status === 404) { lastErr = "モデル未対応"; continue; }
+      if (res.status === 404) { if (!lastErr) lastErr = "モデル未対応"; continue; }
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
+        const msg = (json.error && json.error.message) || "";
+        if (msg) console.warn("gemini:", msg);
+        if (res.status === 429 && msg.includes("limit: 0")) {
+          lastErr = "このキーでは画像生成モデルが使えません(無料枠対象外)。Google Cloudで課金を有効化したプロジェクトのキーが必要です";
+          continue;   /* 他のモデルに無料枠がある可能性を一応試す */
+        }
         lastErr = res.status === 400 || res.status === 403 ? "APIキーが無効です(設定⚙️を確認)"
-                : res.status === 429 ? "レート制限/無料枠の上限です。少し待って再試行してください"
+                : res.status === 429 ? "レート制限です。数十秒待って再試行してください"
                 : `APIエラー ${res.status}`;
-        if (json.error && json.error.message) console.warn("gemini:", json.error.message);
         break;
       }
       const parts = json.candidates?.[0]?.content?.parts || [];
