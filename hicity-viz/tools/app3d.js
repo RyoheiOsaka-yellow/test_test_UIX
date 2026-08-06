@@ -66,8 +66,8 @@ const context = new THREE.Group(); scene.add(context);
 {
   const g = new THREE.Mesh(
     new THREE.PlaneGeometry(40000, 40000),
-    new THREE.MeshBasicMaterial({ color: 0x060a14 }));
-  g.rotation.x = -Math.PI / 2; g.position.y = -0.8; context.add(g);
+    new THREE.MeshBasicMaterial({ color: 0x060a14, transparent: true, opacity: 0.82, depthWrite: false }));
+  g.rotation.x = -Math.PI / 2; g.position.y = -0.8; g.renderOrder = -1; context.add(g);
   const grid = new THREE.GridHelper(20000, 100, 0x0d1a30, 0x0a1425);
   grid.position.y = -0.7; context.add(grid);
 }

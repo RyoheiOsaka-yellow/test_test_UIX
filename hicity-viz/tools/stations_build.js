@@ -140,6 +140,51 @@ export function buildStations(toLocal, W, labelSprite) {
       const lvLabel = labelSprite(lv.name.split(' — ')[0], lv.future ? '#ff6b7a' : '#9fd8ff', 0.55);
       lvLabel.position.set((lv.dx || 0) + lv.w / 2 + 10, lv.z + 3, -(lv.dy || 0) - lv.l / 2);
       sg.add(lvLabel);
+      // ---- 新駅(構想)の作り込み: 駅躯体ガラスボックス・停車列車・地表投影・大ラベル ----
+      if (lv.future && lv.kind === 'platform') {
+        const bw = lv.w + 10, bh = 11, bl = lv.l + 12;
+        const shellBox = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bl),
+          new THREE.MeshBasicMaterial({ color: 0xff9a3d, transparent: true, opacity: 0.09, depthWrite: false, side: THREE.BackSide }));
+        shellBox.position.y = bh / 2 - 2.5;
+        lg.add(shellBox);
+        const shellEdge = new THREE.LineSegments(
+          new THREE.EdgesGeometry(new THREE.BoxGeometry(bw, bh, bl)),
+          new THREE.LineBasicMaterial({ color: FUTURE_RED, transparent: true, opacity: 0.9 }));
+        shellEdge.position.copy(shellBox.position);
+        lg.add(shellEdge);
+        // 停車中の列車(赤)
+        const train = new THREE.Mesh(new THREE.BoxGeometry(3.2, 3.2, Math.min(84, lv.l * 0.5)),
+          new THREE.MeshBasicMaterial({ color: 0xff5566, transparent: true, opacity: 0.85 }));
+        train.position.set(-lv.w * 0.2, 2.1, 0);
+        lg.add(train);
+        // 地表への投影枠(破線)
+        const proj = new THREE.LineSegments(
+          new THREE.EdgesGeometry(new THREE.PlaneGeometry(bw, bl)),
+          new THREE.LineDashedMaterial({ color: FUTURE_RED, transparent: true, opacity: 0.55, dashSize: 4, gapSize: 3 }));
+        proj.rotation.x = -Math.PI / 2;
+        proj.position.y = -lv.z + 0.6;   // lg基準で地表(z=0)へ
+        proj.computeLineDistances();
+        lg.add(proj);
+        // 吹き抜けシャフト(躯体→地表, 整備案の縦動線イメージ)
+        for (const sx of [-lv.l * 0.3, lv.l * 0.3]) {
+          const shaft = new THREE.Mesh(
+            new THREE.BoxGeometry(6, -lv.z, 8),
+            new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.10, depthWrite: false }));
+          shaft.position.set(0, -lv.z / 2, sx);
+          lg.add(shaft);
+          const se = new THREE.LineSegments(
+            new THREE.EdgesGeometry(new THREE.BoxGeometry(6, -lv.z, 8)),
+            new THREE.LineBasicMaterial({ color: 0xffb0b8, transparent: true, opacity: 0.45 }));
+          se.position.copy(shaft.position);
+          lg.add(se);
+        }
+        // 駅名大ラベル
+        const big = labelSprite(lv.name.split(' — ')[0], '#ff6b7a', 1.0);
+        big.position.set(0, bh + 4, 0);
+        lg.add(big);
+        // X線表示(地面・建物越しに見えるように)
+        lg.traverse(o => { if (o.material && !o.isSprite) { o.material.depthTest = false; o.renderOrder = 6; } });
+      }
       sg.add(lg);
       plate.userData.info = { station: st.name, level: lv.name, desc: st.desc, future: !!lv.future };
       plate.userData.flyPos = sg.position.clone().add(new THREE.Vector3(lv.dx || 0, lv.z, -(lv.dy || 0)));
@@ -309,6 +354,9 @@ export function buildStations(toLocal, W, labelSprite) {
       }
     }
   }
+
+  // 構想要素はX線表示(地面・建物越しに視認可能)
+  futureGroup.traverse(o => { if (o.material && !o.isSprite) { o.material.depthTest = false; o.renderOrder = 5; } });
 
   return { group, futureGroup, railGroup, pickables, flyTargets };
 }
