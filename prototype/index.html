@@ -43,6 +43,8 @@
     #stateLabel {
       align-self: center; font-size: 12px; color: #7a8699; min-width: 72px; text-align: center;
     }
+    .sep { width: 1px; background: #d4dce8; margin: 4px 2px; }
+    #controls { max-width: min(92vw, 860px); }
   </style>
 </head>
 <body>
@@ -53,7 +55,8 @@
       <h1>WINKY 3D アクションプロトタイプ<small>Three.js</small></h1>
       <div id="hint">
         ドラッグ: 360°回転 / ホイール: ズーム / 右ドラッグ: 移動<br>
-        キー: <b>1</b> 待機 <b>2</b> 走る <b>Space</b> はねる <b>R</b> 自動回転
+        キー: <b>1</b> 待機 <b>2</b> 走る <b>3</b> ダンス / <b>Space</b> はねる
+        <b>S</b> スピン <b>W</b> 手をふる <b>B</b> おじぎ <b>F</b> バク宙 / <b>R</b> 自動回転
       </div>
     </div>
   </div>
@@ -62,8 +65,15 @@
     <span id="stateLabel">状態: 待機</span>
     <button id="btnIdle" class="active">待機<span class="key">1</span></button>
     <button id="btnRun">走る<span class="key">2</span></button>
+    <button id="btnDance">ダンス<span class="key">3</span></button>
+    <span class="sep"></span>
     <button id="btnJump">はねる<span class="key">Space</span></button>
-    <button id="btnSpin">360°自動回転<span class="key">R</span></button>
+    <button id="btnSpin">スピン<span class="key">S</span></button>
+    <button id="btnWave">手をふる<span class="key">W</span></button>
+    <button id="btnBow">おじぎ<span class="key">B</span></button>
+    <button id="btnFlip">バク宙<span class="key">F</span></button>
+    <span class="sep"></span>
+    <button id="btnAutoRotate">360°自動回転<span class="key">R</span></button>
   </div>
 
   <script type="importmap">
