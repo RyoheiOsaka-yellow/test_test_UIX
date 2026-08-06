@@ -218,7 +218,7 @@
       function render() {
         camera.position.set(rig.x, rig.y, rig.z);
         camera.lookAt(rig.tx, rig.ty, rig.tz);
-        texture.needsUpdate = true;
+        if (video.readyState >= 2) texture.needsUpdate = true;
         renderer.render(scene, camera);
       }
 
