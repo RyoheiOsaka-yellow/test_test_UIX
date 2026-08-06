@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WINKY 3D プロトタイプ — 360°ビュー &amp; アクション</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif; }
+    #app { position: fixed; inset: 0; }
+    canvas { display: block; }
+
+    #hud {
+      position: fixed; top: 16px; left: 16px; right: 16px;
+      display: flex; justify-content: space-between; align-items: flex-start;
+      pointer-events: none;
+    }
+    .panel {
+      background: rgba(255,255,255,.82); backdrop-filter: blur(8px);
+      border-radius: 14px; padding: 14px 18px;
+      box-shadow: 0 4px 18px rgba(30,50,90,.14);
+      pointer-events: auto;
+    }
+    h1 { font-size: 17px; color: #2b3a55; }
+    h1 small { font-weight: normal; color: #7a8699; font-size: 12px; margin-left: 8px; }
+    #hint { margin-top: 6px; font-size: 12px; color: #7a8699; line-height: 1.6; }
+
+    #controls {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+      background: rgba(255,255,255,.82); backdrop-filter: blur(8px);
+      border-radius: 16px; padding: 12px 14px;
+      box-shadow: 0 4px 18px rgba(30,50,90,.14);
+    }
+    button {
+      font-family: inherit; font-size: 14px; font-weight: bold;
+      padding: 10px 18px; border: none; border-radius: 10px; cursor: pointer;
+      background: #eef2f8; color: #2b3a55; transition: all .15s;
+    }
+    button:hover { background: #dde6f2; }
+    button.active { background: #3d7bfd; color: #fff; }
+    button .key { font-weight: normal; font-size: 11px; opacity: .55; margin-left: 5px; }
+    #stateLabel {
+      align-self: center; font-size: 12px; color: #7a8699; min-width: 72px; text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="hud">
+    <div class="panel">
+      <h1>WINKY 3D アクションプロトタイプ<small>Three.js</small></h1>
+      <div id="hint">
+        ドラッグ: 360°回転 / ホイール: ズーム / 右ドラッグ: 移動<br>
+        キー: <b>1</b> 待機 <b>2</b> 走る <b>Space</b> はねる <b>R</b> 自動回転
+      </div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <span id="stateLabel">状態: 待機</span>
+    <button id="btnIdle" class="active">待機<span class="key">1</span></button>
+    <button id="btnRun">走る<span class="key">2</span></button>
+    <button id="btnJump">はねる<span class="key">Space</span></button>
+    <button id="btnSpin">360°自動回転<span class="key">R</span></button>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three.module.js",
+      "three/addons/controls/OrbitControls.js": "./vendor/OrbitControls.js"
+    }
+  }
+  </script>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
