@@ -81,6 +81,24 @@ import * as vec3 from 'mathcat/vec3'
 | `random` | seedable mulberry32 RNG, ranges, points on/in circle and sphere |
 | `easing` | timing functions, smoothstep, clamp, mix, remap |
 
+## Porting — taking mathcat into another project
+
+`npm run build` generates portable, dependency-free single files in `dist/`:
+
+| File | Use it when |
+| ---- | ----------- |
+| `dist/mathcat.js` | Your project speaks ES modules — bundlers, Node.js, Deno, Bun, `<script type="module">`. `import { vec3, quat, mat4 } from './mathcat.js'` |
+| `dist/mathcat.global.js` | You want a classic `<script src="mathcat.global.js">` tag with no build step. Exposes a frozen `mathcat` global: `mathcat.vec3.add(out, a, b)` |
+| `dist/mathcat.d.ts` | TypeScript types for either build. Sits next to `mathcat.js` and is picked up automatically; works with `.js` usage too via `// @ts-check` |
+
+All three are generated from `src/` (the build itself is zero-dependency —
+Node's built-in type stripping does the work), so copy them anywhere: another
+repo, a CDN, a `<script>` tag in a CodePen. Nothing else needs to come along.
+
+For TypeScript-native runtimes you can instead vendor the `src/` folder
+directly and import `src/index.ts` — the per-module entries
+(`mathcat/vec3`, …) keep tree-shaking exact.
+
 ## Development
 
 ```sh

@@ -5,7 +5,10 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts",
+    ".": {
+      "types": "./dist/mathcat.d.ts",
+      "default": "./dist/mathcat.js"
+    },
     "./vec2": "./src/vec2.ts",
     "./vec3": "./src/vec3.ts",
     "./quat": "./src/quat.ts",
@@ -14,9 +17,15 @@
     "./random": "./src/random.ts",
     "./easing": "./src/easing.ts"
   },
+  "types": "./dist/mathcat.d.ts",
+  "files": [
+    "src",
+    "dist"
+  ],
   "scripts": {
     "test": "node --test 'test/*.test.ts'",
-    "bench": "node bench/bench.ts"
+    "bench": "node bench/bench.ts",
+    "build": "node scripts/build.mjs"
   },
   "keywords": [
     "math",
