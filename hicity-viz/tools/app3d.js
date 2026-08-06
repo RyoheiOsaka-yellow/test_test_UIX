@@ -143,6 +143,10 @@ scene.add(ST3D.group, ST3D.futureGroup, ST3D.railGroup);
 const TRAINS = buildTrains(toLocal, W);
 scene.add(TRAINS.group);
 
+/* 回転体(観覧車など) */
+const spinners = [];
+ST3D.group.traverse(o => { if (o.userData.spin) spinners.push(o); });
+
 /* 経路検索 */
 const RG = buildRouteGraph(toLocal);
 
@@ -712,6 +716,7 @@ function loop(now) {
   if (state.trains) TRAINS.update(state.simT, state.future);
   if (state.ridership) RIDER.update(state.simT);
   if (state.dwell) DWELL.update(state.simT);
+  for (const s of spinners) s.rotation.z = now * 0.00025;
   updateFly(now);
   controls.update();
   renderer.render(scene, camera);

@@ -141,13 +141,25 @@ NEAR_R = 2000.0   # 全形状で保持
 near, far = [], []
 nb = 0
 seen_ids = set()
+occupied = set()   # PLATEAU建物の50mグリッド(区外OSM建物との重複除外用)
 bld_files = sorted(os.path.basename(p)[:-5] for p in glob.glob(f'{SP}/osm/bld*.json'))
+# PLATEAUを最優先で処理し、OSM由来は同グリッドをスキップ
+bld_files.sort(key=lambda n: 0 if 'plateau' in n else 1)
 for name in bld_files:
+    is_plateau = 'plateau' in name
     for el in load(name):
         if 'geometry' not in el: continue
         eid = el.get('id')
         if eid in seen_ids: continue
         seen_ids.add(eid)
+        g0 = el['geometry'][0]
+        gx, gy = to_local(g0['lon'], g0['lat'])
+        cell = (int(gx // 50), int(gy // 50))
+        if is_plateau:
+            occupied.add(cell)
+        else:
+            if any((cell[0]+dx2, cell[1]+dy2) in occupied for dx2 in (-1,0,1) for dy2 in (-1,0,1)):
+                continue
         g = el['geometry']
         if len(g) < 3: continue
         nb += 1

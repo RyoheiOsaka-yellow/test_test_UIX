@@ -196,6 +196,69 @@ export function buildStations(toLocal, W, labelSprite) {
       pickables.push(plate);
     }
 
+    // 駅ビル(公開情報に基づく概形・パステルボリューム)
+    if (st.buildings) {
+      for (const bd of st.buildings) {
+        const bg = new THREE.Group();
+        bg.position.set(bd.dx || 0, 0, -(bd.dy || 0));
+        bg.rotation.y = -(bd.brg || 0) * Math.PI / 180;
+        const vol = new THREE.Mesh(new THREE.BoxGeometry(bd.w, bd.h, bd.l),
+          new THREE.MeshBasicMaterial({ color: bd.color, transparent: true, opacity: 0.14, depthWrite: false }));
+        vol.position.y = bd.h / 2;
+        bg.add(vol);
+        const edge = new THREE.LineSegments(
+          new THREE.EdgesGeometry(new THREE.BoxGeometry(bd.w, bd.h, bd.l)),
+          new THREE.LineBasicMaterial({ color: bd.color, transparent: true, opacity: 0.85 }));
+        edge.position.y = bd.h / 2;
+        bg.add(edge);
+        // フロアライン(4フロアごと)
+        const flv = [];
+        for (let z = 4; z < bd.h - 2; z += 8) {
+          flv.push(-bd.w / 2, z, -bd.l / 2, bd.w / 2, z, -bd.l / 2);
+          flv.push(-bd.w / 2, z, bd.l / 2, bd.w / 2, z, bd.l / 2);
+          flv.push(-bd.w / 2, z, -bd.l / 2, -bd.w / 2, z, bd.l / 2);
+          flv.push(bd.w / 2, z, -bd.l / 2, bd.w / 2, z, bd.l / 2);
+        }
+        if (flv.length) {
+          const fg = new THREE.BufferGeometry();
+          fg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(flv), 3));
+          bg.add(new THREE.LineSegments(fg, new THREE.LineBasicMaterial({
+            color: bd.color, transparent: true, opacity: 0.28 })));
+        }
+        // 観覧車(東急プラザ蒲田「幸せの観覧車」)
+        if (bd.wheel) {
+          const wr = 7;
+          const wheel = new THREE.Group();
+          wheel.position.set(0, bd.h + wr + 1.5, 0);
+          const rim = new THREE.Mesh(new THREE.TorusGeometry(wr, 0.35, 8, 28),
+            new THREE.MeshBasicMaterial({ color: 0xff8ab0, transparent: true, opacity: 0.9 }));
+          wheel.add(rim);
+          const sv = [];
+          for (let k = 0; k < 8; k++) {
+            const a = k * Math.PI / 4;
+            sv.push(0, 0, 0, Math.cos(a) * wr, Math.sin(a) * wr, 0);
+          }
+          const sg3 = new THREE.BufferGeometry();
+          sg3.setAttribute('position', new THREE.BufferAttribute(new Float32Array(sv), 3));
+          wheel.add(new THREE.LineSegments(sg3, new THREE.LineBasicMaterial({
+            color: 0xff8ab0, transparent: true, opacity: 0.7 })));
+          const sup = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.6, wr + 1.5, 6),
+            new THREE.MeshBasicMaterial({ color: 0xffb0c8, transparent: true, opacity: 0.7 }));
+          sup.position.y = -(wr + 1.5) / 2;
+          wheel.add(sup);
+          wheel.userData.spin = true;
+          bg.add(wheel);
+        }
+        const bl = labelSprite(bd.name.split('(')[0], '#e8c8a8', 0.7);
+        bl.position.set(0, bd.h + (bd.wheel ? 20 : 6), 0);
+        bg.add(bl);
+        vol.userData.info = { station: st.name, level: bd.name + '(概形)', future: false };
+        vol.userData.flyPos = sg.position.clone().add(new THREE.Vector3(bd.dx || 0, bd.h / 2, -(bd.dy || 0)));
+        pickables.push(vol);
+        sg.add(bg);
+      }
+    }
+
     // 駅シェル(躯体ワイヤーフレーム, 主要駅のみ)
     if (st.major) {
       const zs0 = st.levels.map(l => l.z);

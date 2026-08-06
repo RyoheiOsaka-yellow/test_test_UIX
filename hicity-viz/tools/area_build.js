@@ -86,33 +86,32 @@ export function buildArea(A, W) {
     layers.bld.userData.count = pos.length / 3;
   }
 
-  /* ---- 建物ボリューム(LOD1押し出し) ---- */
+  /* ---- 建物ワイヤーフレーム(新宿駅3D風のライン表現) ---- */
   {
-    // 近傍2km: 実フットプリントを高さ押し出し(高さ帯ごとにマージ)
-    const bands = [[0, 8, 0x243550], [8, 15, 0x2c4468], [15, 30, 0x35567e], [30, 60, 0x3e6a94], [60, 1e9, 0x4a80aa]];
-    const byBand = bands.map(() => []);
+    const WIRE = 0x46597a;   // 淡いスレート(参考HTMLの周辺建物色)
+    // 近傍: 実フットプリントの垂直エッジ+屋根・地上輪郭ライン
+    const nv = [];
     for (const b of (A.bldNear || [])) {
       const h = b[0];
-      const pts = [];
-      for (let i = 1; i + 1 < b.length; i += 2) pts.push(new THREE.Vector2(b[i], -b[i + 1]));
-      if (pts.length < 3) continue;
-      try {
-        const geo = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: h, bevelEnabled: false });
-        geo.rotateX(-Math.PI / 2);
-        const bi = bands.findIndex(([lo, hi]) => h >= lo && h < hi);
-        byBand[Math.max(0, bi)].push(geo);
-      } catch (e) { /* 不正リングはスキップ */ }
+      const ring = [];
+      for (let i = 1; i + 1 < b.length; i += 2) ring.push([b[i], b[i + 1]]);
+      if (ring.length < 3) continue;
+      for (let i = 0; i < ring.length; i++) {
+        const [x1, y1] = ring[i], [x2, y2] = ring[(i + 1) % ring.length];
+        nv.push(x1, h, -y1, x2, h, -y2);        // 屋根輪郭
+        nv.push(x1, 0, -y1, x2, 0, -y2);        // 地上輪郭
+        nv.push(x1, 0, -y1, x1, h, -y1);        // 垂直エッジ
+      }
     }
-    byBand.forEach((geos, i) => {
-      if (!geos.length) return;
-      const merged = mergeGeometries(geos, false);
-      geos.forEach(g => g.dispose());
-      const mesh = new THREE.Mesh(merged, new THREE.MeshLambertMaterial({
-        color: bands[i][2], transparent: true, opacity: 0.92 }));
-      mesh.frustumCulled = false;
-      layers.bld3d.add(mesh);
-    });
-    // 広域: 高さのあるビル(タグ付き)をインスタンスボックスで
+    if (nv.length) {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(nv), 3));
+      const ls = new THREE.LineSegments(g, new THREE.LineBasicMaterial({
+        color: WIRE, transparent: true, opacity: 0.55 }));
+      ls.frustumCulled = false;
+      layers.bld3d.add(ls);
+    }
+    // 広域: OBBのボックスワイヤー(高さ8m以上=ビル・マンション級を線画)
     let F2 = new Int16Array(0);
     if (A.bldFarB64) {
       const bin = atob(A.bldFarB64);
@@ -120,28 +119,32 @@ export function buildArea(A, W) {
       for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
       F2 = new Int16Array(u8.buffer);
     }
-    const towers = [];
+    const fv = [];
+    const corner = (cx, cy, w, l, ca, sa, sx, sz) => {
+      const px = sx * w / 2, py = sz * l / 2;
+      return [cx + px * ca - py * sa, cy + px * sa + py * ca];
+    };
     for (let i = 0; i < F2.length; i += 6) {
       const h = F2[i + 5] / 2;
-      if (h >= 13) towers.push([F2[i] * 2, F2[i + 1] * 2, F2[i + 2] / 2, F2[i + 3] / 2, F2[i + 4], h]);
+      if (h < 8) continue;                       // 低層はポイント表現に任せる
+      const cx = F2[i] * 2, cy = F2[i + 1] * 2, w = F2[i + 2] / 2, l = F2[i + 3] / 2;
+      const ang = F2[i + 4] * Math.PI / 180, ca = Math.cos(ang), sa = Math.sin(ang);
+      const cs = [corner(cx, cy, w, l, ca, sa, -1, -1), corner(cx, cy, w, l, ca, sa, 1, -1),
+                  corner(cx, cy, w, l, ca, sa, 1, 1), corner(cx, cy, w, l, ca, sa, -1, 1)];
+      for (let k = 0; k < 4; k++) {
+        const [x1, y1] = cs[k], [x2, y2] = cs[(k + 1) % 4];
+        fv.push(x1, h, -y1, x2, h, -y2);
+        fv.push(x1, 0, -y1, x1, h, -y1);
+      }
     }
-    if (towers.length) {
-      const box = new THREE.BoxGeometry(1, 1, 1);
-      box.translate(0, 0.5, 0);
-      const im = new THREE.InstancedMesh(box, new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.92 }), towers.length);
-      const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
-      const cc = new THREE.Color();
-      towers.forEach(([cx, cy, w, l, ang, h], i) => {
-        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -ang * Math.PI / 180);
-        s.set(w, h, l); p.set(cx, 0, -cy);
-        m4.compose(p, q, s);
-        im.setMatrixAt(i, m4);
-        const t = Math.min(1, (h - 13) / 60);
-        im.setColorAt(i, cc.setHex(0x2c4468).lerp(new THREE.Color(0x5a90ba), t));
-      });
-      im.frustumCulled = false;
-      layers.bld3d.add(im);
-      layers.bld3d.userData.towers = towers.length;
+    if (fv.length) {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(fv), 3));
+      const ls = new THREE.LineSegments(g, new THREE.LineBasicMaterial({
+        color: WIRE, transparent: true, opacity: 0.4 }));
+      ls.frustumCulled = false;
+      layers.bld3d.add(ls);
+      layers.bld3d.userData.towers = fv.length / 6;
     }
   }
 
@@ -186,12 +189,11 @@ export function buildArea(A, W) {
     parent.add(m);
   };
   const [r0, r1, r2] = A.roads || [[], [], []];
-  // 生活道路: ライン / 幹線: リボン+センターライン
-  addLines(layers.roads, r2, 0x46527a, 0.5, 0.3);
-  ribbon(layers.roads, r1, 5, 0x2e3a5c, 0.75, 0.45);
-  addLines(layers.roads, r1, 0x7c8cb8, 0.5, 0.55);
-  ribbon(layers.roads, r0, 8, 0x3a4a74, 0.9, 0.6);
-  addLines(layers.roads, r0, 0xc8d4f4, 0.85, 0.75);
+  // 道路: バイオレット系ライン(新宿駅3D風)
+  addLines(layers.roads, r2, 0x4a3a72, 0.4, 0.3);
+  addLines(layers.roads, r1, 0x8a5ac8, 0.55, 0.5);
+  ribbon(layers.roads, r0, 7, 0x2c2148, 0.7, 0.45);
+  addLines(layers.roads, r0, 0xd166ff, 0.6, 0.7);
   // 首都高(自動車専用道): 高架リボン+橋脚
   {
     const mways = A.motorway || [];

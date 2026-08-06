@@ -18,6 +18,12 @@ export const STATIONS = [
       [0, -25, -18, 0, 0, 0],      // 地下新駅 → 東急/JRコンコース直下 立坑
       [0, 0, 0, 0, 30, 7],         // 地上 → 2F橋上コンコース
     ],
+    buildings: [  // 駅ビル(公開情報に基づく概形)
+      { name: 'グランデュオ蒲田 東館', dx: 30, dy: -10, brg: 10, w: 30, l: 170, h: 55, color: 0xf5c9a0 },
+      { name: 'グランデュオ蒲田 西館', dx: -30, dy: 10, brg: 10, w: 30, l: 150, h: 55, color: 0xf5c9a0 },
+      { name: '東急プラザ蒲田(屋上に幸せの観覧車)', dx: -90, dy: 40, brg: 100, w: 65, l: 60, h: 34, color: 0xf5a9c0, wheel: true },
+      { name: 'アロマスクエア(蒲田駅東)', dx: 200, dy: -110, brg: 10, w: 45, l: 45, h: 93, color: 0xa9c8f5 },
+    ],
   },
   {
     id: 'keikyu-kamata', name: '京急蒲田', lon: 139.7231, lat: 35.5611, major: true,
@@ -30,6 +36,9 @@ export const STATIONS = [
     ],
     links: [
       [0, 0, -24, 0, 0, 0],        // 地下新駅 → 1F改札 連絡立坑
+    ],
+    buildings: [
+      { name: 'あすとウィズ(京急蒲田駅ビル)', dx: 30, dy: -20, brg: 170, w: 28, l: 90, h: 28, color: 0xf5c9a0 },
     ],
   },
   {
