@@ -192,43 +192,100 @@ vec2 path(float z) {
   );
 }
 
-// sin 値から細い刻線を作る
+// sin 値から刻線を作る（w で太さが変わる）
 float carve(float v, float w) {
   return smoothstep(w, 0.0, abs(v));
 }
 
-// ---- 紋様モチーフ（q はセル中心基準 -0.5..0.5）----
+// 局所用の値ノイズ（セル内の線幅ゆらぎなどに使用）
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float a = hash21(i);
+  float b = hash21(i + vec2(1.0, 0.0));
+  float c = hash21(i + vec2(0.0, 1.0));
+  float d = hash21(i + vec2(1.0, 1.0));
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+// x 方向に周期 px で折り返す値ノイズ（円周の継ぎ目を消す）
+float vnoisep(vec2 p, float px) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float x0 = mod(i.x, px), x1 = mod(i.x + 1.0, px);
+  float a = hash21(vec2(x0, i.y));
+  float b = hash21(vec2(x1, i.y));
+  float c = hash21(vec2(x0, i.y + 1.0));
+  float d = hash21(vec2(x1, i.y + 1.0));
+  return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+float fbmp(vec2 p, float px) {
+  float v = 0.0, a = 0.5;
+  for (int i = 0; i < 3; i++) {
+    v += a * vnoisep(p, px);
+    p = p * 2.0 + vec2(31.0, 17.0);
+    px *= 2.0;
+    a *= 0.5;
+  }
+  return v;
+}
+
+// ---- 紋様モチーフ（q はセル中心基準 -0.5..0.5、w は基準線幅）----
+// どのモチーフも線幅をノイズで揺らし、手で盛った隆帯・引いた沈線の不均一さを出す
 
 // 渦巻文
-float motifSpiral(vec2 q, float seed) {
+float motifSpiral(vec2 q, float seed, float w) {
   float r = length(q) + 1e-4;
   float a = atan(q.y, q.x);
   float arms = 1.0 + floor(fract(seed * 7.13) * 3.0);
-  float freq = 22.0 + 26.0 * fract(seed * 3.71);
-  float v = sin(a * arms + r * freq);
-  float mask = smoothstep(0.52, 0.44, r);
-  return carve(v, 0.42) * mask;
+  float freq = 17.0 + 21.0 * fract(seed * 3.71);
+  float v = sin(a * arms + r * freq + seed * TAU);
+  float wob = 0.55 + 0.9 * vnoise(q * 7.0 + seed * 41.0);
+  return carve(v, w * wob) * smoothstep(0.55, 0.45, r);
+}
+
+// S 字連結渦巻文（左右で巻きが逆の一対の渦）
+float motifSSpiral(vec2 q, float seed, float w) {
+  float side = q.x < 0.0 ? -1.0 : 1.0;
+  vec2 p = q - vec2(side * 0.21, 0.0);
+  float r = length(p) + 1e-4;
+  float a = atan(p.y, p.x);
+  float v = sin(side * a * 2.0 + r * (22.0 + 16.0 * fract(seed * 5.31)));
+  float wob = 0.55 + 0.9 * vnoise(q * 6.0 + seed * 31.0);
+  return carve(v, w * wob) * smoothstep(0.34, 0.27, r);
 }
 
 // 同心円文
-float motifRings(vec2 q, float seed) {
+float motifRings(vec2 q, float seed, float w) {
   float r = length(q);
-  float v = sin(r * (26.0 + 34.0 * fract(seed * 5.17)) + seed * TAU);
-  return carve(v, 0.38) * smoothstep(0.52, 0.44, r);
+  float v = sin(r * (24.0 + 30.0 * fract(seed * 5.17)) + seed * TAU);
+  float wob = 0.55 + 0.9 * vnoise(q * 8.0 + seed * 23.0);
+  return carve(v, w * wob) * smoothstep(0.55, 0.45, r);
 }
 
 // 縄目（撚糸文）
-float motifCord(vec2 q, float seed) {
+float motifCord(vec2 q, float seed, float w) {
   vec2 p = q * rot(floor(fract(seed * 9.71) * 4.0) * PI * 0.25);
-  float v = sin(p.y * 30.0 + sin(p.x * 21.0) * 1.35);
-  return carve(v, 0.42);
+  float v = sin(p.y * 28.0 + sin(p.x * 20.0) * 1.35);
+  float wob = 0.6 + 0.8 * vnoise(p * 9.0 + seed * 53.0);
+  return carve(v, w * wob);
 }
 
 // 波状沈線
-float motifWave(vec2 q, float seed) {
+float motifWave(vec2 q, float seed, float w) {
   vec2 p = q * rot(fract(seed * 3.13) * PI);
-  float v = sin(p.y * 24.0 + abs(fract(p.x * 3.0) - 0.5) * 9.0);
-  return carve(v, 0.42);
+  float v = sin(p.y * 22.0 + abs(fract(p.x * 3.0) - 0.5) * 8.5);
+  float wob = 0.6 + 0.8 * vnoise(p * 8.0 + seed * 47.0);
+  return carve(v, w * wob);
+}
+
+// 条線（胴下部のような細い平行沈線）
+float motifStria(vec2 q, float seed, float w) {
+  vec2 p = q * rot(floor(fract(seed * 9.17) * 2.0) * PI * 0.5);
+  float wig = sin(p.y * 4.0 + seed * TAU) * 0.6 + vnoise(vec2(p.x * 5.0, seed * 90.0)) * 1.1;
+  float v = sin(p.x * 32.0 + wig);
+  return carve(v, w * 0.6);
 }
 
 // 1 層ぶんの紋様。wrapX = CIRC * sc（整数）で円周方向に周期化
@@ -241,22 +298,45 @@ vec3 layerPat(vec2 uv, float sc, float wrapX, vec2 seedOff) {
   float seed = hash21(id + seedOff);
   vec2 qr = q * rot(floor(seed * 8.0) * PI * 0.25);
 
+  // 線の太さ：細い沈線〜太い隆帯までセルごとにばらつかせる
+  float w = mix(0.16, 0.62, pow(fract(seed * 29.31), 1.4));
+
   float m;
   float k = fract(seed * 43.7);
-  if      (k < 0.32) m = motifSpiral(qr, seed);
-  else if (k < 0.52) m = motifRings(qr, seed);
-  else if (k < 0.80) m = motifCord(qr, seed);
-  else               m = motifWave(qr, seed);
+  if      (k < 0.24) m = motifSpiral(qr, seed, w);
+  else if (k < 0.44) m = motifSSpiral(qr, seed, w);
+  else if (k < 0.56) m = motifRings(qr, seed, w);
+  else if (k < 0.76) m = motifCord(qr, seed, w);
+  else if (k < 0.90) m = motifWave(qr, seed, w);
+  else               m = motifStria(qr, seed, w);
 
-  // 区画の枠線（隆帯）
+  // 区画の枠線（隆帯）。存在も太さもセルごとに揺らす
   float edge = max(abs(q.x), abs(q.y));
-  float border = smoothstep(0.44, 0.485, edge) * smoothstep(0.5, 0.495, edge);
+  float border = smoothstep(0.43, 0.478, edge) * smoothstep(0.5, 0.492, edge);
+  border *= 0.4 + 0.7 * fract(seed * 8.93);
 
   // このセルがアクセント色かどうか
-  float accent = step(fract(seed * 17.31), 0.34);
+  float accent = step(fract(seed * 17.31), 0.3);
 
-  float line = max(m, border * 0.9);
-  return vec3(line * (1.0 - accent), line * accent, border);
+  float line = max(m, border);
+  return vec3(line * (1.0 - accent), line * accent, 0.0);
+}
+
+// 大きく流れる隆帯の渦（ノイズワープした帯 + 帯上の微細な縄目 + 脇を走る細い沈線）
+vec2 flowPat(vec2 uv) {
+  float px = 4.0;
+  vec2 p = uv * 0.5;
+  float w1 = fbmp(p + vec2(0.0, 3.1), px);
+  float w2 = fbmp(p + vec2(0.0, 17.3), px);
+  vec2 q = p + (vec2(w1, w2) - 0.5) * 2.4;
+
+  float v = sin(q.y * 3.6 + q.x * PI * 0.5);
+  float widthMod = 0.12 + 0.45 * fbmp(p * 2.0 + vec2(0.0, 9.7), px * 2.0);
+  float thick = carve(v, widthMod);
+  float micro = carve(sin(q.x * PI * 9.0 + q.y * 24.0), 0.55) * thick;
+  float thin = carve(abs(v) - 0.55, 0.06);
+
+  return vec2(thick * 0.75 + micro * 0.35, thin);
 }
 
 // 多層の紋様。dist に応じて高周波層をフェードしてちらつきを抑える
@@ -264,14 +344,24 @@ vec3 pattern(vec2 uv, float dist) {
   float lod1 = smoothstep(38.0, 12.0, dist);
   float lod2 = smoothstep(20.0, 6.0, dist);
 
+  // 手びねりのゆらぎ：全体を柔らかく歪ませ、機械的な格子感を消す
+  vec2 wob = (vec2(fbmp(uv + vec2(0.0, 2.2), 8.0), fbmp(uv + vec2(0.0, 13.7), 8.0)) - 0.5) * 0.42;
+  vec2 uvw = uv + wob;
+
   vec3 m = vec3(0.0);
-  m += layerPat(uv, 0.5,  4.0,  vec2(0.0, 0.0)) * 1.00;
-  m += layerPat(uv + vec2(3.37, 7.11), 1.25, 10.0, vec2(11.0, 5.0)) * 0.72 * lod1;
-  m += layerPat(uv + vec2(1.91, 2.73), 3.0,  24.0, vec2(23.0, 17.0)) * 0.45 * lod2;
+
+  // 全体を貫く流線の渦
+  vec2 fl = flowPat(uv);
+  m.x += fl.x * 0.7;
+  m.y += fl.y * 0.75;
+
+  m += layerPat(uvw, 0.5,  4.0,  vec2(0.0, 0.0)) * 0.95;
+  m += layerPat(uvw + vec2(3.37, 7.11), 1.25, 10.0, vec2(11.0, 5.0)) * 0.7 * lod1;
+  m += layerPat(uvw + vec2(1.91, 2.73), 3.0,  24.0, vec2(23.0, 17.0)) * 0.45 * lod2;
 
   // 最微細の地文（条線）
-  float fine = carve(sin(uv.x * PI * 14.0 + sin(uv.y * 9.0) * 1.4), 0.3);
-  m.x += fine * 0.14 * lod2;
+  float fine = carve(sin(uvw.x * PI * 14.0 + sin(uvw.y * 9.0) * 1.4), 0.3);
+  m.x += fine * 0.12 * lod2;
 
   return m;
 }
@@ -347,16 +437,28 @@ void main() {
     vec2 uv = wallUV(p);
     vec3 pat = pattern(uv, t);
 
-    // 素地：闇に沈む土器の肌
+    // 紋様の高さで法線を歪ませ、粘土の盛り上がり（レリーフ）を出す
+    float e = 0.035;
+    vec3 patX = pattern(uv + vec2(e, 0.0), t);
+    vec3 patY = pattern(uv + vec2(0.0, e), t);
+    float h0 = pat.x + pat.y;
+    float hx = patX.x + patX.y;
+    float hy = patY.x + patY.y;
+    vec3 t1 = normalize(cross(vec3(0.0, 0.0, 1.0), n));
+    vec3 t2 = cross(t1, n);
+    float bumpLod = smoothstep(24.0, 5.0, t);
+    n = normalize(n + (t1 * (hx - h0) + t2 * (hy - h0)) / e * 0.045 * bumpLod);
+
+    // 素地：闇に沈む土器の肌（レリーフの陰影が乗る）
     float diff = max(dot(n, -rd), 0.0);
     float atten = 1.0 / (1.0 + t * t * 0.045);
-    col = uColBase * diff * atten * 0.55;
+    col = uColBase * (0.2 + 0.8 * diff) * atten * 0.7;
 
     // 刻線の発光
     float lineA = pow(min(pat.x, 1.5), 1.1);
     float lineB = pow(min(pat.y, 1.5), 1.1);
     float pulse = 0.86 + 0.14 * sin(uTime * 0.7 + p.z * 0.35);
-    vec3 emit = (uColA * lineA + uColB * lineB) * pulse;
+    vec3 emit = (uColA * lineA + uColB * lineB) * pulse * (0.65 + 0.35 * diff);
 
     // 遠方は発光が霞み、近くは強く輝く
     float eAtten = 1.0 / (1.0 + t * 0.16);
