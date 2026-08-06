@@ -1,7 +1,7 @@
 // WINKY 3D アクションプロトタイプ
 // 添付イラスト(白い鳥の着ぐるみ+水色ボディの WINKY)をトゥーンシェーディング+
-// 黒アウトライン(反転ハル)で再現。キャラクターは「おまつり(うちわ)」と
-// 「野球(バット)」の 2 体を切り替え可能。
+// 均一太さの黒アウトライン(法線オフセット方式)で再現。
+// キャラクターは「おまつり(うちわ)」と「野球(バット)」の 2 体を切り替え可能。
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -43,6 +43,7 @@ sun.shadow.camera.left = -7;
 sun.shadow.camera.right = 7;
 sun.shadow.camera.top = 7;
 sun.shadow.camera.bottom = -7;
+sun.shadow.radius = 4;
 scene.add(sun);
 
 // ---------- 地面 ----------
@@ -74,51 +75,145 @@ const C = {
   yellow:  0xf5c31d,  // くちばし・前髪・鈴
   cheek:   0xf6a8c9,  // ほっぺ
   deepPink:0xef4d8e,  // アンテナの玉
-  padPink: 0xf77fd0,  // 肉球
+  padPink: 0xf76fd0,  // 肉球
   fanPink: 0xe73562,  // うちわ
   batOrange:0xf7941d, // バット
   wood:    0xdca85a,  // うちわの柄
-  textBlue:0x4a7de8,  // WINK 文字
 };
 
+// 3 階調のセルシェーディング用グラデーションマップ
+const gradientMap = new THREE.DataTexture(new Uint8Array([175, 220, 255]), 3, 1, THREE.RedFormat);
+gradientMap.minFilter = THREE.NearestFilter;
+gradientMap.magFilter = THREE.NearestFilter;
+gradientMap.needsUpdate = true;
+
 function toon(color) {
-  return new THREE.MeshToonMaterial({ color });
+  return new THREE.MeshToonMaterial({ color, gradientMap });
 }
 const OUTLINE_MAT = new THREE.MeshBasicMaterial({ color: C.outline, side: THREE.BackSide });
 
-// メッシュ生成: トゥーン材質+黒アウトライン(反転ハル)+影
-function part(geo, color, outlineScale = 1.06) {
+// 頂点を法線方向に一定距離ふくらませたアウトライン用ジオメトリ。
+// スケール方式と違い、パーツの大小によらず線の太さが揃う。
+function outlineGeo(geo, t) {
+  const g = geo.clone();
+  const pos = g.attributes.position;
+  const nor = g.attributes.normal;
+  for (let i = 0; i < pos.count; i++) {
+    pos.setXYZ(
+      i,
+      pos.getX(i) + nor.getX(i) * t,
+      pos.getY(i) + nor.getY(i) * t,
+      pos.getZ(i) + nor.getZ(i) * t
+    );
+  }
+  return g;
+}
+
+// メッシュ生成: トゥーン材質+黒アウトライン+影
+function part(geo, color, outlineWidth = 0.02) {
   const mesh = new THREE.Mesh(geo, toon(color));
   mesh.castShadow = true;
-  if (outlineScale > 0) {
-    const ol = new THREE.Mesh(geo, OUTLINE_MAT);
-    ol.scale.setScalar(outlineScale);
-    mesh.add(ol);
+  if (outlineWidth > 0) {
+    mesh.add(new THREE.Mesh(outlineGeo(geo, outlineWidth), OUTLINE_MAT));
   }
   return mesh;
 }
 
-// 文字テクスチャ(WINK / 祭)
-function textPlane(text, { font, color, w, h, pw, ph }) {
+// ---------- テクスチャ描画(Canvas) ----------
+// おなかの「WINK」— アーチ状に並んだ手書き風の青文字
+function makeWinkTexture() {
   const cv = document.createElement('canvas');
-  cv.width = w; cv.height = h;
+  cv.width = 512; cv.height = 160;
   const ctx = cv.getContext('2d');
-  ctx.font = font;
-  ctx.fillStyle = color;
+  ctx.fillStyle = '#4a7de8';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, w / 2, h / 2);
+  ctx.font = 'bold 76px "Arial Rounded MT Bold", "Hiragino Maru Gothic ProN", sans-serif';
+  const letters = ['W', 'I', 'N', 'K'];
+  const xs = [-105, -35, 35, 105];
+  for (let i = 0; i < 4; i++) {
+    const dx = xs[i];
+    ctx.save();
+    ctx.translate(256 + dx, 82 + Math.pow(dx / 105, 2) * 16);
+    ctx.rotate(dx * 0.001);
+    ctx.fillText(letters[i], 0, 0);
+    ctx.restore();
+  }
   const tex = new THREE.CanvasTexture(cv);
-  tex.anisotropy = 4;
-  const plane = new THREE.Mesh(
-    new THREE.PlaneGeometry(pw, ph),
-    new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+  tex.anisotropy = 8;
+  return tex;
+}
+
+// うちわの面 — ピンク地・黒縁・扇の骨・「祭」
+function makeUchiwaTexture() {
+  const cv = document.createElement('canvas');
+  cv.width = 512; cv.height = 512;
+  const ctx = cv.getContext('2d');
+  const cx = 256, cy = 240, r = 205;
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = '#e73562';
+  ctx.fill();
+
+  // 扇の骨(下端から放射状)
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(28,28,36,0.85)';
+  ctx.lineWidth = 5;
+  for (let a = -64; a <= 64; a += 16) {
+    const rad = (a - 90) * Math.PI / 180;
+    ctx.beginPath();
+    ctx.moveTo(cx, 500);
+    ctx.lineTo(cx + Math.cos(rad) * 640, 500 + Math.sin(rad) * 640);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // 縁取り
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = '#1c1c24';
+  ctx.lineWidth = 12;
+  ctx.stroke();
+
+  // 「祭」
+  ctx.fillStyle = '#1c1c24';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 210px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif';
+  ctx.fillText('祭', cx, cy + 6);
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.anisotropy = 8;
+  return tex;
+}
+
+// ほっぺ — ふんわりにじむ円形グラデーション
+function makeBlushTexture() {
+  const cv = document.createElement('canvas');
+  cv.width = 128; cv.height = 128;
+  const ctx = cv.getContext('2d');
+  const g = ctx.createRadialGradient(64, 64, 8, 64, 64, 60);
+  g.addColorStop(0, 'rgba(246,146,196,0.95)');
+  g.addColorStop(0.7, 'rgba(246,146,196,0.55)');
+  g.addColorStop(1, 'rgba(246,146,196,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(cv);
+}
+const blushTex = makeBlushTexture();
+
+function blush(size) {
+  return new THREE.Mesh(
+    new THREE.PlaneGeometry(size, size * 0.82),
+    new THREE.MeshBasicMaterial({ map: blushTex, transparent: true, depthWrite: false })
   );
-  return plane;
 }
 
 // ---------- WINKY キャラクター ----------
-// root(位置・向き) > body(スクワッシュ) > {胴体, head(フード・鳥・翼), armL/R, legL/R}
 const root = new THREE.Group();
 scene.add(root);
 
@@ -127,75 +222,105 @@ body.position.y = 0.55;
 root.add(body);
 
 // 胴体(水色のまるいからだ)
-const torso = part(new THREE.SphereGeometry(0.45, 32, 24), C.skin);
+const torso = part(new THREE.SphereGeometry(0.45, 40, 30), C.skin, 0.022);
 torso.scale.set(1, 1.05, 0.9);
 body.add(torso);
 
-// おなかの「WINK」文字
-const winkText = textPlane('WINK', {
-  font: 'bold 58px "Comic Sans MS", "Hiragino Maru Gothic ProN", sans-serif',
-  color: '#4a7de8', w: 256, h: 96, pw: 0.62, ph: 0.23,
-});
-winkText.position.set(0, -0.08, 0.415);
+// おなかの「WINK」
+const winkText = new THREE.Mesh(
+  new THREE.PlaneGeometry(0.6, 0.19),
+  new THREE.MeshBasicMaterial({ map: makeWinkTexture(), transparent: true, depthWrite: false })
+);
+winkText.position.set(0, -0.05, 0.405);
 winkText.rotation.x = -0.15;
 body.add(winkText);
 
-// 鈴(フードのあごの下にぶら下がる)
-const bell = part(new THREE.SphereGeometry(0.08, 16, 12), C.yellow, 1.1);
+// 鈴(スリット入り)
+const bell = part(new THREE.SphereGeometry(0.08, 20, 16), C.yellow, 0.014);
 bell.position.set(0, 0.28, 0.38);
 body.add(bell);
+const bellSlit = new THREE.Mesh(
+  new THREE.TorusGeometry(0.078, 0.009, 6, 24, Math.PI * 0.8),
+  new THREE.MeshBasicMaterial({ color: C.outline })
+);
+bellSlit.rotation.z = Math.PI * 0.1;
+bell.add(bellSlit);
+const bellDot = new THREE.Mesh(new THREE.SphereGeometry(0.016, 8, 6), new THREE.MeshBasicMaterial({ color: C.outline }));
+bellDot.position.set(0, -0.045, 0.062);
+bell.add(bellDot);
+
+// 着ぐるみの尻尾(3枚の羽根)
+const tail = new THREE.Group();
+tail.position.set(0, -0.05, -0.42);
+for (const [i, ang] of [[0, -0.35], [1, 0], [2, 0.35]].entries()) {
+  const feather = part(new THREE.CapsuleGeometry(0.07, 0.22, 6, 12), C.white, 0.018);
+  feather.rotation.x = -2.1;
+  feather.rotation.y = ang;
+  feather.position.set(Math.sin(ang) * 0.12, 0.02 - Math.abs(ang) * 0.03, -0.1);
+  feather.scale.z = 0.55;
+  tail.add(feather);
+}
+body.add(tail);
 
 // ---------- 頭(フード+顔+鳥+翼) ----------
 const head = new THREE.Group();
 head.position.y = 0.85;
 body.add(head);
 
-// 白いフード(着ぐるみ)— 顔のまわりに白いふちが見えるよう奥に配置
-const hood = part(new THREE.SphereGeometry(0.66, 32, 24), C.white, 1.04);
+// 白いフード — 顔のまわりに白いふちが見えるよう奥に配置
+const hood = part(new THREE.SphereGeometry(0.66, 40, 30), C.white, 0.024);
 hood.position.set(0, 0.3, -0.12);
 hood.scale.set(1, 1, 0.82);
 head.add(hood);
 
 // 水色の顔
-const face = part(new THREE.SphereGeometry(0.55, 32, 24), C.skin, 1.045);
+const face = part(new THREE.SphereGeometry(0.55, 40, 30), C.skin, 0.022);
 face.position.set(0, 0.25, 0.05);
 head.add(face);
 
 // 黄色い前髪(3つのふさ)
 for (const [x, s] of [[-0.14, 0.09], [0, 0.115], [0.14, 0.09]]) {
-  const tuft = part(new THREE.SphereGeometry(s, 16, 12), C.yellow, 1.12);
+  const tuft = part(new THREE.SphereGeometry(s, 18, 14), C.yellow, 0.016);
   tuft.position.set(x, 0.68, 0.4);
   tuft.scale.set(1, 1.2, 0.7);
   head.add(tuft);
 }
 
-// 左目(ぱっちり黒目+ハイライト)
-const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.1, 20, 16), new THREE.MeshBasicMaterial({ color: C.outline }));
+// 左目(ぱっちり黒目+三日月ハイライト)
+const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.1, 24, 18), new THREE.MeshBasicMaterial({ color: C.outline }));
 eyeL.position.set(-0.19, 0.32, 0.56);
 eyeL.scale.set(0.9, 1.25, 0.45);
 head.add(eyeL);
-const hi = new THREE.Mesh(new THREE.SphereGeometry(0.028, 10, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-hi.position.set(-0.155, 0.38, 0.62);
-head.add(hi);
+const eyeHi = new THREE.Mesh(
+  new THREE.TorusGeometry(0.045, 0.017, 8, 16, Math.PI * 0.85),
+  new THREE.MeshBasicMaterial({ color: 0xffffff })
+);
+eyeHi.position.set(-0.2, 0.35, 0.63);
+eyeHi.rotation.z = 0.5;
+head.add(eyeHi);
 
-// 右目(ウインク)
-const winkEye = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.018, 8, 16, Math.PI), new THREE.MeshBasicMaterial({ color: C.outline }));
+// 右目(ウインク+目じりのまつ毛)
+const winkEye = new THREE.Mesh(new THREE.TorusGeometry(0.075, 0.02, 8, 18, Math.PI), new THREE.MeshBasicMaterial({ color: C.outline }));
 winkEye.position.set(0.2, 0.34, 0.58);
 head.add(winkEye);
+const lash = new THREE.Mesh(new THREE.CapsuleGeometry(0.017, 0.05, 4, 8), new THREE.MeshBasicMaterial({ color: C.outline }));
+lash.position.set(0.285, 0.36, 0.565);
+lash.rotation.z = -0.9;
+head.add(lash);
 
 // ω の口(2 つの下向きアーチ)
 for (const sx of [-1, 1]) {
-  const arc = new THREE.Mesh(new THREE.TorusGeometry(0.045, 0.014, 8, 16, Math.PI), new THREE.MeshBasicMaterial({ color: C.outline }));
-  arc.position.set(sx * 0.045, 0.16, 0.6);
+  const arc = new THREE.Mesh(new THREE.TorusGeometry(0.048, 0.018, 8, 18, Math.PI), new THREE.MeshBasicMaterial({ color: C.outline }));
+  arc.position.set(sx * 0.048, 0.16, 0.6);
   arc.rotation.x = Math.PI; // ∪ 型
   head.add(arc);
 }
 
-// ほっぺ
+// ほっぺ(ふんわりグラデーション)
 for (const sx of [-1, 1]) {
-  const cheek = new THREE.Mesh(new THREE.SphereGeometry(0.08, 14, 10), toon(C.cheek));
-  cheek.position.set(sx * 0.38, 0.18, 0.46);
-  cheek.scale.set(1, 0.8, 0.4);
+  const cheek = blush(0.2);
+  cheek.position.set(sx * 0.36, 0.17, 0.485);
+  cheek.rotation.y = sx * 0.55;
   head.add(cheek);
 }
 
@@ -205,61 +330,69 @@ bird.position.set(0, 0.86, -0.04);
 bird.scale.setScalar(1.25);
 head.add(bird);
 
-const neck = part(new THREE.CapsuleGeometry(0.1, 0.22, 6, 14), C.white, 1.1);
+const neck = part(new THREE.CapsuleGeometry(0.1, 0.22, 6, 14), C.white, 0.018);
 neck.position.set(0, 0.12, 0.04);
 neck.rotation.x = 0.25;
 bird.add(neck);
 
-const birdHead = part(new THREE.SphereGeometry(0.2, 24, 18), C.white, 1.07);
+const birdHead = part(new THREE.SphereGeometry(0.2, 28, 20), C.white, 0.018);
 birdHead.position.set(0, 0.32, 0.1);
 bird.add(birdHead);
 
 // くちばし
-const beak = part(new THREE.ConeGeometry(0.09, 0.34, 12), C.yellow, 1.1);
+const beak = part(new THREE.ConeGeometry(0.09, 0.34, 14), C.yellow, 0.014);
 beak.position.set(0, 0.3, 0.32);
 beak.rotation.x = Math.PI / 2;
 beak.scale.set(1, 1, 0.55);
 bird.add(beak);
 
 // 鳥の目(左: 点 / 右: ウインク)
-const birdEyeL = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), new THREE.MeshBasicMaterial({ color: C.outline }));
+const birdEyeL = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 8), new THREE.MeshBasicMaterial({ color: C.outline }));
 birdEyeL.position.set(-0.1, 0.38, 0.23);
 bird.add(birdEyeL);
-const birdWink = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.01, 6, 12, Math.PI), new THREE.MeshBasicMaterial({ color: C.outline }));
+const birdWink = new THREE.Mesh(new THREE.TorusGeometry(0.035, 0.011, 6, 12, Math.PI), new THREE.MeshBasicMaterial({ color: C.outline }));
 birdWink.position.set(0.1, 0.39, 0.24);
 bird.add(birdWink);
 
 // 鳥のほっぺ
 for (const sx of [-1, 1]) {
-  const bc = new THREE.Mesh(new THREE.SphereGeometry(0.045, 10, 8), toon(C.cheek));
-  bc.position.set(sx * 0.15, 0.3, 0.18);
-  bc.scale.set(1, 0.8, 0.5);
+  const bc = blush(0.1);
+  bc.position.set(sx * 0.14, 0.3, 0.24);
+  bc.rotation.y = sx * 0.5;
   bird.add(bc);
 }
 
-// アンテナ(ピンクの玉)
+// アンテナ(ばねのように揺れる)
+const antenna = new THREE.Group();
+antenna.position.set(0.02, 0.45, 0.08);
+bird.add(antenna);
 const antennaRod = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.2, 8), new THREE.MeshBasicMaterial({ color: C.outline }));
-antennaRod.position.set(0.02, 0.55, 0.08);
-bird.add(antennaRod);
-const antennaBall = part(new THREE.SphereGeometry(0.055, 14, 10), C.deepPink, 1.12);
-antennaBall.position.set(0.02, 0.67, 0.08);
-bird.add(antennaBall);
+antennaRod.position.y = 0.1;
+antenna.add(antennaRod);
+const antennaBall = part(new THREE.SphereGeometry(0.055, 16, 12), C.deepPink, 0.012);
+antennaBall.position.y = 0.24;
+antenna.add(antennaBall);
 
 // ---------- 翼(着ぐるみの羽・左右) ----------
 function makeWing(side) {
-  // 3 枚の羽根を扇状に並べた翼。ピボットはフードとの付け根
+  // 4 枚の平らな羽根を扇状に並べた翼(外側ほど長い)
   const wing = new THREE.Group();
-  const angles = [0.2, 0.6, 1.0];
-  for (let i = 0; i < angles.length; i++) {
-    const ang = angles[i];
-    const feather = part(new THREE.CapsuleGeometry(0.13 - i * 0.014, 0.58, 6, 14), C.white, 1.07);
-    // 羽根の長軸(y)を外側斜め上に向ける
+  const feathers = [
+    { ang: 0.12, len: 0.6, r: 0.125 },
+    { ang: 0.5,  len: 0.66, r: 0.115 },
+    { ang: 0.88, len: 0.56, r: 0.1 },
+    { ang: 1.2,  len: 0.42, r: 0.085 },
+  ];
+  for (let i = 0; i < feathers.length; i++) {
+    const { ang, len, r } = feathers[i];
+    const feather = part(new THREE.CapsuleGeometry(r, len, 6, 14), C.white, 0.02);
     feather.rotation.z = -side * (Math.PI / 2 - ang);
     feather.position.set(
-      side * Math.cos(ang) * 0.42,
-      Math.sin(ang) * 0.42,
+      side * Math.cos(ang) * (len * 0.42 + 0.18),
+      Math.sin(ang) * (len * 0.42 + 0.18),
       -0.03 * i
     );
+    feather.scale.z = 0.6; // 平らな羽根
     wing.add(feather);
   }
   return wing;
@@ -277,7 +410,7 @@ head.add(wingR);
 // ---------- 手足 ----------
 function makeLimb(len, radius) {
   const pivot = new THREE.Group();
-  const limb = part(new THREE.CapsuleGeometry(radius, len, 6, 14), C.skin, 1.08);
+  const limb = part(new THREE.CapsuleGeometry(radius, len, 8, 16), C.skin, 0.02);
   limb.position.y = -(len / 2 + radius);
   pivot.add(limb);
   pivot.userData.limb = limb;
@@ -292,6 +425,21 @@ const armR = makeLimb(0.2, 0.1);
 armR.position.set(0.5, 0.22, 0.06);
 body.add(armR);
 
+// 左手のひらの肉球(手をふると見える)
+{
+  const palm = armL.userData.limb;
+  const big = new THREE.Mesh(new THREE.SphereGeometry(0.048, 12, 10), toon(C.padPink));
+  big.position.set(0, -0.2, 0.085);
+  big.scale.set(1, 1.1, 0.35);
+  palm.add(big);
+  for (const [x, y] of [[-0.05, -0.13], [0, -0.115], [0.05, -0.13]]) {
+    const bean = new THREE.Mesh(new THREE.SphereGeometry(0.022, 10, 8), toon(C.padPink));
+    bean.position.set(x, y, 0.09);
+    bean.scale.z = 0.35;
+    palm.add(bean);
+  }
+}
+
 const legL = makeLimb(0.12, 0.12);
 legL.position.set(-0.2, -0.4, 0);
 body.add(legL);
@@ -300,7 +448,7 @@ const legR = makeLimb(0.12, 0.12);
 legR.position.set(0.2, -0.4, 0);
 body.add(legR);
 
-// 足先の肉球(ピンク)
+// 足先の肉球
 for (const leg of [legL, legR]) {
   const foot = leg.userData.limb;
   for (const [x, y, s] of [[0, -0.3, 0.045], [-0.05, -0.24, 0.026], [0.05, -0.24, 0.026]]) {
@@ -314,36 +462,39 @@ for (const leg of [legL, legR]) {
 // ---------- 持ち物(キャラクター切り替え) ----------
 function makeUchiwa() {
   const g = new THREE.Group();
-  const handle = part(new THREE.CylinderGeometry(0.025, 0.03, 0.34, 10), C.wood, 1.15);
+  const handle = part(new THREE.CylinderGeometry(0.026, 0.032, 0.38, 10), C.wood, 0.014);
   handle.position.y = -0.08;
   g.add(handle);
-  const fan = part(new THREE.SphereGeometry(0.38, 28, 20), C.fanPink, 1.05);
-  fan.position.y = 0.42;
-  fan.scale.set(1, 1.05, 0.14);
+
+  // 本体はうすい円盤、面はテクスチャ(骨・縁取り・祭)
+  const fan = part(new THREE.SphereGeometry(0.4, 32, 24), C.fanPink, 0.018);
+  fan.position.y = 0.48;
+  fan.scale.set(1, 1.04, 0.13);
   g.add(fan);
-  const matsuri = textPlane('祭', {
-    font: 'bold 150px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif',
-    color: '#1c1c24', w: 200, h: 200, pw: 0.5, ph: 0.5,
-  });
-  matsuri.position.set(0, 0.42, 0.07);
-  g.add(matsuri);
-  const matsuri2 = matsuri.clone();
-  matsuri2.rotation.y = Math.PI;
-  matsuri2.position.z = -0.07;
-  g.add(matsuri2);
+
+  const faceTex = makeUchiwaTexture();
+  for (const zs of [1, -1]) {
+    const facePlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.0, 1.0),
+      new THREE.MeshBasicMaterial({ map: faceTex, transparent: true, depthWrite: false })
+    );
+    facePlane.position.set(0, 0.445, zs * 0.062);
+    if (zs < 0) facePlane.rotation.y = Math.PI;
+    g.add(facePlane);
+  }
   return g;
 }
 
 function makeBat() {
   const g = new THREE.Group();
-  const bat = part(new THREE.CylinderGeometry(0.11, 0.05, 0.95, 14), C.batOrange, 1.08);
+  const bat = part(new THREE.CylinderGeometry(0.11, 0.05, 0.95, 16), C.batOrange, 0.018);
   bat.position.y = 0.5;
   g.add(bat);
-  const tip = part(new THREE.SphereGeometry(0.11, 14, 10), C.batOrange, 1.08);
+  const tip = part(new THREE.SphereGeometry(0.11, 16, 12), C.batOrange, 0.018);
   tip.position.y = 0.98;
   tip.scale.y = 0.7;
   g.add(tip);
-  const knob = part(new THREE.SphereGeometry(0.065, 12, 8), C.white, 1.1);
+  const knob = part(new THREE.SphereGeometry(0.065, 12, 10), C.white, 0.014);
   knob.position.y = 0.0;
   knob.scale.y = 0.6;
   g.add(knob);
@@ -360,7 +511,7 @@ PROPS.uchiwa.rotation.set(1.05, 0, 0);
 PROPS.bat.rotation.set(0.9, 0, -0.35);
 
 for (const p of Object.values(PROPS)) {
-  p.position.y = -0.36; // 手の先
+  p.position.set(0.04, -0.36, 0); // 手の先
   p.visible = false;
   armR.userData.limb.add(p);
 }
@@ -452,8 +603,8 @@ function applyIdle(time, w) {
   bird.rotation.z += Math.sin(time * 1.4) * 0.06 * w;
   wingL.rotation.z += Math.sin(time * 2.0) * 0.06 * w;
   wingR.rotation.z += -Math.sin(time * 2.0) * 0.06 * w;
+  tail.rotation.x += Math.sin(time * 1.8) * 0.1 * w;
   armL.rotation.z += 0.15 * w + Math.sin(time * 2.2) * 0.04 * w;
-  if (!PROPS[currentChar]) armR.rotation.z += -0.15 * w;
 }
 
 function applyRun(time, w, dt) {
@@ -477,6 +628,7 @@ function applyRun(time, w, dt) {
   bird.rotation.x += -0.15 * w;
   wingL.rotation.z += (0.5 + Math.sin(cycle) * 0.12) * w;  // 翼を後ろへなびかせる
   wingR.rotation.z += (-0.5 - Math.sin(cycle) * 0.12) * w;
+  tail.rotation.x += (0.25 + Math.sin(cycle) * 0.1) * w;
 }
 
 function applyDance(time, w) {
@@ -497,6 +649,7 @@ function applyDance(time, w) {
   bird.rotation.z += Math.sin(beat * 2) * 0.15 * w;
   wingL.rotation.z += Math.abs(Math.sin(beat)) * 0.5 * w;   // 翼をパタパタ
   wingR.rotation.z += -Math.abs(Math.sin(beat)) * 0.5 * w;
+  tail.rotation.x += Math.sin(beat * 2) * 0.2 * w;
 }
 
 // ---------- ワンショットアクション ----------
@@ -514,7 +667,7 @@ function applyJump(t) {
     body.scale.x *= 1 - stretch * 0.5;
     body.scale.z *= 1 - stretch * 0.5;
     armL.rotation.z += 2.4 * Math.sin(k * Math.PI);
-    wingL.rotation.z += 0.9 * Math.sin(k * Math.PI);   // 翼を大きく広げる
+    wingL.rotation.z += 0.9 * Math.sin(k * Math.PI);
     wingR.rotation.z += -0.9 * Math.sin(k * Math.PI);
     legL.rotation.x += -0.5 * Math.sin(k * Math.PI);
     legR.rotation.x += -0.5 * Math.sin(k * Math.PI);
@@ -534,7 +687,7 @@ function applySpin(t) {
 }
 
 function applyWave(t) {
-  // 左手(持ち物と反対の手)を大きくふる挨拶
+  // 左手(肉球のある手)を大きくふる挨拶
   const raise = Math.min(1, t / 0.2) * Math.min(1, (1 - t) / 0.2);
   armL.rotation.z += 2.6 * raise;
   armL.rotation.x += Math.sin(t * Math.PI * 6) * 0.5 * raise;
@@ -585,14 +738,18 @@ const ONESHOT_FN = { jump: applyJump, spin: applySpin, wave: applyWave, bow: app
 // ---------- メインループ ----------
 const clock = new THREE.Clock();
 
+// アンテナのばね(上下動に反応して遅れて揺れる)
+const spring = { value: 0, prevY: 0 };
+
 function resetPose() {
   body.scale.set(1, 1, 1);
   body.position.y = 0.55;
   body.rotation.set(0, 0, 0);
   head.rotation.set(0, 0, 0);
   bird.rotation.set(0, 0, 0);
-  wingL.rotation.set(0, 0, 0.15);
-  wingR.rotation.set(0, 0, -0.15);
+  wingL.rotation.set(0, 0, 0.1);
+  wingR.rotation.set(0, 0, -0.1);
+  tail.rotation.set(0, 0, 0);
   armL.rotation.set(0, 0, 0.15);
   armR.rotation.set(-1.15, 0, -0.45); // 持ち物をかかげる腕
   legL.rotation.set(0, 0, 0);
@@ -635,6 +792,15 @@ function animate() {
   }
 
   root.rotation.y = anim.heading + anim.spinOffset;
+
+  // アンテナのばね揺れ(体の上下速度に反応)
+  const bodyY = root.position.y + body.position.y;
+  const vy = dt > 0 ? (bodyY - spring.prevY) / dt : 0;
+  spring.prevY = bodyY;
+  const target = THREE.MathUtils.clamp(-vy * 0.18, -0.55, 0.55);
+  spring.value += (target - spring.value) * Math.min(1, dt * 9);
+  antenna.rotation.x = spring.value;
+  antenna.rotation.z = Math.sin(time * 2.6) * 0.05;
 
   controls.update();
   renderer.render(scene, camera);
