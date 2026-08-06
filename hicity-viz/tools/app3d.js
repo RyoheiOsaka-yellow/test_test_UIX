@@ -32,6 +32,7 @@ const GROUPS = {
   robot: { label: 'ロボット', color: 0x35e0a1 },
   mobility: { label: 'モビリティ', color: 0xffe066 },
 };
+const DAY_LABEL = { '0918': '9/18金', '0919': '9/19土', '0920': '9/20日', '0921': '9/21祝', '0922': '9/22祝' };
 const SCENARIOS = {
   s2020: { label: '2020 実測', clones: 0, idx: 100, dwell: 42.4, vis: '実証実験期', econ: null },
   low: { label: '2026 低位', clones: 1, idx: 220, dwell: 55, vis: '約120万人/年', econ: 59 },
@@ -217,11 +218,21 @@ const heatRamp = t => {
   }
 }
 
-/* ---------------- trajectories replay ---------------- */
-const tags = Object.entries(D.traj).map(([uid, d]) => ({ uid, g: d.g, n: d.n, p: d.p, ptr: 0 }));
+/* ---------------- trajectories replay (日切替対応) ---------------- */
 const CLONE_MAX = 4;
-const partSystems = {};   // g -> {points, base:[tagIdx...], clones:[{tag, dx,dy,dt}...]}
-{
+let tags = [];
+let partSystems = {};   // g -> {points, base:[tagIdx...], clones:[{ti, dx,dy,dt,k}...]}
+const DOT_TEX = dotTexture();
+let replayDay = '0918';
+function setReplayDay(day) {
+  replayDay = day;
+  for (const g of Object.keys(partSystems)) {
+    scene.remove(partSystems[g].points);
+    partSystems[g].points.geometry.dispose();
+    partSystems[g].points.material.dispose();
+  }
+  partSystems = {};
+  tags = Object.entries(D.traj[day] || {}).map(([uid, d]) => ({ uid, g: d.g, n: d.n, p: d.p, ptr: 0 }));
   const rng = mulberry(42);
   for (const g of Object.keys(GROUPS)) {
     const gTags = tags.map((t, i) => t.g === g ? i : -1).filter(i => i >= 0);
@@ -233,13 +244,13 @@ const partSystems = {};   // g -> {points, base:[tagIdx...], clones:[{tag, dx,dy
         clones.push({ ti, dx: Math.cos(ang) * dist, dy: Math.sin(ang) * dist, dt: (rng() - 0.5) * 5400, k });
       }
     }
-    const n = gTags.length + clones.length;
+    const n = Math.max(1, gTags.length + clones.length);
     const pos = new Float32Array(n * 3).fill(-9999);
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
     const mat = new THREE.PointsMaterial({
       color: GROUPS[g].color, size: 4.2, transparent: true, opacity: 1,
-      map: dotTexture(), alphaTest: 0.15, depthWrite: false, sizeAttenuation: true,
+      map: DOT_TEX, alphaTest: 0.15, depthWrite: false, sizeAttenuation: true,
       blending: THREE.AdditiveBlending,
     });
     const pts = new THREE.Points(geo, mat);
@@ -430,6 +441,17 @@ function updateParticles() {
     document.querySelectorAll('#floor-list input').forEach(i => i.checked = false);
     applyVisibility();
   });
+  // リプレイ日切替
+  const rdr = $('replay-day-row');
+  if (rdr) {
+    const days = Object.keys(D.traj).sort();
+    rdr.innerHTML = days.map(d =>
+      `<button data-day="${d}" class="${d === replayDay ? 'active' : ''}">${(DAY_LABEL[d] || d).replace(' ', '')}</button>`).join('');
+    rdr.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      rdr.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+      setReplayDay(b.dataset.day);
+    }));
+  }
   // playback
   $('btn-play').addEventListener('click', () => {
     state.playing = !state.playing;
@@ -560,6 +582,7 @@ addEventListener('resize', () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
+setReplayDay(replayDay);
 applyVisibility(); applyExpand(); applyScenario();
 if (state.area.gsi) ensureGsi();
 $('loading').style.display = 'none';

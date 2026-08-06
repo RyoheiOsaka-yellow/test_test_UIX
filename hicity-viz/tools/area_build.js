@@ -28,8 +28,9 @@ export function buildArea(A, W) {
       const ang = F[i + 4] * Math.PI / 180, h = F[i + 5];
       const ca = Math.cos(ang), sa = Math.sin(ang);
       const per = 2 * (w + l);
-      const step = per > 160 ? 6 : per > 60 ? 5 : 4;
+      const step = per > 160 ? 7 : per > 90 ? 6 : 5;
       const n = Math.max(4, Math.floor(per / step));
+      const midSlice = h >= 15;   // 高い建物のみ中間スライス
       c.copy(heightColor(h));
       for (let k = 0; k < n; k++) {
         let d = per * k / n, px, py;
@@ -38,8 +39,12 @@ export function buildArea(A, W) {
         else if (d < 2 * w + l) { px = w / 2 - (d - w - l); py = l / 2; }
         else { px = -w / 2; py = l / 2 - (d - 2 * w - l); }
         const x = cx + px * ca - py * sa, y = cy + px * sa + py * ca;
-        pos.push(x, h, -y, x, h * 0.5, -y);
-        col.push(c.r, c.g, c.b, c.r * 0.55, c.g * 0.55, c.b * 0.55);
+        pos.push(x, h, -y);
+        col.push(c.r, c.g, c.b);
+        if (midSlice) {
+          pos.push(x, h * 0.5, -y);
+          col.push(c.r * 0.55, c.g * 0.55, c.b * 0.55);
+        }
       }
     }
     // near: full footprint rings, denser slices

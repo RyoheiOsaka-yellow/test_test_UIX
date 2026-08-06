@@ -91,7 +91,12 @@ python3 aggregate3d.py
 
 # 3) OSM取得 → osm/*.json (Overpassは混雑時504が多い。curl -G が通る。POSTは不可な環境あり)
 python3 fetch_osm.py          # 境界/鉄道/駅/空港/水域/道路(主要+南北分割)
-./fetch_bld_small.sh          # 建物8分割(bld0a..bld3b) ← 未完了ならこれを回す
+# 建物はOverpass混雑時、Geofabrik経由が確実:
+#   curl -o kanto.osm.pbf https://download.geofabrik.de/asia/japan/kanto-latest.osm.pbf  (~480MB)
+#   osmium extract -b 139.655,35.518,139.815,35.630 kanto.osm.pbf -o ota.osm.pbf
+#   osmium tags-filter ota.osm.pbf w/building -o ota_bld.osm.pbf
+#   pyosmium(pip install osmium)で geometry付きJSONへ変換 → osm/bld_geofabrik.json
+#   (Overpass形式: {"elements":[{"type":"way","id":..,"tags":{height系のみ},"geometry":[{lon,lat},..]},..]})
 
 # 4) OSM → area.json (ローカル座標へ変換・量子化・建物は近傍=全形状/遠方=OBB)
 python3 process_osm.py
@@ -125,9 +130,10 @@ EOF
 
 ## 7. 残タスク
 
-1. **建物点群データの取得完了**(最重要): Overpass混雑により `bld*` クエリが未完。`tools/fetch_bld_small.sh` を回して `osm/bld*.json` を作り、手順5の(4)(5)を再実行すれば `area_build.js` が自動で点群化する(コード実装・検証済み。データ待ちのみ)
-2. 駅データの精度向上(現状は「公開情報に基づく想定・仮説」の模式モデル。国交省 歩行空間ネットワークデータや駅構内図で精緻化可能)
-3. リプレイの複数日対応(traj.jsonを日別に持てば可)、PLATEAU 3D都市モデル(大田区)による建物精緻化、経路検索モード(渋谷参考HTMLにあった機能)
+1. ~~建物点群データの取得~~ → **完了**(Geofabrik関東抽出で33.8万棟、近傍1.5kmフル形状5,915棟+広域OBB 149,725棟、間引き: 3.5km超は面積80m²未満かつ高さ12m未満を省略。表示点数約164万点)
+2. ~~リプレイの複数日対応~~ → **完了**(9/18〜9/22の5日切替)
+3. 駅データの精度向上(現状は「公開情報に基づく想定・仮説」の模式モデル。国交省 歩行空間ネットワークデータや駅構内図で精緻化可能)
+4. PLATEAU 3D都市モデル(大田区)による建物精緻化、経路検索モード(渋谷参考HTMLにあった機能)、建物点群のLOD/チャンク化(現状10MB・低スペック端末では重い可能性)
 
 ## 8. 注意事項(そのまま維持すること)
 

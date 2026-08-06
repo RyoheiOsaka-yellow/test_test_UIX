@@ -126,7 +126,9 @@ out['taxiways'] = tw
 out['aprons'] = ap
 
 # buildings: near = full ring, far = oriented bbox
-NEAR_R = 1600.0
+NEAR_R = 1500.0   # 全形状で保持
+MID_R = 3500.0    # OBBで全棟保持
+# それ以遠: 小規模建物(概ね戸建て)は間引き
 near, far = [], []
 nb = 0
 seen_ids = set()
@@ -144,7 +146,8 @@ for name in bld_files:
         h = est_height(t)
         pts = [to_local(p['lon'], p['lat']) for p in g]
         cx = sum(p[0] for p in pts)/len(pts); cy = sum(p[1] for p in pts)/len(pts)
-        if math.hypot(cx - hic_x, cy - hic_y) < NEAR_R:
+        dist = math.hypot(cx - hic_x, cy - hic_y)
+        if dist < NEAR_R:
             r = ring_local(g, q=0.5, min_seg=1)
             if len(r) >= 3:
                 near.append([round(h, 1)] + [c for p in r for c in p])
@@ -159,6 +162,7 @@ for name in bld_files:
             ys = [ (p[0]-cx)*sa + (p[1]-cy)*ca for p in pts]
             w = max(xs)-min(xs); l = max(ys)-min(ys)
             if w < 2 or l < 2: continue
+            if dist > MID_R and w * l < 80 and h < 12: continue  # 遠方の小規模建物は省略
             far.append([round(cx), round(cy), round(w), round(l), round(math.degrees(ang)) % 180, round(h)])
 out['bldNear'] = near
 out['bldFar'] = [v for b in far for v in b]  # flat array, stride 6

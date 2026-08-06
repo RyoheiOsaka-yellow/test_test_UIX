@@ -58,33 +58,36 @@ for fl in heat_out:
 STEP = 8        # min seconds between samples
 KEEPALIVE = 60  # max seconds without a sample while stationary
 MOVE = 1.0      # meters of movement that forces a sample
-traj = {}   # uid -> {'g':group,'n':name,'p':[[t,x10,y10,fl],...]}
-last = {}   # uid -> (t, x, y, fl)
-with open(f'{SP}/data/kf_0918.csv', encoding='cp932', errors='replace') as f:
-    r = csv.reader(f); next(r)
-    for row in r:
-        try:
-            g = group_of(row[4])
-            if g is None: continue
-            fl = floor_of(row[6])
-            if fl is None: continue
-            ts = row[9]
-            t = int(ts[11:13])*3600 + int(ts[14:16])*60 + int(ts[17:19])
-            uid = row[0]
-        except (ValueError, IndexError):
-            continue
-        x, y = to_local(float(row[7]), float(row[8]))
-        lt = last.get(uid)
-        if lt is not None:
-            dt = t - lt[0]
-            if dt < STEP: continue
-            moved = math.hypot(x-lt[1], y-lt[2]) >= MOVE or fl != lt[3]
-            if not moved and dt < KEEPALIVE: continue
-        d = traj.setdefault(uid, {'g': g, 'n': row[1], 'p': []})
-        d['p'].append([t, round(x*10), round(y*10), fl])
-        last[uid] = (t, x, y, fl)
+traj = {}   # day -> uid -> {'g':group,'n':name,'p':[[t,x10,y10,fl],...]}
+for path in sorted(glob.glob(f'{SP}/data/kf_*.csv')):
+    day = os.path.basename(path)[3:7]
+    dtraj = traj.setdefault(day, {})
+    last = {}   # uid -> (t, x, y, fl)
+    with open(path, encoding='cp932', errors='replace') as f:
+        r = csv.reader(f); next(r)
+        for row in r:
+            try:
+                g = group_of(row[4])
+                if g is None: continue
+                fl = floor_of(row[6])
+                if fl is None: continue
+                ts = row[9]
+                t = int(ts[11:13])*3600 + int(ts[14:16])*60 + int(ts[17:19])
+                uid = row[0]
+            except (ValueError, IndexError):
+                continue
+            x, y = to_local(float(row[7]), float(row[8]))
+            lt = last.get(uid)
+            if lt is not None:
+                dt = t - lt[0]
+                if dt < STEP: continue
+                moved = math.hypot(x-lt[1], y-lt[2]) >= MOVE or fl != lt[3]
+                if not moved and dt < KEEPALIVE: continue
+            d = dtraj.setdefault(uid, {'g': g, 'n': row[1], 'p': []})
+            d['p'].append([t, round(x*10), round(y*10), fl])
+            last[uid] = (t, x, y, fl)
 
-npts = sum(len(d['p']) for d in traj.values())
+npts = sum(len(d['p']) for dd in traj.values() for d in dd.values())
 out = {
     'cell': CELL,
     'floors': {'-1': {'z': -2.6, 'label': 'B1F'}, '0': {'z': 0.15, 'label': '1F'},
@@ -97,5 +100,5 @@ out = {
 json.dump(out, open(f'{SP}/heat3d.json', 'w'), separators=(',', ':'))
 json.dump(traj, open(f'{SP}/traj.json', 'w'), separators=(',', ':'))
 print('heat cells', {fl: {g: len(v) for g, v in d.items()} for fl, d in heat_out.items()})
-print('traj tags', len(traj), 'points', npts)
+print('traj days', {d: len(v) for d, v in traj.items()}, 'points', npts)
 print('sizes', os.path.getsize(f'{SP}/heat3d.json'), os.path.getsize(f'{SP}/traj.json'))
