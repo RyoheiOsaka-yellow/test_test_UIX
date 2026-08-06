@@ -517,8 +517,10 @@ for (const p of Object.values(PROPS)) {
 }
 
 function setCharacter(name) {
+  const changed = currentChar !== name;
   currentChar = name;
   for (const [k, p] of Object.entries(PROPS)) p.visible = (k === name);
+  if (changed) propPop.t = 0; // ポンッと現れる演出をリスタート
   document.getElementById('btnCharUchiwa').classList.toggle('active', name === 'uchiwa');
   document.getElementById('btnCharBat').classList.toggle('active', name === 'bat');
   document.getElementById('charLabel').textContent = CHAR_LABELS[name];
@@ -526,6 +528,13 @@ function setCharacter(name) {
 
 // ---------- アニメーション状態マシン ----------
 const easeInOut = (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const smoothstep = (t) => t * t * (3 - 2 * t);
+const easeOutBack = (t) => {
+  const c1 = 1.70158, c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+};
+// 角度を [-π, π] に正規化(走行停止時に何回転も巻き戻らないように)
+const wrapAngle = (a) => ((a + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
 
 const LOOP_STATES = ['idle', 'run', 'dance'];
 const STATE_LABELS = { idle: '待機', run: '走る', dance: 'ダンス' };
@@ -553,6 +562,10 @@ function updateLabel() {
 }
 
 function setState(next) {
+  if (next === 'run' && anim.state !== 'run') {
+    // いま向いている方向から走り出せるよう、コース上の角度を同期する
+    anim.runAngle = anim.heading - Math.PI;
+  }
   anim.state = next;
   for (const s of LOOP_STATES) stateButtons[s].classList.toggle('active', s === next);
   updateLabel();
@@ -615,15 +628,19 @@ function applyRun(time, w, dt) {
   const R = 3.6;
   root.position.x = Math.cos(-anim.runAngle) * R * w;
   root.position.z = Math.sin(-anim.runAngle) * R * w;
-  anim.heading = anim.runAngle + Math.PI; // 進行方向(円の接線方向)
+  if (anim.state === 'run') {
+    anim.heading = anim.runAngle + Math.PI; // 進行方向(円の接線方向)
+  }
 
   armL.rotation.x += Math.sin(cycle) * 1.1 * w;
   armR.rotation.x += Math.sin(cycle + Math.PI) * 0.7 * w;
   legL.rotation.x += Math.sin(cycle + Math.PI) * 1.2 * w;
   legR.rotation.x += Math.sin(cycle) * 1.2 * w;
 
-  body.position.y += Math.abs(Math.sin(cycle)) * 0.12 * w;
+  // sin^2 で折り返しのカクつきがない弾み+カーブへの内傾(バンク)
+  body.position.y += Math.pow(Math.sin(cycle), 2) * 0.12 * w;
   body.rotation.x += 0.2 * w;
+  body.rotation.z += 0.09 * w;
   head.rotation.x += -0.1 * w;
   bird.rotation.x += -0.15 * w;
   wingL.rotation.z += (0.5 + Math.sin(cycle) * 0.12) * w;  // 翼を後ろへなびかせる
@@ -635,7 +652,7 @@ function applyDance(time, w) {
   if (w <= 0.001) return;
   const beat = time * 6;
 
-  body.position.y += Math.abs(Math.sin(beat)) * 0.09 * w;
+  body.position.y += Math.pow(Math.sin(beat), 2) * 0.09 * w;
   body.rotation.z += Math.sin(beat) * 0.1 * w;
   body.rotation.y += Math.sin(beat * 0.5) * 0.25 * w;
 
@@ -679,16 +696,23 @@ function applyJump(t) {
 }
 
 function applySpin(t) {
-  anim.spinOffset = Math.PI * 2 * easeInOut(t);
-  root.position.y += Math.sin(t * Math.PI) * 0.25;
+  // 予備動作(逆ひねり)→ 一気に 1 回転
+  if (t < 0.22) {
+    anim.spinOffset = -0.3 * smoothstep(t / 0.22);
+    body.rotation.y += -0.15 * smoothstep(t / 0.22);
+  } else {
+    const k = (t - 0.22) / 0.78;
+    anim.spinOffset = -0.3 + (Math.PI * 2 + 0.3) * easeInOut(k);
+  }
+  root.position.y += Math.pow(Math.sin(t * Math.PI), 2) * 0.25;
   armL.rotation.z += 1.2 * Math.sin(t * Math.PI);
   wingL.rotation.z += 0.6 * Math.sin(t * Math.PI);
   wingR.rotation.z += -0.6 * Math.sin(t * Math.PI);
 }
 
 function applyWave(t) {
-  // 左手(肉球のある手)を大きくふる挨拶
-  const raise = Math.min(1, t / 0.2) * Math.min(1, (1 - t) / 0.2);
+  // 左手(肉球のある手)を大きくふる挨拶(出入りを smoothstep で丸める)
+  const raise = smoothstep(Math.min(1, t / 0.25)) * smoothstep(Math.min(1, (1 - t) / 0.25));
   armL.rotation.z += 2.6 * raise;
   armL.rotation.x += Math.sin(t * Math.PI * 6) * 0.5 * raise;
   head.rotation.z += 0.12 * raise;
@@ -738,8 +762,18 @@ const ONESHOT_FN = { jump: applyJump, spin: applySpin, wave: applyWave, bow: app
 // ---------- メインループ ----------
 const clock = new THREE.Clock();
 
-// アンテナのばね(上下動に反応して遅れて揺れる)
-const spring = { value: 0, prevY: 0 };
+// 減衰バネ(体の上下動に遅れて反応し、余韻を残して揺れる)
+// アンテナ・鳥の頭・尻尾・鈴が同じ信号に追従して「揺れもの」を表現する
+const spring = { x: 0, v: 0, prevY: 0 };
+const SPRING_K = 70;   // ばね定数
+const SPRING_C = 7;    // 減衰
+
+// まばたき・翼の羽ばたき(ランダム間隔の生体アニメーション)
+const blink = { t: 1, next: 2.5 };
+const flutter = { t: 1, next: 4 };
+
+// キャラ切り替え時に持ち物がポンッと現れる演出
+const propPop = { t: 1 };
 
 function resetPose() {
   body.scale.set(1, 1, 1);
@@ -772,13 +806,15 @@ function animate() {
   if (anim.state !== 'run') {
     root.position.x *= 1 - Math.min(1, dt * 3);
     root.position.z *= 1 - Math.min(1, dt * 3);
-    anim.heading *= 1 - Math.min(1, dt * 3);
+    // 最短方向に向き直る(±πに正規化してから減衰)
+    anim.heading = wrapAngle(anim.heading) * (1 - Math.min(1, dt * 3));
   }
 
   resetPose();
-  applyIdle(time, anim.blend.idle);
-  applyRun(time, anim.blend.run, dt);
-  applyDance(time, anim.blend.dance);
+  // ウェイトを smoothstep に通してブレンドの入り・抜きを柔らかく
+  applyIdle(time, smoothstep(anim.blend.idle));
+  applyRun(time, smoothstep(anim.blend.run), dt);
+  applyDance(time, smoothstep(anim.blend.dance));
 
   if (anim.oneShot) {
     anim.oneShot.t += dt;
@@ -793,14 +829,47 @@ function animate() {
 
   root.rotation.y = anim.heading + anim.spinOffset;
 
-  // アンテナのばね揺れ(体の上下速度に反応)
+  // ---- 揺れもの(減衰バネ物理) ----
   const bodyY = root.position.y + body.position.y;
   const vy = dt > 0 ? (bodyY - spring.prevY) / dt : 0;
   spring.prevY = bodyY;
-  const target = THREE.MathUtils.clamp(-vy * 0.18, -0.55, 0.55);
-  spring.value += (target - spring.value) * Math.min(1, dt * 9);
-  antenna.rotation.x = spring.value;
+  const springTarget = THREE.MathUtils.clamp(-vy * 0.16, -0.6, 0.6);
+  spring.v += (-SPRING_K * (spring.x - springTarget) - SPRING_C * spring.v) * dt;
+  spring.x += spring.v * dt;
+  antenna.rotation.x = spring.x;
   antenna.rotation.z = Math.sin(time * 2.6) * 0.05;
+  bird.rotation.x += spring.x * 0.22;   // 鳥の頭が遅れてついてくる
+  tail.rotation.x += spring.x * 0.5;    // 尻尾の羽根がはねる
+  bell.position.y = 0.28 + spring.x * 0.018; // 鈴もわずかに揺れる
+
+  // ---- まばたき(左目のみ・ランダム間隔) ----
+  if (time > blink.next) {
+    blink.t = 0;
+    blink.next = time + 2.2 + Math.random() * 3;
+  }
+  blink.t += dt;
+  const blinkK = blink.t < 0.16 ? 1 - 0.92 * Math.sin((blink.t / 0.16) * Math.PI) : 1;
+  eyeL.scale.y = 1.25 * blinkK;
+  eyeHi.visible = blinkK > 0.5;
+
+  // ---- 翼のはためき(待機中にときどきパタパタッ) ----
+  if (time > flutter.next) {
+    flutter.t = 0;
+    flutter.next = time + 3.5 + Math.random() * 3.5;
+  }
+  flutter.t += dt;
+  if (flutter.t < 0.5) {
+    const p = flutter.t / 0.5;
+    const flap = Math.sin(p * Math.PI * 5) * 0.28 * (1 - p) * anim.blend.idle;
+    wingL.rotation.z += flap;
+    wingR.rotation.z += -flap;
+  }
+
+  // ---- キャラ切り替えの持ち物ポップイン ----
+  if (propPop.t < 1) {
+    propPop.t = Math.min(1, propPop.t + dt / 0.3);
+    PROPS[currentChar].scale.setScalar(Math.max(0.001, easeOutBack(propPop.t)));
+  }
 
   controls.update();
   renderer.render(scene, camera);
