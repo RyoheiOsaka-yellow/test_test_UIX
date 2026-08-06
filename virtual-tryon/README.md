@@ -34,6 +34,18 @@ python3 -m http.server 8000
 | `vendor/pose_landmarker_lite.task` | ポーズ推定モデル (Apache-2.0) |
 
 
+## ✨ AI生成試着(写真品質)
+
+服が体の形に沿って変形・馴染む本物の合成写真を生成するモードです。
+
+1. [Google AI Studio](https://aistudio.google.com/apikey) で無料のGemini APIキーを取得
+2. 鏡パネル右上の ⚙️ からキーを貼り付けて「保存して有効化」
+3. ✨ボタンがONの状態で服をドロップすると、まず幾何学フィットが即時表示され、数秒後にGemini 2.5 Flash Image(画像編集AI)による写真品質の試着合成に切り替わります
+
+- 送信されるのは「現在の人物のスナップショット+服の画像+指示文」のみで、宛先はGoogleのAPIだけです。キーはブラウザのlocalStorageに保存されます。
+- カメラ/写真アップロード/モデル写真のどのモードでも使えます。🧺で元に戻せます。
+- 幾何学フィット(リアルタイム追従)はAPIキーなしで従来どおり動きます。
+
 ## 実写アセットについて
 
 - 服・モデルの写真は **Unsplash**([Unsplash License](https://unsplash.com/license) — 商用・非商用とも無償利用可)の実写素材です。

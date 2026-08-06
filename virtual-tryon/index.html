@@ -325,6 +325,42 @@
     display: none;
   }
   .drag-ghost img { width: 100%; height: auto; }
+
+  /* ---------- AI generation ---------- */
+  .gen-overlay { position: absolute; inset: 0; z-index: 18; display: none; background: #000; }
+  .gen-overlay.show { display: block; }
+  .gen-overlay img { width: 100%; height: 100%; object-fit: contain; }
+  .gen-badge {
+    position: absolute; left: 16px; bottom: 60px; z-index: 28;
+    background: linear-gradient(120deg, var(--accent), #8b5cf6);
+    color: #fff; font-size: 11.5px; font-weight: 800; letter-spacing: .6px;
+    padding: 6px 12px; border-radius: 999px; display: none;
+    box-shadow: 0 6px 18px rgba(139,92,246,.45);
+  }
+  .gen-badge.show { display: inline-flex; }
+  .icon-btn.gen-on { background: linear-gradient(120deg, var(--accent), #8b5cf6); border-color: transparent; }
+
+  .modal-bg {
+    position: fixed; inset: 0; z-index: 90; display: none;
+    align-items: center; justify-content: center;
+    background: rgba(0,0,0,.65); backdrop-filter: blur(5px);
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    width: min(500px, 92vw); background: var(--panel-2);
+    border: 1px solid var(--border); border-radius: 20px; padding: 28px;
+    box-shadow: 0 30px 80px rgba(0,0,0,.6);
+  }
+  .modal h3 { font-size: 19px; font-weight: 800; margin-bottom: 10px; }
+  .modal p { color: var(--muted); font-size: 13px; line-height: 1.75; margin-bottom: 14px; }
+  .modal p a { color: var(--accent-2); }
+  .modal input {
+    width: 100%; padding: 12px 14px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text);
+    font-size: 14px; font-family: inherit; margin-bottom: 16px;
+  }
+  .modal input:focus { outline: none; border-color: var(--accent-2); }
+  .modal .row { display: flex; gap: 10px; justify-content: flex-end; }
 </style>
 </head>
 <body>
@@ -375,12 +411,16 @@
         <div class="photo-stage" id="photoStage"><img id="photoImg" alt=""></div>
 
         <div class="worn-layer" id="wornLayer"></div>
+        <div class="gen-overlay" id="genOverlay"><img id="genImg" alt="AI生成試着結果"></div>
+        <span class="gen-badge" id="genBadge">✨ AI GENERATED — ドロップで再生成 / 🧺で戻る</span>
 
         <div class="scanline" id="scanline"></div>
         <div class="status-chip" id="statusChip"><span class="pulse"></span><span id="statusText">待機中</span></div>
         <div class="worn-toast" id="wornToast"></div>
 
         <div class="mirror-controls">
+          <button class="icon-btn" id="btnGenMode" title="AI生成試着(写真品質)のON/OFF">✨</button>
+          <button class="icon-btn" id="btnSettings" title="設定(APIキー)">⚙️</button>
           <button class="icon-btn" id="btnModeCam" title="カメラ(リアルタイム追従)">📷</button>
           <button class="icon-btn" id="btnModePhoto" title="写真をアップロードして試着">🖼️</button>
           <button class="icon-btn" id="btnModeModel" title="モデル写真で試着(もう一度押すと人物切替)">🧍</button>
@@ -446,6 +486,21 @@
   <div class="row">
     <button class="btn primary" onclick="document.getElementById('cookieBanner').classList.add('hidden')">同意する</button>
     <button class="btn" onclick="document.getElementById('cookieBanner').classList.add('hidden')">拒否する</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="settingsModal">
+  <div class="modal">
+    <h3>✨ AI生成試着の設定</h3>
+    <p>写真品質の試着合成には Google Gemini(画像編集AI)を使います。
+      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>
+      で無料のAPIキーを取得し、下に貼り付けてください。キーはこのブラウザの localStorage にのみ保存され、
+      画像とともに Google のAPIへ直接送信されます(それ以外には送信されません)。</p>
+    <input type="password" id="apiKeyInput" placeholder="AIza… で始まるGemini APIキー" autocomplete="off">
+    <div class="row">
+      <button class="btn" id="btnSettingsCancel">閉じる</button>
+      <button class="btn primary" id="btnSettingsSave">保存して有効化</button>
+    </div>
   </div>
 </div>
 
@@ -842,6 +897,7 @@ window.addEventListener("resize", refit);
 let fittingTimer = null;
 function tryOn(index) {
   if (state.mode === "none") enterModelMode();
+  if (typeof genOverlay !== "undefined") { genOverlay.classList.remove("show"); genBadge.classList.remove("show"); }
   const g = GARMENTS[index];
   state.wornIndex = index;
   state.fitting = true;
@@ -870,6 +926,7 @@ function tryOn(index) {
     wornLayer.classList.add("visible");
     wornToast.innerHTML = `✨ ${g.name} を試着中 <span class="price">${g.price}</span>`;
     wornToast.classList.add("show");
+    if (window.__genHook) window.__genHook(g);
   }, 1100);
 }
 
@@ -924,8 +981,170 @@ document.querySelectorAll(".garment-card").forEach(card => {
   });
 });
 
+/* =====================================================================
+   AI generative try-on (Gemini 2.5 Flash Image — photorealistic edit)
+   ===================================================================== */
+const genOverlay = document.getElementById("genOverlay");
+const genImg = document.getElementById("genImg");
+const genBadge = document.getElementById("genBadge");
+const btnGenMode = document.getElementById("btnGenMode");
+const settingsModal = document.getElementById("settingsModal");
+const apiKeyInput = document.getElementById("apiKeyInput");
+
+const AI = {
+  key: localStorage.getItem("anyfit_gemini_key") || "",
+  on: localStorage.getItem("anyfit_gen_on") === "1",
+  seq: 0,
+  busy: false,
+};
+function syncGenUI() {
+  btnGenMode.classList.toggle("gen-on", AI.on);
+}
+syncGenUI();
+
+function openSettings() {
+  apiKeyInput.value = AI.key;
+  settingsModal.classList.add("show");
+}
+document.getElementById("btnSettings").addEventListener("click", openSettings);
+document.getElementById("btnSettingsCancel").addEventListener("click", () => settingsModal.classList.remove("show"));
+document.getElementById("btnSettingsSave").addEventListener("click", () => {
+  AI.key = apiKeyInput.value.trim();
+  localStorage.setItem("anyfit_gemini_key", AI.key);
+  if (AI.key) { AI.on = true; localStorage.setItem("anyfit_gen_on", "1"); }
+  settingsModal.classList.remove("show");
+  syncGenUI();
+  setStatus("", AI.key ? "✨ AI生成試着が有効です — 服をドロップしてください" : "APIキー未設定");
+});
+settingsModal.addEventListener("click", e => { if (e.target === settingsModal) settingsModal.classList.remove("show"); });
+
+btnGenMode.addEventListener("click", () => {
+  if (!AI.on && !AI.key) { openSettings(); return; }
+  AI.on = !AI.on;
+  localStorage.setItem("anyfit_gen_on", AI.on ? "1" : "0");
+  syncGenUI();
+  if (!AI.on) hideGen();
+  setStatus("", AI.on ? "✨ AI生成試着 ON" : "AI生成試着 OFF(幾何学フィットのみ)");
+});
+
+function hideGen() {
+  genOverlay.classList.remove("show");
+  genBadge.classList.remove("show");
+}
+
+/* person snapshot from the current stage, as base64 jpeg (no data: prefix) */
+function snapshotPerson() {
+  const cv = document.createElement("canvas");
+  let sw, sh, draw;
+  if (state.mode === "cam" && camVideo.videoWidth) {
+    sw = camVideo.videoWidth; sh = camVideo.videoHeight;
+    draw = ctx => { ctx.translate(cv.width, 0); ctx.scale(-1, 1); ctx.drawImage(camVideo, 0, 0, cv.width, cv.height); };
+  } else if (state.mode === "photo" && photoImg.naturalWidth) {
+    sw = photoImg.naturalWidth; sh = photoImg.naturalHeight;
+    draw = ctx => ctx.drawImage(photoImg, 0, 0, cv.width, cv.height);
+  } else if (modelImg.naturalWidth) {
+    sw = modelImg.naturalWidth; sh = modelImg.naturalHeight;
+    draw = ctx => ctx.drawImage(modelImg, 0, 0, cv.width, cv.height);
+  } else return null;
+  const k = Math.min(1, 1024 / Math.max(sw, sh));
+  cv.width = Math.round(sw * k); cv.height = Math.round(sh * k);
+  draw(cv.getContext("2d"));
+  return cv.toDataURL("image/jpeg", 0.92).split(",")[1];
+}
+
+/* garment cutout on white, base64 jpeg */
+function garmentSnapshot(g) {
+  return new Promise(resolve => {
+    const im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, 768 / Math.max(im.naturalWidth, im.naturalHeight));
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(im.naturalWidth * k); cv.height = Math.round(im.naturalHeight * k);
+      const ctx = cv.getContext("2d");
+      ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, cv.width, cv.height);
+      ctx.drawImage(im, 0, 0, cv.width, cv.height);
+      resolve(cv.toDataURL("image/jpeg", 0.92).split(",")[1]);
+    };
+    im.onerror = () => resolve(null);
+    im.src = g.img;
+  });
+}
+
+const GEN_PROMPT =
+  "Virtual try-on. The first image is a photo of a person. The second image is a garment " +
+  "product photo on a white background. Generate the same photo of the person, but with the " +
+  "person wearing the garment from the second image instead of their current upper-body " +
+  "clothing. Preserve the person's identity, face, hair, skin tone, pose, body proportions, " +
+  "camera framing, background and lighting exactly. The garment must fit the body naturally " +
+  "with realistic drape, folds, occlusion and shadows. Photorealistic output, no text or watermark.";
+
+const GEN_MODELS = ["gemini-2.5-flash-image", "gemini-2.5-flash-image-preview"];
+
+async function generateTryOn(g) {
+  if (!AI.key) { openSettings(); return; }
+  const my = ++AI.seq;
+  const person = snapshotPerson();
+  if (!person) { setStatus("", "先にカメラ/写真/モデルを表示してください"); return; }
+  const garment = await garmentSnapshot(g);
+  if (!garment) { setStatus("", "服画像の読み込みに失敗しました"); return; }
+  AI.busy = true;
+  scanline.classList.add("active");
+  setStatus("fitting", "✨ AI生成試着中…(数秒〜十数秒)");
+  const body = JSON.stringify({
+    contents: [{ parts: [
+      { text: GEN_PROMPT },
+      { inline_data: { mime_type: "image/jpeg", data: person } },
+      { inline_data: { mime_type: "image/jpeg", data: garment } },
+    ]}],
+  });
+  let lastErr = "";
+  for (const model of GEN_MODELS) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": AI.key }, body });
+      if (my !== AI.seq) return;           /* superseded by a newer drop */
+      if (res.status === 404) { lastErr = "モデル未対応"; continue; }
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        lastErr = res.status === 400 || res.status === 403 ? "APIキーが無効です(設定⚙️を確認)"
+                : res.status === 429 ? "レート制限/無料枠の上限です。少し待って再試行してください"
+                : `APIエラー ${res.status}`;
+        if (json.error && json.error.message) console.warn("gemini:", json.error.message);
+        break;
+      }
+      const parts = json.candidates?.[0]?.content?.parts || [];
+      const imgPart = parts.find(p => p.inlineData || p.inline_data);
+      if (!imgPart) { lastErr = "画像が返されませんでした(安全フィルタの可能性)"; break; }
+      const d = imgPart.inlineData || imgPart.inline_data;
+      genImg.src = `data:${d.mimeType || d.mime_type || "image/png"};base64,${d.data}`;
+      genOverlay.classList.add("show");
+      genBadge.classList.add("show");
+      scanline.classList.remove("active");
+      AI.busy = false;
+      setStatus("tracking", `✨ AI生成完了 — ${g.name}`);
+      return;
+    } catch (e) {
+      lastErr = "通信エラー(ネットワーク/CORS)";
+    }
+  }
+  if (my !== AI.seq) return;
+  scanline.classList.remove("active");
+  AI.busy = false;
+  setStatus("searching", `生成失敗: ${lastErr}`);
+}
+
+/* hook into try-on + clear + mode switches */
+const _origTryOn = tryOn;
+window.__genHook = g => { if (AI.on) generateTryOn(g); };
+
+document.getElementById("btnClear").addEventListener("click", () => { AI.seq++; hideGen(); });
+document.getElementById("btnModeCam").addEventListener("click", hideGen);
+document.getElementById("btnModePhoto").addEventListener("click", hideGen);
+document.getElementById("btnModeModel").addEventListener("click", hideGen);
+
 /* expose minimal test hook */
-window.__anyfit = { state, tryOn, enterModelMode };
+window.__anyfit = { state, tryOn, enterModelMode, AI, generateTryOn };
 </script>
 </body>
 </html>
