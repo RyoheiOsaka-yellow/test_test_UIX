@@ -565,7 +565,7 @@ export function buildDwell(toLocal, W) {
       const density = popK * 1000 / (Math.PI * (it.radius / 1000) ** 2 * 1e6) * 1e4; // 人/ha
       const t = Math.min(1, density / 260);
       it.m.material.color = ramp(t);
-      it.m.material.opacity = 0.14 + 0.4 * t;
+      it.m.material.opacity = 0.07 + 0.22 * t;
       it.m.userData.info.level = `滞在 約${popK >= 10 ? Math.round(popK) : popK.toFixed(1)}千人(${h}時台・推計)｜夜間人口 約${it.nightK}千人ベース`;
     }
   }

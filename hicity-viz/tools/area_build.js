@@ -1,10 +1,11 @@
-/* 大田区全域 OSMレイヤー: 建物点群 / 道路 / 鉄道(実線形) / 水域 / 空港 / 区境界 / GSIタイル */
+/* 大田区全域 OSMレイヤー: 建物点群 / 建物ボリューム / 道路 / 鉄道(実線形) / 水域 / 空港 / 区境界 / GSIタイル */
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 export function buildArea(A, W) {
   const layers = {};
   const mk = () => new THREE.Group();
-  layers.bld = mk(); layers.roads = mk(); layers.osmrail = mk();
+  layers.bld = mk(); layers.bld3d = mk(); layers.roads = mk(); layers.osmrail = mk();
   layers.water = mk(); layers.aero = mk(); layers.boundary = mk(); layers.gsi = mk();
 
   const heightColor = h => {
@@ -83,6 +84,65 @@ export function buildArea(A, W) {
     pts.frustumCulled = false;
     layers.bld.add(pts);
     layers.bld.userData.count = pos.length / 3;
+  }
+
+  /* ---- 建物ボリューム(LOD1押し出し) ---- */
+  {
+    // 近傍2km: 実フットプリントを高さ押し出し(高さ帯ごとにマージ)
+    const bands = [[0, 8, 0x243550], [8, 15, 0x2c4468], [15, 30, 0x35567e], [30, 60, 0x3e6a94], [60, 1e9, 0x4a80aa]];
+    const byBand = bands.map(() => []);
+    for (const b of (A.bldNear || [])) {
+      const h = b[0];
+      const pts = [];
+      for (let i = 1; i + 1 < b.length; i += 2) pts.push(new THREE.Vector2(b[i], -b[i + 1]));
+      if (pts.length < 3) continue;
+      try {
+        const geo = new THREE.ExtrudeGeometry(new THREE.Shape(pts), { depth: h, bevelEnabled: false });
+        geo.rotateX(-Math.PI / 2);
+        const bi = bands.findIndex(([lo, hi]) => h >= lo && h < hi);
+        byBand[Math.max(0, bi)].push(geo);
+      } catch (e) { /* 不正リングはスキップ */ }
+    }
+    byBand.forEach((geos, i) => {
+      if (!geos.length) return;
+      const merged = mergeGeometries(geos, false);
+      geos.forEach(g => g.dispose());
+      const mesh = new THREE.Mesh(merged, new THREE.MeshLambertMaterial({
+        color: bands[i][2], transparent: true, opacity: 0.92 }));
+      mesh.frustumCulled = false;
+      layers.bld3d.add(mesh);
+    });
+    // 広域: 高さのあるビル(タグ付き)をインスタンスボックスで
+    let F2 = new Int16Array(0);
+    if (A.bldFarB64) {
+      const bin = atob(A.bldFarB64);
+      const u8 = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      F2 = new Int16Array(u8.buffer);
+    }
+    const towers = [];
+    for (let i = 0; i < F2.length; i += 6) {
+      const h = F2[i + 5] / 2;
+      if (h >= 13) towers.push([F2[i] * 2, F2[i + 1] * 2, F2[i + 2] / 2, F2[i + 3] / 2, F2[i + 4], h]);
+    }
+    if (towers.length) {
+      const box = new THREE.BoxGeometry(1, 1, 1);
+      box.translate(0, 0.5, 0);
+      const im = new THREE.InstancedMesh(box, new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.92 }), towers.length);
+      const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
+      const cc = new THREE.Color();
+      towers.forEach(([cx, cy, w, l, ang, h], i) => {
+        q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), -ang * Math.PI / 180);
+        s.set(w, h, l); p.set(cx, 0, -cy);
+        m4.compose(p, q, s);
+        im.setMatrixAt(i, m4);
+        const t = Math.min(1, (h - 13) / 60);
+        im.setColorAt(i, cc.setHex(0x2c4468).lerp(new THREE.Color(0x5a90ba), t));
+      });
+      im.frustumCulled = false;
+      layers.bld3d.add(im);
+      layers.bld3d.userData.towers = towers.length;
+    }
   }
 
   const addLines = (parent, ways, color, opacity, y = 0.4) => {

@@ -59,7 +59,11 @@ controls.enableDamping = true; controls.dampingFactor = 0.08;
 controls.maxPolarAngle = Math.PI * 0.495;
 controls.minDistance = 20; controls.maxDistance = 16000;
 
-scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+scene.add(new THREE.HemisphereLight(0x9fb8e8, 0x141a26, 0.85));
+const sun = new THREE.DirectionalLight(0xdfe8ff, 0.65);
+sun.position.set(-400, 700, 300);
+scene.add(sun);
 
 /* ---------------- ground & context ---------------- */
 const context = new THREE.Group(); scene.add(context);
@@ -384,7 +388,7 @@ const state = {
   expand: 1.0, blueprint: false, rotate: false,
   scenario: 's2020',
   playing: true, speed: 240, simT: 9.5 * 3600,
-  area: { bld: true, roads: true, osmrail: true, water: true, aero: true, boundary: true, gsi: false },
+  area: { bld: true, bld3d: true, roads: true, osmrail: true, water: true, aero: true, boundary: true, gsi: false },
   stations: true, rail3d: true, future: true,
   trains: true, ridership: true, dwell: true,
   viewMode: 'points',   // points | photo | both
@@ -568,7 +572,7 @@ function updateParticles() {
   document.querySelectorAll('#viewmode-row button').forEach(b =>
     b.addEventListener('click', () => applyViewMode(b.dataset.vm)));
   // 周辺エリアレイヤー
-  for (const [id, key] of [['chk-a-bld', 'bld'], ['chk-a-roads', 'roads'], ['chk-a-rail', 'osmrail'],
+  for (const [id, key] of [['chk-a-bld', 'bld'], ['chk-a-bld3d', 'bld3d'], ['chk-a-roads', 'roads'], ['chk-a-rail', 'osmrail'],
                            ['chk-a-water', 'water'], ['chk-a-aero', 'aero'], ['chk-a-bnd', 'boundary'],
                            ['chk-a-gsi', 'gsi']]) {
     const el = $(id);
