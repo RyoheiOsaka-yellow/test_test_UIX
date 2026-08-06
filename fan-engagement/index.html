@@ -1,0 +1,1894 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>スタジアムの熱は、みんなでつくる。｜アスルクラロ沼津 2026 SEASON</title>
+
+<!--
+  ============================================================
+  「来場者カウンター」×「みんなの元気玉」統合ページ
+  【更新のしかた】※現在はすべてダミーデータです
+  下の  const SEASON = { ... }  だけを書き換えれば数字が変わります。
+    - matches    : 全ホームゲームの配列。attendance に実数を入れる。
+    - benchmarks : 3つの基準ライン（値・1試合平均・名前）
+  次のホームゲーム（元気玉の行き先）は「まだ結果が入っていない
+  最初の試合」から自動で決まります。
+  ============================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --navy:#002F6C;
+  --navy-2:#0F4C81;
+  --ink:#0B1F3A;
+  --cyan:#00A0E9;
+  --cyan-lt:#7FD6F7;
+  --cyan-pale:#D6EFFB;
+  --sky:#EAF4FC;
+  --paper:#F6FBFE;
+  --line:#D5E5F2;
+  /* 基準ラインのアイデンティティカラー */
+  --bm1:#0091D8;   /* J昇格ライン */
+  --bm2:#255B94;   /* JFL CUP平均 */
+  --bm3:#C97A00;   /* 2025シーズン平均 */
+  --bm1-pale:#D6EFFB;
+  --bm2-pale:#DCE6F2;
+  --bm3-pale:#F6E7CE;
+  /* 元気玉（夜）パート */
+  --night:#001129;
+  --night-2:#00204a;
+  --glow:#7FE8FF;
+  --paper-n:#EAF4FC;
+  --dim-n:#8FAFCB;
+  --line-n:rgba(127,232,255,.18);
+  --heat:#FFB547;
+  --dh:88px;
+  --dw:64px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif;
+  background:var(--paper);
+  color:var(--ink);
+  line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+.num{font-family:"Outfit",sans-serif;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ---------- scroll reveal ---------- */
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .7s ease,transform .7s cubic-bezier(.22,.9,.3,1)}
+.reveal.in{opacity:1;transform:none}
+
+/* ---------- header ---------- */
+.masthead{padding:34px 0 10px}
+.eyebrow{
+  font-family:"Outfit",sans-serif;font-weight:700;font-size:12px;letter-spacing:.22em;
+  color:var(--cyan);text-transform:uppercase;
+}
+.eyebrow span{color:var(--navy-2);opacity:.65}
+h1{
+  font-weight:900;font-size:clamp(30px,5.6vw,52px);line-height:1.28;
+  color:var(--navy);margin-top:10px;letter-spacing:.01em;
+}
+.lead{margin-top:14px;max-width:44em;font-size:15px;color:#3A5876}
+
+/* ---------- hero board（来場者カウンター） ---------- */
+.board{
+  margin-top:30px;border-radius:32px;
+  background:
+    radial-gradient(120% 100% at 12% 0%, rgba(0,160,233,.42) 0%, rgba(0,160,233,0) 58%),
+    linear-gradient(158deg,#0F4C81 0%,#002F6C 58%,#00214D 100%);
+  padding:38px 26px 30px;color:#fff;position:relative;overflow:hidden;
+  box-shadow:0 24px 50px -28px rgba(0,47,108,.7);
+}
+.board::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(70% 55% at 50% 8%, rgba(127,214,247,.18) 0%, transparent 70%);
+}
+.board-label{
+  text-align:center;font-size:13px;letter-spacing:.16em;color:var(--cyan-lt);font-weight:700;
+}
+.counter{
+  display:flex;justify-content:center;align-items:flex-end;gap:6px;
+  margin:20px 0 6px;position:relative;z-index:2;perspective:800px;
+}
+.digit{
+  width:var(--dw);height:var(--dh);border-radius:12px;overflow:hidden;position:relative;
+  background:linear-gradient(180deg,#0A2A55 0%,#061C3B 49.6%,#0A2A55 50.4%,#04162E 100%);
+  box-shadow:inset 0 0 0 1px rgba(127,214,247,.22), 0 8px 18px -8px rgba(0,0,0,.8);
+  transform-style:preserve-3d;
+}
+.digit.lead0{opacity:.3}
+.digit .seam{
+  position:absolute;left:0;right:0;top:50%;height:2px;z-index:3;
+  background:rgba(0,0,0,.55);box-shadow:0 1px 0 rgba(127,214,247,.14);
+}
+.digit .sheen{
+  position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;
+  background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);
+  transform:translateX(-110%);
+}
+.digit.shine .sheen{animation:sheen .9s ease-out forwards}
+@keyframes sheen{0%{opacity:1;transform:translateX(-110%)}100%{opacity:0;transform:translateX(110%)}}
+.reel{position:absolute;left:0;right:0;top:0;will-change:transform}
+.reel i{
+  display:flex;align-items:center;justify-content:center;height:var(--dh);
+  font-family:"Outfit",sans-serif;font-weight:800;font-size:calc(var(--dh) * .66);
+  font-style:normal;color:#EAF7FF;text-shadow:0 2px 6px rgba(0,0,0,.5);
+}
+.comma{
+  font-family:"Outfit",sans-serif;font-weight:800;font-size:calc(var(--dh) * .5);
+  color:var(--cyan-lt);align-self:flex-end;padding-bottom:6px;
+}
+.unit{
+  font-weight:900;font-size:26px;color:#fff;align-self:flex-end;padding-bottom:12px;margin-left:6px;
+}
+@keyframes flap{
+  0%{transform:rotateX(0deg)}
+  45%{transform:rotateX(-16deg)}
+  100%{transform:rotateX(0deg)}
+}
+.digit.flip{animation:flap .3s ease-out}
+.board-sub{text-align:center;position:relative;z-index:2;font-size:14px;color:#BFE3F7}
+.board-sub b{color:#fff;font-weight:900}
+
+/* milestone track */
+.track{position:relative;z-index:2;margin:38px auto 8px;max-width:720px;padding:26px 0 30px}
+.track-bar{
+  height:10px;border-radius:999px;background:rgba(255,255,255,.12);
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.35);overflow:hidden;
+}
+.track-fill{
+  height:100%;width:0%;border-radius:999px;
+  background:linear-gradient(90deg,#00A0E9 0%,#7FD6F7 100%);
+  box-shadow:0 0 14px rgba(0,160,233,.75);
+}
+.track .mk{position:absolute;top:0;bottom:0;width:0}
+.track .mk .notch{
+  position:absolute;left:-1px;top:22px;bottom:26px;width:2px;border-radius:2px;
+  background:rgba(255,255,255,.4);transition:.4s;
+}
+.track .mk .pill{
+  position:absolute;left:0;transform:translateX(-50%);white-space:nowrap;
+  font-family:"Outfit",sans-serif;font-weight:700;font-size:11px;letter-spacing:.03em;
+  padding:2px 9px;border-radius:999px;color:#DFF2FC;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28);transition:.4s;
+}
+.track .mk.up .pill{top:-2px}
+.track .mk.down .pill{bottom:0}
+.track .mk.edge .pill{transform:translateX(-88%)}
+.track .mk.passed .notch{background:#fff;box-shadow:0 0 8px rgba(255,255,255,.8)}
+.track .mk.passed .pill{color:#fff;border-color:transparent}
+.track .mk.passed.c1 .pill{background:var(--bm1)}
+.track .mk.passed.c2 .pill{background:var(--bm2)}
+.track .mk.passed.c3 .pill{background:var(--bm3)}
+
+/* benchmark chips */
+.chips{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px;position:relative;z-index:2}
+.chip{
+  display:flex;align-items:center;gap:9px;padding:9px 15px;border-radius:999px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(127,214,247,.28);
+  font-size:12.5px;color:#CDE7F8;transition:.35s;
+}
+.chip .dot{width:9px;height:9px;border-radius:50%;flex:none;transition:.35s}
+.chip.c1 .dot{background:var(--bm1)}
+.chip.c2 .dot{background:var(--bm2);box-shadow:0 0 0 1px rgba(255,255,255,.35)}
+.chip.c3 .dot{background:var(--bm3)}
+.chip b{font-family:"Outfit",sans-serif;font-weight:800;font-size:15px;color:#fff}
+.chip small{font-size:10.5px;color:#9CC6E2}
+.chip .ck{display:none;font-weight:900;color:#fff}
+.chip.hit{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.55);color:#fff}
+.chip.hit .ck{display:inline}
+.chip.hit small{color:#D8ECFA}
+.chip.near{border-color:var(--cyan-lt)}
+.chip.near .dot{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(127,214,247,.55)}50%{box-shadow:0 0 0 7px rgba(127,214,247,0)}}
+
+.board-foot{display:flex;justify-content:flex-end;margin-top:6px}
+.replay{
+  display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:999px;
+  border:1px solid var(--line);background:#fff;color:#5C7A97;font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;
+  transition:background .2s,color .2s;
+}
+.replay:hover{background:var(--sky);color:var(--navy)}
+.replay:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+
+/* ---------- NEXT MATCH ブリッジ（唯一の常設導線・控えめに） ---------- */
+.next-strip{
+  display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+  margin:22px auto 0;padding:13px 20px;max-width:720px;
+  border:1px solid var(--line);border-radius:16px;background:#fff;
+  text-decoration:none;color:var(--ink);
+  box-shadow:0 10px 26px -22px rgba(0,47,108,.5);
+  transition:transform .15s,border-color .2s,box-shadow .2s;
+}
+a.next-strip:hover{transform:translateY(-2px);border-color:var(--heat);box-shadow:0 12px 30px -20px rgba(201,122,0,.45)}
+.ns-tag{
+  font-family:"Outfit",sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.2em;
+  color:#fff;background:var(--heat);padding:3px 10px;border-radius:4px;flex:none;
+}
+.ns-main{font-weight:700;font-size:14.5px}
+.ns-main b{color:var(--navy);font-weight:900}
+.ns-sub{font-size:11.5px;color:#7C97B1}
+.ns-arrow{color:var(--heat);font-weight:900;font-size:13px;flex:none}
+.next-strip.closed{border-style:dashed;color:#5C7A97;font-size:13.5px}
+
+/* ---------- 元気玉ナイトカード ---------- */
+.night{
+  --nx:26px; --nb:30px;
+  margin-top:26px;border-radius:32px;position:relative;overflow:hidden;
+  padding:40px var(--nx) var(--nb);
+  color:var(--paper-n);
+  background:
+    radial-gradient(720px 420px at 50% 20%, rgba(0,160,233,.16), transparent 66%),
+    linear-gradient(172deg,#0B2447 0%,#001129 46%,#00204a 100%);
+  box-shadow:0 24px 50px -28px rgba(0,17,41,.8);
+}
+.n-eyebrow{
+  font-family:"Outfit",sans-serif;font-weight:700;font-size:12px;letter-spacing:.24em;
+  color:var(--glow);text-align:center;
+}
+.night h2{
+  font-weight:900;font-size:clamp(22px,3.6vw,30px);line-height:1.4;color:#fff;
+  text-align:center;margin-top:8px;
+}
+.night h2 em{font-style:normal;color:var(--glow);text-shadow:0 0 26px rgba(127,232,255,.55)}
+.n-lede{color:var(--dim-n);font-size:13.5px;text-align:center;max-width:600px;margin:8px auto 0}
+
+/* HUD */
+.hud{display:flex;justify-content:center;margin:24px auto 4px;flex-wrap:wrap}
+.hud-cell{padding:0 26px;text-align:center;border-right:1px solid var(--line-n)}
+.hud-cell:last-child{border-right:none}
+@media(max-width:560px){
+  .hud{display:grid;grid-template-columns:1fr 1fr;gap:14px 0;max-width:340px}
+  .hud-cell{padding:0 10px}
+  .hud-cell:nth-child(2){border-right:none}
+}
+.hud-num{
+  font-family:"Outfit",sans-serif;font-weight:700;font-size:clamp(26px,5.5vw,38px);
+  line-height:1.1;color:#fff;display:block;font-variant-numeric:tabular-nums;
+}
+.hud-num.pop{animation:hudpop .45s cubic-bezier(.2,1.6,.4,1)}
+@keyframes hudpop{0%{transform:scale(1)}40%{transform:scale(1.16);color:var(--glow)}100%{transform:scale(1)}}
+.hud-label{font-size:10px;letter-spacing:.14em;color:var(--dim-n)}
+
+/* 玉キャンバス */
+.ball-area{position:relative;width:100%;max-width:580px;margin:0 auto}
+#ball{display:block;width:100%;height:auto;touch-action:none;cursor:pointer}
+.hint{
+  position:absolute;left:50%;bottom:2px;transform:translateX(-50%);
+  font-size:12px;color:var(--dim-n);letter-spacing:.04em;white-space:nowrap;
+  transition:opacity .4s;pointer-events:none;
+}
+.hint.hide{opacity:0}
+@media(max-width:560px){.hint{white-space:normal;width:94%;text-align:center;line-height:1.5}}
+.sound-btn{
+  position:absolute;top:6px;right:6px;z-index:5;
+  font:inherit;font-size:15px;line-height:1;color:var(--dim-n);
+  background:rgba(0,32,74,.6);border:1px solid var(--line-n);border-radius:99px;
+  width:38px;height:38px;cursor:pointer;transition:color .2s,border-color .2s;
+}
+.sound-btn:hover{color:var(--glow);border-color:var(--cyan)}
+.msg-pop{
+  position:absolute;z-index:6;min-width:200px;max-width:260px;
+  background:rgba(0,32,74,.94);border:1px solid var(--line-n);
+  border-radius:10px;padding:12px 14px;
+  box-shadow:0 12px 40px rgba(0,0,0,.55);
+  transform:translate(-50%,-118%);opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.msg-pop.below{transform:translate(-50%,20px)}
+.msg-pop.on{opacity:1}
+.msg-pop .mp-text{font-size:13.5px;line-height:1.7;margin-bottom:8px}
+.msg-pop .mp-meta{font-size:11px;color:var(--dim-n);letter-spacing:.04em}
+
+/* 目標ゲージ */
+.goal{max-width:580px;margin:8px auto 0}
+.goal-top{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;color:var(--dim-n);letter-spacing:.06em;margin-bottom:6px}
+.goal-top b{font-family:"Outfit",sans-serif;font-size:15px;color:var(--glow);font-weight:600;letter-spacing:.04em}
+.goal-bar{height:6px;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden}
+.goal-fill{height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,var(--navy-2),var(--cyan) 55%,var(--glow));transition:width .8s cubic-bezier(.2,.8,.3,1)}
+
+/* メッセージフォーム（ナイトカード内） */
+.n-form{max-width:720px;margin:34px auto 0;padding-top:28px;border-top:1px solid var(--line-n)}
+.n-form-head{text-align:center;margin-bottom:18px}
+.n-form-head h3{font-weight:900;font-size:17px;color:#fff}
+.n-form-head p{font-size:12.5px;color:var(--dim-n);margin-top:4px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px}
+@media(max-width:640px){.form-grid{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:6px}
+.field.full{grid-column:1/-1}
+.field label{font-size:11.5px;letter-spacing:.1em;color:var(--dim-n)}
+.night input,.night select,.night textarea{
+  font:inherit;font-size:14px;color:#fff;background:rgba(255,255,255,.05);
+  border:1px solid var(--line-n);border-radius:8px;padding:11px 13px;outline:none;
+  transition:border-color .2s,background .2s;width:100%;
+}
+@media(max-width:640px){.night input,.night select,.night textarea{font-size:16px}}
+.night input:focus,.night select:focus,.night textarea:focus{border-color:var(--cyan);background:rgba(0,160,233,.10)}
+.night select option{background:#00204a;color:#fff}
+.night textarea{resize:vertical;min-height:72px;line-height:1.7}
+.count{font-size:11px;color:var(--dim-n);text-align:right;font-family:"Outfit",sans-serif;letter-spacing:.06em}
+.count.over{color:var(--heat)}
+.btn{
+  font:inherit;font-weight:700;font-size:15px;
+  color:var(--night);background:linear-gradient(100deg,var(--glow),var(--cyan));
+  border:none;border-radius:99px;padding:13px 34px;cursor:pointer;letter-spacing:.06em;
+  box-shadow:0 6px 24px rgba(0,160,233,.34);transition:transform .12s,box-shadow .2s,opacity .2s;
+  text-decoration:none;display:inline-block;text-align:center;
+}
+.btn:hover{box-shadow:0 8px 32px rgba(0,160,233,.5)}
+.btn:active{transform:scale(.97)}
+.form-foot{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:14px}
+.thanks{font-size:13px;color:var(--glow);opacity:0;transition:opacity .3s}
+.thanks.on{opacity:1}
+
+/* ティッカー（ナイトカード内・全幅） */
+.ticker{
+  margin:30px calc(-1 * var(--nx)) calc(-1 * var(--nb));
+  border-top:1px solid var(--line-n);
+  background:rgba(0,17,41,.4);
+  overflow:hidden;padding:13px 0;
+}
+.ticker-track{display:flex;width:max-content;animation:slide 46s linear infinite}
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ticker:hover .ticker-track{animation-play-state:paused}
+.tk-item{display:flex;align-items:center;gap:9px;padding:0 26px;white-space:nowrap;font-size:13px}
+.tk-city{font-size:10.5px;letter-spacing:.08em;color:var(--night);background:var(--glow);padding:2px 8px;border-radius:99px;font-weight:700}
+.tk-sep{color:rgba(127,232,255,.3)}
+
+/* ---------- sections（ライト側） ---------- */
+section{padding:56px 0 0}
+.sec-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+h2.sec-title{font-weight:900;font-size:22px;color:var(--navy)}
+.sec-note{font-size:13px;color:#6E8AA6}
+.card{
+  background:#fff;border:1px solid var(--line);border-radius:26px;padding:26px 22px;margin-top:18px;
+  box-shadow:0 12px 30px -26px rgba(0,47,108,.55);
+}
+
+/* ---------- chart ---------- */
+.chart-card{position:relative}
+.chart{width:100%;height:auto;display:block}
+.chart text{font-family:"Outfit",sans-serif;font-weight:700}
+.chart .hit{cursor:pointer;outline:none}
+.chart .hit:focus-visible{stroke:var(--cyan);stroke-width:2;fill:rgba(0,160,233,.06)}
+.chart .col{transition:filter .15s}
+.chart .col.hov{filter:brightness(1.14)}
+.tip{
+  position:absolute;z-index:5;pointer-events:none;opacity:0;transform:translateY(4px);
+  transition:opacity .15s,transform .15s;
+  background:#0B2447;color:#EAF7FF;border-radius:12px;padding:10px 13px;min-width:150px;
+  box-shadow:0 12px 26px -12px rgba(0,31,68,.6);font-size:12px;line-height:1.5;
+}
+.tip.show{opacity:1;transform:translateY(0)}
+.tip .t-h{color:#9CC6E2;font-size:11px}
+.tip .t-v{font-family:"Outfit",sans-serif;font-weight:800;font-size:19px}
+.tip .t-v small{font-size:11px;font-weight:700;margin-left:2px}
+.tip .t-c{color:#BFE3F7;font-size:11.5px}
+.tip .t-c b{font-family:"Outfit",sans-serif;color:#fff}
+
+/* ---------- pace cards ---------- */
+.pace{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+.pcard{background:#fff;border:1px solid var(--line);border-radius:22px;padding:20px 18px;position:relative;overflow:hidden}
+.pcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px}
+.pcard.c1::before{background:var(--bm1)}
+.pcard.c2::before{background:var(--bm2)}
+.pcard.c3::before{background:var(--bm3)}
+.pcard h3{font-size:13px;font-weight:700;color:#41627F;letter-spacing:.02em;display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.pcard h3 b{font-family:"Outfit",sans-serif;font-weight:800;font-size:16px;color:var(--navy)}
+.pcard h3 small{font-size:11px;color:#7C97B1;font-weight:500}
+.meter{margin-top:12px;height:8px;border-radius:999px;overflow:hidden}
+.pcard.c1 .meter{background:var(--bm1-pale)} .pcard.c1 .meter i{background:var(--bm1)}
+.pcard.c2 .meter{background:var(--bm2-pale)} .pcard.c2 .meter i{background:var(--bm2)}
+.pcard.c3 .meter{background:var(--bm3-pale)} .pcard.c3 .meter i{background:var(--bm3)}
+.meter i{display:block;height:100%;width:0%;border-radius:999px;transition:width 1.4s cubic-bezier(.22,.9,.3,1)}
+.pcard .pct{font-family:"Outfit",sans-serif;font-weight:700;font-size:12px;color:#6E8AA6;margin-top:6px}
+.pcard .big{font-family:"Outfit",sans-serif;font-weight:800;font-size:34px;line-height:1.15;color:var(--navy);margin-top:8px}
+.pcard .big small{font-size:14px;font-weight:700;margin-left:3px}
+.pcard p{font-size:12.5px;color:#6E8AA6;margin-top:8px;line-height:1.6}
+.pcard.done{background:linear-gradient(160deg,#F2FAFF 0%,#fff 60%)}
+.pcard .badge{display:inline-block;margin-top:8px;padding:3px 12px;border-radius:999px;font-size:12px;font-weight:900;color:#fff}
+.pcard.c1 .badge{background:var(--bm1)}
+.pcard.c2 .badge{background:var(--bm2)}
+.pcard.c3 .badge{background:var(--bm3)}
+
+/* ---------- ヒートマップ（ライトセクション内・マップだけ夜） ---------- */
+.map-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:34px;align-items:start}
+@media(max-width:900px){.map-layout{grid-template-columns:1fr;gap:24px}}
+.map-box{
+  background:linear-gradient(180deg,#0B2447,#001B3C);
+  border-radius:18px;padding:12px 8px;
+}
+#mapSvg{width:100%;height:auto;display:block;overflow:visible}
+.hex{cursor:pointer}
+.hex-shape{stroke:rgba(127,232,255,.30);stroke-width:1.2;transition:fill .5s,stroke .2s}
+.hex:hover .hex-shape{stroke:#fff;stroke-width:2}
+.hex.sel .hex-shape{stroke:var(--heat);stroke-width:2.4}
+.hex-name{font-weight:700;font-size:14px;fill:#fff;text-anchor:middle;pointer-events:none}
+.hex-name.sm{font-size:11.5px}
+.hex-suf{font-size:9px;fill:rgba(255,255,255,.55);text-anchor:middle;pointer-events:none}
+.hex-val{font-family:"Outfit",sans-serif;font-weight:600;font-size:12px;fill:var(--glow);text-anchor:middle;pointer-events:none;letter-spacing:.04em}
+.legend{display:flex;align-items:center;gap:10px;font-size:11px;color:#7C97B1;letter-spacing:.08em;margin-top:12px}
+.legend-bar{height:6px;width:150px;border-radius:99px;background:linear-gradient(90deg,#00214d,#0F4C81,#00A0E9,#7FE8FF)}
+.rank-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.rank-title{font-weight:900;font-size:15px;color:var(--navy)}
+.toggle{display:flex;border:1px solid var(--line);border-radius:99px;overflow:hidden}
+.toggle button{
+  font:inherit;font-size:11.5px;letter-spacing:.06em;color:#6E8AA6;
+  background:none;border:none;padding:6px 13px;cursor:pointer;transition:.2s;
+}
+.toggle button.on{background:var(--navy);color:#fff;font-weight:700}
+.rank-list{list-style:none}
+.rank-list li{
+  display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:10px;
+  padding:9px 4px;border-bottom:1px solid var(--line);cursor:pointer;transition:background .2s;
+}
+.rank-list li:hover{background:var(--sky)}
+.rank-list li.sel{background:var(--bm3-pale)}
+.rank-no{font-family:"Outfit",sans-serif;font-weight:700;font-size:16px;color:#7C97B1;text-align:center}
+.rank-list li:nth-child(1) .rank-no{color:var(--bm3)}
+.rank-city{font-size:13.5px}
+.rank-val{font-family:"Outfit",sans-serif;font-weight:700;font-size:15px;color:var(--navy);font-variant-numeric:tabular-nums}
+.rank-foot{font-size:11px;color:#7C97B1;margin-top:12px;line-height:1.7}
+.city-detail{margin-top:16px;border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--sky)}
+.city-detail h4{font-size:14px;font-weight:900;color:var(--navy);margin-bottom:4px}
+.city-detail p{font-size:12px;color:#5C7A97;line-height:1.8}
+
+/* ---------- table（折りたたみ） ---------- */
+details.records{margin-top:56px}
+details.records summary{
+  cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:12px;
+  font-weight:900;font-size:22px;color:var(--navy);
+}
+details.records summary::-webkit-details-marker{display:none}
+details.records summary::after{content:"開く ＋";font-size:12px;font-weight:700;color:#7C97B1}
+details.records[open] summary::after{content:"閉じる −"}
+details.records summary .sec-note{font-weight:400}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:11px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11.5px;color:#7C97B1;font-weight:700;letter-spacing:.06em}
+th:nth-child(-n+3),td:nth-child(-n+3){text-align:left}
+td.n{font-family:"Outfit",sans-serif;font-weight:700}
+tbody tr{transition:background .2s}
+tbody tr:hover{background:var(--sky)}
+tr.future td{color:#A9BED0}
+tr.best td.n{color:var(--cyan)}
+.scroller{overflow-x:auto}
+
+/* ---------- 送信後モーダル ---------- */
+.modal-bk{
+  position:fixed;inset:0;z-index:50;background:rgba(0,8,20,.78);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  opacity:0;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(4px);
+}
+.modal-bk.on{opacity:1;pointer-events:auto}
+.modal{
+  position:relative;width:100%;max-width:460px;max-height:92vh;overflow-y:auto;
+  background:linear-gradient(170deg,#03295c,#001129 70%);
+  border:1px solid rgba(127,232,255,.35);border-radius:18px;
+  padding:34px 28px 28px;text-align:center;color:var(--paper-n);
+  box-shadow:0 30px 90px rgba(0,0,0,.7),0 0 60px rgba(0,160,233,.25);
+  transform:translateY(18px) scale(.96);transition:transform .35s cubic-bezier(.2,1.4,.4,1);
+}
+.modal-bk.on .modal{transform:translateY(0) scale(1)}
+#confetti{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;border-radius:18px}
+.md-close{
+  position:absolute;top:10px;right:10px;z-index:3;
+  font:inherit;font-size:18px;line-height:1;color:var(--dim-n);
+  background:none;border:none;width:38px;height:38px;cursor:pointer;border-radius:50%;
+  transition:color .2s,background .2s;
+}
+.md-close:hover{color:#fff;background:rgba(255,255,255,.08)}
+.md-orb{
+  width:74px;height:74px;border-radius:50%;margin:0 auto 14px;position:relative;
+  background:radial-gradient(circle at 32% 28%,#fff,var(--glow) 35%,var(--cyan) 62%,var(--navy) 100%);
+  box-shadow:0 0 34px rgba(0,160,233,.8),0 0 90px rgba(127,232,255,.35);
+  animation:orb 2.2s ease-in-out infinite;
+}
+@keyframes orb{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+.md-badge{font-family:"Outfit",sans-serif;font-weight:700;font-size:12px;letter-spacing:.3em;color:var(--glow);margin-bottom:4px}
+.modal h3{font-weight:900;font-size:23px;margin-bottom:6px;line-height:1.4;color:#fff}
+.md-sub{font-size:13px;color:var(--dim-n);margin-bottom:20px;line-height:1.7}
+.md-sub b{color:var(--glow);font-family:"Outfit",sans-serif;font-size:16px;letter-spacing:.04em}
+.md-next{
+  border:1px solid rgba(255,181,71,.5);border-radius:14px;
+  background:linear-gradient(120deg,rgba(255,181,71,.14),rgba(0,160,233,.08));
+  padding:18px 16px 16px;margin-bottom:18px;
+}
+.md-next-label{font-family:"Outfit",sans-serif;font-weight:700;font-size:11px;letter-spacing:.28em;color:var(--heat);margin-bottom:6px}
+.md-next-date{font-family:"Outfit",sans-serif;font-weight:700;font-size:44px;line-height:1;color:#fff}
+.md-next-date span{font-size:20px;color:var(--heat)}
+.md-next-title{font-weight:900;font-size:18px;margin:4px 0 2px;color:#fff}
+.md-count{font-size:12px;color:var(--dim-n);letter-spacing:.06em;margin-bottom:8px}
+.md-count b{font-family:"Outfit",sans-serif;font-size:20px;color:var(--heat);font-weight:700}
+.md-next-msg{font-size:13px;line-height:1.8}
+.md-actions{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.md-actions .btn{width:100%;padding:14px 20px}
+.btn-x{background:none;color:var(--paper-n);border:1.5px solid rgba(127,232,255,.5);box-shadow:none}
+.btn-x:hover{border-color:var(--glow);color:var(--glow);box-shadow:0 6px 24px rgba(0,160,233,.25)}
+.md-skip{font-size:11.5px;color:var(--dim-n)}
+
+/* ---------- 発射後トースト ---------- */
+.toast{
+  position:fixed;left:50%;bottom:26px;z-index:40;transform:translate(-50%,20px);
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center;
+  background:rgba(0,32,74,.95);border:1px solid rgba(127,232,255,.4);border-radius:14px;
+  padding:11px 20px;box-shadow:0 16px 50px rgba(0,0,0,.6);
+  opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;
+  max-width:92vw;text-align:center;color:var(--paper-n);
+}
+.toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast-amt{font-family:"Outfit",sans-serif;font-weight:700;font-size:21px;color:var(--glow);letter-spacing:.02em;line-height:1.2}
+.toast-combo{font-family:"Outfit",sans-serif;font-weight:700;font-size:13px;color:var(--heat);letter-spacing:.1em}
+.toast-next{font-size:12px;color:var(--dim-n);line-height:1.6}
+.toast-next b{font-family:"Outfit",sans-serif;color:var(--heat)}
+.toast-next a{color:var(--heat);text-decoration:none;font-weight:700}
+.toast-next a:hover{text-decoration:underline}
+
+/* ---------- footer / demo ---------- */
+.sns-quiet{
+  margin-top:56px;padding:22px;border:1px solid var(--line);border-radius:20px;background:#fff;
+  display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+}
+.sns-quiet p{font-size:13px;color:#5C7A97}
+.sns-links{display:flex;gap:10px;flex-wrap:wrap}
+.sns-links a{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:88px;padding:7px 14px;border:1px solid var(--line);border-radius:99px;
+  color:var(--navy-2);text-decoration:none;font-size:12px;font-weight:700;
+  transition:color .2s,border-color .2s,background .2s;
+}
+.sns-links a:hover{color:var(--navy);border-color:var(--cyan);background:var(--sky)}
+.demo{margin-top:28px;padding:20px;border:1px dashed #B9CFE0;border-radius:20px;background:#fff}
+.demo p{font-size:12.5px;color:#6E8AA6;margin-bottom:12px}
+.demo-btns{display:flex;gap:9px;flex-wrap:wrap}
+.demo-btns button{
+  padding:9px 15px;border-radius:999px;border:1px solid var(--line);background:var(--sky);
+  font-family:inherit;font-size:13px;font-weight:700;color:var(--navy-2);cursor:pointer;
+}
+.demo-btns button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
+.demo-btns button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+footer{padding:36px 0 64px;font-size:11.5px;color:#8AA3B8;text-align:center;line-height:2}
+
+:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+@media(max-width:860px){
+  :root{--dh:62px;--dw:45px}
+  .pace{grid-template-columns:1fr}
+  .board{padding:30px 14px 24px;border-radius:26px}
+  .night{--nx:14px;--nb:24px;border-radius:26px;padding-top:32px}
+  .chart{min-width:640px}
+  .track{margin-top:32px}
+  .track .mk .pill{font-size:10px;padding:2px 7px}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+  .reveal{opacity:1;transform:none}
+  .ticker-track{animation:none!important}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ============ 1. マストヘッド ============ -->
+  <header class="masthead">
+    <div class="eyebrow">AZUL CLARO NUMAZU <span>／ 2026 SEASON</span></div>
+    <h1>スタジアムの熱は、<br>みんなでつくる。</h1>
+    <p class="lead">これまでホームゲームに来てくれた人の数と、次の試合へ向けてみんなで育てる「元気玉」。積み上げてきた実績と、これからのエネルギーをひとつのページにまとめました。数字を眺めるだけでも、玉をひと押ししていくだけでも。</p>
+  </header>
+
+  <!-- ============ 2. 来場者カウンター（実績） ============ -->
+  <div class="board">
+    <div class="board-label">今シーズン ホームゲーム累計来場者数</div>
+    <div class="counter num" id="counter" role="status" aria-live="polite" aria-label="累計来場者数"></div>
+    <div class="board-sub" id="boardSub">集計中…</div>
+    <div class="track" id="track" aria-hidden="true">
+      <div class="track-bar"><div class="track-fill" id="trackFill"></div></div>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+  <div class="board-foot">
+    <button class="replay" id="replay" type="button">↻ もう一度、1人から積み上げる</button>
+  </div>
+
+  <!-- ============ 3. 次のホームゲーム（唯一の常設導線） ============ -->
+  <a class="next-strip" id="nextStrip" href="https://www.azul-claro.jp/" target="_blank" rel="noopener"></a>
+
+  <!-- ============ 4. みんなの元気玉（これから） ============ -->
+  <div class="night reveal" id="genki">
+    <div class="n-eyebrow">MINNA NO GENKIDAMA</div>
+    <h2>次の試合へ、<em>元気</em>をためる。</h2>
+    <p class="n-lede">玉を押し続けてチャージ、離して発射。集まった元気は次のホームゲームで場内ビジョンに映し出され、キックオフ直前にみんなで炸裂させます。</p>
+
+    <div class="hud">
+      <div class="hud-cell"><span class="hud-num" id="hudEnergy">0</span><span class="hud-label">TOTAL ENERGY</span></div>
+      <div class="hud-cell"><span class="hud-num" id="hudMsg">0</span><span class="hud-label">MESSAGES</span></div>
+      <div class="hud-cell"><span class="hud-num" id="hudCity">0<small style="font-size:.5em">/20</small></span><span class="hud-label">CITIES LIT</span></div>
+      <div class="hud-cell"><span class="hud-num" id="hudDays">—</span><span class="hud-label">DAYS TO NEXT MATCH</span></div>
+    </div>
+
+    <div class="ball-area" id="ballArea">
+      <canvas id="ball" width="1240" height="1000"></canvas>
+      <button class="sound-btn" id="soundBtn" aria-label="効果音の切り替え" title="効果音 ON/OFF">♪</button>
+      <div class="hint" id="hint">押し続けてチャージ → 離して発射／光の粒をタップでメッセージが読めます</div>
+      <div class="msg-pop" id="msgPop">
+        <p class="mp-text" id="mpText"></p>
+        <div class="mp-meta" id="mpMeta"></div>
+      </div>
+    </div>
+
+    <div class="goal">
+      <div class="goal-top">
+        <span id="goalLabel">次のホームゲームまでの目標</span>
+        <span><b id="goalNow">0</b> / 100,000 ENERGY</span>
+      </div>
+      <div class="goal-bar"><div class="goal-fill" id="goalFill"></div></div>
+    </div>
+
+    <div class="n-form">
+      <div class="n-form-head">
+        <h3>ひとこと添える（任意）</h3>
+        <p>送られたメッセージは元気玉のなかで一粒の光になります。粒をタップすると、誰かの声がそのまま読めます。</p>
+      </div>
+      <div class="form-grid">
+        <div class="field">
+          <label for="fName">ニックネーム（任意）</label>
+          <input id="fName" type="text" maxlength="12" placeholder="例）ぬまづサポ">
+        </div>
+        <div class="field">
+          <label for="fCity">お住まいの市町</label>
+          <select id="fCity"></select>
+        </div>
+        <div class="field">
+          <label for="fTo">届け先</label>
+          <select id="fTo">
+            <option value="チーム全員へ">チーム全員へ</option>
+            <option value="監督・スタッフへ">監督・スタッフへ</option>
+            <option value="#7 の選手へ">#7 の選手へ</option>
+            <option value="#9 の選手へ">#9 の選手へ</option>
+            <option value="#10 の選手へ">#10 の選手へ</option>
+            <option value="#18 の選手へ">#18 の選手へ</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fPlace">参加方法</label>
+          <select id="fPlace">
+            <option value="web">WEBから（×1.0）</option>
+            <option value="real">会場・店頭のQRから（×2.0）</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label for="fText">メッセージ（40文字まで）</label>
+          <textarea id="fText" maxlength="40" placeholder="次のホームゲーム、スタジアムで待ってます！"></textarea>
+          <div class="count" id="fCount">0 / 40</div>
+        </div>
+      </div>
+      <div class="form-foot">
+        <button class="btn" id="sendBtn">元気を送る</button>
+        <span class="thanks" id="thanks">ありがとうございます！元気玉に光が加わりました。</span>
+      </div>
+    </div>
+
+    <div class="ticker" aria-label="届いた応援メッセージ">
+      <div class="ticker-track" id="tickerTrack"></div>
+    </div>
+  </div>
+
+  <!-- ============ 5. 試合ごとの積み上がり ============ -->
+  <section class="reveal">
+    <div class="sec-head">
+      <h2 class="sec-title">試合ごとの積み上がり</h2>
+      <span class="sec-note">濃い部分がその試合で増えた分。バーに触れると詳細が見られます</span>
+    </div>
+    <div class="card chart-card">
+      <div class="scroller"><svg class="chart" id="chart" viewBox="0 0 840 340" role="img" aria-label="試合ごとの累計来場者数グラフ"></svg></div>
+      <div class="tip" id="tip"></div>
+    </div>
+  </section>
+
+  <!-- ============ 6. 3つのラインまで ============ -->
+  <section class="reveal">
+    <div class="sec-head">
+      <h2 class="sec-title">3つのラインまで</h2>
+      <span class="sec-note">残りのホームゲームで必要な、1試合あたりの人数</span>
+    </div>
+    <div class="pace" id="pace"></div>
+  </section>
+
+  <!-- ============ 7. 東部20市町 応援ヒートマップ ============ -->
+  <section class="reveal">
+    <div class="sec-head">
+      <h2 class="sec-title">東部20市町の応援</h2>
+      <span class="sec-note">どの市町から、どれだけの元気が届いているか。市町をタップすると詳細が出ます</span>
+    </div>
+    <div class="card">
+      <div class="map-layout">
+        <div>
+          <div class="map-box"><svg id="mapSvg" viewBox="0 0 500 700" role="img" aria-label="東部20市町のヒートマップ"></svg></div>
+          <div class="legend"><span>少</span><div class="legend-bar"></div><span>多</span></div>
+        </div>
+        <div>
+          <div class="rank-head">
+            <div class="rank-title">市町ランキング</div>
+            <div class="toggle">
+              <button id="tabTotal" class="on" type="button">総エナジー</button>
+              <button id="tabDens" type="button">密度</button>
+            </div>
+          </div>
+          <ol class="rank-list" id="rankList"></ol>
+          <p class="rank-foot">「密度」＝人口10万人あたりのエナジー。人口はデモ用の概数です。小さな町でも上位に入れる設計にしています。</p>
+          <div class="city-detail" id="cityDetail">
+            <h4>市町を選ぶと表示されます</h4>
+            <p>マップまたはランキングから選択してください。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 8. ホームゲーム記録（折りたたみ） ============ -->
+  <details class="records reveal">
+    <summary>ホームゲーム記録 <span class="sec-note">全<span id="totalMatches">15</span>試合</span></summary>
+    <div class="card">
+      <div class="scroller">
+        <table>
+          <thead>
+            <tr><th>節</th><th>開催日</th><th>対戦相手</th><th>入場者数</th><th>累計</th></tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </details>
+
+  <!-- ============ 9. SNS（静かな導線） ============ -->
+  <div class="sns-quiet reveal">
+    <p>試合情報や元気玉の続報は、公式SNSでお知らせしています。</p>
+    <div class="sns-links">
+      <a href="https://www.azul-claro.jp/" target="_blank" rel="noopener">X（旧Twitter）</a>
+      <a href="https://www.azul-claro.jp/" target="_blank" rel="noopener">Instagram</a>
+      <a href="https://www.azul-claro.jp/" target="_blank" rel="noopener">YouTube</a>
+    </div>
+  </div>
+
+  <!-- ============ デモ操作 ============ -->
+  <div class="demo">
+    <p>【デモ用・公開時は削除します】シーズンの進行状態を切り替えて確認できます。元気玉のデータはこの端末内にのみ保存されます。</p>
+    <div class="demo-btns" id="demoBtns"></div>
+    <div style="margin-top:10px"><button class="demo-reset" id="resetBtn" type="button" style="padding:9px 15px;border-radius:999px;border:1px solid var(--line);background:#fff;font-family:inherit;font-size:13px;font-weight:700;color:#6E8AA6;cursor:pointer">元気玉のデモデータをリセット</button></div>
+  </div>
+
+  <footer>
+    数値・メッセージはすべてダミーデータです。本番運用では投稿の承認・フィルタと合算のサーバー側実装が必要です。<br>
+    リンク先（www.azul-claro.jp）は確認用の仮設定です。／ アスルクラロ沼津
+  </footer>
+</div>
+
+<!-- 送信後モーダル（SNS・来場への導線はここに集約） -->
+<div class="modal-bk" id="modalBk" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mdTitle">
+    <canvas id="confetti"></canvas>
+    <button class="md-close" id="mdClose" aria-label="閉じる">×</button>
+    <div class="md-orb"></div>
+    <div class="md-badge">THANK YOU!</div>
+    <h3 id="mdTitle">元気、届きました！</h3>
+    <p class="md-sub" id="mdSub"></p>
+    <div class="md-next" id="mdNext"></div>
+    <div class="md-actions">
+      <a class="btn" id="mdTicket" href="https://www.azul-claro.jp/" target="_blank" rel="noopener">チケット・試合情報を見る</a>
+      <a class="btn btn-x" id="mdShare" href="#" target="_blank" rel="noopener">Xで応援をシェアする</a>
+    </div>
+    <p class="md-skip">シェアはもちろん任意です。閉じてゆっくりご覧ください。</p>
+  </div>
+</div>
+
+<!-- 発射後トースト -->
+<div class="toast" id="toast" role="status">
+  <span class="toast-amt" id="toastAmt">+0 ENERGY</span>
+  <span class="toast-combo" id="toastCombo"></span>
+  <span class="toast-next" id="toastNext"></span>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ===================== ここだけ書き換えれば OK ===================== */
+const SEASON = {
+  benchmarks: [
+    { value: 30000, perGame: 2000, name: "J昇格ライン",       short: "J昇格" },
+    { value: 42435, perGame: 2829, name: "JFL CUP平均",       short: "JFL CUP平均" },
+    { value: 51255, perGame: 3417, name: "2025シーズン平均",  short: "2025平均" }
+  ],
+  matches: [
+    { round: 1,  date: "3/8",   vs: "A FC", attendance: 3412 },
+    { round: 3,  date: "3/22",  vs: "B FC", attendance: 2688 },
+    { round: 5,  date: "4/5",   vs: "C FC", attendance: 2955 },
+    { round: 7,  date: "4/19",  vs: "D FC", attendance: 3104 },
+    { round: 9,  date: "5/3",   vs: "E FC", attendance: 4022 },
+    { round: 11, date: "5/17",  vs: "F FC", attendance: 2571 },
+    { round: 13, date: "6/7",   vs: "G FC", attendance: 2834 },
+    { round: 15, date: "6/21",  vs: "H FC", attendance: 3266 },
+    { round: 17, date: "7/12",  vs: "I FC", attendance: 2489 },
+    { round: 19, date: "7/26",  vs: "J FC", attendance: 2059 },
+    { round: 21, date: "8/9",   vs: "K FC", attendance: 3180 },
+    { round: 23, date: "8/23",  vs: "L FC", attendance: 3051 },
+    { round: 25, date: "9/13",  vs: "M FC", attendance: 3402 },
+    { round: 27, date: "10/11", vs: "N FC", attendance: 3015 },
+    { round: 29, date: "11/15", vs: "O FC", attendance: 4180 }
+  ]
+};
+const SEASON_YEAR = 2026;
+const CLUB_URL = "https://www.azul-claro.jp/";
+/* ================================================================= */
+
+/* デモ用：何試合目まで消化済みとして表示するか */
+const DEMO_PRESETS = [
+  { label: "10試合終了（J昇格ラインまであと600人）", played: 10 },
+  { label: "12試合終了（J昇格ライン突破）",           played: 12 },
+  { label: "15試合終了（シーズン全日程終了）",         played: 15 }
+];
+let PLAYED = DEMO_PRESETS[0].played;
+
+const BM = SEASON.benchmarks;
+const BM_COLORS = ["#0091D8", "#255B94", "#C97A00"];
+const SCALE_MAX = 55000;   /* 来場者ビジュアル共通の上限 */
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const fmt = n => Math.round(n).toLocaleString("ja-JP");
+
+/* ---------- 次のホームゲーム（両ツールの共通接点） ---------- */
+function nextMatch(){
+  if(PLAYED >= SEASON.matches.length) return null;
+  const m = SEASON.matches[PLAYED];
+  const parts = m.date.split("/");
+  const dt = new Date(SEASON_YEAR, +parts[0]-1, +parts[1]);
+  const wd = "日月火水木金土"[dt.getDay()];
+  return { ...m, dateObj: dt, wd, label: `${m.date}(${wd})` };
+}
+function daysToNext(){
+  const n = nextMatch();
+  if(!n) return null;
+  return Math.max(0, Math.ceil((n.dateObj - new Date()) / 86400000));
+}
+function renderNextStrip(){
+  const strip = document.getElementById("nextStrip");
+  const n = nextMatch();
+  if(!n){
+    strip.classList.add("closed");
+    strip.removeAttribute("href");
+    strip.innerHTML = `<span class="ns-main">今シーズンのホームゲームは全日程終了しました。たくさんのご来場、ありがとうございました！</span>`;
+    return;
+  }
+  strip.classList.remove("closed");
+  strip.setAttribute("href", CLUB_URL);
+  strip.innerHTML =
+    `<span class="ns-tag">NEXT HOME</span>` +
+    `<span class="ns-main"><b>${n.label}</b> 第${n.round}節 vs ${n.vs}</span>` +
+    `<span class="ns-sub">下の元気玉は、この試合のビジョンで炸裂します</span>` +
+    `<span class="ns-arrow">チケット →</span>`;
+}
+
+/* ========================================================= */
+/* ============ PART A：来場者カウンター ==================== */
+/* ========================================================= */
+function seasonState(){
+  const played = SEASON.matches.slice(0, PLAYED);
+  const cum = [];
+  let t = 0;
+  SEASON.matches.forEach((m,i)=>{ if(i<PLAYED) t += m.attendance; cum.push(t); });
+  const total = played.reduce((s,m)=>s+m.attendance,0);
+  const avg = played.length ? Math.round(total/played.length) : 0;
+  return { played, total, avg, cum, remaining: SEASON.matches.length - PLAYED };
+}
+function zoneColor(v){
+  if(v < BM[0].value) return BM_COLORS[0];
+  if(v < BM[1].value) return BM_COLORS[1];
+  return BM_COLORS[2];
+}
+
+/* ---------- flap counter ---------- */
+const counterEl = document.getElementById("counter");
+const DIGITS = 5;
+let reels = [], digitCards = [], itemH = 0;
+function buildCounter(){
+  counterEl.innerHTML = "";
+  reels = []; digitCards = [];
+  for(let i=0;i<DIGITS;i++){
+    const card = document.createElement("div");
+    card.className = "digit";
+    const reel = document.createElement("div");
+    reel.className = "reel";
+    for(let d=0;d<=10;d++){
+      const it = document.createElement("i");
+      it.textContent = d % 10;
+      reel.appendChild(it);
+    }
+    const seam = document.createElement("span");
+    seam.className = "seam";
+    const sheen = document.createElement("span");
+    sheen.className = "sheen";
+    card.appendChild(reel); card.appendChild(seam); card.appendChild(sheen);
+    counterEl.appendChild(card);
+    reels.push(reel); digitCards.push(card);
+    if(i === 1){
+      const c = document.createElement("span");
+      c.className = "comma"; c.textContent = ",";
+      counterEl.appendChild(c);
+    }
+  }
+  const u = document.createElement("span");
+  u.className = "unit"; u.textContent = "人";
+  counterEl.appendChild(u);
+  itemH = digitCards[0].getBoundingClientRect().height || 88;
+}
+function snap(x){
+  const i = Math.floor(x);
+  let f = x - i;
+  const hold = 0.74;
+  f = f < hold ? 0 : (f - hold) / (1 - hold);
+  return i + f;
+}
+function renderCounter(v, exact){
+  for(let i=0;i<DIGITS;i++){
+    const exp = Math.pow(10, DIGITS - 1 - i);
+    const pos = exact ? Math.floor(v / exp) % 10 : snap((v / exp) % 10);
+    reels[i].style.transform = `translateY(${-pos * itemH}px)`;
+    digitCards[i].classList.toggle("lead0", v < exp && i < DIGITS - 1);
+  }
+  counterEl.setAttribute("aria-label", `累計来場者数 ${fmt(v)}人`);
+}
+function flipSettle(){
+  digitCards.forEach((c,i)=>{
+    c.classList.remove("flip","shine");
+    setTimeout(()=>c.classList.add("flip"), i*60);
+    setTimeout(()=>c.classList.add("shine"), i*60 + 180);
+  });
+}
+
+/* ---------- milestone track ---------- */
+const trackEl = document.getElementById("track");
+const trackFill = document.getElementById("trackFill");
+let trackMarks = [];
+function buildTrack(){
+  trackMarks.forEach(m=>m.remove());
+  trackMarks = [];
+  BM.forEach((b,i)=>{
+    const mk = document.createElement("div");
+    const pct = b.value / SCALE_MAX * 100;
+    mk.className = `mk c${i+1} ${i % 2 === 0 ? "down" : "up"}${pct > 86 ? " edge" : ""}`;
+    mk.style.left = pct + "%";
+    mk.title = b.name;
+    const pill = document.createElement("span");
+    pill.className = "pill";
+    pill.textContent = fmt(b.value);
+    const notch = document.createElement("span");
+    notch.className = "notch";
+    mk.appendChild(notch); mk.appendChild(pill);
+    trackEl.appendChild(mk);
+    trackMarks.push(mk);
+  });
+}
+function renderTrack(v){
+  trackFill.style.width = Math.min(100, v / SCALE_MAX * 100) + "%";
+  trackMarks.forEach((mk,i)=>mk.classList.toggle("passed", v >= BM[i].value));
+}
+
+/* ---------- chart ---------- */
+const chartEl = document.getElementById("chart");
+const tipEl = document.getElementById("tip");
+const SVG_W = 840, PAD_L = 46, PAD_R = 88, PAD_T = 18, BASE_Y = 296;
+const BAR_W = 24;
+let baseRects = [], topPaths = [];
+function ych(v){ return BASE_Y - (v / SCALE_MAX) * (BASE_Y - PAD_T); }
+function bandX(i){
+  const band = (SVG_W - PAD_L - PAD_R) / SEASON.matches.length;
+  return PAD_L + band * (i + 0.5);
+}
+function topRoundPath(x, yTop, w, h, r){
+  if(h <= 0) return "";
+  r = Math.min(r, h, w/2);
+  return `M${x},${yTop+h} L${x},${yTop+r} Q${x},${yTop} ${x+r},${yTop} L${x+w-r},${yTop} Q${x+w},${yTop} ${x+w},${yTop+r} L${x+w},${yTop+h} Z`;
+}
+function buildChart(){
+  const s = seasonState();
+  const n = SEASON.matches.length;
+  const band = (SVG_W - PAD_L - PAD_R) / n;
+  let svg = "";
+  for(let gv = 10000; gv <= 50000; gv += 10000){
+    const gy = ych(gv);
+    svg += `<line x1="${PAD_L}" x2="${SVG_W-PAD_R+6}" y1="${gy}" y2="${gy}" stroke="#E4EEF5" stroke-width="1"/>`;
+    svg += `<text x="${PAD_L-8}" y="${gy+4}" font-size="10.5" fill="#9BB2C6" text-anchor="end">${gv/10000}万</text>`;
+  }
+  BM.forEach((b,i)=>{
+    const gy = ych(b.value);
+    const col = BM_COLORS[i];
+    svg += `<line x1="${PAD_L}" x2="${SVG_W-PAD_R+6}" y1="${gy}" y2="${gy}" stroke="${col}" stroke-width="1.6" stroke-dasharray="6 5" opacity=".6"/>`;
+    svg += `<rect x="${SVG_W-PAD_R+12}" y="${gy-9}" width="7" height="3" rx="1.5" fill="${col}"/>`;
+    svg += `<text x="${SVG_W-PAD_R+23}" y="${gy-4}" font-size="10.5" fill="#476B8A">${b.short}</text>`;
+    svg += `<text x="${SVG_W-PAD_R+12}" y="${gy+9}" font-size="10.5" fill="#476B8A">${fmt(b.value)}</text>`;
+  });
+  if(s.remaining > 0 && s.avg > 0){
+    let pts = [];
+    for(let i=PLAYED-1;i<n;i++){
+      const val = s.total + s.avg * (i - (PLAYED-1));
+      pts.push(`${bandX(i)},${ych(val)}`);
+    }
+    svg += `<polyline points="${pts.join(' ')}" fill="none" stroke="#9FB8CC" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 7"/>`;
+    const lastVal = s.total + s.avg * (n - PLAYED);
+    svg += `<text x="${bandX(n-1)}" y="${ych(lastVal)-12}" font-size="11" fill="#7C97B1" text-anchor="end">このペースで ${fmt(lastVal)}</text>`;
+  }
+  SEASON.matches.forEach((m,i)=>{
+    const cx = bandX(i) - BAR_W/2;
+    svg += `<rect class="col c-base" data-i="${i}" x="${cx}" y="${BASE_Y}" width="${BAR_W}" height="0" fill="#0091D8" opacity=".22"/>`;
+    svg += `<path class="col c-top" data-i="${i}" d="" fill="#0091D8"/>`;
+  });
+  svg += `<line x1="${PAD_L}" x2="${SVG_W-PAD_R+6}" y1="${BASE_Y}" y2="${BASE_Y}" stroke="#C3D8E8" stroke-width="1.5"/>`;
+  SEASON.matches.forEach((m,i)=>{
+    if(i % 2 !== 0 && n > 10) return;
+    svg += `<text x="${bandX(i)}" y="${BASE_Y+20}" font-size="11" fill="#8AA3B8" text-anchor="middle">${m.date}</text>`;
+  });
+  SEASON.matches.forEach((m,i)=>{
+    const hx = bandX(i) - band/2;
+    const played = i < PLAYED;
+    const label = played
+      ? `第${m.round}節 ${m.date} vs ${m.vs}、入場者数${fmt(m.attendance)}人、累計${fmt(s.cum[i])}人`
+      : `第${m.round}節 ${m.date} vs ${m.vs}、開催予定`;
+    svg += `<rect class="hit" data-i="${i}" x="${hx}" y="${PAD_T}" width="${band}" height="${BASE_Y-PAD_T}" fill="transparent" tabindex="0" role="img" aria-label="${label}"/>`;
+  });
+  chartEl.innerHTML = svg;
+  baseRects = Array.from(chartEl.querySelectorAll(".c-base"));
+  topPaths  = Array.from(chartEl.querySelectorAll(".c-top"));
+  bindChartHover();
+}
+function renderChart(v){
+  const s = seasonState();
+  SEASON.matches.forEach((m,i)=>{
+    const b = baseRects[i], t = topPaths[i];
+    if(!b || !t) return;
+    if(i >= PLAYED){
+      b.setAttribute("height", 0);
+      t.setAttribute("d", "");
+      return;
+    }
+    const prev = i === 0 ? 0 : s.cum[i-1];
+    const cur  = s.cum[i];
+    const shown = Math.max(0, Math.min(v, cur));
+    const col = zoneColor(cur);
+    const cx = bandX(i) - BAR_W/2;
+    const prevShown = Math.min(shown, prev);
+    const baseTopY = ych(prevShown) + (shown > prev ? 2 : 0);
+    b.setAttribute("y", Math.min(baseTopY, BASE_Y));
+    b.setAttribute("height", Math.max(0, BASE_Y - baseTopY));
+    b.setAttribute("fill", col);
+    const topH = Math.max(0, ych(prevShown) - ych(shown));
+    t.setAttribute("d", topRoundPath(cx, ych(shown), BAR_W, topH, 4));
+    t.setAttribute("fill", col);
+  });
+}
+function bindChartHover(){
+  const card = chartEl.closest(".chart-card");
+  const hits = chartEl.querySelectorAll(".hit");
+  function fill(i){
+    const s = seasonState();
+    const m = SEASON.matches[i];
+    const played = i < PLAYED;
+    tipEl.textContent = "";
+    const h = document.createElement("div");
+    h.className = "t-h";
+    h.textContent = `第${m.round}節 ${m.date}　vs ${m.vs}`;
+    tipEl.appendChild(h);
+    const v = document.createElement("div");
+    v.className = "t-v";
+    if(played){
+      v.textContent = fmt(m.attendance);
+      const sm = document.createElement("small"); sm.textContent = "人";
+      v.appendChild(sm);
+    } else {
+      v.textContent = "開催予定";
+    }
+    tipEl.appendChild(v);
+    if(played){
+      const c = document.createElement("div");
+      c.className = "t-c";
+      c.textContent = "累計 ";
+      const bb = document.createElement("b");
+      bb.textContent = `${fmt(s.cum[i])}人`;
+      c.appendChild(bb);
+      tipEl.appendChild(c);
+    }
+  }
+  function place(i){
+    const cardR = card.getBoundingClientRect();
+    const svgR = chartEl.getBoundingClientRect();
+    const sc = svgR.width / SVG_W;
+    let x = svgR.left - cardR.left + bandX(i) * sc - tipEl.offsetWidth / 2;
+    x = Math.max(6, Math.min(x, cardR.width - tipEl.offsetWidth - 6));
+    const s = seasonState();
+    const topV = i < PLAYED ? s.cum[i] : 0;
+    let yy = svgR.top - cardR.top + ych(topV) * sc - tipEl.offsetHeight - 10;
+    yy = Math.max(4, yy);
+    tipEl.style.left = x + "px";
+    tipEl.style.top = yy + "px";
+  }
+  function show(i){
+    fill(i);
+    tipEl.classList.add("show");
+    place(i);
+    chartEl.querySelectorAll(".col").forEach(el=>
+      el.classList.toggle("hov", +el.dataset.i === i));
+  }
+  function hide(){
+    tipEl.classList.remove("show");
+    chartEl.querySelectorAll(".col.hov").forEach(el=>el.classList.remove("hov"));
+  }
+  hits.forEach(hit=>{
+    const i = +hit.dataset.i;
+    hit.addEventListener("pointerenter", ()=>show(i));
+    hit.addEventListener("focus", ()=>show(i));
+    hit.addEventListener("pointerleave", hide);
+    hit.addEventListener("blur", hide);
+  });
+  chartEl.addEventListener("pointerleave", hide);
+}
+
+/* ---------- chips ---------- */
+const chipsEl = document.getElementById("chips");
+function buildChips(){
+  chipsEl.innerHTML = BM.map((b,i)=>
+    `<span class="chip c${i+1}" data-v="${b.value}"><span class="dot"></span><span class="ck">✓</span>${b.name} <b>${fmt(b.value)}</b><small>平均${fmt(b.perGame)}/試合</small></span>`
+  ).join("");
+}
+function renderChips(v){
+  chipsEl.querySelectorAll(".chip").forEach(c=>{
+    const gv = +c.dataset.v;
+    c.classList.toggle("hit", v >= gv);
+    c.classList.toggle("near", v < gv && v >= gv*0.9);
+  });
+}
+
+/* ---------- board sub text ---------- */
+const subEl = document.getElementById("boardSub");
+function renderSub(){
+  const s = seasonState();
+  const next = BM.find(b => s.total < b.value);
+  let msg;
+  if(!next){
+    msg = `3つのラインをすべて超えました。ありがとうございます！`;
+  } else {
+    msg = `${next.name}（${fmt(next.value)}人）まで あと <b>${fmt(next.value - s.total)}人</b>`;
+  }
+  subEl.innerHTML = `${PLAYED}試合終了 ／ 1試合平均 <b>${fmt(s.avg)}人</b>・${msg}`;
+}
+
+/* ---------- pace cards ---------- */
+function renderPace(){
+  const s = seasonState();
+  const el = document.getElementById("pace");
+  el.innerHTML = BM.map((b,i)=>{
+    const gap = b.value - s.total;
+    const cls = `c${i+1}`;
+    const head = `<h3>${b.name} <b>${fmt(b.value)}</b><small>平均${fmt(b.perGame)}/試合</small></h3>`;
+    const pct = Math.min(100, s.total / b.value * 100);
+    const meter = `<div class="meter"><i data-w="${pct.toFixed(1)}"></i></div>
+      <div class="pct num">${pct.toFixed(1)}%（${fmt(s.total)} / ${fmt(b.value)}）</div>`;
+    if(gap <= 0){
+      return `<div class="pcard ${cls} done">${head}${meter}
+        <div class="big">超えました 🎉</div><span class="badge">LINE CLEAR</span>
+        <p>このラインの先へ、さらに積み上げていきます。</p></div>`;
+    }
+    if(s.remaining <= 0){
+      return `<div class="pcard ${cls}">${head}${meter}
+        <div class="big">あと ${fmt(gap)}<small>人</small></div>
+        <p>今シーズンは届きませんでした。来季、必ず。</p></div>`;
+    }
+    const need = Math.ceil(gap / s.remaining);
+    const plus = need - s.avg;
+    return `<div class="pcard ${cls}">${head}${meter}
+      <div class="big">${fmt(need)}<small>人／試合</small></div>
+      <p>残り${s.remaining}試合。いまの平均から${plus > 0 ? `<b>1試合あたり ${fmt(plus)}人</b>増えれば` : "このペースを保てば"}届きます。</p></div>`;
+  }).join("");
+  requestAnimationFrame(()=>{
+    el.querySelectorAll(".meter i").forEach(m=>{ m.style.width = m.dataset.w + "%"; });
+  });
+}
+
+/* ---------- table ---------- */
+function renderTable(){
+  const s = seasonState();
+  const best = Math.max(...s.played.map(m=>m.attendance), 0);
+  document.getElementById("totalMatches").textContent = SEASON.matches.length;
+  document.getElementById("tbody").innerHTML = SEASON.matches.map((m,i)=>{
+    const done = i < PLAYED;
+    const cls = !done ? "future" : (m.attendance === best ? "best" : "");
+    return `<tr class="${cls}">
+      <td>第${m.round}節</td><td>${m.date}</td><td>vs ${m.vs}</td>
+      <td class="n">${done ? fmt(m.attendance) : "—"}</td>
+      <td class="n">${done ? fmt(s.cum[i]) : "—"}</td></tr>`;
+  }).join("");
+}
+
+/* ---------- カウンターのアニメーション ---------- */
+let rafId = null;
+function drawFrame(v){
+  renderCounter(v); renderChart(v); renderChips(v); renderTrack(v);
+}
+function play(){
+  cancelAnimationFrame(rafId);
+  const target = seasonState().total;
+  if(reduceMotion){
+    drawFrame(target);
+    renderCounter(target, true);
+    return;
+  }
+  const dur = 3400, t0 = performance.now();
+  const ease = t => 1 - Math.pow(1 - t, 4);
+  function step(now){
+    const p = Math.min(1, (now - t0) / dur);
+    const v = 1 + (target - 1) * ease(p);
+    drawFrame(v);
+    if(p < 1){ rafId = requestAnimationFrame(step); }
+    else { drawFrame(target); renderCounter(target, true); flipSettle(); }
+  }
+  rafId = requestAnimationFrame(step);
+}
+
+/* ========================================================= */
+/* ============ PART B：みんなの元気玉 ====================== */
+/* ========================================================= */
+const CITIES = [
+  {n:"小山",     s:"町", col:3, row:0, pop:1.8},
+  {n:"富士宮",   s:"市", col:0, row:1, pop:12.7},
+  {n:"御殿場",   s:"市", col:2, row:1, pop:8.6},
+  {n:"富士",     s:"市", col:0, row:2, pop:24.5},
+  {n:"裾野",     s:"市", col:2, row:2, pop:5.0},
+  {n:"長泉",     s:"町", col:2, row:3, pop:4.3},
+  {n:"三島",     s:"市", col:3, row:3, pop:10.6},
+  {n:"沼津",     s:"市", col:1, row:4, pop:18.6},
+  {n:"清水",     s:"町", col:2, row:4, pop:3.2},
+  {n:"函南",     s:"町", col:3, row:4, pop:3.6},
+  {n:"熱海",     s:"市", col:4, row:4, pop:3.3},
+  {n:"伊豆の国", s:"市", col:2, row:5, pop:4.6},
+  {n:"伊東",     s:"市", col:4, row:5, pop:6.4},
+  {n:"西伊豆",   s:"町", col:1, row:6, pop:0.7},
+  {n:"伊豆",     s:"市", col:2, row:6, pop:2.8},
+  {n:"東伊豆",   s:"町", col:4, row:6, pop:1.1},
+  {n:"松崎",     s:"町", col:1, row:7, pop:0.6},
+  {n:"河津",     s:"町", col:3, row:7, pop:0.6},
+  {n:"南伊豆",   s:"町", col:2, row:8, pop:0.7},
+  {n:"下田",     s:"市", col:3, row:8, pop:1.9}
+];
+const GOAL = 100000;
+const KEY = "azul_genki_demo_v3";
+
+const SAMPLE_TEXT = [
+  "次のホームゲーム、スタジアムで待ってます！","今年こそ絶対いける。信じてます","声が枯れるまで応援します",
+  "沼津から愛を込めて","うちの子が背番号を覚えました","去年の悔しさ、全部ぶつけよう",
+  "職場のみんなで応援してます","初観戦です。よろしくお願いします","雨でも雪でも行きます",
+  "アスルがあるから月曜も頑張れる","地元から声援送ります","勝っても負けても大好きです",
+  "スタジアムの空気が好きです","家族3人で応援に行きます","ホームで勝ち点3、決めよう！",
+  "遠くからだけど心は隣にいます","今年は昇格の年にしよう","子どもの憧れでいてください",
+  "商店街のみんなで待ってます","一緒に歴史をつくりましょう","おじいちゃんもテレビの前で応援",
+  "選手のみんな、けがだけは気をつけて","青い空、青いユニフォーム","今年もよろしくお願いします！"
+];
+const SAMPLE_NAME = ["ぬまづサポ","青い風","ヨシ","みかん農家","かずき","おかん","三島の熱男","たけ","ゆうか","","ハルパパ","めぐ","","名無しのサポーター","こまち","RIKU",""];
+const TO_LIST = ["チーム全員へ","監督・スタッフへ","#7 の選手へ","#9 の選手へ","#10 の選手へ","#18 の選手へ"];
+
+let gk = null;
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function seed(){
+  const rnd = mulberry(20260804);
+  const energy = {}, msgs = [];
+  let people = 0;
+  CITIES.forEach(c=>{
+    let base = c.pop * (140 + rnd()*260);
+    if(c.n==="沼津") base *= 2.1;
+    if(c.n==="三島"||c.n==="裾野"||c.n==="長泉"||c.n==="清水") base *= 1.35;
+    energy[c.n] = Math.round(base);
+    people += Math.round(base/38);
+  });
+  for(let i=0;i<46;i++){
+    const c = CITIES[Math.floor(rnd()*CITIES.length)];
+    msgs.push({
+      name: SAMPLE_NAME[Math.floor(rnd()*SAMPLE_NAME.length)],
+      city: c.n,
+      to:   TO_LIST[Math.floor(rnd()*TO_LIST.length)],
+      text: SAMPLE_TEXT[Math.floor(rnd()*SAMPLE_TEXT.length)],
+      ts:   Date.now() - Math.floor(rnd()*86400000*12)
+    });
+  }
+  msgs.sort((a,b)=>a.ts-b.ts);
+  return {energy, msgs, people};
+}
+function gkLoad(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(raw){ const o=JSON.parse(raw); if(o&&o.energy) return o; }
+  }catch(e){}
+  const s = seed(); gkSave(s); return s;
+}
+function gkSave(s){ try{ localStorage.setItem(KEY, JSON.stringify(s)); }catch(e){} }
+gk = gkLoad();
+
+function gkTotal(){ let t=0; for(const k in gk.energy) t+=gk.energy[k]; return t; }
+function litCount(){ let n=0; CITIES.forEach(c=>{ if(gk.energy[c.n]>0) n++; }); return n; }
+
+/* ---------- 効果音（WebAudio・任意OFF） ---------- */
+let AC=null, master=null, soundOn=true, humOsc=null, humGain=null;
+function ac(){
+  if(!AC){
+    try{
+      AC = new (window.AudioContext||window.webkitAudioContext)();
+      master = AC.createGain(); master.gain.value = 0.10; master.connect(AC.destination);
+    }catch(e){ soundOn=false; return null; }
+  }
+  if(AC.state==="suspended") AC.resume();
+  return AC;
+}
+function startHum(){
+  if(!soundOn) return; const a=ac(); if(!a) return;
+  stopHum();
+  humOsc=a.createOscillator(); humGain=a.createGain();
+  humOsc.type="sine"; humOsc.frequency.value=110;
+  humGain.gain.setValueAtTime(0.0001,a.currentTime);
+  humGain.gain.exponentialRampToValueAtTime(0.5,a.currentTime+0.4);
+  humOsc.connect(humGain); humGain.connect(master); humOsc.start();
+}
+function stopHum(){
+  if(humOsc){ try{humOsc.stop();}catch(e){} humOsc=null; humGain=null; }
+}
+function playFire(big){
+  if(!soundOn) return; const a=ac(); if(!a) return;
+  const t=a.currentTime;
+  const o=a.createOscillator(), g=a.createGain();
+  o.type="triangle";
+  o.frequency.setValueAtTime(big?740:520,t);
+  o.frequency.exponentialRampToValueAtTime(70,t+0.3);
+  g.gain.setValueAtTime(0.9,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.35);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t+0.4);
+}
+function playChime(){
+  if(!soundOn) return; const a=ac(); if(!a) return;
+  const t=a.currentTime;
+  [523.25,659.25,783.99].forEach((f,i)=>{
+    const o=a.createOscillator(), g=a.createGain();
+    o.type="sine"; o.frequency.value=f;
+    g.gain.setValueAtTime(0.0001,t+i*0.09);
+    g.gain.exponentialRampToValueAtTime(0.5,t+i*0.09+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001,t+i*0.09+0.7);
+    o.connect(g); g.connect(master); o.start(t+i*0.09); o.stop(t+i*0.09+0.75);
+  });
+}
+function vib(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+const soundBtn=document.getElementById("soundBtn");
+soundBtn.addEventListener("click",()=>{
+  soundOn=!soundOn;
+  if(!soundOn) stopHum();
+  soundBtn.textContent = soundOn ? "♪" : "✕";
+  soundBtn.title = "効果音 " + (soundOn?"ON":"OFF");
+});
+
+/* ---------- HUD ---------- */
+const elE=document.getElementById("hudEnergy"), elM=document.getElementById("hudMsg"),
+    elC=document.getElementById("hudCity"), elD=document.getElementById("hudDays"),
+    elGoalNow=document.getElementById("goalNow"), elGoalFill=document.getElementById("goalFill"),
+    elGoalLabel=document.getElementById("goalLabel");
+let shownEnergy = gkTotal();
+function renderGkHUD(pop){
+  elM.textContent = fmt(gk.msgs.length);
+  elC.innerHTML = litCount()+'<small style="font-size:.5em">/20</small>';
+  const d = daysToNext();
+  elD.textContent = d === null ? "—" : d;
+  const n = nextMatch();
+  elGoalLabel.textContent = n ? `${n.label} 第${n.round}節までの目標` : "今シーズンの応援、ありがとうございました";
+  const t = gkTotal();
+  elGoalNow.textContent = fmt(t);
+  elGoalFill.style.width = Math.min(100, t/GOAL*100).toFixed(2)+"%";
+  if(pop){ elE.classList.remove("pop"); void elE.offsetWidth; elE.classList.add("pop"); }
+}
+(function tickCounter(){
+  const t = gkTotal();
+  if(Math.abs(shownEnergy-t) > 0.5){ shownEnergy += (t-shownEnergy)*0.12; }
+  else shownEnergy = t;
+  elE.textContent = fmt(shownEnergy);
+  requestAnimationFrame(tickCounter);
+})();
+
+/* ---------- 元気玉キャンバス ---------- */
+const cv = document.getElementById("ball"), ctx = cv.getContext("2d");
+const CV_W = cv.width, CV_H = cv.height, CX = CV_W/2, CY = CV_H*0.47;
+let holding=false, charge=0, bursts=[], streaks=[], sparks=[];
+let particles = [];
+function rebuildParticles(){
+  particles = [];
+  const list = gk.msgs.slice(-110);
+  for(let i=0;i<list.length;i++){
+    particles.push({
+      msg:list[i],
+      a: (i*137.508)*Math.PI/180,
+      tilt: Math.acos(1-2*((i+0.5)/list.length)),
+      r: 0.62+((i*0.37)%1)*0.34,
+      sp: 0.00022+((i*0.11)%1)*0.00028,
+      px:0, py:0, pr:0, vis:0, born:0
+    });
+  }
+}
+rebuildParticles();
+function ballRadius(){
+  const t = gkTotal();
+  return 150 + Math.min(150, Math.pow(t/GOAL,0.55)*150);
+}
+let lastVibStep = 0;
+function drawBall(now){
+  ctx.clearRect(0,0,CV_W,CV_H);
+  const R = ballRadius();
+  const chargeK = charge/100;
+  const maxed = charge>=100;
+  ctx.save();
+  if(maxed && !reduceMotion){
+    ctx.translate((Math.random()*2-1)*4,(Math.random()*2-1)*4);
+  }
+  const aura = ctx.createRadialGradient(CX,CY,R*0.4,CX,CY,R*2.5);
+  aura.addColorStop(0,"rgba(0,160,233,"+(0.20+chargeK*0.22)+")");
+  aura.addColorStop(0.45,"rgba(0,47,108,0.16)");
+  aura.addColorStop(1,"rgba(0,17,41,0)");
+  ctx.fillStyle=aura; ctx.beginPath(); ctx.arc(CX,CY,R*2.5,0,7); ctx.fill();
+  for(let b=bursts.length-1;b>=0;b--){
+    const bu=bursts[b], age=(now-bu.t)/900;
+    if(age>1){ bursts.splice(b,1); continue; }
+    const rr = R + age*R*2.4, al = (1-age)*0.55;
+    ctx.strokeStyle="rgba(127,232,255,"+al+")"; ctx.lineWidth=(1-age)*10+1;
+    ctx.beginPath(); ctx.arc(CX,CY,rr,0,7); ctx.stroke();
+  }
+  for(let s=streaks.length-1;s>=0;s--){
+    const st=streaks[s], k=(now-st.t)/1400;
+    if(k>1){ streaks.splice(s,1); continue; }
+    const e = 1-Math.pow(1-k,3);
+    const x = st.x0+(CX-st.x0)*e, y2 = st.y0+(CY-st.y0)*e;
+    const g = ctx.createLinearGradient(st.x0,st.y0,x,y2);
+    g.addColorStop(0,"rgba(127,232,255,0)"); g.addColorStop(1,"rgba(255,255,255,"+(1-k)*0.9+")");
+    ctx.strokeStyle=g; ctx.lineWidth=5; ctx.lineCap="round";
+    ctx.beginPath(); ctx.moveTo(st.x0+(x-st.x0)*0.72, st.y0+(y2-st.y0)*0.72); ctx.lineTo(x,y2); ctx.stroke();
+    ctx.fillStyle="rgba(255,255,255,"+(1-k)+")"; ctx.beginPath(); ctx.arc(x,y2,7*(1-k*0.5),0,7); ctx.fill();
+    if(k<0.7){
+      ctx.font="700 30px 'Zen Maru Gothic',sans-serif"; ctx.textAlign="center";
+      ctx.fillStyle="rgba(127,232,255,"+(0.85-k)+")";
+      ctx.fillText(st.label, st.x0, st.y0-22);
+    }
+  }
+  const core = ctx.createRadialGradient(CX-R*0.22,CY-R*0.26,R*0.05,CX,CY,R*(1+chargeK*0.10));
+  core.addColorStop(0,"rgba(255,255,255,0.95)");
+  core.addColorStop(0.22,"rgba(127,232,255,0.85)");
+  core.addColorStop(0.55,"rgba(0,160,233,0.55)");
+  core.addColorStop(0.85,"rgba(15,76,129,0.30)");
+  core.addColorStop(1,"rgba(0,47,108,0)");
+  ctx.fillStyle=core; ctx.beginPath(); ctx.arc(CX,CY,R*(1.12+chargeK*0.10),0,7); ctx.fill();
+  ctx.textAlign="center";
+  for(let i=0;i<particles.length;i++){
+    const p=particles[i];
+    p.a += p.sp*(reduceMotion?0:16.6) * (1+chargeK*2.2);
+    const pull = 1 - chargeK*0.30;
+    const rr2 = R*p.r*pull;
+    const sx = Math.sin(p.tilt)*Math.cos(p.a), sy = Math.cos(p.tilt)*0.72, sz = Math.sin(p.tilt)*Math.sin(p.a);
+    const depth = (sz+1)/2;
+    p.px = CX + sx*rr2; p.py = CY + sy*rr2 + Math.sin(p.a*0.7)*rr2*0.28;
+    p.pr = 4+depth*6.5;
+    p.vis = 0.35+depth*0.65;
+    const fresh = p.born ? Math.max(0,1-(now-p.born)/1200) : 0;
+    ctx.fillStyle="rgba(255,255,255,"+(p.vis*0.9)+")";
+    ctx.beginPath(); ctx.arc(p.px,p.py,p.pr*(1+fresh*1.8),0,7); ctx.fill();
+    if(depth>0.55||fresh>0){
+      ctx.fillStyle="rgba(127,232,255,"+(p.vis*0.28+fresh*0.5)+")";
+      ctx.beginPath(); ctx.arc(p.px,p.py,p.pr*2.6*(1+fresh),0,7); ctx.fill();
+    }
+  }
+  if(charge>0){
+    ctx.strokeStyle="rgba(255,255,255,0.14)"; ctx.lineWidth=9;
+    ctx.beginPath(); ctx.arc(CX,CY,R*1.42,0,7); ctx.stroke();
+    ctx.strokeStyle= maxed ? "#FFB547" : "#7FE8FF"; ctx.lineWidth=9; ctx.lineCap="round";
+    ctx.beginPath(); ctx.arc(CX,CY,R*1.42,-Math.PI/2,-Math.PI/2+chargeK*Math.PI*2); ctx.stroke();
+    ctx.font="700 46px 'Outfit',sans-serif";
+    ctx.fillStyle= maxed ? "#FFB547" : "#7FE8FF"; ctx.textAlign="center";
+    ctx.fillText((maxed?"MAX! ":"")+"+"+Math.round(charge*3), CX, CY+R*1.42+64);
+  }
+  for(let k2=sparks.length-1;k2>=0;k2--){
+    const sp=sparks[k2]; sp.x+=sp.vx; sp.y+=sp.vy; sp.vy+=0.12; sp.life-=0.016;
+    if(sp.life<=0){ sparks.splice(k2,1); continue; }
+    ctx.fillStyle="rgba(255,255,255,"+sp.life+")";
+    ctx.beginPath(); ctx.arc(sp.x,sp.y,sp.life*5,0,7); ctx.fill();
+  }
+  ctx.restore();
+  if(holding){
+    charge = Math.min(100, charge+1.5);
+    if(humOsc) humOsc.frequency.value = 110 + chargeK*460;
+    const step = Math.floor(charge/25);
+    if(step>lastVibStep){ lastVibStep=step; vib(12); }
+  }
+  requestAnimationFrame(drawBall);
+}
+requestAnimationFrame(drawBall);
+
+function addEnergy(city, amount){
+  gk.energy[city] = (gk.energy[city]||0) + amount;
+  gk.people += 1;
+  gkSave(gk); renderGkHUD(true); renderMap(); renderRank();
+}
+
+/* コンボ：連続発射でボーナス */
+let combo=0, lastFireT=0;
+function fireBurst(){
+  const base = Math.round(charge*3);
+  if(base<=0) return;
+  const nowT = performance.now();
+  combo = (nowT-lastFireT<4000) ? combo+1 : 1;
+  lastFireT = nowT;
+  const mult = Math.min(2, 1+(combo-1)*0.1);
+  const amt = Math.round(base*mult);
+  const city = citySel.value;
+  const big = charge>=100;
+  bursts.push({t:nowT});
+  for(let i=0;i<(big?44:26);i++){
+    const a=Math.random()*Math.PI*2, v=3+Math.random()*(big?10:7);
+    sparks.push({x:CX,y:CY,vx:Math.cos(a)*v,vy:Math.sin(a)*v-2,life:0.6+Math.random()*0.4});
+  }
+  addEnergy(city, amt);
+  playFire(big);
+  vib(big?[40,60,90]:[30,50]);
+  showToast(amt, combo);
+  charge=0; lastVibStep=0;
+}
+
+/* 発射後トースト（次の試合はさりげなく1行だけ） */
+const toast=document.getElementById("toast");
+let toastTimer=null;
+function showToast(amt, comboN){
+  document.getElementById("toastAmt").textContent = "+"+fmt(amt)+" ENERGY";
+  document.getElementById("toastCombo").textContent = comboN>1 ? "COMBO ×"+comboN+"!" : "";
+  const n = nextMatch();
+  document.getElementById("toastNext").innerHTML = n
+    ? `${n.label}の試合まであと<b>${daysToNext()}</b>日 — <a href="${CLUB_URL}" target="_blank" rel="noopener">試合情報 →</a>`
+    : "";
+  toast.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{ toast.classList.remove("on"); }, 4200);
+}
+
+/* 押す／離す */
+const hint=document.getElementById("hint");
+let downT=0;
+cv.addEventListener("pointerdown", function(e){
+  e.preventDefault(); holding=true; downT=performance.now();
+  hint.classList.add("hide");
+  lastVibStep=0;
+  startHum();
+  cv.setPointerCapture && cv.setPointerCapture(e.pointerId);
+});
+function release(e){
+  if(!holding) return;
+  holding=false;
+  stopHum();
+  const dur = performance.now()-downT;
+  if(dur<240){ hitTest(e); charge=0; }   // 短いタップ＝粒を読む
+  else fireBurst();
+}
+cv.addEventListener("pointerup", release);
+cv.addEventListener("pointercancel", function(){ holding=false; charge=0; stopHum(); });
+cv.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+cv.addEventListener("keydown", function(e){ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); charge=60; fireBurst(); } });
+cv.setAttribute("tabindex","0");
+cv.setAttribute("aria-label","元気玉。押し続けてチャージ、離して発射します");
+
+/* 粒タップでメッセージ表示 */
+const msgPop=document.getElementById("msgPop"), mpText=document.getElementById("mpText"), mpMeta=document.getElementById("mpMeta");
+function hitTest(e){
+  const rect=cv.getBoundingClientRect();
+  const scale=CV_W/rect.width;
+  const x=(e.clientX-rect.left)*scale, y2=(e.clientY-rect.top)*scale;
+  let best=null,bd=1e9;
+  for(let i=0;i<particles.length;i++){
+    const p=particles[i], d=Math.hypot(p.px-x,p.py-y2);
+    if(d<bd && d<Math.max(26,p.pr*3.4)){ bd=d; best=p; }
+  }
+  if(best){
+    const m=best.msg;
+    mpText.textContent = "「"+m.text+"」";
+    mpMeta.textContent = (m.name||"名無しのサポーター")+"／"+m.city+"　→　"+m.to;
+    let cssX = best.px/scale, cssY = best.py/scale;
+    const half = 132;
+    cssX = Math.min(Math.max(cssX, half), rect.width-half);
+    msgPop.classList.toggle("below", cssY < 120);
+    msgPop.style.left=cssX+"px";
+    msgPop.style.top=cssY+"px";
+    msgPop.classList.add("on");
+  }else{
+    msgPop.classList.remove("on");
+  }
+}
+document.addEventListener("pointerdown", function(e){ if(!msgPop.contains(e.target)&&e.target!==cv) msgPop.classList.remove("on"); });
+
+/* ---------- フォーム ---------- */
+const citySel=document.getElementById("fCity"), fText=document.getElementById("fText"),
+    fCount=document.getElementById("fCount"), sendBtn=document.getElementById("sendBtn"),
+    thanks=document.getElementById("thanks");
+CITIES.slice().sort((a,b)=>b.pop-a.pop).forEach(c=>{
+  const o=document.createElement("option"); o.value=c.n; o.textContent=c.n+c.s; citySel.appendChild(o);
+});
+citySel.value="沼津";
+fText.addEventListener("input", function(){
+  const l=fText.value.length;
+  fCount.textContent=l+" / 40";
+  fCount.classList.toggle("over", l>=40);
+});
+sendBtn.addEventListener("click", function(){
+  const txt=fText.value.trim();
+  if(!txt){ fText.focus(); fText.placeholder="ひとことだけでも大丈夫です"; return; }
+  const mult = document.getElementById("fPlace").value==="real" ? 2 : 1;
+  const amt = 120*mult;
+  const m={ name:document.getElementById("fName").value.trim(), city:citySel.value,
+          to:document.getElementById("fTo").value, text:txt, ts:Date.now() };
+  gk.msgs.push(m);
+  addEnergy(m.city, amt);
+  rebuildParticles();
+  if(particles.length) particles[particles.length-1].born=performance.now();
+  streaks.push({t:performance.now(), x0:CX+(Math.random()*2-1)*520, y0:CV_H*0.9, label:m.city+"から"});
+  buildTicker();
+  playChime();
+  vib(60);
+  fText.value=""; fCount.textContent="0 / 40";
+  thanks.classList.add("on");
+  setTimeout(()=>{ thanks.classList.remove("on"); }, 3200);
+  document.getElementById("ballArea").scrollIntoView({behavior:"smooth",block:"center"});
+  // 光の流入演出を見せてから、次の試合への導線モーダルを開く（SNS導線はここ1か所）
+  setTimeout(()=>{ openModal(m, amt); }, 1300);
+});
+
+/* ---------- 送信後モーダル ---------- */
+const modalBk=document.getElementById("modalBk"), mdClose=document.getElementById("mdClose"),
+    mdSub=document.getElementById("mdSub"), mdNext=document.getElementById("mdNext"),
+    mdShare=document.getElementById("mdShare");
+let confettiRun=0;
+function shareUrl(){
+  const n = nextMatch();
+  let text = "アスルクラロ沼津「みんなの元気玉」に元気を送りました⚡ ただいま "+fmt(gkTotal())+" ENERGY！";
+  if(n) text += " "+n.label+" 第"+n.round+"節 vs "+n.vs+"、スタジアムで一緒に応援しませんか？";
+  text += " #アスルクラロ沼津 #みんなの元気玉";
+  return "https://twitter.com/intent/tweet?text="+encodeURIComponent(text)+"&url="+encodeURIComponent(CLUB_URL);
+}
+function openModal(m, amt){
+  mdSub.innerHTML = (m.name?esc(m.name)+"さんの":"あなたの")+"元気で、元気玉が <b>+"+fmt(amt)+"</b> 大きくなりました";
+  const n = nextMatch();
+  if(n){
+    mdNext.innerHTML =
+      `<div class="md-next-label">NEXT HOME GAME</div>`+
+      `<div class="md-next-date">${n.date} <span>(${n.wd})</span></div>`+
+      `<div class="md-next-title">第${n.round}節 vs ${esc(n.vs)}</div>`+
+      `<div class="md-count">キックオフまであと <b>${daysToNext()}</b> 日</div>`+
+      `<p class="md-next-msg">この元気玉は当日、場内ビジョンで炸裂します。<br>スタジアムでも、一緒に見届けませんか？</p>`;
+  }else{
+    mdNext.innerHTML =
+      `<div class="md-next-label">SEASON FINISHED</div>`+
+      `<p class="md-next-msg" style="margin-top:6px">今シーズンの全ホームゲームが終了しました。<br>届いた元気は、来季のチームへそのまま引き継がれます。</p>`;
+  }
+  mdShare.href = shareUrl();
+  modalBk.classList.add("on");
+  modalBk.setAttribute("aria-hidden","false");
+  startConfetti();
+  mdClose.focus();
+}
+function closeModal(){
+  modalBk.classList.remove("on");
+  modalBk.setAttribute("aria-hidden","true");
+  confettiRun=0;
+}
+mdClose.addEventListener("click", closeModal);
+modalBk.addEventListener("click", function(e){ if(e.target===modalBk) closeModal(); });
+document.addEventListener("keydown", function(e){ if(e.key==="Escape") closeModal(); });
+
+/* 紙吹雪（クラブカラー） */
+const cfCv=document.getElementById("confetti"), cfCtx=cfCv.getContext("2d");
+function startConfetti(){
+  if(reduceMotion) return;
+  const box=cfCv.parentElement.getBoundingClientRect();
+  cfCv.width=box.width; cfCv.height=box.height;
+  const COLORS=["#7FE8FF","#00A0E9","#FFFFFF","#FFB547","#0F4C81"];
+  const pieces=[];
+  for(let i=0;i<90;i++){
+    pieces.push({
+      x:Math.random()*cfCv.width, y:-20-Math.random()*cfCv.height*0.5,
+      w:5+Math.random()*6, h:8+Math.random()*8,
+      vy:1.6+Math.random()*2.6, vx:(Math.random()*2-1)*1.2,
+      rot:Math.random()*Math.PI, vr:(Math.random()*2-1)*0.12,
+      c:COLORS[Math.floor(Math.random()*COLORS.length)]
+    });
+  }
+  const run=++confettiRun, start=performance.now();
+  (function loop(now){
+    if(run!==confettiRun) return;
+    const t=(now-start)/3400;
+    cfCtx.clearRect(0,0,cfCv.width,cfCv.height);
+    if(t>1) return;
+    pieces.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr;
+      cfCtx.save(); cfCtx.translate(p.x,p.y); cfCtx.rotate(p.rot);
+      cfCtx.globalAlpha=Math.min(1,(1-t)*1.6);
+      cfCtx.fillStyle=p.c; cfCtx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      cfCtx.restore();
+    });
+    requestAnimationFrame(loop);
+  })(start);
+}
+
+/* ---------- マップ ---------- */
+const SVGNS="http://www.w3.org/2000/svg";
+const HS=48, HW=Math.sqrt(3)*HS, HSTEP=HS*1.5;
+const mapSvg=document.getElementById("mapSvg");
+let selCity=null, rankMode="total";
+function hexPath(cx,cy){
+  let d="";
+  for(let i=0;i<6;i++){
+    const a=Math.PI/180*(60*i-90);
+    const x=cx+HS*Math.cos(a), y2=cy+HS*Math.sin(a);
+    d+=(i?"L":"M")+x.toFixed(1)+","+y2.toFixed(1);
+  }
+  return d+"Z";
+}
+function cityPos(c){
+  return { x: 46 + c.col*HW + (c.row%2?HW/2:0), y: 60 + c.row*HSTEP };
+}
+function heatColor(k){
+  const stops=[[0,34,77],[15,76,129],[0,160,233],[127,232,255]];
+  let t=Math.min(1,Math.max(0,k))*(stops.length-1);
+  let i=Math.floor(t), f=t-i; if(i>=stops.length-1){i=stops.length-2;f=1;}
+  const a=stops[i], b=stops[i+1];
+  return "rgb("+Math.round(a[0]+(b[0]-a[0])*f)+","+Math.round(a[1]+(b[1]-a[1])*f)+","+Math.round(a[2]+(b[2]-a[2])*f)+")";
+}
+function buildMap(){
+  mapSvg.innerHTML="";
+  CITIES.forEach(c=>{
+    const p=cityPos(c);
+    const g=document.createElementNS(SVGNS,"g");
+    g.setAttribute("class","hex"); g.setAttribute("data-city",c.n);
+    g.setAttribute("tabindex","0"); g.setAttribute("role","button");
+    g.setAttribute("aria-label",c.n+c.s);
+    const path=document.createElementNS(SVGNS,"path");
+    path.setAttribute("d",hexPath(p.x,p.y)); path.setAttribute("class","hex-shape");
+    g.appendChild(path);
+    const t1=document.createElementNS(SVGNS,"text");
+    t1.setAttribute("class","hex-name"+(c.n.length>3?" sm":"")); t1.setAttribute("x",p.x); t1.setAttribute("y",p.y-4);
+    t1.textContent=c.n; g.appendChild(t1);
+    const t2=document.createElementNS(SVGNS,"text");
+    t2.setAttribute("class","hex-suf"); t2.setAttribute("x",p.x); t2.setAttribute("y",p.y+9);
+    t2.textContent=c.s; g.appendChild(t2);
+    const t3=document.createElementNS(SVGNS,"text");
+    t3.setAttribute("class","hex-val"); t3.setAttribute("x",p.x); t3.setAttribute("y",p.y+26);
+    g.appendChild(t3);
+    g.addEventListener("click",()=>selectCity(c.n));
+    g.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "){e.preventDefault();selectCity(c.n);} });
+    mapSvg.appendChild(g);
+  });
+}
+function renderMap(){
+  let max=0; CITIES.forEach(c=>{ max=Math.max(max,gk.energy[c.n]||0); });
+  CITIES.forEach(c=>{
+    const g=mapSvg.querySelector('[data-city="'+c.n+'"]');
+    if(!g) return;
+    const v=gk.energy[c.n]||0;
+    const k=max? Math.pow(v/max,0.6):0;
+    g.querySelector(".hex-shape").setAttribute("fill",heatColor(k));
+    g.querySelector(".hex-val").textContent=fmt(v);
+    g.classList.toggle("sel", selCity===c.n);
+  });
+}
+function selectCity(n){
+  selCity=n; citySel.value=n; renderMap(); renderRank();
+  const c=CITIES.filter(x=>x.n===n)[0];
+  const v=gk.energy[n]||0, tot=gkTotal();
+  const cnt=gk.msgs.filter(m=>m.city===n).length;
+  const d=document.getElementById("cityDetail");
+  d.innerHTML="<h4>"+c.n+c.s+"</h4><p>エナジー "+fmt(v)+"（全体の"+(tot?(v/tot*100).toFixed(1):0)+"％）／メッセージ "+cnt+"件<br>"
+   +"人口10万人あたり "+fmt(v/(c.pop*10))+" ／ 順位 "+(rankArray().findIndex(x=>x.n===n)+1)+"位（"+(rankMode==="total"?"総エナジー":"密度")+"）</p>";
+}
+buildMap();
+
+/* ランキング */
+function rankArray(){
+  return CITIES.map(c=>{
+    const v=gk.energy[c.n]||0;
+    return {n:c.n,s:c.s,v:v,d:v/(c.pop*10)};
+  }).sort((a,b)=> rankMode==="total" ? b.v-a.v : b.d-a.d);
+}
+function renderRank(){
+  const arr=rankArray(), ol=document.getElementById("rankList");
+  ol.innerHTML="";
+  arr.slice(0,10).forEach((r,i)=>{
+    const li=document.createElement("li");
+    li.className = (selCity===r.n?"sel":"");
+    li.innerHTML='<span class="rank-no">'+(i+1)+'</span><span class="rank-city">'+r.n+r.s+'</span>'
+      +'<span class="rank-val">'+fmt(rankMode==="total"?r.v:r.d)+'</span>';
+    li.addEventListener("click",()=>selectCity(r.n));
+    ol.appendChild(li);
+  });
+}
+document.getElementById("tabTotal").addEventListener("click",function(){
+  rankMode="total"; this.classList.add("on"); document.getElementById("tabDens").classList.remove("on"); renderRank();
+});
+document.getElementById("tabDens").addEventListener("click",function(){
+  rankMode="dens"; this.classList.add("on"); document.getElementById("tabTotal").classList.remove("on"); renderRank();
+});
+
+/* ---------- ティッカー ---------- */
+function buildTicker(){
+  const track=document.getElementById("tickerTrack");
+  const recent=gk.msgs.slice(-24).reverse();
+  let html="";
+  for(let rep=0;rep<2;rep++){
+    recent.forEach(m=>{
+      html+='<span class="tk-item"><span class="tk-city">'+esc(m.city)+'</span>'
+        +'<span>'+esc(m.text)+'</span><span class="tk-sep">／</span>'
+        +'<span style="color:var(--dim-n);font-size:12px">'+esc(m.name||"名無しのサポーター")+'</span></span>';
+    });
+  }
+  track.innerHTML=html;
+}
+function esc(s){ return String(s).replace(/[<>&"]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c])); }
+
+/* ---------- リセット ---------- */
+document.getElementById("resetBtn").addEventListener("click",function(){
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  gk=gkLoad(); rebuildParticles(); renderGkHUD(true); renderMap(); renderRank(); buildTicker();
+  selCity=null;
+  document.getElementById("cityDetail").innerHTML="<h4>市町を選ぶと表示されます</h4><p>マップまたはランキングから選択してください。</p>";
+});
+
+/* ========================================================= */
+/* ============ 初期化・デモ切り替え ======================== */
+/* ========================================================= */
+function renderAll(){
+  buildCounter(); buildChart(); buildChips();
+  renderSub(); renderPace(); renderTable();
+  renderNextStrip(); renderGkHUD();
+  play();
+}
+buildTrack();
+renderAll();
+renderMap(); renderRank(); buildTicker();
+
+document.getElementById("replay").addEventListener("click", play);
+window.addEventListener("resize", ()=>{
+  itemH = digitCards[0].getBoundingClientRect().height || itemH;
+  renderCounter(seasonState().total, true);
+});
+
+/* scroll reveal */
+if(!reduceMotion && "IntersectionObserver" in window){
+  const io = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); } });
+  }, { threshold: .12 });
+  document.querySelectorAll(".reveal").forEach(el=>io.observe(el));
+} else {
+  document.querySelectorAll(".reveal").forEach(el=>el.classList.add("in"));
+}
+
+/* demo switcher */
+const demoBtns = document.getElementById("demoBtns");
+demoBtns.innerHTML = DEMO_PRESETS.map((p,i)=>
+  `<button type="button" data-played="${p.played}" aria-pressed="${i===0}">${p.label}</button>`).join("");
+demoBtns.addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  PLAYED = +b.dataset.played;
+  demoBtns.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", x===b));
+  renderAll();
+});
+
+})();
+</script>
+</body>
+</html>
