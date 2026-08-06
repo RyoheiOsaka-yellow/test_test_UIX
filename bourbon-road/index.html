@@ -2163,9 +2163,11 @@ function closeModal(){
 }
 
 // Reveal
+// threshold は 0 にする(巨大なセクションは「10%表示」に永遠に到達せず
+// opacity:0 のまま残ってしまうため、1px でも見えたら表示する)
 const observer = new IntersectionObserver((entries)=>{
   entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');observer.unobserve(e.target)}});
-},{threshold:.1});
+},{threshold:0, rootMargin:'0px 0px -40px 0px'});
 document.querySelectorAll('section, .event-card, .partner-card, .collab-item, .dish, .insta-tile, .store-card').forEach(el=>{
   el.classList.add('reveal');
   observer.observe(el);
