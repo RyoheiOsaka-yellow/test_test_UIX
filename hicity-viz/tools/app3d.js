@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { buildStations } from './stations_build.js';
+import { buildArea, buildGsiTiles } from './area_build.js';
 
 const D = window.__HIC;
+const AREA = window.__AREA || {};
 const $ = id => document.getElementById(id);
 
 /* ---------------- coordinate helpers ---------------- */
@@ -44,16 +47,16 @@ document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 const BG_NORMAL = new THREE.Color(0x04050c), BG_BLUE = new THREE.Color(0x081b33);
 scene.background = BG_NORMAL.clone();
-scene.fog = new THREE.Fog(0x04050c, 700, 1600);
+scene.fog = new THREE.Fog(0x04050c, 3000, 22000);
 
-const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.5, 4000);
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.5, 60000);
 const CENTER = W(60, -20, 0);
 camera.position.set(CENTER.x + 30, 300, CENTER.z + 310);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.copy(CENTER);
 controls.enableDamping = true; controls.dampingFactor = 0.08;
 controls.maxPolarAngle = Math.PI * 0.495;
-controls.minDistance = 20; controls.maxDistance = 1200;
+controls.minDistance = 20; controls.maxDistance = 16000;
 
 scene.add(new THREE.AmbientLight(0xffffff, 1.0));
 
@@ -61,11 +64,11 @@ scene.add(new THREE.AmbientLight(0xffffff, 1.0));
 const context = new THREE.Group(); scene.add(context);
 {
   const g = new THREE.Mesh(
-    new THREE.PlaneGeometry(4000, 4000),
+    new THREE.PlaneGeometry(40000, 40000),
     new THREE.MeshBasicMaterial({ color: 0x060a14 }));
-  g.rotation.x = -Math.PI / 2; g.position.y = -0.6; context.add(g);
-  const grid = new THREE.GridHelper(3000, 100, 0x0d1a30, 0x0a1425);
-  grid.position.y = -0.5; context.add(grid);
+  g.rotation.x = -Math.PI / 2; g.position.y = -0.8; context.add(g);
+  const grid = new THREE.GridHelper(20000, 100, 0x0d1a30, 0x0a1425);
+  grid.position.y = -0.7; context.add(grid);
 }
 function lineFromLonLat(pts, color, opacity, dashed) {
   const v = [];
@@ -97,29 +100,47 @@ function labelSprite(text, color, scale = 1) {
   return sp;
 }
 {
-  // rail context (schematic)
-  const keikyu = [[139.7231, 35.5613], [139.7333, 35.5560], [139.7419, 35.5527], [139.7492, 35.5507], [139.7539, 35.5494], [139.7687, 35.5444], [139.7862, 35.5452]];
-  const mono = [[139.7470, 35.5723], [139.7461, 35.5556], [139.7539, 35.5494], [139.7687, 35.5444], [139.7772, 35.5407], [139.7838, 35.5440], [139.7877, 35.5498]];
+  // バス経路(模式)のみ残す — 鉄道は駅構造レイヤーの3Dプロファイル線で表示
   const bus = [[139.7160, 35.5624], [139.7333, 35.5553], [139.7419, 35.5520], [139.7546, 35.5488], [139.7690, 35.5450]];
-  context.add(lineFromLonLat(keikyu, 0xff5a5a, 0.75));
-  context.add(lineFromLonLat(mono, 0x4da3ff, 0.75));
-  context.add(lineFromLonLat(bus, 0xffd94d, 0.45, true));
-  const stations = [
-    ['天空橋', 139.7539, 35.5494, '#9fd8ff', 1],
-    ['穴守稲荷', 139.7492, 35.5507, '#8fa8c8', 0.8],
-    ['整備場', 139.7461, 35.5556, '#8fa8c8', 0.8],
-    ['羽田空港第3ターミナル', 139.7687, 35.5444, '#8fa8c8', 0.8],
-  ];
-  for (const [name, lon, lat, col, sc] of stations) {
-    const [x, y] = toLocal(lon, lat);
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 1.4, 16),
-      new THREE.MeshBasicMaterial({ color: 0xdfe8f5 }));
-    m.position.copy(W(x, y, 0.7)); context.add(m);
-    const sp = labelSprite(name + '駅', col, sc);
-    sp.position.copy(W(x, y, 10)); context.add(sp);
-  }
+  context.add(lineFromLonLat(bus, 0xffd94d, 0.4, true));
   const hicSp = labelSprite('HANEDA INNOVATION CITY', '#00e5ff', 1.15);
   hicSp.position.copy(CENTER.clone().setY(46)); context.add(hicSp);
+}
+
+/* ---------------- 周辺エリア(大田区全域 OSM) ---------------- */
+const areaLayers = buildArea(AREA, W);
+for (const k of Object.keys(areaLayers)) scene.add(areaLayers[k]);
+let gsiLoaded = false;
+function ensureGsi() {
+  if (gsiLoaded) return; gsiLoaded = true;
+  buildGsiTiles(areaLayers.gsi, { toLocal, W, TH, lonC: fit.lon_c, latC: fit.lat_c });
+}
+
+/* ---------------- 駅構造 + 路線3D + 新空港線(構想) ---------------- */
+const ST3D = buildStations(toLocal, W, labelSprite);
+scene.add(ST3D.group, ST3D.futureGroup, ST3D.railGroup);
+
+/* カメラ フライト */
+let flyTween = null;
+function flyTo(target, dist, dur = 1400) {
+  let dirXZ = camera.position.clone().sub(controls.target).setY(0);
+  if (dirXZ.lengthSq() < 1) dirXZ.set(0.3, 0, 1);
+  dirXZ.normalize();
+  flyTween = {
+    t0: performance.now(), dur,
+    fromT: controls.target.clone(), toT: target.clone(),
+    fromP: camera.position.clone(),
+    toP: target.clone().addScaledVector(dirXZ, dist * 0.85).add(new THREE.Vector3(0, dist * 0.6, 0)),
+  };
+}
+function updateFly(now) {
+  if (!flyTween) return;
+  let k = (now - flyTween.t0) / flyTween.dur;
+  if (k >= 1) k = 1;
+  const e = k < .5 ? 4*k*k*k : 1 - Math.pow(-2*k + 2, 3) / 2;
+  controls.target.lerpVectors(flyTween.fromT, flyTween.toT, e);
+  camera.position.lerpVectors(flyTween.fromP, flyTween.toP, e);
+  if (k === 1) flyTween = null;
 }
 
 /* ---------------- floors: plans + heat ---------------- */
@@ -274,6 +295,8 @@ const state = {
   expand: 1.0, blueprint: false, rotate: false,
   scenario: 's2020',
   playing: true, speed: 240, simT: 9.5 * 3600,
+  area: { bld: true, roads: true, osmrail: true, water: true, aero: true, boundary: true, gsi: true },
+  stations: true, rail3d: true, future: true,
 };
 
 function applyVisibility() {
@@ -285,6 +308,10 @@ function applyVisibility() {
   // fills
   for (const m of fillMats) m.opacity = (!state.fillOn || state.blueprint) ? 0 : 0.06;
   context.visible = state.contextOn;
+  for (const k of Object.keys(state.area)) areaLayers[k].visible = state.area[k];
+  ST3D.group.visible = state.stations;
+  ST3D.railGroup.visible = state.rail3d;
+  ST3D.futureGroup.visible = state.future;
 }
 function applyExpand() {
   for (const F of FLOORS)
@@ -420,6 +447,37 @@ function updateParticles() {
   });
   document.querySelectorAll('#scenario-row button').forEach(b =>
     b.addEventListener('click', () => { state.scenario = b.dataset.sc; applyScenario(); }));
+
+  // 周辺エリアレイヤー
+  for (const [id, key] of [['chk-a-bld', 'bld'], ['chk-a-roads', 'roads'], ['chk-a-rail', 'osmrail'],
+                           ['chk-a-water', 'water'], ['chk-a-aero', 'aero'], ['chk-a-bnd', 'boundary'],
+                           ['chk-a-gsi', 'gsi']]) {
+    const el = $(id);
+    if (!el) continue;
+    el.addEventListener('change', e => {
+      state.area[key] = e.target.checked;
+      if (key === 'gsi' && e.target.checked) ensureGsi();
+      applyVisibility();
+    });
+  }
+  $('chk-stations')?.addEventListener('change', e => { state.stations = e.target.checked; applyVisibility(); });
+  $('chk-rail3d')?.addEventListener('change', e => { state.rail3d = e.target.checked; applyVisibility(); });
+  $('chk-future')?.addEventListener('change', e => { state.future = e.target.checked; applyVisibility(); });
+
+  // 駅フライト
+  const fr = $('fly-row');
+  if (fr) {
+    const items = [['hic', 'HICity'], ['tenkubashi', '天空橋'], ['hnd-t3', '空港T3'], ['hnd-t12', '空港T1・T2'],
+                   ['keikyu-kamata', '京急蒲田'], ['kamata', '蒲田'], ['otorii', '大鳥居'], ['omori', '大森'], ['oimachi', '大井町']];
+    fr.innerHTML = items.map(([id, l]) => `<button data-fly="${id}">${l}</button>`).join('');
+    fr.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.fly === 'hic') { flyTo(CENTER, 380); return; }
+      const t = ST3D.flyTargets[b.dataset.fly];
+      if (t) flyTo(t.pos, 420);
+    }));
+  }
+  $('bld-count') && ($('bld-count').textContent =
+    (areaLayers.bld.userData.count ? Math.round(areaLayers.bld.children[0].geometry.attributes.position.count / 1000) + 'k点' : ''));
 }
 
 /* ---------------- tooltip on heat cells ---------------- */
@@ -435,6 +493,22 @@ addEventListener('pointermove', ev => {
     const tt = $('tooltip');
     if (!state.heatOn) { tt.style.display = 'none'; return; }
     ray.setFromCamera(mouse, camera);
+    // 駅構造・新空港線
+    if (state.stations || state.future) {
+      const objs = [...(state.stations ? ST3D.pickables : [])];
+      if (state.future) objs.push(...ST3D.futureGroup.children.filter(o => o.userData.info));
+      ray.params.Line = { threshold: 8 };
+      const sh = ray.intersectObjects(objs, false);
+      if (sh.length) {
+        const info = sh[0].object.userData.info;
+        tt.innerHTML = `<span class="tt-floor">${info.future ? '構想・未開業' : '駅構造'}</span>` +
+          `<b>${info.station}</b><br>${info.level}${info.desc ? '<br><span style="color:#8fa8c8">' + info.desc + '</span>' : ''}`;
+        tt.style.left = ev.clientX + 'px'; tt.style.top = ev.clientY + 'px';
+        tt.style.display = 'block';
+        return;
+      }
+    }
+    if (!state.heatOn) { tt.style.display = 'none'; return; }
     const vis = heatMeshes.filter(h => h.mesh.visible && floorRoots[h.fi].visible).map(h => h.mesh);
     const hits = ray.intersectObjects(vis, false);
     if (hits.length && hits[0].instanceId != null) {
@@ -458,6 +532,7 @@ function loop(now) {
     if (state.simT > 86400) state.simT -= 86400;
   }
   updateParticles();
+  updateFly(now);
   controls.update();
   renderer.render(scene, camera);
 }
@@ -468,5 +543,6 @@ addEventListener('resize', () => {
 });
 
 applyVisibility(); applyExpand(); applyScenario();
+if (state.area.gsi) ensureGsi();
 $('loading').style.display = 'none';
 requestAnimationFrame(loop);

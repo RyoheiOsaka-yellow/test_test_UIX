@@ -67,7 +67,7 @@ input[type=range]{width:100%;accent-color:#00b7d9;cursor:pointer}
   <label class="row"><input type="checkbox" id="chk-plan" checked><span class="chip chip-outline" style="background:#8fb8e8"></span>図面ライン(壁・ガラス)</label>
   <label class="row"><input type="checkbox" id="chk-fill" checked><span class="chip" style="background:#1a3a5c"></span>フロア面の塗り</label>
   <label class="row"><input type="checkbox" id="chk-heat" checked><span class="chip" style="background:#ffc94d"></span>滞留ヒートマップ(5日間)</label>
-  <label class="row"><input type="checkbox" id="chk-ctx" checked><span class="chip" style="background:#ff5a5a"></span>周辺(京急・モノレール・バス)</label>
+  <label class="row"><input type="checkbox" id="chk-ctx" checked><span class="chip" style="background:#ffd94d"></span>バス経路(模式)・HICラベル</label>
   <div class="panel-sep"></div>
 
   <div class="sec-title">人流リプレイ — 2020/9/18(金) 実測</div>
@@ -81,6 +81,24 @@ input[type=range]{width:100%;accent-color:#00b7d9;cursor:pointer}
   </div>
   <div class="sec-title" style="margin-top:8px">カテゴリ(稼働数)</div>
   <div id="group-list"></div>
+  <div class="panel-sep"></div>
+
+  <div class="sec-title">周辺エリア — 大田区全域(OSM) <span class="floor-count" id="bld-count"></span></div>
+  <label class="row"><input type="checkbox" id="chk-a-bld" checked><span class="chip" style="background:#3ddc84"></span>建物点群(高さ色分け)</label>
+  <label class="row"><input type="checkbox" id="chk-a-roads" checked><span class="chip" style="background:#9fb2dc"></span>道路網</label>
+  <label class="row"><input type="checkbox" id="chk-a-rail" checked><span class="chip" style="background:#b8c4de"></span>鉄道(実線形)</label>
+  <label class="row"><input type="checkbox" id="chk-a-water" checked><span class="chip" style="background:#0e2a44"></span>水域(多摩川・東京湾)</label>
+  <label class="row"><input type="checkbox" id="chk-a-aero" checked><span class="chip" style="background:#2a3448"></span>空港(滑走路・誘導路)</label>
+  <label class="row"><input type="checkbox" id="chk-a-bnd" checked><span class="chip" style="background:#00e5ff"></span>大田区境界</label>
+  <label class="row"><input type="checkbox" id="chk-a-gsi" checked><span class="chip" style="background:#8890a8"></span>航空写真(GSI・要通信)</label>
+  <div class="panel-sep"></div>
+
+  <div class="sec-title">駅構造・路線</div>
+  <label class="row"><input type="checkbox" id="chk-stations" checked><span class="chip" style="background:#00e5ff"></span>駅構造(階層モデル)</label>
+  <label class="row"><input type="checkbox" id="chk-rail3d" checked><span class="chip" style="background:#ff5a5a"></span>路線(高さプロファイル)</label>
+  <label class="row"><input type="checkbox" id="chk-future" checked><span class="chip" style="background:#ff2d44"></span>新空港線 蒲蒲線 [構想・赤]</label>
+  <div class="sec-title" style="margin-top:6px">移動</div>
+  <div class="seg-row" id="fly-row"></div>
   <div class="panel-sep"></div>
 
   <div class="sec-title">シナリオ(2026年は推計)</div>
@@ -115,8 +133,8 @@ input[type=range]{width:100%;accent-color:#00b7d9;cursor:pointer}
 
 <div id="tooltip"></div>
 <div id="credit">
-  図面: HIC_Building A–E (IFC) ／ 人流: K-field位置ログ 2020/9/18–22<br>
-  2026年シナリオ・経済波及は推計値 ／ 経路は模式表示 ／
+  図面: HIC_Building A–E (IFC) ／ 人流: K-field位置ログ 2020/9/18–22 ／ 地図: © OpenStreetMap contributors (ODbL) ／ 航空写真: 地理院タイル<br>
+  駅構内配置は公開情報に基づく想定を含む模式モデル ／ <span style="color:#ff6b7a">新空港線(蒲蒲線)は構想・未開業(仮定線形)</span> ／ 2026年シナリオ・経済波及は推計値 ／
   <a href="report.html" style="color:#7fb2ff">2D統計レポート</a>
 </div>
 
