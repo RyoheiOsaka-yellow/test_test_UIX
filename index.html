@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>縄文 — JOMON PATTERN DIVE</title>
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #000;
+    touch-action: none;
+    overscroll-behavior: none;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  }
+  #gl {
+    position: fixed; inset: 0;
+    width: 100vw; height: 100vh;
+    display: block;
+    cursor: grab;
+  }
+  #gl.dragging { cursor: grabbing; }
+
+  .ui {
+    position: fixed;
+    z-index: 10;
+    color: rgba(255, 240, 220, 0.85);
+    user-select: none;
+    -webkit-user-select: none;
+    transition: opacity 1.2s ease;
+  }
+  .ui.hidden { opacity: 0; pointer-events: none; }
+
+  #title {
+    top: 6vh; left: 0; right: 0;
+    text-align: center;
+    pointer-events: none;
+    text-shadow: 0 0 24px rgba(255, 140, 40, 0.6), 0 0 60px rgba(60, 160, 255, 0.35);
+  }
+  #title h1 {
+    margin: 0;
+    font-size: clamp(34px, 7vw, 84px);
+    font-weight: 500;
+    letter-spacing: 0.45em;
+    text-indent: 0.45em;
+  }
+  #title p {
+    margin: 10px 0 0;
+    font-size: clamp(11px, 1.6vw, 15px);
+    letter-spacing: 0.55em;
+    text-indent: 0.55em;
+    opacity: 0.7;
+  }
+
+  #hint {
+    bottom: 12vh; left: 0; right: 0;
+    text-align: center;
+    font-size: clamp(11px, 1.5vw, 14px);
+    letter-spacing: 0.25em;
+    opacity: 0.65;
+    pointer-events: none;
+  }
+
+  #controls {
+    bottom: max(18px, env(safe-area-inset-bottom));
+    right: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #controls button {
+    background: rgba(10, 8, 6, 0.5);
+    border: 1px solid rgba(255, 200, 140, 0.35);
+    color: rgba(255, 235, 210, 0.9);
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    text-indent: 0.2em;
+    padding: 8px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition: border-color 0.3s, color 0.3s, box-shadow 0.3s;
+  }
+  #controls button:hover { border-color: rgba(255, 200, 140, 0.8); }
+  #controls button.active {
+    border-color: rgba(255, 180, 90, 0.95);
+    box-shadow: 0 0 16px rgba(255, 150, 50, 0.35);
+  }
+
+  #speedbox {
+    bottom: max(18px, env(safe-area-inset-bottom));
+    left: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+  }
+  #speed {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 120px; height: 2px;
+    background: rgba(255, 220, 180, 0.35);
+    outline: none;
+  }
+  #speed::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: rgba(255, 200, 140, 0.9);
+    box-shadow: 0 0 10px rgba(255, 150, 50, 0.7);
+    cursor: pointer;
+  }
+  #speed::-moz-range-thumb {
+    width: 14px; height: 14px; border: none;
+    border-radius: 50%;
+    background: rgba(255, 200, 140, 0.9);
+    cursor: pointer;
+  }
+
+  #fserr {
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    font-size: 15px;
+    line-height: 2;
+    display: none;
+  }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<div class="ui" id="title">
+  <h1>縄 文</h1>
+  <p>JOMON PATTERN DIVE — 紋様の内側へ</p>
+</div>
+<div class="ui" id="hint">ドラッグで視点 ／ ホイール・スライダーで速度</div>
+<div class="ui" id="speedbox">
+  <span>速</span>
+  <input type="range" id="speed" min="0.2" max="7" step="0.05" value="2.0">
+</div>
+<div class="ui" id="controls">
+  <button data-theme="0" class="active">火焔</button>
+  <button data-theme="1">蒼冥</button>
+  <button data-theme="2">幽玄</button>
+</div>
+<div class="ui" id="fserr">WebGL を利用できませんでした。<br>別のブラウザでお試しください。</div>
+
+<script>
+"use strict";
+
+const VERT = `
+attribute vec2 aPos;
+void main() { gl_Position = vec4(aPos, 0.0, 1.0); }
+`;
+
+const FRAG = `
+precision highp float;
+
+uniform vec2  uRes;
+uniform float uTime;
+uniform float uDist;
+uniform vec2  uLook;
+uniform vec3  uColA;
+uniform vec3  uColB;
+uniform vec3  uColBase;
+uniform float uGlow;
+
+#define PI 3.14159265358979
+#define TAU 6.28318530717959
+// 円周方向のセル数（周期）。スケールは CIRC で割り切れる値のみ使用し継ぎ目を消す
+#define CIRC 8.0
+#define RADIUS 2.5
+
+mat2 rot(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+
+float hash21(vec2 p) {
+  p = fract(p * vec2(234.34, 435.345));
+  p += dot(p, p + 34.23);
+  return fract(p.x * p.y);
+}
+
+// トンネル中心線が描く無限の曲線
+vec2 path(float z) {
+  return vec2(
+    sin(z * 0.110) * 1.35 + sin(z * 0.047) * 2.0,
+    cos(z * 0.089) * 1.25 + sin(z * 0.061) * 1.6
+  );
+}
+
+// sin 値から細い刻線を作る
+float carve(float v, float w) {
+  return smoothstep(w, 0.0, abs(v));
+}
+
+// ---- 紋様モチーフ（q はセル中心基準 -0.5..0.5）----
+
+// 渦巻文
+float motifSpiral(vec2 q, float seed) {
+  float r = length(q) + 1e-4;
+  float a = atan(q.y, q.x);
+  float arms = 1.0 + floor(fract(seed * 7.13) * 3.0);
+  float freq = 22.0 + 26.0 * fract(seed * 3.71);
+  float v = sin(a * arms + r * freq);
+  float mask = smoothstep(0.52, 0.44, r);
+  return carve(v, 0.42) * mask;
+}
+
+// 同心円文
+float motifRings(vec2 q, float seed) {
+  float r = length(q);
+  float v = sin(r * (26.0 + 34.0 * fract(seed * 5.17)) + seed * TAU);
+  return carve(v, 0.38) * smoothstep(0.52, 0.44, r);
+}
+
+// 縄目（撚糸文）
+float motifCord(vec2 q, float seed) {
+  vec2 p = q * rot(floor(fract(seed * 9.71) * 4.0) * PI * 0.25);
+  float v = sin(p.y * 30.0 + sin(p.x * 21.0) * 1.35);
+  return carve(v, 0.42);
+}
+
+// 波状沈線
+float motifWave(vec2 q, float seed) {
+  vec2 p = q * rot(fract(seed * 3.13) * PI);
+  float v = sin(p.y * 24.0 + abs(fract(p.x * 3.0) - 0.5) * 9.0);
+  return carve(v, 0.42);
+}
+
+// 1 層ぶんの紋様。wrapX = CIRC * sc（整数）で円周方向に周期化
+vec3 layerPat(vec2 uv, float sc, float wrapX, vec2 seedOff) {
+  vec2 g = uv * sc;
+  vec2 id = floor(g);
+  id.x = mod(id.x, wrapX);
+  vec2 q = fract(g) - 0.5;
+
+  float seed = hash21(id + seedOff);
+  vec2 qr = q * rot(floor(seed * 8.0) * PI * 0.25);
+
+  float m;
+  float k = fract(seed * 43.7);
+  if      (k < 0.32) m = motifSpiral(qr, seed);
+  else if (k < 0.52) m = motifRings(qr, seed);
+  else if (k < 0.80) m = motifCord(qr, seed);
+  else               m = motifWave(qr, seed);
+
+  // 区画の枠線（隆帯）
+  float edge = max(abs(q.x), abs(q.y));
+  float border = smoothstep(0.44, 0.485, edge) * smoothstep(0.5, 0.495, edge);
+
+  // このセルがアクセント色かどうか
+  float accent = step(fract(seed * 17.31), 0.34);
+
+  float line = max(m, border * 0.9);
+  return vec3(line * (1.0 - accent), line * accent, border);
+}
+
+// 多層の紋様。dist に応じて高周波層をフェードしてちらつきを抑える
+vec3 pattern(vec2 uv, float dist) {
+  float lod1 = smoothstep(38.0, 12.0, dist);
+  float lod2 = smoothstep(20.0, 6.0, dist);
+
+  vec3 m = vec3(0.0);
+  m += layerPat(uv, 0.5,  4.0,  vec2(0.0, 0.0)) * 1.00;
+  m += layerPat(uv + vec2(3.37, 7.11), 1.25, 10.0, vec2(11.0, 5.0)) * 0.72 * lod1;
+  m += layerPat(uv + vec2(1.91, 2.73), 3.0,  24.0, vec2(23.0, 17.0)) * 0.45 * lod2;
+
+  // 最微細の地文（条線）
+  float fine = carve(sin(uv.x * PI * 14.0 + sin(uv.y * 9.0) * 1.4), 0.3);
+  m.x += fine * 0.14 * lod2;
+
+  return m;
+}
+
+// 壁面 UV：x = 円周方向（周期 CIRC）, y = 進行方向
+vec2 wallUV(vec3 p) {
+  vec2 off = p.xy - path(p.z);
+  float ang = atan(off.y, off.x);
+  return vec2(ang / TAU * CIRC, p.z * 0.9);
+}
+
+// SDF：起伏は軽量な正弦で表現（紋様本体は発光として描く）
+float map(vec3 p) {
+  vec2 off = p.xy - path(p.z);
+  float r = length(off);
+  float ang = atan(off.y, off.x);
+
+  float bump = 0.0;
+  bump += sin(ang * 8.0 + p.z * 0.9) * 0.055;
+  bump += sin(ang * 3.0 - p.z * 0.45 + 1.7) * 0.075;
+  bump += sin(p.z * 2.7 + ang * 14.0) * 0.02;
+
+  return RADIUS - r + bump;
+}
+
+vec3 calcNormal(vec3 p) {
+  const vec2 e = vec2(0.004, 0.0);
+  return normalize(vec3(
+    map(p + e.xyy) - map(p - e.xyy),
+    map(p + e.yxy) - map(p - e.yxy),
+    map(p + e.yyx) - map(p - e.yyx)
+  ));
+}
+
+void main() {
+  vec2 sc = (2.0 * gl_FragCoord.xy - uRes) / uRes.y;
+
+  // カメラ
+  float z0 = uDist;
+  vec3 ro = vec3(path(z0), z0);
+  vec3 ta = vec3(path(z0 + 3.0), z0 + 3.0);
+  vec3 fw = normalize(ta - ro);
+  vec3 rt = normalize(cross(fw, vec3(0.0, 1.0, 0.0)));
+  vec3 up = cross(rt, fw);
+
+  // 進路に応じたわずかなバンク
+  float roll = (path(z0 + 4.0).x - path(z0).x) * -0.06;
+  sc = rot(roll) * sc;
+
+  vec3 rdc = normalize(vec3(sc, 1.55));
+  rdc.yz = rot(uLook.y) * rdc.yz;
+  rdc.xz = rot(uLook.x) * rdc.xz;
+  vec3 rd = normalize(rdc.x * rt + rdc.y * up + rdc.z * fw);
+
+  // レイマーチ
+  float t = 0.0;
+  float glowAcc = 0.0;
+  bool hit = false;
+  vec3 p = ro;
+  for (int i = 0; i < 96; i++) {
+    p = ro + rd * t;
+    float d = map(p);
+    glowAcc += exp(-abs(d) * 5.0) * 0.012;
+    if (d < 0.0012 * (1.0 + t)) { hit = true; break; }
+    t += max(d * 0.75, 0.004);
+    if (t > 60.0) break;
+  }
+
+  vec3 col = vec3(0.0);
+
+  if (hit) {
+    vec3 n = calcNormal(p);
+    vec2 uv = wallUV(p);
+    vec3 pat = pattern(uv, t);
+
+    // 素地：闇に沈む土器の肌
+    float diff = max(dot(n, -rd), 0.0);
+    float atten = 1.0 / (1.0 + t * t * 0.045);
+    col = uColBase * diff * atten * 0.55;
+
+    // 刻線の発光
+    float lineA = pow(min(pat.x, 1.5), 1.1);
+    float lineB = pow(min(pat.y, 1.5), 1.1);
+    float pulse = 0.86 + 0.14 * sin(uTime * 0.7 + p.z * 0.35);
+    vec3 emit = (uColA * lineA + uColB * lineB) * pulse;
+
+    // 遠方は発光が霞み、近くは強く輝く
+    float eAtten = 1.0 / (1.0 + t * 0.16);
+    col += emit * eAtten * 2.4;
+
+    // 稜線を照らすリムライト
+    float rim = pow(1.0 - max(dot(n, -rd), 0.0), 3.0);
+    col += (uColA * 0.6 + uColB * 0.4) * rim * 0.12 * atten;
+  }
+
+  // 通路全体を満たす微光
+  col += (uColA * 0.75 + uColB * 0.25) * glowAcc * uGlow;
+
+  // 奥への霧
+  col = mix(col, vec3(0.0), 1.0 - exp(-t * 0.035));
+
+  // トーンマップ・ビネット・粒子
+  col = 1.0 - exp(-col * 1.5);
+  col = pow(col, vec3(0.82));
+  float vig = 1.0 - 0.32 * dot(sc, sc);
+  col *= clamp(vig, 0.0, 1.0);
+  float grain = hash21(gl_FragCoord.xy + fract(uTime) * 100.0);
+  col += (grain - 0.5) * 0.028;
+
+  gl_FragColor = vec4(col, 1.0);
+}
+`;
+
+// ---------------------------------------------------------------- setup
+
+const canvas = document.getElementById("gl");
+const gl = canvas.getContext("webgl", { antialias: false, alpha: false, powerPreference: "high-performance" });
+
+if (!gl) {
+  document.getElementById("fserr").style.display = "block";
+  document.getElementById("title").style.display = "none";
+  document.getElementById("hint").style.display = "none";
+} else {
+  main(gl);
+}
+
+function compile(gl, type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    console.error(gl.getShaderInfoLog(s));
+    throw new Error("shader compile failed");
+  }
+  return s;
+}
+
+function main(gl) {
+  const prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl, gl.VERTEX_SHADER, VERT));
+  gl.attachShader(prog, compile(gl, gl.FRAGMENT_SHADER, FRAG));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+    console.error(gl.getProgramInfoLog(prog));
+    throw new Error("program link failed");
+  }
+  gl.useProgram(prog);
+
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const aPos = gl.getAttribLocation(prog, "aPos");
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+  const U = {};
+  for (const name of ["uRes", "uTime", "uDist", "uLook", "uColA", "uColB", "uColBase", "uGlow"]) {
+    U[name] = gl.getUniformLocation(prog, name);
+  }
+
+  // ---------------------------------------------------------------- themes
+
+  const THEMES = [
+    { // 火焔
+      a: [1.00, 0.42, 0.07],
+      b: [0.12, 0.62, 1.00],
+      base: [0.30, 0.16, 0.09],
+      glow: 1.0,
+    },
+    { // 蒼冥
+      a: [0.15, 0.55, 1.00],
+      b: [0.85, 0.93, 1.00],
+      base: [0.08, 0.13, 0.24],
+      glow: 0.9,
+    },
+    { // 幽玄
+      a: [0.85, 0.88, 0.90],
+      b: [0.45, 0.55, 0.62],
+      base: [0.10, 0.11, 0.12],
+      glow: 0.45,
+    },
+  ];
+  const cur = {
+    a: [...THEMES[0].a], b: [...THEMES[0].b],
+    base: [...THEMES[0].base], glow: THEMES[0].glow,
+  };
+  let target = THEMES[0];
+
+  document.querySelectorAll("#controls button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#controls button").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      target = THEMES[+btn.dataset.theme];
+      wakeUI();
+    });
+  });
+
+  // ---------------------------------------------------------------- input
+
+  let speed = 2.0;
+  const speedInput = document.getElementById("speed");
+  speedInput.addEventListener("input", () => { speed = +speedInput.value; wakeUI(); });
+
+  window.addEventListener("wheel", (e) => {
+    speed = Math.min(7, Math.max(0.2, speed - Math.sign(e.deltaY) * 0.3));
+    speedInput.value = speed;
+    wakeUI();
+  }, { passive: true });
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowUp")   { speed = Math.min(7, speed + 0.3); speedInput.value = speed; wakeUI(); }
+    if (e.key === "ArrowDown") { speed = Math.max(0.2, speed - 0.3); speedInput.value = speed; wakeUI(); }
+  });
+
+  const look = { x: 0, y: 0, tx: 0, ty: 0 };
+  let dragging = false, lastX = 0, lastY = 0;
+
+  canvas.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    lastX = e.clientX; lastY = e.clientY;
+    canvas.classList.add("dragging");
+    canvas.setPointerCapture(e.pointerId);
+    wakeUI();
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    look.tx = clamp(look.tx + (e.clientX - lastX) * 0.004, -2.4, 2.4);
+    look.ty = clamp(look.ty + (e.clientY - lastY) * 0.004, -1.3, 1.3);
+    lastX = e.clientX; lastY = e.clientY;
+  });
+  const endDrag = () => { dragging = false; canvas.classList.remove("dragging"); };
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", endDrag);
+
+  function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+
+  // ---------------------------------------------------------------- UI fade
+
+  const uiEls = [document.getElementById("hint"), document.getElementById("controls"), document.getElementById("speedbox")];
+  const titleEl = document.getElementById("title");
+  let uiTimer = null;
+  function wakeUI() {
+    uiEls.forEach((el) => el.classList.remove("hidden"));
+    clearTimeout(uiTimer);
+    uiTimer = setTimeout(() => uiEls.forEach((el) => el.classList.add("hidden")), 4500);
+  }
+  window.addEventListener("pointermove", wakeUI, { passive: true });
+  wakeUI();
+  setTimeout(() => titleEl.classList.add("hidden"), 7000);
+
+  // ---------------------------------------------------------------- resize & adaptive quality
+
+  let renderScale = Math.min(window.devicePixelRatio || 1, 2);
+  let qualityMul = 1.0;
+  function resize() {
+    const s = renderScale * qualityMul;
+    canvas.width  = Math.max(1, Math.round(window.innerWidth * s));
+    canvas.height = Math.max(1, Math.round(window.innerHeight * s));
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  let frameAvg = 16;
+  let lastQualityCheck = 0;
+
+  // ---------------------------------------------------------------- loop
+
+  let dist = 0;
+  let prev = performance.now();
+
+  function frame(now) {
+    const dt = Math.min((now - prev) / 1000, 0.1);
+    prev = now;
+
+    // 前進（速度は滑らかに反映）
+    dist += speed * dt;
+
+    // 視点の慣性 + 手を離すと正面へゆっくり戻る
+    if (!dragging) {
+      look.tx *= Math.pow(0.35, dt);
+      look.ty *= Math.pow(0.35, dt);
+    }
+    const ease = 1 - Math.pow(0.002, dt);
+    look.x += (look.tx - look.x) * ease;
+    look.y += (look.ty - look.y) * ease;
+
+    // テーマ色の補間
+    const ct = 1 - Math.pow(0.15, dt);
+    for (let i = 0; i < 3; i++) {
+      cur.a[i]    += (target.a[i]    - cur.a[i])    * ct;
+      cur.b[i]    += (target.b[i]    - cur.b[i])    * ct;
+      cur.base[i] += (target.base[i] - cur.base[i]) * ct;
+    }
+    cur.glow += (target.glow - cur.glow) * ct;
+
+    // 簡易アダプティブ品質
+    frameAvg = frameAvg * 0.95 + (now - lastFrameTime(now)) * 0.05;
+    if (now - lastQualityCheck > 2000) {
+      lastQualityCheck = now;
+      if (frameAvg > 26 && qualityMul > 0.55) { qualityMul = Math.max(0.55, qualityMul - 0.15); resize(); }
+      else if (frameAvg < 15 && qualityMul < 1.0) { qualityMul = Math.min(1.0, qualityMul + 0.1); resize(); }
+    }
+
+    gl.uniform2f(U.uRes, canvas.width, canvas.height);
+    gl.uniform1f(U.uTime, now / 1000);
+    gl.uniform1f(U.uDist, dist);
+    gl.uniform2f(U.uLook, -look.x, -look.y);
+    gl.uniform3fv(U.uColA, cur.a);
+    gl.uniform3fv(U.uColB, cur.b);
+    gl.uniform3fv(U.uColBase, cur.base);
+    gl.uniform1f(U.uGlow, cur.glow);
+
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    requestAnimationFrame(frame);
+  }
+
+  let _lastNow = performance.now();
+  function lastFrameTime(now) { const p = _lastNow; _lastNow = now; return p; }
+
+  requestAnimationFrame(frame);
+}
+</script>
+</body>
+</html>
