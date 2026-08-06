@@ -129,9 +129,14 @@ out['aprons'] = ap
 NEAR_R = 1600.0
 near, far = [], []
 nb = 0
-for i in range(4):
-    for el in load(f'bld{i}'):
+seen_ids = set()
+bld_files = sorted(os.path.basename(p)[:-5] for p in glob.glob(f'{SP}/osm/bld*.json'))
+for name in bld_files:
+    for el in load(name):
         if 'geometry' not in el: continue
+        eid = el.get('id')
+        if eid in seen_ids: continue
+        seen_ids.add(eid)
         g = el['geometry']
         if len(g) < 3: continue
         nb += 1

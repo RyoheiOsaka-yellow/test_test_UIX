@@ -14,6 +14,10 @@ export const STATIONS = [
       { name: '2F 橋上コンコース', z: 7, kind: 'concourse', w: 42, l: 90, brg: 100, color: 0x35e0a1 },
       { name: '東急蒲田地下駅(新設・想定) — 新空港線 第1期', z: -18, kind: 'platform', w: 22, l: 160, brg: 100, tracks: 2, platforms: 1, color: 0xff4d5e, future: true, dy: -25 },
     ],
+    links: [  // 連絡通路(整備案の白破線): [x1,y1,z1, x2,y2,z2] 駅ローカルm
+      [0, -25, -18, 0, 0, 0],      // 地下新駅 → 東急/JRコンコース直下 立坑
+      [0, 0, 0, 0, 30, 7],         // 地上 → 2F橋上コンコース
+    ],
   },
   {
     id: 'keikyu-kamata', name: '京急蒲田', lon: 139.7231, lat: 35.5611, major: true,
@@ -23,6 +27,9 @@ export const STATIONS = [
       { name: '2F ホーム(1面2線+通過)', z: 9, kind: 'platform', w: 26, l: 240, brg: 170, tracks: 3, platforms: 1, color: 0x35e0a1 },
       { name: '3F ホーム(1面2線+通過)', z: 16, kind: 'platform', w: 26, l: 240, brg: 170, tracks: 3, platforms: 1, color: 0xffd166 },
       { name: '京急蒲田地下駅(新設・想定) — 新空港線 第1期/第2期境界', z: -24, kind: 'platform', w: 22, l: 160, brg: 115, tracks: 2, platforms: 1, color: 0xff4d5e, future: true },
+    ],
+    links: [
+      [0, 0, -24, 0, 0, 0],        // 地下新駅 → 1F改札 連絡立坑
     ],
   },
   {

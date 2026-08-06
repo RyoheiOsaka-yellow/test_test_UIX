@@ -41,31 +41,91 @@ export function buildStations(toLocal, W, labelSprite) {
       lg.add(edge);
 
       if (lv.kind === 'platform') {
-        const n = lv.tracks || 2;
-        const span = lv.w * 0.9;
-        for (let i = 0; i < n; i++) {
-          const off = n === 1 ? 0 : -span / 2 + span * i / (n - 1);
-          const tr = new THREE.Mesh(
-            new THREE.BoxGeometry(1.6, 0.35, lv.l * 0.98),
-            new THREE.MeshBasicMaterial({ color: lv.future ? FUTURE_RED : 0xd8e4ff, transparent: true, opacity: lv.future ? 0.9 : 0.55 }));
-          tr.position.set(off, 0.55, 0);
-          lg.add(tr);
-        }
-        // ホーム面(線路間の帯)
-        const np = lv.platforms || 1;
-        for (let i = 0; i < np; i++) {
-          const off = np === 1 ? 0 : -lv.w / 4 + (lv.w / 2) * i / (np - 1);
+        const n = lv.tracks || 2, np = lv.platforms || 1;
+        const L = lv.l * 0.96;
+        const span = lv.w * (np === 2 ? 0.5 : 0.86);
+        const trackXs = [];
+        for (let i = 0; i < n; i++) trackXs.push(n === 1 ? 0 : -span / 2 + span * i / (n - 1));
+        // 線路: レール2条ずつ
+        const rv = [];
+        for (const tx of trackXs) for (const o of [-0.75, 0.75])
+          rv.push(tx + o, 0.55, -L / 2, tx + o, 0.55, L / 2);
+        const rg = new THREE.BufferGeometry();
+        rg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(rv), 3));
+        lg.add(new THREE.LineSegments(rg, new THREE.LineBasicMaterial({
+          color: lv.future ? FUTURE_RED : 0xd8e4ff, transparent: true, opacity: lv.future ? 0.95 : 0.7 })));
+        // ホーム面 + 縁の警戒ライン + 昇降設備
+        const pw = Math.max(3.5, lv.w * (np === 1 ? 0.28 : 0.2));
+        const pXs = np === 1 ? [0] : np === 2 ? [-(lv.w / 2 - pw / 2 - 0.5), lv.w / 2 - pw / 2 - 0.5]
+                  : [-(lv.w / 2 - pw / 2 - 0.5), 0, lv.w / 2 - pw / 2 - 0.5];
+        for (const px of pXs) {
           const pf = new THREE.Mesh(
-            new THREE.BoxGeometry(Math.max(3, lv.w / (n + 1)), 1.1, lv.l * 0.92),
+            new THREE.BoxGeometry(pw, 1.1, L * 0.94),
             new THREE.MeshBasicMaterial({ color, transparent: true, opacity: lv.future ? 0.5 : 0.35 }));
-          pf.position.set(off + (n > 1 ? (span / (n - 1)) / 2 * (np === 1 ? 0 : 1) : 0) * 0, 0.85, 0);
-          if (np === 2) pf.position.x = (i === 0 ? -1 : 1) * span / 4;
+          pf.position.set(px, 0.85, 0);
           lg.add(pf);
+          const ev = [];
+          for (const o of [-pw / 2 + 0.5, pw / 2 - 0.5])
+            ev.push(px + o, 1.5, -L * 0.46, px + o, 1.5, L * 0.46);
+          const eg = new THREE.BufferGeometry();
+          eg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(ev), 3));
+          lg.add(new THREE.LineSegments(eg, new THREE.LineBasicMaterial({
+            color: 0xffd94d, transparent: true, opacity: 0.85 })));
+          // 階段(橙)×2 / エスカレーター(黄) / EV(緑)
+          for (const zq of [-L / 4, L / 4]) {
+            const stair = new THREE.Mesh(new THREE.BoxGeometry(Math.min(3, pw * 0.5), 2.4, 5),
+              new THREE.MeshBasicMaterial({ color: 0xffb648, transparent: true, opacity: 0.75 }));
+            stair.position.set(px, 2.2, -zq);
+            lg.add(stair);
+          }
+          const esc = new THREE.Mesh(new THREE.BoxGeometry(Math.min(2, pw * 0.35), 2.4, 6),
+            new THREE.MeshBasicMaterial({ color: 0xffd94d, transparent: true, opacity: 0.7 }));
+          esc.position.set(px, 2.2, L / 8);
+          lg.add(esc);
+          const evtr = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 3.2, 10),
+            new THREE.MeshBasicMaterial({ color: 0x7dffa8, transparent: true, opacity: 0.8 }));
+          evtr.position.set(px, 2.6, -L / 12);
+          lg.add(evtr);
         }
       }
+      if (lv.kind === 'concourse') {
+        // 改札(白いゲート列)
+        const ng = Math.max(4, Math.round(lv.w / 8));
+        for (let i = 0; i < ng; i++) {
+          const gate = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.4, 2.2),
+            new THREE.MeshBasicMaterial({ color: 0xeaf4ff, transparent: true, opacity: 0.85 }));
+          gate.position.set(-lv.w / 2 + (i + 0.5) * (lv.w / ng), 1.2, 0);
+          lg.add(gate);
+        }
+      }
+      // レベル名ラベル(小)
+      const lvLabel = labelSprite(lv.name.split(' — ')[0], lv.future ? '#ff6b7a' : '#9fd8ff', 0.55);
+      lvLabel.position.set((lv.dx || 0) + lv.w / 2 + 10, lv.z + 3, -(lv.dy || 0) - lv.l / 2);
+      sg.add(lvLabel);
       sg.add(lg);
       plate.userData.info = { station: st.name, level: lv.name, desc: st.desc, future: !!lv.future };
+      plate.userData.flyPos = sg.position.clone().add(new THREE.Vector3(lv.dx || 0, lv.z, -(lv.dy || 0)));
       pickables.push(plate);
+    }
+
+    // 連絡通路(白破線, 整備案準拠)
+    if (st.links) {
+      for (const [x1, y1, z1, x2, y2, z2] of st.links) {
+        const g2 = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(x1, z1, -y1), new THREE.Vector3(x2, z2, -y2)]);
+        const dl = new THREE.Line(g2, new THREE.LineDashedMaterial({
+          color: 0xffffff, transparent: true, opacity: 0.75, dashSize: 3, gapSize: 2.4 }));
+        dl.computeLineDistances();
+        sg.add(dl);
+        // 立坑(垂直区間のシャフト)
+        if (Math.abs(z2 - z1) > 5 && Math.hypot(x2 - x1, y2 - y1) < 5) {
+          const shaft = new THREE.Mesh(
+            new THREE.CylinderGeometry(3, 3, Math.abs(z2 - z1), 12, 1, true),
+            new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.10, side: THREE.DoubleSide }));
+          shaft.position.set((x1 + x2) / 2, (z1 + z2) / 2, -(y1 + y2) / 2);
+          sg.add(shaft);
+        }
+      }
     }
 
     // 垂直動線(階段/EVの柱)
@@ -98,6 +158,9 @@ export function buildStations(toLocal, W, labelSprite) {
     lg.add(plate);
     lg.add(mkBoxLines(14, 90, 0.8, 0x6d9cc8, 0.5));
     sg.add(lg);
+    plate.userData.info = { station: name, level: (z > 2 ? '高架' : z < -2 ? '地下' : '地上') + 'ホーム(模式)', future: false };
+    plate.userData.flyPos = sg.position.clone().add(new THREE.Vector3(0, z, 0));
+    pickables.push(plate);
     const sp = labelSprite(name, '#7d93b5', 0.62);
     sp.position.y = z + 9;
     sg.add(sp);

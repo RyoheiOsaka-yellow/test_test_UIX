@@ -480,9 +480,27 @@ function updateParticles() {
     (areaLayers.bld.userData.count ? Math.round(areaLayers.bld.children[0].geometry.attributes.position.count / 1000) + 'k点' : ''));
 }
 
-/* ---------------- tooltip on heat cells ---------------- */
+/* ---------------- click-to-fly (駅・新線の構造をクリックで接近) ---------------- */
 const ray = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
+let downXY = null;
+renderer.domElement.addEventListener('pointerdown', ev => { downXY = [ev.clientX, ev.clientY]; });
+renderer.domElement.addEventListener('pointerup', ev => {
+  if (!downXY) return;
+  const moved = Math.hypot(ev.clientX - downXY[0], ev.clientY - downXY[1]);
+  downXY = null;
+  if (moved > 6 || !state.stations) return;
+  mouse.x = ev.clientX / innerWidth * 2 - 1;
+  mouse.y = -(ev.clientY / innerHeight) * 2 + 1;
+  ray.setFromCamera(mouse, camera);
+  const hits = ray.intersectObjects(ST3D.pickables, false);
+  if (hits.length && hits[0].object.userData.flyPos) {
+    const o = hits[0].object;
+    flyTo(o.userData.flyPos, 320);
+  }
+});
+
+/* ---------------- tooltip on heat cells ---------------- */
 let ttTimer = null;
 addEventListener('pointermove', ev => {
   mouse.x = ev.clientX / innerWidth * 2 - 1;
