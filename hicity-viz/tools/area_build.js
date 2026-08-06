@@ -94,10 +94,38 @@ export function buildArea(A, W) {
   };
 
   /* ---- 道路 ---- */
+  const ribbon = (parent, ways, half, color, opacity, y) => {
+    const vs = [], idx = [];
+    let base = 0;
+    for (const p of ways) {
+      if (p.length < 2) continue;
+      for (let i = 0; i < p.length; i++) {
+        const a = p[Math.max(0, i - 1)], b = p[Math.min(p.length - 1, i + 1)];
+        let dx = b[0] - a[0], dy = b[1] - a[1];
+        const len = Math.hypot(dx, dy) || 1; dx /= len; dy /= len;
+        const nx = -dy, ny = dx;
+        vs.push(p[i][0] + nx * half, y, -(p[i][1] + ny * half));
+        vs.push(p[i][0] - nx * half, y, -(p[i][1] - ny * half));
+        if (i > 0) { const k = base + 2 * i; idx.push(k - 2, k - 1, k, k - 1, k + 1, k); }
+      }
+      base += 2 * p.length;
+    }
+    if (!vs.length) return;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vs), 3));
+    geo.setIndex(idx);
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false }));
+    m.frustumCulled = false;
+    parent.add(m);
+  };
   const [r0, r1, r2] = A.roads || [[], [], []];
-  addLines(layers.roads, r2, 0x2c3550, 0.4, 0.3);
-  addLines(layers.roads, r1, 0x5a6a90, 0.7, 0.5);
-  addLines(layers.roads, r0, 0x9fb2dc, 0.9, 0.7);
+  // 生活道路: ライン / 幹線: リボン+センターライン
+  addLines(layers.roads, r2, 0x46527a, 0.5, 0.3);
+  ribbon(layers.roads, r1, 5, 0x2e3a5c, 0.75, 0.45);
+  addLines(layers.roads, r1, 0x7c8cb8, 0.5, 0.55);
+  ribbon(layers.roads, r0, 8, 0x3a4a74, 0.9, 0.6);
+  addLines(layers.roads, r0, 0xc8d4f4, 0.85, 0.75);
 
   /* ---- 鉄道(OSM実線形, 地表の下敷き) ---- */
   addLines(layers.osmrail, A.rail || [], 0xb8c4de, 0.4, 0.6);

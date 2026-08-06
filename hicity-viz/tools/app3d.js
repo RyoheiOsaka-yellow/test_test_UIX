@@ -41,7 +41,7 @@ const SCENARIOS = {
 };
 
 /* ---------------- renderer / scene ---------------- */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -111,6 +111,20 @@ function labelSprite(text, color, scale = 1) {
 /* ---------------- 周辺エリア(大田区全域 OSM) ---------------- */
 const areaLayers = buildArea(AREA, W);
 for (const k of Object.keys(areaLayers)) scene.add(areaLayers[k]);
+{
+  // 主要道路名(概略位置)
+  const ROAD_LABELS = [
+    ['環八通り', 139.7010, 35.5665], ['第一京浜(国15)', 139.7205, 35.5680],
+    ['産業道路', 139.7355, 35.5610], ['環七通り', 139.7255, 35.5885],
+    ['首都高1号羽田線', 139.7405, 35.5750], ['多摩堤通り', 139.6900, 35.5640],
+  ];
+  for (const [name, lon, lat] of ROAD_LABELS) {
+    const [x, y] = toLocal(lon, lat);
+    const sp = labelSprite(name, '#8c9cc4', 0.72);
+    sp.position.copy(W(x, y, 6));
+    areaLayers.roads.add(sp);
+  }
+}
 let gsiLoaded = false;
 function ensureGsi() {
   if (gsiLoaded) return; gsiLoaded = true;
@@ -338,9 +352,21 @@ const state = {
   expand: 1.0, blueprint: false, rotate: false,
   scenario: 's2020',
   playing: true, speed: 240, simT: 9.5 * 3600,
-  area: { bld: true, roads: true, osmrail: true, water: true, aero: true, boundary: true, gsi: true },
+  area: { bld: true, roads: true, osmrail: true, water: true, aero: true, boundary: true, gsi: false },
   stations: true, rail3d: true, future: true,
+  viewMode: 'points',   // points | photo | both
 };
+function applyViewMode(mode) {
+  state.viewMode = mode;
+  state.area.bld = (mode !== 'photo');
+  state.area.gsi = (mode !== 'points');
+  if (state.area.gsi) ensureGsi();
+  const cb = $('chk-a-bld'); if (cb) cb.checked = state.area.bld;
+  const cg = $('chk-a-gsi'); if (cg) cg.checked = state.area.gsi;
+  document.querySelectorAll('#viewmode-row button').forEach(b =>
+    b.classList.toggle('active', b.dataset.vm === mode));
+  applyVisibility();
+}
 
 function applyVisibility() {
   for (const F of FLOORS) floorRoots[F.fi].visible = state.floors[F.fi];
@@ -502,6 +528,9 @@ function updateParticles() {
   document.querySelectorAll('#scenario-row button').forEach(b =>
     b.addEventListener('click', () => { state.scenario = b.dataset.sc; applyScenario(); }));
 
+  // 表示モード(点群/航空写真/両方)
+  document.querySelectorAll('#viewmode-row button').forEach(b =>
+    b.addEventListener('click', () => applyViewMode(b.dataset.vm)));
   // 周辺エリアレイヤー
   for (const [id, key] of [['chk-a-bld', 'bld'], ['chk-a-roads', 'roads'], ['chk-a-rail', 'osmrail'],
                            ['chk-a-water', 'water'], ['chk-a-aero', 'aero'], ['chk-a-bnd', 'boundary'],
@@ -645,6 +674,6 @@ addEventListener('resize', () => {
 
 setReplayDay(replayDay);
 applyVisibility(); applyExpand(); applyScenario();
-if (state.area.gsi) ensureGsi();
+applyViewMode('points');
 $('loading').style.display = 'none';
 requestAnimationFrame(loop);

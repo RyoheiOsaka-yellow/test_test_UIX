@@ -46,14 +46,26 @@ export function buildStations(toLocal, W, labelSprite) {
         const span = lv.w * (np === 2 ? 0.5 : 0.86);
         const trackXs = [];
         for (let i = 0; i < n; i++) trackXs.push(n === 1 ? 0 : -span / 2 + span * i / (n - 1));
-        // 線路: レール2条ずつ
-        const rv = [];
-        for (const tx of trackXs) for (const o of [-0.75, 0.75])
-          rv.push(tx + o, 0.55, -L / 2, tx + o, 0.55, L / 2);
+        // 線路: バラスト帯 + レール2条 + 枕木
+        for (const tx of trackXs) {
+          const ballast = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.25, L),
+            new THREE.MeshBasicMaterial({ color: lv.future ? 0x5c1620 : 0x223048, transparent: true, opacity: 0.85 }));
+          ballast.position.set(tx, 0.3, 0);
+          lg.add(ballast);
+        }
+        const rv = [], sv = [];
+        for (const tx of trackXs) {
+          for (const o of [-0.75, 0.75]) rv.push(tx + o, 0.55, -L / 2, tx + o, 0.55, L / 2);
+          for (let s = -L / 2 + 2; s < L / 2; s += 8) sv.push(tx - 1.1, 0.48, s, tx + 1.1, 0.48, s);
+        }
         const rg = new THREE.BufferGeometry();
         rg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(rv), 3));
         lg.add(new THREE.LineSegments(rg, new THREE.LineBasicMaterial({
           color: lv.future ? FUTURE_RED : 0xd8e4ff, transparent: true, opacity: lv.future ? 0.95 : 0.7 })));
+        const sg2 = new THREE.BufferGeometry();
+        sg2.setAttribute('position', new THREE.BufferAttribute(new Float32Array(sv), 3));
+        lg.add(new THREE.LineSegments(sg2, new THREE.LineBasicMaterial({
+          color: lv.future ? 0x7a2530 : 0x3a4a68, transparent: true, opacity: 0.6 })));
         // ホーム面 + 縁の警戒ライン + 昇降設備
         const pw = Math.max(3.5, lv.w * (np === 1 ? 0.28 : 0.2));
         const pXs = np === 1 ? [0] : np === 2 ? [-(lv.w / 2 - pw / 2 - 0.5), lv.w / 2 - pw / 2 - 0.5]
@@ -86,6 +98,32 @@ export function buildStations(toLocal, W, labelSprite) {
             new THREE.MeshBasicMaterial({ color: 0x7dffa8, transparent: true, opacity: 0.8 }));
           evtr.position.set(px, 2.6, -L / 12);
           lg.add(evtr);
+          // ホーム上屋(キャノピー)+支柱列 (地上・高架ホームのみ)
+          if (lv.z >= -1) {
+            const canopy = new THREE.Mesh(new THREE.BoxGeometry(pw + 1.6, 0.25, L * 0.88),
+              new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.12, depthWrite: false }));
+            canopy.position.set(px, 4.6, 0);
+            lg.add(canopy);
+            const ce = new THREE.LineSegments(
+              new THREE.EdgesGeometry(new THREE.BoxGeometry(pw + 1.6, 0.25, L * 0.88)),
+              new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.45 }));
+            ce.position.copy(canopy.position);
+            lg.add(ce);
+            const colGeo = new THREE.CylinderGeometry(0.28, 0.28, 3.4, 6);
+            const colMat = new THREE.MeshBasicMaterial({ color: 0x9fb4d8, transparent: true, opacity: 0.55 });
+            for (let s = -L * 0.4; s <= L * 0.4; s += 16) {
+              const c1 = new THREE.Mesh(colGeo, colMat);
+              c1.position.set(px, 2.8, s);
+              lg.add(c1);
+            }
+            // ホームドア(縁の低い柵)
+            for (const o of [-pw / 2 + 0.3, pw / 2 - 0.3]) {
+              const pd = new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.1, L * 0.9),
+                new THREE.MeshBasicMaterial({ color: 0x88e8ff, transparent: true, opacity: 0.25 }));
+              pd.position.set(px + o, 1.95, 0);
+              lg.add(pd);
+            }
+          }
         }
       }
       if (lv.kind === 'concourse') {
@@ -108,6 +146,39 @@ export function buildStations(toLocal, W, labelSprite) {
       pickables.push(plate);
     }
 
+    // 駅シェル(躯体ワイヤーフレーム, 主要駅のみ)
+    if (st.major) {
+      const zs0 = st.levels.map(l => l.z);
+      const zmin0 = Math.min(...zs0, 0) - 3, zmax0 = Math.max(...zs0) + 6;
+      const wMax = Math.max(...st.levels.map(l => l.w)) + 12;
+      const lMax = Math.max(...st.levels.map(l => l.l)) + 12;
+      const mainLv = st.levels.reduce((a, b) => (b.l > a.l ? b : a));
+      const shell = new THREE.LineSegments(
+        new THREE.EdgesGeometry(new THREE.BoxGeometry(wMax, zmax0 - zmin0, lMax)),
+        new THREE.LineBasicMaterial({ color: 0x4a6a9a, transparent: true, opacity: 0.3 }));
+      shell.position.y = (zmin0 + zmax0) / 2;
+      shell.rotation.y = -(mainLv.brg || 0) * Math.PI / 180;
+      sg.add(shell);
+    }
+    // 階間の階段接続(ジグザグ)
+    {
+      const sorted = [...st.levels].sort((a, b) => a.z - b.z);
+      for (let i = 0; i + 1 < sorted.length; i++) {
+        const z1 = sorted[i].z, z2 = sorted[i + 1].z;
+        if (z2 - z1 < 3) continue;
+        for (const sgn of [1, -1]) {
+          const pts = [
+            new THREE.Vector3(sgn * 8, z1 + 0.6, 6),
+            new THREE.Vector3(sgn * 12, (z1 + z2) / 2, 0),
+            new THREE.Vector3(sgn * 8, z2 + 0.6, -6),
+          ];
+          const zig = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints(pts),
+            new THREE.LineBasicMaterial({ color: 0xffb648, transparent: true, opacity: 0.7 }));
+          sg.add(zig);
+        }
+      }
+    }
     // 連絡通路(白破線, 整備案準拠)
     if (st.links) {
       for (const [x1, y1, z1, x2, y2, z2] of st.links) {

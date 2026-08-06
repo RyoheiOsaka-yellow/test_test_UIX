@@ -87,6 +87,11 @@ input[type=range]{width:100%;accent-color:#00b7d9;cursor:pointer}
   <div class="panel-sep"></div>
 
   <div class="sec-title">周辺エリア — 大田区全域(OSM) <span class="floor-count" id="bld-count"></span></div>
+  <div class="seg-row" id="viewmode-row" style="margin-bottom:6px">
+    <button data-vm="points" class="active">◆ 点群</button>
+    <button data-vm="photo">航空写真</button>
+    <button data-vm="both">両方</button>
+  </div>
   <label class="row"><input type="checkbox" id="chk-a-bld" checked><span class="chip" style="background:#3ddc84"></span>建物点群(高さ色分け)</label>
   <label class="row"><input type="checkbox" id="chk-a-roads" checked><span class="chip" style="background:#9fb2dc"></span>道路網</label>
   <label class="row"><input type="checkbox" id="chk-a-rail" checked><span class="chip" style="background:#b8c4de"></span>鉄道(実線形)</label>
