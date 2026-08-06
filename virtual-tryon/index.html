@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AnyFit — Virtual Try-On Demo</title>
+<title>AnyFit — AI Virtual Try-On Prototype</title>
 <style>
   :root {
     --bg: #0b0b0f;
@@ -42,9 +42,7 @@
     background: conic-gradient(from 210deg, var(--accent), var(--accent-3), var(--accent-2), var(--accent));
     position: relative;
   }
-  .logo-mark::after {
-    content: ""; position: absolute; inset: 7px; border-radius: 5px; background: var(--bg);
-  }
+  .logo-mark::after { content: ""; position: absolute; inset: 7px; border-radius: 5px; background: var(--bg); }
   .logo small { color: var(--muted); font-weight: 500; font-size: 11px; margin-left: 4px; }
   .header-actions { display: flex; gap: 10px; align-items: center; }
 
@@ -57,6 +55,7 @@
     transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
     background: var(--panel-2);
     border-color: var(--border);
+    font-family: inherit;
   }
   .btn:hover { transform: translateY(-1px); }
   .btn.primary {
@@ -66,13 +65,13 @@
   }
   .btn.primary:hover { box-shadow: 0 8px 30px rgba(255,47,178,.5); }
   .btn.ghost { background: transparent; }
+  .chrome-icon { width: 18px; height: 18px; border-radius: 50%;
+    background: conic-gradient(#ef4444 0 33%, #fbbf24 0 66%, #22c55e 0 100%);
+    position: relative; flex: none; }
+  .chrome-icon::after { content:""; position:absolute; inset:5px; border-radius:50%; background:#60a5fa; border:2px solid #fff; }
 
   /* ---------- Hero ---------- */
-  .hero {
-    text-align: center;
-    padding: 90px 24px 40px;
-    position: relative;
-  }
+  .hero { text-align: center; padding: 84px 24px 36px; position: relative; }
   .hero::before {
     content: ""; position: absolute; inset: -200px 0 0;
     background:
@@ -87,25 +86,21 @@
     text-transform: uppercase; margin-bottom: 22px;
   }
   .hero h1 {
-    font-size: clamp(34px, 6vw, 64px);
+    font-size: clamp(34px, 6vw, 62px);
     line-height: 1.08; font-weight: 850; letter-spacing: -1.5px;
-    max-width: 880px; margin: 0 auto 20px;
+    max-width: 900px; margin: 0 auto 20px;
   }
   .hero h1 .grad {
     background: linear-gradient(100deg, var(--accent), var(--accent-3) 50%, var(--accent-2));
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-  .hero p { color: var(--muted); font-size: 18px; max-width: 560px; margin: 0 auto 34px; line-height: 1.7; }
+  .hero p { color: var(--muted); font-size: 17px; max-width: 620px; margin: 0 auto 34px; line-height: 1.8; }
   .hero-cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; position: relative; }
-  .chrome-icon { width: 18px; height: 18px; border-radius: 50%;
-    background: conic-gradient(#ef4444 0 33%, #fbbf24 0 66%, #22c55e 0 100%);
-    position: relative; }
-  .chrome-icon::after { content:""; position:absolute; inset:5px; border-radius:50%; background:#60a5fa; border:2px solid #fff; }
 
   /* ---------- Try-on app ---------- */
-  .app-section { padding: 50px 24px 80px; }
+  .app-section { padding: 46px 20px 80px; }
   .app-shell {
-    max-width: 1180px; margin: 0 auto;
+    max-width: 1240px; margin: 0 auto;
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 26px;
@@ -120,21 +115,24 @@
   .dot { width: 11px; height: 11px; border-radius: 50%; }
   .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
   .url-pill {
-    flex: 1; max-width: 420px; margin: 0 auto;
+    flex: 1; max-width: 440px; margin: 0 auto;
     background: var(--bg); border: 1px solid var(--border);
     border-radius: 999px; padding: 6px 16px;
     color: var(--muted); font-size: 12.5px; text-align: center;
     overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
   }
-  .app-body { display: grid; grid-template-columns: 1fr 1.1fr; min-height: 620px; }
+  .app-body { display: grid; grid-template-columns: 1fr 1.15fr; min-height: 680px; }
   @media (max-width: 900px) { .app-body { grid-template-columns: 1fr; } }
 
-  /* --- Left: store / closet --- */
+  /* --- Left: lookbook --- */
   .store {
-    padding: 22px; border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; gap: 16px;
+    padding: 20px; border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 14px;
+    max-height: 780px; overflow-y: auto;
   }
-  @media (max-width: 900px) { .store { border-right: none; border-bottom: 1px solid var(--border); } }
+  .store::-webkit-scrollbar { width: 8px; }
+  .store::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  @media (max-width: 900px) { .store { border-right: none; border-bottom: 1px solid var(--border); max-height: 560px; } }
   .store-head { display: flex; align-items: baseline; justify-content: space-between; }
   .store-head h2 { font-size: 18px; font-weight: 800; }
   .store-head span { color: var(--muted); font-size: 12.5px; }
@@ -144,41 +142,57 @@
     color: var(--accent-2); border-radius: 12px;
     padding: 10px 14px; font-size: 13px; font-weight: 600;
   }
-  .garment-grid {
-    display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
-  }
-  @media (min-width: 1050px) { .garment-grid { grid-template-columns: repeat(2, 1fr); } }
+  .lookbook { column-count: 2; column-gap: 14px; }
+  @media (max-width: 460px) { .lookbook { column-count: 1; } }
   .garment-card {
-    background: var(--panel-2); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 12px;
-    cursor: grab; user-select: none;
+    break-inside: avoid; margin-bottom: 14px;
+    border-radius: var(--radius); overflow: hidden;
+    cursor: grab; user-select: none; position: relative;
+    border: 1px solid var(--border);
     transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
-    position: relative;
+    background: #000;
   }
   .garment-card:hover {
-    transform: translateY(-4px) rotate(-.6deg);
+    transform: translateY(-4px) rotate(-.5deg);
     border-color: var(--accent);
-    box-shadow: 0 14px 34px rgba(255,47,178,.22);
+    box-shadow: 0 14px 34px rgba(255,47,178,.28);
   }
   .garment-card:active { cursor: grabbing; }
   .garment-card.dragging { opacity: .35; }
-  .garment-card svg { width: 100%; height: auto; display: block; border-radius: 10px; background: #fff; }
-  .garment-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
-  .garment-meta .name { font-size: 13px; font-weight: 700; }
-  .garment-meta .price { font-size: 13px; color: var(--accent-2); font-weight: 800; }
-  .garment-card .badge {
-    position: absolute; top: 18px; left: 18px;
-    background: var(--accent); color: #fff; font-size: 10px; font-weight: 800;
-    padding: 3px 8px; border-radius: 999px; letter-spacing: .5px;
+  .garment-card svg.scene { width: 100%; height: auto; display: block; }
+  .garment-card .dots {
+    position: absolute; top: 10px; right: 10px;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: rgba(0,0,0,.4); color: #fff; backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; letter-spacing: 1px; font-weight: 800;
   }
+  .garment-card .badge {
+    position: absolute; top: 10px; left: 10px;
+    background: var(--accent); color: #fff; font-size: 10px; font-weight: 800;
+    padding: 4px 9px; border-radius: 999px; letter-spacing: .5px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  }
+  .garment-meta {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 26px 12px 10px;
+    background: linear-gradient(180deg, transparent, rgba(0,0,0,.78));
+  }
+  .garment-meta .name { font-size: 12.5px; font-weight: 700; text-shadow: 0 1px 4px rgba(0,0,0,.7); }
+  .garment-meta .price { font-size: 12.5px; color: var(--accent-3); font-weight: 800; }
 
   /* --- Right: mirror --- */
-  .mirror { position: relative; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 480px; }
-  .mirror video, .mirror .model-fallback { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  .mirror video { transform: scaleX(-1); }
+  .mirror { position: relative; background: #000; overflow: hidden; min-height: 540px; }
+  .mirror video, .mirror .model-fallback, .mirror .photo-stage {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+  }
+  .mirror video { object-fit: cover; transform: scaleX(-1); }
+  .photo-stage { display: none; align-items: center; justify-content: center; background: #08080b; }
+  .photo-stage img { width: 100%; height: 100%; object-fit: contain; }
   .model-fallback { display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(180deg, #23232e, #101016); }
-  .model-fallback svg { height: 96%; }
+    background: radial-gradient(700px 420px at 50% 12%, #2c2c3a, #101016 70%); }
+  .model-fallback svg { height: 97%; }
 
   .mirror.drop-ready::after {
     content: "ここにドロップして試着 👗";
@@ -191,51 +205,52 @@
     pointer-events: none;
   }
 
-  /* camera permission overlay */
   .cam-overlay {
     position: absolute; inset: 0; z-index: 20;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
-    background: rgba(11,11,15,.86); backdrop-filter: blur(6px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+    background: rgba(11,11,15,.88); backdrop-filter: blur(6px);
     text-align: center; padding: 24px;
   }
-  .cam-overlay .cam-icon { font-size: 44px; }
+  .cam-overlay .cam-icon { font-size: 42px; }
   .cam-overlay h3 { font-size: 21px; font-weight: 800; }
-  .cam-overlay p { color: var(--muted); font-size: 14px; max-width: 340px; line-height: 1.7; }
+  .cam-overlay p { color: var(--muted); font-size: 13.5px; max-width: 380px; line-height: 1.75; }
   .cam-overlay.hidden { display: none; }
+  .cam-overlay .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 
-  /* worn garment overlay */
+  /* worn garment overlay — transform is driven by JS (body tracking) */
   .worn-layer {
-    position: absolute; z-index: 10;
-    left: 50%; top: 54%;
-    transform: translate(-50%, -50%);
-    width: min(62%, 340px);
+    position: absolute; z-index: 10; left: 0; top: 0;
+    width: 300px;
     pointer-events: none;
-    filter: drop-shadow(0 10px 24px rgba(0,0,0,.45));
+    filter: drop-shadow(0 12px 26px rgba(0,0,0,.5));
     opacity: 0; transition: opacity .4s ease;
+    will-change: transform;
+    transform-origin: 50% 18%;
   }
-  .worn-layer.visible { opacity: .96; }
-  .worn-layer svg { width: 100%; height: auto; }
+  .worn-layer.visible { opacity: .97; }
+  .worn-layer svg { width: 100%; height: auto; display: block; }
 
-  /* AI scan effect */
-  .scanline {
-    position: absolute; inset: 0; z-index: 25; pointer-events: none; display: none;
-  }
+  .scanline { position: absolute; inset: 0; z-index: 25; pointer-events: none; display: none; }
   .scanline.active { display: block; }
   .scanline::before {
     content: ""; position: absolute; left: 0; right: 0; height: 120px; top: -120px;
     background: linear-gradient(180deg, transparent, rgba(34,211,238,.35), rgba(255,47,178,.35), transparent);
-    animation: scan 1.4s ease-in-out infinite;
+    animation: scan 1.2s ease-in-out infinite;
   }
   @keyframes scan { 0% { top: -120px; } 100% { top: 100%; } }
-  .ai-chip {
+
+  .status-chip {
     position: absolute; top: 16px; left: 16px; z-index: 26;
-    display: none; align-items: center; gap: 8px;
-    background: rgba(0,0,0,.65); border: 1px solid var(--accent-2);
-    color: var(--accent-2); font-size: 12.5px; font-weight: 800;
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(0,0,0,.65); border: 1px solid var(--border);
+    color: var(--muted); font-size: 12px; font-weight: 800;
     padding: 7px 14px; border-radius: 999px; backdrop-filter: blur(4px);
+    max-width: 70%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
-  .ai-chip.active { display: inline-flex; }
-  .ai-chip .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-2); animation: pulse 1s infinite; }
+  .status-chip.tracking { color: #4ade80; border-color: rgba(74,222,128,.5); }
+  .status-chip.searching { color: var(--accent-3); border-color: rgba(253,224,71,.5); }
+  .status-chip.fitting { color: var(--accent-2); border-color: var(--accent-2); }
+  .status-chip .pulse { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1s infinite; flex: none; }
   @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .3; transform: scale(.7); } }
 
   .worn-toast {
@@ -247,28 +262,23 @@
   .worn-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .worn-toast .price { color: var(--accent-3); margin-left: 6px; }
 
-  .mirror-controls {
-    position: absolute; top: 14px; right: 14px; z-index: 27;
-    display: flex; gap: 8px;
-  }
+  .mirror-controls { position: absolute; top: 14px; right: 14px; z-index: 27; display: flex; gap: 8px; }
   .icon-btn {
-    width: 38px; height: 38px; border-radius: 50%;
+    height: 38px; min-width: 38px; padding: 0 12px; border-radius: 999px;
     border: 1px solid var(--border); background: rgba(0,0,0,.6);
-    color: #fff; font-size: 16px; cursor: pointer; backdrop-filter: blur(4px);
-    display: flex; align-items: center; justify-content: center;
-    transition: background .15s ease;
+    color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    transition: background .15s ease; font-family: inherit;
   }
   .icon-btn:hover { background: rgba(255,47,178,.5); }
+  .icon-btn.active { background: rgba(255,47,178,.65); border-color: var(--accent); }
 
-  /* ---------- How it works ---------- */
-  .how { max-width: 1000px; margin: 0 auto; padding: 30px 24px 80px; text-align: center; }
+  /* ---------- How it works / tech ---------- */
+  .how { max-width: 1000px; margin: 0 auto; padding: 30px 24px 70px; text-align: center; }
   .how h2 { font-size: clamp(26px, 4vw, 38px); font-weight: 850; letter-spacing: -.5px; margin-bottom: 46px; }
   .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
   @media (max-width: 760px) { .steps { grid-template-columns: 1fr; } }
-  .step {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 20px; padding: 30px 24px; text-align: left;
-  }
+  .step { background: var(--panel); border: 1px solid var(--border); border-radius: 20px; padding: 30px 24px; text-align: left; }
   .step .num {
     display: inline-flex; align-items: center; justify-content: center;
     width: 36px; height: 36px; border-radius: 12px; margin-bottom: 16px;
@@ -276,9 +286,8 @@
     background: linear-gradient(120deg, var(--accent-3), var(--accent-2));
   }
   .step h3 { font-size: 17px; margin-bottom: 8px; }
-  .step p { color: var(--muted); font-size: 14px; line-height: 1.7; }
+  .step p { color: var(--muted); font-size: 14px; line-height: 1.75; }
 
-  /* ---------- CTA banner ---------- */
   .cta-banner {
     max-width: 1000px; margin: 0 auto 90px; padding: 54px 30px;
     border-radius: 26px; text-align: center;
@@ -291,7 +300,6 @@
   .cta-banner h2 { font-size: clamp(24px, 4vw, 36px); font-weight: 850; margin-bottom: 12px; }
   .cta-banner p { color: var(--muted); margin-bottom: 28px; }
 
-  /* ---------- Footer ---------- */
   footer {
     border-top: 1px solid var(--border);
     padding: 34px 28px; display: flex; flex-wrap: wrap; gap: 16px;
@@ -302,7 +310,6 @@
   footer a { color: var(--muted); text-decoration: none; }
   footer a:hover { color: var(--text); }
 
-  /* cookie banner */
   .cookie {
     position: fixed; left: 18px; bottom: 18px; z-index: 60;
     max-width: 360px; background: var(--panel-2); border: 1px solid var(--border);
@@ -313,14 +320,13 @@
   .cookie .btn { padding: 8px 16px; font-size: 13px; }
   .cookie.hidden { display: none; }
 
-  /* drag ghost for touch */
   .drag-ghost {
-    position: fixed; z-index: 100; width: 110px; pointer-events: none;
-    transform: translate(-50%, -60%) rotate(4deg); opacity: .9;
+    position: fixed; z-index: 100; width: 120px; pointer-events: none;
+    transform: translate(-50%, -60%) rotate(4deg); opacity: .92;
     filter: drop-shadow(0 10px 20px rgba(0,0,0,.5));
     display: none;
   }
-  .drag-ghost svg { width: 100%; height: auto; border-radius: 10px; background: #fff; }
+  .drag-ghost svg { width: 100%; height: auto; }
 </style>
 </head>
 <body>
@@ -328,7 +334,7 @@
 <header>
   <div class="logo">
     <div class="logo-mark"></div>
-    AnyFit <small>DEMO</small>
+    AnyFit <small>PROTOTYPE</small>
   </div>
   <div class="header-actions">
     <a class="btn ghost" href="#tryon">試着デモ</a>
@@ -337,12 +343,12 @@
 </header>
 
 <section class="hero">
-  <span class="eyebrow">AI Virtual Try-On</span>
+  <span class="eyebrow">AI Virtual Try-On &nbsp;·&nbsp; Real-time Body Tracking</span>
   <h1>どんなお店の服も、<br><span class="grad">その場で着てみる。</span></h1>
-  <p>オンラインストアの服をドラッグするだけで、あなたが着た姿がすぐに見られます。買う前に、鏡の前で。</p>
+  <p>服をドラッグするだけ。ブラウザ内AI(ポーズ推定)があなたの肩と体の向きをリアルタイムに検出し、服が体の動きに追従します。カメラ映像は端末の外に送信されません。</p>
   <div class="hero-cta">
     <a class="btn primary" href="#tryon"><span class="chrome-icon"></span> Add to Chrome — 無料</a>
-    <a class="btn" href="#tryon">サンプルで試す ▶</a>
+    <a class="btn" href="#tryon">ライブデモを試す ▶</a>
   </div>
 </section>
 
@@ -350,42 +356,49 @@
   <div class="app-shell">
     <div class="app-topbar">
       <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
-      <div class="url-pill">🔒 anyfit-demo.example.com — バーチャル試着</div>
+      <div class="url-pill">🔒 anyfit-demo.example.com — ライブ・バーチャル試着</div>
     </div>
     <div class="app-body">
 
-      <!-- Left: dummy store -->
+      <!-- Left: lookbook -->
       <div class="store">
         <div class="store-head">
-          <h2>🛍️ サンプルストア</h2>
+          <h2>🛍️ ルックブック</h2>
           <span>ダミー商品 6点</span>
         </div>
-        <div class="hint">👉 服をつかんで、右の鏡にドラッグ&ドロップ(タップでもOK)</div>
-        <div class="garment-grid" id="garmentGrid"></div>
+        <div class="hint">👉 アイテムをつかんで右の鏡へドラッグ(タップでもOK)</div>
+        <div class="lookbook" id="garmentGrid"></div>
       </div>
 
       <!-- Right: mirror -->
       <div class="mirror" id="mirror">
         <div class="model-fallback" id="modelFallback"></div>
         <video id="camVideo" autoplay playsinline muted></video>
+        <div class="photo-stage" id="photoStage"><img id="photoImg" alt=""></div>
 
         <div class="worn-layer" id="wornLayer"></div>
 
         <div class="scanline" id="scanline"></div>
-        <div class="ai-chip" id="aiChip"><span class="pulse"></span> AI FITTING…</div>
+        <div class="status-chip" id="statusChip"><span class="pulse"></span><span id="statusText">待機中</span></div>
         <div class="worn-toast" id="wornToast"></div>
 
         <div class="mirror-controls">
+          <button class="icon-btn" id="btnModeCam" title="カメラ(リアルタイム追従)">📷</button>
+          <button class="icon-btn" id="btnModePhoto" title="写真をアップロードして試着">🖼️</button>
+          <button class="icon-btn" id="btnModeModel" title="ダミーモデル">🧍</button>
           <button class="icon-btn" id="btnClear" title="脱ぐ">🧺</button>
-          <button class="icon-btn" id="btnCam" title="カメラ切替">📷</button>
         </div>
+        <input type="file" id="photoInput" accept="image/*" hidden>
 
         <div class="cam-overlay" id="camOverlay">
           <div class="cam-icon">📷</div>
-          <h3>カメラを有効にする</h3>
-          <p>カメラ映像はブラウザ内でのみ表示され、どこにも送信されません。カメラなしでもダミーモデルで試せます。</p>
-          <button class="btn primary" id="btnEnableCam">カメラを有効にする</button>
-          <button class="btn" id="btnUseModel">ダミーモデルで試す</button>
+          <h3>試着モードを選ぶ</h3>
+          <p>カメラモードでは、ブラウザ内のポーズ推定AIが肩の位置と傾きを検出し、服がリアルタイムに体へ追従します。映像・写真はすべて端末内で処理されます。</p>
+          <div class="row">
+            <button class="btn primary" id="btnEnableCam">📷 カメラで試着(追従あり)</button>
+            <button class="btn" id="btnUsePhoto">🖼️ 写真で試着</button>
+            <button class="btn" id="btnUseModel">🧍 ダミーモデル</button>
+          </div>
         </div>
       </div>
 
@@ -394,34 +407,34 @@
 </section>
 
 <section class="how">
-  <h2>使い方は3ステップ</h2>
+  <h2>プロトタイプの仕組み</h2>
   <div class="steps">
     <div class="step">
       <div class="num">1</div>
-      <h3>カメラをオンにする</h3>
-      <p>ブラウザのカメラを許可すると、画面があなたの「鏡」になります。カメラなしのモデルモードも選べます。</p>
+      <h3>ポーズ推定(ブラウザ内AI)</h3>
+      <p>MediaPipe Pose Landmarker がカメラ映像から肩・腰など33点の関節をリアルタイム検出。すべてWebAssembly/GPUでローカル実行されます。</p>
     </div>
     <div class="step">
       <div class="num">2</div>
-      <h3>服をドラッグする</h3>
-      <p>気になる服をつかんで鏡へドロップ。AIフィッティングのアニメーションが走り、瞬時に着せ替わります。</p>
+      <h3>服のフィッティング</h3>
+      <p>肩幅から服のスケール、肩のラインから傾きを毎フレーム計算し、スムージングをかけて服レイヤーを体に張り付けます。</p>
     </div>
     <div class="step">
       <div class="num">3</div>
-      <h3>着た姿をチェック</h3>
-      <p>似合ったらそのまま購入ページへ。何着でも、何度でも、無料で試着できます。</p>
+      <h3>どこでも試着</h3>
+      <p>カメラがなくても、写真アップロードやダミーモデルで同じフィッティングを体験できます。商品はドラッグ&ドロップで着せ替え。</p>
     </div>
   </div>
 </section>
 
 <section class="cta-banner">
   <h2>買う前に、着てみよう。</h2>
-  <p>これはデモサイトです。商品・ブランド・価格はすべてダミーです。</p>
+  <p>これは学習用の再現プロトタイプです。商品・ブランド・価格はすべてダミーです。</p>
   <a class="btn primary" href="#tryon"><span class="chrome-icon"></span> Add to Chrome — 無料</a>
 </section>
 
 <footer>
-  <div>© 2026 AnyFit Demo — 学習用の再現デモです</div>
+  <div>© 2026 AnyFit Prototype — 学習用の再現デモです</div>
   <nav>
     <a href="#">プライバシーポリシー</a>
     <a href="#">利用規約</a>
@@ -439,68 +452,298 @@
 
 <div class="drag-ghost" id="dragGhost"></div>
 
-<script>
-/* ================= Dummy garments (generated SVG) ================= */
+<script type="module">
+/* =====================================================================
+   Realistic garment art (SVG with fabric texture, folds, shading)
+   ===================================================================== */
 
-function patternDefs(id, c1, c2, c3) {
+/* shared defs: grain, print-melt displacement, soft blur */
+function fxDefs(id) {
   return `
-    <defs>
-      <pattern id="p${id}" width="46" height="46" patternUnits="userSpaceOnUse" patternTransform="rotate(18)">
-        <rect width="46" height="46" fill="${c1}"/>
-        <circle cx="10" cy="12" r="9" fill="${c2}"/>
-        <path d="M20 30 L40 22 L34 44 Z" fill="${c3}"/>
-        <rect x="28" y="2" width="14" height="10" rx="4" fill="${c3}" opacity=".85"/>
-        <circle cx="38" cy="36" r="6" fill="${c1}" stroke="${c2}" stroke-width="3"/>
-      </pattern>
-    </defs>`;
+    <filter id="grain${id}" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="2" result="n"/>
+      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.3 0.3 0.3 0 0"/>
+      <feComposite operator="in" in2="SourceGraphic"/>
+    </filter>
+    <filter id="melt${id}" x="-15%" y="-15%" width="130%" height="130%">
+      <feTurbulence type="turbulence" baseFrequency="0.022 0.03" numOctaves="2" seed="7" result="t"/>
+      <feDisplacementMap in="SourceGraphic" in2="t" scale="20" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="soft${id}"><feGaussianBlur stdDeviation="5"/></filter>
+    <filter id="soft2${id}"><feGaussianBlur stdDeviation="2.4"/></filter>
+    <linearGradient id="bodyShade${id}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".28"/>
+      <stop offset=".28" stop-color="#ffffff" stop-opacity=".05"/>
+      <stop offset=".72" stop-color="#000000" stop-opacity=".08"/>
+      <stop offset="1" stop-color="#000000" stop-opacity=".22"/>
+    </linearGradient>
+    <linearGradient id="sideShade${id}" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#000" stop-opacity=".38"/>
+      <stop offset=".16" stop-color="#000" stop-opacity="0"/>
+      <stop offset=".84" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".38"/>
+    </linearGradient>`;
 }
 
-/* jacket / hoodie / dress silhouettes, filled with the pattern */
-function jacketSVG(id, c1, c2, c3) {
-  return `<svg viewBox="0 0 200 210" xmlns="http://www.w3.org/2000/svg">
-    ${patternDefs(id, c1, c2, c3)}
-    <g stroke="#111" stroke-width="4" stroke-linejoin="round">
-      <path d="M62 42 Q100 18 138 42 L176 66 Q188 76 182 96 L168 132 Q160 142 150 134 L146 116 L146 186 Q100 200 54 186 L54 116 L50 134 Q40 142 32 132 L18 96 Q12 76 24 66 Z" fill="url(#p${id})"/>
-      <path d="M100 34 L100 190" stroke="#111" stroke-width="5" fill="none"/>
-      <path d="M62 42 Q100 66 138 42 L120 30 Q100 42 80 30 Z" fill="#111" opacity=".85"/>
-      <circle cx="100" cy="70" r="4" fill="#fff"/>
-      <circle cx="100" cy="100" r="4" fill="#fff"/>
-      <circle cx="100" cy="130" r="4" fill="#fff"/>
-    </g>
-  </svg>`;
-}
-function hoodieSVG(id, c1, c2, c3) {
-  return `<svg viewBox="0 0 200 210" xmlns="http://www.w3.org/2000/svg">
-    ${patternDefs(id, c1, c2, c3)}
-    <g stroke="#111" stroke-width="4" stroke-linejoin="round">
-      <path d="M64 52 Q100 12 136 52 L172 74 Q184 84 178 102 L166 134 Q158 144 148 136 L144 120 L144 186 Q100 198 56 186 L56 120 L52 136 Q42 144 34 134 L22 102 Q16 84 28 74 Z" fill="url(#p${id})"/>
-      <path d="M74 52 Q100 84 126 52 Q126 30 100 26 Q74 30 74 52 Z" fill="${c2}"/>
-      <path d="M88 96 L88 122 M112 96 L112 122" stroke="#111" stroke-width="5"/>
-      <rect x="72" y="142" width="56" height="34" rx="8" fill="${c3}" opacity=".9"/>
-    </g>
-  </svg>`;
-}
-function dressSVG(id, c1, c2, c3) {
-  return `<svg viewBox="0 0 200 210" xmlns="http://www.w3.org/2000/svg">
-    ${patternDefs(id, c1, c2, c3)}
-    <g stroke="#111" stroke-width="4" stroke-linejoin="round">
-      <path d="M76 24 L124 24 L132 58 L120 84 Q140 150 152 188 Q100 204 48 188 Q60 150 80 84 L68 58 Z" fill="url(#p${id})"/>
-      <path d="M76 24 Q100 44 124 24" fill="none"/>
-      <path d="M68 58 L132 58" fill="none" opacity=".6"/>
-    </g>
-  </svg>`;
+/* shading + wrinkles common to all garments, clipped to silhouette */
+function shading(id, folds) {
+  return `
+    <g clip-path="url(#clip${id})">
+      <rect x="-10" y="-10" width="220" height="270" fill="url(#bodyShade${id})"/>
+      <rect x="-10" y="-10" width="220" height="270" fill="url(#sideShade${id})"/>
+      ${folds.map(f => `<path d="${f}" fill="none" stroke="#000" stroke-opacity=".28" stroke-width="5" stroke-linecap="round" filter="url(#soft${id})"/>`).join("")}
+      ${folds.map(f => `<path d="${f}" fill="none" stroke="#fff" stroke-opacity=".12" stroke-width="2" stroke-linecap="round" filter="url(#soft2${id})" transform="translate(0,-4)"/>`).join("")}
+      <rect x="-10" y="-10" width="220" height="270" fill="#fff" filter="url(#grain${id})" opacity=".16"/>
+    </g>`;
 }
 
-const GARMENTS = [
-  { name: "レトロトラックジャケット", price: "¥8,900", make: jacketSVG, c: ["#ff2fb2", "#22d3ee", "#fde047"], badge: "人気 No.1" },
-  { name: "ネオンプリズムフーディ",   price: "¥7,400", make: hoodieSVG, c: ["#22d3ee", "#fde047", "#ff2fb2"] },
-  { name: "サイケデリックドレス",     price: "¥12,000", make: dressSVG,  c: ["#fde047", "#ff2fb2", "#22d3ee"] },
-  { name: "ミッドナイトボンバー",     price: "¥9,800", make: jacketSVG, c: ["#6366f1", "#f472b6", "#34d399"], badge: "NEW" },
-  { name: "シトラスパーカー",         price: "¥6,600", make: hoodieSVG, c: ["#fb923c", "#a3e635", "#38bdf8"] },
-  { name: "トロピカルサマードレス",   price: "¥10,500", make: dressSVG,  c: ["#34d399", "#fbbf24", "#f472b6"] },
+const TOP_FOLDS = [
+  "M58 120 Q66 138 60 168", "M142 120 Q134 138 140 168",
+  "M78 150 Q84 166 78 190", "M122 150 Q116 166 122 190",
+  "M92 100 Q100 112 108 100"
 ];
 
-/* ================= Render store ================= */
+/* --- 1. psychedelic puff-shoulder jacket (melted neon print) --- */
+function psyPrint(id) {
+  return `
+    <g filter="url(#melt${id})">
+      <rect x="-30" y="-30" width="260" height="300" fill="#ff2fb2"/>
+      <path d="M-30 10 H230 V44 H-30 Z" fill="#22d3ee"/>
+      <path d="M-30 70 H230 V96 H-30 Z" fill="#fde047"/>
+      <path d="M-30 120 H230 V158 H-30 Z" fill="#22d3ee"/>
+      <path d="M-30 186 H230 V214 H-30 Z" fill="#fde047"/>
+      <path d="M-30 236 H230 V270 H-30 Z" fill="#22d3ee"/>
+      <circle cx="40" cy="60" r="20" fill="#fde047"/>
+      <circle cx="160" cy="110" r="24" fill="#ff2fb2"/>
+      <circle cx="70" cy="170" r="16" fill="#ff2fb2"/>
+      <circle cx="150" cy="210" r="18" fill="#22d3ee"/>
+    </g>`;
+}
+function psyJacket(id) {
+  const sil = "M100 30 Q120 30 132 38 Q166 30 182 56 Q194 76 186 102 Q180 122 166 128 L162 118 Q160 150 158 196 Q130 210 100 210 Q70 210 42 196 Q40 150 38 118 L34 128 Q20 122 14 102 Q6 76 18 56 Q34 30 68 38 Q80 30 100 30 Z";
+  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
+    <defs>${fxDefs(id)}<clipPath id="clip${id}"><path d="${sil}"/></clipPath></defs>
+    <g clip-path="url(#clip${id})">${psyPrint(id)}</g>
+    ${shading(id, ["M52 64 Q44 84 46 108", "M148 64 Q156 84 154 108", ...TOP_FOLDS])}
+    <g clip-path="url(#clip${id})">
+      <path d="M98 44 L98 208 L104 208 L104 44 Z" fill="#101014"/>
+      <rect x="97" y="58" width="8" height="12" rx="2" fill="#d9d9e0"/>
+      <path d="M100 32 Q88 38 84 48 Q100 56 116 48 Q112 38 100 32 Z" fill="#101014" opacity=".92"/>
+    </g>
+    <path d="${sil}" fill="none" stroke="#0a0a0c" stroke-opacity=".55" stroke-width="3"/>
+  </svg>`;
+}
+
+/* --- 2. neon track jacket --- */
+function trackJacket(id) {
+  const sil = "M100 26 Q116 26 126 34 L158 46 Q176 54 178 74 L182 116 Q182 128 170 130 L160 124 L158 198 Q130 212 100 212 Q70 212 42 198 L40 124 L30 130 Q18 128 18 116 L22 74 Q24 54 42 46 L74 34 Q84 26 100 26 Z";
+  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
+    <defs>${fxDefs(id)}
+      <clipPath id="clip${id}"><path d="${sil}"/></clipPath>
+      <linearGradient id="trk${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#38e1f5"/><stop offset=".5" stop-color="#18b8d8"/><stop offset="1" stop-color="#0e93b6"/>
+      </linearGradient>
+    </defs>
+    <g clip-path="url(#clip${id})">
+      <rect x="-10" y="-10" width="220" height="270" fill="url(#trk${id})"/>
+      <g filter="url(#melt${id})">
+        <path d="M-20 90 Q60 60 110 96 Q160 130 220 100 L220 150 Q150 180 90 146 Q40 120 -20 140 Z" fill="#ff2fb2" opacity=".95"/>
+        <path d="M-20 44 Q70 24 130 52 Q180 74 220 56 L220 84 Q160 104 100 74 Q50 52 -20 70 Z" fill="#fde047" opacity=".95"/>
+      </g>
+      <path d="M22 74 L26 128 M178 74 L174 128" stroke="#fff" stroke-opacity=".8" stroke-width="5"/>
+      <path d="M97 40 L97 210 L103 210 L103 40 Z" fill="#0e2a33"/>
+      <rect x="96" y="54" width="8" height="11" rx="2" fill="#e8f6fa"/>
+      <path d="M100 26 Q88 34 84 44 L100 52 L116 44 Q112 34 100 26 Z" fill="#0e2a33"/>
+      <rect x="40" y="188" width="120" height="24" fill="#0e2a33" opacity=".85"/>
+      <path d="M40 194 H160 M40 204 H160" stroke="#38e1f5" stroke-width="2" opacity=".6"/>
+    </g>
+    ${shading(id, TOP_FOLDS)}
+    <path d="${sil}" fill="none" stroke="#06222b" stroke-opacity=".6" stroke-width="3"/>
+  </svg>`;
+}
+
+/* --- 3. liquid silver halter top --- */
+function silverHalter(id) {
+  const sil = "M100 22 L128 40 Q140 48 138 64 L132 96 Q130 150 134 186 Q100 198 66 186 Q70 150 68 96 L62 64 Q60 48 72 40 Z";
+  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
+    <defs>${fxDefs(id)}
+      <clipPath id="clip${id}"><path d="${sil}"/></clipPath>
+      <linearGradient id="slv${id}" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#fafafd"/><stop offset=".3" stop-color="#b9bcc9"/>
+        <stop offset=".5" stop-color="#eceef5"/><stop offset=".72" stop-color="#8e93a6"/>
+        <stop offset="1" stop-color="#d8dae5"/>
+      </linearGradient>
+    </defs>
+    <g clip-path="url(#clip${id})">
+      <rect x="-10" y="-10" width="220" height="270" fill="url(#slv${id})"/>
+      <g filter="url(#melt${id})">
+        <path d="M60 40 Q80 90 66 150 Q90 120 96 60 Z" fill="#fff" opacity=".8"/>
+        <path d="M140 44 Q120 100 134 170 Q110 130 106 66 Z" fill="#6d7183" opacity=".55"/>
+        <path d="M84 120 Q100 140 118 118 Q112 160 88 158 Z" fill="#fff" opacity=".6"/>
+      </g>
+      <path d="M100 22 L96 190 M100 22 L106 190" stroke="#7c8093" stroke-width="1.6" opacity=".5"/>
+    </g>
+    ${shading(id, ["M80 110 Q86 130 80 158", "M120 110 Q114 130 120 158"])}
+    <circle cx="100" cy="24" r="5" fill="#c9ccd8" stroke="#83879a" stroke-width="2"/>
+    <path d="${sil}" fill="none" stroke="#5c6072" stroke-opacity=".6" stroke-width="2.5"/>
+  </svg>`;
+}
+
+/* --- 4. vintage denim jacket --- */
+function denimJacket(id) {
+  const sil = "M100 26 Q114 26 124 34 L156 46 Q174 54 176 74 L180 118 Q180 130 168 132 L158 126 L156 200 Q128 212 100 212 Q72 212 44 200 L42 126 L32 132 Q20 130 20 118 L24 74 Q26 54 44 46 L76 34 Q86 26 100 26 Z";
+  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
+    <defs>${fxDefs(id)}
+      <clipPath id="clip${id}"><path d="${sil}"/></clipPath>
+      <linearGradient id="den${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#7da4cc"/><stop offset=".45" stop-color="#5b83b0"/><stop offset="1" stop-color="#3e5f8a"/>
+      </linearGradient>
+    </defs>
+    <g clip-path="url(#clip${id})">
+      <rect x="-10" y="-10" width="220" height="270" fill="url(#den${id})"/>
+      <g filter="url(#melt${id})" opacity=".5">
+        <path d="M50 60 Q70 120 56 190 L84 190 Q92 120 78 56 Z" fill="#a9c6e4"/>
+        <path d="M150 60 Q130 120 144 190 L118 190 Q110 120 122 56 Z" fill="#315180"/>
+      </g>
+      <path d="M97 42 L97 210 L103 210 L103 42 Z" fill="#2c4a72"/>
+      <path d="M100 26 Q86 36 82 48 L100 56 L118 48 Q114 36 100 26 Z" fill="#2c4a72"/>
+      <path d="M56 70 L88 74 L86 112 L56 108 Z M144 70 L112 74 L114 112 L144 108 Z" fill="none" stroke="#e8c46a" stroke-width="2" opacity=".9"/>
+      <path d="M60 90 L84 93 M116 93 L140 90" stroke="#e8c46a" stroke-width="2" opacity=".9"/>
+      <circle cx="72" cy="82" r="4" fill="#caa64f" stroke="#8a6f2e" stroke-width="1.5"/>
+      <circle cx="128" cy="82" r="4" fill="#caa64f" stroke="#8a6f2e" stroke-width="1.5"/>
+      <circle cx="100" cy="68" r="3.6" fill="#caa64f"/><circle cx="100" cy="102" r="3.6" fill="#caa64f"/>
+      <circle cx="100" cy="136" r="3.6" fill="#caa64f"/><circle cx="100" cy="170" r="3.6" fill="#caa64f"/>
+      <rect x="42" y="186" width="116" height="26" fill="#345687"/>
+      <path d="M42 192 H158" stroke="#e8c46a" stroke-width="2" opacity=".8"/>
+      <path d="M24 76 L30 128 M176 76 L170 128" stroke="#e8c46a" stroke-width="2" opacity=".7"/>
+    </g>
+    ${shading(id, TOP_FOLDS)}
+    <path d="${sil}" fill="none" stroke="#1d3352" stroke-opacity=".7" stroke-width="3"/>
+  </svg>`;
+}
+
+/* --- 5. glossy leather biker jacket --- */
+function leatherJacket(id) {
+  const sil = "M100 26 Q114 26 126 36 L160 48 Q178 56 180 76 L184 120 Q184 132 172 134 L162 128 L160 200 Q130 214 100 214 Q70 214 40 200 L38 128 L28 134 Q16 132 16 120 L20 76 Q22 56 40 48 L74 36 Q86 26 100 26 Z";
+  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
+    <defs>${fxDefs(id)}
+      <clipPath id="clip${id}"><path d="${sil}"/></clipPath>
+      <linearGradient id="lth${id}" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#3a3a44"/><stop offset=".5" stop-color="#1b1b22"/><stop offset="1" stop-color="#26262e"/>
+      </linearGradient>
+    </defs>
+    <g clip-path="url(#clip${id})">
+      <rect x="-10" y="-10" width="220" height="270" fill="url(#lth${id})"/>
+      <g filter="url(#melt${id})">
+        <path d="M46 50 Q60 110 50 190 L64 192 Q76 110 62 48 Z" fill="#8e8ea2" opacity=".5"/>
+        <path d="M152 54 Q140 110 150 188 L138 190 Q128 110 140 52 Z" fill="#6f6f82" opacity=".4"/>
+        <path d="M88 60 Q96 130 90 200 L98 200 Q104 130 98 58 Z" fill="#9a9ab0" opacity=".35"/>
+      </g>
+      <path d="M84 40 L120 196 L128 194 L92 38 Z" fill="#0c0c10"/>
+      <g stroke="#c9ccd8" stroke-width="2.2" opacity=".9">
+        <path d="M87 52 L91 51 M92 72 L96 71 M97 92 L101 91 M102 112 L106 111 M107 132 L111 131 M112 152 L116 151 M117 172 L121 171"/>
+      </g>
+      <path d="M100 26 L70 60 L100 52 L130 60 Z" fill="#0c0c10"/>
+      <path d="M70 60 L58 96 M130 60 L142 96" stroke="#0c0c10" stroke-width="4"/>
+      <circle cx="62" cy="100" r="4" fill="#d3d6e0"/>
+      <circle cx="138" cy="100" r="4" fill="#d3d6e0"/>
+      <rect x="40" y="190" width="120" height="24" fill="#111116"/>
+      <rect x="128" y="196" width="20" height="9" rx="3" fill="#c9ccd8" opacity=".85"/>
+    </g>
+    ${shading(id, TOP_FOLDS)}
+    <path d="${sil}" fill="none" stroke="#000" stroke-opacity=".7" stroke-width="3"/>
+  </svg>`;
+}
+
+/* --- 6. tropical slip dress --- */
+function floralDress(id) {
+  const sil = "M78 24 L122 24 L128 52 L120 86 Q142 150 154 208 Q100 226 46 208 Q58 150 80 86 L72 52 Z";
+  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
+    <defs>${fxDefs(id)}
+      <clipPath id="clip${id}"><path d="${sil}"/></clipPath>
+      <linearGradient id="drs${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#2ec48f"/><stop offset="1" stop-color="#158f6a"/>
+      </linearGradient>
+      <g id="flower${id}">
+        <circle r="5.5" fill="#ffd166"/>
+        <g fill="#ff6ad5"><circle cx="0" cy="-9" r="5"/><circle cx="8.5" cy="-2.8" r="5"/><circle cx="5.3" cy="7.3" r="5"/><circle cx="-5.3" cy="7.3" r="5"/><circle cx="-8.5" cy="-2.8" r="5"/></g>
+      </g>
+    </defs>
+    <g clip-path="url(#clip${id})">
+      <rect x="-10" y="-10" width="220" height="270" fill="url(#drs${id})"/>
+      <g filter="url(#melt${id})" opacity=".95">
+        <use href="#flower${id}" x="70" y="60"/><use href="#flower${id}" x="120" y="90"/>
+        <use href="#flower${id}" x="85" y="130"/><use href="#flower${id}" x="130" y="160"/>
+        <use href="#flower${id}" x="65" y="180"/><use href="#flower${id}" x="105" y="200"/>
+      </g>
+      <path d="M80 86 L120 86" stroke="#0d6b4e" stroke-width="2.5" opacity=".7"/>
+      <path d="M78 24 Q100 40 122 24" fill="none" stroke="#0d6b4e" stroke-width="3" opacity=".8"/>
+      <path d="M70 120 Q76 170 62 206 M130 120 Q124 170 138 206 M100 96 Q100 160 100 214" stroke="#0d6b4e" stroke-width="3" opacity=".35" filter="url(#soft2${id})"/>
+    </g>
+    ${shading(id, ["M84 110 Q90 150 82 196", "M116 110 Q110 150 118 196"])}
+    <path d="${sil}" fill="none" stroke="#0a5940" stroke-opacity=".7" stroke-width="2.6"/>
+  </svg>`;
+}
+
+/* =====================================================================
+   Catalog + photo-style lookbook scenes
+   ===================================================================== */
+
+const GARMENTS = [
+  { name: "サイケパフジャケット", price: "¥14,800", make: psyJacket, badge: "動画で話題",
+    scene: "playa", h: 400, widthK: 2.35, shoulderY: 0.16 },
+  { name: "ネオントラックジャケット", price: "¥9,800", make: trackJacket,
+    scene: "studio", h: 360, widthK: 2.15, shoulderY: 0.155 },
+  { name: "リキッドシルバーホルター", price: "¥7,200", make: silverHalter, badge: "NEW",
+    scene: "night", h: 420, widthK: 1.75, shoulderY: 0.10 },
+  { name: "ヴィンテージデニムジャケット", price: "¥11,000", make: denimJacket,
+    scene: "desert", h: 360, widthK: 2.2, shoulderY: 0.155 },
+  { name: "グロスレザーバイカー", price: "¥19,800", make: leatherJacket,
+    scene: "runway", h: 400, widthK: 2.25, shoulderY: 0.155 },
+  { name: "トロピカルスリップドレス", price: "¥10,500", make: floralDress,
+    scene: "sunset", h: 430, widthK: 2.05, shoulderY: 0.095 },
+];
+
+const SCENES = {
+  playa:  { sky: ["#c8d4dc", "#e8ddc6"], ground: "#d9c49a", extra: `<path d="M0 176 L60 150 L120 172 L200 148 L260 176 Z" fill="#a9986f" opacity=".7"/>` },
+  desert: { sky: ["#9fb8c8", "#eadfc8"], ground: "#cdb890", extra: `<ellipse cx="210" cy="60" rx="26" ry="26" fill="#fff" opacity=".55"/>` },
+  runway: { sky: ["#f2f2f5", "#d8d8de"], ground: "#c4c4cc", extra: `<rect x="70" y="176" width="120" height="200" fill="#fff" opacity=".5"/>` },
+  studio: { sky: ["#55556a", "#2c2c3a"], ground: "#232330", extra: `<ellipse cx="130" cy="120" rx="130" ry="120" fill="#fff" opacity=".22"/>` },
+  night:  { sky: ["#232338", "#101020"], ground: "#12121e", extra: `<circle cx="50" cy="46" r="2" fill="#fff"/><circle cx="200" cy="30" r="1.6" fill="#fff"/><circle cx="150" cy="70" r="1.4" fill="#fff" opacity=".8"/><ellipse cx="130" cy="150" rx="150" ry="140" fill="#8a8aff" opacity=".2"/>` },
+  sunset: { sky: ["#f7b267", "#e8608a"], ground: "#7a3b58", extra: `<circle cx="130" cy="140" r="34" fill="#ffe08a" opacity=".85"/>` },
+};
+
+let sceneUid = 0;
+function sceneCard(g, idx) {
+  const s = SCENES[g.scene];
+  const uid = "s" + (sceneUid++);
+  const H = Math.round(g.h * 0.65) + 130;
+  const gy = H - 235;
+  return `<svg class="scene" viewBox="0 0 260 ${H}" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="sky${uid}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${s.sky[0]}"/><stop offset="1" stop-color="${s.sky[1]}"/>
+      </linearGradient>
+      <radialGradient id="spot${uid}" cx=".5" cy=".32" r=".75">
+        <stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+      </radialGradient>
+      <filter id="cardGrain${uid}">
+        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2"/>
+        <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.4 0.4 0.4 0 0"/>
+        <feComposite operator="in" in2="SourceGraphic"/>
+      </filter>
+    </defs>
+    <rect width="260" height="${H}" fill="url(#sky${uid})"/>
+    <rect y="${H * 0.62}" width="260" height="${H}" fill="${s.ground}"/>
+    ${s.extra}
+    <rect width="260" height="${H}" fill="url(#spot${uid})"/>
+    <ellipse cx="130" cy="${H - 22}" rx="78" ry="13" fill="#000" opacity=".3"/>
+    <g transform="translate(35 ${gy}) scale(0.95)">${g.make("card" + idx)}</g>
+    <rect width="260" height="${H}" fill="#fff" filter="url(#cardGrain${uid})" opacity=".35"/>
+  </svg>`;
+}
+
+/* render lookbook */
 const grid = document.getElementById("garmentGrid");
 GARMENTS.forEach((g, i) => {
   const card = document.createElement("div");
@@ -509,7 +752,8 @@ GARMENTS.forEach((g, i) => {
   card.dataset.index = i;
   card.innerHTML = `
     ${g.badge ? `<span class="badge">${g.badge}</span>` : ""}
-    ${g.make(i, ...g.c)}
+    <span class="dots">···</span>
+    ${sceneCard(g, i)}
     <div class="garment-meta">
       <span class="name">${g.name}</span>
       <span class="price">${g.price}</span>
@@ -517,101 +761,387 @@ GARMENTS.forEach((g, i) => {
   grid.appendChild(card);
 });
 
-/* ================= Model fallback (dummy person) ================= */
+/* =====================================================================
+   Dummy model (photo-styled illustration)
+   ===================================================================== */
 document.getElementById("modelFallback").innerHTML = `
-  <svg viewBox="0 0 300 560" xmlns="http://www.w3.org/2000/svg">
+  <svg viewBox="0 0 320 600" xmlns="http://www.w3.org/2000/svg">
     <defs>
-      <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#e8b48f"/><stop offset="1" stop-color="#d49a72"/>
+      <linearGradient id="mSkin" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#efc39d"/><stop offset="1" stop-color="#c98f66"/>
       </linearGradient>
+      <linearGradient id="mPants" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#44445a"/><stop offset="1" stop-color="#26262f"/>
+      </linearGradient>
+      <linearGradient id="mTee" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#6b6b80"/><stop offset="1" stop-color="#47475a"/>
+      </linearGradient>
+      <filter id="mSoft"><feGaussianBlur stdDeviation="3"/></filter>
     </defs>
-    <ellipse cx="150" cy="540" rx="120" ry="16" fill="rgba(0,0,0,.45)"/>
+    <ellipse cx="160" cy="576" rx="120" ry="15" fill="rgba(0,0,0,.5)"/>
     <g>
-      <rect x="128" y="330" width="18" height="180" rx="9" fill="#3b3b4a"/>
-      <rect x="154" y="330" width="18" height="180" rx="9" fill="#33333f"/>
-      <rect x="120" y="505" width="34" height="16" rx="8" fill="#111"/>
-      <rect x="148" y="505" width="34" height="16" rx="8" fill="#111"/>
-      <path d="M96 180 Q150 150 204 180 L216 320 Q150 344 84 320 Z" fill="#4b4b5c"/>
-      <rect x="78" y="188" width="22" height="130" rx="11" fill="url(#skin)"/>
-      <rect x="200" y="188" width="22" height="130" rx="11" fill="url(#skin)"/>
-      <rect x="138" y="140" width="24" height="40" fill="url(#skin)"/>
-      <circle cx="150" cy="112" r="42" fill="url(#skin)"/>
-      <path d="M108 100 Q120 52 150 56 Q186 52 192 104 Q194 76 178 64 Q160 48 134 58 Q112 68 108 100 Z" fill="#2c2434"/>
-      <circle cx="136" cy="110" r="4.5" fill="#222"/>
-      <circle cx="164" cy="110" r="4.5" fill="#222"/>
-      <path d="M138 132 Q150 140 162 132" stroke="#b0765a" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <path d="M132 350 L128 540 Q128 552 140 552 L152 552 Q158 552 158 542 L162 400 L166 542 Q166 552 172 552 L184 552 Q196 552 196 540 L190 350 Z" fill="url(#mPants)"/>
+      <path d="M126 548 L162 548 L162 566 Q140 572 122 566 Q118 556 126 548 Z" fill="#15151a"/>
+      <path d="M198 548 L162 548 L162 566 Q184 572 202 566 Q206 556 198 548 Z" fill="#15151a"/>
+      <path d="M104 196 Q160 168 216 196 L226 340 Q160 362 94 340 Z" fill="url(#mTee)"/>
+      <path d="M104 196 L82 208 Q74 258 80 306 Q86 318 98 314 L104 300 Z" fill="url(#mSkin)"/>
+      <path d="M216 196 L238 208 Q246 258 240 306 Q234 318 222 314 L216 300 Z" fill="url(#mSkin)"/>
+      <path d="M82 208 Q74 258 80 306" stroke="#a06c48" stroke-width="3" opacity=".4" fill="none" filter="url(#mSoft)"/>
+      <rect x="146" y="150" width="28" height="52" rx="12" fill="url(#mSkin)"/>
+      <path d="M146 168 Q160 180 174 168 L174 156 L146 156 Z" fill="#b57e58" opacity=".55" filter="url(#mSoft)"/>
+      <circle cx="160" cy="118" r="44" fill="url(#mSkin)"/>
+      <path d="M116 108 Q118 56 160 54 Q202 56 204 108 Q206 78 190 64 Q170 48 140 60 Q118 72 116 108 Z" fill="#241c2c"/>
+      <path d="M204 108 Q208 94 202 78 L210 96 Q210 106 204 112 Z" fill="#241c2c"/>
+      <ellipse cx="144" cy="116" rx="5" ry="6" fill="#2b2118"/>
+      <ellipse cx="176" cy="116" rx="5" ry="6" fill="#2b2118"/>
+      <path d="M141 104 Q144 100 150 102 M170 102 Q176 100 179 104" stroke="#241c2c" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M156 118 Q154 130 158 132 Q160 134 164 132" stroke="#b57e58" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+      <path d="M146 142 Q160 150 174 142" stroke="#a5643f" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <path d="M132 96 Q140 90 150 92 M170 92 Q180 90 188 96" stroke="#241c2c" stroke-width="4" fill="none" stroke-linecap="round" opacity=".9"/>
     </g>
-    <text x="150" y="40" text-anchor="middle" fill="#5b5b70" font-size="15" font-weight="700" font-family="sans-serif">ダミーモデル モード</text>
+    <text x="160" y="34" text-anchor="middle" fill="#6a6a80" font-size="15" font-weight="700" font-family="sans-serif">ダミーモデル モード</text>
   </svg>`;
 
-/* ================= Camera handling ================= */
+/* =====================================================================
+   Try-on engine: modes, pose tracking, fitting
+   ===================================================================== */
+const mirror = document.getElementById("mirror");
 const camVideo = document.getElementById("camVideo");
 const camOverlay = document.getElementById("camOverlay");
 const modelFallback = document.getElementById("modelFallback");
-let camStream = null;
+const photoStage = document.getElementById("photoStage");
+const photoImg = document.getElementById("photoImg");
+const photoInput = document.getElementById("photoInput");
+const wornLayer = document.getElementById("wornLayer");
+const scanline = document.getElementById("scanline");
+const statusChip = document.getElementById("statusChip");
+const statusText = document.getElementById("statusText");
+const wornToast = document.getElementById("wornToast");
+const dragGhost = document.getElementById("dragGhost");
 
-async function enableCamera() {
+const state = {
+  mode: "none",            // none | cam | photo | model
+  landmarker: null,
+  poseReady: false,
+  poseFailed: false,
+  runningMode: null,       // "VIDEO" | "IMAGE"
+  camStream: null,
+  wornIndex: null,
+  fitting: false,
+  rafId: null,
+  lastVideoTime: -1,
+  smooth: null,            // {x, y, w, a}
+  lostFrames: 0,
+  photoPose: null,         // one-shot detection result for photo mode
+};
+
+function setStatus(kind, text) {
+  statusChip.className = "status-chip " + kind;
+  statusText.textContent = text;
+}
+setStatus("", "待機中 — モードを選択してください");
+
+/* ---- pose model bootstrap (in-browser AI) ----
+   Prefer the vendored copy (works offline when served over http);
+   fall back to the public CDN (works from file:// with internet). */
+const MP_VER = "0.10.14";
+const POSE_SOURCES = [
+  {
+    bundle: new URL("./vendor/vision_bundle.mjs", import.meta.url).href,
+    wasm: new URL("./vendor/wasm", import.meta.url).href,
+    model: new URL("./vendor/pose_landmarker_lite.task", import.meta.url).href,
+  },
+  {
+    bundle: `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VER}/vision_bundle.mjs`,
+    wasm: `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VER}/wasm`,
+    model: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+  },
+];
+async function initPose() {
+  setStatus("fitting", "AIモデル読み込み中…");
+  for (const src of POSE_SOURCES) {
+    try {
+      const vision = await import(src.bundle);
+      const fileset = await vision.FilesetResolver.forVisionTasks(src.wasm);
+      const opts = delegate => ({
+        baseOptions: { modelAssetPath: src.model, delegate },
+        runningMode: "VIDEO",
+        numPoses: 1,
+      });
+      try {
+        state.landmarker = await vision.PoseLandmarker.createFromOptions(fileset, opts("GPU"));
+      } catch {
+        state.landmarker = await vision.PoseLandmarker.createFromOptions(fileset, opts("CPU"));
+      }
+      state.runningMode = "VIDEO";
+      state.poseReady = true;
+      return true;
+    } catch (e) {
+      console.warn("pose init failed for", src.bundle, e);
+    }
+  }
+  state.poseFailed = true;
+  return false;
+}
+let poseInitPromise = null;
+function ensurePose() { return poseInitPromise ??= initPose(); }
+
+async function setRunningMode(mode) {
+  if (!state.landmarker || state.runningMode === mode) return;
+  await state.landmarker.setOptions({ runningMode: mode });
+  state.runningMode = mode;
+}
+
+/* ---- mode switching ---- */
+function stopCam() {
+  if (state.camStream) { state.camStream.getTracks().forEach(t => t.stop()); state.camStream = null; }
+  if (state.rafId) { cancelAnimationFrame(state.rafId); state.rafId = null; }
+  camVideo.srcObject = null;
+}
+function showLayer(mode) {
+  camVideo.style.display = mode === "cam" ? "block" : "none";
+  photoStage.style.display = mode === "photo" ? "flex" : "none";
+  modelFallback.style.display = mode === "model" ? "flex" : "none";
+  document.getElementById("btnModeCam").classList.toggle("active", mode === "cam");
+  document.getElementById("btnModePhoto").classList.toggle("active", mode === "photo");
+  document.getElementById("btnModeModel").classList.toggle("active", mode === "model");
+}
+showLayer("none");
+
+async function enterCamMode() {
+  camOverlay.classList.add("hidden");
   try {
-    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-    camVideo.srcObject = camStream;
-    camVideo.style.display = "block";
-    modelFallback.style.display = "none";
-    camOverlay.classList.add("hidden");
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 } } });
+    stopCam();
+    state.camStream = stream;
+    camVideo.srcObject = stream;
+    state.mode = "cam";
+    showLayer("cam");
+    state.smooth = null;
+    const ok = await ensurePose();
+    if (ok) {
+      await setRunningMode("VIDEO");
+      setStatus("searching", "人物を探しています…");
+      startTrackLoop();
+    } else {
+      setStatus("", "静的モード(AI読み込み不可・中央配置)");
+    }
+    refit();
   } catch (e) {
     alert("カメラを起動できませんでした。ダミーモデルモードに切り替えます。");
-    useModelMode();
+    enterModelMode();
   }
 }
-function useModelMode() {
-  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
-  camVideo.style.display = "none";
-  camVideo.srcObject = null;
-  modelFallback.style.display = "flex";
+function enterModelMode() {
+  stopCam();
+  state.mode = "model";
+  showLayer("model");
   camOverlay.classList.add("hidden");
+  setStatus("", "ダミーモデル モード");
+  refit();
 }
-camVideo.style.display = "none";
+function enterPhotoMode() { photoInput.click(); }
 
-document.getElementById("btnEnableCam").addEventListener("click", enableCamera);
-document.getElementById("btnUseModel").addEventListener("click", useModelMode);
-document.getElementById("btnCam").addEventListener("click", () => {
-  if (camStream) useModelMode(); else enableCamera();
+photoInput.addEventListener("change", () => {
+  const file = photoInput.files && photoInput.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  photoImg.onload = async () => {
+    stopCam();
+    state.mode = "photo";
+    showLayer("photo");
+    camOverlay.classList.add("hidden");
+    state.photoPose = null;
+    const ok = await ensurePose();
+    if (ok) {
+      setStatus("fitting", "写真を解析中…");
+      try {
+        await setRunningMode("IMAGE");
+        const res = state.landmarker.detect(photoImg);
+        if (res.landmarks && res.landmarks.length) {
+          state.photoPose = res.landmarks[0];
+          setStatus("tracking", "人物を検出 — フィット済み");
+        } else {
+          setStatus("searching", "人物が見つかりません — 中央に配置します");
+        }
+      } catch (e) { setStatus("", "解析失敗 — 中央に配置します"); }
+    } else {
+      setStatus("", "静的モード(中央配置)");
+    }
+    refit();
+  };
+  photoImg.src = url;
 });
+
+document.getElementById("btnEnableCam").addEventListener("click", enterCamMode);
+document.getElementById("btnUsePhoto").addEventListener("click", enterPhotoMode);
+document.getElementById("btnUseModel").addEventListener("click", enterModelMode);
+document.getElementById("btnModeCam").addEventListener("click", enterCamMode);
+document.getElementById("btnModePhoto").addEventListener("click", enterPhotoMode);
+document.getElementById("btnModeModel").addEventListener("click", enterModelMode);
 document.getElementById("btnClear").addEventListener("click", () => {
+  state.wornIndex = null;
   wornLayer.classList.remove("visible");
   wornToast.classList.remove("show");
 });
 
-/* ================= Try-on (drag & drop + tap) ================= */
-const mirror = document.getElementById("mirror");
-const wornLayer = document.getElementById("wornLayer");
-const scanline = document.getElementById("scanline");
-const aiChip = document.getElementById("aiChip");
-const wornToast = document.getElementById("wornToast");
-const dragGhost = document.getElementById("dragGhost");
+/* warm up the AI model in the background */
+ensurePose().then(ok => {
+  if (state.mode === "none") setStatus("", ok ? "AI準備完了 — モードを選択してください" : "静的モード(AI読み込み不可)");
+});
+
+/* ---- coordinate mapping (object-fit aware) ---- */
+function coverMap(natW, natH) {
+  const r = mirror.getBoundingClientRect();
+  const s = Math.max(r.width / natW, r.height / natH);
+  return { s, ox: (r.width - natW * s) / 2, oy: (r.height - natH * s) / 2, W: r.width };
+}
+function containMap(natW, natH) {
+  const r = mirror.getBoundingClientRect();
+  const s = Math.min(r.width / natW, r.height / natH);
+  return { s, ox: (r.width - natW * s) / 2, oy: (r.height - natH * s) / 2, W: r.width };
+}
+
+/* ---- garment placement ---- */
+function applyWorn(x, y, w, angleDeg, instant) {
+  const g = GARMENTS[state.wornIndex];
+  if (!g) return;
+  /* smooth */
+  if (!state.smooth || instant) state.smooth = { x, y, w, a: angleDeg };
+  else {
+    const k = 0.35, s = state.smooth;
+    s.x += (x - s.x) * k; s.y += (y - s.y) * k;
+    s.w += (w - s.w) * k; s.a += (angleDeg - s.a) * k;
+  }
+  const s = state.smooth;
+  wornLayer.style.width = s.w + "px";
+  wornLayer.style.transformOrigin = `50% ${g.shoulderY * 100}%`;
+  /* anchor: garment's shoulder line (shoulderY of height) sits on the detected shoulder midpoint */
+  const h = s.w * 1.2; /* viewBox 200x240 */
+  wornLayer.style.transform =
+    `translate(${s.x - s.w / 2}px, ${s.y - h * g.shoulderY}px) rotate(${s.a}deg)`;
+}
+
+/* landmarks: 11 = left shoulder, 12 = right shoulder (normalized) */
+function placeFromLandmarks(lm, map, mirrored) {
+  const g = GARMENTS[state.wornIndex];
+  const L = lm[11], R = lm[12];
+  if (!L || !R) return false;
+  const vis = Math.min(L.visibility ?? 1, R.visibility ?? 1);
+  if (vis < 0.5) return false;
+  const px = p => {
+    let x = p.x;
+    if (mirrored) x = 1 - x;
+    return { x: map.ox + x * map.natW * map.s, y: map.oy + p.y * map.natH * map.s };
+  };
+  const a = px(L), b = px(R);
+  const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const shoulderW = Math.hypot(dx, dy);
+  if (shoulderW < 10) return false;
+  /* shoulder line angle; garment is drawn upright, left-shoulder→right-shoulder should map */
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI + (dx < 0 ? 180 : 0);
+  applyWorn(mid.x, mid.y, shoulderW * g.widthK, Math.max(-28, Math.min(28, angle)));
+  return true;
+}
+
+/* ---- realtime tracking loop (camera) ---- */
+function startTrackLoop() {
+  if (state.rafId) cancelAnimationFrame(state.rafId);
+  const loop = () => {
+    state.rafId = requestAnimationFrame(loop);
+    if (state.mode !== "cam" || !state.poseReady || camVideo.readyState < 2) return;
+    if (camVideo.currentTime === state.lastVideoTime) return;
+    state.lastVideoTime = camVideo.currentTime;
+    let res;
+    try { res = state.landmarker.detectForVideo(camVideo, performance.now()); }
+    catch { return; }
+    const natW = camVideo.videoWidth, natH = camVideo.videoHeight;
+    if (!natW) return;
+    const map = Object.assign(coverMap(natW, natH), { natW, natH });
+    if (res.landmarks && res.landmarks.length && state.wornIndex !== null && !state.fitting) {
+      const ok = placeFromLandmarks(res.landmarks[0], map, true);
+      if (ok) {
+        state.lostFrames = 0;
+        setStatus("tracking", "ボディトラッキング中 — 動いてみてください");
+        return;
+      }
+    }
+    if (state.wornIndex !== null && !state.fitting) {
+      if (++state.lostFrames === 45) {
+        setStatus("searching", "人物を探しています…(カメラに上半身を映してください)");
+        centerPlace();
+      }
+    } else if (res.landmarks && res.landmarks.length) {
+      setStatus("tracking", "人物を検出 — 服をドロップしてください");
+    }
+  };
+  loop();
+}
+
+/* ---- static placements ---- */
+function centerPlace() {
+  const r = mirror.getBoundingClientRect();
+  applyWorn(r.width / 2, r.height * 0.30, Math.min(r.width * 0.55, 330), 0, true);
+}
+function modelPlace() {
+  /* dummy model: SVG 320x600 shown with height:97% centered; shoulders at (160,196)-ish, width 112 */
+  const r = mirror.getBoundingClientRect();
+  const svgH = r.height * 0.97, s = svgH / 600;
+  const cx = r.width / 2, topY = (r.height - svgH) / 2;
+  const shoulderY = topY + 192 * s;
+  const shoulderW = 118 * s;
+  const g = GARMENTS[state.wornIndex];
+  applyWorn(cx, shoulderY, shoulderW * g.widthK, 0, true);
+}
+function photoPlace() {
+  const g = GARMENTS[state.wornIndex];
+  if (state.photoPose && photoImg.naturalWidth) {
+    const map = Object.assign(containMap(photoImg.naturalWidth, photoImg.naturalHeight),
+      { natW: photoImg.naturalWidth, natH: photoImg.naturalHeight });
+    if (placeFromLandmarks(state.photoPose, map, false)) return;
+  }
+  centerPlace();
+}
+
+function refit() {
+  if (state.wornIndex === null) return;
+  state.smooth = null;
+  if (state.mode === "model") modelPlace();
+  else if (state.mode === "photo") photoPlace();
+  else if (state.mode === "cam" && (!state.poseReady || state.poseFailed)) centerPlace();
+}
+window.addEventListener("resize", refit);
+
+/* ---- try-on with AI fitting animation ---- */
 let fittingTimer = null;
-
 function tryOn(index) {
+  if (state.mode === "none") enterModelMode();
   const g = GARMENTS[index];
-  camOverlay.classList.add("hidden");
-  if (!camStream) modelFallback.style.display = "flex";
-
+  state.wornIndex = index;
+  state.fitting = true;
   wornLayer.classList.remove("visible");
   wornToast.classList.remove("show");
   scanline.classList.add("active");
-  aiChip.classList.add("active");
-
+  setStatus("fitting", "AIフィッティング中…");
   clearTimeout(fittingTimer);
   fittingTimer = setTimeout(() => {
     scanline.classList.remove("active");
-    aiChip.classList.remove("active");
-    wornLayer.innerHTML = g.make("worn" + index, ...g.c);
+    state.fitting = false;
+    wornLayer.innerHTML = g.make("worn" + index);
+    state.smooth = null;
+    state.lostFrames = 0;
+    if (state.mode === "model") { modelPlace(); setStatus("", "ダミーモデル モード"); }
+    else if (state.mode === "photo") photoPlace();
+    else if (!state.poseReady) { centerPlace(); setStatus("", "静的モード(トラッキングなし・中央配置)"); }
+    else setStatus("searching", "人物を探しています…");
     wornLayer.classList.add("visible");
     wornToast.innerHTML = `✨ ${g.name} を試着中 <span class="price">${g.price}</span>`;
     wornToast.classList.add("show");
-  }, 1400);
+  }, 1100);
 }
 
-/* --- HTML5 drag & drop (desktop) --- */
+/* ---- drag & drop (desktop) ---- */
 document.querySelectorAll(".garment-card").forEach(card => {
   card.addEventListener("dragstart", e => {
     e.dataTransfer.setData("text/plain", card.dataset.index);
@@ -619,10 +1149,8 @@ document.querySelectorAll(".garment-card").forEach(card => {
     card.classList.add("dragging");
   });
   card.addEventListener("dragend", () => card.classList.remove("dragging"));
-  /* tap / click to try on (mobile-friendly) */
   card.addEventListener("click", () => tryOn(+card.dataset.index));
 });
-
 mirror.addEventListener("dragover", e => { e.preventDefault(); mirror.classList.add("drop-ready"); });
 mirror.addEventListener("dragleave", () => mirror.classList.remove("drop-ready"));
 mirror.addEventListener("drop", e => {
@@ -632,13 +1160,12 @@ mirror.addEventListener("drop", e => {
   if (idx !== "") tryOn(+idx);
 });
 
-/* --- touch drag ghost (mobile) --- */
+/* ---- touch drag (mobile) ---- */
 let touchIndex = null;
 document.querySelectorAll(".garment-card").forEach(card => {
   card.addEventListener("touchstart", e => {
     touchIndex = +card.dataset.index;
-    const g = GARMENTS[touchIndex];
-    dragGhost.innerHTML = g.make("ghost" + touchIndex, ...g.c);
+    dragGhost.innerHTML = GARMENTS[touchIndex].make("ghost" + touchIndex);
     const t = e.touches[0];
     dragGhost.style.left = t.clientX + "px";
     dragGhost.style.top = t.clientY + "px";
@@ -659,13 +1186,14 @@ document.querySelectorAll(".garment-card").forEach(card => {
     if (touchIndex === null) return;
     const t = e.changedTouches[0];
     const r = mirror.getBoundingClientRect();
-    if (t.clientX > r.left && t.clientX < r.right && t.clientY > r.top && t.clientY < r.bottom) {
-      tryOn(touchIndex);
-    }
+    if (t.clientX > r.left && t.clientX < r.right && t.clientY > r.top && t.clientY < r.bottom) tryOn(touchIndex);
     mirror.classList.remove("drop-ready");
     touchIndex = null;
   });
 });
+
+/* expose minimal test hook */
+window.__anyfit = { state, tryOn, enterModelMode };
 </script>
 </body>
 </html>
