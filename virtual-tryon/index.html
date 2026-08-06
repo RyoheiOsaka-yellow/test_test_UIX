@@ -159,7 +159,7 @@
   }
   .garment-card:active { cursor: grabbing; }
   .garment-card.dragging { opacity: .35; }
-  .garment-card svg.scene { width: 100%; height: auto; display: block; }
+  .garment-card img.scene { width: 100%; height: auto; display: block; }
   .garment-card .dots {
     position: absolute; top: 10px; right: 10px;
     width: 30px; height: 30px; border-radius: 50%;
@@ -184,15 +184,12 @@
 
   /* --- Right: mirror --- */
   .mirror { position: relative; background: #000; overflow: hidden; min-height: 540px; }
-  .mirror video, .mirror .model-fallback, .mirror .photo-stage {
+  .mirror video, .mirror .model-stage, .mirror .photo-stage {
     position: absolute; inset: 0; width: 100%; height: 100%;
   }
   .mirror video { object-fit: cover; transform: scaleX(-1); }
-  .photo-stage { display: none; align-items: center; justify-content: center; background: #08080b; }
-  .photo-stage img { width: 100%; height: 100%; object-fit: contain; }
-  .model-fallback { display: flex; align-items: center; justify-content: center;
-    background: radial-gradient(700px 420px at 50% 12%, #2c2c3a, #101016 70%); }
-  .model-fallback svg { height: 97%; }
+  .photo-stage, .model-stage { display: none; align-items: center; justify-content: center; background: #08080b; }
+  .photo-stage img, .model-stage img { width: 100%; height: 100%; object-fit: contain; }
 
   .mirror.drop-ready::after {
     content: "ここにドロップして試着 👗";
@@ -227,8 +224,9 @@
     will-change: transform;
     transform-origin: 50% 18%;
   }
-  .worn-layer.visible { opacity: .97; }
-  .worn-layer svg { width: 100%; height: auto; display: block; }
+  .worn-layer.visible { opacity: .98; }
+  .worn-layer img { width: 100%; height: auto; display: block;
+    filter: brightness(1.02) contrast(1.01); }
 
   .scanline { position: absolute; inset: 0; z-index: 25; pointer-events: none; display: none; }
   .scanline.active { display: block; }
@@ -326,7 +324,7 @@
     filter: drop-shadow(0 10px 20px rgba(0,0,0,.5));
     display: none;
   }
-  .drag-ghost svg { width: 100%; height: auto; }
+  .drag-ghost img { width: 100%; height: auto; }
 </style>
 </head>
 <body>
@@ -364,7 +362,7 @@
       <div class="store">
         <div class="store-head">
           <h2>🛍️ ルックブック</h2>
-          <span>ダミー商品 6点</span>
+          <span>ダミー商品 5点</span>
         </div>
         <div class="hint">👉 アイテムをつかんで右の鏡へドラッグ(タップでもOK)</div>
         <div class="lookbook" id="garmentGrid"></div>
@@ -372,7 +370,7 @@
 
       <!-- Right: mirror -->
       <div class="mirror" id="mirror">
-        <div class="model-fallback" id="modelFallback"></div>
+        <div class="model-stage" id="modelStage"><img id="modelImg" alt="モデル"></div>
         <video id="camVideo" autoplay playsinline muted></video>
         <div class="photo-stage" id="photoStage"><img id="photoImg" alt=""></div>
 
@@ -385,7 +383,7 @@
         <div class="mirror-controls">
           <button class="icon-btn" id="btnModeCam" title="カメラ(リアルタイム追従)">📷</button>
           <button class="icon-btn" id="btnModePhoto" title="写真をアップロードして試着">🖼️</button>
-          <button class="icon-btn" id="btnModeModel" title="ダミーモデル">🧍</button>
+          <button class="icon-btn" id="btnModeModel" title="モデル写真で試着(もう一度押すと人物切替)">🧍</button>
           <button class="icon-btn" id="btnClear" title="脱ぐ">🧺</button>
         </div>
         <input type="file" id="photoInput" accept="image/*" hidden>
@@ -397,7 +395,7 @@
           <div class="row">
             <button class="btn primary" id="btnEnableCam">📷 カメラで試着(追従あり)</button>
             <button class="btn" id="btnUsePhoto">🖼️ 写真で試着</button>
-            <button class="btn" id="btnUseModel">🧍 ダミーモデル</button>
+            <button class="btn" id="btnUseModel">🧍 モデル写真で試着</button>
           </div>
         </div>
       </div>
@@ -439,6 +437,7 @@
     <a href="#">プライバシーポリシー</a>
     <a href="#">利用規約</a>
     <a href="#">利用ガイドライン</a>
+    <a href="https://unsplash.com/license" target="_blank" rel="noopener">写真素材: Unsplash License</a>
   </nav>
 </footer>
 
@@ -454,294 +453,34 @@
 
 <script type="module">
 /* =====================================================================
-   Realistic garment art (SVG with fabric texture, folds, shading)
+   Catalog — real garment photos (Unsplash License), cut out for try-on
    ===================================================================== */
-
-/* shared defs: grain, print-melt displacement, soft blur */
-function fxDefs(id) {
-  return `
-    <filter id="grain${id}" x="-5%" y="-5%" width="110%" height="110%">
-      <feTurbulence type="fractalNoise" baseFrequency="0.55" numOctaves="2" result="n"/>
-      <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.3 0.3 0.3 0 0"/>
-      <feComposite operator="in" in2="SourceGraphic"/>
-    </filter>
-    <filter id="melt${id}" x="-15%" y="-15%" width="130%" height="130%">
-      <feTurbulence type="turbulence" baseFrequency="0.022 0.03" numOctaves="2" seed="7" result="t"/>
-      <feDisplacementMap in="SourceGraphic" in2="t" scale="20" xChannelSelector="R" yChannelSelector="G"/>
-    </filter>
-    <filter id="soft${id}"><feGaussianBlur stdDeviation="5"/></filter>
-    <filter id="soft2${id}"><feGaussianBlur stdDeviation="2.4"/></filter>
-    <linearGradient id="bodyShade${id}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity=".28"/>
-      <stop offset=".28" stop-color="#ffffff" stop-opacity=".05"/>
-      <stop offset=".72" stop-color="#000000" stop-opacity=".08"/>
-      <stop offset="1" stop-color="#000000" stop-opacity=".22"/>
-    </linearGradient>
-    <linearGradient id="sideShade${id}" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#000" stop-opacity=".38"/>
-      <stop offset=".16" stop-color="#000" stop-opacity="0"/>
-      <stop offset=".84" stop-color="#000" stop-opacity="0"/>
-      <stop offset="1" stop-color="#000" stop-opacity=".38"/>
-    </linearGradient>`;
-}
-
-/* shading + wrinkles common to all garments, clipped to silhouette */
-function shading(id, folds) {
-  return `
-    <g clip-path="url(#clip${id})">
-      <rect x="-10" y="-10" width="220" height="270" fill="url(#bodyShade${id})"/>
-      <rect x="-10" y="-10" width="220" height="270" fill="url(#sideShade${id})"/>
-      ${folds.map(f => `<path d="${f}" fill="none" stroke="#000" stroke-opacity=".28" stroke-width="5" stroke-linecap="round" filter="url(#soft${id})"/>`).join("")}
-      ${folds.map(f => `<path d="${f}" fill="none" stroke="#fff" stroke-opacity=".12" stroke-width="2" stroke-linecap="round" filter="url(#soft2${id})" transform="translate(0,-4)"/>`).join("")}
-      <rect x="-10" y="-10" width="220" height="270" fill="#fff" filter="url(#grain${id})" opacity=".16"/>
-    </g>`;
-}
-
-const TOP_FOLDS = [
-  "M58 120 Q66 138 60 168", "M142 120 Q134 138 140 168",
-  "M78 150 Q84 166 78 190", "M122 150 Q116 166 122 190",
-  "M92 100 Q100 112 108 100"
-];
-
-/* --- 1. psychedelic puff-shoulder jacket (melted neon print) --- */
-function psyPrint(id) {
-  return `
-    <g filter="url(#melt${id})">
-      <rect x="-30" y="-30" width="260" height="300" fill="#ff2fb2"/>
-      <path d="M-30 10 H230 V44 H-30 Z" fill="#22d3ee"/>
-      <path d="M-30 70 H230 V96 H-30 Z" fill="#fde047"/>
-      <path d="M-30 120 H230 V158 H-30 Z" fill="#22d3ee"/>
-      <path d="M-30 186 H230 V214 H-30 Z" fill="#fde047"/>
-      <path d="M-30 236 H230 V270 H-30 Z" fill="#22d3ee"/>
-      <circle cx="40" cy="60" r="20" fill="#fde047"/>
-      <circle cx="160" cy="110" r="24" fill="#ff2fb2"/>
-      <circle cx="70" cy="170" r="16" fill="#ff2fb2"/>
-      <circle cx="150" cy="210" r="18" fill="#22d3ee"/>
-    </g>`;
-}
-function psyJacket(id) {
-  const sil = "M100 30 Q120 30 132 38 Q166 30 182 56 Q194 76 186 102 Q180 122 166 128 L162 118 Q160 150 158 196 Q130 210 100 210 Q70 210 42 196 Q40 150 38 118 L34 128 Q20 122 14 102 Q6 76 18 56 Q34 30 68 38 Q80 30 100 30 Z";
-  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
-    <defs>${fxDefs(id)}<clipPath id="clip${id}"><path d="${sil}"/></clipPath></defs>
-    <g clip-path="url(#clip${id})">${psyPrint(id)}</g>
-    ${shading(id, ["M52 64 Q44 84 46 108", "M148 64 Q156 84 154 108", ...TOP_FOLDS])}
-    <g clip-path="url(#clip${id})">
-      <path d="M98 44 L98 208 L104 208 L104 44 Z" fill="#101014"/>
-      <rect x="97" y="58" width="8" height="12" rx="2" fill="#d9d9e0"/>
-      <path d="M100 32 Q88 38 84 48 Q100 56 116 48 Q112 38 100 32 Z" fill="#101014" opacity=".92"/>
-    </g>
-    <path d="${sil}" fill="none" stroke="#0a0a0c" stroke-opacity=".55" stroke-width="3"/>
-  </svg>`;
-}
-
-/* --- 2. neon track jacket --- */
-function trackJacket(id) {
-  const sil = "M100 26 Q116 26 126 34 L158 46 Q176 54 178 74 L182 116 Q182 128 170 130 L160 124 L158 198 Q130 212 100 212 Q70 212 42 198 L40 124 L30 130 Q18 128 18 116 L22 74 Q24 54 42 46 L74 34 Q84 26 100 26 Z";
-  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
-    <defs>${fxDefs(id)}
-      <clipPath id="clip${id}"><path d="${sil}"/></clipPath>
-      <linearGradient id="trk${id}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#38e1f5"/><stop offset=".5" stop-color="#18b8d8"/><stop offset="1" stop-color="#0e93b6"/>
-      </linearGradient>
-    </defs>
-    <g clip-path="url(#clip${id})">
-      <rect x="-10" y="-10" width="220" height="270" fill="url(#trk${id})"/>
-      <g filter="url(#melt${id})">
-        <path d="M-20 90 Q60 60 110 96 Q160 130 220 100 L220 150 Q150 180 90 146 Q40 120 -20 140 Z" fill="#ff2fb2" opacity=".95"/>
-        <path d="M-20 44 Q70 24 130 52 Q180 74 220 56 L220 84 Q160 104 100 74 Q50 52 -20 70 Z" fill="#fde047" opacity=".95"/>
-      </g>
-      <path d="M22 74 L26 128 M178 74 L174 128" stroke="#fff" stroke-opacity=".8" stroke-width="5"/>
-      <path d="M97 40 L97 210 L103 210 L103 40 Z" fill="#0e2a33"/>
-      <rect x="96" y="54" width="8" height="11" rx="2" fill="#e8f6fa"/>
-      <path d="M100 26 Q88 34 84 44 L100 52 L116 44 Q112 34 100 26 Z" fill="#0e2a33"/>
-      <rect x="40" y="188" width="120" height="24" fill="#0e2a33" opacity=".85"/>
-      <path d="M40 194 H160 M40 204 H160" stroke="#38e1f5" stroke-width="2" opacity=".6"/>
-    </g>
-    ${shading(id, TOP_FOLDS)}
-    <path d="${sil}" fill="none" stroke="#06222b" stroke-opacity=".6" stroke-width="3"/>
-  </svg>`;
-}
-
-/* --- 3. liquid silver halter top --- */
-function silverHalter(id) {
-  const sil = "M100 22 L128 40 Q140 48 138 64 L132 96 Q130 150 134 186 Q100 198 66 186 Q70 150 68 96 L62 64 Q60 48 72 40 Z";
-  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
-    <defs>${fxDefs(id)}
-      <clipPath id="clip${id}"><path d="${sil}"/></clipPath>
-      <linearGradient id="slv${id}" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#fafafd"/><stop offset=".3" stop-color="#b9bcc9"/>
-        <stop offset=".5" stop-color="#eceef5"/><stop offset=".72" stop-color="#8e93a6"/>
-        <stop offset="1" stop-color="#d8dae5"/>
-      </linearGradient>
-    </defs>
-    <g clip-path="url(#clip${id})">
-      <rect x="-10" y="-10" width="220" height="270" fill="url(#slv${id})"/>
-      <g filter="url(#melt${id})">
-        <path d="M60 40 Q80 90 66 150 Q90 120 96 60 Z" fill="#fff" opacity=".8"/>
-        <path d="M140 44 Q120 100 134 170 Q110 130 106 66 Z" fill="#6d7183" opacity=".55"/>
-        <path d="M84 120 Q100 140 118 118 Q112 160 88 158 Z" fill="#fff" opacity=".6"/>
-      </g>
-      <path d="M100 22 L96 190 M100 22 L106 190" stroke="#7c8093" stroke-width="1.6" opacity=".5"/>
-    </g>
-    ${shading(id, ["M80 110 Q86 130 80 158", "M120 110 Q114 130 120 158"])}
-    <circle cx="100" cy="24" r="5" fill="#c9ccd8" stroke="#83879a" stroke-width="2"/>
-    <path d="${sil}" fill="none" stroke="#5c6072" stroke-opacity=".6" stroke-width="2.5"/>
-  </svg>`;
-}
-
-/* --- 4. vintage denim jacket --- */
-function denimJacket(id) {
-  const sil = "M100 26 Q114 26 124 34 L156 46 Q174 54 176 74 L180 118 Q180 130 168 132 L158 126 L156 200 Q128 212 100 212 Q72 212 44 200 L42 126 L32 132 Q20 130 20 118 L24 74 Q26 54 44 46 L76 34 Q86 26 100 26 Z";
-  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
-    <defs>${fxDefs(id)}
-      <clipPath id="clip${id}"><path d="${sil}"/></clipPath>
-      <linearGradient id="den${id}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#7da4cc"/><stop offset=".45" stop-color="#5b83b0"/><stop offset="1" stop-color="#3e5f8a"/>
-      </linearGradient>
-    </defs>
-    <g clip-path="url(#clip${id})">
-      <rect x="-10" y="-10" width="220" height="270" fill="url(#den${id})"/>
-      <g filter="url(#melt${id})" opacity=".5">
-        <path d="M50 60 Q70 120 56 190 L84 190 Q92 120 78 56 Z" fill="#a9c6e4"/>
-        <path d="M150 60 Q130 120 144 190 L118 190 Q110 120 122 56 Z" fill="#315180"/>
-      </g>
-      <path d="M97 42 L97 210 L103 210 L103 42 Z" fill="#2c4a72"/>
-      <path d="M100 26 Q86 36 82 48 L100 56 L118 48 Q114 36 100 26 Z" fill="#2c4a72"/>
-      <path d="M56 70 L88 74 L86 112 L56 108 Z M144 70 L112 74 L114 112 L144 108 Z" fill="none" stroke="#e8c46a" stroke-width="2" opacity=".9"/>
-      <path d="M60 90 L84 93 M116 93 L140 90" stroke="#e8c46a" stroke-width="2" opacity=".9"/>
-      <circle cx="72" cy="82" r="4" fill="#caa64f" stroke="#8a6f2e" stroke-width="1.5"/>
-      <circle cx="128" cy="82" r="4" fill="#caa64f" stroke="#8a6f2e" stroke-width="1.5"/>
-      <circle cx="100" cy="68" r="3.6" fill="#caa64f"/><circle cx="100" cy="102" r="3.6" fill="#caa64f"/>
-      <circle cx="100" cy="136" r="3.6" fill="#caa64f"/><circle cx="100" cy="170" r="3.6" fill="#caa64f"/>
-      <rect x="42" y="186" width="116" height="26" fill="#345687"/>
-      <path d="M42 192 H158" stroke="#e8c46a" stroke-width="2" opacity=".8"/>
-      <path d="M24 76 L30 128 M176 76 L170 128" stroke="#e8c46a" stroke-width="2" opacity=".7"/>
-    </g>
-    ${shading(id, TOP_FOLDS)}
-    <path d="${sil}" fill="none" stroke="#1d3352" stroke-opacity=".7" stroke-width="3"/>
-  </svg>`;
-}
-
-/* --- 5. glossy leather biker jacket --- */
-function leatherJacket(id) {
-  const sil = "M100 26 Q114 26 126 36 L160 48 Q178 56 180 76 L184 120 Q184 132 172 134 L162 128 L160 200 Q130 214 100 214 Q70 214 40 200 L38 128 L28 134 Q16 132 16 120 L20 76 Q22 56 40 48 L74 36 Q86 26 100 26 Z";
-  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
-    <defs>${fxDefs(id)}
-      <clipPath id="clip${id}"><path d="${sil}"/></clipPath>
-      <linearGradient id="lth${id}" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#3a3a44"/><stop offset=".5" stop-color="#1b1b22"/><stop offset="1" stop-color="#26262e"/>
-      </linearGradient>
-    </defs>
-    <g clip-path="url(#clip${id})">
-      <rect x="-10" y="-10" width="220" height="270" fill="url(#lth${id})"/>
-      <g filter="url(#melt${id})">
-        <path d="M46 50 Q60 110 50 190 L64 192 Q76 110 62 48 Z" fill="#8e8ea2" opacity=".5"/>
-        <path d="M152 54 Q140 110 150 188 L138 190 Q128 110 140 52 Z" fill="#6f6f82" opacity=".4"/>
-        <path d="M88 60 Q96 130 90 200 L98 200 Q104 130 98 58 Z" fill="#9a9ab0" opacity=".35"/>
-      </g>
-      <path d="M84 40 L120 196 L128 194 L92 38 Z" fill="#0c0c10"/>
-      <g stroke="#c9ccd8" stroke-width="2.2" opacity=".9">
-        <path d="M87 52 L91 51 M92 72 L96 71 M97 92 L101 91 M102 112 L106 111 M107 132 L111 131 M112 152 L116 151 M117 172 L121 171"/>
-      </g>
-      <path d="M100 26 L70 60 L100 52 L130 60 Z" fill="#0c0c10"/>
-      <path d="M70 60 L58 96 M130 60 L142 96" stroke="#0c0c10" stroke-width="4"/>
-      <circle cx="62" cy="100" r="4" fill="#d3d6e0"/>
-      <circle cx="138" cy="100" r="4" fill="#d3d6e0"/>
-      <rect x="40" y="190" width="120" height="24" fill="#111116"/>
-      <rect x="128" y="196" width="20" height="9" rx="3" fill="#c9ccd8" opacity=".85"/>
-    </g>
-    ${shading(id, TOP_FOLDS)}
-    <path d="${sil}" fill="none" stroke="#000" stroke-opacity=".7" stroke-width="3"/>
-  </svg>`;
-}
-
-/* --- 6. tropical slip dress --- */
-function floralDress(id) {
-  const sil = "M78 24 L122 24 L128 52 L120 86 Q142 150 154 208 Q100 226 46 208 Q58 150 80 86 L72 52 Z";
-  return `<svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg">
-    <defs>${fxDefs(id)}
-      <clipPath id="clip${id}"><path d="${sil}"/></clipPath>
-      <linearGradient id="drs${id}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#2ec48f"/><stop offset="1" stop-color="#158f6a"/>
-      </linearGradient>
-      <g id="flower${id}">
-        <circle r="5.5" fill="#ffd166"/>
-        <g fill="#ff6ad5"><circle cx="0" cy="-9" r="5"/><circle cx="8.5" cy="-2.8" r="5"/><circle cx="5.3" cy="7.3" r="5"/><circle cx="-5.3" cy="7.3" r="5"/><circle cx="-8.5" cy="-2.8" r="5"/></g>
-      </g>
-    </defs>
-    <g clip-path="url(#clip${id})">
-      <rect x="-10" y="-10" width="220" height="270" fill="url(#drs${id})"/>
-      <g filter="url(#melt${id})" opacity=".95">
-        <use href="#flower${id}" x="70" y="60"/><use href="#flower${id}" x="120" y="90"/>
-        <use href="#flower${id}" x="85" y="130"/><use href="#flower${id}" x="130" y="160"/>
-        <use href="#flower${id}" x="65" y="180"/><use href="#flower${id}" x="105" y="200"/>
-      </g>
-      <path d="M80 86 L120 86" stroke="#0d6b4e" stroke-width="2.5" opacity=".7"/>
-      <path d="M78 24 Q100 40 122 24" fill="none" stroke="#0d6b4e" stroke-width="3" opacity=".8"/>
-      <path d="M70 120 Q76 170 62 206 M130 120 Q124 170 138 206 M100 96 Q100 160 100 214" stroke="#0d6b4e" stroke-width="3" opacity=".35" filter="url(#soft2${id})"/>
-    </g>
-    ${shading(id, ["M84 110 Q90 150 82 196", "M116 110 Q110 150 118 196"])}
-    <path d="${sil}" fill="none" stroke="#0a5940" stroke-opacity=".7" stroke-width="2.6"/>
-  </svg>`;
-}
-
-/* =====================================================================
-   Catalog + photo-style lookbook scenes
-   ===================================================================== */
-
 const GARMENTS = [
-  { name: "サイケパフジャケット", price: "¥14,800", make: psyJacket, badge: "動画で話題",
-    scene: "playa", h: 400, widthK: 2.35, shoulderY: 0.16 },
-  { name: "ネオントラックジャケット", price: "¥9,800", make: trackJacket,
-    scene: "studio", h: 360, widthK: 2.15, shoulderY: 0.155 },
-  { name: "リキッドシルバーホルター", price: "¥7,200", make: silverHalter, badge: "NEW",
-    scene: "night", h: 420, widthK: 1.75, shoulderY: 0.10 },
-  { name: "ヴィンテージデニムジャケット", price: "¥11,000", make: denimJacket,
-    scene: "desert", h: 360, widthK: 2.2, shoulderY: 0.155 },
-  { name: "グロスレザーバイカー", price: "¥19,800", make: leatherJacket,
-    scene: "runway", h: 400, widthK: 2.25, shoulderY: 0.155 },
-  { name: "トロピカルスリップドレス", price: "¥10,500", make: floralDress,
-    scene: "sunset", h: 430, widthK: 2.05, shoulderY: 0.095 },
+  { name: "コッパーボンバージャケット", price: "¥12,800", badge: "人気 No.1",
+    img: "assets/garment-bomber.webp", card: "assets/card-bomber.webp",
+    widthK: 1.75, shoulderY: 0.16 },
+  { name: "705 ブラックTシャツ", price: "¥4,900",
+    img: "assets/garment-tee-black.webp", card: "assets/card-tee-black.webp",
+    widthK: 1.55, shoulderY: 0.15 },
+  { name: "シャンブレー ハートドットシャツ", price: "¥7,800",
+    img: "assets/garment-chambray.webp", card: "assets/card-chambray.webp",
+    widthK: 1.60, shoulderY: 0.17 },
+  { name: "まねきねこ プリントTee", price: "¥5,400", badge: "NEW",
+    img: "assets/garment-tee-print.webp", card: "assets/card-tee-print.webp",
+    widthK: 1.50, shoulderY: 0.17 },
+  { name: "ハンドニット ポンチョ", price: "¥9,200",
+    img: "assets/garment-poncho.webp", card: "assets/card-poncho.webp",
+    widthK: 1.50, shoulderY: 0.12 },
 ];
 
-const SCENES = {
-  playa:  { sky: ["#c8d4dc", "#e8ddc6"], ground: "#d9c49a", extra: `<path d="M0 176 L60 150 L120 172 L200 148 L260 176 Z" fill="#a9986f" opacity=".7"/>` },
-  desert: { sky: ["#9fb8c8", "#eadfc8"], ground: "#cdb890", extra: `<ellipse cx="210" cy="60" rx="26" ry="26" fill="#fff" opacity=".55"/>` },
-  runway: { sky: ["#f2f2f5", "#d8d8de"], ground: "#c4c4cc", extra: `<rect x="70" y="176" width="120" height="200" fill="#fff" opacity=".5"/>` },
-  studio: { sky: ["#55556a", "#2c2c3a"], ground: "#232330", extra: `<ellipse cx="130" cy="120" rx="130" ry="120" fill="#fff" opacity=".22"/>` },
-  night:  { sky: ["#232338", "#101020"], ground: "#12121e", extra: `<circle cx="50" cy="46" r="2" fill="#fff"/><circle cx="200" cy="30" r="1.6" fill="#fff"/><circle cx="150" cy="70" r="1.4" fill="#fff" opacity=".8"/><ellipse cx="130" cy="150" rx="150" ry="140" fill="#8a8aff" opacity=".2"/>` },
-  sunset: { sky: ["#f7b267", "#e8608a"], ground: "#7a3b58", extra: `<circle cx="130" cy="140" r="34" fill="#ffe08a" opacity=".85"/>` },
-};
+const MODEL_CATALOG = [
+  { label: "女性モデル", src: "assets/model-woman.webp" },
+  { label: "男性モデル", src: "assets/model-man.webp" },
+];
 
-let sceneUid = 0;
-function sceneCard(g, idx) {
-  const s = SCENES[g.scene];
-  const uid = "s" + (sceneUid++);
-  const H = Math.round(g.h * 0.65) + 130;
-  const gy = H - 235;
-  return `<svg class="scene" viewBox="0 0 260 ${H}" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="sky${uid}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="${s.sky[0]}"/><stop offset="1" stop-color="${s.sky[1]}"/>
-      </linearGradient>
-      <radialGradient id="spot${uid}" cx=".5" cy=".32" r=".75">
-        <stop offset="0" stop-color="#fff" stop-opacity=".28"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
-      </radialGradient>
-      <filter id="cardGrain${uid}">
-        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2"/>
-        <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.4 0.4 0.4 0 0"/>
-        <feComposite operator="in" in2="SourceGraphic"/>
-      </filter>
-    </defs>
-    <rect width="260" height="${H}" fill="url(#sky${uid})"/>
-    <rect y="${H * 0.62}" width="260" height="${H}" fill="${s.ground}"/>
-    ${s.extra}
-    <rect width="260" height="${H}" fill="url(#spot${uid})"/>
-    <ellipse cx="130" cy="${H - 22}" rx="78" ry="13" fill="#000" opacity=".3"/>
-    <g transform="translate(35 ${gy}) scale(0.95)">${g.make("card" + idx)}</g>
-    <rect width="260" height="${H}" fill="#fff" filter="url(#cardGrain${uid})" opacity=".35"/>
-  </svg>`;
-}
+/* preload for instant try-on */
+for (const g of GARMENTS) { const i = new Image(); i.src = g.img; }
+for (const m of MODEL_CATALOG) { const i = new Image(); i.src = m.src; }
 
 /* render lookbook */
 const grid = document.getElementById("garmentGrid");
@@ -753,7 +492,7 @@ GARMENTS.forEach((g, i) => {
   card.innerHTML = `
     ${g.badge ? `<span class="badge">${g.badge}</span>` : ""}
     <span class="dots">···</span>
-    ${sceneCard(g, i)}
+    <img class="scene" src="${g.card}" alt="${g.name}" draggable="false">
     <div class="garment-meta">
       <span class="name">${g.name}</span>
       <span class="price">${g.price}</span>
@@ -762,53 +501,13 @@ GARMENTS.forEach((g, i) => {
 });
 
 /* =====================================================================
-   Dummy model (photo-styled illustration)
-   ===================================================================== */
-document.getElementById("modelFallback").innerHTML = `
-  <svg viewBox="0 0 320 600" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="mSkin" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#efc39d"/><stop offset="1" stop-color="#c98f66"/>
-      </linearGradient>
-      <linearGradient id="mPants" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#44445a"/><stop offset="1" stop-color="#26262f"/>
-      </linearGradient>
-      <linearGradient id="mTee" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" stop-color="#6b6b80"/><stop offset="1" stop-color="#47475a"/>
-      </linearGradient>
-      <filter id="mSoft"><feGaussianBlur stdDeviation="3"/></filter>
-    </defs>
-    <ellipse cx="160" cy="576" rx="120" ry="15" fill="rgba(0,0,0,.5)"/>
-    <g>
-      <path d="M132 350 L128 540 Q128 552 140 552 L152 552 Q158 552 158 542 L162 400 L166 542 Q166 552 172 552 L184 552 Q196 552 196 540 L190 350 Z" fill="url(#mPants)"/>
-      <path d="M126 548 L162 548 L162 566 Q140 572 122 566 Q118 556 126 548 Z" fill="#15151a"/>
-      <path d="M198 548 L162 548 L162 566 Q184 572 202 566 Q206 556 198 548 Z" fill="#15151a"/>
-      <path d="M104 196 Q160 168 216 196 L226 340 Q160 362 94 340 Z" fill="url(#mTee)"/>
-      <path d="M104 196 L82 208 Q74 258 80 306 Q86 318 98 314 L104 300 Z" fill="url(#mSkin)"/>
-      <path d="M216 196 L238 208 Q246 258 240 306 Q234 318 222 314 L216 300 Z" fill="url(#mSkin)"/>
-      <path d="M82 208 Q74 258 80 306" stroke="#a06c48" stroke-width="3" opacity=".4" fill="none" filter="url(#mSoft)"/>
-      <rect x="146" y="150" width="28" height="52" rx="12" fill="url(#mSkin)"/>
-      <path d="M146 168 Q160 180 174 168 L174 156 L146 156 Z" fill="#b57e58" opacity=".55" filter="url(#mSoft)"/>
-      <circle cx="160" cy="118" r="44" fill="url(#mSkin)"/>
-      <path d="M116 108 Q118 56 160 54 Q202 56 204 108 Q206 78 190 64 Q170 48 140 60 Q118 72 116 108 Z" fill="#241c2c"/>
-      <path d="M204 108 Q208 94 202 78 L210 96 Q210 106 204 112 Z" fill="#241c2c"/>
-      <ellipse cx="144" cy="116" rx="5" ry="6" fill="#2b2118"/>
-      <ellipse cx="176" cy="116" rx="5" ry="6" fill="#2b2118"/>
-      <path d="M141 104 Q144 100 150 102 M170 102 Q176 100 179 104" stroke="#241c2c" stroke-width="3" fill="none" stroke-linecap="round"/>
-      <path d="M156 118 Q154 130 158 132 Q160 134 164 132" stroke="#b57e58" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <path d="M146 142 Q160 150 174 142" stroke="#a5643f" stroke-width="4" fill="none" stroke-linecap="round"/>
-      <path d="M132 96 Q140 90 150 92 M170 92 Q180 90 188 96" stroke="#241c2c" stroke-width="4" fill="none" stroke-linecap="round" opacity=".9"/>
-    </g>
-    <text x="160" y="34" text-anchor="middle" fill="#6a6a80" font-size="15" font-weight="700" font-family="sans-serif">ダミーモデル モード</text>
-  </svg>`;
-
-/* =====================================================================
    Try-on engine: modes, pose tracking, fitting
    ===================================================================== */
 const mirror = document.getElementById("mirror");
 const camVideo = document.getElementById("camVideo");
 const camOverlay = document.getElementById("camOverlay");
-const modelFallback = document.getElementById("modelFallback");
+const modelStage = document.getElementById("modelStage");
+const modelImg = document.getElementById("modelImg");
 const photoStage = document.getElementById("photoStage");
 const photoImg = document.getElementById("photoImg");
 const photoInput = document.getElementById("photoInput");
@@ -833,6 +532,8 @@ const state = {
   smooth: null,            // {x, y, w, a}
   lostFrames: 0,
   photoPose: null,         // one-shot detection result for photo mode
+  modelIdx: 0,
+  modelPose: {},           // modelIdx -> landmarks | null
 };
 
 function setStatus(kind, text) {
@@ -901,7 +602,7 @@ function stopCam() {
 function showLayer(mode) {
   camVideo.style.display = mode === "cam" ? "block" : "none";
   photoStage.style.display = mode === "photo" ? "flex" : "none";
-  modelFallback.style.display = mode === "model" ? "flex" : "none";
+  modelStage.style.display = mode === "model" ? "flex" : "none";
   document.getElementById("btnModeCam").classList.toggle("active", mode === "cam");
   document.getElementById("btnModePhoto").classList.toggle("active", mode === "photo");
   document.getElementById("btnModeModel").classList.toggle("active", mode === "model");
@@ -932,12 +633,33 @@ async function enterCamMode() {
     enterModelMode();
   }
 }
-function enterModelMode() {
+async function enterModelMode(toggle) {
   stopCam();
+  if (toggle === true && state.mode === "model")
+    state.modelIdx = (state.modelIdx + 1) % MODEL_CATALOG.length;
   state.mode = "model";
   showLayer("model");
   camOverlay.classList.add("hidden");
-  setStatus("", "ダミーモデル モード");
+  const m = MODEL_CATALOG[state.modelIdx];
+  if (!modelImg.src || !modelImg.src.includes(m.src)) {
+    setStatus("fitting", `${m.label}を読み込み中…`);
+    await new Promise(res => { modelImg.onload = res; modelImg.onerror = res; modelImg.src = m.src; });
+  }
+  if (!(state.modelIdx in state.modelPose)) {
+    setStatus("fitting", "モデルをAI解析中…");
+    const ok = await ensurePose();
+    if (ok) {
+      try {
+        await setRunningMode("IMAGE");
+        const r = state.landmarker.detect(modelImg);
+        state.modelPose[state.modelIdx] = (r.landmarks && r.landmarks[0]) || null;
+      } catch { state.modelPose[state.modelIdx] = null; }
+    } else state.modelPose[state.modelIdx] = null;
+  }
+  if (state.mode !== "model") return;
+  const fitted = !!state.modelPose[state.modelIdx];
+  setStatus(fitted ? "tracking" : "searching",
+    `${m.label} — ${fitted ? "AIフィット済み" : "中央配置"}(🧍で人物切替)`);
   refit();
 }
 function enterPhotoMode() { photoInput.click(); }
@@ -975,10 +697,10 @@ photoInput.addEventListener("change", () => {
 
 document.getElementById("btnEnableCam").addEventListener("click", enterCamMode);
 document.getElementById("btnUsePhoto").addEventListener("click", enterPhotoMode);
-document.getElementById("btnUseModel").addEventListener("click", enterModelMode);
+document.getElementById("btnUseModel").addEventListener("click", () => enterModelMode(false));
 document.getElementById("btnModeCam").addEventListener("click", enterCamMode);
 document.getElementById("btnModePhoto").addEventListener("click", enterPhotoMode);
-document.getElementById("btnModeModel").addEventListener("click", enterModelMode);
+document.getElementById("btnModeModel").addEventListener("click", () => enterModelMode(true));
 document.getElementById("btnClear").addEventListener("click", () => {
   state.wornIndex = null;
   wornLayer.classList.remove("visible");
@@ -1017,7 +739,9 @@ function applyWorn(x, y, w, angleDeg, instant) {
   wornLayer.style.width = s.w + "px";
   wornLayer.style.transformOrigin = `50% ${g.shoulderY * 100}%`;
   /* anchor: garment's shoulder line (shoulderY of height) sits on the detected shoulder midpoint */
-  const h = s.w * 1.2; /* viewBox 200x240 */
+  const im = wornLayer.querySelector("img");
+  const aspect = (im && im.naturalWidth) ? im.naturalHeight / im.naturalWidth : 1.2;
+  const h = s.w * aspect;
   wornLayer.style.transform =
     `translate(${s.x - s.w / 2}px, ${s.y - h * g.shoulderY}px) rotate(${s.a}deg)`;
 }
@@ -1039,8 +763,10 @@ function placeFromLandmarks(lm, map, mirrored) {
   const dx = b.x - a.x, dy = b.y - a.y;
   const shoulderW = Math.hypot(dx, dy);
   if (shoulderW < 10) return false;
-  /* shoulder line angle; garment is drawn upright, left-shoulder→right-shoulder should map */
-  const angle = Math.atan2(dy, dx) * 180 / Math.PI + (dx < 0 ? 180 : 0);
+  /* shoulder line angle, normalized to [-180,180] (front-facing photos have dx<0) */
+  let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  if (dx < 0) angle += 180;
+  angle = ((angle + 180) % 360 + 360) % 360 - 180;
   applyWorn(mid.x, mid.y, shoulderW * g.widthK, Math.max(-28, Math.min(28, angle)));
   return true;
 }
@@ -1085,14 +811,13 @@ function centerPlace() {
   applyWorn(r.width / 2, r.height * 0.30, Math.min(r.width * 0.55, 330), 0, true);
 }
 function modelPlace() {
-  /* dummy model: SVG 320x600 shown with height:97% centered; shoulders at (160,196)-ish, width 112 */
-  const r = mirror.getBoundingClientRect();
-  const svgH = r.height * 0.97, s = svgH / 600;
-  const cx = r.width / 2, topY = (r.height - svgH) / 2;
-  const shoulderY = topY + 192 * s;
-  const shoulderW = 118 * s;
-  const g = GARMENTS[state.wornIndex];
-  applyWorn(cx, shoulderY, shoulderW * g.widthK, 0, true);
+  const pose = state.modelPose[state.modelIdx];
+  if (pose && modelImg.naturalWidth) {
+    const map = Object.assign(containMap(modelImg.naturalWidth, modelImg.naturalHeight),
+      { natW: modelImg.naturalWidth, natH: modelImg.naturalHeight });
+    if (placeFromLandmarks(pose, map, false)) return;
+  }
+  centerPlace();
 }
 function photoPlace() {
   const g = GARMENTS[state.wornIndex];
@@ -1128,10 +853,17 @@ function tryOn(index) {
   fittingTimer = setTimeout(() => {
     scanline.classList.remove("active");
     state.fitting = false;
-    wornLayer.innerHTML = g.make("worn" + index);
+    wornLayer.innerHTML = `<img src="${g.img}" alt="${g.name}">`;
+    const wornIm = wornLayer.querySelector("img");
+    if (!wornIm.complete) wornIm.onload = () => refit();
     state.smooth = null;
     state.lostFrames = 0;
-    if (state.mode === "model") { modelPlace(); setStatus("", "ダミーモデル モード"); }
+    if (state.mode === "model") {
+      modelPlace();
+      const fitted = !!state.modelPose[state.modelIdx];
+      setStatus(fitted ? "tracking" : "searching",
+        `${MODEL_CATALOG[state.modelIdx].label} — ${fitted ? "AIフィット済み" : "中央配置"}`);
+    }
     else if (state.mode === "photo") photoPlace();
     else if (!state.poseReady) { centerPlace(); setStatus("", "静的モード(トラッキングなし・中央配置)"); }
     else setStatus("searching", "人物を探しています…");
@@ -1165,7 +897,7 @@ let touchIndex = null;
 document.querySelectorAll(".garment-card").forEach(card => {
   card.addEventListener("touchstart", e => {
     touchIndex = +card.dataset.index;
-    dragGhost.innerHTML = GARMENTS[touchIndex].make("ghost" + touchIndex);
+    dragGhost.innerHTML = `<img src="${GARMENTS[touchIndex].img}" alt="">`;
     const t = e.touches[0];
     dragGhost.style.left = t.clientX + "px";
     dragGhost.style.top = t.clientY + "px";
