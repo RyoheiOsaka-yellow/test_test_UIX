@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>みんなの元気玉 ｜ ホーム開幕戦 参加型PR企画（動作デモ）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#001129;
+  --night-2:#00204a;
+  --navy:#002F6C;
+  --navy-2:#0F4C81;
+  --cyan:#00A0E9;
+  --glow:#7FE8FF;
+  --paper:#EAF4FC;
+  --paper-dim:#8FAFCB;
+  --line:rgba(127,232,255,.18);
+  --heat:#FFB547;
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0; background:var(--night); color:var(--paper);
+  font-family:'Noto Sans JP','Zen Kaku Gothic New',sans-serif;
+  line-height:1.8; -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 28px;}
+@media(max-width:640px){.wrap{padding:0 16px;}}
+
+/* ---------- ヘッダ ---------- */
+.topbar{
+  border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(0,47,108,.55),rgba(0,17,41,0));
+}
+.topbar-in{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 0;flex-wrap:wrap;}
+.brand{display:flex;align-items:center;gap:12px;}
+.brand-mark{
+  width:34px;height:34px;border-radius:50%;
+  background:radial-gradient(circle at 32% 28%,#fff,var(--glow) 35%,var(--cyan) 62%,var(--navy) 100%);
+  box-shadow:0 0 18px rgba(0,160,233,.6);flex:none;
+}
+.brand-name{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;font-size:17px;letter-spacing:.02em;line-height:1.3;}
+.brand-sub{font-size:11px;color:var(--paper-dim);letter-spacing:.08em;line-height:1.3;}
+.demo-flag{
+  font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:12px;letter-spacing:.16em;
+  color:var(--night);background:var(--heat);padding:3px 10px;border-radius:2px;
+}
+
+/* ---------- ステージ ---------- */
+.stage{position:relative;padding:34px 0 8px;}
+.stage::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(720px 420px at 50% 34%,rgba(0,160,233,.16),transparent 66%),
+    radial-gradient(500px 320px at 88% 4%,rgba(15,76,129,.30),transparent 70%);
+}
+.stage-head{text-align:center;position:relative;margin-bottom:6px;}
+.eyebrow{
+  font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:13px;letter-spacing:.24em;
+  color:var(--glow);display:inline-block;margin-bottom:8px;
+}
+h1{
+  font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;
+  font-size:clamp(30px,6vw,54px);line-height:1.22;margin:0 0 10px;letter-spacing:.01em;
+}
+h1 em{font-style:normal;color:var(--glow);text-shadow:0 0 26px rgba(127,232,255,.55);}
+.lede{color:var(--paper-dim);font-size:14.5px;margin:0 auto;max-width:600px;}
+
+/* HUD */
+.hud{
+  display:flex;justify-content:center;gap:0;flex-wrap:wrap;
+  margin:22px auto 4px;position:relative;
+}
+.hud-cell{padding:0 26px;text-align:center;border-right:1px solid var(--line);}
+.hud-cell:last-child{border-right:none;}
+@media(max-width:560px){
+  .hud{display:grid;grid-template-columns:1fr 1fr;gap:14px 0;max-width:340px;}
+  .hud-cell{padding:0 10px;}
+  .hud-cell:nth-child(2){border-right:none;}
+}
+.hud-num{
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:clamp(28px,6vw,42px);
+  line-height:1;letter-spacing:.01em;color:#fff;display:block;
+  font-variant-numeric:tabular-nums;
+}
+.hud-num.pop{animation:pop .45s cubic-bezier(.2,1.6,.4,1);}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.16);color:var(--glow)}100%{transform:scale(1)}}
+.hud-label{font-size:10.5px;letter-spacing:.14em;color:var(--paper-dim);}
+
+/* キャンバス */
+.ball-area{position:relative;width:100%;max-width:620px;margin:0 auto;}
+#ball{display:block;width:100%;height:auto;touch-action:none;cursor:pointer;}
+.hint{
+  position:absolute;left:50%;bottom:2px;transform:translateX(-50%);
+  font-size:12px;color:var(--paper-dim);letter-spacing:.06em;white-space:nowrap;
+  transition:opacity .4s;pointer-events:none;
+}
+.hint.hide{opacity:0;}
+@media(max-width:560px){
+  .hint{white-space:normal;width:94%;text-align:center;line-height:1.5;}
+}
+.sound-btn{
+  position:absolute;top:6px;right:6px;z-index:5;
+  font:inherit;font-size:15px;line-height:1;color:var(--paper-dim);
+  background:rgba(0,32,74,.6);border:1px solid var(--line);border-radius:99px;
+  width:38px;height:38px;cursor:pointer;transition:color .2s,border-color .2s;
+}
+.sound-btn:hover{color:var(--glow);border-color:var(--cyan);}
+
+/* メッセージカード（粒をクリック） */
+.msg-pop{
+  position:absolute;z-index:6;min-width:200px;max-width:260px;
+  background:rgba(0,32,74,.94);border:1px solid var(--line);
+  border-radius:10px;padding:12px 14px;
+  box-shadow:0 12px 40px rgba(0,0,0,.55);
+  transform:translate(-50%,-118%);opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.msg-pop.below{transform:translate(-50%,20px);}
+.msg-pop.on{opacity:1;}
+.msg-pop .mp-text{font-size:13.5px;line-height:1.7;margin:0 0 8px;}
+.msg-pop .mp-meta{font-size:11px;color:var(--paper-dim);letter-spacing:.04em;}
+
+/* 目標ゲージ */
+.goal{max-width:620px;margin:6px auto 0;}
+.goal-top{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px;color:var(--paper-dim);letter-spacing:.06em;margin-bottom:6px;}
+.goal-top b{font-family:'Barlow Condensed',sans-serif;font-size:15px;color:var(--glow);font-weight:600;letter-spacing:.04em;}
+.goal-bar{height:6px;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden;}
+.goal-fill{height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,var(--navy-2),var(--cyan) 55%,var(--glow));transition:width .8s cubic-bezier(.2,.8,.3,1);}
+
+/* NEXT MATCH 常設バナー */
+.next-strip{
+  display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;
+  max-width:620px;margin:18px auto 10px;padding:12px 18px;
+  border:1px solid rgba(255,181,71,.45);border-radius:12px;
+  background:linear-gradient(100deg,rgba(255,181,71,.12),rgba(0,160,233,.10));
+  text-decoration:none;color:var(--paper);
+  transition:transform .15s,box-shadow .2s,border-color .2s;
+}
+.next-strip:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(255,181,71,.18);border-color:var(--heat);}
+.ns-tag{
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:.2em;
+  color:var(--night);background:var(--heat);padding:3px 10px;border-radius:2px;flex:none;
+}
+.ns-main{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;font-size:14.5px;letter-spacing:.02em;}
+.ns-main b{color:var(--heat);}
+.ns-sub{font-size:11.5px;color:var(--paper-dim);}
+.ns-arrow{color:var(--heat);font-weight:700;flex:none;}
+
+/* ---------- 共通セクション ---------- */
+section.blk{padding:64px 0;border-top:1px solid var(--line);position:relative;}
+.sec-label{
+  font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:12px;letter-spacing:.22em;
+  color:var(--cyan);margin-bottom:8px;
+}
+h2{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;font-size:clamp(21px,3.4vw,29px);margin:0 0 10px;line-height:1.4;}
+.sec-note{color:var(--paper-dim);font-size:13.5px;margin:0 0 30px;max-width:640px;}
+
+/* ---------- 投稿フォーム ---------- */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;max-width:720px;}
+@media(max-width:640px){.form-grid{grid-template-columns:1fr;}}
+.field{display:flex;flex-direction:column;gap:6px;}
+.field.full{grid-column:1/-1;}
+label{font-size:11.5px;letter-spacing:.1em;color:var(--paper-dim);}
+input,select,textarea{
+  font:inherit;font-size:14px;color:#fff;background:rgba(255,255,255,.05);
+  border:1px solid var(--line);border-radius:8px;padding:11px 13px;outline:none;
+  transition:border-color .2s,background .2s;width:100%;
+}
+@media(max-width:640px){input,select,textarea{font-size:16px;}}
+input:focus,select:focus,textarea:focus{border-color:var(--cyan);background:rgba(0,160,233,.10);}
+select option{background:#00204a;color:#fff;}
+textarea{resize:vertical;min-height:76px;line-height:1.7;}
+.count{font-size:11px;color:var(--paper-dim);text-align:right;font-family:'Barlow Condensed',sans-serif;letter-spacing:.06em;}
+.count.over{color:var(--heat);}
+.btn{
+  font:inherit;font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;font-size:15px;
+  color:var(--night);background:linear-gradient(100deg,var(--glow),var(--cyan));
+  border:none;border-radius:99px;padding:13px 34px;cursor:pointer;letter-spacing:.06em;
+  box-shadow:0 6px 24px rgba(0,160,233,.34);transition:transform .12s,box-shadow .2s,opacity .2s;
+  text-decoration:none;display:inline-block;text-align:center;
+}
+.btn:hover{box-shadow:0 8px 32px rgba(0,160,233,.5);}
+.btn:active{transform:scale(.97);}
+.btn[disabled]{opacity:.4;cursor:default;box-shadow:none;}
+.btn-ghost{
+  font:inherit;font-size:12.5px;color:var(--paper-dim);background:none;
+  border:1px solid var(--line);border-radius:99px;padding:7px 18px;cursor:pointer;transition:color .2s,border-color .2s;
+}
+.btn-ghost:hover{color:var(--glow);border-color:var(--cyan);}
+.form-foot{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:6px;}
+.thanks{font-size:13px;color:var(--glow);opacity:0;transition:opacity .3s;}
+.thanks.on{opacity:1;}
+
+/* ---------- 送信後モーダル ---------- */
+.modal-bk{
+  position:fixed;inset:0;z-index:50;background:rgba(0,8,20,.78);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  opacity:0;pointer-events:none;transition:opacity .3s;backdrop-filter:blur(4px);
+}
+.modal-bk.on{opacity:1;pointer-events:auto;}
+.modal{
+  position:relative;width:100%;max-width:460px;max-height:92vh;overflow-y:auto;
+  background:linear-gradient(170deg,#03295c,#001129 70%);
+  border:1px solid rgba(127,232,255,.35);border-radius:18px;
+  padding:34px 28px 28px;text-align:center;
+  box-shadow:0 30px 90px rgba(0,0,0,.7),0 0 60px rgba(0,160,233,.25);
+  transform:translateY(18px) scale(.96);transition:transform .35s cubic-bezier(.2,1.4,.4,1);
+}
+.modal-bk.on .modal{transform:translateY(0) scale(1);}
+#confetti{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;border-radius:18px;}
+.md-close{
+  position:absolute;top:10px;right:10px;z-index:3;
+  font:inherit;font-size:18px;line-height:1;color:var(--paper-dim);
+  background:none;border:none;width:38px;height:38px;cursor:pointer;border-radius:50%;
+  transition:color .2s,background .2s;
+}
+.md-close:hover{color:#fff;background:rgba(255,255,255,.08);}
+.md-orb{
+  width:74px;height:74px;border-radius:50%;margin:0 auto 14px;position:relative;
+  background:radial-gradient(circle at 32% 28%,#fff,var(--glow) 35%,var(--cyan) 62%,var(--navy) 100%);
+  box-shadow:0 0 34px rgba(0,160,233,.8),0 0 90px rgba(127,232,255,.35);
+  animation:orb 2.2s ease-in-out infinite;
+}
+@keyframes orb{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+.md-badge{
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:.3em;
+  color:var(--glow);margin-bottom:4px;
+}
+.modal h3{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;font-size:23px;margin:0 0 6px;line-height:1.4;}
+.md-sub{font-size:13px;color:var(--paper-dim);margin:0 0 20px;line-height:1.7;}
+.md-sub b{color:var(--glow);font-family:'Barlow Condensed',sans-serif;font-size:16px;letter-spacing:.04em;}
+.md-next{
+  border:1px solid rgba(255,181,71,.5);border-radius:14px;
+  background:linear-gradient(120deg,rgba(255,181,71,.14),rgba(0,160,233,.08));
+  padding:18px 16px 16px;margin-bottom:18px;position:relative;
+}
+.md-next-label{
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:11px;letter-spacing:.28em;
+  color:var(--heat);margin-bottom:6px;
+}
+.md-next-date{
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:46px;line-height:1;color:#fff;
+}
+.md-next-date span{font-size:20px;color:var(--heat);}
+.md-next-title{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:900;font-size:19px;margin:4px 0 2px;}
+.md-count{font-size:12px;color:var(--paper-dim);letter-spacing:.06em;margin-bottom:8px;}
+.md-count b{font-family:'Barlow Condensed',sans-serif;font-size:20px;color:var(--heat);font-weight:700;}
+.md-next-msg{margin:0;font-size:13px;line-height:1.8;}
+.md-actions{display:flex;flex-direction:column;gap:10px;margin-bottom:16px;}
+.md-actions .btn{width:100%;padding:14px 20px;}
+.btn-x{
+  background:none;color:var(--paper);border:1.5px solid rgba(127,232,255,.5);
+  box-shadow:none;
+}
+.btn-x:hover{border-color:var(--glow);color:var(--glow);box-shadow:0 6px 24px rgba(0,160,233,.25);}
+.md-sns{font-size:11.5px;color:var(--paper-dim);letter-spacing:.04em;}
+.md-sns-links{display:flex;justify-content:center;gap:10px;margin-top:8px;}
+.md-sns-links a{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:88px;padding:7px 12px;border:1px solid var(--line);border-radius:99px;
+  color:var(--paper);text-decoration:none;font-size:12px;transition:color .2s,border-color .2s,background .2s;
+}
+.md-sns-links a:hover{color:var(--glow);border-color:var(--cyan);background:rgba(0,160,233,.10);}
+
+/* ---------- 発射後トースト ---------- */
+.toast{
+  position:fixed;left:50%;bottom:26px;z-index:40;transform:translate(-50%,20px);
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center;
+  background:rgba(0,32,74,.95);border:1px solid rgba(127,232,255,.4);border-radius:14px;
+  padding:12px 20px;box-shadow:0 16px 50px rgba(0,0,0,.6);
+  opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;
+  max-width:92vw;text-align:center;
+}
+.toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto;}
+.toast-amt{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;color:var(--glow);letter-spacing:.02em;line-height:1.2;}
+.toast-combo{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;color:var(--heat);letter-spacing:.1em;}
+.toast-next{font-size:12px;color:var(--paper-dim);line-height:1.6;}
+.toast-next a{color:var(--heat);text-decoration:none;font-weight:700;}
+.toast-next a:hover{text-decoration:underline;}
+
+/* ---------- マップ ---------- */
+.map-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:40px;align-items:start;}
+@media(max-width:900px){.map-layout{grid-template-columns:1fr;gap:28px;}}
+.map-box{background:radial-gradient(520px 460px at 46% 40%,rgba(0,47,108,.5),rgba(0,17,41,0));border-radius:14px;}
+#mapSvg{width:100%;height:auto;display:block;overflow:visible;}
+.hex{cursor:pointer;transition:transform .18s;transform-origin:center;transform-box:fill-box;}
+.hex-shape{stroke:rgba(127,232,255,.30);stroke-width:1.2;transition:fill .5s,stroke .2s;}
+.hex:hover .hex-shape{stroke:#fff;stroke-width:2;}
+.hex.sel .hex-shape{stroke:var(--heat);stroke-width:2.4;}
+.hex-name{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;font-size:14px;fill:#fff;text-anchor:middle;pointer-events:none;}
+.hex-name.sm{font-size:11.5px;}
+.hex-suf{font-size:9px;fill:rgba(255,255,255,.55);text-anchor:middle;pointer-events:none;}
+.hex-val{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:12px;fill:var(--glow);text-anchor:middle;pointer-events:none;letter-spacing:.04em;}
+.legend{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--paper-dim);letter-spacing:.08em;margin-top:14px;}
+.legend-bar{height:6px;width:150px;border-radius:99px;background:linear-gradient(90deg,#00214d,#0F4C81,#00A0E9,#7FE8FF);}
+
+/* ランキング */
+.rank-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.rank-title{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;font-size:15px;}
+.toggle{display:flex;border:1px solid var(--line);border-radius:99px;overflow:hidden;}
+.toggle button{
+  font:inherit;font-size:11.5px;letter-spacing:.06em;color:var(--paper-dim);
+  background:none;border:none;padding:6px 13px;cursor:pointer;transition:.2s;
+}
+.toggle button.on{background:var(--cyan);color:var(--night);font-weight:700;}
+.rank-list{list-style:none;margin:0;padding:0;}
+.rank-list li{
+  display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:10px;
+  padding:9px 4px;border-bottom:1px solid rgba(127,232,255,.10);cursor:pointer;transition:background .2s;
+}
+.rank-list li:hover{background:rgba(0,160,233,.08);}
+.rank-list li.sel{background:rgba(255,181,71,.10);}
+.rank-no{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;color:var(--paper-dim);text-align:center;}
+.rank-list li:nth-child(1) .rank-no{color:var(--heat);}
+.rank-city{font-size:13.5px;}
+.rank-val{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:15px;color:var(--glow);font-variant-numeric:tabular-nums;}
+.rank-foot{font-size:11px;color:var(--paper-dim);margin-top:12px;line-height:1.7;}
+.city-detail{
+  margin-top:18px;border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+  background:rgba(0,47,108,.28);
+}
+.city-detail h4{margin:0 0 6px;font-size:14px;font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;}
+.city-detail p{margin:0;font-size:12px;color:var(--paper-dim);line-height:1.8;}
+
+/* ---------- 横断幕ティッカー ---------- */
+.ticker{
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:linear-gradient(90deg,rgba(0,47,108,.6),rgba(0,17,41,.2),rgba(0,47,108,.6));
+  overflow:hidden;padding:14px 0;position:relative;
+}
+.ticker-track{display:flex;gap:0;width:max-content;animation:slide 46s linear infinite;}
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ticker:hover .ticker-track{animation-play-state:paused;}
+.tk-item{display:flex;align-items:center;gap:9px;padding:0 26px;white-space:nowrap;font-size:13.5px;}
+.tk-city{font-size:10.5px;letter-spacing:.08em;color:var(--night);background:var(--glow);padding:2px 8px;border-radius:99px;font-weight:700;}
+.tk-sep{color:rgba(127,232,255,.3);}
+
+/* ---------- 仕組み ---------- */
+.flow{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;}
+@media(max-width:820px){.flow{grid-template-columns:1fr;}}
+.flow-card{border:1px solid var(--line);border-radius:12px;padding:22px 20px;background:rgba(0,47,108,.20);}
+.flow-step{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:.18em;color:var(--cyan);margin-bottom:8px;}
+.flow-card h3{font-family:'Zen Kaku Gothic New',sans-serif;font-weight:700;font-size:16px;margin:0 0 8px;}
+.flow-card p{margin:0;font-size:13px;color:var(--paper-dim);line-height:1.85;}
+
+footer{padding:44px 0 60px;border-top:1px solid var(--line);}
+.foot-row{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;}
+.foot-note{font-size:11.5px;color:var(--paper-dim);line-height:1.9;max-width:720px;}
+:focus-visible{outline:2px solid var(--glow);outline-offset:3px;}
+@media(prefers-reduced-motion:reduce){
+  .ticker-track{animation:none;}
+  .md-orb{animation:none;}
+  *{transition-duration:.01ms !important;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap topbar-in">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-name">みんなの元気玉</div>
+        <div class="brand-sub">HOME OPENER SUPPORT PROJECT</div>
+      </div>
+    </div>
+    <span class="demo-flag">DEMO / 動作イメージ</span>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="wrap">
+    <div class="stage-head">
+      <span class="eyebrow">EAST SHIZUOKA 20 CITIES &amp; TOWNS</span>
+      <h1>東部20市町の「がんばれ」を、<br><em>ひとつの光</em>に。</h1>
+      <p class="lede">玉を押し続けると元気がたまります。手を離すと、あなたの元気が加わります。</p>
+    </div>
+
+    <div class="hud">
+      <div class="hud-cell"><span class="hud-num" id="hudEnergy">0</span><span class="hud-label">TOTAL ENERGY</span></div>
+      <div class="hud-cell"><span class="hud-num" id="hudMsg">0</span><span class="hud-label">MESSAGES</span></div>
+      <div class="hud-cell"><span class="hud-num" id="hudCity">0<small style="font-size:.5em">/20</small></span><span class="hud-label">CITIES LIT</span></div>
+      <div class="hud-cell"><span class="hud-num" id="hudDays">—</span><span class="hud-label">DAYS TO KICKOFF</span></div>
+    </div>
+
+    <div class="ball-area" id="ballArea">
+      <canvas id="ball" width="1240" height="1000"></canvas>
+      <button class="sound-btn" id="soundBtn" aria-label="効果音の切り替え" title="効果音 ON/OFF">♪</button>
+      <div class="hint" id="hint">押し続けてチャージ → 離して発射／光の粒をタップでメッセージが読めます</div>
+      <div class="msg-pop" id="msgPop">
+        <p class="mp-text" id="mpText"></p>
+        <div class="mp-meta" id="mpMeta"></div>
+      </div>
+    </div>
+
+    <div class="goal">
+      <div class="goal-top">
+        <span>ホーム開幕までの目標</span>
+        <span><b id="goalNow">0</b> / 100,000 ENERGY</span>
+      </div>
+      <div class="goal-bar"><div class="goal-fill" id="goalFill"></div></div>
+    </div>
+
+    <a class="next-strip" id="nextStrip" href="https://www.azul-claro.jp/" target="_blank" rel="noopener">
+      <span class="ns-tag">NEXT MATCH</span>
+      <span class="ns-main"><b>9/6(日)</b> ホーム開幕戦</span>
+      <span class="ns-sub">チケット・試合情報はこちら</span>
+      <span class="ns-arrow">→</span>
+    </a>
+  </div>
+</div>
+
+<div class="ticker" aria-label="届いた応援メッセージ">
+  <div class="ticker-track" id="tickerTrack"></div>
+</div>
+
+<section class="blk">
+  <div class="wrap">
+    <div class="sec-label">02 — MESSAGE</div>
+    <h2>応援メッセージを送る</h2>
+    <p class="sec-note">送られたメッセージは元気玉のなかで一粒の光になります。粒をタップすると、誰かの声がそのまま読めます。</p>
+
+    <div class="form-grid">
+      <div class="field">
+        <label for="fName">ニックネーム（任意）</label>
+        <input id="fName" type="text" maxlength="12" placeholder="例）ぬまづサポ">
+      </div>
+      <div class="field">
+        <label for="fCity">お住まいの市町</label>
+        <select id="fCity"></select>
+      </div>
+      <div class="field">
+        <label for="fTo">届け先</label>
+        <select id="fTo">
+          <option value="チーム全員へ">チーム全員へ</option>
+          <option value="監督・スタッフへ">監督・スタッフへ</option>
+          <option value="#7 の選手へ">#7 の選手へ</option>
+          <option value="#9 の選手へ">#9 の選手へ</option>
+          <option value="#10 の選手へ">#10 の選手へ</option>
+          <option value="#18 の選手へ">#18 の選手へ</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="fPlace">参加方法</label>
+        <select id="fPlace">
+          <option value="web">WEBから（×1.0）</option>
+          <option value="real">会場・店頭のQRから（×2.0）</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label for="fText">メッセージ（40文字まで）</label>
+        <textarea id="fText" maxlength="40" placeholder="開幕戦、スタジアムで待ってます！"></textarea>
+        <div class="count" id="fCount">0 / 40</div>
+      </div>
+    </div>
+    <div class="form-foot">
+      <button class="btn" id="sendBtn">元気を送る</button>
+      <span class="thanks" id="thanks">ありがとうございます！元気玉に光が加わりました。</span>
+    </div>
+  </div>
+</section>
+
+<section class="blk">
+  <div class="wrap">
+    <div class="sec-label">03 — HEAT MAP</div>
+    <h2>東部20市町 応援ヒートマップ</h2>
+    <p class="sec-note">どの市町から、どれだけの元気が届いているか。市町をタップすると詳細が出ます。人口規模の差が出ないよう「人口10万人あたり」の密度でも見られます。</p>
+
+    <div class="map-layout">
+      <div>
+        <div class="map-box"><svg id="mapSvg" viewBox="0 0 500 700" role="img" aria-label="東部20市町のヒートマップ"></svg></div>
+        <div class="legend"><span>少</span><div class="legend-bar"></div><span>多</span></div>
+      </div>
+      <div>
+        <div class="rank-head">
+          <div class="rank-title">市町ランキング</div>
+          <div class="toggle">
+            <button id="tabTotal" class="on">総エナジー</button>
+            <button id="tabDens">密度</button>
+          </div>
+        </div>
+        <ol class="rank-list" id="rankList"></ol>
+        <p class="rank-foot">「密度」＝人口10万人あたりのエナジー。人口はデモ用の概数です。小さな町でも上位に入れる設計にしています。</p>
+        <div class="city-detail" id="cityDetail">
+          <h4>市町を選ぶと表示されます</h4>
+          <p>マップまたはランキングから選択してください。</p>
+        </div>
+        <div style="margin-top:18px"><button class="btn-ghost" id="resetBtn">デモデータをリセット</button></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="blk">
+  <div class="wrap">
+    <div class="sec-label">04 — HOW IT WORKS</div>
+    <h2>開幕までの3つの場面</h2>
+    <p class="sec-note">WEBで集め、当日に炸裂させ、あとに残す。この3段構えで「参加して終わり」にしません。</p>
+    <div class="flow">
+      <div class="flow-card">
+        <div class="flow-step">BEFORE</div>
+        <h3>集める</h3>
+        <p>WEB・SNSに加え、市役所／商店／スポンサー店舗／スクールにQRポスターを設置。会場QR経由は2倍加算にして、リアルの現場に足を運ぶ理由をつくります。</p>
+      </div>
+      <div class="flow-card">
+        <div class="flow-step">MATCH DAY</div>
+        <h3>爆発させる</h3>
+        <p>キックオフ直前、場内ビジョンに元気玉を投影。来場者が一斉にタップして玉が炸裂する演出。抜粋メッセージを場内アナウンスで読み上げます。</p>
+      </div>
+      <div class="flow-card">
+        <div class="flow-step">AFTER</div>
+        <h3>残す</h3>
+        <p>全参加者の名前を敷き詰めた実物のフラッグを制作しクラブハウスに掲出。市町別の参加データはそのまま各自治体への報告資料になります。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot-row">
+    <p class="foot-note">
+      ※ 本ページは動作イメージの確認用デモです。表示中の数値・メッセージはサンプルで、データはご覧の端末内にのみ保存されます（他の方の画面には反映されません）。<br>
+      ※ 本番運用では、全参加者の合算・不適切投稿のフィルタと承認・重複対策のサーバー側実装が必要です。届け先の選手名・試合情報・SNSシェア文面はデモ用の仮置きで、各リンクの遷移先（www.azul-claro.jp）も確認用の仮設定です。
+    </p>
+    <span class="demo-flag">DEMO</span>
+  </div>
+</footer>
+
+<!-- 送信後モーダル -->
+<div class="modal-bk" id="modalBk" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mdTitle">
+    <canvas id="confetti"></canvas>
+    <button class="md-close" id="mdClose" aria-label="閉じる">×</button>
+    <div class="md-orb"></div>
+    <div class="md-badge">THANK YOU!</div>
+    <h3 id="mdTitle">元気、届きました！</h3>
+    <p class="md-sub" id="mdSub">あなたの元気玉が <b>+120</b> 大きくなりました</p>
+    <div class="md-next">
+      <div class="md-next-label">NEXT MATCH</div>
+      <div class="md-next-date">9/6 <span>(日)</span></div>
+      <div class="md-next-title">ホーム開幕戦</div>
+      <div class="md-count">キックオフまであと <b id="mdDays">—</b> 日</div>
+      <p class="md-next-msg">この元気玉は開幕戦のビジョンで炸裂します。<br>スタジアムで、一緒に見届けませんか？</p>
+    </div>
+    <div class="md-actions">
+      <a class="btn" id="mdTicket" href="https://www.azul-claro.jp/" target="_blank" rel="noopener">チケット・試合情報を見る</a>
+      <a class="btn btn-x" id="mdShare" href="#" target="_blank" rel="noopener">Xで応援をシェアする</a>
+    </div>
+    <div class="md-sns">
+      公式SNSをフォローして続報をチェック
+      <div class="md-sns-links">
+        <a href="https://www.azul-claro.jp/" target="_blank" rel="noopener">X（旧Twitter）</a>
+        <a href="https://www.azul-claro.jp/" target="_blank" rel="noopener">Instagram</a>
+        <a href="https://www.azul-claro.jp/" target="_blank" rel="noopener">YouTube</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 発射後トースト -->
+<div class="toast" id="toast" role="status">
+  <span class="toast-amt" id="toastAmt">+0 ENERGY</span>
+  <span class="toast-combo" id="toastCombo"></span>
+  <span class="toast-next">9/6(日)ホーム開幕戦まであと<b id="toastDays">—</b>日 — <a href="https://www.azul-claro.jp/" target="_blank" rel="noopener">スタジアムで応援する →</a></span>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ===================== データ定義 ===================== */
+// col,row：地理関係をおおまかに反映したタイル配置
+var CITIES = [
+  {n:"小山",     s:"町", col:3, row:0, pop:1.8},
+  {n:"富士宮",   s:"市", col:0, row:1, pop:12.7},
+  {n:"御殿場",   s:"市", col:2, row:1, pop:8.6},
+  {n:"富士",     s:"市", col:0, row:2, pop:24.5},
+  {n:"裾野",     s:"市", col:2, row:2, pop:5.0},
+  {n:"長泉",     s:"町", col:2, row:3, pop:4.3},
+  {n:"三島",     s:"市", col:3, row:3, pop:10.6},
+  {n:"沼津",     s:"市", col:1, row:4, pop:18.6},
+  {n:"清水",     s:"町", col:2, row:4, pop:3.2},
+  {n:"函南",     s:"町", col:3, row:4, pop:3.6},
+  {n:"熱海",     s:"市", col:4, row:4, pop:3.3},
+  {n:"伊豆の国", s:"市", col:2, row:5, pop:4.6},
+  {n:"伊東",     s:"市", col:4, row:5, pop:6.4},
+  {n:"西伊豆",   s:"町", col:1, row:6, pop:0.7},
+  {n:"伊豆",     s:"市", col:2, row:6, pop:2.8},
+  {n:"東伊豆",   s:"町", col:4, row:6, pop:1.1},
+  {n:"松崎",     s:"町", col:1, row:7, pop:0.6},
+  {n:"河津",     s:"町", col:3, row:7, pop:0.6},
+  {n:"南伊豆",   s:"町", col:2, row:8, pop:0.7},
+  {n:"下田",     s:"市", col:3, row:8, pop:1.9}
+];
+var GOAL = 100000;
+// 次回ホームゲーム（デモ用仮設定）：9/6(日) ホーム開幕戦
+var NEXT_MATCH = {
+  date: new Date(2026,8,6),
+  labelShort: "9/6(日)",
+  title: "ホーム開幕戦",
+  url: "https://www.azul-claro.jp/"
+};
+var KICKOFF = NEXT_MATCH.date;
+var KEY = "azul_genki_demo_v2";
+
+var SAMPLE_TEXT = [
+  "開幕戦、スタジアムで待ってます！","今年こそ絶対いける。信じてます","声が枯れるまで応援します",
+  "沼津から愛を込めて","うちの子が背番号を覚えました","去年の悔しさ、全部ぶつけよう",
+  "職場のみんなで応援してます","初観戦です。よろしくお願いします","雨でも雪でも行きます",
+  "アスルがあるから月曜も頑張れる","地元から声援送ります","勝っても負けても大好きです",
+  "スタジアムの空気が好きです","家族3人で応援に行きます","開幕ダッシュ決めよう！",
+  "遠くからだけど心は隣にいます","今年は昇格の年にしよう","子どもの憧れでいてください",
+  "商店街のみんなで待ってます","一緒に歴史をつくりましょう","おじいちゃんもテレビの前で応援",
+  "選手のみんな、けがだけは気をつけて","青い空、青いユニフォーム","今年もよろしくお願いします！"
+];
+var SAMPLE_NAME = ["ぬまづサポ","青い風","ヨシ","みかん農家","かずき","おかん","三島の熱男","たけ","ゆうか","","ハルパパ","めぐ","","名無しのサポーター","こまち","RIKU",""];
+var TO_LIST = ["チーム全員へ","監督・スタッフへ","#7 の選手へ","#9 の選手へ","#10 の選手へ","#18 の選手へ"];
+
+/* ===================== 状態 ===================== */
+var state = null;
+function seed(){
+  var rnd = mulberry(20260804);
+  var energy = {}, msgs = [], people = 0;
+  CITIES.forEach(function(c){
+    // 人口に緩く相関＋クラブ本拠地補正
+    var base = c.pop * (140 + rnd()*260);
+    if(c.n==="沼津") base *= 2.1;
+    if(c.n==="三島"||c.n==="裾野"||c.n==="長泉"||c.n==="清水") base *= 1.35;
+    energy[c.n] = Math.round(base);
+    people += Math.round(base/38);
+  });
+  for(var i=0;i<46;i++){
+    var c = CITIES[Math.floor(rnd()*CITIES.length)];
+    msgs.push({
+      name: SAMPLE_NAME[Math.floor(rnd()*SAMPLE_NAME.length)],
+      city: c.n,
+      to:   TO_LIST[Math.floor(rnd()*TO_LIST.length)],
+      text: SAMPLE_TEXT[Math.floor(rnd()*SAMPLE_TEXT.length)],
+      ts:   Date.now() - Math.floor(rnd()*86400000*12)
+    });
+  }
+  msgs.sort(function(a,b){return a.ts-b.ts;});
+  return {energy:energy, msgs:msgs, people:people};
+}
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(raw){ var o=JSON.parse(raw); if(o&&o.energy) return o; }
+  }catch(e){}
+  var s = seed(); save(s); return s;
+}
+function save(s){ try{ localStorage.setItem(KEY, JSON.stringify(s)); }catch(e){} }
+state = load();
+
+function totalEnergy(){ var t=0; for(var k in state.energy) t+=state.energy[k]; return t; }
+function litCount(){ var n=0; CITIES.forEach(function(c){ if(state.energy[c.n]>0) n++; }); return n; }
+function daysToKickoff(){ return Math.max(0, Math.ceil((KICKOFF - new Date())/86400000)); }
+
+/* ===================== 効果音（WebAudio・任意OFF） ===================== */
+var AC=null, master=null, soundOn=true, humOsc=null, humGain=null;
+function ac(){
+  if(!AC){
+    try{
+      AC = new (window.AudioContext||window.webkitAudioContext)();
+      master = AC.createGain(); master.gain.value = 0.10; master.connect(AC.destination);
+    }catch(e){ soundOn=false; return null; }
+  }
+  if(AC.state==="suspended") AC.resume();
+  return AC;
+}
+function startHum(){
+  if(!soundOn) return; var a=ac(); if(!a) return;
+  stopHum();
+  humOsc=a.createOscillator(); humGain=a.createGain();
+  humOsc.type="sine"; humOsc.frequency.value=110;
+  humGain.gain.setValueAtTime(0.0001,a.currentTime);
+  humGain.gain.exponentialRampToValueAtTime(0.5,a.currentTime+0.4);
+  humOsc.connect(humGain); humGain.connect(master); humOsc.start();
+}
+function stopHum(){
+  if(humOsc){ try{humOsc.stop();}catch(e){} humOsc=null; humGain=null; }
+}
+function playFire(big){
+  if(!soundOn) return; var a=ac(); if(!a) return;
+  var t=a.currentTime;
+  var o=a.createOscillator(), g=a.createGain();
+  o.type="triangle";
+  o.frequency.setValueAtTime(big?740:520,t);
+  o.frequency.exponentialRampToValueAtTime(70,t+0.3);
+  g.gain.setValueAtTime(0.9,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.35);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t+0.4);
+}
+function playChime(){
+  if(!soundOn) return; var a=ac(); if(!a) return;
+  var t=a.currentTime;
+  [523.25,659.25,783.99].forEach(function(f,i){
+    var o=a.createOscillator(), g=a.createGain();
+    o.type="sine"; o.frequency.value=f;
+    g.gain.setValueAtTime(0.0001,t+i*0.09);
+    g.gain.exponentialRampToValueAtTime(0.5,t+i*0.09+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001,t+i*0.09+0.7);
+    o.connect(g); g.connect(master); o.start(t+i*0.09); o.stop(t+i*0.09+0.75);
+  });
+}
+function vib(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+var soundBtn=document.getElementById("soundBtn");
+soundBtn.addEventListener("click",function(){
+  soundOn=!soundOn;
+  if(!soundOn) stopHum();
+  soundBtn.textContent = soundOn ? "♪" : "✕";
+  soundBtn.title = "効果音 " + (soundOn?"ON":"OFF");
+});
+
+/* ===================== HUD ===================== */
+var elE=document.getElementById("hudEnergy"), elM=document.getElementById("hudMsg"),
+    elC=document.getElementById("hudCity"), elD=document.getElementById("hudDays"),
+    elGoalNow=document.getElementById("goalNow"), elGoalFill=document.getElementById("goalFill");
+
+var shownEnergy = totalEnergy();
+function fmt(n){ return Math.round(n).toLocaleString("ja-JP"); }
+function renderHUD(pop){
+  elM.textContent = fmt(state.msgs.length);
+  elC.innerHTML = litCount()+'<small style="font-size:.5em">/20</small>';
+  elD.textContent = daysToKickoff();
+  var t = totalEnergy();
+  elGoalNow.textContent = fmt(t);
+  elGoalFill.style.width = Math.min(100, t/GOAL*100).toFixed(2)+"%";
+  if(pop){ elE.classList.remove("pop"); void elE.offsetWidth; elE.classList.add("pop"); }
+}
+// カウントアップ演出
+(function tickCounter(){
+  var t = totalEnergy();
+  if(Math.abs(shownEnergy-t) > 0.5){ shownEnergy += (t-shownEnergy)*0.12; }
+  else shownEnergy = t;
+  elE.textContent = fmt(shownEnergy);
+  requestAnimationFrame(tickCounter);
+})();
+renderHUD();
+
+/* ===================== 元気玉キャンバス ===================== */
+var cv = document.getElementById("ball"), ctx = cv.getContext("2d");
+var CW = cv.width, CH = cv.height, CX = CW/2, CY = CH*0.47;
+var holding=false, charge=0, bursts=[], streaks=[], sparks=[];
+var particles = [];
+var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function rebuildParticles(){
+  particles = [];
+  var list = state.msgs.slice(-110);
+  for(var i=0;i<list.length;i++){
+    particles.push({
+      msg:list[i],
+      a: (i*137.508)*Math.PI/180,          // 黄金角で均等配置
+      tilt: Math.acos(1-2*((i+0.5)/list.length)),
+      r: 0.62+((i*0.37)%1)*0.34,
+      sp: 0.00022+((i*0.11)%1)*0.00028,
+      px:0, py:0, pr:0, vis:0, born:0
+    });
+  }
+}
+rebuildParticles();
+
+function ballRadius(){
+  var t = totalEnergy();
+  return 150 + Math.min(150, Math.pow(t/GOAL,0.55)*150);
+}
+
+var lastVibStep = 0;
+function draw(now){
+  ctx.clearRect(0,0,CW,CH);
+  var R = ballRadius();
+  var chargeK = charge/100;
+  var maxed = charge>=100;
+
+  // MAXチャージ時は小さく振動させる
+  ctx.save();
+  if(maxed && !reduce){
+    ctx.translate((Math.random()*2-1)*4,(Math.random()*2-1)*4);
+  }
+
+  // 外周のオーラ
+  var aura = ctx.createRadialGradient(CX,CY,R*0.4,CX,CY,R*2.5);
+  aura.addColorStop(0,"rgba(0,160,233,"+(0.20+chargeK*0.22)+")");
+  aura.addColorStop(0.45,"rgba(0,47,108,0.16)");
+  aura.addColorStop(1,"rgba(0,17,41,0)");
+  ctx.fillStyle=aura; ctx.beginPath(); ctx.arc(CX,CY,R*2.5,0,7); ctx.fill();
+
+  // 発射エフェクト
+  for(var b=bursts.length-1;b>=0;b--){
+    var bu=bursts[b], age=(now-bu.t)/900;
+    if(age>1){ bursts.splice(b,1); continue; }
+    var rr = R + age*R*2.4, al = (1-age)*0.55;
+    ctx.strokeStyle="rgba(127,232,255,"+al+")"; ctx.lineWidth=(1-age)*10+1;
+    ctx.beginPath(); ctx.arc(CX,CY,rr,0,7); ctx.stroke();
+  }
+
+  // 流れ込む光（投稿時）
+  for(var s=streaks.length-1;s>=0;s--){
+    var st=streaks[s], k=(now-st.t)/1400;
+    if(k>1){ streaks.splice(s,1); continue; }
+    var e = 1-Math.pow(1-k,3);
+    var x = st.x0+(CX-st.x0)*e, y = st.y0+(CY-st.y0)*e;
+    var g = ctx.createLinearGradient(st.x0,st.y0,x,y);
+    g.addColorStop(0,"rgba(127,232,255,0)"); g.addColorStop(1,"rgba(255,255,255,"+(1-k)*0.9+")");
+    ctx.strokeStyle=g; ctx.lineWidth=5; ctx.lineCap="round";
+    ctx.beginPath(); ctx.moveTo(st.x0+(x-st.x0)*0.72, st.y0+(y-st.y0)*0.72); ctx.lineTo(x,y); ctx.stroke();
+    ctx.fillStyle="rgba(255,255,255,"+(1-k)+")"; ctx.beginPath(); ctx.arc(x,y,7*(1-k*0.5),0,7); ctx.fill();
+    if(k<0.7){
+      ctx.font="600 30px 'Zen Kaku Gothic New',sans-serif"; ctx.textAlign="center";
+      ctx.fillStyle="rgba(127,232,255,"+(0.85-k)+")";
+      ctx.fillText(st.label, st.x0, st.y0-22);
+    }
+  }
+
+  // 本体
+  var core = ctx.createRadialGradient(CX-R*0.22,CY-R*0.26,R*0.05,CX,CY,R*(1+chargeK*0.10));
+  core.addColorStop(0,"rgba(255,255,255,"+(0.95)+")");
+  core.addColorStop(0.22,"rgba(127,232,255,0.85)");
+  core.addColorStop(0.55,"rgba(0,160,233,0.55)");
+  core.addColorStop(0.85,"rgba(15,76,129,0.30)");
+  core.addColorStop(1,"rgba(0,47,108,0)");
+  ctx.fillStyle=core; ctx.beginPath(); ctx.arc(CX,CY,R*(1.12+chargeK*0.10),0,7); ctx.fill();
+
+  // 粒（＝メッセージ）
+  ctx.textAlign="center";
+  for(var i=0;i<particles.length;i++){
+    var p=particles[i];
+    p.a += p.sp*(reduce?0:16.6) * (1+chargeK*2.2);
+    var pull = 1 - chargeK*0.30;
+    var rr2 = R*p.r*pull;
+    var sx = Math.sin(p.tilt)*Math.cos(p.a), sy = Math.cos(p.tilt)*0.72, sz = Math.sin(p.tilt)*Math.sin(p.a);
+    var depth = (sz+1)/2;
+    p.px = CX + sx*rr2; p.py = CY + sy*rr2 + Math.sin(p.a*0.7)*rr2*0.28;
+    p.pr = 4+depth*6.5;
+    p.vis = 0.35+depth*0.65;
+    var fresh = p.born ? Math.max(0,1-(now-p.born)/1200) : 0;
+    ctx.fillStyle="rgba(255,255,255,"+(p.vis*0.9)+")";
+    ctx.beginPath(); ctx.arc(p.px,p.py,p.pr*(1+fresh*1.8),0,7); ctx.fill();
+    if(depth>0.55||fresh>0){
+      ctx.fillStyle="rgba(127,232,255,"+(p.vis*0.28+fresh*0.5)+")";
+      ctx.beginPath(); ctx.arc(p.px,p.py,p.pr*2.6*(1+fresh),0,7); ctx.fill();
+    }
+  }
+
+  // チャージリング
+  if(charge>0){
+    ctx.strokeStyle="rgba(255,255,255,0.14)"; ctx.lineWidth=9;
+    ctx.beginPath(); ctx.arc(CX,CY,R*1.42,0,7); ctx.stroke();
+    ctx.strokeStyle= maxed ? "#FFB547" : "#7FE8FF"; ctx.lineWidth=9; ctx.lineCap="round";
+    ctx.beginPath(); ctx.arc(CX,CY,R*1.42,-Math.PI/2,-Math.PI/2+chargeK*Math.PI*2); ctx.stroke();
+    ctx.font="700 46px 'Barlow Condensed',sans-serif";
+    ctx.fillStyle= maxed ? "#FFB547" : "#7FE8FF"; ctx.textAlign="center";
+    ctx.fillText((maxed?"MAX! ":"")+"+"+Math.round(charge*3), CX, CY+R*1.42+64);
+  }
+
+  // 火花
+  for(var k2=sparks.length-1;k2>=0;k2--){
+    var sp=sparks[k2]; sp.x+=sp.vx; sp.y+=sp.vy; sp.vy+=0.12; sp.life-=0.016;
+    if(sp.life<=0){ sparks.splice(k2,1); continue; }
+    ctx.fillStyle="rgba(255,255,255,"+sp.life+")";
+    ctx.beginPath(); ctx.arc(sp.x,sp.y,sp.life*5,0,7); ctx.fill();
+  }
+
+  ctx.restore();
+
+  if(holding){
+    charge = Math.min(100, charge+1.5);
+    // チャージ音のピッチを上げる／25%ごとに小さく振動
+    if(humOsc) humOsc.frequency.value = 110 + chargeK*460;
+    var step = Math.floor(charge/25);
+    if(step>lastVibStep){ lastVibStep=step; vib(12); }
+  }
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+function addEnergy(city, amount){
+  state.energy[city] = (state.energy[city]||0) + amount;
+  state.people += 1;
+  save(state); renderHUD(true); renderMap(); renderRank();
+}
+
+/* コンボ：連続発射でボーナス */
+var combo=0, lastFireT=0;
+function fireBurst(){
+  var base = Math.round(charge*3);
+  if(base<=0) return;
+  var nowT = performance.now();
+  combo = (nowT-lastFireT<4000) ? combo+1 : 1;
+  lastFireT = nowT;
+  var mult = Math.min(2, 1+(combo-1)*0.1);
+  var amt = Math.round(base*mult);
+  var city = citySel.value;
+  var big = charge>=100;
+  bursts.push({t:nowT});
+  for(var i=0;i<(big?44:26);i++){
+    var a=Math.random()*Math.PI*2, v=3+Math.random()*(big?10:7);
+    sparks.push({x:CX,y:CY,vx:Math.cos(a)*v,vy:Math.sin(a)*v-2,life:0.6+Math.random()*0.4});
+  }
+  addEnergy(city, amt);
+  playFire(big);
+  vib(big?[40,60,90]:[30,50]);
+  showToast(amt, combo);
+  charge=0; lastVibStep=0;
+}
+
+/* 発射後トースト（次回試合への導線） */
+var toast=document.getElementById("toast"), toastTimer=null;
+function showToast(amt, comboN){
+  document.getElementById("toastAmt").textContent = "+"+fmt(amt)+" ENERGY";
+  document.getElementById("toastCombo").textContent = comboN>1 ? "COMBO ×"+comboN+"!" : "";
+  document.getElementById("toastDays").textContent = daysToKickoff();
+  toast.classList.add("on");
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){ toast.classList.remove("on"); }, 4200);
+}
+
+/* 押す／離す */
+var ballArea=document.getElementById("ballArea"), hint=document.getElementById("hint");
+var moved=false, downT=0;
+cv.addEventListener("pointerdown", function(e){
+  e.preventDefault(); holding=true; moved=false; downT=performance.now();
+  hint.classList.add("hide");
+  lastVibStep=0;
+  startHum();
+  cv.setPointerCapture && cv.setPointerCapture(e.pointerId);
+});
+function release(e){
+  if(!holding) return;
+  holding=false;
+  stopHum();
+  var dur = performance.now()-downT;
+  if(dur<240){ hitTest(e); charge=0; }   // 短いタップ＝粒を読む
+  else fireBurst();
+}
+cv.addEventListener("pointerup", release);
+cv.addEventListener("pointercancel", function(){ holding=false; charge=0; stopHum(); });
+cv.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+cv.addEventListener("keydown", function(e){ if(e.key===" "||e.key==="Enter"){ e.preventDefault(); charge=60; fireBurst(); } });
+cv.setAttribute("tabindex","0");
+cv.setAttribute("aria-label","元気玉。押し続けてチャージ、離して発射します");
+
+/* 粒タップでメッセージ表示（画面外にはみ出さないようクランプ） */
+var msgPop=document.getElementById("msgPop"), mpText=document.getElementById("mpText"), mpMeta=document.getElementById("mpMeta");
+function hitTest(e){
+  var rect=cv.getBoundingClientRect();
+  var scale=CW/rect.width;
+  var x=(e.clientX-rect.left)*scale, y=(e.clientY-rect.top)*scale;
+  var best=null,bd=1e9;
+  for(var i=0;i<particles.length;i++){
+    var p=particles[i], d=Math.hypot(p.px-x,p.py-y);
+    if(d<bd && d<Math.max(26,p.pr*3.4)){ bd=d; best=p; }
+  }
+  if(best){
+    var m=best.msg;
+    mpText.textContent = "「"+m.text+"」";
+    mpMeta.textContent = (m.name||"名無しのサポーター")+"／"+m.city+"　→　"+m.to;
+    var cssX = best.px/scale, cssY = best.py/scale;
+    var half = 132; // ポップ幅の半分＋余白
+    cssX = Math.min(Math.max(cssX, half), rect.width-half);
+    msgPop.classList.toggle("below", cssY < 120); // 上端付近は下側に表示
+    msgPop.style.left=cssX+"px";
+    msgPop.style.top=cssY+"px";
+    msgPop.classList.add("on");
+  }else{
+    msgPop.classList.remove("on");
+  }
+}
+document.addEventListener("pointerdown", function(e){ if(!msgPop.contains(e.target)&&e.target!==cv) msgPop.classList.remove("on"); });
+
+/* ===================== フォーム ===================== */
+var citySel=document.getElementById("fCity"), fText=document.getElementById("fText"),
+    fCount=document.getElementById("fCount"), sendBtn=document.getElementById("sendBtn"),
+    thanks=document.getElementById("thanks");
+CITIES.slice().sort(function(a,b){return b.pop-a.pop;}).forEach(function(c){
+  var o=document.createElement("option"); o.value=c.n; o.textContent=c.n+c.s; citySel.appendChild(o);
+});
+citySel.value="沼津";
+fText.addEventListener("input", function(){
+  var l=fText.value.length;
+  fCount.textContent=l+" / 40";
+  fCount.classList.toggle("over", l>=40);
+});
+sendBtn.addEventListener("click", function(){
+  var txt=fText.value.trim();
+  if(!txt){ fText.focus(); fText.placeholder="ひとことだけでも大丈夫です"; return; }
+  var mult = document.getElementById("fPlace").value==="real" ? 2 : 1;
+  var amt = 120*mult;
+  var m={ name:document.getElementById("fName").value.trim(), city:citySel.value,
+          to:document.getElementById("fTo").value, text:txt, ts:Date.now() };
+  state.msgs.push(m);
+  addEnergy(m.city, amt);
+  rebuildParticles();
+  if(particles.length) particles[particles.length-1].born=performance.now();
+  // マップから玉へ光が流れる演出
+  streaks.push({t:performance.now(), x0:CX+(Math.random()*2-1)*520, y0:CH*0.9, label:m.city+"から"});
+  buildTicker();
+  playChime();
+  vib(60);
+  fText.value=""; fCount.textContent="0 / 40";
+  thanks.classList.add("on");
+  setTimeout(function(){ thanks.classList.remove("on"); }, 3200);
+  document.getElementById("ballArea").scrollIntoView({behavior:"smooth",block:"center"});
+  // 光の流入演出を見せてから、次回試合への導線モーダルを開く
+  setTimeout(function(){ openModal(m, amt); }, 1300);
+});
+
+/* ===================== 送信後モーダル ===================== */
+var modalBk=document.getElementById("modalBk"), mdClose=document.getElementById("mdClose"),
+    mdSub=document.getElementById("mdSub"), mdDays=document.getElementById("mdDays"),
+    mdShare=document.getElementById("mdShare"), mdTicket=document.getElementById("mdTicket");
+var confettiRun=0;
+function shareUrl(){
+  var text = "「みんなの元気玉」に元気を送りました！⚡ 現在 "+fmt(totalEnergy())+" ENERGY。"
+    + NEXT_MATCH.labelShort+" "+NEXT_MATCH.title+"、スタジアムで一緒に応援しよう！ #アスルクラロ沼津 #みんなの元気玉";
+  return "https://twitter.com/intent/tweet?text="+encodeURIComponent(text)+"&url="+encodeURIComponent(NEXT_MATCH.url);
+}
+function openModal(m, amt){
+  mdSub.innerHTML = (m.name?esc(m.name)+"さんの":"あなたの")+"元気で、元気玉が <b>+"+fmt(amt)+"</b> 大きくなりました";
+  mdDays.textContent = daysToKickoff();
+  mdShare.href = shareUrl();
+  modalBk.classList.add("on");
+  modalBk.setAttribute("aria-hidden","false");
+  startConfetti();
+  mdClose.focus();
+}
+function closeModal(){
+  modalBk.classList.remove("on");
+  modalBk.setAttribute("aria-hidden","true");
+  confettiRun=0;
+}
+mdClose.addEventListener("click", closeModal);
+modalBk.addEventListener("click", function(e){ if(e.target===modalBk) closeModal(); });
+document.addEventListener("keydown", function(e){ if(e.key==="Escape") closeModal(); });
+
+/* 紙吹雪（クラブカラー） */
+var cfCv=document.getElementById("confetti"), cfCtx=cfCv.getContext("2d");
+function startConfetti(){
+  if(reduce) return;
+  var box=cfCv.parentElement.getBoundingClientRect();
+  cfCv.width=box.width; cfCv.height=box.height;
+  var COLORS=["#7FE8FF","#00A0E9","#FFFFFF","#FFB547","#0F4C81"];
+  var pieces=[];
+  for(var i=0;i<90;i++){
+    pieces.push({
+      x:Math.random()*cfCv.width, y:-20-Math.random()*cfCv.height*0.5,
+      w:5+Math.random()*6, h:8+Math.random()*8,
+      vy:1.6+Math.random()*2.6, vx:(Math.random()*2-1)*1.2,
+      rot:Math.random()*Math.PI, vr:(Math.random()*2-1)*0.12,
+      c:COLORS[Math.floor(Math.random()*COLORS.length)]
+    });
+  }
+  var run=++confettiRun, start=performance.now();
+  (function loop(now){
+    if(run!==confettiRun) return;
+    var t=(now-start)/3400;
+    cfCtx.clearRect(0,0,cfCv.width,cfCv.height);
+    if(t>1) return;
+    pieces.forEach(function(p){
+      p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr;
+      cfCtx.save(); cfCtx.translate(p.x,p.y); cfCtx.rotate(p.rot);
+      cfCtx.globalAlpha=Math.min(1,(1-t)*1.6);
+      cfCtx.fillStyle=p.c; cfCtx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      cfCtx.restore();
+    });
+    requestAnimationFrame(loop);
+  })(start);
+}
+
+/* ===================== マップ ===================== */
+var SVGNS="http://www.w3.org/2000/svg";
+var HS=48, HW=Math.sqrt(3)*HS, HSTEP=HS*1.5;
+var mapSvg=document.getElementById("mapSvg"), selCity=null, rankMode="total";
+function hexPath(cx,cy){
+  var d="";
+  for(var i=0;i<6;i++){
+    var a=Math.PI/180*(60*i-90);
+    var x=cx+HS*Math.cos(a), y=cy+HS*Math.sin(a);
+    d+=(i?"L":"M")+x.toFixed(1)+","+y.toFixed(1);
+  }
+  return d+"Z";
+}
+function cityPos(c){
+  return { x: 46 + c.col*HW + (c.row%2?HW/2:0), y: 60 + c.row*HSTEP };
+}
+function heatColor(k){
+  // 0→濃紺 / 1→白青
+  var stops=[[0,34,77],[15,76,129],[0,160,233],[127,232,255]];
+  var t=Math.min(1,Math.max(0,k))*(stops.length-1);
+  var i=Math.floor(t), f=t-i; if(i>=stops.length-1){i=stops.length-2;f=1;}
+  var a=stops[i], b=stops[i+1];
+  return "rgb("+Math.round(a[0]+(b[0]-a[0])*f)+","+Math.round(a[1]+(b[1]-a[1])*f)+","+Math.round(a[2]+(b[2]-a[2])*f)+")";
+}
+function buildMap(){
+  mapSvg.innerHTML="";
+  CITIES.forEach(function(c){
+    var p=cityPos(c);
+    var g=document.createElementNS(SVGNS,"g");
+    g.setAttribute("class","hex"); g.setAttribute("data-city",c.n);
+    g.setAttribute("tabindex","0"); g.setAttribute("role","button");
+    g.setAttribute("aria-label",c.n+c.s);
+    var path=document.createElementNS(SVGNS,"path");
+    path.setAttribute("d",hexPath(p.x,p.y)); path.setAttribute("class","hex-shape");
+    g.appendChild(path);
+    var t1=document.createElementNS(SVGNS,"text");
+    t1.setAttribute("class","hex-name"+(c.n.length>3?" sm":"")); t1.setAttribute("x",p.x); t1.setAttribute("y",p.y-4);
+    t1.textContent=c.n; g.appendChild(t1);
+    var t2=document.createElementNS(SVGNS,"text");
+    t2.setAttribute("class","hex-suf"); t2.setAttribute("x",p.x); t2.setAttribute("y",p.y+9);
+    t2.textContent=c.s; g.appendChild(t2);
+    var t3=document.createElementNS(SVGNS,"text");
+    t3.setAttribute("class","hex-val"); t3.setAttribute("x",p.x); t3.setAttribute("y",p.y+26);
+    g.appendChild(t3);
+    g.addEventListener("click",function(){ selectCity(c.n); });
+    g.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "){e.preventDefault();selectCity(c.n);} });
+    mapSvg.appendChild(g);
+  });
+}
+function renderMap(){
+  var max=0; CITIES.forEach(function(c){ max=Math.max(max,state.energy[c.n]||0); });
+  CITIES.forEach(function(c){
+    var g=mapSvg.querySelector('[data-city="'+c.n+'"]');
+    if(!g) return;
+    var v=state.energy[c.n]||0;
+    var k=max? Math.pow(v/max,0.6):0;
+    g.querySelector(".hex-shape").setAttribute("fill",heatColor(k));
+    g.querySelector(".hex-val").textContent=fmt(v);
+    g.classList.toggle("sel", selCity===c.n);
+  });
+}
+function selectCity(n){
+  selCity=n; citySel.value=n; renderMap(); renderRank();
+  var c=CITIES.filter(function(x){return x.n===n;})[0];
+  var v=state.energy[n]||0, tot=totalEnergy();
+  var cnt=state.msgs.filter(function(m){return m.city===n;}).length;
+  var d=document.getElementById("cityDetail");
+  d.innerHTML="<h4>"+c.n+c.s+"</h4><p>エナジー "+fmt(v)+"（全体の"+(tot?(v/tot*100).toFixed(1):0)+"％）／メッセージ "+cnt+"件<br>"
+   +"人口10万人あたり "+fmt(v/(c.pop*10))+" ／ 順位 "+(rankArray().findIndex(function(x){return x.n===n;})+1)+"位（"+(rankMode==="total"?"総エナジー":"密度")+"）</p>";
+}
+buildMap(); renderMap();
+
+/* ランキング */
+function rankArray(){
+  return CITIES.map(function(c){
+    var v=state.energy[c.n]||0;
+    return {n:c.n,s:c.s,v:v,d:v/(c.pop*10)};
+  }).sort(function(a,b){ return rankMode==="total" ? b.v-a.v : b.d-a.d; });
+}
+function renderRank(){
+  var arr=rankArray(), ol=document.getElementById("rankList");
+  ol.innerHTML="";
+  arr.slice(0,10).forEach(function(r,i){
+    var li=document.createElement("li");
+    li.className = (selCity===r.n?"sel":"");
+    li.innerHTML='<span class="rank-no">'+(i+1)+'</span><span class="rank-city">'+r.n+r.s+'</span>'
+      +'<span class="rank-val">'+fmt(rankMode==="total"?r.v:r.d)+'</span>';
+    li.addEventListener("click",function(){ selectCity(r.n); });
+    ol.appendChild(li);
+  });
+}
+renderRank();
+document.getElementById("tabTotal").addEventListener("click",function(){
+  rankMode="total"; this.classList.add("on"); document.getElementById("tabDens").classList.remove("on"); renderRank();
+});
+document.getElementById("tabDens").addEventListener("click",function(){
+  rankMode="dens"; this.classList.add("on"); document.getElementById("tabTotal").classList.remove("on"); renderRank();
+});
+
+/* ===================== ティッカー ===================== */
+function buildTicker(){
+  var track=document.getElementById("tickerTrack");
+  var recent=state.msgs.slice(-24).reverse();
+  var html="";
+  for(var rep=0;rep<2;rep++){
+    recent.forEach(function(m){
+      html+='<span class="tk-item"><span class="tk-city">'+esc(m.city)+'</span>'
+        +'<span>'+esc(m.text)+'</span><span class="tk-sep">／</span>'
+        +'<span style="color:var(--paper-dim);font-size:12px">'+esc(m.name||"名無しのサポーター")+'</span></span>';
+    });
+  }
+  track.innerHTML=html;
+}
+function esc(s){ return String(s).replace(/[<>&"]/g,function(c){return {"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c];}); }
+buildTicker();
+
+/* ===================== リセット ===================== */
+document.getElementById("resetBtn").addEventListener("click",function(){
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  state=load(); rebuildParticles(); renderHUD(true); renderMap(); renderRank(); buildTicker();
+  selCity=null;
+  document.getElementById("cityDetail").innerHTML="<h4>市町を選ぶと表示されます</h4><p>マップまたはランキングから選択してください。</p>";
+});
+
+})();
+</script>
+</body>
+</html>
