@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>みんなで積み上げる、来場者数。｜アスルクラロ沼津 2026 SEASON</title>
+
+<!--
+  ============================================================
+  【更新のしかた】※現在はすべてダミーデータです
+  下の  const SEASON = { ... }  だけを書き換えれば数字が変わります。
+    - matches    : 全ホームゲームの配列。attendance に実数を入れる。
+                   まだ開催していない試合は attendance: null のままにする。
+    - benchmarks : 3つの基準ライン（値・1試合平均・名前）
+  それ以外のコードは触らなくて大丈夫です。
+  ============================================================
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --navy:#002F6C;
+  --navy-2:#0F4C81;
+  --ink:#0B1F3A;
+  --cyan:#00A0E9;
+  --cyan-lt:#7FD6F7;
+  --cyan-pale:#D6EFFB;
+  --sky:#EAF4FC;
+  --paper:#F6FBFE;
+  --line:#D5E5F2;
+  /* 基準ラインのアイデンティティカラー（CVD検証済み） */
+  --bm1:#0091D8;   /* J昇格ライン */
+  --bm2:#255B94;   /* JFL CUP平均 */
+  --bm3:#C97A00;   /* 2025シーズン平均 */
+  --bm1-pale:#D6EFFB;
+  --bm2-pale:#DCE6F2;
+  --bm3-pale:#F6E7CE;
+  --dh:88px;
+  --dw:64px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:"Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif;
+  background:var(--paper);
+  color:var(--ink);
+  line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+.num{font-family:"Outfit",sans-serif;font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ---------- scroll reveal ---------- */
+.reveal{opacity:0;transform:translateY(16px);transition:opacity .7s ease,transform .7s cubic-bezier(.22,.9,.3,1)}
+.reveal.in{opacity:1;transform:none}
+
+/* ---------- header ---------- */
+.masthead{padding:34px 0 10px}
+.eyebrow{
+  font-family:"Outfit",sans-serif;font-weight:700;font-size:12px;letter-spacing:.22em;
+  color:var(--cyan);text-transform:uppercase;
+}
+.eyebrow span{color:var(--navy-2);opacity:.65}
+h1{
+  font-weight:900;font-size:clamp(30px,5.6vw,52px);line-height:1.28;
+  color:var(--navy);margin-top:10px;letter-spacing:.01em;
+}
+.lead{margin-top:14px;max-width:44em;font-size:15px;color:#3A5876}
+
+/* ---------- hero board ---------- */
+.board{
+  margin-top:30px;border-radius:32px;
+  background:
+    radial-gradient(120% 100% at 12% 0%, rgba(0,160,233,.42) 0%, rgba(0,160,233,0) 58%),
+    linear-gradient(158deg,#0F4C81 0%,#002F6C 58%,#00214D 100%);
+  padding:38px 26px 30px;color:#fff;position:relative;overflow:hidden;
+  box-shadow:0 24px 50px -28px rgba(0,47,108,.7);
+}
+.board::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(70% 55% at 50% 8%, rgba(127,214,247,.18) 0%, transparent 70%);
+}
+.board-label{
+  text-align:center;font-size:13px;letter-spacing:.16em;color:var(--cyan-lt);font-weight:700;
+}
+
+/* flap counter */
+.counter{
+  display:flex;justify-content:center;align-items:flex-end;gap:6px;
+  margin:20px 0 6px;position:relative;z-index:2;perspective:800px;
+}
+.digit{
+  width:var(--dw);height:var(--dh);border-radius:12px;overflow:hidden;position:relative;
+  background:linear-gradient(180deg,#0A2A55 0%,#061C3B 49.6%,#0A2A55 50.4%,#04162E 100%);
+  box-shadow:inset 0 0 0 1px rgba(127,214,247,.22), 0 8px 18px -8px rgba(0,0,0,.8);
+  transform-style:preserve-3d;
+}
+.digit.lead0{opacity:.3}
+.digit .seam{
+  position:absolute;left:0;right:0;top:50%;height:2px;z-index:3;
+  background:rgba(0,0,0,.55);box-shadow:0 1px 0 rgba(127,214,247,.14);
+}
+.digit .sheen{
+  position:absolute;inset:0;z-index:4;pointer-events:none;opacity:0;
+  background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);
+  transform:translateX(-110%);
+}
+.digit.shine .sheen{animation:sheen .9s ease-out forwards}
+@keyframes sheen{0%{opacity:1;transform:translateX(-110%)}100%{opacity:0;transform:translateX(110%)}}
+.reel{position:absolute;left:0;right:0;top:0;will-change:transform}
+.reel i{
+  display:flex;align-items:center;justify-content:center;height:var(--dh);
+  font-family:"Outfit",sans-serif;font-weight:800;font-size:calc(var(--dh) * .66);
+  font-style:normal;color:#EAF7FF;text-shadow:0 2px 6px rgba(0,0,0,.5);
+}
+.comma{
+  font-family:"Outfit",sans-serif;font-weight:800;font-size:calc(var(--dh) * .5);
+  color:var(--cyan-lt);align-self:flex-end;padding-bottom:6px;
+}
+.unit{
+  font-weight:900;font-size:26px;color:#fff;align-self:flex-end;padding-bottom:12px;margin-left:6px;
+}
+@keyframes flap{
+  0%{transform:rotateX(0deg)}
+  45%{transform:rotateX(-16deg)}
+  100%{transform:rotateX(0deg)}
+}
+.digit.flip{animation:flap .3s ease-out}
+
+.board-sub{text-align:center;position:relative;z-index:2;font-size:14px;color:#BFE3F7}
+.board-sub b{color:#fff;font-weight:900}
+
+/* milestone track */
+.track{position:relative;z-index:2;margin:38px auto 8px;max-width:720px;padding:26px 0 30px}
+.track-bar{
+  height:10px;border-radius:999px;background:rgba(255,255,255,.12);
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.35);overflow:hidden;
+}
+.track-fill{
+  height:100%;width:0%;border-radius:999px;
+  background:linear-gradient(90deg,#00A0E9 0%,#7FD6F7 100%);
+  box-shadow:0 0 14px rgba(0,160,233,.75);
+}
+.track .mk{position:absolute;top:0;bottom:0;width:0}
+.track .mk .notch{
+  position:absolute;left:-1px;top:22px;bottom:26px;width:2px;border-radius:2px;
+  background:rgba(255,255,255,.4);transition:.4s;
+}
+.track .mk .pill{
+  position:absolute;left:0;transform:translateX(-50%);white-space:nowrap;
+  font-family:"Outfit",sans-serif;font-weight:700;font-size:11px;letter-spacing:.03em;
+  padding:2px 9px;border-radius:999px;color:#DFF2FC;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.28);transition:.4s;
+}
+.track .mk.up .pill{top:-2px}
+.track .mk.down .pill{bottom:0}
+.track .mk.edge .pill{transform:translateX(-88%)}
+.track .mk.passed .notch{background:#fff;box-shadow:0 0 8px rgba(255,255,255,.8)}
+.track .mk.passed .pill{color:#fff;border-color:transparent}
+.track .mk.passed.c1 .pill{background:var(--bm1)}
+.track .mk.passed.c2 .pill{background:var(--bm2)}
+.track .mk.passed.c3 .pill{background:var(--bm3)}
+
+/* benchmark chips */
+.chips{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:14px;position:relative;z-index:2}
+.chip{
+  display:flex;align-items:center;gap:9px;padding:9px 15px;border-radius:999px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(127,214,247,.28);
+  font-size:12.5px;color:#CDE7F8;transition:.35s;
+}
+.chip .dot{width:9px;height:9px;border-radius:50%;flex:none;transition:.35s}
+.chip.c1 .dot{background:var(--bm1)}
+.chip.c2 .dot{background:var(--bm2);box-shadow:0 0 0 1px rgba(255,255,255,.35)}
+.chip.c3 .dot{background:var(--bm3)}
+.chip b{font-family:"Outfit",sans-serif;font-weight:800;font-size:15px;color:#fff}
+.chip small{font-size:10.5px;color:#9CC6E2}
+.chip .ck{display:none;font-weight:900;color:#fff}
+.chip.hit{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.55);color:#fff}
+.chip.hit .ck{display:inline}
+.chip.hit small{color:#D8ECFA}
+.chip.near{border-color:var(--cyan-lt)}
+.chip.near .dot{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(127,214,247,.55)}50%{box-shadow:0 0 0 7px rgba(127,214,247,0)}}
+
+/* ---------- sections ---------- */
+section{padding:56px 0 0}
+.sec-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+h2{font-weight:900;font-size:22px;color:var(--navy)}
+.sec-note{font-size:13px;color:#6E8AA6}
+
+.card{
+  background:#fff;border:1px solid var(--line);border-radius:26px;padding:26px 22px;margin-top:18px;
+  box-shadow:0 12px 30px -26px rgba(0,47,108,.55);
+}
+
+/* ---------- dot grid ---------- */
+.grid-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:#5C7A97;margin-bottom:16px}
+.grid-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.gridbox{position:relative;padding:4px 0}
+.dots{display:grid;grid-template-columns:repeat(50,1fr);gap:3px}
+.dots b{
+  display:block;width:100%;aspect-ratio:1/1;border-radius:2.5px;background:var(--cyan-pale);
+  transform:scale(.72);opacity:.55;transition:transform .25s cubic-bezier(.34,1.56,.64,1),background .25s,opacity .25s;
+}
+.dots b.on{background:var(--bm1);transform:scale(1);opacity:1}
+.dots b.on.tier2{background:var(--bm2)}
+.dots b.on.tier3{background:var(--bm3)}
+.mline{position:absolute;left:0;right:0;height:0;border-top:2px dashed var(--bm1);opacity:.55;pointer-events:none}
+.mline em{
+  position:absolute;right:0;top:-11px;font-style:normal;font-family:"Outfit",sans-serif;
+  font-size:11px;font-weight:700;color:#fff;padding:2px 9px;border-radius:999px;letter-spacing:.04em;
+}
+.mline.c1{border-top-color:var(--bm1)} .mline.c1 em{background:var(--bm1)}
+.mline.c2{border-top-color:var(--bm2)} .mline.c2 em{background:var(--bm2)}
+.mline.c3{border-top-color:var(--bm3);opacity:.75} .mline.c3 em{background:var(--bm3)}
+
+/* ---------- chart ---------- */
+.chart-card{position:relative}
+.chart{width:100%;height:auto;display:block}
+.chart text{font-family:"Outfit",sans-serif;font-weight:700}
+.chart .hit{cursor:pointer;outline:none}
+.chart .hit:focus-visible{stroke:var(--cyan);stroke-width:2;fill:rgba(0,160,233,.06)}
+.chart .col{transition:filter .15s}
+.chart .col.hov{filter:brightness(1.14)}
+.tip{
+  position:absolute;z-index:5;pointer-events:none;opacity:0;transform:translateY(4px);
+  transition:opacity .15s,transform .15s;
+  background:#0B2447;color:#EAF7FF;border-radius:12px;padding:10px 13px;min-width:150px;
+  box-shadow:0 12px 26px -12px rgba(0,31,68,.6);font-size:12px;line-height:1.5;
+}
+.tip.show{opacity:1;transform:translateY(0)}
+.tip .t-h{color:#9CC6E2;font-size:11px}
+.tip .t-v{font-family:"Outfit",sans-serif;font-weight:800;font-size:19px}
+.tip .t-v small{font-size:11px;font-weight:700;margin-left:2px}
+.tip .t-c{color:#BFE3F7;font-size:11.5px}
+.tip .t-c b{font-family:"Outfit",sans-serif;color:#fff}
+
+/* ---------- pace cards ---------- */
+.pace{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+.pcard{background:#fff;border:1px solid var(--line);border-radius:22px;padding:20px 18px;position:relative;overflow:hidden}
+.pcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px}
+.pcard.c1::before{background:var(--bm1)}
+.pcard.c2::before{background:var(--bm2)}
+.pcard.c3::before{background:var(--bm3)}
+.pcard h3{font-size:13px;font-weight:700;color:#41627F;letter-spacing:.02em;display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.pcard h3 b{font-family:"Outfit",sans-serif;font-weight:800;font-size:16px;color:var(--navy)}
+.pcard h3 small{font-size:11px;color:#7C97B1;font-weight:500}
+.meter{margin-top:12px;height:8px;border-radius:999px;overflow:hidden}
+.pcard.c1 .meter{background:var(--bm1-pale)} .pcard.c1 .meter i{background:var(--bm1)}
+.pcard.c2 .meter{background:var(--bm2-pale)} .pcard.c2 .meter i{background:var(--bm2)}
+.pcard.c3 .meter{background:var(--bm3-pale)} .pcard.c3 .meter i{background:var(--bm3)}
+.meter i{display:block;height:100%;width:0%;border-radius:999px;transition:width 1.4s cubic-bezier(.22,.9,.3,1)}
+.pcard .pct{font-family:"Outfit",sans-serif;font-weight:700;font-size:12px;color:#6E8AA6;margin-top:6px}
+.pcard .big{font-family:"Outfit",sans-serif;font-weight:800;font-size:34px;line-height:1.15;color:var(--navy);margin-top:8px}
+.pcard .big small{font-size:14px;font-weight:700;margin-left:3px}
+.pcard p{font-size:12.5px;color:#6E8AA6;margin-top:8px;line-height:1.6}
+.pcard.done{background:linear-gradient(160deg,#F2FAFF 0%,#fff 60%)}
+.pcard .badge{
+  display:inline-block;margin-top:8px;padding:3px 12px;border-radius:999px;
+  font-size:12px;font-weight:900;color:#fff;
+}
+.pcard.c1 .badge{background:var(--bm1)}
+.pcard.c2 .badge{background:var(--bm2)}
+.pcard.c3 .badge{background:var(--bm3)}
+
+/* ---------- table ---------- */
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:11px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11.5px;color:#7C97B1;font-weight:700;letter-spacing:.06em}
+th:nth-child(-n+3),td:nth-child(-n+3){text-align:left}
+td.n{font-family:"Outfit",sans-serif;font-weight:700}
+tbody tr{transition:background .2s}
+tbody tr:hover{background:var(--sky)}
+tr.future td{color:#A9BED0}
+tr.best td.n{color:var(--cyan)}
+.scroller{overflow-x:auto}
+
+/* ---------- footer / demo ---------- */
+.replay{
+  display:inline-flex;align-items:center;gap:8px;margin-top:22px;padding:11px 20px;border-radius:999px;
+  border:1px solid var(--cyan);background:#fff;color:var(--navy);font-family:inherit;font-weight:700;font-size:13.5px;cursor:pointer;
+  transition:background .2s,transform .2s;
+}
+.replay:hover{background:var(--sky);transform:translateY(-1px)}
+.replay:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+.demo{margin-top:44px;padding:20px;border:1px dashed #B9CFE0;border-radius:20px;background:#fff}
+.demo p{font-size:12.5px;color:#6E8AA6;margin-bottom:12px}
+.demo-btns{display:flex;gap:9px;flex-wrap:wrap}
+.demo-btns button{
+  padding:9px 15px;border-radius:999px;border:1px solid var(--line);background:var(--sky);
+  font-family:inherit;font-size:13px;font-weight:700;color:var(--navy-2);cursor:pointer;
+}
+.demo-btns button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
+.demo-btns button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+footer{padding:40px 0 64px;font-size:12px;color:#8AA3B8;text-align:center}
+
+@media(max-width:860px){
+  :root{--dh:62px;--dw:45px}
+  .dots{grid-template-columns:repeat(25,1fr)}
+  .pace{grid-template-columns:1fr}
+  .board{padding:30px 14px 24px;border-radius:26px}
+  .chart{min-width:640px}
+  .track{margin-top:32px}
+  .track .mk .pill{font-size:10px;padding:2px 7px}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+  .reveal{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">AZUL CLARO NUMAZU <span>／ 2026 SEASON</span></div>
+    <h1>みんなで積み上げる、<br>来場者数。</h1>
+    <p class="lead">ホームゲームに足を運んでくれた人の数を、シーズンを通して積み上げています。J昇格の目安、JFL CUPの平均、そして2025シーズンの平均。3つのラインを見上げながら、一人ひとりの来場を積み重ねていきます。</p>
+  </header>
+
+  <div class="board">
+    <div class="board-label">今シーズン ホームゲーム累計来場者数</div>
+    <div class="counter num" id="counter" role="status" aria-live="polite" aria-label="累計来場者数"></div>
+    <div class="board-sub" id="boardSub">集計中…</div>
+    <div class="track" id="track" aria-hidden="true">
+      <div class="track-bar"><div class="track-fill" id="trackFill"></div></div>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <button class="replay" id="replay" type="button">↻ もう一度、1人から積み上げる</button>
+
+  <section class="reveal">
+    <div class="sec-head">
+      <h2>1マス＝100人</h2>
+      <span class="sec-note">来てくれた一人ひとりが、このマスを埋めています</span>
+    </div>
+    <div class="card">
+      <div class="grid-legend" id="gridLegend"></div>
+      <div class="gridbox">
+        <div class="dots" id="dots" aria-hidden="true"></div>
+        <div id="gridLines"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="reveal">
+    <div class="sec-head">
+      <h2>試合ごとの積み上がり</h2>
+      <span class="sec-note">濃い部分がその試合で増えた分。バーに触れると詳細が見られます</span>
+    </div>
+    <div class="card chart-card">
+      <div class="scroller"><svg class="chart" id="chart" viewBox="0 0 840 340" role="img" aria-label="試合ごとの累計来場者数グラフ"></svg></div>
+      <div class="tip" id="tip"></div>
+    </div>
+  </section>
+
+  <section class="reveal">
+    <div class="sec-head">
+      <h2>3つのラインまで</h2>
+      <span class="sec-note">残りのホームゲームで必要な、1試合あたりの人数</span>
+    </div>
+    <div class="pace" id="pace"></div>
+  </section>
+
+  <section class="reveal">
+    <div class="sec-head">
+      <h2>ホームゲーム記録</h2>
+      <span class="sec-note">全<span id="totalMatches">15</span>試合</span>
+    </div>
+    <div class="card">
+      <div class="scroller">
+        <table>
+          <thead>
+            <tr><th>節</th><th>開催日</th><th>対戦相手</th><th>入場者数</th><th>累計</th></tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <div class="demo">
+    <p>【デモ用・公開時は削除します】表示状態を切り替えて確認できます。</p>
+    <div class="demo-btns" id="demoBtns"></div>
+  </div>
+
+  <footer>
+    数値はすべてダミーデータです。／ アスルクラロ沼津
+  </footer>
+</div>
+
+<script>
+/* ===================== ここだけ書き換えれば OK ===================== */
+const SEASON = {
+  benchmarks: [
+    { value: 30000, perGame: 2000, name: "J昇格ライン",       short: "J昇格" },
+    { value: 42435, perGame: 2829, name: "JFL CUP平均",       short: "JFL CUP平均" },
+    { value: 51255, perGame: 3417, name: "2025シーズン平均",  short: "2025平均" }
+  ],
+  matches: [
+    { round: 1,  date: "3/8",   vs: "A FC", attendance: 3412 },
+    { round: 3,  date: "3/22",  vs: "B FC", attendance: 2688 },
+    { round: 5,  date: "4/5",   vs: "C FC", attendance: 2955 },
+    { round: 7,  date: "4/19",  vs: "D FC", attendance: 3104 },
+    { round: 9,  date: "5/3",   vs: "E FC", attendance: 4022 },
+    { round: 11, date: "5/17",  vs: "F FC", attendance: 2571 },
+    { round: 13, date: "6/7",   vs: "G FC", attendance: 2834 },
+    { round: 15, date: "6/21",  vs: "H FC", attendance: 3266 },
+    { round: 17, date: "7/12",  vs: "I FC", attendance: 2489 },
+    { round: 19, date: "7/26",  vs: "J FC", attendance: 2059 },
+    { round: 21, date: "8/9",   vs: "K FC", attendance: 3180 },
+    { round: 23, date: "8/23",  vs: "L FC", attendance: 3051 },
+    { round: 25, date: "9/13",  vs: "M FC", attendance: 3402 },
+    { round: 27, date: "10/11", vs: "N FC", attendance: 3015 },
+    { round: 29, date: "11/15", vs: "O FC", attendance: 4180 }
+  ]
+};
+/* ================================================================= */
+
+/* デモ用：何試合目まで消化済みとして表示するか */
+const DEMO_PRESETS = [
+  { label: "10試合終了（J昇格ラインまであと600人）", played: 10 },
+  { label: "12試合終了（J昇格ライン突破）",           played: 12 },
+  { label: "15試合終了（JFL CUP平均超え）",           played: 15 }
+];
+let PLAYED = DEMO_PRESETS[0].played;
+
+const BM = SEASON.benchmarks;
+const BM_COLORS = ["#0091D8", "#255B94", "#C97A00"];
+const PER_DOT = 100;
+const SCALE_MAX = 55000;                 /* 全ビジュアル共通の上限（2025平均の少し上） */
+const DOT_COUNT = SCALE_MAX / PER_DOT;   /* 550マス */
+const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const yen = n => n.toLocaleString("ja-JP");
+
+/* ---------- derived ---------- */
+function state(){
+  const played = SEASON.matches.slice(0, PLAYED);
+  const cum = [];
+  let t = 0;
+  SEASON.matches.forEach((m,i)=>{ if(i<PLAYED) t += m.attendance; cum.push(t); });
+  const total = played.reduce((s,m)=>s+m.attendance,0);
+  const avg = played.length ? Math.round(total/played.length) : 0;
+  return { played, total, avg, cum, remaining: SEASON.matches.length - PLAYED };
+}
+/* 値 v がどのゾーンにいるか（0=まだ1本目の下 / 1,2,3=そのライン超え） */
+function zoneOf(v){
+  let z = 0;
+  BM.forEach((b,i)=>{ if(v >= b.value) z = i+1; });
+  return z;
+}
+function zoneColor(v){
+  if(v < BM[0].value) return BM_COLORS[0];
+  if(v < BM[1].value) return BM_COLORS[1];
+  return BM_COLORS[2];
+}
+
+/* ---------- flap counter ---------- */
+const counterEl = document.getElementById("counter");
+const DIGITS = 5;
+let reels = [], digitCards = [], itemH = 0;
+
+function buildCounter(){
+  counterEl.innerHTML = "";
+  reels = []; digitCards = [];
+  for(let i=0;i<DIGITS;i++){
+    const card = document.createElement("div");
+    card.className = "digit";
+    const reel = document.createElement("div");
+    reel.className = "reel";
+    for(let d=0;d<=10;d++){
+      const it = document.createElement("i");
+      it.textContent = d % 10;
+      reel.appendChild(it);
+    }
+    const seam = document.createElement("span");
+    seam.className = "seam";
+    const sheen = document.createElement("span");
+    sheen.className = "sheen";
+    card.appendChild(reel); card.appendChild(seam); card.appendChild(sheen);
+    counterEl.appendChild(card);
+    reels.push(reel); digitCards.push(card);
+    if(i === 1){
+      const c = document.createElement("span");
+      c.className = "comma"; c.textContent = ",";
+      counterEl.appendChild(c);
+    }
+  }
+  const u = document.createElement("span");
+  u.className = "unit"; u.textContent = "人";
+  counterEl.appendChild(u);
+  itemH = digitCards[0].getBoundingClientRect().height || 88;
+}
+
+/* 数字を「保持してからパタッと落ちる」動きにする */
+function snap(x){
+  const i = Math.floor(x);
+  let f = x - i;
+  const hold = 0.74;
+  f = f < hold ? 0 : (f - hold) / (1 - hold);
+  return i + f;
+}
+function renderCounter(v, exact){
+  for(let i=0;i<DIGITS;i++){
+    const exp = Math.pow(10, DIGITS - 1 - i);
+    const pos = exact ? Math.floor(v / exp) % 10 : snap((v / exp) % 10);
+    reels[i].style.transform = `translateY(${-pos * itemH}px)`;
+    digitCards[i].classList.toggle("lead0", v < exp && i < DIGITS - 1);
+  }
+  counterEl.setAttribute("aria-label", `累計来場者数 ${yen(Math.round(v))}人`);
+}
+function flipSettle(){
+  digitCards.forEach((c,i)=>{
+    c.classList.remove("flip","shine");
+    setTimeout(()=>c.classList.add("flip"), i*60);
+    setTimeout(()=>c.classList.add("shine"), i*60 + 180);
+  });
+}
+
+/* ---------- milestone track ---------- */
+const trackEl = document.getElementById("track");
+const trackFill = document.getElementById("trackFill");
+let trackMarks = [];
+function buildTrack(){
+  trackMarks.forEach(m=>m.remove());
+  trackMarks = [];
+  BM.forEach((b,i)=>{
+    const mk = document.createElement("div");
+    const pct = b.value / SCALE_MAX * 100;
+    mk.className = `mk c${i+1} ${i % 2 === 0 ? "down" : "up"}${pct > 86 ? " edge" : ""}`;
+    mk.style.left = pct + "%";
+    mk.title = b.name;
+    const pill = document.createElement("span");
+    pill.className = "pill";
+    pill.textContent = yen(b.value);
+    const notch = document.createElement("span");
+    notch.className = "notch";
+    mk.appendChild(notch); mk.appendChild(pill);
+    trackEl.appendChild(mk);
+    trackMarks.push(mk);
+  });
+}
+function renderTrack(v){
+  trackFill.style.width = Math.min(100, v / SCALE_MAX * 100) + "%";
+  trackMarks.forEach((mk,i)=>mk.classList.toggle("passed", v >= BM[i].value));
+}
+
+/* ---------- dot grid ---------- */
+const dotsEl = document.getElementById("dots");
+let dotNodes = [];
+function buildDots(){
+  const frag = document.createDocumentFragment();
+  for(let i=0;i<DOT_COUNT;i++) frag.appendChild(document.createElement("b"));
+  dotsEl.innerHTML = ""; dotsEl.appendChild(frag);
+  dotNodes = Array.from(dotsEl.children);
+  const t2 = Math.floor(BM[0].value / PER_DOT);
+  const t3 = Math.floor(BM[1].value / PER_DOT);
+  dotNodes.forEach((n,i)=>{
+    if(i >= t3) n.dataset.tier = "3";
+    else if(i >= t2) n.dataset.tier = "2";
+  });
+
+  /* 基準ライン（マスの消費割合の位置に引く） */
+  document.getElementById("gridLines").innerHTML = BM.map((b,i)=>
+    `<div class="mline c${i+1}" style="top:${(b.value / SCALE_MAX * 100).toFixed(2)}%"><em>${yen(b.value)} ${b.name}</em></div>`
+  ).join("");
+
+  document.getElementById("gridLegend").innerHTML = [
+    `<span><i style="background:var(--bm1)"></i>〜J昇格ライン 30,000</span>`,
+    `<span><i style="background:var(--bm2)"></i>〜JFL CUP平均 42,435</span>`,
+    `<span><i style="background:var(--bm3)"></i>〜2025シーズン平均 51,255</span>`,
+    `<span><i style="background:var(--cyan-pale)"></i>これから埋まるマス</span>`
+  ].join("");
+}
+let lastFilled = -1;
+function renderDots(v){
+  const filled = Math.min(DOT_COUNT, Math.floor(v / PER_DOT));
+  if(filled === lastFilled) return;
+  if(filled > lastFilled){
+    for(let i=Math.max(0,lastFilled); i<filled; i++){
+      const n = dotNodes[i]; if(!n) continue;
+      n.classList.add("on");
+      if(n.dataset.tier === "2") n.classList.add("tier2");
+      if(n.dataset.tier === "3") n.classList.add("tier3");
+    }
+  } else {
+    for(let i=filled;i<=lastFilled;i++){
+      const n = dotNodes[i]; if(!n) continue;
+      n.classList.remove("on","tier2","tier3");
+    }
+  }
+  lastFilled = filled;
+}
+
+/* ---------- chart ---------- */
+const chartEl = document.getElementById("chart");
+const tipEl = document.getElementById("tip");
+const CW = 840, CH = 340, PAD_L = 46, PAD_R = 88, TOP = 18, BOT = 296;
+const BW = 24; /* バーの太さ */
+let baseRects = [], topPaths = [];
+
+function y(v){ return BOT - (v / SCALE_MAX) * (BOT - TOP); }
+function bandX(i){
+  const band = (CW - PAD_L - PAD_R) / SEASON.matches.length;
+  return PAD_L + band * (i + 0.5);
+}
+/* 上だけ角丸のバー */
+function topRoundPath(x, yTop, w, h, r){
+  if(h <= 0) return "";
+  r = Math.min(r, h, w/2);
+  return `M${x},${yTop+h} L${x},${yTop+r} Q${x},${yTop} ${x+r},${yTop} L${x+w-r},${yTop} Q${x+w},${yTop} ${x+w},${yTop+r} L${x+w},${yTop+h} Z`;
+}
+
+function buildChart(){
+  const s = state();
+  const n = SEASON.matches.length;
+  const band = (CW - PAD_L - PAD_R) / n;
+  let svg = "";
+
+  /* y gridlines（1万人刻み・控えめ） */
+  for(let gv = 10000; gv <= 50000; gv += 10000){
+    const gy = y(gv);
+    svg += `<line x1="${PAD_L}" x2="${CW-PAD_R+6}" y1="${gy}" y2="${gy}" stroke="#E4EEF5" stroke-width="1"/>`;
+    svg += `<text x="${PAD_L-8}" y="${gy+4}" font-size="10.5" fill="#9BB2C6" text-anchor="end">${gv/10000}万</text>`;
+  }
+
+  /* 3つの基準ライン */
+  BM.forEach((b,i)=>{
+    const gy = y(b.value);
+    const col = BM_COLORS[i];
+    svg += `<line x1="${PAD_L}" x2="${CW-PAD_R+6}" y1="${gy}" y2="${gy}" stroke="${col}" stroke-width="1.6" stroke-dasharray="6 5" opacity=".6"/>`;
+    svg += `<rect x="${CW-PAD_R+12}" y="${gy-9}" width="7" height="3" rx="1.5" fill="${col}"/>`;
+    svg += `<text x="${CW-PAD_R+23}" y="${gy-4}" font-size="10.5" fill="#476B8A">${b.short}</text>`;
+    svg += `<text x="${CW-PAD_R+12}" y="${gy+9}" font-size="10.5" fill="#476B8A">${yen(b.value)}</text>`;
+  });
+
+  /* projection (pace) */
+  if(s.remaining > 0 && s.avg > 0){
+    let pts = [];
+    for(let i=PLAYED-1;i<n;i++){
+      const val = s.total + s.avg * (i - (PLAYED-1));
+      pts.push(`${bandX(i)},${y(val)}`);
+    }
+    svg += `<polyline points="${pts.join(' ')}" fill="none" stroke="#9FB8CC" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 7"/>`;
+    const lastVal = s.total + s.avg * (n - PLAYED);
+    svg += `<text x="${bandX(n-1)}" y="${y(lastVal)-12}" font-size="11" fill="#7C97B1" text-anchor="end">このペースで ${yen(lastVal)}</text>`;
+  }
+
+  /* columns */
+  SEASON.matches.forEach((m,i)=>{
+    const cx = bandX(i) - BW/2;
+    svg += `<rect class="col c-base" data-i="${i}" x="${cx}" y="${BOT}" width="${BW}" height="0" fill="#0091D8" opacity=".22"/>`;
+    svg += `<path class="col c-top" data-i="${i}" d="" fill="#0091D8"/>`;
+  });
+
+  /* baseline + x labels */
+  svg += `<line x1="${PAD_L}" x2="${CW-PAD_R+6}" y1="${BOT}" y2="${BOT}" stroke="#C3D8E8" stroke-width="1.5"/>`;
+  SEASON.matches.forEach((m,i)=>{
+    if(i % 2 !== 0 && n > 10) return;
+    svg += `<text x="${bandX(i)}" y="${BOT+20}" font-size="11" fill="#8AA3B8" text-anchor="middle">${m.date}</text>`;
+  });
+
+  /* hover / focus hit targets（マークより大きい当たり判定） */
+  SEASON.matches.forEach((m,i)=>{
+    const hx = bandX(i) - band/2;
+    const played = i < PLAYED;
+    const label = played
+      ? `第${m.round}節 ${m.date} vs ${m.vs}、入場者数${yen(m.attendance)}人、累計${yen(state().cum[i])}人`
+      : `第${m.round}節 ${m.date} vs ${m.vs}、開催予定`;
+    svg += `<rect class="hit" data-i="${i}" x="${hx}" y="${TOP}" width="${band}" height="${BOT-TOP}" fill="transparent" tabindex="0" role="img" aria-label="${label}"/>`;
+  });
+
+  chartEl.innerHTML = svg;
+  baseRects = Array.from(chartEl.querySelectorAll(".c-base"));
+  topPaths  = Array.from(chartEl.querySelectorAll(".c-top"));
+  bindChartHover();
+}
+
+function renderChart(v){
+  const s = state();
+  SEASON.matches.forEach((m,i)=>{
+    const b = baseRects[i], t = topPaths[i];
+    if(!b || !t) return;
+    if(i >= PLAYED){
+      /* 未開催の試合はバーを描かない（予測は点線が担当） */
+      b.setAttribute("height", 0);
+      t.setAttribute("d", "");
+      return;
+    }
+    const prev = i === 0 ? 0 : s.cum[i-1];
+    const cur  = s.cum[i];
+    const shown = Math.max(0, Math.min(v, cur));
+    const col = zoneColor(cur);
+    const cx = bandX(i) - BW/2;
+    /* 下側（前試合までの積み上げ）— 上の濃い部分と2pxの隙間 */
+    const prevShown = Math.min(shown, prev);
+    const baseTopY = y(prevShown) + (shown > prev ? 2 : 0);
+    b.setAttribute("y", Math.min(baseTopY, BOT));
+    b.setAttribute("height", Math.max(0, BOT - baseTopY));
+    b.setAttribute("fill", col);
+    /* 上側（その試合で増えた分）— 先端だけ角丸 */
+    const topH = Math.max(0, y(prevShown) - y(shown));
+    t.setAttribute("d", topRoundPath(cx, y(shown), BW, topH, 4));
+    t.setAttribute("fill", col);
+  });
+}
+
+/* tooltip */
+function bindChartHover(){
+  const card = chartEl.closest(".chart-card");
+  const hits = chartEl.querySelectorAll(".hit");
+  function fill(i){
+    const s = state();
+    const m = SEASON.matches[i];
+    const played = i < PLAYED;
+    tipEl.textContent = "";
+    const h = document.createElement("div");
+    h.className = "t-h";
+    h.textContent = `第${m.round}節 ${m.date}　vs ${m.vs}`;
+    tipEl.appendChild(h);
+    const v = document.createElement("div");
+    v.className = "t-v";
+    if(played){
+      v.textContent = yen(m.attendance);
+      const sm = document.createElement("small"); sm.textContent = "人";
+      v.appendChild(sm);
+    } else {
+      v.textContent = "開催予定";
+    }
+    tipEl.appendChild(v);
+    if(played){
+      const c = document.createElement("div");
+      c.className = "t-c";
+      c.textContent = "累計 ";
+      const bb = document.createElement("b");
+      bb.textContent = `${yen(s.cum[i])}人`;
+      c.appendChild(bb);
+      tipEl.appendChild(c);
+    }
+  }
+  function place(i){
+    const cardR = card.getBoundingClientRect();
+    const svgR = chartEl.getBoundingClientRect();
+    const sc = svgR.width / CW;
+    let x = svgR.left - cardR.left + bandX(i) * sc - tipEl.offsetWidth / 2;
+    x = Math.max(6, Math.min(x, cardR.width - tipEl.offsetWidth - 6));
+    const s = state();
+    const topV = i < PLAYED ? s.cum[i] : 0;
+    let yy = svgR.top - cardR.top + y(topV) * sc - tipEl.offsetHeight - 10;
+    yy = Math.max(4, yy);
+    tipEl.style.left = x + "px";
+    tipEl.style.top = yy + "px";
+  }
+  function show(i){
+    fill(i);
+    tipEl.classList.add("show");
+    place(i);
+    chartEl.querySelectorAll(".col").forEach(el=>
+      el.classList.toggle("hov", +el.dataset.i === i));
+  }
+  function hide(){
+    tipEl.classList.remove("show");
+    chartEl.querySelectorAll(".col.hov").forEach(el=>el.classList.remove("hov"));
+  }
+  hits.forEach(hit=>{
+    const i = +hit.dataset.i;
+    hit.addEventListener("pointerenter", ()=>show(i));
+    hit.addEventListener("focus", ()=>show(i));
+    hit.addEventListener("pointerleave", hide);
+    hit.addEventListener("blur", hide);
+  });
+  chartEl.addEventListener("pointerleave", hide);
+}
+
+/* ---------- chips ---------- */
+const chipsEl = document.getElementById("chips");
+function buildChips(){
+  chipsEl.innerHTML = BM.map((b,i)=>
+    `<span class="chip c${i+1}" data-v="${b.value}"><span class="dot"></span><span class="ck">✓</span>${b.name} <b>${yen(b.value)}</b><small>平均${yen(b.perGame)}/試合</small></span>`
+  ).join("");
+}
+function renderChips(v){
+  chipsEl.querySelectorAll(".chip").forEach(c=>{
+    const gv = +c.dataset.v;
+    c.classList.toggle("hit", v >= gv);
+    c.classList.toggle("near", v < gv && v >= gv*0.9);
+  });
+}
+
+/* ---------- board sub text ---------- */
+const subEl = document.getElementById("boardSub");
+function renderSub(){
+  const s = state();
+  const next = BM.find(b => s.total < b.value);
+  let msg;
+  if(!next){
+    msg = `3つのラインをすべて超えました。ありがとうございます！`;
+  } else {
+    msg = `${next.name}（${yen(next.value)}人）まで あと <b>${yen(next.value - s.total)}人</b>`;
+  }
+  subEl.innerHTML = `${PLAYED}試合終了 ／ 1試合平均 <b>${yen(s.avg)}人</b>・${msg}`;
+}
+
+/* ---------- pace cards ---------- */
+function renderPace(){
+  const s = state();
+  const el = document.getElementById("pace");
+  el.innerHTML = BM.map((b,i)=>{
+    const gap = b.value - s.total;
+    const cls = `c${i+1}`;
+    const head = `<h3>${b.name} <b>${yen(b.value)}</b><small>平均${yen(b.perGame)}/試合</small></h3>`;
+    const pct = Math.min(100, s.total / b.value * 100);
+    const meter = `<div class="meter"><i data-w="${pct.toFixed(1)}"></i></div>
+      <div class="pct num">${pct.toFixed(1)}%（${yen(s.total)} / ${yen(b.value)}）</div>`;
+    if(gap <= 0){
+      return `<div class="pcard ${cls} done">${head}${meter}
+        <div class="big">超えました 🎉</div><span class="badge">LINE CLEAR</span>
+        <p>このラインの先へ、さらに積み上げていきます。</p></div>`;
+    }
+    if(s.remaining <= 0){
+      return `<div class="pcard ${cls}">${head}${meter}
+        <div class="big">あと ${yen(gap)}<small>人</small></div>
+        <p>今シーズンは届きませんでした。来季、必ず。</p></div>`;
+    }
+    const need = Math.ceil(gap / s.remaining);
+    const plus = need - s.avg;
+    return `<div class="pcard ${cls}">${head}${meter}
+      <div class="big">${yen(need)}<small>人／試合</small></div>
+      <p>残り${s.remaining}試合。いまの平均から${plus > 0 ? `<b>1試合あたり ${yen(plus)}人</b>増えれば` : "このペースを保てば"}届きます。</p></div>`;
+  }).join("");
+  /* メーターをアニメーション */
+  requestAnimationFrame(()=>{
+    el.querySelectorAll(".meter i").forEach(m=>{ m.style.width = m.dataset.w + "%"; });
+  });
+}
+
+/* ---------- table ---------- */
+function renderTable(){
+  const s = state();
+  const best = Math.max(...s.played.map(m=>m.attendance), 0);
+  document.getElementById("totalMatches").textContent = SEASON.matches.length;
+  document.getElementById("tbody").innerHTML = SEASON.matches.map((m,i)=>{
+    const done = i < PLAYED;
+    const cls = !done ? "future" : (m.attendance === best ? "best" : "");
+    return `<tr class="${cls}">
+      <td>第${m.round}節</td><td>${m.date}</td><td>vs ${m.vs}</td>
+      <td class="n">${done ? yen(m.attendance) : "—"}</td>
+      <td class="n">${done ? yen(s.cum[i]) : "—"}</td></tr>`;
+  }).join("");
+}
+
+/* ---------- animation timeline ---------- */
+let rafId = null;
+function drawFrame(v){
+  renderCounter(v); renderDots(v); renderChart(v); renderChips(v); renderTrack(v);
+}
+function play(){
+  cancelAnimationFrame(rafId);
+  const target = state().total;
+  if(reduceMotion){
+    drawFrame(target);
+    renderCounter(target, true);
+    return;
+  }
+  lastFilled = -1;
+  dotNodes.forEach(n=>n.classList.remove("on","tier2","tier3"));
+  const dur = 3400, t0 = performance.now();
+  const ease = t => 1 - Math.pow(1 - t, 4);
+  function step(now){
+    const p = Math.min(1, (now - t0) / dur);
+    const v = 1 + (target - 1) * ease(p);
+    drawFrame(v);
+    if(p < 1){ rafId = requestAnimationFrame(step); }
+    else { drawFrame(target); renderCounter(target, true); flipSettle(); }
+  }
+  rafId = requestAnimationFrame(step);
+}
+
+/* ---------- init ---------- */
+function renderAll(){
+  buildCounter(); buildChart(); buildChips();
+  renderSub(); renderPace(); renderTable();
+  play();
+}
+buildDots();
+buildTrack();
+renderAll();
+
+document.getElementById("replay").addEventListener("click", play);
+window.addEventListener("resize", ()=>{
+  itemH = digitCards[0].getBoundingClientRect().height || itemH;
+  renderCounter(state().total, true);
+});
+
+/* scroll reveal */
+if(!reduceMotion && "IntersectionObserver" in window){
+  const io = new IntersectionObserver(entries=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add("in"); io.unobserve(e.target); } });
+  }, { threshold: .12 });
+  document.querySelectorAll(".reveal").forEach(el=>io.observe(el));
+} else {
+  document.querySelectorAll(".reveal").forEach(el=>el.classList.add("in"));
+}
+
+/* demo switcher */
+const demoBtns = document.getElementById("demoBtns");
+demoBtns.innerHTML = DEMO_PRESETS.map((p,i)=>
+  `<button type="button" data-played="${p.played}" aria-pressed="${i===0}">${p.label}</button>`).join("");
+demoBtns.addEventListener("click", e=>{
+  const b = e.target.closest("button"); if(!b) return;
+  PLAYED = +b.dataset.played;
+  demoBtns.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed", x===b));
+  renderAll();
+});
+</script>
+</body>
+</html>
