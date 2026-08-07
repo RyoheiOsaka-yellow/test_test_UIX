@@ -23,7 +23,7 @@
   #fx { left:0; right:0; bottom:calc(92px + env(safe-area-inset-bottom));
         text-align:center; font-size:clamp(13px, 2.2vw, 15px);
         letter-spacing:.3em; color:#fff; opacity:0; transition:opacity .55s;
-        text-shadow:0 0 14px rgba(160,190,255,.7); }
+        text-shadow:0 0 14px rgba(200,210,230,.7); }
   .chip { position:fixed; z-index:11; pointer-events:auto;
         background:rgba(14,16,22,.55); color:#9aa2b4;
         border:1px solid rgba(120,130,155,.3); border-radius:999px;
@@ -47,7 +47,7 @@
 
 <canvas id="stage"></canvas>
 <div id="stats" class="hud"></div>
-<div id="title" class="hud"><div class="t1">VITREA</div><div class="t2">DARK SURFACE STUDY</div></div>
+<div id="title" class="hud"><div class="t1">VITREA</div><div class="t2">MONOCHROME REFRACTION</div></div>
 <div id="caption" class="hud"></div>
 <div id="fx" class="hud"></div>
 <div id="hint" class="hud">指で触れると表面が反応 ／ ダブルタップで変質</div>
@@ -844,14 +844,96 @@ if (!gl) { document.getElementById('fallback').style.display = 'grid'; return; }
 const params = new URLSearchParams(location.search);
 const coarse = matchMedia('(pointer: coarse)').matches;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const DPR = Math.min(coarse ? 1.8 : 2, window.devicePixelRatio || 1);
+const N_FULL = Math.max(200, Math.min(20000,
+  parseInt(params.get('n') || (coarse ? 3000 : 5500), 10)));
+const DPR = Math.min(coarse ? 1.6 : 2, window.devicePixelRatio || 1);
 
-const { random: mrandom } = globalThis.mathcat;
+const { random: mrandom, easing: mease } = globalThis.mathcat;
 const seedP = parseInt(params.get('seed'), 10);
 const SEED = Number.isInteger(seedP) ? seedP >>> 0 : (Math.random()*4294967296) >>> 0;
 const rnd = mrandom.createRng(SEED);
+const TAU = Math.PI * 2;
 
-let W = 1; // aspect, x in [0,W], y in [0,1]
+// greyscale tile floor drawn offscreen, refracted by the surface shader
+const floorCanvas = document.createElement('canvas');
+const ctx = floorCanvas.getContext('2d');
+
+// ---------- world & agents (x in [0,W], y in [0,1], y down) ----------
+let W = 1;
+const px = new Float32Array(N_FULL), py = new Float32Array(N_FULL);
+const vx = new Float32Array(N_FULL), vy = new Float32Array(N_FULL);
+const heat = new Float32Array(N_FULL);
+let simCount = N_FULL;
+
+const MAXK = 6;
+const attr = [];
+for (let k = 0; k < MAXK; k++) {
+  attr.push({ fa: 0.05 + rnd()*0.10, fb: 0.05 + rnd()*0.10,
+              pa: rnd()*TAU, pb: rnd()*TAU, x: 0.5, y: 0.5 });
+}
+let Ka = 4;
+const cmul = new Float32Array(N_FULL);
+const hx = new Float32Array(N_FULL), hy = new Float32Array(N_FULL);
+function rollHomes(){
+  for (let i = 0; i < N_FULL; i++) { hx[i] = rnd()*W; hy[i] = rnd(); }
+}
+function seedAgents(){
+  for (let i = 0; i < N_FULL; i++) {
+    px[i] = rnd()*W; py[i] = rnd();
+    vx[i] = 0; vy[i] = 0; heat[i] = 0;
+    cmul[i] = 0.45 + Math.pow(rnd(), 0.6) * 1.9;
+  }
+  rollHomes();
+}
+
+// ---------- seasons: gathering / dispersing + monochrome tone scheme ----------
+let seasonIdx = 0, seasonT = 0;
+const SEASON_LEN = [11, 7]; // gather, disperse
+let cohesion = 1;
+
+// each season rolls a tonal character: 4 patch greys + key bias
+let greys = [30, 50, 70, 88];
+function newTone(){
+  const lowKey = rnd() < 0.55;
+  const base = lowKey ? 14 + rnd()*18 : 38 + rnd()*22;
+  const spread = 18 + rnd()*38;
+  greys = [0, 1, 2, 3].map(i =>
+    Math.min(96, Math.max(6, base + spread*(i/3) + (rnd() - 0.5)*10)));
+}
+newTone();
+
+function nextSeason(){
+  seasonIdx = (seasonIdx + 1) % 2;
+  seasonT = 0;
+  if (seasonIdx === 0) { // gather
+    Ka = 2 + ((rnd()*5)|0);
+    for (const a of attr) { a.pa = rnd()*TAU; a.pb = rnd()*TAU; }
+  } else {
+    rollHomes();
+  }
+  newTone();
+}
+
+// large-scale region flips (half / quarter): tone inversions in grayscale
+let regionEv = null, regionEnv = 0, nextRegionT = 4 + rnd()*8;
+function spawnRegion(now){
+  const mx = W/2, my = 0.5;
+  const r = rnd() < 0.5
+    ? [[0,0,mx,1],[mx,0,W,1],[0,0,W,my],[0,my,W,1]][(rnd()*4)|0]
+    : [[0,0,mx,my],[mx,0,W,my],[0,my,mx,1],[mx,my,W,1]][(rnd()*4)|0];
+  regionEv = {
+    x0: r[0], y0: r[1], x1: r[2], y1: r[3],
+    t0: now, dur: 2.5 + rnd()*2,
+    dAlpha: (rnd() < 0.5 ? -1 : 1) * (0.12 + rnd()*0.16),
+    dLight: (rnd() < 0.5 ? -1 : 1) * (10 + rnd()*16),
+  };
+}
+function inRegion(x0, y0, x1, y1){
+  if (!regionEv || regionEnv < 0.01) return false;
+  const cx = (x0+x1)/2, cy = (y0+y1)/2;
+  return cx >= regionEv.x0 && cx < regionEv.x1 &&
+         cy >= regionEv.y0 && cy < regionEv.y1;
+}
 
 // ---------- material state: water(0) <-> glass(1) ----------
 let matV = 0, matTarget = 0, matCycleT = 0;
@@ -870,10 +952,10 @@ function flipMaterial(){
 function updateMatLabel(){
   if (matV < 0.33) {
     matBtn.textContent = '💧 WATER';
-    captionEl.textContent = '表面張力が黒い液体を静かに保っている。';
+    captionEl.textContent = '黒い液体の下で、灰色の区画が組み変わり続ける。';
   } else if (matV > 0.67) {
     matBtn.textContent = '🪟 GLASS';
-    captionEl.textContent = '凍結完了。応力は打ち出し肌に封じ込められた。';
+    captionEl.textContent = '凍結完了。打ち出し肌の下に区画が霞んで見える。';
   } else {
     matBtn.textContent = '❄ 変質中…';
     captionEl.textContent = matTarget > 0.5
@@ -882,26 +964,28 @@ function updateMatLabel(){
   }
 }
 
-// ---------- interaction: pure surface phenomena ----------
+// ---------- interaction ----------
 const FX_NAMES = ['ばらける', 'ついてくる', 'ぐるぐる', '波紋'];
 let mode = 0;
 let press = 0, pressTarget = 0;
 let spin = 0;
 const pointerTarget = [0.5, 0.5];
 const pointer = [0.5, 0.5];
+const bursts = [];  // agent scatter kicks
+const ripples = []; // agent-pushing rings on the floor
 
 const NRIP = 12;
-const surfRipples = new Float32Array(NRIP*4); // x, y (world), t0, amp
+const surfRipples = new Float32Array(NRIP*4);
 let surfIdx = 0;
 function addSurfRipple(x, y, amp, now){
   const j = (surfIdx++ % NRIP) * 4;
   surfRipples[j] = x; surfRipples[j+1] = y;
   surfRipples[j+2] = now; surfRipples[j+3] = amp;
 }
-function splash(x, y, s, now){ // ばらける: a burst of small offset rings
+function splash(x, y, s, now){
   const n = 4 + ((rnd()*3)|0);
   for (let i = 0; i < n; i++) {
-    const a = rnd()*Math.PI*2, r = 0.02 + rnd()*0.09;
+    const a = rnd()*TAU, r = 0.02 + rnd()*0.09;
     addSurfRipple(x + Math.cos(a)*r, y + Math.sin(a)*r,
                   s*(0.25 + rnd()*0.5), now + rnd()*0.12);
   }
@@ -927,13 +1011,29 @@ function fxDown(x, y, strength, now){
   mode = (rnd()*FX_NAMES.length)|0;
   showFx(FX_NAMES[mode]);
   pressTarget = 1;
-  if (mode === 0) { splash(x, y, strength*1.2, now); lastFxT = now; }
-  if (mode === 3) { addSurfRipple(x, y, strength*1.5, now); lastFxT = now; }
+  if (mode === 0) {
+    splash(x, y, strength*1.2, now);
+    bursts.push({x, y, s: strength*1.2});
+    lastFxT = now;
+  }
+  if (mode === 3) {
+    addSurfRipple(x, y, strength*1.5, now);
+    ripples.push({x, y, t0: now, s: strength*1.2});
+    lastFxT = now;
+  }
 }
 function fxMove(x, y, strength, now){
   if (now - lastWake > 0.13) { addSurfRipple(x, y, 0.28, now); lastWake = now; }
-  if (mode === 0 && now - lastFxT > 0.28) { splash(x, y, strength*0.7, now); lastFxT = now; }
-  if (mode === 3 && now - lastFxT > 0.5)  { addSurfRipple(x, y, strength, now); lastFxT = now; }
+  if (mode === 0 && now - lastFxT > 0.28) {
+    splash(x, y, strength*0.7, now);
+    bursts.push({x, y, s: strength*0.6});
+    lastFxT = now;
+  }
+  if (mode === 3 && now - lastFxT > 0.5) {
+    addSurfRipple(x, y, strength, now);
+    ripples.push({x, y, t0: now, s: strength*0.9});
+    lastFxT = now;
+  }
 }
 
 canvas.addEventListener('pointerdown', ev => {
@@ -1102,7 +1202,181 @@ function processAir(now){
   }
 }
 
-// ---------- shaders ----------
+// ---------- physics ----------
+function step(dt, now){
+  const target = seasonIdx === 0 ? 1 : 0;
+  cohesion += (target - cohesion) * Math.min(1, dt*1.2);
+  const coh = 0.45 + cohesion*0.9;
+  const wander = 0.28 + (1 - cohesion)*0.9;
+
+  for (const a of attr) {
+    a.x = W * (0.5 + 0.34*Math.sin(now*a.fa*TAU + a.pa));
+    a.y = 0.5 + 0.34*Math.sin(now*a.fb*TAU + a.pb);
+  }
+
+  const P0 = pointer[0], P1 = pointer[1];
+  const R2 = 0.075;
+  const damp = Math.exp(-dt*2.1);
+
+  for (let i = 0; i < simCount; i++) {
+    const free = (i % 7) === 0;
+    const a = attr[i % Ka];
+    const tx = free ? hx[i] : a.x*cohesion + hx[i]*(1 - cohesion);
+    const ty = free ? hy[i] : a.y*cohesion + hy[i]*(1 - cohesion);
+    vx[i] += (tx - px[i]) * coh * cmul[i] * dt;
+    vy[i] += (ty - py[i]) * coh * cmul[i] * dt;
+    vx[i] += (rnd() - 0.5) * wander * dt * 2.2;
+    vy[i] += (rnd() - 0.5) * wander * dt * 2.2;
+
+    if (press > 0.02 && (mode === 1 || mode === 2)) {
+      const dx = P0 - px[i], dy = P1 - py[i];
+      const d2 = dx*dx + dy*dy;
+      const infl = press * Math.exp(-d2/R2);
+      if (mode === 1) {
+        vx[i] += dx * infl * 7 * dt;
+        vy[i] += dy * infl * 7 * dt;
+      } else {
+        vx[i] += -dy * infl * 9 * dt;
+        vy[i] +=  dx * infl * 9 * dt;
+      }
+      heat[i] = Math.min(1, heat[i] + infl*dt*2.5);
+    }
+
+    vx[i] *= damp; vy[i] *= damp;
+    px[i] += vx[i]*dt; py[i] += vy[i]*dt;
+    if (px[i] < 0) { px[i] = 0; vx[i] = Math.abs(vx[i]); }
+    if (px[i] > W) { px[i] = W; vx[i] = -Math.abs(vx[i]); }
+    if (py[i] < 0) { py[i] = 0; vy[i] = Math.abs(vy[i]); }
+    if (py[i] > 1) { py[i] = 1; vy[i] = -Math.abs(vy[i]); }
+    heat[i] *= Math.exp(-dt*1.3);
+  }
+
+  if (bursts.length) {
+    for (const b of bursts) {
+      for (let i = 0; i < simCount; i++) {
+        const dx = px[i] - b.x, dy = py[i] - b.y;
+        const d2 = dx*dx + dy*dy;
+        const infl = Math.exp(-d2/R2);
+        if (infl < 0.02) continue;
+        const dl = Math.sqrt(d2) + 1e-4;
+        const kick = infl * b.s * (0.35 + rnd()*0.5);
+        vx[i] += (dx/dl + (rnd()-0.5)*1.2) * kick;
+        vy[i] += (dy/dl + (rnd()-0.5)*1.2) * kick;
+        heat[i] = Math.min(1, heat[i] + infl*0.8);
+      }
+    }
+    bursts.length = 0;
+  }
+
+  for (let r = ripples.length - 1; r >= 0; r--) {
+    const rp = ripples[r];
+    const age = now - rp.t0;
+    if (age > 1.6) { ripples.splice(r, 1); continue; }
+    const rr = age * 0.55;
+    const amp = rp.s * Math.exp(-age*1.4);
+    for (let i = 0; i < simCount; i++) {
+      const dx = px[i] - rp.x, dy = py[i] - rp.y;
+      const d = Math.sqrt(dx*dx + dy*dy) + 1e-4;
+      const band = Math.exp(-((d - rr)*(d - rr))/0.004);
+      if (band < 0.03) continue;
+      vx[i] += dx/d * band * amp * 9 * dt;
+      vy[i] += dy/d * band * amp * 9 * dt;
+      heat[i] = Math.min(1, heat[i] + band*amp*dt*3);
+    }
+  }
+}
+
+// ---------- greyscale quadtree floor ----------
+const CAP = 5, MAXD = 8;
+let cellCount = 0, maxDepthUsed = 0;
+let scalePx = 1;
+
+function hash2(a, b, c){
+  const s = Math.sin(a*127.1 + b*311.7 + c*74.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+function drawNode(x0, y0, x1, y1, idxs, depth){
+  const n = idxs.length;
+  const X = x0*scalePx, Y = y0*scalePx;
+  const WW = (x1-x0)*scalePx, HH = (y1-y0)*scalePx;
+
+  // grid lines: grey, weight and darkness vary per cell
+  const sh = hash2(x0, y0, depth + 11);
+  const salpha = Math.min(0.4, (depth <= 2 ? 0.13 : 0.04) + sh*sh*0.22);
+  ctx.strokeStyle = `rgba(220,224,232,${salpha.toFixed(3)})`;
+  ctx.lineWidth = depth <= 1 ? 2 : 1;
+  ctx.strokeRect(X, Y, WW, HH);
+
+  if (n > CAP && depth < MAXD && WW > 11) {
+    const mx = (x0+x1)/2, my = (y0+y1)/2;
+    const q0 = [], q1 = [], q2 = [], q3 = [];
+    for (let k = 0; k < n; k++) {
+      const i = idxs[k];
+      if (py[i] < my) (px[i] < mx ? q0 : q1).push(i);
+      else            (px[i] < mx ? q2 : q3).push(i);
+    }
+    drawNode(x0, y0, mx, my, q0, depth+1);
+    drawNode(mx, y0, x1, my, q1, depth+1);
+    drawNode(x0, my, mx, y1, q2, depth+1);
+    drawNode(mx, my, x1, y1, q3, depth+1);
+    return;
+  }
+  cellCount++;
+  if (depth > maxDepthUsed) maxDepthUsed = depth;
+
+  const h2 = hash2(x0, y0, depth);
+  // grey tone chosen per coarse patch so neighbours group tonally
+  const hp = hash2(Math.floor(x0*5), Math.floor(y0*5), 7);
+  const g0 = greys[Math.floor(hp * greys.length) % greys.length];
+
+  if (!n) {
+    let a = h2 < 0.4 ? 0.02 + h2*0.55*0.12 : 0;
+    let lg = g0;
+    if (inRegion(x0, y0, x1, y1)) {
+      a += (0.05 + Math.abs(regionEv.dAlpha)*0.7) * regionEnv;
+      lg += regionEv.dLight * regionEnv;
+    }
+    if (a > 0.005) {
+      lg = Math.min(96, Math.max(4, lg));
+      ctx.fillStyle = `hsla(0,0%,${lg|0}%,${a.toFixed(3)})`;
+      ctx.fillRect(X, Y, WW, HH);
+    }
+    return;
+  }
+
+  let hsum = 0;
+  for (let k = 0; k < n; k++) hsum += heat[idxs[k]];
+  const havg = hsum / n;
+  const area = (x1-x0)*(y1-y0);
+  const dens = n / (area * simCount);
+
+  // grayscale only: variety comes from lightness, opacity, and contrast
+  let alpha = 0.08 + 0.30*Math.sqrt(dens) + (h2 - 0.5)*0.12 + havg*0.35;
+  let light = g0 + (sh - 0.5)*30 + Math.min(20, dens*1.8) + havg*28;
+  if (h2 > 0.93) { alpha += 0.42; light = Math.min(97, light + 26); } // white pops
+  else if (h2 < 0.06) { light = Math.max(3, light - 26); }            // ink-dark cells
+  if (inRegion(x0, y0, x1, y1)) {
+    alpha += regionEv.dAlpha * regionEnv;
+    light += regionEv.dLight * regionEnv;
+  }
+  alpha = Math.min(0.95, Math.max(0.03, alpha));
+  light = Math.min(97, Math.max(3, light));
+
+  ctx.fillStyle = `hsla(0,0%,${light|0}%,${alpha.toFixed(3)})`;
+  ctx.fillRect(X, Y, WW, HH);
+}
+
+function renderFloor(){
+  ctx.fillStyle = '#050505';
+  ctx.fillRect(0, 0, floorCanvas.width, floorCanvas.height);
+  cellCount = 0; maxDepthUsed = 0;
+  const all = [];
+  for (let i = 0; i < simCount; i++) all.push(i);
+  drawNode(0, 0, W, 1, all, 0);
+}
+
+// ---------- WebGL surface ----------
 const VS = `#version 300 es
 void main(){
   vec2 v = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
@@ -1111,14 +1385,14 @@ void main(){
 
 const FS = `#version 300 es
 precision highp float;
+uniform sampler2D uFloor;
 uniform vec2 uRes;
 uniform float uTime, uAspect, uMat, uPress, uSpin;
-uniform vec3 uPointer; // xy: world position of the finger
-uniform int uFx;       // 1 = follow (dimple), 2 = whirlpool
+uniform vec3 uPointer;
+uniform int uFx;
 uniform vec4 uRip[${NRIP}];
 out vec4 frag;
 
-// slow, long-lived rings
 float ripplesH(vec2 p, float t){
   float h = 0.0;
   for (int k = 0; k < ${NRIP}; k++) {
@@ -1134,7 +1408,6 @@ float ripplesH(vec2 p, float t){
   return h;
 }
 
-// molten swells: domain-warped, slow, viscous
 float waterH(vec2 p, float t){
   vec2 q = p + 0.11*vec2(
     sin(p.y*2.8 + t*0.35) + sin(p.x*1.7 - t*0.22),
@@ -1147,7 +1420,6 @@ float waterH(vec2 p, float t){
   return h;
 }
 
-// hammered glass relief with a soft flute (static)
 float glassH(vec2 p){
   float h = 0.004*cos(p.x*58.0);
   h += 0.020*sin(p.x*6.8 + 1.4*sin(p.y*6.3)) * sin(p.y*5.2 + 1.6*sin(p.x*4.7));
@@ -1155,7 +1427,6 @@ float glassH(vec2 p){
   return h;
 }
 
-// whirlpool: twist the domain around the finger
 vec2 twist(vec2 p){
   vec2 d = p - uPointer.xy;
   float a = uSpin * exp(-dot(d,d)/0.055);
@@ -1165,10 +1436,10 @@ vec2 twist(vec2 p){
 
 float surfH(vec2 p, float t){
   vec2 pw = twist(p);
-  float tw = t * (1.0 - uMat*0.93); // swells freeze as it vitrifies
+  float tw = t * (1.0 - uMat*0.93);
   float h = mix(waterH(pw, tw), glassH(pw), uMat);
   h += ripplesH(p, t) * (1.0 - uMat*0.55);
-  if (uFx == 1) { // finger dimple with a raised rim, like pressing the surface
+  if (uFx == 1) {
     vec2 d = p - uPointer.xy;
     float r2 = dot(d, d);
     h += uPress * (-0.034*exp(-r2/0.012) + 0.013*exp(-r2/0.055));
@@ -1184,7 +1455,23 @@ vec3 surfN(vec2 p, float t){
   return normalize(vec3(-(hx - h0)/e, -(hy - h0)/e, 1.0));
 }
 
-// dark studio: soft overhead box, one crisp key light, faint rim
+float caustic(vec2 pin, float t){
+  vec2 p = mod(pin*6.28318, 6.28318) - 250.0;
+  vec2 i = p;
+  float c = 1.0;
+  float inten = 0.005;
+  for (int n = 0; n < 3; n++) {
+    float ft = t * (1.0 - (3.5 / float(n+1)));
+    i = p + vec2(cos(ft - i.x) + sin(ft + i.y),
+                 sin(ft - i.y) + cos(ft + i.x));
+    c += 1.0/length(vec2(p.x / (sin(i.x+ft)/inten),
+                         p.y / (cos(i.y+ft)/inten)));
+  }
+  c /= 3.0;
+  c = 1.17 - pow(c, 1.4);
+  return clamp(pow(abs(c), 8.0), 0.0, 2.5);
+}
+
 vec3 envColor(vec3 r){
   vec3 Lbox = normalize(vec3( 0.25, -0.35, 0.90));
   vec3 Lkey = normalize(vec3(-0.45,  0.30, 0.83));
@@ -1200,6 +1487,9 @@ vec3 envColor(vec3 r){
        + spark * vec3(2.6, 2.65, 2.75);
 }
 
+const vec2 KERN[5] = vec2[](vec2(0.0, 0.0), vec2(1.0, 0.4),
+  vec2(-0.7, 0.8), vec2(0.6, -0.9), vec2(-1.0, -0.3));
+
 void main(){
   vec2 suv = vec2(gl_FragCoord.x/uRes.x, 1.0 - gl_FragCoord.y/uRes.y);
   vec2 p = vec2(suv.x*uAspect, suv.y);
@@ -1208,25 +1498,39 @@ void main(){
   float hgt = surfH(p, uTime);
   vec3 N = surfN(p, uTime);
 
+  // refraction of the greyscale floor; blurrier as it vitrifies
+  vec2 ruv = suv + N.xy * mix(0.075, 0.105, m);
+  vec3 base = texture(uFloor, ruv).rgb;
+  float blur = 0.006 * m;
+  if (blur > 0.0002) {
+    vec3 acc = vec3(0.0);
+    for (int s = 0; s < 5; s++)
+      acc += texture(uFloor, ruv + KERN[s]*blur).rgb;
+    base = mix(base, acc/5.0, clamp(m*1.25, 0.0, 1.0));
+  }
+
+  // white caustic light in the liquid state
+  float ca = caustic(p*1.15 + N.xy*0.5, uTime*0.4) * (1.0 - m);
+  base *= 0.85 + ca*0.95;
+  base += vec3(ca*0.05);
+
+  // neutral absorption keeps everything monochrome
+  base *= mix(0.85, 0.94, m);
+
   float F0 = mix(0.02, 0.045, m);
   float F = F0 + (1.0 - F0)*pow(1.0 - max(N.z, 0.0), 5.0);
   vec3 R = reflect(vec3(0.0, 0.0, -1.0), N);
   vec3 env = envColor(R);
+  vec3 col = base * (1.0 - F) + env * (0.05 + F*2.8);
 
-  // the material exists only as reflection: black stays black on flats
-  vec3 col = env * (0.10 + F*2.7);
-
-  // transparency cues, kept neutral:
-  // liquid crests catch a whisper of internal scatter…
+  // neutral transparency cues
   float crest = clamp(hgt*9.0 + 0.25, 0.0, 1.0);
-  col += vec3(0.010, 0.012, 0.015) * crest * (1.0 - m) * (1.0 - F);
-  // …glass shows a faint milkiness where the relief is steep
+  col += vec3(0.008, 0.009, 0.011) * crest * (1.0 - m) * (1.0 - F);
   float slope = 1.0 - N.z;
-  col += vec3(0.020, 0.021, 0.023) * clamp(slope*9.0, 0.0, 0.9) * m;
+  col += vec3(0.016, 0.017, 0.018) * clamp(slope*9.0, 0.0, 0.9) * m;
 
-  // gentle vignette + gamma
   vec2 q = suv - 0.5;
-  col *= 1.0 - dot(q, q)*0.5;
+  col *= 1.0 - dot(q, q)*0.45;
   col = pow(max(col, vec3(0.0)), vec3(0.92));
   frag = vec4(col, 1.0);
 }`;
@@ -1246,29 +1550,31 @@ if (!gl.getProgramParameter(prog, gl.LINK_STATUS))
   throw new Error(gl.getProgramInfoLog(prog));
 gl.useProgram(prog);
 const U = {};
-for (const n of ['uRes','uTime','uAspect','uMat','uPress','uSpin','uPointer','uFx','uRip'])
+for (const n of ['uFloor','uRes','uTime','uAspect','uMat','uPress','uSpin',
+                 'uPointer','uFx','uRip'])
   U[n] = gl.getUniformLocation(prog, n);
+
+const floorTex = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, floorTex);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+gl.uniform1i(U.uFloor, 0);
 
 // ---------- HUD fake telemetry ----------
 const statsEl = document.getElementById('stats');
 let iter = 10000;
-function activeRipples(now){
-  let c = 0;
-  for (let k = 0; k < NRIP; k++) {
-    const a = now - surfRipples[k*4+2];
-    if (surfRipples[k*4+3] > 0 && a >= 0 && a < 4.5) c++;
-  }
-  return c;
-}
-function updateStats(now){
+function updateStats(){
   iter += 5 + (Math.random()*7|0);
   const ior = 1.33 + (1.52 - 1.33)*matV;
   statsEl.textContent =
     'SURFACE EPOCH     : ' + iter.toLocaleString('en-US') + '\n' +
     'VITRIFICATION     : ' + matV.toFixed(3) + '\n' +
     'IOR (BLENDED)     : ' + ior.toFixed(4) + '\n' +
-    'ACTIVE RIPPLES    : ' + activeRipples(now) + '\n' +
-    'VORTICITY         : ' + spin.toFixed(3) + '\n' +
+    'AGENTS            : ' + simCount.toLocaleString('en-US') + '\n' +
+    'LEAF CELLS        : ' + cellCount.toLocaleString('en-US') + '\n' +
+    'COHESION          : ' + cohesion.toFixed(4) + '\n' +
     'SEED              : ' + SEED;
 }
 
@@ -1277,14 +1583,26 @@ function resize(){
   const w = Math.floor(canvas.clientWidth * DPR) || 1;
   const h = Math.floor(canvas.clientHeight * DPR) || 1;
   if (canvas.width !== w || canvas.height !== h) {
+    const oldW = W;
     canvas.width = w; canvas.height = h;
     gl.viewport(0, 0, w, h);
     W = w / h;
+    const fh = Math.min(coarse ? 640 : 900, h);
+    floorCanvas.height = fh;
+    floorCanvas.width = Math.round(fh * W);
+    scalePx = fh;
+    if (oldW > 0 && Math.abs(W - oldW) > 1e-6) {
+      const k = W / oldW;
+      for (let i = 0; i < N_FULL; i++) { px[i] *= k; hx[i] *= k; }
+      for (const a of attr) a.x *= k;
+    }
   }
 }
 window.addEventListener('resize', resize);
 resize();
+seedAgents();
 
+let fpsFrames = 0, fpsTime = 0, warmup = 2;
 let prev = performance.now()/1000, statT = 0;
 let nextRainT = 3 + rnd()*3;
 
@@ -1296,6 +1614,34 @@ function frame(){
 
   if (airOn && video && video.readyState >= 2) processAir(now);
 
+  if (warmup > 0) warmup -= dt;
+  else {
+    fpsFrames++; fpsTime += dt;
+    if (fpsTime > 1.5) {
+      const fps = fpsFrames / fpsTime;
+      if (fps < 40 && simCount > 1200) simCount = Math.max(1200, (simCount*0.75)|0);
+      else if (fps > 55 && simCount < N_FULL) simCount = Math.min(N_FULL, (simCount*1.12)|0);
+      fpsFrames = 0; fpsTime = 0;
+    }
+  }
+
+  seasonT += dt * (reducedMotion ? 0.5 : 1);
+  if (seasonT > SEASON_LEN[seasonIdx]) nextSeason();
+
+  if (!regionEv) {
+    nextRegionT -= dt;
+    if (nextRegionT <= 0) spawnRegion(now);
+  } else {
+    const age = now - regionEv.t0;
+    if (age > regionEv.dur) {
+      regionEv = null; regionEnv = 0;
+      nextRegionT = 5 + rnd()*10;
+    } else {
+      regionEnv = mease.smoothstep(0, 0.5, age)
+                * (1 - mease.smoothstep(regionEv.dur - 0.8, regionEv.dur, age));
+    }
+  }
+
   // slow transmutation cycle
   matCycleT += dt;
   if (matCycleT > MAT_CYCLE) { matTarget = 1 - matTarget; matCycleT = 0; }
@@ -1303,7 +1649,6 @@ function frame(){
   matV = Math.min(1, Math.max(0, matV));
   updateMatLabel();
 
-  // occasional stray droplets keep the liquid alive
   if (matV < 0.5 && !reducedMotion) {
     nextRainT -= dt;
     if (nextRainT <= 0) {
@@ -1318,6 +1663,11 @@ function frame(){
   if (mode === 2 && pressTarget > 0) spin = Math.min(10, spin + dt*2.6);
   else spin *= Math.exp(-dt/1.4);
 
+  step(dt, now);
+  renderFloor();
+
+  gl.bindTexture(gl.TEXTURE_2D, floorTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, floorCanvas);
   gl.uniform2f(U.uRes, canvas.width, canvas.height);
   gl.uniform1f(U.uTime, now);
   gl.uniform1f(U.uAspect, W);
@@ -1330,7 +1680,7 @@ function frame(){
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 
   statT += dt;
-  if (statT > 0.12) { statT = 0; updateStats(now); }
+  if (statT > 0.12) { statT = 0; updateStats(); }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
