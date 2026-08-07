@@ -11,21 +11,31 @@
   .hud { position:fixed; z-index:10; color:#cfd3dc; pointer-events:none;
          font-family:"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
          text-shadow:0 0 6px rgba(0,0,0,.9); user-select:none; -webkit-user-select:none; }
-  #stats { top:14px; left:16px; font-size:11px; line-height:1.55; letter-spacing:.04em;
+  #stats { top:calc(12px + env(safe-area-inset-top)); left:calc(14px + env(safe-area-inset-left));
+           font-size:clamp(8.5px, 1.5vw, 11px); line-height:1.55; letter-spacing:.04em;
            opacity:.85; white-space:pre; }
-  #title { top:14px; right:18px; text-align:right; }
-  #title .t1 { font-size:17px; letter-spacing:.14em; color:#e8eaf0; }
-  #title .t2 { font-size:10px; letter-spacing:.22em; opacity:.55; margin-top:2px; }
-  #shapeName { top:64px; right:18px; font-size:12px; letter-spacing:.18em;
+  #title { top:calc(12px + env(safe-area-inset-top)); right:calc(16px + env(safe-area-inset-right));
+           text-align:right; }
+  #title .t1 { font-size:clamp(14px, 2.4vw, 17px); letter-spacing:.14em; color:#e8eaf0; }
+  #title .t2 { font-size:clamp(8px, 1.4vw, 10px); letter-spacing:.22em; opacity:.55; margin-top:2px; }
+  #shapeName { top:calc(60px + env(safe-area-inset-top)); right:calc(16px + env(safe-area-inset-right));
+               font-size:clamp(10px, 1.7vw, 12px); letter-spacing:.18em;
                color:#9aa3b5; text-align:right; transition:opacity .4s; }
-  #caption { left:0; right:0; bottom:52px; text-align:center; font-style:italic;
-             font-size:12.5px; color:#b9bfcc; opacity:.85; padding:0 24px;
-             transition:opacity .5s; }
-  #hint { left:0; right:0; bottom:30px; text-align:center; font-size:10px;
+  #caption { left:0; right:0; bottom:calc(48px + env(safe-area-inset-bottom));
+             text-align:center; font-style:italic;
+             font-size:clamp(10.5px, 1.8vw, 12.5px); color:#b9bfcc; opacity:.85;
+             padding:0 24px; transition:opacity .5s; }
+  #hint { left:0; right:0; bottom:calc(26px + env(safe-area-inset-bottom));
+          text-align:center; font-size:clamp(8.5px, 1.5vw, 10px);
           letter-spacing:.14em; color:#6d7489; opacity:.7; }
-  #fx { left:0; right:0; bottom:96px; text-align:center; font-size:15px;
+  #fx { left:0; right:0; bottom:calc(92px + env(safe-area-inset-bottom));
+        text-align:center; font-size:clamp(13px, 2.2vw, 15px);
         letter-spacing:.3em; color:#fff; opacity:0; transition:opacity .55s;
         text-shadow:0 0 14px rgba(255,120,220,.8); }
+  @media (max-width: 420px) {
+    #shapeName { top:calc(54px + env(safe-area-inset-top)); }
+    #caption { padding:0 14px; }
+  }
   #fallback { position:fixed; inset:0; display:none; place-items:center; color:#889;
           font-family:sans-serif; font-size:14px; }
 </style>
@@ -53,13 +63,13 @@ if (!gl) { document.getElementById('fallback').style.display = 'grid'; return; }
 
 const params = new URLSearchParams(location.search);
 const coarse = matchMedia('(pointer: coarse)').matches;
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const COUNT = Math.max(1000, Math.min(600000,
-  parseInt(params.get('n') || (coarse ? 120000 : 240000), 10)));
+  parseInt(params.get('n') || (coarse ? 150000 : 280000), 10)));
 
-const DPR = Math.min(2, window.devicePixelRatio || 1);
+const DPR = Math.min(coarse ? 1.8 : 2, window.devicePixelRatio || 1);
 const FOV = 55 * Math.PI / 180;
-const CAM_DIST = 3.3;
-const MORPH_SEC = 3.4;
+const MORPH_SEC = 4.2;
 const AUTO_SEC = 7.5;
 const NTOUCH = 8;
 
@@ -73,7 +83,7 @@ layout(location=3) in vec3 aColTo;
 layout(location=4) in vec4 aRand;
 uniform mat4 uProj, uModel;
 uniform float uTime, uMorph, uPress, uSpin, uSize, uCamDist;
-uniform vec3 uPointer;
+uniform vec3 uPointer, uSweep;
 uniform int uMode;
 uniform vec4 uTouches[${NTOUCH}];
 out vec3 vColor;
@@ -82,28 +92,37 @@ out float vAlpha;
 float hash1(float n){ return fract(sin(n)*43758.5453123); }
 
 void main(){
-  // per-particle staggered morph (quintic ease for extra smoothness)
-  float stag = 0.6;
-  float tt = clamp(uMorph*(1.0+stag) - aRand.x*stag, 0.0, 1.0);
+  // morph timing: a wave sweeps through space (mixed with per-grain randomness)
+  float spatial = clamp(dot(aPosFrom, uSweep)*0.5 + 0.5, 0.0, 1.0);
+  float delay = mix(spatial, aRand.x, 0.45);
+  float stag = 0.7;
+  float tt = clamp(uMorph*(1.0+stag) - delay*stag, 0.0, 1.0);
   float e = tt*tt*tt*(tt*(tt*6.0-15.0)+10.0);
-  vec3 p = mix(aPosFrom, aPosTo, e);
 
-  // turbulence while morphing
-  float burst = sin(3.14159265*e);
-  p += burst * (0.10 + 0.4*aRand.y) * vec3(
-    sin(6.2831*aRand.y + uTime*1.4 + p.y*2.6),
-    cos(6.2831*aRand.z + uTime*1.2 + p.z*2.6),
-    sin(6.2831*aRand.w + uTime*1.6 + p.x*2.6));
+  // curved travel: each grain arcs along its own bowed path
+  vec3 travel = aPosTo - aPosFrom;
+  vec3 rv = vec3(aRand.y, aRand.z, aRand.w) - 0.5;
+  vec3 bowDir = normalize(cross(travel, rv) + vec3(1e-5));
+  float bow = e*(1.0-e)*4.0;
+  vec3 p = mix(aPosFrom, aPosTo, e)
+         + bowDir * bow * min(length(travel), 1.2) * (0.07 + 0.32*aRand.x);
 
-  // slow fluid drift (shared flow field) + faint per-particle shimmer
-  p += 0.016 * vec3(
+  // gentle streaming while in flight
+  p += bow * 0.05 * vec3(
+    sin(p.y*2.0 + uTime*0.8 + aRand.y*6.2831),
+    sin(p.z*2.2 + uTime*0.7 + aRand.z*6.2831),
+    sin(p.x*1.8 + uTime*0.9 + aRand.w*6.2831));
+
+  // slow fluid drift (shared flow field)
+  p += 0.014 * vec3(
     sin(p.y*1.8 + uTime*0.60) + sin(p.z*2.3 + uTime*0.42),
     sin(p.z*1.9 + uTime*0.50) + sin(p.x*2.1 + uTime*0.38),
     sin(p.x*1.7 + uTime*0.55) + sin(p.y*2.4 + uTime*0.47));
-  p += 0.006 * vec3(
-    sin(uTime*0.9 + aRand.y*40.0),
-    cos(uTime*1.1 + aRand.z*40.0),
-    sin(uTime*0.8 + aRand.w*40.0));
+  // fine granular trickle — the "sand" shimmer
+  p += 0.009 * vec3(
+    sin(p.x*6.0 + uTime*0.9 + aRand.y*6.2831),
+    sin(p.y*5.5 - uTime*0.8 + aRand.z*6.2831),
+    sin(p.z*6.5 + uTime*0.7 + aRand.w*6.2831));
 
   vec3 wp = (uModel * vec4(p, 1.0)).xyz;
   float glow = 0.0;
@@ -160,12 +179,13 @@ void main(){
   vec4 mv = vec4(wp.xy, wp.z - uCamDist, 1.0);
   gl_Position = uProj * mv;
   float dist = max(0.2, -mv.z);
-  gl_PointSize = clamp(uSize * (0.5 + 1.3*aRand.w) / dist, 1.0, 7.0);
+  // size skewed small: mostly fine grains, a few brighter specks
+  gl_PointSize = clamp(uSize * (0.45 + 1.15*aRand.w*aRand.w) / dist, 1.0, 4.0);
 
   vColor = mix(aColFrom, aColTo, e)
          + glow * vec3(0.95, 0.9, 0.85)
-         + burst * 0.3 * vec3(0.55, 0.45, 0.9);
-  vAlpha = 0.3 + 0.45*aRand.z;
+         + bow * 0.12 * vec3(0.55, 0.45, 0.9);
+  vAlpha = 0.42 + 0.45*aRand.z;
 }`;
 
 const FS = `#version 300 es
@@ -177,7 +197,8 @@ void main(){
   vec2 uv = gl_PointCoord - 0.5;
   float d = dot(uv, uv);
   if (d > 0.25) discard;
-  float a = smoothstep(0.25, 0.02, d) * vAlpha;
+  float a = smoothstep(0.24, 0.05, d);
+  a *= a * vAlpha; // crisp grain core, fast falloff
   frag = vec4(vColor * a, a);
 }`;
 
@@ -197,7 +218,7 @@ if (!gl.getProgramParameter(prog, gl.LINK_STATUS))
 gl.useProgram(prog);
 const U = {};
 for (const n of ['uProj','uModel','uTime','uMorph','uPress','uSpin','uSize',
-                 'uCamDist','uPointer','uMode','uTouches'])
+                 'uCamDist','uPointer','uSweep','uMode','uTouches'])
   U[n] = gl.getUniformLocation(prog, n);
 
 // ---------- random palettes ----------
@@ -220,9 +241,9 @@ function randomPalette(){
   const h0 = rnd() * 360;
   const t = rnd();
   let h1, h2;
-  if (t < 0.4)      { h1 = h0 + 28 + rnd()*40; h2 = h0 + 180 + (rnd()*60 - 30); } // analogous + opposite accent
-  else if (t < 0.7) { h1 = h0 + 120; h2 = h0 + 240; }                             // triadic
-  else              { h1 = h0 + 180; h2 = h0 + 90 + rnd()*40; }                   // complementary
+  if (t < 0.4)      { h1 = h0 + 28 + rnd()*40; h2 = h0 + 180 + (rnd()*60 - 30); }
+  else if (t < 0.7) { h1 = h0 + 120; h2 = h0 + 240; }
+  else              { h1 = h0 + 180; h2 = h0 + 90 + rnd()*40; }
   return [
     hsl2rgb(h0, 0.75 + 0.25*rnd(), 0.55 + 0.10*rnd()),
     hsl2rgb(h1, 0.70 + 0.30*rnd(), 0.60 + 0.12*rnd()),
@@ -445,12 +466,11 @@ const SHAPES = [
     caption:'立方格子の稜線に確率密度が集中している。',
     gen(pos, col, i, pal){
       const h = 0.85, f = 0.03;
-      if (rnd() < 0.12) { // faint interior dust
+      if (rnd() < 0.12) {
         pos[i*3] = g()*0.45; pos[i*3+1] = g()*0.45; pos[i*3+2] = g()*0.45;
         colorize(col, i, 0.5, pal);
         return;
       }
-      // pick one of 12 edges: axis + 4 corner offsets
       const axis = (rnd()*3)|0;
       const s1 = rnd() < 0.5 ? -h : h, s2 = rnd() < 0.5 ? -h : h;
       const t = rnd()*2*h - h;
@@ -511,6 +531,13 @@ function upload(buf, arr){
 // ---------- morph control ----------
 let morphT = 0; // plays the intro morph
 let autoTimer = 0;
+let sweep = [0, 1, 0]; // morph wave direction (random per morph)
+function randomSweep(){
+  let x = g(), y = g(), z = g();
+  const n = Math.hypot(x, y, z) || 1;
+  sweep = [x/n, y/n, z/n];
+}
+randomSweep();
 
 const shapeNameEl = document.getElementById('shapeName');
 const captionEl = document.getElementById('caption');
@@ -522,13 +549,19 @@ function showShapeText(){
 showShapeText();
 
 function bakeCurrentInto(fromP, fromC){
-  const stag = 0.6;
+  // freeze the currently displayed state, matching the shader's timing math
+  const stag = 0.7;
+  const [sx, sy, sz] = sweep;
   for (let i = 0; i < COUNT; i++) {
-    let tt = morphT*(1+stag) - rands[i*4]*stag;
+    const j0 = i*3;
+    let spatial = (posFrom[j0]*sx + posFrom[j0+1]*sy + posFrom[j0+2]*sz)*0.5 + 0.5;
+    spatial = spatial < 0 ? 0 : spatial > 1 ? 1 : spatial;
+    const delay = spatial*0.55 + rands[i*4]*0.45;
+    let tt = morphT*(1+stag) - delay*stag;
     tt = tt < 0 ? 0 : tt > 1 ? 1 : tt;
     const e = tt*tt*tt*(tt*(tt*6-15)+10);
     for (let k = 0; k < 3; k++) {
-      const j = i*3+k;
+      const j = j0+k;
       fromP[j] = posFrom[j] + (posTo[j]-posFrom[j])*e;
       fromC[j] = colFrom[j] + (colTo[j]-colFrom[j])*e;
     }
@@ -545,6 +578,7 @@ function morphTo(idx){
   generateInto(posTo, colTo, shapeIdx);
   upload(bPosFrom, posFrom); upload(bColFrom, colFrom);
   upload(bPosTo, posTo);     upload(bColTo, colTo);
+  randomSweep();
   morphT = 0; autoTimer = 0;
   showShapeText();
 }
@@ -556,7 +590,7 @@ function nextShape(){
 
 // ---------- interaction (random effect per touch) ----------
 const FX_NAMES = ['ばらける', 'ついてくる', 'ぐるぐる', '波紋'];
-let mode = 0;               // effect chosen at pointerdown
+let mode = 0;
 let press = 0, pressTarget = 0;
 let spin = 0;
 const pointerTarget = [0, 0];
@@ -573,11 +607,12 @@ function showFx(name){
   fxTimer = setTimeout(() => { fxEl.style.opacity = 0; }, 900);
 }
 
+let camDist = 3.3;
 function toWorld(cx, cy){
   const r = canvas.getBoundingClientRect();
   const ndcX = (cx - r.left) / r.width * 2 - 1;
   const ndcY = 1 - (cy - r.top) / r.height * 2;
-  const halfH = Math.tan(FOV/2) * CAM_DIST;
+  const halfH = Math.tan(FOV/2) * camDist;
   return [ndcX * halfH * (r.width/r.height), ndcY * halfH];
 }
 function addBurst(x, y, strength, now){
@@ -654,7 +689,7 @@ function updateStats(t){
     'LEARNING RATE (η) : ' + lr.toFixed(4) + '\n' +
     'NEIGHBORHOOD (σ)  : ' + sig.toFixed(4) + '\n' +
     'TOPO-TENSION      : ' + topo.toFixed(4) + '\n' +
-    'PARTICLES         : ' + COUNT.toLocaleString('en-US');
+    'PARTICLES         : ' + drawCount.toLocaleString('en-US');
 }
 
 // ---------- render loop ----------
@@ -664,7 +699,10 @@ function resize(){
   if (canvas.width !== w || canvas.height !== h) {
     canvas.width = w; canvas.height = h;
     gl.viewport(0, 0, w, h);
-    perspective(proj, FOV, w/h, 0.1, 30);
+    const aspect = w/h;
+    perspective(proj, FOV, aspect, 0.1, 30);
+    // portrait screens: pull the camera back so wide shapes still fit
+    camDist = Math.max(3.3, 1.62 / (Math.tan(FOV/2) * aspect));
   }
 }
 window.addEventListener('resize', resize);
@@ -674,6 +712,10 @@ gl.enable(gl.BLEND);
 gl.blendFunc(gl.ONE, gl.ONE);
 gl.clearColor(0, 0, 0, 1);
 
+// adaptive quality: keep the frame rate silky by trimming drawn grains
+let drawCount = COUNT;
+let fpsFrames = 0, fpsTime = 0, warmup = 2;
+
 let prev = performance.now()/1000, statT = 0;
 function frame(){
   const now = performance.now()/1000;
@@ -681,20 +723,33 @@ function frame(){
   prev = now;
   resize();
 
+  if (warmup > 0) warmup -= dt;
+  else {
+    fpsFrames++; fpsTime += dt;
+    if (fpsTime > 1.5) {
+      const fps = fpsFrames / fpsTime;
+      if (fps < 42 && drawCount > 60000)
+        drawCount = Math.max(60000, (drawCount*0.75)|0);
+      else if (fps > 56 && drawCount < COUNT)
+        drawCount = Math.min(COUNT, (drawCount*1.12)|0);
+      fpsFrames = 0; fpsTime = 0;
+    }
+  }
+
   if (morphT < 1) morphT = Math.min(1, morphT + dt/MORPH_SEC);
   else {
     autoTimer += dt;
     if (autoTimer > AUTO_SEC) nextShape();
   }
 
-  // smoothing: fast attack, gentle release; pointer glides toward target
   press += (pressTarget - press) * Math.min(1, dt * (pressTarget > press ? 10 : 4));
   pointer[0] += (pointerTarget[0] - pointer[0]) * Math.min(1, dt*12);
   pointer[1] += (pointerTarget[1] - pointer[1]) * Math.min(1, dt*12);
   if (mode === 2 && pressTarget > 0) spin = Math.min(14, spin + dt*3.0);
   else spin *= Math.exp(-dt/1.3);
 
-  const ry = now * 0.10, rx = 0.18 + 0.22*Math.sin(now*0.08);
+  const rotSpeed = reducedMotion ? 0.04 : 0.10;
+  const ry = now * rotSpeed, rx = 0.18 + 0.22*Math.sin(now*0.08);
   modelRot(model, rx, ry);
 
   gl.clear(gl.COLOR_BUFFER_BIT);
@@ -704,12 +759,13 @@ function frame(){
   gl.uniform1f(U.uMorph, morphT);
   gl.uniform1f(U.uPress, press);
   gl.uniform1f(U.uSpin, spin);
-  gl.uniform1f(U.uSize, canvas.height * 0.0042 * (coarse ? 1.25 : 1));
-  gl.uniform1f(U.uCamDist, CAM_DIST);
+  gl.uniform1f(U.uSize, canvas.height * 0.0038 * (coarse ? 1.2 : 1));
+  gl.uniform1f(U.uCamDist, camDist);
   gl.uniform3f(U.uPointer, pointer[0], pointer[1], 0);
+  gl.uniform3f(U.uSweep, sweep[0], sweep[1], sweep[2]);
   gl.uniform1i(U.uMode, mode);
   gl.uniform4fv(U.uTouches, touches);
-  gl.drawArrays(gl.POINTS, 0, COUNT);
+  gl.drawArrays(gl.POINTS, 0, drawCount);
 
   statT += dt;
   if (statT > 0.1) { statT = 0; updateStats(now); }
