@@ -1,0 +1,895 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>king crab — mathcat demo</title>
+<style>
+  :root {
+    --bg: #f8fafd;
+    --grid: rgba(47, 84, 224, 0.08);
+    --grid-major: rgba(47, 84, 224, 0.16);
+    --ink: #131c33;
+    --muted: #5b6684;
+    --accent: #2f54e0;
+    --accent-soft: rgba(47, 84, 224, 0.1);
+    --warm: #c4472e;
+    --panel: #ffffff;
+    --panel-edge: #dde3f0;
+    --water-top: rgba(47, 84, 224, 0.04);
+    --water-bottom: rgba(47, 84, 224, 0.16);
+    --mono: "SF Mono", "Cascadia Code", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0f1d;
+      --grid: rgba(122, 148, 255, 0.07);
+      --grid-major: rgba(122, 148, 255, 0.14);
+      --ink: #e7ebf7;
+      --muted: #939cba;
+      --accent: #7a94ff;
+      --accent-soft: rgba(122, 148, 255, 0.12);
+      --warm: #ff7a5c;
+      --panel: #111830;
+      --panel-edge: #232d4d;
+      --water-top: rgba(122, 148, 255, 0.03);
+      --water-bottom: rgba(122, 148, 255, 0.12);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f8fafd;
+    --grid: rgba(47, 84, 224, 0.08);
+    --grid-major: rgba(47, 84, 224, 0.16);
+    --ink: #131c33;
+    --muted: #5b6684;
+    --accent: #2f54e0;
+    --accent-soft: rgba(47, 84, 224, 0.1);
+    --warm: #c4472e;
+    --panel: #ffffff;
+    --panel-edge: #dde3f0;
+    --water-top: rgba(47, 84, 224, 0.04);
+    --water-bottom: rgba(47, 84, 224, 0.16);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0f1d;
+    --grid: rgba(122, 148, 255, 0.07);
+    --grid-major: rgba(122, 148, 255, 0.14);
+    --ink: #e7ebf7;
+    --muted: #939cba;
+    --accent: #7a94ff;
+    --accent-soft: rgba(122, 148, 255, 0.12);
+    --warm: #ff7a5c;
+    --panel: #111830;
+    --panel-edge: #232d4d;
+    --water-top: rgba(122, 148, 255, 0.03);
+    --water-bottom: rgba(122, 148, 255, 0.12);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--ink);
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 100% 24px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 24px 100%,
+      linear-gradient(var(--grid-major) 1px, transparent 1px) 0 0 / 100% 120px,
+      linear-gradient(90deg, var(--grid-major) 1px, transparent 1px) 0 0 / 120px 100%,
+      var(--bg);
+  }
+  main { max-width: 920px; margin: 0 auto; padding: 0 20px 80px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--accent); margin: 40px 0 0;
+  }
+  h1 {
+    font-family: var(--mono); font-size: clamp(28px, 6vw, 46px);
+    line-height: 1.12; letter-spacing: -0.02em; margin: 8px 0 10px; text-wrap: balance;
+  }
+  h1 .cursor { color: var(--accent); }
+  .lede { max-width: 62ch; color: var(--muted); font-size: clamp(14px, 2.6vw, 17px); margin: 0 0 22px; }
+  h2 { font-family: var(--mono); font-size: 18px; letter-spacing: -0.01em; margin: 56px 0 4px; }
+  h2::before { content: "∴ "; color: var(--accent); }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 16px; max-width: 62ch; }
+  .stage {
+    position: relative;
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    background: linear-gradient(var(--water-top), var(--water-bottom)), var(--panel);
+    overflow: hidden;
+  }
+  #tank { display: block; width: 100%; aspect-ratio: 16 / 9; cursor: crosshair; touch-action: none; }
+  @media (max-width: 640px) { #tank { aspect-ratio: 4 / 3; } }
+  #tank:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .hud {
+    position: absolute; left: 10px; right: 10px; bottom: 8px;
+    display: flex; flex-wrap: wrap; gap: 4px 14px;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    font-variant-numeric: tabular-nums; pointer-events: none;
+  }
+  .hud b { color: var(--accent); font-weight: 600; }
+  .hud b.st { color: var(--warm); }
+  @media (max-width: 640px) { .hud { font-size: 10px; gap: 2px 10px; } }
+  .ideas { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 10px; }
+  .ideas li { padding-left: 26px; position: relative; max-width: 70ch; font-size: 15px; }
+  .ideas li::before { content: "⟡"; position: absolute; left: 0; color: var(--accent); }
+  .ideas b { font-family: var(--mono); font-size: 14px; }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  footer {
+    margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--panel-edge);
+    font-family: var(--mono); font-size: 13px; color: var(--muted);
+    display: flex; flex-wrap: wrap; gap: 8px 24px;
+  }
+  a { color: var(--accent); }
+</style>
+
+<main>
+  <p class="eyebrow">mathcat demo · benthic walker</p>
+  <h1>king crab<span class="cursor">_</span> 海底の横歩き</h1>
+  <p class="lede">
+    タラバガニです。6 本の歩脚はそれぞれ 2 関節の逆運動学(IK)で足先を海底に接地させ、
+    体の移動に合わせて交互にステップします。すべて mathcat の演算、
+    フレーム中のカーネルアロケーションはゼロです。
+  </p>
+
+  <div class="stage">
+    <canvas id="tank" tabindex="0"
+      aria-label="タラバガニの水槽。カーソルを追って横歩きし、クリックで餌を落とすと駆け寄って食べます。ダブルクリックで威嚇します。"></canvas>
+    <div class="hud">
+      <span><b id="fps">60</b> fps</span>
+      <span>state <b class="st" id="state">歩行中</b></span>
+      <span><b id="meals">0</b> 摂食</span>
+      <span><b>0</b> kernel alloc / frame</span>
+    </div>
+  </div>
+  <p class="sub" style="margin-top:10px">
+    カーソル / 指でなぞる: 追わせる · クリック / タップ: 餌を沈める · ダブルクリック / 素早いフリック: 威嚇させる
+  </p>
+
+  <h2>インタラクション</h2>
+  <ul class="ideas">
+    <li><b>横歩き追尾</b> — カニは前に歩けません。カーソルの真下へ、6 本の脚を交互に運びながら横歩きで近づきます(接近中)。</li>
+    <li><b>給餌</b> — クリックで餌が海底に沈みます。駆け寄ってハサミで拾い、口に運びます(摂食!)。</li>
+    <li><b>威嚇</b> — ダブルクリックやカーソルの素早い動きに、両のハサミを大きく振り上げて応えます(威嚇!)。</li>
+    <li><b>脚の IK</b> — 肩と足先から膝の位置を余弦定理で解き、体が進むと踏み替えます。
+      <code>easing.smoothstep</code> がステップの持ち上げを、<code>vec3</code> が体の操舵を担当。</li>
+  </ul>
+
+  <footer>
+    <span>mathcat — interactive math engine</span>
+    <a href="./aquarium.html">aquarium →</a>
+    <a href="./arowana.html">arowana →</a>
+  </footer>
+</main>
+
+<script>
+'use strict';
+/* ------------------------------------------------------------------ */
+/* The mathcat kernel, ported verbatim from mathcat/src (types erased). */
+/* ------------------------------------------------------------------ */
+const EPSILON = 0.000001;
+
+const vec3 = {
+  create: () => [0, 0, 0],
+  set: (out, x, y, z) => { out[0] = x; out[1] = y; out[2] = z; return out; },
+  copy: (out, a) => { out[0] = a[0]; out[1] = a[1]; out[2] = a[2]; return out; },
+  subtract: (out, a, b) => {
+    out[0] = a[0] - b[0]; out[1] = a[1] - b[1]; out[2] = a[2] - b[2];
+    return out;
+  },
+  scale: (out, a, s) => {
+    out[0] = a[0] * s; out[1] = a[1] * s; out[2] = a[2] * s;
+    return out;
+  },
+  scaleAndAdd: (out, a, b, s) => {
+    out[0] = a[0] + b[0] * s; out[1] = a[1] + b[1] * s; out[2] = a[2] + b[2] * s;
+    return out;
+  },
+  length: (a) => Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]),
+  distance: (a, b) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  },
+  normalize: (out, a) => {
+    const len = Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+    const inv = len > EPSILON ? 1 / len : 0;
+    out[0] = a[0] * inv; out[1] = a[1] * inv; out[2] = a[2] * inv;
+    return out;
+  },
+  lerp: (out, a, b, t) => {
+    out[0] = a[0] + (b[0] - a[0]) * t;
+    out[1] = a[1] + (b[1] - a[1]) * t;
+    out[2] = a[2] + (b[2] - a[2]) * t;
+    return out;
+  },
+  transformMat4: (out, a, m) => {
+    const x = a[0], y = a[1], z = a[2];
+    const w = m[3] * x + m[7] * y + m[11] * z + m[15] || 1;
+    out[0] = (m[0] * x + m[4] * y + m[8] * z + m[12]) / w;
+    out[1] = (m[1] * x + m[5] * y + m[9] * z + m[13]) / w;
+    out[2] = (m[2] * x + m[6] * y + m[10] * z + m[14]) / w;
+    return out;
+  },
+};
+
+const mat4 = {
+  create: () => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+  multiply: (out, a, b) => {
+    const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+    const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+    const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+    const a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+    for (let c = 0; c < 4; c++) {
+      const b0 = b[c * 4], b1 = b[c * 4 + 1], b2 = b[c * 4 + 2], b3 = b[c * 4 + 3];
+      out[c * 4] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+      out[c * 4 + 1] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+      out[c * 4 + 2] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+      out[c * 4 + 3] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+    }
+    return out;
+  },
+  perspective: (out, fovy, aspect, near, far) => {
+    const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
+    out[0] = f / aspect; out[1] = 0; out[2] = 0; out[3] = 0;
+    out[4] = 0; out[5] = f; out[6] = 0; out[7] = 0;
+    out[8] = 0; out[9] = 0; out[10] = (far + near) * nf; out[11] = -1;
+    out[12] = 0; out[13] = 0; out[14] = 2 * far * near * nf; out[15] = 0;
+    return out;
+  },
+  lookAt: (out, eye, target, up) => {
+    let zx = eye[0] - target[0], zy = eye[1] - target[1], zz = eye[2] - target[2];
+    let len = Math.sqrt(zx * zx + zy * zy + zz * zz);
+    if (len > 0) { zx /= len; zy /= len; zz /= len; }
+    let xx = up[1] * zz - up[2] * zy, xy = up[2] * zx - up[0] * zz, xz = up[0] * zy - up[1] * zx;
+    len = Math.sqrt(xx * xx + xy * xy + xz * xz);
+    if (len > 0) { xx /= len; xy /= len; xz /= len; }
+    const yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
+    out[0] = xx; out[1] = yx; out[2] = zx; out[3] = 0;
+    out[4] = xy; out[5] = yy; out[6] = zy; out[7] = 0;
+    out[8] = xz; out[9] = yz; out[10] = zz; out[11] = 0;
+    out[12] = -(xx * eye[0] + xy * eye[1] + xz * eye[2]);
+    out[13] = -(yx * eye[0] + yy * eye[1] + yz * eye[2]);
+    out[14] = -(zx * eye[0] + zy * eye[1] + zz * eye[2]);
+    out[15] = 1;
+    return out;
+  },
+  invert: (out, a) => {
+    const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+    const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+    const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+    const a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+    const b00 = a00 * a11 - a01 * a10;
+    const b01 = a00 * a12 - a02 * a10;
+    const b02 = a00 * a13 - a03 * a10;
+    const b03 = a01 * a12 - a02 * a11;
+    const b04 = a01 * a13 - a03 * a11;
+    const b05 = a02 * a13 - a03 * a12;
+    const b06 = a20 * a31 - a21 * a30;
+    const b07 = a20 * a32 - a22 * a30;
+    const b08 = a20 * a33 - a23 * a30;
+    const b09 = a21 * a32 - a22 * a31;
+    const b10 = a21 * a33 - a23 * a31;
+    const b11 = a22 * a33 - a23 * a32;
+    const det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+    if (det === 0) { for (let i = 0; i < 16; i++) out[i] = 0; return out; }
+    const inv = 1 / det;
+    out[0] = (a11 * b11 - a12 * b10 + a13 * b09) * inv;
+    out[1] = (a02 * b10 - a01 * b11 - a03 * b09) * inv;
+    out[2] = (a31 * b05 - a32 * b04 + a33 * b03) * inv;
+    out[3] = (a22 * b04 - a21 * b05 - a23 * b03) * inv;
+    out[4] = (a12 * b08 - a10 * b11 - a13 * b07) * inv;
+    out[5] = (a00 * b11 - a02 * b08 + a03 * b07) * inv;
+    out[6] = (a32 * b02 - a30 * b05 - a33 * b01) * inv;
+    out[7] = (a20 * b05 - a22 * b02 + a23 * b01) * inv;
+    out[8] = (a10 * b10 - a11 * b08 + a13 * b06) * inv;
+    out[9] = (a01 * b08 - a00 * b10 - a03 * b06) * inv;
+    out[10] = (a30 * b04 - a31 * b02 + a33 * b00) * inv;
+    out[11] = (a21 * b02 - a20 * b04 - a23 * b00) * inv;
+    out[12] = (a11 * b07 - a10 * b09 - a12 * b06) * inv;
+    out[13] = (a00 * b09 - a01 * b07 + a02 * b06) * inv;
+    out[14] = (a31 * b01 - a30 * b03 - a32 * b00) * inv;
+    out[15] = (a20 * b03 - a21 * b01 + a22 * b00) * inv;
+    return out;
+  },
+};
+
+const color = {
+  create: () => [0, 0, 0],
+  fromHex: (out, hex) => {
+    out[0] = ((hex >> 16) & 0xff) / 255;
+    out[1] = ((hex >> 8) & 0xff) / 255;
+    out[2] = (hex & 0xff) / 255;
+    return out;
+  },
+  lerp: (out, a, b, t) => {
+    out[0] = a[0] + (b[0] - a[0]) * t;
+    out[1] = a[1] + (b[1] - a[1]) * t;
+    out[2] = a[2] + (b[2] - a[2]) * t;
+    return out;
+  },
+};
+
+const random = {
+  createRng: (seed) => {
+    let state = seed >>> 0;
+    return () => {
+      state = (state + 0x6d2b79f5) >>> 0;
+      let t = state;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  },
+  range: (rng, min, max) => min + rng() * (max - min),
+};
+
+const easing = {
+  smoothstep: (edge0, edge1, x) => {
+    const t = Math.min(Math.max((x - edge0) / (edge1 - edge0), 0), 1);
+    return t * t * (3 - 2 * t);
+  },
+  clamp: (x, min, max) => Math.min(Math.max(x, min), max),
+};
+
+/* ------------------------------------------------------------------ */
+/* World                                                               */
+/* ------------------------------------------------------------------ */
+const canvas = document.getElementById('tank');
+const ctx = canvas.getContext('2d');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+const FLOOR = -1.15;
+const TANK_X = 2.3;
+const rng = random.createRng(20260807);
+
+/* Crab body + legs. All state preallocated. */
+const body = vec3.set(vec3.create(), 0, FLOOR + 0.62, 0);
+let bodyVX = 0;
+const BODY_R = 0.4;
+
+// Walking legs: 3 per side. Each leg: shoulder offset, home foot offset,
+// femur/tibia lengths, foot position + stepping state.
+const LEGS = [];
+for (let sideI = 0; sideI < 2; sideI++) {
+  const sgn = sideI === 0 ? -1 : 1;
+  for (let i = 0; i < 3; i++) {
+    LEGS.push({
+      sgn,
+      shoulder: [sgn * (0.18 + i * 0.11), 0.16 - i * 0.13],   // relative to body
+      home: sgn * (1.35 - i * 0.33),                          // foot x offset
+      l1: 0.62 + i * 0.05,
+      l2: 0.78 + i * 0.06,
+      foot: vec3.set(vec3.create(), 0, FLOOR, 0),
+      from: vec3.create(),
+      to: vec3.create(),
+      stepT: 1,       // 1 = planted
+      phase: i,
+    });
+  }
+}
+for (const leg of LEGS) {
+  leg.foot[0] = body[0] + leg.home;
+  leg.foot[1] = FLOOR;
+}
+
+// Claw arms: shoulder offset, current claw tip (smoothed), open amount.
+const CLAWS = [
+  { sgn: -1, shoulder: [-0.26, 0.22], tip: vec3.create(), open: 0.2 },
+  { sgn: 1, shoulder: [0.30, 0.22], tip: vec3.create(), open: 0.2 },
+];
+vec3.set(CLAWS[0].tip, body[0] - 0.6, body[1] + 0.1, 0);
+vec3.set(CLAWS[1].tip, body[0] + 0.6, body[1] + 0.1, 0);
+
+/* Pebbles on the sand, placed once. */
+const PEBBLES = [];
+for (let i = 0; i < 9; i++) {
+  PEBBLES.push([
+    random.range(rng, -TANK_X, TANK_X),
+    random.range(rng, 0.02, 0.07),
+    random.range(rng, 0.5, 1),
+  ]);
+}
+
+/* States */
+const WALK = 0, APPROACH = 1, FEED = 2, THREAT = 3;
+const STATE_LABEL = ['歩行中', '接近中', '摂食!', '威嚇!'];
+let state = WALK;
+let stateTime = 0;
+let meals = 0;
+let wanderX = 0.8;
+let wanderTimer = 0;
+
+let foodActive = false;
+const foodPos = vec3.create();
+let foodVY = 0;
+let lureActive = false, lureAge = 999;
+const lure = vec3.create();
+let threatTimer = 0;
+let eatAnim = 0; // claw carrying food to mouth, 0..1
+const eatingClaw = { i: 0 };
+
+/* Camera + scratch */
+const view = mat4.create();
+const proj = mat4.create();
+const viewProj = mat4.create();
+const invViewProj = mat4.create();
+const eye = vec3.create();
+const camTarget = [0, -0.45, 0];
+const up = [0, 1, 0];
+const tmp = vec3.create();
+const tmp2 = vec3.create();
+const p0 = vec3.create();
+const p1 = vec3.create();
+const dir = vec3.create();
+const cA = color.create(), cB = color.create(), cMix = color.create();
+let pointerNX = 0, pointerNY = 0;
+
+const setState = (next) => {
+  if (state === next) return;
+  state = next;
+  stateTime = 0;
+  document.getElementById('state').textContent = STATE_LABEL[next];
+};
+
+/* ------------------------------------------------------------------ */
+/* Simulation                                                          */
+/* ------------------------------------------------------------------ */
+const update = (dt, time) => {
+  stateTime += dt;
+  if (threatTimer > 0) threatTimer -= dt;
+
+  // Choose a walk target: food > threat(stand) > lure > wander.
+  let targetX = wanderX;
+  if (threatTimer > 0) {
+    setState(THREAT);
+    targetX = body[0]; // stand ground
+  } else if (foodActive && (foodPos[1] <= FLOOR + 0.06 || eatAnim > 0)) {
+    targetX = foodPos[0];
+    if (eatAnim > 0 || Math.abs(targetX - body[0]) < 0.62) setState(FEED);
+    else setState(APPROACH);
+  } else if (lureActive && lureAge < 2.5) {
+    targetX = easing.clamp(lure[0], -TANK_X + 0.6, TANK_X - 0.6);
+    setState(Math.abs(targetX - body[0]) > 0.3 ? APPROACH : WALK);
+  } else {
+    setState(WALK);
+    wanderTimer -= dt;
+    if (wanderTimer <= 0 || Math.abs(wanderX - body[0]) < 0.2) {
+      wanderX = random.range(rng, -TANK_X + 0.7, TANK_X - 0.7);
+      wanderTimer = random.range(rng, 3, 6);
+    }
+  }
+
+  // Sideways walk: accelerate toward the target x.
+  const maxSpd = state === APPROACH || state === FEED ? 1.15 : 0.45;
+  const want = easing.clamp((targetX - body[0]) * 3, -maxSpd, maxSpd);
+  bodyVX += (want - bodyVX) * Math.min(1, dt * 6);
+  if (state === FEED || threatTimer > 0) bodyVX *= 0.8;
+  body[0] = easing.clamp(body[0] + bodyVX * dt, -TANK_X + 0.5, TANK_X - 0.5);
+  // Body bobs with the gait.
+  const gait = Math.abs(bodyVX) > 0.05 ? Math.sin(time * 9) * 0.02 : 0;
+  body[1] = FLOOR + 0.62 + gait + Math.sin(time * 1.7) * 0.008;
+
+  // Legs: step when the foot strays too far from its moving home.
+  for (let i = 0; i < LEGS.length; i++) {
+    const leg = LEGS[i];
+    const homeX = body[0] + leg.home + bodyVX * 0.22;
+    if (leg.stepT >= 1) {
+      const stray = Math.abs(leg.foot[0] - homeX);
+      // Stagger steps: odd/even legs prefer alternate half-cycles.
+      const gateOpen = Math.sin(time * 9 + leg.phase * 2.1) * (Math.abs(bodyVX) > 0.05 ? 1 : 0);
+      if (stray > 0.24 && gateOpen > 0.1) {
+        vec3.copy(leg.from, leg.foot);
+        vec3.set(leg.to, homeX + bodyVX * 0.12, FLOOR, 0);
+        leg.stepT = 0;
+      }
+    } else {
+      leg.stepT = Math.min(1, leg.stepT + dt * 6);
+      const t = leg.stepT;
+      leg.foot[0] = leg.from[0] + (leg.to[0] - leg.from[0]) * easing.smoothstep(0, 1, t);
+      leg.foot[1] = FLOOR + Math.sin(t * Math.PI) * 0.16;
+    }
+  }
+
+  // Food falls; once the claw arrives it grabs the pellet and carries it
+  // to the mouth.
+  if (foodActive) {
+    if (eatAnim === 0 && foodPos[1] > FLOOR + 0.05) {
+      foodVY -= 2.5 * dt;
+      foodVY = Math.max(foodVY, -0.7);
+      foodPos[1] += foodVY * dt;
+      if (foodPos[1] <= FLOOR + 0.05) foodPos[1] = FLOOR + 0.05;
+    } else if (state === FEED) {
+      const claw = CLAWS[eatingClaw.i];
+      const grabDist = Math.hypot(claw.tip[0] - foodPos[0], claw.tip[1] - foodPos[1]);
+      if (eatAnim > 0 || grabDist < 0.18) {
+        eatAnim += dt * 1.2;
+        if (eatAnim >= 1) {
+          foodActive = false;
+          eatAnim = 0;
+          meals++;
+          document.getElementById('meals').textContent = String(meals);
+        }
+      }
+    }
+  } else {
+    eatAnim = 0;
+  }
+
+  // Claw targets: threat > feeding > idle sway.
+  for (let i = 0; i < 2; i++) {
+    const claw = CLAWS[i];
+    const sx = body[0] + claw.shoulder[0] * 2.2;
+    let tx, ty, openWant;
+    if (threatTimer > 0) {
+      tx = body[0] + claw.sgn * 0.85;
+      ty = body[1] + 0.75 + Math.sin(time * 13 + i * 2) * 0.06;
+      openWant = 1;
+    } else if (foodActive && state === FEED && i === eatingClaw.i) {
+      // Reach for the pellet first; after grabbing, carry it to the mouth.
+      if (eatAnim > 0.1) {
+        tx = body[0];
+        ty = body[1] - 0.05;
+      } else {
+        tx = foodPos[0];
+        ty = foodPos[1];
+      }
+      openWant = eatAnim < 0.1 ? 0.9 : 0.1;
+    } else {
+      tx = sx + claw.sgn * 0.32;
+      ty = body[1] + 0.12 + Math.sin(time * 2.1 + i * 2.6) * 0.05;
+      openWant = 0.2;
+    }
+    vec3.set(tmp, tx, ty, 0);
+    vec3.lerp(claw.tip, claw.tip, tmp, Math.min(1, dt * (threatTimer > 0 ? 10 : 6)));
+    claw.open += (openWant - claw.open) * Math.min(1, dt * 8);
+  }
+  // While the pellet is grabbed it rides in the claw.
+  if (foodActive && eatAnim > 0) {
+    const claw = CLAWS[eatingClaw.i];
+    foodPos[0] = claw.tip[0];
+    foodPos[1] = claw.tip[1];
+  }
+  lureAge += dt;
+};
+
+/* ------------------------------------------------------------------ */
+/* Rendering                                                           */
+/* ------------------------------------------------------------------ */
+const project = (out, world) => {
+  vec3.transformMat4(out, world, viewProj);
+  out[0] = (out[0] * 0.5 + 0.5) * canvas.width;
+  out[1] = (1 - (out[1] * 0.5 + 0.5)) * canvas.height;
+  return out;
+};
+const rgbStr = (c) =>
+  `rgb(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)})`;
+
+const SHELL = 0xb03a26;   // king crab red
+const SHELL_DARK = 0x7c2418;
+const BELLY = 0xe8cfb4;
+const SPIKE = 0x8f2c1c;
+
+/* Solve a 2-bone IK in the xy plane: shoulder S -> knee (up) -> foot F. */
+let kneeX = 0, kneeY = 0;
+const solveKnee = (sx, sy, fx, fy, l1, l2) => {
+  let dx = fx - sx, dy = fy - sy;
+  let d = Math.hypot(dx, dy);
+  const maxD = l1 + l2 - 0.01;
+  if (d > maxD) { dx *= maxD / d; dy *= maxD / d; d = maxD; }
+  const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d);
+  const h = Math.sqrt(Math.max(0, l1 * l1 - a * a));
+  const mx = sx + (dx * a) / d, my = sy + (dy * a) / d;
+  // Two solutions; pick the knee that points up.
+  const k1x = mx - (dy * h) / d, k1y = my + (dx * h) / d;
+  const k2x = mx + (dy * h) / d, k2y = my - (dx * h) / d;
+  if (k1y >= k2y) { kneeX = k1x; kneeY = k1y; } else { kneeX = k2x; kneeY = k2y; }
+};
+
+let sx0 = 0, sy0 = 0, px1 = 0, py1 = 0, px2 = 0, py2 = 0;
+const toScreen = (wx, wy) => {
+  vec3.set(tmp, wx, wy, 0);
+  project(tmp, tmp);
+  return tmp;
+};
+
+const render = (time) => {
+  const w = canvas.width, h = canvas.height;
+  vec3.set(eye, pointerNX * 0.3, 0.15 + pointerNY * 0.12, 6.0);
+  mat4.lookAt(view, eye, camTarget, up);
+  mat4.perspective(proj, Math.PI / 4.6, w / h, 0.1, 30);
+  mat4.multiply(viewProj, proj, view);
+
+  ctx.clearRect(0, 0, w, h);
+  const lw = Math.max(1.5, w / 900);
+
+  // Sand line + pebbles.
+  ctx.strokeStyle = cssVar('--muted');
+  ctx.globalAlpha = 0.3;
+  ctx.lineWidth = lw;
+  let s = toScreen(-TANK_X - 1.8, FLOOR);
+  const sandY = s[1];
+  ctx.beginPath();
+  ctx.moveTo(s[0], s[1]);
+  s = toScreen(TANK_X + 1.8, FLOOR);
+  ctx.lineTo(s[0], s[1]);
+  ctx.stroke();
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = cssVar('--muted');
+  for (const [px, pr, sq] of PEBBLES) {
+    s = toScreen(px, FLOOR + pr * 0.4);
+    const rr = pr * (w / 6);
+    ctx.beginPath();
+    ctx.ellipse(s[0], s[1], rr, rr * sq * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  void sandY;
+
+  // Scale factor: pixels per world unit at the crab.
+  const c0 = toScreen(body[0], body[1]);
+  const bx = c0[0], by = c0[1];
+  const c1 = toScreen(body[0], body[1] + 0.1);
+  const pxu = Math.hypot(c1[0] - bx, c1[1] - by) * 10;
+
+  color.fromHex(cA, SHELL);
+  color.fromHex(cB, SHELL_DARK);
+
+  // --- Legs (far pair slightly darker, drawn first) -------------------
+  for (let pass = 0; pass < 2; pass++) {
+    for (let i = 0; i < LEGS.length; i++) {
+      const leg = LEGS[i];
+      const far = i % 3 === 0; // rearmost pair reads as farther
+      if ((pass === 0) !== far) continue;
+      const shX = body[0] + leg.shoulder[0];
+      const shY = body[1] + leg.shoulder[1];
+      solveKnee(shX, shY, leg.foot[0], leg.foot[1], leg.l1, leg.l2);
+      const kx = kneeX, ky = kneeY;
+
+      s = toScreen(shX, shY); sx0 = s[0]; sy0 = s[1];
+      s = toScreen(kx, ky); px1 = s[0]; py1 = s[1];
+      s = toScreen(leg.foot[0], leg.foot[1]); px2 = s[0]; py2 = s[1];
+
+      color.lerp(cMix, cA, cB, far ? 0.55 : 0.15);
+      ctx.strokeStyle = rgbStr(cMix);
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(2, pxu * 0.052);
+      ctx.beginPath();
+      ctx.moveTo(sx0, sy0);
+      ctx.lineTo(px1, py1);
+      ctx.stroke();
+      ctx.lineWidth = Math.max(1.5, pxu * 0.036);
+      ctx.beginPath();
+      ctx.moveTo(px1, py1);
+      ctx.lineTo(px2, py2);
+      ctx.stroke();
+      // Femur spikes.
+      ctx.fillStyle = rgbStr(cMix);
+      for (let k = 1; k <= 2; k++) {
+        const t = k / 3;
+        const ax = sx0 + (px1 - sx0) * t, ay = sy0 + (py1 - sy0) * t;
+        ctx.beginPath();
+        ctx.moveTo(ax - pxu * 0.015, ay);
+        ctx.lineTo(ax + pxu * 0.015, ay);
+        ctx.lineTo(ax, ay - pxu * 0.045);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+  ctx.lineCap = 'butt';
+
+  // --- Claw arms ------------------------------------------------------
+  for (let i = 0; i < 2; i++) {
+    const claw = CLAWS[i];
+    const shX = body[0] + claw.shoulder[0];
+    const shY = body[1] + claw.shoulder[1];
+    solveKnee(shX, shY, claw.tip[0], claw.tip[1], 0.42, 0.46);
+    s = toScreen(shX, shY); sx0 = s[0]; sy0 = s[1];
+    s = toScreen(kneeX, kneeY); px1 = s[0]; py1 = s[1];
+    s = toScreen(claw.tip[0], claw.tip[1]); px2 = s[0]; py2 = s[1];
+
+    ctx.strokeStyle = rgbStr(cA);
+    ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(2.5, pxu * 0.06);
+    ctx.beginPath();
+    ctx.moveTo(sx0, sy0);
+    ctx.lineTo(px1, py1);
+    ctx.lineTo(px2, py2);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+
+    // Pincer: two wedges opening around the arm direction.
+    const adx = px2 - px1, ady = py2 - py1;
+    const al = Math.hypot(adx, ady) || 1;
+    const ux = adx / al, uy = ady / al;
+    const open = 0.25 + claw.open * 0.75;
+    const clawLen = pxu * 0.20;
+    ctx.fillStyle = rgbStr(cA);
+    for (let jaw = -1; jaw <= 1; jaw += 2) {
+      const ang = jaw * open * 0.55;
+      const ca = Math.cos(ang), sa2 = Math.sin(ang);
+      const jx = ux * ca - uy * sa2, jy = ux * sa2 + uy * ca;
+      ctx.beginPath();
+      ctx.moveTo(px2, py2);
+      ctx.lineTo(px2 + jx * clawLen - jy * clawLen * (jaw * 0.28), py2 + jy * clawLen + jx * clawLen * (jaw * 0.28));
+      ctx.lineTo(px2 + jx * clawLen * 1.35, py2 + jy * clawLen * 1.35);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // --- Carapace -------------------------------------------------------
+  const R = BODY_R * pxu;
+  ctx.fillStyle = rgbStr(cA);
+  ctx.beginPath();
+  for (let k = 0; k <= 22; k++) {
+    const a = (k / 22) * Math.PI * 2;
+    // A widened, spiky-edged oval.
+    const wobble = 1 + 0.06 * Math.sin(a * 7 + 1);
+    const rx = R * 1.18 * wobble, ry = R * 0.92 * wobble;
+    const x = bx + Math.cos(a) * rx;
+    const y = by + Math.sin(a) * ry - R * 0.05;
+    if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fill();
+  // Carapace spikes.
+  ctx.fillStyle = rgbStr(color.fromHex(cMix, SPIKE));
+  for (let k = 0; k < 7; k++) {
+    const a = -Math.PI * 0.85 + (k / 6) * Math.PI * 0.7;
+    const x = bx + Math.cos(a) * R * 1.12;
+    const y = by + Math.sin(a) * R * 0.88 - R * 0.05;
+    ctx.beginPath();
+    ctx.moveTo(x - pxu * 0.03, y + pxu * 0.01);
+    ctx.lineTo(x + pxu * 0.03, y + pxu * 0.01);
+    ctx.lineTo(x + Math.cos(a) * pxu * 0.09, y + Math.sin(a) * pxu * 0.09);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // Belly plate.
+  color.fromHex(cMix, BELLY);
+  ctx.fillStyle = rgbStr(cMix);
+  ctx.globalAlpha = 0.85;
+  ctx.beginPath();
+  ctx.ellipse(bx, by + R * 0.45, R * 0.85, R * 0.4, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Eye stalks + eyes.
+  ctx.strokeStyle = rgbStr(cA);
+  ctx.lineWidth = Math.max(1.5, pxu * 0.025);
+  ctx.lineCap = 'round';
+  const inkCss = cssVar('--ink');
+  for (let e = -1; e <= 1; e += 2) {
+    const ex = bx + e * R * 0.28;
+    const eyTop = by - R * 0.95;
+    ctx.beginPath();
+    ctx.moveTo(ex, by - R * 0.6);
+    ctx.lineTo(ex + e * R * 0.06, eyTop);
+    ctx.stroke();
+    ctx.fillStyle = inkCss;
+    ctx.beginPath();
+    ctx.arc(ex + e * R * 0.06, eyTop, Math.max(2, pxu * 0.032), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.lineCap = 'butt';
+
+  // Mouth nibble animation while feeding.
+  if (state === FEED && eatAnim > 0.75) {
+    ctx.strokeStyle = inkCss;
+    ctx.globalAlpha = 0.6;
+    ctx.lineWidth = lw;
+    const mm = Math.sin(time * 26) * pxu * 0.02;
+    ctx.beginPath();
+    ctx.moveTo(bx - pxu * 0.05, by - R * 0.05 + mm);
+    ctx.lineTo(bx + pxu * 0.05, by - R * 0.05 - mm);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // --- Food pellet ----------------------------------------------------
+  if (foodActive) {
+    s = toScreen(foodPos[0], foodPos[1]);
+    ctx.fillStyle = cssVar('--warm');
+    ctx.beginPath();
+    ctx.arc(s[0], s[1], Math.max(3, pxu * 0.045), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Threat "!" flare: raised claws already say it; add motion lines.
+  if (state === THREAT) {
+    ctx.strokeStyle = cssVar('--warm');
+    ctx.globalAlpha = 0.5 + Math.sin(time * 12) * 0.2;
+    ctx.lineWidth = lw * 1.4;
+    for (let e = -1; e <= 1; e += 2) {
+      const cxp = bx + e * R * 2.1;
+      ctx.beginPath();
+      ctx.arc(cxp, by - R * 1.5, R * 0.4, e > 0 ? -0.7 : Math.PI - 0.9, e > 0 ? 0.9 : Math.PI + 0.7);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+};
+
+/* ------------------------------------------------------------------ */
+/* Interaction                                                         */
+/* ------------------------------------------------------------------ */
+const unprojectRay = (clientX, clientY) => {
+  const rect = canvas.getBoundingClientRect();
+  const nx = ((clientX - rect.left) / rect.width) * 2 - 1;
+  const ny = 1 - ((clientY - rect.top) / rect.height) * 2;
+  mat4.invert(invViewProj, viewProj);
+  vec3.set(p0, nx, ny, -1);
+  vec3.transformMat4(p0, p0, invViewProj);
+  vec3.set(p1, nx, ny, 1);
+  vec3.transformMat4(p1, p1, invViewProj);
+  vec3.subtract(dir, p1, p0);
+  vec3.normalize(dir, dir);
+  return { nx, ny };
+};
+const rayToPlaneZ0 = (out) => {
+  if (Math.abs(dir[2]) < EPSILON) return false;
+  const t = -p0[2] / dir[2];
+  if (t <= 0) return false;
+  vec3.scaleAndAdd(out, p0, dir, t);
+  return true;
+};
+
+let lastMoveX = 0, lastMoveY = 0, lastMoveT = 0;
+
+canvas.addEventListener('pointermove', (e) => {
+  const { nx, ny } = unprojectRay(e.clientX, e.clientY);
+  pointerNX = nx;
+  pointerNY = ny;
+  if (rayToPlaneZ0(lure)) { lureActive = true; lureAge = 0; }
+  const now = performance.now();
+  const dtms = now - lastMoveT;
+  if (dtms > 0 && dtms < 80) {
+    const speed = Math.hypot(e.clientX - lastMoveX, e.clientY - lastMoveY) / dtms;
+    if (speed > 3.2) threatTimer = 1.4;
+  }
+  lastMoveX = e.clientX; lastMoveY = e.clientY; lastMoveT = now;
+});
+canvas.addEventListener('pointerleave', () => { lureActive = false; });
+canvas.addEventListener('click', (e) => {
+  unprojectRay(e.clientX, e.clientY);
+  if (!rayToPlaneZ0(tmp2)) return;
+  foodPos[0] = easing.clamp(tmp2[0], -TANK_X + 0.3, TANK_X - 0.3);
+  foodPos[1] = Math.max(tmp2[1], FLOOR + 0.4);
+  foodPos[2] = 0;
+  foodVY = 0;
+  foodActive = true;
+  eatAnim = 0;
+  eatingClaw.i = foodPos[0] < body[0] ? 0 : 1;
+});
+canvas.addEventListener('dblclick', () => { threatTimer = 1.6; });
+
+/* Responsive */
+const resize = () => {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
+  const h = Math.max(1, Math.round(canvas.clientHeight * dpr));
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+};
+new ResizeObserver(resize).observe(canvas);
+resize();
+
+/* Main loop */
+let prev = performance.now();
+let frames = 0, fpsTime = prev;
+const frame = (now) => {
+  const dt = Math.min((now - prev) / 1000, 0.05);
+  prev = now;
+  update(reducedMotion ? dt * 0.5 : dt, now / 1000);
+  render(now / 1000);
+  frames++;
+  if (now - fpsTime > 500) {
+    document.getElementById('fps').textContent = String(Math.round(frames * 1000 / (now - fpsTime)));
+    frames = 0;
+    fpsTime = now;
+  }
+  requestAnimationFrame(frame);
+};
+requestAnimationFrame(frame);
+</script>

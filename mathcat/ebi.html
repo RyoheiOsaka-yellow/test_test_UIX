@@ -1,0 +1,763 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>shrimp — mathcat demo</title>
+<style>
+  :root {
+    --bg: #f8fafd;
+    --grid: rgba(47, 84, 224, 0.08);
+    --grid-major: rgba(47, 84, 224, 0.16);
+    --ink: #131c33;
+    --muted: #5b6684;
+    --accent: #2f54e0;
+    --accent-soft: rgba(47, 84, 224, 0.1);
+    --warm: #c4472e;
+    --panel: #ffffff;
+    --panel-edge: #dde3f0;
+    --water-top: rgba(47, 84, 224, 0.04);
+    --water-bottom: rgba(47, 84, 224, 0.16);
+    --mono: "SF Mono", "Cascadia Code", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0f1d; --grid: rgba(122, 148, 255, 0.07); --grid-major: rgba(122, 148, 255, 0.14);
+      --ink: #e7ebf7; --muted: #939cba; --accent: #7a94ff; --accent-soft: rgba(122, 148, 255, 0.12);
+      --warm: #ff7a5c; --panel: #111830; --panel-edge: #232d4d;
+      --water-top: rgba(122, 148, 255, 0.03); --water-bottom: rgba(122, 148, 255, 0.12);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f8fafd; --grid: rgba(47, 84, 224, 0.08); --grid-major: rgba(47, 84, 224, 0.16);
+    --ink: #131c33; --muted: #5b6684; --accent: #2f54e0; --accent-soft: rgba(47, 84, 224, 0.1);
+    --warm: #c4472e; --panel: #ffffff; --panel-edge: #dde3f0;
+    --water-top: rgba(47, 84, 224, 0.04); --water-bottom: rgba(47, 84, 224, 0.16);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0f1d; --grid: rgba(122, 148, 255, 0.07); --grid-major: rgba(122, 148, 255, 0.14);
+    --ink: #e7ebf7; --muted: #939cba; --accent: #7a94ff; --accent-soft: rgba(122, 148, 255, 0.12);
+    --warm: #ff7a5c; --panel: #111830; --panel-edge: #232d4d;
+    --water-top: rgba(122, 148, 255, 0.03); --water-bottom: rgba(122, 148, 255, 0.12);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: var(--sans); font-size: 16px; line-height: 1.65; color: var(--ink);
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 100% 24px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 24px 100%,
+      linear-gradient(var(--grid-major) 1px, transparent 1px) 0 0 / 100% 120px,
+      linear-gradient(90deg, var(--grid-major) 1px, transparent 1px) 0 0 / 120px 100%,
+      var(--bg);
+  }
+  main { max-width: 920px; margin: 0 auto; padding: 0 20px 80px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin: 40px 0 0; }
+  h1 { font-family: var(--mono); font-size: clamp(28px, 6vw, 46px); line-height: 1.12; letter-spacing: -0.02em; margin: 8px 0 10px; text-wrap: balance; }
+  h1 .cursor { color: var(--accent); }
+  .lede { max-width: 62ch; color: var(--muted); font-size: clamp(14px, 2.6vw, 17px); margin: 0 0 22px; }
+  h2 { font-family: var(--mono); font-size: 18px; letter-spacing: -0.01em; margin: 56px 0 4px; }
+  h2::before { content: "∴ "; color: var(--accent); }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 16px; max-width: 62ch; }
+  .stage {
+    position: relative; border: 1px solid var(--panel-edge); border-radius: 6px;
+    background: linear-gradient(var(--water-top), var(--water-bottom)), var(--panel);
+    overflow: hidden;
+  }
+  #tank { display: block; width: 100%; aspect-ratio: 16 / 9; cursor: crosshair; touch-action: none; }
+  @media (max-width: 640px) { #tank { aspect-ratio: 4 / 3; } }
+  #tank:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .hud {
+    position: absolute; left: 10px; right: 10px; bottom: 8px;
+    display: flex; flex-wrap: wrap; gap: 4px 14px;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    font-variant-numeric: tabular-nums; pointer-events: none;
+  }
+  .hud b { color: var(--accent); font-weight: 600; }
+  .hud b.st { color: var(--warm); }
+  @media (max-width: 640px) { .hud { font-size: 10px; gap: 2px 10px; } }
+  .ideas { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 10px; }
+  .ideas li { padding-left: 26px; position: relative; max-width: 70ch; font-size: 15px; }
+  .ideas li::before { content: "⟡"; position: absolute; left: 0; color: var(--accent); }
+  .ideas b { font-family: var(--mono); font-size: 14px; }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  footer {
+    margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--panel-edge);
+    font-family: var(--mono); font-size: 13px; color: var(--muted);
+    display: flex; flex-wrap: wrap; gap: 8px 24px;
+  }
+  a { color: var(--accent); }
+</style>
+
+<main>
+  <p class="eyebrow">mathcat demo · caridoid escape</p>
+  <h1>shrimp<span class="cursor">_</span> 後ろへ跳ぶ</h1>
+  <p class="lede">
+    エビです。ふだんは海底をちょこちょこ歩き、長い触角を揺らしています。
+    驚かせると尾を強く打ち付けて後方へ弾丸のように跳びます —
+    甲殻類の「カリドイド逃避反応」。体の丸まりが推進のパルスです。
+  </p>
+
+  <div class="stage">
+    <canvas id="tank" tabindex="0"
+      aria-label="エビの水槽。エビをクリックすると尾を打って後方へ逃げます。離れた場所をクリックすると餌が落ちます。"></canvas>
+    <div class="hud">
+      <span><b id="fps">60</b> fps</span>
+      <span>state <b class="st" id="state">歩行中</b></span>
+      <span><b id="escapes">0</b> 逃避</span>
+      <span><b id="meals">0</b> 摂食</span>
+      <span><b>0</b> kernel alloc / frame</span>
+    </div>
+  </div>
+  <p class="sub" style="margin-top:10px">
+    カーソル / 指でなぞる: 興味を引く · エビをクリック / 素早いフリック: 驚かせる(後方エスケープ) ·
+    離れた場所をクリック: 餌を沈める
+  </p>
+
+  <h2>インタラクション</h2>
+  <ul class="ideas">
+    <li><b>カリドイド逃避</b> — 本体クリックで腹部を瞬間的に丸め、3 連続の尾打ちで後方へ跳びます(エスケープ!)。
+      体の曲率パルスがそのまま推進力になっています。</li>
+    <li><b>着底</b> — 跳んだあとはゆっくり沈み、脚を広げて着地(着底)、また歩き始めます。</li>
+    <li><b>採餌</b> — 離れた場所をクリックすると餌が沈み、歩いて向かい、小さな前脚でついばみます(摂食)。</li>
+    <li><b>触角</b> — 2 本の長い触角が常に水流を探っています。逃避の瞬間は後方へなびきます。</li>
+  </ul>
+
+  <footer>
+    <span>mathcat — interactive math engine</span>
+    <a href="./harisenbon.html">porcupinefish →</a>
+    <a href="./kani.html">king crab →</a>
+  </footer>
+</main>
+
+<script>
+'use strict';
+/* ------------------------------------------------------------------ */
+/* The mathcat kernel, ported verbatim from mathcat/src (types erased). */
+/* ------------------------------------------------------------------ */
+const EPSILON = 0.000001;
+
+const vec3 = {
+  create: () => [0, 0, 0],
+  set: (out, x, y, z) => { out[0] = x; out[1] = y; out[2] = z; return out; },
+  copy: (out, a) => { out[0] = a[0]; out[1] = a[1]; out[2] = a[2]; return out; },
+  subtract: (out, a, b) => {
+    out[0] = a[0] - b[0]; out[1] = a[1] - b[1]; out[2] = a[2] - b[2];
+    return out;
+  },
+  scale: (out, a, s) => {
+    out[0] = a[0] * s; out[1] = a[1] * s; out[2] = a[2] * s;
+    return out;
+  },
+  scaleAndAdd: (out, a, b, s) => {
+    out[0] = a[0] + b[0] * s; out[1] = a[1] + b[1] * s; out[2] = a[2] + b[2] * s;
+    return out;
+  },
+  length: (a) => Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]),
+  distance: (a, b) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  },
+  normalize: (out, a) => {
+    const len = Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+    const inv = len > EPSILON ? 1 / len : 0;
+    out[0] = a[0] * inv; out[1] = a[1] * inv; out[2] = a[2] * inv;
+    return out;
+  },
+  lerp: (out, a, b, t) => {
+    out[0] = a[0] + (b[0] - a[0]) * t;
+    out[1] = a[1] + (b[1] - a[1]) * t;
+    out[2] = a[2] + (b[2] - a[2]) * t;
+    return out;
+  },
+  transformMat4: (out, a, m) => {
+    const x = a[0], y = a[1], z = a[2];
+    const w = m[3] * x + m[7] * y + m[11] * z + m[15] || 1;
+    out[0] = (m[0] * x + m[4] * y + m[8] * z + m[12]) / w;
+    out[1] = (m[1] * x + m[5] * y + m[9] * z + m[13]) / w;
+    out[2] = (m[2] * x + m[6] * y + m[10] * z + m[14]) / w;
+    return out;
+  },
+};
+
+const mat4 = {
+  create: () => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+  multiply: (out, a, b) => {
+    const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+    const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+    const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+    const a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+    for (let c = 0; c < 4; c++) {
+      const b0 = b[c * 4], b1 = b[c * 4 + 1], b2 = b[c * 4 + 2], b3 = b[c * 4 + 3];
+      out[c * 4] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+      out[c * 4 + 1] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+      out[c * 4 + 2] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+      out[c * 4 + 3] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+    }
+    return out;
+  },
+  perspective: (out, fovy, aspect, near, far) => {
+    const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
+    out[0] = f / aspect; out[1] = 0; out[2] = 0; out[3] = 0;
+    out[4] = 0; out[5] = f; out[6] = 0; out[7] = 0;
+    out[8] = 0; out[9] = 0; out[10] = (far + near) * nf; out[11] = -1;
+    out[12] = 0; out[13] = 0; out[14] = 2 * far * near * nf; out[15] = 0;
+    return out;
+  },
+  lookAt: (out, eye, target, up) => {
+    let zx = eye[0] - target[0], zy = eye[1] - target[1], zz = eye[2] - target[2];
+    let len = Math.sqrt(zx * zx + zy * zy + zz * zz);
+    if (len > 0) { zx /= len; zy /= len; zz /= len; }
+    let xx = up[1] * zz - up[2] * zy, xy = up[2] * zx - up[0] * zz, xz = up[0] * zy - up[1] * zx;
+    len = Math.sqrt(xx * xx + xy * xy + xz * xz);
+    if (len > 0) { xx /= len; xy /= len; xz /= len; }
+    const yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
+    out[0] = xx; out[1] = yx; out[2] = zx; out[3] = 0;
+    out[4] = xy; out[5] = yy; out[6] = zy; out[7] = 0;
+    out[8] = xz; out[9] = yz; out[10] = zz; out[11] = 0;
+    out[12] = -(xx * eye[0] + xy * eye[1] + xz * eye[2]);
+    out[13] = -(yx * eye[0] + yy * eye[1] + yz * eye[2]);
+    out[14] = -(zx * eye[0] + zy * eye[1] + zz * eye[2]);
+    out[15] = 1;
+    return out;
+  },
+  invert: (out, a) => {
+    const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+    const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+    const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+    const a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+    const b00 = a00 * a11 - a01 * a10;
+    const b01 = a00 * a12 - a02 * a10;
+    const b02 = a00 * a13 - a03 * a10;
+    const b03 = a01 * a12 - a02 * a11;
+    const b04 = a01 * a13 - a03 * a11;
+    const b05 = a02 * a13 - a03 * a12;
+    const b06 = a20 * a31 - a21 * a30;
+    const b07 = a20 * a32 - a22 * a30;
+    const b08 = a20 * a33 - a23 * a30;
+    const b09 = a21 * a32 - a22 * a31;
+    const b10 = a21 * a33 - a23 * a31;
+    const b11 = a22 * a33 - a23 * a32;
+    const det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+    if (det === 0) { for (let i = 0; i < 16; i++) out[i] = 0; return out; }
+    const inv = 1 / det;
+    out[0] = (a11 * b11 - a12 * b10 + a13 * b09) * inv;
+    out[1] = (a02 * b10 - a01 * b11 - a03 * b09) * inv;
+    out[2] = (a31 * b05 - a32 * b04 + a33 * b03) * inv;
+    out[3] = (a22 * b04 - a21 * b05 - a23 * b03) * inv;
+    out[4] = (a12 * b08 - a10 * b11 - a13 * b07) * inv;
+    out[5] = (a00 * b11 - a02 * b08 + a03 * b07) * inv;
+    out[6] = (a32 * b02 - a30 * b05 - a33 * b01) * inv;
+    out[7] = (a20 * b05 - a22 * b02 + a23 * b01) * inv;
+    out[8] = (a10 * b10 - a11 * b08 + a13 * b06) * inv;
+    out[9] = (a01 * b08 - a00 * b10 - a03 * b06) * inv;
+    out[10] = (a30 * b04 - a31 * b02 + a33 * b00) * inv;
+    out[11] = (a21 * b02 - a20 * b04 - a23 * b00) * inv;
+    out[12] = (a11 * b07 - a10 * b09 - a12 * b06) * inv;
+    out[13] = (a00 * b09 - a01 * b07 + a02 * b06) * inv;
+    out[14] = (a31 * b01 - a30 * b03 - a32 * b00) * inv;
+    out[15] = (a20 * b03 - a21 * b01 + a22 * b00) * inv;
+    return out;
+  },
+};
+
+const color = {
+  create: () => [0, 0, 0],
+  fromHex: (out, hex) => {
+    out[0] = ((hex >> 16) & 0xff) / 255;
+    out[1] = ((hex >> 8) & 0xff) / 255;
+    out[2] = (hex & 0xff) / 255;
+    return out;
+  },
+  lerp: (out, a, b, t) => {
+    out[0] = a[0] + (b[0] - a[0]) * t;
+    out[1] = a[1] + (b[1] - a[1]) * t;
+    out[2] = a[2] + (b[2] - a[2]) * t;
+    return out;
+  },
+};
+
+const random = {
+  createRng: (seed) => {
+    let state = seed >>> 0;
+    return () => {
+      state = (state + 0x6d2b79f5) >>> 0;
+      let t = state;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  },
+  range: (rng, min, max) => min + rng() * (max - min),
+};
+
+const easing = {
+  smoothstep: (edge0, edge1, x) => {
+    const t = Math.min(Math.max((x - edge0) / (edge1 - edge0), 0), 1);
+    return t * t * (3 - 2 * t);
+  },
+  clamp: (x, min, max) => Math.min(Math.max(x, min), max),
+};
+
+/* ------------------------------------------------------------------ */
+/* World                                                               */
+/* ------------------------------------------------------------------ */
+const canvas = document.getElementById('tank');
+const ctx = canvas.getContext('2d');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+const FLOOR = -1.15;
+const TANK_X = 2.3;
+const REST_Y = FLOOR + 0.38;
+const rng = random.createRng(510510);
+
+const pos = vec3.set(vec3.create(), -0.5, REST_Y, 0);
+const vel = vec3.create();
+let facing = 1;           // shrimp faces +x when facing = 1
+let curl = 0;             // 0 relaxed .. 1 tucked
+let escapeT = -1;         // <0 idle, else seconds since escape start
+
+/* States */
+const WALKING = 0, CURIOUS = 1, FEEDING = 2, ESCAPE = 3, LANDING = 4;
+const STATE_LABEL = ['歩行中', '接近中', '摂食', 'エスケープ!', '着底'];
+let state = WALKING;
+let stateTime = 0;
+let escapes = 0, meals = 0;
+
+let wanderX = 0.6, wanderTimer = 0;
+const lure = vec3.create();
+let lureActive = false, lureAge = 999;
+let foodActive = false;
+const foodPos = vec3.create();
+let foodVY = 0;
+let eatT = 0;
+
+/* Pebbles */
+const PEBBLES = [];
+for (let i = 0; i < 8; i++) {
+  PEBBLES.push([random.range(rng, -TANK_X, TANK_X), random.range(rng, 0.02, 0.06), random.range(rng, 0.5, 1)]);
+}
+
+/* Camera + scratch */
+const view = mat4.create();
+const proj = mat4.create();
+const viewProj = mat4.create();
+const invViewProj = mat4.create();
+const eyeV = vec3.create();
+const camTarget = [0, -0.5, 0];
+const up = [0, 1, 0];
+const tmp = vec3.create();
+const p0 = vec3.create();
+const p1 = vec3.create();
+const dir = vec3.create();
+const cA = color.create(), cB = color.create(), cMix = color.create();
+let pointerNX = 0, pointerNY = 0;
+
+/* Body chain: 9 nodes computed each frame in screen space. */
+const NSEG = 9;
+const nodes = new Float32Array(NSEG * 2);
+const RADII = [0.155, 0.15, 0.135, 0.12, 0.105, 0.09, 0.075, 0.06, 0.048];
+
+const setState = (next) => {
+  if (state === next) return;
+  state = next;
+  stateTime = 0;
+  document.getElementById('state').textContent = STATE_LABEL[next];
+};
+
+const startEscape = () => {
+  if (escapeT >= 0 && escapeT < 0.5) return;
+  escapeT = 0;
+  escapes++;
+  document.getElementById('escapes').textContent = String(escapes);
+  vel[0] = -facing * 3.4;
+  vel[1] = 1.15;
+  setState(ESCAPE);
+};
+
+/* ------------------------------------------------------------------ */
+/* Simulation                                                          */
+/* ------------------------------------------------------------------ */
+const update = (dt, time) => {
+  stateTime += dt;
+
+  if (escapeT >= 0) {
+    escapeT += dt;
+    // Tail-flip pulses: sharp curls that kick backward.
+    const pulse = Math.max(0, Math.sin(escapeT * 22));
+    curl += (pulse - curl) * Math.min(1, dt * 26);
+    if (escapeT < 0.5) {
+      if (Math.sin(escapeT * 22) > 0.9) vel[0] += -facing * 5.5 * dt * 4;
+    }
+    // Sink back down.
+    vel[1] -= 2.1 * dt;
+    vec3.scale(vel, vel, Math.pow(0.5, dt));
+    vec3.scaleAndAdd(pos, pos, vel, dt);
+    if (pos[0] < -TANK_X + 0.35 || pos[0] > TANK_X - 0.35) {
+      pos[0] = easing.clamp(pos[0], -TANK_X + 0.35, TANK_X - 0.35);
+      vel[0] *= -0.4;
+    }
+    if (escapeT > 0.55) setState(LANDING);
+    if (pos[1] <= REST_Y) {
+      pos[1] = REST_Y;
+      if (escapeT > 0.7) { escapeT = -1; vel[0] = 0; vel[1] = 0; setState(WALKING); }
+    }
+    lureAge += dt;
+    return;
+  }
+
+  curl += (0 - curl) * Math.min(1, dt * 5);
+
+  // Choose a walk target.
+  let targetX = wanderX;
+  if (foodActive && foodPos[1] <= FLOOR + 0.07) {
+    targetX = foodPos[0] + facing * -0.18;
+    if (Math.abs(foodPos[0] - pos[0]) < 0.3) {
+      setState(FEEDING);
+      eatT += dt;
+      if (eatT > 1.6) {
+        foodActive = false;
+        eatT = 0;
+        meals++;
+        document.getElementById('meals').textContent = String(meals);
+      }
+    } else {
+      setState(CURIOUS);
+      eatT = 0;
+    }
+  } else if (lureActive && lureAge < 2.5 && Math.abs(lure[0] - pos[0]) > 0.45) {
+    targetX = lure[0];
+    setState(CURIOUS);
+  } else {
+    setState(WALKING);
+    wanderTimer -= dt;
+    if (wanderTimer <= 0 || Math.abs(wanderX - pos[0]) < 0.15) {
+      wanderX = random.range(rng, -TANK_X + 0.6, TANK_X - 0.6);
+      wanderTimer = random.range(rng, 3, 6);
+    }
+  }
+
+  // Little walking steps.
+  const maxSpd = state === CURIOUS ? 0.55 : 0.28;
+  const want = state === FEEDING ? 0 : easing.clamp((targetX - pos[0]) * 2.5, -maxSpd, maxSpd);
+  vel[0] += (want - vel[0]) * Math.min(1, dt * 5);
+  pos[0] = easing.clamp(pos[0] + vel[0] * dt, -TANK_X + 0.35, TANK_X - 0.35);
+  // Bobbing while walking.
+  const stepBob = Math.abs(vel[0]) > 0.04 ? Math.abs(Math.sin(time * 10)) * 0.02 : 0;
+  pos[1] = REST_Y + stepBob;
+
+  // Facing follows walk direction.
+  if (Math.abs(vel[0]) > 0.03) {
+    facing += ((vel[0] > 0 ? 1 : -1) - facing) * Math.min(1, dt * 4);
+  }
+
+  // Food falls.
+  if (foodActive && foodPos[1] > FLOOR + 0.06) {
+    foodVY = Math.max(foodVY - 2.5 * dt, -0.7);
+    foodPos[1] += foodVY * dt;
+    if (foodPos[1] <= FLOOR + 0.06) foodPos[1] = FLOOR + 0.06;
+  }
+  lureAge += dt;
+};
+
+/* ------------------------------------------------------------------ */
+/* Rendering                                                           */
+/* ------------------------------------------------------------------ */
+const project = (out, world) => {
+  vec3.transformMat4(out, world, viewProj);
+  out[0] = (out[0] * 0.5 + 0.5) * canvas.width;
+  out[1] = (1 - (out[1] * 0.5 + 0.5)) * canvas.height;
+  return out;
+};
+const toScreen = (wx, wy) => {
+  vec3.set(tmp, wx, wy, 0);
+  return project(tmp, tmp);
+};
+const rgbStr = (c) =>
+  `rgb(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)})`;
+
+const SHELL = 0xd96a4a;      // cooked-coral pink-orange (sakura ebi!)
+const SHELL_DARK = 0xa44631;
+const STRIPE = 0xf3d2c4;
+
+const render = (time) => {
+  const w = canvas.width, h = canvas.height;
+  vec3.set(eyeV, pointerNX * 0.3, 0.15 + pointerNY * 0.12, 6.0);
+  mat4.lookAt(view, eyeV, camTarget, up);
+  mat4.perspective(proj, Math.PI / 4.6, w / h, 0.1, 30);
+  mat4.multiply(viewProj, proj, view);
+
+  ctx.clearRect(0, 0, w, h);
+  const lw = Math.max(1.5, w / 900);
+
+  // Sand + pebbles.
+  ctx.strokeStyle = cssVar('--muted');
+  ctx.globalAlpha = 0.3;
+  ctx.lineWidth = lw;
+  let s = toScreen(-TANK_X - 1.8, FLOOR);
+  ctx.beginPath();
+  ctx.moveTo(s[0], s[1]);
+  s = toScreen(TANK_X + 1.8, FLOOR);
+  ctx.lineTo(s[0], s[1]);
+  ctx.stroke();
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = cssVar('--muted');
+  for (const [px, pr, sq] of PEBBLES) {
+    s = toScreen(px, FLOOR + pr * 0.4);
+    const rr = pr * (w / 6);
+    ctx.beginPath();
+    ctx.ellipse(s[0], s[1], rr, rr * sq * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Scale.
+  s = toScreen(pos[0], pos[1]);
+  const hx = s[0], hy = s[1];
+  s = toScreen(pos[0], pos[1] + 0.1);
+  const pxu = Math.hypot(s[0] - hx, s[1] - hy) * 10;
+  const f = facing >= 0 ? 1 : -1;
+  const fl = Math.max(0.4, Math.abs(facing));
+
+  // --- Body chain in screen space -------------------------------------
+  // Head at the front; abdomen curves down and tucks with `curl`.
+  const segLen = pxu * 0.105;
+  let cxp = hx, cyp = hy;
+  let theta = 0.1 + curl * 0.25; // from horizontal, curving downward
+  for (let i = 0; i < NSEG; i++) {
+    nodes[i * 2] = cxp;
+    nodes[i * 2 + 1] = cyp;
+    const bend = (i < 3 ? 0.05 : 0.16 + (i - 3) * 0.05) + curl * (i < 3 ? 0.1 : 0.38);
+    theta += bend;
+    cxp -= Math.cos(theta) * segLen * f * fl;
+    cyp += Math.sin(theta) * segLen;
+  }
+
+  color.fromHex(cA, SHELL);
+  color.fromHex(cB, SHELL_DARK);
+
+  // Walking legs under the carapace.
+  ctx.strokeStyle = rgbStr(cB);
+  ctx.lineWidth = Math.max(1.2, pxu * 0.016);
+  ctx.lineCap = 'round';
+  const walking = Math.abs(vel[0]) > 0.04 && escapeT < 0;
+  for (let i = 0; i < 5; i++) {
+    const bxp = nodes[2] + (nodes[4] - nodes[2]) * (i / 4) - f * pxu * 0.02;
+    const byp = nodes[3] + (nodes[5] - nodes[3]) * (i / 4) + pxu * 0.06;
+    const swing = walking ? Math.sin(time * 12 + i * 1.9) * 0.35 : Math.sin(time * 2 + i) * 0.06;
+    const legL = pxu * 0.16;
+    ctx.beginPath();
+    ctx.moveTo(bxp, byp);
+    ctx.lineTo(bxp + f * legL * (0.3 + swing), byp + legL * 0.9);
+    ctx.stroke();
+  }
+  // Swimmerets under the abdomen, fluttering.
+  for (let i = 4; i < 8; i++) {
+    const flut = Math.sin(time * (escapeT >= 0 ? 30 : 8) + i * 1.4) * 0.3;
+    ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(nodes[i * 2], nodes[i * 2 + 1] + pxu * 0.03);
+    ctx.lineTo(nodes[i * 2] - f * pxu * 0.03 + flut * pxu * 0.04, nodes[i * 2 + 1] + pxu * 0.11);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  ctx.lineCap = 'butt';
+
+  // Segment plates, tail to head so the front overlaps.
+  for (let i = NSEG - 1; i >= 0; i--) {
+    const r = RADII[i] * pxu;
+    color.lerp(cMix, cA, cB, i / (NSEG * 2.4));
+    ctx.fillStyle = rgbStr(cMix);
+    ctx.beginPath();
+    ctx.arc(nodes[i * 2], nodes[i * 2 + 1], r, 0, Math.PI * 2);
+    ctx.fill();
+    // Plate edge.
+    ctx.strokeStyle = rgbStr(cB);
+    ctx.globalAlpha = 0.35;
+    ctx.lineWidth = Math.max(1, pxu * 0.012);
+    ctx.beginPath();
+    ctx.arc(nodes[i * 2], nodes[i * 2 + 1], r, -1.2, 1.2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  // Stripes on the carapace.
+  color.fromHex(cMix, STRIPE);
+  ctx.strokeStyle = rgbStr(cMix);
+  ctx.globalAlpha = 0.65;
+  ctx.lineWidth = Math.max(1.5, pxu * 0.02);
+  for (let i = 1; i < 4; i++) {
+    const r = RADII[i] * pxu;
+    ctx.beginPath();
+    ctx.arc(nodes[i * 2], nodes[i * 2 + 1], r * 0.85, -1.9, -0.4);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // Tail fan.
+  const tx = nodes[(NSEG - 1) * 2], ty = nodes[(NSEG - 1) * 2 + 1];
+  let tdx = tx - nodes[(NSEG - 2) * 2], tdy = ty - nodes[(NSEG - 2) * 2 + 1];
+  const tdl = Math.hypot(tdx, tdy) || 1;
+  tdx /= tdl; tdy /= tdl;
+  ctx.fillStyle = rgbStr(cA);
+  ctx.globalAlpha = 0.85;
+  const fanL = pxu * (0.16 + curl * 0.06);
+  for (let b = -1; b <= 1; b++) {
+    const ang = b * (0.45 + curl * 0.15);
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    const fx2 = tdx * ca - tdy * sa, fy2 = tdy * ca + tdx * sa;
+    ctx.beginPath();
+    ctx.moveTo(tx, ty);
+    ctx.lineTo(tx + fx2 * fanL - fy2 * fanL * 0.22, ty + fy2 * fanL + fx2 * fanL * 0.22);
+    ctx.lineTo(tx + fx2 * fanL * 1.25, ty + fy2 * fanL * 1.25);
+    ctx.lineTo(tx + fx2 * fanL + fy2 * fanL * 0.22, ty + fy2 * fanL - fx2 * fanL * 0.22);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Rostrum (serrated nose spike) + eye + antennae.
+  ctx.strokeStyle = rgbStr(cB);
+  ctx.lineWidth = Math.max(1.5, pxu * 0.022);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(hx + f * pxu * 0.1, hy - pxu * 0.05);
+  ctx.lineTo(hx + f * pxu * 0.26, hy - pxu * 0.13);
+  ctx.stroke();
+
+  const inkCss = cssVar('--ink');
+  ctx.fillStyle = inkCss;
+  ctx.beginPath();
+  ctx.arc(hx + f * pxu * 0.13, hy - pxu * 0.045, Math.max(2, pxu * 0.028), 0, Math.PI * 2);
+  ctx.fill();
+
+  // Two long antennae, swept back; whip backward during escape.
+  ctx.strokeStyle = rgbStr(cA);
+  ctx.lineWidth = Math.max(1.2, pxu * 0.014);
+  for (let a = 0; a < 2; a++) {
+    const sway = Math.sin(time * (escapeT >= 0 ? 1 : 1.6) + a * 2.4) * 0.12;
+    const back = escapeT >= 0 ? 0.85 : 0.35 + a * 0.12;
+    ctx.beginPath();
+    ctx.moveTo(hx + f * pxu * 0.16, hy - pxu * 0.02);
+    ctx.quadraticCurveTo(
+      hx + f * pxu * (0.55 - back * 0.4), hy - pxu * (0.42 + sway),
+      hx - f * pxu * (0.25 + back * 0.75), hy - pxu * (0.55 - back * 0.25 + sway * 2),
+    );
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+
+  // Food pellet.
+  if (foodActive) {
+    s = toScreen(foodPos[0], foodPos[1]);
+    ctx.fillStyle = cssVar('--warm');
+    ctx.beginPath();
+    ctx.arc(s[0], s[1], Math.max(3, pxu * 0.04), 0, Math.PI * 2);
+    ctx.fill();
+    // Nibbling motion lines.
+    if (state === FEEDING) {
+      ctx.strokeStyle = cssVar('--warm');
+      ctx.globalAlpha = 0.5 + Math.sin(time * 20) * 0.3;
+      ctx.lineWidth = lw;
+      ctx.beginPath();
+      ctx.arc(s[0], s[1], Math.max(6, pxu * 0.07), -0.6, 0.6);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Escape burst lines.
+  if (escapeT >= 0 && escapeT < 0.5) {
+    ctx.strokeStyle = cssVar('--accent');
+    ctx.globalAlpha = 0.5 * (1 - escapeT * 2);
+    ctx.lineWidth = lw * 1.4;
+    for (let k = 0; k < 3; k++) {
+      ctx.beginPath();
+      ctx.moveTo(hx + f * pxu * (0.5 + k * 0.18), hy - pxu * 0.1 + k * pxu * 0.08);
+      ctx.lineTo(hx + f * pxu * (0.75 + k * 0.18), hy - pxu * 0.1 + k * pxu * 0.08);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+};
+
+/* ------------------------------------------------------------------ */
+/* Interaction                                                         */
+/* ------------------------------------------------------------------ */
+const unprojectRay = (clientX, clientY) => {
+  const rect = canvas.getBoundingClientRect();
+  const nx = ((clientX - rect.left) / rect.width) * 2 - 1;
+  const ny = 1 - ((clientY - rect.top) / rect.height) * 2;
+  mat4.invert(invViewProj, viewProj);
+  vec3.set(p0, nx, ny, -1);
+  vec3.transformMat4(p0, p0, invViewProj);
+  vec3.set(p1, nx, ny, 1);
+  vec3.transformMat4(p1, p1, invViewProj);
+  vec3.subtract(dir, p1, p0);
+  vec3.normalize(dir, dir);
+  return { nx, ny };
+};
+const rayToPlaneZ0 = (out) => {
+  if (Math.abs(dir[2]) < EPSILON) return false;
+  const t = -p0[2] / dir[2];
+  if (t <= 0) return false;
+  vec3.scaleAndAdd(out, p0, dir, t);
+  return true;
+};
+
+let lastMoveX = 0, lastMoveY = 0, lastMoveT = 0;
+canvas.addEventListener('pointermove', (e) => {
+  const { nx, ny } = unprojectRay(e.clientX, e.clientY);
+  pointerNX = nx;
+  pointerNY = ny;
+  if (rayToPlaneZ0(lure)) { lureActive = true; lureAge = 0; }
+  const now = performance.now();
+  const dtms = now - lastMoveT;
+  if (dtms > 0 && dtms < 80) {
+    const speed = Math.hypot(e.clientX - lastMoveX, e.clientY - lastMoveY) / dtms;
+    if (speed > 3.2 && Math.abs(lure[0] - pos[0]) < 1.2) startEscape();
+  }
+  lastMoveX = e.clientX; lastMoveY = e.clientY; lastMoveT = now;
+});
+canvas.addEventListener('pointerleave', () => { lureActive = false; });
+canvas.addEventListener('click', (e) => {
+  unprojectRay(e.clientX, e.clientY);
+  if (!rayToPlaneZ0(tmp)) return;
+  if (vec3.distance(tmp, pos) < 0.55) {
+    startEscape();
+  } else {
+    foodPos[0] = easing.clamp(tmp[0], -TANK_X + 0.3, TANK_X - 0.3);
+    foodPos[1] = Math.max(tmp[1], FLOOR + 0.4);
+    foodPos[2] = 0;
+    foodVY = 0;
+    foodActive = true;
+  }
+});
+canvas.addEventListener('dblclick', startEscape);
+
+/* Responsive */
+const resize = () => {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
+  const h = Math.max(1, Math.round(canvas.clientHeight * dpr));
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+};
+new ResizeObserver(resize).observe(canvas);
+resize();
+
+/* Main loop */
+let prev = performance.now();
+let frames = 0, fpsTime = prev;
+const frame = (now) => {
+  const dt = Math.min((now - prev) / 1000, 0.05);
+  prev = now;
+  update(reducedMotion ? dt * 0.5 : dt, now / 1000);
+  render(now / 1000);
+  frames++;
+  if (now - fpsTime > 500) {
+    document.getElementById('fps').textContent = String(Math.round(frames * 1000 / (now - fpsTime)));
+    frames = 0;
+    fpsTime = now;
+  }
+  requestAnimationFrame(frame);
+};
+requestAnimationFrame(frame);
+</script>

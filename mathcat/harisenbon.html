@@ -1,0 +1,762 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>porcupinefish — mathcat demo</title>
+<style>
+  :root {
+    --bg: #f8fafd;
+    --grid: rgba(47, 84, 224, 0.08);
+    --grid-major: rgba(47, 84, 224, 0.16);
+    --ink: #131c33;
+    --muted: #5b6684;
+    --accent: #2f54e0;
+    --accent-soft: rgba(47, 84, 224, 0.1);
+    --warm: #c4472e;
+    --panel: #ffffff;
+    --panel-edge: #dde3f0;
+    --water-top: rgba(47, 84, 224, 0.04);
+    --water-bottom: rgba(47, 84, 224, 0.16);
+    --air: rgba(248, 250, 253, 0.6);
+    --mono: "SF Mono", "Cascadia Code", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0b0f1d; --grid: rgba(122, 148, 255, 0.07); --grid-major: rgba(122, 148, 255, 0.14);
+      --ink: #e7ebf7; --muted: #939cba; --accent: #7a94ff; --accent-soft: rgba(122, 148, 255, 0.12);
+      --warm: #ff7a5c; --panel: #111830; --panel-edge: #232d4d;
+      --water-top: rgba(122, 148, 255, 0.03); --water-bottom: rgba(122, 148, 255, 0.12);
+      --air: rgba(11, 15, 29, 0.55);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f8fafd; --grid: rgba(47, 84, 224, 0.08); --grid-major: rgba(47, 84, 224, 0.16);
+    --ink: #131c33; --muted: #5b6684; --accent: #2f54e0; --accent-soft: rgba(47, 84, 224, 0.1);
+    --warm: #c4472e; --panel: #ffffff; --panel-edge: #dde3f0;
+    --water-top: rgba(47, 84, 224, 0.04); --water-bottom: rgba(47, 84, 224, 0.16);
+    --air: rgba(248, 250, 253, 0.6);
+  }
+  :root[data-theme="dark"] {
+    --bg: #0b0f1d; --grid: rgba(122, 148, 255, 0.07); --grid-major: rgba(122, 148, 255, 0.14);
+    --ink: #e7ebf7; --muted: #939cba; --accent: #7a94ff; --accent-soft: rgba(122, 148, 255, 0.12);
+    --warm: #ff7a5c; --panel: #111830; --panel-edge: #232d4d;
+    --water-top: rgba(122, 148, 255, 0.03); --water-bottom: rgba(122, 148, 255, 0.12);
+    --air: rgba(11, 15, 29, 0.55);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: var(--sans); font-size: 16px; line-height: 1.65; color: var(--ink);
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 100% 24px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 24px 100%,
+      linear-gradient(var(--grid-major) 1px, transparent 1px) 0 0 / 100% 120px,
+      linear-gradient(90deg, var(--grid-major) 1px, transparent 1px) 0 0 / 120px 100%,
+      var(--bg);
+  }
+  main { max-width: 920px; margin: 0 auto; padding: 0 20px 80px; }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); margin: 40px 0 0; }
+  h1 { font-family: var(--mono); font-size: clamp(28px, 6vw, 46px); line-height: 1.12; letter-spacing: -0.02em; margin: 8px 0 10px; text-wrap: balance; }
+  h1 .cursor { color: var(--accent); }
+  .lede { max-width: 62ch; color: var(--muted); font-size: clamp(14px, 2.6vw, 17px); margin: 0 0 22px; }
+  h2 { font-family: var(--mono); font-size: 18px; letter-spacing: -0.01em; margin: 56px 0 4px; }
+  h2::before { content: "∴ "; color: var(--accent); }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 16px; max-width: 62ch; }
+  .stage {
+    position: relative; border: 1px solid var(--panel-edge); border-radius: 6px;
+    background: linear-gradient(var(--water-top), var(--water-bottom)), var(--panel);
+    overflow: hidden;
+  }
+  #tank { display: block; width: 100%; aspect-ratio: 16 / 9; cursor: crosshair; touch-action: none; }
+  @media (max-width: 640px) { #tank { aspect-ratio: 4 / 3; } }
+  #tank:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .hud {
+    position: absolute; left: 10px; right: 10px; bottom: 8px;
+    display: flex; flex-wrap: wrap; gap: 4px 14px;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    font-variant-numeric: tabular-nums; pointer-events: none;
+  }
+  .hud b { color: var(--accent); font-weight: 600; }
+  .hud b.st { color: var(--warm); }
+  @media (max-width: 640px) { .hud { font-size: 10px; gap: 2px 10px; } }
+  .ideas { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 10px; }
+  .ideas li { padding-left: 26px; position: relative; max-width: 70ch; font-size: 15px; }
+  .ideas li::before { content: "⟡"; position: absolute; left: 0; color: var(--accent); }
+  .ideas b { font-family: var(--mono); font-size: 14px; }
+  code { font-family: var(--mono); font-size: 0.92em; }
+  footer {
+    margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--panel-edge);
+    font-family: var(--mono); font-size: 13px; color: var(--muted);
+    display: flex; flex-wrap: wrap; gap: 8px 24px;
+  }
+  a { color: var(--accent); }
+</style>
+
+<main>
+  <p class="eyebrow">mathcat demo · do not touch</p>
+  <h1>porcupinefish<span class="cursor">_</span> 怒らせないで</h1>
+  <p class="lede">
+    ハリセンボンです。ふだんは棘を寝かせてのんびり泳いでいますが、
+    本体をクリックすると怒って水を飲み込み、まん丸に膨らんで
+    全身の棘を立てます。膨張は <code>easing.smoothstep</code>、
+    棘の起き上がりは接線→法線方向への <code>lerp</code> です。
+  </p>
+
+  <div class="stage">
+    <canvas id="tank" tabindex="0"
+      aria-label="ハリセンボンの水槽。魚をクリックすると怒って膨らみます。水面クリックで移動、しばらくすると萎みます。"></canvas>
+    <div class="hud">
+      <span><b id="fps">60</b> fps</span>
+      <span>state <b class="st" id="state">遊泳中</b></span>
+      <span><b id="puffs">0</b> 膨張</span>
+      <span><b>0</b> kernel alloc / frame</span>
+    </div>
+  </div>
+  <p class="sub" style="margin-top:10px">
+    カーソル / 指でなぞる: 近寄ってくる · 魚をクリック / タップ: 怒って膨らむ ·
+    離れた場所をクリック: 見に行く
+  </p>
+
+  <h2>インタラクション</h2>
+  <ul class="ideas">
+    <li><b>膨張</b> — 本体クリックで体積が約 5 倍に。26 本の棘が寝た状態(接線方向)から
+      立った状態(法線方向)へ起き上がり、目つきも変わります(怒った!)。</li>
+    <li><b>浮上</b> — 膨らむと泳げません。ぷかぷかと水面へ浮かび、泡を吐きながら漂います。</li>
+    <li><b>沈静化</b> — 4 秒ほどで機嫌を直し、泡と一緒に空気を吐いてしぼみます(しぼみ中)。</li>
+    <li><b>好奇心</b> — カーソルには興味津々。離れた場所をクリックすると様子を見に行きます(接近中)。</li>
+  </ul>
+
+  <footer>
+    <span>mathcat — interactive math engine</span>
+    <a href="./chouchin.html">anglerfish →</a>
+    <a href="./aquarium.html">aquarium →</a>
+  </footer>
+</main>
+
+<script>
+'use strict';
+/* ------------------------------------------------------------------ */
+/* The mathcat kernel, ported verbatim from mathcat/src (types erased). */
+/* ------------------------------------------------------------------ */
+const EPSILON = 0.000001;
+
+const vec3 = {
+  create: () => [0, 0, 0],
+  set: (out, x, y, z) => { out[0] = x; out[1] = y; out[2] = z; return out; },
+  copy: (out, a) => { out[0] = a[0]; out[1] = a[1]; out[2] = a[2]; return out; },
+  subtract: (out, a, b) => {
+    out[0] = a[0] - b[0]; out[1] = a[1] - b[1]; out[2] = a[2] - b[2];
+    return out;
+  },
+  scale: (out, a, s) => {
+    out[0] = a[0] * s; out[1] = a[1] * s; out[2] = a[2] * s;
+    return out;
+  },
+  scaleAndAdd: (out, a, b, s) => {
+    out[0] = a[0] + b[0] * s; out[1] = a[1] + b[1] * s; out[2] = a[2] + b[2] * s;
+    return out;
+  },
+  length: (a) => Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]),
+  distance: (a, b) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  },
+  normalize: (out, a) => {
+    const len = Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+    const inv = len > EPSILON ? 1 / len : 0;
+    out[0] = a[0] * inv; out[1] = a[1] * inv; out[2] = a[2] * inv;
+    return out;
+  },
+  lerp: (out, a, b, t) => {
+    out[0] = a[0] + (b[0] - a[0]) * t;
+    out[1] = a[1] + (b[1] - a[1]) * t;
+    out[2] = a[2] + (b[2] - a[2]) * t;
+    return out;
+  },
+  transformMat4: (out, a, m) => {
+    const x = a[0], y = a[1], z = a[2];
+    const w = m[3] * x + m[7] * y + m[11] * z + m[15] || 1;
+    out[0] = (m[0] * x + m[4] * y + m[8] * z + m[12]) / w;
+    out[1] = (m[1] * x + m[5] * y + m[9] * z + m[13]) / w;
+    out[2] = (m[2] * x + m[6] * y + m[10] * z + m[14]) / w;
+    return out;
+  },
+};
+
+const mat4 = {
+  create: () => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+  multiply: (out, a, b) => {
+    const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+    const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+    const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+    const a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+    for (let c = 0; c < 4; c++) {
+      const b0 = b[c * 4], b1 = b[c * 4 + 1], b2 = b[c * 4 + 2], b3 = b[c * 4 + 3];
+      out[c * 4] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+      out[c * 4 + 1] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+      out[c * 4 + 2] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+      out[c * 4 + 3] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+    }
+    return out;
+  },
+  perspective: (out, fovy, aspect, near, far) => {
+    const f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
+    out[0] = f / aspect; out[1] = 0; out[2] = 0; out[3] = 0;
+    out[4] = 0; out[5] = f; out[6] = 0; out[7] = 0;
+    out[8] = 0; out[9] = 0; out[10] = (far + near) * nf; out[11] = -1;
+    out[12] = 0; out[13] = 0; out[14] = 2 * far * near * nf; out[15] = 0;
+    return out;
+  },
+  lookAt: (out, eye, target, up) => {
+    let zx = eye[0] - target[0], zy = eye[1] - target[1], zz = eye[2] - target[2];
+    let len = Math.sqrt(zx * zx + zy * zy + zz * zz);
+    if (len > 0) { zx /= len; zy /= len; zz /= len; }
+    let xx = up[1] * zz - up[2] * zy, xy = up[2] * zx - up[0] * zz, xz = up[0] * zy - up[1] * zx;
+    len = Math.sqrt(xx * xx + xy * xy + xz * xz);
+    if (len > 0) { xx /= len; xy /= len; xz /= len; }
+    const yx = zy * xz - zz * xy, yy = zz * xx - zx * xz, yz = zx * xy - zy * xx;
+    out[0] = xx; out[1] = yx; out[2] = zx; out[3] = 0;
+    out[4] = xy; out[5] = yy; out[6] = zy; out[7] = 0;
+    out[8] = xz; out[9] = yz; out[10] = zz; out[11] = 0;
+    out[12] = -(xx * eye[0] + xy * eye[1] + xz * eye[2]);
+    out[13] = -(yx * eye[0] + yy * eye[1] + yz * eye[2]);
+    out[14] = -(zx * eye[0] + zy * eye[1] + zz * eye[2]);
+    out[15] = 1;
+    return out;
+  },
+  invert: (out, a) => {
+    const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+    const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+    const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+    const a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+    const b00 = a00 * a11 - a01 * a10;
+    const b01 = a00 * a12 - a02 * a10;
+    const b02 = a00 * a13 - a03 * a10;
+    const b03 = a01 * a12 - a02 * a11;
+    const b04 = a01 * a13 - a03 * a11;
+    const b05 = a02 * a13 - a03 * a12;
+    const b06 = a20 * a31 - a21 * a30;
+    const b07 = a20 * a32 - a22 * a30;
+    const b08 = a20 * a33 - a23 * a30;
+    const b09 = a21 * a32 - a22 * a31;
+    const b10 = a21 * a33 - a23 * a31;
+    const b11 = a22 * a33 - a23 * a32;
+    const det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+    if (det === 0) { for (let i = 0; i < 16; i++) out[i] = 0; return out; }
+    const inv = 1 / det;
+    out[0] = (a11 * b11 - a12 * b10 + a13 * b09) * inv;
+    out[1] = (a02 * b10 - a01 * b11 - a03 * b09) * inv;
+    out[2] = (a31 * b05 - a32 * b04 + a33 * b03) * inv;
+    out[3] = (a22 * b04 - a21 * b05 - a23 * b03) * inv;
+    out[4] = (a12 * b08 - a10 * b11 - a13 * b07) * inv;
+    out[5] = (a00 * b11 - a02 * b08 + a03 * b07) * inv;
+    out[6] = (a32 * b02 - a30 * b05 - a33 * b01) * inv;
+    out[7] = (a20 * b05 - a22 * b02 + a23 * b01) * inv;
+    out[8] = (a10 * b10 - a11 * b08 + a13 * b06) * inv;
+    out[9] = (a01 * b08 - a00 * b10 - a03 * b06) * inv;
+    out[10] = (a30 * b04 - a31 * b02 + a33 * b00) * inv;
+    out[11] = (a21 * b02 - a20 * b04 - a23 * b00) * inv;
+    out[12] = (a11 * b07 - a10 * b09 - a12 * b06) * inv;
+    out[13] = (a00 * b09 - a01 * b07 + a02 * b06) * inv;
+    out[14] = (a31 * b01 - a30 * b03 - a32 * b00) * inv;
+    out[15] = (a20 * b03 - a21 * b01 + a22 * b00) * inv;
+    return out;
+  },
+};
+
+const color = {
+  create: () => [0, 0, 0],
+  fromHex: (out, hex) => {
+    out[0] = ((hex >> 16) & 0xff) / 255;
+    out[1] = ((hex >> 8) & 0xff) / 255;
+    out[2] = (hex & 0xff) / 255;
+    return out;
+  },
+  lerp: (out, a, b, t) => {
+    out[0] = a[0] + (b[0] - a[0]) * t;
+    out[1] = a[1] + (b[1] - a[1]) * t;
+    out[2] = a[2] + (b[2] - a[2]) * t;
+    return out;
+  },
+};
+
+const random = {
+  createRng: (seed) => {
+    let state = seed >>> 0;
+    return () => {
+      state = (state + 0x6d2b79f5) >>> 0;
+      let t = state;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  },
+  range: (rng, min, max) => min + rng() * (max - min),
+};
+
+const easing = {
+  smoothstep: (edge0, edge1, x) => {
+    const t = Math.min(Math.max((x - edge0) / (edge1 - edge0), 0), 1);
+    return t * t * (3 - 2 * t);
+  },
+  clamp: (x, min, max) => Math.min(Math.max(x, min), max),
+};
+
+/* ------------------------------------------------------------------ */
+/* World                                                               */
+/* ------------------------------------------------------------------ */
+const canvas = document.getElementById('tank');
+const ctx = canvas.getContext('2d');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+const SURFACE = 0.95, FLOOR = -1.25, TANK_X = 2.4;
+const rng = random.createRng(1000);
+
+const pos = vec3.set(vec3.create(), 0, -0.2, 0);
+const vel = vec3.set(vec3.create(), 0.3, 0, 0);
+let facing = 1;
+let inflate = 0;           // 0 flat .. 1 fully puffed
+const BODY_R = 0.30;
+
+/* States */
+const SWIM = 0, CURIOUS = 1, ANGRY = 2, DEFLATE = 3;
+const STATE_LABEL = ['遊泳中', '接近中', '怒った!', 'しぼみ中'];
+let state = SWIM;
+let stateTime = 0;
+let puffs = 0;
+let angerTimer = 0;
+
+const waypoint = vec3.create();
+let wanderTimer = 0;
+const lure = vec3.create();
+let lureActive = false, lureAge = 999;
+const goal = vec3.create();     // clicked inspection point
+let goalActive = false;
+
+/* Bubbles: x, y, vy, size, life. */
+const NB = 26;
+const bubbles = new Float32Array(NB * 5);
+
+/* Camera + scratch */
+const view = mat4.create();
+const proj = mat4.create();
+const viewProj = mat4.create();
+const invViewProj = mat4.create();
+const eyeV = vec3.create();
+const camTarget = [0, -0.1, 0];
+const up = [0, 1, 0];
+const tmp = vec3.create();
+const p0 = vec3.create();
+const p1 = vec3.create();
+const dir = vec3.create();
+const steer = vec3.create();
+const cA = color.create(), cB = color.create();
+let pointerNX = 0, pointerNY = 0;
+
+const setState = (next) => {
+  if (state === next) return;
+  state = next;
+  stateTime = 0;
+  document.getElementById('state').textContent = STATE_LABEL[next];
+};
+const newWaypoint = () => {
+  vec3.set(waypoint,
+    random.range(rng, -TANK_X + 0.6, TANK_X - 0.6),
+    random.range(rng, -0.85, SURFACE - 0.45), 0);
+};
+newWaypoint();
+
+const spawnBubbles = (n, big) => {
+  let made = 0;
+  for (let i = 0; i < NB && made < n; i++) {
+    if (bubbles[i * 5 + 4] > 0) continue;
+    bubbles[i * 5] = pos[0] + random.range(rng, -0.15, 0.15);
+    bubbles[i * 5 + 1] = pos[1] + random.range(rng, 0, 0.2);
+    bubbles[i * 5 + 2] = random.range(rng, 0.35, 0.7);
+    bubbles[i * 5 + 3] = random.range(rng, 0.015, big ? 0.05 : 0.03);
+    bubbles[i * 5 + 4] = random.range(rng, 1.2, 2.4);
+    made++;
+  }
+};
+
+const angerUp = () => {
+  if (angerTimer > 0) { angerTimer = 4; return; }
+  angerTimer = 4;
+  puffs++;
+  document.getElementById('puffs').textContent = String(puffs);
+  spawnBubbles(9, true);
+  setState(ANGRY);
+};
+
+/* ------------------------------------------------------------------ */
+/* Simulation                                                          */
+/* ------------------------------------------------------------------ */
+const update = (dt, time) => {
+  stateTime += dt;
+  if (angerTimer > 0) angerTimer -= dt;
+
+  // Inflation follows the anger timer.
+  const inflateTarget = angerTimer > 0 ? 1 : 0;
+  const rate = inflateTarget > inflate ? 6 : 1.4;
+  const before = inflate;
+  inflate += (inflateTarget - inflate) * Math.min(1, dt * rate);
+  if (before > 0.4 && inflate <= 0.4 && inflateTarget === 0) spawnBubbles(6, false);
+
+  if (angerTimer > 0) setState(ANGRY);
+  else if (inflate > 0.12) setState(DEFLATE);
+
+  // --- Steering --------------------------------------------------------
+  vec3.set(steer, 0, 0, 0);
+  if (inflate > 0.25) {
+    // Puffed: buoyant, helpless. Bob up toward the surface.
+    vel[1] += (0.55 * inflate) * dt;
+    vel[0] += Math.sin(time * 2.3) * 0.06 * dt;
+  } else {
+    let target = waypoint;
+    if (goalActive) {
+      target = goal;
+      if (vec3.distance(pos, goal) < 0.35 || stateTime > 6) goalActive = false;
+      setState(CURIOUS);
+    } else if (lureActive && lureAge < 2.5 && vec3.distance(pos, lure) > 0.5) {
+      target = lure;
+      setState(CURIOUS);
+    } else if (state !== ANGRY && state !== DEFLATE) {
+      setState(SWIM);
+      wanderTimer -= dt;
+      if (wanderTimer <= 0 || vec3.distance(pos, waypoint) < 0.3) {
+        newWaypoint();
+        wanderTimer = random.range(rng, 3, 6);
+      }
+    }
+    vec3.subtract(steer, target, pos);
+    vec3.normalize(steer, steer);
+    const maxSpd = state === CURIOUS ? 0.7 : 0.42;
+    vec3.scaleAndAdd(vel, vel, steer, dt * 1.2);
+    const spd = vec3.length(vel);
+    if (spd > maxSpd) vec3.scale(vel, vel, maxSpd / spd);
+  }
+
+  // Walls + surface + floor.
+  if (Math.abs(pos[0]) > TANK_X - 0.5) vel[0] -= Math.sign(pos[0]) * dt * 1.5;
+  const ceil = SURFACE - 0.18 - BODY_R * inflate;
+  if (pos[1] > ceil) { pos[1] = ceil; if (vel[1] > 0) vel[1] *= -0.25; }
+  if (pos[1] < FLOOR + 0.35) vel[1] += dt * 1.5;
+
+  vec3.scale(vel, vel, Math.pow(inflate > 0.25 ? 0.5 : 0.82, dt));
+  vec3.scaleAndAdd(pos, pos, vel, dt);
+
+  // Facing follows motion (never mid-puff — it just spins slowly).
+  if (Math.abs(vel[0]) > 0.05 && inflate < 0.5) {
+    facing += ((vel[0] > 0 ? 1 : -1) - facing) * Math.min(1, dt * 3);
+  }
+
+  // --- Bubbles ---------------------------------------------------------
+  for (let i = 0; i < NB; i++) {
+    if (bubbles[i * 5 + 4] <= 0) continue;
+    bubbles[i * 5 + 4] -= dt;
+    bubbles[i * 5 + 1] += bubbles[i * 5 + 2] * dt;
+    bubbles[i * 5] += Math.sin(time * 4 + i) * 0.04 * dt;
+    if (bubbles[i * 5 + 1] > SURFACE - 0.02) bubbles[i * 5 + 4] = 0;
+  }
+  lureAge += dt;
+};
+
+/* ------------------------------------------------------------------ */
+/* Rendering                                                           */
+/* ------------------------------------------------------------------ */
+const project = (out, world) => {
+  vec3.transformMat4(out, world, viewProj);
+  out[0] = (out[0] * 0.5 + 0.5) * canvas.width;
+  out[1] = (1 - (out[1] * 0.5 + 0.5)) * canvas.height;
+  return out;
+};
+const toScreen = (wx, wy) => {
+  vec3.set(tmp, wx, wy, 0);
+  return project(tmp, tmp);
+};
+const rgbStr = (c) =>
+  `rgb(${Math.round(c[0] * 255)},${Math.round(c[1] * 255)},${Math.round(c[2] * 255)})`;
+
+const BODY = 0xc9a86a;      // sandy tan
+const BODY_DARK = 0x9a7c46;
+const BELLY = 0xf3ead6;
+const SPINE_C = 0x6b5530;
+
+const render = (time) => {
+  const w = canvas.width, h = canvas.height;
+  vec3.set(eyeV, pointerNX * 0.3, 0.2 + pointerNY * 0.12, 6.2);
+  mat4.lookAt(view, eyeV, camTarget, up);
+  mat4.perspective(proj, Math.PI / 4.6, w / h, 0.1, 30);
+  mat4.multiply(viewProj, proj, view);
+
+  ctx.clearRect(0, 0, w, h);
+  const lw = Math.max(1.5, w / 900);
+
+  // Waterline + air tint.
+  ctx.beginPath();
+  let s;
+  for (let i = 0; i <= 28; i++) {
+    const wx = -TANK_X - 2.4 + (i / 28) * (TANK_X + 2.4) * 2;
+    const wy = SURFACE + Math.sin(time * 1.4 + i * 0.65) * 0.014;
+    s = toScreen(wx, wy);
+    if (i === 0) ctx.moveTo(s[0], s[1]); else ctx.lineTo(s[0], s[1]);
+  }
+  ctx.lineTo(w + 4, -4);
+  ctx.lineTo(-4, -4);
+  ctx.closePath();
+  ctx.fillStyle = cssVar('--air');
+  ctx.fill();
+  ctx.strokeStyle = cssVar('--accent');
+  ctx.globalAlpha = 0.5;
+  ctx.lineWidth = lw * 1.4;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // Bubbles.
+  ctx.strokeStyle = cssVar('--accent');
+  for (let i = 0; i < NB; i++) {
+    if (bubbles[i * 5 + 4] <= 0) continue;
+    s = toScreen(bubbles[i * 5], bubbles[i * 5 + 1]);
+    const c1 = toScreen(bubbles[i * 5] + bubbles[i * 5 + 3], bubbles[i * 5 + 1]);
+    ctx.globalAlpha = Math.min(0.55, bubbles[i * 5 + 4]);
+    ctx.lineWidth = lw;
+    ctx.beginPath();
+    ctx.arc(s[0], s[1], Math.abs(c1[0] - s[0]), 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // --- The porcupinefish ----------------------------------------------
+  s = toScreen(pos[0], pos[1]);
+  const bx = s[0], by = s[1];
+  s = toScreen(pos[0], pos[1] + 0.1);
+  const pxu = Math.hypot(s[0] - bx, s[1] - by) * 10;
+  const f = facing >= 0 ? 1 : -1;
+  const fl = Math.max(0.35, Math.abs(facing));
+  const puff = easing.smoothstep(0, 1, inflate);
+  const R = BODY_R * pxu * (1 + puff * 0.85);
+  const rx = R * (1 + (1 - puff) * 0.35 * fl);   // flat fish is longer than tall
+  const ry = R * (1 - (1 - puff) * 0.18);
+  const wig = Math.sin(time * (6 + puff * 4)) * (1 - puff);
+
+  color.fromHex(cA, BODY);
+  color.fromHex(cB, BODY_DARK);
+
+  // Tail fin (shrinks visually when puffed).
+  const tailW = pxu * 0.16 * (1 - puff * 0.5);
+  ctx.fillStyle = rgbStr(cB);
+  ctx.globalAlpha = 0.85;
+  ctx.beginPath();
+  ctx.moveTo(bx - f * rx * 0.95, by);
+  ctx.lineTo(bx - f * (rx * 0.95 + tailW), by - tailW * (0.65 + wig * 0.25));
+  ctx.lineTo(bx - f * (rx * 0.95 + tailW), by + tailW * (0.65 - wig * 0.25));
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Spines first (behind the body edge), all around.
+  const NSP = 26;
+  color.fromHex(cB, SPINE_C);
+  ctx.strokeStyle = rgbStr(cB);
+  ctx.lineCap = 'round';
+  ctx.lineWidth = Math.max(1.5, pxu * 0.022);
+  const spineLen = pxu * (0.045 + puff * 0.24);
+  for (let i = 0; i < NSP; i++) {
+    const a = (i / NSP) * Math.PI * 2 + wig * 0.02;
+    const cx = Math.cos(a), sy2 = Math.sin(a);
+    const baseX = bx + cx * rx * 0.98, baseY = by + sy2 * ry * 0.98;
+    // Lie along the tangent when calm; stand along the normal when puffed.
+    const tx = -sy2 * f, ty = cx * f;
+    const ddx = tx * (1 - puff) * 0.9 + cx * (0.25 + puff);
+    const ddy = ty * (1 - puff) * 0.9 + sy2 * (0.25 + puff);
+    const dl = Math.hypot(ddx, ddy) || 1;
+    ctx.beginPath();
+    ctx.moveTo(baseX, baseY);
+    ctx.lineTo(baseX + (ddx / dl) * spineLen, baseY + (ddy / dl) * spineLen);
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt';
+
+  // Body.
+  color.fromHex(cA, BODY);
+  ctx.fillStyle = rgbStr(cA);
+  ctx.beginPath();
+  ctx.ellipse(bx, by + wig * pxu * 0.008, rx, ry, wig * 0.03, 0, Math.PI * 2);
+  ctx.fill();
+  // Belly.
+  color.fromHex(cB, BELLY);
+  ctx.fillStyle = rgbStr(cB);
+  ctx.beginPath();
+  ctx.ellipse(bx + f * rx * 0.06, by + ry * 0.32, rx * 0.8, ry * 0.55, 0, 0, Math.PI);
+  ctx.fill();
+  // Spots.
+  color.fromHex(cB, BODY_DARK);
+  ctx.fillStyle = rgbStr(cB);
+  ctx.globalAlpha = 0.5;
+  for (let i = 0; i < 6; i++) {
+    const a = 0.6 + i * 0.9;
+    ctx.beginPath();
+    ctx.arc(bx + Math.cos(a) * rx * 0.5, by - Math.abs(Math.sin(a)) * ry * 0.45,
+      pxu * (0.02 + (i % 3) * 0.008) * (1 + puff * 0.5), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Pectoral fin, fluttering.
+  color.fromHex(cB, BODY_DARK);
+  ctx.fillStyle = rgbStr(cB);
+  ctx.globalAlpha = 0.7;
+  const finFlap = Math.sin(time * 10) * 0.25 + 0.4;
+  ctx.beginPath();
+  ctx.moveTo(bx - f * rx * 0.15, by + ry * 0.05);
+  ctx.quadraticCurveTo(
+    bx - f * rx * 0.45, by + ry * (0.1 + finFlap * 0.3),
+    bx - f * rx * 0.55, by + ry * 0.05,
+  );
+  ctx.closePath();
+  ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Eyes: big and cute; angry lids when puffed.
+  const inkCss = cssVar('--ink');
+  const er = pxu * 0.055 * (1 + puff * 0.25);
+  for (let e = 0; e < 1 + (puff > 0.4 ? 0 : 0); e++) { /* single visible eye in profile */ }
+  const ex = bx + f * rx * 0.45, ey = by - ry * 0.28;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(ex, ey, er * 1.35, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = inkCss;
+  ctx.beginPath();
+  ctx.arc(ex + f * er * 0.3, ey, er * 0.85, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(ex + f * er * 0.05, ey - er * 0.35, er * 0.3, 0, Math.PI * 2);
+  ctx.fill();
+  // Angry brow.
+  if (puff > 0.3) {
+    ctx.strokeStyle = inkCss;
+    ctx.lineWidth = Math.max(2, pxu * 0.03);
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(ex - f * er * 1.6, ey - er * 2.1);
+    ctx.lineTo(ex + f * er * 1.2, ey - er * 1.2);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+
+  // Mouth: tiny beak; puffed = round "po" mouth blowing bubbles.
+  ctx.strokeStyle = inkCss;
+  ctx.fillStyle = inkCss;
+  ctx.lineWidth = Math.max(1.5, pxu * 0.02);
+  const mx = bx + f * rx * 0.88, my = by + ry * 0.1;
+  if (puff > 0.3) {
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.arc(mx, my, pxu * 0.035, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  } else {
+    ctx.beginPath();
+    ctx.arc(mx - f * pxu * 0.01, my, pxu * 0.045, f > 0 ? -0.6 : Math.PI - 0.6, f > 0 ? 0.6 : Math.PI + 0.6);
+    ctx.stroke();
+  }
+
+  // Anger mark.
+  if (state === ANGRY && stateTime < 1.2) {
+    ctx.strokeStyle = cssVar('--warm');
+    ctx.lineWidth = lw * 1.6;
+    ctx.globalAlpha = 0.9 - stateTime * 0.6;
+    const ax = bx + f * rx * 0.4, ay = by - ry * 1.5;
+    for (let k = 0; k < 2; k++) {
+      ctx.beginPath();
+      ctx.moveTo(ax + k * pxu * 0.06, ay - pxu * 0.05);
+      ctx.lineTo(ax + k * pxu * 0.06, ay + pxu * 0.02);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+};
+
+/* ------------------------------------------------------------------ */
+/* Interaction                                                         */
+/* ------------------------------------------------------------------ */
+const unprojectRay = (clientX, clientY) => {
+  const rect = canvas.getBoundingClientRect();
+  const nx = ((clientX - rect.left) / rect.width) * 2 - 1;
+  const ny = 1 - ((clientY - rect.top) / rect.height) * 2;
+  mat4.invert(invViewProj, viewProj);
+  vec3.set(p0, nx, ny, -1);
+  vec3.transformMat4(p0, p0, invViewProj);
+  vec3.set(p1, nx, ny, 1);
+  vec3.transformMat4(p1, p1, invViewProj);
+  vec3.subtract(dir, p1, p0);
+  vec3.normalize(dir, dir);
+  return { nx, ny };
+};
+const rayToPlaneZ0 = (out) => {
+  if (Math.abs(dir[2]) < EPSILON) return false;
+  const t = -p0[2] / dir[2];
+  if (t <= 0) return false;
+  vec3.scaleAndAdd(out, p0, dir, t);
+  return true;
+};
+
+let lastMoveX = 0, lastMoveY = 0, lastMoveT = 0;
+canvas.addEventListener('pointermove', (e) => {
+  const { nx, ny } = unprojectRay(e.clientX, e.clientY);
+  pointerNX = nx;
+  pointerNY = ny;
+  if (rayToPlaneZ0(lure)) { lureActive = true; lureAge = 0; }
+  const now = performance.now();
+  const dtms = now - lastMoveT;
+  if (dtms > 0 && dtms < 80) {
+    const speed = Math.hypot(e.clientX - lastMoveX, e.clientY - lastMoveY) / dtms;
+    if (speed > 3.4) angerUp();
+  }
+  lastMoveX = e.clientX; lastMoveY = e.clientY; lastMoveT = now;
+});
+canvas.addEventListener('pointerleave', () => { lureActive = false; });
+canvas.addEventListener('click', (e) => {
+  unprojectRay(e.clientX, e.clientY);
+  if (!rayToPlaneZ0(tmp)) return;
+  const hitR = BODY_R * (1 + inflate * 0.85) + 0.16;
+  if (vec3.distance(tmp, pos) < hitR) {
+    angerUp();
+  } else {
+    vec3.copy(goal, tmp);
+    goal[1] = easing.clamp(goal[1], FLOOR + 0.4, SURFACE - 0.3);
+    goalActive = true;
+  }
+});
+canvas.addEventListener('dblclick', angerUp);
+
+/* Responsive */
+const resize = () => {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
+  const h = Math.max(1, Math.round(canvas.clientHeight * dpr));
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+};
+new ResizeObserver(resize).observe(canvas);
+resize();
+
+/* Main loop */
+let prev = performance.now();
+let frames = 0, fpsTime = prev;
+const frame = (now) => {
+  const dt = Math.min((now - prev) / 1000, 0.05);
+  prev = now;
+  update(reducedMotion ? dt * 0.5 : dt, now / 1000);
+  render(now / 1000);
+  frames++;
+  if (now - fpsTime > 500) {
+    document.getElementById('fps').textContent = String(Math.round(frames * 1000 / (now - fpsTime)));
+    frames = 0;
+    fpsTime = now;
+  }
+  requestAnimationFrame(frame);
+};
+requestAnimationFrame(frame);
+</script>
