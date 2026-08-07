@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Wraps the self-contained inner pages into full HTML documents."""
-PAGES = [('src/inner.html', 'index.html'), ('src/blocks-inner.html', 'blocks.html')]
+PAGES = [('src/inner.html', 'index.html'), ('src/blocks-inner.html', 'blocks.html'), ('src/glass-inner.html', 'glass.html')]
 for src, dst in PAGES:
     inner = open(src).read()
     head, _, body = inner.partition('</style>')
