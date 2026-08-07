@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>新宿駅 B1 人流シミュレータ 3D — Phase 1.5</title>
+<style>
+  :root{
+    --paper:#EDF0F3; --ink:#1B2733; --line:#C3CCD6; --muted:#66788A;
+    --amber:#E8A13C; --green:#3F9D63; --train:#3E5C76; --alight:#D9772B; --board:#2E7FA3;
+    --bad:#C43D3D; --panel:#FFFFFF;
+  }
+  *{box-sizing:border-box;margin:0}
+  html,body{height:100%}
+  body{background:var(--paper);color:var(--ink);
+    font-family:"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+    display:flex;flex-direction:column;overflow:hidden}
+  /* 発車標風ヘッダ */
+  header{background:var(--ink);color:#E8EDF2;padding:10px 16px;display:flex;gap:24px;align-items:baseline;flex-wrap:wrap}
+  header h1{font-size:15px;font-weight:700;letter-spacing:.14em}
+  header h1 small{font-weight:400;letter-spacing:.06em;color:#9FB0C0;margin-left:10px;font-size:11px}
+  #board{display:flex;gap:18px;font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:12px}
+  #board .tr{display:flex;gap:6px;align-items:baseline}
+  #board .tr b{color:var(--amber);font-weight:600}
+  #board .tr span{color:#9FB0C0}
+  #board .tr.dwell b{color:#7BD98A}
+  main{flex:1;display:flex;min-height:0}
+  #stage{flex:1;position:relative;min-width:0}
+  #map{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+  #map.drag{cursor:grabbing}
+  aside{width:300px;border-left:1px solid var(--line);background:var(--panel);
+    padding:14px;display:flex;flex-direction:column;gap:14px;overflow-y:auto}
+  aside h2{font-size:11px;letter-spacing:.18em;color:var(--muted);font-weight:600}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;
+    font-family:ui-monospace,Menlo,monospace;font-size:12px}
+  .stats div b{display:block;font-size:18px;font-weight:600}
+  .stats div span{color:var(--muted);font-size:10px;letter-spacing:.08em}
+  .stats .warn b{color:var(--bad)}
+  .stats .ok b{color:var(--green)}
+  #fd{width:100%;height:170px;border:1px solid var(--line);background:#FAFBFC}
+  .ctrl{display:flex;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-size:12px;padding:6px 12px;border:1px solid var(--line);
+    background:#fff;color:var(--ink);cursor:pointer;border-radius:2px}
+  button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  button:focus-visible{outline:2px solid var(--board);outline-offset:1px}
+  .legend{font-size:11px;color:var(--muted);display:grid;gap:5px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+  .note{font-size:11px;color:var(--muted);line-height:1.7}
+  #loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:var(--paper);font-family:ui-monospace,Menlo,monospace;font-size:13px;color:var(--muted);z-index:5}
+  @media (max-width:760px){ aside{display:none} }
+  @media (prefers-reduced-motion:reduce){ /* シミュレーションは初期停止 */ }
+</style>
+</head>
+<body>
+<header>
+  <h1>新宿駅 B1 人流シミュレータ 3D<small>Phase 1.5 — フローフィールド + 社会力 + 電車連動 / WebGL2</small></h1>
+  <div id="board"></div>
+</header>
+<main>
+  <div id="stage">
+    <div id="loading">場を構築中 — SDF・コスト場・3Dジオメトリを計算しています…</div>
+    <canvas id="map"></canvas>
+  </div>
+  <aside>
+    <h2>実行</h2>
+    <div class="ctrl">
+      <button id="bPause" aria-pressed="false">一時停止</button>
+      <button id="bSpeed" aria-pressed="false">4×速</button>
+      <button id="bReset">リセット</button>
+      <button id="bTop" aria-pressed="false">真上視点</button>
+      <button id="bHome">視点リセット</button>
+    </div>
+    <h2>状態</h2>
+    <div class="stats">
+      <div><b id="sAgents">0</b><span>歩行者数</span></div>
+      <div><b id="sTime">0:00</b><span>シミュ時刻</span></div>
+      <div><b id="sExited">0</b><span>退出(階段/ESC)</span></div>
+      <div><b id="sBoarded">0</b><span>乗車</span></div>
+      <div class="ok"><b id="sWall">0</b><span>壁貫通 (累計)</span></div>
+      <div class="ok"><b id="sOverlap">0.0%</b><span>重なり違反率</span></div>
+      <div><b id="sFps">—</b><span>FPS</span></div>
+      <div><b id="sStep">—</b><span>物理 ms/step</span></div>
+    </div>
+    <h2>基本図 — 密度 × 速度</h2>
+    <canvas id="fd" width="272" height="170"></canvas>
+    <div class="note">灰線 = Weidmann 参照曲線。点 = 実測ビン平均。自由歩行 ≈1.3 m/s、4人/m²で停滞に漸近すれば合格。</div>
+    <h2>凡例</h2>
+    <div class="legend">
+      <div><i style="background:var(--alight)"></i>降車客(ホーム→出口)</div>
+      <div><i style="background:var(--board)"></i>乗車客(出口→ホーム)</div>
+      <div><i style="background:var(--train)"></i>電車(半透明の車体・cubicOut 減速停車)</div>
+      <div><i style="background:var(--amber)"></i>ホーム</div>
+      <div><i style="background:var(--green)"></i>階段・ESC・EV(光柱)</div>
+    </div>
+    <div class="note">左ドラッグ 回転 / 右ドラッグ or Shift+ドラッグ 平行移動 / ホイール ズーム。壁は腰高カットアウェイ表現(高さ1.1m)。座標系: EPSG:6677 ローカル、0.5m グリッド。カーネルは mathcat 規約(インターリーブ Float32Array・アロケーションフリー・CSR 近傍索引)。物理は 2D 版と同一・決定的。</div>
+  </aside>
+</main>
+<script id="pack" type="application/json">__B1_PACK__</script>
+<script>
+"use strict";
+/* ================================================================
+   新宿駅 B1 垂直スライス — 3D ビュー版
+   物理・場・電車・計測は 2D 版 (shinjuku_b1_sim.html) と同一。
+   §11 描画のみ WebGL2 3D レンダラに置換:
+   - 床: 2D ベースレイヤ(2px/m)をテクスチャとして地面クアッドに貼付
+   - 壁: walk グリッド境界エッジをランマージして高さ1.1mに押し出し
+   - 歩行者: インスタンス描画(円柱+天板、疑似接地影)
+   - 電車: 半透明ボックス(乗降とホーム上の待機列が透けて見える)
+   - カメラ: オービット(回転/パン/ズーム)
+   規約ショーケース:
+   - 属性間SoA・成分内インターリーブ: pos = Float32Array(2N) [x0,y0,x1,y1,...]
+   - カーネルは op(out,...) 形式でアロケートしない
+   - 近傍索引はCSR(counts→offsets前置和→fill)を毎フレーム再構築
+   ================================================================ */
+const PACK = JSON.parse(document.getElementById('pack').textContent);
+const CELL = PACK.cell, W = PACK.W, H = PACK.H, NC = W*H;
+
+/* ---------- mathcat 抜粋(規約準拠ミニカーネル) ---------- */
+const easing = {
+  cubicOut: t => 1 - Math.pow(1-t,3),
+  cubicIn:  t => t*t*t,
+};
+const rand = (()=>{ // xorshift128 決定的乱数
+  let s0=0x9E3779B9|0, s1=0x243F6A88|0;
+  function u32(){ let x=s0,y=s1; s0=y; x^=x<<23; s1=(x^y^(x>>>17)^(y>>>26))|0; return (s1+y)>>>0; }
+  return {
+    f: ()=>u32()/4294967296,
+    normal(mu,sd){ const u=Math.max(this.f(),1e-9), v=this.f();
+      return mu + sd*Math.sqrt(-2*Math.log(u))*Math.cos(6.283185307*v); },
+    poisson(lam){ const L=Math.exp(-lam); let k=0,p=1;
+      do{ k++; p*=this.f(); }while(p>L); return k-1; },
+    reset(){ s0=0x9E3779B9|0; s1=0x243F6A88|0; }
+  };
+})();
+
+/* ---------- 1) RLE 展開 → 歩行可能マスク ---------- */
+const walk = new Uint8Array(NC);
+{ let i=0, v=0;
+  for(const run of PACK.rle){ if(v) walk.fill(1,i,i+run); i+=run; v^=1; } }
+
+/* ---------- 2) チャンファーSDF(壁距離, m) ---------- */
+const sdf = new Float32Array(NC);
+{ const INF=1e9, d=sdf;
+  for(let i=0;i<NC;i++) d[i]=walk[i]?INF:0;
+  // forward pass (3-4 chamfer)
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){ const i=y*W+x; if(d[i]===0)continue;
+    let m=d[i];
+    if(x>0)          m=Math.min(m,d[i-1]+3);
+    if(y>0){         m=Math.min(m,d[i-W]+3);
+      if(x>0)        m=Math.min(m,d[i-W-1]+4);
+      if(x<W-1)      m=Math.min(m,d[i-W+1]+4); }
+    d[i]=m; }
+  // backward pass
+  for(let y=H-1;y>=0;y--)for(let x=W-1;x>=0;x--){ const i=y*W+x; if(d[i]===0)continue;
+    let m=d[i];
+    if(x<W-1)        m=Math.min(m,d[i+1]+3);
+    if(y<H-1){       m=Math.min(m,d[i+W]+3);
+      if(x<W-1)      m=Math.min(m,d[i+W+1]+4);
+      if(x>0)        m=Math.min(m,d[i+W-1]+4); }
+    d[i]=m; }
+  const k=CELL/3; for(let i=0;i<NC;i++) d[i]=Math.min(d[i]*k, 50);
+}
+
+/* ---------- 3) コスト場(8近傍 Dijkstra, バケット付き) ---------- */
+// 重み: 直進5 / 斜め7 (≈ 1:1.4)。Uint16、未到達=65535。
+function costField(seeds){
+  const c=new Uint16Array(NC).fill(65535);
+  const buckets=[]; let maxb=0;
+  const push=(cost,i)=>{ (buckets[cost]||(buckets[cost]=[])).push(i); if(cost>maxb)maxb=cost; };
+  for(const s of seeds){ if(walk[s] && c[s]!==0){ c[s]=0; push(0,s); } }
+  for(let b=0;b<=maxb;b++){
+    const q=buckets[b]; if(!q)continue;
+    for(let qi=0;qi<q.length;qi++){
+      const i=q[qi]; if(c[i]!==b)continue;
+      const x=i%W, y=(i-x)/W;
+      const L=x>0, R=x<W-1, U=y>0, D=y<H-1;
+      // 直進
+      if(L&&walk[i-1]  &&b+5<c[i-1]  ){c[i-1]  =b+5;push(b+5,i-1);}
+      if(R&&walk[i+1]  &&b+5<c[i+1]  ){c[i+1]  =b+5;push(b+5,i+1);}
+      if(U&&walk[i-W]  &&b+5<c[i-W]  ){c[i-W]  =b+5;push(b+5,i-W);}
+      if(D&&walk[i+W]  &&b+5<c[i+W]  ){c[i+W]  =b+5;push(b+5,i+W);}
+      // 斜め(角抜け防止: 両直交セルが歩行可能な時のみ)
+      if(L&&U&&walk[i-1]&&walk[i-W]&&walk[i-W-1]&&b+7<c[i-W-1]){c[i-W-1]=b+7;push(b+7,i-W-1);}
+      if(R&&U&&walk[i+1]&&walk[i-W]&&walk[i-W+1]&&b+7<c[i-W+1]){c[i-W+1]=b+7;push(b+7,i-W+1);}
+      if(L&&D&&walk[i-1]&&walk[i+W]&&walk[i+W-1]&&b+7<c[i+W-1]){c[i+W-1]=b+7;push(b+7,i+W-1);}
+      if(R&&D&&walk[i+1]&&walk[i+W]&&walk[i+W+1]&&b+7<c[i+W+1]){c[i+W+1]=b+7;push(b+7,i+W+1);}
+    }
+    buckets[b]=null;
+  }
+  return c;
+}
+const gi=(x,y)=>{ // 位置(m)→セル添字(範囲クランプ)
+  let cx=(x/CELL)|0, cy=(y/CELL)|0;
+  cx=cx<0?0:cx>=W?W-1:cx; cy=cy<0?0:cy>=H?H-1:cy; return cy*W+cx;
+};
+
+/* ---------- 4) 目的地: 出口を k-means で6群に、ホーム軸4本 ---------- */
+const EXITS = PACK.dests;
+const KEX = 6;
+const exitGroup = new Uint8Array(EXITS.length);
+{ // 軽量 k-means
+  const cx=new Float32Array(KEX), cy=new Float32Array(KEX);
+  for(let k=0;k<KEX;k++){ const e=EXITS[(k*EXITS.length/KEX)|0]; cx[k]=e.x; cy[k]=e.y; }
+  for(let it=0;it<20;it++){
+    const sx=new Float32Array(KEX), sy=new Float32Array(KEX), n=new Uint16Array(KEX);
+    for(let e=0;e<EXITS.length;e++){ let bk=0,bd=1e18;
+      for(let k=0;k<KEX;k++){ const dx=EXITS[e].x-cx[k], dy=EXITS[e].y-cy[k], d=dx*dx+dy*dy;
+        if(d<bd){bd=d;bk=k;} }
+      exitGroup[e]=bk; sx[bk]+=EXITS[e].x; sy[bk]+=EXITS[e].y; n[bk]++; }
+    for(let k=0;k<KEX;k++) if(n[k]){ cx[k]=sx[k]/n[k]; cy[k]=sy[k]/n[k]; }
+  }
+}
+const PLATS = PACK.platforms;
+// ホーム軸近傍のシード(軸線から2m以内の歩行可能セル)
+function platformSeeds(p){
+  const seeds=[], dx=p.x1-p.x0, dy=p.y1-p.y0, len=Math.hypot(dx,dy), ux=dx/len, uy=dy/len;
+  for(let t=0;t<=len;t+=CELL){
+    for(let o=-2;o<=2;o+=CELL){
+      const x=p.x0+ux*t-uy*o, y=p.y0+uy*t+ux*o, i=gi(x,y);
+      if(walk[i]) seeds.push(i);
+    } }
+  return seeds;
+}
+
+/* ---------- 5) 場の構築(非同期に見せるため rAF 分割) ---------- */
+const fields = []; // [0..KEX-1]=出口群, [KEX..KEX+3]=ホーム
+const FIELD_PLAT = KEX;
+function buildFields(done){
+  const jobs=[];
+  for(let k=0;k<KEX;k++) jobs.push(()=> {
+    const seeds=[]; for(let e=0;e<EXITS.length;e++) if(exitGroup[e]===k) seeds.push(EXITS[e].gy*W+EXITS[e].gx);
+    fields[k]=costField(seeds); });
+  for(let p=0;p<PLATS.length;p++) jobs.push(()=> fields[FIELD_PLAT+p]=costField(platformSeeds(PLATS[p])));
+  let j=0;
+  (function step(){ if(j<jobs.length){ jobs[j++](); requestAnimationFrame(step); } else done(); })();
+}
+
+/* 勾配サンプル: バイリニア補間コストの中央差分。
+   壁/未到達セルは「局所基準値+ペナルティ」に置換 → 階段状ラスタ壁でも滑らかに沿う */
+function sampleCost(f, x, y, ref){
+  let fx=x/CELL-0.5, fy=y/CELL-0.5;
+  let x0=Math.floor(fx), y0=Math.floor(fy);
+  const tx=fx-x0, ty=fy-y0;
+  x0=x0<0?0:x0>W-2?W-2:x0; y0=y0<0?0:y0>H-2?H-2:y0;
+  const i00=y0*W+x0;
+  const V=(i)=>{ const v=f[i]; return (v===65535||!walk[i]) ? ref+8 : v; };
+  const a=V(i00), b=V(i00+1), c=V(i00+W), d=V(i00+W+1);
+  return a*(1-tx)*(1-ty)+b*tx*(1-ty)+c*(1-tx)*ty+d*tx*ty;
+}
+function fieldDir(f, x, y, out){
+  const i=gi(x,y);
+  const c=f[i]===65535?1e6:f[i];
+  const h=0.6, ref=c===1e6?30000:c;
+  const gx=sampleCost(f,x+h,y,ref)-sampleCost(f,x-h,y,ref);
+  const gy=sampleCost(f,x,y+h,ref)-sampleCost(f,x,y-h,ref);
+  const n=Math.hypot(gx,gy);
+  if(n<1e-6){ out[0]=0; out[1]=0; return c; }
+  out[0]=-gx/n; out[1]=-gy/n; return c;
+}
+
+/* ---------- 6) エージェント(SoA・インターリーブ) ---------- */
+const NMAX=3000;
+const pos = new Float32Array(2*NMAX);   // [x0,y0,x1,y1,...]
+const vel = new Float32Array(2*NMAX);
+const vdes= new Float32Array(NMAX);     // 希望速度
+const goal= new Uint8Array(NMAX);       // field index
+const kind= new Uint8Array(NMAX);       // 0=降車(→出口) 1=乗車(→ホーム)
+const born= new Float32Array(NMAX);     // 生成時刻(FD計測の除外用)
+let N=0;
+const R=0.25, R2=2*R;
+
+function spawn(x,y,fieldIdx,kd){
+  if(N>=NMAX) return -1;
+  // 歩行可能セルへスナップ(近傍探索 3m)
+  let bi=-1, bd=1e18;
+  const cx0=(x/CELL)|0, cy0=(y/CELL)|0, RR=6;
+  for(let dy=-RR;dy<=RR;dy++)for(let dx=-RR;dx<=RR;dx++){
+    const cx=cx0+dx, cy=cy0+dy;
+    if(cx<0||cy<0||cx>=W||cy>=H) continue;
+    const i=cy*W+cx; if(!walk[i]) continue;
+    const d=dx*dx+dy*dy; if(d<bd){bd=d;bi=i;}
+  }
+  if(bi<0) return -1;
+  const px=(bi%W+0.5)*CELL, py=(((bi-bi%W)/W)+0.5)*CELL;
+  const a=N++;
+  let jx=px+rand.normal(0,0.25), jy=py+rand.normal(0,0.25);
+  if(!walk[gi(jx,jy)]){ jx=px; jy=py; } // ジッタで壁に落ちたら中心へ(不変条件死守)
+  pos[2*a]=jx; pos[2*a+1]=jy;
+  vel[2*a]=0; vel[2*a+1]=0;
+  vdes[a]=Math.min(1.9,Math.max(0.8,rand.normal(1.34,0.2)));
+  goal[a]=fieldIdx; kind[a]=kd; born[a]=simT;
+  return a;
+}
+function kill(a){ // swap-remove
+  N--;
+  pos[2*a]=pos[2*N]; pos[2*a+1]=pos[2*N+1];
+  vel[2*a]=vel[2*N]; vel[2*a+1]=vel[2*N+1];
+  vdes[a]=vdes[N]; goal[a]=goal[N]; kind[a]=kind[N]; born[a]=born[N];
+}
+
+/* ---------- 7) CSR 近傍ハッシュ(1mセル・毎フレーム再構築) ---------- */
+const HCELL=1.0, HW=Math.ceil(W*CELL/HCELL), HH=Math.ceil(H*CELL/HCELL), HN=HW*HH;
+const hCount=new Uint16Array(HN);
+const hOff  =new Uint32Array(HN+1);
+const hIdx  =new Uint32Array(NMAX);
+const hKey  =new Uint32Array(NMAX);
+function rebuildHash(){
+  hCount.fill(0);
+  for(let a=0;a<N;a++){
+    let cx=(pos[2*a]/HCELL)|0, cy=(pos[2*a+1]/HCELL)|0;
+    cx=cx<0?0:cx>=HW?HW-1:cx; cy=cy<0?0:cy>=HH?HH-1:cy;
+    const k=cy*HW+cx; hKey[a]=k; hCount[k]++;
+  }
+  hOff[0]=0; for(let i=0;i<HN;i++) hOff[i+1]=hOff[i]+hCount[i];
+  const cur=hCount; cur.fill(0);
+  for(let a=0;a<N;a++){ const k=hKey[a]; hIdx[hOff[k]+cur[k]++]=a; }
+}
+
+/* ---------- 8) 電車 ---------- */
+// 位相: approach 8s → dwell 25s → depart 8s → gap
+const trains = PLATS.map((p,idx)=>{
+  const dx=p.x1-p.x0, dy=p.y1-p.y0, len=Math.hypot(dx,dy);
+  const tlen=Math.min(len-8, 105);
+  return { p, ux:dx/len, uy:dy/len, len, tlen,
+    period: 70+idx*17, offset: idx*22, doors: Math.max(4,(tlen/18)|0),
+    alightLeft: 0, emitAcc: 0 };
+});
+const T_APP=8, T_DWELL=25, T_DEP=8;
+function trainState(tr, t){
+  const ph=((t+tr.offset)%tr.period+tr.period)%tr.period;
+  if(ph<T_APP)              return {s:'app',  u:easing.cubicOut(ph/T_APP)};
+  if(ph<T_APP+T_DWELL)      return {s:'dwell',u:1, justArrived: ph-T_APP<0.05};
+  if(ph<T_APP+T_DWELL+T_DEP)return {s:'dep',  u:easing.cubicIn((ph-T_APP-T_DWELL)/T_DEP)};
+  return {s:'gone',u:0};
+}
+function doorXY(tr, d, out){ // 停車位置でのドア座標
+  const c=(tr.len-tr.tlen)/2 + tr.tlen*(d+0.5)/tr.doors;
+  out[0]=tr.p.x0+tr.ux*c; out[1]=tr.p.y0+tr.uy*c;
+}
+const prevDwell=new Array(trains.length).fill(false);
+
+/* ---------- 9) 計測 ---------- */
+const M = { exited:0, boarded:0, wallHits:0, slides:0, overlapPairs:0, pairChecks:0,
+  fdN:new Float32Array(26), fdV:new Float32Array(26) }; // 密度ビン 0.2刻み
+
+/* ---------- 10) 物理ステップ ---------- */
+const DT=1/60, AMAX=5.0, TAU=0.5, WALLR=0.40, WALLC=1.2, REP_A=4.0, REP_B=0.12;
+const CB=Math.cos(0.30), SB=Math.sin(0.30); // レーン形成用の回転バイアス
+const tmp2=new Float32Array(2);
+let simT=0;
+function stepSim(){
+  simT+=DT;
+  // --- 電車イベント ---
+  for(let ti=0;ti<trains.length;ti++){
+    const tr=trains[ti], st=trainState(tr,simT);
+    const dw= st.s==='dwell';
+    if(dw && !prevDwell[ti]){ tr.alightLeft = 40 + rand.poisson(20); tr.emitAcc=0; }
+    if(dw && tr.alightLeft>0){
+      // 降車は最初の~12秒に分散して流出(1ドアあたり ~0.7人/s)
+      tr.emitAcc += tr.doors*0.7*DT;
+      while(tr.emitAcc>=1 && tr.alightLeft>0){
+        tr.emitAcc-=1; tr.alightLeft--;
+        const d=(rand.f()*tr.doors)|0;
+        doorXY(tr,d,tmp2);
+        spawn(tmp2[0]+rand.normal(0,0.5), tmp2[1]+rand.normal(0,0.5),
+              (rand.f()*KEX)|0, 0);
+      }
+    }
+    prevDwell[ti]=dw;
+  }
+  // --- 乗車客の湧出(出口→ホーム)---
+  if(rand.f() < 2.2*DT){
+    const e=EXITS[(rand.f()*EXITS.length)|0];
+    spawn(e.x, e.y, FIELD_PLAT+((rand.f()*PLATS.length)|0), 1);
+  }
+  rebuildHash();
+  M.overlapPairs=0; M.pairChecks=0;
+  for(let a=0;a<N;a++){
+    const ax=pos[2*a], ay=pos[2*a+1];
+    // 目標方向
+    const cost=fieldDir(fields[goal[a]], ax, ay, tmp2);
+    let gx=tmp2[0], gy=tmp2[1];
+    // 到達判定
+    let waiting=false;
+    if(kind[a]===0){ // 降車→出口
+      if(cost<=10){ M.exited++; kill(a); a--; continue; }
+    } else {         // 乗車→ホーム
+      if(cost<=20){
+        const pi=goal[a]-FIELD_PLAT, st=trainState(trains[pi],simT);
+        if(st.s==='dwell'){ if(rand.f()<2.0*DT){ M.boarded++; kill(a); a--; continue; } }
+        gx*=0.12; gy*=0.12; waiting=true; // ホーム上で待機(そっと停止)
+      }
+    }
+    // 操舵
+    let fx=(gx*vdes[a]-vel[2*a])/TAU, fy=(gy*vdes[a]-vel[2*a+1])/TAU;
+    // 近傍反発 + 計測
+    let nnear=0;
+    { let cx=(ax/HCELL)|0, cy=(ay/HCELL)|0;
+      cx=cx<1?1:cx>=HW-1?HW-2:cx; cy=cy<1?1:cy>=HH-1?HH-2:cy;
+      for(let oy=-1;oy<=1;oy++)for(let ox=-1;ox<=1;ox++){
+        const k=(cy+oy)*HW+cx+ox;
+        for(let q=hOff[k];q<hOff[k+1];q++){
+          const b=hIdx[q]; if(b===a) continue;
+          const dx=ax-pos[2*b], dy=ay-pos[2*b+1];
+          const d2=dx*dx+dy*dy; if(d2>2.25) continue;
+          const d=Math.sqrt(d2)||1e-4;
+          if(d<1.0) nnear++;
+          M.pairChecks++;
+          if(d<0.9*R2 && b>a) M.overlapPairs++;
+          const m=REP_A*Math.exp((R2-d)/REP_B);
+          // 左側通行バイアス: 反発を約17°回転 → 対向流がレーンに整列
+          const ux=dx/d, uy=dy/d;
+          fx+=(ux*CB - uy*SB)*m; fy+=(ux*SB + uy*CB)*m;
+        } } }
+    // 壁力(SDF): 中距離センタリング + 接触反発
+    const ci=gi(ax,ay), sd=sdf[ci];
+    if(sd<WALLC){
+      const xr=ci%W;
+      const sl=xr>0?sdf[ci-1]:0, sr=xr<W-1?sdf[ci+1]:0;
+      const su=ci>=W?sdf[ci-W]:0, sdn=ci<NC-W?sdf[ci+W]:0;
+      let wx=sr-sl, wy=sdn-su; const wn=Math.hypot(wx,wy)||1e-4;
+      const t=1-sd/WALLC;
+      let m=2.6*t*t;                      // 通路中央へ寄せる弱い力
+      if(sd<WALLR) m+=16*(WALLR-sd);      // 接触域の強反発
+      fx+=wx/wn*m; fy+=wy/wn*m;
+    }
+    // 加速度クランプ・積分
+    const fn=Math.hypot(fx,fy);
+    if(fn>AMAX){ fx*=AMAX/fn; fy*=AMAX/fn; }
+    vel[2*a]+=fx*DT; vel[2*a+1]+=fy*DT;
+    const sp=Math.hypot(vel[2*a],vel[2*a+1]);
+    if(sp>2.2){ vel[2*a]*=2.2/sp; vel[2*a+1]*=2.2/sp; }
+    let nx=ax+vel[2*a]*DT, ny=ay+vel[2*a+1]*DT;
+    // 域外クランプ
+    const XM=W*CELL-0.01, YM=H*CELL-0.01;
+    nx=nx<0.01?0.01:nx>XM?XM:nx; ny=ny<0.01?0.01:ny>YM?YM:ny;
+    // 壁スライド(接触処理・貫通ではない)
+    if(!walk[gi(nx,ny)]){
+      M.slides++;
+      if(walk[gi(nx,ay)]){ ny=ay; vel[2*a+1]=0; }
+      else if(walk[gi(ax,ny)]){ nx=ax; vel[2*a]=0; }
+      else { nx=ax; ny=ay; vel[2*a]=0; vel[2*a+1]=0; }
+    }
+    if(!walk[gi(nx,ny)]){
+      // 不変条件違反 = 真の貫通。最近傍歩行可能セルへ復帰させ計上
+      M.wallHits++;
+      let bi=-1,bd=1e18; const cx0=(nx/CELL)|0, cy0=(ny/CELL)|0;
+      for(let dy2=-3;dy2<=3;dy2++)for(let dx2=-3;dx2<=3;dx2++){
+        const cx=cx0+dx2, cy=cy0+dy2;
+        if(cx<0||cy<0||cx>=W||cy>=H) continue;
+        const ii=cy*W+cx; if(!walk[ii]) continue;
+        const dd=dx2*dx2+dy2*dy2; if(dd<bd){bd=dd;bi=ii;} }
+      if(bi>=0){ nx=(bi%W+0.5)*CELL; ny=(((bi-bi%W)/W)+0.5)*CELL; }
+      vel[2*a]=0; vel[2*a+1]=0;
+    }
+    pos[2*a]=nx; pos[2*a+1]=ny;
+    // 基本図サンプル(1/8 サブサンプル、待機者・生成3秒未満は除外)
+    if((a&7)===0 && !waiting && simT-born[a]>3){
+      const rho=nnear/Math.PI; // 半径1m円内
+      const bin=Math.min(25,(rho/0.2)|0);
+      M.fdN[bin]+=1; M.fdV[bin]+=Math.min(sp,2.2);
+    }
+  }
+}
+
+/* ================================================================
+   11) 3D 描画(WebGL2)
+   ワールド座標: X=東西(m), Y=上(m), Z=南北(m)。シミュ座標 (x,y) → (x, 0, y)。
+   ================================================================ */
+const cv=document.getElementById('map');
+const gl=cv.getContext('webgl2',{antialias:true});
+if(!gl){
+  document.getElementById('loading').textContent='WebGL2 が利用できない環境です(3D版は WebGL2 必須)。2D版 shinjuku_b1_sim.html をご利用ください。';
+  throw new Error('WebGL2 unavailable');
+}
+
+/* --- 小さな mat4 カーネル(列優先、op(out,...) 規約) --- */
+const mTmpA=new Float32Array(16), mTmpB=new Float32Array(16);
+const VP=new Float32Array(16);
+function mPersp(o,fovy,asp,n,f){
+  const t=1/Math.tan(fovy/2);
+  o.fill(0);
+  o[0]=t/asp; o[5]=t; o[10]=(f+n)/(n-f); o[11]=-1; o[14]=2*f*n/(n-f);
+}
+function mLook(o,ex,ey,ez,tx,ty,tz){
+  let zx=ex-tx, zy=ey-ty, zz=ez-tz;
+  const zl=Math.hypot(zx,zy,zz)||1e-6; zx/=zl; zy/=zl; zz/=zl;
+  // right = up(0,1,0) × z
+  const xl=Math.hypot(zz,zx)||1e-6;
+  const xx=zz/xl, xy=0, xz=-zx/xl;
+  // camUp = z × right
+  const yx=zy*xz-zz*xy, yy=zz*xx-zx*xz, yz=zx*xy-zy*xx;
+  o[0]=xx; o[1]=yx; o[2]=zx; o[3]=0;
+  o[4]=xy; o[5]=yy; o[6]=zy; o[7]=0;
+  o[8]=xz; o[9]=yz; o[10]=zz; o[11]=0;
+  o[12]=-(xx*ex+xy*ey+xz*ez);
+  o[13]=-(yx*ex+yy*ey+yz*ez);
+  o[14]=-(zx*ex+zy*ey+zz*ez);
+  o[15]=1;
+}
+function mMul(o,a,b){ // o = a*b
+  for(let c=0;c<4;c++){
+    const b0=b[4*c],b1=b[4*c+1],b2=b[4*c+2],b3=b[4*c+3];
+    o[4*c]  =a[0]*b0+a[4]*b1+a[8]*b2+a[12]*b3;
+    o[4*c+1]=a[1]*b0+a[5]*b1+a[9]*b2+a[13]*b3;
+    o[4*c+2]=a[2]*b0+a[6]*b1+a[10]*b2+a[14]*b3;
+    o[4*c+3]=a[3]*b0+a[7]*b1+a[11]*b2+a[15]*b3;
+  }
+}
+
+/* --- シェーダ --- */
+function compile(vs,fs){
+  const mk=(t,s)=>{ const sh=gl.createShader(t); gl.shaderSource(sh,s); gl.compileShader(sh);
+    if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
+  const p=gl.createProgram();
+  gl.attachShader(p,mk(gl.VERTEX_SHADER,vs)); gl.attachShader(p,mk(gl.FRAGMENT_SHADER,fs));
+  gl.linkProgram(p);
+  if(!gl.getProgramParameter(p,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  return p;
+}
+const FOG_GLSL=`
+  const vec3 FOGC=vec3(0.929,0.941,0.953);
+  vec3 fogMix(vec3 c, float d){ return mix(c, FOGC, smoothstep(320.0, 1100.0, d)); }`;
+// 床(テクスチャ)
+const pFloor=compile(`#version 300 es
+  layout(location=0) in vec2 aPos; // x,z (m)
+  uniform mat4 uVP; uniform vec2 uExt; uniform vec3 uEye;
+  out vec2 vUV; out float vD;
+  void main(){
+    vec3 wp=vec3(aPos.x,0.0,aPos.y);
+    vUV=aPos/uExt; vD=distance(wp,uEye);
+    gl_Position=uVP*vec4(wp,1.0);
+  }`,`#version 300 es
+  precision highp float;
+  uniform sampler2D uTex;
+  in vec2 vUV; in float vD; out vec4 o;
+  ${FOG_GLSL}
+  void main(){ o=vec4(fogMix(texture(uTex,vUV).rgb, vD),1.0); }`);
+// 単色ジオメトリ(壁・光柱・電車)
+const pSolid=compile(`#version 300 es
+  layout(location=0) in vec3 aPos;
+  layout(location=1) in vec3 aNrm;
+  uniform mat4 uVP; uniform mat4 uModel; uniform vec3 uScale; uniform vec3 uEye;
+  out vec3 vN; out float vD; out float vY;
+  void main(){
+    vec3 wp=(uModel*vec4(aPos*uScale,1.0)).xyz;
+    vN=mat3(uModel)*aNrm; vD=distance(wp,uEye); vY=aPos.y;
+    gl_Position=uVP*vec4(wp,1.0);
+  }`,`#version 300 es
+  precision highp float;
+  uniform vec3 uColor; uniform float uAlpha; uniform float uEmiss;
+  in vec3 vN; in float vD; in float vY; out vec4 o;
+  ${FOG_GLSL}
+  const vec3 L=normalize(vec3(0.35,0.8,0.45));
+  void main(){
+    float lit=0.55+0.45*abs(dot(normalize(vN),L));
+    lit=mix(lit,1.0,uEmiss);
+    lit*=mix(0.82,1.0,clamp(vY,0.0,1.0)); // 足元をわずかに落として接地感
+    o=vec4(fogMix(uColor*lit,vD),uAlpha);
+  }`);
+// インスタンス描画(歩行者・接地影)
+const pInst=compile(`#version 300 es
+  layout(location=0) in vec3 aPos;
+  layout(location=1) in vec3 aNrm;
+  layout(location=2) in vec3 aInst; // x,z,kind
+  uniform mat4 uVP; uniform vec3 uEye;
+  uniform vec3 uColA; uniform vec3 uColB; uniform float uFlat;
+  out vec3 vC; out float vD;
+  const vec3 L=normalize(vec3(0.35,0.8,0.45));
+  void main(){
+    vec3 wp=vec3(aPos.x+aInst.x, aPos.y, aPos.z+aInst.y);
+    float lit=mix(0.55+0.45*abs(dot(aNrm,L)),1.0,uFlat);
+    vC=mix(uColA,uColB,step(0.5,aInst.z))*lit;
+    vD=distance(wp,uEye);
+    gl_Position=uVP*vec4(wp,1.0);
+  }`,`#version 300 es
+  precision highp float;
+  uniform float uAlpha;
+  in vec3 vC; in float vD; out vec4 o;
+  ${FOG_GLSL}
+  void main(){ o=vec4(fogMix(vC,vD),uAlpha); }`);
+const U=(p,n)=>gl.getUniformLocation(p,n);
+
+/* --- 床テクスチャ: 2D 版ベースレイヤをそのまま焼き込み(2px/m) --- */
+function makeFloorTexture(){
+  const S=2;
+  const c=document.createElement('canvas');
+  c.width=Math.ceil(W*CELL*S); c.height=Math.ceil(H*CELL*S);
+  const b=c.getContext('2d');
+  b.scale(S,S);
+  b.fillStyle='#E2E6EB'; b.fillRect(0,0,W*CELL,H*CELL);
+  const poly=(pts)=>{ b.beginPath(); b.moveTo(pts[0][0],pts[0][1]);
+    for(let i=1;i<pts.length;i++) b.lineTo(pts[i][0],pts[i][1]); b.closePath(); };
+  b.fillStyle='#FFFFFF'; b.strokeStyle='#C3CCD6'; b.lineWidth=0.15;
+  for(const p of PACK.render.walk){ poly(p); b.fill(); b.stroke(); }
+  b.fillStyle='#F5DFB4'; b.strokeStyle='#E8A13C'; b.lineWidth=0.2;
+  for(const p of PACK.render.plat){ poly(p); b.fill(); b.stroke(); }
+  b.fillStyle='#CBE8D3'; b.strokeStyle='#3F9D63'; b.lineWidth=0.18;
+  for(const p of PACK.render.conn){ poly(p); b.fill(); b.stroke(); }
+  b.fillStyle='#B7C0CB';
+  for(const p of PACK.render.fix){ poly(p); b.fill(); }
+  // 出口位置(緑)も床へ焼き込み
+  b.fillStyle='rgba(63,157,99,0.9)';
+  for(const e of EXITS) b.fillRect(e.x-0.75,e.y-0.75,1.5,1.5);
+  const tex=gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,c);
+  gl.generateMipmap(gl.TEXTURE_2D);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  const an=gl.getExtension('EXT_texture_filter_anisotropic');
+  if(an) gl.texParameterf(gl.TEXTURE_2D,an.TEXTURE_MAX_ANISOTROPY_EXT,
+    Math.min(8,gl.getParameter(an.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+  return tex;
+}
+
+/* --- VAO ヘルパ --- */
+function makeVAO(verts, idx, hasNormal){
+  const vao=gl.createVertexArray(); gl.bindVertexArray(vao);
+  const vbo=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,vbo);
+  gl.bufferData(gl.ARRAY_BUFFER,verts,gl.STATIC_DRAW);
+  const stride=hasNormal?24:8;
+  gl.enableVertexAttribArray(0);
+  gl.vertexAttribPointer(0,hasNormal?3:2,gl.FLOAT,false,stride,0);
+  if(hasNormal){
+    gl.enableVertexAttribArray(1);
+    gl.vertexAttribPointer(1,3,gl.FLOAT,false,stride,12);
+  }
+  let n=verts.length/(hasNormal?6:2);
+  if(idx){
+    const ibo=gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ibo);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,idx,gl.STATIC_DRAW);
+    n=idx.length;
+  }
+  gl.bindVertexArray(null);
+  return {vao,count:n,indexed:!!idx};
+}
+
+/* --- 壁ジオメトリ: walk 境界エッジをランマージして押し出し --- */
+const WALL_H=1.1;
+function buildWalls(){
+  const V=[], I=[];
+  const quad=(x0,z0,x1,z1,nx,nz)=>{
+    const b=V.length/6;
+    V.push(x0,0,z0,nx,0,nz, x1,0,z1,nx,0,nz, x1,WALL_H,z1,nx,0,nz, x0,WALL_H,z0,nx,0,nz);
+    I.push(b,b+1,b+2, b,b+2,b+3);
+  };
+  // 水平エッジ(北面/南面): 行ごとに x 方向へランマージ
+  for(let y=0;y<H;y++){
+    let runN=-1, runS=-1;
+    for(let x=0;x<=W;x++){
+      const i=y*W+x;
+      const wN=x<W && walk[i] && (y===0||!walk[i-W]);
+      const wS=x<W && walk[i] && (y===H-1||!walk[i+W]);
+      if(wN&&runN<0) runN=x;
+      if(!wN&&runN>=0){ quad(runN*CELL,y*CELL,x*CELL,y*CELL,0,1); runN=-1; }
+      if(wS&&runS<0) runS=x;
+      if(!wS&&runS>=0){ quad(runS*CELL,(y+1)*CELL,x*CELL,(y+1)*CELL,0,-1); runS=-1; }
+    }
+  }
+  // 垂直エッジ(西面/東面): 列ごとに y 方向へランマージ
+  for(let x=0;x<W;x++){
+    let runW=-1, runE=-1;
+    for(let y=0;y<=H;y++){
+      const i=y*W+x;
+      const wW=y<H && walk[i] && (x===0||!walk[i-1]);
+      const wE=y<H && walk[i] && (x===W-1||!walk[i+1]);
+      if(wW&&runW<0) runW=y;
+      if(!wW&&runW>=0){ quad(x*CELL,runW*CELL,x*CELL,y*CELL,1,0); runW=-1; }
+      if(wE&&runE<0) runE=y;
+      if(!wE&&runE>=0){ quad((x+1)*CELL,runE*CELL,(x+1)*CELL,y*CELL,-1,0); runE=-1; }
+    }
+  }
+  return makeVAO(new Float32Array(V), new Uint32Array(I), true);
+}
+
+/* --- プリミティブ: 円柱 / 円盤 / 単位箱 --- */
+function cylinderGeom(seg,r,h,withTop){
+  const V=[], I=[];
+  for(let k=0;k<seg;k++){
+    const a0=k/seg*6.2832, a1=(k+1)/seg*6.2832;
+    const c0=Math.cos(a0),s0=Math.sin(a0),c1=Math.cos(a1),s1=Math.sin(a1);
+    const b=V.length/6;
+    V.push(r*c0,0,r*s0,c0,0,s0, r*c1,0,r*s1,c1,0,s1, r*c1,h,r*s1,c1,0,s1, r*c0,h,r*s0,c0,0,s0);
+    I.push(b,b+1,b+2, b,b+2,b+3);
+    if(withTop){
+      const t=V.length/6;
+      V.push(0,h,0,0,1,0, r*c1,h,r*s1,0,1,0, r*c0,h,r*s0,0,1,0);
+      I.push(t,t+1,t+2);
+    }
+  }
+  return {V:new Float32Array(V), I:new Uint32Array(I)};
+}
+function diskGeom(seg,r,y){
+  const V=[], I=[];
+  for(let k=0;k<seg;k++){
+    const a0=k/seg*6.2832, a1=(k+1)/seg*6.2832;
+    const b=V.length/6;
+    V.push(0,y,0,0,1,0, r*Math.cos(a1),y,r*Math.sin(a1),0,1,0, r*Math.cos(a0),y,r*Math.sin(a0),0,1,0);
+    I.push(b,b+1,b+2);
+  }
+  return {V:new Float32Array(V), I:new Uint32Array(I)};
+}
+function boxGeom(){ // x∈[-.5,.5] y∈[0,1] z∈[-.5,.5]
+  const F=[ // [nx,ny,nz, 4頂点]
+    [ 1,0,0, .5,0,-.5, .5,0,.5, .5,1,.5, .5,1,-.5],
+    [-1,0,0, -.5,0,.5, -.5,0,-.5, -.5,1,-.5, -.5,1,.5],
+    [0, 1,0, -.5,1,-.5, .5,1,-.5, .5,1,.5, -.5,1,.5],
+    [0,-1,0, -.5,0,.5, .5,0,.5, .5,0,-.5, -.5,0,-.5],
+    [0,0, 1, -.5,0,.5, -.5,1,.5, .5,1,.5, .5,0,.5],
+    [0,0,-1, .5,0,-.5, .5,1,-.5, -.5,1,-.5, -.5,0,-.5],
+  ];
+  const V=[], I=[];
+  for(const f of F){
+    const b=V.length/6;
+    for(let k=0;k<4;k++) V.push(f[3+3*k],f[4+3*k],f[5+3*k],f[0],f[1],f[2]);
+    I.push(b,b+1,b+2, b,b+2,b+3);
+  }
+  return {V:new Float32Array(V), I:new Uint32Array(I)};
+}
+
+/* --- 静的バッファ構築 --- */
+const floorVAO=makeVAO(new Float32Array([0,0, W*CELL,0, W*CELL,H*CELL, 0,0, W*CELL,H*CELL, 0,H*CELL]), null, false);
+let wallsVAO=null, floorTex=null, beaconVAO=null, boxVAO=null;
+function buildStaticGeom(){
+  floorTex=makeFloorTexture();
+  wallsVAO=buildWalls();
+  // 出口の光柱(全88本を1バッファへ焼き込み)
+  { const g=cylinderGeom(10,0.55,3.2,false);
+    const V=[], I=[];
+    for(const e of EXITS){
+      const b=V.length/6;
+      for(let v=0;v<g.V.length;v+=6)
+        V.push(g.V[v]+e.x, g.V[v+1], g.V[v+2]+e.y, g.V[v+3], g.V[v+4], g.V[v+5]);
+      for(const ix of g.I) I.push(ix+b);
+    }
+    beaconVAO=makeVAO(new Float32Array(V), new Uint32Array(I), true);
+  }
+  { const g=boxGeom(); boxVAO=makeVAO(g.V,g.I,true); }
+}
+
+/* --- 歩行者インスタンス(円柱ボディ + 接地影) --- */
+const instData=new Float32Array(3*NMAX); // [x,z,kind]*N
+let instVBO=null, agentVAO=null, shadowVAO=null, agentCount=0, shadowCount=0;
+function makeInstancedVAO(geom){
+  const vao=gl.createVertexArray(); gl.bindVertexArray(vao);
+  const vbo=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,vbo);
+  gl.bufferData(gl.ARRAY_BUFFER,geom.V,gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,3,gl.FLOAT,false,24,0);
+  gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1,3,gl.FLOAT,false,24,12);
+  const ibo=gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ibo);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,geom.I,gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ARRAY_BUFFER,instVBO);
+  gl.enableVertexAttribArray(2); gl.vertexAttribPointer(2,3,gl.FLOAT,false,12,0);
+  gl.vertexAttribDivisor(2,1);
+  gl.bindVertexArray(null);
+  return {vao,count:geom.I.length};
+}
+function buildAgentGeom(){
+  instVBO=gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER,instVBO);
+  gl.bufferData(gl.ARRAY_BUFFER,instData.byteLength,gl.DYNAMIC_DRAW);
+  const body=cylinderGeom(10,R,1.62,true);
+  const a=makeInstancedVAO(body); agentVAO=a.vao; agentCount=a.count;
+  const sh=diskGeom(12,0.36,0.02);
+  const s=makeInstancedVAO(sh); shadowVAO=s.vao; shadowCount=s.count;
+}
+
+/* --- カメラ(オービット) --- */
+const P0=(()=>{ // 歩行可能領域の重心(初期フレーミング用)
+  let sx=0, sy=0, n=0;
+  for(let y=0;y<H;y+=4)for(let x=0;x<W;x+=4){ if(walk[y*W+x]){ sx+=x; sy+=y; n++; } }
+  return {x:(sx/n+0.5)*CELL, y:(sy/n+0.5)*CELL};
+})();
+const CAM_HOME={tx:P0.x, tz:P0.y, az:Math.atan2(PLATS[0].y1-PLATS[0].y0,PLATS[0].x1-PLATS[0].x0)+Math.PI/2, el:0.95, dist:300};
+const cam={...CAM_HOME};
+let topView=false, elBeforeTop=CAM_HOME.el, distBeforeTop=CAM_HOME.dist;
+const eye=new Float32Array(3);
+function computeVP(){
+  const el=topView?1.53:cam.el;
+  eye[0]=cam.tx+cam.dist*Math.cos(el)*Math.cos(cam.az);
+  eye[1]=       cam.dist*Math.sin(el);
+  eye[2]=cam.tz+cam.dist*Math.cos(el)*Math.sin(cam.az);
+  const dpr=Math.min(devicePixelRatio||1,2);
+  mPersp(mTmpA, 50*Math.PI/180, cv.width/Math.max(1,cv.height), 1.0, 3000);
+  mLook(mTmpB, eye[0],eye[1],eye[2], cam.tx,0,cam.tz);
+  mMul(VP, mTmpA, mTmpB);
+}
+
+/* --- モデル行列(電車): 軸方向基底 + 平行移動 --- */
+const IDENT=new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
+const trainModel=new Float32Array(16);
+function setTrainModel(tr,c){
+  const cx=tr.p.x0+tr.ux*c, cz=tr.p.y0+tr.uy*c;
+  trainModel.set([tr.ux,0,tr.uy,0, 0,1,0,0, -tr.uy,0,tr.ux,0, cx,0,cz,1]);
+}
+
+/* --- 描画 --- */
+function resize(){
+  const dpr=Math.min(devicePixelRatio||1,2), r=cv.getBoundingClientRect();
+  const w=Math.max(1,Math.round(r.width*dpr)), h=Math.max(1,Math.round(r.height*dpr));
+  if(cv.width!==w||cv.height!==h){ cv.width=w; cv.height=h; }
+}
+addEventListener('resize',resize);
+const COL_ALIGHT=[0.851,0.467,0.169], COL_BOARD=[0.180,0.498,0.639];
+function draw(){
+  resize();
+  computeVP();
+  gl.viewport(0,0,cv.width,cv.height);
+  gl.clearColor(0.929,0.941,0.953,1);
+  gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST);
+  gl.disable(gl.CULL_FACE);
+  gl.disable(gl.BLEND);
+  // 床
+  gl.useProgram(pFloor);
+  gl.uniformMatrix4fv(U(pFloor,'uVP'),false,VP);
+  gl.uniform2f(U(pFloor,'uExt'),W*CELL,H*CELL);
+  gl.uniform3fv(U(pFloor,'uEye'),eye);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D,floorTex);
+  gl.uniform1i(U(pFloor,'uTex'),0);
+  gl.bindVertexArray(floorVAO.vao);
+  gl.drawArrays(gl.TRIANGLES,0,floorVAO.count);
+  // 壁(不透明)
+  gl.useProgram(pSolid);
+  gl.uniformMatrix4fv(U(pSolid,'uVP'),false,VP);
+  gl.uniform3fv(U(pSolid,'uEye'),eye);
+  gl.uniformMatrix4fv(U(pSolid,'uModel'),false,IDENT);
+  gl.uniform3f(U(pSolid,'uScale'),1,1,1);
+  gl.uniform3f(U(pSolid,'uColor'),0.596,0.651,0.706);
+  gl.uniform1f(U(pSolid,'uAlpha'),1); gl.uniform1f(U(pSolid,'uEmiss'),0);
+  gl.bindVertexArray(wallsVAO.vao);
+  gl.drawElements(gl.TRIANGLES,wallsVAO.count,gl.UNSIGNED_INT,0);
+  // 接地影(ブレンド・深度書込なし)
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+  gl.depthMask(false);
+  gl.useProgram(pInst);
+  gl.uniformMatrix4fv(U(pInst,'uVP'),false,VP);
+  gl.uniform3fv(U(pInst,'uEye'),eye);
+  gl.uniform3f(U(pInst,'uColA'),0.10,0.13,0.16);
+  gl.uniform3f(U(pInst,'uColB'),0.10,0.13,0.16);
+  gl.uniform1f(U(pInst,'uFlat'),1);
+  gl.uniform1f(U(pInst,'uAlpha'),0.28);
+  gl.bindVertexArray(shadowVAO);
+  gl.drawElementsInstanced(gl.TRIANGLES,shadowCount,gl.UNSIGNED_INT,0,N);
+  gl.depthMask(true);
+  gl.disable(gl.BLEND);
+  // 歩行者ボディ(不透明)
+  gl.uniform3f(U(pInst,'uColA'),COL_ALIGHT[0],COL_ALIGHT[1],COL_ALIGHT[2]);
+  gl.uniform3f(U(pInst,'uColB'),COL_BOARD[0],COL_BOARD[1],COL_BOARD[2]);
+  gl.uniform1f(U(pInst,'uFlat'),0);
+  gl.uniform1f(U(pInst,'uAlpha'),1);
+  gl.bindVertexArray(agentVAO);
+  gl.drawElementsInstanced(gl.TRIANGLES,agentCount,gl.UNSIGNED_INT,0,N);
+  // 透明パス: 光柱 → 電車(深度書込なし)
+  gl.enable(gl.BLEND);
+  gl.depthMask(false);
+  gl.useProgram(pSolid);
+  gl.uniformMatrix4fv(U(pSolid,'uModel'),false,IDENT);
+  gl.uniform3f(U(pSolid,'uScale'),1,1,1);
+  gl.uniform3f(U(pSolid,'uColor'),0.247,0.616,0.388);
+  gl.uniform1f(U(pSolid,'uAlpha'),0.22); gl.uniform1f(U(pSolid,'uEmiss'),0.8);
+  gl.bindVertexArray(beaconVAO.vao);
+  gl.drawElements(gl.TRIANGLES,beaconVAO.count,gl.UNSIGNED_INT,0);
+  gl.bindVertexArray(boxVAO.vao);
+  for(const tr of trains){
+    const st=trainState(tr,simT);
+    if(st.s==='gone') continue;
+    const mid=tr.len/2;
+    let c;
+    if(st.s==='app') c=mid + (1-st.u)*(tr.len*0.9+60);
+    else if(st.s==='dep') c=mid - st.u*(tr.len*0.9+60);
+    else c=mid;
+    setTrainModel(tr,c);
+    gl.uniformMatrix4fv(U(pSolid,'uModel'),false,trainModel);
+    // 裾(不透明・濃色): 床上でも車体位置がはっきり分かる
+    gl.uniform3f(U(pSolid,'uScale'),tr.tlen,0.45,3.3);
+    gl.uniform3f(U(pSolid,'uColor'),0.145,0.216,0.286);
+    gl.uniform1f(U(pSolid,'uAlpha'),0.95); gl.uniform1f(U(pSolid,'uEmiss'),0);
+    gl.drawElements(gl.TRIANGLES,boxVAO.count,gl.UNSIGNED_INT,0);
+    // ボディ(半透明): 乗降とホーム上の待機列が透けて見える
+    gl.uniform3f(U(pSolid,'uScale'),tr.tlen,2.9,3.2);
+    if(st.s==='dwell'){ gl.uniform3f(U(pSolid,'uColor'),0.180,0.290,0.396); gl.uniform1f(U(pSolid,'uAlpha'),0.68); gl.uniform1f(U(pSolid,'uEmiss'),0.12); }
+    else{ gl.uniform3f(U(pSolid,'uColor'),0.180,0.290,0.396); gl.uniform1f(U(pSolid,'uAlpha'),0.50); gl.uniform1f(U(pSolid,'uEmiss'),0); }
+    gl.drawElements(gl.TRIANGLES,boxVAO.count,gl.UNSIGNED_INT,0);
+  }
+  gl.depthMask(true);
+  gl.disable(gl.BLEND);
+}
+function updateInstances(){
+  for(let a=0;a<N;a++){
+    instData[3*a]=pos[2*a]; instData[3*a+1]=pos[2*a+1]; instData[3*a+2]=kind[a];
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER,instVBO);
+  gl.bufferSubData(gl.ARRAY_BUFFER,0,instData,0,3*N);
+}
+
+/* ---------- 12) 基本図チャート ---------- */
+const fdCv=document.getElementById('fd'), fdCtx=fdCv.getContext('2d');
+function weidmann(rho){ return rho<=0?1.34:Math.max(0,1.34*(1-Math.exp(-1.913*(1/rho-1/5.4)))); }
+function drawFD(){
+  const w=fdCv.width, h=fdCv.height, mx=30, my=14;
+  fdCtx.clearRect(0,0,w,h);
+  fdCtx.strokeStyle='#C3CCD6'; fdCtx.beginPath();
+  fdCtx.moveTo(mx,my); fdCtx.lineTo(mx,h-my); fdCtx.lineTo(w-8,h-my); fdCtx.stroke();
+  fdCtx.fillStyle='#66788A'; fdCtx.font='9px ui-monospace,monospace';
+  fdCtx.fillText('m/s',4,my+4); fdCtx.fillText('人/m²',w-38,h-2);
+  const X=rho=>mx+(w-mx-10)*rho/5, Y=v=>h-my-(h-2*my)*v/1.6;
+  // Weidmann 参照
+  fdCtx.strokeStyle='#9AA7B5'; fdCtx.beginPath();
+  for(let r=0;r<=5;r+=0.05){ const x=X(r),y=Y(weidmann(r)); r?fdCtx.lineTo(x,y):fdCtx.moveTo(x,y); }
+  fdCtx.stroke();
+  // 実測ビン
+  fdCtx.fillStyle='#2E7FA3';
+  for(let b=0;b<26;b++){ if(M.fdN[b]<12) continue;
+    const rho=b*0.2+0.1, v=M.fdV[b]/M.fdN[b];
+    fdCtx.beginPath(); fdCtx.arc(X(rho),Y(v),2.6,0,6.2832); fdCtx.fill(); }
+}
+
+/* ---------- 13) ループ・UI ---------- */
+let paused=false, fast=false, frames=0, lastFpsT=performance.now(), fps=0, stepMs=0;
+const $=id=>document.getElementById(id);
+function fmtT(t){ const m=(t/60)|0, s=(t%60)|0; return m+':'+String(s).padStart(2,'0'); }
+function tick(){
+  requestAnimationFrame(tick);
+  if(!paused){
+    const t0=performance.now();
+    const n=fast?4:1;
+    for(let i=0;i<n;i++) stepSim();
+    stepMs=0.9*stepMs+0.1*(performance.now()-t0)/n;
+  }
+  updateInstances();
+  draw();
+  frames++;
+  const now=performance.now();
+  if(now-lastFpsT>500){
+    fps=frames*1000/(now-lastFpsT); frames=0; lastFpsT=now;
+    $('sAgents').textContent=N;
+    $('sTime').textContent=fmtT(simT);
+    $('sExited').textContent=M.exited;
+    $('sBoarded').textContent=M.boarded;
+    $('sWall').textContent=M.wallHits;
+    $('sWall').parentElement.className = M.wallHits===0?'ok':'warn';
+    const ov = M.pairChecks? (200*M.overlapPairs/Math.max(1,N)).toFixed(1):'0.0';
+    $('sOverlap').textContent=ov+'%';
+    $('sOverlap').parentElement.className = +ov<2?'ok':'warn';
+    $('sFps').textContent=fps.toFixed(0);
+    $('sStep').textContent=stepMs.toFixed(1);
+    drawFD();
+    // 発車標
+    let html='';
+    for(let i=0;i<trains.length;i++){
+      const st=trainState(trains[i],simT);
+      const lbl = st.s==='dwell'?'停車中': st.s==='app'?'接近': st.s==='dep'?'発車':'——';
+      html+=`<div class="tr ${st.s==='dwell'?'dwell':''}"><span>ホーム${i+1}</span><b>${lbl}</b></div>`;
+    }
+    $('board').innerHTML=html;
+  }
+}
+$('bPause').onclick=e=>{ paused=!paused; e.target.setAttribute('aria-pressed',paused); e.target.textContent=paused?'再開':'一時停止'; };
+$('bSpeed').onclick=e=>{ fast=!fast; e.target.setAttribute('aria-pressed',fast); };
+$('bReset').onclick=()=>{ N=0; simT=0; rand.reset();
+  M.exited=0;M.boarded=0;M.wallHits=0;M.slides=0;M.fdN.fill(0);M.fdV.fill(0); prevDwell.fill(false); };
+$('bTop').onclick=e=>{ topView=!topView; e.target.setAttribute('aria-pressed',topView); };
+$('bHome').onclick=()=>{ Object.assign(cam,CAM_HOME); topView=false; $('bTop').setAttribute('aria-pressed',false); };
+/* オービット操作: 左ドラッグ=回転 / 右 or Shift=パン / ホイール=ズーム */
+let dragging=0,lx=0,ly=0; // 1=回転 2=パン
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('pointerdown',e=>{
+  dragging=(e.button===2||e.shiftKey)?2:1;
+  lx=e.clientX; ly=e.clientY;
+  cv.classList.add('drag'); cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener('pointermove',e=>{
+  if(!dragging) return;
+  const dx=e.clientX-lx, dy=e.clientY-ly; lx=e.clientX; ly=e.clientY;
+  if(dragging===1){
+    cam.az+=dx*0.005;
+    cam.el=Math.min(1.5,Math.max(0.15,cam.el+dy*0.005));
+  }else{
+    const k=cam.dist*0.0016;
+    const rx=Math.sin(cam.az), rz=-Math.cos(cam.az);      // 画面右(地面)
+    const fx=-Math.cos(cam.az), fz=-Math.sin(cam.az);     // 視線の地面成分
+    cam.tx-=(rx*dx-fx*dy)*k; cam.tz-=(rz*dx-fz*dy)*k;
+  }
+});
+cv.addEventListener('pointerup',()=>{dragging=0;cv.classList.remove('drag');});
+cv.addEventListener('wheel',e=>{ e.preventDefault();
+  cam.dist=Math.min(900,Math.max(14,cam.dist*Math.exp(e.deltaY*0.0015)));},{passive:false});
+
+/* ---------- 起動 ---------- */
+resize();
+buildStaticGeom();
+buildAgentGeom();
+buildFields(()=>{
+  document.getElementById('loading').remove();
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){ paused=true;
+    $('bPause').setAttribute('aria-pressed',true); $('bPause').textContent='再開'; }
+  tick();
+});
+</script>
+</body>
+</html>
