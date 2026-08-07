@@ -2,8 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>GLITCH FIELD — インスタレーション制御プロトタイプ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>GLITCH FIELD — インスタレーション・プロトタイプ</title>
 <style>
   /* 単一テーマ(暗室・制御室)で完結させる。地色は必ず明示的に塗る */
   :root{
@@ -25,18 +25,28 @@
     color:var(--ink);
     font-family:var(--mono);
     overflow:hidden;
-  }
-  #stage{
-    position:fixed;inset:0;
-    display:flex;align-items:center;justify-content:center;
-    background:var(--bg);
+    touch-action:none;
+    overscroll-behavior:none;
   }
   #view{
-    max-width:100%;max-height:100%;
+    position:fixed;inset:0;width:100vw;height:100vh;
     image-rendering:pixelated;
-    box-shadow:0 0 0 1px var(--faint);
+    cursor:crosshair;
   }
-  /* ---------- 制御盤 ---------- */
+  /* 触れることを示すヒント。最初の接触で消える */
+  #hint{
+    position:fixed;left:50%;bottom:9vh;transform:translateX(-50%);
+    font-family:var(--sans);font-size:12px;letter-spacing:.35em;
+    color:rgba(230,230,227,.65);
+    text-shadow:0 0 6px rgba(0,0,0,.8);
+    pointer-events:none;
+    transition:opacity 1.2s ease;
+    animation:breathe 3.2s ease-in-out infinite;
+  }
+  #hint.gone{opacity:0}
+  @keyframes breathe{50%{opacity:.35}}
+  @media (prefers-reduced-motion:reduce){#hint{animation:none}}
+  /* ---------- 調整パネル(既定は隠す。H で開く) ---------- */
   #panel{
     position:fixed;top:0;right:0;bottom:0;width:304px;
     background:var(--panel);
@@ -51,9 +61,7 @@
     border-bottom:1px solid var(--panel-edge);
     flex:none;
   }
-  #panel h1{
-    font-size:13px;font-weight:600;letter-spacing:.18em;
-  }
+  #panel h1{font-size:13px;font-weight:600;letter-spacing:.18em}
   #panel h1 small{
     display:block;margin-top:4px;
     font-family:var(--sans);font-size:10px;font-weight:400;
@@ -76,9 +84,7 @@
     flex:1;overflow-y:auto;padding:6px 16px 16px;
     scrollbar-width:thin;scrollbar-color:var(--faint) transparent;
   }
-  .sect{
-    margin-top:14px;
-  }
+  .sect{margin-top:14px}
   .sect > .sect-title{
     font-size:10px;letter-spacing:.22em;color:var(--muted);
     border-bottom:1px solid var(--panel-edge);
@@ -106,9 +112,7 @@
     -webkit-appearance:none;appearance:none;
     width:100%;height:18px;background:transparent;cursor:pointer;
   }
-  input[type=range]::-webkit-slider-runnable-track{
-    height:2px;background:var(--track);
-  }
+  input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--track)}
   input[type=range]::-webkit-slider-thumb{
     -webkit-appearance:none;appearance:none;
     width:10px;height:14px;margin-top:-6px;
@@ -155,19 +159,22 @@
   }
   #toggle-ui{
     position:fixed;top:10px;right:10px;z-index:20;
-    background:rgba(11,11,12,.7);backdrop-filter:blur(4px);
+    background:rgba(11,11,12,.55);backdrop-filter:blur(4px);
+    opacity:.35;transition:opacity .2s;
   }
-  body:not(.ui-hidden) #toggle-ui{right:314px}
+  #toggle-ui:hover,#toggle-ui:focus-visible{opacity:1}
+  body:not(.ui-hidden) #toggle-ui{right:314px;opacity:1}
 </style>
 </head>
-<body>
+<body class="ui-hidden">
 
-<div id="stage"><canvas id="view"></canvas></div>
-<button id="toggle-ui" title="パネル表示切替 (H)">≡</button>
+<canvas id="view"></canvas>
+<div id="hint">触れてください — TAP / DRAG</div>
+<button id="toggle-ui" title="調整パネル (H)">≡</button>
 
 <aside id="panel">
   <header>
-    <h1>GLITCH FIELD<small>グリッチノイズ・インスタレーション制御 v0.2</small></h1>
+    <h1>GLITCH FIELD<small>グリッチノイズ・インスタレーション v0.3 — 触覚駆動</small></h1>
     <div id="statusline">
       <span class="live"><span class="dot"></span>LIVE</span>
       <span id="fps">-- fps</span>
@@ -190,15 +197,15 @@
         <input id="seed" inputmode="numeric" title="シード値">
       </div>
       <div class="checks">
-        <label><input type="checkbox" id="drift">自動ドリフト</label>
+        <label><input type="checkbox" id="drift" checked>自動ドリフト</label>
         <label><input type="checkbox" id="invert">反転</label>
         <label><input type="checkbox" id="paused">停止</label>
       </div>
     </div>
 
     <div class="sect">
-      <div class="sect-title"><span>TIME / 時間</span></div>
-      <div id="g-time"></div>
+      <div class="sect-title"><span>FLOW / 流れ</span></div>
+      <div id="g-flow"></div>
     </div>
 
     <div class="sect">
@@ -221,16 +228,17 @@
       <div class="btnrow">
         <button id="save">PNG 書き出し</button>
         <button id="fullscreen">フルスクリーン</button>
-        <select id="res">
-          <option value="540">540 × 960</option>
-          <option value="720" selected>720 × 1280</option>
-          <option value="1080">1080 × 1920</option>
+        <select id="res" title="描画スケール">
+          <option value="0.5">描画 50%</option>
+          <option value="0.75" selected>描画 75%</option>
+          <option value="1">描画 100%</option>
         </select>
       </div>
     </div>
   </div>
 
   <footer>
+    画面のどこでも: タップ=突然変異 / ドラッグ=引き裂き・滲み<br>
     <kbd>H</kbd> パネル / <kbd>F</kbd> 全画面 / <kbd>R</kbd> ランダム /
     <kbd>Space</kbd> 停止 / <kbd>S</kbd> 保存<br>
     外部制御: <span style="font-family:var(--mono)">window.installation</span> ·
@@ -241,9 +249,11 @@
 <script>
 'use strict';
 /* =========================================================
-   GLITCH FIELD — 縦ストリークのグレースケール平面に
-   白の階段状ブロック・黒の繊維バースト・行ズレ・飛沫を重ねる。
-   すべてシード決定的。時間は hold フレーム単位で離散更新される。
+   GLITCH FIELD v0.3 — 触覚駆動のメルト・フィードバック
+   フレームを消さずに持ち越し、縦ストリップごとに垂れ下がる
+   メルトパスを毎フレーム適用。その上に FBM+ドメインワープの
+   縦ストリーク・繊維バースト・引き裂き・シャッフルを低アルファで
+   注ぎ続ける。タップで構図が突然変異し、ドラッグで局所が滲む。
    ========================================================= */
 
 // ---------- 乱数・ノイズ ----------
@@ -256,357 +266,411 @@ function mulberry32(a){
   };
 }
 function hash1(n){ const s = Math.sin(n) * 43758.5453123; return s - Math.floor(s); }
-function vnoise(x){                    // 1次元バリューノイズ
+function vnoise(x){                       // 1次元バリューノイズ
   const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f);
   return hash1(i) * (1 - u) + hash1(i + 1) * u;
+}
+function fbm(x, y, oct){                  // 多オクターブ
+  let v = 0, a = 0.5, f = 1, norm = 0;
+  for (let i = 0; i < oct; i++){
+    v += a * vnoise(x * f + y * f * 0.71 + i * 19.7);
+    norm += a; f *= 2.03; a *= 0.5;
+  }
+  return v / norm;
 }
 
 // ---------- パラメータ定義 ----------
 const PARAMS = [
-  { id:'speed',    group:'g-time',        ja:'速度',            en:'speed',    min:0,   max:3,   step:0.01, val:1    },
-  { id:'hold',     group:'g-time',        ja:'更新間隔',        en:'hold',     min:1,   max:30,  step:1,    val:4    },
-  { id:'streaks',  group:'g-texture',     ja:'縦ストリーク',    en:'streaks',  min:0,   max:1,   step:0.01, val:0.7  },
-  { id:'grain',    group:'g-texture',     ja:'粒子',            en:'grain',    min:0,   max:1,   step:0.01, val:0.35 },
-  { id:'bright',   group:'g-texture',     ja:'明るさ',          en:'bright',   min:0.2, max:0.9, step:0.01, val:0.56 },
-  { id:'contrast', group:'g-texture',     ja:'コントラスト',    en:'contrast', min:0.5, max:2,   step:0.01, val:1.15 },
-  { id:'levels',   group:'g-texture',     ja:'階調(ソリッド)', en:'levels',   min:0,   max:16,  step:1,    val:9    },
-  { id:'burst',    group:'g-structure',   ja:'黒バースト',      en:'burst',    min:0,   max:1,   step:0.01, val:0.65, struct:true },
-  { id:'spread',   group:'g-structure',   ja:'バースト拡がり',  en:'spread',   min:0,   max:1,   step:0.01, val:0.5,  struct:true },
-  { id:'blocks',   group:'g-structure',   ja:'白ブロック',      en:'blocks',   min:0,   max:1,   step:0.01, val:0.6,  struct:true },
-  { id:'bars',     group:'g-structure',   ja:'黒バー',          en:'bars',     min:0,   max:1,   step:0.01, val:0.5,  struct:true },
-  { id:'splatter', group:'g-destruction', ja:'飛沫',            en:'splatter', min:0,   max:1,   step:0.01, val:0.45, struct:true },
-  { id:'displace', group:'g-destruction', ja:'行ズレ量',        en:'displace', min:0,   max:1,   step:0.01, val:0.3  },
-  { id:'slices',   group:'g-destruction', ja:'行ズレ回数',      en:'slices',   min:0,   max:40,  step:1,    val:10   },
+  { id:'speed',      group:'g-flow',        ja:'速度',            en:'speed',      min:0,   max:3,  step:0.01, val:1    },
+  { id:'melt',       group:'g-flow',        ja:'とろけ',          en:'melt',       min:0,   max:1,  step:0.01, val:0.55 },
+  { id:'viscosity',  group:'g-flow',        ja:'粘性(尾の伸び)', en:'viscosity',  min:0,   max:1,  step:0.01, val:0.5  },
+  { id:'streaks',    group:'g-texture',     ja:'縦ストリーク',    en:'streaks',    min:0,   max:1,  step:0.01, val:0.7  },
+  { id:'complexity', group:'g-texture',     ja:'複雑さ(ワープ)', en:'complexity', min:0,   max:1,  step:0.01, val:0.65 },
+  { id:'grain',      group:'g-texture',     ja:'粒子',            en:'grain',      min:0,   max:1,  step:0.01, val:0.3  },
+  { id:'bright',     group:'g-texture',     ja:'明るさ',          en:'bright',     min:0.2, max:0.9,step:0.01, val:0.56 },
+  { id:'contrast',   group:'g-texture',     ja:'コントラスト',    en:'contrast',   min:0.5, max:2,  step:0.01, val:1.35 },
+  { id:'levels',     group:'g-texture',     ja:'階調(ソリッド)', en:'levels',     min:0,   max:16, step:1,    val:10   },
+  { id:'burst',      group:'g-structure',   ja:'黒バースト',      en:'burst',      min:0,   max:1,  step:0.01, val:0.6, struct:true },
+  { id:'blocks',     group:'g-structure',   ja:'白ブロック',      en:'blocks',     min:0,   max:1,  step:0.01, val:0.5, struct:true },
+  { id:'bars',       group:'g-structure',   ja:'黒バー',          en:'bars',       min:0,   max:1,  step:0.01, val:0.5, struct:true },
+  { id:'tear',       group:'g-destruction', ja:'引き裂き',        en:'tear',       min:0,   max:1,  step:0.01, val:0.35 },
+  { id:'shuffle',    group:'g-destruction', ja:'シャッフル',      en:'shuffle',    min:0,   max:1,  step:0.01, val:0.3  },
+  { id:'touch',      group:'g-destruction', ja:'タッチ強度',      en:'touch',      min:0,   max:1,  step:0.01, val:0.7  },
 ];
-const P = {};                          // 現在値
+const P = {};
 PARAMS.forEach(p => P[p.id] = p.val);
 
 const PRESETS = {
-  standard: { streaks:0.7, grain:0.35, bright:0.56, contrast:1.15, burst:0.65, spread:0.5,
-              blocks:0.6, bars:0.5, splatter:0.45, displace:0.3, slices:10, speed:1, hold:4, levels:9, invert:false },
-  calm:     { streaks:0.45, grain:0.15, bright:0.62, contrast:1.0, burst:0.2, spread:0.25,
-              blocks:0.35, bars:0.2, splatter:0.1, displace:0.05, slices:2, speed:0.3, hold:10, levels:6, invert:false },
-  storm:    { streaks:0.95, grain:0.6, bright:0.5, contrast:1.35, burst:0.9, spread:0.8,
-              blocks:0.7, bars:0.7, splatter:0.8, displace:0.7, slices:26, speed:2.2, hold:2, levels:12, invert:false },
-  collapse: { streaks:0.85, grain:0.8, bright:0.42, contrast:1.6, burst:1, spread:1,
-              blocks:0.45, bars:0.9, splatter:1, displace:1, slices:40, speed:1.6, hold:1, levels:4, invert:false },
-  daylight: { streaks:0.5, grain:0.25, bright:0.6, contrast:1.2, burst:0.5, spread:0.4,
-              blocks:0.55, bars:0.4, splatter:0.35, displace:0.2, slices:6, speed:0.8, hold:6, levels:8, invert:true },
+  standard: { speed:1,   melt:0.55, viscosity:0.5,  streaks:0.7,  complexity:0.65, grain:0.3,
+              bright:0.56, contrast:1.2,  levels:10, burst:0.6,  blocks:0.5,  bars:0.5,
+              tear:0.35, shuffle:0.3,  touch:0.7,  invert:false },
+  calm:     { speed:0.35, melt:0.3, viscosity:0.75, streaks:0.45, complexity:0.4,  grain:0.15,
+              bright:0.6,  contrast:1.05, levels:7,  burst:0.25, blocks:0.35, bars:0.2,
+              tear:0.08, shuffle:0.05, touch:0.5,  invert:false },
+  storm:    { speed:2,   melt:0.75, viscosity:0.35, streaks:0.95, complexity:0.85, grain:0.55,
+              bright:0.5,  contrast:1.35, levels:12, burst:0.85, blocks:0.65, bars:0.7,
+              tear:0.7,  shuffle:0.6,  touch:0.9,  invert:false },
+  collapse: { speed:1.6, melt:1,    viscosity:0.15, streaks:0.85, complexity:1,    grain:0.75,
+              bright:0.44, contrast:1.6,  levels:4,  burst:1,    blocks:0.4,  bars:0.9,
+              tear:1,    shuffle:0.85, touch:1,    invert:false },
+  daylight: { speed:0.8, melt:0.45, viscosity:0.6,  streaks:0.5,  complexity:0.55, grain:0.2,
+              bright:0.6,  contrast:1.25, levels:8,  burst:0.45, blocks:0.55, bars:0.4,
+              tear:0.2,  shuffle:0.2,  touch:0.7,  invert:true },
 };
 
 // ---------- 状態 ----------
-let W = 720, H = 1280;
+let W = 0, H = 0, scale = 0.75;
 let seed = 1024;
-let frame = 0, timeAcc = 0, lastBucket = -1, needRedraw = true;
+let frameN = 0, t = 0;
 let structure = null;
+let spike = 0;                       // タップ直後の暴発量(減衰する)
+let flash = 0;                       // ネガ反転フラッシュの残りフレーム
+const touches = new Map();           // pointerId → {x,y,px,py,power}
 
 const view = document.getElementById('view');
 const vctx = view.getContext('2d');
-const off  = document.createElement('canvas');
-const octx = off.getContext('2d');
-const noiseTile = document.createElement('canvas');   // 粒子用タイル
+let bufA = document.createElement('canvas'), bufB = document.createElement('canvas');
+let actx = bufA.getContext('2d'),  bctx = bufB.getContext('2d');
+const noiseTile = document.createElement('canvas');
 noiseTile.width = noiseTile.height = 256;
-const rowTile = document.createElement('canvas');     // 列カラー1行分(縦に引き伸ばして面を塗る)
+const rowTile = document.createElement('canvas');
 rowTile.height = 1;
 
-function setResolution(w){
-  W = w; H = Math.round(w * 16 / 9);
-  view.width = off.width = W;
-  view.height = off.height = H;
+let rng = mulberry32(seed);          // フレームごとに進む連続乱数
+
+function resize(){
+  view.width = window.innerWidth;
+  view.height = window.innerHeight;
+  W = Math.max(64, Math.round(window.innerWidth * scale));
+  H = Math.max(64, Math.round(window.innerHeight * scale));
+  bufA.width = bufB.width = W;
+  bufA.height = bufB.height = H;
   rowTile.width = W;
-  fitView();
+  actx.imageSmoothingEnabled = bctx.imageSmoothingEnabled = false;
+  vctx.imageSmoothingEnabled = false;
   rebuildStructure();
-  needRedraw = true;
+  primeField();
 }
-function fitView(){
-  const pad = document.body.classList.contains('ui-hidden') ? 0 : 304;
-  const aw = window.innerWidth - pad, ah = window.innerHeight;
-  const s = Math.min(aw / W, ah / H);
-  view.style.width  = Math.floor(W * s) + 'px';
-  view.style.height = Math.floor(H * s) + 'px';
+function primeField(){               // 初期フィールドを一度だけ濃く敷く
+  injectStreaks(actx, 1);
 }
 
-// ---------- 構造の生成(シード決定的・アニメ中は不変) ----------
-function rebuildStructure(){
+// ---------- 構造の生成 ----------
+function rebuildStructure(cx, cy){
   const r = mulberry32(seed * 7919 + 13);
-  const s = { white: [], barsV: [], clusters: [], crossBars: [], squares: [] };
+  const s = { white: [], barsV: [], clusters: [], squares: [] };
+  s.burstCX = cx !== undefined ? cx : W * (0.3 + r() * 0.4);
+  s.burstCY = cy !== undefined ? cy : H * (0.15 + r() * 0.25);
 
-  // 黒バーストの中心
-  s.burstCX = W * (0.38 + r() * 0.2);
-  s.burstCY = H * (0.2 + r() * 0.12);
-
-  // バースト直下の黒い縦バー(2〜3本)
   const nb = 2 + Math.round(r() * P.bars);
   for (let i = 0; i < nb; i++){
-    const bw = W * (0.035 + r() * 0.04);
-    const bx = s.burstCX + (i - (nb - 1) / 2) * W * (0.14 + r() * 0.05) - bw / 2;
+    const bw = W * (0.02 + r() * 0.03);
+    const bx = s.burstCX + (i - (nb - 1) / 2) * W * (0.09 + r() * 0.04) - bw / 2;
     const by = s.burstCY + H * 0.05 * r();
-    const bh = H * (0.25 + r() * 0.18) * (0.4 + P.bars);
+    const bh = H * (0.22 + r() * 0.2) * (0.4 + P.bars);
     s.barsV.push({ x: bx, y: by, w: bw, h: bh });
-    // バー先端の白い小方形
-    s.squares.push({ x: bx - bw * 0.1, y: by + bh + H * 0.01, w: bw * 1.2, h: bw * 1.1 });
+    s.squares.push({ x: bx - bw * 0.1, y: by + bh + H * 0.015, w: bw * 1.2, h: bw * 1.1 });
   }
 
-  // 白の階段状ブロック(四隅・縁)
   const anchors = [
-    { x: 0,        y: H * 0.02, dx:  1, dy:  1 },   // 左上
-    { x: W,        y: 0,        dx: -1, dy:  1 },   // 右上
-    { x: W,        y: H * 0.32, dx: -1, dy:  1 },   // 右中
-    { x: 0,        y: H * 0.1,  dx:  1, dy:  1 },   // 左上2
+    { x: 0, y: H * 0.02, dx:  1 },
+    { x: W, y: 0,        dx: -1 },
+    { x: W, y: H * 0.35, dx: -1 },
+    { x: 0, y: H * 0.55, dx:  1 },
   ];
   const nw = Math.round(2 + P.blocks * 5);
   for (let i = 0; i < nw; i++){
     const a = anchors[i % anchors.length];
-    const steps = 2 + Math.floor(r() * 4);
-    const bw = W * (0.1 + r() * 0.16), bh = H * (0.02 + r() * 0.035);
     s.white.push({
-      x: a.x + a.dx * r() * W * 0.06, y: a.y + r() * H * 0.05,
-      dx: a.dx, dy: a.dy, steps, w: bw, h: bh, jitter: r(),
+      x: a.x + a.dx * r() * W * 0.05, y: a.y + r() * H * 0.08,
+      dx: a.dx, steps: 2 + Math.floor(r() * 4),
+      w: W * (0.08 + r() * 0.14), h: H * (0.02 + r() * 0.03),
     });
   }
 
-  // 下部の白い横断バー(黒の切れ目つき)
-  const nc = 1 + Math.round(P.blocks * 1.6);
-  for (let i = 0; i < nc; i++){
-    const y = H * (0.68 + i * 0.09 + r() * 0.03);
-    const gaps = [];
-    const ng = 1 + Math.floor(r() * 3);
-    for (let g = 0; g < ng; g++) gaps.push({ x: W * r(), w: W * (0.04 + r() * 0.08) });
-    s.crossBars.push({ y, h: H * (0.025 + r() * 0.02), gaps });
-  }
-
-  // 飛沫クラスタ
-  const ns = Math.round(2 + P.splatter * 6);
+  const ns = Math.round(2 + r() * 5);
   for (let i = 0; i < ns; i++){
     s.clusters.push({
       x: W * r(), y: H * (0.05 + r() * 0.9),
-      rad: W * (0.03 + r() * 0.09),
+      rad: W * (0.02 + r() * 0.06),
       dark: r() > 0.35,
     });
   }
   structure = s;
 }
 
-// ---------- 描画 ----------
-function gray(v){ v = Math.max(0, Math.min(1, v)); const g = Math.round(v * 255); return `rgb(${g},${g},${g})`; }
+// ---------- メルトパス(とろけの核) ----------
+function meltPass(){
+  // bufA → bufB: 縦ストリップごとに下へずらし、上端は引き伸ばして尾を作る
+  const sw = 4;
+  const amp = (P.melt + spike * 0.7) * 10;
+  const visc = 1 + P.viscosity * 5;                    // 尾の伸び
+  const oct = 2 + Math.round(P.complexity * 2);
+  bctx.clearRect(0, 0, W, H);
+  for (let x = 0; x < W; x += sw){
+    let n = fbm(x * 0.008 + seed * 0.11, t * 0.018, oct);
+    let dy = Math.pow(n, 2) * amp;
+    // まれに太い滴が抜け落ちる
+    if (hash1(Math.floor(x / sw) * 37.7 + Math.floor(t * 0.05)) > 0.985) dy += amp * 3;
+    // タッチ周辺は強く垂れる
+    for (const tp of touches.values()){
+      const d = (x - tp.x) / (W * 0.06);
+      dy += tp.power * P.touch * 26 * Math.exp(-d * d);
+    }
+    dy = Math.min(dy, H * 0.12);
+    bctx.drawImage(bufA, x, 0, sw, H, x, dy, sw, H);
+    if (dy >= 1){                                       // 上端 1px を縦に伸ばす=溶けた尾
+      bctx.drawImage(bufA, x, 0, sw, Math.max(1, dy / visc), x, 0, sw, dy + 1);
+    }
+  }
+  // スワップ
+  [bufA, bufB] = [bufB, bufA];
+  [actx, bctx] = [bctx, actx];
+}
 
-function drawStreaks(g, rng, t){
-  const base = P.bright;
-  const amp = P.streaks;
+// ---------- 注入レイヤー ----------
+function gray(v){ v = Math.max(0, Math.min(1, v)); const g = Math.round(v * 255) | 0; return `rgb(${g},${g},${g})`; }
+
+function injectStreaks(g, alphaScale){
+  // FBM+ドメインワープの列カラーを 1 行分作り、縦に引き伸ばして薄く被せる
+  const base = P.bright, amp = P.streaks;
   const lv = Math.round(P.levels);
-  // 面: 列ごとの色を 1 行分の ImageData に書き、縦に引き伸ばして一発で塗る
+  const oct = 2 + Math.round(P.complexity * 3);
+  const warp = P.complexity * 2.4;
   const rg = rowTile.getContext('2d');
   const img = rg.createImageData(W, 1);
   const d = img.data;
   for (let x = 0; x < W; x++){
-    const zone = vnoise(x * 0.012 + seed * 0.37);                 // 太い明暗ゾーン
-    const fine = vnoise(x * 0.3 + t * 0.7 + seed);                // 細かい揺れ
-    let v = base + (zone - 0.5) * 0.55 * amp + (fine - 0.5) * 0.15 * amp;
+    const wx = x * 0.015 + warp * fbm(x * 0.004 + t * 0.006, t * 0.01, 2);  // ドメインワープ
+    const zone = fbm(wx + seed * 0.37, t * 0.012, oct);
+    const fine = vnoise(x * 0.35 + t * 0.6 + seed);
+    let v = base + (zone - 0.5) * 0.9 * amp + (fine - 0.5) * 0.18 * amp;
     if (lv > 1) v = Math.round(v * lv) / lv;
     const gv = Math.max(0, Math.min(255, Math.round(v * 255)));
     d[x * 4] = d[x * 4 + 1] = d[x * 4 + 2] = gv;
     d[x * 4 + 3] = 255;
   }
   rg.putImageData(img, 0, 0);
-  g.imageSmoothingEnabled = false;
+  g.globalAlpha = alphaScale !== undefined ? alphaScale : 0.05 + 0.09 * amp;
   g.drawImage(rowTile, 0, 0, W, 1, 0, 0, W, H);
-  // 細いヘアライン(白 / 黒・全高〜中途)を大量に重ねる
-  const nHair = Math.floor(W * (0.8 + amp * 2.2));
+  g.globalAlpha = 1;
+  // 細いヘアラインを毎フレーム少量ずつ(蓄積してメルトに流される)
+  const nHair = Math.floor(6 + amp * 40 + spike * 60);
   for (let i = 0; i < nHair; i++){
     const x = Math.floor(rng() * W);
-    const top = rng() < 0.55;
-    const y0 = top ? 0 : Math.floor(rng() * H * 0.6);
-    const len = top && rng() < 0.5 ? H : H * (0.08 + rng() * 0.7);
+    const y0 = rng() < 0.5 ? 0 : Math.floor(rng() * H * 0.6);
+    const len = rng() < 0.4 ? H : H * (0.08 + rng() * 0.7);
     g.fillStyle = rng() > 0.45 ? '#000' : '#fff';
-    g.globalAlpha = 0.04 + Math.pow(rng(), 2) * 0.45;
+    g.globalAlpha = 0.08 + Math.pow(rng(), 2) * 0.55;
     g.fillRect(x, y0, 1, len);
   }
   g.globalAlpha = 1;
 }
 
-function drawStepped(g, b){
+function injectStructure(g){
+  const s = structure;
+  // 白の階段状ブロック(塗り続けて存在をとどめる)
+  g.globalAlpha = 0.16 + spike * 0.3;
   g.fillStyle = '#f2f2f0';
-  for (let i = 0; i < b.steps; i++){
-    const w = b.w * (1 - i * 0.18);
-    g.fillRect(                                   // 整数座標に丸めてエッジをソリッドに
-      Math.round(b.x + b.dx * i * b.w * 0.35 - (b.dx < 0 ? w : 0)),
-      Math.round(b.y + b.dy * i * b.h * 0.9),
-      Math.round(w), Math.round(b.h)
-    );
+  for (const b of s.white){
+    for (let i = 0; i < b.steps; i++){
+      const w = b.w * (1 - i * 0.18);
+      g.fillRect(
+        Math.round(b.x + b.dx * i * b.w * 0.35 - (b.dx < 0 ? w : 0)),
+        Math.round(b.y + i * b.h * 0.9),
+        Math.round(w), Math.round(b.h)
+      );
+    }
   }
+  // 黒バー+先端の白方形(黒は強めに刻み続ける)
+  g.globalAlpha = 0.28 + spike * 0.3;
+  g.fillStyle = '#000';
+  for (const b of s.barsV) g.fillRect(Math.round(b.x), Math.round(b.y), Math.round(b.w), Math.round(b.h));
+  g.fillStyle = '#f4f4f2';
+  for (const q of s.squares) g.fillRect(Math.round(q.x), Math.round(q.y), Math.round(q.w), Math.round(q.h));
+  g.globalAlpha = 1;
 }
 
-function drawBurst(g, rng){
+function injectBurst(g){
   const s = structure;
-  const count = Math.floor(600 + 3400 * P.burst);
-  const spreadA = 0.25 + P.spread * 1.1;         // 角度の広がり
-  const maxLen = H * (0.1 + 0.3 * P.spread);
-  // 上部から降りてくる白い帯(バーストの背後)
+  const power = P.burst + spike * 0.6;
+  if (power <= 0.02) return;
+  // 上から差す白(バーストの背後の光)
   const grd = g.createLinearGradient(0, 0, 0, s.burstCY * 1.1);
-  grd.addColorStop(0, 'rgba(255,255,255,0.95)');
+  grd.addColorStop(0, 'rgba(255,255,255,0.12)');
   grd.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = grd;
-  g.fillRect(s.burstCX - W * 0.13, 0, W * 0.26, s.burstCY * 1.1);
-  // 繊維状ヘアライン(0.6px の極細)。アルファ帯ごとにパスへまとめて一括ストローク
-  const NB = 6;
-  const paths = Array.from({ length: NB }, () => new Path2D());
+  g.fillRect(s.burstCX - W * 0.11, 0, W * 0.22, s.burstCY * 1.1);
+  // 繊維(毎フレーム少量。メルトで下へ溶け落ちる)
+  const count = Math.floor(20 + power * 130);
+  const spreadA = 0.3 + P.complexity * 0.9;
+  const maxLen = H * (0.08 + 0.25 * power);
+  const path = new Path2D();
   for (let i = 0; i < count; i++){
-    const ang = Math.PI / 2 + (rng() - 0.5) * 2 * spreadA;        // おおむね下向き
+    const ang = Math.PI / 2 + (rng() - 0.5) * 2 * spreadA;
     const len = Math.pow(rng(), 1.6) * maxLen + 4;
-    const ox = (rng() - 0.5) * W * 0.16, oy = (rng() - 0.5) * H * 0.05;
-    const x0 = s.burstCX + ox, y0 = s.burstCY + oy;
-    const p = paths[Math.floor(rng() * NB)];
-    p.moveTo(x0, y0);
-    p.lineTo(x0 + Math.cos(ang) * len, y0 + Math.sin(ang) * len);
+    const x0 = s.burstCX + (rng() - 0.5) * W * 0.14;
+    const y0 = s.burstCY + (rng() - 0.5) * H * 0.04;
+    path.moveTo(x0, y0);
+    path.lineTo(x0 + Math.cos(ang) * len, y0 + Math.sin(ang) * len);
   }
   g.lineWidth = 0.6;
   g.strokeStyle = '#000';
-  for (let b = 0; b < NB; b++){
-    g.globalAlpha = 0.03 + (b / (NB - 1)) * 0.18;
-    g.stroke(paths[b]);
-  }
-  g.globalAlpha = 1;
-  // 中心の黒い塊 — 1px の縦ストロークを密集させて繊維の束にする
-  const coreN = Math.floor(250 + 1100 * P.burst);
+  g.globalAlpha = 0.09 + power * 0.09;
+  g.stroke(path);
+  // 中心の黒い束
+  const coreN = Math.floor(10 + power * 60);
   g.fillStyle = '#000';
   for (let i = 0; i < coreN; i++){
-    const a = rng() * Math.PI * 2, d = Math.pow(rng(), 2);
-    const x = s.burstCX + Math.cos(a) * d * W * 0.09;
-    const y = s.burstCY + Math.sin(a) * d * H * 0.07 + H * 0.03;
-    g.globalAlpha = 0.55 + rng() * 0.45;
-    g.fillRect(Math.round(x), Math.round(y), 1, 6 + rng() * 34);
+    const a = rng() * Math.PI * 2, dd = Math.pow(rng(), 2);
+    g.globalAlpha = 0.3 + rng() * 0.5;
+    g.fillRect(
+      Math.round(s.burstCX + Math.cos(a) * dd * W * 0.06),
+      Math.round(s.burstCY + Math.sin(a) * dd * H * 0.05 + H * 0.02),
+      1, 4 + rng() * 24
+    );
   }
   g.globalAlpha = 1;
 }
 
-function drawSplatter(g, rng){
+function injectSplatter(g){
+  const power = P.touch * spike;                        // 飛沫はタップ時に散る
+  if (power <= 0.01) return;
   for (const c of structure.clusters){
-    const n = Math.floor(40 + P.splatter * 220);
+    const n = Math.floor(power * 90);
     g.fillStyle = c.dark ? '#000' : '#fff';
     for (let i = 0; i < n; i++){
       const a = rng() * Math.PI * 2, d = Math.pow(rng(), 1.7) * c.rad;
-      const rr = Math.pow(rng(), 3) * c.rad * 0.12 + 0.3;      // 微細なスプレー状
+      const rr = Math.pow(rng(), 3) * c.rad * 0.12 + 0.3;
       g.globalAlpha = 0.4 + rng() * 0.6;
-      const sz = Math.max(1, Math.round(rr * 2));              // 矩形で打つ(arc より高速)
+      const sz = Math.max(1, Math.round(rr * 2));
       g.fillRect(Math.round(c.x + Math.cos(a) * d - rr), Math.round(c.y + Math.sin(a) * d * 1.3 - rr), sz, sz);
     }
   }
   g.globalAlpha = 1;
 }
 
-function drawDisplace(g, rng){
-  const n = Math.floor(P.slices);
-  const amt = P.displace;
-  if (!n || !amt) return;
+function tearPass(g){
+  // 行スライスの水平ずれ。ドラッグ中はポインタの高さで強く裂ける
+  const amt = P.tear + spike * 0.8;
+  const n = Math.floor(amt * 10);
   for (let i = 0; i < n; i++){
     const y = Math.floor(rng() * H);
-    const h = Math.max(1, Math.floor(rng() * H * 0.03 * (0.3 + amt)));
-    const dx = Math.round((rng() - 0.5) * W * 0.22 * amt);
-    g.drawImage(off, 0, y, W, h, dx, y, W, h);
-    if (rng() < 0.3 * amt){                       // ときどき明度も壊す
+    const h = Math.max(1, Math.floor(rng() * H * 0.025 * (0.3 + amt)));
+    const dx = Math.round((rng() - 0.5) * W * 0.2 * amt);
+    g.drawImage(bufA, 0, y, W, h, dx, y, W, h);
+    if (rng() < 0.25 * amt){
       g.globalAlpha = 0.5;
       g.fillStyle = rng() > 0.5 ? '#fff' : '#000';
       g.fillRect(0, y, W, 1);
       g.globalAlpha = 1;
     }
   }
+  for (const tp of touches.values()){
+    if (!tp.drag) continue;
+    const h = Math.max(2, Math.round(4 + rng() * H * 0.02));
+    const dx = Math.round((tp.x - tp.px) * 2 + (rng() - 0.5) * W * 0.06 * P.touch);
+    g.drawImage(bufA, 0, tp.y - h / 2, W, h, dx, tp.y - h / 2, W, h);
+  }
 }
 
-function refreshNoiseTile(rng){
-  const g = noiseTile.getContext('2d');
-  const img = g.createImageData(256, 256);
-  const d = img.data;
-  for (let i = 0; i < d.length; i += 4){
-    const v = rng() * 255 | 0;
-    d[i] = d[i+1] = d[i+2] = v;
-    d[i+3] = 255;
+function shufflePass(g){
+  // 矩形の転写=データモッシュ的な破綻
+  const p = P.shuffle * 0.2 + spike * 0.3;
+  if (rng() < p){
+    const sw2 = W * (0.08 + rng() * 0.3), sh2 = H * (0.01 + rng() * 0.08);
+    const sx = rng() * (W - sw2), sy = rng() * (H - sh2);
+    const dx2 = sx + (rng() - 0.5) * W * 0.3, dy2 = sy + (rng() - 0.5) * H * 0.12;
+    g.drawImage(bufA, sx, sy, sw2, sh2, Math.round(dx2), Math.round(dy2), sw2, sh2);
   }
-  g.putImageData(img, 0, 0);
 }
 
-function render(bucket){
-  const g = octx;
-  const rng = mulberry32(seed * 9973 + bucket * 613 + 7);
-  const t = bucket * 0.13;
-
-  drawStreaks(g, rng, t);
-
-  for (const b of structure.white) drawStepped(g, b);
-
-  // 白ブロックの上にも薄く細線ストリークを重ね、面を馴染ませる
-  g.globalAlpha = 0.14;
-  for (let x = 0; x < W; x += 2){
-    g.fillStyle = gray(P.bright + (vnoise(x * 0.25 + t) - 0.5) * 0.9);
-    g.fillRect(x, 0, 1, H);
+function grainPass(g){
+  if (P.grain <= 0.01) return;
+  if ((frameN & 3) === 0){                              // タイルは 4 フレームに一度更新
+    const ng = noiseTile.getContext('2d');
+    const img = ng.createImageData(256, 256);
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4){
+      const v = rng() * 255 | 0;
+      d[i] = d[i+1] = d[i+2] = v; d[i+3] = 255;
+    }
+    ng.putImageData(img, 0, 0);
   }
+  g.globalAlpha = P.grain * 0.1;
+  g.globalCompositeOperation = 'overlay';
+  const ox = (frameN * 7) % 256, oy = (frameN * 13) % 256;
+  for (let y = -oy; y < H; y += 256)
+    for (let x = -ox; x < W; x += 256)
+      g.drawImage(noiseTile, x, y);
+  g.globalCompositeOperation = 'source-over';
   g.globalAlpha = 1;
-
-  // 横断バー(白)と切れ目
-  for (const cb of structure.crossBars){
-    g.fillStyle = '#efefec';
-    g.fillRect(0, cb.y, W, cb.h);
-    g.fillStyle = gray(P.bright * 0.6);
-    for (const gap of cb.gaps) g.fillRect(gap.x, cb.y, gap.w, cb.h);
-  }
-
-  // 黒バー+先端の白方形
-  g.fillStyle = '#000';
-  for (const b of structure.barsV) g.fillRect(b.x, b.y, b.w, b.h);
-  g.fillStyle = '#f4f4f2';
-  for (const q of structure.squares) g.fillRect(q.x, q.y, q.w, q.h);
-
-  drawBurst(g, rng);
-  drawSplatter(g, rng);
-  drawDisplace(g, rng);
-
-  // 粒子
-  if (P.grain > 0){
-    refreshNoiseTile(rng);
-    g.globalAlpha = P.grain * 0.16;
-    g.globalCompositeOperation = 'overlay';
-    for (let y = 0; y < H; y += 256)
-      for (let x = 0; x < W; x += 256)
-        g.drawImage(noiseTile, x, y);
-    g.globalCompositeOperation = 'source-over';
-    g.globalAlpha = 1;
-  }
-
-  // 仕上げ: コントラスト・反転を掛けて表示キャンバスへ
-  const inv = document.getElementById('invert').checked ? ' invert(1)' : '';
-  vctx.filter = `contrast(${P.contrast})${inv}`;
-  vctx.drawImage(off, 0, 0);
-  vctx.filter = 'none';
 }
 
-// ---------- ループ ----------
+// ---------- 突然変異(タップ) ----------
+function mutate(px, py){
+  seed = Math.floor(rng() * 1e9);
+  document.getElementById('seed').value = seed;
+  rebuildStructure(px, py);                             // タップ点にバーストの芯を移す
+  spike = Math.min(1.6, spike + 0.6 + P.touch * 0.6);
+  flash = rng() < 0.35 ? 3 : 0;                         // ときどきネガのフラッシュ
+  // 質感パラメータもわずかに揺らす(スライダーにも反映)
+  applyParam('levels', 3 + Math.floor(rng() * 13), true);
+  applyParam('streaks', 0.4 + rng() * 0.6, true);
+  document.getElementById('hint').classList.add('gone');
+}
+
+// ---------- メインループ ----------
 let fpsCount = 0, fpsLast = performance.now();
 function tick(){
   requestAnimationFrame(tick);
   const paused = document.getElementById('paused').checked;
   if (!paused){
-    timeAcc += P.speed;
-    frame++;
+    t += P.speed;
+    frameN++;
+    rng = mulberry32((seed ^ Math.imul(frameN, 2654435761)) >>> 0);
+
+    if (document.getElementById('drift').checked){
+      // 無人時も勝手に呼吸し、まれに自発的な突然変異を起こす
+      const dt = frameN * 0.0015;
+      P.melt      = clampP('melt',  P.melt  * 0.98 + (0.2 + fbm(dt, 0, 2) * 0.8) * 0.02);
+      P.burst     = clampP('burst', P.burst * 0.98 + fbm(dt + 40, 0, 2) * 0.02);
+      if (rng() < 0.0008) mutate(rng() * W, rng() * H * 0.5);
+    }
+
+    meltPass();
+    const g = actx;
+    injectStreaks(g);
+    injectStructure(g);
+    injectBurst(g);
+    injectSplatter(g);
+    tearPass(g);
+    shufflePass(g);
+    grainPass(g);
+
+    spike *= 0.93;                                      // タップの暴発は指数減衰
+    if (spike < 0.01) spike = 0;
+    for (const tp of touches.values()){ tp.power *= 0.9; tp.px = tp.x; tp.py = tp.y; }
   }
-  if (document.getElementById('drift').checked && !paused){
-    // 自動ドリフト: 一部パラメータを低速ノイズで揺らす
-    const dt = frame * 0.002;
-    applyParam('burst',    0.15 + vnoise(dt) * 0.85, true);
-    applyParam('displace', vnoise(dt + 50) * 0.9, true);
-    applyParam('streaks',  0.3 + vnoise(dt + 100) * 0.7, true);
-    if (vnoise(dt + 200) > 0.93 && frame % 60 === 0) rebuildStructure();
-  }
-  const bucket = Math.floor(timeAcc / Math.max(1, P.hold));
-  if (bucket !== lastBucket || needRedraw){
-    lastBucket = bucket;
-    needRedraw = false;
-    render(bucket);
-  }
+
+  // 表示(コントラスト・反転・フラッシュ)
+  const inv = document.getElementById('invert').checked !== (flash > 0);
+  vctx.filter = `contrast(${P.contrast})` + (inv ? ' invert(1)' : '');
+  vctx.drawImage(bufA, 0, 0, view.width, view.height);
+  vctx.filter = 'none';
+  if (flash > 0) flash--;
+
   fpsCount++;
   const now = performance.now();
   if (now - fpsLast > 1000){
     document.getElementById('fps').textContent = fpsCount + ' fps';
     fpsCount = 0; fpsLast = now;
   }
+}
+
+function clampP(id, v){
+  const def = PARAMS.find(p => p.id === id);
+  return Math.max(def.min, Math.min(def.max, v));
 }
 
 // ---------- UI 構築 ----------
@@ -624,17 +688,16 @@ function buildControls(){
     });
   }
 }
-function applyParam(id, value, fromDrift){
+function applyParam(id, value, fromAuto){
   const def = PARAMS.find(p => p.id === id);
   if (!def) return;
   value = Math.max(def.min, Math.min(def.max, value));
   P[id] = value;
   const el = document.getElementById('in-' + id);
   const out = document.getElementById('out-' + id);
-  if (el && (fromDrift || el.valueAsNumber !== value)) el.value = value;
+  if (el && (fromAuto || el.valueAsNumber !== value)) el.value = value;
   if (out) out.textContent = def.step >= 1 ? Math.round(value) : value.toFixed(2);
-  if (def.struct) rebuildStructure();
-  needRedraw = true;
+  if (def.struct) rebuildStructure(structure && structure.burstCX, structure && structure.burstCY);
 }
 function applyPreset(name){
   const pr = PRESETS[name];
@@ -643,28 +706,36 @@ function applyPreset(name){
     if (k === 'invert'){ document.getElementById('invert').checked = v; continue; }
     applyParam(k, v);
   }
-  needRedraw = true;
 }
 function setSeed(v){
   seed = (v >>> 0) || 1;
   document.getElementById('seed').value = seed;
   rebuildStructure();
-  needRedraw = true;
-}
-function randomize(){
-  setSeed(Math.floor(Math.random() * 1e9));
 }
 
-// ---------- イベント ----------
-document.getElementById('preset').addEventListener('change', e => applyPreset(e.target.value));
-document.getElementById('randomize').addEventListener('click', randomize);
-document.getElementById('seed').addEventListener('change', e => setSeed(parseInt(e.target.value, 10)));
-document.getElementById('res').addEventListener('change', e => setResolution(parseInt(e.target.value, 10)));
-document.getElementById('invert').addEventListener('change', () => needRedraw = true);
-document.getElementById('toggle-ui').addEventListener('click', () => {
-  document.body.classList.toggle('ui-hidden');
-  fitView();
+// ---------- ポインタ(触覚) ----------
+view.addEventListener('pointerdown', e => {
+  view.setPointerCapture(e.pointerId);
+  const x = e.clientX * scale, y = e.clientY * scale;
+  touches.set(e.pointerId, { x, y, px: x, py: y, power: 1, drag: false });
+  mutate(x, y);
 });
+view.addEventListener('pointermove', e => {
+  const tp = touches.get(e.pointerId);
+  if (!tp) return;
+  tp.x = e.clientX * scale; tp.y = e.clientY * scale;
+  tp.power = 1; tp.drag = true;
+});
+function endTouch(e){ touches.delete(e.pointerId); }
+view.addEventListener('pointerup', endTouch);
+view.addEventListener('pointercancel', endTouch);
+
+// ---------- その他イベント ----------
+document.getElementById('preset').addEventListener('change', e => applyPreset(e.target.value));
+document.getElementById('randomize').addEventListener('click', () => mutate(rng() * W, rng() * H * 0.5));
+document.getElementById('seed').addEventListener('change', e => setSeed(parseInt(e.target.value, 10)));
+document.getElementById('res').addEventListener('change', e => { scale = parseFloat(e.target.value); resize(); });
+document.getElementById('toggle-ui').addEventListener('click', () => document.body.classList.toggle('ui-hidden'));
 document.getElementById('fullscreen').addEventListener('click', () => {
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen();
@@ -673,18 +744,18 @@ document.getElementById('save').addEventListener('click', () => {
   view.toBlob(b => {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(b);
-    a.download = `glitch-field_${seed}_${lastBucket}.png`;
+    a.download = `glitch-field_${seed}_${frameN}.png`;
     a.click();
     URL.revokeObjectURL(a.href);
   });
 });
-window.addEventListener('resize', fitView);
+window.addEventListener('resize', resize);
 window.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
   switch (e.key.toLowerCase()){
     case 'h': document.getElementById('toggle-ui').click(); break;
     case 'f': document.getElementById('fullscreen').click(); break;
-    case 'r': randomize(); break;
+    case 'r': mutate(rng() * W, rng() * H * 0.5); break;
     case 's': document.getElementById('save').click(); break;
     case ' ': {
       const c = document.getElementById('paused');
@@ -696,26 +767,23 @@ window.addEventListener('keydown', e => {
 });
 
 // ---------- 外部制御(インスタレーション連携の足場) ----------
-// 1) window.installation — コンソール・組み込みスクリプトから
 window.installation = {
   set: applyParam,
   preset: applyPreset,
-  randomize,
+  randomize: () => mutate(rng() * W, rng() * H * 0.5),
+  mutate: (nx, ny) => mutate((nx ?? 0.5) * W, (ny ?? 0.3) * H),   // 0-1 正規化座標
   seed: setSeed,
   params: P,
 };
-// 2) postMessage — iframe 埋め込み・別ウィンドウの操作卓から
-//    例: frame.contentWindow.postMessage({type:'set', id:'burst', value:0.9}, '*')
 window.addEventListener('message', e => {
   const m = e.data;
   if (!m || typeof m !== 'object') return;
   if (m.type === 'set') applyParam(m.id, +m.value);
   else if (m.type === 'preset') applyPreset(m.value);
-  else if (m.type === 'randomize') randomize();
+  else if (m.type === 'randomize') window.installation.randomize();
+  else if (m.type === 'mutate') window.installation.mutate(+m.x, +m.y);
   else if (m.type === 'seed') setSeed(+m.value);
 });
-// 3) WebSocket — ?ws=ws://host:port で接続し JSON を受ける
-//    例: {"type":"set","id":"displace","value":0.8}  (OSC ブリッジ想定)
 const wsUrl = new URLSearchParams(location.search).get('ws');
 if (wsUrl){
   try {
@@ -725,7 +793,6 @@ if (wsUrl){
     };
   } catch {}
 }
-// 4) Web MIDI — CC1 以降をパラメータ定義順に割り当て
 if (navigator.requestMIDIAccess){
   navigator.requestMIDIAccess().then(access => {
     const label = document.getElementById('midi-status');
@@ -735,7 +802,7 @@ if (navigator.requestMIDIAccess){
         n++;
         input.onmidimessage = msg => {
           const [st, cc, val] = msg.data;
-          if ((st & 0xf0) !== 0xb0) return;         // CC のみ
+          if ((st & 0xf0) !== 0xb0) return;
           const def = PARAMS[cc - 1];
           if (!def) return;
           applyParam(def.id, def.min + (val / 127) * (def.max - def.min));
@@ -751,13 +818,14 @@ if (navigator.requestMIDIAccess){
 // ---------- 起動 ----------
 buildControls();
 const q = new URLSearchParams(location.search);
-if (q.get('hideui') === '1') document.body.classList.add('ui-hidden');
-setResolution(720);
-if (q.get('preset')) {
+if (q.get('hideui') === '0') document.body.classList.remove('ui-hidden');
+if (q.get('preset')){
   document.getElementById('preset').value = q.get('preset');
   applyPreset(q.get('preset'));
 }
-setSeed(parseInt(q.get('seed'), 10) || 1024);
+seed = parseInt(q.get('seed'), 10) || 1024;
+document.getElementById('seed').value = seed;
+resize();
 tick();
 </script>
 </body>
