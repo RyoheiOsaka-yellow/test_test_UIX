@@ -3,248 +3,230 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>spectral — うねうね generative art</title>
+<title>spectral — raymarched うねうね</title>
 <style>
-  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #eeeae9; }
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #ece8e7; }
   canvas { display: block; width: 100vw; height: 100vh; }
+  #err { position: fixed; inset: 0; display: none; place-items: center;
+         font: 14px/1.6 sans-serif; color: #444; padding: 2em; text-align: center; }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="err">このブラウザは WebGL に対応していないため表示できません。<br>
+代わりに <a href="canvas2d.html">Canvas 2D 版</a> をご覧ください。</div>
+
+<script id="frag" type="x-shader/x-fragment">
+precision highp float;
+
+uniform vec2  uRes;
+uniform float uTime;
+
+// ---------- hashing ----------
+float hash1(vec3 p) {
+  p = fract(p * 0.3183099 + vec3(0.11, 0.23, 0.37));
+  p *= 17.0;
+  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+vec3 hash3(vec3 p) {
+  return vec3(hash1(p), hash1(p + 11.13), hash1(p + 27.71));
+}
+mat2 rot2(float a) { float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+
+// ---------- scene constants ----------
+const float CELL_W = 2.8;   // worm repetition cell
+const float CELL_O = 3.6;   // orb repetition cell
+const vec3  ORB_OFF = vec3(1.13, 2.71, 0.58);
+const float MAXD = 26.0;
+
+// Scene SDF.  Returns vec3(distance, materialId, tone).
+// materials: 1 = worm body, 2 = worm eye, 3 = orb
+vec3 map(vec3 p) {
+  float d = 1e9, mat = 0.0, tone = 0.5;
+
+  // ---- worms: one wriggling tapered tube per cell ----
+  vec3 idW = floor(p / CELL_W);
+  vec3 h = hash3(idW);
+  vec3 qc = p - (idW + 0.5) * CELL_W;
+  // never step past this cell's boundary — neighbour cells hold other creatures
+  float bound = CELL_W * 0.5 - max(abs(qc.x), max(abs(qc.y), abs(qc.z)));
+  if (h.x > 0.08) {
+    vec3 q = qc;
+    q.xy = rot2(h.y * 6.2832) * q.xy;
+    q.yz = rot2(h.z * 6.2832) * q.yz;
+    q.xz = rot2(h.x * 6.2832) * q.xz;
+
+    float ph = h.z * 6.2832;
+    float tt = uTime * (0.7 + h.x * 1.0);
+    float L  = 0.6 + h.y * 0.35;                        // half length
+    float amp = 0.12 + h.x * 0.06;                      // wriggle amplitude
+    // undulating spine offset, a wave traveling down the body (the うねうね)
+    vec2 w = vec2(sin(q.z * 4.6 + ph + tt),
+                  cos(q.z * 3.3 + ph * 1.3 + tt * 0.85)) * amp;
+    float k = clamp((q.z + L) / (2.0 * L), 0.0, 1.0);   // 0 tail .. 1 head
+    float rHead = 0.12 + h.y * 0.12;
+    float r = mix(0.035, rHead, k);
+    float dz = max(abs(q.z) - L, 0.0);
+    float dw = length(vec2(length(q.xy - w), dz)) - r;
+    d = dw * 0.7;                                       // Lipschitz margin for the sine warp
+    mat = 1.0; tone = 0.3 + h.z * 0.45;
+
+    // dark eye capping the head, pushed just past the tip
+    vec2 wh = vec2(sin(L * 4.6 + ph + tt),
+                   cos(L * 3.3 + ph * 1.3 + tt * 0.85)) * amp;
+    float de = length(q - vec3(wh, L + rHead * 0.35)) - rHead * 0.8;
+    if (de < d) { d = de; mat = 2.0; }
+  }
+
+  // ---- orbs: floating eyeball spheres, offset grid ----
+  vec3 po = p + ORB_OFF;
+  vec3 idO = floor(po / CELL_O);
+  vec3 ho = hash3(idO + 31.7);
+  vec3 qb = po - (idO + 0.5) * CELL_O;
+  bound = min(bound, CELL_O * 0.5 - max(abs(qb.x), max(abs(qb.y), abs(qb.z))));
+  if (ho.x > 0.45) {
+    vec3 qo = qb + (ho - 0.5) * 1.1;
+    qo += 0.1 * sin(uTime * 0.5 + ho * 6.2832);         // slow bobbing
+    float ro = 0.22 + ho.y * 0.45;
+    float dOrb = length(qo) - ro;
+    if (dOrb < d) { d = dOrb; mat = 3.0; tone = 0.5 + ho.z * 0.35; }
+  }
+
+  return vec3(min(d, bound + 0.03), mat, tone);
+}
+
+vec3 calcNormal(vec3 p) {
+  const vec2 e = vec2(0.0015, -0.0015);
+  return normalize(e.xyy * map(p + e.xyy).x + e.yyx * map(p + e.yyx).x +
+                   e.yxy * map(p + e.yxy).x + e.xxx * map(p + e.xxx).x);
+}
+
+float calcAO(vec3 p, vec3 n) {
+  float occ = 0.0, sca = 1.0;
+  for (int i = 0; i < 5; i++) {
+    float hh = 0.02 + 0.11 * float(i);
+    occ += (hh - map(p + n * hh).x) * sca;
+    sca *= 0.75;
+  }
+  return clamp(1.0 - 2.2 * occ, 0.0, 1.0);
+}
+
+void main() {
+  vec2 uv = (2.0 * gl_FragCoord.xy - uRes) / min(uRes.x, uRes.y);
+
+  // slow drifting camera pushing forward through the field
+  float ct = uTime * 0.32;
+  vec3 ro = vec3(0.7 * sin(uTime * 0.10), 0.55 * sin(uTime * 0.13), ct);
+  vec3 fwd = normalize(vec3(0.12 * sin(uTime * 0.07), 0.10 * cos(uTime * 0.09), 1.0));
+  vec3 rgt = normalize(cross(fwd, vec3(sin(uTime * 0.05) * 0.08, 1.0, 0.0)));
+  vec3 up  = cross(rgt, fwd);
+  vec3 rd = normalize(uv.x * rgt + uv.y * up + 1.5 * fwd);
+
+  const vec3 BG = vec3(0.925, 0.912, 0.905);
+
+  // raymarch
+  float t = 0.0; vec3 res = vec3(0.0);
+  bool hit = false;
+  for (int i = 0; i < 160; i++) {
+    vec3 pos = ro + rd * t;
+    res = map(pos);
+    if (res.x < 0.0008 + 0.0012 * t) { hit = true; break; }
+    t += res.x * 0.8;
+    if (t > MAXD) break;
+  }
+
+  vec3 col = BG;
+  if (hit) {
+    vec3 pos = ro + rd * t;
+    vec3 n = calcNormal(pos);
+    float ao = calcAO(pos, n);
+    vec3 lig = normalize(vec3(0.45, 0.75, -0.35));
+    float dif = clamp(dot(n, lig), 0.0, 1.0);
+    float bnc = clamp(dot(n, -lig) * 0.5 + 0.5, 0.0, 1.0) * 0.18;
+    float spe = pow(clamp(dot(reflect(rd, n), lig), 0.0, 1.0), 24.0);
+
+    float g = res.z;                                    // base tone
+    if (res.y > 2.5) {
+      // orb with a pupil looking roughly toward the camera
+      vec3 po = pos + ORB_OFF;
+      vec3 ho = hash3(floor(po / CELL_O) + 31.7);
+      vec3 pupilDir = normalize(ho - 0.5 + vec3(0.0, 0.0, -0.9));
+      float pupil = smoothstep(0.80, 0.88, dot(n, pupilDir));
+      g = mix(g, 0.045, pupil);
+      spe *= 1.6;
+    } else if (res.y > 1.5) {
+      g = 0.05;                                         // worm eye: near black
+      spe *= 2.2;
+    }
+
+    col = vec3(g) * (0.42 + 0.58 * dif + bnc) * ao + spe * 0.35;
+
+    // pale fog — far creatures dissolve into the light
+    float fog = 1.0 - exp(-0.006 * t * t);
+    col = mix(col, BG, fog);
+  }
+
+  // gentle vignette-in-reverse: bright center, like backlit film
+  float r2 = dot(uv, uv);
+  col += (0.05 - 0.045 * r2) * vec3(1.0);
+
+  gl_FragColor = vec4(pow(col, vec3(0.93)), 1.0);
+}
+</script>
+
 <script>
 (() => {
   "use strict";
-
-  // ---------- seeded PRNG (deterministic) ----------
-  function mulberry32(seed) {
-    let a = seed >>> 0;
-    return () => {
-      a |= 0; a = (a + 0x6D2B79F5) | 0;
-      let t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-  const rand = mulberry32(20250807);
-
-  // ---------- 3D value noise + fbm ----------
-  const PERM = new Uint8Array(512);
-  {
-    const p = [...Array(256).keys()];
-    for (let i = 255; i > 0; i--) {
-      const j = (rand() * (i + 1)) | 0;
-      [p[i], p[j]] = [p[j], p[i]];
-    }
-    for (let i = 0; i < 512; i++) PERM[i] = p[i & 255];
-  }
-  const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
-  function noise3(x, y, z) {
-    const X = Math.floor(x) & 255, Y = Math.floor(y) & 255, Z = Math.floor(z) & 255;
-    x -= Math.floor(x); y -= Math.floor(y); z -= Math.floor(z);
-    const u = fade(x), v = fade(y), w = fade(z);
-    const h = (i, j, k) => PERM[(PERM[(PERM[(X + i) & 255] + Y + j) & 255] + Z + k) & 255] / 255;
-    const lerp = (a, b, t) => a + (b - a) * t;
-    return lerp(
-      lerp(lerp(h(0,0,0), h(1,0,0), u), lerp(h(0,1,0), h(1,1,0), u), v),
-      lerp(lerp(h(0,0,1), h(1,0,1), u), lerp(h(0,1,1), h(1,1,1), u), v),
-      w
-    ) * 2 - 1;
-  }
-  function fbm(x, y, z) {
-    return noise3(x, y, z) * 0.65 + noise3(x * 2.1, y * 2.1, z * 1.7) * 0.35;
-  }
-
-  // ---------- canvas setup ----------
   const canvas = document.getElementById("c");
-  const ctx = canvas.getContext("2d");
-  let W = 0, H = 0, DPR = 1, SCALE = 1;
+  const gl = canvas.getContext("webgl", { antialias: false }) ||
+             canvas.getContext("experimental-webgl");
+  if (!gl) {
+    canvas.style.display = "none";
+    document.getElementById("err").style.display = "grid";
+    return;
+  }
+
+  const VERT = "attribute vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }";
+  function compile(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+      throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, compile(gl.VERTEX_SHADER, VERT));
+  gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, document.getElementById("frag").textContent));
+  gl.linkProgram(prog);
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS))
+    throw new Error(gl.getProgramInfoLog(prog));
+  gl.useProgram(prog);
+
+  // fullscreen triangle
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const aPos = gl.getAttribLocation(prog, "aPos");
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+  const uRes = gl.getUniformLocation(prog, "uRes");
+  const uTime = gl.getUniformLocation(prog, "uTime");
 
   function resize() {
-    DPR = Math.min(window.devicePixelRatio || 1, 2);
-    W = window.innerWidth; H = window.innerHeight;
-    canvas.width = W * DPR; canvas.height = H * DPR;
-    SCALE = Math.min(W, H) / 900;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    canvas.width = Math.floor(window.innerWidth * dpr);
+    canvas.height = Math.floor(window.innerHeight * dpr);
+    gl.viewport(0, 0, canvas.width, canvas.height);
   }
   window.addEventListener("resize", resize);
   resize();
 
-  // ---------- scene population ----------
-  // creatures: noise-driven tapered tube "worms"
-  const CREATURES = [];
-  const N_CREATURES = 130;
-  for (let i = 0; i < N_CREATURES; i++) {
-    const width = 14 + rand() * rand() * 42;         // head width, mostly chunky
-    CREATURES.push({
-      ax: rand(), ay: rand(),                       // anchor (0..1)
-      segs: 8 + (rand() * 16) | 0,                   // body segments
-      width,
-      step: width * (0.45 + rand() * 0.3),           // segment length scales with girth
-      bias: rand() * Math.PI * 2,                    // preferred direction
-      turn: 2.4 + rand() * 2.6,                      // how curly
-      wamp: 3 + rand() * 9,                          // wriggle amplitude
-      wfreq: 0.5 + rand() * 0.9,                     // wriggle frequency
-      speed: 0.5 + rand() * 1.1,                     // wriggle speed
-      phase: rand() * Math.PI * 2,
-      tone: 0.15 + rand() * 0.6,                     // 0 dark .. 1 light
-      z: rand()                                      // draw-order depth
-    });
-  }
-
-  // wigglers: tiny fast tadpole-like squiggles clustered in patches
-  const WIGGLERS = [];
-  {
-    const nClusters = 9;
-    for (let cl = 0; cl < nClusters; cl++) {
-      const cx = rand(), cy = rand(), n = 8 + (rand() * 14) | 0;
-      for (let i = 0; i < n; i++) {
-        WIGGLERS.push({
-          ax: cx + (rand() - 0.5) * 0.22, ay: cy + (rand() - 0.5) * 0.22,
-          segs: 6 + (rand() * 5) | 0,
-          width: 2.5 + rand() * 3.5,
-          step: 5 + rand() * 4,
-          bias: rand() * Math.PI * 2,
-          turn: 3 + rand() * 3,
-          wamp: 3 + rand() * 4,
-          wfreq: 1.2 + rand() * 1.2,
-          speed: 2 + rand() * 2.5,
-          phase: rand() * Math.PI * 2,
-          tone: 0.3 + rand() * 0.5,
-          z: rand()
-        });
-      }
-    }
-  }
-
-  // orbs: glossy spheres with dark pupils (the "eyeballs")
-  const ORBS = [];
-  for (let i = 0; i < 46; i++) {
-    ORBS.push({
-      ax: rand(), ay: rand(),
-      r: 10 + rand() * 34,
-      pupil: 0.35 + rand() * 0.35,
-      px: (rand() - 0.5) * 0.5, py: (rand() - 0.5) * 0.5,
-      bob: rand() * Math.PI * 2,
-      tone: 0.35 + rand() * 0.5,
-      z: rand()
-    });
-  }
-
-  // motes: tiny scattered dots
-  const MOTES = [];
-  for (let i = 0; i < 260; i++) {
-    MOTES.push({ ax: rand(), ay: rand(), r: 0.8 + rand() * 2.4, bob: rand() * Math.PI * 2 });
-  }
-
-  const gray = v => {
-    const g = Math.max(0, Math.min(255, Math.round(v * 255)));
-    return `rgb(${g},${g},${g})`;
-  };
-
-  // ---------- drawing ----------
-  function drawCreature(c, t) {
-    const NS = 0.0016 / Math.max(SCALE, 0.6);      // noise spatial scale
-    let x = c.ax * W, y = c.ay * H;
-    // anchor drift so whole bodies slowly roam
-    x += fbm(c.ax * 3, c.ay * 3, t * 0.08) * 40 * SCALE;
-    y += fbm(c.ay * 3 + 9, c.ax * 3, t * 0.08) * 40 * SCALE;
-
-    // build spine through the noise flow field
-    const pts = [];
-    let px = x, py = y;
-    for (let i = 0; i < c.segs; i++) {
-      const a = c.bias + fbm(px * NS, py * NS, t * 0.12 + c.phase) * c.turn;
-      px += Math.cos(a) * c.step * SCALE;
-      py += Math.sin(a) * c.step * SCALE;
-      // perpendicular wriggle wave traveling down the body
-      const wave = Math.sin(i * c.wfreq - t * c.speed * 2.2 + c.phase) * c.wamp * SCALE;
-      pts.push([px + Math.cos(a + Math.PI / 2) * wave, py + Math.sin(a + Math.PI / 2) * wave]);
-    }
-
-    // tapered tube: per-segment strokes, 3 passes for cylindrical shading
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    const passes = [
-      { w: 1.00, tone: c.tone * 0.5, dx: 0, dy: 0 },                  // dark rim
-      { w: 0.70, tone: c.tone * 0.5 + 0.26, dx: -0.05, dy: -0.05 },   // mid body
-      { w: 0.34, tone: c.tone * 0.35 + 0.55, dx: -0.09, dy: -0.09 }   // soft core light
-    ];
-    for (const p of passes) {
-      ctx.strokeStyle = gray(p.tone);
-      for (let i = 1; i < pts.length; i++) {
-        const k = i / (pts.length - 1);                 // 0 tail .. 1 head
-        const wdt = c.width * SCALE * (0.15 + 0.85 * k) * p.w;
-        ctx.lineWidth = Math.max(wdt, 0.5);
-        const off = c.width * SCALE * 0.25;
-        ctx.beginPath();
-        ctx.moveTo(pts[i - 1][0] + p.dx * off, pts[i - 1][1] + p.dy * off);
-        ctx.lineTo(pts[i][0] + p.dx * off, pts[i][1] + p.dy * off);
-        ctx.stroke();
-      }
-    }
-
-    // head eye
-    const [hx, hy] = pts[pts.length - 1];
-    const er = c.width * SCALE * 0.42;
-    ctx.fillStyle = "rgba(18,16,17,0.92)";
-    ctx.beginPath(); ctx.arc(hx, hy, er, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.55)";
-    ctx.beginPath(); ctx.arc(hx - er * 0.3, hy - er * 0.3, er * 0.22, 0, Math.PI * 2); ctx.fill();
-  }
-
-  function drawOrb(o, t) {
-    const bobx = fbm(o.ax * 5, t * 0.1, o.bob) * 18 * SCALE;
-    const boby = Math.sin(t * 0.7 + o.bob) * 8 * SCALE;
-    const x = o.ax * W + bobx, y = o.ay * H + boby;
-    const r = o.r * SCALE * (1 + Math.sin(t * 0.9 + o.bob) * 0.04);
-
-    const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r);
-    g.addColorStop(0, gray(Math.min(o.tone + 0.4, 0.96)));
-    g.addColorStop(0.7, gray(o.tone));
-    g.addColorStop(1, gray(o.tone * 0.55));
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-
-    // pupil
-    const pr = r * o.pupil;
-    ctx.fillStyle = "rgba(15,13,14,0.95)";
-    ctx.beginPath(); ctx.arc(x + o.px * r, y + o.py * r, pr, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    ctx.beginPath(); ctx.arc(x + o.px * r - pr * 0.3, y + o.py * r - pr * 0.3, pr * 0.2, 0, Math.PI * 2); ctx.fill();
-  }
-
-  // ---------- render loop ----------
-  const drawables = [
-    ...CREATURES.map(c => ({ z: c.z, kind: "creature", o: c })),
-    ...WIGGLERS.map(c => ({ z: c.z, kind: "creature", o: c })),
-    ...ORBS.map(o => ({ z: o.z, kind: "orb", o }))
-  ].sort((a, b) => a.z - b.z);
-
   function frame(ms) {
-    const t = ms / 1000;
-    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-
-    // background: pale ground with soft center glow
-    ctx.fillStyle = "#eae6e5";
-    ctx.fillRect(0, 0, W, H);
-    const bg = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.7);
-    bg.addColorStop(0, "rgba(255,255,255,0.65)");
-    bg.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, H);
-
-    // motes
-    ctx.fillStyle = "rgba(25,22,23,0.8)";
-    for (const m of MOTES) {
-      const x = m.ax * W + Math.sin(t * 0.8 + m.bob) * 4 * SCALE;
-      const y = m.ay * H + Math.cos(t * 0.6 + m.bob) * 4 * SCALE;
-      ctx.beginPath(); ctx.arc(x, y, m.r * SCALE, 0, Math.PI * 2); ctx.fill();
-    }
-
-    for (const d of drawables) {
-      if (d.kind === "creature") drawCreature(d.o, t);
-      else drawOrb(d.o, t);
-    }
-
+    gl.uniform2f(uRes, canvas.width, canvas.height);
+    gl.uniform1f(uTime, ms / 1000);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
