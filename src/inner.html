@@ -1,0 +1,545 @@
+<title>MORPHOSIS — interactive point cloud</title>
+<style>
+  html, body { margin:0; padding:0; background:#000; overflow:hidden; height:100%; }
+  #stage { position:fixed; inset:0; width:100%; height:100%; touch-action:none;
+           cursor:crosshair; background:#000; }
+  .hud { position:fixed; z-index:10; color:#cfd3dc; pointer-events:none;
+         font-family:"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+         text-shadow:0 0 6px rgba(0,0,0,.9); user-select:none; -webkit-user-select:none; }
+  #stats { top:14px; left:16px; font-size:11px; line-height:1.55; letter-spacing:.04em;
+           opacity:.85; white-space:pre; }
+  #title { top:14px; right:18px; text-align:right; }
+  #title .t1 { font-size:17px; letter-spacing:.14em; color:#e8eaf0; }
+  #title .t2 { font-size:10px; letter-spacing:.22em; opacity:.55; margin-top:2px; }
+  #shapeName { top:64px; right:18px; font-size:12px; letter-spacing:.18em;
+               color:#9aa3b5; text-align:right; transition:opacity .4s; }
+  #caption { left:0; right:0; bottom:86px; text-align:center; font-style:italic;
+             font-size:12.5px; color:#b9bfcc; opacity:.85; padding:0 24px;
+             transition:opacity .5s; }
+  #modes { position:fixed; z-index:11; left:0; right:0; bottom:26px;
+           display:flex; justify-content:center; gap:8px; flex-wrap:wrap;
+           font-family:"SF Mono",Menlo,Consolas,monospace; }
+  #modes button { pointer-events:auto; background:rgba(18,20,28,.55); color:#aab2c4;
+           border:1px solid rgba(140,150,175,.35); border-radius:999px;
+           padding:8px 15px; font-size:12px; letter-spacing:.08em;
+           backdrop-filter:blur(6px); cursor:pointer; transition:all .18s; }
+  #modes button.on { color:#fff; border-color:rgba(255,120,220,.85);
+           background:rgba(150,40,130,.35); box-shadow:0 0 14px rgba(255,80,200,.35); }
+  #modes button:active { transform:scale(.94); }
+  #hint { left:0; right:0; bottom:66px; text-align:center; font-size:10px;
+          letter-spacing:.14em; color:#6d7489; opacity:.7; }
+  #fallback { position:fixed; inset:0; display:none; place-items:center; color:#889;
+          font-family:sans-serif; font-size:14px; }
+</style>
+
+<canvas id="stage"></canvas>
+<div id="stats" class="hud"></div>
+<div id="title" class="hud"><div class="t1">MORPHOSIS</div><div class="t2">POINT CLOUD FIELD</div></div>
+<div id="shapeName" class="hud"></div>
+<div id="caption" class="hud"></div>
+<div id="hint" class="hud">指で触れる ／ ダブルタップで変形</div>
+<div id="modes">
+  <button data-mode="0" class="on">ばらける</button>
+  <button data-mode="1">ついてくる</button>
+  <button data-mode="2">ぐるぐる</button>
+  <button id="morphBtn">⟳ 変形</button>
+</div>
+<div id="fallback">WebGL2 が利用できない環境です。</div>
+
+<script>
+'use strict';
+(function(){
+
+// ---------- setup ----------
+const canvas = document.getElementById('stage');
+const gl = canvas.getContext('webgl2', { antialias:false, alpha:false,
+  premultipliedAlpha:true, powerPreference:'high-performance' });
+if (!gl) { document.getElementById('fallback').style.display = 'grid'; return; }
+
+const params = new URLSearchParams(location.search);
+const coarse = matchMedia('(pointer: coarse)').matches;
+const COUNT = Math.max(1000, Math.min(600000,
+  parseInt(params.get('n') || (coarse ? 120000 : 240000), 10)));
+
+const DPR = Math.min(2, window.devicePixelRatio || 1);
+const FOV = 55 * Math.PI / 180;
+const CAM_DIST = 3.3;
+const MORPH_SEC = 2.8;
+const AUTO_SEC = 8.5;
+const NTOUCH = 8;
+
+// ---------- shaders ----------
+const VS = `#version 300 es
+precision highp float;
+layout(location=0) in vec3 aPosFrom;
+layout(location=1) in vec3 aPosTo;
+layout(location=2) in vec3 aColFrom;
+layout(location=3) in vec3 aColTo;
+layout(location=4) in vec4 aRand;
+uniform mat4 uProj, uModel;
+uniform float uTime, uMorph, uPress, uSpin, uSize, uCamDist;
+uniform vec3 uPointer;
+uniform int uMode;
+uniform vec4 uTouches[${NTOUCH}];
+out vec3 vColor;
+out float vAlpha;
+
+float hash1(float n){ return fract(sin(n)*43758.5453123); }
+
+void main(){
+  // per-particle staggered morph
+  float stag = 0.6;
+  float tt = clamp(uMorph*(1.0+stag) - aRand.x*stag, 0.0, 1.0);
+  float e = tt*tt*(3.0-2.0*tt);
+  vec3 p = mix(aPosFrom, aPosTo, e);
+
+  // turbulence while morphing ("violent morphological shift")
+  float burst = sin(3.14159265*e);
+  p += burst * (0.12 + 0.45*aRand.y) * vec3(
+    sin(6.2831*aRand.y + uTime*2.0 + p.y*3.0),
+    cos(6.2831*aRand.z + uTime*1.7 + p.z*3.0),
+    sin(6.2831*aRand.w + uTime*2.3 + p.x*3.0));
+
+  // idle breathing
+  p += 0.012 * vec3(
+    sin(uTime*1.1 + aRand.y*40.0),
+    cos(uTime*1.4 + aRand.z*40.0),
+    sin(uTime*0.9 + aRand.w*40.0));
+
+  vec3 wp = (uModel * vec4(p, 1.0)).xyz;
+  float glow = 0.0;
+
+  if (uMode == 1) { // follow / attract
+    vec3 d = uPointer - wp;
+    float f = uPress * exp(-dot(d,d)/0.55);
+    wp += d * f * (0.78 + 0.18*sin(uTime*3.0 + aRand.y*6.2831));
+    vec3 tang = cross(vec3(0.0,0.0,1.0), d);
+    wp += tang * f * 0.3 * sin(uTime*2.2 + aRand.z*6.2831);
+    glow += f * 0.7;
+  } else if (uMode == 2) { // vortex
+    vec2 off = wp.xy - uPointer.xy;
+    float r2 = dot(off,off);
+    float fall = exp(-r2/0.9);
+    float ang = uSpin * (0.12 + fall);
+    float c = cos(ang), s = sin(ang);
+    wp.xy = uPointer.xy + mat2(c,-s,s,c) * off;
+    wp.z += fall * uPress * 0.25 * sin(uTime*4.0 + aRand.y*6.2831);
+    glow += fall * uPress * 0.55;
+  }
+
+  // scatter bursts (ring buffer of recent touches)
+  for (int i = 0; i < ${NTOUCH}; i++) {
+    vec4 tch = uTouches[i];
+    if (tch.w <= 0.0) continue;
+    float age = uTime - tch.z;
+    if (age < 0.0) continue;
+    float w = tch.w * exp(-age*1.6);
+    if (w < 0.004) continue;
+    vec2 off = wp.xy - tch.xy;
+    float infl = exp(-dot(off,off)/0.5);
+    if (infl < 0.01) continue;
+    float fi = float(i);
+    vec3 rdir = normalize(vec3(
+      hash1(aRand.x*37.0 + fi*17.0) - 0.5,
+      hash1(aRand.y*57.0 + fi*23.0) - 0.5,
+      (hash1(aRand.z*71.0 + fi*31.0) - 0.5)*0.8));
+    vec3 outward = normalize(vec3(off, 0.15*(aRand.w-0.5)) + vec3(1e-4));
+    wp += normalize(mix(outward, rdir, 0.65)) * infl * w * (0.9 + 1.8*aRand.w);
+    glow += infl * w * 0.4;
+  }
+
+  vec4 mv = vec4(wp.xy, wp.z - uCamDist, 1.0);
+  gl_Position = uProj * mv;
+  float dist = max(0.2, -mv.z);
+  gl_PointSize = clamp(uSize * (0.5 + 1.3*aRand.w) / dist, 1.0, 7.0);
+
+  vColor = mix(aColFrom, aColTo, e)
+         + glow * vec3(0.95, 0.9, 0.85)
+         + burst * 0.35 * vec3(0.55, 0.45, 0.9);
+  vAlpha = 0.3 + 0.45*aRand.z;
+}`;
+
+const FS = `#version 300 es
+precision mediump float;
+in vec3 vColor;
+in float vAlpha;
+out vec4 frag;
+void main(){
+  vec2 uv = gl_PointCoord - 0.5;
+  float d = dot(uv, uv);
+  if (d > 0.25) discard;
+  float a = smoothstep(0.25, 0.02, d) * vAlpha;
+  frag = vec4(vColor * a, a);
+}`;
+
+function compile(type, src){
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+    throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS))
+  throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+const U = {};
+for (const n of ['uProj','uModel','uTime','uMorph','uPress','uSpin','uSize',
+                 'uCamDist','uPointer','uMode','uTouches'])
+  U[n] = gl.getUniformLocation(prog, n);
+
+// ---------- shape generators ----------
+const rnd = Math.random;
+const g = () => (rnd() + rnd() + rnd() - 1.5) * 2.0; // ~N(0,1)
+const TAU = Math.PI * 2;
+
+function hex(h){ return [(h>>16&255)/255, (h>>8&255)/255, (h&255)/255]; }
+
+// writes color for particle i given gradient t in [0,1]
+function colorize(col, i, t, pal){
+  const [c1, c2, c3] = pal;
+  let r, gr, b;
+  if (rnd() < 0.12) { [r, gr, b] = c3; }
+  else {
+    r  = c1[0] + (c2[0]-c1[0]) * t;
+    gr = c1[1] + (c2[1]-c1[1]) * t;
+    b  = c1[2] + (c2[2]-c1[2]) * t;
+  }
+  const br = 0.65 + rnd()*0.65;
+  col[i*3]   = Math.min(1, r*br);
+  col[i*3+1] = Math.min(1, gr*br);
+  col[i*3+2] = Math.min(1, b*br);
+}
+
+function fuzz(){ return rnd() < 0.13 ? 0.4 : 0.035; } // dust halo vs surface
+
+const SHAPES = [
+  { name:'KNOT-FIELD',
+    caption:'位相結び目が自己交差を回避しながら再構成中。',
+    pal:[hex(0xff2fb4), hex(0x6a4dff), hex(0xffd75e)],
+    gen(pos, col, i){
+      const u = rnd()*TAU, s = 0.42, f = fuzz();
+      const x = (2 + Math.cos(3*u)) * Math.cos(2*u);
+      const y = (2 + Math.cos(3*u)) * Math.sin(2*u);
+      const z = Math.sin(3*u);
+      pos[i*3]   = x*s + g()*(f*1.4);
+      pos[i*3+1] = z*s*1.4 + g()*(f*1.4);
+      pos[i*3+2] = y*s + g()*(f*1.4);
+      colorize(col, i, u/TAU, this.pal);
+    } },
+  { name:'HYPERSPHERE',
+    caption:'球面調和が安定解に収束。表面張力は臨界値未満。',
+    pal:[hex(0x35d6ff), hex(0x2a52ff), hex(0xe8f6ff)],
+    gen(pos, col, i){
+      let x = g(), y = g(), z = g();
+      const n = Math.hypot(x, y, z) || 1;
+      const r = 1.08, f = fuzz();
+      pos[i*3]   = x/n*r + g()*f;
+      pos[i*3+1] = y/n*r + g()*f;
+      pos[i*3+2] = z/n*r + g()*f;
+      colorize(col, i, (y/n + 1) * 0.5, this.pal);
+    } },
+  { name:'GALAXY-ARM',
+    caption:'角運動量が保存されたまま渦状腕が展開する。',
+    pal:[hex(0xffc45e), hex(0x7fb4ff), hex(0xff6a3d)],
+    gen(pos, col, i){
+      if (rnd() < 0.14) { // core bulge
+        pos[i*3] = g()*0.2; pos[i*3+1] = g()*0.14; pos[i*3+2] = g()*0.2;
+        colorize(col, i, 0.05, this.pal);
+        return;
+      }
+      const arm = i % 3;
+      const r = 1.38 * Math.pow(rnd(), 0.62);
+      const a = -r*2.1 + arm*(TAU/3) + g()*0.2*(0.35 + r*0.5);
+      pos[i*3]   = r * Math.cos(a) + g()*0.02;
+      pos[i*3+1] = g() * 0.05 * (1.6 - r);
+      pos[i*3+2] = r * Math.sin(a) + g()*0.02;
+      colorize(col, i, Math.min(1, r/1.35), this.pal);
+    } },
+  { name:'TOPO-SHEET',
+    caption:'高可塑性の多様体が折り畳みを開始。トポロジーは維持される。',
+    pal:[hex(0x4dffb8), hex(0x1f8fff), hex(0xf4ff5e)],
+    gen(pos, col, i){
+      const u = (rnd()*2-1) * 1.3, v = (rnd()*2-1) * 1.3, f = fuzz()*0.8;
+      const y = 0.42*Math.sin(2.2*u + 0.8)*Math.cos(2.0*v)
+              + 0.18*Math.sin(3.4*(u+v));
+      pos[i*3]   = u + g()*f;
+      pos[i*3+1] = y + g()*f;
+      pos[i*3+2] = v + g()*f;
+      colorize(col, i, (y + 0.6) / 1.2, this.pal);
+    } },
+  { name:'DOUBLE-HELIX',
+    caption:'二重らせんの塩基対密度が同期振動している。',
+    pal:[hex(0x8a7bff), hex(0xff5ad0), hex(0x5effe0)],
+    gen(pos, col, i){
+      const t = rnd(), s = t*TAU*2.2, r0 = 0.5, f = fuzz()*0.7;
+      const y = t*2.5 - 1.25;
+      if (rnd() < 0.1) { // rungs
+        const k = rnd()*2-1;
+        pos[i*3]   = Math.cos(s)*r0*k + g()*0.02;
+        pos[i*3+1] = y + g()*0.02;
+        pos[i*3+2] = Math.sin(s)*r0*k + g()*0.02;
+      } else {
+        const ph = (i % 2) * Math.PI;
+        pos[i*3]   = Math.cos(s+ph)*r0 + g()*f;
+        pos[i*3+1] = y + g()*f;
+        pos[i*3+2] = Math.sin(s+ph)*r0 + g()*f;
+      }
+      colorize(col, i, t, this.pal);
+    } },
+  { name:'CARDIOID',
+    caption:'情動場が局所的に濃縮。拍動周期は安定。',
+    pal:[hex(0xff2f55), hex(0xff9ecb), hex(0xffd75e)],
+    gen(pos, col, i){
+      const a = rnd()*TAU, sc = 1.12/17, f = fuzz()*0.7;
+      const s3 = Math.sin(a);
+      const hx = 16 * s3*s3*s3;
+      const hy = 13*Math.cos(a) - 5*Math.cos(2*a) - 2*Math.cos(3*a) - Math.cos(4*a);
+      const k = Math.pow(rnd(), 0.35);
+      pos[i*3]   = hx*sc*k + g()*f;
+      pos[i*3+1] = hy*sc*k + 0.12 + g()*f;
+      pos[i*3+2] = g() * (0.06 + 0.16*k);
+      colorize(col, i, 1 - k*0.9, this.pal);
+    } },
+];
+
+// ---------- buffers ----------
+const posFrom = new Float32Array(COUNT*3), posTo = new Float32Array(COUNT*3);
+const colFrom = new Float32Array(COUNT*3), colTo = new Float32Array(COUNT*3);
+const rands   = new Float32Array(COUNT*4);
+for (let i = 0; i < COUNT*4; i++) rands[i] = rnd();
+
+// intro: from a huge random cloud into shape 0
+for (let i = 0; i < COUNT; i++) {
+  posFrom[i*3] = g()*1.6; posFrom[i*3+1] = g()*1.6; posFrom[i*3+2] = g()*1.6;
+  const b = 0.25 + rnd()*0.3;
+  colFrom[i*3] = b; colFrom[i*3+1] = b*0.9; colFrom[i*3+2] = b*1.2;
+}
+let shapeIdx = 0;
+for (let i = 0; i < COUNT; i++) SHAPES[0].gen(posTo, colTo, i);
+
+function makeBuf(arr, loc, size){
+  const b = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, b);
+  gl.bufferData(gl.ARRAY_BUFFER, arr, gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+  return b;
+}
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const bPosFrom = makeBuf(posFrom, 0, 3);
+const bPosTo   = makeBuf(posTo,   1, 3);
+const bColFrom = makeBuf(colFrom, 2, 3);
+const bColTo   = makeBuf(colTo,   3, 3);
+makeBuf(rands, 4, 4);
+
+function upload(buf, arr){
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, arr);
+}
+
+// ---------- morph control ----------
+let morphT = 1;       // 0..1 progress (starts mid-intro below)
+let autoTimer = 0;
+morphT = 0;           // play the intro morph
+
+const shapeNameEl = document.getElementById('shapeName');
+const captionEl = document.getElementById('caption');
+function showShapeText(){
+  shapeNameEl.textContent = 'FORM ' + String(shapeIdx+1).padStart(2,'0')
+    + ' : ' + SHAPES[shapeIdx].name;
+  captionEl.textContent = SHAPES[shapeIdx].caption;
+}
+showShapeText();
+
+function bakeCurrentInto(fromP, fromC){
+  // freeze the currently displayed (possibly mid-morph) state as new origin
+  const stag = 0.6;
+  for (let i = 0; i < COUNT; i++) {
+    let tt = morphT*(1+stag) - rands[i*4]*stag;
+    tt = tt < 0 ? 0 : tt > 1 ? 1 : tt;
+    const e = tt*tt*(3-2*tt);
+    for (let k = 0; k < 3; k++) {
+      const j = i*3+k;
+      fromP[j] = posFrom[j] + (posTo[j]-posFrom[j])*e;
+      fromC[j] = colFrom[j] + (colTo[j]-colFrom[j])*e;
+    }
+  }
+}
+
+function morphTo(idx){
+  if (idx === shapeIdx && morphT >= 1) return;
+  if (morphT < 1) {
+    bakeCurrentInto(posFrom, colFrom);
+  } else {
+    posFrom.set(posTo); colFrom.set(colTo);
+  }
+  shapeIdx = ((idx % SHAPES.length) + SHAPES.length) % SHAPES.length;
+  const s = SHAPES[shapeIdx];
+  for (let i = 0; i < COUNT; i++) s.gen(posTo, colTo, i);
+  upload(bPosFrom, posFrom); upload(bColFrom, colFrom);
+  upload(bPosTo, posTo);     upload(bColTo, colTo);
+  morphT = 0; autoTimer = 0;
+  showShapeText();
+}
+const nextShape = () => morphTo(shapeIdx + 1);
+
+// ---------- interaction ----------
+let mode = 0;
+let press = 0, pressTarget = 0;
+let spin = 0;
+const pointer = [0, 0, 0];
+const touches = new Float32Array(NTOUCH*4);
+let touchIdx = 0, lastBurst = 0, lastTap = 0, downPos = null, moved = 0;
+
+function toWorld(cx, cy){
+  const r = canvas.getBoundingClientRect();
+  const ndcX = (cx - r.left) / r.width * 2 - 1;
+  const ndcY = 1 - (cy - r.top) / r.height * 2;
+  const halfH = Math.tan(FOV/2) * CAM_DIST;
+  return [ndcX * halfH * (r.width/r.height), ndcY * halfH];
+}
+function addBurst(x, y, strength, now){
+  const j = (touchIdx++ % NTOUCH) * 4;
+  touches[j] = x; touches[j+1] = y; touches[j+2] = now; touches[j+3] = strength;
+}
+
+canvas.addEventListener('pointerdown', ev => {
+  canvas.setPointerCapture(ev.pointerId);
+  const [x, y] = toWorld(ev.clientX, ev.clientY);
+  pointer[0] = x; pointer[1] = y;
+  pressTarget = 1; moved = 0; downPos = [ev.clientX, ev.clientY];
+  const now = performance.now()/1000;
+  if (mode === 0) { addBurst(x, y, 1.2, now); lastBurst = now; }
+});
+canvas.addEventListener('pointermove', ev => {
+  const [x, y] = toWorld(ev.clientX, ev.clientY);
+  pointer[0] = x; pointer[1] = y;
+  if (downPos) moved = Math.max(moved,
+    Math.hypot(ev.clientX-downPos[0], ev.clientY-downPos[1]));
+  if (pressTarget > 0 && mode === 0) {
+    const now = performance.now()/1000;
+    if (now - lastBurst > 0.07) { addBurst(x, y, 0.7, now); lastBurst = now; }
+  }
+});
+function endPress(ev){
+  pressTarget = 0;
+  if (downPos && moved < 24) {
+    const now = performance.now();
+    if (now - lastTap < 320) { nextShape(); lastTap = 0; }
+    else lastTap = now;
+  }
+  downPos = null;
+}
+canvas.addEventListener('pointerup', endPress);
+canvas.addEventListener('pointercancel', endPress);
+
+for (const btn of document.querySelectorAll('#modes button[data-mode]')) {
+  btn.addEventListener('click', () => {
+    mode = +btn.dataset.mode;
+    document.querySelectorAll('#modes button').forEach(b =>
+      b.classList.toggle('on', b === btn));
+  });
+}
+document.getElementById('morphBtn').addEventListener('click', nextShape);
+
+// ---------- matrices ----------
+function perspective(out, fovy, aspect, near, far){
+  const f = 1/Math.tan(fovy/2), nf = 1/(near-far);
+  out.fill(0);
+  out[0]=f/aspect; out[5]=f; out[10]=(far+near)*nf; out[11]=-1;
+  out[14]=2*far*near*nf;
+}
+function modelRot(out, rx, ry){
+  const cx=Math.cos(rx), sx=Math.sin(rx), cy=Math.cos(ry), sy=Math.sin(ry);
+  // Ry * Rx, column-major
+  out[0]=cy;      out[1]=0;   out[2]=-sy;     out[3]=0;
+  out[4]=sy*sx;   out[5]=cx;  out[6]=cy*sx;   out[7]=0;
+  out[8]=sy*cx;   out[9]=-sx; out[10]=cy*cx;  out[11]=0;
+  out[12]=0; out[13]=0; out[14]=0; out[15]=1;
+}
+const proj = new Float32Array(16), model = new Float32Array(16);
+
+// ---------- HUD fake telemetry ----------
+const statsEl = document.getElementById('stats');
+let iter = 10000, topo = 0.15;
+function updateStats(t){
+  iter += 7 + (Math.random()*9|0);
+  topo += (Math.random()-0.5)*0.004;
+  topo = Math.max(0.02, Math.min(0.6, topo));
+  const lr = 0.081 * (1 + 0.12*Math.sin(t*0.4));
+  const sig = 1.57 * (1 + 0.1*Math.sin(t*0.23 + 2));
+  statsEl.textContent =
+    'KOHONEN ITERATION : ' + iter.toLocaleString('en-US') + '\n' +
+    'LEARNING RATE (η) : ' + lr.toFixed(4) + '\n' +
+    'NEIGHBORHOOD (σ)  : ' + sig.toFixed(4) + '\n' +
+    'TOPO-TENSION      : ' + topo.toFixed(4) + '\n' +
+    'PARTICLES         : ' + COUNT.toLocaleString('en-US');
+}
+
+// ---------- render loop ----------
+function resize(){
+  const w = Math.floor(canvas.clientWidth * DPR) || 1;
+  const h = Math.floor(canvas.clientHeight * DPR) || 1;
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w; canvas.height = h;
+    gl.viewport(0, 0, w, h);
+    perspective(proj, FOV, w/h, 0.1, 30);
+  }
+}
+window.addEventListener('resize', resize);
+
+gl.disable(gl.DEPTH_TEST);
+gl.enable(gl.BLEND);
+gl.blendFunc(gl.ONE, gl.ONE);
+gl.clearColor(0, 0, 0, 1);
+
+let prev = performance.now()/1000, statT = 0;
+function frame(){
+  const now = performance.now()/1000;
+  const dt = Math.min(0.05, now - prev);
+  prev = now;
+  resize();
+
+  // morph progress + auto cycle
+  if (morphT < 1) morphT = Math.min(1, morphT + dt/MORPH_SEC);
+  else {
+    autoTimer += dt;
+    if (autoTimer > AUTO_SEC) nextShape();
+  }
+
+  // interaction smoothing
+  press += (pressTarget - press) * Math.min(1, dt*8);
+  if (mode === 2 && pressTarget > 0) spin = Math.min(14, spin + dt*3.2);
+  else spin *= Math.exp(-dt/1.1);
+
+  const ry = now * 0.12, rx = 0.18 + 0.22*Math.sin(now*0.1);
+  modelRot(model, rx, ry);
+
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.uniformMatrix4fv(U.uProj, false, proj);
+  gl.uniformMatrix4fv(U.uModel, false, model);
+  gl.uniform1f(U.uTime, now);
+  gl.uniform1f(U.uMorph, morphT);
+  gl.uniform1f(U.uPress, press);
+  gl.uniform1f(U.uSpin, spin);
+  gl.uniform1f(U.uSize, canvas.height * 0.0042 * (coarse ? 1.25 : 1));
+  gl.uniform1f(U.uCamDist, CAM_DIST);
+  gl.uniform3f(U.uPointer, pointer[0], pointer[1], 0);
+  gl.uniform1i(U.uMode, mode);
+  gl.uniform4fv(U.uTouches, touches);
+  gl.drawArrays(gl.POINTS, 0, COUNT);
+
+  statT += dt;
+  if (statT > 0.1) { statT = 0; updateStats(now); }
+  requestAnimationFrame(frame);
+}
+resize();
+requestAnimationFrame(frame);
+
+})();
+</script>
