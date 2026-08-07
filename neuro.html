@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>NEURON DRIFT — 脳神経の中を彷徨う</title>
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #000;
+    touch-action: none;
+    overscroll-behavior: none;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  }
+  #gl {
+    position: fixed; inset: 0;
+    width: 100vw; height: 100vh;
+    display: block;
+    cursor: grab;
+  }
+  #gl.dragging { cursor: grabbing; }
+
+  .ui {
+    position: fixed;
+    z-index: 10;
+    color: rgba(225, 240, 255, 0.92);
+    user-select: none;
+    -webkit-user-select: none;
+    transition: opacity 1.2s ease;
+  }
+  .ui.hidden { opacity: 0; pointer-events: none; }
+
+  #controls {
+    bottom: max(18px, env(safe-area-inset-bottom));
+    right: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #controls button {
+    background: rgba(2, 5, 12, 0.55);
+    border: 1.5px solid rgba(90, 170, 255, 0.5);
+    color: rgba(230, 244, 255, 0.95);
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 0.2em;
+    text-indent: 0.2em;
+    padding: 8px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    text-shadow: 0 0 8px rgba(110, 190, 255, 0.8);
+    transition: border-color 0.3s, color 0.3s, box-shadow 0.3s;
+  }
+  #controls button:hover { border-color: rgba(150, 210, 255, 0.9); }
+  #controls button.active {
+    border-color: rgba(255, 180, 80, 0.95);
+    box-shadow: 0 0 14px rgba(255, 160, 60, 0.5), inset 0 0 8px rgba(255, 160, 60, 0.22);
+    text-shadow: 0 0 8px rgba(255, 190, 110, 0.9);
+  }
+
+  #speedbox {
+    bottom: max(18px, env(safe-area-inset-bottom));
+    left: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+  }
+  #speed {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 120px; height: 2px;
+    background: rgba(110, 180, 255, 0.4);
+    outline: none;
+  }
+  #speed::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: rgba(170, 220, 255, 0.95);
+    box-shadow: 0 0 12px rgba(110, 190, 255, 0.9);
+    cursor: pointer;
+  }
+  #speed::-moz-range-thumb {
+    width: 14px; height: 14px; border: none;
+    border-radius: 50%;
+    background: rgba(170, 220, 255, 0.95);
+    cursor: pointer;
+  }
+
+  #fserr {
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 80vw;
+    text-align: center;
+    font-size: 14px;
+    line-height: 2;
+    display: none;
+    white-space: pre-wrap;
+  }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+
+<div class="ui" id="speedbox">
+  <span>速</span>
+  <input type="range" id="speed" min="0.1" max="5" step="0.05" value="1.0">
+</div>
+<div class="ui" id="controls">
+  <button data-theme="0" class="active">電脳</button>
+  <button data-theme="1">蒼紅</button>
+  <button data-theme="2">紫宮</button>
+</div>
+<div class="ui" id="fserr"></div>
+
+<script>
+/* ==== mathcat v0.1.0（同梱）: 神経ネットワーク生成とカメラ運動に使用 ==== */
+/**
+ * mathcat v0.1.0 — A lean, allocation-free, data-oriented math kernel for interactive apps on the web.
+ * Generated from src/ by scripts/build.mjs. Do not edit by hand.
+ *
+ * The usage contract: every operation is op(out, a, b) — writes into the
+ * caller-owned `out`, returns it, never allocates. `out` may alias an
+ * input. Keep call sites monomorphic (one array type per code path).
+ */
+(() => {
+/** The tolerance used by approximate comparisons. */
+const EPSILON = 0.000001;
+
+const vec2 = (() => {
+/** Allocates a new zero vector. The only allocating function in this module. */
+const create = () => [0, 0];
+
+const set = (out, x, y) => {
+  out[0] = x;
+  out[1] = y;
+  return out;
+};
+
+const copy = (out, a) => {
+  out[0] = a[0];
+  out[1] = a[1];
+  return out;
+};
+
+const add = (out, a, b) => {
+  out[0] = a[0] + b[0];
+  out[1] = a[1] + b[1];
+  return out;
+};
+
+const subtract = (out, a, b) => {
+  out[0] = a[0] - b[0];
+  out[1] = a[1] - b[1];
+  return out;
+};
+
+const scale = (out, a, s) => {
+  out[0] = a[0] * s;
+  out[1] = a[1] * s;
+  return out;
+};
+
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1];
+
+/** The z-component of the 3D cross product of two 2D vectors. */
+const cross = (a, b) => a[0] * b[1] - a[1] * b[0];
+
+const length = (a) => Math.sqrt(a[0] * a[0] + a[1] * a[1]);
+
+const squaredLength = (a) => a[0] * a[0] + a[1] * a[1];
+
+const distance = (a, b) => {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  return Math.sqrt(dx * dx + dy * dy);
+};
+
+const normalize = (out, a) => {
+  const len = Math.sqrt(a[0] * a[0] + a[1] * a[1]);
+  const inv = len > EPSILON ? 1 / len : 0;
+  out[0] = a[0] * inv;
+  out[1] = a[1] * inv;
+  return out;
+};
+
+const lerp = (out, a, b, t) => {
+  out[0] = a[0] + (b[0] - a[0]) * t;
+  out[1] = a[1] + (b[1] - a[1]) * t;
+  return out;
+};
+
+/** Rotates `a` around `origin` by `rad` radians, counter-clockwise. */
+const rotate = (out, a, origin, rad) => {
+  const x = a[0] - origin[0];
+  const y = a[1] - origin[1];
+  const s = Math.sin(rad);
+  const c = Math.cos(rad);
+  out[0] = origin[0] + x * c - y * s;
+  out[1] = origin[1] + x * s + y * c;
+  return out;
+};
+
+const equals = (a, b, epsilon         = EPSILON) =>
+  Math.abs(a[0] - b[0]) <= epsilon && Math.abs(a[1] - b[1]) <= epsilon;
+
+return Object.freeze({ create, set, copy, add, subtract, scale, dot, cross, length, squaredLength, distance, normalize, lerp, rotate, equals });
+})();
+
+const vec3 = (() => {
+/** Allocates a new zero vector. The only allocating function in this module. */
+const create = () => [0, 0, 0];
+
+const set = (out, x, y, z) => {
+  out[0] = x;
+  out[1] = y;
+  out[2] = z;
+  return out;
+};
+
+const copy = (out, a) => {
+  out[0] = a[0];
+  out[1] = a[1];
+  out[2] = a[2];
+  return out;
+};
+
+const add = (out, a, b) => {
+  out[0] = a[0] + b[0];
+  out[1] = a[1] + b[1];
+  out[2] = a[2] + b[2];
+  return out;
+};
+
+const subtract = (out, a, b) => {
+  out[0] = a[0] - b[0];
+  out[1] = a[1] - b[1];
+  out[2] = a[2] - b[2];
+  return out;
+};
+
+const multiply = (out, a, b) => {
+  out[0] = a[0] * b[0];
+  out[1] = a[1] * b[1];
+  out[2] = a[2] * b[2];
+  return out;
+};
+
+const scale = (out, a, s) => {
+  out[0] = a[0] * s;
+  out[1] = a[1] * s;
+  out[2] = a[2] * s;
+  return out;
+};
+
+/** out = a + b * s. The fused workhorse of integration loops. */
+const scaleAndAdd = (out, a, b, s) => {
+  out[0] = a[0] + b[0] * s;
+  out[1] = a[1] + b[1] * s;
+  out[2] = a[2] + b[2] * s;
+  return out;
+};
+
+const dot = (a, b) =>
+  a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+const cross = (out, a, b) => {
+  const ax = a[0], ay = a[1], az = a[2];
+  const bx = b[0], by = b[1], bz = b[2];
+  out[0] = ay * bz - az * by;
+  out[1] = az * bx - ax * bz;
+  out[2] = ax * by - ay * bx;
+  return out;
+};
+
+const length = (a) =>
+  Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+
+const squaredLength = (a) =>
+  a[0] * a[0] + a[1] * a[1] + a[2] * a[2];
+
+const distance = (a, b) => {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const dz = b[2] - a[2];
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+};
+
+const normalize = (out, a) => {
+  const len = Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+  const inv = len > EPSILON ? 1 / len : 0;
+  out[0] = a[0] * inv;
+  out[1] = a[1] * inv;
+  out[2] = a[2] * inv;
+  return out;
+};
+
+const negate = (out, a) => {
+  out[0] = -a[0];
+  out[1] = -a[1];
+  out[2] = -a[2];
+  return out;
+};
+
+const lerp = (out, a, b, t) => {
+  out[0] = a[0] + (b[0] - a[0]) * t;
+  out[1] = a[1] + (b[1] - a[1]) * t;
+  out[2] = a[2] + (b[2] - a[2]) * t;
+  return out;
+};
+
+/** Transforms `a` by the quaternion `q` (q must be normalized). */
+const transformQuat = (out, a, q) => {
+  // t = 2 * cross(q.xyz, a); out = a + q.w * t + cross(q.xyz, t)
+  const qx = q[0], qy = q[1], qz = q[2], qw = q[3];
+  const x = a[0], y = a[1], z = a[2];
+
+  const tx = 2 * (qy * z - qz * y);
+  const ty = 2 * (qz * x - qx * z);
+  const tz = 2 * (qx * y - qy * x);
+
+  out[0] = x + qw * tx + qy * tz - qz * ty;
+  out[1] = y + qw * ty + qz * tx - qx * tz;
+  out[2] = z + qw * tz + qx * ty - qy * tx;
+  return out;
+};
+
+/** Transforms the point `a` by the matrix `m` (with perspective divide). */
+const transformMat4 = (out, a, m) => {
+  const x = a[0], y = a[1], z = a[2];
+  const w = m[3] * x + m[7] * y + m[11] * z + m[15] || 1;
+  out[0] = (m[0] * x + m[4] * y + m[8] * z + m[12]) / w;
+  out[1] = (m[1] * x + m[5] * y + m[9] * z + m[13]) / w;
+  out[2] = (m[2] * x + m[6] * y + m[10] * z + m[14]) / w;
+  return out;
+};
+
+const equals = (a, b, epsilon         = EPSILON) =>
+  Math.abs(a[0] - b[0]) <= epsilon &&
+  Math.abs(a[1] - b[1]) <= epsilon &&
+  Math.abs(a[2] - b[2]) <= epsilon;
+
+return Object.freeze({ create, set, copy, add, subtract, multiply, scale, scaleAndAdd, dot, cross, length, squaredLength, distance, normalize, negate, lerp, transformQuat, transformMat4, equals });
+})();
+
+const quat = (() => {
+/** Allocates a new identity quaternion. The only allocating function in this module. */
+const create = () => [0, 0, 0, 1];
+
+const identity = (out) => {
+  out[0] = 0;
+  out[1] = 0;
+  out[2] = 0;
+  out[3] = 1;
+  return out;
+};
+
+const set = (out, x, y, z, w) => {
+  out[0] = x;
+  out[1] = y;
+  out[2] = z;
+  out[3] = w;
+  return out;
+};
+
+const copy = (out, a) => {
+  out[0] = a[0];
+  out[1] = a[1];
+  out[2] = a[2];
+  out[3] = a[3];
+  return out;
+};
+
+/** Sets `out` to a rotation of `rad` radians around the normalized `axis`. */
+const setAxisAngle = (out, axis, rad) => {
+  const half = rad * 0.5;
+  const s = Math.sin(half);
+  out[0] = axis[0] * s;
+  out[1] = axis[1] * s;
+  out[2] = axis[2] * s;
+  out[3] = Math.cos(half);
+  return out;
+};
+
+/**
+ * Sets `out` from euler angles in radians, applied in x-then-y-then-z
+ * (intrinsic XYZ) order.
+ */
+const fromEuler = (out, x, y, z) => {
+  const sx = Math.sin(x * 0.5), cx = Math.cos(x * 0.5);
+  const sy = Math.sin(y * 0.5), cy = Math.cos(y * 0.5);
+  const sz = Math.sin(z * 0.5), cz = Math.cos(z * 0.5);
+
+  out[0] = sx * cy * cz + cx * sy * sz;
+  out[1] = cx * sy * cz - sx * cy * sz;
+  out[2] = cx * cy * sz + sx * sy * cz;
+  out[3] = cx * cy * cz - sx * sy * sz;
+  return out;
+};
+
+/** Hamilton product: the rotation `b` followed by the rotation `a`. */
+const multiply = (out, a, b) => {
+  const ax = a[0], ay = a[1], az = a[2], aw = a[3];
+  const bx = b[0], by = b[1], bz = b[2], bw = b[3];
+
+  out[0] = ax * bw + aw * bx + ay * bz - az * by;
+  out[1] = ay * bw + aw * by + az * bx - ax * bz;
+  out[2] = az * bw + aw * bz + ax * by - ay * bx;
+  out[3] = aw * bw - ax * bx - ay * by - az * bz;
+  return out;
+};
+
+/** The inverse rotation of a normalized quaternion. */
+const conjugate = (out, a) => {
+  out[0] = -a[0];
+  out[1] = -a[1];
+  out[2] = -a[2];
+  out[3] = a[3];
+  return out;
+};
+
+const dot = (a, b) =>
+  a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+
+const normalize = (out, a) => {
+  const len = Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2] + a[3] * a[3]);
+  const inv = len > EPSILON ? 1 / len : 0;
+  out[0] = a[0] * inv;
+  out[1] = a[1] * inv;
+  out[2] = a[2] * inv;
+  out[3] = a[3] * inv;
+  return out;
+};
+
+/** Spherical linear interpolation between `a` and `b` by `t` in [0, 1]. */
+const slerp = (out, a, b, t) => {
+  const ax = a[0], ay = a[1], az = a[2], aw = a[3];
+  let bx = b[0], by = b[1], bz = b[2], bw = b[3];
+
+  // Take the shortest arc: if the quaternions point away from each other,
+  // negate one of them.
+  let cosom = ax * bx + ay * by + az * bz + aw * bw;
+  if (cosom < 0) {
+    cosom = -cosom;
+    bx = -bx;
+    by = -by;
+    bz = -bz;
+    bw = -bw;
+  }
+
+  // Fall back to linear interpolation when the arc is tiny, where the
+  // spherical formula divides by ~0.
+  let scale0 = 1 - t;
+  let scale1 = t;
+  if (1 - cosom > EPSILON) {
+    const omega = Math.acos(cosom);
+    const sinom = Math.sin(omega);
+    scale0 = Math.sin((1 - t) * omega) / sinom;
+    scale1 = Math.sin(t * omega) / sinom;
+  }
+
+  out[0] = scale0 * ax + scale1 * bx;
+  out[1] = scale0 * ay + scale1 * by;
+  out[2] = scale0 * az + scale1 * bz;
+  out[3] = scale0 * aw + scale1 * bw;
+  return out;
+};
+
+const equals = (a, b, epsilon         = EPSILON) =>
+  Math.abs(a[0] - b[0]) <= epsilon &&
+  Math.abs(a[1] - b[1]) <= epsilon &&
+  Math.abs(a[2] - b[2]) <= epsilon &&
+  Math.abs(a[3] - b[3]) <= epsilon;
+
+return Object.freeze({ create, identity, set, copy, setAxisAngle, fromEuler, multiply, conjugate, dot, normalize, slerp, equals });
+})();
+
+const mat4 = (() => {
+/** Allocates a new identity matrix. The only allocating function in this module. */
+const create = () => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+
+const identity = (out) => {
+  out[0] = 1; out[1] = 0; out[2] = 0; out[3] = 0;
+  out[4] = 0; out[5] = 1; out[6] = 0; out[7] = 0;
+  out[8] = 0; out[9] = 0; out[10] = 1; out[11] = 0;
+  out[12] = 0; out[13] = 0; out[14] = 0; out[15] = 1;
+  return out;
+};
+
+const copy = (out, a) => {
+  for (let i = 0; i < 16; i++) out[i] = a[i];
+  return out;
+};
+
+/** out = a * b (b is applied first when transforming column vectors). */
+const multiply = (out, a, b) => {
+  const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+  const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+  const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+  const a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+
+  let b0 = b[0], b1 = b[1], b2 = b[2], b3 = b[3];
+  out[0] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+  out[1] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+  out[2] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+  out[3] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+  b0 = b[4]; b1 = b[5]; b2 = b[6]; b3 = b[7];
+  out[4] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+  out[5] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+  out[6] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+  out[7] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+  b0 = b[8]; b1 = b[9]; b2 = b[10]; b3 = b[11];
+  out[8] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+  out[9] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+  out[10] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+  out[11] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+  b0 = b[12]; b1 = b[13]; b2 = b[14]; b3 = b[15];
+  out[12] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+  out[13] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+  out[14] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+  out[15] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+  return out;
+};
+
+/**
+ * Composes a transform from a translation, a normalized rotation quaternion,
+ * and a non-uniform scale — the standard TRS used by scene graphs.
+ */
+const compose = (out, translation, rotation, scale) => {
+  const x = rotation[0], y = rotation[1], z = rotation[2], w = rotation[3];
+  const x2 = x + x, y2 = y + y, z2 = z + z;
+  const xx = x * x2, xy = x * y2, xz = x * z2;
+  const yy = y * y2, yz = y * z2, zz = z * z2;
+  const wx = w * x2, wy = w * y2, wz = w * z2;
+  const sx = scale[0], sy = scale[1], sz = scale[2];
+
+  out[0] = (1 - (yy + zz)) * sx;
+  out[1] = (xy + wz) * sx;
+  out[2] = (xz - wy) * sx;
+  out[3] = 0;
+  out[4] = (xy - wz) * sy;
+  out[5] = (1 - (xx + zz)) * sy;
+  out[6] = (yz + wx) * sy;
+  out[7] = 0;
+  out[8] = (xz + wy) * sz;
+  out[9] = (yz - wx) * sz;
+  out[10] = (1 - (xx + yy)) * sz;
+  out[11] = 0;
+  out[12] = translation[0];
+  out[13] = translation[1];
+  out[14] = translation[2];
+  out[15] = 1;
+  return out;
+};
+
+/** General inverse via the adjugate. Returns `out` zeroed if `a` is singular. */
+const invert = (out, a) => {
+  const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+  const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+  const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+  const a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+
+  const b00 = a00 * a11 - a01 * a10;
+  const b01 = a00 * a12 - a02 * a10;
+  const b02 = a00 * a13 - a03 * a10;
+  const b03 = a01 * a12 - a02 * a11;
+  const b04 = a01 * a13 - a03 * a11;
+  const b05 = a02 * a13 - a03 * a12;
+  const b06 = a20 * a31 - a21 * a30;
+  const b07 = a20 * a32 - a22 * a30;
+  const b08 = a20 * a33 - a23 * a30;
+  const b09 = a21 * a32 - a22 * a31;
+  const b10 = a21 * a33 - a23 * a31;
+  const b11 = a22 * a33 - a23 * a32;
+
+  const det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+  if (det === 0) {
+    for (let i = 0; i < 16; i++) out[i] = 0;
+    return out;
+  }
+  const inv = 1 / det;
+
+  out[0] = (a11 * b11 - a12 * b10 + a13 * b09) * inv;
+  out[1] = (a02 * b10 - a01 * b11 - a03 * b09) * inv;
+  out[2] = (a31 * b05 - a32 * b04 + a33 * b03) * inv;
+  out[3] = (a22 * b04 - a21 * b05 - a23 * b03) * inv;
+  out[4] = (a12 * b08 - a10 * b11 - a13 * b07) * inv;
+  out[5] = (a00 * b11 - a02 * b08 + a03 * b07) * inv;
+  out[6] = (a32 * b02 - a30 * b05 - a33 * b01) * inv;
+  out[7] = (a20 * b05 - a22 * b02 + a23 * b01) * inv;
+  out[8] = (a10 * b10 - a11 * b08 + a13 * b06) * inv;
+  out[9] = (a01 * b08 - a00 * b10 - a03 * b06) * inv;
+  out[10] = (a30 * b04 - a31 * b02 + a33 * b00) * inv;
+  out[11] = (a21 * b02 - a20 * b04 - a23 * b00) * inv;
+  out[12] = (a11 * b07 - a10 * b09 - a12 * b06) * inv;
+  out[13] = (a00 * b09 - a01 * b07 + a02 * b06) * inv;
+  out[14] = (a31 * b01 - a30 * b03 - a32 * b00) * inv;
+  out[15] = (a20 * b03 - a21 * b01 + a22 * b00) * inv;
+  return out;
+};
+
+/**
+ * Right-handed perspective projection mapping z to clip-space [-1, 1]
+ * (the WebGL convention). `fovy` is the vertical field of view in radians.
+ */
+const perspective = (
+  out,
+  fovy,
+  aspect,
+  near,
+  far,
+) => {
+  const f = 1 / Math.tan(fovy / 2);
+  const nf = 1 / (near - far);
+
+  out[0] = f / aspect;
+  out[1] = 0; out[2] = 0; out[3] = 0;
+  out[4] = 0;
+  out[5] = f;
+  out[6] = 0; out[7] = 0;
+  out[8] = 0; out[9] = 0;
+  out[10] = (far + near) * nf;
+  out[11] = -1;
+  out[12] = 0; out[13] = 0;
+  out[14] = 2 * far * near * nf;
+  out[15] = 0;
+  return out;
+};
+
+/** Right-handed view matrix looking from `eye` toward `target`. */
+const lookAt = (out, eye, target, up) => {
+  // Forward (z), right (x), and true up (y) axes of the camera.
+  let zx = eye[0] - target[0];
+  let zy = eye[1] - target[1];
+  let zz = eye[2] - target[2];
+  let len = Math.sqrt(zx * zx + zy * zy + zz * zz);
+  if (len > 0) { zx /= len; zy /= len; zz /= len; }
+
+  let xx = up[1] * zz - up[2] * zy;
+  let xy = up[2] * zx - up[0] * zz;
+  let xz = up[0] * zy - up[1] * zx;
+  len = Math.sqrt(xx * xx + xy * xy + xz * xz);
+  if (len > 0) { xx /= len; xy /= len; xz /= len; }
+
+  const yx = zy * xz - zz * xy;
+  const yy = zz * xx - zx * xz;
+  const yz = zx * xy - zy * xx;
+
+  out[0] = xx; out[1] = yx; out[2] = zx; out[3] = 0;
+  out[4] = xy; out[5] = yy; out[6] = zy; out[7] = 0;
+  out[8] = xz; out[9] = yz; out[10] = zz; out[11] = 0;
+  out[12] = -(xx * eye[0] + xy * eye[1] + xz * eye[2]);
+  out[13] = -(yx * eye[0] + yy * eye[1] + yz * eye[2]);
+  out[14] = -(zx * eye[0] + zy * eye[1] + zz * eye[2]);
+  out[15] = 1;
+  return out;
+};
+
+const transpose = (out, a) => {
+  if (out === a) {
+    // In-place: swap the off-diagonal pairs.
+    let t = a[1]; out[1] = a[4]; out[4] = t;
+    t = a[2]; out[2] = a[8]; out[8] = t;
+    t = a[3]; out[3] = a[12]; out[12] = t;
+    t = a[6]; out[6] = a[9]; out[9] = t;
+    t = a[7]; out[7] = a[13]; out[13] = t;
+    t = a[11]; out[11] = a[14]; out[14] = t;
+    return out;
+  }
+  out[0] = a[0]; out[1] = a[4]; out[2] = a[8]; out[3] = a[12];
+  out[4] = a[1]; out[5] = a[5]; out[6] = a[9]; out[7] = a[13];
+  out[8] = a[2]; out[9] = a[6]; out[10] = a[10]; out[11] = a[14];
+  out[12] = a[3]; out[13] = a[7]; out[14] = a[11]; out[15] = a[15];
+  return out;
+};
+
+const equals = (a, b, epsilon         = 0.000001) => {
+  for (let i = 0; i < 16; i++) {
+    if (Math.abs(a[i] - b[i]) > epsilon) return false;
+  }
+  return true;
+};
+
+return Object.freeze({ create, identity, copy, multiply, compose, invert, perspective, lookAt, transpose, equals });
+})();
+
+const color = (() => {
+/** Allocates a new black color. The only allocating function in this module. */
+const create = () => [0, 0, 0];
+
+const set = (out, r, g, b) => {
+  out[0] = r;
+  out[1] = g;
+  out[2] = b;
+  return out;
+};
+
+/** Parses a 0xRRGGBB integer (e.g. 0xff8800) into `out`. */
+const fromHex = (out, hex) => {
+  out[0] = ((hex >> 16) & 0xff) / 255;
+  out[1] = ((hex >> 8) & 0xff) / 255;
+  out[2] = (hex & 0xff) / 255;
+  return out;
+};
+
+/** Packs `a` into a 0xRRGGBB integer, clamping each component to [0, 1]. */
+const toHex = (a) => {
+  const r = Math.round(Math.min(Math.max(a[0], 0), 1) * 255);
+  const g = Math.round(Math.min(Math.max(a[1], 0), 1) * 255);
+  const b = Math.round(Math.min(Math.max(a[2], 0), 1) * 255);
+  return (r << 16) | (g << 8) | b;
+};
+
+/** Sets `out` from hue [0, 1), saturation [0, 1], and lightness [0, 1]. */
+const fromHsl = (out, h, s, l) => {
+  const hue2rgb = (p, q, t) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+
+  if (s === 0) {
+    out[0] = out[1] = out[2] = l;
+    return out;
+  }
+
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  out[0] = hue2rgb(p, q, h + 1 / 3);
+  out[1] = hue2rgb(p, q, h);
+  out[2] = hue2rgb(p, q, h - 1 / 3);
+  return out;
+};
+
+const lerp = (out, a, b, t) => {
+  out[0] = a[0] + (b[0] - a[0]) * t;
+  out[1] = a[1] + (b[1] - a[1]) * t;
+  out[2] = a[2] + (b[2] - a[2]) * t;
+  return out;
+};
+
+/** Converts sRGB components to linear-light, as GPUs expect for shading. */
+const srgbToLinear = (out, a) => {
+  for (let i = 0; i < 3; i++) {
+    const c = a[i];
+    out[i] = c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  }
+  return out;
+};
+
+/** Converts linear-light components back to sRGB for display. */
+const linearToSrgb = (out, a) => {
+  for (let i = 0; i < 3; i++) {
+    const c = a[i];
+    out[i] = c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055;
+  }
+  return out;
+};
+
+return Object.freeze({ create, set, fromHex, toHex, fromHsl, lerp, srgbToLinear, linearToSrgb });
+})();
+
+const random = (() => {
+/**
+ * Creates a mulberry32 generator from a 32-bit integer seed. Fast, tiny, and
+ * statistically solid for interactive use (not for cryptography). This is
+ * the only allocating function in this module.
+ */
+const createRng = (seed) => {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+/** A uniform float in [min, max). */
+const range = (rng, min, max) =>
+  min + rng() * (max - min);
+
+/** A uniform integer in [min, max] inclusive. */
+const intRange = (rng, min, max) =>
+  min + Math.floor(rng() * (max - min + 1));
+
+/** A uniform point on the unit circle. */
+const onCircle = (out, rng) => {
+  const angle = rng() * Math.PI * 2;
+  out[0] = Math.cos(angle);
+  out[1] = Math.sin(angle);
+  return out;
+};
+
+/** A uniform point on the unit sphere's surface. */
+const onSphere = (out, rng) => {
+  // Uniform via z-slice: z uniform in [-1, 1], angle uniform in [0, 2pi).
+  const z = rng() * 2 - 1;
+  const angle = rng() * Math.PI * 2;
+  const r = Math.sqrt(1 - z * z);
+  out[0] = r * Math.cos(angle);
+  out[1] = r * Math.sin(angle);
+  out[2] = z;
+  return out;
+};
+
+/** A uniform point inside the unit sphere. */
+const inSphere = (out, rng) => {
+  onSphere(out, rng);
+  // Cube root makes the radial distribution uniform by volume.
+  const r = Math.cbrt(rng());
+  out[0] *= r;
+  out[1] *= r;
+  out[2] *= r;
+  return out;
+};
+
+return Object.freeze({ createRng, range, intRange, onCircle, onSphere, inSphere });
+})();
+
+const easing = (() => {
+const linear = (t) => t;
+
+const quadIn = (t) => t * t;
+
+const quadOut = (t) => t * (2 - t);
+
+const quadInOut = (t) =>
+  t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+
+const cubicIn = (t) => t * t * t;
+
+const cubicOut = (t) => 1 - (1 - t) ** 3;
+
+const cubicInOut = (t) =>
+  t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+
+const expoOut = (t) =>
+  t === 1 ? 1 : 1 - 2 ** (-10 * t);
+
+const elasticOut = (t) => {
+  if (t === 0 || t === 1) return t;
+  const c = (2 * Math.PI) / 3;
+  return 2 ** (-10 * t) * Math.sin((t * 10 - 0.75) * c) + 1;
+};
+
+const bounceOut = (t) => {
+  const n = 7.5625;
+  const d = 2.75;
+  if (t < 1 / d) return n * t * t;
+  if (t < 2 / d) { t -= 1.5 / d; return n * t * t + 0.75; }
+  if (t < 2.5 / d) { t -= 2.25 / d; return n * t * t + 0.9375; }
+  t -= 2.625 / d;
+  return n * t * t + 0.984375;
+};
+
+/** Hermite smoothing between two edges; the GLSL smoothstep. */
+const smoothstep = (edge0, edge1, x) => {
+  const t = Math.min(Math.max((x - edge0) / (edge1 - edge0), 0), 1);
+  return t * t * (3 - 2 * t);
+};
+
+const clamp = (x, min, max) =>
+  Math.min(Math.max(x, min), max);
+
+/** Linear interpolation between scalars. */
+const mix = (a, b, t) => a + (b - a) * t;
+
+/** Maps `x` from [inMin, inMax] to [outMin, outMax], without clamping. */
+const remap = (
+  x,
+  inMin,
+  inMax,
+  outMin,
+  outMax,
+) => outMin + ((x - inMin) / (inMax - inMin)) * (outMax - outMin);
+
+return Object.freeze({ linear, quadIn, quadOut, quadInOut, cubicIn, cubicOut, cubicInOut, expoOut, elasticOut, bounceOut, smoothstep, clamp, mix, remap });
+})();
+
+globalThis.mathcat = Object.freeze({ EPSILON, vec2, vec3, quat, mat4, color, random, easing });
+})();
+
+</script>
+
+<script>
+"use strict";
+
+// ---- 繊維（軸索・樹状突起）：カメラ正対リボン。ハロー + 芯 + 走るパルス ----
+const VERT_FIBER = `
+precision highp float;
+attribute vec3 aPos;
+attribute vec3 aTan;
+attribute vec4 aData;   // x: side(±1), y: t(0..1), z: 半幅, w: 1=軸索 / 0=樹状突起
+attribute vec4 aPulse;  // x: 位相, y: 速さ, z: 色セレクタA, w: 色セレクタB
+uniform mat4 uVP;
+uniform vec3 uCamPos;
+uniform float uTime;
+uniform vec3 uPal0;
+uniform vec3 uPal1;
+uniform vec3 uPal2;
+uniform vec3 uPal3;
+varying vec4 vCol;      // rgb + 明るさ
+varying vec2 vSP;       // x: side, y: パルス強度
+
+vec3 pal(float r) {
+  if (r < 0.28) return uPal0;
+  if (r < 0.55) return uPal1;
+  if (r < 0.80) return uPal2;
+  return uPal3;
+}
+
+void main() {
+  vec3 toCam = aPos - uCamPos;
+  float dist = max(length(toCam), 1e-4);
+  vec3 sideDir = normalize(cross(aTan, toCam / dist));
+  float w = aData.z * (1.0 + dist * 0.06);
+  vec3 world = aPos + sideDir * (aData.x * w);
+  gl_Position = uVP * vec4(world, 1.0);
+
+  float t = aData.y;
+
+  // 信号パルス：繊維の上を光が走る
+  float pp = fract(uTime * aPulse.y + aPulse.x);
+  float d = abs(t - pp);
+  d = min(d, 1.0 - d);
+  float pulse = exp(-d * d * 420.0);
+
+  vec3 col = mix(pal(aPulse.z), pal(aPulse.w), t);
+
+  // 細胞体の近くほど明るく灯る。樹状突起の先端はすっと消える
+  float endGlow = exp(-t * 4.0) + exp(-(1.0 - t) * 4.0) * aData.w;
+  float tipFade = mix(1.0 - t * t, 1.0, aData.w);
+
+  float fog = exp(-dist * 0.035) * smoothstep(46.0, 30.0, dist);
+  float nearFade = smoothstep(0.22, 1.1, dist);
+
+  vCol = vec4(col, (0.75 + endGlow * 0.7 + pulse * 2.6) * tipFade * fog * nearFade);
+  vSP = vec2(aData.x, pulse);
+}
+`;
+
+const FRAG_FIBER = `
+precision highp float;
+varying vec4 vCol;
+varying vec2 vSP;
+void main() {
+  float f = 1.0 - abs(vSP.x);
+  float halo = f * f * 0.34;
+  float core = pow(f, 6.0);
+  vec3 c = (vCol.rgb * (halo + core * 2.0) + vec3(1.0) * core * vSP.y * 0.9) * vCol.a;
+  gl_FragColor = vec4(c, 1.0);
+}
+`;
+
+// ---- 点（細胞体・シナプスの粒・浮遊塵）----
+const VERT_POINT = `
+precision highp float;
+attribute vec3 aPos;
+attribute vec4 aInfo;   // x: 色セレクタ, y: 大きさ, z: 位相, w: 種別(0 細胞体 / 1 粒 / 2 塵)
+uniform mat4 uVP;
+uniform vec3 uCamPos;
+uniform float uTime;
+uniform float uResY;
+uniform vec3 uPal0;
+uniform vec3 uPal1;
+uniform vec3 uPal2;
+uniform vec3 uPal3;
+varying vec4 vCol;
+varying float vKind;
+
+vec3 pal(float r) {
+  if (r < 0.28) return uPal0;
+  if (r < 0.55) return uPal1;
+  if (r < 0.80) return uPal2;
+  return uPal3;
+}
+
+void main() {
+  gl_Position = uVP * vec4(aPos, 1.0);
+  float dist = max(distance(aPos, uCamPos), 1e-4);
+  gl_PointSize = clamp(uResY * aInfo.y / dist, 1.0, 240.0);
+
+  // 細胞体はゆらめき、ときどき強く発火する
+  float tw = 0.72 + 0.28 * sin(uTime * (1.5 + aInfo.z * 2.5) + aInfo.z * 40.0);
+  float fire = pow(0.5 + 0.5 * sin(uTime * (0.4 + aInfo.z * 0.7) + aInfo.z * 90.0), 24.0) * 2.5;
+
+  float fog = exp(-dist * 0.035) * smoothstep(46.0, 30.0, dist);
+  float nearFade = smoothstep(0.22, 1.1, dist);
+
+  float b;
+  if      (aInfo.w < 0.5) b = (tw + fire) * 1.3;   // 細胞体
+  else if (aInfo.w < 1.5) b = tw * 0.9;            // シナプスの粒
+  else if (aInfo.w < 2.5) b = 0.55;                // 塵
+  else                    b = 0.045;               // 靄
+  vCol = vec4(pal(aInfo.x), b * fog * nearFade);
+  vKind = aInfo.w;
+}
+`;
+
+const FRAG_POINT = `
+precision highp float;
+varying vec4 vCol;
+varying float vKind;
+void main() {
+  vec2 uv = gl_PointCoord * 2.0 - 1.0;
+  float r = length(uv);
+  if (r > 1.0) discard;
+  float glow = exp(-r * 3.2);
+  float core = exp(-r * r * 24.0);
+  float coreW = vKind < 0.5 ? 0.85 : 0.3;
+  vec3 c = (vCol.rgb * (glow * 0.55 + core * 1.7) + vec3(1.0) * core * coreW) * vCol.a;
+  gl_FragColor = vec4(c, 1.0);
+}
+`;
+
+// ---- 仕上げ（乗算合成のビネットと粒子）----
+const VERT_POST = `
+attribute vec2 aPos;
+varying vec2 vUV;
+void main() { vUV = aPos; gl_Position = vec4(aPos, 0.0, 1.0); }
+`;
+
+const FRAG_POST = `
+precision highp float;
+varying vec2 vUV;
+uniform float uTime;
+uniform vec2 uRes;
+float hash21(vec2 p) {
+  p = fract(p * vec2(234.34, 435.345));
+  p += dot(p, p + 34.23);
+  return fract(p.x * p.y);
+}
+void main() {
+  vec2 sc = vUV * vec2(uRes.x / uRes.y, 1.0);
+  float vig = 1.0 - 0.34 * dot(sc, sc) * 0.5;
+  float grain = 0.965 + 0.035 * hash21(gl_FragCoord.xy + fract(uTime) * 100.0);
+  gl_FragColor = vec4(vec3(clamp(vig, 0.0, 1.0) * grain), 1.0);
+}
+`;
+
+// ---------------------------------------------------------------- setup
+
+const canvas = document.getElementById("gl");
+const errBox = document.getElementById("fserr");
+
+function fail(msg) {
+  errBox.textContent = msg;
+  errBox.style.display = "block";
+}
+
+try {
+  const gl = canvas.getContext("webgl", { antialias: false, alpha: false, depth: false, powerPreference: "high-performance" })
+          || canvas.getContext("experimental-webgl", { antialias: false, alpha: false, depth: false });
+  if (!gl) {
+    fail("WebGL を利用できませんでした。\nSafari / Chrome など WebGL 対応ブラウザで開いてください。");
+  } else {
+    main(gl);
+  }
+} catch (e) {
+  fail("起動に失敗しました:\n" + (e && e.message ? e.message : e));
+}
+
+function compile(gl, type, src) {
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src);
+  gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+    throw new Error("shader: " + gl.getShaderInfoLog(s));
+  }
+  return s;
+}
+
+function link(gl, vs, fs) {
+  const p = gl.createProgram();
+  gl.attachShader(p, compile(gl, gl.VERTEX_SHADER, vs));
+  gl.attachShader(p, compile(gl, gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+    throw new Error("link: " + gl.getProgramInfoLog(p));
+  }
+  return p;
+}
+
+function main(gl) {
+  const { vec3, quat, mat4, random, color } = mathcat;
+
+  const progFiber = link(gl, VERT_FIBER, FRAG_FIBER);
+  const progPoint = link(gl, VERT_POINT, FRAG_POINT);
+  const progPost  = link(gl, VERT_POST, FRAG_POST);
+
+  const loc = (p, names) => {
+    const o = {};
+    for (const n of names) o[n] = gl.getUniformLocation(p, n);
+    return o;
+  };
+  const UF = loc(progFiber, ["uVP", "uCamPos", "uTime", "uPal0", "uPal1", "uPal2", "uPal3"]);
+  const UP = loc(progPoint, ["uVP", "uCamPos", "uTime", "uResY", "uPal0", "uPal1", "uPal2", "uPal3"]);
+  const UQ = loc(progPost, ["uTime", "uRes"]);
+
+  // 属性ロケーション
+  const AF = {
+    aPos: gl.getAttribLocation(progFiber, "aPos"),
+    aTan: gl.getAttribLocation(progFiber, "aTan"),
+    aData: gl.getAttribLocation(progFiber, "aData"),
+    aPulse: gl.getAttribLocation(progFiber, "aPulse"),
+  };
+  const AP = {
+    aPos: gl.getAttribLocation(progPoint, "aPos"),
+    aInfo: gl.getAttribLocation(progPoint, "aInfo"),
+  };
+  const AQ = { aPos: gl.getAttribLocation(progPost, "aPos") };
+
+  // フルスクリーン三角形（仕上げ用）
+  const quadBuf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+
+  // ---------------------------------------------------------------- themes
+
+  const THEMES = [
+    { pal: [[0.15, 0.50, 1.00], [0.30, 0.85, 1.00], [1.00, 0.58, 0.14], [1.00, 0.88, 0.62]] }, // 電脳
+    { pal: [[0.18, 0.80, 1.00], [0.70, 0.95, 1.00], [1.00, 0.14, 0.25], [1.00, 0.45, 0.60]] }, // 蒼紅
+    { pal: [[0.65, 0.38, 1.00], [0.85, 0.70, 1.00], [1.00, 0.30, 0.85], [0.45, 0.55, 1.00]] }, // 紫宮
+  ];
+  const cur = { pal: THEMES[0].pal.map((c) => [...c]) };
+  let target = THEMES[0];
+
+  document.querySelectorAll("#controls button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#controls button").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      target = THEMES[+btn.dataset.theme];
+      wakeUI();
+    });
+  });
+
+  // ---------------------------------------------------------------- neuron world generation
+
+  const CHUNK = 26;          // チャンク一辺
+  const RANGE = 1;           // 前後左右 1 チャンク＝3×3×3
+  const FSTRIDE = 14;        // 繊維頂点: pos3 + tan3 + data4 + pulse4
+  const PSTRIDE = 7;         // 点: pos3 + info4
+  // 32bit インデックスが使えれば高密度で生成する
+  const HAS_UINT = !!gl.getExtension("OES_element_index_uint");
+  const DENSE = HAS_UINT;
+
+  function chunkRng(cx, cy, cz) {
+    let h = Math.imul(cx, 374761393) ^ Math.imul(cy, 668265263) ^ Math.imul(cz, 1274126177);
+    h = Math.imul(h ^ (h >>> 13), 1103515245) ^ 0x2545f491;
+    return random.createRng(h >>> 0);
+  }
+
+  const bez = vec3.create(), bezT = vec3.create();
+  const tmpA = vec3.create(), tmpB = vec3.create(), tmpC = vec3.create();
+
+  // 2 次ベジェ + 手ぶれ的うねり
+  function sampleCurve(out, A, M, B, t, wob, wf, wp, perp) {
+    const u = 1 - t;
+    for (let i = 0; i < 3; i++) {
+      out[i] = u * u * A[i] + 2 * u * t * M[i] + t * t * B[i];
+    }
+    const s = Math.sin(t * wf + wp) * wob * Math.sin(t * Math.PI);
+    vec3.scaleAndAdd(out, out, perp, s);
+    return out;
+  }
+
+  // 1 本の繊維（曲線）を頂点列に書き出す
+  function emitFiber(fverts, findex, A, M, B, samples, width, axon, selA, selB, rng) {
+    const wob = random.range(rng, 0.1, 0.7);
+    const wf = random.range(rng, 5, 13);
+    const wp = random.range(rng, 0, Math.PI * 2);
+    random.onSphere(tmpC, rng);
+    vec3.subtract(tmpA, B, A);
+    vec3.cross(tmpB, tmpA, tmpC);
+    vec3.normalize(tmpB, tmpB);
+    const perp = [tmpB[0], tmpB[1], tmpB[2]];
+
+    const phase = rng();
+    const pspeed = random.range(rng, 0.05, 0.22);
+    const base = fverts.length / FSTRIDE;
+    const pts = [];
+    for (let i = 0; i <= samples; i++) {
+      const t = i / samples;
+      sampleCurve(bez, A, M, B, t, wob, wf, wp, perp);
+      pts.push([bez[0], bez[1], bez[2]]);
+    }
+    for (let i = 0; i <= samples; i++) {
+      const t = i / samples;
+      const p0 = pts[Math.max(i - 1, 0)];
+      const p1 = pts[Math.min(i + 1, samples)];
+      vec3.subtract(bezT, p1, p0);
+      vec3.normalize(bezT, bezT);
+      for (let side = -1; side <= 1; side += 2) {
+        fverts.push(
+          pts[i][0], pts[i][1], pts[i][2],
+          bezT[0], bezT[1], bezT[2],
+          side, t, width, axon,
+          phase, pspeed, selA, selB
+        );
+      }
+    }
+    for (let i = 0; i < samples; i++) {
+      const a = base + i * 2, b = a + 1, c = a + 2, d = a + 3;
+      findex.push(a, b, c, b, d, c);
+    }
+  }
+
+  function buildWorld(ccx, ccy, ccz) {
+    const fverts = [], findex = [], pverts = [];
+    for (let dx = -RANGE; dx <= RANGE; dx++)
+    for (let dy = -RANGE; dy <= RANGE; dy++)
+    for (let dz = -RANGE; dz <= RANGE; dz++) {
+      const cx = ccx + dx, cy = ccy + dy, cz = ccz + dz;
+      const rng = chunkRng(cx, cy, cz);
+      const ox = cx * CHUNK, oy = cy * CHUNK, oz = cz * CHUNK;
+
+      // 細胞体
+      const n = random.intRange(rng, DENSE ? 9 : 4, DENSE ? 15 : 7);
+      const somas = [];
+      for (let i = 0; i < n; i++) {
+        const s = {
+          p: [ox + rng() * CHUNK, oy + rng() * CHUNK, oz + rng() * CHUNK],
+          sel: rng(),
+          size: random.range(rng, 0.45, 1.0),
+        };
+        somas.push(s);
+        pverts.push(s.p[0], s.p[1], s.p[2], s.sel, s.size, rng(), 0);
+      }
+
+      // 軸索：近くの細胞体同士を曲線で結ぶ
+      for (let i = 0; i < n; i++) {
+        const links = random.intRange(rng, DENSE ? 3 : 2, DENSE ? 4 : 3);
+        const order = somas
+          .map((s, j) => ({ j, d: j === i ? 1e9 : vec3.distance(somas[i].p, s.p) }))
+          .sort((a, b) => a.d - b.d);
+        for (let k = 0; k < links && k < n - 1; k++) {
+          const tgt = somas[order[k].j];
+          const A = somas[i].p, B = tgt.p;
+          const len = vec3.distance(A, B);
+          vec3.lerp(tmpA, A, B, random.range(rng, 0.3, 0.7));
+          random.onSphere(tmpB, rng);
+          vec3.scaleAndAdd(tmpA, tmpA, tmpB, len * random.range(rng, 0.12, 0.4));
+          const M = [tmpA[0], tmpA[1], tmpA[2]];
+          const w = random.range(rng, 0.025, 0.08);
+          emitFiber(fverts, findex, A, M, B, 18, w, 1, somas[i].sel, tgt.sel, rng);
+
+          // シナプスの粒を曲線上に散らす
+          const beads = random.intRange(rng, 1, 3);
+          for (let bd = 0; bd < beads; bd++) {
+            const t = random.range(rng, 0.15, 0.85);
+            const u = 1 - t;
+            for (let ci = 0; ci < 3; ci++) bez[ci] = u * u * A[ci] + 2 * u * t * M[ci] + t * t * B[ci];
+            pverts.push(bez[0], bez[1], bez[2], somas[i].sel, random.range(rng, 0.05, 0.12), rng(), 1);
+          }
+        }
+
+        // 樹状突起：先端が闇に溶ける短い枝
+        const twigs = random.intRange(rng, DENSE ? 5 : 3, DENSE ? 8 : 5);
+        for (let tw = 0; tw < twigs; tw++) {
+          random.onSphere(tmpA, rng);
+          vec3.scaleAndAdd(tmpB, somas[i].p, tmpA, random.range(rng, 1.4, 4.2));
+          const B2 = [tmpB[0], tmpB[1], tmpB[2]];
+          vec3.lerp(tmpC, somas[i].p, B2, 0.5);
+          random.onSphere(tmpA, rng);
+          vec3.scaleAndAdd(tmpC, tmpC, tmpA, random.range(rng, 0.3, 1.1));
+          const M2 = [tmpC[0], tmpC[1], tmpC[2]];
+          emitFiber(fverts, findex, somas[i].p, M2, B2, 9,
+                    random.range(rng, 0.014, 0.035), 0, somas[i].sel, somas[i].sel, rng);
+        }
+      }
+
+      // 浮遊する塵
+      const dust = 20;
+      for (let i = 0; i < dust; i++) {
+        pverts.push(ox + rng() * CHUNK, oy + rng() * CHUNK, oz + rng() * CHUNK,
+                    rng(), random.range(rng, 0.015, 0.04), rng(), 2);
+      }
+
+      // 遠景を霞ませる大きく淡い靄
+      for (let i = 0; i < 4; i++) {
+        pverts.push(ox + rng() * CHUNK, oy + rng() * CHUNK, oz + rng() * CHUNK,
+                    rng(), random.range(rng, 2.5, 5.5), rng(), 3);
+      }
+    }
+    return {
+      fverts: new Float32Array(fverts),
+      findex: HAS_UINT ? new Uint32Array(findex) : new Uint16Array(findex),
+      pverts: new Float32Array(pverts),
+    };
+  }
+
+  const fiberVBO = gl.createBuffer();
+  const fiberIBO = gl.createBuffer();
+  const pointVBO = gl.createBuffer();
+  let fiberCount = 0, pointCount = 0;
+  let curC = [1e9, 1e9, 1e9];
+
+  function refreshWorld(pos) {
+    const cx = Math.floor(pos[0] / CHUNK), cy = Math.floor(pos[1] / CHUNK), cz = Math.floor(pos[2] / CHUNK);
+    if (cx === curC[0] && cy === curC[1] && cz === curC[2]) return;
+    curC = [cx, cy, cz];
+    const w = buildWorld(cx, cy, cz);
+    gl.bindBuffer(gl.ARRAY_BUFFER, fiberVBO);
+    gl.bufferData(gl.ARRAY_BUFFER, w.fverts, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, fiberIBO);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, w.findex, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, pointVBO);
+    gl.bufferData(gl.ARRAY_BUFFER, w.pverts, gl.DYNAMIC_DRAW);
+    fiberCount = w.findex.length;
+    pointCount = w.pverts.length / PSTRIDE;
+  }
+
+  // ---------------------------------------------------------------- camera dynamics (mathcat)
+
+  const seed = (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
+  const rng = random.createRng(seed);
+
+  const pos = [random.range(rng, -300, 300), random.range(rng, -300, 300), random.range(rng, -300, 300)];
+  const vel = vec3.create();
+  random.onSphere(vel, rng);
+  vec3.scale(vel, vel, 0.4);
+  const acc = vec3.create();
+  const accTarget = vec3.create();
+  let accTimer = 0;
+
+  const camQ = quat.create();
+  quat.fromEuler(camQ, random.range(rng, -0.5, 0.5), random.range(rng, 0, Math.PI * 2), 0);
+  const angVel = vec3.create();
+  const angVelTarget = vec3.create();
+  let angTimer = 0;
+  const dragVel = vec3.create();
+
+  const tmpQ = quat.create();
+  const tmpV = vec3.create();
+  const ZERO = vec3.create();
+  const AXX = [1, 0, 0], AXY = [0, 1, 0], AXZ = [0, 0, 1];
+  const camR = [1, 0, 0], camU = [0, 1, 0], camF = [0, 0, 1];
+
+  const proj = new Float32Array(16);
+  const view = new Float32Array(16);
+  const vp = new Float32Array(16);
+  const eyeTarget = vec3.create();
+
+  // ---------------------------------------------------------------- input
+
+  let speed = 1.0;
+  const speedInput = document.getElementById("speed");
+  speedInput.addEventListener("input", () => { speed = +speedInput.value; wakeUI(); });
+
+  window.addEventListener("wheel", (e) => {
+    speed = Math.min(5, Math.max(0.1, speed - Math.sign(e.deltaY) * 0.2));
+    speedInput.value = speed;
+    wakeUI();
+  }, { passive: true });
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowUp")   { speed = Math.min(5, speed + 0.2); speedInput.value = speed; wakeUI(); }
+    if (e.key === "ArrowDown") { speed = Math.max(0.1, speed - 0.2); speedInput.value = speed; wakeUI(); }
+  });
+
+  let dragging = false, lastX = 0, lastY = 0;
+  let lastInteract = 0;
+
+  canvas.addEventListener("pointerdown", (e) => {
+    dragging = true;
+    lastX = e.clientX; lastY = e.clientY;
+    vec3.copy(dragVel, ZERO);
+    canvas.classList.add("dragging");
+    canvas.setPointerCapture(e.pointerId);
+    lastInteract = performance.now();
+    wakeUI();
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (!dragging) return;
+    const k = 0.0032;
+    const dPitch = (e.clientY - lastY) * k;
+    const dYaw = -(e.clientX - lastX) * k;
+    quat.fromEuler(tmpQ, dPitch, dYaw, 0);
+    quat.multiply(camQ, camQ, tmpQ);
+    quat.normalize(camQ, camQ);
+    vec3.set(dragVel, dPitch * 60, dYaw * 60, 0);
+    lastX = e.clientX; lastY = e.clientY;
+    lastInteract = performance.now();
+  });
+  const endDrag = () => { dragging = false; canvas.classList.remove("dragging"); };
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", endDrag);
+
+  // ---------------------------------------------------------------- UI fade
+
+  const uiEls = [document.getElementById("controls"), document.getElementById("speedbox")];
+  let uiTimer = null;
+  function wakeUI() {
+    uiEls.forEach((el) => el.classList.remove("hidden"));
+    clearTimeout(uiTimer);
+    uiTimer = setTimeout(() => uiEls.forEach((el) => el.classList.add("hidden")), 4000);
+  }
+  window.addEventListener("pointermove", wakeUI, { passive: true });
+  wakeUI();
+
+  // ---------------------------------------------------------------- resize
+
+  const forcedScale = parseFloat(new URLSearchParams(location.search).get("rs") || "");
+  const renderScale = isFinite(forcedScale) ? forcedScale : Math.min(window.devicePixelRatio || 1, 1.75);
+  function resize() {
+    canvas.width  = Math.max(1, Math.round(window.innerWidth * renderScale));
+    canvas.height = Math.max(1, Math.round(window.innerHeight * renderScale));
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  // ---------------------------------------------------------------- loop
+
+  gl.disable(gl.DEPTH_TEST);
+  gl.enable(gl.BLEND);
+
+  let prev = performance.now();
+
+  function frame(now) {
+    const dt = Math.min(now - prev, 100) / 1000;
+    prev = now;
+
+    // --- 並進：なめらかに変化するランダム加速度で漂う ---
+    accTimer -= dt;
+    if (accTimer <= 0) {
+      accTimer = random.range(rng, 3, 7);
+      random.onSphere(accTarget, rng);
+      vec3.scale(accTarget, accTarget, random.range(rng, 0.1, 0.35));
+    }
+    vec3.lerp(acc, acc, accTarget, 1 - Math.pow(0.4, dt));
+    vec3.scaleAndAdd(vel, vel, acc, dt);
+    const spTarget = speed * 0.35;
+    const sp = Math.max(vec3.length(vel), 1e-4);
+    vec3.scale(vel, vel, 1 + ((spTarget - sp) / sp) * Math.min(1, dt * 1.2));
+    vec3.scaleAndAdd(pos, pos, vel, dt);
+
+    // --- 回転：角速度もゆっくり揺れ動く ---
+    angTimer -= dt;
+    if (angTimer <= 0) {
+      angTimer = random.range(rng, 4, 9);
+      random.onSphere(angVelTarget, rng);
+      vec3.scale(angVelTarget, angVelTarget, random.range(rng, 0.01, 0.05));
+    }
+    const autoOn = !dragging && now - lastInteract > 3500;
+    vec3.lerp(angVel, angVel, autoOn ? angVelTarget : ZERO, 1 - Math.pow(0.5, dt));
+    vec3.scale(dragVel, dragVel, Math.pow(0.1, dt));
+    vec3.add(tmpV, angVel, dragVel);
+    const w = vec3.length(tmpV);
+    if (w > 1e-6) {
+      vec3.scale(tmpV, tmpV, 1 / w);
+      quat.setAxisAngle(tmpQ, tmpV, w * dt);
+      quat.multiply(camQ, camQ, tmpQ);
+      quat.normalize(camQ, camQ);
+    }
+    vec3.transformQuat(camR, AXX, camQ);
+    vec3.transformQuat(camU, AXY, camQ);
+    vec3.transformQuat(camF, AXZ, camQ);
+
+    // --- テーマ色の補間 ---
+    const ct = 1 - Math.pow(0.15, dt);
+    for (let i = 0; i < 4; i++) color.lerp(cur.pal[i], cur.pal[i], target.pal[i], ct);
+
+    // --- 世界の更新と行列 ---
+    refreshWorld(pos);
+    mat4.perspective(proj, 1.15, canvas.width / canvas.height, 0.1, 150);
+    vec3.add(eyeTarget, pos, camF);
+    mat4.lookAt(view, pos, eyeTarget, camU);
+    mat4.multiply(vp, proj, view);
+
+    // --- 描画 ---
+    gl.clearColor(0.004, 0.005, 0.012, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.blendFunc(gl.ONE, gl.ONE);
+    const time = now / 1000;
+
+    // 繊維
+    gl.useProgram(progFiber);
+    gl.uniformMatrix4fv(UF.uVP, false, vp);
+    gl.uniform3fv(UF.uCamPos, pos);
+    gl.uniform1f(UF.uTime, time);
+    gl.uniform3fv(UF.uPal0, cur.pal[0]);
+    gl.uniform3fv(UF.uPal1, cur.pal[1]);
+    gl.uniform3fv(UF.uPal2, cur.pal[2]);
+    gl.uniform3fv(UF.uPal3, cur.pal[3]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, fiberVBO);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, fiberIBO);
+    gl.enableVertexAttribArray(AF.aPos);
+    gl.enableVertexAttribArray(AF.aTan);
+    gl.enableVertexAttribArray(AF.aData);
+    gl.enableVertexAttribArray(AF.aPulse);
+    gl.vertexAttribPointer(AF.aPos, 3, gl.FLOAT, false, FSTRIDE * 4, 0);
+    gl.vertexAttribPointer(AF.aTan, 3, gl.FLOAT, false, FSTRIDE * 4, 12);
+    gl.vertexAttribPointer(AF.aData, 4, gl.FLOAT, false, FSTRIDE * 4, 24);
+    gl.vertexAttribPointer(AF.aPulse, 4, gl.FLOAT, false, FSTRIDE * 4, 40);
+    gl.drawElements(gl.TRIANGLES, fiberCount, HAS_UINT ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT, 0);
+
+    // 点（細胞体・粒・塵）
+    gl.useProgram(progPoint);
+    gl.uniformMatrix4fv(UP.uVP, false, vp);
+    gl.uniform3fv(UP.uCamPos, pos);
+    gl.uniform1f(UP.uTime, time);
+    gl.uniform1f(UP.uResY, canvas.height);
+    gl.uniform3fv(UP.uPal0, cur.pal[0]);
+    gl.uniform3fv(UP.uPal1, cur.pal[1]);
+    gl.uniform3fv(UP.uPal2, cur.pal[2]);
+    gl.uniform3fv(UP.uPal3, cur.pal[3]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, pointVBO);
+    gl.enableVertexAttribArray(AP.aPos);
+    gl.enableVertexAttribArray(AP.aInfo);
+    gl.vertexAttribPointer(AP.aPos, 3, gl.FLOAT, false, PSTRIDE * 4, 0);
+    gl.vertexAttribPointer(AP.aInfo, 4, gl.FLOAT, false, PSTRIDE * 4, 12);
+    gl.drawArrays(gl.POINTS, 0, pointCount);
+
+    // 仕上げ（乗算：ビネット + 粒子）
+    gl.useProgram(progPost);
+    gl.blendFunc(gl.ZERO, gl.SRC_COLOR);
+    gl.uniform1f(UQ.uTime, time);
+    gl.uniform2f(UQ.uRes, canvas.width, canvas.height);
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+    gl.enableVertexAttribArray(AQ.aPos);
+    gl.vertexAttribPointer(AQ.aPos, 2, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+    requestAnimationFrame(frame);
+  }
+
+  requestAnimationFrame(frame);
+}
+</script>
+</body>
+</html>
