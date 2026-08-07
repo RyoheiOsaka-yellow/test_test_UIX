@@ -13,41 +13,38 @@
          text-shadow:0 0 6px rgba(0,0,0,.9); user-select:none; -webkit-user-select:none; }
   #stats { top:calc(12px + env(safe-area-inset-top)); left:calc(14px + env(safe-area-inset-left));
            font-size:clamp(8.5px, 1.5vw, 11px); line-height:1.55; letter-spacing:.04em;
-           opacity:.9; white-space:pre; }
+           opacity:.8; white-space:pre; }
   #title { top:calc(12px + env(safe-area-inset-top)); right:calc(16px + env(safe-area-inset-right));
            text-align:right; }
   #title .t1 { font-size:clamp(14px, 2.4vw, 17px); letter-spacing:.14em; color:#e8eaf0; }
   #title .t2 { font-size:clamp(8px, 1.4vw, 10px); letter-spacing:.22em; opacity:.55; margin-top:2px; }
-  #seasonName { top:calc(60px + env(safe-area-inset-top)); right:calc(16px + env(safe-area-inset-right));
-               font-size:clamp(10px, 1.7vw, 12px); letter-spacing:.18em;
-               color:#9aa3b5; text-align:right; transition:opacity .4s; }
   #caption { left:0; right:0; bottom:calc(48px + env(safe-area-inset-bottom));
              text-align:center; font-style:italic;
-             font-size:clamp(10.5px, 1.8vw, 12.5px); color:#b9bfcc; opacity:.85;
+             font-size:clamp(10.5px, 1.8vw, 12.5px); color:#9aa0b5; opacity:.8;
              padding:0 24px; transition:opacity .5s; }
   #hint { left:0; right:0; bottom:calc(26px + env(safe-area-inset-bottom));
           text-align:center; font-size:clamp(8.5px, 1.5vw, 10px);
-          letter-spacing:.14em; color:#6d7489; opacity:.7; }
+          letter-spacing:.14em; color:#5d6377; opacity:.7; }
   #fx { left:0; right:0; bottom:calc(92px + env(safe-area-inset-bottom));
         text-align:center; font-size:clamp(13px, 2.2vw, 15px);
         letter-spacing:.3em; color:#fff; opacity:0; transition:opacity .55s;
-        text-shadow:0 0 14px rgba(120,180,255,.8); }
+        text-shadow:0 0 14px rgba(160,190,255,.7); }
   .chip { position:fixed; z-index:11; pointer-events:auto;
-        background:rgba(18,20,28,.55); color:#aab2c4;
-        border:1px solid rgba(140,150,175,.35); border-radius:999px;
+        background:rgba(14,16,22,.55); color:#9aa2b4;
+        border:1px solid rgba(120,130,155,.3); border-radius:999px;
         padding:8px 14px; font-size:12px; letter-spacing:.08em;
         font-family:"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
         backdrop-filter:blur(6px); cursor:pointer; transition:all .18s; }
   .chip:active { transform:scale(.94); }
   #airBtn { right:calc(16px + env(safe-area-inset-right));
         bottom:calc(24px + env(safe-area-inset-bottom)); }
-  #airBtn.on { color:#fff; border-color:rgba(120,255,190,.8);
-        background:rgba(30,140,90,.35); box-shadow:0 0 14px rgba(80,255,180,.35); }
+  #airBtn.on { color:#fff; border-color:rgba(120,255,190,.7);
+        background:rgba(30,140,90,.3); box-shadow:0 0 14px rgba(80,255,180,.3); }
   #matBtn { left:calc(16px + env(safe-area-inset-left));
         bottom:calc(24px + env(safe-area-inset-bottom)); }
   #cam { position:fixed; z-index:10; right:calc(16px + env(safe-area-inset-right));
         bottom:calc(68px + env(safe-area-inset-bottom)); width:120px; height:90px;
-        border:1px solid rgba(140,150,175,.3); border-radius:6px; opacity:.8;
+        border:1px solid rgba(120,130,155,.3); border-radius:6px; opacity:.8;
         display:none; transform:scaleX(-1); pointer-events:none; }
   #fallback { position:fixed; inset:0; display:none; place-items:center; color:#889;
         font-family:sans-serif; font-size:14px; }
@@ -57,11 +54,10 @@
 
 <canvas id="stage"></canvas>
 <div id="stats" class="hud"></div>
-<div id="title" class="hud"><div class="t1">VITREA</div><div class="t2">REFRACTION FIELD</div></div>
-<div id="seasonName" class="hud"></div>
+<div id="title" class="hud"><div class="t1">VITREA</div><div class="t2">DARK SURFACE STUDY</div></div>
 <div id="caption" class="hud"></div>
 <div id="fx" class="hud"></div>
-<div id="hint" class="hud">指で触れるとランダムに反応 ／ ダブルタップで季節変更</div>
+<div id="hint" class="hud">指で触れると表面が反応 ／ ダブルタップで変質</div>
 <canvas id="cam" width="128" height="96"></canvas>
 <button id="airBtn" class="chip">📷 AIR</button>
 <button id="matBtn" class="chip">💧 WATER</button>
@@ -855,134 +851,53 @@ if (!gl) { document.getElementById('fallback').style.display = 'grid'; return; }
 const params = new URLSearchParams(location.search);
 const coarse = matchMedia('(pointer: coarse)').matches;
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const N_FULL = Math.max(200, Math.min(20000,
-  parseInt(params.get('n') || (coarse ? 3000 : 5500), 10)));
-const DPR = Math.min(coarse ? 1.6 : 2, window.devicePixelRatio || 1);
+const DPR = Math.min(coarse ? 1.8 : 2, window.devicePixelRatio || 1);
 
-const { random: mrandom, easing: mease, color: mcolor } = globalThis.mathcat;
+const { random: mrandom } = globalThis.mathcat;
 const seedP = parseInt(params.get('seed'), 10);
 const SEED = Number.isInteger(seedP) ? seedP >>> 0 : (Math.random()*4294967296) >>> 0;
 const rnd = mrandom.createRng(SEED);
-const TAU = Math.PI * 2;
 
-// the pool floor (quadtree tiles) is drawn on an offscreen 2D canvas,
-// then refracted by the WebGL water/glass surface each frame
-const floorCanvas = document.createElement('canvas');
-const ctx = floorCanvas.getContext('2d');
+let W = 1; // aspect, x in [0,W], y in [0,1]
 
-// ---------- world & agents (world: x in [0,W], y in [0,1], y down) ----------
-let W = 1; // aspect, set in resize
-const px = new Float32Array(N_FULL), py = new Float32Array(N_FULL);
-const vx = new Float32Array(N_FULL), vy = new Float32Array(N_FULL);
-const heat = new Float32Array(N_FULL);
-let simCount = N_FULL;
-
-const MAXK = 6;
-const attr = [];
-for (let k = 0; k < MAXK; k++) {
-  attr.push({ fa: 0.05 + rnd()*0.10, fb: 0.05 + rnd()*0.10,
-              pa: rnd()*TAU, pb: rnd()*TAU, x: 0.5, y: 0.5 });
+// ---------- material state: water(0) <-> glass(1) ----------
+let matV = 0, matTarget = 0, matCycleT = 0;
+const MAT_CYCLE = 14;
+{
+  const m0 = parseFloat(params.get('mat'));
+  if (Number.isFinite(m0)) { matV = matTarget = Math.min(1, Math.max(0, m0)); }
 }
-let Ka = 4;
-const cmul = new Float32Array(N_FULL);
-
-const hx = new Float32Array(N_FULL), hy = new Float32Array(N_FULL);
-function rollHomes(){
-  for (let i = 0; i < N_FULL; i++) { hx[i] = rnd()*W; hy[i] = rnd(); }
-}
-function seedAgents(){
-  for (let i = 0; i < N_FULL; i++) {
-    px[i] = rnd()*W; py[i] = rnd();
-    vx[i] = 0; vy[i] = 0; heat[i] = 0;
-    cmul[i] = 0.45 + Math.pow(rnd(), 0.6) * 1.9;
-  }
-  rollHomes();
-}
-
-// ---------- seasons & palette ----------
-const SEASONS = [
-  { name:'GATHER',   caption:'凝集フェーズ。エージェントは群れの重心へ回帰する。', gather:1 },
-  { name:'DISPERSE', caption:'拡散フェーズ。個体は場のノイズに従い漂流する。',     gather:0 },
-];
-let seasonIdx = 0, seasonT = 0;
-const SEASON_LEN = [11, 7];
-let cohesion = 1;
-
-// large-scale region flips (half / quarter of the field)
-let regionEv = null, regionEnv = 0, nextRegionT = 4 + rnd()*8;
-function spawnRegion(now){
-  const mx = W/2, my = 0.5;
-  const r = rnd() < 0.5
-    ? [[0,0,mx,1],[mx,0,W,1],[0,0,W,my],[0,my,W,1]][(rnd()*4)|0]
-    : [[0,0,mx,my],[mx,0,W,my],[0,my,mx,1],[mx,my,W,1]][(rnd()*4)|0];
-  const pal = palette[(rnd()*palette.length)|0];
-  regionEv = {
-    x0: r[0], y0: r[1], x1: r[2], y1: r[3],
-    t0: now, dur: 2.5 + rnd()*2,
-    hue: pal.h,
-    dAlpha: (rnd() < 0.5 ? -1 : 1) * (0.12 + rnd()*0.16),
-    dLight: (rnd() < 0.5 ? -1 : 1) * (6 + rnd()*10),
-  };
-}
-function inRegion(x0, y0, x1, y1){
-  if (!regionEv || regionEnv < 0.01) return false;
-  const cx = (x0+x1)/2, cy = (y0+y1)/2;
-  return cx >= regionEv.x0 && cx < regionEv.x1 &&
-         cy >= regionEv.y0 && cy < regionEv.y1;
-}
-
-let palette = [{h:230, s:40, l:60}], strokeHue = 230;
-let waterTint = [0.22, 0.34, 0.36];
-function newPalette(){
-  const h0 = rnd()*360, t = rnd();
-  let hs;
-  if (t < 0.35)      hs = [h0, h0 + 25 + rnd()*30, h0 + 180 + (rnd()*40 - 20)];
-  else if (t < 0.65) hs = [h0, h0 + 120, h0 + 240];
-  else               hs = [h0, h0 + 90 + rnd()*30, h0 + 180, h0 + 270 + rnd()*30];
-  palette = hs.map(h => ({
-    h: ((h % 360) + 360) % 360,
-    s: 32 + rnd()*46,
-    l: 46 + rnd()*18,
-  }));
-  strokeHue = palette[0].h;
-  // the liquid tints toward the season's lead hue (brighter for black bg)
-  waterTint = mcolor.fromHsl([0,0,0], palette[0].h/360, 0.55, 0.52);
-}
-newPalette();
-
-const seasonNameEl = document.getElementById('seasonName');
+const matBtn = document.getElementById('matBtn');
 const captionEl = document.getElementById('caption');
-function showSeason(){
-  const s = SEASONS[seasonIdx];
-  seasonNameEl.textContent = 'PHASE ' + (seasonIdx ? '02' : '01') + ' : ' + s.name;
-  captionEl.textContent = s.caption;
+matBtn.addEventListener('click', flipMaterial);
+function flipMaterial(){
+  matTarget = matTarget > 0.5 ? 0 : 1;
+  matCycleT = 0;
 }
-showSeason();
-
-function nextSeason(){
-  seasonIdx = (seasonIdx + 1) % SEASONS.length;
-  seasonT = 0;
-  if (SEASONS[seasonIdx].gather) {
-    Ka = 2 + ((rnd()*5)|0);
-    for (const a of attr) { a.pa = rnd()*TAU; a.pb = rnd()*TAU; }
+function updateMatLabel(){
+  if (matV < 0.33) {
+    matBtn.textContent = '💧 WATER';
+    captionEl.textContent = '表面張力が黒い液体を静かに保っている。';
+  } else if (matV > 0.67) {
+    matBtn.textContent = '🪟 GLASS';
+    captionEl.textContent = '凍結完了。応力は打ち出し肌に封じ込められた。';
   } else {
-    rollHomes();
+    matBtn.textContent = '❄ 変質中…';
+    captionEl.textContent = matTarget > 0.5
+      ? 'うねりが減速し、ガラス相へ凍結しつつある。'
+      : 'ガラス相が融解し、粘性流体へ戻りつつある。';
   }
-  newPalette();
-  showSeason();
 }
 
-// ---------- interaction (random effect per touch) ----------
+// ---------- interaction: pure surface phenomena ----------
 const FX_NAMES = ['ばらける', 'ついてくる', 'ぐるぐる', '波紋'];
 let mode = 0;
 let press = 0, pressTarget = 0;
+let spin = 0;
 const pointerTarget = [0.5, 0.5];
 const pointer = [0.5, 0.5];
-const bursts = [];
-const ripples = []; // agent-pushing rings on the floor
 
-// water-surface ripples (rendered by the shader), ring buffer
-const NRIP = 10;
+const NRIP = 12;
 const surfRipples = new Float32Array(NRIP*4); // x, y (world), t0, amp
 let surfIdx = 0;
 function addSurfRipple(x, y, amp, now){
@@ -990,8 +905,16 @@ function addSurfRipple(x, y, amp, now){
   surfRipples[j] = x; surfRipples[j+1] = y;
   surfRipples[j+2] = now; surfRipples[j+3] = amp;
 }
+function splash(x, y, s, now){ // ばらける: a burst of small offset rings
+  const n = 4 + ((rnd()*3)|0);
+  for (let i = 0; i < n; i++) {
+    const a = rnd()*Math.PI*2, r = 0.02 + rnd()*0.09;
+    addSurfRipple(x + Math.cos(a)*r, y + Math.sin(a)*r,
+                  s*(0.25 + rnd()*0.5), now + rnd()*0.12);
+  }
+}
 
-let lastBurst = 0, lastRipple = 0, lastWake = 0, lastTap = 0, downPos = null, moved = 0;
+let lastFxT = 0, lastWake = 0, lastTap = 0, downPos = null, moved = 0;
 
 const fxEl = document.getElementById('fx');
 let fxTimer = 0;
@@ -1007,69 +930,45 @@ function toWorld(cx, cy){
   return [(cx - r.left) / r.height, (cy - r.top) / r.height];
 }
 
+function fxDown(x, y, strength, now){
+  mode = (rnd()*FX_NAMES.length)|0;
+  showFx(FX_NAMES[mode]);
+  pressTarget = 1;
+  if (mode === 0) { splash(x, y, strength*1.2, now); lastFxT = now; }
+  if (mode === 3) { addSurfRipple(x, y, strength*1.5, now); lastFxT = now; }
+}
+function fxMove(x, y, strength, now){
+  if (now - lastWake > 0.13) { addSurfRipple(x, y, 0.28, now); lastWake = now; }
+  if (mode === 0 && now - lastFxT > 0.28) { splash(x, y, strength*0.7, now); lastFxT = now; }
+  if (mode === 3 && now - lastFxT > 0.5)  { addSurfRipple(x, y, strength, now); lastFxT = now; }
+}
+
 canvas.addEventListener('pointerdown', ev => {
   canvas.setPointerCapture(ev.pointerId);
   const [x, y] = toWorld(ev.clientX, ev.clientY);
   pointerTarget[0] = x; pointerTarget[1] = y;
   pointer[0] = x; pointer[1] = y;
-  pressTarget = 1; moved = 0; downPos = [ev.clientX, ev.clientY];
-  mode = (rnd()*FX_NAMES.length)|0;
-  showFx(FX_NAMES[mode]);
-  const now = performance.now()/1000;
-  addSurfRipple(x, y, 0.9, now); // every touch disturbs the surface
-  if (mode === 0) { bursts.push({x, y, s: 1.2}); lastBurst = now; }
-  if (mode === 3) {
-    ripples.push({x, y, t0: now, s: 1.2});
-    addSurfRipple(x, y, 1.4, now);
-    lastRipple = now;
-  }
+  moved = 0; downPos = [ev.clientX, ev.clientY];
+  fxDown(x, y, 1.0, performance.now()/1000);
 });
 canvas.addEventListener('pointermove', ev => {
   const [x, y] = toWorld(ev.clientX, ev.clientY);
   pointerTarget[0] = x; pointerTarget[1] = y;
   if (downPos) moved = Math.max(moved,
     Math.hypot(ev.clientX-downPos[0], ev.clientY-downPos[1]));
-  if (pressTarget > 0) {
-    const now = performance.now()/1000;
-    if (now - lastWake > 0.14) { addSurfRipple(x, y, 0.35, now); lastWake = now; } // wake trail
-    if (mode === 0 && now - lastBurst > 0.1) {
-      bursts.push({x, y, s: 0.6}); lastBurst = now;
-    }
-    if (mode === 3 && now - lastRipple > 0.45) {
-      ripples.push({x, y, t0: now, s: 0.9});
-      addSurfRipple(x, y, 1.0, now);
-      lastRipple = now;
-    }
-  }
+  if (pressTarget > 0) fxMove(x, y, 0.8, performance.now()/1000);
 });
 function endPress(){
   pressTarget = 0;
   if (downPos && moved < 24) {
     const now = performance.now();
-    if (now - lastTap < 320) { nextSeason(); lastTap = 0; }
+    if (now - lastTap < 320) { flipMaterial(); lastTap = 0; }
     else lastTap = now;
   }
   downPos = null;
 }
 canvas.addEventListener('pointerup', endPress);
 canvas.addEventListener('pointercancel', endPress);
-
-// material: continuous water(0) <-> glass(1), auto-cycling with slow melts
-let matV = 0, matTarget = 0, matCycleT = 0;
-{
-  const m0 = parseFloat(params.get('mat'));
-  if (Number.isFinite(m0)) { matV = matTarget = Math.min(1, Math.max(0, m0)); }
-}
-const MAT_CYCLE = 13; // seconds per state before it starts transmuting
-const matBtn = document.getElementById('matBtn');
-matBtn.addEventListener('click', () => {
-  matTarget = matTarget > 0.5 ? 0 : 1;
-  matCycleT = 0;
-});
-function updateMatLabel(){
-  matBtn.textContent = matV < 0.33 ? '💧 WATER'
-                     : matV > 0.67 ? '🪟 GLASS' : '❄ 変化中…';
-}
 
 // ---------- AIR mode: touch-free control via camera hand tracking ----------
 const airBtn = document.getElementById('airBtn');
@@ -1083,7 +982,6 @@ let bgL = null, noiseAvg = 8;
 const actX = new Int16Array(NPIX), actY = new Int16Array(NPIX);
 const actSkin = new Uint8Array(NPIX);
 let airActive = false, activeFrames = 0, lastMotionT = 0;
-let lastAirBurst = 0, lastAirRipple = 0;
 let trkX = CW/2, trkY = CH/2, trkLocked = false;
 let airX = 0.5, airY = 0.5;
 
@@ -1106,7 +1004,7 @@ async function toggleAir(){
   airOn = true;
   airBtn.classList.add('on');
   camCanvas.style.display = 'block';
-  hintEl.textContent = 'カメラに向かって手を振る ／ ダブルタップで季節変更';
+  hintEl.textContent = 'カメラに向かって手を振る ／ ダブルタップで変質';
 }
 function stopAir(){
   airOn = false;
@@ -1148,9 +1046,9 @@ function processAir(now){
       if (skin) { skinCnt++; sumSX += x; sumSY += y; lvl = 2; }
       else lvl = 1;
     }
-    d[i*4]   = lvl === 2 ? 60  : lvl === 1 ? 120 : r*0.6 + 90;
-    d[i*4+1] = lvl === 2 ? 190 : lvl === 1 ? 130 : gg*0.6 + 90;
-    d[i*4+2] = lvl === 2 ? 120 : lvl === 1 ? 200 : b*0.6 + 90;
+    d[i*4]   = lvl === 2 ? 60  : lvl === 1 ? 120 : r*0.5 + 40;
+    d[i*4+1] = lvl === 2 ? 190 : lvl === 1 ? 130 : gg*0.5 + 40;
+    d[i*4+2] = lvl === 2 ? 120 : lvl === 1 ? 200 : b*0.5 + 40;
   }
   noiseAvg += (diffSum/NPIX - noiseAvg) * 0.05;
   camCtx.putImageData(img, 0, 0);
@@ -1192,24 +1090,11 @@ function processAir(now){
     const strength = 0.55 + Math.min(0.9, effCnt/(NPIX*0.06));
     if (!airActive && activeFrames >= 3) {
       airActive = true;
-      pressTarget = 1;
-      mode = (rnd()*FX_NAMES.length)|0;
-      showFx(FX_NAMES[mode]);
-      addSurfRipple(airX, airY, 0.8, now);
-      if (mode === 0) { bursts.push({x: airX, y: airY, s: strength + 0.3}); lastAirBurst = now; }
-      if (mode === 3) { ripples.push({x: airX, y: airY, t0: now, s: strength + 0.3}); lastAirRipple = now; }
+      fxDown(airX, airY, strength, now);
     } else if (airActive) {
-      if (now - lastWake > 0.16) { addSurfRipple(airX, airY, 0.3, now); lastWake = now; }
-      if (mode === 0 && now - lastAirBurst > 0.12) {
-        bursts.push({x: airX, y: airY, s: strength*0.6}); lastAirBurst = now;
-      }
-      if (mode === 3 && now - lastAirRipple > 0.5) {
-        ripples.push({x: airX, y: airY, t0: now, s: strength*0.8});
-        addSurfRipple(airX, airY, 0.9, now);
-        lastAirRipple = now;
-      }
+      fxMove(airX, airY, strength*0.8, now);
     }
-    camCtx.strokeStyle = 'rgba(30,35,60,0.9)';
+    camCtx.strokeStyle = 'rgba(240,245,255,0.9)';
     camCtx.lineWidth = 1.5;
     camCtx.beginPath();
     camCtx.arc(cx, cy, 5, 0, 6.2832);
@@ -1224,183 +1109,7 @@ function processAir(now){
   }
 }
 
-// ---------- physics ----------
-function step(dt, now){
-  const s = SEASONS[seasonIdx];
-  const target = s.gather ? 1 : 0;
-  cohesion += (target - cohesion) * Math.min(1, dt*1.2);
-  const coh = 0.45 + cohesion*0.9;
-  const wander = 0.28 + (1 - cohesion)*0.9;
-
-  for (const a of attr) {
-    a.x = W * (0.5 + 0.34*Math.sin(now*a.fa*TAU + a.pa));
-    a.y = 0.5 + 0.34*Math.sin(now*a.fb*TAU + a.pb);
-  }
-
-  const P0 = pointer[0], P1 = pointer[1];
-  const R2 = 0.075;
-  const damp = Math.exp(-dt*2.1);
-
-  for (let i = 0; i < simCount; i++) {
-    const free = (i % 7) === 0;
-    const a = attr[i % Ka];
-    const tx = free ? hx[i] : a.x*cohesion + hx[i]*(1 - cohesion);
-    const ty = free ? hy[i] : a.y*cohesion + hy[i]*(1 - cohesion);
-    vx[i] += (tx - px[i]) * coh * cmul[i] * dt;
-    vy[i] += (ty - py[i]) * coh * cmul[i] * dt;
-    vx[i] += (rnd() - 0.5) * wander * dt * 2.2;
-    vy[i] += (rnd() - 0.5) * wander * dt * 2.2;
-
-    if (press > 0.02 && (mode === 1 || mode === 2)) {
-      const dx = P0 - px[i], dy = P1 - py[i];
-      const d2 = dx*dx + dy*dy;
-      const infl = press * Math.exp(-d2/R2);
-      if (mode === 1) {
-        vx[i] += dx * infl * 7 * dt;
-        vy[i] += dy * infl * 7 * dt;
-      } else {
-        vx[i] += -dy * infl * 9 * dt;
-        vy[i] +=  dx * infl * 9 * dt;
-      }
-      heat[i] = Math.min(1, heat[i] + infl*dt*2.5);
-    }
-
-    vx[i] *= damp; vy[i] *= damp;
-    px[i] += vx[i]*dt; py[i] += vy[i]*dt;
-    if (px[i] < 0) { px[i] = 0; vx[i] = Math.abs(vx[i]); }
-    if (px[i] > W) { px[i] = W; vx[i] = -Math.abs(vx[i]); }
-    if (py[i] < 0) { py[i] = 0; vy[i] = Math.abs(vy[i]); }
-    if (py[i] > 1) { py[i] = 1; vy[i] = -Math.abs(vy[i]); }
-    heat[i] *= Math.exp(-dt*1.3);
-  }
-
-  if (bursts.length) {
-    for (const b of bursts) {
-      for (let i = 0; i < simCount; i++) {
-        const dx = px[i] - b.x, dy = py[i] - b.y;
-        const d2 = dx*dx + dy*dy;
-        const infl = Math.exp(-d2/R2);
-        if (infl < 0.02) continue;
-        const dl = Math.sqrt(d2) + 1e-4;
-        const kick = infl * b.s * (0.35 + rnd()*0.5);
-        vx[i] += (dx/dl + (rnd()-0.5)*1.2) * kick;
-        vy[i] += (dy/dl + (rnd()-0.5)*1.2) * kick;
-        heat[i] = Math.min(1, heat[i] + infl*0.8);
-      }
-    }
-    bursts.length = 0;
-  }
-
-  for (let r = ripples.length - 1; r >= 0; r--) {
-    const rp = ripples[r];
-    const age = now - rp.t0;
-    if (age > 1.6) { ripples.splice(r, 1); continue; }
-    const rr = age * 0.55;
-    const amp = rp.s * Math.exp(-age*1.4);
-    for (let i = 0; i < simCount; i++) {
-      const dx = px[i] - rp.x, dy = py[i] - rp.y;
-      const d = Math.sqrt(dx*dx + dy*dy) + 1e-4;
-      const band = Math.exp(-((d - rr)*(d - rr))/0.004);
-      if (band < 0.03) continue;
-      vx[i] += dx/d * band * amp * 9 * dt;
-      vy[i] += dy/d * band * amp * 9 * dt;
-      heat[i] = Math.min(1, heat[i] + band*amp*dt*3);
-    }
-  }
-}
-
-// ---------- quadtree floor render (into the offscreen 2D canvas) ----------
-const CAP = 5, MAXD = 8;
-let cellCount = 0, maxDepthUsed = 0;
-let scalePx = 1;
-
-function hash2(a, b, c){
-  const s = Math.sin(a*127.1 + b*311.7 + c*74.7) * 43758.5453;
-  return s - Math.floor(s);
-}
-
-function drawNode(x0, y0, x1, y1, idxs, depth){
-  const n = idxs.length;
-  const X = x0*scalePx, Y = y0*scalePx;
-  const WW = (x1-x0)*scalePx, HH = (y1-y0)*scalePx;
-
-  // faintly glowing grid lines on the dark ground
-  const sh = hash2(x0, y0, depth + 11);
-  const salpha = Math.min(0.4, (depth <= 2 ? 0.14 : 0.04) + sh*sh*0.2);
-  ctx.strokeStyle = `hsla(${strokeHue|0},50%,68%,${salpha.toFixed(3)})`;
-  ctx.lineWidth = depth <= 1 ? 2 : 1;
-  ctx.strokeRect(X, Y, WW, HH);
-
-  if (n > CAP && depth < MAXD && WW > 11) {
-    const mx = (x0+x1)/2, my = (y0+y1)/2;
-    const q0 = [], q1 = [], q2 = [], q3 = [];
-    for (let k = 0; k < n; k++) {
-      const i = idxs[k];
-      if (py[i] < my) (px[i] < mx ? q0 : q1).push(i);
-      else            (px[i] < mx ? q2 : q3).push(i);
-    }
-    drawNode(x0, y0, mx, my, q0, depth+1);
-    drawNode(mx, y0, x1, my, q1, depth+1);
-    drawNode(x0, my, mx, y1, q2, depth+1);
-    drawNode(mx, my, x1, y1, q3, depth+1);
-    return;
-  }
-  cellCount++;
-  if (depth > maxDepthUsed) maxDepthUsed = depth;
-
-  const h2 = hash2(x0, y0, depth);
-  const hp = hash2(Math.floor(x0*5), Math.floor(y0*5), 7);
-  const pal = palette[Math.floor(hp * palette.length) % palette.length];
-
-  if (!n) {
-    let a = h2 < 0.4 ? 0.02 + h2*0.55*0.14 : 0;
-    let eh = pal.h;
-    if (inRegion(x0, y0, x1, y1)) {
-      a += (0.06 + Math.abs(regionEv.dAlpha)*0.8) * regionEnv;
-      eh = regionEv.hue;
-    }
-    if (a > 0.005) {
-      ctx.fillStyle = `hsla(${eh|0},${(pal.s+10)|0}%,${(pal.l-4)|0}%,${a.toFixed(3)})`;
-      ctx.fillRect(X, Y, WW, HH);
-    }
-    return;
-  }
-
-  let hsum = 0;
-  for (let k = 0; k < n; k++) hsum += heat[idxs[k]];
-  const havg = hsum / n;
-  const area = (x1-x0)*(y1-y0);
-  const dens = n / (area * simCount);
-  const accent = palette[palette.length - 1];
-
-  // glowing tiles on the dark ground: denser cells burn brighter
-  let alpha = 0.08 + 0.30*Math.sqrt(dens) + (h2 - 0.5)*0.12 + havg*0.35;
-  let light = pal.l + (sh - 0.5)*22 + Math.min(16, dens*1.6);
-  let s2 = Math.min(95, pal.s + 14 + h2*18 + havg*22);
-  let hue = pal.h + depth*3 + (accent.h - pal.h)*Math.min(1, havg*1.3);
-  if (h2 > 0.93) { alpha += 0.42; light = Math.min(72, light + 14); }
-  if (inRegion(x0, y0, x1, y1)) {
-    hue += (regionEv.hue - hue) * 0.55 * regionEnv;
-    alpha += regionEv.dAlpha * regionEnv;
-    light += regionEv.dLight * regionEnv;
-  }
-  alpha = Math.min(0.95, Math.max(0.03, alpha));
-  light = Math.min(78, Math.max(26, light));
-
-  ctx.fillStyle = `hsla(${hue|0},${s2|0}%,${light|0}%,${alpha.toFixed(3)})`;
-  ctx.fillRect(X, Y, WW, HH);
-}
-
-function renderFloor(){
-  ctx.fillStyle = '#04050a';
-  ctx.fillRect(0, 0, floorCanvas.width, floorCanvas.height);
-  cellCount = 0; maxDepthUsed = 0;
-  const all = [];
-  for (let i = 0; i < simCount; i++) all.push(i);
-  drawNode(0, 0, W, 1, all, 0);
-}
-
-// ---------- WebGL surface (water / glass) ----------
+// ---------- shaders ----------
 const VS = `#version 300 es
 void main(){
   vec2 v = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2));
@@ -1409,14 +1118,14 @@ void main(){
 
 const FS = `#version 300 es
 precision highp float;
-uniform sampler2D uFloor;
 uniform vec2 uRes;
-uniform float uTime, uAspect, uMat; // uMat: 0 = water ... 1 = glass
-uniform vec3 uTint;
-uniform vec4 uRip[${NRIP}]; // x, y (world), t0, amp
+uniform float uTime, uAspect, uMat, uPress, uSpin;
+uniform vec3 uPointer; // xy: world position of the finger
+uniform int uFx;       // 1 = follow (dimple), 2 = whirlpool
+uniform vec4 uRip[${NRIP}];
 out vec4 frag;
 
-// slow, long-lived rings from touches
+// slow, long-lived rings
 float ripplesH(vec2 p, float t){
   float h = 0.0;
   for (int k = 0; k < ${NRIP}; k++) {
@@ -1426,22 +1135,22 @@ float ripplesH(vec2 p, float t){
     if (age < 0.0 || age > 4.5) continue;
     vec2 d = p - r.xy;
     float dist = length(d);
-    float amp = 0.020 * r.w * exp(-age*1.05) * exp(-dist*2.0);
-    h += amp * sin((dist - 0.30*age)*42.0);
+    float amp = 0.020 * r.w * exp(-age*1.05) * exp(-dist*2.2);
+    h += amp * sin((dist - 0.30*age)*46.0);
   }
   return h;
 }
 
-// molten water: domain-warped slow swells
+// molten swells: domain-warped, slow, viscous
 float waterH(vec2 p, float t){
   vec2 q = p + 0.11*vec2(
     sin(p.y*2.8 + t*0.35) + sin(p.x*1.7 - t*0.22),
     sin(p.x*2.3 - t*0.28) + sin(p.y*1.9 + t*0.31));
   float h = 0.0;
-  h += 0.030*sin(dot(q, vec2( 0.95, 0.31))*6.0  + t*0.50);
-  h += 0.020*sin(dot(q, vec2(-0.49, 0.87))*9.5  + t*0.74);
-  h += 0.012*sin(dot(q, vec2( 0.72,-0.69))*16.0 + t*1.05);
-  h += 0.006*sin(dot(q, vec2(-0.28,-0.96))*26.0 + t*1.50);
+  h += 0.032*sin(dot(q, vec2( 0.95, 0.31))*5.6  + t*0.50);
+  h += 0.021*sin(dot(q, vec2(-0.49, 0.87))*9.0  + t*0.74);
+  h += 0.012*sin(dot(q, vec2( 0.72,-0.69))*15.0 + t*1.05);
+  h += 0.006*sin(dot(q, vec2(-0.28,-0.96))*25.0 + t*1.50);
   return h;
 }
 
@@ -1453,11 +1162,25 @@ float glassH(vec2 p){
   return h;
 }
 
-// blended surface: water freezes into glass and melts back
+// whirlpool: twist the domain around the finger
+vec2 twist(vec2 p){
+  vec2 d = p - uPointer.xy;
+  float a = uSpin * exp(-dot(d,d)/0.055);
+  float c = cos(a), s = sin(a);
+  return uPointer.xy + mat2(c, -s, s, c) * d;
+}
+
 float surfH(vec2 p, float t){
-  float tw = t * (1.0 - uMat*0.93); // swells slow to a stop as it vitrifies
-  float h = mix(waterH(p, tw), glassH(p), uMat);
-  return h + ripplesH(p, t) * (1.0 - uMat*0.55);
+  vec2 pw = twist(p);
+  float tw = t * (1.0 - uMat*0.93); // swells freeze as it vitrifies
+  float h = mix(waterH(pw, tw), glassH(pw), uMat);
+  h += ripplesH(p, t) * (1.0 - uMat*0.55);
+  if (uFx == 1) { // finger dimple with a raised rim, like pressing the surface
+    vec2 d = p - uPointer.xy;
+    float r2 = dot(d, d);
+    h += uPress * (-0.034*exp(-r2/0.012) + 0.013*exp(-r2/0.055));
+  }
+  return h;
 }
 
 vec3 surfN(vec2 p, float t){
@@ -1468,81 +1191,49 @@ vec3 surfN(vec2 p, float t){
   return normalize(vec3(-(hx - h0)/e, -(hy - h0)/e, 1.0));
 }
 
-// classic iterative caustic pattern (expects large-magnitude coords)
-float caustic(vec2 pin, float t){
-  vec2 p = mod(pin*6.28318, 6.28318) - 250.0;
-  vec2 i = p;
-  float c = 1.0;
-  float inten = 0.005;
-  for (int n = 0; n < 3; n++) {
-    float ft = t * (1.0 - (3.5 / float(n+1)));
-    i = p + vec2(cos(ft - i.x) + sin(ft + i.y),
-                 sin(ft - i.y) + cos(ft + i.x));
-    c += 1.0/length(vec2(p.x / (sin(i.x+ft)/inten),
-                         p.y / (cos(i.y+ft)/inten)));
-  }
-  c /= 3.0;
-  c = 1.17 - pow(c, 1.4);
-  return clamp(pow(abs(c), 8.0), 0.0, 2.5);
-}
-
-// dark studio environment: soft overhead box + one crisp strip light
+// dark studio: soft overhead box, one crisp key light, faint rim
 vec3 envColor(vec3 r){
   vec3 Lbox = normalize(vec3( 0.25, -0.35, 0.90));
   vec3 Lkey = normalize(vec3(-0.45,  0.30, 0.83));
-  float soft = pow(max(dot(r, Lbox), 0.0), 7.0);
-  float key  = pow(max(dot(r, Lkey), 0.0), 90.0);
-  float spark= pow(max(dot(r, Lkey), 0.0), 500.0);
-  return vec3(0.010, 0.012, 0.018)
-       + soft  * vec3(0.16, 0.18, 0.24)
-       + key   * vec3(0.55, 0.58, 0.65)
-       + spark * vec3(1.9, 1.95, 2.0);
+  vec3 Lrim = normalize(vec3( 0.62,  0.52, 0.59));
+  float soft  = pow(max(dot(r, Lbox), 0.0), 6.0);
+  float key   = pow(max(dot(r, Lkey), 0.0), 110.0);
+  float spark = pow(max(dot(r, Lkey), 0.0), 620.0);
+  float rim   = pow(max(dot(r, Lrim), 0.0), 42.0);
+  return vec3(0.006, 0.007, 0.009)
+       + soft  * vec3(0.085, 0.092, 0.108)
+       + rim   * vec3(0.052, 0.056, 0.066)
+       + key   * vec3(0.72, 0.75, 0.82)
+       + spark * vec3(2.6, 2.65, 2.75);
 }
-
-const vec2 KERN[5] = vec2[](vec2(0.0, 0.0), vec2(1.0, 0.4),
-  vec2(-0.7, 0.8), vec2(0.6, -0.9), vec2(-1.0, -0.3));
 
 void main(){
   vec2 suv = vec2(gl_FragCoord.x/uRes.x, 1.0 - gl_FragCoord.y/uRes.y);
   vec2 p = vec2(suv.x*uAspect, suv.y);
   float m = uMat;
 
+  float hgt = surfH(p, uTime);
   vec3 N = surfN(p, uTime);
-
-  // refraction: chromatic when liquid, blurrier as it turns to glass
-  vec2 ruv = suv + N.xy * mix(0.075, 0.105, m);
-  vec3 sharp;
-  sharp.r = texture(uFloor, ruv + N.xy*0.010).r;
-  sharp.g = texture(uFloor, ruv).g;
-  sharp.b = texture(uFloor, ruv - N.xy*0.010).b;
-  vec3 base = sharp;
-  float blur = 0.006 * m;
-  if (blur > 0.0002) {
-    vec3 acc = vec3(0.0);
-    for (int s = 0; s < 5; s++)
-      acc += texture(uFloor, ruv + KERN[s]*blur).rgb;
-    base = mix(sharp, acc/5.0, clamp(m*1.25, 0.0, 1.0));
-  }
-
-  // caustics live only in the liquid state; glow so they read on black
-  float ca = caustic(p*1.15 + N.xy*0.5, uTime*0.4) * (1.0 - m);
-  base *= 0.85 + ca*0.95;
-  base += uTint * ca * 0.22;
-
-  // absorption: multiplicative so the black stays black
-  vec3 absorb = mix(mix(vec3(1.0), uTint*1.7, 0.35),
-                    vec3(0.93, 1.0, 0.95), m);
-  base *= absorb;
 
   float F0 = mix(0.02, 0.045, m);
   float F = F0 + (1.0 - F0)*pow(1.0 - max(N.z, 0.0), 5.0);
   vec3 R = reflect(vec3(0.0, 0.0, -1.0), N);
   vec3 env = envColor(R);
-  vec3 col = base * (1.0 - F) + env * (0.05 + F*3.0);
+
+  // the material exists only as reflection: black stays black on flats
+  vec3 col = env * (0.10 + F*2.7);
+
+  // transparency cues, kept neutral:
+  // liquid crests catch a whisper of internal scatter…
+  float crest = clamp(hgt*9.0 + 0.25, 0.0, 1.0);
+  col += vec3(0.010, 0.012, 0.015) * crest * (1.0 - m) * (1.0 - F);
+  // …glass shows a faint milkiness where the relief is steep
+  float slope = 1.0 - N.z;
+  col += vec3(0.020, 0.021, 0.023) * clamp(slope*9.0, 0.0, 0.9) * m;
 
   // gentle vignette + gamma
   vec2 q = suv - 0.5;
-  col *= 1.0 - dot(q, q)*0.4;
+  col *= 1.0 - dot(q, q)*0.5;
   col = pow(max(col, vec3(0.0)), vec3(0.92));
   frag = vec4(col, 1.0);
 }`;
@@ -1562,29 +1253,29 @@ if (!gl.getProgramParameter(prog, gl.LINK_STATUS))
   throw new Error(gl.getProgramInfoLog(prog));
 gl.useProgram(prog);
 const U = {};
-for (const n of ['uFloor','uRes','uTime','uAspect','uMat','uTint','uRip'])
+for (const n of ['uRes','uTime','uAspect','uMat','uPress','uSpin','uPointer','uFx','uRip'])
   U[n] = gl.getUniformLocation(prog, n);
-
-const floorTex = gl.createTexture();
-gl.bindTexture(gl.TEXTURE_2D, floorTex);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-gl.uniform1i(U.uFloor, 0);
 
 // ---------- HUD fake telemetry ----------
 const statsEl = document.getElementById('stats');
 let iter = 10000;
-function updateStats(){
+function activeRipples(now){
+  let c = 0;
+  for (let k = 0; k < NRIP; k++) {
+    const a = now - surfRipples[k*4+2];
+    if (surfRipples[k*4+3] > 0 && a >= 0 && a < 4.5) c++;
+  }
+  return c;
+}
+function updateStats(now){
   iter += 5 + (Math.random()*7|0);
   const ior = 1.33 + (1.52 - 1.33)*matV;
   statsEl.textContent =
-    'PARTITION EPOCH   : ' + iter.toLocaleString('en-US') + '\n' +
+    'SURFACE EPOCH     : ' + iter.toLocaleString('en-US') + '\n' +
     'VITRIFICATION     : ' + matV.toFixed(3) + '\n' +
     'IOR (BLENDED)     : ' + ior.toFixed(4) + '\n' +
-    'AGENTS            : ' + simCount.toLocaleString('en-US') + '\n' +
-    'LEAF CELLS        : ' + cellCount.toLocaleString('en-US') + '\n' +
+    'ACTIVE RIPPLES    : ' + activeRipples(now) + '\n' +
+    'VORTICITY         : ' + spin.toFixed(3) + '\n' +
     'SEED              : ' + SEED;
 }
 
@@ -1593,27 +1284,14 @@ function resize(){
   const w = Math.floor(canvas.clientWidth * DPR) || 1;
   const h = Math.floor(canvas.clientHeight * DPR) || 1;
   if (canvas.width !== w || canvas.height !== h) {
-    const oldW = W;
     canvas.width = w; canvas.height = h;
     gl.viewport(0, 0, w, h);
     W = w / h;
-    const fh = Math.min(coarse ? 640 : 900, h);
-    floorCanvas.height = fh;
-    floorCanvas.width = Math.round(fh * W);
-    scalePx = fh;
-    if (oldW > 0 && Math.abs(W - oldW) > 1e-6) {
-      const k = W / oldW;
-      for (let i = 0; i < N_FULL; i++) px[i] *= k;
-      for (let i = 0; i < N_FULL; i++) hx[i] *= k;
-      for (const a of attr) a.x *= k;
-    }
   }
 }
 window.addEventListener('resize', resize);
 resize();
-seedAgents();
 
-let fpsFrames = 0, fpsTime = 0, warmup = 2;
 let prev = performance.now()/1000, statT = 0;
 let nextRainT = 3 + rnd()*3;
 
@@ -1625,35 +1303,7 @@ function frame(){
 
   if (airOn && video && video.readyState >= 2) processAir(now);
 
-  if (warmup > 0) warmup -= dt;
-  else {
-    fpsFrames++; fpsTime += dt;
-    if (fpsTime > 1.5) {
-      const fps = fpsFrames / fpsTime;
-      if (fps < 40 && simCount > 1200) simCount = Math.max(1200, (simCount*0.75)|0);
-      else if (fps > 55 && simCount < N_FULL) simCount = Math.min(N_FULL, (simCount*1.12)|0);
-      fpsFrames = 0; fpsTime = 0;
-    }
-  }
-
-  seasonT += dt * (reducedMotion ? 0.5 : 1);
-  if (seasonT > SEASON_LEN[seasonIdx]) nextSeason();
-
-  if (!regionEv) {
-    nextRegionT -= dt;
-    if (nextRegionT <= 0) spawnRegion(now);
-  } else {
-    const age = now - regionEv.t0;
-    if (age > regionEv.dur) {
-      regionEv = null; regionEnv = 0;
-      nextRegionT = 5 + rnd()*10;
-    } else {
-      regionEnv = mease.smoothstep(0, 0.5, age)
-                * (1 - mease.smoothstep(regionEv.dur - 0.8, regionEv.dur, age));
-    }
-  }
-
-  // slow transmutation cycle: water <-> glass
+  // slow transmutation cycle
   matCycleT += dt;
   if (matCycleT > MAT_CYCLE) { matTarget = 1 - matTarget; matCycleT = 0; }
   matV += (matTarget - matV) * Math.min(1, dt*0.5);
@@ -1672,22 +1322,22 @@ function frame(){
   press += (pressTarget - press) * Math.min(1, dt * (pressTarget > press ? 10 : 4));
   pointer[0] += (pointerTarget[0] - pointer[0]) * Math.min(1, dt*14);
   pointer[1] += (pointerTarget[1] - pointer[1]) * Math.min(1, dt*14);
+  if (mode === 2 && pressTarget > 0) spin = Math.min(10, spin + dt*2.6);
+  else spin *= Math.exp(-dt/1.4);
 
-  step(dt, now);
-  renderFloor();
-
-  gl.bindTexture(gl.TEXTURE_2D, floorTex);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, floorCanvas);
   gl.uniform2f(U.uRes, canvas.width, canvas.height);
   gl.uniform1f(U.uTime, now);
   gl.uniform1f(U.uAspect, W);
   gl.uniform1f(U.uMat, matV);
-  gl.uniform3f(U.uTint, waterTint[0], waterTint[1], waterTint[2]);
+  gl.uniform1f(U.uPress, press);
+  gl.uniform1f(U.uSpin, spin);
+  gl.uniform3f(U.uPointer, pointer[0], pointer[1], 0);
+  gl.uniform1i(U.uFx, pressTarget > 0 || press > 0.03 ? mode : 0);
   gl.uniform4fv(U.uRip, surfRipples);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 
   statT += dt;
-  if (statT > 0.12) { statT = 0; updateStats(); }
+  if (statT > 0.12) { statT = 0; updateStats(now); }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
