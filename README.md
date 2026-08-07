@@ -52,6 +52,7 @@ index.html?preset=storm&seed=1024&hideui=1
 | `grain` | 粒子 | 0–1 |
 | `bright` | 明るさ | 0.2–0.9 |
 | `contrast` | コントラスト | 0.5–2 |
+| `levels` | 階調(ソリッド) | 0–16(量子化する階調数。0/1 で無効) |
 | `burst` | 黒バースト | 0–1 |
 | `spread` | バースト拡がり | 0–1 |
 | `blocks` | 白ブロック | 0–1 |
