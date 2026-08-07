@@ -13,8 +13,8 @@ base = root / "新宿駅構内図3D_base.html"
 out  = root / "新宿駅構内図3D.html"
 
 html = base.read_text()
-pack = (root / "b1_pack.json").read_text()
-layer = (root / "b1_layer.js").read_text()
+pack = (root / "floors_pack.json").read_text()
+layer = (root / "floors_layer.js").read_text()
 
 patches = [
     # 1) __app 拡張
@@ -29,7 +29,7 @@ for old, new in patches:
     assert n == 1, f"アンカー一致数 {n} != 1: {old[:60]}"
     html = html.replace(old, new)
 
-inject = (f'<script id="b1pack" type="application/json">{pack}</script>\n'
+inject = (f'<script id="floorspack" type="application/json">{pack}</script>\n'
           f'<script>\n{layer}\n</script>\n</body>')
 assert html.count("</body>") == 1
 html = html.replace("</body>", inject)
@@ -37,6 +37,6 @@ html = html.replace("</body>", inject)
 out.write_text(html)
 
 # パッチ後の実物確認(sed 的置換の無言成功を防ぐ — HANDOVER §6)
-for needle in ["floors:Zi", "__b1tick", 'id="b1pack"', "b1-crowd"]:
+for needle in ["floors:Zi", "__b1tick", 'id="floorspack"', "'crowd-'+F.pk.name", "地下 物理人流"]:
     assert needle in out.read_text(), f"検証失敗: {needle}"
 print(f"wrote {out} ({out.stat().st_size/1e6:.1f} MB)")
