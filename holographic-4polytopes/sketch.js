@@ -2,6 +2,7 @@
 // Description 1: Six exact regular 4-polytopes transform continuously through four-dimensional space.
 // Description 2: Angular diffraction separates saturated rainbow light into animated holographic interference bands.
 // Description 3: Strong colored reflection, refraction, Fresnel highlights, and premultiplied transparency preserve vivid spectral depth.
+// Description 4: Drag to orbit in 3D, tap to trigger the next transformation, pinch or scroll to zoom, and right-drag or two-finger drag to rotate through the fourth dimension.
 
 p5.disableFriendlyErrors=true;
 const DRAW_DIAMETER_RATIO=0.95;
@@ -26,8 +27,14 @@ const ROTATION_YW_SPEED=0.13;
 const ROTATION_ZW_SPEED=0.11;
 const FOUR_D_CAMERA_DISTANCE=3.0;
 const pageStyle=document.createElement("style");
-pageStyle.textContent="html,body{margin:0;padding:0;overflow:hidden;background:#000}canvas{display:block}";
+pageStyle.textContent="html,body{margin:0;padding:0;overflow:hidden;background:#000}canvas{display:block;touch-action:none;user-select:none;-webkit-user-select:none}";
 document.head.appendChild(pageStyle);
+document.addEventListener("contextmenu",event=>event.preventDefault());
+const hintElement=document.createElement("div");
+hintElement.textContent="ドラッグ: 回転 ／ タップ: 変形 ／ ピンチ・ホイール: ズーム ／ 右ドラッグ・2本指: 4D回転";
+hintElement.style.cssText="position:fixed;left:50%;bottom:18px;transform:translateX(-50%);color:rgba(255,255,255,0.78);font:14px/1.6 sans-serif;background:rgba(0,0,0,0.45);padding:8px 16px;border-radius:999px;pointer-events:none;white-space:nowrap;transition:opacity 1.6s;z-index:10";
+document.addEventListener("DOMContentLoaded",()=>document.body.appendChild(hintElement));
+setTimeout(()=>{hintElement.style.opacity="0";},9000);
 
 const glassVertexShader=`
 precision highp float;
@@ -114,6 +121,21 @@ let polytopes=[];
 let transformations=[];
 let shortSide=1;
 let glassShader;
+let viewRotX=0,viewRotY=0;
+let spinVelX=0,spinVelY=0;
+let userXW=0,userYW=0;
+let zoomFactor=1;
+let autoWeight=1;
+const autoAngles={x:0,y:0,z:0,xw:0,yw:0,zw:0};
+let lastFrameSeconds=0;
+let lastInteractionSeconds=-10;
+let slotIndex=0;
+let morphPhase="hold";
+let phaseElapsed=0;
+let morphSpeed=1;
+let dragActive=false;
+let pressSeconds=0,dragDistance=0;
+let pinchActive=false,pinchDistance=0,pinchMid=null;
 
 function setup(){
   createCanvas(windowWidth,windowHeight,WEBGL);
@@ -142,10 +164,46 @@ function draw(){
   ortho(-width/2,width/2,-height/2,height/2,-5000,5000);
   drawingContext.disable(drawingContext.DEPTH_TEST);
   const seconds=millis()*0.001;
-  const slot=Math.floor(seconds/SLOT_SECONDS)%transformations.length;
-  const local=seconds%SLOT_SECONDS;
-  const raw=local<HOLD_SECONDS?0:(local-HOLD_SECONDS)/TRANSFORMATION_SECONDS;
-  drawTransformation(transformations[slot],smootherstep(raw),seconds);
+  const dt=Math.min(0.1,Math.max(0,seconds-lastFrameSeconds));
+  lastFrameSeconds=seconds;
+  const autoTarget=seconds-lastInteractionSeconds<3?0:1;
+  autoWeight+=(autoTarget-autoWeight)*Math.min(1,dt*2.5);
+  autoAngles.x+=ROTATION_X_SPEED*dt*autoWeight;
+  autoAngles.y+=ROTATION_Y_SPEED*dt*autoWeight;
+  autoAngles.z+=ROTATION_Z_SPEED*dt*autoWeight;
+  autoAngles.xw+=ROTATION_XW_SPEED*dt*autoWeight;
+  autoAngles.yw+=ROTATION_YW_SPEED*dt*autoWeight;
+  autoAngles.zw+=ROTATION_ZW_SPEED*dt*autoWeight;
+  if(!dragActive){
+    viewRotX+=spinVelX*dt;
+    viewRotY+=spinVelY*dt;
+    const decay=Math.exp(-2.5*dt);
+    spinVelX*=decay;
+    spinVelY*=decay;
+  }
+  phaseElapsed+=dt*(morphPhase==="morph"?morphSpeed:1);
+  if(morphPhase==="hold"&&phaseElapsed>=HOLD_SECONDS){
+    morphPhase="morph";
+    phaseElapsed=0;
+    morphSpeed=1;
+  }else if(morphPhase==="morph"&&phaseElapsed>=TRANSFORMATION_SECONDS){
+    morphPhase="hold";
+    phaseElapsed=0;
+    morphSpeed=1;
+    slotIndex=(slotIndex+1)%transformations.length;
+  }
+  const raw=morphPhase==="hold"?0:Math.min(1,phaseElapsed/TRANSFORMATION_SECONDS);
+  drawTransformation(transformations[slotIndex],smootherstep(raw),seconds);
+}
+
+function triggerMorph(){
+  if(morphPhase==="hold"){
+    morphPhase="morph";
+    phaseElapsed=0;
+    morphSpeed=1;
+  }else{
+    morphSpeed=Math.min(morphSpeed*1.8+0.5,6);
+  }
 }
 
 function drawTransformation(transformation,amount,seconds){
@@ -156,12 +214,12 @@ function drawTransformation(transformation,amount,seconds){
     const pair=transformation.edgePairs[i];
     const a4=slerp4(pair[0],pair[2],amount);
     const b4=slerp4(pair[1],pair[3],amount);
-    segments[i]=[project4Dto3D(a4,seconds),project4Dto3D(b4,seconds)];
+    segments[i]=[project4Dto3D(a4),project4Dto3D(b4)];
   }
   const points=new Array(transformation.vertexPairs.length);
   for(let i=0;i<transformation.vertexPairs.length;i++){
     const pair=transformation.vertexPairs[i];
-    points[i]=project4Dto3D(slerp4(pair[0],pair[1],amount),seconds);
+    points[i]=project4Dto3D(slerp4(pair[0],pair[1],amount));
   }
   const effectiveEdges=lerp(from.edges.length,to.edges.length,amount);
   const effectiveVertices=lerp(from.vertices.length,to.vertices.length,amount);
@@ -182,7 +240,7 @@ function drawTransformation(transformation,amount,seconds){
     const polygon=new Array(MORPH_FACE_VERTEX_COUNT);
     const center=[0,0,0];
     for(let i=0;i<MORPH_FACE_VERTEX_COUNT;i++){
-      polygon[i]=project4Dto3D(slerp4(face.fromVertices[i],face.toVertices[i],amount),seconds);
+      polygon[i]=project4Dto3D(slerp4(face.fromVertices[i],face.toVertices[i],amount));
       center[0]+=polygon[i][0]/MORPH_FACE_VERTEX_COUNT;
       center[1]+=polygon[i][1]/MORPH_FACE_VERTEX_COUNT;
       center[2]+=polygon[i][2]/MORPH_FACE_VERTEX_COUNT;
@@ -195,7 +253,7 @@ function drawTransformation(transformation,amount,seconds){
   for(const segment of segments)projectedRadius=Math.max(projectedRadius,Math.hypot(segment[0][0],segment[0][1]),Math.hypot(segment[1][0],segment[1][1]));
   for(const point of points)projectedRadius=Math.max(projectedRadius,Math.hypot(point[0],point[1]));
   for(const face of glassFaces)for(const point of face.polygon)projectedRadius=Math.max(projectedRadius,Math.hypot(point[0],point[1]));
-  const modelScale=shortSide*DRAW_DIAMETER_RATIO*0.5/projectedRadius;
+  const modelScale=shortSide*DRAW_DIAMETER_RATIO*0.5/projectedRadius*zoomFactor;
   push();
   scale(modelScale);
   blendMode(BLEND);
@@ -261,14 +319,15 @@ function polygonNormal(polygon){
   return[0,0,1];
 }
 
-function project4Dto3D(vertex,seconds){
+function project4Dto3D(vertex){
   let q=vertex.slice();
-  q=rotate4DPlane(q,0,3,seconds*ROTATION_XW_SPEED);
-  q=rotate4DPlane(q,1,3,seconds*ROTATION_YW_SPEED+1.2);
-  q=rotate4DPlane(q,2,3,seconds*ROTATION_ZW_SPEED+2.4);
+  q=rotate4DPlane(q,0,3,autoAngles.xw+userXW);
+  q=rotate4DPlane(q,1,3,autoAngles.yw+userYW+1.2);
+  q=rotate4DPlane(q,2,3,autoAngles.zw+2.4);
   const perspective=FOUR_D_CAMERA_DISTANCE/(FOUR_D_CAMERA_DISTANCE-q[3]);
   const projected=[q[0]*perspective,q[1]*perspective,q[2]*perspective];
-  return rotate3D(projected,seconds*ROTATION_X_SPEED,seconds*ROTATION_Y_SPEED,seconds*ROTATION_Z_SPEED);
+  const spun=rotate3D(projected,autoAngles.x,autoAngles.y,autoAngles.z);
+  return rotate3D(spun,viewRotX,viewRotY,0);
 }
 
 function rotate3D(v,angleX,angleY,angleZ){
@@ -560,6 +619,96 @@ function evenPermutations4(){
 function smootherstep(t){
   t=Math.max(0,Math.min(1,t));
   return t*t*t*(t*(t*6-15)+10);
+}
+
+function markInteraction(){
+  lastInteractionSeconds=millis()*0.001;
+}
+
+function mousePressed(){
+  markInteraction();
+  pressSeconds=lastInteractionSeconds;
+  dragDistance=0;
+  spinVelX=0;
+  spinVelY=0;
+  dragActive=true;
+  return false;
+}
+
+function mouseDragged(){
+  markInteraction();
+  if(touches.length>=2)return false;
+  const dx=movedX,dy=movedY;
+  dragDistance+=Math.abs(dx)+Math.abs(dy);
+  if(mouseButton===RIGHT){
+    userXW+=dx*0.006;
+    userYW+=dy*0.006;
+  }else{
+    viewRotY+=dx*0.008;
+    viewRotX-=dy*0.008;
+    spinVelY=lerp(spinVelY,dx*0.008*TARGET_FRAME_RATE,0.5);
+    spinVelX=lerp(spinVelX,-dy*0.008*TARGET_FRAME_RATE,0.5);
+  }
+  return false;
+}
+
+function mouseReleased(){
+  dragActive=false;
+  const seconds=millis()*0.001;
+  if(dragDistance<12&&seconds-pressSeconds<0.4){
+    spinVelX=0;
+    spinVelY=0;
+    triggerMorph();
+  }
+  return false;
+}
+
+function mouseWheel(event){
+  markInteraction();
+  zoomFactor=Math.max(0.35,Math.min(3.2,zoomFactor*Math.exp(-event.delta*0.0009)));
+  return false;
+}
+
+function touchStarted(){
+  if(touches.length>=2){
+    pinchActive=true;
+    pinchDistance=dist(touches[0].x,touches[0].y,touches[1].x,touches[1].y);
+    pinchMid={x:(touches[0].x+touches[1].x)*0.5,y:(touches[0].y+touches[1].y)*0.5};
+    dragDistance+=100;
+    markInteraction();
+  }else{
+    mousePressed();
+  }
+  return false;
+}
+
+function touchMoved(){
+  markInteraction();
+  if(touches.length>=2){
+    const distance=dist(touches[0].x,touches[0].y,touches[1].x,touches[1].y);
+    const mid={x:(touches[0].x+touches[1].x)*0.5,y:(touches[0].y+touches[1].y)*0.5};
+    if(pinchActive&&pinchDistance>0)zoomFactor=Math.max(0.35,Math.min(3.2,zoomFactor*distance/pinchDistance));
+    if(pinchActive&&pinchMid){
+      userXW+=(mid.x-pinchMid.x)*0.006;
+      userYW+=(mid.y-pinchMid.y)*0.006;
+    }
+    pinchDistance=distance;
+    pinchMid=mid;
+    dragDistance+=100;
+  }else{
+    mouseDragged();
+  }
+  return false;
+}
+
+function touchEnded(){
+  if(touches.length<2){
+    pinchActive=false;
+    pinchDistance=0;
+    pinchMid=null;
+  }
+  if(touches.length===0)mouseReleased();
+  return false;
 }
 
 function windowResized(){
