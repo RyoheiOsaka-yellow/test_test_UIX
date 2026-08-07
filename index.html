@@ -36,6 +36,20 @@
     #shapeName { top:calc(54px + env(safe-area-inset-top)); }
     #caption { padding:0 14px; }
   }
+  #airBtn { position:fixed; z-index:11; right:calc(16px + env(safe-area-inset-right));
+        bottom:calc(24px + env(safe-area-inset-bottom)); pointer-events:auto;
+        background:rgba(18,20,28,.55); color:#aab2c4;
+        border:1px solid rgba(140,150,175,.35); border-radius:999px;
+        padding:8px 14px; font-size:12px; letter-spacing:.08em;
+        font-family:"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+        backdrop-filter:blur(6px); cursor:pointer; transition:all .18s; }
+  #airBtn.on { color:#fff; border-color:rgba(120,255,190,.8);
+        background:rgba(30,140,90,.35); box-shadow:0 0 14px rgba(80,255,180,.35); }
+  #airBtn:active { transform:scale(.94); }
+  #cam { position:fixed; z-index:10; right:calc(16px + env(safe-area-inset-right));
+        bottom:calc(68px + env(safe-area-inset-bottom)); width:120px; height:90px;
+        border:1px solid rgba(140,150,175,.3); border-radius:6px; opacity:.75;
+        display:none; transform:scaleX(-1); pointer-events:none; }
   #fallback { position:fixed; inset:0; display:none; place-items:center; color:#889;
           font-family:sans-serif; font-size:14px; }
 </style>
@@ -49,6 +63,8 @@
 <div id="caption" class="hud"></div>
 <div id="fx" class="hud"></div>
 <div id="hint" class="hud">指で触れるとランダムに反応 ／ ダブルタップで変形</div>
+<canvas id="cam" width="80" height="60"></canvas>
+<button id="airBtn">📷 AIR</button>
 <div id="fallback">WebGL2 が利用できない環境です。</div>
 
 <script>
@@ -1471,6 +1487,97 @@ function endPress(){
 canvas.addEventListener('pointerup', endPress);
 canvas.addEventListener('pointercancel', endPress);
 
+// ---------- AIR mode: control by waving a hand at the camera ----------
+const airBtn = document.getElementById('airBtn');
+const camCanvas = document.getElementById('cam');
+const camCtx = camCanvas.getContext('2d', { willReadFrequently: true });
+const hintEl = document.getElementById('hint');
+const HINT_TOUCH = hintEl.textContent;
+const CW = 80, CH = 60;
+let airOn = false, video = null, stream = null, prevLuma = null;
+let airActive = false, lastMotionT = 0, lastAirBurst = 0, lastAirRipple = 0;
+
+async function toggleAir(){
+  if (airOn) { stopAir(); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showFx('カメラ非対応の環境です'); return;
+  }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: {ideal: 320}, height: {ideal: 240} },
+      audio: false });
+  } catch (e) { showFx('カメラを利用できません'); return; }
+  video = document.createElement('video');
+  video.srcObject = stream;
+  video.muted = true;
+  video.setAttribute('playsinline', '');
+  try { await video.play(); } catch (e) { stopAir(); return; }
+  prevLuma = null;
+  airOn = true;
+  airBtn.classList.add('on');
+  camCanvas.style.display = 'block';
+  hintEl.textContent = 'カメラに向かって手を振る ／ ダブルタップで変形';
+}
+function stopAir(){
+  airOn = false;
+  airBtn.classList.remove('on');
+  camCanvas.style.display = 'none';
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null; video = null; prevLuma = null;
+  if (airActive) { airActive = false; pressTarget = 0; }
+  hintEl.textContent = HINT_TOUCH;
+}
+airBtn.addEventListener('click', toggleAir);
+
+function processAir(now){
+  camCtx.drawImage(video, 0, 0, CW, CH);
+  const img = camCtx.getImageData(0, 0, CW, CH);
+  const d = img.data;
+  const first = !prevLuma;
+  if (first) prevLuma = new Float32Array(CW*CH);
+  let sumX = 0, sumY = 0, cnt = 0;
+  for (let i = 0; i < CW*CH; i++) {
+    const l = d[i*4]*0.3 + d[i*4+1]*0.6 + d[i*4+2]*0.1;
+    const mv = !first && Math.abs(l - prevLuma[i]) > 26;
+    prevLuma[i] = l;
+    if (mv) { cnt++; sumX += i % CW; sumY += (i / CW)|0; }
+    // preview: dimmed video with motion pixels highlighted
+    d[i*4]   = mv ? 40  : d[i*4]*0.25;
+    d[i*4+1] = mv ? 255 : d[i*4+1]*0.25;
+    d[i*4+2] = mv ? 120 : d[i*4+2]*0.25;
+  }
+  camCtx.putImageData(img, 0, 0);
+
+  if (cnt > 18) { // enough motion: treat its centroid as the finger
+    lastMotionT = now;
+    const r = canvas.getBoundingClientRect();
+    const ndcX = (1 - (sumX/cnt)/CW) * 2 - 1; // mirrored
+    const ndcY = 1 - (sumY/cnt)/CH * 2;
+    const halfH = Math.tan(FOV/2) * camDist;
+    const wx = ndcX * halfH * (r.width/r.height);
+    const wy = ndcY * halfH;
+    pointerTarget[0] = wx; pointerTarget[1] = wy;
+    if (!airActive) {
+      airActive = true;
+      pressTarget = 1;
+      mode = (rnd()*FX_NAMES.length)|0;
+      showFx(FX_NAMES[mode]);
+      if (mode === 0) { addBurst(wx, wy, 1.1, now); lastAirBurst = now; }
+      if (mode === 3) { addBurst(wx, wy, -1.2, now); lastAirRipple = now; }
+    } else {
+      if (mode === 0 && now - lastAirBurst > 0.12) {
+        addBurst(wx, wy, 0.6, now); lastAirBurst = now;
+      }
+      if (mode === 3 && now - lastAirRipple > 0.5) {
+        addBurst(wx, wy, -0.9, now); lastAirRipple = now;
+      }
+    }
+  } else if (airActive && now - lastMotionT > 0.6) {
+    airActive = false;
+    pressTarget = 0;
+  }
+}
+
 // ---------- matrices & organic tumbling (mathcat quat/mat4) ----------
 const proj = new Float32Array(16), model = new Float32Array(16);
 const qa = [0,0,0,1], qb = [0,0,0,1], qCur = [0,0,0,1];
@@ -1528,12 +1635,16 @@ gl.clearColor(0, 0, 0, 1);
 let drawCount = COUNT;
 let fpsFrames = 0, fpsTime = 0, warmup = 2;
 
-let prev = performance.now()/1000, statT = 0;
+let prev = performance.now()/1000, statT = 0, frameNo = 0;
 function frame(){
   const now = performance.now()/1000;
   const dt = Math.min(0.05, now - prev);
   prev = now;
   resize();
+  frameNo++;
+
+  if (airOn && video && video.readyState >= 2 && (frameNo & 1) === 0)
+    processAir(now);
 
   if (warmup > 0) warmup -= dt;
   else {
