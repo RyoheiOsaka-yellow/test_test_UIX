@@ -56,7 +56,7 @@
 <div id="caption" class="hud"></div>
 <div id="fx" class="hud"></div>
 <div id="hint" class="hud">指で触れるとランダムに反応 ／ ダブルタップで変形</div>
-<canvas id="cam" width="80" height="60"></canvas>
+<canvas id="cam" width="128" height="96"></canvas>
 <button id="airBtn">📷 AIR</button>
 <div id="fallback">WebGL2 が利用できない環境です。</div>
 
@@ -1486,9 +1486,15 @@ const camCanvas = document.getElementById('cam');
 const camCtx = camCanvas.getContext('2d', { willReadFrequently: true });
 const hintEl = document.getElementById('hint');
 const HINT_TOUCH = hintEl.textContent;
-const CW = 80, CH = 60;
-let airOn = false, video = null, stream = null, prevLuma = null;
-let airActive = false, lastMotionT = 0, lastAirBurst = 0, lastAirRipple = 0;
+const CW = 128, CH = 96, NPIX = CW*CH;
+let airOn = false, video = null, stream = null;
+let bgL = null, noiseAvg = 8;
+const actX = new Int16Array(NPIX), actY = new Int16Array(NPIX);
+const actSkin = new Uint8Array(NPIX);
+let airActive = false, activeFrames = 0, lastMotionT = 0;
+let lastAirBurst = 0, lastAirRipple = 0;
+let trkX = CW/2, trkY = CH/2, trkLocked = false;
+let airX = 0, airY = 0; // filtered world-space hand position
 
 async function toggleAir(){
   if (airOn) { stopAir(); return; }
@@ -1505,7 +1511,7 @@ async function toggleAir(){
   video.muted = true;
   video.setAttribute('playsinline', '');
   try { await video.play(); } catch (e) { stopAir(); return; }
-  prevLuma = null;
+  bgL = null; trkLocked = false; activeFrames = 0;
   airOn = true;
   airBtn.classList.add('on');
   camCanvas.style.display = 'block';
@@ -1516,7 +1522,8 @@ function stopAir(){
   airBtn.classList.remove('on');
   camCanvas.style.display = 'none';
   if (stream) stream.getTracks().forEach(t => t.stop());
-  stream = null; video = null; prevLuma = null;
+  stream = null; video = null; bgL = null;
+  trkLocked = false; activeFrames = 0;
   if (airActive) { airActive = false; pressTarget = 0; }
   hintEl.textContent = HINT_TOUCH;
 }
@@ -1526,48 +1533,113 @@ function processAir(now){
   camCtx.drawImage(video, 0, 0, CW, CH);
   const img = camCtx.getImageData(0, 0, CW, CH);
   const d = img.data;
-  const first = !prevLuma;
-  if (first) prevLuma = new Float32Array(CW*CH);
-  let sumX = 0, sumY = 0, cnt = 0;
-  for (let i = 0; i < CW*CH; i++) {
-    const l = d[i*4]*0.3 + d[i*4+1]*0.6 + d[i*4+2]*0.1;
-    const mv = !first && Math.abs(l - prevLuma[i]) > 26;
-    prevLuma[i] = l;
-    if (mv) { cnt++; sumX += i % CW; sumY += (i / CW)|0; }
-    // preview: dimmed video with motion pixels highlighted
-    d[i*4]   = mv ? 40  : d[i*4]*0.25;
-    d[i*4+1] = mv ? 255 : d[i*4+1]*0.25;
-    d[i*4+2] = mv ? 120 : d[i*4+2]*0.25;
+  const first = !bgL;
+  if (first) bgL = new Float32Array(NPIX);
+  // threshold rides on the measured noise floor
+  const thr = Math.max(14, noiseAvg*3 + 6);
+  let diffSum = 0, cnt = 0, skinCnt = 0;
+  let sumMX = 0, sumMY = 0, sumSX = 0, sumSY = 0;
+  for (let i = 0; i < NPIX; i++) {
+    const r = d[i*4], gg = d[i*4+1], b = d[i*4+2];
+    const l = r*0.3 + gg*0.6 + b*0.1;
+    if (first) bgL[i] = l;
+    const diff = Math.abs(l - bgL[i]);
+    diffSum += diff;
+    const motion = diff > thr;
+    // background learns fast where the scene is static, slowly under the hand
+    bgL[i] += (l - bgL[i]) * (motion ? 0.015 : 0.10);
+    let lvl = 0;
+    if (motion) {
+      const x = i % CW, y = (i / CW)|0;
+      const cb = 128 - 0.169*r - 0.331*gg + 0.5*b;
+      const cr = 128 + 0.5*r - 0.419*gg - 0.081*b;
+      const skin = cr > 133 && cr < 180 && cb > 75 && cb < 130 && r > 55;
+      actX[cnt] = x; actY[cnt] = y; actSkin[cnt] = skin ? 1 : 0; cnt++;
+      sumMX += x; sumMY += y;
+      if (skin) { skinCnt++; sumSX += x; sumSY += y; lvl = 2; }
+      else lvl = 1;
+    }
+    // preview: skin+motion bright green, other motion dim teal, rest dimmed
+    d[i*4]   = lvl === 2 ? 60  : lvl === 1 ? 30  : r*0.22;
+    d[i*4+1] = lvl === 2 ? 255 : lvl === 1 ? 95  : gg*0.22;
+    d[i*4+2] = lvl === 2 ? 140 : lvl === 1 ? 120 : b*0.22;
   }
+  noiseAvg += (diffSum/NPIX - noiseAvg) * 0.05;
   camCtx.putImageData(img, 0, 0);
 
-  if (cnt > 18) { // enough motion: treat its centroid as the finger
+  // lighting change / camera bump: nearly everything "moved" — don't track it
+  if (cnt > NPIX*0.5) { trkLocked = false; activeFrames = 0; return; }
+
+  // prefer skin-colored moving pixels; fall back to any motion
+  const useSkin = skinCnt >= Math.max(12, cnt*0.18);
+  const effCnt = useSkin ? skinCnt : cnt;
+  const MIN = useSkin ? 12 : 26;
+
+  if (effCnt >= MIN) {
+    const gx = useSkin ? sumSX/skinCnt : sumMX/cnt;
+    const gy = useSkin ? sumSY/skinCnt : sumMY/cnt;
+    // mean shift: slide a window onto the densest cluster instead of
+    // averaging every stray pixel across the frame
+    let cx = trkLocked ? trkX : gx, cy = trkLocked ? trkY : gy;
+    const R2 = 28*28;
+    for (let it = 0; it < 3; it++) {
+      let sx = 0, sy = 0, sc = 0;
+      for (let k = 0; k < cnt; k++) {
+        if (useSkin && !actSkin[k]) continue;
+        const dx = actX[k] - cx, dy = actY[k] - cy;
+        if (dx*dx + dy*dy < R2) { sx += actX[k]; sy += actY[k]; sc++; }
+      }
+      if (sc < 6) { cx = gx; cy = gy; continue; } // lost: re-seek globally
+      cx = sx/sc; cy = sy/sc;
+    }
+    trkX = cx; trkY = cy; trkLocked = true;
     lastMotionT = now;
-    const r = canvas.getBoundingClientRect();
-    const ndcX = (1 - (sumX/cnt)/CW) * 2 - 1; // mirrored
-    const ndcY = 1 - (sumY/cnt)/CH * 2;
+    activeFrames++;
+
+    // map with gain around center (small hand motions cover the screen), mirrored
+    const nx = Math.min(1, Math.max(0, ((1 - cx/CW) - 0.5)*1.45 + 0.5));
+    const ny = Math.min(1, Math.max(0, ((cy/CH) - 0.5)*1.45 + 0.5));
+    const rr = canvas.getBoundingClientRect();
     const halfH = Math.tan(FOV/2) * camDist;
-    const wx = ndcX * halfH * (r.width/r.height);
-    const wy = ndcY * halfH;
-    pointerTarget[0] = wx; pointerTarget[1] = wy;
-    if (!airActive) {
+    const wx = (nx*2 - 1) * halfH * (rr.width/rr.height);
+    const wy = (1 - ny*2) * halfH;
+    // adaptive filter: a steady hand is heavily smoothed, a sweep tracks tightly
+    const ddist = Math.hypot(wx - airX, wy - airY);
+    const alpha = airActive ? Math.min(0.85, 0.18 + ddist*1.6) : 1;
+    airX += (wx - airX) * alpha;
+    airY += (wy - airY) * alpha;
+    pointerTarget[0] = airX; pointerTarget[1] = airY;
+
+    // effect strength follows how much of the frame is moving
+    const strength = 0.55 + Math.min(0.9, effCnt/(NPIX*0.06));
+    if (!airActive && activeFrames >= 3) { // debounce against one-frame noise
       airActive = true;
       pressTarget = 1;
       mode = (rnd()*FX_NAMES.length)|0;
       showFx(FX_NAMES[mode]);
-      if (mode === 0) { addBurst(wx, wy, 1.1, now); lastAirBurst = now; }
-      if (mode === 3) { addBurst(wx, wy, -1.2, now); lastAirRipple = now; }
-    } else {
+      if (mode === 0) { addBurst(airX, airY, strength + 0.3, now); lastAirBurst = now; }
+      if (mode === 3) { addBurst(airX, airY, -(strength + 0.3), now); lastAirRipple = now; }
+    } else if (airActive) {
       if (mode === 0 && now - lastAirBurst > 0.12) {
-        addBurst(wx, wy, 0.6, now); lastAirBurst = now;
+        addBurst(airX, airY, strength*0.6, now); lastAirBurst = now;
       }
       if (mode === 3 && now - lastAirRipple > 0.5) {
-        addBurst(wx, wy, -0.9, now); lastAirRipple = now;
+        addBurst(airX, airY, -strength*0.8, now); lastAirRipple = now;
       }
     }
-  } else if (airActive && now - lastMotionT > 0.6) {
-    airActive = false;
-    pressTarget = 0;
+    // crosshair on the preview at the tracked point
+    camCtx.strokeStyle = 'rgba(255,255,255,0.9)';
+    camCtx.lineWidth = 1.5;
+    camCtx.beginPath();
+    camCtx.arc(cx, cy, 5, 0, 6.2832);
+    camCtx.stroke();
+  } else {
+    activeFrames = 0;
+    if (airActive && now - lastMotionT > 0.7) {
+      airActive = false;
+      pressTarget = 0;
+    }
+    if (now - lastMotionT > 1.5) trkLocked = false;
   }
 }
 
@@ -1636,7 +1708,7 @@ function frame(){
   resize();
   frameNo++;
 
-  if (airOn && video && video.readyState >= 2 && (frameNo & 1) === 0)
+  if (airOn && video && video.readyState >= 2)
     processAir(now);
 
   if (warmup > 0) warmup -= dt;
