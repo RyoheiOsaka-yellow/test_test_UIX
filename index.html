@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GLITCH FIELD — インスタレーション制御プロトタイプ</title>
+<style>
+  /* 単一テーマ(暗室・制御室)で完結させる。地色は必ず明示的に塗る */
+  :root{
+    --bg:#0b0b0c;
+    --panel:#151517;
+    --panel-edge:#232326;
+    --ink:#e6e6e3;
+    --muted:#85858a;
+    --faint:#3a3a3f;
+    --signal:#e5484d;      /* REC / LIVE 専用。装飾には使わない */
+    --track:#2a2a2e;
+    --mono:ui-monospace,"SF Mono","IBM Plex Mono","Cascadia Mono",Consolas,Menlo,monospace;
+    --sans:-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--mono);
+    overflow:hidden;
+  }
+  #stage{
+    position:fixed;inset:0;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--bg);
+  }
+  #view{
+    max-width:100%;max-height:100%;
+    image-rendering:pixelated;
+    box-shadow:0 0 0 1px var(--faint);
+  }
+  /* ---------- 制御盤 ---------- */
+  #panel{
+    position:fixed;top:0;right:0;bottom:0;width:304px;
+    background:var(--panel);
+    border-left:1px solid var(--panel-edge);
+    display:flex;flex-direction:column;
+    transition:transform .25s ease;
+    z-index:10;
+  }
+  body.ui-hidden #panel{transform:translateX(100%)}
+  #panel header{
+    padding:14px 16px 10px;
+    border-bottom:1px solid var(--panel-edge);
+    flex:none;
+  }
+  #panel h1{
+    font-size:13px;font-weight:600;letter-spacing:.18em;
+  }
+  #panel h1 small{
+    display:block;margin-top:4px;
+    font-family:var(--sans);font-size:10px;font-weight:400;
+    letter-spacing:.08em;color:var(--muted);
+  }
+  #statusline{
+    display:flex;gap:12px;margin-top:10px;
+    font-size:10px;color:var(--muted);letter-spacing:.08em;
+    font-variant-numeric:tabular-nums;
+  }
+  #statusline .live{color:var(--signal)}
+  #statusline .dot{
+    display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--signal);margin-right:4px;vertical-align:1px;
+    animation:blink 1.2s steps(2,jump-none) infinite;
+  }
+  @keyframes blink{50%{opacity:.2}}
+  @media (prefers-reduced-motion:reduce){#statusline .dot{animation:none}}
+  #controls{
+    flex:1;overflow-y:auto;padding:6px 16px 16px;
+    scrollbar-width:thin;scrollbar-color:var(--faint) transparent;
+  }
+  .sect{
+    margin-top:14px;
+  }
+  .sect > .sect-title{
+    font-size:10px;letter-spacing:.22em;color:var(--muted);
+    border-bottom:1px solid var(--panel-edge);
+    padding-bottom:5px;margin-bottom:10px;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .row{
+    display:grid;grid-template-columns:1fr 44px;
+    align-items:center;gap:8px;margin-bottom:9px;
+  }
+  .row label{
+    grid-column:1 / -1;
+    font-family:var(--sans);font-size:11px;color:var(--ink);
+    display:flex;justify-content:space-between;
+  }
+  .row label .en{
+    font-family:var(--mono);font-size:9px;color:var(--muted);
+    letter-spacing:.1em;text-transform:uppercase;
+  }
+  .row output{
+    font-size:11px;color:var(--muted);text-align:right;
+    font-variant-numeric:tabular-nums;
+  }
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;
+    width:100%;height:18px;background:transparent;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{
+    height:2px;background:var(--track);
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;
+    width:10px;height:14px;margin-top:-6px;
+    background:var(--ink);border:none;border-radius:1px;
+  }
+  input[type=range]::-moz-range-track{height:2px;background:var(--track)}
+  input[type=range]::-moz-range-thumb{
+    width:10px;height:14px;background:var(--ink);border:none;border-radius:1px;
+  }
+  input[type=range]:focus-visible{outline:1px solid var(--ink);outline-offset:2px}
+  .checks{display:flex;flex-wrap:wrap;gap:6px}
+  .checks label{
+    font-family:var(--sans);font-size:11px;
+    border:1px solid var(--faint);padding:4px 9px;cursor:pointer;
+    color:var(--muted);user-select:none;
+  }
+  .checks input{position:absolute;opacity:0;pointer-events:none}
+  .checks label:has(input:checked){
+    color:var(--bg);background:var(--ink);border-color:var(--ink);
+  }
+  .checks label:has(input:focus-visible){outline:1px solid var(--ink);outline-offset:2px}
+  .btnrow{display:flex;flex-wrap:wrap;gap:6px}
+  button,select{
+    font-family:var(--mono);font-size:11px;letter-spacing:.06em;
+    background:transparent;color:var(--ink);
+    border:1px solid var(--faint);padding:6px 10px;cursor:pointer;
+  }
+  button:hover{border-color:var(--ink)}
+  button:focus-visible,select:focus-visible{outline:1px solid var(--ink);outline-offset:2px}
+  select{background:var(--panel)}
+  #seed{
+    width:82px;font-family:var(--mono);font-size:11px;
+    background:transparent;border:1px solid var(--faint);
+    color:var(--ink);padding:6px 8px;
+    font-variant-numeric:tabular-nums;
+  }
+  #panel footer{
+    flex:none;padding:10px 16px;border-top:1px solid var(--panel-edge);
+    font-family:var(--sans);font-size:10px;color:var(--muted);line-height:1.7;
+  }
+  #panel footer kbd{
+    font-family:var(--mono);border:1px solid var(--faint);
+    padding:0 4px;border-radius:2px;font-size:9px;
+  }
+  #toggle-ui{
+    position:fixed;top:10px;right:10px;z-index:20;
+    background:rgba(11,11,12,.7);backdrop-filter:blur(4px);
+  }
+  body:not(.ui-hidden) #toggle-ui{right:314px}
+</style>
+</head>
+<body>
+
+<div id="stage"><canvas id="view"></canvas></div>
+<button id="toggle-ui" title="パネル表示切替 (H)">≡</button>
+
+<aside id="panel">
+  <header>
+    <h1>GLITCH FIELD<small>グリッチノイズ・インスタレーション制御 v0.1</small></h1>
+    <div id="statusline">
+      <span class="live"><span class="dot"></span>LIVE</span>
+      <span id="fps">-- fps</span>
+      <span id="midi-status">MIDI: --</span>
+    </div>
+  </header>
+
+  <div id="controls">
+    <div class="sect">
+      <div class="sect-title"><span>SCENE / シーン</span></div>
+      <div class="btnrow" style="margin-bottom:9px">
+        <select id="preset" title="プリセット">
+          <option value="standard">標準</option>
+          <option value="calm">静寂</option>
+          <option value="storm">嵐</option>
+          <option value="collapse">崩壊</option>
+          <option value="daylight">白昼(反転)</option>
+        </select>
+        <button id="randomize" title="R キー">RANDOM</button>
+        <input id="seed" inputmode="numeric" title="シード値">
+      </div>
+      <div class="checks">
+        <label><input type="checkbox" id="drift">自動ドリフト</label>
+        <label><input type="checkbox" id="invert">反転</label>
+        <label><input type="checkbox" id="paused">停止</label>
+      </div>
+    </div>
+
+    <div class="sect">
+      <div class="sect-title"><span>TIME / 時間</span></div>
+      <div id="g-time"></div>
+    </div>
+
+    <div class="sect">
+      <div class="sect-title"><span>TEXTURE / 質感</span></div>
+      <div id="g-texture"></div>
+    </div>
+
+    <div class="sect">
+      <div class="sect-title"><span>STRUCTURE / 構造</span></div>
+      <div id="g-structure"></div>
+    </div>
+
+    <div class="sect">
+      <div class="sect-title"><span>DESTRUCTION / 破壊</span></div>
+      <div id="g-destruction"></div>
+    </div>
+
+    <div class="sect">
+      <div class="sect-title"><span>OUTPUT / 出力</span></div>
+      <div class="btnrow">
+        <button id="save">PNG 書き出し</button>
+        <button id="fullscreen">フルスクリーン</button>
+        <select id="res">
+          <option value="540">540 × 960</option>
+          <option value="720" selected>720 × 1280</option>
+          <option value="1080">1080 × 1920</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <kbd>H</kbd> パネル / <kbd>F</kbd> 全画面 / <kbd>R</kbd> ランダム /
+    <kbd>Space</kbd> 停止 / <kbd>S</kbd> 保存<br>
+    外部制御: <span style="font-family:var(--mono)">window.installation</span> ·
+    postMessage · <span style="font-family:var(--mono)">?ws=</span> WebSocket · MIDI CC
+  </footer>
+</aside>
+
+<script>
+'use strict';
+/* =========================================================
+   GLITCH FIELD — 縦ストリークのグレースケール平面に
+   白の階段状ブロック・黒の繊維バースト・行ズレ・飛沫を重ねる。
+   すべてシード決定的。時間は hold フレーム単位で離散更新される。
+   ========================================================= */
+
+// ---------- 乱数・ノイズ ----------
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function hash1(n){ const s = Math.sin(n) * 43758.5453123; return s - Math.floor(s); }
+function vnoise(x){                    // 1次元バリューノイズ
+  const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f);
+  return hash1(i) * (1 - u) + hash1(i + 1) * u;
+}
+
+// ---------- パラメータ定義 ----------
+const PARAMS = [
+  { id:'speed',    group:'g-time',        ja:'速度',            en:'speed',    min:0,   max:3,   step:0.01, val:1    },
+  { id:'hold',     group:'g-time',        ja:'更新間隔',        en:'hold',     min:1,   max:30,  step:1,    val:4    },
+  { id:'streaks',  group:'g-texture',     ja:'縦ストリーク',    en:'streaks',  min:0,   max:1,   step:0.01, val:0.7  },
+  { id:'grain',    group:'g-texture',     ja:'粒子',            en:'grain',    min:0,   max:1,   step:0.01, val:0.35 },
+  { id:'bright',   group:'g-texture',     ja:'明るさ',          en:'bright',   min:0.2, max:0.9, step:0.01, val:0.56 },
+  { id:'contrast', group:'g-texture',     ja:'コントラスト',    en:'contrast', min:0.5, max:2,   step:0.01, val:1.15 },
+  { id:'burst',    group:'g-structure',   ja:'黒バースト',      en:'burst',    min:0,   max:1,   step:0.01, val:0.65, struct:true },
+  { id:'spread',   group:'g-structure',   ja:'バースト拡がり',  en:'spread',   min:0,   max:1,   step:0.01, val:0.5,  struct:true },
+  { id:'blocks',   group:'g-structure',   ja:'白ブロック',      en:'blocks',   min:0,   max:1,   step:0.01, val:0.6,  struct:true },
+  { id:'bars',     group:'g-structure',   ja:'黒バー',          en:'bars',     min:0,   max:1,   step:0.01, val:0.5,  struct:true },
+  { id:'splatter', group:'g-destruction', ja:'飛沫',            en:'splatter', min:0,   max:1,   step:0.01, val:0.45, struct:true },
+  { id:'displace', group:'g-destruction', ja:'行ズレ量',        en:'displace', min:0,   max:1,   step:0.01, val:0.3  },
+  { id:'slices',   group:'g-destruction', ja:'行ズレ回数',      en:'slices',   min:0,   max:40,  step:1,    val:10   },
+];
+const P = {};                          // 現在値
+PARAMS.forEach(p => P[p.id] = p.val);
+
+const PRESETS = {
+  standard: { streaks:0.7, grain:0.35, bright:0.56, contrast:1.15, burst:0.65, spread:0.5,
+              blocks:0.6, bars:0.5, splatter:0.45, displace:0.3, slices:10, speed:1, hold:4, invert:false },
+  calm:     { streaks:0.45, grain:0.15, bright:0.62, contrast:1.0, burst:0.2, spread:0.25,
+              blocks:0.35, bars:0.2, splatter:0.1, displace:0.05, slices:2, speed:0.3, hold:10, invert:false },
+  storm:    { streaks:0.95, grain:0.6, bright:0.5, contrast:1.35, burst:0.9, spread:0.8,
+              blocks:0.7, bars:0.7, splatter:0.8, displace:0.7, slices:26, speed:2.2, hold:2, invert:false },
+  collapse: { streaks:0.85, grain:0.8, bright:0.42, contrast:1.6, burst:1, spread:1,
+              blocks:0.45, bars:0.9, splatter:1, displace:1, slices:40, speed:1.6, hold:1, invert:false },
+  daylight: { streaks:0.5, grain:0.25, bright:0.6, contrast:1.2, burst:0.5, spread:0.4,
+              blocks:0.55, bars:0.4, splatter:0.35, displace:0.2, slices:6, speed:0.8, hold:6, invert:true },
+};
+
+// ---------- 状態 ----------
+let W = 720, H = 1280;
+let seed = 1024;
+let frame = 0, timeAcc = 0, lastBucket = -1, needRedraw = true;
+let structure = null;
+
+const view = document.getElementById('view');
+const vctx = view.getContext('2d');
+const off  = document.createElement('canvas');
+const octx = off.getContext('2d');
+const noiseTile = document.createElement('canvas');   // 粒子用タイル
+noiseTile.width = noiseTile.height = 256;
+
+function setResolution(h){
+  H = h; W = Math.round(h * 9 / 16);
+  view.width = off.width = W;
+  view.height = off.height = H;
+  fitView();
+  rebuildStructure();
+  needRedraw = true;
+}
+function fitView(){
+  const pad = document.body.classList.contains('ui-hidden') ? 0 : 304;
+  const aw = window.innerWidth - pad, ah = window.innerHeight;
+  const s = Math.min(aw / W, ah / H);
+  view.style.width  = Math.floor(W * s) + 'px';
+  view.style.height = Math.floor(H * s) + 'px';
+}
+
+// ---------- 構造の生成(シード決定的・アニメ中は不変) ----------
+function rebuildStructure(){
+  const r = mulberry32(seed * 7919 + 13);
+  const s = { white: [], barsV: [], clusters: [], crossBars: [], squares: [] };
+
+  // 黒バーストの中心
+  s.burstCX = W * (0.38 + r() * 0.2);
+  s.burstCY = H * (0.2 + r() * 0.12);
+
+  // バースト直下の黒い縦バー(2〜3本)
+  const nb = 2 + Math.round(r() * P.bars);
+  for (let i = 0; i < nb; i++){
+    const bw = W * (0.035 + r() * 0.04);
+    const bx = s.burstCX + (i - (nb - 1) / 2) * W * (0.14 + r() * 0.05) - bw / 2;
+    const by = s.burstCY + H * 0.05 * r();
+    const bh = H * (0.25 + r() * 0.18) * (0.4 + P.bars);
+    s.barsV.push({ x: bx, y: by, w: bw, h: bh });
+    // バー先端の白い小方形
+    s.squares.push({ x: bx - bw * 0.1, y: by + bh + H * 0.01, w: bw * 1.2, h: bw * 1.1 });
+  }
+
+  // 白の階段状ブロック(四隅・縁)
+  const anchors = [
+    { x: 0,        y: H * 0.02, dx:  1, dy:  1 },   // 左上
+    { x: W,        y: 0,        dx: -1, dy:  1 },   // 右上
+    { x: W,        y: H * 0.32, dx: -1, dy:  1 },   // 右中
+    { x: 0,        y: H * 0.1,  dx:  1, dy:  1 },   // 左上2
+  ];
+  const nw = Math.round(2 + P.blocks * 5);
+  for (let i = 0; i < nw; i++){
+    const a = anchors[i % anchors.length];
+    const steps = 2 + Math.floor(r() * 4);
+    const bw = W * (0.1 + r() * 0.16), bh = H * (0.02 + r() * 0.035);
+    s.white.push({
+      x: a.x + a.dx * r() * W * 0.06, y: a.y + r() * H * 0.05,
+      dx: a.dx, dy: a.dy, steps, w: bw, h: bh, jitter: r(),
+    });
+  }
+
+  // 下部の白い横断バー(黒の切れ目つき)
+  const nc = 1 + Math.round(P.blocks * 1.6);
+  for (let i = 0; i < nc; i++){
+    const y = H * (0.68 + i * 0.09 + r() * 0.03);
+    const gaps = [];
+    const ng = 1 + Math.floor(r() * 3);
+    for (let g = 0; g < ng; g++) gaps.push({ x: W * r(), w: W * (0.04 + r() * 0.08) });
+    s.crossBars.push({ y, h: H * (0.025 + r() * 0.02), gaps });
+  }
+
+  // 飛沫クラスタ
+  const ns = Math.round(2 + P.splatter * 6);
+  for (let i = 0; i < ns; i++){
+    s.clusters.push({
+      x: W * r(), y: H * (0.05 + r() * 0.9),
+      rad: W * (0.03 + r() * 0.09),
+      dark: r() > 0.35,
+    });
+  }
+  structure = s;
+}
+
+// ---------- 描画 ----------
+function gray(v){ v = Math.max(0, Math.min(1, v)); const g = Math.round(v * 255); return `rgb(${g},${g},${g})`; }
+
+function drawStreaks(g, rng, t){
+  const base = P.bright;
+  const amp = P.streaks;
+  const step = 2;
+  for (let x = 0; x < W; x += step){
+    const zone = vnoise(x * 0.012 + seed * 0.37);                 // 太い明暗ゾーン
+    const fine = vnoise(x * 0.25 + t * 0.7 + seed);               // 細かい揺れ
+    let v = base + (zone - 0.5) * 0.5 * amp + (fine - 0.5) * 0.25 * amp;
+    g.fillStyle = gray(v);
+    g.fillRect(x, 0, step, H);
+    // 短い明暗セグメントを散らす(質感)
+    const nSeg = 2 + Math.floor(rng() * 5 * amp);
+    for (let k = 0; k < nSeg; k++){
+      const y = rng() * H, len = H * (0.02 + rng() * 0.25);
+      g.fillStyle = gray(v + (rng() - 0.5) * 0.6 * amp);
+      g.globalAlpha = 0.2 + rng() * 0.4;
+      g.fillRect(x, y, step, len);
+      g.globalAlpha = 1;
+    }
+    // まれに走る白 / 黒の長いライン
+    if (rng() < 0.05 * amp){
+      g.fillStyle = rng() > 0.5 ? '#fff' : '#000';
+      g.globalAlpha = 0.25 + rng() * 0.5;
+      g.fillRect(x, rng() * H * 0.3, 1, H * (0.3 + rng() * 0.7));
+      g.globalAlpha = 1;
+    }
+  }
+}
+
+function drawStepped(g, b){
+  g.fillStyle = '#f2f2f0';
+  for (let i = 0; i < b.steps; i++){
+    const w = b.w * (1 - i * 0.18);
+    g.fillRect(
+      b.x + b.dx * i * b.w * 0.35 - (b.dx < 0 ? w : 0),
+      b.y + b.dy * i * b.h * 0.9,
+      w, b.h
+    );
+  }
+}
+
+function drawBurst(g, rng){
+  const s = structure;
+  const count = Math.floor(400 + 2600 * P.burst);
+  const spreadA = 0.25 + P.spread * 1.1;         // 角度の広がり
+  const maxLen = H * (0.1 + 0.3 * P.spread);
+  // 上部から降りてくる白い帯(バーストの背後)
+  const grd = g.createLinearGradient(0, 0, 0, s.burstCY * 1.1);
+  grd.addColorStop(0, 'rgba(255,255,255,0.95)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd;
+  g.fillRect(s.burstCX - W * 0.13, 0, W * 0.26, s.burstCY * 1.1);
+  // 繊維状ヘアライン
+  g.lineWidth = 1;
+  for (let i = 0; i < count; i++){
+    const ang = Math.PI / 2 + (rng() - 0.5) * 2 * spreadA;        // おおむね下向き
+    const len = Math.pow(rng(), 1.6) * maxLen + 4;
+    const ox = (rng() - 0.5) * W * 0.16, oy = (rng() - 0.5) * H * 0.05;
+    const x0 = s.burstCX + ox, y0 = s.burstCY + oy;
+    g.strokeStyle = '#000';
+    g.globalAlpha = 0.04 + rng() * 0.22;
+    g.beginPath();
+    g.moveTo(x0, y0);
+    g.lineTo(x0 + Math.cos(ang) * len, y0 + Math.sin(ang) * len);
+    g.stroke();
+  }
+  g.globalAlpha = 1;
+  // 中心の黒い塊
+  const coreN = Math.floor(120 + 500 * P.burst);
+  g.fillStyle = '#000';
+  for (let i = 0; i < coreN; i++){
+    const a = rng() * Math.PI * 2, d = Math.pow(rng(), 2);
+    const x = s.burstCX + Math.cos(a) * d * W * 0.1;
+    const y = s.burstCY + Math.sin(a) * d * H * 0.09 + H * 0.04;
+    g.globalAlpha = 0.5 + rng() * 0.5;
+    g.fillRect(x, y, 2 + rng() * 3, 3 + rng() * 10);
+  }
+  g.globalAlpha = 1;
+}
+
+function drawSplatter(g, rng){
+  for (const c of structure.clusters){
+    const n = Math.floor(20 + P.splatter * 120);
+    g.fillStyle = c.dark ? '#000' : '#fff';
+    for (let i = 0; i < n; i++){
+      const a = rng() * Math.PI * 2, d = Math.pow(rng(), 1.7) * c.rad;
+      const rr = Math.pow(rng(), 2.6) * c.rad * 0.22 + 0.4;
+      g.globalAlpha = 0.4 + rng() * 0.6;
+      g.beginPath();
+      g.arc(c.x + Math.cos(a) * d, c.y + Math.sin(a) * d * 1.3, rr, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
+  g.globalAlpha = 1;
+}
+
+function drawDisplace(g, rng){
+  const n = Math.floor(P.slices);
+  const amt = P.displace;
+  if (!n || !amt) return;
+  for (let i = 0; i < n; i++){
+    const y = Math.floor(rng() * H);
+    const h = Math.max(1, Math.floor(rng() * H * 0.03 * (0.3 + amt)));
+    const dx = Math.round((rng() - 0.5) * W * 0.22 * amt);
+    g.drawImage(off, 0, y, W, h, dx, y, W, h);
+    if (rng() < 0.3 * amt){                       // ときどき明度も壊す
+      g.globalAlpha = 0.5;
+      g.fillStyle = rng() > 0.5 ? '#fff' : '#000';
+      g.fillRect(0, y, W, 1);
+      g.globalAlpha = 1;
+    }
+  }
+}
+
+function refreshNoiseTile(rng){
+  const g = noiseTile.getContext('2d');
+  const img = g.createImageData(256, 256);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4){
+    const v = rng() * 255 | 0;
+    d[i] = d[i+1] = d[i+2] = v;
+    d[i+3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+}
+
+function render(bucket){
+  const g = octx;
+  const rng = mulberry32(seed * 9973 + bucket * 613 + 7);
+  const t = bucket * 0.13;
+
+  drawStreaks(g, rng, t);
+
+  for (const b of structure.white) drawStepped(g, b);
+
+  // 白ブロックの上にも薄くストリークを重ね、面を馴染ませる
+  g.globalAlpha = 0.18;
+  for (let x = 0; x < W; x += 3){
+    g.fillStyle = gray(P.bright + (vnoise(x * 0.2 + t) - 0.5) * 0.8);
+    g.fillRect(x, 0, 1, H);
+  }
+  g.globalAlpha = 1;
+
+  // 横断バー(白)と切れ目
+  for (const cb of structure.crossBars){
+    g.fillStyle = '#efefec';
+    g.fillRect(0, cb.y, W, cb.h);
+    g.fillStyle = gray(P.bright * 0.6);
+    for (const gap of cb.gaps) g.fillRect(gap.x, cb.y, gap.w, cb.h);
+  }
+
+  // 黒バー+先端の白方形
+  g.fillStyle = '#000';
+  for (const b of structure.barsV) g.fillRect(b.x, b.y, b.w, b.h);
+  g.fillStyle = '#f4f4f2';
+  for (const q of structure.squares) g.fillRect(q.x, q.y, q.w, q.h);
+
+  drawBurst(g, rng);
+  drawSplatter(g, rng);
+  drawDisplace(g, rng);
+
+  // 粒子
+  if (P.grain > 0){
+    refreshNoiseTile(rng);
+    g.globalAlpha = P.grain * 0.16;
+    g.globalCompositeOperation = 'overlay';
+    for (let y = 0; y < H; y += 256)
+      for (let x = 0; x < W; x += 256)
+        g.drawImage(noiseTile, x, y);
+    g.globalCompositeOperation = 'source-over';
+    g.globalAlpha = 1;
+  }
+
+  // 仕上げ: コントラスト・反転を掛けて表示キャンバスへ
+  const inv = document.getElementById('invert').checked ? ' invert(1)' : '';
+  vctx.filter = `contrast(${P.contrast})${inv}`;
+  vctx.drawImage(off, 0, 0);
+  vctx.filter = 'none';
+}
+
+// ---------- ループ ----------
+let fpsCount = 0, fpsLast = performance.now();
+function tick(){
+  requestAnimationFrame(tick);
+  const paused = document.getElementById('paused').checked;
+  if (!paused){
+    timeAcc += P.speed;
+    frame++;
+  }
+  if (document.getElementById('drift').checked && !paused){
+    // 自動ドリフト: 一部パラメータを低速ノイズで揺らす
+    const dt = frame * 0.002;
+    applyParam('burst',    0.15 + vnoise(dt) * 0.85, true);
+    applyParam('displace', vnoise(dt + 50) * 0.9, true);
+    applyParam('streaks',  0.3 + vnoise(dt + 100) * 0.7, true);
+    if (vnoise(dt + 200) > 0.93 && frame % 60 === 0) rebuildStructure();
+  }
+  const bucket = Math.floor(timeAcc / Math.max(1, P.hold));
+  if (bucket !== lastBucket || needRedraw){
+    lastBucket = bucket;
+    needRedraw = false;
+    render(bucket);
+  }
+  fpsCount++;
+  const now = performance.now();
+  if (now - fpsLast > 1000){
+    document.getElementById('fps').textContent = fpsCount + ' fps';
+    fpsCount = 0; fpsLast = now;
+  }
+}
+
+// ---------- UI 構築 ----------
+function buildControls(){
+  for (const p of PARAMS){
+    const wrap = document.createElement('div');
+    wrap.className = 'row';
+    wrap.innerHTML =
+      `<label for="in-${p.id}">${p.ja}<span class="en">${p.en}</span></label>` +
+      `<input type="range" id="in-${p.id}" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.val}">` +
+      `<output id="out-${p.id}">${p.val}</output>`;
+    document.getElementById(p.group).appendChild(wrap);
+    wrap.querySelector('input').addEventListener('input', e => {
+      applyParam(p.id, parseFloat(e.target.value));
+    });
+  }
+}
+function applyParam(id, value, fromDrift){
+  const def = PARAMS.find(p => p.id === id);
+  if (!def) return;
+  value = Math.max(def.min, Math.min(def.max, value));
+  P[id] = value;
+  const el = document.getElementById('in-' + id);
+  const out = document.getElementById('out-' + id);
+  if (el && (fromDrift || el.valueAsNumber !== value)) el.value = value;
+  if (out) out.textContent = def.step >= 1 ? Math.round(value) : value.toFixed(2);
+  if (def.struct) rebuildStructure();
+  needRedraw = true;
+}
+function applyPreset(name){
+  const pr = PRESETS[name];
+  if (!pr) return;
+  for (const [k, v] of Object.entries(pr)){
+    if (k === 'invert'){ document.getElementById('invert').checked = v; continue; }
+    applyParam(k, v);
+  }
+  needRedraw = true;
+}
+function setSeed(v){
+  seed = (v >>> 0) || 1;
+  document.getElementById('seed').value = seed;
+  rebuildStructure();
+  needRedraw = true;
+}
+function randomize(){
+  setSeed(Math.floor(Math.random() * 1e9));
+}
+
+// ---------- イベント ----------
+document.getElementById('preset').addEventListener('change', e => applyPreset(e.target.value));
+document.getElementById('randomize').addEventListener('click', randomize);
+document.getElementById('seed').addEventListener('change', e => setSeed(parseInt(e.target.value, 10)));
+document.getElementById('res').addEventListener('change', e => setResolution(parseInt(e.target.value, 10)));
+document.getElementById('invert').addEventListener('change', () => needRedraw = true);
+document.getElementById('toggle-ui').addEventListener('click', () => {
+  document.body.classList.toggle('ui-hidden');
+  fitView();
+});
+document.getElementById('fullscreen').addEventListener('click', () => {
+  if (document.fullscreenElement) document.exitFullscreen();
+  else document.documentElement.requestFullscreen();
+});
+document.getElementById('save').addEventListener('click', () => {
+  view.toBlob(b => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = `glitch-field_${seed}_${lastBucket}.png`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+});
+window.addEventListener('resize', fitView);
+window.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  switch (e.key.toLowerCase()){
+    case 'h': document.getElementById('toggle-ui').click(); break;
+    case 'f': document.getElementById('fullscreen').click(); break;
+    case 'r': randomize(); break;
+    case 's': document.getElementById('save').click(); break;
+    case ' ': {
+      const c = document.getElementById('paused');
+      c.checked = !c.checked;
+      e.preventDefault();
+      break;
+    }
+  }
+});
+
+// ---------- 外部制御(インスタレーション連携の足場) ----------
+// 1) window.installation — コンソール・組み込みスクリプトから
+window.installation = {
+  set: applyParam,
+  preset: applyPreset,
+  randomize,
+  seed: setSeed,
+  params: P,
+};
+// 2) postMessage — iframe 埋め込み・別ウィンドウの操作卓から
+//    例: frame.contentWindow.postMessage({type:'set', id:'burst', value:0.9}, '*')
+window.addEventListener('message', e => {
+  const m = e.data;
+  if (!m || typeof m !== 'object') return;
+  if (m.type === 'set') applyParam(m.id, +m.value);
+  else if (m.type === 'preset') applyPreset(m.value);
+  else if (m.type === 'randomize') randomize();
+  else if (m.type === 'seed') setSeed(+m.value);
+});
+// 3) WebSocket — ?ws=ws://host:port で接続し JSON を受ける
+//    例: {"type":"set","id":"displace","value":0.8}  (OSC ブリッジ想定)
+const wsUrl = new URLSearchParams(location.search).get('ws');
+if (wsUrl){
+  try {
+    const sock = new WebSocket(wsUrl);
+    sock.onmessage = ev => {
+      try { window.postMessage(JSON.parse(ev.data), '*'); } catch {}
+    };
+  } catch {}
+}
+// 4) Web MIDI — CC1 以降をパラメータ定義順に割り当て
+if (navigator.requestMIDIAccess){
+  navigator.requestMIDIAccess().then(access => {
+    const label = document.getElementById('midi-status');
+    const bind = () => {
+      let n = 0;
+      access.inputs.forEach(input => {
+        n++;
+        input.onmidimessage = msg => {
+          const [st, cc, val] = msg.data;
+          if ((st & 0xf0) !== 0xb0) return;         // CC のみ
+          const def = PARAMS[cc - 1];
+          if (!def) return;
+          applyParam(def.id, def.min + (val / 127) * (def.max - def.min));
+        };
+      });
+      label.textContent = 'MIDI: ' + (n ? n + ' in' : '--');
+    };
+    bind();
+    access.onstatechange = bind;
+  }).catch(() => {});
+}
+
+// ---------- 起動 ----------
+buildControls();
+const q = new URLSearchParams(location.search);
+if (q.get('hideui') === '1') document.body.classList.add('ui-hidden');
+setResolution(720);
+if (q.get('preset')) {
+  document.getElementById('preset').value = q.get('preset');
+  applyPreset(q.get('preset'));
+}
+setSeed(parseInt(q.get('seed'), 10) || 1024);
+tick();
+</script>
+</body>
+</html>
