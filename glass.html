@@ -5,51 +5,51 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>VITREA — refraction field</title>
 <style>
-  html, body { margin:0; padding:0; background:#eef0f4; overflow:hidden; height:100%; }
+  html, body { margin:0; padding:0; background:#000; overflow:hidden; height:100%; }
   #stage { position:fixed; inset:0; width:100%; height:100%; touch-action:none;
-           cursor:crosshair; background:#eef0f4; }
-  .hud { position:fixed; z-index:10; color:#3c4258; pointer-events:none;
+           cursor:crosshair; background:#000; }
+  .hud { position:fixed; z-index:10; color:#cfd3dc; pointer-events:none;
          font-family:"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
-         text-shadow:0 0 8px rgba(255,255,255,.8); user-select:none; -webkit-user-select:none; }
+         text-shadow:0 0 6px rgba(0,0,0,.9); user-select:none; -webkit-user-select:none; }
   #stats { top:calc(12px + env(safe-area-inset-top)); left:calc(14px + env(safe-area-inset-left));
            font-size:clamp(8.5px, 1.5vw, 11px); line-height:1.55; letter-spacing:.04em;
            opacity:.9; white-space:pre; }
   #title { top:calc(12px + env(safe-area-inset-top)); right:calc(16px + env(safe-area-inset-right));
            text-align:right; }
-  #title .t1 { font-size:clamp(14px, 2.4vw, 17px); letter-spacing:.14em; color:#181c2e; }
+  #title .t1 { font-size:clamp(14px, 2.4vw, 17px); letter-spacing:.14em; color:#e8eaf0; }
   #title .t2 { font-size:clamp(8px, 1.4vw, 10px); letter-spacing:.22em; opacity:.55; margin-top:2px; }
   #seasonName { top:calc(60px + env(safe-area-inset-top)); right:calc(16px + env(safe-area-inset-right));
                font-size:clamp(10px, 1.7vw, 12px); letter-spacing:.18em;
-               color:#6b7290; text-align:right; transition:opacity .4s; }
+               color:#9aa3b5; text-align:right; transition:opacity .4s; }
   #caption { left:0; right:0; bottom:calc(48px + env(safe-area-inset-bottom));
              text-align:center; font-style:italic;
-             font-size:clamp(10.5px, 1.8vw, 12.5px); color:#4c5270; opacity:.9;
+             font-size:clamp(10.5px, 1.8vw, 12.5px); color:#b9bfcc; opacity:.85;
              padding:0 24px; transition:opacity .5s; }
   #hint { left:0; right:0; bottom:calc(26px + env(safe-area-inset-bottom));
           text-align:center; font-size:clamp(8.5px, 1.5vw, 10px);
-          letter-spacing:.14em; color:#8a90ac; opacity:.9; }
+          letter-spacing:.14em; color:#6d7489; opacity:.7; }
   #fx { left:0; right:0; bottom:calc(92px + env(safe-area-inset-bottom));
         text-align:center; font-size:clamp(13px, 2.2vw, 15px);
-        letter-spacing:.3em; color:#181c2e; opacity:0; transition:opacity .55s;
-        text-shadow:0 0 14px rgba(120,160,255,.6); }
+        letter-spacing:.3em; color:#fff; opacity:0; transition:opacity .55s;
+        text-shadow:0 0 14px rgba(120,180,255,.8); }
   .chip { position:fixed; z-index:11; pointer-events:auto;
-        background:rgba(255,255,255,.72); color:#4c5270;
-        border:1px solid rgba(80,90,130,.35); border-radius:999px;
+        background:rgba(18,20,28,.55); color:#aab2c4;
+        border:1px solid rgba(140,150,175,.35); border-radius:999px;
         padding:8px 14px; font-size:12px; letter-spacing:.08em;
         font-family:"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
         backdrop-filter:blur(6px); cursor:pointer; transition:all .18s; }
   .chip:active { transform:scale(.94); }
   #airBtn { right:calc(16px + env(safe-area-inset-right));
         bottom:calc(24px + env(safe-area-inset-bottom)); }
-  #airBtn.on { color:#0a3; border-color:rgba(30,170,110,.7);
-        background:rgba(210,255,235,.85); box-shadow:0 0 14px rgba(60,220,150,.35); }
+  #airBtn.on { color:#fff; border-color:rgba(120,255,190,.8);
+        background:rgba(30,140,90,.35); box-shadow:0 0 14px rgba(80,255,180,.35); }
   #matBtn { left:calc(16px + env(safe-area-inset-left));
         bottom:calc(24px + env(safe-area-inset-bottom)); }
   #cam { position:fixed; z-index:10; right:calc(16px + env(safe-area-inset-right));
         bottom:calc(68px + env(safe-area-inset-bottom)); width:120px; height:90px;
-        border:1px solid rgba(80,90,130,.3); border-radius:6px; opacity:.85;
+        border:1px solid rgba(140,150,175,.3); border-radius:6px; opacity:.8;
         display:none; transform:scaleX(-1); pointer-events:none; }
-  #fallback { position:fixed; inset:0; display:none; place-items:center; color:#778;
+  #fallback { position:fixed; inset:0; display:none; place-items:center; color:#889;
         font-family:sans-serif; font-size:14px; }
 </style>
 </head>
@@ -945,8 +945,8 @@ function newPalette(){
     l: 46 + rnd()*18,
   }));
   strokeHue = palette[0].h;
-  // the water column tints slightly toward the season's lead hue
-  waterTint = mcolor.fromHsl([0,0,0], palette[0].h/360, 0.35, 0.42);
+  // the liquid tints toward the season's lead hue (brighter for black bg)
+  waterTint = mcolor.fromHsl([0,0,0], palette[0].h/360, 0.55, 0.52);
 }
 newPalette();
 
@@ -1054,13 +1054,22 @@ function endPress(){
 canvas.addEventListener('pointerup', endPress);
 canvas.addEventListener('pointercancel', endPress);
 
-// material toggle
-let material = 0; // 0 water, 1 glass
+// material: continuous water(0) <-> glass(1), auto-cycling with slow melts
+let matV = 0, matTarget = 0, matCycleT = 0;
+{
+  const m0 = parseFloat(params.get('mat'));
+  if (Number.isFinite(m0)) { matV = matTarget = Math.min(1, Math.max(0, m0)); }
+}
+const MAT_CYCLE = 13; // seconds per state before it starts transmuting
 const matBtn = document.getElementById('matBtn');
 matBtn.addEventListener('click', () => {
-  material = 1 - material;
-  matBtn.textContent = material ? '🪟 GLASS' : '💧 WATER';
+  matTarget = matTarget > 0.5 ? 0 : 1;
+  matCycleT = 0;
 });
+function updateMatLabel(){
+  matBtn.textContent = matV < 0.33 ? '💧 WATER'
+                     : matV > 0.67 ? '🪟 GLASS' : '❄ 変化中…';
+}
 
 // ---------- AIR mode: touch-free control via camera hand tracking ----------
 const airBtn = document.getElementById('airBtn');
@@ -1315,10 +1324,10 @@ function drawNode(x0, y0, x1, y1, idxs, depth){
   const X = x0*scalePx, Y = y0*scalePx;
   const WW = (x1-x0)*scalePx, HH = (y1-y0)*scalePx;
 
-  // grout lines between tiles
+  // faintly glowing grid lines on the dark ground
   const sh = hash2(x0, y0, depth + 11);
-  const salpha = Math.min(0.55, (depth <= 2 ? 0.2 : 0.07) + sh*sh*0.3);
-  ctx.strokeStyle = `hsla(${strokeHue|0},18%,42%,${salpha.toFixed(3)})`;
+  const salpha = Math.min(0.4, (depth <= 2 ? 0.14 : 0.04) + sh*sh*0.2);
+  ctx.strokeStyle = `hsla(${strokeHue|0},50%,68%,${salpha.toFixed(3)})`;
   ctx.lineWidth = depth <= 1 ? 2 : 1;
   ctx.strokeRect(X, Y, WW, HH);
 
@@ -1344,14 +1353,14 @@ function drawNode(x0, y0, x1, y1, idxs, depth){
   const pal = palette[Math.floor(hp * palette.length) % palette.length];
 
   if (!n) {
-    let a = h2 < 0.4 ? 0.03 + h2*0.55*0.18 : 0;
+    let a = h2 < 0.4 ? 0.02 + h2*0.55*0.14 : 0;
     let eh = pal.h;
     if (inRegion(x0, y0, x1, y1)) {
       a += (0.06 + Math.abs(regionEv.dAlpha)*0.8) * regionEnv;
       eh = regionEv.hue;
     }
     if (a > 0.005) {
-      ctx.fillStyle = `hsla(${eh|0},${pal.s|0}%,${(pal.l+12)|0}%,${a.toFixed(3)})`;
+      ctx.fillStyle = `hsla(${eh|0},${(pal.s+10)|0}%,${(pal.l-4)|0}%,${a.toFixed(3)})`;
       ctx.fillRect(X, Y, WW, HH);
     }
     return;
@@ -1364,25 +1373,26 @@ function drawNode(x0, y0, x1, y1, idxs, depth){
   const dens = n / (area * simCount);
   const accent = palette[palette.length - 1];
 
-  let alpha = 0.05 + 0.26*Math.sqrt(dens) + (h2 - 0.5)*0.12 + havg*0.35;
-  let light = pal.l + (sh - 0.5)*26 - Math.min(24, dens*2.2);
-  let s2 = Math.min(95, pal.s + h2*20 + havg*22);
+  // glowing tiles on the dark ground: denser cells burn brighter
+  let alpha = 0.08 + 0.30*Math.sqrt(dens) + (h2 - 0.5)*0.12 + havg*0.35;
+  let light = pal.l + (sh - 0.5)*22 + Math.min(16, dens*1.6);
+  let s2 = Math.min(95, pal.s + 14 + h2*18 + havg*22);
   let hue = pal.h + depth*3 + (accent.h - pal.h)*Math.min(1, havg*1.3);
-  if (h2 > 0.93) { alpha += 0.42; light = Math.max(26, light - 20); }
+  if (h2 > 0.93) { alpha += 0.42; light = Math.min(72, light + 14); }
   if (inRegion(x0, y0, x1, y1)) {
     hue += (regionEv.hue - hue) * 0.55 * regionEnv;
     alpha += regionEv.dAlpha * regionEnv;
     light += regionEv.dLight * regionEnv;
   }
   alpha = Math.min(0.95, Math.max(0.03, alpha));
-  light = Math.min(82, Math.max(24, light));
+  light = Math.min(78, Math.max(26, light));
 
   ctx.fillStyle = `hsla(${hue|0},${s2|0}%,${light|0}%,${alpha.toFixed(3)})`;
   ctx.fillRect(X, Y, WW, HH);
 }
 
 function renderFloor(){
-  ctx.fillStyle = '#f2f3f6';
+  ctx.fillStyle = '#04050a';
   ctx.fillRect(0, 0, floorCanvas.width, floorCanvas.height);
   cellCount = 0; maxDepthUsed = 0;
   const all = [];
@@ -1401,43 +1411,61 @@ const FS = `#version 300 es
 precision highp float;
 uniform sampler2D uFloor;
 uniform vec2 uRes;
-uniform float uTime, uAspect;
-uniform int uMode;
+uniform float uTime, uAspect, uMat; // uMat: 0 = water ... 1 = glass
 uniform vec3 uTint;
 uniform vec4 uRip[${NRIP}]; // x, y (world), t0, amp
 out vec4 frag;
 
-// water height field + analytic gradient: returns (h, dh/dx, dh/dy)
-vec3 waterField(vec2 p, float t){
-  float h = 0.0, dx = 0.0, dy = 0.0;
-  vec2 dirs[4] = vec2[](vec2(0.96,0.28), vec2(-0.51,0.86),
-                        vec2(0.75,-0.66), vec2(-0.29,-0.96));
-  float ws[4] = float[](14.0, 23.0, 36.0, 55.0);
-  float as_[4] = float[](0.0110, 0.0075, 0.0045, 0.0026);
-  float ss[4] = float[](1.0, 1.5, 2.1, 2.8);
-  for (int k = 0; k < 4; k++) {
-    float ph = dot(p, dirs[k])*ws[k] + t*ss[k];
-    float c = cos(ph);
-    h  += as_[k]*sin(ph);
-    dx += as_[k]*ws[k]*dirs[k].x*c;
-    dy += as_[k]*ws[k]*dirs[k].y*c;
-  }
+// slow, long-lived rings from touches
+float ripplesH(vec2 p, float t){
+  float h = 0.0;
   for (int k = 0; k < ${NRIP}; k++) {
     vec4 r = uRip[k];
     if (r.w <= 0.0) continue;
     float age = t - r.z;
-    if (age < 0.0 || age > 3.2) continue;
+    if (age < 0.0 || age > 4.5) continue;
     vec2 d = p - r.xy;
-    float dist = length(d) + 1e-5;
-    float amp = 0.014 * r.w * exp(-age*1.5) * exp(-dist*2.4);
-    float k2 = 55.0, c2 = 0.38;
-    float ph = (dist - c2*age)*k2;
-    h += amp*sin(ph);
-    float dd = amp*k2*cos(ph);
-    dx += dd * d.x/dist;
-    dy += dd * d.y/dist;
+    float dist = length(d);
+    float amp = 0.020 * r.w * exp(-age*1.05) * exp(-dist*2.0);
+    h += amp * sin((dist - 0.30*age)*42.0);
   }
-  return vec3(h, dx, dy);
+  return h;
+}
+
+// molten water: domain-warped slow swells
+float waterH(vec2 p, float t){
+  vec2 q = p + 0.11*vec2(
+    sin(p.y*2.8 + t*0.35) + sin(p.x*1.7 - t*0.22),
+    sin(p.x*2.3 - t*0.28) + sin(p.y*1.9 + t*0.31));
+  float h = 0.0;
+  h += 0.030*sin(dot(q, vec2( 0.95, 0.31))*6.0  + t*0.50);
+  h += 0.020*sin(dot(q, vec2(-0.49, 0.87))*9.5  + t*0.74);
+  h += 0.012*sin(dot(q, vec2( 0.72,-0.69))*16.0 + t*1.05);
+  h += 0.006*sin(dot(q, vec2(-0.28,-0.96))*26.0 + t*1.50);
+  return h;
+}
+
+// hammered glass relief with a soft flute (static)
+float glassH(vec2 p){
+  float h = 0.004*cos(p.x*58.0);
+  h += 0.020*sin(p.x*6.8 + 1.4*sin(p.y*6.3)) * sin(p.y*5.2 + 1.6*sin(p.x*4.7));
+  h += 0.008*sin(p.x*13.0 + 2.0*sin(p.y*11.0)) * sin(p.y*12.0 - 1.7*sin(p.x*9.0));
+  return h;
+}
+
+// blended surface: water freezes into glass and melts back
+float surfH(vec2 p, float t){
+  float tw = t * (1.0 - uMat*0.93); // swells slow to a stop as it vitrifies
+  float h = mix(waterH(p, tw), glassH(p), uMat);
+  return h + ripplesH(p, t) * (1.0 - uMat*0.55);
+}
+
+vec3 surfN(vec2 p, float t){
+  float e = 0.0022;
+  float h0 = surfH(p, t);
+  float hx = surfH(p + vec2(e, 0.0), t);
+  float hy = surfH(p + vec2(0.0, e), t);
+  return normalize(vec3(-(hx - h0)/e, -(hy - h0)/e, 1.0));
 }
 
 // classic iterative caustic pattern (expects large-magnitude coords)
@@ -1458,64 +1486,64 @@ float caustic(vec2 pin, float t){
   return clamp(pow(abs(c), 8.0), 0.0, 2.5);
 }
 
-vec3 skyColor(vec3 r){
-  float u = clamp(r.z*0.6 + 0.5, 0.0, 1.0);
-  return mix(vec3(0.80, 0.84, 0.90), vec3(0.42, 0.56, 0.74), u);
+// dark studio environment: soft overhead box + one crisp strip light
+vec3 envColor(vec3 r){
+  vec3 Lbox = normalize(vec3( 0.25, -0.35, 0.90));
+  vec3 Lkey = normalize(vec3(-0.45,  0.30, 0.83));
+  float soft = pow(max(dot(r, Lbox), 0.0), 7.0);
+  float key  = pow(max(dot(r, Lkey), 0.0), 90.0);
+  float spark= pow(max(dot(r, Lkey), 0.0), 500.0);
+  return vec3(0.010, 0.012, 0.018)
+       + soft  * vec3(0.16, 0.18, 0.24)
+       + key   * vec3(0.55, 0.58, 0.65)
+       + spark * vec3(1.9, 1.95, 2.0);
 }
+
+const vec2 KERN[5] = vec2[](vec2(0.0, 0.0), vec2(1.0, 0.4),
+  vec2(-0.7, 0.8), vec2(0.6, -0.9), vec2(-1.0, -0.3));
 
 void main(){
   vec2 suv = vec2(gl_FragCoord.x/uRes.x, 1.0 - gl_FragCoord.y/uRes.y);
   vec2 p = vec2(suv.x*uAspect, suv.y);
-  vec3 L = normalize(vec3(0.42, -0.35, 0.84));
-  vec3 col;
+  float m = uMat;
 
-  if (uMode == 0) {
-    // ---- water over the tiled floor ----
-    vec3 wf = waterField(p, uTime);
-    vec3 N = normalize(vec3(-wf.y, -wf.z, 1.0));
-    vec2 ruv = suv + N.xy * 0.055;
-    vec3 base;
-    base.r = texture(uFloor, ruv + N.xy*0.007).r;
-    base.g = texture(uFloor, ruv).g;
-    base.b = texture(uFloor, ruv - N.xy*0.007).b;
-    float ca = caustic(p*1.15 + N.xy*0.5, uTime*0.55);
-    base *= 0.80 + ca*1.05;
-    // depth tint (Beer-Lambert-ish toward the season water color)
-    base = mix(base, uTint, 0.16);
-    float F = 0.02 + 0.98*pow(1.0 - max(N.z, 0.0), 5.0);
-    vec3 R = reflect(vec3(0.0, 0.0, -1.0), N);
-    vec3 sky = skyColor(R);
-    float glint = pow(max(dot(R, L), 0.0), 420.0) * 2.4
-                + pow(max(dot(R, L), 0.0), 60.0) * 0.22;
-    col = mix(base, sky, clamp(F*1.6, 0.0, 0.6)) + glint*vec3(1.0, 0.98, 0.92);
-  } else {
-    // ---- fluted (reeded) glass pane over the floor ----
-    float K = 26.0;
-    float xw = p.x*K;
-    float u = fract(xw)*2.0 - 1.0;
-    float nx = u * inversesqrt(max(1.0 - u*u*0.94, 0.045));
-    nx += 0.30*sin(p.y*24.0 + sin(p.x*17.0)); // hammered wobble
-    float ny = 0.22*sin(p.y*21.0 + p.x*12.0);
-    vec3 N = normalize(vec3(-nx*0.5, -ny*0.5, 1.0));
-    vec2 off = N.xy * 0.05;
-    vec3 base = vec3(0.0);
-    for (int s = -2; s <= 2; s++) {
-      base += texture(uFloor, suv + off + vec2(0.0, float(s))*0.0035).rgb;
-    }
-    base /= 5.0;
-    base *= vec3(0.955, 1.0, 0.965); // faint green glass body
-    float F = 0.04 + 0.96*pow(1.0 - max(N.z, 0.0), 5.0);
-    vec3 R = reflect(vec3(0.0, 0.0, -1.0), N);
-    vec3 sky = skyColor(R);
-    float spec = pow(max(dot(R, L), 0.0), 160.0) * 1.6
-               + pow(max(dot(R, L), 0.0), 18.0) * 0.16;
-    col = mix(base, sky, clamp(F*1.7, 0.0, 0.75)) + spec*vec3(1.0);
+  vec3 N = surfN(p, uTime);
+
+  // refraction: chromatic when liquid, blurrier as it turns to glass
+  vec2 ruv = suv + N.xy * mix(0.075, 0.105, m);
+  vec3 sharp;
+  sharp.r = texture(uFloor, ruv + N.xy*0.010).r;
+  sharp.g = texture(uFloor, ruv).g;
+  sharp.b = texture(uFloor, ruv - N.xy*0.010).b;
+  vec3 base = sharp;
+  float blur = 0.006 * m;
+  if (blur > 0.0002) {
+    vec3 acc = vec3(0.0);
+    for (int s = 0; s < 5; s++)
+      acc += texture(uFloor, ruv + KERN[s]*blur).rgb;
+    base = mix(sharp, acc/5.0, clamp(m*1.25, 0.0, 1.0));
   }
+
+  // caustics live only in the liquid state; glow so they read on black
+  float ca = caustic(p*1.15 + N.xy*0.5, uTime*0.4) * (1.0 - m);
+  base *= 0.85 + ca*0.95;
+  base += uTint * ca * 0.22;
+
+  // absorption: multiplicative so the black stays black
+  vec3 absorb = mix(mix(vec3(1.0), uTint*1.7, 0.35),
+                    vec3(0.93, 1.0, 0.95), m);
+  base *= absorb;
+
+  float F0 = mix(0.02, 0.045, m);
+  float F = F0 + (1.0 - F0)*pow(1.0 - max(N.z, 0.0), 5.0);
+  vec3 R = reflect(vec3(0.0, 0.0, -1.0), N);
+  vec3 env = envColor(R);
+  vec3 col = base * (1.0 - F) + env * (0.05 + F*3.0);
 
   // gentle vignette + gamma
   vec2 q = suv - 0.5;
-  col *= 1.0 - dot(q, q)*0.35;
-  col = pow(max(col, 0.0), vec3(0.93));
+  col *= 1.0 - dot(q, q)*0.4;
+  col = pow(max(col, vec3(0.0)), vec3(0.92));
   frag = vec4(col, 1.0);
 }`;
 
@@ -1534,7 +1562,7 @@ if (!gl.getProgramParameter(prog, gl.LINK_STATUS))
   throw new Error(gl.getProgramInfoLog(prog));
 gl.useProgram(prog);
 const U = {};
-for (const n of ['uFloor','uRes','uTime','uAspect','uMode','uTint','uRip'])
+for (const n of ['uFloor','uRes','uTime','uAspect','uMat','uTint','uRip'])
   U[n] = gl.getUniformLocation(prog, n);
 
 const floorTex = gl.createTexture();
@@ -1550,12 +1578,13 @@ const statsEl = document.getElementById('stats');
 let iter = 10000;
 function updateStats(){
   iter += 5 + (Math.random()*7|0);
+  const ior = 1.33 + (1.52 - 1.33)*matV;
   statsEl.textContent =
     'PARTITION EPOCH   : ' + iter.toLocaleString('en-US') + '\n' +
-    'MATERIAL          : ' + (material ? 'GLASS (IOR 1.52)' : 'WATER (IOR 1.33)') + '\n' +
+    'VITRIFICATION     : ' + matV.toFixed(3) + '\n' +
+    'IOR (BLENDED)     : ' + ior.toFixed(4) + '\n' +
     'AGENTS            : ' + simCount.toLocaleString('en-US') + '\n' +
     'LEAF CELLS        : ' + cellCount.toLocaleString('en-US') + '\n' +
-    'COHESION          : ' + cohesion.toFixed(4) + '\n' +
     'SEED              : ' + SEED;
 }
 
@@ -1624,8 +1653,15 @@ function frame(){
     }
   }
 
-  // occasional stray droplets keep the water alive
-  if (material === 0 && !reducedMotion) {
+  // slow transmutation cycle: water <-> glass
+  matCycleT += dt;
+  if (matCycleT > MAT_CYCLE) { matTarget = 1 - matTarget; matCycleT = 0; }
+  matV += (matTarget - matV) * Math.min(1, dt*0.5);
+  matV = Math.min(1, Math.max(0, matV));
+  updateMatLabel();
+
+  // occasional stray droplets keep the liquid alive
+  if (matV < 0.5 && !reducedMotion) {
     nextRainT -= dt;
     if (nextRainT <= 0) {
       addSurfRipple(rnd()*W, rnd(), 0.25 + rnd()*0.3, now);
@@ -1645,7 +1681,7 @@ function frame(){
   gl.uniform2f(U.uRes, canvas.width, canvas.height);
   gl.uniform1f(U.uTime, now);
   gl.uniform1f(U.uAspect, W);
-  gl.uniform1i(U.uMode, material);
+  gl.uniform1f(U.uMat, matV);
   gl.uniform3f(U.uTint, waterTint[0], waterTint[1], waterTint[2]);
   gl.uniform4fv(U.uRip, surfRipples);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
