@@ -25,7 +25,7 @@
   .ui {
     position: fixed;
     z-index: 10;
-    color: rgba(255, 240, 220, 0.85);
+    color: rgba(235, 248, 255, 0.92);
     user-select: none;
     -webkit-user-select: none;
     transition: opacity 1.2s ease;
@@ -40,9 +40,9 @@
     gap: 10px;
   }
   #controls button {
-    background: rgba(10, 8, 6, 0.5);
-    border: 1px solid rgba(255, 200, 140, 0.35);
-    color: rgba(255, 235, 210, 0.9);
+    background: rgba(2, 4, 10, 0.55);
+    border: 1.5px solid rgba(60, 210, 255, 0.5);
+    color: rgba(235, 250, 255, 0.95);
     font-family: inherit;
     font-size: 13px;
     letter-spacing: 0.2em;
@@ -52,12 +52,14 @@
     cursor: pointer;
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
+    text-shadow: 0 0 8px rgba(80, 220, 255, 0.8);
     transition: border-color 0.3s, color 0.3s, box-shadow 0.3s;
   }
-  #controls button:hover { border-color: rgba(255, 200, 140, 0.8); }
+  #controls button:hover { border-color: rgba(120, 230, 255, 0.9); }
   #controls button.active {
-    border-color: rgba(255, 180, 90, 0.95);
-    box-shadow: 0 0 16px rgba(255, 150, 50, 0.35);
+    border-color: rgba(255, 60, 110, 0.95);
+    box-shadow: 0 0 14px rgba(255, 60, 110, 0.55), inset 0 0 8px rgba(255, 60, 110, 0.25);
+    text-shadow: 0 0 8px rgba(255, 90, 130, 0.9);
   }
 
   #speedbox {
@@ -73,21 +75,21 @@
     -webkit-appearance: none;
     appearance: none;
     width: 120px; height: 2px;
-    background: rgba(255, 220, 180, 0.35);
+    background: rgba(80, 210, 255, 0.4);
     outline: none;
   }
   #speed::-webkit-slider-thumb {
     -webkit-appearance: none;
     width: 14px; height: 14px;
     border-radius: 50%;
-    background: rgba(255, 200, 140, 0.9);
-    box-shadow: 0 0 10px rgba(255, 150, 50, 0.7);
+    background: rgba(140, 235, 255, 0.95);
+    box-shadow: 0 0 12px rgba(60, 210, 255, 0.9);
     cursor: pointer;
   }
   #speed::-moz-range-thumb {
     width: 14px; height: 14px; border: none;
     border-radius: 50%;
-    background: rgba(255, 200, 140, 0.9);
+    background: rgba(140, 235, 255, 0.95);
     cursor: pointer;
   }
 
@@ -111,9 +113,9 @@
   <input type="range" id="speed" min="0.1" max="5" step="0.05" value="1.2">
 </div>
 <div class="ui" id="controls">
-  <button data-theme="0" class="active">火焔</button>
-  <button data-theme="1">蒼冥</button>
-  <button data-theme="2">幽玄</button>
+  <button data-theme="0" class="active">五彩</button>
+  <button data-theme="1">蒼</button>
+  <button data-theme="2">紅</button>
 </div>
 <div class="ui" id="fserr"></div>
 
@@ -913,8 +915,10 @@ uniform vec3  uCamPos;
 uniform vec3  uCamR;
 uniform vec3  uCamU;
 uniform vec3  uCamF;
-uniform vec3  uColA;
-uniform vec3  uColB;
+uniform vec3  uPal0;  // ネオン管 4 色のパレット
+uniform vec3  uPal1;
+uniform vec3  uPal2;
+uniform vec3  uPal3;
 uniform float uGlow;
 
 #define PI 3.14159265358979
@@ -936,6 +940,14 @@ float vnoise(vec2 p) {
   float c = hash21(i + vec2(0.0, 1.0));
   float d = hash21(i + vec2(1.0, 1.0));
   return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+// ハッシュ値からネオン管の色を選ぶ
+vec3 tubeCol(float r) {
+  if (r < 0.30) return uPal0;
+  if (r < 0.55) return uPal1;
+  if (r < 0.78) return uPal2;
+  return uPal3;
 }
 
 // sin 値から刻線を作る（w で太さが変わる）
@@ -1016,8 +1028,8 @@ float motifStria(vec2 q, float seed, float w) {
   return carve(v, w * 0.6);
 }
 
-// 1 層ぶんの紋様（x: 主色の線, y: アクセント色の線）
-vec3 layerPat(vec2 uv, float sc, vec2 seedOff) {
+// 1 層ぶんの紋様（rgb: ネオン発色, a: 管の高さ）
+vec4 layerPat(vec2 uv, float sc, vec2 seedOff) {
   vec2 g = uv * sc;
   vec2 id = floor(g);
   vec2 q = fract(g) - 0.5;
@@ -1046,40 +1058,52 @@ vec3 layerPat(vec2 uv, float sc, vec2 seedOff) {
     m *= mix(0.08, 1.0, brk);
   }
 
-  // 区画の枠線（丸断面の隆帯）。存在も太さもセルごとに揺らす
+  // 区画の枠線＝看板の枠のネオン管。存在も太さもセルごとに揺らす
   float edge = max(abs(q.x), abs(q.y));
   float border = bead(edge - 0.468, 0.036 + 0.025 * fract(seed * 5.51));
-  border *= step(fract(seed * 8.93), 0.72) * (0.5 + 0.5 * fract(seed * 21.3));
+  border *= step(fract(seed * 8.93), 0.72) * (0.55 + 0.45 * fract(seed * 21.3));
 
-  float accent = step(fract(seed * 17.31), 0.3);
+  // ネオンの明滅：一部の看板はジジッと震え、ときどきふっと消えかける
+  float flick = 1.0;
+  if (fract(seed * 91.3) < 0.14) {
+    float gate = step(0.1, fract(uTime * (0.23 + 0.4 * fract(seed * 7.31)) + seed));
+    float buzz = 0.82 + 0.18 * sin(uTime * (40.0 + 30.0 * fract(seed * 3.37)) + seed * TAU);
+    flick = mix(0.12, 1.0, gate) * buzz;
+  }
 
-  float line = max(m, border);
-  return vec3(line * (1.0 - accent), line * accent, 0.0);
+  // モチーフと枠でそれぞれ管の色を選ぶ
+  vec3 cm = tubeCol(fract(seed * 17.31));
+  vec3 cb = tubeCol(fract(seed * 57.77));
+  float h = max(m, border);
+  return vec4((cm * m + cb * border * 1.1) * flick, h * flick);
 }
 
 // 壁面 1 枚ぶんの紋様。lod で微細層をフェード
-vec3 pattern(vec2 uv, float lod) {
+vec4 pattern(vec2 uv, float lod) {
   // 手びねりのゆらぎ
   vec2 wob = (vec2(vnoise(uv * 0.8 + vec2(2.2, 0.0)), vnoise(uv * 0.8 + vec2(0.0, 13.7))) - 0.5) * 1.1;
   vec2 uvw = uv + wob;
 
-  vec3 m = vec3(0.0);
+  vec4 m = vec4(0.0);
 
-  // 流線の帯（ワープした太い隆帯 + 帯上の縄目 + 並走する細い沈線）
+  // 流線の帯（ワープした太い管 + 帯上の縄目 + 並走する白い細管）
   vec2 q = uv * 0.4 + (vec2(vnoise(uv * 0.45 + vec2(2.0, 9.0)), vnoise(uv * 0.45 + vec2(11.0, 4.0))) - 0.5) * 2.2;
   float fv = sin(q.y * 3.4 + q.x * 1.5);
   float widthMod = 0.09 + 0.32 * vnoise(uv * 0.7 + vec2(5.5, 1.2));
   float thick = bead(fv, widthMod);
   float micro = carve(sin(q.x * 9.0 + q.y * 22.0), 0.55) * thick;
   float thin = carve(abs(fv) - 0.55, 0.055);
-  m.x += thick * 0.45 + micro * 0.3;
-  m.y += thin * 0.85;
+  // 帯の色は大きな区域ごとに管の色を選ぶ
+  vec3 cFlow = tubeCol(fract(hash21(floor(uv * 0.22) + vec2(7.7, 3.3)) * 0.97));
+  m.rgb += cFlow * (thick * 0.5 + micro * 0.28) + uPal3 * thin * 0.5;
+  m.a += thick * 0.5 + micro * 0.2 + thin * 0.5;
 
   m += layerPat(uvw, 0.75, vec2(0.0, 0.0)) * 0.95;
   if (lod > 0.15) {
     m += layerPat(uvw + vec2(3.37, 7.11), 1.9, vec2(11.0, 5.0)) * 0.6 * lod;
     float fine = carve(sin(uvw.x * 9.0 + sin(uvw.y * 7.0) * 1.3), 0.3);
-    m.x += fine * 0.12 * lod;
+    m.rgb += uPal3 * fine * 0.1 * lod;
+    m.a += fine * 0.1 * lod;
   }
 
   return m;
@@ -1124,7 +1148,7 @@ vec3 calcNormal(vec3 p, vec3 ro) {
 }
 
 // 殻表面へ射影した点で三面投影サンプル（線が面に定着して鋭くなる）
-vec3 surfPattern(vec3 p, float lod) {
+vec4 surfPattern(vec3 p, float lod) {
   vec3 q = p * GS;
   float g = gyr(q);
   vec3 grad = gyrGrad(q);
@@ -1135,7 +1159,7 @@ vec3 surfPattern(vec3 p, float lod) {
   an /= (an.x + an.y + an.z);
 
   float ps = 1.5;
-  vec3 m = vec3(0.0);
+  vec4 m = vec4(0.0);
   if (an.z > 0.14) m += pattern(pp.xy * ps, lod) * an.z;
   if (an.x > 0.14) m += pattern(pp.yz * ps + vec2(11.7, 5.3), lod) * an.x;
   if (an.y > 0.14) m += pattern(pp.zx * ps + vec2(3.9, 8.1), lod) * an.y;
@@ -1168,46 +1192,44 @@ void main() {
   if (hit) {
     vec3 n = calcNormal(p, ro);
     float lod = smoothstep(30.0, 6.0, t);
-    vec3 m = surfPattern(p, lod);
+    vec4 m = surfPattern(p, lod);
 
-    // 線の高さで法線を歪め、丸い粘土紐の盛り上がりとして陰影を付ける
+    // 管の高さで法線を歪め、丸いガラス管の盛り上がりとして陰影を付ける
     float bLod = smoothstep(24.0, 4.0, t);
     if (bLod > 0.02) {
       float e2 = 0.03;
       vec3 tb1 = normalize(cross(n, vec3(0.577, 0.31, 0.755)));
       vec3 tb2 = cross(n, tb1);
-      vec3 mx = surfPattern(p + tb1 * e2, lod);
-      vec3 my = surfPattern(p + tb2 * e2, lod);
-      float h0 = m.x + m.y;
-      n = normalize(n - (tb1 * (mx.x + mx.y - h0) + tb2 * (my.x + my.y - h0)) * 1.7 * bLod);
+      vec4 mx = surfPattern(p + tb1 * e2, lod);
+      vec4 my = surfPattern(p + tb2 * e2, lod);
+      n = normalize(n - (tb1 * (mx.a - m.a) + tb2 * (my.a - m.a)) * 1.7 * bLod);
     }
 
-    // ほぼヘッドライト + わずかに斜め上からの光
     vec3 L = normalize(-rd + vec3(0.22, 0.34, 0.1));
     float diff = max(dot(n, L), 0.0);
     float atten = 1.0 / (1.0 + t * t * 0.03);
 
-    // 素地：闇に沈む土器の肌（隆線の陰影が乗る）
-    col = (uColA * 0.11 + uColB * 0.05) * (0.18 + 0.82 * diff) * atten;
+    // 素地：看板の黒地。ほぼ闇に沈み、形だけがかすかに残る
+    col = vec3(0.012, 0.015, 0.024) * (0.3 + 0.7 * diff) * atten;
 
-    // 丸い隆線の頂を滑る鏡面ハイライト
-    float spec = pow(max(dot(reflect(rd, n), L), 0.0), 26.0);
-    col += (uColA * 0.45 + uColB * 0.45 + vec3(0.28)) * spec * 0.55 * atten;
-
-    // 刻線のネオン発光：丸断面の中心（頂）ほど強く光る
-    float lineA = pow(min(m.x, 1.6), 1.25);
-    float lineB = pow(min(m.y, 1.6), 1.25);
-    float pulse = 0.86 + 0.14 * sin(uTime * 0.6 + p.z * 0.3);
+    // ネオン管：色付きの管 + 中心で白熱する細い芯
+    float h = min(m.a, 1.7);
+    float core = pow(min(h, 1.0), 6.0);
     float eAtten = 1.0 / (1.0 + t * 0.13);
-    col += (uColA * lineA + uColB * lineB) * pulse * eAtten * (0.7 + 0.3 * diff) * 3.0;
+    col += (m.rgb * (1.2 * h + 0.3 * sqrt(h)) + vec3(1.0) * core * 0.35)
+           * eAtten * (0.8 + 0.2 * diff) * 1.6;
 
-    // 窓の縁や曲面の稜線を照らすリムライト
+    // ガラス管の照り
+    float spec = pow(max(dot(reflect(rd, n), L), 0.0), 26.0);
+    col += (m.rgb + vec3(0.18)) * spec * 0.5 * atten;
+
+    // 稜線のリム（闇の中に曲面の形をわずかに残す）
     float rim = pow(1.0 - max(dot(n, -rd), 0.0), 3.0);
-    col += (uColA * 0.55 + uColB * 0.45) * rim * 0.22 * atten;
+    col += vec3(0.22, 0.4, 0.65) * rim * 0.1 * atten;
   }
 
   // 空間を満たす微光（ネオンのハロー）
-  col += (uColA * 0.7 + uColB * 0.3) * glowAcc * 0.9 * uGlow;
+  col += (uPal0 + uPal1 + uPal2 + uPal3) * 0.25 * glowAcc * 0.42 * uGlow;
 
   // 奥への霧
   col = mix(col, vec3(0.0), 1.0 - exp(-t * 0.045));
@@ -1273,7 +1295,7 @@ function main(gl) {
   gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
   const U = {};
-  for (const name of ["uRes", "uTime", "uCamPos", "uCamR", "uCamU", "uCamF", "uColA", "uColB", "uGlow"]) {
+  for (const name of ["uRes", "uTime", "uCamPos", "uCamR", "uCamU", "uCamF", "uPal0", "uPal1", "uPal2", "uPal3", "uGlow"]) {
     U[name] = gl.getUniformLocation(prog, name);
   }
 
@@ -1310,14 +1332,15 @@ function main(gl) {
 
   // ---------------------------------------------------------------- themes
 
+  // ネオン管 4 色のパレット（看板ごとにこの中から色が選ばれる）
   const THEMES = MONO ? [
-    { a: [0.94, 0.96, 1.00], b: [0.42, 0.50, 0.58], glow: 0.55 },
+    { pal: [[0.96, 0.97, 1.00], [0.75, 0.80, 0.87], [0.52, 0.58, 0.66], [1.00, 1.00, 1.00]], glow: 0.55 },
   ] : [
-    { a: [1.00, 0.42, 0.07], b: [0.12, 0.65, 1.00], glow: 1.0 },  // 火焔
-    { a: [0.15, 0.55, 1.00], b: [0.85, 0.93, 1.00], glow: 0.9 },  // 蒼冥
-    { a: [0.90, 0.92, 0.95], b: [0.40, 0.50, 0.58], glow: 0.5 },  // 幽玄
+    { pal: [[0.10, 0.85, 1.00], [1.00, 0.16, 0.32], [1.00, 0.78, 0.12], [0.93, 0.96, 1.00]], glow: 1.0 },   // 五彩
+    { pal: [[0.12, 0.70, 1.00], [0.35, 0.45, 1.00], [0.55, 0.90, 1.00], [0.95, 0.98, 1.00]], glow: 0.95 }, // 蒼
+    { pal: [[1.00, 0.15, 0.30], [1.00, 0.45, 0.08], [1.00, 0.80, 0.15], [1.00, 0.95, 0.88]], glow: 0.95 }, // 紅
   ];
-  const cur = { a: [...THEMES[0].a], b: [...THEMES[0].b], glow: THEMES[0].glow };
+  const cur = { pal: THEMES[0].pal.map((c) => [...c]), glow: THEMES[0].glow };
   let target = THEMES[0];
 
   if (MONO) {
@@ -1461,8 +1484,7 @@ function main(gl) {
 
     // テーマ色の補間
     const ct = 1 - Math.pow(0.15, dt);
-    color.lerp(cur.a, cur.a, target.a, ct);
-    color.lerp(cur.b, cur.b, target.b, ct);
+    for (let i = 0; i < 4; i++) color.lerp(cur.pal[i], cur.pal[i], target.pal[i], ct);
     cur.glow += (target.glow - cur.glow) * ct;
 
     // 簡易アダプティブ品質
@@ -1479,8 +1501,10 @@ function main(gl) {
     gl.uniform3fv(U.uCamR, camR);
     gl.uniform3fv(U.uCamU, camU);
     gl.uniform3fv(U.uCamF, camF);
-    gl.uniform3fv(U.uColA, cur.a);
-    gl.uniform3fv(U.uColB, cur.b);
+    gl.uniform3fv(U.uPal0, cur.pal[0]);
+    gl.uniform3fv(U.uPal1, cur.pal[1]);
+    gl.uniform3fv(U.uPal2, cur.pal[2]);
+    gl.uniform3fv(U.uPal3, cur.pal[3]);
     gl.uniform1f(U.uGlow, cur.glow);
 
     gl.drawArrays(gl.TRIANGLES, 0, 3);
