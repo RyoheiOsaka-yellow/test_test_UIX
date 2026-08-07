@@ -909,6 +909,7 @@ attribute vec4 aPulse;  // x: 位相, y: 速さ, z: 色セレクタA, w: 色セ�
 uniform mat4 uVP;
 uniform vec3 uCamPos;
 uniform float uTime;
+uniform float uPeriod;
 uniform vec3 uPal0;
 uniform vec3 uPal1;
 uniform vec3 uPal2;
@@ -933,11 +934,14 @@ void main() {
 
   float t = aData.y;
 
-  // 信号パルス：繊維の上を光が走る
-  float pp = fract(uTime * aPulse.y + aPulse.x);
-  float d = abs(t - pp);
-  d = min(d, 1.0 - d);
-  float pulse = exp(-d * d * 420.0);
+  // 発火の連鎖：源の細胞体が閃いた瞬間にパルスが放たれ、繊維を走って次の細胞へ届く
+  float wp = fract(uTime / uPeriod - aPulse.x);
+  float pos = wp / aPulse.y;
+  float pulse = 0.0;
+  if (pos < 1.0) {
+    float d = t - pos;
+    pulse = exp(-d * d * 420.0) * (1.7 - 0.7 * pos);
+  }
 
   vec3 col = mix(pal(aPulse.z), pal(aPulse.w), t);
 
@@ -974,6 +978,7 @@ attribute vec4 aInfo;   // x: 色セレクタ, y: 大きさ, z: 位相, w: 種�
 uniform mat4 uVP;
 uniform vec3 uCamPos;
 uniform float uTime;
+uniform float uPeriod;
 uniform float uResY;
 uniform vec3 uPal0;
 uniform vec3 uPal1;
@@ -994,9 +999,11 @@ void main() {
   float dist = max(distance(aPos, uCamPos), 1e-4);
   gl_PointSize = clamp(uResY * aInfo.y / dist, 1.0, 240.0);
 
-  // 細胞体はゆらめき、ときどき強く発火する
+  // 細胞体はゆらめき、発火の波が届いた瞬間に強く閃く
   float tw = 0.72 + 0.28 * sin(uTime * (1.5 + aInfo.z * 2.5) + aInfo.z * 40.0);
-  float fire = pow(0.5 + 0.5 * sin(uTime * (0.4 + aInfo.z * 0.7) + aInfo.z * 90.0), 24.0) * 2.5;
+  float wpf = fract(uTime / uPeriod - aInfo.z);
+  float df = min(wpf, 1.0 - wpf);
+  float fire = exp(-df * df * 240.0) * 2.8;
 
   float fog = exp(-dist * 0.035) * smoothstep(46.0, 30.0, dist);
   float nearFade = smoothstep(0.22, 1.1, dist);
@@ -1005,7 +1012,7 @@ void main() {
   if      (aInfo.w < 0.5) b = (tw + fire) * 1.3;   // 細胞体
   else if (aInfo.w < 1.5) b = tw * 0.9;            // シナプスの粒
   else if (aInfo.w < 2.5) b = 0.55;                // 塵
-  else                    b = 0.045;               // 靄
+  else                    b = 0.06;                // 靄
   vCol = vec4(pal(aInfo.x), b * fog * nearFade);
   vKind = aInfo.w;
 }
@@ -1107,8 +1114,8 @@ function main(gl) {
     for (const n of names) o[n] = gl.getUniformLocation(p, n);
     return o;
   };
-  const UF = loc(progFiber, ["uVP", "uCamPos", "uTime", "uPal0", "uPal1", "uPal2", "uPal3"]);
-  const UP = loc(progPoint, ["uVP", "uCamPos", "uTime", "uResY", "uPal0", "uPal1", "uPal2", "uPal3"]);
+  const UF = loc(progFiber, ["uVP", "uCamPos", "uTime", "uPeriod", "uPal0", "uPal1", "uPal2", "uPal3"]);
+  const UP = loc(progPoint, ["uVP", "uCamPos", "uTime", "uPeriod", "uResY", "uPal0", "uPal1", "uPal2", "uPal3"]);
   const UQ = loc(progPost, ["uTime", "uRes"]);
 
   // 属性ロケーション
@@ -1156,7 +1163,21 @@ function main(gl) {
   const PSTRIDE = 7;         // 点: pos3 + info4
   // 32bit インデックスが使えれば高密度で生成する
   const HAS_UINT = !!gl.getExtension("OES_element_index_uint");
-  const DENSE = HAS_UINT;
+
+  // 発火の波：この方向へ空間をゆっくり掃いていく
+  const WAVE = [0.30, 0.45, 0.84];
+  const PERIOD = 7.0;
+
+  // 密度 3 段階（実測 FPS で自動昇降。?density=0..2 で固定可）
+  let density = HAS_UINT ? 1 : 0;
+  const forcedDensity = parseInt(new URLSearchParams(location.search).get("density"), 10);
+  if (HAS_UINT && (forcedDensity === 0 || forcedDensity === 1 || forcedDensity === 2)) density = forcedDensity;
+
+  function densityOf(level) {
+    if (level >= 2) return { s0: 13, s1: 19, l0: 3, l1: 5, t0: 9, t1: 14, c0: 2, c1: 3 };
+    if (level === 1) return { s0: 9, s1: 14, l0: 3, l1: 4, t0: 6, t1: 9, c0: 1, c1: 2 };
+    return { s0: 4, s1: 7, l0: 2, l1: 3, t0: 3, t1: 5, c0: 0, c1: 0 };
+  }
 
   function chunkRng(cx, cy, cz) {
     let h = Math.imul(cx, 374761393) ^ Math.imul(cy, 668265263) ^ Math.imul(cz, 1274126177);
@@ -1178,9 +1199,10 @@ function main(gl) {
     return out;
   }
 
-  // 1 本の繊維（曲線）を頂点列に書き出す
-  function emitFiber(fverts, findex, A, M, B, samples, width, axon, selA, selB, rng) {
-    const wob = random.range(rng, 0.1, 0.7);
+  // 1 本の繊維（曲線）を頂点列に書き出す。fireOff = 源の細胞体の発火位相
+  function emitFiber(fverts, findex, A, M, B, samples, width, axon, selA, selB, fireOff, travel, rng) {
+    // うねりの振幅は繊維の長さに比例させ、短い枝が折れ線にならないようにする
+    const wob = random.range(rng, 0.1, 0.7) * Math.min(1, vec3.distance(A, B) * 0.22);
     const wf = random.range(rng, 5, 13);
     const wp = random.range(rng, 0, Math.PI * 2);
     random.onSphere(tmpC, rng);
@@ -1189,8 +1211,6 @@ function main(gl) {
     vec3.normalize(tmpB, tmpB);
     const perp = [tmpB[0], tmpB[1], tmpB[2]];
 
-    const phase = rng();
-    const pspeed = random.range(rng, 0.05, 0.22);
     const base = fverts.length / FSTRIDE;
     const pts = [];
     for (let i = 0; i <= samples; i++) {
@@ -1209,7 +1229,7 @@ function main(gl) {
           pts[i][0], pts[i][1], pts[i][2],
           bezT[0], bezT[1], bezT[2],
           side, t, width, axon,
-          phase, pspeed, selA, selB
+          fireOff, travel, selA, selB
         );
       }
     }
@@ -1217,9 +1237,11 @@ function main(gl) {
       const a = base + i * 2, b = a + 1, c = a + 2, d = a + 3;
       findex.push(a, b, c, b, d, c);
     }
+    return pts;
   }
 
   function buildWorld(ccx, ccy, ccz) {
+    const D = densityOf(density);
     const fverts = [], findex = [], pverts = [];
     for (let dx = -RANGE; dx <= RANGE; dx++)
     for (let dy = -RANGE; dy <= RANGE; dy++)
@@ -1228,22 +1250,37 @@ function main(gl) {
       const rng = chunkRng(cx, cy, cz);
       const ox = cx * CHUNK, oy = cy * CHUNK, oz = cz * CHUNK;
 
-      // 細胞体
-      const n = random.intRange(rng, DENSE ? 9 : 4, DENSE ? 15 : 7);
+      // 細胞体。発火位相は波の方向に沿って遅れていく（連鎖の源）
+      // 3×3×3 の小部屋から重複なく選んで置き、空白の偏りを防ぐ
+      const n = random.intRange(rng, D.s0, D.s1);
+      const cells = [];
+      for (let i = 0; i < 27; i++) cells.push(i);
+      for (let i = 26; i > 0; i--) {
+        const j = random.intRange(rng, 0, i);
+        const t2 = cells[i]; cells[i] = cells[j]; cells[j] = t2;
+      }
+      const SUB = CHUNK / 3;
       const somas = [];
       for (let i = 0; i < n; i++) {
+        const c = cells[i % 27];
+        const p = [
+          ox + (c % 3) * SUB + rng() * SUB,
+          oy + (Math.floor(c / 3) % 3) * SUB + rng() * SUB,
+          oz + Math.floor(c / 9) * SUB + rng() * SUB,
+        ];
         const s = {
-          p: [ox + rng() * CHUNK, oy + rng() * CHUNK, oz + rng() * CHUNK],
+          p,
           sel: rng(),
           size: random.range(rng, 0.45, 1.0),
+          fire: ((vec3.dot(p, WAVE) * 0.021 + rng() * 0.12) % 1 + 1) % 1,
         };
         somas.push(s);
-        pverts.push(s.p[0], s.p[1], s.p[2], s.sel, s.size, rng(), 0);
+        pverts.push(p[0], p[1], p[2], s.sel, s.size, s.fire, 0);
       }
 
       // 軸索：近くの細胞体同士を曲線で結ぶ
       for (let i = 0; i < n; i++) {
-        const links = random.intRange(rng, DENSE ? 3 : 2, DENSE ? 4 : 3);
+        const links = random.intRange(rng, D.l0, D.l1);
         const order = somas
           .map((s, j) => ({ j, d: j === i ? 1e9 : vec3.distance(somas[i].p, s.p) }))
           .sort((a, b) => a.d - b.d);
@@ -1256,30 +1293,53 @@ function main(gl) {
           vec3.scaleAndAdd(tmpA, tmpA, tmpB, len * random.range(rng, 0.12, 0.4));
           const M = [tmpA[0], tmpA[1], tmpA[2]];
           const w = random.range(rng, 0.025, 0.08);
-          emitFiber(fverts, findex, A, M, B, 18, w, 1, somas[i].sel, tgt.sel, rng);
+          const pts = emitFiber(fverts, findex, A, M, B, 18, w, 1,
+                                somas[i].sel, tgt.sel,
+                                somas[i].fire, random.range(rng, 0.18, 0.32), rng);
 
           // シナプスの粒を曲線上に散らす
           const beads = random.intRange(rng, 1, 3);
           for (let bd = 0; bd < beads; bd++) {
-            const t = random.range(rng, 0.15, 0.85);
-            const u = 1 - t;
-            for (let ci = 0; ci < 3; ci++) bez[ci] = u * u * A[ci] + 2 * u * t * M[ci] + t * t * B[ci];
-            pverts.push(bez[0], bez[1], bez[2], somas[i].sel, random.range(rng, 0.05, 0.12), rng(), 1);
+            const bp = pts[random.intRange(rng, 3, pts.length - 4)];
+            pverts.push(bp[0], bp[1], bp[2], somas[i].sel, random.range(rng, 0.05, 0.12), rng(), 1);
           }
         }
 
-        // 樹状突起：先端が闇に溶ける短い枝
-        const twigs = random.intRange(rng, DENSE ? 5 : 3, DENSE ? 8 : 5);
+        // 樹状突起：先端が闇に溶ける短い枝。さらに枝分かれして房状に茂る
+        const twigs = random.intRange(rng, D.t0, D.t1);
         for (let tw = 0; tw < twigs; tw++) {
           random.onSphere(tmpA, rng);
-          vec3.scaleAndAdd(tmpB, somas[i].p, tmpA, random.range(rng, 1.4, 4.2));
+          vec3.scaleAndAdd(tmpB, somas[i].p, tmpA, random.range(rng, 1.2, 4.0));
           const B2 = [tmpB[0], tmpB[1], tmpB[2]];
           vec3.lerp(tmpC, somas[i].p, B2, 0.5);
           random.onSphere(tmpA, rng);
           vec3.scaleAndAdd(tmpC, tmpC, tmpA, random.range(rng, 0.3, 1.1));
           const M2 = [tmpC[0], tmpC[1], tmpC[2]];
-          emitFiber(fverts, findex, somas[i].p, M2, B2, 9,
-                    random.range(rng, 0.014, 0.035), 0, somas[i].sel, somas[i].sel, rng);
+          const twWidth = random.range(rng, 0.014, 0.035);
+          const tpts = emitFiber(fverts, findex, somas[i].p, M2, B2, 9, twWidth, 0,
+                                 somas[i].sel, somas[i].sel,
+                                 somas[i].fire, random.range(rng, 0.1, 0.18), rng);
+
+          // 小枝：親の途中から生え、外へ広がる
+          const kids = random.intRange(rng, D.c0, D.c1);
+          for (let kd = 0; kd < kids; kd++) {
+            const at = random.intRange(rng, Math.floor(tpts.length * 0.4), tpts.length - 2);
+            const A3 = tpts[at];
+            random.onSphere(tmpA, rng);
+            vec3.subtract(tmpB, A3, somas[i].p);
+            vec3.normalize(tmpB, tmpB);
+            vec3.scaleAndAdd(tmpA, tmpA, tmpB, 1.2);      // 外向きに偏らせる
+            vec3.normalize(tmpA, tmpA);
+            vec3.scaleAndAdd(tmpB, A3, tmpA, random.range(rng, 0.5, 1.5));
+            const B3 = [tmpB[0], tmpB[1], tmpB[2]];
+            vec3.lerp(tmpC, A3, B3, 0.5);
+            random.onSphere(tmpA, rng);
+            vec3.scaleAndAdd(tmpC, tmpC, tmpA, random.range(rng, 0.1, 0.4));
+            const M3 = [tmpC[0], tmpC[1], tmpC[2]];
+            emitFiber(fverts, findex, A3, M3, B3, 7, twWidth * 0.6, 0,
+                      somas[i].sel, somas[i].sel,
+                      somas[i].fire, random.range(rng, 0.08, 0.14), rng);
+          }
         }
       }
 
@@ -1309,9 +1369,9 @@ function main(gl) {
   let fiberCount = 0, pointCount = 0;
   let curC = [1e9, 1e9, 1e9];
 
-  function refreshWorld(pos) {
+  function refreshWorld(pos, force) {
     const cx = Math.floor(pos[0] / CHUNK), cy = Math.floor(pos[1] / CHUNK), cz = Math.floor(pos[2] / CHUNK);
-    if (cx === curC[0] && cy === curC[1] && cz === curC[2]) return;
+    if (!force && cx === curC[0] && cy === curC[1] && cz === curC[2]) return;
     curC = [cx, cy, cz];
     const w = buildWorld(cx, cy, cz);
     gl.bindBuffer(gl.ARRAY_BUFFER, fiberVBO);
@@ -1430,6 +1490,8 @@ function main(gl) {
   gl.enable(gl.BLEND);
 
   let prev = performance.now();
+  let frameAvg = 16;
+  let lastDensityCheck = 0;
 
   function frame(now) {
     const dt = Math.min(now - prev, 100) / 1000;
@@ -1475,6 +1537,14 @@ function main(gl) {
     const ct = 1 - Math.pow(0.15, dt);
     for (let i = 0; i < 4; i++) color.lerp(cur.pal[i], cur.pal[i], target.pal[i], ct);
 
+    // --- 実測 FPS に応じて密度を自動昇降（?density= 指定時は固定） ---
+    frameAvg = frameAvg * 0.95 + dt * 1000 * 0.05;
+    if (HAS_UINT && !(forcedDensity >= 0) && now - lastDensityCheck > 4000) {
+      lastDensityCheck = now;
+      if (frameAvg < 17 && density < 2) { density++; refreshWorld(pos, true); }
+      else if (frameAvg > 34 && density > 0) { density--; refreshWorld(pos, true); }
+    }
+
     // --- 世界の更新と行列 ---
     refreshWorld(pos);
     mat4.perspective(proj, 1.15, canvas.width / canvas.height, 0.1, 150);
@@ -1493,6 +1563,7 @@ function main(gl) {
     gl.uniformMatrix4fv(UF.uVP, false, vp);
     gl.uniform3fv(UF.uCamPos, pos);
     gl.uniform1f(UF.uTime, time);
+    gl.uniform1f(UF.uPeriod, PERIOD);
     gl.uniform3fv(UF.uPal0, cur.pal[0]);
     gl.uniform3fv(UF.uPal1, cur.pal[1]);
     gl.uniform3fv(UF.uPal2, cur.pal[2]);
@@ -1514,6 +1585,7 @@ function main(gl) {
     gl.uniformMatrix4fv(UP.uVP, false, vp);
     gl.uniform3fv(UP.uCamPos, pos);
     gl.uniform1f(UP.uTime, time);
+    gl.uniform1f(UP.uPeriod, PERIOD);
     gl.uniform1f(UP.uResY, canvas.height);
     gl.uniform3fv(UP.uPal0, cur.pal[0]);
     gl.uniform3fv(UP.uPal1, cur.pal[1]);
