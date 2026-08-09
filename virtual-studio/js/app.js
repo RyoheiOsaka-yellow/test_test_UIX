@@ -983,18 +983,23 @@ function renderCanvas() {
   if (typeof S3D !== "undefined" && S3D.active) render3D();
 }
 
-/* 2D/3D ビュー切替 */
+/* 2D/3D/POV ビュー切替 */
 function setupViewToggle() {
   document.querySelectorAll(".view-tab").forEach(btn => {
     btn.addEventListener("click", () => {
-      const is3d = btn.dataset.view === "3d";
+      const view = btn.dataset.view;
+      const is3d = view !== "2d";
       S3D.active = is3d;
+      S3D.pov = view === "pov";
       document.querySelectorAll(".view-tab").forEach(b => b.classList.toggle("active", b === btn));
       // SVG要素は hidden プロパティが効かない (HTMLElement専用) ため display で切替える
       byId("studioCanvas").style.display = is3d ? "none" : "";
       byId("studio3d").style.display = is3d ? "block" : "none";
       byId("zoomControls").style.display = is3d ? "none" : "";
-      byId("viewHint").textContent = is3d ? "回転して光錐・視野角・被写界深度を確認" : "ドラッグで機材を移動";
+      byId("viewHint").textContent =
+        view === "pov" ? "カメラ視点 — 再生ボタンで軌道を移動"
+        : is3d ? "回転して光錐・視野角・被写界深度・カメラ軌道を確認"
+        : "ドラッグで機材を移動";
       if (is3d) requestAnimationFrame(render3D);
     });
   });
@@ -1094,12 +1099,18 @@ function startPreviewAnim() {
   animStart = performance.now();
   const tick = (now) => {
     const cut = activeCut();
+    const speedMul = { veryslow: 1.8, slow: 1.3, normal: 1, fast: 0.65, veryfast: 0.45 }[cut.camera.moveSpeed] || 1;
+    const dur = Math.min(8, Math.max(2, cut.kind === "still" ? 3 : cut.duration || 5)) * 1000 * speedMul;
+    const t = ((now - animStart) % dur) / dur;
     const g = document.getElementById("liveanim");
     if (g) {
       const { W, H } = aspectDims(cut.aspect);
-      const speedMul = { veryslow: 1.8, slow: 1.3, normal: 1, fast: 0.65, veryfast: 0.45 }[cut.camera.moveSpeed] || 1;
-      const dur = Math.min(8, Math.max(2, cut.kind === "still" ? 3 : cut.duration || 5)) * 1000 * speedMul;
-      g.setAttribute("transform", animTransform(cut, ((now - animStart) % dur) / dur, W, H));
+      g.setAttribute("transform", animTransform(cut, t, W, H));
+    }
+    // 3D/POVビューにもカメラ軌道の進行を反映
+    if (typeof S3D !== "undefined" && S3D.active) {
+      S3D.animT = t;
+      render3D();
     }
     animRAF = requestAnimationFrame(tick);
   };
@@ -1111,6 +1122,10 @@ function stopPreviewAnim() {
   animRAF = null;
   const g = document.getElementById("liveanim");
   if (g) g.removeAttribute("transform");
+  if (typeof S3D !== "undefined") {
+    S3D.animT = null;
+    if (S3D.active) render3D();
+  }
 }
 
 function renderPrompt() {
@@ -1187,6 +1202,7 @@ function renderInspector() {
           `<option ${s === (selItem.stand || "ライトスタンド") ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>`)}
         ${fieldRow("消費電力(W)", `<input type="number" id="itWatt" value="${selItem.watt ?? 0}" min="0" max="20000" step="10" title="電源プラン(指示書)の自動計算に使われます">`)}` : ""}
         <div class="insp-hint">被写体からの距離: 約${distM}m ｜ 方位: ${esc(relToJa(analyzeLighting(cut).lights.find(l => l.item.id === selItem.id)?.rel ?? 0))}</div>
+        ${selItem.sku ? `<div class="insp-hint" style="margin-top:6px">🎬 使用機材: <b>${esc(selItem.sku)}</b> (機材DBで変更可)</div>` : ""}
         ${(() => {
           const rec = recommendForItem(selItem);
           if (!rec || !rec.records.length) return "";
@@ -1249,6 +1265,8 @@ function renderInspector() {
       ${fieldRow("ISO", `<input type="text" id="cIso" value="${esc(cut.camera.iso)}">`)}
       ${cut.kind !== "still" ? fieldRow("フレームレート", `<input type="text" id="cFps" value="${esc(cut.camera.fps)}">`) : ""}
       ${fieldRow("WB", `<input type="text" id="cWb" value="${esc(cut.camera.wb)}">`)}
+      ${(cut.camera.bodySku || cut.camera.lensSku || cut.camera.supportSku)
+        ? `<div class="insp-hint">🎬 使用機材: ${esc([cut.camera.bodySku, cut.camera.lensSku, cut.camera.supportSku].filter(Boolean).join(" / "))}</div>` : ""}
     </div>
     <div class="insp-section">
       <h3>サポート (支持機材)</h3>
@@ -1777,15 +1795,36 @@ function buildStoryboardDoc() {
   </body></html>`;
 }
 
-function openDocWindow(html, fallbackName) {
-  const w = window.open("", "_blank");
-  if (w) { w.document.write(html); w.document.close(); return; }
-  const blob = new Blob([html], { type: "text/html" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = fallbackName;
-  a.click();
-  URL.revokeObjectURL(a.href);
+/* 書き出しドキュメントはアプリ内オーバーレイで開く (「← スタジオに戻る」で戻れる) */
+let docCurrent = { html: "", name: "document.html" };
+
+function openDocWindow(html, fallbackName, title) {
+  docCurrent = { html, name: fallbackName || "document.html" };
+  byId("docFrame").srcdoc = html;
+  byId("docOverlayTitle").textContent = title || fallbackName || "ドキュメント";
+  byId("docOverlay").hidden = false;
+}
+
+function setupDocOverlay() {
+  byId("btnDocBack").addEventListener("click", () => { byId("docOverlay").hidden = true; });
+  byId("btnDocPrint").addEventListener("click", () => {
+    try { byId("docFrame").contentWindow.print(); }
+    catch { window.print(); }
+  });
+  byId("btnDocDownload").addEventListener("click", () => {
+    const blob = new Blob([docCurrent.html], { type: "text/html" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = docCurrent.name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      byId("docOverlay").hidden = true;
+      byId("equipOverlay").hidden = true;
+    }
+  });
 }
 
 /* =========================================================
@@ -1910,10 +1949,10 @@ function importKnowledgeMdFiles(files) {
 }
 
 function exportDoc() {
-  openDocWindow(buildInstructionDoc(), "shooting-instructions.html");
+  openDocWindow(buildInstructionDoc(), "shooting-instructions.html", "撮影指示書");
 }
 function exportBoard() {
-  openDocWindow(buildStoryboardDoc(), "storyboard.html");
+  openDocWindow(buildStoryboardDoc(), "storyboard.html", "絵コンテ (1ページ6コマ)");
 }
 
 /* ---------- SVG画像 / JSON 書き出し ---------- */
@@ -2048,7 +2087,7 @@ function buildDmxDoc() {
 function exportDmx() {
   const html = buildDmxDoc();
   if (!html) { alert("パッチ対象のライトがありません"); return; }
-  openDocWindow(html, "dmx-cue-sheet.html");
+  openDocWindow(html, "dmx-cue-sheet.html", "DMXキューシート");
 }
 
 /* =========================================================
@@ -2097,13 +2136,15 @@ function cutToCanonicalShot(cut, i, projectId) {
         target_m: toWorldM({ ...sub, height: 150 }),
         roll_deg: cut.camera.angle === "dutch" ? 7 : 0,
         body_archetype: cut.camera.body,
-        support: { type: cut.camera.support, param: sup && sup.param ? { [sup.param.label]: `${cut.camera.supportParam}${sup.param.unit}` } : null, head: cut.camera.head },
+        body_sku: cut.camera.bodySku || null,
+        support: { type: cut.camera.support, param: sup && sup.param ? { [sup.param.label]: `${cut.camera.supportParam}${sup.param.unit}` } : null, head: cut.camera.head, support_sku: cut.camera.supportSku || null },
       },
       lens: {
         focal_length_mm: cut.camera.focalMm,
         aperture_f: cut.camera.apertureF,
         focus_distance_m: cut.camera.focusM,
         anamorphic: cut.camera.lens === "anam",
+        lens_sku: cut.camera.lensSku || null,
         nd: cut.camera.nd,
         filters: cut.camera.filters,
       },
@@ -2116,7 +2157,7 @@ function cutToCanonicalShot(cut, i, projectId) {
           role: x.type, position_m: toWorldM(x),
           power_pct: x.power, color_temp_k: x.colorTemp,
           beam_angle_deg: x.beamAngle, modifier: x.modifier,
-          stand: x.stand, watt: x.watt,
+          stand: x.stand, watt: x.watt, sku: x.sku || null,
           azimuth_from_camera_axis_deg: Math.round(an.lights.find(l => l.item.id === x.id)?.rel ?? 0),
         })),
       grip: cut.items
@@ -2177,6 +2218,11 @@ function importJSON(file) {
   reader.onload = () => {
     try {
       const data = JSON.parse(reader.result);
+      // canonical shot list はインポート経路を分岐 (書き出しとの往復対応)
+      if (data.schema && String(data.schema).startsWith("cineos.canonical_shot_list")) {
+        importCanonical(data);
+        return;
+      }
       if (!Array.isArray(data.cuts) || !data.cuts.length) throw new Error("cuts がありません");
       state.mode = data.mode || "video";
       state.cuts = data.cuts.map(ensureCameraDefaults); // 旧バージョンのJSONに詳細フィールドを補完
@@ -2194,6 +2240,207 @@ function importJSON(file) {
     }
   };
   reader.readAsText(file);
+}
+
+/* =========================================================
+ * 機材データベースページ (アプリ内オーバーレイ・戻るボタン付き)
+ * 選んだ実機材はカット/選択中の機材に割当できる (capability-first の具体化)
+ * ======================================================= */
+const EQUIP_CATS = [
+  { id: "all", label: "すべて" },
+  { id: "camera", label: "カメラ" },
+  { id: "lens", label: "レンズ" },
+  { id: "lighting", label: "ライティング" },
+  { id: "camera_support", label: "カメラサポート" },
+  { id: "aerial", label: "ドローン/空撮" },
+  { id: "special_effects", label: "特効" },
+  { id: "modifier_support", label: "モディファイア" },
+  { id: "grip", label: "グリップ" },
+];
+const SFX_ITEM_TYPES = ["fan", "smoke", "rainmachine", "snowmachine", "confetti", "pyro", "spark"];
+let equipCat = "all";
+
+function assignTargetLabel(record) {
+  switch (record.category) {
+    case "camera": return "このカメラを使用";
+    case "lens": return "このレンズを使用";
+    case "camera_support": return "このサポートを使用";
+    case "aerial": return "このドローンを使用";
+    default: return "選択中の機材に割当";
+  }
+}
+
+function assignEquipment(record) {
+  const cut = activeCut();
+  const name = `${record.manufacturer} ${record.model}`;
+  switch (record.category) {
+    case "camera": cut.camera.bodySku = name; break;
+    case "lens": cut.camera.lensSku = name; break;
+    case "camera_support": cut.camera.supportSku = name; break;
+    case "aerial": {
+      const droneItem = cut.items.find(i => i.type === "drone");
+      if (droneItem) droneItem.sku = name; else cut.camera.supportSku = name;
+      break;
+    }
+    default: {
+      const sel = cut.items.find(i => i.id === state.selectedItem);
+      const compatible = sel && (
+        (record.category === "lighting" && LIGHT_TYPES.includes(sel.type)) ||
+        (record.category === "special_effects" && SFX_ITEM_TYPES.includes(sel.type)) ||
+        (["modifier_support", "grip"].includes(record.category) && ["reflector", "flag", "diff"].includes(sel.type))
+      );
+      if (!compatible) {
+        byId("equipAssignHint").innerHTML = `⚠️ 先に俯瞰図で対応する機材 (${record.category === "lighting" ? "ライト" : record.category === "special_effects" ? "特効機材" : "レフ/フラッグ/ディフューザー"}) を選択してから割り当ててください。`;
+        return;
+      }
+      sel.sku = name;
+      break;
+    }
+  }
+  byId("equipAssignHint").innerHTML = `✓ <b>${esc(name)}</b> を割り当てました (インスペクター・指示書・canonical JSONに反映)`;
+  renderInspector();
+}
+
+function renderEquipPage() {
+  const q = byId("equipSearch").value.trim().toLowerCase();
+  byId("equipFilters").innerHTML = EQUIP_CATS.map(c =>
+    `<span class="opt-toggle ${equipCat === c.id ? "on" : ""}" data-cat="${c.id}">${esc(c.label)}</span>`).join("");
+  byId("equipFilters").querySelectorAll("[data-cat]").forEach(el =>
+    el.addEventListener("click", () => { equipCat = el.dataset.cat; renderEquipPage(); }));
+
+  const records = EQUIPMENT_DB.filter(r => {
+    if (equipCat !== "all" && r.category !== equipCat) return false;
+    if (!q) return true;
+    const text = `${r.manufacturer} ${r.model} ${r.subcategory} ${r.use_cases.join(" ")}`.toLowerCase();
+    return text.includes(q);
+  });
+  byId("equipCount").textContent = `${records.length} / ${EQUIPMENT_DB.length} 機種`;
+
+  const sel = activeCut().items.find(i => i.id === state.selectedItem);
+  if (!byId("equipAssignHint").innerHTML.startsWith("✓") && !byId("equipAssignHint").innerHTML.startsWith("⚠️")) {
+    byId("equipAssignHint").innerHTML = sel
+      ? `選択中: <b>${esc(EQUIP_TYPES[sel.type].label)}</b> — ライト/特効/モディファイアのカードから割当できます`
+      : "カメラ/レンズ/サポート/ドローンは直接割当可。ライト等は俯瞰図で機材を選択してから開いてください";
+  }
+
+  byId("equipGrid").innerHTML = records.map((r, i) => `
+    <div class="equip-card">
+      <div class="e-head">
+        <div>
+          <div class="e-name">${esc(r.manufacturer)} ${esc(r.model)}</div>
+          <div class="e-cat">${esc(r.category)} / ${esc(r.subcategory)}</div>
+        </div>
+        <span class="safety-badge sc-${esc(r.safety_class)}" title="安全区分 ${esc(r.safety_class)}${r.specialist_only ? " (専門者のみ)" : ""}">${esc(r.safety_class)}</span>
+      </div>
+      <div class="e-cap">${esc(Object.entries(r.capability).slice(0, 4).map(([k, v]) => `${k}: ${v}`).join(" ｜ ") || "—")}</div>
+      <div class="e-use">${esc(r.use_cases.join(" / "))}</div>
+      <div class="e-actions"><button class="btn small" data-assign="${i}">${esc(assignTargetLabel(r))}</button></div>
+    </div>`).join("");
+  byId("equipGrid").querySelectorAll("[data-assign]").forEach(btn =>
+    btn.addEventListener("click", () => assignEquipment(records[+btn.dataset.assign])));
+}
+
+function setupEquipPage() {
+  byId("btnEquipPage").addEventListener("click", () => {
+    byId("equipAssignHint").innerHTML = "";
+    byId("equipOverlay").hidden = false;
+    renderEquipPage();
+  });
+  byId("btnEquipBack").addEventListener("click", () => { byId("equipOverlay").hidden = true; });
+  byId("equipSearch").addEventListener("input", renderEquipPage);
+}
+
+/* =========================================================
+ * Canonical Shot JSON インポート (書き出しとの往復対応)
+ * ======================================================= */
+function fromWorldM(pos) {
+  return {
+    x: Math.max(20, Math.min(980, (pos?.[0] ?? 0) * 100 + SUBJECT_POS.x)),
+    y: Math.max(20, Math.min(680, SUBJECT_POS.y - (pos?.[1] ?? 0) * 100)),
+    height: Math.round(Math.max(0, (pos?.[2] ?? 1.5) * 100)),
+  };
+}
+
+function cutFromCanonicalShot(shot) {
+  const cut = makeCut(null);
+  const P = shot.planned || {};
+  cut.name = shot.name || shot.shot_id || "インポートカット";
+  cut.aim = shot.intent?.purpose || "";
+  cut.kind = P.timing?.kind || "video";
+  if (P.timing?.duration_s) cut.duration = P.timing.duration_s;
+  if (P.composition) {
+    cut.camera.shotSize = P.composition.shot_size || cut.camera.shotSize;
+    cut.camera.endShotSize = P.composition.end_shot_size || "same";
+    cut.camera.angle = P.composition.angle || cut.camera.angle;
+    cut.aspect = P.composition.aspect_ratio || cut.aspect;
+  }
+  if (P.subject) {
+    cut.subjectType = P.subject.type || cut.subjectType;
+    cut.action = P.subject.action || cut.action;
+    cut.subjectNote = P.subject.note || "";
+  }
+  if (P.environment) {
+    cut.bgStyle = BG_STYLES[P.environment.background] ? P.environment.background : cut.bgStyle;
+    cut.weather = P.environment.weather || "none";
+    cut.timeOfDay = P.environment.time_of_day || "none";
+  }
+  if (P.color?.look) cut.look = P.color.look;
+  if (P.audio?.plan) cut.audio = P.audio.plan;
+  if (Array.isArray(P.fx_options)) cut.options = P.fx_options.filter(o => SHOT_OPTIONS.some(s => s.id === o));
+  cut.transition = shot.transition_out || "cut";
+  if (P.logistics) { cut.takes = P.logistics.estimated_takes ?? cut.takes; cut.setupMin = P.logistics.setup_min ?? cut.setupMin; }
+
+  const c = P.camera || {};
+  if (c.position_m) {
+    const camItem = cut.items.find(i => i.type === "camera");
+    Object.assign(camItem, fromWorldM(c.position_m));
+  }
+  cut.camera.body = c.body_archetype || cut.camera.body;
+  if (c.support) { cut.camera.support = c.support.type || cut.camera.support; cut.camera.head = c.support.head || cut.camera.head; }
+  const L = P.lens || {};
+  if (L.focal_length_mm) cut.camera.focalMm = L.focal_length_mm;
+  if (L.aperture_f) cut.camera.apertureF = L.aperture_f;
+  if (L.focus_distance_m) cut.camera.focusM = L.focus_distance_m;
+  if (L.anamorphic) cut.camera.lens = "anam";
+  if (L.nd) cut.camera.nd = L.nd;
+  if (Array.isArray(L.filters)) cut.camera.filters = L.filters;
+  const E = P.exposure || {};
+  Object.assign(cut.camera, {
+    shutter: E.shutter || cut.camera.shutter, iso: E.iso || cut.camera.iso,
+    fps: E.fps || cut.camera.fps, wb: E.white_balance || cut.camera.wb,
+  });
+  if (P.movement) { cut.camera.move = P.movement.type || cut.camera.move; cut.camera.moveSpeed = P.movement.speed || cut.camera.moveSpeed; if (P.movement.track_shape) cut.camera.trackShape = P.movement.track_shape; }
+
+  for (const l of P.lighting || []) {
+    if (!EQUIP_TYPES[l.role]) continue;
+    cut.items.push(makeItem({
+      type: l.role, ...fromWorldM(l.position_m),
+      power: l.power_pct ?? 50, colorTemp: l.color_temp_k ?? 5600,
+      modifier: l.modifier || "なし(直射)",
+    }));
+    const it = cut.items[cut.items.length - 1];
+    if (l.beam_angle_deg) it.beamAngle = l.beam_angle_deg;
+    if (l.stand) it.stand = l.stand;
+    if (l.watt) it.watt = l.watt;
+  }
+  for (const g of P.grip || []) {
+    if (EQUIP_TYPES[g.type]) cut.items.push(makeItem({ type: g.type, ...fromWorldM(g.position_m), power: 0, modifier: g.modifier || "なし(直射)" }));
+  }
+  for (const f of P.practical_fx || []) {
+    if (EQUIP_TYPES[f.type]) cut.items.push(makeItem({ type: f.type, ...fromWorldM(f.position_m), power: 0 }));
+  }
+  for (const v of P.logistics?.vehicles || []) {
+    if (EQUIP_TYPES[v.type]) cut.items.push(makeItem({ type: v.type, ...fromWorldM(v.position_m), power: 0 }));
+  }
+  return ensureCameraDefaults(cut);
+}
+
+function importCanonical(data) {
+  if (!Array.isArray(data.shots) || !data.shots.length) throw new Error("shots がありません");
+  state.cuts = data.shots.map(cutFromCanonicalShot);
+  state.activeCut = 0;
+  state.selectedItem = null;
+  renderAll();
 }
 
 /* =========================================================
@@ -2437,6 +2684,8 @@ function init() {
   setupIntent();
   setupViewToggle();
   setup3DControls();
+  setupDocOverlay();
+  setupEquipPage();
   byId("btnPlayPreview").addEventListener("click", () => {
     state.previewPlay = !state.previewPlay;
     if (state.previewPlay) startPreviewAnim(); else stopPreviewAnim();

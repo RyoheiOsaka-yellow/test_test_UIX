@@ -34,6 +34,9 @@
     <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
     <symbol id="i-braces" viewBox="0 0 24 24"><path d="M8.5 3.5C6.8 3.5 6 4.4 6 6v3c0 1.4-.8 2.3-2 3 1.2.7 2 1.6 2 3v3c0 1.6.8 2.5 2.5 2.5M15.5 3.5c1.7 0 2.5.9 2.5 2.5v3c0 1.4.8 2.3 2 3-1.2.7-2 1.6-2 3v3c0 1.6-.8 2.5-2.5 2.5"/></symbol>
     <symbol id="i-dmx" viewBox="0 0 24 24"><path d="M6 4v16M12 4v16M18 4v16"/><rect x="4" y="9" width="4" height="3.6" rx="1.2" fill="currentColor" stroke="none"/><rect x="10" y="13.5" width="4" height="3.6" rx="1.2" fill="currentColor" stroke="none"/><rect x="16" y="6" width="4" height="3.6" rx="1.2" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v6c0 1.55 3.36 2.8 7.5 2.8s7.5-1.25 7.5-2.8v-6M4.5 11.5v6c0 1.55 3.36 2.8 7.5 2.8s7.5-1.25 7.5-2.8v-6"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M14.5 5.5 8 12l6.5 6.5"/></symbol>
+    <symbol id="i-printer" viewBox="0 0 24 24"><path d="M7 8V4.5h10V8M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 17h-2"/><rect x="7" y="14" width="10" height="5.5" rx="1"/></symbol>
   </defs>
 </svg>
 
@@ -49,6 +52,9 @@
     <button class="mode-tab" data-mode="outdoor" role="tab">屋外・ドローン</button>
   </nav>
   <div class="header-actions">
+    <button id="btnEquipPage" class="icon-btn" title="機材データベース (131機種)" aria-label="機材データベース">
+      <svg class="ic"><use href="#i-db"/></svg>
+    </button>
     <button id="btnTheme" class="icon-btn" title="テーマ切替" aria-label="テーマ切替">
       <svg class="ic"><use href="#i-autotheme"/></svg>
     </button>
@@ -117,6 +123,7 @@
         <span id="viewToggle" role="group" aria-label="ビュー切替">
           <button class="view-tab active" data-view="2d">2D 俯瞰</button>
           <button class="view-tab" data-view="3d">3D</button>
+          <button class="view-tab" data-view="pov" title="カメラ視点 (レンズの画角で見る)">POV</button>
         </span>
         <small id="viewHint">ドラッグで機材を移動</small>
       </span>
@@ -197,6 +204,33 @@
     <div id="inspector"></div>
   </aside>
 </main>
+
+<!-- 機材データベースページ (アプリ内オーバーレイ) -->
+<div id="equipOverlay" class="overlay" hidden>
+  <div class="overlay-bar">
+    <button id="btnEquipBack" class="btn small"><svg class="ic"><use href="#i-back"/></svg> スタジオに戻る</button>
+    <span class="panel-title">機材データベース <small id="equipCount"></small></span>
+    <div class="search-field overlay-search">
+      <svg class="ic"><use href="#i-search"/></svg>
+      <input type="search" id="equipSearch" placeholder="機材を検索 (メーカー・機種・用途)">
+    </div>
+  </div>
+  <div id="equipFilters"></div>
+  <div id="equipAssignHint" class="insp-hint"></div>
+  <div id="equipGrid"></div>
+</div>
+
+<!-- ドキュメントビューア (指示書/絵コンテ/DMX — アプリ内で開き、戻れる) -->
+<div id="docOverlay" class="overlay" hidden>
+  <div class="overlay-bar">
+    <button id="btnDocBack" class="btn small"><svg class="ic"><use href="#i-back"/></svg> スタジオに戻る</button>
+    <span class="panel-title" id="docOverlayTitle"></span>
+    <span class="overlay-spacer"></span>
+    <button id="btnDocPrint" class="btn small primary"><svg class="ic"><use href="#i-printer"/></svg> 印刷 / PDF保存</button>
+    <button id="btnDocDownload" class="btn small">HTMLで保存</button>
+  </div>
+  <iframe id="docFrame" title="書き出しドキュメント"></iframe>
+</div>
 
 <script src="js/data.js"></script>
 <script src="js/equipment_db.js"></script>

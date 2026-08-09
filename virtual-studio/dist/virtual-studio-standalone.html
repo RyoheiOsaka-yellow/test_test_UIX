@@ -616,6 +616,59 @@ input[type="range"]::-moz-range-thumb {
 }
 .insp-hint { font-size: 11px; color: var(--dim); line-height: 1.6; }
 
+/* ---------- フルスクリーンオーバーレイ (機材DB / ドキュメントビューア) ---------- */
+.overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+}
+.overlay[hidden] { display: none; }
+.overlay-bar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 16px;
+  background: var(--glass);
+  -webkit-backdrop-filter: saturate(1.8) blur(20px);
+  backdrop-filter: saturate(1.8) blur(20px);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.overlay-bar .btn .ic { width: 14px; height: 14px; }
+.overlay-spacer { flex: 1; }
+.overlay-search { max-width: 300px; flex: 1; margin: 0; }
+#docFrame { flex: 1; border: none; background: #ffffff; width: 100%; }
+
+#equipFilters {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 10px 16px 0;
+}
+#equipAssignHint { padding: 8px 16px 0; }
+#equipGrid {
+  flex: 1; overflow-y: auto;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 12px; padding: 14px 16px 20px;
+  align-content: start;
+}
+.equip-card {
+  background: var(--surface); border-radius: var(--radius);
+  padding: 13px 14px; box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 6px;
+  transition: all 0.18s var(--ease);
+}
+.equip-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.equip-card .e-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.equip-card .e-name { font-size: 13px; font-weight: 700; line-height: 1.35; }
+.equip-card .e-cat { font-size: 10px; color: var(--dim); }
+.safety-badge {
+  flex: 0 0 auto; font-size: 10px; font-weight: 800;
+  padding: 2px 8px; border-radius: 980px;
+}
+.safety-badge.sc-A { background: rgba(42, 168, 126, 0.15); color: #1d8a63; }
+.safety-badge.sc-B { background: rgba(232, 146, 10, 0.15); color: #b06e06; }
+.safety-badge.sc-C { background: rgba(255, 59, 48, 0.15); color: var(--danger); }
+.equip-card .e-cap { font-size: 11px; color: var(--text2); line-height: 1.55; }
+.equip-card .e-use { font-size: 10.5px; color: var(--dim); line-height: 1.5; }
+.equip-card .e-actions { margin-top: auto; padding-top: 4px; }
+
 /* ---------- モーション設定の尊重 ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
@@ -676,6 +729,9 @@ input[type="range"]::-moz-range-thumb {
     <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
     <symbol id="i-braces" viewBox="0 0 24 24"><path d="M8.5 3.5C6.8 3.5 6 4.4 6 6v3c0 1.4-.8 2.3-2 3 1.2.7 2 1.6 2 3v3c0 1.6.8 2.5 2.5 2.5M15.5 3.5c1.7 0 2.5.9 2.5 2.5v3c0 1.4.8 2.3 2 3-1.2.7-2 1.6-2 3v3c0 1.6-.8 2.5-2.5 2.5"/></symbol>
     <symbol id="i-dmx" viewBox="0 0 24 24"><path d="M6 4v16M12 4v16M18 4v16"/><rect x="4" y="9" width="4" height="3.6" rx="1.2" fill="currentColor" stroke="none"/><rect x="10" y="13.5" width="4" height="3.6" rx="1.2" fill="currentColor" stroke="none"/><rect x="16" y="6" width="4" height="3.6" rx="1.2" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v6c0 1.55 3.36 2.8 7.5 2.8s7.5-1.25 7.5-2.8v-6M4.5 11.5v6c0 1.55 3.36 2.8 7.5 2.8s7.5-1.25 7.5-2.8v-6"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M14.5 5.5 8 12l6.5 6.5"/></symbol>
+    <symbol id="i-printer" viewBox="0 0 24 24"><path d="M7 8V4.5h10V8M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 17h-2"/><rect x="7" y="14" width="10" height="5.5" rx="1"/></symbol>
   </defs>
 </svg>
 
@@ -691,6 +747,9 @@ input[type="range"]::-moz-range-thumb {
     <button class="mode-tab" data-mode="outdoor" role="tab">屋外・ドローン</button>
   </nav>
   <div class="header-actions">
+    <button id="btnEquipPage" class="icon-btn" title="機材データベース (131機種)" aria-label="機材データベース">
+      <svg class="ic"><use href="#i-db"/></svg>
+    </button>
     <button id="btnTheme" class="icon-btn" title="テーマ切替" aria-label="テーマ切替">
       <svg class="ic"><use href="#i-autotheme"/></svg>
     </button>
@@ -759,6 +818,7 @@ input[type="range"]::-moz-range-thumb {
         <span id="viewToggle" role="group" aria-label="ビュー切替">
           <button class="view-tab active" data-view="2d">2D 俯瞰</button>
           <button class="view-tab" data-view="3d">3D</button>
+          <button class="view-tab" data-view="pov" title="カメラ視点 (レンズの画角で見る)">POV</button>
         </span>
         <small id="viewHint">ドラッグで機材を移動</small>
       </span>
@@ -839,6 +899,33 @@ input[type="range"]::-moz-range-thumb {
     <div id="inspector"></div>
   </aside>
 </main>
+
+<!-- 機材データベースページ (アプリ内オーバーレイ) -->
+<div id="equipOverlay" class="overlay" hidden>
+  <div class="overlay-bar">
+    <button id="btnEquipBack" class="btn small"><svg class="ic"><use href="#i-back"/></svg> スタジオに戻る</button>
+    <span class="panel-title">機材データベース <small id="equipCount"></small></span>
+    <div class="search-field overlay-search">
+      <svg class="ic"><use href="#i-search"/></svg>
+      <input type="search" id="equipSearch" placeholder="機材を検索 (メーカー・機種・用途)">
+    </div>
+  </div>
+  <div id="equipFilters"></div>
+  <div id="equipAssignHint" class="insp-hint"></div>
+  <div id="equipGrid"></div>
+</div>
+
+<!-- ドキュメントビューア (指示書/絵コンテ/DMX — アプリ内で開き、戻れる) -->
+<div id="docOverlay" class="overlay" hidden>
+  <div class="overlay-bar">
+    <button id="btnDocBack" class="btn small"><svg class="ic"><use href="#i-back"/></svg> スタジオに戻る</button>
+    <span class="panel-title" id="docOverlayTitle"></span>
+    <span class="overlay-spacer"></span>
+    <button id="btnDocPrint" class="btn small primary"><svg class="ic"><use href="#i-printer"/></svg> 印刷 / PDF保存</button>
+    <button id="btnDocDownload" class="btn small">HTMLで保存</button>
+  </div>
+  <iframe id="docFrame" title="書き出しドキュメント"></iframe>
+</div>
 
 <script>
 /* =========================================================
@@ -4975,44 +5062,26 @@ function expandCoverage(cut) {
 </script>
 <script>
 /* =========================================================
- * Studio3D — 3Dテクニカルビュー (CineOS Phase 2 移植)
+ * Studio3D — 3Dテクニカルビュー + POV (CineOS Phase 2 移植)
  * 依存ライブラリなしの自前パースペクティブ投影 (canvas 2D)。
- * 表示: 床グリッド / 被写体 / ライト+光錐 (照射角) / カメラ+視野角
- *       フラスタム / 被写界深度 (DOF) 面 / ドローン高度
+ * 3D: 床グリッド / 被写体 / ライト光錐 / カメラ視野角フラスタム /
+ *     被写界深度面 / ドローン / カメラワークの軌道パス+再生マーカー
+ * POV: カメラ位置からレンズ画角で見る実尺プレビュー (再生でパス移動)
  * 座標系は canonical と同じ: +X=右, +Y=被写体後方, +Z=上 (m)
- * 操作: ドラッグ=回転 / ホイール=ズーム / ダブルクリック=リセット
  * ======================================================= */
 
 "use strict";
 
 const S3D = {
   active: false,
+  pov: false,
   yaw: 0.55, pitch: 0.42, dist: 13.5,
   target: [0, 0, 1.0],
   dragging: null,
+  animT: null, // 再生中の 0..1 (app.js の再生ループが更新)
 };
 
 function s3dReset() { S3D.yaw = 0.55; S3D.pitch = 0.42; S3D.dist = 13.5; }
-
-/* world(m) → screen */
-function s3dMakeProjector(canvas) {
-  const dpr = window.devicePixelRatio || 1;
-  const W = canvas.width / dpr, H = canvas.height / dpr;
-  const cy = Math.cos(S3D.yaw), sy = Math.sin(S3D.yaw);
-  const cp = Math.cos(S3D.pitch), sp = Math.sin(S3D.pitch);
-  const f = Math.min(W, H) * 1.15;
-  const [tx, ty, tz] = S3D.target;
-  return (p) => {
-    let x = p[0] - tx, y = p[1] - ty, z = p[2] - tz;
-    const x1 = x * cy - y * sy;
-    const y1 = x * sy + y * cy;
-    const y2 = y1 * cp - z * sp;
-    const z2 = y1 * sp + z * cp;
-    const depth = y2 + S3D.dist;
-    if (depth < 0.3) return null;
-    return { x: W / 2 + (x1 * f) / depth, y: H * 0.52 - (z2 * f) / depth, d: depth };
-  };
-}
 
 /* 被写界深度 (mm系, 許容錯乱円 0.03mm フルサイズ) */
 function computeDOF(focalMm, apertureF, focusM) {
@@ -5039,11 +5108,51 @@ function s3dBasis(axis) {
   return { a, r, u, len };
 }
 
+/* =========================================================
+ * カメラワーク → 3D軌道パス (サンプル点列)
+ * ======================================================= */
+function camPathPoints(cut, camW, aim) {
+  const move = cut.camera.move;
+  const { a, r, len } = s3dBasis([aim[0] - camW[0], aim[1] - camW[1], aim[2] - camW[2]]);
+  const N = 40;
+  const pts = [];
+  const lerp = (fn) => { for (let i = 0; i <= N; i++) pts.push(fn(i / N)); return pts; };
+  const along = (v, s) => [camW[0] + v[0] * s, camW[1] + v[1] * s, Math.max(0.15, camW[2] + v[2] * s)];
+  const orbitR = Math.hypot(camW[0] - aim[0], camW[1] - aim[1]);
+  const ang0 = Math.atan2(camW[1] - aim[1], camW[0] - aim[0]);
+  const orbitPt = (th, z) => [aim[0] + orbitR * Math.cos(th), aim[1] + orbitR * Math.sin(th), z];
+
+  switch (move) {
+    case "dollyin": case "zoomin": return lerp(t => along(a, t * Math.min(len - 0.8, len * 0.55)));
+    case "dollyout": return lerp(t => along(a, -t * len * 0.6));
+    case "track": case "d_side": return lerp(t => along(r, (t - 0.5) * Math.min(6, len * 1.6)));
+    case "slider": return lerp(t => along(r, (t - 0.5) * 1.0));
+    case "arc": return lerp(t => orbitPt(ang0 + (t - 0.5) * 1.4, camW[2]));
+    case "orbit": case "d_orbit": return lerp(t => orbitPt(ang0 + t * Math.PI * 2, camW[2]));
+    case "d_spiral": return lerp(t => orbitPt(ang0 + t * Math.PI * 2, camW[2] + t * 2.5));
+    case "crane": return lerp(t => along([a[0] * 0.3, a[1] * 0.3, 1], t * 2.2));
+    case "pedestal": return lerp(t => [camW[0], camW[1], Math.max(0.2, camW[2] + (t - 0.5) * 1.6)]);
+    case "d_reveal": return lerp(t => along([a[0] * 0.5, a[1] * 0.5, 1], t * 3));
+    case "d_pullback": case "d_dronie": return lerp(t => along([-a[0], -a[1], 0.55], t * len * 0.9));
+    case "d_flyover": case "d_lowpass": case "d_chase": case "d_gap":
+      return lerp(t => along(a, (t - 0.2) * len * 1.3));
+    case "d_lead": return lerp(t => along([-a[0], -a[1], 0], t * len * 0.8));
+    case "d_topdown": return lerp(t => [camW[0], camW[1], Math.max(0.5, camW[2] * (1 - t * 0.5))]);
+    case "d_dive": return lerp(t => [camW[0], camW[1], Math.max(0.4, camW[2] * (1 - t * 0.85))]);
+    case "d_dzoom": case "dollyzoom": return lerp(t => along(a, -t * len * 0.4));
+    default: return null; // fix/pan/tilt/handheld/gimbal/whip は定点扱い
+  }
+}
+
+/* =========================================================
+ * メイン描画
+ * ======================================================= */
 function render3D() {
   const canvas = byId("studio3d");
   if (!canvas || !S3D.active) return;
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
+  if (rect.width < 4) return;
   if (canvas.width !== Math.round(rect.width * dpr)) {
     canvas.width = Math.round(rect.width * dpr);
     canvas.height = Math.round(rect.height * dpr);
@@ -5054,10 +5163,9 @@ function render3D() {
   const cs = getComputedStyle(document.documentElement);
   const col = (name, fb) => (cs.getPropertyValue(name) || fb).trim() || fb;
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = col("--cv-surface", "#ffffff");
+  ctx.fillStyle = S3D.pov ? "#101114" : col("--cv-surface", "#ffffff");
   ctx.fillRect(0, 0, W, H);
 
-  const proj = s3dMakeProjector(canvas);
   const cut = activeCut();
   const camIt = cut.items.find(i => i.type === "camera");
   const subIt = cut.items.find(i => i.type === "subject");
@@ -5067,6 +5175,43 @@ function render3D() {
   const subjH = cut.subjectType === "person" ? 1.7 : cut.subjectType === "car" ? 1.4 : 1.0;
   const subW = subIt ? [...s3dItemWorld(subIt).slice(0, 2), 0] : [0, 0, 0];
   const aim = [subW[0], subW[1], Math.min(subjH * 0.85, 1.5)];
+  const path = camPathPoints(cut, camW, aim);
+  const hfov = Math.atan(18 / cut.camera.focalMm);
+  const asp = aspectDims(cut.aspect); const vRatio = asp.H / asp.W;
+
+  /* --- プロジェクタ: オービット or POV --- */
+  let proj;
+  let eye = camW;
+  if (S3D.pov) {
+    if (path && S3D.animT != null) {
+      eye = path[Math.min(path.length - 1, Math.floor(S3D.animT * path.length))];
+    }
+    const { a, r, u } = s3dBasis([aim[0] - eye[0], aim[1] - eye[1], aim[2] - eye[2]]);
+    const fpx = (W * 0.42) / Math.tan(hfov); // 少し余白を持たせたPOV焦点
+    proj = (p) => {
+      const v = [p[0] - eye[0], p[1] - eye[1], p[2] - eye[2]];
+      const d = v[0] * a[0] + v[1] * a[1] + v[2] * a[2];
+      if (d < 0.15) return null;
+      const x = v[0] * r[0] + v[1] * r[1] + v[2] * r[2];
+      const z = v[0] * u[0] + v[1] * u[1] + v[2] * u[2];
+      return { x: W / 2 + (x * fpx) / d, y: H / 2 - (z * fpx) / d, d };
+    };
+  } else {
+    const cyw = Math.cos(S3D.yaw), syw = Math.sin(S3D.yaw);
+    const cp = Math.cos(S3D.pitch), sp = Math.sin(S3D.pitch);
+    const f = Math.min(W, H) * 1.15;
+    const [tx, ty, tz] = S3D.target;
+    proj = (p) => {
+      let x = p[0] - tx, y = p[1] - ty, z = p[2] - tz;
+      const x1 = x * cyw - y * syw;
+      const y1 = x * syw + y * cyw;
+      const y2 = y1 * cp - z * sp;
+      const z2 = y1 * sp + z * cp;
+      const depth = y2 + S3D.dist;
+      if (depth < 0.3) return null;
+      return { x: W / 2 + (x1 * f) / depth, y: H * 0.52 - (z2 * f) / depth, d: depth };
+    };
+  }
 
   const line3 = (a, b, color, w, alpha = 1, dash = null) => {
     const pa = proj(a), pb = proj(b);
@@ -5076,7 +5221,7 @@ function render3D() {
     ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
     ctx.setLineDash([]); ctx.globalAlpha = 1;
   };
-  const polyList = []; // {d, fn} 奥から描く
+  const polyList = [];
   const poly3 = (pts, fill, alpha, stroke) => {
     const pp = pts.map(proj);
     if (pp.some(p => !p)) return;
@@ -5093,6 +5238,7 @@ function render3D() {
     });
   };
   const label3 = (p, text, color) => {
+    if (S3D.pov) return; // POVはHUDのみ
     const pp = proj(p);
     if (!pp) return;
     polyList.push({
@@ -5113,32 +5259,28 @@ function render3D() {
     poly3([T[0], T[1], T[2], T[3]], fill, 0.95, stroke);
   };
 
-  /* --- 床グリッド (10m x 7m) --- */
-  const gMinor = col("--cv-grid-minor", "#eceef3"), gMajor = col("--cv-grid-major", "#dfe2e9");
+  /* --- 床グリッド + ホリゾント --- */
+  const gMinor = S3D.pov ? "#26262c" : col("--cv-grid-minor", "#eceef3");
+  const gMajor = S3D.pov ? "#33333b" : col("--cv-grid-major", "#dfe2e9");
   for (let x = -5; x <= 5; x += 0.5) line3([x, -3.7, 0], [x, 3.3, 0], x % 1 === 0 ? gMajor : gMinor, 1);
   for (let y = -3.5; y <= 3.5; y += 0.5) line3([-5, y, 0], [5, y, 0], y % 1 === 0 ? gMajor : gMinor, 1);
-  /* 背景ホリゾント壁 */
-  poly3([[-5, 2.4, 0], [5, 2.4, 0], [5, 2.4, 3.2], [-5, 2.4, 3.2]], col("--cv-grid-major", "#dfe2e9"), 0.25, gMajor);
+  poly3([[-5, 2.4, 0], [5, 2.4, 0], [5, 2.4, 3.2], [-5, 2.4, 3.2]], gMajor, 0.25, gMajor);
 
   /* --- 被写体 --- */
-  const subColor = "#5a6478";
+  const subColor = S3D.pov ? "#c9b8a0" : "#5a6478";
   const segs = 10, r0 = cut.subjectType === "car" ? 0.9 : 0.28;
   const ring = (z, r) => Array.from({ length: segs }, (_, i) => {
-    const a = (i / segs) * Math.PI * 2;
-    return [subW[0] + r * Math.cos(a), subW[1] + r * Math.sin(a), z];
+    const a2 = (i / segs) * Math.PI * 2;
+    return [subW[0] + r * Math.cos(a2), subW[1] + r * Math.sin(a2), z];
   });
   const b0 = ring(0, r0), b1 = ring(subjH, r0 * (cut.subjectType === "person" ? 0.7 : 1));
   for (let i = 0; i < segs; i++) {
     poly3([b0[i], b0[(i + 1) % segs], b1[(i + 1) % segs], b1[i]], subColor, 0.5, null);
   }
-  if (cut.subjectType === "person") {
-    const hz = subjH + 0.12;
-    box3([subW[0], subW[1], subjH], 0.26, 0.26, 0.26, subColor, null);
-    void hz;
-  }
+  if (cut.subjectType === "person") box3([subW[0], subW[1], subjH], 0.26, 0.26, 0.26, subColor, null);
   label3([subW[0], subW[1], subjH + 0.55], "被写体", col("--cv-label", "#3a3a3c"));
 
-  /* --- ライト + 光錐 --- */
+  /* --- ライト + 光錐 / パネル --- */
   for (const it of cut.items) {
     if (!LIGHT_TYPES.includes(it.type) && !["reflector", "flag", "diff"].includes(it.type)) continue;
     const p = s3dItemWorld(it);
@@ -5146,30 +5288,28 @@ function render3D() {
     if (LIGHT_TYPES.includes(it.type)) {
       box3(p.map((v, i) => i === 2 ? v - 0.15 : v), 0.3, 0.3, 0.3, t.color, null);
       if (it.power > 0 && it.type !== "sun") {
-        const { a, r, u, len } = s3dBasis([aim[0] - p[0], aim[1] - p[1], aim[2] - p[2]]);
-        const L = Math.min(len, 6);
+        const { a: la, r: lr, u: lu, len: ll } = s3dBasis([aim[0] - p[0], aim[1] - p[1], aim[2] - p[2]]);
+        const L = Math.min(ll, 6);
         const rad = Math.tan(Math.min(60, (it.beamAngle ?? 60) / 2) * Math.PI / 180) * L;
         const base = [];
         for (let i = 0; i < 8; i++) {
           const th = (i / 8) * Math.PI * 2;
           base.push([
-            p[0] + a[0] * L + (r[0] * Math.cos(th) + u[0] * Math.sin(th)) * rad,
-            p[1] + a[1] * L + (r[1] * Math.cos(th) + u[1] * Math.sin(th)) * rad,
-            Math.max(0, p[2] + a[2] * L + (r[2] * Math.cos(th) + u[2] * Math.sin(th)) * rad),
+            p[0] + la[0] * L + (lr[0] * Math.cos(th) + lu[0] * Math.sin(th)) * rad,
+            p[1] + la[1] * L + (lr[1] * Math.cos(th) + lu[1] * Math.sin(th)) * rad,
+            Math.max(0, p[2] + la[2] * L + (lr[2] * Math.cos(th) + lu[2] * Math.sin(th)) * rad),
           ]);
         }
-        for (let i = 0; i < 8; i++) poly3([p, base[i], base[(i + 1) % 8]], t.color, 0.06, null);
+        for (let i = 0; i < 8; i++) poly3([p, base[i], base[(i + 1) % 8]], t.color, S3D.pov ? 0.05 : 0.06, null);
       }
       label3([p[0], p[1], p[2] + 0.35], t.label, col("--cv-sub", "#8a90a0"));
     } else {
-      /* パネル類 (レフ/フラッグ/ディフューザー): 板 */
-      const { r, u } = s3dBasis([aim[0] - p[0], aim[1] - p[1], 0]);
+      const { r: pr } = s3dBasis([aim[0] - p[0], aim[1] - p[1], 0]);
       const w2 = 0.5, h2 = 0.4;
       poly3([
-        [p[0] - r[0] * w2, p[1] - r[1] * w2, p[2] - h2], [p[0] + r[0] * w2, p[1] + r[1] * w2, p[2] - h2],
-        [p[0] + r[0] * w2, p[1] + r[1] * w2, p[2] + h2], [p[0] - r[0] * w2, p[1] - r[1] * w2, p[2] + h2],
+        [p[0] - pr[0] * w2, p[1] - pr[1] * w2, p[2] - h2], [p[0] + pr[0] * w2, p[1] + pr[1] * w2, p[2] - h2],
+        [p[0] + pr[0] * w2, p[1] + pr[1] * w2, p[2] + h2], [p[0] - pr[0] * w2, p[1] - pr[1] * w2, p[2] + h2],
       ], t.color, 0.55, "#8a90a0");
-      void u;
     }
   }
 
@@ -5182,56 +5322,107 @@ function render3D() {
     label3([p[0], p[1], p[2] + 0.35], `ドローン ${(it.height / 100).toFixed(0)}m`, col("--cv-sub", "#8a90a0"));
   }
 
-  /* --- カメラ + フラスタム + DOF --- */
   const accent = col("--accent", "#0071e3");
-  box3([camW[0], camW[1], camW[2] - 0.12], 0.34, 0.5, 0.24, accent, null);
-  line3([camW[0], camW[1], 0], camW, "#8a90a0", 1.5, 0.6);
-  const { a, r, u, len } = s3dBasis([aim[0] - camW[0], aim[1] - camW[1], aim[2] - camW[2]]);
-  const hfov = Math.atan(18 / cut.camera.focalMm);           // 半水平視野角 (FF 36mm幅)
-  const asp = aspectDims(cut.aspect); const vRatio = asp.H / asp.W;
-  const frust = (L) => {
-    const hw = Math.tan(hfov) * L, hh = hw * vRatio;
-    return [
-      [camW[0] + a[0] * L - r[0] * hw - u[0] * hh, camW[1] + a[1] * L - r[1] * hw - u[1] * hh, camW[2] + a[2] * L - r[2] * hw - u[2] * hh],
-      [camW[0] + a[0] * L + r[0] * hw - u[0] * hh, camW[1] + a[1] * L + r[1] * hw - u[1] * hh, camW[2] + a[2] * L + r[2] * hw - u[2] * hh],
-      [camW[0] + a[0] * L + r[0] * hw + u[0] * hh, camW[1] + a[1] * L + r[1] * hw + u[1] * hh, camW[2] + a[2] * L + r[2] * hw + u[2] * hh],
-      [camW[0] + a[0] * L - r[0] * hw + u[0] * hh, camW[1] + a[1] * L - r[1] * hw + u[1] * hh, camW[2] + a[2] * L - r[2] * hw + u[2] * hh],
-    ];
-  };
-  const far = frust(Math.max(len * 1.25, 3));
-  for (const c of far) line3(camW, c, accent, 1.2, 0.55);
-  poly3(far, accent, 0.06, accent);
 
-  /* DOF: 合焦面 (オレンジ) + 前後の深度面 (緑) */
+  /* --- カメラワーク軌道パス (3Dビューのみ) --- */
+  if (!S3D.pov && path) {
+    for (let i = 0; i < path.length - 1; i++) {
+      line3(path[i], path[i + 1], accent, 2, 0.7, [6, 5]);
+    }
+    // 終端矢印
+    const pe = proj(path[path.length - 1]), pp2 = proj(path[path.length - 2]);
+    if (pe && pp2) {
+      const ang = Math.atan2(pe.y - pp2.y, pe.x - pp2.x);
+      ctx.strokeStyle = accent; ctx.lineWidth = 2; ctx.globalAlpha = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(pe.x, pe.y);
+      ctx.lineTo(pe.x - 10 * Math.cos(ang - 0.45), pe.y - 10 * Math.sin(ang - 0.45));
+      ctx.moveTo(pe.x, pe.y);
+      ctx.lineTo(pe.x - 10 * Math.cos(ang + 0.45), pe.y - 10 * Math.sin(ang + 0.45));
+      ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    // 再生マーカー
+    if (S3D.animT != null) {
+      const mp = path[Math.min(path.length - 1, Math.floor(S3D.animT * path.length))];
+      box3([mp[0], mp[1], Math.max(0.05, mp[2] - 0.1)], 0.28, 0.28, 0.2, "#e8920a", accent);
+    }
+  }
+
+  /* --- カメラ + フラスタム + DOF (3Dビューのみ) --- */
   const dof = computeDOF(cut.camera.focalMm, cut.camera.apertureF, cut.camera.focusM);
-  const fp = frust(Math.min(cut.camera.focusM, 12));
-  poly3(fp, "#e8920a", 0.16, "#e8920a");
-  if (dof.near < 12) poly3(frust(Math.min(dof.near, 12)), "#2aa87e", 0.1, "#2aa87e");
-  if (dof.far !== Infinity && dof.far < 12) poly3(frust(dof.far), "#2aa87e", 0.1, "#2aa87e");
-  label3([camW[0], camW[1], camW[2] + 0.4], "カメラ", accent);
+  if (!S3D.pov) {
+    box3([camW[0], camW[1], camW[2] - 0.12], 0.34, 0.5, 0.24, accent, null);
+    line3([camW[0], camW[1], 0], camW, "#8a90a0", 1.5, 0.6);
+    const { a: ca, r: cr, u: cu, len: cl } = s3dBasis([aim[0] - camW[0], aim[1] - camW[1], aim[2] - camW[2]]);
+    const frust = (L) => {
+      const hw = Math.tan(hfov) * L, hh = hw * vRatio;
+      return [
+        [camW[0] + ca[0] * L - cr[0] * hw - cu[0] * hh, camW[1] + ca[1] * L - cr[1] * hw - cu[1] * hh, camW[2] + ca[2] * L - cr[2] * hw - cu[2] * hh],
+        [camW[0] + ca[0] * L + cr[0] * hw - cu[0] * hh, camW[1] + ca[1] * L + cr[1] * hw - cu[1] * hh, camW[2] + ca[2] * L + cr[2] * hw - cu[2] * hh],
+        [camW[0] + ca[0] * L + cr[0] * hw + cu[0] * hh, camW[1] + ca[1] * L + cr[1] * hw + cu[1] * hh, camW[2] + ca[2] * L + cr[2] * hw + cu[2] * hh],
+        [camW[0] + ca[0] * L - cr[0] * hw + cu[0] * hh, camW[1] + ca[1] * L - cr[1] * hw + cu[1] * hh, camW[2] + ca[2] * L - cr[2] * hw + cu[2] * hh],
+      ];
+    };
+    const far = frust(Math.max(cl * 1.25, 3));
+    for (const c of far) line3(camW, c, accent, 1.2, 0.55);
+    poly3(far, accent, 0.06, accent);
+    const fp = frust(Math.min(cut.camera.focusM, 12));
+    poly3(fp, "#e8920a", 0.16, "#e8920a");
+    if (dof.near < 12) poly3(frust(Math.min(dof.near, 12)), "#2aa87e", 0.1, "#2aa87e");
+    if (dof.far !== Infinity && dof.far < 12) poly3(frust(dof.far), "#2aa87e", 0.1, "#2aa87e");
+    label3([camW[0], camW[1], camW[2] + 0.4], "カメラ", accent);
+  }
 
-  /* 奥から描画 */
   polyList.sort((p1, p2) => p2.d - p1.d).forEach(p => p.fn());
+
+  /* --- POV: フレームマスク (アスペクト比) + 三分割線 --- */
+  if (S3D.pov) {
+    const frameW = W * 0.84;
+    const frameH = frameW * vRatio;
+    const fx = (W - frameW) / 2, fy = (H - frameH) / 2;
+    ctx.fillStyle = "rgba(6,6,8,0.72)";
+    ctx.fillRect(0, 0, W, fy); ctx.fillRect(0, fy + frameH, W, H - fy - frameH);
+    ctx.fillRect(0, fy, fx, frameH); ctx.fillRect(fx + frameW, fy, W - fx - frameW, frameH);
+    ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 1.5;
+    ctx.strokeRect(fx, fy, frameW, frameH);
+    ctx.strokeStyle = "rgba(255,255,255,0.22)"; ctx.lineWidth = 1;
+    for (let i = 1; i <= 2; i++) {
+      ctx.beginPath(); ctx.moveTo(fx + (frameW * i) / 3, fy); ctx.lineTo(fx + (frameW * i) / 3, fy + frameH); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(fx, fy + (frameH * i) / 3); ctx.lineTo(fx + frameW, fy + (frameH * i) / 3); ctx.stroke();
+    }
+  }
 
   /* --- HUD --- */
   ctx.font = "600 12px -apple-system, 'Hiragino Sans', sans-serif";
   ctx.textAlign = "left";
-  ctx.fillStyle = col("--text2", "#515154");
+  ctx.fillStyle = S3D.pov ? "#e8e8ec" : col("--text2", "#515154");
   const farStr = dof.far === Infinity ? "∞" : dof.far.toFixed(2) + "m";
-  ctx.fillText(`${cut.camera.focalMm}mm F${cut.camera.apertureF} ｜ フォーカス ${cut.camera.focusM}m ｜ 被写界深度 ${dof.near.toFixed(2)}m – ${farStr}`, 12, 20);
-  ctx.fillStyle = col("--dim", "#86868b");
+  const movLabel = (CAM_MOVES.find(m => m.id === cut.camera.move) || {}).label || "";
+  ctx.fillText(
+    S3D.pov
+      ? `POV — ${cut.camera.focalMm}mm F${cut.camera.apertureF} ｜ ${cut.aspect} ｜ ${movLabel}${S3D.animT != null ? " ▶ 再生中" : ""}`
+      : `${cut.camera.focalMm}mm F${cut.camera.apertureF} ｜ フォーカス ${cut.camera.focusM}m ｜ 被写界深度 ${dof.near.toFixed(2)}m – ${farStr}${path ? ` ｜ 軌道: ${movLabel}` : ""}`,
+    12, 20);
+  ctx.fillStyle = S3D.pov ? "#9a9aa2" : col("--dim", "#86868b");
   ctx.font = "400 11px -apple-system, 'Hiragino Sans', sans-serif";
-  ctx.fillText("ドラッグ: 回転 ｜ ホイール: ズーム ｜ ダブルクリック: リセット (編集は2Dビューで)", 12, H - 12);
-  /* 凡例 */
-  ctx.fillStyle = "#e8920a"; ctx.fillText("■ 合焦面", W - 190, 20);
-  ctx.fillStyle = "#2aa87e"; ctx.fillText("■ 被写界深度", W - 130, 20);
-  ctx.fillStyle = col("--accent", "#0071e3"); ctx.fillText("■ 視野角", W - 58, 20);
+  ctx.fillText(
+    S3D.pov
+      ? "カメラ視点 (レンズ画角で表示)。プレビューの再生ボタンで軌道を移動 (編集は2Dビューで)"
+      : "ドラッグ: 回転 ｜ ホイール: ズーム ｜ ダブルクリック: リセット ｜ 点線=カメラ軌道 (編集は2Dビューで)",
+    12, H - 12);
+  if (!S3D.pov) {
+    ctx.fillStyle = "#e8920a"; ctx.fillText("■ 合焦面", W - 250, 20);
+    ctx.fillStyle = "#2aa87e"; ctx.fillText("■ 被写界深度", W - 190, 20);
+    ctx.fillStyle = accent; ctx.fillText("■ 視野角", W - 118, 20);
+    ctx.fillStyle = accent; ctx.fillText("┈ 軌道", W - 62, 20);
+  }
 }
 
 /* ---------- 操作 ---------- */
 function setup3DControls() {
   const canvas = byId("studio3d");
   canvas.addEventListener("pointerdown", e => {
+    if (S3D.pov) return;
     S3D.dragging = { x: e.clientX, y: e.clientY, yaw: S3D.yaw, pitch: S3D.pitch };
     try { canvas.setPointerCapture(e.pointerId); } catch { /* noop */ }
   });
@@ -5244,11 +5435,12 @@ function setup3DControls() {
   canvas.addEventListener("pointerup", () => { S3D.dragging = null; });
   canvas.addEventListener("pointercancel", () => { S3D.dragging = null; });
   canvas.addEventListener("wheel", e => {
+    if (S3D.pov) return;
     e.preventDefault();
     S3D.dist = Math.min(30, Math.max(4, S3D.dist * (e.deltaY > 0 ? 1.1 : 1 / 1.1)));
     render3D();
   }, { passive: false });
-  canvas.addEventListener("dblclick", () => { s3dReset(); render3D(); });
+  canvas.addEventListener("dblclick", () => { if (!S3D.pov) { s3dReset(); render3D(); } });
   window.addEventListener("resize", () => { if (S3D.active) render3D(); });
 }
 
@@ -6239,18 +6431,23 @@ function renderCanvas() {
   if (typeof S3D !== "undefined" && S3D.active) render3D();
 }
 
-/* 2D/3D ビュー切替 */
+/* 2D/3D/POV ビュー切替 */
 function setupViewToggle() {
   document.querySelectorAll(".view-tab").forEach(btn => {
     btn.addEventListener("click", () => {
-      const is3d = btn.dataset.view === "3d";
+      const view = btn.dataset.view;
+      const is3d = view !== "2d";
       S3D.active = is3d;
+      S3D.pov = view === "pov";
       document.querySelectorAll(".view-tab").forEach(b => b.classList.toggle("active", b === btn));
       // SVG要素は hidden プロパティが効かない (HTMLElement専用) ため display で切替える
       byId("studioCanvas").style.display = is3d ? "none" : "";
       byId("studio3d").style.display = is3d ? "block" : "none";
       byId("zoomControls").style.display = is3d ? "none" : "";
-      byId("viewHint").textContent = is3d ? "回転して光錐・視野角・被写界深度を確認" : "ドラッグで機材を移動";
+      byId("viewHint").textContent =
+        view === "pov" ? "カメラ視点 — 再生ボタンで軌道を移動"
+        : is3d ? "回転して光錐・視野角・被写界深度・カメラ軌道を確認"
+        : "ドラッグで機材を移動";
       if (is3d) requestAnimationFrame(render3D);
     });
   });
@@ -6350,12 +6547,18 @@ function startPreviewAnim() {
   animStart = performance.now();
   const tick = (now) => {
     const cut = activeCut();
+    const speedMul = { veryslow: 1.8, slow: 1.3, normal: 1, fast: 0.65, veryfast: 0.45 }[cut.camera.moveSpeed] || 1;
+    const dur = Math.min(8, Math.max(2, cut.kind === "still" ? 3 : cut.duration || 5)) * 1000 * speedMul;
+    const t = ((now - animStart) % dur) / dur;
     const g = document.getElementById("liveanim");
     if (g) {
       const { W, H } = aspectDims(cut.aspect);
-      const speedMul = { veryslow: 1.8, slow: 1.3, normal: 1, fast: 0.65, veryfast: 0.45 }[cut.camera.moveSpeed] || 1;
-      const dur = Math.min(8, Math.max(2, cut.kind === "still" ? 3 : cut.duration || 5)) * 1000 * speedMul;
-      g.setAttribute("transform", animTransform(cut, ((now - animStart) % dur) / dur, W, H));
+      g.setAttribute("transform", animTransform(cut, t, W, H));
+    }
+    // 3D/POVビューにもカメラ軌道の進行を反映
+    if (typeof S3D !== "undefined" && S3D.active) {
+      S3D.animT = t;
+      render3D();
     }
     animRAF = requestAnimationFrame(tick);
   };
@@ -6367,6 +6570,10 @@ function stopPreviewAnim() {
   animRAF = null;
   const g = document.getElementById("liveanim");
   if (g) g.removeAttribute("transform");
+  if (typeof S3D !== "undefined") {
+    S3D.animT = null;
+    if (S3D.active) render3D();
+  }
 }
 
 function renderPrompt() {
@@ -6443,6 +6650,7 @@ function renderInspector() {
           `<option ${s === (selItem.stand || "ライトスタンド") ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>`)}
         ${fieldRow("消費電力(W)", `<input type="number" id="itWatt" value="${selItem.watt ?? 0}" min="0" max="20000" step="10" title="電源プラン(指示書)の自動計算に使われます">`)}` : ""}
         <div class="insp-hint">被写体からの距離: 約${distM}m ｜ 方位: ${esc(relToJa(analyzeLighting(cut).lights.find(l => l.item.id === selItem.id)?.rel ?? 0))}</div>
+        ${selItem.sku ? `<div class="insp-hint" style="margin-top:6px">🎬 使用機材: <b>${esc(selItem.sku)}</b> (機材DBで変更可)</div>` : ""}
         ${(() => {
           const rec = recommendForItem(selItem);
           if (!rec || !rec.records.length) return "";
@@ -6505,6 +6713,8 @@ function renderInspector() {
       ${fieldRow("ISO", `<input type="text" id="cIso" value="${esc(cut.camera.iso)}">`)}
       ${cut.kind !== "still" ? fieldRow("フレームレート", `<input type="text" id="cFps" value="${esc(cut.camera.fps)}">`) : ""}
       ${fieldRow("WB", `<input type="text" id="cWb" value="${esc(cut.camera.wb)}">`)}
+      ${(cut.camera.bodySku || cut.camera.lensSku || cut.camera.supportSku)
+        ? `<div class="insp-hint">🎬 使用機材: ${esc([cut.camera.bodySku, cut.camera.lensSku, cut.camera.supportSku].filter(Boolean).join(" / "))}</div>` : ""}
     </div>
     <div class="insp-section">
       <h3>サポート (支持機材)</h3>
@@ -7033,15 +7243,36 @@ function buildStoryboardDoc() {
   </body></html>`;
 }
 
-function openDocWindow(html, fallbackName) {
-  const w = window.open("", "_blank");
-  if (w) { w.document.write(html); w.document.close(); return; }
-  const blob = new Blob([html], { type: "text/html" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = fallbackName;
-  a.click();
-  URL.revokeObjectURL(a.href);
+/* 書き出しドキュメントはアプリ内オーバーレイで開く (「← スタジオに戻る」で戻れる) */
+let docCurrent = { html: "", name: "document.html" };
+
+function openDocWindow(html, fallbackName, title) {
+  docCurrent = { html, name: fallbackName || "document.html" };
+  byId("docFrame").srcdoc = html;
+  byId("docOverlayTitle").textContent = title || fallbackName || "ドキュメント";
+  byId("docOverlay").hidden = false;
+}
+
+function setupDocOverlay() {
+  byId("btnDocBack").addEventListener("click", () => { byId("docOverlay").hidden = true; });
+  byId("btnDocPrint").addEventListener("click", () => {
+    try { byId("docFrame").contentWindow.print(); }
+    catch { window.print(); }
+  });
+  byId("btnDocDownload").addEventListener("click", () => {
+    const blob = new Blob([docCurrent.html], { type: "text/html" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = docCurrent.name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      byId("docOverlay").hidden = true;
+      byId("equipOverlay").hidden = true;
+    }
+  });
 }
 
 /* =========================================================
@@ -7166,10 +7397,10 @@ function importKnowledgeMdFiles(files) {
 }
 
 function exportDoc() {
-  openDocWindow(buildInstructionDoc(), "shooting-instructions.html");
+  openDocWindow(buildInstructionDoc(), "shooting-instructions.html", "撮影指示書");
 }
 function exportBoard() {
-  openDocWindow(buildStoryboardDoc(), "storyboard.html");
+  openDocWindow(buildStoryboardDoc(), "storyboard.html", "絵コンテ (1ページ6コマ)");
 }
 
 /* ---------- SVG画像 / JSON 書き出し ---------- */
@@ -7304,7 +7535,7 @@ function buildDmxDoc() {
 function exportDmx() {
   const html = buildDmxDoc();
   if (!html) { alert("パッチ対象のライトがありません"); return; }
-  openDocWindow(html, "dmx-cue-sheet.html");
+  openDocWindow(html, "dmx-cue-sheet.html", "DMXキューシート");
 }
 
 /* =========================================================
@@ -7353,13 +7584,15 @@ function cutToCanonicalShot(cut, i, projectId) {
         target_m: toWorldM({ ...sub, height: 150 }),
         roll_deg: cut.camera.angle === "dutch" ? 7 : 0,
         body_archetype: cut.camera.body,
-        support: { type: cut.camera.support, param: sup && sup.param ? { [sup.param.label]: `${cut.camera.supportParam}${sup.param.unit}` } : null, head: cut.camera.head },
+        body_sku: cut.camera.bodySku || null,
+        support: { type: cut.camera.support, param: sup && sup.param ? { [sup.param.label]: `${cut.camera.supportParam}${sup.param.unit}` } : null, head: cut.camera.head, support_sku: cut.camera.supportSku || null },
       },
       lens: {
         focal_length_mm: cut.camera.focalMm,
         aperture_f: cut.camera.apertureF,
         focus_distance_m: cut.camera.focusM,
         anamorphic: cut.camera.lens === "anam",
+        lens_sku: cut.camera.lensSku || null,
         nd: cut.camera.nd,
         filters: cut.camera.filters,
       },
@@ -7372,7 +7605,7 @@ function cutToCanonicalShot(cut, i, projectId) {
           role: x.type, position_m: toWorldM(x),
           power_pct: x.power, color_temp_k: x.colorTemp,
           beam_angle_deg: x.beamAngle, modifier: x.modifier,
-          stand: x.stand, watt: x.watt,
+          stand: x.stand, watt: x.watt, sku: x.sku || null,
           azimuth_from_camera_axis_deg: Math.round(an.lights.find(l => l.item.id === x.id)?.rel ?? 0),
         })),
       grip: cut.items
@@ -7433,6 +7666,11 @@ function importJSON(file) {
   reader.onload = () => {
     try {
       const data = JSON.parse(reader.result);
+      // canonical shot list はインポート経路を分岐 (書き出しとの往復対応)
+      if (data.schema && String(data.schema).startsWith("cineos.canonical_shot_list")) {
+        importCanonical(data);
+        return;
+      }
       if (!Array.isArray(data.cuts) || !data.cuts.length) throw new Error("cuts がありません");
       state.mode = data.mode || "video";
       state.cuts = data.cuts.map(ensureCameraDefaults); // 旧バージョンのJSONに詳細フィールドを補完
@@ -7450,6 +7688,207 @@ function importJSON(file) {
     }
   };
   reader.readAsText(file);
+}
+
+/* =========================================================
+ * 機材データベースページ (アプリ内オーバーレイ・戻るボタン付き)
+ * 選んだ実機材はカット/選択中の機材に割当できる (capability-first の具体化)
+ * ======================================================= */
+const EQUIP_CATS = [
+  { id: "all", label: "すべて" },
+  { id: "camera", label: "カメラ" },
+  { id: "lens", label: "レンズ" },
+  { id: "lighting", label: "ライティング" },
+  { id: "camera_support", label: "カメラサポート" },
+  { id: "aerial", label: "ドローン/空撮" },
+  { id: "special_effects", label: "特効" },
+  { id: "modifier_support", label: "モディファイア" },
+  { id: "grip", label: "グリップ" },
+];
+const SFX_ITEM_TYPES = ["fan", "smoke", "rainmachine", "snowmachine", "confetti", "pyro", "spark"];
+let equipCat = "all";
+
+function assignTargetLabel(record) {
+  switch (record.category) {
+    case "camera": return "このカメラを使用";
+    case "lens": return "このレンズを使用";
+    case "camera_support": return "このサポートを使用";
+    case "aerial": return "このドローンを使用";
+    default: return "選択中の機材に割当";
+  }
+}
+
+function assignEquipment(record) {
+  const cut = activeCut();
+  const name = `${record.manufacturer} ${record.model}`;
+  switch (record.category) {
+    case "camera": cut.camera.bodySku = name; break;
+    case "lens": cut.camera.lensSku = name; break;
+    case "camera_support": cut.camera.supportSku = name; break;
+    case "aerial": {
+      const droneItem = cut.items.find(i => i.type === "drone");
+      if (droneItem) droneItem.sku = name; else cut.camera.supportSku = name;
+      break;
+    }
+    default: {
+      const sel = cut.items.find(i => i.id === state.selectedItem);
+      const compatible = sel && (
+        (record.category === "lighting" && LIGHT_TYPES.includes(sel.type)) ||
+        (record.category === "special_effects" && SFX_ITEM_TYPES.includes(sel.type)) ||
+        (["modifier_support", "grip"].includes(record.category) && ["reflector", "flag", "diff"].includes(sel.type))
+      );
+      if (!compatible) {
+        byId("equipAssignHint").innerHTML = `⚠️ 先に俯瞰図で対応する機材 (${record.category === "lighting" ? "ライト" : record.category === "special_effects" ? "特効機材" : "レフ/フラッグ/ディフューザー"}) を選択してから割り当ててください。`;
+        return;
+      }
+      sel.sku = name;
+      break;
+    }
+  }
+  byId("equipAssignHint").innerHTML = `✓ <b>${esc(name)}</b> を割り当てました (インスペクター・指示書・canonical JSONに反映)`;
+  renderInspector();
+}
+
+function renderEquipPage() {
+  const q = byId("equipSearch").value.trim().toLowerCase();
+  byId("equipFilters").innerHTML = EQUIP_CATS.map(c =>
+    `<span class="opt-toggle ${equipCat === c.id ? "on" : ""}" data-cat="${c.id}">${esc(c.label)}</span>`).join("");
+  byId("equipFilters").querySelectorAll("[data-cat]").forEach(el =>
+    el.addEventListener("click", () => { equipCat = el.dataset.cat; renderEquipPage(); }));
+
+  const records = EQUIPMENT_DB.filter(r => {
+    if (equipCat !== "all" && r.category !== equipCat) return false;
+    if (!q) return true;
+    const text = `${r.manufacturer} ${r.model} ${r.subcategory} ${r.use_cases.join(" ")}`.toLowerCase();
+    return text.includes(q);
+  });
+  byId("equipCount").textContent = `${records.length} / ${EQUIPMENT_DB.length} 機種`;
+
+  const sel = activeCut().items.find(i => i.id === state.selectedItem);
+  if (!byId("equipAssignHint").innerHTML.startsWith("✓") && !byId("equipAssignHint").innerHTML.startsWith("⚠️")) {
+    byId("equipAssignHint").innerHTML = sel
+      ? `選択中: <b>${esc(EQUIP_TYPES[sel.type].label)}</b> — ライト/特効/モディファイアのカードから割当できます`
+      : "カメラ/レンズ/サポート/ドローンは直接割当可。ライト等は俯瞰図で機材を選択してから開いてください";
+  }
+
+  byId("equipGrid").innerHTML = records.map((r, i) => `
+    <div class="equip-card">
+      <div class="e-head">
+        <div>
+          <div class="e-name">${esc(r.manufacturer)} ${esc(r.model)}</div>
+          <div class="e-cat">${esc(r.category)} / ${esc(r.subcategory)}</div>
+        </div>
+        <span class="safety-badge sc-${esc(r.safety_class)}" title="安全区分 ${esc(r.safety_class)}${r.specialist_only ? " (専門者のみ)" : ""}">${esc(r.safety_class)}</span>
+      </div>
+      <div class="e-cap">${esc(Object.entries(r.capability).slice(0, 4).map(([k, v]) => `${k}: ${v}`).join(" ｜ ") || "—")}</div>
+      <div class="e-use">${esc(r.use_cases.join(" / "))}</div>
+      <div class="e-actions"><button class="btn small" data-assign="${i}">${esc(assignTargetLabel(r))}</button></div>
+    </div>`).join("");
+  byId("equipGrid").querySelectorAll("[data-assign]").forEach(btn =>
+    btn.addEventListener("click", () => assignEquipment(records[+btn.dataset.assign])));
+}
+
+function setupEquipPage() {
+  byId("btnEquipPage").addEventListener("click", () => {
+    byId("equipAssignHint").innerHTML = "";
+    byId("equipOverlay").hidden = false;
+    renderEquipPage();
+  });
+  byId("btnEquipBack").addEventListener("click", () => { byId("equipOverlay").hidden = true; });
+  byId("equipSearch").addEventListener("input", renderEquipPage);
+}
+
+/* =========================================================
+ * Canonical Shot JSON インポート (書き出しとの往復対応)
+ * ======================================================= */
+function fromWorldM(pos) {
+  return {
+    x: Math.max(20, Math.min(980, (pos?.[0] ?? 0) * 100 + SUBJECT_POS.x)),
+    y: Math.max(20, Math.min(680, SUBJECT_POS.y - (pos?.[1] ?? 0) * 100)),
+    height: Math.round(Math.max(0, (pos?.[2] ?? 1.5) * 100)),
+  };
+}
+
+function cutFromCanonicalShot(shot) {
+  const cut = makeCut(null);
+  const P = shot.planned || {};
+  cut.name = shot.name || shot.shot_id || "インポートカット";
+  cut.aim = shot.intent?.purpose || "";
+  cut.kind = P.timing?.kind || "video";
+  if (P.timing?.duration_s) cut.duration = P.timing.duration_s;
+  if (P.composition) {
+    cut.camera.shotSize = P.composition.shot_size || cut.camera.shotSize;
+    cut.camera.endShotSize = P.composition.end_shot_size || "same";
+    cut.camera.angle = P.composition.angle || cut.camera.angle;
+    cut.aspect = P.composition.aspect_ratio || cut.aspect;
+  }
+  if (P.subject) {
+    cut.subjectType = P.subject.type || cut.subjectType;
+    cut.action = P.subject.action || cut.action;
+    cut.subjectNote = P.subject.note || "";
+  }
+  if (P.environment) {
+    cut.bgStyle = BG_STYLES[P.environment.background] ? P.environment.background : cut.bgStyle;
+    cut.weather = P.environment.weather || "none";
+    cut.timeOfDay = P.environment.time_of_day || "none";
+  }
+  if (P.color?.look) cut.look = P.color.look;
+  if (P.audio?.plan) cut.audio = P.audio.plan;
+  if (Array.isArray(P.fx_options)) cut.options = P.fx_options.filter(o => SHOT_OPTIONS.some(s => s.id === o));
+  cut.transition = shot.transition_out || "cut";
+  if (P.logistics) { cut.takes = P.logistics.estimated_takes ?? cut.takes; cut.setupMin = P.logistics.setup_min ?? cut.setupMin; }
+
+  const c = P.camera || {};
+  if (c.position_m) {
+    const camItem = cut.items.find(i => i.type === "camera");
+    Object.assign(camItem, fromWorldM(c.position_m));
+  }
+  cut.camera.body = c.body_archetype || cut.camera.body;
+  if (c.support) { cut.camera.support = c.support.type || cut.camera.support; cut.camera.head = c.support.head || cut.camera.head; }
+  const L = P.lens || {};
+  if (L.focal_length_mm) cut.camera.focalMm = L.focal_length_mm;
+  if (L.aperture_f) cut.camera.apertureF = L.aperture_f;
+  if (L.focus_distance_m) cut.camera.focusM = L.focus_distance_m;
+  if (L.anamorphic) cut.camera.lens = "anam";
+  if (L.nd) cut.camera.nd = L.nd;
+  if (Array.isArray(L.filters)) cut.camera.filters = L.filters;
+  const E = P.exposure || {};
+  Object.assign(cut.camera, {
+    shutter: E.shutter || cut.camera.shutter, iso: E.iso || cut.camera.iso,
+    fps: E.fps || cut.camera.fps, wb: E.white_balance || cut.camera.wb,
+  });
+  if (P.movement) { cut.camera.move = P.movement.type || cut.camera.move; cut.camera.moveSpeed = P.movement.speed || cut.camera.moveSpeed; if (P.movement.track_shape) cut.camera.trackShape = P.movement.track_shape; }
+
+  for (const l of P.lighting || []) {
+    if (!EQUIP_TYPES[l.role]) continue;
+    cut.items.push(makeItem({
+      type: l.role, ...fromWorldM(l.position_m),
+      power: l.power_pct ?? 50, colorTemp: l.color_temp_k ?? 5600,
+      modifier: l.modifier || "なし(直射)",
+    }));
+    const it = cut.items[cut.items.length - 1];
+    if (l.beam_angle_deg) it.beamAngle = l.beam_angle_deg;
+    if (l.stand) it.stand = l.stand;
+    if (l.watt) it.watt = l.watt;
+  }
+  for (const g of P.grip || []) {
+    if (EQUIP_TYPES[g.type]) cut.items.push(makeItem({ type: g.type, ...fromWorldM(g.position_m), power: 0, modifier: g.modifier || "なし(直射)" }));
+  }
+  for (const f of P.practical_fx || []) {
+    if (EQUIP_TYPES[f.type]) cut.items.push(makeItem({ type: f.type, ...fromWorldM(f.position_m), power: 0 }));
+  }
+  for (const v of P.logistics?.vehicles || []) {
+    if (EQUIP_TYPES[v.type]) cut.items.push(makeItem({ type: v.type, ...fromWorldM(v.position_m), power: 0 }));
+  }
+  return ensureCameraDefaults(cut);
+}
+
+function importCanonical(data) {
+  if (!Array.isArray(data.shots) || !data.shots.length) throw new Error("shots がありません");
+  state.cuts = data.shots.map(cutFromCanonicalShot);
+  state.activeCut = 0;
+  state.selectedItem = null;
+  renderAll();
 }
 
 /* =========================================================
@@ -7693,6 +8132,8 @@ function init() {
   setupIntent();
   setupViewToggle();
   setup3DControls();
+  setupDocOverlay();
+  setupEquipPage();
   byId("btnPlayPreview").addEventListener("click", () => {
     state.previewPlay = !state.previewPlay;
     if (state.previewPlay) startPreviewAnim(); else stopPreviewAnim();

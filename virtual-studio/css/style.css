@@ -609,6 +609,59 @@ input[type="range"]::-moz-range-thumb {
 }
 .insp-hint { font-size: 11px; color: var(--dim); line-height: 1.6; }
 
+/* ---------- フルスクリーンオーバーレイ (機材DB / ドキュメントビューア) ---------- */
+.overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--bg);
+  display: flex; flex-direction: column;
+}
+.overlay[hidden] { display: none; }
+.overlay-bar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 16px;
+  background: var(--glass);
+  -webkit-backdrop-filter: saturate(1.8) blur(20px);
+  backdrop-filter: saturate(1.8) blur(20px);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.overlay-bar .btn .ic { width: 14px; height: 14px; }
+.overlay-spacer { flex: 1; }
+.overlay-search { max-width: 300px; flex: 1; margin: 0; }
+#docFrame { flex: 1; border: none; background: #ffffff; width: 100%; }
+
+#equipFilters {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 10px 16px 0;
+}
+#equipAssignHint { padding: 8px 16px 0; }
+#equipGrid {
+  flex: 1; overflow-y: auto;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 12px; padding: 14px 16px 20px;
+  align-content: start;
+}
+.equip-card {
+  background: var(--surface); border-radius: var(--radius);
+  padding: 13px 14px; box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 6px;
+  transition: all 0.18s var(--ease);
+}
+.equip-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.equip-card .e-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.equip-card .e-name { font-size: 13px; font-weight: 700; line-height: 1.35; }
+.equip-card .e-cat { font-size: 10px; color: var(--dim); }
+.safety-badge {
+  flex: 0 0 auto; font-size: 10px; font-weight: 800;
+  padding: 2px 8px; border-radius: 980px;
+}
+.safety-badge.sc-A { background: rgba(42, 168, 126, 0.15); color: #1d8a63; }
+.safety-badge.sc-B { background: rgba(232, 146, 10, 0.15); color: #b06e06; }
+.safety-badge.sc-C { background: rgba(255, 59, 48, 0.15); color: var(--danger); }
+.equip-card .e-cap { font-size: 11px; color: var(--text2); line-height: 1.55; }
+.equip-card .e-use { font-size: 10.5px; color: var(--dim); line-height: 1.5; }
+.equip-card .e-actions { margin-top: auto; padding-top: 4px; }
+
 /* ---------- モーション設定の尊重 ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }
