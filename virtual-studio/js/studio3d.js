@@ -20,6 +20,71 @@ const S3D = {
 
 function s3dReset() { S3D.yaw = 0.55; S3D.pitch = 0.42; S3D.dist = 13.5; }
 
+/* =========================================================
+ * 簡易ライティングシェーディング (POV用 — Phase 3 の入口)
+ * 色温度→RGB / ランバート面 / ビーム円錐 / 距離減衰
+ * ======================================================= */
+function kelvinToRGB(k) {
+  k = Math.min(12000, Math.max(1500, k)) / 100;
+  let r, g, b;
+  r = k <= 66 ? 255 : 329.7 * Math.pow(k - 60, -0.1332);
+  g = k <= 66 ? 99.47 * Math.log(k) - 161.12 : 288.12 * Math.pow(k - 60, -0.0755);
+  b = k >= 66 ? 255 : k <= 19 ? 0 : 138.52 * Math.log(k - 10) - 305.04;
+  const c = v => Math.min(255, Math.max(0, v));
+  return [c(r), c(g), c(b)];
+}
+
+/* 灯の前計算 (位置/照射軸/ビーム/色) */
+function s3dPrepareLights(cut, aim) {
+  const out = [];
+  for (const it of cut.items) {
+    if (!LIGHT_TYPES.includes(it.type) || it.power <= 0) continue;
+    const p = s3dItemWorld(it);
+    const ax = [aim[0] - p[0], aim[1] - p[1], aim[2] - p[2]];
+    const al = Math.hypot(...ax) || 1;
+    const gel = (typeof GEL_RGB !== "undefined" && GEL_RGB[it.modifier]) || null;
+    out.push({
+      p, axis: ax.map(v => v / al),
+      cosHalf: Math.cos(Math.min(60, (it.beamAngle ?? 60) / 2) * Math.PI / 180),
+      power: it.power / 100,
+      rgb: (gel || kelvinToRGB(it.colorTemp)).map(v => v / 255),
+      isSun: it.type === "sun",
+    });
+  }
+  return out;
+}
+
+/* 点+法線のシェーディング → [r,g,b] (0..1超えあり) */
+function s3dShadePoint(pt, normal, lights) {
+  let r = 0.10, g = 0.10, b = 0.12; // アンビエント
+  for (const L of lights) {
+    const toL = [L.p[0] - pt[0], L.p[1] - pt[1], L.p[2] - pt[2]];
+    const d = Math.hypot(...toL) || 0.001;
+    const dir = toL.map(v => v / d);
+    let lam = 1;
+    if (normal) {
+      lam = dir[0] * normal[0] + dir[1] * normal[1] + dir[2] * normal[2];
+      if (lam <= 0) continue;
+    }
+    // ビーム円錐: 灯の照射軸と「灯→この点」の角度
+    let beam = 1;
+    if (!L.isSun) {
+      const cosA = -(dir[0] * L.axis[0] + dir[1] * L.axis[1] + dir[2] * L.axis[2]);
+      if (cosA <= L.cosHalf) continue;
+      beam = Math.pow((cosA - L.cosHalf) / (1 - L.cosHalf), 0.6);
+    }
+    const fall = L.isSun ? 0.9 : Math.min(1, 3.2 / (d * d));
+    const I = L.power * lam * beam * fall * 1.6;
+    r += I * L.rgb[0]; g += I * L.rgb[1]; b += I * L.rgb[2];
+  }
+  return [r, g, b];
+}
+
+function s3dShadedColor(albedo, light) {
+  const c = (a, l) => Math.min(255, Math.round(a * l * 255));
+  return `rgb(${c(albedo[0], light[0])},${c(albedo[1], light[1])},${c(albedo[2], light[2])})`;
+}
+
 /* 被写界深度 (mm系, 許容錯乱円 0.03mm フルサイズ) */
 function computeDOF(focalMm, apertureF, focusM) {
   const f = focalMm, N = Math.max(0.7, apertureF), c = 0.03, s = focusM * 1000;
@@ -196,15 +261,43 @@ function render3D() {
     poly3([T[0], T[1], T[2], T[3]], fill, 0.95, stroke);
   };
 
+  /* --- POV用: 簡易ライティングの前計算 --- */
+  const povLights = S3D.pov ? s3dPrepareLights(cut, aim) : null;
+
   /* --- 床グリッド + ホリゾント --- */
-  const gMinor = S3D.pov ? "#26262c" : col("--cv-grid-minor", "#eceef3");
-  const gMajor = S3D.pov ? "#33333b" : col("--cv-grid-major", "#dfe2e9");
-  for (let x = -5; x <= 5; x += 0.5) line3([x, -3.7, 0], [x, 3.3, 0], x % 1 === 0 ? gMajor : gMinor, 1);
-  for (let y = -3.5; y <= 3.5; y += 0.5) line3([-5, y, 0], [5, y, 0], y % 1 === 0 ? gMajor : gMinor, 1);
-  poly3([[-5, 2.4, 0], [5, 2.4, 0], [5, 2.4, 3.2], [-5, 2.4, 3.2]], gMajor, 0.25, gMajor);
+  if (S3D.pov) {
+    // 床と壁をライトで面シェーディング (光だまりが見える)
+    const floorAlb = [0.40, 0.40, 0.42];
+    for (let x = -5; x < 5; x += 0.5) {
+      for (let y = -3.5; y < 3; y += 0.5) {
+        const lit = s3dShadePoint([x + 0.25, y + 0.25, 0], [0, 0, 1], povLights);
+        poly3([[x, y, 0], [x + 0.5, y, 0], [x + 0.5, y + 0.5, 0], [x, y + 0.5, 0]],
+          s3dShadedColor(floorAlb, lit), 1, null);
+      }
+    }
+    const wallAlb = [0.5, 0.5, 0.52];
+    for (let x = -5; x < 5; x += 0.5) {
+      for (let z = 0; z < 3.2; z += 0.8) {
+        const lit = s3dShadePoint([x + 0.25, 2.4, z + 0.4], [0, -1, 0], povLights);
+        poly3([[x, 2.4, z], [x + 0.5, 2.4, z], [x + 0.5, 2.4, z + 0.8], [x, 2.4, z + 0.8]],
+          s3dShadedColor(wallAlb, lit), 1, null);
+      }
+    }
+  } else {
+    const gMinor = col("--cv-grid-minor", "#eceef3");
+    const gMajor = col("--cv-grid-major", "#dfe2e9");
+    for (let x = -5; x <= 5; x += 0.5) line3([x, -3.7, 0], [x, 3.3, 0], x % 1 === 0 ? gMajor : gMinor, 1);
+    for (let y = -3.5; y <= 3.5; y += 0.5) line3([-5, y, 0], [5, y, 0], y % 1 === 0 ? gMajor : gMinor, 1);
+    poly3([[-5, 2.4, 0], [5, 2.4, 0], [5, 2.4, 3.2], [-5, 2.4, 3.2]], gMajor, 0.25, gMajor);
+  }
 
   /* --- 被写体 --- */
-  const subColor = S3D.pov ? "#c9b8a0" : "#5a6478";
+  const SUBJ_ALBEDO = {
+    person: [0.85, 0.71, 0.56], bottle: [0.50, 0.72, 0.85], cosme: [0.91, 0.78, 0.85],
+    food: [0.88, 0.63, 0.35], car: [0.69, 0.29, 0.33], arch: [0.54, 0.58, 0.66],
+  };
+  const subAlb = SUBJ_ALBEDO[cut.subjectType] || SUBJ_ALBEDO.person;
+  const subColor = "#5a6478";
   const segs = 10, r0 = cut.subjectType === "car" ? 0.9 : 0.28;
   const ring = (z, r) => Array.from({ length: segs }, (_, i) => {
     const a2 = (i / segs) * Math.PI * 2;
@@ -212,9 +305,44 @@ function render3D() {
   });
   const b0 = ring(0, r0), b1 = ring(subjH, r0 * (cut.subjectType === "person" ? 0.7 : 1));
   for (let i = 0; i < segs; i++) {
-    poly3([b0[i], b0[(i + 1) % segs], b1[(i + 1) % segs], b1[i]], subColor, 0.5, null);
+    if (S3D.pov) {
+      // 各面の中心と外向き法線でシェーディング
+      const midA = ((i + 0.5) / segs) * Math.PI * 2;
+      const normal = [Math.cos(midA), Math.sin(midA), 0];
+      const center = [subW[0] + r0 * normal[0], subW[1] + r0 * normal[1], subjH * 0.55];
+      const lit = s3dShadePoint(center, normal, povLights);
+      poly3([b0[i], b0[(i + 1) % segs], b1[(i + 1) % segs], b1[i]], s3dShadedColor(subAlb, lit), 1, null);
+    } else {
+      poly3([b0[i], b0[(i + 1) % segs], b1[(i + 1) % segs], b1[i]], subColor, 0.5, null);
+    }
   }
-  if (cut.subjectType === "person") box3([subW[0], subW[1], subjH], 0.26, 0.26, 0.26, subColor, null);
+  if (cut.subjectType === "person") {
+    if (S3D.pov) {
+      // 頭部: 前後左右の平均照度で近似シェーディング
+      const headC = [subW[0], subW[1], subjH + 0.13];
+      const hb = 0.13;
+      const faces = [
+        { n: [0, -1, 0] }, { n: [1, 0, 0] }, { n: [-1, 0, 0] }, { n: [0, 0, 1] },
+      ];
+      const B = [[-hb, -hb], [hb, -hb], [hb, hb], [-hb, hb]];
+      for (const f of faces) {
+        const lit = s3dShadePoint([headC[0] + f.n[0] * hb, headC[1] + f.n[1] * hb, headC[2] + f.n[2] * hb + 0.1], f.n, povLights);
+        const colr = s3dShadedColor(subAlb, lit);
+        if (f.n[2] === 1) {
+          poly3(B.map(p => [headC[0] + p[0], headC[1] + p[1], headC[2] + 0.26]), colr, 1, null);
+        } else if (f.n[1] === -1) {
+          poly3([[headC[0] - hb, headC[1] - hb, headC[2]], [headC[0] + hb, headC[1] - hb, headC[2]],
+                 [headC[0] + hb, headC[1] - hb, headC[2] + 0.26], [headC[0] - hb, headC[1] - hb, headC[2] + 0.26]], colr, 1, null);
+        } else {
+          const sx = f.n[0];
+          poly3([[headC[0] + sx * hb, headC[1] - hb, headC[2]], [headC[0] + sx * hb, headC[1] + hb, headC[2]],
+                 [headC[0] + sx * hb, headC[1] + hb, headC[2] + 0.26], [headC[0] + sx * hb, headC[1] - hb, headC[2] + 0.26]], colr, 1, null);
+        }
+      }
+    } else {
+      box3([subW[0], subW[1], subjH], 0.26, 0.26, 0.26, subColor, null);
+    }
+  }
   label3([subW[0], subW[1], subjH + 0.55], "被写体", col("--cv-label", "#3a3a3c"));
 
   /* --- ライト + 光錐 / パネル --- */
@@ -337,7 +465,7 @@ function render3D() {
   const movLabel = (CAM_MOVES.find(m => m.id === cut.camera.move) || {}).label || "";
   ctx.fillText(
     S3D.pov
-      ? `POV — ${cut.camera.focalMm}mm F${cut.camera.apertureF} ｜ ${cut.aspect} ｜ ${movLabel}${S3D.animT != null ? " ▶ 再生中" : ""}`
+      ? `POV — ${cut.camera.focalMm}mm F${cut.camera.apertureF} ｜ ${cut.aspect} ｜ ${movLabel} ｜ 簡易ライティング${S3D.animT != null ? " ▶ 再生中" : ""}`
       : `${cut.camera.focalMm}mm F${cut.camera.apertureF} ｜ フォーカス ${cut.camera.focusM}m ｜ 被写界深度 ${dof.near.toFixed(2)}m – ${farStr}${path ? ` ｜ 軌道: ${movLabel}` : ""}`,
     12, 20);
   ctx.fillStyle = S3D.pov ? "#9a9aa2" : col("--dim", "#86868b");

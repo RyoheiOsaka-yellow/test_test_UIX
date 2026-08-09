@@ -1823,6 +1823,7 @@ function setupDocOverlay() {
     if (e.key === "Escape") {
       byId("docOverlay").hidden = true;
       byId("equipOverlay").hidden = true;
+      byId("projOverlay").hidden = true;
     }
   });
 }
@@ -2240,6 +2241,135 @@ function importJSON(file) {
     }
   };
   reader.readAsText(file);
+}
+
+/* =========================================================
+ * プロジェクトマネージャー (ブラウザ内保存・切替・自動保存)
+ * localStorage: vsProjects = {id: {id,title,updated,data}} / vsCurrent = 作業中
+ * ======================================================= */
+const LS_PROJECTS = "vsProjects", LS_CURRENT = "vsCurrent";
+
+function lsGet(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
+}
+function lsSet(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); return true; } catch { return false; }
+}
+
+function snapshotState() {
+  return JSON.parse(JSON.stringify({
+    mode: state.mode, cuts: state.cuts, activeCut: state.activeCut,
+    projectTitle: state.projectTitle, projectId: state.projectId || null,
+    promptModel: state.promptModel, customPresets: state.customPresets,
+  }));
+}
+
+function applySnapshot(s) {
+  state.mode = s.mode || "video";
+  state.cuts = (s.cuts || []).map(ensureCameraDefaults);
+  if (!state.cuts.length) state.cuts = [makeCut(allPresets().find(p => p.id === "three-point"))];
+  state.activeCut = Math.min(s.activeCut || 0, state.cuts.length - 1);
+  state.selectedItem = null;
+  state.projectTitle = s.projectTitle || "無題プロジェクト";
+  state.projectId = s.projectId || null;
+  state.promptModel = s.promptModel || "seedance";
+  state.customPresets = Array.isArray(s.customPresets) ? s.customPresets : [];
+  document.querySelectorAll(".mode-tab").forEach(b => b.classList.toggle("active", b.dataset.mode === state.mode));
+  const pm = byId("promptModelSelect");
+  if (pm && pm.options.length) pm.value = state.promptModel;
+  renderAll();
+}
+
+/* 自動保存 (3秒ごと・変化時のみ) */
+let lastAutosave = "";
+function startAutosave() {
+  setInterval(() => {
+    const snap = JSON.stringify(snapshotState());
+    if (snap !== lastAutosave) {
+      lastAutosave = snap;
+      lsSet(LS_CURRENT, JSON.parse(snap));
+    }
+  }, 3000);
+}
+
+function saveCurrentProject() {
+  const title = byId("projName").value.trim() || "無題プロジェクト";
+  state.projectTitle = title;
+  if (!state.projectId) state.projectId = "p" + Date.now();
+  const all = lsGet(LS_PROJECTS, {});
+  all[state.projectId] = { id: state.projectId, title, updated: Date.now(), data: snapshotState() };
+  const ok = lsSet(LS_PROJECTS, all);
+  byId("projSavedMsg").textContent = ok ? `✓ 保存しました (${new Date().toLocaleTimeString("ja-JP")})` : "⚠️ ブラウザ保存が使えない環境です (JSONで書き出してください)";
+  renderProjPage();
+}
+
+function renderProjPage() {
+  const all = lsGet(LS_PROJECTS, {});
+  const list = Object.values(all).sort((a, b) => b.updated - a.updated);
+  byId("projName").value = state.projectTitle;
+  byId("projStorageNote").textContent = `保存: ${list.length}件 (このブラウザ内)`;
+  byId("projGrid").innerHTML = list.map(p => {
+    const firstCut = p.data?.cuts?.[0];
+    const thumb = firstCut ? renderPreviewSVG(ensureCameraDefaults(JSON.parse(JSON.stringify(firstCut))), "pj" + p.id) : "";
+    return `
+    <div class="proj-card ${p.id === state.projectId ? "current" : ""}">
+      <div class="p-thumb">${thumb}</div>
+      <div class="p-body">
+        <div class="p-title">${esc(p.title)}${p.id === state.projectId ? " <small>(編集中)</small>" : ""}</div>
+        <div class="p-meta">カット ${p.data?.cuts?.length ?? 0} ｜ 更新 ${new Date(p.updated).toLocaleString("ja-JP")}</div>
+      </div>
+      <div class="p-actions">
+        <button class="btn small" data-open="${esc(p.id)}">開く</button>
+        <button class="btn small ghost" data-dup="${esc(p.id)}">複製</button>
+        <button class="btn small ghost danger" data-del="${esc(p.id)}">削除</button>
+      </div>
+    </div>`;
+  }).join("") || `<div class="insp-hint" style="padding:8px">まだ保存されたプロジェクトがありません。「保存」で現在の作業を名前を付けて保存できます。</div>`;
+
+  const grid = byId("projGrid");
+  grid.querySelectorAll("[data-open]").forEach(b => b.addEventListener("click", () => {
+    const p = lsGet(LS_PROJECTS, {})[b.dataset.open];
+    if (!p) return;
+    applySnapshot({ ...p.data, projectId: p.id, projectTitle: p.title });
+    byId("projOverlay").hidden = true;
+  }));
+  grid.querySelectorAll("[data-dup]").forEach(b => b.addEventListener("click", () => {
+    const all2 = lsGet(LS_PROJECTS, {});
+    const src = all2[b.dataset.dup];
+    if (!src) return;
+    const id = "p" + Date.now();
+    all2[id] = { id, title: src.title + " のコピー", updated: Date.now(), data: JSON.parse(JSON.stringify(src.data)) };
+    all2[id].data.projectId = id;
+    lsSet(LS_PROJECTS, all2);
+    renderProjPage();
+  }));
+  grid.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
+    const all2 = lsGet(LS_PROJECTS, {});
+    if (!confirm(`「${all2[b.dataset.del]?.title}」を削除しますか?`)) return;
+    delete all2[b.dataset.del];
+    lsSet(LS_PROJECTS, all2);
+    if (state.projectId === b.dataset.del) state.projectId = null;
+    renderProjPage();
+  }));
+}
+
+function setupProjects() {
+  byId("btnProjPage").addEventListener("click", () => {
+    byId("projSavedMsg").textContent = "";
+    byId("projOverlay").hidden = false;
+    renderProjPage();
+  });
+  byId("btnProjBack").addEventListener("click", () => { byId("projOverlay").hidden = true; });
+  byId("btnProjSave").addEventListener("click", saveCurrentProject);
+  byId("projName").addEventListener("keydown", e => { if (e.key === "Enter") saveCurrentProject(); });
+  byId("btnProjNew").addEventListener("click", () => {
+    if (!confirm("新規プロジェクトを開始しますか? (現在の作業は自動保存に残ります。名前を付けて保存していない変更は失われます)")) return;
+    applySnapshot({
+      mode: "video", projectTitle: "無題プロジェクト", projectId: null,
+      cuts: [makeCut(allPresets().find(p => p.id === "three-point"))],
+    });
+    byId("projOverlay").hidden = true;
+  });
 }
 
 /* =========================================================
@@ -2686,19 +2816,26 @@ function init() {
   setup3DControls();
   setupDocOverlay();
   setupEquipPage();
+  setupProjects();
   byId("btnPlayPreview").addEventListener("click", () => {
     state.previewPlay = !state.previewPlay;
     if (state.previewPlay) startPreviewAnim(); else stopPreviewAnim();
     updatePlayButton();
   });
-  // デモ用の初期カット割り: 三点照明 → レンブラント → 逆光シルエット
-  state.cuts = [
-    makeCut(PRESETS.find(p => p.id === "three-point")),
-    makeCut(PRESETS.find(p => p.id === "rembrandt")),
-    makeCut(PRESETS.find(p => p.id === "backlight-silhouette")),
-  ];
-  state.activeCut = 0;
-  renderAll();
+  // 前回の作業を復元 (自動保存)。無ければデモ用の初期カット割り
+  const saved = lsGet(LS_CURRENT, null);
+  if (saved && Array.isArray(saved.cuts) && saved.cuts.length) {
+    applySnapshot(saved);
+  } else {
+    state.cuts = [
+      makeCut(PRESETS.find(p => p.id === "three-point")),
+      makeCut(PRESETS.find(p => p.id === "rembrandt")),
+      makeCut(PRESETS.find(p => p.id === "backlight-silhouette")),
+    ];
+    state.activeCut = 0;
+    renderAll();
+  }
+  startAutosave();
 }
 
 init();
