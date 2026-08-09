@@ -6,9 +6,11 @@
 <title>Virtual Studio — 仮想撮影スタジオ / 撮影指示書ジェネレーター</title>
 <style>
 /* =========================================================
- * Virtual Studio — Apple-like light UI
- * ニュートラル: #f5f5f7 地 / 白サーフェス / #1d1d1f 文字
- * アクセントは #0071e3 ブルー1色。境界はヘアライン+柔らかい影。
+ * Virtual Studio — Apple-like UI (ライト/ダーク両対応)
+ * トークンは :root がライト。ダークは
+ *   1) OS設定 (prefers-color-scheme) + data-theme 未指定
+ *   2) 手動 data-theme="dark"
+ * の両方で同じ値を再定義する。
  * ======================================================= */
 :root {
   --bg: #f5f5f7;
@@ -17,17 +19,107 @@
   --line: rgba(0, 0, 0, 0.08);
   --line-strong: rgba(0, 0, 0, 0.14);
   --text: #1d1d1f;
+  --text2: #515154;
   --dim: #86868b;
   --accent: #0071e3;
   --accent-hover: #0077ed;
   --accent-soft: rgba(0, 113, 227, 0.09);
   --danger: #ff3b30;
+  --glass: rgba(255, 255, 255, 0.78);
+  --seg-track: rgba(0, 0, 0, 0.055);
+  --seg-active: #ffffff;
+  --hover: rgba(0, 0, 0, 0.06);
+  --fill-1: rgba(0, 0, 0, 0.045);
+  --fill-2: rgba(0, 0, 0, 0.08);
+  --track: rgba(0, 0, 0, 0.1);
   --radius: 12px;
   --radius-sm: 8px;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 8px rgba(0, 0, 0, 0.04);
   --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.05), 0 8px 24px rgba(0, 0, 0, 0.07);
   --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+  /* スタジオ俯瞰図 (SVG) 用 */
+  --cv-surface: #ffffff;
+  --cv-grid-minor: #eceef3;
+  --cv-grid-major: #dfe2e9;
+  --cv-text: #8a90a0;
+  --cv-horizon: #c3c9d6;
+  --cv-body: #ffffff;
+  --cv-rail: #8a90a0;
+  --cv-rail2: #b8bdc9;
+  --cv-label: #3a3a3c;
+  --cv-sub: #98989d;
 }
+
+/* ---------- ダークテーマ (OS追従 / 手動) ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161617;
+    --surface: #1f1f22;
+    --surface2: #27272b;
+    --line: rgba(255, 255, 255, 0.09);
+    --line-strong: rgba(255, 255, 255, 0.17);
+    --text: #f5f5f7;
+    --text2: #d1d1d6;
+    --dim: #98989d;
+    --accent: #0a84ff;
+    --accent-hover: #2492ff;
+    --accent-soft: rgba(10, 132, 255, 0.18);
+    --danger: #ff453a;
+    --glass: rgba(24, 24, 26, 0.72);
+    --seg-track: rgba(255, 255, 255, 0.09);
+    --seg-active: #48484c;
+    --hover: rgba(255, 255, 255, 0.1);
+    --fill-1: rgba(255, 255, 255, 0.08);
+    --fill-2: rgba(255, 255, 255, 0.13);
+    --track: rgba(255, 255, 255, 0.16);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45);
+    --cv-surface: #1c1c1f;
+    --cv-grid-minor: #27272b;
+    --cv-grid-major: #323237;
+    --cv-text: #6e6e73;
+    --cv-horizon: #48484d;
+    --cv-body: #2c2c30;
+    --cv-rail: #7a7a80;
+    --cv-rail2: #55555b;
+    --cv-label: #d5d5da;
+    --cv-sub: #8e8e93;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161617;
+  --surface: #1f1f22;
+  --surface2: #27272b;
+  --line: rgba(255, 255, 255, 0.09);
+  --line-strong: rgba(255, 255, 255, 0.17);
+  --text: #f5f5f7;
+  --text2: #d1d1d6;
+  --dim: #98989d;
+  --accent: #0a84ff;
+  --accent-hover: #2492ff;
+  --accent-soft: rgba(10, 132, 255, 0.18);
+  --danger: #ff453a;
+  --glass: rgba(24, 24, 26, 0.72);
+  --seg-track: rgba(255, 255, 255, 0.09);
+  --seg-active: #48484c;
+  --hover: rgba(255, 255, 255, 0.1);
+  --fill-1: rgba(255, 255, 255, 0.08);
+  --fill-2: rgba(255, 255, 255, 0.13);
+  --track: rgba(255, 255, 255, 0.16);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45);
+  --cv-surface: #1c1c1f;
+  --cv-grid-minor: #27272b;
+  --cv-grid-major: #323237;
+  --cv-text: #6e6e73;
+  --cv-horizon: #48484d;
+  --cv-body: #2c2c30;
+  --cv-rail: #7a7a80;
+  --cv-rail2: #55555b;
+  --cv-label: #d5d5da;
+  --cv-sub: #8e8e93;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
 body {
@@ -40,6 +132,7 @@ body {
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.01em;
+  transition: background 0.25s var(--ease);
 }
 
 button { font-family: inherit; letter-spacing: inherit; }
@@ -57,7 +150,7 @@ button { font-family: inherit; letter-spacing: inherit; }
 #appHeader {
   display: flex; align-items: center; gap: 18px;
   padding: 10px 18px;
-  background: rgba(255, 255, 255, 0.78);
+  background: var(--glass);
   -webkit-backdrop-filter: saturate(1.8) blur(20px);
   backdrop-filter: saturate(1.8) blur(20px);
   border-bottom: 1px solid var(--line);
@@ -76,7 +169,7 @@ button { font-family: inherit; letter-spacing: inherit; }
 /* セグメンテッドコントロール */
 #modeTabs {
   display: flex; gap: 2px;
-  background: rgba(0, 0, 0, 0.055);
+  background: var(--seg-track);
   border-radius: 9px; padding: 2.5px;
 }
 .mode-tab {
@@ -85,10 +178,9 @@ button { font-family: inherit; letter-spacing: inherit; }
   padding: 5.5px 16px; border-radius: 7px; cursor: pointer;
   transition: all 0.18s var(--ease);
 }
-.mode-tab:hover { color: #000; }
 .mode-tab.active {
-  background: var(--surface); font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 0 1px rgba(0, 0, 0, 0.08);
+  background: var(--seg-active); font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 1px rgba(0, 0, 0, 0.1);
 }
 .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 .v-sep { width: 1px; height: 20px; background: var(--line-strong); margin: 0 2px; }
@@ -101,7 +193,7 @@ button { font-family: inherit; letter-spacing: inherit; }
   padding: 6.5px 15px; cursor: pointer; font-size: 13px; font-weight: 500;
   transition: all 0.18s var(--ease);
 }
-.btn:hover { background: var(--surface2); border-color: rgba(0, 0, 0, 0.22); }
+.btn:hover { background: var(--surface2); }
 .btn:active { transform: scale(0.97); }
 .btn.primary {
   background: var(--accent); color: #fff; border-color: transparent;
@@ -112,23 +204,22 @@ button { font-family: inherit; letter-spacing: inherit; }
 .btn.small { padding: 4px 12px; font-size: 12px; }
 .btn.tiny { padding: 2.5px 10px; font-size: 11px; }
 .btn.ghost { background: transparent; border-color: transparent; }
-.btn.ghost:hover { background: rgba(0, 0, 0, 0.05); }
+.btn.ghost:hover { background: var(--hover); }
 
 /* アイコンボタン */
 .icon-btn {
   display: inline-flex; align-items: center; justify-content: center;
   width: 32px; height: 32px;
   border: none; border-radius: 9px;
-  background: transparent; color: #515154; cursor: pointer;
+  background: transparent; color: var(--text2); cursor: pointer;
   transition: all 0.16s var(--ease);
 }
-.icon-btn:hover { background: rgba(0, 0, 0, 0.06); color: var(--text); }
+.icon-btn:hover { background: var(--hover); color: var(--text); }
 .icon-btn:active { transform: scale(0.92); }
 .icon-btn.small { width: 27px; height: 27px; }
 .icon-btn.small .ic { width: 15px; height: 15px; }
 .icon-btn.accent { background: var(--accent-soft); color: var(--accent); }
-.icon-btn.accent:hover { background: rgba(0, 113, 227, 0.16); }
-.icon-btn.danger:hover { background: rgba(255, 59, 48, 0.1); color: var(--danger); }
+.icon-btn.danger:hover { background: rgba(255, 59, 48, 0.12); color: var(--danger); }
 
 /* ---------- レイアウト ---------- */
 #appMain {
@@ -154,7 +245,7 @@ button { font-family: inherit; letter-spacing: inherit; }
 }
 .search-field {
   display: flex; align-items: center; gap: 7px;
-  background: rgba(0, 0, 0, 0.05);
+  background: var(--fill-1);
   border-radius: 9px; padding: 6px 10px; margin-bottom: 6px;
   transition: box-shadow 0.18s var(--ease), background 0.18s var(--ease);
 }
@@ -194,7 +285,7 @@ button { font-family: inherit; letter-spacing: inherit; }
 .preset-card .p-tags { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 4px; }
 .p-tag {
   font-size: 10px; padding: 2px 8px; border-radius: 980px;
-  background: rgba(0, 0, 0, 0.045); color: #515154;
+  background: var(--fill-1); color: var(--text2);
 }
 
 /* ---------- 中央: スタジオ ---------- */
@@ -211,7 +302,7 @@ button { font-family: inherit; letter-spacing: inherit; }
 /* セレクト (共通) */
 select {
   -webkit-appearance: none; appearance: none;
-  background: var(--surface);
+  background-color: var(--surface);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2386868b' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 9px center;
   border: 1px solid var(--line-strong); border-radius: 8px;
@@ -219,21 +310,30 @@ select {
   padding: 5.5px 26px 5.5px 10px; cursor: pointer;
   transition: border-color 0.18s var(--ease), box-shadow 0.18s var(--ease);
 }
-select:hover { border-color: rgba(0, 0, 0, 0.25); }
 select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .add-equipment select { max-width: 185px; }
 
-#canvasWrap { flex: 1; min-height: 320px; padding: 6px 14px 10px; }
+#canvasWrap { flex: 1; min-height: 320px; padding: 6px 14px 10px; position: relative; }
 #studioCanvas {
   width: 100%; height: 100%; min-height: 304px; display: block;
-  background: var(--surface);
+  background: var(--cv-surface);
   border: none; border-radius: 16px;
   box-shadow: var(--shadow-sm);
+  touch-action: none;
 }
+#zoomControls {
+  position: absolute; right: 24px; bottom: 20px;
+  display: flex; flex-direction: column; gap: 2px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  border-radius: 11px; padding: 3px;
+  box-shadow: var(--shadow-md); border: 1px solid var(--line);
+}
+#zoomControls .icon-btn { width: 30px; height: 30px; }
 .equip-item { cursor: grab; }
 .equip-item.selected .equip-body { stroke: var(--accent); stroke-width: 3; }
-.equip-label { font-size: 13px; fill: #3a3a3c; font-weight: 600; pointer-events: none; }
-.equip-sub { font-size: 10px; fill: #98989d; pointer-events: none; }
+.equip-label { font-size: 13px; fill: var(--cv-label); font-weight: 600; pointer-events: none; }
+.equip-sub { font-size: 10px; fill: var(--cv-sub); pointer-events: none; }
 
 /* ---------- ストーリーボード ---------- */
 #storyboard { padding: 2px 14px 12px; }
@@ -241,7 +341,7 @@ select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0
 .storyboard-actions { display: flex; gap: 2px; }
 #cutStrip { display: flex; gap: 10px; overflow-x: auto; padding: 8px 2px 6px; min-height: 100px; }
 #cutStrip::-webkit-scrollbar { height: 6px; }
-#cutStrip::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.15); border-radius: 3px; }
+#cutStrip::-webkit-scrollbar-thumb { background: var(--track); border-radius: 3px; }
 .cut-thumb {
   flex: 0 0 auto; width: 132px; cursor: pointer;
   border-radius: 11px; overflow: hidden;
@@ -254,7 +354,7 @@ select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0
 .cut-thumb.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-sm); }
 .cut-thumb svg { display: block; width: 100%; height: 72px; background: #101114; }
 .cut-thumb .cut-cap {
-  font-size: 10px; font-weight: 500; padding: 4px 8px; color: #515154;
+  font-size: 10px; font-weight: 500; padding: 4px 8px; color: var(--text2);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .trans-chip {
@@ -271,13 +371,24 @@ select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0
   display: flex; flex-direction: column; gap: 12px;
 }
 #previewWrap {
+  position: relative;
   border-radius: 14px; overflow: hidden;
   background: #101114;
-  display: flex; justify-content: center; flex-shrink: 0;
+  flex-shrink: 0;
   box-shadow: var(--shadow-md);
 }
+#previewFrame { display: flex; justify-content: center; }
 /* 縦アスペクト (9:16 等) でもパネルを圧迫しないよう高さを上限 */
 #previewWrap svg { display: block; width: 100%; max-height: 320px; }
+.play-btn {
+  position: absolute; right: 8px; bottom: 34px;
+  width: 34px; height: 34px; border-radius: 50%;
+  background: rgba(20, 20, 24, 0.55); color: #fff;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.play-btn:hover { background: rgba(40, 40, 46, 0.75); color: #fff; }
+.play-btn.playing { background: var(--accent); border-color: transparent; }
 
 #explainBox {
   background: var(--surface);
@@ -288,9 +399,9 @@ select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0
 #explainBox .panel-title { margin-bottom: 4px; }
 #explainList { list-style: none; }
 #explainList li {
-  font-size: 12px; line-height: 1.65; color: #424245;
+  font-size: 12px; line-height: 1.65; color: var(--text2);
   padding: 5px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--line);
 }
 #explainList li:last-child { border-bottom: none; padding-bottom: 0; }
 
@@ -325,16 +436,16 @@ select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0
 }
 .field { display: grid; grid-template-columns: 94px 1fr; align-items: center; gap: 8px; margin-bottom: 8px; }
 .field:last-child { margin-bottom: 0; }
-.field label { font-size: 11.5px; color: #515154; }
+.field label { font-size: 11.5px; color: var(--text2); }
 .field input[type="text"], .field input[type="number"], .field textarea,
 #inspector textarea {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--fill-1);
   color: var(--text); border: 1px solid transparent;
   border-radius: 7px; padding: 6px 9px; font-size: 12px; width: 100%;
   font-family: inherit;
   transition: all 0.18s var(--ease);
 }
-.field input:hover, #inspector textarea:hover { background: rgba(0, 0, 0, 0.06); }
+.field input:hover, #inspector textarea:hover { background: var(--fill-2); }
 .field input:focus, .field textarea:focus, #inspector textarea:focus {
   outline: none; background: var(--surface);
   border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
@@ -342,7 +453,7 @@ select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0
 .field select { width: 100%; }
 
 .field-row3 { display: grid; grid-template-columns: 94px 1fr 48px; align-items: center; gap: 8px; margin-bottom: 8px; }
-.field-row3 label { font-size: 11.5px; color: #515154; }
+.field-row3 label { font-size: 11.5px; color: var(--text2); }
 .field-row3 .range-val {
   font-size: 11px; color: var(--dim); text-align: right;
   font-variant-numeric: tabular-nums;
@@ -355,21 +466,21 @@ input[type="range"] {
 }
 input[type="range"]::-webkit-slider-runnable-track {
   height: 4px; border-radius: 2px;
-  background: linear-gradient(to right, var(--accent) var(--fill, 50%), rgba(0, 0, 0, 0.1) var(--fill, 50%));
+  background: linear-gradient(to right, var(--accent) var(--fill, 50%), var(--track) var(--fill, 50%));
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 17px; height: 17px; border-radius: 50%;
   background: #fff; margin-top: -6.5px;
-  box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.2);
   transition: transform 0.15s var(--ease);
 }
 input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.12); }
-input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(0, 0, 0, 0.1); }
+input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--track); }
 input[type="range"]::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--accent); }
 input[type="range"]::-moz-range-thumb {
   width: 17px; height: 17px; border: none; border-radius: 50%;
-  background: #fff; box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.15);
+  background: #fff; box-shadow: 0 0.5px 2px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 /* トグルチップ */
@@ -377,17 +488,17 @@ input[type="range"]::-moz-range-thumb {
 .opt-toggle {
   font-size: 11px; font-weight: 500;
   padding: 4.5px 12px; border-radius: 980px;
-  background: rgba(0, 0, 0, 0.045);
-  color: #515154; cursor: pointer;
+  background: var(--fill-1);
+  color: var(--text2); cursor: pointer;
   border: 1px solid transparent;
   transition: all 0.16s var(--ease);
   user-select: none;
 }
-.opt-toggle:hover { background: rgba(0, 0, 0, 0.08); }
+.opt-toggle:hover { background: var(--fill-2); }
 .opt-toggle:active { transform: scale(0.95); }
 .opt-toggle.on {
   background: var(--accent-soft); color: var(--accent);
-  border-color: rgba(0, 113, 227, 0.35); font-weight: 600;
+  border-color: var(--accent); font-weight: 600;
 }
 .insp-hint { font-size: 11px; color: var(--dim); line-height: 1.6; }
 
@@ -440,6 +551,13 @@ input[type="range"]::-moz-range-thumb {
     <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M6 18.5l4.8-4.8a1.5 1.5 0 0 1 2.1 0l2.3 2.3 1.8-1.8a1.5 1.5 0 0 1 2.1 0l1.4 1.4"/></symbol>
     <symbol id="i-import" viewBox="0 0 24 24"><path d="M12 3.5v9m0 0l-3.5-3.5M12 12.5l3.5-3.5"/><path d="M4 13.5l1.2 5A2 2 0 0 0 7.1 20h9.8a2 2 0 0 0 1.9-1.5l1.2-5"/></symbol>
     <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15.5 15.5 20 20"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.8v2.4M12 18.8v2.4M2.8 12h2.4M18.8 12h2.4M5.5 5.5l1.7 1.7M16.8 16.8l1.7 1.7M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.3 8.3 0 1 1 9.5 4.1 6.6 6.6 0 0 0 20 14.5Z"/></symbol>
+    <symbol id="i-autotheme" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.6"/><path d="M12 4.4a7.6 7.6 0 0 1 0 15.2Z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8.2 5.5v13L18.8 12Z"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5.5v13M15 5.5v13"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5.5 12h13"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M9 3.5H5.5A2 2 0 0 0 3.5 5.5V9M15 3.5h3.5a2 2 0 0 1 2 2V9M9 20.5H5.5a2 2 0 0 1-2-2V15M15 20.5h3.5a2 2 0 0 0 2-2V15"/></symbol>
   </defs>
 </svg>
 
@@ -455,6 +573,10 @@ input[type="range"]::-moz-range-thumb {
     <button class="mode-tab" data-mode="outdoor" role="tab">屋外・ドローン</button>
   </nav>
   <div class="header-actions">
+    <button id="btnTheme" class="icon-btn" title="テーマ切替" aria-label="テーマ切替">
+      <svg class="ic"><use href="#i-autotheme"/></svg>
+    </button>
+    <span class="v-sep" aria-hidden="true"></span>
     <button id="btnExportJson" class="icon-btn" title="プロジェクトを保存 (JSON)" aria-label="プロジェクトを保存">
       <svg class="ic"><use href="#i-download"/></svg>
     </button>
@@ -505,6 +627,11 @@ input[type="range"]::-moz-range-thumb {
     </div>
     <div id="canvasWrap">
       <svg id="studioCanvas" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet"></svg>
+      <div id="zoomControls">
+        <button id="btnZoomIn" class="icon-btn" title="拡大 (ホイールでも可)" aria-label="拡大"><svg class="ic"><use href="#i-plus"/></svg></button>
+        <button id="btnZoomOut" class="icon-btn" title="縮小" aria-label="縮小"><svg class="ic"><use href="#i-minus"/></svg></button>
+        <button id="btnZoomReset" class="icon-btn" title="全体表示に戻す" aria-label="全体表示"><svg class="ic"><use href="#i-fit"/></svg></button>
+      </div>
     </div>
 
     <!-- 下: カット割り -->
@@ -530,7 +657,12 @@ input[type="range"]::-moz-range-thumb {
   <!-- 右: プレビュー + インスペクター -->
   <aside id="rightPanel">
     <div class="panel-title">想定カット</div>
-    <div id="previewWrap"></div>
+    <div id="previewWrap">
+      <div id="previewFrame"></div>
+      <button id="btnPlayPreview" class="icon-btn play-btn" title="カメラワークを再生" aria-label="カメラワークを再生">
+        <svg class="ic"><use href="#i-play"/></svg>
+      </button>
+    </div>
     <div id="explainBox">
       <div class="panel-title small">この配置だとこう写る</div>
       <ul id="explainList"></ul>
@@ -2491,7 +2623,7 @@ function equipGlyph(it, sub, cut) {
   let body = "";
   switch (t.shape) {
     case "subject":
-      body = `<circle class="equip-body" r="26" fill="#ffffff" stroke="${t.color}" stroke-width="1.5"/>
+      body = `<circle class="equip-body" r="26" fill="var(--cv-body, #ffffff)" stroke="${t.color}" stroke-width="1.5"/>
               <circle r="9" fill="${t.color}"/>`;
       break;
     case "camera": {
@@ -2503,20 +2635,20 @@ function equipGlyph(it, sub, cut) {
         const L = supId === "slider" ? Math.max(40, supParam) * 0.8 : Math.max(2, supParam) * 18;
         const shape = (cut && cut.camera && cut.camera.trackShape) || "直線";
         if (shape.startsWith("カーブ")) {
-          rig = `<path d="M-16,${-L / 2} Q-52,0 -16,${L / 2}" fill="none" stroke="#8a90a0" stroke-width="3"/>
-                 <path d="M-24,${-L / 2} Q-62,0 -24,${L / 2}" fill="none" stroke="#8a90a0" stroke-width="3"/>`;
+          rig = `<path d="M-16,${-L / 2} Q-52,0 -16,${L / 2}" fill="none" stroke="var(--cv-rail, #8a90a0)" stroke-width="3"/>
+                 <path d="M-24,${-L / 2} Q-62,0 -24,${L / 2}" fill="none" stroke="var(--cv-rail, #8a90a0)" stroke-width="3"/>`;
         } else if (shape.startsWith("円弧")) {
           const R = Math.max(60, Math.hypot(sub.x - it.x, sub.y - it.y));
           const a = 28 * Math.PI / 180;
           const x1 = R - R * Math.cos(a), y1 = -R * Math.sin(a);
           const x2 = R - R * Math.cos(a), y2 = R * Math.sin(a);
-          rig = `<path d="M${x1 - 16},${y1} A${R},${R} 0 0 0 ${x2 - 16},${y2}" fill="none" stroke="#8a90a0" stroke-width="3"/>
-                 <path d="M${x1 - 24},${y1} A${R + 8},${R + 8} 0 0 0 ${x2 - 24},${y2}" fill="none" stroke="#8a90a0" stroke-width="3"/>`;
+          rig = `<path d="M${x1 - 16},${y1} A${R},${R} 0 0 0 ${x2 - 16},${y2}" fill="none" stroke="var(--cv-rail, #8a90a0)" stroke-width="3"/>
+                 <path d="M${x1 - 24},${y1} A${R + 8},${R + 8} 0 0 0 ${x2 - 24},${y2}" fill="none" stroke="var(--cv-rail, #8a90a0)" stroke-width="3"/>`;
         } else {
-          rig = `<line x1="-16" y1="${-L / 2}" x2="-16" y2="${L / 2}" stroke="#8a90a0" stroke-width="3"/>
-                 <line x1="-24" y1="${-L / 2}" x2="-24" y2="${L / 2}" stroke="#8a90a0" stroke-width="3"/>
+          rig = `<line x1="-16" y1="${-L / 2}" x2="-16" y2="${L / 2}" stroke="var(--cv-rail, #8a90a0)" stroke-width="3"/>
+                 <line x1="-24" y1="${-L / 2}" x2="-24" y2="${L / 2}" stroke="var(--cv-rail, #8a90a0)" stroke-width="3"/>
                  ${Array.from({ length: Math.max(2, Math.round(L / 26)) }, (_, k) =>
-                   `<line x1="-28" y1="${-L / 2 + k * 26}" x2="-12" y2="${-L / 2 + k * 26}" stroke="#b8bdc9" stroke-width="2"/>`).join("")}`;
+                   `<line x1="-28" y1="${-L / 2 + k * 26}" x2="-12" y2="${-L / 2 + k * 26}" stroke="var(--cv-rail2, #b8bdc9)" stroke-width="2"/>`).join("")}`;
         }
       } else if (supId === "crane" || supId === "technocrane") {
         const armPx = Math.max(2, supParam) * 14;
@@ -2524,19 +2656,19 @@ function equipGlyph(it, sub, cut) {
                <circle cx="${-armPx}" cy="0" r="10" fill="#ffffff" stroke="#d98a4e" stroke-width="2.5"/>
                <line x1="${-armPx - 8}" y1="10" x2="${-armPx + 8}" y2="10" stroke="#d98a4e" stroke-width="3"/>`;
       } else if (supId === "cablecam") {
-        rig = `<line x1="-30" y1="-160" x2="-30" y2="160" stroke="#8a90a0" stroke-width="2" stroke-dasharray="8 6"/>`;
+        rig = `<line x1="-30" y1="-160" x2="-30" y2="160" stroke="var(--cv-rail, #8a90a0)" stroke-width="2" stroke-dasharray="8 6"/>`;
       } else if (supId === "tripod" || supId === "highhat") {
         rig = `${[150, 270, 30].map(a =>
-          `<line x1="0" y1="0" x2="${18 * Math.cos(a * Math.PI / 180)}" y2="${18 * Math.sin(a * Math.PI / 180)}" stroke="#8a90a0" stroke-width="2.5"/>`).join("")}`;
+          `<line x1="0" y1="0" x2="${18 * Math.cos(a * Math.PI / 180)}" y2="${18 * Math.sin(a * Math.PI / 180)}" stroke="var(--cv-rail, #8a90a0)" stroke-width="2.5"/>`).join("")}`;
       } else if (supId === "ladder" || supId === "intore") {
-        rig = `<rect x="-30" y="-14" width="14" height="28" fill="none" stroke="#8a90a0" stroke-width="2"/>
-               <line x1="-30" y1="-5" x2="-16" y2="-5" stroke="#8a90a0" stroke-width="2"/>
-               <line x1="-30" y1="4" x2="-16" y2="4" stroke="#8a90a0" stroke-width="2"/>`;
+        rig = `<rect x="-30" y="-14" width="14" height="28" fill="none" stroke="var(--cv-rail, #8a90a0)" stroke-width="2"/>
+               <line x1="-30" y1="-5" x2="-16" y2="-5" stroke="var(--cv-rail, #8a90a0)" stroke-width="2"/>
+               <line x1="-30" y1="4" x2="-16" y2="4" stroke="var(--cv-rail, #8a90a0)" stroke-width="2"/>`;
       }
       body = `<g transform="rotate(${aim})">
                 ${rig}
                 <path d="M-40,0 L-8,-16 L-8,16 Z" fill="rgba(47,127,224,.15)"/>
-                <rect class="equip-body" x="-8" y="-13" width="30" height="26" rx="4" fill="#ffffff" stroke="${t.color}" stroke-width="1.5"/>
+                <rect class="equip-body" x="-8" y="-13" width="30" height="26" rx="4" fill="var(--cv-body, #ffffff)" stroke="${t.color}" stroke-width="1.5"/>
                 <rect x="-16" y="-6" width="9" height="12" fill="${t.color}"/>
               </g>`;
       break;
@@ -2547,7 +2679,7 @@ function equipGlyph(it, sub, cut) {
       const spread = Math.tan(Math.min(60, beam / 2) * Math.PI / 180) * len;
       body = `<g transform="rotate(${aim})">
                 <path d="M12,-7 L${12 + len},${-spread} L${12 + len},${spread} L12,7 Z" fill="${t.color}" opacity="0.18"/>
-                <rect class="equip-body" x="-14" y="-12" width="26" height="24" rx="5" fill="#ffffff" stroke="${t.color}" stroke-width="1.5"/>
+                <rect class="equip-body" x="-14" y="-12" width="26" height="24" rx="5" fill="var(--cv-body, #ffffff)" stroke="${t.color}" stroke-width="1.5"/>
                 <circle cx="6" cy="0" r="6" fill="${t.color}"/>
               </g>`;
       break;
@@ -2559,7 +2691,7 @@ function equipGlyph(it, sub, cut) {
       break;
     case "vehicle":
       body = `<g>
-                <rect class="equip-body" x="-34" y="-16" width="68" height="32" rx="5" fill="#ffffff" stroke="${t.color}" stroke-width="2"/>
+                <rect class="equip-body" x="-34" y="-16" width="68" height="32" rx="5" fill="var(--cv-body, #ffffff)" stroke="${t.color}" stroke-width="2"/>
                 <rect x="14" y="-12" width="16" height="24" rx="3" fill="${t.color}" opacity="0.85"/>
                 <rect x="-30" y="-12" width="40" height="24" rx="2" fill="${t.color}" opacity="0.25"/>
                 <rect x="-26" y="-19" width="12" height="4" rx="2" fill="${t.color}"/><rect x="8" y="-19" width="12" height="4" rx="2" fill="${t.color}"/>
@@ -2577,7 +2709,7 @@ function equipGlyph(it, sub, cut) {
       break;
     case "drone":
       body = `<g>
-                <circle class="equip-body" r="15" fill="#ffffff" stroke="${t.color}" stroke-width="1.5"/>
+                <circle class="equip-body" r="15" fill="var(--cv-body, #ffffff)" stroke="${t.color}" stroke-width="1.5"/>
                 <line x1="-20" y1="-20" x2="20" y2="20" stroke="${t.color}" stroke-width="2"/>
                 <line x1="-20" y1="20" x2="20" y2="-20" stroke="${t.color}" stroke-width="2"/>
                 <circle cx="-20" cy="-20" r="6" fill="none" stroke="${t.color}"/><circle cx="20" cy="-20" r="6" fill="none" stroke="${t.color}"/>
@@ -2613,14 +2745,14 @@ function renderCanvasSVG(cut, interactive) {
   const sub = cut.items.find(i => i.type === "subject") || SUBJECT_POS;
   // 床グリッド (1マス = 50cm 想定, 100px = 1m)
   let grid = "";
-  for (let x = 0; x <= 1000; x += 50) grid += `<line x1="${x}" y1="0" x2="${x}" y2="700" stroke="${x % 100 ? "#eceef3" : "#dfe2e9"}" stroke-width="1"/>`;
-  for (let y = 0; y <= 700; y += 50) grid += `<line x1="0" y1="${y}" x2="1000" y2="${y}" stroke="${y % 100 ? "#eceef3" : "#dfe2e9"}" stroke-width="1"/>`;
+  for (let x = 0; x <= 1000; x += 50) grid += `<line x1="${x}" y1="0" x2="${x}" y2="700" stroke="${x % 100 ? "var(--cv-grid-minor, #eceef3)" : "var(--cv-grid-major, #dfe2e9)"}" stroke-width="1"/>`;
+  for (let y = 0; y <= 700; y += 50) grid += `<line x1="0" y1="${y}" x2="1000" y2="${y}" stroke="${y % 100 ? "var(--cv-grid-minor, #eceef3)" : "var(--cv-grid-major, #dfe2e9)"}" stroke-width="1"/>`;
 
   const items = cut.items.map(it => equipGlyph(it, sub, cut)).join("");
   return `${grid}
-    <text x="14" y="24" fill="#8a90a0" font-size="12">グリッド 1マス = 50cm (100px = 1m) / 背景: ${esc((BG_STYLES[cut.bgStyle] || {}).en || "")}</text>
-    <line x1="0" y1="90" x2="1000" y2="90" stroke="#c3c9d6" stroke-width="2" stroke-dasharray="8 6"/>
-    <text x="986" y="82" fill="#8a90a0" font-size="11" text-anchor="end">背景 / ホリゾント</text>
+    <text x="14" y="24" fill="var(--cv-text, #8a90a0)" font-size="12">グリッド 1マス = 50cm (100px = 1m) / 背景: ${esc((BG_STYLES[cut.bgStyle] || {}).en || "")}</text>
+    <line x1="0" y1="90" x2="1000" y2="90" stroke="var(--cv-horizon, #c3c9d6)" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="986" y="82" fill="var(--cv-text, #8a90a0)" font-size="11" text-anchor="end">背景 / ホリゾント</text>
     ${items}`;
 }
 
@@ -2852,10 +2984,10 @@ function renderPreviewSVG(cut, idPrefix) {
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">
     <defs>${defs}</defs>
-    <g ${lookFilter}>
-      <rect width="${W}" height="${H}" fill="url(#${p}bg)"/>
+    <g id="${p}anim"><g ${lookFilter}>
+      <rect x="${-W * 0.15}" y="${-H * 0.15}" width="${W * 1.3}" height="${H * 1.3}" fill="url(#${p}bg)"/>
       ${bgExtra}${subjectSvg}${fx}
-    </g>
+    </g></g>
     ${lookTint}${overlay}
   </svg>`;
 }
@@ -2919,8 +3051,93 @@ function renderCanvas() {
 }
 
 function renderPreview() {
-  byId("previewWrap").innerHTML = renderPreviewSVG(activeCut(), "live");
+  byId("previewFrame").innerHTML = renderPreviewSVG(activeCut(), "live");
   byId("explainList").innerHTML = explainCut(activeCut()).map(l => `<li>${esc(l)}</li>`).join("");
+  updatePlayButton();
+}
+
+/* =========================================================
+ * カメラワークのプレビュー再生 (アニメーション)
+ * ======================================================= */
+let animRAF = null, animStart = 0;
+
+function updatePlayButton() {
+  const btn = byId("btnPlayPreview");
+  const cut = activeCut();
+  const isStill = cut.kind === "still" && cut.camera.move === "fix";
+  btn.style.display = isStill ? "none" : "";
+  btn.classList.toggle("playing", !!state.previewPlay);
+  btn.innerHTML = `<svg class="ic"><use href="#${state.previewPlay ? "i-pause" : "i-play"}"/></svg>`;
+  btn.title = state.previewPlay ? "再生を停止" : "カメラワークを再生";
+}
+
+/* カメラワーク種別 → フレーム内の擬似的な動き */
+function animTransform(cut, t, W, H) {
+  const easeIO = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const move = cut.camera.move;
+  let s = 1, tx = 0, ty = 0, rot = 0;
+  const sin = (f, ph = 0) => Math.sin(t * Math.PI * 2 * f + ph);
+
+  switch (move) {
+    case "dollyin": case "zoomin": s = 1 + 0.20 * easeIO; break;
+    case "dollyout": s = 1.20 - 0.20 * easeIO; break;
+    case "pan": tx = (easeIO - 0.5) * W * 0.14; break;
+    case "whip": { const e2 = Math.min(1, t * 2.5); tx = (e2 - 0.5) * W * 0.55; break; }
+    case "tilt": ty = (easeIO - 0.5) * H * 0.16; break;
+    case "pedestal": case "crane": ty = (0.5 - easeIO) * H * 0.2; s = 1 + 0.05 * easeIO; break;
+    case "track": case "d_side": tx = (0.5 - easeIO) * W * 0.2; break;
+    case "arc": case "orbit": case "d_orbit": case "d_spiral":
+      tx = sin(1) * W * 0.06; s = 1.05 + 0.04 * sin(2, 1); break;
+    case "handheld":
+      tx = (sin(3.1) + 0.5 * sin(7.3, 2)) * W * 0.008;
+      ty = (sin(2.7, 1) + 0.5 * sin(6.1, 4)) * H * 0.01;
+      rot = sin(1.9, 3) * 0.4; break;
+    case "gimbal": tx = sin(1) * W * 0.02; ty = Math.cos(t * Math.PI * 2) * H * 0.015; break;
+    case "dollyzoom": case "d_dzoom": s = 1.06 + 0.1 * sin(1); break;
+    case "d_reveal": ty = (0.5 - easeIO) * H * 0.3; s = 1.18 - 0.15 * easeIO; break;
+    case "d_flyover": case "d_lowpass": ty = (easeIO - 0.5) * H * 0.25; s = 1.12; break;
+    case "d_chase": tx = sin(4) * W * 0.02; ty = sin(5) * H * 0.012; s = 1.08; break;
+    case "d_topdown": s = 1.18 - 0.15 * easeIO; break;
+    case "d_pullback": case "d_dronie": s = 1.3 - 0.28 * easeIO; break;
+    case "d_dive": ty = (0.5 - easeIO) * H * 0.35; s = 1.1; break;
+    default: break;
+  }
+  // 開始→終了サイズの変化 (常に s>=1 側で表現し、余白の露出を防ぐ)
+  if (cut.camera.endShotSize && cut.camera.endShotSize !== "same") {
+    const st = SHOT_SIZES.find(x => x.id === cut.camera.shotSize) || SHOT_SIZES[2];
+    const en = SHOT_SIZES.find(x => x.id === cut.camera.endShotSize);
+    if (en && en.id !== st.id) {
+      const ratio = Math.max(0.35, Math.min(2.8, en.scale / st.scale));
+      const f = Math.pow(ratio, easeIO) * (ratio < 1 ? 1 / ratio : 1);
+      s *= f;
+    }
+  }
+  const cx = W / 2, cy = H / 2;
+  return `rotate(${rot} ${cx} ${cy}) translate(${(cx * (1 - s) + tx).toFixed(2)} ${(cy * (1 - s) + ty).toFixed(2)}) scale(${s.toFixed(4)})`;
+}
+
+function startPreviewAnim() {
+  stopPreviewAnim();
+  animStart = performance.now();
+  const tick = (now) => {
+    const cut = activeCut();
+    const g = document.getElementById("liveanim");
+    if (g) {
+      const { W, H } = aspectDims(cut.aspect);
+      const speedMul = { veryslow: 1.8, slow: 1.3, normal: 1, fast: 0.65, veryfast: 0.45 }[cut.camera.moveSpeed] || 1;
+      const dur = Math.min(8, Math.max(2, cut.kind === "still" ? 3 : cut.duration || 5)) * 1000 * speedMul;
+      g.setAttribute("transform", animTransform(cut, ((now - animStart) % dur) / dur, W, H));
+    }
+    animRAF = requestAnimationFrame(tick);
+  };
+  animRAF = requestAnimationFrame(tick);
+}
+
+function stopPreviewAnim() {
+  if (animRAF) cancelAnimationFrame(animRAF);
+  animRAF = null;
+  const g = document.getElementById("liveanim");
+  if (g) g.removeAttribute("transform");
 }
 
 function renderPrompt() {
@@ -3217,7 +3434,8 @@ function renderAll() { renderPresetList(); renderCanvas(); renderPreview(); rend
  * ======================================================= */
 (function setupDrag() {
   const svg = byId("studioCanvas");
-  let dragging = null;
+  let dragging = null; // 機材ドラッグ
+  let panning = null;  // 背景パン
 
   function svgPoint(e) {
     const pt = svg.createSVGPoint();
@@ -3227,7 +3445,16 @@ function renderAll() { renderPresetList(); renderCanvas(); renderPreview(); rend
 
   svg.addEventListener("pointerdown", e => {
     const g = e.target.closest(".equip-item");
-    if (!g) { state.selectedItem = null; renderCanvas(); renderInspector(); return; }
+    if (!g) {
+      // 空白部分: ドラッグでパン、動かさなければ選択解除
+      panning = {
+        startX: e.clientX, startY: e.clientY,
+        viewX: canvasView.x, viewY: canvasView.y, moved: false,
+      };
+      try { svg.setPointerCapture(e.pointerId); } catch { /* noop */ }
+      svg.style.cursor = "grabbing";
+      return;
+    }
     const cut = activeCut();
     const item = cut.items.find(i => i.id === g.dataset.id);
     if (!item) return;
@@ -3239,6 +3466,17 @@ function renderAll() { renderPresetList(); renderCanvas(); renderPreview(); rend
   });
 
   svg.addEventListener("pointermove", e => {
+    if (panning) {
+      const kx = canvasView.w / svg.clientWidth;
+      const ky = canvasView.h / svg.clientHeight;
+      const dx = (e.clientX - panning.startX) * kx;
+      const dy = (e.clientY - panning.startY) * ky;
+      if (Math.abs(dx) + Math.abs(dy) > 2) panning.moved = true;
+      canvasView.x = panning.viewX - dx;
+      canvasView.y = panning.viewY - dy;
+      applyCanvasView();
+      return;
+    }
     if (!dragging) return;
     const p = svgPoint(e);
     dragging.item.x = Math.max(20, Math.min(980, p.x + dragging.dx));
@@ -3248,6 +3486,12 @@ function renderAll() { renderPresetList(); renderCanvas(); renderPreview(); rend
   });
 
   const endDrag = () => {
+    if (panning) {
+      if (!panning.moved) { state.selectedItem = null; renderCanvas(); renderInspector(); }
+      panning = null;
+      svg.style.cursor = "";
+      return;
+    }
     if (dragging && dragging.moved) { renderPreview(); renderPrompt(); renderCutStrip(); renderInspector(); }
     dragging = null;
   };
@@ -3675,6 +3919,72 @@ function importJSON(file) {
 }
 
 /* =========================================================
+ * テーマ (自動/ライト/ダーク)
+ * ======================================================= */
+function applyTheme(mode) {
+  const root = document.documentElement;
+  if (mode === "auto") delete root.dataset.theme;
+  else root.dataset.theme = mode;
+  try { localStorage.setItem("vsTheme", mode); } catch { /* プライベートモード等 */ }
+  state.theme = mode;
+  const icons = { auto: "i-autotheme", light: "i-sun", dark: "i-moon" };
+  const titles = { auto: "テーマ: 自動 (OS設定に追従) — クリックで切替", light: "テーマ: ライト — クリックで切替", dark: "テーマ: ダーク — クリックで切替" };
+  const btn = byId("btnTheme");
+  btn.innerHTML = `<svg class="ic"><use href="#${icons[mode]}"/></svg>`;
+  btn.title = titles[mode];
+}
+
+function setupTheme() {
+  let saved = "auto";
+  try { saved = localStorage.getItem("vsTheme") || "auto"; } catch { /* noop */ }
+  applyTheme(["auto", "light", "dark"].includes(saved) ? saved : "auto");
+  byId("btnTheme").addEventListener("click", () => {
+    const order = ["auto", "dark", "light"];
+    applyTheme(order[(order.indexOf(state.theme) + 1) % order.length]);
+  });
+}
+
+/* =========================================================
+ * スタジオ俯瞰図のズーム / パン
+ * ======================================================= */
+const canvasView = { x: 0, y: 0, w: 1000, h: 700 };
+
+function applyCanvasView() {
+  byId("studioCanvas").setAttribute("viewBox", `${canvasView.x} ${canvasView.y} ${canvasView.w} ${canvasView.h}`);
+}
+
+function zoomCanvasAt(factor, cx, cy) {
+  const nw = Math.min(1400, Math.max(240, canvasView.w * factor));
+  const k = nw / canvasView.w;
+  canvasView.x = cx - (cx - canvasView.x) * k;
+  canvasView.y = cy - (cy - canvasView.y) * k;
+  canvasView.w = nw;
+  canvasView.h = nw * 0.7;
+  applyCanvasView();
+}
+
+function resetCanvasView() {
+  canvasView.x = 0; canvasView.y = 0; canvasView.w = 1000; canvasView.h = 700;
+  applyCanvasView();
+}
+
+function setupZoom() {
+  const svg = byId("studioCanvas");
+  const center = () => ({ x: canvasView.x + canvasView.w / 2, y: canvasView.y + canvasView.h / 2 });
+  byId("btnZoomIn").addEventListener("click", () => { const c = center(); zoomCanvasAt(1 / 1.25, c.x, c.y); });
+  byId("btnZoomOut").addEventListener("click", () => { const c = center(); zoomCanvasAt(1.25, c.x, c.y); });
+  byId("btnZoomReset").addEventListener("click", resetCanvasView);
+  svg.addEventListener("wheel", e => {
+    e.preventDefault();
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    zoomCanvasAt(e.deltaY > 0 ? 1.12 : 1 / 1.12, p.x, p.y);
+  }, { passive: false });
+  svg.addEventListener("dblclick", resetCanvasView);
+}
+
+/* =========================================================
  * イベント接続 / 初期化
  * ======================================================= */
 function setupHeader() {
@@ -3768,6 +4078,13 @@ function setupHeader() {
 
 function init() {
   setupHeader();
+  setupTheme();
+  setupZoom();
+  byId("btnPlayPreview").addEventListener("click", () => {
+    state.previewPlay = !state.previewPlay;
+    if (state.previewPlay) startPreviewAnim(); else stopPreviewAnim();
+    updatePlayButton();
+  });
   // デモ用の初期カット割り: 三点照明 → レンブラント → 逆光シルエット
   state.cuts = [
     makeCut(PRESETS.find(p => p.id === "three-point")),

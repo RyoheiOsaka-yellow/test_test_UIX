@@ -495,7 +495,7 @@ function equipGlyph(it, sub, cut) {
   let body = "";
   switch (t.shape) {
     case "subject":
-      body = `<circle class="equip-body" r="26" fill="#ffffff" stroke="${t.color}" stroke-width="1.5"/>
+      body = `<circle class="equip-body" r="26" fill="var(--cv-body, #ffffff)" stroke="${t.color}" stroke-width="1.5"/>
               <circle r="9" fill="${t.color}"/>`;
       break;
     case "camera": {
@@ -507,20 +507,20 @@ function equipGlyph(it, sub, cut) {
         const L = supId === "slider" ? Math.max(40, supParam) * 0.8 : Math.max(2, supParam) * 18;
         const shape = (cut && cut.camera && cut.camera.trackShape) || "直線";
         if (shape.startsWith("カーブ")) {
-          rig = `<path d="M-16,${-L / 2} Q-52,0 -16,${L / 2}" fill="none" stroke="#8a90a0" stroke-width="3"/>
-                 <path d="M-24,${-L / 2} Q-62,0 -24,${L / 2}" fill="none" stroke="#8a90a0" stroke-width="3"/>`;
+          rig = `<path d="M-16,${-L / 2} Q-52,0 -16,${L / 2}" fill="none" stroke="var(--cv-rail, #8a90a0)" stroke-width="3"/>
+                 <path d="M-24,${-L / 2} Q-62,0 -24,${L / 2}" fill="none" stroke="var(--cv-rail, #8a90a0)" stroke-width="3"/>`;
         } else if (shape.startsWith("円弧")) {
           const R = Math.max(60, Math.hypot(sub.x - it.x, sub.y - it.y));
           const a = 28 * Math.PI / 180;
           const x1 = R - R * Math.cos(a), y1 = -R * Math.sin(a);
           const x2 = R - R * Math.cos(a), y2 = R * Math.sin(a);
-          rig = `<path d="M${x1 - 16},${y1} A${R},${R} 0 0 0 ${x2 - 16},${y2}" fill="none" stroke="#8a90a0" stroke-width="3"/>
-                 <path d="M${x1 - 24},${y1} A${R + 8},${R + 8} 0 0 0 ${x2 - 24},${y2}" fill="none" stroke="#8a90a0" stroke-width="3"/>`;
+          rig = `<path d="M${x1 - 16},${y1} A${R},${R} 0 0 0 ${x2 - 16},${y2}" fill="none" stroke="var(--cv-rail, #8a90a0)" stroke-width="3"/>
+                 <path d="M${x1 - 24},${y1} A${R + 8},${R + 8} 0 0 0 ${x2 - 24},${y2}" fill="none" stroke="var(--cv-rail, #8a90a0)" stroke-width="3"/>`;
         } else {
-          rig = `<line x1="-16" y1="${-L / 2}" x2="-16" y2="${L / 2}" stroke="#8a90a0" stroke-width="3"/>
-                 <line x1="-24" y1="${-L / 2}" x2="-24" y2="${L / 2}" stroke="#8a90a0" stroke-width="3"/>
+          rig = `<line x1="-16" y1="${-L / 2}" x2="-16" y2="${L / 2}" stroke="var(--cv-rail, #8a90a0)" stroke-width="3"/>
+                 <line x1="-24" y1="${-L / 2}" x2="-24" y2="${L / 2}" stroke="var(--cv-rail, #8a90a0)" stroke-width="3"/>
                  ${Array.from({ length: Math.max(2, Math.round(L / 26)) }, (_, k) =>
-                   `<line x1="-28" y1="${-L / 2 + k * 26}" x2="-12" y2="${-L / 2 + k * 26}" stroke="#b8bdc9" stroke-width="2"/>`).join("")}`;
+                   `<line x1="-28" y1="${-L / 2 + k * 26}" x2="-12" y2="${-L / 2 + k * 26}" stroke="var(--cv-rail2, #b8bdc9)" stroke-width="2"/>`).join("")}`;
         }
       } else if (supId === "crane" || supId === "technocrane") {
         const armPx = Math.max(2, supParam) * 14;
@@ -528,19 +528,19 @@ function equipGlyph(it, sub, cut) {
                <circle cx="${-armPx}" cy="0" r="10" fill="#ffffff" stroke="#d98a4e" stroke-width="2.5"/>
                <line x1="${-armPx - 8}" y1="10" x2="${-armPx + 8}" y2="10" stroke="#d98a4e" stroke-width="3"/>`;
       } else if (supId === "cablecam") {
-        rig = `<line x1="-30" y1="-160" x2="-30" y2="160" stroke="#8a90a0" stroke-width="2" stroke-dasharray="8 6"/>`;
+        rig = `<line x1="-30" y1="-160" x2="-30" y2="160" stroke="var(--cv-rail, #8a90a0)" stroke-width="2" stroke-dasharray="8 6"/>`;
       } else if (supId === "tripod" || supId === "highhat") {
         rig = `${[150, 270, 30].map(a =>
-          `<line x1="0" y1="0" x2="${18 * Math.cos(a * Math.PI / 180)}" y2="${18 * Math.sin(a * Math.PI / 180)}" stroke="#8a90a0" stroke-width="2.5"/>`).join("")}`;
+          `<line x1="0" y1="0" x2="${18 * Math.cos(a * Math.PI / 180)}" y2="${18 * Math.sin(a * Math.PI / 180)}" stroke="var(--cv-rail, #8a90a0)" stroke-width="2.5"/>`).join("")}`;
       } else if (supId === "ladder" || supId === "intore") {
-        rig = `<rect x="-30" y="-14" width="14" height="28" fill="none" stroke="#8a90a0" stroke-width="2"/>
-               <line x1="-30" y1="-5" x2="-16" y2="-5" stroke="#8a90a0" stroke-width="2"/>
-               <line x1="-30" y1="4" x2="-16" y2="4" stroke="#8a90a0" stroke-width="2"/>`;
+        rig = `<rect x="-30" y="-14" width="14" height="28" fill="none" stroke="var(--cv-rail, #8a90a0)" stroke-width="2"/>
+               <line x1="-30" y1="-5" x2="-16" y2="-5" stroke="var(--cv-rail, #8a90a0)" stroke-width="2"/>
+               <line x1="-30" y1="4" x2="-16" y2="4" stroke="var(--cv-rail, #8a90a0)" stroke-width="2"/>`;
       }
       body = `<g transform="rotate(${aim})">
                 ${rig}
                 <path d="M-40,0 L-8,-16 L-8,16 Z" fill="rgba(47,127,224,.15)"/>
-                <rect class="equip-body" x="-8" y="-13" width="30" height="26" rx="4" fill="#ffffff" stroke="${t.color}" stroke-width="1.5"/>
+                <rect class="equip-body" x="-8" y="-13" width="30" height="26" rx="4" fill="var(--cv-body, #ffffff)" stroke="${t.color}" stroke-width="1.5"/>
                 <rect x="-16" y="-6" width="9" height="12" fill="${t.color}"/>
               </g>`;
       break;
@@ -551,7 +551,7 @@ function equipGlyph(it, sub, cut) {
       const spread = Math.tan(Math.min(60, beam / 2) * Math.PI / 180) * len;
       body = `<g transform="rotate(${aim})">
                 <path d="M12,-7 L${12 + len},${-spread} L${12 + len},${spread} L12,7 Z" fill="${t.color}" opacity="0.18"/>
-                <rect class="equip-body" x="-14" y="-12" width="26" height="24" rx="5" fill="#ffffff" stroke="${t.color}" stroke-width="1.5"/>
+                <rect class="equip-body" x="-14" y="-12" width="26" height="24" rx="5" fill="var(--cv-body, #ffffff)" stroke="${t.color}" stroke-width="1.5"/>
                 <circle cx="6" cy="0" r="6" fill="${t.color}"/>
               </g>`;
       break;
@@ -563,7 +563,7 @@ function equipGlyph(it, sub, cut) {
       break;
     case "vehicle":
       body = `<g>
-                <rect class="equip-body" x="-34" y="-16" width="68" height="32" rx="5" fill="#ffffff" stroke="${t.color}" stroke-width="2"/>
+                <rect class="equip-body" x="-34" y="-16" width="68" height="32" rx="5" fill="var(--cv-body, #ffffff)" stroke="${t.color}" stroke-width="2"/>
                 <rect x="14" y="-12" width="16" height="24" rx="3" fill="${t.color}" opacity="0.85"/>
                 <rect x="-30" y="-12" width="40" height="24" rx="2" fill="${t.color}" opacity="0.25"/>
                 <rect x="-26" y="-19" width="12" height="4" rx="2" fill="${t.color}"/><rect x="8" y="-19" width="12" height="4" rx="2" fill="${t.color}"/>
@@ -581,7 +581,7 @@ function equipGlyph(it, sub, cut) {
       break;
     case "drone":
       body = `<g>
-                <circle class="equip-body" r="15" fill="#ffffff" stroke="${t.color}" stroke-width="1.5"/>
+                <circle class="equip-body" r="15" fill="var(--cv-body, #ffffff)" stroke="${t.color}" stroke-width="1.5"/>
                 <line x1="-20" y1="-20" x2="20" y2="20" stroke="${t.color}" stroke-width="2"/>
                 <line x1="-20" y1="20" x2="20" y2="-20" stroke="${t.color}" stroke-width="2"/>
                 <circle cx="-20" cy="-20" r="6" fill="none" stroke="${t.color}"/><circle cx="20" cy="-20" r="6" fill="none" stroke="${t.color}"/>
@@ -617,14 +617,14 @@ function renderCanvasSVG(cut, interactive) {
   const sub = cut.items.find(i => i.type === "subject") || SUBJECT_POS;
   // 床グリッド (1マス = 50cm 想定, 100px = 1m)
   let grid = "";
-  for (let x = 0; x <= 1000; x += 50) grid += `<line x1="${x}" y1="0" x2="${x}" y2="700" stroke="${x % 100 ? "#eceef3" : "#dfe2e9"}" stroke-width="1"/>`;
-  for (let y = 0; y <= 700; y += 50) grid += `<line x1="0" y1="${y}" x2="1000" y2="${y}" stroke="${y % 100 ? "#eceef3" : "#dfe2e9"}" stroke-width="1"/>`;
+  for (let x = 0; x <= 1000; x += 50) grid += `<line x1="${x}" y1="0" x2="${x}" y2="700" stroke="${x % 100 ? "var(--cv-grid-minor, #eceef3)" : "var(--cv-grid-major, #dfe2e9)"}" stroke-width="1"/>`;
+  for (let y = 0; y <= 700; y += 50) grid += `<line x1="0" y1="${y}" x2="1000" y2="${y}" stroke="${y % 100 ? "var(--cv-grid-minor, #eceef3)" : "var(--cv-grid-major, #dfe2e9)"}" stroke-width="1"/>`;
 
   const items = cut.items.map(it => equipGlyph(it, sub, cut)).join("");
   return `${grid}
-    <text x="14" y="24" fill="#8a90a0" font-size="12">グリッド 1マス = 50cm (100px = 1m) / 背景: ${esc((BG_STYLES[cut.bgStyle] || {}).en || "")}</text>
-    <line x1="0" y1="90" x2="1000" y2="90" stroke="#c3c9d6" stroke-width="2" stroke-dasharray="8 6"/>
-    <text x="986" y="82" fill="#8a90a0" font-size="11" text-anchor="end">背景 / ホリゾント</text>
+    <text x="14" y="24" fill="var(--cv-text, #8a90a0)" font-size="12">グリッド 1マス = 50cm (100px = 1m) / 背景: ${esc((BG_STYLES[cut.bgStyle] || {}).en || "")}</text>
+    <line x1="0" y1="90" x2="1000" y2="90" stroke="var(--cv-horizon, #c3c9d6)" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="986" y="82" fill="var(--cv-text, #8a90a0)" font-size="11" text-anchor="end">背景 / ホリゾント</text>
     ${items}`;
 }
 
@@ -856,10 +856,10 @@ function renderPreviewSVG(cut, idPrefix) {
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">
     <defs>${defs}</defs>
-    <g ${lookFilter}>
-      <rect width="${W}" height="${H}" fill="url(#${p}bg)"/>
+    <g id="${p}anim"><g ${lookFilter}>
+      <rect x="${-W * 0.15}" y="${-H * 0.15}" width="${W * 1.3}" height="${H * 1.3}" fill="url(#${p}bg)"/>
       ${bgExtra}${subjectSvg}${fx}
-    </g>
+    </g></g>
     ${lookTint}${overlay}
   </svg>`;
 }
@@ -923,8 +923,93 @@ function renderCanvas() {
 }
 
 function renderPreview() {
-  byId("previewWrap").innerHTML = renderPreviewSVG(activeCut(), "live");
+  byId("previewFrame").innerHTML = renderPreviewSVG(activeCut(), "live");
   byId("explainList").innerHTML = explainCut(activeCut()).map(l => `<li>${esc(l)}</li>`).join("");
+  updatePlayButton();
+}
+
+/* =========================================================
+ * カメラワークのプレビュー再生 (アニメーション)
+ * ======================================================= */
+let animRAF = null, animStart = 0;
+
+function updatePlayButton() {
+  const btn = byId("btnPlayPreview");
+  const cut = activeCut();
+  const isStill = cut.kind === "still" && cut.camera.move === "fix";
+  btn.style.display = isStill ? "none" : "";
+  btn.classList.toggle("playing", !!state.previewPlay);
+  btn.innerHTML = `<svg class="ic"><use href="#${state.previewPlay ? "i-pause" : "i-play"}"/></svg>`;
+  btn.title = state.previewPlay ? "再生を停止" : "カメラワークを再生";
+}
+
+/* カメラワーク種別 → フレーム内の擬似的な動き */
+function animTransform(cut, t, W, H) {
+  const easeIO = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  const move = cut.camera.move;
+  let s = 1, tx = 0, ty = 0, rot = 0;
+  const sin = (f, ph = 0) => Math.sin(t * Math.PI * 2 * f + ph);
+
+  switch (move) {
+    case "dollyin": case "zoomin": s = 1 + 0.20 * easeIO; break;
+    case "dollyout": s = 1.20 - 0.20 * easeIO; break;
+    case "pan": tx = (easeIO - 0.5) * W * 0.14; break;
+    case "whip": { const e2 = Math.min(1, t * 2.5); tx = (e2 - 0.5) * W * 0.55; break; }
+    case "tilt": ty = (easeIO - 0.5) * H * 0.16; break;
+    case "pedestal": case "crane": ty = (0.5 - easeIO) * H * 0.2; s = 1 + 0.05 * easeIO; break;
+    case "track": case "d_side": tx = (0.5 - easeIO) * W * 0.2; break;
+    case "arc": case "orbit": case "d_orbit": case "d_spiral":
+      tx = sin(1) * W * 0.06; s = 1.05 + 0.04 * sin(2, 1); break;
+    case "handheld":
+      tx = (sin(3.1) + 0.5 * sin(7.3, 2)) * W * 0.008;
+      ty = (sin(2.7, 1) + 0.5 * sin(6.1, 4)) * H * 0.01;
+      rot = sin(1.9, 3) * 0.4; break;
+    case "gimbal": tx = sin(1) * W * 0.02; ty = Math.cos(t * Math.PI * 2) * H * 0.015; break;
+    case "dollyzoom": case "d_dzoom": s = 1.06 + 0.1 * sin(1); break;
+    case "d_reveal": ty = (0.5 - easeIO) * H * 0.3; s = 1.18 - 0.15 * easeIO; break;
+    case "d_flyover": case "d_lowpass": ty = (easeIO - 0.5) * H * 0.25; s = 1.12; break;
+    case "d_chase": tx = sin(4) * W * 0.02; ty = sin(5) * H * 0.012; s = 1.08; break;
+    case "d_topdown": s = 1.18 - 0.15 * easeIO; break;
+    case "d_pullback": case "d_dronie": s = 1.3 - 0.28 * easeIO; break;
+    case "d_dive": ty = (0.5 - easeIO) * H * 0.35; s = 1.1; break;
+    default: break;
+  }
+  // 開始→終了サイズの変化 (常に s>=1 側で表現し、余白の露出を防ぐ)
+  if (cut.camera.endShotSize && cut.camera.endShotSize !== "same") {
+    const st = SHOT_SIZES.find(x => x.id === cut.camera.shotSize) || SHOT_SIZES[2];
+    const en = SHOT_SIZES.find(x => x.id === cut.camera.endShotSize);
+    if (en && en.id !== st.id) {
+      const ratio = Math.max(0.35, Math.min(2.8, en.scale / st.scale));
+      const f = Math.pow(ratio, easeIO) * (ratio < 1 ? 1 / ratio : 1);
+      s *= f;
+    }
+  }
+  const cx = W / 2, cy = H / 2;
+  return `rotate(${rot} ${cx} ${cy}) translate(${(cx * (1 - s) + tx).toFixed(2)} ${(cy * (1 - s) + ty).toFixed(2)}) scale(${s.toFixed(4)})`;
+}
+
+function startPreviewAnim() {
+  stopPreviewAnim();
+  animStart = performance.now();
+  const tick = (now) => {
+    const cut = activeCut();
+    const g = document.getElementById("liveanim");
+    if (g) {
+      const { W, H } = aspectDims(cut.aspect);
+      const speedMul = { veryslow: 1.8, slow: 1.3, normal: 1, fast: 0.65, veryfast: 0.45 }[cut.camera.moveSpeed] || 1;
+      const dur = Math.min(8, Math.max(2, cut.kind === "still" ? 3 : cut.duration || 5)) * 1000 * speedMul;
+      g.setAttribute("transform", animTransform(cut, ((now - animStart) % dur) / dur, W, H));
+    }
+    animRAF = requestAnimationFrame(tick);
+  };
+  animRAF = requestAnimationFrame(tick);
+}
+
+function stopPreviewAnim() {
+  if (animRAF) cancelAnimationFrame(animRAF);
+  animRAF = null;
+  const g = document.getElementById("liveanim");
+  if (g) g.removeAttribute("transform");
 }
 
 function renderPrompt() {
@@ -1221,7 +1306,8 @@ function renderAll() { renderPresetList(); renderCanvas(); renderPreview(); rend
  * ======================================================= */
 (function setupDrag() {
   const svg = byId("studioCanvas");
-  let dragging = null;
+  let dragging = null; // 機材ドラッグ
+  let panning = null;  // 背景パン
 
   function svgPoint(e) {
     const pt = svg.createSVGPoint();
@@ -1231,7 +1317,16 @@ function renderAll() { renderPresetList(); renderCanvas(); renderPreview(); rend
 
   svg.addEventListener("pointerdown", e => {
     const g = e.target.closest(".equip-item");
-    if (!g) { state.selectedItem = null; renderCanvas(); renderInspector(); return; }
+    if (!g) {
+      // 空白部分: ドラッグでパン、動かさなければ選択解除
+      panning = {
+        startX: e.clientX, startY: e.clientY,
+        viewX: canvasView.x, viewY: canvasView.y, moved: false,
+      };
+      try { svg.setPointerCapture(e.pointerId); } catch { /* noop */ }
+      svg.style.cursor = "grabbing";
+      return;
+    }
     const cut = activeCut();
     const item = cut.items.find(i => i.id === g.dataset.id);
     if (!item) return;
@@ -1243,6 +1338,17 @@ function renderAll() { renderPresetList(); renderCanvas(); renderPreview(); rend
   });
 
   svg.addEventListener("pointermove", e => {
+    if (panning) {
+      const kx = canvasView.w / svg.clientWidth;
+      const ky = canvasView.h / svg.clientHeight;
+      const dx = (e.clientX - panning.startX) * kx;
+      const dy = (e.clientY - panning.startY) * ky;
+      if (Math.abs(dx) + Math.abs(dy) > 2) panning.moved = true;
+      canvasView.x = panning.viewX - dx;
+      canvasView.y = panning.viewY - dy;
+      applyCanvasView();
+      return;
+    }
     if (!dragging) return;
     const p = svgPoint(e);
     dragging.item.x = Math.max(20, Math.min(980, p.x + dragging.dx));
@@ -1252,6 +1358,12 @@ function renderAll() { renderPresetList(); renderCanvas(); renderPreview(); rend
   });
 
   const endDrag = () => {
+    if (panning) {
+      if (!panning.moved) { state.selectedItem = null; renderCanvas(); renderInspector(); }
+      panning = null;
+      svg.style.cursor = "";
+      return;
+    }
     if (dragging && dragging.moved) { renderPreview(); renderPrompt(); renderCutStrip(); renderInspector(); }
     dragging = null;
   };
@@ -1679,6 +1791,72 @@ function importJSON(file) {
 }
 
 /* =========================================================
+ * テーマ (自動/ライト/ダーク)
+ * ======================================================= */
+function applyTheme(mode) {
+  const root = document.documentElement;
+  if (mode === "auto") delete root.dataset.theme;
+  else root.dataset.theme = mode;
+  try { localStorage.setItem("vsTheme", mode); } catch { /* プライベートモード等 */ }
+  state.theme = mode;
+  const icons = { auto: "i-autotheme", light: "i-sun", dark: "i-moon" };
+  const titles = { auto: "テーマ: 自動 (OS設定に追従) — クリックで切替", light: "テーマ: ライト — クリックで切替", dark: "テーマ: ダーク — クリックで切替" };
+  const btn = byId("btnTheme");
+  btn.innerHTML = `<svg class="ic"><use href="#${icons[mode]}"/></svg>`;
+  btn.title = titles[mode];
+}
+
+function setupTheme() {
+  let saved = "auto";
+  try { saved = localStorage.getItem("vsTheme") || "auto"; } catch { /* noop */ }
+  applyTheme(["auto", "light", "dark"].includes(saved) ? saved : "auto");
+  byId("btnTheme").addEventListener("click", () => {
+    const order = ["auto", "dark", "light"];
+    applyTheme(order[(order.indexOf(state.theme) + 1) % order.length]);
+  });
+}
+
+/* =========================================================
+ * スタジオ俯瞰図のズーム / パン
+ * ======================================================= */
+const canvasView = { x: 0, y: 0, w: 1000, h: 700 };
+
+function applyCanvasView() {
+  byId("studioCanvas").setAttribute("viewBox", `${canvasView.x} ${canvasView.y} ${canvasView.w} ${canvasView.h}`);
+}
+
+function zoomCanvasAt(factor, cx, cy) {
+  const nw = Math.min(1400, Math.max(240, canvasView.w * factor));
+  const k = nw / canvasView.w;
+  canvasView.x = cx - (cx - canvasView.x) * k;
+  canvasView.y = cy - (cy - canvasView.y) * k;
+  canvasView.w = nw;
+  canvasView.h = nw * 0.7;
+  applyCanvasView();
+}
+
+function resetCanvasView() {
+  canvasView.x = 0; canvasView.y = 0; canvasView.w = 1000; canvasView.h = 700;
+  applyCanvasView();
+}
+
+function setupZoom() {
+  const svg = byId("studioCanvas");
+  const center = () => ({ x: canvasView.x + canvasView.w / 2, y: canvasView.y + canvasView.h / 2 });
+  byId("btnZoomIn").addEventListener("click", () => { const c = center(); zoomCanvasAt(1 / 1.25, c.x, c.y); });
+  byId("btnZoomOut").addEventListener("click", () => { const c = center(); zoomCanvasAt(1.25, c.x, c.y); });
+  byId("btnZoomReset").addEventListener("click", resetCanvasView);
+  svg.addEventListener("wheel", e => {
+    e.preventDefault();
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+    zoomCanvasAt(e.deltaY > 0 ? 1.12 : 1 / 1.12, p.x, p.y);
+  }, { passive: false });
+  svg.addEventListener("dblclick", resetCanvasView);
+}
+
+/* =========================================================
  * イベント接続 / 初期化
  * ======================================================= */
 function setupHeader() {
@@ -1772,6 +1950,13 @@ function setupHeader() {
 
 function init() {
   setupHeader();
+  setupTheme();
+  setupZoom();
+  byId("btnPlayPreview").addEventListener("click", () => {
+    state.previewPlay = !state.previewPlay;
+    if (state.previewPlay) startPreviewAnim(); else stopPreviewAnim();
+    updatePlayButton();
+  });
   // デモ用の初期カット割り: 三点照明 → レンブラント → 逆光シルエット
   state.cuts = [
     makeCut(PRESETS.find(p => p.id === "three-point")),
