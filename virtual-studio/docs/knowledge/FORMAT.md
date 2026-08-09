@@ -27,7 +27,10 @@ camera:
   fps: 24fps
   wb: 5600K
 equipment:                  # 座標系: 1000x700, 被写体(500,330), カメラ(500,600), 100px=1m
-  - type: key               # key/fill/back/rim/top/bg/hmi/practical/reflector/flag/diff/drone/sun/fan/smoke
+  - type: key               # ライト: key/fill/back/rim/top/bg/hmi/practical
+                            # 機材: reflector/flag/diff/drone/sun
+                            # 特効: fan/smoke/rainmachine/snowmachine/confetti/pyro/spark
+                            # 車両等: truck/genny/locabus/cranetruck/village/sound
     x: 350
     y: 480
     height: 220             # cm

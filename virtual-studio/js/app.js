@@ -23,6 +23,7 @@ function seededRand(seed) {
 function hashStr(str) { let h = 0; for (const c of str) h = (h * 31 + c.charCodeAt(0)) | 0; return Math.abs(h) + 1; }
 
 const LIGHT_TYPES = ["key", "fill", "back", "rim", "top", "bg", "hmi", "practical", "sun"];
+const VEHICLE_TYPES = ["truck", "genny", "locabus", "cranetruck"];
 const SOFT_WORDS = ["ソフト", "オクタ", "アンブレラ", "ディフュージョン", "ブックライト", "ビューティー"];
 
 /* ---------- 状態 ---------- */
@@ -201,6 +202,76 @@ function generateJaSummary(cut) {
 }
 
 /* =========================================================
+ * 「この配置だとこう写る」— 誰でも分かる平易な自動解説
+ * ======================================================= */
+const OPTION_EFFECTS_JA = {
+  droplets: "💧 商品に雫・結露がつき、冷たさと新鮮さが伝わります",
+  gloss: "✨ フチに光沢のラインが走り、高級感が出ます",
+  matte: "🪶 テカリを抑えた、落ち着いた質感になります",
+  steam: "♨️ 湯気が後ろからの光に浮かび、出来立て感を演出します",
+  haze: "🌫 空気中のもやで光の筋が見え、幻想的な奥行きが出ます",
+  wind: "🍃 髪や布が風でなびき、画に動きが生まれます",
+  splash: "💦 液体のしぶきが空中で止まったような躍動感が出ます",
+  rain: "🌧 逆光に照らされた雨の線が全面に光ります",
+  snow: "❄️ 雪がゆっくり舞い、冬の空気感に包まれます",
+  explosion: "💥 背景で火球と黒煙が上がる迫力のカットになります(特効技師の管理下で実施)",
+  sparks: "🎇 オレンジの火花が雨のように降り注ぎます",
+  confetti: "🎉 色とりどりの紙吹雪が舞い、お祝いのクライマックス感が出ます",
+  bokeh: "🔮 背景に丸い光のボケが散り、ロマンチックな雰囲気になります",
+  lensflare: "🌟 レンズに光が差し込み、映画のようなフレアが入ります",
+  silhouette: "👤 人物・商品は影絵(シルエット)になり、輪郭の形で見せます",
+  gel: "🎨 左右から2色のカラーライトに挟まれ、ネオンのような世界観になります",
+};
+
+function explainCut(cut) {
+  const an = analyzeLighting(cut);
+  const lines = [];
+  const silhouette = cut.options.includes("silhouette") || (an.frontPower === 0 && (an.bgPower > 0 || an.rimPower > 0));
+  const sideJa = an.keySide > 0 ? "左" : "右";
+  const otherJa = an.keySide > 0 ? "右" : "左";
+
+  if (silhouette) {
+    lines.push("💡 正面からの光がないので、被写体は真っ黒な影絵(シルエット)として写ります。表情ではなく「形」で見せるカットです。");
+  } else if (an.frontPower > 0) {
+    const ab = Math.abs(an.keyRel);
+    const dirWord = ab <= 15 ? "ほぼ正面" : ab <= 60 ? `${sideJa}ななめ前` : `ほぼ真横(${sideJa}側)`;
+    lines.push(`💡 メインの光は、カメラから見て【${dirWord}】から当たっています。→ 画面の${sideJa}側が明るく、${otherJa}側に影ができます。`);
+    lines.push(an.soft
+      ? "☁️ 光をやわらかく拡散しているので、影のフチはふんわり。肌や質感がなめらかに写ります。"
+      : "🔦 光を直接当てる硬い光なので、影のフチがくっきり。シャープでドラマチックな印象になります。");
+    lines.push(an.contrast > 0.7
+      ? "🌓 影を明るくする補助光はほぼ無し。→ 明暗差の大きい、重厚で映画的な画になります。"
+      : an.contrast > 0.35
+        ? "🌗 影はほどよく残ります。→ 立体感のある自然な仕上がりです。"
+        : "🌕 影をしっかり明るく起こしています。→ 明るくフラットで、清潔感のある画になります。");
+  } else {
+    lines.push("💡 ライトが無い/光量ゼロの状態です。ライトを置くか出力を上げてください。");
+  }
+  if (an.rimPower > 0 && !silhouette) {
+    lines.push("✨ 被写体の後ろからも光が当たっています。→ 輪郭が細く光って、背景からくっきり浮き上がります。");
+  }
+  if (an.topPower > 0 && !silhouette) {
+    lines.push("⬇️ 真上からの光もあります。→ 髪や商品の天面にハイライトが乗ります。");
+  }
+  const bgBrightJa = ["white", "bright", "day", "sky"].includes(cut.bgStyle) || an.bgPower > 60
+    ? "背景は明るく抜けます" : an.bgPower > 0 ? "背景はほどよい明るさに整えられます" : "背景は暗く落ち、被写体だけが浮かび上がります";
+  lines.push(`🖼 ${bgBrightJa}。`);
+  if (an.avgTemp <= 3800) lines.push("🔥 全体はオレンジ系の暖かい色味です(夕方・ろうそく・白熱灯のイメージ)。");
+  else if (an.avgTemp >= 7000) lines.push("🧊 全体は青系の冷たい色味です(月夜・冬・近未来のイメージ)。");
+
+  const size = SHOT_SIZES.find(s => s.id === cut.camera.shotSize) || SHOT_SIZES[2];
+  const ang = CAM_ANGLES.find(s => s.id === cut.camera.angle) || CAM_ANGLES[0];
+  const mov = CAM_MOVES.find(s => s.id === cut.camera.move) || CAM_MOVES[0];
+  const angJa = { eye: "目の高さから自然に", high: "少し上から見下ろして(小さく・客観的に見える)", low: "下からあおって(大きく・力強く見える)", birds: "真上から(地図のような構図)", dutch: "画面を斜めに傾けて(不安・スピード感)", ots: "手前の人物の肩越しに(会話の臨場感)" }[cut.camera.angle] || "";
+  lines.push(`🎥 ${size.label}で、${angJa}撮ります。カメラの動き: ${mov.label}。`);
+
+  for (const o of cut.options) {
+    if (OPTION_EFFECTS_JA[o]) lines.push(OPTION_EFFECTS_JA[o] + "。");
+  }
+  return lines;
+}
+
+/* =========================================================
  * スタジオ俯瞰図 SVG
  * ======================================================= */
 function equipGlyph(it, sub) {
@@ -209,31 +280,49 @@ function equipGlyph(it, sub) {
   let body = "";
   switch (t.shape) {
     case "subject":
-      body = `<circle class="equip-body" r="26" fill="#2c3b52" stroke="${t.color}" stroke-width="1.5"/>
+      body = `<circle class="equip-body" r="26" fill="#ffffff" stroke="${t.color}" stroke-width="1.5"/>
               <circle r="9" fill="${t.color}"/>`;
       break;
     case "camera":
       body = `<g transform="rotate(${aim})">
-                <path d="M-40,0 L-8,-16 L-8,16 Z" fill="rgba(77,163,255,.18)"/>
-                <rect class="equip-body" x="-8" y="-13" width="30" height="26" rx="4" fill="#22364e" stroke="${t.color}" stroke-width="1.5"/>
+                <path d="M-40,0 L-8,-16 L-8,16 Z" fill="rgba(47,127,224,.15)"/>
+                <rect class="equip-body" x="-8" y="-13" width="30" height="26" rx="4" fill="#ffffff" stroke="${t.color}" stroke-width="1.5"/>
                 <rect x="-16" y="-6" width="9" height="12" fill="${t.color}"/>
               </g>`;
       break;
     case "light":
       body = `<g transform="rotate(${aim})">
-                <path d="M12,-9 L${12 + Math.min(120, 60 + it.power)},-${20 + it.power * 0.25} L${12 + Math.min(120, 60 + it.power)},${20 + it.power * 0.25} L12,9 Z" fill="${t.color}" opacity="0.13"/>
-                <rect class="equip-body" x="-14" y="-12" width="26" height="24" rx="5" fill="#232834" stroke="${t.color}" stroke-width="1.5"/>
+                <path d="M12,-9 L${12 + Math.min(120, 60 + it.power)},-${20 + it.power * 0.25} L${12 + Math.min(120, 60 + it.power)},${20 + it.power * 0.25} L12,9 Z" fill="${t.color}" opacity="0.18"/>
+                <rect class="equip-body" x="-14" y="-12" width="26" height="24" rx="5" fill="#ffffff" stroke="${t.color}" stroke-width="1.5"/>
                 <circle cx="6" cy="0" r="6" fill="${t.color}"/>
               </g>`;
       break;
     case "panel":
       body = `<g transform="rotate(${aim + 90})">
-                <rect class="equip-body" x="-26" y="-5" width="52" height="10" rx="3" fill="${t.color}" opacity="0.85" stroke="#666" stroke-width="1"/>
+                <rect class="equip-body" x="-26" y="-5" width="52" height="10" rx="3" fill="${t.color}" opacity="0.9" stroke="#8a90a0" stroke-width="1"/>
+              </g>`;
+      break;
+    case "vehicle":
+      body = `<g>
+                <rect class="equip-body" x="-34" y="-16" width="68" height="32" rx="5" fill="#ffffff" stroke="${t.color}" stroke-width="2"/>
+                <rect x="14" y="-12" width="16" height="24" rx="3" fill="${t.color}" opacity="0.85"/>
+                <rect x="-30" y="-12" width="40" height="24" rx="2" fill="${t.color}" opacity="0.25"/>
+                <rect x="-26" y="-19" width="12" height="4" rx="2" fill="${t.color}"/><rect x="8" y="-19" width="12" height="4" rx="2" fill="${t.color}"/>
+                <rect x="-26" y="15" width="12" height="4" rx="2" fill="${t.color}"/><rect x="8" y="15" width="12" height="4" rx="2" fill="${t.color}"/>
+              </g>`;
+      break;
+    case "sfx":
+      body = `<g>
+                <path class="equip-body" d="${[0,45,90,135,180,225,270,315].map((a,i)=>{
+                  const r1=18, r2=8, a1=a*Math.PI/180, a2=(a+22.5)*Math.PI/180;
+                  return `${i===0?"M":"L"}${(r1*Math.cos(a1)).toFixed(1)},${(r1*Math.sin(a1)).toFixed(1)} L${(r2*Math.cos(a2)).toFixed(1)},${(r2*Math.sin(a2)).toFixed(1)}`;
+                }).join(" ")} Z" fill="${t.color}" opacity="0.85" stroke="#b03e1a" stroke-width="1.5"/>
+                <circle r="6" fill="#fff3c4"/>
               </g>`;
       break;
     case "drone":
       body = `<g>
-                <circle class="equip-body" r="15" fill="#173042" stroke="${t.color}" stroke-width="1.5"/>
+                <circle class="equip-body" r="15" fill="#ffffff" stroke="${t.color}" stroke-width="1.5"/>
                 <line x1="-20" y1="-20" x2="20" y2="20" stroke="${t.color}" stroke-width="2"/>
                 <line x1="-20" y1="20" x2="20" y2="-20" stroke="${t.color}" stroke-width="2"/>
                 <circle cx="-20" cy="-20" r="6" fill="none" stroke="${t.color}"/><circle cx="20" cy="-20" r="6" fill="none" stroke="${t.color}"/>
@@ -262,17 +351,15 @@ function renderCanvasSVG(cut, interactive) {
   const sub = cut.items.find(i => i.type === "subject") || SUBJECT_POS;
   // 床グリッド (1マス = 50cm 想定, 100px = 1m)
   let grid = "";
-  for (let x = 0; x <= 1000; x += 50) grid += `<line x1="${x}" y1="0" x2="${x}" y2="700" stroke="#1d212b" stroke-width="${x % 100 ? 0.5 : 1}"/>`;
-  for (let y = 0; y <= 700; y += 50) grid += `<line x1="0" y1="${y}" x2="1000" y2="${y}" stroke="#1d212b" stroke-width="${y % 100 ? 0.5 : 1}"/>`;
+  for (let x = 0; x <= 1000; x += 50) grid += `<line x1="${x}" y1="0" x2="${x}" y2="700" stroke="${x % 100 ? "#eceef3" : "#dfe2e9"}" stroke-width="1"/>`;
+  for (let y = 0; y <= 700; y += 50) grid += `<line x1="0" y1="${y}" x2="1000" y2="${y}" stroke="${y % 100 ? "#eceef3" : "#dfe2e9"}" stroke-width="1"/>`;
 
   const items = cut.items.map(it => equipGlyph(it, sub)).join("");
-  const sel = interactive && state.selectedItem
-    ? `` : "";
   return `${grid}
-    <text x="14" y="24" fill="#525b6e" font-size="12">グリッド 1マス = 50cm (100px = 1m) / 背景: ${esc((BG_STYLES[cut.bgStyle] || {}).en || "")}</text>
-    <line x1="0" y1="90" x2="1000" y2="90" stroke="#39445c" stroke-width="2" stroke-dasharray="8 6"/>
-    <text x="986" y="82" fill="#525b6e" font-size="11" text-anchor="end">背景 / ホリゾント</text>
-    ${items}${sel}`;
+    <text x="14" y="24" fill="#8a90a0" font-size="12">グリッド 1マス = 50cm (100px = 1m) / 背景: ${esc((BG_STYLES[cut.bgStyle] || {}).en || "")}</text>
+    <line x1="0" y1="90" x2="1000" y2="90" stroke="#c3c9d6" stroke-width="2" stroke-dasharray="8 6"/>
+    <text x="986" y="82" fill="#8a90a0" font-size="11" text-anchor="end">背景 / ホリゾント</text>
+    ${items}`;
 }
 
 /* =========================================================
@@ -329,6 +416,26 @@ function renderPreviewSVG(cut, idPrefix) {
     const hx = keySide > 0 ? 0 : W;
     bgExtra += `<polygon points="${hx},0 ${hx + keySide * 260},0 ${W / 2 + keySide * 40},${H} ${W / 2 - keySide * 120},${H}" fill="#ffffff" opacity="0.09"/>
                 <polygon points="${hx},0 ${hx + keySide * 140},0 ${W / 2 - keySide * 40},${H}" fill="#ffffff" opacity="0.07"/>`;
+  }
+  if (cut.options.includes("explosion")) {
+    // 爆発は被写体の背後に描く
+    const ex = W * 0.62, ey = H * 0.42;
+    bgExtra += `
+      <circle cx="${ex}" cy="${ey - 70}" r="46" fill="#3a3430" opacity="0.85"/>
+      <circle cx="${ex - 34}" cy="${ey - 50}" r="36" fill="#4a4038" opacity="0.8"/>
+      <circle cx="${ex + 30}" cy="${ey - 44}" r="32" fill="#443a32" opacity="0.8"/>
+      <circle cx="${ex}" cy="${ey}" r="52" fill="#e05a2a" opacity="0.95"/>
+      <circle cx="${ex - 20}" cy="${ey + 6}" r="34" fill="#f5921e" opacity="0.95"/>
+      <circle cx="${ex + 14}" cy="${ey + 10}" r="26" fill="#ffd24d"/>
+      <circle cx="${ex}" cy="${ey + 12}" r="14" fill="#fff3c4"/>
+      ${Array.from({ length: 10 }, () => {
+        const a = rand() * Math.PI * 2, r = 55 + rand() * 45;
+        return `<line x1="${ex}" y1="${ey}" x2="${ex + Math.cos(a) * r}" y2="${ey + Math.sin(a) * r * 0.7}" stroke="#f5921e" stroke-width="${1 + rand() * 2.5}" opacity="0.8"/>`;
+      }).join("")}`;
+  }
+  if (cut.options.includes("gel")) {
+    bgExtra += `<rect x="0" y="0" width="${W / 2}" height="${H}" fill="#e040c8" opacity="0.16"/>
+                <rect x="${W / 2}" y="0" width="${W / 2}" height="${H}" fill="#2a6ae8" opacity="0.16"/>`;
   }
 
   /* ---- 被写体 ---- */
@@ -428,8 +535,35 @@ function renderPreviewSVG(cut, idPrefix) {
            <circle cx="${fxX - keySide * 170}" cy="${H * 0.38}" r="6" fill="#9fd0ff" opacity="0.4"/>`;
   }
   if (cut.options.includes("wind")) {
-    fx += `<path d="M${cx - 150},${baseCy - 10} q40,-12 80,0" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.3"/>
-           <path d="M${cx - 170},${baseCy + 20} q50,-14 100,0" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.22"/>`;
+    fx += `<path d="M${cx - 150},${baseCy - 10} q40,-12 80,0" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.35"/>
+           <path d="M${cx - 170},${baseCy + 20} q50,-14 100,0" stroke="#ffffff" stroke-width="2" fill="none" opacity="0.28"/>`;
+  }
+  if (cut.options.includes("rain")) {
+    for (let i = 0; i < 34; i++) {
+      const rx = rand() * W, ry = rand() * H, len = 14 + rand() * 20;
+      fx += `<line x1="${rx}" y1="${ry}" x2="${rx - len * 0.25}" y2="${ry + len}" stroke="#dceaf5" stroke-width="1.2" opacity="${0.3 + rand() * 0.4}"/>`;
+    }
+  }
+  if (cut.options.includes("snow")) {
+    for (let i = 0; i < 40; i++) {
+      fx += `<circle cx="${rand() * W}" cy="${rand() * H}" r="${1 + rand() * 3}" fill="#ffffff" opacity="${0.4 + rand() * 0.5}"/>`;
+    }
+  }
+  if (cut.options.includes("sparks")) {
+    for (let i = 0; i < 36; i++) {
+      const sx = rand() * W, sy = rand() * H * 0.85, len = 6 + rand() * 14;
+      const c = ["#ffd24d", "#f5921e", "#ffb547"][i % 3];
+      fx += `<line x1="${sx}" y1="${sy}" x2="${sx + (rand() - 0.5) * 6}" y2="${sy + len}" stroke="${c}" stroke-width="${0.8 + rand() * 1.4}" opacity="${0.5 + rand() * 0.5}"/>`;
+    }
+    fx += `<circle cx="${W * 0.3}" cy="${H * 0.12}" r="8" fill="#fff3c4" opacity="0.9"/>
+           <circle cx="${W * 0.72}" cy="${H * 0.1}" r="8" fill="#fff3c4" opacity="0.9"/>`;
+  }
+  if (cut.options.includes("confetti")) {
+    const colors = ["#e05a7a", "#4da3ff", "#ffd24d", "#4dc98a", "#c97ae0", "#f5921e"];
+    for (let i = 0; i < 44; i++) {
+      const px = rand() * W, py = rand() * H, rot = Math.round(rand() * 360);
+      fx += `<rect x="${px}" y="${py}" width="${4 + rand() * 5}" height="${2.5 + rand() * 3}" fill="${colors[i % colors.length]}" opacity="${0.6 + rand() * 0.4}" transform="rotate(${rot} ${px} ${py})"/>`;
+    }
   }
 
   /* ---- フレームオーバーレイ ---- */
@@ -503,6 +637,7 @@ function renderCanvas() {
 
 function renderPreview() {
   byId("previewWrap").innerHTML = renderPreviewSVG(activeCut(), "live");
+  byId("explainList").innerHTML = explainCut(activeCut()).map(l => `<li>${esc(l)}</li>`).join("");
 }
 
 function renderPrompt() {
@@ -542,13 +677,14 @@ function renderInspector() {
   if (selItem) {
     const t = EQUIP_TYPES[selItem.type];
     const isLight = LIGHT_TYPES.includes(selItem.type);
+    const hasHeight = !VEHICLE_TYPES.includes(selItem.type) && !["village", "sound", "subject", "camera"].includes(selItem.type);
     const distM = (Math.hypot(selItem.x - SUBJECT_POS.x, selItem.y - SUBJECT_POS.y) / 100).toFixed(1);
     itemSection = `
       <div class="insp-section">
         <h3>選択中の機材: ${esc(t.label)}</h3>
-        <div class="field-row3"><label>高さ</label>
+        ${hasHeight ? `<div class="field-row3"><label>高さ</label>
           <input type="range" id="itHeight" min="10" max="${selItem.type === "drone" || selItem.type === "sun" ? 5000 : 450}" value="${selItem.height}">
-          <span class="range-val">${selItem.height}cm</span></div>
+          <span class="range-val">${selItem.height}cm</span></div>` : ""}
         ${isLight ? `
         <div class="field-row3"><label>出力</label>
           <input type="range" id="itPower" min="0" max="100" value="${selItem.power}">
@@ -705,11 +841,12 @@ function equipTableRows(cut) {
     const distM = (Math.hypot(it.x - SUBJECT_POS.x, it.y - SUBJECT_POS.y) / 100).toFixed(1);
     const rel = an.lights.find(l => l.item.id === it.id)?.rel;
     const isLight = LIGHT_TYPES.includes(it.type);
+    const hasHeight = !VEHICLE_TYPES.includes(it.type) && !["village", "sound"].includes(it.type);
     return `<tr>
       <td>${esc(t.label)}</td>
       <td>${rel !== undefined ? esc(relToJa(rel)) : "—"}</td>
       <td>${distM}m</td>
-      <td>${it.height}cm</td>
+      <td>${hasHeight ? it.height + "cm" : "—"}</td>
       <td>${isLight ? it.power + "%" : "—"}</td>
       <td>${isLight && it.power > 0 ? it.colorTemp + "K" : "—"}</td>
       <td>${isLight ? esc(it.modifier) : "—"}</td>
@@ -732,13 +869,16 @@ function buildInstructionDoc() {
       <div class="two-col">
         <figure>
           <figcaption>スタジオ配置図 (俯瞰) — グリッド1マス=50cm</figcaption>
-          <svg viewBox="0 0 1000 700" style="background:#14161b;border-radius:6px">${renderCanvasSVG(cut, false)}</svg>
+          <svg viewBox="0 0 1000 700" style="background:#fbfcfd;border-radius:6px">${renderCanvasSVG(cut, false)}</svg>
         </figure>
         <figure>
           <figcaption>想定カットイメージ</figcaption>
           ${renderPreviewSVG(cut, "doc" + i)}
         </figure>
       </div>
+
+      <h3>この配置だとこう写る (かんたん解説)</h3>
+      <ul class="ja-summary">${explainCut(cut).map(l => `<li>${esc(l)}</li>`).join("")}</ul>
 
       <h3>ライティング指示</h3>
       <ul class="ja-summary">${jaLines.map(l => `<li>${esc(l)}</li>`).join("")}</ul>
@@ -833,7 +973,7 @@ function exportDoc() {
 /* ---------- SVG画像 / JSON 書き出し ---------- */
 function downloadPlanSVG() {
   const cut = activeCut();
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" style="background:#14161b">${renderCanvasSVG(cut, false)}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" style="background:#fbfcfd">${renderCanvasSVG(cut, false)}</svg>`;
   const blob = new Blob([svg], { type: "image/svg+xml" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
