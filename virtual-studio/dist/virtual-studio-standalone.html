@@ -887,6 +887,7 @@ input[type="range"]::-moz-range-thumb {
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 6.5A2 2 0 0 1 5.5 4.5h4l2 2.5h7a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/></symbol>
     <symbol id="i-dna" viewBox="0 0 24 24"><path d="M7 3c0 6 10 6 10 12M17 3c0 6-10 6-10 12M7 15c0 3 .5 4.5 1.5 6M17 15c0 3-.5 4.5-1.5 6M8.2 6.5h7.6M8.2 11.5h7.6M8 18h8"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></symbol>
+    <symbol id="i-edl" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M3.5 9.5h17M8.5 9.5V19M8.5 5v2M14 9.5V19M14 5v2"/></symbol>
   </defs>
 </svg>
 
@@ -931,6 +932,9 @@ input[type="range"]::-moz-range-thumb {
     </button>
     <button id="btnExportDmx" class="icon-btn" title="DMXキューシートを書き出す (パッチ表+カット毎のキュー)" aria-label="DMXキューシート">
       <svg class="ic"><use href="#i-dmx"/></svg>
+    </button>
+    <button id="btnExportEdl" class="icon-btn" title="編集リスト (EDL) を書き出す — 採用テイク・イン/アウト点・J/Lカット・CMX3600" aria-label="編集リスト (EDL)">
+      <svg class="ic"><use href="#i-edl"/></svg>
     </button>
     <button id="btnExportBoard" class="btn" title="絵コンテを書き出す (1ページ6コマ / 印刷・PDF)">
       <svg class="ic"><use href="#i-board"/></svg><span>絵コンテ</span>
@@ -1084,6 +1088,8 @@ input[type="range"]::-moz-range-thumb {
     </select>
     <button id="btnDnaAnnotate" class="btn small"><svg class="ic"><use href="#i-plus"/></svg> 参照から作成 (手動注釈)</button>
     <button id="btnDnaExtract" class="btn small" title="現在のカット割りからスタイルDNAを自動抽出します (推定値)"><svg class="ic"><use href="#i-dna"/></svg> プロジェクトから抽出</button>
+    <button id="btnDnaMedia" class="btn small" title="参照の画像/動画ファイルを解析してスタイルDNAを抽出します — ブラウザ内解析のみ・ファイルは送信されません (推定値)"><svg class="ic"><use href="#i-image"/></svg> 画像/動画から抽出</button>
+    <input type="file" id="dnaMediaInput" accept="image/*,video/*" hidden>
     <span id="dnaMsg" class="insp-hint"></span>
   </div>
   <!-- V8 Phase 2: 参照作品の手動注釈 → カスタムDNA -->
@@ -1428,6 +1434,16 @@ const TRACK_SHAPES = ["直線", "カーブ (S字/緩弧)", "円弧 (被写体中
 
 /* ---------- 音声収録 ---------- */
 const AUDIO_MODES = ["同録 (ガンマイク+ブーム)", "ラベリア (ピンマイク)", "同録+ラベリア (2系統)", "アンビエンスのみ", "MOS (現場無音・後付け)"];
+
+/* ---------- 音の編集点 (V6 EditDecision — J/Lカット) ---------- */
+const AUDIO_EDITS = [
+  { id: "none", label: "同時 (ストレート)",
+    note: "映像と音を同じ点で切る。基本形。" },
+  { id: "jcut", label: "Jカット (音が先行)",
+    note: "次カットの音声を映像より先に始める。会話シーンの定番。自然な流れを作る。" },
+  { id: "lcut", label: "Lカット (音が残る)",
+    note: "前カットの音声を次の映像に持ち越す。リアクションを見せながら台詞を聞かせる。" },
+];
 
 /* ---------- 天候・時間帯 (主に屋外) ---------- */
 const WEATHERS = [
@@ -6417,6 +6433,11 @@ function ensureCameraDefaults(cut) {
   if (cut.takes == null) cut.takes = 3;
   if (cut.setupMin == null) cut.setupMin = 30;
   if (!cut.transition) cut.transition = "cut";
+  /* V6 EditDecision: 採用テイク・素材イン点 (プリロール込み)・音の編集点 */
+  if (cut.take == null) cut.take = 1;
+  if (cut.srcInSec == null) cut.srcInSec = 2;
+  if (!cut.audioEdit) cut.audioEdit = "none";
+  if (cut.audioOverlapSec == null) cut.audioOverlapSec = 1;
   const c = cut.camera;
   if (!c.moveSpeed) c.moveSpeed = "normal";
   if (!c.endShotSize) c.endShotSize = "same";
@@ -7691,6 +7712,21 @@ function renderInspector() {
         return t && state.activeCut < state.cuts.length - 1 ? `<div class="insp-hint">🎬 ${esc(t.note)}</div>` : "";
       })()}
     </div>
+    ${cut.kind !== "still" ? `
+    <div class="insp-section">
+      <h3>編集 (EditDecision)</h3>
+      ${fieldRow("採用テイク", `<input type="number" id="cTake" value="${cut.take}" min="1" max="50">`)}
+      ${fieldRow("素材イン点(秒)", `<input type="number" id="cSrcIn" value="${cut.srcInSec}" min="0" max="600" step="0.5">`)}
+      <div class="insp-hint">録画開始からアクション頭までのプリロール。EDLの素材INに反映されます</div>
+      ${state.activeCut < state.cuts.length - 1 ? fieldRow("音の繋ぎ", selectHtml("cAudioEdit", AUDIO_EDITS, cut.audioEdit)) : ""}
+      ${cut.audioEdit !== "none" && state.activeCut < state.cuts.length - 1
+        ? fieldRow("音のズレ(秒)", `<input type="number" id="cAudioOv" value="${cut.audioOverlapSec}" min="0.5" max="5" step="0.5">`)
+        : ""}
+      ${(() => {
+        const ae = AUDIO_EDITS.find(x => x.id === cut.audioEdit);
+        return ae && ae.id !== "none" && state.activeCut < state.cuts.length - 1 ? `<div class="insp-hint">🔊 ${esc(ae.note)}</div>` : "";
+      })()}
+    </div>` : ""}
     <div class="insp-section">
       <h3>カメラ & レンズ</h3>
       ${fieldRow("ボディ", selectHtml("cBody", CAMERA_BODIES, cut.camera.body))}
@@ -7780,6 +7816,10 @@ function renderInspector() {
   bind("cSetup", e => { cut.setupMin = +e.target.value; });
   bind("cDur", e => { cut.duration = +e.target.value; });
   bind("cTrans", e => { cut.transition = e.target.value; renderCutStrip(); renderPrompt(); renderInspector(); });
+  bind("cTake", e => { cut.take = Math.max(1, +e.target.value || 1); });
+  bind("cSrcIn", e => { cut.srcInSec = Math.max(0, +e.target.value || 0); });
+  bind("cAudioEdit", e => { cut.audioEdit = e.target.value; renderInspector(); });
+  bind("cAudioOv", e => { cut.audioOverlapSec = Math.max(0.5, +e.target.value || 1); });
   bind("cShot", e => { cut.camera.shotSize = e.target.value; refresh(); });
   bind("cAngle", e => { cut.camera.angle = e.target.value; refresh(); });
   bind("cMove", e => {
@@ -8629,6 +8669,115 @@ function exportSchedule() {
 }
 
 /* =========================================================
+ * 編集リスト (V6 EditDecision → コンフォーム)
+ * 採用テイク・素材イン点・J/Lカットを CSV表 + CMX3600風EDL で出力。
+ * タイムコードはカットのfps設定 (既定24) の Non-Drop。
+ * ======================================================= */
+function buildEdlDoc() {
+  const vcuts = state.cuts.filter(c => c.kind !== "still");
+  const stills = state.cuts.length - vcuts.length;
+  const fps = parseFps(vcuts[0] ? vcuts[0].camera.fps : "24fps") || 24;
+  const tc = (sec) => {
+    const f = Math.round(sec * fps);
+    const h = Math.floor(f / (3600 * fps)), m = Math.floor(f / (60 * fps)) % 60,
+      s = Math.floor(f / fps) % 60, fr = f % fps;
+    return [h, m, s].map(v => String(v).padStart(2, "0")).join(":") + ":" + String(fr).padStart(2, "0");
+  };
+  const DISSOLVES = { dissolve: 1.5, fadeout: 2, whiteout: 1 };
+
+  let rec = 0;
+  const events = vcuts.map((cut, i) => {
+    const dur = cut.duration || 5;
+    const prev = i > 0 ? vcuts[i - 1] : null;
+    const transIn = prev ? prev.transition : null;       // このカットへの入り方 = 前カットの「次への繋ぎ」
+    const dSec = DISSOLVES[transIn] || 0;
+    const reel = `C${state.cuts.indexOf(cut) + 1}TK${cut.take || 1}`;
+    const ev = {
+      no: i + 1, cut, reel, dur,
+      srcIn: cut.srcInSec || 0, srcOut: (cut.srcInSec || 0) + dur,
+      recIn: rec, recOut: rec + dur,
+      transIn, dFrames: dSec ? Math.round(dSec * fps) : 0,
+      audioEdit: prev ? prev.audioEdit : "none",
+      audioOv: prev ? prev.audioOverlapSec : 0,
+    };
+    rec += dur;
+    return ev;
+  });
+
+  const edlLines = [`TITLE: ${state.projectTitle.toUpperCase()}`, "FCM: NON-DROP FRAME", ""];
+  events.forEach(ev => {
+    const n = String(ev.no).padStart(3, "0");
+    const trans = ev.dFrames ? `D    ${String(ev.dFrames).padStart(3, "0")}` : "C        ";
+    edlLines.push(`${n}  ${ev.reel.padEnd(8)} V     ${trans} ${tc(ev.srcIn)} ${tc(ev.srcOut)} ${tc(ev.recIn)} ${tc(ev.recOut)}`);
+    edlLines.push(`* FROM CLIP NAME: C${state.cuts.indexOf(ev.cut) + 1} ${ev.cut.name}`);
+    if (ev.transIn && ev.transIn !== "cut" && !ev.dFrames) {
+      const t = TRANSITIONS.find(x => x.id === ev.transIn);
+      edlLines.push(`* TRANSITION NOTE: ${t ? t.en.toUpperCase() : ev.transIn}`);
+    }
+    if (ev.audioEdit === "jcut") edlLines.push(`* AUDIO: J-CUT — このカットの音声を ${ev.audioOv}s 先行させる`);
+    if (ev.audioEdit === "lcut") edlLines.push(`* AUDIO: L-CUT — 前カットの音声を ${ev.audioOv}s 持ち越す`);
+    edlLines.push("");
+  });
+  const edl = edlLines.join("\n");
+
+  const rows = events.map(ev => {
+    const idx = state.cuts.indexOf(ev.cut);
+    const t = ev.transIn ? TRANSITIONS.find(x => x.id === ev.transIn) : null;
+    const ae = AUDIO_EDITS.find(x => x.id === ev.audioEdit);
+    return `<tr>
+      <td>${ev.no}</td>
+      <td><b>C${idx + 1}　${esc(ev.cut.name)}</b></td>
+      <td>TK${ev.cut.take || 1} / 全${ev.cut.takes || 3}</td>
+      <td>${tc(ev.srcIn)}<br>${tc(ev.srcOut)}</td>
+      <td>${tc(ev.recIn)}<br>${tc(ev.recOut)}</td>
+      <td>${ev.dur}s</td>
+      <td>${ev.no === 1 ? "—" : esc(t ? t.label : "カット")}${ev.dFrames ? `<br><small>${ev.dFrames}f</small>` : ""}</td>
+      <td>${ev.no === 1 || !ae || ae.id === "none" ? "—" : `${esc(ae.label)}<br><small>${ev.audioOv}s</small>`}</td>
+    </tr>`;
+  }).join("");
+
+  return `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+  <title>編集リスト (EDL) — ${esc(state.projectTitle)}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; color: #1a1d24; background: #fff; padding: 24px; }
+    h1 { font-size: 20px; } h2 { font-size: 14px; margin: 20px 0 8px; }
+    .meta { color: #667; font-size: 11px; margin: 4px 0 12px; }
+    .toolbar { margin-bottom: 16px; display: flex; gap: 8px; }
+    .toolbar button, .toolbar a { padding: 10px 22px; font-size: 14px; cursor: pointer; background: #1a1d24; color: #fff; border: 0; border-radius: 6px; text-decoration: none; display: inline-block; }
+    table { border-collapse: collapse; width: 100%; font-size: 12px; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; vertical-align: top; font-variant-numeric: tabular-nums; }
+    th { background: #eef4ff; font-size: 11px; }
+    small { color: #667; }
+    pre { background: #14161a; color: #d7e0ea; font: 11px/1.6 ui-monospace, "SF Mono", Menlo, monospace; padding: 14px 16px; border-radius: 8px; overflow-x: auto; margin-top: 8px; }
+    ul { padding-left: 20px; font-size: 12px; line-height: 1.7; margin-top: 10px; }
+    @media print { .toolbar { display: none; } body { padding: 0; } pre { background: #f2f4f7; color: #1a1d24; } }
+  </style></head><body>
+    <h1>編集リスト (EditDecision) — ${esc(state.projectTitle)}</h1>
+    <div class="meta">${fps}fps Non-Drop ｜ ビデオカット ${vcuts.length}${stills ? ` (スチール${stills}は対象外)` : ""} ｜ 合計 ${tc(rec)} ｜ Generated by Virtual Studio</div>
+    <div class="toolbar">
+      <button onclick="window.print()">🖨 印刷 / PDFに保存</button>
+      <a download="${esc(state.projectTitle)}.edl" href="data:text/plain;charset=utf-8,${encodeURIComponent(edl)}">⬇ .edl をダウンロード (CMX3600)</a>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>カット</th><th>採用テイク</th><th>素材 IN/OUT</th><th>レコード IN/OUT</th><th>尺</th><th>入りの繋ぎ</th><th>音の繋ぎ</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <h2>CMX3600 EDL</h2>
+    <pre>${esc(edl)}</pre>
+    <ul>
+      <li>素材INは各カットの「素材イン点(秒)」設定 (録画開始→アクション頭のプリロール)。テイクを変えたら撮影時のメモに合わせて更新すること</li>
+      <li>ディゾルブ系は D + フレーム数で表現 (ディゾルブ1.5s / フェード2s / ホワイトアウト1s)。マッチカット等はコメント行で指示</li>
+      <li>J/Lカットは音声トラックのトリム指示としてコメント行に出力。NLEに読み込んだ後、音声を指定秒ずらすこと</li>
+    </ul>
+  </body></html>`;
+}
+
+function exportEdl() {
+  openDocWindow(buildEdlDoc(), "edit-decision-list.html", "編集リスト (EDL)");
+}
+
+/* =========================================================
  * Canonical Shot JSON エクスポート (CineOS V3 ベンダー中立形式)
  * 座標系は cineos/CLAUDE.md §4 に準拠:
  *   +X=被写体の右 / +Y=被写体の後ろ / -Y=カメラ側 / +Z=上 (SI単位)
@@ -8717,6 +8866,12 @@ function cutToCanonicalShot(cut, i, projectId) {
       },
     },
     transition_out: cut.transition,
+    edit_decision: cut.kind === "still" ? null : {
+      take: cut.take || 1,
+      src_in_s: cut.srcInSec || 0,
+      audio_edit: cut.audioEdit || "none",
+      audio_overlap_s: cut.audioEdit && cut.audioEdit !== "none" ? cut.audioOverlapSec : null,
+    },
     feasibility_flags: evaluateFeasibility(cut).map(w => ({ level: w.lv, message: w.t })),
     safety_classification: maxSafety,
     equipment_capabilities: recommendForCut(cut).map(r => ({ role: r.role, need: r.need, example_skus: r.examples })),
@@ -8974,6 +9129,139 @@ function extractProjectDNA() {
     },
   };
 }
+/* =========================================================
+ * Phase 3 ステップ1: 参照メディア (画像/動画) からのDNA抽出
+ * ブラウザ内解析のみ — ファイルはどこにも送信されない。
+ * 輝度分布/コントラスト/色温度/彩度、動画はさらに
+ * フレーム差分によるカット検出 (平均ショット尺) とモーション量を推定する。
+ * ======================================================= */
+function frameStats(cx, w, h) {
+  const d = cx.getImageData(0, 0, w, h).data;
+  const n = w * h;
+  const lums = new Float32Array(n);
+  let rSum = 0, bSum = 0, satSum = 0;
+  for (let i = 0; i < n; i++) {
+    const r = d[i * 4] / 255, g = d[i * 4 + 1] / 255, b = d[i * 4 + 2] / 255;
+    rSum += r; bSum += b;
+    /* 彩度は絶対クロマ (max-min)。相対彩度は暗部ノイズで暴れるため使わない */
+    satSum += Math.max(r, g, b) - Math.min(r, g, b);
+    lums[i] = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+  const sorted = Float32Array.from(lums).sort();
+  const pct = q => sorted[Math.min(n - 1, Math.floor(q * n))];
+  let mean = 0;
+  for (let i = 0; i < n; i++) mean += lums[i];
+  return {
+    mean: mean / n,
+    contrast: pct(0.95) - pct(0.05),   // 輝度レンジ (0-1)
+    warmth: (rSum - bSum) / n,         // 正=暖色寄り / 負=寒色寄り
+    sat: satSum / n,
+    lums,
+  };
+}
+
+function lumaDiff(a, b) {
+  let s = 0;
+  for (let i = 0; i < a.length; i++) s += Math.abs(a[i] - b[i]);
+  return s / a.length;
+}
+
+async function extractMediaDNA(file) {
+  const isVideo = (file.type || "").startsWith("video");
+  const W = 96, H = 54;
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const cx = cv.getContext("2d", { willReadFrequently: true });
+  const frames = [];
+  let avgShotSec = null, motion = 0, shotCount = 1, videoDur = 0;
+
+  if (isVideo) {
+    const url = URL.createObjectURL(file);
+    try {
+      const v = document.createElement("video");
+      v.muted = true; v.preload = "auto"; v.src = url;
+      await new Promise((res, rej) => {
+        v.onloadedmetadata = res;
+        v.onerror = () => rej(new Error("動画を読み込めませんでした (ブラウザ非対応のコーデックの可能性)"));
+      });
+      videoDur = Math.min(v.duration || 10, 180);
+      const N = Math.min(24, Math.max(8, Math.round(videoDur)));
+      let prev = null, cutsDetected = 0;
+      const moves = [];
+      for (let k = 0; k < N; k++) {
+        await new Promise(res => { v.onseeked = res; v.currentTime = (videoDur * (k + 0.5)) / N; });
+        cx.drawImage(v, 0, 0, W, H);
+        const st = frameStats(cx, W, H);
+        frames.push(st);
+        if (prev) {
+          const df = lumaDiff(prev.lums, st.lums);
+          if (df > 0.18) cutsDetected++;   // 大きな画変わり=カット点とみなす
+          else moves.push(df);              // 同ショット内の変化=モーション量
+        }
+        prev = st;
+      }
+      motion = moves.length ? moves.reduce((a, b) => a + b, 0) / moves.length : 0;
+      shotCount = cutsDetected + 1;
+      avgShotSec = videoDur / shotCount;
+    } finally { URL.revokeObjectURL(url); }
+  } else {
+    const bmp = await createImageBitmap(file);
+    cx.drawImage(bmp, 0, 0, W, H);
+    frames.push(frameStats(cx, W, H));
+  }
+
+  const avg = k => frames.reduce((a, f) => a + f[k], 0) / frames.length;
+  const meanLum = avg("mean"), contrast = avg("contrast"), warmth = avg("warmth"), sat = avg("sat");
+
+  /* 解析値 → 撮影変数へのマッピング (すべて推定値) */
+  /* 色被り (暖/寒) は彩度の高低より優先して判定する */
+  const look = sat < 0.02 ? "mono" : sat < 0.06 ? "bleach"
+    : warmth > 0.06 ? "filmwarm" : warmth < -0.05 ? "tealorange"
+    : sat > 0.28 ? "vivid" : "natural";
+  const fillScale = meanLum > 0.6 ? 1.3 : meanLum < 0.32 ? 0.35 : contrast > 0.6 ? 0.7 : 1.0;
+  const contrastLabel = contrast > 0.65 ? "高" : contrast > 0.4 ? "中" : "低";
+  const keyLabel = meanLum > 0.6 ? "ハイキー" : meanLum < 0.32 ? "ローキー" : "ミドルキー";
+  const moveSpeed = !isVideo ? "normal"
+    : motion > 0.09 ? "fast" : motion > 0.045 ? "normal" : motion > 0.015 ? "slow" : "veryslow";
+  const durationMul = avgShotSec != null ? Math.max(0.4, Math.min(2, avgShotSec / 5)) : 1;
+
+  const tokens = [
+    meanLum > 0.6 ? "bright high-key exposure" : meanLum < 0.32 ? "dark low-key mood" : null,
+    contrast > 0.65 ? "high contrast lighting" : contrast < 0.4 ? "soft flat lighting" : null,
+    look === "filmwarm" ? "warm color palette" : look === "tealorange" ? "cool teal-leaning palette"
+      : look === "mono" ? "black and white" : look === "vivid" ? "punchy saturated colors" : null,
+    isVideo ? (moveSpeed === "fast" ? "energetic camera movement" : moveSpeed !== "normal" ? "slow deliberate camera movement" : null) : null,
+    isVideo && avgShotSec != null && avgShotSec < 3 ? "quick rhythmic cutting" : null,
+  ].filter(Boolean);
+
+  const base = file.name.replace(/\.[^.]+$/, "");
+  return {
+    id: "media-" + Date.now(),
+    name: `${base} のDNA (メディア解析)`,
+    family: "メディア抽出",
+    keywords: [base, keyLabel, `コントラスト${contrastLabel}`,
+      look === "filmwarm" ? "暖色" : look === "tealorange" ? "寒色" : null].filter(Boolean),
+    why: `${isVideo ? `動画${Math.round(videoDur)}s (検出ショット${shotCount}・平均${avgShotSec.toFixed(1)}s)` : "静止画"}をブラウザ内解析。`
+      + `${keyLabel} / コントラスト${contrastLabel} / ${warmth > 0.06 ? "暖色寄り" : warmth < -0.05 ? "寒色寄り" : "色温度ニュートラル"} / 彩度${sat > 0.28 ? "高" : sat < 0.06 ? "低" : "中"}`
+      + `${isVideo ? ` / モーション${moveSpeed === "fast" ? "速い" : moveSpeed === "normal" ? "標準" : "ゆっくり"}` : ""}`,
+    dims: {
+      editorial: { durationMul, transition: "cut", pace: "解析値" },
+      camera: {},   // 焦点距離/絞りは画からは判定しない (推定しない=空)
+      lighting: { fillScale, rimBoost: contrast > 0.65 ? 1.3 : 1.0, contrast: contrastLabel },
+      color: { look },
+      movement: isVideo ? { moveSpeed } : {},
+    },
+    tokens,
+    avoid: [],
+    provenance: {
+      source: file.name, source_type: "user_media",
+      extraction_method: "auto_from_media", annotator: "model",
+      confidence: "estimate", // §4: 画素統計からの推定であり実測ではない
+      date: new Date().toISOString().slice(0, 10),
+    },
+  };
+}
+
 const mixWeights = { editorial: 0.5, camera: 0.5, lighting: 0.5, color: 0.5, movement: 0.5 };
 const MIX_DIMS = [["editorial", "編集リズム"], ["camera", "カメラ/レンズ"], ["lighting", "ライティング"], ["color", "カラー"], ["movement", "ムーブ"]];
 
@@ -9075,6 +9363,21 @@ function setupDnaPage() {
     state.customDNA.push(dna);
     byId("dnaMsg").innerHTML = `✓ <b>${esc(dna.name)}</b> を抽出しました (推定値・来歴付き)。他プロジェクトを開いてから適用すると、このスタイルを移植できます`;
     renderDnaPage();
+  });
+  byId("btnDnaMedia").addEventListener("click", () => byId("dnaMediaInput").click());
+  byId("dnaMediaInput").addEventListener("change", async e => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    byId("dnaMsg").textContent = "解析中… (ブラウザ内で完結します。ファイルは外部に送信されません)";
+    try {
+      const dna = await extractMediaDNA(file);
+      state.customDNA.push(dna);
+      byId("dnaMsg").innerHTML = `✓ <b>${esc(dna.name)}</b> を抽出しました — ${esc(dna.why)}`;
+      renderDnaPage();
+    } catch (err) {
+      byId("dnaMsg").textContent = "⚠️ 解析できませんでした: " + err.message;
+    }
   });
   byId("btnAnnotClose").addEventListener("click", () => { byId("dnaAnnotateForm").hidden = true; });
   byId("btnAnnotSave").addEventListener("click", () => {
@@ -9272,6 +9575,12 @@ function cutFromCanonicalShot(shot) {
   if (P.audio?.plan) cut.audio = P.audio.plan;
   if (Array.isArray(P.fx_options)) cut.options = P.fx_options.filter(o => SHOT_OPTIONS.some(s => s.id === o));
   cut.transition = shot.transition_out || "cut";
+  if (shot.edit_decision) {
+    cut.take = shot.edit_decision.take || 1;
+    cut.srcInSec = shot.edit_decision.src_in_s || 0;
+    cut.audioEdit = shot.edit_decision.audio_edit || "none";
+    if (shot.edit_decision.audio_overlap_s != null) cut.audioOverlapSec = shot.edit_decision.audio_overlap_s;
+  }
   if (P.logistics) { cut.takes = P.logistics.estimated_takes ?? cut.takes; cut.setupMin = P.logistics.setup_min ?? cut.setupMin; }
 
   const c = P.camera || {};
@@ -9418,6 +9727,7 @@ function setupHeader() {
   byId("btnExportCanonical").addEventListener("click", exportCanonicalJSON);
   byId("btnExportDmx").addEventListener("click", exportDmx);
   byId("btnExportSchedule").addEventListener("click", exportSchedule);
+  byId("btnExportEdl").addEventListener("click", exportEdl);
 
   // プロンプトモデル (方言) 切り替え
   const pm = byId("promptModelSelect");

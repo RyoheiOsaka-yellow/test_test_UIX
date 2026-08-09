@@ -40,6 +40,7 @@
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 6.5A2 2 0 0 1 5.5 4.5h4l2 2.5h7a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/></symbol>
     <symbol id="i-dna" viewBox="0 0 24 24"><path d="M7 3c0 6 10 6 10 12M17 3c0 6-10 6-10 12M7 15c0 3 .5 4.5 1.5 6M17 15c0 3-.5 4.5-1.5 6M8.2 6.5h7.6M8.2 11.5h7.6M8 18h8"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></symbol>
+    <symbol id="i-edl" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M3.5 9.5h17M8.5 9.5V19M8.5 5v2M14 9.5V19M14 5v2"/></symbol>
   </defs>
 </svg>
 
@@ -84,6 +85,9 @@
     </button>
     <button id="btnExportDmx" class="icon-btn" title="DMXキューシートを書き出す (パッチ表+カット毎のキュー)" aria-label="DMXキューシート">
       <svg class="ic"><use href="#i-dmx"/></svg>
+    </button>
+    <button id="btnExportEdl" class="icon-btn" title="編集リスト (EDL) を書き出す — 採用テイク・イン/アウト点・J/Lカット・CMX3600" aria-label="編集リスト (EDL)">
+      <svg class="ic"><use href="#i-edl"/></svg>
     </button>
     <button id="btnExportBoard" class="btn" title="絵コンテを書き出す (1ページ6コマ / 印刷・PDF)">
       <svg class="ic"><use href="#i-board"/></svg><span>絵コンテ</span>
@@ -237,6 +241,8 @@
     </select>
     <button id="btnDnaAnnotate" class="btn small"><svg class="ic"><use href="#i-plus"/></svg> 参照から作成 (手動注釈)</button>
     <button id="btnDnaExtract" class="btn small" title="現在のカット割りからスタイルDNAを自動抽出します (推定値)"><svg class="ic"><use href="#i-dna"/></svg> プロジェクトから抽出</button>
+    <button id="btnDnaMedia" class="btn small" title="参照の画像/動画ファイルを解析してスタイルDNAを抽出します — ブラウザ内解析のみ・ファイルは送信されません (推定値)"><svg class="ic"><use href="#i-image"/></svg> 画像/動画から抽出</button>
+    <input type="file" id="dnaMediaInput" accept="image/*,video/*" hidden>
     <span id="dnaMsg" class="insp-hint"></span>
   </div>
   <!-- V8 Phase 2: 参照作品の手動注釈 → カスタムDNA -->
