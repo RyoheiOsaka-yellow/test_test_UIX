@@ -38,6 +38,7 @@
     <symbol id="i-back" viewBox="0 0 24 24"><path d="M14.5 5.5 8 12l6.5 6.5"/></symbol>
     <symbol id="i-printer" viewBox="0 0 24 24"><path d="M7 8V4.5h10V8M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 17h-2"/><rect x="7" y="14" width="10" height="5.5" rx="1"/></symbol>
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 6.5A2 2 0 0 1 5.5 4.5h4l2 2.5h7a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/></symbol>
+    <symbol id="i-dna" viewBox="0 0 24 24"><path d="M7 3c0 6 10 6 10 12M17 3c0 6-10 6-10 12M7 15c0 3 .5 4.5 1.5 6M17 15c0 3-.5 4.5-1.5 6M8.2 6.5h7.6M8.2 11.5h7.6M8 18h8"/></symbol>
   </defs>
 </svg>
 
@@ -55,6 +56,9 @@
   <div class="header-actions">
     <button id="btnProjPage" class="icon-btn" title="プロジェクト (保存・切替)" aria-label="プロジェクト">
       <svg class="ic"><use href="#i-folder"/></svg>
+    </button>
+    <button id="btnDnaPage" class="icon-btn" title="Pattern DNA (スタイルの検索・ブレンド・適用)" aria-label="Pattern DNA">
+      <svg class="ic"><use href="#i-dna"/></svg>
     </button>
     <button id="btnEquipPage" class="icon-btn" title="機材データベース (131機種)" aria-label="機材データベース">
       <svg class="ic"><use href="#i-db"/></svg>
@@ -209,6 +213,35 @@
   </aside>
 </main>
 
+<!-- Pattern DNA ページ (CineOS V8: スタイルの検索・ミックス・適用) -->
+<div id="dnaOverlay" class="overlay" hidden>
+  <div class="overlay-bar">
+    <button id="btnDnaBack" class="btn small"><svg class="ic"><use href="#i-back"/></svg> スタジオに戻る</button>
+    <span class="panel-title">Pattern DNA <small>参照作品の「なぜ効くか」を撮影変数として適用 (V8)</small></span>
+    <div class="search-field overlay-search">
+      <svg class="ic"><use href="#i-search"/></svg>
+      <input type="search" id="dnaSearch" placeholder="言葉で検索 (例: 高級, 爽やか, Appleっぽい, 90年代レトロ)">
+    </div>
+  </div>
+  <div id="dnaApplyBar">
+    <span class="panel-title small">適用範囲</span>
+    <select id="dnaScope">
+      <option value="current">現在のカットのみ</option>
+      <option value="all">全カット</option>
+    </select>
+    <span id="dnaMsg" class="insp-hint"></span>
+  </div>
+  <div id="dnaMixer" hidden>
+    <div class="mixer-head">
+      <span class="panel-title small">DNAミキサー — <b id="mixA"></b> (左) × <b id="mixB"></b> (右)</span>
+      <button id="btnMixApply" class="btn small primary">ミックスを適用</button>
+      <button id="btnMixClear" class="icon-btn small" aria-label="ミキサーを閉じる"><svg class="ic"><use href="#i-close"/></svg></button>
+    </div>
+    <div id="mixSliders"></div>
+  </div>
+  <div id="dnaGrid"></div>
+</div>
+
 <!-- プロジェクトページ (ブラウザ内保存・切替) -->
 <div id="projOverlay" class="overlay" hidden>
   <div class="overlay-bar">
@@ -256,6 +289,7 @@
 <script src="js/data.js"></script>
 <script src="js/equipment_db.js"></script>
 <script src="js/engine.js"></script>
+<script src="js/dna.js"></script>
 <script src="js/intent.js"></script>
 <script src="js/studio3d.js"></script>
 <script src="js/app.js"></script>

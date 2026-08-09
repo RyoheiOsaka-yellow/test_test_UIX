@@ -135,6 +135,15 @@ function parseIntent(text) {
   if ((ev = has(/モノクロ|白黒/))) { R.look = "mono"; note("ルック", "モノクロ", ev); }
   if ((ev = has(/ノスタルジ|レトロ|ヴィンテージ|回想/))) { R.look = "filmwarm"; note("ルック", "フィルム暖色", ev); }
 
+  /* ---------- Pattern DNA 検出 (V8) ---------- */
+  if (typeof searchDNA === "function") {
+    const dnaHits = searchDNA(t);
+    if (dnaHits.length) {
+      R.dnaId = dnaHits[0].dna.id;
+      note("Pattern DNA", dnaHits[0].dna.name, dnaHits[0].matched[0]);
+    }
+  }
+
   /* ---------- ベース技法プリセットの決定 (優先度順) ---------- */
   const pick = (id, why, evd) => { if (!R.presetId) { R.presetId = id; R.presetWhy = why; note("ベース技法", why, evd || "-"); } };
   if (has(/爆発|爆炎|火球/)) pick("sfx-explosion", "爆発バック (パイロ)", has(/爆発|爆炎|火球/));
@@ -204,6 +213,18 @@ function buildCutFromIntent(parsed) {
   Object.assign(cut.camera, R.camera);
   if (R.camera.focalMm) cut.camera.lens = String(
     [14, 24, 35, 50, 85, 135].reduce((a, b) => Math.abs(b - R.camera.focalMm) < Math.abs(a - R.camera.focalMm) ? b : a));
+
+  // Pattern DNA 適用 (明示的なカメラ/ルック/アスペクト指定を優先して上書きし直す)
+  if (R.dnaId && typeof DNA_LIBRARY !== "undefined") {
+    const d = DNA_LIBRARY.find(x => x.id === R.dnaId);
+    if (d) {
+      applyPatternDNA(cut, d);
+      if (R.look) cut.look = R.look;
+      if (R.camera.focalMm) cut.camera.focalMm = R.camera.focalMm;
+      if (R.camera.moveSpeed) cut.camera.moveSpeed = R.camera.moveSpeed;
+      if (R.aspect) cut.aspect = R.aspect;
+    }
+  }
 
   // 追加機材 (プリセットに同種が無い場合のみ)
   for (const type of [...new Set(R.addItems)]) {

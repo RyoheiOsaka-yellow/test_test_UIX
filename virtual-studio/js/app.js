@@ -35,6 +35,8 @@ const state = {
   projectTitle: "無題プロジェクト",
   promptModel: "seedance",
   customPresets: [], // mdインポートされた技法
+  // プロジェクト共通の使用機材キット (機材DBで選択 → 全カット・保存に反映)
+  kit: { body: null, lens: null, support: null, drone: null },
 };
 
 function allPresets() { return PRESETS.concat(state.customPresets); }
@@ -299,6 +301,9 @@ function buildPromptParts(cut) {
     fps: cut.camera.fps, shutter: cut.camera.shutter,
     focusM: c.focusM, dur: cut.duration || 5,
     optList: optPhrases,
+    dnaTokens: cut.dna ? cut.dna.tokens : [],
+    dnaAvoid: cut.dna ? cut.dna.avoid : [],
+    dnaName: cut.dna ? cut.dna.name : "",
   };
 }
 
@@ -384,7 +389,8 @@ function generatePrompt(cut, modelId) {
         P.optList.length ? `PRACTICAL FX: ${P.optList.join(", ")}` : "",
         `COLOR / FINISH: ${j([P.lookEn || "natural true-to-life color grade", "photorealistic, professional cinematography, high detail"], ", ")}`,
         P.transEn ? `EDIT: shot ends with a ${P.transEn}` : "",
-        `NEGATIVE: no subtitles, no watermark, no on-screen text, no morphing artifacts`,
+        P.dnaTokens.length ? `STYLE DNA: ${P.dnaTokens.join(", ")}` : "",
+        `NEGATIVE: no subtitles, no watermark, no on-screen text, no morphing artifacts${P.dnaAvoid.length ? ", " + P.dnaAvoid.join(", ") : ""}`,
       ], "\n");
     }
     default: { // generic: 標準フォーマット
@@ -395,6 +401,7 @@ function generatePrompt(cut, modelId) {
         P.lightStr, P.bgEn, P.envPhrase,
         P.lensStr, P.dofPhrase, P.filterStr, P.lookEn, P.aspectEn,
         P.transEn ? `shot ends with a ${P.transEn}` : "",
+        P.dnaTokens.join(", "),
         P.motionStr,
         "photorealistic, professional cinematography, high detail",
       ], ". ") + ".";
@@ -1265,8 +1272,17 @@ function renderInspector() {
       ${fieldRow("ISO", `<input type="text" id="cIso" value="${esc(cut.camera.iso)}">`)}
       ${cut.kind !== "still" ? fieldRow("フレームレート", `<input type="text" id="cFps" value="${esc(cut.camera.fps)}">`) : ""}
       ${fieldRow("WB", `<input type="text" id="cWb" value="${esc(cut.camera.wb)}">`)}
-      ${(cut.camera.bodySku || cut.camera.lensSku || cut.camera.supportSku)
-        ? `<div class="insp-hint">🎬 使用機材: ${esc([cut.camera.bodySku, cut.camera.lensSku, cut.camera.supportSku].filter(Boolean).join(" / "))}</div>` : ""}
+    </div>
+    <div class="insp-section">
+      <h3>使用機材 (プロジェクト共通・保存されます)</h3>
+      ${[["body", "カメラ"], ["lens", "レンズ"], ["support", "サポート"], ["drone", "ドローン"]].map(([k, label]) => `
+        <div class="field"><label>${label}</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="insp-hint" style="flex:1">${state.kit[k] ? `<b>${esc(state.kit[k])}</b>` : "未設定"}</span>
+            ${state.kit[k] ? `<button class="icon-btn small kit-clear" data-kit="${k}" title="解除" aria-label="解除"><svg class="ic"><use href="#i-close"/></svg></button>` : ""}
+          </div>
+        </div>`).join("")}
+      <button class="btn small" id="btnKitOpenDb">機材DBから選ぶ</button>
     </div>
     <div class="insp-section">
       <h3>サポート (支持機材)</h3>
@@ -1363,6 +1379,14 @@ function renderInspector() {
     const supDef = CAMERA_SUPPORTS.find(s => s.id === cut.camera.support);
     bindCamRange("cSupParam", "supportParam", v => v + (supDef && supDef.param ? supDef.param.unit : ""));
   }
+  insp.querySelectorAll(".kit-clear").forEach(el => {
+    el.addEventListener("click", () => { state.kit[el.dataset.kit] = null; renderInspector(); });
+  });
+  bind("btnKitOpenDb", () => {
+    byId("equipAssignHint").innerHTML = "";
+    byId("equipOverlay").hidden = false;
+    renderEquipPage();
+  }, "click");
   insp.querySelectorAll(".filter-toggle").forEach(el => {
     el.addEventListener("click", () => {
       const f = el.dataset.filter;
@@ -1536,6 +1560,7 @@ function buildInstructionDoc() {
     <section class="cut-page">
       <h2>CUT ${i + 1}　${esc(cut.name)} <span class="dur">${cut.kind === "still" ? "スチール" : "尺: " + cut.duration + "秒"} ｜ ${esc(cut.aspect)} ｜ テイク${cut.takes} ｜ 準備${cut.setupMin}分</span></h2>
       ${cut.aim ? `<p class="aim"><b>狙い:</b> ${esc(cut.aim)}</p>` : ""}
+      ${cut.dna ? `<p class="memo">🧬 <b>Pattern DNA: ${esc(cut.dna.name)}</b> — ${esc(cut.dna.tokens.join(", "))}${cut.dna.lineage && cut.dna.lineage.sources.length > 1 ? ` ｜ 由来: ${esc(cut.dna.lineage.sources.join(" + "))}` : ""}</p>` : ""}
       <div class="two-col">
         <figure>
           <figcaption>スタジオ配置図 (俯瞰) — グリッド1マス=50cm</figcaption>
@@ -1824,6 +1849,7 @@ function setupDocOverlay() {
       byId("docOverlay").hidden = true;
       byId("equipOverlay").hidden = true;
       byId("projOverlay").hidden = true;
+      byId("dnaOverlay").hidden = true;
     }
   });
 }
@@ -2137,15 +2163,15 @@ function cutToCanonicalShot(cut, i, projectId) {
         target_m: toWorldM({ ...sub, height: 150 }),
         roll_deg: cut.camera.angle === "dutch" ? 7 : 0,
         body_archetype: cut.camera.body,
-        body_sku: cut.camera.bodySku || null,
-        support: { type: cut.camera.support, param: sup && sup.param ? { [sup.param.label]: `${cut.camera.supportParam}${sup.param.unit}` } : null, head: cut.camera.head, support_sku: cut.camera.supportSku || null },
+        body_sku: state.kit.body || cut.camera.bodySku || null,
+        support: { type: cut.camera.support, param: sup && sup.param ? { [sup.param.label]: `${cut.camera.supportParam}${sup.param.unit}` } : null, head: cut.camera.head, support_sku: state.kit.support || cut.camera.supportSku || null },
       },
       lens: {
         focal_length_mm: cut.camera.focalMm,
         aperture_f: cut.camera.apertureF,
         focus_distance_m: cut.camera.focusM,
         anamorphic: cut.camera.lens === "anam",
-        lens_sku: cut.camera.lensSku || null,
+        lens_sku: state.kit.lens || cut.camera.lensSku || null,
         nd: cut.camera.nd,
         filters: cut.camera.filters,
       },
@@ -2228,6 +2254,7 @@ function importJSON(file) {
       state.mode = data.mode || "video";
       state.cuts = data.cuts.map(ensureCameraDefaults); // 旧バージョンのJSONに詳細フィールドを補完
       state.customPresets = Array.isArray(data.customPresets) ? data.customPresets : [];
+      state.kit = Object.assign({ body: null, lens: null, support: null, drone: null }, data.kit || {});
       state.promptModel = data.promptModel || state.promptModel;
       const pmSel = byId("promptModelSelect");
       if (pmSel) pmSel.value = state.promptModel;
@@ -2261,6 +2288,7 @@ function snapshotState() {
     mode: state.mode, cuts: state.cuts, activeCut: state.activeCut,
     projectTitle: state.projectTitle, projectId: state.projectId || null,
     promptModel: state.promptModel, customPresets: state.customPresets,
+    kit: state.kit,
   }));
 }
 
@@ -2274,6 +2302,7 @@ function applySnapshot(s) {
   state.projectId = s.projectId || null;
   state.promptModel = s.promptModel || "seedance";
   state.customPresets = Array.isArray(s.customPresets) ? s.customPresets : [];
+  state.kit = Object.assign({ body: null, lens: null, support: null, drone: null }, s.kit || {});
   document.querySelectorAll(".mode-tab").forEach(b => b.classList.toggle("active", b.dataset.mode === state.mode));
   const pm = byId("promptModelSelect");
   if (pm && pm.options.length) pm.value = state.promptModel;
@@ -2373,6 +2402,92 @@ function setupProjects() {
 }
 
 /* =========================================================
+ * Pattern DNA ページ (CineOS V8 Phase 1: 検索・適用・ミキサー)
+ * ======================================================= */
+const dnaSel = { a: null, b: null };
+const mixWeights = { editorial: 0.5, camera: 0.5, lighting: 0.5, color: 0.5, movement: 0.5 };
+const MIX_DIMS = [["editorial", "編集リズム"], ["camera", "カメラ/レンズ"], ["lighting", "ライティング"], ["color", "カラー"], ["movement", "ムーブ"]];
+
+function applyDnaToScope(dna, lineage) {
+  const targets = byId("dnaScope").value === "all" ? state.cuts : [activeCut()];
+  for (const c of targets) {
+    applyPatternDNA(c, dna, null, lineage ? JSON.parse(JSON.stringify(lineage)) : undefined);
+  }
+  refresh(); renderInspector();
+  byId("dnaMsg").innerHTML = `✓ <b>${esc(dna.name)}</b> を${targets.length}カットに適用しました (プレビュー/プロンプト/指示書に反映)`;
+}
+
+function renderDnaPage() {
+  const q = byId("dnaSearch").value.trim();
+  const hits = q ? searchDNA(q) : [];
+  const list = hits.length ? hits : DNA_LIBRARY.map(d => ({ dna: d, matched: [] }));
+
+  byId("dnaGrid").innerHTML = list.map(({ dna, matched }) => `
+    <div class="dna-card ${dnaSel.a === dna.id ? "sel-a" : ""} ${dnaSel.b === dna.id ? "sel-b" : ""}">
+      <div class="d-head">
+        <span class="d-name">${esc(dna.name)}${matched.length ? ` <small style="color:var(--accent)">「${esc(matched[0])}」に一致</small>` : ""}</span>
+        <span class="d-family">${esc(dna.family)}</span>
+      </div>
+      <div class="d-why">${esc(dna.why)}</div>
+      <div class="d-tokens">${esc(dna.tokens.slice(0, 3).join(" / "))}</div>
+      <div class="d-actions">
+        <button class="btn small primary" data-apply="${esc(dna.id)}">適用</button>
+        <button class="btn small ${dnaSel.a === dna.id ? "primary" : ""}" data-mixa="${esc(dna.id)}">A</button>
+        <button class="btn small ${dnaSel.b === dna.id ? "primary" : ""}" data-mixb="${esc(dna.id)}">B</button>
+      </div>
+    </div>`).join("");
+
+  const grid = byId("dnaGrid");
+  grid.querySelectorAll("[data-apply]").forEach(b => b.addEventListener("click", () => {
+    const d = DNA_LIBRARY.find(x => x.id === b.dataset.apply);
+    if (d) applyDnaToScope(d);
+    renderDnaPage();
+  }));
+  grid.querySelectorAll("[data-mixa]").forEach(b => b.addEventListener("click", () => {
+    dnaSel.a = dnaSel.a === b.dataset.mixa ? null : b.dataset.mixa; renderDnaPage();
+  }));
+  grid.querySelectorAll("[data-mixb]").forEach(b => b.addEventListener("click", () => {
+    dnaSel.b = dnaSel.b === b.dataset.mixb ? null : b.dataset.mixb; renderDnaPage();
+  }));
+
+  // ミキサー (§34): AとBが選ばれたら表示
+  const a = DNA_LIBRARY.find(x => x.id === dnaSel.a);
+  const b = DNA_LIBRARY.find(x => x.id === dnaSel.b);
+  const mixer = byId("dnaMixer");
+  mixer.hidden = !(a && b);
+  if (a && b) {
+    byId("mixA").textContent = a.name;
+    byId("mixB").textContent = b.name;
+    byId("mixSliders").innerHTML = MIX_DIMS.map(([k, label]) => `
+      <div class="mix-row"><label>${label}</label>
+        <input type="range" min="0" max="100" value="${Math.round(mixWeights[k] * 100)}" data-mixdim="${k}">
+      </div>`).join("");
+    byId("mixSliders").querySelectorAll("[data-mixdim]").forEach(el => {
+      el.addEventListener("input", () => { mixWeights[el.dataset.mixdim] = +el.value / 100; });
+    });
+  }
+}
+
+function setupDnaPage() {
+  byId("btnDnaPage").addEventListener("click", () => {
+    byId("dnaMsg").textContent = "";
+    byId("dnaOverlay").hidden = false;
+    renderDnaPage();
+  });
+  byId("btnDnaBack").addEventListener("click", () => { byId("dnaOverlay").hidden = true; });
+  byId("dnaSearch").addEventListener("input", renderDnaPage);
+  byId("btnMixApply").addEventListener("click", () => {
+    const a = DNA_LIBRARY.find(x => x.id === dnaSel.a);
+    const b = DNA_LIBRARY.find(x => x.id === dnaSel.b);
+    if (!a || !b) return;
+    const mixed = mixDNA(a, b, mixWeights);
+    applyDnaToScope(mixed, { sources: [a.id, b.id], weights: { ...mixWeights }, date: new Date().toISOString().slice(0, 10) });
+    renderDnaPage();
+  });
+  byId("btnMixClear").addEventListener("click", () => { dnaSel.a = null; dnaSel.b = null; renderDnaPage(); });
+}
+
+/* =========================================================
  * 機材データベースページ (アプリ内オーバーレイ・戻るボタン付き)
  * 選んだ実機材はカット/選択中の機材に割当できる (capability-first の具体化)
  * ======================================================= */
@@ -2403,13 +2518,16 @@ function assignTargetLabel(record) {
 function assignEquipment(record) {
   const cut = activeCut();
   const name = `${record.manufacturer} ${record.model}`;
+  // カメラ・レンズ・サポート・ドローンはプロジェクト共通キットに保存
+  // (全カット・自動保存・書き出しに反映され、戻っても保持される)
   switch (record.category) {
-    case "camera": cut.camera.bodySku = name; break;
-    case "lens": cut.camera.lensSku = name; break;
-    case "camera_support": cut.camera.supportSku = name; break;
+    case "camera": state.kit.body = name; break;
+    case "lens": state.kit.lens = name; break;
+    case "camera_support": state.kit.support = name; break;
     case "aerial": {
+      state.kit.drone = name;
       const droneItem = cut.items.find(i => i.type === "drone");
-      if (droneItem) droneItem.sku = name; else cut.camera.supportSku = name;
+      if (droneItem) droneItem.sku = name;
       break;
     }
     default: {
@@ -2427,8 +2545,9 @@ function assignEquipment(record) {
       break;
     }
   }
-  byId("equipAssignHint").innerHTML = `✓ <b>${esc(name)}</b> を割り当てました (インスペクター・指示書・canonical JSONに反映)`;
+  byId("equipAssignHint").innerHTML = `✓ <b>${esc(name)}</b> を使用機材に保存しました (全カット共通・自動保存・指示書/canonical JSONに反映)`;
   renderInspector();
+  renderEquipPage();
 }
 
 function renderEquipPage() {
@@ -2448,9 +2567,17 @@ function renderEquipPage() {
 
   const sel = activeCut().items.find(i => i.id === state.selectedItem);
   if (!byId("equipAssignHint").innerHTML.startsWith("✓") && !byId("equipAssignHint").innerHTML.startsWith("⚠️")) {
-    byId("equipAssignHint").innerHTML = sel
-      ? `選択中: <b>${esc(EQUIP_TYPES[sel.type].label)}</b> — ライト/特効/モディファイアのカードから割当できます`
-      : "カメラ/レンズ/サポート/ドローンは直接割当可。ライト等は俯瞰図で機材を選択してから開いてください";
+    const kitStr = [
+      state.kit.body && `カメラ: ${state.kit.body}`,
+      state.kit.lens && `レンズ: ${state.kit.lens}`,
+      state.kit.support && `サポート: ${state.kit.support}`,
+      state.kit.drone && `ドローン: ${state.kit.drone}`,
+    ].filter(Boolean).join(" ｜ ");
+    byId("equipAssignHint").innerHTML =
+      (kitStr ? `🎬 <b>使用機材 (保存済み)</b>: ${esc(kitStr)}<br>` : "") +
+      (sel
+        ? `選択中: <b>${esc(EQUIP_TYPES[sel.type].label)}</b> — ライト/特効/モディファイアのカードから割当できます`
+        : "カメラ/レンズ/サポート/ドローンは選ぶだけで保存されます。ライト等は俯瞰図で機材を選択してから開いてください");
   }
 
   byId("equipGrid").innerHTML = records.map((r, i) => `
@@ -2464,7 +2591,7 @@ function renderEquipPage() {
       </div>
       <div class="e-cap">${esc(Object.entries(r.capability).slice(0, 4).map(([k, v]) => `${k}: ${v}`).join(" ｜ ") || "—")}</div>
       <div class="e-use">${esc(r.use_cases.join(" / "))}</div>
-      <div class="e-actions"><button class="btn small" data-assign="${i}">${esc(assignTargetLabel(r))}</button></div>
+      <div class="e-actions"><button class="btn small ${[state.kit.body, state.kit.lens, state.kit.support, state.kit.drone].includes(`${r.manufacturer} ${r.model}`) ? "primary" : ""}" data-assign="${i}">${[state.kit.body, state.kit.lens, state.kit.support, state.kit.drone].includes(`${r.manufacturer} ${r.model}`) ? "✓ 使用中" : esc(assignTargetLabel(r))}</button></div>
     </div>`).join("");
   byId("equipGrid").querySelectorAll("[data-assign]").forEach(btn =>
     btn.addEventListener("click", () => assignEquipment(records[+btn.dataset.assign])));
@@ -2567,6 +2694,13 @@ function cutFromCanonicalShot(shot) {
 
 function importCanonical(data) {
   if (!Array.isArray(data.shots) || !data.shots.length) throw new Error("shots がありません");
+  const c0 = data.shots[0].planned?.camera || {};
+  state.kit = {
+    body: c0.body_sku || null,
+    lens: data.shots[0].planned?.lens?.lens_sku || null,
+    support: c0.support?.support_sku || null,
+    drone: state.kit?.drone || null,
+  };
   state.cuts = data.shots.map(cutFromCanonicalShot);
   state.activeCut = 0;
   state.selectedItem = null;
@@ -2817,6 +2951,7 @@ function init() {
   setupDocOverlay();
   setupEquipPage();
   setupProjects();
+  setupDnaPage();
   byId("btnPlayPreview").addEventListener("click", () => {
     state.previewPlay = !state.previewPlay;
     if (state.previewPlay) startPreviewAnim(); else stopPreviewAnim();

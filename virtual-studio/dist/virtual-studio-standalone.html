@@ -669,6 +669,49 @@ input[type="range"]::-moz-range-thumb {
 .equip-card .e-use { font-size: 10.5px; color: var(--dim); line-height: 1.5; }
 .equip-card .e-actions { margin-top: auto; padding-top: 4px; }
 
+/* ---------- Pattern DNA ページ ---------- */
+#dnaApplyBar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 16px 0;
+}
+#dnaMixer {
+  margin: 10px 16px 0;
+  background: var(--surface); border-radius: var(--radius);
+  padding: 12px 14px; box-shadow: var(--shadow-sm);
+  border-left: 3px solid var(--accent);
+}
+#dnaMixer[hidden] { display: none; }
+.mixer-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.mixer-head .panel-title { flex: 1; }
+#mixSliders { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px 18px; }
+.mix-row { display: grid; grid-template-columns: 88px 1fr; align-items: center; gap: 8px; }
+.mix-row label { font-size: 11px; color: var(--text2); font-weight: 600; }
+#dnaGrid {
+  flex: 1; overflow-y: auto;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px; padding: 14px 16px 20px;
+  align-content: start;
+}
+.dna-card {
+  background: var(--surface); border-radius: var(--radius);
+  padding: 13px 14px; box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 7px;
+  border: 2px solid transparent;
+  transition: all 0.18s var(--ease);
+}
+.dna-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.dna-card.sel-a { border-color: var(--accent); }
+.dna-card.sel-b { border-color: #9a6ae0; }
+.dna-card .d-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dna-card .d-name { font-size: 13.5px; font-weight: 700; }
+.dna-card .d-family {
+  font-size: 10px; padding: 2px 8px; border-radius: 980px;
+  background: var(--fill-1); color: var(--text2);
+}
+.dna-card .d-why { font-size: 11.5px; color: var(--text2); line-height: 1.6; }
+.dna-card .d-tokens { font-size: 10.5px; color: var(--dim); line-height: 1.5; font-family: "SF Mono", ui-monospace, monospace; }
+.dna-card .d-actions { display: flex; gap: 6px; margin-top: auto; padding-top: 4px; }
+
 /* ---------- プロジェクトページ ---------- */
 #projCurrent {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -767,6 +810,7 @@ input[type="range"]::-moz-range-thumb {
     <symbol id="i-back" viewBox="0 0 24 24"><path d="M14.5 5.5 8 12l6.5 6.5"/></symbol>
     <symbol id="i-printer" viewBox="0 0 24 24"><path d="M7 8V4.5h10V8M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 17h-2"/><rect x="7" y="14" width="10" height="5.5" rx="1"/></symbol>
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 6.5A2 2 0 0 1 5.5 4.5h4l2 2.5h7a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/></symbol>
+    <symbol id="i-dna" viewBox="0 0 24 24"><path d="M7 3c0 6 10 6 10 12M17 3c0 6-10 6-10 12M7 15c0 3 .5 4.5 1.5 6M17 15c0 3-.5 4.5-1.5 6M8.2 6.5h7.6M8.2 11.5h7.6M8 18h8"/></symbol>
   </defs>
 </svg>
 
@@ -784,6 +828,9 @@ input[type="range"]::-moz-range-thumb {
   <div class="header-actions">
     <button id="btnProjPage" class="icon-btn" title="プロジェクト (保存・切替)" aria-label="プロジェクト">
       <svg class="ic"><use href="#i-folder"/></svg>
+    </button>
+    <button id="btnDnaPage" class="icon-btn" title="Pattern DNA (スタイルの検索・ブレンド・適用)" aria-label="Pattern DNA">
+      <svg class="ic"><use href="#i-dna"/></svg>
     </button>
     <button id="btnEquipPage" class="icon-btn" title="機材データベース (131機種)" aria-label="機材データベース">
       <svg class="ic"><use href="#i-db"/></svg>
@@ -937,6 +984,35 @@ input[type="range"]::-moz-range-thumb {
     <div id="inspector"></div>
   </aside>
 </main>
+
+<!-- Pattern DNA ページ (CineOS V8: スタイルの検索・ミックス・適用) -->
+<div id="dnaOverlay" class="overlay" hidden>
+  <div class="overlay-bar">
+    <button id="btnDnaBack" class="btn small"><svg class="ic"><use href="#i-back"/></svg> スタジオに戻る</button>
+    <span class="panel-title">Pattern DNA <small>参照作品の「なぜ効くか」を撮影変数として適用 (V8)</small></span>
+    <div class="search-field overlay-search">
+      <svg class="ic"><use href="#i-search"/></svg>
+      <input type="search" id="dnaSearch" placeholder="言葉で検索 (例: 高級, 爽やか, Appleっぽい, 90年代レトロ)">
+    </div>
+  </div>
+  <div id="dnaApplyBar">
+    <span class="panel-title small">適用範囲</span>
+    <select id="dnaScope">
+      <option value="current">現在のカットのみ</option>
+      <option value="all">全カット</option>
+    </select>
+    <span id="dnaMsg" class="insp-hint"></span>
+  </div>
+  <div id="dnaMixer" hidden>
+    <div class="mixer-head">
+      <span class="panel-title small">DNAミキサー — <b id="mixA"></b> (左) × <b id="mixB"></b> (右)</span>
+      <button id="btnMixApply" class="btn small primary">ミックスを適用</button>
+      <button id="btnMixClear" class="icon-btn small" aria-label="ミキサーを閉じる"><svg class="ic"><use href="#i-close"/></svg></button>
+    </div>
+    <div id="mixSliders"></div>
+  </div>
+  <div id="dnaGrid"></div>
+</div>
 
 <!-- プロジェクトページ (ブラウザ内保存・切替) -->
 <div id="projOverlay" class="overlay" hidden>
@@ -4833,6 +4909,345 @@ function evaluateFeasibility(cut) {
 </script>
 <script>
 /* =========================================================
+ * CineOS V8 移植: Pattern DNA (cineos/knowledge/v8/PATTERN_DNA_MASTER.md)
+ * Phase 1 (§36): キュレーション済みDNAアーキタイプ + 自然言語検索 + 適用
+ * + §34 DNA Mixer (次元別ブレンド) + §23 来歴 (lineage) 記録
+ *
+ * DNAは「なぜ効くか」を制御可能な撮影変数で表現する (§6):
+ * 悪い例: cinematic, premium
+ * 良い例: 大面積ソフト45°+ネガティブフィル / 85-135mm浅い被写界深度 / 10cmの遅いプッシュ
+ * ======================================================= */
+
+"use strict";
+
+/* 次元: editorial / camera / lighting / color / movement (§34) */
+const DNA_LIBRARY = [
+  {
+    id: "luxury", name: "ラグジュアリー", family: "commercial",
+    keywords: ["高級", "ラグジュアリー", "プレミアム", "上質", "ハイエンド", "luxury"],
+    why: "大面積ソフトを45°から+反対側はネガティブフィルで深い影。85-135mmの浅い被写界深度で背景を溶かし、動きは10cm級の極遅プッシュのみ。カットは長く、ディゾルブで繋ぐ。",
+    dims: {
+      editorial: { durationMul: 1.5, transition: "dissolve", pace: "遅い" },
+      camera: { focal: [85, 135], aperture: 2.0 },
+      lighting: { fillScale: 0.35, rimBoost: 1.2, contrast: "高 (影を残す)" },
+      color: { look: "filmwarm" },
+      movement: { moveSpeed: "veryslow", prefMove: "dollyin" },
+    },
+    tokens: ["restrained premium composition", "large soft key with deep negative fill", "shallow depth of field melting the background", "slow deliberate 10cm push-in"],
+    avoid: ["fast cuts", "harsh on-camera flash", "busy background"],
+  },
+  {
+    id: "refreshing", name: "爽快 (リフレッシング)", family: "commercial",
+    keywords: ["爽やか", "爽快", "清涼", "フレッシュ", "炭酸", "refreshing"],
+    why: "ハイキー寄りの明るい透過光+雫と飛沫のハイスピード。動きは速め、カットは短くリズミカル。青空系の抜けと高彩度。",
+    dims: {
+      editorial: { durationMul: 0.7, transition: "cut", pace: "速い" },
+      camera: { focal: [35, 85], aperture: 4 },
+      lighting: { fillScale: 1.3, rimBoost: 1.3, contrast: "低 (明るく)" },
+      color: { look: "vivid" },
+      movement: { moveSpeed: "fast", prefMove: "track" },
+    },
+    tokens: ["bright airy backlight", "sparkling condensation and splash energy", "crisp high-key freshness"],
+    avoid: ["murky shadows", "warm heavy grade"],
+  },
+  {
+    id: "appetizing", name: "食欲 (シズル)", family: "food",
+    keywords: ["食欲", "シズル", "おいしそう", "うまそう", "appetizing"],
+    why: "半逆光45°で照りと湯気を立て、暖色4300-5000Kで食欲色に。マクロ寄りの浅い深度、ゆっくり寄る。艶と湯気が主役。",
+    dims: {
+      editorial: { durationMul: 1.0, transition: "cut", pace: "中" },
+      camera: { focal: [85, 100], aperture: 3.2 },
+      lighting: { fillScale: 0.7, rimBoost: 1.4, contrast: "中" },
+      color: { look: "filmwarm" },
+      movement: { moveSpeed: "slow", prefMove: "dollyin" },
+    },
+    tokens: ["glistening back-side key on texture", "steam catching the backlight", "warm appetizing palette"],
+    avoid: ["cold blue cast", "flat frontal light"],
+  },
+  {
+    id: "beauty", name: "ビューティー", family: "beauty",
+    keywords: ["ビューティー", "美容", "コスメ", "美肌", "beauty"],
+    why: "正面上からの大光面 (クラムシェル) +下からの返しで影を消し、目に大きなキャッチライト。肌のスペキュラーを整え CU 中心。動きは最小限。",
+    dims: {
+      editorial: { durationMul: 1.2, transition: "dissolve", pace: "遅い" },
+      camera: { focal: [85, 100], aperture: 4 },
+      lighting: { fillScale: 1.4, rimBoost: 1.0, contrast: "低 (影を消す)" },
+      color: { look: "pastel" },
+      movement: { moveSpeed: "veryslow", prefMove: "fix" },
+    },
+    tokens: ["clamshell beauty light with big round catchlights", "smooth controlled skin speculars", "clean close-up framing"],
+    avoid: ["hard nose shadow", "green-magenta skin cast"],
+  },
+  {
+    id: "minimal-clinical", name: "ミニマル / クリニカル", family: "product",
+    keywords: ["ミニマル", "アップル", "Apple", "クリニカル", "シンプル", "無駄のない", "minimal"],
+    why: "被写体以外を徹底的に排除。無地背景+制御された写り込み一本、対称構図、直線的な極遅ムーブ。色は無彩色寄り、余白で語る。",
+    dims: {
+      editorial: { durationMul: 1.3, transition: "cut", pace: "遅い" },
+      camera: { focal: [50, 100], aperture: 5.6 },
+      lighting: { fillScale: 0.9, rimBoost: 1.1, contrast: "中 (整った)" },
+      color: { look: "natural" },
+      movement: { moveSpeed: "veryslow", prefMove: "track" },
+    },
+    tokens: ["minimal product staging on seamless background", "single controlled reflection line", "symmetric composition with generous negative space", "restrained typography-friendly framing"],
+    avoid: ["clutter", "decorative props", "dutch angle"],
+  },
+  {
+    id: "futuristic", name: "近未来 / フューチャリスティック", family: "style",
+    keywords: ["近未来", "未来", "サイバー", "SF", "テック", "futuristic"],
+    why: "シアン寄りの冷たいベース+アクセントのネオン。ヘイズで光条を可視化し、直線的なスライド移動と正確な等速。黒を締める。",
+    dims: {
+      editorial: { durationMul: 0.9, transition: "cut", pace: "中" },
+      camera: { focal: [24, 50], aperture: 2.8 },
+      lighting: { fillScale: 0.5, rimBoost: 1.5, contrast: "高" },
+      color: { look: "cyber" },
+      movement: { moveSpeed: "normal", prefMove: "track" },
+    },
+    tokens: ["cool cyan base with neon accents", "haze-defined light beams", "precise linear robotic camera motion"],
+    avoid: ["warm cozy tones", "organic handheld wobble"],
+  },
+  {
+    id: "nostalgic", name: "ノスタルジック / レトロ", family: "style",
+    keywords: ["ノスタルジ", "レトロ", "懐かし", "90年代", "昭和", "フィルム", "vintage"],
+    why: "暖色に転んだハレーション気味のハイライト、ソフトな拡散とグレイン。ズーム/手持ちの不完全な動き、少し長い間。",
+    dims: {
+      editorial: { durationMul: 1.2, transition: "fadeout", pace: "ゆったり" },
+      camera: { focal: [35, 85], aperture: 2.0 },
+      lighting: { fillScale: 0.8, rimBoost: 1.3, contrast: "中" },
+      color: { look: "filmwarm" },
+      movement: { moveSpeed: "slow", prefMove: "handheld" },
+    },
+    tokens: ["warm halated highlights", "soft diffusion and gentle grain", "imperfect nostalgic camera energy", "held moments that breathe"],
+    avoid: ["clinical sharpness", "modern speed ramps"],
+  },
+  {
+    id: "documentary", name: "ドキュメンタリー・ナチュラル", family: "doc",
+    keywords: ["ドキュメンタリー", "ナチュラル", "リアル", "自然体", "documentary"],
+    why: "自然光/既存光を活かし、補助光は起こす程度。手持ちの呼吸感、被写体を追う反応的なカメラ。演出感を消す。",
+    dims: {
+      editorial: { durationMul: 1.0, transition: "cut", pace: "自然" },
+      camera: { focal: [35, 50], aperture: 2.8 },
+      lighting: { fillScale: 1.0, rimBoost: 0.8, contrast: "自然" },
+      color: { look: "natural" },
+      movement: { moveSpeed: "normal", prefMove: "handheld" },
+    },
+    tokens: ["available-light naturalism", "reactive observational handheld", "unforced honest moments"],
+    avoid: ["stylized gel lighting", "choreographed crane moves"],
+  },
+  {
+    id: "sports", name: "ハイエナジー・スポーツ", family: "sports",
+    keywords: ["スポーツ", "躍動", "アスリート", "エナジー", "疾走", "sports"],
+    why: "硬いサイド/バックライトで汗と筋肉のエッジを立て、超速カット+ハイスピードの緩急。広角で寄って迫力、追従ムーブ。",
+    dims: {
+      editorial: { durationMul: 0.5, transition: "whippan", pace: "超速" },
+      camera: { focal: [14, 35], aperture: 2.8 },
+      lighting: { fillScale: 0.4, rimBoost: 1.8, contrast: "高" },
+      color: { look: "bleach" },
+      movement: { moveSpeed: "veryfast", prefMove: "d_chase" },
+    },
+    tokens: ["hard rim light carving muscle and sweat", "wide lens in close for aggression", "speed-ramped chase energy"],
+    avoid: ["static tripod distance", "soft romantic glow"],
+  },
+  {
+    id: "intimate", name: "親密ドラマ (インティメット)", family: "drama",
+    keywords: ["親密", "静かな", "会話劇", "余韻", "intimate"],
+    why: "窓光1方向+浅い深度の長回し。カメラは登場人物の呼吸に合わせた微細な手持ち。沈黙とリアクションを長く持つ。",
+    dims: {
+      editorial: { durationMul: 1.6, transition: "cut", pace: "長回し" },
+      camera: { focal: [50, 85], aperture: 1.8 },
+      lighting: { fillScale: 0.6, rimBoost: 0.9, contrast: "柔らかい高コントラスト" },
+      color: { look: "natural" },
+      movement: { moveSpeed: "veryslow", prefMove: "handheld" },
+    },
+    tokens: ["single-direction window light", "long held reactions in shallow focus", "breathing intimate camera"],
+    avoid: ["rapid coverage cutting", "flashy transitions"],
+  },
+  {
+    id: "suspense", name: "サスペンス", family: "drama",
+    keywords: ["サスペンス", "緊張", "スリラー", "不穏", "suspense"],
+    why: "ローキー+片側からの硬い光で顔を割る。ゆっくり寄るドリーで圧を上げ、音と静寂で締める。情報を隠すフレーミング。",
+    dims: {
+      editorial: { durationMul: 1.3, transition: "cut", pace: "じわじわ" },
+      camera: { focal: [35, 50], aperture: 2.8 },
+      lighting: { fillScale: 0.25, rimBoost: 1.2, contrast: "非常に高" },
+      color: { look: "tealorange" },
+      movement: { moveSpeed: "veryslow", prefMove: "dollyin" },
+    },
+    tokens: ["low-key split face in hard light", "creeping slow push building pressure", "withheld information framing"],
+    avoid: ["cheerful high-key", "playful whip pans"],
+  },
+  {
+    id: "horror", name: "ホラー", family: "drama",
+    keywords: ["ホラー", "恐怖", "怪談", "怖い", "horror"],
+    why: "アンダーライトと闇の面積。動かないカメラで「見えない」を長く見せ、要所だけ突発的な速い動き。色は冷たく沈む。",
+    dims: {
+      editorial: { durationMul: 1.4, transition: "cut", pace: "静→突発" },
+      camera: { focal: [24, 35], aperture: 2.0 },
+      lighting: { fillScale: 0.15, rimBoost: 0.7, contrast: "極高" },
+      color: { look: "cyber" },
+      movement: { moveSpeed: "veryslow", prefMove: "fix" },
+    },
+    tokens: ["darkness occupying most of the frame", "underlight dread", "long motionless watching then sudden movement"],
+    avoid: ["even bright illumination", "warm comfort tones"],
+  },
+  {
+    id: "epic", name: "エピック / モニュメンタル", family: "style",
+    keywords: ["エピック", "壮大", "スケール", "雄大", "epic"],
+    why: "超広角+空撮の引き画でスケールを提示し、人物は小さく置く。ゆっくり上昇するクレーン/ドローン。逆光と大気感。",
+    dims: {
+      editorial: { durationMul: 1.4, transition: "dissolve", pace: "大きい" },
+      camera: { focal: [14, 24], aperture: 5.6 },
+      lighting: { fillScale: 0.8, rimBoost: 1.5, contrast: "高" },
+      color: { look: "tealorange" },
+      movement: { moveSpeed: "slow", prefMove: "d_pullback" },
+    },
+    tokens: ["monumental wide vistas with a small human figure", "slow rising aerial reveal", "atmospheric backlit scale"],
+    avoid: ["cramped tight framing only"],
+  },
+  {
+    id: "social-native", name: "SNSネイティブ / UGC風", family: "social",
+    keywords: ["SNS", "TikTok", "リール", "UGC", "スマホっぽい", "バズ", "social"],
+    why: "縦9:16+冒頭1秒のフック。スマホ風の広角手持ち、速いジャンプカット、字幕前提の中央寄り構図。作り込みすぎない光。",
+    dims: {
+      editorial: { durationMul: 0.5, transition: "jumpcut", pace: "超速フック" },
+      camera: { focal: [24, 35], aperture: 2.8 },
+      lighting: { fillScale: 1.2, rimBoost: 0.9, contrast: "低" },
+      color: { look: "vivid" },
+      movement: { moveSpeed: "fast", prefMove: "handheld" },
+    },
+    tokens: ["vertical phone-native energy", "first-second hook framing", "authentic casual light"],
+    avoid: ["cinematic letterbox", "slow establishing openings"],
+    aspect: "9:16",
+  },
+  {
+    id: "fashion-editorial", name: "ファッション・エディトリアル", family: "fashion",
+    keywords: ["ファッション", "エディトリアル", "モード", "ヴォーグ", "fashion"],
+    why: "硬い単灯を高めから直射し、影を構図の一部としてデザイン。ポーズは静止、カットは大胆に間引く。彩度を抑えたグラフィカルな画。",
+    dims: {
+      editorial: { durationMul: 0.9, transition: "cut", pace: "スタッカート" },
+      camera: { focal: [50, 85], aperture: 8 },
+      lighting: { fillScale: 0.3, rimBoost: 1.0, contrast: "極高 (影をデザイン)" },
+      color: { look: "bleach" },
+      movement: { moveSpeed: "normal", prefMove: "fix" },
+    },
+    tokens: ["hard single-source fashion light", "shadows designed as graphic shapes", "held sculptural poses"],
+    avoid: ["soft romantic diffusion everywhere"],
+  },
+  {
+    id: "automotive-premium", name: "自動車プレミアム", family: "automotive",
+    keywords: ["自動車", "カーCM", "クルマ", "走行美", "automotive"],
+    why: "ボディに走る一本の細長い写り込みを設計し、ロー気味の並走でスピードの品格を出す。黒背景or夜明けの空。リグ消し前提の複合ムーブ。",
+    dims: {
+      editorial: { durationMul: 1.1, transition: "dissolve", pace: "滑らか" },
+      camera: { focal: [35, 85], aperture: 4 },
+      lighting: { fillScale: 0.4, rimBoost: 1.6, contrast: "高" },
+      color: { look: "tealorange" },
+      movement: { moveSpeed: "slow", prefMove: "d_side" },
+    },
+    tokens: ["one long designed reflection traveling the body line", "low parallel tracking with dignified speed", "sculpted dark automotive stage"],
+    avoid: ["random busy reflections", "shaky amateur pans"],
+  },
+];
+
+/* ---------- 自然言語検索 (§21, §33) ---------- */
+function searchDNA(query) {
+  const q = String(query || "").toLowerCase();
+  if (!q) return [];
+  const hits = [];
+  for (const dna of DNA_LIBRARY) {
+    const matched = dna.keywords.filter(k => q.includes(k.toLowerCase()));
+    if (matched.length) hits.push({ dna, matched, score: matched.length });
+  }
+  return hits.sort((a, b) => b.score - a.score);
+}
+
+/* ---------- DNA適用 (§29 に向けた制御変数の書き込み) ----------
+ * use: {editorial, camera, lighting, color, movement} 各 true/false */
+function applyPatternDNA(cut, dna, use, lineage) {
+  const U = Object.assign({ editorial: true, camera: true, lighting: true, color: true, movement: true }, use || {});
+  const D = dna.dims;
+  if (U.editorial && D.editorial) {
+    if (cut.kind !== "still") {
+      cut.duration = Math.max(2, Math.min(20, Math.round((cut.duration || 5) * D.editorial.durationMul)));
+    }
+    cut.transition = D.editorial.transition || cut.transition;
+  }
+  if (U.camera && D.camera) {
+    const [mn, mx] = D.camera.focal;
+    if (cut.camera.focalMm < mn || cut.camera.focalMm > mx) cut.camera.focalMm = Math.round((mn + mx) / 2);
+    cut.camera.apertureF = D.camera.aperture;
+  }
+  if (U.movement && D.movement) {
+    cut.camera.moveSpeed = D.movement.moveSpeed;
+    if (cut.camera.move === "fix" && D.movement.prefMove && D.movement.prefMove !== "fix") {
+      cut.camera.move = D.movement.prefMove;
+      const supId = MOVE_SUPPORT[D.movement.prefMove] || "tripod";
+      cut.camera.support = supId;
+      const sup = CAMERA_SUPPORTS.find(s => s.id === supId);
+      cut.camera.supportParam = sup && sup.param ? sup.param.def : 0;
+    }
+  }
+  if (U.lighting && D.lighting) {
+    for (const it of cut.items) {
+      if (it.type === "fill") it.power = Math.max(0, Math.min(100, Math.round(it.power * D.lighting.fillScale)));
+      if (["rim", "back"].includes(it.type)) it.power = Math.max(0, Math.min(100, Math.round(it.power * D.lighting.rimBoost)));
+    }
+  }
+  if (U.color && D.color && D.color.look) cut.look = D.color.look;
+  if (dna.aspect && U.editorial) cut.aspect = dna.aspect;
+
+  cut.dna = {
+    name: dna.name,
+    tokens: dna.tokens.slice(),
+    avoid: (dna.avoid || []).slice(),
+    lineage: lineage || { sources: [dna.id], weights: null, date: new Date().toISOString().slice(0, 10) },
+  };
+  return cut;
+}
+
+/* ---------- DNA Mixer (§34): 次元別に A↔B をブレンド ----------
+ * weights: {editorial, camera, lighting, color, movement} 各 0(A)〜1(B) */
+function mixDNA(a, b, weights) {
+  const w = weights || {};
+  const pick = (dim) => (w[dim] ?? 0.5) < 0.5 ? a : b;
+  const lerp = (va, vb, t) => va + (vb - va) * t;
+  const tE = w.editorial ?? 0.5, tC = w.camera ?? 0.5, tL = w.lighting ?? 0.5;
+  return {
+    id: `mix-${a.id}-${b.id}`,
+    name: `${a.name} × ${b.name}`,
+    family: "mix",
+    keywords: [],
+    why: `ミックス: editorial=${pick("editorial").name} / camera=${pick("camera").name} / lighting=${pick("lighting").name} / color=${pick("color").name} / movement=${pick("movement").name}`,
+    dims: {
+      editorial: {
+        durationMul: lerp(a.dims.editorial.durationMul, b.dims.editorial.durationMul, tE),
+        transition: pick("editorial").dims.editorial.transition,
+        pace: pick("editorial").dims.editorial.pace,
+      },
+      camera: {
+        focal: [
+          Math.round(lerp(a.dims.camera.focal[0], b.dims.camera.focal[0], tC)),
+          Math.round(lerp(a.dims.camera.focal[1], b.dims.camera.focal[1], tC)),
+        ],
+        aperture: +lerp(a.dims.camera.aperture, b.dims.camera.aperture, tC).toFixed(1),
+      },
+      lighting: {
+        fillScale: +lerp(a.dims.lighting.fillScale, b.dims.lighting.fillScale, tL).toFixed(2),
+        rimBoost: +lerp(a.dims.lighting.rimBoost, b.dims.lighting.rimBoost, tL).toFixed(2),
+        contrast: pick("lighting").dims.lighting.contrast,
+      },
+      color: { look: pick("color").dims.color.look },
+      movement: pick("movement").dims.movement,
+    },
+    tokens: [...new Set([...pick("lighting").tokens.slice(0, 2), ...pick("camera").tokens.slice(0, 1), ...pick("editorial").tokens.slice(0, 1)])],
+    avoid: [...new Set([...(a.avoid || []), ...(b.avoid || [])])].slice(0, 4),
+    aspect: pick("editorial").aspect,
+  };
+}
+
+</script>
+<script>
+/* =========================================================
  * CineOS 移植: IntentParser (cineos/CLAUDE.md §5, §8)
  * 自由文の日本語 (+一部英語) をルールベースで解釈し、
  * ベース技法プリセット + 上書き設定 + 「解釈の根拠」リストを返す。
@@ -4969,6 +5384,15 @@ function parseIntent(text) {
   if ((ev = has(/モノクロ|白黒/))) { R.look = "mono"; note("ルック", "モノクロ", ev); }
   if ((ev = has(/ノスタルジ|レトロ|ヴィンテージ|回想/))) { R.look = "filmwarm"; note("ルック", "フィルム暖色", ev); }
 
+  /* ---------- Pattern DNA 検出 (V8) ---------- */
+  if (typeof searchDNA === "function") {
+    const dnaHits = searchDNA(t);
+    if (dnaHits.length) {
+      R.dnaId = dnaHits[0].dna.id;
+      note("Pattern DNA", dnaHits[0].dna.name, dnaHits[0].matched[0]);
+    }
+  }
+
   /* ---------- ベース技法プリセットの決定 (優先度順) ---------- */
   const pick = (id, why, evd) => { if (!R.presetId) { R.presetId = id; R.presetWhy = why; note("ベース技法", why, evd || "-"); } };
   if (has(/爆発|爆炎|火球/)) pick("sfx-explosion", "爆発バック (パイロ)", has(/爆発|爆炎|火球/));
@@ -5038,6 +5462,18 @@ function buildCutFromIntent(parsed) {
   Object.assign(cut.camera, R.camera);
   if (R.camera.focalMm) cut.camera.lens = String(
     [14, 24, 35, 50, 85, 135].reduce((a, b) => Math.abs(b - R.camera.focalMm) < Math.abs(a - R.camera.focalMm) ? b : a));
+
+  // Pattern DNA 適用 (明示的なカメラ/ルック/アスペクト指定を優先して上書きし直す)
+  if (R.dnaId && typeof DNA_LIBRARY !== "undefined") {
+    const d = DNA_LIBRARY.find(x => x.id === R.dnaId);
+    if (d) {
+      applyPatternDNA(cut, d);
+      if (R.look) cut.look = R.look;
+      if (R.camera.focalMm) cut.camera.focalMm = R.camera.focalMm;
+      if (R.camera.moveSpeed) cut.camera.moveSpeed = R.camera.moveSpeed;
+      if (R.aspect) cut.aspect = R.aspect;
+    }
+  }
 
   // 追加機材 (プリセットに同種が無い場合のみ)
   for (const type of [...new Set(R.addItems)]) {
@@ -5666,6 +6102,8 @@ const state = {
   projectTitle: "無題プロジェクト",
   promptModel: "seedance",
   customPresets: [], // mdインポートされた技法
+  // プロジェクト共通の使用機材キット (機材DBで選択 → 全カット・保存に反映)
+  kit: { body: null, lens: null, support: null, drone: null },
 };
 
 function allPresets() { return PRESETS.concat(state.customPresets); }
@@ -5930,6 +6368,9 @@ function buildPromptParts(cut) {
     fps: cut.camera.fps, shutter: cut.camera.shutter,
     focusM: c.focusM, dur: cut.duration || 5,
     optList: optPhrases,
+    dnaTokens: cut.dna ? cut.dna.tokens : [],
+    dnaAvoid: cut.dna ? cut.dna.avoid : [],
+    dnaName: cut.dna ? cut.dna.name : "",
   };
 }
 
@@ -6015,7 +6456,8 @@ function generatePrompt(cut, modelId) {
         P.optList.length ? `PRACTICAL FX: ${P.optList.join(", ")}` : "",
         `COLOR / FINISH: ${j([P.lookEn || "natural true-to-life color grade", "photorealistic, professional cinematography, high detail"], ", ")}`,
         P.transEn ? `EDIT: shot ends with a ${P.transEn}` : "",
-        `NEGATIVE: no subtitles, no watermark, no on-screen text, no morphing artifacts`,
+        P.dnaTokens.length ? `STYLE DNA: ${P.dnaTokens.join(", ")}` : "",
+        `NEGATIVE: no subtitles, no watermark, no on-screen text, no morphing artifacts${P.dnaAvoid.length ? ", " + P.dnaAvoid.join(", ") : ""}`,
       ], "\n");
     }
     default: { // generic: 標準フォーマット
@@ -6026,6 +6468,7 @@ function generatePrompt(cut, modelId) {
         P.lightStr, P.bgEn, P.envPhrase,
         P.lensStr, P.dofPhrase, P.filterStr, P.lookEn, P.aspectEn,
         P.transEn ? `shot ends with a ${P.transEn}` : "",
+        P.dnaTokens.join(", "),
         P.motionStr,
         "photorealistic, professional cinematography, high detail",
       ], ". ") + ".";
@@ -6896,8 +7339,17 @@ function renderInspector() {
       ${fieldRow("ISO", `<input type="text" id="cIso" value="${esc(cut.camera.iso)}">`)}
       ${cut.kind !== "still" ? fieldRow("フレームレート", `<input type="text" id="cFps" value="${esc(cut.camera.fps)}">`) : ""}
       ${fieldRow("WB", `<input type="text" id="cWb" value="${esc(cut.camera.wb)}">`)}
-      ${(cut.camera.bodySku || cut.camera.lensSku || cut.camera.supportSku)
-        ? `<div class="insp-hint">🎬 使用機材: ${esc([cut.camera.bodySku, cut.camera.lensSku, cut.camera.supportSku].filter(Boolean).join(" / "))}</div>` : ""}
+    </div>
+    <div class="insp-section">
+      <h3>使用機材 (プロジェクト共通・保存されます)</h3>
+      ${[["body", "カメラ"], ["lens", "レンズ"], ["support", "サポート"], ["drone", "ドローン"]].map(([k, label]) => `
+        <div class="field"><label>${label}</label>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span class="insp-hint" style="flex:1">${state.kit[k] ? `<b>${esc(state.kit[k])}</b>` : "未設定"}</span>
+            ${state.kit[k] ? `<button class="icon-btn small kit-clear" data-kit="${k}" title="解除" aria-label="解除"><svg class="ic"><use href="#i-close"/></svg></button>` : ""}
+          </div>
+        </div>`).join("")}
+      <button class="btn small" id="btnKitOpenDb">機材DBから選ぶ</button>
     </div>
     <div class="insp-section">
       <h3>サポート (支持機材)</h3>
@@ -6994,6 +7446,14 @@ function renderInspector() {
     const supDef = CAMERA_SUPPORTS.find(s => s.id === cut.camera.support);
     bindCamRange("cSupParam", "supportParam", v => v + (supDef && supDef.param ? supDef.param.unit : ""));
   }
+  insp.querySelectorAll(".kit-clear").forEach(el => {
+    el.addEventListener("click", () => { state.kit[el.dataset.kit] = null; renderInspector(); });
+  });
+  bind("btnKitOpenDb", () => {
+    byId("equipAssignHint").innerHTML = "";
+    byId("equipOverlay").hidden = false;
+    renderEquipPage();
+  }, "click");
   insp.querySelectorAll(".filter-toggle").forEach(el => {
     el.addEventListener("click", () => {
       const f = el.dataset.filter;
@@ -7167,6 +7627,7 @@ function buildInstructionDoc() {
     <section class="cut-page">
       <h2>CUT ${i + 1}　${esc(cut.name)} <span class="dur">${cut.kind === "still" ? "スチール" : "尺: " + cut.duration + "秒"} ｜ ${esc(cut.aspect)} ｜ テイク${cut.takes} ｜ 準備${cut.setupMin}分</span></h2>
       ${cut.aim ? `<p class="aim"><b>狙い:</b> ${esc(cut.aim)}</p>` : ""}
+      ${cut.dna ? `<p class="memo">🧬 <b>Pattern DNA: ${esc(cut.dna.name)}</b> — ${esc(cut.dna.tokens.join(", "))}${cut.dna.lineage && cut.dna.lineage.sources.length > 1 ? ` ｜ 由来: ${esc(cut.dna.lineage.sources.join(" + "))}` : ""}</p>` : ""}
       <div class="two-col">
         <figure>
           <figcaption>スタジオ配置図 (俯瞰) — グリッド1マス=50cm</figcaption>
@@ -7455,6 +7916,7 @@ function setupDocOverlay() {
       byId("docOverlay").hidden = true;
       byId("equipOverlay").hidden = true;
       byId("projOverlay").hidden = true;
+      byId("dnaOverlay").hidden = true;
     }
   });
 }
@@ -7768,15 +8230,15 @@ function cutToCanonicalShot(cut, i, projectId) {
         target_m: toWorldM({ ...sub, height: 150 }),
         roll_deg: cut.camera.angle === "dutch" ? 7 : 0,
         body_archetype: cut.camera.body,
-        body_sku: cut.camera.bodySku || null,
-        support: { type: cut.camera.support, param: sup && sup.param ? { [sup.param.label]: `${cut.camera.supportParam}${sup.param.unit}` } : null, head: cut.camera.head, support_sku: cut.camera.supportSku || null },
+        body_sku: state.kit.body || cut.camera.bodySku || null,
+        support: { type: cut.camera.support, param: sup && sup.param ? { [sup.param.label]: `${cut.camera.supportParam}${sup.param.unit}` } : null, head: cut.camera.head, support_sku: state.kit.support || cut.camera.supportSku || null },
       },
       lens: {
         focal_length_mm: cut.camera.focalMm,
         aperture_f: cut.camera.apertureF,
         focus_distance_m: cut.camera.focusM,
         anamorphic: cut.camera.lens === "anam",
-        lens_sku: cut.camera.lensSku || null,
+        lens_sku: state.kit.lens || cut.camera.lensSku || null,
         nd: cut.camera.nd,
         filters: cut.camera.filters,
       },
@@ -7859,6 +8321,7 @@ function importJSON(file) {
       state.mode = data.mode || "video";
       state.cuts = data.cuts.map(ensureCameraDefaults); // 旧バージョンのJSONに詳細フィールドを補完
       state.customPresets = Array.isArray(data.customPresets) ? data.customPresets : [];
+      state.kit = Object.assign({ body: null, lens: null, support: null, drone: null }, data.kit || {});
       state.promptModel = data.promptModel || state.promptModel;
       const pmSel = byId("promptModelSelect");
       if (pmSel) pmSel.value = state.promptModel;
@@ -7892,6 +8355,7 @@ function snapshotState() {
     mode: state.mode, cuts: state.cuts, activeCut: state.activeCut,
     projectTitle: state.projectTitle, projectId: state.projectId || null,
     promptModel: state.promptModel, customPresets: state.customPresets,
+    kit: state.kit,
   }));
 }
 
@@ -7905,6 +8369,7 @@ function applySnapshot(s) {
   state.projectId = s.projectId || null;
   state.promptModel = s.promptModel || "seedance";
   state.customPresets = Array.isArray(s.customPresets) ? s.customPresets : [];
+  state.kit = Object.assign({ body: null, lens: null, support: null, drone: null }, s.kit || {});
   document.querySelectorAll(".mode-tab").forEach(b => b.classList.toggle("active", b.dataset.mode === state.mode));
   const pm = byId("promptModelSelect");
   if (pm && pm.options.length) pm.value = state.promptModel;
@@ -8004,6 +8469,92 @@ function setupProjects() {
 }
 
 /* =========================================================
+ * Pattern DNA ページ (CineOS V8 Phase 1: 検索・適用・ミキサー)
+ * ======================================================= */
+const dnaSel = { a: null, b: null };
+const mixWeights = { editorial: 0.5, camera: 0.5, lighting: 0.5, color: 0.5, movement: 0.5 };
+const MIX_DIMS = [["editorial", "編集リズム"], ["camera", "カメラ/レンズ"], ["lighting", "ライティング"], ["color", "カラー"], ["movement", "ムーブ"]];
+
+function applyDnaToScope(dna, lineage) {
+  const targets = byId("dnaScope").value === "all" ? state.cuts : [activeCut()];
+  for (const c of targets) {
+    applyPatternDNA(c, dna, null, lineage ? JSON.parse(JSON.stringify(lineage)) : undefined);
+  }
+  refresh(); renderInspector();
+  byId("dnaMsg").innerHTML = `✓ <b>${esc(dna.name)}</b> を${targets.length}カットに適用しました (プレビュー/プロンプト/指示書に反映)`;
+}
+
+function renderDnaPage() {
+  const q = byId("dnaSearch").value.trim();
+  const hits = q ? searchDNA(q) : [];
+  const list = hits.length ? hits : DNA_LIBRARY.map(d => ({ dna: d, matched: [] }));
+
+  byId("dnaGrid").innerHTML = list.map(({ dna, matched }) => `
+    <div class="dna-card ${dnaSel.a === dna.id ? "sel-a" : ""} ${dnaSel.b === dna.id ? "sel-b" : ""}">
+      <div class="d-head">
+        <span class="d-name">${esc(dna.name)}${matched.length ? ` <small style="color:var(--accent)">「${esc(matched[0])}」に一致</small>` : ""}</span>
+        <span class="d-family">${esc(dna.family)}</span>
+      </div>
+      <div class="d-why">${esc(dna.why)}</div>
+      <div class="d-tokens">${esc(dna.tokens.slice(0, 3).join(" / "))}</div>
+      <div class="d-actions">
+        <button class="btn small primary" data-apply="${esc(dna.id)}">適用</button>
+        <button class="btn small ${dnaSel.a === dna.id ? "primary" : ""}" data-mixa="${esc(dna.id)}">A</button>
+        <button class="btn small ${dnaSel.b === dna.id ? "primary" : ""}" data-mixb="${esc(dna.id)}">B</button>
+      </div>
+    </div>`).join("");
+
+  const grid = byId("dnaGrid");
+  grid.querySelectorAll("[data-apply]").forEach(b => b.addEventListener("click", () => {
+    const d = DNA_LIBRARY.find(x => x.id === b.dataset.apply);
+    if (d) applyDnaToScope(d);
+    renderDnaPage();
+  }));
+  grid.querySelectorAll("[data-mixa]").forEach(b => b.addEventListener("click", () => {
+    dnaSel.a = dnaSel.a === b.dataset.mixa ? null : b.dataset.mixa; renderDnaPage();
+  }));
+  grid.querySelectorAll("[data-mixb]").forEach(b => b.addEventListener("click", () => {
+    dnaSel.b = dnaSel.b === b.dataset.mixb ? null : b.dataset.mixb; renderDnaPage();
+  }));
+
+  // ミキサー (§34): AとBが選ばれたら表示
+  const a = DNA_LIBRARY.find(x => x.id === dnaSel.a);
+  const b = DNA_LIBRARY.find(x => x.id === dnaSel.b);
+  const mixer = byId("dnaMixer");
+  mixer.hidden = !(a && b);
+  if (a && b) {
+    byId("mixA").textContent = a.name;
+    byId("mixB").textContent = b.name;
+    byId("mixSliders").innerHTML = MIX_DIMS.map(([k, label]) => `
+      <div class="mix-row"><label>${label}</label>
+        <input type="range" min="0" max="100" value="${Math.round(mixWeights[k] * 100)}" data-mixdim="${k}">
+      </div>`).join("");
+    byId("mixSliders").querySelectorAll("[data-mixdim]").forEach(el => {
+      el.addEventListener("input", () => { mixWeights[el.dataset.mixdim] = +el.value / 100; });
+    });
+  }
+}
+
+function setupDnaPage() {
+  byId("btnDnaPage").addEventListener("click", () => {
+    byId("dnaMsg").textContent = "";
+    byId("dnaOverlay").hidden = false;
+    renderDnaPage();
+  });
+  byId("btnDnaBack").addEventListener("click", () => { byId("dnaOverlay").hidden = true; });
+  byId("dnaSearch").addEventListener("input", renderDnaPage);
+  byId("btnMixApply").addEventListener("click", () => {
+    const a = DNA_LIBRARY.find(x => x.id === dnaSel.a);
+    const b = DNA_LIBRARY.find(x => x.id === dnaSel.b);
+    if (!a || !b) return;
+    const mixed = mixDNA(a, b, mixWeights);
+    applyDnaToScope(mixed, { sources: [a.id, b.id], weights: { ...mixWeights }, date: new Date().toISOString().slice(0, 10) });
+    renderDnaPage();
+  });
+  byId("btnMixClear").addEventListener("click", () => { dnaSel.a = null; dnaSel.b = null; renderDnaPage(); });
+}
+
+/* =========================================================
  * 機材データベースページ (アプリ内オーバーレイ・戻るボタン付き)
  * 選んだ実機材はカット/選択中の機材に割当できる (capability-first の具体化)
  * ======================================================= */
@@ -8034,13 +8585,16 @@ function assignTargetLabel(record) {
 function assignEquipment(record) {
   const cut = activeCut();
   const name = `${record.manufacturer} ${record.model}`;
+  // カメラ・レンズ・サポート・ドローンはプロジェクト共通キットに保存
+  // (全カット・自動保存・書き出しに反映され、戻っても保持される)
   switch (record.category) {
-    case "camera": cut.camera.bodySku = name; break;
-    case "lens": cut.camera.lensSku = name; break;
-    case "camera_support": cut.camera.supportSku = name; break;
+    case "camera": state.kit.body = name; break;
+    case "lens": state.kit.lens = name; break;
+    case "camera_support": state.kit.support = name; break;
     case "aerial": {
+      state.kit.drone = name;
       const droneItem = cut.items.find(i => i.type === "drone");
-      if (droneItem) droneItem.sku = name; else cut.camera.supportSku = name;
+      if (droneItem) droneItem.sku = name;
       break;
     }
     default: {
@@ -8058,8 +8612,9 @@ function assignEquipment(record) {
       break;
     }
   }
-  byId("equipAssignHint").innerHTML = `✓ <b>${esc(name)}</b> を割り当てました (インスペクター・指示書・canonical JSONに反映)`;
+  byId("equipAssignHint").innerHTML = `✓ <b>${esc(name)}</b> を使用機材に保存しました (全カット共通・自動保存・指示書/canonical JSONに反映)`;
   renderInspector();
+  renderEquipPage();
 }
 
 function renderEquipPage() {
@@ -8079,9 +8634,17 @@ function renderEquipPage() {
 
   const sel = activeCut().items.find(i => i.id === state.selectedItem);
   if (!byId("equipAssignHint").innerHTML.startsWith("✓") && !byId("equipAssignHint").innerHTML.startsWith("⚠️")) {
-    byId("equipAssignHint").innerHTML = sel
-      ? `選択中: <b>${esc(EQUIP_TYPES[sel.type].label)}</b> — ライト/特効/モディファイアのカードから割当できます`
-      : "カメラ/レンズ/サポート/ドローンは直接割当可。ライト等は俯瞰図で機材を選択してから開いてください";
+    const kitStr = [
+      state.kit.body && `カメラ: ${state.kit.body}`,
+      state.kit.lens && `レンズ: ${state.kit.lens}`,
+      state.kit.support && `サポート: ${state.kit.support}`,
+      state.kit.drone && `ドローン: ${state.kit.drone}`,
+    ].filter(Boolean).join(" ｜ ");
+    byId("equipAssignHint").innerHTML =
+      (kitStr ? `🎬 <b>使用機材 (保存済み)</b>: ${esc(kitStr)}<br>` : "") +
+      (sel
+        ? `選択中: <b>${esc(EQUIP_TYPES[sel.type].label)}</b> — ライト/特効/モディファイアのカードから割当できます`
+        : "カメラ/レンズ/サポート/ドローンは選ぶだけで保存されます。ライト等は俯瞰図で機材を選択してから開いてください");
   }
 
   byId("equipGrid").innerHTML = records.map((r, i) => `
@@ -8095,7 +8658,7 @@ function renderEquipPage() {
       </div>
       <div class="e-cap">${esc(Object.entries(r.capability).slice(0, 4).map(([k, v]) => `${k}: ${v}`).join(" ｜ ") || "—")}</div>
       <div class="e-use">${esc(r.use_cases.join(" / "))}</div>
-      <div class="e-actions"><button class="btn small" data-assign="${i}">${esc(assignTargetLabel(r))}</button></div>
+      <div class="e-actions"><button class="btn small ${[state.kit.body, state.kit.lens, state.kit.support, state.kit.drone].includes(`${r.manufacturer} ${r.model}`) ? "primary" : ""}" data-assign="${i}">${[state.kit.body, state.kit.lens, state.kit.support, state.kit.drone].includes(`${r.manufacturer} ${r.model}`) ? "✓ 使用中" : esc(assignTargetLabel(r))}</button></div>
     </div>`).join("");
   byId("equipGrid").querySelectorAll("[data-assign]").forEach(btn =>
     btn.addEventListener("click", () => assignEquipment(records[+btn.dataset.assign])));
@@ -8198,6 +8761,13 @@ function cutFromCanonicalShot(shot) {
 
 function importCanonical(data) {
   if (!Array.isArray(data.shots) || !data.shots.length) throw new Error("shots がありません");
+  const c0 = data.shots[0].planned?.camera || {};
+  state.kit = {
+    body: c0.body_sku || null,
+    lens: data.shots[0].planned?.lens?.lens_sku || null,
+    support: c0.support?.support_sku || null,
+    drone: state.kit?.drone || null,
+  };
   state.cuts = data.shots.map(cutFromCanonicalShot);
   state.activeCut = 0;
   state.selectedItem = null;
@@ -8448,6 +9018,7 @@ function init() {
   setupDocOverlay();
   setupEquipPage();
   setupProjects();
+  setupDnaPage();
   byId("btnPlayPreview").addEventListener("click", () => {
     state.previewPlay = !state.previewPlay;
     if (state.previewPlay) startPreviewAnim(); else stopPreviewAnim();
