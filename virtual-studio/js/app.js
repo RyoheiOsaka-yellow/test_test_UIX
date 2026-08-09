@@ -2109,10 +2109,49 @@ function setupHeader() {
   });
 }
 
+/* =========================================================
+ * IntentParser の配線 (自由文 → カット自動設計)
+ * ======================================================= */
+let lastIntentCutId = null;
+
+function runIntent() {
+  const text = byId("intentInput").value.trim();
+  if (!text) return;
+  const parsed = parseIntent(text);
+  const cut = buildCutFromIntent(parsed);
+  state.cuts.push(cut);
+  state.activeCut = state.cuts.length - 1;
+  state.selectedItem = null;
+  lastIntentCutId = cut.id;
+  renderAll();
+  // 解釈の根拠を表示 (すべての推定を明示する — CLAUDE.md §8)
+  byId("intentChips").innerHTML = parsed.assumptions
+    .map(a => `<span class="intent-chip">${esc(a.label)}: ${esc(a.value)}${a.ev ? `<small>「${esc(a.ev)}」</small>` : ""}</span>`)
+    .join("");
+  byId("intentResult").hidden = false;
+}
+
+function setupIntent() {
+  byId("btnIntent").addEventListener("click", runIntent);
+  byId("intentInput").addEventListener("keydown", e => { if (e.key === "Enter") runIntent(); });
+  byId("btnIntentClose").addEventListener("click", () => { byId("intentResult").hidden = true; });
+  byId("btnCoverage").addEventListener("click", () => {
+    const idx = state.cuts.findIndex(c => c.id === lastIntentCutId);
+    const target = idx >= 0 ? state.cuts[idx] : activeCut();
+    const three = expandCoverage(target);
+    const at = idx >= 0 ? idx : state.activeCut;
+    state.cuts.splice(at, 1, ...three);
+    state.activeCut = at + 1; // メインカットを選択
+    lastIntentCutId = three[1].id;
+    renderAll();
+  });
+}
+
 function init() {
   setupHeader();
   setupTheme();
   setupZoom();
+  setupIntent();
   byId("btnPlayPreview").addEventListener("click", () => {
     state.previewPlay = !state.previewPlay;
     if (state.previewPlay) startPreviewAnim(); else stopPreviewAnim();

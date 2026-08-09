@@ -286,6 +286,41 @@ button { font-family: inherit; letter-spacing: inherit; }
   display: flex; flex-direction: column;
   min-width: 0; min-height: 0; background: var(--bg); overflow-y: auto;
 }
+/* ---------- IntentParser バー ---------- */
+#intentBar {
+  display: flex; align-items: center; gap: 9px;
+  margin: 12px 14px 0;
+  background: var(--surface);
+  border-radius: 12px; padding: 7px 8px 7px 13px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid transparent;
+  transition: all 0.18s var(--ease);
+}
+#intentBar:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-sm); }
+#intentBar .wand { color: var(--accent); width: 16px; height: 16px; }
+#intentBar input {
+  flex: 1; border: none; background: transparent;
+  font-size: 13px; color: var(--text); font-family: inherit;
+}
+#intentBar input::placeholder { color: var(--dim); }
+#intentBar input:focus { outline: none; }
+
+#intentResult {
+  margin: 8px 14px 0;
+  background: var(--surface);
+  border-radius: 12px; padding: 10px 13px;
+  box-shadow: var(--shadow-sm);
+  border-left: 3px solid var(--accent);
+}
+.intent-result-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+.intent-result-head > div { display: flex; align-items: center; gap: 4px; }
+#intentChips { display: flex; flex-wrap: wrap; gap: 5px; }
+.intent-chip {
+  font-size: 11px; padding: 3.5px 10px; border-radius: 980px;
+  background: var(--accent-soft); color: var(--accent); font-weight: 600;
+}
+.intent-chip small { color: var(--dim); font-weight: 400; margin-left: 3px; }
+
 .studio-toolbar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 14px 4px; flex-wrap: wrap; gap: 8px;

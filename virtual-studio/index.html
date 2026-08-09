@@ -30,6 +30,8 @@
     <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5.5v13M15 5.5v13"/></symbol>
     <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5.5 12h13"/></symbol>
     <symbol id="i-fit" viewBox="0 0 24 24"><path d="M9 3.5H5.5A2 2 0 0 0 3.5 5.5V9M15 3.5h3.5a2 2 0 0 1 2 2V9M9 20.5H5.5a2 2 0 0 1-2-2V15M15 20.5h3.5a2 2 0 0 0 2-2V15"/></symbol>
+    <symbol id="i-wand" viewBox="0 0 24 24"><path d="M5 19 16.5 7.5M14.5 5.5l4 4M18 3v2.5M19.25 4.25h-2.5M8 3.5v2M9 4.5H7M20 10.5v2M21 11.5h-2"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
   </defs>
 </svg>
 
@@ -85,6 +87,23 @@
 
   <!-- 中央: スタジオキャンバス -->
   <section id="studioPanel">
+    <!-- IntentParser: 自由文からカットを自動設計 -->
+    <div id="intentBar">
+      <svg class="ic wand"><use href="#i-wand"/></svg>
+      <input id="intentInput" type="text"
+        placeholder="シーンを言葉で書くとカットを自動設計 — 例: 夜の豪雨。主人公が路地を走り、後方で大きな爆発。35mm映画の緊張感。">
+      <button id="btnIntent" class="btn primary small">設計</button>
+    </div>
+    <div id="intentResult" hidden>
+      <div class="intent-result-head">
+        <span class="panel-title small">解釈した前提 <small>クリックした項目は右のインスペクターで調整できます</small></span>
+        <div>
+          <button id="btnCoverage" class="btn tiny" title="引き(状況)→メイン→寄り(感情)の3カット構成に展開">3カットに展開</button>
+          <button id="btnIntentClose" class="icon-btn small" aria-label="閉じる"><svg class="ic"><use href="#i-close"/></svg></button>
+        </div>
+      </div>
+      <div id="intentChips"></div>
+    </div>
     <div class="studio-toolbar">
       <span class="panel-title">スタジオ俯瞰図 <small>ドラッグで機材を移動</small></span>
       <div class="add-equipment">
@@ -167,6 +186,7 @@
 <script src="js/data.js"></script>
 <script src="js/equipment_db.js"></script>
 <script src="js/engine.js"></script>
+<script src="js/intent.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
