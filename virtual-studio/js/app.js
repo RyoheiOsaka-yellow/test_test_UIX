@@ -54,12 +54,28 @@ function ensureItemDefaults(it) {
   if (LIGHT_TYPES.includes(it.type)) {
     if (it.beamAngle == null) it.beamAngle = MODIFIER_BEAM[it.modifier] ?? 60;
     if (!it.stand) it.stand = it.type === "top" ? "ブームアーム" : "ライトスタンド";
+    if (it.watt == null) it.watt = TYPE_WATT[it.type] ?? 0;
   }
   return it;
 }
 
+const SUBJECT_DEFAULT_ACTION = { person: "stand", bottle: "place", cosme: "place", food: "place", car: "drive", arch: "place" };
+
 function ensureCameraDefaults(cut) {
+  /* カット全体の詳細フィールド */
+  if (!cut.kind) cut.kind = cut.aspect === "3:2" || cut.aspect === "4:5" ? "still" : "video";
+  if (!cut.look) cut.look = "natural";
+  if (!cut.action) cut.action = SUBJECT_DEFAULT_ACTION[cut.subjectType] || "stand";
+  if (cut.subjectNote == null) cut.subjectNote = "";
+  if (!cut.audio) cut.audio = cut.kind === "still" ? "MOS (現場無音・後付け)" : AUDIO_MODES[0];
+  if (!cut.weather) cut.weather = "none";
+  if (!cut.timeOfDay) cut.timeOfDay = "none";
+  if (cut.takes == null) cut.takes = 3;
+  if (cut.setupMin == null) cut.setupMin = 30;
   const c = cut.camera;
+  if (!c.moveSpeed) c.moveSpeed = "normal";
+  if (!c.endShotSize) c.endShotSize = "same";
+  if (!c.trackShape) c.trackShape = "直線";
   if (!c.body) c.body = cut.aspect === "3:2" ? "medium" : "cine";
   if (c.focalMm == null) c.focalMm = LENS_FOCAL[c.lens] ?? 50;
   if (c.apertureF == null) {
@@ -85,6 +101,7 @@ function makeCut(preset) {
     aim: preset ? preset.look : "",
     notes: "",
     duration: 5,
+    kind: state.mode === "still" ? "still" : "video",
     aspect: state.mode === "still" ? "3:2" : "16:9",
     subjectType: preset ? preset.subjectType : "person",
     bgStyle: preset ? preset.bgStyle : "dark",
@@ -171,6 +188,24 @@ function relToEn(rel) {
 /* =========================================================
  * Seedance / AI動画生成プロンプト
  * ======================================================= */
+/* ---------- アスペクト比 → プレビュー寸法 ---------- */
+function aspectDims(aspectId) {
+  const a = ASPECTS.find(x => x.id === aspectId) || ASPECTS[0];
+  const ratio = a.w / a.h;
+  if (ratio >= 1) { const W = 640; return { W, H: Math.round(W / ratio) }; }
+  const H = 520; return { W: Math.round(H * ratio), H };
+}
+
+/* ---------- 電源プラン自動計算 ---------- */
+function powerPlan(cut) {
+  const lights = cut.items.filter(i => LIGHT_TYPES.includes(i.type) && i.type !== "sun" && i.power > 0);
+  const total = lights.reduce((s, i) => s + (i.watt || 0), 0);
+  const circuits = total > 0 ? Math.ceil(total / 1500) : 0; // 100V 15A = 1500W/回路
+  const genkVA = total === 0 ? 0
+    : (GENERATOR_SIZES.find(g => g * 1000 * 0.8 >= total * 1.25) || GENERATOR_SIZES[GENERATOR_SIZES.length - 1]);
+  return { count: lights.length, total, circuits, genkVA };
+}
+
 /* 焦点距離(mm) → 英語表現 */
 function focalToEn(mm, isAnam) {
   let s;
@@ -226,18 +261,35 @@ function generatePrompt(cut) {
   const supPhrase = sup && ["steadicam", "shoulder", "bodyrig", "wearable", "cablecam", "carmount", "technocrane", "slider"].includes(sup.id)
     ? `shot with ${sup.en}` : "";
 
+  /* 動き・演技・環境・ルックの言語化 */
+  const spd = MOVE_SPEEDS.find(s => s.id === c.moveSpeed);
+  const movPhrase = spd && spd.en && c.move !== "fix" ? `${mov.en}, ${spd.en} pace` : mov.en;
+  const endSize = c.endShotSize !== "same" ? SHOT_SIZES.find(s => s.id === c.endShotSize) : null;
+  const framingPhrase = endSize && endSize.id !== size.id
+    ? `framing evolves from ${size.en} to ${endSize.en}` : "";
+  const act = SUBJECT_ACTIONS.find(a => a.id === cut.action);
+  const weather = WEATHERS.find(w => w.id === cut.weather);
+  const tod = TIMES_OF_DAY.find(t => t.id === cut.timeOfDay);
+  const envPhrase = [weather && weather.en, tod && tod.en].filter(Boolean).join(", ");
+  const look = LOOKS.find(l => l.id === cut.look);
+  const aspect = ASPECTS.find(a => a.id === cut.aspect);
+
   const parts = [
     `${size.en}, ${ang.en}`,
-    mov.en,
+    movPhrase,
+    framingPhrase,
     supPhrase,
     bodyPhrase,
-    `subject: ${subj.en}${optPhrases.length ? ", " + optPhrases.join(", ") : ""}`,
+    `subject: ${subj.en}${act && act.en ? ", " + act.en : ""}${cut.subjectNote ? ` (${cut.subjectNote})` : ""}${optPhrases.length ? ", " + optPhrases.join(", ") : ""}`,
     lightPhrases.join(", "),
     bg.en,
+    envPhrase,
     `${lensPhrase}, aperture f/${c.apertureF}${c.focusM ? `, focus at ${c.focusM}m` : ""}`,
     dofPhrase,
     filterPhrases.join(", "),
-    cut.aspect === "3:2" ? "still photograph, ultra high resolution" : `${cut.camera.fps}, cinematic motion`,
+    look && look.id !== "natural" ? look.en : "",
+    aspect ? aspect.en : "",
+    cut.kind === "still" ? "still photograph, ultra high resolution" : `${cut.camera.fps}, cinematic motion`,
     "photorealistic, professional cinematography, high detail",
   ];
   return parts.filter(Boolean).join(". ") + ".";
@@ -331,6 +383,18 @@ function explainCut(cut) {
   if (bodyDef && !["cine", "mirrorless", "medium"].includes(bodyDef.id)) {
     lines.push(`📹 カメラ本体は「${bodyDef.label}」。${bodyDef.id === "pov_ear" || bodyDef.id === "action" ? "本人の見た目そのままの一人称視点になります。" : bodyDef.id === "highspeed" ? "超スローモーションで撮れます。" : bodyDef.id === "cam360" ? "全方位が記録され、後から画角を切り出せます。" : ""}`);
   }
+  if (cut.camera.endShotSize && cut.camera.endShotSize !== "same" && cut.camera.endShotSize !== cut.camera.shotSize) {
+    const endS = SHOT_SIZES.find(s => s.id === cut.camera.endShotSize);
+    lines.push(`↔️ カットの中でサイズが変わります: ${size.label} から ${endS ? endS.label : cut.camera.endShotSize} へ${SHOT_SIZES.indexOf(endS) < SHOT_SIZES.indexOf(size) ? "引いていき、状況を見せます" : "寄っていき、感情や細部に迫ります"}。`);
+  }
+  const lookDef = LOOKS.find(l => l.id === cut.look);
+  if (lookDef && lookDef.id !== "natural") {
+    lines.push(`🎞 仕上げの色は「${lookDef.label}」。${lookDef.id === "mono" ? "白黒になり、光と影だけで見せます。" : lookDef.id === "tealorange" ? "肌はオレンジ・背景は青緑に分かれる映画の定番カラーです。" : lookDef.id === "bleach" ? "色が薄く硬い、戦場映画のような質感です。" : ""}`);
+  }
+  const actDef = SUBJECT_ACTIONS.find(a => a.id === cut.action);
+  if (actDef && !["stand", "place"].includes(actDef.id)) {
+    lines.push(`🏃 被写体の動き: ${actDef.label}。`);
+  }
 
   for (const o of cut.options) {
     if (OPTION_EFFECTS_JA[o]) lines.push(OPTION_EFFECTS_JA[o] + "。");
@@ -357,10 +421,23 @@ function equipGlyph(it, sub, cut) {
       let rig = "";
       if (supId === "slider" || supId === "dolly") {
         const L = supId === "slider" ? Math.max(40, supParam) * 0.8 : Math.max(2, supParam) * 18;
-        rig = `<line x1="-16" y1="${-L / 2}" x2="-16" y2="${L / 2}" stroke="#8a90a0" stroke-width="3"/>
-               <line x1="-24" y1="${-L / 2}" x2="-24" y2="${L / 2}" stroke="#8a90a0" stroke-width="3"/>
-               ${Array.from({ length: Math.max(2, Math.round(L / 26)) }, (_, k) =>
-                 `<line x1="-28" y1="${-L / 2 + k * 26}" x2="-12" y2="${-L / 2 + k * 26}" stroke="#b8bdc9" stroke-width="2"/>`).join("")}`;
+        const shape = (cut && cut.camera && cut.camera.trackShape) || "直線";
+        if (shape.startsWith("カーブ")) {
+          rig = `<path d="M-16,${-L / 2} Q-52,0 -16,${L / 2}" fill="none" stroke="#8a90a0" stroke-width="3"/>
+                 <path d="M-24,${-L / 2} Q-62,0 -24,${L / 2}" fill="none" stroke="#8a90a0" stroke-width="3"/>`;
+        } else if (shape.startsWith("円弧")) {
+          const R = Math.max(60, Math.hypot(sub.x - it.x, sub.y - it.y));
+          const a = 28 * Math.PI / 180;
+          const x1 = R - R * Math.cos(a), y1 = -R * Math.sin(a);
+          const x2 = R - R * Math.cos(a), y2 = R * Math.sin(a);
+          rig = `<path d="M${x1 - 16},${y1} A${R},${R} 0 0 0 ${x2 - 16},${y2}" fill="none" stroke="#8a90a0" stroke-width="3"/>
+                 <path d="M${x1 - 24},${y1} A${R + 8},${R + 8} 0 0 0 ${x2 - 24},${y2}" fill="none" stroke="#8a90a0" stroke-width="3"/>`;
+        } else {
+          rig = `<line x1="-16" y1="${-L / 2}" x2="-16" y2="${L / 2}" stroke="#8a90a0" stroke-width="3"/>
+                 <line x1="-24" y1="${-L / 2}" x2="-24" y2="${L / 2}" stroke="#8a90a0" stroke-width="3"/>
+                 ${Array.from({ length: Math.max(2, Math.round(L / 26)) }, (_, k) =>
+                   `<line x1="-28" y1="${-L / 2 + k * 26}" x2="-12" y2="${-L / 2 + k * 26}" stroke="#b8bdc9" stroke-width="2"/>`).join("")}`;
+        }
       } else if (supId === "crane" || supId === "technocrane") {
         const armPx = Math.max(2, supParam) * 14;
         rig = `<line x1="${-armPx}" y1="0" x2="-10" y2="0" stroke="#d98a4e" stroke-width="4"/>
@@ -479,7 +556,7 @@ function shade(hex, f) {
 }
 
 function renderPreviewSVG(cut, idPrefix) {
-  const W = 640, H = cut.aspect === "3:2" ? 427 : 360;
+  const { W, H } = aspectDims(cut.aspect);
   const an = analyzeLighting(cut);
   const bg = BG_STYLES[cut.bgStyle] || BG_STYLES.dark;
   const size = SHOT_SIZES.find(s => s.id === cut.camera.shotSize) || SHOT_SIZES[2];
@@ -682,10 +759,24 @@ function renderPreviewSVG(cut, idPrefix) {
     <rect x="0" y="${H - 26}" width="${W}" height="26" fill="#000" opacity="0.55"/>
     <text x="10" y="${H - 8}" fill="#ffd98a" font-size="13" font-family="monospace">${esc(cut.camera.shotSize)} | ${esc(ang2.label)} | ${esc(mov.label)} | ${cut.camera.focalMm || ""}mm F${cut.camera.apertureF || ""} | ${esc((CAMERA_SUPPORTS.find(s => s.id === cut.camera.support) || {}).label || "")}</text>`;
 
+  /* ルック / グレーディング */
+  const look = LOOKS.find(l => l.id === (cut.look || "natural")) || LOOKS[0];
+  let lookFilter = "";
+  if (look.sat != null) {
+    defs += `<filter id="${p}lk"><feColorMatrix type="saturate" values="${look.sat}"/></filter>`;
+    lookFilter = `filter="url(#${p}lk)"`;
+  }
+  let lookTint = "";
+  if (look.tintA) lookTint += `<rect width="${W}" height="${H}" fill="${look.tintA}" opacity="0.10"/>`;
+  if (look.tintB) lookTint += `<rect width="${W}" height="${H}" fill="${look.tintB}" opacity="0.12"/>`;
+
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">
     <defs>${defs}</defs>
-    <rect width="${W}" height="${H}" fill="url(#${p}bg)"/>
-    ${bgExtra}${subjectSvg}${fx}${overlay}
+    <g ${lookFilter}>
+      <rect width="${W}" height="${H}" fill="url(#${p}bg)"/>
+      ${bgExtra}${subjectSvg}${fx}
+    </g>
+    ${lookTint}${overlay}
   </svg>`;
 }
 
@@ -803,7 +894,8 @@ function renderInspector() {
         ${fieldRow("モディファイア", `<select id="itMod">${MODIFIERS.map(m =>
           `<option ${m === selItem.modifier ? "selected" : ""}>${esc(m)}</option>`).join("")}</select>`)}
         ${fieldRow("スタンド", `<select id="itStand">${LIGHT_STANDS.map(s =>
-          `<option ${s === (selItem.stand || "ライトスタンド") ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>`)}` : ""}
+          `<option ${s === (selItem.stand || "ライトスタンド") ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>`)}
+        ${fieldRow("消費電力(W)", `<input type="number" id="itWatt" value="${selItem.watt ?? 0}" min="0" max="20000" step="10" title="電源プラン(指示書)の自動計算に使われます">`)}` : ""}
         <div class="insp-hint">被写体からの距離: 約${distM}m ｜ 方位: ${esc(relToJa(analyzeLighting(cut).lights.find(l => l.item.id === selItem.id)?.rel ?? 0))}</div>
         ${selItem.type !== "subject" && selItem.type !== "camera"
           ? `<button class="btn small danger" id="btnDelItem" style="margin-top:6px">この機材を削除</button>` : ""}
@@ -816,8 +908,17 @@ function renderInspector() {
       ${fieldRow("カット名", `<input type="text" id="cName" value="${esc(cut.name)}">`)}
       ${fieldRow("狙い/意図", `<textarea id="cAim" rows="2">${esc(cut.aim)}</textarea>`)}
       ${fieldRow("被写体", selectHtml("cSubject", SUBJECT_TYPES, cut.subjectType))}
+      ${fieldRow("演技/動き", selectHtml("cAction", SUBJECT_ACTIONS, cut.action))}
+      ${fieldRow("被写体メモ", `<input type="text" id="cSubNote" value="${esc(cut.subjectNote)}" placeholder="例: 20代女性・白ワンピース / 青いガラス瓶のジン">`)}
       ${fieldRow("背景", selectHtml("cBg", Object.keys(BG_STYLES).map(k => ({ id: k, label: k + " — " + BG_STYLES[k].en })), cut.bgStyle))}
-      ${cut.aspect !== "3:2" ? fieldRow("尺(秒)", `<input type="number" id="cDur" value="${cut.duration}" min="1" max="60">`) : ""}
+      ${fieldRow("アスペクト比", selectHtml("cAspect", ASPECTS, cut.aspect))}
+      ${fieldRow("ルック/グレード", selectHtml("cLook", LOOKS, cut.look))}
+      ${fieldRow("天候", selectHtml("cWeather", WEATHERS, cut.weather))}
+      ${fieldRow("時間帯", selectHtml("cTod", TIMES_OF_DAY, cut.timeOfDay))}
+      ${cut.kind !== "still" ? fieldRow("尺(秒)", `<input type="number" id="cDur" value="${cut.duration}" min="1" max="60">`) : ""}
+      ${cut.kind !== "still" ? fieldRow("音声収録", `<select id="cAudio">${AUDIO_MODES.map(a => `<option ${a === cut.audio ? "selected" : ""}>${esc(a)}</option>`).join("")}</select>`) : ""}
+      ${fieldRow("想定テイク", `<input type="number" id="cTakes" value="${cut.takes}" min="1" max="50">`)}
+      ${fieldRow("準備時間(分)", `<input type="number" id="cSetup" value="${cut.setupMin}" min="0" max="480">`)}
     </div>
     <div class="insp-section">
       <h3>カメラ & レンズ</h3>
@@ -825,6 +926,8 @@ function renderInspector() {
       ${fieldRow("カットサイズ", selectHtml("cShot", SHOT_SIZES, cut.camera.shotSize))}
       ${fieldRow("アングル", selectHtml("cAngle", CAM_ANGLES, cut.camera.angle))}
       ${fieldRow("カメラワーク", selectHtml("cMove", CAM_MOVES, cut.camera.move))}
+      ${cut.camera.move !== "fix" ? fieldRow("移動速度", selectHtml("cMoveSpeed", MOVE_SPEEDS, cut.camera.moveSpeed)) : ""}
+      ${fieldRow("終了サイズ", selectHtml("cEndShot", [{ id: "same", label: "変化なし (同サイズ)" }, ...SHOT_SIZES], cut.camera.endShotSize))}
       ${fieldRow("レンズ選択", selectHtml("cLens", LENSES, cut.camera.lens))}
       <div class="field-row3"><label>焦点距離</label>
         <input type="range" id="cFocal" min="8" max="800" step="1" value="${cut.camera.focalMm}">
@@ -841,7 +944,7 @@ function renderInspector() {
           `<span class="opt-toggle filter-toggle ${cut.camera.filters.includes(f.id) ? "on" : ""}" data-filter="${f.id}" title="${esc(f.en)}">${esc(f.label)}</span>`).join("")}</div></div>
       ${fieldRow("シャッター", `<input type="text" id="cShutter" value="${esc(cut.camera.shutter)}">`)}
       ${fieldRow("ISO", `<input type="text" id="cIso" value="${esc(cut.camera.iso)}">`)}
-      ${cut.aspect !== "3:2" ? fieldRow("フレームレート", `<input type="text" id="cFps" value="${esc(cut.camera.fps)}">`) : ""}
+      ${cut.kind !== "still" ? fieldRow("フレームレート", `<input type="text" id="cFps" value="${esc(cut.camera.fps)}">`) : ""}
       ${fieldRow("WB", `<input type="text" id="cWb" value="${esc(cut.camera.wb)}">`)}
     </div>
     <div class="insp-section">
@@ -854,6 +957,8 @@ function renderInspector() {
           <input type="range" id="cSupParam" min="${sup.param.min}" max="${sup.param.max}" step="1" value="${cut.camera.supportParam}">
           <span class="range-val">${cut.camera.supportParam}${esc(sup.param.unit)}</span></div>`;
       })()}
+      ${["dolly", "slider"].includes(cut.camera.support)
+        ? fieldRow("レール軌道", `<select id="cTrack">${TRACK_SHAPES.map(t => `<option ${t === cut.camera.trackShape ? "selected" : ""}>${esc(t)}</option>`).join("")}</select>`) : ""}
       ${fieldRow("雲台", `<select id="cHead">${CAMERA_HEADS.map(h => `<option ${h === cut.camera.head ? "selected" : ""}>${esc(h)}</option>`).join("")}</select>`)}
       <div class="insp-hint">カメラワークを変えると支持機材が自動で切り替わります (手動変更も可能)。俯瞰図のカメラ下にレール・アーム等が表示されます。</div>
     </div>
@@ -876,8 +981,21 @@ function renderInspector() {
   const bind = (id, fn, ev = "change") => { const el = byId(id); if (el) el.addEventListener(ev, fn); };
   bind("cName", e => { cut.name = e.target.value; renderCutStrip(); });
   bind("cAim", e => { cut.aim = e.target.value; });
-  bind("cSubject", e => { cut.subjectType = e.target.value; refresh(); });
+  bind("cSubject", e => {
+    cut.subjectType = e.target.value;
+    cut.action = SUBJECT_DEFAULT_ACTION[e.target.value] || "stand";
+    refresh(); renderInspector();
+  });
+  bind("cAction", e => { cut.action = e.target.value; renderPrompt(); });
+  bind("cSubNote", e => { cut.subjectNote = e.target.value; renderPrompt(); }, "input");
   bind("cBg", e => { cut.bgStyle = e.target.value; refresh(); });
+  bind("cAspect", e => { cut.aspect = e.target.value; refresh(); });
+  bind("cLook", e => { cut.look = e.target.value; renderPreview(); renderPrompt(); renderCutStrip(); });
+  bind("cWeather", e => { cut.weather = e.target.value; renderPrompt(); });
+  bind("cTod", e => { cut.timeOfDay = e.target.value; renderPrompt(); });
+  bind("cAudio", e => { cut.audio = e.target.value; });
+  bind("cTakes", e => { cut.takes = +e.target.value; });
+  bind("cSetup", e => { cut.setupMin = +e.target.value; });
   bind("cDur", e => { cut.duration = +e.target.value; });
   bind("cShot", e => { cut.camera.shotSize = e.target.value; refresh(); });
   bind("cAngle", e => { cut.camera.angle = e.target.value; refresh(); });
@@ -904,6 +1022,9 @@ function renderInspector() {
     renderCanvas(); renderPrompt(); renderInspector();
   });
   bind("cHead", e => { cut.camera.head = e.target.value; });
+  bind("cMoveSpeed", e => { cut.camera.moveSpeed = e.target.value; renderPrompt(); });
+  bind("cEndShot", e => { cut.camera.endShotSize = e.target.value; renderPrompt(); });
+  bind("cTrack", e => { cut.camera.trackShape = e.target.value; renderCanvas(); });
   { // 連続値スライダー (焦点距離 / F値 / フォーカス / サポートパラメータ)
     const bindCamRange = (id, prop, fmt) => {
       const el = byId(id);
@@ -965,6 +1086,7 @@ function renderInspector() {
       refresh(); renderInspector();
     });
     bind("itStand", e => { selItem.stand = e.target.value; });
+    bind("itWatt", e => { selItem.watt = +e.target.value; });
     bind("btnDelItem", () => {
       cut.items = cut.items.filter(i => i.id !== selItem.id);
       state.selectedItem = null;
@@ -1040,6 +1162,7 @@ function equipTableRows(cut) {
       <td>${isLight ? (it.beamAngle ?? 60) + "°" : "—"}</td>
       <td>${isLight ? esc(it.modifier) : "—"}</td>
       <td>${isLight ? esc(it.stand || "ライトスタンド") : "—"}</td>
+      <td>${isLight && it.type !== "sun" && it.watt ? it.watt + "W" : "—"}</td>
     </tr>`;
   }).join("");
 }
@@ -1054,7 +1177,7 @@ function buildInstructionDoc() {
     const opts = cut.options.map(o => SHOT_OPTIONS.find(s => s.id === o)).filter(Boolean);
     return `
     <section class="cut-page">
-      <h2>CUT ${i + 1}　${esc(cut.name)} <span class="dur">${cut.aspect === "3:2" ? "スチール" : "尺: " + cut.duration + "秒"}</span></h2>
+      <h2>CUT ${i + 1}　${esc(cut.name)} <span class="dur">${cut.kind === "still" ? "スチール" : "尺: " + cut.duration + "秒"} ｜ ${esc(cut.aspect)} ｜ テイク${cut.takes} ｜ 準備${cut.setupMin}分</span></h2>
       ${cut.aim ? `<p class="aim"><b>狙い:</b> ${esc(cut.aim)}</p>` : ""}
       <div class="two-col">
         <figure>
@@ -1073,9 +1196,14 @@ function buildInstructionDoc() {
       <h3>ライティング指示</h3>
       <ul class="ja-summary">${jaLines.map(l => `<li>${esc(l)}</li>`).join("")}</ul>
       <table>
-        <thead><tr><th>機材</th><th>方位 (カメラ軸基準)</th><th>被写体距離</th><th>高さ</th><th>出力</th><th>色温度</th><th>照射角</th><th>モディファイア</th><th>スタンド</th></tr></thead>
+        <thead><tr><th>機材</th><th>方位 (カメラ軸基準)</th><th>被写体距離</th><th>高さ</th><th>出力</th><th>色温度</th><th>照射角</th><th>モディファイア</th><th>スタンド</th><th>消費電力</th></tr></thead>
         <tbody>${equipTableRows(cut)}</tbody>
       </table>
+      ${(() => {
+        const pp = powerPlan(cut);
+        if (!pp.total) return "";
+        return `<p class="power-plan">⚡ <b>電源プラン (自動計算)</b>: 点灯 ${pp.count}灯 / 合計 ${pp.total}W → 100V15A回路 <b>${pp.circuits}回路</b> に分散${pp.genkVA ? ` ｜ 発電機使用時の推奨容量: <b>${pp.genkVA}kVA</b> (余裕率25%込み)` : ""}。大電力灯 (HMI等) は単独回路に。</p>`;
+      })()}
 
       <h3>カメラ・レンズ設定</h3>
       <table>
@@ -1102,6 +1230,21 @@ function buildInstructionDoc() {
             const fl = (cut.camera.filters || []).map(f => (LENS_FILTERS.find(x => x.id === f) || {}).label).filter(Boolean).join(" / ") || "なし";
             return `<td>${esc(sup ? sup.label : "")}</td><td>${esc(p)}</td><td>${esc(cut.camera.head)}</td><td>${esc(cut.camera.nd)}</td><td>${esc(fl)}</td>`;
           })()}
+        </tr></tbody>
+      </table>
+
+      <h3>演出・収録・環境</h3>
+      <table>
+        <thead><tr><th>演技/動き</th><th>被写体メモ</th><th>移動速度</th><th>サイズ変化</th><th>ルック</th><th>音声</th><th>天候</th><th>時間帯</th></tr></thead>
+        <tbody><tr>
+          <td>${esc((SUBJECT_ACTIONS.find(a => a.id === cut.action) || {}).label || "—")}</td>
+          <td>${esc(cut.subjectNote || "—")}</td>
+          <td>${esc((MOVE_SPEEDS.find(s => s.id === cut.camera.moveSpeed) || {}).label || "標準")}</td>
+          <td>${cut.camera.endShotSize !== "same" ? esc(cut.camera.shotSize + " → " + cut.camera.endShotSize) : "変化なし"}</td>
+          <td>${esc((LOOKS.find(l => l.id === cut.look) || {}).label || "")}</td>
+          <td>${cut.kind === "still" ? "—" : esc(cut.audio)}</td>
+          <td>${esc((WEATHERS.find(w => w.id === cut.weather) || {}).label || "")}</td>
+          <td>${esc((TIMES_OF_DAY.find(t => t.id === cut.timeOfDay) || {}).label || "")}</td>
         </tr></tbody>
       </table>
 
@@ -1141,17 +1284,23 @@ function buildInstructionDoc() {
     .ja-summary li { margin-bottom: 2px; }
     .memo { font-size: 12px; line-height: 1.7; color: #333; }
     .prompt { background: #14161b; color: #b8e0b8; padding: 12px; border-radius: 6px; font-size: 11px; white-space: pre-wrap; font-family: ui-monospace, monospace; line-height: 1.6; }
+    .power-plan { font-size: 12px; background: #f0f6ff; border: 1px solid #c8d8f0; border-radius: 6px; padding: 8px 10px; margin-top: 8px; }
     @media print { .toolbar { display: none; } body { padding: 0; } }
   </style></head><body>
     <h1>撮影指示書 — ${esc(state.projectTitle)}</h1>
-    <div class="meta">モード: ${esc(modeLabel)} ｜ カット数: ${state.cuts.length} ｜ 出力日: ${esc(today)} ｜ Generated by Virtual Studio</div>
+    <div class="meta">モード: ${esc(modeLabel)} ｜ カット数: ${state.cuts.length}
+      ｜ 想定合計テイク: ${state.cuts.reduce((s, c) => s + (c.takes || 0), 0)}
+      ｜ 合計準備時間: 約${Math.round(state.cuts.reduce((s, c) => s + (c.setupMin || 0), 0) / 60 * 10) / 10}時間
+      ｜ 出力日: ${esc(today)} ｜ Generated by Virtual Studio</div>
     <div class="toolbar"><button onclick="window.print()">🖨 印刷 / PDFに保存</button></div>
     <table class="toc">
-      <thead><tr><th>#</th><th>カット名</th><th>サイズ</th><th>ワーク</th><th>尺</th><th>狙い</th></tr></thead>
+      <thead><tr><th>#</th><th>カット名</th><th>サイズ</th><th>ワーク</th><th>尺</th><th>テイク</th><th>準備</th><th>狙い</th></tr></thead>
       <tbody>${state.cuts.map((c, i) => `<tr>
-        <td>C${i + 1}</td><td>${esc(c.name)}</td><td>${esc(c.camera.shotSize)}</td>
+        <td>C${i + 1}</td><td>${esc(c.name)}</td><td>${esc(c.camera.shotSize)}${c.camera.endShotSize && c.camera.endShotSize !== "same" ? "→" + esc(c.camera.endShotSize) : ""}</td>
         <td>${esc((CAM_MOVES.find(s => s.id === c.camera.move) || {}).label || "")}</td>
-        <td>${c.aspect === "3:2" ? "スチール" : c.duration + "s"}</td><td>${esc(c.aim.slice(0, 40))}</td></tr>`).join("")}
+        <td>${c.kind === "still" ? "スチール" : c.duration + "s"}</td>
+        <td>${c.takes ?? "-"}</td><td>${c.setupMin ?? "-"}分</td>
+        <td>${esc(c.aim.slice(0, 40))}</td></tr>`).join("")}
       </tbody>
     </table>
     ${cutPages}

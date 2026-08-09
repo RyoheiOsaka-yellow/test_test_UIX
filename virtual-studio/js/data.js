@@ -190,6 +190,96 @@ const MODIFIER_BEAM = {
 /* レンズプリセットID → 焦点距離mm */
 const LENS_FOCAL = { "14": 14, "24": 24, "35": 35, "50": 50, "85": 85, "100m": 100, "135": 135, "anam": 50 };
 
+/* ---------- アスペクト比 ---------- */
+const ASPECTS = [
+  { id: "16:9",   label: "16:9 (横・標準)",        w: 16, h: 9,  en: "16:9 widescreen" },
+  { id: "9:16",   label: "9:16 (縦・リール/TikTok)", w: 9, h: 16, en: "9:16 vertical video" },
+  { id: "2.39:1", label: "2.39:1 (シネスコ)",      w: 239, h: 100, en: "2.39:1 anamorphic widescreen, cinematic letterbox" },
+  { id: "4:3",    label: "4:3 (クラシック)",        w: 4, h: 3,  en: "4:3 classic aspect ratio" },
+  { id: "1:1",    label: "1:1 (スクエア)",          w: 1, h: 1,  en: "1:1 square format" },
+  { id: "3:2",    label: "3:2 (スチール標準)",      w: 3, h: 2,  en: "3:2 photographic frame" },
+  { id: "4:5",    label: "4:5 (縦スチール/SNS)",    w: 4, h: 5,  en: "4:5 vertical photographic frame" },
+];
+
+/* ---------- ルック / グレーディング ---------- */
+const LOOKS = [
+  { id: "natural",    label: "ナチュラル",         en: "natural true-to-life color grade" },
+  { id: "tealorange", label: "ティール&オレンジ",  en: "teal and orange blockbuster color grade",
+    tintA: "#ff8a3c", tintB: "#186e8a" },
+  { id: "filmwarm",   label: "フィルム暖色",       en: "warm vintage film emulation with soft grain",
+    tintA: "#ffb060", sat: 0.9 },
+  { id: "bleach",     label: "ブリーチバイパス",   en: "bleach bypass look, desaturated and high contrast", sat: 0.35 },
+  { id: "mono",       label: "モノクロ",           en: "black and white, rich tonal range", sat: 0 },
+  { id: "pastel",     label: "パステル",           en: "soft pastel tones with lifted shadows",
+    tintA: "#ffd9e8", sat: 0.8 },
+  { id: "vivid",      label: "ビビッド",           en: "punchy vivid saturated colors", sat: 1.5 },
+  { id: "cyber",      label: "シネパンク (青強調)", en: "cyberpunk grade with deep blues and neon accents",
+    tintB: "#2040c0" },
+];
+
+/* ---------- 被写体の演技・動き ---------- */
+const SUBJECT_ACTIONS = [
+  { id: "stand",  label: "立ち (静止)",     en: "standing still" },
+  { id: "walk",   label: "歩く",            en: "walking" },
+  { id: "run",    label: "走る",            en: "running" },
+  { id: "sit",    label: "座る",            en: "sitting" },
+  { id: "turn",   label: "振り返る",        en: "turning around to look back at the camera" },
+  { id: "jump",   label: "ジャンプ",        en: "jumping mid-air" },
+  { id: "dance",  label: "踊る",            en: "dancing" },
+  { id: "talk",   label: "話す (カメラ目線)", en: "speaking directly to the camera" },
+  { id: "hands",  label: "手元作業",        en: "hands working in detail" },
+  { id: "pour",   label: "注ぐ (液体)",     en: "liquid being poured in a smooth stream" },
+  { id: "rotate", label: "回転 (ターンテーブル)", en: "slowly rotating on a turntable" },
+  { id: "float",  label: "浮遊 (商品)",     en: "floating weightlessly in mid-air" },
+  { id: "place",  label: "置き (静物)",     en: "a carefully arranged still composition" },
+  { id: "drive",  label: "走行 (車両)",     en: "driving at speed" },
+];
+
+/* ---------- カメラ移動速度 ---------- */
+const MOVE_SPEEDS = [
+  { id: "veryslow", label: "とてもゆっくり", en: "very slow, almost imperceptible" },
+  { id: "slow",     label: "ゆっくり",       en: "slow and deliberate" },
+  { id: "normal",   label: "標準",           en: "" },
+  { id: "fast",     label: "速い",           en: "fast and energetic" },
+  { id: "veryfast", label: "とても速い",     en: "rapid, high-speed" },
+];
+
+/* ---------- ドリー/スライダー軌道 ---------- */
+const TRACK_SHAPES = ["直線", "カーブ (S字/緩弧)", "円弧 (被写体中心)"];
+
+/* ---------- 音声収録 ---------- */
+const AUDIO_MODES = ["同録 (ガンマイク+ブーム)", "ラベリア (ピンマイク)", "同録+ラベリア (2系統)", "アンビエンスのみ", "MOS (現場無音・後付け)"];
+
+/* ---------- 天候・時間帯 (主に屋外) ---------- */
+const WEATHERS = [
+  { id: "none",   label: "指定なし", en: "" },
+  { id: "clear",  label: "快晴",     en: "clear sunny weather" },
+  { id: "thin",   label: "薄曇り",   en: "thin high clouds, soft daylight" },
+  { id: "cloudy", label: "曇天",     en: "overcast sky, diffused light" },
+  { id: "rainy",  label: "雨",       en: "rainy weather, wet surfaces" },
+  { id: "snowy",  label: "雪",       en: "snowy weather" },
+  { id: "foggy",  label: "霧",       en: "thick fog, limited visibility" },
+  { id: "windy",  label: "強風",     en: "strong wind" },
+];
+const TIMES_OF_DAY = [
+  { id: "none",    label: "指定なし",       en: "" },
+  { id: "dawn",    label: "早朝 (夜明け)",   en: "at dawn, first light" },
+  { id: "morning", label: "午前",           en: "in the morning" },
+  { id: "noon",    label: "正午 (トップ光)", en: "at high noon" },
+  { id: "aft",     label: "午後",           en: "in the afternoon" },
+  { id: "golden",  label: "ゴールデンアワー", en: "during golden hour" },
+  { id: "blue",    label: "ブルーアワー",   en: "during blue hour twilight" },
+  { id: "night",   label: "夜",             en: "at night" },
+];
+
+/* ---------- 消費電力デフォルト (W) — 電源プラン自動計算用 ---------- */
+const TYPE_WATT = {
+  key: 300, fill: 200, back: 150, rim: 150, top: 300, bg: 200,
+  hmi: 1200, practical: 60,
+};
+/* 発電機の標準容量 (kVA) */
+const GENERATOR_SIZES = [2.8, 5.5, 15, 25, 60];
+
 /* ---------- 被写体タイプ ---------- */
 const SUBJECT_TYPES = [
   { id: "person",  label: "人物",             en: "a person" },
