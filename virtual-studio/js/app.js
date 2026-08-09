@@ -49,6 +49,34 @@ function makeItem(def) {
   };
 }
 
+/* ---------- 詳細フィールドのデフォルト補完 (プリセット/旧JSON互換) ---------- */
+function ensureItemDefaults(it) {
+  if (LIGHT_TYPES.includes(it.type)) {
+    if (it.beamAngle == null) it.beamAngle = MODIFIER_BEAM[it.modifier] ?? 60;
+    if (!it.stand) it.stand = it.type === "top" ? "ブームアーム" : "ライトスタンド";
+  }
+  return it;
+}
+
+function ensureCameraDefaults(cut) {
+  const c = cut.camera;
+  if (!c.body) c.body = cut.aspect === "3:2" ? "medium" : "cine";
+  if (c.focalMm == null) c.focalMm = LENS_FOCAL[c.lens] ?? 50;
+  if (c.apertureF == null) {
+    const m = String(c.aperture || "").match(/[\d.]+/);
+    c.apertureF = m ? parseFloat(m[0]) : 2.8;
+  }
+  if (c.focusM == null) c.focusM = ["bottle", "cosme", "food"].includes(cut.subjectType) ? 0.8 : 2.5;
+  if (!c.nd) c.nd = "なし";
+  if (!Array.isArray(c.filters)) c.filters = [];
+  if (!c.support) c.support = MOVE_SUPPORT[c.move] || "tripod";
+  const sup = CAMERA_SUPPORTS.find(s => s.id === c.support);
+  if (c.supportParam == null) c.supportParam = sup && sup.param ? sup.param.def : 0;
+  if (!c.head) c.head = c.support === "gimbal" ? "3軸スタビ雲台" : "フルード雲台";
+  cut.items.forEach(ensureItemDefaults);
+  return cut;
+}
+
 function makeCut(preset) {
   const cut = {
     id: uid(),
@@ -70,7 +98,7 @@ function makeCut(preset) {
       ...(preset ? preset.items.map(makeItem) : []),
     ],
   };
-  return cut;
+  return ensureCameraDefaults(cut);
 }
 
 /* =========================================================
@@ -143,11 +171,24 @@ function relToEn(rel) {
 /* =========================================================
  * Seedance / AI動画生成プロンプト
  * ======================================================= */
+/* 焦点距離(mm) → 英語表現 */
+function focalToEn(mm, isAnam) {
+  let s;
+  if (mm <= 16) s = `${mm}mm ultra-wide lens, dramatic perspective`;
+  else if (mm <= 28) s = `${mm}mm wide-angle lens`;
+  else if (mm <= 42) s = `${mm}mm lens, natural field of view`;
+  else if (mm <= 65) s = `${mm}mm standard lens`;
+  else if (mm <= 105) s = `${mm}mm portrait lens, compressed background`;
+  else if (mm <= 250) s = `${mm}mm telephoto lens, strong compression`;
+  else s = `${mm}mm super-telephoto lens, extreme compression`;
+  return isAnam ? s + ", 2x anamorphic with oval bokeh and horizontal flares" : s;
+}
+
 function generatePrompt(cut) {
+  ensureCameraDefaults(cut);
   const size = SHOT_SIZES.find(s => s.id === cut.camera.shotSize) || SHOT_SIZES[2];
   const ang = CAM_ANGLES.find(s => s.id === cut.camera.angle) || CAM_ANGLES[0];
   const mov = CAM_MOVES.find(s => s.id === cut.camera.move) || CAM_MOVES[0];
-  const lens = LENSES.find(s => s.id === cut.camera.lens) || LENSES[3];
   const subj = SUBJECT_TYPES.find(s => s.id === cut.subjectType) || SUBJECT_TYPES[0];
   const bg = BG_STYLES[cut.bgStyle] || BG_STYLES.dark;
   const an = analyzeLighting(cut);
@@ -170,13 +211,32 @@ function generatePrompt(cut) {
   lightPhrases.push(an.avgTemp <= 3800 ? "warm tungsten color palette"
     : an.avgTemp >= 7000 ? "cool blue color palette" : "neutral daylight color balance");
 
+  /* カメラ・レンズ・リグの言語化 */
+  const c = cut.camera;
+  const body = CAMERA_BODIES.find(b => b.id === c.body);
+  const sup = CAMERA_SUPPORTS.find(s => s.id === c.support);
+  const lensPhrase = focalToEn(c.focalMm, c.lens === "anam");
+  const dofPhrase = c.apertureF <= 2.8 && c.focalMm >= 50
+    ? "shallow depth of field with creamy bokeh"
+    : c.apertureF <= 2.8 ? "shallow depth of field"
+    : c.apertureF >= 8 ? "deep focus, everything sharp" : "";
+  const filterPhrases = (c.filters || [])
+    .map(f => LENS_FILTERS.find(x => x.id === f)).filter(Boolean).map(f => f.en);
+  const bodyPhrase = body && !["cine", "mirrorless"].includes(body.id) ? body.en : "";
+  const supPhrase = sup && ["steadicam", "shoulder", "bodyrig", "wearable", "cablecam", "carmount", "technocrane", "slider"].includes(sup.id)
+    ? `shot with ${sup.en}` : "";
+
   const parts = [
     `${size.en}, ${ang.en}`,
     mov.en,
+    supPhrase,
+    bodyPhrase,
     `subject: ${subj.en}${optPhrases.length ? ", " + optPhrases.join(", ") : ""}`,
     lightPhrases.join(", "),
     bg.en,
-    `${lens.en}, aperture ${cut.camera.aperture}`,
+    `${lensPhrase}, aperture f/${c.apertureF}${c.focusM ? `, focus at ${c.focusM}m` : ""}`,
+    dofPhrase,
+    filterPhrases.join(", "),
     cut.aspect === "3:2" ? "still photograph, ultra high resolution" : `${cut.camera.fps}, cinematic motion`,
     "photorealistic, professional cinematography, high detail",
   ];
@@ -224,6 +284,7 @@ const OPTION_EFFECTS_JA = {
 };
 
 function explainCut(cut) {
+  ensureCameraDefaults(cut);
   const an = analyzeLighting(cut);
   const lines = [];
   const silhouette = cut.options.includes("silhouette") || (an.frontPower === 0 && (an.bgPower > 0 || an.rimPower > 0));
@@ -263,7 +324,13 @@ function explainCut(cut) {
   const ang = CAM_ANGLES.find(s => s.id === cut.camera.angle) || CAM_ANGLES[0];
   const mov = CAM_MOVES.find(s => s.id === cut.camera.move) || CAM_MOVES[0];
   const angJa = { eye: "目の高さから自然に", high: "少し上から見下ろして(小さく・客観的に見える)", low: "下からあおって(大きく・力強く見える)", birds: "真上から(地図のような構図)", dutch: "画面を斜めに傾けて(不安・スピード感)", ots: "手前の人物の肩越しに(会話の臨場感)" }[cut.camera.angle] || "";
-  lines.push(`🎥 ${size.label}で、${angJa}撮ります。カメラの動き: ${mov.label}。`);
+  const sup = CAMERA_SUPPORTS.find(s => s.id === cut.camera.support);
+  const supJa = sup ? `カメラは${sup.label}${sup.param ? `(${cut.camera.supportParam}${sup.param.unit})` : ""}に載せ、` : "";
+  lines.push(`🎥 ${supJa}${size.label}で、${angJa}撮ります。動き: ${mov.label}。レンズは${cut.camera.focalMm}mm・F${cut.camera.apertureF}${cut.camera.apertureF <= 2.8 ? "(背景が大きくボケます)" : cut.camera.apertureF >= 8 ? "(手前から奥までピントが合います)" : ""}。`);
+  const bodyDef = CAMERA_BODIES.find(b => b.id === cut.camera.body);
+  if (bodyDef && !["cine", "mirrorless", "medium"].includes(bodyDef.id)) {
+    lines.push(`📹 カメラ本体は「${bodyDef.label}」。${bodyDef.id === "pov_ear" || bodyDef.id === "action" ? "本人の見た目そのままの一人称視点になります。" : bodyDef.id === "highspeed" ? "超スローモーションで撮れます。" : bodyDef.id === "cam360" ? "全方位が記録され、後から画角を切り出せます。" : ""}`);
+  }
 
   for (const o of cut.options) {
     if (OPTION_EFFECTS_JA[o]) lines.push(OPTION_EFFECTS_JA[o] + "。");
@@ -274,7 +341,7 @@ function explainCut(cut) {
 /* =========================================================
  * スタジオ俯瞰図 SVG
  * ======================================================= */
-function equipGlyph(it, sub) {
+function equipGlyph(it, sub, cut) {
   const t = EQUIP_TYPES[it.type] || EQUIP_TYPES.key;
   const aim = deg(Math.atan2(sub.y - it.y, sub.x - it.x));
   let body = "";
@@ -283,20 +350,51 @@ function equipGlyph(it, sub) {
       body = `<circle class="equip-body" r="26" fill="#ffffff" stroke="${t.color}" stroke-width="1.5"/>
               <circle r="9" fill="${t.color}"/>`;
       break;
-    case "camera":
+    case "camera": {
+      // サポート機材 (支持機材) の可視化
+      const supId = cut && cut.camera ? cut.camera.support : "tripod";
+      const supParam = cut && cut.camera ? cut.camera.supportParam : 0;
+      let rig = "";
+      if (supId === "slider" || supId === "dolly") {
+        const L = supId === "slider" ? Math.max(40, supParam) * 0.8 : Math.max(2, supParam) * 18;
+        rig = `<line x1="-16" y1="${-L / 2}" x2="-16" y2="${L / 2}" stroke="#8a90a0" stroke-width="3"/>
+               <line x1="-24" y1="${-L / 2}" x2="-24" y2="${L / 2}" stroke="#8a90a0" stroke-width="3"/>
+               ${Array.from({ length: Math.max(2, Math.round(L / 26)) }, (_, k) =>
+                 `<line x1="-28" y1="${-L / 2 + k * 26}" x2="-12" y2="${-L / 2 + k * 26}" stroke="#b8bdc9" stroke-width="2"/>`).join("")}`;
+      } else if (supId === "crane" || supId === "technocrane") {
+        const armPx = Math.max(2, supParam) * 14;
+        rig = `<line x1="${-armPx}" y1="0" x2="-10" y2="0" stroke="#d98a4e" stroke-width="4"/>
+               <circle cx="${-armPx}" cy="0" r="10" fill="#ffffff" stroke="#d98a4e" stroke-width="2.5"/>
+               <line x1="${-armPx - 8}" y1="10" x2="${-armPx + 8}" y2="10" stroke="#d98a4e" stroke-width="3"/>`;
+      } else if (supId === "cablecam") {
+        rig = `<line x1="-30" y1="-160" x2="-30" y2="160" stroke="#8a90a0" stroke-width="2" stroke-dasharray="8 6"/>`;
+      } else if (supId === "tripod" || supId === "highhat") {
+        rig = `${[150, 270, 30].map(a =>
+          `<line x1="0" y1="0" x2="${18 * Math.cos(a * Math.PI / 180)}" y2="${18 * Math.sin(a * Math.PI / 180)}" stroke="#8a90a0" stroke-width="2.5"/>`).join("")}`;
+      } else if (supId === "ladder" || supId === "intore") {
+        rig = `<rect x="-30" y="-14" width="14" height="28" fill="none" stroke="#8a90a0" stroke-width="2"/>
+               <line x1="-30" y1="-5" x2="-16" y2="-5" stroke="#8a90a0" stroke-width="2"/>
+               <line x1="-30" y1="4" x2="-16" y2="4" stroke="#8a90a0" stroke-width="2"/>`;
+      }
       body = `<g transform="rotate(${aim})">
+                ${rig}
                 <path d="M-40,0 L-8,-16 L-8,16 Z" fill="rgba(47,127,224,.15)"/>
                 <rect class="equip-body" x="-8" y="-13" width="30" height="26" rx="4" fill="#ffffff" stroke="${t.color}" stroke-width="1.5"/>
                 <rect x="-16" y="-6" width="9" height="12" fill="${t.color}"/>
               </g>`;
       break;
-    case "light":
+    }
+    case "light": {
+      const beam = it.beamAngle ?? 60;
+      const len = Math.min(150, 60 + it.power * 0.8);
+      const spread = Math.tan(Math.min(60, beam / 2) * Math.PI / 180) * len;
       body = `<g transform="rotate(${aim})">
-                <path d="M12,-9 L${12 + Math.min(120, 60 + it.power)},-${20 + it.power * 0.25} L${12 + Math.min(120, 60 + it.power)},${20 + it.power * 0.25} L12,9 Z" fill="${t.color}" opacity="0.18"/>
+                <path d="M12,-7 L${12 + len},${-spread} L${12 + len},${spread} L12,7 Z" fill="${t.color}" opacity="0.18"/>
                 <rect class="equip-body" x="-14" y="-12" width="26" height="24" rx="5" fill="#ffffff" stroke="${t.color}" stroke-width="1.5"/>
                 <circle cx="6" cy="0" r="6" fill="${t.color}"/>
               </g>`;
       break;
+    }
     case "panel":
       body = `<g transform="rotate(${aim + 90})">
                 <rect class="equip-body" x="-26" y="-5" width="52" height="10" rx="3" fill="${t.color}" opacity="0.9" stroke="#8a90a0" stroke-width="1"/>
@@ -337,9 +435,16 @@ function equipGlyph(it, sub) {
               </g>`;
       break;
   }
-  const subLabel = LIGHT_TYPES.includes(it.type) && it.power > 0
-    ? `${it.power}% / ${it.colorTemp}K / h${it.height}cm`
-    : (it.type === "drone" ? `高度 ${it.height}cm` : "");
+  let subLabel = "";
+  if (LIGHT_TYPES.includes(it.type) && it.power > 0) {
+    subLabel = `${it.power}% / ${it.colorTemp}K / h${it.height}cm / ${it.beamAngle ?? 60}°`;
+  } else if (it.type === "drone") {
+    subLabel = `高度 ${it.height}cm`;
+  } else if (it.type === "camera" && cut && cut.camera) {
+    const sup = CAMERA_SUPPORTS.find(s => s.id === cut.camera.support);
+    const p = sup && sup.param ? ` ${cut.camera.supportParam}${sup.param.unit}` : "";
+    subLabel = `${sup ? sup.label + p : ""} / ${cut.camera.focalMm}mm F${cut.camera.apertureF}`;
+  }
   return `<g class="equip-item" data-id="${it.id}" transform="translate(${it.x},${it.y})">
     ${body}
     <text class="equip-label" y="-34" text-anchor="middle">${esc(t.label)}</text>
@@ -354,7 +459,7 @@ function renderCanvasSVG(cut, interactive) {
   for (let x = 0; x <= 1000; x += 50) grid += `<line x1="${x}" y1="0" x2="${x}" y2="700" stroke="${x % 100 ? "#eceef3" : "#dfe2e9"}" stroke-width="1"/>`;
   for (let y = 0; y <= 700; y += 50) grid += `<line x1="0" y1="${y}" x2="1000" y2="${y}" stroke="${y % 100 ? "#eceef3" : "#dfe2e9"}" stroke-width="1"/>`;
 
-  const items = cut.items.map(it => equipGlyph(it, sub)).join("");
+  const items = cut.items.map(it => equipGlyph(it, sub, cut)).join("");
   return `${grid}
     <text x="14" y="24" fill="#8a90a0" font-size="12">グリッド 1マス = 50cm (100px = 1m) / 背景: ${esc((BG_STYLES[cut.bgStyle] || {}).en || "")}</text>
     <line x1="0" y1="90" x2="1000" y2="90" stroke="#c3c9d6" stroke-width="2" stroke-dasharray="8 6"/>
@@ -575,7 +680,7 @@ function renderPreviewSVG(cut, idPrefix) {
       <line x1="0" y1="${H / 3}" x2="${W}" y2="${H / 3}"/><line x1="0" y1="${H * 2 / 3}" x2="${W}" y2="${H * 2 / 3}"/>
     </g>
     <rect x="0" y="${H - 26}" width="${W}" height="26" fill="#000" opacity="0.55"/>
-    <text x="10" y="${H - 8}" fill="#ffd98a" font-size="13" font-family="monospace">${esc(cut.camera.shotSize)} | ${esc(ang2.label)} | ${esc(mov.label)} | ${esc((LENSES.find(l => l.id === cut.camera.lens) || {}).label || "")} ${esc(cut.camera.aperture)}</text>`;
+    <text x="10" y="${H - 8}" fill="#ffd98a" font-size="13" font-family="monospace">${esc(cut.camera.shotSize)} | ${esc(ang2.label)} | ${esc(mov.label)} | ${cut.camera.focalMm || ""}mm F${cut.camera.apertureF || ""} | ${esc((CAMERA_SUPPORTS.find(s => s.id === cut.camera.support) || {}).label || "")}</text>`;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">
     <defs>${defs}</defs>
@@ -692,8 +797,13 @@ function renderInspector() {
         <div class="field-row3"><label>色温度</label>
           <input type="range" id="itTemp" min="2500" max="10000" step="100" value="${selItem.colorTemp}">
           <span class="range-val">${selItem.colorTemp}K</span></div>
+        <div class="field-row3"><label>照射角</label>
+          <input type="range" id="itBeam" min="10" max="120" step="1" value="${selItem.beamAngle ?? 60}">
+          <span class="range-val">${selItem.beamAngle ?? 60}°</span></div>
         ${fieldRow("モディファイア", `<select id="itMod">${MODIFIERS.map(m =>
-          `<option ${m === selItem.modifier ? "selected" : ""}>${esc(m)}</option>`).join("")}</select>`)}` : ""}
+          `<option ${m === selItem.modifier ? "selected" : ""}>${esc(m)}</option>`).join("")}</select>`)}
+        ${fieldRow("スタンド", `<select id="itStand">${LIGHT_STANDS.map(s =>
+          `<option ${s === (selItem.stand || "ライトスタンド") ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>`)}` : ""}
         <div class="insp-hint">被写体からの距離: 約${distM}m ｜ 方位: ${esc(relToJa(analyzeLighting(cut).lights.find(l => l.item.id === selItem.id)?.rel ?? 0))}</div>
         ${selItem.type !== "subject" && selItem.type !== "camera"
           ? `<button class="btn small danger" id="btnDelItem" style="margin-top:6px">この機材を削除</button>` : ""}
@@ -710,16 +820,42 @@ function renderInspector() {
       ${cut.aspect !== "3:2" ? fieldRow("尺(秒)", `<input type="number" id="cDur" value="${cut.duration}" min="1" max="60">`) : ""}
     </div>
     <div class="insp-section">
-      <h3>カメラ</h3>
+      <h3>カメラ & レンズ</h3>
+      ${fieldRow("ボディ", selectHtml("cBody", CAMERA_BODIES, cut.camera.body))}
       ${fieldRow("カットサイズ", selectHtml("cShot", SHOT_SIZES, cut.camera.shotSize))}
       ${fieldRow("アングル", selectHtml("cAngle", CAM_ANGLES, cut.camera.angle))}
       ${fieldRow("カメラワーク", selectHtml("cMove", CAM_MOVES, cut.camera.move))}
-      ${fieldRow("レンズ", selectHtml("cLens", LENSES, cut.camera.lens))}
-      ${fieldRow("絞り", `<input type="text" id="cAperture" value="${esc(cut.camera.aperture)}">`)}
+      ${fieldRow("レンズ選択", selectHtml("cLens", LENSES, cut.camera.lens))}
+      <div class="field-row3"><label>焦点距離</label>
+        <input type="range" id="cFocal" min="8" max="800" step="1" value="${cut.camera.focalMm}">
+        <span class="range-val">${cut.camera.focalMm}mm</span></div>
+      <div class="field-row3"><label>絞り (F値)</label>
+        <input type="range" id="cApertureF" min="1.2" max="22" step="0.1" value="${cut.camera.apertureF}">
+        <span class="range-val">F${cut.camera.apertureF}</span></div>
+      <div class="field-row3"><label>フォーカス</label>
+        <input type="range" id="cFocus" min="0.2" max="30" step="0.1" value="${cut.camera.focusM}">
+        <span class="range-val">${cut.camera.focusM}m</span></div>
+      ${fieldRow("NDフィルター", `<select id="cNd">${ND_FILTERS.map(n => `<option ${n === cut.camera.nd ? "selected" : ""}>${esc(n)}</option>`).join("")}</select>`)}
+      <div class="field"><label>レンズフィルター</label>
+        <div class="opt-toggles">${LENS_FILTERS.map(f =>
+          `<span class="opt-toggle filter-toggle ${cut.camera.filters.includes(f.id) ? "on" : ""}" data-filter="${f.id}" title="${esc(f.en)}">${esc(f.label)}</span>`).join("")}</div></div>
       ${fieldRow("シャッター", `<input type="text" id="cShutter" value="${esc(cut.camera.shutter)}">`)}
       ${fieldRow("ISO", `<input type="text" id="cIso" value="${esc(cut.camera.iso)}">`)}
       ${cut.aspect !== "3:2" ? fieldRow("フレームレート", `<input type="text" id="cFps" value="${esc(cut.camera.fps)}">`) : ""}
       ${fieldRow("WB", `<input type="text" id="cWb" value="${esc(cut.camera.wb)}">`)}
+    </div>
+    <div class="insp-section">
+      <h3>サポート (支持機材)</h3>
+      ${fieldRow("支持機材", selectHtml("cSupport", CAMERA_SUPPORTS, cut.camera.support))}
+      ${(() => {
+        const sup = CAMERA_SUPPORTS.find(s => s.id === cut.camera.support);
+        if (!sup || !sup.param) return "";
+        return `<div class="field-row3"><label>${esc(sup.param.label)}</label>
+          <input type="range" id="cSupParam" min="${sup.param.min}" max="${sup.param.max}" step="1" value="${cut.camera.supportParam}">
+          <span class="range-val">${cut.camera.supportParam}${esc(sup.param.unit)}</span></div>`;
+      })()}
+      ${fieldRow("雲台", `<select id="cHead">${CAMERA_HEADS.map(h => `<option ${h === cut.camera.head ? "selected" : ""}>${esc(h)}</option>`).join("")}</select>`)}
+      <div class="insp-hint">カメラワークを変えると支持機材が自動で切り替わります (手動変更も可能)。俯瞰図のカメラ下にレール・アーム等が表示されます。</div>
     </div>
     <div class="insp-section">
       <h3>演出オプション <small style="color:var(--text-dim)">(商品の光り方・雫など)</small></h3>
@@ -745,16 +881,60 @@ function renderInspector() {
   bind("cDur", e => { cut.duration = +e.target.value; });
   bind("cShot", e => { cut.camera.shotSize = e.target.value; refresh(); });
   bind("cAngle", e => { cut.camera.angle = e.target.value; refresh(); });
-  bind("cMove", e => { cut.camera.move = e.target.value; refresh(); });
-  bind("cLens", e => { cut.camera.lens = e.target.value; refresh(); });
-  bind("cAperture", e => { cut.camera.aperture = e.target.value; renderPrompt(); });
+  bind("cMove", e => {
+    cut.camera.move = e.target.value;
+    // カメラワークに応じて支持機材を自動選択
+    const supId = MOVE_SUPPORT[e.target.value] || "tripod";
+    cut.camera.support = supId;
+    const sup = CAMERA_SUPPORTS.find(s => s.id === supId);
+    cut.camera.supportParam = sup && sup.param ? sup.param.def : 0;
+    refresh(); renderInspector();
+  });
+  bind("cBody", e => { cut.camera.body = e.target.value; renderPrompt(); });
+  bind("cLens", e => {
+    cut.camera.lens = e.target.value;
+    cut.camera.focalMm = LENS_FOCAL[e.target.value] ?? cut.camera.focalMm;
+    refresh(); renderInspector();
+  });
+  bind("cNd", e => { cut.camera.nd = e.target.value; });
+  bind("cSupport", e => {
+    cut.camera.support = e.target.value;
+    const sup = CAMERA_SUPPORTS.find(s => s.id === e.target.value);
+    cut.camera.supportParam = sup && sup.param ? sup.param.def : 0;
+    renderCanvas(); renderPrompt(); renderInspector();
+  });
+  bind("cHead", e => { cut.camera.head = e.target.value; });
+  { // 連続値スライダー (焦点距離 / F値 / フォーカス / サポートパラメータ)
+    const bindCamRange = (id, prop, fmt) => {
+      const el = byId(id);
+      if (!el) return;
+      el.addEventListener("input", e => {
+        cut.camera[prop] = +e.target.value;
+        el.nextElementSibling.textContent = fmt(+e.target.value);
+        renderCanvas(); renderPreview(); renderPrompt();
+      });
+    };
+    bindCamRange("cFocal", "focalMm", v => v + "mm");
+    bindCamRange("cApertureF", "apertureF", v => "F" + v);
+    bindCamRange("cFocus", "focusM", v => v + "m");
+    const supDef = CAMERA_SUPPORTS.find(s => s.id === cut.camera.support);
+    bindCamRange("cSupParam", "supportParam", v => v + (supDef && supDef.param ? supDef.param.unit : ""));
+  }
+  insp.querySelectorAll(".filter-toggle").forEach(el => {
+    el.addEventListener("click", () => {
+      const f = el.dataset.filter;
+      const i = cut.camera.filters.indexOf(f);
+      if (i >= 0) cut.camera.filters.splice(i, 1); else cut.camera.filters.push(f);
+      renderPrompt(); renderInspector();
+    });
+  });
   bind("cShutter", e => { cut.camera.shutter = e.target.value; });
   bind("cIso", e => { cut.camera.iso = e.target.value; });
   bind("cFps", e => { cut.camera.fps = e.target.value; renderPrompt(); });
   bind("cWb", e => { cut.camera.wb = e.target.value; });
   bind("cNotes", e => { cut.notes = e.target.value; });
 
-  insp.querySelectorAll(".opt-toggle").forEach(el => {
+  insp.querySelectorAll(".opt-toggle[data-opt]").forEach(el => {
     el.addEventListener("click", () => {
       const o = el.dataset.opt;
       const i = cut.options.indexOf(o);
@@ -764,19 +944,27 @@ function renderInspector() {
   });
 
   if (selItem) {
+    const UNITS = { colorTemp: "K", power: "%", beamAngle: "°", height: "cm" };
     const bindRange = (id, prop) => {
       const el = byId(id);
       if (!el) return;
       el.addEventListener("input", e => {
         selItem[prop] = +e.target.value;
-        el.nextElementSibling.textContent = e.target.value + (prop === "colorTemp" ? "K" : prop === "power" ? "%" : "cm");
+        el.nextElementSibling.textContent = e.target.value + (UNITS[prop] || "");
         renderCanvas(); renderPreview(); renderPrompt();
       });
     };
     bindRange("itHeight", "height");
     bindRange("itPower", "power");
     bindRange("itTemp", "colorTemp");
-    bind("itMod", e => { selItem.modifier = e.target.value; refresh(); });
+    bindRange("itBeam", "beamAngle");
+    bind("itMod", e => {
+      selItem.modifier = e.target.value;
+      // モディファイアに応じた照射角へ自動更新 (手動調整はその後も可能)
+      if (MODIFIER_BEAM[e.target.value] != null) selItem.beamAngle = MODIFIER_BEAM[e.target.value];
+      refresh(); renderInspector();
+    });
+    bind("itStand", e => { selItem.stand = e.target.value; });
     bind("btnDelItem", () => {
       cut.items = cut.items.filter(i => i.id !== selItem.id);
       state.selectedItem = null;
@@ -849,7 +1037,9 @@ function equipTableRows(cut) {
       <td>${hasHeight ? it.height + "cm" : "—"}</td>
       <td>${isLight ? it.power + "%" : "—"}</td>
       <td>${isLight && it.power > 0 ? it.colorTemp + "K" : "—"}</td>
+      <td>${isLight ? (it.beamAngle ?? 60) + "°" : "—"}</td>
       <td>${isLight ? esc(it.modifier) : "—"}</td>
+      <td>${isLight ? esc(it.stand || "ライトスタンド") : "—"}</td>
     </tr>`;
   }).join("");
 }
@@ -883,20 +1073,35 @@ function buildInstructionDoc() {
       <h3>ライティング指示</h3>
       <ul class="ja-summary">${jaLines.map(l => `<li>${esc(l)}</li>`).join("")}</ul>
       <table>
-        <thead><tr><th>機材</th><th>方位 (カメラ軸基準)</th><th>被写体距離</th><th>高さ</th><th>出力</th><th>色温度</th><th>モディファイア</th></tr></thead>
+        <thead><tr><th>機材</th><th>方位 (カメラ軸基準)</th><th>被写体距離</th><th>高さ</th><th>出力</th><th>色温度</th><th>照射角</th><th>モディファイア</th><th>スタンド</th></tr></thead>
         <tbody>${equipTableRows(cut)}</tbody>
       </table>
 
-      <h3>カメラ設定</h3>
+      <h3>カメラ・レンズ設定</h3>
       <table>
-        <thead><tr><th>サイズ</th><th>アングル</th><th>ワーク</th><th>レンズ</th><th>絞り</th><th>SS</th><th>ISO</th><th>FPS</th><th>WB</th></tr></thead>
+        <thead><tr><th>ボディ</th><th>サイズ</th><th>アングル</th><th>ワーク</th><th>焦点距離</th><th>絞り</th><th>フォーカス</th><th>SS</th><th>ISO</th><th>FPS</th><th>WB</th></tr></thead>
         <tbody><tr>
+          <td>${esc((CAMERA_BODIES.find(b => b.id === cut.camera.body) || {}).label || "")}</td>
           <td>${esc((SHOT_SIZES.find(s => s.id === cut.camera.shotSize) || {}).label || "")}</td>
           <td>${esc((CAM_ANGLES.find(s => s.id === cut.camera.angle) || {}).label || "")}</td>
           <td>${esc((CAM_MOVES.find(s => s.id === cut.camera.move) || {}).label || "")}</td>
-          <td>${esc((LENSES.find(s => s.id === cut.camera.lens) || {}).label || "")}</td>
-          <td>${esc(cut.camera.aperture)}</td><td>${esc(cut.camera.shutter)}</td>
+          <td>${cut.camera.focalMm}mm${cut.camera.lens === "anam" ? " (アナモ2x)" : ""}</td>
+          <td>F${cut.camera.apertureF}</td><td>${cut.camera.focusM}m</td>
+          <td>${esc(cut.camera.shutter)}</td>
           <td>${esc(cut.camera.iso)}</td><td>${esc(cut.camera.fps)}</td><td>${esc(cut.camera.wb)}</td>
+        </tr></tbody>
+      </table>
+
+      <h3>支持機材・フィルター</h3>
+      <table>
+        <thead><tr><th>支持機材</th><th>パラメータ</th><th>雲台</th><th>ND</th><th>レンズフィルター</th></tr></thead>
+        <tbody><tr>
+          ${(() => {
+            const sup = CAMERA_SUPPORTS.find(s => s.id === cut.camera.support);
+            const p = sup && sup.param ? `${sup.param.label}: ${cut.camera.supportParam}${sup.param.unit}` : "—";
+            const fl = (cut.camera.filters || []).map(f => (LENS_FILTERS.find(x => x.id === f) || {}).label).filter(Boolean).join(" / ") || "なし";
+            return `<td>${esc(sup ? sup.label : "")}</td><td>${esc(p)}</td><td>${esc(cut.camera.head)}</td><td>${esc(cut.camera.nd)}</td><td>${esc(fl)}</td>`;
+          })()}
         </tr></tbody>
       </table>
 
@@ -998,7 +1203,7 @@ function importJSON(file) {
       const data = JSON.parse(reader.result);
       if (!Array.isArray(data.cuts) || !data.cuts.length) throw new Error("cuts がありません");
       state.mode = data.mode || "video";
-      state.cuts = data.cuts;
+      state.cuts = data.cuts.map(ensureCameraDefaults); // 旧バージョンのJSONに詳細フィールドを補完
       state.activeCut = Math.min(data.activeCut || 0, state.cuts.length - 1);
       state.selectedItem = null;
       state.projectTitle = data.projectTitle || state.projectTitle;

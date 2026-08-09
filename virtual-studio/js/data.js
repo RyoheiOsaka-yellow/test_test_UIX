@@ -119,6 +119,77 @@ const LENSES = [
   { id: "anam", label: "アナモルフィック 2x", en: "2x anamorphic lens, oval bokeh and horizontal flares" },
 ];
 
+/* ---------- カメラボディ ---------- */
+const CAMERA_BODIES = [
+  { id: "cine",       label: "シネマカメラ (フルサイズ)", en: "full-frame cinema camera" },
+  { id: "mirrorless", label: "ミラーレス一眼",           en: "mirrorless camera" },
+  { id: "highspeed",  label: "ハイスピードカメラ",       en: "high-speed camera, ultra slow motion" },
+  { id: "broadcast",  label: "放送用ENGカメラ",          en: "broadcast ENG camera" },
+  { id: "action",     label: "アクションカム",           en: "rugged action camera, ultra-wide POV" },
+  { id: "pov_ear",    label: "ウェアラブルPOV (耳掛けCCD)", en: "ear-mounted micro POV camera, true first-person view" },
+  { id: "fpv",        label: "FPVドローンカメラ",        en: "FPV drone camera" },
+  { id: "cam360",     label: "360°カメラ",               en: "360-degree camera" },
+  { id: "phone",      label: "スマートフォン",           en: "smartphone camera footage" },
+  { id: "medium",     label: "中判デジタル (スチール)",   en: "medium format digital camera, exceptional detail" },
+];
+
+/* ---------- カメラサポート (支持機材) ---------- */
+const CAMERA_SUPPORTS = [
+  { id: "tripod",     label: "三脚",                    en: "locked off on a tripod", param: { label: "高さ", min: 20, max: 220, unit: "cm", def: 140 } },
+  { id: "highhat",    label: "ハイハット (地面すれすれ)", en: "ground-level hi-hat rig", param: { label: "高さ", min: 5, max: 40, unit: "cm", def: 15 } },
+  { id: "ladder",     label: "脚立 (俯瞰ポジション)",    en: "elevated angle shot from a stepladder", param: { label: "高さ", min: 150, max: 400, unit: "cm", def: 250 } },
+  { id: "intore",     label: "イントレ (足場櫓)",        en: "high vantage point from scaffolding", param: { label: "高さ", min: 200, max: 800, unit: "cm", def: 400 } },
+  { id: "slider",     label: "スライダー (平行移動レール)", en: "smooth short slider move", param: { label: "レール長", min: 40, max: 200, unit: "cm", def: 100 } },
+  { id: "dolly",      label: "ドリー (レール)",          en: "dolly rolling on tracks", param: { label: "レール長", min: 2, max: 20, unit: "m", def: 6 } },
+  { id: "crane",      label: "クレーン / ジブ",          en: "sweeping crane arm move", param: { label: "アーム長", min: 2, max: 15, unit: "m", def: 6 } },
+  { id: "technocrane",label: "テクノクレーン+リモートヘッド", en: "telescopic techno-crane with a remote head", param: { label: "アーム長", min: 4, max: 15, unit: "m", def: 10 } },
+  { id: "steadicam",  label: "ステディカム (平衡機)",     en: "smooth gliding steadicam", param: null },
+  { id: "gimbal",     label: "3軸ジンバル",              en: "floating 3-axis gimbal", param: null },
+  { id: "shoulder",   label: "ショルダーリグ",           en: "documentary-style shoulder mount", param: null },
+  { id: "handheld",   label: "完全手持ち",               en: "raw handheld energy", param: null },
+  { id: "carmount",   label: "車載リグ (サクション)",     en: "car-mounted suction rig", param: null },
+  { id: "cablecam",   label: "ケーブルカム",             en: "cable cam flying along a wire", param: { label: "スパン", min: 10, max: 200, unit: "m", def: 50 } },
+  { id: "bodyrig",    label: "ボディマウント (スノリカム)", en: "body-mounted snorricam locked on the actor", param: null },
+  { id: "wearable",   label: "ウェアラブル (頭部/耳掛け)", en: "head-mounted wearable POV", param: null },
+  { id: "dronemount", label: "ドローン搭載",             en: "mounted on a drone", param: { label: "高度", min: 1, max: 120, unit: "m", def: 30 } },
+];
+
+/* カメラワーク → 推奨サポートの対応 */
+const MOVE_SUPPORT = {
+  fix: "tripod", pan: "tripod", whip: "tripod", tilt: "tripod", zoomin: "tripod",
+  pedestal: "crane", dollyin: "dolly", dollyout: "dolly", track: "dolly", arc: "dolly",
+  dollyzoom: "dolly", crane: "crane", handheld: "handheld", gimbal: "gimbal", orbit: "gimbal",
+  d_orbit: "dronemount", d_reveal: "dronemount", d_flyover: "dronemount", d_chase: "dronemount",
+  d_topdown: "dronemount", d_side: "dronemount", d_pullback: "dronemount", d_dronie: "dronemount",
+  d_spiral: "dronemount", d_lowpass: "dronemount", d_dive: "dronemount", d_dzoom: "dronemount",
+};
+
+/* ---------- 雲台 / ND / レンズフィルター ---------- */
+const CAMERA_HEADS = ["フルード雲台", "ギア雲台", "ボール雲台", "リモートヘッド(電子制御)", "3軸スタビ雲台", "直付け(リジッド)"];
+const ND_FILTERS = ["なし", "ND4 (2段)", "ND8 (3段)", "ND64 (6段)", "ND400 (8.6段)", "可変ND"];
+const LENS_FILTERS = [
+  { id: "pl",        label: "PL (偏光)",           en: "polarizer taming reflections and deepening colors" },
+  { id: "blackmist", label: "ブラックミスト 1/4",  en: "black mist filter, gentle halation on highlights" },
+  { id: "promist",   label: "プロミスト 1/2",      en: "pro-mist filter, dreamy glowing highlights" },
+  { id: "cross",     label: "クロスフィルター",     en: "cross screen filter, star-shaped sparkles on light sources" },
+  { id: "streak",    label: "ストリーク (アナモ風)", en: "streak filter, horizontal anamorphic-style flares" },
+  { id: "diopter",   label: "クローズアップ (接写)", en: "close-up diopter for macro detail" },
+];
+
+/* ---------- ライトスタンド / 照射角デフォルト ---------- */
+const LIGHT_STANDS = ["ライトスタンド", "センチュリースタンド(Cスタンド)", "ブームアーム", "オートポール", "グリッド吊り(バトン)", "クランプ固定", "床置き"];
+const MODIFIER_BEAM = {
+  "グリッド10°": 10, "グリッド30°": 30, "スヌート": 15, "フレネル": 35, "バーンドア": 50,
+  "パラボリックリフレクター": 45, "リングライト": 70,
+  "ソフトボックス60cm": 80, "ソフトボックス120cm": 95, "オクタボックス150cm": 100,
+  "アンブレラ(透過)": 110, "アンブレラ(反射)": 100, "ビューティーディッシュ": 65,
+  "ディフュージョン#216": 110, "ディフュージョン#250": 115, "ブックライト": 120,
+  "ストリップボックス30x120": 55, "ライトテント(乳白)": 120, "12x12シルク(頭上)": 120,
+};
+
+/* レンズプリセットID → 焦点距離mm */
+const LENS_FOCAL = { "14": 14, "24": 24, "35": 35, "50": 50, "85": 85, "100m": 100, "135": 135, "anam": 50 };
+
 /* ---------- 被写体タイプ ---------- */
 const SUBJECT_TYPES = [
   { id: "person",  label: "人物",             en: "a person" },
