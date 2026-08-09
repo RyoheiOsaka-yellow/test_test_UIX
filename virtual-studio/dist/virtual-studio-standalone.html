@@ -72,6 +72,8 @@
     --fill-1: rgba(255, 255, 255, 0.08);
     --fill-2: rgba(255, 255, 255, 0.13);
     --track: rgba(255, 255, 255, 0.16);
+    --cov-ok: #4ecf9d;
+    --cov-ng: #e8a13d;
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45);
     --cv-surface: #1c1c1f;
@@ -106,6 +108,8 @@
   --fill-1: rgba(255, 255, 255, 0.08);
   --fill-2: rgba(255, 255, 255, 0.13);
   --track: rgba(255, 255, 255, 0.16);
+  --cov-ok: #4ecf9d;
+  --cov-ng: #e8a13d;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 2px 6px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.45);
   --cv-surface: #1c1c1f;
@@ -412,15 +416,21 @@ select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0
 /* カバレッジ充足チェック (V6) */
 #coverageBar { display: flex; flex-wrap: wrap; gap: 5px; padding: 7px 2px 0; }
 .cov-chip {
-  font-size: 10.5px; font-weight: 600;
-  padding: 3px 10px; border-radius: 980px;
-  background: rgba(42, 168, 126, 0.13); color: #1d8a63;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.01em;
+  padding: 3px 10px 3px 9px; border-radius: 980px;
+  background: rgba(42, 168, 126, 0.09); color: var(--cov-ok, #1d8a63);
   border: none; cursor: default;
+  transition: background 0.16s var(--ease);
+}
+.cov-chip::before {
+  content: ""; flex: 0 0 auto; width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor; opacity: 0.8;
 }
 .cov-chip.ng {
-  background: rgba(232, 146, 10, 0.14); color: #b06e06; cursor: pointer;
+  background: rgba(232, 146, 10, 0.1); color: var(--cov-ng, #b06e06); cursor: pointer;
 }
-.cov-chip.ng:hover { background: rgba(232, 146, 10, 0.24); }
+.cov-chip.ng:hover { background: rgba(232, 146, 10, 0.2); }
 
 /* 尺タイムライン (V6) */
 #timelineBar {
@@ -438,13 +448,18 @@ select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0
 }
 .tl-label { pointer-events: none; }
 .tl-handle {
-  position: absolute; right: 0; top: 0; bottom: 0; width: 9px;
-  cursor: ew-resize;
-  border-right: 3px solid rgba(0, 0, 0, 0.18);
-  border-radius: 0 5px 5px 0;
+  position: absolute; right: 0; top: 0; bottom: 0; width: 10px;
+  cursor: ew-resize; border-radius: 0 5px 5px 0;
 }
-.tl-block.active .tl-handle { border-right-color: rgba(255, 255, 255, 0.55); }
-.tl-handle:hover { background: rgba(0, 0, 0, 0.1); }
+/* グリップは触れた時だけ見せる (フラット維持) */
+.tl-handle::after {
+  content: ""; position: absolute; right: 3px; top: 50%;
+  width: 2px; height: 10px; transform: translateY(-50%);
+  border-radius: 2px; background: currentColor; opacity: 0;
+  transition: opacity 0.15s var(--ease);
+}
+.tl-block:hover .tl-handle::after { opacity: 0.35; }
+.tl-block.active .tl-handle::after { opacity: 0.6; }
 .tl-block:hover { background: var(--accent-soft); }
 .tl-block.active { background: var(--accent); color: #fff; }
 .tl-total {
@@ -473,10 +488,11 @@ select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .trans-chip {
-  flex: 0 0 auto; align-self: center; text-align: center;
-  font-size: 12px; color: var(--accent); line-height: 1.2; min-width: 46px;
+  flex: 0 0 auto; align-self: center;
+  font-size: 9.5px; font-weight: 600; color: var(--dim);
+  background: var(--fill-2); border-radius: 980px;
+  padding: 3px 9px; white-space: nowrap;
 }
-.trans-chip span { font-size: 9px; color: var(--dim); font-weight: 500; }
 
 /* ---------- 右パネル ---------- */
 #rightPanel {
@@ -7476,7 +7492,7 @@ function renderCutStrip() {
       ${renderPreviewSVG(c, "th" + i)}
       <div class="cut-cap">C${i + 1}　${esc(c.name)}</div>
     </div>
-    ${trans ? `<div class="trans-chip" title="${esc(trans.note)}">${trans.id === "cut" ? "✂" : "⤳"}<br><span>${esc(trans.label.split(" ")[0])}</span></div>` : ""}`;
+    ${trans ? `<div class="trans-chip" title="${esc(trans.note)}">${esc(trans.label.split(" ")[0])}</div>` : ""}`;
   }).join("");
   strip.querySelectorAll(".cut-thumb").forEach(el => {
     el.addEventListener("click", () => {
@@ -7495,7 +7511,7 @@ function renderCoverage() {
   const bar = byId("coverageBar");
   const items = evaluateCoverage(state.cuts);
   bar.innerHTML = items.map((c, i) =>
-    `<button class="cov-chip ${c.ok ? "" : "ng"}" data-cov="${i}" title="${esc(c.tip)}${c.fix ? " — クリックで不足カットを自動追加" : ""}">${c.ok ? "✓" : "⚠"} ${esc(c.label)}</button>`).join("");
+    `<button class="cov-chip ${c.ok ? "" : "ng"}" data-cov="${i}" title="${esc(c.tip)}${c.fix ? " — クリックで不足カットを自動追加" : ""}">${esc(c.label)}</button>`).join("");
   bar.querySelectorAll(".cov-chip.ng").forEach(el => {
     el.addEventListener("click", () => {
       const c = items[+el.dataset.cov];

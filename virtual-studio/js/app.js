@@ -1155,7 +1155,7 @@ function renderCutStrip() {
       ${renderPreviewSVG(c, "th" + i)}
       <div class="cut-cap">C${i + 1}　${esc(c.name)}</div>
     </div>
-    ${trans ? `<div class="trans-chip" title="${esc(trans.note)}">${trans.id === "cut" ? "✂" : "⤳"}<br><span>${esc(trans.label.split(" ")[0])}</span></div>` : ""}`;
+    ${trans ? `<div class="trans-chip" title="${esc(trans.note)}">${esc(trans.label.split(" ")[0])}</div>` : ""}`;
   }).join("");
   strip.querySelectorAll(".cut-thumb").forEach(el => {
     el.addEventListener("click", () => {
@@ -1174,7 +1174,7 @@ function renderCoverage() {
   const bar = byId("coverageBar");
   const items = evaluateCoverage(state.cuts);
   bar.innerHTML = items.map((c, i) =>
-    `<button class="cov-chip ${c.ok ? "" : "ng"}" data-cov="${i}" title="${esc(c.tip)}${c.fix ? " — クリックで不足カットを自動追加" : ""}">${c.ok ? "✓" : "⚠"} ${esc(c.label)}</button>`).join("");
+    `<button class="cov-chip ${c.ok ? "" : "ng"}" data-cov="${i}" title="${esc(c.tip)}${c.fix ? " — クリックで不足カットを自動追加" : ""}">${esc(c.label)}</button>`).join("");
   bar.querySelectorAll(".cov-chip.ng").forEach(el => {
     el.addEventListener("click", () => {
       const c = items[+el.dataset.cov];
