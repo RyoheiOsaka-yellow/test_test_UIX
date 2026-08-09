@@ -1203,7 +1203,14 @@ function renderInspector() {
       renderAll();
     }, "click");
   }
+  insp.querySelectorAll('input[type="range"]').forEach(updateRangeFill);
   rightPanel.scrollTop = keepScroll;
+}
+
+function updateRangeFill(el) {
+  const min = +el.min || 0, max = +el.max || 100;
+  const pct = ((+el.value - min) / (max - min)) * 100;
+  el.style.setProperty("--fill", pct.toFixed(1) + "%");
 }
 
 function refresh() { renderCanvas(); renderPreview(); renderPrompt(); renderCutStrip(); }
@@ -1745,11 +1752,21 @@ function setupHeader() {
   });
 
   byId("btnCopyPrompt").addEventListener("click", async () => {
+    const btn = byId("btnCopyPrompt");
     try {
       await navigator.clipboard.writeText(byId("promptText").value);
-      byId("btnCopyPrompt").textContent = "✓ コピー済";
-      setTimeout(() => byId("btnCopyPrompt").textContent = "コピー", 1500);
     } catch { byId("promptText").select(); document.execCommand("copy"); }
+    btn.innerHTML = '<svg class="ic"><use href="#i-check"/></svg>';
+    btn.style.color = "var(--accent)";
+    setTimeout(() => {
+      btn.innerHTML = '<svg class="ic"><use href="#i-copy"/></svg>';
+      btn.style.color = "";
+    }, 1400);
+  });
+
+  // スライダーの進捗塗り (トラック左側をアクセント色に)
+  byId("inspector").addEventListener("input", e => {
+    if (e.target.type === "range") updateRangeFill(e.target);
   });
 }
 

@@ -7,45 +7,83 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
+<!-- SFシンボル風 ストロークアイコン -->
+<svg id="iconSprite" width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 17v1.5A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V17"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 14V4m0 0L8 8m4-4l4 4M5 17v1.5A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V17"/></symbol>
+    <symbol id="i-board" viewBox="0 0 24 24"><rect x="3.2" y="5" width="17.6" height="14" rx="2.5"/><path d="M8.5 5v14M15.5 5v14M3.2 9.6h5.3M3.2 14.4h5.3M15.5 9.6h5.3M15.5 14.4h5.3"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6.5 3.5h7L18.5 8v10a2 2 0 0 1-2 2h-10a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2Z"/><path d="M13.5 3.5V8h5M8.5 12.5h7M8.5 16h7"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.5v13M5.5 12h13"/></symbol>
+    <symbol id="i-dup" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 5.5v-.2a1.8 1.8 0 0 0-1.8-1.8H5.5a2 2 0 0 0-2 2v8.2a1.8 1.8 0 0 0 1.8 1.8h.2"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 6.5h15M9.5 6.5V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v1.5m3.5 0-.8 12a2 2 0 0 1-2 1.9H8.8a2 2 0 0 1-2-1.9l-.8-12M10 10.5v6M14 10.5v6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="10.5" height="10.5" rx="2"/><path d="M15 6V5.8A1.8 1.8 0 0 0 13.2 4H6a2 2 0 0 0-2 2v7.2A1.8 1.8 0 0 0 5.8 15H6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 13l4.2 4.2L19 7.5"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M6 18.5l4.8-4.8a1.5 1.5 0 0 1 2.1 0l2.3 2.3 1.8-1.8a1.5 1.5 0 0 1 2.1 0l1.4 1.4"/></symbol>
+    <symbol id="i-import" viewBox="0 0 24 24"><path d="M12 3.5v9m0 0l-3.5-3.5M12 12.5l3.5-3.5"/><path d="M4 13.5l1.2 5A2 2 0 0 0 7.1 20h9.8a2 2 0 0 0 1.9-1.5l1.2-5"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6"/><path d="M15.5 15.5 20 20"/></symbol>
+  </defs>
+</svg>
+
 <header id="appHeader">
   <div class="brand">
-    <span class="brand-mark">◉</span>
+    <span class="brand-mark"></span>
     <h1>Virtual Studio</h1>
-    <span class="brand-sub">仮想撮影スタジオ / 撮影指示書ジェネレーター</span>
+    <span class="brand-sub">仮想撮影スタジオ</span>
   </div>
-  <nav id="modeTabs">
-    <button class="mode-tab active" data-mode="video">🎬 動画スタジオ</button>
-    <button class="mode-tab" data-mode="still">📷 スチールスタジオ</button>
-    <button class="mode-tab" data-mode="outdoor">🚁 屋外・ドローン</button>
+  <nav id="modeTabs" role="tablist" aria-label="スタジオモード">
+    <button class="mode-tab active" data-mode="video" role="tab">動画</button>
+    <button class="mode-tab" data-mode="still" role="tab">スチール</button>
+    <button class="mode-tab" data-mode="outdoor" role="tab">屋外・ドローン</button>
   </nav>
   <div class="header-actions">
-    <button id="btnExportJson" class="btn ghost" title="プロジェクトをJSONで保存">JSON書き出し</button>
-    <button id="btnImportJson" class="btn ghost" title="JSONを読み込み">読み込み</button>
+    <button id="btnExportJson" class="icon-btn" title="プロジェクトを保存 (JSON)" aria-label="プロジェクトを保存">
+      <svg class="ic"><use href="#i-download"/></svg>
+    </button>
+    <button id="btnImportJson" class="icon-btn" title="プロジェクトを開く (JSON)" aria-label="プロジェクトを開く">
+      <svg class="ic"><use href="#i-upload"/></svg>
+    </button>
     <input type="file" id="fileImport" accept=".json" hidden>
-    <button id="btnExportBoard" class="btn" title="1ページ6コマの絵コンテを印刷/PDF出力">🎞 絵コンテ</button>
-    <button id="btnExportDoc" class="btn primary">📄 指示書を書き出す (PDF/印刷)</button>
+    <span class="v-sep" aria-hidden="true"></span>
+    <button id="btnExportBoard" class="btn" title="絵コンテを書き出す (1ページ6コマ / 印刷・PDF)">
+      <svg class="ic"><use href="#i-board"/></svg><span>絵コンテ</span>
+    </button>
+    <button id="btnExportDoc" class="btn primary" title="撮影指示書を書き出す (印刷・PDF)">
+      <svg class="ic"><use href="#i-doc"/></svg><span>指示書</span>
+    </button>
   </div>
 </header>
 
 <main id="appMain">
   <!-- 左: 技法ライブラリ -->
   <aside id="libraryPanel">
-    <div class="panel-title">撮影技法ライブラリ
-      <button id="btnImportMd" class="btn tiny ghost" title="FORMAT.md形式の技法mdを取り込みます">📥 md取込</button>
+    <div class="panel-head">
+      <span class="panel-title">技法ライブラリ</span>
+      <button id="btnImportMd" class="icon-btn small" title="技法mdを取り込む (FORMAT.md形式・複数可)" aria-label="技法mdを取り込む">
+        <svg class="ic"><use href="#i-import"/></svg>
+      </button>
     </div>
     <input type="file" id="fileMdImport" accept=".md,.markdown,.txt" multiple hidden>
-    <input type="search" id="presetSearch" placeholder="技法を検索 (例: レンブラント, 雫, オービット)">
+    <div class="search-field">
+      <svg class="ic"><use href="#i-search"/></svg>
+      <input type="search" id="presetSearch" placeholder="技法を検索">
+    </div>
     <div id="presetList"></div>
   </aside>
 
   <!-- 中央: スタジオキャンバス -->
   <section id="studioPanel">
     <div class="studio-toolbar">
-      <span class="panel-title">スタジオ俯瞰図 <small>(ドラッグで機材を移動)</small></span>
+      <span class="panel-title">スタジオ俯瞰図 <small>ドラッグで機材を移動</small></span>
       <div class="add-equipment">
-        <select id="equipTypeSelect"></select>
-        <button id="btnAddEquip" class="btn small">＋ 機材を追加</button>
-        <button id="btnDownloadPlan" class="btn small ghost" title="俯瞰図をSVG画像で保存">図を画像保存</button>
+        <select id="equipTypeSelect" aria-label="追加する機材"></select>
+        <button id="btnAddEquip" class="icon-btn accent" title="選択した機材を追加" aria-label="機材を追加">
+          <svg class="ic"><use href="#i-plus"/></svg>
+        </button>
+        <button id="btnDownloadPlan" class="icon-btn" title="俯瞰図をSVG画像で保存" aria-label="俯瞰図を画像保存">
+          <svg class="ic"><use href="#i-image"/></svg>
+        </button>
       </div>
     </div>
     <div id="canvasWrap">
@@ -55,11 +93,17 @@
     <!-- 下: カット割り -->
     <div id="storyboard">
       <div class="storyboard-head">
-        <span class="panel-title">カット割り (ストーリーボード)</span>
-        <div>
-          <button id="btnAddCut" class="btn small">＋ カット追加</button>
-          <button id="btnDupCut" class="btn small ghost">複製</button>
-          <button id="btnDelCut" class="btn small danger">削除</button>
+        <span class="panel-title">カット割り</span>
+        <div class="storyboard-actions">
+          <button id="btnAddCut" class="icon-btn" title="カットを追加" aria-label="カットを追加">
+            <svg class="ic"><use href="#i-plus"/></svg>
+          </button>
+          <button id="btnDupCut" class="icon-btn" title="カットを複製" aria-label="カットを複製">
+            <svg class="ic"><use href="#i-dup"/></svg>
+          </button>
+          <button id="btnDelCut" class="icon-btn danger" title="カットを削除" aria-label="カットを削除">
+            <svg class="ic"><use href="#i-trash"/></svg>
+          </button>
         </div>
       </div>
       <div id="cutStrip"></div>
@@ -68,17 +112,19 @@
 
   <!-- 右: プレビュー + インスペクター -->
   <aside id="rightPanel">
-    <div class="panel-title">想定カットプレビュー</div>
+    <div class="panel-title">想定カット</div>
     <div id="previewWrap"></div>
     <div id="explainBox">
-      <div class="panel-title small">📖 この配置だとこう写る (かんたん解説)</div>
+      <div class="panel-title small">この配置だとこう写る</div>
       <ul id="explainList"></ul>
     </div>
     <div id="promptPreview">
-      <div class="panel-title small prompt-head">
-        <span>AI生成プロンプト</span>
+      <div class="prompt-head">
+        <span class="panel-title small">AIプロンプト</span>
         <select id="promptModelSelect" title="モデル別のプロンプト方言に切り替え"></select>
-        <button id="btnCopyPrompt" class="btn tiny ghost">コピー</button>
+        <button id="btnCopyPrompt" class="icon-btn small" title="プロンプトをコピー" aria-label="プロンプトをコピー">
+          <svg class="ic"><use href="#i-copy"/></svg>
+        </button>
       </div>
       <div id="promptHint" class="insp-hint"></div>
       <textarea id="promptText" readonly></textarea>
