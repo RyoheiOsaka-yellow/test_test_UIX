@@ -128,7 +128,10 @@
 
   <!-- 右: プレビュー + インスペクター -->
   <aside id="rightPanel">
-    <div class="panel-title">想定カット</div>
+    <div class="preview-head">
+      <span class="panel-title">想定カット</span>
+      <div id="aspectChips" role="group" aria-label="アスペクト比"></div>
+    </div>
     <div id="previewWrap">
       <div id="previewFrame"></div>
       <button id="btnPlayPreview" class="icon-btn play-btn" title="カメラワークを再生" aria-label="カメラワークを再生">
@@ -143,7 +146,10 @@
       <div class="prompt-head">
         <span class="panel-title small">AIプロンプト</span>
         <select id="promptModelSelect" title="モデル別のプロンプト方言に切り替え"></select>
-        <button id="btnCopyPrompt" class="icon-btn small" title="プロンプトをコピー" aria-label="プロンプトをコピー">
+        <button id="btnCopySequence" class="icon-btn small" title="全カットを繋いだSeedanceマルチショット・シーケンスプロンプトをコピー" aria-label="シーケンスプロンプトをコピー">
+          <svg class="ic"><use href="#i-board"/></svg>
+        </button>
+        <button id="btnCopyPrompt" class="icon-btn small" title="このカットのプロンプトをコピー" aria-label="プロンプトをコピー">
           <svg class="ic"><use href="#i-copy"/></svg>
         </button>
       </div>

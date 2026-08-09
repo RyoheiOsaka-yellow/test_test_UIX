@@ -234,6 +234,7 @@ function buildPromptParts(cut) {
   const an = analyzeLighting(cut);
 
   const optPhrases = cut.options
+    .filter(o => o !== "silhouette") // シルエットはライティング解析側で言語化するため重複を避ける
     .map(o => SHOT_OPTIONS.find(s => s.id === o))
     .filter(Boolean).map(o => o.en);
 
@@ -374,9 +375,47 @@ function generatePrompt(cut, modelId) {
         P.transEn ? `shot ends with a ${P.transEn}` : "",
         P.motionStr,
         "photorealistic, professional cinematography, high detail",
+        model === "seedance" ? "no subtitles, no watermark, no on-screen text" : "",
       ], ". ") + ".";
     }
   }
+}
+
+/* =========================================================
+ * Seedance 向け: 推奨パラメータ / マルチショット・シーケンス
+ * ======================================================= */
+function seedanceRatio(aspectId) {
+  // Seedance が受け付ける ratio への対応 (近いものへマップ)
+  const map = { "16:9": "16:9", "9:16": "9:16", "2.39:1": "21:9", "4:3": "4:3", "1:1": "1:1", "3:2": "4:3 (3:2近似)", "4:5": "3:4 (4:5近似)" };
+  return map[aspectId] || "16:9";
+}
+
+function seedanceParams(cut) {
+  return {
+    ratio: seedanceRatio(cut.aspect),
+    duration: cut.kind === "still" ? "— (静止画: 画像モデル推奨)" : `${cut.duration || 5}s`,
+    resolution: "1080p",
+    camerafixed: cut.camera.move === "fix" ? "true (フィックスを厳守させる)" : "false",
+    firstFrame: "本カットの「想定カットイメージ」を参照画像 (first frame) に使うと構図が安定",
+  };
+}
+
+/* 全カットを1プロンプトに繋いだマルチショット・シーケンス */
+function buildSeedanceSequence() {
+  const cuts = state.cuts.filter(c => c.kind !== "still");
+  if (!cuts.length) return "";
+  const shots = cuts.map((cut, i) => {
+    const P = buildPromptParts(cut);
+    let s = `[Shot ${i + 1} — ${cut.duration || 5}s] ${P.sizeEn}, ${P.angEn}. ${P.movPhrase}. ${P.subjClause}. ${P.lightStr}. ${P.bgEn}${P.envPhrase ? ", " + P.envPhrase : ""}.`;
+    if (i < cuts.length - 1) {
+      const t = TRANSITIONS.find(x => x.id === (cut.transition || "cut"));
+      s += ` [${t ? t.en : "hard cut"} to next shot]`;
+    }
+    return s;
+  });
+  return "Multi-shot cinematic sequence. Keep the same subject, wardrobe, lighting style and color grade consistent across all shots. "
+    + shots.join(" ")
+    + " Photorealistic, professional cinematography, no subtitles, no watermark, no on-screen text.";
 }
 
 /* 日本語の撮影意図サマリー (指示書用) */
@@ -926,6 +965,19 @@ function renderPreview() {
   byId("previewFrame").innerHTML = renderPreviewSVG(activeCut(), "live");
   byId("explainList").innerHTML = explainCut(activeCut()).map(l => `<li>${esc(l)}</li>`).join("");
   updatePlayButton();
+  renderAspectChips();
+}
+
+/* アスペクト比クイック切替チップ (プレビュー直上) */
+function renderAspectChips() {
+  const wrap = byId("aspectChips");
+  const cur = activeCut().aspect;
+  wrap.innerHTML = ASPECTS.map(a =>
+    `<button class="aspect-chip ${a.id === cur ? "active" : ""}" data-a="${a.id}" title="${esc(a.label)}">${esc(a.id)}</button>`).join("");
+  wrap.querySelectorAll(".aspect-chip").forEach(b => b.addEventListener("click", () => {
+    activeCut().aspect = b.dataset.a;
+    refresh(); renderInspector();
+  }));
 }
 
 /* =========================================================
@@ -1023,8 +1075,11 @@ function renderCutStrip() {
   const keepScroll = strip.scrollLeft; // 再描画で横スクロール位置を失わない
   strip.innerHTML = state.cuts.map((c, i) => {
     const trans = i < state.cuts.length - 1 ? TRANSITIONS.find(t => t.id === (c.transition || "cut")) : null;
+    // サムネイルはカットの実アスペクト比 (9:16なら縦長) で表示する
+    const d = aspectDims(c.aspect);
+    const tw = Math.max(56, Math.min(150, Math.round(76 * d.W / d.H)));
     return `
-    <div class="cut-thumb ${i === state.activeCut ? "active" : ""}" data-idx="${i}">
+    <div class="cut-thumb ${i === state.activeCut ? "active" : ""}" data-idx="${i}" style="width:${tw + 4}px">
       ${renderPreviewSVG(c, "th" + i)}
       <div class="cut-cap">C${i + 1}　${esc(c.name)}</div>
     </div>
@@ -1488,8 +1543,21 @@ function buildInstructionDoc() {
         return t ? `<h3>次のカットへの繋ぎ</h3><p class="memo">▼ <b>${esc(t.label)}</b> — ${esc(t.note)}</p>` : "";
       })() : ""}
 
-      <h3>AI生成プロンプト (${esc((PROMPT_MODELS.find(m => m.id === state.promptModel) || {}).label || "")} / 英語)</h3>
-      <pre class="prompt">${esc(generatePrompt(cut, state.promptModel))}</pre>
+      <h3>Seedance プロンプト (英語)</h3>
+      <pre class="prompt">${esc(generatePrompt(cut, "seedance"))}</pre>
+      ${(() => {
+        const sp = seedanceParams(cut);
+        return `<table class="sd-params">
+          <thead><tr><th>ratio</th><th>duration</th><th>resolution</th><th>camerafixed</th><th>参照画像 (first frame)</th></tr></thead>
+          <tbody><tr>
+            <td>${esc(sp.ratio)}</td><td>${esc(sp.duration)}</td><td>${esc(sp.resolution)}</td>
+            <td>${esc(sp.camerafixed)}</td><td>${esc(sp.firstFrame)}</td>
+          </tr></tbody>
+        </table>`;
+      })()}
+      ${!["seedance", "generic"].includes(state.promptModel) ? `
+      <h3>参考: ${esc((PROMPT_MODELS.find(m => m.id === state.promptModel) || {}).label || "")} 版プロンプト</h3>
+      <pre class="prompt">${esc(generatePrompt(cut, state.promptModel))}</pre>` : ""}
     </section>`;
   }).join("");
 
@@ -1519,6 +1587,8 @@ function buildInstructionDoc() {
     .memo { font-size: 12px; line-height: 1.7; color: #333; }
     .prompt { background: #14161b; color: #b8e0b8; padding: 12px; border-radius: 6px; font-size: 11px; white-space: pre-wrap; font-family: ui-monospace, monospace; line-height: 1.6; }
     .power-plan { font-size: 12px; background: #f0f6ff; border: 1px solid #c8d8f0; border-radius: 6px; padding: 8px 10px; margin-top: 8px; }
+    .sd-params { margin-top: 8px; }
+    .sd-params th { background: #eaf3ec; }
     @media print { .toolbar { display: none; } body { padding: 0; } }
   </style></head><body>
     <h1>撮影指示書 — ${esc(state.projectTitle)}</h1>
@@ -1538,6 +1608,30 @@ function buildInstructionDoc() {
       </tbody>
     </table>
     ${cutPages}
+    ${(() => {
+      const seq = buildSeedanceSequence();
+      if (!seq) return "";
+      const videoCuts = state.cuts.filter(c => c.kind !== "still");
+      const total = videoCuts.reduce((s, c) => s + (c.duration || 5), 0);
+      const ratio = seedanceRatio(videoCuts[0].aspect);
+      return `
+    <section class="cut-page">
+      <h2>Seedance マルチショット・シーケンス <span class="dur">全${videoCuts.length}ショット ｜ 総尺 約${total}s ｜ ratio ${esc(ratio)}</span></h2>
+      <p class="memo">1回の生成で複数ショットを繋げる場合のプロンプト。被写体・光・グレードの一貫性指示を先頭に置き、各ショットを [Shot n — 秒数] で区切り、ショット間のトランジションを [ ] で明示しています。</p>
+      <pre class="prompt">${esc(seq)}</pre>
+      <h3>Seedance 運用のヒント</h3>
+      <ul>
+        <li>1ショット = 1〜2アクションに絞る。動きを詰め込むほど破綻しやすい</li>
+        <li>カメラ用語は英語 (dolly in / orbit / crane up 等) がもっとも安定して通る</li>
+        <li>各カットの「想定カットイメージ」を参照画像 (first frame) に渡すと構図・ライティングが安定する</li>
+        <li>人物・商品の一貫性は「同じ被写体記述を全ショットで繰り返す」ことで担保する</li>
+        <li>フィックスは camerafixed=true を併用するとプロンプトより確実</li>
+        <li>ratio・duration・resolution は生成時のパラメータ側でも必ず指定する (各カットの表を参照)</li>
+        <li>ネガティブ指示: no subtitles, no watermark, no on-screen text は常に付ける</li>
+        <li>長尺は「シーケンス一括」より「カット毎に生成→編集で繋ぐ」方が歩留まりが良い。その場合は各カットのプロンプトを使用</li>
+      </ul>
+    </section>`;
+    })()}
   </body></html>`;
 }
 
@@ -1929,17 +2023,25 @@ function setupHeader() {
     renderAll();
   });
 
-  byId("btnCopyPrompt").addEventListener("click", async () => {
-    const btn = byId("btnCopyPrompt");
-    try {
-      await navigator.clipboard.writeText(byId("promptText").value);
-    } catch { byId("promptText").select(); document.execCommand("copy"); }
+  const copyFeedback = (btn, restoreIcon) => {
     btn.innerHTML = '<svg class="ic"><use href="#i-check"/></svg>';
     btn.style.color = "var(--accent)";
     setTimeout(() => {
-      btn.innerHTML = '<svg class="ic"><use href="#i-copy"/></svg>';
+      btn.innerHTML = `<svg class="ic"><use href="#${restoreIcon}"/></svg>`;
       btn.style.color = "";
     }, 1400);
+  };
+  byId("btnCopyPrompt").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(byId("promptText").value);
+    } catch { byId("promptText").select(); document.execCommand("copy"); }
+    copyFeedback(byId("btnCopyPrompt"), "i-copy");
+  });
+  byId("btnCopySequence").addEventListener("click", async () => {
+    const seq = buildSeedanceSequence();
+    if (!seq) { alert("動画カットがありません (スチールのみのため)"); return; }
+    try { await navigator.clipboard.writeText(seq); } catch { /* clipboard不可環境 */ }
+    copyFeedback(byId("btnCopySequence"), "i-board");
   });
 
   // スライダーの進捗塗り (トラック左側をアクセント色に)

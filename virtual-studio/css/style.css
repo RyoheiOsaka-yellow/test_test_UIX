@@ -336,6 +336,7 @@ select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0
 #cutStrip::-webkit-scrollbar { height: 6px; }
 #cutStrip::-webkit-scrollbar-thumb { background: var(--track); border-radius: 3px; }
 .cut-thumb {
+  /* 幅は各カットのアスペクト比に応じて JS がインライン指定する */
   flex: 0 0 auto; width: 132px; cursor: pointer;
   border-radius: 11px; overflow: hidden;
   background: var(--surface);
@@ -345,7 +346,7 @@ select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0
 }
 .cut-thumb:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .cut-thumb.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow-sm); }
-.cut-thumb svg { display: block; width: 100%; height: 72px; background: #101114; }
+.cut-thumb svg { display: block; width: 100%; height: 76px; background: #101114; }
 .cut-thumb .cut-cap {
   font-size: 10px; font-weight: 500; padding: 4px 8px; color: var(--text2);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -363,6 +364,27 @@ select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0
   padding: 14px 12px; overflow-y: auto; min-height: 0;
   display: flex; flex-direction: column; gap: 12px;
 }
+.preview-head {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 8px; flex-wrap: wrap;
+}
+#aspectChips {
+  display: flex; gap: 2px;
+  background: var(--seg-track);
+  border-radius: 8px; padding: 2px;
+}
+.aspect-chip {
+  font-size: 10px; font-weight: 500;
+  padding: 3.5px 7px; border: none; border-radius: 6px;
+  background: transparent; color: var(--text2); cursor: pointer;
+  font-variant-numeric: tabular-nums;
+  transition: all 0.16s var(--ease);
+}
+.aspect-chip.active {
+  background: var(--seg-active); color: var(--text); font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
 #previewWrap {
   position: relative;
   border-radius: 14px; overflow: hidden;
