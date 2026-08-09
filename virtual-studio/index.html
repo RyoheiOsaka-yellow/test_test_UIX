@@ -39,6 +39,7 @@
     <symbol id="i-printer" viewBox="0 0 24 24"><path d="M7 8V4.5h10V8M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 17h-2"/><rect x="7" y="14" width="10" height="5.5" rx="1"/></symbol>
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 6.5A2 2 0 0 1 5.5 4.5h4l2 2.5h7a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/></symbol>
     <symbol id="i-dna" viewBox="0 0 24 24"><path d="M7 3c0 6 10 6 10 12M17 3c0 6-10 6-10 12M7 15c0 3 .5 4.5 1.5 6M17 15c0 3-.5 4.5-1.5 6M8.2 6.5h7.6M8.2 11.5h7.6M8 18h8"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></symbol>
   </defs>
 </svg>
 
@@ -78,6 +79,9 @@
     </button>
     <input type="file" id="fileImport" accept=".json" hidden>
     <span class="v-sep" aria-hidden="true"></span>
+    <button id="btnExportSchedule" class="icon-btn" title="香盤表 (撮影スケジュール) を書き出す" aria-label="香盤表">
+      <svg class="ic"><use href="#i-clock"/></svg>
+    </button>
     <button id="btnExportDmx" class="icon-btn" title="DMXキューシートを書き出す (パッチ表+カット毎のキュー)" aria-label="DMXキューシート">
       <svg class="ic"><use href="#i-dmx"/></svg>
     </button>
@@ -171,6 +175,8 @@
           </button>
         </div>
       </div>
+      <div id="coverageBar" title="カバレッジ充足チェック (V6)"></div>
+      <div id="timelineBar" title="尺タイムライン (クリックでカット選択)"></div>
       <div id="cutStrip"></div>
     </div>
   </section>
@@ -229,7 +235,41 @@
       <option value="current">現在のカットのみ</option>
       <option value="all">全カット</option>
     </select>
+    <button id="btnDnaAnnotate" class="btn small"><svg class="ic"><use href="#i-plus"/></svg> 参照から作成 (手動注釈)</button>
     <span id="dnaMsg" class="insp-hint"></span>
+  </div>
+  <!-- V8 Phase 2: 参照作品の手動注釈 → カスタムDNA -->
+  <div id="dnaAnnotateForm" hidden>
+    <div class="mixer-head">
+      <span class="panel-title small">参照作品の手動注釈 <small>「なぜ効くか」を撮影変数として記録します (来歴付き)</small></span>
+      <button id="btnAnnotSave" class="btn small primary">DNAとして保存</button>
+      <button id="btnAnnotClose" class="icon-btn small" aria-label="閉じる"><svg class="ic"><use href="#i-close"/></svg></button>
+    </div>
+    <div class="annot-grid">
+      <div class="field"><label>参照名 *</label><input type="text" id="anName" placeholder="例: ○○のウイスキーCM"></div>
+      <div class="field"><label>参照タイプ</label><select id="anType">
+        <option>commercial</option><option>film</option><option>music_video</option><option>fashion_film</option>
+        <option>food_film</option><option>documentary</option><option>social_video</option><option>still_photography</option>
+      </select></div>
+      <div class="field"><label>検索キーワード</label><input type="text" id="anKeywords" placeholder="カンマ区切り 例: 琥珀, バー, 大人"></div>
+      <div class="field"><label>ペース</label><select id="anPace">
+        <option value="1.5">遅い (長回し)</option><option value="1.0" selected>中</option><option value="0.6">速い</option>
+      </select></div>
+      <div class="field"><label>繋ぎ</label><select id="anTrans"></select></div>
+      <div class="field"><label>レンズ域 (mm)</label>
+        <div style="display:flex;gap:6px"><input type="number" id="anFocalMin" value="50" min="8" max="800"><input type="number" id="anFocalMax" value="85" min="8" max="800"></div></div>
+      <div class="field"><label>F値</label><input type="number" id="anAperture" value="2.8" step="0.1" min="0.9" max="22"></div>
+      <div class="field"><label>ムーブ速度</label><select id="anSpeed"></select></div>
+      <div class="field"><label>フィル比</label><select id="anFill">
+        <option value="0.3">締める (高コントラスト)</option><option value="0.7" selected>ほどよく</option><option value="1.3">起こす (明るく)</option>
+      </select></div>
+      <div class="field"><label>リム</label><select id="anRim">
+        <option value="0.8">控えめ</option><option value="1.0" selected>標準</option><option value="1.5">強調</option>
+      </select></div>
+      <div class="field"><label>ルック</label><select id="anLook"></select></div>
+      <div class="field annot-wide"><label>なぜ効くか *</label><textarea id="anWhy" rows="2" placeholder="例: 大面積ソフト45°+黒締め、85mmの浅い深度、10cmの遅い寄り、リアクションを長く持つ"></textarea></div>
+      <div class="field annot-wide"><label>STYLEトークン (英)</label><input type="text" id="anTokens" placeholder="カンマ区切り 例: amber backlit liquid, quiet bar ambience"></div>
+    </div>
   </div>
   <div id="dnaMixer" hidden>
     <div class="mixer-head">

@@ -409,6 +409,40 @@ select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0
 #storyboard { padding: 2px 14px 12px; }
 .storyboard-head { display: flex; justify-content: space-between; align-items: center; }
 .storyboard-actions { display: flex; gap: 2px; }
+/* カバレッジ充足チェック (V6) */
+#coverageBar { display: flex; flex-wrap: wrap; gap: 5px; padding: 7px 2px 0; }
+.cov-chip {
+  font-size: 10.5px; font-weight: 600;
+  padding: 3px 10px; border-radius: 980px;
+  background: rgba(42, 168, 126, 0.13); color: #1d8a63;
+  border: none; cursor: default;
+}
+.cov-chip.ng {
+  background: rgba(232, 146, 10, 0.14); color: #b06e06; cursor: pointer;
+}
+.cov-chip.ng:hover { background: rgba(232, 146, 10, 0.24); }
+
+/* 尺タイムライン (V6) */
+#timelineBar {
+  display: flex; align-items: stretch; gap: 2px;
+  height: 22px; margin-top: 7px; padding: 0 2px;
+}
+.tl-block {
+  position: relative; border-radius: 5px; cursor: pointer;
+  background: var(--fill-2); overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; color: var(--text2);
+  transition: all 0.16s var(--ease);
+  min-width: 20px;
+}
+.tl-block:hover { background: var(--accent-soft); }
+.tl-block.active { background: var(--accent); color: #fff; }
+.tl-total {
+  flex: 0 0 auto; display: flex; align-items: center;
+  font-size: 10px; color: var(--dim); padding-left: 6px;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
 #cutStrip { display: flex; gap: 10px; overflow-x: auto; padding: 8px 2px 6px; min-height: 100px; }
 #cutStrip::-webkit-scrollbar { height: 6px; }
 #cutStrip::-webkit-scrollbar-thumb { background: var(--track); border-radius: 3px; }
@@ -712,6 +746,21 @@ input[type="range"]::-moz-range-thumb {
 .dna-card .d-tokens { font-size: 10.5px; color: var(--dim); line-height: 1.5; font-family: "SF Mono", ui-monospace, monospace; }
 .dna-card .d-actions { display: flex; gap: 6px; margin-top: auto; padding-top: 4px; }
 
+/* 参照注釈フォーム (V8 Phase 2) */
+#dnaAnnotateForm {
+  margin: 10px 16px 0;
+  background: var(--surface); border-radius: var(--radius);
+  padding: 12px 14px; box-shadow: var(--shadow-sm);
+  border-left: 3px solid #9a6ae0;
+}
+#dnaAnnotateForm[hidden] { display: none; }
+.annot-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 4px 16px;
+}
+.annot-grid .field { margin-bottom: 4px; }
+.annot-grid .annot-wide { grid-column: 1 / -1; }
+
 /* ---------- プロジェクトページ ---------- */
 #projCurrent {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -811,6 +860,7 @@ input[type="range"]::-moz-range-thumb {
     <symbol id="i-printer" viewBox="0 0 24 24"><path d="M7 8V4.5h10V8M7 17H5a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 5 9h14a1.5 1.5 0 0 1 1.5 1.5v5A1.5 1.5 0 0 1 19 17h-2"/><rect x="7" y="14" width="10" height="5.5" rx="1"/></symbol>
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 6.5A2 2 0 0 1 5.5 4.5h4l2 2.5h7a2 2 0 0 1 2 2v8.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z"/></symbol>
     <symbol id="i-dna" viewBox="0 0 24 24"><path d="M7 3c0 6 10 6 10 12M17 3c0 6-10 6-10 12M7 15c0 3 .5 4.5 1.5 6M17 15c0 3-.5 4.5-1.5 6M8.2 6.5h7.6M8.2 11.5h7.6M8 18h8"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></symbol>
   </defs>
 </svg>
 
@@ -850,6 +900,9 @@ input[type="range"]::-moz-range-thumb {
     </button>
     <input type="file" id="fileImport" accept=".json" hidden>
     <span class="v-sep" aria-hidden="true"></span>
+    <button id="btnExportSchedule" class="icon-btn" title="香盤表 (撮影スケジュール) を書き出す" aria-label="香盤表">
+      <svg class="ic"><use href="#i-clock"/></svg>
+    </button>
     <button id="btnExportDmx" class="icon-btn" title="DMXキューシートを書き出す (パッチ表+カット毎のキュー)" aria-label="DMXキューシート">
       <svg class="ic"><use href="#i-dmx"/></svg>
     </button>
@@ -943,6 +996,8 @@ input[type="range"]::-moz-range-thumb {
           </button>
         </div>
       </div>
+      <div id="coverageBar" title="カバレッジ充足チェック (V6)"></div>
+      <div id="timelineBar" title="尺タイムライン (クリックでカット選択)"></div>
       <div id="cutStrip"></div>
     </div>
   </section>
@@ -1001,7 +1056,41 @@ input[type="range"]::-moz-range-thumb {
       <option value="current">現在のカットのみ</option>
       <option value="all">全カット</option>
     </select>
+    <button id="btnDnaAnnotate" class="btn small"><svg class="ic"><use href="#i-plus"/></svg> 参照から作成 (手動注釈)</button>
     <span id="dnaMsg" class="insp-hint"></span>
+  </div>
+  <!-- V8 Phase 2: 参照作品の手動注釈 → カスタムDNA -->
+  <div id="dnaAnnotateForm" hidden>
+    <div class="mixer-head">
+      <span class="panel-title small">参照作品の手動注釈 <small>「なぜ効くか」を撮影変数として記録します (来歴付き)</small></span>
+      <button id="btnAnnotSave" class="btn small primary">DNAとして保存</button>
+      <button id="btnAnnotClose" class="icon-btn small" aria-label="閉じる"><svg class="ic"><use href="#i-close"/></svg></button>
+    </div>
+    <div class="annot-grid">
+      <div class="field"><label>参照名 *</label><input type="text" id="anName" placeholder="例: ○○のウイスキーCM"></div>
+      <div class="field"><label>参照タイプ</label><select id="anType">
+        <option>commercial</option><option>film</option><option>music_video</option><option>fashion_film</option>
+        <option>food_film</option><option>documentary</option><option>social_video</option><option>still_photography</option>
+      </select></div>
+      <div class="field"><label>検索キーワード</label><input type="text" id="anKeywords" placeholder="カンマ区切り 例: 琥珀, バー, 大人"></div>
+      <div class="field"><label>ペース</label><select id="anPace">
+        <option value="1.5">遅い (長回し)</option><option value="1.0" selected>中</option><option value="0.6">速い</option>
+      </select></div>
+      <div class="field"><label>繋ぎ</label><select id="anTrans"></select></div>
+      <div class="field"><label>レンズ域 (mm)</label>
+        <div style="display:flex;gap:6px"><input type="number" id="anFocalMin" value="50" min="8" max="800"><input type="number" id="anFocalMax" value="85" min="8" max="800"></div></div>
+      <div class="field"><label>F値</label><input type="number" id="anAperture" value="2.8" step="0.1" min="0.9" max="22"></div>
+      <div class="field"><label>ムーブ速度</label><select id="anSpeed"></select></div>
+      <div class="field"><label>フィル比</label><select id="anFill">
+        <option value="0.3">締める (高コントラスト)</option><option value="0.7" selected>ほどよく</option><option value="1.3">起こす (明るく)</option>
+      </select></div>
+      <div class="field"><label>リム</label><select id="anRim">
+        <option value="0.8">控えめ</option><option value="1.0" selected>標準</option><option value="1.5">強調</option>
+      </select></div>
+      <div class="field"><label>ルック</label><select id="anLook"></select></div>
+      <div class="field annot-wide"><label>なぜ効くか *</label><textarea id="anWhy" rows="2" placeholder="例: 大面積ソフト45°+黒締め、85mmの浅い深度、10cmの遅い寄り、リアクションを長く持つ"></textarea></div>
+      <div class="field annot-wide"><label>STYLEトークン (英)</label><input type="text" id="anTokens" placeholder="カンマ区切り 例: amber backlit liquid, quiet bar ambience"></div>
+    </div>
   </div>
   <div id="dnaMixer" hidden>
     <div class="mixer-head">
@@ -4837,6 +4926,46 @@ function parseShutterDenom(s) {
   return m ? parseInt(m[1]) : null;
 }
 
+/* =========================================================
+ * CoverageSufficiency (V6 編集インテリジェンス / COV-001, COV-002)
+ * カット列全体を見て、編集で成立するカバレッジかを判定する。
+ * ======================================================= */
+function evaluateCoverage(cuts) {
+  const list = [];
+  const wideIdx = cuts.findIndex(c => ["LS", "ELS"].includes(c.camera.shotSize));
+  const tight = cuts.some(c => ["CU", "ECU"].includes(c.camera.shotSize));
+  const personCU = cuts.some(c => c.subjectType === "person" && ["CU", "ECU", "BS"].includes(c.camera.shotSize));
+
+  list.push(wideIdx >= 0
+    ? { ok: true, label: "状況説明 (引き)", tip: `C${wideIdx + 1} がエスタブリッシングとして機能 (COV-001)` }
+    : { ok: false, label: "状況説明 (引き) なし", tip: "シーンの地理が伝わる引き (LS/ELS) がありません (COV-001)。", fix: "wide" });
+  list.push(tight
+    ? { ok: true, label: "寄り (ディテール)", tip: "CU/ECU があり感情・細部を語れます" }
+    : { ok: false, label: "寄りなし", tip: "感情やディテールを読ませる寄り (CU) がありません (COV-002)。", fix: "tight" });
+  if (cuts.some(c => c.subjectType === "person") && cuts.length >= 3) {
+    list.push(personCU
+      ? { ok: true, label: "リアクション可", tip: "人物の表情が読めるサイズがあります" }
+      : { ok: false, label: "表情が読めない", tip: "人物がいるのに表情の読めるサイズ (BS以上の寄り) がありません (COV-002)。", fix: "tight" });
+  }
+  // 同ポジ連続 (同サイズ+同アングルが隣接) → 意図しないジャンプカット風
+  const samePos = [];
+  for (let i = 0; i < cuts.length - 1; i++) {
+    if (cuts[i].camera.shotSize === cuts[i + 1].camera.shotSize &&
+        cuts[i].camera.angle === cuts[i + 1].camera.angle &&
+        cuts[i].subjectType === cuts[i + 1].subjectType &&
+        (cuts[i].transition || "cut") === "cut") samePos.push(i + 1);
+  }
+  if (samePos.length) {
+    list.push({ ok: false, label: "同ポジ連続", tip: `C${samePos.join("/C")}→次カットが同サイズ・同アングルの直つなぎ。意図がなければサイズかアングルを変えるか、ジャンプカット指定に。` });
+  }
+  // 尺の単調さ
+  const durs = cuts.filter(c => c.kind !== "still").map(c => c.duration || 5);
+  if (durs.length >= 3 && new Set(durs).size === 1) {
+    list.push({ ok: false, label: "尺が単調", tip: `全カットが${durs[0]}秒。緩急 (長い呼吸→短いアクセント) を付けるとリズムが生まれます。` });
+  }
+  return list;
+}
+
 function evaluateFeasibility(cut) {
   const w = []; // {lv: "danger"|"warn"|"info", t}
   const an = analyzeLighting(cut);
@@ -4902,6 +5031,17 @@ function evaluateFeasibility(cut) {
   }
   if (["d_chase", "d_dive", "d_lowpass"].includes(cut.camera.move)) {
     w.push({ lv: "warn", t: "低空・高速のドローン飛行: 事前ロケハン/コース確認と安全マージン、操縦者の資格・許可空域の確認が必須。" });
+  }
+
+  /* --- Failure DNA (§27) と実行モードルーティング (§28) — dna.js 提供 --- */
+  if (typeof evaluateFailureDNA === "function") {
+    for (const f of evaluateFailureDNA(cut)) {
+      w.push({ lv: "info", t: `🧬 Failure DNA: ${f.risk} → ${f.safer}` });
+    }
+  }
+  if (typeof routeExecution === "function") {
+    const r = routeExecution(cut);
+    if (r) w.push({ lv: "info", t: `実行モード推奨: ${r.mode} — ${r.reason}` });
   }
   return w;
 }
@@ -5149,16 +5289,101 @@ const DNA_LIBRARY = [
   },
 ];
 
+/* 手動注釈で作られたカスタムDNA (state.customDNA) を含む全DNA */
+function allDNA() {
+  const custom = (typeof state !== "undefined" && Array.isArray(state.customDNA)) ? state.customDNA : [];
+  return DNA_LIBRARY.concat(custom);
+}
+
 /* ---------- 自然言語検索 (§21, §33) ---------- */
 function searchDNA(query) {
   const q = String(query || "").toLowerCase();
   if (!q) return [];
   const hits = [];
-  for (const dna of DNA_LIBRARY) {
-    const matched = dna.keywords.filter(k => q.includes(k.toLowerCase()));
+  for (const dna of allDNA()) {
+    const matched = (dna.keywords || []).filter(k => k && q.includes(k.toLowerCase()));
     if (matched.length) hits.push({ dna, matched, score: matched.length });
   }
   return hits.sort((a, b) => b.score - a.score);
+}
+
+/* =========================================================
+ * Failure DNA (§27): 生成AIで再発しやすい失敗モード → 安全な分解の推奨
+ * ======================================================= */
+const FAILURE_DNA = [
+  {
+    id: "liquid-complex-move",
+    when: c => (c.options.includes("splash") || c.action === "pour") &&
+      ["orbit", "d_orbit", "dollyzoom", "d_dzoom", "whip", "arc", "d_spiral"].includes(c.camera.move),
+    risk: "複雑なカメラ移動中の液体は形状が破綻しやすい",
+    safer: "カメラは固定/直線の遅い移動にし、液体側だけを動かす。または実写ハイスピード撮影を推奨",
+  },
+  {
+    id: "label-rotation",
+    when: c => ["bottle", "cosme"].includes(c.subjectType) &&
+      ["orbit", "d_orbit", "rotate"].includes(c.camera.move) || (["bottle", "cosme"].includes(c.subjectType) && c.action === "rotate"),
+    risk: "回転中に商品ラベル/ロゴが変形・崩壊しやすい",
+    safer: "参照画像 (first frame) を必ず与え、回転は45°以内の部分回転に分割。正確なパックショットは実写/CGを推奨",
+  },
+  {
+    id: "hands-product",
+    when: c => c.action === "hands" || (c.action === "pour" && c.subjectType !== "person"),
+    risk: "商品を扱う手指は本数・関節が破綻しやすい",
+    safer: "手元は実写インサートで撮り、AI生成は手が写らない構図に分解する",
+  },
+  {
+    id: "overloaded-prompt",
+    when: c => c.kind !== "still" && (c.duration || 5) >= 10 && c.options.length >= 3,
+    risk: "長尺+多要素の1プロンプトはビート過積載で破綻する (§27)",
+    safer: "1ショット=1〜2アクションに分割し、編集で繋ぐ (「3カットに展開」も有効)",
+  },
+  {
+    id: "whip-identity",
+    when: c => c.transition === "whippan" || c.camera.move === "whip",
+    risk: "ウィップパン中に被写体のアイデンティティ (顔・服装) が変わりやすい",
+    safer: "ウィップはカット割り+編集ブラーで作り、生成は前後の静止側だけにする",
+  },
+  {
+    id: "rain-consistency",
+    when: c => c.options.includes("rain") || c.weather === "rainy",
+    risk: "雨の密度・方向がカット間で変わりやすい",
+    safer: "全カットのプロンプトに同じ雨記述を繰り返し、濡れの継続 (continuity) を明示する",
+  },
+  {
+    id: "fast-parallax",
+    when: c => ["d_chase", "d_lowpass", "d_dive", "d_gap"].includes(c.camera.move),
+    risk: "高速の空撮的移動は背景パララックスが物理的に破綻しやすい",
+    safer: "速度を1段落とすか、実写FPV素材+AI背景拡張のハイブリッドを検討",
+  },
+];
+
+function evaluateFailureDNA(cut) {
+  return FAILURE_DNA.filter(f => { try { return f.when(cut); } catch { return false; } })
+    .map(f => ({ id: f.id, risk: f.risk, safer: f.safer }));
+}
+
+/* =========================================================
+ * 実行モードルーティング (§28): Real / AI / CG / Hybrid を能力ベースで推奨
+ * ======================================================= */
+function routeExecution(cut) {
+  const fails = evaluateFailureDNA(cut);
+  const opts = new Set(cut.options);
+  if (opts.has("explosion")) {
+    return { mode: "実写特効 (Class C) + マルチカム、またはAI生成+実写プレート合成", reason: "一発勝負の破壊系。実写なら特効技師専任、AIなら人物プレートと分離生成が安全" };
+  }
+  if ((opts.has("splash") || cut.action === "pour") && ["bottle", "food", "cosme"].includes(cut.subjectType)) {
+    return { mode: "実写ハイスピード (または制御CG)", reason: "物理的に複雑な液体マクロは生成AIより実写HS/CGが歩留まり良 (§28)" };
+  }
+  if (["bottle", "cosme"].includes(cut.subjectType) && opts.has("gloss") && ["ECU", "CU"].includes(cut.camera.shotSize)) {
+    return { mode: "実写/CG (パックショット品質)", reason: "ブランドロゴ・形状の忠実性が必要な寄りは幾何制御の効く実写/CGを推奨" };
+  }
+  if (fails.length >= 2) {
+    return { mode: "ハイブリッド (実写プレート + AI)", reason: `破綻リスクが${fails.length}件。リスク要素を実写で押さえ、環境をAIで拡張する分担が安全` };
+  }
+  if (cut.subjectType === "person" && !opts.has("splash") && cut.kind !== "still") {
+    return { mode: "AI生成向き", reason: "雰囲気系の人物ショットは生成AIの得意領域。被写体記述の一貫性だけ担保する" };
+  }
+  return null;
 }
 
 /* ---------- DNA適用 (§29 に向けた制御変数の書き込み) ----------
@@ -6104,6 +6329,7 @@ const state = {
   customPresets: [], // mdインポートされた技法
   // プロジェクト共通の使用機材キット (機材DBで選択 → 全カット・保存に反映)
   kit: { body: null, lens: null, support: null, drone: null },
+  customDNA: [], // 参照の手動注釈から作られたPattern DNA (V8 Phase 2)
 };
 
 function allPresets() { return PRESETS.concat(state.customPresets); }
@@ -7231,6 +7457,56 @@ function renderCutStrip() {
     });
   });
   strip.scrollLeft = keepScroll;
+  renderCoverage();
+  renderTimeline();
+}
+
+/* ---------- CoverageSufficiency 表示 (V6) ---------- */
+function renderCoverage() {
+  const bar = byId("coverageBar");
+  const items = evaluateCoverage(state.cuts);
+  bar.innerHTML = items.map((c, i) =>
+    `<button class="cov-chip ${c.ok ? "" : "ng"}" data-cov="${i}" title="${esc(c.tip)}${c.fix ? " — クリックで不足カットを自動追加" : ""}">${c.ok ? "✓" : "⚠"} ${esc(c.label)}</button>`).join("");
+  bar.querySelectorAll(".cov-chip.ng").forEach(el => {
+    el.addEventListener("click", () => {
+      const c = items[+el.dataset.cov];
+      if (!c.fix) return;
+      // 不足カバレッジの自動補完: 現在のカットを複製してサイズを変更
+      const base = JSON.parse(JSON.stringify(activeCut()));
+      base.id = uid(); base.items.forEach(it => it.id = uid());
+      if (c.fix === "wide") {
+        base.name = "引き (状況説明)"; base.camera.shotSize = "LS"; base.camera.endShotSize = "same";
+        base.camera.move = "fix"; base.aim = "シーンの地理を見せるエスタブリッシング (COV-001 自動補完)。";
+        state.cuts.unshift(ensureCameraDefaults(base));
+        state.activeCut = 0;
+      } else {
+        base.name = "寄り (感情/ディテール)"; base.camera.shotSize = "CU"; base.camera.endShotSize = "same";
+        base.camera.move = "dollyin"; base.camera.moveSpeed = "slow";
+        base.aim = "感情・ディテールを読ませる寄り (COV-002 自動補完)。";
+        state.cuts.push(ensureCameraDefaults(base));
+        state.activeCut = state.cuts.length - 1;
+      }
+      renderAll();
+    });
+  });
+}
+
+/* ---------- 尺タイムライン (V6) ---------- */
+function renderTimeline() {
+  const bar = byId("timelineBar");
+  const durs = state.cuts.map(c => c.kind === "still" ? 2 : (c.duration || 5));
+  const total = state.cuts.reduce((s2, c) => s2 + (c.kind === "still" ? 0 : c.duration || 5), 0);
+  bar.innerHTML = state.cuts.map((c, i) =>
+    `<div class="tl-block ${i === state.activeCut ? "active" : ""}" style="flex:${durs[i]}"
+       title="C${i + 1} ${esc(c.name)} — ${c.kind === "still" ? "スチール" : (c.duration || 5) + "秒"}" data-idx="${i}">C${i + 1}${c.kind === "still" ? "" : " " + (c.duration || 5) + "s"}</div>`).join("")
+    + `<span class="tl-total">計 ${total}s</span>`;
+  bar.querySelectorAll(".tl-block").forEach(el => {
+    el.addEventListener("click", () => {
+      state.activeCut = +el.dataset.idx;
+      state.selectedItem = null;
+      renderAll();
+    });
+  });
 }
 
 function fieldRow(label, inner) {
@@ -8185,6 +8461,72 @@ function exportDmx() {
 }
 
 /* =========================================================
+ * 香盤表 (撮影スケジュール) — 準備/撮影時間から予定時刻を積算
+ * ======================================================= */
+function buildScheduleDoc() {
+  const today = new Date().toLocaleDateString("ja-JP");
+  let clock = 9 * 60; // 9:00 開始
+  let lunchDone = false;
+  const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const rows = state.cuts.map((cut, i) => {
+    // 昼休憩 (12:00を跨いだ最初の区切りで60分)
+    let lunch = "";
+    if (!lunchDone && clock >= 12 * 60) { lunch = `<tr class="lunch"><td colspan="8">🍱 昼休憩 (${fmt(clock)}–${fmt(clock + 60)})</td></tr>`; clock += 60; lunchDone = true; }
+    const setup = cut.setupMin || 30;
+    const shootMin = Math.max(10, Math.ceil((cut.takes || 3) * Math.max(cut.kind === "still" ? 2 : (cut.duration || 5) / 60, 0.5) * 2 + 5));
+    const start = clock;
+    clock += setup + shootMin;
+    const preset = allPresets().find(p => p.id === cut.presetId);
+    const sfx = cut.items.filter(it => SFX_SAFETY_CLASS[it.type]).map(it => `${EQUIP_TYPES[it.type].label}(${SFX_SAFETY_CLASS[it.type]})`);
+    const lights = cut.items.filter(it => LIGHT_TYPES.includes(it.type) && it.type !== "sun").length;
+    return lunch + `<tr>
+      <td>C${i + 1}</td>
+      <td>${fmt(start)}–${fmt(clock)}</td>
+      <td><b>${esc(cut.name)}</b><br><small>${esc((cut.aim || "").slice(0, 42))}</small></td>
+      <td>${esc(preset ? preset.name : "-")}</td>
+      <td>灯体${lights} ｜ ${esc((CAMERA_SUPPORTS.find(x => x.id === cut.camera.support) || {}).label || "")}${state.kit.body ? `<br><small>${esc(state.kit.body)}</small>` : ""}</td>
+      <td>${setup}分</td>
+      <td>${shootMin}分 (${cut.takes || 3}T)</td>
+      <td>${sfx.length ? sfx.map(x => esc(x)).join("<br>") : "—"}</td>
+    </tr>`;
+  }).join("");
+
+  return `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+  <title>香盤表 — ${esc(state.projectTitle)}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; color: #1a1d24; background: #fff; padding: 24px; }
+    h1 { font-size: 20px; } .meta { color: #667; font-size: 11px; margin: 4px 0 12px; }
+    .toolbar { margin-bottom: 16px; }
+    .toolbar button { padding: 10px 22px; font-size: 14px; cursor: pointer; background: #1a1d24; color: #fff; border: 0; border-radius: 6px; }
+    table { border-collapse: collapse; width: 100%; font-size: 12px; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; vertical-align: top; font-variant-numeric: tabular-nums; }
+    th { background: #eef4ff; font-size: 11px; }
+    tr.lunch td { background: #fff7e8; text-align: center; font-weight: 700; }
+    small { color: #667; }
+    ul { padding-left: 20px; font-size: 12px; line-height: 1.7; margin-top: 10px; }
+    @media print { .toolbar { display: none; } body { padding: 0; } }
+  </style></head><body>
+    <h1>香盤表 — ${esc(state.projectTitle)}</h1>
+    <div class="meta">9:00 開始想定 ｜ 終了見込み ${fmt(clock)} ｜ カット数 ${state.cuts.length} ｜ 出力日 ${esc(today)} ｜ Generated by Virtual Studio</div>
+    <div class="toolbar"><button onclick="window.print()">🖨 印刷 / PDFに保存</button></div>
+    <table>
+      <thead><tr><th>#</th><th>予定時刻</th><th>カット / 狙い</th><th>技法</th><th>主要機材</th><th>段取り</th><th>撮影 (テイク)</th><th>特効 / 安全</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <ul>
+      <li>撮影時間は「テイク数 × 尺 × 2 + 5分」の概算。特効・ハイスピードはリセット時間を上乗せして調整すること</li>
+      <li>段取り時間は各カットの「準備時間(分)」設定から。並行仕込みができる場合は前倒し可</li>
+      <li>Class B/C 特効のあるカットは安全ブリーフィングの時間を別途確保する</li>
+    </ul>
+  </body></html>`;
+}
+
+function exportSchedule() {
+  openDocWindow(buildScheduleDoc(), "schedule.html", "香盤表 (撮影スケジュール)");
+}
+
+/* =========================================================
  * Canonical Shot JSON エクスポート (CineOS V3 ベンダー中立形式)
  * 座標系は cineos/CLAUDE.md §4 に準拠:
  *   +X=被写体の右 / +Y=被写体の後ろ / -Y=カメラ側 / +Z=上 (SI単位)
@@ -8355,7 +8697,7 @@ function snapshotState() {
     mode: state.mode, cuts: state.cuts, activeCut: state.activeCut,
     projectTitle: state.projectTitle, projectId: state.projectId || null,
     promptModel: state.promptModel, customPresets: state.customPresets,
-    kit: state.kit,
+    kit: state.kit, customDNA: state.customDNA,
   }));
 }
 
@@ -8370,6 +8712,7 @@ function applySnapshot(s) {
   state.promptModel = s.promptModel || "seedance";
   state.customPresets = Array.isArray(s.customPresets) ? s.customPresets : [];
   state.kit = Object.assign({ body: null, lens: null, support: null, drone: null }, s.kit || {});
+  state.customDNA = Array.isArray(s.customDNA) ? s.customDNA : [];
   document.querySelectorAll(".mode-tab").forEach(b => b.classList.toggle("active", b.dataset.mode === state.mode));
   const pm = byId("promptModelSelect");
   if (pm && pm.options.length) pm.value = state.promptModel;
@@ -8487,7 +8830,7 @@ function applyDnaToScope(dna, lineage) {
 function renderDnaPage() {
   const q = byId("dnaSearch").value.trim();
   const hits = q ? searchDNA(q) : [];
-  const list = hits.length ? hits : DNA_LIBRARY.map(d => ({ dna: d, matched: [] }));
+  const list = hits.length ? hits : allDNA().map(d => ({ dna: d, matched: [] }));
 
   byId("dnaGrid").innerHTML = list.map(({ dna, matched }) => `
     <div class="dna-card ${dnaSel.a === dna.id ? "sel-a" : ""} ${dnaSel.b === dna.id ? "sel-b" : ""}">
@@ -8506,7 +8849,7 @@ function renderDnaPage() {
 
   const grid = byId("dnaGrid");
   grid.querySelectorAll("[data-apply]").forEach(b => b.addEventListener("click", () => {
-    const d = DNA_LIBRARY.find(x => x.id === b.dataset.apply);
+    const d = allDNA().find(x => x.id === b.dataset.apply);
     if (d) applyDnaToScope(d);
     renderDnaPage();
   }));
@@ -8518,8 +8861,8 @@ function renderDnaPage() {
   }));
 
   // ミキサー (§34): AとBが選ばれたら表示
-  const a = DNA_LIBRARY.find(x => x.id === dnaSel.a);
-  const b = DNA_LIBRARY.find(x => x.id === dnaSel.b);
+  const a = allDNA().find(x => x.id === dnaSel.a);
+  const b = allDNA().find(x => x.id === dnaSel.b);
   const mixer = byId("dnaMixer");
   mixer.hidden = !(a && b);
   if (a && b) {
@@ -8544,14 +8887,58 @@ function setupDnaPage() {
   byId("btnDnaBack").addEventListener("click", () => { byId("dnaOverlay").hidden = true; });
   byId("dnaSearch").addEventListener("input", renderDnaPage);
   byId("btnMixApply").addEventListener("click", () => {
-    const a = DNA_LIBRARY.find(x => x.id === dnaSel.a);
-    const b = DNA_LIBRARY.find(x => x.id === dnaSel.b);
+    const a = allDNA().find(x => x.id === dnaSel.a);
+    const b = allDNA().find(x => x.id === dnaSel.b);
     if (!a || !b) return;
     const mixed = mixDNA(a, b, mixWeights);
     applyDnaToScope(mixed, { sources: [a.id, b.id], weights: { ...mixWeights }, date: new Date().toISOString().slice(0, 10) });
     renderDnaPage();
   });
   byId("btnMixClear").addEventListener("click", () => { dnaSel.a = null; dnaSel.b = null; renderDnaPage(); });
+
+  /* --- V8 Phase 2: 参照の手動注釈 → カスタムDNA --- */
+  byId("anTrans").innerHTML = TRANSITIONS.map(t => `<option value="${t.id}">${esc(t.label)}</option>`).join("");
+  byId("anSpeed").innerHTML = MOVE_SPEEDS.map(m => `<option value="${m.id}" ${m.id === "slow" ? "selected" : ""}>${esc(m.label)}</option>`).join("");
+  byId("anLook").innerHTML = LOOKS.map(l => `<option value="${l.id}">${esc(l.label)}</option>`).join("");
+  byId("btnDnaAnnotate").addEventListener("click", () => {
+    byId("dnaAnnotateForm").hidden = !byId("dnaAnnotateForm").hidden;
+  });
+  byId("btnAnnotClose").addEventListener("click", () => { byId("dnaAnnotateForm").hidden = true; });
+  byId("btnAnnotSave").addEventListener("click", () => {
+    const name = byId("anName").value.trim();
+    const why = byId("anWhy").value.trim();
+    if (!name || !why) { byId("dnaMsg").textContent = "⚠️ 参照名と「なぜ効くか」は必須です"; return; }
+    const kw = byId("anKeywords").value.split(/[,、]/).map(x => x.trim()).filter(Boolean);
+    const tokens = byId("anTokens").value.split(/[,、]/).map(x => x.trim()).filter(Boolean);
+    const mn = Math.min(+byId("anFocalMin").value || 50, +byId("anFocalMax").value || 85);
+    const mx = Math.max(+byId("anFocalMin").value || 50, +byId("anFocalMax").value || 85);
+    const dna = {
+      id: "ref-" + Date.now(),
+      name, family: "手動注釈",
+      keywords: [...new Set([name, ...kw])],
+      why,
+      dims: {
+        editorial: { durationMul: +byId("anPace").value, transition: byId("anTrans").value, pace: byId("anPace").selectedOptions[0].textContent },
+        camera: { focal: [mn, mx], aperture: +byId("anAperture").value || 2.8 },
+        lighting: { fillScale: +byId("anFill").value, rimBoost: +byId("anRim").value, contrast: byId("anFill").selectedOptions[0].textContent },
+        color: { look: byId("anLook").value },
+        movement: { moveSpeed: byId("anSpeed").value, prefMove: null },
+      },
+      tokens: tokens.length ? tokens : [why.slice(0, 60)],
+      avoid: [],
+      // 来歴 (§23): 手動注釈は human/confidence高
+      provenance: {
+        source: name, source_type: byId("anType").value,
+        extraction_method: "manual_annotation", annotator: "human",
+        confidence: "high", date: new Date().toISOString().slice(0, 10),
+      },
+    };
+    state.customDNA.push(dna);
+    byId("dnaAnnotateForm").hidden = true;
+    byId("anName").value = ""; byId("anWhy").value = ""; byId("anTokens").value = ""; byId("anKeywords").value = "";
+    byId("dnaMsg").innerHTML = `✓ カスタムDNA <b>${esc(name)}</b> を保存しました (検索・適用・ミックス可、プロジェクトに保存されます)`;
+    renderDnaPage();
+  });
 }
 
 /* =========================================================
@@ -8857,6 +9244,7 @@ function setupHeader() {
   byId("btnExportJson").addEventListener("click", exportJSON);
   byId("btnExportCanonical").addEventListener("click", exportCanonicalJSON);
   byId("btnExportDmx").addEventListener("click", exportDmx);
+  byId("btnExportSchedule").addEventListener("click", exportSchedule);
 
   // プロンプトモデル (方言) 切り替え
   const pm = byId("promptModelSelect");

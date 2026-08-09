@@ -131,6 +131,46 @@ function parseShutterDenom(s) {
   return m ? parseInt(m[1]) : null;
 }
 
+/* =========================================================
+ * CoverageSufficiency (V6 編集インテリジェンス / COV-001, COV-002)
+ * カット列全体を見て、編集で成立するカバレッジかを判定する。
+ * ======================================================= */
+function evaluateCoverage(cuts) {
+  const list = [];
+  const wideIdx = cuts.findIndex(c => ["LS", "ELS"].includes(c.camera.shotSize));
+  const tight = cuts.some(c => ["CU", "ECU"].includes(c.camera.shotSize));
+  const personCU = cuts.some(c => c.subjectType === "person" && ["CU", "ECU", "BS"].includes(c.camera.shotSize));
+
+  list.push(wideIdx >= 0
+    ? { ok: true, label: "状況説明 (引き)", tip: `C${wideIdx + 1} がエスタブリッシングとして機能 (COV-001)` }
+    : { ok: false, label: "状況説明 (引き) なし", tip: "シーンの地理が伝わる引き (LS/ELS) がありません (COV-001)。", fix: "wide" });
+  list.push(tight
+    ? { ok: true, label: "寄り (ディテール)", tip: "CU/ECU があり感情・細部を語れます" }
+    : { ok: false, label: "寄りなし", tip: "感情やディテールを読ませる寄り (CU) がありません (COV-002)。", fix: "tight" });
+  if (cuts.some(c => c.subjectType === "person") && cuts.length >= 3) {
+    list.push(personCU
+      ? { ok: true, label: "リアクション可", tip: "人物の表情が読めるサイズがあります" }
+      : { ok: false, label: "表情が読めない", tip: "人物がいるのに表情の読めるサイズ (BS以上の寄り) がありません (COV-002)。", fix: "tight" });
+  }
+  // 同ポジ連続 (同サイズ+同アングルが隣接) → 意図しないジャンプカット風
+  const samePos = [];
+  for (let i = 0; i < cuts.length - 1; i++) {
+    if (cuts[i].camera.shotSize === cuts[i + 1].camera.shotSize &&
+        cuts[i].camera.angle === cuts[i + 1].camera.angle &&
+        cuts[i].subjectType === cuts[i + 1].subjectType &&
+        (cuts[i].transition || "cut") === "cut") samePos.push(i + 1);
+  }
+  if (samePos.length) {
+    list.push({ ok: false, label: "同ポジ連続", tip: `C${samePos.join("/C")}→次カットが同サイズ・同アングルの直つなぎ。意図がなければサイズかアングルを変えるか、ジャンプカット指定に。` });
+  }
+  // 尺の単調さ
+  const durs = cuts.filter(c => c.kind !== "still").map(c => c.duration || 5);
+  if (durs.length >= 3 && new Set(durs).size === 1) {
+    list.push({ ok: false, label: "尺が単調", tip: `全カットが${durs[0]}秒。緩急 (長い呼吸→短いアクセント) を付けるとリズムが生まれます。` });
+  }
+  return list;
+}
+
 function evaluateFeasibility(cut) {
   const w = []; // {lv: "danger"|"warn"|"info", t}
   const an = analyzeLighting(cut);
@@ -196,6 +236,17 @@ function evaluateFeasibility(cut) {
   }
   if (["d_chase", "d_dive", "d_lowpass"].includes(cut.camera.move)) {
     w.push({ lv: "warn", t: "低空・高速のドローン飛行: 事前ロケハン/コース確認と安全マージン、操縦者の資格・許可空域の確認が必須。" });
+  }
+
+  /* --- Failure DNA (§27) と実行モードルーティング (§28) — dna.js 提供 --- */
+  if (typeof evaluateFailureDNA === "function") {
+    for (const f of evaluateFailureDNA(cut)) {
+      w.push({ lv: "info", t: `🧬 Failure DNA: ${f.risk} → ${f.safer}` });
+    }
+  }
+  if (typeof routeExecution === "function") {
+    const r = routeExecution(cut);
+    if (r) w.push({ lv: "info", t: `実行モード推奨: ${r.mode} — ${r.reason}` });
   }
   return w;
 }

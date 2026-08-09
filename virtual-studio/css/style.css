@@ -402,6 +402,40 @@ select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0
 #storyboard { padding: 2px 14px 12px; }
 .storyboard-head { display: flex; justify-content: space-between; align-items: center; }
 .storyboard-actions { display: flex; gap: 2px; }
+/* カバレッジ充足チェック (V6) */
+#coverageBar { display: flex; flex-wrap: wrap; gap: 5px; padding: 7px 2px 0; }
+.cov-chip {
+  font-size: 10.5px; font-weight: 600;
+  padding: 3px 10px; border-radius: 980px;
+  background: rgba(42, 168, 126, 0.13); color: #1d8a63;
+  border: none; cursor: default;
+}
+.cov-chip.ng {
+  background: rgba(232, 146, 10, 0.14); color: #b06e06; cursor: pointer;
+}
+.cov-chip.ng:hover { background: rgba(232, 146, 10, 0.24); }
+
+/* 尺タイムライン (V6) */
+#timelineBar {
+  display: flex; align-items: stretch; gap: 2px;
+  height: 22px; margin-top: 7px; padding: 0 2px;
+}
+.tl-block {
+  position: relative; border-radius: 5px; cursor: pointer;
+  background: var(--fill-2); overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 9px; font-weight: 700; color: var(--text2);
+  transition: all 0.16s var(--ease);
+  min-width: 20px;
+}
+.tl-block:hover { background: var(--accent-soft); }
+.tl-block.active { background: var(--accent); color: #fff; }
+.tl-total {
+  flex: 0 0 auto; display: flex; align-items: center;
+  font-size: 10px; color: var(--dim); padding-left: 6px;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
 #cutStrip { display: flex; gap: 10px; overflow-x: auto; padding: 8px 2px 6px; min-height: 100px; }
 #cutStrip::-webkit-scrollbar { height: 6px; }
 #cutStrip::-webkit-scrollbar-thumb { background: var(--track); border-radius: 3px; }
@@ -704,6 +738,21 @@ input[type="range"]::-moz-range-thumb {
 .dna-card .d-why { font-size: 11.5px; color: var(--text2); line-height: 1.6; }
 .dna-card .d-tokens { font-size: 10.5px; color: var(--dim); line-height: 1.5; font-family: "SF Mono", ui-monospace, monospace; }
 .dna-card .d-actions { display: flex; gap: 6px; margin-top: auto; padding-top: 4px; }
+
+/* 参照注釈フォーム (V8 Phase 2) */
+#dnaAnnotateForm {
+  margin: 10px 16px 0;
+  background: var(--surface); border-radius: var(--radius);
+  padding: 12px 14px; box-shadow: var(--shadow-sm);
+  border-left: 3px solid #9a6ae0;
+}
+#dnaAnnotateForm[hidden] { display: none; }
+.annot-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 4px 16px;
+}
+.annot-grid .field { margin-bottom: 4px; }
+.annot-grid .annot-wide { grid-column: 1 / -1; }
 
 /* ---------- プロジェクトページ ---------- */
 #projCurrent {

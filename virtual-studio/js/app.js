@@ -37,6 +37,7 @@ const state = {
   customPresets: [], // mdインポートされた技法
   // プロジェクト共通の使用機材キット (機材DBで選択 → 全カット・保存に反映)
   kit: { body: null, lens: null, support: null, drone: null },
+  customDNA: [], // 参照の手動注釈から作られたPattern DNA (V8 Phase 2)
 };
 
 function allPresets() { return PRESETS.concat(state.customPresets); }
@@ -1164,6 +1165,56 @@ function renderCutStrip() {
     });
   });
   strip.scrollLeft = keepScroll;
+  renderCoverage();
+  renderTimeline();
+}
+
+/* ---------- CoverageSufficiency 表示 (V6) ---------- */
+function renderCoverage() {
+  const bar = byId("coverageBar");
+  const items = evaluateCoverage(state.cuts);
+  bar.innerHTML = items.map((c, i) =>
+    `<button class="cov-chip ${c.ok ? "" : "ng"}" data-cov="${i}" title="${esc(c.tip)}${c.fix ? " — クリックで不足カットを自動追加" : ""}">${c.ok ? "✓" : "⚠"} ${esc(c.label)}</button>`).join("");
+  bar.querySelectorAll(".cov-chip.ng").forEach(el => {
+    el.addEventListener("click", () => {
+      const c = items[+el.dataset.cov];
+      if (!c.fix) return;
+      // 不足カバレッジの自動補完: 現在のカットを複製してサイズを変更
+      const base = JSON.parse(JSON.stringify(activeCut()));
+      base.id = uid(); base.items.forEach(it => it.id = uid());
+      if (c.fix === "wide") {
+        base.name = "引き (状況説明)"; base.camera.shotSize = "LS"; base.camera.endShotSize = "same";
+        base.camera.move = "fix"; base.aim = "シーンの地理を見せるエスタブリッシング (COV-001 自動補完)。";
+        state.cuts.unshift(ensureCameraDefaults(base));
+        state.activeCut = 0;
+      } else {
+        base.name = "寄り (感情/ディテール)"; base.camera.shotSize = "CU"; base.camera.endShotSize = "same";
+        base.camera.move = "dollyin"; base.camera.moveSpeed = "slow";
+        base.aim = "感情・ディテールを読ませる寄り (COV-002 自動補完)。";
+        state.cuts.push(ensureCameraDefaults(base));
+        state.activeCut = state.cuts.length - 1;
+      }
+      renderAll();
+    });
+  });
+}
+
+/* ---------- 尺タイムライン (V6) ---------- */
+function renderTimeline() {
+  const bar = byId("timelineBar");
+  const durs = state.cuts.map(c => c.kind === "still" ? 2 : (c.duration || 5));
+  const total = state.cuts.reduce((s2, c) => s2 + (c.kind === "still" ? 0 : c.duration || 5), 0);
+  bar.innerHTML = state.cuts.map((c, i) =>
+    `<div class="tl-block ${i === state.activeCut ? "active" : ""}" style="flex:${durs[i]}"
+       title="C${i + 1} ${esc(c.name)} — ${c.kind === "still" ? "スチール" : (c.duration || 5) + "秒"}" data-idx="${i}">C${i + 1}${c.kind === "still" ? "" : " " + (c.duration || 5) + "s"}</div>`).join("")
+    + `<span class="tl-total">計 ${total}s</span>`;
+  bar.querySelectorAll(".tl-block").forEach(el => {
+    el.addEventListener("click", () => {
+      state.activeCut = +el.dataset.idx;
+      state.selectedItem = null;
+      renderAll();
+    });
+  });
 }
 
 function fieldRow(label, inner) {
@@ -2118,6 +2169,72 @@ function exportDmx() {
 }
 
 /* =========================================================
+ * 香盤表 (撮影スケジュール) — 準備/撮影時間から予定時刻を積算
+ * ======================================================= */
+function buildScheduleDoc() {
+  const today = new Date().toLocaleDateString("ja-JP");
+  let clock = 9 * 60; // 9:00 開始
+  let lunchDone = false;
+  const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const rows = state.cuts.map((cut, i) => {
+    // 昼休憩 (12:00を跨いだ最初の区切りで60分)
+    let lunch = "";
+    if (!lunchDone && clock >= 12 * 60) { lunch = `<tr class="lunch"><td colspan="8">🍱 昼休憩 (${fmt(clock)}–${fmt(clock + 60)})</td></tr>`; clock += 60; lunchDone = true; }
+    const setup = cut.setupMin || 30;
+    const shootMin = Math.max(10, Math.ceil((cut.takes || 3) * Math.max(cut.kind === "still" ? 2 : (cut.duration || 5) / 60, 0.5) * 2 + 5));
+    const start = clock;
+    clock += setup + shootMin;
+    const preset = allPresets().find(p => p.id === cut.presetId);
+    const sfx = cut.items.filter(it => SFX_SAFETY_CLASS[it.type]).map(it => `${EQUIP_TYPES[it.type].label}(${SFX_SAFETY_CLASS[it.type]})`);
+    const lights = cut.items.filter(it => LIGHT_TYPES.includes(it.type) && it.type !== "sun").length;
+    return lunch + `<tr>
+      <td>C${i + 1}</td>
+      <td>${fmt(start)}–${fmt(clock)}</td>
+      <td><b>${esc(cut.name)}</b><br><small>${esc((cut.aim || "").slice(0, 42))}</small></td>
+      <td>${esc(preset ? preset.name : "-")}</td>
+      <td>灯体${lights} ｜ ${esc((CAMERA_SUPPORTS.find(x => x.id === cut.camera.support) || {}).label || "")}${state.kit.body ? `<br><small>${esc(state.kit.body)}</small>` : ""}</td>
+      <td>${setup}分</td>
+      <td>${shootMin}分 (${cut.takes || 3}T)</td>
+      <td>${sfx.length ? sfx.map(x => esc(x)).join("<br>") : "—"}</td>
+    </tr>`;
+  }).join("");
+
+  return `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+  <title>香盤表 — ${esc(state.projectTitle)}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; color: #1a1d24; background: #fff; padding: 24px; }
+    h1 { font-size: 20px; } .meta { color: #667; font-size: 11px; margin: 4px 0 12px; }
+    .toolbar { margin-bottom: 16px; }
+    .toolbar button { padding: 10px 22px; font-size: 14px; cursor: pointer; background: #1a1d24; color: #fff; border: 0; border-radius: 6px; }
+    table { border-collapse: collapse; width: 100%; font-size: 12px; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; vertical-align: top; font-variant-numeric: tabular-nums; }
+    th { background: #eef4ff; font-size: 11px; }
+    tr.lunch td { background: #fff7e8; text-align: center; font-weight: 700; }
+    small { color: #667; }
+    ul { padding-left: 20px; font-size: 12px; line-height: 1.7; margin-top: 10px; }
+    @media print { .toolbar { display: none; } body { padding: 0; } }
+  </style></head><body>
+    <h1>香盤表 — ${esc(state.projectTitle)}</h1>
+    <div class="meta">9:00 開始想定 ｜ 終了見込み ${fmt(clock)} ｜ カット数 ${state.cuts.length} ｜ 出力日 ${esc(today)} ｜ Generated by Virtual Studio</div>
+    <div class="toolbar"><button onclick="window.print()">🖨 印刷 / PDFに保存</button></div>
+    <table>
+      <thead><tr><th>#</th><th>予定時刻</th><th>カット / 狙い</th><th>技法</th><th>主要機材</th><th>段取り</th><th>撮影 (テイク)</th><th>特効 / 安全</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <ul>
+      <li>撮影時間は「テイク数 × 尺 × 2 + 5分」の概算。特効・ハイスピードはリセット時間を上乗せして調整すること</li>
+      <li>段取り時間は各カットの「準備時間(分)」設定から。並行仕込みができる場合は前倒し可</li>
+      <li>Class B/C 特効のあるカットは安全ブリーフィングの時間を別途確保する</li>
+    </ul>
+  </body></html>`;
+}
+
+function exportSchedule() {
+  openDocWindow(buildScheduleDoc(), "schedule.html", "香盤表 (撮影スケジュール)");
+}
+
+/* =========================================================
  * Canonical Shot JSON エクスポート (CineOS V3 ベンダー中立形式)
  * 座標系は cineos/CLAUDE.md §4 に準拠:
  *   +X=被写体の右 / +Y=被写体の後ろ / -Y=カメラ側 / +Z=上 (SI単位)
@@ -2288,7 +2405,7 @@ function snapshotState() {
     mode: state.mode, cuts: state.cuts, activeCut: state.activeCut,
     projectTitle: state.projectTitle, projectId: state.projectId || null,
     promptModel: state.promptModel, customPresets: state.customPresets,
-    kit: state.kit,
+    kit: state.kit, customDNA: state.customDNA,
   }));
 }
 
@@ -2303,6 +2420,7 @@ function applySnapshot(s) {
   state.promptModel = s.promptModel || "seedance";
   state.customPresets = Array.isArray(s.customPresets) ? s.customPresets : [];
   state.kit = Object.assign({ body: null, lens: null, support: null, drone: null }, s.kit || {});
+  state.customDNA = Array.isArray(s.customDNA) ? s.customDNA : [];
   document.querySelectorAll(".mode-tab").forEach(b => b.classList.toggle("active", b.dataset.mode === state.mode));
   const pm = byId("promptModelSelect");
   if (pm && pm.options.length) pm.value = state.promptModel;
@@ -2420,7 +2538,7 @@ function applyDnaToScope(dna, lineage) {
 function renderDnaPage() {
   const q = byId("dnaSearch").value.trim();
   const hits = q ? searchDNA(q) : [];
-  const list = hits.length ? hits : DNA_LIBRARY.map(d => ({ dna: d, matched: [] }));
+  const list = hits.length ? hits : allDNA().map(d => ({ dna: d, matched: [] }));
 
   byId("dnaGrid").innerHTML = list.map(({ dna, matched }) => `
     <div class="dna-card ${dnaSel.a === dna.id ? "sel-a" : ""} ${dnaSel.b === dna.id ? "sel-b" : ""}">
@@ -2439,7 +2557,7 @@ function renderDnaPage() {
 
   const grid = byId("dnaGrid");
   grid.querySelectorAll("[data-apply]").forEach(b => b.addEventListener("click", () => {
-    const d = DNA_LIBRARY.find(x => x.id === b.dataset.apply);
+    const d = allDNA().find(x => x.id === b.dataset.apply);
     if (d) applyDnaToScope(d);
     renderDnaPage();
   }));
@@ -2451,8 +2569,8 @@ function renderDnaPage() {
   }));
 
   // ミキサー (§34): AとBが選ばれたら表示
-  const a = DNA_LIBRARY.find(x => x.id === dnaSel.a);
-  const b = DNA_LIBRARY.find(x => x.id === dnaSel.b);
+  const a = allDNA().find(x => x.id === dnaSel.a);
+  const b = allDNA().find(x => x.id === dnaSel.b);
   const mixer = byId("dnaMixer");
   mixer.hidden = !(a && b);
   if (a && b) {
@@ -2477,14 +2595,58 @@ function setupDnaPage() {
   byId("btnDnaBack").addEventListener("click", () => { byId("dnaOverlay").hidden = true; });
   byId("dnaSearch").addEventListener("input", renderDnaPage);
   byId("btnMixApply").addEventListener("click", () => {
-    const a = DNA_LIBRARY.find(x => x.id === dnaSel.a);
-    const b = DNA_LIBRARY.find(x => x.id === dnaSel.b);
+    const a = allDNA().find(x => x.id === dnaSel.a);
+    const b = allDNA().find(x => x.id === dnaSel.b);
     if (!a || !b) return;
     const mixed = mixDNA(a, b, mixWeights);
     applyDnaToScope(mixed, { sources: [a.id, b.id], weights: { ...mixWeights }, date: new Date().toISOString().slice(0, 10) });
     renderDnaPage();
   });
   byId("btnMixClear").addEventListener("click", () => { dnaSel.a = null; dnaSel.b = null; renderDnaPage(); });
+
+  /* --- V8 Phase 2: 参照の手動注釈 → カスタムDNA --- */
+  byId("anTrans").innerHTML = TRANSITIONS.map(t => `<option value="${t.id}">${esc(t.label)}</option>`).join("");
+  byId("anSpeed").innerHTML = MOVE_SPEEDS.map(m => `<option value="${m.id}" ${m.id === "slow" ? "selected" : ""}>${esc(m.label)}</option>`).join("");
+  byId("anLook").innerHTML = LOOKS.map(l => `<option value="${l.id}">${esc(l.label)}</option>`).join("");
+  byId("btnDnaAnnotate").addEventListener("click", () => {
+    byId("dnaAnnotateForm").hidden = !byId("dnaAnnotateForm").hidden;
+  });
+  byId("btnAnnotClose").addEventListener("click", () => { byId("dnaAnnotateForm").hidden = true; });
+  byId("btnAnnotSave").addEventListener("click", () => {
+    const name = byId("anName").value.trim();
+    const why = byId("anWhy").value.trim();
+    if (!name || !why) { byId("dnaMsg").textContent = "⚠️ 参照名と「なぜ効くか」は必須です"; return; }
+    const kw = byId("anKeywords").value.split(/[,、]/).map(x => x.trim()).filter(Boolean);
+    const tokens = byId("anTokens").value.split(/[,、]/).map(x => x.trim()).filter(Boolean);
+    const mn = Math.min(+byId("anFocalMin").value || 50, +byId("anFocalMax").value || 85);
+    const mx = Math.max(+byId("anFocalMin").value || 50, +byId("anFocalMax").value || 85);
+    const dna = {
+      id: "ref-" + Date.now(),
+      name, family: "手動注釈",
+      keywords: [...new Set([name, ...kw])],
+      why,
+      dims: {
+        editorial: { durationMul: +byId("anPace").value, transition: byId("anTrans").value, pace: byId("anPace").selectedOptions[0].textContent },
+        camera: { focal: [mn, mx], aperture: +byId("anAperture").value || 2.8 },
+        lighting: { fillScale: +byId("anFill").value, rimBoost: +byId("anRim").value, contrast: byId("anFill").selectedOptions[0].textContent },
+        color: { look: byId("anLook").value },
+        movement: { moveSpeed: byId("anSpeed").value, prefMove: null },
+      },
+      tokens: tokens.length ? tokens : [why.slice(0, 60)],
+      avoid: [],
+      // 来歴 (§23): 手動注釈は human/confidence高
+      provenance: {
+        source: name, source_type: byId("anType").value,
+        extraction_method: "manual_annotation", annotator: "human",
+        confidence: "high", date: new Date().toISOString().slice(0, 10),
+      },
+    };
+    state.customDNA.push(dna);
+    byId("dnaAnnotateForm").hidden = true;
+    byId("anName").value = ""; byId("anWhy").value = ""; byId("anTokens").value = ""; byId("anKeywords").value = "";
+    byId("dnaMsg").innerHTML = `✓ カスタムDNA <b>${esc(name)}</b> を保存しました (検索・適用・ミックス可、プロジェクトに保存されます)`;
+    renderDnaPage();
+  });
 }
 
 /* =========================================================
@@ -2790,6 +2952,7 @@ function setupHeader() {
   byId("btnExportJson").addEventListener("click", exportJSON);
   byId("btnExportCanonical").addEventListener("click", exportCanonicalJSON);
   byId("btnExportDmx").addEventListener("click", exportDmx);
+  byId("btnExportSchedule").addEventListener("click", exportSchedule);
 
   // プロンプトモデル (方言) 切り替え
   const pm = byId("promptModelSelect");

@@ -239,16 +239,101 @@ const DNA_LIBRARY = [
   },
 ];
 
+/* 手動注釈で作られたカスタムDNA (state.customDNA) を含む全DNA */
+function allDNA() {
+  const custom = (typeof state !== "undefined" && Array.isArray(state.customDNA)) ? state.customDNA : [];
+  return DNA_LIBRARY.concat(custom);
+}
+
 /* ---------- 自然言語検索 (§21, §33) ---------- */
 function searchDNA(query) {
   const q = String(query || "").toLowerCase();
   if (!q) return [];
   const hits = [];
-  for (const dna of DNA_LIBRARY) {
-    const matched = dna.keywords.filter(k => q.includes(k.toLowerCase()));
+  for (const dna of allDNA()) {
+    const matched = (dna.keywords || []).filter(k => k && q.includes(k.toLowerCase()));
     if (matched.length) hits.push({ dna, matched, score: matched.length });
   }
   return hits.sort((a, b) => b.score - a.score);
+}
+
+/* =========================================================
+ * Failure DNA (§27): 生成AIで再発しやすい失敗モード → 安全な分解の推奨
+ * ======================================================= */
+const FAILURE_DNA = [
+  {
+    id: "liquid-complex-move",
+    when: c => (c.options.includes("splash") || c.action === "pour") &&
+      ["orbit", "d_orbit", "dollyzoom", "d_dzoom", "whip", "arc", "d_spiral"].includes(c.camera.move),
+    risk: "複雑なカメラ移動中の液体は形状が破綻しやすい",
+    safer: "カメラは固定/直線の遅い移動にし、液体側だけを動かす。または実写ハイスピード撮影を推奨",
+  },
+  {
+    id: "label-rotation",
+    when: c => ["bottle", "cosme"].includes(c.subjectType) &&
+      ["orbit", "d_orbit", "rotate"].includes(c.camera.move) || (["bottle", "cosme"].includes(c.subjectType) && c.action === "rotate"),
+    risk: "回転中に商品ラベル/ロゴが変形・崩壊しやすい",
+    safer: "参照画像 (first frame) を必ず与え、回転は45°以内の部分回転に分割。正確なパックショットは実写/CGを推奨",
+  },
+  {
+    id: "hands-product",
+    when: c => c.action === "hands" || (c.action === "pour" && c.subjectType !== "person"),
+    risk: "商品を扱う手指は本数・関節が破綻しやすい",
+    safer: "手元は実写インサートで撮り、AI生成は手が写らない構図に分解する",
+  },
+  {
+    id: "overloaded-prompt",
+    when: c => c.kind !== "still" && (c.duration || 5) >= 10 && c.options.length >= 3,
+    risk: "長尺+多要素の1プロンプトはビート過積載で破綻する (§27)",
+    safer: "1ショット=1〜2アクションに分割し、編集で繋ぐ (「3カットに展開」も有効)",
+  },
+  {
+    id: "whip-identity",
+    when: c => c.transition === "whippan" || c.camera.move === "whip",
+    risk: "ウィップパン中に被写体のアイデンティティ (顔・服装) が変わりやすい",
+    safer: "ウィップはカット割り+編集ブラーで作り、生成は前後の静止側だけにする",
+  },
+  {
+    id: "rain-consistency",
+    when: c => c.options.includes("rain") || c.weather === "rainy",
+    risk: "雨の密度・方向がカット間で変わりやすい",
+    safer: "全カットのプロンプトに同じ雨記述を繰り返し、濡れの継続 (continuity) を明示する",
+  },
+  {
+    id: "fast-parallax",
+    when: c => ["d_chase", "d_lowpass", "d_dive", "d_gap"].includes(c.camera.move),
+    risk: "高速の空撮的移動は背景パララックスが物理的に破綻しやすい",
+    safer: "速度を1段落とすか、実写FPV素材+AI背景拡張のハイブリッドを検討",
+  },
+];
+
+function evaluateFailureDNA(cut) {
+  return FAILURE_DNA.filter(f => { try { return f.when(cut); } catch { return false; } })
+    .map(f => ({ id: f.id, risk: f.risk, safer: f.safer }));
+}
+
+/* =========================================================
+ * 実行モードルーティング (§28): Real / AI / CG / Hybrid を能力ベースで推奨
+ * ======================================================= */
+function routeExecution(cut) {
+  const fails = evaluateFailureDNA(cut);
+  const opts = new Set(cut.options);
+  if (opts.has("explosion")) {
+    return { mode: "実写特効 (Class C) + マルチカム、またはAI生成+実写プレート合成", reason: "一発勝負の破壊系。実写なら特効技師専任、AIなら人物プレートと分離生成が安全" };
+  }
+  if ((opts.has("splash") || cut.action === "pour") && ["bottle", "food", "cosme"].includes(cut.subjectType)) {
+    return { mode: "実写ハイスピード (または制御CG)", reason: "物理的に複雑な液体マクロは生成AIより実写HS/CGが歩留まり良 (§28)" };
+  }
+  if (["bottle", "cosme"].includes(cut.subjectType) && opts.has("gloss") && ["ECU", "CU"].includes(cut.camera.shotSize)) {
+    return { mode: "実写/CG (パックショット品質)", reason: "ブランドロゴ・形状の忠実性が必要な寄りは幾何制御の効く実写/CGを推奨" };
+  }
+  if (fails.length >= 2) {
+    return { mode: "ハイブリッド (実写プレート + AI)", reason: `破綻リスクが${fails.length}件。リスク要素を実写で押さえ、環境をAIで拡張する分担が安全` };
+  }
+  if (cut.subjectType === "person" && !opts.has("splash") && cut.kind !== "still") {
+    return { mode: "AI生成向き", reason: "雰囲気系の人物ショットは生成AIの得意領域。被写体記述の一貫性だけ担保する" };
+  }
+  return null;
 }
 
 /* ---------- DNA適用 (§29 に向けた制御変数の書き込み) ----------
