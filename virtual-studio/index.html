@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Virtual Studio — 仮想撮影スタジオ / 撮影指示書ジェネレーター</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header id="appHeader">
+  <div class="brand">
+    <span class="brand-mark">◉</span>
+    <h1>Virtual Studio</h1>
+    <span class="brand-sub">仮想撮影スタジオ / 撮影指示書ジェネレーター</span>
+  </div>
+  <nav id="modeTabs">
+    <button class="mode-tab active" data-mode="video">🎬 動画スタジオ</button>
+    <button class="mode-tab" data-mode="still">📷 スチールスタジオ</button>
+    <button class="mode-tab" data-mode="outdoor">🚁 屋外・ドローン</button>
+  </nav>
+  <div class="header-actions">
+    <button id="btnExportJson" class="btn ghost" title="プロジェクトをJSONで保存">JSON書き出し</button>
+    <button id="btnImportJson" class="btn ghost" title="JSONを読み込み">読み込み</button>
+    <input type="file" id="fileImport" accept=".json" hidden>
+    <button id="btnExportDoc" class="btn primary">📄 指示書を書き出す (PDF/印刷)</button>
+  </div>
+</header>
+
+<main id="appMain">
+  <!-- 左: 技法ライブラリ -->
+  <aside id="libraryPanel">
+    <div class="panel-title">撮影技法ライブラリ</div>
+    <input type="search" id="presetSearch" placeholder="技法を検索 (例: レンブラント, 雫, オービット)">
+    <div id="presetList"></div>
+  </aside>
+
+  <!-- 中央: スタジオキャンバス -->
+  <section id="studioPanel">
+    <div class="studio-toolbar">
+      <span class="panel-title">スタジオ俯瞰図 <small>(ドラッグで機材を移動)</small></span>
+      <div class="add-equipment">
+        <select id="equipTypeSelect"></select>
+        <button id="btnAddEquip" class="btn small">＋ 機材を追加</button>
+        <button id="btnDownloadPlan" class="btn small ghost" title="俯瞰図をSVG画像で保存">図を画像保存</button>
+      </div>
+    </div>
+    <div id="canvasWrap">
+      <svg id="studioCanvas" viewBox="0 0 1000 700" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+
+    <!-- 下: カット割り -->
+    <div id="storyboard">
+      <div class="storyboard-head">
+        <span class="panel-title">カット割り (ストーリーボード)</span>
+        <div>
+          <button id="btnAddCut" class="btn small">＋ カット追加</button>
+          <button id="btnDupCut" class="btn small ghost">複製</button>
+          <button id="btnDelCut" class="btn small danger">削除</button>
+        </div>
+      </div>
+      <div id="cutStrip"></div>
+    </div>
+  </section>
+
+  <!-- 右: プレビュー + インスペクター -->
+  <aside id="rightPanel">
+    <div class="panel-title">想定カットプレビュー</div>
+    <div id="previewWrap"></div>
+    <div id="promptPreview">
+      <div class="panel-title small">Seedance / AI動画生成プロンプト <button id="btnCopyPrompt" class="btn tiny ghost">コピー</button></div>
+      <textarea id="promptText" readonly></textarea>
+    </div>
+    <div id="inspector"></div>
+  </aside>
+</main>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
