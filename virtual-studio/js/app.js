@@ -1910,6 +1910,118 @@ function downloadPlanSVG() {
   URL.revokeObjectURL(a.href);
 }
 
+/* =========================================================
+ * Canonical Shot JSON エクスポート (CineOS V3 ベンダー中立形式)
+ * 座標系は cineos/CLAUDE.md §4 に準拠:
+ *   +X=被写体の右 / +Y=被写体の後ろ / -Y=カメラ側 / +Z=上 (SI単位)
+ * 俯瞰図 (100px=1m, 被写体(500,330)) から変換する。
+ * planned のみを持つ (actual は実撮影で追記する設計)。
+ * ======================================================= */
+function toWorldM(item) {
+  return [
+    +((item.x - SUBJECT_POS.x) / 100).toFixed(2),   // +X = 右
+    +((SUBJECT_POS.y - item.y) / 100).toFixed(2),   // +Y = 被写体の後ろ (画面上方向)
+    +(((item.height || 0) / 100)).toFixed(2),        // +Z = 上
+  ];
+}
+
+function cutToCanonicalShot(cut, i, projectId) {
+  ensureCameraDefaults(cut);
+  const cam = cut.items.find(x => x.type === "camera") || CAMERA_POS;
+  const sub = cut.items.find(x => x.type === "subject") || SUBJECT_POS;
+  const an = analyzeLighting(cut);
+  const sup = CAMERA_SUPPORTS.find(s => s.id === cut.camera.support);
+  const fxItems = cut.items.filter(x => SFX_SAFETY_CLASS[x.type]);
+  const maxSafety = fxItems.reduce((m, x) =>
+    SFX_SAFETY_CLASS[x.type] > m ? SFX_SAFETY_CLASS[x.type] : m, "A");
+
+  return {
+    shot_id: `${projectId}_SC01_SH${String(i + 1).padStart(3, "0")}`,
+    scene_id: `${projectId}_SC01`,
+    name: cut.name,
+    intent: {
+      purpose: cut.aim || "",
+      mood: [cut.bgStyle, cut.timeOfDay !== "none" ? cut.timeOfDay : null, cut.weather !== "none" ? cut.weather : null, cut.look !== "natural" ? cut.look : null].filter(Boolean),
+    },
+    planned: {
+      timing: { duration_s: cut.kind === "still" ? null : cut.duration, kind: cut.kind },
+      composition: {
+        shot_size: cut.camera.shotSize,
+        end_shot_size: cut.camera.endShotSize !== "same" ? cut.camera.endShotSize : null,
+        angle: cut.camera.angle,
+        aspect_ratio: cut.aspect,
+      },
+      camera: {
+        position_m: toWorldM(cam),
+        target_m: toWorldM({ ...sub, height: 150 }),
+        roll_deg: cut.camera.angle === "dutch" ? 7 : 0,
+        body_archetype: cut.camera.body,
+        support: { type: cut.camera.support, param: sup && sup.param ? { [sup.param.label]: `${cut.camera.supportParam}${sup.param.unit}` } : null, head: cut.camera.head },
+      },
+      lens: {
+        focal_length_mm: cut.camera.focalMm,
+        aperture_f: cut.camera.apertureF,
+        focus_distance_m: cut.camera.focusM,
+        anamorphic: cut.camera.lens === "anam",
+        nd: cut.camera.nd,
+        filters: cut.camera.filters,
+      },
+      exposure: { shutter: cut.camera.shutter, iso: cut.camera.iso, fps: cut.camera.fps, white_balance: cut.camera.wb },
+      movement: { type: cut.camera.move, speed: cut.camera.moveSpeed, track_shape: ["dolly", "slider"].includes(cut.camera.support) ? cut.camera.trackShape : null },
+      subject: { type: cut.subjectType, action: cut.action, note: cut.subjectNote || null },
+      lighting: cut.items
+        .filter(x => LIGHT_TYPES.includes(x.type))
+        .map(x => ({
+          role: x.type, position_m: toWorldM(x),
+          power_pct: x.power, color_temp_k: x.colorTemp,
+          beam_angle_deg: x.beamAngle, modifier: x.modifier,
+          stand: x.stand, watt: x.watt,
+          azimuth_from_camera_axis_deg: Math.round(an.lights.find(l => l.item.id === x.id)?.rel ?? 0),
+        })),
+      grip: cut.items
+        .filter(x => ["reflector", "flag", "diff"].includes(x.type))
+        .map(x => ({ type: x.type, position_m: toWorldM(x), modifier: x.modifier })),
+      practical_fx: fxItems.map(x => ({
+        type: x.type, position_m: toWorldM(x),
+        safety_class: SFX_SAFETY_CLASS[x.type],
+        specialist_only: SFX_SAFETY_CLASS[x.type] !== "A",
+      })),
+      fx_options: cut.options,
+      environment: { background: cut.bgStyle, weather: cut.weather, time_of_day: cut.timeOfDay },
+      audio: cut.kind === "still" ? null : { plan: cut.audio },
+      color: { look: cut.look },
+      logistics: {
+        vehicles: cut.items.filter(x => VEHICLE_TYPES.includes(x.type)).map(x => ({ type: x.type, position_m: toWorldM(x) })),
+        power_plan: powerPlan(cut),
+        estimated_takes: cut.takes, setup_min: cut.setupMin,
+      },
+    },
+    transition_out: cut.transition,
+    feasibility_flags: evaluateFeasibility(cut).map(w => ({ level: w.lv, message: w.t })),
+    safety_classification: maxSafety,
+    equipment_capabilities: recommendForCut(cut).map(r => ({ role: r.role, need: r.need, example_skus: r.examples })),
+    prompt_fragments: { seedance: generatePrompt(cut, "seedance"), generic: generatePrompt(cut, "generic") },
+    ai_generation_runs: [],
+  };
+}
+
+function exportCanonicalJSON() {
+  const projectId = "PRJ_" + (state.projectTitle === "無題プロジェクト" ? "UNTITLED" : state.projectTitle.replace(/\W+/g, "_").toUpperCase()).slice(0, 24);
+  const doc = {
+    schema: "cineos.canonical_shot_list/v1-lite",
+    generator: "Virtual Studio",
+    coordinate_convention: "+X=subject right, +Y=behind subject, -Y=camera side, +Z=up, meters",
+    project_id: projectId,
+    shots: state.cuts.map((c, i) => cutToCanonicalShot(c, i, projectId)),
+  };
+  const blob = new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "canonical-shots.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 function exportJSON() {
   const blob = new Blob([JSON.stringify({ version: 1, ...state }, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
@@ -2024,6 +2136,7 @@ function setupHeader() {
   byId("btnExportDoc").addEventListener("click", exportDoc);
   byId("btnExportBoard").addEventListener("click", exportBoard);
   byId("btnExportJson").addEventListener("click", exportJSON);
+  byId("btnExportCanonical").addEventListener("click", exportCanonicalJSON);
 
   // プロンプトモデル (方言) 切り替え
   const pm = byId("promptModelSelect");

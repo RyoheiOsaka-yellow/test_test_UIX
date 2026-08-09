@@ -32,6 +32,7 @@
     <symbol id="i-fit" viewBox="0 0 24 24"><path d="M9 3.5H5.5A2 2 0 0 0 3.5 5.5V9M15 3.5h3.5a2 2 0 0 1 2 2V9M9 20.5H5.5a2 2 0 0 1-2-2V15M15 20.5h3.5a2 2 0 0 0 2-2V15"/></symbol>
     <symbol id="i-wand" viewBox="0 0 24 24"><path d="M5 19 16.5 7.5M14.5 5.5l4 4M18 3v2.5M19.25 4.25h-2.5M8 3.5v2M9 4.5H7M20 10.5v2M21 11.5h-2"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-braces" viewBox="0 0 24 24"><path d="M8.5 3.5C6.8 3.5 6 4.4 6 6v3c0 1.4-.8 2.3-2 3 1.2.7 2 1.6 2 3v3c0 1.6.8 2.5 2.5 2.5M15.5 3.5c1.7 0 2.5.9 2.5 2.5v3c0 1.4.8 2.3 2 3-1.2.7-2 1.6-2 3v3c0 1.6-.8 2.5-2.5 2.5"/></symbol>
   </defs>
 </svg>
 
@@ -56,6 +57,9 @@
     </button>
     <button id="btnImportJson" class="icon-btn" title="プロジェクトを開く (JSON)" aria-label="プロジェクトを開く">
       <svg class="ic"><use href="#i-upload"/></svg>
+    </button>
+    <button id="btnExportCanonical" class="icon-btn" title="Canonical Shot JSON を書き出す (CineOS ベンダー中立形式)" aria-label="Canonical Shot JSON">
+      <svg class="ic"><use href="#i-braces"/></svg>
     </button>
     <input type="file" id="fileImport" accept=".json" hidden>
     <span class="v-sep" aria-hidden="true"></span>

@@ -154,9 +154,23 @@ function parseIntent(text) {
       "ドローンショット", has(/空撮|ドローン/));
   }
   if (has(/ビール/)) pick("beer-sizzle", "ビール: 泡・透過・結露", "ビール");
+  if (has(/ウイスキー|ハイボール|ロックグラス|ブランデー/)) pick("whisky-highball", "ウイスキー: 琥珀の透過", has(/ウイスキー|ハイボール|ロックグラス|ブランデー/));
+  if (has(/ワイン/)) pick("wine-red", "赤ワイン: バック/サイド透過", "ワイン");
   if (has(/香水/)) pick("perfume-gel", "香水: カラージェル背景", "香水");
+  if (has(/美容液|セラム|スポイト/)) pick("serum", "美容液: 透過とコースティクス", has(/美容液|セラム|スポイト/));
+  if (has(/口紅|リップ/)) pick("lipstick", "リップ: 精密スペキュラー", has(/口紅|リップ/));
+  if (has(/パウダー|粉/)) pick("powder-burst", "パウダーバースト", has(/パウダー|粉/));
+  if (has(/ミルククラウン|ウォータークラウン|王冠/)) pick("water-crown", "ウォータークラウン", has(/ミルククラウン|ウォータークラウン|王冠/));
   if (has(/ジュエリー|指輪|宝石/)) pick("jewelry", "ジュエリー: テント+ピンスポット", has(/ジュエリー|指輪|宝石/));
-  if (has(/ウイスキー|ハイボール|グラス/)) pick("dark-field", "ダークフィールド (グラス)", has(/ウイスキー|ハイボール|グラス/));
+  if (has(/バーガー|ハンバーガー/)) pick("burger", "バーガー: テクスチャ半逆光", has(/バーガー|ハンバーガー/));
+  if (has(/唐揚げ|チキン|揚げ物|フライ/)) pick("fried-chicken", "フライドチキン: 衣のハード", has(/唐揚げ|チキン|揚げ物|フライ/));
+  if (has(/アイス|ソフトクリーム|ジェラート/)) pick("icecream", "アイスクリーム: 冷感管理", has(/アイス|ソフトクリーム|ジェラート/));
+  if (has(/水光肌|ガラススキン|ツヤ肌|つや肌/)) pick("glass-skin", "Glass Skin (水光肌)", has(/水光肌|ガラススキン|ツヤ肌|つや肌/));
+  if (has(/髪|ヘア/) && has(/なびか|なびく|風|揺れ/)) pick("hair-motion", "ヘアモーション", "髪+風");
+  if (has(/メガネ|眼鏡|サングラス/)) pick("eyewear", "アイウェア (反射制御)", has(/メガネ|眼鏡|サングラス/));
+  if (has(/ドライアイス|低い霧|這う霧/)) pick("dryice-lowfog", "ドライアイス (低い霧)", has(/ドライアイス|低い霧|這う霧/));
+  if (has(/注ぐ|注がれ|ポア/) && (R.subjectType === "bottle" || !R.subjectType)) pick("water-pour", "ポア (注ぎ)", has(/注ぐ|注がれ|ポア/));
+  if (has(/グラス/)) pick("dark-field", "ダークフィールド (グラス)", "グラス");
   if (R.subjectType === "bottle") pick("product-gradation", "ボトル: グラデーションライティング", "ボトル/飲料");
   if (R.subjectType === "cosme") pick("cosme-beauty", "コスメ: クリーンビューティー", "コスメ/小物");
   if (R.subjectType === "food") pick("food-sizzle", "フード: 半逆光シズル", "料理");

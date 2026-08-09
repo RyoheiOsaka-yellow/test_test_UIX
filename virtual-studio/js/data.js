@@ -105,6 +105,8 @@ const CAM_MOVES = [
   { id: "d_lowpass",label: "ドローン: ローパス",   en: "low-altitude drone pass skimming just above the surface" },
   { id: "d_dive",   label: "ドローン: ダイブ(急降下)", en: "FPV drone dive plunging vertically along the structure" },
   { id: "d_dzoom",  label: "ドローン: ドリーズーム", en: "aerial dolly zoom, flying backward while zooming in (vertigo effect)" },
+  { id: "d_lead",   label: "ドローン: リード (前方後退)", en: "aerial lead shot, flying backward in front of the moving subject" },
+  { id: "d_gap",    label: "ドローン: FPVギャップ (狭所通過)", en: "FPV drone threading through a narrow gap" },
 ];
 
 /* ---------- レンズ ---------- */
@@ -1422,6 +1424,281 @@ const PRESETS = [
     ],
   },
 ];
+
+/* =====================================================
+   * MASTER_CINEMATOGRAPHY_OS_V4.md 由来の追加技法
+   * (cineos/knowledge PART 8-24 からの移植)
+   * =================================================== */
+PRESETS.push(
+  /* --- 飲料・液体 (PART 9) --- */
+  {
+    id: "whisky-highball", modes: ["still", "video"], group: "商品撮影 (プロダクト)",
+    name: "ウイスキー/ハイボール: 琥珀の透過",
+    desc: "琥珀色の液体エッジを硬めのバックライトで透過させ、氷のスペキュラーと炭酸の気泡を立てる。冷たい環境光×温かい液色の対比が鉄則。氷はアクリル氷も併用し、マクロで結露を寄る。",
+    tags: ["ウイスキー", "琥珀", "氷"],
+    subjectType: "bottle", bgStyle: "black",
+    look: "漆黒の中で琥珀色が内側から発光し、氷の面がきらめく。大人の時間の一杯。",
+    camera: { shotSize: "CU", angle: "eye", move: "fix", lens: "100m", aperture: "F8", shutter: "1/200", iso: "100", fps: "-", wb: "5000K" },
+    items: [
+      { type: "bg",  x: 500, y: 150, height: 80, power: 85, colorTemp: 4300, modifier: "ディフュージョン#216" },
+      { type: "rim", x: 340, y: 200, height: 90, power: 70, colorTemp: 5500, modifier: "ストリップボックス30x120" },
+      { type: "top", x: 500, y: 250, height: 160, power: 35, colorTemp: 6500, modifier: "グリッド30°" },
+      { type: "flag", x: 660, y: 340, height: 60, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+    ],
+    defaultOptions: ["droplets", "gloss"],
+  },
+  {
+    id: "wine-red", modes: ["still"], group: "商品撮影 (プロダクト)",
+    name: "赤ワイン: バック/サイド透過",
+    desc: "赤はバック〜サイドの透過で液色を出し、エレガントな暖色プラクティカルを背景に置く。ステム(脚)の写り込みは白カードの位置で1本に制御。白ワインはクール寄りの透過+微結露。",
+    tags: ["ワイン", "透過", "エレガント"],
+    subjectType: "bottle", bgStyle: "dark",
+    look: "深いガーネットの透過色、グラスの脚に一本の端正なハイライト。上質なレストランの空気。",
+    camera: { shotSize: "CU", angle: "eye", move: "fix", lens: "100m", aperture: "F8", shutter: "1/160", iso: "100", fps: "-", wb: "4800K" },
+    items: [
+      { type: "bg",  x: 620, y: 150, height: 90, power: 75, colorTemp: 5200, modifier: "ディフュージョン#216" },
+      { type: "practical", x: 320, y: 160, height: 120, power: 25, colorTemp: 2700, modifier: "なし(直射)" },
+      { type: "reflector", x: 350, y: 300, height: 70, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+      { type: "flag", x: 660, y: 380, height: 60, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+    ],
+    defaultOptions: ["gloss", "bokeh"],
+  },
+  {
+    id: "serum", modes: ["still", "video"], group: "商品撮影 (プロダクト)",
+    name: "美容液/セラム: 透過とコースティクス",
+    desc: "半透明の液体をバックライトで透かし、粘度とスポイトのマクロで「とろみ」を見せる。ガラス越しの光が作るコースティクス(光の模様)を白面に落とすと透明感が倍増する。",
+    tags: ["コスメ", "透明感", "マクロ"],
+    subjectType: "cosme", bgStyle: "bright",
+    look: "光を含んだ透明の雫がスポイトから伸びる。清潔で高機能な美容の画。",
+    camera: { shotSize: "ECU", angle: "eye", move: "fix", lens: "100m", aperture: "F11", shutter: "1/200", iso: "100", fps: "-", wb: "5500K" },
+    items: [
+      { type: "bg",  x: 500, y: 150, height: 80, power: 95, colorTemp: 5500, modifier: "ディフュージョン#216" },
+      { type: "top", x: 500, y: 260, height: 150, power: 40, colorTemp: 5500, modifier: "ソフトボックス60cm" },
+      { type: "flag", x: 340, y: 330, height: 60, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+      { type: "flag", x: 660, y: 330, height: 60, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+    ],
+    defaultOptions: ["gloss", "droplets"],
+  },
+  {
+    id: "lipstick", modes: ["still"], group: "商品撮影 (プロダクト)",
+    name: "リップスティック: 精密スペキュラー",
+    desc: "口紅の面に正確なエッジハイライトを走らせるストリップ2灯+黒締め。ターンテーブル(回転台)でハイライトの流れを選ぶ。マクロで質感の粒立ちまで解像させる。",
+    tags: ["コスメ", "マクロ", "エッジ"],
+    subjectType: "cosme", bgStyle: "black",
+    look: "漆黒に浮かぶ艶のエッジライン。彩度の高いリップカラーが主役の一枚。",
+    camera: { shotSize: "ECU", angle: "eye", move: "orbit", lens: "100m", aperture: "F13", shutter: "1/160", iso: "100", fps: "-", wb: "5500K" },
+    items: [
+      { type: "key", x: 330, y: 230, height: 90, power: 60, colorTemp: 5500, modifier: "ストリップボックス30x120" },
+      { type: "rim", x: 670, y: 230, height: 90, power: 55, colorTemp: 5500, modifier: "ストリップボックス30x120" },
+      { type: "flag", x: 500, y: 130, height: 80, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+    ],
+    defaultOptions: ["gloss"],
+  },
+
+  /* --- ハイスピード・リキッド (PART 21/23) --- */
+  {
+    id: "powder-burst", modes: ["still", "video"], group: "ハイスピード・リキッド",
+    name: "パウダーバースト (粉体飛散)",
+    desc: "粉体は「バックライト+ハイスピード」が鉄則。黒背景で硬いサイド〜バックライトを当て、粉の一粒一粒を光で拾う。エアジェットで吹き上げ、複数テイク前提。清掃と機材養生を段取りに含める。",
+    tags: ["パウダー", "ハイスピード", "黒背景"],
+    subjectType: "cosme", bgStyle: "black",
+    look: "闇の中で色粉が爆ぜ、逆光に粒子の輪郭が光る。エネルギーの静止画。",
+    camera: { shotSize: "CU", angle: "eye", move: "fix", lens: "100m", aperture: "F8", shutter: "1/8000", iso: "400", fps: "1000fps(HS)", wb: "5500K" },
+    items: [
+      { type: "rim", x: 330, y: 180, height: 120, power: 90, colorTemp: 5500, modifier: "なし(直射)" },
+      { type: "rim", x: 670, y: 180, height: 120, power: 90, colorTemp: 5500, modifier: "なし(直射)" },
+      { type: "fan", x: 280, y: 460, height: 80, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+      { type: "flag", x: 500, y: 540, height: 60, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+    ],
+    defaultOptions: ["splash", "wind"],
+  },
+  {
+    id: "water-crown", modes: ["still"], group: "ハイスピード・リキッド",
+    name: "ウォータークラウン (王冠水滴)",
+    desc: "電子ドロップコントローラーで水滴を正確なタイミングで落とし、マクロ+ハイスピード+バックライトで王冠を凍結する。液体の粘度(牛乳/増粘剤)で王冠の形が決まる。",
+    tags: ["水滴", "マクロ", "ハイスピード"],
+    subjectType: "cosme", bgStyle: "dark",
+    look: "水面に王冠が立ち上がる一瞬。物理の美しさをそのまま閉じ込めた画。",
+    camera: { shotSize: "ECU", angle: "eye", move: "fix", lens: "100m", aperture: "F16", shutter: "1/10000", iso: "400", fps: "-", wb: "5500K" },
+    items: [
+      { type: "bg",  x: 500, y: 150, height: 70, power: 90, colorTemp: 5500, modifier: "ディフュージョン#216" },
+      { type: "rim", x: 340, y: 200, height: 80, power: 70, colorTemp: 5500, modifier: "ストリップボックス30x120" },
+      { type: "flag", x: 660, y: 330, height: 60, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+    ],
+    defaultOptions: ["splash", "droplets"],
+  },
+  {
+    id: "water-pour", modes: ["still", "video"], group: "ハイスピード・リキッド",
+    name: "ポア (注ぎ)",
+    desc: "注ぎの形は液体の粘度と容器の口で管理する。透過光で液流を光らせ、120〜500fpsで滑らかに。グラス内の対流と泡も画になる。注ぎ手の再現性のためポンプ/バルブ制御も検討。",
+    tags: ["注ぎ", "液体", "シズル"],
+    subjectType: "bottle", bgStyle: "bright",
+    look: "光を含んだ液体の帯がグラスに吸い込まれ、飛沫が舞う。飲みたくなる瞬間の画。",
+    camera: { shotSize: "CU", angle: "eye", move: "fix", lens: "85", aperture: "F5.6", shutter: "1/1000", iso: "200", fps: "240fps(HS)", wb: "5500K" },
+    items: [
+      { type: "bg",  x: 500, y: 150, height: 80, power: 95, colorTemp: 5500, modifier: "ディフュージョン#216" },
+      { type: "top", x: 500, y: 250, height: 170, power: 35, colorTemp: 5500, modifier: "グリッド30°" },
+      { type: "flag", x: 340, y: 340, height: 60, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+      { type: "flag", x: 660, y: 340, height: 60, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+    ],
+    defaultOptions: ["splash", "gloss"],
+  },
+
+  /* --- フード撮影 (PART 10) --- */
+  {
+    id: "burger", modes: ["still", "video"], group: "フード撮影",
+    name: "バーガー: テクスチャ半逆光",
+    desc: "バック〜サイドのキーでバンズとパティの質感を立て、前面はフィルで起こす。湯気+グリセリン/オイルの照りは控えめに丁寧に。マクロ気味の浅い被写界深度で断面のシズルに寄る。",
+    tags: ["バーガー", "シズル", "マクロ"],
+    subjectType: "food", bgStyle: "dark",
+    look: "バンズの照り、チーズのとろけ、立ち上る湯気。断面のレイヤーが主役のヒーローショット。",
+    camera: { shotSize: "CU", angle: "eye", move: "dollyin", lens: "100m", aperture: "F4", shutter: "1/125", iso: "200", fps: "30fps", wb: "5000K" },
+    items: [
+      { type: "key", x: 650, y: 180, height: 130, power: 75, colorTemp: 5200, modifier: "ソフトボックス120cm" },
+      { type: "fill", x: 400, y: 520, height: 90, power: 30, colorTemp: 5200, modifier: "ディフュージョン#216" },
+      { type: "flag", x: 300, y: 300, height: 70, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+    ],
+    defaultOptions: ["steam", "gloss"],
+  },
+  {
+    id: "fried-chicken", modes: ["still", "video"], group: "フード撮影",
+    name: "フライドチキン: 衣のハードサイド",
+    desc: "衣のザクザク感は硬めのサイドキーで影を立てて描く。色温度は暖色寄り(4300K前後)で揚げ物の食欲色に。ちぎる瞬間の湯気とパン粉の飛散はハイスピードで。",
+    tags: ["揚げ物", "テクスチャ", "湯気"],
+    subjectType: "food", bgStyle: "dark",
+    look: "衣の凹凸に硬い光が食い込み、割った断面から湯気。音まで聞こえそうなザクザク感。",
+    camera: { shotSize: "CU", angle: "eye", move: "fix", lens: "100m", aperture: "F5.6", shutter: "1/250", iso: "400", fps: "120fps(HS)", wb: "4300K" },
+    items: [
+      { type: "key", x: 300, y: 250, height: 120, power: 80, colorTemp: 4300, modifier: "グリッド30°" },
+      { type: "rim", x: 680, y: 180, height: 130, power: 45, colorTemp: 4800, modifier: "ストリップボックス30x120" },
+      { type: "reflector", x: 620, y: 500, height: 50, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+    ],
+    defaultOptions: ["steam"],
+  },
+  {
+    id: "icecream", modes: ["still"], group: "フード撮影",
+    name: "アイスクリーム: 冷感管理",
+    desc: "溶けとの時間勝負。トップソフト+リムで冷たさを描き、セッティングはスタンドイン(偽ヒーロー)で完成させ、本物は最後に置いて数十秒で撮り切る。ドライアイスの冷気やフロストで冷感を足す。",
+    tags: ["アイス", "冷感", "時間勝負"],
+    subjectType: "food", bgStyle: "bright",
+    look: "スクープの角が立ち、表面にフロストの微結晶。溶ける前の完璧な一瞬。",
+    camera: { shotSize: "CU", angle: "eye", move: "fix", lens: "100m", aperture: "F8", shutter: "1/200", iso: "100", fps: "-", wb: "5500K" },
+    items: [
+      { type: "top", x: 500, y: 250, height: 170, power: 60, colorTemp: 5500, modifier: "ソフトボックス120cm" },
+      { type: "rim", x: 650, y: 170, height: 120, power: 45, colorTemp: 6000, modifier: "ストリップボックス30x120" },
+      { type: "reflector", x: 350, y: 500, height: 50, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+    ],
+    defaultOptions: ["droplets"],
+  },
+
+  /* --- ビューティー詳細 (PART 11) --- */
+  {
+    id: "glass-skin", modes: ["still", "video"], group: "人物スチール",
+    name: "Glass Skin (水光肌)",
+    desc: "広いスペキュラー(面の写り込み)で肌をガラスのように艶めかせる。大面積ソフトをやや横から当てて艶のグラデーションを作り、保湿剤で表面を整える。偏光は使いすぎると艶が死ぬので注意。",
+    tags: ["ビューティー", "艶", "韓国系"],
+    subjectType: "person", bgStyle: "gradient",
+    look: "頬骨のハイライトが濡れたように光る水光肌。透明感の極致。",
+    camera: { shotSize: "CU", angle: "eye", move: "fix", lens: "100m", aperture: "F4", shutter: "1/160", iso: "100", fps: "-", wb: "5500K" },
+    items: [
+      { type: "key", x: 340, y: 430, height: 210, power: 70, colorTemp: 5500, modifier: "オクタボックス150cm" },
+      { type: "fill", x: 500, y: 470, height: 60, power: 25, colorTemp: 5500, modifier: "ソフトボックス60cm" },
+      { type: "rim", x: 680, y: 180, height: 230, power: 35, colorTemp: 5500, modifier: "ストリップボックス30x120" },
+    ],
+    defaultOptions: ["gloss"],
+  },
+  {
+    id: "hair-motion", modes: ["still", "video"], group: "人物スチール",
+    name: "ヘアモーション (なびく髪)",
+    desc: "髪はバック/リムで背景から分離するのが大前提。送風機で動きを作り、50〜120fpsで滑らかに。サイド〜バックの光が1本1本を光らせる。ヘアスプレーの艶も光の角度で拾う。",
+    tags: ["ヘア", "リム", "動き"],
+    subjectType: "person", bgStyle: "dark",
+    look: "浮き上がった髪の一本一本が光の線になる。シャンプーCMの決め画。",
+    camera: { shotSize: "BS", angle: "eye", move: "fix", lens: "85", aperture: "F4", shutter: "1/500", iso: "400", fps: "120fps(HS)", wb: "5500K" },
+    items: [
+      { type: "key", x: 380, y: 480, height: 210, power: 60, colorTemp: 5500, modifier: "ソフトボックス120cm" },
+      { type: "rim", x: 300, y: 170, height: 250, power: 75, colorTemp: 5500, modifier: "ストリップボックス30x120" },
+      { type: "rim", x: 700, y: 170, height: 250, power: 75, colorTemp: 5500, modifier: "ストリップボックス30x120" },
+      { type: "fan", x: 280, y: 460, height: 120, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+    ],
+    defaultOptions: ["wind"],
+  },
+  {
+    id: "eyewear", modes: ["still", "video"], group: "人物スチール",
+    name: "アイウェア (眼鏡の反射制御)",
+    desc: "レンズ反射とフレーム影が二大課題。ライトを高めに上げ、大面積ソフトで写り込みを整理し、偏光と「あご/テンプルのわずかな角度」で反射を逃がす。レンズに写す白カードをデザインする発想も有効。",
+    tags: ["眼鏡", "反射制御", "ポートレート"],
+    subjectType: "person", bgStyle: "gradient",
+    look: "レンズはクリアに目が見え、フレームの影が頬に落ちない端正なポートレート。",
+    camera: { shotSize: "CU", angle: "eye", move: "fix", lens: "85", aperture: "F4", shutter: "1/160", iso: "100", fps: "-", wb: "5500K" },
+    items: [
+      { type: "key", x: 360, y: 460, height: 260, power: 70, colorTemp: 5500, modifier: "オクタボックス150cm" },
+      { type: "fill", x: 640, y: 500, height: 150, power: 25, colorTemp: 5500, modifier: "アンブレラ(透過)" },
+      { type: "reflector", x: 500, y: 440, height: 50, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+    ],
+    defaultOptions: ["matte"],
+  },
+
+  /* --- ライティング応用 / 特効 --- */
+  {
+    id: "cove-light", modes: ["video", "still"], group: "人物ライティング (応用)",
+    name: "コーブライト (大面積の回り込み)",
+    desc: "複数灯を1つの巨大な面光源として形成し、白ホリの壁面バウンスで全周から光を回す。影がほぼ消える広告的な明るさで、車・ファッション・ダンスの白ホリ撮影の土台になる。",
+    tags: ["白ホリ", "大面積", "回り込み"],
+    subjectType: "person", bgStyle: "white",
+    look: "どこにも硬い影のない、白く満ちた光。清潔で未来的な空間感。",
+    camera: { shotSize: "FF", angle: "eye", move: "gimbal", lens: "35", aperture: "F5.6", shutter: "1/50", iso: "200", fps: "24fps", wb: "5600K" },
+    items: [
+      { type: "bg", x: 250, y: 130, height: 200, power: 90, colorTemp: 5600, modifier: "アンブレラ(反射)" },
+      { type: "bg", x: 500, y: 110, height: 200, power: 90, colorTemp: 5600, modifier: "アンブレラ(反射)" },
+      { type: "bg", x: 750, y: 130, height: 200, power: 90, colorTemp: 5600, modifier: "アンブレラ(反射)" },
+      { type: "key", x: 400, y: 520, height: 230, power: 55, colorTemp: 5600, modifier: "オクタボックス150cm" },
+    ],
+  },
+  {
+    id: "dryice-lowfog", modes: ["video", "still"], group: "特殊効果 (SFX)",
+    name: "ドライアイス (低く這う霧)",
+    desc: "ドライアイス(低温フォグ)は床を低く流れるのが特徴。足元を照らすローポジションのバックライトで霧の層を光らせる。換気と酸欠防止、素手で触らない等の取り扱い注意。",
+    tags: ["特効", "霧", "幻想"],
+    subjectType: "person", bgStyle: "black",
+    look: "足元を白い霧が川のように流れ、被写体が幻想の中に立つ。",
+    camera: { shotSize: "FF", angle: "low", move: "dollyin", lens: "35", aperture: "F2.8", shutter: "1/50", iso: "800", fps: "24fps", wb: "5000K" },
+    items: [
+      { type: "smoke", x: 750, y: 400, height: 20, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+      { type: "rim", x: 400, y: 160, height: 40, power: 70, colorTemp: 6000, modifier: "なし(直射)" },
+      { type: "key", x: 340, y: 470, height: 200, power: 45, colorTemp: 5000, modifier: "ソフトボックス120cm" },
+    ],
+    defaultOptions: ["haze"],
+  },
+
+  /* --- ドローン語彙の追加 (PART 16.7) --- */
+  {
+    id: "drone-lead", modes: ["outdoor"], group: "ドローン基本ムーブ",
+    name: "リード (前方後退)",
+    desc: "走る被写体の前方に位置し、同速で後退しながら正面の表情を撮る。被写体との距離を一定に保つのが鍵。表情+背景の流れが同時に撮れる、走り/車/バイクの正面ヒーローショット。",
+    tags: ["ドローン", "正面", "疾走"],
+    subjectType: "person", bgStyle: "sky",
+    look: "被写体は画面に固定され、世界が背後へ流れ去る。追われるような疾走の正面画。",
+    camera: { shotSize: "BS", angle: "eye", move: "d_lead", lens: "35", aperture: "F4", shutter: "1/100", iso: "100", fps: "60fps", wb: "5600K" },
+    items: [
+      { type: "drone", x: 500, y: 480, height: 180, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+      { type: "sun", x: 650, y: 100, height: 3000, power: 100, colorTemp: 5600, modifier: "なし(直射)" },
+    ],
+  },
+  {
+    id: "drone-fpv-gap", modes: ["outdoor"], group: "ドローン応用 (FPV・シネマティック)",
+    name: "FPVギャップ (狭所通過)",
+    desc: "窓・橋脚・木々の間など狭い隙間を高速で通過するFPV必殺技。通過の瞬間に世界が切り替わるトランジションとしても機能する。予備機とプロップガード、綿密なコース設計が前提。",
+    tags: ["FPV", "ギャップ", "トランジション"],
+    subjectType: "arch", bgStyle: "sky",
+    look: "隙間の暗がりを抜けた瞬間、視界が開ける。ゲームのような没入トランジション。",
+    camera: { shotSize: "LS", angle: "eye", move: "d_gap", lens: "14", aperture: "F2.8", shutter: "1/120", iso: "200", fps: "60fps", wb: "5600K" },
+    items: [
+      { type: "drone", x: 500, y: 540, height: 200, power: 0, colorTemp: 0, modifier: "なし(直射)" },
+      { type: "sun", x: 350, y: 100, height: 3000, power: 100, colorTemp: 5600, modifier: "なし(直射)" },
+    ],
+  },
+);
 
 /* ---------- 背景スタイル (プレビュー描画用) ---------- */
 const BG_STYLES = {
