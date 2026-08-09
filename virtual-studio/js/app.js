@@ -870,6 +870,8 @@ function renderPreviewSVG(cut, idPrefix) {
 function renderPresetList() {
   const q = byId("presetSearch").value.trim().toLowerCase();
   const wrap = byId("presetList");
+  const scroller = byId("libraryPanel");
+  const keepScroll = scroller.scrollTop; // 再描画でスクロール位置を失わない
   const cut = activeCut();
   const groups = {};
   for (const p of allPresets()) {
@@ -891,6 +893,7 @@ function renderPresetList() {
   wrap.querySelectorAll(".preset-card").forEach(el => {
     el.addEventListener("click", () => applyPreset(el.dataset.preset));
   });
+  scroller.scrollTop = keepScroll;
 }
 
 function applyPreset(presetId) {
@@ -932,6 +935,7 @@ function renderPrompt() {
 
 function renderCutStrip() {
   const strip = byId("cutStrip");
+  const keepScroll = strip.scrollLeft; // 再描画で横スクロール位置を失わない
   strip.innerHTML = state.cuts.map((c, i) => {
     const trans = i < state.cuts.length - 1 ? TRANSITIONS.find(t => t.id === (c.transition || "cut")) : null;
     return `
@@ -948,6 +952,7 @@ function renderCutStrip() {
       renderAll();
     });
   });
+  strip.scrollLeft = keepScroll;
 }
 
 function fieldRow(label, inner) {
@@ -961,6 +966,8 @@ function selectHtml(id, options, value) {
 function renderInspector() {
   const cut = activeCut();
   const insp = byId("inspector");
+  const rightPanel = byId("rightPanel");
+  const keepScroll = rightPanel.scrollTop; // トグル操作等の再描画でスクロール位置を失わない
   const selItem = cut.items.find(i => i.id === state.selectedItem);
 
   let itemSection = "";
@@ -1196,6 +1203,7 @@ function renderInspector() {
       renderAll();
     }, "click");
   }
+  rightPanel.scrollTop = keepScroll;
 }
 
 function refresh() { renderCanvas(); renderPreview(); renderPrompt(); renderCutStrip(); }
