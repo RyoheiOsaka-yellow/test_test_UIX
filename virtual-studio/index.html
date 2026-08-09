@@ -22,6 +22,7 @@
     <button id="btnExportJson" class="btn ghost" title="プロジェクトをJSONで保存">JSON書き出し</button>
     <button id="btnImportJson" class="btn ghost" title="JSONを読み込み">読み込み</button>
     <input type="file" id="fileImport" accept=".json" hidden>
+    <button id="btnExportBoard" class="btn" title="1ページ6コマの絵コンテを印刷/PDF出力">🎞 絵コンテ</button>
     <button id="btnExportDoc" class="btn primary">📄 指示書を書き出す (PDF/印刷)</button>
   </div>
 </header>
@@ -29,7 +30,10 @@
 <main id="appMain">
   <!-- 左: 技法ライブラリ -->
   <aside id="libraryPanel">
-    <div class="panel-title">撮影技法ライブラリ</div>
+    <div class="panel-title">撮影技法ライブラリ
+      <button id="btnImportMd" class="btn tiny ghost" title="FORMAT.md形式の技法mdを取り込みます">📥 md取込</button>
+    </div>
+    <input type="file" id="fileMdImport" accept=".md,.markdown,.txt" multiple hidden>
     <input type="search" id="presetSearch" placeholder="技法を検索 (例: レンブラント, 雫, オービット)">
     <div id="presetList"></div>
   </aside>
@@ -71,7 +75,12 @@
       <ul id="explainList"></ul>
     </div>
     <div id="promptPreview">
-      <div class="panel-title small">Seedance / AI動画生成プロンプト <button id="btnCopyPrompt" class="btn tiny ghost">コピー</button></div>
+      <div class="panel-title small prompt-head">
+        <span>AI生成プロンプト</span>
+        <select id="promptModelSelect" title="モデル別のプロンプト方言に切り替え"></select>
+        <button id="btnCopyPrompt" class="btn tiny ghost">コピー</button>
+      </div>
+      <div id="promptHint" class="insp-hint"></div>
       <textarea id="promptText" readonly></textarea>
     </div>
     <div id="inspector"></div>

@@ -33,7 +33,11 @@ const state = {
   activeCut: 0,
   selectedItem: null,
   projectTitle: "無題プロジェクト",
+  promptModel: "seedance",
+  customPresets: [], // mdインポートされた技法
 };
+
+function allPresets() { return PRESETS.concat(state.customPresets); }
 
 function activeCut() { return state.cuts[state.activeCut]; }
 
@@ -72,6 +76,7 @@ function ensureCameraDefaults(cut) {
   if (!cut.timeOfDay) cut.timeOfDay = "none";
   if (cut.takes == null) cut.takes = 3;
   if (cut.setupMin == null) cut.setupMin = 30;
+  if (!cut.transition) cut.transition = "cut";
   const c = cut.camera;
   if (!c.moveSpeed) c.moveSpeed = "normal";
   if (!c.endShotSize) c.endShotSize = "same";
@@ -219,7 +224,7 @@ function focalToEn(mm, isAnam) {
   return isAnam ? s + ", 2x anamorphic with oval bokeh and horizontal flares" : s;
 }
 
-function generatePrompt(cut) {
+function buildPromptParts(cut) {
   ensureCameraDefaults(cut);
   const size = SHOT_SIZES.find(s => s.id === cut.camera.shotSize) || SHOT_SIZES[2];
   const ang = CAM_ANGLES.find(s => s.id === cut.camera.angle) || CAM_ANGLES[0];
@@ -274,25 +279,104 @@ function generatePrompt(cut) {
   const look = LOOKS.find(l => l.id === cut.look);
   const aspect = ASPECTS.find(a => a.id === cut.aspect);
 
-  const parts = [
-    `${size.en}, ${ang.en}`,
-    movPhrase,
-    framingPhrase,
-    supPhrase,
-    bodyPhrase,
-    `subject: ${subj.en}${act && act.en ? ", " + act.en : ""}${cut.subjectNote ? ` (${cut.subjectNote})` : ""}${optPhrases.length ? ", " + optPhrases.join(", ") : ""}`,
-    lightPhrases.join(", "),
-    bg.en,
-    envPhrase,
-    `${lensPhrase}, aperture f/${c.apertureF}${c.focusM ? `, focus at ${c.focusM}m` : ""}`,
-    dofPhrase,
-    filterPhrases.join(", "),
-    look && look.id !== "natural" ? look.en : "",
-    aspect ? aspect.en : "",
-    cut.kind === "still" ? "still photograph, ultra high resolution" : `${cut.camera.fps}, cinematic motion`,
-    "photorealistic, professional cinematography, high detail",
-  ];
-  return parts.filter(Boolean).join(". ") + ".";
+  /* プロンプト構成要素 (モデル別方言の共通材料) */
+  const idx = state.cuts.indexOf(cut);
+  const trans = idx >= 0 && idx < state.cuts.length - 1 && cut.transition && cut.transition !== "cut"
+    ? TRANSITIONS.find(t => t.id === cut.transition) : null;
+  return {
+    sizeEn: size.en, angEn: ang.en, movPhrase, framingPhrase, supPhrase, bodyPhrase,
+    subjClause: `${subj.en}${act && act.en ? ", " + act.en : ""}${cut.subjectNote ? ` (${cut.subjectNote})` : ""}${optPhrases.length ? ", " + optPhrases.join(", ") : ""}`,
+    lightStr: lightPhrases.join(", "),
+    bgEn: bg.en, envPhrase,
+    lensStr: `${lensPhrase}, aperture f/${c.apertureF}${c.focusM ? `, focus at ${c.focusM}m` : ""}`,
+    dofPhrase, filterStr: filterPhrases.join(", "),
+    lookEn: look && look.id !== "natural" ? look.en : "",
+    aspectEn: aspect ? aspect.en : "", aspectId: cut.aspect,
+    motionStr: cut.kind === "still" ? "still photograph, ultra high resolution" : `${cut.camera.fps}, cinematic motion`,
+    isStill: cut.kind === "still",
+    audio: cut.audio, transEn: trans ? trans.en : "",
+  };
+}
+
+/* ---------- 音声モード → 英語 (Veo等の音声対応モデル用) ---------- */
+const AUDIO_EN = {
+  "同録 (ガンマイク+ブーム)": "natural location sound and dialogue",
+  "ラベリア (ピンマイク)": "clear close-mic dialogue",
+  "同録+ラベリア (2系統)": "natural ambience with clear dialogue",
+  "アンビエンスのみ": "ambient environmental sound only, no dialogue",
+  "MOS (現場無音・後付け)": "fitting music and sound design (no location dialogue)",
+};
+
+/* ---------- モデル別プロンプト方言フォーマッタ ---------- */
+function generatePrompt(cut, modelId) {
+  const P = buildPromptParts(cut);
+  const model = modelId || state.promptModel || "seedance";
+  const j = (arr, sep) => arr.filter(Boolean).join(sep);
+
+  switch (model) {
+    case "veo": { // 自然な英文パラグラフ + 音声指示
+      const s = [];
+      s.push(`A ${P.sizeEn} of ${P.subjClause}, seen from ${P.angEn}.`);
+      s.push(`The camera: ${P.movPhrase}${P.framingPhrase ? "; " + P.framingPhrase : ""}${P.supPhrase ? "; " + P.supPhrase : ""}.`);
+      if (P.bodyPhrase) s.push(`Captured with ${P.bodyPhrase}.`);
+      s.push(`Lighting: ${P.lightStr}.`);
+      s.push(`Setting: ${j([P.bgEn, P.envPhrase], ", ")}.`);
+      s.push(`Shot on a ${P.lensStr}${P.dofPhrase ? ", " + P.dofPhrase : ""}${P.filterStr ? ", " + P.filterStr : ""}.`);
+      if (P.lookEn) s.push(`Color grade: ${P.lookEn}.`);
+      if (!P.isStill) s.push(`Audio: ${AUDIO_EN[P.audio] || "fitting ambient sound"}.`);
+      if (P.transEn) s.push(`The shot ends with a ${P.transEn}.`);
+      s.push(`${P.aspectEn}. Photorealistic, professional cinematography.`);
+      return s.join(" ");
+    }
+    case "kling": { // 項目ラベル形式
+      return j([
+        `Subject: ${P.subjClause}`,
+        `Camera: ${j([P.sizeEn, P.angEn, P.movPhrase, P.framingPhrase, P.supPhrase], ", ")}`,
+        `Lens: ${j([P.lensStr, P.dofPhrase, P.filterStr], ", ")}`,
+        `Lighting: ${P.lightStr}`,
+        `Environment: ${j([P.bgEn, P.envPhrase], ", ")}`,
+        `Style: ${j([P.lookEn, P.aspectEn, P.motionStr, "photorealistic, high detail"], ", ")}`,
+        P.transEn ? `Transition out: ${P.transEn}` : "",
+      ], "\n");
+    }
+    case "runway": { // [camera]: [scene] 簡潔形式
+      const cam = j([P.movPhrase, P.sizeEn, P.angEn], ", ");
+      const scene = j([P.subjClause, P.bgEn, P.envPhrase], ", ");
+      const detail = j([P.lightStr, P.lensStr, P.dofPhrase, P.lookEn, P.filterStr], ". ");
+      return `[${cam}]: [${scene}]. ${detail}. Cinematic, photorealistic.`;
+    }
+    case "sora": { // 情景描写の長文
+      const s = [];
+      s.push(`${P.subjClause[0].toUpperCase() + P.subjClause.slice(1)} in ${j([P.bgEn, P.envPhrase], ", ")}.`);
+      s.push(`${P.lightStr[0].toUpperCase() + P.lightStr.slice(1)}.`);
+      s.push(`The scene is framed as a ${P.sizeEn} from ${P.angEn}, ${P.movPhrase}${P.framingPhrase ? ", " + P.framingPhrase : ""}.`);
+      s.push(`${P.lensStr}${P.dofPhrase ? ", " + P.dofPhrase : ""}.`);
+      if (P.lookEn || P.filterStr) s.push(`${j([P.lookEn, P.filterStr], ", ")}.`);
+      s.push(`${P.aspectEn}, ${P.motionStr}, photorealistic, rich in detail and atmosphere.`);
+      return s.join(" ");
+    }
+    case "mj": { // Midjourney: タグ列 + パラメータ
+      const arMap = { "16:9": "16:9", "9:16": "9:16", "2.39:1": "21:9", "4:3": "4:3", "1:1": "1:1", "3:2": "3:2", "4:5": "4:5" };
+      const tags = j([
+        P.subjClause, P.sizeEn, P.angEn, P.lightStr,
+        P.bgEn, P.envPhrase, P.lensStr, P.dofPhrase, P.filterStr, P.lookEn,
+        "professional photography, photorealistic, high detail",
+      ], ", ");
+      return `${tags} --ar ${arMap[P.aspectId] || "16:9"} --style raw`;
+    }
+    default: { // seedance / generic: 標準フォーマット
+      return j([
+        `${P.sizeEn}, ${P.angEn}`,
+        P.movPhrase, P.framingPhrase, P.supPhrase, P.bodyPhrase,
+        `subject: ${P.subjClause}`,
+        P.lightStr, P.bgEn, P.envPhrase,
+        P.lensStr, P.dofPhrase, P.filterStr, P.lookEn, P.aspectEn,
+        P.transEn ? `shot ends with a ${P.transEn}` : "",
+        P.motionStr,
+        "photorealistic, professional cinematography, high detail",
+      ], ". ") + ".";
+    }
+  }
 }
 
 /* 日本語の撮影意図サマリー (指示書用) */
@@ -788,7 +872,7 @@ function renderPresetList() {
   const wrap = byId("presetList");
   const cut = activeCut();
   const groups = {};
-  for (const p of PRESETS) {
+  for (const p of allPresets()) {
     if (!p.modes.includes(state.mode)) continue;
     const text = (p.name + p.desc + p.tags.join(" ")).toLowerCase();
     if (q && !text.includes(q)) continue;
@@ -810,12 +894,16 @@ function renderPresetList() {
 }
 
 function applyPreset(presetId) {
-  const preset = PRESETS.find(p => p.id === presetId);
+  const preset = allPresets().find(p => p.id === presetId);
   if (!preset) return;
   const cut = activeCut();
   const idx = state.activeCut;
   const fresh = makeCut(preset);
   fresh.id = cut.id; // プレビューseedを安定させたい場合は維持しない方が自然だが、参照維持のためIDは引き継ぐ
+  // カットの物語上の設定 (繋ぎ・段取り) はプリセットを変えても維持する
+  fresh.transition = cut.transition;
+  fresh.takes = cut.takes;
+  fresh.setupMin = cut.setupMin;
   state.cuts[idx] = fresh;
   state.selectedItem = null;
   renderAll();
@@ -837,16 +925,22 @@ function renderPreview() {
 }
 
 function renderPrompt() {
-  byId("promptText").value = generatePrompt(activeCut());
+  byId("promptText").value = generatePrompt(activeCut(), state.promptModel);
+  const m = PROMPT_MODELS.find(x => x.id === state.promptModel);
+  byId("promptHint").textContent = m ? `${m.label}: ${m.hint}` : "";
 }
 
 function renderCutStrip() {
   const strip = byId("cutStrip");
-  strip.innerHTML = state.cuts.map((c, i) => `
+  strip.innerHTML = state.cuts.map((c, i) => {
+    const trans = i < state.cuts.length - 1 ? TRANSITIONS.find(t => t.id === (c.transition || "cut")) : null;
+    return `
     <div class="cut-thumb ${i === state.activeCut ? "active" : ""}" data-idx="${i}">
       ${renderPreviewSVG(c, "th" + i)}
       <div class="cut-cap">C${i + 1}　${esc(c.name)}</div>
-    </div>`).join("");
+    </div>
+    ${trans ? `<div class="trans-chip" title="${esc(trans.note)}">${trans.id === "cut" ? "✂" : "⤳"}<br><span>${esc(trans.label.split(" ")[0])}</span></div>` : ""}`;
+  }).join("");
   strip.querySelectorAll(".cut-thumb").forEach(el => {
     el.addEventListener("click", () => {
       state.activeCut = +el.dataset.idx;
@@ -919,6 +1013,14 @@ function renderInspector() {
       ${cut.kind !== "still" ? fieldRow("音声収録", `<select id="cAudio">${AUDIO_MODES.map(a => `<option ${a === cut.audio ? "selected" : ""}>${esc(a)}</option>`).join("")}</select>`) : ""}
       ${fieldRow("想定テイク", `<input type="number" id="cTakes" value="${cut.takes}" min="1" max="50">`)}
       ${fieldRow("準備時間(分)", `<input type="number" id="cSetup" value="${cut.setupMin}" min="0" max="480">`)}
+      ${state.activeCut < state.cuts.length - 1
+        ? fieldRow("次カットへの繋ぎ", `<select id="cTrans">${TRANSITIONS.map(t =>
+            `<option value="${t.id}" ${t.id === cut.transition ? "selected" : ""}>${esc(t.label)}</option>`).join("")}</select>`)
+        : ""}
+      ${(() => {
+        const t = TRANSITIONS.find(x => x.id === cut.transition);
+        return t && state.activeCut < state.cuts.length - 1 ? `<div class="insp-hint">🎬 ${esc(t.note)}</div>` : "";
+      })()}
     </div>
     <div class="insp-section">
       <h3>カメラ & レンズ</h3>
@@ -997,6 +1099,7 @@ function renderInspector() {
   bind("cTakes", e => { cut.takes = +e.target.value; });
   bind("cSetup", e => { cut.setupMin = +e.target.value; });
   bind("cDur", e => { cut.duration = +e.target.value; });
+  bind("cTrans", e => { cut.transition = e.target.value; renderCutStrip(); renderPrompt(); renderInspector(); });
   bind("cShot", e => { cut.camera.shotSize = e.target.value; refresh(); });
   bind("cAngle", e => { cut.camera.angle = e.target.value; refresh(); });
   bind("cMove", e => {
@@ -1172,7 +1275,7 @@ function buildInstructionDoc() {
   const modeLabel = { video: "動画スタジオ", still: "スチールスタジオ", outdoor: "屋外・ドローン" }[state.mode];
 
   const cutPages = state.cuts.map((cut, i) => {
-    const preset = PRESETS.find(p => p.id === cut.presetId);
+    const preset = allPresets().find(p => p.id === cut.presetId);
     const jaLines = generateJaSummary(cut);
     const opts = cut.options.map(o => SHOT_OPTIONS.find(s => s.id === o)).filter(Boolean);
     return `
@@ -1251,11 +1354,15 @@ function buildInstructionDoc() {
       ${opts.length ? `<h3>演出オプションと実施上の注意</h3>
       <ul>${opts.map(o => `<li><b>${esc(o.label)}</b> — ${esc(o.note)}</li>`).join("")}</ul>` : ""}
 
-      ${preset ? `<h3>技法メモ: ${esc(preset.name)}</h3><p class="memo">${esc(preset.desc)}</p>` : ""}
+      ${preset ? `<h3>技法メモ: ${esc(preset.name)}</h3><p class="memo">${esc(preset.desc)}${preset.notesExtra ? `<br><b>実施上の注意:</b> ${esc(preset.notesExtra)}` : ""}</p>` : ""}
       ${cut.notes ? `<h3>備考</h3><p class="memo">${esc(cut.notes)}</p>` : ""}
+      ${i < state.cuts.length - 1 ? (() => {
+        const t = TRANSITIONS.find(x => x.id === (cut.transition || "cut"));
+        return t ? `<h3>次のカットへの繋ぎ</h3><p class="memo">▼ <b>${esc(t.label)}</b> — ${esc(t.note)}</p>` : "";
+      })() : ""}
 
-      <h3>AI動画生成プロンプト (Seedance / 英語)</h3>
-      <pre class="prompt">${esc(generatePrompt(cut))}</pre>
+      <h3>AI生成プロンプト (${esc((PROMPT_MODELS.find(m => m.id === state.promptModel) || {}).label || "")} / 英語)</h3>
+      <pre class="prompt">${esc(generatePrompt(cut, state.promptModel))}</pre>
     </section>`;
   }).join("");
 
@@ -1307,21 +1414,208 @@ function buildInstructionDoc() {
   </body></html>`;
 }
 
-function exportDoc() {
-  const html = buildInstructionDoc();
+/* =========================================================
+ * 絵コンテ (コマ割りレイアウト・1ページ6コマ) 書き出し
+ * ======================================================= */
+function buildStoryboardDoc() {
+  const today = new Date().toLocaleDateString("ja-JP");
+  const panels = state.cuts.map((cut, i) => {
+    ensureCameraDefaults(cut);
+    const size = SHOT_SIZES.find(s => s.id === cut.camera.shotSize) || {};
+    const mov = CAM_MOVES.find(s => s.id === cut.camera.move) || {};
+    const act = SUBJECT_ACTIONS.find(a => a.id === cut.action);
+    const trans = i < state.cuts.length - 1 ? TRANSITIONS.find(t => t.id === (cut.transition || "cut")) : null;
+    const endS = cut.camera.endShotSize !== "same" ? ` → ${cut.camera.endShotSize}` : "";
+    return `
+    <div class="panel">
+      <div class="frame">${renderPreviewSVG(cut, "sb" + i)}</div>
+      <div class="panel-meta">
+        <div class="panel-no">C${i + 1}</div>
+        <div class="panel-info">
+          <div class="panel-name">${esc(cut.name)}</div>
+          <div class="panel-tech">${esc(cut.camera.shotSize)}${endS} ｜ ${esc(mov.label || "")} ｜ ${cut.camera.focalMm}mm</div>
+          <div class="panel-action">${esc(act ? act.label : "")}${cut.subjectNote ? " — " + esc(cut.subjectNote) : ""}</div>
+          <div class="panel-aim">${esc((cut.aim || "").slice(0, 60))}</div>
+        </div>
+        <div class="panel-dur">${cut.kind === "still" ? "STILL" : cut.duration + "s"}</div>
+      </div>
+      ${trans ? `<div class="panel-trans">▼ ${esc(trans.label)}</div>` : `<div class="panel-trans end">— END —</div>`}
+    </div>`;
+  }).join("");
+
+  return `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+  <title>絵コンテ — ${esc(state.projectTitle)}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; color: #1a1d24; background: #fff; padding: 20px; }
+    h1 { font-size: 20px; }
+    .meta { color: #667; font-size: 11px; margin: 4px 0 14px; }
+    .toolbar { margin-bottom: 16px; }
+    .toolbar button { padding: 10px 22px; font-size: 14px; cursor: pointer; background: #1a1d24; color: #fff; border: 0; border-radius: 6px; }
+    .board { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .panel { border: 1.5px solid #1a1d24; border-radius: 6px; overflow: hidden; page-break-inside: avoid; display: flex; flex-direction: column; }
+    .frame { background: #000; display:flex; justify-content:center; }
+    .frame svg { display: block; max-width: 100%; height: 150px; }
+    .panel-meta { display: flex; gap: 8px; padding: 6px 8px; align-items: flex-start; flex: 1; }
+    .panel-no { font-size: 16px; font-weight: 800; min-width: 34px; }
+    .panel-info { flex: 1; min-width: 0; }
+    .panel-name { font-size: 12px; font-weight: 700; }
+    .panel-tech { font-size: 10px; color: #446; margin-top: 2px; font-family: ui-monospace, monospace; }
+    .panel-action { font-size: 10px; color: #333; margin-top: 2px; }
+    .panel-aim { font-size: 10px; color: #667; margin-top: 2px; }
+    .panel-dur { font-size: 12px; font-weight: 700; color: #b06e06; }
+    .panel-trans { font-size: 10px; text-align: center; background: #f0f2f5; padding: 3px; color: #445; border-top: 1px dashed #ccc; }
+    .panel-trans.end { color: #999; }
+    @media print {
+      .toolbar { display: none; } body { padding: 0; }
+      .board { grid-template-columns: 1fr 1fr; }
+      .panel:nth-of-type(6n) { page-break-after: always; }
+    }
+  </style></head><body>
+    <h1>絵コンテ — ${esc(state.projectTitle)}</h1>
+    <div class="meta">カット数: ${state.cuts.length} ｜ 総尺(動画カット): 約${state.cuts.reduce((s, c) => s + (c.kind === "still" ? 0 : c.duration || 0), 0)}秒 ｜ 出力日: ${esc(today)} ｜ Generated by Virtual Studio</div>
+    <div class="toolbar"><button onclick="window.print()">🖨 印刷 / PDFに保存 (A4縦・1ページ6コマ)</button></div>
+    <div class="board">${panels}</div>
+  </body></html>`;
+}
+
+function openDocWindow(html, fallbackName) {
   const w = window.open("", "_blank");
-  if (w) {
-    w.document.write(html);
-    w.document.close();
-  } else {
-    // ポップアップブロック時: HTMLファイルとしてダウンロード
-    const blob = new Blob([html], { type: "text/html" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "shooting-instructions.html";
-    a.click();
-    URL.revokeObjectURL(a.href);
+  if (w) { w.document.write(html); w.document.close(); return; }
+  const blob = new Blob([html], { type: "text/html" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = fallbackName;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* =========================================================
+ * 技法md インポータ (docs/knowledge/FORMAT.md 形式)
+ * ======================================================= */
+function parseYamlScalar(v) {
+  v = v.trim().replace(/^["']|["']$/g, "");
+  if (/^-?\d+(\.\d+)?$/.test(v)) return parseFloat(v);
+  return v;
+}
+
+function parseKnowledgeMd(text) {
+  const fmMatch = text.match(/^---\s*\n([\s\S]*?)\n---\s*\n?([\s\S]*)$/);
+  if (!fmMatch) throw new Error("フロントマター (--- で囲まれた部分) が見つかりません");
+  const [, fm, body] = fmMatch;
+  const data = {};
+  let ctx = null;      // 現在のネスト先 (camera オブジェクト or equipment 配列)
+  let ctxKey = null;
+  let listItem = null; // equipment の現在の要素
+
+  for (const raw of fm.split("\n")) {
+    if (!raw.trim() || raw.trim().startsWith("#")) continue;
+    const indent = raw.match(/^\s*/)[0].length;
+    const line = raw.trim();
+
+    if (indent === 0) {
+      listItem = null;
+      const m = line.match(/^([\w]+):\s*(.*)$/);
+      if (!m) continue;
+      const [, key, val] = m;
+      if (val === "") { // ネスト開始
+        ctxKey = key;
+        ctx = key === "equipment" ? [] : {};
+        data[key] = ctx;
+      } else if (val.startsWith("[")) {
+        data[key] = val.replace(/^\[|\]$/g, "").split(",").map(s => parseYamlScalar(s)).filter(s => s !== "");
+        ctx = null;
+      } else {
+        data[key] = parseYamlScalar(val);
+        ctx = null;
+      }
+    } else if (ctx) {
+      if (line.startsWith("- ")) { // 配列要素の開始
+        listItem = {};
+        if (Array.isArray(ctx)) ctx.push(listItem);
+        const m = line.slice(2).match(/^([\w]+):\s*(.*)$/);
+        if (m) listItem[m[1]] = parseYamlScalar(m[2]);
+      } else {
+        const m = line.match(/^([\w]+):\s*(.*)$/);
+        if (!m) continue;
+        const target = Array.isArray(ctx) ? listItem : ctx;
+        if (target) target[m[1]] = parseYamlScalar(m[2]);
+      }
+    }
   }
+
+  // 本文セクション抽出
+  const section = (title) => {
+    const m = body.match(new RegExp(`##\\s*${title}\\s*\\n([\\s\\S]*?)(?=\\n##\\s|$)`));
+    return m ? m[1].trim().replace(/\n+/g, " ") : "";
+  };
+
+  if (!data.id || !data.name) throw new Error("id と name は必須です");
+  return {
+    id: "md-" + data.id,
+    modes: Array.isArray(data.modes) && data.modes.length ? data.modes : ["video", "still", "outdoor"],
+    group: "📥 " + (data.group || "インポート技法"),
+    name: data.name,
+    desc: section("概要") || data.name,
+    tags: Array.isArray(data.tags) ? data.tags.map(String) : [],
+    subjectType: data.subject || "person",
+    bgStyle: BG_STYLES[data.background] ? data.background : "dark",
+    look: section("仕上がりの見え方"),
+    notesExtra: section("実施上の注意"),
+    camera: {
+      shotSize: "BS", angle: "eye", move: "fix", lens: "50",
+      aperture: "F2.8", shutter: "1/50", iso: "400", fps: "24fps", wb: "5600K",
+      ...(data.camera || {}),
+      lens: String((data.camera || {}).lens ?? "50"),
+      iso: String((data.camera || {}).iso ?? "400"),
+    },
+    items: (Array.isArray(data.equipment) ? data.equipment : [])
+      .filter(e => EQUIP_TYPES[e.type])
+      .map(e => ({
+        type: e.type,
+        x: e.x ?? 300, y: e.y ?? 300,
+        height: e.height ?? 150,
+        power: e.power ?? (LIGHT_TYPES.includes(e.type) ? 50 : 0),
+        colorTemp: e.colorTemp ?? 5600,
+        modifier: e.modifier || "なし(直射)",
+      })),
+    defaultOptions: Array.isArray(data.options)
+      ? data.options.map(String).filter(o => SHOT_OPTIONS.some(s => s.id === o)) : [],
+  };
+}
+
+function importKnowledgeMdFiles(files) {
+  let ok = 0; const errs = [];
+  let pending = files.length;
+  const finish = () => {
+    if (--pending > 0) return;
+    renderPresetList();
+    alert(`技法mdインポート: ${ok}件成功` + (errs.length ? `\n失敗:\n` + errs.join("\n") : ""));
+  };
+  for (const file of files) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const preset = parseKnowledgeMd(reader.result);
+        // 同IDは上書き
+        state.customPresets = state.customPresets.filter(p => p.id !== preset.id);
+        state.customPresets.push(preset);
+        ok++;
+      } catch (err) {
+        errs.push(`${file.name}: ${err.message}`);
+      }
+      finish();
+    };
+    reader.onerror = () => { errs.push(`${file.name}: 読み込み失敗`); finish(); };
+    reader.readAsText(file);
+  }
+}
+
+function exportDoc() {
+  openDocWindow(buildInstructionDoc(), "shooting-instructions.html");
+}
+function exportBoard() {
+  openDocWindow(buildStoryboardDoc(), "storyboard.html");
 }
 
 /* ---------- SVG画像 / JSON 書き出し ---------- */
@@ -1353,6 +1647,10 @@ function importJSON(file) {
       if (!Array.isArray(data.cuts) || !data.cuts.length) throw new Error("cuts がありません");
       state.mode = data.mode || "video";
       state.cuts = data.cuts.map(ensureCameraDefaults); // 旧バージョンのJSONに詳細フィールドを補完
+      state.customPresets = Array.isArray(data.customPresets) ? data.customPresets : [];
+      state.promptModel = data.promptModel || state.promptModel;
+      const pmSel = byId("promptModelSelect");
+      if (pmSel) pmSel.value = state.promptModel;
       state.activeCut = Math.min(data.activeCut || 0, state.cuts.length - 1);
       state.selectedItem = null;
       state.projectTitle = data.projectTitle || state.projectTitle;
@@ -1378,7 +1676,21 @@ function setupHeader() {
   });
   byId("presetSearch").addEventListener("input", renderPresetList);
   byId("btnExportDoc").addEventListener("click", exportDoc);
+  byId("btnExportBoard").addEventListener("click", exportBoard);
   byId("btnExportJson").addEventListener("click", exportJSON);
+
+  // プロンプトモデル (方言) 切り替え
+  const pm = byId("promptModelSelect");
+  pm.innerHTML = PROMPT_MODELS.map(m => `<option value="${m.id}">${esc(m.label)}</option>`).join("");
+  pm.value = state.promptModel;
+  pm.addEventListener("change", () => { state.promptModel = pm.value; renderPrompt(); });
+
+  // 技法md インポート
+  byId("btnImportMd").addEventListener("click", () => byId("fileMdImport").click());
+  byId("fileMdImport").addEventListener("change", e => {
+    if (e.target.files.length) importKnowledgeMdFiles([...e.target.files]);
+    e.target.value = "";
+  });
   byId("btnImportJson").addEventListener("click", () => byId("fileImport").click());
   byId("fileImport").addEventListener("change", e => {
     if (e.target.files[0]) importJSON(e.target.files[0]);

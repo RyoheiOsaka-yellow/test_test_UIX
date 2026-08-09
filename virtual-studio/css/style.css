@@ -152,6 +152,20 @@ body {
 }
 #explainList li:last-child { border-bottom: none; }
 
+.prompt-head { display: flex; align-items: center; gap: 6px; }
+.prompt-head span { flex: 1; }
+.prompt-head select {
+  background: var(--bg2); color: var(--text); border: 1px solid var(--line);
+  border-radius: 5px; padding: 3px 6px; font-size: 11px;
+}
+#promptHint { margin: 2px 0 4px; }
+
+.trans-chip {
+  flex: 0 0 auto; align-self: center; text-align: center;
+  font-size: 13px; color: #b06e06; line-height: 1.1; min-width: 44px;
+}
+.trans-chip span { font-size: 9px; color: var(--text-dim); }
+
 #promptPreview textarea {
   width: 100%; height: 110px; resize: vertical;
   background: #1c2028; color: #a8d8a8; border: 1px solid var(--line);
