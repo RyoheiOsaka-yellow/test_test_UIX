@@ -1,0 +1,59 @@
+{
+  "project_id": "PRJ_DEMO_001",
+  "sequence_id": "SQ01",
+  "scene_id": "SC012",
+  "shot_id": "PRJ_DEMO_001_SQ01_SC012_SH042",
+  "intent": {
+    "dramatic_beat": "realization",
+    "mood": [
+      "night",
+      "rain",
+      "tense"
+    ]
+  },
+  "planned": {
+    "camera": {
+      "position_m": [
+        0,
+        -3.2,
+        1.55
+      ],
+      "focal_length_mm": 85,
+      "fps": 24,
+      "shutter_angle": 180
+    },
+    "lighting": {
+      "key_motivation": "storefront",
+      "rain_backlight": true
+    },
+    "fx": {
+      "rain": {
+        "density": 0.8,
+        "wind_vector": [
+          0.4,
+          0,
+          -0.1
+        ]
+      }
+    },
+    "sound": {
+      "dialogue_required": false,
+      "adr_risk": 0.15
+    }
+  },
+  "continuity": {
+    "actor_a": {
+      "hair_wetness": 0.75,
+      "coat_wetness": 0.8
+    },
+    "ground": {
+      "wetness": 1.0
+    }
+  },
+  "color_pipeline_id": "COLOR_NIGHT_RAIN_01",
+  "usd_stage_uri": "scene/SC012_SH042.usda",
+  "editorial": {
+    "otio_clip_name": "SC012_SH042_TK03"
+  },
+  "ai_generation_runs": []
+}

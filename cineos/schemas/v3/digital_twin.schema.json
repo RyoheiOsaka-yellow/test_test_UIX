@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CineOS Digital Twin Asset",
+  "type": "object",
+  "required": [
+    "asset_id",
+    "asset_type",
+    "dimensions_m"
+  ],
+  "properties": {
+    "asset_id": {
+      "type": "string"
+    },
+    "asset_type": {
+      "type": "string"
+    },
+    "dimensions_m": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "number"
+      }
+    },
+    "geometry_uri": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "usd_uri": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "materials": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "collision_proxy": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "provenance": {
+      "type": "object"
+    }
+  }
+}

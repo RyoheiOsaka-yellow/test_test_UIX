@@ -296,6 +296,9 @@ function buildPromptParts(cut) {
     motionStr: cut.kind === "still" ? "still photograph, ultra high resolution" : `${cut.camera.fps}, cinematic motion`,
     isStill: cut.kind === "still",
     audio: cut.audio, transEn: trans ? trans.en : "",
+    fps: cut.camera.fps, shutter: cut.camera.shutter,
+    focusM: c.focusM, dur: cut.duration || 5,
+    optList: optPhrases,
   };
 }
 
@@ -365,7 +368,26 @@ function generatePrompt(cut, modelId) {
       ], ", ");
       return `${tags} --ar ${arMap[P.aspectId] || "16:9"} --style raw`;
     }
-    default: { // seedance / generic: 標準フォーマット
+    case "seedance": {
+      // CineOS プロンプトコンパイル順序 (cineos/CLAUDE.md §10) に準拠した構造化ブロック
+      return j([
+        `FORMAT: ${P.aspectEn}${P.isStill ? ", still photograph, ultra high resolution" : `, video, ${P.dur}s`}`,
+        `SUBJECT & ACTION: ${P.subjClause}`,
+        `ENVIRONMENT: ${j([P.bgEn, P.envPhrase], ", ")}`,
+        P.bodyPhrase ? `CAMERA FORMAT: ${P.bodyPhrase}` : "",
+        `LENS: ${P.lensStr}`,
+        `CAMERA: ${j([P.sizeEn, P.angEn], ", ")}`,
+        `CAMERA MOVE: ${j([P.movPhrase, P.framingPhrase, P.supPhrase], "; ")}${P.isStill ? "" : ` — over ${P.dur} seconds`}`,
+        `FOCUS: focus at ${P.focusM}m${P.dofPhrase ? ", " + P.dofPhrase : ""}${P.filterStr ? ", " + P.filterStr : ""}`,
+        P.isStill ? `EXPOSURE: shutter ${P.shutter}` : `FRAME RATE / SHUTTER: ${P.fps}, shutter ${P.shutter}`,
+        `LIGHTING: ${P.lightStr}`,
+        P.optList.length ? `PRACTICAL FX: ${P.optList.join(", ")}` : "",
+        `COLOR / FINISH: ${j([P.lookEn || "natural true-to-life color grade", "photorealistic, professional cinematography, high detail"], ", ")}`,
+        P.transEn ? `EDIT: shot ends with a ${P.transEn}` : "",
+        `NEGATIVE: no subtitles, no watermark, no on-screen text, no morphing artifacts`,
+      ], "\n");
+    }
+    default: { // generic: 標準フォーマット
       return j([
         `${P.sizeEn}, ${P.angEn}`,
         P.movPhrase, P.framingPhrase, P.supPhrase, P.bodyPhrase,
@@ -375,7 +397,6 @@ function generatePrompt(cut, modelId) {
         P.transEn ? `shot ends with a ${P.transEn}` : "",
         P.motionStr,
         "photorealistic, professional cinematography, high detail",
-        model === "seedance" ? "no subtitles, no watermark, no on-screen text" : "",
       ], ". ") + ".";
     }
   }
@@ -966,6 +987,16 @@ function renderPreview() {
   byId("explainList").innerHTML = explainCut(activeCut()).map(l => `<li>${esc(l)}</li>`).join("");
   updatePlayButton();
   renderAspectChips();
+  renderFeasibility();
+}
+
+/* フィージビリティ / 安全チェック (CineOS FeasibilityEngine) */
+function renderFeasibility() {
+  const warnings = evaluateFeasibility(activeCut());
+  const box = byId("feasBox");
+  box.hidden = warnings.length === 0;
+  byId("feasList").innerHTML = warnings
+    .map(x => `<li class="lv-${x.lv}">${esc(x.t)}</li>`).join("");
 }
 
 /* アスペクト比クイック切替チップ (プレビュー直上) */
@@ -1138,6 +1169,11 @@ function renderInspector() {
           `<option ${s === (selItem.stand || "ライトスタンド") ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>`)}
         ${fieldRow("消費電力(W)", `<input type="number" id="itWatt" value="${selItem.watt ?? 0}" min="0" max="20000" step="10" title="電源プラン(指示書)の自動計算に使われます">`)}` : ""}
         <div class="insp-hint">被写体からの距離: 約${distM}m ｜ 方位: ${esc(relToJa(analyzeLighting(cut).lights.find(l => l.item.id === selItem.id)?.rel ?? 0))}</div>
+        ${(() => {
+          const rec = recommendForItem(selItem);
+          if (!rec || !rec.records.length) return "";
+          return `<div class="insp-hint" style="margin-top:6px">🎬 実機材候補: ${esc(rec.records.map(r => `${r.manufacturer} ${r.model}`).join(" / "))} など同等能力機<br><small>${esc(rec.need)}</small></div>`;
+        })()}
         ${selItem.type !== "subject" && selItem.type !== "camera"
           ? `<button class="btn small danger" id="btnDelItem" style="margin-top:6px">この機材を削除</button>` : ""}
       </div>`;
@@ -1536,6 +1572,26 @@ function buildInstructionDoc() {
       ${opts.length ? `<h3>演出オプションと実施上の注意</h3>
       <ul>${opts.map(o => `<li><b>${esc(o.label)}</b> — ${esc(o.note)}</li>`).join("")}</ul>` : ""}
 
+      ${(() => {
+        const warns = evaluateFeasibility(cut);
+        if (!warns.length) return "";
+        return `<h3>フィージビリティ / 安全チェック</h3>
+        <ul class="feas-doc">${warns.map(x =>
+          `<li class="lv-${x.lv}">${x.lv === "danger" ? "⛔" : x.lv === "warn" ? "⚠️" : "💡"} ${esc(x.t)}</li>`).join("")}</ul>`;
+      })()}
+
+      ${(() => {
+        const recs = recommendForCut(cut);
+        if (!recs.length) return "";
+        return `<h3>機材候補 (capability first, SKU second)</h3>
+        <table><thead><tr><th>役割</th><th>必要な能力</th><th>代表機種 (例)</th><th>安全区分</th></tr></thead>
+        <tbody>${recs.map(r => `<tr>
+          <td>${esc(r.role)}</td><td>${esc(r.need)}</td>
+          <td>${esc(r.examples.join(" / "))} など同等能力機</td>
+          <td>${esc(r.safety)}</td></tr>`).join("")}</tbody></table>
+        <p class="memo">※ CineOS機材マスター (131機種シード) より。ブランド固定ではなく「能力で選び、同等機で代替可」が原則。</p>`;
+      })()}
+
       ${preset ? `<h3>技法メモ: ${esc(preset.name)}</h3><p class="memo">${esc(preset.desc)}${preset.notesExtra ? `<br><b>実施上の注意:</b> ${esc(preset.notesExtra)}` : ""}</p>` : ""}
       ${cut.notes ? `<h3>備考</h3><p class="memo">${esc(cut.notes)}</p>` : ""}
       ${i < state.cuts.length - 1 ? (() => {
@@ -1589,6 +1645,9 @@ function buildInstructionDoc() {
     .power-plan { font-size: 12px; background: #f0f6ff; border: 1px solid #c8d8f0; border-radius: 6px; padding: 8px 10px; margin-top: 8px; }
     .sd-params { margin-top: 8px; }
     .sd-params th { background: #eaf3ec; }
+    .feas-doc { list-style: none; padding-left: 0; }
+    .feas-doc li { padding: 3px 0; font-size: 12px; }
+    .feas-doc li.lv-danger { color: #c0392b; font-weight: 700; }
     @media print { .toolbar { display: none; } body { padding: 0; } }
   </style></head><body>
     <h1>撮影指示書 — ${esc(state.projectTitle)}</h1>

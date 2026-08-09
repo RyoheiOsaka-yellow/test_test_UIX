@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CineOS Production Sound Plan",
+  "type": "object",
+  "required": [
+    "sound_plan_id",
+    "dialogue_required"
+  ],
+  "properties": {
+    "sound_plan_id": {
+      "type": "string"
+    },
+    "dialogue_required": {
+      "type": "boolean"
+    },
+    "boom": {
+      "type": "object"
+    },
+    "lav": {
+      "type": "object"
+    },
+    "plant": {
+      "type": "object"
+    },
+    "noise_sources": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "adr_risk": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    }
+  }
+}

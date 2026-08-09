@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "version": "1.0",
+    "date": "2026-08-09",
+    "type": "mixed_physics_geometry_heuristic"
+  },
+  "rules": [
+    {
+      "id": "CAUSE-LIGHT-001",
+      "cause": "source_apparent_size increases",
+      "effect": "shadow_edge_softness increases",
+      "type": "geometry",
+      "confidence": 0.98
+    },
+    {
+      "id": "CAUSE-LIGHT-002",
+      "cause": "source_distance decreases",
+      "effect": "apparent_source_size increases",
+      "type": "geometry",
+      "confidence": 0.98
+    },
+    {
+      "id": "CAUSE-LIGHT-003",
+      "cause": "source_distance decreases",
+      "effect": "illumination_falloff_across_depth increases",
+      "type": "physics",
+      "confidence": 0.95
+    },
+    {
+      "id": "CAUSE-EXP-001",
+      "cause": "capture_fps increases at constant shutter angle",
+      "effect": "exposure_time decreases",
+      "type": "physics",
+      "confidence": 1.0
+    },
+    {
+      "id": "CAUSE-EXP-002",
+      "cause": "shutter_angle decreases",
+      "effect": "motion_blur decreases and required_light increases",
+      "type": "physics",
+      "confidence": 0.99
+    },
+    {
+      "id": "CAUSE-DOF-001",
+      "cause": "aperture opens",
+      "effect": "depth_of_field decreases",
+      "type": "optics",
+      "confidence": 0.99
+    },
+    {
+      "id": "CAUSE-DOF-002",
+      "cause": "subject_background_distance increases",
+      "effect": "background_defocus potential increases",
+      "type": "optics_geometry",
+      "confidence": 0.95
+    },
+    {
+      "id": "CAUSE-PERS-001",
+      "cause": "camera moves farther while reframing with longer focal length",
+      "effect": "near_far_size_relationship flattens",
+      "type": "geometry",
+      "confidence": 0.98
+    },
+    {
+      "id": "CAUSE-CONTRAST-001",
+      "cause": "negative_fill moves closer",
+      "effect": "unwanted_fill decreases",
+      "type": "common_practice",
+      "confidence": 0.9
+    },
+    {
+      "id": "CAUSE-RAIN-001",
+      "cause": "rain backlight increases",
+      "effect": "rain visibility increases",
+      "type": "cinematography",
+      "confidence": 0.92
+    },
+    {
+      "id": "CAUSE-ATM-001",
+      "cause": "haze_density increases",
+      "effect": "depth_contrast decreases and light_beam_visibility increases",
+      "type": "physics_visual",
+      "confidence": 0.95
+    },
+    {
+      "id": "CAUSE-SOUND-001",
+      "cause": "rain_or_wind_fx noise increases",
+      "effect": "sync_dialogue_capture_difficulty increases",
+      "type": "production",
+      "confidence": 0.95
+    },
+    {
+      "id": "CAUSE-MAT-001",
+      "cause": "surface_roughness decreases",
+      "effect": "reflections become sharper",
+      "type": "material_physics",
+      "confidence": 0.98
+    },
+    {
+      "id": "CAUSE-MAT-002",
+      "cause": "surface_albedo increases",
+      "effect": "room_bounce contribution tends to increase",
+      "type": "lighting_physics",
+      "confidence": 0.9
+    }
+  ]
+}

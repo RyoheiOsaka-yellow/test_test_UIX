@@ -1,0 +1,141 @@
+{
+  "meta": {
+    "version": "2.0",
+    "date": "2026-08-09"
+  },
+  "coverage_rules": [
+    {
+      "id": "COV-001",
+      "if": [
+        "scene_geography_unclear"
+      ],
+      "then": [
+        "include_establishing_or_master"
+      ],
+      "type": "heuristic"
+    },
+    {
+      "id": "COV-002",
+      "if": [
+        "beat_type=reaction",
+        "importance>=0.7"
+      ],
+      "then": [
+        "ensure_reaction_readable"
+      ],
+      "type": "heuristic"
+    },
+    {
+      "id": "COV-003",
+      "if": [
+        "destructive_event=true"
+      ],
+      "then": [
+        "consider_simultaneous_multicam"
+      ],
+      "type": "production_heuristic"
+    },
+    {
+      "id": "COV-004",
+      "if": [
+        "axis_crossing=true",
+        "neutral_bridge=false",
+        "creative_override=false"
+      ],
+      "then": [
+        "warn_axis_break"
+      ],
+      "type": "continuity"
+    }
+  ],
+  "lighting_rules": [
+    {
+      "id": "LGT-001",
+      "formula": "exposure_time = shutter_angle / 360 / fps",
+      "type": "physical_principle"
+    },
+    {
+      "id": "LGT-002",
+      "formula": "stop_loss_vs_24fps = log2(fps/24) when shutter_angle constant",
+      "type": "physical_principle"
+    },
+    {
+      "id": "LGT-003",
+      "if": [
+        "specular_material=true"
+      ],
+      "then": [
+        "solve_reflected_source_shape_not_only_illuminance"
+      ],
+      "type": "physical_principle"
+    }
+  ],
+  "sfx_rules": [
+    {
+      "id": "SFX-001",
+      "if": [
+        "rain=true"
+      ],
+      "then": [
+        "evaluate_backlight",
+        "background_luminance",
+        "shutter",
+        "wind_vector"
+      ],
+      "type": "cinematography"
+    },
+    {
+      "id": "SFX-002",
+      "if": [
+        "safety_class=C"
+      ],
+      "then": [
+        "specialist_only=true",
+        "exclude_hazardous_construction_instructions"
+      ],
+      "type": "safety"
+    },
+    {
+      "id": "SFX-003",
+      "if": [
+        "destructive_state_transition=true"
+      ],
+      "then": [
+        "persist_damage_until_reset"
+      ],
+      "type": "continuity"
+    }
+  ],
+  "motion_rules": [
+    {
+      "id": "MOT-001",
+      "if": [
+        "path_outside_reach=true"
+      ],
+      "then": [
+        "reject_or_offer_alternative_rig"
+      ],
+      "type": "feasibility"
+    },
+    {
+      "id": "MOT-002",
+      "if": [
+        "payload_total>rig_payload"
+      ],
+      "then": [
+        "reject_configuration"
+      ],
+      "type": "feasibility"
+    },
+    {
+      "id": "MOT-003",
+      "if": [
+        "collision=true"
+      ],
+      "then": [
+        "return_collision_objects_and_time"
+      ],
+      "type": "feasibility"
+    }
+  ]
+}

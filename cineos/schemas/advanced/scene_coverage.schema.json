@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CineOS Scene Coverage",
+  "type": "object",
+  "required": [
+    "scene_id",
+    "beats",
+    "axis",
+    "blocking",
+    "shots"
+  ],
+  "properties": {
+    "scene_id": {
+      "type": "string"
+    },
+    "beats": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "axis": {
+      "type": "object"
+    },
+    "blocking": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "lighting_zones": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "shots": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  }
+}

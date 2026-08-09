@@ -1,0 +1,153 @@
+{
+  "package": "cineos_claude_code_package_v3",
+  "version": "3.0",
+  "date": "2026-08-09",
+  "description": "Film Production Digital Twin + Cinematography Reasoning Engine development package",
+  "files": [
+    {
+      "path": "CLAUDE.md",
+      "bytes": 10569,
+      "sha256": "cffd20dbfcd399e7a9868cf299cf3304f067526606efa764e3f1b8abd0736a23"
+    },
+    {
+      "path": "README.md",
+      "bytes": 1859,
+      "sha256": "102a06c993ab65f9ac46c3580aa9df21bdde8cbfa89ed70a378c10f251e2e56d"
+    },
+    {
+      "path": "adapters/specs/COLOR_ADAPTER.md",
+      "bytes": 448,
+      "sha256": "5ba0d3569261dd1042f82ccc01dca54c0ebdad35a8201ead48de9b653eecc035"
+    },
+    {
+      "path": "adapters/specs/OPENUSD_ADAPTER.md",
+      "bytes": 834,
+      "sha256": "a3406cbf9e62bdd6b03692094a22b3f3208aa5dd04bef336308f1a7a8aa82d5f"
+    },
+    {
+      "path": "adapters/specs/OTIO_ADAPTER.md",
+      "bytes": 504,
+      "sha256": "644f0c17a25baef6b10c1b542f9f657206b0efff646e905f4132153e1a6eb4df"
+    },
+    {
+      "path": "data/advanced/advanced_rules.json",
+      "bytes": 2671,
+      "sha256": "ca9ccc2dddd3bcb7c2bb4c542cc357242bd919ee9c5b44cce4667502781fa620"
+    },
+    {
+      "path": "data/advanced/source_registry.json",
+      "bytes": 2784,
+      "sha256": "73e356a3ead9a847728c421d25657e521fca81a4ff4494be93bca2155b764434"
+    },
+    {
+      "path": "data/equipment_master.json",
+      "bytes": 69851,
+      "sha256": "177cd8ab6c0b879fd383e3e7faf9df2c7859451a6680c34e71280d3df345ab9f"
+    },
+    {
+      "path": "data/v3/ai_generation_qa_profiles.json",
+      "bytes": 802,
+      "sha256": "073cd13f1cb6859bdaa000459320c40dd21c58e50e1a0f5f636c9d487728345d"
+    },
+    {
+      "path": "data/v3/causal_cinematography_graph.json",
+      "bytes": 2937,
+      "sha256": "c643f89ac1da50d1b1803021dffe77b516f06cf9357d7d0a5001f29fc759f7d4"
+    },
+    {
+      "path": "data/v3/standards_registry.json",
+      "bytes": 1610,
+      "sha256": "0c22b638fa64ea00508493a44043fcb160aa2a650e08ba0cfd9ab3d91086d078"
+    },
+    {
+      "path": "docs/IMPLEMENTATION_V2.md",
+      "bytes": 2022,
+      "sha256": "6e90844c283a257c9c33a1e167ed3759530fe79d192e88974ea5be01132fb357"
+    },
+    {
+      "path": "docs/v3/IMPLEMENTATION_ROADMAP_V3.md",
+      "bytes": 1699,
+      "sha256": "436f76cab040a9f996368356b650d2c5c18c06f158372fd39d8bbe8aacbeb161"
+    },
+    {
+      "path": "examples/advanced/example_screenplay_to_coverage.json",
+      "bytes": 1872,
+      "sha256": "81eca2d9c82380e1918dfff0f49ecd0a835d119488098ebd49aaa73b329cd284"
+    },
+    {
+      "path": "examples/v3/example_canonical_shot.json",
+      "bytes": 1072,
+      "sha256": "8067bb3c03c90dd8f38b511b64054c768d10cfa41e0384fb86d2b849d111df2e"
+    },
+    {
+      "path": "knowledge/MASTER_CINEMATOGRAPHY_OS_V4.md",
+      "bytes": 141287,
+      "sha256": "88e324d6f4b67641208fa0dd169066718cb8c84ae24e742eaa30671f5454e10e"
+    },
+    {
+      "path": "knowledge/advanced/ADVANCED_PRODUCTION_REASONING_V5.md",
+      "bytes": 13354,
+      "sha256": "001f1f63f936ed0a0234b00c42e7dc660d44c96c5eea54ee07d2d5dca97591f2"
+    },
+    {
+      "path": "knowledge/v3/FILM_PRODUCTION_DIGITAL_TWIN_V6.md",
+      "bytes": 21054,
+      "sha256": "0b04fb26fac66f4037863396e16013ed5dcf63a608d891af494df1198cbcb325"
+    },
+    {
+      "path": "schemas/advanced/lens_timeline.schema.json",
+      "bytes": 1178,
+      "sha256": "0cf593a75b02d8cce5a66540f482567071fb71295b1f1201cac951ed1dc9c422"
+    },
+    {
+      "path": "schemas/advanced/motion_rig.schema.json",
+      "bytes": 574,
+      "sha256": "d0dd596e0f6b2b87af1f4d1eaf850f71d062f6b0ce94a9fb52ed1af53a15729d"
+    },
+    {
+      "path": "schemas/advanced/practical_fx_event.schema.json",
+      "bytes": 724,
+      "sha256": "8d67e5186d3dd6d5c597e8b499a3c781db04b48d115e201153d24a67ef810e2c"
+    },
+    {
+      "path": "schemas/advanced/scene_coverage.schema.json",
+      "bytes": 715,
+      "sha256": "621502aa556a6055141093411001dafa3df60b46d7339915c8ae4d11f96e3158"
+    },
+    {
+      "path": "schemas/v3/ai_generation_run.schema.json",
+      "bytes": 749,
+      "sha256": "2e8ecea1f74b2c4f903af678aa46b79c4868efb37ace4df865ac9be40fd06ca7"
+    },
+    {
+      "path": "schemas/v3/color_pipeline.schema.json",
+      "bytes": 837,
+      "sha256": "7342ba4cc48b0544b28aeb6373dfd5a2989190678220abb2cf2a5e704342abc2"
+    },
+    {
+      "path": "schemas/v3/continuity_state.schema.json",
+      "bytes": 582,
+      "sha256": "3434e99d25a09aaf78b1d4acbfdc1368d7eb6ea1cfdea062601fa53bbe810f07"
+    },
+    {
+      "path": "schemas/v3/digital_twin.schema.json",
+      "bytes": 866,
+      "sha256": "e06a51a7e311d89a534a421fa62abacec6b229923f9011c0ed3196950887800c"
+    },
+    {
+      "path": "schemas/v3/live_ip_stream.schema.json",
+      "bytes": 793,
+      "sha256": "ccd8f028bde474804d45f405b05fe8578a13afe4acdbe3d17a4dc41959343e79"
+    },
+    {
+      "path": "schemas/v3/production_identity.schema.json",
+      "bytes": 614,
+      "sha256": "da444c06e4a81f12e79f02acc18d4cdbbba61f01191c751d819e5f2650dac794"
+    },
+    {
+      "path": "schemas/v3/sound_plan.schema.json",
+      "bytes": 648,
+      "sha256": "f121f39984f543210b7145d3b6042d4a44a5f803f76f4bcb8d3b963c8cd9a5eb"
+    }
+  ]
+}

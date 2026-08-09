@@ -427,6 +427,28 @@ select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0
 }
 #explainList li:last-child { border-bottom: none; padding-bottom: 0; }
 
+#feasBox {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  box-shadow: var(--shadow-sm);
+  border-left: 3px solid #e8920a;
+}
+#feasList { list-style: none; }
+#feasList li {
+  font-size: 12px; line-height: 1.6; color: var(--text2);
+  padding: 5px 0 5px 20px; position: relative;
+  border-bottom: 1px solid var(--line);
+}
+#feasList li:last-child { border-bottom: none; padding-bottom: 0; }
+#feasList li::before {
+  position: absolute; left: 0; top: 5px; font-size: 11px;
+}
+#feasList li.lv-danger::before { content: "⛔"; }
+#feasList li.lv-warn::before { content: "⚠️"; }
+#feasList li.lv-info::before { content: "💡"; }
+#feasList li.lv-danger { color: var(--danger); font-weight: 600; }
+
 #promptPreview {
   background: var(--surface); border-radius: var(--radius);
   padding: 12px 14px; box-shadow: var(--shadow-sm);
@@ -691,6 +713,10 @@ input[type="range"]::-moz-range-thumb {
     <div id="explainBox">
       <div class="panel-title small">この配置だとこう写る</div>
       <ul id="explainList"></ul>
+    </div>
+    <div id="feasBox" hidden>
+      <div class="panel-title small">フィージビリティ / 安全チェック</div>
+      <ul id="feasList"></ul>
     </div>
     <div id="promptPreview">
       <div class="prompt-head">
@@ -1011,7 +1037,7 @@ const TRANSITIONS = [
 
 /* ---------- AI動画/画像モデル別プロンプト方言 ---------- */
 const PROMPT_MODELS = [
-  { id: "seedance", label: "Seedance",  hint: "文章+カメラ用語をカンマ区切りで詳細に" },
+  { id: "seedance", label: "Seedance",  hint: "CineOS §10 準拠: FORMAT→SUBJECT→…→NEGATIVE の構造化ブロック" },
   { id: "veo",      label: "Veo 3",     hint: "自然な英文の1段落+音声指示に対応" },
   { id: "kling",    label: "Kling",     hint: "項目ラベル形式 (Subject/Camera/Lighting...)" },
   { id: "runway",   label: "Runway Gen-4", hint: "[camera]: [scene] 形式の簡潔な指示" },
@@ -2155,6 +2181,2135 @@ const BG_STYLES = {
 </script>
 <script>
 /* =========================================================
+ * CineOS Equipment Master (cineos/data/equipment_master.json 由来)
+ * capability-first の機材アーキタイプ+代表SKUシード。
+ * version 2.0 / 131 records
+ * ======================================================= */
+const EQUIPMENT_DB = [
+ {
+  "id": "CAM-ARRI-ALEXA35",
+  "category": "camera",
+  "subcategory": "cinema",
+  "manufacturer": "ARRI",
+  "model": "ALEXA 35 / Xtreme",
+  "capability": {
+   "sensor_class": "Super35",
+   "dynamic_range_stops": 17,
+   "raw": true,
+   "high_speed": true
+  },
+  "use_cases": [
+   "feature film",
+   "drama",
+   "commercial"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-SONY-VENICE2",
+  "category": "camera",
+  "subcategory": "cinema",
+  "manufacturer": "Sony",
+  "model": "VENICE 2",
+  "capability": {
+   "sensor_class": "full-frame cinema",
+   "raw": true,
+   "dual_sensor_options_family": true
+  },
+  "use_cases": [
+   "feature film",
+   "drama",
+   "VP"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-RED-VRAPTOR",
+  "category": "camera",
+  "subcategory": "cinema",
+  "manufacturer": "RED",
+  "model": "V-RAPTOR / V-RAPTOR XL family",
+  "capability": {
+   "large_format": true,
+   "raw": true,
+   "high_speed": true
+  },
+  "use_cases": [
+   "film",
+   "action",
+   "VFX"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-CANON-C400",
+  "category": "camera",
+  "subcategory": "cinema",
+  "manufacturer": "Canon",
+  "model": "EOS C400",
+  "capability": {
+   "sensor_class": "full_frame",
+   "resolution": "6K class",
+   "high_speed": "4K 120p class",
+   "AF": true
+  },
+  "use_cases": [
+   "drama",
+   "documentary",
+   "commercial"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-BMD-URSA12KLF",
+  "category": "camera",
+  "subcategory": "cinema",
+  "manufacturer": "Blackmagic Design",
+  "model": "URSA Cine 12K LF",
+  "capability": {
+   "sensor_mm": [
+    35.64,
+    23.32
+   ],
+   "dynamic_range_stops": 16,
+   "open_gate": "12288x8040",
+   "internal_nd_stops": [
+    0,
+    2,
+    4,
+    6
+   ]
+  },
+  "use_cases": [
+   "film",
+   "drama",
+   "commercial"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-FREEFLY-EMBER5K",
+  "category": "camera",
+  "subcategory": "high_speed",
+  "manufacturer": "Freefly",
+  "model": "Ember S5K",
+  "capability": {
+   "sensor_class": "Super35",
+   "global_shutter": true,
+   "weight_g": 800
+  },
+  "use_cases": [
+   "product",
+   "liquid",
+   "food"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-PHANTOM-TMX7510",
+  "category": "camera",
+  "subcategory": "ultra_high_speed",
+  "manufacturer": "Vision Research",
+  "model": "Phantom TMX 7510",
+  "capability": {
+   "ultra_high_speed": true,
+   "scientific": true
+  },
+  "use_cases": [
+   "impact",
+   "fracture",
+   "liquid"
+  ],
+  "safety_class": "B",
+  "specialist_only": true
+ },
+ {
+  "id": "CAM-SONY-FX6",
+  "category": "camera",
+  "subcategory": "compact_cinema",
+  "manufacturer": "Sony",
+  "model": "FX6",
+  "capability": {},
+  "use_cases": [
+   "documentary",
+   "B-camera",
+   "gimbal"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-SONY-FX3",
+  "category": "camera",
+  "subcategory": "compact_cinema",
+  "manufacturer": "Sony",
+  "model": "FX3",
+  "capability": {},
+  "use_cases": [
+   "gimbal",
+   "car rig",
+   "social"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-CANON-C80",
+  "category": "camera",
+  "subcategory": "compact_cinema",
+  "manufacturer": "Canon",
+  "model": "EOS C80",
+  "capability": {},
+  "use_cases": [
+   "documentary",
+   "commercial"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-NIKON-Z9",
+  "category": "camera",
+  "subcategory": "hybrid",
+  "manufacturer": "Nikon",
+  "model": "Z9",
+  "capability": {},
+  "use_cases": [
+   "sports",
+   "wildlife",
+   "still"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-CANON-R5II",
+  "category": "camera",
+  "subcategory": "hybrid",
+  "manufacturer": "Canon",
+  "model": "EOS R5 Mark II",
+  "capability": {},
+  "use_cases": [
+   "hybrid",
+   "small crew"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-PANASONIC-S",
+  "category": "camera",
+  "subcategory": "hybrid",
+  "manufacturer": "Panasonic",
+  "model": "LUMIX S family",
+  "capability": {},
+  "use_cases": [
+   "documentary",
+   "creator"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-HASSELBLAD-X2DII",
+  "category": "camera",
+  "subcategory": "medium_format_still",
+  "manufacturer": "Hasselblad",
+  "model": "X2D II 100C",
+  "capability": {},
+  "use_cases": [
+   "fashion still",
+   "beauty",
+   "product"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-PHASEONE",
+  "category": "camera",
+  "subcategory": "medium_format_still",
+  "manufacturer": "Phase One",
+  "model": "XF / IQ family",
+  "capability": {},
+  "use_cases": [
+   "advertising still",
+   "art reproduction"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-GOPRO",
+  "category": "camera",
+  "subcategory": "action",
+  "manufacturer": "GoPro",
+  "model": "HERO family",
+  "capability": {},
+  "use_cases": [
+   "POV",
+   "sports",
+   "water"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-INSTA360",
+  "category": "camera",
+  "subcategory": "360",
+  "manufacturer": "Insta360",
+  "model": "Pro / X family",
+  "capability": {},
+  "use_cases": [
+   "360",
+   "VR",
+   "location capture"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-ARRI-SIGNATURE",
+  "category": "lens",
+  "subcategory": "prime",
+  "manufacturer": "ARRI",
+  "model": "Signature Prime",
+  "capability": {},
+  "use_cases": [
+   "film",
+   "drama",
+   "commercial"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-COOKE-S8",
+  "category": "lens",
+  "subcategory": "prime",
+  "manufacturer": "Cooke",
+  "model": "S8/i",
+  "capability": {},
+  "use_cases": [
+   "film",
+   "drama",
+   "beauty"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-ZEISS-SUPREME",
+  "category": "lens",
+  "subcategory": "prime",
+  "manufacturer": "ZEISS",
+  "model": "Supreme Prime",
+  "capability": {},
+  "use_cases": [
+   "film",
+   "commercial",
+   "VFX"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-LEITZ",
+  "category": "lens",
+  "subcategory": "prime",
+  "manufacturer": "Leitz",
+  "model": "Prime family",
+  "capability": {},
+  "use_cases": [
+   "film",
+   "luxury"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-ANGENIEUX",
+  "category": "lens",
+  "subcategory": "cinema_zoom",
+  "manufacturer": "Angénieux",
+  "model": "Optimo family",
+  "capability": {},
+  "use_cases": [
+   "film",
+   "drama"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-ATLAS",
+  "category": "lens",
+  "subcategory": "anamorphic",
+  "manufacturer": "Atlas Lens Co.",
+  "model": "Orion / Mercury family",
+  "capability": {},
+  "use_cases": [
+   "film",
+   "MV"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-LAOWA-PROBE",
+  "category": "lens",
+  "subcategory": "probe",
+  "manufacturer": "Laowa",
+  "model": "24mm Probe family",
+  "capability": {},
+  "use_cases": [
+   "food",
+   "product",
+   "miniature"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-MACRO100",
+  "category": "lens",
+  "subcategory": "macro",
+  "manufacturer": "Various",
+  "model": "90–105mm Macro",
+  "capability": {},
+  "use_cases": [
+   "product",
+   "beauty",
+   "food"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-SUPERMACRO",
+  "category": "lens",
+  "subcategory": "supermacro",
+  "manufacturer": "Various",
+  "model": "2x–5x Super Macro",
+  "capability": {},
+  "use_cases": [
+   "micro texture",
+   "scientific"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-TILTSHIFT",
+  "category": "lens",
+  "subcategory": "tilt_shift",
+  "manufacturer": "Canon/Nikon/Various",
+  "model": "Tilt-Shift family",
+  "capability": {},
+  "use_cases": [
+   "architecture",
+   "product"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-FISHEYE",
+  "category": "lens",
+  "subcategory": "fisheye",
+  "manufacturer": "Various",
+  "model": "Fisheye",
+  "capability": {},
+  "use_cases": [
+   "MV",
+   "skate",
+   "POV"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-VINTAGE",
+  "category": "lens",
+  "subcategory": "vintage_prime",
+  "manufacturer": "Various",
+  "model": "Rehoused Vintage Spherical",
+  "capability": {},
+  "use_cases": [
+   "period",
+   "drama",
+   "MV"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-APUTURE-XT26",
+  "category": "lighting",
+  "subcategory": "high_output_LED",
+  "manufacturer": "Aputure",
+  "model": "Electro Storm XT26",
+  "capability": {
+   "output_power_W": 2600,
+   "input_power_max_W": 3500,
+   "CCT_K": [
+    2700,
+    6500
+   ],
+   "CRI": "96.5+",
+   "TLCI": "97+",
+   "IP": "IP65"
+  },
+  "use_cases": [
+   "sun recreation",
+   "exterior fill",
+   "high speed"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-ARRI-SKYPANELX",
+  "category": "lighting",
+  "subcategory": "LED_panel",
+  "manufacturer": "ARRI",
+  "model": "SkyPanel X",
+  "capability": {},
+  "use_cases": [],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-ARRI-ORBITER",
+  "category": "lighting",
+  "subcategory": "LED_point_source",
+  "manufacturer": "ARRI",
+  "model": "Orbiter",
+  "capability": {},
+  "use_cases": [],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-KINO-MIMIK",
+  "category": "lighting",
+  "subcategory": "image_based_light",
+  "manufacturer": "Kino Flo",
+  "model": "MIMIK",
+  "capability": {},
+  "use_cases": [],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-ASTERA-TITAN",
+  "category": "lighting",
+  "subcategory": "pixel_tube",
+  "manufacturer": "Astera",
+  "model": "Titan Tube",
+  "capability": {},
+  "use_cases": [],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-NANLUX-EVOKE",
+  "category": "lighting",
+  "subcategory": "high_output_LED",
+  "manufacturer": "Nanlux",
+  "model": "Evoke family",
+  "capability": {},
+  "use_cases": [],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-NANLITE-FORZA",
+  "category": "lighting",
+  "subcategory": "COB_LED",
+  "manufacturer": "Nanlite",
+  "model": "Forza family",
+  "capability": {},
+  "use_cases": [],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-GODOX-KNOWLED",
+  "category": "lighting",
+  "subcategory": "cinema_LED",
+  "manufacturer": "Godox",
+  "model": "KNOWLED family",
+  "capability": {},
+  "use_cases": [],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-CREAMSOURCE",
+  "category": "lighting",
+  "subcategory": "LED_panel",
+  "manufacturer": "Creamsource",
+  "model": "Vortex family",
+  "capability": {},
+  "use_cases": [],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-PROFOTO-PROD3",
+  "category": "lighting",
+  "subcategory": "studio_strobe",
+  "manufacturer": "Profoto",
+  "model": "Pro-D3",
+  "capability": {},
+  "use_cases": [],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-BRONCOLOR-SCORO",
+  "category": "lighting",
+  "subcategory": "studio_flash_pack",
+  "manufacturer": "Broncolor",
+  "model": "Scoro",
+  "capability": {},
+  "use_cases": [],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-HMI-18K",
+  "category": "lighting",
+  "subcategory": "HMI",
+  "manufacturer": "Various",
+  "model": "18K HMI class",
+  "capability": {},
+  "use_cases": [],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-TUNGSTEN-5K",
+  "category": "lighting",
+  "subcategory": "tungsten",
+  "manufacturer": "Various",
+  "model": "5K Tungsten Fresnel",
+  "capability": {},
+  "use_cases": [],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-SOURCE4",
+  "category": "lighting",
+  "subcategory": "ellipsoidal",
+  "manufacturer": "ETC",
+  "model": "Source Four family",
+  "capability": {},
+  "use_cases": [],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-SPACELIGHT",
+  "category": "lighting",
+  "subcategory": "soft_overhead",
+  "manufacturer": "Various",
+  "model": "Space Light",
+  "capability": {},
+  "use_cases": [],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-BALLOON",
+  "category": "lighting",
+  "subcategory": "large_soft",
+  "manufacturer": "Various",
+  "model": "Balloon Light",
+  "capability": {},
+  "use_cases": [],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "MOV-ARRI-TRINITY2",
+  "category": "camera_support",
+  "subcategory": "body_stabilizer",
+  "manufacturer": "ARRI",
+  "model": "TRINITY 2",
+  "capability": {},
+  "use_cases": [
+   "long take",
+   "low-to-high"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "MOV-ARRI-360EVO",
+  "category": "camera_support",
+  "subcategory": "remote_head",
+  "manufacturer": "ARRI",
+  "model": "360 EVO",
+  "capability": {},
+  "use_cases": [
+   "crane",
+   "vehicle",
+   "continuous roll"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "MOV-MRMC-BOLT",
+  "category": "camera_support",
+  "subcategory": "motion_control_robot",
+  "manufacturer": "MRMC",
+  "model": "Bolt family",
+  "capability": {},
+  "use_cases": [
+   "tabletop",
+   "VFX",
+   "high-speed"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "MOV-AGITO",
+  "category": "camera_support",
+  "subcategory": "robotic_dolly",
+  "manufacturer": "Motion Impossible",
+  "model": "AGITO",
+  "capability": {},
+  "use_cases": [
+   "sports",
+   "studio",
+   "live"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "MOV-HYDRASCOPE",
+  "category": "camera_support",
+  "subcategory": "telescopic_crane",
+  "manufacturer": "Chapman/Leonard",
+  "model": "Hydrascope family",
+  "capability": {},
+  "use_cases": [
+   "film",
+   "large reveal"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "MOV-FISHER",
+  "category": "camera_support",
+  "subcategory": "dolly",
+  "manufacturer": "Fisher",
+  "model": "Studio Dolly family",
+  "capability": {},
+  "use_cases": [
+   "drama",
+   "film"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "MOV-STEADICAM",
+  "category": "camera_support",
+  "subcategory": "body_stabilizer",
+  "manufacturer": "Tiffen",
+  "model": "Steadicam family",
+  "capability": {},
+  "use_cases": [
+   "drama",
+   "one take"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "MOV-RONIN",
+  "category": "camera_support",
+  "subcategory": "gimbal",
+  "manufacturer": "DJI",
+  "model": "Ronin family",
+  "capability": {},
+  "use_cases": [
+   "gimbal",
+   "vehicle"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "MOV-SLIDER",
+  "category": "camera_support",
+  "subcategory": "slider",
+  "manufacturer": "Various",
+  "model": "Motorized Slider",
+  "capability": {},
+  "use_cases": [
+   "product",
+   "interview"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "MOV-CABLECAM",
+  "category": "camera_support",
+  "subcategory": "cablecam",
+  "manufacturer": "Various",
+  "model": "Cable Camera System",
+  "capability": {},
+  "use_cases": [
+   "stadium",
+   "forest"
+  ],
+  "safety_class": "C",
+  "specialist_only": true
+ },
+ {
+  "id": "MOV-SPIDERCAM",
+  "category": "camera_support",
+  "subcategory": "multi_cable_camera",
+  "manufacturer": "Spidercam",
+  "model": "Spidercam",
+  "capability": {},
+  "use_cases": [
+   "stadium",
+   "live"
+  ],
+  "safety_class": "C",
+  "specialist_only": true
+ },
+ {
+  "id": "MOV-RAILCAM",
+  "category": "camera_support",
+  "subcategory": "railcam",
+  "manufacturer": "Various",
+  "model": "Rail Camera",
+  "capability": {},
+  "use_cases": [
+   "sports",
+   "concert"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "DRN-DJI-INSPIRE3",
+  "category": "aerial",
+  "subcategory": "cinema_drone",
+  "manufacturer": "DJI",
+  "model": "Inspire 3",
+  "capability": {
+   "full_frame_8K_camera": true,
+   "RTK": true,
+   "high_frame_rate": true
+  },
+  "use_cases": [
+   "film aerial",
+   "VFX plate",
+   "commercial"
+  ],
+  "safety_class": "B",
+  "specialist_only": true
+ },
+ {
+  "id": "DRN-FREEFLY-ALTAX",
+  "category": "aerial",
+  "subcategory": "heavy_lift",
+  "manufacturer": "Freefly",
+  "model": "Alta X",
+  "capability": {
+   "max_payload_kg": 15.06,
+   "max_gross_takeoff_kg": 34.86,
+   "typical_empty_kg": 10.86,
+   "ingress": "IP43 equivalent tested"
+  },
+  "use_cases": [
+   "heavy cinema payload",
+   "LiDAR",
+   "custom sensor"
+  ],
+  "safety_class": "B",
+  "specialist_only": true
+ },
+ {
+  "id": "DRN-AVATA2",
+  "category": "aerial",
+  "subcategory": "FPV_cinewhoop",
+  "manufacturer": "DJI/Various",
+  "model": "DJI Avata 2",
+  "capability": {},
+  "use_cases": [
+   "proximity",
+   "interior transition"
+  ],
+  "safety_class": "B",
+  "specialist_only": true
+ },
+ {
+  "id": "DRN-FPV5",
+  "category": "aerial",
+  "subcategory": "FPV",
+  "manufacturer": "DJI/Various",
+  "model": "Custom 5-inch FPV",
+  "capability": {},
+  "use_cases": [
+   "chase",
+   "action"
+  ],
+  "safety_class": "B",
+  "specialist_only": true
+ },
+ {
+  "id": "DRN-FPV7",
+  "category": "aerial",
+  "subcategory": "long_range_FPV",
+  "manufacturer": "DJI/Various",
+  "model": "Custom 7-inch FPV",
+  "capability": {},
+  "use_cases": [
+   "mountain",
+   "vehicle"
+  ],
+  "safety_class": "B",
+  "specialist_only": true
+ },
+ {
+  "id": "DRN-MICRO",
+  "category": "aerial",
+  "subcategory": "micro_FPV",
+  "manufacturer": "DJI/Various",
+  "model": "Micro Cinewhoop",
+  "capability": {},
+  "use_cases": [
+   "tight interior"
+  ],
+  "safety_class": "B",
+  "specialist_only": true
+ },
+ {
+  "id": "SFX-RE5",
+  "category": "special_effects",
+  "subcategory": "wind_machine",
+  "manufacturer": "Reel EFX",
+  "model": "RE5 Fan",
+  "capability": {},
+  "use_cases": [
+   "wind",
+   "hair",
+   "wardrobe"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-RE2",
+  "category": "special_effects",
+  "subcategory": "wind_machine",
+  "manufacturer": "Reel EFX",
+  "model": "RE2 Fan",
+  "capability": {},
+  "use_cases": [
+   "wind",
+   "smoke shaping"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-DF50",
+  "category": "special_effects",
+  "subcategory": "hazer",
+  "manufacturer": "Reel EFX",
+  "model": "DF-50 Diffusion Hazer",
+  "capability": {},
+  "use_cases": [
+   "film haze"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-RADIANCE",
+  "category": "special_effects",
+  "subcategory": "hazer",
+  "manufacturer": "Ultratec",
+  "model": "Radiance Hazer",
+  "capability": {},
+  "use_cases": [
+   "haze",
+   "stage"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-G3000",
+  "category": "special_effects",
+  "subcategory": "fogger",
+  "manufacturer": "Ultratec",
+  "model": "G3000 Fog Generator",
+  "capability": {},
+  "use_cases": [
+   "fog",
+   "atmosphere"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-ECLIPSE",
+  "category": "special_effects",
+  "subcategory": "low_fog",
+  "manufacturer": "Ultratec",
+  "model": "Eclipse Low Fog Generator",
+  "capability": {},
+  "use_cases": [
+   "ground fog"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-POLARVORTEX",
+  "category": "special_effects",
+  "subcategory": "snow_machine",
+  "manufacturer": "Ultratec",
+  "model": "Polar Vortex Snow Machine",
+  "capability": {},
+  "use_cases": [
+   "snow"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-SNOWSQUALL",
+  "category": "special_effects",
+  "subcategory": "snow_machine",
+  "manufacturer": "Ultratec",
+  "model": "Snow Squall Snow Machine",
+  "capability": {},
+  "use_cases": [
+   "snow",
+   "blizzard"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-RAINBAR",
+  "category": "special_effects",
+  "subcategory": "rain_rig",
+  "manufacturer": "Various",
+  "model": "Rain Bar",
+  "capability": {},
+  "use_cases": [
+   "rain close coverage"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-RAINTOWER",
+  "category": "special_effects",
+  "subcategory": "rain_rig",
+  "manufacturer": "Various",
+  "model": "Rain Tower",
+  "capability": {},
+  "use_cases": [
+   "large exterior rain"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-RAINGRID",
+  "category": "special_effects",
+  "subcategory": "rain_rig",
+  "manufacturer": "Various",
+  "model": "Overhead Rain Grid",
+  "capability": {},
+  "use_cases": [
+   "stage rain"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-WETDOWN",
+  "category": "special_effects",
+  "subcategory": "water_effect",
+  "manufacturer": "Various",
+  "model": "Wet-down System",
+  "capability": {},
+  "use_cases": [
+   "night street"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-WATERDUMP",
+  "category": "special_effects",
+  "subcategory": "water_effect",
+  "manufacturer": "Professional SFX vendor",
+  "model": "Water Dump / Wave System",
+  "capability": {},
+  "use_cases": [
+   "large splash",
+   "wave"
+  ],
+  "safety_class": "C",
+  "specialist_only": true
+ },
+ {
+  "id": "SFX-WATERCANNON",
+  "category": "special_effects",
+  "subcategory": "water_effect",
+  "manufacturer": "Professional SFX vendor",
+  "model": "Production Water Cannon class",
+  "capability": {},
+  "use_cases": [
+   "storm",
+   "large water"
+  ],
+  "safety_class": "C",
+  "specialist_only": true
+ },
+ {
+  "id": "SFX-FOGCURTAIN",
+  "category": "special_effects",
+  "subcategory": "fog_effect",
+  "manufacturer": "Various",
+  "model": "Fog Curtain",
+  "capability": {},
+  "use_cases": [
+   "localized fog wall"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-STEAM",
+  "category": "special_effects",
+  "subcategory": "steam",
+  "manufacturer": "Various",
+  "model": "Production Steam System",
+  "capability": {},
+  "use_cases": [
+   "food",
+   "industrial"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-AIRMOVER",
+  "category": "special_effects",
+  "subcategory": "wind_machine",
+  "manufacturer": "Various",
+  "model": "High-output Air Mover",
+  "capability": {},
+  "use_cases": [
+   "storm",
+   "debris"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-MULTIFAN",
+  "category": "special_effects",
+  "subcategory": "wind_machine",
+  "manufacturer": "Various",
+  "model": "DMX Multi-Fan Array",
+  "capability": {},
+  "use_cases": [
+   "distributed wind"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-TURNTABLE",
+  "category": "special_effects",
+  "subcategory": "mechanical",
+  "manufacturer": "Various",
+  "model": "Large Motion Turntable",
+  "capability": {},
+  "use_cases": [
+   "product",
+   "vehicle",
+   "set"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-SHAKER",
+  "category": "special_effects",
+  "subcategory": "mechanical",
+  "manufacturer": "Professional SFX vendor",
+  "model": "Set Shaker / Vibration Platform",
+  "capability": {},
+  "use_cases": [
+   "earthquake",
+   "vehicle interior"
+  ],
+  "safety_class": "C",
+  "specialist_only": true
+ },
+ {
+  "id": "SFX-TILTSET",
+  "category": "special_effects",
+  "subcategory": "mechanical",
+  "manufacturer": "Professional SFX vendor",
+  "model": "Tilting Set Platform",
+  "capability": {},
+  "use_cases": [
+   "ship",
+   "disaster"
+  ],
+  "safety_class": "C",
+  "specialist_only": true
+ },
+ {
+  "id": "SFX-ROTATINGROOM",
+  "category": "special_effects",
+  "subcategory": "mechanical",
+  "manufacturer": "Professional SFX vendor",
+  "model": "Rotating Room / Set",
+  "capability": {},
+  "use_cases": [
+   "fantasy",
+   "action"
+  ],
+  "safety_class": "C",
+  "specialist_only": true
+ },
+ {
+  "id": "SFX-WINCH",
+  "category": "special_effects",
+  "subcategory": "flying_rigging",
+  "manufacturer": "Professional rigging/SFX vendor",
+  "model": "Computer-Controlled FX Winch",
+  "capability": {},
+  "use_cases": [
+   "object pull",
+   "flying interface"
+  ],
+  "safety_class": "C",
+  "specialist_only": true
+ },
+ {
+  "id": "SFX-BREAKGLASS",
+  "category": "special_effects",
+  "subcategory": "breakaway",
+  "manufacturer": "Professional props/SFX vendor",
+  "model": "Approved Breakaway Glass System",
+  "capability": {},
+  "use_cases": [
+   "action",
+   "stunt"
+  ],
+  "safety_class": "C",
+  "specialist_only": true
+ },
+ {
+  "id": "SFX-BREAKWALL",
+  "category": "special_effects",
+  "subcategory": "breakaway",
+  "manufacturer": "Professional scenic/SFX vendor",
+  "model": "Breakaway Wall System",
+  "capability": {},
+  "use_cases": [
+   "action",
+   "comedy"
+  ],
+  "safety_class": "C",
+  "specialist_only": true
+ },
+ {
+  "id": "SFX-FLAME",
+  "category": "special_effects",
+  "subcategory": "fire",
+  "manufacturer": "Licensed SFX vendor",
+  "model": "Controlled Practical Flame System",
+  "capability": {},
+  "use_cases": [
+   "film fire",
+   "interactive light"
+  ],
+  "safety_class": "C",
+  "specialist_only": true
+ },
+ {
+  "id": "SFX-PYRO",
+  "category": "special_effects",
+  "subcategory": "pyrotechnics",
+  "manufacturer": "Licensed Pyrotechnics Provider",
+  "model": "Cinematic Pyrotechnic Effects",
+  "capability": {},
+  "use_cases": [
+   "explosion representation",
+   "impact",
+   "fireball"
+  ],
+  "safety_class": "C",
+  "specialist_only": true
+ },
+ {
+  "id": "SFX-IMPACT",
+  "category": "special_effects",
+  "subcategory": "impact_effect",
+  "manufacturer": "Professional SFX vendor",
+  "model": "Impact / Bullet-Hit Representation System",
+  "capability": {},
+  "use_cases": [
+   "drama",
+   "action"
+  ],
+  "safety_class": "C",
+  "specialist_only": true
+ },
+ {
+  "id": "SFX-DUST",
+  "category": "special_effects",
+  "subcategory": "particle",
+  "manufacturer": "Various",
+  "model": "Controlled Dust / Particle System",
+  "capability": {},
+  "use_cases": [
+   "impact",
+   "collapse"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-EMBERS",
+  "category": "special_effects",
+  "subcategory": "particle",
+  "manufacturer": "Professional SFX vendor",
+  "model": "Controlled Ember Visual System",
+  "capability": {},
+  "use_cases": [
+   "fire scene",
+   "fantasy"
+  ],
+  "safety_class": "C",
+  "specialist_only": true
+ },
+ {
+  "id": "MOD-8X8",
+  "category": "modifier_support",
+  "subcategory": "diffusion",
+  "manufacturer": "Various",
+  "model": "8x8 Half Grid Diffusion",
+  "capability": {},
+  "use_cases": [
+   "portrait",
+   "day exterior"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "MOD-12X12",
+  "category": "modifier_support",
+  "subcategory": "diffusion",
+  "manufacturer": "Various",
+  "model": "12x12 Full Grid Diffusion",
+  "capability": {},
+  "use_cases": [
+   "film exterior"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "MOD-ULTRABOUNCE",
+  "category": "modifier_support",
+  "subcategory": "bounce",
+  "manufacturer": "Various",
+  "model": "Ultrabounce",
+  "capability": {},
+  "use_cases": [
+   "exterior fill"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "MOD-MUSLIN",
+  "category": "modifier_support",
+  "subcategory": "bounce_diffusion",
+  "manufacturer": "Various",
+  "model": "Bleached/Unbleached Muslin",
+  "capability": {},
+  "use_cases": [
+   "portrait",
+   "drama"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "MOD-SOLID",
+  "category": "modifier_support",
+  "subcategory": "negative_fill",
+  "manufacturer": "Various",
+  "model": "Solid / Floppy",
+  "capability": {},
+  "use_cases": [
+   "contrast",
+   "flagging"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "MOD-NET",
+  "category": "modifier_support",
+  "subcategory": "light_control",
+  "manufacturer": "Various",
+  "model": "Single/Double Net",
+  "capability": {},
+  "use_cases": [
+   "exposure shaping"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "MOD-CPL",
+  "category": "modifier_support",
+  "subcategory": "filter",
+  "manufacturer": "Various",
+  "model": "Circular Polarizer",
+  "capability": {},
+  "use_cases": [
+   "glass",
+   "water",
+   "car"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "MOD-DIFF",
+  "category": "modifier_support",
+  "subcategory": "camera_filter",
+  "manufacturer": "Various",
+  "model": "Diffusion Filter family",
+  "capability": {},
+  "use_cases": [
+   "beauty",
+   "period"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "STL-COLUMN",
+  "category": "modifier_support",
+  "subcategory": "still_support",
+  "manufacturer": "Various",
+  "model": "Studio Camera Column Stand",
+  "capability": {},
+  "use_cases": [
+   "product still"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "STL-FOCUSRAIL",
+  "category": "modifier_support",
+  "subcategory": "still_support",
+  "manufacturer": "Various",
+  "model": "Motorized Macro Focus Rail",
+  "capability": {},
+  "use_cases": [
+   "focus stacking"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-ARRI-ALEXA-MINI-LF",
+  "category": "camera",
+  "subcategory": "cinema",
+  "manufacturer": "ARRI",
+  "model": "ALEXA Mini LF",
+  "capability": {
+   "sensor_class": "large_format"
+  },
+  "use_cases": [
+   "feature",
+   "drama",
+   "gimbal"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-SONY-BURANO",
+  "category": "camera",
+  "subcategory": "cinema",
+  "manufacturer": "Sony",
+  "model": "BURANO",
+  "capability": {
+   "sensor_class": "full_frame",
+   "IBIS": true
+  },
+  "use_cases": [
+   "documentary",
+   "drama",
+   "commercial"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-CANON-C500II",
+  "category": "camera",
+  "subcategory": "cinema",
+  "manufacturer": "Canon",
+  "model": "EOS C500 Mark II",
+  "capability": {
+   "sensor_class": "full_frame"
+  },
+  "use_cases": [
+   "drama",
+   "commercial"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-PANASONIC-AU-EVA1",
+  "category": "camera",
+  "subcategory": "cinema",
+  "manufacturer": "Panasonic",
+  "model": "AU-EVA1",
+  "capability": {
+   "sensor_class": "Super35"
+  },
+  "use_cases": [
+   "documentary",
+   "legacy rental"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "CAM-ARRI-AMIRA",
+  "category": "camera",
+  "subcategory": "cinema",
+  "manufacturer": "ARRI",
+  "model": "AMIRA",
+  "capability": {
+   "sensor_class": "Super35"
+  },
+  "use_cases": [
+   "documentary",
+   "live",
+   "drama"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-ARRI-MASTER-PRIME",
+  "category": "lens",
+  "subcategory": "prime",
+  "manufacturer": "ARRI/ZEISS",
+  "model": "Master Prime",
+  "capability": {},
+  "use_cases": [
+   "film",
+   "drama",
+   "VFX"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-COOKE-S4",
+  "category": "lens",
+  "subcategory": "prime",
+  "manufacturer": "Cooke",
+  "model": "S4/i",
+  "capability": {},
+  "use_cases": [
+   "film",
+   "period",
+   "drama"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-ZEISS-CP3",
+  "category": "lens",
+  "subcategory": "prime",
+  "manufacturer": "ZEISS",
+  "model": "CP.3",
+  "capability": {},
+  "use_cases": [
+   "commercial",
+   "documentary"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-DZO-VESPID",
+  "category": "lens",
+  "subcategory": "prime",
+  "manufacturer": "DZOFilm",
+  "model": "Vespid Prime",
+  "capability": {},
+  "use_cases": [
+   "commercial",
+   "indie film"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-FUJINON-PREMISTA",
+  "category": "lens",
+  "subcategory": "cinema_zoom",
+  "manufacturer": "Fujinon",
+  "model": "Premista",
+  "capability": {},
+  "use_cases": [
+   "film",
+   "commercial"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LEN-FUJINON-CABRIO",
+  "category": "lens",
+  "subcategory": "servo_zoom",
+  "manufacturer": "Fujinon",
+  "model": "Cabrio family",
+  "capability": {},
+  "use_cases": [
+   "documentary",
+   "live",
+   "sports"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-ARRI-SKYPANEL-X21",
+  "category": "lighting",
+  "subcategory": "LED_panel",
+  "manufacturer": "ARRI",
+  "model": "SkyPanel X21",
+  "capability": {
+   "power_W": 800,
+   "pixel_zones": 8,
+   "CCT_K": [
+    1500,
+    20000
+   ],
+   "IP": "IP66",
+   "beam_deg": {
+    "hard": 11,
+    "soft": 107,
+    "open": 121
+   },
+   "protocols": [
+    "DMX512A",
+    "RDM",
+    "Art-Net 4",
+    "sACN",
+    "CRMX"
+   ]
+  },
+  "use_cases": [
+   "film",
+   "VP",
+   "weather"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-ARRI-SKYPANEL-X22",
+  "category": "lighting",
+  "subcategory": "LED_array",
+  "manufacturer": "ARRI",
+  "model": "SkyPanel X22",
+  "capability": {
+   "power_W": 1600,
+   "pixel_zones": 16,
+   "max_lux_10m_5600K": 9600
+  },
+  "use_cases": [
+   "film",
+   "large stage",
+   "VP"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "LGT-ARRI-SKYPANEL-X23",
+  "category": "lighting",
+  "subcategory": "LED_array",
+  "manufacturer": "ARRI",
+  "model": "SkyPanel X23",
+  "capability": {
+   "power_W": 2400,
+   "pixel_zones": 24,
+   "max_lux_10m_5600K": 14400
+  },
+  "use_cases": [
+   "large stage",
+   "VP",
+   "exterior"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "GRP-MATTHEWS-CSTAND",
+  "category": "grip",
+  "subcategory": "stand",
+  "manufacturer": "Matthews",
+  "model": "C-Stand family",
+  "capability": {},
+  "use_cases": [
+   "flags",
+   "small lights",
+   "grip"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "GRP-AVENGER-COMBO",
+  "category": "grip",
+  "subcategory": "stand",
+  "manufacturer": "Avenger",
+  "model": "Combo Stand family",
+  "capability": {},
+  "use_cases": [
+   "larger fixtures",
+   "frames"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "GRP-MENACEARM",
+  "category": "grip",
+  "subcategory": "overhead",
+  "manufacturer": "Various",
+  "model": "Menace Arm",
+  "capability": {},
+  "use_cases": [
+   "top light",
+   "boom source"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "MOV-PANTHER-DOLLY",
+  "category": "camera_support",
+  "subcategory": "dolly",
+  "manufacturer": "Panther",
+  "model": "Dolly systems",
+  "capability": {},
+  "use_cases": [
+   "film",
+   "drama",
+   "studio"
+  ],
+  "safety_class": "A",
+  "specialist_only": false
+ },
+ {
+  "id": "MOV-TECHNOCRANE",
+  "category": "camera_support",
+  "subcategory": "telescopic_crane",
+  "manufacturer": "Various",
+  "model": "Technocrane class",
+  "capability": {},
+  "use_cases": [
+   "feature",
+   "commercial",
+   "live"
+  ],
+  "safety_class": "B",
+  "specialist_only": true
+ },
+ {
+  "id": "SFX-RAIN-WAND",
+  "category": "special_effects",
+  "subcategory": "rain_rig",
+  "manufacturer": "Various",
+  "model": "Rain Wand",
+  "capability": {},
+  "use_cases": [
+   "close rain",
+   "localized rain"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-WINDOW-RAIN",
+  "category": "special_effects",
+  "subcategory": "rain_rig",
+  "manufacturer": "Various",
+  "model": "Window Rain System",
+  "capability": {},
+  "use_cases": [
+   "interior dialogue",
+   "car window"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-LOWFOG",
+  "category": "special_effects",
+  "subcategory": "atmosphere",
+  "manufacturer": "Various",
+  "model": "Low Fog System",
+  "capability": {},
+  "use_cases": [
+   "horror",
+   "fantasy",
+   "stage"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-FOGGER-HAND",
+  "category": "special_effects",
+  "subcategory": "atmosphere",
+  "manufacturer": "Various",
+  "model": "Portable Local Fogger",
+  "capability": {},
+  "use_cases": [
+   "localized smoke",
+   "food/industrial"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-SNOW",
+  "category": "special_effects",
+  "subcategory": "weather",
+  "manufacturer": "Various",
+  "model": "Production Snow Machine class",
+  "capability": {},
+  "use_cases": [
+   "film snow",
+   "blizzard"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-BUBBLE",
+  "category": "special_effects",
+  "subcategory": "particle",
+  "manufacturer": "Various",
+  "model": "Bubble Machine",
+  "capability": {},
+  "use_cases": [
+   "fantasy",
+   "beauty",
+   "live"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-CONFETTI",
+  "category": "special_effects",
+  "subcategory": "particle",
+  "manufacturer": "Various",
+  "model": "Confetti System",
+  "capability": {},
+  "use_cases": [
+   "live",
+   "celebration"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-RAIN-RECIRC",
+  "category": "special_effects",
+  "subcategory": "water_system",
+  "manufacturer": "Various",
+  "model": "Recirculating Stage Rain System",
+  "capability": {},
+  "use_cases": [
+   "stage rain",
+   "long takes"
+  ],
+  "safety_class": "B",
+  "specialist_only": false
+ },
+ {
+  "id": "SFX-CREATURE",
+  "category": "special_effects",
+  "subcategory": "mechanical_prop",
+  "manufacturer": "Various",
+  "model": "Animatronic / Mechanical Creature class",
+  "capability": {},
+  "use_cases": [
+   "feature",
+   "creature",
+   "practical"
+  ],
+  "safety_class": "C",
+  "specialist_only": true
+ }
+];
+
+</script>
+<script>
+/* =========================================================
+ * CineOS 移植エンジン群 (cineos/CLAUDE.md §5 準拠のモジュール分割)
+ *  - EquipmentMatcher: capability-first の機材アーキタイプ推薦
+ *  - FeasibilityEngine / SafetyFlagger: ルールベースの実現性・安全チェック
+ * ルールIDは cineos/data/advanced/advanced_rules.json に対応。
+ * 安全方針: Class C は演出計画・座組みのみを扱い、
+ * 危険な構造物・火薬量等の情報は一切生成しない (CLAUDE.md §3)。
+ * ======================================================= */
+
+"use strict";
+
+/* =========================================================
+ * EquipmentMatcher — アプリ内の機材タイプ/設定 → DBアーキタイプ候補
+ * 「capability first, SKU second」(CLAUDE.md §9)
+ * ======================================================= */
+const MATCH_RULES = {
+  /* ライト: モディファイアの性格も加味して候補を寄せる */
+  key:       { cats: [["lighting", ["COB_LED", "high_output_LED", "LED_panel"]]], need: "拡散前提の主光源 (COB/パネル系)" },
+  fill:      { cats: [["lighting", ["LED_panel", "COB_LED"]]], need: "起こし用の面光源" },
+  back:      { cats: [["lighting", ["COB_LED", "ellipsoidal", "LED_point_source"]]], need: "輪郭用の指向性光源" },
+  rim:       { cats: [["lighting", ["COB_LED", "ellipsoidal", "LED_point_source"]]], need: "エッジ用の指向性光源" },
+  top:       { cats: [["lighting", ["soft_overhead", "large_soft", "LED_array"]]], need: "頭上の大面積ソフト" },
+  bg:        { cats: [["lighting", ["LED_panel", "pixel_tube", "cinema_LED"]]], need: "背景を独立制御できる面/チューブ光源" },
+  hmi:       { cats: [["lighting", ["HMI", "high_output_LED"]]], need: "太陽光級の大出力デイライト (フリッカーセーフ)" },
+  practical: { cats: [["lighting", ["pixel_tube", "LED_point_source", "tungsten"]]], need: "画面内に写る演出光源" },
+  reflector: { cats: [["modifier_support", ["bounce", "bounce_diffusion"]]], need: "バウンス面" },
+  flag:      { cats: [["modifier_support", ["negative_fill", "light_control"]]], need: "ネガティブフィル / 光のカット" },
+  diff:      { cats: [["modifier_support", ["diffusion"]], ["grip", ["overhead"]]], need: "拡散フレーム / オーバーヘッド" },
+  fan:       { cats: [["special_effects", ["wind_machine"]]], need: "送風 (風量段階制御)" },
+  smoke:     { cats: [["special_effects", ["hazer", "fogger", "atmosphere", "low_fog", "fog_effect"]]], need: "ヘイズ/フォグ (粒径と滞留時間で選定)" },
+  rainmachine: { cats: [["special_effects", ["rain_rig", "water_system"]]], need: "レインリグ (逆光前提・水量制御)" },
+  snowmachine: { cats: [["special_effects", ["snow_machine", "particle"]]], need: "降雪 (泡雪/紙雪)" },
+  confetti:  { cats: [["special_effects", ["particle"]]], need: "紙吹雪/パーティクル射出" },
+  pyro:      { cats: [["special_effects", ["pyrotechnics", "fire"]]], need: "火工特効 — Class C: 有資格特効技師の専任領域 (本ツールは演出計画のみ)" },
+  spark:     { cats: [["special_effects", ["particle", "impact_effect", "pyrotechnics"]]], need: "スパーク演出 — 有資格者運用" },
+  drone:     { cats: [["aerial", ["cinema_drone", "heavy_lift", "FPV", "FPV_cinewhoop"]]], need: "空撮プラットフォーム" },
+};
+
+const BODY_MATCH = {
+  cine:       [["camera", ["cinema", "compact_cinema"]]],
+  mirrorless: [["camera", ["hybrid"]]],
+  highspeed:  [["camera", ["high_speed", "ultra_high_speed"]]],
+  broadcast:  [["camera", ["cinema", "compact_cinema"]]],
+  action:     [["camera", ["action"]]],
+  pov_ear:    [["camera", ["action"]]],
+  fpv:        [["aerial", ["FPV", "FPV_cinewhoop"]]],
+  cam360:     [["camera", ["360"]]],
+  medium:     [["camera", ["medium_format_still"]]],
+  phone:      [],
+};
+
+const SUPPORT_MATCH = {
+  slider: [["camera_support", ["slider"]]],
+  dolly: [["camera_support", ["dolly", "robotic_dolly", "railcam"]]],
+  crane: [["camera_support", ["telescopic_crane"]]],
+  technocrane: [["camera_support", ["telescopic_crane", "remote_head"]]],
+  steadicam: [["camera_support", ["body_stabilizer"]]],
+  bodyrig: [["camera_support", ["body_stabilizer"]]],
+  gimbal: [["camera_support", ["gimbal", "remote_head"]]],
+  cablecam: [["camera_support", ["cablecam", "multi_cable_camera"]]],
+  dronemount: [["aerial", ["cinema_drone", "heavy_lift"]]],
+  tripod: [["modifier_support", ["still_support"]], ["grip", ["stand"]]],
+};
+
+function dbQuery(catSubPairs, limit = 3) {
+  const out = [];
+  for (const [cat, subs] of catSubPairs) {
+    for (const r of EQUIPMENT_DB) {
+      if (r.category !== cat) continue;
+      if (subs && subs.length && !subs.includes(r.subcategory)) continue;
+      out.push(r);
+      if (out.length >= limit) return out;
+    }
+  }
+  return out.slice(0, limit);
+}
+
+function lensMatch(cut) {
+  if (cut.camera.lens === "anam") return dbQuery([["lens", ["anamorphic"]]]);
+  if (cut.camera.lens === "100m" || cut.camera.focalMm >= 90 && cut.subjectType !== "person")
+    return dbQuery([["lens", ["macro", "probe", "supermacro"]]]);
+  return dbQuery([["lens", ["prime", "cinema_zoom"]]], 2);
+}
+
+/* カット全体の機材候補リスト (指示書用) */
+function recommendForCut(cut) {
+  const recs = [];
+  const fmtR = (r) => `${r.manufacturer} ${r.model}`;
+  const push = (role, need, records) => {
+    if (records.length) recs.push({ role, need, examples: records.map(fmtR), safety: records[0].safety_class });
+  };
+
+  const body = BODY_MATCH[cut.camera.body];
+  if (body && body.length) push("カメラ", (CAMERA_BODIES.find(b => b.id === cut.camera.body) || {}).label || "", dbQuery(body, 2));
+  push("レンズ", cut.camera.lens === "anam" ? "アナモルフィック" : `${cut.camera.focalMm}mm 相当`, lensMatch(cut));
+  const sup = SUPPORT_MATCH[cut.camera.support];
+  if (sup) push("サポート", (CAMERA_SUPPORTS.find(s => s.id === cut.camera.support) || {}).label || "", dbQuery(sup, 2));
+
+  const seen = new Set();
+  for (const it of cut.items) {
+    if (it.type === "subject" || it.type === "camera" || seen.has(it.type)) continue;
+    seen.add(it.type);
+    const m = MATCH_RULES[it.type];
+    if (m) push(EQUIP_TYPES[it.type].label, m.need, dbQuery(m.cats, 2));
+  }
+  return recs;
+}
+
+/* 選択中の機材1つの候補 (インスペクター用) */
+function recommendForItem(it) {
+  const m = MATCH_RULES[it.type];
+  if (!m) return null;
+  return { need: m.need, records: dbQuery(m.cats, 3) };
+}
+
+/* =========================================================
+ * FeasibilityEngine / SafetyFlagger
+ * 優先順位: SAFETY → 物理的実現性 → 継続性 → … (CLAUDE.md §6)
+ * ======================================================= */
+const SFX_SAFETY_CLASS = {
+  pyro: "C", spark: "B", rainmachine: "B", snowmachine: "B",
+  smoke: "B", fan: "A", confetti: "A",
+};
+
+function parseFps(fpsStr) {
+  const m = String(fpsStr || "").match(/(\d+)\s*fps/i) || String(fpsStr || "").match(/^(\d+)/);
+  return m ? parseInt(m[1]) : 24;
+}
+function parseShutterDenom(s) {
+  const m = String(s || "").match(/1\s*\/\s*(\d+)/);
+  return m ? parseInt(m[1]) : null;
+}
+
+function evaluateFeasibility(cut) {
+  const w = []; // {lv: "danger"|"warn"|"info", t}
+  const an = analyzeLighting(cut);
+  const types = new Set(cut.items.map(i => i.type));
+  const opts = new Set(cut.options);
+
+  /* --- SAFETY (最優先) --- */
+  if (types.has("pyro") || opts.has("explosion")) {
+    w.push({ lv: "danger", t: "Class C 特効 (爆発/火工): 有資格の特効技師専任・所轄届出・安全区域とリスクアセスメントが前提。本ツールが出すのは演出計画と座組みのみ (SFX-002)。" });
+    w.push({ lv: "warn", t: "一発勝負の破壊系イベント → 同時マルチカム (本線+HS+寄り) を推奨 (COV-003)。" });
+  }
+  const classB = [...types].filter(t => SFX_SAFETY_CLASS[t] === "B");
+  if (classB.length) {
+    w.push({ lv: "warn", t: `Class B 特効機材 (${classB.map(t => EQUIP_TYPES[t].label).join("・")}): 訓練を受けたクルーによる運用と養生・消火/漏電対策が必要。` });
+  }
+  if (types.has("smoke") || opts.has("haze")) {
+    w.push({ lv: "info", t: "スモーク/ヘイズ: 会場の火災報知器対応と換気計画、テイク間の充満待ちを段取りに含める。" });
+  }
+
+  /* --- 物理的実現性 --- */
+  const fps = parseFps(cut.camera.fps);
+  if (fps >= 100) {
+    const stops = Math.log2(fps / 24).toFixed(1);
+    w.push({ lv: "warn", t: `ハイスピード ${fps}fps: 24fps比で約 +${stops} 段の光量が必要 (LGT-002)。フリッカーフリー電源/灯体を確認。` });
+  }
+  if ((opts.has("rain") || opts.has("snow")) && an.rimPower === 0) {
+    w.push({ lv: "warn", t: "雨・雪は逆光がないとほぼ写らない (SFX-001)。バック/サイドバックのライトを追加してください。" });
+  }
+  if (opts.has("steam") && ["white", "bright", "day", "sky"].includes(cut.bgStyle)) {
+    w.push({ lv: "warn", t: "湯気・スチームは明るい背景では消える。被写体背後に暗い面を作り逆光で抜くこと。" });
+  }
+  if (opts.has("splash")) {
+    const denom = parseShutterDenom(cut.camera.shutter);
+    if (fps < 120 && (!denom || denom < 1000)) {
+      w.push({ lv: "warn", t: "スプラッシュの凍結には 1/1000s 以上のシャッター、ハイスピード撮影、または閃光時間の短いストロボが必要。" });
+    }
+  }
+  if (opts.has("silhouette") && an.frontPower > 0) {
+    w.push({ lv: "warn", t: "シルエット指定なのに正面光が点灯している。前面の灯を消すか出力0にしないと輪郭が濁る。" });
+  }
+
+  /* --- 材質物理 (subject material) --- */
+  if (cut.subjectType === "bottle" && an.bgPower === 0 && !opts.has("silhouette")) {
+    w.push({ lv: "info", t: "透明ガラス/液体は「透過光+エッジ制御」で設計する。背面の面光源 (背景ライト) の追加を推奨。" });
+  }
+  if (opts.has("gloss") && ["black", "dark"].includes(cut.bgStyle)) {
+    w.push({ lv: "info", t: "黒い光沢面は照度ではなく「写り込む光源の形」で描く (LGT-003)。ストリップ等の細長い面光源をエッジに正対させる。" });
+  }
+
+  /* --- 演出と機材の整合 --- */
+  if (opts.has("rain") && !types.has("rainmachine")) w.push({ lv: "info", t: "雨オプションON: レインマシンが未配置です。" });
+  if (opts.has("snow") && !types.has("snowmachine")) w.push({ lv: "info", t: "雪オプションON: スノーマシンが未配置です。" });
+  if (opts.has("wind") && !types.has("fan")) w.push({ lv: "info", t: "風オプションON: 送風機が未配置です。" });
+  if (opts.has("sparks") && !types.has("spark")) w.push({ lv: "info", t: "火花オプションON: スパークマシンが未配置です。" });
+  if (opts.has("confetti") && !types.has("confetti")) w.push({ lv: "info", t: "紙吹雪オプションON: キャノンが未配置です。" });
+  if (an.frontPower === 0 && an.rimPower === 0 && an.bgPower === 0 && !["outdoor"].includes(state.mode)) {
+    w.push({ lv: "warn", t: "点灯しているライトがありません。" });
+  }
+
+  /* --- カメラ/動きの整合 --- */
+  if (cut.camera.move === "fix" && cut.kind !== "still") {
+    w.push({ lv: "info", t: "フィックス: AI生成時は camerafixed=true の併用がプロンプトより確実。" });
+  }
+  if (["d_chase", "d_dive", "d_lowpass"].includes(cut.camera.move)) {
+    w.push({ lv: "warn", t: "低空・高速のドローン飛行: 事前ロケハン/コース確認と安全マージン、操縦者の資格・許可空域の確認が必須。" });
+  }
+  return w;
+}
+
+</script>
+<script>
+/* =========================================================
  * Virtual Studio — アプリ本体
  *  - スタジオ俯瞰図 (機材ドラッグ配置)
  *  - ライティング解析 → 想定カットプレビュー自動生成
@@ -2452,6 +4607,9 @@ function buildPromptParts(cut) {
     motionStr: cut.kind === "still" ? "still photograph, ultra high resolution" : `${cut.camera.fps}, cinematic motion`,
     isStill: cut.kind === "still",
     audio: cut.audio, transEn: trans ? trans.en : "",
+    fps: cut.camera.fps, shutter: cut.camera.shutter,
+    focusM: c.focusM, dur: cut.duration || 5,
+    optList: optPhrases,
   };
 }
 
@@ -2521,7 +4679,26 @@ function generatePrompt(cut, modelId) {
       ], ", ");
       return `${tags} --ar ${arMap[P.aspectId] || "16:9"} --style raw`;
     }
-    default: { // seedance / generic: 標準フォーマット
+    case "seedance": {
+      // CineOS プロンプトコンパイル順序 (cineos/CLAUDE.md §10) に準拠した構造化ブロック
+      return j([
+        `FORMAT: ${P.aspectEn}${P.isStill ? ", still photograph, ultra high resolution" : `, video, ${P.dur}s`}`,
+        `SUBJECT & ACTION: ${P.subjClause}`,
+        `ENVIRONMENT: ${j([P.bgEn, P.envPhrase], ", ")}`,
+        P.bodyPhrase ? `CAMERA FORMAT: ${P.bodyPhrase}` : "",
+        `LENS: ${P.lensStr}`,
+        `CAMERA: ${j([P.sizeEn, P.angEn], ", ")}`,
+        `CAMERA MOVE: ${j([P.movPhrase, P.framingPhrase, P.supPhrase], "; ")}${P.isStill ? "" : ` — over ${P.dur} seconds`}`,
+        `FOCUS: focus at ${P.focusM}m${P.dofPhrase ? ", " + P.dofPhrase : ""}${P.filterStr ? ", " + P.filterStr : ""}`,
+        P.isStill ? `EXPOSURE: shutter ${P.shutter}` : `FRAME RATE / SHUTTER: ${P.fps}, shutter ${P.shutter}`,
+        `LIGHTING: ${P.lightStr}`,
+        P.optList.length ? `PRACTICAL FX: ${P.optList.join(", ")}` : "",
+        `COLOR / FINISH: ${j([P.lookEn || "natural true-to-life color grade", "photorealistic, professional cinematography, high detail"], ", ")}`,
+        P.transEn ? `EDIT: shot ends with a ${P.transEn}` : "",
+        `NEGATIVE: no subtitles, no watermark, no on-screen text, no morphing artifacts`,
+      ], "\n");
+    }
+    default: { // generic: 標準フォーマット
       return j([
         `${P.sizeEn}, ${P.angEn}`,
         P.movPhrase, P.framingPhrase, P.supPhrase, P.bodyPhrase,
@@ -2531,7 +4708,6 @@ function generatePrompt(cut, modelId) {
         P.transEn ? `shot ends with a ${P.transEn}` : "",
         P.motionStr,
         "photorealistic, professional cinematography, high detail",
-        model === "seedance" ? "no subtitles, no watermark, no on-screen text" : "",
       ], ". ") + ".";
     }
   }
@@ -3122,6 +5298,16 @@ function renderPreview() {
   byId("explainList").innerHTML = explainCut(activeCut()).map(l => `<li>${esc(l)}</li>`).join("");
   updatePlayButton();
   renderAspectChips();
+  renderFeasibility();
+}
+
+/* フィージビリティ / 安全チェック (CineOS FeasibilityEngine) */
+function renderFeasibility() {
+  const warnings = evaluateFeasibility(activeCut());
+  const box = byId("feasBox");
+  box.hidden = warnings.length === 0;
+  byId("feasList").innerHTML = warnings
+    .map(x => `<li class="lv-${x.lv}">${esc(x.t)}</li>`).join("");
 }
 
 /* アスペクト比クイック切替チップ (プレビュー直上) */
@@ -3294,6 +5480,11 @@ function renderInspector() {
           `<option ${s === (selItem.stand || "ライトスタンド") ? "selected" : ""}>${esc(s)}</option>`).join("")}</select>`)}
         ${fieldRow("消費電力(W)", `<input type="number" id="itWatt" value="${selItem.watt ?? 0}" min="0" max="20000" step="10" title="電源プラン(指示書)の自動計算に使われます">`)}` : ""}
         <div class="insp-hint">被写体からの距離: 約${distM}m ｜ 方位: ${esc(relToJa(analyzeLighting(cut).lights.find(l => l.item.id === selItem.id)?.rel ?? 0))}</div>
+        ${(() => {
+          const rec = recommendForItem(selItem);
+          if (!rec || !rec.records.length) return "";
+          return `<div class="insp-hint" style="margin-top:6px">🎬 実機材候補: ${esc(rec.records.map(r => `${r.manufacturer} ${r.model}`).join(" / "))} など同等能力機<br><small>${esc(rec.need)}</small></div>`;
+        })()}
         ${selItem.type !== "subject" && selItem.type !== "camera"
           ? `<button class="btn small danger" id="btnDelItem" style="margin-top:6px">この機材を削除</button>` : ""}
       </div>`;
@@ -3692,6 +5883,26 @@ function buildInstructionDoc() {
       ${opts.length ? `<h3>演出オプションと実施上の注意</h3>
       <ul>${opts.map(o => `<li><b>${esc(o.label)}</b> — ${esc(o.note)}</li>`).join("")}</ul>` : ""}
 
+      ${(() => {
+        const warns = evaluateFeasibility(cut);
+        if (!warns.length) return "";
+        return `<h3>フィージビリティ / 安全チェック</h3>
+        <ul class="feas-doc">${warns.map(x =>
+          `<li class="lv-${x.lv}">${x.lv === "danger" ? "⛔" : x.lv === "warn" ? "⚠️" : "💡"} ${esc(x.t)}</li>`).join("")}</ul>`;
+      })()}
+
+      ${(() => {
+        const recs = recommendForCut(cut);
+        if (!recs.length) return "";
+        return `<h3>機材候補 (capability first, SKU second)</h3>
+        <table><thead><tr><th>役割</th><th>必要な能力</th><th>代表機種 (例)</th><th>安全区分</th></tr></thead>
+        <tbody>${recs.map(r => `<tr>
+          <td>${esc(r.role)}</td><td>${esc(r.need)}</td>
+          <td>${esc(r.examples.join(" / "))} など同等能力機</td>
+          <td>${esc(r.safety)}</td></tr>`).join("")}</tbody></table>
+        <p class="memo">※ CineOS機材マスター (131機種シード) より。ブランド固定ではなく「能力で選び、同等機で代替可」が原則。</p>`;
+      })()}
+
       ${preset ? `<h3>技法メモ: ${esc(preset.name)}</h3><p class="memo">${esc(preset.desc)}${preset.notesExtra ? `<br><b>実施上の注意:</b> ${esc(preset.notesExtra)}` : ""}</p>` : ""}
       ${cut.notes ? `<h3>備考</h3><p class="memo">${esc(cut.notes)}</p>` : ""}
       ${i < state.cuts.length - 1 ? (() => {
@@ -3745,6 +5956,9 @@ function buildInstructionDoc() {
     .power-plan { font-size: 12px; background: #f0f6ff; border: 1px solid #c8d8f0; border-radius: 6px; padding: 8px 10px; margin-top: 8px; }
     .sd-params { margin-top: 8px; }
     .sd-params th { background: #eaf3ec; }
+    .feas-doc { list-style: none; padding-left: 0; }
+    .feas-doc li { padding: 3px 0; font-size: 12px; }
+    .feas-doc li.lv-danger { color: #c0392b; font-weight: 700; }
     @media print { .toolbar { display: none; } body { padding: 0; } }
   </style></head><body>
     <h1>撮影指示書 — ${esc(state.projectTitle)}</h1>

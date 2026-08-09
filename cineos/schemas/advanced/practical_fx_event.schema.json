@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CineOS Practical FX Event",
+  "type": "object",
+  "required": [
+    "effect_id",
+    "effect_type",
+    "safety_class",
+    "states"
+  ],
+  "properties": {
+    "effect_id": {
+      "type": "string"
+    },
+    "effect_type": {
+      "type": "string"
+    },
+    "safety_class": {
+      "enum": [
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    "specialist_only": {
+      "type": "boolean"
+    },
+    "states": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "continuity": {
+      "type": "object"
+    },
+    "vfx_capture": {
+      "type": "object"
+    },
+    "reset": {
+      "type": "object"
+    }
+  }
+}

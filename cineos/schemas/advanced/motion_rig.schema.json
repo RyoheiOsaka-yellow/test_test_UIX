@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CineOS Motion Rig",
+  "type": "object",
+  "required": [
+    "rig_id",
+    "payload_kg",
+    "footprint",
+    "limits"
+  ],
+  "properties": {
+    "rig_id": {
+      "type": "string"
+    },
+    "payload_kg": {
+      "type": "number"
+    },
+    "footprint": {
+      "type": "object"
+    },
+    "limits": {
+      "type": "object"
+    },
+    "collision_geometry": {
+      "type": "object"
+    },
+    "repeatability": {
+      "type": [
+        "number",
+        "string",
+        "null"
+      ]
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CineOS Live IP Stream",
+  "type": "object",
+  "required": [
+    "stream_id",
+    "essence_type"
+  ],
+  "properties": {
+    "stream_id": {
+      "type": "string"
+    },
+    "essence_type": {
+      "enum": [
+        "video",
+        "audio",
+        "ancillary",
+        "metadata"
+      ]
+    },
+    "source_device": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ptp_domain": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "multicast": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "redundancy": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "format": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

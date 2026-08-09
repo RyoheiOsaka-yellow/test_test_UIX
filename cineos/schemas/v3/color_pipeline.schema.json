@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CineOS Color Pipeline",
+  "type": "object",
+  "required": [
+    "pipeline_id"
+  ],
+  "properties": {
+    "pipeline_id": {
+      "type": "string"
+    },
+    "capture_transform": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "working_space": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "look_transform": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "output_transform": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "display_target": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "amf_uri": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "clf_uri": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

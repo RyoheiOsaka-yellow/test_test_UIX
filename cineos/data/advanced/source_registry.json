@@ -1,0 +1,107 @@
+{
+  "meta": {
+    "verified_date": "2026-08-09",
+    "policy": "Prefer official manufacturer/manual sources."
+  },
+  "sources": [
+    {
+      "id": "SRC-ARRI-LIVELINK",
+      "title": "ARRI Live Link Metadata",
+      "url": "https://www.arri.com/en/learn-help/learn-help-camera-system/tools/live-link-metadata-plugin",
+      "supports": [
+        "real-time lens metadata",
+        "camera metadata",
+        "Unreal Engine integration"
+      ]
+    },
+    {
+      "id": "SRC-SONY-VIRTUAL-VENICE",
+      "title": "Sony Camera and Display Plugin / Virtual VENICE",
+      "url": "https://www.sony.com/electronics/support/software/00302480",
+      "supports": [
+        "VENICE previsualization",
+        "filmback",
+        "camera parameters",
+        "PL lens distortion",
+        "vignetting"
+      ]
+    },
+    {
+      "id": "SRC-COOKE-I",
+      "title": "Cooke /i Technology",
+      "url": "https://cookeoptics.com/cooke-digital/",
+      "supports": [
+        "per-frame lens metadata",
+        "focus",
+        "T-stop",
+        "focal length",
+        "VFX pipeline"
+      ]
+    },
+    {
+      "id": "SRC-MRMC-BOLT",
+      "title": "MRMC Bolt Cinebot",
+      "url": "https://www.mrmoco.com/motion-control/bolt/",
+      "supports": [
+        "high-speed robot",
+        "20kg payload",
+        "3.5m height",
+        "up to 12m/s camera speed with track"
+      ]
+    },
+    {
+      "id": "SRC-MRMC-BOLTX",
+      "title": "MRMC Bolt X",
+      "url": "https://www.mrmoco.com/motion-control/bolt-x/",
+      "supports": [
+        "4.3m max height",
+        "3.2m max reach",
+        "motion envelope",
+        "high-speed motion"
+      ]
+    },
+    {
+      "id": "SRC-OPENUSD",
+      "title": "OpenUSD official documentation",
+      "url": "https://openusd.org/",
+      "supports": [
+        "3D scene composition",
+        "lighting",
+        "physics",
+        "animation"
+      ]
+    },
+    {
+      "id": "SRC-ACES2",
+      "title": "ACES 2 official documentation",
+      "url": "https://docs.acescentral.com/background/about-aces-2/",
+      "supports": [
+        "end-to-end color management"
+      ]
+    },
+    {
+      "id": "SRC-ACES-AMF",
+      "title": "ACES Metadata File specification",
+      "url": "https://docs.acescentral.com/amf/specification/",
+      "supports": [
+        "ACES viewing pipeline metadata exchange"
+      ]
+    },
+    {
+      "id": "SRC-OTIO",
+      "title": "OpenTimelineIO official documentation",
+      "url": "https://opentimelineio.readthedocs.io/en/latest/",
+      "supports": [
+        "editorial interchange"
+      ]
+    },
+    {
+      "id": "SRC-ST2110",
+      "title": "SMPTE ST 2110 standards suite",
+      "url": "https://www.smpte.org/standards/st2110",
+      "supports": [
+        "real-time professional media over IP"
+      ]
+    }
+  ]
+}

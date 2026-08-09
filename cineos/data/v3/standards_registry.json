@@ -1,0 +1,46 @@
+{
+  "meta": {
+    "verified_date": "2026-08-09",
+    "source_policy": "Primary/official documentation only"
+  },
+  "standards": [
+    {
+      "id": "OPENUSD",
+      "name": "OpenUSD / Universal Scene Description",
+      "role": "3D scene interchange / composition / animated scene description",
+      "official_url": "https://openusd.org/",
+      "notes": "Supports complex scene composition and schemas for geometry, shading, lighting and physics; supports time-varying values."
+    },
+    {
+      "id": "ACES2",
+      "name": "ACES 2",
+      "role": "end-to-end color-management framework",
+      "official_url": "https://docs.acescentral.com/background/about-aces-2/"
+    },
+    {
+      "id": "ACES-AMF",
+      "name": "ACES Metadata File",
+      "role": "sidecar metadata for recreating ACES viewing pipelines",
+      "official_url": "https://docs.acescentral.com/amf/specification/"
+    },
+    {
+      "id": "ACES-CLF",
+      "name": "Common LUT Format",
+      "role": "interchange of color transforms",
+      "official_url": "https://docs.acescentral.com/clf/specification/"
+    },
+    {
+      "id": "OTIO",
+      "name": "OpenTimelineIO",
+      "role": "editorial interchange API / format",
+      "official_url": "https://opentimelineio.readthedocs.io/en/latest/"
+    },
+    {
+      "id": "SMPTE-ST2110",
+      "name": "SMPTE ST 2110",
+      "role": "professional media over managed IP networks",
+      "official_url": "https://www.smpte.org/standards/st2110",
+      "notes": "Separates elementary essence streams for video, audio, ancillary data and related real-time production workflows."
+    }
+  ]
+}

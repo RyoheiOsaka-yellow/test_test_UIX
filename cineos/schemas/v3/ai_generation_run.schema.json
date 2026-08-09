@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CineOS AI Generation Run",
+  "type": "object",
+  "required": [
+    "run_id",
+    "shot_id",
+    "provider",
+    "model"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "string"
+    },
+    "shot_id": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "prompt": {
+      "type": "string"
+    },
+    "reference_assets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "output_assets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "qa_result_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

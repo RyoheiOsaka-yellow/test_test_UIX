@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CineOS Lens State Timeline",
+  "type": "object",
+  "required": [
+    "lens_id",
+    "timeline"
+  ],
+  "properties": {
+    "lens_id": {
+      "type": "string"
+    },
+    "serial": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "distortion_profile_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "vignetting_profile_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "timeline": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "t",
+          "focal_length_mm",
+          "focus_distance_m",
+          "t_stop"
+        ],
+        "properties": {
+          "t": {
+            "type": "number"
+          },
+          "focal_length_mm": {
+            "type": "number"
+          },
+          "focus_distance_m": {
+            "type": "number"
+          },
+          "t_stop": {
+            "type": "number"
+          },
+          "entrance_pupil_position_mm": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

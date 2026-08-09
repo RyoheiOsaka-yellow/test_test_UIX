@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CineOS Continuity State",
+  "type": "object",
+  "required": [
+    "shot_id",
+    "entities"
+  ],
+  "properties": {
+    "shot_id": {
+      "type": "string"
+    },
+    "take_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "timestamp": {
+      "type": [
+        "string",
+        "number",
+        "null"
+      ]
+    },
+    "entities": {
+      "type": "object"
+    },
+    "visual_reference_uris": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

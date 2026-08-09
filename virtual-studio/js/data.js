@@ -298,7 +298,7 @@ const TRANSITIONS = [
 
 /* ---------- AI動画/画像モデル別プロンプト方言 ---------- */
 const PROMPT_MODELS = [
-  { id: "seedance", label: "Seedance",  hint: "文章+カメラ用語をカンマ区切りで詳細に" },
+  { id: "seedance", label: "Seedance",  hint: "CineOS §10 準拠: FORMAT→SUBJECT→…→NEGATIVE の構造化ブロック" },
   { id: "veo",      label: "Veo 3",     hint: "自然な英文の1段落+音声指示に対応" },
   { id: "kling",    label: "Kling",     hint: "項目ラベル形式 (Subject/Camera/Lighting...)" },
   { id: "runway",   label: "Runway Gen-4", hint: "[camera]: [scene] 形式の簡潔な指示" },

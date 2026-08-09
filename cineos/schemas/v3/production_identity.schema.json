@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CineOS Production Identity",
+  "type": "object",
+  "required": [
+    "project_id",
+    "scene_id",
+    "shot_id"
+  ],
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "sequence_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "scene_id": {
+      "type": "string"
+    },
+    "shot_id": {
+      "type": "string"
+    },
+    "take_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "media_asset_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

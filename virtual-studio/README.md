@@ -111,15 +111,39 @@ cd virtual-studio && python3 -m http.server 8080
 プリセットとしてライブラリに追加され (📥グループ)、JSONに保存されます。
 本文の「概要 / 仕上がりの見え方 / 実施上の注意」は説明・狙い・指示書に反映されます。
 
+## CineOS ナレッジ移植 (v0.9)
+
+リポジトリ直下の `cineos/` に **CineOS 開発パッケージ** (開発憲章 CLAUDE.md /
+マスターナレッジ / 機材マスター / 推論ルール / スキーマ) を正典として取り込み、
+以下を本アプリへ移植済み:
+
+- **機材データベース (131機種シード)** → `js/equipment_db.js`。
+  「capability first, SKU second」原則で、配置した機材・カメラ・レンズ・サポートに
+  実機材候補 (例: ARRI ALEXA 35 / Aputure 等+同等能力機) をインスペクターと指示書に提示
+- **FeasibilityEngine / SafetyFlagger** → `js/engine.js`。
+  advanced_rules.json のルールを移植し、リアルタイムで警告
+  (例: ハイスピードfpsの必要光量段数 LGT-002 / 雨・雪は逆光必須 SFX-001 /
+  黒光沢は写り込み光源の形で設計 LGT-003 / 破壊系はマルチカム COV-003)。
+  **特効の安全区分 A/B/C** を表示し、Class C (爆発・火工) は
+  「有資格特効技師専任・演出計画のみ」を明示 (危険な構造情報は一切出力しない)
+- **プロンプトコンパイラ §10 準拠**: Seedance プロンプトを
+  FORMAT → SUBJECT & ACTION → ENVIRONMENT → CAMERA → LENS → MOVE →
+  FOCUS → FRAME RATE → LIGHTING → PRACTICAL FX → COLOR → NEGATIVE の
+  構造化ブロックで出力
+
 ## 設計
 
 ```
+cineos/               # ★ CineOS 開発パッケージ (ナレッジ正典: CLAUDE.md/knowledge/data/schemas)
 virtual-studio/
 ├── index.html        # UI レイアウト
 ├── css/style.css
 ├── js/
-│   ├── data.js       # ★ 撮影技法ナレッジベース (プリセット/機材/技法定義)
+│   ├── data.js       # 撮影技法ナレッジベース (プリセット/機材/技法定義)
+│   ├── equipment_db.js # CineOS機材マスター (equipment_master.json 由来)
+│   ├── engine.js     # EquipmentMatcher / FeasibilityEngine / SafetyFlagger
 │   └── app.js        # 配置図・ライティング解析・プレビュー・書き出し
+├── dist/             # スタンドアロン1ファイル版
 └── docs/knowledge/   # 撮影技法 md ナレッジ (取り込み形式の仕様あり)
 ```
 

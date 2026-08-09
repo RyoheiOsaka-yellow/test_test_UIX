@@ -1,0 +1,108 @@
+{
+  "project_id": "EX-DRAMA-001",
+  "scene": {
+    "scene_id": "SC12",
+    "slugline": "INT. SMALL APARTMENT - NIGHT",
+    "characters": [
+      "A",
+      "B"
+    ],
+    "dramatic_goal": "A realizes B has lied.",
+    "beats": [
+      {
+        "id": "B1",
+        "type": "silence",
+        "subject": "A",
+        "importance": 0.5
+      },
+      {
+        "id": "B2",
+        "type": "reveal",
+        "subject": "phone",
+        "importance": 0.95
+      },
+      {
+        "id": "B3",
+        "type": "reaction",
+        "subject": "A",
+        "importance": 0.9
+      },
+      {
+        "id": "B4",
+        "type": "decision",
+        "subject": "B",
+        "importance": 0.8
+      }
+    ]
+  },
+  "blocking": [
+    {
+      "character": "A",
+      "keyframes": [
+        {
+          "t": 0,
+          "xyz": [
+            -1.2,
+            0,
+            0
+          ]
+        },
+        {
+          "t": 6,
+          "xyz": [
+            0.2,
+            0.3,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "character": "B",
+      "keyframes": [
+        {
+          "t": 0,
+          "xyz": [
+            1.1,
+            0.4,
+            0
+          ]
+        },
+        {
+          "t": 6,
+          "xyz": [
+            1.1,
+            0.4,
+            0
+          ]
+        }
+      ]
+    }
+  ],
+  "coverage_plan": [
+    {
+      "shot": "S1",
+      "role": "master_two_shot",
+      "lens_mm": 40,
+      "reason": "establish geography and silence"
+    },
+    {
+      "shot": "S2",
+      "role": "phone_insert",
+      "lens_mm": 100,
+      "reason": "plot information must be legible"
+    },
+    {
+      "shot": "S3",
+      "role": "A_close_reaction",
+      "lens_mm": 85,
+      "reason": "reaction changes meaning of scene"
+    },
+    {
+      "shot": "S4",
+      "role": "B_single",
+      "lens_mm": 75,
+      "reason": "decision beat"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "version": "1.0"
+  },
+  "profiles": {
+    "branded_product": {
+      "weights": {
+        "product_geometry": 1.0,
+        "logo_text": 1.0,
+        "lighting_consistency": 0.8,
+        "camera_path": 0.7,
+        "material_physics": 0.9,
+        "continuity": 0.9,
+        "talent_identity": 0.7
+      }
+    },
+    "narrative": {
+      "weights": {
+        "performance_continuity": 1.0,
+        "screen_direction": 0.9,
+        "camera_grammar": 0.8,
+        "lighting_motivation": 0.8,
+        "wardrobe_continuity": 0.8,
+        "effect_physics": 0.7
+      }
+    },
+    "beauty": {
+      "weights": {
+        "face_identity": 1.0,
+        "skin_texture": 0.95,
+        "hand_integrity": 0.8,
+        "product_geometry": 0.8,
+        "lighting_consistency": 0.9
+      }
+    }
+  }
+}
