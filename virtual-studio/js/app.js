@@ -1199,22 +1199,79 @@ function renderCoverage() {
   });
 }
 
-/* ---------- 尺タイムライン (V6) ---------- */
+/* ---------- 尺タイムライン (V6 — トリム/並べ替え対応) ---------- */
 function renderTimeline() {
   const bar = byId("timelineBar");
   const durs = state.cuts.map(c => c.kind === "still" ? 2 : (c.duration || 5));
   const total = state.cuts.reduce((s2, c) => s2 + (c.kind === "still" ? 0 : c.duration || 5), 0);
   bar.innerHTML = state.cuts.map((c, i) =>
     `<div class="tl-block ${i === state.activeCut ? "active" : ""}" style="flex:${durs[i]}"
-       title="C${i + 1} ${esc(c.name)} — ${c.kind === "still" ? "スチール" : (c.duration || 5) + "秒"}" data-idx="${i}">C${i + 1}${c.kind === "still" ? "" : " " + (c.duration || 5) + "s"}</div>`).join("")
+       title="C${i + 1} ${esc(c.name)} — ${c.kind === "still" ? "スチール" : (c.duration || 5) + "秒"}。ドラッグで並べ替え${c.kind === "still" ? "" : "、右端で尺トリム"}" data-idx="${i}" data-cid="${esc(c.id)}">
+       <span class="tl-label">C${i + 1}${c.kind === "still" ? "" : " " + (c.duration || 5) + "s"}</span>
+       ${c.kind === "still" ? "" : `<span class="tl-handle" data-h="${i}" title="ドラッグで尺を変更"></span>`}
+     </div>`).join("")
     + `<span class="tl-total">計 ${total}s</span>`;
-  bar.querySelectorAll(".tl-block").forEach(el => {
-    el.addEventListener("click", () => {
-      state.activeCut = +el.dataset.idx;
+}
+
+/* タイムライン操作 (委譲・1回だけ登録): 右端ドラッグ=トリム / ブロックドラッグ=並べ替え / クリック=選択 */
+function setupTimeline() {
+  const bar = byId("timelineBar");
+  let drag = null;
+
+  bar.addEventListener("pointerdown", e => {
+    const handle = e.target.closest(".tl-handle");
+    const block = e.target.closest(".tl-block");
+    if (handle) {
+      const idx = +handle.dataset.h;
+      drag = { type: "trim", cutId: state.cuts[idx].id, startX: e.clientX, startDur: state.cuts[idx].duration || 5 };
+    } else if (block) {
+      drag = { type: "move", cutId: block.dataset.cid, startX: e.clientX, moved: false };
+    } else return;
+    try { bar.setPointerCapture(e.pointerId); } catch { /* noop */ }
+    e.preventDefault();
+  });
+
+  bar.addEventListener("pointermove", e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.startX;
+    if (drag.type === "trim") {
+      const cut = state.cuts.find(c => c.id === drag.cutId);
+      if (!cut) return;
+      const nd = Math.max(1, Math.min(30, drag.startDur + Math.round(dx / 10)));
+      if (nd !== cut.duration) { cut.duration = nd; drag.trimmed = true; renderTimeline(); }
+    } else {
+      if (Math.abs(dx) > 8) drag.moved = true;
+      if (!drag.moved) return;
+      // ポインタ位置のブロックへ並べ替え
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const over = el && el.closest ? el.closest(".tl-block") : null;
+      if (!over) return;
+      const from = state.cuts.findIndex(c => c.id === drag.cutId);
+      const to = +over.dataset.idx;
+      if (from < 0 || to === from) return;
+      const [mv] = state.cuts.splice(from, 1);
+      state.cuts.splice(to, 0, mv);
+      renderTimeline();
+    }
+  });
+
+  const end = () => {
+    if (!drag) return;
+    const idx = state.cuts.findIndex(c => c.id === drag.cutId);
+    if (drag.type === "trim") {
+      if (drag.trimmed) { refresh(); renderInspector(); }
+    } else if (drag.moved) {
+      if (idx >= 0) state.activeCut = idx;
+      renderAll();
+    } else if (idx >= 0) {
+      state.activeCut = idx;
       state.selectedItem = null;
       renderAll();
-    });
-  });
+    }
+    drag = null;
+  };
+  bar.addEventListener("pointerup", end);
+  bar.addEventListener("pointercancel", end);
 }
 
 function fieldRow(label, inner) {
@@ -2523,6 +2580,63 @@ function setupProjects() {
  * Pattern DNA ページ (CineOS V8 Phase 1: 検索・適用・ミキサー)
  * ======================================================= */
 const dnaSel = { a: null, b: null };
+
+/* ---------- Phase 5-lite: パターン性能トラッキング (§26) ---------- */
+function dnaPerf() { return lsGet("vsDnaPerf", {}); }
+function bumpPerf(id, key) {
+  const p = dnaPerf();
+  p[id] = p[id] || { applied: 0, up: 0, down: 0 };
+  p[id][key]++;
+  lsSet("vsDnaPerf", p);
+}
+
+/* ---------- Phase 3-lite: プロジェクトからのDNA自動抽出 (推定値マーク付き §4) ---------- */
+function extractProjectDNA() {
+  const cuts = state.cuts;
+  if (!cuts.length) return null;
+  const most = (arr) => {
+    const m = {};
+    arr.filter(v => v != null).forEach(v => m[v] = (m[v] || 0) + 1);
+    const e = Object.entries(m).sort((a, b) => b[1] - a[1])[0];
+    return e ? e[0] : null;
+  };
+  const durs = cuts.filter(c => c.kind !== "still").map(c => c.duration || 5);
+  const avgDur = durs.length ? durs.reduce((a, b) => a + b, 0) / durs.length : 5;
+  const focals = cuts.map(c => c.camera.focalMm);
+  const mn = Math.min(...focals), mx = Math.max(...focals);
+  const analyses = cuts.map(c => analyzeLighting(c));
+  const avgContrast = analyses.reduce((a, x) => a + x.contrast, 0) / analyses.length;
+  const avgRim = analyses.reduce((a, x) => a + x.rimPower, 0) / analyses.length;
+  const rep = cuts.slice().sort((a, b) => (b.duration || 0) - (a.duration || 0))[0];
+  const P = buildPromptParts(rep);
+  const apertures = cuts.map(c => c.camera.apertureF).sort((a, b) => a - b);
+  return {
+    id: "proj-" + Date.now(),
+    name: `${state.projectTitle} のDNA (自動抽出)`,
+    family: "プロジェクト抽出",
+    keywords: [state.projectTitle],
+    why: `現在の${cuts.length}カットから自動抽出した推定値。平均尺${avgDur.toFixed(1)}s / レンズ${mn}-${mx}mm / コントラスト${avgContrast > 0.7 ? "高" : avgContrast > 0.35 ? "中" : "低"} / リム${avgRim > 40 ? "強め" : "控えめ"} / 主なムーブ: ${most(cuts.map(c => c.camera.move))}`,
+    dims: {
+      editorial: { durationMul: Math.max(0.4, Math.min(2, avgDur / 5)), transition: most(cuts.map(c => c.transition)) || "cut", pace: "抽出値" },
+      camera: { focal: [mn, mx], aperture: apertures[Math.floor(apertures.length / 2)] },
+      lighting: {
+        fillScale: avgContrast > 0.7 ? 0.35 : avgContrast > 0.35 ? 0.7 : 1.3,
+        rimBoost: avgRim > 40 ? 1.4 : 1.0,
+        contrast: avgContrast > 0.7 ? "高" : avgContrast > 0.35 ? "中" : "低",
+      },
+      color: { look: most(cuts.map(c => c.look)) || "natural" },
+      movement: { moveSpeed: most(cuts.map(c => c.camera.moveSpeed)) || "normal", prefMove: most(cuts.map(c => c.camera.move).filter(m => m !== "fix")) },
+    },
+    tokens: [P.lightStr.split(", ")[0], P.bgEn].filter(Boolean),
+    avoid: [],
+    provenance: {
+      source: state.projectTitle, source_type: "cineos_project",
+      extraction_method: "auto_from_project", annotator: "model",
+      confidence: "estimate", // §4: 推定値は推定値と明示する
+      date: new Date().toISOString().slice(0, 10),
+    },
+  };
+}
 const mixWeights = { editorial: 0.5, camera: 0.5, lighting: 0.5, color: 0.5, movement: 0.5 };
 const MIX_DIMS = [["editorial", "編集リズム"], ["camera", "カメラ/レンズ"], ["lighting", "ライティング"], ["color", "カラー"], ["movement", "ムーブ"]];
 
@@ -2532,6 +2646,7 @@ function applyDnaToScope(dna, lineage) {
     applyPatternDNA(c, dna, null, lineage ? JSON.parse(JSON.stringify(lineage)) : undefined);
   }
   refresh(); renderInspector();
+  bumpPerf(dna.id, "applied"); // Phase 5-lite: 使用実績を記録 (§26)
   byId("dnaMsg").innerHTML = `✓ <b>${esc(dna.name)}</b> を${targets.length}カットに適用しました (プレビュー/プロンプト/指示書に反映)`;
 }
 
@@ -2547,11 +2662,15 @@ function renderDnaPage() {
         <span class="d-family">${esc(dna.family)}</span>
       </div>
       <div class="d-why">${esc(dna.why)}</div>
-      <div class="d-tokens">${esc(dna.tokens.slice(0, 3).join(" / "))}</div>
+      <div class="d-tokens">${esc(dna.tokens.slice(0, 3).join(" / "))}${dna.provenance && dna.provenance.confidence === "estimate" ? ' <span class="d-est">推定値</span>' : ""}</div>
       <div class="d-actions">
         <button class="btn small primary" data-apply="${esc(dna.id)}">適用</button>
         <button class="btn small ${dnaSel.a === dna.id ? "primary" : ""}" data-mixa="${esc(dna.id)}">A</button>
         <button class="btn small ${dnaSel.b === dna.id ? "primary" : ""}" data-mixb="${esc(dna.id)}">B</button>
+        ${(() => { const p = dnaPerf()[dna.id]; return `
+        <span class="d-perf" title="適用回数と評価 (§26 パターン性能)">${p ? `適用${p.applied}` : ""}</span>
+        <button class="btn tiny ghost" data-good="${esc(dna.id)}" title="この結果は良かった">👍${p && p.up ? p.up : ""}</button>
+        <button class="btn tiny ghost" data-bad="${esc(dna.id)}" title="この結果は微妙だった">👎${p && p.down ? p.down : ""}</button>`; })()}
       </div>
     </div>`).join("");
 
@@ -2567,6 +2686,8 @@ function renderDnaPage() {
   grid.querySelectorAll("[data-mixb]").forEach(b => b.addEventListener("click", () => {
     dnaSel.b = dnaSel.b === b.dataset.mixb ? null : b.dataset.mixb; renderDnaPage();
   }));
+  grid.querySelectorAll("[data-good]").forEach(b => b.addEventListener("click", () => { bumpPerf(b.dataset.good, "up"); renderDnaPage(); }));
+  grid.querySelectorAll("[data-bad]").forEach(b => b.addEventListener("click", () => { bumpPerf(b.dataset.bad, "down"); renderDnaPage(); }));
 
   // ミキサー (§34): AとBが選ばれたら表示
   const a = allDNA().find(x => x.id === dnaSel.a);
@@ -2610,6 +2731,13 @@ function setupDnaPage() {
   byId("anLook").innerHTML = LOOKS.map(l => `<option value="${l.id}">${esc(l.label)}</option>`).join("");
   byId("btnDnaAnnotate").addEventListener("click", () => {
     byId("dnaAnnotateForm").hidden = !byId("dnaAnnotateForm").hidden;
+  });
+  byId("btnDnaExtract").addEventListener("click", () => {
+    const dna = extractProjectDNA();
+    if (!dna) return;
+    state.customDNA.push(dna);
+    byId("dnaMsg").innerHTML = `✓ <b>${esc(dna.name)}</b> を抽出しました (推定値・来歴付き)。他プロジェクトを開いてから適用すると、このスタイルを移植できます`;
+    renderDnaPage();
   });
   byId("btnAnnotClose").addEventListener("click", () => { byId("dnaAnnotateForm").hidden = true; });
   byId("btnAnnotSave").addEventListener("click", () => {
@@ -3115,6 +3243,7 @@ function init() {
   setupEquipPage();
   setupProjects();
   setupDnaPage();
+  setupTimeline();
   byId("btnPlayPreview").addEventListener("click", () => {
     state.previewPlay = !state.previewPlay;
     if (state.previewPlay) startPreviewAnim(); else stopPreviewAnim();

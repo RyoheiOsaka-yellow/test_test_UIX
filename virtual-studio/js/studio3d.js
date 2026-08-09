@@ -457,30 +457,48 @@ function render3D() {
     }
   }
 
-  /* --- HUD --- */
+  /* --- HUD (重なり防止: 凡例幅を実測し、情報行は残り幅に収める) --- */
+  const fitText = (txt, maxW) => {
+    if (ctx.measureText(txt).width <= maxW) return txt;
+    while (txt.length > 1 && ctx.measureText(txt + "…").width > maxW) txt = txt.slice(0, -1);
+    return txt + "…";
+  };
+  const farStr = dof.far === Infinity ? "∞" : dof.far.toFixed(2) + "m";
+  const movLabel = (CAM_MOVES.find(m => m.id === cut.camera.move) || {}).label || "";
+
+  // 凡例 (3Dのみ・右詰め)
+  let legendW = 0;
+  if (!S3D.pov) {
+    ctx.font = "400 11px -apple-system, 'Hiragino Sans', sans-serif";
+    const legend = [["■ 合焦面", "#e8920a"], ["■ 被写界深度", "#2aa87e"], ["■ 視野角", accent]];
+    if (path) legend.push(["┈ 軌道", accent]);
+    const gap = 10;
+    legendW = legend.reduce((s, [t]) => s + ctx.measureText(t).width + gap, 0);
+    let lx = W - 12 - legendW + gap;
+    for (const [t, c] of legend) {
+      ctx.fillStyle = c;
+      ctx.textAlign = "left";
+      ctx.fillText(t, lx, 20);
+      lx += ctx.measureText(t).width + gap;
+    }
+  }
+
+  // 情報行 (左・凡例と被らない幅に切り詰め)
   ctx.font = "600 12px -apple-system, 'Hiragino Sans', sans-serif";
   ctx.textAlign = "left";
   ctx.fillStyle = S3D.pov ? "#e8e8ec" : col("--text2", "#515154");
-  const farStr = dof.far === Infinity ? "∞" : dof.far.toFixed(2) + "m";
-  const movLabel = (CAM_MOVES.find(m => m.id === cut.camera.move) || {}).label || "";
-  ctx.fillText(
-    S3D.pov
-      ? `POV — ${cut.camera.focalMm}mm F${cut.camera.apertureF} ｜ ${cut.aspect} ｜ ${movLabel} ｜ 簡易ライティング${S3D.animT != null ? " ▶ 再生中" : ""}`
-      : `${cut.camera.focalMm}mm F${cut.camera.apertureF} ｜ フォーカス ${cut.camera.focusM}m ｜ 被写界深度 ${dof.near.toFixed(2)}m – ${farStr}${path ? ` ｜ 軌道: ${movLabel}` : ""}`,
-    12, 20);
+  const info = S3D.pov
+    ? `POV — ${cut.camera.focalMm}mm F${cut.camera.apertureF} ｜ ${cut.aspect} ｜ ${movLabel} ｜ 簡易ライティング${S3D.animT != null ? " ▶ 再生中" : ""}`
+    : `${cut.camera.focalMm}mm F${cut.camera.apertureF} ｜ フォーカス ${cut.camera.focusM}m ｜ 被写界深度 ${dof.near.toFixed(2)}m – ${farStr}`;
+  ctx.fillText(fitText(info, W - 24 - legendW - 12), 12, 20);
+
+  // 下部ヒント (幅に収める)
   ctx.fillStyle = S3D.pov ? "#9a9aa2" : col("--dim", "#86868b");
   ctx.font = "400 11px -apple-system, 'Hiragino Sans', sans-serif";
-  ctx.fillText(
-    S3D.pov
-      ? "カメラ視点 (レンズ画角で表示)。プレビューの再生ボタンで軌道を移動 (編集は2Dビューで)"
-      : "ドラッグ: 回転 ｜ ホイール: ズーム ｜ ダブルクリック: リセット ｜ 点線=カメラ軌道 (編集は2Dビューで)",
-    12, H - 12);
-  if (!S3D.pov) {
-    ctx.fillStyle = "#e8920a"; ctx.fillText("■ 合焦面", W - 250, 20);
-    ctx.fillStyle = "#2aa87e"; ctx.fillText("■ 被写界深度", W - 190, 20);
-    ctx.fillStyle = accent; ctx.fillText("■ 視野角", W - 118, 20);
-    ctx.fillStyle = accent; ctx.fillText("┈ 軌道", W - 62, 20);
-  }
+  const hint = S3D.pov
+    ? "カメラ視点 (レンズ画角で表示)。プレビューの再生ボタンで軌道を移動 (編集は2Dビューで)"
+    : `ドラッグ: 回転 ｜ ホイール: ズーム ｜ ダブルクリック: リセット${path ? ` ｜ 点線=カメラ軌道 (${movLabel})` : ""} (編集は2Dビューで)`;
+  ctx.fillText(fitText(hint, W - 24), 12, H - 12);
 }
 
 /* ---------- 操作 ---------- */
