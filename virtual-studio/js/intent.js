@@ -214,6 +214,49 @@ function buildCutFromIntent(parsed) {
   return ensureCameraDefaults(cut);
 }
 
+/* =========================================================
+ * 複文対応: 「まず引きで…次に寄りで…最後に…」→ 複数カット
+ * 順序マーカー・改行・番号でセグメント分割する。
+ * ======================================================= */
+const INTENT_SEQ_MARKERS = /(?=(?:まず|最初に|冒頭は|冒頭で|次に|それから|その後|続いて|つづいて|最後に|ラストは|ラストで|そして次|カット\d)[、,はで]?)/;
+
+function splitIntentSegments(text) {
+  const t = String(text || "").trim();
+  let parts = t
+    .split(/\n+/)
+    .flatMap(s => s.split(INTENT_SEQ_MARKERS))
+    .flatMap(s => s.split(/(?=\d+[\.．\)、]\s*)/))
+    .map(s => s.replace(/^(?:まず|最初に|冒頭は|冒頭で|次に|それから|その後|続いて|つづいて|最後に|ラストは|ラストで|そして次|\d+[\.．\)、])\s*[、,]?\s*/, "").trim())
+    .filter(s => s.length > 3);
+  return parts.length >= 2 ? parts : null;
+}
+
+/* セグメント解釈に全体文脈 (天候/時間帯/被写体/ルック等) を継承させる */
+const INTENT_INHERIT_FIELDS = ["subjectType", "weather", "timeOfDay", "bgStyle", "look", "aspect"];
+
+function parseIntentMulti(text) {
+  const segs = splitIntentSegments(text);
+  if (!segs) return null;
+  const global = parseIntent(text).result;
+  return segs.map(seg => {
+    const parsed = parseIntent(seg);
+    for (const k of INTENT_INHERIT_FIELDS) {
+      if (!parsed.result[k] && global[k]) {
+        parsed.result[k] = global[k];
+        parsed.assumptions.push({ label: "継承", value: `${k === "subjectType" ? "被写体" : k === "timeOfDay" ? "時間帯" : k === "weather" ? "天候" : k}を全体文から引き継ぎ`, ev: "" });
+      }
+    }
+    return { segment: seg, parsed };
+  });
+}
+
+/* セグメント文中のトランジション語 → 前カットの繋ぎ指定 */
+const INTENT_TRANSITIONS = [
+  [/ディゾルブ/, "dissolve"], [/フェードアウト|フェード/, "fadeout"],
+  [/ホワイトアウト/, "whiteout"], [/マッチカット/, "matchcut"],
+  [/ワイプ/, "wipe"], [/ウィップパン/, "whippan"], [/モーフ/, "morph"],
+];
+
 /* ---------- カバレッジ展開: 1カット → 引き/メイン/寄りの3カット ---------- */
 function expandCoverage(cut) {
   const base = JSON.stringify(cut);

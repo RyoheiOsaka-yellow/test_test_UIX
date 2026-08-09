@@ -320,6 +320,15 @@ button { font-family: inherit; letter-spacing: inherit; }
   background: var(--accent-soft); color: var(--accent); font-weight: 600;
 }
 .intent-chip small { color: var(--dim); font-weight: 400; margin-left: 3px; }
+.intent-cutgroup {
+  display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+  padding: 5px 0; border-bottom: 1px dashed var(--line);
+}
+.intent-cutgroup:last-child { border-bottom: none; }
+.intent-cutno {
+  font-size: 11px; font-weight: 800; color: #fff;
+  background: var(--accent); border-radius: 6px; padding: 2px 7px;
+}
 
 .studio-toolbar {
   display: flex; align-items: center; justify-content: space-between;
@@ -341,7 +350,33 @@ select {
 select:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .add-equipment select { max-width: 185px; }
 
+/* 2D/3D ビュー切替 */
+#viewToggle {
+  display: inline-flex; gap: 2px; vertical-align: middle; margin-left: 8px;
+  background: var(--seg-track); border-radius: 8px; padding: 2px;
+}
+.view-tab {
+  border: none; background: transparent; color: var(--text2);
+  font-size: 11px; font-weight: 500; padding: 3.5px 11px;
+  border-radius: 6px; cursor: pointer; transition: all 0.16s var(--ease);
+}
+.view-tab.active {
+  background: var(--seg-active); color: var(--text); font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
 #canvasWrap { flex: 1; min-height: 320px; padding: 6px 14px 10px; position: relative; }
+#studio3d {
+  width: 100%; height: 100%; min-height: 304px; display: block;
+  background: var(--cv-surface);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  cursor: grab;
+  touch-action: none;
+}
+#studio3d:active { cursor: grabbing; }
+/* display:block のID指定が hidden 属性 (UAの display:none) に勝ってしまうのを防ぐ */
+#studioCanvas[hidden], #studio3d[hidden] { display: none; }
 #studioCanvas {
   width: 100%; height: 100%; min-height: 304px; display: block;
   background: var(--cv-surface);

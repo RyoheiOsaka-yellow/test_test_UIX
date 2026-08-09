@@ -980,6 +980,24 @@ function renderCanvas() {
     const g = svg.querySelector(`[data-id="${state.selectedItem}"]`);
     if (g) g.classList.add("selected");
   }
+  if (typeof S3D !== "undefined" && S3D.active) render3D();
+}
+
+/* 2D/3D ビュー切替 */
+function setupViewToggle() {
+  document.querySelectorAll(".view-tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const is3d = btn.dataset.view === "3d";
+      S3D.active = is3d;
+      document.querySelectorAll(".view-tab").forEach(b => b.classList.toggle("active", b === btn));
+      // SVG要素は hidden プロパティが効かない (HTMLElement専用) ため display で切替える
+      byId("studioCanvas").style.display = is3d ? "none" : "";
+      byId("studio3d").style.display = is3d ? "block" : "none";
+      byId("zoomControls").style.display = is3d ? "none" : "";
+      byId("viewHint").textContent = is3d ? "回転して光錐・視野角・被写界深度を確認" : "ドラッグで機材を移動";
+      if (is3d) requestAnimationFrame(render3D);
+    });
+  });
 }
 
 function renderPreview() {
@@ -1911,6 +1929,129 @@ function downloadPlanSVG() {
 }
 
 /* =========================================================
+ * DMX キューシート (照明卓向け・CineOS Phase 4 の一部を先行移植)
+ * パッチは全カットの灯体を役割別にマージした固定パッチ (10ch刻み)。
+ * 汎用8chモード想定: 1=Dimmer 2=CCT 3=G/M 4=Strobe 5-7=RGB 8=Fan
+ * ======================================================= */
+const GEL_RGB = {
+  "カラージェル(マゼンタ)": [255, 0, 255],
+  "カラージェル(シアン)": [0, 255, 255],
+  "カラージェル(アンバー)": [255, 150, 0],
+};
+
+function buildDmxPatch() {
+  // 役割(type)ごとに全カット中の最大灯数を数え、固定パッチを作る
+  const maxCount = {};
+  for (const cut of state.cuts) {
+    const per = {};
+    for (const it of cut.items) {
+      if (LIGHT_TYPES.includes(it.type) && it.type !== "sun") per[it.type] = (per[it.type] || 0) + 1;
+    }
+    for (const k in per) maxCount[k] = Math.max(maxCount[k] || 0, per[k]);
+  }
+  const patch = [];
+  let addr = 1;
+  for (const type of Object.keys(maxCount)) {
+    for (let i = 0; i < maxCount[type]; i++) {
+      patch.push({ key: `${type}#${i + 1}`, label: `${EQUIP_TYPES[type].label} ${i + 1}`, type, idx: i, addr });
+      addr += 10; // 10ch刻みで余裕を持たせる
+    }
+  }
+  return patch;
+}
+
+function buildDmxCues(patch) {
+  return state.cuts.map((cut, ci) => {
+    const perType = {};
+    const values = {};
+    for (const it of cut.items) {
+      if (!LIGHT_TYPES.includes(it.type) || it.type === "sun") continue;
+      const idx = perType[it.type] = (perType[it.type] || 0) + 1;
+      const key = `${it.type}#${idx}`;
+      const gel = GEL_RGB[it.modifier] || null;
+      values[key] = {
+        dim: Math.round(it.power * 2.55),
+        cct: Math.round(((it.colorTemp - 2500) / 7500) * 255),
+        gel,
+        note: it.modifier !== "なし(直射)" ? it.modifier : "",
+      };
+    }
+    const prev = ci > 0 ? state.cuts[ci - 1].transition : null;
+    const fade = ci === 0 ? 3.0 : prev === "dissolve" ? 2.0 : prev === "fadeout" ? 3.0 : prev === "cut" ? 0.0 : 1.0;
+    return { cue: ci + 1, name: cut.name, fade, values };
+  });
+}
+
+function buildDmxDoc() {
+  const today = new Date().toLocaleDateString("ja-JP");
+  const patch = buildDmxPatch();
+  const cues = buildDmxCues(patch);
+  if (!patch.length) return null;
+
+  const patchRows = patch.map(p => `<tr>
+    <td>${esc(p.label)}</td><td>1</td><td>${p.addr}</td><td>${p.addr}-${p.addr + 7}</td>
+    <td>1:Dim ｜ 2:CCT ｜ 3:G/M ｜ 4:Strobe ｜ 5-7:RGB ｜ 8:Fan</td></tr>`).join("");
+
+  const cueTables = cues.map(c => `
+    <h3>Cue ${c.cue} — ${esc(c.name)} <span class="fade">Fade ${c.fade.toFixed(1)}s</span></h3>
+    <table>
+      <thead><tr><th>灯体</th><th>Addr</th><th>Dim (ch1)</th><th>CCT (ch2)</th><th>RGB (ch5-7)</th><th>備考</th></tr></thead>
+      <tbody>${patch.map(p => {
+        const v = c.values[p.key];
+        if (!v) return `<tr class="off"><td>${esc(p.label)}</td><td>${p.addr}</td><td>0</td><td>—</td><td>—</td><td>消灯</td></tr>`;
+        return `<tr><td>${esc(p.label)}</td><td>${p.addr}</td>
+          <td><b>${v.dim}</b> (${Math.round(v.dim / 2.55)}%)</td>
+          <td>${v.cct} (${Math.round(2500 + (v.cct / 255) * 7500)}K)</td>
+          <td>${v.gel ? v.gel.join(" / ") : "—"}</td>
+          <td>${esc(v.note)}</td></tr>`;
+      }).join("")}</tbody>
+    </table>`).join("");
+
+  return `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+  <title>DMXキューシート — ${esc(state.projectTitle)}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif; color: #1a1d24; background: #fff; padding: 24px; }
+    h1 { font-size: 20px; } .meta { color: #667; font-size: 11px; margin: 4px 0 12px; }
+    .toolbar { margin-bottom: 16px; }
+    .toolbar button { padding: 10px 22px; font-size: 14px; cursor: pointer; background: #1a1d24; color: #fff; border: 0; border-radius: 6px; }
+    h2 { font-size: 15px; margin: 18px 0 8px; border-left: 4px solid #9a6ae0; padding-left: 8px; }
+    h3 { font-size: 13px; margin: 14px 0 6px; }
+    h3 .fade { font-size: 11px; color: #9a6ae0; font-weight: 600; margin-left: 8px; }
+    table { border-collapse: collapse; width: 100%; font-size: 11.5px; margin-bottom: 4px; }
+    th, td { border: 1px solid #ccc; padding: 4px 8px; text-align: left; font-variant-numeric: tabular-nums; }
+    th { background: #f2effa; font-size: 10.5px; }
+    tr.off td { color: #aab; }
+    ul { padding-left: 20px; font-size: 12px; line-height: 1.7; margin-top: 6px; }
+    @media print { .toolbar { display: none; } body { padding: 0; } h3 { page-break-after: avoid; } }
+  </style></head><body>
+    <h1>DMXキューシート — ${esc(state.projectTitle)}</h1>
+    <div class="meta">キュー数: ${cues.length} ｜ 灯体数 (パッチ): ${patch.length} ｜ 出力日: ${esc(today)} ｜ Generated by Virtual Studio</div>
+    <div class="toolbar"><button onclick="window.print()">🖨 印刷 / PDFに保存</button></div>
+    <h2>パッチ表 (Universe 1 / 10ch刻み / 汎用8chモード想定)</h2>
+    <table>
+      <thead><tr><th>灯体</th><th>Univ</th><th>開始Addr</th><th>使用ch</th><th>チャンネルマップ</th></tr></thead>
+      <tbody>${patchRows}</tbody>
+    </table>
+    <h2>キューリスト (カット順)</h2>
+    ${cueTables}
+    <h2>運用メモ</h2>
+    <ul>
+      <li>チャンネルマップは汎用8chモードの想定。実機のモード表に合わせてch割りを読み替えること</li>
+      <li>Fade はカット間トランジション設定から自動算出 (カット=0s / ディゾルブ=2s / フェード=3s / その他=1s)</li>
+      <li>HMI・大電力灯はDMX調光でなくバラスト側制御の場合あり。パッチ表と機材リストを照合すること</li>
+      <li>カラージェル指定の灯はRGB値で近似。実ジェル使用時はRGBを0にしてジェルを優先</li>
+    </ul>
+  </body></html>`;
+}
+
+function exportDmx() {
+  const html = buildDmxDoc();
+  if (!html) { alert("パッチ対象のライトがありません"); return; }
+  openDocWindow(html, "dmx-cue-sheet.html");
+}
+
+/* =========================================================
  * Canonical Shot JSON エクスポート (CineOS V3 ベンダー中立形式)
  * 座標系は cineos/CLAUDE.md §4 に準拠:
  *   +X=被写体の右 / +Y=被写体の後ろ / -Y=カメラ側 / +Z=上 (SI単位)
@@ -2137,6 +2278,7 @@ function setupHeader() {
   byId("btnExportBoard").addEventListener("click", exportBoard);
   byId("btnExportJson").addEventListener("click", exportJSON);
   byId("btnExportCanonical").addEventListener("click", exportCanonicalJSON);
+  byId("btnExportDmx").addEventListener("click", exportDmx);
 
   // プロンプトモデル (方言) 切り替え
   const pm = byId("promptModelSelect");
@@ -2227,9 +2369,39 @@ function setupHeader() {
  * ======================================================= */
 let lastIntentCutId = null;
 
+const chipHtml = (a) =>
+  `<span class="intent-chip">${esc(a.label)}: ${esc(a.value)}${a.ev ? `<small>「${esc(a.ev)}」</small>` : ""}</span>`;
+
 function runIntent() {
   const text = byId("intentInput").value.trim();
   if (!text) return;
+
+  /* 複文 (「まず…次に…最後に…」) → 複数カット */
+  const multi = parseIntentMulti(text);
+  if (multi) {
+    const startIdx = state.cuts.length;
+    let chipsHtml = "";
+    multi.forEach((seg, si) => {
+      const cut = buildCutFromIntent(seg.parsed);
+      cut.name = seg.segment.slice(0, 16) + (seg.segment.length > 16 ? "…" : "");
+      // セグメント文中のトランジション語は「前カット→このカット」の繋ぎ
+      if (si > 0) {
+        for (const [re, id] of INTENT_TRANSITIONS) {
+          if (re.test(seg.segment)) { state.cuts[state.cuts.length - 1].transition = id; break; }
+        }
+      }
+      state.cuts.push(cut);
+      chipsHtml += `<div class="intent-cutgroup"><span class="intent-cutno">C${state.cuts.length}</span>${seg.parsed.assumptions.map(chipHtml).join("")}</div>`;
+    });
+    state.activeCut = startIdx;
+    state.selectedItem = null;
+    lastIntentCutId = state.cuts[startIdx].id;
+    renderAll();
+    byId("intentChips").innerHTML = chipsHtml;
+    byId("intentResult").hidden = false;
+    return;
+  }
+
   const parsed = parseIntent(text);
   const cut = buildCutFromIntent(parsed);
   state.cuts.push(cut);
@@ -2238,9 +2410,7 @@ function runIntent() {
   lastIntentCutId = cut.id;
   renderAll();
   // 解釈の根拠を表示 (すべての推定を明示する — CLAUDE.md §8)
-  byId("intentChips").innerHTML = parsed.assumptions
-    .map(a => `<span class="intent-chip">${esc(a.label)}: ${esc(a.value)}${a.ev ? `<small>「${esc(a.ev)}」</small>` : ""}</span>`)
-    .join("");
+  byId("intentChips").innerHTML = parsed.assumptions.map(chipHtml).join("");
   byId("intentResult").hidden = false;
 }
 
@@ -2265,6 +2435,8 @@ function init() {
   setupTheme();
   setupZoom();
   setupIntent();
+  setupViewToggle();
+  setup3DControls();
   byId("btnPlayPreview").addEventListener("click", () => {
     state.previewPlay = !state.previewPlay;
     if (state.previewPlay) startPreviewAnim(); else stopPreviewAnim();
