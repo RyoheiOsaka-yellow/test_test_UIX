@@ -41,6 +41,7 @@
     <symbol id="i-dna" viewBox="0 0 24 24"><path d="M7 3c0 6 10 6 10 12M17 3c0 6-10 6-10 12M7 15c0 3 .5 4.5 1.5 6M17 15c0 3-.5 4.5-1.5 6M8.2 6.5h7.6M8.2 11.5h7.6M8 18h8"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></symbol>
     <symbol id="i-edl" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M3.5 9.5h17M8.5 9.5V19M8.5 5v2M14 9.5V19M14 5v2"/></symbol>
+    <symbol id="i-flow" viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 0 1 13-5.2M19.5 12a7.5 7.5 0 0 1-13 5.2"/><path d="M17.5 3.5v3.5H14M6.5 20.5V17H10"/></symbol>
   </defs>
 </svg>
 
@@ -56,6 +57,10 @@
     <button class="mode-tab" data-mode="outdoor" role="tab">屋外・ドローン</button>
   </nav>
   <div class="header-actions">
+    <button id="btnFlowPage" class="btn" title="制作ワークフロー — 1 素材(画像+ストーリー) → 2 カット設計 → 3 生成 → 4 レビュー → 次のストーリーへ">
+      <svg class="ic"><use href="#i-flow"/></svg><span>ワークフロー</span>
+    </button>
+    <span class="v-sep" aria-hidden="true"></span>
     <button id="btnProjPage" class="icon-btn" title="プロジェクト (保存・切替)" aria-label="プロジェクト">
       <svg class="ic"><use href="#i-folder"/></svg>
     </button>
@@ -290,6 +295,70 @@
 </div>
 
 <!-- プロジェクトページ (ブラウザ内保存・切替) -->
+<!-- 制作ワークフロー (1 素材 → 2 カット設計 → 3 生成 → 4 レビュー → 次のストーリーへ) -->
+<div id="wfOverlay" class="overlay" hidden>
+  <div class="overlay-bar">
+    <button id="btnWfBack" class="btn small"><svg class="ic"><use href="#i-back"/></svg> スタジオに戻る</button>
+    <span class="panel-title">制作ワークフロー <small>画像+ストーリー → カット設計 → 生成 → レビューを1本の流れで回す</small></span>
+    <span id="wfProjTitle" class="wf-proj"></span>
+  </div>
+  <div id="wfBody">
+    <div id="wfStepper"></div>
+
+    <section class="wf-step" id="wfStep1">
+      <h2><span class="wf-no">1</span>素材の受け入れ <small>ChatGPT等で作ったキャラクター/シーン画像とストーリーを持ち込む</small></h2>
+      <div class="wf-cols">
+        <div class="wf-col">
+          <label class="wf-label">ストーリー / シナリオ <small>(文または行ごとに1カットへ分解されます)</small></label>
+          <textarea id="wfStory" rows="7" placeholder="例:&#10;夜の雨の街をヒロインが歩いてくる。&#10;ふと立ち止まり、ゆっくり振り返る。&#10;最後に顔の寄りで、目に涙が光る。"></textarea>
+          <div class="wf-actions">
+            <button id="btnWfDesign" class="btn primary"><svg class="ic"><use href="#i-wand"/></svg> ストーリーからカット設計 (2へ)</button>
+            <span id="wfDesignMsg" class="insp-hint"></span>
+          </div>
+        </div>
+        <div class="wf-col">
+          <label class="wf-label">参照画像 <small>(キャラクター/シーンイメージ — 生成時の first frame 候補)</small></label>
+          <div id="wfDrop" tabindex="0">🖼 ここに画像をドロップ / クリックで選択 (ブラウザ内保存のみ)</div>
+          <input type="file" id="wfRefInput" accept="image/*" multiple hidden>
+          <div id="wfRefGrid"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="wf-step" id="wfStep2">
+      <h2><span class="wf-no">2</span>カット設計 <small>機材・ライティング・カメラワークをスタジオで精緻化する (本体)</small></h2>
+      <div id="wfSummary"></div>
+      <div class="wf-actions"><button id="btnWfStudio" class="btn"><svg class="ic"><use href="#i-fit"/></svg> スタジオで調整する</button></div>
+    </section>
+
+    <section class="wf-step" id="wfStep3">
+      <h2><span class="wf-no">3</span>生成へ書き出し <small>Seedance等へ — プロンプト+パラメータ+参照画像をカット毎に</small></h2>
+      <div class="wf-actions">
+        <button id="btnWfCopySeq" class="btn small"><svg class="ic"><use href="#i-copy"/></svg> 連結シーケンスをコピー (1プロンプト)</button>
+        <details id="wfApi">
+          <summary>API連携 (実験的)</summary>
+          <div class="wf-api-row">
+            <input type="url" id="wfApiUrl" placeholder="中継サーバーのURL (例: http://localhost:8787/generate)">
+            <button id="btnWfApiSave" class="btn small">保存</button>
+            <span id="wfApiMsg" class="insp-hint"></span>
+          </div>
+          <p class="insp-hint">Seedance (BytePlus Ark) やOpenAIのAPIはブラウザから直接は呼べないため (CORS/APIキー保護)、自前の中継サーバーのURLを指定します。各カットの「APIへ送信」でプロンプト+パラメータ+参照画像をJSONでPOSTします。</p>
+        </details>
+      </div>
+      <div id="wfExportList"></div>
+    </section>
+
+    <section class="wf-step" id="wfStep4">
+      <h2><span class="wf-no">4</span>レビュー & 次のストーリーへ <small>生成結果を確認し、採用したらループを回す</small></h2>
+      <div id="wfBoard"></div>
+      <div class="wf-actions">
+        <button id="btnWfNext" class="btn primary"><svg class="ic"><use href="#i-flow"/></svg> このストーリーを完了して次へ (1に戻る)</button>
+        <span class="insp-hint">現在のプロジェクトを保存してから、新しい空のプロジェクトを開始します。全体の編集は「編集リスト (EDL)」を書き出して編集ソフトで</span>
+      </div>
+    </section>
+  </div>
+</div>
+
 <div id="projOverlay" class="overlay" hidden>
   <div class="overlay-bar">
     <button id="btnProjBack" class="btn small"><svg class="ic"><use href="#i-back"/></svg> スタジオに戻る</button>

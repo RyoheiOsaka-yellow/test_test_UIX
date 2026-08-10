@@ -38,6 +38,8 @@ const state = {
   // プロジェクト共通の使用機材キット (機材DBで選択 → 全カット・保存に反映)
   kit: { body: null, lens: null, support: null, drone: null },
   customDNA: [], // 参照の手動注釈から作られたPattern DNA (V8 Phase 2)
+  // 制作ワークフロー: ChatGPT等で作った参照画像+ストーリーの受け入れ (ステップ1)
+  story: { text: "", refs: [] }, // refs: {id, name, dataUrl, assign: cutId|null}
 };
 
 function allPresets() { return PRESETS.concat(state.customPresets); }
@@ -85,6 +87,8 @@ function ensureCameraDefaults(cut) {
   if (cut.srcInSec == null) cut.srcInSec = 2;
   if (!cut.audioEdit) cut.audioEdit = "none";
   if (cut.audioOverlapSec == null) cut.audioOverlapSec = 1;
+  /* ワークフロー進行状態 (1素材→2設計→3生成→4レビュー) */
+  if (!cut.wfStatus) cut.wfStatus = "plan";
   const c = cut.camera;
   if (!c.moveSpeed) c.moveSpeed = "normal";
   if (!c.endShotSize) c.endShotSize = "same";
@@ -1158,7 +1162,7 @@ function renderCutStrip() {
     return `
     <div class="cut-thumb ${i === state.activeCut ? "active" : ""}" data-idx="${i}" style="width:${tw + 4}px">
       ${renderPreviewSVG(c, "th" + i)}
-      <div class="cut-cap">C${i + 1}　${esc(c.name)}</div>
+      <div class="cut-cap"><span class="wf-dot ${c.wfStatus || "plan"}" title="${(WF_STATUS.find(w => w.id === c.wfStatus) || WF_STATUS[0]).label}"></span>C${i + 1}　${esc(c.name)}</div>
     </div>
     ${trans ? `<div class="trans-chip" title="${esc(trans.note)}">${esc(trans.label.split(" ")[0])}</div>` : ""}`;
   }).join("");
@@ -1982,6 +1986,7 @@ function setupDocOverlay() {
       byId("equipOverlay").hidden = true;
       byId("projOverlay").hidden = true;
       byId("dnaOverlay").hidden = true;
+      byId("wfOverlay").hidden = true;
     }
   });
 }
@@ -2601,7 +2606,7 @@ function snapshotState() {
     mode: state.mode, cuts: state.cuts, activeCut: state.activeCut,
     projectTitle: state.projectTitle, projectId: state.projectId || null,
     promptModel: state.promptModel, customPresets: state.customPresets,
-    kit: state.kit, customDNA: state.customDNA,
+    kit: state.kit, customDNA: state.customDNA, story: state.story,
   }));
 }
 
@@ -2617,6 +2622,9 @@ function applySnapshot(s) {
   state.customPresets = Array.isArray(s.customPresets) ? s.customPresets : [];
   state.kit = Object.assign({ body: null, lens: null, support: null, drone: null }, s.kit || {});
   state.customDNA = Array.isArray(s.customDNA) ? s.customDNA : [];
+  state.story = s.story && typeof s.story === "object"
+    ? { text: s.story.text || "", refs: Array.isArray(s.story.refs) ? s.story.refs : [] }
+    : { text: "", refs: [] };
   document.querySelectorAll(".mode-tab").forEach(b => b.classList.toggle("active", b.dataset.mode === state.mode));
   const pm = byId("promptModelSelect");
   if (pm && pm.options.length) pm.value = state.promptModel;
@@ -2712,6 +2720,273 @@ function setupProjects() {
       cuts: [makeCut(allPresets().find(p => p.id === "three-point"))],
     });
     byId("projOverlay").hidden = true;
+  });
+}
+
+/* =========================================================
+ * 制作ワークフロー
+ *   1 素材 (参照画像+ストーリー) → 2 カット設計 (本体)
+ *   → 3 生成へ書き出し (Seedance等) → 4 レビュー → 1へ戻る
+ * 全体編集は外部NLE (EDL書き出しで受け渡す) 前提。
+ * ======================================================= */
+const WF_STATUS = [
+  { id: "plan",      label: "設計中" },
+  { id: "prompted",  label: "プロンプト済" },
+  { id: "generated", label: "生成済み" },
+  { id: "approved",  label: "採用" },
+];
+const LS_APICFG = "vsApiCfg";
+
+async function downscaleImage(file, maxPx) {
+  const bmp = await createImageBitmap(file);
+  const scale = Math.min(1, maxPx / Math.max(bmp.width, bmp.height));
+  const cv = document.createElement("canvas");
+  cv.width = Math.max(1, Math.round(bmp.width * scale));
+  cv.height = Math.max(1, Math.round(bmp.height * scale));
+  cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
+  return cv.toDataURL("image/jpeg", 0.82);
+}
+
+async function wfAddRefFiles(files) {
+  const MAX = 12;
+  let added = 0;
+  for (const file of files) {
+    if (!(file.type || "").startsWith("image/")) continue;
+    if (state.story.refs.length >= MAX) { alert(`参照画像は${MAX}枚までです (ブラウザ保存容量のため)`); break; }
+    try {
+      state.story.refs.push({ id: uid(), name: file.name, dataUrl: await downscaleImage(file, 768), assign: null });
+      added++;
+    } catch { /* 読めない画像はスキップ */ }
+  }
+  if (added) renderWorkflow();
+}
+
+/* ストーリー文 → カット群 (IntentParserを文単位に適用) */
+function wfDesignFromStory() {
+  const text = (state.story.text || "").trim();
+  if (!text) { byId("wfDesignMsg").textContent = "⚠️ 先にストーリーを入力してください"; return; }
+  const segs = text.split(/\n+|(?<=[。！？!?])/).map(s => s.trim()).filter(s => s.length >= 4).slice(0, 12);
+  if (!segs.length) { byId("wfDesignMsg").textContent = "⚠️ カットに分解できる文が見つかりません"; return; }
+
+  // 既存カットがあるときは置き換えか追記かを選んでもらう
+  if (state.cuts.length && confirm(`既存の${state.cuts.length}カットを置き換えますか?\nOK = 置き換えて新しく設計 / キャンセル = 後ろに追加`)) {
+    state.cuts = [];
+  }
+  const startIdx = state.cuts.length;
+
+  segs.forEach((seg, si) => {
+    const cut = buildCutFromIntent(parseIntent(seg));
+    cut.name = seg.slice(0, 16) + (seg.length > 16 ? "…" : "");
+    cut.aim = seg;
+    if (si > 0) {
+      for (const [re, id] of INTENT_TRANSITIONS) {
+        if (re.test(seg)) { state.cuts[state.cuts.length - 1].transition = id; break; }
+      }
+    }
+    state.cuts.push(cut);
+  });
+  state.activeCut = startIdx;
+  state.selectedItem = null;
+  renderAll();
+  byId("wfDesignMsg").innerHTML = `✓ ${segs.length}文 → <b>C${startIdx + 1}〜C${state.cuts.length}</b> を設計しました。ステップ2で精緻化してください`;
+  renderWorkflow();
+}
+
+function wfApiCfg() { return lsGet(LS_APICFG, { endpoint: "" }); }
+
+/* 実験的API連携: 自前の中継サーバーへカットをPOSTする */
+async function wfSendCut(cut, statusEl) {
+  const cfg = wfApiCfg();
+  if (!cfg.endpoint) return;
+  const ref = state.story.refs.find(r => r.assign === cut.id);
+  statusEl.textContent = "送信中…";
+  try {
+    const res = await fetch(cfg.endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        project: state.projectTitle,
+        cut_no: state.cuts.indexOf(cut) + 1,
+        name: cut.name,
+        model_hint: "seedance",
+        prompt: generatePrompt(cut, "seedance"),
+        params: {
+          ratio: seedanceRatio(cut.aspect),
+          duration_s: cut.kind === "still" ? null : (cut.duration || 5),
+          resolution: "1080p",
+          camerafixed: cut.camera.move === "fix",
+        },
+        first_frame_data_url: ref ? ref.dataUrl : null,
+      }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    statusEl.textContent = "✓ 送信しました (生成が終わったら「生成済み」を押してください)";
+    if (cut.wfStatus === "plan") cut.wfStatus = "prompted";
+    renderCutStrip();
+  } catch (err) {
+    statusEl.textContent = `⚠️ 送信できませんでした: ${err.message} — 中継サーバーが起動しているか・CORSを許可しているか確認してください`;
+  }
+}
+
+function wfStatusPill(cut) {
+  const st = WF_STATUS.find(w => w.id === cut.wfStatus) || WF_STATUS[0];
+  return `<span class="wf-pill ${st.id}">${st.label}</span>`;
+}
+
+function renderWorkflow() {
+  byId("wfProjTitle").textContent = state.projectTitle;
+  byId("wfStory").value = state.story.text || "";
+
+  /* ステッパー: 各段階の進行を数で示す */
+  const n = state.cuts.length;
+  const counts = { prompted: 0, generated: 0, approved: 0 };
+  state.cuts.forEach(c => {
+    if (c.wfStatus === "prompted") counts.prompted++;
+    if (c.wfStatus === "generated") counts.generated++;
+    if (c.wfStatus === "approved") counts.approved++;
+  });
+  const steps = [
+    { no: 1, t: "素材", d: `${state.story.refs.length}枚 / ${state.story.text.trim() ? "ストーリーあり" : "ストーリー未入力"}`, done: !!state.story.text.trim() },
+    { no: 2, t: "カット設計", d: `${n}カット`, done: n > 0 },
+    { no: 3, t: "生成", d: `${counts.prompted + counts.generated + counts.approved}/${n} 書き出し`, done: n > 0 && counts.prompted + counts.generated + counts.approved >= n },
+    { no: 4, t: "レビュー", d: `${counts.approved}/${n} 採用`, done: n > 0 && counts.approved >= n },
+  ];
+  byId("wfStepper").innerHTML = steps.map((s, i) =>
+    `<a class="wf-stepchip ${s.done ? "done" : ""}" href="#wfStep${s.no}"><span class="wf-stepno">${s.no}</span><b>${s.t}</b><small>${esc(s.d)}</small></a>${i < 3 ? '<span class="wf-arrow">→</span>' : ""}`).join("");
+
+  /* ステップ1: 参照画像 */
+  byId("wfRefGrid").innerHTML = state.story.refs.map(r => `
+    <div class="wf-ref">
+      <img src="${r.dataUrl}" alt="${esc(r.name)}">
+      <div class="wf-ref-body">
+        <div class="wf-ref-name" title="${esc(r.name)}">${esc(r.name)}</div>
+        <select data-refassign="${r.id}" title="このカットの first frame 参照として割り当て">
+          <option value="">未割当</option>
+          ${state.cuts.map((c, i) => `<option value="${c.id}" ${r.assign === c.id ? "selected" : ""}>C${i + 1} ${esc(c.name.slice(0, 10))}</option>`).join("")}
+        </select>
+        <button class="icon-btn small danger" data-refdel="${r.id}" title="削除"><svg class="ic"><use href="#i-trash"/></svg></button>
+      </div>
+    </div>`).join("") || `<p class="insp-hint">まだ画像がありません。ChatGPT等で作成したキャラクター/シーン画像をドロップしてください</p>`;
+
+  /* ステップ2: 設計サマリー */
+  const cov = n ? evaluateCoverage(state.cuts) : [];
+  const ngs = cov.filter(c => !c.ok);
+  const warns = state.cuts.reduce((s, c) => s + evaluateFeasibility(c).filter(w => w.lv === "warn").length, 0);
+  byId("wfSummary").innerHTML = n
+    ? `<div class="wf-sum">
+        <span class="wf-pill">${n}カット / 計${state.cuts.reduce((s, c) => s + (c.kind === "still" ? 0 : c.duration || 5), 0)}秒</span>
+        <span class="wf-pill ${ngs.length ? "warn" : "ok"}">カバレッジ: ${ngs.length ? ngs.map(x => x.label).join("・") : "OK"}</span>
+        <span class="wf-pill ${warns ? "warn" : "ok"}">フィージビリティ警告: ${warns}件</span>
+      </div>`
+    : `<p class="insp-hint">まだカットがありません。ステップ1の「ストーリーからカット設計」か、スタジオの技法ライブラリから作成してください</p>`;
+
+  /* ステップ3: 書き出しセンター */
+  const cfg = wfApiCfg();
+  byId("wfApiUrl").value = cfg.endpoint || "";
+  byId("wfExportList").innerHTML = state.cuts.map((c, i) => {
+    const ref = state.story.refs.find(r => r.assign === c.id);
+    const sp = seedanceParams(c);
+    return `
+    <div class="wf-exp" data-cid="${c.id}">
+      <div class="wf-exp-head">
+        <b>C${i + 1}　${esc(c.name)}</b>
+        ${wfStatusPill(c)}
+        <span class="wf-exp-params">${esc(sp.ratio)} ｜ ${c.kind === "still" ? "静止画" : (c.duration || 5) + "s"} ｜ 1080p ｜ camerafixed: ${c.camera.move === "fix"}</span>
+      </div>
+      <div class="wf-exp-row">
+        ${ref ? `<img class="wf-exp-ref" src="${ref.dataUrl}" title="first frame 参照: ${esc(ref.name)}">` : `<div class="wf-exp-noref" title="ステップ1で参照画像を割り当てると first frame として使えます">参照<br>なし</div>`}
+        <textarea readonly rows="3">${esc(generatePrompt(c, "seedance"))}</textarea>
+      </div>
+      <div class="wf-exp-actions">
+        <button class="btn small" data-wfcopy="${c.id}"><svg class="ic"><use href="#i-copy"/></svg> プロンプトをコピー</button>
+        ${cfg.endpoint ? `<button class="btn small" data-wfsend="${c.id}"><svg class="ic"><use href="#i-upload"/></svg> APIへ送信</button>` : ""}
+        <button class="btn small" data-wfgen="${c.id}">生成済みにする</button>
+        <button class="btn small" data-wfok="${c.id}">採用にする</button>
+        <span class="insp-hint" data-wfmsg="${c.id}"></span>
+      </div>
+    </div>`;
+  }).join("") || `<p class="insp-hint">カットを設計するとここに書き出しカードが並びます</p>`;
+
+  /* ステップ4: レビューボード */
+  byId("wfBoard").innerHTML = n
+    ? `<div class="wf-board">${state.cuts.map((c, i) =>
+        `<button class="wf-boardcell ${c.wfStatus}" data-wfcycle="${c.id}" title="クリックで状態を進める (${(WF_STATUS.find(w => w.id === c.wfStatus) || WF_STATUS[0]).label})">C${i + 1}<small>${(WF_STATUS.find(w => w.id === c.wfStatus) || WF_STATUS[0]).label}</small></button>`).join("")}</div>
+      <p class="insp-hint">採用 ${counts.approved}/${n} — 全カット採用でこのストーリーは完成。生成結果がイメージと違う場合はステップ2に戻って機材・ライティングを調整 → 再書き出し</p>`
+    : "";
+}
+
+function setupWorkflow() {
+  byId("btnFlowPage").addEventListener("click", () => { renderWorkflow(); byId("wfOverlay").hidden = false; });
+  byId("btnWfBack").addEventListener("click", () => { byId("wfOverlay").hidden = true; });
+  byId("btnWfStudio").addEventListener("click", () => { byId("wfOverlay").hidden = true; });
+  byId("wfStory").addEventListener("input", e => { state.story.text = e.target.value; });
+  byId("btnWfDesign").addEventListener("click", wfDesignFromStory);
+
+  /* 参照画像: ドロップ/選択 */
+  const drop = byId("wfDrop");
+  drop.addEventListener("click", () => byId("wfRefInput").click());
+  drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); wfAddRefFiles([...e.dataTransfer.files]); });
+  byId("wfRefInput").addEventListener("change", e => { wfAddRefFiles([...e.target.files]); e.target.value = ""; });
+
+  byId("btnWfCopySeq").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(buildSeedanceSequence()); } catch { /* file://等 */ }
+    state.cuts.forEach(c => { if (c.wfStatus === "plan" && c.kind !== "still") c.wfStatus = "prompted"; });
+    renderCutStrip(); renderWorkflow();
+  });
+  byId("btnWfApiSave").addEventListener("click", () => {
+    lsSet(LS_APICFG, { endpoint: byId("wfApiUrl").value.trim() });
+    byId("wfApiMsg").textContent = "✓ 保存しました";
+    renderWorkflow();
+  });
+
+  /* カード内の操作は委譲で受ける */
+  byId("wfBody").addEventListener("click", async e => {
+    const cutBy = attr => { const el = e.target.closest(`[${attr}]`); return el ? { el, cut: state.cuts.find(c => c.id === el.getAttribute(attr)) } : null; };
+    let hit;
+    if ((hit = cutBy("data-wfcopy")) && hit.cut) {
+      try { await navigator.clipboard.writeText(generatePrompt(hit.cut, "seedance")); } catch { /* 手動コピーにフォールバック */ }
+      if (hit.cut.wfStatus === "plan") hit.cut.wfStatus = "prompted";
+      renderCutStrip(); renderWorkflow();
+    } else if ((hit = cutBy("data-wfsend")) && hit.cut) {
+      wfSendCut(hit.cut, byId("wfBody").querySelector(`[data-wfmsg="${hit.cut.id}"]`));
+    } else if ((hit = cutBy("data-wfgen")) && hit.cut) {
+      hit.cut.wfStatus = "generated"; renderCutStrip(); renderWorkflow();
+    } else if ((hit = cutBy("data-wfok")) && hit.cut) {
+      hit.cut.wfStatus = "approved"; renderCutStrip(); renderWorkflow();
+    } else if ((hit = cutBy("data-wfcycle")) && hit.cut) {
+      const order = WF_STATUS.map(w => w.id);
+      hit.cut.wfStatus = order[(order.indexOf(hit.cut.wfStatus) + 1) % order.length];
+      renderCutStrip(); renderWorkflow();
+    } else if (e.target.closest("[data-refdel]")) {
+      const id = e.target.closest("[data-refdel]").getAttribute("data-refdel");
+      state.story.refs = state.story.refs.filter(r => r.id !== id);
+      renderWorkflow();
+    }
+  });
+  byId("wfBody").addEventListener("change", e => {
+    const sel = e.target.closest("[data-refassign]");
+    if (!sel) return;
+    const ref = state.story.refs.find(r => r.id === sel.getAttribute("data-refassign"));
+    if (ref) ref.assign = sel.value || null;
+    renderWorkflow();
+  });
+
+  /* 4→1: プロジェクトを保存して次のストーリーへ */
+  byId("btnWfNext").addEventListener("click", () => {
+    if (!confirm("このストーリーを完了して、新しいストーリーを開始しますか?\n(現在のプロジェクトはブラウザに保存されます)")) return;
+    if (!state.projectId) state.projectId = "p" + Date.now();
+    const all = lsGet(LS_PROJECTS, {});
+    all[state.projectId] = { id: state.projectId, title: state.projectTitle, updated: Date.now(), data: snapshotState() };
+    lsSet(LS_PROJECTS, all);
+    applySnapshot({
+      mode: "video", projectTitle: "無題プロジェクト", projectId: null,
+      cuts: [makeCut(allPresets().find(p => p.id === "three-point"))],
+      story: { text: "", refs: [] },
+    });
+    renderWorkflow();
+    byId("wfBody").scrollTop = 0;
   });
 }
 
@@ -3538,6 +3813,7 @@ function init() {
   setupProjects();
   setupDnaPage();
   setupTimeline();
+  setupWorkflow();
   byId("btnPlayPreview").addEventListener("click", () => {
     state.previewPlay = !state.previewPlay;
     if (state.previewPlay) startPreviewAnim(); else stopPreviewAnim();
