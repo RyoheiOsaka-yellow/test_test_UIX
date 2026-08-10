@@ -89,6 +89,8 @@ function ensureCameraDefaults(cut) {
   if (cut.audioOverlapSec == null) cut.audioOverlapSec = 1;
   /* ワークフロー進行状態 (1素材→2設計→3生成→4レビュー) */
   if (!cut.wfStatus) cut.wfStatus = "plan";
+  /* 参照画像 (ワークフローの素材) — プレビュー/first frameに使う */
+  if (cut.refImgId === undefined) cut.refImgId = null;
   const c = cut.camera;
   if (!c.moveSpeed) c.moveSpeed = "normal";
   if (!c.endShotSize) c.endShotSize = "same";
@@ -931,13 +933,71 @@ function renderPreviewSVG(cut, idPrefix) {
   if (look.tintA) lookTint += `<rect width="${W}" height="${H}" fill="${look.tintA}" opacity="0.10"/>`;
   if (look.tintB) lookTint += `<rect width="${W}" height="${H}" fill="${look.tintB}" opacity="0.12"/>`;
 
+  /* ---- 参照画像モード ----
+   * ワークフローで取り込んだ実画像をベースに、ライティング解析の結果
+   * (露出/コントラスト/キー方向/リム/色温度/シルエット) を
+   * ブレンドレイヤーで簡易合成する — 技法を切り替えると画像上で効果が変わる */
+  const refImg = cut.refImgId && state.story && state.story.refs
+    ? state.story.refs.find(r => r.id === cut.refImgId) : null;
+  let refScene = "";
+  if (refImg) {
+    const B = silhouette ? 0.45 : Math.max(0.55, Math.min(1.15, 0.55 + keyF * 0.5));
+    const C = silhouette ? 1.35 : 1 + an.contrast * 0.6;
+    const slope = +(B * C).toFixed(3);
+    const inter = +(B * (1 - C) * 0.5).toFixed(3);
+    const gx1 = keySide > 0 ? 0 : 1, gx2 = keySide > 0 ? 1 : 0;
+    defs += `
+      <filter id="${p}imf"><feComponentTransfer>
+        <feFuncR type="linear" slope="${slope}" intercept="${inter}"/>
+        <feFuncG type="linear" slope="${slope}" intercept="${inter}"/>
+        <feFuncB type="linear" slope="${slope}" intercept="${inter}"/>
+      </feComponentTransfer></filter>
+      <linearGradient id="${p}imkey" x1="${gx1}" y1="0" x2="${gx2}" y2="0">
+        <stop offset="0" stop-color="${rimColor}" stop-opacity="${silhouette ? 0 : (0.10 + keyF * 0.16).toFixed(2)}"/>
+        <stop offset="0.6" stop-color="${rimColor}" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="${p}imshad" x1="${gx1}" y1="0" x2="${gx2}" y2="0">
+        <stop offset="0.45" stop-color="#000" stop-opacity="0"/>
+        <stop offset="1" stop-color="#000" stop-opacity="${(an.contrast * 0.55).toFixed(2)}"/>
+      </linearGradient>
+      <linearGradient id="${p}imtop" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#ffffff" stop-opacity="${an.topPower > 0 && !silhouette ? 0.22 : 0}"/>
+        <stop offset="0.4" stop-color="#ffffff" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="${p}imrim" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0.55" stop-color="${rimColor}" stop-opacity="0"/>
+        <stop offset="1" stop-color="${rimColor}" stop-opacity="${Math.min(0.5, an.rimPower / 160).toFixed(2)}"/>
+      </linearGradient>
+      <radialGradient id="${p}imglow" cx="0.5" cy="0.38" r="0.62">
+        <stop offset="0" stop-color="#fff6dd" stop-opacity="0.55"/>
+        <stop offset="1" stop-color="#fff6dd" stop-opacity="0"/>
+      </radialGradient>`;
+    const tempTint = an.avgTemp >= 7000 ? `<rect width="${W}" height="${H}" fill="#3d78ff" opacity="0.10"/>`
+      : an.avgTemp <= 3800 ? `<rect width="${W}" height="${H}" fill="#ff9a3d" opacity="0.10"/>` : "";
+    refScene = `
+      <image href="${refImg.dataUrl}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice" filter="url(#${p}imf)"/>
+      ${silhouette ? `<rect width="${W}" height="${H}" fill="url(#${p}imglow)" style="mix-blend-mode:screen"/>
+                      <rect width="${W}" height="${H}" fill="#0a0c12" opacity="0.5" style="mix-blend-mode:multiply"/>` : ""}
+      <rect width="${W}" height="${H}" fill="url(#${p}imshad)" style="mix-blend-mode:multiply"/>
+      <rect width="${W}" height="${H}" fill="url(#${p}imkey)" style="mix-blend-mode:screen"/>
+      <rect width="${W}" height="${H}" fill="url(#${p}imtop)" style="mix-blend-mode:screen"/>
+      ${an.rimPower > 0 ? `<rect width="${W}" height="${H}" fill="url(#${p}imrim)" style="mix-blend-mode:screen"/>` : ""}
+      ${tempTint}
+      ${cut.options.includes("gel") ? `
+        <rect x="0" y="0" width="${W / 2}" height="${H}" fill="#e040c8" opacity="0.18" style="mix-blend-mode:screen"/>
+        <rect x="${W / 2}" y="0" width="${W / 2}" height="${H}" fill="#2a6ae8" opacity="0.18" style="mix-blend-mode:screen"/>` : ""}
+      ${fx}`;
+  }
+
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">
     <defs>${defs}</defs>
     <g id="${p}anim"><g ${lookFilter}>
+      ${refImg ? refScene : `
       <rect x="${-W * 0.15}" y="${-H * 0.15}" width="${W * 1.3}" height="${H * 1.3}" fill="url(#${p}bg)"/>
-      ${bgExtra}${subjectSvg}${fx}
+      ${bgExtra}${subjectSvg}${fx}`}
     </g></g>
     ${lookTint}${overlay}
+    ${refImg ? `<text x="${W - 8}" y="14" text-anchor="end" fill="#ffd98a" font-size="10" font-family="monospace" opacity="0.85">REF: ${esc(refImg.name.slice(0, 18))}</text>` : ""}
   </svg>`;
 }
 
@@ -980,10 +1040,12 @@ function applyPreset(presetId) {
   const idx = state.activeCut;
   const fresh = makeCut(preset);
   fresh.id = cut.id; // プレビューseedを安定させたい場合は維持しない方が自然だが、参照維持のためIDは引き継ぐ
-  // カットの物語上の設定 (繋ぎ・段取り) はプリセットを変えても維持する
+  // カットの物語上の設定 (繋ぎ・段取り・参照画像・進行状態) はプリセットを変えても維持する
   fresh.transition = cut.transition;
   fresh.takes = cut.takes;
   fresh.setupMin = cut.setupMin;
+  fresh.refImgId = cut.refImgId;
+  fresh.wfStatus = cut.wfStatus;
   state.cuts[idx] = fresh;
   state.selectedItem = null;
   renderAll();
@@ -1346,6 +1408,10 @@ function renderInspector() {
       ${fieldRow("演技/動き", selectHtml("cAction", SUBJECT_ACTIONS, cut.action))}
       ${fieldRow("被写体メモ", `<input type="text" id="cSubNote" value="${esc(cut.subjectNote)}" placeholder="例: 20代女性・白ワンピース / 青いガラス瓶のジン">`)}
       ${fieldRow("背景", selectHtml("cBg", Object.keys(BG_STYLES).map(k => ({ id: k, label: k + " — " + BG_STYLES[k].en })), cut.bgStyle))}
+      ${state.story.refs.length ? fieldRow("参照画像", `<select id="cRefImg">
+        <option value="">なし (図解プレビュー)</option>
+        ${state.story.refs.map(r => `<option value="${esc(r.id)}" ${cut.refImgId === r.id ? "selected" : ""}>${esc(r.name)}</option>`).join("")}
+      </select>`) : ""}
       ${fieldRow("アスペクト比", selectHtml("cAspect", ASPECTS, cut.aspect))}
       ${fieldRow("ルック/グレード", selectHtml("cLook", LOOKS, cut.look))}
       ${fieldRow("天候", selectHtml("cWeather", WEATHERS, cut.weather))}
@@ -1458,6 +1524,7 @@ function renderInspector() {
   bind("cAction", e => { cut.action = e.target.value; renderPrompt(); });
   bind("cSubNote", e => { cut.subjectNote = e.target.value; renderPrompt(); }, "input");
   bind("cBg", e => { cut.bgStyle = e.target.value; refresh(); });
+  bind("cRefImg", e => { cut.refImgId = e.target.value || null; refresh(); });
   bind("cAspect", e => { cut.aspect = e.target.value; refresh(); });
   bind("cLook", e => { cut.look = e.target.value; renderPreview(); renderPrompt(); renderCutStrip(); });
   bind("cWeather", e => { cut.weather = e.target.value; renderPrompt(); });
@@ -2625,6 +2692,13 @@ function applySnapshot(s) {
   state.story = s.story && typeof s.story === "object"
     ? { text: s.story.text || "", refs: Array.isArray(s.story.refs) ? s.story.refs : [] }
     : { text: "", refs: [] };
+  // 旧形式 (ref.assign = cutId) からの移行: カット側ポインタに変換
+  state.story.refs.forEach(r => {
+    if (r.assign) {
+      const c = state.cuts.find(c2 => c2.id === r.assign);
+      if (c && !c.refImgId) c.refImgId = r.id;
+    }
+  });
   document.querySelectorAll(".mode-tab").forEach(b => b.classList.toggle("active", b.dataset.mode === state.mode));
   const pm = byId("promptModelSelect");
   if (pm && pm.options.length) pm.value = state.promptModel;
@@ -2798,7 +2872,7 @@ function wfApiCfg() { return lsGet(LS_APICFG, { endpoint: "" }); }
 async function wfSendCut(cut, statusEl) {
   const cfg = wfApiCfg();
   if (!cfg.endpoint) return;
-  const ref = state.story.refs.find(r => r.assign === cut.id);
+  const ref = state.story.refs.find(r => r.id === cut.refImgId);
   statusEl.textContent = "送信中…";
   try {
     const res = await fetch(cfg.endpoint, {
@@ -2855,18 +2929,22 @@ function renderWorkflow() {
     `<a class="wf-stepchip ${s.done ? "done" : ""}" href="#wfStep${s.no}"><span class="wf-stepno">${s.no}</span><b>${s.t}</b><small>${esc(s.d)}</small></a>${i < 3 ? '<span class="wf-arrow">→</span>' : ""}`).join("");
 
   /* ステップ1: 参照画像 */
-  byId("wfRefGrid").innerHTML = state.story.refs.map(r => `
+  byId("wfRefGrid").innerHTML = state.story.refs.map(r => {
+    const usedBy = state.cuts.map((c, i) => c.refImgId === r.id ? `C${i + 1}` : null).filter(Boolean);
+    return `
     <div class="wf-ref">
       <img src="${r.dataUrl}" alt="${esc(r.name)}">
       <div class="wf-ref-body">
-        <div class="wf-ref-name" title="${esc(r.name)}">${esc(r.name)}</div>
-        <select data-refassign="${r.id}" title="このカットの first frame 参照として割り当て">
-          <option value="">未割当</option>
-          ${state.cuts.map((c, i) => `<option value="${c.id}" ${r.assign === c.id ? "selected" : ""}>C${i + 1} ${esc(c.name.slice(0, 10))}</option>`).join("")}
+        <div class="wf-ref-name" title="${esc(r.name)}">${esc(r.name)}${usedBy.length ? `<span class="wf-ref-used">${usedBy.join(" ")}</span>` : ""}</div>
+        <select data-refassign="${r.id}" title="選んだカットにこの画像を割り当て (プレビュー/first frameに反映。複数カットにも割当可)">
+          <option value="">カットに割当…</option>
+          ${state.cuts.map((c, i) => `<option value="${c.id}" ${c.refImgId === r.id ? "selected" : ""}>C${i + 1} ${esc(c.name.slice(0, 10))}</option>`).join("")}
+          <option value="__clear">— 割当をすべて外す</option>
         </select>
         <button class="icon-btn small danger" data-refdel="${r.id}" title="削除"><svg class="ic"><use href="#i-trash"/></svg></button>
       </div>
-    </div>`).join("") || `<p class="insp-hint">まだ画像がありません。ChatGPT等で作成したキャラクター/シーン画像をドロップしてください</p>`;
+    </div>`;
+  }).join("") || `<p class="insp-hint">まだ画像がありません。ChatGPT等で作成したキャラクター/シーン画像をドロップしてください</p>`;
 
   /* ステップ2: 設計サマリー */
   const cov = n ? evaluateCoverage(state.cuts) : [];
@@ -2884,7 +2962,7 @@ function renderWorkflow() {
   const cfg = wfApiCfg();
   byId("wfApiUrl").value = cfg.endpoint || "";
   byId("wfExportList").innerHTML = state.cuts.map((c, i) => {
-    const ref = state.story.refs.find(r => r.assign === c.id);
+    const ref = state.story.refs.find(r => r.id === c.refImgId);
     const sp = seedanceParams(c);
     return `
     <div class="wf-exp" data-cid="${c.id}">
@@ -2965,6 +3043,8 @@ function setupWorkflow() {
     } else if (e.target.closest("[data-refdel]")) {
       const id = e.target.closest("[data-refdel]").getAttribute("data-refdel");
       state.story.refs = state.story.refs.filter(r => r.id !== id);
+      state.cuts.forEach(c => { if (c.refImgId === id) c.refImgId = null; });
+      refresh(); renderInspector();
       renderWorkflow();
     } else if (e.target.closest("[data-rcattach]")) {
       const input = byId("rcClipInput");
@@ -2981,8 +3061,14 @@ function setupWorkflow() {
   byId("wfBody").addEventListener("change", e => {
     const sel = e.target.closest("[data-refassign]");
     if (!sel) return;
-    const ref = state.story.refs.find(r => r.id === sel.getAttribute("data-refassign"));
-    if (ref) ref.assign = sel.value || null;
+    const refId = sel.getAttribute("data-refassign");
+    if (sel.value === "__clear") {
+      state.cuts.forEach(c => { if (c.refImgId === refId) c.refImgId = null; });
+    } else if (sel.value) {
+      const c = state.cuts.find(c2 => c2.id === sel.value);
+      if (c) c.refImgId = refId;
+    }
+    refresh(); renderInspector();
     renderWorkflow();
   });
 

@@ -974,3 +974,10 @@ input[type="range"]::-moz-range-thumb {
 .rc-player { background: var(--surface); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow-sm); }
 #rcVideo { width: 100%; max-width: 640px; aspect-ratio: 16 / 9; background: #000; border-radius: 10px; display: block; }
 .rc-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+/* 参照画像の使用中カット表示 */
+.wf-ref-used {
+  display: inline-block; margin-left: 5px; padding: 1px 6px;
+  font-size: 9px; font-weight: 700; border-radius: 980px;
+  background: var(--accent-soft); color: var(--accent);
+}
