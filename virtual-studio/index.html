@@ -350,6 +350,23 @@
 
     <section class="wf-step" id="wfStep4">
       <h2><span class="wf-no">4</span>レビュー & 次のストーリーへ <small>生成結果を確認し、採用したらループを回す</small></h2>
+      <!-- ラフカット編集: 生成動画をカットに添付 → トリム値で連結再生 → WebM書き出し -->
+      <div id="rcSection">
+        <h3 class="rc-title">ラフカット編集 <small>生成した動画を各カットに添付すると、タイムラインのイン点/尺で連結再生・書き出しができます (保存はこのブラウザ内)</small></h3>
+        <div id="rcList"></div>
+        <input type="file" id="rcClipInput" accept="video/*" hidden>
+        <div class="rc-player">
+          <video id="rcVideo" playsinline></video>
+          <canvas id="rcCanvas" hidden></canvas>
+          <div class="rc-controls">
+            <button id="btnRcPlay" class="btn small primary"><svg class="ic"><use href="#i-play"/></svg> ラフカット再生</button>
+            <button id="btnRcStop" class="btn small"><svg class="ic"><use href="#i-pause"/></svg> 停止</button>
+            <button id="btnRcExport" class="btn small"><svg class="ic"><use href="#i-download"/></svg> WebMで書き出す (プレビュー品質)</button>
+            <span id="rcMsg" class="insp-hint"></span>
+          </div>
+          <p class="insp-hint">つなぎはカット (直つなぎ) で再生されます。ディゾルブ等の最終表現・納品品質の書き出しは「編集リスト (EDL)」+元素材で編集ソフトへ</p>
+        </div>
+      </div>
       <div id="wfBoard"></div>
       <div class="wf-actions">
         <button id="btnWfNext" class="btn primary"><svg class="ic"><use href="#i-flow"/></svg> このストーリーを完了して次へ (1に戻る)</button>

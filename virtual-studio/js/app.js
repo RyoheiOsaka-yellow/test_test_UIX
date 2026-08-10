@@ -2913,6 +2913,9 @@ function renderWorkflow() {
         `<button class="wf-boardcell ${c.wfStatus}" data-wfcycle="${c.id}" title="クリックで状態を進める (${(WF_STATUS.find(w => w.id === c.wfStatus) || WF_STATUS[0]).label})">C${i + 1}<small>${(WF_STATUS.find(w => w.id === c.wfStatus) || WF_STATUS[0]).label}</small></button>`).join("")}</div>
       <p class="insp-hint">採用 ${counts.approved}/${n} — 全カット採用でこのストーリーは完成。生成結果がイメージと違う場合はステップ2に戻って機材・ライティングを調整 → 再書き出し</p>`
     : "";
+
+  /* ラフカット: 添付状況をIndexedDBから読み直す (非同期) */
+  rcRefreshIndex();
 }
 
 function setupWorkflow() {
@@ -2963,6 +2966,16 @@ function setupWorkflow() {
       const id = e.target.closest("[data-refdel]").getAttribute("data-refdel");
       state.story.refs = state.story.refs.filter(r => r.id !== id);
       renderWorkflow();
+    } else if (e.target.closest("[data-rcattach]")) {
+      const input = byId("rcClipInput");
+      input.dataset.cutId = e.target.closest("[data-rcattach]").getAttribute("data-rcattach");
+      input.click();
+    } else if (e.target.closest("[data-rcdel]")) {
+      const id = e.target.closest("[data-rcdel]").getAttribute("data-rcdel");
+      idbDelClip(id).then(() => {
+        if (roughCut.urls[id]) { URL.revokeObjectURL(roughCut.urls[id]); delete roughCut.urls[id]; }
+        rcRefreshIndex();
+      });
     }
   });
   byId("wfBody").addEventListener("change", e => {
@@ -2987,6 +3000,209 @@ function setupWorkflow() {
     });
     renderWorkflow();
     byId("wfBody").scrollTop = 0;
+  });
+}
+
+/* =========================================================
+ * ラフカット編集 — 生成動画の保存 (IndexedDB) と連結再生/書き出し
+ * トリムは各カットの「素材イン点(秒)」と「尺(秒)」をそのまま使う
+ * (= EDLと同じ値で仮組みできる)。書き出しはWebM (プレビュー品質)。
+ * ======================================================= */
+const IDB_NAME = "vsMedia", IDB_STORE = "clips";
+const roughCut = { index: {}, playing: false, stopFlag: false, urls: {}, ac: null, dest: null };
+
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open(IDB_NAME, 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore(IDB_STORE, { keyPath: "cutId" });
+    rq.onsuccess = () => res(rq.result);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+async function idbPutClip(rec) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).put(rec);
+    tx.oncomplete = res;
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbGetClip(cutId) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const rq = db.transaction(IDB_STORE).objectStore(IDB_STORE).get(cutId);
+    rq.onsuccess = () => res(rq.result || null);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+async function idbDelClip(cutId) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, "readwrite");
+    tx.objectStore(IDB_STORE).delete(cutId);
+    tx.oncomplete = res;
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function idbAllClips() {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const rq = db.transaction(IDB_STORE).objectStore(IDB_STORE).getAll();
+    rq.onsuccess = () => res(rq.result || []);
+    rq.onerror = () => rej(rq.error);
+  });
+}
+
+async function rcRefreshIndex() {
+  try {
+    const all = await idbAllClips();
+    roughCut.index = {};
+    all.forEach(r => { roughCut.index[r.cutId] = { name: r.name, size: r.size }; });
+    renderRcList();
+  } catch {
+    byId("rcList").innerHTML = `<p class="insp-hint">⚠️ このブラウザでは動画保存 (IndexedDB) が使えません</p>`;
+  }
+}
+
+function renderRcList() {
+  const rows = state.cuts.filter(c => c.kind !== "still").map(c => {
+    const i = state.cuts.indexOf(c);
+    const clip = roughCut.index[c.id];
+    return `<div class="rc-row">
+      <b>C${i + 1}</b>
+      <span class="rc-name">${esc(c.name)}</span>
+      <span class="rc-trim" title="タイムライン/インスペクタの「素材イン点」「尺」がそのまま使われます">IN ${c.srcInSec || 0}s ｜ 尺 ${c.duration || 5}s</span>
+      ${clip
+        ? `<span class="rc-clip" title="${esc(clip.name)}">🎞 ${esc(clip.name)}<small> (${(clip.size / 1048576).toFixed(1)}MB)</small></span>
+           <button class="btn small" data-rcattach="${c.id}">差し替え</button>
+           <button class="icon-btn small danger" data-rcdel="${c.id}" title="添付した動画を削除"><svg class="ic"><use href="#i-trash"/></svg></button>`
+        : `<button class="btn small" data-rcattach="${c.id}"><svg class="ic"><use href="#i-plus"/></svg> 生成動画を添付</button>`}
+    </div>`;
+  }).join("");
+  byId("rcList").innerHTML = rows || `<p class="insp-hint">ビデオカットがありません</p>`;
+}
+
+async function wfAttachClip(cut, file) {
+  await idbPutClip({ cutId: cut.id, name: file.name, type: file.type, size: file.size, blob: file, addedAt: Date.now() });
+  if (roughCut.urls[cut.id]) { URL.revokeObjectURL(roughCut.urls[cut.id]); delete roughCut.urls[cut.id]; }
+  if (cut.wfStatus === "plan" || cut.wfStatus === "prompted") cut.wfStatus = "generated";
+  renderCutStrip();
+  renderWorkflow();
+}
+
+async function rcGetUrl(cutId) {
+  if (roughCut.urls[cutId]) return roughCut.urls[cutId];
+  const rec = await idbGetClip(cutId);
+  if (!rec) return null;
+  roughCut.urls[cutId] = URL.createObjectURL(rec.blob);
+  return roughCut.urls[cutId];
+}
+
+function rcPlaySegment(v, url, inSec, durSec) {
+  return new Promise(resolve => {
+    const onMeta = () => {
+      let start = inSec;
+      if (start >= v.duration - 0.2) start = 0; // 素材がイン点より短い場合はイン点を無視
+      const endT = Math.min(v.duration, start + durSec);
+      v.currentTime = start;
+      const tick = () => {
+        if (roughCut.stopFlag || v.ended || v.currentTime >= endT - 0.03) { v.pause(); resolve(); return; }
+        requestAnimationFrame(tick);
+      };
+      v.play().then(() => requestAnimationFrame(tick)).catch(() => resolve());
+    };
+    v.addEventListener("loadedmetadata", onMeta, { once: true });
+    v.addEventListener("error", () => resolve(), { once: true });
+    v.src = url;
+    v.load();
+  });
+}
+
+async function rcRun(record) {
+  if (roughCut.playing) return;
+  const v = byId("rcVideo");
+  const cuts = state.cuts.filter(c => c.kind !== "still" && roughCut.index[c.id]);
+  if (!cuts.length) { byId("rcMsg").textContent = "⚠️ 添付された動画がありません。各カットに生成動画を添付してください"; return; }
+  roughCut.playing = true;
+  roughCut.stopFlag = false;
+
+  let recorder = null;
+  const chunks = [];
+  let drawStop = false;
+  if (record) {
+    const canvas = byId("rcCanvas");
+    canvas.width = 1280; canvas.height = 720;
+    const c2 = canvas.getContext("2d");
+    const stream = canvas.captureStream(30);
+    try {
+      if (!roughCut.ac) { // MediaElementSource は要素につき1回しか作れない
+        roughCut.ac = new (window.AudioContext || window.webkitAudioContext)();
+        roughCut.dest = roughCut.ac.createMediaStreamDestination();
+        const srcNode = roughCut.ac.createMediaElementSource(v);
+        srcNode.connect(roughCut.dest);
+        srcNode.connect(roughCut.ac.destination);
+      }
+      roughCut.ac.resume();
+      const at = roughCut.dest.stream.getAudioTracks()[0];
+      if (at) stream.addTrack(at);
+    } catch { /* 音声なしで続行 */ }
+    const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm";
+    recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6000000 });
+    recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    recorder.start(250);
+    const draw = () => {
+      if (drawStop) return;
+      c2.fillStyle = "#000";
+      c2.fillRect(0, 0, canvas.width, canvas.height);
+      if (v.videoWidth) {
+        const s = Math.min(canvas.width / v.videoWidth, canvas.height / v.videoHeight);
+        const w = v.videoWidth * s, h = v.videoHeight * s;
+        c2.drawImage(v, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+      }
+      requestAnimationFrame(draw);
+    };
+    requestAnimationFrame(draw);
+  }
+
+  for (let k = 0; k < cuts.length; k++) {
+    if (roughCut.stopFlag) break;
+    byId("rcMsg").textContent = `${record ? "録画中" : "再生中"}: C${state.cuts.indexOf(cuts[k]) + 1} (${k + 1}/${cuts.length})`;
+    const url = await rcGetUrl(cuts[k].id);
+    if (url) await rcPlaySegment(v, url, cuts[k].srcInSec || 0, cuts[k].duration || 5);
+  }
+
+  roughCut.playing = false;
+  if (recorder) {
+    await new Promise(res => { recorder.onstop = res; recorder.stop(); });
+    drawStop = true;
+    if (!roughCut.stopFlag && chunks.length) {
+      const blob = new Blob(chunks, { type: recorder.mimeType });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${state.projectTitle.replace(/[\\/:*?"<>|]/g, "_")}-roughcut.webm`;
+      document.body.appendChild(a); // DOM外のアンカーだとファイル名が失われるブラウザがある
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      byId("rcMsg").textContent = `✓ 書き出しました (${(blob.size / 1048576).toFixed(1)}MB WebM)。納品品質はEDL+元素材で編集ソフトへ`;
+    } else {
+      byId("rcMsg").textContent = "停止しました";
+    }
+  } else {
+    byId("rcMsg").textContent = roughCut.stopFlag ? "停止しました" : "✓ 最後まで再生しました";
+  }
+}
+
+function setupRoughCut() {
+  byId("btnRcPlay").addEventListener("click", () => rcRun(false));
+  byId("btnRcExport").addEventListener("click", () => rcRun(true));
+  byId("btnRcStop").addEventListener("click", () => { roughCut.stopFlag = true; });
+  byId("rcClipInput").addEventListener("change", async e => {
+    const file = e.target.files[0];
+    const cut = state.cuts.find(c => c.id === e.target.dataset.cutId);
+    e.target.value = "";
+    if (file && cut) await wfAttachClip(cut, file);
   });
 }
 
@@ -3814,6 +4030,7 @@ function init() {
   setupDnaPage();
   setupTimeline();
   setupWorkflow();
+  setupRoughCut();
   byId("btnPlayPreview").addEventListener("click", () => {
     state.previewPlay = !state.previewPlay;
     if (state.previewPlay) startPreviewAnim(); else stopPreviewAnim();
