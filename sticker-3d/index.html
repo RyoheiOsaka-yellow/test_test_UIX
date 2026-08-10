@@ -20,6 +20,24 @@
     }
     #hud h1 { font-size: 13px; margin: 0 0 2px; }
     #hud .sub { color: var(--muted); margin-bottom: 10px; font-size: 11px; }
+    #hud.collapsed .hud-body, #hud.collapsed .sub { display: none; }
+    #hudToggle {
+      position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; padding: 0;
+      border-radius: 8px; font-size: 14px; line-height: 1; flex: none;
+    }
+
+    /* スマホ: ボトムシート化 + 大きめのタップ領域 */
+    @media (max-width: 700px) {
+      #hud {
+        top: auto; left: 0; right: 0; bottom: 0; width: 100%;
+        border-radius: 16px 16px 0 0; border-left: none; border-right: none; border-bottom: none;
+        max-height: 46dvh; font-size: 13px;
+        padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+      }
+      button { padding: 11px 10px; font-size: 13px; }
+      input[type="range"] { height: 28px; }
+      #previewWrap { max-width: 280px; margin-left: auto; margin-right: auto; }
+    }
     .row { display: flex; gap: 8px; margin: 8px 0; }
     button {
       flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.14);
@@ -50,9 +68,10 @@
     #dropOverlay small { color: var(--muted); font-size: 13px; }
     #dropOverlay.hidden { display: none; }
     #dropOverlay .frame {
-      border: 3px dashed var(--accent); border-radius: 18px; padding: 40px 56px;
-      background: rgba(12,12,18,0.7);
+      border: 3px dashed var(--accent); border-radius: 18px; padding: 40px 48px;
+      background: rgba(12,12,18,0.7); cursor: pointer; max-width: 86vw;
     }
+    #dropOverlay .frame:active { background: rgba(40,30,18,0.8); }
     #busy {
       position: fixed; right: 16px; bottom: 16px; z-index: 15; color: var(--muted); font-size: 12px;
       background: var(--panel-bg); border-radius: 8px; padding: 8px 12px; display: none;
@@ -63,11 +82,13 @@
   <div id="view"></div>
 
   <div id="hud">
+    <button id="hudToggle" title="パネルを折りたたむ">–</button>
     <h1>🏷️→🧍 ステッカー3D化</h1>
     <div class="sub">写真から切り抜いて、ぷっくり膨らんだ立体に</div>
 
+    <div class="hud-body">
     <div class="row">
-      <button id="btnOpen" class="primary">📄 写真を開く</button>
+      <button id="btnOpen" class="primary">📷 写真を選ぶ</button>
       <input id="file" type="file" accept="image/*" hidden>
     </div>
 
@@ -103,14 +124,16 @@
       <button id="btnPng" disabled>透過PNG保存</button>
     </div>
 
-    <div id="status">写真を開くと自動で切り抜き→立体化します。</div>
+    <div id="status">写真を選ぶと自動で切り抜き→立体化します。</div>
     <div class="hint">GLBはBlender・Unity・PlayCanvas・各種3Dビューアで読み込めます。すべてブラウザ内で処理され、画像はどこにも送信されません。</div>
+    </div><!-- /.hud-body -->
   </div>
 
   <div id="dropOverlay">
-    <div class="frame">
-      🏷️ ステッカーやカードの写真をここにドロップ<br>
-      <small>背景と被写体の境目がはっきりした写真がきれいに切り抜けます</small>
+    <div class="frame" id="dropFrame">
+      🏷️ タップしてステッカーやカードの写真を選ぶ<br>
+      <small>スマホは撮影 or アルバムから選択 ・ PCはドラッグ＆ドロップもOK<br>
+      背景と被写体の境目がはっきりした写真がきれいに切り抜けます</small>
     </div>
   </div>
   <div id="busy">処理中…</div>
@@ -608,7 +631,13 @@
             if (cut) {
               state.cutCanvas = cut;
               buildMesh(cut);
-              setStatus('立体化しました。ドラッグで回転、ホイールでズームできます。', 'ok');
+              setStatus('立体化しました。ドラッグ/スワイプで回転、ホイール/ピンチでズームできます。', 'ok');
+              // スマホでは初回のみパネルを畳んでモデルを見せる
+              if (!state.firstBuildDone && matchMedia('(max-width: 700px)').matches) {
+                $('hud').classList.add('collapsed');
+                $('hudToggle').textContent = '+';
+              }
+              state.firstBuildDone = true;
             } else {
               setStatus('被写体を検出できませんでした。「背景除去の強さ」を調整してください。');
             }
@@ -622,7 +651,13 @@
 
     // ---------------- UI ----------------
     $('btnOpen').addEventListener('click', () => $('file').click());
+    $('dropFrame').addEventListener('click', () => $('file').click());
     $('file').addEventListener('change', (e) => { if (e.target.files[0]) openImage(e.target.files[0]); });
+    $('hudToggle').addEventListener('click', () => {
+      const hud = $('hud');
+      hud.classList.toggle('collapsed');
+      $('hudToggle').textContent = hud.classList.contains('collapsed') ? '+' : '–';
+    });
 
     addEventListener('dragover', (e) => e.preventDefault());
     addEventListener('drop', (e) => {
