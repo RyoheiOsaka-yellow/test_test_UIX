@@ -210,7 +210,7 @@ export class StormLance extends Ability {
     u.uChaosSpeed.value = b.chaosSpeed;
     u.uSag.value = b.sag;
     u.uSpiral.value = b.spiral;
-    u.uSpiralRadius.value = b.width * 2.4;
+    u.uSpiralRadius.value = b.width * 4.5;
     u.uCount.value = b.filaments;
     u.uIntensity.value = b.intensity;
     u.uFlicker.value = b.restrikeDepth;

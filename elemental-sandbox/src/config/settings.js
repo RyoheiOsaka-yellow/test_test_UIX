@@ -247,16 +247,18 @@ export const settings = {
       },
 
       bolt: {
-        filaments: 7,
+        /* Fewer filaments, thrown further apart: seven tightly-bundled additive
+           strips just saturate to a white rod. The gaps are the lightning. */
+        filaments: 5,
         segments: 96,
-        width: 0.17,
-        widthJitter: 0.55,
-        chaos: 0.52,
-        chaosScale: 1.5,
+        width: 0.14,
+        widthJitter: 0.6,
+        chaos: 1.15,
+        chaosScale: 1.9,
         chaosDetail: 3.4,
         chaosSpeed: 14.0,
-        sag: 0.22,
-        spiral: 0.42,
+        sag: 0.3,
+        spiral: 0.55,
         taper: 0.55,
         restrikeRate: 15.0,
         restrikeDepth: 0.68,
@@ -265,7 +267,7 @@ export const settings = {
         colorCore: '#ffffff',
         colorMid: '#a9c8ff',
         colorEdge: '#7b4dff',
-        intensity: 1.45,
+        intensity: 1.0,
       },
 
       shell: {

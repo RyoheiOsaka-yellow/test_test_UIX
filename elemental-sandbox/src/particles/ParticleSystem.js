@@ -172,9 +172,9 @@ void main() {
   col *= 0.72 + 0.7 * n;
 
 #else
-  /* Chip: a hard shard with a bevel, shaded by a fake normal. */
-  float ang = floor(atan(vUv.y, vUv.x) / ES_TAU * 5.0 + vSeed * 5.0) / 5.0 * ES_TAU;
-  float poly = r * (0.82 + 0.18 * cos(atan(vUv.y, vUv.x) * 5.0 + vSeed * 20.0));
+  /* Chip: a hard shard with a bevel, shaded by a fake normal. A shallow lobe
+     amplitude keeps it an irregular pentagon; any more and it reads as a star. */
+  float poly = r * (0.93 + 0.07 * cos(atan(vUv.y, vUv.x) * 5.0 + vSeed * 20.0));
   a = 1.0 - smoothstep(0.72, 0.8, poly);
   vec3 n = normalize(vec3(vUv * 0.9, sqrt(max(1.0 - r * r, 0.0))));
   float lit = 0.35 + 0.65 * max(dot(n, normalize(vec3(0.4, 0.75, 0.5))), 0.0);
