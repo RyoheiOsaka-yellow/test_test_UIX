@@ -100,8 +100,8 @@ function createDecalMaterial(type) {
         float mask = smoothstep(edge, edge - 0.34, front);
 
         /* Needles growing inward from the front. */
-        vec2 w = es_worley2(p * uScale * 5.5 + uSeed * 7.0);
-        float veins = smoothstep(0.09, 0.0, w.y - w.x);
+        vec2 w = es_worley2(p * uScale * 1.9 + uSeed * 7.0);
+        float veins = smoothstep(0.13, 0.0, w.y - w.x);
         float feather = pow(clamp(1.0 - abs(front - edge) * 3.2, 0.0, 1.0), 2.0);
 
         col = uColor * (0.16 + 0.5 * veins + 0.9 * feather);

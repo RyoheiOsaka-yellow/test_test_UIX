@@ -164,7 +164,7 @@ export class FrostLance extends Ability {
       spread: 1.15,
       speed: [3, fx.chipSpeed * 1.6],
       life: [0.8, 1.6],
-      size: [0.06, 0.2],
+      size: [0.1, 0.26],
       sizeEnd: 0.8,
       colorA: col(s.ice.colorEdge),
       colorB: col(s.ice.colorMid),
@@ -234,7 +234,7 @@ export class FrostLance extends Ability {
     }
 
     // --- rime laid down under the wave -----------------------------------
-    const spacing = 2.2;
+    const spacing = 3.2;
     while (inst.decalDist < front - spacing * 0.5 && inst.decalDist < inst.distance) {
       inst.decalDist += spacing;
       const u = inst.decalDist / Math.max(inst.distance, 1e-3);
@@ -247,7 +247,7 @@ export class FrostLance extends Ability {
         size: lerp(s.decal.radius, s.decal.radiusFar, u) * 2,
         color: s.decal.color,
         color2: s.ice.colorMid,
-        opacity: s.decal.opacity * 0.85,
+        opacity: s.decal.opacity * 0.5,
         scale: s.decal.rimeScale,
         life: s.decal.fade,
         fadeIn: s.decal.growTime,
@@ -287,7 +287,7 @@ export class FrostLance extends Ability {
         spread: 0.9,
         speed: [2, fx.chipSpeed],
         life: [0.5, 1.1],
-        size: [0.05, 0.15],
+        size: [0.09, 0.2],
         sizeEnd: 0.7,
         colorA: col(s.ice.colorEdge),
         colorB: col(s.ice.colorMid),

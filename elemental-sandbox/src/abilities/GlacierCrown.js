@@ -142,7 +142,7 @@ export class GlacierCrown extends Ability {
       spread: 1.0,
       speed: [3, fx.chipSpeed],
       life: [0.9, 1.7],
-      size: [0.07, 0.24],
+      size: [0.11, 0.3],
       sizeEnd: 0.75,
       colorA: col(s.ice.colorEdge),
       colorB: col(s.ice.colorMid),

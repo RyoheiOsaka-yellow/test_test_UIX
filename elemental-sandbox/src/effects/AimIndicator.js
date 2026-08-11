@@ -67,7 +67,7 @@ void main() {
   float lane = along / max(uLength, 1e-3);
   float chev = fract(lane * uChevrons - uTime * uChevronSpeed);
   /* Bend the band into a > by offsetting it with |across|. */
-  float bend = abs(across) / max(halfW, 1e-3) * 0.12;
+  float bend = abs(across) / max(halfW, 1e-3) * 0.34;
   float band = pow(1.0 - abs(fract(chev + bend) - 0.35) * 2.0, uChevronSharp);
   band = clamp(band, 0.0, 1.0) * interior;
 

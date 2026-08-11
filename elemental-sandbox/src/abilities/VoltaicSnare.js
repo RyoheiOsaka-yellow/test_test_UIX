@@ -256,7 +256,7 @@ export class VoltaicSnare extends Ability {
     cu.uDiscCount.value = 4;
     cu.uDiscSpeed.value = -6;
     cu.uDiscThickness.value = 0.02;
-    cu.uDiscSwell.value = 0.22;
+    cu.uDiscSwell.value = 0.11;
     cu.uDiscColor.value.set(c.colorCore);
     cu.uDiscIntensity.value = 1.2;
     cu.uSeed.value = inst.seed;
