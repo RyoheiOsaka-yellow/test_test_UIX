@@ -85,6 +85,18 @@ function createDecalMaterial(type) {
 
       varying vec2 vUv;
 
+      /* Warp the sample point before a worley lookup. Straight voronoi is a
+         honeycomb — regular cells with even spacing — which reads as tiling on
+         a floor. Pushing the lookup around with low-frequency fbm first breaks
+         the lattice up into something that looks fractured. */
+      vec2 es_warp(vec2 p, float scale, float amount, float seed) {
+        vec2 q = vec2(
+          es_fbm2(p * scale + seed, 3, 2.1, 0.5),
+          es_fbm2(p * scale + seed + 37.0, 3, 2.1, 0.5)
+        );
+        return p + (q - 0.5) * amount;
+      }
+
       void main() {
         vec2 p = vUv * 2.0 - 1.0;
         float r = length(p);
@@ -100,7 +112,7 @@ function createDecalMaterial(type) {
         float mask = smoothstep(edge, edge - 0.34, front);
 
         /* Needles growing inward from the front. */
-        vec2 w = es_worley2(p * uScale * 3.0 + uSeed * 7.0);
+        vec2 w = es_worley2(es_warp(p, uScale * 0.6, 0.85, uSeed * 3.0) * uScale * 3.0 + uSeed * 7.0);
         float veins = smoothstep(0.1, 0.0, w.y - w.x);
         float feather = pow(clamp(1.0 - abs(front - edge) * 3.2, 0.0, 1.0), 2.0);
 
@@ -132,10 +144,13 @@ function createDecalMaterial(type) {
 
       #elif ES_DECAL == 3
         /* --------------------------------------------------------- molten --- */
-        vec2 w = es_worley2(p * uScale + uSeed * 23.0);
+        vec2 w = es_worley2(es_warp(p, uScale * 0.22, 1.1, uSeed) * uScale + uSeed * 23.0);
         float gap = w.y - w.x;
-        float crack = smoothstep(uWidth * 2.6, uWidth * 0.2, gap);
-        float core = smoothstep(uWidth * 1.1, 0.0, gap);
+        /* Seams open and close along their length instead of running at one
+           constant width the whole way round a cell. */
+        float vary = 0.45 + 1.25 * es_fbm2(p * uScale * 0.55 + uSeed * 5.0, 3, 2.2, 0.5);
+        float crack = smoothstep(uWidth * 2.6 * vary, uWidth * 0.2 * vary, gap);
+        float core = smoothstep(uWidth * 1.1 * vary, 0.0, gap);
 
         /* The network only reaches as far as the blast did. */
         float reach = smoothstep(uProgress + 0.1, uProgress - 0.45, r);
