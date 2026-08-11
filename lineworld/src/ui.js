@@ -14,17 +14,6 @@ const CONTROLS = [
   ['MOUSE', 'ctl_cam'],
 ];
 
-// the bar that stays on screen while you play
-const KEYS = [
-  ['move', 'W A S D', 'ctl_move'],
-  ['run', 'SHIFT', 'ctl_run'],
-  ['jump', 'SPACE', 'ctl_jump'],
-  ['sniff', 'Q', 'ctl_sniff'],
-  ['dig', 'E', 'ctl_dig'],
-  ['bark', 'F', 'ctl_bark'],
-  ['cam', 'DRAG', 'ctl_cam'],
-];
-
 export class UI {
   constructor() {
     this.lang = (navigator.language || 'en').startsWith('ja') ? 'ja' : 'en';
@@ -41,9 +30,8 @@ export class UI {
       start: $('#start'),
       controls: $('#controls'),
       credit: $('#credit'),
-      keys: $('#keys'),
+      pad: $('#pad'),
       tagline: $('[data-i18n="tagline"]'),
-      touch: $('#touch'),
     };
     this._subtitle = null;
     this._prompt = null;
@@ -54,8 +42,10 @@ export class UI {
       this.setLang(this.lang === 'ja' ? 'en' : 'ja');
     });
 
-    this._keyEls = {};
-    this._buildKeys();
+    this._padEls = {};
+    for (const el of this.el.pad.querySelectorAll('[data-id]')) {
+      this._padEls[el.dataset.id] = el;
+    }
     this._grain();
     this.setLang(this.lang);
   }
@@ -75,33 +65,23 @@ export class UI {
     this.el.controls.innerHTML = CONTROLS
       .map(([k, key]) => `<b>${k}</b><span>${this.t(key)}</span>`)
       .join('');
-    for (const [id, , key] of KEYS) {
-      const el = this._keyEls[id];
-      if (el) el.lastElementChild.textContent = this.t(key);
+    for (const el of this.el.pad.querySelectorAll('[data-label]')) {
+      el.textContent = this.t(el.dataset.label);
     }
     if (this._subtitle) this.el.subtitle.innerHTML = this.t(this._subtitle);
     if (this._objective) this.el.objective.textContent = this.t(this._objective);
     if (this._prompt) this.el.prompt.innerHTML = this._chips(this.t(this._prompt));
   }
 
-  _buildKeys() {
-    this.el.keys.innerHTML = KEYS
-      .map(([id, k]) => `<div class="kc" data-id="${id}"><b>${k}</b><span></span></div>`)
-      .join('');
-    for (const [id] of KEYS) {
-      this._keyEls[id] = this.el.keys.querySelector(`[data-id="${id}"]`);
-    }
-  }
-
-  /** Light a chip up while its key is doing something, or nudge it with `cue`. */
+  /** Light a button up while it is doing something, or nudge it with `cue`. */
   key(id, hot, cue = false) {
-    const el = this._keyEls[id];
+    const el = this._padEls[id];
     if (!el) return;
     el.classList.toggle('hot', !!hot);
     el.classList.toggle('cue', !hot && !!cue);
   }
 
-  showKeys(on = true) { this.el.keys.classList.toggle('on', on); }
+  showKeys(on = true) { this.el.pad.classList.toggle('on', on); }
 
   _chips(text) {
     return text.replace(/\[([^\]]+)\]/g, '<span class="key">$1</span>');
@@ -174,8 +154,6 @@ export class UI {
     this.el.title.classList.add('gone');
     setTimeout(() => { this.el.title.style.display = 'none'; }, 1500);
   }
-
-  showTouch() { this.el.touch.classList.add('on'); }
 
   update(dt) {
     if (this._subtimer > 0) {

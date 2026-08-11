@@ -62,8 +62,8 @@
   #dots .d.on { background: var(--warm); border-color: var(--warm); box-shadow: 0 0 10px rgba(255,206,138,0.7); }
 
   #subtitle {
-    position: absolute; left: 50%; bottom: 19vh; transform: translateX(-50%);
-    text-align: center; width: min(720px, 84vw);
+    position: absolute; left: 50%; bottom: 30vh; transform: translateX(-50%);
+    text-align: center; width: min(560px, 62vw);
     font-size: clamp(14px, 1.55vw, 19px); font-weight: 300; line-height: 1.9;
     letter-spacing: 0.06em; text-shadow: 0 0 24px rgba(0,0,0,0.9);
     opacity: 0; transition: opacity 1.1s ease;
@@ -71,7 +71,7 @@
   #subtitle.on { opacity: 1; }
 
   #prompt {
-    position: absolute; left: 50%; bottom: 13vh; transform: translateX(-50%);
+    position: absolute; left: 50%; bottom: 24vh; transform: translateX(-50%);
     text-align: center; opacity: 0; transition: opacity 0.35s ease;
   }
   #prompt.on { opacity: 1; }
@@ -81,38 +81,80 @@
     font-size: 11px; letter-spacing: 0.18em;
   }
   #meter {
-    position: absolute; left: 50%; bottom: 10vh; transform: translateX(-50%);
+    position: absolute; left: 50%; bottom: 21vh; transform: translateX(-50%);
     width: 168px; height: 2px; background: rgba(255,255,255,0.14);
     opacity: 0; transition: opacity 0.25s ease;
   }
   #meter.on { opacity: 1; }
   #meter i { display: block; height: 100%; width: 0%; background: var(--warm); box-shadow: 0 0 12px var(--warm); }
 
-  /* --- always-on control bar ------------------------------------------ */
-  #keys {
-    position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
-    display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
-    max-width: 94vw; opacity: 0; transition: opacity 1.4s ease;
+  /* --- on-screen controls --------------------------------------------- */
+  #pad {
+    position: fixed; inset: 0; z-index: 26; pointer-events: none;
+    opacity: 0; transition: opacity 1.2s ease;
   }
-  #keys.on { opacity: 1; }
-  #keys .kc {
-    display: flex; align-items: center; gap: 7px; padding: 4px 10px;
-    border: 1px solid rgba(236, 240, 244, 0.14);
-    transition: border-color 0.18s ease, background 0.18s ease;
+  #pad.on { opacity: 1; }
+  #pad button {
+    pointer-events: auto; cursor: pointer;
+    background: rgba(8, 12, 16, 0.55);
+    border: 1px solid rgba(236, 240, 244, 0.28);
+    color: var(--ink); font-family: var(--font);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1px; padding: 0; line-height: 1;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.08s ease;
+    -webkit-tap-highlight-color: transparent; user-select: none; touch-action: none;
   }
-  #keys .kc b {
-    font-size: 10px; font-weight: 400; letter-spacing: 0.16em;
-    color: rgba(236, 240, 244, 0.66); white-space: nowrap;
+  #pad button i {
+    font-style: normal; font-size: 9px; letter-spacing: 0.14em;
+    color: rgba(236, 240, 244, 0.34);
   }
-  #keys .kc span {
-    font-size: 10px; letter-spacing: 0.10em; color: rgba(236, 240, 244, 0.34);
-    white-space: nowrap;
+  #pad button b { font-weight: 400; }
+  #pad button.hot {
+    border-color: var(--warm); background: rgba(255, 206, 138, 0.16);
+    transform: scale(0.96);
   }
-  #keys .kc.hot { border-color: rgba(255, 206, 138, 0.8); background: rgba(255, 206, 138, 0.07); }
-  #keys .kc.hot b, #keys .kc.hot span { color: var(--warm); }
-  #keys .kc.cue { border-color: rgba(255, 206, 138, 0.55); animation: cuepulse 1.5s ease-in-out infinite; }
-  @keyframes cuepulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+  #pad button.hot b, #pad button.hot i, #pad button.hot .ar { color: var(--warm); }
+  #pad button.cue { animation: cuepulse 1.3s ease-in-out infinite; border-color: rgba(255, 206, 138, 0.7); }
+  @keyframes cuepulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 206, 138, 0); }
+    50% { box-shadow: 0 0 0 6px rgba(255, 206, 138, 0.16); border-color: var(--warm); }
+  }
+
+  #dpad {
+    position: absolute; left: 26px; bottom: 26px;
+    display: grid; grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(3, 58px);
+    gap: 5px;
+  }
+  #dpad button { border-radius: 4px; }
+  #dpad .ar { font-size: 17px; color: rgba(236, 240, 244, 0.85); }
+  #dpad .up { grid-area: 1 / 2; }
+  #dpad .left { grid-area: 2 / 1; }
+  #dpad .down { grid-area: 2 / 2; }
+  #dpad .right { grid-area: 2 / 3; }
+  #dpad .runbtn { grid-area: 3 / 1 / 4 / 4; height: 44px; flex-direction: row; gap: 8px; }
+  #dpad .runbtn b { font-size: 12px; letter-spacing: 0.12em; }
+
+  #acts {
+    position: absolute; right: 26px; bottom: 26px;
+    display: grid; grid-template-columns: repeat(2, 92px); gap: 8px;
+  }
+  #acts button { height: 62px; border-radius: 4px; }
+  #acts button b { font-size: 13px; letter-spacing: 0.1em; }
+  #acts .wide { grid-column: 1 / 3; height: 50px; flex-direction: row; gap: 9px; }
   body.playing #credit { opacity: 0; transition: opacity 1s ease; }
+  #padhint {
+    position: absolute; right: 26px; bottom: 172px; text-align: right;
+    font-size: 10px; letter-spacing: 0.16em; color: rgba(236, 240, 244, 0.3);
+    text-transform: uppercase;
+  }
+
+  @media (max-width: 780px), (max-height: 620px) {
+    #dpad { left: 14px; bottom: 14px; grid-template-columns: repeat(3, 50px); grid-template-rows: repeat(3, 50px); }
+    #acts { right: 14px; bottom: 14px; grid-template-columns: repeat(2, 78px); gap: 6px; }
+    #acts button { height: 54px; }
+    #acts button b { font-size: 12px; }
+    #padhint { display: none; }
+  }
 
   /* --- title ---------------------------------------------------------- */
   #title {
@@ -153,34 +195,13 @@
   #credit a { color: var(--dim); text-decoration: none; }
   #credit a:hover { color: var(--ink); }
 
-  /* --- touch ---------------------------------------------------------- */
-  #touch { position: fixed; inset: 0; z-index: 25; display: none; }
-  #touch.on { display: block; }
-  #stick {
-    position: absolute; left: 22px; bottom: 22px; width: 128px; height: 128px;
-    border: 1px solid rgba(255,255,255,0.16); border-radius: 50%;
-  }
-  #stick i {
-    position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px;
-    border: 1px solid rgba(255,255,255,0.4); border-radius: 50%;
-  }
-  #tbtns { position: absolute; right: 18px; bottom: 26px; display: grid; gap: 10px; }
-  #tbtns button {
-    width: 62px; height: 62px; border-radius: 50%; background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.22); color: var(--ink);
-    font-family: var(--font); font-size: 10px; letter-spacing: 0.14em;
-  }
-  @media (max-width: 900px) {
-    #keys .kc span { display: none; }
-  }
   @media (max-width: 640px) {
     #objective { font-size: 10px; max-width: 26ch; top: 16px; left: 16px; }
     #dots { top: 16px; right: 16px; }
     #lang { top: 14px; right: 14px; }
-    #subtitle { bottom: 26vh; }
-    #prompt { bottom: 20vh; }
-    #meter { bottom: 17vh; }
-    #keys { display: none; }
+    #subtitle { bottom: 34vh; width: 82vw; }
+    #prompt { bottom: 28vh; }
+    #meter { bottom: 25vh; }
   }
 </style>
 </head>
@@ -196,15 +217,22 @@
     <div id="subtitle"></div>
     <div id="prompt" class="label"></div>
     <div id="meter"><i></i></div>
-    <div id="keys"></div>
   </div>
 
-  <div id="touch">
-    <div id="stick"><i></i></div>
-    <div id="tbtns">
-      <button data-key="q">SNIFF</button>
-      <button data-key="e">DIG</button>
-      <button data-key="f">BARK</button>
+  <div id="pad">
+    <div id="dpad">
+      <button class="up" data-hold="w" data-id="up"><span class="ar">&#9650;</span><i>W</i></button>
+      <button class="left" data-hold="a" data-id="left"><span class="ar">&#9664;</span><i>A</i></button>
+      <button class="down" data-hold="s" data-id="down"><span class="ar">&#9660;</span><i>S</i></button>
+      <button class="right" data-hold="d" data-id="right"><span class="ar">&#9654;</span><i>D</i></button>
+      <button class="runbtn" data-hold="shift" data-id="run"><b data-label="ctl_run"></b><i>SHIFT</i></button>
+    </div>
+    <div id="padhint" data-label="hint_cam"></div>
+    <div id="acts">
+      <button data-hold="q" data-id="sniff"><b data-label="ctl_sniff"></b><i>Q</i></button>
+      <button data-hold="e" data-id="dig"><b data-label="ctl_dig"></b><i>E</i></button>
+      <button data-tap="f" data-id="bark"><b data-label="ctl_bark"></b><i>F</i></button>
+      <button data-tap=" " data-id="jump"><b data-label="ctl_jump"></b><i>SPACE</i></button>
     </div>
   </div>
 

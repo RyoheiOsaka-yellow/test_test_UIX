@@ -48,10 +48,15 @@ npm run build
 | `F` | bark — a shockwave that flashes the world into view, and wakes the red lights |
 | mouse drag / wheel | look around / zoom |
 
-The controls also sit along the bottom of the screen the whole time you play.
-A chip lights up warm while you are using that key, and pulses on its own when
-the game wants you to try it — so the prompt to dig or to bark comes from the
-bar itself rather than from a tutorial.
+You never have to touch the keyboard. The same controls are on screen the whole
+time you play — a direction pad at bottom left, the actions at bottom right —
+and they work with the mouse exactly as they do with a finger: press and hold to
+walk or to dig, tap to bark or jump. Each keyboard key is printed small on its
+button, so the shortcuts are there when you want them.
+
+A button lights up warm while it is doing something, and pulses on its own when
+the game wants you to try it — so "dig here" and "bark at this" come from the
+button rather than from a tutorial.
 
 Stand still for a few seconds and the dog sits down on its own.
 `日本語` in the top right switches the language.

@@ -84,9 +84,6 @@ ui.buildDots(SITES.length);
 const keys = new Set();
 const input = { move: new THREE.Vector2(), run: false, jump: false, sniff: false, dig: false, camYaw: 0 };
 let jumpQueued = false;
-const touch = { active: false, x: 0, y: 0, id: -1 };
-
-const isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
@@ -99,6 +96,26 @@ addEventListener('keydown', (e) => {
 addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
 addEventListener('blur', () => keys.clear());
 
+// The on-screen pad. Same code path for mouse and touch: every button either
+// holds a key down while pressed, or fires once on press.
+for (const btn of document.querySelectorAll('#pad button')) {
+  const hold = btn.dataset.hold;
+  const tap = btn.dataset.tap;
+  const release = () => { if (hold) keys.delete(hold); };
+  btn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    try { btn.setPointerCapture(e.pointerId); } catch { /* not captured, fine */ }
+    audio.resume();
+    if (hold) keys.add(hold);
+    if (tap === ' ') jumpQueued = true;
+    if (tap === 'f' && state.phase === 'play') doBark();
+  });
+  btn.addEventListener('pointerup', release);
+  btn.addEventListener('pointercancel', release);
+  btn.addEventListener('lostpointercapture', release);
+  btn.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+
 // camera orbit
 const cam = { yaw: Math.PI, pitch: 0.20, dist: 7.0, curYaw: Math.PI, curPitch: 0.20, curDist: 7.0, idle: 0 };
 const camPos = new THREE.Vector3();
@@ -106,7 +123,6 @@ const camTarget = new THREE.Vector3();
 let dragging = false, lastX = 0, lastY = 0;
 
 renderer.domElement.addEventListener('pointerdown', (e) => {
-  if (e.pointerType === 'touch' && e.clientX < window.innerWidth * 0.45) return;
   dragging = true; lastX = e.clientX; lastY = e.clientY;
   renderer.domElement.setPointerCapture(e.pointerId);
 });
@@ -123,39 +139,6 @@ renderer.domElement.addEventListener('wheel', (e) => {
   cam.dist = Math.max(3.2, Math.min(18, cam.dist + e.deltaY * 0.006));
 }, { passive: false });
 
-// touch controls
-if (isTouch) {
-  ui.showTouch();
-  const stick = document.getElementById('stick');
-  const knob = stick.querySelector('i');
-  stick.addEventListener('pointerdown', (e) => {
-    touch.active = true; touch.id = e.pointerId;
-    stick.setPointerCapture(e.pointerId);
-    touch.ox = e.clientX; touch.oy = e.clientY;
-  });
-  stick.addEventListener('pointermove', (e) => {
-    if (!touch.active || e.pointerId !== touch.id) return;
-    const dx = Math.max(-52, Math.min(52, e.clientX - touch.ox));
-    const dy = Math.max(-52, Math.min(52, e.clientY - touch.oy));
-    touch.x = dx / 52; touch.y = -dy / 52;
-    knob.style.transform = `translate(${dx}px, ${dy}px)`;
-  });
-  const end = () => { touch.active = false; touch.x = touch.y = 0; knob.style.transform = ''; };
-  stick.addEventListener('pointerup', end);
-  stick.addEventListener('pointercancel', end);
-
-  document.querySelectorAll('#tbtns button').forEach((b) => {
-    const k = b.dataset.key;
-    b.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      keys.add(k);
-      if (k === 'f' && state.phase === 'play') doBark();
-    });
-    b.addEventListener('pointerup', () => keys.delete(k));
-    b.addEventListener('pointercancel', () => keys.delete(k));
-  });
-}
-
 function readInput() {
   const disabled = state.phase !== 'play';
   let x = 0, y = 0;
@@ -164,11 +147,10 @@ function readInput() {
     if (keys.has('s') || keys.has('arrowdown')) y -= 1;
     if (keys.has('d') || keys.has('arrowright')) x += 1;
     if (keys.has('a') || keys.has('arrowleft')) x -= 1;
-    if (touch.active) { x += touch.x; y += touch.y; }
   }
   input.move.set(x, y);
   if (input.move.lengthSq() > 1) input.move.normalize();
-  input.run = !disabled && (keys.has('shift') || (touch.active && input.move.length() > 0.85));
+  input.run = !disabled && keys.has('shift');
   input.jump = !disabled && jumpQueued;
   input.sniff = !disabled && keys.has('q');
   input.dig = !disabled && keys.has('e');
@@ -294,7 +276,7 @@ function beginGame() {
   ui.hideTitle();
   ui.fade(0, 3200);
   document.body.classList.add('playing');
-  if (!isTouch) ui.showKeys(true);
+  ui.showKeys(true);
   state.phase = 'play';
   ui.objective(BEATS[0].objective);
   buildScentPath();
@@ -332,6 +314,7 @@ function beginEnding() {
 function showEndCard() {
   state.phase = 'done';
   ui.showKeys(false);
+  document.body.classList.remove('playing');
   const t = ui.el.title;
   t.style.display = 'flex';
   t.querySelector('.tag').innerHTML = ui.t('ending_4');
@@ -420,13 +403,15 @@ function updateKeyBar() {
     sniffCue = !digCue && !barkCue && scent.amount < 0.08 && state.time > 12;
   }
 
-  ui.key('move', moving);
+  ui.key('up', keys.has('w') || keys.has('arrowup'));
+  ui.key('down', keys.has('s') || keys.has('arrowdown'));
+  ui.key('left', keys.has('a') || keys.has('arrowleft'));
+  ui.key('right', keys.has('d') || keys.has('arrowright'));
   ui.key('run', moving && input.run);
   ui.key('jump', dog.airborne);
   ui.key('sniff', input.sniff, sniffCue);
   ui.key('dig', dog.state === 'dig', digCue);
   ui.key('bark', dog.barkTimer > 0, barkCue);
-  ui.key('cam', dragging);
 }
 
 // ---------------------------------------------------------------------------

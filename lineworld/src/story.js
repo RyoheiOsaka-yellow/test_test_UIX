@@ -51,6 +51,7 @@ export const STRINGS = {
   ctl_dig: { en: 'dig', ja: '掘る' },
   ctl_bark: { en: 'bark', ja: '吠える' },
   ctl_cam: { en: 'look / zoom', ja: '視点 / ズーム' },
+  hint_cam: { en: 'drag to look · wheel to zoom', ja: 'ドラッグで視点 · ホイールでズーム' },
 
   intro_1: { en: 'You wake where the light ends.', ja: '明かりの尽きるところで、目を覚ます。' },
   intro_2: { en: 'The lantern was theirs. Now it is yours to carry.', ja: 'このランタンはあの人のものだった。いまはきみが提げている。' },
