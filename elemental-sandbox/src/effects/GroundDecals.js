@@ -100,13 +100,13 @@ function createDecalMaterial(type) {
         float mask = smoothstep(edge, edge - 0.34, front);
 
         /* Needles growing inward from the front. */
-        vec2 w = es_worley2(p * uScale * 1.9 + uSeed * 7.0);
-        float veins = smoothstep(0.13, 0.0, w.y - w.x);
+        vec2 w = es_worley2(p * uScale * 3.0 + uSeed * 7.0);
+        float veins = smoothstep(0.1, 0.0, w.y - w.x);
         float feather = pow(clamp(1.0 - abs(front - edge) * 3.2, 0.0, 1.0), 2.0);
 
-        col = uColor * (0.16 + 0.5 * veins + 0.9 * feather);
-        col += uColor2 * veins * 0.28;
-        a = mask * (0.16 + 0.4 * n + 0.35 * veins) * uOpacity;
+        col = uColor * (0.16 + 0.25 * veins + 0.9 * feather);
+        col += uColor2 * veins * 0.14;
+        a = mask * (0.18 + 0.42 * n + 0.15 * veins) * uOpacity;
 
       #elif ES_DECAL == 1
         /* -------------------------------------------------------- scorch --- */
@@ -145,7 +145,7 @@ function createDecalMaterial(type) {
         float heat = (0.45 + 0.9 * churn);
 
         col = uColor * crack * heat;
-        col += uColor2 * core * heat * 1.9;
+        col += uColor2 * core * heat * 1.15;
         a = clamp(crack * reach * heat, 0.0, 1.0) * uOpacity;
 
       #elif ES_DECAL == 4

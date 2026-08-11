@@ -348,7 +348,7 @@ export class NovaBeam extends Ability {
     ru.uIntensity.value = r.intensity;
     ru.uFlicker.value = 0.25;
     ru.uFlickerRate.value = 6;
-    ru.uColorCore.value.set('#fffdf2');
+    ru.uColorCore.value.set(r.color);
     ru.uColorMid.value.set(r.color);
     ru.uColorEdge.value.set(r.color);
     ru.uSeed.value = inst.seed;

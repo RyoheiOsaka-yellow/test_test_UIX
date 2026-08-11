@@ -151,7 +151,7 @@ export class CinderFall extends Ability {
       size: im.crackReach * 2.2,
       color: im.crackColor,
       color2: im.crackCoreColor,
-      opacity: 1,
+      opacity: 0.7,
       scale: im.crackScale * 3.2,
       width2: im.crackWidth,
       churn: 1.4,
