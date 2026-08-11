@@ -54,6 +54,18 @@ glitter are GPU particles.
 paused. That is the point of the project: freeze a frame mid-eruption, mid-strike or mid-burn with
 **P**, then reshape the silhouette, the palette and the timing against a still image.
 
+| | |
+| --- | --- |
+| ![Frost Lance](docs/frost-lance.png) | ![Storm Lance](docs/storm-lance.png) |
+| **Q — Frost Lance** | **E — Storm Lance** |
+| ![Cinder Fall](docs/cinder-fall.png) | ![Nova Beam](docs/nova-beam.png) |
+| **R — Cinder Fall** | **F — Nova Beam** |
+| ![Voltaic Snare](docs/voltaic-snare.png) | ![Glacier Crown](docs/glacier-crown.png) |
+| **V — Voltaic Snare** | **C — Glacier Crown**, with the editor open |
+
+*(Captured on a software rasteriser, so they run at a fraction of the framerate a GPU gives — the
+frames are representative of the look, not the performance.)*
+
 ---
 
 ## Quick start
@@ -167,6 +179,23 @@ src/
   utils/          Maths and seeded RNG, event emitter, disposal
   world/          Environment (stage lighting + PMREM probe), floor, dust, caster
 ```
+
+### Checks
+
+```bash
+npm run build && npm run preview   # one terminal
+npm run test:behaviour             # another
+```
+
+`test/behaviour.mjs` drives real keyboard and mouse events at the running app and then asks it what
+state it is in — 22 assertions covering the rules that are easy to break and impossible to see in a
+screenshot: arming and disarming, a cast inside `minRange` being refused without burning a cooldown,
+cooldowns staying independent per slot, **P** freezing the simulation clock while the wall clock and
+the editor keep running, **X** clearing every live effect, presets round-tripping, the far cast
+clamping its circle to range, and the orbit/zoom bindings.
+
+It runs headless on a software rasteriser, so it needs no GPU. Set `ES_URL` to point somewhere else
+and `ES_CHROME` to use a specific Chromium build.
 
 ### The editor
 

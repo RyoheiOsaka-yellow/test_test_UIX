@@ -7,13 +7,15 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:behaviour": "node test/behaviour.mjs"
   },
   "dependencies": {
     "lil-gui": "^0.21.0",
     "three": "^0.185.1"
   },
   "devDependencies": {
-    "vite": "^7.1.5"
+    "vite": "^7.1.5",
+    "playwright": "^1.62.0"
   }
 }
