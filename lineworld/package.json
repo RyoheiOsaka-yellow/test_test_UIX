@@ -1,0 +1,14 @@
+{
+  "name": "lineworld",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A dog searching for its owner in a forest made of lines.",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

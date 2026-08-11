@@ -13,17 +13,28 @@ in this project is generated in code at runtime.
 
 ## Run it
 
-The game is plain ES modules with three.js vendored into the repo — there is no
-build step and no install. It just needs to be served over HTTP (ES modules do
-not load from `file://`).
+**The short way:** open [`lineworld.html`](lineworld.html). It is the whole game
+in one file — three.js, every module, the CSS and the markup are all inline, so
+it plays from `file://` with no server and nothing to install. Download it,
+double-click it, done.
+
+**From source:** the game is plain ES modules with three.js vendored into the
+repo, so there is still no build step — it just needs to be served over HTTP
+(ES modules do not load from `file://`).
 
 ```bash
 cd lineworld
-python3 -m http.server 8080
-# or: npx serve .
+python3 -m http.server 8080   # or: npm start
 ```
 
 Then open <http://localhost:8080>.
+
+To regenerate the single file after editing `src/`:
+
+```bash
+npm install   # esbuild, the only dependency, and only for this
+npm run build
+```
 
 ## Controls
 
@@ -71,6 +82,7 @@ you walk towards it, and un-draws behind you.
 | `src/audio.js` | the whole soundtrack: wind, drone, barks, digging, bells, howls |
 | `src/story.js` | the layout of the journey and every line of text (EN / JA) |
 | `src/main.js` | glue: input, camera, the light field per frame, the story beats |
+| `build.mjs` | bundles all of the above into the standalone `lineworld.html` |
 
 A few notes on the parts that were more fun than expected:
 
