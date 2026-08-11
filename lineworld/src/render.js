@@ -124,6 +124,9 @@ void main() {
     float gust = 0.65 + 0.35 * sin(uTime * 0.31 + p.x * 0.02 + p.z * 0.017);
     p.x += sin(t + p.y * 0.42) * s * gust;
     p.z += cos(t * 0.83 + p.y * 0.37) * s * 0.75 * gust;
+    // a little vertical lift too -- barely visible on grass, but it is what
+    // makes the water surface read as moving
+    p.y += sin(t * 1.6 + p.x * 0.7) * s * 0.30;
   }
   vec4 wp = modelMatrix * vec4(p, 1.0);
   vWorld = wp.xyz;

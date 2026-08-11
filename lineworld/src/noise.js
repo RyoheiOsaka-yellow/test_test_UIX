@@ -47,7 +47,8 @@ export function fbm2(x, y, octaves = 4, seed = 0) {
 
 export const WORLD_HALF = 165;
 
-export function terrainHeight(x, z) {
+/** Hills, before the stream is cut into them. */
+export function terrainBase(x, z) {
   let h = (fbm2(x * 0.0085, z * 0.0085, 4, 11) - 0.5) * 9.0;
   h += (fbm2(x * 0.041, z * 0.041, 3, 37) - 0.5) * 1.6;
   h += (fbm2(x * 0.16, z * 0.16, 2, 71) - 0.5) * 0.22;
@@ -55,6 +56,38 @@ export function terrainHeight(x, z) {
   const d = Math.hypot(x, z);
   h *= 0.35 + 0.65 * smooth(Math.min(1, d / 46));
   return h;
+}
+
+// ---------------------------------------------------------------------------
+// The stream. One meandering line across the world, cut into the hills; the
+// ground grid, the trees, the dog and the water surface all read it from here.
+// ---------------------------------------------------------------------------
+
+export const CHANNEL_W = 8.5;
+const CHANNEL_D = 2.4;
+
+export function streamCenterZ(x) {
+  return 42 * Math.sin(x * 0.0115) + 17 * Math.sin(x * 0.0295 + 1.1);
+}
+
+export function streamDist(x, z) {
+  return Math.abs(z - streamCenterZ(x));
+}
+
+export function terrainHeight(x, z) {
+  const d = streamDist(x, z) / CHANNEL_W;
+  return terrainBase(x, z) - CHANNEL_D * Math.exp(-d * d);
+}
+
+/** Height of the water surface at this x. */
+export function waterLevel(x) {
+  return terrainBase(x, streamCenterZ(x)) - CHANNEL_D * 0.80;
+}
+
+export function waterDepth(x, z) {
+  // Water only exists inside the channel; outside it the surface is meaningless.
+  if (streamDist(x, z) > CHANNEL_W * 2.2) return -1;
+  return waterLevel(x) - terrainHeight(x, z);
 }
 
 export function terrainNormal(x, z, out) {

@@ -62,7 +62,7 @@
   #dots .d.on { background: var(--warm); border-color: var(--warm); box-shadow: 0 0 10px rgba(255,206,138,0.7); }
 
   #subtitle {
-    position: absolute; left: 50%; bottom: 15vh; transform: translateX(-50%);
+    position: absolute; left: 50%; bottom: 19vh; transform: translateX(-50%);
     text-align: center; width: min(720px, 84vw);
     font-size: clamp(14px, 1.55vw, 19px); font-weight: 300; line-height: 1.9;
     letter-spacing: 0.06em; text-shadow: 0 0 24px rgba(0,0,0,0.9);
@@ -71,7 +71,7 @@
   #subtitle.on { opacity: 1; }
 
   #prompt {
-    position: absolute; left: 50%; bottom: 8.5vh; transform: translateX(-50%);
+    position: absolute; left: 50%; bottom: 13vh; transform: translateX(-50%);
     text-align: center; opacity: 0; transition: opacity 0.35s ease;
   }
   #prompt.on { opacity: 1; }
@@ -81,12 +81,38 @@
     font-size: 11px; letter-spacing: 0.18em;
   }
   #meter {
-    position: absolute; left: 50%; bottom: 5.6vh; transform: translateX(-50%);
+    position: absolute; left: 50%; bottom: 10vh; transform: translateX(-50%);
     width: 168px; height: 2px; background: rgba(255,255,255,0.14);
     opacity: 0; transition: opacity 0.25s ease;
   }
   #meter.on { opacity: 1; }
   #meter i { display: block; height: 100%; width: 0%; background: var(--warm); box-shadow: 0 0 12px var(--warm); }
+
+  /* --- always-on control bar ------------------------------------------ */
+  #keys {
+    position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
+    display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+    max-width: 94vw; opacity: 0; transition: opacity 1.4s ease;
+  }
+  #keys.on { opacity: 1; }
+  #keys .kc {
+    display: flex; align-items: center; gap: 7px; padding: 4px 10px;
+    border: 1px solid rgba(236, 240, 244, 0.14);
+    transition: border-color 0.18s ease, background 0.18s ease;
+  }
+  #keys .kc b {
+    font-size: 10px; font-weight: 400; letter-spacing: 0.16em;
+    color: rgba(236, 240, 244, 0.66); white-space: nowrap;
+  }
+  #keys .kc span {
+    font-size: 10px; letter-spacing: 0.10em; color: rgba(236, 240, 244, 0.34);
+    white-space: nowrap;
+  }
+  #keys .kc.hot { border-color: rgba(255, 206, 138, 0.8); background: rgba(255, 206, 138, 0.07); }
+  #keys .kc.hot b, #keys .kc.hot span { color: var(--warm); }
+  #keys .kc.cue { border-color: rgba(255, 206, 138, 0.55); animation: cuepulse 1.5s ease-in-out infinite; }
+  @keyframes cuepulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+  body.playing #credit { opacity: 0; transition: opacity 1s ease; }
 
   /* --- title ---------------------------------------------------------- */
   #title {
@@ -144,11 +170,17 @@
     border: 1px solid rgba(255,255,255,0.22); color: var(--ink);
     font-family: var(--font); font-size: 10px; letter-spacing: 0.14em;
   }
+  @media (max-width: 900px) {
+    #keys .kc span { display: none; }
+  }
   @media (max-width: 640px) {
     #objective { font-size: 10px; max-width: 26ch; top: 16px; left: 16px; }
     #dots { top: 16px; right: 16px; }
     #lang { top: 14px; right: 14px; }
-    #subtitle { bottom: 22vh; }
+    #subtitle { bottom: 26vh; }
+    #prompt { bottom: 20vh; }
+    #meter { bottom: 17vh; }
+    #keys { display: none; }
   }
 </style>
 </head>
@@ -164,6 +196,7 @@
     <div id="subtitle"></div>
     <div id="prompt" class="label"></div>
     <div id="meter"><i></i></div>
+    <div id="keys"></div>
   </div>
 
   <div id="touch">

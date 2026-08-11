@@ -9,7 +9,10 @@ export class AudioEngine {
     this.ready = false;
     this.enabled = true;
     this.windAmount = 0.35;
+    this.waterAmount = 0;
     this._nextPluck = 4;
+    this._nextCricket = 2;
+    this._nextOwl = 24;
   }
 
   start() {
@@ -46,6 +49,7 @@ export class AudioEngine {
 
     this._buildWind();
     this._buildDrone();
+    this._buildWater();
 
     this.ready = true;
   }
@@ -174,17 +178,168 @@ export class AudioEngine {
     this.droneGain = g;
   }
 
+  _buildWater() {
+    const ctx = this.ctx;
+    const src = this._src(this.noiseBuffer, true);
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 820;
+    bp.Q.value = 0.5;
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 380;
+    const g = ctx.createGain();
+    g.gain.value = 0;
+    src.connect(bp).connect(hp).connect(g);
+    this._send(g, 0.35);
+    src.start();
+
+    // the burble: a slow wobble on the filter
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.19;
+    const lg = ctx.createGain();
+    lg.gain.value = 240;
+    lfo.connect(lg).connect(bp.frequency);
+    lfo.start();
+
+    this.waterGain = g;
+  }
+
   update(dt, { speed = 0, tension = 0 } = {}) {
     if (!this.ready) return;
     const t = this.ctx.currentTime;
     const target = 0.035 + this.windAmount * 0.055 + Math.min(speed / 8, 1) * 0.03;
     this.windGain.gain.setTargetAtTime(target, t, 0.4);
     this.droneGain.gain.setTargetAtTime(0.085 + tension * 0.09, t, 1.5);
+    this.waterGain.gain.setTargetAtTime(this.waterAmount * 0.10, t, 0.5);
 
     this._nextPluck -= dt;
     if (this._nextPluck <= 0) {
       this._nextPluck = 7 + Math.random() * 11;
       this.pluck(PENTATONIC[(Math.random() * PENTATONIC.length) | 0] * (Math.random() < 0.3 ? 0.5 : 1));
+    }
+
+    this._nextCricket -= dt;
+    if (this._nextCricket <= 0) {
+      this._nextCricket = 0.5 + Math.random() * 1.6;
+      this.cricket();
+    }
+
+    this._nextOwl -= dt;
+    if (this._nextOwl <= 0) {
+      this._nextOwl = 34 + Math.random() * 50;
+      this.owl();
+    }
+  }
+
+  /** Three short pulses at cricket pitch, very quiet, far away. */
+  cricket() {
+    if (!this.ready) return;
+    const ctx = this.ctx;
+    const t0 = ctx.currentTime;
+    const f = 3600 + Math.random() * 1400;
+    for (let i = 0; i < 3; i++) {
+      const t = t0 + i * 0.055;
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = f;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = f;
+      bp.Q.value = 8;
+      const g = ctx.createGain();
+      this._env(g, t, 0.004, 0.028, 0.012);
+      o.connect(bp).connect(g);
+      this._send(g, 1.4);
+      o.start(t); o.stop(t + 0.1);
+    }
+  }
+
+  /** Two low hoots, a long way off. */
+  owl() {
+    if (!this.ready) return;
+    const ctx = this.ctx;
+    const t0 = ctx.currentTime;
+    for (let i = 0; i < 2; i++) {
+      const t = t0 + i * 0.62;
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(360, t);
+      o.frequency.linearRampToValueAtTime(316, t + 0.34);
+      const vib = ctx.createOscillator();
+      vib.frequency.value = 15;
+      const vg = ctx.createGain();
+      vg.gain.value = 5;
+      vib.connect(vg).connect(o.frequency);
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 900;
+      const g = ctx.createGain();
+      this._env(g, t, 0.06, 0.34, i ? 0.05 : 0.065);
+      o.connect(lp).connect(g);
+      this._send(g, 3.0);
+      o.start(t); vib.start(t);
+      o.stop(t + 0.6); vib.stop(t + 0.6);
+    }
+  }
+
+  splash(depth = 0.4) {
+    if (!this.ready) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const s = this._src(this.noiseBuffer);
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 0.9;
+    bp.frequency.setValueAtTime(2600, t);
+    bp.frequency.exponentialRampToValueAtTime(600, t + 0.16);
+    const g = ctx.createGain();
+    this._env(g, t, 0.003, 0.16, 0.05 + depth * 0.05);
+    s.connect(bp).connect(g);
+    this._send(g, 0.6);
+    s.start(t); s.stop(t + 0.4);
+
+    // the little plip of a drop coming back down
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    const p = ctx.currentTime + 0.05 + Math.random() * 0.08;
+    o.frequency.setValueAtTime(500 + Math.random() * 700, p);
+    o.frequency.exponentialRampToValueAtTime(1500, p + 0.05);
+    const og = ctx.createGain();
+    this._env(og, p, 0.002, 0.06, 0.03);
+    o.connect(og);
+    this._send(og, 1.0);
+    o.start(p); o.stop(p + 0.2);
+  }
+
+  /** A handful of birds leaving a tree in a hurry. */
+  wings(count = 5) {
+    if (!this.ready) return;
+    const ctx = this.ctx, t0 = ctx.currentTime;
+    for (let i = 0; i < count * 3; i++) {
+      const t = t0 + 0.04 + i * (0.05 + Math.random() * 0.05);
+      const s = this._src(this.noiseBuffer);
+      s.playbackRate.value = 0.5 + Math.random() * 0.7;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 380 + Math.random() * 620;
+      bp.Q.value = 1.2;
+      const g = ctx.createGain();
+      this._env(g, t, 0.004, 0.06, 0.035);
+      s.connect(bp).connect(g);
+      this._send(g, 1.0);
+      s.start(t); s.stop(t + 0.2);
+    }
+    for (let i = 0; i < 2; i++) {
+      const t = t0 + 0.1 + Math.random() * 0.5;
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(2400 + Math.random() * 900, t);
+      o.frequency.exponentialRampToValueAtTime(1400, t + 0.09);
+      const g = ctx.createGain();
+      this._env(g, t, 0.004, 0.09, 0.035);
+      o.connect(g);
+      this._send(g, 1.6);
+      o.start(t); o.stop(t + 0.25);
     }
   }
 

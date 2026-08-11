@@ -345,6 +345,7 @@ export class Dog {
       const hip = toLocal(new THREE.Vector3(H.x, H.y, H.z));
 
       let fz, fy;
+      let landed = false;
       if (this.speed > 0.12) {
         const tt = (this.gait + phase) % 1;
         if (tt < duty) {
@@ -353,7 +354,7 @@ export class Dog {
           fy = 0;
           if (u > 0.02 && !this._stepFlags[i]) {
             this._stepFlags[i] = true;
-            if (this.onStep) this.onStep(Math.min(1, 0.3 + sp));
+            landed = true;
           }
         } else {
           const u = (tt - duty) / (1 - duty);
@@ -384,6 +385,7 @@ export class Dog {
       const worldX = this.root.position.x + (footX * Math.cos(this.yaw) + (H.z + fz) * Math.sin(this.yaw));
       const worldZ = this.root.position.z + (-footX * Math.sin(this.yaw) + (H.z + fz) * Math.cos(this.yaw));
       const localGround = terrainHeight(worldX, worldZ) - this.root.position.y;
+      if (landed && this.onStep) this.onStep(Math.min(1, 0.3 + sp), i, worldX, worldZ);
 
       const foot = new THREE.Vector3(footX, localGround + fy + 0.055, hip.z + fz);
       if (this.airborne) foot.y = hip.y - 0.30 + fy * 0.5;

@@ -1,10 +1,10 @@
 // Layout of the journey and every line of text in the game.
 
-export const OWNER = { x: 128, z: 26 };
+export const OWNER = { x: 128, z: 46 };
 
 export const SITES = [
   { x: 36, z: -34 },
-  { x: -84, z: -52 },
+  { x: -90, z: -74 },
   { x: -66, z: 96 },
   { x: 98, z: 96 },
 ];

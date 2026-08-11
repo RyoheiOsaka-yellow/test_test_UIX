@@ -30,7 +30,7 @@ const out = html
   // a function replacer, so `$&` and friends in the minified code stay literal
   .replace(
     /<script type="module" src="\.\/src\/main\.js"><\/script>/,
-    () => `<script>\n${js}\n</script>`,
+    () => `<script type="module">\n${js}\n</script>`,
   );
 
 if (out.includes('src/main.js')) throw new Error('script tag was not replaced');

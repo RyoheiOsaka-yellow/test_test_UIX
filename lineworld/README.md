@@ -48,6 +48,11 @@ npm run build
 | `F` | bark — a shockwave that flashes the world into view, and wakes the red lights |
 | mouse drag / wheel | look around / zoom |
 
+The controls also sit along the bottom of the screen the whole time you play.
+A chip lights up warm while you are using that key, and pulses on its own when
+the game wants you to try it — so the prompt to dig or to bark comes from the
+bar itself rather than from a tutorial.
+
 Stand still for a few seconds and the dog sits down on its own.
 `日本語` in the top right switches the language.
 
@@ -58,6 +63,27 @@ ribbon of scent leads somewhere. Dig where the ground is marked and a memory
 draws itself into the air — and the lantern reaches a little further afterwards.
 Bark at a red light and something barks back, further off each time. Seven
 beats later there is a light in the trees that is not yours.
+
+## What is out there
+
+The forest is not one texture repeated. A biome map decides what grows where,
+and the rest follows from the terrain:
+
+- **Three species of tree.** Broadleaf grown by recursive branching; conifers
+  with a straight bole and eight whorls of drooping branches; birches, pale and
+  bare until high up, with bark ticks down the trunk.
+- **A stream** meandering across the whole world, cut into the hills by the same
+  height function everything else reads. It is shallow enough to wade: step in
+  and the footsteps become splashes, rings spread from your paws, and the water
+  bed rises in the mix as you get near. Reeds line both banks.
+- **Undergrowth** — shrubs, ferns, grass, fallen logs, rocks — and clusters of
+  mushrooms that glow faintly blue in the dark, which are often the first thing
+  you see of a place.
+- **Mist** that pools over the stream and thins out to nothing on the high
+  ground, **fireflies**, **leaves** coming down through the lantern light,
+  **stars** and a low moon, and the **footprints** you leave behind, which fade
+  after half a minute.
+- **Birds.** Bark near a stand of trees and they clatter out of it.
 
 ## How it works
 
@@ -71,15 +97,16 @@ you walk towards it, and un-draws behind you.
 
 | file | |
 |---|---|
-| `src/noise.js` | hash noise, fbm, the terrain height function everything else reads |
+| `src/noise.js` | hash noise, fbm, the terrain height function, and the stream cut into it |
 | `src/render.js` | the lantern field shader, line/glow materials, buffer helpers |
-| `src/world.js` | ground grid, recursive line trees, rocks, logs, shader-swayed grass |
+| `src/world.js` | ground grid, the stream surface, three species of tree, undergrowth, mushrooms, reeds, sky |
 | `src/dog.js` | the dog: boxed spine, posed head, four two-bone IK legs, gait clock, the swinging lantern that *is* the light source |
 | `src/scent.js` | the scent ribbon, only perceivable while sniffing |
 | `src/props.js` | dig sites, the red lights, shockwaves, thrown dirt, dust |
+| `src/ambience.js` | mist, fireflies, leaves, footprints, ripples, the startled birds |
 | `src/memories.js` | the memory drawings and the stroke-by-stroke draw-in |
 | `src/owner.js` | the person at the end of the walk |
-| `src/audio.js` | the whole soundtrack: wind, drone, barks, digging, bells, howls |
+| `src/audio.js` | the whole soundtrack: wind, water, crickets, an owl, barks, digging, bells, howls |
 | `src/story.js` | the layout of the journey and every line of text (EN / JA) |
 | `src/main.js` | glue: input, camera, the light field per frame, the story beats |
 | `build.mjs` | bundles all of the above into the standalone `lineworld.html` |
@@ -104,10 +131,13 @@ while poking at it.
 
 ## Performance
 
-One draw call each for the ground, the forest and the grass — roughly 240k line
-segments in total, all static, animated in the vertex shader. It is comfortable
-on a normal GPU; software renderers (headless Chromium with SwiftShader, for
-example) will crawl, which is expected rather than a bug.
+The static world is about 310k line segments in six draw calls — ground, water,
+forest, undergrowth, mushroom glow, sky — all animated in the vertex shader
+rather than on the CPU. Everything that moves (the dog, mist, birds, footprints,
+shockwaves, particles) is rebuilt into a handful of preallocated dynamic buffers
+each frame. Building the world takes well under a second; after that it is
+comfortable on a normal GPU. Software renderers (headless Chromium with
+SwiftShader, for example) will crawl, which is expected rather than a bug.
 
 ## Credits
 

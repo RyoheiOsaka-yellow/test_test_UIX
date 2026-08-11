@@ -1,7 +1,7 @@
 // Lineworld -- entry point.
 
 import * as THREE from 'three';
-import { terrainHeight } from './noise.js';
+import { terrainHeight, streamDist, waterDepth, CHANNEL_W } from './noise.js';
 import * as field from './render.js';
 import { GlowPoints, createGlowMaterial, updateGlowProjection } from './render.js';
 import { buildWorld, resolveCollisions } from './world.js';
@@ -10,6 +10,7 @@ import { Scent } from './scent.js';
 import { MemoryVision } from './memories.js';
 import { DigSite, Monument, Effects } from './props.js';
 import { Owner } from './owner.js';
+import { Ambience } from './ambience.js';
 import { AudioEngine } from './audio.js';
 import { UI } from './ui.js';
 import { BEATS, SITES, MONUMENTS, OWNER } from './story.js';
@@ -41,6 +42,7 @@ const world = buildWorld(scene, { seed: 20260811, keepOut });
 const dog = new Dog(scene);
 const scent = new Scent(scene);
 const effects = new Effects(scene);
+const ambience = new Ambience(scene);
 const vision = new MemoryVision(scene);
 const owner = new Owner(scene, OWNER.x, OWNER.z);
 
@@ -185,6 +187,9 @@ function doBark() {
     maxR: 40, speed: 30, color: PULSE_COL, width: 3.2, intensity: 1.0,
   });
 
+  const startled = ambience.flush(dog.pos, world.trees);
+  if (startled) audio.wings(startled);
+
   // does anything answer?
   for (let i = 0; i < monuments.length; i++) {
     const m = monuments[i];
@@ -288,6 +293,8 @@ function beginGame() {
   audio.resume();
   ui.hideTitle();
   ui.fade(0, 3200);
+  document.body.classList.add('playing');
+  if (!isTouch) ui.showKeys(true);
   state.phase = 'play';
   ui.objective(BEATS[0].objective);
   buildScentPath();
@@ -324,6 +331,7 @@ function beginEnding() {
 
 function showEndCard() {
   state.phase = 'done';
+  ui.showKeys(false);
   const t = ui.el.title;
   t.style.display = 'flex';
   t.querySelector('.tag').innerHTML = ui.t('ending_4');
@@ -394,6 +402,33 @@ function updateStory(dt) {
   }
 }
 
+function updateKeyBar() {
+  if (state.phase === 'title') return;
+  const playing = state.phase === 'play';
+  const moving = input.move.lengthSq() > 0.0001;
+  const beat = BEATS[state.beat];
+
+  let digCue = false, barkCue = false, sniffCue = false;
+  if (playing && beat) {
+    if (beat.kind === 'dig') {
+      const site = sites[beat.target];
+      digCue = !site.dug && dog.pos.distanceTo(site.pos) < 3.2;
+    } else if (beat.kind === 'bark') {
+      const m = monuments[beat.target];
+      barkCue = !m.active && dog.pos.distanceTo(m.pos) < 24;
+    }
+    sniffCue = !digCue && !barkCue && scent.amount < 0.08 && state.time > 12;
+  }
+
+  ui.key('move', moving);
+  ui.key('run', moving && input.run);
+  ui.key('jump', dog.airborne);
+  ui.key('sniff', input.sniff, sniffCue);
+  ui.key('dig', dog.state === 'dig', digCue);
+  ui.key('bark', dog.barkTimer > 0, barkCue);
+  ui.key('cam', dragging);
+}
+
 // ---------------------------------------------------------------------------
 // Camera
 // ---------------------------------------------------------------------------
@@ -442,6 +477,17 @@ function updateCamera(dt) {
 // Loop
 // ---------------------------------------------------------------------------
 
+dog.onStep = (strength, leg, wx, wz) => {
+  const depth = waterDepth(wx, wz);
+  if (depth > 0.03) {
+    audio.splash(Math.min(1, depth));
+    ambience.ripple(wx, wz, Math.min(1, depth));
+  } else {
+    audio.step(strength);
+    ambience.footprint(wx, wz, dog.yaw);
+  }
+};
+
 let last = performance.now();
 
 function frame(now) {
@@ -457,7 +503,6 @@ function frame(now) {
   tickTimeline(dt);
 
   // --- dog -------------------------------------------------------------
-  dog.onStep = (s) => audio.step(s);
   dog.update(dt, input, world.trees, resolveCollisions);
 
   if (input.sniff) {
@@ -503,6 +548,7 @@ function frame(now) {
   }
 
   effects.update(dt, time, dog.pos, field);
+  ambience.update(dt, time, dog.pos);
   field.endFrame();
 
   // --- beacons ---------------------------------------------------------
@@ -543,7 +589,10 @@ function frame(now) {
 
   const tension = state.phase === 'ending' ? 1 : Math.min(1, state.memories / 4);
   audio.windAmount = 0.3 + 0.4 * Math.min(1, dog.speed / 7);
+  audio.waterAmount = Math.max(0, 1 - streamDist(dog.pos.x, dog.pos.z) / (CHANNEL_W * 4.5));
   audio.update(dt, { speed: dog.speed, tension });
+
+  updateKeyBar();
 
   renderer.render(scene, camera);
 }
@@ -562,6 +611,6 @@ dog.pos.set(0, 0, 0);
 dog.yaw = 0.6;
 
 // Handy from the console: __LW.dog.pos.set(x, 0, z) to jump around.
-window.__LW = { dog, state, scene, camera, world, sites, monuments, owner, scent, effects, audio, ui, fps: 0 };
+window.__LW = { dog, state, scene, camera, world, sites, monuments, owner, scent, effects, ambience, audio, ui, fps: 0 };
 
 requestAnimationFrame(frame);
