@@ -1,0 +1,19 @@
+{
+  "name": "elemental-sandbox",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A skillshot VFX sandbox: six fully customisable abilities, hand-written GLSL, GPU-simulated instanced particles, zero art assets on disk.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "lil-gui": "^0.21.0",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "vite": "^7.1.5"
+  }
+}

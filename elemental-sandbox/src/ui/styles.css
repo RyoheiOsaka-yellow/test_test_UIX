@@ -1,0 +1,269 @@
+:root {
+  --ink: #e8f2ff;
+  --dim: #7f92ab;
+  --edge: rgba(150, 190, 235, 0.16);
+  --panel: rgba(9, 13, 20, 0.72);
+  --frost: #7fe7ff;
+  --storm: #b79bff;
+  --cinder: #ff8a3c;
+  --nova: #ffe9a8;
+  --snare: #d07bff;
+  --glacier: #8fd9ff;
+  --font: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #05070b;
+  color: var(--ink);
+  font-family: var(--font);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+}
+
+#stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: crosshair;
+}
+
+/* ---------------------------------------------------------------- boot ---- */
+
+.boot {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 18px;
+  justify-items: center;
+  background: #05070b;
+  z-index: 40;
+  transition: opacity 0.6s ease;
+}
+
+.boot--done {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.boot__mark {
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--frost);
+  transform: rotate(45deg);
+  animation: boot-pulse 1.5s ease-in-out infinite;
+}
+
+.boot__label {
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+@keyframes boot-pulse {
+  0%,
+  100% {
+    transform: rotate(45deg) scale(0.72);
+    opacity: 0.35;
+  }
+  50% {
+    transform: rotate(225deg) scale(1);
+    opacity: 1;
+  }
+}
+
+/* ----------------------------------------------------------------- hud ---- */
+
+.hud {
+  position: absolute;
+  left: 50%;
+  bottom: 26px;
+  transform: translateX(-50%);
+  z-index: 20;
+  pointer-events: none;
+}
+
+.hud__bar {
+  display: flex;
+  gap: 8px;
+}
+
+.slot {
+  position: relative;
+  width: 62px;
+  height: 62px;
+  border: 1px solid var(--edge);
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.slot__glyph {
+  width: 30px;
+  height: 30px;
+  opacity: 0.85;
+}
+
+.slot__key {
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--dim);
+}
+
+.slot__name {
+  position: absolute;
+  bottom: 3px;
+  width: 100%;
+  text-align: center;
+  font-size: 7px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.slot__cd {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 7, 12, 0.78);
+  transform-origin: bottom;
+  transform: scaleY(0);
+  pointer-events: none;
+}
+
+.slot--armed {
+  transform: translateY(-6px);
+}
+
+.slot--armed .slot__glyph {
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------- help ---- */
+
+.help {
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  width: 316px;
+  padding: 18px 20px 16px;
+  border: 1px solid var(--edge);
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  z-index: 20;
+  user-select: none;
+}
+
+.help h1 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+}
+
+.help__sub {
+  margin: 0 0 14px;
+  font-size: 10.5px;
+  line-height: 1.65;
+  color: var(--dim);
+}
+
+.help__keys {
+  margin: 0;
+  display: grid;
+  gap: 5px;
+  font-size: 10.5px;
+}
+
+.help__keys > div {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  align-items: baseline;
+}
+
+.help__keys dt {
+  color: var(--frost);
+  letter-spacing: 0.08em;
+}
+
+.help__keys dd {
+  margin: 0;
+  color: var(--dim);
+}
+
+.help__keys em {
+  font-style: normal;
+  opacity: 0.55;
+}
+
+.help__rule {
+  height: 1px;
+  background: var(--edge);
+  margin: 7px 0;
+}
+
+/* --------------------------------------------------------------- glass ---- */
+
+.flash {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: screen;
+}
+
+.vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 14;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 46%, transparent 42%, rgba(0, 0, 0, 0.62) 100%);
+}
+
+/* ------------------------------------------------------------- lil-gui ---- */
+
+.lil-gui {
+  --background-color: rgba(9, 13, 20, 0.86);
+  --widget-color: rgba(120, 160, 200, 0.16);
+  --focus-color: rgba(127, 231, 255, 0.28);
+  --hover-color: rgba(127, 231, 255, 0.18);
+  --font-family: var(--font);
+  --font-size: 10.5px;
+  --input-font-size: 10.5px;
+  --title-height: 24px;
+  --widget-height: 18px;
+  --name-width: 56%;
+  --number-color: var(--frost);
+  --string-color: var(--nova);
+  z-index: 30 !important;
+  backdrop-filter: blur(10px);
+}
+
+.lil-gui.root > .children > .lil-gui > .title {
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  font-size: 9.5px;
+}
