@@ -9,15 +9,21 @@ Jacquard (Web)
 動かす
 ------
 
-ES モジュールと AudioWorklet を使うため、`file://` ではなく HTTP で開く必要があります。
+**`jacquard.html` をブラウザで開くだけです。** 単一ファイル版（ビルド済み、外部依存
+なし）で、`file://` からでもそのまま動きます。**Play** を押すと `scores/startup.js` の
+譜面（オリジナルの `Assets/Jacquard/Scores/Startup.jacquard.txt` と同一）が鳴ります。
+音は最初のクリックで AudioContext が開いてから出ます。
+
+ソースのまま（`index.html`）動かす場合は、ES モジュールと AudioWorklet の都合で HTTP
+が必要です。
 
 ```
 node serve.mjs        # http://localhost:8080
+node build.mjs        # src/ と style.css から jacquard.html を作り直す
 ```
 
-ブラウザで開き、**Play** を押すと `scores/startup.js` の譜面（オリジナルの
-`Assets/Jacquard/Scores/Startup.jacquard.txt` と同一）が鳴ります。音は最初のクリックで
-AudioContext が開いてから出ます。
+`jacquard.html` は `build.mjs` の生成物なので、直接編集せず `src/` を直して作り直して
+ください。
 
 セルフテスト
 ------------
@@ -67,6 +73,8 @@ Live FX の 12 ボタンは押している間だけ効きます（Reverb / Delay
 | `src/ui` | 平面の描画、セルのアイコン、パネル、編集操作 |
 | `scores` | 起動時に開く譜面 |
 | `tests` | セルフテスト |
+| `build.mjs` | 全モジュール・worklet・CSS を 1 枚の HTML に畳む |
+| `jacquard.html` | その生成物（単一ファイル版） |
 
 `src/core` と `src/audio/dsp.js` はブラウザ API に一切触れません。オリジナルで
 `Assets/Core` の asmdef が `noEngineReferences` によって強制していた分離を、そのまま
@@ -77,9 +85,12 @@ Live FX の 12 ボタンは押している間だけ効きます（Reverb / Delay
 
 - **出力ドライバ**。オリジナルはネイティブでは Scriptable Audio Pipeline、Web では
   `Update` からブロックを描画して Web Audio へ押し込む方式で、後者は約 110ms の遅延を
-  伴います。こちらは AudioWorklet なので、性格としては前者に近く、レンダー量子と
-  メッセージの往復ぶん（20ms）だけを `minimumLead` として見込んでいます。シーケンサの
-  先読み 120ms、ハンドオーバー 30ms はオリジナルのままです。
+  伴います。こちらも 2 系統で、DSP 自体はどちらにも属しません。既定は AudioWorklet
+  （性格としてはパイプライン側に近く、`minimumLead` はレンダー量子とメッセージの往復
+  ぶんの 20ms だけ）、worklet モジュールを一切読めないページでは ScriptProcessor に
+  よる押し込み方式へ落ちます（`minimumLead` は 2 バッファ ≒ 85ms で、オリジナルの Web
+  ビルドと同じ理由の同じ性格）。シーケンサの先読み 120ms、ハンドオーバー 30ms は
+  オリジナルのままです。
 - **UI Toolkit ではなく DOM**。セルのピッチ（30x32、間隔 4px）、アイコンの 15x15
   ビューボックス、レールの点線、ジャンプ線の 7.5px オフセットは `mockup.html` と
   `Style.cs` の値をそのまま使っています。
