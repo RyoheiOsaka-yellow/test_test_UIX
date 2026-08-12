@@ -1,0 +1,11 @@
+{
+  "name": "jacquard-web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A web port of keijiro/Jacquard, the prototype grid sequencer",
+  "scripts": {
+    "start": "node serve.mjs",
+    "test": "node tests/selftest.mjs"
+  }
+}

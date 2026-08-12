@@ -1,0 +1,74 @@
+// The score the app opens on, in the format the app itself writes: replacing it is a
+// copy rather than a transcription, and the format is exercised by the same reader
+// every load uses. Held as a module rather than fetched so that the page has one
+// fewer thing that can fail on a file:// origin.
+
+export const StartupScore = `
+jacquard 11
+tempo 129
+meter 4 4
+fx rsize=0.38564 rdamp=0.5 rwidth=1 dbeats=0.5 dfb=0.61901 dtone=0.32649 dspread=1
+limiter drive=0 ceiling=0 attack=0.005 release=0.15
+patch 1 level=1 pan=0 gate=0.7821 mratio=2.575 index=4.96931 fb=0 md=0.05332 ca=0.001 cr=0.24407 ps=4 pd=0.24228 rsend=0 dsend=0
+patch 2 level=0.6948 pan=0 gate=0.05 mratio=3.50347 index=6.0802 fb=6.66535 md=0.66667 ca=0.001 cr=0.07975 ps=0 pd=0.05 rsend=0.11436 dsend=0
+patch 3 level=0.4547 pan=0 gate=0.9983 mratio=1.41442 index=1.8 fb=0.32673 md=0.38336 ca=0.001 cr=0.0192 ps=-2.02574 pd=0.08378 rsend=0 dsend=0.40842
+patch 4 level=0.29728 pan=0 gate=1.1975 mratio=1 index=3.04158 fb=6.25149 md=0.17142 ca=0.001 cr=0.11833 ps=4 pd=0.29338 rsend=0.18515 dsend=0
+patch 5 level=0.08218 pan=0 gate=0.37875 mratio=4.09728 index=2.4208 fb=0 md=0.26608 ca=0.001 cr=1.15269 ps=4 pd=0.05 rsend=0.40297 dsend=0.55347
+patch 6 level=0.22376 pan=0 gate=1.2562 mratio=7.55495 index=4.38713 fb=2.57624 md=1 ca=0.001 cr=4 ps=0 pd=0.05 rsend=1 dsend=1
+patch 7 level=0.3 pan=0 gate=1.1975 mratio=2.575 index=1.8 fb=0 md=0.37772 ca=0.02595 cr=0.36 ps=0 pd=0.05 rsend=0 dsend=0
+patch 8 level=0.3 pan=0 gate=1.1975 mratio=2.575 index=1.8 fb=0 md=0.37772 ca=0.02595 cr=0.36 ps=0 pd=0.05 rsend=0 dsend=0
+lane 2 1 CHAN:1 div=16
+  step G1
+  step
+  step GPRB:28 PREL:level,-0.41386 C2
+  step GPRB:22 PREL:level,-0.64802 C2
+lane 2 5 CHAN:2 div=16
+  step PREL:level,-0.45198 G#6
+  step
+  step G#6
+  step PREL:level,-0.57723 A6
+lane 2 8 CHAN:3 div=16
+  step E2
+  step
+  step GPRB:50 E3
+lane 9 1 CHAN:4 div=16
+  step
+  step GPRB:36 PREL:level,-0.07624,moddecay,0.01777 E3
+  step
+  step GCYC:4,0001 JUMP
+  step E3
+  step
+  step
+  step
+lane 9 8 CHAN:5 div=16
+  step A3 GPRB:50 G4
+  step C4
+  step D4
+  step G4
+  step GPRB:50 D5
+  step B4
+  step GPRB:50 PABS:dsend,1 A5
+  step GPRB:50 D3
+lane 2 12 CHAN:6 div=16
+  step GCYC:8,10000000 A5
+  step
+  step
+  step
+  step
+  step
+  step
+  step GCYC:8,00000001 PABS:level,0.11213,carattack,0.62127,carrelease,0.66242 E7/8
+  step
+  step
+  step
+  step
+  step
+  step
+  step
+  step
+lane 13 4 JDST from=12,2
+  step
+  step PREL:level,-0.14703 E3
+  step PREL:level,-0.08713 E3
+  step PREL:level,-0.07079 E3
+`.trimStart()

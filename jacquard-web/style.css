@@ -1,0 +1,367 @@
+/* Flat and monochrome throughout, with the palette and the cell pitch taken from
+   mockup.html: a cell is 30x32 with a 4px gutter, the rail is a 2px dot every 7px at
+   35%, and a jump link is a 1px grey line offset half a cell so that it reads as a
+   layer of its own.
+
+   The chrome is the one place where layout values are the real sizes and no transform
+   is applied, which is what keeps 1px borders and corner radii on the pixel grid
+   beside a plane that is panned about freely. */
+
+:root {
+  --bg: #16161a;
+  --note-line: #e8e8e4;
+  --note-text: #f2f2ee;
+  --marker: #9a9a96;
+  --dot: #4e4e54;
+  --ctrl-bg: #34343c;
+  --ctrl-bg-hover: #44444e;
+  --link: #86868c;
+
+  --panel: #1e1e24;
+  --panel-line: #3a3a44;
+  --label: #9a9a96;
+  --fill: #6c6c76;
+  --fill-active: #84848e;
+
+  --cell-w: 30px;
+  --cell-h: 32px;
+  --gap: 4px;
+  --row-h: 20px;
+  --type: 11px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--note-text);
+  font-family: system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root { position: fixed; inset: 0; }
+
+/* The plane */
+
+.plane-area {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  cursor: default;
+}
+
+.visualizer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.plane {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(0, 0);
+}
+
+.cell {
+  position: absolute;
+  width: var(--cell-w);
+  height: var(--cell-h);
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  user-select: none;
+  z-index: 1;
+  line-height: 1;
+}
+
+.cell.lattice { color: var(--dot); font-size: 13px; }
+.cell.marker { color: var(--marker); }
+
+.cell.tile {
+  border: 1px solid var(--note-line);
+  background: var(--bg);
+  color: var(--note-text);
+  font-size: 13px;
+}
+
+.cell.control-tile:not(.inverted) { background: var(--ctrl-bg); }
+
+.cell.inverted {
+  background: var(--note-line);
+  color: var(--bg);
+}
+
+.cell:not(.inverted):hover { background: #ffffff14; }
+.cell.control-tile:not(.inverted):hover { background: var(--ctrl-bg-hover); }
+.cell.inverted:hover { background: #ffffff; }
+
+.cell .label { white-space: nowrap; }
+
+.cell .stack {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.cell .length { font-size: 9px; opacity: 0.7; letter-spacing: 0.02em; }
+
+/* The accidental gutter stands only on the notes that have an accidental: what it
+   holds is four 1px strokes, so it is a fixed five pixels rather than a share of the
+   type size. */
+.cell .accidental {
+  position: relative;
+  display: inline-block;
+  width: 5px;
+  height: 1em;
+  vertical-align: baseline;
+  overflow: visible;
+}
+
+.cell .accidental > span {
+  position: absolute;
+  left: 50%;
+  bottom: 0.42em;
+  transform: translateX(-50%);
+  font-size: 0.62em;
+  line-height: 1;
+}
+
+/* Chain lines join cells of the same stack, and only those. */
+.cell.linked::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(-1 * var(--gap) - 1px);
+  width: 1px;
+  height: calc(var(--gap) + 2px);
+  background: var(--note-line);
+  transform: translateX(-50%);
+}
+
+.cell.playing {
+  box-shadow: 0 0 0 1px var(--note-text), 0 0 12px #f2f2ee55;
+}
+
+.rail {
+  position: absolute;
+  height: 2px;
+  transform: translateY(-50%);
+  background-image: repeating-linear-gradient(to right,
+    var(--note-line) 0 2px, transparent 2px 7px);
+  opacity: 0.35;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.links {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+  fill: none;
+  stroke: var(--link);
+  stroke-width: 1px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.cursor-box, .drop-box {
+  position: absolute;
+  width: var(--cell-w);
+  height: var(--cell-h);
+  border-radius: 5px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.cursor-box { outline: 1px solid var(--note-text); outline-offset: 1px; }
+.drop-box { display: none; outline: 1px dashed var(--note-text); outline-offset: 2px; }
+
+/* Columns. The cursor's panels hang from the top right, the send effects on the inside
+   of that column, the channels in the one corner the cursor's panels never reach, and
+   the live effects across the bottom where both thumbs already are. */
+
+.column {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 3;
+}
+
+.column.right { top: 8px; right: 8px; width: 232px; max-height: calc(100% - 16px);
+                overflow-y: auto; }
+.column.inner { top: 8px; right: 252px; width: 200px; max-height: calc(100% - 16px);
+                overflow-y: auto; }
+.column.left { top: 8px; left: 8px; width: 168px; }
+
+.centre {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+}
+
+.bottom {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+}
+
+.stack-panels { display: flex; flex-direction: column; gap: 8px; }
+
+/* Panels */
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--type);
+}
+
+.panel-header {
+  height: var(--row-h);
+  display: flex;
+  align-items: center;
+  color: var(--note-text);
+  font-size: var(--type);
+  letter-spacing: 0.04em;
+}
+
+.panel-rule { height: 1px; background: var(--panel-line); }
+
+.heading {
+  height: var(--row-h);
+  display: flex;
+  align-items: center;
+  color: var(--label);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.note { margin: 0; color: var(--label); line-height: 1.4; font-size: 10px; }
+
+.row { display: flex; gap: 4px; align-items: center; }
+
+.transport { display: flex; flex-direction: column; gap: 4px;
+             background: var(--panel); border: 1px solid var(--panel-line);
+             border-radius: 6px; padding: 8px; }
+
+.switches { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.status { color: var(--label); font-size: 10px; min-height: 12px; }
+
+/* Controls */
+
+.control {
+  font-family: inherit;
+  font-size: var(--type);
+  color: var(--note-text);
+  background: var(--ctrl-bg);
+  border: 1px solid var(--panel-line);
+  border-radius: 3px;
+  height: var(--row-h);
+  padding: 0 8px;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+}
+
+.control:hover:not(:disabled) { background: var(--ctrl-bg-hover); }
+.control:disabled { opacity: 0.35; cursor: default; }
+
+.control.small { padding: 0 6px; font-size: 10px; }
+.control.play { height: 26px; font-size: 13px; }
+.control.danger { color: #f0c8c8; }
+
+.control.toggle.on, .control.hold.held {
+  background: var(--note-line);
+  color: var(--bg);
+  border-color: var(--note-line);
+}
+
+.control.toggle.idle { opacity: 0.4; }
+
+.palette { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+
+.laps { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; }
+
+.control.lap {
+  height: 18px;
+  padding: 0;
+  font-size: 9px;
+  color: var(--label);
+}
+
+.control.lap.on { background: var(--note-line); color: var(--bg); }
+
+.stepper { display: flex; align-items: center; gap: 4px; height: var(--row-h); }
+.stepper .caption { color: var(--label); flex: 1; }
+.stepper .readout { min-width: 34px; text-align: center; }
+
+/* A number is a bar, not a field. */
+
+.value-bar {
+  position: relative;
+  height: var(--row-h);
+  background: #2a2a32;
+  border: 1px solid var(--panel-line);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  overflow: hidden;
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
+}
+
+.value-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--fill);
+}
+
+.value-bar:hover .value-fill { background: var(--fill-active); }
+
+.value-label { position: relative; color: var(--note-text); flex: 1; }
+.value-readout { position: relative; color: var(--note-text); opacity: 0.85; }
+
+.value-bar.idle .value-label,
+.value-bar.idle .value-readout { opacity: 0.4; }
+.value-bar.idle .value-fill { opacity: 0.25; }
+
+/* The live effects: six columns of two, the smaller of each pair on top. */
+
+.live-panel { flex-direction: row; gap: 6px; }
+.live-column { display: flex; flex-direction: column; gap: 4px; }
+.live-column .control { width: 78px; }
+
+/* A fingertip covers about nine millimetres of glass whatever is under it, so what
+   grows on a touch screen is the targets and not the air between them. */
+
+@media (pointer: coarse) {
+  :root { --row-h: 30px; --type: 13px; }
+  .column.right { width: 268px; }
+  .column.inner { right: 288px; width: 236px; }
+  .live-column .control { width: 92px; }
+}
