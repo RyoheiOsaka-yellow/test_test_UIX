@@ -1,0 +1,2579 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PHENOMENA — 世界のしくみを、触って理解する。</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@500;600;700&family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   PHENOMENA — v8 Visual System
+   Cute × Scientific × Tactile
+   paper / forest / gold  —  a tiny science museum
+   ============================================================ */
+:root{
+  --ink:#1f2b26; --ink-soft:#4a5750; --ink-muted:#768078;
+  --paper:#f6f4ee; --paper-deep:#eeeade;
+  --surface:#ffffff; --surface-soft:#fbfaf6; --surface-float:rgba(255,255,255,.92);
+  --line:#d8d4c6; --line-soft:rgba(31,43,38,.10);
+  --forest:#2e5c4c; --forest-deep:#1c3e33; --forest-soft:rgba(46,92,76,.08);
+  --gold:#b8912f; --gold-soft:rgba(184,145,47,.12);
+  --danger:#9a4d44; --warning:#9a7631;
+
+  /* universe accents — 10-20% of surface only */
+  --u-chaos:#c9705f; --u-attractor:#6b6fa8; --u-maps:#b8873f; --u-random:#c7a83c;
+  --u-life:#6f8f5a; --u-waves:#7ba3b8;
+
+  --shadow-1:0 2px 8px rgba(31,43,38,.06);
+  --shadow-2:0 8px 28px rgba(31,43,38,.10);
+  --shadow-3:0 18px 48px rgba(31,43,38,.14);
+
+  --type-hero:clamp(30px,5vw,68px);
+  --type-h1:clamp(26px,3.4vw,34px);
+  --type-h2:24px; --type-h3:17px;
+  --type-body:14px; --type-small:12px; --type-micro:10.5px;
+
+  --r-card:18px; --r-ctrl:8px; --r-modal:22px;
+  --hdr:58px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Noto Sans JP',system-ui,sans-serif;
+  color:var(--ink); background:var(--paper);
+  font-size:var(--type-body); line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+  display:flex; flex-direction:column; height:100%; overflow:hidden;
+}
+body::before{ /* warm paper grain */
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.5;
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(46,92,76,.05), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgba(184,145,47,.06), transparent 55%);
+}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+a{color:inherit;text-decoration:none}
+.serif{font-family:'Noto Serif JP',serif}
+.num{font-variant-numeric:tabular-nums}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:9px;border:2px solid var(--paper)}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ---------- header ---------- */
+header#topbar{
+  position:relative; z-index:20; flex:0 0 auto; height:var(--hdr);
+  display:flex; align-items:center; gap:16px; padding:0 18px;
+  background:var(--surface); border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.brand .mark{width:26px;height:26px;flex:0 0 auto;overflow:visible}
+.brand .mark .arm{transform-origin:13px 3px; animation:swing 3.6s ease-in-out infinite}
+@keyframes swing{0%,100%{transform:rotate(-17deg)}50%{transform:rotate(17deg)}}
+.brand b{font-family:'Noto Serif JP',serif;font-size:16px;color:var(--forest-deep);letter-spacing:.06em}
+.brand small{display:block;font-size:9.5px;letter-spacing:.18em;color:var(--gold);font-weight:600;line-height:1}
+.navlinks{display:flex;gap:4px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none}
+.navlinks::-webkit-scrollbar{display:none}
+.navlink{
+  font-size:12.5px;font-weight:600;color:var(--ink-soft);white-space:nowrap;
+  padding:7px 14px;border-radius:999px;border:1px solid transparent;transition:all .16s;
+}
+.navlink:hover{border-color:var(--line);color:var(--forest)}
+.navlink.on{background:var(--forest);border-color:var(--forest);color:#fff}
+.hdr-right{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+
+/* ---------- generic pills / buttons ---------- */
+.pill{
+  font-size:11.5px;font-weight:600;color:var(--ink-soft);white-space:nowrap;
+  padding:6px 13px;border-radius:999px;border:1px solid var(--line);
+  background:var(--surface);transition:all .14s;
+}
+.pill:hover{border-color:var(--forest);color:var(--forest);transform:translateY(-1px)}
+.pill.on{background:var(--forest);border-color:var(--forest);color:#fff}
+.pill.gold.on{background:var(--gold);border-color:var(--gold)}
+.pill:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-solid{
+  font-size:13px;font-weight:600;color:#fff;background:var(--forest);
+  border:1px solid var(--forest);border-radius:999px;padding:10px 24px;transition:all .16s;
+}
+.btn-solid:hover{background:var(--forest-deep);transform:translateY(-1px);box-shadow:var(--shadow-2)}
+.btn-ghost{
+  font-size:13px;font-weight:600;color:var(--forest);background:transparent;
+  border:1px solid var(--line);border-radius:999px;padding:10px 24px;transition:all .16s;
+}
+.btn-ghost:hover{border-color:var(--forest);background:var(--forest-soft)}
+
+/* ---------- scroll page ---------- */
+main#app{flex:1;min-height:0;position:relative;z-index:1;display:flex;flex-direction:column}
+.page{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden}
+.wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+
+/* ---------- HOME ---------- */
+.hero{position:relative;padding:54px 0 30px}
+.hero-grid{display:grid;grid-template-columns:1fr 420px;gap:36px;align-items:center}
+.hero h1{
+  font-family:'Noto Serif JP',serif;font-size:var(--type-hero);line-height:1.26;
+  color:var(--forest-deep);letter-spacing:.01em;font-weight:600;
+}
+.hero h1 .ln{display:block;white-space:nowrap}
+.hero h1 .tint{color:var(--gold)}
+.hero .lede{margin-top:18px;color:var(--ink-soft);font-size:15px;max-width:34em}
+.hero .cta{display:flex;gap:10px;margin-top:26px;flex-wrap:wrap}
+.hero-stage{
+  position:relative;background:var(--surface);border:1px solid var(--line);
+  border-radius:var(--r-card);box-shadow:var(--shadow-2);overflow:hidden;aspect-ratio:1/1;
+}
+.hero-stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.hero-stage canvas:active{cursor:grabbing}
+.stage-tag{
+  position:absolute;left:14px;top:12px;font-size:10.5px;letter-spacing:.14em;
+  font-weight:600;color:var(--gold);
+}
+.stage-hint{
+  position:absolute;left:50%;bottom:12px;transform:translateX(-50%);
+  font-size:11px;color:var(--ink-muted);background:var(--surface-float);
+  border:1px solid var(--line);border-radius:999px;padding:5px 14px;
+  backdrop-filter:blur(6px);white-space:nowrap;
+}
+.hero-stage .swing-badge{
+  position:absolute;right:12px;top:12px;font-size:10.5px;font-weight:600;
+  color:var(--forest);background:var(--forest-soft);border-radius:999px;padding:4px 10px;
+}
+
+.sec{padding:44px 0}
+.sec-label{
+  font-size:10.5px;letter-spacing:.2em;font-weight:600;color:var(--gold);margin-bottom:14px;
+}
+.sec h2{font-family:'Noto Serif JP',serif;font-size:var(--type-h2);color:var(--forest-deep);margin-bottom:6px}
+.sec p.sub{color:var(--ink-soft);font-size:13px;margin-bottom:22px}
+
+/* question cards */
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:12px}
+.qcard{
+  display:flex;flex-direction:column;justify-content:space-between;gap:14px;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);
+  padding:18px 18px 15px;min-height:132px;transition:all .2s;text-align:left;
+}
+.qcard:hover{transform:translateY(-3px);box-shadow:var(--shadow-2);border-color:var(--forest)}
+.qcard .q{font-family:'Noto Serif JP',serif;font-size:16px;color:var(--forest-deep);line-height:1.55}
+.qcard .go{font-size:11px;color:var(--ink-muted);display:flex;align-items:center;gap:6px}
+.qcard:hover .go{color:var(--forest)}
+.qcard .go .arw{transition:transform .2s}
+.qcard:hover .go .arw{transform:translateX(4px)}
+
+/* live phenomenon cards */
+.cardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:18px}
+.pcard{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);
+  overflow:hidden;transition:all .22s;display:flex;flex-direction:column;text-align:left;
+}
+.pcard:hover{transform:translateY(-4px);box-shadow:var(--shadow-2);border-color:var(--forest)}
+.pcard .prev{
+  position:relative;aspect-ratio:16/11;background:var(--surface-soft);
+  border-bottom:1px solid var(--line);overflow:hidden;
+}
+.pcard .prev canvas{display:block;width:100%;height:100%}
+.pcard .live{
+  position:absolute;right:10px;top:9px;font-size:9px;letter-spacing:.14em;font-weight:600;
+  color:var(--forest);background:var(--surface-float);border-radius:999px;padding:3px 8px;
+  display:flex;align-items:center;gap:5px;
+}
+.pcard .live i{width:5px;height:5px;border-radius:50%;background:var(--u-chaos);animation:blip 1.6s infinite}
+@keyframes blip{0%,100%{opacity:1}50%{opacity:.25}}
+.pcard .body{padding:14px 16px 16px}
+.pcard h3{font-family:'Noto Serif JP',serif;font-size:16px;color:var(--forest-deep);line-height:1.4}
+.pcard .en{font-size:10.5px;letter-spacing:.1em;color:var(--ink-muted);margin-top:2px}
+.pcard .hook{font-size:12px;color:var(--ink-soft);margin-top:9px;line-height:1.65;min-height:2.6em}
+.tagrow{display:flex;gap:5px;margin-top:11px;flex-wrap:wrap}
+.tag{
+  font-size:9.5px;letter-spacing:.1em;font-weight:600;padding:3px 8px;border-radius:999px;
+  background:var(--paper-deep);color:var(--ink-soft);
+}
+.tag.acc{background:var(--acc-soft,var(--forest-soft));color:var(--acc,var(--forest))}
+.pcard .try{
+  margin-top:12px;font-size:11.5px;font-weight:600;color:var(--forest);
+  opacity:0;transform:translateY(3px);transition:all .2s;
+}
+.pcard:hover .try{opacity:1;transform:none}
+
+/* universes strip */
+.ustrip{display:flex;gap:9px;flex-wrap:wrap}
+.uchip{
+  font-size:11.5px;font-weight:600;padding:8px 15px;border-radius:999px;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);
+  display:flex;align-items:center;gap:8px;transition:all .16s;
+}
+.uchip i{width:9px;height:9px;border-radius:50%;background:var(--c)}
+.uchip:hover{border-color:var(--forest);transform:translateY(-2px)}
+.uchip.soon{opacity:.45}
+
+/* surprise */
+.surprise{
+  background:linear-gradient(135deg,var(--forest-deep),var(--forest));
+  border-radius:var(--r-card);padding:34px 32px;color:#f3f1e9;
+  display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap;
+  box-shadow:var(--shadow-2);position:relative;overflow:hidden;
+}
+.surprise::after{
+  content:'';position:absolute;right:-40px;bottom:-70px;width:230px;height:230px;
+  border-radius:50%;background:rgba(184,145,47,.18);
+}
+.surprise h2{font-family:'Noto Serif JP',serif;font-size:26px;color:#fff;margin-bottom:6px}
+.surprise p{font-size:13px;opacity:.82;max-width:36em}
+.surprise .btn-solid{background:var(--gold);border-color:var(--gold);position:relative;z-index:1}
+.surprise .btn-solid:hover{background:#a37f24}
+
+footer.foot{
+  border-top:1px solid var(--line);margin-top:20px;padding:26px 0 40px;
+  color:var(--ink-muted);font-size:11.5px;
+}
+footer.foot b{color:var(--forest);font-weight:600}
+
+/* ---------- EXPLORE ---------- */
+.exp-head{padding:34px 0 20px}
+.exp-head h1{font-family:'Noto Serif JP',serif;font-size:var(--type-h1);color:var(--forest-deep)}
+.searchbar{
+  display:flex;align-items:center;gap:10px;margin-top:18px;
+  background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:10px 18px;
+  max-width:460px;transition:border-color .16s;
+}
+.searchbar:focus-within{border-color:var(--forest)}
+.searchbar input{border:none;outline:none;background:none;flex:1;font-size:13px;min-width:0}
+.filters{margin-top:18px;display:flex;flex-direction:column;gap:10px}
+.frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.frow .flabel{font-size:10.5px;letter-spacing:.14em;font-weight:600;color:var(--gold);width:78px;flex:0 0 auto}
+.emptynote{padding:40px 0;color:var(--ink-muted);font-size:13px;text-align:center}
+
+/* ---------- LAB ---------- */
+.lab{flex:1;display:flex;flex-direction:column;min-height:0}
+.labbar{
+  flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:9px 18px;
+  background:var(--surface);border-bottom:1px solid var(--line);flex-wrap:wrap;
+}
+.labbar .back{font-size:12px;color:var(--ink-soft);font-weight:600;display:flex;align-items:center;gap:6px}
+.labbar .back:hover{color:var(--forest)}
+.labtitle{display:flex;align-items:baseline;gap:9px;flex:1;min-width:0}
+.labtitle h1{font-family:'Noto Serif JP',serif;font-size:16px;color:var(--forest-deep);white-space:nowrap}
+.labtitle span{font-size:10.5px;letter-spacing:.1em;color:var(--ink-muted);white-space:nowrap}
+.labtabs{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none}
+.labtabs::-webkit-scrollbar{display:none}
+
+.labmain{flex:1;display:flex;min-height:0}
+aside.panel{
+  width:284px;flex:0 0 auto;overflow-y:auto;background:var(--surface);
+  border-right:1px solid var(--line);padding:16px 16px 30px;
+}
+aside.panel.right{width:330px;border-right:none;border-left:1px solid var(--line)}
+.psec{margin-bottom:22px}
+.psec>h3{
+  font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--forest);
+  font-weight:600;margin-bottom:11px;padding-bottom:6px;border-bottom:1px solid var(--line);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.psec>h3 em{font-style:normal;color:var(--ink-muted);letter-spacing:.06em;font-weight:500;text-transform:none;font-size:10px}
+.pnote{font-size:11px;color:var(--ink-muted);line-height:1.7;margin-top:8px}
+
+.presets{display:flex;flex-direction:column;gap:6px}
+.preset{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+  padding:8px 12px;border:1px solid var(--line);border-radius:var(--r-ctrl);
+  font-size:12.5px;transition:all .13s;text-align:left;width:100%;
+}
+.preset:hover{border-color:var(--forest);transform:translateX(2px)}
+.preset.on{border-color:var(--forest);background:var(--forest-soft);font-weight:600}
+.preset em{font-style:normal;font-size:10.5px;color:var(--gold);font-weight:600;white-space:nowrap}
+
+.slider-row{margin-bottom:13px}
+.sl-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:11.5px;margin-bottom:3px}
+.sl-top .lb{color:var(--ink-soft);font-weight:600}
+.sl-top .lb i{font-style:italic;font-family:'Noto Serif JP',serif;color:var(--forest);margin-right:4px}
+.sl-top .vl{font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink)}
+.sl-top .vl small{color:var(--ink-muted);font-weight:400;margin-left:2px}
+input[type=range]{
+  width:100%;accent-color:var(--forest);height:20px;cursor:pointer;
+}
+.sl-warn{font-size:10px;color:var(--warning);margin-top:2px}
+
+.segrow{display:flex;gap:5px;flex-wrap:wrap}
+.metrics{display:flex;flex-direction:column;gap:6px}
+.metric{
+  display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  background:var(--surface-soft);border:1px solid var(--line-soft);border-radius:10px;
+  padding:7px 12px;font-size:11.5px;
+}
+.metric .mk{color:var(--ink-muted);letter-spacing:.06em}
+.metric .mv{font-weight:600;font-variant-numeric:tabular-nums;color:var(--forest-deep)}
+.metric.hot .mv{color:var(--u-chaos)}
+
+#viewport{flex:1;position:relative;min-width:0;background:var(--paper);overflow:hidden}
+#viewport canvas{display:block;width:100%;height:100%;touch-action:none}
+.vp-badge{
+  position:absolute;left:16px;top:14px;z-index:3;display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+}
+.vp-badge .bd{
+  font-size:10px;letter-spacing:.1em;font-weight:600;color:var(--ink-muted);
+  background:var(--surface-float);border:1px solid var(--line);border-radius:999px;padding:3px 10px;
+  backdrop-filter:blur(6px);
+}
+.vp-badge .bd.acc{color:var(--acc);border-color:var(--acc)}
+.bfly{
+  position:absolute;right:16px;top:14px;z-index:3;background:var(--surface-float);
+  border:1px solid var(--gold);border-radius:14px;padding:9px 13px;backdrop-filter:blur(6px);
+  box-shadow:var(--shadow-1);min-width:186px;
+}
+.bfly .bt{font-size:10px;letter-spacing:.14em;font-weight:600;color:var(--gold);display:flex;gap:6px;align-items:center}
+.bfly .bt .w{display:inline-block;animation:flutter 1.1s ease-in-out infinite}
+@keyframes flutter{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-3px) rotate(6deg)}}
+.bfly .bv{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--forest-deep);margin-top:3px}
+.bfly .bs{font-size:10px;color:var(--ink-muted);margin-top:1px}
+.bfly .spark{display:flex;align-items:flex-end;gap:2px;height:22px;margin-top:6px}
+.bfly .spark i{flex:1;background:var(--gold-soft);border-radius:1px;min-height:1px}
+.bfly .spark i.hi{background:var(--gold)}
+
+.toolbar{
+  position:absolute;left:50%;bottom:16px;transform:translateX(-50%);z-index:4;
+  display:flex;align-items:center;gap:6px;flex-wrap:nowrap;justify-content:flex-start;
+  background:var(--surface-float);border:1px solid var(--line);border-radius:999px;
+  padding:7px 12px;backdrop-filter:blur(8px);box-shadow:var(--shadow-2);
+  width:max-content;max-width:calc(100% - 24px);overflow-x:auto;scrollbar-width:none;
+}
+.toolbar::-webkit-scrollbar{display:none}
+.toolbar .pill{padding:6px 11px}
+.tsep{width:1px;height:18px;background:var(--line);flex:0 0 auto}
+.tlabel{font-size:10px;letter-spacing:.12em;color:var(--ink-muted);font-weight:600}
+.playbtn{
+  width:36px;height:36px;border-radius:50%;background:var(--forest);color:#fff;
+  display:flex;align-items:center;justify-content:center;transition:all .16s;flex:0 0 auto;
+}
+.playbtn:hover{background:var(--forest-deep);transform:scale(1.06)}
+
+/* discover panel */
+.learn-block{margin-bottom:16px}
+.learn-block .lk{
+  font-size:10px;letter-spacing:.18em;font-weight:600;color:var(--gold);margin-bottom:5px;
+}
+.learn-block .lv{font-size:12.5px;color:var(--ink-soft);line-height:1.8}
+.learn-block .lv.big{
+  font-family:'Noto Serif JP',serif;font-size:15px;color:var(--forest-deep);line-height:1.75;
+}
+.learn-block ul{list-style:none;display:flex;flex-direction:column;gap:6px}
+.learn-block li{
+  font-size:12.5px;color:var(--ink-soft);line-height:1.7;padding-left:16px;position:relative;
+}
+.learn-block li::before{
+  content:'';position:absolute;left:2px;top:.72em;width:5px;height:5px;border-radius:50%;
+  background:var(--acc,var(--forest));
+}
+.eqbox{
+  background:var(--surface-soft);border:1px solid var(--line);border-radius:12px;
+  padding:12px 14px;font-family:'Noto Serif JP',serif;font-size:13.5px;color:var(--forest-deep);
+  line-height:2;overflow-x:auto;
+}
+.eqbox i{font-style:italic}
+details.disclosure{border-top:1px dashed var(--line);padding-top:10px;margin-top:12px}
+details.disclosure summary{
+  font-size:11.5px;font-weight:600;color:var(--forest);cursor:pointer;list-style:none;
+  display:flex;align-items:center;gap:6px;
+}
+details.disclosure summary::-webkit-details-marker{display:none}
+details.disclosure summary::before{content:'＋';color:var(--gold);font-size:12px}
+details.disclosure[open] summary::before{content:'−'}
+details.disclosure .dd{margin-top:9px}
+.related{display:flex;flex-direction:column;gap:7px}
+.relcard{
+  display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid var(--line);
+  border-radius:12px;transition:all .14s;text-align:left;width:100%;
+}
+.relcard:hover{border-color:var(--forest);background:var(--forest-soft);transform:translateX(2px)}
+.relcard .rd{width:8px;height:8px;border-radius:50%;background:var(--c);flex:0 0 auto}
+.relcard .rt{flex:1;min-width:0}
+.relcard .rt b{display:block;font-size:12.5px;font-weight:600;color:var(--forest-deep)}
+.relcard .rt small{display:block;font-size:10.5px;color:var(--ink-muted);line-height:1.5}
+
+/* mobile drawer tabs */
+.mtabs{
+  display:none;position:absolute;left:50%;transform:translateX(-50%);bottom:70px;z-index:9;
+  gap:6px;width:max-content;background:var(--surface-float);border:1px solid var(--line);
+  border-radius:999px;padding:5px;backdrop-filter:blur(8px);box-shadow:var(--shadow-2);
+}
+
+/* modal */
+.scrim{
+  position:fixed;inset:0;background:rgba(31,43,38,.34);z-index:50;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  backdrop-filter:blur(3px);animation:fade .2s;
+}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal{
+  background:var(--surface);border-radius:var(--r-modal);box-shadow:var(--shadow-3);
+  max-width:600px;width:100%;max-height:82vh;overflow-y:auto;padding:26px 28px 24px;
+  animation:pop .24s cubic-bezier(.2,.9,.3,1.2);
+}
+@keyframes pop{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+.modal h2{font-family:'Noto Serif JP',serif;font-size:19px;color:var(--forest-deep);margin-bottom:4px}
+.modal p.msub{font-size:12px;color:var(--ink-muted);margin-bottom:16px}
+.modal .mfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.trow{
+  display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft);
+  font-size:12.5px;
+}
+.trow .st{
+  flex:0 0 auto;font-size:9.5px;font-weight:700;letter-spacing:.1em;padding:2px 8px;border-radius:999px;
+  margin-top:3px;
+}
+.trow .st.pass{background:var(--forest-soft);color:var(--forest)}
+.trow .st.fail{background:rgba(154,77,68,.12);color:var(--danger)}
+.trow .tn{flex:1}
+.trow .tn small{display:block;color:var(--ink-muted);font-size:11px;font-variant-numeric:tabular-nums}
+.tsummary{
+  display:flex;gap:14px;align-items:baseline;background:var(--surface-soft);
+  border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-bottom:14px;
+}
+.tsummary b{font-size:21px;color:var(--forest);font-variant-numeric:tabular-nums}
+.sharefield{
+  display:flex;gap:8px;background:var(--surface-soft);border:1px solid var(--line);
+  border-radius:10px;padding:10px 12px;align-items:center;
+}
+.sharefield input{flex:1;min-width:0;border:none;background:none;outline:none;font-size:11.5px;color:var(--ink-soft)}
+.toast{
+  position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:60;
+  background:var(--forest-deep);color:#f3f1e9;font-size:12px;font-weight:500;
+  padding:10px 20px;border-radius:999px;box-shadow:var(--shadow-2);animation:pop .2s;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width:1180px){
+  aside.panel{width:250px}
+  aside.panel.right{width:288px}
+  .hero-grid{grid-template-columns:1fr 360px}
+}
+@media (max-width:900px){
+  .hero-grid{grid-template-columns:1fr;gap:26px}
+  .hero{padding:32px 0 16px}
+  .hero-stage{max-width:420px;margin:0 auto;width:100%}
+  .wrap{padding:0 18px}
+  .sec{padding:34px 0}
+}
+@media (max-width:820px){
+  :root{--hdr:54px}
+  .labbar{padding:8px 12px;gap:8px;row-gap:6px}
+  .labbar .back{order:1}
+  .labtitle{order:2;flex:1;overflow:hidden}
+  .labtitle h1{font-size:14px;overflow:hidden;text-overflow:ellipsis}
+  .labtitle span{display:none}
+  #btnShare{order:3} #btnTests{order:4}
+  .labtabs{order:5;flex-basis:100%;width:100%;padding-bottom:1px}
+  .labmain{flex-direction:column;position:relative}
+  aside.panel{
+    position:absolute;left:0;right:0;bottom:0;top:0;width:auto;z-index:8;
+    border:none;border-top:1px solid var(--line);border-radius:24px 24px 0 0;
+    box-shadow:var(--shadow-3);padding:16px 16px 130px;display:none;
+  }
+  aside.panel.right{width:auto;border-left:none}
+  aside.panel.open{display:block}
+  .mtabs{display:flex}
+  #viewport{flex:1;min-height:0}
+  .toolbar{bottom:12px;left:12px;right:12px;transform:none;width:auto;max-width:none}
+  .toolbar .tlabel{display:none}
+  .bfly{right:10px;top:auto;bottom:126px;min-width:158px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+
+<header id="topbar">
+  <a class="brand" href="#/">
+    <svg class="mark" viewBox="0 0 26 26" fill="none">
+      <circle cx="13" cy="3" r="2.1" fill="#b8912f"/>
+      <g class="arm">
+        <line x1="13" y1="3" x2="13" y2="14" stroke="#2e5c4c" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="13" cy="15.6" r="3.1" fill="#2e5c4c"/>
+      </g>
+    </svg>
+    <div>
+      <small>PHENOMENA</small>
+      <b>現象ラボ</b>
+    </div>
+  </a>
+  <nav class="navlinks" id="nav"></nav>
+  <div class="hdr-right">
+    <button class="pill" id="btnAbout">About</button>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<script>
+"use strict";
+/* ============================================================================
+ * PHENOMENA — Visible Alpha prototype
+ *   P02 Double Pendulum / A01 Lorenz / M01 Logistic Map / R02 Random Walk
+ *
+ * Architecture notes
+ *   - simulation and rendering are separated:
+ *       World.step(dt) advances physics on a FIXED timestep only.
+ *       Lab.draw(...) reads state and never mutates it.
+ *   - all randomness goes through SeededRNG (never Math.random) so that
+ *       same seed + same params + same step count => same state.
+ *   - controls are generated from each lab's `params` manifest.
+ *   - state serialization is deterministic (sorted keys) and lives in the URL.
+ * ========================================================================== */
+
+/* ---------------------------------------------------------------- utilities */
+const $ = (sel, root) => (root || document).querySelector(sel);
+const el = (tag, cls, html) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (html != null) n.innerHTML = html;
+  return n;
+};
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const TAU = Math.PI * 2;
+const DEG = Math.PI / 180;
+
+function fmt(v, d) {
+  if (!isFinite(v)) return '—';
+  const n = d == null ? 3 : d;
+  if (Math.abs(v) >= 1e5 || (v !== 0 && Math.abs(v) < 1e-4)) return v.toExponential(2);
+  return v.toFixed(n);
+}
+
+/* deterministic PRNG (mulberry32) — the project SeededRNG */
+function SeededRNG(seed) {
+  let a = (seed >>> 0) || 1;
+  return {
+    seed: seed >>> 0,
+    next() {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    },
+    int(n) { return Math.floor(this.next() * n); }
+  };
+}
+
+/* deterministic serialization: keys always sorted, numbers rounded stably */
+function serialize(obj) {
+  const keys = Object.keys(obj).sort();
+  const out = {};
+  for (const k of keys) {
+    const v = obj[k];
+    out[k] = typeof v === 'number' ? +v.toPrecision(12) : v;
+  }
+  return JSON.stringify(out);
+}
+function encodeState(o) {
+  try { return btoa(unescape(encodeURIComponent(serialize(o)))).replace(/=+$/, ''); }
+  catch (e) { return ''; }
+}
+function decodeState(s) {
+  try { return JSON.parse(decodeURIComponent(escape(atob(s)))); }
+  catch (e) { return null; }
+}
+
+/* canvas sizing with device pixel ratio */
+function fitCanvas(cv) {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const r = cv.getBoundingClientRect();
+  const w = Math.max(1, Math.round(r.width * dpr));
+  const h = Math.max(1, Math.round(r.height * dpr));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w: r.width, h: r.height };
+}
+
+/* one global animation driver; every view registers a ticker */
+const tickers = new Set();
+let lastT = 0;
+function loop(t) {
+  const dt = lastT ? Math.min((t - lastT) / 1000, 0.25) : 0;
+  lastT = t;
+  tickers.forEach(fn => { try { fn(dt); } catch (e) { console.error(e); } });
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+function clearTickers() { tickers.clear(); }
+
+function toast(msg) {
+  const t = el('div', 'toast', msg);
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2000);
+}
+
+/* =========================================================================
+ * SIMULATION CLOCK — fixed step, render decoupled
+ * ======================================================================= */
+class Clock {
+  constructor(fixedDt, scale) {
+    this.fixedDt = fixedDt;
+    this.speed = 1;
+    /* how many units of simulation time pass per real second at 1× */
+    this.scale = scale || 1;
+    this.running = false;
+    this.acc = 0;
+    this.maxSubsteps = 2000;
+  }
+  /* returns how many fixed steps to advance for a real frame delta */
+  substeps(frameDt) {
+    if (!this.running) return 0;
+    this.acc += Math.min(frameDt, 0.1) * this.speed * this.scale;   // clamp after tab stalls
+    let n = Math.floor(this.acc / this.fixedDt);
+    if (n > this.maxSubsteps) { n = this.maxSubsteps; this.acc = 0; }
+    else this.acc -= n * this.fixedDt;
+    return n;
+  }
+}
+
+/* =========================================================================
+ * P02 — DOUBLE PENDULUM   (engine: ode-rigidbody, solver RK4, dt = 1/240)
+ * ======================================================================= */
+function dpDeriv(s, p) {
+  const { m1, m2, l1, l2, g, damping } = p;
+  const [t1, t2, w1, w2] = s;
+  const d = t1 - t2;
+  const den = 2 * m1 + m2 - m2 * Math.cos(2 * t1 - 2 * t2);
+  const a1 = (-g * (2 * m1 + m2) * Math.sin(t1)
+              - m2 * g * Math.sin(t1 - 2 * t2)
+              - 2 * Math.sin(d) * m2 * (w2 * w2 * l2 + w1 * w1 * l1 * Math.cos(d)))
+             / (l1 * den) - damping * w1;
+  const a2 = (2 * Math.sin(d) * (w1 * w1 * l1 * (m1 + m2)
+              + g * (m1 + m2) * Math.cos(t1)
+              + w2 * w2 * l2 * m2 * Math.cos(d)))
+             / (l2 * den) - damping * w2;
+  return [w1, w2, a1, a2];
+}
+function rk4(state, p, dt, deriv) {
+  const n = state.length, k1 = deriv(state, p), tmp = new Array(n);
+  for (let i = 0; i < n; i++) tmp[i] = state[i] + k1[i] * dt / 2;
+  const k2 = deriv(tmp, p);
+  for (let i = 0; i < n; i++) tmp[i] = state[i] + k2[i] * dt / 2;
+  const k3 = deriv(tmp, p);
+  for (let i = 0; i < n; i++) tmp[i] = state[i] + k3[i] * dt;
+  const k4 = deriv(tmp, p);
+  const out = new Array(n);
+  for (let i = 0; i < n; i++)
+    out[i] = state[i] + (dt / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]);
+  return out;
+}
+function dpEnergy(s, p) {
+  const { m1, m2, l1, l2, g } = p;
+  const [t1, t2, w1, w2] = s;
+  const v1 = l1 * w1, v2 = l2 * w2;
+  const ke = 0.5 * m1 * v1 * v1
+           + 0.5 * m2 * (v1 * v1 + v2 * v2 + 2 * v1 * v2 * Math.cos(t1 - t2));
+  const pe = -(m1 + m2) * g * l1 * Math.cos(t1) - m2 * g * l2 * Math.cos(t2);
+  return { ke, pe, total: ke + pe };
+}
+class PendulumWorld {
+  constructor(p, init) {
+    this.p = Object.assign({}, p);
+    this.s = [init.t1, init.t2, init.w1, init.w2];
+    this.t = 0;
+    this.trail = [];
+    this.maxTrail = 900;
+  }
+  step(dt) {
+    this.s = rk4(this.s, this.p, dt, dpDeriv);
+    this.t += dt;
+  }
+  tip() {
+    const { l1, l2 } = this.p, [t1, t2] = this.s;
+    const x1 = l1 * Math.sin(t1), y1 = l1 * Math.cos(t1);
+    return { x1, y1, x2: x1 + l2 * Math.sin(t2), y2: y1 + l2 * Math.cos(t2) };
+  }
+  record() {
+    const t = this.tip();
+    this.trail.push(t.x2, t.y2);
+    if (this.trail.length > this.maxTrail * 2) this.trail.splice(0, 2);
+  }
+}
+
+/* =========================================================================
+ * A01 — LORENZ ATTRACTOR   (engine: ode, solver RK4, dt = 0.005)
+ * ======================================================================= */
+function lorenzDeriv(s, p) {
+  const [x, y, z] = s;
+  return [p.sigma * (y - x), x * (p.rho - z) - y, x * y - p.beta * z];
+}
+class LorenzWorld {
+  constructor(p, init) {
+    this.p = Object.assign({}, p);
+    this.s = [init.x, init.y, init.z];
+    this.t = 0;
+    this.trail = [];
+    this.maxTrail = 6000;
+  }
+  step(dt) {
+    this.s = rk4(this.s, this.p, dt, lorenzDeriv);
+    this.t += dt;
+    this.trail.push(this.s[0], this.s[1], this.s[2]);
+    if (this.trail.length > this.maxTrail * 3) this.trail.splice(0, 3);
+  }
+  speed() {
+    const d = lorenzDeriv(this.s, this.p);
+    return Math.hypot(d[0], d[1], d[2]);
+  }
+}
+
+/* =========================================================================
+ * M01 — LOGISTIC MAP   (engine: discrete-map)
+ * ======================================================================= */
+function logisticIterate(x, r, n) {
+  for (let i = 0; i < n; i++) x = r * x * (1 - x);
+  return x;
+}
+class LogisticWorld {
+  constructor(p, init) {
+    this.p = Object.assign({}, p);
+    this.x = init.x0;
+    this.x0 = init.x0;
+    this.n = 0;
+    this.hist = [init.x0];
+    this.maxHist = 4000;
+  }
+  step() {
+    this.x = this.p.r * this.x * (1 - this.x);
+    this.n++;
+    this.hist.push(this.x);
+    if (this.hist.length > this.maxHist) this.hist.shift();
+  }
+}
+
+/* =========================================================================
+ * R02 — 2D RANDOM WALK   (engine: monte-carlo-particle, seeded lattice walk)
+ * ======================================================================= */
+class WalkWorld {
+  constructor(p, init) {
+    this.p = Object.assign({}, p);
+    this.seed = init.seed;
+    this.reseed();
+  }
+  reseed() {
+    const n = this.p.walkerCount;
+    this.rng = SeededRNG(this.seed);
+    this.pos = new Float32Array(n * 2);
+    this.step_ = 0;
+    this.trail = [];
+    this.msd = [];
+    this.dirCount = [0, 0, 0, 0];
+  }
+  step() {
+    const n = this.p.walkerCount, L = this.p.stepLength, pos = this.pos;
+    for (let i = 0; i < n; i++) {
+      const d = this.rng.int(4);
+      this.dirCount[d]++;
+      if (d === 0) pos[i * 2 + 1] += L;
+      else if (d === 1) pos[i * 2 + 1] -= L;
+      else if (d === 2) pos[i * 2] -= L;
+      else pos[i * 2] += L;
+    }
+    this.step_++;
+    this.trail.push(pos[0], pos[1]);
+    if (this.trail.length > 12000) this.trail.splice(0, 2);
+    if (this.step_ % 2 === 0 || this.step_ < 40) {
+      this.msd.push(this.step_, this.stats().msd);
+      if (this.msd.length > 3000) this.msd.splice(0, 2);
+    }
+  }
+  stats() {
+    const n = this.p.walkerCount, pos = this.pos;
+    let mx = 0, my = 0, m2 = 0;
+    for (let i = 0; i < n; i++) {
+      const x = pos[i * 2], y = pos[i * 2 + 1];
+      mx += x; my += y; m2 += x * x + y * y;
+    }
+    return { mx: mx / n, my: my / n, msd: m2 / n, rms: Math.sqrt(m2 / n) };
+  }
+}
+
+/* =========================================================================
+ * LAB DEFINITIONS  (manifest-driven: controls, presets, learning, tests)
+ * ======================================================================= */
+const LABS = {};
+
+/* -------------------------------------------------------------- P02 ----- */
+LABS.P02 = {
+  id: 'P02', slug: 'double-pendulum',
+  title: 'Double Pendulum', titleJa: '二重振り子',
+  subtitleJa: 'わずかな違いが、違う未来をつくる。',
+  hookJa: '角度を0.001°だけ変える。2つの世界は、いつまで同じ動きをする？',
+  universe: 'chaos', universeJa: 'カオス', accent: 'var(--u-chaos)',
+  tags: ['CHAOS', 'MOVES', 'BEGINNER'],
+  engine: 'ode-rigidbody', renderer: 'canvas2d', solver: 'RK4', fixedDt: 1 / 240,
+  features: { trails: true, worlds: true, butterfly: true, compare: true, grab: true },
+  views: [{ id: 'sim', ja: '振り子' }, { id: 'phase', ja: '位相空間' }, { id: 'energy', ja: 'エネルギー' }],
+  params: [
+    { id: 'm1', ja: '質量 1', sym: 'm₁', def: 1, min: .1, max: 5, step: .1, unit: 'kg' },
+    { id: 'm2', ja: '質量 2', sym: 'm₂', def: 1, min: .1, max: 5, step: .1, unit: 'kg' },
+    { id: 'l1', ja: '長さ 1', sym: 'ℓ₁', def: 1, min: .2, max: 2.5, step: .05, unit: 'm' },
+    { id: 'l2', ja: '長さ 2', sym: 'ℓ₂', def: 1, min: .2, max: 2.5, step: .05, unit: 'm' },
+    { id: 'g', ja: '重力', sym: 'g', def: 9.81, min: 0, max: 20, step: .01, unit: 'm/s²' },
+    { id: 'damping', ja: '減衰', sym: 'b', def: 0, min: 0, max: .5, step: .001, unit: '' }
+  ],
+  initParams: [
+    { id: 't1', ja: '初期角 1', sym: 'θ₁', def: 120, min: -180, max: 180, step: .001, unit: '°', reset: true },
+    { id: 't2', ja: '初期角 2', sym: 'θ₂', def: -10, min: -180, max: 180, step: .001, unit: '°', reset: true }
+  ],
+  presets: [
+    { id: 'gentle', ja: 'おだやか', en: '25° / 15°', p: { g: 9.81, damping: 0 }, i: { t1: 25, t2: 15 } },
+    { id: 'exchange', ja: '受けわたし', en: '75° / 0°', p: { g: 9.81, damping: 0 }, i: { t1: 75, t2: 0 } },
+    { id: 'wild', ja: 'ワイルド', en: '120° / -20°', p: { g: 9.81, damping: 0 }, i: { t1: 120, t2: -20 } },
+    { id: 'moon', ja: '月の重力', en: 'g=1.62', p: { g: 1.62, damping: 0 }, i: { t1: 90, t2: 90 } },
+    { id: 'damped', ja: '摩擦あり', en: 'b=0.12', p: { g: 9.81, damping: .12 }, i: { t1: 120, t2: -20 } }
+  ],
+  perturb: 'θ₁ を微小にずらす',
+  makeWorld(p, ini, delta) {
+    return new PendulumWorld(p, {
+      t1: (ini.t1 + (delta || 0)) * DEG, t2: ini.t2 * DEG, w1: 0, w2: 0
+    });
+  },
+  spread: 0.001,  /* degrees between ensemble members */
+  learn: {
+    hook: '角度を0.001°だけ変える。2つの世界は、いつまで同じ動きをする？',
+    try: ['Worlds を「2」にして、θ₁ を 0.001° だけ動かしてください。',
+          '再生したまま 20 秒ほど眺めます。'],
+    notice: ['はじめの数秒、2本はぴったり重なって見えます。',
+             'ある瞬間から急に離れ、まったく別の動きになります。',
+             '「離れはじめる時刻」は毎回きっちり同じではありません。'],
+    whyPlain: '2本の腕は互いに引っ張り合っていて、片方の動きがもう片方の動きを変えます。この結びつきが強いので、最初のごく小さな差が時間とともに拡大されていきます。',
+    whyDeep: '式そのものはランダムではありません（決定論的）。それでも初期条件のわずかな差が指数的に拡大するため、実質的に長期予測ができなくなります。これが「初期条件への鋭敏な依存性」です。',
+    eq: 'ラグランジアン L = T − V から導いた 2 本の連立常微分方程式を、<br>固定ステップ RK4（Δt = 1/240 s）で積分しています。',
+    assume: ['棒は質量ゼロの剛体、おもりは質点として扱います。',
+             '空気抵抗は減衰係数 b による近似で、実物の抵抗則とは異なります。'],
+    real: [
+      { t: '天気予報', d: '大気も決定論的な方程式に従いますが、観測のわずかな誤差が拡大するため、予報可能な期間には限界があります。' },
+      { t: '機械の振動', d: '連結された振動体は同じ数学構造をもち、設計では共振と非線形挙動が問題になります。' }
+    ],
+    deeper: [
+      { c: 'リアプノフ指数', d: '2つの軌道が離れていく速さの目安。正なら鋭敏な依存性があります。' },
+      { c: 'エネルギー保存', d: '減衰 0 のとき力学的エネルギーは一定のはず。数値誤差の大きさを測る指標になります。' }
+    ],
+    related: ['A01', 'M01', 'R02']
+  }
+};
+
+/* -------------------------------------------------------------- A01 ----- */
+LABS.A01 = {
+  id: 'A01', slug: 'lorenz-attractor',
+  title: 'Lorenz Attractor', titleJa: 'ローレンツ・アトラクタ',
+  subtitleJa: '決まった法則なのに、同じ軌道を繰り返さない。',
+  hookJa: 'ほとんど同じ場所から2点を出発させると、いつ離れていく？',
+  universe: 'attractor', universeJa: 'アトラクタ', accent: 'var(--u-attractor)',
+  tags: ['CHAOS', 'PHASE SPACE', 'BEGINNER'],
+  engine: 'ode', renderer: 'canvas2d(3D projection)', solver: 'RK4', fixedDt: 0.005,
+  /* Lorenz time is not wall-clock time: 1x shows 6 model-time units per second */
+  speedScale: 6,
+  features: { trails: true, worlds: true, butterfly: true, compare: true },
+  views: [{ id: '3d', ja: '3D' }, { id: 'xy', ja: 'XY' }, { id: 'xz', ja: 'XZ' }, { id: 'yz', ja: 'YZ' }],
+  params: [
+    { id: 'sigma', ja: 'シグマ', sym: 'σ', def: 10, min: 0, max: 30, step: .1, unit: '' },
+    { id: 'rho', ja: 'ロー', sym: 'ρ', def: 28, min: 0, max: 60, step: .1, unit: '' },
+    { id: 'beta', ja: 'ベータ', sym: 'β', def: 2.6666666667, min: .1, max: 10, step: .01, unit: '' }
+  ],
+  initParams: [
+    { id: 'x', ja: '初期 x', sym: 'x₀', def: 1, min: -20, max: 20, step: .000001, unit: '', reset: true }
+  ],
+  presets: [
+    { id: 'classic', ja: 'クラシック', en: 'σ10 ρ28 β8/3', p: { sigma: 10, rho: 28, beta: 2.6666666667 }, i: { x: 1 } },
+    { id: 'calm', ja: 'おだやか', en: 'ρ=10', p: { sigma: 10, rho: 10, beta: 2.6666666667 }, i: { x: 1 } },
+    { id: 'ridge', ja: '別の姿', en: 'ρ=45', p: { sigma: 10, rho: 45, beta: 2.6666666667 }, i: { x: 1 } }
+  ],
+  perturb: 'x₀ を 1e-6 ずらす',
+  makeWorld(p, ini, delta) {
+    return new LorenzWorld(p, { x: ini.x + (delta || 0), y: 1, z: 1 });
+  },
+  spread: 1e-6,
+  learn: {
+    hook: 'ほとんど同じ場所から2点を出発させると、いつ離れていく？',
+    try: ['Worlds を「2」にして、x₀ を 1.000000 → 1.000001 にします。',
+          'ρ をゆっくり動かして、軌道の姿がどう変わるか見てください。'],
+    notice: ['軌跡は2つの「羽」のあいだを行き来しますが、順番は繰り返しません。',
+             '同じ点を二度は通らないのに、決まった形の中に収まり続けます。',
+             'ほぼ同じ2点は、しばらく重なったあと別々の羽に分かれます。'],
+    whyPlain: '3つの量が互いを増やしたり減らしたりする関係でつながっているため、系はどこか1点に落ち着くことも、きれいに繰り返すこともできません。それでも動ける範囲は限られています。',
+    whyDeep: '軌道が引き寄せられる集合をアトラクタと呼びます。ローレンツ系のアトラクタは体積ゼロでありながら複雑な構造をもち、その上での運動は周期的になりません。',
+    eq: 'dx/dt = σ(y − x)<br>dy/dt = x(ρ − z) − y<br>dz/dt = xy − βz',
+    assume: ['1963年の対流モデルを大幅に単純化した式で、実際の大気そのものではありません。',
+             'UI 上で「ここからカオス」という単一のしきい値は示しません。'],
+    real: [
+      { t: '対流', d: '下から温められた流体の上下運動を、極端に切り詰めた形で表しています。' },
+      { t: 'レーザーや化学反応', d: '同じ形の方程式が、まったく違う分野の系にも現れます。' }
+    ],
+    deeper: [
+      { c: '位相空間', d: '「位置」ではなく、系の状態そのものを座標にした空間です。' },
+      { c: 'ストレンジアトラクタ', d: '引き寄せられるのに周期的でない、入り組んだ構造をもつアトラクタ。' }
+    ],
+    related: ['P02', 'M01', 'R02']
+  }
+};
+
+/* -------------------------------------------------------------- M01 ----- */
+LABS.M01 = {
+  id: 'M01', slug: 'logistic-map',
+  title: 'Logistic Map', titleJa: 'ロジスティック写像',
+  subtitleJa: 'ひとつの式から、いくつもの未来。',
+  hookJa: 'スライダーを少し動かすだけで、秩序が分かれ、複雑になっていく。',
+  universe: 'maps', universeJa: '写像と分岐', accent: 'var(--u-maps)',
+  tags: ['BIFURCATION', 'ITERATION', 'BEGINNER'],
+  engine: 'discrete-map', renderer: 'canvas2d', solver: 'exact iteration', fixedDt: 1 / 30,
+  features: { trails: false, worlds: true, butterfly: true, compare: true },
+  views: [
+    { id: 'series', ja: '時系列' }, { id: 'cobweb', ja: 'クモの巣' },
+    { id: 'bifur', ja: '分岐図' }, { id: 'return', ja: '戻り写像' }
+  ],
+  params: [
+    { id: 'r', ja: '成長パラメータ', sym: 'r', def: 3.7, min: 0, max: 4, step: .0001, unit: '' }
+  ],
+  initParams: [
+    { id: 'x0', ja: '初期値', sym: 'x₀', def: .2, min: .000001, max: .999999, step: .000001, unit: '', reset: true }
+  ],
+  presets: [
+    { id: 'fixed', ja: '一点へ', en: 'r=2.8', p: { r: 2.8 }, i: { x0: .2 } },
+    { id: 'p2', ja: '2つの値', en: 'r=3.2', p: { r: 3.2 }, i: { x0: .2 } },
+    { id: 'p4', ja: '4つの値', en: 'r=3.5', p: { r: 3.5 }, i: { x0: .2 } },
+    { id: 'chaos', ja: '複雑', en: 'r=3.9', p: { r: 3.9 }, i: { x0: .2 } }
+  ],
+  perturb: 'x₀ を 1e-6 ずらす',
+  makeWorld(p, ini, delta) {
+    return new LogisticWorld(p, { x0: clamp(ini.x0 + (delta || 0), 1e-9, 1 - 1e-9) });
+  },
+  spread: 1e-6,
+  learn: {
+    hook: 'スライダーを少し動かすだけで、秩序が分かれ、複雑になっていく。',
+    try: ['「分岐図」ビューに切り替え、r をゆっくり 2.8 → 4.0 まで上げてください。',
+          '「クモの巣」ビューで、値がどこへ向かうかを目で追います。'],
+    notice: ['長期的な値が 1 つ → 2 つ → 4 つ… と分かれていきます。',
+             '分かれる間隔は、進むほど急激に狭くなります。',
+             '複雑に見える領域の中にも、値が少数個に戻る窓があります。'],
+    whyPlain: '増えすぎると混み合って減る、という「行き過ぎと揺り戻し」が毎回起こります。増え方が強いほど揺り戻しも強く、落ち着き先が1つに定まらなくなります。',
+    whyDeep: '写像を2回繰り返した合成写像の不動点が安定性を失うたびに、周期が倍になります（周期倍化）。この分岐が積み重なった先に、周期をもたない振る舞いが現れます。',
+    eq: 'x<sub>n+1</sub> = r · x<sub>n</sub> · (1 − x<sub>n</sub>)',
+    assume: ['世代が重ならない離散モデルで、連続的に繁殖する個体群とは別物です。',
+             'r の数値と挙動の対応は、表示している計算結果そのものから読み取ってください。'],
+    real: [
+      { t: '個体群の増減', d: '資源が限られた環境での増えすぎと減少を、最小限の形で表した式です。' },
+      { t: 'デジタル信号', d: '同じ操作を繰り返す系では、条件次第で出力が予測しにくくなります。' }
+    ],
+    deeper: [
+      { c: '周期倍化', d: '周期が 1 → 2 → 4 → 8 と倍々に分かれていく道すじ。' },
+      { c: '普遍性', d: '分岐の間隔の比は、式の細部によらず共通の値に近づくことが知られています。' }
+    ],
+    related: ['A01', 'P02', 'R02']
+  }
+};
+
+/* -------------------------------------------------------------- R02 ----- */
+LABS.R02 = {
+  id: 'R02', slug: 'random-walk',
+  title: '2D Random Walk', titleJa: '2次元ランダムウォーク',
+  subtitleJa: '1本はでたらめ。1000本には、かたちがある。',
+  hookJa: '1本だけ見るとでたらめ。でも1000本を重ねると、規則が見えてきます。',
+  universe: 'random', universeJa: 'ランダム', accent: 'var(--u-random)',
+  tags: ['PROBABILITY', 'ENSEMBLE', 'BEGINNER'],
+  engine: 'monte-carlo-particle', renderer: 'canvas2d', solver: 'seeded lattice walk', fixedDt: 1 / 60,
+  features: { trails: true, worlds: false, butterfly: false, compare: true, seeded: true },
+  views: [
+    { id: 'one', ja: '1本' }, { id: 'many', ja: '多数' },
+    { id: 'cloud', ja: '終点の雲' }, { id: 'msd', ja: 'MSD' }
+  ],
+  params: [
+    { id: 'walkerCount', ja: 'ウォーカー数', sym: 'N', def: 100, min: 1, max: 2000, step: 1, unit: '本', reset: true },
+    { id: 'stepLength', ja: '歩幅', sym: 'a', def: 1, min: 1, max: 5, step: 1, unit: '', reset: true }
+  ],
+  initParams: [
+    { id: 'seed', ja: '乱数シード', sym: 's', def: 20270301, min: 1, max: 99999999, step: 1, unit: '', reset: true }
+  ],
+  presets: [
+    { id: 'one', ja: '1本だけ', en: 'N=1', p: { walkerCount: 1, stepLength: 1 }, i: {}, view: 'one' },
+    { id: 'ten', ja: '10本', en: 'N=10', p: { walkerCount: 10, stepLength: 1 }, i: {}, view: 'many' },
+    { id: 'hundred', ja: '100本', en: 'N=100', p: { walkerCount: 100, stepLength: 1 }, i: {}, view: 'many' },
+    { id: 'thousand', ja: '1000本', en: 'N=1000', p: { walkerCount: 1000, stepLength: 1 }, i: {}, view: 'cloud' }
+  ],
+  perturb: '別のシードで走らせる',
+  makeWorld(p, ini, delta) {
+    return new WalkWorld(p, { seed: (ini.seed + (delta ? Math.round(delta) : 0)) >>> 0 });
+  },
+  spread: 1,
+  learn: {
+    hook: '1本だけ見るとでたらめ。でも1000本を重ねると、規則が見えてきます。',
+    try: ['ウォーカー数を 1 → 100 → 1000 と増やしてください。',
+          '「終点の雲」と「MSD」ビューを見比べます。'],
+    notice: ['1本の軌跡は、何度見てもばらばらです。',
+             '終点を集めると、中心のまわりに広がる雲になります。',
+             '平均二乗変位（MSD）は、歩数にほぼ比例して増えていきます。'],
+    whyPlain: '一歩ごとの向きは予測できませんが、たくさん集めると打ち消し合いと積み重なりのバランスが決まった形をとります。個々のでたらめさが、集団の規則性に変わります。',
+    whyDeep: '各ステップは独立で平均ゼロなので平均変位は 0 に近づき、分散は加算されるため平均二乗変位は歩数に比例して増えます。典型的な距離は歩数の平方根に比例します。',
+    eq: '⟨r⟩ ≈ 0<br>⟨r²⟩ ≈ N<sub>steps</sub> · a²',
+    assume: ['正方格子上を上下左右に等確率で進む、という定義に限定しています。',
+             '乱数は SeededRNG です。同じシードなら常に同じ経路になります。'],
+    real: [
+      { t: '拡散', d: 'インクが水中に広がる速さは、時間の平方根に比例して距離が伸びる形になります。' },
+      { t: '測定のばらつき', d: '独立な誤差が積み重なるとき、同じ形の統計則が現れます。' }
+    ],
+    deeper: [
+      { c: '大数の法則', d: '試行を増やすほど、平均は理論値に近づきます。' },
+      { c: 'ランダム ≠ カオス', d: '偶然に従う系と、決定論的なのに予測困難な系は別のものです。' }
+    ],
+    related: ['P02', 'A01', 'M01']
+  }
+};
+
+const LAB_ORDER = ['P02', 'A01', 'M01', 'R02'];
+
+/* related-link title lookup */
+function labMeta(id) { return LABS[id]; }
+
+/* =========================================================================
+ * DRAWING — pure functions of state (never mutate the simulation)
+ * ======================================================================= */
+const COLORS = ['#2e5c4c', '#c9705f', '#b8912f', '#6b6fa8', '#6f8f5a', '#7ba3b8'];
+function worldColor(i, n) {
+  if (n <= COLORS.length) return COLORS[i % COLORS.length];
+  const h = 150 + (i / n) * 190;
+  return `hsl(${h},34%,46%)`;
+}
+function bg(ctx, w, h) {
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#f6f4ee'; ctx.fillRect(0, 0, w, h);
+}
+function grid(ctx, w, h, step) {
+  ctx.strokeStyle = 'rgba(31,43,38,.05)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = (w / 2) % step; x < w; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+  for (let y = (h / 2) % step; y < h; y += step) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+  ctx.stroke();
+}
+function axisLabel(ctx, text, x, y) {
+  ctx.fillStyle = '#768078';
+  ctx.font = '600 10px "Noto Sans JP",sans-serif';
+  ctx.fillText(text, x, y);
+}
+
+/* -------- P02 draw ------------------------------------------------------ */
+LABS.P02.draw = function (ctx, w, h, worlds, ui) {
+  bg(ctx, w, h);
+  if (ui.view === 'phase') return drawPendulumPhase(ctx, w, h, worlds);
+  if (ui.view === 'energy') return drawPendulumEnergy(ctx, w, h, worlds);
+  grid(ctx, w, h, 34);
+  const span = worlds[0].p.l1 + worlds[0].p.l2;
+  const sc = Math.min(w, h) / (2.35 * span);
+  const cx = w / 2, cy = h * 0.34;
+  /* pivot */
+  ctx.fillStyle = '#d8d4c6';
+  ctx.beginPath(); ctx.arc(cx, cy, 6, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#b8912f';
+  ctx.beginPath(); ctx.arc(cx, cy, 3, 0, TAU); ctx.fill();
+
+  for (let k = worlds.length - 1; k >= 0; k--) {
+    const wd = worlds[k], col = worldColor(k, worlds.length);
+    const primary = k === 0;
+    const alpha = primary ? 1 : Math.max(.22, 1 - k * .12);
+    /* trail */
+    if (ui.trails && wd.trail.length > 3) {
+      ctx.strokeStyle = col; ctx.globalAlpha = alpha * .32; ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      for (let i = 0; i < wd.trail.length; i += 2) {
+        const X = cx + wd.trail[i] * sc, Y = cy + wd.trail[i + 1] * sc;
+        i === 0 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y);
+      }
+      ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    const t = wd.tip();
+    const x1 = cx + t.x1 * sc, y1 = cy + t.y1 * sc;
+    const x2 = cx + t.x2 * sc, y2 = cy + t.y2 * sc;
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = col; ctx.lineWidth = primary ? 2.6 : 1.7; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    const r1 = Math.max(5, 5 * Math.cbrt(wd.p.m1)), r2 = Math.max(6, 6 * Math.cbrt(wd.p.m2));
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(x1, y1, primary ? r1 : r1 * .7, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(x2, y2, primary ? r2 : r2 * .7, 0, TAU); ctx.fill();
+    if (primary) {
+      ctx.fillStyle = 'rgba(255,255,255,.55)';
+      ctx.beginPath(); ctx.arc(x2 - r2 * .3, y2 - r2 * .35, r2 * .28, 0, TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (ui.grabbing && primary) {
+      ctx.strokeStyle = 'rgba(184,145,47,.6)'; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy + (wd.p.l1 + wd.p.l2) * sc); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+};
+function drawPendulumPhase(ctx, w, h, worlds) {
+  grid(ctx, w, h, 40);
+  const cx = w / 2, cy = h / 2, sx = w / (2.4 * Math.PI), sy = h / 24;
+  ctx.strokeStyle = 'rgba(31,43,38,.18)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke();
+  axisLabel(ctx, 'θ₁ (rad)', w - 62, cy - 8);
+  axisLabel(ctx, 'ω₁', cx + 8, 16);
+  worlds.forEach((wd, k) => {
+    const col = worldColor(k, worlds.length);
+    if (!wd.phase) wd.phase = [];
+    wd.phase.push(wd.s[0], wd.s[2]);
+    if (wd.phase.length > 5000) wd.phase.splice(0, 2);
+    ctx.strokeStyle = col; ctx.globalAlpha = k === 0 ? .55 : .3; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 0; i < wd.phase.length; i += 2) {
+      let a = wd.phase[i];
+      a = ((a + Math.PI) % TAU + TAU) % TAU - Math.PI;
+      const X = cx + a * sx, Y = cy - wd.phase[i + 1] * sy;
+      if (i === 0 || Math.abs(a - (((wd.phase[i - 2] + Math.PI) % TAU + TAU) % TAU - Math.PI)) > 3) ctx.moveTo(X, Y);
+      else ctx.lineTo(X, Y);
+    }
+    ctx.stroke(); ctx.globalAlpha = 1;
+    let a = ((wd.s[0] + Math.PI) % TAU + TAU) % TAU - Math.PI;
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(cx + a * sx, cy - wd.s[2] * sy, k === 0 ? 4.5 : 3, 0, TAU); ctx.fill();
+  });
+}
+function drawPendulumEnergy(ctx, w, h, worlds) {
+  const wd = worlds[0];
+  if (!wd.ehist) wd.ehist = [];
+  const e = dpEnergy(wd.s, wd.p);
+  wd.ehist.push(e.ke, e.pe);
+  if (wd.ehist.length > 1200) wd.ehist.splice(0, 2);
+  const pad = 46, gw = w - pad * 2, gh = h - pad * 2;
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < wd.ehist.length; i += 2) {
+    const k = wd.ehist[i], p = wd.ehist[i + 1];
+    lo = Math.min(lo, p, k, k + p); hi = Math.max(hi, k, p, k + p);
+  }
+  if (!isFinite(lo)) { lo = -1; hi = 1; }
+  const pad2 = (hi - lo) * .12 + .01; lo -= pad2; hi += pad2;
+  const Y = v => pad + gh - ((v - lo) / (hi - lo)) * gh;
+  ctx.strokeStyle = 'rgba(31,43,38,.12)'; ctx.lineWidth = 1;
+  ctx.strokeRect(pad, pad, gw, gh);
+  const n = wd.ehist.length / 2;
+  const series = [
+    { idx: 0, col: '#c9705f', name: '運動エネルギー K' },
+    { idx: 1, col: '#6b6fa8', name: '位置エネルギー U' }
+  ];
+  series.forEach(s => {
+    ctx.strokeStyle = s.col; ctx.lineWidth = 1.6; ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const X = pad + (i / Math.max(1, n - 1)) * gw;
+      const v = wd.ehist[i * 2 + s.idx];
+      i === 0 ? ctx.moveTo(X, Y(v)) : ctx.lineTo(X, Y(v));
+    }
+    ctx.stroke();
+  });
+  ctx.strokeStyle = '#2e5c4c'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const X = pad + (i / Math.max(1, n - 1)) * gw;
+    const v = wd.ehist[i * 2] + wd.ehist[i * 2 + 1];
+    i === 0 ? ctx.moveTo(X, Y(v)) : ctx.lineTo(X, Y(v));
+  }
+  ctx.stroke();
+  ctx.font = '600 10.5px "Noto Sans JP",sans-serif';
+  let lx = pad + 6;
+  [...series, { col: '#2e5c4c', name: '合計 E' }].forEach(s => {
+    ctx.fillStyle = s.col; ctx.fillRect(lx, pad - 16, 10, 3);
+    ctx.fillText(s.name, lx + 14, pad - 11);
+    lx += ctx.measureText(s.name).width + 34;
+  });
+}
+
+/* -------- A01 draw ------------------------------------------------------ */
+LABS.A01.draw = function (ctx, w, h, worlds, ui) {
+  bg(ctx, w, h);
+  grid(ctx, w, h, 38);
+  const cx = w / 2, cy = h / 2;
+  const sc = Math.min(w, h) / 62;
+  const yaw = ui.yaw || 0, pitch = -0.38;
+  const project = (x, y, z) => {
+    if (ui.view === 'xy') return [cx + x * sc, cy - y * sc];
+    if (ui.view === 'xz') return [cx + x * sc, cy + h * .28 - z * sc];
+    if (ui.view === 'yz') return [cx + y * sc, cy + h * .28 - z * sc];
+    const zc = z - 25;
+    const X = x * Math.cos(yaw) - y * Math.sin(yaw);
+    const Yy = x * Math.sin(yaw) + y * Math.cos(yaw);
+    const Y2 = Yy * Math.cos(pitch) - zc * Math.sin(pitch);
+    return [cx + X * sc, cy - Y2 * sc];
+  };
+  if (ui.view !== '3d') {
+    ctx.strokeStyle = 'rgba(31,43,38,.14)'; ctx.lineWidth = 1;
+    const o = project(0, 0, 0);
+    ctx.beginPath(); ctx.moveTo(0, o[1]); ctx.lineTo(w, o[1]); ctx.moveTo(o[0], 0); ctx.lineTo(o[0], h); ctx.stroke();
+    axisLabel(ctx, ui.view.toUpperCase() + ' 平面', 14, h - 14);
+  }
+  for (let k = worlds.length - 1; k >= 0; k--) {
+    const wd = worlds[k], col = worldColor(k, worlds.length);
+    const tr = wd.trail, n = tr.length / 3;
+    if (n > 2 && ui.trails) {
+      const seg = Math.max(1, Math.floor(n / 900));
+      ctx.lineWidth = k === 0 ? 1.5 : 1.1;
+      for (let i = seg; i < n; i += seg) {
+        const a = project(tr[(i - seg) * 3], tr[(i - seg) * 3 + 1], tr[(i - seg) * 3 + 2]);
+        const b = project(tr[i * 3], tr[i * 3 + 1], tr[i * 3 + 2]);
+        const f = i / n;
+        ctx.globalAlpha = (k === 0 ? .85 : .5) * (0.12 + f * 0.88);
+        ctx.strokeStyle = ui.colorBySpeed && k === 0
+          ? `hsl(${170 - Math.min(1, Math.hypot(tr[i * 3] - tr[(i - seg) * 3], tr[i * 3 + 1] - tr[(i - seg) * 3 + 1]) / 2) * 150},40%,45%)`
+          : col;
+        ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+    const p = project(wd.s[0], wd.s[1], wd.s[2]);
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(p[0], p[1], k === 0 ? 5 : 3.4, 0, TAU); ctx.fill();
+    if (k === 0) {
+      ctx.strokeStyle = 'rgba(184,145,47,.5)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(p[0], p[1], 10, 0, TAU); ctx.stroke();
+    }
+  }
+};
+
+/* -------- M01 draw ------------------------------------------------------ */
+let bifCache = null;
+LABS.M01.draw = function (ctx, w, h, worlds, ui) {
+  bg(ctx, w, h);
+  const pad = 48;
+  if (ui.view === 'bifur') return drawBifurcation(ctx, w, h, worlds, ui, pad);
+  if (ui.view === 'cobweb') return drawCobweb(ctx, w, h, worlds, pad);
+  if (ui.view === 'return') return drawReturnMap(ctx, w, h, worlds, pad);
+  /* time series */
+  const gw = w - pad * 2, gh = h - pad * 2;
+  ctx.strokeStyle = 'rgba(31,43,38,.12)'; ctx.strokeRect(pad, pad, gw, gh);
+  axisLabel(ctx, 'n（繰り返し回数）', pad, h - pad + 18);
+  axisLabel(ctx, 'x', pad - 18, pad - 8);
+  const show = 120;
+  worlds.forEach((wd, k) => {
+    const col = worldColor(k, worlds.length);
+    const hist = wd.hist, start = Math.max(0, hist.length - show), n = hist.length - start;
+    ctx.strokeStyle = col; ctx.globalAlpha = k === 0 ? 1 : .6; ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const X = pad + (i / Math.max(1, show - 1)) * gw, Y = pad + gh - hist[start + i] * gh;
+      i === 0 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y);
+    }
+    ctx.stroke();
+    ctx.fillStyle = col;
+    for (let i = 0; i < n; i += 1) {
+      const X = pad + (i / Math.max(1, show - 1)) * gw, Y = pad + gh - hist[start + i] * gh;
+      ctx.beginPath(); ctx.arc(X, Y, k === 0 ? 2 : 1.4, 0, TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  });
+};
+function mapBox(ctx, w, h, pad) {
+  const s = Math.min(w, h) - pad * 2;
+  const ox = (w - s) / 2, oy = (h - s) / 2;
+  ctx.strokeStyle = 'rgba(31,43,38,.12)'; ctx.lineWidth = 1; ctx.strokeRect(ox, oy, s, s);
+  return { ox, oy, s };
+}
+function drawCobweb(ctx, w, h, worlds, pad) {
+  const { ox, oy, s } = mapBox(ctx, w, h, pad);
+  const r = worlds[0].p.r;
+  const X = v => ox + v * s, Y = v => oy + s - v * s;
+  ctx.strokeStyle = 'rgba(31,43,38,.25)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(1), Y(1)); ctx.stroke();
+  ctx.strokeStyle = '#b8912f'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let i = 0; i <= 200; i++) {
+    const x = i / 200, y = r * x * (1 - x);
+    i === 0 ? ctx.moveTo(X(x), Y(y)) : ctx.lineTo(X(x), Y(y));
+  }
+  ctx.stroke();
+  worlds.forEach((wd, k) => {
+    const col = worldColor(k, worlds.length);
+    const hist = wd.hist, start = Math.max(0, hist.length - 60);
+    ctx.strokeStyle = col; ctx.globalAlpha = k === 0 ? .8 : .45; ctx.lineWidth = 1;
+    ctx.beginPath();
+    let x = hist[start];
+    ctx.moveTo(X(x), Y(0));
+    for (let i = start; i < hist.length - 1; i++) {
+      const y = hist[i + 1];
+      ctx.lineTo(X(hist[i]), Y(y));
+      ctx.lineTo(X(y), Y(y));
+    }
+    ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(X(wd.x), Y(r * wd.x * (1 - wd.x)), 4, 0, TAU); ctx.fill();
+  });
+  axisLabel(ctx, 'xₙ', ox + s - 16, oy + s + 16);
+  axisLabel(ctx, 'xₙ₊₁', ox - 26, oy + 4);
+}
+function drawReturnMap(ctx, w, h, worlds, pad) {
+  const { ox, oy, s } = mapBox(ctx, w, h, pad);
+  const X = v => ox + v * s, Y = v => oy + s - v * s;
+  ctx.strokeStyle = 'rgba(31,43,38,.2)'; ctx.beginPath();
+  ctx.moveTo(X(0), Y(0)); ctx.lineTo(X(1), Y(1)); ctx.stroke();
+  worlds.forEach((wd, k) => {
+    ctx.fillStyle = worldColor(k, worlds.length);
+    ctx.globalAlpha = .55;
+    const hist = wd.hist;
+    for (let i = Math.max(1, hist.length - 900); i < hist.length; i++) {
+      ctx.beginPath(); ctx.arc(X(hist[i - 1]), Y(hist[i]), 1.6, 0, TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  });
+  axisLabel(ctx, 'xₙ', ox + s - 16, oy + s + 16);
+  axisLabel(ctx, 'xₙ₊₁', ox - 26, oy + 4);
+}
+function drawBifurcation(ctx, w, h, worlds, ui, pad) {
+  const gw = Math.floor(w - pad * 2), gh = Math.floor(h - pad * 2);
+  const key = gw + 'x' + gh;
+  if (!bifCache || bifCache.key !== key) {
+    const off = document.createElement('canvas');
+    off.width = gw; off.height = gh;
+    const o = off.getContext('2d');
+    o.fillStyle = '#f6f4ee'; o.fillRect(0, 0, gw, gh);
+    const img = o.getImageData(0, 0, gw, gh), d = img.data;
+    const burn = 250, keep = 160;
+    for (let px = 0; px < gw; px++) {
+      const r = 2.4 + (px / gw) * (4 - 2.4);
+      let x = 0.2;
+      for (let i = 0; i < burn; i++) x = r * x * (1 - x);   /* burn-in excluded */
+      for (let i = 0; i < keep; i++) {
+        x = r * x * (1 - x);
+        const py = Math.floor((1 - x) * (gh - 1));
+        if (py < 0 || py >= gh) continue;
+        const idx = (py * gw + px) * 4;
+        d[idx] = Math.max(0, d[idx] - 26);
+        d[idx + 1] = Math.max(0, d[idx + 1] - 16);
+        d[idx + 2] = Math.max(0, d[idx + 2] - 20);
+      }
+    }
+    o.putImageData(img, 0, 0);
+    bifCache = { key, canvas: off };
+  }
+  ctx.drawImage(bifCache.canvas, pad, pad);
+  ctx.strokeStyle = 'rgba(31,43,38,.12)'; ctx.strokeRect(pad, pad, gw, gh);
+  /* current r marker */
+  const r = worlds[0].p.r;
+  if (r >= 2.4) {
+    const X = pad + ((r - 2.4) / (4 - 2.4)) * gw;
+    ctx.strokeStyle = '#c9705f'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(X, pad); ctx.lineTo(X, pad + gh); ctx.stroke();
+    ctx.fillStyle = '#c9705f';
+    ctx.beginPath(); ctx.moveTo(X, pad - 2); ctx.lineTo(X - 4, pad - 9); ctx.lineTo(X + 4, pad - 9); ctx.fill();
+    ctx.font = '600 10.5px "Noto Sans JP",sans-serif';
+    ctx.fillText('r = ' + r.toFixed(4), Math.min(X + 6, pad + gw - 60), pad - 12);
+  } else {
+    axisLabel(ctx, 'r < 2.4 は図の範囲外です', pad + 6, pad - 10);
+  }
+  worlds.forEach((wd, k) => {
+    ctx.fillStyle = worldColor(k, worlds.length);
+    const X = pad + ((clamp(wd.p.r, 2.4, 4) - 2.4) / 1.6) * gw;
+    ctx.beginPath(); ctx.arc(X, pad + gh - wd.x * gh, 3.2, 0, TAU); ctx.fill();
+  });
+  axisLabel(ctx, 'r', pad + gw - 10, pad + gh + 18);
+  axisLabel(ctx, '長期的な x', pad - 30, pad - 8);
+}
+
+/* -------- R02 draw ------------------------------------------------------ */
+LABS.R02.draw = function (ctx, w, h, worlds, ui) {
+  bg(ctx, w, h);
+  const wd = worlds[0];
+  if (ui.view === 'msd') return drawMSD(ctx, w, h, worlds);
+  const cx = w / 2, cy = h / 2;
+  const reach = Math.max(12, Math.sqrt(Math.max(1, wd.step_)) * 2.6 * wd.p.stepLength);
+  const sc = Math.min(w, h) / (2.4 * reach);
+  grid(ctx, w, h, Math.max(14, sc * wd.p.stepLength));
+  ctx.strokeStyle = 'rgba(31,43,38,.14)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke();
+  ctx.fillStyle = '#b8912f';
+  ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, TAU); ctx.fill();
+
+  worlds.forEach((world, k) => {
+    const col = worldColor(k, worlds.length);
+    const n = world.p.walkerCount, pos = world.pos;
+    if (ui.view === 'one' || (ui.trails && n <= 12)) {
+      /* pencil-like trail for the highlighted walker */
+      if (world.trail.length > 3) {
+        ctx.strokeStyle = col; ctx.globalAlpha = .55; ctx.lineWidth = 1.4; ctx.lineJoin = 'round';
+        ctx.beginPath();
+        for (let i = 0; i < world.trail.length; i += 2) {
+          const X = cx + world.trail[i] * sc, Y = cy - world.trail[i + 1] * sc;
+          i === 0 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y);
+        }
+        ctx.stroke(); ctx.globalAlpha = 1;
+      }
+    }
+    const dotR = n > 600 ? 1.1 : n > 120 ? 1.7 : 2.6;
+    ctx.fillStyle = col;
+    ctx.globalAlpha = ui.view === 'cloud' ? .5 : (n > 400 ? .42 : .72);
+    /* 「1本」view follows the single highlighted walker only */
+    const limit = ui.view === 'one' ? 1 : Math.min(n, 3000);
+    for (let i = 0; i < limit; i++) {
+      ctx.beginPath();
+      ctx.arc(cx + pos[i * 2] * sc, cy - pos[i * 2 + 1] * sc, dotR, 0, TAU);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (ui.view !== 'cloud' && n >= 1) {
+      ctx.fillStyle = k === 0 ? '#1c3e33' : col;
+      ctx.beginPath(); ctx.arc(cx + pos[0] * sc, cy - pos[1] * sc, 4, 0, TAU); ctx.fill();
+    }
+    /* rms circle */
+    if (ui.view === 'cloud' || ui.view === 'many') {
+      const st = world.stats();
+      ctx.strokeStyle = k === 0 ? 'rgba(184,145,47,.75)' : col;
+      ctx.setLineDash([4, 5]); ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(cx, cy, st.rms * sc, 0, TAU); ctx.stroke();
+      ctx.setLineDash([]);
+      if (k === 0 && w > 420) {   /* label would crowd the small preview cards */
+        ctx.fillStyle = '#b8912f'; ctx.font = '600 10.5px "Noto Sans JP",sans-serif';
+        ctx.fillText('RMS 距離 ' + st.rms.toFixed(2), cx + st.rms * sc + 6, cy - 5);
+      }
+    }
+  });
+};
+function drawMSD(ctx, w, h, worlds) {
+  const pad = 52, gw = w - pad * 2, gh = h - pad * 2;
+  const wd = worlds[0];
+  const maxN = Math.max(20, wd.step_);
+  let maxY = Math.max(4, wd.stats().msd * 1.25, maxN * wd.p.stepLength * wd.p.stepLength * 1.25);
+  ctx.strokeStyle = 'rgba(31,43,38,.12)'; ctx.lineWidth = 1; ctx.strokeRect(pad, pad, gw, gh);
+  const X = n => pad + (n / maxN) * gw, Y = v => pad + gh - (v / maxY) * gh;
+  /* reference: MSD = steps * a^2 */
+  ctx.strokeStyle = 'rgba(184,145,47,.8)'; ctx.setLineDash([5, 5]); ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(X(0), Y(0));
+  ctx.lineTo(X(maxN), Y(maxN * wd.p.stepLength * wd.p.stepLength)); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#b8912f'; ctx.font = '600 10.5px "Noto Sans JP",sans-serif';
+  ctx.fillText('目安：⟨r²⟩ = 歩数 × a²', pad + 10, pad + 16);
+  worlds.forEach((world, k) => {
+    ctx.strokeStyle = worldColor(k, worlds.length); ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    for (let i = 0; i < world.msd.length; i += 2) {
+      const Xp = X(world.msd[i]), Yp = Y(world.msd[i + 1]);
+      i === 0 ? ctx.moveTo(Xp, Yp) : ctx.lineTo(Xp, Yp);
+    }
+    ctx.stroke();
+  });
+  axisLabel(ctx, '歩数', pad + gw - 24, pad + gh + 18);
+  axisLabel(ctx, '⟨r²⟩', pad - 30, pad - 8);
+}
+
+/* =========================================================================
+ * METRICS
+ * ======================================================================= */
+LABS.P02.metrics = (worlds) => {
+  const w0 = worlds[0], e = dpEnergy(w0.s, w0.p);
+  const out = [
+    { k: '時間 t', v: fmt(w0.t, 2) + ' s' },
+    { k: '力学的エネルギー E', v: fmt(e.total, 4) + ' J' },
+    { k: '運動 K', v: fmt(e.ke, 3) },
+    { k: '位置 U', v: fmt(e.pe, 3) },
+    { k: '先端の速さ', v: fmt(Math.abs(w0.p.l2 * w0.s[3]), 3) + ' m/s' }
+  ];
+  if (worlds.length > 1) {
+    const a = worlds[0].s, b = worlds[1].s;
+    const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2], a[3] - b[3]);
+    out.push({ k: 'A–B 状態距離', v: fmt(d, 6), hot: d > .05 });
+  }
+  return out;
+};
+LABS.A01.metrics = (worlds) => {
+  const w0 = worlds[0];
+  const out = [
+    { k: '時間 t', v: fmt(w0.t, 2) },
+    { k: 'x', v: fmt(w0.s[0], 4) },
+    { k: 'y', v: fmt(w0.s[1], 4) },
+    { k: 'z', v: fmt(w0.s[2], 4) },
+    { k: '速さ |v|', v: fmt(w0.speed(), 3) }
+  ];
+  if (worlds.length > 1) {
+    const a = worlds[0].s, b = worlds[1].s;
+    const d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+    out.push({ k: 'A–B 距離', v: fmt(d, 6), hot: d > 1 });
+  }
+  return out;
+};
+LABS.M01.metrics = (worlds) => {
+  const w0 = worlds[0];
+  const tail = w0.hist.slice(-64);
+  let period = '—';
+  for (let p = 1; p <= 16; p++) {
+    let ok = true;
+    for (let i = 0; i < 12; i++) {
+      if (Math.abs(tail[tail.length - 1 - i] - tail[tail.length - 1 - i - p]) > 1e-5) { ok = false; break; }
+    }
+    if (ok) { period = p + ' 周期'; break; }
+  }
+  const out = [
+    { k: '繰り返し n', v: w0.n },
+    { k: '現在の x', v: fmt(w0.x, 6) },
+    { k: '長期の様子', v: period },
+    { k: '直近64回の最小', v: fmt(Math.min(...tail), 4) },
+    { k: '直近64回の最大', v: fmt(Math.max(...tail), 4) }
+  ];
+  if (worlds.length > 1) {
+    const d = Math.abs(worlds[0].x - worlds[1].x);
+    out.push({ k: 'A–B 差', v: fmt(d, 8), hot: d > .01 });
+  }
+  return out;
+};
+LABS.R02.metrics = (worlds) => {
+  const w0 = worlds[0], st = w0.stats();
+  const tot = w0.dirCount.reduce((a, b) => a + b, 0) || 1;
+  return [
+    { k: '歩数', v: w0.step_ },
+    { k: 'ウォーカー数 N', v: w0.p.walkerCount },
+    { k: '平均 x', v: fmt(st.mx, 3) },
+    { k: '平均 y', v: fmt(st.my, 3) },
+    { k: '平均二乗変位 ⟨r²⟩', v: fmt(st.msd, 2) },
+    { k: 'RMS 距離', v: fmt(st.rms, 3) },
+    { k: '各向きの割合', v: w0.dirCount.map(c => (100 * c / tot).toFixed(1)).join(' / ') }
+  ];
+};
+
+/* =========================================================================
+ * SCIENTIFIC TESTS — run in-browser, reported in a modal
+ * ======================================================================= */
+const TESTS = {
+  P02: [
+    { n: '静止したままの平衡（θ=0, ω=0）', run() {
+        const w = new PendulumWorld({ m1:1,m2:1,l1:1,l2:1,g:9.81,damping:0 }, {t1:0,t2:0,w1:0,w2:0});
+        for (let i=0;i<2400;i++) w.step(1/240);
+        const err = Math.max(...w.s.map(Math.abs));
+        return { ok: err < 1e-9, d: 'max|state| = ' + err.toExponential(2) };
+    }},
+    { n: '重力 0・初速 0 なら状態は変化しない', run() {
+        const w = new PendulumWorld({ m1:1,m2:1,l1:1,l2:1,g:0,damping:0 }, {t1:1.2,t2:-.4,w1:0,w2:0});
+        for (let i=0;i<2400;i++) w.step(1/240);
+        const err = Math.abs(w.s[0]-1.2)+Math.abs(w.s[1]+.4)+Math.abs(w.s[2])+Math.abs(w.s[3]);
+        return { ok: err < 1e-9, d: 'drift = ' + err.toExponential(2) };
+    }},
+    { n: '減衰 0：30 秒でのエネルギー相対ドリフト < 1e-3', run() {
+        const p = { m1:1,m2:1,l1:1,l2:1,g:9.81,damping:0 };
+        const w = new PendulumWorld(p, {t1:120*DEG,t2:-20*DEG,w1:0,w2:0});
+        const e0 = dpEnergy(w.s,p).total;
+        for (let i=0;i<30*240;i++) w.step(1/240);
+        const e1 = dpEnergy(w.s,p).total;
+        const rel = Math.abs((e1-e0)/e0);
+        return { ok: rel < 1e-3, d: 'relative drift = ' + rel.toExponential(2) };
+    }},
+    { n: 'ステップ半分でも短時間の軌道が収束する', run() {
+        const p = { m1:1,m2:1,l1:1,l2:1,g:9.81,damping:0 }, ini={t1:.4,t2:.2,w1:0,w2:0};
+        const a = new PendulumWorld(p, ini), b = new PendulumWorld(p, ini);
+        for (let i=0;i<240;i++) a.step(1/240);
+        for (let i=0;i<480;i++) b.step(1/480);
+        const d = Math.hypot(a.s[0]-b.s[0], a.s[1]-b.s[1]);
+        return { ok: d < 1e-6, d: '|Δstate| = ' + d.toExponential(2) };
+    }},
+    { n: '同じ初期状態から同じ系列が再現される（決定論）', run() {
+        const p = { m1:1,m2:1,l1:1,l2:1,g:9.81,damping:0 }, ini={t1:1,t2:.5,w1:0,w2:0};
+        const a = new PendulumWorld(p, ini), b = new PendulumWorld(p, ini);
+        for (let i=0;i<1200;i++){a.step(1/240);b.step(1/240);}
+        const same = a.s.every((v,i)=>v===b.s[i]);
+        return { ok: same, d: same ? 'bitwise identical' : 'mismatch' };
+    }}
+  ],
+  A01: [
+    { n: '導関数が手計算値と一致（1,1,1 / σ10 ρ28 β8/3）', run() {
+        const d = lorenzDeriv([1,1,1], {sigma:10,rho:28,beta:8/3});
+        const ok = Math.abs(d[0]-0)<1e-12 && Math.abs(d[1]-26)<1e-12 && Math.abs(d[2]-(1-8/3))<1e-12;
+        return { ok, d: `dx=${d[0]}, dy=${d[1]}, dz=${d[2].toFixed(6)}` };
+    }},
+    { n: '原点はちょうど平衡点', run() {
+        const w = new LorenzWorld({sigma:10,rho:28,beta:8/3},{x:0,y:0,z:0});
+        for (let i=0;i<4000;i++) w.step(0.005);
+        const err = Math.max(...w.s.map(Math.abs));
+        return { ok: err === 0, d: 'max|state| = ' + err };
+    }},
+    { n: 'クラシック設定で長時間走らせても有限にとどまる', run() {
+        const w = new LorenzWorld({sigma:10,rho:28,beta:8/3},{x:1,y:1,z:1});
+        for (let i=0;i<40000;i++) w.step(0.005);
+        const fin = w.s.every(v=>isFinite(v)) && Math.max(...w.s.map(Math.abs)) < 200;
+        return { ok: fin, d: 'state = ' + w.s.map(v=>v.toFixed(3)).join(', ') };
+    }},
+    { n: '同じ初期値なら同じ軌道（決定論）', run() {
+        const a=new LorenzWorld({sigma:10,rho:28,beta:8/3},{x:1,y:1,z:1});
+        const b=new LorenzWorld({sigma:10,rho:28,beta:8/3},{x:1,y:1,z:1});
+        for(let i=0;i<3000;i++){a.step(.005);b.step(.005);}
+        const same = a.s.every((v,i)=>v===b.s[i]);
+        return { ok: same, d: same?'bitwise identical':'mismatch' };
+    }},
+    { n: 'ステップを半分にすると誤差が約 1/16（RK4 は4次精度）', run() {
+        const P={sigma:10,rho:28,beta:8/3}, T=1.0;
+        const at=dt=>{ const w=new LorenzWorld(P,{x:1,y:1,z:1});
+                       const n=Math.round(T/dt); for(let i=0;i<n;i++) w.step(dt); return w.s; };
+        const ref=at(0.0003125), c=at(0.005), f=at(0.0025);
+        const nd=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+        const e1=nd(c,ref), e2=nd(f,ref), ratio=e1/e2;
+        return { ok: ratio>8 && ratio<32,
+                 d:`誤差 ${e1.toExponential(2)} → ${e2.toExponential(2)}（比 ${ratio.toFixed(1)}、理論値 16）` };
+    }}
+  ],
+  M01: [
+    { n: 'r = 0 なら x は 0 になる', run() {
+        const x = logisticIterate(0.7, 0, 5);
+        return { ok: x === 0, d: 'x = ' + x };
+    }},
+    { n: 'r∈[0,4], x∈[0,1] は常に [0,1] にとどまる', run() {
+        let worst = 0, bad = 0;
+        for (let ri=0; ri<=40; ri++) {
+          const r = ri/10;
+          for (let xi=1; xi<20; xi++) {
+            let x = xi/20;
+            for (let i=0;i<300;i++){ x = r*x*(1-x); if(x<0||x>1) bad++; worst=Math.max(worst,x); }
+          }
+        }
+        return { ok: bad === 0, d: `範囲外 ${bad} 件 / 最大 x = ${worst.toFixed(6)}` };
+    }},
+    { n: '反復が厳密に決定論的', run() {
+        const a = logisticIterate(0.2, 3.9, 500), b = logisticIterate(0.2, 3.9, 500);
+        return { ok: a === b, d: 'x₅₀₀ = ' + a.toPrecision(12) };
+    }},
+    { n: '分岐図が burn-in を除外している', run() {
+        /* r=2.8 は 1 点に収束する。burn-in 後の値の広がりが十分小さいことを確認 */
+        let x = .2; for (let i=0;i<250;i++) x = 2.8*x*(1-x);
+        let lo=1, hi=0;
+        for (let i=0;i<160;i++){ x=2.8*x*(1-x); lo=Math.min(lo,x); hi=Math.max(hi,x); }
+        return { ok: hi-lo < 1e-6, d: 'spread = ' + (hi-lo).toExponential(2) };
+    }}
+  ],
+  R02: [
+    { n: '同じシードなら経路が完全一致', run() {
+        const a = new WalkWorld({walkerCount:50,stepLength:1},{seed:12345});
+        const b = new WalkWorld({walkerCount:50,stepLength:1},{seed:12345});
+        for(let i=0;i<400;i++){a.step();b.step();}
+        let same = true;
+        for(let i=0;i<a.pos.length;i++) if(a.pos[i]!==b.pos[i]) { same=false; break; }
+        return { ok: same, d: same?'100 walkers × 400 steps 完全一致':'mismatch' };
+    }},
+    { n: '違うシードでは経路が異なる', run() {
+        const a = new WalkWorld({walkerCount:50,stepLength:1},{seed:1});
+        const b = new WalkWorld({walkerCount:50,stepLength:1},{seed:2});
+        for(let i=0;i<400;i++){a.step();b.step();}
+        let diff=false;
+        for(let i=0;i<a.pos.length;i++) if(a.pos[i]!==b.pos[i]) { diff=true; break; }
+        return { ok: diff, d: diff?'期待どおり異なる':'同一になってしまった' };
+    }},
+    { n: '終点が格子点に乗っている', run() {
+        const w = new WalkWorld({walkerCount:200,stepLength:1},{seed:777});
+        for(let i=0;i<300;i++) w.step();
+        let bad=0;
+        for(let i=0;i<w.pos.length;i++) if(Math.abs(w.pos[i]-Math.round(w.pos[i]))>1e-6) bad++;
+        return { ok: bad===0, d: `格子外れ ${bad} 件` };
+    }},
+    { n: '4方向の出現割合が 25% に近づく', run() {
+        const w = new WalkWorld({walkerCount:200,stepLength:1},{seed:2024});
+        for(let i=0;i<200;i++) w.step();
+        const tot = w.dirCount.reduce((a,b)=>a+b,0);
+        const props = w.dirCount.map(c=>c/tot);
+        const worst = Math.max(...props.map(p=>Math.abs(p-.25)));
+        return { ok: worst < .02, d: props.map(p=>(p*100).toFixed(2)+'%').join(' / ') };
+    }},
+    { n: '平均二乗変位が歩数にほぼ比例（±20%）', run() {
+        const w = new WalkWorld({walkerCount:1500,stepLength:1},{seed:99});
+        for(let i=0;i<400;i++) w.step();
+        const msd = w.stats().msd, ratio = msd/400;
+        return { ok: Math.abs(ratio-1) < .2, d: `⟨r²⟩ = ${msd.toFixed(1)} / 歩数 = 400 → 比 ${ratio.toFixed(3)}` };
+    }},
+    { n: '大きな集団では平均変位が 0 に近い', run() {
+        const w = new WalkWorld({walkerCount:2000,stepLength:1},{seed:555});
+        for(let i=0;i<400;i++) w.step();
+        const st = w.stats(), r = Math.hypot(st.mx, st.my);
+        return { ok: r < 2.5, d: `|平均変位| = ${r.toFixed(3)}（RMS = ${st.rms.toFixed(2)}）` };
+    }}
+  ]
+};
+
+/* =========================================================================
+ * ROUTER
+ * ======================================================================= */
+const app = $('#app');
+function parseHash() {
+  const h = location.hash.replace(/^#/, '') || '/';
+  const [path, query] = h.split('?');
+  const parts = path.split('/').filter(Boolean);
+  const q = {};
+  if (query) query.split('&').forEach(kv => {
+    const [k, v] = kv.split('=');
+    q[k] = decodeURIComponent(v || '');
+  });
+  return { parts, q };
+}
+function navigate() {
+  clearTickers();
+  bifCache = null;
+  const { parts, q } = parseHash();
+  app.innerHTML = '';
+  window.scrollTo(0, 0);
+  if (parts[0] === 'lab' && LABS[parts[1]]) renderLab(LABS[parts[1]], q);
+  else if (parts[0] === 'explore') renderExplore();
+  else renderHome();
+  renderNav(parts);
+}
+window.addEventListener('hashchange', navigate);
+
+function renderNav(parts) {
+  const nav = $('#nav');
+  nav.innerHTML = '';
+  const items = [{ h: '#/', ja: 'ホーム', k: 'home' }, { h: '#/explore', ja: 'さがす', k: 'explore' }];
+  LAB_ORDER.forEach(id => items.push({ h: '#/lab/' + id, ja: LABS[id].titleJa, k: id }));
+  const cur = parts[0] === 'lab' ? parts[1] : (parts[0] || 'home');
+  items.forEach(it => {
+    const a = el('a', 'navlink' + (cur === it.k ? ' on' : ''), it.ja);
+    a.href = it.h;
+    nav.appendChild(a);
+  });
+}
+
+/* =========================================================================
+ * HOME
+ * ======================================================================= */
+function renderHome() {
+  const page = el('div', 'page');
+  page.innerHTML = `
+  <div class="wrap">
+    <section class="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="sec-label">INTERACTIVE PHENOMENA LAB</div>
+          <h1 class="serif"><span class="ln">世界のしくみを、</span><span class="ln"><span class="tint">触って</span>理解する。</span></h1>
+          <p class="lede">
+            読むより先に、動かしてみる。<br>
+            スライダーをひとつ動かすだけで、同じ式から違う未来が生まれます。
+            小さな科学博物館のように、気になったところから触ってください。
+          </p>
+          <div class="cta">
+            <a class="btn-solid" href="#/explore">現象をさがす</a>
+            <a class="btn-ghost" href="#/lab/P02">まず振り子を触る</a>
+          </div>
+        </div>
+        <div class="hero-stage">
+          <div class="stage-tag">GRAB ME</div>
+          <div class="swing-badge" id="heroBadge">つかめます</div>
+          <canvas id="heroCanvas"></canvas>
+          <div class="stage-hint">おもりをドラッグして、手を離してみてください</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-label">WHAT HAPPENS IF...</div>
+      <h2 class="serif">もし、こうしたら？</h2>
+      <p class="sub">ひとつの問いが、ひとつの実験室につながっています。</p>
+      <div class="qgrid" id="qgrid"></div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-label">VISIBLE ALPHA · 4 LABS</div>
+      <h2 class="serif">いま触れる4つの現象</h2>
+      <p class="sub">それぞれ違う種類のモデル。決定論・連続・離散・確率。</p>
+      <div class="cardgrid" id="homeCards"></div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-label">SAME IDEA, DIFFERENT WORLD</div>
+      <h2 class="serif">20 の宇宙</h2>
+      <p class="sub">Visible Alpha で開いているのは、このうち 4 つです。</p>
+      <div class="ustrip" id="ustrip"></div>
+    </section>
+
+    <section class="sec">
+      <div class="surprise">
+        <div>
+          <h2>どれか、ひとつ。</h2>
+          <p>迷ったら選ばずに、任せてしまうのもひとつの方法です。ランダムにひとつ開きます。</p>
+        </div>
+        <button class="btn-solid" id="btnSurprise">おまかせで開く</button>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <div><b>PHENOMENA</b> — Visible Alpha prototype　/　P02 · A01 · M01 · R02　/　v8 visual system</div>
+      <div style="margin-top:6px">まず触る。あとで知る。</div>
+    </footer>
+  </div>`;
+  app.appendChild(page);
+
+  /* questions */
+  const QS = [
+    { q: '0.001°だけ<br>変えたら？', to: 'P02' },
+    { q: 'ほとんど同じ2点は、<br>いつ離れる？', to: 'A01' },
+    { q: 'スライダーを<br>少し上げたら？', to: 'M01' },
+    { q: '1000回<br>繰り返したら？', to: 'R02' },
+    { q: '重力が<br>月だったら？', to: 'P02', preset: 'moon' },
+    { q: '摩擦を<br>足したら？', to: 'P02', preset: 'damped' }
+  ];
+  const qg = $('#qgrid', page);
+  QS.forEach(x => {
+    const c = el('button', 'qcard');
+    c.innerHTML = `<div class="q serif">${x.q}</div>
+      <div class="go">${LABS[x.to].titleJa} をひらく <span class="arw">→</span></div>`;
+    c.onclick = () => {
+      location.hash = '#/lab/' + x.to + (x.preset ? '?preset=' + x.preset : '');
+    };
+    qg.appendChild(c);
+  });
+
+  /* live cards */
+  const cg = $('#homeCards', page);
+  LAB_ORDER.forEach(id => cg.appendChild(makeLiveCard(LABS[id])));
+
+  /* universes */
+  const UNIVERSES = [
+    { ja: 'カオス', c: 'var(--u-chaos)', open: true },
+    { ja: 'アトラクタ', c: 'var(--u-attractor)', open: true },
+    { ja: '写像と分岐', c: 'var(--u-maps)', open: true },
+    { ja: 'ランダム', c: 'var(--u-random)', open: true },
+    { ja: '波', c: 'var(--u-waves)' }, { ja: '生命', c: 'var(--u-life)' },
+    { ja: '反応拡散', c: '#b08bb0' }, { ja: 'フラクタル', c: '#a08a6a' },
+    { ja: '流体', c: '#7ba3b8' }, { ja: '重力と軌道', c: '#6b6fa8' },
+    { ja: '統計物理', c: '#8a8f7a' }, { ja: '臨界現象', c: '#c08a5a' },
+    { ja: '生態系', c: '#6f8f5a' }, { ja: '進化', c: '#7f9a6a' },
+    { ja: '群れ', c: '#5f8f8a' }, { ja: 'ネットワーク', c: '#4f8f8a' },
+    { ja: '都市と交通', c: '#8a7a6a' }, { ja: '光と場', c: '#c0a050' },
+    { ja: '幾何', c: '#a3806a' }, { ja: '計算', c: '#6a7a8a' }
+  ];
+  const us = $('#ustrip', page);
+  UNIVERSES.forEach(u => {
+    const b = el('button', 'uchip' + (u.open ? '' : ' soon'),
+      `<i style="--c:${u.c}"></i>${u.ja}${u.open ? '' : '<span style="font-size:9.5px;letter-spacing:.1em;color:var(--ink-muted)">SOON</span>'}`);
+    b.style.setProperty('--c', u.c);
+    if (u.open) b.onclick = () => { location.hash = '#/explore'; };
+    us.appendChild(b);
+  });
+
+  $('#btnSurprise', page).onclick = () => {
+    const id = LAB_ORDER[Math.floor(Math.random() * LAB_ORDER.length)];
+    location.hash = '#/lab/' + id;
+  };
+
+  /* interactive hero pendulum */
+  setupHero($('#heroCanvas', page), $('#heroBadge', page));
+}
+
+function setupHero(cv, badge) {
+  const p = { m1: 1, m2: 1, l1: 1, l2: 1, g: 9.81, damping: 0.008 };
+  let world = new PendulumWorld(p, { t1: 118 * DEG, t2: -12 * DEG, w1: 0, w2: 0 });
+  const clock = new Clock(1 / 240);
+  clock.running = true;
+  let grabbing = false, grabTarget = 2;
+
+  const pointer = ev => {
+    const r = cv.getBoundingClientRect();
+    const t = ev.touches ? ev.touches[0] : ev;
+    return { x: t.clientX - r.left, y: t.clientY - r.top, w: r.width, h: r.height };
+  };
+  const geo = (w, h) => ({
+    cx: w / 2, cy: h * 0.32, sc: Math.min(w, h) / (2.35 * (p.l1 + p.l2))
+  });
+  const down = ev => {
+    const pt = pointer(ev), g = geo(pt.w, pt.h), t = world.tip();
+    const b1 = { x: g.cx + t.x1 * g.sc, y: g.cy + t.y1 * g.sc };
+    const b2 = { x: g.cx + t.x2 * g.sc, y: g.cy + t.y2 * g.sc };
+    const d1 = Math.hypot(pt.x - b1.x, pt.y - b1.y), d2 = Math.hypot(pt.x - b2.x, pt.y - b2.y);
+    if (Math.min(d1, d2) > 46) return;
+    grabbing = true; grabTarget = d2 <= d1 ? 2 : 1;
+    clock.running = false;
+    world.s[2] = 0; world.s[3] = 0;
+    badge.textContent = 'はなすと動きだす';
+    ev.preventDefault();
+  };
+  const move = ev => {
+    if (!grabbing) return;
+    const pt = pointer(ev), g = geo(pt.w, pt.h);
+    if (grabTarget === 1) {
+      world.s[0] = Math.atan2(pt.x - g.cx, pt.y - g.cy);
+    } else {
+      const t = world.tip();
+      const p1 = { x: g.cx + t.x1 * g.sc, y: g.cy + t.y1 * g.sc };
+      world.s[1] = Math.atan2(pt.x - p1.x, pt.y - p1.y);
+    }
+    world.trail.length = 0;
+    ev.preventDefault();
+  };
+  const up = () => {
+    if (!grabbing) return;
+    grabbing = false; clock.running = true;
+    badge.textContent = 'つかめます';
+  };
+  cv.addEventListener('mousedown', down);
+  cv.addEventListener('touchstart', down, { passive: false });
+  window.addEventListener('mousemove', move);
+  window.addEventListener('touchmove', move, { passive: false });
+  window.addEventListener('mouseup', up);
+  window.addEventListener('touchend', up);
+
+  let acc = 0;
+  tickers.add(dt => {
+    const n = clock.substeps(dt);
+    for (let i = 0; i < n; i++) {
+      world.step(clock.fixedDt);
+      if (i % 4 === 0) world.record();
+    }
+    /* gentle re-energise so the hero never dies out completely */
+    acc += dt;
+    if (acc > 6) {
+      acc = 0;
+      const e = dpEnergy(world.s, p);
+      if (e.ke < 0.4) { world.s[2] += 0.9; world.s[3] -= 0.6; }
+    }
+    const { ctx, w, h } = fitCanvas(cv);
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, w, h);
+    /* soft concentric guide */
+    ctx.strokeStyle = 'rgba(46,92,76,.06)'; ctx.lineWidth = 1;
+    const g = geo(w, h);
+    [p.l1, p.l1 + p.l2].forEach(R => {
+      ctx.beginPath(); ctx.arc(g.cx, g.cy, R * g.sc, 0, TAU); ctx.stroke();
+    });
+    LABS.P02.draw(ctx, w, h, [world], { view: 'sim', trails: true, grabbing });
+  });
+}
+
+function makeLiveCard(lab) {
+  const c = el('button', 'pcard');
+  c.style.setProperty('--acc', lab.accent);
+  c.innerHTML = `
+    <div class="prev"><canvas></canvas><div class="live"><i></i>LIVE</div></div>
+    <div class="body">
+      <h3 class="serif">${lab.titleJa}</h3>
+      <div class="en">${lab.title.toUpperCase()}</div>
+      <div class="hook">${lab.subtitleJa}</div>
+      <div class="tagrow">${lab.tags.map((t, i) =>
+        `<span class="tag${i === 0 ? ' acc' : ''}" ${i === 0 ? `style="--acc:${lab.accent};--acc-soft:${lab.accent}22"` : ''}>${t}</span>`).join('')}</div>
+      <div class="try">触ってみる →</div>
+    </div>`;
+  c.onclick = () => { location.hash = '#/lab/' + lab.id; };
+  attachPreview($('canvas', c), lab);
+  return c;
+}
+
+/* small always-running preview simulation for cards */
+function attachPreview(cv, lab) {
+  const P = {}, I = {};
+  lab.params.forEach(p => P[p.id] = p.def);
+  (lab.initParams || []).forEach(p => I[p.id] = p.def);
+  if (lab.id === 'R02') { P.walkerCount = 220; }
+  if (lab.id === 'P02') { I.t1 = 120; I.t2 = -20; }
+  let world = lab.makeWorld(P, I, 0);
+  const clock = new Clock(lab.fixedDt, lab.speedScale);
+  clock.running = true;
+  clock.speed = lab.id === 'M01' ? 0.35 : 1;
+  let yaw = 0, restart = 0;
+  tickers.add(dt => {
+    const n = clock.substeps(dt);
+    for (let i = 0; i < n; i++) {
+      if (lab.id === 'P02') { world.step(clock.fixedDt); if (i % 4 === 0) world.record(); }
+      else if (lab.id === 'M01' || lab.id === 'R02') world.step();
+      else world.step(clock.fixedDt);
+    }
+    yaw += dt * 0.25;
+    restart += dt;
+    /* keep previews visually alive */
+    if (lab.id === 'R02' && (world.step_ > 900 || restart > 22)) { restart = 0; world.seed = (world.seed + 7919) >>> 0; world.reseed(); }
+    if (lab.id === 'P02' && restart > 26) { restart = 0; world = lab.makeWorld(P, I, 0); }
+    const { ctx, w, h } = fitCanvas(cv);
+    lab.draw(ctx, w, h, [world], {
+      view: lab.id === 'M01' ? 'cobweb' : lab.id === 'R02' ? 'many' : lab.id === 'A01' ? '3d' : 'sim',
+      trails: true, yaw
+    });
+  });
+}
+
+/* =========================================================================
+ * EXPLORE
+ * ======================================================================= */
+function renderExplore() {
+  const page = el('div', 'page');
+  page.innerHTML = `
+  <div class="wrap">
+    <div class="exp-head">
+      <div class="sec-label">EXPLORE</div>
+      <h1 class="serif">現象をさがす</h1>
+      <div class="searchbar">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#768078" stroke-width="1.6">
+          <circle cx="7" cy="7" r="4.6"/><line x1="10.4" y1="10.4" x2="14" y2="14" stroke-linecap="round"/>
+        </svg>
+        <input id="q" placeholder="振り子、カオス、確率 …">
+      </div>
+      <div class="filters">
+        <div class="frow"><span class="flabel">BEHAVIOR</span><span id="fBehavior"></span></div>
+        <div class="frow"><span class="flabel">IDEA</span><span id="fIdea"></span></div>
+      </div>
+    </div>
+    <div class="cardgrid" id="grid" style="padding-bottom:18px"></div>
+    <div class="emptynote" id="empty" hidden>該当する現象がありません。フィルタを外してみてください。</div>
+    <footer class="foot">
+      Visible Alpha では 4 現象を公開しています。残り 316 現象はカタログ上のみです。
+    </footer>
+  </div>`;
+  app.appendChild(page);
+
+  const BEHAVIOR = { P02: ['うごく', 'カオス'], A01: ['うごく', 'カオス'], M01: ['分かれる', 'カオス'], R02: ['ばらつく'] };
+  const IDEA = { P02: ['鋭敏な依存性', '決定論'], A01: ['鋭敏な依存性', '位相空間'], M01: ['分岐', '繰り返し'], R02: ['確率', '統計則'] };
+  const allB = [...new Set(Object.values(BEHAVIOR).flat())];
+  const allI = [...new Set(Object.values(IDEA).flat())];
+  const state = { q: '', b: null, i: null };
+
+  const mkFilters = (host, list, key) => {
+    list.forEach(x => {
+      const b = el('button', 'pill', x);
+      b.onclick = () => {
+        state[key] = state[key] === x ? null : x;
+        [...host.children].forEach(c => c.classList.toggle('on', c.textContent === state[key]));
+        draw();
+      };
+      host.appendChild(b);
+    });
+  };
+  const fb = $('#fBehavior', page), fi = $('#fIdea', page);
+  fb.style.display = fi.style.display = 'flex';
+  fb.style.gap = fi.style.gap = '6px'; fb.style.flexWrap = fi.style.flexWrap = 'wrap';
+  mkFilters(fb, allB, 'b');
+  mkFilters(fi, allI, 'i');
+
+  const grid = $('#grid', page), empty = $('#empty', page);
+  function draw() {
+    clearTickers();
+    grid.innerHTML = '';
+    const hits = LAB_ORDER.filter(id => {
+      const L = LABS[id];
+      const text = (L.titleJa + L.title + L.subtitleJa + L.hookJa + L.tags.join(' ') +
+        BEHAVIOR[id].join(' ') + IDEA[id].join(' ')).toLowerCase();
+      if (state.q && !text.includes(state.q.toLowerCase())) return false;
+      if (state.b && !BEHAVIOR[id].includes(state.b)) return false;
+      if (state.i && !IDEA[id].includes(state.i)) return false;
+      return true;
+    });
+    hits.forEach(id => grid.appendChild(makeLiveCard(LABS[id])));
+    empty.hidden = hits.length > 0;
+  }
+  $('#q', page).oninput = e => { state.q = e.target.value; draw(); };
+  draw();
+}
+
+/* =========================================================================
+ * LAB PAGE
+ * ======================================================================= */
+function renderLab(lab, query) {
+  const root = el('div', 'lab');
+  root.style.setProperty('--acc', lab.accent);
+  root.innerHTML = `
+  <div class="labbar">
+    <a class="back" href="#/explore">← さがす</a>
+    <div class="labtitle">
+      <h1 class="serif">${lab.titleJa}</h1>
+      <span>${lab.id} · ${lab.title.toUpperCase()}</span>
+    </div>
+    <div class="labtabs" id="viewTabs"></div>
+    <button class="pill" id="btnShare">共有</button>
+    <button class="pill" id="btnTests">テスト</button>
+  </div>
+  <div class="labmain">
+    <aside class="panel" id="panelLeft">
+      <div class="psec">
+        <h3>プリセット<em>PRESET</em></h3>
+        <div class="presets" id="presets"></div>
+      </div>
+      <div class="psec">
+        <h3>パラメータ<em>PARAMETERS</em></h3>
+        <div id="sliders"></div>
+      </div>
+      <div class="psec">
+        <h3>初期条件<em>INITIAL</em></h3>
+        <div id="initSliders"></div>
+        <div class="pnote" id="resetNote">初期条件を変えると、その場でリセットされます。</div>
+      </div>
+      <div class="psec" id="worldSec">
+        <h3>世界の数<em>WORLDS</em></h3>
+        <div class="segrow" id="worldSeg"></div>
+        <div class="pnote">${lab.perturb}ことで、少しずつ違う世界を同時に走らせます。</div>
+      </div>
+      <div class="psec">
+        <h3>メトリクス<em>METRICS</em></h3>
+        <div class="metrics" id="metrics"></div>
+      </div>
+      <div class="psec">
+        <h3>モデル<em>MODEL</em></h3>
+        <div class="pnote">
+          エンジン：${lab.engine}<br>
+          ソルバー：${lab.solver}<br>
+          固定ステップ：Δt = ${lab.fixedDt < 1 ? '1/' + Math.round(1 / lab.fixedDt) : lab.fixedDt} ${lab.id === 'M01' || lab.id === 'R02' ? '（1 ステップ = 1 回の更新）' : 's'}
+        </div>
+      </div>
+    </aside>
+
+    <div id="viewport">
+      <div class="vp-badge" id="vpBadge"></div>
+      <div class="bfly" id="bfly" hidden>
+        <div class="bt"><span class="w">🦋</span> BUTTERFLY</div>
+        <div class="bv" id="bflyVal">—</div>
+        <div class="bs" id="bflySub">2つの世界の差</div>
+        <div class="spark" id="bflySpark"></div>
+      </div>
+      <canvas id="cv"></canvas>
+      <div class="mtabs">
+        <button class="pill on" data-drawer="left">あそぶ</button>
+        <button class="pill" data-drawer="none">見る</button>
+        <button class="pill" data-drawer="right">しくみ</button>
+      </div>
+      <div class="toolbar" id="toolbar"></div>
+    </div>
+
+    <aside class="panel right" id="panelRight">
+      <div class="learn-block">
+        <div class="lk">HOOK</div>
+        <div class="lv big">${lab.learn.hook}</div>
+      </div>
+      <div class="learn-block">
+        <div class="lk">TRY THIS</div>
+        <ul>${lab.learn.try.map(t => `<li>${t}</li>`).join('')}</ul>
+      </div>
+      <div class="learn-block">
+        <div class="lk">NOTICE</div>
+        <ul>${lab.learn.notice.map(t => `<li>${t}</li>`).join('')}</ul>
+      </div>
+      <div class="learn-block">
+        <div class="lk">WHY?</div>
+        <div class="lv">${lab.learn.whyPlain}</div>
+        <details class="disclosure"><summary>もう少し深く</summary>
+          <div class="dd lv">${lab.learn.whyDeep}</div></details>
+      </div>
+      <div class="learn-block">
+        <div class="lk">MODEL</div>
+        <div class="eqbox">${lab.learn.eq}</div>
+        <details class="disclosure"><summary>この模型が置いている仮定</summary>
+          <div class="dd"><ul>${lab.learn.assume.map(t => `<li>${t}</li>`).join('')}</ul></div></details>
+      </div>
+      <div class="learn-block">
+        <div class="lk">REAL WORLD</div>
+        <ul>${lab.learn.real.map(r => `<li><b style="color:var(--forest-deep)">${r.t}</b><br>${r.d}</li>`).join('')}</ul>
+      </div>
+      <div class="learn-block">
+        <div class="lk">GO DEEPER</div>
+        <ul>${lab.learn.deeper.map(r => `<li><b style="color:var(--forest-deep)">${r.c}</b><br>${r.d}</li>`).join('')}</ul>
+      </div>
+      <div class="learn-block">
+        <div class="lk">RELATED</div>
+        <div class="related" id="related"></div>
+      </div>
+    </aside>
+  </div>`;
+  app.appendChild(root);
+
+  /* ---------------- state ---------------- */
+  const P = {}, I = {};
+  lab.params.forEach(p => P[p.id] = p.def);
+  (lab.initParams || []).forEach(p => I[p.id] = p.def);
+  const ui = {
+    view: lab.views[0].id, trails: true, worlds: 1, butterfly: false,
+    yaw: 0, autoRotate: true, grabbing: false
+  };
+  let worlds = [];
+  const clock = new Clock(lab.fixedDt, lab.speedScale);
+  clock.running = true;
+
+  /* apply URL query (share state / preset link) */
+  if (query.s) {
+    const d = decodeState(query.s);
+    if (d) {
+      Object.keys(P).forEach(k => { if (d[k] != null) P[k] = d[k]; });
+      Object.keys(I).forEach(k => { if (d['i_' + k] != null) I[k] = d['i_' + k]; });
+      if (d.view) ui.view = d.view;
+      if (d.worlds) ui.worlds = d.worlds;
+    }
+  }
+  if (query.preset) applyPreset(lab.presets.find(p => p.id === query.preset), true);
+
+  function applyPreset(pr, silent) {
+    if (!pr) return;
+    Object.assign(P, pr.p || {});
+    Object.assign(I, pr.i || {});
+    if (pr.view) ui.view = pr.view;
+    if (!silent) { syncControls(); rebuild(); }
+  }
+
+  function rebuild() {
+    worlds = [];
+    const n = ui.butterfly ? 2 : ui.worlds;
+    for (let k = 0; k < n; k++) {
+      const delta = k === 0 ? 0
+        : (ui.butterfly ? lab.spread : lab.spread * k);
+      worlds.push(lab.makeWorld(P, I, delta));
+    }
+    if (lab.id === 'M01') bifCache = bifCache; /* cache depends on size only */
+    bflyHist.length = 0;
+  }
+
+  /* ---------------- view tabs ---------------- */
+  const vt = $('#viewTabs', root);
+  lab.views.forEach(v => {
+    const b = el('button', 'pill' + (v.id === ui.view ? ' on' : ''), v.ja);
+    b.onclick = () => {
+      ui.view = v.id;
+      [...vt.children].forEach(c => c.classList.remove('on'));
+      b.classList.add('on');
+    };
+    vt.appendChild(b);
+  });
+
+  /* ---------------- presets ---------------- */
+  const ph = $('#presets', root);
+  lab.presets.forEach(pr => {
+    const b = el('button', 'preset', `<span>${pr.ja}</span><em>${pr.en}</em>`);
+    b.onclick = () => {
+      [...ph.children].forEach(c => c.classList.remove('on'));
+      b.classList.add('on');
+      applyPreset(pr);
+    };
+    ph.appendChild(b);
+  });
+
+  /* ---------------- manifest-driven sliders ---------------- */
+  const sliderRefs = [];
+  function makeSlider(host, spec, target, isInit) {
+    const row = el('div', 'slider-row');
+    row.innerHTML = `
+      <div class="sl-top">
+        <span class="lb"><i>${spec.sym}</i>${spec.ja}</span>
+        <span class="vl"></span>
+      </div>`;
+    const input = el('input');
+    input.type = 'range';
+    input.min = spec.min; input.max = spec.max; input.step = spec.step;
+    input.value = target[spec.id];
+    row.appendChild(input);
+    const vl = $('.vl', row);
+    const decimals = spec.step >= 1 ? 0 : Math.min(6, String(spec.step).split('.')[1].length);
+    const show = () => {
+      vl.innerHTML = Number(target[spec.id]).toFixed(decimals) +
+        (spec.unit ? `<small>${spec.unit}</small>` : '');
+    };
+    show();
+    input.oninput = () => {
+      target[spec.id] = +input.value;
+      show();
+      if (isInit || spec.reset) rebuild();
+      else worlds.forEach(w => { if (w.p) Object.assign(w.p, P); });
+      if (lab.id === 'M01' && spec.id === 'r') { /* bifurcation marker follows r */ }
+    };
+    host.appendChild(row);
+    sliderRefs.push({ spec, input, show, target });
+  }
+  const sh = $('#sliders', root), ish = $('#initSliders', root);
+  lab.params.forEach(p => makeSlider(sh, p, P, false));
+  (lab.initParams || []).forEach(p => makeSlider(ish, p, I, true));
+  if (lab.id === 'R02') {
+    const b = el('button', 'pill', 'シードを変える');
+    b.style.marginTop = '4px';
+    b.onclick = () => {
+      I.seed = (I.seed * 1103515245 + 12345) >>> 0 % 99999999 || 7;
+      syncControls(); rebuild();
+    };
+    ish.appendChild(b);
+  }
+  function syncControls() {
+    sliderRefs.forEach(r => { r.input.value = r.target[r.spec.id]; r.show(); });
+  }
+
+  /* ---------------- worlds ---------------- */
+  const ws = $('#worldSeg', root);
+  if (lab.features.worlds) {
+    [1, 2, 10, 50].forEach(n => {
+      const b = el('button', 'pill' + (n === ui.worlds ? ' on' : ''), n === 1 ? '1' : n + '');
+      b.onclick = () => {
+        ui.worlds = n; ui.butterfly = false;
+        [...ws.children].forEach(c => c.classList.remove('on'));
+        b.classList.add('on');
+        $('#bfly', root).hidden = true;
+        btnB.classList.remove('on');
+        rebuild();
+      };
+      ws.appendChild(b);
+    });
+  } else {
+    $('#worldSec', root).hidden = true;
+  }
+
+  /* ---------------- toolbar ---------------- */
+  const tb = $('#toolbar', root);
+  const playBtn = el('button', 'playbtn');
+  const setPlayIcon = () => {
+    playBtn.innerHTML = clock.running
+      ? '<svg width="12" height="13" viewBox="0 0 12 13" fill="#fff"><rect x="1" y="1" width="3.4" height="11" rx="1"/><rect x="7.6" y="1" width="3.4" height="11" rx="1"/></svg>'
+      : '<svg width="12" height="13" viewBox="0 0 12 13" fill="#fff"><path d="M1.6 1.3 11 6.5 1.6 11.7Z"/></svg>';
+  };
+  setPlayIcon();
+  playBtn.onclick = () => { clock.running = !clock.running; setPlayIcon(); };
+  tb.appendChild(playBtn);
+
+  const mk = (label, fn, cls) => {
+    const b = el('button', 'pill' + (cls ? ' ' + cls : ''), label);
+    b.onclick = () => fn(b);
+    tb.appendChild(b);
+    return b;
+  };
+  mk('リセット', () => { rebuild(); });
+  mk('ステップ', () => {
+    if (lab.id === 'M01' || lab.id === 'R02') worlds.forEach(w => w.step());
+    else worlds.forEach(w => { w.step(clock.fixedDt); if (w.record) w.record(); });
+  });
+  tb.appendChild(el('span', 'tsep'));
+  tb.appendChild(el('span', 'tlabel', 'SPEED'));
+  [0.1, 1, 4].forEach(s => {
+    const b = el('button', 'pill' + (s === 1 ? ' on' : ''), s + '×');
+    b.onclick = () => {
+      clock.speed = s;
+      [...tb.querySelectorAll('[data-speed]')].forEach(c => c.classList.remove('on'));
+      b.classList.add('on');
+    };
+    b.dataset.speed = s;
+    tb.appendChild(b);
+  });
+  tb.appendChild(el('span', 'tsep'));
+  if (lab.features.trails) {
+    mk('軌跡', b => { ui.trails = !ui.trails; b.classList.toggle('on', ui.trails); }).classList.add('on');
+  }
+  let btnB = { classList: { remove() {}, toggle() {} } };
+  if (lab.features.butterfly) {
+    btnB = mk('🦋 バタフライ', b => {
+      ui.butterfly = !ui.butterfly;
+      b.classList.toggle('on', ui.butterfly);
+      $('#bfly', root).hidden = !ui.butterfly;
+      if (ui.butterfly) ui.worlds = 2;
+      [...ws.children].forEach(c => c.classList.remove('on'));
+      rebuild();
+    }, 'gold');
+  }
+  if (lab.id === 'A01') {
+    mk('自動回転', b => { ui.autoRotate = !ui.autoRotate; b.classList.toggle('on', ui.autoRotate); }).classList.add('on');
+  }
+
+  /* ---------------- related ---------------- */
+  const rel = $('#related', root);
+  lab.learn.related.forEach(id => {
+    const L = labMeta(id);
+    if (!L) return;
+    const b = el('button', 'relcard',
+      `<span class="rd" style="--c:${L.accent}"></span>
+       <span class="rt"><b>${L.titleJa}</b><small>${L.subtitleJa}</small></span>
+       <span style="color:var(--ink-muted);font-size:12px">→</span>`);
+    b.style.setProperty('--c', L.accent);
+    b.onclick = () => { location.hash = '#/lab/' + id; };
+    rel.appendChild(b);
+  });
+
+  /* ---------------- mobile drawers ---------------- */
+  const pl = $('#panelLeft', root), pr2 = $('#panelRight', root);
+  root.querySelectorAll('.mtabs .pill').forEach(b => {
+    b.onclick = () => {
+      root.querySelectorAll('.mtabs .pill').forEach(c => c.classList.remove('on'));
+      b.classList.add('on');
+      pl.classList.toggle('open', b.dataset.drawer === 'left');
+      pr2.classList.toggle('open', b.dataset.drawer === 'right');
+    };
+  });
+
+  /* ---------------- share ---------------- */
+  $('#btnShare', root).onclick = () => {
+    const payload = Object.assign({}, P, { view: ui.view, worlds: ui.worlds });
+    Object.keys(I).forEach(k => payload['i_' + k] = I[k]);
+    const url = location.origin + location.pathname + '#/lab/' + lab.id + '?s=' + encodeState(payload);
+    openModal(`
+      <h2 class="serif">この状態を共有する</h2>
+      <p class="msub">パラメータ・初期条件・表示モードがURLに入ります。開くと同じ状態から再現されます。</p>
+      <div class="sharefield"><input readonly value="${url}"><button class="pill" id="cpy">コピー</button></div>
+      <div style="margin-top:14px;font-size:11.5px;color:var(--ink-muted);line-height:1.8">
+        シリアライズはキー順で安定化されており、同じ状態からは常に同じ文字列が生成されます。
+      </div>
+      <div class="mfoot"><button class="btn-ghost" data-close>閉じる</button></div>`,
+      m => {
+        $('#cpy', m).onclick = () => {
+          const i = $('input', m); i.select();
+          navigator.clipboard ? navigator.clipboard.writeText(url).then(() => toast('コピーしました')) : document.execCommand('copy');
+          toast('コピーしました');
+        };
+      });
+  };
+
+  /* ---------------- tests ---------------- */
+  $('#btnTests', root).onclick = () => {
+    const list = TESTS[lab.id] || [];
+    const results = list.map(t => {
+      const t0 = performance.now();
+      let r;
+      try { r = t.run(); } catch (e) { r = { ok: false, d: 'エラー: ' + e.message }; }
+      return { n: t.n, ok: r.ok, d: r.d, ms: performance.now() - t0 };
+    });
+    const pass = results.filter(r => r.ok).length;
+    openModal(`
+      <h2 class="serif">科学的テスト — ${lab.titleJa}</h2>
+      <p class="msub">保存則・平衡・収束・決定論をブラウザ上で実行しています。</p>
+      <div class="tsummary"><b>${pass}/${results.length}</b><span style="font-size:12px;color:var(--ink-soft)">
+        ${pass === results.length ? 'すべて通過しました。' : '失敗したテストがあります。'}</span></div>
+      ${results.map(r => `
+        <div class="trow">
+          <span class="st ${r.ok ? 'pass' : 'fail'}">${r.ok ? 'PASS' : 'FAIL'}</span>
+          <span class="tn">${r.n}<small>${r.d} · ${r.ms.toFixed(1)} ms</small></span>
+        </div>`).join('')}
+      <div class="mfoot"><button class="btn-solid" data-close>閉じる</button></div>`);
+  };
+
+  /* ---------------- pointer grab (P02) ---------------- */
+  const cv = $('#cv', root);
+  if (lab.features.grab) {
+    let grabTarget = 2;
+    const pointer = ev => {
+      const r = cv.getBoundingClientRect();
+      const t = ev.touches ? ev.touches[0] : ev;
+      return { x: t.clientX - r.left, y: t.clientY - r.top, w: r.width, h: r.height };
+    };
+    const down = ev => {
+      if (ui.view !== 'sim') return;
+      const pt = pointer(ev), w0 = worlds[0];
+      const span = w0.p.l1 + w0.p.l2, sc = Math.min(pt.w, pt.h) / (2.35 * span);
+      const cx = pt.w / 2, cy = pt.h * .34, t = w0.tip();
+      const b1 = { x: cx + t.x1 * sc, y: cy + t.y1 * sc }, b2 = { x: cx + t.x2 * sc, y: cy + t.y2 * sc };
+      const d1 = Math.hypot(pt.x - b1.x, pt.y - b1.y), d2 = Math.hypot(pt.x - b2.x, pt.y - b2.y);
+      if (Math.min(d1, d2) > 46) return;
+      grabTarget = d2 <= d1 ? 2 : 1;
+      ui.grabbing = true;
+      worlds.forEach(w => { w.s[2] = 0; w.s[3] = 0; w.trail.length = 0; });
+      ev.preventDefault();
+    };
+    const move = ev => {
+      if (!ui.grabbing) return;
+      const pt = pointer(ev), w0 = worlds[0];
+      const span = w0.p.l1 + w0.p.l2, sc = Math.min(pt.w, pt.h) / (2.35 * span);
+      const cx = pt.w / 2, cy = pt.h * .34;
+      worlds.forEach((w, k) => {
+        const d = k === 0 ? 0 : (ui.butterfly ? lab.spread : lab.spread * k) * DEG;
+        if (grabTarget === 1) w.s[0] = Math.atan2(pt.x - cx, pt.y - cy) + d;
+        else {
+          const t = w.tip();
+          const p1 = { x: cx + t.x1 * sc, y: cy + t.y1 * sc };
+          w.s[1] = Math.atan2(pt.x - p1.x, pt.y - p1.y);
+        }
+        w.trail.length = 0;
+      });
+      /* keep the initial-angle slider in sync with the grab */
+      I.t1 = worlds[0].s[0] / DEG; I.t2 = worlds[0].s[1] / DEG;
+      syncControls();
+      ev.preventDefault();
+    };
+    const up = () => { ui.grabbing = false; };
+    cv.addEventListener('mousedown', down);
+    cv.addEventListener('touchstart', down, { passive: false });
+    window.addEventListener('mousemove', move);
+    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('mouseup', up);
+    window.addEventListener('touchend', up);
+  }
+
+  /* ---------------- badges ---------------- */
+  const badge = $('#vpBadge', root);
+  function updateBadge() {
+    const n = worlds.length;
+    badge.innerHTML =
+      `<span class="bd acc" style="--acc:${lab.accent}">${lab.universeJa.toUpperCase()}</span>` +
+      `<span class="bd">${n === 1 ? '1 WORLD' : n + ' WORLDS'}</span>` +
+      (clock.speed !== 1 ? `<span class="bd">${clock.speed}× SPEED</span>` : '') +
+      (clock.running ? '' : '<span class="bd">PAUSED</span>');
+  }
+
+  /* ---------------- butterfly readout ---------------- */
+  const bflyHist = [];
+  function separation() {
+    if (worlds.length < 2) return 0;
+    const a = worlds[0], b = worlds[1];
+    if (lab.id === 'P02') return Math.hypot(a.s[0]-b.s[0], a.s[1]-b.s[1], a.s[2]-b.s[2], a.s[3]-b.s[3]);
+    if (lab.id === 'A01') return Math.hypot(a.s[0]-b.s[0], a.s[1]-b.s[1], a.s[2]-b.s[2]);
+    if (lab.id === 'M01') return Math.abs(a.x - b.x);
+    return 0;
+  }
+  function updateBfly() {
+    if (!ui.butterfly) return;
+    const d = separation();
+    $('#bflyVal', root).textContent = d === 0 ? '0' : d.toExponential(3);
+    $('#bflySub', root).textContent = 'log₁₀ 差 = ' + (d > 0 ? Math.log10(d).toFixed(2) : '—');
+    bflyHist.push(d);
+    if (bflyHist.length > 40) bflyHist.shift();
+    const mx = Math.max(...bflyHist.map(v => Math.log10(Math.max(v, 1e-12))));
+    const mn = Math.min(...bflyHist.map(v => Math.log10(Math.max(v, 1e-12))));
+    const sp = $('#bflySpark', root);
+    sp.innerHTML = bflyHist.map((v, i) => {
+      const lv = Math.log10(Math.max(v, 1e-12));
+      const hgt = mx > mn ? ((lv - mn) / (mx - mn)) * 100 : 4;
+      return `<i class="${i === bflyHist.length - 1 ? 'hi' : ''}" style="height:${Math.max(3, hgt)}%"></i>`;
+    }).join('');
+  }
+
+  /* ---------------- metrics ---------------- */
+  const mh = $('#metrics', root);
+  function updateMetrics() {
+    const rows = lab.metrics(worlds);
+    if (mh.children.length !== rows.length) {
+      mh.innerHTML = rows.map(() => '<div class="metric"><span class="mk"></span><span class="mv"></span></div>').join('');
+    }
+    rows.forEach((r, i) => {
+      const n = mh.children[i];
+      n.classList.toggle('hot', !!r.hot);
+      $('.mk', n).textContent = r.k;
+      $('.mv', n).textContent = r.v;
+    });
+  }
+
+  /* ---------------- main loop ---------------- */
+  rebuild();
+  let uiAcc = 0;
+  tickers.add(dt => {
+    const n = clock.substeps(dt);
+    for (let i = 0; i < n; i++) {
+      if (lab.id === 'M01' || lab.id === 'R02') worlds.forEach(w => w.step());
+      else worlds.forEach(w => {
+        w.step(clock.fixedDt);
+        if (lab.id === 'P02' && i % 4 === 0) w.record();
+      });
+    }
+    if (lab.id === 'A01' && ui.autoRotate && ui.view === '3d') ui.yaw += dt * 0.22;
+    const { ctx, w, h } = fitCanvas(cv);
+    lab.draw(ctx, w, h, worlds, ui);
+    uiAcc += dt;
+    if (uiAcc > 0.1) { uiAcc = 0; updateMetrics(); updateBadge(); updateBfly(); }
+  });
+}
+
+/* =========================================================================
+ * MODAL
+ * ======================================================================= */
+function openModal(html, after) {
+  const scrim = el('div', 'scrim');
+  const m = el('div', 'modal', html);
+  scrim.appendChild(m);
+  document.body.appendChild(scrim);
+  const close = () => scrim.remove();
+  scrim.onclick = e => { if (e.target === scrim) close(); };
+  m.querySelectorAll('[data-close]').forEach(b => b.onclick = close);
+  document.addEventListener('keydown', function esc(e) {
+    if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); }
+  });
+  if (after) after(m);
+  return m;
+}
+
+$('#btnAbout').onclick = () => openModal(`
+  <h2 class="serif">PHENOMENA — Visible Alpha</h2>
+  <p class="msub">世界のしくみを、触って理解する。／ まず触る。あとで知る。</p>
+  <div style="font-size:12.5px;color:var(--ink-soft);line-height:1.9">
+    このプロトタイプでは、4つの現象だけを実装しています。<br>
+    <b style="color:var(--forest-deep)">P02 二重振り子</b>（決定論的なカオス）、
+    <b style="color:var(--forest-deep)">A01 ローレンツ</b>（連続系のアトラクタ）、
+    <b style="color:var(--forest-deep)">M01 ロジスティック写像</b>（離散写像と分岐）、
+    <b style="color:var(--forest-deep)">R02 ランダムウォーク</b>（確率とアンサンブル）。<br><br>
+    シミュレーションと描画は分離され、物理は固定ステップでのみ進みます。乱数はすべてシード付きで、
+    同じシード・同じパラメータ・同じ歩数なら常に同じ結果になります。各ラボの「テスト」ボタンから、
+    保存則や決定論の確認をその場で実行できます。
+  </div>
+  <div class="mfoot"><button class="btn-solid" data-close>とじる</button></div>`);
+
+/* boot */
+navigate();
+</script>
+</body>
+</html>
