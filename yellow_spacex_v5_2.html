@@ -353,9 +353,10 @@ html[lang="en"] .prodhero .title{text-transform:none;}
   font-size:clamp(17px,1.9vw,26px);line-height:1.9;font-weight:300;
   color:rgba(255,255,255,.92);max-width:26em;margin:26px 0 0;
 }
+/* .split の左右反転。個別ページのケイパビリティを全画面パネルへ移したため
+   現在は未使用だが、.split を再び左右で組むときのために残している */
 .split--rev .split__media{order:2;}
 .split--rev .split__body{order:1;padding:calc(var(--hdr-h) + clamp(46px,7vh,90px)) clamp(40px,5vw,90px) clamp(70px,12vh,140px) var(--pad);}
-.cap__no{font-size:10px;letter-spacing:.22em;color:var(--grey-d);margin-bottom:14px;}
 
 .nextprod{
   display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
@@ -1013,23 +1014,37 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
     <p class="ovw__body rv" data-d="2" data-i18n="pb_ov">技術シーズを、製品・設備・システムとして立ち上げます。大学・研究機関・企業に眠る研究成果を見出し、試作から検証、そして現場で稼働する形まで一貫して設計・実装します。</p>
   </section>
 
-  <section class="split">
-  <div class="split__media" style="--bg:url('https://picsum.photos/id/153/1400/1800')"></div>
-  <div class="split__body">
-    <div class="cap__no">01</div>
-    <h2 class="title" style="font-size:clamp(24px,3.2vw,44px)" data-i18n="s1_t">技術シーズの発掘</h2>
-    <p class="lede" data-i18n="s1_b">市場が気づく前に、大学・研究機関・企業から有望な技術シーズを見出します。目利きと、その後の交渉・契約までを一体で担います。</p>
-  </div>
-</section>
+  <section class="panel" style="--bg:url('https://picsum.photos/id/153/2400/1350')">
+    <div class="panel__media panel__media--img"></div>
+    <div class="panel__scrim"></div>
+    <div class="panel__inner">
+      <div class="panel__row">
+        <div>
+          <p class="eyebrow rv"><span data-i18n="cap_label">Capability</span> 01 — <span class="nt">xBUILD</span></p>
+          <h2 class="title rv" data-d="1" style="font-size:clamp(28px,4.4vw,64px)" data-i18n="s1_t">技術シーズの発掘</h2>
+          <p class="lede rv" data-d="2" data-i18n="s1_b">市場が気づく前に、大学・研究機関・企業から有望な技術シーズを見出します。目利きと、その後の交渉・契約までを一体で担います。</p>
+          <a class="btn rv" data-d="3" href="#contact" data-i18n="btn_contact">相談する</a>
+        </div>
+        <div class="panel__idx rv" data-d="3">01 / 02</div>
+      </div>
+    </div>
+  </section>
 
-  <section class="split split--rev">
-  <div class="split__media" style="--bg:url('https://picsum.photos/id/490/1400/1800')"></div>
-  <div class="split__body">
-    <div class="cap__no">02</div>
-    <h2 class="title" style="font-size:clamp(24px,3.2vw,44px)" data-i18n="s2_t">研究開発の支援</h2>
-    <p class="lede" data-i18n="s2_b">試作から検証まで、仮説とプロダクトの間にある技術的なループを閉じます。ライフサイエンス機器の集積拠点TOLICへの加盟を通じ、国内有数の開発パイプラインに接続しています。</p>
-  </div>
-</section>
+  <section class="panel" style="--bg:url('https://picsum.photos/id/490/2400/1350')">
+    <div class="panel__media panel__media--img"></div>
+    <div class="panel__scrim"></div>
+    <div class="panel__inner">
+      <div class="panel__row">
+        <div>
+          <p class="eyebrow rv"><span data-i18n="cap_label">Capability</span> 02 — <span class="nt">xBUILD</span></p>
+          <h2 class="title rv" data-d="1" style="font-size:clamp(28px,4.4vw,64px)" data-i18n="s2_t">研究開発の支援</h2>
+          <p class="lede rv" data-d="2" data-i18n="s2_b">試作から検証まで、仮説とプロダクトの間にある技術的なループを閉じます。ライフサイエンス機器の集積拠点TOLICへの加盟を通じ、国内有数の開発パイプラインに接続しています。</p>
+          <a class="btn rv" data-d="3" href="#contact" data-i18n="btn_contact">相談する</a>
+        </div>
+        <div class="panel__idx rv" data-d="3">02 / 02</div>
+      </div>
+    </div>
+  </section>
 
   <section class="sec">
     <p class="eyebrow rv" data-i18n="sp_label">Specifications</p>
@@ -1080,23 +1095,37 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
     <p class="ovw__body rv" data-d="2" data-i18n="pa_ov">人流と行動のデータから、伝えるべき相手と場所と時間を割り出します。交通手段別・時間別・経路別の動態を捕捉し、導線設計と効果測定まで一貫して担います。</p>
   </section>
 
-  <section class="split">
-  <div class="split__media" style="--bg:url('https://picsum.photos/id/88/1400/1800')"></div>
-  <div class="split__body">
-    <div class="cap__no">01</div>
-    <h2 class="title" style="font-size:clamp(24px,3.2vw,44px)" data-i18n="s3_t">人流・行動データ分析</h2>
-    <p class="lede" data-i18n="s3_b">交通手段別・時間別・経路別の来訪動態をデータとして捕捉し、混雑緩和や導線設計に落とし込みます。研究水準の分析手法を、そのまま現場の運用に接続します。</p>
-  </div>
-</section>
+  <section class="panel" style="--bg:url('https://picsum.photos/id/88/2400/1350')">
+    <div class="panel__media panel__media--img"></div>
+    <div class="panel__scrim"></div>
+    <div class="panel__inner">
+      <div class="panel__row">
+        <div>
+          <p class="eyebrow rv"><span data-i18n="cap_label">Capability</span> 01 — <span class="nt">xAD</span></p>
+          <h2 class="title rv" data-d="1" style="font-size:clamp(28px,4.4vw,64px)" data-i18n="s3_t">人流・行動データ分析</h2>
+          <p class="lede rv" data-d="2" data-i18n="s3_b">交通手段別・時間別・経路別の来訪動態をデータとして捕捉し、混雑緩和や導線設計に落とし込みます。研究水準の分析手法を、そのまま現場の運用に接続します。</p>
+          <a class="btn rv" data-d="3" href="#contact" data-i18n="btn_contact">相談する</a>
+        </div>
+        <div class="panel__idx rv" data-d="3">01 / 02</div>
+      </div>
+    </div>
+  </section>
 
-  <section class="split split--rev">
-  <div class="split__media" style="--bg:url('https://picsum.photos/id/290/1400/1800')"></div>
-  <div class="split__body">
-    <div class="cap__no">02</div>
-    <h2 class="title" style="font-size:clamp(24px,3.2vw,44px)" data-i18n="s4_t">公的プログラムへの採択</h2>
-    <p class="lede" data-i18n="s4_b">国・自治体が主導するイノベーション・パイプラインへの戦略的なポジショニング。助成金申請から採択後の事業管理まで、公的資金の経路を実務として引き受けます。</p>
-  </div>
-</section>
+  <section class="panel" style="--bg:url('https://picsum.photos/id/290/2400/1350')">
+    <div class="panel__media panel__media--img"></div>
+    <div class="panel__scrim"></div>
+    <div class="panel__inner">
+      <div class="panel__row">
+        <div>
+          <p class="eyebrow rv"><span data-i18n="cap_label">Capability</span> 02 — <span class="nt">xAD</span></p>
+          <h2 class="title rv" data-d="1" style="font-size:clamp(28px,4.4vw,64px)" data-i18n="s4_t">公的プログラムへの採択</h2>
+          <p class="lede rv" data-d="2" data-i18n="s4_b">国・自治体が主導するイノベーション・パイプラインへの戦略的なポジショニング。助成金申請から採択後の事業管理まで、公的資金の経路を実務として引き受けます。</p>
+          <a class="btn rv" data-d="3" href="#contact" data-i18n="btn_contact">相談する</a>
+        </div>
+        <div class="panel__idx rv" data-d="3">02 / 02</div>
+      </div>
+    </div>
+  </section>
 
   <section class="sec">
     <p class="eyebrow rv" data-i18n="sp_label">Specifications</p>
@@ -1147,23 +1176,37 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
     <p class="ovw__body rv" data-d="2" data-i18n="pi_ov">研究の成果を、来場者が触れて動く体験として実装します。スタジアム、商業施設、街区 — 人が実際にいる場所で機能させ、運用まで伴走します。</p>
   </section>
 
-  <section class="split">
-  <div class="split__media" style="--bg:url('https://picsum.photos/id/396/1400/1800')"></div>
-  <div class="split__body">
-    <div class="cap__no">01</div>
-    <h2 class="title" style="font-size:clamp(24px,3.2vw,44px)" data-i18n="s5_t">スポーツDX</h2>
-    <p class="lede" data-i18n="s5_b">スポーツ庁SOIP採択事業として、いわきFC・LocationMindとともにスタジアムアクセスの改善と地域価値の創造に取り組んでいます。観客の移動は、街の設計そのものです。</p>
-  </div>
-</section>
+  <section class="panel" style="--bg:url('https://picsum.photos/id/396/2400/1350')">
+    <div class="panel__media panel__media--img"></div>
+    <div class="panel__scrim"></div>
+    <div class="panel__inner">
+      <div class="panel__row">
+        <div>
+          <p class="eyebrow rv"><span data-i18n="cap_label">Capability</span> 01 — <span class="nt">xINTERACTIVE</span></p>
+          <h2 class="title rv" data-d="1" style="font-size:clamp(28px,4.4vw,64px)" data-i18n="s5_t">スポーツDX</h2>
+          <p class="lede rv" data-d="2" data-i18n="s5_b">スポーツ庁SOIP採択事業として、いわきFC・LocationMindとともにスタジアムアクセスの改善と地域価値の創造に取り組んでいます。観客の移動は、街の設計そのものです。</p>
+          <a class="btn rv" data-d="3" href="#contact" data-i18n="btn_contact">相談する</a>
+        </div>
+        <div class="panel__idx rv" data-d="3">01 / 02</div>
+      </div>
+    </div>
+  </section>
 
-  <section class="split split--rev">
-  <div class="split__media" style="--bg:url('https://picsum.photos/id/100/1400/1800')"></div>
-  <div class="split__body">
-    <div class="cap__no">02</div>
-    <h2 class="title" style="font-size:clamp(24px,3.2vw,44px)" data-i18n="s6_t">市場への展開</h2>
-    <p class="lede" data-i18n="s6_b">ローンチ戦略から初期顧客の開拓まで、研究を事業性へと運ぶ実行レイヤー。セクターを横断する戦略的アライアンスを構築します。</p>
-  </div>
-</section>
+  <section class="panel" style="--bg:url('https://picsum.photos/id/100/2400/1350')">
+    <div class="panel__media panel__media--img"></div>
+    <div class="panel__scrim"></div>
+    <div class="panel__inner">
+      <div class="panel__row">
+        <div>
+          <p class="eyebrow rv"><span data-i18n="cap_label">Capability</span> 02 — <span class="nt">xINTERACTIVE</span></p>
+          <h2 class="title rv" data-d="1" style="font-size:clamp(28px,4.4vw,64px)" data-i18n="s6_t">市場への展開</h2>
+          <p class="lede rv" data-d="2" data-i18n="s6_b">ローンチ戦略から初期顧客の開拓まで、研究を事業性へと運ぶ実行レイヤー。セクターを横断する戦略的アライアンスを構築します。</p>
+          <a class="btn rv" data-d="3" href="#contact" data-i18n="btn_contact">相談する</a>
+        </div>
+        <div class="panel__idx rv" data-d="3">02 / 02</div>
+      </div>
+    </div>
+  </section>
 
   <section class="sec">
     <p class="eyebrow rv" data-i18n="sp_label">Specifications</p>
@@ -1248,7 +1291,7 @@ var I18N = {
     drop_note: "研究を、社会で動く形にするための3つのプロダクト。それぞれの内訳と関連する実績です。",
     drop_all: "事業の一覧へ →",
     back_home: "← ホームへ戻る",
-    ov_label: "Overview", sp_label: "Specifications",
+    ov_label: "Overview", sp_label: "Specifications", cap_label: "Capability",
     next_prod: "次のプロダクト",
     pb_sub: "研究段階の成果を、現場で稼働する形まで。",
     pa_sub: "データで、届く場所と時間を決める。",
@@ -1373,7 +1416,7 @@ var I18N = {
     drop_note: "Three products that turn research into something that runs in the field — with their capabilities and related record.",
     drop_all: "All business areas →",
     back_home: "← Back to home",
-    ov_label: "Overview", sp_label: "Specifications",
+    ov_label: "Overview", sp_label: "Specifications", cap_label: "Capability",
     next_prod: "Next product",
     pb_sub: "Carrying research-stage results through to something that runs on site.",
     pa_sub: "Letting the data decide where and when a message lands.",
