@@ -29,6 +29,11 @@ const Sharp = '♯'
 // still.
 const DragSlop = 4
 
+// How far the plane may be zoomed. Far enough in that a cell is a comfortable target
+// on a phone, and far enough out that a long score can be read at a glance.
+const MinScale = 0.5
+const MaxScale = 2.5
+
 export class ScoreView {
   constructor(container, delegate) {
     this.container = container
@@ -39,6 +44,12 @@ export class ScoreView {
 
     this.cursor = point(1, 1)
     this.origin = { x: 0, y: 0 }
+
+    // What the plane is drawn at. A fingertip is nine millimetres of glass and a cell
+    // is thirty pixels, so on a phone the plane has to be able to come closer; the
+    // chrome deliberately does not follow it, since layout values there are the real
+    // sizes and a fractional scale would smear every hairline in them.
+    this.scale = 1
 
     this.plane = document.createElement('div')
     this.plane.className = 'plane'
@@ -248,16 +259,40 @@ export class ScoreView {
   pan(dx, dy) {
     this.origin.x += dx
     this.origin.y += dy
+    this.place()
+  }
+
+  place() {
     this.plane.style.transform =
-      'translate(' + this.origin.x + 'px,' + this.origin.y + 'px)'
+      'translate(' + this.origin.x + 'px,' + this.origin.y + 'px) scale(' + this.scale + ')'
+  }
+
+  // Zooms about a point on the screen, which is what both a pinch and a wheel with the
+  // modifier held are: the plane point under the fingers is the one thing that must not
+  // move, so the origin is solved for rather than set.
+  zoomAbout(clientX, clientY, scale) {
+    const view = this.container.getBoundingClientRect()
+    const next = Math.min(Math.max(scale, MinScale), MaxScale)
+
+    const x = clientX - view.left
+    const y = clientY - view.top
+
+    const planeX = (x - this.origin.x) / this.scale
+    const planeY = (y - this.origin.y) / this.scale
+
+    this.scale = next
+    this.origin.x = x - planeX * next
+    this.origin.y = y - planeY * next
+
+    this.place()
   }
 
   scrollIntoView(p) {
     const origin = Style.cellOrigin(p)
     const view = this.container.getBoundingClientRect()
 
-    const x = origin.x + this.origin.x
-    const y = origin.y + this.origin.y
+    const x = origin.x * this.scale + this.origin.x
+    const y = origin.y * this.scale + this.origin.y
 
     const margin = Style.StrideX * 2
 
@@ -270,8 +305,8 @@ export class ScoreView {
 
   cellUnder(clientX, clientY) {
     const view = this.container.getBoundingClientRect()
-    return Style.cellAt(clientX - view.left - this.origin.x,
-                        clientY - view.top - this.origin.y)
+    return Style.cellAt((clientX - view.left - this.origin.x) / this.scale,
+                        (clientY - view.top - this.origin.y) / this.scale)
   }
 
   // Input
@@ -283,10 +318,38 @@ export class ScoreView {
     let lane = null
     let started = false
 
+    // Every finger currently down, because a pinch is the one gesture here that is not
+    // about a single point.
+    const pointers = new Map()
+    let pinch = null
+
     const target = this.container
+
+    const midpoint = () => {
+      const [a, b] = [...pointers.values()]
+      return {
+        x: (a.x + b.x) / 2,
+        y: (a.y + b.y) / 2,
+        distance: Math.hypot(a.x - b.x, a.y - b.y)
+      }
+    }
 
     target.addEventListener('pointerdown', event => {
       if (event.button !== 0) return
+
+      pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
+
+      // A second finger means the gesture was never the one it looked like, so
+      // whatever the first was carrying is put back down where it was picked up.
+      if (pointers.size === 2) {
+        mode = null
+        this.showDrop(null)
+        const start = midpoint()
+        pinch = { distance: start.distance, scale: this.scale }
+        return
+      }
+
+      if (pointers.size > 2) return
 
       const p = this.cellUnder(event.clientX, event.clientY)
       const cell = this.score.at(p)
@@ -312,6 +375,16 @@ export class ScoreView {
     })
 
     target.addEventListener('pointermove', event => {
+      if (pointers.has(event.pointerId))
+        pointers.set(event.pointerId, { x: event.clientX, y: event.clientY })
+
+      if (pinch != null && pointers.size >= 2) {
+        const now = midpoint()
+        if (now.distance > 0 && pinch.distance > 0)
+          this.zoomAbout(now.x, now.y, pinch.scale * now.distance / pinch.distance)
+        return
+      }
+
       if (mode == null) return
 
       const dx = event.clientX - lastX
@@ -338,6 +411,9 @@ export class ScoreView {
     })
 
     const finish = event => {
+      pointers.delete(event.pointerId)
+      if (pointers.size < 2) pinch = null
+
       if (mode == null) return
 
       const p = this.cellUnder(event.clientX, event.clientY)
@@ -359,7 +435,9 @@ export class ScoreView {
     }
 
     target.addEventListener('pointerup', finish)
-    target.addEventListener('pointercancel', () => {
+    target.addEventListener('pointercancel', event => {
+      pointers.delete(event.pointerId)
+      if (pointers.size < 2) pinch = null
       this.showDrop(null)
       mode = null
     })
@@ -372,9 +450,17 @@ export class ScoreView {
       this.delegate.placeNote?.(p)
     })
 
-    // Two axis scrolling, the way a trackpad already offers it.
+    // Two axis scrolling, the way a trackpad already offers it — and a pinch on one,
+    // which the browser reports as a wheel with the modifier held.
     target.addEventListener('wheel', event => {
       event.preventDefault()
+
+      if (event.ctrlKey || event.metaKey) {
+        this.zoomAbout(event.clientX, event.clientY,
+                       this.scale * Math.exp(-event.deltaY / 220))
+        return
+      }
+
       this.pan(-event.deltaX, -event.deltaY)
     }, { passive: false })
   }

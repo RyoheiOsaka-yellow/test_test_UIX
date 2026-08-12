@@ -142,13 +142,63 @@ export class JacquardApp {
     this.centre = element('div', 'centre')
     this.bottom = element('div', 'bottom')
 
+    // Where every panel goes when there is no room for columns: one sheet across the
+    // bottom, scrolled rather than arranged, and with a handle on it — because the
+    // plane is what the screen is for and a sheet that could not be got out of the way
+    // would be a phone showing half a score.
+    this.sheet = element('div', 'sheet')
+    this.sheetBody = element('div', 'sheet-body')
+
+    this.sheetHandle = button('▾', () => {
+      this.sheet.classList.toggle('collapsed')
+      this.sheetHandle.textContent =
+        this.sheet.classList.contains('collapsed') ? '▴' : '▾'
+    }, 'sheet-handle')
+
+    this.sheet.append(this.sheetHandle, this.sheetBody)
+
     this.root.append(this.leftColumn, this.innerColumn, this.rightColumn,
-                     this.centre, this.bottom)
+                     this.centre, this.bottom, this.sheet)
 
     this.rightColumn.appendChild(this.buildTransport())
 
     this.cursorPanels = element('div', 'stack-panels')
     this.rightColumn.appendChild(this.cursorPanels)
+
+    this.followTheWindow()
+  }
+
+  // How much room there is, in the three answers the layout has.
+  //
+  // The columns are what this interface is: the cursor's panels on the right, the
+  // sends inside them, the channels in the corner they never reach. Each one is given
+  // up in turn as the window narrows rather than all at once — a tablet in portrait
+  // loses the inner column and keeps the rest, and only a phone gives up the
+  // arrangement entirely for a sheet that is scrolled.
+  //
+  // It is settled here rather than in a media query because what changes is which
+  // container a panel is appended to, and only this side knows that. What the query
+  // does is the part that is genuinely a style: how wide a card is, and where the
+  // sheet sits.
+  layoutFor(width) {
+    if (width < 760) return 'narrow'
+    if (width < 1180) return 'medium'
+    return 'wide'
+  }
+
+  followTheWindow() {
+    const settle = () => {
+      const layout = this.layoutFor(window.innerWidth)
+      if (layout === this.layout) return
+
+      this.layout = layout
+      document.body.dataset.layout = layout
+      if (this.editor != null) this.refreshPanels()
+    }
+
+    settle()
+    window.addEventListener('resize', settle)
+    window.addEventListener('orientationchange', settle)
   }
 
   buildTransport() {
@@ -223,13 +273,22 @@ export class JacquardApp {
   }
 
   refreshPanels() {
-    this.cursorPanels.textContent = ''
-    this.innerColumn.textContent = ''
-    this.leftColumn.textContent = ''
-    this.centre.textContent = ''
-    this.bottom.textContent = ''
+    for (const container of [this.cursorPanels, this.innerColumn, this.leftColumn,
+                             this.centre, this.bottom, this.sheetBody])
+      container.textContent = ''
 
-    this.cursorPanels.appendChild(tilePanel(this))
+    // Which container each panel goes in, which is the whole of what the layout
+    // decides. A narrow window has one answer for all of them.
+    const narrow = this.layout === 'narrow'
+
+    const cursor = narrow ? this.sheetBody : this.cursorPanels
+    // A medium window keeps the cursor's column and gives up the one inside it, so the
+    // sends stack under the panels they are read against rather than beside them.
+    const sends = narrow ? this.sheetBody
+      : this.layout === 'medium' ? this.cursorPanels : this.innerColumn
+    const corner = narrow ? this.sheetBody : this.leftColumn
+
+    cursor.appendChild(tilePanel(this))
 
     // Beside the tile panel comes up either the Sound panel, while a CHAN cell is
     // selected, or the Lock panel, while a lock is. No cell is both, which is why they
@@ -237,17 +296,30 @@ export class JacquardApp {
     const cell = this.editor.cell
 
     if (cell.tile instanceof AbsoluteParamTile || cell.tile instanceof RelativeParamTile)
-      this.cursorPanels.appendChild(lockPanel(this))
+      cursor.appendChild(lockPanel(this))
     else if (cell.kind === CellKind.Head && cell.tile instanceof ChannelTile)
-      this.cursorPanels.appendChild(soundPanel(this))
+      cursor.appendChild(soundPanel(this))
 
     if (this.showing.sendFx)
-      for (const node of sendFxPanels(this)) this.innerColumn.appendChild(node)
+      for (const node of sendFxPanels(this)) sends.appendChild(node)
 
-    if (this.showing.channels) this.leftColumn.appendChild(channelsPanel(this))
-    if (this.showing.rings) this.leftColumn.appendChild(this.rings.node)
-    if (this.showing.global) this.centre.appendChild(globalPanel(this))
-    if (this.showing.live) this.bottom.appendChild(livePanel(this))
+    if (this.showing.channels) corner.appendChild(channelsPanel(this))
+    if (this.showing.rings) corner.appendChild(this.rings.node)
+
+    // The Global panel is the one that comes up in the middle of the screen, because a
+    // limiter is set while listening to the whole mix. A phone has no middle to spare,
+    // so it joins the sheet like everything else.
+    if (this.showing.global)
+      (narrow ? this.sheetBody : this.centre).appendChild(globalPanel(this))
+
+    // The live effects are played rather than read, so they sit where both thumbs
+    // already are: across the bottom, which on a phone is the near end of the sheet —
+    // first in it, so that it is what a thumb lands on before anything is scrolled.
+    if (this.showing.live) {
+      const live = livePanel(this)
+      if (narrow) this.sheetBody.prepend(live)
+      else this.bottom.appendChild(live)
+    }
 
     this.visualizer.enabled = this.showing.visualizer
     this.visualizer.theme = this.theme

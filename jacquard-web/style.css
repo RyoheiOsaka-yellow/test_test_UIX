@@ -36,13 +36,25 @@ html, body {
   margin: 0;
   height: 100%;
   overflow: hidden;
+  overscroll-behavior: none;
   background: var(--bg);
   color: var(--note-text);
   font-family: system-ui, -apple-system, "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-#root { position: fixed; inset: 0; }
+/* Fixed to the viewport the browser actually gives, which on a phone is not the one
+   the window reports: dvh follows the address bar as it comes and goes, and the safe
+   area is what the chrome is held clear of. */
+#root {
+  position: fixed;
+  inset: 0;
+  height: 100dvh;
+  --inset-top: env(safe-area-inset-top, 0px);
+  --inset-bottom: env(safe-area-inset-bottom, 0px);
+  --inset-left: env(safe-area-inset-left, 0px);
+  --inset-right: env(safe-area-inset-right, 0px);
+}
 
 /* The plane */
 
@@ -67,6 +79,9 @@ html, body {
   left: 0;
   top: 0;
   transform: translate(0, 0);
+  /* The corner and not the middle, because the zoom solves for an origin that keeps
+     the point under the fingers still and that arithmetic is written about this one. */
+  transform-origin: 0 0;
 }
 
 .cell {
@@ -200,11 +215,63 @@ html, body {
   z-index: 3;
 }
 
-.column.right { top: 8px; right: 8px; width: 232px; max-height: calc(100% - 16px);
-                overflow-y: auto; }
-.column.inner { top: 8px; right: 252px; width: 200px; max-height: calc(100% - 16px);
-                overflow-y: auto; }
-.column.left { top: 8px; left: 8px; width: 168px; }
+.column.right {
+  top: calc(8px + var(--inset-top));
+  right: calc(8px + var(--inset-right));
+  width: clamp(200px, 22vw, 240px);
+  max-height: calc(100% - 16px - var(--inset-top) - var(--inset-bottom));
+  overflow-y: auto;
+}
+
+.column.inner {
+  top: calc(8px + var(--inset-top));
+  right: calc(clamp(200px, 22vw, 240px) + 16px + var(--inset-right));
+  width: clamp(180px, 18vw, 208px);
+  max-height: calc(100% - 16px - var(--inset-top) - var(--inset-bottom));
+  overflow-y: auto;
+}
+
+.column.left {
+  top: calc(8px + var(--inset-top));
+  left: calc(8px + var(--inset-left));
+  width: clamp(150px, 16vw, 178px);
+  max-height: calc(100% - 16px - var(--inset-top) - var(--inset-bottom));
+  overflow-y: auto;
+}
+
+/* The sheet: one column across the bottom, holding whatever the columns held, and
+   scrolled rather than arranged. Empty in every layout but the narrow one, where it
+   is the whole of the chrome below the transport. */
+.sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px calc(8px + var(--inset-left)) calc(8px + var(--inset-bottom))
+           calc(8px + var(--inset-right));
+  max-height: 52dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  z-index: 5;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.55) 22px);
+}
+
+body[data-layout="narrow"] .sheet { display: flex; }
+
+.sheet-body { display: flex; flex-direction: column; gap: 8px; }
+.sheet.collapsed .sheet-body { display: none; }
+
+/* The handle is the whole of the switch: a sheet is put away by the thing that says
+   it can be. */
+.sheet-handle {
+  align-self: center;
+  width: 64px;
+  padding: 0;
+  opacity: 0.75;
+}
 
 .centre {
   position: absolute;
@@ -216,9 +283,10 @@ html, body {
 
 .bottom {
   position: absolute;
-  bottom: 8px;
+  bottom: calc(8px + var(--inset-bottom));
   left: 50%;
   transform: translateX(-50%);
+  max-width: calc(100vw - 16px);
   z-index: 4;
 }
 
@@ -359,19 +427,9 @@ html, body {
 
 /* The live effects: six columns of two, the smaller of each pair on top. */
 
-.live-panel { flex-direction: row; gap: 6px; }
+.live-panel { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .live-column { display: flex; flex-direction: column; gap: 4px; }
 .live-column .control { width: 78px; }
-
-/* A fingertip covers about nine millimetres of glass whatever is under it, so what
-   grows on a touch screen is the targets and not the air between them. */
-
-@media (pointer: coarse) {
-  :root { --row-h: 30px; --type: 13px; }
-  .column.right { width: 268px; }
-  .column.inner { right: 288px; width: 236px; }
-  .live-column .control { width: 92px; }
-}
 
 /* ---------------------------------------------------------------------------
    The rack theme.
@@ -902,4 +960,86 @@ body[data-theme="neon"] .live-panel .control {
 body[data-theme="neon"] .live-panel .control:hover {
   background: hsl(var(--hue, 265) 85% 55% / 0.22);
   box-shadow: 0 0 16px hsl(var(--hue, 265) 100% 58% / 0.45);
+}
+
+/* ---------------------------------------------------------------------------
+   Layouts.
+
+   Three of them, and each gives up one thing rather than rearranging everything:
+   a wide window has the columns this interface is made of, a medium one drops
+   the column inside the cursor's and stacks the sends under what they are read
+   against, and a narrow one gives up the arrangement entirely — the transport
+   becomes a bar across the top and every panel goes into one sheet at the
+   bottom, where a thumb already is.
+
+   Which container a panel is in is decided in app.js, since only that side knows
+   what a panel is. What is here is the part that is genuinely a style: how wide
+   a card is, where the sheet sits, and how large a target has to be.
+   --------------------------------------------------------------------------- */
+
+body[data-layout="medium"] .column.inner { display: none; }
+
+body[data-layout="narrow"] .column.left,
+body[data-layout="narrow"] .column.inner,
+body[data-layout="narrow"] .centre { display: none; }
+
+/* The transport becomes the bar across the top, which is the one thing that has to
+   be reachable whatever else is scrolled. */
+body[data-layout="narrow"] .column.right {
+  top: 0;
+  left: 0;
+  right: 0;
+  width: auto;
+  max-height: none;
+  overflow: visible;
+  padding: calc(6px + var(--inset-top)) calc(6px + var(--inset-right)) 0
+           calc(6px + var(--inset-left));
+}
+
+body[data-layout="narrow"] .transport {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  border-radius: 12px;
+  gap: 6px;
+}
+
+body[data-layout="narrow"] .transport .control.play { flex: 0 0 auto; padding: 0 18px; }
+body[data-layout="narrow"] .transport .value-bar { flex: 1 1 130px; }
+body[data-layout="narrow"] .transport .stepper { flex: 1 1 170px; }
+body[data-layout="narrow"] .transport .switches {
+  flex: 1 1 100%;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 1px;
+}
+
+body[data-layout="narrow"] .transport .switches::-webkit-scrollbar { display: none; }
+body[data-layout="narrow"] .transport .switches .control { flex: 0 0 auto; }
+body[data-layout="narrow"] .status { flex: 1 1 100%; text-align: right; font-size: 9px; }
+
+/* The plane keeps the whole window and the sheet is drawn over it, because what a
+   score plane is for is being looked at: a phone that split the two would have
+   half a plane and half a panel, and neither would be usable. */
+body[data-layout="narrow"] .sheet .panel { width: 100%; }
+
+body[data-layout="narrow"] .live-panel .control { width: auto; }
+body[data-layout="narrow"] .live-column { flex: 1 1 88px; }
+
+body[data-layout="narrow"] .palette { grid-template-columns: repeat(3, 1fr); }
+
+/* A fingertip covers about nine millimetres of glass whatever is under it, so what
+   grows on a touch screen is the targets and not the air between them. */
+@media (pointer: coarse) {
+  :root { --row-h: 30px; --type: 13px; }
+  .live-column .control { width: 92px; }
+  .control.lap { height: 24px; font-size: 10px; }
+}
+
+/* A window short enough that a column would not fit anyway: the sheet takes less of
+   it, since what is left has to be worth looking at. */
+@media (max-height: 520px) {
+  .sheet { max-height: 44dvh; }
+  body[data-layout="narrow"] .status { display: none; }
 }
