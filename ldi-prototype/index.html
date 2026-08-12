@@ -633,11 +633,15 @@ ja:{
  "v.fail8":"同一位置に重複した配置があります — アトムが無駄になっています。",
  "v.fail9":"反復の間隔が狭く、コピーが塊に融合しています。",
  "v.fail10":"単独のプリミティブを置いただけで、マークとして成立していません。",
+ "v.fail11":"視覚要素が {0} 群に散っており、ひとつのマークとして読めません。",
+ "v.fail12":"ほぼ同じ大きさの塗りが同じ位置に重なっています — 関係ではなく偶然です。",
  "n.small0":"16px でストロークは {0}px — 再現下限 0.55px を下回ります。",
  "n.small1":"16px でストロークは {0}px を保持し、再現下限に余裕があります。",
  "n.cov":"インク被覆率 {0}%、アトム {1} 個、構築オペレーション {2} 件。",
  "n.contrast":"インクと地のパレットコントラスト {0}:1。",
  "n.centroid":"重心のずれ {0}u、外形範囲 {1}u。",
+ "n.unity1":"視覚要素はひとつの連続したシルエットにまとまっています。",
+ "n.unity":"視覚要素が {0} 群に分かれています — まとまりの点で不利になります。",
  "n.near":"最も近いコーパス構成は {0}、一致度 {1}% — デザイン衝突のみで、商標に関する見解ではありません。",
  "n.favicon":"ブリーフの 16px 制約を満たしていません。",
  "n.single":"この被覆率では単色フォールバックでアクセントの分離が失われます。",
@@ -773,11 +777,15 @@ en:{
  "v.fail8":"Placements land on top of each other — the atoms are wasted.",
  "v.fail9":"Repeat spacing is too tight; the copies fuse into one lump.",
  "v.fail10":"A lone primitive placed as-is does not resolve into a mark.",
+ "v.fail11":"The parts scatter into {0} groups and stop reading as one mark.",
+ "v.fail12":"Two fills of near-identical size sit on the same spot — coincidence, not relation.",
  "n.small0":"At 16 px the stroke lands near {0} px — under the 0.55 px reproduction floor.",
  "n.small1":"Stroke holds {0} px at 16 px, clear of the reproduction floor.",
  "n.cov":"Ink coverage {0}% across {1} atoms in {2} construction ops.",
  "n.contrast":"Palette contrast {0}:1 between ink and ground.",
  "n.centroid":"Centroid offset {0}u, outer extent {1}u.",
+ "n.unity1":"The visible parts resolve into one connected silhouette.",
+ "n.unity":"The visible parts fall into {0} groups, which costs unity.",
  "n.near":"Nearest corpus construction {0} at {1}% — design collision only, not a trademark opinion.",
  "n.favicon":"Fails the 16 px constraint carried from the brief.",
  "n.single":"Flat-colour fallback loses the accent separation at this coverage.",
@@ -866,26 +874,29 @@ const hex=n=>n.toString(16).toUpperCase().padStart(8,"0");
    Eight primitives, six operators. There are no logo templates above this:
    every mark in the system is some tree over exactly these.
    ========================================================================== */
+/* Every dimension is quantised to the 2u drafting grid and every angle to
+   15 degrees. Arbitrary decimals are what make a construction look accidental. */
 const LEAVES={
-  ring:   {stroke:"always", params:[["r",10,52,.5],["gap",0,.6,.01]]},
-  arcband:{stroke:"always", params:[["r",10,50,.5],["a0",0,345,15],["sweep",30,330,15]]},
-  disc:   {stroke:"never",  params:[["r",3,32,.5]]},
-  poly:   {stroke:"either", params:[["r",8,50,.5],["sides",3,8,1]]},
-  bar:    {stroke:"never",  params:[["len",8,92,1],["th",3,28,.5]]},
-  chev:   {stroke:"always", params:[["span",8,42,1],["spread",8,48,1]]},
-  cross:  {stroke:"always", params:[["len",10,54,1],["th",2,16,.5]]},
-  wedge:  {stroke:"either", params:[["r",10,50,.5],["sweep",20,300,10]]}
+  ring:   {stroke:"always", params:[["r",10,52,2],["gap",0,.5,1/12]]},
+  arcband:{stroke:"always", params:[["r",10,50,2],["a0",0,345,15],["sweep",30,330,30]]},
+  disc:   {stroke:"never",  params:[["r",4,32,2]]},
+  poly:   {stroke:"either", params:[["r",8,50,2],["sides",3,8,1]]},
+  bar:    {stroke:"never",  params:[["len",8,92,2],["th",4,28,2]]},
+  chev:   {stroke:"always", params:[["span",8,42,2],["spread",8,48,2]]},
+  cross:  {stroke:"always", params:[["len",10,54,2],["th",2,16,2]]},
+  wedge:  {stroke:"either", params:[["r",10,50,2],["sweep",30,300,30]]}
 };
 const OPS={
-  "repeat.radial":{params:[["n",2,10,1],["radius",0,38,.5],["phase",0,345,15]]},
-  "repeat.linear":{params:[["n",2,7,1],["dx",-30,30,1],["dy",-30,30,1]]},
-  "nest":         {params:[["n",2,5,1],["ratio",.35,.85,.01],["twist",0,90,5]]},
+  "repeat.radial":{params:[["n",2,10,1],["radius",0,38,2],["phase",0,345,15]]},
+  "repeat.linear":{params:[["n",2,7,1],["dx",-30,30,2],["dy",-30,30,2]]},
+  "nest":         {params:[["n",2,5,1],["ratio",.4,.8,.05],["twist",0,90,15]]},
   "mirror":       {params:[["axis",0,1,1]]},
-  "shift":        {params:[["d",0,34,.5],["angle",0,345,15]]},
+  "shift":        {params:[["d",0,34,2],["angle",0,345,15]]},
   "rotate":       {params:[["deg",0,345,15]]}
 };
 const LEAF_KEYS=Object.keys(LEAVES), OP_KEYS=Object.keys(OPS);
 const ROLES=["ink","accent","ground"], MODES=["stroke","fill"];
+const SOLID_KINDS=["disc","poly","wedge","bar"];
 const PLACEMENT_BUDGET=26;
 
 const ATTRIBUTES=[
@@ -1062,14 +1073,18 @@ function opParamText(o){
 }
 
 /* The single place a genome becomes geometry. */
+let MASK_SEQ=0;
 function construct(g){
   const P=palOf(g);
   const ground=g.invert?P.ink:P.bg;
   const ink=g.invert?P.bg:P.ink;
   const accent=g.mono?ink:P.accent;
-  const colOf=role=>role==="ground"?ground:(role==="accent"?accent:ink);
-  const nodes=[],body=[],placed=[];
-  let atoms=0,area=0,extent=0,cx=0,cy=0,mass=0;
+  /* Knockouts paint into a mask, so they genuinely subtract from the mark
+     instead of painting the page colour over it. The silhouette stays correct
+     on any background and survives export. */
+  const colOf=role=>role==="ground"?"#000":(role==="accent"?accent:ink);
+  const nodes=[],body=[],cut=[],placed=[];
+  let atoms=0,area=0,extent=0,visExtent=0,cx=0,cy=0,mass=0;
 
   g.tree.forEach((b,bi)=>{
     const places=expand(b,g);
@@ -1080,25 +1095,28 @@ function construct(g){
     const col=colOf(b.role);
     const rad=leafRadius(b.leaf,g,b.mode), ar=leafArea(b.leaf,g,b.mode);
     places.forEach(pl=>{
-      body.push(leafSvg(b,pl,g,col));
+      (b.role==="ground"?cut:body).push(leafSvg(b,pl,g,col));
       placed.push({b,pl,rad:rad*pl.s});
       atoms++;
       const a=ar*pl.s*pl.s*(b.role==="ground"?-.7:1);
       area+=a;
       if(b.role!=="ground"){ cx+=pl.x*Math.abs(a); cy+=pl.y*Math.abs(a); mass+=Math.abs(a); }
-      extent=Math.max(extent,Math.hypot(pl.x-60,pl.y-60)+rad*pl.s);
+      const reach=Math.hypot(pl.x-60,pl.y-60)+rad*pl.s;
+      extent=Math.max(extent,reach);
+      if(b.role!=="ground") visExtent=Math.max(visExtent,reach);
     });
   });
   /* Three ways a tree wastes its atoms: exact duplicates, repeats packed so
      tightly they read as one lump, and atoms buried inside a same-coloured
      solid. What survives that is what the viewer actually reads. */
-  const SOLID=["disc","poly","wedge","bar"];
+  const SOLID=SOLID_KINDS;
   placed.forEach(x=>{
     if(x.hidden) return;
     for(const y of placed){
       if(y===x||y.hidden) continue;
       if(!(y.b.mode==="fill"&&SOLID.includes(y.b.leaf.k))) continue;
-      if(colOf(x.b.role)!==colOf(y.b.role)) continue;
+      if(y.b.role!=="ground"&&colOf(x.b.role)!==colOf(y.b.role)) continue;
+      if(y.b.role==="ground"&&x.b.role==="ground") continue;
       if(y.rad<=x.rad) continue;
       if(Math.hypot(x.pl.x-y.pl.x,x.pl.y-y.pl.y)+x.rad<=y.rad*.88){x.hidden=true;return;}
     }
@@ -1116,8 +1134,36 @@ function construct(g){
         if(repeats&&d<tight*(mine[i].rad+mine[j].rad)) merged=true;
       }
   });
+  /* How many separate things the eye has to hold. One connected silhouette is
+     a mark; scattered parts are a diagram. */
+  const vis=placed.filter(x=>!x.hidden&&x.b.role!=="ground");
+  const parent=vis.map((_,i)=>i);
+  const find=i=>{while(parent[i]!==i){parent[i]=parent[parent[i]];i=parent[i];}return i;};
+  for(let i=0;i<vis.length;i++)for(let j=i+1;j<vis.length;j++){
+    const d=Math.hypot(vis[i].pl.x-vis[j].pl.x,vis[i].pl.y-vis[j].pl.y);
+    if(d<vis[i].rad+vis[j].rad-.5){const a=find(i),b2=find(j); if(a!==b2) parent[a]=b2;}
+  }
+  const components=vis.length?new Set(vis.map((_,i)=>find(i))).size:0;
+
+  const uid="k"+(++MASK_SEQ);
+  const drawn=cut.length
+    ? `<defs><mask id="${uid}" maskUnits="userSpaceOnUse" x="-70" y="-70" width="440" height="340">`
+      +`<rect x="-70" y="-70" width="440" height="340" fill="#fff"/>${cut.join("")}</mask></defs>`
+      +`<g mask="url(#${uid})">${body.join("")}</g>`
+    : body.join("");
+
+  /* Two solids sitting on the same spot at nearly the same size is a
+     coincidence, not a relation: concentric forms need a clear size step. */
+  let coincident=false;
+  const solids=placed.filter(x=>x.b.mode==="fill"&&SOLID.includes(x.b.leaf.k));
+  for(let i=0;i<solids.length&&!coincident;i++)for(let j=i+1;j<solids.length;j++){
+    if(solids[i].b===solids[j].b) continue;
+    const d=Math.hypot(solids[i].pl.x-solids[j].pl.x,solids[i].pl.y-solids[j].pl.y);
+    const ratio=solids[i].rad/solids[j].rad;
+    if(d<.3*Math.min(solids[i].rad,solids[j].rad)&&ratio>.78&&ratio<1.28){coincident=true;break;}
+  }
   const centroid=mass>0?{x:cx/mass,y:cy/mass}:{x:60,y:60};
-  return {nodes,body:body.join(""),placed,atoms,visibleAtoms,extent,dup,merged,
+  return {nodes,body:drawn,placed,atoms,visibleAtoms,components,extent,visExtent,dup,merged,coincident,
     coverage:clamp(area/(F*F),0,1),
     offset:Math.hypot(centroid.x-60,centroid.y-60),
     palette:P,ground,ink};
@@ -1234,10 +1280,12 @@ function evaluate(g,cons){
   if(!visible) fail.push(t("v.fail6"));
   if(c.dup) fail.push(t("v.fail8"));
   if(c.merged) fail.push(t("v.fail9"));
+  if(c.components>4) fail.push(t("v.fail11",c.components));
+  if(c.coincident) fail.push(t("v.fail12"));
   /* A lone filled convex solid is a shape, not a mark — judged on what is
      actually visible, since knockouts and no-op operators change neither. */
   if(c.visibleAtoms<2&&g.tree.every(b=>b.mode==="fill"||b.role==="ground")
-     &&["disc","poly","wedge","bar"].includes(primaryLeaf(g))) fail.push(t("v.fail10"));
+     &&SOLID_KINDS.includes(primaryLeaf(g))) fail.push(t("v.fail10"));
 
   const strokePx=(effW/F)*16;
   const smallStroke=stroked?clamp((strokePx-.34)/.85,0,1):1;
@@ -1251,8 +1299,12 @@ function evaluate(g,cons){
     100-Math.abs(ops-3)*8-Math.max(0,c.visibleAtoms-12)*4
     -(c.visibleAtoms<2?34:0)-(c.visibleAtoms<3?12:0)-(atoms-c.visibleAtoms)*5,0,100));
   const sym=symmetryOf(g);
+  /* Unity: one connected silhouette reads as a mark, several parts do not —
+     unless they are a regular constellation, which the eye groups by itself. */
+  const constellation=sym==="radial"&&g.tree.length===1;
+  const unity=c.components<=1?100:(constellation?84:clamp(100-(c.components-1)*22,0,100));
   const balance=Math.round(clamp(
-    (sym==="radial"?88:sym==="bilateral"?80:66)-c.offset*2.4
+    (sym==="radial"?86:sym==="bilateral"?80:68)-c.offset*2.4
     +(c.extent>34&&c.extent<52?10:0)+(cov>.12&&cov<.32?6:0),0,100));
 
   const fv=vec(g,c);
@@ -1260,12 +1312,13 @@ function evaluate(g,cons){
   for(const x of CORPUS){const s=simOf(fv,x.v); if(s>maxSim){maxSim=s;near=x;}}
   const distinct=Math.round(clamp((.94-maxSim)/.30,0,1)*100);
   const status=maxSim>=.905?"conflict":maxSim>=.828?"review":"clear";
-  const overall=Math.round(.30*small+.14*contrast+.20*distinct+.16*complexity+.20*balance);
+  const overall=Math.round(.24*small+.11*contrast+.17*distinct+.13*complexity+.15*balance+.20*unity);
 
   const notes=[];
   if(stroked) notes.push(smallStroke<.5?t("n.small0",strokePx.toFixed(2)):t("n.small1",strokePx.toFixed(2)));
   notes.push(t("n.cov",(cov*100).toFixed(1),atoms,ops));
   notes.push(t("n.centroid",c.offset.toFixed(1),c.extent.toFixed(1)));
+  notes.push(c.components<=1?t("n.unity1"):t("n.unity",c.components));
   notes.push(t("n.contrast",contr.toFixed(1)));
   notes.push(t("n.near",near.id,(maxSim*100).toFixed(1)));
   if(cons){
@@ -1274,7 +1327,7 @@ function evaluate(g,cons){
     if(cons.engrave&&atoms>7) notes.push(t("n.engrave"));
   }
   return {valid:fail.length===0,fail,cov,atoms,ops,extent:c.extent,offset:c.offset,
-    perception:{small,contrast,complexity,balance,distinct,overall},
+    perception:{small,contrast,complexity,balance,distinct,unity,overall},
     similarity:{max:maxSim,status,near:near.id},
     pass:fail.length===0&&small>=56&&overall>=62,notes};
 }
@@ -1328,7 +1381,12 @@ function makeRecipe(r,T){
   for(let i=0;i<nb;i++){
     const k=pick(r,T.leaves), spec=LEAVES[k];
     const mode=spec.stroke==="always"?"stroke":spec.stroke==="never"?"fill":(r()<.5?"fill":"stroke");
-    const role=i===0?"ink":(r()<.5?"accent":(r()<.62?"ink":"ground"));
+    /* A logo is usually one colour whose interest comes from what is cut out
+       of it. A second filled solid laid over the first only ever makes a blob,
+       so solids may join the mark by cutting into it, never by piling on;
+       strokes still read as separate structure and may be added. */
+    const solidFill=mode==="fill"&&SOLID_KINDS.includes(k);
+    const role=i===0?"ink":(solidFill?"ground":(r()<.42?"ground":(r()<.62?"accent":"ink")));
     const nops=r()<.3?0:(r()<.72?1:2);
     const pool=T.ops.slice(), ops=[];
     for(let j=0;j<nops&&pool.length;j++){
@@ -1343,13 +1401,34 @@ function makeRecipe(r,T){
 Object.values(OPS).concat(Object.values(LEAVES)).forEach(spec=>spec.params.forEach(([k])=>{
   if(k==="k") throw new Error("parameter name collides with node kind");
 }));
+/* Placement distances are locked to simple multiples of the primitive they
+   move, so copies land tangent, concentric or half-lapped instead of at some
+   arbitrary offset. That relation is most of what reads as "designed". */
+const RELATE=[.5,.75,1,1.25,1.5,2];
+function relate(v,dim,lo,hi){
+  if(!dim||dim<1) return v;
+  let best=v,bd=1e9;
+  for(const k of RELATE){
+    const c=clamp(r2(k*dim),lo,hi);
+    const d=Math.abs(c-Math.abs(v));
+    if(d<bd){bd=d;best=v<0?-c:c;}
+  }
+  return best;
+}
+function leafDim(leaf){
+  return leaf.r!==undefined?leaf.r:(leaf.len!==undefined?leaf.len:leaf.spread);
+}
 function instantiate(recipe,r){
   return recipe.map(b=>{
     const leaf={k:b.leafK};
     LEAVES[b.leafK].params.forEach(([k,lo,hi,st])=>{leaf[k]=q(r,b.win[k],st,lo,hi);});
+    const dim=leafDim(leaf);
     const ops=b.ops.map(o=>{
       const p={k:o.k};
-      OPS[o.k].params.forEach(([k,lo,hi,st])=>{p[k]=q(r,o.win[k],st,lo,hi);});
+      OPS[o.k].params.forEach(([k,lo,hi,st])=>{
+        p[k]=q(r,o.win[k],st,lo,hi);
+        if(k==="radius"||k==="d"||k==="dx"||k==="dy") p[k]=relate(p[k],dim,lo,hi);
+      });
       return p;
     });
     return {leaf,ops,mode:b.mode,role:b.role};
@@ -1359,7 +1438,8 @@ function instantiate(recipe,r){
 function refit(g){
   g.scale=1;
   const c=construct(g);
-  if(c.extent>.5) g.scale=clamp(r2(46/c.extent),.3,1.8);
+  const reach=c.visExtent>.5?c.visExtent:c.extent;
+  if(reach>.5) g.scale=clamp(r2(46/reach),.3,3.2);
   return g;
 }
 function buildGrammars(terrs,seed){
@@ -1445,14 +1525,15 @@ function mutate(src,r,T){
         OPS[ok].params.forEach(([p,lo,hi,st])=>{o[p]=q(r,[lo,hi],st,lo,hi);});
         ops.push(o);
       }
-      g.tree.push({leaf,ops,
-        mode:spec.stroke==="always"?"stroke":spec.stroke==="never"?"fill":(r()<.5?"fill":"stroke"),
-        role:r()<.6?"accent":(r()<.5?"ink":"ground")});
+      const mode=spec.stroke==="always"?"stroke":spec.stroke==="never"?"fill":(r()<.5?"fill":"stroke");
+      const solidFill=mode==="fill"&&SOLID_KINDS.includes(k);
+      g.tree.push({leaf,ops,mode,role:solidFill?"ground":(r()<.5?"accent":(r()<.5?"ink":"ground"))});
     }
   }else if(roll<.88){
-    const b=g.tree[Math.floor(r()*g.tree.length)];
+    const bi=Math.floor(r()*g.tree.length), b=g.tree[bi];
     if(r()<.6) b.role=pick(r,ROLES);
     else if(LEAVES[b.leaf.k].stroke==="either") b.mode=pick(r,MODES);
+    if(bi>0&&b.mode==="fill"&&SOLID_KINDS.includes(b.leaf.k)) b.role="ground";
     if(g.tree.every(x=>x.role==="ground")) g.tree[0].role="ink";
   }else if(roll<.96){
     const d=r();
@@ -1785,7 +1866,7 @@ function renderScreen(){
 }
 
 /* ---- Editor ------------------------------------------------------------ */
-const GLOBALS=[{k:"w",min:1.5,max:12,step:.1,unit:"u"},{k:"scale",min:.3,max:1.8,step:.01,unit:"×"},
+const GLOBALS=[{k:"w",min:1.5,max:12,step:.1,unit:"u"},{k:"scale",min:.3,max:3.2,step:.01,unit:"×"},
                {k:"rot",min:0,max:345,step:15,unit:"°"},{k:"rad",min:0,max:1,step:.01,unit:""}];
 function treeSummary(tree){
   return tree.map(b=>t("leaf."+b.leaf.k)+(b.ops.length?"+"+b.ops.map(o=>t("op."+o.k)).join("+"):"")).join(" / ");
@@ -1838,6 +1919,7 @@ function renderEditor(){
     ["m.distinct",ev.perception.distinct,base.perception.distinct],
     ["m.economy",ev.perception.complexity,base.perception.complexity],
     ["m.balance",ev.perception.balance,base.perception.balance],
+    ["m.unity",ev.perception.unity,base.perception.unity],
     ["m.proximity",Math.round(ev.similarity.max*1000)/10,Math.round(base.similarity.max*1000)/10]];
   $("#metrics").innerHTML=M.map(([k,v,b],i)=>{
     const d=r2(v-b),inv=i===6;
