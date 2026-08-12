@@ -2,699 +2,641 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 /* ============================================================
-   Tokens — light is the base set; dark redefines tokens only.
+   Drafting sheet — warm paper ground, olive ink, a single plate
+   colour reserved for construction lines and registration marks.
+   Light is the base token set; dark redefines tokens only.
    ============================================================ */
 :root{
-  --paper:#E9E7E4;
-  --panel:#F4F3F1;
-  --panel-2:#DFDCD8;
-  --sunk:#E1DEDA;
-  --line:#CFCBC6;
-  --line-2:#B4AEA8;
-  --ink:#1A1817;
-  --ink-2:#4E4945;
-  --ink-3:#847D77;
-  --accent:#C8452D;
-  --accent-ink:#FFFFFF;
-  --accent-wash:#F1DED8;
-  --pass:#2E7D5B;
-  --review:#8F6410;
-  --conflict:#9E2B1B;
-  --grid:rgba(26,24,23,.07);
-  --shadow:0 1px 0 rgba(26,24,23,.05), 0 8px 24px -18px rgba(26,24,23,.5);
-  --mono:ui-monospace,"SF Mono",SFMono-Regular,"Cascadia Mono",Menlo,Consolas,
-         "Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",Meiryo,monospace;
+  --paper:#EDEAE1;
+  --sheet:#F5F3EC;
+  --sunk:#E7E3D8;
+  --line:#D6D1C3;
+  --line-2:#BEB7A5;
+  --ink:#3E3C31;
+  --ink-2:#6E6A5B;
+  --ink-3:#9C9787;
+  --guide:#A8482F;
+  --guide-ink:#FFFFFF;
+  --pass:#4F7350;
+  --review:#8E6E1C;
+  --conflict:#A8482F;
+  --grid-f:rgba(62,60,49,.055);
+  --grid-m:rgba(62,60,49,.11);
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,
+          "Hiragino Mincho ProN","Yu Mincho","Noto Serif JP",serif;
   --sans:"Helvetica Neue",Helvetica,Arial,"Hiragino Sans","Hiragino Kaku Gothic ProN",
          "Yu Gothic","Noto Sans JP",Meiryo,ui-sans-serif,system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,
+         "Hiragino Sans","Yu Gothic","Noto Sans JP",monospace;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --paper:#121110;
-    --panel:#1B1A18;
-    --panel-2:#262322;
-    --sunk:#0D0C0B;
-    --line:#302D2B;
-    --line-2:#4A4540;
-    --ink:#E9E6E2;
-    --ink-2:#A7A09A;
-    --ink-3:#78716C;
-    --accent:#E4644A;
-    --accent-ink:#1A0F0C;
-    --accent-wash:#33201A;
-    --pass:#54B58E;
-    --review:#D3A03F;
-    --conflict:#E0705C;
-    --grid:rgba(233,230,226,.07);
-    --shadow:0 1px 0 rgba(0,0,0,.4), 0 10px 28px -20px #000;
+    --paper:#16150F; --sheet:#1F1D16; --sunk:#121108;
+    --line:#343123; --line-2:#4C4835;
+    --ink:#E9E5D6; --ink-2:#A9A490; --ink-3:#7B7665;
+    --guide:#D2705A; --guide-ink:#1A0F0B;
+    --pass:#6FA277; --review:#C79E43; --conflict:#D2705A;
+    --grid-f:rgba(233,229,214,.05); --grid-m:rgba(233,229,214,.10);
   }
 }
 :root[data-theme="dark"]{
-  --paper:#121110; --panel:#1B1A18; --panel-2:#262322; --sunk:#0D0C0B;
-  --line:#302D2B; --line-2:#4A4540;
-  --ink:#E9E6E2; --ink-2:#A7A09A; --ink-3:#78716C;
-  --accent:#E4644A; --accent-ink:#1A0F0C; --accent-wash:#33201A;
-  --pass:#54B58E; --review:#D3A03F; --conflict:#E0705C;
-  --grid:rgba(233,230,226,.07);
-  --shadow:0 1px 0 rgba(0,0,0,.4), 0 10px 28px -20px #000;
+  --paper:#16150F; --sheet:#1F1D16; --sunk:#121108;
+  --line:#343123; --line-2:#4C4835;
+  --ink:#E9E5D6; --ink-2:#A9A490; --ink-3:#7B7665;
+  --guide:#D2705A; --guide-ink:#1A0F0B;
+  --pass:#6FA277; --review:#C79E43; --conflict:#D2705A;
+  --grid-f:rgba(233,229,214,.05); --grid-m:rgba(233,229,214,.10);
 }
 
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{
   margin:0; background:var(--paper); color:var(--ink);
-  font-family:var(--mono); font-size:13px; line-height:1.5;
+  font-family:var(--sans); font-size:13.5px; line-height:1.6;
   overflow-x:hidden;
 }
-h1,h2,h3,h4{font-family:var(--sans); font-weight:600; letter-spacing:-.02em; margin:0; text-wrap:balance}
+h1,h2,h3{font-family:var(--serif); font-weight:400; margin:0; text-wrap:balance; letter-spacing:.01em}
 p{margin:0}
-button,input,select,textarea{font:inherit; color:inherit}
-:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
-::selection{background:var(--accent); color:var(--accent-ink)}
+button,input,select{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--guide); outline-offset:2px}
+::selection{background:var(--guide); color:var(--guide-ink)}
 
-.lbl{
-  font-size:10px; letter-spacing:.16em; text-transform:uppercase;
-  color:var(--ink-3); font-family:var(--mono);
-}
-.num{font-variant-numeric:tabular-nums}
-
-/* Japanese needs tighter tracking on micro-labels and more leading in prose */
-:root[lang="ja"] .lbl{letter-spacing:.08em}
-:root[lang="ja"] .intro{line-height:1.9; line-break:strict}
+.lbl{font-family:var(--mono); font-size:9.5px; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-3)}
+.num{font-family:var(--mono); font-variant-numeric:tabular-nums}
+:root[lang="ja"] .lbl{letter-spacing:.1em}
+:root[lang="ja"] .prose,
 :root[lang="ja"] .steps li,
-:root[lang="ja"] .rule,
-:root[lang="ja"] .empty{line-break:strict}
-:root[lang="ja"] .thesis{line-height:1.75}
-:root[lang="ja"] .reason span{line-height:1.7}
+:root[lang="ja"] .rule{line-break:strict}
 
-/* ============================================================ Shell */
-.shell{display:grid; grid-template-columns:236px minmax(0,1fr); min-height:100vh}
+.paper-grid{
+  background-image:
+    linear-gradient(var(--grid-f) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid-f) 1px,transparent 1px),
+    linear-gradient(var(--grid-m) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid-m) 1px,transparent 1px);
+  background-size:8px 8px,8px 8px,64px 64px,64px 64px;
+  background-position:center center;
+}
 
-/* ---- Rail */
-.rail{
-  border-right:1px solid var(--line); background:var(--panel);
-  display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow:auto;
-}
-.brand{padding:18px 18px 14px; border-bottom:1px solid var(--line)}
-.brand h1{font-size:15px; line-height:1.25}
-.brand .sub{margin-top:4px; font-size:11px; color:var(--ink-3)}
-.brand .v{margin-top:8px; display:flex; gap:8px; align-items:center}
-.tag{
-  font-size:10px; letter-spacing:.1em; text-transform:uppercase; padding:2px 6px;
-  border:1px solid var(--line-2); color:var(--ink-2); border-radius:2px;
-}
-.chain{padding:12px 0 8px; flex:1}
-.chain .lbl{padding:0 18px 8px; display:block}
-.step{
-  width:100%; text-align:left; background:none; border:0; cursor:pointer;
-  display:grid; grid-template-columns:26px 1fr auto; align-items:center; gap:8px;
-  padding:7px 18px; color:var(--ink-2); position:relative;
-}
-.step:hover{color:var(--ink); background:var(--panel-2)}
-.step .i{font-size:10px; color:var(--ink-3); font-variant-numeric:tabular-nums}
-.step .n{font-size:12px; letter-spacing:.01em}
-.step .c{font-size:10px; color:var(--ink-3); font-variant-numeric:tabular-nums}
-.step[data-on="1"]{color:var(--ink); background:var(--panel-2)}
-.step[data-on="1"]::before{
-  content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--accent);
-}
-.step[data-on="1"] .i{color:var(--accent)}
-.step[disabled]{opacity:.38; cursor:not-allowed}
-.railfoot{padding:12px 18px 16px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:10px}
-.railfoot .row-wrap{gap:6px}
+/* ---- Registration marks (used on every plate) */
+.reg{position:absolute; width:12px; height:12px; border:1px solid var(--guide); opacity:.5; pointer-events:none}
+.reg[data-p="tl"]{top:10px; left:10px; border-right:0; border-bottom:0}
+.reg[data-p="tr"]{top:10px; right:10px; border-left:0; border-bottom:0}
+.reg[data-p="bl"]{bottom:10px; left:10px; border-right:0; border-top:0}
+.reg[data-p="br"]{bottom:10px; right:10px; border-left:0; border-top:0}
 
-/* ---- Main */
-.main{display:flex; flex-direction:column; min-width:0}
-.topbar{
-  display:flex; align-items:center; justify-content:space-between; gap:16px;
-  padding:14px 28px; border-bottom:1px solid var(--line); background:var(--panel);
-  position:sticky; top:0; z-index:5; flex-wrap:wrap;
+/* ============================================================ Masthead */
+.top{position:sticky; top:0; z-index:20; background:var(--sheet); border-bottom:1px solid var(--line)}
+.mast{display:flex; align-items:center; justify-content:space-between; gap:20px; padding:14px 28px 12px; flex-wrap:wrap}
+.mast .id{display:flex; align-items:baseline; gap:12px; min-width:0}
+.mast h1{font-size:19px; line-height:1.15}
+.mast .sub{font-family:var(--mono); font-size:10px; letter-spacing:.12em; color:var(--ink-3)}
+
+.stepper{display:flex; border-top:1px solid var(--line); overflow-x:auto}
+.sp{
+  flex:1 0 auto; min-width:132px; text-align:left; cursor:pointer; position:relative;
+  background:none; border:0; border-right:1px solid var(--line);
+  display:flex; flex-direction:column; gap:1px; padding:11px 16px 12px;
 }
-.topbar .where{display:flex; flex-direction:column; gap:3px; min-width:0}
-.topbar h2{font-size:17px}
-.tools{display:flex; gap:8px; align-items:center}
-.view{padding:26px 28px 90px; display:none; max-width:1180px}
-.view[data-on="1"]{display:block}
-.intro{max-width:66ch; color:var(--ink-2); font-family:var(--sans); font-size:13.5px; line-height:1.6}
+.sp:last-child{border-right:0}
+.sp:hover{background:var(--sunk)}
+.sp .no{font-family:var(--mono); font-size:9.5px; color:var(--ink-3); letter-spacing:.06em}
+.sp .nm{font-family:var(--serif); font-size:15.5px; color:var(--ink-2); line-height:1.2}
+.sp .sub{font-family:var(--mono); font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3)}
+.sp[data-on="1"]{background:var(--sunk)}
+.sp[data-on="1"] .nm{color:var(--ink)}
+.sp[data-on="1"] .no{color:var(--guide)}
+.sp[data-on="1"]::before{content:""; position:absolute; inset:-1px 0 auto 0; height:2px; background:var(--guide)}
+
+/* ============================================================ Sheets */
+.sheet{
+  position:relative; max-width:1200px; margin:24px 28px 96px; padding:34px 40px 40px;
+  background:var(--sheet); border:1px solid var(--line); display:none;
+}
+.sheet[data-on="1"]{display:block}
+.sheet-head{max-width:70ch; margin-bottom:26px}
+.sheet-head h2{font-size:27px; line-height:1.2; margin-bottom:8px}
+.prose{color:var(--ink-2); font-size:13.5px; line-height:1.75}
+.hr{height:1px; background:var(--line); margin:28px 0}
 
 /* ---- Controls */
 .btn{
-  border:1px solid var(--line-2); background:var(--panel); color:var(--ink);
-  padding:7px 13px; border-radius:2px; cursor:pointer; font-size:12px;
-  letter-spacing:.02em; transition:background .12s, border-color .12s;
+  font-family:var(--mono); font-size:11.5px; letter-spacing:.04em;
+  border:1px solid var(--line-2); background:var(--sheet); color:var(--ink);
+  padding:6px 12px; border-radius:1px; cursor:pointer; transition:background .12s,border-color .12s,color .12s;
 }
-.btn:hover{background:var(--panel-2); border-color:var(--ink-3)}
-.btn[data-kind="primary"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
-.btn[data-kind="primary"]:hover{filter:brightness(1.06)}
+.btn:hover{background:var(--sunk); border-color:var(--ink-3)}
+.btn[data-kind="primary"]{background:var(--ink); border-color:var(--ink); color:var(--sheet)}
+.btn[data-kind="primary"]:hover{background:var(--ink-2); border-color:var(--ink-2)}
 .btn[data-kind="ghost"]{border-color:transparent; background:none; color:var(--ink-2)}
-.btn[data-kind="ghost"]:hover{color:var(--ink); background:var(--panel-2)}
+.btn[data-kind="ghost"]:hover{color:var(--ink); background:var(--sunk)}
+.btn[data-on="1"]{border-color:var(--guide); color:var(--guide)}
+.btn-sm{padding:4px 9px; font-size:10.5px}
 .btn:disabled{opacity:.4; cursor:not-allowed}
-.btn-sm{padding:4px 8px; font-size:11px}
-.btn[data-on="1"]{border-color:var(--accent); color:var(--accent)}
+.row-wrap{display:flex; gap:9px; flex-wrap:wrap; align-items:center}
+.stack{display:flex; flex-direction:column; gap:18px}
 
-input[type=text]{
-  background:var(--sunk); border:1px solid var(--line); color:var(--ink);
-  padding:8px 10px; border-radius:2px; width:100%;
-}
-select{
-  background:var(--sunk); border:1px solid var(--line); color:var(--ink);
-  padding:7px 8px; border-radius:2px; width:100%;
-}
-input[type=range]{width:100%; accent-color:var(--accent); background:none}
-
-.card{background:var(--panel); border:1px solid var(--line); border-radius:3px}
-.pad{padding:16px}
+input[type=text]{background:var(--paper); border:1px solid var(--line); color:var(--ink); padding:9px 11px; border-radius:1px; width:100%}
+select{background:var(--paper); border:1px solid var(--line); color:var(--ink); padding:8px 9px; border-radius:1px; width:100%}
+input[type=range]{width:100%; accent-color:var(--guide); background:none}
 
 /* ---- Brief */
-.brief{display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr); gap:20px; margin-top:22px; align-items:start}
-.field{display:flex; flex-direction:column; gap:6px; margin-bottom:16px}
-.hint{font-size:11px; color:var(--ink-3)}
+.brief{display:grid; grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr); gap:34px; align-items:start}
+.field{display:flex; flex-direction:column; gap:6px; margin-bottom:18px}
+.hint{font-family:var(--mono); font-size:10.5px; color:var(--ink-3); text-transform:none; letter-spacing:0}
 .chips{display:flex; flex-wrap:wrap; gap:6px}
 .chip{
-  border:1px solid var(--line-2); background:none; color:var(--ink-2);
-  padding:5px 10px; border-radius:99px; cursor:pointer; font-size:11.5px;
+  border:1px solid var(--line-2); background:none; color:var(--ink-2); font-size:12px;
+  padding:5px 11px; border-radius:99px; cursor:pointer; font-family:var(--sans);
 }
 .chip:hover{border-color:var(--ink-3); color:var(--ink)}
-.chip[data-on="1"]{background:var(--accent-wash); border-color:var(--accent); color:var(--ink)}
-.toggle{display:flex; align-items:center; gap:9px; padding:7px 0; cursor:pointer; border-bottom:1px dashed var(--line)}
+.chip[data-on="1"]{background:var(--ink); border-color:var(--ink); color:var(--sheet)}
+.toggle{display:flex; align-items:flex-start; gap:10px; padding:8px 0; cursor:pointer; border-bottom:1px dashed var(--line)}
 .toggle:last-child{border-bottom:0}
-.toggle input{accent-color:var(--accent); width:14px; height:14px; flex:none}
-.toggle span{font-size:12px; color:var(--ink-2)}
-.rule{display:flex; gap:10px; font-size:11.5px; color:var(--ink-2); padding:6px 0; border-bottom:1px dashed var(--line); line-height:1.65}
+.toggle input{accent-color:var(--guide); width:14px; height:14px; margin-top:3px; flex:none}
+.toggle span{font-size:12.5px; color:var(--ink-2)}
+.rule{display:grid; grid-template-columns:12px 1fr; gap:9px; font-size:12px; color:var(--ink-2); padding:7px 0; border-bottom:1px dashed var(--line); line-height:1.65}
 .rule:last-child{border-bottom:0}
-.rule b{color:var(--accent); font-weight:400; flex:none}
+.rule i{font-style:normal; color:var(--guide)}
+.blk{border:1px solid var(--line); padding:16px 18px}
+.blk h3{font-size:15px; margin-bottom:10px}
 
-/* ---- How to use */
-.steps{list-style:none; margin:0; padding:4px 0; counter-reset:s}
+/* meaning vector */
+.mv{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px 26px; margin-top:8px}
+.mvrow{display:flex; flex-direction:column; gap:5px}
+.mvrow .k{display:flex; justify-content:space-between; font-family:var(--mono); font-size:10.5px; color:var(--ink-3)}
+.mvrow .k b{font-weight:400; color:var(--ink-2)}
+.mvtrack{height:5px; background:var(--sunk); position:relative}
+.mvtrack i{position:absolute; inset:0 auto 0 0; background:var(--ink)}
+
+/* how to */
+.steps{list-style:none; margin:0; padding:0; counter-reset:s}
 .steps li{
-  counter-increment:s; display:grid; grid-template-columns:30px 1fr; gap:10px;
-  padding:9px 16px; border-bottom:1px dashed var(--line);
-  font-size:12px; color:var(--ink-2); line-height:1.7;
+  counter-increment:s; display:grid; grid-template-columns:34px 1fr; gap:12px;
+  padding:11px 0; border-bottom:1px dashed var(--line); font-size:12.5px; color:var(--ink-2); line-height:1.75;
 }
 .steps li:last-child{border-bottom:0}
 .steps li::before{
-  content:counter(s,decimal-leading-zero); color:var(--accent);
-  font-size:10.5px; font-variant-numeric:tabular-nums; padding-top:3px;
+  content:counter(s,decimal-leading-zero); font-family:var(--mono); font-size:10px;
+  color:var(--guide); padding-top:4px;
 }
-.steps li b{color:var(--ink); font-weight:400}
+.steps b{font-weight:400; color:var(--ink); font-family:var(--serif); font-size:14px}
+.kbd{font-family:var(--mono); font-size:10.5px; border:1px solid var(--line-2); padding:1px 5px; color:var(--ink-2)}
 
-/* ---- Grids */
-.grid-4{display:grid; grid-template-columns:repeat(auto-fill,minmax(232px,1fr)); gap:14px}
-.grid-cand{display:grid; grid-template-columns:repeat(auto-fill,minmax(186px,1fr)); gap:14px}
-
-/* ---- Territory card */
-.terr{cursor:pointer; overflow:hidden; display:flex; flex-direction:column; transition:border-color .12s}
+/* ---- Territory plates */
+.terrs{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:20px}
+.terr{border:1px solid var(--line); cursor:pointer; display:flex; flex-direction:column; background:var(--sheet); transition:border-color .14s}
 .terr:hover{border-color:var(--ink-3)}
-.terr[data-on="1"]{border-color:var(--accent)}
-.terr .head{padding:14px 15px 12px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:10px; align-items:flex-start}
-.terr h3{font-size:14px}
-.terr .thesis{padding:12px 15px; font-family:var(--sans); font-size:12.5px; line-height:1.55; color:var(--ink-2); flex:1}
-.terr .swatches{display:flex; gap:4px; padding:0 15px 12px}
-.sw{width:16px; height:16px; border-radius:2px; border:1px solid var(--line)}
-.bars{padding:0 15px 14px; display:flex; flex-direction:column; gap:5px}
-.bar{display:grid; grid-template-columns:64px 1fr 26px; align-items:center; gap:8px; font-size:10px; color:var(--ink-3)}
-.bar .track{height:3px; background:var(--panel-2); border-radius:2px; overflow:hidden}
-.bar .fill{height:100%; background:var(--ink-3)}
-.terr[data-on="1"] .bar .fill{background:var(--accent)}
+.terr[data-on="0"]{opacity:.42}
+.terr .plate{position:relative; aspect-ratio:4/3; display:grid; place-items:center; border-bottom:1px solid var(--line); overflow:hidden}
+.terr .plate svg{width:78%; height:auto}
+.terr .body{padding:14px 16px 16px; display:flex; flex-direction:column; gap:9px; flex:1}
+.terr h3{font-size:16px; line-height:1.25}
+.terr .thesis{font-size:12px; color:var(--ink-2); line-height:1.7; flex:1}
+.terr .foot{display:flex; justify-content:space-between; align-items:center; gap:8px; padding-top:4px; border-top:1px solid var(--line)}
+.axes{display:flex; gap:3px; align-items:flex-end; height:22px}
+.axes span{width:6px; background:var(--ink-3); display:block}
+.terr[data-on="1"] .axes span{background:var(--ink)}
+.state{font-family:var(--mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3)}
+.terr[data-on="1"] .state{color:var(--guide)}
 
 /* ---- Funnel */
-.funnel{display:flex; flex-direction:column; gap:2px; margin-top:18px}
-.fstage{
-  display:grid; grid-template-columns:186px minmax(0,1fr) 100px; gap:14px; align-items:center;
-  padding:11px 14px; background:var(--panel); border:1px solid var(--line); border-radius:3px;
-}
-.fstage .track{height:20px; background:var(--sunk); border-radius:2px; overflow:hidden; position:relative}
-.fstage .fill{height:100%; background:var(--ink-2); width:0; transition:width .5s cubic-bezier(.2,.7,.3,1)}
-.fstage[data-final="1"] .fill{background:var(--accent)}
-.fstage .rt{text-align:right; font-variant-numeric:tabular-nums; font-size:13px}
-.fstage .rt small{display:block; color:var(--ink-3); font-size:10px}
-.fname{display:flex; flex-direction:column; gap:2px}
-.fname b{font-weight:400; font-size:12.5px}
-.fname span{font-size:10px; color:var(--ink-3); letter-spacing:.06em}
+.funnel{display:flex; flex-direction:column}
+.fs{display:grid; grid-template-columns:210px minmax(0,1fr) 132px; gap:20px; align-items:center; padding:15px 0; border-bottom:1px solid var(--line)}
+.fs:last-child{border-bottom:0}
+.fs .fn{display:flex; flex-direction:column; gap:1px}
+.fs .fn b{font-family:var(--serif); font-size:15px; font-weight:400}
+.fs .fn span{font-family:var(--mono); font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3)}
+.fs .tr{height:10px; background:var(--sunk); position:relative}
+.fs .tr i{position:absolute; inset:0 auto 0 0; background:var(--ink-3); transition:width .55s cubic-bezier(.2,.7,.3,1)}
+.fs[data-final="1"] .tr i{background:var(--guide)}
+.fs .rt{text-align:right}
+.fs .rt b{font-family:var(--serif); font-size:23px; font-weight:400; font-variant-numeric:tabular-nums; letter-spacing:.01em}
+.fs .rt span{display:block; font-family:var(--mono); font-size:9.5px; color:var(--ink-3)}
+details{margin-top:24px; border:1px solid var(--line)}
+summary{padding:11px 16px; cursor:pointer; font-family:var(--mono); font-size:11px; letter-spacing:.08em; color:var(--ink-2); list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::before{content:"▸ "; color:var(--guide)}
+details[open] summary::before{content:"▾ "}
+.tbl-wrap{overflow:auto; max-height:340px; border-top:1px solid var(--line)}
+table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:11px}
+th{position:sticky; top:0; background:var(--sunk); text-align:left; padding:8px 14px; font-weight:400;
+   font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); border-bottom:1px solid var(--line); white-space:nowrap}
+td{padding:7px 14px; border-bottom:1px solid var(--line); white-space:nowrap; font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
 
-.gram-table{width:100%; border-collapse:collapse; font-size:11.5px}
-.gram-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:3px; background:var(--panel); max-height:340px; overflow-y:auto}
-.gram-table th{
-  position:sticky; top:0; background:var(--panel-2); text-align:left; padding:8px 12px;
-  font-weight:400; font-size:10px; letter-spacing:.1em; color:var(--ink-3);
-  border-bottom:1px solid var(--line); white-space:nowrap;
-}
-.gram-table td{padding:7px 12px; border-bottom:1px solid var(--line); white-space:nowrap; font-variant-numeric:tabular-nums}
-.gram-table tr:last-child td{border-bottom:0}
+/* ---- Specimens */
+.specs{display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:18px}
+.spec{border:1px solid var(--line); cursor:pointer; background:var(--sheet); display:flex; flex-direction:column; transition:border-color .14s,transform .14s}
+.spec:hover{border-color:var(--ink-3); transform:translateY(-2px)}
+.spec[data-on="1"]{border-color:var(--guide)}
+.spec .plate{position:relative; aspect-ratio:1/1; display:grid; place-items:center; border-bottom:1px solid var(--line); overflow:hidden}
+.spec .plate svg{width:92%; height:auto}
+.spec .meta{padding:9px 12px 11px; display:flex; flex-direction:column; gap:7px}
+.spec .id{display:flex; justify-content:space-between; gap:8px; font-family:var(--mono); font-size:10px; color:var(--ink-3)}
+.score{display:flex; align-items:center; gap:8px}
+.score b{font-family:var(--serif); font-size:19px; font-weight:400; font-variant-numeric:tabular-nums; line-height:1}
+.score .tr{flex:1; height:3px; background:var(--sunk); position:relative}
+.score .tr i{position:absolute; inset:0 auto 0 0; background:var(--ink-2)}
+.tagpill{font-family:var(--mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase; padding:2px 6px; border:1px solid currentColor}
+.tagpill[data-s="clear"]{color:var(--pass)}
+.tagpill[data-s="review"]{color:var(--review)}
+.tagpill[data-s="conflict"]{color:var(--conflict)}
+[data-gd]{opacity:0; transition:opacity .22s}
+.spec:hover [data-gd],.terr:hover [data-gd]{opacity:1}
+.show-gd [data-gd]{opacity:1}
 
-/* ---- Candidate card */
-.cand{overflow:hidden; cursor:pointer; display:flex; flex-direction:column; transition:border-color .12s, transform .12s}
-.cand:hover{border-color:var(--ink-3); transform:translateY(-1px)}
-.cand[data-on="1"]{border-color:var(--accent)}
-.stage-art{
-  position:relative; aspect-ratio:1/1; display:grid; place-items:center; border-bottom:1px solid var(--line);
-}
-.stage-art svg{width:78%; height:78%; display:block}
-.cand .meta{padding:9px 11px; display:flex; flex-direction:column; gap:6px}
-.cand .id{display:flex; justify-content:space-between; gap:6px; font-size:10.5px; color:var(--ink-3)}
-.scorerow{display:flex; align-items:center; gap:6px}
-.scorebar{flex:1; height:3px; background:var(--panel-2); border-radius:2px; overflow:hidden}
-.scorebar i{display:block; height:100%; background:var(--pass)}
-.pill{
-  font-size:9.5px; letter-spacing:.06em; padding:2px 5px;
-  border-radius:2px; border:1px solid currentColor; white-space:nowrap;
-}
-.pill[data-s="clear"]{color:var(--pass)}
-.pill[data-s="review"]{color:var(--review)}
-.pill[data-s="conflict"]{color:var(--conflict)}
+/* ---- Editor plate */
+.ed{display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:26px; align-items:start}
+.plate-wrap{border:1px solid var(--line)}
+.plate-bar{display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 14px; border-bottom:1px solid var(--line); flex-wrap:wrap}
+.plate-big{position:relative; display:grid; place-items:center; padding:28px; min-height:400px}
+.plate-big .holder{width:min(520px,92%)}
+.plate-big .holder svg{width:100%; height:auto; display:block}
+.sheet-foot{display:grid; grid-template-columns:minmax(0,1fr) 190px; gap:0; border-top:1px solid var(--line)}
+.concept{padding:20px 22px 22px}
+.concept h3{font-family:var(--mono); font-size:10px; letter-spacing:.24em; color:var(--ink-3); margin-bottom:10px}
+.concept p{font-size:13px; line-height:1.85; color:var(--ink-2); max-width:52ch}
+.facts{display:flex; flex-wrap:wrap; gap:6px 22px; margin-top:14px; font-family:var(--mono); font-size:10.5px; color:var(--ink-3)}
+.facts b{font-weight:400; color:var(--ink-2); font-variant-numeric:tabular-nums}
+.specimen{border-left:1px solid var(--line); display:flex; flex-direction:column}
+.specimen .box{flex:1; display:grid; place-items:center; padding:22px}
+.specimen .box svg{width:78%; height:auto}
+.specimen .cap{padding:8px 12px; border-top:1px solid var(--line); text-align:center}
 
-/* ---- Editor */
-.editor{display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:20px; margin-top:20px; align-items:start}
-.stagewrap{border:1px solid var(--line); border-radius:3px; background:var(--panel); overflow:hidden}
-.stagebar{
-  display:flex; justify-content:space-between; align-items:center; gap:10px;
-  padding:9px 14px; border-bottom:1px solid var(--line); flex-wrap:wrap;
-}
-.canvas{
-  position:relative; display:grid; place-items:center; padding:34px; min-height:340px;
-  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
-  background-size:20px 20px;
-}
-.canvas .holder{position:relative; width:min(320px,72%)}
-.canvas .holder svg{width:100%; height:auto; display:block}
-.crop{position:absolute; width:11px; height:11px; border:1px solid var(--accent); opacity:.5}
-.crop[data-p="tl"]{top:-16px; left:-16px; border-right:0; border-bottom:0}
-.crop[data-p="tr"]{top:-16px; right:-16px; border-left:0; border-bottom:0}
-.crop[data-p="bl"]{bottom:-16px; left:-16px; border-right:0; border-top:0}
-.crop[data-p="br"]{bottom:-16px; right:-16px; border-left:0; border-top:0}
+.sizes{display:flex; gap:18px; align-items:flex-end; padding:16px; flex-wrap:wrap; border-top:1px solid var(--line)}
+.sz{display:flex; flex-direction:column; align-items:center; gap:7px}
+.sz .box{display:grid; place-items:center; border:1px solid var(--line); padding:3px}
+.sz span{font-family:var(--mono); font-size:9px; color:var(--ink-3)}
 
-.sizes{display:flex; gap:16px; align-items:flex-end; padding:14px; flex-wrap:wrap; border-top:1px solid var(--line)}
-.sz{display:flex; flex-direction:column; align-items:center; gap:6px}
-.sz .box{display:grid; place-items:center; border:1px solid var(--line); border-radius:2px; padding:3px}
-.sz span{font-size:9.5px; color:var(--ink-3)}
-
-.params{display:flex; flex-direction:column; gap:0}
-.param{padding:10px 14px; border-bottom:1px solid var(--line)}
-.param:last-child{border-bottom:0}
-.param .top{display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:5px}
-.param .top b{font-weight:400; font-size:11.5px; color:var(--ink-2)}
-.param .top var{font-style:normal; font-size:11.5px; font-variant-numeric:tabular-nums}
-.param .top var[data-dirty="1"]{color:var(--accent)}
-
-.metrics{display:flex; flex-direction:column}
-.metric{display:grid; grid-template-columns:1fr 46px 44px; gap:8px; align-items:center; padding:8px 14px; border-bottom:1px solid var(--line)}
+.panel{border:1px solid var(--line)}
+.panel h3{font-size:14px}
+.phead{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 14px; border-bottom:1px solid var(--line); background:var(--sunk)}
+.metric{display:grid; grid-template-columns:1fr 44px 40px; gap:8px; align-items:center; padding:8px 14px; border-bottom:1px solid var(--line); font-size:12px}
 .metric:last-child{border-bottom:0}
-.metric .mn{font-size:11.5px; color:var(--ink-2)}
-.metric .mv{text-align:right; font-variant-numeric:tabular-nums; font-size:12.5px}
-.metric .md{text-align:right; font-size:10.5px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.metric .mv2{text-align:right; font-family:var(--mono); font-variant-numeric:tabular-nums}
+.metric .md{text-align:right; font-family:var(--mono); font-size:10px; color:var(--ink-3); font-variant-numeric:tabular-nums}
 .metric .md[data-d="up"]{color:var(--pass)}
 .metric .md[data-d="down"]{color:var(--conflict)}
-
-.log{max-height:230px; overflow:auto}
-.logrow{display:grid; grid-template-columns:22px 1fr auto; gap:8px; align-items:center; padding:7px 14px; border-bottom:1px solid var(--line); font-size:11px}
+.reasons{display:flex; flex-direction:column; gap:7px; padding:13px 14px}
+.reason{display:grid; grid-template-columns:12px 1fr; gap:9px; font-size:12px; color:var(--ink-2); line-height:1.65}
+.reason i{font-style:normal; color:var(--guide)}
+.param{padding:11px 14px; border-bottom:1px solid var(--line)}
+.param:last-child{border-bottom:0}
+.param .top{display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:6px}
+.param .top b{font-weight:400; font-size:12px; color:var(--ink-2)}
+.param .top var{font-style:normal; font-family:var(--mono); font-size:11px; font-variant-numeric:tabular-nums}
+.param .top var[data-dirty="1"]{color:var(--guide)}
+.log{max-height:210px; overflow:auto}
+.logrow{display:grid; grid-template-columns:22px 1fr auto; gap:9px; align-items:center; padding:8px 14px; border-bottom:1px solid var(--line); font-size:11.5px}
 .logrow:last-child{border-bottom:0}
-.logrow .ix{color:var(--ink-3); font-variant-numeric:tabular-nums; font-size:10px}
-.logrow .tx{color:var(--ink-2); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.logrow .ix{font-family:var(--mono); font-size:9.5px; color:var(--ink-3)}
+.logrow .tx{color:var(--ink-2); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:var(--mono); font-size:11px}
 .logrow[data-rev="1"] .tx{color:var(--ink-3); text-decoration:line-through}
-.empty{padding:16px 14px; color:var(--ink-3); font-size:11.5px; line-height:1.7}
-
-.sechead{
-  display:flex; justify-content:space-between; align-items:center; gap:10px;
-  padding:9px 14px; border-bottom:1px solid var(--line); background:var(--panel-2);
-}
-.reasons{display:flex; flex-direction:column; gap:5px; padding:12px 14px}
-.reason{display:grid; grid-template-columns:14px 1fr; gap:8px; font-size:11.5px; color:var(--ink-2); line-height:1.45}
-.reason i{font-style:normal; color:var(--accent)}
+.empty{padding:16px 14px; color:var(--ink-3); font-size:12px; line-height:1.75}
 
 /* ---- Export */
-.export{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; margin-top:20px; align-items:start}
-pre{
-  margin:0; padding:14px; background:var(--sunk); border:0; overflow:auto; max-height:400px;
-  font-family:var(--mono); font-size:11px; line-height:1.55; color:var(--ink-2); tab-size:2;
-}
-.kv{display:grid; grid-template-columns:130px 1fr; gap:4px 12px; padding:14px; font-size:11.5px}
+.exp{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:26px; align-items:start}
+pre{margin:0; padding:15px; background:var(--paper); overflow:auto; max-height:380px;
+    font-family:var(--mono); font-size:10.5px; line-height:1.6; color:var(--ink-2)}
+.kv{display:grid; grid-template-columns:132px 1fr; gap:5px 14px; padding:15px; font-family:var(--mono); font-size:11px}
 .kv dt{color:var(--ink-3)}
 .kv dd{margin:0; word-break:break-all; font-variant-numeric:tabular-nums}
-.gnode{display:grid; grid-template-columns:34px 132px 1fr; gap:10px; padding:7px 14px; border-bottom:1px solid var(--line); font-size:11px; align-items:baseline}
+.gnode{display:grid; grid-template-columns:32px 128px 1fr; gap:10px; padding:8px 14px; border-bottom:1px solid var(--line); font-size:11px; align-items:baseline}
 .gnode:last-child{border-bottom:0}
-.gnode .gid{color:var(--ink-3); font-size:10px}
-.gnode .gop{color:var(--accent)}
+.gnode .gid{font-family:var(--mono); font-size:9.5px; color:var(--ink-3)}
+.gnode .gop{font-family:var(--mono); color:var(--guide); font-size:10.5px}
 .gnode .gnote{color:var(--ink-2); min-width:0}
 
-/* ---- Status bar */
+/* ---- Status */
 .status{
-  position:fixed; left:236px; right:0; bottom:0; z-index:6;
+  position:fixed; left:0; right:0; bottom:0; z-index:20;
   display:flex; gap:22px; align-items:center; flex-wrap:wrap;
-  padding:8px 28px; background:var(--panel); border-top:1px solid var(--line);
-  font-size:10.5px; color:var(--ink-3); letter-spacing:.04em;
+  padding:8px 28px; background:var(--sheet); border-top:1px solid var(--line);
+  font-family:var(--mono); font-size:10px; letter-spacing:.05em; color:var(--ink-3);
 }
 .status b{font-weight:400; color:var(--ink-2); font-variant-numeric:tabular-nums}
-.status .dot{width:6px; height:6px; border-radius:99px; background:var(--pass); display:inline-block; margin-right:6px}
-.status .dot[data-s="idle"]{background:var(--ink-3)}
-.status .dot[data-s="run"]{background:var(--accent)}
+.status .dot{width:5px; height:5px; border-radius:99px; background:var(--pass); display:inline-block; margin-right:7px}
+.status .dot[data-s="run"]{background:var(--guide)}
 
-.note{
-  border-left:2px solid var(--accent); padding:10px 14px; background:var(--panel);
-  font-size:11.5px; color:var(--ink-2); line-height:1.65; margin-top:18px; max-width:72ch;
+@media (max-width:1040px){
+  .sheet{margin:18px 14px 92px; padding:26px 20px 30px}
+  .brief,.ed,.exp{grid-template-columns:1fr}
+  .sheet-foot{grid-template-columns:1fr}
+  .specimen{border-left:0; border-top:1px solid var(--line)}
+  .fs{grid-template-columns:140px minmax(0,1fr) 104px; gap:12px}
 }
-.split{display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap}
-.sechead h3{font-size:12px; letter-spacing:.02em}
-.stack-16{display:flex; flex-direction:column; gap:16px}
-.row-wrap{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
-
-@media (max-width:1000px){
-  .shell{grid-template-columns:1fr}
-  .rail{position:static; height:auto; border-right:0; border-bottom:1px solid var(--line)}
-  .chain{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); padding:10px}
-  .chain .lbl{grid-column:1/-1}
-  .step{padding:7px 10px}
-  .status{left:0}
-  .brief,.editor,.export{grid-template-columns:1fr}
-  .fstage{grid-template-columns:130px minmax(0,1fr) 86px}
-}
-@media (prefers-reduced-motion:reduce){
-  *{transition:none !important; animation:none !important}
-}
+@media (prefers-reduced-motion:reduce){*{transition:none !important}}
 </style>
 
-<div class="shell">
-  <aside class="rail">
-    <div class="brand">
-      <h1>Logo Design<br>Intelligence</h1>
-      <div class="sub" data-t="brand.sub"></div>
-      <div class="v">
-        <span class="tag">v15</span>
-        <span class="tag" data-t="brand.tag"></span>
+<header class="top">
+  <div class="mast">
+    <div class="id">
+      <h1>Logo Design Intelligence</h1>
+      <span class="sub" data-t="brand.sub"></span>
+    </div>
+    <div class="row-wrap">
+      <span class="lbl" id="mastState"></span>
+      <button class="btn btn-sm" data-kind="ghost" id="langBtn">EN</button>
+      <button class="btn btn-sm" data-kind="ghost" id="themeBtn" data-t="rail.theme"></button>
+    </div>
+  </div>
+  <nav class="stepper" id="stepper"></nav>
+</header>
+
+<main>
+  <!-- ============ 01 MEANING ============ -->
+  <section class="sheet" data-view="brief">
+    <span class="reg" data-p="tl"></span><span class="reg" data-p="tr"></span>
+    <span class="reg" data-p="bl"></span><span class="reg" data-p="br"></span>
+    <div class="sheet-head">
+      <h2 data-t="view.brief"></h2>
+      <p class="prose" data-t="brief.intro"></p>
+    </div>
+
+    <div class="brief">
+      <div>
+        <div class="field">
+          <label class="lbl" for="fName" data-t="brief.name"></label>
+          <input type="text" id="fName" spellcheck="false">
+        </div>
+        <div class="field">
+          <label class="lbl" for="fCat" data-t="brief.cat"></label>
+          <select id="fCat">
+            <option value="c1" data-t="cat.c1"></option>
+            <option value="c2" data-t="cat.c2"></option>
+            <option value="c3" data-t="cat.c3"></option>
+            <option value="c4" data-t="cat.c4"></option>
+            <option value="c5" data-t="cat.c5"></option>
+            <option value="c6" data-t="cat.c6"></option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="lbl" for="fAud" data-t="brief.aud"></label>
+          <input type="text" id="fAud" spellcheck="false">
+        </div>
+        <div class="field">
+          <span class="lbl"><span data-t="brief.attrs"></span> <span class="hint" id="attrCount"></span></span>
+          <div class="chips" id="attrs"></div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="blk">
+          <h3 data-t="brief.cons"></h3>
+          <div id="cons"></div>
+        </div>
+        <div class="blk">
+          <h3 data-t="brief.rules"></h3>
+          <div id="rules"></div>
+        </div>
       </div>
     </div>
-    <nav class="chain" id="chain"><span class="lbl" data-t="rail.pipeline"></span></nav>
-    <div class="railfoot">
-      <div class="lbl" data-t="rail.truth"></div>
-      <div style="font-size:11px;color:var(--ink-2);line-height:1.7" data-t="rail.truthBody"></div>
-      <div class="row-wrap">
-        <button class="btn btn-sm" id="langBtn" data-kind="ghost">EN</button>
-        <button class="btn btn-sm" id="themeBtn" data-kind="ghost" data-t="rail.theme"></button>
+
+    <div class="hr"></div>
+    <div class="lbl" data-t="brief.mvec"></div>
+    <div class="mv" id="mvec"></div>
+
+    <div class="hr"></div>
+    <div class="row-wrap" style="justify-content:space-between">
+      <div class="lbl" data-t="howto.title"></div>
+      <div class="hint"><span class="kbd">←</span> <span class="kbd">→</span> <span data-t="howto.kbd"></span></div>
+    </div>
+    <ol class="steps" id="howto"></ol>
+  </section>
+
+  <!-- ============ 02 GENOME ============ -->
+  <section class="sheet" data-view="terr">
+    <span class="reg" data-p="tl"></span><span class="reg" data-p="tr"></span>
+    <span class="reg" data-p="bl"></span><span class="reg" data-p="br"></span>
+    <div class="sheet-head">
+      <h2 data-t="view.terr"></h2>
+      <p class="prose" data-t="terr.intro"></p>
+    </div>
+    <div class="terrs" id="terrGrid"></div>
+    <div class="hr"></div>
+    <div class="exp">
+      <div class="panel">
+        <div class="phead"><h3 data-t="terr.schema"></h3><span class="lbl" id="genomeSrc"></span></div>
+        <pre id="genomeSchema"></pre>
+      </div>
+      <div class="panel">
+        <div class="phead"><h3 data-t="terr.graph"></h3><span class="lbl" id="graphDemoCount"></span></div>
+        <div id="graphDemo"></div>
       </div>
     </div>
-  </aside>
+  </section>
 
-  <main class="main">
-    <header class="topbar">
-      <div class="where">
-        <span class="lbl" id="crumb"></span>
-        <h2 id="vtitle"></h2>
+  <!-- ============ 03 SEARCH ============ -->
+  <section class="sheet" data-view="search">
+    <span class="reg" data-p="tl"></span><span class="reg" data-p="tr"></span>
+    <span class="reg" data-p="bl"></span><span class="reg" data-p="br"></span>
+    <div class="sheet-head">
+      <h2 data-t="view.search"></h2>
+      <p class="prose" data-t="search.intro"></p>
+    </div>
+    <div class="funnel" id="funnel"></div>
+    <details>
+      <summary data-t="search.details"></summary>
+      <div class="tbl-wrap">
+        <table><thead><tr id="gramHead"></tr></thead><tbody id="gramBody"></tbody></table>
       </div>
-      <div class="tools" id="tools"></div>
-    </header>
+    </details>
+  </section>
 
-    <!-- ========== 1. BRIEF ========== -->
-    <section class="view" data-view="brief">
-      <p class="intro" data-t="brief.intro"></p>
+  <!-- ============ 04 PERCEPTION ============ -->
+  <section class="sheet" data-view="screen">
+    <span class="reg" data-p="tl"></span><span class="reg" data-p="tr"></span>
+    <span class="reg" data-p="bl"></span><span class="reg" data-p="br"></span>
+    <div class="sheet-head">
+      <h2 data-t="view.screen"></h2>
+      <p class="prose" data-t="screen.intro"></p>
+    </div>
+    <div class="row-wrap" style="margin-bottom:20px">
+      <span class="lbl" data-t="screen.filter"></span>
+      <div class="chips" id="screenFilters"></div>
+      <span class="hint" id="screenCount"></span>
+    </div>
+    <div class="specs" id="specGrid"></div>
+  </section>
 
-      <div class="brief">
-        <div class="card pad">
-          <div class="field">
-            <label class="lbl" for="fName" data-t="brief.name"></label>
-            <input type="text" id="fName" spellcheck="false">
-          </div>
-          <div class="field">
-            <label class="lbl" for="fCat" data-t="brief.cat"></label>
-            <select id="fCat">
-              <option value="c1" data-t="cat.c1"></option>
-              <option value="c2" data-t="cat.c2"></option>
-              <option value="c3" data-t="cat.c3"></option>
-              <option value="c4" data-t="cat.c4"></option>
-              <option value="c5" data-t="cat.c5"></option>
-              <option value="c6" data-t="cat.c6"></option>
-            </select>
-          </div>
-          <div class="field">
-            <label class="lbl" for="fAud" data-t="brief.aud"></label>
-            <input type="text" id="fAud" spellcheck="false">
-          </div>
-          <div class="field">
-            <span class="lbl"><span data-t="brief.attrs"></span> <span class="hint" id="attrCount"></span></span>
-            <div class="chips" id="attrs"></div>
-          </div>
-        </div>
-
-        <div class="stack-16">
-          <div class="card">
-            <div class="sechead"><h3 data-t="brief.cons"></h3></div>
-            <div class="pad" style="padding-top:4px;padding-bottom:8px" id="cons"></div>
-          </div>
-          <div class="card">
-            <div class="sechead"><h3 data-t="brief.rules"></h3></div>
-            <div class="pad" style="padding-top:8px;padding-bottom:12px" id="rules"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="note">
-        <b data-t="brief.mvec"></b> — <span id="mvec">—</span>
-      </div>
-
-      <div class="card" style="margin-top:20px">
-        <div class="sechead">
-          <h3 data-t="howto.title"></h3>
-          <span class="lbl" data-t="howto.kbd"></span>
-        </div>
-        <ol class="steps" id="howto"></ol>
-      </div>
-    </section>
-
-    <!-- ========== 2. TERRITORIES / GENOME ========== -->
-    <section class="view" data-view="terr">
-      <p class="intro" data-t="terr.intro"></p>
-      <div class="grid-4" id="terrGrid" style="margin-top:20px"></div>
-
-      <div class="split" style="margin-top:26px">
-        <div class="card" style="flex:1 1 380px;min-width:300px">
-          <div class="sechead"><h3 data-t="terr.schema"></h3><span class="lbl" id="genomeSrc"></span></div>
-          <pre id="genomeSchema"></pre>
-        </div>
-        <div class="card" style="flex:1 1 300px;min-width:280px">
-          <div class="sechead"><h3 data-t="terr.graph"></h3></div>
-          <div id="graphDemo"></div>
-          <div class="stage-art" style="border-top:1px solid var(--line);border-bottom:0;aspect-ratio:auto;padding:22px" id="graphArt"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ========== 3. SEARCH ========== -->
-    <section class="view" data-view="search">
-      <p class="intro" data-t="search.intro"></p>
-      <div class="funnel" id="funnel"></div>
-
-      <div class="card" style="margin-top:24px">
-        <div class="sechead">
-          <h3 data-t="search.table"></h3>
-          <span class="lbl" id="gramCount"></span>
-        </div>
-        <div class="gram-wrap">
-          <table class="gram-table">
-            <thead><tr id="gramHead"></tr></thead>
-            <tbody id="gramBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- ========== 4. SCREENING ========== -->
-    <section class="view" data-view="screen">
-      <p class="intro" data-t="screen.intro"></p>
-      <div class="row-wrap" style="margin:18px 0 14px">
-        <span class="lbl" data-t="screen.filter"></span>
-        <div class="chips" id="screenFilters"></div>
-        <span class="hint" id="screenCount"></span>
-      </div>
-      <div class="grid-cand" id="candGrid"></div>
-    </section>
-
-    <!-- ========== 5. EDITOR ========== -->
-    <section class="view" data-view="edit">
-      <div class="editor">
-        <div class="stack-16">
-          <div class="stagewrap">
-            <div class="stagebar">
-              <div class="row-wrap">
-                <span class="lbl" id="editId">—</span>
-                <span class="pill" id="editStatus" data-s="clear"></span>
-              </div>
-              <div class="row-wrap">
-                <button class="btn btn-sm" id="lockBtn"></button>
-                <button class="btn btn-sm" id="monoBtn"></button>
-                <button class="btn btn-sm" id="resetBtn" data-kind="ghost"></button>
-              </div>
+  <!-- ============ 05 EDIT ============ -->
+  <section class="sheet" data-view="edit">
+    <span class="reg" data-p="tl"></span><span class="reg" data-p="tr"></span>
+    <span class="reg" data-p="bl"></span><span class="reg" data-p="br"></span>
+    <div class="ed">
+      <div class="stack">
+        <div class="plate-wrap">
+          <div class="plate-bar">
+            <div class="row-wrap">
+              <span class="lbl" id="editId">—</span>
+              <span class="tagpill" id="editStatus" data-s="clear"></span>
             </div>
-            <div class="canvas">
-              <div class="holder" id="editArt">
-                <span class="crop" data-p="tl"></span><span class="crop" data-p="tr"></span>
-                <span class="crop" data-p="bl"></span><span class="crop" data-p="br"></span>
-              </div>
+            <div class="row-wrap">
+              <button class="btn btn-sm" id="gdBtn"></button>
+              <button class="btn btn-sm" id="lockBtn"></button>
+              <button class="btn btn-sm" id="monoBtn"></button>
+              <button class="btn btn-sm" data-kind="ghost" id="resetBtn"></button>
             </div>
-            <div class="sizes" id="sizeStrip"></div>
           </div>
-
-          <div class="card">
-            <div class="sechead">
-              <h3 data-t="edit.log"></h3>
-              <span class="lbl" id="logCount"></span>
+          <div class="plate-big paper-grid" id="plateBig">
+            <span class="reg" data-p="tl"></span><span class="reg" data-p="tr"></span>
+            <span class="reg" data-p="bl"></span><span class="reg" data-p="br"></span>
+            <div class="holder" id="editArt"></div>
+          </div>
+          <div class="sheet-foot">
+            <div class="concept">
+              <h3>CONCEPT</h3>
+              <p id="conceptText"></p>
+              <div class="facts" id="facts"></div>
             </div>
-            <div class="log" id="logList"></div>
+            <div class="specimen">
+              <div class="box" id="specimenBox"></div>
+              <div class="cap lbl" data-t="ed.specimen"></div>
+            </div>
           </div>
+          <div class="sizes" id="sizeStrip"></div>
         </div>
 
-        <div class="stack-16">
-          <div class="card">
-            <div class="sechead"><h3 data-t="edit.retest"></h3><span class="lbl" data-t="edit.live"></span></div>
-            <div class="metrics" id="metrics"></div>
-          </div>
-          <div class="card">
-            <div class="sechead"><h3 data-t="edit.why"></h3></div>
-            <div class="reasons" id="reasons"></div>
-          </div>
-          <div class="card">
-            <div class="sechead"><h3 data-t="edit.params"></h3><span class="lbl" data-t="edit.structured"></span></div>
-            <div class="params" id="params"></div>
-          </div>
+        <div class="panel">
+          <div class="phead"><h3 data-t="edit.log"></h3><span class="lbl" id="logCount"></span></div>
+          <div class="log" id="logList"></div>
         </div>
       </div>
-    </section>
 
-    <!-- ========== 6. EXPORT ========== -->
-    <section class="view" data-view="export">
-      <p class="intro" data-t="export.intro"></p>
-      <div class="export">
-        <div class="stack-16">
-          <div class="card">
-            <div class="sechead">
-              <h3 data-t="export.svg"></h3>
-              <div class="row-wrap">
-                <button class="btn btn-sm" id="copySvg" data-t="export.copy"></button>
-                <button class="btn btn-sm" id="dlSvg" data-kind="primary" data-t="export.dl"></button>
-              </div>
-            </div>
-            <pre id="svgCode"></pre>
-          </div>
-          <div class="card">
-            <div class="sechead"><h3 data-t="export.accept"></h3><span class="lbl" id="acceptState">—</span></div>
-            <div class="reasons" id="acceptList"></div>
-          </div>
+      <div class="stack">
+        <div class="panel">
+          <div class="phead"><h3 data-t="edit.retest"></h3><span class="lbl" data-t="edit.live"></span></div>
+          <div id="metrics"></div>
         </div>
-        <div class="stack-16">
-          <div class="card">
-            <div class="sechead"><h3 data-t="export.prov"></h3></div>
-            <dl class="kv" id="prov"></dl>
-          </div>
-          <div class="card">
-            <div class="sechead"><h3>ConstructionGraph</h3><span class="lbl" id="graphCount">—</span></div>
-            <div id="graphList"></div>
-          </div>
-          <div class="card">
-            <div class="sechead">
-              <h3>LogoGenome</h3>
-              <button class="btn btn-sm" id="copyGenome" data-kind="ghost" data-t="export.copyJson"></button>
-            </div>
-            <pre id="genomeCode"></pre>
-          </div>
+        <div class="panel">
+          <div class="phead"><h3 data-t="edit.why"></h3></div>
+          <div class="reasons" id="reasons"></div>
+        </div>
+        <div class="panel">
+          <div class="phead"><h3 data-t="edit.params"></h3><span class="lbl" data-t="edit.structured"></span></div>
+          <div id="params"></div>
         </div>
       </div>
-    </section>
-  </main>
-</div>
+    </div>
+  </section>
 
-<div class="status">
-  <span><span class="dot" id="runDot" data-s="idle"></span><b id="runState"></b></span>
+  <!-- ============ 06 EXPORT ============ -->
+  <section class="sheet" data-view="export">
+    <span class="reg" data-p="tl"></span><span class="reg" data-p="tr"></span>
+    <span class="reg" data-p="bl"></span><span class="reg" data-p="br"></span>
+    <div class="sheet-head">
+      <h2 data-t="view.export"></h2>
+      <p class="prose" data-t="export.intro"></p>
+    </div>
+    <div class="exp">
+      <div class="stack">
+        <div class="panel">
+          <div class="phead">
+            <h3 data-t="export.svg"></h3>
+            <div class="row-wrap">
+              <button class="btn btn-sm" id="copySvg" data-t="export.copy"></button>
+              <button class="btn btn-sm" data-kind="primary" id="dlSvg" data-t="export.dl"></button>
+            </div>
+          </div>
+          <pre id="svgCode"></pre>
+        </div>
+        <div class="panel">
+          <div class="phead"><h3 data-t="export.accept"></h3><span class="lbl" id="acceptState">—</span></div>
+          <div class="reasons" id="acceptList"></div>
+        </div>
+      </div>
+      <div class="stack">
+        <div class="panel">
+          <div class="phead"><h3 data-t="export.prov"></h3></div>
+          <dl class="kv" id="prov"></dl>
+        </div>
+        <div class="panel">
+          <div class="phead"><h3>ConstructionGraph</h3><span class="lbl" id="graphCount">—</span></div>
+          <div id="graphList"></div>
+        </div>
+        <div class="panel">
+          <div class="phead"><h3>LogoGenome</h3><button class="btn btn-sm" data-kind="ghost" id="copyGenome" data-t="export.copyJson"></button></div>
+          <pre id="genomeCode"></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="status">
+  <span><span class="dot" id="runDot"></span><b id="runState"></b></span>
   <span><span data-t="st.brief"></span> <b id="sBrief">—</b></span>
   <span><span data-t="st.seed"></span> <b id="sSeed">—</b></span>
   <span><span data-t="st.gram"></span> <b id="sGram">0</b></span>
   <span><span data-t="st.cand"></span> <b id="sCand">0</b></span>
   <span><span data-t="st.rep"></span> <b id="sRep">0</b></span>
   <span><span data-t="st.edit"></span> <b id="sEdit">0</b></span>
-</div>
+</footer>
 
 <script>
 "use strict";
 /* ==========================================================================
-   0. Copy — every user-facing string. Identifiers (grammar ids, graph op
-   names, archetype enums, palette ids) stay in English: they are data.
+   0. Copy. Identifiers (grammar ids, graph op names, archetype enums,
+   palette ids) stay English: they are data, not copy.
    ========================================================================== */
 const TXT={
 ja:{
- "brand.sub":"ロゴ設計インテリジェンス",
- "brand.tag":"プロトタイプ",
- "rail.pipeline":"パイプライン",
- "rail.truth":"真実の源",
- "rail.truthBody":"LogoGenome と ConstructionGraph。このビルドにプロンプト→画像の経路は存在しません。",
+ "brand.sub":"ロゴ設計インテリジェンス v15",
  "rail.theme":"◐ テーマ",
-
- "brief.intro":"ブリーフはシステム内で唯一の自由記述面です。ここで一度だけ意味ベクトルにコンパイルされ、以降の工程は散文ではなく構造だけを読みます。この画面を変更すると実行結果は無効になり、再実行が必要になります。",
- "brief.name":"ブランド名",
- "brief.cat":"カテゴリ",
- "brief.aud":"主要オーディエンス",
- "brief.attrs":"意味属性",
- "brief.attrCount":"— {0} / 5 選択",
- "brief.cons":"構築上の制約",
- "brief.rules":"ビルドパックから引き継いだ厳格ルール",
+ "brief.intro":"ブリーフはシステム内で唯一の自由記述面です。ここで一度だけ意味ベクトルにコンパイルされ、以降の工程は散文ではなく構造だけを読みます。入力を変えると即座に全ステージが引き直されます。",
+ "brief.name":"ブランド名","brief.cat":"カテゴリ","brief.aud":"主要オーディエンス",
+ "brief.attrs":"意味属性","brief.attrCount":"— {0} / 5 選択",
+ "brief.cons":"構築上の制約","brief.rules":"ビルドパックから引き継いだ厳格ルール",
  "brief.mvec":"コンパイル済み意味ベクトル",
- "def.name":"Halcyon Grid",
- "def.aud":"電力会社の調達エンジニア",
-
+ "def.name":"Halcyon Grid","def.aud":"電力会社の調達エンジニア",
  "cat.c1":"大規模電力貯蔵","cat.c2":"決済インフラ","cat.c3":"診断機器",
  "cat.c4":"産業用ロボティクス","cat.c5":"気候計測","cat.c6":"貨物ロジスティクス",
-
  "rule.1":"商標および法的クリアランスの主張は生成しません。スクリーニングはデザイン衝突のみを扱います。",
  "rule.2":"形状心理学を決定論的な事実として断定しません。",
  "rule.3":"ジオメトリはパラメトリックのまま保持し、パスへの変換はエクスポート時のみ行います。",
  "rule.4":"すべての編集は取り消し可能で、来歴を保持します。",
+ "howto.title":"操作方法","howto.kbd":"でステージ移動",
+ "howto.1":"<b>意味</b> ブランド名・カテゴリ・オーディエンスを入力し、意味属性を最大 5 つ選ぶ。制約のチェックはスコアの判定基準に直接効く。変更するとパイプラインは自動で引き直される。",
+ "howto.2":"<b>ゲノム</b> 4 つのテリトリー図版をクリックして選択／解除（最低 1 つは残る）。図版はそのテリトリーの最良候補で、外すとグラマーごと探索から消える。",
+ "howto.3":"<b>探索</b> 2,000 候補がどのスクリーンで何件落ちたかを見る。グラマー別の歩留まりは折りたたみを開く。",
+ "howto.4":"<b>知覚</b> 24 の代表が並ぶ。カードにポインタを重ねると構造線が浮かび、クリックで選択、ダブルクリックで編集へ。",
+ "howto.5":"<b>編集</b> 右のスライダーでゲノムを直接動かす。「構造線」で作図円と軸を常時表示。スコアは即時に再計算され、編集ログから 1 件ずつ取り消せる。",
+ "howto.6":"<b>出力</b> SVG をコピーまたはダウンロード。ゲノム・構築グラフ・来歴が付随し、受け入れ判定の全項目が並ぶ。",
 
- "howto.title":"操作方法",
- "howto.kbd":"← → でステージ移動",
- "howto.1":"<b>01 意味</b> — ブランド名・カテゴリ・オーディエンスを入力し、意味属性を最大 5 つ選ぶ。制約のチェックはスコアの判定基準に直接効く。右上の「パイプラインを実行」で確定。",
- "howto.2":"<b>02 ゲノム</b> — 4 つのテリトリーカードをクリックして選択／解除（最低 1 つは残る）。下段でゲノムのスキーマと、それが生む構築グラフを確認できる。",
- "howto.3":"<b>03 探索</b> — 「2,000 候補を探索」で再サンプリング。ファネルは各スクリーンの通過数、表はグラマー別の歩留まりを示す。",
- "howto.4":"<b>04 知覚</b> — 24 の代表が並ぶ。クリックで選択、ダブルクリックでそのままエディタへ。フィルタで衝突状態や上位のみに絞れる。",
- "howto.5":"<b>05 人手編集</b> — 右のスライダーとセレクトでゲノムを直接動かす。スコアは即座に再計算され探索時からの差分が出る。編集ログの「取り消す」で 1 件ずつ戻せる。",
- "howto.6":"<b>06 エクスポート</b> — SVG をコピーまたはダウンロード。ゲノム・構築グラフ・来歴が付随し、受け入れ判定の全項目が並ぶ。",
+ "terr.intro":"意味ベクトルから 4 つのテリトリーを導出します。各テリトリーが保有するのは絵ではなくグラマー — ゲノム上のパラメータ窓です。図版はそのテリトリーの最良候補を実際に構築したものです。",
+ "terr.schema":"LogoGenome — スキーマ","terr.graph":"ConstructionGraph — 同一ゲノム",
+ "terr.grammars":"{0} グラマー","terr.on":"含める","terr.off":"除外中",
 
- "terr.intro":"意味ベクトルから 4 つのテリトリーを導出します。各テリトリーが保有するのは絵ではなくグラマー — ゲノム上のパラメータ窓です。テリトリーを選択解除すると、そのグラマーは探索から外れます。",
- "terr.schema":"LogoGenome — スキーマ",
- "terr.graph":"ConstructionGraph — 同一ゲノム",
- "terr.grammars":"{0} グラマー",
-
- "search.intro":"グラマーはプロンプトではなくサンプリングされます。各グラマーは自身のパラメータ窓の内側で候補を生成し、母集団は 3 つの独立したスクリーンで絞り込まれます。以下の数値は実行結果の実測値です。",
- "search.table":"グラマー表",
- "search.active":"{0} 件が有効",
+ "search.intro":"グラマーはプロンプトではなくサンプリングされます。各グラマーは自身のパラメータ窓の内側で候補を生成し、母集団は 3 つの独立したスクリーンで絞り込まれます。",
+ "search.details":"グラマー別の内訳を開く","search.active":"{0} 件が有効",
  "th.gram":"グラマー","th.terr":"テリトリー","th.arch":"アーキタイプ","th.sampled":"採取",
  "th.valid":"妥当","th.perc":"知覚","th.clear":"クリア","th.yield":"歩留まり",
-
  "fn.gram":"グラマー","fn.gramS":"パラメータ窓","fn.gramD":"有効",
  "fn.cand":"候補","fn.candS":"サンプリングされたゲノム","fn.candD":"生成",
  "fn.valid":"構造妥当","fn.validS":"構築スクリーン",
  "fn.perc":"知覚通過","fn.percS":"小サイズ＋コントラスト",
  "fn.clear":"衝突クリア","fn.clearS":"コーパス距離",
- "fn.rep":"代表","fn.repS":"クラスタ分散","fn.repD":"エディタへ",
+ "fn.rep":"代表","fn.repS":"クラスタ分散","fn.repD":"編集へ",
  "fn.of":"{0} 件中",
 
- "screen.intro":"生存候補を構築距離でクラスタリングし、各クラスタから代表を 1 つ取ります。密集した一角を繰り返すのではなく、空間全体を張るためです。スクリーニング状態はデザイン衝突のシグナルであり、商標に関する見解ではありません。",
- "screen.filter":"フィルタ",
- "f.all":"すべて","f.clear":"クリア","f.review":"要確認","f.top":"上位 25%",
- "screen.count":"代表 {1} 件中 {0} 件を表示",
- "st.clear":"クリア","st.review":"要確認","st.conflict":"衝突",
+ "screen.intro":"生存候補を構築距離でクラスタリングし、各クラスタから代表を 1 つ取ります。カードに触れると、その形を成立させている作図円と軸が浮かびます。スクリーニング状態はデザイン衝突のシグナルであり、商標に関する見解ではありません。",
+ "screen.filter":"フィルタ","f.all":"すべて","f.clear":"クリア","f.review":"要確認","f.top":"上位 25%",
+ "screen.count":"代表 {1} 件中 {0} 件","st.clear":"クリア","st.review":"要確認","st.conflict":"衝突",
 
- "edit.log":"編集ログ — すべて取り消し可能",
- "edit.logCount":"{0} 件の編集",
+ "edit.log":"編集ログ — すべて取り消し可能","edit.logCount":"{0} 件",
  "edit.logEmpty":"まだ編集はありません。ここでの変更はすべて変更前の値とともに記録され、1 件ずつ取り消せます。",
- "edit.retest":"再テスト","edit.live":"ライブ",
- "edit.why":"スコアの根拠",
+ "edit.retest":"再テスト","edit.live":"ライブ","edit.why":"スコアの根拠",
  "edit.params":"ゲノムパラメータ","edit.structured":"構造化",
- "edit.lockup":"ロックアップ: {0}",
- "lk.mark":"マークのみ","lk.stacked":"縦組み","lk.horizontal":"横組み",
- "edit.mono":"単色テスト","edit.monoOn":"単色: ON",
- "edit.reset":"探索時の状態に戻す",
- "edit.none":"候補が選択されていません。",
- "edit.revert":"取り消す","edit.reverted":"取り消し済み",
- "edit.revertOf":"{0} の取り消し",
- "edit.reversed":"白抜き",
+ "edit.lockup":"組版: {0}","lk.mark":"マークのみ","lk.stacked":"縦組み","lk.horizontal":"横組み",
+ "edit.mono":"単色","edit.monoOn":"単色: ON",
+ "edit.guides":"構造線","edit.guidesOn":"構造線: 表示",
+ "edit.reset":"探索時に戻す","edit.none":"候補が選択されていません。",
+ "edit.revert":"取り消す","edit.reverted":"取り消し済み","edit.revertOf":"{0} の取り消し",
+ "edit.reversed":"白抜き","ed.specimen":"仕上がり",
 
  "m.overall":"総合","m.small":"16px 可読性","m.contrast":"コントラスト","m.distinct":"独自性",
  "m.economy":"構築の経済性","m.balance":"光学バランス","m.proximity":"コーパス近接度",
-
  "p.w":"ストローク太さ","p.r":"主半径","p.n":"個数","p.gap":"開口 / 間隙",
  "p.rot":"回転","p.rad":"角の丸み","p.fill":"カウンター充填",
  "p.arch":"アーキタイプ","p.sym":"対称性","p.pal":"パレット",
@@ -714,64 +656,48 @@ ja:{
  "n.single":"この被覆率では単色フォールバックでアクセントの分離が失われます。",
  "n.engrave":"アトム 7 個超のため単線彫刻の制約に無理があります。",
 
+ "cp.aperture":"開口を持つ主円が中心を通す。切り欠きの角度と線幅だけで、閉じと開きの度合いを制御している。",
+ "cp.orbit":"中心の質量と、それを周回する {n} 個の点。関係の数と距離がそのまま構造になっている。",
+ "cp.lattice":"格子から剰余規則で間引いた場。単位が反復し、1 モジュールだけが強調される。",
+ "cp.chevron":"同一角度の方向線を {n} 段重ねる。段差の間隔が速度を、線幅が重さを担う。",
+ "cp.containment":"境界と、その内側のカウンターフォーム。切り取られた空間が主役で、輪郭はその証跡になる。",
+ "cp.stack":"{n} 本の部材を長さ規則で積む。最長の部材が視線の起点になる。",
+ "cp.prism":"外側のファセットと内側の屈折点。ひとつの入力が秩序ある出力へ解かれる。",
+ "cp.tail":"すべての寸法は {0}u グリッド上で決定され、パラメータを動かせば構築全体が追従する。",
+ "fact.r":"主半径","fact.w":"ストローク","fact.cov":"被覆率","fact.atoms":"アトム",
+ "fact.ops":"オペレーション","fact.sym":"対称性",
+
  "export.intro":"エクスポートで初めて構築グラフをパスへフラット化します — 可能な限り最後の瞬間です。ゲノムとグラフはファイルに同梱されるため、書き出したマークは損失なく再オープン・再テスト・再編集できます。",
  "export.svg":"SVG 出力","export.copy":"コピー","export.copied":"コピーしました",
  "export.dl":".svg をダウンロード","export.copyJson":"JSON をコピー",
- "export.accept":"受け入れ判定",
- "export.prov":"来歴",
- "ac.valid":"構造的に妥当",
- "ac.repro":"ゲノムとシードから再現可能",
- "ac.editable":"構造として編集可能",
- "ac.explain":"説明可能",
- "ac.small":"小サイズで検証済み",
- "ac.collision":"デザイン衝突をスクリーニング済み",
- "ac.flat":"エクスポート時にパスへフラット化",
- "ac.svg":"有効な SVG として書き出し",
+ "export.accept":"受け入れ判定","export.prov":"来歴",
+ "ac.valid":"構造的に妥当","ac.repro":"ゲノムとシードから再現可能","ac.editable":"構造として編集可能",
+ "ac.explain":"説明可能","ac.small":"小サイズで検証済み","ac.collision":"デザイン衝突をスクリーニング済み",
+ "ac.flat":"エクスポート時にパスへフラット化","ac.svg":"有効な SVG として書き出し",
  "ac.text":"ワードマークはライブテキストのまま — アウトライン化は下流工程",
  "ac.complete":"完了","ac.incomplete":"未達あり",
  "pv.brand":"ブランド","pv.hash":"ブリーフハッシュ","pv.seed":"パイプラインシード",
  "pv.terr":"テリトリー","pv.gram":"グラマー","pv.cand":"候補","pv.gseed":"ゲノムシード",
- "pv.kept":"保持された編集","pv.reverted":"取り消し済み",
- "gc.ops":"{0} オペレーション · {1} アトム",
+ "pv.kept":"保持された編集","pv.reverted":"取り消し済み","gc.ops":"{0} オペレーション · {1} アトム",
 
- "b.run":"パイプラインを実行","b.rerun":"パイプラインを再実行","b.back":"戻る",
- "b.search":"2,000 候補を探索","b.reps":"代表を開く","b.edit":"選択を編集",
- "b.export":"エクスポート","b.backEdit":"エディタへ戻る",
-
- "s.idle":"待機","s.done":"実行完了","s.stale":"ブリーフ変更 — 再実行が必要",
- "st.brief":"ブリーフ","st.seed":"シード","st.gram":"グラマー",
+ "s.ready":"実行完了","st.brief":"ブリーフ","st.seed":"シード","st.gram":"グラマー",
  "st.cand":"候補","st.rep":"代表","st.edit":"編集",
-
- "step.1":"意味","step.2":"ゲノム","step.3":"構築","step.4":"探索","step.5":"知覚",
- "step.6":"類似","step.7":"人手編集","step.8":"再テスト","step.9":"エクスポート",
  "view.brief":"意味","view.terr":"ゲノム","view.search":"探索",
- "view.screen":"知覚","view.edit":"人手編集","view.export":"エクスポート",
- "viewL.brief":"ブリーフを意味ベクトルへコンパイル",
- "viewL.terr":"テリトリー、グラマー、構築",
- "viewL.search":"サンプリングと絞り込み",
- "viewL.screen":"可読性と衝突のスクリーニング",
- "viewL.edit":"構造的な編集と再テスト",
- "viewL.export":"フラット化、パッケージ、ハンドオフ",
- "stage":"ステージ",
+ "view.screen":"知覚","view.edit":"編集","view.export":"出力",
+ "sub.brief":"Meaning","sub.terr":"Genome · Construction","sub.search":"Search",
+ "sub.screen":"Perception · Similarity","sub.edit":"Human Edit · Re-test","sub.export":"Export",
 
  "ax.order":"秩序","ax.motion":"運動","ax.weight":"重量","ax.warmth":"温度","ax.openness":"開放",
  "at.precise":"精密","at.open":"開放","at.fast":"高速","at.human":"人間的","at.industrial":"工業的",
  "at.premium":"上質","at.minimal":"最小限","at.analytic":"分析的","at.trusted":"信頼",
  "at.connected":"接続","at.scientific":"科学的","at.bold":"大胆","at.quiet":"静謐","at.continuous":"連続",
- "cn.single":"単色でも成立すること",
- "cn.favicon":"16px で保持できること",
- "cn.nonfig":"非具象のみ（ピクトグラム不可）",
- "cn.motion":"構築がアニメーション可能であること",
+ "cn.single":"単色でも成立すること","cn.favicon":"16px で保持できること",
+ "cn.nonfig":"非具象のみ（ピクトグラム不可）","cn.motion":"構築がアニメーション可能であること",
  "cn.engrave":"単線彫刻で再現可能であること",
 
- "t.APT":"アパーチャ / シグナル",
- "t.MOD":"モジュラー・フィールド",
- "t.ORB":"オービタル・リレーション",
- "t.DIR":"ディレクテッド・マス",
- "t.CTN":"コンテインド・カウンターフォーム",
- "t.PRS":"ストラクチュラル・プリズム",
- "t.LIN":"コンティニュアス・ライン",
- "t.LDB":"ロードベアリング",
+ "t.APT":"アパーチャ / シグナル","t.MOD":"モジュラー・フィールド","t.ORB":"オービタル・リレーション",
+ "t.DIR":"ディレクテッド・マス","t.CTN":"コンテインド・カウンターフォーム","t.PRS":"ストラクチュラル・プリズム",
+ "t.LIN":"コンティニュアス・ライン","t.LDB":"ロードベアリング",
  "th.APT":"開放性を測定可能な属性として扱う。マークは何かを意図的に通す装置として読める。",
  "th.MOD":"規則のもとで反復される単位としてのアイデンティティ。スケールは描画サイズではなく、ブランドが所有する体系になる。",
  "th.ORB":"ブランドは他者が周回する中心である。関係性はタグラインで主張せず、図として描く。",
@@ -781,107 +707,71 @@ ja:{
  "th.LIN":"途切れないひとつの線。足すものも余分もなく、構築が一度の走査で読み取れる。",
  "th.LDB":"支える重さ。マークはブランドの装飾ではなく構造部材として振る舞う。",
 
- "g.arc.open":"主開口、ギャップ {0}%",
- "g.arc.counter":"逆位相のカウンター開口",
- "g.dot.focal":"中心の焦点ノード",
- "g.spoke":"{0} 本の放射コネクタ",
- "g.satellites":"半径 {0} 上の {1} サテライト",
- "g.core":"コア質量",
- "g.field":"{0}×{0} フィールド、剰余規則 k=7",
- "g.fieldAccent":"1 モジュールを強調",
- "g.nested":"{0} 段の入れ子方向、ステップ {1}",
- "g.lead":"先頭方向がアクセントを担う",
- "g.boundCircle":"包含境界",
- "g.boundRect":"包含境界、r={0}",
- "g.counterDisc":"空隙を占めるカウンターフォーム",
- "g.counterRot":"軸を外して回転したカウンターフォーム",
- "g.notch":"進入のために境界を分断",
- "g.stack":"{0} 部材、長さ規則 mod 4",
- "g.stackAccent":"最長部材を強調",
- "g.triangle":"外側ファセット",
- "g.facetInv":"反転した内側ファセット",
- "g.refract":"屈折点"
+ "g.arc.open":"主開口、ギャップ {0}%","g.arc.counter":"逆位相のカウンター開口","g.dot.focal":"中心の焦点ノード",
+ "g.spoke":"{0} 本の放射コネクタ","g.satellites":"半径 {0} 上の {1} サテライト","g.core":"コア質量",
+ "g.field":"{0}×{0} フィールド、剰余規則 k=7","g.fieldAccent":"1 モジュールを強調",
+ "g.nested":"{0} 段の入れ子方向、ステップ {1}","g.lead":"先頭方向がアクセントを担う",
+ "g.boundCircle":"包含境界","g.boundRect":"包含境界、r={0}",
+ "g.counterDisc":"空隙を占めるカウンターフォーム","g.counterRot":"軸を外して回転したカウンターフォーム",
+ "g.notch":"進入のために境界を分断","g.stack":"{0} 部材、長さ規則 mod 4","g.stackAccent":"最長部材を強調",
+ "g.triangle":"外側ファセット","g.facetInv":"反転した内側ファセット","g.refract":"屈折点"
 },
 en:{
- "brand.sub":"Structured logo construction",
- "brand.tag":"prototype",
- "rail.pipeline":"Pipeline",
- "rail.truth":"Source of truth",
- "rail.truthBody":"LogoGenome + ConstructionGraph. No prompt-to-image path exists in this build.",
+ "brand.sub":"Structured logo construction v15",
  "rail.theme":"◐ Theme",
-
- "brief.intro":"The brief is the only free-text surface in the system. It is compiled once into a meaning vector, then never consulted again — every downstream stage reads structure, not prose. Changing anything here invalidates the run.",
- "brief.name":"Brand name",
- "brief.cat":"Category",
- "brief.aud":"Primary audience",
- "brief.attrs":"Meaning attributes",
- "brief.attrCount":"— {0} of 5 chosen",
- "brief.cons":"Construction constraints",
- "brief.rules":"Hard rules carried from the pack",
+ "brief.intro":"The brief is the only free-text surface in the system. It is compiled once into a meaning vector, then never consulted again — every downstream stage reads structure, not prose. Change an input and the whole pipeline redraws.",
+ "brief.name":"Brand name","brief.cat":"Category","brief.aud":"Primary audience",
+ "brief.attrs":"Meaning attributes","brief.attrCount":"— {0} of 5 chosen",
+ "brief.cons":"Construction constraints","brief.rules":"Hard rules carried from the pack",
  "brief.mvec":"Compiled meaning vector",
- "def.name":"Halcyon Grid",
- "def.aud":"Utility procurement engineers",
-
+ "def.name":"Halcyon Grid","def.aud":"Utility procurement engineers",
  "cat.c1":"Grid-scale energy storage","cat.c2":"Payments infrastructure","cat.c3":"Diagnostic instruments",
  "cat.c4":"Industrial robotics","cat.c5":"Climate measurement","cat.c6":"Freight logistics",
-
  "rule.1":"No trademark or legal clearance claim is produced. Screening is design-collision only.",
  "rule.2":"Shape psychology is never asserted as deterministic fact.",
  "rule.3":"Geometry stays parametric; paths are flattened at export, not before.",
  "rule.4":"Every edit is reversible and carries provenance.",
+ "howto.title":"How to use","howto.kbd":"move between stages",
+ "howto.1":"<b>Meaning</b> Enter the brand, category and audience, then choose up to five meaning attributes. The constraint checkboxes feed the scoring directly. Any change redraws the pipeline.",
+ "howto.2":"<b>Genome</b> Click the four territory plates to include or drop them (one always stays). Each plate is that territory's best candidate, actually constructed.",
+ "howto.3":"<b>Search</b> See where the 2,000 candidates fall out, screen by screen. Open the disclosure for per-grammar yield.",
+ "howto.4":"<b>Perception</b> 24 representatives. Hover a card to raise its construction lines, click to select, double-click to edit.",
+ "howto.5":"<b>Edit</b> Drive the genome directly with the sliders. “Construction lines” pins the guides on. Scores recompute instantly and the log reverts one change at a time.",
+ "howto.6":"<b>Export</b> Copy or download the SVG. Genome, construction graph and provenance ride along, next to the full acceptance list.",
 
- "howto.title":"How to use",
- "howto.kbd":"← → move between stages",
- "howto.1":"<b>01 Meaning</b> — enter the brand, category and audience, then choose up to five meaning attributes. The constraint checkboxes feed the scoring directly. Confirm with “Run pipeline”.",
- "howto.2":"<b>02 Genome</b> — click the four territory cards to include or drop them (one always stays). Below, inspect the genome schema and the construction graph it produces.",
- "howto.3":"<b>03 Search</b> — “Search 2,000 candidates” resamples. The funnel shows what each screen passes; the table shows yield per grammar.",
- "howto.4":"<b>04 Perception</b> — 24 representatives. Click to select, double-click to open in the editor. Filter by collision status or top quartile.",
- "howto.5":"<b>05 Human Edit</b> — drive the genome directly with the sliders and selects. Scores recompute instantly and show the delta against the search state. “Revert” undoes one logged change at a time.",
- "howto.6":"<b>06 Export</b> — copy or download the SVG. Genome, construction graph and provenance ride along, next to the full acceptance list.",
+ "terr.intro":"Four territories are derived from the meaning vector. Each owns a set of grammars — parameter windows over the genome, not pictures. Each plate is that territory's best candidate, actually constructed.",
+ "terr.schema":"LogoGenome — schema","terr.graph":"ConstructionGraph — same genome",
+ "terr.grammars":"{0} grammars","terr.on":"included","terr.off":"dropped",
 
- "terr.intro":"Four territories are derived from the meaning vector. Each one owns a set of grammars — parameter windows over the genome, not pictures. Deselect a territory to remove its grammars from the search.",
- "terr.schema":"LogoGenome — schema",
- "terr.graph":"ConstructionGraph — same genome",
- "terr.grammars":"{0} grammars",
-
- "search.intro":"Grammars are sampled, not prompted. Each grammar emits candidates inside its own parameter window; the population is then reduced by three independent screens. Counts below are live from the run.",
- "search.table":"Grammar table",
- "search.active":"{0} active",
+ "search.intro":"Grammars are sampled, not prompted. Each grammar emits candidates inside its own parameter window; the population is then reduced by three independent screens.",
+ "search.details":"Open per-grammar yield","search.active":"{0} active",
  "th.gram":"Grammar","th.terr":"Territory","th.arch":"Archetype","th.sampled":"Sampled",
  "th.valid":"Valid","th.perc":"Perceived","th.clear":"Clear","th.yield":"Yield",
-
  "fn.gram":"Grammars","fn.gramS":"parameter windows","fn.gramD":"active",
  "fn.cand":"Candidates","fn.candS":"sampled genomes","fn.candD":"generated",
  "fn.valid":"Structurally valid","fn.validS":"construction screen",
  "fn.perc":"Perception pass","fn.percS":"small size + contrast",
  "fn.clear":"Collision cleared","fn.clearS":"corpus distance",
- "fn.rep":"Representatives","fn.repS":"cluster spread","fn.repD":"handed to editor",
+ "fn.rep":"Representatives","fn.repS":"cluster spread","fn.repD":"to the editor",
  "fn.of":"of {0}",
 
- "screen.intro":"Survivors are clustered by construction distance and one representative is taken per cluster, so the set spans the space instead of repeating its densest corner. Screening status is a design-collision signal — it is not a trademark opinion.",
- "screen.filter":"Filter",
- "f.all":"all","f.clear":"cleared","f.review":"review","f.top":"top quartile",
- "screen.count":"{0} of {1} representatives shown",
- "st.clear":"clear","st.review":"review","st.conflict":"conflict",
+ "screen.intro":"Survivors are clustered by construction distance and one representative is taken per cluster. Touch a card to raise the circles and axes that make the form. Screening status is a design-collision signal — it is not a trademark opinion.",
+ "screen.filter":"Filter","f.all":"all","f.clear":"cleared","f.review":"review","f.top":"top quartile",
+ "screen.count":"{0} of {1} representatives","st.clear":"clear","st.review":"review","st.conflict":"conflict",
 
- "edit.log":"Edit log — every change reversible",
- "edit.logCount":"{0} edits",
+ "edit.log":"Edit log — every change reversible","edit.logCount":"{0} edits",
  "edit.logEmpty":"No edits yet. Every change made here is recorded with its previous value and can be reverted individually.",
- "edit.retest":"Re-test","edit.live":"live",
- "edit.why":"Why it scores that way",
+ "edit.retest":"Re-test","edit.live":"live","edit.why":"Why it scores that way",
  "edit.params":"Genome parameters","edit.structured":"structured",
- "edit.lockup":"Lockup: {0}",
- "lk.mark":"mark","lk.stacked":"stacked","lk.horizontal":"horizontal",
- "edit.mono":"1-colour test","edit.monoOn":"1-colour: on",
- "edit.reset":"Reset to search state",
- "edit.none":"No candidate selected.",
- "edit.revert":"revert","edit.reverted":"reverted",
- "edit.revertOf":"revert of {0}",
- "edit.reversed":"reversed",
+ "edit.lockup":"Lockup: {0}","lk.mark":"mark","lk.stacked":"stacked","lk.horizontal":"horizontal",
+ "edit.mono":"1-colour","edit.monoOn":"1-colour: on",
+ "edit.guides":"Construction lines","edit.guidesOn":"Guides: on",
+ "edit.reset":"Reset to search state","edit.none":"No candidate selected.",
+ "edit.revert":"revert","edit.reverted":"reverted","edit.revertOf":"revert of {0}",
+ "edit.reversed":"reversed","ed.specimen":"specimen",
 
  "m.overall":"Overall","m.small":"16 px legibility","m.contrast":"Contrast","m.distinct":"Distinctiveness",
  "m.economy":"Construction economy","m.balance":"Optical balance","m.proximity":"Corpus proximity",
-
  "p.w":"Stroke weight","p.r":"Primary radius","p.n":"Count","p.gap":"Aperture / gap",
  "p.rot":"Rotation","p.rad":"Corner softness","p.fill":"Counter fill",
  "p.arch":"Archetype","p.sym":"Symmetry","p.pal":"Palette",
@@ -901,64 +791,48 @@ en:{
  "n.single":"Flat-colour fallback loses the accent separation at this coverage.",
  "n.engrave":"Single-line engraving constraint is strained above 7 atoms.",
 
+ "cp.aperture":"A primary circle opened at one angle. Nothing but the gap and the stroke weight controls how closed or how open the mark reads.",
+ "cp.orbit":"A centre of mass with {n} points travelling around it. The count and the distance are the structure — nothing else is added.",
+ "cp.lattice":"A field thinned out of a grid by a modulus rule. The unit repeats and exactly one module is promoted.",
+ "cp.chevron":"{n} direction lines stacked at one angle. The step carries the speed, the stroke weight carries the mass.",
+ "cp.containment":"A boundary and the counterform inside it. The space cut away is the subject; the outline is only its evidence.",
+ "cp.stack":"{n} members stacked under a length rule. The longest member is where the eye starts.",
+ "cp.prism":"An outer facet with an inner point of refraction — one input resolved into ordered output.",
+ "cp.tail":"Every dimension resolves on the {0}u grid, so moving one parameter moves the whole construction with it.",
+ "fact.r":"radius","fact.w":"stroke","fact.cov":"coverage","fact.atoms":"atoms",
+ "fact.ops":"ops","fact.sym":"symmetry",
+
  "export.intro":"Export flattens the construction graph to paths — the last possible moment. The genome and the graph travel with the file, so any exported mark can be re-opened, re-tested and re-edited without loss.",
  "export.svg":"SVG output","export.copy":"Copy","export.copied":"Copied",
  "export.dl":"Download .svg","export.copyJson":"Copy JSON",
- "export.accept":"Acceptance",
- "export.prov":"Provenance",
- "ac.valid":"structurally valid",
- "ac.repro":"reproducible from genome + seed",
- "ac.editable":"editable as structure",
- "ac.explain":"explainable",
- "ac.small":"tested at small size",
- "ac.collision":"screened for design collision",
- "ac.flat":"geometry flattened to paths at export",
- "ac.svg":"exports as valid SVG",
+ "export.accept":"Acceptance","export.prov":"Provenance",
+ "ac.valid":"structurally valid","ac.repro":"reproducible from genome + seed","ac.editable":"editable as structure",
+ "ac.explain":"explainable","ac.small":"tested at small size","ac.collision":"screened for design collision",
+ "ac.flat":"geometry flattened to paths at export","ac.svg":"exports as valid SVG",
  "ac.text":"wordmark still live text — outline conversion is downstream",
  "ac.complete":"complete","ac.incomplete":"incomplete",
  "pv.brand":"Brand","pv.hash":"Brief hash","pv.seed":"Pipeline seed",
  "pv.terr":"Territory","pv.gram":"Grammar","pv.cand":"Candidate","pv.gseed":"Genome seed",
- "pv.kept":"Edits kept","pv.reverted":"Reverted",
- "gc.ops":"{0} ops · {1} atoms",
+ "pv.kept":"Edits kept","pv.reverted":"Reverted","gc.ops":"{0} ops · {1} atoms",
 
- "b.run":"Run pipeline","b.rerun":"Re-run pipeline","b.back":"Back",
- "b.search":"Search 2,000 candidates","b.reps":"Open representatives","b.edit":"Edit selected",
- "b.export":"Export","b.backEdit":"Back to editor",
-
- "s.idle":"idle","s.done":"run complete","s.stale":"brief changed — re-run required",
- "st.brief":"brief","st.seed":"seed","st.gram":"grammars",
+ "s.ready":"run complete","st.brief":"brief","st.seed":"seed","st.gram":"grammars",
  "st.cand":"candidates","st.rep":"representatives","st.edit":"edits",
-
- "step.1":"Meaning","step.2":"Genome","step.3":"Construction","step.4":"Search","step.5":"Perception",
- "step.6":"Similarity","step.7":"Human Edit","step.8":"Re-test","step.9":"Export",
  "view.brief":"Meaning","view.terr":"Genome","view.search":"Search",
- "view.screen":"Perception","view.edit":"Human Edit","view.export":"Export",
- "viewL.brief":"Brief compiled to a meaning vector",
- "viewL.terr":"Territories, grammars, construction",
- "viewL.search":"Sampling and reduction",
- "viewL.screen":"Legibility and collision screens",
- "viewL.edit":"Structured editing and re-test",
- "viewL.export":"Flatten, package, hand off",
- "stage":"Stage",
+ "view.screen":"Perception","view.edit":"Edit","view.export":"Export",
+ "sub.brief":"Meaning","sub.terr":"Genome · Construction","sub.search":"Search",
+ "sub.screen":"Perception · Similarity","sub.edit":"Human Edit · Re-test","sub.export":"Export",
 
  "ax.order":"order","ax.motion":"motion","ax.weight":"weight","ax.warmth":"warmth","ax.openness":"openness",
  "at.precise":"precise","at.open":"open","at.fast":"fast","at.human":"human","at.industrial":"industrial",
  "at.premium":"premium","at.minimal":"minimal","at.analytic":"analytic","at.trusted":"trusted",
  "at.connected":"connected","at.scientific":"scientific","at.bold":"bold","at.quiet":"quiet","at.continuous":"continuous",
- "cn.single":"Must survive as one flat colour",
- "cn.favicon":"Must hold at 16 px",
- "cn.nonfig":"Non-figurative only (no pictograms)",
- "cn.motion":"Construction must be animatable",
+ "cn.single":"Must survive as one flat colour","cn.favicon":"Must hold at 16 px",
+ "cn.nonfig":"Non-figurative only (no pictograms)","cn.motion":"Construction must be animatable",
  "cn.engrave":"Reproducible by single-line engraving",
 
- "t.APT":"Aperture / Signal",
- "t.MOD":"Modular Field",
- "t.ORB":"Orbital Relation",
- "t.DIR":"Directed Mass",
- "t.CTN":"Contained Counterform",
- "t.PRS":"Structural Prism",
- "t.LIN":"Continuous Line",
- "t.LDB":"Load Bearing",
+ "t.APT":"Aperture / Signal","t.MOD":"Modular Field","t.ORB":"Orbital Relation",
+ "t.DIR":"Directed Mass","t.CTN":"Contained Counterform","t.PRS":"Structural Prism",
+ "t.LIN":"Continuous Line","t.LDB":"Load Bearing",
  "th.APT":"Openness treated as a measurable property. The mark reads as an instrument that deliberately lets something through.",
  "th.MOD":"Identity as one unit repeated under a rule. Scale becomes a system the brand owns, not a size it is rendered at.",
  "th.ORB":"The brand is the centre other parties move around. Relationship is drawn, not asserted in a tagline.",
@@ -968,26 +842,14 @@ en:{
  "th.LIN":"One unbroken path. Nothing added and nothing spare, so the construction can be read in a single pass.",
  "th.LDB":"Weight that holds. The mark behaves like a structural component of the brand rather than a decoration on it.",
 
- "g.arc.open":"primary aperture, gap {0}%",
- "g.arc.counter":"counter-aperture, phase inverted",
- "g.dot.focal":"focal node at centre",
- "g.spoke":"{0} radial connectors",
- "g.satellites":"{1} satellites on r={0}",
- "g.core":"core mass",
- "g.field":"{0}×{0} field, modulus rule k=7",
- "g.fieldAccent":"single module promoted",
- "g.nested":"{0} nested directions, step {1}",
- "g.lead":"leading direction carries the accent",
- "g.boundCircle":"containing boundary",
- "g.boundRect":"containing boundary, r={0}",
- "g.counterDisc":"counterform occupying the void",
- "g.counterRot":"counterform rotated off-axis",
- "g.notch":"boundary interrupted for entry",
- "g.stack":"{0} members, length rule mod 4",
- "g.stackAccent":"longest member promoted",
- "g.triangle":"outer facet",
- "g.facetInv":"inverted inner facet",
- "g.refract":"refraction point"
+ "g.arc.open":"primary aperture, gap {0}%","g.arc.counter":"counter-aperture, phase inverted","g.dot.focal":"focal node at centre",
+ "g.spoke":"{0} radial connectors","g.satellites":"{1} satellites on r={0}","g.core":"core mass",
+ "g.field":"{0}×{0} field, modulus rule k=7","g.fieldAccent":"single module promoted",
+ "g.nested":"{0} nested directions, step {1}","g.lead":"leading direction carries the accent",
+ "g.boundCircle":"containing boundary","g.boundRect":"containing boundary, r={0}",
+ "g.counterDisc":"counterform occupying the void","g.counterRot":"counterform rotated off-axis",
+ "g.notch":"boundary interrupted for entry","g.stack":"{0} members, length rule mod 4","g.stackAccent":"longest member promoted",
+ "g.triangle":"outer facet","g.facetInv":"inverted inner facet","g.refract":"refraction point"
 }};
 let LANG="ja";
 function t(k){
@@ -1002,7 +864,6 @@ function t(k){
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const lerp=(a,b,x)=>a+(b-a)*x;
 const r2=n=>Math.round(n*100)/100;
-
 function hash32(str){
   let h=2166136261>>>0;
   for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}
@@ -1040,10 +901,8 @@ const ATTRIBUTES=[
   {k:"continuous",v:{order:.55,motion:.8,weight:.35,warmth:.5,openness:.65}}
 ];
 const AXES=["order","motion","weight","warmth","openness"];
-const CONSTRAINTS=[
-  {k:"single",on:true},{k:"favicon",on:true},{k:"nonfig",on:true},
-  {k:"motion",on:false},{k:"engrave",on:false}
-];
+const CONSTRAINTS=[{k:"single",on:true},{k:"favicon",on:true},{k:"nonfig",on:true},
+                   {k:"motion",on:false},{k:"engrave",on:false}];
 const PALETTES=[
   {id:"P-01",bg:"#F4F3F1",ink:"#141312",accent:"#C8452D",hue:12},
   {id:"P-02",bg:"#101418",ink:"#F2F4F5",accent:"#4FA3B8",hue:192},
@@ -1057,109 +916,98 @@ const PALETTES=[
 const ARCHETYPES=["aperture","orbit","lattice","chevron","containment","stack","prism"];
 const TERRITORY_POOL=[
   {code:"APT",arch:["aperture","containment"],pal:["P-01","P-05","P-08"],v:{order:.8,motion:.3,weight:.4,warmth:.3,openness:.95}},
-  {code:"MOD",arch:["lattice","stack"],     pal:["P-05","P-02","P-01"],v:{order:.95,motion:.25,weight:.6,warmth:.2,openness:.4}},
-  {code:"ORB",arch:["orbit","prism"],       pal:["P-06","P-02","P-03"],v:{order:.5,motion:.75,weight:.35,warmth:.8,openness:.75}},
-  {code:"DIR",arch:["chevron","stack"],     pal:["P-04","P-01","P-07"],v:{order:.35,motion:.95,weight:.85,warmth:.45,openness:.35}},
+  {code:"MOD",arch:["lattice","stack"],       pal:["P-05","P-02","P-01"],v:{order:.95,motion:.25,weight:.6,warmth:.2,openness:.4}},
+  {code:"ORB",arch:["orbit","prism"],         pal:["P-06","P-02","P-03"],v:{order:.5,motion:.75,weight:.35,warmth:.8,openness:.75}},
+  {code:"DIR",arch:["chevron","stack"],       pal:["P-04","P-01","P-07"],v:{order:.35,motion:.95,weight:.85,warmth:.45,openness:.35}},
   {code:"CTN",arch:["containment","aperture"],pal:["P-07","P-03","P-04"],v:{order:.7,motion:.2,weight:.5,warmth:.65,openness:.5}},
-  {code:"PRS",arch:["prism","lattice"],     pal:["P-02","P-05","P-06"],v:{order:.9,motion:.4,weight:.45,warmth:.2,openness:.55}},
-  {code:"LIN",arch:["aperture","chevron"],  pal:["P-01","P-08","P-03"],v:{order:.6,motion:.7,weight:.25,warmth:.5,openness:.75}},
-  {code:"LDB",arch:["stack","containment"], pal:["P-04","P-07","P-01"],v:{order:.8,motion:.15,weight:.95,warmth:.4,openness:.25}}
+  {code:"PRS",arch:["prism","lattice"],       pal:["P-02","P-05","P-06"],v:{order:.9,motion:.4,weight:.45,warmth:.2,openness:.55}},
+  {code:"LIN",arch:["aperture","chevron"],    pal:["P-01","P-08","P-03"],v:{order:.6,motion:.7,weight:.25,warmth:.5,openness:.75}},
+  {code:"LDB",arch:["stack","containment"],   pal:["P-04","P-07","P-01"],v:{order:.8,motion:.15,weight:.95,warmth:.4,openness:.25}}
 ];
 const GRAMMAR_TRAITS=["orthogonal","rotational","offset","condensed","expanded","bisected","stepped","inverted"];
 
 /* ==========================================================================
-   3. Application state
+   3. State
    ========================================================================== */
 const S={
-  brief:null, seed:0, briefHash:"—", mv:null,
-  territories:[], grammars:[], candidates:[], reps:[], gramStats:[],
+  brief:null,seed:0,briefHash:"—",mv:null,
+  territories:[],grammars:[],candidates:[],reps:[],gramStats:[],
   counts:{sampled:0,valid:0,perceived:0,cleared:0,reps:0},
-  selected:null, base:null, working:null, log:[], logSeq:0,
-  filter:"all", lockup:"mark", mono:false,
-  stage:"brief", ran:false
+  selected:null,base:null,working:null,log:[],logSeq:0,
+  filter:"all",lockup:"mark",mono:false,guides:true,stage:"brief"
 };
-const VIEWS=[
-  {id:"brief", steps:[1]},   {id:"terr", steps:[2,3]}, {id:"search",steps:[4]},
-  {id:"screen",steps:[5,6]}, {id:"edit", steps:[7,8]}, {id:"export",steps:[9]}
-];
-const STEPS=[
-  {n:1,view:"brief"},{n:2,view:"terr"},{n:3,view:"terr"},{n:4,view:"search"},
-  {n:5,view:"screen"},{n:6,view:"screen"},{n:7,view:"edit"},{n:8,view:"edit"},{n:9,view:"export"}
-];
+const VIEWS=["brief","terr","search","screen","edit","export"];
+const STEP_NO={brief:"01",terr:"02—03",search:"04",screen:"05—06",edit:"07—08",export:"09"};
 
 /* ==========================================================================
    4. Construction — genome -> graph -> SVG (120x120 field, unit u = 10)
    ========================================================================== */
-const F=120;
+const F=120, U=10;
 function palOf(g){ return PALETTES.find(p=>p.id===g.pal)||PALETTES[0]; }
+/* Plate grid is tinted from the mark's own ink so it stays visible whatever
+   theme the surrounding UI is in. */
+function plateStyle(P){
+  const c=[1,3,5].map(i=>parseInt(P.ink.substr(i,2),16)).join(",");
+  return `background-color:${P.bg};--grid-f:rgba(${c},.07);--grid-m:rgba(${c},.15)`;
+}
 
 function construct(g){
   const P=palOf(g);
   const ground=g.invert?P.ink:P.bg;
   const ink=g.invert?P.bg:P.ink;
   const acc=g.mono?ink:P.accent;
-  const nodes=[];
-  let atoms=0;
+  const nodes=[]; let atoms=0;
   const add=(op,note,svg,n)=>{nodes.push({id:"N"+String(nodes.length+1).padStart(2,"0"),op,note,svg});atoms+=n||1;};
-  const w=g.w, R=g.r, rot=g.rot, join=g.rad>.45?"round":"miter", cap=g.rad>.45?"round":"butt";
+  const w=g.w,R=g.r,rot=g.rot,join=g.rad>.45?"round":"miter",cap=g.rad>.45?"round":"butt";
 
   if(g.arch==="aperture"){
-    const circ=2*Math.PI*R, on=circ*(1-g.gap);
+    const circ=2*Math.PI*R,on=circ*(1-g.gap);
     add("arc.open",t("g.arc.open",Math.round(g.gap*100)),
       `<circle cx="60" cy="60" r="${r2(R)}" fill="none" stroke="${ink}" stroke-width="${r2(w)}" stroke-linecap="${cap}" stroke-dasharray="${r2(on)} ${r2(circ-on)}" transform="rotate(${rot} 60 60)"/>`,1);
     if(g.n>=5){
-      const R2=R*.44, c2=2*Math.PI*R2, on2=c2*(1-g.gap*.6);
+      const R2=R*.44,c2=2*Math.PI*R2,on2=c2*(1-g.gap*.6);
       add("arc.open",t("g.arc.counter"),
         `<circle cx="60" cy="60" r="${r2(R2)}" fill="none" stroke="${acc}" stroke-width="${r2(w*.7)}" stroke-linecap="${cap}" stroke-dasharray="${r2(on2)} ${r2(c2-on2)}" transform="rotate(${(rot+180)%360} 60 60)"/>`,1);
     }else{
       add("primitive.dot",t("g.dot.focal"),`<circle cx="60" cy="60" r="${r2(w*.95)}" fill="${acc}"/>`,1);
     }
   }
-
   if(g.arch==="orbit"){
-    const rr=R*.78, sat=w*.72;
+    const rr=R*.78,sat=w*.72;
     if(g.gap<.24){
       let d="";
-      for(let i=0;i<g.n;i++){
-        const a=(rot+i*360/g.n)*Math.PI/180;
-        d+=`M60 60L${r2(60+rr*Math.cos(a))} ${r2(60+rr*Math.sin(a))}`;
-      }
+      for(let i=0;i<g.n;i++){const a=(rot+i*360/g.n)*Math.PI/180;
+        d+=`M60 60L${r2(60+rr*Math.cos(a))} ${r2(60+rr*Math.sin(a))}`;}
       add("relation.spoke",t("g.spoke",g.n),
         `<path d="${d}" stroke="${ink}" stroke-width="${r2(w*.34)}" fill="none" stroke-linecap="${cap}"/>`,g.n);
     }
     let dots="";
-    for(let i=0;i<g.n;i++){
-      const a=(rot+i*360/g.n)*Math.PI/180;
-      dots+=`<circle cx="${r2(60+rr*Math.cos(a))}" cy="${r2(60+rr*Math.sin(a))}" r="${r2(sat)}" fill="${i===0?acc:ink}"/>`;
-    }
+    for(let i=0;i<g.n;i++){const a=(rot+i*360/g.n)*Math.PI/180;
+      dots+=`<circle cx="${r2(60+rr*Math.cos(a))}" cy="${r2(60+rr*Math.sin(a))}" r="${r2(sat)}" fill="${i===0?acc:ink}"/>`;}
     add("array.radial",t("g.satellites",r2(rr),g.n),dots,g.n);
     add("primitive.dot",t("g.core"),`<circle cx="60" cy="60" r="${r2(w*1.15)}" fill="${ink}"/>`,1);
   }
-
   if(g.arch==="lattice"){
-    const N=clamp(3+Math.round(g.n/4),3,5), cell=84/N, o=18;
-    const size=cell*(.4+.46*g.fill), off=(cell-size)/2, rx=g.rad*size*.5;
+    const N=clamp(3+Math.round(g.n/4),3,5),cell=84/N,o=18;
+    const size=cell*(.4+.46*g.fill),off=(cell-size)/2,rx=g.rad*size*.5;
     let cells="",acCell="",kept=0;
     for(let i=0;i<N;i++)for(let j=0;j<N;j++){
       const jj=g.sym==="bilateral"?Math.min(j,N-1-j):j;
       if((i*3+jj*5+g.seed)%7===0) continue;
       kept++;
-      const x=r2(o+j*cell+off), y=r2(o+i*cell+off);
+      const x=r2(o+j*cell+off),y=r2(o+i*cell+off);
       const e=`<rect x="${x}" y="${y}" width="${r2(size)}" height="${r2(size)}" rx="${r2(rx)}" fill="${ink}"/>`;
       if(kept===Math.ceil(N*N/3)&&!acCell){acCell=e.replace(ink,acc);}else{cells+=e;}
     }
     add("field.modulus",t("g.field",N),cells,kept-1);
     if(acCell) add("field.accent",t("g.fieldAccent"),acCell,1);
   }
-
   if(g.arch==="chevron"){
-    const n=clamp(g.n>6?Math.round(g.n/2):g.n,2,6);
-    const span=26, step=clamp(w*1.75,6,16);
+    const n=clamp(g.n>6?Math.round(g.n/2):g.n,2,6),span=26,step=clamp(w*1.75,6,16);
     const top=60-((n-1)*step+span)/2;
     let d="",first="";
     for(let i=0;i<n;i++){
-      const y=top+i*step;
-      const seg=`M22 ${r2(y+span)}L60 ${r2(y)}L98 ${r2(y+span)}`;
+      const y=top+i*step,seg=`M22 ${r2(y+span)}L60 ${r2(y)}L98 ${r2(y+span)}`;
       if(i===0) first=seg; else d+=seg;
     }
     const rr=g.sym==="radial"?rot%180:0;
@@ -1168,7 +1016,6 @@ function construct(g){
     add("array.lead",t("g.lead"),
       `<path d="${first}" fill="none" stroke="${acc}" stroke-width="${r2(w)}" stroke-linejoin="${join}" stroke-linecap="${cap}" transform="rotate(${rr} 60 60)"/>`,1);
   }
-
   if(g.arch==="containment"){
     if(g.sym==="radial"){
       add("boundary.circle",t("g.boundCircle"),
@@ -1186,15 +1033,14 @@ function construct(g){
         `<rect x="${r2(60-s/2)}" y="${r2(60-s/2)}" width="${r2(s)}" height="${r2(s)}" rx="${r2(g.rad*s*.3)}" fill="${acc}" transform="rotate(${rot%90+45} 60 60)"/>`,1);
     }
     if(g.gap>.2){
-      const a=rot*Math.PI/180, len=w*2.6;
+      const a=rot*Math.PI/180,len=w*2.6;
       add("boolean.notch",t("g.notch"),
         `<path d="M${r2(60+(R-len/2)*Math.cos(a))} ${r2(60+(R-len/2)*Math.sin(a))}L${r2(60+(R+len/2)*Math.cos(a))} ${r2(60+(R+len/2)*Math.sin(a))}" stroke="${ground}" stroke-width="${r2(w*2.4)}"/>`,1);
     }
   }
-
   if(g.arch==="stack"){
     const n=clamp(g.n>7?Math.round(g.n/2)+2:g.n,3,7);
-    const slot=84/n, h=slot*(.42+.3*g.fill), rx=g.rad*h*.5;
+    const slot=84/n,h=slot*(.42+.3*g.fill),rx=g.rad*h*.5;
     let bars="",acBar="",best=-1,bi=0;
     for(let i=0;i<n;i++){const len=.42+.58*(((i*5+g.seed)%4)/3); if(len>best){best=len;bi=i;}}
     for(let i=0;i<n;i++){
@@ -1206,21 +1052,94 @@ function construct(g){
     add("stack.rule",t("g.stack",n),bars,n-1);
     add("stack.accent",t("g.stackAccent"),acBar,1);
   }
-
   if(g.arch==="prism"){
     const tri=(rad,f,col,sw)=>{
       const pts=[0,120,240].map(a=>{
         const x=(a+rot+(f?180:0))*Math.PI/180;
-        return `${r2(60+rad*Math.cos(x-Math.PI/2))} ${r2(60+rad*Math.sin(x-Math.PI/2))}`;
-      });
+        return `${r2(60+rad*Math.cos(x-Math.PI/2))} ${r2(60+rad*Math.sin(x-Math.PI/2))}`;});
       return `<path d="M${pts[0]}L${pts[1]}L${pts[2]}Z" fill="${sw?"none":col}" ${sw?`stroke="${col}" stroke-width="${r2(sw)}" stroke-linejoin="${join}"`:""}/>`;
     };
     add("boundary.triangle",t("g.triangle"),tri(R,false,ink,w),1);
     if(g.n>=5) add("facet.inverted",t("g.facetInv"),tri(R*.5*(.7+.5*g.fill),true,acc,0),1);
     else add("primitive.dot",t("g.refract"),`<circle cx="60" cy="${r2(60+R*.12)}" r="${r2(R*.22*(.7+.5*g.fill))}" fill="${acc}"/>`,1);
   }
-
   return {nodes,atoms,palette:P,ground,ink};
+}
+
+/* ---- Construction guides: the circles, axes and tangents the form resolves
+   on. Drawn from the same genome, never hand-authored. ---------------- */
+function guides(g){
+  const R=g.r,w=g.w,rot=g.rot,out=[];
+  const LO=-60,HI=180;
+  const L=(x1,y1,x2,y2)=>out.push(`<path d="M${r2(x1)} ${r2(y1)}L${r2(x2)} ${r2(y2)}"/>`);
+  const C=(cx,cy,r)=>{ if(r>.4) out.push(`<circle cx="${r2(cx)}" cy="${r2(cy)}" r="${r2(r)}"/>`); };
+  const tick=(cx,cy)=>out.push(`<path d="M${r2(cx-2.4)} ${r2(cy)}h4.8M${r2(cx)} ${r2(cy-2.4)}v4.8"/>`);
+  const ray=(deg,r0,r1)=>{const a=deg*Math.PI/180;
+    L(60+r0*Math.cos(a),60+r0*Math.sin(a),60+r1*Math.cos(a),60+r1*Math.sin(a));};
+
+  L(LO,60,HI,60); L(60,LO,60,HI);
+  out.push(`<rect x="18" y="18" width="84" height="84"/>`);
+  tick(60,60);
+
+  if(g.arch==="aperture"){
+    C(60,60,R); C(60,60,R+w/2); C(60,60,R-w/2); C(60,60,R*.44);
+    L(LO,60-R,HI,60-R); L(LO,60+R,HI,60+R); L(60-R,LO,60-R,HI); L(60+R,LO,60+R,HI);
+    ray(rot,0,HI); ray(rot-g.gap*360,0,HI);
+  }
+  if(g.arch==="orbit"){
+    const rr=R*.78,sat=w*.72;
+    C(60,60,rr); C(60,60,rr+sat); C(60,60,rr-sat); C(60,60,w*1.15);
+    for(let i=0;i<g.n;i++){
+      const a=rot+i*360/g.n, rad=a*Math.PI/180;
+      ray(a,0,HI);
+      C(60+rr*Math.cos(rad),60+rr*Math.sin(rad),sat);
+      tick(60+rr*Math.cos(rad),60+rr*Math.sin(rad));
+    }
+  }
+  if(g.arch==="lattice"){
+    const N=clamp(3+Math.round(g.n/4),3,5),cell=84/N;
+    for(let i=0;i<=N;i++){L(LO,18+i*cell,HI,18+i*cell); L(18+i*cell,LO,18+i*cell,HI);}
+    C(60,60,Math.SQRT2*42); C(60,60,42);
+  }
+  if(g.arch==="chevron"){
+    const n=clamp(g.n>6?Math.round(g.n/2):g.n,2,6),span=26,step=clamp(w*1.75,6,16);
+    const top=60-((n-1)*step+span)/2;
+    for(let i=0;i<n;i++){
+      const y=top+i*step;
+      L(LO,y,HI,y); L(LO,y+span,HI,y+span);
+      L(60,y,60+(HI-60),y+span*((HI-60)/38));
+      L(60,y,60-(60-LO),y+span*((60-LO)/38));
+      tick(60,y);
+    }
+    C(60,60,R);
+  }
+  if(g.arch==="containment"){
+    C(60,60,R); C(60,60,R+w/2); C(60,60,R-w/2); C(60,60,R*.38*(.7+.5*g.fill));
+    out.push(`<rect x="${r2(60-R)}" y="${r2(60-R)}" width="${r2(R*2)}" height="${r2(R*2)}"/>`);
+    L(LO,60-R,HI,60-R); L(LO,60+R,HI,60+R); L(60-R,LO,60-R,HI); L(60+R,LO,60+R,HI);
+    ray(45,0,HI); ray(135,0,HI); ray(225,0,HI); ray(315,0,HI);
+    if(g.gap>.2) ray(rot,0,HI);
+  }
+  if(g.arch==="stack"){
+    const n=clamp(g.n>7?Math.round(g.n/2)+2:g.n,3,7),slot=84/n;
+    for(let i=0;i<=n;i++) L(LO,18+i*slot,HI,18+i*slot);
+    for(let i=0;i<n;i++){
+      const len=.42+.58*(((i*5+g.seed)%4)/3), x=g.sym==="bilateral"?60+84*len/2:18+84*len;
+      L(x,LO,x,HI); tick(x,18+i*slot+slot/2);
+    }
+    L(18,LO,18,HI); C(60,60,42);
+  }
+  if(g.arch==="prism"){
+    C(60,60,R); C(60,60,R/2); C(60,60,R*.5*(.7+.5*g.fill));
+    for(let i=0;i<3;i++){
+      const a=rot+i*120-90;
+      ray(a,0,HI);
+      const rad=a*Math.PI/180;
+      tick(60+R*Math.cos(rad),60+R*Math.sin(rad));
+    }
+    L(LO,60+R*.5,HI,60+R*.5);
+  }
+  return `<g data-gd="1" fill="none" stroke="var(--guide)" stroke-width="1" stroke-opacity=".55" vector-effect="non-scaling-stroke">${out.join("")}</g>`;
 }
 
 function svgOf(g,opt){
@@ -1230,15 +1149,13 @@ function svgOf(g,opt){
   const lock=opt.lockup||"mark";
   const name=(S.brief?S.brief.name:"Brand").toUpperCase();
   const cjk=/[　-ヿ一-鿿＀-￯]/.test(name);
-  /* Type is set to the measure: size solves for the available width, then the
-     wordmark is tracked to fill it, the way a lockup is drawn by hand. */
   const fit=(measure,cap)=>{
     const fs=clamp(measure/(Math.max(name.length,2)*(cjk?1.12:.88)),5,cap);
-    return {fs:r2(fs),ls:r2(fs*(cjk?.04:.16)),
-            len:cjk?"":` textLength="${measure}" lengthAdjust="spacing"`};
+    return {fs:r2(fs),ls:r2(fs*(cjk?.04:.16)),len:cjk?"":` textLength="${measure}" lengthAdjust="spacing"`};
   };
   const face="Helvetica Neue,Arial,Hiragino Sans,Yu Gothic,Noto Sans JP,sans-serif";
-  let vb="0 0 120 120", extra="";
+  const pad=opt.guides?34:0;
+  let vb=`${-pad} ${-pad} ${120+pad*2} ${120+pad*2}`, extra="";
   if(lock==="stacked"){
     vb="0 0 120 158";
     const f=fit(104,15);
@@ -1248,15 +1165,28 @@ function svgOf(g,opt){
     const f=fit(112,21);
     extra=`<text x="136" y="68"${f.len} font-family="${face}" font-size="${f.fs}" font-weight="600" letter-spacing="${f.ls}" fill="${ink}">${name}</text>`;
   }
-  const bg=opt.transparent?"":`<rect x="-20" y="-20" width="320" height="220" fill="${ground}"/>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" role="img" aria-label="${name} — ${g.arch}">${bg}${body}${extra}</svg>`;
+  const bg=opt.transparent?"":`<rect x="-60" y="-60" width="400" height="300" fill="${ground}"/>`;
+  const gd=(opt.guides&&lock==="mark")?guides(g):"";
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" role="img" aria-label="${name} — ${g.arch}">${bg}${body}${extra}${gd}</svg>`;
+}
+
+function conceptOf(g){
+  const c=construct(g), cov=coverage(g);
+  const n=g.arch==="lattice"?clamp(3+Math.round(g.n/4),3,5)
+        :g.arch==="chevron"?clamp(g.n>6?Math.round(g.n/2):g.n,2,6)
+        :g.arch==="stack"?clamp(g.n>7?Math.round(g.n/2)+2:g.n,3,7):g.n;
+  return {
+    text:t("cp."+g.arch).split("{n}").join(n)+" "+t("cp.tail",U),
+    facts:[["fact.r",r2(g.r)+"u"],["fact.w",r2(g.w)+"u"],["fact.cov",(cov*100).toFixed(1)+"%"],
+           ["fact.atoms",c.atoms],["fact.ops",c.nodes.length],["fact.sym",g.sym]]
+  };
 }
 
 /* ==========================================================================
-   5. Evaluation — validity, perception, similarity
+   5. Evaluation
    ========================================================================== */
 function coverage(g){
-  const w=g.w/F, R=g.r/F;
+  const w=g.w/F,R=g.r/F;
   switch(g.arch){
     case "aperture":   return clamp(2*Math.PI*R*w*(1-g.gap)*1.15+(g.n>=5?.02:.01),0,1);
     case "orbit":      return clamp(g.n*Math.PI*Math.pow(w*.72,2)*1.6+(g.gap<.24?g.n*w*.34*R*.78:0)+.012,0,1);
@@ -1276,8 +1206,7 @@ function ratio(a,b){const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.0
 
 function evaluate(g,cons){
   const {nodes,atoms,palette:P}=construct(g);
-  const cov=coverage(g), sr=g.w/g.r, ops=nodes.length;
-
+  const cov=coverage(g),sr=g.w/g.r,ops=nodes.length;
   const fail=[];
   if(g.w<2.2) fail.push(t("v.fail1"));
   if(sr>.42) fail.push(t("v.fail2"));
@@ -1291,7 +1220,6 @@ function evaluate(g,cons){
   const detail=clamp(1-(atoms-3)/13,0,1);
   const covFit=1-Math.min(1,Math.abs(cov-.20)/.26);
   const small=Math.round(100*(.46*smallStroke+.32*detail+.22*covFit));
-
   const contr=ratio(P.ink,P.bg);
   const contrast=Math.round(clamp((contr-3)/11,0,1)*100);
   const complexity=Math.round(clamp(100-Math.abs(ops-3)*13-Math.max(0,atoms-9)*4,0,100));
@@ -1315,14 +1243,11 @@ function evaluate(g,cons){
     if(cons.single&&P.accent!==P.ink&&cov>.4) notes.push(t("n.single"));
     if(cons.engrave&&atoms>7) notes.push(t("n.engrave"));
   }
-  return {
-    valid:fail.length===0, fail, cov, atoms, ops, strokePx,
+  return {valid:fail.length===0,fail,cov,atoms,ops,strokePx,
     perception:{small,contrast,complexity,balance,distinct,overall},
     similarity:{max:maxSim,status,near:near.id},
-    pass:fail.length===0&&small>=56&&overall>=60, notes
-  };
+    pass:fail.length===0&&small>=56&&overall>=60,notes};
 }
-
 const W=[3.0,1.0,.9,1.1,.8,.5,.6,1.2,.7,.5];
 function vec(g){
   return [ARCHETYPES.indexOf(g.arch)/6,g.w/12,(g.r-24)/24,g.n/12,g.gap,
@@ -1335,7 +1260,7 @@ function simOf(a,b){
   return clamp(1-Math.sqrt(s)/DMAX,0,1);
 }
 const CORPUS=(()=>{
-  const r=rng(0x5EEDBEEF), out=[];
+  const r=rng(0x5EEDBEEF),out=[];
   for(let i=0;i<56;i++){
     out.push({id:"CX-"+String(i+1).padStart(3,"0"),v:vec({
       arch:pick(r,ARCHETYPES),w:lerp(2.5,10,r()),r:lerp(26,46,r()),n:2+Math.floor(r()*10),
@@ -1372,39 +1297,36 @@ function chooseTerritories(mv,seed){
     .map(o=>({...o.x,fit:clamp(1+o.score/2.4,0,1),on:true}));
 }
 function buildGrammars(terrs,seed){
-  const r=rng(seed^0x9E3779B9), out=[];
+  const r=rng(seed^0x9E3779B9),out=[];
   terrs.forEach(tr=>{
     for(let i=0;i<16;i++){
       const arch=tr.arch[i%tr.arch.length];
       const trait=GRAMMAR_TRAITS[(i+tr.code.length)%GRAMMAR_TRAITS.length];
-      const wLo=lerp(2.4,7,r()), rLo=lerp(24,34,r()), nLo=2+Math.floor(r()*4);
+      const wLo=lerp(2.4,7,r()),rLo=lerp(24,34,r()),nLo=2+Math.floor(r()*4);
       out.push({
         id:`${tr.code}.${arch.slice(0,3).toUpperCase()}.${trait}-${String(i+1).padStart(2,"0")}`,
-        terr:tr.code, arch, trait,
+        terr:tr.code,arch,trait,
         win:{w:[wLo,wLo+lerp(1.6,4.2,r())],r:[rLo,rLo+lerp(6,14,r())],
              n:[nLo,nLo+2+Math.floor(r()*5)],gap:[r()*.14,.16+r()*.3],
              rot:[0,trait==="rotational"?345:trait==="orthogonal"?90:180],
              rad:[r()*.3,.35+r()*.65],fill:[.2+r()*.3,.6+r()*.4]},
         sym:trait==="rotational"?"radial":trait==="bisected"?"bilateral":pick(r,["radial","bilateral","grid"]),
-        pal:tr.pal
-      });
+        pal:tr.pal});
     }
   });
   return out;
 }
 function sampleCandidates(grammars,seed,target){
-  const per=Math.floor(target/grammars.length), out=[];
+  const per=Math.floor(target/grammars.length),out=[];
   grammars.forEach((gr,gi)=>{
     const r=rng((seed^hash32(gr.id))>>>0);
     for(let i=0;i<per;i++){
       const q=(a,step)=>{const v=lerp(a[0],a[1],r());return step?Math.round(v/step)*step:v;};
-      out.push({
-        id:"C-"+String(out.length+1).padStart(4,"0"),
-        gram:gr.id, terr:gr.terr, arch:gr.arch,
-        w:r2(q(gr.win.w)), r:r2(q(gr.win.r)), n:Math.round(q(gr.win.n)),
-        gap:r2(q(gr.win.gap)), rot:q(gr.win.rot,15), rad:r2(q(gr.win.rad)), fill:r2(q(gr.win.fill)),
-        sym:gr.sym, pal:pick(r,gr.pal), seed:(seed+gi*97+i)>>>0, mono:false
-      });
+      out.push({id:"C-"+String(out.length+1).padStart(4,"0"),
+        gram:gr.id,terr:gr.terr,arch:gr.arch,
+        w:r2(q(gr.win.w)),r:r2(q(gr.win.r)),n:Math.round(q(gr.win.n)),
+        gap:r2(q(gr.win.gap)),rot:q(gr.win.rot,15),rad:r2(q(gr.win.rad)),fill:r2(q(gr.win.fill)),
+        sym:gr.sym,pal:pick(r,gr.pal),seed:(seed+gi*97+i)>>>0,mono:false});
     }
   });
   return out;
@@ -1441,8 +1363,6 @@ function run(){
   S.territories=chooseTerritories(S.mv,S.seed);
   S.grammars=buildGrammars(S.territories,S.seed);
   rebuild();
-  S.ran=true;
-  renderStatus();
 }
 function rebuild(){
   const active=S.grammars.filter(g=>S.territories.find(x=>x.code===g.terr&&x.on));
@@ -1485,58 +1405,44 @@ const el=(tag,c,h)=>{const e=document.createElement(tag);if(c)e.className=c;if(h
 
 function applyStatic(){
   document.querySelectorAll("[data-t]").forEach(n=>{n.textContent=t(n.dataset.t);});
-  $("#rules").innerHTML=[1,2,3,4].map(i=>`<div class="rule"><b>—</b><span>${t("rule."+i)}</span></div>`).join("");
+  $("#rules").innerHTML=[1,2,3,4].map(i=>`<div class="rule"><i>—</i><span>${t("rule."+i)}</span></div>`).join("");
   $("#howto").innerHTML=[1,2,3,4,5,6].map(i=>`<li><span>${t("howto."+i)}</span></li>`).join("");
   $("#gramHead").innerHTML=["gram","terr","arch","sampled","valid","perc","clear","yield"]
     .map(k=>`<th>${t("th."+k)}</th>`).join("");
   $("#langBtn").textContent=LANG==="ja"?"EN":"日本語";
+  $("#mastState").textContent=t("s.ready");
   document.querySelectorAll("#attrs .chip").forEach(c=>{c.textContent=t("at."+c.dataset.k);});
   document.querySelectorAll("#cons .toggle span").forEach(s=>{s.textContent=t("cn."+s.dataset.k);});
   countAttrs();
 }
 function renderAll(){
-  renderChain(); renderBrief(); renderTerritories(); renderSearch();
+  renderStepper(); renderBrief(); renderTerritories(); renderSearch();
   renderScreen(); renderEditor(); renderExport(); renderStatus();
 }
-
-function renderChain(){
-  const chain=$("#chain");
-  chain.innerHTML=`<span class="lbl">${t("rail.pipeline")}</span>`;
-  const active=VIEWS.find(v=>v.id===S.stage).steps;
-  STEPS.forEach(st=>{
-    const b=el("button","step");
-    b.dataset.on=active.includes(st.n)?"1":"0";
-    const counts={4:S.counts.sampled,5:S.counts.perceived,6:S.counts.cleared};
-    const c=counts[st.n]?counts[st.n].toLocaleString():"";
-    b.innerHTML=`<span class="i num">${String(st.n).padStart(2,"0")}</span><span class="n">${t("step."+st.n)}</span><span class="c num">${c}</span>`;
-    if(!S.ran&&st.view!=="brief") b.disabled=true;
-    b.onclick=()=>go(st.view);
-    chain.appendChild(b);
+function renderStepper(){
+  const nav=$("#stepper"); nav.innerHTML="";
+  VIEWS.forEach(id=>{
+    const b=el("button","sp");
+    b.dataset.on=S.stage===id?"1":"0";
+    b.innerHTML=`<span class="no">${STEP_NO[id]}</span><span class="nm">${t("view."+id)}</span><span class="sub">${t("sub."+id)}</span>`;
+    b.onclick=()=>go(id);
+    nav.appendChild(b);
   });
 }
 function go(id){
   S.stage=id;
-  document.querySelectorAll(".view").forEach(v=>v.dataset.on=v.dataset.view===id?"1":"0");
-  const v=VIEWS.find(x=>x.id===id);
-  $("#vtitle").textContent=t("view."+id);
-  $("#crumb").textContent=t("stage")+" "+v.steps.map(n=>String(n).padStart(2,"0")).join(" — ")+"  /  "+t("viewL."+id);
-  renderChain(); renderTools();
+  document.querySelectorAll(".sheet").forEach(v=>v.dataset.on=v.dataset.view===id?"1":"0");
+  renderStepper();
   window.scrollTo({top:0,behavior:"instant"});
-}
-function renderTools(){
-  const box=$("#tools"); box.innerHTML="";
-  const add=(label,kind,fn,dis)=>{const b=el("button","btn",label);if(kind)b.dataset.kind=kind;b.onclick=fn;b.disabled=!!dis;box.appendChild(b);};
-  if(S.stage==="brief") add(S.ran?t("b.rerun"):t("b.run"),"primary",()=>{run();go("terr");});
-  if(S.stage==="terr"){add(t("b.back"),"ghost",()=>go("brief"));add(t("b.search"),"primary",()=>{rebuild();go("search");});}
-  if(S.stage==="search"){add(t("b.back"),"ghost",()=>go("terr"));add(t("b.reps"),"primary",()=>go("screen"));}
-  if(S.stage==="screen"){add(t("b.back"),"ghost",()=>go("search"));add(t("b.edit"),"primary",()=>go("edit"),!S.selected);}
-  if(S.stage==="edit"){add(t("b.back"),"ghost",()=>go("screen"));add(t("b.export"),"primary",()=>go("export"),!S.selected);}
-  if(S.stage==="export") add(t("b.backEdit"),"ghost",()=>go("edit"));
 }
 
 function renderBrief(){
   if(!S.mv) return;
-  $("#mvec").textContent=AXES.map(a=>t("ax."+a)+" "+S.mv[a].toFixed(2)).join("   ·   ");
+  $("#mvec").innerHTML=AXES.map(a=>`
+    <div class="mvrow">
+      <div class="k"><b>${t("ax."+a)}</b><span>${S.mv[a].toFixed(2)}</span></div>
+      <div class="mvtrack"><i style="width:${S.mv[a]*100}%"></i></div>
+    </div>`).join("");
 }
 function initBrief(){
   const wrap=$("#attrs");
@@ -1548,7 +1454,7 @@ function initBrief(){
       const on=c.dataset.on==="1";
       if(!on&&document.querySelectorAll("#attrs .chip[data-on='1']").length>=5) return;
       c.dataset.on=on?"0":"1";
-      countAttrs(); markStale();
+      countAttrs(); run();
     };
     wrap.appendChild(c);
   });
@@ -1556,34 +1462,39 @@ function initBrief(){
   CONSTRAINTS.forEach(c=>{
     const l=el("label","toggle");
     l.innerHTML=`<input type="checkbox" data-k="${c.k}" ${c.on?"checked":""}><span data-k="${c.k}"></span>`;
-    l.querySelector("input").onchange=markStale;
+    l.querySelector("input").onchange=run;
     cw.appendChild(l);
   });
-  ["fName","fCat","fAud"].forEach(id=>$("#"+id).addEventListener("input",markStale));
+  let timer=null;
+  ["fName","fCat","fAud"].forEach(id=>$("#"+id).addEventListener("input",()=>{
+    clearTimeout(timer); timer=setTimeout(run,260);
+  }));
 }
 function countAttrs(){
   $("#attrCount").textContent=t("brief.attrCount",document.querySelectorAll("#attrs .chip[data-on='1']").length);
-}
-function markStale(){
-  if(!S.ran) return;
-  $("#runDot").dataset.s="run"; $("#runState").textContent=t("s.stale");
 }
 
 function renderTerritories(){
   const grid=$("#terrGrid"); if(!S.territories.length) return;
   grid.innerHTML="";
   S.territories.forEach(tr=>{
-    const card=el("div","card terr"); card.dataset.on=tr.on?"1":"0";
+    const card=el("div","terr"); card.dataset.on=tr.on?"1":"0";
     const n=S.grammars.filter(x=>x.terr===tr.code).length;
+    const demo=S.reps.find(x=>x.terr===tr.code)||S.candidates.find(c=>c.terr===tr.code&&c.ev&&c.ev.valid);
+    const P=demo?palOf(demo):PALETTES[0];
     card.innerHTML=`
-      <div class="head">
-        <div><span class="lbl">${tr.code} · ${t("terr.grammars",n)}</span><h3 style="margin-top:5px">${t("t."+tr.code)}</h3></div>
-        <span class="lbl num">${Math.round(tr.fit*100)}%</span>
+      <div class="plate paper-grid" style="${plateStyle(P)}">
+        ${demo?svgOf(demo,{transparent:true,guides:true}):""}
       </div>
-      <p class="thesis">${t("th."+tr.code)}</p>
-      <div class="swatches">${tr.pal.map(p=>{const P=PALETTES.find(x=>x.id===p);
-        return `<span class="sw" style="background:${P.bg}"></span><span class="sw" style="background:${P.ink}"></span><span class="sw" style="background:${P.accent}"></span>`;}).join("")}</div>
-      <div class="bars">${AXES.map(a=>`<div class="bar"><span>${t("ax."+a)}</span><span class="track"><span class="fill" style="width:${tr.v[a]*100}%"></span></span><span class="num">${tr.v[a].toFixed(2)}</span></div>`).join("")}</div>`;
+      <div class="body">
+        <div class="lbl">${tr.code} · ${t("terr.grammars",n)}</div>
+        <h3>${t("t."+tr.code)}</h3>
+        <p class="thesis">${t("th."+tr.code)}</p>
+        <div class="foot">
+          <div class="axes">${AXES.map(a=>`<span style="height:${Math.max(3,tr.v[a]*22)}px" title="${t("ax."+a)} ${tr.v[a]}"></span>`).join("")}</div>
+          <span class="state">${tr.on?t("terr.on"):t("terr.off")}</span>
+        </div>
+      </div>`;
     card.onclick=()=>{
       if(tr.on&&S.territories.filter(x=>x.on).length<=1) return;
       tr.on=!tr.on; rebuild();
@@ -1598,19 +1509,17 @@ function renderTerritories(){
       id:demo.id,grammar:demo.gram,territory:demo.terr,
       mark:{archetype:demo.arch,strokeWeight:demo.w,radius:demo.r,count:demo.n,
             gap:demo.gap,rotation:demo.rot,cornerRadius:demo.rad,fill:demo.fill,symmetry:demo.sym},
-      palette:demo.pal,seed:demo.seed,provenance:{brief:S.briefHash,edits:0}
-    },null,2);
+      palette:demo.pal,seed:demo.seed,provenance:{brief:S.briefHash,edits:0}},null,2);
     const c=construct(demo);
+    $("#graphDemoCount").textContent=t("gc.ops",c.nodes.length,c.atoms);
     $("#graphDemo").innerHTML=c.nodes.map(n=>
-      `<div class="gnode"><span class="gid num">${n.id}</span><span class="gop">${n.op}</span><span class="gnote">${n.note}</span></div>`).join("");
-    $("#graphArt").innerHTML=svgOf(demo,{});
-    $("#graphArt").style.background=palOf(demo).bg;
+      `<div class="gnode"><span class="gid">${n.id}</span><span class="gop">${n.op}</span><span class="gnote">${n.note}</span></div>`).join("");
   }
 }
 
 function renderSearch(){
   if(!S.candidates.length) return;
-  const c=S.counts, max=c.sampled;
+  const c=S.counts,max=c.sampled;
   const rows=[
     {n:t("fn.gram"),s:t("fn.gramS"),v:S.gramStats.length,d:t("fn.gramD")},
     {n:t("fn.cand"),s:t("fn.candS"),v:c.sampled,d:t("fn.candD")},
@@ -1620,12 +1529,11 @@ function renderSearch(){
     {n:t("fn.rep"),s:t("fn.repS"),v:c.reps,d:t("fn.repD"),f:1}
   ];
   $("#funnel").innerHTML=rows.map(r=>`
-    <div class="fstage" data-final="${r.f?1:0}">
-      <div class="fname"><b>${r.n}</b><span>${r.s}</span></div>
-      <div class="track"><div class="fill" style="width:${clamp(r.v/max*100,.6,100)}%"></div></div>
-      <div class="rt num">${r.v.toLocaleString()}<small>${r.d}</small></div>
+    <div class="fs" data-final="${r.f?1:0}">
+      <div class="fn"><b>${r.n}</b><span>${r.s}</span></div>
+      <div class="tr"><i style="width:${clamp(r.v/max*100,.5,100)}%"></i></div>
+      <div class="rt"><b>${r.v.toLocaleString()}</b><span>${r.d}</span></div>
     </div>`).join("");
-  $("#gramCount").textContent=t("search.active",S.gramStats.length);
   $("#gramBody").innerHTML=S.gramStats.map(g=>`
     <tr><td>${g.id}</td><td>${g.terr}</td><td>${g.arch}</td><td>${g.s}</td>
     <td>${g.v}</td><td>${g.p}</td><td>${g.c}</td>
@@ -1633,8 +1541,7 @@ function renderSearch(){
 }
 
 function renderScreen(){
-  const fw=$("#screenFilters");
-  fw.innerHTML="";
+  const fw=$("#screenFilters"); fw.innerHTML="";
   ["all","clear","review","top"].forEach(k=>{
     const b=el("button","chip",t("f."+k)); b.dataset.k=k; b.dataset.on=k===S.filter?"1":"0";
     b.onclick=()=>{S.filter=k;renderScreen();};
@@ -1648,19 +1555,19 @@ function renderScreen(){
     list=sorted.slice(0,Math.max(1,Math.ceil(sorted.length/4)));
   }
   $("#screenCount").textContent=t("screen.count",list.length,S.reps.length);
-  const grid=$("#candGrid"); grid.innerHTML="";
+  const grid=$("#specGrid"); grid.innerHTML="";
   list.forEach(c=>{
-    const card=el("div","card cand");
+    const card=el("div","spec");
     card.dataset.on=S.selected&&S.selected.id===c.id?"1":"0";
-    const P=palOf(c), ev=c.ev;
+    const P=palOf(c),ev=c.ev;
     card.innerHTML=`
-      <div class="stage-art" style="background:${P.bg}">${svgOf(c,{transparent:true})}</div>
+      <div class="plate paper-grid" style="${plateStyle(P)}">${svgOf(c,{transparent:true,guides:true})}</div>
       <div class="meta">
         <div class="id"><span>${c.id}</span><span>${c.gram.split("-")[0]}</span></div>
-        <div class="scorerow">
-          <span class="num" style="font-size:12.5px;width:22px">${ev.perception.overall}</span>
-          <span class="scorebar"><i style="width:${ev.perception.overall}%;background:${ev.perception.overall>=75?"var(--pass)":"var(--review)"}"></i></span>
-          <span class="pill" data-s="${ev.similarity.status}">${t("st."+ev.similarity.status)}</span>
+        <div class="score">
+          <b>${ev.perception.overall}</b>
+          <span class="tr"><i style="width:${ev.perception.overall}%"></i></span>
+          <span class="tagpill" data-s="${ev.similarity.status}">${t("st."+ev.similarity.status)}</span>
         </div>
         <div class="id"><span>16px ${ev.perception.small}</span><span>${ev.atoms} atoms</span></div>
       </div>`;
@@ -1671,41 +1578,41 @@ function renderScreen(){
 }
 
 const PARAMS=[
-  {k:"w",   min:1.5,max:12, step:.1, unit:"u"},
-  {k:"r",   min:20, max:50, step:.5, unit:"u"},
-  {k:"n",   min:2,  max:12, step:1,  unit:""},
-  {k:"gap", min:0,  max:.5, step:.01,unit:""},
-  {k:"rot", min:0,  max:345,step:15, unit:"°"},
-  {k:"rad", min:0,  max:1,  step:.01,unit:""},
-  {k:"fill",min:.1, max:1,  step:.01,unit:""}
+  {k:"w",min:1.5,max:12,step:.1,unit:"u"},{k:"r",min:20,max:50,step:.5,unit:"u"},
+  {k:"n",min:2,max:12,step:1,unit:""},   {k:"gap",min:0,max:.5,step:.01,unit:""},
+  {k:"rot",min:0,max:345,step:15,unit:"°"},{k:"rad",min:0,max:1,step:.01,unit:""},
+  {k:"fill",min:.1,max:1,step:.01,unit:""}
 ];
 function renderEditor(){
   $("#lockBtn").textContent=t("edit.lockup",t("lk."+S.lockup));
   $("#monoBtn").textContent=S.mono?t("edit.monoOn"):t("edit.mono");
   $("#monoBtn").dataset.on=S.mono?"1":"0";
+  $("#gdBtn").textContent=S.guides?t("edit.guidesOn"):t("edit.guides");
+  $("#gdBtn").dataset.on=S.guides?"1":"0";
   $("#resetBtn").textContent=t("edit.reset");
-  if(!S.working){
-    $("#params").innerHTML=`<div class="empty">${t("edit.none")}</div>`;
-    return;
-  }
-  const g=S.working, ev=evaluate(g,S.brief.cons), base=S.base.ev, P=palOf(g);
+  if(!S.working){$("#params").innerHTML=`<div class="empty">${t("edit.none")}</div>`;return;}
+  const g=S.working,ev=evaluate(g,S.brief.cons),base=S.base.ev,P=palOf(g);
 
-  $("#editId").textContent=g.id+"  ·  "+g.gram;
+  $("#editId").textContent=g.id+" · "+g.gram;
   const st=$("#editStatus"); st.dataset.s=ev.similarity.status; st.textContent=t("st."+ev.similarity.status);
 
-  const art=$("#editArt");
-  [...art.querySelectorAll("svg")].forEach(n=>n.remove());
-  const holder=document.createElement("div");
-  holder.innerHTML=svgOf({...g,mono:S.mono},{lockup:S.lockup,transparent:true});
-  art.prepend(holder.firstChild);
-  art.parentElement.style.background=P.bg;
+  const plate=$("#plateBig");
+  plate.setAttribute("style",plateStyle(P));
+  plate.classList.toggle("show-gd",S.guides);
+  $("#editArt").innerHTML=svgOf({...g,mono:S.mono},{lockup:S.lockup,transparent:true,guides:true});
+
+  const cp=conceptOf(g);
+  $("#conceptText").textContent=cp.text;
+  $("#facts").innerHTML=cp.facts.map(([k,v])=>`<span>${t(k)} <b>${v}</b></span>`).join("");
+  $("#specimenBox").style.backgroundColor=P.bg;
+  $("#specimenBox").innerHTML=svgOf({...g,mono:S.mono},{transparent:true});
 
   const strip=$("#sizeStrip"); strip.innerHTML="";
   [16,24,32,48,72].forEach(px=>{
     const d=el("div","sz");
     d.innerHTML=`<div class="box" style="background:${P.bg};width:${px+8}px;height:${px+8}px">
       <div style="width:${px}px;height:${px}px">${svgOf({...g,mono:S.mono},{transparent:true})}</div></div>
-      <span class="num">${px}px</span>`;
+      <span>${px}px</span>`;
     strip.appendChild(d);
   });
   const rev=el("div","sz");
@@ -1714,20 +1621,18 @@ function renderEditor(){
     <span>${t("edit.reversed")}</span>`;
   strip.appendChild(rev);
 
-  const M=[
-    ["m.overall",ev.perception.overall,base.perception.overall],
+  const M=[["m.overall",ev.perception.overall,base.perception.overall],
     ["m.small",ev.perception.small,base.perception.small],
     ["m.contrast",ev.perception.contrast,base.perception.contrast],
     ["m.distinct",ev.perception.distinct,base.perception.distinct],
     ["m.economy",ev.perception.complexity,base.perception.complexity],
     ["m.balance",ev.perception.balance,base.perception.balance],
-    ["m.proximity",Math.round(ev.similarity.max*1000)/10,Math.round(base.similarity.max*1000)/10]
-  ];
+    ["m.proximity",Math.round(ev.similarity.max*1000)/10,Math.round(base.similarity.max*1000)/10]];
   $("#metrics").innerHTML=M.map(([k,v,b],i)=>{
-    const d=r2(v-b), inv=i===6;
+    const d=r2(v-b),inv=i===6;
     const dir=d===0?"":(inv?(d<0?"up":"down"):(d>0?"up":"down"));
-    return `<div class="metric"><span class="mn">${t(k)}</span><span class="mv num">${v}</span>
-      <span class="md num" ${dir?`data-d="${dir}"`:""}>${d===0?"—":(d>0?"+":"")+d}</span></div>`;
+    return `<div class="metric"><span>${t(k)}</span><span class="mv2">${v}</span>
+      <span class="md" ${dir?`data-d="${dir}"`:""}>${d===0?"—":(d>0?"+":"")+d}</span></div>`;
   }).join("");
 
   $("#reasons").innerHTML=ev.fail.map(f=>`<div class="reason"><i>✕</i><span>${f}</span></div>`).join("")
@@ -1741,13 +1646,12 @@ function renderEditor(){
     const inp=el("input");
     inp.type="range";inp.min=pd.min;inp.max=pd.max;inp.step=pd.step;inp.value=g[pd.k];
     inp.oninput=()=>{
-      const from=g[pd.k], to=parseFloat(inp.value);
+      const from=g[pd.k],to=parseFloat(inp.value);
       if(from===to) return;
       g[pd.k]=to; logEdit("p."+pd.k,from,to,pd.k);
       renderEditor(); renderExport(); renderStatus();
     };
-    row.appendChild(inp);
-    p.appendChild(row);
+    row.appendChild(inp); p.appendChild(row);
   });
   [["arch",ARCHETYPES],["sym",["radial","bilateral","grid"]],["pal",PALETTES.map(x=>x.id)]]
   .forEach(([k,opts])=>{
@@ -1757,8 +1661,7 @@ function renderEditor(){
     const sel=el("select");
     sel.innerHTML=opts.map(o=>`<option ${o===g[k]?"selected":""}>${o}</option>`).join("");
     sel.onchange=()=>{const from=g[k];g[k]=sel.value;logEdit("p."+k,from,sel.value,k);renderEditor();renderExport();renderStatus();};
-    row.appendChild(sel);
-    p.appendChild(row);
+    row.appendChild(sel); p.appendChild(row);
   });
   renderLog();
 }
@@ -1776,7 +1679,7 @@ function renderLog(){
     const row=el("div","logrow");
     row.dataset.rev=e.reverted?"1":"0";
     const label=t(e.labelKey)+(e.note?" ("+t("edit.revertOf",e.note)+")":"");
-    row.innerHTML=`<span class="ix num">${String(e.i).padStart(2,"0")}</span>
+    row.innerHTML=`<span class="ix">${String(e.i).padStart(2,"0")}</span>
       <span class="tx">${label} ${r2(e.from)} → ${r2(e.to)}</span>`;
     const b=el("button","btn btn-sm",e.reverted?t("edit.reverted"):t("edit.revert"));
     b.dataset.kind="ghost"; b.disabled=e.reverted;
@@ -1786,8 +1689,7 @@ function renderLog(){
                   t:Date.now(),reverted:true,note:String(e.i).padStart(2,"0")});
       renderEditor(); renderExport(); renderStatus();
     };
-    row.appendChild(b);
-    L.appendChild(row);
+    row.appendChild(b); L.appendChild(row);
   });
 }
 
@@ -1820,19 +1722,18 @@ function flattenSvg(svgStr){
 }
 function exportSvg(){
   if(!S.working) return "";
-  const g=S.working, ev=evaluate(g,S.brief.cons);
+  const g=S.working,ev=evaluate(g,S.brief.cons);
   const flat=flattenSvg(svgOf({...g,mono:S.mono},{lockup:S.lockup}));
   const head=`<!-- LogoGenome ${g.id} · grammar ${g.gram} · brief ${S.briefHash} · edits ${S.log.filter(e=>!e.reverted).length} -->
   <title>${S.brief.name} — ${g.arch}</title>
   <desc>Logo Design Intelligence v15. overall ${ev.perception.overall}, 16px ${ev.perception.small}, collision ${ev.similarity.status}. Design collision screening only — not a trademark clearance.</desc>`;
   const cut=flat.indexOf(">")+1;
   return (flat.slice(0,cut)+"\n  "+head+flat.slice(cut))
-    .replace(/><(?!\/)/g,">\n  <")
-    .replace("</svg>","\n</svg>");
+    .replace(/><(?!\/)/g,">\n  <").replace("</svg>","\n</svg>");
 }
 function renderExport(){
   if(!S.working){$("#svgCode").textContent="";return;}
-  const g=S.working, ev=evaluate(g,S.brief.cons), svg=exportSvg();
+  const g=S.working,ev=evaluate(g,S.brief.cons),svg=exportSvg();
   $("#svgCode").textContent=svg;
   $("#genomeCode").textContent=JSON.stringify({
     id:g.id,grammar:g.gram,territory:g.terr,
@@ -1840,28 +1741,22 @@ function renderExport(){
           rotation:g.rot,cornerRadius:r2(g.rad),fill:r2(g.fill),symmetry:g.sym},
     palette:g.pal,lockup:S.lockup,seed:g.seed,
     provenance:{brief:S.briefHash,pipelineSeed:S.seed,
-                edits:S.log.filter(e=>!e.reverted).length,derivedFrom:S.base.id,reversible:true}
-  },null,2);
+                edits:S.log.filter(e=>!e.reverted).length,derivedFrom:S.base.id,reversible:true}},null,2);
   const c=construct(g);
   $("#graphCount").textContent=t("gc.ops",c.nodes.length,c.atoms);
   $("#graphList").innerHTML=c.nodes.map(n=>
-    `<div class="gnode"><span class="gid num">${n.id}</span><span class="gop">${n.op}</span><span class="gnote">${n.note}</span></div>`).join("");
+    `<div class="gnode"><span class="gid">${n.id}</span><span class="gop">${n.op}</span><span class="gnote">${n.note}</span></div>`).join("");
   $("#prov").innerHTML=[
     ["pv.brand",S.brief.name],["pv.hash",S.briefHash],["pv.seed",S.seed],
     ["pv.terr",g.terr],["pv.gram",g.gram],["pv.cand",S.base.id],["pv.gseed",g.seed],
     ["pv.kept",S.log.filter(e=>!e.reverted).length],["pv.reverted",S.log.filter(e=>e.reverted).length]
   ].map(([k,v])=>`<dt>${t(k)}</dt><dd>${v}</dd>`).join("");
 
-  const checks=[
-    ["ac.valid",ev.valid],
-    ["ac.repro",true],
-    ["ac.editable",true],
-    ["ac.explain",ev.notes.length>0],
-    ["ac.small",ev.perception.small>=56],
+  const checks=[["ac.valid",ev.valid],["ac.repro",true],["ac.editable",true],
+    ["ac.explain",ev.notes.length>0],["ac.small",ev.perception.small>=56],
     ["ac.collision",ev.similarity.status!=="conflict"],
     ["ac.flat",!/<(circle|rect)\b/.test(svg)],
-    ["ac.svg",svg.startsWith("<svg")&&svg.trimEnd().endsWith("</svg>")]
-  ];
+    ["ac.svg",svg.startsWith("<svg")&&svg.trimEnd().endsWith("</svg>")]];
   if(S.lockup!=="mark") checks.push(["ac.text",false]);
   const ok=checks.every(c=>c[1]);
   $("#acceptState").textContent=ok?t("ac.complete"):t("ac.incomplete");
@@ -1869,10 +1764,8 @@ function renderExport(){
   $("#acceptList").innerHTML=checks.map(([k,v])=>
     `<div class="reason"><i style="color:${v?"var(--pass)":"var(--conflict)"}">${v?"✓":"✕"}</i><span>${t(k)}</span></div>`).join("");
 }
-
 function renderStatus(){
-  $("#runDot").dataset.s=S.ran?"":"idle";
-  $("#runState").textContent=S.ran?t("s.done"):t("s.idle");
+  $("#runState").textContent=t("s.ready");
   $("#sBrief").textContent=S.briefHash;
   $("#sSeed").textContent=S.seed||"—";
   $("#sGram").textContent=S.gramStats.length;
@@ -1888,13 +1781,10 @@ function setLang(next){
   const prev=LANG;
   LANG=next;
   document.documentElement.lang=next;
-  /* Only replace text the user has not typed over. */
-  const nm=$("#fName"), au=$("#fAud");
+  const nm=$("#fName"),au=$("#fAud");
   if(nm.value===TXT[prev]["def.name"]) nm.value=TXT[next]["def.name"];
   if(au.value===TXT[prev]["def.aud"]) au.value=TXT[next]["def.aud"];
-  applyStatic();
-  run();
-  go(S.stage);
+  applyStatic(); run(); go(S.stage);
 }
 initBrief();
 $("#fName").value=TXT[LANG]["def.name"];
@@ -1910,6 +1800,7 @@ $("#themeBtn").onclick=()=>{
   if(next) document.documentElement.setAttribute("data-theme",next);
   else document.documentElement.removeAttribute("data-theme");
 };
+$("#gdBtn").onclick=()=>{S.guides=!S.guides;renderEditor();};
 $("#lockBtn").onclick=()=>{
   const o=["mark","stacked","horizontal"];
   S.lockup=o[(o.indexOf(S.lockup)+1)%o.length];
@@ -1943,9 +1834,9 @@ document.addEventListener("keydown",e=>{
   if(e.key!=="ArrowLeft"&&e.key!=="ArrowRight") return;
   const tag=(e.target.tagName||"").toLowerCase();
   if(tag==="input"||tag==="select"||tag==="textarea") return;
-  const i=VIEWS.findIndex(v=>v.id===S.stage);
+  const i=VIEWS.indexOf(S.stage);
   const j=clamp(i+(e.key==="ArrowRight"?1:-1),0,VIEWS.length-1);
-  if(j!==i&&(S.ran||VIEWS[j].id==="brief")) go(VIEWS[j].id);
+  if(j!==i) go(VIEWS[j]);
 });
 
 run();
