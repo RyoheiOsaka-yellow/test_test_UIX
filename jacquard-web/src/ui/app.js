@@ -19,12 +19,12 @@ import { CellKind } from '../core/score.js'
 import { FmSynth } from '../audio/synth.js'
 import { ScoreView } from './score-view.js'
 import { ScoreEditor } from './editor.js'
-import { element, button, valueBar } from './controls.js'
+import { element, button, valueBar, stepper } from './controls.js'
 import {
   tilePanel, soundPanel, lockPanel, sendFxPanels, globalPanel, channelsPanel, livePanel
 } from './panels.js'
 import { Visualizer } from './visualizer.js'
-import { StartupScore } from '../../scores/startup.js'
+import { Presets } from '../../scores/presets.js'
 
 // How far ahead of the audio clock the sequencer runs, and how far ahead of it a note
 // is actually handed to the synth. The second is much the shorter of the two: at
@@ -34,10 +34,21 @@ const Lookahead = 0.12
 const LiveLead = 0.03
 
 const StorageKey = 'jacquard.score'
+const ThemeKey = 'jacquard.theme'
+
+// Two looks, and the switch between them is the whole of the difference: the rack
+// theme draws a module behind every lane, colours it by its channel and reads the
+// jump links as patch cables, while the flat one is the monochrome the original is
+// drawn in. Nothing in the score, the sequencer or the synth knows which is up.
+const Themes = ['rack', 'flat']
 
 export class JacquardApp {
   constructor(root) {
     this.root = root
+
+    this.preset = 0
+    this.theme = window.localStorage?.getItem(ThemeKey) ?? Themes[0]
+    document.body.dataset.theme = this.theme
 
     this.project = this.readStartupScore()
 
@@ -89,11 +100,24 @@ export class JacquardApp {
     }
 
     try {
-      return ProjectFormat.read(StartupScore)
+      return ProjectFormat.read(Presets[this.preset].text)
     } catch (error) {
       this.startupMessage = 'could not read the startup score: ' + error.message
       return Project.createEmpty()
     }
+  }
+
+  // A preset is a score the app carries rather than a file, which is what the two
+  // arrows on the transport step through. Loading one is the same path a file takes.
+  selectPreset(delta) {
+    this.preset = (this.preset + delta + Presets.length) % Presets.length
+    this.open(Presets[this.preset].text, 'opened ' + Presets[this.preset].name)
+  }
+
+  toggleTheme() {
+    this.theme = Themes[(Themes.indexOf(this.theme) + 1) % Themes.length]
+    document.body.dataset.theme = this.theme
+    window.localStorage?.setItem(ThemeKey, this.theme)
   }
 
   // Chrome
@@ -136,6 +160,9 @@ export class JacquardApp {
       format: value => value.toFixed(1) + ' bpm'
     }))
 
+    node.appendChild(stepper('Preset', Presets[this.preset].name,
+      delta => this.selectPreset(delta)))
+
     const switches = element('div', 'switches')
 
     const toggle = (label, key, after = null) => {
@@ -153,6 +180,11 @@ export class JacquardApp {
     toggle('Global', 'global')
     toggle('Channels', 'channels')
     toggle('Scope', 'visualizer')
+
+    switches.appendChild(button(this.theme === 'rack' ? 'Rack' : 'Flat', () => {
+      this.toggleTheme()
+      this.refreshPanels()
+    }, 'small toggle' + (this.theme === 'rack' ? ' on' : '')))
 
     node.appendChild(switches)
 

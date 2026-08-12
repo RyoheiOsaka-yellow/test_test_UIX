@@ -323,8 +323,15 @@ html, body {
 .control.lap.on { background: var(--note-line); color: var(--bg); }
 
 .stepper { display: flex; align-items: center; gap: 4px; height: var(--row-h); }
-.stepper .caption { color: var(--label); flex: 1; }
-.stepper .readout { min-width: 34px; text-align: center; }
+.stepper .caption { color: var(--label); flex: 0 0 auto; }
+.stepper .readout {
+  flex: 1;
+  min-width: 34px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* A number is a bar, not a field. */
 
@@ -373,6 +380,249 @@ html, body {
   .column.right { width: 268px; }
   .column.inner { right: 288px; width: 236px; }
   .live-column .control { width: 92px; }
+}
+
+/* ---------------------------------------------------------------------------
+   The rack theme.
+
+   The plane is the same plane and the chrome is the same chrome: what this adds
+   is the reading that a lane is a module. The ground a lane owns was already a
+   rectangle — the rail from the head to the terminator, as deep as its deepest
+   stack — so a panel is drawn on it, screwed to a rail, coloured by the channel
+   it sounds on, and the jump links become the patch cables they always were.
+
+   Nothing here is a second layout. Every metric is still the one the flat theme
+   uses, because the cell pitch is what the whole plane is derived from; what
+   changes is only what a cell, a panel and a line are made of.
+   --------------------------------------------------------------------------- */
+
+body[data-theme="rack"] {
+  --panel: #3c3c45;
+  --panel-line: #16161a;
+  --label: #b9b6ae;
+  --note-text: #f4f2ec;
+  --fill: #d8912f;
+  --fill-active: #f0a63b;
+}
+
+/* Wood cheeks either side and a brushed floor between them, which is what a rack
+   sitting on a desk is: the score is what stands on it. */
+body[data-theme="rack"] .plane-area {
+  background:
+    repeating-linear-gradient(94deg,
+      rgba(0, 0, 0, 0.16) 0 3px, rgba(255, 255, 255, 0.015) 3px 9px),
+    linear-gradient(180deg, #2b1d12 0%, #1d140c 55%, #241810 100%);
+}
+
+/* The module a lane stands on: a panel, four screws, a coloured strip along the
+   top and its own name in silkscreen at the bottom left. */
+body[data-theme="rack"] .module {
+  display: block;
+  border-radius: 4px;
+  border: 1px solid #0e0e11;
+  border-top: 3px solid hsl(var(--hue, 0) 52% 46%);
+  background-image:
+    radial-gradient(circle 2.5px at 6px 6px, #b6b6bd 45%, #5c5c64 62%, transparent 63%),
+    radial-gradient(circle 2.5px at calc(100% - 6px) 6px, #b6b6bd 45%, #5c5c64 62%, transparent 63%),
+    radial-gradient(circle 2.5px at 6px calc(100% - 6px), #b6b6bd 45%, #5c5c64 62%, transparent 63%),
+    radial-gradient(circle 2.5px at calc(100% - 6px) calc(100% - 6px), #b6b6bd 45%, #5c5c64 62%, transparent 63%),
+    repeating-linear-gradient(90deg,
+      rgba(255, 255, 255, 0.024) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #4b4b55 0%, #3c3c46 42%, #33333c 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 6px 14px rgba(0, 0, 0, 0.45);
+}
+
+body[data-theme="rack"] .module::after {
+  content: attr(data-name);
+  position: absolute;
+  left: 20px;
+  bottom: 2px;
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  color: hsl(var(--hue, 0) 30% 78%);
+  opacity: 0.55;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  pointer-events: none;
+}
+
+.module { position: absolute; display: none; z-index: 0; pointer-events: none; }
+
+/* A cell is a component screwed to that panel rather than a box drawn on paper. */
+body[data-theme="rack"] .cell.tile {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: linear-gradient(180deg, #232329 0%, #16161b 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 1px 2px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+body[data-theme="rack"] .cell.control-tile:not(.inverted) {
+  background: linear-gradient(180deg,
+    hsl(var(--hue, 0) 20% 30%) 0%, hsl(var(--hue, 0) 22% 19%) 100%);
+}
+
+/* The four cells that do something other than move right are the panel's own
+   plate: a lane says what it is at its ends, so those are the ones that carry
+   the colour. */
+body[data-theme="rack"] .cell.inverted {
+  background: linear-gradient(180deg,
+    hsl(var(--hue, 0) 58% 62%) 0%, hsl(var(--hue, 0) 62% 44%) 100%);
+  border-color: hsl(var(--hue, 0) 45% 72%);
+  color: #17110c;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+body[data-theme="rack"] .cell.lattice { color: #52453a; }
+body[data-theme="rack"] .cell.marker { color: #7e756a; }
+
+/* The playhead is an LED in the module's own colour, which is what makes a rack
+   readable across the room. */
+body[data-theme="rack"] .cell.playing {
+  box-shadow:
+    0 0 0 1px hsl(var(--hue, 0) 90% 70%),
+    0 0 16px hsl(var(--hue, 0) 95% 58% / 0.75),
+    inset 0 0 10px hsl(var(--hue, 0) 90% 55% / 0.35);
+}
+
+body[data-theme="rack"] .rail {
+  background-image: repeating-linear-gradient(to right,
+    hsl(var(--hue, 0) 45% 72%) 0 2px, transparent 2px 7px);
+  opacity: 0.5;
+}
+
+/* Patch cables: thick, coloured by what travels down them, and hanging over the
+   panels rather than ruled between two cells. */
+body[data-theme="rack"] .links path {
+  stroke: hsl(var(--hue, 0) 65% 58%);
+  stroke-width: 3px;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.55));
+}
+
+body[data-theme="rack"] .links .jack {
+  fill: #d8d5cd;
+  stroke: #14141a;
+  stroke-width: 1.5px;
+}
+
+body[data-theme="rack"] .cursor-box {
+  outline-color: #ffd27a;
+  box-shadow: 0 0 10px rgba(255, 190, 90, 0.35);
+}
+
+/* The chrome, on the same terms: a panel is a panel. */
+body[data-theme="rack"] .panel,
+body[data-theme="rack"] .transport {
+  border-color: #0e0e11;
+  background-image:
+    radial-gradient(circle 2.5px at 7px 7px, #b6b6bd 45%, #5c5c64 62%, transparent 63%),
+    radial-gradient(circle 2.5px at calc(100% - 7px) 7px, #b6b6bd 45%, #5c5c64 62%, transparent 63%),
+    radial-gradient(circle 2.5px at 7px calc(100% - 7px), #b6b6bd 45%, #5c5c64 62%, transparent 63%),
+    radial-gradient(circle 2.5px at calc(100% - 7px) calc(100% - 7px), #b6b6bd 45%, #5c5c64 62%, transparent 63%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #474751 0%, #3a3a44 45%, #31313a 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    0 8px 18px rgba(0, 0, 0, 0.5);
+  padding: 10px 12px;
+}
+
+body[data-theme="rack"] .panel-header {
+  color: #f4f2ec;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+}
+
+body[data-theme="rack"] .panel-rule {
+  background: linear-gradient(90deg, #d8912f, rgba(216, 145, 47, 0.15));
+  height: 2px;
+}
+
+body[data-theme="rack"] .heading,
+body[data-theme="rack"] .note,
+body[data-theme="rack"] .value-label,
+body[data-theme="rack"] .stepper .caption {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  letter-spacing: 0.08em;
+}
+
+/* A bar is a slot cut into the panel with a lamp behind it. */
+body[data-theme="rack"] .value-bar {
+  background: linear-gradient(180deg, #101014 0%, #1b1b21 100%);
+  border-color: #0c0c10;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.8),
+    0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+body[data-theme="rack"] .value-fill {
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(0, 0, 0, 0.3) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, #b8791f 0%, #7d4f10 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 210, 140, 0.55),
+    0 0 10px rgba(210, 140, 50, 0.35);
+}
+
+body[data-theme="rack"] .value-label,
+body[data-theme="rack"] .value-readout {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+body[data-theme="rack"] .value-readout {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color: #ffd694;
+  text-shadow: 0 0 6px rgba(255, 190, 100, 0.5);
+}
+
+body[data-theme="rack"] .control {
+  background: linear-gradient(180deg, #52525d 0%, #3a3a44 100%);
+  border-color: #101014;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 2px 3px rgba(0, 0, 0, 0.45);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  letter-spacing: 0.06em;
+}
+
+body[data-theme="rack"] .control:hover:not(:disabled) {
+  background: linear-gradient(180deg, #5e5e6a 0%, #45454f 100%);
+}
+
+/* A switch that is on is a lamp, not a swapped pair of colours. */
+body[data-theme="rack"] .control.toggle.on,
+body[data-theme="rack"] .control.hold.held,
+body[data-theme="rack"] .control.lap.on {
+  background: linear-gradient(180deg, #ffc86a 0%, #d1830f 100%);
+  border-color: #7a4c06;
+  color: #1b1206;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 0 12px rgba(255, 175, 60, 0.55);
+}
+
+body[data-theme="rack"] .control.play {
+  background: linear-gradient(180deg, #6f7a5e 0%, #48513a 100%);
+  color: #eaf3d8;
+}
+
+body[data-theme="rack"] .status {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color: #cbb894;
+}
+
+body[data-theme="rack"] .live-panel .control {
+  height: calc(var(--row-h) + 4px);
 }
 </style>
 </head>
@@ -1429,10 +1679,10 @@ const { CellKind } = __require("src/core/score.js");
 const { FmSynth } = __require("src/audio/synth.js");
 const { ScoreView } = __require("src/ui/score-view.js");
 const { ScoreEditor } = __require("src/ui/editor.js");
-const { element, button, valueBar } = __require("src/ui/controls.js");
+const { element, button, valueBar, stepper } = __require("src/ui/controls.js");
 const { tilePanel, soundPanel, lockPanel, sendFxPanels, globalPanel, channelsPanel, livePanel } = __require("src/ui/panels.js");
 const { Visualizer } = __require("src/ui/visualizer.js");
-const { StartupScore } = __require("scores/startup.js");
+const { Presets } = __require("scores/presets.js");
 
 // How far ahead of the audio clock the sequencer runs, and how far ahead of it a note
 // is actually handed to the synth. The second is much the shorter of the two: at
@@ -1442,10 +1692,21 @@ const Lookahead = 0.12
 const LiveLead = 0.03
 
 const StorageKey = 'jacquard.score'
+const ThemeKey = 'jacquard.theme'
+
+// Two looks, and the switch between them is the whole of the difference: the rack
+// theme draws a module behind every lane, colours it by its channel and reads the
+// jump links as patch cables, while the flat one is the monochrome the original is
+// drawn in. Nothing in the score, the sequencer or the synth knows which is up.
+const Themes = ['rack', 'flat']
 
 class JacquardApp {
   constructor(root) {
     this.root = root
+
+    this.preset = 0
+    this.theme = window.localStorage?.getItem(ThemeKey) ?? Themes[0]
+    document.body.dataset.theme = this.theme
 
     this.project = this.readStartupScore()
 
@@ -1497,11 +1758,24 @@ class JacquardApp {
     }
 
     try {
-      return ProjectFormat.read(StartupScore)
+      return ProjectFormat.read(Presets[this.preset].text)
     } catch (error) {
       this.startupMessage = 'could not read the startup score: ' + error.message
       return Project.createEmpty()
     }
+  }
+
+  // A preset is a score the app carries rather than a file, which is what the two
+  // arrows on the transport step through. Loading one is the same path a file takes.
+  selectPreset(delta) {
+    this.preset = (this.preset + delta + Presets.length) % Presets.length
+    this.open(Presets[this.preset].text, 'opened ' + Presets[this.preset].name)
+  }
+
+  toggleTheme() {
+    this.theme = Themes[(Themes.indexOf(this.theme) + 1) % Themes.length]
+    document.body.dataset.theme = this.theme
+    window.localStorage?.setItem(ThemeKey, this.theme)
   }
 
   // Chrome
@@ -1544,6 +1818,9 @@ class JacquardApp {
       format: value => value.toFixed(1) + ' bpm'
     }))
 
+    node.appendChild(stepper('Preset', Presets[this.preset].name,
+      delta => this.selectPreset(delta)))
+
     const switches = element('div', 'switches')
 
     const toggle = (label, key, after = null) => {
@@ -1561,6 +1838,11 @@ class JacquardApp {
     toggle('Global', 'global')
     toggle('Channels', 'channels')
     toggle('Scope', 'visualizer')
+
+    switches.appendChild(button(this.theme === 'rack' ? 'Rack' : 'Flat', () => {
+      this.toggleTheme()
+      this.refreshPanels()
+    }, 'small toggle' + (this.theme === 'rack' ? ' on' : '')))
 
     node.appendChild(switches)
 
@@ -4710,8 +4992,13 @@ class ScoreView {
     layer.setAttribute('width', size.width)
     layer.setAttribute('height', size.height)
 
-    // The rails first, so that the cells stand over them.
-    for (const lane of score.lanes) this.plane.appendChild(rail(lane))
+    // A panel behind each lane, which is what the rack theme reads as a module: the
+    // ground a lane owns is exactly the run it plays through, so the shape was already
+    // there to be drawn. The flat theme hides them and nothing else changes.
+    for (const lane of score.lanes) this.plane.appendChild(modulePanel(score, lane))
+
+    // The rails next, so that the cells stand over them.
+    for (const lane of score.lanes) this.plane.appendChild(rail(score, lane))
 
     // Route each link down out of its JUMP cell, across the row above the target lane,
     // then down into that lane's JDST cell.
@@ -4720,6 +5007,10 @@ class ScoreView {
 
       const from = score.locate(lane.jumpSource)
       if (from == null) continue
+
+      // A cable is coloured by the channel that will travel down it, which is the
+      // channel of whatever jumps into this lane rather than of the lane itself.
+      const hue = channelHue(score.channelOf(lane))
 
       const a = Style.cellCenter(from)
       const b = Style.cellCenter(lane.headPoint)
@@ -4733,7 +5024,20 @@ class ScoreView {
         [b.x + Style.LinkOffset, b.y]
       ], Style.LinkRadius))
 
+      path.style.setProperty('--hue', hue)
       layer.appendChild(path)
+
+      // The two ends read as a jack rather than as a line that stops, which is the one
+      // thing a patch cable has that a link between two cells does not.
+      for (const end of [[a.x + Style.LinkOffset, a.y], [b.x + Style.LinkOffset, b.y]]) {
+        const jack = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+        jack.setAttribute('class', 'jack')
+        jack.setAttribute('cx', end[0])
+        jack.setAttribute('cy', end[1])
+        jack.setAttribute('r', 2.5)
+        jack.style.setProperty('--hue', hue)
+        layer.appendChild(jack)
+      }
     }
 
     this.plane.appendChild(layer)
@@ -4766,6 +5070,11 @@ class ScoreView {
     node.dataset.y = p.y
 
     const cell = this.score.at(p)
+
+    // Which module a cell belongs to, so that the rack theme can tint it. The flat
+    // theme reads none of this.
+    if (cell.lane != null)
+      node.style.setProperty('--hue', channelHue(this.score.channelOf(cell.lane)))
 
     switch (cell.kind) {
       case CellKind.Tile:
@@ -4997,12 +5306,49 @@ class ScoreView {
   }
 }
 
-function rail(lane) {
+// One hue per channel, which is the only colour in this interface and is there for
+// the same reason a rack of modules is not one colour: what a cell belongs to should
+// be readable without counting rows.
+const Hues = [0, 28, 46, 205, 150, 275, 320, 95]
+
+const channelHue = channel => Hues[(Math.max(1, channel) - 1) % Hues.length]
+
+// The panel a lane sits on. It covers the ground the lane owns — the rail from the
+// head to the terminator, and as deep as its deepest stack — with a little air around
+// it, which is what makes two lanes on adjacent rows read as two modules rather than
+// as one block.
+function modulePanel(score, lane) {
+  const node = document.createElement('div')
+
+  let depth = 1
+  for (const step of lane.steps) depth = Math.max(depth, step.depth)
+
+  const origin = Style.cellOrigin(point(lane.headX, lane.y))
+  const width = (lane.termX - lane.headX + 1) * Style.StrideX - Style.Gap
+  const height = depth * Style.StrideY - Style.Gap
+
+  node.className = 'module'
+  node.style.left = (origin.x - 2) + 'px'
+  node.style.top = (origin.y - 2) + 'px'
+  node.style.width = (width + 4) + 'px'
+  node.style.height = (height + 4) + 'px'
+  node.style.setProperty('--hue', channelHue(score.channelOf(lane)))
+
+  // Silkscreen: what the lane is, in the words the chrome uses rather than in tokens.
+  node.dataset.name = lane.channel != null
+    ? 'CH' + lane.channel.channel + ' · 1/' + lane.channel.division
+    : 'BRANCH · CH' + score.channelOf(lane)
+
+  return node
+}
+
+function rail(score, lane) {
   const node = document.createElement('div')
   const a = Style.cellCenter(lane.headPoint)
   const b = Style.cellCenter(lane.termPoint)
 
   node.className = 'rail'
+  node.style.setProperty('--hue', channelHue(score.channelOf(lane)))
   node.style.left = Math.min(a.x, b.x) + 'px'
   node.style.top = a.y + 'px'
   node.style.width = Math.abs(b.x - a.x) + 'px'
@@ -6313,6 +6659,178 @@ class Visualizer {
 }
 
 Object.assign(__exports, { Visualizer });
+};
+
+__modules["scores/presets.js"] = (__exports, __require) => {
+// The scores the app can open without a file.
+//
+// The first is what it opens on; the original's own startup score is kept beside it
+// unchanged, since it is the piece the port was checked against.
+
+const { BeatAndBass } = __require("scores/beat-and-bass.js");
+const { StartupScore } = __require("scores/startup.js");
+
+const Presets = [
+  { name: 'Beat & Bass', text: BeatAndBass },
+  { name: 'Electro Jam', text: StartupScore }
+]
+
+Object.assign(__exports, { Presets });
+};
+
+__modules["scores/beat-and-bass.js"] = (__exports, __require) => {
+// A demonstration score: a beat with a bass line on it.
+//
+// The startup score this port opened on is the original's own piece, and it is kept
+// beside this one. What it does not do is show the thing a grid sequencer is easiest
+// to hear — drums and a bass running against each other on one plane — so this is
+// written for that, in the format the app itself writes.
+//
+// Seven lanes, one module's worth of idea each:
+//
+//   CH1  kick       a pitch envelope four octaves deep, which is most of what a kick is
+//   CH2  snare      the same two operators with the feedback up, which is noise
+//   CH3  accent     four steps of PREL over the hats, so every other sixteenth ducks
+//   CH3  hats       sixteenths, with one PABS opening the gate on the last of the bar
+//   CH4  bass       the line, with a GCYC over a JUMP that takes a fill every fourth lap
+//   CH5  stab       chords off the beat, thrown at the delay
+//   CH6  lead       a few notes in the reverb, each on a cycle of its own
+//
+// The accent lane is the idiom the original's sample score demonstrates: four steps
+// against sixteen, no notes of its own, and placed above the lane it colours because
+// what a lock reaches is whatever is processed after it.
+//
+// The bass jumps out at step twelve and the branch is four steps long, so a lap is
+// sixteen either way.
+
+const BeatAndBass = `jacquard 11
+tempo 124
+meter 4 4
+fx rsize=0.45 rdamp=0.55 rwidth=1 dbeats=0.375 dfb=0.42 dtone=0.35 dspread=1
+limiter drive=3 ceiling=-1.5 attack=0.006 release=0.12
+patch 1 level=0.9 pan=0 gate=0.6 mratio=1 index=2.5 fb=0 md=0.08 ca=0.001 cr=0.28 ps=4 pd=0.055 rsend=0 dsend=0
+patch 2 level=0.85 pan=0 gate=0.4 mratio=3.4 index=7 fb=6.5 md=0.12 ca=0.001 cr=0.18 ps=1 pd=0.02 rsend=0.18 dsend=0
+patch 3 level=0.36 pan=0.15 gate=0.08 mratio=7.6 index=8 fb=7.5 md=0.03 ca=0.001 cr=0.035 ps=0 pd=0.05 rsend=0.05 dsend=0
+patch 4 level=0.62 pan=0 gate=0.92 mratio=1 index=3.2 fb=0.6 md=0.28 ca=0.002 cr=0.09 ps=0 pd=0.05 rsend=0 dsend=0
+patch 5 level=0.45 pan=-0.25 gate=0.5 mratio=2 index=4.5 fb=0 md=0.22 ca=0.003 cr=0.22 ps=0 pd=0.05 rsend=0.25 dsend=0.45
+patch 6 level=0.46 pan=0.3 gate=0.6 mratio=3 index=2.2 fb=0 md=0.45 ca=0.004 cr=0.35 ps=0 pd=0.05 rsend=0.5 dsend=0.3
+patch 7 level=0.3 pan=0 gate=1.1975 mratio=2.575 index=1.8 fb=0 md=0.37772 ca=0.02595 cr=0.36 ps=0 pd=0.05 rsend=0 dsend=0
+patch 8 level=0.3 pan=0 gate=1.1975 mratio=2.575 index=1.8 fb=0 md=0.37772 ca=0.02595 cr=0.36 ps=0 pd=0.05 rsend=0 dsend=0
+lane 2 1 CHAN:1 div=16
+  step C1
+  step
+  step
+  step
+  step C1
+  step
+  step
+  step GPRB:35 C1
+  step C1
+  step
+  step
+  step
+  step C1
+  step
+  step GPRB:45 C1
+  step
+lane 2 4 CHAN:2 div=16
+  step
+  step
+  step
+  step
+  step D3
+  step
+  step
+  step GPRB:30 PREL:level,-0.35 D3
+  step
+  step
+  step GPRB:25 PREL:level,-0.4 D3
+  step
+  step D3
+  step
+  step
+  step GPRB:35 PREL:level,-0.3 D3
+lane 2 8 CHAN:3 div=16
+  step PREL:level,0.12
+  step
+  step PREL:level,-0.28
+  step
+lane 2 9 CHAN:3 div=16
+  step A6
+  step A6
+  step A6
+  step A6
+  step A6
+  step A6
+  step A6
+  step A6
+  step A6
+  step A6
+  step A6
+  step A6
+  step A6
+  step A6
+  step PABS:gate,0.6,carrelease,0.16 A6
+  step A6
+lane 2 12 CHAN:4 div=16
+  step E1
+  step
+  step
+  step E1
+  step
+  step
+  step E1
+  step GPRB:40 E1
+  step G1
+  step
+  step B1
+  step B1 GCYC:4,0001 JUMP
+  step D2
+  step
+  step E1
+  step GPRB:50 E2
+lane 2 17 CHAN:5 div=16
+  step
+  step
+  step E3 G3 B3
+  step
+  step
+  step
+  step GPRB:70 E3 G3 B3
+  step
+  step
+  step
+  step E3 A3 C4
+  step
+  step
+  step
+  step GPRB:60 D3 G3 B3
+  step
+lane 2 22 CHAN:6 div=16
+  step GCYC:2,10 B4
+  step
+  step
+  step
+  step
+  step
+  step G4
+  step
+  step
+  step
+  step GCYC:4,0010 E5
+  step
+  step D5
+  step
+  step
+  step GCYC:4,0001 B4
+lane 8 26 JDST from=13,14
+  step D2
+  step E2
+  step GPRB:60 F#2
+  step G2
+`
+
+Object.assign(__exports, { BeatAndBass });
 };
 
 __modules["scores/startup.js"] = (__exports, __require) => {

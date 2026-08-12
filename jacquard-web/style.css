@@ -314,8 +314,15 @@ html, body {
 .control.lap.on { background: var(--note-line); color: var(--bg); }
 
 .stepper { display: flex; align-items: center; gap: 4px; height: var(--row-h); }
-.stepper .caption { color: var(--label); flex: 1; }
-.stepper .readout { min-width: 34px; text-align: center; }
+.stepper .caption { color: var(--label); flex: 0 0 auto; }
+.stepper .readout {
+  flex: 1;
+  min-width: 34px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* A number is a bar, not a field. */
 
@@ -364,4 +371,247 @@ html, body {
   .column.right { width: 268px; }
   .column.inner { right: 288px; width: 236px; }
   .live-column .control { width: 92px; }
+}
+
+/* ---------------------------------------------------------------------------
+   The rack theme.
+
+   The plane is the same plane and the chrome is the same chrome: what this adds
+   is the reading that a lane is a module. The ground a lane owns was already a
+   rectangle — the rail from the head to the terminator, as deep as its deepest
+   stack — so a panel is drawn on it, screwed to a rail, coloured by the channel
+   it sounds on, and the jump links become the patch cables they always were.
+
+   Nothing here is a second layout. Every metric is still the one the flat theme
+   uses, because the cell pitch is what the whole plane is derived from; what
+   changes is only what a cell, a panel and a line are made of.
+   --------------------------------------------------------------------------- */
+
+body[data-theme="rack"] {
+  --panel: #3c3c45;
+  --panel-line: #16161a;
+  --label: #b9b6ae;
+  --note-text: #f4f2ec;
+  --fill: #d8912f;
+  --fill-active: #f0a63b;
+}
+
+/* Wood cheeks either side and a brushed floor between them, which is what a rack
+   sitting on a desk is: the score is what stands on it. */
+body[data-theme="rack"] .plane-area {
+  background:
+    repeating-linear-gradient(94deg,
+      rgba(0, 0, 0, 0.16) 0 3px, rgba(255, 255, 255, 0.015) 3px 9px),
+    linear-gradient(180deg, #2b1d12 0%, #1d140c 55%, #241810 100%);
+}
+
+/* The module a lane stands on: a panel, four screws, a coloured strip along the
+   top and its own name in silkscreen at the bottom left. */
+body[data-theme="rack"] .module {
+  display: block;
+  border-radius: 4px;
+  border: 1px solid #0e0e11;
+  border-top: 3px solid hsl(var(--hue, 0) 52% 46%);
+  background-image:
+    radial-gradient(circle 2.5px at 6px 6px, #b6b6bd 45%, #5c5c64 62%, transparent 63%),
+    radial-gradient(circle 2.5px at calc(100% - 6px) 6px, #b6b6bd 45%, #5c5c64 62%, transparent 63%),
+    radial-gradient(circle 2.5px at 6px calc(100% - 6px), #b6b6bd 45%, #5c5c64 62%, transparent 63%),
+    radial-gradient(circle 2.5px at calc(100% - 6px) calc(100% - 6px), #b6b6bd 45%, #5c5c64 62%, transparent 63%),
+    repeating-linear-gradient(90deg,
+      rgba(255, 255, 255, 0.024) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #4b4b55 0%, #3c3c46 42%, #33333c 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 6px 14px rgba(0, 0, 0, 0.45);
+}
+
+body[data-theme="rack"] .module::after {
+  content: attr(data-name);
+  position: absolute;
+  left: 20px;
+  bottom: 2px;
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  color: hsl(var(--hue, 0) 30% 78%);
+  opacity: 0.55;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  pointer-events: none;
+}
+
+.module { position: absolute; display: none; z-index: 0; pointer-events: none; }
+
+/* A cell is a component screwed to that panel rather than a box drawn on paper. */
+body[data-theme="rack"] .cell.tile {
+  border-color: rgba(255, 255, 255, 0.32);
+  background: linear-gradient(180deg, #232329 0%, #16161b 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    0 1px 2px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+}
+
+body[data-theme="rack"] .cell.control-tile:not(.inverted) {
+  background: linear-gradient(180deg,
+    hsl(var(--hue, 0) 20% 30%) 0%, hsl(var(--hue, 0) 22% 19%) 100%);
+}
+
+/* The four cells that do something other than move right are the panel's own
+   plate: a lane says what it is at its ends, so those are the ones that carry
+   the colour. */
+body[data-theme="rack"] .cell.inverted {
+  background: linear-gradient(180deg,
+    hsl(var(--hue, 0) 58% 62%) 0%, hsl(var(--hue, 0) 62% 44%) 100%);
+  border-color: hsl(var(--hue, 0) 45% 72%);
+  color: #17110c;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.28);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+body[data-theme="rack"] .cell.lattice { color: #52453a; }
+body[data-theme="rack"] .cell.marker { color: #7e756a; }
+
+/* The playhead is an LED in the module's own colour, which is what makes a rack
+   readable across the room. */
+body[data-theme="rack"] .cell.playing {
+  box-shadow:
+    0 0 0 1px hsl(var(--hue, 0) 90% 70%),
+    0 0 16px hsl(var(--hue, 0) 95% 58% / 0.75),
+    inset 0 0 10px hsl(var(--hue, 0) 90% 55% / 0.35);
+}
+
+body[data-theme="rack"] .rail {
+  background-image: repeating-linear-gradient(to right,
+    hsl(var(--hue, 0) 45% 72%) 0 2px, transparent 2px 7px);
+  opacity: 0.5;
+}
+
+/* Patch cables: thick, coloured by what travels down them, and hanging over the
+   panels rather than ruled between two cells. */
+body[data-theme="rack"] .links path {
+  stroke: hsl(var(--hue, 0) 65% 58%);
+  stroke-width: 3px;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.55));
+}
+
+body[data-theme="rack"] .links .jack {
+  fill: #d8d5cd;
+  stroke: #14141a;
+  stroke-width: 1.5px;
+}
+
+body[data-theme="rack"] .cursor-box {
+  outline-color: #ffd27a;
+  box-shadow: 0 0 10px rgba(255, 190, 90, 0.35);
+}
+
+/* The chrome, on the same terms: a panel is a panel. */
+body[data-theme="rack"] .panel,
+body[data-theme="rack"] .transport {
+  border-color: #0e0e11;
+  background-image:
+    radial-gradient(circle 2.5px at 7px 7px, #b6b6bd 45%, #5c5c64 62%, transparent 63%),
+    radial-gradient(circle 2.5px at calc(100% - 7px) 7px, #b6b6bd 45%, #5c5c64 62%, transparent 63%),
+    radial-gradient(circle 2.5px at 7px calc(100% - 7px), #b6b6bd 45%, #5c5c64 62%, transparent 63%),
+    radial-gradient(circle 2.5px at calc(100% - 7px) calc(100% - 7px), #b6b6bd 45%, #5c5c64 62%, transparent 63%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.022) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #474751 0%, #3a3a44 45%, #31313a 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.13),
+    0 8px 18px rgba(0, 0, 0, 0.5);
+  padding: 10px 12px;
+}
+
+body[data-theme="rack"] .panel-header {
+  color: #f4f2ec;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+}
+
+body[data-theme="rack"] .panel-rule {
+  background: linear-gradient(90deg, #d8912f, rgba(216, 145, 47, 0.15));
+  height: 2px;
+}
+
+body[data-theme="rack"] .heading,
+body[data-theme="rack"] .note,
+body[data-theme="rack"] .value-label,
+body[data-theme="rack"] .stepper .caption {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  letter-spacing: 0.08em;
+}
+
+/* A bar is a slot cut into the panel with a lamp behind it. */
+body[data-theme="rack"] .value-bar {
+  background: linear-gradient(180deg, #101014 0%, #1b1b21 100%);
+  border-color: #0c0c10;
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.8),
+    0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+body[data-theme="rack"] .value-fill {
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(0, 0, 0, 0.3) 0 1px, transparent 1px 4px),
+    linear-gradient(180deg, #b8791f 0%, #7d4f10 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 210, 140, 0.55),
+    0 0 10px rgba(210, 140, 50, 0.35);
+}
+
+body[data-theme="rack"] .value-label,
+body[data-theme="rack"] .value-readout {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+body[data-theme="rack"] .value-readout {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color: #ffd694;
+  text-shadow: 0 0 6px rgba(255, 190, 100, 0.5);
+}
+
+body[data-theme="rack"] .control {
+  background: linear-gradient(180deg, #52525d 0%, #3a3a44 100%);
+  border-color: #101014;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 2px 3px rgba(0, 0, 0, 0.45);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  letter-spacing: 0.06em;
+}
+
+body[data-theme="rack"] .control:hover:not(:disabled) {
+  background: linear-gradient(180deg, #5e5e6a 0%, #45454f 100%);
+}
+
+/* A switch that is on is a lamp, not a swapped pair of colours. */
+body[data-theme="rack"] .control.toggle.on,
+body[data-theme="rack"] .control.hold.held,
+body[data-theme="rack"] .control.lap.on {
+  background: linear-gradient(180deg, #ffc86a 0%, #d1830f 100%);
+  border-color: #7a4c06;
+  color: #1b1206;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 0 12px rgba(255, 175, 60, 0.55);
+}
+
+body[data-theme="rack"] .control.play {
+  background: linear-gradient(180deg, #6f7a5e 0%, #48513a 100%);
+  color: #eaf3d8;
+}
+
+body[data-theme="rack"] .status {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color: #cbb894;
+}
+
+body[data-theme="rack"] .live-panel .control {
+  height: calc(var(--row-h) + 4px);
 }

@@ -77,8 +77,13 @@ export class ScoreView {
     layer.setAttribute('width', size.width)
     layer.setAttribute('height', size.height)
 
-    // The rails first, so that the cells stand over them.
-    for (const lane of score.lanes) this.plane.appendChild(rail(lane))
+    // A panel behind each lane, which is what the rack theme reads as a module: the
+    // ground a lane owns is exactly the run it plays through, so the shape was already
+    // there to be drawn. The flat theme hides them and nothing else changes.
+    for (const lane of score.lanes) this.plane.appendChild(modulePanel(score, lane))
+
+    // The rails next, so that the cells stand over them.
+    for (const lane of score.lanes) this.plane.appendChild(rail(score, lane))
 
     // Route each link down out of its JUMP cell, across the row above the target lane,
     // then down into that lane's JDST cell.
@@ -87,6 +92,10 @@ export class ScoreView {
 
       const from = score.locate(lane.jumpSource)
       if (from == null) continue
+
+      // A cable is coloured by the channel that will travel down it, which is the
+      // channel of whatever jumps into this lane rather than of the lane itself.
+      const hue = channelHue(score.channelOf(lane))
 
       const a = Style.cellCenter(from)
       const b = Style.cellCenter(lane.headPoint)
@@ -100,7 +109,20 @@ export class ScoreView {
         [b.x + Style.LinkOffset, b.y]
       ], Style.LinkRadius))
 
+      path.style.setProperty('--hue', hue)
       layer.appendChild(path)
+
+      // The two ends read as a jack rather than as a line that stops, which is the one
+      // thing a patch cable has that a link between two cells does not.
+      for (const end of [[a.x + Style.LinkOffset, a.y], [b.x + Style.LinkOffset, b.y]]) {
+        const jack = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
+        jack.setAttribute('class', 'jack')
+        jack.setAttribute('cx', end[0])
+        jack.setAttribute('cy', end[1])
+        jack.setAttribute('r', 2.5)
+        jack.style.setProperty('--hue', hue)
+        layer.appendChild(jack)
+      }
     }
 
     this.plane.appendChild(layer)
@@ -133,6 +155,11 @@ export class ScoreView {
     node.dataset.y = p.y
 
     const cell = this.score.at(p)
+
+    // Which module a cell belongs to, so that the rack theme can tint it. The flat
+    // theme reads none of this.
+    if (cell.lane != null)
+      node.style.setProperty('--hue', channelHue(this.score.channelOf(cell.lane)))
 
     switch (cell.kind) {
       case CellKind.Tile:
@@ -364,12 +391,49 @@ export class ScoreView {
   }
 }
 
-function rail(lane) {
+// One hue per channel, which is the only colour in this interface and is there for
+// the same reason a rack of modules is not one colour: what a cell belongs to should
+// be readable without counting rows.
+const Hues = [0, 28, 46, 205, 150, 275, 320, 95]
+
+const channelHue = channel => Hues[(Math.max(1, channel) - 1) % Hues.length]
+
+// The panel a lane sits on. It covers the ground the lane owns — the rail from the
+// head to the terminator, and as deep as its deepest stack — with a little air around
+// it, which is what makes two lanes on adjacent rows read as two modules rather than
+// as one block.
+function modulePanel(score, lane) {
+  const node = document.createElement('div')
+
+  let depth = 1
+  for (const step of lane.steps) depth = Math.max(depth, step.depth)
+
+  const origin = Style.cellOrigin(point(lane.headX, lane.y))
+  const width = (lane.termX - lane.headX + 1) * Style.StrideX - Style.Gap
+  const height = depth * Style.StrideY - Style.Gap
+
+  node.className = 'module'
+  node.style.left = (origin.x - 2) + 'px'
+  node.style.top = (origin.y - 2) + 'px'
+  node.style.width = (width + 4) + 'px'
+  node.style.height = (height + 4) + 'px'
+  node.style.setProperty('--hue', channelHue(score.channelOf(lane)))
+
+  // Silkscreen: what the lane is, in the words the chrome uses rather than in tokens.
+  node.dataset.name = lane.channel != null
+    ? 'CH' + lane.channel.channel + ' · 1/' + lane.channel.division
+    : 'BRANCH · CH' + score.channelOf(lane)
+
+  return node
+}
+
+function rail(score, lane) {
   const node = document.createElement('div')
   const a = Style.cellCenter(lane.headPoint)
   const b = Style.cellCenter(lane.termPoint)
 
   node.className = 'rail'
+  node.style.setProperty('--hue', channelHue(score.channelOf(lane)))
   node.style.left = Math.min(a.x, b.x) + 'px'
   node.style.top = a.y + 'px'
   node.style.width = Math.abs(b.x - a.x) + 'px'

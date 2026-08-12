@@ -10,9 +10,20 @@ Jacquard (Web)
 ------
 
 **`jacquard.html` をブラウザで開くだけです。** 単一ファイル版（ビルド済み、外部依存
-なし）で、`file://` からでもそのまま動きます。**Play** を押すと `scores/startup.js` の
-譜面（オリジナルの `Assets/Jacquard/Scores/Startup.jacquard.txt` と同一）が鳴ります。
-音は最初のクリックで AudioContext が開いてから出ます。
+なし）で、`file://` からでもそのまま動きます。**Play** を押すとデモ譜面
+（**Beat & Bass**）が鳴ります。音は最初のクリックで AudioContext が開いてから出ます。
+
+譜面はトランスポートの **Preset** で切り替えます。
+
+| プリセット | 中身 |
+| --- | --- |
+| **Beat & Bass** | キック・スネア・ハイハット・**ベース**・コードスタブ・リード の 7 レーン。ハイハットには 4 ステップのアクセントレーン、ベースには 4 周に 1 回だけ分岐するフィル（`GCYC` + `JUMP`）が付いています |
+| **Electro Jam** | オリジナルの起動譜面（`Assets/Jacquard/Scores/Startup.jacquard.txt`）そのまま |
+
+見た目は **Rack**（既定）と **Flat** の 2 つで、トランスポートのボタンで切り替えます。
+Rack はレーン 1 本を 1 台のモジュールとして描き（パネル・ネジ・チャンネル色の帯・
+シルク印刷、点灯する LED、ジャンプ線はパッチケーブル）、Flat はオリジナルどおりの
+フラットなモノクロです。譜面・シーケンサ・音源はどちらかを一切知りません。
 
 ソースのまま（`index.html`）動かす場合は、ES モジュールと AudioWorklet の都合で HTTP
 が必要です。
@@ -35,6 +46,13 @@ node build.mjs        # src/ と style.css から jacquard.html を作り直す
 
 ```
 node tests/selftest.mjs
+```
+
+譜面を WAV に書き出すこともできます（ブラウザ不要・同じシーケンサと同じ DSP）。
+手書きした譜面の確認にも使っていて、レーンごとの発音数とピークを出します。
+
+```
+node tools/render-wav.mjs "Beat" 16 beat.wav
 ```
 
 操作
@@ -71,8 +89,9 @@ Live FX の 12 ボタンは押している間だけ効きます（Reverb / Delay
 | `src/core` | 譜面モデル、タイル、テキスト形式、シーケンサ、ライブエフェクト、パッチとロック対象 |
 | `src/audio` | FM ボイスと 3 つのバス（`dsp.js`）、それを回す AudioWorklet、アプリ側のハンドル |
 | `src/ui` | 平面の描画、セルのアイコン、パネル、編集操作 |
-| `scores` | 起動時に開く譜面 |
+| `scores` | プリセット譜面（デモの Beat & Bass と、オリジナルの起動譜面） |
 | `tests` | セルフテスト |
+| `tools` | オフラインの WAV 書き出し |
 | `build.mjs` | 全モジュール・worklet・CSS を 1 枚の HTML に畳む |
 | `jacquard.html` | その生成物（単一ファイル版） |
 
