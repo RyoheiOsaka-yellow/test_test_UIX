@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Log-Polar Raymarch</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #d8d8d8;
+        --dim: #7a7a7a;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+        background: #000;
+        overflow: hidden;
+      }
+      body {
+        font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        color: var(--ink);
+      }
+      #gl {
+        display: block;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
+      }
+
+      .hud {
+        position: fixed;
+        left: max(14px, env(safe-area-inset-left));
+        bottom: max(12px, env(safe-area-inset-bottom));
+        display: flex;
+        gap: 14px;
+        align-items: baseline;
+        padding: 7px 11px;
+        border: 1px solid #ffffff1f;
+        border-radius: 6px;
+        background: #0000008c;
+        backdrop-filter: blur(6px);
+        letter-spacing: 0.02em;
+        transition: opacity 0.45s ease;
+        pointer-events: none;
+        user-select: none;
+      }
+      .hud b {
+        font-weight: 500;
+        color: var(--dim);
+      }
+      .hud[hidden],
+      .help[hidden] {
+        display: none;
+      }
+      body.idle .hud {
+        opacity: 0;
+      }
+
+      .help {
+        position: fixed;
+        right: max(14px, env(safe-area-inset-right));
+        bottom: max(12px, env(safe-area-inset-bottom));
+        padding: 9px 12px;
+        border: 1px solid #ffffff1f;
+        border-radius: 6px;
+        background: #0000008c;
+        backdrop-filter: blur(6px);
+        color: var(--dim);
+        transition: opacity 0.45s ease;
+        pointer-events: none;
+        user-select: none;
+      }
+      .help kbd {
+        color: var(--ink);
+        font: inherit;
+      }
+      .help div + div {
+        margin-top: 2px;
+      }
+      body.idle .help {
+        opacity: 0;
+      }
+
+      .error {
+        position: fixed;
+        inset: 0;
+        display: none;
+        overflow: auto;
+        padding: 28px;
+        background: #000;
+        color: #ff8a7a;
+        white-space: pre-wrap;
+      }
+      .error.on {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gl"></canvas>
+
+    <div class="hud" id="hud">
+      <span><b>t</b> <span id="uiTime">0.00</span>s</span>
+      <span><b>fps</b> <span id="uiFps">–</span></span>
+      <span><b>res</b> <span id="uiRes">–</span></span>
+      <span><b>scale</b> <span id="uiScale">–</span></span>
+      <span id="uiState"></span>
+    </div>
+
+    <div class="help" id="help">
+      <div><kbd>space</kbd> pause · <kbd>←/→</kbd> scrub · <kbd>0</kbd> restart</div>
+      <div><kbd>-/+</kbd> resolution · <kbd>s</kbd> save png · <kbd>h</kbd> hide ui</div>
+    </div>
+
+    <pre class="error" id="error"></pre>
+
+    <script>
+      // Twigl "geekest (300 es)" wrapper: r = resolution, t = time, m = mouse,
+      // f = frame, o = output colour, FC = gl_FragCoord.
+      const FRAG_PREAMBLE = `#version 300 es
+precision highp float;
+uniform vec2 r;
+uniform vec2 m;
+uniform float t;
+uniform int f;
+out vec4 o;
+#define FC gl_FragCoord
+void main(){
+o=vec4(0,0,0,1);
+`;
+
+      // The composition, verbatim from the Twigl source apart from explicit
+      // zero-initialisation of the accumulators (i, e, R, s, q, p). Twigl runs on
+      // drivers that happen to zero locals; GLSL leaves them undefined, so we say
+      // what was meant instead of relying on it.
+      const FRAG_BODY = `
+float i=0.,e=0.,R=0.,s=0.;
+vec3 q=vec3(0),p=vec3(0),d=vec3((FC.xy-.5*r)/r.y+vec2(cos(t)*.04,1),.5);
+for(q.yz--;i++<99.;){
+  o+=min(e*s,.8-e)/50.;
+  s=1.;
+  p=q+=d*e*R*.4-e;
+  p=vec3(log(R=length(p))-t,exp(-p.z/R+.6),abs(atan(p.x,p.y)));
+  for(e=--p.y;s<9e2;s+=s)
+    e+=.06-abs(dot(cos(p.zzx*s),.3-cos(p*s)))/s*.3;
+}
+`;
+
+      const FRAG = FRAG_PREAMBLE + FRAG_BODY + "\n}\n";
+
+      const VERT = `#version 300 es
+void main(){
+  // Fullscreen triangle from gl_VertexID — no buffers needed.
+  vec2 v=vec2((gl_VertexID<<1)&2,gl_VertexID&2);
+  gl_Position=vec4(v*2.-1.,0,1);
+}`;
+
+      const canvas = document.getElementById("gl");
+      const errorBox = document.getElementById("error");
+
+      const fail = (msg) => {
+        errorBox.textContent = msg;
+        errorBox.classList.add("on");
+        throw new Error(msg);
+      };
+
+      const gl = canvas.getContext("webgl2", {
+        alpha: false,
+        antialias: false,
+        depth: false,
+        stencil: false,
+        desynchronized: true,
+        preserveDrawingBuffer: true, // so `s` can grab the frame
+        powerPreference: "high-performance",
+      });
+      if (!gl) fail("WebGL2 is not available in this browser.");
+
+      const compile = (type, src) => {
+        const sh = gl.createShader(type);
+        gl.shaderSource(sh, src);
+        gl.compileShader(sh);
+        if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+          const log = gl.getShaderInfoLog(sh) || "unknown error";
+          const numbered = src
+            .split("\n")
+            .map((l, n) => String(n + 1).padStart(3) + " | " + l)
+            .join("\n");
+          fail("Shader compile failed:\n\n" + log + "\n\n" + numbered);
+        }
+        return sh;
+      };
+
+      const program = gl.createProgram();
+      gl.attachShader(program, compile(gl.VERTEX_SHADER, VERT));
+      gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAG));
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        fail("Program link failed:\n\n" + (gl.getProgramInfoLog(program) || ""));
+      }
+      gl.useProgram(program);
+
+      const uni = {
+        r: gl.getUniformLocation(program, "r"),
+        m: gl.getUniformLocation(program, "m"),
+        t: gl.getUniformLocation(program, "t"),
+        f: gl.getUniformLocation(program, "f"),
+      };
+
+      // ---- state -------------------------------------------------------------
+
+      const SCALES = [0.25, 0.35, 0.5, 0.7, 1, 1.5, 2];
+      const state = {
+        time: 0,
+        playing: true,
+        frame: 0,
+        mouse: [0.5, 0.5],
+        // Start at native CSS pixels; this shader is ~1000 loop steps per pixel,
+        // so full DPR on a retina panel is rarely worth it.
+        scale: Math.min(window.devicePixelRatio || 1, 1),
+      };
+
+      const ui = {
+        hud: document.getElementById("hud"),
+        help: document.getElementById("help"),
+        time: document.getElementById("uiTime"),
+        fps: document.getElementById("uiFps"),
+        res: document.getElementById("uiRes"),
+        scale: document.getElementById("uiScale"),
+        state: document.getElementById("uiState"),
+      };
+
+      const resize = () => {
+        const w = Math.max(1, Math.round(canvas.clientWidth * state.scale));
+        const h = Math.max(1, Math.round(canvas.clientHeight * state.scale));
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w;
+          canvas.height = h;
+          gl.viewport(0, 0, w, h);
+        }
+        ui.res.textContent = w + "×" + h;
+        ui.scale.textContent = state.scale.toFixed(2) + "×";
+      };
+      window.addEventListener("resize", resize);
+
+      // ---- input -------------------------------------------------------------
+
+      let idleTimer;
+      const wake = () => {
+        document.body.classList.remove("idle");
+        clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => document.body.classList.add("idle"), 2600);
+      };
+      wake();
+
+      const pointer = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        state.mouse = [
+          (e.clientX - rect.left) / rect.width,
+          1 - (e.clientY - rect.top) / rect.height,
+        ];
+        wake();
+      };
+      canvas.addEventListener("pointermove", pointer);
+      canvas.addEventListener("pointerdown", pointer);
+      window.addEventListener("mousemove", wake);
+
+      const setScale = (dir) => {
+        let i = SCALES.findIndex((v) => v >= state.scale - 1e-6);
+        if (i < 0) i = SCALES.length - 1;
+        state.scale = SCALES[Math.min(SCALES.length - 1, Math.max(0, i + dir))];
+        resize();
+      };
+
+      const save = () => {
+        canvas.toBlob((blob) => {
+          if (!blob) return;
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = "raymarch-" + state.time.toFixed(2) + ".png";
+          a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+        });
+      };
+
+      window.addEventListener("keydown", (e) => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        switch (e.key) {
+          case " ":
+            state.playing = !state.playing;
+            break;
+          case "ArrowLeft":
+            state.time = Math.max(0, state.time - (e.shiftKey ? 1 : 0.1));
+            break;
+          case "ArrowRight":
+            state.time += e.shiftKey ? 1 : 0.1;
+            break;
+          case "0":
+            state.time = 0;
+            break;
+          case "-":
+          case "_":
+            setScale(-1);
+            break;
+          case "+":
+          case "=":
+            setScale(1);
+            break;
+          case "s":
+          case "S":
+            save();
+            break;
+          case "h":
+          case "H":
+            ui.hud.hidden = ui.help.hidden = !ui.hud.hidden;
+            break;
+          default:
+            return;
+        }
+        e.preventDefault();
+        wake();
+      });
+
+      // ---- loop --------------------------------------------------------------
+
+      let last = performance.now();
+      let fpsAccum = 0;
+      let fpsFrames = 0;
+
+      const draw = (now) => {
+        const dt = Math.min((now - last) / 1000, 0.1); // clamp tab-switch jumps
+        last = now;
+        if (state.playing) state.time += dt;
+
+        resize();
+        gl.uniform2f(uni.r, canvas.width, canvas.height);
+        gl.uniform2f(uni.m, state.mouse[0], state.mouse[1]);
+        gl.uniform1f(uni.t, state.time);
+        gl.uniform1i(uni.f, state.frame++);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+        fpsAccum += dt;
+        fpsFrames++;
+        if (fpsAccum >= 0.5) {
+          ui.fps.textContent = (fpsFrames / fpsAccum).toFixed(0);
+          fpsAccum = 0;
+          fpsFrames = 0;
+        }
+        ui.time.textContent = state.time.toFixed(2);
+        ui.state.textContent = state.playing ? "" : "paused";
+
+        window.__frames = state.frame; // handy for automated capture
+        requestAnimationFrame(draw);
+      };
+      requestAnimationFrame(draw);
+    </script>
+  </body>
+</html>
