@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>The Prediction Horizon</title>
+<meta name="description" content="Probabilistic state projection — NOW marks the present, branching paths map possible futures." />
+<style>
+  :root{
+    --bg:#04070b;
+    --ink:#8fc3d2;
+    --ink-dim:#4d7683;
+    --cyan:#35e6e0;
+    --orange:#ff8f3a;
+    --panel:rgba(9,16,22,.86);
+    --line:rgba(120,190,210,.18);
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--mono);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+    overscroll-behavior:none;
+  }
+  #stage{position:fixed; inset:0}
+  canvas{display:block; width:100%; height:100%; touch-action:none}
+
+  /* ---------- HUD ---------- */
+  .hud{
+    position:fixed; right:16px; bottom:16px; width:250px;
+    background:var(--panel);
+    border:1px solid rgba(140,205,225,.22);
+    border-radius:14px;
+    padding:10px 12px 12px;
+    backdrop-filter:blur(9px); -webkit-backdrop-filter:blur(9px);
+    box-shadow:0 18px 50px rgba(0,0,0,.6), inset 0 1px 0 rgba(180,235,255,.06);
+    user-select:none;
+    transition:transform .35s cubic-bezier(.2,.8,.2,1), opacity .25s;
+    z-index:5;
+  }
+  .hud.collapsed{transform:translateX(calc(100% + 22px)); opacity:.35}
+  .hud .top{display:flex; gap:8px; align-items:center; margin-bottom:10px}
+  .chip{
+    flex:1; display:flex; align-items:center; justify-content:space-between;
+    font:600 10px/1 var(--mono); letter-spacing:.14em; color:var(--ink);
+    background:rgba(255,143,58,.06);
+    border:1px solid rgba(255,160,80,.42);
+    border-radius:999px; padding:8px 10px; cursor:pointer;
+    transition:background .18s, border-color .18s, color .18s;
+  }
+  .chip[aria-pressed="true"]{background:rgba(255,143,58,.2); border-color:rgba(255,175,95,.9); color:#ffd7ae}
+  .chip .ar{opacity:.7; font-size:11px}
+  .icon{
+    width:32px; height:30px; display:grid; place-items:center; cursor:pointer;
+    background:rgba(120,200,220,.05); border:1px solid rgba(140,205,225,.3);
+    border-radius:9px; color:var(--ink); font:600 13px/1 var(--mono);
+    transition:background .18s, color .18s;
+  }
+  .icon:hover,.chip:hover{background:rgba(140,220,240,.14)}
+
+  .sl{
+    display:grid; grid-template-columns:82px 1fr 24px; align-items:center; gap:8px;
+    padding:5px 0; cursor:pointer; outline:none; border-radius:6px;
+  }
+  .sl:focus-visible{box-shadow:0 0 0 1px rgba(90,230,230,.7)}
+  .sl .lab{font:500 9px/1 var(--mono); letter-spacing:.14em; color:var(--ink-dim)}
+  .sl .val{font:600 10px/1 var(--mono); text-align:right; color:#cfeef7; font-variant-numeric:tabular-nums}
+  .track{position:relative; height:16px; display:flex; align-items:center}
+  .track::before{content:""; position:absolute; left:0; right:0; height:2px; background:rgba(130,200,220,.18); border-radius:2px}
+  .fill{position:absolute; left:0; height:2px; background:linear-gradient(90deg,#2aa8c8,#4ff0ea); border-radius:2px}
+  .knob{
+    position:absolute; width:11px; height:11px; border-radius:50%;
+    background:#7df3ee; box-shadow:0 0 10px rgba(80,240,235,.8), 0 0 0 1px rgba(10,25,30,.9);
+    transform:translateX(-50%); pointer-events:none;
+  }
+  .sl:hover .knob{background:#b6fffb}
+
+  .pause{
+    margin-top:9px; width:100%; padding:8px 0;
+    font:600 10px/1 var(--mono); letter-spacing:.2em; color:#cfeef7;
+    background:rgba(120,200,220,.06); border:1px solid rgba(140,205,225,.32);
+    border-radius:9px; cursor:pointer; transition:background .18s,color .18s;
+  }
+  .pause:hover{background:rgba(140,220,240,.16)}
+  .pause[data-paused="true"]{color:#ffd0a4; border-color:rgba(255,165,90,.5); background:rgba(255,143,58,.1)}
+
+  .tab{
+    position:fixed; right:0; bottom:64px; z-index:6;
+    width:16px; height:44px; display:grid; place-items:center; cursor:pointer;
+    background:var(--panel); border:1px solid rgba(140,205,225,.22); border-right:0;
+    border-radius:8px 0 0 8px; color:var(--ink); font-size:11px; line-height:1;
+    opacity:0; pointer-events:none; transition:opacity .25s;
+  }
+  .tab.show{opacity:1; pointer-events:auto}
+
+  .hint{
+    position:fixed; left:16px; bottom:12px; z-index:4;
+    font:500 9px/1.6 var(--mono); letter-spacing:.12em; color:rgba(120,170,185,.45);
+    pointer-events:none;
+  }
+  @media (max-width:720px){
+    .hud{left:12px; right:12px; width:auto; bottom:12px}
+    .hint{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){ .hud{transition:none} }
+</style>
+</head>
+<body>
+<div id="stage"><canvas id="c" aria-label="Probabilistic state projection visualization"></canvas></div>
+
+<button class="tab" id="tab" aria-label="Show controls">‹</button>
+
+<div class="hud" id="hud">
+  <div class="top">
+    <button class="chip" id="evidence" aria-pressed="true">EVIDENCE <span class="ar">›</span></button>
+    <button class="icon" id="reseed" title="Resample (R)" aria-label="Resample">⇌</button>
+    <button class="icon" id="collapse" title="Hide panel" aria-label="Hide panel">›</button>
+  </div>
+
+  <div class="sl" data-key="uncertainty" role="slider" tabindex="0"
+       aria-label="Uncertainty" aria-valuemin="0" aria-valuemax="100" aria-valuenow="56">
+    <span class="lab">UNCERTAINTY</span>
+    <span class="track"><span class="fill"></span><span class="knob"></span></span>
+    <span class="val">56</span>
+  </div>
+  <div class="sl" data-key="horizon" role="slider" tabindex="0"
+       aria-label="Horizon" aria-valuemin="0" aria-valuemax="100" aria-valuenow="78">
+    <span class="lab">HORIZON</span>
+    <span class="track"><span class="fill"></span><span class="knob"></span></span>
+    <span class="val">78</span>
+  </div>
+  <div class="sl" data-key="noise" role="slider" tabindex="0"
+       aria-label="Noise" aria-valuemin="0" aria-valuemax="100" aria-valuenow="42">
+    <span class="lab">NOISE</span>
+    <span class="track"><span class="fill"></span><span class="knob"></span></span>
+    <span class="val">42</span>
+  </div>
+
+  <button class="pause" id="pause" data-paused="false">PAUSE</button>
+</div>
+
+<div class="hint">SPACE&nbsp;PAUSE &nbsp;·&nbsp; E&nbsp;EVIDENCE &nbsp;·&nbsp; R&nbsp;RESAMPLE</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ══════════════════════════════════════════════════════════════════════
+   THE PREDICTION HORIZON — probabilistic state projection
+   Vanilla JS + Canvas 2D. No dependencies.
+   ══════════════════════════════════════════════════════════════════════ */
+
+const MONO = 'ui-monospace, "SFMono-Regular", Menlo, Consolas, "DejaVu Sans Mono", monospace';
+
+const P = {
+  bg      : '#04070b',
+  grid    : 'rgba(110,180,205,0.055)',
+  gridHot : 'rgba(120,200,220,0.12)',
+  label   : 'rgba(126,178,193,0.78)',
+  faint   : 'rgba(110,160,175,0.42)',
+  bright  : '#cfeef7',
+  ice     : '#e6f4ff',
+  cyan    : '#3fe6df',
+  teal    : '#31c9a8',
+  amber   : '#ffc06a',
+  orange  : '#ff8f3a',
+  violet  : '#a294ff'
+};
+
+/* Six prediction families: drift, colour, label. */
+const FAMILIES = [
+  { id:'F1', color:P.ice,    drift: 1.00 },
+  { id:'F2', color:P.cyan,   drift: 0.56 },
+  { id:'F3', color:P.teal,   drift: 0.17 },
+  { id:'F4', color:P.amber,  drift:-0.22 },
+  { id:'F5', color:P.orange, drift:-0.60 },
+  { id:'F6', color:P.violet, drift:-1.00 }
+];
+const MEMBERS = 6;                 // sample paths per family
+const STEPS   = 132;               // polyline resolution
+const HIST    = 190;               // history ring-buffer length
+
+/* ───────────────────────── math helpers ───────────────────────── */
+const clamp  = (v,a,b) => v < a ? a : v > b ? b : v;
+const lerp   = (a,b,t) => a + (b-a)*t;
+const smooth = (e0,e1,x) => { const t = clamp((x-e0)/(e1-e0),0,1); return t*t*(3-2*t); };
+
+function hash(n){ const s = Math.sin(n*127.1 + 311.7) * 43758.5453123; return s - Math.floor(s); }
+function vnoise(x){
+  const i = Math.floor(x), f = x - i, u = f*f*(3-2*f);
+  return lerp(hash(i), hash(i+1), u) * 2 - 1;
+}
+function fbm(x){
+  let a = 0, amp = 0.5, fr = 1;
+  for (let i = 0; i < 4; i++){ a += vnoise(x*fr + i*17.3) * amp; fr *= 2.03; amp *= 0.5; }
+  return a;
+}
+function rgba(hex, a){
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+}
+const fmt = (v,d=3) => v.toFixed(d);
+const pad3 = n => String(Math.floor(n)).padStart(3,'0');
+
+/* ───────────────────────── state ───────────────────────── */
+const S = {
+  uncertainty : 0.56,
+  horizon     : 0.78,
+  noise       : 0.42,
+  evidence    : true,
+  paused      : false,
+  seed        : 41.7,
+  t           : 0,          // model time (frozen while paused)
+  wall        : 0,          // wall time (always advances)
+  tauE        : 0.44,       // evidence boundary position, in tau
+  weights     : FAMILIES.map((_,i) => 0.55 + 0.35*hash(i*3.3)),
+  locked      : FAMILIES.map(() => false),
+  state       : 29,
+  sample      : 84,
+  fps         : 0,
+  entHist     : new Float32Array(HIST),
+  varHist     : new Float32Array(HIST),
+  phiHist     : new Float32Array(HIST),
+  histN       : 0,
+  metrics     : { ent:0.6, p:0.65, delta:0.47, conf:65.6, sig:0.307, varr:0.31 }
+};
+
+/* ───────────────────────── canvas ───────────────────────── */
+const cvs = document.getElementById('c');
+const ctx = cvs.getContext('2d', { alpha:false });
+let W = 0, H = 0, DPR = 1, compact = false;
+let L = {};                                   // layout rects
+const hit = [];                               // canvas hit regions
+
+function resize(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = cvs.clientWidth; H = cvs.clientHeight;
+  cvs.width = Math.max(1, Math.round(W*DPR));
+  cvs.height = Math.max(1, Math.round(H*DPR));
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  buildLayout();
+}
+
+function buildLayout(){
+  compact = W < 940 || H < 560;
+  const pad     = compact ? 14 : 22;
+  const scaleW  = compact ? 0  : 34;          // gutter for the 020…100 scale
+  const sideW   = compact ? 0  : clamp(W*0.17, 162, 228);
+  const headerH = compact ? 106 : 104;
+  /* compact reserves the bottom strip for the control panel instead of the density plot */
+  const botH    = compact ? clamp(H*0.30, 150, 210) : clamp(H*0.23, 112, 200);
+  const gut     = compact ? 0  : 20;
+
+  const px = pad + (compact ? 24 : scaleW + sideW + gut);
+  const pw = W - px - pad - (compact ? 0 : sideW + gut);
+
+  L = {
+    pad, scaleW, sideW, headerH, botH,
+    plot : { x:px, y:headerH, w:pw, h:H - headerH - botH - pad - (compact?28:10) }
+  };
+  L.plot.h = Math.max(140, L.plot.h);
+
+  L.now = { x: L.plot.x + L.plot.w*0.075, y: L.plot.y + L.plot.h*0.53 };
+  L.amp = L.plot.h * 0.44;
+
+  if (!compact){
+    const lx = pad + scaleW, rx = W - pad - sideW;
+    const colTop = headerH + 26;
+    const colH   = H - colTop - botH - pad - 10;
+    const gapY   = 40;                          // room for each panel's footer read-out
+    const h3     = (colH - gapY*2) / 3;
+
+    L.left = [
+      { x:lx, y:colTop,                    w:sideW, h:h3, title:'NEAR-TERM BRANCHES' },
+      { x:lx, y:colTop + h3 + gapY,        w:sideW, h:h3, title:'LOCAL SENSITIVITY' },
+      { x:lx, y:colTop + 2*(h3 + gapY),    w:sideW, h:h3, title:'PREDICTION MEMORY' }
+    ];
+    L.right = [
+      { x:rx, y:colTop,                    w:sideW, h:h3, title:'FAMILY WEIGHT' },
+      { x:rx, y:colTop + h3 + gapY,        w:sideW, h:h3, title:'ENTROPY / HISTORY' },
+      { x:rx, y:colTop + 2*(h3 + gapY),    w:sideW, h:h3, title:'ALT / COORD PHI' }
+    ];
+    L.density = { x:L.plot.x, y:H - botH - pad + 10, w:L.plot.w, h:botH - 30 };
+  } else {
+    L.left = L.right = [];
+    L.density = null;
+  }
+}
+
+/* run a draw call clipped to a panel (plus a little headroom) */
+function clipped(r, pad, fn){
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(r.x - pad, r.y - pad, r.w + pad*2, r.h + pad*2);
+  ctx.clip();
+  fn();
+  ctx.restore();
+}
+
+/* ───────────────────────── model ───────────────────────── */
+/* Horizon in "steps ahead": 8 … 64. tau ∈ [0,1] is log-time. */
+function horizonT(){ return 8 + S.horizon * 56; }
+function tauOf(t){ return Math.log2(1+t) / Math.log2(1 + horizonT()); }
+function xOf(tau){ return L.now.x + (L.plot.x + L.plot.w - L.now.x) * tau; }
+
+/* Evidence contracts the cone at the phase boundary, then it re-widens. */
+function pinch(tau){
+  if (!S.evidence) return 1;
+  const g = Math.exp(-Math.pow((tau - S.tauE) / 0.075, 2));
+  const re = smooth(S.tauE, 1, tau) * 0.34;
+  return (1 - 0.62*g) * (1 + re);
+}
+
+/* Soft saturation keeps every path inside the plot no matter how wide the cone gets. */
+const sat = v => Math.tanh(v * 0.95);
+
+/* Value of one sample path at tau, in normalised units (≈ -1 … 1). */
+function pathValue(f, m, tau, w){
+  const seed = S.seed + f*97.13 + m*13.77;
+  const u    = 0.34 + 1.26 * S.uncertainty;
+  const mOff = (MEMBERS === 1 ? 0 : (m/(MEMBERS-1))*2 - 1) + (hash(seed)*2-1)*0.22;
+
+  const wander = fbm(f*11.4 + S.t*0.16 + S.seed) * 0.26;
+  const core   = (FAMILIES[f].drift + wander) * Math.pow(tau, 1.22) * (0.5 + 0.62*w);
+  const spread = mOff * Math.pow(tau, 1.06) * 0.44;
+  const jitter = fbm(seed + tau*2.7 + S.t*0.34) * (0.16 + S.noise*0.62) * Math.pow(tau, 0.82);
+
+  return sat((core + spread + jitter) * u * pinch(tau));
+}
+
+function familyWeight(f){
+  if (S.locked[f]) return S.weights[f];
+  const w = 0.5 + 0.45 * fbm(f*23.9 + S.t*0.09 + S.seed*0.5);
+  S.weights[f] = clamp(w, 0.06, 1);
+  return S.weights[f];
+}
+
+/* Endpoint statistics → entropy, modal probability, drift delta. */
+function computeMetrics(){
+  const ends = [], ws = [];
+  let sw = 0, mean = 0;
+  for (let f = 0; f < FAMILIES.length; f++){
+    const w = S.weights[f];
+    for (let m = 0; m < MEMBERS; m++){
+      const v = pathValue(f, m, 1, w);
+      ends.push(v); ws.push(w); sw += w; mean += v*w;
+    }
+  }
+  mean /= (sw || 1);
+
+  const BINS = 22, lo = -1.6, hi = 1.6;
+  const bins = new Float64Array(BINS);
+  for (let i = 0; i < ends.length; i++){
+    const b = clamp(Math.floor((ends[i]-lo)/(hi-lo)*BINS), 0, BINS-1);
+    bins[b] += ws[i];
+  }
+  let ent = 0;
+  for (let i = 0; i < BINS; i++){
+    const p = bins[i] / (sw || 1);
+    if (p > 0) ent -= p * Math.log(p);
+  }
+  ent /= Math.log(BINS);
+
+  /* modal mass over three macro-bands */
+  const macro = [0,0,0];
+  for (let i = 0; i < ends.length; i++){
+    const k = ends[i] > 0.33 ? 0 : ends[i] < -0.33 ? 2 : 1;
+    macro[k] += ws[i];
+  }
+  const pmax = Math.max(macro[0], macro[1], macro[2]) / (sw || 1);
+
+  let vr = 0;
+  for (let i = 0; i < ends.length; i++) vr += ws[i] * Math.pow(ends[i]-mean, 2);
+  vr /= (sw || 1);
+
+  const M = S.metrics;
+  M.ent   = ent;
+  M.p     = pmax;
+  M.delta = Math.abs(mean);
+  M.varr  = vr;
+  M.sig   = 0.12 + S.uncertainty*0.34 + S.noise*0.12;
+  M.conf  = clamp((1 - ent) * 78 + pmax*28, 4, 99.4);
+
+  const i = S.histN % HIST;
+  S.entHist[i] = ent;
+  S.varHist[i] = clamp(vr*0.6, 0, 1);
+  S.phiHist[i] = 0.5 + 0.42*Math.sin(S.t*0.7 + mean*2.4) * (0.4 + 0.6*S.noise);
+  S.histN++;
+}
+
+/* ───────────────────────── drawing primitives ───────────────────────── */
+function txt(s, x, y, o){
+  o = o || {};
+  ctx.save();
+  ctx.font = `${o.weight || 500} ${o.size || 9.5}px ${MONO}`;
+  ctx.fillStyle = o.color || P.label;
+  ctx.textAlign = o.align || 'left';
+  ctx.textBaseline = o.baseline || 'alphabetic';
+  try { ctx.letterSpacing = (o.ls == null ? 1.4 : o.ls) + 'px'; } catch(e){}
+  if (o.alpha != null) ctx.globalAlpha = o.alpha;
+  ctx.fillText(s, x, y);
+  ctx.restore();
+}
+
+/* the recurring ⊕ reticle */
+function reticle(x, y, r, color, a){
+  ctx.save();
+  ctx.strokeStyle = rgba(color, a == null ? 0.85 : a);
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x - r*1.9, y); ctx.lineTo(x + r*1.9, y);
+  ctx.moveTo(x, y - r*1.9); ctx.lineTo(x, y + r*1.9);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function panelHead(p, sub){
+  txt(p.title, p.x, p.y - 8, { size:9, color:P.label, ls:1.8, weight:600 });
+  if (sub) txt(sub, p.x + p.w, p.y - 8, { size:9, color:P.faint, align:'right' });
+}
+
+function polyline(pts, stroke, width, blend){
+  if (pts.length < 2) return;
+  ctx.save();
+  if (blend) ctx.globalCompositeOperation = 'lighter';
+  ctx.strokeStyle = stroke; ctx.lineWidth = width;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* ───────────────────────── background ───────────────────────── */
+function drawBackground(){
+  ctx.fillStyle = P.bg;
+  ctx.fillRect(0,0,W,H);
+
+  /* soft column of light behind the fan */
+  const g = ctx.createLinearGradient(L.plot.x, 0, L.plot.x + L.plot.w, 0);
+  g.addColorStop(0,    'rgba(20,48,62,0.45)');
+  g.addColorStop(0.35, 'rgba(14,32,44,0.28)');
+  g.addColorStop(1,    'rgba(6,12,18,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(L.plot.x - 30, 0, L.plot.w + 60, H);
+
+  /* grid */
+  ctx.save();
+  ctx.strokeStyle = P.grid; ctx.lineWidth = 1;
+  ctx.beginPath();
+  const rows = 9;
+  for (let i = 0; i <= rows; i++){
+    const y = Math.round(L.plot.y + L.plot.h * i/rows) + 0.5;
+    ctx.moveTo(L.plot.x, y); ctx.lineTo(L.plot.x + L.plot.w, y);
+  }
+  for (let i = 0; i <= 12; i++){
+    const x = Math.round(L.plot.x + L.plot.w * i/12) + 0.5;
+    ctx.moveTo(x, L.plot.y); ctx.lineTo(x, L.plot.y + L.plot.h);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  /* left-hand scale — pinned to panel quarter-marks so it never shares a text baseline */
+  if (!compact && L.left.length){
+    const marks = [
+      [L.left[0], 0.25], [L.left[0], 0.75],
+      [L.left[1], 0.25], [L.left[1], 0.75],
+      [L.left[2], 0.5]
+    ];
+    marks.forEach((mk, i) => {
+      const y = mk[0].y + mk[0].h * mk[1];
+      txt(pad3((i+1)*20), L.pad, y, { size:9, color:'rgba(110,160,175,0.4)', ls:1.6 });
+      ctx.save();
+      ctx.strokeStyle = 'rgba(110,160,175,0.2)'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(L.pad + 26, y - 3.5); ctx.lineTo(L.pad + 30, y - 3.5);
+      ctx.stroke();
+      ctx.restore();
+    });
+  }
+}
+
+/* ───────────────────────── header + axis ───────────────────────── */
+function drawHeader(){
+  const x = L.pad, y = L.headerH;
+
+  if (!compact){
+    /* long "sum path" traces run above the title block */
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const sx0 = W*0.24, sx1 = W*0.76;          // stay clear of the corner read-outs
+    for (let k = 0; k < 2; k++){
+      const base = 26 + k*11, col = k ? P.violet : P.ice;
+      const g = ctx.createLinearGradient(sx0, 0, sx1, 0);
+      g.addColorStop(0,   rgba(col, 0));
+      g.addColorStop(0.5, rgba(col, 0.34));
+      g.addColorStop(1,   rgba(col, 0));
+      ctx.strokeStyle = g; ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i <= 90; i++){
+        const t = i/90, px = lerp(sx0, sx1, t);
+        const py = base + fbm(t*3 + k*9 + S.t*0.22)*4.5;
+        i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+    reticle(W*0.5, 26, 4.5, P.ice, 0.7);
+    txt('TEMPORAL FLATTENING / SUM PATH', W*0.5, 50, { size:9, color:P.faint, align:'center', ls:2 });
+  }
+
+  const M = S.metrics;
+
+  if (compact){
+    /* everything stacks on the left — no room for corner read-outs */
+    txt('REALTIME / MODEL 7A', x, 18, { size:8.5, color:P.faint, ls:2 });
+    txt('THE PREDICTION HORIZON', x, 40, { size:15, color:'#eaf7ff', ls:2.4, weight:600 });
+    txt('PROBABILISTIC STATE PROJECTION', x, 55, { size:8.5, color:'rgba(120,200,220,0.55)', ls:1.8 });
+    txt(`STATE ${pad3(S.state)}   P ${fmt(M.p)}   ENT ${fmt(M.ent)}`,
+        x, 72, { size:8.5, color:'rgba(180,225,240,0.72)', ls:1.2 });
+    txt(`HORIZON ${fmt(horizonT(),1)}   NOISE ${fmt(S.noise,2)}   ${Math.round(S.fps)} FPS`,
+        x, 84, { size:8.5, color:P.faint, ls:1.2 });
+    return;
+  }
+
+  txt('REALTIME / MODEL 7A', x, y - 54, { size:9, color:P.faint, ls:2.2 });
+  txt('THE PREDICTION HORIZON', x, y - 32, { size:19, color:'#eaf7ff', ls:4.2, weight:600 });
+  txt('PROBABILISTIC STATE PROJECTION', x, y - 16, { size:9, color:'rgba(120,200,220,0.55)', ls:2.4 });
+
+  /* top-right telemetry */
+  const r = W - L.pad;
+  txt(`STATE ${pad3(S.state)}   P ${fmt(M.p)}   DELTA ${fmt(M.delta)}   ENT ${fmt(M.ent)}`,
+      r, 26, { size:9, align:'right', color:'rgba(180,225,240,0.72)', ls:1.6 });
+  txt(`SAMPLE ${pad3(S.sample)}`, r, 42, { size:9, align:'right', color:P.faint });
+  txt(`HORIZON ${fmt(horizonT(),1)}   NOISE ${fmt(S.noise,2)}   ${Math.round(S.fps)} FPS`,
+      r, 56, { size:9, align:'right', color:P.faint });
+}
+
+function drawAxis(){
+  const y = L.plot.y + 6;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(120,190,210,0.22)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(L.now.x, y + 0.5); ctx.lineTo(L.plot.x + L.plot.w, y + 0.5);
+  ctx.stroke();
+
+  const T = horizonT();
+  let lastX = -1e9;
+  [1,2,4,8,16,32,64].forEach(t => {
+    if (t > T) return;
+    const tau = tauOf(t);
+    if (tau > 1.001) return;
+    const px = xOf(tau);
+    if (px - lastX < 52) return;              // drop ticks that would crowd
+    lastX = px;
+    ctx.beginPath();
+    ctx.moveTo(px + 0.5, y); ctx.lineTo(px + 0.5, y + 8);
+    ctx.strokeStyle = 'rgba(140,210,230,0.4)';
+    ctx.stroke();
+    txt('T+' + String(t).padStart(2,'0'), px, y - 7,
+        { size:9, align:'center', color:'rgba(150,210,225,0.7)', ls:1.6 });
+  });
+  ctx.restore();
+}
+
+/* ───────────────────────── evidence boundary ───────────────────────── */
+function drawEvidence(){
+  if (!S.evidence) return;
+  const x = xOf(S.tauE);
+  const wBand = clamp(L.plot.w*0.009, 5, 12);
+  const y0 = L.plot.y - 2, y1 = L.plot.y + L.plot.h + 4;
+  const hh = y1 - y0;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  /* horizontal falloff × vertical falloff, so the column has no hard ends */
+  const g = ctx.createLinearGradient(x - wBand*3.4, 0, x + wBand*3.4, 0);
+  g.addColorStop(0,    'rgba(255,120,30,0)');
+  g.addColorStop(0.5,  'rgba(255,148,58,0.26)');
+  g.addColorStop(1,    'rgba(255,120,30,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(x - wBand*3.4, y0, wBand*6.8, hh);
+
+  const v = ctx.createLinearGradient(0, y0, 0, y1);
+  v.addColorStop(0,    'rgba(255,190,120,0.08)');
+  v.addColorStop(0.18, 'rgba(255,198,132,0.42)');
+  v.addColorStop(0.82, 'rgba(255,198,132,0.42)');
+  v.addColorStop(1,    'rgba(255,190,120,0.08)');
+  ctx.fillStyle = v;
+  ctx.fillRect(x - wBand*0.26, y0, Math.max(1.5, wBand*0.52), hh);
+  ctx.restore();
+
+  txt('EVIDENCE / PHASE BOUNDARY', x, L.plot.y + 30,
+      { size:9, align:'center', color:'#ffc691', ls:2 });
+}
+
+/* ───────────────────────── the fan ───────────────────────── */
+const floaters = [];   // drifting probability read-outs
+
+function drawFan(){
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+
+  for (let f = 0; f < FAMILIES.length; f++){
+    const fam = FAMILIES[f];
+    const w   = familyWeight(f);
+
+    for (let m = 0; m < MEMBERS; m++){
+      const pts = [];
+      for (let i = 0; i <= STEPS; i++){
+        const tau = i/STEPS;
+        const v = pathValue(f, m, tau, w);
+        pts.push([ xOf(tau), L.now.y - L.amp * v ]);
+      }
+
+      const grad = ctx.createLinearGradient(L.now.x, 0, L.plot.x + L.plot.w, 0);
+      const a = 0.20 + 0.72*w;
+      grad.addColorStop(0,    rgba(fam.color, 0));
+      grad.addColorStop(0.05, rgba(fam.color, a*0.95));
+      grad.addColorStop(0.5,  rgba(fam.color, a*0.9));
+      grad.addColorStop(0.86, rgba(fam.color, a*0.42));
+      grad.addColorStop(1,    rgba(fam.color, 0.03));
+
+      /* bloom pass */
+      polyline(pts, rgba(fam.color, 0.05 + 0.07*w), 6.5 + 4*w, false);
+      /* core pass */
+      polyline(pts, grad, 0.9 + 1.0*w, false);
+    }
+  }
+  ctx.restore();
+
+  drawFloaters();
+}
+
+function drawFloaters(){
+  /* four read-outs pinned to representative paths */
+  const picks = [
+    { f:0, m:4, tau:0.30 },
+    { f:1, m:2, tau:0.36 },
+    { f:2, m:5, tau:0.55 },
+    { f:4, m:1, tau:0.24 }
+  ];
+  picks.forEach((k, i) => {
+    const tau = clamp(k.tau + 0.05*Math.sin(S.t*0.25 + i), 0.12, 0.92);
+    const w = S.weights[k.f];
+    const v = pathValue(k.f, k.m, tau, w);
+    const x = xOf(tau), y = L.now.y - L.amp*v;
+    const p = clamp(0.5 + v*0.32 + 0.12*fbm(i*7 + S.t*0.3), 0.02, 0.99);
+    const lab = (i === 3 ? 'P' + pad3(100*w) + ' ' : '') + fmt(p);
+    txt(lab, x, y - 7, { size:9, color:rgba(FAMILIES[k.f].color, 0.8), ls:1.2, align:'center' });
+  });
+}
+
+function drawNow(){
+  const { x, y } = L.now;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const g = ctx.createRadialGradient(x, y, 0, x, y, 46);
+  g.addColorStop(0, 'rgba(210,250,255,0.5)');
+  g.addColorStop(1, 'rgba(120,220,240,0)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(x, y, 46, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(225,250,255,0.95)'; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x-19, y); ctx.lineTo(x+19, y);
+  ctx.moveTo(x, y-19); ctx.lineTo(x, y+19);
+  ctx.stroke();
+  ctx.restore();
+
+  txt('NOW', x + 2, y - 26, { size:11, color:'#ffffff', ls:2.4, weight:700, align:'center' });
+  txt('DELTA ' + fmt(S.metrics.delta), x, y + 34,
+      { size:9, color:'rgba(255,190,130,0.72)', align:'center' });
+}
+
+/* ───────────────────────── left panels ───────────────────────── */
+function drawNearTerm(p){
+  panelHead(p, null);
+  const ox = p.x, ow = p.w - 6, oy = p.y + p.h*0.5;
+  const TAU = 0.13;                              // this panel zooms the first 13% of the cone
+  clipped(p, 6, () => {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let f = 0; f < FAMILIES.length; f++){
+      for (let m = 0; m < MEMBERS; m += 2){
+        const pts = [];
+        for (let i = 0; i <= 26; i++){
+          const t = i/26;
+          const v = pathValue(f, m, t*TAU, S.weights[f]) * (1/TAU) * 0.24;
+          pts.push([ ox + ow*t, oy - p.h*0.44*clamp(v,-1,1) ]);
+        }
+        polyline(pts, rgba(FAMILIES[f].color, 0.28 + 0.5*S.weights[f]), 1.1, false);
+      }
+    }
+    ctx.restore();
+  });
+  reticle(ox + ow*0.44, oy - 2, 4.5, P.amber, 0.7);
+  txt('T+00 … T+0' + Math.max(1, Math.round(horizonT()*TAU)), p.x + p.w, p.y + p.h + 14,
+      { size:9, color:P.faint, align:'right' });
+}
+
+function drawSensitivity(p){
+  panelHead(p, null);
+  const ox = p.x, ow = p.w - 6, oy = p.y + p.h*0.42;
+  clipped(p, 6, () => {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let k = 0; k < 5; k++){
+      const pts = [];
+      const col = [P.orange, P.amber, P.cyan, P.teal, P.violet][k];
+      for (let i = 0; i <= 24; i++){
+        const t = i/24;
+        const v = (k-2)*0.26*t + fbm(k*5.5 + t*2 + S.t*0.4)*0.4*t*(0.4 + S.noise);
+        pts.push([ ox + ow*t, oy - p.h*0.34*v ]);
+      }
+      polyline(pts, rgba(col, 0.6), 1.1, false);
+    }
+    ctx.restore();
+  });
+  reticle(ox + ow*0.5, oy, 4, P.amber, 0.7);
+
+  /* tick strip */
+  ctx.save();
+  ctx.strokeStyle = 'rgba(120,190,210,0.26)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i <= 14; i++){
+    const x = Math.round(ox + ow*i/14) + 0.5;
+    ctx.moveTo(x, p.y + p.h - 10); ctx.lineTo(x, p.y + p.h - 4);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  txt('STATE ' + pad3(S.state), p.x, p.y + p.h + 14, { size:9, color:P.faint });
+  txt('SIG ' + fmt(S.metrics.sig), p.x + p.w, p.y + p.h + 14, { size:9, color:P.faint, align:'right' });
+}
+
+function drawMemory(p){
+  panelHead(p, null);
+  const edge = p.x + p.w - 10;                 // "present" edge; streaks decay to the left
+  clipped(p, 4, () => {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 16; i++){
+      const sy  = p.y + 6 + (p.h - 12) * hash(i*4.4);
+      const len = 20 + hash(i*9.1)*(p.w*0.5);
+      const spd = 5 + hash(i*2.7)*18;
+      const span = p.w + 80;
+      const x = edge - ((S.t*spd + hash(i*5.5)*span) % span);
+      const col = [P.cyan, P.teal, P.violet, P.ice, P.amber][i % 5];
+      const g = ctx.createLinearGradient(x, 0, x + len, 0);
+      g.addColorStop(0,   rgba(col, 0));
+      g.addColorStop(0.7, rgba(col, 0.45));
+      g.addColorStop(1,   rgba(col, 0.7));
+      ctx.strokeStyle = g; ctx.lineWidth = 1.1;
+      ctx.beginPath(); ctx.moveTo(x, sy); ctx.lineTo(Math.min(x + len, edge), sy); ctx.stroke();
+    }
+    ctx.restore();
+  });
+
+  reticle(p.x + p.w*0.3, p.y + p.h*0.52, 4.5, P.amber, 0.75);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(220,245,255,0.5)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(edge + 0.5, p.y); ctx.lineTo(edge + 0.5, p.y + p.h);
+  ctx.stroke();
+  ctx.restore();
+  txt('E01', p.x + p.w - 6, p.y + 10, { size:9, color:P.faint });
+  txt('LAPSE ' + fmt(S.t % 100, 1), p.x, p.y + p.h + 14, { size:9, color:P.faint });
+}
+
+/* ───────────────────────── right panels ───────────────────────── */
+function drawFamilyWeight(p){
+  panelHead(p, null);
+  const rowH = (p.h - 6) / FAMILIES.length;
+  const tx0 = p.x + 26, tx1 = p.x + p.w - 16;
+
+  txt('1.0', p.x + p.w, p.y - 8, { size:9, color:P.faint, align:'right' });
+
+  for (let f = 0; f < FAMILIES.length; f++){
+    const y = Math.round(p.y + rowH*(f + 0.5)) + 0.5;
+    const w = S.weights[f];
+    const kx = tx0 + (tx1 - tx0) * w;
+
+    txt(FAMILIES[f].id, p.x, y + 3, { size:9, color:rgba(FAMILIES[f].color, 0.85), ls:1 });
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(120,190,210,0.16)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(tx0, y); ctx.lineTo(tx1, y); ctx.stroke();
+
+    ctx.strokeStyle = rgba(FAMILIES[f].color, S.locked[f] ? 0.95 : 0.72);
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(tx0, y); ctx.lineTo(kx, y); ctx.stroke();
+
+    ctx.fillStyle = rgba(FAMILIES[f].color, 0.95);
+    ctx.fillRect(kx - 2.5, y - 2.5, 5, 5);
+    ctx.restore();
+
+    hit.push({ kind:'weight', f, x:tx0 - 10, y:y - rowH*0.5, w:(tx1-tx0) + 20, h:rowH, tx0, tx1 });
+  }
+
+  txt('0.8', p.x, p.y + p.h + 14, { size:9, color:P.faint });
+  txt('CONF ' + fmt(S.metrics.conf, 1), p.x + p.w, p.y + p.h + 14,
+      { size:9, color:'rgba(180,225,240,0.7)', align:'right' });
+}
+
+/* Auto-ranged sparkline: rescales to the buffer's own span (with a floor on the
+   span so a flat signal doesn't get amplified into noise). */
+function sparkline(p, buf, color, alpha, floorSpan){
+  const n = Math.min(S.histN, HIST);
+  if (n < 2) return;
+
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < n; i++){
+    const v = buf[(S.histN - n + i) % HIST];
+    if (v < lo) lo = v;
+    if (v > hi) hi = v;
+  }
+  const span = Math.max(hi - lo, floorSpan || 0.08);
+  const mid  = (lo + hi) * 0.5;
+  lo = mid - span/2; hi = mid + span/2;
+
+  const pts = [];
+  for (let i = 0; i < n; i++){
+    const v = clamp((buf[(S.histN - n + i) % HIST] - lo) / (hi - lo), 0, 1);
+    pts.push([ p.x + p.w * (i/(n-1)), p.y + p.h - p.h*0.8*v - p.h*0.1 ]);
+  }
+  polyline(pts, rgba(color, alpha), 1.2, true);
+}
+
+function drawEntropy(p){
+  panelHead(p, null);
+  txt('0.6', p.x + p.w, p.y + 9, { size:9, color:P.faint, align:'right' });
+
+  clipped(p, 4, () => {
+    sparkline(p, S.varHist, P.violet, 0.5, 0.12);
+    sparkline(p, S.entHist, P.cyan,   0.9, 0.10);
+  });
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,160,90,0.7)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(p.x + 0.5, p.y - 2); ctx.lineTo(p.x + 0.5, p.y + p.h + 2); ctx.stroke();
+  ctx.restore();
+
+  reticle(p.x + p.w*0.46, p.y + p.h*0.5, 4.5, P.amber, 0.6);
+  txt('ENT ' + fmt(S.metrics.ent), p.x + p.w, p.y + p.h + 14,
+      { size:9, color:'rgba(180,225,240,0.7)', align:'right' });
+}
+
+function drawPhi(p){
+  panelHead(p, null);
+  txt('0.4', p.x + p.w, p.y + 9, { size:9, color:P.faint, align:'right' });
+
+  clipped(p, 4, () => {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let k = 0; k < 3; k++){
+      const col = [P.violet, P.cyan, P.ice][k];
+      const pts = [];
+      for (let i = 0; i <= 40; i++){
+        const t = i/40;
+        const v = 0.5 + 0.32*Math.sin(t*3.4 + k*1.7 + S.t*0.5) * (0.4 + 0.7*S.uncertainty)
+                + fbm(k*8.2 + t*2.4 + S.t*0.3)*0.15;
+        pts.push([ p.x + p.w*t, p.y + p.h - p.h*clamp(v,0,1)*0.86 - p.h*0.07 ]);
+      }
+      polyline(pts, rgba(col, 0.4 + 0.2*k), 1.1, false);
+    }
+    ctx.restore();
+  });
+
+  reticle(p.x + p.w*0.5, p.y + p.h*0.46, 4.5, P.amber, 0.6);
+  txt('VAR ' + fmt(S.metrics.varr, 2), p.x, p.y + p.h + 14, { size:9, color:P.faint });
+}
+
+/* ───────────────────────── density projection ───────────────────────── */
+function drawDensity(){
+  const p = L.density;
+  if (!p) return;
+
+  txt('DENSITY PROJECTION / P(X,T)', p.x, p.y - 6, { size:9, color:P.label, ls:1.8, weight:600 });
+
+  const cx = p.x + p.w*0.5;
+  const nearHalf = p.w*0.5, farHalf = p.w*0.5*0.44;
+  const rowsN = 7, colsN = 15;
+
+  const proj = (u, r) => {                       // u∈[-1,1] across, r∈[0,1] depth
+    const rp = Math.pow(r, 1.55);
+    const half = lerp(nearHalf, farHalf, rp);
+    return [ cx + u*half, p.y + p.h - rp*p.h*0.92 ];
+  };
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(90,190,190,0.16)'; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i <= rowsN; i++){
+    const r = i/rowsN;
+    const a = proj(-1, r), b = proj(1, r);
+    ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+  }
+  for (let i = 0; i <= colsN; i++){
+    const u = i/colsN*2 - 1;
+    const a = proj(u, 0), b = proj(u, 1);
+    ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  /* ridgelines: marginal density at successive T slices */
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (let s = 0; s < 5; s++){
+    const r = 0.08 + s*0.2;
+    const tau = clamp(0.15 + s*0.2, 0, 1);
+    const pts = [];
+    for (let i = 0; i <= 60; i++){
+      const u = i/60*2 - 1;
+      let d = 0;
+      for (let f = 0; f < FAMILIES.length; f++){
+        const w = S.weights[f];
+        const mu = clamp(pathValue(f, Math.floor(MEMBERS/2), tau, w)*0.62, -1, 1);
+        const sd = 0.07 + 0.2*S.uncertainty*tau + 0.06*S.noise;
+        d += w * Math.exp(-Math.pow((u-mu)/sd, 2)*0.5);
+      }
+      d /= FAMILIES.length;
+      const base = proj(u, r);
+      pts.push([ base[0], base[1] - d * p.h*0.42 ]);
+    }
+    polyline(pts, rgba(s < 2 ? P.cyan : P.teal, 0.28 + 0.22*(1-s/5)), 1.1, false);
+  }
+  ctx.restore();
+
+  /* contour ellipses on the floor */
+  ctx.save();
+  ctx.strokeStyle = 'rgba(120,220,220,0.2)'; ctx.lineWidth = 1;
+  for (let k = 1; k <= 3; k++){
+    ctx.beginPath();
+    for (let i = 0; i <= 48; i++){
+      const a = i/48*Math.PI*2;
+      const u = Math.cos(a)*0.16*k, r = 0.42 + Math.sin(a)*0.1*k;
+      const q = proj(u, clamp(r,0,1));
+      i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  const mark = proj(0, 0.42);
+  reticle(mark[0], mark[1], 5, P.amber, 0.75);
+
+  /* baseline + fractional ticks */
+  const by = p.y + p.h + 10;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(120,190,210,0.3)'; ctx.lineWidth = 1;
+  ctx.setLineDash([6,7]);
+  ctx.beginPath(); ctx.moveTo(p.x, by + 0.5); ctx.lineTo(p.x + p.w, by + 0.5); ctx.stroke();
+  ctx.restore();
+
+  ['.125','.250','.375','.500','.625','.750'].forEach((s, i) => {
+    txt(s, p.x + p.w*(0.10 + i*0.13), by + 13, { size:9, color:P.faint, align:'center' });
+  });
+  txt('MODE ' + fmt(horizonT()*0.117, 3), p.x + p.w, by + 13,
+      { size:9, color:'rgba(120,170,185,0.55)', align:'right' });
+}
+
+/* ───────────────────────── overlay ───────────────────────── */
+function drawScanlines(){
+  ctx.save();
+  ctx.globalAlpha = 0.05;
+  ctx.fillStyle = '#7fd6e8';
+  for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
+  ctx.restore();
+
+  const v = ctx.createRadialGradient(W*0.5, H*0.5, Math.min(W,H)*0.28, W*0.5, H*0.5, Math.max(W,H)*0.78);
+  v.addColorStop(0, 'rgba(0,0,0,0)');
+  v.addColorStop(1, 'rgba(0,0,0,0.62)');
+  ctx.fillStyle = v;
+  ctx.fillRect(0,0,W,H);
+}
+
+/* ───────────────────────── frame ───────────────────────── */
+function frame(){
+  hit.length = 0;
+
+  drawBackground();
+  drawEvidence();
+  drawAxis();
+  drawFan();
+  drawNow();
+  drawHeader();
+
+  if (!compact){
+    drawNearTerm(L.left[0]);
+    drawSensitivity(L.left[1]);
+    drawMemory(L.left[2]);
+    drawFamilyWeight(L.right[0]);
+    drawEntropy(L.right[1]);
+    drawPhi(L.right[2]);
+    drawDensity();
+  }
+
+  drawScanlines();
+}
+
+/* ───────────────────────── loop ───────────────────────── */
+let last = performance.now(), fpsAcc = 0, fpsN = 0, stateAcc = 0;
+
+function tick(now){
+  const dt = Math.min((now - last)/1000, 0.05);
+  last = now;
+
+  S.wall += dt;
+  if (!S.paused) S.t += dt;
+
+  fpsAcc += 1/Math.max(dt, 1e-4); fpsN++;
+  if (fpsN >= 14){ S.fps = fpsAcc/fpsN; fpsAcc = 0; fpsN = 0; }
+
+  if (!S.paused){
+    stateAcc += dt;
+    if (stateAcc > 1.9){ stateAcc = 0; S.state = (S.state + 1) % 1000; }
+    S.sample = 60 + Math.floor(40 * (0.5 + 0.5*Math.sin(S.t*0.5)));
+  }
+
+  computeMetrics();
+  frame();
+  requestAnimationFrame(tick);
+}
+
+/* ───────────────────────── canvas interaction ───────────────────────── */
+let drag = null;
+
+function canvasPos(e){
+  const r = cvs.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+function inRect(p, r){ return p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h; }
+
+cvs.addEventListener('pointerdown', e => {
+  const p = canvasPos(e);
+
+  for (const h of hit){
+    if (h.kind === 'weight' && inRect(p, h)){
+      drag = h;
+      S.locked[h.f] = true;
+      S.weights[h.f] = clamp((p.x - h.tx0)/(h.tx1 - h.tx0), 0.04, 1);
+      cvs.setPointerCapture(e.pointerId);
+      return;
+    }
+  }
+
+  const pl = L.plot;
+  if (p.x >= pl.x - 20 && p.x <= pl.x + pl.w && p.y >= pl.y && p.y <= pl.y + pl.h){
+    drag = { kind:'evidence' };
+    S.tauE = clamp((p.x - L.now.x)/(pl.x + pl.w - L.now.x), 0.05, 0.95);
+    cvs.setPointerCapture(e.pointerId);
+  }
+});
+
+cvs.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const p = canvasPos(e);
+  if (drag.kind === 'weight') S.weights[drag.f] = clamp((p.x - drag.tx0)/(drag.tx1 - drag.tx0), 0.04, 1);
+  else S.tauE = clamp((p.x - L.now.x)/(L.plot.x + L.plot.w - L.now.x), 0.05, 0.95);
+});
+
+const endDrag = () => { drag = null; };
+cvs.addEventListener('pointerup', endDrag);
+cvs.addEventListener('pointercancel', endDrag);
+
+/* ───────────────────────── HUD wiring ───────────────────────── */
+const hud      = document.getElementById('hud');
+const tabBtn   = document.getElementById('tab');
+const pauseBtn = document.getElementById('pause');
+const evBtn    = document.getElementById('evidence');
+
+document.querySelectorAll('.sl').forEach(el => {
+  const key   = el.dataset.key;
+  const track = el.querySelector('.track');
+  const fill  = el.querySelector('.fill');
+  const knob  = el.querySelector('.knob');
+  const val   = el.querySelector('.val');
+
+  const render = () => {
+    const v = S[key];
+    fill.style.width = (v*100) + '%';
+    knob.style.left  = (v*100) + '%';
+    const n = Math.round(v*100);
+    val.textContent = n;
+    el.setAttribute('aria-valuenow', n);
+  };
+  const setFrom = clientX => {
+    const r = track.getBoundingClientRect();
+    S[key] = clamp((clientX - r.left)/r.width, 0, 1);
+    render();
+  };
+
+  let active = false;
+  el.addEventListener('pointerdown', e => {
+    active = true; el.setPointerCapture(e.pointerId); setFrom(e.clientX); el.focus();
+  });
+  el.addEventListener('pointermove', e => { if (active) setFrom(e.clientX); });
+  el.addEventListener('pointerup',     () => { active = false; });
+  el.addEventListener('pointercancel', () => { active = false; });
+  el.addEventListener('keydown', e => {
+    const step = e.shiftKey ? 0.1 : 0.02;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown')      { S[key] = clamp(S[key]-step,0,1); render(); e.preventDefault(); }
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowUp')  { S[key] = clamp(S[key]+step,0,1); render(); e.preventDefault(); }
+    else if (e.key === 'Home') { S[key] = 0; render(); e.preventDefault(); }
+    else if (e.key === 'End')  { S[key] = 1; render(); e.preventDefault(); }
+  });
+
+  render();
+});
+
+function setPaused(v){
+  S.paused = v;
+  pauseBtn.textContent = v ? 'RESUME' : 'PAUSE';
+  pauseBtn.dataset.paused = String(v);
+}
+function setEvidence(v){
+  S.evidence = v;
+  evBtn.setAttribute('aria-pressed', String(v));
+}
+function reseed(){
+  S.seed = 10 + (S.seed*7.31 % 990);
+  S.locked = FAMILIES.map(() => false);
+  S.histN = 0;
+  S.entHist.fill(0); S.varHist.fill(0); S.phiHist.fill(0);
+}
+
+pauseBtn.addEventListener('click', () => setPaused(!S.paused));
+evBtn.addEventListener('click',    () => setEvidence(!S.evidence));
+document.getElementById('reseed').addEventListener('click', reseed);
+
+document.getElementById('collapse').addEventListener('click', () => {
+  hud.classList.add('collapsed'); tabBtn.classList.add('show');
+});
+tabBtn.addEventListener('click', () => {
+  hud.classList.remove('collapsed'); tabBtn.classList.remove('show');
+});
+
+window.addEventListener('keydown', e => {
+  if (e.target.closest('.sl')) return;
+  if (e.code === 'Space'){ setPaused(!S.paused); e.preventDefault(); }
+  else if (e.key === 'e' || e.key === 'E') setEvidence(!S.evidence);
+  else if (e.key === 'r' || e.key === 'R') reseed();
+});
+
+/* ───────────────────────── boot ───────────────────────── */
+window.addEventListener('resize', resize);
+resize();
+requestAnimationFrame(tick);
+
+})();
+</script>
+</body>
+</html>
