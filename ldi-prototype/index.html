@@ -1,0 +1,1587 @@
+<title>Logo Design Intelligence</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+/* ============================================================
+   Tokens — light is the base set; dark redefines tokens only.
+   ============================================================ */
+:root{
+  --paper:#E9E7E4;
+  --panel:#F4F3F1;
+  --panel-2:#DFDCD8;
+  --sunk:#E1DEDA;
+  --line:#CFCBC6;
+  --line-2:#B4AEA8;
+  --ink:#1A1817;
+  --ink-2:#4E4945;
+  --ink-3:#847D77;
+  --accent:#C8452D;
+  --accent-ink:#FFFFFF;
+  --accent-wash:#F1DED8;
+  --pass:#2E7D5B;
+  --review:#8F6410;
+  --conflict:#9E2B1B;
+  --grid:rgba(26,24,23,.07);
+  --shadow:0 1px 0 rgba(26,24,23,.05), 0 8px 24px -18px rgba(26,24,23,.5);
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,"Cascadia Mono",Menlo,Consolas,monospace;
+  --sans:"Helvetica Neue",Helvetica,Arial,ui-sans-serif,system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#121110;
+    --panel:#1B1A18;
+    --panel-2:#262322;
+    --sunk:#0D0C0B;
+    --line:#302D2B;
+    --line-2:#4A4540;
+    --ink:#E9E6E2;
+    --ink-2:#A7A09A;
+    --ink-3:#78716C;
+    --accent:#E4644A;
+    --accent-ink:#1A0F0C;
+    --accent-wash:#33201A;
+    --pass:#54B58E;
+    --review:#D3A03F;
+    --conflict:#E0705C;
+    --grid:rgba(233,230,226,.07);
+    --shadow:0 1px 0 rgba(0,0,0,.4), 0 10px 28px -20px #000;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#121110; --panel:#1B1A18; --panel-2:#262322; --sunk:#0D0C0B;
+  --line:#302D2B; --line-2:#4A4540;
+  --ink:#E9E6E2; --ink-2:#A7A09A; --ink-3:#78716C;
+  --accent:#E4644A; --accent-ink:#1A0F0C; --accent-wash:#33201A;
+  --pass:#54B58E; --review:#D3A03F; --conflict:#E0705C;
+  --grid:rgba(233,230,226,.07);
+  --shadow:0 1px 0 rgba(0,0,0,.4), 0 10px 28px -20px #000;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--mono); font-size:13px; line-height:1.5;
+  overflow-x:hidden;
+}
+h1,h2,h3,h4{font-family:var(--sans); font-weight:600; letter-spacing:-.02em; margin:0; text-wrap:balance}
+p{margin:0}
+button,input,select,textarea{font:inherit; color:inherit}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+::selection{background:var(--accent); color:var(--accent-ink)}
+
+.lbl{
+  font-size:10px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--ink-3); font-family:var(--mono);
+}
+.num{font-variant-numeric:tabular-nums}
+
+/* ============================================================ Shell */
+.shell{display:grid; grid-template-columns:236px minmax(0,1fr); min-height:100vh}
+
+/* ---- Rail */
+.rail{
+  border-right:1px solid var(--line); background:var(--panel);
+  display:flex; flex-direction:column; position:sticky; top:0; height:100vh; overflow:auto;
+}
+.brand{padding:18px 18px 14px; border-bottom:1px solid var(--line)}
+.brand h1{font-size:15px; line-height:1.25}
+.brand .v{margin-top:6px; display:flex; gap:8px; align-items:center}
+.tag{
+  font-size:10px; letter-spacing:.1em; text-transform:uppercase; padding:2px 6px;
+  border:1px solid var(--line-2); color:var(--ink-2); border-radius:2px;
+}
+.chain{padding:12px 0 8px; flex:1}
+.chain .lbl{padding:0 18px 8px; display:block}
+.step{
+  width:100%; text-align:left; background:none; border:0; cursor:pointer;
+  display:grid; grid-template-columns:26px 1fr auto; align-items:center; gap:8px;
+  padding:7px 18px; color:var(--ink-2); position:relative;
+}
+.step:hover{color:var(--ink); background:var(--panel-2)}
+.step .i{font-size:10px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.step .n{font-size:12px; letter-spacing:.01em}
+.step .c{font-size:10px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.step[data-on="1"]{color:var(--ink); background:var(--panel-2)}
+.step[data-on="1"]::before{
+  content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--accent);
+}
+.step[data-on="1"] .i{color:var(--accent)}
+.step[disabled]{opacity:.38; cursor:not-allowed}
+.railfoot{padding:12px 18px 16px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:10px}
+
+/* ---- Main */
+.main{display:flex; flex-direction:column; min-width:0}
+.topbar{
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:14px 28px; border-bottom:1px solid var(--line); background:var(--panel);
+  position:sticky; top:0; z-index:5; flex-wrap:wrap;
+}
+.topbar .where{display:flex; flex-direction:column; gap:3px; min-width:0}
+.topbar h2{font-size:17px}
+.tools{display:flex; gap:8px; align-items:center}
+.view{padding:26px 28px 90px; display:none; max-width:1180px}
+.view[data-on="1"]{display:block}
+.intro{max-width:66ch; color:var(--ink-2); font-family:var(--sans); font-size:13.5px; line-height:1.6}
+
+/* ---- Controls */
+.btn{
+  border:1px solid var(--line-2); background:var(--panel); color:var(--ink);
+  padding:7px 13px; border-radius:2px; cursor:pointer; font-size:12px;
+  letter-spacing:.02em; transition:background .12s, border-color .12s;
+}
+.btn:hover{background:var(--panel-2); border-color:var(--ink-3)}
+.btn[data-kind="primary"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.btn[data-kind="primary"]:hover{filter:brightness(1.06)}
+.btn[data-kind="ghost"]{border-color:transparent; background:none; color:var(--ink-2)}
+.btn[data-kind="ghost"]:hover{color:var(--ink); background:var(--panel-2)}
+.btn:disabled{opacity:.4; cursor:not-allowed}
+.btn-sm{padding:4px 8px; font-size:11px}
+
+input[type=text]{
+  background:var(--sunk); border:1px solid var(--line); color:var(--ink);
+  padding:8px 10px; border-radius:2px; width:100%;
+}
+select{
+  background:var(--sunk); border:1px solid var(--line); color:var(--ink);
+  padding:7px 8px; border-radius:2px; width:100%;
+}
+input[type=range]{width:100%; accent-color:var(--accent); background:none}
+
+.card{background:var(--panel); border:1px solid var(--line); border-radius:3px}
+.pad{padding:16px}
+
+/* ---- Brief */
+.brief{display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr); gap:20px; margin-top:22px; align-items:start}
+.field{display:flex; flex-direction:column; gap:6px; margin-bottom:16px}
+.hint{font-size:11px; color:var(--ink-3)}
+.chips{display:flex; flex-wrap:wrap; gap:6px}
+.chip{
+  border:1px solid var(--line-2); background:none; color:var(--ink-2);
+  padding:5px 10px; border-radius:99px; cursor:pointer; font-size:11.5px;
+}
+.chip:hover{border-color:var(--ink-3); color:var(--ink)}
+.chip[data-on="1"]{background:var(--accent-wash); border-color:var(--accent); color:var(--ink)}
+.toggle{display:flex; align-items:center; gap:9px; padding:7px 0; cursor:pointer; border-bottom:1px dashed var(--line)}
+.toggle:last-child{border-bottom:0}
+.toggle input{accent-color:var(--accent); width:14px; height:14px}
+.toggle span{font-size:12px; color:var(--ink-2)}
+.rule{display:flex; gap:10px; font-size:11.5px; color:var(--ink-2); padding:6px 0; border-bottom:1px dashed var(--line)}
+.rule:last-child{border-bottom:0}
+.rule b{color:var(--accent); font-weight:400}
+
+/* ---- Grids */
+.grid-4{display:grid; grid-template-columns:repeat(auto-fill,minmax(232px,1fr)); gap:14px}
+.grid-cand{display:grid; grid-template-columns:repeat(auto-fill,minmax(186px,1fr)); gap:14px}
+
+/* ---- Territory card */
+.terr{cursor:pointer; overflow:hidden; display:flex; flex-direction:column; transition:border-color .12s}
+.terr:hover{border-color:var(--ink-3)}
+.terr[data-on="1"]{border-color:var(--accent)}
+.terr .head{padding:14px 15px 12px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:10px; align-items:flex-start}
+.terr h3{font-size:14px}
+.terr .thesis{padding:12px 15px; font-family:var(--sans); font-size:12.5px; line-height:1.55; color:var(--ink-2); flex:1}
+.terr .swatches{display:flex; gap:4px; padding:0 15px 12px}
+.sw{width:16px; height:16px; border-radius:2px; border:1px solid var(--line)}
+.bars{padding:0 15px 14px; display:flex; flex-direction:column; gap:5px}
+.bar{display:grid; grid-template-columns:64px 1fr 26px; align-items:center; gap:8px; font-size:10px; color:var(--ink-3)}
+.bar .track{height:3px; background:var(--panel-2); border-radius:2px; overflow:hidden}
+.bar .fill{height:100%; background:var(--ink-3)}
+.terr[data-on="1"] .bar .fill{background:var(--accent)}
+
+/* ---- Funnel */
+.funnel{display:flex; flex-direction:column; gap:2px; margin-top:18px}
+.fstage{
+  display:grid; grid-template-columns:186px minmax(0,1fr) 92px; gap:14px; align-items:center;
+  padding:11px 14px; background:var(--panel); border:1px solid var(--line); border-radius:3px;
+}
+.fstage .track{height:20px; background:var(--sunk); border-radius:2px; overflow:hidden; position:relative}
+.fstage .fill{height:100%; background:var(--ink-2); width:0; transition:width .5s cubic-bezier(.2,.7,.3,1)}
+.fstage[data-final="1"] .fill{background:var(--accent)}
+.fstage .rt{text-align:right; font-variant-numeric:tabular-nums; font-size:13px}
+.fstage .rt small{display:block; color:var(--ink-3); font-size:10px}
+.fname{display:flex; flex-direction:column; gap:2px}
+.fname b{font-weight:400; font-size:12.5px}
+.fname span{font-size:10px; color:var(--ink-3); letter-spacing:.06em; text-transform:uppercase}
+
+.gram-table{width:100%; border-collapse:collapse; font-size:11.5px}
+.gram-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:3px; background:var(--panel); max-height:340px; overflow-y:auto}
+.gram-table th{
+  position:sticky; top:0; background:var(--panel-2); text-align:left; padding:8px 12px;
+  font-weight:400; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3);
+  border-bottom:1px solid var(--line); white-space:nowrap;
+}
+.gram-table td{padding:7px 12px; border-bottom:1px solid var(--line); white-space:nowrap; font-variant-numeric:tabular-nums}
+.gram-table tr:last-child td{border-bottom:0}
+
+/* ---- Candidate card */
+.cand{overflow:hidden; cursor:pointer; display:flex; flex-direction:column; transition:border-color .12s, transform .12s}
+.cand:hover{border-color:var(--ink-3); transform:translateY(-1px)}
+.cand[data-on="1"]{border-color:var(--accent)}
+.stage-art{
+  position:relative; aspect-ratio:1/1; display:grid; place-items:center; border-bottom:1px solid var(--line);
+}
+.stage-art svg{width:78%; height:78%; display:block}
+.cand .meta{padding:9px 11px; display:flex; flex-direction:column; gap:6px}
+.cand .id{display:flex; justify-content:space-between; font-size:10.5px; color:var(--ink-3)}
+.scorerow{display:flex; align-items:center; gap:6px}
+.scorebar{flex:1; height:3px; background:var(--panel-2); border-radius:2px; overflow:hidden}
+.scorebar i{display:block; height:100%; background:var(--pass)}
+.pill{
+  font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; padding:2px 5px;
+  border-radius:2px; border:1px solid currentColor;
+}
+.pill[data-s="clear"]{color:var(--pass)}
+.pill[data-s="review"]{color:var(--review)}
+.pill[data-s="conflict"]{color:var(--conflict)}
+
+/* ---- Editor */
+.editor{display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:20px; margin-top:20px; align-items:start}
+.stagewrap{border:1px solid var(--line); border-radius:3px; background:var(--panel); overflow:hidden}
+.stagebar{
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  padding:9px 14px; border-bottom:1px solid var(--line); flex-wrap:wrap;
+}
+.canvas{
+  position:relative; display:grid; place-items:center; padding:34px; min-height:340px;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:20px 20px;
+}
+.canvas .holder{position:relative; width:min(320px,72%)}
+.canvas .holder svg{width:100%; height:auto; display:block}
+.crop{position:absolute; width:11px; height:11px; border:1px solid var(--accent); opacity:.5}
+.crop[data-p="tl"]{top:-16px; left:-16px; border-right:0; border-bottom:0}
+.crop[data-p="tr"]{top:-16px; right:-16px; border-left:0; border-bottom:0}
+.crop[data-p="bl"]{bottom:-16px; left:-16px; border-right:0; border-top:0}
+.crop[data-p="br"]{bottom:-16px; right:-16px; border-left:0; border-top:0}
+
+.sizes{display:flex; gap:16px; align-items:flex-end; padding:14px; flex-wrap:wrap; border-top:1px solid var(--line)}
+.sz{display:flex; flex-direction:column; align-items:center; gap:6px}
+.sz .box{display:grid; place-items:center; border:1px solid var(--line); border-radius:2px; padding:3px}
+.sz span{font-size:9.5px; color:var(--ink-3)}
+
+.params{display:flex; flex-direction:column; gap:0}
+.param{padding:10px 14px; border-bottom:1px solid var(--line)}
+.param:last-child{border-bottom:0}
+.param .top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px}
+.param .top b{font-weight:400; font-size:11.5px; color:var(--ink-2)}
+.param .top var{font-style:normal; font-size:11.5px; font-variant-numeric:tabular-nums}
+.param .top var[data-dirty="1"]{color:var(--accent)}
+
+.metrics{display:flex; flex-direction:column}
+.metric{display:grid; grid-template-columns:1fr 46px 44px; gap:8px; align-items:center; padding:8px 14px; border-bottom:1px solid var(--line)}
+.metric:last-child{border-bottom:0}
+.metric .mn{font-size:11.5px; color:var(--ink-2)}
+.metric .mv{text-align:right; font-variant-numeric:tabular-nums; font-size:12.5px}
+.metric .md{text-align:right; font-size:10.5px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.metric .md[data-d="up"]{color:var(--pass)}
+.metric .md[data-d="down"]{color:var(--conflict)}
+
+.log{max-height:230px; overflow:auto}
+.logrow{display:grid; grid-template-columns:22px 1fr auto; gap:8px; align-items:center; padding:7px 14px; border-bottom:1px solid var(--line); font-size:11px}
+.logrow:last-child{border-bottom:0}
+.logrow .ix{color:var(--ink-3); font-variant-numeric:tabular-nums; font-size:10px}
+.logrow .tx{color:var(--ink-2); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.logrow[data-rev="1"] .tx{color:var(--ink-3); text-decoration:line-through}
+.empty{padding:16px 14px; color:var(--ink-3); font-size:11.5px}
+
+.sechead{
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  padding:9px 14px; border-bottom:1px solid var(--line); background:var(--panel-2);
+}
+.reasons{display:flex; flex-direction:column; gap:5px; padding:12px 14px}
+.reason{display:grid; grid-template-columns:14px 1fr; gap:8px; font-size:11.5px; color:var(--ink-2); line-height:1.45}
+.reason i{font-style:normal; color:var(--accent)}
+
+/* ---- Export */
+.export{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; margin-top:20px; align-items:start}
+pre{
+  margin:0; padding:14px; background:var(--sunk); border:0; overflow:auto; max-height:400px;
+  font-family:var(--mono); font-size:11px; line-height:1.55; color:var(--ink-2); tab-size:2;
+}
+.kv{display:grid; grid-template-columns:130px 1fr; gap:4px 12px; padding:14px; font-size:11.5px}
+.kv dt{color:var(--ink-3)}
+.kv dd{margin:0; word-break:break-all; font-variant-numeric:tabular-nums}
+.gnode{display:grid; grid-template-columns:34px 132px 1fr; gap:10px; padding:7px 14px; border-bottom:1px solid var(--line); font-size:11px; align-items:baseline}
+.gnode:last-child{border-bottom:0}
+.gnode .gid{color:var(--ink-3); font-size:10px}
+.gnode .gop{color:var(--accent)}
+.gnode .gnote{color:var(--ink-2); min-width:0}
+
+/* ---- Status bar */
+.status{
+  position:fixed; left:236px; right:0; bottom:0; z-index:6;
+  display:flex; gap:22px; align-items:center; flex-wrap:wrap;
+  padding:8px 28px; background:var(--panel); border-top:1px solid var(--line);
+  font-size:10.5px; color:var(--ink-3); letter-spacing:.04em;
+}
+.status b{font-weight:400; color:var(--ink-2); font-variant-numeric:tabular-nums}
+.status .dot{width:6px; height:6px; border-radius:99px; background:var(--pass); display:inline-block; margin-right:6px}
+.status .dot[data-s="idle"]{background:var(--ink-3)}
+.status .dot[data-s="run"]{background:var(--accent)}
+
+.note{
+  border-left:2px solid var(--accent); padding:10px 14px; background:var(--panel);
+  font-size:11.5px; color:var(--ink-2); line-height:1.55; margin-top:18px; max-width:72ch;
+}
+.split{display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap}
+.sechead h3{font-size:12px; letter-spacing:.02em}
+.stack-16{display:flex; flex-direction:column; gap:16px}
+.row-wrap{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+
+@media (max-width:1000px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:static; height:auto; border-right:0; border-bottom:1px solid var(--line)}
+  .chain{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); padding:10px}
+  .chain .lbl{grid-column:1/-1}
+  .step{padding:7px 10px}
+  .status{left:0}
+  .brief,.editor,.export{grid-template-columns:1fr}
+  .fstage{grid-template-columns:130px minmax(0,1fr) 78px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important; animation:none !important}
+}
+</style>
+
+<div class="shell">
+  <aside class="rail">
+    <div class="brand">
+      <h1>Logo Design<br>Intelligence</h1>
+      <div class="v">
+        <span class="tag">v15</span>
+        <span class="tag">prototype</span>
+      </div>
+    </div>
+    <nav class="chain" id="chain"><span class="lbl">Pipeline</span></nav>
+    <div class="railfoot">
+      <div class="lbl">Source of truth</div>
+      <div style="font-size:11px;color:var(--ink-2);line-height:1.5">
+        LogoGenome + ConstructionGraph.<br>No prompt-to-image path exists in this build.
+      </div>
+      <button class="btn btn-sm" id="themeBtn" data-kind="ghost" style="align-self:flex-start">◐ Theme</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="where">
+        <span class="lbl" id="crumb">Stage 01 — 02</span>
+        <h2 id="vtitle">Meaning</h2>
+      </div>
+      <div class="tools" id="tools"></div>
+    </header>
+
+    <!-- ========== 1. BRIEF ========== -->
+    <section class="view" data-view="brief">
+      <p class="intro">
+        The brief is the only free-text surface in the system. It is compiled once into a meaning vector,
+        then never consulted again — every downstream stage reads structure, not prose. Changing anything
+        here invalidates the run.
+      </p>
+
+      <div class="brief">
+        <div class="card pad">
+          <div class="field">
+            <label class="lbl" for="fName">Brand name</label>
+            <input type="text" id="fName" value="Halcyon Grid" spellcheck="false">
+          </div>
+          <div class="field">
+            <label class="lbl" for="fCat">Category</label>
+            <select id="fCat">
+              <option>Grid-scale energy storage</option>
+              <option>Payments infrastructure</option>
+              <option>Diagnostic instruments</option>
+              <option>Industrial robotics</option>
+              <option>Climate measurement</option>
+              <option>Freight logistics</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="lbl" for="fAud">Primary audience</label>
+            <input type="text" id="fAud" value="Utility procurement engineers" spellcheck="false">
+          </div>
+          <div class="field">
+            <span class="lbl">Meaning attributes <span class="hint" id="attrCount">— 0 of 5 chosen</span></span>
+            <div class="chips" id="attrs"></div>
+          </div>
+        </div>
+
+        <div class="stack-16">
+          <div class="card">
+            <div class="sechead"><h3>Construction constraints</h3></div>
+            <div class="pad" style="padding-top:4px;padding-bottom:8px" id="cons"></div>
+          </div>
+          <div class="card">
+            <div class="sechead"><h3>Hard rules carried from the pack</h3></div>
+            <div class="pad" style="padding-top:8px;padding-bottom:12px">
+              <div class="rule"><b>—</b><span>No trademark or legal clearance claim is produced. Screening is design-collision only.</span></div>
+              <div class="rule"><b>—</b><span>Shape psychology is never asserted as deterministic fact.</span></div>
+              <div class="rule"><b>—</b><span>Geometry stays parametric; paths are flattened at export, not before.</span></div>
+              <div class="rule"><b>—</b><span>Every edit is reversible and carries provenance.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="note">
+        <b>Compiled meaning vector</b> — <span id="mvec">—</span>
+      </div>
+    </section>
+
+    <!-- ========== 2. TERRITORIES / GENOME ========== -->
+    <section class="view" data-view="terr">
+      <p class="intro">
+        Four territories are derived from the meaning vector. Each one owns a set of grammars — parameter
+        windows over the genome, not pictures. Deselect a territory to remove its grammars from the search.
+      </p>
+      <div class="grid-4" id="terrGrid" style="margin-top:20px"></div>
+
+      <div class="split" style="margin-top:26px">
+        <div class="card" style="flex:1 1 380px;min-width:300px">
+          <div class="sechead"><h3>LogoGenome — schema</h3><span class="lbl" id="genomeSrc">sample</span></div>
+          <pre id="genomeSchema"></pre>
+        </div>
+        <div class="card" style="flex:1 1 300px;min-width:280px">
+          <div class="sechead"><h3>ConstructionGraph — same genome</h3></div>
+          <div id="graphDemo"></div>
+          <div class="stage-art" style="border-top:1px solid var(--line);border-bottom:0;aspect-ratio:auto;padding:22px" id="graphArt"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 3. SEARCH ========== -->
+    <section class="view" data-view="search">
+      <p class="intro">
+        Grammars are sampled, not prompted. Each grammar emits candidates inside its own parameter window;
+        the population is then reduced by three independent screens. Counts below are live from the run.
+      </p>
+      <div class="funnel" id="funnel"></div>
+
+      <div class="card" style="margin-top:24px">
+        <div class="sechead">
+          <h3>Grammar table</h3>
+          <span class="lbl" id="gramCount">—</span>
+        </div>
+        <div class="gram-wrap">
+          <table class="gram-table">
+            <thead><tr>
+              <th>Grammar</th><th>Territory</th><th>Archetype</th><th>Sampled</th>
+              <th>Valid</th><th>Perceived</th><th>Clear</th><th>Yield</th>
+            </tr></thead>
+            <tbody id="gramBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 4. SCREENING ========== -->
+    <section class="view" data-view="screen">
+      <p class="intro">
+        Survivors are clustered by construction distance and one representative is taken per cluster, so the
+        set spans the space instead of repeating its densest corner. Screening status is a design-collision
+        signal — it is not a trademark opinion.
+      </p>
+      <div class="row-wrap" style="margin:18px 0 14px">
+        <span class="lbl">Filter</span>
+        <div class="chips" id="screenFilters"></div>
+        <span class="hint" id="screenCount"></span>
+      </div>
+      <div class="grid-cand" id="candGrid"></div>
+    </section>
+
+    <!-- ========== 5. EDITOR ========== -->
+    <section class="view" data-view="edit">
+      <div class="editor">
+        <div class="stack-16">
+          <div class="stagewrap">
+            <div class="stagebar">
+              <div class="row-wrap">
+                <span class="lbl" id="editId">—</span>
+                <span class="pill" id="editStatus" data-s="clear">clear</span>
+              </div>
+              <div class="row-wrap">
+                <button class="btn btn-sm" id="lockBtn">Lockup: mark</button>
+                <button class="btn btn-sm" id="monoBtn">1-colour test</button>
+                <button class="btn btn-sm" id="resetBtn" data-kind="ghost">Reset to search state</button>
+              </div>
+            </div>
+            <div class="canvas">
+              <div class="holder" id="editArt">
+                <span class="crop" data-p="tl"></span><span class="crop" data-p="tr"></span>
+                <span class="crop" data-p="bl"></span><span class="crop" data-p="br"></span>
+              </div>
+            </div>
+            <div class="sizes" id="sizeStrip"></div>
+          </div>
+
+          <div class="card">
+            <div class="sechead">
+              <h3>Edit log — every change reversible</h3>
+              <span class="lbl" id="logCount">0 edits</span>
+            </div>
+            <div class="log" id="logList"></div>
+          </div>
+        </div>
+
+        <div class="stack-16">
+          <div class="card">
+            <div class="sechead"><h3>Re-test</h3><span class="lbl">live</span></div>
+            <div class="metrics" id="metrics"></div>
+          </div>
+          <div class="card">
+            <div class="sechead"><h3>Why it scores that way</h3></div>
+            <div class="reasons" id="reasons"></div>
+          </div>
+          <div class="card">
+            <div class="sechead"><h3>Genome parameters</h3><span class="lbl">structured</span></div>
+            <div class="params" id="params"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 6. EXPORT ========== -->
+    <section class="view" data-view="export">
+      <p class="intro">
+        Export flattens the construction graph to paths — the last possible moment. The genome and the graph
+        travel with the file, so any exported mark can be re-opened, re-tested and re-edited without loss.
+      </p>
+      <div class="export">
+        <div class="stack-16">
+          <div class="card">
+            <div class="sechead">
+              <h3>SVG output</h3>
+              <div class="row-wrap">
+                <button class="btn btn-sm" id="copySvg">Copy</button>
+                <button class="btn btn-sm" id="dlSvg" data-kind="primary">Download .svg</button>
+              </div>
+            </div>
+            <pre id="svgCode"></pre>
+          </div>
+          <div class="card">
+            <div class="sechead"><h3>Acceptance</h3><span class="lbl" id="acceptState">—</span></div>
+            <div class="reasons" id="acceptList"></div>
+          </div>
+        </div>
+        <div class="stack-16">
+          <div class="card">
+            <div class="sechead"><h3>Provenance</h3></div>
+            <dl class="kv" id="prov"></dl>
+          </div>
+          <div class="card">
+            <div class="sechead"><h3>ConstructionGraph</h3><span class="lbl" id="graphCount">—</span></div>
+            <div id="graphList"></div>
+          </div>
+          <div class="card">
+            <div class="sechead">
+              <h3>LogoGenome</h3>
+              <button class="btn btn-sm" id="copyGenome" data-kind="ghost">Copy JSON</button>
+            </div>
+            <pre id="genomeCode"></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="status">
+  <span><span class="dot" id="runDot" data-s="idle"></span><b id="runState">idle</b></span>
+  <span>brief <b id="sBrief">—</b></span>
+  <span>seed <b id="sSeed">—</b></span>
+  <span>grammars <b id="sGram">0</b></span>
+  <span>candidates <b id="sCand">0</b></span>
+  <span>representatives <b id="sRep">0</b></span>
+  <span>edits <b id="sEdit">0</b></span>
+</div>
+
+<script>
+"use strict";
+/* ==========================================================================
+   0. Deterministic primitives
+   ========================================================================== */
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const r2=n=>Math.round(n*100)/100;
+
+function hash32(str){
+  let h=2166136261>>>0;
+  for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}
+  return h>>>0;
+}
+function rng(seed){
+  let a=seed>>>0;
+  return function(){
+    a|=0; a=a+0x6D2B79F5|0;
+    let t=Math.imul(a^a>>>15,1|a);
+    t=t+Math.imul(t^t>>>7,61|t)^t;
+    return ((t^t>>>14)>>>0)/4294967296;
+  };
+}
+const pick=(r,arr)=>arr[Math.floor(r()*arr.length)%arr.length];
+const hex=n=>n.toString(16).toUpperCase().padStart(8,"0");
+
+/* ==========================================================================
+   1. Static domain data
+   ========================================================================== */
+const ATTRIBUTES=[
+  {k:"precise",  v:{order:.9,motion:.2,weight:.5,warmth:.2,openness:.4}},
+  {k:"open",     v:{order:.4,motion:.5,weight:.2,warmth:.6,openness:.95}},
+  {k:"fast",     v:{order:.3,motion:.95,weight:.4,warmth:.4,openness:.5}},
+  {k:"human",    v:{order:.2,motion:.5,weight:.3,warmth:.95,openness:.7}},
+  {k:"industrial",v:{order:.8,motion:.3,weight:.9,warmth:.15,openness:.25}},
+  {k:"premium",  v:{order:.7,motion:.2,weight:.4,warmth:.5,openness:.5}},
+  {k:"minimal",  v:{order:.8,motion:.2,weight:.25,warmth:.3,openness:.7}},
+  {k:"analytic", v:{order:.95,motion:.3,weight:.4,warmth:.15,openness:.45}},
+  {k:"trusted",  v:{order:.75,motion:.15,weight:.75,warmth:.5,openness:.35}},
+  {k:"connected",v:{order:.45,motion:.7,weight:.35,warmth:.7,openness:.75}},
+  {k:"scientific",v:{order:.9,motion:.35,weight:.3,warmth:.2,openness:.55}},
+  {k:"bold",     v:{order:.4,motion:.6,weight:.95,warmth:.45,openness:.3}},
+  {k:"quiet",    v:{order:.6,motion:.1,weight:.25,warmth:.55,openness:.6}},
+  {k:"continuous",v:{order:.55,motion:.8,weight:.35,warmth:.5,openness:.65}}
+];
+const AXES=["order","motion","weight","warmth","openness"];
+
+const CONSTRAINTS=[
+  {k:"single",  label:"Must survive as one flat colour",    on:true},
+  {k:"favicon", label:"Must hold at 16 px",                  on:true},
+  {k:"nonfig",  label:"Non-figurative only (no pictograms)", on:true},
+  {k:"motion",  label:"Construction must be animatable",     on:false},
+  {k:"engrave", label:"Reproducible by single-line engraving",on:false}
+];
+
+const PALETTES=[
+  {id:"P-01",bg:"#F4F3F1",ink:"#141312",accent:"#C8452D",hue:12},
+  {id:"P-02",bg:"#101418",ink:"#F2F4F5",accent:"#4FA3B8",hue:192},
+  {id:"P-03",bg:"#F2EFE8",ink:"#1F2A22",accent:"#3F7D4E",hue:135},
+  {id:"P-04",bg:"#161513",ink:"#EDE7DC",accent:"#D8A13A",hue:41},
+  {id:"P-05",bg:"#EFF1F4",ink:"#16253C",accent:"#2E5AAC",hue:218},
+  {id:"P-06",bg:"#1A1620",ink:"#EFE7F2",accent:"#9B6FC4",hue:270},
+  {id:"P-07",bg:"#F5F2EE",ink:"#2B211C",accent:"#B06A3B",hue:26},
+  {id:"P-08",bg:"#121212",ink:"#F0F0F0",accent:"#E0E0E0",hue:0}
+];
+
+const ARCHETYPES=["aperture","orbit","lattice","chevron","containment","stack","prism"];
+
+const TERRITORY_POOL=[
+  {code:"APT",name:"Aperture / Signal",arch:["aperture","containment"],pal:["P-01","P-05","P-08"],
+   v:{order:.8,motion:.3,weight:.4,warmth:.3,openness:.95},
+   thesis:"Openness treated as a measurable property. The mark reads as an instrument that deliberately lets something through."},
+  {code:"MOD",name:"Modular Field",arch:["lattice","stack"],pal:["P-05","P-02","P-01"],
+   v:{order:.95,motion:.25,weight:.6,warmth:.2,openness:.4},
+   thesis:"Identity as one unit repeated under a rule. Scale becomes a system the brand owns, not a size it is rendered at."},
+  {code:"ORB",name:"Orbital Relation",arch:["orbit","prism"],pal:["P-06","P-02","P-03"],
+   v:{order:.5,motion:.75,weight:.35,warmth:.8,openness:.75},
+   thesis:"The brand is the centre other parties move around. Relationship is drawn, not asserted in a tagline."},
+  {code:"DIR",name:"Directed Mass",arch:["chevron","stack"],pal:["P-04","P-01","P-07"],
+   v:{order:.35,motion:.95,weight:.85,warmth:.45,openness:.35},
+   thesis:"Momentum expressed as stacked direction. Weight carries the intent so the mark still moves when it is static."},
+  {code:"CTN",name:"Contained Counterform",arch:["containment","aperture"],pal:["P-07","P-03","P-04"],
+   v:{order:.7,motion:.2,weight:.5,warmth:.65,openness:.5},
+   thesis:"Meaning lives in the space the mark removes. What is cut away is the asset; the outline is only its evidence."},
+  {code:"PRS",name:"Structural Prism",arch:["prism","lattice"],pal:["P-02","P-05","P-06"],
+   v:{order:.9,motion:.4,weight:.45,warmth:.2,openness:.55},
+   thesis:"Refraction: one input resolved into many ordered outputs. The mark shows the mechanism rather than the promise."},
+  {code:"LIN",name:"Continuous Line",arch:["aperture","chevron"],pal:["P-01","P-08","P-03"],
+   v:{order:.6,motion:.7,weight:.25,warmth:.5,openness:.75},
+   thesis:"One unbroken path. Nothing added and nothing spare, so the construction can be read in a single pass."},
+  {code:"LDB",name:"Load Bearing",arch:["stack","containment"],pal:["P-04","P-07","P-01"],
+   v:{order:.8,motion:.15,weight:.95,warmth:.4,openness:.25},
+   thesis:"Weight that holds. The mark behaves like a structural component of the brand rather than a decoration on it."}
+];
+
+const GRAMMAR_TRAITS=["orthogonal","rotational","offset","condensed","expanded","bisected","stepped","inverted"];
+
+/* ==========================================================================
+   2. Application state
+   ========================================================================== */
+const S={
+  brief:null, seed:0, briefHash:"—",
+  territories:[], grammars:[], candidates:[], reps:[],
+  counts:{sampled:0,valid:0,perceived:0,cleared:0,reps:0},
+  selected:null, base:null, working:null, log:[], logSeq:0,
+  filter:"all", lockup:"mark", mono:false,
+  stage:"brief", ran:false
+};
+
+const VIEWS=[
+  {id:"brief", title:"Meaning",     steps:[1],    label:"Brief compiled to a meaning vector"},
+  {id:"terr",  title:"Genome",      steps:[2,3],  label:"Territories, grammars, construction"},
+  {id:"search",title:"Search",      steps:[4],    label:"Sampling and reduction"},
+  {id:"screen",title:"Perception",  steps:[5,6],  label:"Legibility and collision screens"},
+  {id:"edit",  title:"Human Edit",  steps:[7,8],  label:"Structured editing and re-test"},
+  {id:"export",title:"Export",      steps:[9],    label:"Flatten, package, hand off"}
+];
+const STEPS=[
+  {n:1,name:"Meaning",   view:"brief"},
+  {n:2,name:"Genome",    view:"terr"},
+  {n:3,name:"Construction",view:"terr"},
+  {n:4,name:"Search",    view:"search"},
+  {n:5,name:"Perception",view:"screen"},
+  {n:6,name:"Similarity",view:"screen"},
+  {n:7,name:"Human Edit",view:"edit"},
+  {n:8,name:"Re-test",   view:"edit"},
+  {n:9,name:"Export",    view:"export"}
+];
+
+/* ==========================================================================
+   3. Construction — genome -> graph -> SVG
+   Geometry is authored on a 120x120 field, unit u = 10.
+   ========================================================================== */
+const F=120, C=60;
+
+function palOf(g){ return PALETTES.find(p=>p.id===g.pal)||PALETTES[0]; }
+
+function construct(g){
+  const P=palOf(g);
+  const ground=g.invert?P.ink:P.bg;
+  const ink=g.invert?P.bg:P.ink;
+  const acc=g.mono?ink:P.accent;
+  const nodes=[];
+  let atoms=0;
+  const add=(op,note,svg,n)=>{nodes.push({id:"N"+String(nodes.length+1).padStart(2,"0"),op,note,svg});atoms+=n||1;};
+
+  const w=g.w, R=g.r, rot=g.rot, join=g.rad>.45?"round":"miter", cap=g.rad>.45?"round":"butt";
+
+  if(g.arch==="aperture"){
+    const circ=2*Math.PI*R, on=circ*(1-g.gap);
+    add("arc.open","primary aperture, gap "+Math.round(g.gap*100)+"%",
+      `<circle cx="60" cy="60" r="${r2(R)}" fill="none" stroke="${ink}" stroke-width="${r2(w)}" stroke-linecap="${cap}" stroke-dasharray="${r2(on)} ${r2(circ-on)}" transform="rotate(${rot} 60 60)"/>`,1);
+    if(g.n>=5){
+      const R2=R*.44, c2=2*Math.PI*R2, on2=c2*(1-g.gap*.6);
+      add("arc.open","counter-aperture, phase inverted",
+        `<circle cx="60" cy="60" r="${r2(R2)}" fill="none" stroke="${acc}" stroke-width="${r2(w*.7)}" stroke-linecap="${cap}" stroke-dasharray="${r2(on2)} ${r2(c2-on2)}" transform="rotate(${(rot+180)%360} 60 60)"/>`,1);
+    }else{
+      add("primitive.dot","focal node at centre",
+        `<circle cx="60" cy="60" r="${r2(w*.95)}" fill="${acc}"/>`,1);
+    }
+  }
+
+  if(g.arch==="orbit"){
+    const rr=R*.78, sat=w*.72;
+    if(g.gap<.24){
+      let d="";
+      for(let i=0;i<g.n;i++){
+        const a=(rot+i*360/g.n)*Math.PI/180;
+        d+=`M60 60L${r2(60+rr*Math.cos(a))} ${r2(60+rr*Math.sin(a))}`;
+      }
+      add("relation.spoke",g.n+" radial connectors",
+        `<path d="${d}" stroke="${ink}" stroke-width="${r2(w*.34)}" fill="none" stroke-linecap="${cap}"/>`,g.n);
+    }
+    let dots="";
+    for(let i=0;i<g.n;i++){
+      const a=(rot+i*360/g.n)*Math.PI/180;
+      dots+=`<circle cx="${r2(60+rr*Math.cos(a))}" cy="${r2(60+rr*Math.sin(a))}" r="${r2(sat)}" fill="${i===0?acc:ink}"/>`;
+    }
+    add("array.radial",g.n+" satellites on r="+r2(rr),dots,g.n);
+    add("primitive.dot","core mass",`<circle cx="60" cy="60" r="${r2(w*1.15)}" fill="${ink}"/>`,1);
+  }
+
+  if(g.arch==="lattice"){
+    const N=clamp(3+Math.round(g.n/4),3,5), cell=84/N, o=18;
+    const size=cell*(.4+.46*g.fill), off=(cell-size)/2, rx=g.rad*size*.5;
+    let cells="",acCell="",kept=0;
+    for(let i=0;i<N;i++)for(let j=0;j<N;j++){
+      const jj=g.sym==="bilateral"?Math.min(j,N-1-j):j;
+      if((i*3+jj*5+g.seed)%7===0) continue;
+      kept++;
+      const x=r2(o+j*cell+off), y=r2(o+i*cell+off);
+      const el=`<rect x="${x}" y="${y}" width="${r2(size)}" height="${r2(size)}" rx="${r2(rx)}" fill="${ink}"/>`;
+      if(kept===Math.ceil(N*N/3)&&!acCell){acCell=el.replace(ink,acc);}else{cells+=el;}
+    }
+    add("field.modulus",N+"×"+N+" field, modulus rule k=7",cells,kept-1);
+    if(acCell) add("field.accent","single module promoted",acCell,1);
+  }
+
+  if(g.arch==="chevron"){
+    const n=clamp(g.n>6?Math.round(g.n/2):g.n,2,6);
+    const span=26, step=clamp(w*1.75,6,16);
+    const total=(n-1)*step+span, top=60-total/2;
+    let d="",first="";
+    for(let i=0;i<n;i++){
+      const y=top+i*step;
+      const seg=`M22 ${r2(y+span)}L60 ${r2(y)}L98 ${r2(y+span)}`;
+      if(i===0) first=seg; else d+=seg;
+    }
+    add("array.offset",n+" nested directions, step "+r2(step),
+      `<path d="${d}" fill="none" stroke="${ink}" stroke-width="${r2(w)}" stroke-linejoin="${join}" stroke-linecap="${cap}" transform="rotate(${g.sym==="radial"?rot%180:0} 60 60)"/>`,n-1);
+    add("array.lead","leading direction carries the accent",
+      `<path d="${first}" fill="none" stroke="${acc}" stroke-width="${r2(w)}" stroke-linejoin="${join}" stroke-linecap="${cap}" transform="rotate(${g.sym==="radial"?rot%180:0} 60 60)"/>`,1);
+  }
+
+  if(g.arch==="containment"){
+    if(g.sym==="radial"){
+      add("boundary.circle","containing boundary",
+        `<circle cx="60" cy="60" r="${r2(R)}" fill="none" stroke="${ink}" stroke-width="${r2(w)}"/>`,1);
+    }else{
+      add("boundary.rect","containing boundary, r="+r2(g.rad*R*.5),
+        `<rect x="${r2(60-R)}" y="${r2(60-R)}" width="${r2(R*2)}" height="${r2(R*2)}" rx="${r2(g.rad*R*.5)}" fill="none" stroke="${ink}" stroke-width="${r2(w)}"/>`,1);
+    }
+    if(g.n%2){
+      add("counterform.disc","counterform occupying the void",
+        `<circle cx="60" cy="60" r="${r2(R*.38*(.7+.5*g.fill))}" fill="${acc}"/>`,1);
+    }else{
+      const s=R*.56*(.7+.5*g.fill);
+      add("counterform.rotated","counterform rotated off-axis",
+        `<rect x="${r2(60-s/2)}" y="${r2(60-s/2)}" width="${r2(s)}" height="${r2(s)}" rx="${r2(g.rad*s*.3)}" fill="${acc}" transform="rotate(${rot%90+45} 60 60)"/>`,1);
+    }
+    if(g.gap>.2){
+      const a=rot*Math.PI/180, len=w*2.6;
+      add("boolean.notch","boundary interrupted for entry",
+        `<path d="M${r2(60+(R-len/2)*Math.cos(a))} ${r2(60+(R-len/2)*Math.sin(a))}L${r2(60+(R+len/2)*Math.cos(a))} ${r2(60+(R+len/2)*Math.sin(a))}" stroke="${ground}" stroke-width="${r2(w*2.4)}"/>`,1);
+    }
+  }
+
+  if(g.arch==="stack"){
+    const n=clamp(g.n>7?Math.round(g.n/2)+2:g.n,3,7);
+    const slot=84/n, h=slot*(.42+.3*g.fill), rx=g.rad*h*.5;
+    let bars="",acBar="",best=-1,bi=0;
+    for(let i=0;i<n;i++){
+      const len=.42+.58*(((i*5+g.seed)%4)/3);
+      if(len>best){best=len;bi=i;}
+    }
+    for(let i=0;i<n;i++){
+      const len=.42+.58*(((i*5+g.seed)%4)/3);
+      const x=g.sym==="bilateral"?r2(60-84*len/2):18;
+      const el=`<rect x="${x}" y="${r2(18+i*slot+(slot-h)/2)}" width="${r2(84*len)}" height="${r2(h)}" rx="${r2(rx)}" fill="${ink}"/>`;
+      if(i===bi) acBar=el.replace(ink,acc); else bars+=el;
+    }
+    add("stack.rule",n+" members, length rule mod 4",bars,n-1);
+    add("stack.accent","longest member promoted",acBar,1);
+  }
+
+  if(g.arch==="prism"){
+    const tri=(rad,f,col,sw)=>{
+      const pts=[0,120,240].map(a=>{
+        const t=(a+rot+(f?180:0))*Math.PI/180;
+        return `${r2(60+rad*Math.cos(t-Math.PI/2))} ${r2(60+rad*Math.sin(t-Math.PI/2))}`;
+      });
+      return `<path d="M${pts[0]}L${pts[1]}L${pts[2]}Z" fill="${sw?"none":col}" ${sw?`stroke="${col}" stroke-width="${r2(sw)}" stroke-linejoin="${join}"`:""}/>`;
+    };
+    add("boundary.triangle","outer facet",tri(R,false,ink,w),1);
+    if(g.n>=5){
+      add("facet.inverted","inverted inner facet",tri(R*.5*(.7+.5*g.fill),true,acc,0),1);
+    }else{
+      add("primitive.dot","refraction point",`<circle cx="60" cy="${r2(60+R*.12)}" r="${r2(R*.22*(.7+.5*g.fill))}" fill="${acc}"/>`,1);
+    }
+  }
+
+  return {nodes,atoms,palette:P,ground,ink};
+}
+
+function svgOf(g,opt){
+  opt=opt||{};
+  const {nodes,palette:P,ground,ink}=construct(g);
+  const body=nodes.map(n=>n.svg).join("");
+  const lock=opt.lockup||"mark";
+  const name=(S.brief?S.brief.name:"Brand").toUpperCase();
+  /* Type is set to the measure: size solves for the available width, then the
+     wordmark is tracked to fill it exactly, the way a lockup is drawn by hand. */
+  const fit=(measure,cap)=>{
+    const fs=clamp(measure/(Math.max(name.length,2)*.88),5,cap);
+    return {fs:r2(fs),ls:r2(fs*.16)};
+  };
+  let vb="0 0 120 120", extra="";
+  if(lock==="stacked"){
+    vb="0 0 120 158";
+    const t=fit(104,15);
+    extra=`<text x="60" y="146" text-anchor="middle" textLength="104" lengthAdjust="spacing" font-family="Helvetica Neue,Arial,sans-serif" font-size="${t.fs}" font-weight="600" letter-spacing="${t.ls}" fill="${ink}">${name}</text>`;
+  }else if(lock==="horizontal"){
+    vb="-6 0 262 120";
+    const t=fit(112,21);
+    extra=`<text x="136" y="68" textLength="112" lengthAdjust="spacing" font-family="Helvetica Neue,Arial,sans-serif" font-size="${t.fs}" font-weight="600" letter-spacing="${t.ls}" fill="${ink}">${name}</text>`;
+  }
+  const bg=opt.transparent?"":`<rect x="-20" y="-20" width="320" height="220" fill="${ground}"/>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" role="img" aria-label="${name} mark, ${g.arch} construction">${bg}${body}${extra}</svg>`;
+}
+
+/* ==========================================================================
+   4. Evaluation — validity, perception, similarity
+   ========================================================================== */
+function coverage(g){
+  const w=g.w/F, R=g.r/F;
+  switch(g.arch){
+    case "aperture":   return clamp(2*Math.PI*R*w*(1-g.gap)*1.15+(g.n>=5?.02:.01),0,1);
+    case "orbit":      return clamp(g.n*Math.PI*Math.pow(w*.72,2)*1.6+(g.gap<.24?g.n*w*.34*R*.78:0)+.012,0,1);
+    case "lattice":    {const N=clamp(3+Math.round(g.n/4),3,5);const cell=84/F/N;const s=cell*(.4+.46*g.fill);return clamp(N*N*.82*s*s,0,1);}
+    case "chevron":    {const n=clamp(g.n>6?Math.round(g.n/2):g.n,2,6);return clamp(n*w*.86,0,1);}
+    case "containment":return clamp(8*R*w+Math.PI*Math.pow(R*.4,2)*(.7+.5*g.fill),0,1);
+    case "stack":      {const n=clamp(g.n>7?Math.round(g.n/2)+2:g.n,3,7);const slot=84/F/n;return clamp(n*slot*(.42+.3*g.fill)*.7*.7,0,1);}
+    default:           return clamp(3*R*w*1.7+Math.pow(R*.4,2)*1.2,0,1);
+  }
+}
+function luminance(h){
+  const c=[1,3,5].map(i=>parseInt(h.substr(i,2),16)/255)
+    .map(v=>v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4));
+  return .2126*c[0]+.7152*c[1]+.0722*c[2];
+}
+function ratio(a,b){const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);}
+
+function evaluate(g,cons){
+  const {nodes,atoms,palette:P}=construct(g);
+  const cov=coverage(g), sr=g.w/g.r, ops=nodes.length;
+
+  const fail=[];
+  if(g.w<2.2) fail.push("Stroke below the 2.2u construction floor.");
+  if(sr>.42) fail.push("Stroke/radius ratio collapses the counter space.");
+  if(cov<.055) fail.push("Ink coverage under the 5.5% floor — the mark disappears on light ground.");
+  if(cov>.46) fail.push("Ink coverage over the 46% ceiling — the mark reads as a filled block.");
+  if(atoms>16) fail.push("Atom count over the construction budget of 16.");
+  if(g.arch==="aperture"&&g.gap>.44) fail.push("Arc continuity below threshold — the ring stops reading as a ring.");
+
+  const strokePx=(g.w/F)*16;
+  const smallStroke=clamp((strokePx-.34)/.85,0,1);
+  const detail=clamp(1-(atoms-3)/13,0,1);
+  const covFit=1-Math.min(1,Math.abs(cov-.20)/.26);
+  const small=Math.round(100*(.46*smallStroke+.32*detail+.22*covFit));
+
+  const contr=ratio(P.ink,P.bg);
+  const contrast=Math.round(clamp((contr-3)/(14-3),0,1)*100);
+
+  const complexity=Math.round(clamp(100-Math.abs(ops-3)*13-Math.max(0,atoms-9)*4,0,100));
+  const balance=Math.round(clamp(
+    (g.sym==="radial"?86:g.sym==="bilateral"?78:66)+(g.rad>.5?6:0)+(g.gap>.35?-12:0)+(cov>.12&&cov<.3?10:0),0,100));
+
+  const fv=vec(g);
+  let maxSim=0,near=null;
+  for(const c of CORPUS){
+    const s=simOf(fv,c.v);
+    if(s>maxSim){maxSim=s;near=c;}
+  }
+  const distinct=Math.round(clamp((.94-maxSim)/.30,0,1)*100);
+  const status=maxSim>=.905?"conflict":maxSim>=.828?"review":"clear";
+
+  const overall=Math.round(.32*small+.16*contrast+.19*distinct+.16*complexity+.17*balance);
+
+  const notes=[];
+  if(smallStroke<.5) notes.push("At 16 px the stroke lands near "+strokePx.toFixed(2)+" px — under the 0.55 px reproduction floor.");
+  else notes.push("Stroke holds "+strokePx.toFixed(2)+" px at 16 px, clear of the reproduction floor.");
+  notes.push("Ink coverage "+(cov*100).toFixed(1)+"% across "+atoms+" atoms in "+ops+" construction ops.");
+  notes.push("Palette contrast "+contr.toFixed(1)+":1 between ink and ground.");
+  notes.push("Nearest corpus construction "+near.id+" at "+(maxSim*100).toFixed(1)+"% — design collision only, not a trademark opinion.");
+  if(cons){
+    if(cons.favicon&&small<58) notes.push("Fails the 16 px constraint carried from the brief.");
+    if(cons.single&&P.accent!==P.ink&&cov>.4) notes.push("Flat-colour fallback loses the accent separation at this coverage.");
+    if(cons.engrave&&atoms>7) notes.push("Single-line engraving constraint is strained above 7 atoms.");
+  }
+
+  return {
+    valid:fail.length===0, fail, cov, atoms, ops, strokePx,
+    perception:{small,contrast,complexity,balance,distinct,overall},
+    similarity:{max:maxSim,status,near:near.id},
+    pass:fail.length===0&&small>=56&&overall>=60,
+    notes
+  };
+}
+
+/* feature space + corpus ------------------------------------------------- */
+const W=[3.0,1.0,.9,1.1,.8,.5,.6,1.2,.7,.5];
+function vec(g){
+  return [
+    ARCHETYPES.indexOf(g.arch)/6, g.w/12, (g.r-24)/24, g.n/12, g.gap,
+    g.rot/360, g.rad, coverage(g), {radial:0,bilateral:.5,grid:1}[g.sym], (palOf(g).hue)/360
+  ];
+}
+const DMAX=Math.sqrt(W.reduce((a,b)=>a+b,0));
+function simOf(a,b){
+  let s=0;
+  for(let i=0;i<a.length;i++){const d=a[i]-b[i];s+=W[i]*d*d;}
+  return clamp(1-Math.sqrt(s)/DMAX,0,1);
+}
+const CORPUS=(()=>{
+  const r=rng(0x5EEDBEEF), out=[];
+  for(let i=0;i<56;i++){
+    const g={
+      arch:pick(r,ARCHETYPES), w:lerp(2.5,10,r()), r:lerp(26,46,r()), n:2+Math.floor(r()*10),
+      gap:r()*.42, rot:Math.floor(r()*24)*15, rad:r(), fill:r(),
+      sym:pick(r,["radial","bilateral","grid"]), pal:pick(r,PALETTES).id, seed:i
+    };
+    out.push({id:"CX-"+String(i+1).padStart(3,"0"),v:vec(g)});
+  }
+  return out;
+})();
+
+/* ==========================================================================
+   5. Pipeline
+   ========================================================================== */
+function readBrief(){
+  return {
+    name:document.getElementById("fName").value.trim()||"Brand",
+    category:document.getElementById("fCat").value,
+    audience:document.getElementById("fAud").value.trim(),
+    attrs:[...document.querySelectorAll("#attrs .chip[data-on='1']")].map(c=>c.dataset.k),
+    cons:Object.fromEntries([...document.querySelectorAll("#cons input")].map(i=>[i.dataset.k,i.checked]))
+  };
+}
+function meaningVector(b){
+  const v={};AXES.forEach(a=>v[a]=0);
+  const list=b.attrs.length?b.attrs:["precise"];
+  list.forEach(k=>{const a=ATTRIBUTES.find(x=>x.k===k);AXES.forEach(ax=>v[ax]+=a.v[ax]);});
+  AXES.forEach(ax=>v[ax]=r2(v[ax]/list.length));
+  return v;
+}
+function chooseTerritories(mv,seed){
+  const r=rng(seed);
+  return TERRITORY_POOL
+    .map(t=>({t,score:AXES.reduce((s,a)=>s-Math.abs(t.v[a]-mv[a]),0)+r()*.35}))
+    .sort((a,b)=>b.score-a.score).slice(0,4)
+    .map((x,i)=>({...x.t,fit:clamp(1+x.score/2.4,0,1),on:true,idx:i}));
+}
+function buildGrammars(terrs,seed){
+  const r=rng(seed^0x9E3779B9), out=[];
+  terrs.forEach(t=>{
+    for(let i=0;i<16;i++){
+      const arch=t.arch[i%t.arch.length];
+      const trait=GRAMMAR_TRAITS[(i+t.code.length)%GRAMMAR_TRAITS.length];
+      const wLo=lerp(2.4,7,r()), rLo=lerp(24,34,r()), nLo=2+Math.floor(r()*4);
+      out.push({
+        id:`${t.code}.${arch.slice(0,3).toUpperCase()}.${trait}-${String(i+1).padStart(2,"0")}`,
+        terr:t.code, arch, trait,
+        win:{
+          w:[wLo,wLo+lerp(1.6,4.2,r())],
+          r:[rLo,rLo+lerp(6,14,r())],
+          n:[nLo,nLo+2+Math.floor(r()*5)],
+          gap:[r()*.14,.16+r()*.3],
+          rot:[0,trait==="rotational"?345:trait==="orthogonal"?90:180],
+          rad:[r()*.3,.35+r()*.65],
+          fill:[.2+r()*.3,.6+r()*.4]
+        },
+        sym:trait==="rotational"?"radial":trait==="bisected"?"bilateral":pick(r,["radial","bilateral","grid"]),
+        pal:t.pal
+      });
+    }
+  });
+  return out;
+}
+function sample(grammars,seed,target){
+  const per=Math.floor(target/grammars.length), out=[];
+  grammars.forEach((gr,gi)=>{
+    const r=rng((seed^hash32(gr.id))>>>0);
+    for(let i=0;i<per;i++){
+      const q=(a,step)=>{const v=lerp(a[0],a[1],r());return step?Math.round(v/step)*step:v;};
+      out.push({
+        id:"C-"+String(out.length+1).padStart(4,"0"),
+        gram:gr.id, terr:gr.terr, arch:gr.arch,
+        w:r2(q(gr.win.w)), r:r2(q(gr.win.r)),
+        n:Math.round(q(gr.win.n)), gap:r2(q(gr.win.gap)),
+        rot:q(gr.win.rot,15), rad:r2(q(gr.win.rad)), fill:r2(q(gr.win.fill)),
+        sym:gr.sym, pal:pick(r,gr.pal), seed:(seed+gi*97+i)>>>0, mono:false
+      });
+    }
+  });
+  return out;
+}
+function representatives(pool,perTerr){
+  const byTerr={};
+  pool.forEach(c=>{(byTerr[c.terr]=byTerr[c.terr]||[]).push(c);});
+  const out=[];
+  Object.keys(byTerr).sort().forEach(code=>{
+    const list=byTerr[code].slice().sort((a,b)=>b.ev.perception.overall-a.ev.perception.overall);
+    const chosen=[list[0]];
+    while(chosen.length<perTerr&&chosen.length<list.length){
+      let best=null,bestD=-1;
+      for(const c of list){
+        if(chosen.includes(c)) continue;
+        let d=1;
+        for(const s of chosen) d=Math.min(d,1-simOf(vec(c),vec(s)));
+        const q=d*.72+(c.ev.perception.overall/100)*.28;
+        if(q>bestD){bestD=q;best=c;}
+      }
+      if(!best) break;
+      chosen.push(best);
+    }
+    out.push(...chosen);
+  });
+  return out;
+}
+
+function run(){
+  const b=readBrief();
+  S.brief=b;
+  S.briefHash=hex(hash32(b.name+"|"+b.category+"|"+b.audience+"|"+b.attrs.join(",")));
+  S.seed=hash32(S.briefHash);
+  const mv=meaningVector(b);
+  S.mv=mv;
+  S.territories=chooseTerritories(mv,S.seed);
+  S.grammars=buildGrammars(S.territories,S.seed);
+  rebuild();
+  S.ran=true;
+}
+function rebuild(){
+  const active=S.grammars.filter(g=>S.territories.find(t=>t.code===g.terr&&t.on));
+  const cands=sample(active,S.seed,2000);
+  const cons=S.brief.cons;
+  let valid=0,perceived=0,cleared=0;
+  const survivors=[];
+  cands.forEach(c=>{
+    c.ev=evaluate(c,cons);
+    if(c.ev.valid){
+      valid++;
+      if(c.ev.pass){
+        perceived++;
+        if(c.ev.similarity.status!=="conflict"){cleared++;survivors.push(c);}
+      }
+    }
+  });
+  S.candidates=cands;
+  S.reps=representatives(survivors,6);
+  S.counts={sampled:cands.length,valid,perceived,cleared,reps:S.reps.length};
+  S.gramStats=(()=>{
+    const m={};
+    active.forEach(g=>m[g.id]={id:g.id,terr:g.terr,arch:g.arch,s:0,v:0,p:0,c:0});
+    cands.forEach(c=>{
+      const s=m[c.gram]; if(!s) return;
+      s.s++; if(c.ev.valid){s.v++; if(c.ev.pass){s.p++; if(c.ev.similarity.status!=="conflict") s.c++;}}
+    });
+    return Object.values(m).sort((a,b)=>b.c-a.c||a.id.localeCompare(b.id));
+  })();
+  if(!S.reps.find(r=>S.selected&&r.id===S.selected.id)) select(S.reps[0]||null);
+  renderAll();
+}
+function select(c){
+  S.selected=c;
+  if(!c){S.base=null;S.working=null;S.log=[];return;}
+  S.base=JSON.parse(JSON.stringify(c));
+  S.working=JSON.parse(JSON.stringify(c));
+  S.log=[]; S.logSeq=0;
+}
+
+/* ==========================================================================
+   6. Rendering
+   ========================================================================== */
+const $=s=>document.querySelector(s);
+const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+
+function renderAll(){
+  renderChain(); renderBrief(); renderTerritories(); renderSearch();
+  renderScreen(); renderEditor(); renderExport(); renderStatus();
+}
+
+/* --- rail --- */
+function renderChain(){
+  const chain=$("#chain");
+  chain.innerHTML='<span class="lbl">Pipeline</span>';
+  STEPS.forEach(st=>{
+    const b=el("button","step");
+    const on=VIEWS.find(v=>v.id===S.stage).steps.includes(st.n);
+    b.dataset.on=on?"1":"0";
+    const counts={4:S.counts.sampled,5:S.counts.perceived,6:S.counts.cleared,9:S.counts.reps?"ready":""};
+    b.innerHTML=`<span class="i num">${String(st.n).padStart(2,"0")}</span><span class="n">${st.name}</span><span class="c num">${counts[st.n]!=null&&counts[st.n]!==0?counts[st.n]:""}</span>`;
+    if(!S.ran&&st.view!=="brief") b.disabled=true;
+    b.onclick=()=>go(st.view);
+    chain.appendChild(b);
+  });
+}
+function go(id){
+  S.stage=id;
+  document.querySelectorAll(".view").forEach(v=>v.dataset.on=v.dataset.view===id?"1":"0");
+  const v=VIEWS.find(x=>x.id===id);
+  $("#vtitle").textContent=v.title;
+  $("#crumb").textContent="Stage "+v.steps.map(n=>String(n).padStart(2,"0")).join(" — ")+"  /  "+v.label;
+  renderChain(); renderTools();
+  window.scrollTo({top:0,behavior:"instant"});
+}
+function renderTools(){
+  const t=$("#tools"); t.innerHTML="";
+  const add=(label,kind,fn,dis)=>{const b=el("button","btn",label);if(kind)b.dataset.kind=kind;b.onclick=fn;b.disabled=!!dis;t.appendChild(b);};
+  if(S.stage==="brief") add(S.ran?"Re-run pipeline":"Run pipeline","primary",()=>{run();go("terr");});
+  if(S.stage==="terr"){add("Back","ghost",()=>go("brief"));add("Search 2,000 candidates","primary",()=>{rebuild();go("search");});}
+  if(S.stage==="search"){add("Back","ghost",()=>go("terr"));add("Open representatives","primary",()=>go("screen"));}
+  if(S.stage==="screen"){add("Back","ghost",()=>go("search"));add("Edit selected","primary",()=>go("edit"),!S.selected);}
+  if(S.stage==="edit"){add("Back","ghost",()=>go("screen"));add("Export","primary",()=>go("export"),!S.selected);}
+  if(S.stage==="export") add("Back to editor","ghost",()=>go("edit"));
+}
+
+/* --- brief --- */
+function renderBrief(){
+  if(!S.mv) return;
+  $("#mvec").textContent=AXES.map(a=>a+" "+S.mv[a].toFixed(2)).join("   ·   ");
+}
+function initBrief(){
+  const wrap=$("#attrs");
+  const preset=["precise","industrial","trusted","analytic"];
+  ATTRIBUTES.forEach(a=>{
+    const c=el("button","chip",a.k);
+    c.dataset.k=a.k; c.dataset.on=preset.includes(a.k)?"1":"0";
+    c.onclick=()=>{
+      const on=c.dataset.on==="1";
+      const count=document.querySelectorAll("#attrs .chip[data-on='1']").length;
+      if(!on&&count>=5) return;
+      c.dataset.on=on?"0":"1";
+      countAttrs(); markStale();
+    };
+    wrap.appendChild(c);
+  });
+  const cw=$("#cons");
+  CONSTRAINTS.forEach(c=>{
+    const l=el("label","toggle");
+    l.innerHTML=`<input type="checkbox" data-k="${c.k}" ${c.on?"checked":""}><span>${c.label}</span>`;
+    l.querySelector("input").onchange=markStale;
+    cw.appendChild(l);
+  });
+  ["fName","fCat","fAud"].forEach(id=>$("#"+id).addEventListener("input",markStale));
+  countAttrs();
+}
+function countAttrs(){
+  const n=document.querySelectorAll("#attrs .chip[data-on='1']").length;
+  $("#attrCount").textContent="— "+n+" of 5 chosen";
+}
+function markStale(){
+  if(!S.ran) return;
+  $("#runDot").dataset.s="run"; $("#runState").textContent="brief changed — re-run required";
+}
+
+/* --- territories --- */
+function renderTerritories(){
+  const g=$("#terrGrid"); if(!S.territories.length) return;
+  g.innerHTML="";
+  S.territories.forEach(t=>{
+    const card=el("div","card terr"); card.dataset.on=t.on?"1":"0";
+    const n=S.grammars.filter(x=>x.terr===t.code).length;
+    card.innerHTML=`
+      <div class="head">
+        <div><span class="lbl">${t.code} · ${n} grammars</span><h3 style="margin-top:5px">${t.name}</h3></div>
+        <span class="lbl num">${Math.round(t.fit*100)}%</span>
+      </div>
+      <p class="thesis">${t.thesis}</p>
+      <div class="swatches">${t.pal.map(p=>{const P=PALETTES.find(x=>x.id===p);
+        return `<span class="sw" style="background:${P.bg}"></span><span class="sw" style="background:${P.ink}"></span><span class="sw" style="background:${P.accent}"></span>`;}).join("")}</div>
+      <div class="bars">${AXES.map(a=>`<div class="bar"><span>${a}</span><span class="track"><span class="fill" style="width:${t.v[a]*100}%"></span></span><span class="num">${t.v[a].toFixed(2)}</span></div>`).join("")}</div>`;
+    card.onclick=()=>{
+      const live=S.territories.filter(x=>x.on).length;
+      if(t.on&&live<=1) return;
+      t.on=!t.on; rebuild();
+    };
+    g.appendChild(card);
+  });
+
+  const demo=S.reps[0]||S.candidates.find(c=>c.ev&&c.ev.valid);
+  if(demo){
+    $("#genomeSrc").textContent=demo.id;
+    $("#genomeSchema").textContent=JSON.stringify({
+      id:demo.id, grammar:demo.gram, territory:demo.terr,
+      mark:{archetype:demo.arch,strokeWeight:demo.w,radius:demo.r,count:demo.n,
+            gap:demo.gap,rotation:demo.rot,cornerRadius:demo.rad,fill:demo.fill,symmetry:demo.sym},
+      palette:demo.pal, seed:demo.seed, provenance:{brief:S.briefHash,edits:0}
+    },null,2);
+    const c=construct(demo);
+    $("#graphDemo").innerHTML=c.nodes.map(n=>
+      `<div class="gnode"><span class="gid num">${n.id}</span><span class="gop">${n.op}</span><span class="gnote">${n.note}</span></div>`).join("");
+    $("#graphArt").innerHTML=svgOf(demo,{});
+    $("#graphArt").style.background=palOf(demo).bg;
+  }
+}
+
+/* --- search --- */
+function renderSearch(){
+  if(!S.candidates.length) return;
+  const c=S.counts, max=c.sampled;
+  const stages=[
+    {n:"Grammars",s:"parameter windows",v:S.gramStats.length,d:"active"},
+    {n:"Candidates",s:"sampled genomes",v:c.sampled,d:"generated"},
+    {n:"Structurally valid",s:"construction screen",v:c.valid,d:"of "+c.sampled},
+    {n:"Perception pass",s:"small size + contrast",v:c.perceived,d:"of "+c.valid},
+    {n:"Collision cleared",s:"corpus distance",v:c.cleared,d:"of "+c.perceived},
+    {n:"Representatives",s:"cluster spread",v:c.reps,d:"handed to editor",f:1}
+  ];
+  $("#funnel").innerHTML=stages.map(s=>`
+    <div class="fstage" data-final="${s.f?1:0}">
+      <div class="fname"><b>${s.n}</b><span>${s.s}</span></div>
+      <div class="track"><div class="fill" style="width:${clamp(s.v/max*100,.6,100)}%"></div></div>
+      <div class="rt num">${s.v.toLocaleString()}<small>${s.d}</small></div>
+    </div>`).join("");
+  $("#gramCount").textContent=S.gramStats.length+" active";
+  $("#gramBody").innerHTML=S.gramStats.map(g=>`
+    <tr><td>${g.id}</td><td>${g.terr}</td><td>${g.arch}</td><td>${g.s}</td>
+    <td>${g.v}</td><td>${g.p}</td><td>${g.c}</td>
+    <td style="color:${g.c?"var(--pass)":"var(--ink-3)"}">${g.s?Math.round(g.c/g.s*100):0}%</td></tr>`).join("");
+}
+
+/* --- screening --- */
+function renderScreen(){
+  const fw=$("#screenFilters");
+  if(!fw.childElementCount){
+    [["all","all"],["clear","cleared"],["review","review"],["top","top quartile"]].forEach(([k,l])=>{
+      const b=el("button","chip",l); b.dataset.k=k; b.dataset.on=k===S.filter?"1":"0";
+      b.onclick=()=>{S.filter=k;[...fw.children].forEach(x=>x.dataset.on=x.dataset.k===k?"1":"0");renderScreen();};
+      fw.appendChild(b);
+    });
+  }
+  let list=S.reps;
+  if(S.filter==="clear") list=list.filter(c=>c.ev.similarity.status==="clear");
+  if(S.filter==="review") list=list.filter(c=>c.ev.similarity.status==="review");
+  if(S.filter==="top"){
+    const sorted=S.reps.slice().sort((a,b)=>b.ev.perception.overall-a.ev.perception.overall);
+    list=sorted.slice(0,Math.max(1,Math.ceil(sorted.length/4)));
+  }
+  $("#screenCount").textContent=list.length+" of "+S.reps.length+" representatives shown";
+  const grid=$("#candGrid"); grid.innerHTML="";
+  list.forEach(c=>{
+    const card=el("div","card cand");
+    card.dataset.on=S.selected&&S.selected.id===c.id?"1":"0";
+    const P=palOf(c), ev=c.ev;
+    card.innerHTML=`
+      <div class="stage-art" style="background:${P.bg}">${svgOf(c,{transparent:true})}</div>
+      <div class="meta">
+        <div class="id"><span>${c.id}</span><span>${c.gram.split("-")[0]}</span></div>
+        <div class="scorerow">
+          <span class="num" style="font-size:12.5px;width:22px">${ev.perception.overall}</span>
+          <span class="scorebar"><i style="width:${ev.perception.overall}%;background:${ev.perception.overall>=75?"var(--pass)":"var(--review)"}"></i></span>
+          <span class="pill" data-s="${ev.similarity.status}">${ev.similarity.status}</span>
+        </div>
+        <div class="id"><span>16px ${ev.perception.small}</span><span>${ev.atoms} atoms</span></div>
+      </div>`;
+    card.onclick=()=>{select(c);renderScreen();renderEditor();renderExport();renderStatus();};
+    card.ondblclick=()=>{select(c);renderEditor();renderExport();go("edit");};
+    grid.appendChild(card);
+  });
+}
+
+/* --- editor --- */
+const PARAMS=[
+  {k:"w",   label:"Stroke weight",  min:1.5,max:12,step:.1,unit:"u"},
+  {k:"r",   label:"Primary radius", min:20, max:50,step:.5,unit:"u"},
+  {k:"n",   label:"Count",          min:2,  max:12,step:1, unit:""},
+  {k:"gap", label:"Aperture / gap", min:0,  max:.5,step:.01,unit:""},
+  {k:"rot", label:"Rotation",       min:0,  max:345,step:15,unit:"°"},
+  {k:"rad", label:"Corner softness",min:0,  max:1, step:.01,unit:""},
+  {k:"fill",label:"Counter fill",   min:.1, max:1, step:.01,unit:""}
+];
+function renderEditor(){
+  if(!S.working){
+    $("#editArt").innerHTML="";$("#params").innerHTML='<div class="empty">No candidate selected.</div>';
+    return;
+  }
+  const g=S.working, ev=evaluate(g,S.brief.cons), base=S.base.ev;
+  const P=palOf(g);
+
+  $("#editId").textContent=g.id+"  ·  "+g.gram;
+  const st=$("#editStatus"); st.dataset.s=ev.similarity.status; st.textContent=ev.similarity.status;
+  $("#lockBtn").textContent="Lockup: "+S.lockup;
+  $("#monoBtn").textContent=S.mono?"1-colour: on":"1-colour test";
+
+  const art=$("#editArt");
+  [...art.querySelectorAll("svg")].forEach(n=>n.remove());
+  const holder=document.createElement("div");
+  holder.innerHTML=svgOf({...g,mono:S.mono},{lockup:S.lockup,transparent:true});
+  art.prepend(holder.firstChild);
+  art.parentElement.style.background=P.bg;
+
+  const strip=$("#sizeStrip"); strip.innerHTML="";
+  [16,24,32,48,72].forEach(px=>{
+    const d=el("div","sz");
+    d.innerHTML=`<div class="box" style="background:${P.bg};width:${px+8}px;height:${px+8}px">
+      <div style="width:${px}px;height:${px}px">${svgOf({...g,mono:S.mono},{transparent:true})}</div></div>
+      <span class="num">${px}px</span>`;
+    strip.appendChild(d);
+  });
+  const dl=el("div","sz");
+  dl.innerHTML=`<div class="box" style="background:${P.ink};width:56px;height:56px">
+    <div style="width:48px;height:48px">${svgOf({...g,mono:S.mono,invert:true},{transparent:true})}</div></div><span>reversed</span>`;
+  strip.appendChild(dl);
+
+  const M=[
+    ["Overall",ev.perception.overall,base.perception.overall],
+    ["16 px legibility",ev.perception.small,base.perception.small],
+    ["Contrast",ev.perception.contrast,base.perception.contrast],
+    ["Distinctiveness",ev.perception.distinct,base.perception.distinct],
+    ["Construction economy",ev.perception.complexity,base.perception.complexity],
+    ["Optical balance",ev.perception.balance,base.perception.balance],
+    ["Corpus proximity",Math.round(ev.similarity.max*1000)/10,Math.round(base.similarity.max*1000)/10]
+  ];
+  $("#metrics").innerHTML=M.map(([n,v,b],i)=>{
+    const d=r2(v-b), inv=i===6;
+    const dir=d===0?"":(inv?(d<0?"up":"down"):(d>0?"up":"down"));
+    return `<div class="metric"><span class="mn">${n}</span><span class="mv num">${v}</span>
+      <span class="md num" ${dir?`data-d="${dir}"`:""}>${d===0?"—":(d>0?"+":"")+d}</span></div>`;
+  }).join("");
+
+  $("#reasons").innerHTML=(ev.fail.length?ev.fail.map(f=>`<div class="reason"><i>✕</i><span>${f}</span></div>`).join(""):"")
+    +ev.notes.map(n=>`<div class="reason"><i>—</i><span>${n}</span></div>`).join("");
+
+  const p=$("#params"); p.innerHTML="";
+  PARAMS.forEach(P0=>{
+    const dirty=r2(g[P0.k])!==r2(S.base[P0.k]);
+    const row=el("div","param");
+    row.innerHTML=`<div class="top"><b>${P0.label}</b><var data-dirty="${dirty?1:0}">${r2(g[P0.k])}${P0.unit}</var></div>`;
+    const inp=el("input");
+    inp.type="range";inp.min=P0.min;inp.max=P0.max;inp.step=P0.step;inp.value=g[P0.k];
+    inp.oninput=()=>{
+      const from=g[P0.k], to=parseFloat(inp.value);
+      if(from===to) return;
+      g[P0.k]=to; logEdit(P0.label,from,to,P0.k); renderEditor(); renderExport(); renderStatus();
+    };
+    row.appendChild(inp);
+    p.appendChild(row);
+  });
+  [["arch","Archetype",ARCHETYPES],["sym","Symmetry",["radial","bilateral","grid"]],["pal","Palette",PALETTES.map(x=>x.id)]]
+  .forEach(([k,label,opts])=>{
+    const dirty=g[k]!==S.base[k];
+    const row=el("div","param");
+    row.innerHTML=`<div class="top"><b>${label}</b><var data-dirty="${dirty?1:0}">${g[k]}</var></div>`;
+    const sel=el("select");
+    sel.innerHTML=opts.map(o=>`<option ${o===g[k]?"selected":""}>${o}</option>`).join("");
+    sel.onchange=()=>{const from=g[k];g[k]=sel.value;logEdit(label,from,sel.value,k);renderEditor();renderExport();renderStatus();};
+    row.appendChild(sel);
+    p.appendChild(row);
+  });
+
+  renderLog();
+}
+function logEdit(label,from,to,key){
+  const last=S.log[S.log.length-1];
+  if(last&&last.key===key&&!last.reverted&&Date.now()-last.t<700){last.to=to;last.label=label;last.t=Date.now();return;}
+  S.log.push({i:++S.logSeq,key,label,from,to,t:Date.now(),reverted:false});
+}
+function renderLog(){
+  const L=$("#logList");
+  $("#logCount").textContent=S.log.filter(e=>!e.reverted).length+" edits";
+  if(!S.log.length){L.innerHTML='<div class="empty">No edits yet. Every change made here is recorded with its previous value and can be reverted individually.</div>';return;}
+  L.innerHTML="";
+  S.log.slice().reverse().forEach(e=>{
+    const row=el("div","logrow");
+    row.dataset.rev=e.reverted?"1":"0";
+    row.innerHTML=`<span class="ix num">${String(e.i).padStart(2,"0")}</span>
+      <span class="tx">${e.label} ${r2(e.from)} → ${r2(e.to)}</span>`;
+    const b=el("button","btn btn-sm",e.reverted?"reverted":"revert");
+    b.dataset.kind="ghost"; b.disabled=e.reverted;
+    b.onclick=()=>{
+      S.working[e.key]=e.from; e.reverted=true;
+      S.log.push({i:++S.logSeq,key:e.key,label:e.label+" (revert of "+String(e.i).padStart(2,"0")+")",from:e.to,to:e.from,t:Date.now(),reverted:true});
+      renderEditor(); renderExport(); renderStatus();
+    };
+    row.appendChild(b);
+    L.appendChild(row);
+  });
+}
+
+/* --- export --- */
+const NS="http://www.w3.org/2000/svg";
+/* Parametric primitives survive the whole pipeline and are flattened to path
+   data only here, at the last possible moment before hand-off. */
+function flatten(svgStr){
+  const doc=new DOMParser().parseFromString(svgStr,"image/svg+xml");
+  const root=doc.documentElement;
+  const drop=["cx","cy","r","x","y","width","height","rx","ry"];
+  [...root.querySelectorAll("circle,rect")].forEach(e=>{
+    let d="";
+    if(e.tagName==="circle"){
+      const cx=+e.getAttribute("cx"),cy=+e.getAttribute("cy"),r=+e.getAttribute("r");
+      d=`M${r2(cx+r)} ${r2(cy)}A${r2(r)} ${r2(r)} 0 0 1 ${r2(cx-r)} ${r2(cy)}A${r2(r)} ${r2(r)} 0 0 1 ${r2(cx+r)} ${r2(cy)}Z`;
+    }else{
+      const x=+e.getAttribute("x"),y=+e.getAttribute("y"),
+            w=+e.getAttribute("width"),h=+e.getAttribute("height"),
+            k=Math.min(+(e.getAttribute("rx")||0),w/2,h/2);
+      d=k>.01
+        ? `M${r2(x+k)} ${r2(y)}H${r2(x+w-k)}A${r2(k)} ${r2(k)} 0 0 1 ${r2(x+w)} ${r2(y+k)}V${r2(y+h-k)}A${r2(k)} ${r2(k)} 0 0 1 ${r2(x+w-k)} ${r2(y+h)}H${r2(x+k)}A${r2(k)} ${r2(k)} 0 0 1 ${r2(x)} ${r2(y+h-k)}V${r2(y+k)}A${r2(k)} ${r2(k)} 0 0 1 ${r2(x+k)} ${r2(y)}Z`
+        : `M${r2(x)} ${r2(y)}H${r2(x+w)}V${r2(y+h)}H${r2(x)}Z`;
+    }
+    const p=doc.createElementNS(NS,"path");
+    [...e.attributes].forEach(a=>{if(!drop.includes(a.name)) p.setAttribute(a.name,a.value);});
+    p.setAttribute("d",d);
+    e.replaceWith(p);
+  });
+  return new XMLSerializer().serializeToString(root);
+}
+function exportSvg(){
+  if(!S.working) return "";
+  const g=S.working, ev=evaluate(g,S.brief.cons);
+  const flat=flatten(svgOf({...g,mono:S.mono},{lockup:S.lockup}));
+  const head=`<!-- LogoGenome ${g.id} · grammar ${g.gram} · brief ${S.briefHash} · edits ${S.log.filter(e=>!e.reverted).length} -->
+  <title>${S.brief.name} — ${g.arch} construction</title>
+  <desc>Logo Design Intelligence v15. Overall ${ev.perception.overall}, 16 px legibility ${ev.perception.small}, collision status ${ev.similarity.status}. Design collision screening only — not a trademark clearance.</desc>`;
+  const cut=flat.indexOf(">")+1;
+  return (flat.slice(0,cut)+"\n  "+head+flat.slice(cut))
+    .replace(/><(?!\/)/g,">\n  <")
+    .replace("</svg>","\n</svg>");
+}
+function renderExport(){
+  if(!S.working){$("#svgCode").textContent="";return;}
+  const g=S.working, ev=evaluate(g,S.brief.cons);
+  const svg=exportSvg();
+  $("#svgCode").textContent=svg;
+  $("#genomeCode").textContent=JSON.stringify({
+    id:g.id,grammar:g.gram,territory:g.terr,
+    mark:{archetype:g.arch,strokeWeight:r2(g.w),radius:r2(g.r),count:g.n,gap:r2(g.gap),
+          rotation:g.rot,cornerRadius:r2(g.rad),fill:r2(g.fill),symmetry:g.sym},
+    palette:g.pal,lockup:S.lockup,seed:g.seed,
+    provenance:{brief:S.briefHash,pipelineSeed:S.seed,edits:S.log.filter(e=>!e.reverted).length,
+                derivedFrom:S.base.id,reversible:true}
+  },null,2);
+  const c=construct(g);
+  $("#graphCount").textContent=c.nodes.length+" ops · "+c.atoms+" atoms";
+  $("#graphList").innerHTML=c.nodes.map(n=>
+    `<div class="gnode"><span class="gid num">${n.id}</span><span class="gop">${n.op}</span><span class="gnote">${n.note}</span></div>`).join("");
+  $("#prov").innerHTML=[
+    ["Brand",S.brief.name],["Brief hash",S.briefHash],["Pipeline seed",S.seed],
+    ["Territory",g.terr],["Grammar",g.gram],["Candidate",S.base.id],
+    ["Genome seed",g.seed],["Edits kept",S.log.filter(e=>!e.reverted).length],
+    ["Reverted",S.log.filter(e=>e.reverted).length]
+  ].map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join("");
+
+  const checks=[
+    ["structurally valid",ev.valid],
+    ["reproducible from genome + seed",true],
+    ["editable as structure",true],
+    ["explainable",ev.notes.length>0],
+    ["tested at small size",ev.perception.small>=56],
+    ["screened for design collision",ev.similarity.status!=="conflict"],
+    ["geometry flattened to paths at export",!/<(circle|rect)\b/.test(svg)],
+    ["exports as valid SVG",svg.startsWith("<svg")&&svg.trimEnd().endsWith("</svg>")]
+  ];
+  if(S.lockup!=="mark") checks.push(["wordmark still live text — outline conversion is downstream",false]);
+  const ok=checks.every(c=>c[1]);
+  $("#acceptState").textContent=ok?"complete":"incomplete";
+  $("#acceptState").style.color=ok?"var(--pass)":"var(--review)";
+  $("#acceptList").innerHTML=checks.map(([n,v])=>
+    `<div class="reason"><i style="color:${v?"var(--pass)":"var(--conflict)"}">${v?"✓":"✕"}</i><span>${n}</span></div>`).join("");
+}
+
+/* --- status --- */
+function renderStatus(){
+  $("#runDot").dataset.s=S.ran?"":"idle";
+  $("#runState").textContent=S.ran?"run complete":"idle";
+  $("#sBrief").textContent=S.briefHash;
+  $("#sSeed").textContent=S.seed||"—";
+  $("#sGram").textContent=(S.gramStats||[]).length;
+  $("#sCand").textContent=S.counts.sampled.toLocaleString();
+  $("#sRep").textContent=S.counts.reps;
+  $("#sEdit").textContent=S.log.filter(e=>!e.reverted).length;
+}
+
+/* ==========================================================================
+   7. Wiring
+   ========================================================================== */
+initBrief();
+$("#themeBtn").onclick=()=>{
+  const cur=document.documentElement.getAttribute("data-theme");
+  const sysDark=matchMedia("(prefers-color-scheme: dark)").matches;
+  const next=cur?(cur==="dark"?"light":null):(sysDark?"light":"dark");
+  if(next) document.documentElement.setAttribute("data-theme",next);
+  else document.documentElement.removeAttribute("data-theme");
+};
+$("#lockBtn").onclick=()=>{
+  const o=["mark","stacked","horizontal"];
+  S.lockup=o[(o.indexOf(S.lockup)+1)%o.length];
+  renderEditor(); renderExport();
+};
+$("#monoBtn").onclick=()=>{S.mono=!S.mono;renderEditor();renderExport();};
+$("#resetBtn").onclick=()=>{
+  if(!S.selected) return;
+  S.working=JSON.parse(JSON.stringify(S.base));
+  S.log=[]; S.logSeq=0;
+  renderEditor(); renderExport(); renderStatus();
+};
+$("#copySvg").onclick=()=>{navigator.clipboard.writeText(exportSvg());$("#copySvg").textContent="Copied";setTimeout(()=>$("#copySvg").textContent="Copy",1200);};
+$("#copyGenome").onclick=()=>{navigator.clipboard.writeText($("#genomeCode").textContent);$("#copyGenome").textContent="Copied";setTimeout(()=>$("#copyGenome").textContent="Copy JSON",1200);};
+$("#dlSvg").onclick=()=>{
+  const blob=new Blob([exportSvg()],{type:"image/svg+xml"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=(S.brief.name.toLowerCase().replace(/\s+/g,"-"))+"-"+S.working.id+".svg";
+  a.click(); URL.revokeObjectURL(a.href);
+};
+
+run();
+go("brief");
+</script>
