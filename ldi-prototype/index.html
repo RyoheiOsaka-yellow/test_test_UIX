@@ -264,6 +264,13 @@ tr:last-child td{border-bottom:0}
 .param .top var{font-style:normal; font-family:var(--mono); font-size:11px; font-variant-numeric:tabular-nums}
 .param .top var[data-dirty="1"]{color:var(--guide)}
 
+.swatches{display:flex; flex-wrap:wrap; gap:6px; margin-top:4px}
+.swatch{display:flex; padding:0; border:1px solid var(--line-2); background:none; cursor:pointer; height:22px; border-radius:1px; overflow:hidden}
+.swatch i{display:block; width:9px; height:100%}
+.swatch:hover{border-color:var(--ink-3)}
+.swatch[data-on="1"]{border-color:var(--guide); box-shadow:0 0 0 1px var(--guide)}
+input[type=color]{width:100%; height:28px; padding:2px; border:1px solid var(--line); background:var(--paper); border-radius:1px; cursor:pointer}
+
 /* tree editor */
 .tb{border-bottom:1px solid var(--line); padding:12px 14px 14px}
 .tb:last-child{border-bottom:0}
@@ -478,6 +485,10 @@ pre{margin:0; padding:15px; background:var(--paper); overflow:auto; max-height:3
 
       <div class="stack">
         <div class="panel">
+          <div class="phead"><h3 data-t="pal.title"></h3></div>
+          <div id="palPanel"></div>
+        </div>
+        <div class="panel">
           <div class="phead"><h3 data-t="type.title"></h3><span class="lbl" data-t="type.nameHint"></span></div>
           <div id="typePanel"></div>
         </div>
@@ -516,6 +527,13 @@ pre{margin:0; padding:15px; background:var(--paper); overflow:auto; max-height:3
             </div>
           </div>
           <pre id="svgCode"></pre>
+        </div>
+        <div class="panel">
+          <div class="phead">
+            <h3 data-t="export.raster"></h3>
+            <button class="btn btn-sm" data-kind="primary" id="dlPng" data-t="export.png"></button>
+          </div>
+          <div id="pngPanel"></div>
         </div>
         <div class="panel">
           <div class="phead"><h3 data-t="export.accept"></h3><span class="lbl" id="acceptState">—</span></div>
@@ -708,6 +726,16 @@ ja:{
  "face.mono":"モノスペース","face.mincho":"明朝","face.gothic":"ゴシック",
  "al.center":"中央","al.left":"左","al.right":"右",
  "fact.face":"書体","fact.lock":"組版",
+ "type.pos":"マークの配置","pos.mark":"マークのみ","pos.top":"上","pos.bottom":"下",
+ "pos.left":"左","pos.right":"右","pos.text":"文字のみ",
+ "type.markScale":"マークの大きさ","type.offx":"横位置の微調整","type.offy":"縦位置の微調整",
+ "type.valign":"縦の揃え","va.center":"中央","va.baseline":"ベースライン","va.top":"上端",
+ "type.reset":"位置をリセット",
+ "pal.title":"パレット","pal.bg":"地","pal.ink":"インク","pal.accent":"アクセント",
+ "pal.presets":"プリセット","pal.custom":"カスタム","pal.contrast":"インク／地 コントラスト {0}:1",
+ "pal.swap":"インクと地を入れ替え",
+ "export.png":"PNG をダウンロード","export.pngSize":"書き出しサイズ","export.pngBg":"背景を含める",
+ "export.raster":"ラスタライズ","export.pngNote":"表示中の組版をそのまま書き出します。文字は環境のフォントで焼き付けられます。",
 },
 en:{
  "brand.sub":"Structured logo construction v15","rail.theme":"◐ Theme",
@@ -863,6 +891,16 @@ en:{
  "face.mono":"Monospace","face.mincho":"Mincho","face.gothic":"Gothic",
  "al.center":"centre","al.left":"left","al.right":"right",
  "fact.face":"typeface","fact.lock":"lockup",
+ "type.pos":"Mark position","pos.mark":"mark only","pos.top":"above","pos.bottom":"below",
+ "pos.left":"left","pos.right":"right","pos.text":"type only",
+ "type.markScale":"Mark size","type.offx":"Nudge X","type.offy":"Nudge Y",
+ "type.valign":"Vertical align","va.center":"centre","va.baseline":"baseline","va.top":"top",
+ "type.reset":"Reset position",
+ "pal.title":"Palette","pal.bg":"ground","pal.ink":"ink","pal.accent":"accent",
+ "pal.presets":"Presets","pal.custom":"custom","pal.contrast":"ink / ground contrast {0}:1",
+ "pal.swap":"Swap ink and ground",
+ "export.png":"Download PNG","export.pngSize":"Raster size","export.pngBg":"Include background",
+ "export.raster":"Raster","export.pngNote":"Exports the lockup as shown. Type is baked using the fonts on this machine.",
 }};
 let LANG="ja";
 function t(k){
@@ -988,7 +1026,7 @@ const FACES=[
   {id:"mincho",      css:JP_SERIF+',"MS Mincho",serif'},
   {id:"gothic",      css:JP_SANS+',"MS Gothic",sans-serif'}
 ];
-const LAYOUTS=["mark","stacked","horizontal","text"];
+const LAYOUTS=["mark","top","bottom","left","right","text"];
 const faceCss=id=>(FACES.find(f=>f.id===id)||FACES[0]).css;
 /* Font stacks quote family names, so they must be single-quoted before they
    go into a double-quoted attribute, and user text must be XML-escaped. */
@@ -1004,7 +1042,8 @@ const S={
   selected:null,base:null,working:null,log:[],logSeq:0,muts:[],mutSeed:1,dragFrom:null,
   filter:"all",lockup:"mark",mono:false,guides:true,stage:"brief",
   type:{face:"grotesk",weight:600,track:.14,size:22,gap:16,upper:true,align:"center",
-        tagline:"",tagScale:.42,tagTrack:.24}
+        tagline:"",tagScale:.42,tagTrack:.24,markScale:1,offx:0,offy:0,valign:"center"},
+  png:{size:1024,bg:true}
 };
 const VIEWS=["brief","terr","search","screen","edit","export"];
 const STEP_NO={brief:"01",terr:"02—03",search:"04",screen:"05—06",edit:"07—08",export:"09"};
@@ -1013,7 +1052,21 @@ const STEP_NO={brief:"01",terr:"02—03",search:"04",screen:"05—06",edit:"07�
    3. Construction — tree -> placements -> shapes -> SVG (120x120, u = 10)
    ========================================================================== */
 const F=120, U=10;
-function palOf(g){ return PALETTES.find(p=>p.id===g.pal)||PALETTES[0]; }
+function palOf(g){
+  if(g.pal&&typeof g.pal==="object") return g.pal;
+  return PALETTES.find(p=>p.id===g.pal)||PALETTES[0];
+}
+function hueOf(hexv){
+  const c=[1,3,5].map(i=>parseInt(hexv.substr(i,2),16)/255);
+  const mx=Math.max(c[0],c[1],c[2]),mn=Math.min(c[0],c[1],c[2]),d=mx-mn;
+  if(d<1e-6) return 0;
+  let h;
+  if(mx===c[0]) h=((c[1]-c[2])/d)%6;
+  else if(mx===c[1]) h=(c[2]-c[0])/d+2;
+  else h=(c[0]-c[1])/d+4;
+  return (h*60+360)%360;
+}
+function customPal(bg,ink,accent){ return {id:"custom",bg,ink,accent,hue:hueOf(accent)}; }
 function plateStyle(P){
   const c=[1,3,5].map(i=>parseInt(P.ink.substr(i,2),16)).join(",");
   return `background-color:${P.bg};--grid-f:rgba(${c},.07);--grid-m:rgba(${c},.15)`;
@@ -1308,27 +1361,36 @@ function svgOf(g,opt){
   if(lock!=="mark"){
     const T=S.type, tb=typeBlock();
     label=tb.name;
-    const g0=T.gap;
+    const g0=T.gap, M=120*T.markScale;
+    const anchor=T.align==="left"?"start":(T.align==="right"?"end":"middle");
+    /* One placement routine: the type block and the mark box are laid out
+       against each other, then nudged. Every layout is a case of it. */
+    const put=(mx,my,tx,ty)=>{
+      mark=M?`<g transform="translate(${r2(mx)} ${r2(my)}) scale(${r2(T.markScale)})">${c.body}</g>`:"";
+      const ax=T.align==="left"?tx:(T.align==="right"?tx+tb.w:tx+tb.w/2);
+      type=typeSvg(tb,ax+T.offx,ty+T.offy,anchor,c.ink);
+    };
     if(lock==="text"){
-      const x=T.align==="left"?0:(T.align==="right"?tb.w:tb.w/2);
-      const anchor=T.align==="left"?"start":(T.align==="right"?"end":"middle");
       mark="";
-      type=typeSvg(tb,x,tb.m.asc,anchor,c.ink);
+      const ax=T.align==="left"?0:(T.align==="right"?tb.w:tb.w/2);
+      type=typeSvg(tb,ax+T.offx,tb.m.asc+T.offy,anchor,c.ink);
       vb=`0 0 ${r2(Math.max(tb.w,1))} ${r2(tb.h)}`;
-    }else if(lock==="stacked"){
-      /* Type aligns to the mark's own edges, the way a lockup is set. */
-      const W=Math.max(120,tb.w), H=120+g0+tb.h, mx=(W-120)/2;
-      const anchor=T.align==="left"?"start":(T.align==="right"?"end":"middle");
-      const x=T.align==="left"?mx:(T.align==="right"?mx+120:W/2);
-      mark=`<g transform="translate(${r2(mx)} 0)">${c.body}</g>`;
-      type=typeSvg(tb,x,120+g0+tb.m.asc,anchor,c.ink);
+    }else if(lock==="top"||lock==="bottom"){
+      const W=Math.max(M,tb.w), H=M+g0+tb.h, mx=(W-M)/2;
+      const tx=T.align==="left"?mx:(T.align==="right"?mx+M-tb.w:(W-tb.w)/2);
+      const markY=lock==="top"?0:tb.h+g0;
+      const typeY=lock==="top"?M+g0+tb.m.asc:tb.m.asc;
+      put(mx,markY,tx,typeY);
       vb=`0 0 ${r2(W)} ${r2(H)}`;
     }else{
-      const H=Math.max(120,tb.h), W=120+g0+tb.w, tx=120+g0;
-      const anchor=T.align==="left"?"start":(T.align==="right"?"end":"middle");
-      const x=T.align==="left"?tx:(T.align==="right"?tx+tb.w:tx+tb.w/2);
-      mark=`<g transform="translate(0 ${r2((H-120)/2)})">${c.body}</g>`;
-      type=typeSvg(tb,x,(H-tb.h)/2+tb.m.asc,anchor,c.ink);
+      const H=Math.max(M,tb.h), W=M+g0+tb.w;
+      const markX=lock==="left"?0:tb.w+g0;
+      const tx=lock==="left"?M+g0:0;
+      let typeTop;
+      if(T.valign==="top") typeTop=(H-M)/2;
+      else if(T.valign==="baseline") typeTop=H/2-tb.m.asc;
+      else typeTop=(H-tb.h)/2;
+      put(markX,(H-M)/2,tx,typeTop+tb.m.asc);
       vb=`0 0 ${r2(W)} ${r2(H)}`;
     }
   }
@@ -1358,7 +1420,7 @@ function conceptOf(g){
     facts:[["fact.r",r2(primaryDim(g))+"u"],["fact.w",r2(g.w)+"u"],
            ["fact.cov",(c.coverage*100).toFixed(1)+"%"],["fact.atoms",c.atoms],
            ["fact.ops",c.nodes.length],["fact.extent",r2(c.extent)+"u"],["fact.sym",t("sym."+sym)],
-           ["fact.lock",t("lay."+S.lockup)],["fact.face",t("face."+S.type.face)]]
+           ["fact.lock",t("pos."+S.lockup)],["fact.face",t("face."+S.type.face)]]
   };
 }
 
@@ -1986,7 +2048,7 @@ function pushTreeEdit(before,labelKey){
               t:Date.now(),reverted:false,note:""});
 }
 function renderEditor(){
-  $("#lockBtn").textContent=t("edit.lockup",t("lay."+S.lockup));
+  $("#lockBtn").textContent=t("edit.lockup",t("pos."+S.lockup));
   $("#monoBtn").textContent=S.mono?t("edit.monoOn"):t("edit.mono");
   $("#monoBtn").dataset.on=S.mono?"1":"0";
   $("#gdBtn").textContent=S.guides?t("edit.guidesOn"):t("edit.guides");
@@ -2040,7 +2102,7 @@ function renderEditor(){
     +ev.notes.map(n=>`<div class="reason"><i>—</i><span>${n}</span></div>`).join("");
 
   $("#treeCount").textContent=t("tree.branches",g.tree.length,c.atoms);
-  renderTree(); renderGlobals(); renderType(); renderMutations(); renderLog();
+  renderTree(); renderGlobals(); renderType(); renderPalette(); renderMutations(); renderLog();
 }
 const WEIGHTS=[300,400,500,600,700,800];
 function renderType(){
@@ -2069,7 +2131,7 @@ function renderType(){
     d.appendChild(inp); box.appendChild(d);
   };
 
-  row("type.layout",chips(LAYOUTS,S.lockup,v=>{S.lockup=v;renderEditor();renderExport();},"lay."));
+  row("type.pos",chips(LAYOUTS,S.lockup,v=>{S.lockup=v;renderEditor();renderExport();},"pos."));
 
   const faceSel=el("select");
   faceSel.innerHTML=FACES.map(f=>`<option value="${f.id}" style="font-family:${faceAttr(f.css)}" ${f.id===T.face?"selected":""}>${t("face."+f.id)}</option>`).join("");
@@ -2118,12 +2180,58 @@ function renderGlobals(){
     };
     row.appendChild(inp); p.appendChild(row);
   });
-  const row=el("div","param");
-  row.innerHTML=`<div class="top"><b>${t("p.pal")}</b><var data-dirty="${g.pal!==S.base.pal?1:0}">${g.pal}</var></div>`;
-  const sel=el("select");
-  sel.innerHTML=PALETTES.map(x=>`<option ${x.id===g.pal?"selected":""}>${x.id}</option>`).join("");
-  sel.onchange=()=>{const from=g.pal;g.pal=sel.value;logEdit("p.pal",from,sel.value,"pal");renderEditor();renderExport();renderStatus();};
-  row.appendChild(sel); p.appendChild(row);
+}
+/* The palette is brand material, so presets are a starting point rather than
+   the whole choice: every slot is editable and the contrast is reported. */
+function renderPalette(){
+  const g=S.working, P=palOf(g), box=$("#palPanel"); box.innerHTML="";
+  const setPal=next=>{
+    const from=clone(g.pal);
+    g.pal=next;
+    S.log.push({i:++S.logSeq,key:"pal",labelKey:"p.pal",from,to:clone(next),
+                disp:typeof next==="string"?next:next.ink.toUpperCase(),
+                t:Date.now(),reverted:false,note:""});
+    renderEditor(); renderExport(); renderStatus();
+  };
+  const pre=el("div","param");
+  pre.innerHTML=`<div class="top"><b>${t("pal.presets")}</b><var>${P.id==="custom"?t("pal.custom"):P.id}</var></div>`;
+  const sw=el("div","swatches");
+  PALETTES.forEach(x=>{
+    const b=el("button","swatch");
+    b.dataset.on=x.id===P.id?"1":"0"; b.title=x.id;
+    b.innerHTML=`<i style="background:${x.bg}"></i><i style="background:${x.ink}"></i><i style="background:${x.accent}"></i>`;
+    b.onclick=()=>setPal(x.id);
+    sw.appendChild(b);
+  });
+  pre.appendChild(sw); box.appendChild(pre);
+
+  [["pal.bg","bg"],["pal.ink","ink"],["pal.accent","accent"]].forEach(([k,slot])=>{
+    const d=el("div","param");
+    d.innerHTML=`<div class="top"><b>${t(k)}</b><var>${P[slot].toUpperCase()}</var></div>`;
+    const inp=el("input"); inp.type="color"; inp.value=P[slot];
+    inp.oninput=()=>{
+      const cur=palOf(S.working);
+      S.working.pal=customPal(slot==="bg"?inp.value:cur.bg,
+                              slot==="ink"?inp.value:cur.ink,
+                              slot==="accent"?inp.value:cur.accent);
+      d.querySelector("var").textContent=inp.value.toUpperCase();
+      livePaint();
+    };
+    inp.onchange=()=>{
+      const cur=palOf(S.working);
+      S.working.pal=P.id==="custom"?S.working.pal:clone(P);
+      setPal(customPal(cur.bg,cur.ink,cur.accent));
+    };
+    d.appendChild(inp); box.appendChild(d);
+  });
+
+  const x=luminance(P.ink), y=luminance(P.bg);
+  const ratio=(Math.max(x,y)+.05)/(Math.min(x,y)+.05);
+  const foot=el("div","param");
+  foot.innerHTML=`<div class="top"><b style="color:${ratio<4.5?"var(--review)":"var(--pass)"}">${t("pal.contrast",ratio.toFixed(1))}</b></div>`;
+  const swapb=el("button","btn btn-sm",t("pal.swap"));
+  swapb.onclick=()=>setPal(customPal(P.ink,P.bg,P.accent));
+  foot.appendChild(swapb); box.appendChild(foot);
 }
 /* Dragging a tree slider repaints live; the log entry lands on release. */
 function treeSlider(label,obj,key,lo,hi,step){
@@ -2308,23 +2416,72 @@ function genomeJson(g,edits){
     id:g.id,grammar:g.gram,territory:g.terr,
     tree:g.tree.map(b=>({primitive:b.leaf,operators:b.ops,mode:b.mode,role:b.role})),
     stroke:r2(g.w),scale:r2(g.scale),rotation:g.rot,cornerRadius:r2(g.rad),
-    palette:g.pal,seed:g.seed,symmetry:symmetryOf(g),
+    palette:typeof g.pal==="object"?{bg:g.pal.bg,ink:g.pal.ink,accent:g.pal.accent}:g.pal,
+    seed:g.seed,symmetry:symmetryOf(g),
     lockup:{layout:S.lockup,typeface:S.type.face,stack:faceCss(S.type.face),
             weight:S.type.weight,size:S.type.size,tracking:S.type.track,gap:S.type.gap,
             capitals:S.type.upper,align:S.type.align,tagline:S.type.tagline||null},
     provenance:{brief:S.briefHash,pipelineSeed:S.seed,edits:edits,reversible:true}
   },null,2);
 }
-function exportSvg(){
+function exportSvg(opt){
   if(!S.working) return "";
+  opt=opt||{};
   const g=S.working,ev=evaluate(g,S.brief.cons);
-  const flat=flattenSvg(svgOf({...g,mono:S.mono},{lockup:S.lockup}));
+  const flat=flattenSvg(svgOf({...g,mono:S.mono},{lockup:S.lockup,transparent:!!opt.transparent}));
   const head=`<!-- LogoGenome ${g.id} · grammar ${g.gram} · brief ${S.briefHash} · edits ${S.log.filter(e=>!e.reverted).length} -->
   <title>${esc(S.brief.name)} — ${primaryLeaf(g)}</title>
   <desc>Logo Design Intelligence v15. overall ${ev.perception.overall}, 16px ${ev.perception.small}, collision ${ev.similarity.status}. Design collision screening only — not a trademark clearance.</desc>`;
   const cut=flat.indexOf(">")+1;
   return (flat.slice(0,cut)+"\n  "+head+flat.slice(cut))
     .replace(/><(?!\/)/g,">\n  <").replace("</svg>","\n</svg>");
+}
+/* Rasterising goes through the same SVG the user downloads: the string is
+   given explicit pixel dimensions, drawn into a canvas via a data URI (which
+   keeps the canvas untainted) and encoded as PNG. */
+function svgToPng(svgStr,longest,cb){
+  const m=/viewBox="([^"]+)"/.exec(svgStr);
+  const box=m?m[1].trim().split(/[\s,]+/).map(Number):[0,0,120,120];
+  const w=box[2]||120, h=box[3]||120;
+  const k=longest/Math.max(w,h);
+  const W=Math.max(1,Math.round(w*k)), H=Math.max(1,Math.round(h*k));
+  const sized=svgStr.replace("<svg ",`<svg width="${W}" height="${H}" `);
+  const img=new Image();
+  img.onload=()=>{
+    const cv=document.createElement("canvas");
+    cv.width=W; cv.height=H;
+    cv.getContext("2d").drawImage(img,0,0,W,H);
+    cv.toBlob(b=>cb(b,W,H),"image/png");
+  };
+  img.onerror=()=>cb(null);
+  img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(sized);
+}
+function fileStem(){
+  return (S.brief.name||"mark").toLowerCase().replace(/[^\w\u3040-\u30ff\u4e00-\u9fff-]+/g,"-")
+    .replace(/^-|-$/g,"")+"-"+String(S.working.id).replace(/[^\w-]/g,"");
+}
+function renderPng(){
+  const box=$("#pngPanel"); if(!box) return;
+  box.innerHTML="";
+  const sizes=[512,1024,2048,4096];
+  const d=el("div","param");
+  d.innerHTML=`<div class="top"><b>${t("export.pngSize")}</b><var>${S.png.size} px</var></div>`;
+  const c=el("div","chips");
+  sizes.forEach(z=>{
+    const b=el("button","chip",z+"px");
+    b.dataset.on=z===S.png.size?"1":"0";
+    b.onclick=()=>{S.png.size=z;renderPng();};
+    c.appendChild(b);
+  });
+  d.appendChild(c); box.appendChild(d);
+  const d2=el("div","param");
+  const bg=el("button","chip",t("export.pngBg"));
+  bg.dataset.on=S.png.bg?"1":"0";
+  bg.onclick=()=>{S.png.bg=!S.png.bg;renderPng();};
+  const wrap=el("div","chips"); wrap.appendChild(bg);
+  d2.appendChild(wrap);
+  d2.appendChild(el("div","hint",t("export.pngNote")));
+  box.appendChild(d2);
 }
 function renderExport(){
   if(!S.working){$("#svgCode").textContent="";return;}
@@ -2341,6 +2498,7 @@ function renderExport(){
     ["pv.terr",g.terr],["pv.gram",g.gram],["pv.cand",S.base.id],["pv.gseed",g.seed],
     ["pv.kept",edits],["pv.reverted",S.log.filter(e=>e.reverted).length]
   ].map(([k,v])=>`<dt>${t(k)}</dt><dd>${v}</dd>`).join("");
+  renderPng();
   const checks=[["ac.valid",ev.valid],["ac.repro",true],["ac.editable",true],
     ["ac.explain",ev.notes.length>0],["ac.small",ev.perception.small>=56],
     ["ac.collision",ev.similarity.status!=="conflict"],
@@ -2418,12 +2576,21 @@ $("#copyGenome").onclick=()=>{
   $("#copyGenome").textContent=t("export.copied");
   setTimeout(()=>$("#copyGenome").textContent=t("export.copyJson"),1200);
 };
-$("#dlSvg").onclick=()=>{
-  const blob=new Blob([exportSvg()],{type:"image/svg+xml"});
+function saveBlob(blob,name){
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
-  a.download=S.brief.name.toLowerCase().replace(/\s+/g,"-")+"-"+S.working.id.replace(/[^\w-]/g,"")+".svg";
-  a.click(); URL.revokeObjectURL(a.href);
+  a.download=name;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+$("#dlSvg").onclick=()=>saveBlob(new Blob([exportSvg()],{type:"image/svg+xml"}),fileStem()+".svg");
+$("#dlPng").onclick=()=>{
+  const btn=$("#dlPng"), was=btn.textContent;
+  btn.disabled=true; btn.textContent="…";
+  svgToPng(exportSvg({transparent:!S.png.bg}),S.png.size,blob=>{
+    btn.disabled=false; btn.textContent=was;
+    if(blob) saveBlob(blob,fileStem()+"-"+S.png.size+".png");
+  });
 };
 document.addEventListener("keydown",e=>{
   if(e.key!=="ArrowLeft"&&e.key!=="ArrowRight") return;
