@@ -478,6 +478,10 @@ pre{margin:0; padding:15px; background:var(--paper); overflow:auto; max-height:3
 
       <div class="stack">
         <div class="panel">
+          <div class="phead"><h3 data-t="type.title"></h3><span class="lbl" data-t="type.nameHint"></span></div>
+          <div id="typePanel"></div>
+        </div>
+        <div class="panel">
           <div class="phead"><h3 data-t="edit.tree"></h3><span class="lbl" id="treeCount"></span></div>
           <div id="tree"></div>
           <div class="addrow"><button class="btn btn-sm" id="addBranch"></button></div>
@@ -692,7 +696,18 @@ ja:{
  "th.PRS":"屈折。ひとつの入力が秩序ある複数の出力へ解かれる。約束ではなく機構を見せる。",
  "th.LIN":"途切れないひとつの線。足すものも余分もなく、構築が一度の走査で読み取れる。",
  "th.LDB":"支える重さ。マークはブランドの装飾ではなく構造部材として振る舞う。",
- "gn.leaf":"{0}（{1}・{2}）"
+ "gn.leaf":"{0}（{1}・{2}）",
+ "type.title":"ロゴタイプ","type.layout":"レイアウト","type.face":"書体","type.weight":"ウェイト",
+ "type.track":"字間","type.size":"文字サイズ","type.gap":"マークとの間隔","type.upper":"大文字にする",
+ "type.tagline":"タグライン（任意）","type.tagScale":"タグラインの比率",
+ "type.align":"揃え","type.nameHint":"ブランド名は 01 意味 で編集します",
+ "type.faceNote":"実際に表示される書体は環境にインストールされているものに依存します。プレビューがそのまま結果です。",
+ "lay.mark":"マークのみ","lay.stacked":"縦組み","lay.horizontal":"横組み","lay.text":"文字のみ",
+ "face.grotesk":"グロテスク","face.geometric":"ジオメトリック","face.humanist":"ヒューマニスト",
+ "face.transitional":"オールドスタイル","face.didone":"ディドネ","face.slab":"スラブ",
+ "face.mono":"モノスペース","face.mincho":"明朝","face.gothic":"ゴシック",
+ "al.center":"中央","al.left":"左","al.right":"右",
+ "fact.face":"書体","fact.lock":"組版",
 },
 en:{
  "brand.sub":"Structured logo construction v15","rail.theme":"◐ Theme",
@@ -836,7 +851,18 @@ en:{
  "th.PRS":"Refraction: one input resolved into many ordered outputs. The mark shows the mechanism rather than the promise.",
  "th.LIN":"One unbroken path. Nothing added and nothing spare, so the construction can be read in a single pass.",
  "th.LDB":"Weight that holds. The mark behaves like a structural component of the brand rather than a decoration on it.",
- "gn.leaf":"{0} ({1}, {2})"
+ "gn.leaf":"{0} ({1}, {2})",
+ "type.title":"Logotype","type.layout":"Layout","type.face":"Typeface","type.weight":"Weight",
+ "type.track":"Tracking","type.size":"Type size","type.gap":"Gap to mark","type.upper":"Set in capitals",
+ "type.tagline":"Tagline (optional)","type.tagScale":"Tagline ratio",
+ "type.align":"Align","type.nameHint":"The brand name is edited in 01 Meaning",
+ "type.faceNote":"Which typeface actually renders depends on what is installed. The preview is the result.",
+ "lay.mark":"mark only","lay.stacked":"stacked","lay.horizontal":"horizontal","lay.text":"type only",
+ "face.grotesk":"Grotesk","face.geometric":"Geometric","face.humanist":"Humanist",
+ "face.transitional":"Old style","face.didone":"Didone","face.slab":"Slab",
+ "face.mono":"Monospace","face.mincho":"Mincho","face.gothic":"Gothic",
+ "al.center":"centre","al.left":"left","al.right":"right",
+ "fact.face":"typeface","fact.lock":"lockup",
 }};
 let LANG="ja";
 function t(k){
@@ -947,6 +973,28 @@ const TERRITORY_POOL=[
   {code:"LDB",leaves:["bar","poly","disc","cross"],ops:["repeat.linear","mirror","shift","nest"],
    pal:["P-04","P-07","P-01"],v:{order:.8,motion:.15,weight:.95,warmth:.4,openness:.25}}
 ];
+/* No webfont can be loaded here, so the choice is over stacks the machine
+   already has. Japanese fallbacks are appended to every stack. */
+const JP_SANS='"Hiragino Sans","Yu Gothic","Noto Sans JP",Meiryo';
+const JP_SERIF='"Hiragino Mincho ProN","Yu Mincho","Noto Serif JP"';
+const FACES=[
+  {id:"grotesk",     css:'"Helvetica Neue",Helvetica,Arial,'+JP_SANS+',sans-serif'},
+  {id:"geometric",   css:'Futura,"Avenir Next",Avenir,"Century Gothic","Trebuchet MS",'+JP_SANS+',sans-serif'},
+  {id:"humanist",    css:'Optima,"Gill Sans","Gill Sans MT","Segoe UI",'+JP_SANS+',sans-serif'},
+  {id:"transitional",css:'"Iowan Old Style","Palatino Linotype",Palatino,Georgia,'+JP_SERIF+',serif'},
+  {id:"didone",      css:'Didot,"Bodoni MT","Bodoni 72",Georgia,'+JP_SERIF+',serif'},
+  {id:"slab",        css:'Rockwell,"Bookman Old Style","Roboto Slab",Georgia,'+JP_SERIF+',serif'},
+  {id:"mono",        css:'ui-monospace,"SF Mono",Menlo,Consolas,'+JP_SANS+',monospace'},
+  {id:"mincho",      css:JP_SERIF+',"MS Mincho",serif'},
+  {id:"gothic",      css:JP_SANS+',"MS Gothic",sans-serif'}
+];
+const LAYOUTS=["mark","stacked","horizontal","text"];
+const faceCss=id=>(FACES.find(f=>f.id===id)||FACES[0]).css;
+/* Font stacks quote family names, so they must be single-quoted before they
+   go into a double-quoted attribute, and user text must be XML-escaped. */
+const faceAttr=css=>css.replace(/"/g,"'");
+const esc=v=>String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;")
+  .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const GRAMMAR_TRAITS=["orthogonal","rotational","offset","condensed","expanded","bisected","stepped","inverted"];
 
 const S={
@@ -954,7 +1002,9 @@ const S={
   territories:[],grammars:[],candidates:[],reps:[],gramStats:[],
   counts:{sampled:0,valid:0,perceived:0,cleared:0,reps:0},
   selected:null,base:null,working:null,log:[],logSeq:0,muts:[],mutSeed:1,dragFrom:null,
-  filter:"all",lockup:"mark",mono:false,guides:true,stage:"brief"
+  filter:"all",lockup:"mark",mono:false,guides:true,stage:"brief",
+  type:{face:"grotesk",weight:600,track:.14,size:22,gap:16,upper:true,align:"center",
+        tagline:"",tagScale:.42,tagTrack:.24}
 };
 const VIEWS=["brief","terr","search","screen","edit","export"];
 const STEP_NO={brief:"01",terr:"02—03",search:"04",screen:"05—06",edit:"07—08",export:"09"};
@@ -1202,31 +1252,89 @@ function guidesOf(g,c){
   return `<g data-gd="1" fill="none" stroke="var(--guide)" stroke-width="1" stroke-opacity=".55" vector-effect="non-scaling-stroke">${out.join("")}</g>`;
 }
 
+/* Real lockups need real metrics, so the type is measured in a hidden SVG
+   rather than guessed from a character count. */
+let MEAS=null; const MEAS_CACHE=new Map();
+function measureText(str,face,weight,size,track){
+  const key=[str,face,weight,size,track].join("|");
+  if(MEAS_CACHE.has(key)) return MEAS_CACHE.get(key);
+  if(!MEAS){
+    MEAS=document.createElementNS(NS,"svg");
+    MEAS.setAttribute("style","position:fixed;left:-9999px;top:0;width:10px;height:10px;overflow:hidden");
+    MEAS.appendChild(document.createElementNS(NS,"text"));
+    document.body.appendChild(MEAS);
+  }
+  const tn=MEAS.firstChild;
+  tn.setAttribute("font-family",face); tn.setAttribute("font-size",size);
+  tn.setAttribute("font-weight",weight); tn.setAttribute("letter-spacing",track);
+  tn.textContent=str||" ";
+  let bb;
+  try{bb=tn.getBBox();}catch(e){bb={width:(str||"").length*size*.6,height:size*.72,y:-size*.72};}
+  const m={w:Math.max(0,bb.width-(str&&str.length?track:0)),asc:-bb.y,desc:Math.max(0,bb.height+bb.y)};
+  MEAS_CACHE.set(key,m);
+  return m;
+}
+function typeBlock(){
+  const T=S.type, face=faceCss(T.face);
+  const raw=S.brief?S.brief.name:"Brand";
+  const name=T.upper?raw.toUpperCase():raw;
+  const track=r2(T.size*T.track);
+  const m=measureText(name,face,T.weight,T.size,track);
+  const tagRaw=(T.tagline||"").trim();
+  const tsize=r2(T.size*T.tagScale), ttrack=r2(tsize*T.tagTrack);
+  const mt=tagRaw?measureText(tagRaw,face,400,tsize,ttrack):null;
+  const tag=tagRaw;
+  const lead=tag?r2(T.size*.62):0;
+  return {face:faceAttr(face),name:esc(name),track,m,tag:esc(tag),tsize,ttrack,mt,lead,
+    w:Math.max(m.w,mt?mt.w:0),
+    h:m.asc+m.desc+(mt?lead+mt.asc+mt.desc:0)};
+}
+function typeSvg(tb,x,baseline,anchor,fill){
+  const T=S.type;
+  let out=`<text x="${r2(x)}" y="${r2(baseline)}" text-anchor="${anchor}" font-family="${tb.face}" font-size="${T.size}" font-weight="${T.weight}" letter-spacing="${tb.track}" fill="${fill}">${tb.name}</text>`;
+  if(tb.tag){
+    const y2=baseline+tb.m.desc+tb.lead+tb.mt.asc;
+    out+=`<text x="${r2(x)}" y="${r2(y2)}" text-anchor="${anchor}" font-family="${tb.face}" font-size="${tb.tsize}" font-weight="400" letter-spacing="${tb.ttrack}" fill="${fill}">${tb.tag}</text>`;
+  }
+  return out;
+}
 function svgOf(g,opt){
   opt=opt||{};
   const c=construct(g);
   const lock=opt.lockup||"mark";
-  const name=(S.brief?S.brief.name:"Brand").toUpperCase();
-  const cjk=/[　-ヿ一-鿿＀-￯]/.test(name);
-  const fit=(measure,cap)=>{
-    const fs=clamp(measure/(Math.max(name.length,2)*(cjk?1.12:.88)),5,cap);
-    return {fs:r2(fs),ls:r2(fs*(cjk?.04:.16)),len:cjk?"":` textLength="${measure}" lengthAdjust="spacing"`};
-  };
-  const face="Helvetica Neue,Arial,Hiragino Sans,Yu Gothic,Noto Sans JP,sans-serif";
-  const pad=opt.guides?34:0;
-  let vb=`${-pad} ${-pad} ${120+pad*2} ${120+pad*2}`, extra="";
-  if(lock==="stacked"){
-    vb="0 0 120 158";
-    const f=fit(104,15);
-    extra=`<text x="60" y="146" text-anchor="middle"${f.len} font-family="${face}" font-size="${f.fs}" font-weight="600" letter-spacing="${f.ls}" fill="${c.ink}">${name}</text>`;
-  }else if(lock==="horizontal"){
-    vb="-6 0 262 120";
-    const f=fit(112,21);
-    extra=`<text x="136" y="68"${f.len} font-family="${face}" font-size="${f.fs}" font-weight="600" letter-spacing="${f.ls}" fill="${c.ink}">${name}</text>`;
+  const pad=opt.guides&&lock==="mark"?34:0;
+  let vb=`${-pad} ${-pad} ${120+pad*2} ${120+pad*2}`;
+  let mark=c.body, type="", label=S.brief?S.brief.name:"Brand";
+  if(lock!=="mark"){
+    const T=S.type, tb=typeBlock();
+    label=tb.name;
+    const g0=T.gap;
+    if(lock==="text"){
+      const x=T.align==="left"?0:(T.align==="right"?tb.w:tb.w/2);
+      const anchor=T.align==="left"?"start":(T.align==="right"?"end":"middle");
+      mark="";
+      type=typeSvg(tb,x,tb.m.asc,anchor,c.ink);
+      vb=`0 0 ${r2(Math.max(tb.w,1))} ${r2(tb.h)}`;
+    }else if(lock==="stacked"){
+      /* Type aligns to the mark's own edges, the way a lockup is set. */
+      const W=Math.max(120,tb.w), H=120+g0+tb.h, mx=(W-120)/2;
+      const anchor=T.align==="left"?"start":(T.align==="right"?"end":"middle");
+      const x=T.align==="left"?mx:(T.align==="right"?mx+120:W/2);
+      mark=`<g transform="translate(${r2(mx)} 0)">${c.body}</g>`;
+      type=typeSvg(tb,x,120+g0+tb.m.asc,anchor,c.ink);
+      vb=`0 0 ${r2(W)} ${r2(H)}`;
+    }else{
+      const H=Math.max(120,tb.h), W=120+g0+tb.w, tx=120+g0;
+      const anchor=T.align==="left"?"start":(T.align==="right"?"end":"middle");
+      const x=T.align==="left"?tx:(T.align==="right"?tx+tb.w:tx+tb.w/2);
+      mark=`<g transform="translate(0 ${r2((H-120)/2)})">${c.body}</g>`;
+      type=typeSvg(tb,x,(H-tb.h)/2+tb.m.asc,anchor,c.ink);
+      vb=`0 0 ${r2(W)} ${r2(H)}`;
+    }
   }
-  const bg=opt.transparent?"":`<rect x="-60" y="-60" width="400" height="300" fill="${c.ground}"/>`;
+  const bg=opt.transparent?"":`<rect x="-200" y="-200" width="900" height="700" fill="${c.ground}"/>`;
   const gd=(opt.guides&&lock==="mark")?guidesOf(g,c):"";
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" role="img" aria-label="${name} — ${primaryLeaf(g)}">${bg}${c.body}${extra}${gd}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" role="img" aria-label="${esc(label)} — ${primaryLeaf(g)}">${bg}${mark}${type}${gd}</svg>`;
 }
 
 function symmetryOf(g){
@@ -1249,7 +1357,8 @@ function conceptOf(g){
     text:t("cp.body",t("leaf."+primaryLeaf(g)),phrase,c.atoms,t("cp.sym."+sym)),
     facts:[["fact.r",r2(primaryDim(g))+"u"],["fact.w",r2(g.w)+"u"],
            ["fact.cov",(c.coverage*100).toFixed(1)+"%"],["fact.atoms",c.atoms],
-           ["fact.ops",c.nodes.length],["fact.extent",r2(c.extent)+"u"],["fact.sym",t("sym."+sym)]]
+           ["fact.ops",c.nodes.length],["fact.extent",r2(c.extent)+"u"],["fact.sym",t("sym."+sym)],
+           ["fact.lock",t("lay."+S.lockup)],["fact.face",t("face."+S.type.face)]]
   };
 }
 
@@ -1877,7 +1986,7 @@ function pushTreeEdit(before,labelKey){
               t:Date.now(),reverted:false,note:""});
 }
 function renderEditor(){
-  $("#lockBtn").textContent=t("edit.lockup",t("lk."+S.lockup));
+  $("#lockBtn").textContent=t("edit.lockup",t("lay."+S.lockup));
   $("#monoBtn").textContent=S.mono?t("edit.monoOn"):t("edit.mono");
   $("#monoBtn").dataset.on=S.mono?"1":"0";
   $("#gdBtn").textContent=S.guides?t("edit.guidesOn"):t("edit.guides");
@@ -1931,7 +2040,67 @@ function renderEditor(){
     +ev.notes.map(n=>`<div class="reason"><i>—</i><span>${n}</span></div>`).join("");
 
   $("#treeCount").textContent=t("tree.branches",g.tree.length,c.atoms);
-  renderTree(); renderGlobals(); renderMutations(); renderLog();
+  renderTree(); renderGlobals(); renderType(); renderMutations(); renderLog();
+}
+const WEIGHTS=[300,400,500,600,700,800];
+function renderType(){
+  const T=S.type, box=$("#typePanel"); box.innerHTML="";
+  const row=(labelKey,node)=>{
+    const d=el("div","param");
+    d.innerHTML=`<div class="top"><b>${t(labelKey)}</b></div>`;
+    d.appendChild(node); box.appendChild(d); return d;
+  };
+  const chips=(opts,cur,onPick,keyPrefix)=>{
+    const c=el("div","chips");
+    opts.forEach(o=>{
+      const b=el("button","chip",t(keyPrefix+o));
+      b.dataset.on=o===cur?"1":"0";
+      b.onclick=()=>{onPick(o);};
+      c.appendChild(b);
+    });
+    return c;
+  };
+  const slider=(labelKey,key,lo,hi,step,fmt)=>{
+    const d=el("div","param");
+    d.innerHTML=`<div class="top"><b>${t(labelKey)}</b><var>${fmt?fmt(T[key]):r2(T[key])}</var></div>`;
+    const inp=el("input");
+    inp.type="range";inp.min=lo;inp.max=hi;inp.step=step;inp.value=T[key];
+    inp.oninput=()=>{T[key]=parseFloat(inp.value);renderEditor();renderExport();};
+    d.appendChild(inp); box.appendChild(d);
+  };
+
+  row("type.layout",chips(LAYOUTS,S.lockup,v=>{S.lockup=v;renderEditor();renderExport();},"lay."));
+
+  const faceSel=el("select");
+  faceSel.innerHTML=FACES.map(f=>`<option value="${f.id}" style="font-family:${faceAttr(f.css)}" ${f.id===T.face?"selected":""}>${t("face."+f.id)}</option>`).join("");
+  faceSel.onchange=()=>{T.face=faceSel.value;renderEditor();renderExport();};
+  const fr=row("type.face",faceSel);
+  fr.appendChild(el("div","hint",t("type.faceNote")));
+
+  const wSel=el("select");
+  wSel.innerHTML=WEIGHTS.map(w=>`<option ${w===T.weight?"selected":""}>${w}</option>`).join("");
+  wSel.onchange=()=>{T.weight=+wSel.value;renderEditor();renderExport();};
+  row("type.weight",wSel);
+
+  slider("type.size","size",8,44,1);
+  slider("type.track","track",-.04,.55,.01,v=>r2(v)+"em");
+  slider("type.gap","gap",0,52,1);
+  row("type.align",chips(["center","left","right"],T.align,v=>{T.align=v;renderEditor();renderExport();},"al."));
+
+  const up=el("div","chips");
+  const ub=el("button","chip",t("type.upper"));
+  ub.dataset.on=T.upper?"1":"0";
+  ub.onclick=()=>{T.upper=!T.upper;renderEditor();renderExport();};
+  up.appendChild(ub);
+  const ud=el("div","param"); ud.appendChild(up); box.appendChild(ud);
+
+  const tag=el("div","param");
+  tag.innerHTML=`<div class="top"><b>${t("type.tagline")}</b></div>`;
+  const ti=el("input"); ti.type="text"; ti.value=T.tagline; ti.spellcheck=false;
+  let tt=null;
+  ti.oninput=()=>{clearTimeout(tt);tt=setTimeout(()=>{T.tagline=ti.value;renderEditor();renderExport();},220);};
+  tag.appendChild(ti); box.appendChild(tag);
+  if(T.tagline.trim()) slider("type.tagScale","tagScale",.24,.8,.02);
 }
 function renderGlobals(){
   const g=S.working, p=$("#params"); p.innerHTML="";
@@ -2140,6 +2309,9 @@ function genomeJson(g,edits){
     tree:g.tree.map(b=>({primitive:b.leaf,operators:b.ops,mode:b.mode,role:b.role})),
     stroke:r2(g.w),scale:r2(g.scale),rotation:g.rot,cornerRadius:r2(g.rad),
     palette:g.pal,seed:g.seed,symmetry:symmetryOf(g),
+    lockup:{layout:S.lockup,typeface:S.type.face,stack:faceCss(S.type.face),
+            weight:S.type.weight,size:S.type.size,tracking:S.type.track,gap:S.type.gap,
+            capitals:S.type.upper,align:S.type.align,tagline:S.type.tagline||null},
     provenance:{brief:S.briefHash,pipelineSeed:S.seed,edits:edits,reversible:true}
   },null,2);
 }
@@ -2148,7 +2320,7 @@ function exportSvg(){
   const g=S.working,ev=evaluate(g,S.brief.cons);
   const flat=flattenSvg(svgOf({...g,mono:S.mono},{lockup:S.lockup}));
   const head=`<!-- LogoGenome ${g.id} · grammar ${g.gram} · brief ${S.briefHash} · edits ${S.log.filter(e=>!e.reverted).length} -->
-  <title>${S.brief.name} — ${primaryLeaf(g)}</title>
+  <title>${esc(S.brief.name)} — ${primaryLeaf(g)}</title>
   <desc>Logo Design Intelligence v15. overall ${ev.perception.overall}, 16px ${ev.perception.small}, collision ${ev.similarity.status}. Design collision screening only — not a trademark clearance.</desc>`;
   const cut=flat.indexOf(">")+1;
   return (flat.slice(0,cut)+"\n  "+head+flat.slice(cut))
@@ -2219,8 +2391,7 @@ $("#themeBtn").onclick=()=>{
 };
 $("#gdBtn").onclick=()=>{S.guides=!S.guides;renderEditor();};
 $("#lockBtn").onclick=()=>{
-  const o=["mark","stacked","horizontal"];
-  S.lockup=o[(o.indexOf(S.lockup)+1)%o.length];
+  S.lockup=LAYOUTS[(LAYOUTS.indexOf(S.lockup)+1)%LAYOUTS.length];
   renderEditor(); renderExport();
 };
 $("#monoBtn").onclick=()=>{S.mono=!S.mono;renderEditor();renderExport();};
