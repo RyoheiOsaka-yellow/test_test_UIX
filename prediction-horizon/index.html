@@ -158,10 +158,8 @@ const MONO = 'ui-monospace, "SFMono-Regular", Menlo, Consolas, "DejaVu Sans Mono
 const P = {
   bg      : '#04070b',
   grid    : 'rgba(110,180,205,0.055)',
-  gridHot : 'rgba(120,200,220,0.12)',
   label   : 'rgba(126,178,193,0.78)',
   faint   : 'rgba(110,160,175,0.42)',
-  bright  : '#cfeef7',
   ice     : '#e6f4ff',
   cyan    : '#3fe6df',
   teal    : '#31c9a8',
@@ -214,7 +212,6 @@ const S = {
   paused      : false,
   seed        : 41.7,
   t           : 0,          // model time (frozen while paused)
-  wall        : 0,          // wall time (always advances)
   tauE        : 0.44,       // evidence boundary position, in tau
   weights     : FAMILIES.map((_,i) => 0.55 + 0.35*hash(i*3.3)),
   locked      : FAMILIES.map(() => false),
@@ -223,7 +220,6 @@ const S = {
   fps         : 0,
   entHist     : new Float32Array(HIST),
   varHist     : new Float32Array(HIST),
-  phiHist     : new Float32Array(HIST),
   histN       : 0,
   metrics     : { ent:0.6, p:0.65, delta:0.47, conf:65.6, sig:0.307, varr:0.31 }
 };
@@ -387,7 +383,6 @@ function computeMetrics(){
   const i = S.histN % HIST;
   S.entHist[i] = ent;
   S.varHist[i] = clamp(vr*0.6, 0, 1);
-  S.phiHist[i] = 0.5 + 0.42*Math.sin(S.t*0.7 + mean*2.4) * (0.4 + 0.6*S.noise);
   S.histN++;
 }
 
@@ -601,8 +596,6 @@ function drawEvidence(){
 }
 
 /* ───────────────────────── the fan ───────────────────────── */
-const floaters = [];   // drifting probability read-outs
-
 function drawFan(){
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
@@ -1016,7 +1009,6 @@ function tick(now){
   const dt = Math.min((now - last)/1000, 0.05);
   last = now;
 
-  S.wall += dt;
   if (!S.paused) S.t += dt;
 
   fpsAcc += 1/Math.max(dt, 1e-4); fpsN++;
@@ -1132,7 +1124,7 @@ function reseed(){
   S.seed = 10 + (S.seed*7.31 % 990);
   S.locked = FAMILIES.map(() => false);
   S.histN = 0;
-  S.entHist.fill(0); S.varHist.fill(0); S.phiHist.fill(0);
+  S.entHist.fill(0); S.varHist.fill(0);
 }
 
 pauseBtn.addEventListener('click', () => setPaused(!S.paused));
