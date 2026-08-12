@@ -83,6 +83,24 @@ for the bundled server, which has no dependencies either.
 Chrome, Edge, Firefox, Safari 15+. Needs WebGL2. Works on phones and tablets
 with twin thumbsticks. Progress autosaves to `localStorage` every 20 seconds.
 
+### One file, no server
+
+```bash
+npm run build      # writes regolith.html
+```
+
+**[`regolith.html`](regolith.html)** is the whole game in a single document —
+every module, the stylesheet and the boot screen folded together, ~260 KB,
+no server and no network. Double-click it.
+
+The game does not need a build step and this is not one: it exists because ES
+modules cannot be loaded over `file://`, so opening `index.html` directly gets
+you a blank page. `build/single-file.mjs` gives each module its own scope inside
+a function and stands a nine-line registry in for `import`; nothing is minified
+and nothing is rewritten cleverly. Browsers refuse `localStorage` to `file://`
+pages, so the single-file build simply does not save — everything else,
+including the whole mission chain, works.
+
 It is a static site with no build step, so GitHub Pages needs nothing special
 beyond pointing at the directory this README lives in. Every path in the page is
 relative, so it works from a subdirectory without configuration.
@@ -352,6 +370,11 @@ position.
 ```
 index.html          shell, boot screen, HUD markup
 server.js           zero-dependency static server
+regolith.html       the whole game as one file, built by build/
+build/
+  single-file.mjs   folds src/ and the stylesheet into regolith.html
+test/
+  field-agreement.mjs  the invariants, headless, no framework
 src/
   main.js           bootstrap, loading, menus, frame loop        341
   core/
