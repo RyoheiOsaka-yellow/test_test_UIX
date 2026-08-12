@@ -85,6 +85,22 @@ npm run preview
 There is nothing to download and no `public/` directory. The first frame costs a few hundred
 milliseconds of shader compilation and geometry generation; after that nothing is ever loaded.
 
+### One file, no build
+
+[**`elemental-sandbox.html`**](elemental-sandbox.html) is the whole thing in a single 723 KB file —
+markup, styles, Three.js and every shader inlined. Double-click it. It runs from `file://` with no
+server, no install and no network at all: open it with the machine offline and nothing changes,
+because there is nothing to fetch.
+
+Rebuild it after editing `src/` with:
+
+```bash
+npm run build:single
+```
+
+That builds a classic-script bundle rather than an ES module — Chrome treats `file://` as an opaque
+origin and refuses to load module scripts from one — and `scripts/inline.mjs` folds it into the HTML.
+
 ---
 
 ## Controls
@@ -178,6 +194,9 @@ src/
   ui/             HUD, the auto-generated lil-gui editor, glyphs, styles
   utils/          Maths and seeded RNG, event emitter, disposal
   world/          Environment (stage lighting + PMREM probe), floor, dust, caster
+scripts/          The single-file bundler
+test/             Behaviour checks
+docs/             README captures
 ```
 
 ### Checks
@@ -195,7 +214,9 @@ the editor keep running, **X** clearing every live effect, presets round-trippin
 clamping its circle to range, and the orbit/zoom bindings.
 
 It runs headless on a software rasteriser, so it needs no GPU. Set `ES_URL` to point somewhere else
-and `ES_CHROME` to use a specific Chromium build.
+and `ES_CHROME` to use a specific Chromium build — pointing `ES_URL` at
+`file://…/elemental-sandbox.html` is how the single-file build is checked for parity with the
+served one.
 
 ### The editor
 
