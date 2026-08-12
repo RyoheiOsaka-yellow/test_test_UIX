@@ -1,0 +1,13 @@
+{
+  "name": "regolith-anaxagoras",
+  "version": "1.0.0",
+  "private": true,
+  "description": "REGOLITH — The Silence at Anaxagoras. A lunar rover survey game in raw WebGL2, no build step and no dependencies.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js 5173",
+    "dev": "node server.js 5173",
+    "test": "node test/field-agreement.mjs"
+  },
+  "engines": { "node": ">=18" }
+}
