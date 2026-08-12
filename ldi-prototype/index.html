@@ -22,8 +22,10 @@
   --conflict:#9E2B1B;
   --grid:rgba(26,24,23,.07);
   --shadow:0 1px 0 rgba(26,24,23,.05), 0 8px 24px -18px rgba(26,24,23,.5);
-  --mono:ui-monospace,"SF Mono",SFMono-Regular,"Cascadia Mono",Menlo,Consolas,monospace;
-  --sans:"Helvetica Neue",Helvetica,Arial,ui-sans-serif,system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,"Cascadia Mono",Menlo,Consolas,
+         "Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",Meiryo,monospace;
+  --sans:"Helvetica Neue",Helvetica,Arial,"Hiragino Sans","Hiragino Kaku Gothic ProN",
+         "Yu Gothic","Noto Sans JP",Meiryo,ui-sans-serif,system-ui,sans-serif;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
@@ -75,6 +77,15 @@ button,input,select,textarea{font:inherit; color:inherit}
 }
 .num{font-variant-numeric:tabular-nums}
 
+/* Japanese needs tighter tracking on micro-labels and more leading in prose */
+:root[lang="ja"] .lbl{letter-spacing:.08em}
+:root[lang="ja"] .intro{line-height:1.9; line-break:strict}
+:root[lang="ja"] .steps li,
+:root[lang="ja"] .rule,
+:root[lang="ja"] .empty{line-break:strict}
+:root[lang="ja"] .thesis{line-height:1.75}
+:root[lang="ja"] .reason span{line-height:1.7}
+
 /* ============================================================ Shell */
 .shell{display:grid; grid-template-columns:236px minmax(0,1fr); min-height:100vh}
 
@@ -85,7 +96,8 @@ button,input,select,textarea{font:inherit; color:inherit}
 }
 .brand{padding:18px 18px 14px; border-bottom:1px solid var(--line)}
 .brand h1{font-size:15px; line-height:1.25}
-.brand .v{margin-top:6px; display:flex; gap:8px; align-items:center}
+.brand .sub{margin-top:4px; font-size:11px; color:var(--ink-3)}
+.brand .v{margin-top:8px; display:flex; gap:8px; align-items:center}
 .tag{
   font-size:10px; letter-spacing:.1em; text-transform:uppercase; padding:2px 6px;
   border:1px solid var(--line-2); color:var(--ink-2); border-radius:2px;
@@ -108,6 +120,7 @@ button,input,select,textarea{font:inherit; color:inherit}
 .step[data-on="1"] .i{color:var(--accent)}
 .step[disabled]{opacity:.38; cursor:not-allowed}
 .railfoot{padding:12px 18px 16px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:10px}
+.railfoot .row-wrap{gap:6px}
 
 /* ---- Main */
 .main{display:flex; flex-direction:column; min-width:0}
@@ -136,6 +149,7 @@ button,input,select,textarea{font:inherit; color:inherit}
 .btn[data-kind="ghost"]:hover{color:var(--ink); background:var(--panel-2)}
 .btn:disabled{opacity:.4; cursor:not-allowed}
 .btn-sm{padding:4px 8px; font-size:11px}
+.btn[data-on="1"]{border-color:var(--accent); color:var(--accent)}
 
 input[type=text]{
   background:var(--sunk); border:1px solid var(--line); color:var(--ink);
@@ -163,11 +177,25 @@ input[type=range]{width:100%; accent-color:var(--accent); background:none}
 .chip[data-on="1"]{background:var(--accent-wash); border-color:var(--accent); color:var(--ink)}
 .toggle{display:flex; align-items:center; gap:9px; padding:7px 0; cursor:pointer; border-bottom:1px dashed var(--line)}
 .toggle:last-child{border-bottom:0}
-.toggle input{accent-color:var(--accent); width:14px; height:14px}
+.toggle input{accent-color:var(--accent); width:14px; height:14px; flex:none}
 .toggle span{font-size:12px; color:var(--ink-2)}
-.rule{display:flex; gap:10px; font-size:11.5px; color:var(--ink-2); padding:6px 0; border-bottom:1px dashed var(--line)}
+.rule{display:flex; gap:10px; font-size:11.5px; color:var(--ink-2); padding:6px 0; border-bottom:1px dashed var(--line); line-height:1.65}
 .rule:last-child{border-bottom:0}
-.rule b{color:var(--accent); font-weight:400}
+.rule b{color:var(--accent); font-weight:400; flex:none}
+
+/* ---- How to use */
+.steps{list-style:none; margin:0; padding:4px 0; counter-reset:s}
+.steps li{
+  counter-increment:s; display:grid; grid-template-columns:30px 1fr; gap:10px;
+  padding:9px 16px; border-bottom:1px dashed var(--line);
+  font-size:12px; color:var(--ink-2); line-height:1.7;
+}
+.steps li:last-child{border-bottom:0}
+.steps li::before{
+  content:counter(s,decimal-leading-zero); color:var(--accent);
+  font-size:10.5px; font-variant-numeric:tabular-nums; padding-top:3px;
+}
+.steps li b{color:var(--ink); font-weight:400}
 
 /* ---- Grids */
 .grid-4{display:grid; grid-template-columns:repeat(auto-fill,minmax(232px,1fr)); gap:14px}
@@ -191,7 +219,7 @@ input[type=range]{width:100%; accent-color:var(--accent); background:none}
 /* ---- Funnel */
 .funnel{display:flex; flex-direction:column; gap:2px; margin-top:18px}
 .fstage{
-  display:grid; grid-template-columns:186px minmax(0,1fr) 92px; gap:14px; align-items:center;
+  display:grid; grid-template-columns:186px minmax(0,1fr) 100px; gap:14px; align-items:center;
   padding:11px 14px; background:var(--panel); border:1px solid var(--line); border-radius:3px;
 }
 .fstage .track{height:20px; background:var(--sunk); border-radius:2px; overflow:hidden; position:relative}
@@ -201,13 +229,13 @@ input[type=range]{width:100%; accent-color:var(--accent); background:none}
 .fstage .rt small{display:block; color:var(--ink-3); font-size:10px}
 .fname{display:flex; flex-direction:column; gap:2px}
 .fname b{font-weight:400; font-size:12.5px}
-.fname span{font-size:10px; color:var(--ink-3); letter-spacing:.06em; text-transform:uppercase}
+.fname span{font-size:10px; color:var(--ink-3); letter-spacing:.06em}
 
 .gram-table{width:100%; border-collapse:collapse; font-size:11.5px}
 .gram-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:3px; background:var(--panel); max-height:340px; overflow-y:auto}
 .gram-table th{
   position:sticky; top:0; background:var(--panel-2); text-align:left; padding:8px 12px;
-  font-weight:400; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3);
+  font-weight:400; font-size:10px; letter-spacing:.1em; color:var(--ink-3);
   border-bottom:1px solid var(--line); white-space:nowrap;
 }
 .gram-table td{padding:7px 12px; border-bottom:1px solid var(--line); white-space:nowrap; font-variant-numeric:tabular-nums}
@@ -222,13 +250,13 @@ input[type=range]{width:100%; accent-color:var(--accent); background:none}
 }
 .stage-art svg{width:78%; height:78%; display:block}
 .cand .meta{padding:9px 11px; display:flex; flex-direction:column; gap:6px}
-.cand .id{display:flex; justify-content:space-between; font-size:10.5px; color:var(--ink-3)}
+.cand .id{display:flex; justify-content:space-between; gap:6px; font-size:10.5px; color:var(--ink-3)}
 .scorerow{display:flex; align-items:center; gap:6px}
 .scorebar{flex:1; height:3px; background:var(--panel-2); border-radius:2px; overflow:hidden}
 .scorebar i{display:block; height:100%; background:var(--pass)}
 .pill{
-  font-size:9.5px; letter-spacing:.1em; text-transform:uppercase; padding:2px 5px;
-  border-radius:2px; border:1px solid currentColor;
+  font-size:9.5px; letter-spacing:.06em; padding:2px 5px;
+  border-radius:2px; border:1px solid currentColor; white-space:nowrap;
 }
 .pill[data-s="clear"]{color:var(--pass)}
 .pill[data-s="review"]{color:var(--review)}
@@ -262,7 +290,7 @@ input[type=range]{width:100%; accent-color:var(--accent); background:none}
 .params{display:flex; flex-direction:column; gap:0}
 .param{padding:10px 14px; border-bottom:1px solid var(--line)}
 .param:last-child{border-bottom:0}
-.param .top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px}
+.param .top{display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:5px}
 .param .top b{font-weight:400; font-size:11.5px; color:var(--ink-2)}
 .param .top var{font-style:normal; font-size:11.5px; font-variant-numeric:tabular-nums}
 .param .top var[data-dirty="1"]{color:var(--accent)}
@@ -282,7 +310,7 @@ input[type=range]{width:100%; accent-color:var(--accent); background:none}
 .logrow .ix{color:var(--ink-3); font-variant-numeric:tabular-nums; font-size:10px}
 .logrow .tx{color:var(--ink-2); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
 .logrow[data-rev="1"] .tx{color:var(--ink-3); text-decoration:line-through}
-.empty{padding:16px 14px; color:var(--ink-3); font-size:11.5px}
+.empty{padding:16px 14px; color:var(--ink-3); font-size:11.5px; line-height:1.7}
 
 .sechead{
   display:flex; justify-content:space-between; align-items:center; gap:10px;
@@ -321,7 +349,7 @@ pre{
 
 .note{
   border-left:2px solid var(--accent); padding:10px 14px; background:var(--panel);
-  font-size:11.5px; color:var(--ink-2); line-height:1.55; margin-top:18px; max-width:72ch;
+  font-size:11.5px; color:var(--ink-2); line-height:1.65; margin-top:18px; max-width:72ch;
 }
 .split{display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap}
 .sechead h3{font-size:12px; letter-spacing:.02em}
@@ -336,7 +364,7 @@ pre{
   .step{padding:7px 10px}
   .status{left:0}
   .brief,.editor,.export{grid-template-columns:1fr}
-  .fstage{grid-template-columns:130px minmax(0,1fr) 78px}
+  .fstage{grid-template-columns:130px minmax(0,1fr) 86px}
 }
 @media (prefers-reduced-motion:reduce){
   *{transition:none !important; animation:none !important}
@@ -347,102 +375,100 @@ pre{
   <aside class="rail">
     <div class="brand">
       <h1>Logo Design<br>Intelligence</h1>
+      <div class="sub" data-t="brand.sub"></div>
       <div class="v">
         <span class="tag">v15</span>
-        <span class="tag">prototype</span>
+        <span class="tag" data-t="brand.tag"></span>
       </div>
     </div>
-    <nav class="chain" id="chain"><span class="lbl">Pipeline</span></nav>
+    <nav class="chain" id="chain"><span class="lbl" data-t="rail.pipeline"></span></nav>
     <div class="railfoot">
-      <div class="lbl">Source of truth</div>
-      <div style="font-size:11px;color:var(--ink-2);line-height:1.5">
-        LogoGenome + ConstructionGraph.<br>No prompt-to-image path exists in this build.
+      <div class="lbl" data-t="rail.truth"></div>
+      <div style="font-size:11px;color:var(--ink-2);line-height:1.7" data-t="rail.truthBody"></div>
+      <div class="row-wrap">
+        <button class="btn btn-sm" id="langBtn" data-kind="ghost">EN</button>
+        <button class="btn btn-sm" id="themeBtn" data-kind="ghost" data-t="rail.theme"></button>
       </div>
-      <button class="btn btn-sm" id="themeBtn" data-kind="ghost" style="align-self:flex-start">◐ Theme</button>
     </div>
   </aside>
 
   <main class="main">
     <header class="topbar">
       <div class="where">
-        <span class="lbl" id="crumb">Stage 01 — 02</span>
-        <h2 id="vtitle">Meaning</h2>
+        <span class="lbl" id="crumb"></span>
+        <h2 id="vtitle"></h2>
       </div>
       <div class="tools" id="tools"></div>
     </header>
 
     <!-- ========== 1. BRIEF ========== -->
     <section class="view" data-view="brief">
-      <p class="intro">
-        The brief is the only free-text surface in the system. It is compiled once into a meaning vector,
-        then never consulted again — every downstream stage reads structure, not prose. Changing anything
-        here invalidates the run.
-      </p>
+      <p class="intro" data-t="brief.intro"></p>
 
       <div class="brief">
         <div class="card pad">
           <div class="field">
-            <label class="lbl" for="fName">Brand name</label>
-            <input type="text" id="fName" value="Halcyon Grid" spellcheck="false">
+            <label class="lbl" for="fName" data-t="brief.name"></label>
+            <input type="text" id="fName" spellcheck="false">
           </div>
           <div class="field">
-            <label class="lbl" for="fCat">Category</label>
+            <label class="lbl" for="fCat" data-t="brief.cat"></label>
             <select id="fCat">
-              <option>Grid-scale energy storage</option>
-              <option>Payments infrastructure</option>
-              <option>Diagnostic instruments</option>
-              <option>Industrial robotics</option>
-              <option>Climate measurement</option>
-              <option>Freight logistics</option>
+              <option value="c1" data-t="cat.c1"></option>
+              <option value="c2" data-t="cat.c2"></option>
+              <option value="c3" data-t="cat.c3"></option>
+              <option value="c4" data-t="cat.c4"></option>
+              <option value="c5" data-t="cat.c5"></option>
+              <option value="c6" data-t="cat.c6"></option>
             </select>
           </div>
           <div class="field">
-            <label class="lbl" for="fAud">Primary audience</label>
-            <input type="text" id="fAud" value="Utility procurement engineers" spellcheck="false">
+            <label class="lbl" for="fAud" data-t="brief.aud"></label>
+            <input type="text" id="fAud" spellcheck="false">
           </div>
           <div class="field">
-            <span class="lbl">Meaning attributes <span class="hint" id="attrCount">— 0 of 5 chosen</span></span>
+            <span class="lbl"><span data-t="brief.attrs"></span> <span class="hint" id="attrCount"></span></span>
             <div class="chips" id="attrs"></div>
           </div>
         </div>
 
         <div class="stack-16">
           <div class="card">
-            <div class="sechead"><h3>Construction constraints</h3></div>
+            <div class="sechead"><h3 data-t="brief.cons"></h3></div>
             <div class="pad" style="padding-top:4px;padding-bottom:8px" id="cons"></div>
           </div>
           <div class="card">
-            <div class="sechead"><h3>Hard rules carried from the pack</h3></div>
-            <div class="pad" style="padding-top:8px;padding-bottom:12px">
-              <div class="rule"><b>—</b><span>No trademark or legal clearance claim is produced. Screening is design-collision only.</span></div>
-              <div class="rule"><b>—</b><span>Shape psychology is never asserted as deterministic fact.</span></div>
-              <div class="rule"><b>—</b><span>Geometry stays parametric; paths are flattened at export, not before.</span></div>
-              <div class="rule"><b>—</b><span>Every edit is reversible and carries provenance.</span></div>
-            </div>
+            <div class="sechead"><h3 data-t="brief.rules"></h3></div>
+            <div class="pad" style="padding-top:8px;padding-bottom:12px" id="rules"></div>
           </div>
         </div>
       </div>
 
       <div class="note">
-        <b>Compiled meaning vector</b> — <span id="mvec">—</span>
+        <b data-t="brief.mvec"></b> — <span id="mvec">—</span>
+      </div>
+
+      <div class="card" style="margin-top:20px">
+        <div class="sechead">
+          <h3 data-t="howto.title"></h3>
+          <span class="lbl" data-t="howto.kbd"></span>
+        </div>
+        <ol class="steps" id="howto"></ol>
       </div>
     </section>
 
     <!-- ========== 2. TERRITORIES / GENOME ========== -->
     <section class="view" data-view="terr">
-      <p class="intro">
-        Four territories are derived from the meaning vector. Each one owns a set of grammars — parameter
-        windows over the genome, not pictures. Deselect a territory to remove its grammars from the search.
-      </p>
+      <p class="intro" data-t="terr.intro"></p>
       <div class="grid-4" id="terrGrid" style="margin-top:20px"></div>
 
       <div class="split" style="margin-top:26px">
         <div class="card" style="flex:1 1 380px;min-width:300px">
-          <div class="sechead"><h3>LogoGenome — schema</h3><span class="lbl" id="genomeSrc">sample</span></div>
+          <div class="sechead"><h3 data-t="terr.schema"></h3><span class="lbl" id="genomeSrc"></span></div>
           <pre id="genomeSchema"></pre>
         </div>
         <div class="card" style="flex:1 1 300px;min-width:280px">
-          <div class="sechead"><h3>ConstructionGraph — same genome</h3></div>
+          <div class="sechead"><h3 data-t="terr.graph"></h3></div>
           <div id="graphDemo"></div>
           <div class="stage-art" style="border-top:1px solid var(--line);border-bottom:0;aspect-ratio:auto;padding:22px" id="graphArt"></div>
         </div>
@@ -451,23 +477,17 @@ pre{
 
     <!-- ========== 3. SEARCH ========== -->
     <section class="view" data-view="search">
-      <p class="intro">
-        Grammars are sampled, not prompted. Each grammar emits candidates inside its own parameter window;
-        the population is then reduced by three independent screens. Counts below are live from the run.
-      </p>
+      <p class="intro" data-t="search.intro"></p>
       <div class="funnel" id="funnel"></div>
 
       <div class="card" style="margin-top:24px">
         <div class="sechead">
-          <h3>Grammar table</h3>
-          <span class="lbl" id="gramCount">—</span>
+          <h3 data-t="search.table"></h3>
+          <span class="lbl" id="gramCount"></span>
         </div>
         <div class="gram-wrap">
           <table class="gram-table">
-            <thead><tr>
-              <th>Grammar</th><th>Territory</th><th>Archetype</th><th>Sampled</th>
-              <th>Valid</th><th>Perceived</th><th>Clear</th><th>Yield</th>
-            </tr></thead>
+            <thead><tr id="gramHead"></tr></thead>
             <tbody id="gramBody"></tbody>
           </table>
         </div>
@@ -476,13 +496,9 @@ pre{
 
     <!-- ========== 4. SCREENING ========== -->
     <section class="view" data-view="screen">
-      <p class="intro">
-        Survivors are clustered by construction distance and one representative is taken per cluster, so the
-        set spans the space instead of repeating its densest corner. Screening status is a design-collision
-        signal — it is not a trademark opinion.
-      </p>
+      <p class="intro" data-t="screen.intro"></p>
       <div class="row-wrap" style="margin:18px 0 14px">
-        <span class="lbl">Filter</span>
+        <span class="lbl" data-t="screen.filter"></span>
         <div class="chips" id="screenFilters"></div>
         <span class="hint" id="screenCount"></span>
       </div>
@@ -497,12 +513,12 @@ pre{
             <div class="stagebar">
               <div class="row-wrap">
                 <span class="lbl" id="editId">—</span>
-                <span class="pill" id="editStatus" data-s="clear">clear</span>
+                <span class="pill" id="editStatus" data-s="clear"></span>
               </div>
               <div class="row-wrap">
-                <button class="btn btn-sm" id="lockBtn">Lockup: mark</button>
-                <button class="btn btn-sm" id="monoBtn">1-colour test</button>
-                <button class="btn btn-sm" id="resetBtn" data-kind="ghost">Reset to search state</button>
+                <button class="btn btn-sm" id="lockBtn"></button>
+                <button class="btn btn-sm" id="monoBtn"></button>
+                <button class="btn btn-sm" id="resetBtn" data-kind="ghost"></button>
               </div>
             </div>
             <div class="canvas">
@@ -516,8 +532,8 @@ pre{
 
           <div class="card">
             <div class="sechead">
-              <h3>Edit log — every change reversible</h3>
-              <span class="lbl" id="logCount">0 edits</span>
+              <h3 data-t="edit.log"></h3>
+              <span class="lbl" id="logCount"></span>
             </div>
             <div class="log" id="logList"></div>
           </div>
@@ -525,15 +541,15 @@ pre{
 
         <div class="stack-16">
           <div class="card">
-            <div class="sechead"><h3>Re-test</h3><span class="lbl">live</span></div>
+            <div class="sechead"><h3 data-t="edit.retest"></h3><span class="lbl" data-t="edit.live"></span></div>
             <div class="metrics" id="metrics"></div>
           </div>
           <div class="card">
-            <div class="sechead"><h3>Why it scores that way</h3></div>
+            <div class="sechead"><h3 data-t="edit.why"></h3></div>
             <div class="reasons" id="reasons"></div>
           </div>
           <div class="card">
-            <div class="sechead"><h3>Genome parameters</h3><span class="lbl">structured</span></div>
+            <div class="sechead"><h3 data-t="edit.params"></h3><span class="lbl" data-t="edit.structured"></span></div>
             <div class="params" id="params"></div>
           </div>
         </div>
@@ -542,30 +558,27 @@ pre{
 
     <!-- ========== 6. EXPORT ========== -->
     <section class="view" data-view="export">
-      <p class="intro">
-        Export flattens the construction graph to paths — the last possible moment. The genome and the graph
-        travel with the file, so any exported mark can be re-opened, re-tested and re-edited without loss.
-      </p>
+      <p class="intro" data-t="export.intro"></p>
       <div class="export">
         <div class="stack-16">
           <div class="card">
             <div class="sechead">
-              <h3>SVG output</h3>
+              <h3 data-t="export.svg"></h3>
               <div class="row-wrap">
-                <button class="btn btn-sm" id="copySvg">Copy</button>
-                <button class="btn btn-sm" id="dlSvg" data-kind="primary">Download .svg</button>
+                <button class="btn btn-sm" id="copySvg" data-t="export.copy"></button>
+                <button class="btn btn-sm" id="dlSvg" data-kind="primary" data-t="export.dl"></button>
               </div>
             </div>
             <pre id="svgCode"></pre>
           </div>
           <div class="card">
-            <div class="sechead"><h3>Acceptance</h3><span class="lbl" id="acceptState">—</span></div>
+            <div class="sechead"><h3 data-t="export.accept"></h3><span class="lbl" id="acceptState">—</span></div>
             <div class="reasons" id="acceptList"></div>
           </div>
         </div>
         <div class="stack-16">
           <div class="card">
-            <div class="sechead"><h3>Provenance</h3></div>
+            <div class="sechead"><h3 data-t="export.prov"></h3></div>
             <dl class="kv" id="prov"></dl>
           </div>
           <div class="card">
@@ -575,7 +588,7 @@ pre{
           <div class="card">
             <div class="sechead">
               <h3>LogoGenome</h3>
-              <button class="btn btn-sm" id="copyGenome" data-kind="ghost">Copy JSON</button>
+              <button class="btn btn-sm" id="copyGenome" data-kind="ghost" data-t="export.copyJson"></button>
             </div>
             <pre id="genomeCode"></pre>
           </div>
@@ -586,22 +599,408 @@ pre{
 </div>
 
 <div class="status">
-  <span><span class="dot" id="runDot" data-s="idle"></span><b id="runState">idle</b></span>
-  <span>brief <b id="sBrief">—</b></span>
-  <span>seed <b id="sSeed">—</b></span>
-  <span>grammars <b id="sGram">0</b></span>
-  <span>candidates <b id="sCand">0</b></span>
-  <span>representatives <b id="sRep">0</b></span>
-  <span>edits <b id="sEdit">0</b></span>
+  <span><span class="dot" id="runDot" data-s="idle"></span><b id="runState"></b></span>
+  <span><span data-t="st.brief"></span> <b id="sBrief">—</b></span>
+  <span><span data-t="st.seed"></span> <b id="sSeed">—</b></span>
+  <span><span data-t="st.gram"></span> <b id="sGram">0</b></span>
+  <span><span data-t="st.cand"></span> <b id="sCand">0</b></span>
+  <span><span data-t="st.rep"></span> <b id="sRep">0</b></span>
+  <span><span data-t="st.edit"></span> <b id="sEdit">0</b></span>
 </div>
 
 <script>
 "use strict";
 /* ==========================================================================
-   0. Deterministic primitives
+   0. Copy — every user-facing string. Identifiers (grammar ids, graph op
+   names, archetype enums, palette ids) stay in English: they are data.
+   ========================================================================== */
+const TXT={
+ja:{
+ "brand.sub":"ロゴ設計インテリジェンス",
+ "brand.tag":"プロトタイプ",
+ "rail.pipeline":"パイプライン",
+ "rail.truth":"真実の源",
+ "rail.truthBody":"LogoGenome と ConstructionGraph。このビルドにプロンプト→画像の経路は存在しません。",
+ "rail.theme":"◐ テーマ",
+
+ "brief.intro":"ブリーフはシステム内で唯一の自由記述面です。ここで一度だけ意味ベクトルにコンパイルされ、以降の工程は散文ではなく構造だけを読みます。この画面を変更すると実行結果は無効になり、再実行が必要になります。",
+ "brief.name":"ブランド名",
+ "brief.cat":"カテゴリ",
+ "brief.aud":"主要オーディエンス",
+ "brief.attrs":"意味属性",
+ "brief.attrCount":"— {0} / 5 選択",
+ "brief.cons":"構築上の制約",
+ "brief.rules":"ビルドパックから引き継いだ厳格ルール",
+ "brief.mvec":"コンパイル済み意味ベクトル",
+ "def.name":"Halcyon Grid",
+ "def.aud":"電力会社の調達エンジニア",
+
+ "cat.c1":"大規模電力貯蔵","cat.c2":"決済インフラ","cat.c3":"診断機器",
+ "cat.c4":"産業用ロボティクス","cat.c5":"気候計測","cat.c6":"貨物ロジスティクス",
+
+ "rule.1":"商標および法的クリアランスの主張は生成しません。スクリーニングはデザイン衝突のみを扱います。",
+ "rule.2":"形状心理学を決定論的な事実として断定しません。",
+ "rule.3":"ジオメトリはパラメトリックのまま保持し、パスへの変換はエクスポート時のみ行います。",
+ "rule.4":"すべての編集は取り消し可能で、来歴を保持します。",
+
+ "howto.title":"操作方法",
+ "howto.kbd":"← → でステージ移動",
+ "howto.1":"<b>01 意味</b> — ブランド名・カテゴリ・オーディエンスを入力し、意味属性を最大 5 つ選ぶ。制約のチェックはスコアの判定基準に直接効く。右上の「パイプラインを実行」で確定。",
+ "howto.2":"<b>02 ゲノム</b> — 4 つのテリトリーカードをクリックして選択／解除（最低 1 つは残る）。下段でゲノムのスキーマと、それが生む構築グラフを確認できる。",
+ "howto.3":"<b>03 探索</b> — 「2,000 候補を探索」で再サンプリング。ファネルは各スクリーンの通過数、表はグラマー別の歩留まりを示す。",
+ "howto.4":"<b>04 知覚</b> — 24 の代表が並ぶ。クリックで選択、ダブルクリックでそのままエディタへ。フィルタで衝突状態や上位のみに絞れる。",
+ "howto.5":"<b>05 人手編集</b> — 右のスライダーとセレクトでゲノムを直接動かす。スコアは即座に再計算され探索時からの差分が出る。編集ログの「取り消す」で 1 件ずつ戻せる。",
+ "howto.6":"<b>06 エクスポート</b> — SVG をコピーまたはダウンロード。ゲノム・構築グラフ・来歴が付随し、受け入れ判定の全項目が並ぶ。",
+
+ "terr.intro":"意味ベクトルから 4 つのテリトリーを導出します。各テリトリーが保有するのは絵ではなくグラマー — ゲノム上のパラメータ窓です。テリトリーを選択解除すると、そのグラマーは探索から外れます。",
+ "terr.schema":"LogoGenome — スキーマ",
+ "terr.graph":"ConstructionGraph — 同一ゲノム",
+ "terr.grammars":"{0} グラマー",
+
+ "search.intro":"グラマーはプロンプトではなくサンプリングされます。各グラマーは自身のパラメータ窓の内側で候補を生成し、母集団は 3 つの独立したスクリーンで絞り込まれます。以下の数値は実行結果の実測値です。",
+ "search.table":"グラマー表",
+ "search.active":"{0} 件が有効",
+ "th.gram":"グラマー","th.terr":"テリトリー","th.arch":"アーキタイプ","th.sampled":"採取",
+ "th.valid":"妥当","th.perc":"知覚","th.clear":"クリア","th.yield":"歩留まり",
+
+ "fn.gram":"グラマー","fn.gramS":"パラメータ窓","fn.gramD":"有効",
+ "fn.cand":"候補","fn.candS":"サンプリングされたゲノム","fn.candD":"生成",
+ "fn.valid":"構造妥当","fn.validS":"構築スクリーン",
+ "fn.perc":"知覚通過","fn.percS":"小サイズ＋コントラスト",
+ "fn.clear":"衝突クリア","fn.clearS":"コーパス距離",
+ "fn.rep":"代表","fn.repS":"クラスタ分散","fn.repD":"エディタへ",
+ "fn.of":"{0} 件中",
+
+ "screen.intro":"生存候補を構築距離でクラスタリングし、各クラスタから代表を 1 つ取ります。密集した一角を繰り返すのではなく、空間全体を張るためです。スクリーニング状態はデザイン衝突のシグナルであり、商標に関する見解ではありません。",
+ "screen.filter":"フィルタ",
+ "f.all":"すべて","f.clear":"クリア","f.review":"要確認","f.top":"上位 25%",
+ "screen.count":"代表 {1} 件中 {0} 件を表示",
+ "st.clear":"クリア","st.review":"要確認","st.conflict":"衝突",
+
+ "edit.log":"編集ログ — すべて取り消し可能",
+ "edit.logCount":"{0} 件の編集",
+ "edit.logEmpty":"まだ編集はありません。ここでの変更はすべて変更前の値とともに記録され、1 件ずつ取り消せます。",
+ "edit.retest":"再テスト","edit.live":"ライブ",
+ "edit.why":"スコアの根拠",
+ "edit.params":"ゲノムパラメータ","edit.structured":"構造化",
+ "edit.lockup":"ロックアップ: {0}",
+ "lk.mark":"マークのみ","lk.stacked":"縦組み","lk.horizontal":"横組み",
+ "edit.mono":"単色テスト","edit.monoOn":"単色: ON",
+ "edit.reset":"探索時の状態に戻す",
+ "edit.none":"候補が選択されていません。",
+ "edit.revert":"取り消す","edit.reverted":"取り消し済み",
+ "edit.revertOf":"{0} の取り消し",
+ "edit.reversed":"白抜き",
+
+ "m.overall":"総合","m.small":"16px 可読性","m.contrast":"コントラスト","m.distinct":"独自性",
+ "m.economy":"構築の経済性","m.balance":"光学バランス","m.proximity":"コーパス近接度",
+
+ "p.w":"ストローク太さ","p.r":"主半径","p.n":"個数","p.gap":"開口 / 間隙",
+ "p.rot":"回転","p.rad":"角の丸み","p.fill":"カウンター充填",
+ "p.arch":"アーキタイプ","p.sym":"対称性","p.pal":"パレット",
+
+ "v.fail1":"ストロークが構築下限 2.2u を下回っています。",
+ "v.fail2":"ストローク／半径比がカウンター空間を潰しています。",
+ "v.fail3":"インク被覆率が下限 5.5% 未満 — 明るい地でマークが消えます。",
+ "v.fail4":"インク被覆率が上限 46% 超 — 塗り潰しの塊として読まれます。",
+ "v.fail5":"アトム数が構築予算 16 を超えています。",
+ "v.fail6":"弧の連続性が閾値未満 — リングがリングとして読めなくなります。",
+ "n.small0":"16px でストロークは {0}px — 再現下限 0.55px を下回ります。",
+ "n.small1":"16px でストロークは {0}px を保持し、再現下限に余裕があります。",
+ "n.cov":"インク被覆率 {0}%、アトム {1} 個、構築オペレーション {2} 件。",
+ "n.contrast":"インクと地のパレットコントラスト {0}:1。",
+ "n.near":"最も近いコーパス構成は {0}、一致度 {1}% — デザイン衝突のみで、商標に関する見解ではありません。",
+ "n.favicon":"ブリーフの 16px 制約を満たしていません。",
+ "n.single":"この被覆率では単色フォールバックでアクセントの分離が失われます。",
+ "n.engrave":"アトム 7 個超のため単線彫刻の制約に無理があります。",
+
+ "export.intro":"エクスポートで初めて構築グラフをパスへフラット化します — 可能な限り最後の瞬間です。ゲノムとグラフはファイルに同梱されるため、書き出したマークは損失なく再オープン・再テスト・再編集できます。",
+ "export.svg":"SVG 出力","export.copy":"コピー","export.copied":"コピーしました",
+ "export.dl":".svg をダウンロード","export.copyJson":"JSON をコピー",
+ "export.accept":"受け入れ判定",
+ "export.prov":"来歴",
+ "ac.valid":"構造的に妥当",
+ "ac.repro":"ゲノムとシードから再現可能",
+ "ac.editable":"構造として編集可能",
+ "ac.explain":"説明可能",
+ "ac.small":"小サイズで検証済み",
+ "ac.collision":"デザイン衝突をスクリーニング済み",
+ "ac.flat":"エクスポート時にパスへフラット化",
+ "ac.svg":"有効な SVG として書き出し",
+ "ac.text":"ワードマークはライブテキストのまま — アウトライン化は下流工程",
+ "ac.complete":"完了","ac.incomplete":"未達あり",
+ "pv.brand":"ブランド","pv.hash":"ブリーフハッシュ","pv.seed":"パイプラインシード",
+ "pv.terr":"テリトリー","pv.gram":"グラマー","pv.cand":"候補","pv.gseed":"ゲノムシード",
+ "pv.kept":"保持された編集","pv.reverted":"取り消し済み",
+ "gc.ops":"{0} オペレーション · {1} アトム",
+
+ "b.run":"パイプラインを実行","b.rerun":"パイプラインを再実行","b.back":"戻る",
+ "b.search":"2,000 候補を探索","b.reps":"代表を開く","b.edit":"選択を編集",
+ "b.export":"エクスポート","b.backEdit":"エディタへ戻る",
+
+ "s.idle":"待機","s.done":"実行完了","s.stale":"ブリーフ変更 — 再実行が必要",
+ "st.brief":"ブリーフ","st.seed":"シード","st.gram":"グラマー",
+ "st.cand":"候補","st.rep":"代表","st.edit":"編集",
+
+ "step.1":"意味","step.2":"ゲノム","step.3":"構築","step.4":"探索","step.5":"知覚",
+ "step.6":"類似","step.7":"人手編集","step.8":"再テスト","step.9":"エクスポート",
+ "view.brief":"意味","view.terr":"ゲノム","view.search":"探索",
+ "view.screen":"知覚","view.edit":"人手編集","view.export":"エクスポート",
+ "viewL.brief":"ブリーフを意味ベクトルへコンパイル",
+ "viewL.terr":"テリトリー、グラマー、構築",
+ "viewL.search":"サンプリングと絞り込み",
+ "viewL.screen":"可読性と衝突のスクリーニング",
+ "viewL.edit":"構造的な編集と再テスト",
+ "viewL.export":"フラット化、パッケージ、ハンドオフ",
+ "stage":"ステージ",
+
+ "ax.order":"秩序","ax.motion":"運動","ax.weight":"重量","ax.warmth":"温度","ax.openness":"開放",
+ "at.precise":"精密","at.open":"開放","at.fast":"高速","at.human":"人間的","at.industrial":"工業的",
+ "at.premium":"上質","at.minimal":"最小限","at.analytic":"分析的","at.trusted":"信頼",
+ "at.connected":"接続","at.scientific":"科学的","at.bold":"大胆","at.quiet":"静謐","at.continuous":"連続",
+ "cn.single":"単色でも成立すること",
+ "cn.favicon":"16px で保持できること",
+ "cn.nonfig":"非具象のみ（ピクトグラム不可）",
+ "cn.motion":"構築がアニメーション可能であること",
+ "cn.engrave":"単線彫刻で再現可能であること",
+
+ "t.APT":"アパーチャ / シグナル",
+ "t.MOD":"モジュラー・フィールド",
+ "t.ORB":"オービタル・リレーション",
+ "t.DIR":"ディレクテッド・マス",
+ "t.CTN":"コンテインド・カウンターフォーム",
+ "t.PRS":"ストラクチュラル・プリズム",
+ "t.LIN":"コンティニュアス・ライン",
+ "t.LDB":"ロードベアリング",
+ "th.APT":"開放性を測定可能な属性として扱う。マークは何かを意図的に通す装置として読める。",
+ "th.MOD":"規則のもとで反復される単位としてのアイデンティティ。スケールは描画サイズではなく、ブランドが所有する体系になる。",
+ "th.ORB":"ブランドは他者が周回する中心である。関係性はタグラインで主張せず、図として描く。",
+ "th.DIR":"積層された方向として表現される運動量。重量が意図を担うため、静止していてもマークは動き続ける。",
+ "th.CTN":"意味はマークが取り除いた空間に宿る。切り取られた側が資産であり、輪郭はその証跡にすぎない。",
+ "th.PRS":"屈折。ひとつの入力が秩序ある複数の出力へ解かれる。約束ではなく機構を見せる。",
+ "th.LIN":"途切れないひとつの線。足すものも余分もなく、構築が一度の走査で読み取れる。",
+ "th.LDB":"支える重さ。マークはブランドの装飾ではなく構造部材として振る舞う。",
+
+ "g.arc.open":"主開口、ギャップ {0}%",
+ "g.arc.counter":"逆位相のカウンター開口",
+ "g.dot.focal":"中心の焦点ノード",
+ "g.spoke":"{0} 本の放射コネクタ",
+ "g.satellites":"半径 {0} 上の {1} サテライト",
+ "g.core":"コア質量",
+ "g.field":"{0}×{0} フィールド、剰余規則 k=7",
+ "g.fieldAccent":"1 モジュールを強調",
+ "g.nested":"{0} 段の入れ子方向、ステップ {1}",
+ "g.lead":"先頭方向がアクセントを担う",
+ "g.boundCircle":"包含境界",
+ "g.boundRect":"包含境界、r={0}",
+ "g.counterDisc":"空隙を占めるカウンターフォーム",
+ "g.counterRot":"軸を外して回転したカウンターフォーム",
+ "g.notch":"進入のために境界を分断",
+ "g.stack":"{0} 部材、長さ規則 mod 4",
+ "g.stackAccent":"最長部材を強調",
+ "g.triangle":"外側ファセット",
+ "g.facetInv":"反転した内側ファセット",
+ "g.refract":"屈折点"
+},
+en:{
+ "brand.sub":"Structured logo construction",
+ "brand.tag":"prototype",
+ "rail.pipeline":"Pipeline",
+ "rail.truth":"Source of truth",
+ "rail.truthBody":"LogoGenome + ConstructionGraph. No prompt-to-image path exists in this build.",
+ "rail.theme":"◐ Theme",
+
+ "brief.intro":"The brief is the only free-text surface in the system. It is compiled once into a meaning vector, then never consulted again — every downstream stage reads structure, not prose. Changing anything here invalidates the run.",
+ "brief.name":"Brand name",
+ "brief.cat":"Category",
+ "brief.aud":"Primary audience",
+ "brief.attrs":"Meaning attributes",
+ "brief.attrCount":"— {0} of 5 chosen",
+ "brief.cons":"Construction constraints",
+ "brief.rules":"Hard rules carried from the pack",
+ "brief.mvec":"Compiled meaning vector",
+ "def.name":"Halcyon Grid",
+ "def.aud":"Utility procurement engineers",
+
+ "cat.c1":"Grid-scale energy storage","cat.c2":"Payments infrastructure","cat.c3":"Diagnostic instruments",
+ "cat.c4":"Industrial robotics","cat.c5":"Climate measurement","cat.c6":"Freight logistics",
+
+ "rule.1":"No trademark or legal clearance claim is produced. Screening is design-collision only.",
+ "rule.2":"Shape psychology is never asserted as deterministic fact.",
+ "rule.3":"Geometry stays parametric; paths are flattened at export, not before.",
+ "rule.4":"Every edit is reversible and carries provenance.",
+
+ "howto.title":"How to use",
+ "howto.kbd":"← → move between stages",
+ "howto.1":"<b>01 Meaning</b> — enter the brand, category and audience, then choose up to five meaning attributes. The constraint checkboxes feed the scoring directly. Confirm with “Run pipeline”.",
+ "howto.2":"<b>02 Genome</b> — click the four territory cards to include or drop them (one always stays). Below, inspect the genome schema and the construction graph it produces.",
+ "howto.3":"<b>03 Search</b> — “Search 2,000 candidates” resamples. The funnel shows what each screen passes; the table shows yield per grammar.",
+ "howto.4":"<b>04 Perception</b> — 24 representatives. Click to select, double-click to open in the editor. Filter by collision status or top quartile.",
+ "howto.5":"<b>05 Human Edit</b> — drive the genome directly with the sliders and selects. Scores recompute instantly and show the delta against the search state. “Revert” undoes one logged change at a time.",
+ "howto.6":"<b>06 Export</b> — copy or download the SVG. Genome, construction graph and provenance ride along, next to the full acceptance list.",
+
+ "terr.intro":"Four territories are derived from the meaning vector. Each one owns a set of grammars — parameter windows over the genome, not pictures. Deselect a territory to remove its grammars from the search.",
+ "terr.schema":"LogoGenome — schema",
+ "terr.graph":"ConstructionGraph — same genome",
+ "terr.grammars":"{0} grammars",
+
+ "search.intro":"Grammars are sampled, not prompted. Each grammar emits candidates inside its own parameter window; the population is then reduced by three independent screens. Counts below are live from the run.",
+ "search.table":"Grammar table",
+ "search.active":"{0} active",
+ "th.gram":"Grammar","th.terr":"Territory","th.arch":"Archetype","th.sampled":"Sampled",
+ "th.valid":"Valid","th.perc":"Perceived","th.clear":"Clear","th.yield":"Yield",
+
+ "fn.gram":"Grammars","fn.gramS":"parameter windows","fn.gramD":"active",
+ "fn.cand":"Candidates","fn.candS":"sampled genomes","fn.candD":"generated",
+ "fn.valid":"Structurally valid","fn.validS":"construction screen",
+ "fn.perc":"Perception pass","fn.percS":"small size + contrast",
+ "fn.clear":"Collision cleared","fn.clearS":"corpus distance",
+ "fn.rep":"Representatives","fn.repS":"cluster spread","fn.repD":"handed to editor",
+ "fn.of":"of {0}",
+
+ "screen.intro":"Survivors are clustered by construction distance and one representative is taken per cluster, so the set spans the space instead of repeating its densest corner. Screening status is a design-collision signal — it is not a trademark opinion.",
+ "screen.filter":"Filter",
+ "f.all":"all","f.clear":"cleared","f.review":"review","f.top":"top quartile",
+ "screen.count":"{0} of {1} representatives shown",
+ "st.clear":"clear","st.review":"review","st.conflict":"conflict",
+
+ "edit.log":"Edit log — every change reversible",
+ "edit.logCount":"{0} edits",
+ "edit.logEmpty":"No edits yet. Every change made here is recorded with its previous value and can be reverted individually.",
+ "edit.retest":"Re-test","edit.live":"live",
+ "edit.why":"Why it scores that way",
+ "edit.params":"Genome parameters","edit.structured":"structured",
+ "edit.lockup":"Lockup: {0}",
+ "lk.mark":"mark","lk.stacked":"stacked","lk.horizontal":"horizontal",
+ "edit.mono":"1-colour test","edit.monoOn":"1-colour: on",
+ "edit.reset":"Reset to search state",
+ "edit.none":"No candidate selected.",
+ "edit.revert":"revert","edit.reverted":"reverted",
+ "edit.revertOf":"revert of {0}",
+ "edit.reversed":"reversed",
+
+ "m.overall":"Overall","m.small":"16 px legibility","m.contrast":"Contrast","m.distinct":"Distinctiveness",
+ "m.economy":"Construction economy","m.balance":"Optical balance","m.proximity":"Corpus proximity",
+
+ "p.w":"Stroke weight","p.r":"Primary radius","p.n":"Count","p.gap":"Aperture / gap",
+ "p.rot":"Rotation","p.rad":"Corner softness","p.fill":"Counter fill",
+ "p.arch":"Archetype","p.sym":"Symmetry","p.pal":"Palette",
+
+ "v.fail1":"Stroke below the 2.2u construction floor.",
+ "v.fail2":"Stroke/radius ratio collapses the counter space.",
+ "v.fail3":"Ink coverage under the 5.5% floor — the mark disappears on light ground.",
+ "v.fail4":"Ink coverage over the 46% ceiling — the mark reads as a filled block.",
+ "v.fail5":"Atom count over the construction budget of 16.",
+ "v.fail6":"Arc continuity below threshold — the ring stops reading as a ring.",
+ "n.small0":"At 16 px the stroke lands near {0} px — under the 0.55 px reproduction floor.",
+ "n.small1":"Stroke holds {0} px at 16 px, clear of the reproduction floor.",
+ "n.cov":"Ink coverage {0}% across {1} atoms in {2} construction ops.",
+ "n.contrast":"Palette contrast {0}:1 between ink and ground.",
+ "n.near":"Nearest corpus construction {0} at {1}% — design collision only, not a trademark opinion.",
+ "n.favicon":"Fails the 16 px constraint carried from the brief.",
+ "n.single":"Flat-colour fallback loses the accent separation at this coverage.",
+ "n.engrave":"Single-line engraving constraint is strained above 7 atoms.",
+
+ "export.intro":"Export flattens the construction graph to paths — the last possible moment. The genome and the graph travel with the file, so any exported mark can be re-opened, re-tested and re-edited without loss.",
+ "export.svg":"SVG output","export.copy":"Copy","export.copied":"Copied",
+ "export.dl":"Download .svg","export.copyJson":"Copy JSON",
+ "export.accept":"Acceptance",
+ "export.prov":"Provenance",
+ "ac.valid":"structurally valid",
+ "ac.repro":"reproducible from genome + seed",
+ "ac.editable":"editable as structure",
+ "ac.explain":"explainable",
+ "ac.small":"tested at small size",
+ "ac.collision":"screened for design collision",
+ "ac.flat":"geometry flattened to paths at export",
+ "ac.svg":"exports as valid SVG",
+ "ac.text":"wordmark still live text — outline conversion is downstream",
+ "ac.complete":"complete","ac.incomplete":"incomplete",
+ "pv.brand":"Brand","pv.hash":"Brief hash","pv.seed":"Pipeline seed",
+ "pv.terr":"Territory","pv.gram":"Grammar","pv.cand":"Candidate","pv.gseed":"Genome seed",
+ "pv.kept":"Edits kept","pv.reverted":"Reverted",
+ "gc.ops":"{0} ops · {1} atoms",
+
+ "b.run":"Run pipeline","b.rerun":"Re-run pipeline","b.back":"Back",
+ "b.search":"Search 2,000 candidates","b.reps":"Open representatives","b.edit":"Edit selected",
+ "b.export":"Export","b.backEdit":"Back to editor",
+
+ "s.idle":"idle","s.done":"run complete","s.stale":"brief changed — re-run required",
+ "st.brief":"brief","st.seed":"seed","st.gram":"grammars",
+ "st.cand":"candidates","st.rep":"representatives","st.edit":"edits",
+
+ "step.1":"Meaning","step.2":"Genome","step.3":"Construction","step.4":"Search","step.5":"Perception",
+ "step.6":"Similarity","step.7":"Human Edit","step.8":"Re-test","step.9":"Export",
+ "view.brief":"Meaning","view.terr":"Genome","view.search":"Search",
+ "view.screen":"Perception","view.edit":"Human Edit","view.export":"Export",
+ "viewL.brief":"Brief compiled to a meaning vector",
+ "viewL.terr":"Territories, grammars, construction",
+ "viewL.search":"Sampling and reduction",
+ "viewL.screen":"Legibility and collision screens",
+ "viewL.edit":"Structured editing and re-test",
+ "viewL.export":"Flatten, package, hand off",
+ "stage":"Stage",
+
+ "ax.order":"order","ax.motion":"motion","ax.weight":"weight","ax.warmth":"warmth","ax.openness":"openness",
+ "at.precise":"precise","at.open":"open","at.fast":"fast","at.human":"human","at.industrial":"industrial",
+ "at.premium":"premium","at.minimal":"minimal","at.analytic":"analytic","at.trusted":"trusted",
+ "at.connected":"connected","at.scientific":"scientific","at.bold":"bold","at.quiet":"quiet","at.continuous":"continuous",
+ "cn.single":"Must survive as one flat colour",
+ "cn.favicon":"Must hold at 16 px",
+ "cn.nonfig":"Non-figurative only (no pictograms)",
+ "cn.motion":"Construction must be animatable",
+ "cn.engrave":"Reproducible by single-line engraving",
+
+ "t.APT":"Aperture / Signal",
+ "t.MOD":"Modular Field",
+ "t.ORB":"Orbital Relation",
+ "t.DIR":"Directed Mass",
+ "t.CTN":"Contained Counterform",
+ "t.PRS":"Structural Prism",
+ "t.LIN":"Continuous Line",
+ "t.LDB":"Load Bearing",
+ "th.APT":"Openness treated as a measurable property. The mark reads as an instrument that deliberately lets something through.",
+ "th.MOD":"Identity as one unit repeated under a rule. Scale becomes a system the brand owns, not a size it is rendered at.",
+ "th.ORB":"The brand is the centre other parties move around. Relationship is drawn, not asserted in a tagline.",
+ "th.DIR":"Momentum expressed as stacked direction. Weight carries the intent so the mark still moves when it is static.",
+ "th.CTN":"Meaning lives in the space the mark removes. What is cut away is the asset; the outline is only its evidence.",
+ "th.PRS":"Refraction: one input resolved into many ordered outputs. The mark shows the mechanism rather than the promise.",
+ "th.LIN":"One unbroken path. Nothing added and nothing spare, so the construction can be read in a single pass.",
+ "th.LDB":"Weight that holds. The mark behaves like a structural component of the brand rather than a decoration on it.",
+
+ "g.arc.open":"primary aperture, gap {0}%",
+ "g.arc.counter":"counter-aperture, phase inverted",
+ "g.dot.focal":"focal node at centre",
+ "g.spoke":"{0} radial connectors",
+ "g.satellites":"{1} satellites on r={0}",
+ "g.core":"core mass",
+ "g.field":"{0}×{0} field, modulus rule k=7",
+ "g.fieldAccent":"single module promoted",
+ "g.nested":"{0} nested directions, step {1}",
+ "g.lead":"leading direction carries the accent",
+ "g.boundCircle":"containing boundary",
+ "g.boundRect":"containing boundary, r={0}",
+ "g.counterDisc":"counterform occupying the void",
+ "g.counterRot":"counterform rotated off-axis",
+ "g.notch":"boundary interrupted for entry",
+ "g.stack":"{0} members, length rule mod 4",
+ "g.stackAccent":"longest member promoted",
+ "g.triangle":"outer facet",
+ "g.facetInv":"inverted inner facet",
+ "g.refract":"refraction point"
+}};
+let LANG="ja";
+function t(k){
+  let s=TXT[LANG][k]!==undefined?TXT[LANG][k]:(TXT.en[k]!==undefined?TXT.en[k]:k);
+  for(let i=1;i<arguments.length;i++) s=s.split("{"+(i-1)+"}").join(arguments[i]);
+  return s;
+}
+
+/* ==========================================================================
+   1. Deterministic primitives
    ========================================================================== */
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
-const lerp=(a,b,t)=>a+(b-a)*t;
+const lerp=(a,b,x)=>a+(b-a)*x;
 const r2=n=>Math.round(n*100)/100;
 
 function hash32(str){
@@ -613,16 +1012,16 @@ function rng(seed){
   let a=seed>>>0;
   return function(){
     a|=0; a=a+0x6D2B79F5|0;
-    let t=Math.imul(a^a>>>15,1|a);
-    t=t+Math.imul(t^t>>>7,61|t)^t;
-    return ((t^t>>>14)>>>0)/4294967296;
+    let x=Math.imul(a^a>>>15,1|a);
+    x=x+Math.imul(x^x>>>7,61|x)^x;
+    return ((x^x>>>14)>>>0)/4294967296;
   };
 }
 const pick=(r,arr)=>arr[Math.floor(r()*arr.length)%arr.length];
 const hex=n=>n.toString(16).toUpperCase().padStart(8,"0");
 
 /* ==========================================================================
-   1. Static domain data
+   2. Static domain data
    ========================================================================== */
 const ATTRIBUTES=[
   {k:"precise",  v:{order:.9,motion:.2,weight:.5,warmth:.2,openness:.4}},
@@ -641,15 +1040,10 @@ const ATTRIBUTES=[
   {k:"continuous",v:{order:.55,motion:.8,weight:.35,warmth:.5,openness:.65}}
 ];
 const AXES=["order","motion","weight","warmth","openness"];
-
 const CONSTRAINTS=[
-  {k:"single",  label:"Must survive as one flat colour",    on:true},
-  {k:"favicon", label:"Must hold at 16 px",                  on:true},
-  {k:"nonfig",  label:"Non-figurative only (no pictograms)", on:true},
-  {k:"motion",  label:"Construction must be animatable",     on:false},
-  {k:"engrave", label:"Reproducible by single-line engraving",on:false}
+  {k:"single",on:true},{k:"favicon",on:true},{k:"nonfig",on:true},
+  {k:"motion",on:false},{k:"engrave",on:false}
 ];
-
 const PALETTES=[
   {id:"P-01",bg:"#F4F3F1",ink:"#141312",accent:"#C8452D",hue:12},
   {id:"P-02",bg:"#101418",ink:"#F2F4F5",accent:"#4FA3B8",hue:192},
@@ -660,76 +1054,43 @@ const PALETTES=[
   {id:"P-07",bg:"#F5F2EE",ink:"#2B211C",accent:"#B06A3B",hue:26},
   {id:"P-08",bg:"#121212",ink:"#F0F0F0",accent:"#E0E0E0",hue:0}
 ];
-
 const ARCHETYPES=["aperture","orbit","lattice","chevron","containment","stack","prism"];
-
 const TERRITORY_POOL=[
-  {code:"APT",name:"Aperture / Signal",arch:["aperture","containment"],pal:["P-01","P-05","P-08"],
-   v:{order:.8,motion:.3,weight:.4,warmth:.3,openness:.95},
-   thesis:"Openness treated as a measurable property. The mark reads as an instrument that deliberately lets something through."},
-  {code:"MOD",name:"Modular Field",arch:["lattice","stack"],pal:["P-05","P-02","P-01"],
-   v:{order:.95,motion:.25,weight:.6,warmth:.2,openness:.4},
-   thesis:"Identity as one unit repeated under a rule. Scale becomes a system the brand owns, not a size it is rendered at."},
-  {code:"ORB",name:"Orbital Relation",arch:["orbit","prism"],pal:["P-06","P-02","P-03"],
-   v:{order:.5,motion:.75,weight:.35,warmth:.8,openness:.75},
-   thesis:"The brand is the centre other parties move around. Relationship is drawn, not asserted in a tagline."},
-  {code:"DIR",name:"Directed Mass",arch:["chevron","stack"],pal:["P-04","P-01","P-07"],
-   v:{order:.35,motion:.95,weight:.85,warmth:.45,openness:.35},
-   thesis:"Momentum expressed as stacked direction. Weight carries the intent so the mark still moves when it is static."},
-  {code:"CTN",name:"Contained Counterform",arch:["containment","aperture"],pal:["P-07","P-03","P-04"],
-   v:{order:.7,motion:.2,weight:.5,warmth:.65,openness:.5},
-   thesis:"Meaning lives in the space the mark removes. What is cut away is the asset; the outline is only its evidence."},
-  {code:"PRS",name:"Structural Prism",arch:["prism","lattice"],pal:["P-02","P-05","P-06"],
-   v:{order:.9,motion:.4,weight:.45,warmth:.2,openness:.55},
-   thesis:"Refraction: one input resolved into many ordered outputs. The mark shows the mechanism rather than the promise."},
-  {code:"LIN",name:"Continuous Line",arch:["aperture","chevron"],pal:["P-01","P-08","P-03"],
-   v:{order:.6,motion:.7,weight:.25,warmth:.5,openness:.75},
-   thesis:"One unbroken path. Nothing added and nothing spare, so the construction can be read in a single pass."},
-  {code:"LDB",name:"Load Bearing",arch:["stack","containment"],pal:["P-04","P-07","P-01"],
-   v:{order:.8,motion:.15,weight:.95,warmth:.4,openness:.25},
-   thesis:"Weight that holds. The mark behaves like a structural component of the brand rather than a decoration on it."}
+  {code:"APT",arch:["aperture","containment"],pal:["P-01","P-05","P-08"],v:{order:.8,motion:.3,weight:.4,warmth:.3,openness:.95}},
+  {code:"MOD",arch:["lattice","stack"],     pal:["P-05","P-02","P-01"],v:{order:.95,motion:.25,weight:.6,warmth:.2,openness:.4}},
+  {code:"ORB",arch:["orbit","prism"],       pal:["P-06","P-02","P-03"],v:{order:.5,motion:.75,weight:.35,warmth:.8,openness:.75}},
+  {code:"DIR",arch:["chevron","stack"],     pal:["P-04","P-01","P-07"],v:{order:.35,motion:.95,weight:.85,warmth:.45,openness:.35}},
+  {code:"CTN",arch:["containment","aperture"],pal:["P-07","P-03","P-04"],v:{order:.7,motion:.2,weight:.5,warmth:.65,openness:.5}},
+  {code:"PRS",arch:["prism","lattice"],     pal:["P-02","P-05","P-06"],v:{order:.9,motion:.4,weight:.45,warmth:.2,openness:.55}},
+  {code:"LIN",arch:["aperture","chevron"],  pal:["P-01","P-08","P-03"],v:{order:.6,motion:.7,weight:.25,warmth:.5,openness:.75}},
+  {code:"LDB",arch:["stack","containment"], pal:["P-04","P-07","P-01"],v:{order:.8,motion:.15,weight:.95,warmth:.4,openness:.25}}
 ];
-
 const GRAMMAR_TRAITS=["orthogonal","rotational","offset","condensed","expanded","bisected","stepped","inverted"];
 
 /* ==========================================================================
-   2. Application state
+   3. Application state
    ========================================================================== */
 const S={
-  brief:null, seed:0, briefHash:"—",
-  territories:[], grammars:[], candidates:[], reps:[],
+  brief:null, seed:0, briefHash:"—", mv:null,
+  territories:[], grammars:[], candidates:[], reps:[], gramStats:[],
   counts:{sampled:0,valid:0,perceived:0,cleared:0,reps:0},
   selected:null, base:null, working:null, log:[], logSeq:0,
   filter:"all", lockup:"mark", mono:false,
   stage:"brief", ran:false
 };
-
 const VIEWS=[
-  {id:"brief", title:"Meaning",     steps:[1],    label:"Brief compiled to a meaning vector"},
-  {id:"terr",  title:"Genome",      steps:[2,3],  label:"Territories, grammars, construction"},
-  {id:"search",title:"Search",      steps:[4],    label:"Sampling and reduction"},
-  {id:"screen",title:"Perception",  steps:[5,6],  label:"Legibility and collision screens"},
-  {id:"edit",  title:"Human Edit",  steps:[7,8],  label:"Structured editing and re-test"},
-  {id:"export",title:"Export",      steps:[9],    label:"Flatten, package, hand off"}
+  {id:"brief", steps:[1]},   {id:"terr", steps:[2,3]}, {id:"search",steps:[4]},
+  {id:"screen",steps:[5,6]}, {id:"edit", steps:[7,8]}, {id:"export",steps:[9]}
 ];
 const STEPS=[
-  {n:1,name:"Meaning",   view:"brief"},
-  {n:2,name:"Genome",    view:"terr"},
-  {n:3,name:"Construction",view:"terr"},
-  {n:4,name:"Search",    view:"search"},
-  {n:5,name:"Perception",view:"screen"},
-  {n:6,name:"Similarity",view:"screen"},
-  {n:7,name:"Human Edit",view:"edit"},
-  {n:8,name:"Re-test",   view:"edit"},
-  {n:9,name:"Export",    view:"export"}
+  {n:1,view:"brief"},{n:2,view:"terr"},{n:3,view:"terr"},{n:4,view:"search"},
+  {n:5,view:"screen"},{n:6,view:"screen"},{n:7,view:"edit"},{n:8,view:"edit"},{n:9,view:"export"}
 ];
 
 /* ==========================================================================
-   3. Construction — genome -> graph -> SVG
-   Geometry is authored on a 120x120 field, unit u = 10.
+   4. Construction — genome -> graph -> SVG (120x120 field, unit u = 10)
    ========================================================================== */
-const F=120, C=60;
-
+const F=120;
 function palOf(g){ return PALETTES.find(p=>p.id===g.pal)||PALETTES[0]; }
 
 function construct(g){
@@ -740,20 +1101,18 @@ function construct(g){
   const nodes=[];
   let atoms=0;
   const add=(op,note,svg,n)=>{nodes.push({id:"N"+String(nodes.length+1).padStart(2,"0"),op,note,svg});atoms+=n||1;};
-
   const w=g.w, R=g.r, rot=g.rot, join=g.rad>.45?"round":"miter", cap=g.rad>.45?"round":"butt";
 
   if(g.arch==="aperture"){
     const circ=2*Math.PI*R, on=circ*(1-g.gap);
-    add("arc.open","primary aperture, gap "+Math.round(g.gap*100)+"%",
+    add("arc.open",t("g.arc.open",Math.round(g.gap*100)),
       `<circle cx="60" cy="60" r="${r2(R)}" fill="none" stroke="${ink}" stroke-width="${r2(w)}" stroke-linecap="${cap}" stroke-dasharray="${r2(on)} ${r2(circ-on)}" transform="rotate(${rot} 60 60)"/>`,1);
     if(g.n>=5){
       const R2=R*.44, c2=2*Math.PI*R2, on2=c2*(1-g.gap*.6);
-      add("arc.open","counter-aperture, phase inverted",
+      add("arc.open",t("g.arc.counter"),
         `<circle cx="60" cy="60" r="${r2(R2)}" fill="none" stroke="${acc}" stroke-width="${r2(w*.7)}" stroke-linecap="${cap}" stroke-dasharray="${r2(on2)} ${r2(c2-on2)}" transform="rotate(${(rot+180)%360} 60 60)"/>`,1);
     }else{
-      add("primitive.dot","focal node at centre",
-        `<circle cx="60" cy="60" r="${r2(w*.95)}" fill="${acc}"/>`,1);
+      add("primitive.dot",t("g.dot.focal"),`<circle cx="60" cy="60" r="${r2(w*.95)}" fill="${acc}"/>`,1);
     }
   }
 
@@ -765,7 +1124,7 @@ function construct(g){
         const a=(rot+i*360/g.n)*Math.PI/180;
         d+=`M60 60L${r2(60+rr*Math.cos(a))} ${r2(60+rr*Math.sin(a))}`;
       }
-      add("relation.spoke",g.n+" radial connectors",
+      add("relation.spoke",t("g.spoke",g.n),
         `<path d="${d}" stroke="${ink}" stroke-width="${r2(w*.34)}" fill="none" stroke-linecap="${cap}"/>`,g.n);
     }
     let dots="";
@@ -773,8 +1132,8 @@ function construct(g){
       const a=(rot+i*360/g.n)*Math.PI/180;
       dots+=`<circle cx="${r2(60+rr*Math.cos(a))}" cy="${r2(60+rr*Math.sin(a))}" r="${r2(sat)}" fill="${i===0?acc:ink}"/>`;
     }
-    add("array.radial",g.n+" satellites on r="+r2(rr),dots,g.n);
-    add("primitive.dot","core mass",`<circle cx="60" cy="60" r="${r2(w*1.15)}" fill="${ink}"/>`,1);
+    add("array.radial",t("g.satellites",r2(rr),g.n),dots,g.n);
+    add("primitive.dot",t("g.core"),`<circle cx="60" cy="60" r="${r2(w*1.15)}" fill="${ink}"/>`,1);
   }
 
   if(g.arch==="lattice"){
@@ -786,48 +1145,49 @@ function construct(g){
       if((i*3+jj*5+g.seed)%7===0) continue;
       kept++;
       const x=r2(o+j*cell+off), y=r2(o+i*cell+off);
-      const el=`<rect x="${x}" y="${y}" width="${r2(size)}" height="${r2(size)}" rx="${r2(rx)}" fill="${ink}"/>`;
-      if(kept===Math.ceil(N*N/3)&&!acCell){acCell=el.replace(ink,acc);}else{cells+=el;}
+      const e=`<rect x="${x}" y="${y}" width="${r2(size)}" height="${r2(size)}" rx="${r2(rx)}" fill="${ink}"/>`;
+      if(kept===Math.ceil(N*N/3)&&!acCell){acCell=e.replace(ink,acc);}else{cells+=e;}
     }
-    add("field.modulus",N+"×"+N+" field, modulus rule k=7",cells,kept-1);
-    if(acCell) add("field.accent","single module promoted",acCell,1);
+    add("field.modulus",t("g.field",N),cells,kept-1);
+    if(acCell) add("field.accent",t("g.fieldAccent"),acCell,1);
   }
 
   if(g.arch==="chevron"){
     const n=clamp(g.n>6?Math.round(g.n/2):g.n,2,6);
     const span=26, step=clamp(w*1.75,6,16);
-    const total=(n-1)*step+span, top=60-total/2;
+    const top=60-((n-1)*step+span)/2;
     let d="",first="";
     for(let i=0;i<n;i++){
       const y=top+i*step;
       const seg=`M22 ${r2(y+span)}L60 ${r2(y)}L98 ${r2(y+span)}`;
       if(i===0) first=seg; else d+=seg;
     }
-    add("array.offset",n+" nested directions, step "+r2(step),
-      `<path d="${d}" fill="none" stroke="${ink}" stroke-width="${r2(w)}" stroke-linejoin="${join}" stroke-linecap="${cap}" transform="rotate(${g.sym==="radial"?rot%180:0} 60 60)"/>`,n-1);
-    add("array.lead","leading direction carries the accent",
-      `<path d="${first}" fill="none" stroke="${acc}" stroke-width="${r2(w)}" stroke-linejoin="${join}" stroke-linecap="${cap}" transform="rotate(${g.sym==="radial"?rot%180:0} 60 60)"/>`,1);
+    const rr=g.sym==="radial"?rot%180:0;
+    add("array.offset",t("g.nested",n,r2(step)),
+      `<path d="${d}" fill="none" stroke="${ink}" stroke-width="${r2(w)}" stroke-linejoin="${join}" stroke-linecap="${cap}" transform="rotate(${rr} 60 60)"/>`,n-1);
+    add("array.lead",t("g.lead"),
+      `<path d="${first}" fill="none" stroke="${acc}" stroke-width="${r2(w)}" stroke-linejoin="${join}" stroke-linecap="${cap}" transform="rotate(${rr} 60 60)"/>`,1);
   }
 
   if(g.arch==="containment"){
     if(g.sym==="radial"){
-      add("boundary.circle","containing boundary",
+      add("boundary.circle",t("g.boundCircle"),
         `<circle cx="60" cy="60" r="${r2(R)}" fill="none" stroke="${ink}" stroke-width="${r2(w)}"/>`,1);
     }else{
-      add("boundary.rect","containing boundary, r="+r2(g.rad*R*.5),
+      add("boundary.rect",t("g.boundRect",r2(g.rad*R*.5)),
         `<rect x="${r2(60-R)}" y="${r2(60-R)}" width="${r2(R*2)}" height="${r2(R*2)}" rx="${r2(g.rad*R*.5)}" fill="none" stroke="${ink}" stroke-width="${r2(w)}"/>`,1);
     }
     if(g.n%2){
-      add("counterform.disc","counterform occupying the void",
+      add("counterform.disc",t("g.counterDisc"),
         `<circle cx="60" cy="60" r="${r2(R*.38*(.7+.5*g.fill))}" fill="${acc}"/>`,1);
     }else{
       const s=R*.56*(.7+.5*g.fill);
-      add("counterform.rotated","counterform rotated off-axis",
+      add("counterform.rotated",t("g.counterRot"),
         `<rect x="${r2(60-s/2)}" y="${r2(60-s/2)}" width="${r2(s)}" height="${r2(s)}" rx="${r2(g.rad*s*.3)}" fill="${acc}" transform="rotate(${rot%90+45} 60 60)"/>`,1);
     }
     if(g.gap>.2){
       const a=rot*Math.PI/180, len=w*2.6;
-      add("boolean.notch","boundary interrupted for entry",
+      add("boolean.notch",t("g.notch"),
         `<path d="M${r2(60+(R-len/2)*Math.cos(a))} ${r2(60+(R-len/2)*Math.sin(a))}L${r2(60+(R+len/2)*Math.cos(a))} ${r2(60+(R+len/2)*Math.sin(a))}" stroke="${ground}" stroke-width="${r2(w*2.4)}"/>`,1);
     }
   }
@@ -836,34 +1196,28 @@ function construct(g){
     const n=clamp(g.n>7?Math.round(g.n/2)+2:g.n,3,7);
     const slot=84/n, h=slot*(.42+.3*g.fill), rx=g.rad*h*.5;
     let bars="",acBar="",best=-1,bi=0;
-    for(let i=0;i<n;i++){
-      const len=.42+.58*(((i*5+g.seed)%4)/3);
-      if(len>best){best=len;bi=i;}
-    }
+    for(let i=0;i<n;i++){const len=.42+.58*(((i*5+g.seed)%4)/3); if(len>best){best=len;bi=i;}}
     for(let i=0;i<n;i++){
       const len=.42+.58*(((i*5+g.seed)%4)/3);
       const x=g.sym==="bilateral"?r2(60-84*len/2):18;
-      const el=`<rect x="${x}" y="${r2(18+i*slot+(slot-h)/2)}" width="${r2(84*len)}" height="${r2(h)}" rx="${r2(rx)}" fill="${ink}"/>`;
-      if(i===bi) acBar=el.replace(ink,acc); else bars+=el;
+      const e=`<rect x="${x}" y="${r2(18+i*slot+(slot-h)/2)}" width="${r2(84*len)}" height="${r2(h)}" rx="${r2(rx)}" fill="${ink}"/>`;
+      if(i===bi) acBar=e.replace(ink,acc); else bars+=e;
     }
-    add("stack.rule",n+" members, length rule mod 4",bars,n-1);
-    add("stack.accent","longest member promoted",acBar,1);
+    add("stack.rule",t("g.stack",n),bars,n-1);
+    add("stack.accent",t("g.stackAccent"),acBar,1);
   }
 
   if(g.arch==="prism"){
     const tri=(rad,f,col,sw)=>{
       const pts=[0,120,240].map(a=>{
-        const t=(a+rot+(f?180:0))*Math.PI/180;
-        return `${r2(60+rad*Math.cos(t-Math.PI/2))} ${r2(60+rad*Math.sin(t-Math.PI/2))}`;
+        const x=(a+rot+(f?180:0))*Math.PI/180;
+        return `${r2(60+rad*Math.cos(x-Math.PI/2))} ${r2(60+rad*Math.sin(x-Math.PI/2))}`;
       });
       return `<path d="M${pts[0]}L${pts[1]}L${pts[2]}Z" fill="${sw?"none":col}" ${sw?`stroke="${col}" stroke-width="${r2(sw)}" stroke-linejoin="${join}"`:""}/>`;
     };
-    add("boundary.triangle","outer facet",tri(R,false,ink,w),1);
-    if(g.n>=5){
-      add("facet.inverted","inverted inner facet",tri(R*.5*(.7+.5*g.fill),true,acc,0),1);
-    }else{
-      add("primitive.dot","refraction point",`<circle cx="60" cy="${r2(60+R*.12)}" r="${r2(R*.22*(.7+.5*g.fill))}" fill="${acc}"/>`,1);
-    }
+    add("boundary.triangle",t("g.triangle"),tri(R,false,ink,w),1);
+    if(g.n>=5) add("facet.inverted",t("g.facetInv"),tri(R*.5*(.7+.5*g.fill),true,acc,0),1);
+    else add("primitive.dot",t("g.refract"),`<circle cx="60" cy="${r2(60+R*.12)}" r="${r2(R*.22*(.7+.5*g.fill))}" fill="${acc}"/>`,1);
   }
 
   return {nodes,atoms,palette:P,ground,ink};
@@ -871,42 +1225,45 @@ function construct(g){
 
 function svgOf(g,opt){
   opt=opt||{};
-  const {nodes,palette:P,ground,ink}=construct(g);
+  const {nodes,ground,ink}=construct(g);
   const body=nodes.map(n=>n.svg).join("");
   const lock=opt.lockup||"mark";
   const name=(S.brief?S.brief.name:"Brand").toUpperCase();
+  const cjk=/[　-ヿ一-鿿＀-￯]/.test(name);
   /* Type is set to the measure: size solves for the available width, then the
-     wordmark is tracked to fill it exactly, the way a lockup is drawn by hand. */
+     wordmark is tracked to fill it, the way a lockup is drawn by hand. */
   const fit=(measure,cap)=>{
-    const fs=clamp(measure/(Math.max(name.length,2)*.88),5,cap);
-    return {fs:r2(fs),ls:r2(fs*.16)};
+    const fs=clamp(measure/(Math.max(name.length,2)*(cjk?1.12:.88)),5,cap);
+    return {fs:r2(fs),ls:r2(fs*(cjk?.04:.16)),
+            len:cjk?"":` textLength="${measure}" lengthAdjust="spacing"`};
   };
+  const face="Helvetica Neue,Arial,Hiragino Sans,Yu Gothic,Noto Sans JP,sans-serif";
   let vb="0 0 120 120", extra="";
   if(lock==="stacked"){
     vb="0 0 120 158";
-    const t=fit(104,15);
-    extra=`<text x="60" y="146" text-anchor="middle" textLength="104" lengthAdjust="spacing" font-family="Helvetica Neue,Arial,sans-serif" font-size="${t.fs}" font-weight="600" letter-spacing="${t.ls}" fill="${ink}">${name}</text>`;
+    const f=fit(104,15);
+    extra=`<text x="60" y="146" text-anchor="middle"${f.len} font-family="${face}" font-size="${f.fs}" font-weight="600" letter-spacing="${f.ls}" fill="${ink}">${name}</text>`;
   }else if(lock==="horizontal"){
     vb="-6 0 262 120";
-    const t=fit(112,21);
-    extra=`<text x="136" y="68" textLength="112" lengthAdjust="spacing" font-family="Helvetica Neue,Arial,sans-serif" font-size="${t.fs}" font-weight="600" letter-spacing="${t.ls}" fill="${ink}">${name}</text>`;
+    const f=fit(112,21);
+    extra=`<text x="136" y="68"${f.len} font-family="${face}" font-size="${f.fs}" font-weight="600" letter-spacing="${f.ls}" fill="${ink}">${name}</text>`;
   }
   const bg=opt.transparent?"":`<rect x="-20" y="-20" width="320" height="220" fill="${ground}"/>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" role="img" aria-label="${name} mark, ${g.arch} construction">${bg}${body}${extra}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" role="img" aria-label="${name} — ${g.arch}">${bg}${body}${extra}</svg>`;
 }
 
 /* ==========================================================================
-   4. Evaluation — validity, perception, similarity
+   5. Evaluation — validity, perception, similarity
    ========================================================================== */
 function coverage(g){
   const w=g.w/F, R=g.r/F;
   switch(g.arch){
     case "aperture":   return clamp(2*Math.PI*R*w*(1-g.gap)*1.15+(g.n>=5?.02:.01),0,1);
     case "orbit":      return clamp(g.n*Math.PI*Math.pow(w*.72,2)*1.6+(g.gap<.24?g.n*w*.34*R*.78:0)+.012,0,1);
-    case "lattice":    {const N=clamp(3+Math.round(g.n/4),3,5);const cell=84/F/N;const s=cell*(.4+.46*g.fill);return clamp(N*N*.82*s*s,0,1);}
+    case "lattice":    {const N=clamp(3+Math.round(g.n/4),3,5),cell=84/F/N,s=cell*(.4+.46*g.fill);return clamp(N*N*.82*s*s,0,1);}
     case "chevron":    {const n=clamp(g.n>6?Math.round(g.n/2):g.n,2,6);return clamp(n*w*.86,0,1);}
     case "containment":return clamp(8*R*w+Math.PI*Math.pow(R*.4,2)*(.7+.5*g.fill),0,1);
-    case "stack":      {const n=clamp(g.n>7?Math.round(g.n/2)+2:g.n,3,7);const slot=84/F/n;return clamp(n*slot*(.42+.3*g.fill)*.7*.7,0,1);}
+    case "stack":      {const n=clamp(g.n>7?Math.round(g.n/2)+2:g.n,3,7),slot=84/F/n;return clamp(n*slot*(.42+.3*g.fill)*.49,0,1);}
     default:           return clamp(3*R*w*1.7+Math.pow(R*.4,2)*1.2,0,1);
   }
 }
@@ -922,12 +1279,12 @@ function evaluate(g,cons){
   const cov=coverage(g), sr=g.w/g.r, ops=nodes.length;
 
   const fail=[];
-  if(g.w<2.2) fail.push("Stroke below the 2.2u construction floor.");
-  if(sr>.42) fail.push("Stroke/radius ratio collapses the counter space.");
-  if(cov<.055) fail.push("Ink coverage under the 5.5% floor — the mark disappears on light ground.");
-  if(cov>.46) fail.push("Ink coverage over the 46% ceiling — the mark reads as a filled block.");
-  if(atoms>16) fail.push("Atom count over the construction budget of 16.");
-  if(g.arch==="aperture"&&g.gap>.44) fail.push("Arc continuity below threshold — the ring stops reading as a ring.");
+  if(g.w<2.2) fail.push(t("v.fail1"));
+  if(sr>.42) fail.push(t("v.fail2"));
+  if(cov<.055) fail.push(t("v.fail3"));
+  if(cov>.46) fail.push(t("v.fail4"));
+  if(atoms>16) fail.push(t("v.fail5"));
+  if(g.arch==="aperture"&&g.gap>.44) fail.push(t("v.fail6"));
 
   const strokePx=(g.w/F)*16;
   const smallStroke=clamp((strokePx-.34)/.85,0,1);
@@ -936,51 +1293,40 @@ function evaluate(g,cons){
   const small=Math.round(100*(.46*smallStroke+.32*detail+.22*covFit));
 
   const contr=ratio(P.ink,P.bg);
-  const contrast=Math.round(clamp((contr-3)/(14-3),0,1)*100);
-
+  const contrast=Math.round(clamp((contr-3)/11,0,1)*100);
   const complexity=Math.round(clamp(100-Math.abs(ops-3)*13-Math.max(0,atoms-9)*4,0,100));
   const balance=Math.round(clamp(
     (g.sym==="radial"?86:g.sym==="bilateral"?78:66)+(g.rad>.5?6:0)+(g.gap>.35?-12:0)+(cov>.12&&cov<.3?10:0),0,100));
 
   const fv=vec(g);
   let maxSim=0,near=null;
-  for(const c of CORPUS){
-    const s=simOf(fv,c.v);
-    if(s>maxSim){maxSim=s;near=c;}
-  }
+  for(const c of CORPUS){const s=simOf(fv,c.v); if(s>maxSim){maxSim=s;near=c;}}
   const distinct=Math.round(clamp((.94-maxSim)/.30,0,1)*100);
   const status=maxSim>=.905?"conflict":maxSim>=.828?"review":"clear";
-
   const overall=Math.round(.32*small+.16*contrast+.19*distinct+.16*complexity+.17*balance);
 
   const notes=[];
-  if(smallStroke<.5) notes.push("At 16 px the stroke lands near "+strokePx.toFixed(2)+" px — under the 0.55 px reproduction floor.");
-  else notes.push("Stroke holds "+strokePx.toFixed(2)+" px at 16 px, clear of the reproduction floor.");
-  notes.push("Ink coverage "+(cov*100).toFixed(1)+"% across "+atoms+" atoms in "+ops+" construction ops.");
-  notes.push("Palette contrast "+contr.toFixed(1)+":1 between ink and ground.");
-  notes.push("Nearest corpus construction "+near.id+" at "+(maxSim*100).toFixed(1)+"% — design collision only, not a trademark opinion.");
+  notes.push(smallStroke<.5?t("n.small0",strokePx.toFixed(2)):t("n.small1",strokePx.toFixed(2)));
+  notes.push(t("n.cov",(cov*100).toFixed(1),atoms,ops));
+  notes.push(t("n.contrast",contr.toFixed(1)));
+  notes.push(t("n.near",near.id,(maxSim*100).toFixed(1)));
   if(cons){
-    if(cons.favicon&&small<58) notes.push("Fails the 16 px constraint carried from the brief.");
-    if(cons.single&&P.accent!==P.ink&&cov>.4) notes.push("Flat-colour fallback loses the accent separation at this coverage.");
-    if(cons.engrave&&atoms>7) notes.push("Single-line engraving constraint is strained above 7 atoms.");
+    if(cons.favicon&&small<58) notes.push(t("n.favicon"));
+    if(cons.single&&P.accent!==P.ink&&cov>.4) notes.push(t("n.single"));
+    if(cons.engrave&&atoms>7) notes.push(t("n.engrave"));
   }
-
   return {
     valid:fail.length===0, fail, cov, atoms, ops, strokePx,
     perception:{small,contrast,complexity,balance,distinct,overall},
     similarity:{max:maxSim,status,near:near.id},
-    pass:fail.length===0&&small>=56&&overall>=60,
-    notes
+    pass:fail.length===0&&small>=56&&overall>=60, notes
   };
 }
 
-/* feature space + corpus ------------------------------------------------- */
 const W=[3.0,1.0,.9,1.1,.8,.5,.6,1.2,.7,.5];
 function vec(g){
-  return [
-    ARCHETYPES.indexOf(g.arch)/6, g.w/12, (g.r-24)/24, g.n/12, g.gap,
-    g.rot/360, g.rad, coverage(g), {radial:0,bilateral:.5,grid:1}[g.sym], (palOf(g).hue)/360
-  ];
+  return [ARCHETYPES.indexOf(g.arch)/6,g.w/12,(g.r-24)/24,g.n/12,g.gap,
+          g.rot/360,g.rad,coverage(g),{radial:0,bilateral:.5,grid:1}[g.sym],palOf(g).hue/360];
 }
 const DMAX=Math.sqrt(W.reduce((a,b)=>a+b,0));
 function simOf(a,b){
@@ -991,18 +1337,16 @@ function simOf(a,b){
 const CORPUS=(()=>{
   const r=rng(0x5EEDBEEF), out=[];
   for(let i=0;i<56;i++){
-    const g={
-      arch:pick(r,ARCHETYPES), w:lerp(2.5,10,r()), r:lerp(26,46,r()), n:2+Math.floor(r()*10),
-      gap:r()*.42, rot:Math.floor(r()*24)*15, rad:r(), fill:r(),
-      sym:pick(r,["radial","bilateral","grid"]), pal:pick(r,PALETTES).id, seed:i
-    };
-    out.push({id:"CX-"+String(i+1).padStart(3,"0"),v:vec(g)});
+    out.push({id:"CX-"+String(i+1).padStart(3,"0"),v:vec({
+      arch:pick(r,ARCHETYPES),w:lerp(2.5,10,r()),r:lerp(26,46,r()),n:2+Math.floor(r()*10),
+      gap:r()*.42,rot:Math.floor(r()*24)*15,rad:r(),fill:r(),
+      sym:pick(r,["radial","bilateral","grid"]),pal:pick(r,PALETTES).id,seed:i})});
   }
   return out;
 })();
 
 /* ==========================================================================
-   5. Pipeline
+   6. Pipeline
    ========================================================================== */
 function readBrief(){
   return {
@@ -1023,37 +1367,32 @@ function meaningVector(b){
 function chooseTerritories(mv,seed){
   const r=rng(seed);
   return TERRITORY_POOL
-    .map(t=>({t,score:AXES.reduce((s,a)=>s-Math.abs(t.v[a]-mv[a]),0)+r()*.35}))
+    .map(x=>({x,score:AXES.reduce((s,a)=>s-Math.abs(x.v[a]-mv[a]),0)+r()*.35}))
     .sort((a,b)=>b.score-a.score).slice(0,4)
-    .map((x,i)=>({...x.t,fit:clamp(1+x.score/2.4,0,1),on:true,idx:i}));
+    .map(o=>({...o.x,fit:clamp(1+o.score/2.4,0,1),on:true}));
 }
 function buildGrammars(terrs,seed){
   const r=rng(seed^0x9E3779B9), out=[];
-  terrs.forEach(t=>{
+  terrs.forEach(tr=>{
     for(let i=0;i<16;i++){
-      const arch=t.arch[i%t.arch.length];
-      const trait=GRAMMAR_TRAITS[(i+t.code.length)%GRAMMAR_TRAITS.length];
+      const arch=tr.arch[i%tr.arch.length];
+      const trait=GRAMMAR_TRAITS[(i+tr.code.length)%GRAMMAR_TRAITS.length];
       const wLo=lerp(2.4,7,r()), rLo=lerp(24,34,r()), nLo=2+Math.floor(r()*4);
       out.push({
-        id:`${t.code}.${arch.slice(0,3).toUpperCase()}.${trait}-${String(i+1).padStart(2,"0")}`,
-        terr:t.code, arch, trait,
-        win:{
-          w:[wLo,wLo+lerp(1.6,4.2,r())],
-          r:[rLo,rLo+lerp(6,14,r())],
-          n:[nLo,nLo+2+Math.floor(r()*5)],
-          gap:[r()*.14,.16+r()*.3],
-          rot:[0,trait==="rotational"?345:trait==="orthogonal"?90:180],
-          rad:[r()*.3,.35+r()*.65],
-          fill:[.2+r()*.3,.6+r()*.4]
-        },
+        id:`${tr.code}.${arch.slice(0,3).toUpperCase()}.${trait}-${String(i+1).padStart(2,"0")}`,
+        terr:tr.code, arch, trait,
+        win:{w:[wLo,wLo+lerp(1.6,4.2,r())],r:[rLo,rLo+lerp(6,14,r())],
+             n:[nLo,nLo+2+Math.floor(r()*5)],gap:[r()*.14,.16+r()*.3],
+             rot:[0,trait==="rotational"?345:trait==="orthogonal"?90:180],
+             rad:[r()*.3,.35+r()*.65],fill:[.2+r()*.3,.6+r()*.4]},
         sym:trait==="rotational"?"radial":trait==="bisected"?"bilateral":pick(r,["radial","bilateral","grid"]),
-        pal:t.pal
+        pal:tr.pal
       });
     }
   });
   return out;
 }
-function sample(grammars,seed,target){
+function sampleCandidates(grammars,seed,target){
   const per=Math.floor(target/grammars.length), out=[];
   grammars.forEach((gr,gi)=>{
     const r=rng((seed^hash32(gr.id))>>>0);
@@ -1062,9 +1401,8 @@ function sample(grammars,seed,target){
       out.push({
         id:"C-"+String(out.length+1).padStart(4,"0"),
         gram:gr.id, terr:gr.terr, arch:gr.arch,
-        w:r2(q(gr.win.w)), r:r2(q(gr.win.r)),
-        n:Math.round(q(gr.win.n)), gap:r2(q(gr.win.gap)),
-        rot:q(gr.win.rot,15), rad:r2(q(gr.win.rad)), fill:r2(q(gr.win.fill)),
+        w:r2(q(gr.win.w)), r:r2(q(gr.win.r)), n:Math.round(q(gr.win.n)),
+        gap:r2(q(gr.win.gap)), rot:q(gr.win.rot,15), rad:r2(q(gr.win.rad)), fill:r2(q(gr.win.fill)),
         sym:gr.sym, pal:pick(r,gr.pal), seed:(seed+gi*97+i)>>>0, mono:false
       });
     }
@@ -1079,13 +1417,13 @@ function representatives(pool,perTerr){
     const list=byTerr[code].slice().sort((a,b)=>b.ev.perception.overall-a.ev.perception.overall);
     const chosen=[list[0]];
     while(chosen.length<perTerr&&chosen.length<list.length){
-      let best=null,bestD=-1;
+      let best=null,bestQ=-1;
       for(const c of list){
         if(chosen.includes(c)) continue;
         let d=1;
         for(const s of chosen) d=Math.min(d,1-simOf(vec(c),vec(s)));
         const q=d*.72+(c.ev.perception.overall/100)*.28;
-        if(q>bestD){bestD=q;best=c;}
+        if(q>bestQ){bestQ=q;best=c;}
       }
       if(!best) break;
       chosen.push(best);
@@ -1094,48 +1432,41 @@ function representatives(pool,perTerr){
   });
   return out;
 }
-
 function run(){
   const b=readBrief();
   S.brief=b;
   S.briefHash=hex(hash32(b.name+"|"+b.category+"|"+b.audience+"|"+b.attrs.join(",")));
   S.seed=hash32(S.briefHash);
-  const mv=meaningVector(b);
-  S.mv=mv;
-  S.territories=chooseTerritories(mv,S.seed);
+  S.mv=meaningVector(b);
+  S.territories=chooseTerritories(S.mv,S.seed);
   S.grammars=buildGrammars(S.territories,S.seed);
   rebuild();
   S.ran=true;
+  renderStatus();
 }
 function rebuild(){
-  const active=S.grammars.filter(g=>S.territories.find(t=>t.code===g.terr&&t.on));
-  const cands=sample(active,S.seed,2000);
+  const active=S.grammars.filter(g=>S.territories.find(x=>x.code===g.terr&&x.on));
+  const cands=sampleCandidates(active,S.seed,2000);
   const cons=S.brief.cons;
   let valid=0,perceived=0,cleared=0;
   const survivors=[];
   cands.forEach(c=>{
     c.ev=evaluate(c,cons);
-    if(c.ev.valid){
-      valid++;
-      if(c.ev.pass){
-        perceived++;
-        if(c.ev.similarity.status!=="conflict"){cleared++;survivors.push(c);}
-      }
-    }
+    if(c.ev.valid){valid++;
+      if(c.ev.pass){perceived++;
+        if(c.ev.similarity.status!=="conflict"){cleared++;survivors.push(c);}}}
   });
   S.candidates=cands;
   S.reps=representatives(survivors,6);
   S.counts={sampled:cands.length,valid,perceived,cleared,reps:S.reps.length};
-  S.gramStats=(()=>{
-    const m={};
-    active.forEach(g=>m[g.id]={id:g.id,terr:g.terr,arch:g.arch,s:0,v:0,p:0,c:0});
-    cands.forEach(c=>{
-      const s=m[c.gram]; if(!s) return;
-      s.s++; if(c.ev.valid){s.v++; if(c.ev.pass){s.p++; if(c.ev.similarity.status!=="conflict") s.c++;}}
-    });
-    return Object.values(m).sort((a,b)=>b.c-a.c||a.id.localeCompare(b.id));
-  })();
-  if(!S.reps.find(r=>S.selected&&r.id===S.selected.id)) select(S.reps[0]||null);
+  const m={};
+  active.forEach(g=>m[g.id]={id:g.id,terr:g.terr,arch:g.arch,s:0,v:0,p:0,c:0});
+  cands.forEach(c=>{
+    const s=m[c.gram]; if(!s) return;
+    s.s++; if(c.ev.valid){s.v++; if(c.ev.pass){s.p++; if(c.ev.similarity.status!=="conflict") s.c++;}}
+  });
+  S.gramStats=Object.values(m).sort((a,b)=>b.c-a.c||a.id.localeCompare(b.id));
+  if(!S.reps.find(x=>S.selected&&x.id===S.selected.id)) select(S.reps[0]||null);
   renderAll();
 }
 function select(c){
@@ -1147,26 +1478,37 @@ function select(c){
 }
 
 /* ==========================================================================
-   6. Rendering
+   7. Rendering
    ========================================================================== */
 const $=s=>document.querySelector(s);
-const el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+const el=(tag,c,h)=>{const e=document.createElement(tag);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
 
+function applyStatic(){
+  document.querySelectorAll("[data-t]").forEach(n=>{n.textContent=t(n.dataset.t);});
+  $("#rules").innerHTML=[1,2,3,4].map(i=>`<div class="rule"><b>—</b><span>${t("rule."+i)}</span></div>`).join("");
+  $("#howto").innerHTML=[1,2,3,4,5,6].map(i=>`<li><span>${t("howto."+i)}</span></li>`).join("");
+  $("#gramHead").innerHTML=["gram","terr","arch","sampled","valid","perc","clear","yield"]
+    .map(k=>`<th>${t("th."+k)}</th>`).join("");
+  $("#langBtn").textContent=LANG==="ja"?"EN":"日本語";
+  document.querySelectorAll("#attrs .chip").forEach(c=>{c.textContent=t("at."+c.dataset.k);});
+  document.querySelectorAll("#cons .toggle span").forEach(s=>{s.textContent=t("cn."+s.dataset.k);});
+  countAttrs();
+}
 function renderAll(){
   renderChain(); renderBrief(); renderTerritories(); renderSearch();
   renderScreen(); renderEditor(); renderExport(); renderStatus();
 }
 
-/* --- rail --- */
 function renderChain(){
   const chain=$("#chain");
-  chain.innerHTML='<span class="lbl">Pipeline</span>';
+  chain.innerHTML=`<span class="lbl">${t("rail.pipeline")}</span>`;
+  const active=VIEWS.find(v=>v.id===S.stage).steps;
   STEPS.forEach(st=>{
     const b=el("button","step");
-    const on=VIEWS.find(v=>v.id===S.stage).steps.includes(st.n);
-    b.dataset.on=on?"1":"0";
-    const counts={4:S.counts.sampled,5:S.counts.perceived,6:S.counts.cleared,9:S.counts.reps?"ready":""};
-    b.innerHTML=`<span class="i num">${String(st.n).padStart(2,"0")}</span><span class="n">${st.name}</span><span class="c num">${counts[st.n]!=null&&counts[st.n]!==0?counts[st.n]:""}</span>`;
+    b.dataset.on=active.includes(st.n)?"1":"0";
+    const counts={4:S.counts.sampled,5:S.counts.perceived,6:S.counts.cleared};
+    const c=counts[st.n]?counts[st.n].toLocaleString():"";
+    b.innerHTML=`<span class="i num">${String(st.n).padStart(2,"0")}</span><span class="n">${t("step."+st.n)}</span><span class="c num">${c}</span>`;
     if(!S.ran&&st.view!=="brief") b.disabled=true;
     b.onclick=()=>go(st.view);
     chain.appendChild(b);
@@ -1176,26 +1518,25 @@ function go(id){
   S.stage=id;
   document.querySelectorAll(".view").forEach(v=>v.dataset.on=v.dataset.view===id?"1":"0");
   const v=VIEWS.find(x=>x.id===id);
-  $("#vtitle").textContent=v.title;
-  $("#crumb").textContent="Stage "+v.steps.map(n=>String(n).padStart(2,"0")).join(" — ")+"  /  "+v.label;
+  $("#vtitle").textContent=t("view."+id);
+  $("#crumb").textContent=t("stage")+" "+v.steps.map(n=>String(n).padStart(2,"0")).join(" — ")+"  /  "+t("viewL."+id);
   renderChain(); renderTools();
   window.scrollTo({top:0,behavior:"instant"});
 }
 function renderTools(){
-  const t=$("#tools"); t.innerHTML="";
-  const add=(label,kind,fn,dis)=>{const b=el("button","btn",label);if(kind)b.dataset.kind=kind;b.onclick=fn;b.disabled=!!dis;t.appendChild(b);};
-  if(S.stage==="brief") add(S.ran?"Re-run pipeline":"Run pipeline","primary",()=>{run();go("terr");});
-  if(S.stage==="terr"){add("Back","ghost",()=>go("brief"));add("Search 2,000 candidates","primary",()=>{rebuild();go("search");});}
-  if(S.stage==="search"){add("Back","ghost",()=>go("terr"));add("Open representatives","primary",()=>go("screen"));}
-  if(S.stage==="screen"){add("Back","ghost",()=>go("search"));add("Edit selected","primary",()=>go("edit"),!S.selected);}
-  if(S.stage==="edit"){add("Back","ghost",()=>go("screen"));add("Export","primary",()=>go("export"),!S.selected);}
-  if(S.stage==="export") add("Back to editor","ghost",()=>go("edit"));
+  const box=$("#tools"); box.innerHTML="";
+  const add=(label,kind,fn,dis)=>{const b=el("button","btn",label);if(kind)b.dataset.kind=kind;b.onclick=fn;b.disabled=!!dis;box.appendChild(b);};
+  if(S.stage==="brief") add(S.ran?t("b.rerun"):t("b.run"),"primary",()=>{run();go("terr");});
+  if(S.stage==="terr"){add(t("b.back"),"ghost",()=>go("brief"));add(t("b.search"),"primary",()=>{rebuild();go("search");});}
+  if(S.stage==="search"){add(t("b.back"),"ghost",()=>go("terr"));add(t("b.reps"),"primary",()=>go("screen"));}
+  if(S.stage==="screen"){add(t("b.back"),"ghost",()=>go("search"));add(t("b.edit"),"primary",()=>go("edit"),!S.selected);}
+  if(S.stage==="edit"){add(t("b.back"),"ghost",()=>go("screen"));add(t("b.export"),"primary",()=>go("export"),!S.selected);}
+  if(S.stage==="export") add(t("b.backEdit"),"ghost",()=>go("edit"));
 }
 
-/* --- brief --- */
 function renderBrief(){
   if(!S.mv) return;
-  $("#mvec").textContent=AXES.map(a=>a+" "+S.mv[a].toFixed(2)).join("   ·   ");
+  $("#mvec").textContent=AXES.map(a=>t("ax."+a)+" "+S.mv[a].toFixed(2)).join("   ·   ");
 }
 function initBrief(){
   const wrap=$("#attrs");
@@ -1205,8 +1546,7 @@ function initBrief(){
     c.dataset.k=a.k; c.dataset.on=preset.includes(a.k)?"1":"0";
     c.onclick=()=>{
       const on=c.dataset.on==="1";
-      const count=document.querySelectorAll("#attrs .chip[data-on='1']").length;
-      if(!on&&count>=5) return;
+      if(!on&&document.querySelectorAll("#attrs .chip[data-on='1']").length>=5) return;
       c.dataset.on=on?"0":"1";
       countAttrs(); markStale();
     };
@@ -1215,54 +1555,50 @@ function initBrief(){
   const cw=$("#cons");
   CONSTRAINTS.forEach(c=>{
     const l=el("label","toggle");
-    l.innerHTML=`<input type="checkbox" data-k="${c.k}" ${c.on?"checked":""}><span>${c.label}</span>`;
+    l.innerHTML=`<input type="checkbox" data-k="${c.k}" ${c.on?"checked":""}><span data-k="${c.k}"></span>`;
     l.querySelector("input").onchange=markStale;
     cw.appendChild(l);
   });
   ["fName","fCat","fAud"].forEach(id=>$("#"+id).addEventListener("input",markStale));
-  countAttrs();
 }
 function countAttrs(){
-  const n=document.querySelectorAll("#attrs .chip[data-on='1']").length;
-  $("#attrCount").textContent="— "+n+" of 5 chosen";
+  $("#attrCount").textContent=t("brief.attrCount",document.querySelectorAll("#attrs .chip[data-on='1']").length);
 }
 function markStale(){
   if(!S.ran) return;
-  $("#runDot").dataset.s="run"; $("#runState").textContent="brief changed — re-run required";
+  $("#runDot").dataset.s="run"; $("#runState").textContent=t("s.stale");
 }
 
-/* --- territories --- */
 function renderTerritories(){
-  const g=$("#terrGrid"); if(!S.territories.length) return;
-  g.innerHTML="";
-  S.territories.forEach(t=>{
-    const card=el("div","card terr"); card.dataset.on=t.on?"1":"0";
-    const n=S.grammars.filter(x=>x.terr===t.code).length;
+  const grid=$("#terrGrid"); if(!S.territories.length) return;
+  grid.innerHTML="";
+  S.territories.forEach(tr=>{
+    const card=el("div","card terr"); card.dataset.on=tr.on?"1":"0";
+    const n=S.grammars.filter(x=>x.terr===tr.code).length;
     card.innerHTML=`
       <div class="head">
-        <div><span class="lbl">${t.code} · ${n} grammars</span><h3 style="margin-top:5px">${t.name}</h3></div>
-        <span class="lbl num">${Math.round(t.fit*100)}%</span>
+        <div><span class="lbl">${tr.code} · ${t("terr.grammars",n)}</span><h3 style="margin-top:5px">${t("t."+tr.code)}</h3></div>
+        <span class="lbl num">${Math.round(tr.fit*100)}%</span>
       </div>
-      <p class="thesis">${t.thesis}</p>
-      <div class="swatches">${t.pal.map(p=>{const P=PALETTES.find(x=>x.id===p);
+      <p class="thesis">${t("th."+tr.code)}</p>
+      <div class="swatches">${tr.pal.map(p=>{const P=PALETTES.find(x=>x.id===p);
         return `<span class="sw" style="background:${P.bg}"></span><span class="sw" style="background:${P.ink}"></span><span class="sw" style="background:${P.accent}"></span>`;}).join("")}</div>
-      <div class="bars">${AXES.map(a=>`<div class="bar"><span>${a}</span><span class="track"><span class="fill" style="width:${t.v[a]*100}%"></span></span><span class="num">${t.v[a].toFixed(2)}</span></div>`).join("")}</div>`;
+      <div class="bars">${AXES.map(a=>`<div class="bar"><span>${t("ax."+a)}</span><span class="track"><span class="fill" style="width:${tr.v[a]*100}%"></span></span><span class="num">${tr.v[a].toFixed(2)}</span></div>`).join("")}</div>`;
     card.onclick=()=>{
-      const live=S.territories.filter(x=>x.on).length;
-      if(t.on&&live<=1) return;
-      t.on=!t.on; rebuild();
+      if(tr.on&&S.territories.filter(x=>x.on).length<=1) return;
+      tr.on=!tr.on; rebuild();
     };
-    g.appendChild(card);
+    grid.appendChild(card);
   });
 
   const demo=S.reps[0]||S.candidates.find(c=>c.ev&&c.ev.valid);
   if(demo){
     $("#genomeSrc").textContent=demo.id;
     $("#genomeSchema").textContent=JSON.stringify({
-      id:demo.id, grammar:demo.gram, territory:demo.terr,
+      id:demo.id,grammar:demo.gram,territory:demo.terr,
       mark:{archetype:demo.arch,strokeWeight:demo.w,radius:demo.r,count:demo.n,
             gap:demo.gap,rotation:demo.rot,cornerRadius:demo.rad,fill:demo.fill,symmetry:demo.sym},
-      palette:demo.pal, seed:demo.seed, provenance:{brief:S.briefHash,edits:0}
+      palette:demo.pal,seed:demo.seed,provenance:{brief:S.briefHash,edits:0}
     },null,2);
     const c=construct(demo);
     $("#graphDemo").innerHTML=c.nodes.map(n=>
@@ -1272,41 +1608,38 @@ function renderTerritories(){
   }
 }
 
-/* --- search --- */
 function renderSearch(){
   if(!S.candidates.length) return;
   const c=S.counts, max=c.sampled;
-  const stages=[
-    {n:"Grammars",s:"parameter windows",v:S.gramStats.length,d:"active"},
-    {n:"Candidates",s:"sampled genomes",v:c.sampled,d:"generated"},
-    {n:"Structurally valid",s:"construction screen",v:c.valid,d:"of "+c.sampled},
-    {n:"Perception pass",s:"small size + contrast",v:c.perceived,d:"of "+c.valid},
-    {n:"Collision cleared",s:"corpus distance",v:c.cleared,d:"of "+c.perceived},
-    {n:"Representatives",s:"cluster spread",v:c.reps,d:"handed to editor",f:1}
+  const rows=[
+    {n:t("fn.gram"),s:t("fn.gramS"),v:S.gramStats.length,d:t("fn.gramD")},
+    {n:t("fn.cand"),s:t("fn.candS"),v:c.sampled,d:t("fn.candD")},
+    {n:t("fn.valid"),s:t("fn.validS"),v:c.valid,d:t("fn.of",c.sampled.toLocaleString())},
+    {n:t("fn.perc"),s:t("fn.percS"),v:c.perceived,d:t("fn.of",c.valid.toLocaleString())},
+    {n:t("fn.clear"),s:t("fn.clearS"),v:c.cleared,d:t("fn.of",c.perceived.toLocaleString())},
+    {n:t("fn.rep"),s:t("fn.repS"),v:c.reps,d:t("fn.repD"),f:1}
   ];
-  $("#funnel").innerHTML=stages.map(s=>`
-    <div class="fstage" data-final="${s.f?1:0}">
-      <div class="fname"><b>${s.n}</b><span>${s.s}</span></div>
-      <div class="track"><div class="fill" style="width:${clamp(s.v/max*100,.6,100)}%"></div></div>
-      <div class="rt num">${s.v.toLocaleString()}<small>${s.d}</small></div>
+  $("#funnel").innerHTML=rows.map(r=>`
+    <div class="fstage" data-final="${r.f?1:0}">
+      <div class="fname"><b>${r.n}</b><span>${r.s}</span></div>
+      <div class="track"><div class="fill" style="width:${clamp(r.v/max*100,.6,100)}%"></div></div>
+      <div class="rt num">${r.v.toLocaleString()}<small>${r.d}</small></div>
     </div>`).join("");
-  $("#gramCount").textContent=S.gramStats.length+" active";
+  $("#gramCount").textContent=t("search.active",S.gramStats.length);
   $("#gramBody").innerHTML=S.gramStats.map(g=>`
     <tr><td>${g.id}</td><td>${g.terr}</td><td>${g.arch}</td><td>${g.s}</td>
     <td>${g.v}</td><td>${g.p}</td><td>${g.c}</td>
     <td style="color:${g.c?"var(--pass)":"var(--ink-3)"}">${g.s?Math.round(g.c/g.s*100):0}%</td></tr>`).join("");
 }
 
-/* --- screening --- */
 function renderScreen(){
   const fw=$("#screenFilters");
-  if(!fw.childElementCount){
-    [["all","all"],["clear","cleared"],["review","review"],["top","top quartile"]].forEach(([k,l])=>{
-      const b=el("button","chip",l); b.dataset.k=k; b.dataset.on=k===S.filter?"1":"0";
-      b.onclick=()=>{S.filter=k;[...fw.children].forEach(x=>x.dataset.on=x.dataset.k===k?"1":"0");renderScreen();};
-      fw.appendChild(b);
-    });
-  }
+  fw.innerHTML="";
+  ["all","clear","review","top"].forEach(k=>{
+    const b=el("button","chip",t("f."+k)); b.dataset.k=k; b.dataset.on=k===S.filter?"1":"0";
+    b.onclick=()=>{S.filter=k;renderScreen();};
+    fw.appendChild(b);
+  });
   let list=S.reps;
   if(S.filter==="clear") list=list.filter(c=>c.ev.similarity.status==="clear");
   if(S.filter==="review") list=list.filter(c=>c.ev.similarity.status==="review");
@@ -1314,7 +1647,7 @@ function renderScreen(){
     const sorted=S.reps.slice().sort((a,b)=>b.ev.perception.overall-a.ev.perception.overall);
     list=sorted.slice(0,Math.max(1,Math.ceil(sorted.length/4)));
   }
-  $("#screenCount").textContent=list.length+" of "+S.reps.length+" representatives shown";
+  $("#screenCount").textContent=t("screen.count",list.length,S.reps.length);
   const grid=$("#candGrid"); grid.innerHTML="";
   list.forEach(c=>{
     const card=el("div","card cand");
@@ -1327,7 +1660,7 @@ function renderScreen(){
         <div class="scorerow">
           <span class="num" style="font-size:12.5px;width:22px">${ev.perception.overall}</span>
           <span class="scorebar"><i style="width:${ev.perception.overall}%;background:${ev.perception.overall>=75?"var(--pass)":"var(--review)"}"></i></span>
-          <span class="pill" data-s="${ev.similarity.status}">${ev.similarity.status}</span>
+          <span class="pill" data-s="${ev.similarity.status}">${t("st."+ev.similarity.status)}</span>
         </div>
         <div class="id"><span>16px ${ev.perception.small}</span><span>${ev.atoms} atoms</span></div>
       </div>`;
@@ -1337,28 +1670,28 @@ function renderScreen(){
   });
 }
 
-/* --- editor --- */
 const PARAMS=[
-  {k:"w",   label:"Stroke weight",  min:1.5,max:12,step:.1,unit:"u"},
-  {k:"r",   label:"Primary radius", min:20, max:50,step:.5,unit:"u"},
-  {k:"n",   label:"Count",          min:2,  max:12,step:1, unit:""},
-  {k:"gap", label:"Aperture / gap", min:0,  max:.5,step:.01,unit:""},
-  {k:"rot", label:"Rotation",       min:0,  max:345,step:15,unit:"°"},
-  {k:"rad", label:"Corner softness",min:0,  max:1, step:.01,unit:""},
-  {k:"fill",label:"Counter fill",   min:.1, max:1, step:.01,unit:""}
+  {k:"w",   min:1.5,max:12, step:.1, unit:"u"},
+  {k:"r",   min:20, max:50, step:.5, unit:"u"},
+  {k:"n",   min:2,  max:12, step:1,  unit:""},
+  {k:"gap", min:0,  max:.5, step:.01,unit:""},
+  {k:"rot", min:0,  max:345,step:15, unit:"°"},
+  {k:"rad", min:0,  max:1,  step:.01,unit:""},
+  {k:"fill",min:.1, max:1,  step:.01,unit:""}
 ];
 function renderEditor(){
+  $("#lockBtn").textContent=t("edit.lockup",t("lk."+S.lockup));
+  $("#monoBtn").textContent=S.mono?t("edit.monoOn"):t("edit.mono");
+  $("#monoBtn").dataset.on=S.mono?"1":"0";
+  $("#resetBtn").textContent=t("edit.reset");
   if(!S.working){
-    $("#editArt").innerHTML="";$("#params").innerHTML='<div class="empty">No candidate selected.</div>';
+    $("#params").innerHTML=`<div class="empty">${t("edit.none")}</div>`;
     return;
   }
-  const g=S.working, ev=evaluate(g,S.brief.cons), base=S.base.ev;
-  const P=palOf(g);
+  const g=S.working, ev=evaluate(g,S.brief.cons), base=S.base.ev, P=palOf(g);
 
   $("#editId").textContent=g.id+"  ·  "+g.gram;
-  const st=$("#editStatus"); st.dataset.s=ev.similarity.status; st.textContent=ev.similarity.status;
-  $("#lockBtn").textContent="Lockup: "+S.lockup;
-  $("#monoBtn").textContent=S.mono?"1-colour: on":"1-colour test";
+  const st=$("#editStatus"); st.dataset.s=ev.similarity.status; st.textContent=t("st."+ev.similarity.status);
 
   const art=$("#editArt");
   [...art.querySelectorAll("svg")].forEach(n=>n.remove());
@@ -1375,79 +1708,82 @@ function renderEditor(){
       <span class="num">${px}px</span>`;
     strip.appendChild(d);
   });
-  const dl=el("div","sz");
-  dl.innerHTML=`<div class="box" style="background:${P.ink};width:56px;height:56px">
-    <div style="width:48px;height:48px">${svgOf({...g,mono:S.mono,invert:true},{transparent:true})}</div></div><span>reversed</span>`;
-  strip.appendChild(dl);
+  const rev=el("div","sz");
+  rev.innerHTML=`<div class="box" style="background:${P.ink};width:56px;height:56px">
+    <div style="width:48px;height:48px">${svgOf({...g,mono:S.mono,invert:true},{transparent:true})}</div></div>
+    <span>${t("edit.reversed")}</span>`;
+  strip.appendChild(rev);
 
   const M=[
-    ["Overall",ev.perception.overall,base.perception.overall],
-    ["16 px legibility",ev.perception.small,base.perception.small],
-    ["Contrast",ev.perception.contrast,base.perception.contrast],
-    ["Distinctiveness",ev.perception.distinct,base.perception.distinct],
-    ["Construction economy",ev.perception.complexity,base.perception.complexity],
-    ["Optical balance",ev.perception.balance,base.perception.balance],
-    ["Corpus proximity",Math.round(ev.similarity.max*1000)/10,Math.round(base.similarity.max*1000)/10]
+    ["m.overall",ev.perception.overall,base.perception.overall],
+    ["m.small",ev.perception.small,base.perception.small],
+    ["m.contrast",ev.perception.contrast,base.perception.contrast],
+    ["m.distinct",ev.perception.distinct,base.perception.distinct],
+    ["m.economy",ev.perception.complexity,base.perception.complexity],
+    ["m.balance",ev.perception.balance,base.perception.balance],
+    ["m.proximity",Math.round(ev.similarity.max*1000)/10,Math.round(base.similarity.max*1000)/10]
   ];
-  $("#metrics").innerHTML=M.map(([n,v,b],i)=>{
+  $("#metrics").innerHTML=M.map(([k,v,b],i)=>{
     const d=r2(v-b), inv=i===6;
     const dir=d===0?"":(inv?(d<0?"up":"down"):(d>0?"up":"down"));
-    return `<div class="metric"><span class="mn">${n}</span><span class="mv num">${v}</span>
+    return `<div class="metric"><span class="mn">${t(k)}</span><span class="mv num">${v}</span>
       <span class="md num" ${dir?`data-d="${dir}"`:""}>${d===0?"—":(d>0?"+":"")+d}</span></div>`;
   }).join("");
 
-  $("#reasons").innerHTML=(ev.fail.length?ev.fail.map(f=>`<div class="reason"><i>✕</i><span>${f}</span></div>`).join(""):"")
+  $("#reasons").innerHTML=ev.fail.map(f=>`<div class="reason"><i>✕</i><span>${f}</span></div>`).join("")
     +ev.notes.map(n=>`<div class="reason"><i>—</i><span>${n}</span></div>`).join("");
 
   const p=$("#params"); p.innerHTML="";
-  PARAMS.forEach(P0=>{
-    const dirty=r2(g[P0.k])!==r2(S.base[P0.k]);
+  PARAMS.forEach(pd=>{
+    const dirty=r2(g[pd.k])!==r2(S.base[pd.k]);
     const row=el("div","param");
-    row.innerHTML=`<div class="top"><b>${P0.label}</b><var data-dirty="${dirty?1:0}">${r2(g[P0.k])}${P0.unit}</var></div>`;
+    row.innerHTML=`<div class="top"><b>${t("p."+pd.k)}</b><var data-dirty="${dirty?1:0}">${r2(g[pd.k])}${pd.unit}</var></div>`;
     const inp=el("input");
-    inp.type="range";inp.min=P0.min;inp.max=P0.max;inp.step=P0.step;inp.value=g[P0.k];
+    inp.type="range";inp.min=pd.min;inp.max=pd.max;inp.step=pd.step;inp.value=g[pd.k];
     inp.oninput=()=>{
-      const from=g[P0.k], to=parseFloat(inp.value);
+      const from=g[pd.k], to=parseFloat(inp.value);
       if(from===to) return;
-      g[P0.k]=to; logEdit(P0.label,from,to,P0.k); renderEditor(); renderExport(); renderStatus();
+      g[pd.k]=to; logEdit("p."+pd.k,from,to,pd.k);
+      renderEditor(); renderExport(); renderStatus();
     };
     row.appendChild(inp);
     p.appendChild(row);
   });
-  [["arch","Archetype",ARCHETYPES],["sym","Symmetry",["radial","bilateral","grid"]],["pal","Palette",PALETTES.map(x=>x.id)]]
-  .forEach(([k,label,opts])=>{
+  [["arch",ARCHETYPES],["sym",["radial","bilateral","grid"]],["pal",PALETTES.map(x=>x.id)]]
+  .forEach(([k,opts])=>{
     const dirty=g[k]!==S.base[k];
     const row=el("div","param");
-    row.innerHTML=`<div class="top"><b>${label}</b><var data-dirty="${dirty?1:0}">${g[k]}</var></div>`;
+    row.innerHTML=`<div class="top"><b>${t("p."+k)}</b><var data-dirty="${dirty?1:0}">${g[k]}</var></div>`;
     const sel=el("select");
     sel.innerHTML=opts.map(o=>`<option ${o===g[k]?"selected":""}>${o}</option>`).join("");
-    sel.onchange=()=>{const from=g[k];g[k]=sel.value;logEdit(label,from,sel.value,k);renderEditor();renderExport();renderStatus();};
+    sel.onchange=()=>{const from=g[k];g[k]=sel.value;logEdit("p."+k,from,sel.value,k);renderEditor();renderExport();renderStatus();};
     row.appendChild(sel);
     p.appendChild(row);
   });
-
   renderLog();
 }
-function logEdit(label,from,to,key){
+function logEdit(labelKey,from,to,key){
   const last=S.log[S.log.length-1];
-  if(last&&last.key===key&&!last.reverted&&Date.now()-last.t<700){last.to=to;last.label=label;last.t=Date.now();return;}
-  S.log.push({i:++S.logSeq,key,label,from,to,t:Date.now(),reverted:false});
+  if(last&&last.key===key&&!last.reverted&&Date.now()-last.t<700){last.to=to;last.t=Date.now();return;}
+  S.log.push({i:++S.logSeq,key,labelKey,from,to,t:Date.now(),reverted:false,note:""});
 }
 function renderLog(){
   const L=$("#logList");
-  $("#logCount").textContent=S.log.filter(e=>!e.reverted).length+" edits";
-  if(!S.log.length){L.innerHTML='<div class="empty">No edits yet. Every change made here is recorded with its previous value and can be reverted individually.</div>';return;}
+  $("#logCount").textContent=t("edit.logCount",S.log.filter(e=>!e.reverted).length);
+  if(!S.log.length){L.innerHTML=`<div class="empty">${t("edit.logEmpty")}</div>`;return;}
   L.innerHTML="";
   S.log.slice().reverse().forEach(e=>{
     const row=el("div","logrow");
     row.dataset.rev=e.reverted?"1":"0";
+    const label=t(e.labelKey)+(e.note?" ("+t("edit.revertOf",e.note)+")":"");
     row.innerHTML=`<span class="ix num">${String(e.i).padStart(2,"0")}</span>
-      <span class="tx">${e.label} ${r2(e.from)} → ${r2(e.to)}</span>`;
-    const b=el("button","btn btn-sm",e.reverted?"reverted":"revert");
+      <span class="tx">${label} ${r2(e.from)} → ${r2(e.to)}</span>`;
+    const b=el("button","btn btn-sm",e.reverted?t("edit.reverted"):t("edit.revert"));
     b.dataset.kind="ghost"; b.disabled=e.reverted;
     b.onclick=()=>{
       S.working[e.key]=e.from; e.reverted=true;
-      S.log.push({i:++S.logSeq,key:e.key,label:e.label+" (revert of "+String(e.i).padStart(2,"0")+")",from:e.to,to:e.from,t:Date.now(),reverted:true});
+      S.log.push({i:++S.logSeq,key:e.key,labelKey:e.labelKey,from:e.to,to:e.from,
+                  t:Date.now(),reverted:true,note:String(e.i).padStart(2,"0")});
       renderEditor(); renderExport(); renderStatus();
     };
     row.appendChild(b);
@@ -1455,19 +1791,18 @@ function renderLog(){
   });
 }
 
-/* --- export --- */
-const NS="http://www.w3.org/2000/svg";
 /* Parametric primitives survive the whole pipeline and are flattened to path
    data only here, at the last possible moment before hand-off. */
-function flatten(svgStr){
+const NS="http://www.w3.org/2000/svg";
+function flattenSvg(svgStr){
   const doc=new DOMParser().parseFromString(svgStr,"image/svg+xml");
   const root=doc.documentElement;
   const drop=["cx","cy","r","x","y","width","height","rx","ry"];
   [...root.querySelectorAll("circle,rect")].forEach(e=>{
     let d="";
     if(e.tagName==="circle"){
-      const cx=+e.getAttribute("cx"),cy=+e.getAttribute("cy"),r=+e.getAttribute("r");
-      d=`M${r2(cx+r)} ${r2(cy)}A${r2(r)} ${r2(r)} 0 0 1 ${r2(cx-r)} ${r2(cy)}A${r2(r)} ${r2(r)} 0 0 1 ${r2(cx+r)} ${r2(cy)}Z`;
+      const cx=+e.getAttribute("cx"),cy=+e.getAttribute("cy"),rr=+e.getAttribute("r");
+      d=`M${r2(cx+rr)} ${r2(cy)}A${r2(rr)} ${r2(rr)} 0 0 1 ${r2(cx-rr)} ${r2(cy)}A${r2(rr)} ${r2(rr)} 0 0 1 ${r2(cx+rr)} ${r2(cy)}Z`;
     }else{
       const x=+e.getAttribute("x"),y=+e.getAttribute("y"),
             w=+e.getAttribute("width"),h=+e.getAttribute("height"),
@@ -1486,10 +1821,10 @@ function flatten(svgStr){
 function exportSvg(){
   if(!S.working) return "";
   const g=S.working, ev=evaluate(g,S.brief.cons);
-  const flat=flatten(svgOf({...g,mono:S.mono},{lockup:S.lockup}));
+  const flat=flattenSvg(svgOf({...g,mono:S.mono},{lockup:S.lockup}));
   const head=`<!-- LogoGenome ${g.id} · grammar ${g.gram} · brief ${S.briefHash} · edits ${S.log.filter(e=>!e.reverted).length} -->
-  <title>${S.brief.name} — ${g.arch} construction</title>
-  <desc>Logo Design Intelligence v15. Overall ${ev.perception.overall}, 16 px legibility ${ev.perception.small}, collision status ${ev.similarity.status}. Design collision screening only — not a trademark clearance.</desc>`;
+  <title>${S.brief.name} — ${g.arch}</title>
+  <desc>Logo Design Intelligence v15. overall ${ev.perception.overall}, 16px ${ev.perception.small}, collision ${ev.similarity.status}. Design collision screening only — not a trademark clearance.</desc>`;
   const cut=flat.indexOf(">")+1;
   return (flat.slice(0,cut)+"\n  "+head+flat.slice(cut))
     .replace(/><(?!\/)/g,">\n  <")
@@ -1497,62 +1832,77 @@ function exportSvg(){
 }
 function renderExport(){
   if(!S.working){$("#svgCode").textContent="";return;}
-  const g=S.working, ev=evaluate(g,S.brief.cons);
-  const svg=exportSvg();
+  const g=S.working, ev=evaluate(g,S.brief.cons), svg=exportSvg();
   $("#svgCode").textContent=svg;
   $("#genomeCode").textContent=JSON.stringify({
     id:g.id,grammar:g.gram,territory:g.terr,
     mark:{archetype:g.arch,strokeWeight:r2(g.w),radius:r2(g.r),count:g.n,gap:r2(g.gap),
           rotation:g.rot,cornerRadius:r2(g.rad),fill:r2(g.fill),symmetry:g.sym},
     palette:g.pal,lockup:S.lockup,seed:g.seed,
-    provenance:{brief:S.briefHash,pipelineSeed:S.seed,edits:S.log.filter(e=>!e.reverted).length,
-                derivedFrom:S.base.id,reversible:true}
+    provenance:{brief:S.briefHash,pipelineSeed:S.seed,
+                edits:S.log.filter(e=>!e.reverted).length,derivedFrom:S.base.id,reversible:true}
   },null,2);
   const c=construct(g);
-  $("#graphCount").textContent=c.nodes.length+" ops · "+c.atoms+" atoms";
+  $("#graphCount").textContent=t("gc.ops",c.nodes.length,c.atoms);
   $("#graphList").innerHTML=c.nodes.map(n=>
     `<div class="gnode"><span class="gid num">${n.id}</span><span class="gop">${n.op}</span><span class="gnote">${n.note}</span></div>`).join("");
   $("#prov").innerHTML=[
-    ["Brand",S.brief.name],["Brief hash",S.briefHash],["Pipeline seed",S.seed],
-    ["Territory",g.terr],["Grammar",g.gram],["Candidate",S.base.id],
-    ["Genome seed",g.seed],["Edits kept",S.log.filter(e=>!e.reverted).length],
-    ["Reverted",S.log.filter(e=>e.reverted).length]
-  ].map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join("");
+    ["pv.brand",S.brief.name],["pv.hash",S.briefHash],["pv.seed",S.seed],
+    ["pv.terr",g.terr],["pv.gram",g.gram],["pv.cand",S.base.id],["pv.gseed",g.seed],
+    ["pv.kept",S.log.filter(e=>!e.reverted).length],["pv.reverted",S.log.filter(e=>e.reverted).length]
+  ].map(([k,v])=>`<dt>${t(k)}</dt><dd>${v}</dd>`).join("");
 
   const checks=[
-    ["structurally valid",ev.valid],
-    ["reproducible from genome + seed",true],
-    ["editable as structure",true],
-    ["explainable",ev.notes.length>0],
-    ["tested at small size",ev.perception.small>=56],
-    ["screened for design collision",ev.similarity.status!=="conflict"],
-    ["geometry flattened to paths at export",!/<(circle|rect)\b/.test(svg)],
-    ["exports as valid SVG",svg.startsWith("<svg")&&svg.trimEnd().endsWith("</svg>")]
+    ["ac.valid",ev.valid],
+    ["ac.repro",true],
+    ["ac.editable",true],
+    ["ac.explain",ev.notes.length>0],
+    ["ac.small",ev.perception.small>=56],
+    ["ac.collision",ev.similarity.status!=="conflict"],
+    ["ac.flat",!/<(circle|rect)\b/.test(svg)],
+    ["ac.svg",svg.startsWith("<svg")&&svg.trimEnd().endsWith("</svg>")]
   ];
-  if(S.lockup!=="mark") checks.push(["wordmark still live text — outline conversion is downstream",false]);
+  if(S.lockup!=="mark") checks.push(["ac.text",false]);
   const ok=checks.every(c=>c[1]);
-  $("#acceptState").textContent=ok?"complete":"incomplete";
+  $("#acceptState").textContent=ok?t("ac.complete"):t("ac.incomplete");
   $("#acceptState").style.color=ok?"var(--pass)":"var(--review)";
-  $("#acceptList").innerHTML=checks.map(([n,v])=>
-    `<div class="reason"><i style="color:${v?"var(--pass)":"var(--conflict)"}">${v?"✓":"✕"}</i><span>${n}</span></div>`).join("");
+  $("#acceptList").innerHTML=checks.map(([k,v])=>
+    `<div class="reason"><i style="color:${v?"var(--pass)":"var(--conflict)"}">${v?"✓":"✕"}</i><span>${t(k)}</span></div>`).join("");
 }
 
-/* --- status --- */
 function renderStatus(){
   $("#runDot").dataset.s=S.ran?"":"idle";
-  $("#runState").textContent=S.ran?"run complete":"idle";
+  $("#runState").textContent=S.ran?t("s.done"):t("s.idle");
   $("#sBrief").textContent=S.briefHash;
   $("#sSeed").textContent=S.seed||"—";
-  $("#sGram").textContent=(S.gramStats||[]).length;
+  $("#sGram").textContent=S.gramStats.length;
   $("#sCand").textContent=S.counts.sampled.toLocaleString();
   $("#sRep").textContent=S.counts.reps;
   $("#sEdit").textContent=S.log.filter(e=>!e.reverted).length;
 }
 
 /* ==========================================================================
-   7. Wiring
+   8. Wiring
    ========================================================================== */
+function setLang(next){
+  const prev=LANG;
+  LANG=next;
+  document.documentElement.lang=next;
+  /* Only replace text the user has not typed over. */
+  const nm=$("#fName"), au=$("#fAud");
+  if(nm.value===TXT[prev]["def.name"]) nm.value=TXT[next]["def.name"];
+  if(au.value===TXT[prev]["def.aud"]) au.value=TXT[next]["def.aud"];
+  applyStatic();
+  run();
+  go(S.stage);
+}
 initBrief();
+$("#fName").value=TXT[LANG]["def.name"];
+$("#fAud").value=TXT[LANG]["def.aud"];
+document.documentElement.lang=LANG;
+applyStatic();
+
+$("#langBtn").onclick=()=>setLang(LANG==="ja"?"en":"ja");
 $("#themeBtn").onclick=()=>{
   const cur=document.documentElement.getAttribute("data-theme");
   const sysDark=matchMedia("(prefers-color-scheme: dark)").matches;
@@ -1572,15 +1922,31 @@ $("#resetBtn").onclick=()=>{
   S.log=[]; S.logSeq=0;
   renderEditor(); renderExport(); renderStatus();
 };
-$("#copySvg").onclick=()=>{navigator.clipboard.writeText(exportSvg());$("#copySvg").textContent="Copied";setTimeout(()=>$("#copySvg").textContent="Copy",1200);};
-$("#copyGenome").onclick=()=>{navigator.clipboard.writeText($("#genomeCode").textContent);$("#copyGenome").textContent="Copied";setTimeout(()=>$("#copyGenome").textContent="Copy JSON",1200);};
+$("#copySvg").onclick=()=>{
+  navigator.clipboard.writeText(exportSvg());
+  $("#copySvg").textContent=t("export.copied");
+  setTimeout(()=>$("#copySvg").textContent=t("export.copy"),1200);
+};
+$("#copyGenome").onclick=()=>{
+  navigator.clipboard.writeText($("#genomeCode").textContent);
+  $("#copyGenome").textContent=t("export.copied");
+  setTimeout(()=>$("#copyGenome").textContent=t("export.copyJson"),1200);
+};
 $("#dlSvg").onclick=()=>{
   const blob=new Blob([exportSvg()],{type:"image/svg+xml"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
-  a.download=(S.brief.name.toLowerCase().replace(/\s+/g,"-"))+"-"+S.working.id+".svg";
+  a.download=S.brief.name.toLowerCase().replace(/\s+/g,"-")+"-"+S.working.id+".svg";
   a.click(); URL.revokeObjectURL(a.href);
 };
+document.addEventListener("keydown",e=>{
+  if(e.key!=="ArrowLeft"&&e.key!=="ArrowRight") return;
+  const tag=(e.target.tagName||"").toLowerCase();
+  if(tag==="input"||tag==="select"||tag==="textarea") return;
+  const i=VIEWS.findIndex(v=>v.id===S.stage);
+  const j=clamp(i+(e.key==="ArrowRight"?1:-1),0,VIEWS.length-1);
+  if(j!==i&&(S.ran||VIEWS[j].id==="brief")) go(VIEWS[j].id);
+});
 
 run();
 go("brief");

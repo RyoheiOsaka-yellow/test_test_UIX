@@ -1,45 +1,63 @@
-# Logo Design Intelligence — v15 prototype
+# Logo Design Intelligence — v15 プロトタイプ
 
-An interactive, single-file prototype of the pipeline described in the build pack:
+ビルドパックに記述されたパイプラインの、動作する単一ファイル・プロトタイプ。
 
 ```
-Meaning → Genome → Construction → Search → Perception → Similarity → Human Edit → Re-test → Export
+意味 → ゲノム → 構築 → 探索 → 知覚 → 類似 → 人手編集 → 再テスト → エクスポート
 ```
 
-Open `index.html` in any browser. No build step, no dependencies, no network calls.
+`index.html` をブラウザで開くだけ。ビルド不要・依存関係なし・ネットワーク通信なし。
+UI は日本語/英語を左下のボタンで切り替えられる（既定は日本語）。
 
-## What it actually does
+## 操作方法
 
-This is not a mockup with placeholder images. The marks on screen are generated at runtime
-from structured data:
-
-| Stage | Implemented behaviour |
+| ステージ | 操作 |
 | --- | --- |
-| Meaning | Free-text brief compiled once into a 5-axis meaning vector, then never read again |
-| Genome | 4 territories selected by vector distance; 16 grammars each = 64 parameter windows |
-| Construction | Each genome builds a `ConstructionGraph` of named ops that emits the SVG |
-| Search | ~2,000 candidate genomes sampled inside the grammar windows |
-| Perception | Validity screen, then 16 px legibility, contrast, economy, balance, distinctiveness |
-| Similarity | Weighted distance against a 56-entry construction corpus → clear / review / conflict |
-| Human Edit | Every genome parameter exposed as a control; each change logged with its prior value |
-| Re-test | Scores recompute live and show the delta against the search-time state |
-| Export | Primitives flattened to `<path>` here and only here; genome + provenance ride along |
+| **01 意味** | ブランド名・カテゴリ・オーディエンスを入力し、意味属性を最大 5 つ選ぶ。制約のチェックはスコアの判定基準に直接効く。右上の「パイプラインを実行」で確定 |
+| **02 ゲノム** | 4 つのテリトリーカードをクリックして選択／解除（最低 1 つは残る）。下段でゲノムのスキーマと、それが生む構築グラフを確認できる |
+| **03 探索** | 「2,000 候補を探索」で再サンプリング。ファネルは各スクリーンの通過数、表はグラマー別の歩留まり |
+| **04 知覚** | 24 の代表が並ぶ。クリックで選択、**ダブルクリックでそのままエディタへ**。フィルタで衝突状態や上位 25% に絞れる |
+| **05 人手編集** | 右のスライダーとセレクトでゲノムを直接動かす。スコアは即座に再計算され、探索時からの差分が出る。編集ログの「取り消す」で 1 件ずつ戻せる |
+| **06 エクスポート** | SVG をコピーまたはダウンロード。ゲノム・構築グラフ・来歴が付随し、受け入れ判定の全項目が並ぶ |
 
-Everything is deterministic: the brief hashes to a seed, so the same brief reproduces the
-same 2,000 candidates and the same 24 representatives on every run.
+補助操作:
 
-## Constraints honoured from `00_START_HERE.md`
+- **← →** キーでステージ移動（入力欄にフォーカスがあるときは無効）
+- 左レールの番号をクリックしても同じ画面に飛べる
+- エディタ上部: ロックアップ切替（マークのみ／縦組み／横組み）、単色テスト、探索時の状態に戻す
+- 左下: 言語切替（EN / 日本語）、テーマ切替（システム → ライト → ダーク）
 
-- No prompt-to-image path exists in the build — the genome is the source of truth.
-- Similarity output is a **design-collision** signal and is labelled as such. No trademark
-  or legal clearance claim is made anywhere in the UI or in the exported file.
-- Shape psychology is never asserted as fact; territory theses are stated as positions.
-- Geometry stays parametric until export, where it is flattened to path data.
-- Every edit is reversible individually and carries provenance to the exported SVG.
+## 実装されている挙動
 
-## Known prototype boundaries
+プレースホルダ画像のモックではなく、画面上のマークはすべて構造データから実行時に生成される。
 
-- Wordmark type is live `<text>`; outline conversion is a downstream task and the
-  acceptance panel says so rather than claiming it is done.
-- Ink coverage is estimated analytically per archetype rather than rasterised.
-- The corpus is synthetic — it stands in for the real screening index.
+| 段階 | 実装 |
+| --- | --- |
+| 意味 | 自由記述のブリーフを 5 軸の意味ベクトルへ一度だけコンパイルし、以降は参照しない |
+| ゲノム | ベクトル距離で 4 テリトリーを選定。各 16 グラマー = 64 のパラメータ窓 |
+| 構築 | 各ゲノムが名前付きオペレーションの `ConstructionGraph` を組み、そこから SVG を出力 |
+| 探索 | グラマー窓の内側で約 2,000 の候補ゲノムをサンプリング |
+| 知覚 | 妥当性スクリーンの後、16px 可読性・コントラスト・構築の経済性・光学バランス・独自性 |
+| 類似 | 56 件の構成コーパスに対する重み付き距離 → クリア／要確認／衝突 |
+| 人手編集 | 全ゲノムパラメータを操作可能。各変更を変更前の値とともに記録 |
+| 再テスト | スコアを即時再計算し、探索時の状態との差分を表示 |
+| エクスポート | ここで初めてプリミティブを `<path>` へフラット化。ゲノムと来歴を同梱 |
+
+完全に決定論的: ブリーフがハッシュ化されてシードになるため、同じブリーフからは毎回同じ
+2,000 候補・同じ 24 代表が再現される。
+
+## `00_START_HERE.md` の制約の扱い
+
+- prompt-to-image の経路は存在しない。真実の源はゲノムのみ
+- 類似判定は**デザイン衝突**のシグナルとして明示。商標・法的クリアランスの主張は UI にも
+  書き出した SVG にも一切含まない
+- 形状心理学を決定論的な事実として断定しない。テリトリーの主張は「立場」として記述
+- ジオメトリはエクスポート直前までパラメトリックのまま
+- すべての編集は個別に取り消し可能で、来歴を保持する
+
+## プロトタイプとしての境界
+
+- ワードマークはライブ `<text>` のまま。アウトライン化は下流タスクであり、完了したふりを
+  せず受け入れ判定に未達として表示する
+- インク被覆率はラスタライズではなく、アーキタイプごとの解析的推定
+- コーパスは合成データで、実スクリーニング索引の代替
