@@ -513,13 +513,7 @@ button.big.ghost { background: transparent; color: var(--agave); border: 1px sol
     <div class="boot-mark">HACIENDA SAN ROMÁN · 標高 2,050 m</div>
     <h1>TROMBA</h1>
     <div class="boot-sub">アガベ平原の竜巻</div>
-    <p class="title-brief">
-      五月、雨季の前。<b>ハリスコ高原</b>の赤い土の上に、四十年ぶんの
-      <b>アオノリュウゼツラン</b>が畝を作って並んでいる。正午過ぎ、
-      乾いた地面が熱を返し、そこに<b>あなた</b>が生まれる。
-      最初はただの塵の渦。畑を薙ぎ、サボテンを倒し、赤い土を吸い上げるたび、
-      あなたは雲を戴き、雷を持ち、赤く染まって大きくなる。
-    </p>
+    <p class="title-brief">五月、雨季の前。<b>ハリスコ高原</b>の赤い土の上に、四十年ぶんの<b>アオノリュウゼツラン</b>が畝を作って並んでいる。正午過ぎ、乾いた地面が熱を返し、そこに<b>あなた</b>が生まれる。最初はただの塵の渦。畑を薙ぎ、サボテンを倒し、赤い土を吸い上げるたび、あなたは雲を戴き、雷を持ち、赤く染まって大きくなる。</p>
     <div class="title-buttons">
       <button id="btnStart" class="big">渦を起こす</button>
       <button id="btnContinue" class="big ghost hidden">続きから</button>
@@ -1023,7 +1017,7 @@ void main() {
   if (uGrain > 0.0) {
     float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
     float n = hash(vUv * 1024.0 + fract(uTime) * 37.0) - 0.5;
-    col += n * uGrain * 0.030 * (0.18 + 0.82 * exp(-l * 7.0));
+    col += n * uGrain * 0.026 * (0.18 + 0.58 * exp(-l * 7.0));
   }
 
   float v = 1.0 - uVignette * pow(length(vUv - 0.5) * 1.34, 2.6);
@@ -4673,7 +4667,7 @@ class Debris {
     let count = amount * 220 * dt;
     count = Math.floor(count) + (r() < count % 1 ? 1 : 0);
     for (let i = 0; i < count && i < 30; i++) {
-      const a = r() * Math.PI * 2, rad = r() * 26;
+      const a = r() * Math.PI * 2, rad = 9 + r() * 26;
       const x = camPos[0] + Math.cos(a) * rad;
       const z = camPos[2] + Math.sin(a) * rad;
       this._spawn(x, camPos[1] + 12 + r() * 10, z,
