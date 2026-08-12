@@ -246,6 +246,23 @@ footer.foot b{color:var(--forest);font-weight:600}
 .frow .flabel{font-size:10.5px;letter-spacing:.14em;font-weight:600;color:var(--gold);width:78px;flex:0 0 auto}
 .emptynote{padding:40px 0;color:var(--ink-muted);font-size:13px;text-align:center}
 
+/* soon (catalog) cards */
+.soongrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:10px;padding-bottom:16px}
+.scard{
+  background:var(--surface);border:1px dashed var(--line);border-radius:14px;
+  padding:12px 14px;display:flex;flex-direction:column;gap:5px;min-height:88px;
+}
+.scard b{font-size:13px;color:var(--ink-soft);font-weight:600;line-height:1.45}
+.scard small{font-size:10px;color:var(--ink-muted);letter-spacing:.04em;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.scard code{font-family:inherit;background:var(--paper-deep);border-radius:4px;padding:1px 5px}
+.scard .sbadge{align-self:flex-start;font-size:9px;letter-spacing:.14em;font-weight:700;color:var(--gold);background:var(--gold-soft);border-radius:999px;padding:2.5px 8px}
+.udot{display:inline-block;width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+.fchips{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
+.fchips .pill{display:inline-flex;align-items:center;gap:6px}
+.uchip .ucnt{font-size:9.5px;letter-spacing:.08em;color:var(--ink-muted);font-weight:600}
+.uchip .uext{font-size:8.5px;letter-spacing:.12em;color:#8a6fb8;background:rgba(138,111,184,.12);border-radius:999px;padding:2px 6px;font-weight:700}
+.uchip.soon{opacity:.75}
+
 /* ---------- LAB ---------- */
 .lab{flex:1;display:flex;flex-direction:column;min-height:0}
 .labbar{
@@ -793,6 +810,121 @@ class WalkWorld {
   }
 }
 
+/* ---- 22 universes: 20 from the master catalog + 2 extension universes ---- */
+const UNIVERSES = [
+  { id:'01', ja:'振り子と振動', en:'Pendulum & Oscillation', c:'#a3806a' },
+  { id:'02', ja:'カオス', en:'Chaotic Systems', c:'#c9705f' },
+  { id:'03', ja:'写像と分岐', en:'Maps & Bifurcations', c:'#b8873f' },
+  { id:'04', ja:'アトラクタ', en:'Strange Attractors', c:'#6b6fa8' },
+  { id:'05', ja:'波', en:'Waves', c:'#7ba3b8' },
+  { id:'06', ja:'共鳴と同期', en:'Resonance & Synchronization', c:'#5f9a94' },
+  { id:'07', ja:'反応拡散', en:'Reaction–Diffusion', c:'#b08bb0' },
+  { id:'08', ja:'セル・オートマトン', en:'Cellular Automata', c:'#6a7a8a' },
+  { id:'09', ja:'フラクタル', en:'Fractals', c:'#a08a6a' },
+  { id:'10', ja:'流体と不安定性', en:'Fluids & Instability', c:'#6f9fc0' },
+  { id:'11', ja:'重力と軌道', en:'Gravity & Orbits', c:'#7a6fa8' },
+  { id:'12', ja:'統計物理', en:'Particles & Statistical Physics', c:'#8a8f7a' },
+  { id:'13', ja:'ランダム', en:'Randomness & Probability', c:'#c7a83c' },
+  { id:'14', ja:'臨界現象', en:'Criticality & Phase Transition', c:'#c08a5a' },
+  { id:'15', ja:'生態系', en:'Ecology', c:'#6f8f5a' },
+  { id:'16', ja:'進化と遺伝', en:'Evolution & Genetics', c:'#7f9a6a' },
+  { id:'17', ja:'群れ', en:'Collective Behavior', c:'#5f8f8a' },
+  { id:'18', ja:'ネットワーク', en:'Networks', c:'#4f8f8a' },
+  { id:'19', ja:'都市と交通', en:'Society, Cities & Traffic', c:'#8a7a6a' },
+  { id:'20', ja:'光と場', en:'Light, Electricity & Fields', c:'#c0a050' },
+  { id:'21', ja:'量子', en:'Quantum', c:'#8a6fb8', ext:true },
+  { id:'22', ja:'相対論', en:'Relativity', c:'#54677a', ext:true },
+];
+/* ---- 320-experiment master catalog + extension entries ----
+ * [id, title, universeId, engine, difficulty, priority]  (S=flagship A=next B=backlog) */
+const CATALOG = [
+  ['P01','Simple Pendulum','01','ode-rigidbody','M','B'],['P02','Double Pendulum','01','ode-rigidbody','M','S'],['P03','Triple Pendulum','01','ode-rigidbody','M','B'],['P04','N-Link Pendulum','01','ode-rigidbody','M','B'],
+  ['P05','Spring Pendulum','01','ode-rigidbody','M','B'],['P06','Spherical Pendulum','01','ode-rigidbody','M','B'],['P07','Foucault Pendulum','01','ode-rigidbody','M','B'],['P08','Magnetic Pendulum','01','ode-rigidbody','M','B'],
+  ['P09','Driven Pendulum','01','ode-rigidbody','M','B'],['P10','Damped Pendulum','01','ode-rigidbody','M','B'],['P11','Parametric Pendulum','01','ode-rigidbody','M','B'],['P12','Coupled Pendulums','01','ode-rigidbody','M','B'],
+  ['P13','Pendulum Wave','01','ode-rigidbody','M','A'],['P14','Newton\'s Cradle','01','ode-rigidbody','M','A'],['P15','Torsion Pendulum','01','ode-rigidbody','M','B'],['P16','Kapitza Pendulum','01','ode-rigidbody','M','B'],
+  ['C01','Duffing Oscillator','02','ode-rigidbody','M','A'],['C02','Van der Pol Oscillator','02','ode-rigidbody','M','B'],['C03','Forced Duffing','02','ode-rigidbody','M','B'],['C04','Chaotic Bouncing Ball','02','ode-rigidbody','M','B'],
+  ['C05','Chaotic Billiards','02','ode-rigidbody','M','B'],['C06','Stadium Billiard','02','ode-rigidbody','M','B'],['C07','Sinai Billiard','02','ode-rigidbody','M','B'],['C08','Three-Body Chaos','02','ode-rigidbody','M','A'],
+  ['C09','Chaotic Rotor','02','ode-rigidbody','M','B'],['C10','Driven Rotor','02','ode-rigidbody','M','B'],['C11','Chaotic Spring','02','ode-rigidbody','M','B'],['C12','Chua Circuit','02','ode-rigidbody','M','B'],
+  ['C13','Chaotic Waterwheel','02','ode-rigidbody','M','B'],['C14','Chaotic Scattering','02','ode-rigidbody','M','B'],['C15','Rikitake Dynamo','02','ode-rigidbody','M','B'],['C16','Forced Nonlinear Oscillator','02','ode-rigidbody','M','B'],
+  ['M01','Logistic Map','03','discrete-map','L','S'],['M02','Tent Map','03','discrete-map','L','B'],['M03','Hénon Map','03','discrete-map','L','B'],['M04','Ikeda Map','03','discrete-map','L','B'],
+  ['M05','Standard Map','03','discrete-map','L','B'],['M06','Circle Map','03','discrete-map','L','B'],['M07','Baker\'s Map','03','discrete-map','L','B'],['M08','Arnold Cat Map','03','discrete-map','L','B'],
+  ['M09','Gingerbreadman Map','03','discrete-map','M','B'],['M10','Gauss Map','03','discrete-map','M','B'],['M11','Lozi Map','03','discrete-map','M','B'],['M12','Tinkerbell Map','03','discrete-map','M','B'],
+  ['M13','Cobweb Diagram','03','discrete-map','M','B'],['M14','Feigenbaum Bifurcation','03','discrete-map','M','A'],['M15','Period Doubling','03','discrete-map','M','B'],['M16','Intermittency Route to Chaos','03','discrete-map','M','B'],
+  ['A01','Lorenz Attractor','04','ode','M','S'],['A02','Rössler Attractor','04','ode','M','A'],['A03','Aizawa Attractor','04','ode','M','B'],['A04','Thomas Attractor','04','ode','M','B'],
+  ['A05','Halvorsen Attractor','04','ode','M','B'],['A06','Chen Attractor','04','ode','M','B'],['A07','Lü Attractor','04','ode','M','B'],['A08','Dadras Attractor','04','ode','M','B'],
+  ['A09','Rabinovich–Fabrikant','04','ode','M','B'],['A10','Rucklidge Attractor','04','ode','M','B'],['A11','Dequan Li Attractor','04','ode','M','B'],['A12','Four-Wing Attractor','04','ode','M','B'],
+  ['A13','Nosé–Hoover Attractor','04','ode','M','B'],['A14','Burke–Shaw Attractor','04','ode','M','B'],['A15','Sprott Systems','04','ode','M','B'],['A16','Clifford Attractor','04','ode','M','B'],
+  ['W01','Sine Wave','05','wave-pde','M','B'],['W02','Standing Wave','05','wave-pde','M','B'],['W03','Wave Superposition','05','wave-pde','M','B'],['W04','Interference','05','wave-pde','M','S'],
+  ['W05','Reflection','05','wave-pde','M','B'],['W06','Refraction','05','wave-pde','M','B'],['W07','Diffraction','05','wave-pde','M','B'],['W08','Wave Packet','05','wave-pde','M','B'],
+  ['W09','Beats','05','wave-pde','M','B'],['W10','Doppler Effect','05','wave-pde','M','A'],['W11','Soliton','05','wave-pde','M','B'],['W12','Shock Wave','05','wave-pde','M','B'],
+  ['W13','Circular Water Waves','05','wave-pde','M','B'],['W14','String Waves','05','wave-pde','M','B'],['W15','Membrane Waves','05','wave-pde','M','B'],['W16','Wave Dispersion','05','wave-pde','M','B'],
+  ['S01','Mechanical Resonance','06','oscillator-network','M','B'],['S02','Coupled Oscillators','06','oscillator-network','M','B'],['S03','Kuramoto Model','06','oscillator-network','M','S'],['S04','Metronome Synchronization','06','oscillator-network','M','A'],
+  ['S05','Firefly Synchronization','06','oscillator-network','M','A'],['S06','Phase Locking','06','oscillator-network','M','B'],['S07','Frequency Locking','06','oscillator-network','M','B'],['S08','Entrainment','06','oscillator-network','M','B'],
+  ['S09','Arnold Tongues','06','oscillator-network','M','B'],['S10','Pulse-Coupled Oscillators','06','oscillator-network','M','B'],['S11','Chimera State','06','oscillator-network','M','B'],['S12','Swarmalators','06','oscillator-network','M','B'],
+  ['S13','Josephson Synchronization','06','oscillator-network','M','B'],['S14','Circadian Synchronization','06','oscillator-network','M','B'],['S15','Cardiac Pacemaker Model','06','oscillator-network','M','B'],['S16','Bridge Crowd Synchronization','06','oscillator-network','M','B'],
+  ['RD01','Gray–Scott','07','reaction-diffusion-gpu','M','S'],['RD02','Turing Pattern','07','reaction-diffusion-gpu','M','A'],['RD03','Activator–Inhibitor','07','reaction-diffusion-gpu','M','B'],['RD04','FitzHugh–Nagumo','07','reaction-diffusion-gpu','M','B'],
+  ['RD05','Brusselator','07','reaction-diffusion-gpu','M','B'],['RD06','Oregonator','07','reaction-diffusion-gpu','M','B'],['RD07','Belousov–Zhabotinsky','07','reaction-diffusion-gpu','M','B'],['RD08','Spiral Waves','07','reaction-diffusion-gpu','M','B'],
+  ['RD09','Target Waves','07','reaction-diffusion-gpu','H','B'],['RD10','Spot Formation','07','reaction-diffusion-gpu','H','B'],['RD11','Stripe Formation','07','reaction-diffusion-gpu','H','B'],['RD12','Maze Pattern','07','reaction-diffusion-gpu','H','B'],
+  ['RD13','Wave Instability','07','reaction-diffusion-gpu','H','B'],['RD14','Excitable Media','07','reaction-diffusion-gpu','H','B'],['RD15','Morphogenesis','07','reaction-diffusion-gpu','H','B'],['RD16','Predator–Prey Reaction Diffusion','07','reaction-diffusion-gpu','H','B'],
+  ['CA01','Conway\'s Game of Life','08','cellular-automata','L','S'],['CA02','Rule 30','08','cellular-automata','L','B'],['CA03','Rule 90','08','cellular-automata','L','B'],['CA04','Rule 110','08','cellular-automata','L','B'],
+  ['CA05','Brian\'s Brain','08','cellular-automata','L','B'],['CA06','Wireworld','08','cellular-automata','L','B'],['CA07','Langton\'s Ant','08','cellular-automata','L','A'],['CA08','Langton\'s Loops','08','cellular-automata','L','B'],
+  ['CA09','Cyclic Cellular Automata','08','cellular-automata','M','B'],['CA10','Forest Fire CA','08','cellular-automata','M','B'],['CA11','Majority CA','08','cellular-automata','M','B'],['CA12','Seeds','08','cellular-automata','M','B'],
+  ['CA13','HighLife','08','cellular-automata','M','B'],['CA14','Day & Night','08','cellular-automata','M','B'],['CA15','Elementary CA Explorer','08','cellular-automata','M','B'],['CA16','Stochastic Cellular Automaton','08','cellular-automata','M','B'],
+  ['F01','Mandelbrot Set','09','fractal-shader','L','S'],['F02','Julia Set','09','fractal-shader','L','A'],['F03','Burning Ship','09','fractal-shader','L','B'],['F04','Newton Fractal','09','fractal-shader','L','B'],
+  ['F05','Sierpiński Triangle','09','fractal-shader','L','B'],['F06','Sierpiński Carpet','09','fractal-shader','L','B'],['F07','Menger Sponge','09','fractal-shader','L','B'],['F08','Koch Snowflake','09','fractal-shader','L','B'],
+  ['F09','Dragon Curve','09','fractal-shader','M','B'],['F10','Barnsley Fern','09','fractal-shader','M','B'],['F11','Cantor Set','09','fractal-shader','M','B'],['F12','Apollonian Gasket','09','fractal-shader','M','B'],
+  ['F13','Fractal Tree','09','fractal-shader','M','B'],['F14','L-System','09','fractal-shader','M','B'],['F15','IFS Explorer','09','fractal-shader','M','B'],['F16','Mandelbulb','09','fractal-shader','M','B'],
+  ['FL01','Laminar Flow','10','fluid-gpu','M','B'],['FL02','Turbulent Flow','10','fluid-gpu','M','B'],['FL03','Vortex','10','fluid-gpu','M','B'],['FL04','Vortex Ring','10','fluid-gpu','M','B'],
+  ['FL05','Kármán Vortex Street','10','fluid-gpu','H','A'],['FL06','Kelvin–Helmholtz Instability','10','fluid-gpu','H','B'],['FL07','Rayleigh–Taylor Instability','10','fluid-gpu','H','B'],['FL08','Rayleigh–Bénard Convection','10','fluid-gpu','H','B'],
+  ['FL09','Taylor–Couette Flow','10','fluid-gpu','H','B'],['FL10','Dam Break','10','fluid-gpu','H','B'],['FL11','Whirlpool','10','fluid-gpu','H','B'],['FL12','Smoke Plume','10','fluid-gpu','H','B'],
+  ['FL13','Fluid Mixing','10','fluid-gpu','H','B'],['FL14','Convection','10','fluid-gpu','H','B'],['FL15','Advection','10','fluid-gpu','H','B'],['FL16','Vortex Interaction','10','fluid-gpu','H','B'],
+  ['G01','Two-Body Orbit','11','nbody','M','B'],['G02','Three-Body Problem','11','nbody','M','A'],['G03','N-Body Gravity','11','nbody','M','S'],['G04','Binary Star','11','nbody','M','B'],
+  ['G05','Lagrange Points','11','nbody','H','B'],['G06','Gravity Assist','11','nbody','H','B'],['G07','Orbital Resonance','11','nbody','H','B'],['G08','Hohmann Transfer','11','nbody','H','B'],
+  ['G09','Escape Velocity','11','nbody','H','B'],['G10','Hill Sphere','11','nbody','H','B'],['G11','Roche Limit','11','nbody','H','B'],['G12','Trojan Asteroids','11','nbody','H','B'],
+  ['G13','Restricted Three-Body','11','nbody','H','B'],['G14','Galaxy Collision','11','nbody','H','B'],['G15','Accretion Disk','11','nbody','H','B'],['G16','Planetary System Sandbox','11','nbody','H','B'],
+  ['SP01','Ideal Gas','12','particle-md','M','A'],['SP02','Brownian Motion','12','particle-md','M','B'],['SP03','Diffusion','12','particle-md','M','B'],['SP04','Maxwell–Boltzmann Distribution','12','particle-md','M','B'],
+  ['SP05','Gas Mixing','12','particle-md','H','B'],['SP06','Effusion','12','particle-md','H','B'],['SP07','Random Collision','12','particle-md','H','B'],['SP08','Hard Sphere Gas','12','particle-md','H','B'],
+  ['SP09','Molecular Dynamics','12','particle-md','H','B'],['SP10','Lennard-Jones Fluid','12','particle-md','H','B'],['SP11','Crystal Formation','12','particle-md','H','B'],['SP12','Melting','12','particle-md','H','B'],
+  ['SP13','Evaporation','12','particle-md','H','B'],['SP14','Osmosis','12','particle-md','H','B'],['SP15','Entropy Mixing','12','particle-md','H','B'],['SP16','Pressure–Temperature','12','particle-md','H','B'],
+  ['R01','1D Random Walk','13','monte-carlo-particle','L','B'],['R02','2D Random Walk','13','monte-carlo-particle','L','S'],['R03','3D Random Walk','13','monte-carlo-particle','L','B'],['R04','Brownian Walk','13','monte-carlo-particle','L','B'],
+  ['R05','Lévy Flight','13','monte-carlo-particle','L','B'],['R06','Drunkard\'s Walk','13','monte-carlo-particle','L','B'],['R07','Galton Board','13','monte-carlo-particle','L','A'],['R08','Monte Carlo π','13','monte-carlo-particle','L','B'],
+  ['R09','Buffon\'s Needle','13','monte-carlo-particle','M','B'],['R10','Birthday Paradox','13','monte-carlo-particle','M','B'],['R11','Central Limit Theorem','13','monte-carlo-particle','M','B'],['R12','Gambler\'s Ruin','13','monte-carlo-particle','M','B'],
+  ['R13','Coupon Collector','13','monte-carlo-particle','M','B'],['R14','Random Chords','13','monte-carlo-particle','M','B'],['R15','Random Packing','13','monte-carlo-particle','M','B'],['R16','Diffusion-Limited Aggregation','13','monte-carlo-particle','M','B'],
+  ['CR01','Ising Model','14','lattice-critical','M','A'],['CR02','Potts Model','14','lattice-critical','M','B'],['CR03','Percolation','14','lattice-critical','M','B'],['CR04','Site Percolation','14','lattice-critical','M','B'],
+  ['CR05','Bond Percolation','14','lattice-critical','M','B'],['CR06','Sandpile','14','lattice-critical','M','B'],['CR07','Bak–Tang–Wiesenfeld Model','14','lattice-critical','M','B'],['CR08','Forest Fire','14','lattice-critical','M','B'],
+  ['CR09','Avalanche','14','lattice-critical','H','B'],['CR10','Self-Organized Criticality','14','lattice-critical','H','B'],['CR11','Bootstrap Percolation','14','lattice-critical','H','B'],['CR12','Epidemic Threshold','14','lattice-critical','H','B'],
+  ['CR13','Magnetization','14','lattice-critical','H','B'],['CR14','Phase Coexistence','14','lattice-critical','H','B'],['CR15','Critical Slowing Down','14','lattice-critical','H','B'],['CR16','Nucleation','14','lattice-critical','H','B'],
+  ['E01','Lotka–Volterra','15','ode-agent','M','A'],['E02','Predator–Prey','15','ode-agent','M','B'],['E03','Three-Species Food Chain','15','ode-agent','M','B'],['E04','Competitive Exclusion','15','ode-agent','M','B'],
+  ['E05','Mutualism','15','ode-agent','M','B'],['E06','Parasitism','15','ode-agent','M','B'],['E07','Carrying Capacity','15','ode-agent','M','B'],['E08','Logistic Population Growth','15','ode-agent','M','B'],
+  ['E09','Allee Effect','15','ode-agent','M','B'],['E10','Metapopulation','15','ode-agent','M','B'],['E11','Island Biogeography','15','ode-agent','M','B'],['E12','Ecological Succession','15','ode-agent','M','B'],
+  ['E13','Food Web','15','ode-agent','M','B'],['E14','Spatial Competition','15','ode-agent','M','B'],['E15','Predator Functional Response','15','ode-agent','M','B'],['E16','Ecosystem Collapse','15','ode-agent','M','B'],
+  ['EV01','Natural Selection','16','evolution-agent','M','A'],['EV02','Genetic Drift','16','evolution-agent','M','B'],['EV03','Mutation','16','evolution-agent','M','B'],['EV04','Founder Effect','16','evolution-agent','M','B'],
+  ['EV05','Bottleneck Effect','16','evolution-agent','M','B'],['EV06','Gene Flow','16','evolution-agent','M','B'],['EV07','Hardy–Weinberg','16','evolution-agent','M','B'],['EV08','Sexual Selection','16','evolution-agent','M','B'],
+  ['EV09','Frequency-Dependent Selection','16','evolution-agent','H','B'],['EV10','Evolutionary Arms Race','16','evolution-agent','H','B'],['EV11','Evolution of Cooperation','16','evolution-agent','H','B'],['EV12','Evolutionary Game Theory','16','evolution-agent','H','B'],
+  ['EV13','Replicator Dynamics','16','evolution-agent','H','B'],['EV14','Quasispecies','16','evolution-agent','H','B'],['EV15','Artificial Selection','16','evolution-agent','H','B'],['EV16','Adaptive Landscape','16','evolution-agent','H','B'],
+  ['CB01','Boids','17','agent-gpu','M','S'],['CB02','Vicsek Model','17','agent-gpu','M','B'],['CB03','Bird Flocking','17','agent-gpu','M','B'],['CB04','Fish Schooling','17','agent-gpu','M','B'],
+  ['CB05','Ant Foraging','17','agent-gpu','M','A'],['CB06','Ant Trail','17','agent-gpu','M','B'],['CB07','Bee Swarm','17','agent-gpu','M','B'],['CB08','Slime Mold','17','agent-gpu','M','B'],
+  ['CB09','Termite Mound','17','agent-gpu','M','B'],['CB10','Bacterial Colony','17','agent-gpu','M','B'],['CB11','Collective Escape','17','agent-gpu','M','B'],['CB12','Milling','17','agent-gpu','M','B'],
+  ['CB13','Swarm Intelligence','17','agent-gpu','M','B'],['CB14','Leader Following','17','agent-gpu','M','B'],['CB15','Collective Decision','17','agent-gpu','M','B'],['CB16','Active Matter','17','agent-gpu','M','B'],
+  ['N01','Erdős–Rényi Network','18','network','M','B'],['N02','Watts–Strogatz Network','18','network','M','B'],['N03','Barabási–Albert Network','18','network','M','B'],['N04','Small World','18','network','M','A'],
+  ['N05','Scale-Free Network','18','network','M','B'],['N06','Preferential Attachment','18','network','M','B'],['N07','Network Percolation','18','network','M','B'],['N08','Community Formation','18','network','M','B'],
+  ['N09','Network Cascade','18','network','M','B'],['N10','Epidemic Network','18','network','M','B'],['N11','Rumor Network','18','network','M','B'],['N12','Synchronization Network','18','network','M','B'],
+  ['N13','Adaptive Network','18','network','M','B'],['N14','Network Robustness','18','network','M','B'],['N15','Cascading Failure','18','network','M','B'],['N16','Dynamic Social Network','18','network','M','B'],
+  ['SC01','Schelling Segregation','19','agent-network','M','A'],['SC02','Traffic Jam','19','agent-network','M','S'],['SC03','Phantom Traffic Jam','19','agent-network','M','B'],['SC04','Traffic Light','19','agent-network','M','B'],
+  ['SC05','Highway Flow','19','agent-network','M','B'],['SC06','Pedestrian Flow','19','agent-network','M','B'],['SC07','Lane Formation','19','agent-network','M','B'],['SC08','Crowd Evacuation','19','agent-network','M','B'],
+  ['SC09','Panic Escape','19','agent-network','M','B'],['SC10','Opinion Dynamics','19','agent-network','M','B'],['SC11','Voter Model','19','agent-network','M','B'],['SC12','Rumor Spread','19','agent-network','M','B'],
+  ['SC13','Prisoner\'s Dilemma','19','agent-network','M','B'],['SC14','Public Goods Game','19','agent-network','M','B'],['SC15','El Farol Bar Problem','19','agent-network','M','B'],['SC16','Herd Behavior','19','agent-network','M','B'],
+  ['EM01','Electric Field','20','field-ray','M','B'],['EM02','Magnetic Field','20','field-ray','M','B'],['EM03','Dipole Field','20','field-ray','M','B'],['EM04','Coulomb Interaction','20','field-ray','M','B'],
+  ['EM05','Lorentz Force','20','field-ray','M','B'],['EM06','Charged Particle','20','field-ray','M','B'],['EM07','Electromagnetic Induction','20','field-ray','M','B'],['EM08','LC Oscillator','20','field-ray','M','B'],
+  ['EM09','Double Slit','20','field-ray','M','A'],['EM10','Thin-Film Interference','20','field-ray','M','B'],['EM11','Polarization','20','field-ray','M','B'],['EM12','Lens Ray Tracing','20','field-ray','M','B'],
+  ['EM13','Total Internal Reflection','20','field-ray','M','B'],['EM14','Prism Dispersion','20','field-ray','M','B'],['EM15','Gravitational Lens Analogy','20','field-ray','M','B'],['EM16','Field-Line Sandbox','20','field-ray','M','B'],
+  ['QM01','Quantum Tunneling','21','schrodinger-1d','M','S'],['QM02','Double-Slit Experiment','21','schrodinger-1d','H','A'],['QM03','Particle in a Box','21','schrodinger-1d','M','B'],
+  ['QM04','Harmonic Oscillator States','21','schrodinger-1d','M','B'],['QM05','Wave Packet Dispersion','21','schrodinger-1d','L','B'],['QM06','Quantum Reflection','21','schrodinger-1d','M','B'],
+  ['BH01','Light Bending','22','geodesic','M','S'],['BH02','Gravitational Lensing Images','22','geodesic','H','A'],['BH03','Photon Sphere Orbits','22','geodesic','M','B'],
+  ['BH04','Orbit Precession','22','geodesic','M','B'],['BH05','Accretion Disk Appearance','22','geodesic','H','B'],['BH06','Gravitational Wave Inspiral','22','geodesic','H','B'],
+];
+const UNI = id => UNIVERSES.find(u => u.id === id);
+
 /* =========================================================================
  * LAB DEFINITIONS  (manifest-driven: controls, presets, learning, tests)
  * ======================================================================= */
@@ -800,7 +932,7 @@ const LABS = {};
 
 /* -------------------------------------------------------------- P02 ----- */
 LABS.P02 = {
-  id: 'P02', slug: 'double-pendulum',
+  id: 'P02', slug: 'double-pendulum', universeId: '01', navJa: '振り子',
   title: 'Double Pendulum', titleJa: '二重振り子',
   subtitleJa: 'わずかな違いが、違う未来をつくる。',
   hookJa: '角度を0.001°だけ変える。2つの世界は、いつまで同じ動きをする？',
@@ -835,6 +967,7 @@ LABS.P02 = {
     });
   },
   spread: 0.001,  /* degrees between ensemble members */
+  preview: { view: 'sim', restartSec: 26 },
   learn: {
     hook: '角度を0.001°だけ変える。2つの世界は、いつまで同じ動きをする？',
     try: ['Worlds を「2」にして、θ₁ を 0.001° だけ動かしてください。',
@@ -861,7 +994,7 @@ LABS.P02 = {
 
 /* -------------------------------------------------------------- A01 ----- */
 LABS.A01 = {
-  id: 'A01', slug: 'lorenz-attractor',
+  id: 'A01', slug: 'lorenz-attractor', universeId: '04', navJa: 'ローレンツ',
   title: 'Lorenz Attractor', titleJa: 'ローレンツ・アトラクタ',
   subtitleJa: '決まった法則なのに、同じ軌道を繰り返さない。',
   hookJa: 'ほとんど同じ場所から2点を出発させると、いつ離れていく？',
@@ -916,7 +1049,7 @@ LABS.A01 = {
 
 /* -------------------------------------------------------------- M01 ----- */
 LABS.M01 = {
-  id: 'M01', slug: 'logistic-map',
+  id: 'M01', slug: 'logistic-map', universeId: '03', navJa: '写像', discrete: true,
   title: 'Logistic Map', titleJa: 'ロジスティック写像',
   subtitleJa: 'ひとつの式から、いくつもの未来。',
   hookJa: 'スライダーを少し動かすだけで、秩序が分かれ、複雑になっていく。',
@@ -971,7 +1104,7 @@ LABS.M01 = {
 
 /* -------------------------------------------------------------- R02 ----- */
 LABS.R02 = {
-  id: 'R02', slug: 'random-walk',
+  id: 'R02', slug: 'random-walk', universeId: '13', navJa: 'ランダム', discrete: true,
   title: '2D Random Walk', titleJa: '2次元ランダムウォーク',
   subtitleJa: '1本はでたらめ。1000本には、かたちがある。',
   hookJa: '1本だけ見るとでたらめ。でも1000本を重ねると、規則が見えてきます。',
@@ -1025,7 +1158,7 @@ LABS.R02 = {
   }
 };
 
-const LAB_ORDER = ['P02', 'A01', 'M01', 'R02'];
+const LAB_ORDER = ['P02', 'A01', 'M01', 'R02', 'CA01', 'W04', 'G03', 'S03', 'QM01', 'BH01'];
 
 /* related-link title lookup */
 function labMeta(id) { return LABS[id]; }
@@ -1681,6 +1814,1484 @@ const TESTS = {
 };
 
 /* =========================================================================
+ * CA01 — GAME OF LIFE   (engine: cellular-automata, B3/S23, toroidal)
+ * ======================================================================= */
+const LIFE_PATTERNS = {
+  glider: [[1,0],[2,1],[0,2],[1,2],[2,2]],
+  gun: [[0,4],[0,5],[1,4],[1,5],[10,4],[10,5],[10,6],[11,3],[11,7],[12,2],[12,8],
+        [13,2],[13,8],[14,5],[15,3],[15,7],[16,4],[16,5],[16,6],[17,5],[20,2],[20,3],
+        [20,4],[21,2],[21,3],[21,4],[22,1],[22,5],[24,0],[24,1],[24,5],[24,6],
+        [34,2],[34,3],[35,2],[35,3]],
+  pulsar: (() => {
+    const seg = [2,3,4,8,9,10], out = [];
+    seg.forEach(x => [0,5,7,12].forEach(y => out.push([x,y])));
+    seg.forEach(y => [0,5,7,12].forEach(x => out.push([x,y])));
+    return out;
+  })()
+};
+class LifeWorld {
+  constructor(p, init) {
+    this.p = Object.assign({}, p);
+    this.W = 132; this.H = 88;
+    this.a = new Uint8Array(this.W * this.H);
+    this.b = new Uint8Array(this.W * this.H);
+    this.gen = 0; this.activity = 0;
+    this.popHist = [];
+    const pat = init.pattern || 'soup';
+    if (pat === 'soup') {
+      const rng = SeededRNG(init.seed >>> 0);
+      for (let i = 0; i < this.a.length; i++) this.a[i] = rng.next() < init.density ? 1 : 0;
+    } else {
+      const cells = LIFE_PATTERNS[pat] || [];
+      let mx = 0, my = 0;
+      cells.forEach(c => { mx = Math.max(mx, c[0]); my = Math.max(my, c[1]); });
+      const ox = (this.W - mx) >> 1, oy = (this.H - my) >> 1;
+      cells.forEach(c => { this.a[(c[1] + oy) * this.W + (c[0] + ox)] = 1; });
+    }
+    this.popHist.push(this.pop());
+  }
+  pop() { let s = 0; for (let i = 0; i < this.a.length; i++) s += this.a[i]; return s; }
+  step() {
+    const { W, H, a, b } = this;
+    let act = 0;
+    for (let y = 0; y < H; y++) {
+      const yu = ((y - 1 + H) % H) * W, ym = y * W, yd = ((y + 1) % H) * W;
+      for (let x = 0; x < W; x++) {
+        const xl = (x - 1 + W) % W, xr = (x + 1) % W;
+        const n = a[yu + xl] + a[yu + x] + a[yu + xr] + a[ym + xl] + a[ym + xr]
+                + a[yd + xl] + a[yd + x] + a[yd + xr];
+        const alive = a[ym + x];
+        const next = alive ? (n === 2 || n === 3 ? 1 : 0) : (n === 3 ? 1 : 0);
+        b[ym + x] = next;
+        if (next !== alive) act++;
+      }
+    }
+    this.a.set(b);
+    this.gen++; this.activity = act;
+    this.popHist.push(this.pop());
+    if (this.popHist.length > 900) this.popHist.shift();
+  }
+  paint(cx, cy) {
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (Math.abs(dx) + Math.abs(dy) > 1) continue;
+      const x = cx + dx, y = cy + dy;
+      if (x >= 0 && x < this.W && y >= 0 && y < this.H) this.a[y * this.W + x] = 1;
+    }
+  }
+}
+LABS.CA01 = {
+  id: 'CA01', slug: 'game-of-life', universeId: '08', navJa: 'ライフ', discrete: true,
+  title: "Conway's Game of Life", titleJa: 'ライフゲーム',
+  subtitleJa: '3つの規則から、生き物のような何かが。',
+  hookJa: 'ルールは「隣が3つなら生まれる。2つか3つなら生き残る」だけ。あとは眺めてください。',
+  universe: 'ca', universeJa: 'セル・オートマトン', accent: 'var(--u-life)',
+  tags: ['EMERGENCE', 'RULES', 'BEGINNER'],
+  engine: 'cellular-automata', renderer: 'canvas2d', solver: 'B3/S23 同期更新', fixedDt: 1 / 15,
+  features: { trails: false, worlds: false, butterfly: false, compare: false, paint: true },
+  views: [{ id: 'grid', ja: '盤面' }, { id: 'pop', ja: '人口の推移' }],
+  params: [],
+  initParams: [
+    { id: 'seed', ja: '乱数シード', sym: 's', def: 42, min: 1, max: 99999, step: 1, unit: '', reset: true },
+    { id: 'density', ja: '初期密度', sym: 'd', def: .28, min: .02, max: .8, step: .01, unit: '', reset: true }
+  ],
+  presets: [
+    { id: 'soup', ja: 'ランダムスープ', en: 'd=0.28', p: {}, i: { pattern: 'soup', density: .28 } },
+    { id: 'glider', ja: 'グライダー', en: '5 cells', p: {}, i: { pattern: 'glider' } },
+    { id: 'gun', ja: 'グライダー銃', en: 'Gosper', p: {}, i: { pattern: 'gun' } },
+    { id: 'pulsar', ja: 'パルサー', en: '周期3', p: {}, i: { pattern: 'pulsar' } }
+  ],
+  makeWorld(p, ini) { return new LifeWorld(p, ini); },
+  extraTools: [
+    { label: '消す', fn(api) { const w = api.getWorlds()[0]; w.a.fill(0); w.popHist.length = 0; } },
+    { label: 'まぜる', fn(api) {
+        api.I.seed = (api.I.seed * 16807 % 99999) + 1; api.syncControls(); api.rebuild();
+    } }
+  ],
+  setupPointer(cv, api) {
+    let painting = false;
+    const cell = ev => {
+      const w = api.getWorlds()[0], g = w._geom;
+      if (!g) return null;
+      const r = cv.getBoundingClientRect(), t = ev.touches ? ev.touches[0] : ev;
+      const x = Math.floor((t.clientX - r.left - g.ox) / g.cs);
+      const y = Math.floor((t.clientY - r.top - g.oy) / g.cs);
+      return (x >= 0 && x < w.W && y >= 0 && y < w.H) ? { x, y } : null;
+    };
+    const down = ev => {
+      if (api.ui.view !== 'grid') return;
+      const c = cell(ev); if (!c) return;
+      painting = true;
+      api.getWorlds()[0].paint(c.x, c.y);
+      ev.preventDefault();
+    };
+    const move = ev => {
+      if (!painting) return;
+      const c = cell(ev); if (c) api.getWorlds()[0].paint(c.x, c.y);
+      ev.preventDefault();
+    };
+    cv.addEventListener('mousedown', down);
+    cv.addEventListener('touchstart', down, { passive: false });
+    window.addEventListener('mousemove', move);
+    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('mouseup', () => painting = false);
+    window.addEventListener('touchend', () => painting = false);
+  },
+  preview: { I: { pattern: 'gun' }, view: 'grid', restartSec: 34 },
+  learn: {
+    hook: 'ルールは3行だけ。それでも、動き回るもの・撃ち出すもの・脈打つものが生まれます。',
+    try: ['盤面をドラッグして、自由にセルを描いてください。',
+          '「グライダー銃」プリセットで、構造が構造を作る様子を見ます。'],
+    notice: ['どのセルも「自分の隣8つ」しか見ていません。',
+             '設計図がないのに、安定した形・周期的な形・移動する形が現れます。',
+             'ほんの1セルの違いで、その後の展開が大きく変わります。'],
+    whyPlain: '一つひとつのセルは単純でも、隣同士の影響が連鎖すると、全体として誰も設計していないパターンが生まれます。これが「創発」です。',
+    whyDeep: 'ライフゲームは万能計算が可能なことが知られています。局所規則だけから任意の計算装置を組み立てられる、という意味で「単純な規則の表現力」の極端な例です。',
+    eq: '誕生：死セルの隣に生セルがちょうど 3 つ → 生<br>生存：生セルの隣が 2 つか 3 つ → 生き残る<br>それ以外 → 死',
+    assume: ['盤面の端は反対側とつながっています（トーラス境界）。',
+             '全セルが同時に更新される同期型です。非同期にすると振る舞いは変わります。'],
+    real: [
+      { t: '生物のパターン形成', d: '細胞どうしの局所的な相互作用から、縞や斑点などの全体パターンが生まれる仕組みの最小モデルです。' },
+      { t: '結晶成長・山火事の広がり', d: '「隣の状態で自分が決まる」現象はいたるところにあります。' }
+    ],
+    deeper: [
+      { c: '創発', d: '個々の要素にはない性質が、相互作用する集まりに現れること。' },
+      { c: '万能計算', d: 'グライダーの衝突を配線に見立てて、論理回路が構成できます。' }
+    ],
+    related: ['M01', 'R02', 'S03']
+  }
+};
+LABS.CA01.draw = function (ctx, w, h, worlds, ui) {
+  bg(ctx, w, h);
+  const wd = worlds[0];
+  if (ui.view === 'pop') return drawLifePop(ctx, w, h, wd);
+  const cs = Math.min(w / wd.W, h / wd.H);
+  const ox = (w - cs * wd.W) / 2, oy = (h - cs * wd.H) / 2;
+  wd._geom = { ox, oy, cs };
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(ox, oy, cs * wd.W, cs * wd.H);
+  ctx.strokeStyle = 'rgba(31,43,38,.12)';
+  ctx.strokeRect(ox, oy, cs * wd.W, cs * wd.H);
+  if (cs > 4.5) {
+    ctx.strokeStyle = 'rgba(31,43,38,.04)'; ctx.lineWidth = 1; ctx.beginPath();
+    for (let x = 1; x < wd.W; x++) { ctx.moveTo(ox + x * cs, oy); ctx.lineTo(ox + x * cs, oy + wd.H * cs); }
+    for (let y = 1; y < wd.H; y++) { ctx.moveTo(ox, oy + y * cs); ctx.lineTo(ox + wd.W * cs, oy + y * cs); }
+    ctx.stroke();
+  }
+  ctx.fillStyle = '#2e5c4c';
+  const pad = Math.max(cs * .12, .4);
+  for (let y = 0; y < wd.H; y++) {
+    const base = y * wd.W;
+    for (let x = 0; x < wd.W; x++) {
+      if (wd.a[base + x]) ctx.fillRect(ox + x * cs + pad / 2, oy + y * cs + pad / 2, cs - pad, cs - pad);
+    }
+  }
+};
+function drawLifePop(ctx, w, h, wd) {
+  const pad = 50, gw = w - pad * 2, gh = h - pad * 2;
+  ctx.strokeStyle = 'rgba(31,43,38,.12)'; ctx.strokeRect(pad, pad, gw, gh);
+  const hist = wd.popHist, n = hist.length;
+  let hi = 10; for (let i = 0; i < n; i++) hi = Math.max(hi, hist[i]);
+  hi *= 1.15;
+  ctx.strokeStyle = '#2e5c4c'; ctx.lineWidth = 1.8; ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const X = pad + (i / Math.max(1, n - 1)) * gw, Y = pad + gh - (hist[i] / hi) * gh;
+    i === 0 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y);
+  }
+  ctx.stroke();
+  axisLabel(ctx, '世代', pad + gw - 20, pad + gh + 18);
+  axisLabel(ctx, '人口 ' + hist[n - 1], pad + 6, pad - 8);
+}
+LABS.CA01.metrics = (worlds) => {
+  const w0 = worlds[0], pop = w0.popHist[w0.popHist.length - 1] || 0;
+  return [
+    { k: '世代', v: w0.gen },
+    { k: '人口', v: pop },
+    { k: '密度', v: fmt(pop / (w0.W * w0.H), 4) },
+    { k: '直前の変化セル数', v: w0.activity }
+  ];
+};
+
+/* =========================================================================
+ * W04 — WAVE INTERFERENCE   (engine: wave-pde, leapfrog FDTD + sponge)
+ * ======================================================================= */
+const WAVE_SOURCES = {
+  single: [{ x: 108, y: 72 }],
+  double: [{ x: 78, y: 72 }, { x: 137, y: 72 }],
+  triple: [{ x: 70, y: 50 }, { x: 145, y: 50 }, { x: 108, y: 100 }],
+  antiphase: [{ x: 78, y: 72 }, { x: 137, y: 72, inv: true }]
+};
+class WaveWorld {
+  constructor(p, init) {
+    this.p = Object.assign({}, p);
+    this.W = 216; this.H = 144;
+    const n = this.W * this.H;
+    this.u = new Float32Array(n); this.up = new Float32Array(n); this.un = new Float32Array(n);
+    this.avg = new Float32Array(n); this.avgN = 0;
+    this.t = 0;
+    this.sources = (WAVE_SOURCES[init.sources] || WAVE_SOURCES.double).map(s => Object.assign({}, s));
+  }
+  step() {
+    const { W, H } = this, u = this.u, up = this.up, un = this.un;
+    const c2 = 0.2, keep = 1 - this.p.damping;
+    this.t++;
+    for (let y = 1; y < H - 1; y++) {
+      const b = y * W;
+      for (let x = 1; x < W - 1; x++) {
+        const i = b + x;
+        un[i] = (2 * u[i] - up[i] + c2 * (u[i - 1] + u[i + 1] + u[i - W] + u[i + W] - 4 * u[i])) * keep;
+      }
+    }
+    /* sponge boundary: soak up outgoing waves so edges don't reflect hard */
+    const M = 12;
+    for (let d = 0; d < M; d++) {
+      const f = 0.90 + 0.10 * (d / M);
+      for (let x = 0; x < W; x++) { un[d * W + x] *= f; un[(H - 1 - d) * W + x] *= f; }
+      for (let y = 0; y < H; y++) { un[y * W + d] *= f; un[y * W + (W - 1 - d)] *= f; }
+    }
+    /* drive sources: ω = c·k, c = √0.2 cells/step */
+    const om = TAU * Math.sqrt(0.2) / this.p.lambda;
+    for (const s of this.sources)
+      un[s.y * W + s.x] = this.p.amp * Math.sin(om * this.t + (s.inv ? Math.PI : 0));
+    const tmp = this.up; this.up = this.u; this.u = this.un; this.un = tmp;
+    if (this.t > 40 && (this.t & 1) === 0) {
+      const uu = this.u, avg = this.avg;
+      for (let i = 0; i < uu.length; i++) avg[i] += uu[i] * uu[i];
+      this.avgN++;
+    }
+  }
+  energy() { let s = 0; const u = this.u; for (let i = 0; i < u.length; i++) s += u[i] * u[i]; return s; }
+}
+LABS.W04 = {
+  id: 'W04', slug: 'wave-interference', universeId: '05', navJa: '波', discrete: true,
+  title: 'Wave Interference', titleJa: '波の干渉',
+  subtitleJa: '2つの波が出会うと、静かな場所が生まれる。',
+  hookJa: '波をもう1つ足したのに、消えてしまう場所ができます。クリックして波源を置いてみてください。',
+  universe: 'waves', universeJa: '波', accent: 'var(--u-waves)',
+  tags: ['INTERFERENCE', 'SUPERPOSITION', 'BEGINNER'],
+  engine: 'wave-pde', renderer: 'canvas2d', solver: 'leapfrog FDTD（CFL 0.45）', fixedDt: 1 / 240,
+  features: { trails: false, worlds: false, butterfly: false, compare: false },
+  views: [{ id: 'field', ja: '波の場' }, { id: 'avg', ja: '平均強度' }],
+  params: [
+    { id: 'lambda', ja: '波長', sym: 'λ', def: 18, min: 8, max: 40, step: 1, unit: 'セル' },
+    { id: 'amp', ja: '振幅', sym: 'A', def: 1, min: .2, max: 2, step: .1, unit: '' },
+    { id: 'damping', ja: '減衰', sym: 'γ', def: .001, min: 0, max: .02, step: .0005, unit: '' }
+  ],
+  initParams: [],
+  presets: [
+    { id: 'single', ja: '1つの波源', en: '円形波', p: {}, i: { sources: 'single' } },
+    { id: 'double', ja: '2つの波源', en: '干渉縞', p: {}, i: { sources: 'double' } },
+    { id: 'triple', ja: '3つの波源', en: '', p: {}, i: { sources: 'triple' } },
+    { id: 'antiphase', ja: '逆位相ペア', en: 'φ=π', p: {}, i: { sources: 'antiphase' } }
+  ],
+  makeWorld(p, ini) { return new WaveWorld(p, ini); },
+  extraTools: [
+    { label: '波源を消す', fn(api) { const w = api.getWorlds()[0]; w.sources.length = 0; } }
+  ],
+  setupPointer(cv, api) {
+    const down = ev => {
+      const w = api.getWorlds()[0], g = w._geom;
+      if (!g) return;
+      const r = cv.getBoundingClientRect(), t = ev.touches ? ev.touches[0] : ev;
+      const x = Math.round((t.clientX - r.left - g.ox) / g.sc);
+      const y = Math.round((t.clientY - r.top - g.oy) / g.sc);
+      if (x < 14 || x >= w.W - 14 || y < 14 || y >= w.H - 14) return;
+      /* click near an existing source removes it; otherwise add (max 8) */
+      const hit = w.sources.findIndex(s => Math.hypot(s.x - x, s.y - y) < 7);
+      if (hit >= 0) w.sources.splice(hit, 1);
+      else if (w.sources.length < 8) w.sources.push({ x, y });
+      w.avg.fill(0); w.avgN = 0;
+      ev.preventDefault();
+    };
+    cv.addEventListener('mousedown', down);
+    cv.addEventListener('touchstart', down, { passive: false });
+  },
+  preview: { I: { sources: 'double' }, view: 'field' },
+  learn: {
+    hook: '波をもう1つ足したのに、消えてしまう場所ができます。',
+    try: ['場をクリックして、好きな位置に波源を置いてください（もう一度クリックで削除）。',
+          '「平均強度」ビューで、明るい筋と暗い筋を確認します。'],
+    notice: ['波源が2つあると、常によく揺れる筋と、ほとんど揺れない筋が交互に並びます。',
+             '波長を変えると、縞の間隔が変わります。',
+             '逆位相のペアでは、真ん中の線上がずっと静かです。'],
+    whyPlain: '波は足し算で重なります。山と山が出会えば大きく、山と谷が出会えば打ち消し合います。2つの波源からの距離の差で、どちらが起こるかが場所ごとに決まります。',
+    whyDeep: '経路差が波長の整数倍なら強め合い、半整数倍なら弱め合います。時間平均した強度に現れる縞は、光の二重スリット実験で観測されるものと同じ構造です。',
+    eq: '∂²u/∂t² = c²∇²u − γ∂u/∂t<br>強め合い：|d₁ − d₂| = nλ　弱め合い：|d₁ − d₂| = (n+½)λ',
+    assume: ['線形な波（重ね合わせが厳密に成り立つ）を仮定しています。大波や衝撃波は別物です。',
+             '端では波を吸収する層を置いており、完全な無限平面ではありません。'],
+    real: [
+      { t: '水面の波・音', d: '2つのスピーカーの前を歩くと、音が大きくなる場所と小さくなる場所が交互に現れます。' },
+      { t: '光の干渉', d: 'シャボン玉の色づき、二重スリット実験。波長が短いだけで、同じ足し算です。' }
+    ],
+    deeper: [
+      { c: '重ね合わせの原理', d: '線形な系では、解の和もまた解になります。' },
+      { c: 'ホイヘンスの原理', d: '波面の各点を小さな波源とみなすと、回折や干渉が統一的に説明できます。' }
+    ],
+    related: ['S03', 'QM01', 'R02']
+  }
+};
+LABS.W04.draw = function (ctx, w, h, worlds, ui) {
+  bg(ctx, w, h);
+  const wd = worlds[0];
+  const sc = Math.min(w / wd.W, h / wd.H);
+  const ox = (w - sc * wd.W) / 2, oy = (h - sc * wd.H) / 2;
+  wd._geom = { ox, oy, sc };
+  if (!wd._img || wd._img.width !== wd.W) {
+    wd._off = document.createElement('canvas');
+    wd._off.width = wd.W; wd._off.height = wd.H;
+    wd._octx = wd._off.getContext('2d');
+    wd._img = wd._octx.createImageData(wd.W, wd.H);
+  }
+  const d = wd._img.data;
+  if (ui.view === 'avg') {
+    const n = Math.max(1, wd.avgN);
+    let hi = 1e-6;
+    for (let i = 0; i < wd.avg.length; i++) if (wd.avg[i] > hi) hi = wd.avg[i];
+    for (let i = 0; i < wd.avg.length; i++) {
+      const v = Math.pow(wd.avg[i] / hi, .42);   /* gamma lift for visibility */
+      d[i * 4] = 246 - v * 62; d[i * 4 + 1] = 244 - v * 99; d[i * 4 + 2] = 238 - v * 191; d[i * 4 + 3] = 255;
+    }
+  } else {
+    for (let i = 0; i < wd.u.length; i++) {
+      const v = clamp(wd.u[i] * .9, -1, 1);
+      if (v > 0) { /* crest → forest green */
+        d[i * 4] = 246 - v * 200; d[i * 4 + 1] = 244 - v * 152; d[i * 4 + 2] = 238 - v * 162;
+      } else {     /* trough → warm coral */
+        d[i * 4] = 246 - v * -45 + v * 45; d[i * 4 + 1] = 244 + v * 132; d[i * 4 + 2] = 238 + v * 143;
+      }
+      d[i * 4 + 3] = 255;
+    }
+  }
+  wd._octx.putImageData(wd._img, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(wd._off, ox, oy, sc * wd.W, sc * wd.H);
+  ctx.strokeStyle = 'rgba(31,43,38,.15)'; ctx.strokeRect(ox, oy, sc * wd.W, sc * wd.H);
+  /* sources */
+  wd.sources.forEach(s => {
+    const X = ox + s.x * sc, Y = oy + s.y * sc;
+    ctx.fillStyle = '#b8912f';
+    ctx.beginPath(); ctx.arc(X, Y, 4, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(184,145,47,.55)'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.arc(X, Y, 8, 0, TAU); ctx.stroke();
+    if (s.inv) { ctx.fillStyle = '#fff'; ctx.fillRect(X - 2.5, Y - .8, 5, 1.6); }
+  });
+  if (!wd.sources.length) {
+    ctx.fillStyle = '#768078'; ctx.font = '600 12px "Noto Sans JP",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('クリックして波源を置いてください', w / 2, oy + 24);
+    ctx.textAlign = 'left';
+  }
+};
+LABS.W04.metrics = (worlds) => {
+  const w0 = worlds[0];
+  return [
+    { k: '波源の数', v: w0.sources.length },
+    { k: 'ステップ', v: w0.t },
+    { k: '波長 λ', v: w0.p.lambda + ' セル' },
+    { k: '場のエネルギー Σu²', v: fmt(w0.energy(), 1) }
+  ];
+};
+
+/* =========================================================================
+ * G03 — N-BODY GRAVITY   (engine: nbody, leapfrog KDK + softening)
+ * ======================================================================= */
+const NBODY_SCENES = {
+  circular(G) {
+    const v = Math.sqrt(G / 1.2);
+    return { span: 2.0, bodies: [
+      { x: 0, y: 0, vx: 0, vy: -0.001 * v, m: 1 },
+      { x: 1.2, y: 0, vx: 0, vy: v, m: 0.001 }
+    ] };
+  },
+  binary(G) {
+    const v = 0.477 * Math.sqrt(G);
+    return { span: 1.7, bodies: [
+      { x: -0.55, y: 0, vx: 0, vy: v, m: 0.5 },
+      { x: 0.55, y: 0, vx: 0, vy: -v, m: 0.5 }
+    ] };
+  },
+  figure8(G) {
+    const s = Math.sqrt(G);
+    const px = 0.97000436, py = 0.24308753, vx = 0.93240737 * s, vy = 0.86473146 * s;
+    return { span: 1.6, bodies: [
+      { x: px, y: -py, vx: vx / 2, vy: vy / 2, m: 1 },
+      { x: -px, y: py, vx: vx / 2, vy: vy / 2, m: 1 },
+      { x: 0, y: 0, vx: -vx, vy: -vy, m: 1 }
+    ] };
+  },
+  planets(G) {
+    const bodies = [{ x: 0, y: 0, vx: 0, vy: 0, m: 1 }];
+    [0.55, 0.9, 1.35, 1.9].forEach((r, i) => {
+      const v = Math.sqrt(G / r);
+      bodies.push({ x: r, y: 0, vx: 0, vy: v * (i === 2 ? -1 : 1), m: 0.0008 });
+    });
+    return { span: 2.4, bodies };
+  }
+};
+class NBodyWorld {
+  constructor(p, init) {
+    this.p = Object.assign({}, p);
+    const scene = NBODY_SCENES[init.scene || 'circular'](this.p.G);
+    this.bodies = scene.bodies.map(b => Object.assign({ trail: [], added: false }, b));
+    this.span = scene.span;
+    this.t = 0; this.frame = 0;
+    this.eps2 = 0.02 * 0.02;
+    this.accel();
+  }
+  accel() {
+    const bs = this.bodies, G = this.p.G;
+    for (const b of bs) { b.ax = 0; b.ay = 0; }
+    for (let i = 0; i < bs.length; i++) {
+      for (let j = i + 1; j < bs.length; j++) {
+        const a = bs[i], c = bs[j];
+        const dx = c.x - a.x, dy = c.y - a.y;
+        const r2 = dx * dx + dy * dy + this.eps2;
+        const inv = G / (r2 * Math.sqrt(r2));
+        a.ax += dx * inv * c.m; a.ay += dy * inv * c.m;
+        c.ax -= dx * inv * a.m; c.ay -= dy * inv * a.m;
+      }
+    }
+  }
+  step(dt) {
+    const bs = this.bodies;
+    for (const b of bs) { b.vx += b.ax * dt / 2; b.vy += b.ay * dt / 2; b.x += b.vx * dt; b.y += b.vy * dt; }
+    this.accel();
+    for (const b of bs) { b.vx += b.ax * dt / 2; b.vy += b.ay * dt / 2; }
+    this.t += dt;
+    if (++this.frame % 6 === 0) {
+      for (const b of bs) {
+        b.trail.push(b.x, b.y);
+        if (b.trail.length > 500) b.trail.splice(0, 2);
+      }
+      /* drop bodies flung far outside the stage */
+      for (let i = bs.length - 1; i >= 0; i--)
+        if (Math.hypot(bs[i].x, bs[i].y) > this.span * 12) bs.splice(i, 1);
+    }
+  }
+  energy() {
+    const bs = this.bodies, G = this.p.G;
+    let K = 0, U = 0;
+    for (const b of bs) K += 0.5 * b.m * (b.vx * b.vx + b.vy * b.vy);
+    for (let i = 0; i < bs.length; i++) for (let j = i + 1; j < bs.length; j++) {
+      const dx = bs[j].x - bs[i].x, dy = bs[j].y - bs[i].y;
+      U -= G * bs[i].m * bs[j].m / Math.sqrt(dx * dx + dy * dy + this.eps2);
+    }
+    return { K, U, total: K + U };
+  }
+  momentum() {
+    let px = 0, py = 0;
+    for (const b of this.bodies) { px += b.m * b.vx; py += b.m * b.vy; }
+    return Math.hypot(px, py);
+  }
+}
+LABS.G03 = {
+  id: 'G03', slug: 'n-body-gravity', universeId: '11', navJa: '重力',
+  title: 'N-Body Gravity', titleJa: 'N体重力',
+  subtitleJa: '引き合うだけで、これほど多彩な軌道。',
+  hookJa: '空間をドラッグして、天体を放り込んでみてください。軌道になるか、弾き飛ばされるか。',
+  universe: 'gravity', universeJa: '重力と軌道', accent: '#7a6fa8',
+  tags: ['ORBITS', 'SANDBOX', 'BEGINNER'],
+  engine: 'nbody', renderer: 'canvas2d', solver: 'leapfrog KDK（ε=0.02）', fixedDt: 1 / 240,
+  features: { trails: true, worlds: false, butterfly: false, compare: false },
+  views: [{ id: 'space', ja: '空間' }, { id: 'energy', ja: 'エネルギー' }],
+  params: [
+    { id: 'G', ja: '重力定数', sym: 'G', def: 1, min: .2, max: 3, step: .05, unit: '' },
+    { id: 'newMass', ja: '追加する質量', sym: 'm', def: .05, min: .001, max: 1, step: .001, unit: '' }
+  ],
+  initParams: [],
+  presets: [
+    { id: 'circular', ja: '円軌道', en: '恒星+惑星', p: { G: 1 }, i: { scene: 'circular' } },
+    { id: 'binary', ja: '連星', en: 'm=0.5×2', p: { G: 1 }, i: { scene: 'binary' } },
+    { id: 'figure8', ja: '8の字三体', en: 'Chenciner–Montgomery', p: { G: 1 }, i: { scene: 'figure8' } },
+    { id: 'planets', ja: '恒星系', en: '惑星4つ', p: { G: 1 }, i: { scene: 'planets' } }
+  ],
+  makeWorld(p, ini) { return new NBodyWorld(p, ini); },
+  extraTools: [
+    { label: '追加した天体を消す', fn(api) {
+        const w = api.getWorlds()[0];
+        for (let i = w.bodies.length - 1; i >= 0; i--) if (w.bodies[i].added) w.bodies.splice(i, 1);
+    } }
+  ],
+  setupPointer(cv, api) {
+    let start = null;
+    const pt = ev => {
+      const w = api.getWorlds()[0], g = w._geom;
+      if (!g) return null;
+      const r = cv.getBoundingClientRect(), t = ev.touches ? ev.touches[0] : ev;
+      return { x: (t.clientX - r.left - g.cx) / g.sc, y: (t.clientY - r.top - g.cy) / g.sc };
+    };
+    const down = ev => {
+      if (api.ui.view !== 'space') return;
+      start = pt(ev);
+      if (start) { api.ui.pending = { x0: start.x, y0: start.y, x1: start.x, y1: start.y }; ev.preventDefault(); }
+    };
+    const move = ev => {
+      if (!start) return;
+      const p = pt(ev);
+      if (p) { api.ui.pending.x1 = p.x; api.ui.pending.y1 = p.y; }
+      ev.preventDefault();
+    };
+    const up = () => {
+      if (!start) return;
+      const pd = api.ui.pending, w = api.getWorlds()[0];
+      w.bodies.push({
+        x: pd.x0, y: pd.y0,
+        vx: (pd.x1 - pd.x0) * 1.4, vy: (pd.y1 - pd.y0) * 1.4,
+        m: api.P.newMass, trail: [], added: true, ax: 0, ay: 0
+      });
+      start = null; api.ui.pending = null;
+    };
+    cv.addEventListener('mousedown', down);
+    cv.addEventListener('touchstart', down, { passive: false });
+    window.addEventListener('mousemove', move);
+    window.addEventListener('touchmove', move, { passive: false });
+    window.addEventListener('mouseup', up);
+    window.addEventListener('touchend', up);
+  },
+  preview: { I: { scene: 'figure8' }, view: 'space' },
+  learn: {
+    hook: '法則はたった1つ、「質量は引き合う」。それだけで円・楕円・8の字・カオスまで生まれます。',
+    try: ['空間をドラッグして天体を放り込んでください（ドラッグの向きと長さが初速になります）。',
+          '「8の字三体」プリセットで、3つの天体が互いを追いかける特別な解を見ます。'],
+    notice: ['2体だけなら軌道は永遠に安定な楕円です。',
+             '3体以上になると、一般には予測が難しい動きになります。',
+             '弾き飛ばされる天体が出ると、残った系はより強く結合します。'],
+    whyPlain: 'どの天体も、他のすべての天体から同時に引かれています。2つなら答えがきれいに求まりますが、3つ目が加わると引く相手が刻々と入れ替わり、単純な式では書けなくなります。',
+    whyDeep: '三体問題に一般解が存在しないことは19世紀末に示されました。8の字解のような周期解は例外的な存在で、位相空間の中の特別な島にあたります。',
+    eq: 'aᵢ = G Σⱼ mⱼ (rⱼ − rᵢ) / (|rⱼ − rᵢ|² + ε²)<sup>3/2</sup>',
+    assume: ['近接時の発散を避けるため softening ε を入れています。至近距離の挙動は現実と異なります。',
+             '単位は無次元です。太陽系の数値をそのまま入れたものではありません。'],
+    real: [
+      { t: '惑星と衛星', d: 'ケプラーの法則は2体問題の解です。実際の太陽系は摂動を受けた多体系です。' },
+      { t: '星団・銀河', d: '無数の星が互いの重力だけで形を保ち、ときに星を弾き飛ばします。' }
+    ],
+    deeper: [
+      { c: '三体問題', d: '3つ以上の天体の運動は、一般には閉じた式で解けません。' },
+      { c: 'シンプレクティック積分', d: 'leapfrog はエネルギーの長期ドリフトが小さく、軌道計算の定番です。' }
+    ],
+    related: ['P02', 'A01', 'BH01']
+  }
+};
+LABS.G03.draw = function (ctx, w, h, worlds, ui) {
+  bg(ctx, w, h);
+  const wd = worlds[0];
+  if (ui.view === 'energy') return drawNBodyEnergy(ctx, w, h, wd);
+  grid(ctx, w, h, 40);
+  const sc = Math.min(w, h) / (2.2 * wd.span);
+  const cx = w / 2, cy = h / 2;
+  wd._geom = { cx, cy, sc };
+  wd.bodies.forEach((b, i) => {
+    const col = worldColor(i, Math.max(wd.bodies.length, 3));
+    if (ui.trails && b.trail.length > 3) {
+      ctx.strokeStyle = col; ctx.globalAlpha = .3; ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      for (let k = 0; k < b.trail.length; k += 2) {
+        const X = cx + b.trail[k] * sc, Y = cy + b.trail[k + 1] * sc;
+        k === 0 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y);
+      }
+      ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    const R = Math.max(2.4, 7 * Math.cbrt(b.m));
+    const X = cx + b.x * sc, Y = cy + b.y * sc;
+    ctx.fillStyle = b.added ? '#b8912f' : col;
+    ctx.beginPath(); ctx.arc(X, Y, R, 0, TAU); ctx.fill();
+    if (b.m > .5) {
+      ctx.fillStyle = 'rgba(255,255,255,.5)';
+      ctx.beginPath(); ctx.arc(X - R * .3, Y - R * .3, R * .3, 0, TAU); ctx.fill();
+    }
+  });
+  /* velocity arrow while dragging a new body in */
+  const pd = ui.pending;
+  if (pd) {
+    const X0 = cx + pd.x0 * sc, Y0 = cy + pd.y0 * sc;
+    const X1 = cx + pd.x1 * sc, Y1 = cy + pd.y1 * sc;
+    ctx.strokeStyle = '#b8912f'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.moveTo(X0, Y0); ctx.lineTo(X1, Y1); ctx.stroke();
+    ctx.setLineDash([]);
+    const a = Math.atan2(Y1 - Y0, X1 - X0);
+    ctx.fillStyle = '#b8912f';
+    ctx.beginPath();
+    ctx.moveTo(X1, Y1);
+    ctx.lineTo(X1 - 9 * Math.cos(a - .4), Y1 - 9 * Math.sin(a - .4));
+    ctx.lineTo(X1 - 9 * Math.cos(a + .4), Y1 - 9 * Math.sin(a + .4));
+    ctx.fill();
+    ctx.beginPath(); ctx.arc(X0, Y0, 5, 0, TAU); ctx.fill();
+  }
+};
+function drawNBodyEnergy(ctx, w, h, wd) {
+  if (!wd.ehist) wd.ehist = [];
+  const e = wd.energy();
+  wd.ehist.push(e.K, e.U);
+  if (wd.ehist.length > 1200) wd.ehist.splice(0, 2);
+  const pad = 50, gw = w - pad * 2, gh = h - pad * 2;
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i < wd.ehist.length; i += 2) {
+    const K = wd.ehist[i], U = wd.ehist[i + 1];
+    lo = Math.min(lo, U, K + U); hi = Math.max(hi, K, K + U);
+  }
+  if (!isFinite(lo)) { lo = -1; hi = 1; }
+  const m = (hi - lo) * .1 + .01; lo -= m; hi += m;
+  const Y = v => pad + gh - ((v - lo) / (hi - lo)) * gh;
+  ctx.strokeStyle = 'rgba(31,43,38,.12)'; ctx.strokeRect(pad, pad, gw, gh);
+  const n = wd.ehist.length / 2;
+  [{ i: 0, c: '#c9705f', nm: '運動 K' }, { i: 1, c: '#6b6fa8', nm: '位置 U' }].forEach(s => {
+    ctx.strokeStyle = s.c; ctx.lineWidth = 1.5; ctx.beginPath();
+    for (let k = 0; k < n; k++) {
+      const X = pad + (k / Math.max(1, n - 1)) * gw;
+      k === 0 ? ctx.moveTo(X, Y(wd.ehist[k * 2 + s.i])) : ctx.lineTo(X, Y(wd.ehist[k * 2 + s.i]));
+    }
+    ctx.stroke();
+  });
+  ctx.strokeStyle = '#2e5c4c'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let k = 0; k < n; k++) {
+    const X = pad + (k / Math.max(1, n - 1)) * gw;
+    const v = wd.ehist[k * 2] + wd.ehist[k * 2 + 1];
+    k === 0 ? ctx.moveTo(X, Y(v)) : ctx.lineTo(X, Y(v));
+  }
+  ctx.stroke();
+  ctx.font = '600 10.5px "Noto Sans JP",sans-serif';
+  let lx = pad + 6;
+  [{ c: '#c9705f', nm: '運動 K' }, { c: '#6b6fa8', nm: '位置 U' }, { c: '#2e5c4c', nm: '合計 E' }].forEach(s => {
+    ctx.fillStyle = s.c; ctx.fillRect(lx, pad - 16, 10, 3);
+    ctx.fillText(s.nm, lx + 14, pad - 11);
+    lx += ctx.measureText(s.nm).width + 34;
+  });
+}
+LABS.G03.metrics = (worlds) => {
+  const w0 = worlds[0], e = w0.energy();
+  return [
+    { k: '天体の数', v: w0.bodies.length },
+    { k: '時間 t', v: fmt(w0.t, 2) },
+    { k: '全エネルギー E', v: fmt(e.total, 5) },
+    { k: '運動量 |P|', v: fmt(w0.momentum(), 6) },
+    { k: '束縛状態', v: e.total < 0 ? 'はい（E < 0）' : 'いいえ（E ≥ 0）', hot: e.total >= 0 }
+  ];
+};
+
+/* =========================================================================
+ * S03 — KURAMOTO MODEL   (engine: oscillator-network, mean-field RK4)
+ * ======================================================================= */
+class KuramotoWorld {
+  constructor(p, init) {
+    this.p = Object.assign({}, p);
+    const N = Math.round(this.p.N);
+    const rng = SeededRNG(init.seed >>> 0);
+    this.th = new Float64Array(N);
+    this.om = new Float64Array(N);
+    for (let i = 0; i < N; i++) this.th[i] = rng.next() * TAU;
+    for (let i = 0; i < N; i++) {
+      const u1 = Math.max(rng.next(), 1e-12), u2 = rng.next();
+      this.om[i] = this.p.spread * Math.sqrt(-2 * Math.log(u1)) * Math.cos(TAU * u2);
+    }
+    this.t = 0; this.frame = 0;
+    this.rHist = [];
+  }
+  order(th) {
+    th = th || this.th;
+    let rx = 0, ry = 0;
+    for (let i = 0; i < th.length; i++) { rx += Math.cos(th[i]); ry += Math.sin(th[i]); }
+    const N = th.length;
+    return { r: Math.hypot(rx, ry) / N, psi: Math.atan2(ry, rx) };
+  }
+  deriv(th) {
+    const { r, psi } = this.order(th);
+    const K = this.p.K, out = new Float64Array(th.length);
+    for (let i = 0; i < th.length; i++) out[i] = this.om[i] + K * r * Math.sin(psi - th[i]);
+    return out;
+  }
+  step(dt) {
+    const th = this.th, n = th.length;
+    const k1 = this.deriv(th), t2 = new Float64Array(n);
+    for (let i = 0; i < n; i++) t2[i] = th[i] + k1[i] * dt / 2;
+    const k2 = this.deriv(t2);
+    for (let i = 0; i < n; i++) t2[i] = th[i] + k2[i] * dt / 2;
+    const k3 = this.deriv(t2);
+    for (let i = 0; i < n; i++) t2[i] = th[i] + k3[i] * dt;
+    const k4 = this.deriv(t2);
+    for (let i = 0; i < n; i++) th[i] += (dt / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]);
+    this.t += dt;
+    if (++this.frame % 4 === 0) {
+      this.rHist.push(this.order().r);
+      if (this.rHist.length > 1400) this.rHist.shift();
+    }
+  }
+}
+LABS.S03 = {
+  id: 'S03', slug: 'kuramoto', universeId: '06', navJa: '同期',
+  title: 'Kuramoto Model', titleJa: '蔵本モデル',
+  subtitleJa: 'ばらばらの振り子が、ふと、そろいだす。',
+  hookJa: 'てんでんばらばらに回る振動子たち。結合を強めると、ある強さから急にそろいはじめます。',
+  universe: 'sync', universeJa: '共鳴と同期', accent: 'var(--u-waves)',
+  tags: ['SYNC', 'PHASE TRANSITION', 'BEGINNER'],
+  engine: 'oscillator-network', renderer: 'canvas2d', solver: 'RK4（平均場）', fixedDt: 1 / 120,
+  features: { trails: false, worlds: false, butterfly: false, compare: false },
+  views: [{ id: 'ring', ja: '円環' }, { id: 'order', ja: 'r の推移' }],
+  params: [
+    { id: 'K', ja: '結合の強さ', sym: 'K', def: 1.0, min: 0, max: 5, step: .05, unit: '' },
+    { id: 'N', ja: '振動子の数', sym: 'N', def: 200, min: 10, max: 600, step: 10, unit: '個', reset: true },
+    { id: 'spread', ja: '速さのばらつき', sym: 'σ', def: 1, min: .1, max: 2.5, step: .05, unit: '', reset: true }
+  ],
+  initParams: [
+    { id: 'seed', ja: '乱数シード', sym: 's', def: 7, min: 1, max: 99999, step: 1, unit: '', reset: true }
+  ],
+  presets: [
+    { id: 'free', ja: 'ばらばら', en: 'K=0', p: { K: 0 } },
+    { id: 'weak', ja: 'よわい結合', en: 'K=0.6', p: { K: .6 } },
+    { id: 'edge', ja: 'さかいめ付近', en: 'K=1.6', p: { K: 1.6 } },
+    { id: 'sync', ja: 'そろう', en: 'K=4', p: { K: 4 } }
+  ],
+  makeWorld(p, ini) { return new KuramotoWorld(p, ini); },
+  preview: { P: { K: 2.4, N: 80 }, view: 'ring' },
+  learn: {
+    hook: 'メトロノームも、ホタルも、心臓の細胞も。互いに少し影響し合うだけで、リズムがそろいます。',
+    try: ['K = 0 から、スライダーをゆっくり右へ動かしてください。',
+          '「r の推移」ビューで、そろい具合の変化を確かめます。'],
+    notice: ['K が小さいうちは、点はリングの上に散らばったままです。',
+             'ある強さを超えると、点のかたまりができて一緒に回りはじめます。',
+             'そろい方は「じわじわ」ではなく、境目を境に急に進みます。'],
+    whyPlain: 'それぞれの振動子は自分のペースで回りたい。でも周りの平均に少しずつ引き寄せられます。引き寄せる力（K）がばらつき（σ）に勝った瞬間、多数派のリズムが雪だるま式に育ちます。',
+    whyDeep: '秩序変数 r が 0 から立ち上がる臨界結合 K_c が存在します。r が大きいほど各振動子への引き込みが強まり、さらに r が増える——この自己強化が同期転移の核心です。',
+    eq: 'dθᵢ/dt = ωᵢ + K·r·sin(ψ − θᵢ)<br>r·e<sup>iψ</sup> = (1/N) Σⱼ e<sup>iθⱼ</sup>',
+    assume: ['全員が全員とつながる平均場結合です。ネットワーク上の同期はまた違う振る舞いをします。',
+             '固有振動数は正規分布からシード付きで生成しています。'],
+    real: [
+      { t: 'ホタルの一斉明滅', d: '東南アジアのホタルは、木全体で発光のリズムがそろうことが知られています。' },
+      { t: '電力網・心筋・体内時計', d: '同じ数学が、発電機の位相、心拍の協調、脳のリズムに現れます。' }
+    ],
+    deeper: [
+      { c: '秩序変数', d: '集団のそろい具合を1つの数 r ∈ [0,1] に要約したもの。' },
+      { c: '同期転移', d: '結合の強さに対する r の立ち上がりは、相転移と同じ構造を持ちます。' }
+    ],
+    related: ['W04', 'P02', 'CA01']
+  }
+};
+LABS.S03.draw = function (ctx, w, h, worlds, ui) {
+  bg(ctx, w, h);
+  const wd = worlds[0];
+  if (ui.view === 'order') return drawKuramotoOrder(ctx, w, h, wd);
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) * .36;
+  ctx.strokeStyle = 'rgba(31,43,38,.14)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke();
+  const { r, psi } = wd.order();
+  const sd = wd.p.spread;
+  for (let i = 0; i < wd.th.length; i++) {
+    const a = wd.th[i];
+    /* color by natural frequency: slow=teal, fast=coral */
+    const f = clamp(wd.om[i] / (2.2 * sd), -1, 1);
+    ctx.fillStyle = `hsl(${170 - (f + 1) * 78},38%,47%)`;
+    ctx.beginPath();
+    ctx.arc(cx + R * Math.cos(a), cy + R * Math.sin(a), 3.2, 0, TAU);
+    ctx.fill();
+  }
+  /* mean-field arrow */
+  const ax = cx + r * R * Math.cos(psi), ay = cy + r * R * Math.sin(psi);
+  ctx.strokeStyle = '#b8912f'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ax, ay); ctx.stroke();
+  ctx.fillStyle = '#b8912f';
+  ctx.beginPath(); ctx.arc(ax, ay, 4.5, 0, TAU); ctx.fill();
+  ctx.font = '600 11px "Noto Sans JP",sans-serif'; ctx.fillStyle = '#4a5750';
+  ctx.fillText('r = ' + r.toFixed(3), cx + 10, cy - 8);
+};
+function drawKuramotoOrder(ctx, w, h, wd) {
+  const pad = 50, gw = w - pad * 2, gh = h - pad * 2;
+  ctx.strokeStyle = 'rgba(31,43,38,.12)'; ctx.strokeRect(pad, pad, gw, gh);
+  /* r = 1 line */
+  ctx.strokeStyle = 'rgba(184,145,47,.5)'; ctx.setLineDash([4, 5]);
+  ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad + gw, pad); ctx.stroke();
+  ctx.setLineDash([]);
+  const hist = wd.rHist, n = hist.length;
+  ctx.strokeStyle = '#2e5c4c'; ctx.lineWidth = 1.8; ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const X = pad + (i / Math.max(1, n - 1)) * gw, Y = pad + gh - hist[i] * gh;
+    i === 0 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y);
+  }
+  ctx.stroke();
+  axisLabel(ctx, '時間 →', pad + gw - 30, pad + gh + 18);
+  axisLabel(ctx, 'r（そろい具合 0〜1）', pad + 4, pad - 8);
+  axisLabel(ctx, 'K = ' + wd.p.K.toFixed(2), pad + gw - 60, pad + 16);
+}
+LABS.S03.metrics = (worlds) => {
+  const w0 = worlds[0], o = w0.order();
+  return [
+    { k: '秩序変数 r', v: fmt(o.r, 4), hot: o.r > .7 },
+    { k: '平均位相 ψ', v: fmt(o.psi, 3) },
+    { k: '振動子の数 N', v: w0.th.length },
+    { k: '結合 K', v: fmt(w0.p.K, 2) },
+    { k: '時間 t', v: fmt(w0.t, 1) }
+  ];
+};
+
+/* =========================================================================
+ * QM01 — QUANTUM TUNNELING   (engine: schrodinger-1d, Crank–Nicolson)
+ *   ħ = m = 1.  CN is unitary: the norm is conserved to machine precision.
+ * ======================================================================= */
+class QuantumWorld {
+  constructor(p, init) {
+    this.p = Object.assign({}, p);
+    this.N = 520; this.dx = 0.12; this.dt = 0.004;
+    this.L = this.N * this.dx;          /* 62.4 */
+    this.xb = this.L / 2;               /* barrier center */
+    const N = this.N;
+    this.re = new Float64Array(N); this.im = new Float64Array(N);
+    /* Thomas scratch */
+    this._cr = new Float64Array(N); this._ci = new Float64Array(N);
+    this._dr = new Float64Array(N); this._di = new Float64Array(N);
+    this.t = 0; this.steps = 0;
+    const x0 = 14, sg = init.sigma, k0 = this.p.k0;
+    for (let j = 0; j < N; j++) {
+      const x = j * this.dx;
+      const g = Math.exp(-((x - x0) * (x - x0)) / (4 * sg * sg));
+      this.re[j] = g * Math.cos(k0 * x);
+      this.im[j] = g * Math.sin(k0 * x);
+    }
+    const nrm = Math.sqrt(this.norm());
+    for (let j = 0; j < N; j++) { this.re[j] /= nrm; this.im[j] /= nrm; }
+  }
+  V(j) {
+    const x = j * this.dx, w = this.p.width;
+    return Math.abs(x - this.xb) < w / 2 ? this.p.v0 : 0;
+  }
+  step() {
+    /* Crank–Nicolson: (1 + i·dt/2·H)ψ' = (1 − i·dt/2·H)ψ, complex Thomas solve */
+    const N = this.N, dt = this.dt, dx2 = this.dx * this.dx;
+    const re = this.re, im = this.im;
+    const offI = -dt / (4 * dx2);                     /* A off-diag = i·offI (pure imag) */
+    const cr = this._cr, ci = this._ci, dr = this._dr, di = this._di;
+    /* RHS = B ψ ; B off-diag = −i·offI, B diag = 1 − i·dt/2·(1/dx² + V) */
+    for (let j = 1; j < N - 1; j++) {
+      const hd = dt / 2 * (1 / dx2 + this.V(j));      /* imag part of A diag */
+      const nre = re[j - 1] + re[j + 1], nim = im[j - 1] + im[j + 1];
+      /* (1 − i·hd)(re+i·im) + (−i·offI)(nre+i·nim) */
+      dr[j] = re[j] + hd * im[j] + offI * nim;
+      di[j] = im[j] - hd * re[j] - offI * nre;
+    }
+    /* forward sweep (Dirichlet ψ₀ = ψ_{N−1} = 0) */
+    for (let j = 1; j < N - 1; j++) {
+      const adr = 1, adi = dt / 2 * (1 / dx2 + this.V(j));
+      let br = adr, bi = adi;
+      if (j > 1) {
+        /* b = a_diag − a_off² / c_{j−1};  a_off = i·offI → a_off² = −offI² */
+        const den = cr[j - 1] * cr[j - 1] + ci[j - 1] * ci[j - 1];
+        const qr = (-offI * offI) * cr[j - 1] / den, qi = -(-offI * offI) * ci[j - 1] / den;
+        br = adr - qr; bi = adi - qi;
+        /* d_j −= a_off / c_{j−1} · d_{j−1};  a_off/c = i·offI·conj(c)/|c|² */
+        const fr = offI * ci[j - 1] / den, fi = offI * cr[j - 1] / den;
+        dr[j] -= fr * dr[j - 1] - fi * di[j - 1];
+        di[j] -= fr * di[j - 1] + fi * dr[j - 1];
+      }
+      cr[j] = br; ci[j] = bi;
+    }
+    /* back substitution */
+    re[0] = im[0] = re[N - 1] = im[N - 1] = 0;
+    for (let j = N - 2; j >= 1; j--) {
+      let rr = dr[j], ri = di[j];
+      if (j < N - 2) {
+        /* subtract a_off·ψ_{j+1} = i·offI·ψ */
+        rr -= -offI * im[j + 1];
+        ri -= offI * re[j + 1];
+      }
+      const den = cr[j] * cr[j] + ci[j] * ci[j];
+      re[j] = (rr * cr[j] + ri * ci[j]) / den;
+      im[j] = (ri * cr[j] - rr * ci[j]) / den;
+    }
+    this.t += dt; this.steps++;
+  }
+  norm() {
+    let s = 0;
+    for (let j = 0; j < this.N; j++) s += this.re[j] * this.re[j] + this.im[j] * this.im[j];
+    return s * this.dx;
+  }
+  meanX() {
+    let s = 0, n = 0;
+    for (let j = 0; j < this.N; j++) {
+      const p = this.re[j] * this.re[j] + this.im[j] * this.im[j];
+      s += j * this.dx * p; n += p;
+    }
+    return s / n;
+  }
+  transmission() {
+    const cut = Math.ceil((this.xb + this.p.width / 2) / this.dx);
+    let s = 0;
+    for (let j = cut; j < this.N; j++) s += this.re[j] * this.re[j] + this.im[j] * this.im[j];
+    return s * this.dx / this.norm();
+  }
+}
+LABS.QM01 = {
+  id: 'QM01', slug: 'quantum-tunneling', universeId: '21', navJa: '量子', discrete: true,
+  title: 'Quantum Tunneling', titleJa: '量子トンネル効果',
+  subtitleJa: '越えられないはずの壁を、すり抜ける。',
+  hookJa: '壁より低いエネルギーの波束をぶつけます。古典力学なら全反射。でも、少しだけ向こう側に現れます。',
+  universe: 'quantum', universeJa: '量子', accent: '#8a6fb8',
+  tags: ['QUANTUM', 'WAVE FUNCTION', 'INTERMEDIATE'],
+  engine: 'schrodinger-1d', renderer: 'canvas2d', solver: 'Crank–Nicolson（ユニタリ）', fixedDt: 1 / 500,
+  features: { trails: false, worlds: false, butterfly: false, compare: false },
+  views: [{ id: 'prob', ja: '確率密度' }, { id: 'reim', ja: '実部と虚部' }, { id: 'phase', ja: '位相' }],
+  params: [
+    { id: 'k0', ja: '波束の運動量', sym: 'k₀', def: 1.2, min: .4, max: 2.5, step: .05, unit: '', reset: true },
+    { id: 'v0', ja: '壁の高さ', sym: 'V₀', def: 1.0, min: 0, max: 3, step: .05, unit: '' },
+    { id: 'width', ja: '壁の厚さ', sym: 'w', def: 3, min: 1, max: 10, step: .5, unit: '' }
+  ],
+  initParams: [
+    { id: 'sigma', ja: '波束の幅', sym: 'σ', def: 2.5, min: 1.2, max: 5, step: .1, unit: '', reset: true }
+  ],
+  presets: [
+    { id: 'tunnel', ja: 'トンネル', en: 'E < V₀', p: { k0: 1.2, v0: 1.0, width: 3 }, i: { sigma: 2.5 } },
+    { id: 'over', ja: 'のりこえ', en: 'E > V₀', p: { k0: 2.0, v0: 1.0, width: 3 }, i: { sigma: 2.5 } },
+    { id: 'free', ja: '自由な波束', en: 'V₀ = 0', p: { k0: 1.4, v0: 0, width: 3 }, i: { sigma: 2.5 } },
+    { id: 'thick', ja: '厚い壁', en: 'w = 8', p: { k0: 1.2, v0: 1.2, width: 8 }, i: { sigma: 2.5 } }
+  ],
+  makeWorld(p, ini) { return new QuantumWorld(p, ini); },
+  preview: { view: 'prob', restartSec: 26 },
+  learn: {
+    hook: '壁より低いエネルギーの粒子が、ときどき壁の向こうに現れます。',
+    try: ['「トンネル」プリセットで再生し、壁を通り抜けるわずかな成分を見つけてください。',
+          '壁の厚さ w を 3 → 8 に変えて、透過確率 T の変化を比べます。'],
+    notice: ['波束は壁でほぼ反射しますが、一部が向こう側に染み出します。',
+             '壁を厚くすると、透過はけた違いに小さくなります。',
+             '反射した波と入射する波が重なって、細かい縞（干渉）ができます。'],
+    whyPlain: '量子の世界では、粒子は「ここにいる」ではなく「ここにいる確率の波」で記述されます。波は壁の中で急激に弱まりながらも完全にはゼロにならず、壁が薄ければ向こう側へつながってしまうのです。',
+    whyDeep: '壁の中では波動関数が指数関数的に減衰します（エバネッセント波）。透過確率は壁の厚さに対しておおよそ指数的に減少し、これが太陽の核融合やトンネルダイオードの動作を支配します。',
+    eq: 'iħ ∂ψ/∂t = −(ħ²/2m) ∂²ψ/∂x² + V(x)ψ<br>（ここでは ħ = m = 1）',
+    assume: ['1次元・単一粒子のシュレーディンガー方程式です。測定や多粒子の効果は含みません。',
+             '数値解法はCrank–Nicolson法。ユニタリなので全確率（ノルム）は厳密に保たれます。'],
+    real: [
+      { t: '太陽が燃える理由', d: '陽子同士は静電反発の壁を古典的には越えられません。トンネル効果が核融合を可能にしています。' },
+      { t: 'トンネル顕微鏡（STM）', d: '針と試料の隙間をすり抜ける電子の量を測って、原子1つ1つを画像化します。' }
+    ],
+    deeper: [
+      { c: '波動関数', d: '粒子の状態を表す複素数の波。絶対値の2乗が存在確率になります。' },
+      { c: 'WKB近似', d: '透過確率が壁の「面積」に対して指数的に決まることを示す近似法。' }
+    ],
+    related: ['W04', 'R02', 'BH01']
+  }
+};
+LABS.QM01.draw = function (ctx, w, h, worlds, ui) {
+  bg(ctx, w, h);
+  const wd = worlds[0];
+  const pad = 46, gw = w - pad * 2, gh = h - pad * 2;
+  const X = x => pad + (x / wd.L) * gw;
+  ctx.strokeStyle = 'rgba(31,43,38,.12)'; ctx.strokeRect(pad, pad, gw, gh);
+  /* barrier */
+  if (wd.p.v0 > 0) {
+    const bx0 = X(wd.xb - wd.p.width / 2), bx1 = X(wd.xb + wd.p.width / 2);
+    const bh = clamp(wd.p.v0 / 3, 0, 1) * gh * .82;
+    ctx.fillStyle = 'rgba(184,145,47,.16)';
+    ctx.fillRect(bx0, pad + gh - bh, bx1 - bx0, bh);
+    ctx.strokeStyle = '#b8912f'; ctx.lineWidth = 1.4;
+    ctx.strokeRect(bx0, pad + gh - bh, bx1 - bx0, bh);
+    ctx.fillStyle = '#b8912f'; ctx.font = '600 10.5px "Noto Sans JP",sans-serif';
+    ctx.fillText('V₀ = ' + wd.p.v0.toFixed(2), bx1 + 6, pad + gh - bh + 4);
+    /* packet kinetic energy marker */
+    const eh = clamp((wd.p.k0 * wd.p.k0 / 2) / 3, 0, 1) * gh * .82;
+    ctx.strokeStyle = 'rgba(138,111,184,.75)'; ctx.setLineDash([5, 4]);
+    ctx.beginPath(); ctx.moveTo(pad, pad + gh - eh); ctx.lineTo(pad + gw, pad + gh - eh); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#8a6fb8';
+    ctx.fillText('E ≈ k₀²/2', pad + 6, pad + gh - eh - 5);
+  }
+  const N = wd.N;
+  let hi = 1e-9;
+  for (let j = 0; j < N; j++) hi = Math.max(hi, wd.re[j] * wd.re[j] + wd.im[j] * wd.im[j]);
+  if (ui.view === 'reim') {
+    let ah = 1e-9;
+    for (let j = 0; j < N; j++) ah = Math.max(ah, Math.abs(wd.re[j]), Math.abs(wd.im[j]));
+    const Y0 = pad + gh / 2;
+    ctx.strokeStyle = 'rgba(31,43,38,.15)';
+    ctx.beginPath(); ctx.moveTo(pad, Y0); ctx.lineTo(pad + gw, Y0); ctx.stroke();
+    [{ arr: wd.re, c: '#2e5c4c', nm: 'Re ψ' }, { arr: wd.im, c: '#c9705f', nm: 'Im ψ' }].forEach((s, si) => {
+      ctx.strokeStyle = s.c; ctx.lineWidth = 1.4; ctx.beginPath();
+      for (let j = 0; j < N; j++) {
+        const Xp = X(j * wd.dx), Yp = Y0 - (s.arr[j] / ah) * gh * .44;
+        j === 0 ? ctx.moveTo(Xp, Yp) : ctx.lineTo(Xp, Yp);
+      }
+      ctx.stroke();
+      ctx.fillStyle = s.c; ctx.font = '600 10.5px "Noto Sans JP",sans-serif';
+      ctx.fillText(s.nm, pad + 8 + si * 52, pad + 16);
+    });
+  } else if (ui.view === 'phase') {
+    /* bars: height = |ψ|², hue = arg ψ */
+    const bw = gw / N;
+    for (let j = 0; j < N; j++) {
+      const p2 = wd.re[j] * wd.re[j] + wd.im[j] * wd.im[j];
+      if (p2 < hi * .003) continue;
+      const hgt = (p2 / hi) * gh * .9;
+      const hue = (Math.atan2(wd.im[j], wd.re[j]) / TAU + .5) * 360;
+      ctx.fillStyle = `hsl(${hue},42%,52%)`;
+      ctx.fillRect(pad + j * bw, pad + gh - hgt, Math.max(bw, 1), hgt);
+    }
+    axisLabel(ctx, '色 = 位相 arg ψ', pad + 6, pad + 16);
+  } else {
+    /* probability density, filled */
+    ctx.beginPath();
+    ctx.moveTo(pad, pad + gh);
+    for (let j = 0; j < N; j++) {
+      const p2 = wd.re[j] * wd.re[j] + wd.im[j] * wd.im[j];
+      ctx.lineTo(X(j * wd.dx), pad + gh - (p2 / hi) * gh * .9);
+    }
+    ctx.lineTo(pad + gw, pad + gh); ctx.closePath();
+    ctx.fillStyle = 'rgba(138,111,184,.2)'; ctx.fill();
+    ctx.strokeStyle = '#8a6fb8'; ctx.lineWidth = 1.8; ctx.stroke();
+    axisLabel(ctx, '|ψ|²（存在確率の密度）', pad + 6, pad + 16);
+  }
+  axisLabel(ctx, 'x', pad + gw - 12, pad + gh + 18);
+};
+LABS.QM01.metrics = (worlds) => {
+  const w0 = worlds[0], T = w0.transmission();
+  return [
+    { k: 'ノルム（全確率）', v: fmt(w0.norm(), 8) },
+    { k: '透過確率 T', v: fmt(T, 5), hot: T > .01 && w0.p.v0 > w0.p.k0 * w0.p.k0 / 2 },
+    { k: '反射側の確率', v: fmt(1 - T, 5) },
+    { k: '⟨x⟩', v: fmt(w0.meanX(), 2) },
+    { k: '時間 t', v: fmt(w0.t, 2) }
+  ];
+};
+
+/* =========================================================================
+ * BH01 — LIGHT BENDING   (engine: geodesic, Schwarzschild null geodesics)
+ *   Units: r_s = 1, E = 1.  Hamiltonian form, RK4 in the affine parameter.
+ * ======================================================================= */
+function bhDeriv(s) {
+  const r = s[0], pr = s[2], L = s[3];
+  const f = 1 - 1 / r, fp = 1 / (r * r);
+  return [
+    f * pr,
+    L / (r * r),
+    -0.5 * (fp / (f * f) + fp * pr * pr - 2 * L * L / (r * r * r)),
+    0
+  ];
+}
+function bhH(s) {
+  const r = s[0], pr = s[2], L = s[3], f = 1 - 1 / r;
+  return 0.5 * (-1 / f + f * pr * pr + L * L / (r * r));
+}
+function traceRay(b, x0, rEsc) {
+  x0 = x0 == null ? -30 : x0;
+  rEsc = rEsc == null ? 34 : rEsc;
+  let r = Math.hypot(x0, b), phi = Math.atan2(b, x0);
+  const f0 = 1 - 1 / r;
+  let arg = (1 / f0 - b * b / (r * r)) / f0;
+  let s = [r, phi, -Math.sqrt(Math.max(arg, 0)), b];
+  const pts = [r * Math.cos(phi), r * Math.sin(phi)];
+  let rmin = r, fate = 'lost', i = 0;
+  for (; i < 26000; i++) {
+    const dl = 0.02 * Math.min(Math.max(s[0] - 1, 0.03) * 1.2 + 0.02, 40);
+    s = rk4(s, null, dl, bhDeriv);
+    r = s[0];
+    rmin = Math.min(rmin, r);
+    if ((i & 3) === 0) pts.push(r * Math.cos(s[1]), r * Math.sin(s[1]));
+    if (r < 1.005) { fate = 'captured'; break; }
+    if (r > rEsc && s[2] > 0 && i > 20) { fate = 'escaped'; break; }
+  }
+  pts.push(r * Math.cos(s[1]), r * Math.sin(s[1]));
+  /* deflection: angle between the actual initial and final velocity vectors —
+     measuring against an assumed +x incoming direction adds an O(b/x0) geometry
+     error, so both directions are taken from the integrated state itself */
+  let defl = null;
+  if (fate === 'escaped') {
+    const vel = st => {
+      const f = 1 - 1 / st[0], rdot = f * st[2], phidot = st[3] / (st[0] * st[0]);
+      return Math.atan2(rdot * Math.sin(st[1]) + st[0] * phidot * Math.cos(st[1]),
+                        rdot * Math.cos(st[1]) - st[0] * phidot * Math.sin(st[1]));
+    };
+    const r00 = Math.hypot(x0, b), f00 = 1 - 1 / r00;
+    const s0 = [r00, Math.atan2(b, x0),
+                -Math.sqrt(Math.max((1 / f00 - b * b / (r00 * r00)) / f00, 0)), b];
+    const d = vel(s0) - vel(s);
+    defl = Math.abs(Math.atan2(Math.sin(d), Math.cos(d)));
+  }
+  return { b, pts, fate, defl, rmin, hEnd: bhH(s) };
+}
+class BlackHoleWorld {
+  constructor(p, init) {
+    this.p = Object.assign({}, p);
+    this.rays = [];
+    const n = Math.round(this.p.rays);
+    for (let k = 0; k < n; k++) {
+      const b = n === 1 ? this.p.bc
+        : this.p.bc - this.p.bw / 2 + (k / (n - 1)) * this.p.bw;
+      this.rays.push(traceRay(b));
+    }
+    this.pt = 0;
+  }
+  step(dt) { this.pt += dt * 30; }   /* photon dots glide along traced paths */
+  captured() { return this.rays.filter(r => r.fate === 'captured').length; }
+  rmin() { return Math.min(...this.rays.map(r => r.rmin)); }
+}
+LABS.BH01 = {
+  id: 'BH01', slug: 'light-bending', universeId: '22', navJa: 'ブラックホール',
+  title: 'Light Bending', titleJa: 'ブラックホールと光',
+  subtitleJa: '光はまっすぐ進む。曲がっているのは、空間のほう。',
+  hookJa: 'ブラックホールのそばに光のビームを通します。かすめた光は曲がり、近づきすぎた光は戻れません。',
+  universe: 'relativity', universeJa: '相対論', accent: '#54677a',
+  tags: ['RELATIVITY', 'GEODESIC', 'INTERMEDIATE'],
+  engine: 'geodesic', renderer: 'canvas2d', solver: 'RK4（シュヴァルツシルト、アフィン径数）', fixedDt: 1 / 60,
+  features: { trails: false, worlds: false, butterfly: false, compare: false },
+  views: [{ id: 'rays', ja: '光線' }, { id: 'defl', ja: '曲がり角' }],
+  params: [
+    { id: 'rays', ja: '光線の本数', sym: 'n', def: 17, min: 3, max: 41, step: 2, unit: '本', reset: true },
+    { id: 'bc', ja: 'ねらい（中心）', sym: 'b', def: 0, min: -12, max: 12, step: .1, unit: 'r_s', reset: true },
+    { id: 'bw', ja: 'ビームの幅', sym: 'Δb', def: 16, min: 0, max: 24, step: .2, unit: 'r_s', reset: true }
+  ],
+  initParams: [],
+  presets: [
+    { id: 'beam', ja: '平行ビーム', en: 'b = ±8', p: { rays: 17, bc: 0, bw: 16 } },
+    { id: 'critical', ja: '臨界すれすれ', en: 'b ≈ 2.6', p: { rays: 15, bc: 2.6, bw: .3 } },
+    { id: 'weak', ja: '遠くを通す', en: 'b = 9〜15', p: { rays: 9, bc: 12, bw: 6 } },
+    { id: 'plunge', ja: 'のみ込まれる', en: 'b = ±2', p: { rays: 9, bc: 0, bw: 4 } }
+  ],
+  makeWorld(p) { return new BlackHoleWorld(p, {}); },
+  preview: { P: { rays: 13, bc: 0, bw: 14 }, view: 'rays' },
+  learn: {
+    hook: '光は最短の道を進んでいるだけ。その「最短の道」自体が、重い天体のそばでは曲がっています。',
+    try: ['「ねらい」を 0 に近づけて、光がのみ込まれる瞬間を探してください。',
+          '「臨界すれすれ」プリセットで、光がブラックホールを周回しかけるのを見ます。'],
+    notice: ['遠くを通る光はわずかに曲がるだけです。',
+             'b ≈ 2.6 r_s（臨界値）付近では、光は何周も巻きついてから脱出 or 落下します。',
+             '臨界より内側を狙った光は、二度と出てきません。'],
+    whyPlain: '重いものは周囲の空間と時間をゆがめます。光はそのゆがんだ空間の中の「まっすぐ」を進むので、遠くから見ると曲がって見えます。曲がりすぎて円になる半径より内側では、外へ向かう道そのものがなくなります。',
+    whyDeep: '光の経路はヌル測地線です。有効ポテンシャルは r = 1.5 r_s（光子球）に不安定な極大をもち、臨界衝突径数 b_c = (3√3/2) r_s ≈ 2.598 r_s を境に散乱と捕獲が分かれます。遠方での曲がり角は δ ≈ 2 r_s/b で、1919年の日食観測で検証されました。',
+    eq: 'd²u/dφ² = −u + (3/2) r_s u²　（u = 1/r）<br>b_c = (3√3/2) r_s ≈ 2.598 r_s　　δ ≈ 2 r_s / b',
+    assume: ['回転しない球対称ブラックホール（シュヴァルツシルト解）に限定しています。',
+             '光の波としての性質（回折など）は無視し、光線として扱います。'],
+    real: [
+      { t: '重力レンズ', d: '遠くの銀河の光が手前の銀河団で曲げられ、弧や複数の像になって観測されます。' },
+      { t: 'ブラックホールの撮影', d: 'M87* の画像に写る明るいリングの内側の影は、光子球と捕獲のしくみそのものです。' }
+    ],
+    deeper: [
+      { c: '光子球', d: 'r = 1.5 r_s にある、光が円軌道を描ける（ただし不安定な）半径。' },
+      { c: '事象の地平線', d: 'r = r_s。ここを越えると、光でさえ外向きに進む経路が存在しません。' }
+    ],
+    related: ['G03', 'A01', 'QM01']
+  }
+};
+LABS.BH01.draw = function (ctx, w, h, worlds, ui) {
+  bg(ctx, w, h);
+  const wd = worlds[0];
+  if (ui.view === 'defl') return drawBHDefl(ctx, w, h, wd);
+  const span = 17;
+  const sc = Math.min(w, h) / (2 * span);
+  const cx = w / 2, cy = h / 2;
+  /* rays */
+  wd.rays.forEach(ray => {
+    const pts = ray.pts, n = pts.length / 2;
+    ctx.strokeStyle = ray.fate === 'captured' ? '#c9705f' : '#2e5c4c';
+    ctx.globalAlpha = .5; ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const X = cx + pts[i * 2] * sc, Y = cy - pts[i * 2 + 1] * sc;
+      i === 0 ? ctx.moveTo(X, Y) : ctx.lineTo(X, Y);
+    }
+    ctx.stroke(); ctx.globalAlpha = 1;
+    /* travelling photon dot */
+    const k = Math.floor(wd.pt) % n;
+    ctx.fillStyle = '#b8912f';
+    ctx.beginPath();
+    ctx.arc(cx + pts[k * 2] * sc, cy - pts[k * 2 + 1] * sc, 2.6, 0, TAU);
+    ctx.fill();
+  });
+  /* photon sphere */
+  ctx.strokeStyle = 'rgba(184,145,47,.6)'; ctx.setLineDash([4, 5]); ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.arc(cx, cy, 1.5 * sc, 0, TAU); ctx.stroke();
+  ctx.setLineDash([]);
+  /* horizon */
+  ctx.fillStyle = '#141a17';
+  ctx.beginPath(); ctx.arc(cx, cy, 1 * sc, 0, TAU); ctx.fill();
+  ctx.strokeStyle = 'rgba(84,103,122,.5)';
+  ctx.beginPath(); ctx.arc(cx, cy, 1 * sc, 0, TAU); ctx.stroke();
+  ctx.fillStyle = '#768078'; ctx.font = '600 10.5px "Noto Sans JP",sans-serif';
+  ctx.fillText('光子球 1.5 r_s', cx + 1.5 * sc * .72, cy - 1.5 * sc * .78);
+  ctx.fillText('地平線 r_s', cx + sc * .8, cy + sc * 1.35);
+};
+function drawBHDefl(ctx, w, h, wd) {
+  const pad = 54, gw = w - pad * 2, gh = h - pad * 2;
+  ctx.strokeStyle = 'rgba(31,43,38,.12)'; ctx.strokeRect(pad, pad, gw, gh);
+  const bmax = 13, dmax = Math.PI;
+  const X = b => pad + gw / 2 + (b / bmax) * gw / 2;
+  const Y = d => pad + gh - clamp(d / dmax, 0, 1) * gh;
+  const bc = 3 * Math.sqrt(3) / 2;
+  /* critical impact parameter bands */
+  ctx.fillStyle = 'rgba(201,112,95,.1)';
+  ctx.fillRect(X(-bc), pad, X(bc) - X(-bc), gh);
+  [-bc, bc].forEach(b => {
+    ctx.strokeStyle = 'rgba(201,112,95,.7)'; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(X(b), pad); ctx.lineTo(X(b), pad + gh); ctx.stroke();
+    ctx.setLineDash([]);
+  });
+  ctx.fillStyle = '#c9705f'; ctx.font = '600 10.5px "Noto Sans JP",sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('← 捕獲される範囲 |b| < 2.598 r_s →', X(0), pad + 18);
+  ctx.textAlign = 'left';
+  /* theory curve δ = 2/b (weak field) */
+  ctx.strokeStyle = 'rgba(184,145,47,.8)'; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.3;
+  [1, -1].forEach(sg => {
+    ctx.beginPath();
+    let started = false;
+    for (let b = bc + .4; b < bmax; b += .1) {
+      const Xp = X(sg * b), Yp = Y(2 / b);
+      started ? ctx.lineTo(Xp, Yp) : ctx.moveTo(Xp, Yp);
+      started = true;
+    }
+    ctx.stroke();
+  });
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#b8912f';
+  ctx.fillText('弱い場の理論値 δ = 2r_s/b', pad + gw - 170, Y(2 / (bmax - 1)) - 8);
+  /* measured points */
+  wd.rays.forEach(ray => {
+    if (ray.fate === 'escaped' && ray.defl != null) {
+      ctx.fillStyle = '#2e5c4c';
+      ctx.beginPath(); ctx.arc(X(ray.b), Y(ray.defl), 3.4, 0, TAU); ctx.fill();
+    } else if (ray.fate === 'captured') {
+      ctx.fillStyle = '#c9705f';
+      ctx.beginPath(); ctx.arc(X(ray.b), pad + 30, 3.4, 0, TAU); ctx.fill();
+    }
+  });
+  axisLabel(ctx, 'ねらい b（r_s）', pad + gw - 80, pad + gh + 18);
+  axisLabel(ctx, '曲がり角 δ（rad）', pad + 4, pad - 8);
+}
+LABS.BH01.metrics = (worlds) => {
+  const w0 = worlds[0];
+  return [
+    { k: '臨界値 b_c', v: '2.598 r_s' },
+    { k: '捕獲された光線', v: w0.captured() + ' / ' + w0.rays.length, hot: w0.captured() > 0 },
+    { k: '最も近づいた距離', v: fmt(w0.rmin(), 3) + ' r_s' },
+    { k: '拘束条件 |H|（脱出光線）', v: (() => {
+        const esc = w0.rays.filter(r => r.fate === 'escaped');
+        return esc.length ? fmt(Math.max(...esc.map(r => Math.abs(r.hEnd))), 8) : '—';
+      })() }
+  ];
+};
+
+/* ---- scientific tests for the six new labs ---- */
+Object.assign(TESTS, {
+  CA01: [
+    { n: 'ブリンカーは周期2で振動する', run() {
+        const w = new LifeWorld({}, { pattern: 'soup', seed: 1, density: 0 });
+        w.a.fill(0);
+        [[65,43],[66,43],[67,43]].forEach(c => w.a[c[1]*w.W+c[0]] = 1);
+        const s0 = w.a.slice();
+        w.step();
+        const changed = !w.a.every((v,i) => v === s0[i]);
+        w.step();
+        const back = w.a.every((v,i) => v === s0[i]);
+        return { ok: changed && back, d: changed && back ? '2世代で元の形に戻った' : 'NG' };
+    }},
+    { n: 'ブロック（2×2）は静物として不変', run() {
+        const w = new LifeWorld({}, { pattern: 'soup', seed: 1, density: 0 });
+        w.a.fill(0);
+        [[60,40],[61,40],[60,41],[61,41]].forEach(c => w.a[c[1]*w.W+c[0]] = 1);
+        const s0 = w.a.slice();
+        for (let i = 0; i < 12; i++) w.step();
+        const same = w.a.every((v,i) => v === s0[i]);
+        return { ok: same, d: same ? '12世代後も同一' : '変化してしまった' };
+    }},
+    { n: 'グライダーは4世代ごとに(+1,+1)移動する', run() {
+        const w = new LifeWorld({}, { pattern: 'glider' });
+        const pos = a => { const out=[]; for(let i=0;i<a.length;i++) if(a[i]) out.push(i); return out; };
+        const p0 = pos(w.a);
+        for (let i = 0; i < 4; i++) w.step();
+        const p1 = pos(w.a);
+        const ok = p1.length === p0.length &&
+          p1.every((v,i) => v === p0[i] + 1 + w.W);
+        return { ok, d: ok ? '4世代で対角に1セル移動' : '移動量が想定と異なる' };
+    }},
+    { n: '同じシードのスープは同じ歴史をたどる（決定論）', run() {
+        const a = new LifeWorld({}, { pattern: 'soup', seed: 99, density: .3 });
+        const b = new LifeWorld({}, { pattern: 'soup', seed: 99, density: .3 });
+        for (let i = 0; i < 60; i++) { a.step(); b.step(); }
+        const same = a.a.every((v,i) => v === b.a[i]);
+        return { ok: same, d: same ? '60世代後も完全一致' : 'mismatch' };
+    }}
+  ],
+  W04: [
+    { n: '波源のない静止場は静止したまま', run() {
+        const w = new WaveWorld({ lambda: 18, amp: 1, damping: .001 }, { sources: 'single' });
+        w.sources.length = 0;
+        for (let i = 0; i < 400; i++) w.step();
+        const e = w.energy();
+        return { ok: e === 0, d: 'Σu² = ' + e };
+    }},
+    { n: '左右対称な2波源の場は左右対称', run() {
+        const w = new WaveWorld({ lambda: 18, amp: 1, damping: .001 }, { sources: 'double' });
+        for (let i = 0; i < 500; i++) w.step();
+        let worst = 0;
+        for (let y = 20; y < w.H - 20; y++) for (let x = 20; x < w.W / 2; x++)
+          worst = Math.max(worst, Math.abs(w.u[y*w.W+x] - w.u[y*w.W+(w.W-1-x)]));
+        return { ok: worst < 1e-4, d: '左右差の最大 = ' + worst.toExponential(2) };
+    }},
+    { n: '駆動を止めた場のエネルギーは減衰する', run() {
+        const w = new WaveWorld({ lambda: 18, amp: 1, damping: .01 }, { sources: 'single' });
+        for (let i = 0; i < 300; i++) w.step();
+        w.sources.length = 0;
+        const e0 = w.energy();
+        for (let i = 0; i < 400; i++) w.step();
+        const e1 = w.energy();
+        return { ok: e1 < e0 * .5, d: `Σu²: ${e0.toFixed(1)} → ${e1.toFixed(2)}` };
+    }},
+    { n: '長時間駆動しても発散しない（CFL 安定）', run() {
+        const w = new WaveWorld({ lambda: 10, amp: 2, damping: 0 }, { sources: 'triple' });
+        let mx = 0;
+        for (let i = 0; i < 4000; i++) w.step();
+        for (let i = 0; i < w.u.length; i++) mx = Math.max(mx, Math.abs(w.u[i]));
+        return { ok: isFinite(mx) && mx < 60, d: 'max|u| = ' + mx.toFixed(2) };
+    }},
+    { n: '同じ設定は同じ場を生む（決定論）', run() {
+        const a = new WaveWorld({ lambda: 18, amp: 1, damping: .001 }, { sources: 'double' });
+        const b = new WaveWorld({ lambda: 18, amp: 1, damping: .001 }, { sources: 'double' });
+        for (let i = 0; i < 400; i++) { a.step(); b.step(); }
+        let same = true;
+        for (let i = 0; i < a.u.length; i++) if (a.u[i] !== b.u[i]) { same = false; break; }
+        return { ok: same, d: same ? '400ステップ後も完全一致' : 'mismatch' };
+    }}
+  ],
+  G03: [
+    { n: '二体円軌道の半径が2周回っても保たれる', run() {
+        const w = new NBodyWorld({ G: 1, newMass: .05 }, { scene: 'circular' });
+        const T = TAU * Math.pow(1.2, 1.5);
+        const steps = Math.round(2 * T * 240);
+        let worst = 0;
+        for (let i = 0; i < steps; i++) {
+          w.step(1/240);
+          const b = w.bodies[1], c = w.bodies[0];
+          worst = Math.max(worst, Math.abs(Math.hypot(b.x - c.x, b.y - c.y) - 1.2));
+        }
+        return { ok: worst < .025, d: `半径のずれ最大 ${worst.toFixed(4)}（r=1.2）` };
+    }},
+    { n: 'エネルギーの相対ドリフトが小さい（leapfrog）', run() {
+        const w = new NBodyWorld({ G: 1, newMass: .05 }, { scene: 'figure8' });
+        const e0 = w.energy().total;
+        for (let i = 0; i < 6000; i++) w.step(1/240);
+        const rel = Math.abs((w.energy().total - e0) / e0);
+        return { ok: rel < 1e-4, d: '相対ドリフト = ' + rel.toExponential(2) };
+    }},
+    { n: '全運動量が保存される', run() {
+        const w = new NBodyWorld({ G: 1, newMass: .05 }, { scene: 'binary' });
+        for (let i = 0; i < 4000; i++) w.step(1/240);
+        const p = w.momentum();
+        return { ok: p < 1e-10, d: '|P| = ' + p.toExponential(2) };
+    }},
+    { n: '8の字解が1周期後にほぼ元の配置へ戻る', run() {
+        const w = new NBodyWorld({ G: 1, newMass: .05 }, { scene: 'figure8' });
+        const init = w.bodies.map(b => [b.x, b.y]);
+        const T = 6.32591398;
+        const steps = Math.round(T * 240);
+        for (let i = 0; i < steps; i++) w.step(1/240);
+        let worst = 0;
+        w.bodies.forEach((b, i) => worst = Math.max(worst, Math.hypot(b.x - init[i][0], b.y - init[i][1])));
+        return { ok: worst < .05, d: '位置ずれ最大 = ' + worst.toFixed(4) };
+    }},
+    { n: '同じ初期配置は同じ軌道（決定論）', run() {
+        const a = new NBodyWorld({ G: 1, newMass: .05 }, { scene: 'planets' });
+        const b = new NBodyWorld({ G: 1, newMass: .05 }, { scene: 'planets' });
+        for (let i = 0; i < 2000; i++) { a.step(1/240); b.step(1/240); }
+        const same = a.bodies.every((bd, i) => bd.x === b.bodies[i].x && bd.y === b.bodies[i].y);
+        return { ok: same, d: same ? 'bitwise identical' : 'mismatch' };
+    }}
+  ],
+  S03: [
+    { n: 'K=0 では各振動子が自分の速さで回り続ける', run() {
+        const w = new KuramotoWorld({ K: 0, N: 50, spread: 1 }, { seed: 7 });
+        const th0 = w.th.slice();
+        for (let i = 0; i < 1200; i++) w.step(1/120);
+        let worst = 0;
+        for (let i = 0; i < 50; i++)
+          worst = Math.max(worst, Math.abs(w.th[i] - (th0[i] + w.om[i] * w.t)));
+        return { ok: worst < 1e-6, d: 'θ の誤差最大 = ' + worst.toExponential(2) };
+    }},
+    { n: 'K=0 では秩序変数が低いまま', run() {
+        const w = new KuramotoWorld({ K: 0, N: 400, spread: 1 }, { seed: 11 });
+        let mx = 0;
+        for (let i = 0; i < 2400; i++) { w.step(1/120); if (i % 40 === 0) mx = Math.max(mx, w.order().r); }
+        return { ok: mx < .3, d: 'r の最大 = ' + mx.toFixed(3) };
+    }},
+    { n: '強い結合（K=5）で同期する（r > 0.85）', run() {
+        const w = new KuramotoWorld({ K: 5, N: 300, spread: 1 }, { seed: 3 });
+        for (let i = 0; i < 3000; i++) w.step(1/120);
+        const r = w.order().r;
+        return { ok: r > .85, d: 'r = ' + r.toFixed(3) };
+    }},
+    { n: '同じシードなら同じ同期の歴史（決定論）', run() {
+        const a = new KuramotoWorld({ K: 2, N: 100, spread: 1 }, { seed: 42 });
+        const b = new KuramotoWorld({ K: 2, N: 100, spread: 1 }, { seed: 42 });
+        for (let i = 0; i < 1200; i++) { a.step(1/120); b.step(1/120); }
+        const same = a.th.every((v, i) => v === b.th[i]);
+        return { ok: same, d: same ? 'bitwise identical' : 'mismatch' };
+    }}
+  ],
+  QM01: [
+    { n: 'ノルム（全確率）が保存される（CN はユニタリ）', run() {
+        const w = new QuantumWorld({ k0: 1.2, v0: 1, width: 3 }, { sigma: 2.5 });
+        const n0 = w.norm();
+        for (let i = 0; i < 1500; i++) w.step();
+        const rel = Math.abs(w.norm() - n0) / n0;
+        return { ok: rel < 1e-7, d: '相対ドリフト = ' + rel.toExponential(2) };
+    }},
+    { n: '自由な波束の重心が群速度 k₀ で進む', run() {
+        const w = new QuantumWorld({ k0: 1.5, v0: 0, width: 3 }, { sigma: 2.5 });
+        const x0 = w.meanX();
+        for (let i = 0; i < 2000; i++) w.step();
+        const drift = (w.meanX() - x0) / w.t;
+        const rel = Math.abs(drift - 1.5) / 1.5;
+        return { ok: rel < .02, d: `⟨x⟩ の速度 = ${drift.toFixed(4)}（理論値 1.5）` };
+    }},
+    { n: '高い壁（V₀ ≫ E）では透過がごく小さい', run() {
+        const w = new QuantumWorld({ k0: 1.0, v0: 6, width: 3 }, { sigma: 2.5 });
+        for (let i = 0; i < 4500; i++) w.step();
+        const T = w.transmission();
+        return { ok: T < .005, d: 'T = ' + T.toExponential(2) };
+    }},
+    { n: '壁が厚いほど透過が小さい（トンネルの指数則）', run() {
+        const run = wd => {
+          const w = new QuantumWorld({ k0: 1.2, v0: 1.2, width: wd }, { sigma: 2.5 });
+          for (let i = 0; i < 4500; i++) w.step();
+          return w.transmission();
+        };
+        const t3 = run(3), t8 = run(8);
+        return { ok: t8 < t3 * .5 && t3 > 1e-6, d: `T(w=3)=${t3.toExponential(2)} → T(w=8)=${t8.toExponential(2)}` };
+    }},
+    { n: '同じ初期波束は同じ時間発展（決定論）', run() {
+        const a = new QuantumWorld({ k0: 1.2, v0: 1, width: 3 }, { sigma: 2.5 });
+        const b = new QuantumWorld({ k0: 1.2, v0: 1, width: 3 }, { sigma: 2.5 });
+        for (let i = 0; i < 800; i++) { a.step(); b.step(); }
+        let same = true;
+        for (let j = 0; j < a.N; j++) if (a.re[j] !== b.re[j] || a.im[j] !== b.im[j]) { same = false; break; }
+        return { ok: same, d: same ? 'bitwise identical' : 'mismatch' };
+    }}
+  ],
+  BH01: [
+    { n: '遠くを通る光の曲がり角が理論値 2r_s/b に一致', run() {
+        const ray = traceRay(30, -400, 500);
+        const th = 2 / 30;
+        const rel = Math.abs(ray.defl - th) / th;
+        return { ok: ray.fate === 'escaped' && rel < .1,
+                 d: `δ = ${ray.defl?.toFixed(5)}（理論 ${th.toFixed(5)}、差 ${(rel*100).toFixed(1)}%）` };
+    }},
+    { n: '臨界値 b_c = 2.598 の内側は捕獲、外側は脱出', run() {
+        const inside = traceRay(2.45), outside = traceRay(2.75);
+        const ok = inside.fate === 'captured' && outside.fate === 'escaped';
+        return { ok, d: `b=2.45 → ${inside.fate} / b=2.75 → ${outside.fate}` };
+    }},
+    { n: 'ヌル条件 H = 0 が積分の間 保たれる', run() {
+        const ray = traceRay(4);
+        const h = Math.abs(ray.hEnd);
+        return { ok: h < 1e-6, d: '|H| = ' + h.toExponential(2) };
+    }},
+    { n: '正面（b=0）の光はまっすぐ落ちる', run() {
+        const ray = traceRay(0);
+        let maxY = 0;
+        for (let i = 0; i < ray.pts.length; i += 2) maxY = Math.max(maxY, Math.abs(ray.pts[i + 1]));
+        return { ok: ray.fate === 'captured' && maxY < 1e-9,
+                 d: `fate=${ray.fate}, |y|max = ${maxY.toExponential(1)}` };
+    }},
+    { n: '同じ b は同じ経路（決定論）', run() {
+        const a = traceRay(3.1), b = traceRay(3.1);
+        const same = a.pts.length === b.pts.length && a.pts.every((v, i) => v === b.pts[i]);
+        return { ok: same, d: same ? 'bitwise identical' : 'mismatch' };
+    }}
+  ]
+});
+
+
+/* =========================================================================
  * ROUTER
  * ======================================================================= */
 const app = $('#app');
@@ -1702,7 +3313,7 @@ function navigate() {
   app.innerHTML = '';
   window.scrollTo(0, 0);
   if (parts[0] === 'lab' && LABS[parts[1]]) renderLab(LABS[parts[1]], q);
-  else if (parts[0] === 'explore') renderExplore();
+  else if (parts[0] === 'explore') renderExplore(q);
   else renderHome();
   renderNav(parts);
 }
@@ -1712,7 +3323,7 @@ function renderNav(parts) {
   const nav = $('#nav');
   nav.innerHTML = '';
   const items = [{ h: '#/', ja: 'ホーム', k: 'home' }, { h: '#/explore', ja: 'さがす', k: 'explore' }];
-  LAB_ORDER.forEach(id => items.push({ h: '#/lab/' + id, ja: LABS[id].titleJa, k: id }));
+  LAB_ORDER.forEach(id => items.push({ h: '#/lab/' + id, ja: LABS[id].navJa || LABS[id].titleJa, k: id }));
   const cur = parts[0] === 'lab' ? parts[1] : (parts[0] || 'home');
   items.forEach(it => {
     const a = el('a', 'navlink' + (cur === it.k ? ' on' : ''), it.ja);
@@ -1760,16 +3371,16 @@ function renderHome() {
     </section>
 
     <section class="sec">
-      <div class="sec-label">VISIBLE ALPHA · 4 LABS</div>
-      <h2 class="serif">いま触れる4つの現象</h2>
-      <p class="sub">それぞれ違う種類のモデル。決定論・連続・離散・確率。</p>
+      <div class="sec-label">PLAYABLE · 10 LABS</div>
+      <h2 class="serif">いま触れる10の現象</h2>
+      <p class="sub">力学・カオス・写像・確率・創発・波・重力・同期、そして量子と相対論まで。すべて別の種類のモデルです。</p>
       <div class="cardgrid" id="homeCards"></div>
     </section>
 
     <section class="sec">
       <div class="sec-label">SAME IDEA, DIFFERENT WORLD</div>
-      <h2 class="serif">20 の宇宙</h2>
-      <p class="sub">Visible Alpha で開いているのは、このうち 4 つです。</p>
+      <h2 class="serif">22 の宇宙 — 332 の現象</h2>
+      <p class="sub">マスターカタログの20宇宙に、拡張の「量子」「相対論」を加えました。宇宙を選ぶとカタログが開きます。</p>
       <div class="ustrip" id="ustrip"></div>
     </section>
 
@@ -1796,8 +3407,12 @@ function renderHome() {
     { q: 'ほとんど同じ2点は、<br>いつ離れる？', to: 'A01' },
     { q: 'スライダーを<br>少し上げたら？', to: 'M01' },
     { q: '1000回<br>繰り返したら？', to: 'R02' },
-    { q: '重力が<br>月だったら？', to: 'P02', preset: 'moon' },
-    { q: '摩擦を<br>足したら？', to: 'P02', preset: 'damped' }
+    { q: '規則3行を<br>繰り返したら？', to: 'CA01' },
+    { q: '波と波が<br>出会ったら？', to: 'W04' },
+    { q: '3つ目の天体を<br>放り込んだら？', to: 'G03' },
+    { q: 'みんなが周りに<br>合わせたら？', to: 'S03' },
+    { q: '壁より低いエネルギーで<br>ぶつかったら？', to: 'QM01' },
+    { q: '光の通り道が<br>曲がっていたら？', to: 'BH01' }
   ];
   const qg = $('#qgrid', page);
   QS.forEach(x => {
@@ -1814,27 +3429,17 @@ function renderHome() {
   const cg = $('#homeCards', page);
   LAB_ORDER.forEach(id => cg.appendChild(makeLiveCard(LABS[id])));
 
-  /* universes */
-  const UNIVERSES = [
-    { ja: 'カオス', c: 'var(--u-chaos)', open: true },
-    { ja: 'アトラクタ', c: 'var(--u-attractor)', open: true },
-    { ja: '写像と分岐', c: 'var(--u-maps)', open: true },
-    { ja: 'ランダム', c: 'var(--u-random)', open: true },
-    { ja: '波', c: 'var(--u-waves)' }, { ja: '生命', c: 'var(--u-life)' },
-    { ja: '反応拡散', c: '#b08bb0' }, { ja: 'フラクタル', c: '#a08a6a' },
-    { ja: '流体', c: '#7ba3b8' }, { ja: '重力と軌道', c: '#6b6fa8' },
-    { ja: '統計物理', c: '#8a8f7a' }, { ja: '臨界現象', c: '#c08a5a' },
-    { ja: '生態系', c: '#6f8f5a' }, { ja: '進化', c: '#7f9a6a' },
-    { ja: '群れ', c: '#5f8f8a' }, { ja: 'ネットワーク', c: '#4f8f8a' },
-    { ja: '都市と交通', c: '#8a7a6a' }, { ja: '光と場', c: '#c0a050' },
-    { ja: '幾何', c: '#a3806a' }, { ja: '計算', c: '#6a7a8a' }
-  ];
+  /* universes: from the master catalog, playable count per universe */
   const us = $('#ustrip', page);
   UNIVERSES.forEach(u => {
-    const b = el('button', 'uchip' + (u.open ? '' : ' soon'),
-      `<i style="--c:${u.c}"></i>${u.ja}${u.open ? '' : '<span style="font-size:9.5px;letter-spacing:.1em;color:var(--ink-muted)">SOON</span>'}`);
+    const total = CATALOG.filter(c => c[2] === u.id).length;
+    const live = LAB_ORDER.filter(id => LABS[id].universeId === u.id).length;
+    const b = el('button', 'uchip' + (live ? '' : ' soon'),
+      `<i style="--c:${u.c}"></i>${u.ja}` +
+      (u.ext ? '<span class="uext">EXT</span>' : '') +
+      `<span class="ucnt">${live ? live + ' LIVE / ' : ''}${total}</span>`);
     b.style.setProperty('--c', u.c);
-    if (u.open) b.onclick = () => { location.hash = '#/explore'; };
+    b.onclick = () => { location.hash = '#/explore?u=' + u.id; };
     us.appendChild(b);
   });
 
@@ -1949,28 +3554,31 @@ function attachPreview(cv, lab) {
   const P = {}, I = {};
   lab.params.forEach(p => P[p.id] = p.def);
   (lab.initParams || []).forEach(p => I[p.id] = p.def);
+  const pv = lab.preview || {};
+  Object.assign(P, pv.P || {});
+  Object.assign(I, pv.I || {});
   if (lab.id === 'R02') { P.walkerCount = 220; }
   if (lab.id === 'P02') { I.t1 = 120; I.t2 = -20; }
   let world = lab.makeWorld(P, I, 0);
   const clock = new Clock(lab.fixedDt, lab.speedScale);
   clock.running = true;
-  clock.speed = lab.id === 'M01' ? 0.35 : 1;
+  clock.speed = pv.speed || (lab.id === 'M01' ? 0.35 : 1);
   let yaw = 0, restart = 0;
   tickers.add(dt => {
     const n = clock.substeps(dt);
     for (let i = 0; i < n; i++) {
       if (lab.id === 'P02') { world.step(clock.fixedDt); if (i % 4 === 0) world.record(); }
-      else if (lab.id === 'M01' || lab.id === 'R02') world.step();
+      else if (lab.discrete) world.step();
       else world.step(clock.fixedDt);
     }
     yaw += dt * 0.25;
     restart += dt;
     /* keep previews visually alive */
     if (lab.id === 'R02' && (world.step_ > 900 || restart > 22)) { restart = 0; world.seed = (world.seed + 7919) >>> 0; world.reseed(); }
-    if (lab.id === 'P02' && restart > 26) { restart = 0; world = lab.makeWorld(P, I, 0); }
+    else if (pv.restartSec && restart > pv.restartSec) { restart = 0; world = lab.makeWorld(P, I, 0); }
     const { ctx, w, h } = fitCanvas(cv);
     lab.draw(ctx, w, h, [world], {
-      view: lab.id === 'M01' ? 'cobweb' : lab.id === 'R02' ? 'many' : lab.id === 'A01' ? '3d' : 'sim',
+      view: pv.view || (lab.id === 'M01' ? 'cobweb' : lab.id === 'R02' ? 'many' : lab.id === 'A01' ? '3d' : 'sim'),
       trails: true, yaw
     });
   });
@@ -1979,38 +3587,72 @@ function attachPreview(cv, lab) {
 /* =========================================================================
  * EXPLORE
  * ======================================================================= */
-function renderExplore() {
+function renderExplore(query) {
+  query = query || {};
   const page = el('div', 'page');
   page.innerHTML = `
   <div class="wrap">
     <div class="exp-head">
       <div class="sec-label">EXPLORE</div>
       <h1 class="serif">現象をさがす</h1>
+      <p style="margin-top:8px;color:var(--ink-soft);font-size:12.5px">
+        カタログ ${CATALOG.length} 現象 / ${UNIVERSES.length} 宇宙。
+        <b style="color:var(--forest)">LIVE</b> と付いた ${LAB_ORDER.length} 現象は、いますぐ触れます。</p>
       <div class="searchbar">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="#768078" stroke-width="1.6">
           <circle cx="7" cy="7" r="4.6"/><line x1="10.4" y1="10.4" x2="14" y2="14" stroke-linecap="round"/>
         </svg>
-        <input id="q" placeholder="振り子、カオス、確率 …">
+        <input id="q" placeholder="振り子、カオス、tunneling …">
       </div>
       <div class="filters">
-        <div class="frow"><span class="flabel">BEHAVIOR</span><span id="fBehavior"></span></div>
-        <div class="frow"><span class="flabel">IDEA</span><span id="fIdea"></span></div>
+        <div class="frow"><span class="flabel">UNIVERSE</span><span class="fchips" id="fUni"></span></div>
+        <div class="frow"><span class="flabel">BEHAVIOR</span><span class="fchips" id="fBehavior"></span></div>
+        <div class="frow"><span class="flabel">IDEA</span><span class="fchips" id="fIdea"></span></div>
       </div>
     </div>
-    <div class="cardgrid" id="grid" style="padding-bottom:18px"></div>
+    <div class="cardgrid" id="grid" style="padding-bottom:8px"></div>
+    <div id="soonWrap" hidden>
+      <div class="sec-label" style="margin:26px 0 12px">CATALOG — 準備中の現象</div>
+      <div class="soongrid" id="soon"></div>
+    </div>
     <div class="emptynote" id="empty" hidden>該当する現象がありません。フィルタを外してみてください。</div>
+    <div class="emptynote" id="hint" hidden>宇宙を選ぶか検索すると、カタログ全体（準備中を含む）が開きます。</div>
     <footer class="foot">
-      Visible Alpha では 4 現象を公開しています。残り 316 現象はカタログ上のみです。
+      LIVE の現象はブラウザ内で実シミュレーションが動いています。準備中の現象はマスターカタログの登録データです。
     </footer>
   </div>`;
   app.appendChild(page);
 
-  const BEHAVIOR = { P02: ['うごく', 'カオス'], A01: ['うごく', 'カオス'], M01: ['分かれる', 'カオス'], R02: ['ばらつく'] };
-  const IDEA = { P02: ['鋭敏な依存性', '決定論'], A01: ['鋭敏な依存性', '位相空間'], M01: ['分岐', '繰り返し'], R02: ['確率', '統計則'] };
+  const BEHAVIOR = {
+    P02: ['うごく', 'カオス'], A01: ['うごく', 'カオス'], M01: ['分かれる', 'カオス'],
+    R02: ['ばらつく'], CA01: ['うまれる', 'ひろがる'], W04: ['ゆれる', 'かさなる'],
+    G03: ['まわる', 'うごく'], S03: ['そろう', 'まわる'],
+    QM01: ['ひろがる', 'すりぬける'], BH01: ['まがる', 'おちる']
+  };
+  const IDEA = {
+    P02: ['鋭敏な依存性', '決定論'], A01: ['鋭敏な依存性', '位相空間'], M01: ['分岐', '繰り返し'],
+    R02: ['確率', '統計則'], CA01: ['創発', '繰り返し'], W04: ['重ね合わせ'],
+    G03: ['決定論', '引力'], S03: ['同期', '相転移'],
+    QM01: ['確率', '波'], BH01: ['測地線', '引力']
+  };
   const allB = [...new Set(Object.values(BEHAVIOR).flat())];
   const allI = [...new Set(Object.values(IDEA).flat())];
-  const state = { q: '', b: null, i: null };
+  const state = { q: '', u: query.u || null, b: null, i: null };
 
+  /* universe chips */
+  const fu = $('#fUni', page);
+  UNIVERSES.forEach(u => {
+    const live = LAB_ORDER.filter(id => LABS[id].universeId === u.id).length;
+    const b = el('button', 'pill' + (state.u === u.id ? ' on' : ''),
+      `<i class="udot" style="background:${u.c}"></i>${u.ja}${live ? ` <b style="font-weight:700">${live}</b>` : ''}`);
+    b.dataset.u = u.id;
+    b.onclick = () => {
+      state.u = state.u === u.id ? null : u.id;
+      [...fu.children].forEach(c => c.classList.toggle('on', c.dataset.u === state.u));
+      draw();
+    };
+    fu.appendChild(b);
+  });
   const mkFilters = (host, list, key) => {
     list.forEach(x => {
       const b = el('button', 'pill', x);
@@ -2022,27 +3664,48 @@ function renderExplore() {
       host.appendChild(b);
     });
   };
-  const fb = $('#fBehavior', page), fi = $('#fIdea', page);
-  fb.style.display = fi.style.display = 'flex';
-  fb.style.gap = fi.style.gap = '6px'; fb.style.flexWrap = fi.style.flexWrap = 'wrap';
-  mkFilters(fb, allB, 'b');
-  mkFilters(fi, allI, 'i');
+  mkFilters($('#fBehavior', page), allB, 'b');
+  mkFilters($('#fIdea', page), allI, 'i');
 
-  const grid = $('#grid', page), empty = $('#empty', page);
+  const grid = $('#grid', page), soon = $('#soon', page),
+        soonWrap = $('#soonWrap', page), empty = $('#empty', page), hint = $('#hint', page);
   function draw() {
     clearTickers();
-    grid.innerHTML = '';
+    grid.innerHTML = ''; soon.innerHTML = '';
+    const q = state.q.toLowerCase();
     const hits = LAB_ORDER.filter(id => {
       const L = LABS[id];
-      const text = (L.titleJa + L.title + L.subtitleJa + L.hookJa + L.tags.join(' ') +
+      const text = (L.titleJa + L.title + L.subtitleJa + L.hookJa + L.tags.join(' ') + L.universeJa +
         BEHAVIOR[id].join(' ') + IDEA[id].join(' ')).toLowerCase();
-      if (state.q && !text.includes(state.q.toLowerCase())) return false;
+      if (q && !text.includes(q)) return false;
+      if (state.u && L.universeId !== state.u) return false;
       if (state.b && !BEHAVIOR[id].includes(state.b)) return false;
       if (state.i && !IDEA[id].includes(state.i)) return false;
       return true;
     });
     hits.forEach(id => grid.appendChild(makeLiveCard(LABS[id])));
-    empty.hidden = hits.length > 0;
+    /* catalog (soon) cards appear once the user narrows by universe or search */
+    let soonHits = [];
+    if ((state.u || q) && !state.b && !state.i) {
+      soonHits = CATALOG.filter(c => {
+        if (LABS[c[0]]) return false;
+        if (state.u && c[2] !== state.u) return false;
+        if (q && !(c[0] + ' ' + c[1] + ' ' + UNI(c[2]).ja).toLowerCase().includes(q)) return false;
+        return true;
+      });
+      soonHits.forEach(c => {
+        const u = UNI(c[2]);
+        const pri = c[5] === 'S' ? 'FLAGSHIP' : c[5] === 'A' ? 'NEXT' : '';
+        const card = el('div', 'scard',
+          `<span class="sbadge">準備中${pri ? ' · ' + pri : ''}</span>
+           <b>${c[1]}</b>
+           <small><i class="udot" style="background:${u.c}"></i>${u.ja} · ${c[0]} · <code>${c[3]}</code></small>`);
+        soon.appendChild(card);
+      });
+    }
+    soonWrap.hidden = soonHits.length === 0;
+    empty.hidden = !(hits.length === 0 && soonHits.length === 0 && (state.u || q || state.b || state.i));
+    hint.hidden = !!(state.u || q) || hits.length === 0;
   }
   $('#q', page).oninput = e => { state.q = e.target.value; draw(); };
   draw();
@@ -2094,7 +3757,7 @@ function renderLab(lab, query) {
         <div class="pnote">
           エンジン：${lab.engine}<br>
           ソルバー：${lab.solver}<br>
-          固定ステップ：Δt = ${lab.fixedDt < 1 ? '1/' + Math.round(1 / lab.fixedDt) : lab.fixedDt} ${lab.id === 'M01' || lab.id === 'R02' ? '（1 ステップ = 1 回の更新）' : 's'}
+          固定ステップ：Δt = ${lab.fixedDt < 1 ? '1/' + Math.round(1 / lab.fixedDt) : lab.fixedDt} ${lab.discrete ? '（1 ステップ = 1 回の更新）' : 's'}
         </div>
       </div>
     </aside>
@@ -2259,6 +3922,8 @@ function renderLab(lab, query) {
   const sh = $('#sliders', root), ish = $('#initSliders', root);
   lab.params.forEach(p => makeSlider(sh, p, P, false));
   (lab.initParams || []).forEach(p => makeSlider(ish, p, I, true));
+  if (!lab.params.length) sh.closest('.psec').hidden = true;
+  if (!(lab.initParams || []).length && lab.id !== 'R02') ish.closest('.psec').hidden = true;
   if (lab.id === 'R02') {
     const b = el('button', 'pill', 'シードを変える');
     b.style.marginTop = '4px';
@@ -2311,7 +3976,7 @@ function renderLab(lab, query) {
   };
   mk('リセット', () => { rebuild(); });
   mk('ステップ', () => {
-    if (lab.id === 'M01' || lab.id === 'R02') worlds.forEach(w => w.step());
+    if (lab.discrete) worlds.forEach(w => w.step());
     else worlds.forEach(w => { w.step(clock.fixedDt); if (w.record) w.record(); });
   });
   tb.appendChild(el('span', 'tsep'));
@@ -2344,6 +4009,9 @@ function renderLab(lab, query) {
   if (lab.id === 'A01') {
     mk('自動回転', b => { ui.autoRotate = !ui.autoRotate; b.classList.toggle('on', ui.autoRotate); }).classList.add('on');
   }
+  (lab.extraTools || []).forEach(tl => {
+    mk(tl.label, () => tl.fn({ getWorlds: () => worlds, rebuild, P, I, ui, syncControls }));
+  });
 
   /* ---------------- related ---------------- */
   const rel = $('#related', root);
@@ -2465,6 +4133,8 @@ function renderLab(lab, query) {
     window.addEventListener('mouseup', up);
     window.addEventListener('touchend', up);
   }
+  if (lab.setupPointer)
+    lab.setupPointer(cv, { getWorlds: () => worlds, rebuild, P, I, ui, syncControls });
 
   /* ---------------- badges ---------------- */
   const badge = $('#vpBadge', root);
@@ -2525,7 +4195,7 @@ function renderLab(lab, query) {
   tickers.add(dt => {
     const n = clock.substeps(dt);
     for (let i = 0; i < n; i++) {
-      if (lab.id === 'M01' || lab.id === 'R02') worlds.forEach(w => w.step());
+      if (lab.discrete) worlds.forEach(w => w.step());
       else worlds.forEach(w => {
         w.step(clock.fixedDt);
         if (lab.id === 'P02' && i % 4 === 0) w.record();
@@ -2558,17 +4228,20 @@ function openModal(html, after) {
 }
 
 $('#btnAbout').onclick = () => openModal(`
-  <h2 class="serif">PHENOMENA — Visible Alpha</h2>
+  <h2 class="serif">PHENOMENA — Visible Alpha +</h2>
   <p class="msub">世界のしくみを、触って理解する。／ まず触る。あとで知る。</p>
   <div style="font-size:12.5px;color:var(--ink-soft);line-height:1.9">
-    このプロトタイプでは、4つの現象だけを実装しています。<br>
-    <b style="color:var(--forest-deep)">P02 二重振り子</b>（決定論的なカオス）、
-    <b style="color:var(--forest-deep)">A01 ローレンツ</b>（連続系のアトラクタ）、
-    <b style="color:var(--forest-deep)">M01 ロジスティック写像</b>（離散写像と分岐）、
-    <b style="color:var(--forest-deep)">R02 ランダムウォーク</b>（確率とアンサンブル）。<br><br>
+    いま触れるのは 10 の現象です。<br>
+    <b style="color:var(--forest-deep)">P02 二重振り子</b>・<b style="color:var(--forest-deep)">A01 ローレンツ</b>・
+    <b style="color:var(--forest-deep)">M01 ロジスティック写像</b>・<b style="color:var(--forest-deep)">R02 ランダムウォーク</b>・
+    <b style="color:var(--forest-deep)">CA01 ライフゲーム</b>・<b style="color:var(--forest-deep)">W04 波の干渉</b>・
+    <b style="color:var(--forest-deep)">G03 N体重力</b>・<b style="color:var(--forest-deep)">S03 蔵本モデル</b>、
+    拡張宇宙として <b style="color:#8a6fb8">QM01 量子トンネル効果</b> と
+    <b style="color:#54677a">BH01 ブラックホールと光</b>。<br><br>
+    残りの 322 現象はマスターカタログとして登録済みで、「さがす」から宇宙別に閲覧できます。<br><br>
     シミュレーションと描画は分離され、物理は固定ステップでのみ進みます。乱数はすべてシード付きで、
-    同じシード・同じパラメータ・同じ歩数なら常に同じ結果になります。各ラボの「テスト」ボタンから、
-    保存則や決定論の確認をその場で実行できます。
+    同じ条件なら常に同じ結果になります。各ラボの「テスト」ボタンから、保存則・決定論・理論値との
+    一致をその場で実行できます。
   </div>
   <div class="mfoot"><button class="btn-solid" data-close>とじる</button></div>`);
 
