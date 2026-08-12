@@ -26,6 +26,7 @@ import { DelayTime, Limiter, MaxFeedback, Channels } from '../core/project.js'
 import { LiveEffect, LiveEffectNames } from '../core/livefx.js'
 import { element, button, holdButton, panel, heading, row, stepper, valueBar }
   from './controls.js'
+import { channelHue, spread } from './style.js'
 
 // Which targets read better on a geometric travel: a range that spans decades is a
 // ratio at every point along it, and an exponent is the wrong shape for one.
@@ -223,6 +224,7 @@ export function soundPanel(app) {
       min: ParamTargets.min(target),
       max: ParamTargets.max(target),
       taper: taperFor(target),
+      hue: spread(target, ParamTargets.Count),
       get: () => ParamTargets.get(patch, target),
       set: value => { ParamTargets.set(patch, target, value); app.touch() },
       // The audition hangs off the settled report: sounding a note per event turned a
@@ -262,6 +264,7 @@ export function lockPanel(app) {
       min: absolute ? ParamTargets.min(target) : -span,
       max: absolute ? ParamTargets.max(target) : span,
       taper: absolute ? taperFor(target) : 'linear',
+      hue: spread(target, ParamTargets.Count),
       get: () => tile.isEngaged(target) ? tile.amount(target)
         : absolute ? ParamTargets.get(patch, target) : 0,
       set: value => { tile.engage(target, value); app.touch() },
@@ -283,9 +286,9 @@ export function sendFxPanels(app) {
 
   const reverb = panel('Reverb', 'fx-panel')
 
-  const add = (node, label, min, max, key, taper = 'linear') =>
+  const add = (node, label, min, max, key, taper = 'linear', hue = 265) =>
     node.appendChild(valueBar({
-      label, min, max, taper,
+      label, min, max, taper, hue,
       get: () => fx[key],
       set: value => { fx[key] = value; app.touch() }
     }))
@@ -307,9 +310,9 @@ export function sendFxPanels(app) {
       app.refreshPanels()
     }))
 
-  add(delay, 'Feedback', 0, MaxFeedback, 'delayFeedback')
-  add(delay, 'Tone', 0, 1, 'delayTone')
-  add(delay, 'Spread', 0, 1, 'delaySpread')
+  add(delay, 'Feedback', 0, MaxFeedback, 'delayFeedback', 'linear', 190)
+  add(delay, 'Tone', 0, 1, 'delayTone', 'linear', 190)
+  add(delay, 'Spread', 0, 1, 'delaySpread', 'linear', 190)
 
   return [reverb, delay]
 }
@@ -326,7 +329,7 @@ export function globalPanel(app) {
 
   const add = (label, min, max, key, taper = 'linear', format = null) =>
     node.appendChild(valueBar({
-      label, min, max, taper, format,
+      label, min, max, taper, format, hue: 30,
       get: () => limiter[key],
       set: value => { limiter[key] = value; app.touch() }
     }))
@@ -380,7 +383,9 @@ export function channelsPanel(app) {
     // than clearing themselves: dropping the last solo gives back the mix underneath.
     mute.classList.toggle('idle', app.mutes.anySoloed)
 
-    node.appendChild(row(select, mute, solo))
+    const line = row(select, mute, solo)
+    line.style.setProperty('--hue', channelHue(channel))
+    node.appendChild(line)
   }
 
   return node
@@ -405,10 +410,14 @@ export function livePanel(app) {
   for (const column of columns) {
     const box = element('div', 'live-column')
 
-    for (const fx of column)
-      box.appendChild(holdButton(LiveEffectNames[fx],
+    for (const fx of column) {
+      const control = holdButton(LiveEffectNames[fx],
         () => app.live.press(fx, app.synth.currentSample),
-        () => app.live.release(fx)))
+        () => app.live.release(fx))
+
+      control.style.setProperty('--hue', spread(fx, 12, 300, 340))
+      box.appendChild(control)
+    }
 
     node.appendChild(box)
   }

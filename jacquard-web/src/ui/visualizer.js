@@ -20,6 +20,11 @@
 const Trace = 'rgba(232, 232, 228, 0.10)'
 const Slots = 'rgba(232, 232, 228, 0.07)'
 
+// The neon theme lights the same reading rather than drawing a different one: the
+// trace is the mix and the row under it is the pool, and what changes is that both are
+// coloured and allowed to be seen. The measured faintness above is what the flat and
+// rack themes keep, where the plane's own lattice is the dimmest thing on screen and a
+// background brighter than it would be arguing with the score.
 export class Visualizer {
   constructor(container) {
     this.canvas = document.createElement('canvas')
@@ -28,6 +33,7 @@ export class Visualizer {
 
     this.context = this.canvas.getContext('2d')
     this.enabled = false
+    this.theme = 'neon'
   }
 
   draw(scope) {
@@ -75,9 +81,26 @@ export class Visualizer {
       else ctx.lineTo(x, y)
     }
 
-    ctx.strokeStyle = Trace
-    ctx.lineWidth = 1
-    ctx.stroke()
+    if (this.theme === 'neon') {
+      const spectrum = ctx.createLinearGradient(0, 0, width, 0)
+      spectrum.addColorStop(0, 'hsl(285 95% 62%)')
+      spectrum.addColorStop(0.4, 'hsl(330 95% 62%)')
+      spectrum.addColorStop(0.7, 'hsl(35 95% 60%)')
+      spectrum.addColorStop(1, 'hsl(190 95% 60%)')
+
+      ctx.strokeStyle = spectrum
+      ctx.globalAlpha = 0.5
+      ctx.lineWidth = 1.5
+      ctx.shadowColor = 'hsl(300 100% 60% / 0.9)'
+      ctx.shadowBlur = 18
+      ctx.stroke()
+      ctx.shadowBlur = 0
+      ctx.globalAlpha = 1
+    } else {
+      ctx.strokeStyle = Trace
+      ctx.lineWidth = 1
+      ctx.stroke()
+    }
 
     // A row of the voice pool under it: a level rather than a flag, because a voice is
     // not on or off — it is somewhere in its envelope — and taken from the samples
@@ -85,11 +108,22 @@ export class Visualizer {
     const levels = scope.levels
     const slot = width / levels.length
 
-    ctx.fillStyle = Slots
-
     for (let i = 0; i < levels.length; i++) {
       const bar = Math.min(levels[i], 1) * height * 0.25
+
+      if (this.theme === 'neon') {
+        const hue = Math.round(i / levels.length * 320 + 265) % 360
+        ctx.fillStyle = 'hsl(' + hue + ' 95% 60% / 0.3)'
+        ctx.shadowColor = 'hsl(' + hue + ' 100% 60% / 0.6)'
+        ctx.shadowBlur = bar > 1 ? 16 : 0
+      } else {
+        ctx.fillStyle = Slots
+        ctx.shadowBlur = 0
+      }
+
       ctx.fillRect(i * slot + 1, height - bar, slot - 2, bar)
     }
+
+    ctx.shadowBlur = 0
   }
 }

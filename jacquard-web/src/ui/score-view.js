@@ -19,6 +19,7 @@ import {
 } from '../core/tiles.js'
 import * as Pitch from '../core/pitch.js'
 import * as Style from './style.js'
+import { channelHue } from './style.js'
 import { Icons, cycle, prob, Marker, roundedPath } from './icons.js'
 import { point } from '../core/lane.js'
 
@@ -390,13 +391,6 @@ export class ScoreView {
     this.dropBox.style.top = origin.y + 'px'
   }
 }
-
-// One hue per channel, which is the only colour in this interface and is there for
-// the same reason a rack of modules is not one colour: what a cell belongs to should
-// be readable without counting rows.
-const Hues = [0, 28, 46, 205, 150, 275, 320, 95]
-
-const channelHue = channel => Hues[(Math.max(1, channel) - 1) % Hues.length]
 
 // The panel a lane sits on. It covers the ground the lane owns — the rail from the
 // head to the terminator, and as deep as its deepest stack — with a little air around

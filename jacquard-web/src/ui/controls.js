@@ -137,7 +137,7 @@ function significant(value) {
 export function valueBar(options) {
   const {
     label, min, max, taper = 'linear', get, set,
-    settled = null, format = null, engaged = null, onRelease = null
+    settled = null, format = null, engaged = null, onRelease = null, hue = null
   } = options
 
   const node = element('div', 'value-bar')
@@ -146,6 +146,11 @@ export function valueBar(options) {
   const readout = element('span', 'value-readout')
 
   node.append(fill, caption, readout)
+
+  // Where this row sits in the run of rows it belongs to. Only the neon theme reads
+  // it, and what it does with it is light the fill: a panel of thirteen parameters is
+  // a spectrum rather than thirteen of the same bar.
+  if (hue != null) node.style.setProperty('--hue', hue)
 
   // A geometric travel needs somewhere to start from, since no number of ratios
   // reaches zero: a millisecond is the shortest time this synth has any use for, and

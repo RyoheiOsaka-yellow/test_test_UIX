@@ -615,3 +615,291 @@ body[data-theme="rack"] .status {
 body[data-theme="rack"] .live-panel .control {
   height: calc(var(--row-h) + 4px);
 }
+
+/* ---------------------------------------------------------------------------
+   The neon theme.
+
+   Black ground, and everything on it lit in the colour of whatever it belongs
+   to: a cell takes its channel's hue, a bar takes its row's, a live effect
+   takes its own, and a runner's ring takes the same hue its lane wears on the
+   plane. So the colour is never decoration — it is the one thing on screen that
+   says what goes with what, which is exactly what a plane holding eight
+   channels at once is short of.
+
+   The metrics are untouched. A cell is still 30x32 at a 4px gutter and a panel
+   is still built out of the same two numbers; what changes is what a surface is
+   made of — glass over a black ground, with the light coming from the content
+   rather than from a light source.
+   --------------------------------------------------------------------------- */
+
+body[data-theme="neon"] {
+  --bg: #05050a;
+  --note-text: #f2f4ff;
+  --label: #8b90ad;
+  --panel: rgba(18, 18, 28, 0.82);
+  --panel-line: rgba(255, 255, 255, 0.09);
+  --hue: 265;
+}
+
+/* Colour blooming out of the ground, so that black is a room rather than a
+   surface. Fixed to the viewport rather than to the plane: the light does not
+   pan with the score. */
+body[data-theme="neon"] .plane-area {
+  background:
+    radial-gradient(46% 38% at 12% 8%, hsl(280 90% 45% / 0.20), transparent 70%),
+    radial-gradient(42% 34% at 88% 14%, hsl(190 95% 45% / 0.16), transparent 72%),
+    radial-gradient(52% 42% at 66% 96%, hsl(330 95% 50% / 0.16), transparent 72%),
+    radial-gradient(40% 34% at 20% 88%, hsl(150 90% 45% / 0.12), transparent 72%),
+    #05050a;
+}
+
+/* A lane is a card, the way a chart on a dashboard is: dark glass, its own
+   colour bled into the top of it, and a soft ring of that colour around it. */
+body[data-theme="neon"] .module {
+  display: block;
+  border-radius: 14px;
+  border: 1px solid hsl(var(--hue) 80% 65% / 0.18);
+  background:
+    linear-gradient(180deg,
+      hsl(var(--hue) 70% 55% / 0.14) 0%,
+      hsl(var(--hue) 60% 40% / 0.04) 38%,
+      rgba(10, 10, 18, 0.55) 100%);
+  box-shadow:
+    0 0 26px hsl(var(--hue) 90% 50% / 0.14),
+    inset 0 1px 0 hsl(var(--hue) 90% 80% / 0.14);
+  backdrop-filter: blur(2px);
+}
+
+body[data-theme="neon"] .module::after {
+  content: attr(data-name);
+  position: absolute;
+  left: 14px;
+  bottom: 2px;
+  font-size: 8px;
+  letter-spacing: 0.22em;
+  color: hsl(var(--hue) 90% 78%);
+  opacity: 0.5;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  pointer-events: none;
+}
+
+/* Cells */
+
+body[data-theme="neon"] .cell.tile {
+  border-radius: 9px;
+  border: 1px solid hsl(var(--hue) 90% 68% / 0.5);
+  background:
+    linear-gradient(160deg,
+      hsl(var(--hue) 70% 34% / 0.55) 0%, rgba(9, 9, 16, 0.92) 70%);
+  color: #ffffff;
+  box-shadow:
+    0 0 12px hsl(var(--hue) 95% 55% / 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  text-shadow: 0 0 10px hsl(var(--hue) 95% 72% / 0.65);
+  transition: box-shadow 90ms linear, transform 90ms linear;
+}
+
+body[data-theme="neon"] .cell.control-tile:not(.inverted) {
+  background:
+    linear-gradient(160deg,
+      hsl(var(--hue) 60% 40% / 0.45) 0%, rgba(12, 12, 20, 0.92) 75%);
+  color: hsl(var(--hue) 95% 82%);
+}
+
+/* The four cells that do something other than move right are the lit plate that
+   names the lane, which is where a channel's colour is strongest. */
+body[data-theme="neon"] .cell.inverted {
+  background: linear-gradient(160deg,
+    hsl(var(--hue) 95% 68%) 0%, hsl(var(--hue) 90% 46%) 100%);
+  border-color: hsl(var(--hue) 95% 82%);
+  color: #0a0a12;
+  text-shadow: none;
+  box-shadow:
+    0 0 18px hsl(var(--hue) 95% 55% / 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+body[data-theme="neon"] .cell.lattice { color: rgba(150, 160, 210, 0.22); }
+body[data-theme="neon"] .cell.marker { color: hsl(var(--hue) 80% 70% / 0.45); }
+
+/* What is sounding right now, which is the whole reason to light anything. */
+body[data-theme="neon"] .cell.playing {
+  transform: scale(1.08);
+  border-color: hsl(var(--hue) 100% 82%);
+  box-shadow:
+    0 0 0 1px hsl(var(--hue) 100% 78%),
+    0 0 26px hsl(var(--hue) 100% 62% / 0.85),
+    0 0 60px hsl(var(--hue) 100% 55% / 0.35),
+    inset 0 0 16px hsl(var(--hue) 100% 70% / 0.45);
+}
+
+body[data-theme="neon"] .cell.linked::before {
+  background: hsl(var(--hue) 90% 70% / 0.75);
+  box-shadow: 0 0 6px hsl(var(--hue) 95% 60% / 0.8);
+}
+
+body[data-theme="neon"] .rail {
+  background-image: repeating-linear-gradient(to right,
+    hsl(var(--hue) 90% 70%) 0 2px, transparent 2px 7px);
+  opacity: 0.4;
+  filter: drop-shadow(0 0 4px hsl(var(--hue) 95% 55% / 0.7));
+}
+
+body[data-theme="neon"] .links path {
+  stroke: hsl(var(--hue) 95% 65%);
+  stroke-width: 2.5px;
+  filter: drop-shadow(0 0 6px hsl(var(--hue) 100% 60% / 0.9));
+}
+
+body[data-theme="neon"] .links .jack {
+  fill: #ffffff;
+  stroke: hsl(var(--hue) 95% 60%);
+  stroke-width: 2px;
+  filter: drop-shadow(0 0 6px hsl(var(--hue) 100% 60%));
+}
+
+body[data-theme="neon"] .cursor-box {
+  outline: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 18px rgba(180, 200, 255, 0.45);
+  border-radius: 9px;
+}
+
+body[data-theme="neon"] .drop-box { border-radius: 9px; }
+
+/* Chrome: glass cards with the light behind the numbers. */
+
+body[data-theme="neon"] .panel,
+body[data-theme="neon"] .transport {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(30, 30, 46, 0.9) 0%, rgba(12, 12, 20, 0.92) 100%);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(10px);
+  padding: 10px 12px;
+}
+
+body[data-theme="neon"] .panel-header {
+  color: #ffffff;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+body[data-theme="neon"] .panel-rule {
+  height: 1px;
+  background: linear-gradient(90deg,
+    hsl(285 95% 65% / 0.9), hsl(190 95% 60% / 0.5), transparent);
+}
+
+body[data-theme="neon"] .heading { color: rgba(200, 205, 235, 0.6); }
+
+/* A bar is a lit track: the fill is the row's own hue, blended into the next one
+   along, so a panel of thirteen reads as a spectrum. */
+body[data-theme="neon"] .value-bar {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.045);
+  padding: 0 10px;
+}
+
+body[data-theme="neon"] .value-fill {
+  background: linear-gradient(90deg,
+    hsl(var(--hue, 265) 90% 42%) 0%, hsl(var(--hue, 265) 100% 62%) 100%);
+  box-shadow: 0 0 14px hsl(var(--hue, 265) 100% 55% / 0.55);
+  border-radius: 999px;
+}
+
+body[data-theme="neon"] .value-bar:hover .value-fill {
+  box-shadow: 0 0 20px hsl(var(--hue, 265) 100% 60% / 0.8);
+}
+
+body[data-theme="neon"] .value-label { color: rgba(235, 238, 255, 0.92); }
+
+body[data-theme="neon"] .value-readout {
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 8px hsl(var(--hue, 265) 100% 65% / 0.55);
+}
+
+body[data-theme="neon"] .value-bar.idle .value-fill { opacity: 0.18; }
+
+body[data-theme="neon"] .control {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(238, 240, 255, 0.9);
+}
+
+body[data-theme="neon"] .control:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 14px hsl(var(--hue, 265) 90% 60% / 0.35);
+}
+
+/* On is lit, and lit in whatever colour the thing itself is. */
+body[data-theme="neon"] .control.toggle.on,
+body[data-theme="neon"] .control.hold.held,
+body[data-theme="neon"] .control.lap.on {
+  background: linear-gradient(180deg,
+    hsl(var(--hue, 265) 95% 62%) 0%, hsl(var(--hue, 265) 90% 45%) 100%);
+  border-color: hsl(var(--hue, 265) 95% 75%);
+  color: #0a0a12;
+  box-shadow:
+    0 0 18px hsl(var(--hue, 265) 100% 58% / 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+body[data-theme="neon"] .control.play {
+  border-radius: 999px;
+  background: linear-gradient(180deg, hsl(150 90% 55%) 0%, hsl(165 90% 38%) 100%);
+  border-color: hsl(150 95% 70%);
+  color: #04140c;
+  font-weight: 600;
+  box-shadow: 0 0 22px hsl(155 100% 50% / 0.5);
+}
+
+body[data-theme="neon"] .control.danger {
+  color: hsl(350 100% 78%);
+  border-color: hsl(350 90% 60% / 0.4);
+}
+
+/* The channels panel wears the plane's own colours, which is what makes it a
+   legend as well as a set of switches. */
+body[data-theme="neon"] .channels-panel .row .control:first-child {
+  background: linear-gradient(180deg,
+    hsl(var(--hue) 90% 60% / 0.9), hsl(var(--hue) 85% 42% / 0.9));
+  border-color: hsl(var(--hue) 95% 75%);
+  color: #0a0a12;
+  box-shadow: 0 0 12px hsl(var(--hue) 100% 55% / 0.45);
+}
+
+body[data-theme="neon"] .channels-panel .row .control:first-child:disabled {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(238, 240, 255, 0.5);
+  box-shadow: none;
+}
+
+body[data-theme="neon"] .status { color: rgba(190, 196, 230, 0.7); }
+
+/* The rings panel is the one card that is all picture, so what it holds is sized
+   to the card rather than to a number of its own. */
+.rings { display: block; width: 100%; aspect-ratio: 1 / 1; margin: 2px auto 0; }
+body[data-theme="neon"] .rings-panel { padding-bottom: 8px; }
+
+/* A live effect is lit in its own colour before it is pressed as well as while it
+   is held: twelve buttons that all look the same is the one thing a panel played
+   with both thumbs cannot afford. */
+body[data-theme="neon"] .live-panel .control {
+  border-color: hsl(var(--hue, 265) 90% 62% / 0.45);
+  color: hsl(var(--hue, 265) 95% 82%);
+  background: hsl(var(--hue, 265) 80% 50% / 0.10);
+}
+
+body[data-theme="neon"] .live-panel .control:hover {
+  background: hsl(var(--hue, 265) 85% 55% / 0.22);
+  box-shadow: 0 0 16px hsl(var(--hue, 265) 100% 58% / 0.45);
+}

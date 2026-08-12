@@ -24,6 +24,7 @@ import {
   tilePanel, soundPanel, lockPanel, sendFxPanels, globalPanel, channelsPanel, livePanel
 } from './panels.js'
 import { Visualizer } from './visualizer.js'
+import { Rings } from './rings.js'
 import { Presets } from '../../scores/presets.js'
 
 // How far ahead of the audio clock the sequencer runs, and how far ahead of it a note
@@ -36,11 +37,13 @@ const LiveLead = 0.03
 const StorageKey = 'jacquard.score'
 const ThemeKey = 'jacquard.theme'
 
-// Two looks, and the switch between them is the whole of the difference: the rack
-// theme draws a module behind every lane, colours it by its channel and reads the
-// jump links as patch cables, while the flat one is the monochrome the original is
-// drawn in. Nothing in the score, the sequencer or the synth knows which is up.
-const Themes = ['rack', 'flat']
+// Three looks, and the switch between them is the whole of the difference. Neon
+// lights every channel's own colour — the cells, the cables, the playheads and the
+// rings — against black; rack draws each lane as a module screwed to a panel; flat is
+// the monochrome the original is drawn in. Nothing in the score, the sequencer or the
+// synth knows which is up.
+const Themes = ['neon', 'rack', 'flat']
+const ThemeNames = { neon: 'Neon', rack: 'Rack', flat: 'Flat' }
 
 export class JacquardApp {
   constructor(root) {
@@ -62,7 +65,8 @@ export class JacquardApp {
     // Everything the transport row switches starts off: the plane is what the screen
     // is for, and a switch that starts on is a decision nobody made.
     this.showing = {
-      sendFx: false, live: false, global: false, channels: false, visualizer: false
+      sendFx: false, live: false, global: false, channels: false,
+      visualizer: false, rings: false
     }
 
     this.build()
@@ -129,6 +133,7 @@ export class JacquardApp {
     this.root.appendChild(this.planeArea)
 
     this.visualizer = new Visualizer(this.planeArea)
+    this.rings = new Rings()
     this.view = new ScoreView(this.planeArea, {})
 
     this.leftColumn = element('div', 'column left')
@@ -180,11 +185,12 @@ export class JacquardApp {
     toggle('Global', 'global')
     toggle('Channels', 'channels')
     toggle('Scope', 'visualizer')
+    toggle('Runners', 'rings')
 
-    switches.appendChild(button(this.theme === 'rack' ? 'Rack' : 'Flat', () => {
+    switches.appendChild(button(ThemeNames[this.theme], () => {
       this.toggleTheme()
       this.refreshPanels()
-    }, 'small toggle' + (this.theme === 'rack' ? ' on' : '')))
+    }, 'small toggle' + (this.theme === 'neon' ? ' on' : '')))
 
     node.appendChild(switches)
 
@@ -239,10 +245,12 @@ export class JacquardApp {
       for (const node of sendFxPanels(this)) this.innerColumn.appendChild(node)
 
     if (this.showing.channels) this.leftColumn.appendChild(channelsPanel(this))
+    if (this.showing.rings) this.leftColumn.appendChild(this.rings.node)
     if (this.showing.global) this.centre.appendChild(globalPanel(this))
     if (this.showing.live) this.bottom.appendChild(livePanel(this))
 
     this.visualizer.enabled = this.showing.visualizer
+    this.visualizer.theme = this.theme
 
     // The switches read their own state, so the row is rebuilt with them.
     const transport = this.rightColumn.firstChild
@@ -299,6 +307,7 @@ export class JacquardApp {
 
     this.view.refreshPlayheads()
     this.visualizer.draw(this.synth.scope)
+    if (this.showing.rings) this.rings.draw(this.sequencer, this.project)
 
     this.playButton.textContent = this.sequencer.isPlaying ? 'Stop' : 'Play'
 

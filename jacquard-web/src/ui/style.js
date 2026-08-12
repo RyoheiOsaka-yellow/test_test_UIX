@@ -43,3 +43,23 @@ export const planeSize = (columns, rows) => ({
   width: Padding * 2 + columns * StrideX - Gap,
   height: Padding * 2 + rows * StrideY - Gap
 })
+
+// Colour
+//
+// One hue per channel, and it is the only colour this interface assigns from data:
+// what a cell belongs to should be readable without counting rows. Everything else
+// that is coloured — a bar, a live effect, a ring — takes its hue from where it sits
+// in its own row of things, which is what makes a panel read as a spectrum rather
+// than as a list.
+//
+// The themes differ in what they do with a hue, not in what the hue is. Flat ignores
+// it, rack renders it as a painted strip and neon lights it.
+
+export const Hues = [285, 330, 20, 45, 150, 190, 220, 95]
+
+export const channelHue = channel => Hues[(Math.max(1, channel) - 1) % Hues.length]
+
+// A run of hues across the whole wheel, for a list whose rows are not channels: the
+// thirteen parameters of a patch, the twelve live effects.
+export const spread = (index, count, from = 265, span = 320) =>
+  Math.round(from + (count <= 1 ? 0 : index / (count - 1) * span)) % 360
