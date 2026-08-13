@@ -1,0 +1,17 @@
+{
+  "name": "aaabench-web-harness",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Harness dependencies: the browser that gives the agent eyes, and the MCP server that hands them over.",
+  "scripts": {
+    "mcp": "node mcp/server.mjs",
+    "shot": "node tools/viewport.mjs shot",
+    "qa": "node tools/qa.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "playwright": "^1.49.0",
+    "zod": "^4.4.3"
+  }
+}

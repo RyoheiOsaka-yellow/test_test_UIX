@@ -1,0 +1,25 @@
+# the agent's project and everything it makes is the RESULT of a run, not part of the harness
+AgentCity/
+run/
+PROGRESS.md
+RESUME-NOTE.md
+
+node_modules/
+*.log
+.last-session-id
+keys.env
+
+# measured per machine by bin/setup-capabilities.sh (a trailing comment on a pattern line is
+# part of the pattern, not a comment — these two need their own lines)
+.harness-baseline.json
+# written per machine, with absolute paths
+.mcp.json
+
+__pycache__/
+.DS_Store
+
+# agent scratch, never publish
+.claude/worktrees/
+.claude/shell-snapshots/
+.claude/todos/
+.claude/projects/

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- An empty data: icon, so the browser stops asking for /favicon.ico. Without it every
+     capture reports a 404 the agent then has to rule out — a permanent false alarm in the
+     error channel is worse than no error channel. -->
+<link rel="icon" href="data:,">
+<title>AgentCity</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #101216; overflow: hidden; }
+  #viewport { display: block; width: 100vw; height: 100vh; }
+  #boot { position: fixed; inset: 0; display: grid; place-items: center; color: #6b7280;
+          font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; pointer-events: none; }
+  #boot[hidden] { display: none; }
+</style>
+<script>
+// Installed BEFORE any module runs, on purpose. A module that throws while loading never
+// reaches harness.js, and the page then looks merely blank — no error anywhere the tools can
+// read. This stub is the only thing that catches that class of failure, so the sensors report
+// "it threw during boot" instead of "the world is empty".
+window.__aaabench = {
+  version: 1,
+  ready: false,
+  bootError: null,
+  errors: [],
+  logs: [],
+};
+(function () {
+  var A = window.__aaabench;
+  var push = function (level, text) {
+    var e = { t: Date.now(), level: level, text: String(text).slice(0, 4000) };
+    (level === 'error' || level === 'warn' ? A.errors : A.logs).push(e);
+    if (A.errors.length > 500) A.errors.splice(0, A.errors.length - 500);
+    if (A.logs.length > 500) A.logs.splice(0, A.logs.length - 500);
+  };
+  window.addEventListener('error', function (ev) {
+    var where = ev.filename ? ' (' + ev.filename + ':' + ev.lineno + ')' : '';
+    push('error', (ev.message || 'error') + where);
+    if (!A.ready) A.bootError = A.bootError || ev.message;
+  });
+  window.addEventListener('unhandledrejection', function (ev) {
+    push('error', 'unhandled rejection: ' + (ev.reason && ev.reason.stack || ev.reason));
+    if (!A.ready) A.bootError = A.bootError || String(ev.reason);
+  });
+  ['error', 'warn', 'log'].forEach(function (k) {
+    var orig = console[k].bind(console);
+    console[k] = function () {
+      try { push(k, Array.prototype.map.call(arguments, String).join(' ')); } catch (_) {}
+      orig.apply(null, arguments);
+    };
+  });
+})();
+</script>
+</head>
+<body>
+  <canvas id="viewport"></canvas>
+  <div id="boot">booting…</div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
