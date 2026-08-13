@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>XBUILD — データフロー層 P6</title>
+<style>
+  :root{
+    --bg:#0e1013; --panel:#15181d; --panel2:#1b1f26; --line:#272c34;
+    --fg:#d6dae1; --dim:#7f8a99; --acc:#f0c341; --ok:#6fcf8a; --bad:#e8705f; --warn:#e2b04a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);
+    font:12px/1.5 -apple-system,BlinkMacSystemFont,"Helvetica Neue","Hiragino Sans","Noto Sans JP",sans-serif;}
+  #app{display:grid;height:100vh;
+    grid-template-columns:230px 1fr 260px;
+    grid-template-rows:38px 1fr 196px;
+    grid-template-areas:"hd hd hd" "lf vp rt" "bt bt bt";}
+  header{grid-area:hd;display:flex;align-items:center;gap:14px;padding:0 12px;
+    border-bottom:1px solid var(--line);background:var(--panel);}
+  header h1{font-size:12px;margin:0;font-weight:600;letter-spacing:.06em}
+  header h1 b{color:var(--acc)}
+  #stats{margin-left:auto;color:var(--dim);font-variant-numeric:tabular-nums}
+  button{background:var(--panel2);color:var(--fg);border:1px solid var(--line);
+    border-radius:3px;padding:3px 10px;cursor:pointer;font-size:11px}
+  button:hover{border-color:var(--acc);color:var(--acc)}
+  aside{background:var(--panel);overflow:auto;border-right:1px solid var(--line)}
+  #left{grid-area:lf} #right{grid-area:rt;border-right:none;border-left:1px solid var(--line)}
+  #viewport{grid-area:vp;position:relative;overflow:hidden}
+  #viewport canvas{position:absolute;inset:0;display:block}
+  #bottom{grid-area:bt;background:var(--panel);border-top:1px solid var(--line);overflow:auto;padding:6px 10px}
+  h2{font-size:10px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;
+    margin:10px 10px 4px;font-weight:600}
+  .row{display:flex;align-items:center;gap:6px;padding:4px 10px;cursor:pointer;border-left:2px solid transparent}
+  .row:hover{background:#1d222a}
+  .row.sel{background:#20262f;border-left-color:var(--acc)}
+  .row.indent{padding-left:18px}
+  .row.err{color:var(--bad)}
+  .row input[type=checkbox]{margin:0;accent-color:var(--acc)}
+  .tag{margin-left:auto;color:var(--dim);font-style:normal;font-size:10px}
+  .pfield{padding:3px 10px;display:flex;align-items:center;gap:8px}
+  .pfield label{width:82px;color:var(--dim);flex:none}
+  .pfield input{flex:1;min-width:0;background:#0f1216;border:1px solid var(--line);
+    color:var(--fg);border-radius:3px;padding:3px 6px;font:inherit}
+  .pfield input:focus{outline:none;border-color:var(--acc)}
+  .vec{display:flex;gap:4px;flex:1;min-width:0}
+  #snipwrap{padding:6px 10px}
+  #snippet{width:100%;height:112px;background:#0f1216;border:1px solid var(--line);color:var(--fg);
+    border-radius:3px;padding:6px;font:11px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
+  #snipwrap .bar{display:flex;gap:6px;margin-top:5px;align-items:center}
+  select{background:#0f1216;color:var(--fg);border:1px solid var(--line);border-radius:3px;padding:3px 6px;font:inherit}
+  table{border-collapse:collapse;font-variant-numeric:tabular-nums;table-layout:fixed;width:620px}
+  th,td{text-align:left;padding:2px 8px;border-bottom:1px solid #1e2229;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  col.c1{width:150px} col.c2{width:60px} col.c3{width:80px} col.c4{width:80px}
+  col.c5{width:56px} col.c6{width:190px}
+  th{color:var(--dim);font-weight:600;font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+  td:nth-child(2),td:nth-child(3),td:nth-child(4){text-align:right}
+  .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)} .cache{color:var(--dim)}
+  .hint{color:var(--dim);padding:4px 10px 10px;line-height:1.6}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>XBUILD <b>データフロー層</b> — 東静岡アリーナ予定地 / 実データ</h1>
+    <button id="play">▶ 再生</button>
+    <button id="reset">リセット</button>
+    <span id="stats"></span>
+  </header>
+
+  <aside id="left">
+    <h2>シーン</h2>
+    <div id="outliner"></div>
+    <div class="hint">
+      左ドラッグ=回転 / 右ドラッグ=移動 / ホイール=ズーム
+      <div style="margin-top:8px;color:#5f6b7a;line-height:1.5">
+        建物: PLATEAU 静岡市 建築物モデル LOD1 (2023)<br>
+        道路: OpenStreetMap<br>
+        アリーナ: 静岡市公表の計画値
+      </div>
+    </div>
+  </aside>
+
+  <div id="viewport"></div>
+
+  <aside id="right">
+    <h2>ノード</h2>
+    <div id="nodelist"></div>
+    <h2>パラメータ</h2>
+    <div id="params"></div>
+    <div id="snipwrap">
+      <textarea id="snippet" spellcheck="false"></textarea>
+      <div class="bar">
+        <select id="snipclass">
+          <option value="point">point</option>
+          <option value="prim">prim</option>
+          <option value="vertex">vertex</option>
+          <option value="detail">detail</option>
+        </select>
+        <button id="snipapply">適用</button>
+      </div>
+    </div>
+  </aside>
+
+  <div id="bottom">
+    <h2 style="margin:0 0 4px">評価レポート</h2>
+    <div id="report"></div>
+  </div>
+</div>
+<!--THREE-->
+<!--BUNDLE-->
+</body>
+</html>
