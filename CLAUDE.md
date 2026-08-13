@@ -68,6 +68,10 @@ assert h.count(old) == 1
 ```bash
 node build.js                      # src/*.js + three.js r128 -> dist/xbuild_dataflow.html
 node --check dist/_bundle_check.js # HTML に直接 --check をかけないこと
+
+# 既存ビューアへの注入（three.js はホストのものを使うので同梱しない。SPEC.md §22）
+node build_inject.js --host <入力HTML> [--out dist/shinjuku_flow_3d.html]
+node --check dist/_inject_check.js
 ```
 
 `src/*.js` は CommonJS のまま書く。`import` / `export` を使うとローダが壊れる。
@@ -93,10 +97,15 @@ node --check dist/_bundle_check.js # HTML に直接 --check をかけないこ�
   （任意時刻で呼ばれ、結果がキャッシュされるため）。決定論的な経路 + 弧長で表現する。
 - **外部データの型を信用しない。** batchTable は配列でなく dict で来ることがあり、
   建築年に `1.0` のような異常値が混入する。
+- **需要モデルは経路長の分布を必ず確認する。** 起点のすぐ隣が目的地になる経路が
+  大量に混ざり、「歩かない人」で平均が汚れることがある（SPEC.md §22.5）。
+- **カラーランプは背景と合成方法に依存する。** 低域が暗いランプ（yellow/cool/heat）は
+  暗背景への加算合成で完全に消える。点群には `flow` / `vivid` を使う（§22.4）。
 
 ## 現在地
 
-P1 / P2 / P3 / P4 / P5 / P6 / P6.5 / 実データ結合 / 人流需要モデル 完了。テスト 114件すべて緑。
+P1 / P2 / P3 / P4 / P5 / P6 / P6.5 / 実データ結合 / 人流需要モデル / 他ビューアへの移植 完了。
+テスト 128件すべて緑。
 
 `dist/xbuild_dataflow.html` は東静岡アリーナ予定地の実データ（PLATEAU LOD1 1,088棟 +
 OSM 道路網 + 人流900体 + 計画アリーナ）で動作する。遅延プル評価・動的な時間依存・
@@ -119,6 +128,10 @@ OSM 歩行網は素のままでは断片化している（両駅とも会場と�
 最短路を使う処理は必ずブリッジ済みグラフ（`buildDemandGraph`）を使うこと。
 **ランダムウォークはネットワークの欠陥を隠す。最短路は欠陥を暴く**（§21.2）。
 需要パラメータ（railShare 等）と計画デッキの線形は仮定値。実測・公表が入手でき次第差し替える。
+
+エンジンは他社製ビューアへも注入できる（SPEC.md §22）。新宿駅 構内図 3D へ
+`build_inject.js` で 97KB のスクリプトを1本足すだけで人流可視化が動く
+（`dist/shinjuku_flow_3d.html`）。ホストへの要求は `window.__app.{scene, graph}` のみ。
 
 次の候補は P7（時系列チャンネル層）、サブネット編集 UI（§20.5）、
 帰路・混雑モデル（§21.4）。マイルストーン全体は SPEC.md §13 を参照。
