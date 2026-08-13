@@ -41,7 +41,8 @@ arenaGraph.displayNode = 'azh';
 
 /* --- 道路網とその上を歩く人流（時間依存） --- */
 const flowGraph = new Graph(reg);
-flowGraph.add('roadagents', { count: 900, attract: 0.55, speed: 1.0 }, 'agents1');
+// demand: 駅・外周から会場へ集まる流入モデル（§21）。window/speed はデモで観察しやすい値
+flowGraph.add('roadagents', { mode: 'demand', count: 900, window: 300, speed: 2.0, deck: 0 }, 'agents1');
 flowGraph.add('heatmap', { cell: 22, extent: 600, lift: 0.6 }, 'heat1');
 flowGraph.connect('agents1', 'heat1', 0);
 flowGraph.displayNode = 'heat1';

@@ -124,6 +124,9 @@ reg.register({
   params: {
     walkableOnly: { type: 'int',   default: 1 },
     lift:         { type: 'float', default: 0.3 },
+    deck:         { type: 'int',   default: 0 },   // 1: 計画デッキ（仮定線形、§21）も表示する
+    vx:           { type: 'float', default: 55 },
+    vy:           { type: 'float', default: 65 },
   },
   cook(ctx) {
     const src = decodeRoads();
@@ -132,12 +135,27 @@ reg.register({
     for (const w of src) nv += w.pts.length;
     g.reserve(nv, nv, src.length);
     const aWalk = g.addAttrib('prim', 'walk', 'int');
+    const aPart = g.addAttrib('prim', 'part', 'string');
     let n = 0;
     for (const w of src) {
       if (ctx.params.walkableOnly && !w.walk) continue;
       const idx = w.pts.map(p => g.addPoint(p[0], p[1], ctx.params.lift));
-      aWalk.set(g.addPrim(idx, false), w.walk ? 1 : 0);   // closed=false -> 線分
+      const pi = g.addPrim(idx, false);            // closed=false -> 線分
+      aWalk.set(pi, w.walk ? 1 : 0);
+      aPart.set(pi, 'road');
       n++;
+    }
+    if (ctx.params.deck) {
+      for (const seg of deckSegments(ctx.params.vx, ctx.params.vy)) {
+        const z = ctx.params.lift + 6;             // 高架として少し持ち上げて表示
+        const pi = g.addPrim([
+          g.addPoint(seg.from[0], seg.from[1], z),
+          g.addPoint(seg.to[0], seg.to[1], z),
+        ], false);
+        aWalk.set(pi, 1);
+        aPart.set(pi, 'deck');
+      }
+      ctx.warn('deck alignment is an assumption (station -> venue straight line); the plan is unpublished');
     }
     g.detail.add('roads', 'int').set(0, n);
     return g;
@@ -230,19 +248,215 @@ function buildRoutes(count, seed, steps, attract) {
   return out;
 }
 
+/* ============================================================
+   需要ベース人流（§21）
+   ------------------------------------------------------------
+   ランダム歩行（wander）に対し、demand モードは
+   「駅・外周から会場へ、到着時間帯に沿って歩いて集まる」流入を表す。
+   引き続き時刻の純関数（§17.6）: 経路・出発時刻・速度はすべて
+   seed から決定論的に生成し、位置は t から解析的に求める。
+   ============================================================ */
+
+function stationList() {
+  return DATA.landmarks
+    .filter(l => l[3] === 'station')
+    .map(([name, xdm, ydm]) => ({ name, x: xdm / 10, y: ydm / 10 }))
+    // 東静岡駅（会場最寄り）を先頭に
+    .sort((a, b) => (b.name.includes('東静岡') ? 1 : 0) - (a.name.includes('東静岡') ? 1 : 0));
+}
+
+/** 計画ペデストリアンデッキ。線形は未公表のため「駅 -> 会場の直線」という仮定 */
+function deckSegments(vx, vy) {
+  return stationList().map(s => ({ from: [s.x, s.y], to: [vx, vy], name: s.name }));
+}
+
+function nearestNode(pos, adj, x, y) {
+  let best = -1, bd = Infinity;
+  for (let i = 0; i < pos.length; i++) {
+    if (!adj[i].length) continue;
+    const d = (pos[i][0] - x) ** 2 + (pos[i][1] - y) ** 2;
+    if (d < bd) { bd = d; best = i; }
+  }
+  return best;
+}
+
+/**
+ * OSM 歩行ネットワークの断片を接続する。
+ * OSM の歩道は横断歩道などの接続ノードを欠くことが多く、素の歩行グラフは
+ * 断片化している（実測: 会場成分 156 / 1,145 ノードで、両駅とも非連結）。
+ * 成分間の近接ノード対（30m 以内）を距離昇順に見て、まだ別成分なら
+ * エッジを足す（Kruskal 式 = 人工エッジは最短・最小限になる）。
+ */
+function bridgeComponents(pos, adj, maxGap = 30) {
+  const n = pos.length;
+  const uf = new Int32Array(n).map((_, i) => i);
+  const find = (x) => { while (uf[x] !== x) x = uf[x] = uf[uf[x]]; return x; };
+  for (let u = 0; u < n; u++)
+    for (const [w] of adj[u]) { const a = find(u), b = find(w); if (a !== b) uf[a] = b; }
+  const pairs = [];
+  for (let i = 0; i < n; i++) {
+    if (!adj[i].length) continue;
+    for (let j = i + 1; j < n; j++) {
+      if (!adj[j].length || find(i) === find(j)) continue;
+      const d = Math.hypot(pos[i][0] - pos[j][0], pos[i][1] - pos[j][1]);
+      if (d < maxGap) pairs.push([d, i, j]);
+    }
+  }
+  pairs.sort((a, b) => a[0] - b[0]);
+  let bridges = 0;
+  for (const [d, i, j] of pairs) {
+    const a = find(i), b = find(j);
+    if (a === b) continue;
+    uf[a] = b;
+    adj[i].push([j, d]); adj[j].push([i, d]);
+    bridges++;
+  }
+  return bridges;
+}
+
+/** 歩行グラフ（断片接続済み）+ （deck=1 なら）計画デッキの仮定線形エッジ */
+function buildDemandGraph(deck, vx, vy) {
+  buildDemandGraph._c = buildDemandGraph._c || new Map();
+  const ck = `${deck ? 1 : 0}|${vx}|${vy}`;
+  const hit = buildDemandGraph._c.get(ck);
+  if (hit) return hit;
+
+  const base = buildGraph();
+  const pos = base.pos;
+  const adj = base.adj.map(a => a.slice());
+  const bridges = bridgeComponents(pos, adj);
+  const deckEdges = new Set();
+  if (deck) {
+    for (const seg of deckSegments(vx, vy)) {
+      const a = nearestNode(pos, adj, seg.from[0], seg.from[1]);
+      const b = nearestNode(pos, adj, seg.to[0], seg.to[1]);
+      if (a < 0 || b < 0 || a === b) continue;
+      const d = Math.hypot(pos[a][0] - pos[b][0], pos[a][1] - pos[b][1]);
+      adj[a].push([b, d]); adj[b].push([a, d]);
+      deckEdges.add(a + '|' + b); deckEdges.add(b + '|' + a);
+    }
+  }
+  const out = { pos, adj, deckEdges, bridges };
+  if (buildDemandGraph._c.size > 8) buildDemandGraph._c.clear();
+  buildDemandGraph._c.set(ck, out);
+  return out;
+}
+
+/** 会場を根とする最短路木（Dijkstra）。グラフごとにメモ化 */
+function shortestTree(gr, vx, vy) {
+  if (gr._tree) return gr._tree;
+  const { pos, adj } = gr;
+  const v = nearestNode(pos, adj, vx, vy);
+  const n = pos.length;
+  const dist = new Float64Array(n).fill(Infinity);
+  const parent = new Int32Array(n).fill(-1);
+  const done = new Uint8Array(n);
+  dist[v] = 0;
+  for (;;) {
+    let u = -1, bd = Infinity;
+    for (let i = 0; i < n; i++) if (!done[i] && dist[i] < bd) { bd = dist[i]; u = i; }
+    if (u < 0) break;
+    done[u] = 1;
+    for (const [w, d] of adj[u])
+      if (dist[u] + d < dist[w]) { dist[w] = dist[u] + d; parent[w] = u; }
+  }
+  gr._tree = { venueNode: v, dist, parent };
+  return gr._tree;
+}
+
+const _demandCache = new Map();
+
+function buildDemandRoutes(p) {
+  const ck = JSON.stringify([p.count, p.seed, p.deck, p.vx, p.vy, p.window, p.railShare, p.higashiShare]);
+  const hit = _demandCache.get(ck);
+  if (hit) return hit;
+
+  const gr = buildDemandGraph(p.deck, p.vx, p.vy);
+  const tree = shortestTree(gr, p.vx, p.vy);
+  const { pos, adj, deckEdges } = gr;
+  const stations = stationList().map(s => ({ ...s, node: nearestNode(pos, adj, s.x, s.y) }));
+
+  // 外周流入（バス・駐車場等）の起点候補: 会場から 250m 超の接続ノード
+  const perimeter = [];
+  for (let i = 0; i < pos.length; i++)
+    if (adj[i].length && isFinite(tree.dist[i]) &&
+        Math.hypot(pos[i][0] - p.vx, pos[i][1] - p.vy) > 250) perimeter.push(i);
+
+  const rnd = prng(p.seed);
+  const routes = [];
+  let sumLen = 0, deckUsers = 0, guard = 0;
+
+  while (routes.length < p.count && guard++ < p.count * 10) {
+    let originNode, originName;
+    const u = rnd(), w1 = rnd();
+    if (u < p.railShare && stations.length) {
+      const st = (w1 < p.higashiShare || stations.length < 2) ? stations[0] : stations[1];
+      originNode = st.node; originName = st.name;
+    } else if (perimeter.length) {
+      originNode = perimeter[Math.floor(rnd() * perimeter.length)];
+      originName = 'その他';
+    } else {
+      originNode = stations[0] && stations[0].node;
+      originName = 'その他';
+    }
+    if (originNode == null || originNode < 0 || !isFinite(tree.dist[originNode])) continue;
+
+    const path = [originNode];
+    const cum = [0];
+    let total = 0, usesDeck = false, cur = originNode;
+    while (cur !== tree.venueNode && tree.parent[cur] >= 0) {
+      const nxt = tree.parent[cur];
+      if (deckEdges.has(cur + '|' + nxt)) usesDeck = true;
+      total += Math.hypot(pos[cur][0] - pos[nxt][0], pos[cur][1] - pos[nxt][1]);
+      path.push(nxt); cum.push(total);
+      cur = nxt;
+    }
+    if (path.length < 2) continue;
+
+    const spawn = ((rnd() + rnd()) / 2) * p.window;     // 三角分布（中央ピーク）の到着波
+    const speed = 1.1 + rnd() * 0.7;
+    const ang = rnd() * Math.PI * 2, rad = 5 + rnd() * 18;   // 会場到着後の滞留位置（決定論）
+    routes.push({ path, cum, total, spawn, speed, originName, usesDeck,
+                  ax: Math.cos(ang) * rad, ay: Math.sin(ang) * rad });
+    sumLen += total;
+    if (usesDeck) deckUsers++;
+  }
+
+  const out = {
+    routes, pos,
+    meanRoute: routes.length ? sumLen / routes.length : 0,
+    deckShare: routes.length ? deckUsers / routes.length : 0,
+  };
+  if (_demandCache.size > 12) _demandCache.clear();
+  _demandCache.set(ck, out);
+  return out;
+}
+
 reg.register({
   type: 'roadagents',
   label: '人流 (道路網)',
   inputs: [],
   params: {
+    mode:    { type: 'string', default: 'wander' },  // 'wander' | 'demand'
     count:   { type: 'int',   default: 900 },
     seed:    { type: 'int',   default: 20260813 },
     steps:   { type: 'int',   default: 26 },
-    attract: { type: 'float', default: 0.55 },   // 0=ランダム歩行, 1=会場へ直行
+    attract: { type: 'float', default: 0.55 },   // wander: 0=ランダム歩行, 1=会場へ直行
     speed:   { type: 'float', default: 1.0 },    // 倍率
+    /* ---- demand モード ---- */
+    capacity:     { type: 'int',   default: 10000 }, // 想定来場者数（計画公表の規模感）
+    railShare:    { type: 'float', default: 0.6 },   // 鉄道利用率（仮定）
+    higashiShare: { type: 'float', default: 0.75 },  // 鉄道のうち東静岡駅の割合（仮定）
+    window:       { type: 'float', default: 1800 },  // 到着が分散する時間幅（秒）
+    deck:         { type: 'int',   default: 0 },     // 1: 計画デッキ（仮定線形）を道路網へ足す
+    vx:           { type: 'float', default: 55 },    // 会場位置（アリーナ既定配置）
+    vy:           { type: 'float', default: 65 },
   },
   timeDep: true,
   cook(ctx) {
+    if (ctx.params.mode === 'demand') return cookDemand(ctx);
+    if (ctx.params.mode !== 'wander')
+      ctx.warn(`unknown mode "${ctx.params.mode}"; falling back to wander`);
     const { count, seed, steps, attract, speed } = ctx.params;
     const { routes, pos } = buildRoutes(count, seed, steps, attract);
 
@@ -273,6 +487,62 @@ reg.register({
     return g;
   },
 });
+
+/** demand モードの cook 本体。時刻の純関数（§17.6 / §21） */
+function cookDemand(ctx) {
+  const p = ctx.params;
+  const R = buildDemandRoutes(p);
+  if (!R.routes.length) ctx.warn('no routes could be built (network disconnected?)');
+
+  const g = new GeoSet();
+  g.reserve(R.routes.length, 0, 0);
+  const aSpeed  = g.addAttrib('point', 'speed', 'float');
+  const aDist   = g.addAttrib('point', 'toVenue', 'float');
+  const aState  = g.addAttrib('point', 'state', 'int');      // 0=出発待ち 1=歩行中 2=到着
+  const aOrigin = g.addAttrib('point', 'origin', 'string');
+  const aRoute  = g.addAttrib('point', 'routeLen', 'float');
+
+  let waiting = 0, walking = 0, arrived = 0;
+  for (const r of R.routes) {
+    const d = (ctx.time - r.spawn) * r.speed * p.speed;
+    let x, y, state;
+    if (d <= 0) {
+      const A = R.pos[r.path[0]];
+      x = A[0]; y = A[1]; state = 0; waiting++;
+    } else if (d >= r.total) {
+      x = p.vx + r.ax; y = p.vy + r.ay; state = 2; arrived++;
+    } else {
+      let lo = 0, hi = r.cum.length - 1;
+      while (lo + 1 < hi) {
+        const m = (lo + hi) >> 1;
+        if (r.cum[m] <= d) lo = m; else hi = m;
+      }
+      const seg = r.cum[hi] - r.cum[lo] || 1;
+      const t = (d - r.cum[lo]) / seg;
+      const A = R.pos[r.path[lo]], B = R.pos[r.path[hi]];
+      x = A[0] + (B[0] - A[0]) * t;
+      y = A[1] + (B[1] - A[1]) * t;
+      state = 1; walking++;
+    }
+    const pt = g.addPoint(x, y, 1.4);
+    aSpeed.set(pt, r.speed * p.speed);
+    aDist.set(pt, Math.hypot(x - p.vx, y - p.vy));
+    aState.set(pt, state);
+    aOrigin.set(pt, r.originName);
+    aRoute.set(pt, r.total);
+  }
+
+  g.detail.add('source', 'string').set(0, 'OSM walkable network + demand model');
+  g.detail.add('bridges', 'int').set(0, buildDemandGraph(p.deck, p.vx, p.vy).bridges);
+  g.detail.add('capacity', 'int').set(0, p.capacity);
+  g.detail.add('personsPerAgent', 'float').set(0, R.routes.length ? p.capacity / R.routes.length : 0);
+  g.detail.add('meanRoute', 'float').set(0, R.meanRoute);
+  g.detail.add('deckShare', 'float').set(0, R.deckShare);
+  g.detail.add('waiting', 'int').set(0, waiting);
+  g.detail.add('walking', 'int').set(0, walking);
+  g.detail.add('arrived', 'int').set(0, arrived);
+  return g;
+}
 
 /* ============================================================
    arena : 計画アリーナのマッシング（公表値ベース）
