@@ -1,16 +1,38 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import {
   CSS2DObject,
   CSS2DRenderer,
 } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
-import type {
-  Entity,
-  HullEntityData,
-  TankEntityData,
-  VesselEntityData,
+import {
+  verticalInShip,
+  type Entity,
+  type HullEntityData,
+  type TankEntityData,
+  type VesselEntityData,
 } from '@dock/shared';
 import { buildHullGeometry } from './geometry.js';
+
+/** Box coordinates of a tank, in hull axes. */
+export interface TankBox {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+  z0: number;
+  z1: number;
+}
+
+export type GizmoMode = 'off' | 'translate' | 'scale';
+
+/** Attitude of the free-surface plane, as solved by the L1 engine. */
+export interface WaterAttitude {
+  heelDeg: number;
+  trimDeg: number;
+  /** waterplane constant in hull coordinates: immersed where u·p ≤ c */
+  waterlineConstant: number;
+}
 
 export const FLUID_COLORS: Record<string, number> = {
   ballast: 0x5b8def,
@@ -43,6 +65,7 @@ export class DockScene {
   private scene = new THREE.Scene();
   private camera: THREE.PerspectiveCamera;
   private controls: OrbitControls;
+  private shipRoot = new THREE.Group();
   private hullGroup = new THREE.Group();
   private tankGroup = new THREE.Group();
   private ghostGroup = new THREE.Group();
@@ -54,8 +77,21 @@ export class DockScene {
   private disposed = false;
   private lpp = 100;
   private depth = 12;
+  private attitude: WaterAttitude = { heelDeg: 0, trimDeg: 0, waterlineConstant: 0 };
+
+  // --- drag editing ---
+  private gizmo: TransformControls;
+  private gizmoHelper: THREE.Object3D;
+  private dragProxy = new THREE.Object3D();
+  private gizmoMode: GizmoMode = 'off';
+  private dragBase: TankBox | null = null;
+  private dragging = false;
 
   onSelect: (id: string | null) => void = () => undefined;
+  /** Fired continuously while dragging, so the panel can show live values. */
+  onDragPreview: (id: string, box: TankBox) => void = () => undefined;
+  /** Fired once when the drag ends, to turn the change into a transaction. */
+  onDragCommit: (id: string, box: TankBox) => void = () => undefined;
 
   constructor(private container: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -83,8 +119,39 @@ export class DockScene {
     rim.position.set(120, 40, -80);
     this.scene.add(rim);
 
-    this.scene.add(this.hullGroup, this.tankGroup, this.ghostGroup);
+    // The ship hangs off a root group that carries the floating attitude, so
+    // the sea stays level and the vessel heels — the way it looks from a quay,
+    // rather than the ship-fixed frame the solver works in.
+    this.shipRoot.add(this.hullGroup, this.tankGroup, this.ghostGroup, this.dragProxy);
+    this.scene.add(this.shipRoot);
     this.scene.fog = new THREE.Fog(0x0f1722, 400, 1400);
+
+    // Drag editing. The gizmo drives a proxy object; the tank box is derived
+    // from the proxy's transform so the authoritative numbers stay in metres.
+    this.gizmo = new TransformControls(this.camera, this.renderer.domElement);
+    this.gizmo.setTranslationSnap(0.5);
+    this.gizmo.setScaleSnap(0.05);
+    this.gizmo.setSize(0.8);
+    // local space keeps the handles on the ship's own axes when she is heeled
+    this.gizmo.setSpace('local');
+    this.gizmoHelper = this.gizmo.getHelper();
+    this.gizmoHelper.visible = false;
+    this.scene.add(this.gizmoHelper);
+
+    this.gizmo.addEventListener('dragging-changed', (e) => {
+      const active = Boolean((e as unknown as { value: boolean }).value);
+      this.controls.enabled = !active;
+      this.dragging = active;
+      if (!active && this.selectedId && this.dragBase) {
+        this.onDragCommit(this.selectedId, this.boxFromProxy());
+      }
+    });
+    this.gizmo.addEventListener('objectChange', () => {
+      if (!this.selectedId || !this.dragBase) return;
+      const box = this.boxFromProxy();
+      this.setGhost({ ...this.tanks.get(this.selectedId)!.data, ...box });
+      this.onDragPreview(this.selectedId, box);
+    });
 
     this.renderer.domElement.addEventListener('pointerdown', (e) => {
       (this.renderer.domElement as HTMLElement).dataset.downAt = `${e.clientX},${e.clientY}`;
@@ -94,6 +161,7 @@ export class DockScene {
       if (!down) return;
       const [dx, dy] = down.split(',').map(Number);
       if (Math.hypot(e.clientX - dx, e.clientY - dy) > 4) return; // it was a drag
+      if (this.dragging || this.gizmo.axis) return; // the gizmo owns this click
       this.pick(e);
     });
 
@@ -208,6 +276,7 @@ export class DockScene {
 
     this.buildWater();
     this.applySelection();
+    this.syncGizmo();
   }
 
   private addTank(id: string, t: TankEntityData): void {
@@ -281,24 +350,114 @@ export class DockScene {
         depthWrite: false,
       }),
     );
-    this.water.rotation.x = -Math.PI / 2;
-    this.water.position.set(this.lpp / 2, 0, 0);
     this.water.renderOrder = 0;
     this.scene.add(this.water);
 
     this.waterGrid = new THREE.GridHelper(w, 32, 0x2a4d74, 0x1c3352);
     this.scene.add(this.waterGrid);
+    this.setWaterAttitude(this.attitude);
   }
 
+  /** Even-keel water surface at a given draft (the L0 view). */
   setDraft(draft: number): void {
-    if (this.water) this.water.position.y = draft;
-    if (this.waterGrid) this.waterGrid.position.y = draft;
-    if (this.waterGrid) this.waterGrid.position.x = this.lpp / 2;
+    this.setWaterAttitude({ heelDeg: 0, trimDeg: 0, waterlineConstant: draft });
+  }
+
+  /**
+   * Show the vessel at a solved floating attitude.
+   *
+   * The engine works in ship coordinates, where a point is immersed when
+   * u·p ≤ c. Rotating the ship by the transform that carries u onto world "up"
+   * turns that into the view from outside: the sea is a level plane at height
+   * c, and the vessel sits in it at its true heel and trim.
+   */
+  setWaterAttitude(att: WaterAttitude): void {
+    this.attitude = att;
+    const u = verticalInShip((att.heelDeg * Math.PI) / 180, (att.trimDeg * Math.PI) / 180);
+    // hull (x, y, z) → three (x, z, y)
+    const n = new THREE.Vector3(u.x, u.z, u.y).normalize();
+    const up = new THREE.Vector3(0, 1, 0);
+    this.shipRoot.quaternion.setFromUnitVectors(n, up);
+    this.shipRoot.updateMatrixWorld(true);
+
+    const centre = new THREE.Vector3(this.lpp / 2, 0, 0).applyQuaternion(
+      this.shipRoot.quaternion,
+    );
+    if (this.water) {
+      this.water.position.set(centre.x, att.waterlineConstant, centre.z);
+      this.water.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), up);
+    }
+    if (this.waterGrid) {
+      this.waterGrid.position.set(centre.x, att.waterlineConstant, centre.z);
+      this.waterGrid.quaternion.identity();
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Drag editing
+  // -------------------------------------------------------------------------
+
+  setGizmoMode(mode: GizmoMode): void {
+    this.gizmoMode = mode;
+    this.syncGizmo();
+  }
+
+  /** Snap the gizmo back to the committed geometry after a rejected drag. */
+  resetDrag(): void {
+    this.setGhost(null);
+    this.syncGizmo();
+  }
+
+  /** Committed box of a tank, as currently projected. */
+  tankBox(id: string): TankBox | null {
+    const d = this.tanks.get(id)?.data;
+    if (!d) return null;
+    return { x0: d.x0, x1: d.x1, y0: d.y0, y1: d.y1, z0: d.z0, z1: d.z1 };
+  }
+
+  private syncGizmo(): void {
+    const tank = this.selectedId ? this.tanks.get(this.selectedId) : undefined;
+    if (!tank || this.gizmoMode === 'off') {
+      this.gizmo.detach();
+      this.gizmoHelper.visible = false;
+      this.dragBase = null;
+      return;
+    }
+    const d = tank.data;
+    this.dragBase = { x0: d.x0, x1: d.x1, y0: d.y0, y1: d.y1, z0: d.z0, z1: d.z1 };
+    this.dragProxy.position.set((d.x0 + d.x1) / 2, (d.z0 + d.z1) / 2, (d.y0 + d.y1) / 2);
+    this.dragProxy.scale.set(1, 1, 1);
+    this.dragProxy.updateMatrixWorld();
+    this.gizmo.attach(this.dragProxy);
+    this.gizmo.setMode(this.gizmoMode);
+    this.gizmoHelper.visible = true;
+  }
+
+  /** Tank box implied by the proxy's current position and scale. */
+  private boxFromProxy(): TankBox {
+    const b = this.dragBase!;
+    const halfX = ((b.x1 - b.x0) / 2) * this.dragProxy.scale.x;
+    const halfZ = ((b.z1 - b.z0) / 2) * this.dragProxy.scale.y;
+    const halfY = ((b.y1 - b.y0) / 2) * this.dragProxy.scale.z;
+    const cx = this.dragProxy.position.x;
+    const cz = this.dragProxy.position.y;
+    const cy = this.dragProxy.position.z;
+    const min = 0.05;
+    const hx = Math.max(min, halfX);
+    const hy = Math.max(min, halfY);
+    const hz = Math.max(min, halfZ);
+    const r = (v: number) => Math.round(v * 100) / 100;
+    return {
+      x0: r(cx - hx), x1: r(cx + hx),
+      y0: r(cy - hy), y1: r(cy + hy),
+      z0: r(cz - hz), z1: r(cz + hz),
+    };
   }
 
   setSelected(id: string | null): void {
     this.selectedId = id;
     this.applySelection();
+    this.syncGizmo();
   }
 
   private applySelection(): void {
@@ -340,12 +499,17 @@ export class DockScene {
   focusTank(id: string): void {
     const t = this.tanks.get(id);
     if (!t) return;
-    const p = t.shell.position;
-    this.controls.target.lerp(new THREE.Vector3(p.x, p.y, p.z), 1);
+    this.controls.target.copy(t.shell.getWorldPosition(new THREE.Vector3()));
   }
 
   setHome(): void {
-    this.controls.target.set(this.lpp / 2, this.depth / 2, 0);
-    this.camera.position.set(-this.lpp * 0.55, this.depth * 4.5, this.lpp * 1.1);
+    const target = new THREE.Vector3(this.lpp / 2, this.depth * 0.45, 0).applyQuaternion(
+      this.shipRoot.quaternion,
+    );
+    this.controls.target.copy(target);
+    this.camera.position
+      .set(-this.lpp * 0.28, this.depth * 3.5, this.lpp * 0.82)
+      .add(target)
+      .sub(new THREE.Vector3(this.lpp / 2, this.depth * 0.45, 0));
   }
 }

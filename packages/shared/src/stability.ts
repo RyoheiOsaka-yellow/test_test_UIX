@@ -310,6 +310,8 @@ export function runL1(
     gz: points,
     gzMax: round6(peak.gz),
     gzMaxAngleDeg: round6(peak.heelDeg),
+    gzMaxAtRangeEdge:
+      points.length > 1 && peak.heelDeg >= points[points.length - 1].heelDeg - 1e-9,
     vanishingAngleDeg: nullableRound(vanishingAngle(points)),
     deckImmersionAngleDeg: nullableRound(deckImmersionAngleDeg),
     floodingAngleDeg,

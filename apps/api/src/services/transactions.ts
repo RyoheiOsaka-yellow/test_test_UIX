@@ -43,6 +43,7 @@ import {
   buildModel,
   OperationError,
   rebuildAtVersion,
+  validateModel,
   type ProjectionModel,
 } from './projection.js';
 
@@ -94,6 +95,9 @@ function applyAll(model: ProjectionModel, operations: Operation[]): AppliedOp[] 
           : null;
     applied.push({ op, effect, kind });
   }
+  // cross-entity rules are checked on the finished state, not per operation,
+  // so a transaction may pass through an intermediate state that breaks them
+  validateModel(model);
   return applied;
 }
 

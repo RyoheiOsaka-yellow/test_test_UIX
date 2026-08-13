@@ -147,6 +147,12 @@ export interface L1Result {
   gz: GzPoint[];
   gzMax: number;
   gzMaxAngleDeg: number;
+  /**
+   * True when the largest sampled righting lever is the last sample, i.e. the
+   * real peak lies beyond the range that was evaluated. The IS Code angle
+   * criterion is then a lower bound rather than the actual peak angle.
+   */
+  gzMaxAtRangeEdge: boolean;
   /** Heel at which GZ returns to zero (range of positive stability) [deg] */
   vanishingAngleDeg: number | null;
   /** Heel at which the deck edge first immerses [deg] */
@@ -560,8 +566,12 @@ export function gzCurve(
   return out;
 }
 
-/** Default heel sampling: 2° to 60°, so 30° and 40° are exact sample points. */
-export function defaultHeelAngles(maxDeg = 60, stepDeg = 2): number[] {
+/**
+ * Default heel sampling: 2° steps to 80°, so 30° and 40° are exact sample
+ * points and stiff ships still reach the peak of their GZ curve inside the
+ * sampled range.
+ */
+export function defaultHeelAngles(maxDeg = 80, stepDeg = 2): number[] {
   const out: number[] = [];
   for (let a = 0; a <= maxDeg + 1e-9; a += stepDeg) out.push(round6(a));
   return out;

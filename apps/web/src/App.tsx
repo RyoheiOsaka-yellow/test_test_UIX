@@ -10,8 +10,15 @@ import type {
   VesselEntityData,
 } from '@dock/shared';
 import { api, ApiError, type Snapshot } from './api.js';
-import { DockScene } from './scene.js';
-import { EntityPanel, HistoryPanel, HydroPanel, TankEditor, TopBar } from './panels.js';
+import { DockScene, type GizmoMode, type TankBox, type WaterAttitude } from './scene.js';
+import {
+  EntityPanel,
+  HistoryPanel,
+  HydroPanel,
+  StabilityPanel,
+  TankEditor,
+  TopBar,
+} from './panels.js';
 
 export interface PreviewState {
   preview: PreviewResultDto;
@@ -22,6 +29,10 @@ export interface PreviewState {
 export default function App() {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<DockScene | null>(null);
+  /** The scene is built once, so drag callbacks reach the latest handler here. */
+  const runPreviewRef = useRef<
+    ((tankId: string, patch: Record<string, unknown>) => Promise<void>) | null
+  >(null);
 
   const [vessel, setVessel] = useState<(VesselDto & { branches: BranchDto[] }) | null>(null);
   const [branch, setBranch] = useState<BranchDto | null>(null);
@@ -33,6 +44,14 @@ export default function App() {
   const [draft, setDraft] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [gizmoMode, setGizmoMode] = useState<GizmoMode>('off');
+  const [drag, setDrag] = useState<{ box: TankBox | null; nonce: number }>({
+    box: null,
+    nonce: 0,
+  });
+  /** null = follow the draft slider (L0); set = the attitude solved by L1 */
+  const [attitude, setAttitude] = useState<WaterAttitude | null>(null);
+  const [analysisTab, setAnalysisTab] = useState<'L0' | 'L1'>('L0');
 
   const atHead = viewVersion === null || viewVersion === branch?.headVersion;
 
@@ -80,6 +99,11 @@ export default function App() {
     if (!mountRef.current) return;
     const scene = new DockScene(mountRef.current);
     scene.onSelect = (id) => setSelectedId(id);
+    scene.onDragPreview = (_id, box) => setDrag((d) => ({ box, nonce: d.nonce + 1 }));
+    scene.onDragCommit = (id, box) => {
+      setDrag((d) => ({ box, nonce: d.nonce + 1 }));
+      void runPreviewRef.current?.(id, { ...box });
+    };
     sceneRef.current = scene;
     return () => {
       scene.dispose();
@@ -88,18 +112,28 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    sceneRef.current?.setGizmoMode(gizmoMode);
+  }, [gizmoMode]);
+
+  useEffect(() => {
     if (!snapshot || !sceneRef.current) return;
     sceneRef.current.setModel(snapshot.entities);
     sceneRef.current.setHome();
     const v = snapshot.entities.find((e) => e.kind === 'vessel')?.data as VesselEntityData | undefined;
     if (v && draft === null) setDraft(v.principal.designDraft);
+    // a new projection invalidates the solved attitude until L1 is re-run
+    setAttitude(null);
+    setDrag({ box: null, nonce: 0 });
     sceneRef.current.setDraft(draft ?? v?.principal.designDraft ?? 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot]);
 
+  // The water surface follows whichever analysis is on screen: the draft
+  // slider under L0, the solved floating attitude under L1.
   useEffect(() => {
-    if (draft !== null) sceneRef.current?.setDraft(draft);
-  }, [draft]);
+    if (analysisTab === 'L1' && attitude) sceneRef.current?.setWaterAttitude(attitude);
+    else if (draft !== null) sceneRef.current?.setDraft(draft);
+  }, [draft, attitude, analysisTab]);
 
   useEffect(() => {
     sceneRef.current?.setSelected(selectedId);
@@ -108,10 +142,26 @@ export default function App() {
       setPreviewState(null);
       sceneRef.current?.setGhost(null);
     }
+    setDrag({ box: null, nonce: 0 });
+    if (!selectedId) setGizmoMode('off');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
   // ---- actions -------------------------------------------------------------
+
+  /**
+   * An edit the server refused. The 3D ghost and the numeric fields both snap
+   * back to the committed geometry, so an impossible tank never lingers on
+   * screen looking like state.
+   */
+  const rejectEdit = useCallback((tankId: string, errors: string[]) => {
+    setError(`検証エラー: ${errors.join('; ')}`);
+    setPreviewState(null);
+    sceneRef.current?.resetDrag();
+    const committed = sceneRef.current?.tankBox(tankId) ?? null;
+    setDrag((d) => ({ box: committed, nonce: d.nonce + 1 }));
+  }, []);
+
   const runPreview = useCallback(
     async (tankId: string, patch: Record<string, unknown>) => {
       if (!branch || !snapshot) return;
@@ -126,9 +176,7 @@ export default function App() {
           snapshot.version,
         );
         if (!preview.validation.ok) {
-          setError(`検証エラー: ${preview.validation.errors.join('; ')}`);
-          setPreviewState(null);
-          sceneRef.current?.setGhost(null);
+          rejectEdit(tankId, preview.validation.errors);
           return;
         }
         const after = preview.effects[0].after as TankEntityData;
@@ -137,7 +185,7 @@ export default function App() {
       } catch (err) {
         if (err instanceof ApiError && err.status === 422) {
           const body = err.body as PreviewResultDto | null;
-          setError(`検証エラー: ${body?.validation?.errors?.join('; ') ?? err.message}`);
+          rejectEdit(tankId, body?.validation?.errors ?? [err.message]);
         } else {
           setError(String(err instanceof Error ? err.message : err));
         }
@@ -145,8 +193,12 @@ export default function App() {
         setBusy(false);
       }
     },
-    [branch, snapshot],
+    [branch, snapshot, rejectEdit],
   );
+
+  useEffect(() => {
+    runPreviewRef.current = runPreview;
+  }, [runPreview]);
 
   const commitPreview = useCallback(async () => {
     if (!previewState || !branch) return;
@@ -265,15 +317,41 @@ export default function App() {
         </aside>
         <main className="viewport" ref={mountRef} />
         <aside className="panel right">
-          <HydroPanel
-            snapshot={snapshot}
-            branch={branch}
-            draft={draft}
-            onDraft={setDraft}
-            vesselData={vesselData}
-            atHead={atHead}
-            viewVersion={viewVersion}
-          />
+          <div className="tabs" role="tablist">
+            <button
+              role="tab"
+              aria-selected={analysisTab === 'L0'}
+              className={analysisTab === 'L0' ? 'tab active' : 'tab'}
+              onClick={() => setAnalysisTab('L0')}
+            >
+              L0 流体静力学
+            </button>
+            <button
+              role="tab"
+              aria-selected={analysisTab === 'L1'}
+              className={analysisTab === 'L1' ? 'tab active' : 'tab'}
+              onClick={() => setAnalysisTab('L1')}
+            >
+              L1 復原性
+            </button>
+          </div>
+          {analysisTab === 'L0' ? (
+            <HydroPanel
+              snapshot={snapshot}
+              branch={branch}
+              draft={draft}
+              onDraft={setDraft}
+              vesselData={vesselData}
+              atHead={atHead}
+              viewVersion={viewVersion}
+            />
+          ) : (
+            <StabilityPanel
+              branch={branch}
+              viewVersion={viewVersion}
+              onAttitude={setAttitude}
+            />
+          )}
           {selectedTank && (
             <TankEditor
               key={`${selectedTank.id}@${snapshot?.version}`}
@@ -282,6 +360,10 @@ export default function App() {
               editable={atHead}
               busy={busy}
               previewState={previewState}
+              gizmoMode={gizmoMode}
+              onGizmoMode={setGizmoMode}
+              dragBox={drag.box}
+              dragNonce={drag.nonce}
               onPreview={runPreview}
               onCommit={commitPreview}
               onDiscard={discardPreview}

@@ -69,7 +69,7 @@ export async function runStabilityL1(req: L1RunRequest): Promise<{
   }
 
   const heelStepDeg = req.heelStepDeg ?? 2;
-  const maxHeelDeg = req.maxHeelDeg ?? 60;
+  const maxHeelDeg = req.maxHeelDeg ?? 80;
   if (heelStepDeg <= 0 || heelStepDeg > 10) {
     throw new OperationError('heelStepDeg must be within (0, 10]');
   }

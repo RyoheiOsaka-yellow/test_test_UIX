@@ -8,6 +8,7 @@ import type {
   Relation,
   TransactionDto,
   VesselDto,
+  WeightItem,
 } from '@dock/shared';
 
 const API = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8787';
@@ -81,6 +82,21 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
+
+  stabilityRun: (
+    branchId: string,
+    body: {
+      version?: number;
+      extraWeights?: WeightItem[];
+      floodingAngleDeg?: number;
+      heelStepDeg?: number;
+      maxHeelDeg?: number;
+    },
+  ) =>
+    j<{ cached: boolean; derived: DerivedResultDto & { result: unknown } }>(
+      `/api/branches/${branchId}/stability/run`,
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
 
   hydroList: (branchId: string, version?: number) => {
     const qs = version === undefined ? '' : `?version=${version}`;

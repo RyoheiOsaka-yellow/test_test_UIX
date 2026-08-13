@@ -73,6 +73,22 @@ describe('Step 2 — preview does not mutate the branch projection', () => {
     expect(events.every((e) => e.transactionId !== preview.transactionId)).toBe(true);
   });
 
+  it('rejects a tank dragged outside the vessel envelope', async () => {
+    const preview = await previewTransaction(branchId, [
+      { op: 'entity.update', id: 'tank:WB2.P', patch: { z0: 10.1, z1: 13.5 } },
+    ]);
+    expect(preview.validation.ok).toBe(false);
+    expect(preview.validation.errors[0]).toMatch(/leaves the vessel envelope/);
+    expect(preview.validation.errors[0]).toMatch(/z 10.1…13.5 outside 0…12/);
+  });
+
+  it('accepts a tank moved to a valid position inside the envelope', async () => {
+    const preview = await previewTransaction(branchId, [
+      { op: 'entity.update', id: 'tank:WB2.P', patch: { z0: 9, z1: 11.5 } },
+    ]);
+    expect(preview.validation.ok).toBe(true);
+  });
+
   it('reports validation errors without creating a transaction', async () => {
     const preview = await previewTransaction(branchId, [
       { op: 'entity.update', id: 'tank:WB2.P', patch: { fillPercent: 150 } },

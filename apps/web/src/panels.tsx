@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   computeHydrostatics,
   tankState,
@@ -6,6 +6,7 @@ import {
   type Entity,
   type HullEntityData,
   type HydroResult,
+  type L1Result,
   type TankEntityData,
   type TransactionDto,
   type VesselDto,
@@ -14,6 +15,7 @@ import {
 import type { Snapshot } from './api.js';
 import { api } from './api.js';
 import type { PreviewState } from './App.js';
+import type { GizmoMode, TankBox, WaterAttitude } from './scene.js';
 
 const fmt = (v: number, digits = 2) =>
   v.toLocaleString('ja-JP', { maximumFractionDigits: digits, minimumFractionDigits: digits });
@@ -377,6 +379,238 @@ function DisplacementCurve(props: {
 }
 
 // ---------------------------------------------------------------------------
+// Stability L1 panel
+// ---------------------------------------------------------------------------
+
+export function StabilityPanel(props: {
+  branch: BranchDto | null;
+  viewVersion: number | null;
+  onAttitude: (a: WaterAttitude | null) => void;
+}) {
+  const [result, setResult] = useState<L1Result | null>(null);
+  const [meta, setMeta] = useState<{ version: number; cached: boolean } | null>(null);
+  const [running, setRunning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [cargo, setCargo] = useState({ mass: 0, x: 66, z: 6.2 });
+
+  const run = async () => {
+    if (!props.branch) return;
+    setRunning(true);
+    setError(null);
+    try {
+      const extraWeights =
+        cargo.mass > 0
+          ? [{ id: 'cargo:hold', name: 'Cargo', mass: cargo.mass, x: cargo.x, y: 0, z: cargo.z }]
+          : [];
+      const res = await api.stabilityRun(props.branch.id, {
+        version: props.viewVersion ?? undefined,
+        extraWeights,
+      });
+      const r = res.derived.result as unknown as L1Result;
+      setResult(r);
+      setMeta({ version: res.derived.version, cached: res.cached });
+      props.onAttitude({
+        heelDeg: r.equilibrium.heelDeg,
+        trimDeg: r.equilibrium.trimDeg,
+        waterlineConstant: r.equilibrium.waterlineConstant,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setResult(null);
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const eq = result?.equilibrium;
+
+  return (
+    <div className="section">
+      <h2>復原性 L1(自由トリム釣合)</h2>
+      <div className="grid3">
+        <label>
+          貨物 t
+          <input
+            type="number"
+            step={50}
+            min={0}
+            value={cargo.mass}
+            onChange={(e) => setCargo({ ...cargo, mass: Number(e.target.value) })}
+          />
+        </label>
+        <label>
+          LCG m
+          <input
+            type="number"
+            step={1}
+            value={cargo.x}
+            onChange={(e) => setCargo({ ...cargo, x: Number(e.target.value) })}
+          />
+        </label>
+        <label>
+          VCG m
+          <input
+            type="number"
+            step={0.5}
+            value={cargo.z}
+            onChange={(e) => setCargo({ ...cargo, z: Number(e.target.value) })}
+          />
+        </label>
+      </div>
+      <div className="btn-row">
+        <button className="primary" disabled={running || !props.branch} onClick={run}>
+          {running ? '計算中…' : '釣合と復原性を計算'}
+        </button>
+        {meta && (
+          <span className="persist-note mono">
+            v{meta.version} {meta.cached ? '(キャッシュ)' : '(新規)'}
+          </span>
+        )}
+      </div>
+
+      {error && <p className="hint bad">{error}</p>}
+
+      {result && eq && (
+        <>
+          <div className={`verdict ${result.allCriteriaPassed ? 'pass' : 'fail'}`}>
+            {result.allCriteriaPassed ? '✓ IMO 復原性基準 適合' : '✗ IMO 復原性基準 不適合'}
+          </div>
+
+          <div className="tiles">
+            <Tile label="喫水 船尾/船首" value={`${fmt(eq.draftAP)} / ${fmt(eq.draftFP)}`} unit="m" main />
+            <Tile label="GM₀(修正後)" value={fmt(result.gm0, 3)} unit="m" main />
+            <Tile label="トリム(船尾)" value={fmt(eq.trimByStern, 3)} unit="m" />
+            <Tile label="横傾斜" value={fmt(eq.heelDeg, 3)} unit="°" />
+            <Tile label="排水量" value={fmt(eq.displacement, 0)} unit="t" />
+            <Tile label="平均喫水" value={fmt(eq.draftMean, 3)} unit="m" />
+            <Tile label="GZ最大" value={fmt(result.gzMax, 3)} unit="m" />
+            <Tile label="GZ最大角" value={fmt(result.gzMaxAngleDeg, 1)} unit="°" />
+          </div>
+
+          <GzChart result={result} />
+
+          <ul className="criteria">
+            {result.criteria.map((c) => (
+              <li key={c.id} className={c.passed ? 'pass' : 'fail'}>
+                <span className="mark">{c.passed ? '✓' : '✗'}</span>
+                <span className="crit-body">
+                  <span className="crit-desc">{c.description}</span>
+                  <span className="crit-nums mono">
+                    {fmt(c.actual, 3)} {c.unit} / 要求 {fmt(c.required, 3)} ({c.passed ? '適合' : '不適合'}{' '}
+                    {c.margin >= 0 ? '+' : ''}
+                    {fmt(c.margin, 3)})
+                  </span>
+                  <span className="crit-ref">{c.reference}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          <p className="hint">
+            甲板端没水角 {result.deckImmersionAngleDeg === null ? '—' : `${fmt(result.deckImmersionAngleDeg, 1)}°`} ·
+            復原力消失角{' '}
+            {result.vanishingAngleDeg === null ? '範囲外' : `${fmt(result.vanishingAngleDeg, 1)}°`} ·
+            面積基準の上限 {result.floodingAngleDeg}°
+            {result.gzMaxAtRangeEdge && ' · GZ最大は計算範囲の端(実際の頂点はさらに大傾斜側)'}
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Righting-lever curve. One measure, one axis. The 0–30° area criterion is
+ * shaded because that area is the quantity the Code actually tests, and the
+ * 30°/40° bounds are drawn as guides.
+ */
+function GzChart(props: { result: L1Result }) {
+  const [hover, setHover] = useState<{ heelDeg: number; gz: number } | null>(null);
+  const pts = props.result.gz;
+  if (pts.length < 2) return null;
+
+  const W = 296;
+  const H = 150;
+  const PAD = { l: 30, r: 10, t: 10, b: 22 };
+  const maxA = pts[pts.length - 1].heelDeg;
+  const maxG = Math.max(0.1, ...pts.map((p) => p.gz));
+  const minG = Math.min(0, ...pts.map((p) => p.gz));
+  const px = (a: number) => PAD.l + ((W - PAD.l - PAD.r) * a) / maxA;
+  const py = (g: number) =>
+    H - PAD.b - ((H - PAD.t - PAD.b) * (g - minG)) / (maxG - minG);
+
+  const line = pts
+    .map((p, i) => `${i === 0 ? 'M' : 'L'}${px(p.heelDeg).toFixed(1)},${py(p.gz).toFixed(1)}`)
+    .join(' ');
+  const under30 = pts.filter((p) => p.heelDeg <= 30);
+  const areaPath =
+    under30.length > 1
+      ? `M${px(0).toFixed(1)},${py(0).toFixed(1)} ` +
+        under30.map((p) => `L${px(p.heelDeg).toFixed(1)},${py(p.gz).toFixed(1)}`).join(' ') +
+        ` L${px(30).toFixed(1)},${py(0).toFixed(1)} Z`
+      : '';
+
+  const shown = hover ?? {
+    heelDeg: props.result.gzMaxAngleDeg,
+    gz: props.result.gzMax,
+  };
+
+  return (
+    <div className="curve">
+      <div className="curve-title">復原てこ曲線 GZ(自由トリム)</div>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        onMouseMove={(e) => {
+          const svg = (e.target as SVGElement).closest('svg')!;
+          const rect = svg.getBoundingClientRect();
+          const xPix = ((e.clientX - rect.left) / rect.width) * W;
+          const nearest = pts.reduce((a, b) =>
+            Math.abs(px(b.heelDeg) - xPix) < Math.abs(px(a.heelDeg) - xPix) ? b : a,
+          );
+          setHover({ heelDeg: nearest.heelDeg, gz: nearest.gz });
+        }}
+        onMouseLeave={() => setHover(null)}
+      >
+        {areaPath && <path d={areaPath} className="gz-area" />}
+        <line x1={PAD.l} y1={py(0)} x2={W - PAD.r} y2={py(0)} className="axis" />
+        <line x1={PAD.l} y1={PAD.t} x2={PAD.l} y2={H - PAD.b} className="axis" />
+        {[30, 40].map((a) =>
+          a <= maxA ? (
+            <g key={a}>
+              <line x1={px(a)} y1={PAD.t} x2={px(a)} y2={H - PAD.b} className="guide" />
+              <text x={px(a)} y={H - 12} className="axis-label" textAnchor="middle">
+                {a}°
+              </text>
+            </g>
+          ) : null,
+        )}
+        <path d={line} className="curve-line" />
+        <circle cx={px(shown.heelDeg)} cy={py(shown.gz)} r={3.5} className="curve-dot" />
+        {hover && (
+          <line x1={px(hover.heelDeg)} y1={PAD.t} x2={px(hover.heelDeg)} y2={H - PAD.b} className="crosshair" />
+        )}
+        <text x={PAD.l - 4} y={py(maxG) + 3} className="axis-label" textAnchor="end">
+          {fmt(maxG, 1)}
+        </text>
+        <text x={PAD.l - 4} y={py(0) + 3} className="axis-label" textAnchor="end">
+          0
+        </text>
+        <text x={W - PAD.r} y={H - 12} className="axis-label" textAnchor="end">
+          {fmt(maxA, 0)}°
+        </text>
+        <text x={4} y={PAD.t + 4} className="axis-label">
+          GZ [m]
+        </text>
+      </svg>
+      <div className="curve-readout mono">
+        {hover ? '傾斜' : 'GZ最大'} {fmt(shown.heelDeg, 1)}° → GZ = {fmt(shown.gz, 3)} m
+        {!hover && ' · 網掛けは 0–30° 面積基準'}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Tank editor (preview → commit workflow)
 // ---------------------------------------------------------------------------
 
@@ -386,6 +620,11 @@ export function TankEditor(props: {
   editable: boolean;
   busy: boolean;
   previewState: PreviewState | null;
+  gizmoMode: GizmoMode;
+  onGizmoMode: (m: GizmoMode) => void;
+  /** box pushed in from a 3D drag; `dragNonce` changes on every drag update */
+  dragBox: TankBox | null;
+  dragNonce: number;
   onPreview: (tankId: string, patch: Record<string, unknown>) => void;
   onCommit: () => void;
   onDiscard: () => void;
@@ -397,6 +636,12 @@ export function TankEditor(props: {
     z0: tank.z0, z1: tank.z1,
     fillPercent: tank.fillPercent,
   });
+
+  // a drag in the viewport is just another way of typing into these fields
+  useEffect(() => {
+    if (props.dragBox) setForm((f) => ({ ...f, ...props.dragBox }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.dragNonce]);
 
   const dirty =
     form.x0 !== tank.x0 || form.x1 !== tank.x1 ||
@@ -421,6 +666,20 @@ export function TankEditor(props: {
       <h2>
         タンク編集 <span className="mono id">{props.tankId}</span>
       </h2>
+      {props.editable && (
+        <div className="gizmo-row">
+          <span className="gizmo-label">3D操作</span>
+          {(['off', 'translate', 'scale'] as GizmoMode[]).map((m) => (
+            <button
+              key={m}
+              className={props.gizmoMode === m ? 'seg active' : 'seg'}
+              onClick={() => props.onGizmoMode(m)}
+            >
+              {m === 'off' ? 'なし' : m === 'translate' ? '移動' : 'サイズ'}
+            </button>
+          ))}
+        </div>
+      )}
       <div className="grid3">
         <label>x0 <input {...num('x0')} /></label>
         <label>x1 <input {...num('x1')} /></label>
