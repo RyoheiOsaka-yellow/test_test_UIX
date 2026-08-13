@@ -338,14 +338,16 @@ export class DockScene {
   private buildWater(): void {
     if (this.water) this.scene.remove(this.water);
     if (this.waterGrid) this.scene.remove(this.waterGrid);
-    const w = this.lpp * 3.2;
-    const d = this.lpp * 1.8;
+    // Kept close to the hull: a sea that runs to the horizon pulls the eye off
+    // the vessel, which is the subject.
+    const w = this.lpp * 1.9;
+    const d = this.lpp * 1.1;
     this.water = new THREE.Mesh(
       new THREE.PlaneGeometry(w, d),
       new THREE.MeshStandardMaterial({
         color: 0x123a5e,
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.3,
         side: THREE.DoubleSide,
         depthWrite: false,
       }),
@@ -353,7 +355,9 @@ export class DockScene {
     this.water.renderOrder = 0;
     this.scene.add(this.water);
 
-    this.waterGrid = new THREE.GridHelper(w, 32, 0x2a4d74, 0x1c3352);
+    this.waterGrid = new THREE.GridHelper(w, 19, 0x24405f, 0x18293c);
+    (this.waterGrid.material as THREE.Material).transparent = true;
+    (this.waterGrid.material as THREE.Material).opacity = 0.55;
     this.scene.add(this.waterGrid);
     this.setWaterAttitude(this.attitude);
   }
@@ -508,7 +512,7 @@ export class DockScene {
     );
     this.controls.target.copy(target);
     this.camera.position
-      .set(-this.lpp * 0.28, this.depth * 3.5, this.lpp * 0.82)
+      .set(-this.lpp * 0.2, this.depth * 2.7, this.lpp * 0.62)
       .add(target)
       .sub(new THREE.Vector3(this.lpp / 2, this.depth * 0.45, 0));
   }

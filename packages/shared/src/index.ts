@@ -6,3 +6,4 @@ export * from './section.js';
 export * from './polyhedron.js';
 export * from './hydroL1.js';
 export * from './stability.js';
+export * from './demoVessel.js';

@@ -1,4 +1,4 @@
 node_modules/
 dist/
+dist-standalone/
 *.log
-.env
