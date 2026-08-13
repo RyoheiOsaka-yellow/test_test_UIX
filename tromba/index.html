@@ -122,8 +122,10 @@ button.big.ghost { background: transparent; color: var(--agave); border: 1px sol
 /* ============ 舞台の選択 ============ */
 
 .stage-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr);
-  gap: 12px; margin: 30px 0 26px; text-align: left;
+  /* 舞台が増えても列を書き直さなくていいように、最小幅だけ決めて
+     残りは並べ方に任せる。三枚でも五枚でも収まる。 */
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(192px, 1fr));
+  gap: 11px; margin: 26px 0 22px; text-align: left;
 }
 .stage-card {
   border: 1px solid var(--edge); background: rgba(22, 16, 14, 0.55);
@@ -673,7 +675,7 @@ button.big.ghost { background: transparent; color: var(--agave); border: 1px sol
     </div>
 
     <div class="panel map" id="pMap">
-      <label>HACIENDA · 1:2000</label>
+      <label id="mapLabel">HACIENDA · 1:2000</label>
       <canvas id="cMap" width="190" height="190"></canvas>
     </div>
   </div>
@@ -2834,6 +2836,107 @@ function costaWorld(seed, Z) {
   return { height, mask: (x, z) => rectMask(x, z, Z, 34), coastZ };
 }
 
+/* ---------- 四つめ：火山 ---------- */
+
+function volcanWorld(seed, Z) {
+  /* 谷の底に恐竜がいて、北の壁の向こうに火山が立っている。溶岩は
+     y < LAVA の低いところ。地形で決めるので、地面の描き方も、どこを
+     歩けるかも、同じ一つの高さ関数から出てくる。 */
+  const LAVA = -3.0;
+
+  function cone(x, z) {
+    // 山体。円錐の頂上を落として火口にする。裾は遠くまで薄く広がる。
+    const dx = x + 300, dz = z + 2100;
+    const r = Math.hypot(dx, dz * 0.92);
+    const wob = ridged2(Math.atan2(dz, dx) * 3.1, r * 0.0009, 4, seed ^ 0x5a5) * 130;
+    const R = 1750 + wob;
+    if (r > R) return 0;
+    const u = 1 - r / R;
+    let h = Math.pow(u, 1.7) * 1250;
+    // 火口。頂上の内側だけ落ちる。
+    const crater = 1 - smoothstep(0.86, 0.96, u);
+    h -= (1 - crater) * 210;
+    return h;
+  }
+
+  function flow(x, z) {
+    /* 溶岩流。火口から南へ下る谷。底は溶岩面より下にあり、そこだけが
+       赤くなる。うねりは沿う向きの一次元ノイズで、支流は作らない。 */
+    const along = z * 0.98 - x * 0.2;
+    const across = x * 0.98 + z * 0.2;
+    const wander = fbm2(along * 0.0012, 11.0, 3, seed ^ 0x9e) * 300 - 150;
+    const d = Math.abs(across - 120 - wander);
+    const halfW = 34 + fbm2(along * 0.003, 4.0, 3, seed ^ 0x1f) * 26;
+    const u = d / halfW;
+    if (u > 3.2) return 0;
+    const DEPTH = -11.5;
+    if (u < 1) return DEPTH * (1 - 0.18 * u * u);
+    return DEPTH * 0.72 * Math.exp(-(u - 1) * 2.0) * (1 - smoothstep(2.4, 3.2, u));
+  }
+
+  function height(x, z) {
+    let h = rolling(x, z, seed, 22, 4.2) + 4;
+    h += ridged2(x * 0.0021, z * 0.0021, 4, seed ^ 0x77) * 46;   // 溶岩台地の段
+    h += cone(x, z);
+    h += flow(x, z);
+    h += sierraAt(x, z, seed, 3100, 300);
+    const m = rectMask(x, z, Z, 50);
+    if (m > 0.001) {
+      // 谷底の平地。灰が積もって均されている。
+      const v = zoneCoord(x, z, Z)[1];
+      const dune = Math.sin(v / Z.gap) * 0.5;
+      h = h * (1 - m) + (Z.level + dune) * m;
+    }
+    return h;
+  }
+  return { height, mask: (x, z) => rectMask(x, z, Z, 50), cone, flow, LAVA };
+}
+
+/* ---------- 五つめ：軌道基地 ---------- */
+
+function orbitalWorld(seed, Z) {
+  /* どこかの衛星。空気は薄く、光は硬い。クレーターの多い平原を人が
+     均して着陸場にした。区画は完全な平面で、外は掘りっぱなしの整地。 */
+  function craters(x, z) {
+    /* 三つの周期でクレーターを重ねる。格子の各セルに一つ、位置と
+       大きさを座標のハッシュで決める。数式一つで見えるところ全部に
+       穴が開く。 */
+    let h = 0;
+    for (const [cell, depth, rim] of [[420, 26, 9], [155, 9.5, 3.4], [58, 3.0, 1.1]]) {
+      const gx = Math.floor(x / cell), gz = Math.floor(z / cell);
+      for (let ox = -1; ox <= 1; ox++) {
+        for (let oz = -1; oz <= 1; oz++) {
+          const cx = gx + ox, cz = gz + oz;
+          const n1 = fbm2(cx * 7.13 + 0.5, cz * 3.71 + 0.5, 1, seed ^ 0x33);
+          const n2 = fbm2(cx * 2.19 + 9.5, cz * 8.37 + 2.5, 1, seed ^ 0x55);
+          const n3 = fbm2(cx * 5.51 + 4.5, cz * 1.27 + 7.5, 1, seed ^ 0x99);
+          if (n3 < 0.34) continue;                       // ここには無い
+          const px = (cx + 0.15 + n1 * 0.7) * cell;
+          const pz = (cz + 0.15 + n2 * 0.7) * cell;
+          const R = cell * (0.16 + n3 * 0.24);
+          const d = Math.hypot(x - px, z - pz);
+          if (d > R * 1.6) continue;
+          const u = d / R;
+          // 椀の底、立ち上がる縁、外へ落ちる裾。
+          if (u < 1) h += -depth * (1 - u * u) + rim * smoothstep(0.72, 1.0, u);
+          else h += rim * (1 - smoothstep(1.0, 1.6, u));
+        }
+      }
+    }
+    return h;
+  }
+
+  function height(x, z) {
+    let h = rolling(x, z, seed, 13, 2.2);
+    h += craters(x, z);
+    h += sierraAt(x, z, seed, 3300, 460);
+    const m = rectMask(x, z, Z, 46);
+    if (m > 0.001) h = h * (1 - m) + Z.level * m;
+    return h;
+  }
+  return { height, mask: (x, z) => rectMask(x, z, Z, 46), craters };
+}
+
 /* ---------- 定義 ---------- */
 
 const LIST = [
@@ -2892,6 +2995,38 @@ const LIST = [
       return [x, z + 60];
     },
     world: costaWorld
+  },
+  {
+    id: 'volcan', ground: 3,
+    name: '火山の谷', sub: 'VALLE DEL FUEGO',
+    tag: '白亜紀 · 溶岩面 -3 m',
+    brief: '北の山が煙を上げている。灰の谷にシダが生え、骨が転がり、恐竜が歩いている。谷の奥に、山ほどの大きさの主がいる。',
+    zone: { x: -20, z: 120, halfX: 300, halfZ: 230, dir: 0.30, gap: 46, level: 6.0 },
+    sun: { az: 2.05, el: 26 },
+    sea: { level: -3.0, lava: true },
+    seed: 20260520,
+    tint: { sky: [0.255, 0.115, 0.082], haze: [0.285, 0.132, 0.092] },
+    // 噴煙。火口の真上。cone() の中心と同じ座標でなければ煙が山から外れる。
+    plume: { x: -300, z: -2100, y: 930, h: 1350, r: 230, drift: 520 },
+    labels: { small: 'シダ', mid: '巨岩と骨', building: '岩塔', livestock: '恐竜', people: '翼竜' },
+    landmark: '主竜',
+    spawn: (w, Z) => [Z.x - 40, Z.z + 60],
+    world: volcanWorld
+  },
+  {
+    id: 'orbital', ground: 4,
+    name: '軌道基地', sub: 'ESTACIÓN ÍCARO',
+    tag: '衛星面 · 重力 0.38 G',
+    brief: '空気の薄い平原に着陸場と居住ドームが並ぶ。作業機が歩き、太陽帆が畝を作っている。基地の背後に、九十メートルの守護機が立ったまま眠っている。',
+    zone: { x: 0, z: -40, halfX: 320, halfZ: 250, dir: 0.12, gap: 15.0, level: 5.0 },
+    sun: { az: 1.30, el: 23 },
+    sea: null,
+    seed: 20260521,
+    tint: { sky: [0.055, 0.070, 0.135], haze: [0.085, 0.098, 0.150] },
+    labels: { small: '太陽帆', mid: '標識塔', building: 'ドーム', livestock: '歩行機', people: '作業員' },
+    landmark: '守護機',
+    spawn: (w, Z) => [Z.x - 70, Z.z + 90],
+    world: orbitalWorld
   }
 ];
 
@@ -3711,6 +3846,7 @@ void main() {
 
   vec3 albedo;
   float rough = 1.0;          // 1 で完全に拡散。舗装と濡れた砂だけ下がる
+  vec3 emis = vec3(0.0);      // 自分で光る分。溶岩と標識灯だけが使う
 
   /* ---- 土。どの土地も下はこれ ---- */
   float mott = fbm(p * 0.024) * 0.55 + fbm(p * 0.17) * 0.30;
@@ -3759,6 +3895,64 @@ void main() {
       // 交差点の轍。
       float wear = road * (0.5 + 0.5 * sin(zc.x * 0.7)) * 0.12;
       albedo *= 1.0 - wear * inZone;
+    }
+  } else if (uGround == 3) {
+    /* 火山。灰とスコリアの黒い地面。低いところは溶岩で、そこだけが
+       自分で光る。溶岩面のすぐ上は冷えかけた地殻で、ひび割れの底から
+       まだ赤が漏れている。「溶岩がどこにあるか」は高さだけで決まる
+       ので、地形と描き方が食い違わない。 */
+    float depth = uSea - vWorld.y;                  // 正で溶岩面より下
+    vec3 ash = mix(vec3(0.062, 0.055, 0.052), vec3(0.105, 0.092, 0.083), fbm(p * 0.35));
+    vec3 scoria = mix(vec3(0.085, 0.040, 0.028), vec3(0.038, 0.033, 0.032), fbm(p * 1.3));
+    albedo = mix(ash, scoria, smoothstep(0.35, 0.75, fbm(p * 0.06 + 4.0)));
+    albedo = mix(albedo, vec3(0.030, 0.027, 0.026), steep * 0.7);
+
+    /* 地殻のひび。溶岩面から二メートル上までの帯にだけ入れる。
+       ノイズの尾根に沿って走るので、格子には見えない。 */
+    float crackN = 1.0 - abs(fbm(p * 0.55 + 21.0) * 2.0 - 1.0);
+    float crack = smoothstep(0.72, 0.97, crackN) * (1.0 - smoothstep(0.0, 6.0, vWorld.y - uSea));
+    float molten = smoothstep(-0.4, 1.2, depth);    // 溶岩そのもの
+    // 表面に浮いた冷えた殻。全部が赤いと溶けた池には見えない。
+    float skin = smoothstep(0.32, 0.62, fbm(p * 0.22 + 8.0)) * molten;
+    albedo = mix(albedo, vec3(0.020, 0.016, 0.015), molten * 0.9);
+    float glow = molten * (1.0 - skin * 0.82) + crack * 0.55;
+    emis += vec3(2.60, 0.55, 0.10) * glow;
+    emis += vec3(1.10, 0.20, 0.03) * molten * 0.35;
+    rough = mix(rough, 0.62, molten * 0.6);
+
+    if (inZone > 0.01) {
+      // 谷底。灰が積もり、シダの根元に腐葉が溜まっている。
+      vec3 duff = mix(vec3(0.070, 0.062, 0.040), vec3(0.098, 0.086, 0.052), fbm(p * 0.9));
+      vec3 fern = mix(duff, vec3(0.075, 0.105, 0.048), smoothstep(0.42, 0.82, fbm(p * 0.32 + 3.0)));
+      albedo = mix(albedo, fern, inZone * 0.80);
+    }
+  } else if (uGround == 4) {
+    /* 衛星面。空気が薄いので色が付かない。灰色のレゴリスと、人が
+       敷いた金属の甲板。甲板は格子の目地と、縁の警戒帯だけで足りる。 */
+    vec3 fines = mix(vec3(0.118, 0.112, 0.104), vec3(0.168, 0.160, 0.150), fbm(p * 0.4));
+    vec3 rock = vec3(0.072, 0.070, 0.070);
+    albedo = mix(fines, rock, steep * 0.8);
+    // クレーターの縁に飛び散った明るい放出物。
+    float ejecta = smoothstep(0.55, 0.9, fbm(p * 0.11 + 17.0)) * smoothstep(0.82, 0.97, N.y);
+    albedo = mix(albedo, vec3(0.215, 0.210, 0.203), ejecta * 0.5);
+
+    if (inZone > 0.01) {
+      vec2 g = fract(zc.xy / 12.0) - 0.5;
+      float joint = 1.0 - smoothstep(0.015, 0.038, min(abs(g.x), abs(g.y)));
+      vec3 deck = mix(vec3(0.128, 0.132, 0.140), vec3(0.088, 0.092, 0.100), fbm(p * 1.1));
+      deck = mix(deck, deck * 0.55, joint);
+      // 着陸場の輪。中心から一定の半径にだけ帯が出る。
+      float ring = abs(length(zc.xy) - 96.0);
+      float pad = 1.0 - smoothstep(1.4, 3.2, ring);
+      deck = mix(deck, vec3(0.62, 0.48, 0.10), pad * 0.8);
+      albedo = mix(albedo, deck, inZone);
+      rough = mix(rough, 0.42, inZone);
+      // 目地に沿った誘導灯。二十四メートルごとに一つ灯っている。
+      vec2 lg = abs(fract(zc.xy / 24.0) - 0.5);
+      float lamp = (1.0 - smoothstep(0.012, 0.024, max(lg.x, lg.y)))
+                 * step(0.485, min(lg.x, lg.y) + 0.485);
+      emis += vec3(0.30, 1.30, 1.55) * lamp * inZone * 1.6;
+      emis += vec3(1.40, 0.85, 0.10) * pad * inZone * 0.35;
     }
   } else {
     /* 湾岸。汀線から陸へ、濡れた砂・乾いた砂・草地。埠頭はコンクリート。 */
@@ -3816,6 +4010,10 @@ void main() {
   }
 
   col += albedo * vec3(0.62, 0.70, 1.0) * uWeather.x * (0.30 + 0.45 * clamp(N.y, 0.0, 1.0));
+
+  /* 自分で光る分は最後に足す。影も雲影も掛からない。溶岩は日が
+     陰っても赤いままで、それが溶岩であることの意味でもある。 */
+  col += emis;
 
   float fog = 1.0 - exp(-dist * uFog);
   float mie = pow(max(dot(-V, uSun), 0.0), 6.0);
@@ -4526,7 +4724,26 @@ const KINDS = {
   boat:   { label: 'ボート',   minStage: 1, hp: 3.6,  value: 35,  r: 3.4,  tone: 'wood',  count: 'livestock' },
   store:  { label: '倉庫',     minStage: 2, hp: 8.5,  value: 60,  r: 9.0,  tone: 'metal', count: 'building' },
   crane:  { label: 'クレーン', minStage: 2, hp: 10.0, value: 90,  r: 4.5,  tone: 'metal', count: 'building' },
-  faro:   { label: '灯台',     minStage: 3, hp: 15.0, value: 200, r: 6.0,  tone: 'adobe', count: 'building' }
+  faro:   { label: '灯台',     minStage: 3, hp: 15.0, value: 200, r: 6.0,  tone: 'adobe', count: 'building' },
+  // 火山の谷
+  fern:   { label: 'シダ',     minStage: 0, hp: 0.45, value: 2,   r: 1.3,  tone: 'leaf',  count: 'small' },
+  cycad:  { label: 'ソテツ',   minStage: 0, hp: 0.6,  value: 3,   r: 1.1,  tone: 'leaf',  count: 'small' },
+  boulder: { label: '火山弾',  minStage: 1, hp: 1.8,  value: 10,  r: 2.4,  tone: 'metal', count: 'mid' },
+  bone:   { label: '骨',       minStage: 0, hp: 1.0,  value: 8,   r: 2.2,  tone: 'wood',  count: 'mid' },
+  nest:   { label: '巣',       minStage: 1, hp: 2.2,  value: 30,  r: 2.6,  tone: 'wood' },
+  skull:  { label: '頭骨',     minStage: 2, hp: 6.0,  value: 60,  r: 4.5,  tone: 'wood',  count: 'building' },
+  spire:  { label: '溶岩塔',   minStage: 2, hp: 9.0,  value: 80,  r: 4.0,  tone: 'metal', count: 'building' },
+  kaiju:  { label: '主竜',     minStage: 3, hp: 20.0, value: 300, r: 14.0, tone: 'leaf',  count: 'building' },
+  // 軌道基地
+  panel:  { label: '太陽帆',   minStage: 0, hp: 0.5,  value: 2,   r: 1.8,  tone: 'metal', count: 'small' },
+  beacon: { label: '誘導灯',   minStage: 0, hp: 0.7,  value: 3,   r: 0.5,  tone: 'metal' },
+  rock:   { label: '転石',     minStage: 0, hp: 0.9,  value: 2,   r: 1.0,  tone: 'metal' },
+  mast:   { label: '標識塔',   minStage: 1, hp: 1.9,  value: 12,  r: 1.2,  tone: 'metal', count: 'mid' },
+  pod:    { label: 'ポッド',   minStage: 1, hp: 3.0,  value: 25,  r: 2.6,  tone: 'metal', count: 'mid' },
+  dome:   { label: 'ドーム',   minStage: 2, hp: 8.5,  value: 70,  r: 8.5,  tone: 'metal', count: 'building' },
+  hangar: { label: '格納庫',   minStage: 2, hp: 9.5,  value: 80,  r: 9.0,  tone: 'metal', count: 'building' },
+  gantry: { label: '射出塔',   minStage: 2, hp: 11.0, value: 100, r: 6.0,  tone: 'metal', count: 'building' },
+  guard:  { label: '守護機',   minStage: 3, hp: 22.0, value: 300, r: 16.0, tone: 'metal', count: 'building' }
 };
 
 const GRID = 8;
@@ -4991,6 +5208,429 @@ function truckMesh(seed) {
   return b.build();
 }
 
+/* ---------- 火山の谷 ---------- */
+
+function fernShape(seed) {
+  /* 木性シダ。短い幹の上に葉が放射状に開く。ヤシと似た作りだが、
+     葉が下へ垂れずに斜め上へ伸びるところが違う。 */
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const H = 2.4 + rng() * 2.6;
+  b.mat([0.088, 0.070, 0.052], 0.94, 1.0);
+  b.translate(0, H / 2, 0).cylinder(0.20, H, 9, false, 0.15).pop();
+  // 幹に残った古い葉柄の跡。
+  b.mat([0.058, 0.050, 0.040], 0.95, 1.0);
+  for (let i = 0; i < 7; i++) {
+    const a = i * 2.4, y = H * (0.15 + i * 0.10);
+    b.translate(Math.cos(a) * 0.18, y, Math.sin(a) * 0.18).scale(1, 0.5, 1).sphere(0.08, 6, 4).pop().pop();
+  }
+  const n = 8 + ((rng() * 5) | 0);
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * 6.283 + rng() * 0.25;
+    const rise = 0.42 + rng() * 0.42;
+    b.mat([0.048 + rng() * 0.03, 0.115 + rng() * 0.05, 0.040], 0.86, 0.8);
+    b.translate(0, H, 0).rotate(0, 1, 0, a).rotate(0, 0, 1, rise)
+      .blade(1.9 + rng() * 1.5, 0.34, 0.028, 0.30, 6, 0.2).pop().pop().pop();
+  }
+  return b.build();
+}
+
+function cycadShape(seed) {
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  b.mat([0.075, 0.062, 0.048], 0.94, 1.0);
+  b.translate(0, 0.55, 0).scale(1, 0.9, 1).sphere(0.55, 10, 7).pop().pop();
+  for (let i = 0; i < 14; i++) {
+    const a = i * 2.39996323;
+    b.mat([0.052 + rng() * 0.02, 0.098 + rng() * 0.04, 0.042], 0.88, 0.85);
+    b.translate(0, 0.95, 0).rotate(0, 1, 0, a).rotate(0, 0, 1, 0.55 + rng() * 0.5)
+      .blade(1.5 + rng() * 0.8, 0.13, 0.024, 0.35, 5).pop().pop().pop();
+  }
+  return b.build();
+}
+
+function boulderShape(seed) {
+  /* 火山弾。球を潰して、面を荒らす。三つ重ねると岩塊に見える。 */
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  /* 球を法線ごとに伸び縮みさせる。半径を返すだけで岩になる。 */
+  const rough = (nx, ny, nz) => {
+    const n = Math.sin(nx * 12.9898 + ny * 78.233 + nz * 37.719) * 43758.5453;
+    return 0.80 + (n - Math.floor(n)) * 0.42;
+  };
+  for (let k = 0; k < 3; k++) {
+    const s = 1 - k * 0.26;
+    b.mat([0.055 + rng() * 0.03, 0.046 + rng() * 0.02, 0.042], 0.92, 1.0);
+    b.translate((rng() - 0.5) * 0.9, 0.75 * s + k * 0.5, (rng() - 0.5) * 0.9)
+      .scale(1.25 * s, 0.90 * s, 1.10 * s).sphere(1.0, 11, 8, rough).pop().pop();
+  }
+  return b.build();
+}
+
+function boneShape(seed) {
+  /* 肋骨の並んだ背骨。砂に半分埋まっている。 */
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  b.mat([0.245, 0.228, 0.190], 0.86, 1.0);
+  for (let i = 0; i < 7; i++) {
+    const z = -1.7 + i * 0.56;
+    b.translate(0, 0.30, z).scale(1, 0.7, 1).sphere(0.19, 7, 5).pop().pop();
+    if (i % 2 === 0) continue;
+    for (const sx of [-1, 1]) {
+      const spread = 1.0 + rng() * 0.6;
+      b.strut([sx * 0.14, 0.34, z], [sx * spread, 0.9 + rng() * 0.5, z + (rng() - 0.5) * 0.3], 0.070, 5);
+    }
+  }
+  b.strut([0, 0.30, 1.6], [0, 0.36, 2.5], 0.13, 6);
+  b.translate(0, 0.40, 2.8).scale(1.5, 0.85, 1.9).sphere(0.28, 9, 6).pop().pop();
+  return b.build();
+}
+
+function spireShape(seed) {
+  /* 溶岩塔。冷えた噴出物が縦に固まったもの。段ごとに細く、少しずれる。 */
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  let x = 0, z = 0;
+  for (let i = 0; i < 7; i++) {
+    const r0 = 3.4 - i * 0.42, h = 3.6 + rng() * 1.6;
+    b.mat([0.050 + rng() * 0.02, 0.042, 0.040 + rng() * 0.015], 0.94, 1.0);
+    b.translate(x, i * 3.4 + h / 2, z).cylinder(r0, h, 9, false, r0 * 0.82).pop();
+    x += (rng() - 0.5) * 0.9; z += (rng() - 0.5) * 0.9;
+  }
+  b.mat([0.115, 0.048, 0.030], 0.9, 1.0);
+  b.translate(x, 24.5, z).scale(1, 1.5, 1).sphere(1.1, 9, 6).pop().pop();
+  return b.build();
+}
+
+function skullShape() {
+  /* 頭骨。大きすぎて誰も動かせないので、そのまま谷に残っている。 */
+  const b = new MeshBuilder();
+  b.mat([0.255, 0.238, 0.198], 0.86, 1.0);
+  b.translate(0, 2.0, 0).scale(1.5, 1.35, 2.6).sphere(1.5, 13, 9).pop().pop();
+  b.translate(0, 1.3, 3.1).scale(1.05, 0.75, 1.5).sphere(1.2, 11, 7).pop().pop();
+  // 眼窩と鼻孔。黒い穴が二対あるだけで頭骨に見える。
+  b.mat([0.020, 0.018, 0.016], 0.9, 1.0);
+  for (const sx of [-1, 1]) b.translate(sx * 1.25, 2.5, 1.5).scale(1, 1.1, 1.2).sphere(0.52, 9, 6).pop().pop();
+  b.translate(0, 1.9, 4.2).scale(0.8, 0.9, 0.7).sphere(0.42, 8, 6).pop().pop();
+  // 歯。
+  b.mat([0.31, 0.29, 0.25], 0.8, 0.9);
+  for (let i = 0; i < 9; i++) {
+    const t = i / 8, z = 1.0 + t * 3.2, sx = (i % 2 ? 1 : -1) * (1.15 - t * 0.45);
+    b.translate(sx, 0.9, z).rotate(1, 0, 0, 0.1).cylinder(0.13, 0.7, 6, true, 0.02).pop().pop();
+  }
+  return b.build();
+}
+
+function nestShape(seed) {
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  b.mat([0.098, 0.078, 0.048], 0.94, 1.0);
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * 6.283;
+    b.translate(Math.cos(a) * 2.1, 0.35, Math.sin(a) * 2.1).rotate(0, 1, 0, -a)
+      .scale(0.5, 0.7, 1.4).sphere(0.55, 7, 5).pop().pop().pop();
+  }
+  b.mat([0.285, 0.252, 0.205], 0.55, 0.5);
+  for (let i = 0; i < 5; i++) {
+    const a = rng() * 6.283, r = rng() * 0.9;
+    b.translate(Math.cos(a) * r, 0.55, Math.sin(a) * r).rotate(0, 0, 1, rng())
+      .scale(1, 1.35, 1).sphere(0.42, 10, 7).pop().pop().pop();
+  }
+  return b.build();
+}
+
+function kaijuShape() {
+  /* 主竜。谷の奥に立っている。動かないが、生きてはいる。
+     背びれは中心線に沿って一列。これが無いと、ただの大きな爬虫類。 */
+  const b = new MeshBuilder();
+  const hide = [0.052, 0.062, 0.055];
+  b.mat([0.040, 0.048, 0.044], 0.94, 1.0);
+  // 脚。片方を前に出しておくと、立ち止まっているだけに見えない。
+  for (const [sx, sz] of [[-3.2, 1.6], [3.4, -1.4]]) {
+    b.translate(sx, 9.0, sz).scale(1.25, 1, 1.25).cylinder(1.9, 18, 10, true, 2.5).pop().pop();
+    b.translate(sx, 0.9, sz + 1.2).scale(1.5, 0.5, 2.2).sphere(1.5, 9, 6).pop().pop();
+  }
+  // 胴と尾。
+  b.mat(hide, 0.92, 1.0);
+  b.translate(0, 22.5, 0).scale(1.25, 1.35, 1.75).sphere(5.4, 15, 11).pop().pop();
+  b.translate(0, 27.0, -1.0).scale(1.0, 1.0, 1.2).sphere(4.2, 13, 9).pop().pop();
+  let ty = 20.0, tz = -7.0;
+  for (let i = 0; i < 8; i++) {
+    const r = 2.6 - i * 0.28;
+    b.strut([0, ty, tz], [0, ty - 1.5, tz - 4.0], r, 8);
+    ty -= 1.5; tz -= 4.0;
+  }
+  // 首と頭。
+  b.strut([0, 27.5, 2.0], [0, 33.0, 8.0], 2.5, 10);
+  b.translate(0, 34.0, 11.5).scale(1.5, 1.25, 2.4).sphere(2.5, 12, 8).pop().pop();
+  b.mat([0.030, 0.026, 0.024], 0.9, 1.0);
+  for (const sx of [-1, 1]) b.translate(sx * 1.9, 35.4, 12.6).sphere(0.55, 8, 6).pop();
+  // 顎と歯。
+  b.mat([0.36, 0.33, 0.28], 0.7, 0.8);
+  for (let i = 0; i < 7; i++) {
+    const t = i / 6;
+    for (const sx of [-1, 1]) {
+      b.translate(sx * (1.7 - t * 0.7), 32.4, 10.4 + t * 3.4).cylinder(0.30, 1.5, 6, true, 0.03).pop();
+    }
+  }
+  // 背びれ。
+  b.mat([0.135, 0.052, 0.036], 0.88, 0.9);
+  for (let i = 0; i < 11; i++) {
+    const t = i / 10;
+    const z = 6.0 - t * 22.0;
+    const h = 5.5 * Math.sin(t * Math.PI) + 1.4;
+    const y = 27.0 - Math.max(0, t - 0.55) * 14.0;
+    b.translate(0, y, z).scale(0.22, 1, 0.7).sphere(h, 8, 6).pop().pop();
+  }
+  // 腕。小さいほうが大きさが出る。
+  b.mat(hide, 0.92, 1.0);
+  for (const sx of [-1, 1]) {
+    b.strut([sx * 4.6, 26.0, 2.6], [sx * 6.6, 21.0, 4.8], 1.0, 7);
+    b.strut([sx * 6.6, 21.0, 4.8], [sx * 6.4, 17.5, 7.4], 0.7, 6);
+  }
+  return b.build();
+}
+
+/* ---------- 軌道基地 ---------- */
+
+function panelShape(seed) {
+  /* 太陽帆。畝に沿って並ぶ。畑のアガベと同じ役で、同じくらい密に置く。 */
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const tilt = 0.62 + rng() * 0.14;
+  b.mat([0.115, 0.118, 0.125], 0.35, 0.6);
+  b.translate(0, 0.85, 0).cylinder(0.10, 1.7, 7).pop();
+  b.translate(0, 0.20, 0).cylinder(0.34, 0.4, 8).pop();
+  b.translate(0, 1.70, 0).rotate(1, 0, 0, -tilt);
+  b.mat([0.058, 0.082, 0.175], 0.16, 0.35);
+  b.box(3.2, 0.09, 1.9, 0, 0, 0);
+  // 電池の目地。銀の線が入るだけで、板がパネルになる。
+  b.mat([0.46, 0.48, 0.52], 0.22, 0.4);
+  for (let i = -3; i <= 3; i++) b.box(0.055, 0.11, 1.9, i * 0.45, 0.005, 0);
+  for (let i = -1; i <= 1; i++) b.box(3.2, 0.11, 0.045, 0, 0.005, i * 0.6);
+  b.pop().pop();
+  return b.build();
+}
+
+function mastShape() {
+  /* 標識塔。三本の脚と、上のアンテナ皿と、赤い灯。 */
+  const b = new MeshBuilder();
+  b.mat([0.128, 0.130, 0.136], 0.30, 0.5);
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * 6.283;
+    b.strut([Math.cos(a) * 0.7, 0, Math.sin(a) * 0.7], [0, 6.4, 0], 0.075, 6);
+  }
+  for (let k = 1; k <= 3; k++) {
+    const y = k * 1.6, r = 0.7 * (1 - y / 8.0);
+    for (let i = 0; i < 3; i++) {
+      const a0 = (i / 3) * 6.283, a1 = ((i + 1) / 3) * 6.283;
+      b.strut([Math.cos(a0) * r, y, Math.sin(a0) * r], [Math.cos(a1) * r, y, Math.sin(a1) * r], 0.045, 5);
+    }
+  }
+  b.mat([0.185, 0.190, 0.198], 0.22, 0.4);
+  b.translate(0, 7.1, 0).rotate(1, 0, 0, 0.7).scale(1, 0.32, 1).sphere(1.05, 12, 7).pop().pop().pop();
+  b.mat([2.4, 0.30, 0.22], 0.5, 0.0);
+  b.translate(0, 6.6, 0).sphere(0.16, 7, 5).pop();
+  return b.build();
+}
+
+function beaconShape() {
+  const b = new MeshBuilder();
+  b.mat([0.145, 0.148, 0.152], 0.28, 0.5);
+  b.translate(0, 0.55, 0).cylinder(0.16, 1.1, 8, true, 0.11).pop();
+  b.mat([0.18, 1.35, 1.55], 0.5, 0.0);
+  b.translate(0, 1.18, 0).sphere(0.20, 8, 6).pop();
+  return b.build();
+}
+
+function rockShape(seed) {
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const rough = (nx, ny, nz) => {
+    const n = Math.sin(nx * 41.7 + ny * 13.3 + nz * 91.1) * 43758.5453;
+    return 0.72 + (n - Math.floor(n)) * 0.56;
+  };
+  b.mat([0.098 + rng() * 0.03, 0.095 + rng() * 0.03, 0.092], 0.9, 1.0);
+  b.translate(0, 0.5, 0).scale(1.2, 0.75, 1.0).sphere(0.8, 10, 7, rough).pop().pop();
+  return b.build();
+}
+
+function podShape(seed) {
+  /* 物資ポッド。降りてきたまま、脚を張って立っている。 */
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const paint = [[0.145, 0.140, 0.132], [0.135, 0.105, 0.045], [0.055, 0.105, 0.115]][(rng() * 3) | 0];
+  b.mat(paint, 0.34, 0.7);
+  b.translate(0, 2.1, 0).cylinder(1.7, 3.0, 12, true, 1.45).pop();
+  b.translate(0, 3.8, 0).scale(1, 0.6, 1).sphere(1.5, 12, 7).pop().pop();
+  b.mat([0.075, 0.078, 0.085], 0.25, 0.4);
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * 6.283 + 0.78;
+    b.strut([Math.cos(a) * 1.2, 2.2, Math.sin(a) * 1.2], [Math.cos(a) * 2.5, 0.1, Math.sin(a) * 2.5], 0.14, 6);
+    b.translate(Math.cos(a) * 2.5, 0.14, Math.sin(a) * 2.5).cylinder(0.42, 0.28, 8).pop();
+  }
+  b.mat([0.20, 0.60, 0.72], 0.2, 0.3);
+  b.box(0.9, 0.7, 0.05, 0, 2.6, 1.72);
+  return b.build();
+}
+
+function domeShape(seed) {
+  /* 居住ドーム。半球と、そこから伸びる連絡管。 */
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const R = 6.5 + rng() * 3;
+  b.mat([0.165, 0.162, 0.155], 0.36, 0.7);
+  b.translate(0, 0.2, 0).scale(1, 0.78, 1).sphere(R, 18, 11).pop().pop();
+  // 継ぎ目のリブ。半球が布に見えないようにする。
+  b.mat([0.098, 0.100, 0.108], 0.28, 0.5);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * 6.283;
+    for (let k = 0; k < 6; k++) {
+      const t0 = k / 6, t1 = (k + 1) / 6;
+      const p0 = [Math.cos(a) * R * Math.cos(t0 * 1.5), 0.2 + R * 0.78 * Math.sin(t0 * 1.5), Math.sin(a) * R * Math.cos(t0 * 1.5)];
+      const p1 = [Math.cos(a) * R * Math.cos(t1 * 1.5), 0.2 + R * 0.78 * Math.sin(t1 * 1.5), Math.sin(a) * R * Math.cos(t1 * 1.5)];
+      b.strut(p0, p1, 0.13, 5);
+    }
+  }
+  b.mat([0.10, 0.34, 0.42], 0.20, 0.3);
+  for (let i = 0; i < 5; i++) {
+    const a = rng() * 6.283;
+    b.translate(Math.cos(a) * R * 0.88, 2.6 + rng() * 2.4, Math.sin(a) * R * 0.88)
+      .scale(1, 1, 0.35).sphere(0.9, 10, 7).pop().pop();
+  }
+  // 連絡管。
+  b.mat([0.130, 0.132, 0.138], 0.30, 0.6);
+  b.translate(R * 0.7, 1.5, 0).rotate(0, 0, 1, 1.5708).cylinder(1.2, R * 1.3, 10).pop().pop();
+  return b.build();
+}
+
+function hangarShape(seed) {
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const L = 22 + rng() * 10;
+  b.mat([0.140, 0.142, 0.148], 0.34, 0.7);
+  b.translate(0, 0, 0).rotate(1, 0, 0, 1.5708).cylinder(7.0, L, 14, false).pop().pop();
+  b.mat([0.105, 0.108, 0.115], 0.30, 0.6);
+  b.box(14.4, 0.5, L, 0, 0.25, 0);
+  for (let i = -2; i <= 2; i++) {
+    b.translate(0, 0, i * L * 0.22).rotate(1, 0, 0, 1.5708).cylinder(7.2, 0.5, 14, false, 7.2).pop().pop();
+  }
+  // 扉。開いていて、中が暗い。
+  b.mat([0.028, 0.030, 0.034], 0.5, 0.5);
+  b.box(9.0, 8.5, 0.4, 0, 4.3, L / 2);
+  b.mat([1.30, 0.85, 0.20], 0.4, 0.0);
+  for (const sx of [-5.2, 5.2]) b.translate(sx, 8.0, L / 2 - 0.3).sphere(0.30, 7, 5).pop();
+  return b.build();
+}
+
+function gantryShape() {
+  /* 射出塔。四本の柱と、上のアームと、根元の噴射炎の受け皿。 */
+  const b = new MeshBuilder();
+  b.mat([0.128, 0.130, 0.136], 0.28, 0.5);
+  const H = 34;
+  for (const [sx, sz] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) {
+    b.strut([sx, 0, sz], [sx * 0.55, H, sz * 0.55], 0.34, 7);
+  }
+  for (let k = 1; k <= 8; k++) {
+    const y = k * (H / 9), s = 3 * (1 - (y / H) * 0.45);
+    const c = [[-s, -s], [s, -s], [s, s], [-s, s]];
+    for (let i = 0; i < 4; i++) {
+      const a = c[i], d = c[(i + 1) % 4];
+      b.strut([a[0], y, a[1]], [d[0], y, d[1]], 0.16, 5);
+    }
+  }
+  b.mat([0.155, 0.120, 0.038], 0.30, 0.6);
+  b.strut([0, H - 4, 0], [16, H - 6, 0], 0.55, 8);
+  b.translate(16, H - 8.5, 0).cylinder(0.9, 5, 9).pop();
+  b.mat([0.070, 0.072, 0.078], 0.34, 0.7);
+  b.translate(0, 0.5, 0).cylinder(9.0, 1.0, 16, true, 7.0).pop();
+  b.mat([2.2, 0.35, 0.20], 0.5, 0.0);
+  b.translate(0, H + 0.6, 0).sphere(0.42, 8, 6).pop();
+  return b.build();
+}
+
+function guardianShape() {
+  /* 守護機。基地の背後に立ったまま眠っている九十メートルの機体。
+     人型は関節の位置を間違えるとすぐ玩具になる。腰を高く、肩を広く、
+     脛を長く取る。 */
+  const b = new MeshBuilder();
+  const plate = [0.135, 0.140, 0.150];
+  const dark = [0.048, 0.052, 0.060];
+  const trim = [0.155, 0.120, 0.035];
+
+  /* 脚。太腿・膝・脛・足の四段を、それぞれ先細りの円筒で作る。
+     一本の太さの揃った筒で繋ぐと、腕も脚もソーセージになる。 */
+  const limb = (x0, y0, z0, x1, y1, z1, r0, r1) => {
+    const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0;
+    const len = Math.hypot(dx, dy, dz);
+    const yaw = Math.atan2(dx, dz);
+    const pitch = Math.acos(Math.max(-1, Math.min(1, dy / len)));
+    b.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
+      .rotate(0, 1, 0, yaw).rotate(1, 0, 0, pitch)
+      .cylinder(r0, len, 12, true, r1).pop().pop().pop();
+  };
+
+  // 脚。片脚を半歩前に出す。膝は前へ、足は板。
+  for (const [sx, kz, fz] of [[-6.6, 3.4, 5.0], [6.6, -2.6, -3.4]]) {
+    b.mat(dark, 0.34, 0.5);
+    b.translate(sx, 1.6, fz).scale(1.7, 1, 3.0).cylinder(1.9, 3.2, 10).pop().pop();      // 足
+    b.mat(plate, 0.30, 0.5);
+    limb(sx, 3.0, fz, sx, 19.0, kz, 2.0, 2.9);                                            // 脛
+    b.translate(sx, 20.4, kz).scale(1.15, 1, 1.25).sphere(3.1, 12, 9).pop().pop();        // 膝
+    limb(sx, 21.6, kz, sx * 0.72, 38.0, 0, 3.0, 3.6);                                     // 腿
+    b.mat(trim, 0.28, 0.4);
+    b.translate(sx, 20.6, kz + 2.5).scale(1, 1.1, 0.35).sphere(2.4, 10, 7).pop().pop();   // 膝当て
+  }
+  /* 腰と胴。胴は前後に薄い。円い胴は風船に見えるし、装甲板を貼った
+     機械はどれも前後が薄い。 */
+  b.mat(dark, 0.34, 0.5);
+  b.translate(0, 40.5, 0).scale(1.35, 0.75, 0.85).sphere(5.6, 14, 9).pop().pop();
+  b.mat(plate, 0.30, 0.5);
+  b.translate(0, 52.0, 0).scale(1.30, 1.45, 0.72).sphere(7.2, 16, 12).pop().pop();
+  b.translate(0, 44.5, 0).scale(1.00, 0.85, 0.62).sphere(5.6, 13, 9).pop().pop();
+  // 胸当て。前面だけ一枚多い。
+  b.mat(trim, 0.28, 0.4);
+  b.translate(0, 54.5, 3.6).scale(1.05, 1.15, 0.22).sphere(6.4, 14, 10).pop().pop();
+  // 胸の炉。この機体で唯一光っているところ。
+  b.mat([0.22, 1.75, 2.05], 0.4, 0.0);
+  b.translate(0, 53.0, 5.4).scale(1, 1, 0.30).sphere(2.4, 12, 8).pop().pop();
+
+  // 肩と腕。肩は胴から離して張り出す。人型の幅はここで決まる。
+  for (const sx of [-1, 1]) {
+    b.mat(plate, 0.30, 0.5);
+    b.translate(sx * 11.4, 58.5, 0).scale(1.15, 0.95, 1.05).sphere(4.6, 13, 9).pop().pop();
+    limb(sx * 11.6, 56.5, 0, sx * 13.4, 42.0, 1.2, 2.0, 2.4);
+    b.translate(sx * 13.6, 40.6, 1.2).sphere(2.3, 11, 8).pop();
+    limb(sx * 13.6, 39.4, 1.2, sx * 13.2, 25.0, 3.2, 1.7, 2.0);
+    b.mat(dark, 0.34, 0.5);
+    b.translate(sx * 13.2, 23.2, 3.4).scale(1.1, 1.5, 0.9).sphere(2.2, 10, 7).pop().pop();
+    // 肩の増加装甲。上から被せた庇。
+    b.mat(trim, 0.28, 0.4);
+    b.translate(sx * 12.4, 61.6, 0).rotate(0, 0, 1, -sx * 0.22)
+      .scale(1.25, 0.40, 1.15).sphere(4.9, 12, 8).pop().pop().pop();
+  }
+  /* 首と頭。頭は小さいほど機体が大きく見える。単眼の帯を一本入れる
+     と、どちらが正面かが二百メートル先からでも分かる。 */
+  b.mat(dark, 0.34, 0.5);
+  b.translate(0, 60.5, 0).cylinder(1.8, 4.0, 10).pop();
+  b.mat(plate, 0.28, 0.45);
+  b.translate(0, 65.5, -0.4).scale(1.10, 1.00, 1.25).sphere(3.5, 14, 10).pop().pop();
+  b.mat(trim, 0.28, 0.4);
+  for (const sx of [-1, 1]) {
+    b.translate(sx * 3.0, 67.5, -1.0).rotate(0, 0, 1, -sx * 0.5)
+      .cylinder(0.55, 4.4, 7, true, 0.10).pop().pop();      // 角
+  }
+  b.mat([2.40, 0.46, 0.24], 0.4, 0.0);
+  b.translate(0, 65.8, 3.3).scale(2.0, 0.42, 0.30).sphere(1.5, 10, 7).pop().pop();
+  // 背中の放熱翼。畳んだまま、一度も開いていない。
+  b.mat(plate, 0.30, 0.5);
+  for (const sx of [-1, 1]) {
+    b.translate(sx * 5.0, 55.0, -6.0).rotate(0, 0, 1, sx * 0.42).rotate(1, 0, 0, -0.26)
+      .scale(0.22, 1.7, 0.85).sphere(6.8, 11, 8).pop().pop().pop().pop();
+  }
+  return b.build();
+}
+
 /* ---------- Props ---------- */
 
 class Props {
@@ -5114,6 +5754,8 @@ class Props {
     const id = this.stage.id;
     if (id === 'ciudad') this._buildCiudad(density);
     else if (id === 'costa') this._buildCosta(density);
+    else if (id === 'volcan') this._buildVolcan(density);
+    else if (id === 'orbital') this._buildOrbital(density);
     else this._buildCampo(density);
 
     const mk = (data, list) => this.solid.instancedMesh(data, {
@@ -5392,6 +6034,161 @@ class Props {
     // 灯台は岬の先。
     const fx = Z.x - Z.halfX - 70;
     this.landmark = this._struct('faro', M.faro, fx, T.world.coastZ(fx) + 26, 0.6, {});
+  }
+
+  /* ---- 火山の谷 ---- */
+  _buildVolcan(density) {
+    const T = this.terrain, Z = T.zone, rng = this.rng;
+    this.shapes = [fernShape(this.seed + 41), boulderShape(this.seed + 43),
+      cycadShape(this.seed + 45), boneShape(this.seed + 47)];
+    const LAVA = T.sea === null ? -3 : T.sea;
+    const reach = T.fineHalf - 20;
+    const dry = (x, z) => T.height(x, z) > LAVA + 2.5;
+
+    /* シダは谷底に密生する。溶岩から離れているほど濃い。ここが
+       この土地の「畑」で、最初の数十秒はこれを薙いで過ごす。 */
+    for (let i = 0; i < Math.round(6200 * density); i++) {
+      const x = (rng() * 2 - 1) * reach, z = (rng() * 2 - 1) * reach;
+      if (!dry(x, z)) continue;
+      const m = T.world.mask(x, z);
+      const wet = 1 - Math.min(1, Math.abs(T.height(x, z) - LAVA) / 90);
+      if (rng() > 0.30 + m * 0.62 - wet * 0.25) continue;
+      const s = 0.85 + rng() * 0.8;
+      this._place(0, 'fern', x, z, s, rng() * 6.283, 0.85 + rng() * 0.3, 4.2 * s);
+    }
+    for (let i = 0; i < Math.round(1800 * density); i++) {
+      const x = (rng() * 2 - 1) * reach, z = (rng() * 2 - 1) * reach;
+      if (!dry(x, z)) continue;
+      this._place(2, 'cycad', x, z, 0.9 + rng() * 0.9, rng() * 6.283, 0.9 + rng() * 0.25, 2.4);
+    }
+    // 火山弾は火口から遠いほど小さく、まばらになる。
+    for (let i = 0; i < Math.round(900 * density); i++) {
+      const x = (rng() * 2 - 1) * reach, z = (rng() * 2 - 1) * reach;
+      if (!dry(x, z)) continue;
+      const near = 1 - Math.min(1, Math.hypot(x + 300, z + 2100) / 2600);
+      if (rng() > 0.25 + near * 0.75) continue;
+      this._place(1, 'boulder', x, z, 0.9 + rng() * 1.5 + near * 0.8, rng() * 6.283, 0.85 + rng() * 0.3, 3.0);
+    }
+    // 骨は谷底に集まる。ここで死ぬものが多いということでもある。
+    for (let i = 0; i < Math.round(260 * density); i++) {
+      const x = Z.x + (rng() * 2 - 1) * (Z.halfX + 260);
+      const z = Z.z + (rng() * 2 - 1) * (Z.halfZ + 260);
+      if (!dry(x, z)) continue;
+      this._place(3, 'bone', x, z, 1.0 + rng() * 1.1, rng() * 6.283, 0.95 + rng() * 0.2, 1.4);
+    }
+
+    const M = {
+      spire: [spireShape(this.seed + 51), spireShape(this.seed + 52), spireShape(this.seed + 53)]
+        .map((d) => this.solid.mesh(d)),
+      skull: this.solid.mesh(skullShape()),
+      nest: this.solid.mesh(nestShape(this.seed + 55))
+    };
+    // 溶岩塔は谷の縁に立つ。区画の中に立てると恐竜の通り道を塞ぐ。
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * 6.283 + rng() * 0.3;
+      const r = Z.halfX * 1.25 + rng() * 340;
+      const x = Z.x + Math.cos(a) * r, z = Z.z + Math.sin(a) * r * 0.85;
+      if (Math.abs(x) > reach || Math.abs(z) > reach || !dry(x, z)) continue;
+      this._struct('spire', M.spire[(rng() * 3) | 0], x, z, rng() * 6.283,
+        { scale: 0.75 + rng() * 0.7 });
+    }
+    for (let i = 0; i < 7; i++) {
+      const x = Z.x + (rng() * 2 - 1) * Z.halfX * 1.1;
+      const z = Z.z + (rng() * 2 - 1) * Z.halfZ * 1.1;
+      if (!dry(x, z)) continue;
+      this._struct('skull', M.skull, x, z, rng() * 6.283, { scale: 0.9 + rng() * 0.8 });
+    }
+    for (let i = 0; i < 9; i++) {
+      const x = Z.x + (rng() * 2 - 1) * Z.halfX * 0.9;
+      const z = Z.z + (rng() * 2 - 1) * Z.halfZ * 0.9;
+      if (!dry(x, z)) continue;
+      this._struct('nest', M.nest, x, z, rng() * 6.283, { scale: 1.0 + rng() * 0.6 });
+    }
+
+    /* 主竜。谷の奥、火山を背にして立っている。他の何より大きいので、
+       最初に画面へ入ってくるのはこれになる。 */
+    const kx = Z.x + 120, kz = Z.z - Z.halfZ - 190;
+    this.landmark = this._struct('kaiju', this.solid.mesh(kaijuShape()), kx, kz, 2.6, { scale: 1.30 });
+  }
+
+  /* ---- 軌道基地 ---- */
+  _buildOrbital(density) {
+    const T = this.terrain, Z = T.zone, rng = this.rng;
+    this.shapes = [panelShape(this.seed + 61), mastShape(),
+      rockShape(this.seed + 65), beaconShape()];
+    const reach = T.fineHalf - 20;
+    const cos = Math.cos(Z.dir), sin = Math.sin(Z.dir);
+    const toWorld = (u, v) => [Z.x + u * cos - v * sin, Z.z + u * sin + v * cos];
+
+    /* 太陽帆。区画の畝に沿って並ぶ。全部が同じ方角を向いているのは、
+       太陽が動かないから。ここが最初の「畑」になる。 */
+    const rows = Math.floor((Z.halfZ - 40) / Z.gap);
+    for (let r = -rows; r <= rows; r++) {
+      const v = r * Z.gap;
+      for (let u = -(Z.halfX - 50); u < Z.halfX - 50; u += 6.4 + rng() * 0.6) {
+        const [x, z] = toWorld(u, v);
+        if (T.world.mask(x, z) < 0.85) continue;
+        if (Math.hypot(u, v) < 110) continue;                 // 着陸場は空ける
+        if (rng() > 0.88 * density) continue;
+        this._place(0, 'panel', x, z, 0.9 + rng() * 0.3, Z.dir, 0.9 + rng() * 0.2, 2.6);
+      }
+    }
+    // 誘導灯は着陸場の輪に沿って。地面の帯と同じ半径に置く。
+    for (let i = 0; i < 40; i++) {
+      const a = (i / 40) * 6.283;
+      const [x, z] = toWorld(Math.cos(a) * 96, Math.sin(a) * 96);
+      if (T.world.mask(x, z) < 0.5) continue;
+      this._place(3, 'beacon', x, z, 1.1, 0, 1, 1.2);
+    }
+    // 標識塔は区画の中に格子状。外にも道しるべとして点々と続く。
+    for (let i = -4; i <= 4; i++) {
+      for (let k = -3; k <= 3; k++) {
+        const [x, z] = toWorld(i * 74, k * 74);
+        if (T.world.mask(x, z) < 0.7 || Math.hypot(i * 74, k * 74) < 104) continue;
+        this._place(1, 'mast', x, z, 0.9 + rng() * 0.4, rng() * 6.283, 1, 7.2);
+      }
+    }
+    for (let i = 0; i < Math.round(70 * density); i++) {
+      const x = (rng() * 2 - 1) * reach, z = (rng() * 2 - 1) * reach;
+      if (T.world.mask(x, z) > 0.2) continue;
+      this._place(1, 'mast', x, z, 0.8 + rng() * 0.4, rng() * 6.283, 1, 7.0);
+    }
+    // 転石。何も無い平原に散らばっているだけのもの。
+    for (let i = 0; i < Math.round(3400 * density); i++) {
+      const x = (rng() * 2 - 1) * reach, z = (rng() * 2 - 1) * reach;
+      if (T.world.mask(x, z) > 0.25) continue;
+      this._place(2, 'rock', x, z, 0.8 + rng() * 1.6, rng() * 6.283, 0.85 + rng() * 0.3, 1.2);
+    }
+
+    const M = {
+      dome: [domeShape(this.seed + 71), domeShape(this.seed + 72)].map((d) => this.solid.mesh(d)),
+      hangar: [hangarShape(this.seed + 74), hangarShape(this.seed + 75)].map((d) => this.solid.mesh(d)),
+      gantry: this.solid.mesh(gantryShape()),
+      pod: [podShape(this.seed + 77), podShape(this.seed + 78)].map((d) => this.solid.mesh(d))
+    };
+    // ドームは連なって建つ。連絡管で繋がっているという体。
+    for (let i = 0; i < 7; i++) {
+      const [x, z] = toWorld(-190 + i * 62, Z.halfZ * 0.60 + (rng() - 0.5) * 34);
+      this._struct('dome', M.dome[i % 2], x, z, Z.dir + rng() * 0.4, { scale: 0.9 + rng() * 0.5 });
+    }
+    for (let i = 0; i < 4; i++) {
+      const [x, z] = toWorld(-150 + i * 105, -Z.halfZ * 0.62);
+      this._struct('hangar', M.hangar[i % 2], x, z, Z.dir + (i % 2 ? 0.1 : -0.1), { scale: 0.95 });
+    }
+    for (let i = 0; i < 22; i++) {
+      const a = rng() * 6.283, r = 130 + rng() * (Z.halfX - 150);
+      const [x, z] = toWorld(Math.cos(a) * r, Math.sin(a) * r * 0.8);
+      this._struct('pod', M.pod[(rng() * 2) | 0], x, z, rng() * 6.283, { scale: 1.0 + rng() * 0.5 });
+    }
+    for (const [u, v] of [[-Z.halfX * 0.72, 40], [Z.halfX * 0.74, -60]]) {
+      const [x, z] = toWorld(u, v);
+      this._struct('gantry', M.gantry, x, z, Z.dir + rng(), { scale: 1.0 });
+    }
+
+    /* 守護機。基地の背後に立ったまま眠っている。九十メートル。
+       これが見えている方角が「奥」で、土地の向きはこれで分かる。 */
+    const [gx, gz] = toWorld(60, -Z.halfZ - 150);
+    this.landmark = this._struct('guard', this.solid.mesh(guardianShape()), gx, gz, Z.dir + Math.PI, { scale: 1.70 });
   }
 
   /* ---------- 壊す ---------- */
@@ -6287,9 +7084,11 @@ class Tornado {
       this.surge = Math.max(0, this.surge - dt * 1.5);
     }
 
-    // 大きい渦ほど鈍い。EF5は畑一枚を曲がるのに時間が要る。
-    const maxV = (21 - this.stage * 1.1) * (1 + this.surge * 0.55);
-    const accel = (26 - this.stage * 2.2) * (1 + this.surge * 0.5);
+    /* 大きい渦ほど鈍い。EF5は畑一枚を曲がるのに時間が要る。とはいえ
+       遅すぎると土地が広く感じるだけなので、L1で時速110km、L10でも
+       80kmは出る。実際の竜巻の移動速度もこのあたり。 */
+    const maxV = (31 - this.stage * 1.1) * (1 + this.surge * 0.60);
+    const accel = (38 - this.stage * 2.4) * (1 + this.surge * 0.5);
     this.vel[0] += (dx * maxV - this.vel[0]) * Math.min(1, accel * dt / maxV);
     this.vel[2] += (dz * maxV - this.vel[2]) * Math.min(1, accel * dt / maxV);
 
@@ -6844,18 +7643,28 @@ const { clamp } = __req("core/math.js");
 
 /* 記録帳の封を切る条件。壊してみるまで開かない。 */
 const UNLOCKS = [
+  // 土地の一枚目は着いた時点で読める。残りは触ってみるまで開かない。
   { id: 'hacienda', when: () => true },
-  { id: 'agave', when: (s) => s.tally.agave >= 1 },
-  { id: 'cactus', when: (s) => s.tally.cactus >= 1 },
-  { id: 'jimador', when: (s) => s.killed.pile >= 1 },
+  { id: 'ciudad', when: () => true },
+  { id: 'puerto', when: () => true },
+  { id: 'valle', when: () => true },
+  { id: 'icaro', when: () => true },
+  { id: 'agave', when: (s) => s.tally.small >= 20 },
+  { id: 'calle', when: (s) => s.tally.small >= 20 },
+  { id: 'bestia', when: (s) => s.tally.livestock >= 1 },
+  { id: 'maquina', when: (s) => s.tally.livestock >= 1 },
   { id: 'meso', when: (s) => s.stage >= 2 },
-  { id: 'soil', when: (s) => s.stage >= 2 && s.tally.agave >= 120 },
   { id: 'bolt', when: (s) => s.boltsSeen >= 1 },
+  { id: 'tromba', when: (s) => s.overSea },
+  { id: 'grua', when: (s) => s.tally.building >= 1 },
   { id: 'ef', when: (s) => s.stage >= 3 },
   { id: 'vaca', when: (s) => s.tally.livestock >= 1 },
-  { id: 'red', when: (s) => s.stage >= 4 },
-  { id: 'casa', when: (s) => s.casaGone },
-  { id: 'end', when: (s) => s.stage >= 5 }
+  { id: 'multi', when: (s) => s.stage >= 4 },
+  { id: 'red', when: (s) => s.stage >= 5 },
+  { id: 'torre', when: (s) => s.landmarkGone },
+  { id: 'senor', when: (s) => s.landmarkGone },
+  { id: 'guardian', when: (s) => s.landmarkGone },
+  { id: 'end', when: (s) => s.stage >= 8 }
 ];
 
 class Gameplay {
@@ -6909,7 +7718,7 @@ class Gameplay {
        両方に居る枠もあるので、近いほうを採る。 */
     const best = this.props.nearest(t[0], t[2], seek, st);
     if (seek === 'livestock' || seek === 'any') {
-      const a = this.actors.nearest(t[0], t[2], true);
+      const a = this.actors.nearest(t[0], t[2], true, st);
       if (a && (!best || Math.hypot(a.x - t[0], a.z - t[2]) < Math.hypot(best.x - t[0], best.z - t[2]))) {
         return { x: a.x, z: a.z, y: a.y, actor: a, label: a.k.label, hard: false };
       }
@@ -6985,11 +7794,17 @@ class Gameplay {
         if (this.time - this._snatchAt > 3.0) {
           this._snatchAt = this.time;
           const a = e.actor;
+          const SAID = {
+            jimador: 'ヒマドールが帽子ごと持っていかれた',
+            vaca: '牛が飛んだ', perro: '犬が飛んだ。犬は無事だ', burro: 'ロバが飛んだ',
+            raptor: 'ラプトルが宙に消えた', trike: 'トリケラトプスが襟ごと浮いた',
+            trex: 'ティラノサウルスが空を掴んでいる', ptero: '翼竜が渦に巻かれた',
+            bot: '作業員が命綱ごと持っていかれた', walker: '歩行機が脚から外れた',
+            hauler: '運搬機が荷ごと舞い上がった'
+          };
           this.events.push({
             type: 'toast',
-            text: a.kind === 'jimador' ? 'ヒマドールが帽子ごと持っていかれた'
-              : a.kind === 'vaca' ? '牛が飛んだ'
-                : a.kind === 'perro' ? '犬が飛んだ。犬は無事だ' : 'ロバが飛んだ',
+            text: SAID[a.kind] || `${a.k.label}が飛んだ`,
             tone: 'warn'
           });
         }
@@ -7000,8 +7815,8 @@ class Gameplay {
         // 何度も同じことを言わない。三秒に一度で足りる。
         if (this.time - this._toughAt > 3.5) {
           this._toughAt = this.time;
-          const need = ['EF0', 'EF1', 'EF2', 'EF3', 'EF4', 'EF5'][e.item.minStage];
-          this.events.push({ type: 'deny', text: `${e.item.kind === 'casa' ? '母屋' : 'これ'}には歯が立たない — ${need} が要る` });
+          const name = e.item.label || this.props.labelOf(e.item) || 'これ';
+          this.events.push({ type: 'deny', text: `${name}には歯が立たない — L${(e.item.minStage | 0) + 1} が要る` });
         }
       }
     }
@@ -7256,6 +8071,64 @@ const CODEX = [
       'あなたはそれを軽々と超える。',
       '倒れるときは、腕から先に海へ落ちる。'
     ]
+  },
+
+  /* ---- 火山の谷 ---- */
+  {
+    id: 'valle', stage: 'volcan', tag: 'VALLE', title: '火の谷',
+    meta: '溶岩面 -3 m · 気温 41 ℃',
+    body: [
+      '北の山は三十年前から止まっていない。噴煙が西へ流れる日は空が茶色になり、南へ流れる日は谷が暗くなる。今日は西だ。',
+      '溶岩は谷の低いところを南へ下っている。表面には冷えた殻が浮いていて、割れ目からだけ下の赤が見える。あなたが上を通ると、殻は風で剥がれる。',
+      '谷底にシダが生えているのは、灰が良い土になるからだ。焼けた土地はよく育つ。それが分かっているから、獣たちも戻ってくる。'
+    ]
+  },
+  {
+    id: 'bestia', stage: 'volcan', tag: 'BESTIAS', title: '谷の獣',
+    meta: 'ラプトル 30点 · トリケラ 90点 · ティラノ 140点',
+    body: [
+      'ラプトルは軽い。L2の渦でもう足が地から離れる。走って逃げるが、逃げる方向を間違える癖があって、たいてい渦の内側へ回り込んでしまう。',
+      'トリケラトプスは襟が帆になる。二トンの体を持ち上げるのに必要なのは風速ではなく面積で、あの襟がそれを渦に差し出している。L3から。',
+      'ティラノサウルスは重い。L4より下の渦は、脚を煽ってよろけさせるだけで終わる。持ち上がったときの音は、聞いたことのある誰も説明できない。'
+    ]
+  },
+  {
+    id: 'senor', stage: 'volcan', tag: 'EL SEÑOR', title: '主竜',
+    meta: '全高 74 m · 300点 · L4の歯が要る',
+    body: [
+      '谷の奥に立っている。三十年、同じ場所にいる。動くところを見た者はいないが、朝と夕で向きが違うことが何度かあった。',
+      '背びれは中心線に一列。あれが立っているときは山が近い、と谷の獣は知っている。実際には、あれは山を背にして立っているだけだ。',
+      'あなたに持ち上がるかどうかは、あなた次第でしかない。'
+    ]
+  },
+
+  /* ---- 軌道基地 ---- */
+  {
+    id: 'icaro', stage: 'orbital', tag: 'ÍCARO', title: 'イカロ基地',
+    meta: '重力 0.38 G · 気圧 0.006 atm · 在籍 214 名',
+    body: [
+      '空気がほとんど無いのに渦が立つのか、という問いには、立たない、と答えるのが正しい。ここで回っているのは大気ではなく、地表から巻き上がった細かい塵と、基地が漏らした水蒸気だ。',
+      '重力が地球の四割足らずなので、一度浮いたものはなかなか降りてこない。同じ風速でも、ここでは倍の高さまで上がり、四倍の時間だけ落ちてこない。',
+      '太陽帆は畝に並べてある。太陽が動かないので、全部が同じ方角を向いたまま何年も立っている。'
+    ]
+  },
+  {
+    id: 'maquina', stage: 'orbital', tag: 'MÁQUINAS', title: '働くもの',
+    meta: '作業員 20点 · 運搬機 55点 · 歩行機 110点',
+    body: [
+      '作業員は与圧服の中にいる。面覆いが黒いのは遮光のためで、中の顔は見えない。渦に捕まっても、服が保つかぎりは無事だ。',
+      '運搬機は六輪。脚がないので、逃げるときは跳ねる。0.38 G では跳ねるほうが速い。',
+      '歩行機は逆関節の二脚で、膝が後ろを向いている。設計者は鳥を見て決めたと言っているが、実際には、そのほうが着地の衝撃を吸えるからだ。'
+    ]
+  },
+  {
+    id: 'guardian', stage: 'orbital', tag: 'GUARDIÁN', title: '守護機',
+    meta: '全高 90 m · 300点 · 稼働記録なし',
+    body: [
+      '基地より先にここにあった。誰が置いたのか、何のためなのかは、記録が残っていない。胸の炉だけがずっと点いている。',
+      '関節に電力を送った記録は一度もない。だから「眠っている」というのは正確ではなく、単に一度も起きていない。',
+      '倒すと基地から見える景色が変わる。それ以上のことは、倒してみないと分からない。'
+    ]
   }
 ];
 
@@ -7349,6 +8222,7 @@ class Hud {
       hud: $('hud'), objTitle: $('objTitle'), objDetail: $('objDetail'), objFill: $('objFill'),
       stormClock: $('stormClock'), stormPath: $('stormPath'), stormWidth: $('stormWidth'),
       score: $('score'), nextStage: $('nextStage'), pops: $('pops'),
+      mapLabel: $('mapLabel'),
       guide: $('guide'), guideArrow: $('guideArrow'), guideRing: $('guideRing'),
       guideLabel: $('guideLabel'), guideDist: $('guideDist'),
       ladderRows: $('ladderRows'), tallyRows: $('tallyRows'), chips: $('chips'),
@@ -7373,6 +8247,7 @@ class Hud {
     this._trail = [];
     this._marks = [];
 
+    this.el.mapLabel.textContent = `${stage.sub} · 1:2000`;
     this._buildLadder();
     this._buildTally();
     this._buildControlSheet();
@@ -7956,12 +8831,23 @@ const { MeshBuilder } = __req("core/mesh.js");
 const { makeRng } = __req("core/rng.js");
 const { m4, m4compose, qt, qFromAxisAngle, qIntegrate, clamp, wrapPi } = __req("core/math.js");
 
-/* 種類。run は逃げ足、walk は普段の速さ、legY は「脚とみなす高さ」。 */
+/* 種類。run は逃げ足、walk は普段の速さ、legY は「脚とみなす高さ」。
+   minStage は「この渦でなければ持ち上がらない」段。三十トンの獣が
+   塵旋風で飛ぶのは、絵として嘘になる。 */
 const KIND = {
   jimador: { label: '人',   walk: 1.5, run: 5.2, legY: 0.95, r: 0.8, value: 10, tone: 'wood', scale: 1.25, livestock: false },
   vaca:    { label: '牛',   walk: 0.9, run: 5.6, legY: 1.05, r: 1.8, value: 20, tone: 'leaf', scale: 1.45, livestock: true },
   burro:   { label: 'ロバ', walk: 1.1, run: 5.6, legY: 0.90, r: 1.4, value: 15, tone: 'wood', scale: 1.35, livestock: true },
-  perro:   { label: '犬',   walk: 2.0, run: 7.0, legY: 0.45, r: 0.6, value: 8,  tone: 'wood', scale: 1.40, livestock: true }
+  perro:   { label: '犬',   walk: 2.0, run: 7.0, legY: 0.45, r: 0.6, value: 8,  tone: 'wood', scale: 1.40, livestock: true },
+  // 火山の谷
+  raptor:  { label: 'ラプトル',   walk: 2.4, run: 12.0, legY: 0.95, r: 1.6, value: 30,  tone: 'leaf',  scale: 2.10, livestock: true,  minStage: 1 },
+  trike:   { label: 'トリケラ',   walk: 1.0, run: 6.4,  legY: 1.10, r: 4.2, value: 90,  tone: 'leaf',  scale: 3.60, livestock: true,  minStage: 2 },
+  trex:    { label: 'ティラノ',   walk: 1.4, run: 8.6,  legY: 2.60, r: 5.0, value: 140, tone: 'leaf',  scale: 4.20, livestock: true,  minStage: 3 },
+  ptero:   { label: '翼竜',       walk: 2.2, run: 9.5,  legY: 0.60, r: 1.5, value: 25,  tone: 'wood',  scale: 2.30, livestock: false, minStage: 0 },
+  // 軌道基地
+  bot:     { label: '作業員',     walk: 1.8, run: 6.0,  legY: 0.80, r: 1.0, value: 20,  tone: 'metal', scale: 1.70, livestock: false, minStage: 0 },
+  walker:  { label: '歩行機',     walk: 1.2, run: 5.8,  legY: 2.40, r: 4.0, value: 110, tone: 'metal', scale: 3.60, livestock: true,  minStage: 2 },
+  hauler:  { label: '運搬機',     walk: 1.6, run: 6.6,  legY: 0.70, r: 2.6, value: 55,  tone: 'metal', scale: 2.20, livestock: true,  minStage: 1 }
 };
 
 /* ---------- 形 ----------
@@ -8061,6 +8947,244 @@ function perroMesh() {
   return b.build();
 }
 
+/* ---------- 火山の谷の住人 ----------
+
+   どれも「二本か四本の脚、胴、首、頭、尾」。歩容変形が振るのは
+   legY より下なので、脚の付け根の高さだけ揃えておけばいい。 */
+
+function trexMesh(seed) {
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const hide = [0.085 + rng() * 0.03, 0.078 + rng() * 0.025, 0.055];
+  const belly = [0.135, 0.118, 0.082];
+  // 後脚。太腿・脛・足の三段で、膝が前に出る。
+  b.mat(hide, 0.92, 1.0);
+  for (const sx of [-0.52, 0.52]) {
+    b.strut([sx, 2.60, -0.20], [sx * 1.10, 1.45, 0.35], 0.42, 8);
+    b.strut([sx * 1.10, 1.45, 0.35], [sx * 1.05, 0.32, -0.15], 0.24, 7);
+    b.mat([0.055, 0.050, 0.042], 0.9, 1.0);
+    b.translate(sx * 1.05, 0.16, 0.22).scale(1.1, 0.5, 1.9).sphere(0.30, 8, 6).pop().pop();
+    b.mat(hide, 0.92, 1.0);
+  }
+  // 胴。腰から肩へ向かって細くなる。
+  b.translate(0, 2.75, -0.20).scale(1.0, 1.05, 1.85).sphere(0.95, 14, 10).pop().pop();
+  b.mat(belly, 0.92, 1.0);
+  b.translate(0, 2.35, 0.20).scale(0.85, 0.62, 1.5).sphere(0.80, 11, 8).pop().pop();
+  // 尾。付け根が太く、先が細く、水平に伸びる。
+  b.mat(hide, 0.92, 1.0);
+  let ty = 2.85, tz = -1.9;
+  for (let i = 0; i < 7; i++) {
+    const r = 0.72 - i * 0.09;
+    b.strut([0, ty, tz], [0, ty - 0.10, tz - 0.85], r, 7);
+    ty -= 0.10; tz -= 0.85;
+  }
+  // 首と頭。頭は箱ではなく、細長い卵。
+  b.strut([0, 3.10, 1.35], [0, 3.75, 2.35], 0.52, 8);
+  b.translate(0, 3.85, 3.15).scale(0.72, 0.80, 1.55).sphere(0.62, 12, 8).pop().pop();
+  b.mat([0.045, 0.040, 0.035], 0.9, 1.0);
+  for (const sx of [-1, 1]) b.translate(sx * 0.42, 4.12, 3.05).sphere(0.11, 7, 5).pop();
+  // 顎と歯。ティラノの顔はここで決まる。
+  b.mat(belly, 0.9, 1.0);
+  b.translate(0, 3.50, 3.35).scale(0.60, 0.42, 1.35).sphere(0.55, 10, 7).pop().pop();
+  b.mat([0.42, 0.40, 0.34], 0.7, 0.8);
+  for (let i = 0; i < 6; i++) {
+    const t = i / 5;
+    for (const sx of [-1, 1]) {
+      b.translate(sx * (0.36 - t * 0.10), 3.62, 2.85 + t * 1.30).cylinder(0.055, 0.28, 5, true, 0.01).pop();
+    }
+  }
+  // 前肢。二本指。小さいほど胴が大きく見える。
+  b.mat(hide, 0.92, 1.0);
+  for (const sx of [-1, 1]) {
+    b.strut([sx * 0.62, 2.90, 1.05], [sx * 0.80, 2.35, 1.45], 0.13, 6);
+    b.strut([sx * 0.80, 2.35, 1.45], [sx * 0.86, 2.05, 1.80], 0.09, 5);
+  }
+  // 背の縞。単色の獣は模型に見える。
+  b.mat([0.038, 0.055, 0.042], 0.92, 1.0);
+  for (let i = 0; i < 6; i++) {
+    b.translate((i % 2 ? 0.2 : -0.2), 3.45, 0.9 - i * 0.62).scale(0.9, 0.22, 0.30).sphere(0.55, 8, 6).pop().pop();
+  }
+  return b.build();
+}
+
+function trikeMesh(seed) {
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const hide = [0.105 + rng() * 0.03, 0.088, 0.062];
+  b.mat([0.070, 0.062, 0.050], 0.92, 1.0);
+  for (const sx of [-0.62, 0.62]) {
+    for (const sz of [-0.85, 0.95]) b.translate(sx, 0.62, sz).cylinder(0.24, 1.24, 8).pop();
+  }
+  b.mat(hide, 0.92, 1.0);
+  b.translate(0, 1.60, -0.10).scale(1.0, 0.95, 1.70).sphere(1.05, 14, 10).pop().pop();
+  // 首と頭。
+  b.translate(0, 1.72, 1.55).rotate(1, 0, 0, 0.30).scale(0.85, 0.80, 0.95).sphere(0.78, 11, 8).pop().pop().pop();
+  b.translate(0, 1.68, 2.55).scale(0.80, 0.72, 1.10).sphere(0.62, 11, 8).pop().pop();
+  // 襟飾り。この一枚がトリケラトプスの全部。
+  b.mat([0.135, 0.098, 0.068], 0.90, 1.0);
+  b.translate(0, 2.05, 1.85).rotate(1, 0, 0, -0.42).scale(1.55, 1.45, 0.16).sphere(1.15, 15, 10).pop().pop().pop();
+  b.mat([0.078, 0.058, 0.042], 0.9, 1.0);
+  for (let i = 0; i < 7; i++) {
+    const a = -1.1 + (i / 6) * 2.2;
+    b.translate(Math.sin(a) * 1.70, 2.05 + Math.cos(a) * 1.55, 1.72)
+      .rotate(0, 0, 1, -a).cylinder(0.10, 0.42, 6, true, 0.02).pop().pop();
+  }
+  // 角。鼻に一本、目の上に二本。
+  b.mat([0.36, 0.33, 0.28], 0.72, 0.8);
+  b.translate(0, 1.92, 3.05).rotate(1, 0, 0, 0.5).cylinder(0.12, 0.60, 7, true, 0.02).pop().pop();
+  for (const sx of [-0.42, 0.42]) {
+    b.translate(sx, 2.15, 2.55).rotate(1, 0, 0, 0.35).rotate(0, 0, 1, -sx * 0.5)
+      .cylinder(0.14, 1.30, 8, true, 0.02).pop().pop().pop();
+  }
+  // 嘴と尾。
+  b.mat([0.30, 0.26, 0.20], 0.8, 0.9);
+  b.translate(0, 1.52, 3.25).scale(0.55, 0.65, 0.9).sphere(0.30, 9, 6).pop().pop();
+  b.mat(hide, 0.92, 1.0);
+  b.strut([0, 1.60, -1.70], [0, 1.05, -2.90], 0.28, 7);
+  return b.build();
+}
+
+function raptorMesh(seed) {
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const hide = [0.115 + rng() * 0.04, 0.078, 0.048];
+  b.mat(hide, 0.90, 1.0);
+  for (const sx of [-0.20, 0.20]) {
+    b.strut([sx, 0.95, -0.06], [sx * 1.2, 0.52, 0.22], 0.13, 6);
+    b.strut([sx * 1.2, 0.52, 0.22], [sx * 1.15, 0.10, -0.05], 0.075, 5);
+  }
+  b.translate(0, 1.02, -0.08).scale(0.80, 0.82, 1.55).sphere(0.34, 11, 8).pop().pop();
+  // 尾は真っ直ぐ。走るときの舵。
+  b.strut([0, 1.06, -0.62], [0, 1.02, -2.10], 0.13, 6);
+  b.strut([0, 1.14, 0.42], [0, 1.30, 0.92], 0.17, 6);
+  b.translate(0, 1.34, 1.28).scale(0.62, 0.62, 1.30).sphere(0.24, 10, 7).pop().pop();
+  b.mat([0.030, 0.028, 0.024], 0.9, 1.0);
+  for (const sx of [-1, 1]) b.translate(sx * 0.15, 1.44, 1.20).sphere(0.055, 6, 4).pop();
+  // 羽毛。背と尾に生えた黒い房。
+  b.mat([0.052, 0.040, 0.032], 0.94, 1.0);
+  for (let i = 0; i < 7; i++) {
+    const t = i / 6;
+    b.translate(0, 1.28 - t * 0.10, 0.4 - t * 2.2).rotate(1, 0, 0, 0.4)
+      .scale(0.22, 1, 0.5).sphere(0.20, 7, 5).pop().pop().pop();
+  }
+  for (const sx of [-1, 1]) {
+    b.translate(sx * 0.26, 1.10, 0.18).rotate(0, 0, 1, sx * 0.9)
+      .scale(0.16, 1, 0.9).sphere(0.30, 8, 6).pop().pop().pop();
+  }
+  return b.build();
+}
+
+function pteroMesh(seed) {
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  b.mat([0.145, 0.125, 0.098], 0.90, 1.0);
+  for (const sx of [-0.16, 0.16]) b.strut([sx, 0.62, 0], [sx * 1.3, 0.06, 0.10], 0.065, 5);
+  b.translate(0, 0.72, 0).scale(0.70, 0.72, 1.35).sphere(0.28, 10, 7).pop().pop();
+  // 首と、頭より長い嘴。
+  b.strut([0, 0.80, 0.30], [0, 1.02, 0.72], 0.11, 6);
+  b.translate(0, 1.06, 0.90).scale(0.60, 0.62, 1.0).sphere(0.18, 9, 6).pop().pop();
+  b.mat([0.185, 0.155, 0.115], 0.85, 0.9);
+  b.translate(0, 1.02, 1.45).rotate(1, 0, 0, 0.1).cylinder(0.075, 0.95, 7, true, 0.02).pop().pop();
+  // 頭頂の冠。翼竜に見えるかどうかはここ。
+  b.translate(0, 1.30, 0.72).rotate(0, 0, 1, 0).scale(0.10, 1, 0.75).sphere(0.30, 8, 6).pop().pop();
+  // 翼。畳んでいる。地上にいるときの姿勢。
+  b.mat([0.115, 0.098, 0.078], 0.92, 1.0);
+  for (const sx of [-1, 1]) {
+    b.strut([sx * 0.22, 0.86, 0.10], [sx * 1.15, 1.12, -0.15], 0.075, 6);
+    b.strut([sx * 1.15, 1.12, -0.15], [sx * 0.75, 0.55, -1.05], 0.055, 5);
+    b.translate(sx * 0.80, 0.86, -0.45).rotate(0, 1, 0, sx * 0.5)
+      .scale(0.55, 0.35, 1.0).sphere(0.42, 9, 6).pop().pop().pop();
+  }
+  void rng;
+  return b.build();
+}
+
+/* ---------- 軌道基地の住人 ---------- */
+
+function botMesh(seed) {
+  /* 作業員。与圧服の中身は分からないが、歩き方は人と同じ。 */
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const suit = rng() < 0.5 ? [0.225, 0.228, 0.235] : [0.215, 0.180, 0.075];
+  b.mat([0.085, 0.088, 0.095], 0.35, 0.5);
+  for (const sx of [-0.14, 0.14]) b.translate(sx, 0.38, 0).cylinder(0.085, 0.78, 7).pop();
+  for (const sx of [-0.14, 0.14]) b.box(0.16, 0.09, 0.30, sx, 0.045, 0.04);
+  b.mat(suit, 0.42, 0.6);
+  b.translate(0, 1.02, 0).scale(1.05, 1.30, 0.80).sphere(0.24, 11, 8).pop().pop();
+  for (const sx of [-0.26, 0.26]) b.strut([sx, 1.22, 0], [sx * 1.25, 0.74, 0.10], 0.062, 6);
+  // 背嚢と頭。面覆いは黒い球で、そこに空が映る。
+  b.mat([0.135, 0.138, 0.145], 0.30, 0.5);
+  b.box(0.38, 0.48, 0.22, 0, 1.12, -0.24);
+  b.translate(0, 1.44, 0).scale(1, 1.05, 1).sphere(0.185, 11, 8).pop().pop();
+  b.mat([0.022, 0.026, 0.032], 0.08, 0.2);
+  b.translate(0, 1.45, 0.10).scale(0.85, 0.75, 0.6).sphere(0.165, 10, 7).pop().pop();
+  b.mat([0.25, 1.10, 1.30], 0.4, 0.0);
+  b.translate(0.20, 1.24, -0.20).sphere(0.045, 6, 4).pop();
+  return b.build();
+}
+
+function walkerMesh(seed) {
+  /* 歩行機。逆関節の二脚。胴は箱で、上に作業腕とセンサー。 */
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const paint = rng() < 0.5 ? [0.155, 0.158, 0.168] : [0.170, 0.135, 0.048];
+  b.mat([0.070, 0.074, 0.082], 0.30, 0.5);
+  for (const sx of [-0.72, 0.72]) {
+    b.strut([sx, 2.45, -0.10], [sx * 1.15, 1.55, -0.85], 0.22, 8);   // 腿は後ろへ
+    b.strut([sx * 1.15, 1.55, -0.85], [sx * 1.10, 0.42, 0.30], 0.16, 7);  // 脛は前へ
+    b.translate(sx * 1.15, 1.55, -0.85).sphere(0.28, 9, 7).pop();
+    b.mat([0.048, 0.050, 0.055], 0.32, 0.5);
+    b.translate(sx * 1.10, 0.16, 0.42).scale(1.0, 0.42, 1.9).sphere(0.34, 9, 6).pop().pop();
+    b.mat([0.070, 0.074, 0.082], 0.30, 0.5);
+  }
+  b.mat(paint, 0.34, 0.6);
+  b.box(1.90, 1.15, 2.30, 0, 3.00, 0);
+  b.translate(0, 3.05, 1.25).scale(1.0, 0.85, 0.6).sphere(0.80, 11, 8).pop().pop();
+  // 運転席の窓。
+  b.mat([0.030, 0.075, 0.095], 0.10, 0.2);
+  b.box(1.30, 0.55, 0.10, 0, 3.20, 1.72);
+  // 作業腕。
+  b.mat([0.100, 0.104, 0.112], 0.30, 0.5);
+  b.strut([0.95, 3.30, 0.40], [1.90, 2.70, 1.10], 0.14, 6);
+  b.strut([1.90, 2.70, 1.10], [2.35, 1.85, 1.60], 0.10, 6);
+  b.mat([0.155, 0.120, 0.038], 0.28, 0.4);
+  for (const sz of [-0.14, 0.14]) b.strut([2.35, 1.85, 1.60], [2.55, 1.55, 1.85 + sz], 0.055, 5);
+  // 灯とアンテナ。
+  b.mat([1.80, 1.30, 0.35], 0.4, 0.0);
+  for (const sx of [-0.7, 0.7]) b.translate(sx, 3.52, 1.16).sphere(0.11, 6, 5).pop();
+  b.mat([0.090, 0.094, 0.100], 0.3, 0.5);
+  b.strut([-0.7, 3.58, -0.9], [-0.95, 5.10, -1.15], 0.035, 5);
+  return b.build();
+}
+
+function haulerMesh(seed) {
+  /* 運搬機。六輪の台車。脚が無いので歩容は効かないが、逃げるときに
+     跳ねるので、それで生き物に見える。 */
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  b.mat([0.042, 0.044, 0.048], 0.40, 0.7);
+  for (const sx of [-0.82, 0.82]) {
+    for (const sz of [-1.10, 0, 1.10]) {
+      b.translate(sx, 0.44, sz).rotate(0, 0, 1, 1.5708).cylinder(0.44, 0.30, 10).pop().pop();
+    }
+  }
+  b.mat([0.165, 0.145, 0.070], 0.34, 0.6);
+  b.box(1.50, 0.55, 2.90, 0, 0.90, 0);
+  b.mat([0.130, 0.134, 0.142], 0.32, 0.55);
+  b.box(1.35, 0.95, 1.30, 0, 1.62, -0.70);
+  b.mat([0.030, 0.070, 0.090], 0.10, 0.2);
+  b.box(1.10, 0.40, 0.08, 0, 1.80, -1.36);
+  // 荷。積んでいるものは日によって違う。
+  b.mat([0.115, 0.118, 0.125], 0.34, 0.6);
+  for (let i = 0; i < 3; i++) {
+    if (rng() < 0.25) continue;
+    b.box(0.70, 0.62, 0.70, (rng() - 0.5) * 0.5, 1.48, 0.35 + i * 0.72);
+  }
+  b.mat([1.70, 0.60, 0.20], 0.4, 0.0);
+  for (const sx of [-0.6, 0.6]) b.translate(sx, 2.14, -0.70).sphere(0.09, 6, 4).pop();
+  return b.build();
+}
+
 class Actors {
   constructor(gl, terrain, solid, seed, { density = 1 } = {}) {
     this.gl = gl;
@@ -8083,6 +9207,23 @@ class Actors {
       burro: [burroMesh(21), burroMesh(22)].map((d) => this.solid.mesh(d)),
       perro: [this.solid.mesh(perroMesh())]
     };
+    /* 土地ごとに要るものだけ作る。恐竜の模型は基地には要らないし、
+       作らなければ頂点も食わない。 */
+    const sid = this.terrain.stage.id;
+    if (sid === 'volcan') {
+      Object.assign(this.mesh, {
+        trex: [trexMesh(31), trexMesh(32)].map((d) => this.solid.mesh(d)),
+        trike: [trikeMesh(35), trikeMesh(36)].map((d) => this.solid.mesh(d)),
+        raptor: [raptorMesh(41), raptorMesh(42), raptorMesh(43)].map((d) => this.solid.mesh(d)),
+        ptero: [pteroMesh(45), pteroMesh(46)].map((d) => this.solid.mesh(d))
+      });
+    } else if (sid === 'orbital') {
+      Object.assign(this.mesh, {
+        bot: [botMesh(51), botMesh(52), botMesh(53)].map((d) => this.solid.mesh(d)),
+        walker: [walkerMesh(55), walkerMesh(56)].map((d) => this.solid.mesh(d)),
+        hauler: [haulerMesh(58), haulerMesh(59)].map((d) => this.solid.mesh(d))
+      });
+    }
 
     const spawn = (kind, x, z) => {
       const k = KIND[kind];
@@ -8124,6 +9265,45 @@ class Actors {
         const x = (rng() * 2 - 1) * (T.fineHalf - 200);
         spawn('burro', x, T.world.coastZ(x) + 120 + rng() * 260);
       }
+    } else if (id === 'volcan') {
+      /* 火山の谷。ティラノは単独、トリケラは群れ、ラプトルは小さな
+         集団。翼竜は溶岩の熱で上がる気流の下にいるので、谷に多い。 */
+      const dry = (x, z) => T.height(x, z) > (T.sea === null ? -3 : T.sea) + 3;
+      const drop = (kind, x, z) => { if (dry(x, z)) spawn(kind, x, z); };
+      for (let i = 0; i < R(5); i++) {
+        drop('trex', F.x + (rng() * 2 - 1) * (F.halfX + 260), F.z + (rng() * 2 - 1) * (F.halfZ + 260));
+      }
+      for (let h = 0; h < 5; h++) {
+        const hx = F.x + (rng() * 2 - 1) * (F.halfX + 160);
+        const hz = F.z + (rng() * 2 - 1) * (F.halfZ + 160);
+        for (let i = 0; i < R(3 + rng() * 4); i++) drop('trike', hx + (rng() - 0.5) * 44, hz + (rng() - 0.5) * 44);
+      }
+      for (let h = 0; h < 7; h++) {
+        const hx = F.x + (rng() * 2 - 1) * (F.halfX + 120);
+        const hz = F.z + (rng() * 2 - 1) * (F.halfZ + 120);
+        for (let i = 0; i < R(3 + rng() * 3); i++) drop('raptor', hx + (rng() - 0.5) * 30, hz + (rng() - 0.5) * 30);
+      }
+      for (let i = 0; i < R(24); i++) {
+        drop('ptero', F.x + (rng() * 2 - 1) * (F.halfX + 200), F.z + (rng() * 2 - 1) * (F.halfZ + 200));
+      }
+    } else if (id === 'orbital') {
+      /* 基地。作業員はドームと着陸場の間を歩き、運搬機は区画の中を
+         往復し、歩行機は外周を巡回している。 */
+      const c = Math.cos(F.dir), sn = Math.sin(F.dir);
+      const toW = (u, v) => [F.x + u * c - v * sn, F.z + u * sn + v * c];
+      for (let i = 0; i < R(20); i++) {
+        const [x, z] = toW((rng() * 2 - 1) * (F.halfX - 60), (rng() * 2 - 1) * (F.halfZ - 60));
+        spawn('bot', x, z);
+      }
+      for (let i = 0; i < R(12); i++) {
+        const [x, z] = toW((rng() * 2 - 1) * (F.halfX - 40), (rng() * 2 - 1) * (F.halfZ - 40));
+        spawn('hauler', x, z);
+      }
+      for (let i = 0; i < R(9); i++) {
+        const a = rng() * 6.283, r = F.halfX * (0.75 + rng() * 0.55);
+        const [x, z] = toW(Math.cos(a) * r, Math.sin(a) * r * 0.8);
+        spawn('walker', x, z);
+      }
     } else {
       // 農園。ヒマドールは畑の中、牛は外の草地に群れでいる。
       const c = Math.cos(F.dir), sn = Math.sin(F.dir);
@@ -8149,12 +9329,13 @@ class Actors {
 
   /* 案内のための探索。まだ一度も巻き上げていないものを先に返す。
      一度飛ばした牛をもう一度指しても、目標は進まない。 */
-  nearest(x, z, livestock) {
+  nearest(x, z, livestock, stage = 99) {
     let best = null, bd = Infinity;
     for (let pass = 0; pass < 2 && !best; pass++) {
       bd = Infinity;
       for (const a of this.list) {
         if (a.fly || !!a.k.livestock !== livestock) continue;
+        if ((a.k.minStage || 0) > stage) continue;   // 持ち上がらない相手は指さない
         if (pass === 0 && a.taken) continue;
         const d = (a.x - x) * (a.x - x) + (a.z - z) * (a.z - z);
         if (d < bd) { bd = d; best = a; }
@@ -8184,8 +9365,16 @@ class Actors {
       const dx = a.x - V.x, dz = a.z - V.z;
       const d = Math.hypot(dx, dz);
 
-      // 捕まった。回りながら持っていかれる。
-      if (d < V.radius * 1.15 + a.k.r) {
+      /* 捕まった。回りながら持っていかれる。ただし、重いものは
+         それなりの渦でなければ足が地から離れない。持ち上がらない
+         相手は、風に煽られてよろけるだけで済む。 */
+      if (d < V.radius * 1.15 + a.k.r && tornado.stage < (a.k.minStage || 0)) {
+        a.yaw += (Math.random() - 0.5) * dt * 4;
+        if (Math.random() < dt * 1.5) {
+          debris.burst(a.x, a.y + a.k.r * 0.5, a.z, 3, 'dust', 4);
+          events.push({ type: 'tough', item: { kind: a.kind, minStage: a.k.minStage, x: a.x, y: a.y, z: a.z, label: a.k.label } });
+        }
+      } else if (d < V.radius * 1.15 + a.k.r) {
         const f = tornado.flow(a.x, a.y + 1, a.z, [0, 0, 0]);
         const r = Math.random;
         a.fly = {
@@ -8434,7 +9623,116 @@ class Guide {
   }
 }
 
+/* ============================================================
+   PLUME — 噴煙
+
+   火口から上がっている煙。地形は高さの場でできているので、山は
+   立つが煙は立たない。板一枚をY軸まわりでカメラへ向け、縦に伸ばし、
+   横へ流す。遠景に一つ置くだけなので、これで足りる。
+   ============================================================ */
+
+const PLUME_VS = `#version 300 es
+precision highp float;
+in vec3 aPos;
+in vec2 aInfo;
+uniform mat4 uViewProj;
+uniform vec3 uBase;
+uniform vec3 uCamPos;
+uniform vec2 uSize;        // 高さ, 根元の幅
+uniform float uDrift;      // 上へ行くほど風下へ流れる量
+out vec2 vUV;
+void main() {
+  vec2 d = uBase.xz - uCamPos.xz;
+  vec2 right = vec2(-d.y, d.x) / max(length(d), 0.001);
+  float h = aPos.y;
+  // 上ほど太く、上ほど流れる。煙が上で開くのはこの二つだけで出る。
+  float w = uSize.y * (0.55 + h * 1.9);
+  vec3 w3 = uBase
+    + vec3(right.x * aPos.x * w, h * uSize.x, right.y * aPos.x * w)
+    + vec3(right.y, 0.0, -right.x) * (h * h * uDrift);
+  vUV = vec2(aPos.x, h);
+  gl_Position = uViewProj * vec4(w3, 1.0);
+}`;
+
+const PLUME_FS = `#version 300 es
+precision highp float;
+in vec2 vUV;
+uniform float uTime;
+uniform vec3 uAsh;
+uniform vec3 uGlow;
+out vec4 fragColor;
+
+/* 三層の正弦を重ねただけの雲。噴煙は一つしか無いので、これで済む。 */
+float puff(vec2 p) {
+  float a = sin(p.x * 3.1 + p.y * 7.0) * 0.5 + 0.5;
+  float b = sin(p.x * 7.7 - p.y * 13.0 + 1.7) * 0.5 + 0.5;
+  float c = sin(p.x * 17.0 + p.y * 27.0 - 0.9) * 0.5 + 0.5;
+  return a * 0.55 + b * 0.30 + c * 0.15;
+}
+
+void main() {
+  float h = vUV.y;
+  // 縁は薄く、芯は濃く。上端は空へ溶ける。
+  float radial = 1.0 - abs(vUV.x);
+  float body = smoothstep(0.0, 0.34, radial) * (1.0 - smoothstep(0.55, 1.0, h));
+  float n = puff(vec2(vUV.x * 1.6, h * 2.2 - uTime * 0.055));
+  float a = clamp(body * (0.52 + n * 1.15), 0.0, 1.0);
+  a *= smoothstep(0.0, 0.015, h);
+  if (a < 0.006) discard;
+  // 根元は火口の照り返しで暖かい。上は冷えた灰。
+  vec3 c = mix(uGlow, uAsh, smoothstep(0.02, 0.22, h));
+  fragColor = vec4(c * a, a);
+}`;
+
+class Plume {
+  constructor(gl, spec) {
+    this.gl = gl;
+    this.spec = spec;
+    this.prog = createProgram(gl, PLUME_VS, PLUME_FS, 'plume');
+    const v = [];
+    // 縦に切った帯。横一枚では上端の切れ目が直線に見える。
+    const N = 10;
+    for (let i = 0; i < N; i++) {
+      const y0 = i / N, y1 = (i + 1) / N;
+      v.push(-1, y0, 0, 0, y0, 1, y0, 0, 0, y0, 1, y1, 0, 0, y1);
+      v.push(-1, y0, 0, 0, y0, 1, y1, 0, 0, y1, -1, y1, 0, 0, y1);
+    }
+    const data = new Float32Array(v);
+    this.count = data.length / 5;
+    const b = buffer(gl, data);
+    const a = this.prog.a;
+    this.vao = vao(gl, [
+      { buffer: b, loc: a.aPos, size: 3, stride: 20, offset: 0 },
+      { buffer: b, loc: a.aInfo, size: 2, stride: 20, offset: 12 }
+    ]);
+  }
+
+  render(ctx) {
+    const gl = this.gl, p = this.prog, u = p.u, s = this.spec;
+    p.use();
+    gl.uniformMatrix4fv(u.uViewProj, false, ctx.viewProj);
+    gl.uniform3f(u.uBase, s.x, s.y, s.z);
+    gl.uniform3fv(u.uCamPos, ctx.camPos);
+    gl.uniform2f(u.uSize, s.h, s.r);
+    gl.uniform1f(u.uDrift, s.drift);
+    gl.uniform1f(u.uTime, ctx.time);
+    gl.uniform3f(u.uAsh, 0.078, 0.066, 0.062);
+    gl.uniform3f(u.uGlow, 0.95, 0.32, 0.10);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.depthMask(false);
+    gl.disable(gl.CULL_FACE);
+    gl.bindVertexArray(this.vao);
+    gl.drawArrays(gl.TRIANGLES, 0, this.count);
+    gl.bindVertexArray(null);
+    gl.enable(gl.CULL_FACE);
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+  }
+}
+
   __e.Guide = Guide;
+  __e.Plume = Plume;
 });
 __def("main.js", function (__e, __req) {
 /* ============================================================
@@ -8465,7 +9763,7 @@ const { Debris } = __req("world/debris.js");
 const { Tornado } = __req("game/tornado.js");
 const { Camera, CAM_MODES, CAM_LABEL } = __req("game/camera.js");
 const { Gameplay } = __req("game/gameplay.js");
-const { Guide } = __req("game/guide.js");
+const { Guide, Plume } = __req("game/guide.js");
 const { Hud } = __req("ui/hud.js");
 const { v3, clamp, lerp, DEG } = __req("core/math.js");
 
@@ -8564,7 +9862,10 @@ function start(stage, resume) {
 function begin(stage, terrain, resume) {
   const solid = new SolidRenderer(gl);
   const sky = new Sky(gl, { sunDir: terrain.sunDir });
-  const water = terrain.sea !== null ? new Water(gl, terrain, terrain.sea) : null;
+  /* 海があるのは湾岸だけ。火の谷にも「面」はあるが、あれは溶岩で、
+     地面の描き方の側で赤くしている。水の板を張ると池になってしまう。 */
+  const hasSea = terrain.sea !== null && !(stage.sea && stage.sea.lava);
+  const water = hasSea ? new Water(gl, terrain, terrain.sea) : null;
   const density = settings.quality === 'low' ? 0.45 : settings.quality === 'medium' ? 0.7 : 1;
   const props = new Props(gl, terrain, solid, stage.seed, { density });
   const actors = new Actors(gl, terrain, solid, stage.seed, { density: Math.max(0.6, density) });
@@ -8578,6 +9879,7 @@ function begin(stage, terrain, resume) {
   });
   const game = new Gameplay(terrain, tornado, props, actors, debris, stage.seed);
   const guide = new Guide(gl);
+  const plume = stage.plume ? new Plume(gl, stage.plume) : null;
   const cam = new Camera(terrain);
   cam.fov = settings.fov * DEG;
   cam.autoCentre = settings.autoCentre;
@@ -8685,11 +9987,13 @@ function begin(stage, terrain, resume) {
     ctx.sunColor[0] = (1.00 * dim + flash * 0.5);
     ctx.sunColor[1] = (0.95 * dim + flash * 0.55);
     ctx.sunColor[2] = (0.86 * dim + flash * 0.7);
-    const blue = [0.075, 0.185, 0.445];
+    /* 晴れの空と、嵐の空。土地が tint を持っていれば、その二つを
+       土地の色で置き換える。火の谷は茶色、衛星面は夜に近い青。 */
+    const blue = stage.tint ? stage.tint.sky : [0.075, 0.185, 0.445];
     const slate = [0.078, 0.078, 0.090];
     for (let i = 0; i < 3; i++) ctx.skyColor[i] = lerp(blue[i], slate[i], storm * 0.85);
     ctx.skyColor[0] += red * 0.10;
-    const dry = [0.365, 0.300, 0.235];
+    const dry = stage.tint ? stage.tint.haze : [0.365, 0.300, 0.235];
     const wet = [0.135, 0.122, 0.128];
     for (let i = 0; i < 3; i++) ctx.haze[i] = lerp(dry[i], wet[i], storm * 0.72);
     ctx.haze[0] += red * 0.042 + flash * 0.2;
@@ -8837,6 +10141,7 @@ function begin(stage, terrain, resume) {
     sky.render(ctx);
     terrain.render(ctx);
     if (water) water.render(ctx);
+    if (plume) plume.render(ctx);
     props.render(solid, ctx);
     actors.render(solid, ctx);
     guide.render(ctx, game.target);
