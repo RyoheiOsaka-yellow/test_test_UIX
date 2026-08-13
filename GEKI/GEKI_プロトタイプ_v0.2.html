@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ちゃんみな × ラブandベリー｜プロトタイプ v0.2</title>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --hot:#FF2D87;
+  --hot-dk:#D40E67;
+  --pink:#FFD9EA;
+  --blue:#BFD9FF;
+  --lav:#E6D9FF;
+  --cream:#FFF7FB;
+  --ink:#231F26;
+  --sub:#8A7D88;
+  --gold:#F5C64C;
+  --ok:#25B77B;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  font-family:'M PLUS Rounded 1c','Inter',sans-serif;color:var(--ink);
+  background:linear-gradient(160deg,#F2A9C9,#A9C4F2);
+  display:flex;align-items:center;justify-content:center;min-height:100vh;
+}
+/* ---- phone frame ---- */
+#phone{
+  width:min(400px,100vw);height:min(860px,100vh);
+  background:var(--cream);position:relative;overflow:hidden;
+  box-shadow:0 20px 60px rgba(60,20,50,.35);
+}
+@media(min-width:480px){#phone{border-radius:34px;border:8px solid #2A2230;height:min(820px,94vh);}}
+
+/* ---- global header ---- */
+#hd{
+  position:absolute;top:0;left:0;right:0;height:52px;z-index:40;
+  display:flex;align-items:center;gap:8px;padding:0 12px;
+  background:linear-gradient(90deg,var(--pink),var(--blue));
+  border-bottom:2px solid #fff;
+}
+#hd .ttl{font-weight:800;font-size:12px;letter-spacing:.04em;flex:1;line-height:1.2;}
+#hd .ttl small{display:block;font-family:Inter;font-size:8.5px;color:#7A5C74;font-weight:700;letter-spacing:.14em;}
+.scid{
+  font-family:Inter;font-size:9px;font-weight:800;letter-spacing:.08em;
+  background:var(--ink);color:#fff;border-radius:20px;padding:3px 9px;
+}
+#back{border:2px solid var(--ink);background:#fff;border-radius:20px;font-family:inherit;
+  font-weight:800;font-size:11px;padding:4px 10px;cursor:pointer;}
+#back.hide{visibility:hidden;}
+
+/* rights pill */
+#rights{
+  display:flex;align-items:center;gap:4px;background:#fff;border:2px solid var(--hot);
+  border-radius:20px;padding:3px 9px;font-weight:800;font-size:11px;color:var(--hot-dk);
+}
+#rights b{font-family:Inter;font-size:14px;}
+#rights.pulse{animation:pulse .5s;}
+@keyframes pulse{40%{transform:scale(1.25);}}
+
+/* ---- CQ mode ---- */
+#cqbtn{
+  position:absolute;bottom:16px;right:14px;z-index:60;
+  width:46px;height:46px;border-radius:50%;border:3px solid #fff;cursor:pointer;
+  background:var(--ink);color:var(--gold);font-family:Inter;font-weight:800;font-size:13px;
+  box-shadow:0 4px 14px rgba(0,0,0,.3);
+}
+#cqbtn.on{background:var(--gold);color:var(--ink);}
+.cq{
+  display:none;position:absolute;z-index:35;
+  background:var(--gold);color:var(--ink);border:2px solid var(--ink);
+  font-family:Inter;font-size:9px;font-weight:800;letter-spacing:.04em;
+  padding:3px 7px;border-radius:4px;box-shadow:2px 2px 0 var(--ink);
+  max-width:230px;line-height:1.45;pointer-events:none;
+}
+body.cqmode .cq{display:block;}
+body.playing #cqbtn,body.playing #dbgbtn{display:none;}
+.cq i{font-style:normal;display:block;font-family:'M PLUS Rounded 1c';font-weight:700;font-size:9px;}
+
+/* ---- debug ---- */
+#dbgbtn{
+  position:absolute;bottom:16px;left:14px;z-index:60;
+  width:46px;height:46px;border-radius:50%;border:3px solid #fff;cursor:pointer;
+  background:#4A4152;color:#fff;font-size:19px;box-shadow:0 4px 14px rgba(0,0,0,.3);
+}
+#dbg{position:absolute;inset:0;z-index:65;background:rgba(30,12,26,.6);display:none;align-items:flex-end;}
+#dbg.act{display:flex;}
+#dbg .sheet{background:#fff;width:100%;border-radius:20px 20px 0 0;padding:18px 18px 26px;}
+#dbg h3{font-size:13px;font-weight:800;margin-bottom:4px;}
+#dbg p{font-size:10px;color:var(--sub);font-weight:700;margin-bottom:10px;line-height:1.6;}
+#dbg .btn{margin-top:8px;font-size:12.5px;padding:11px;}
+
+/* ---- screens ---- */
+.scr{position:absolute;inset:52px 0 0 0;overflow-y:auto;display:none;padding:18px 16px 90px;}
+.scr.act{display:block;animation:in .28s;}
+@keyframes in{from{opacity:0;transform:translateX(18px);}to{opacity:1;transform:none;}}
+
+/* ---- shared bits ---- */
+.h1{font-size:20px;font-weight:800;line-height:1.4;margin-bottom:4px;}
+.lead{font-size:11.5px;color:var(--sub);font-weight:700;margin-bottom:14px;line-height:1.6;}
+.btn{
+  display:block;width:100%;border:none;cursor:pointer;font-family:inherit;
+  background:var(--hot);color:#fff;font-weight:800;font-size:15px;
+  padding:14px;border-radius:30px;box-shadow:0 4px 0 var(--hot-dk);margin-top:10px;
+  transition:transform .06s;
+}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--hot-dk);}
+.btn.ghost{background:#fff;color:var(--hot-dk);box-shadow:0 4px 0 #E9BED3;border:2px solid var(--hot);}
+.btn.dark{background:var(--ink);box-shadow:0 4px 0 #000;}
+.btn:disabled{background:#D8CDD5;box-shadow:0 4px 0 #BDB0BA;cursor:default;}
+
+/* ---- LP (SC-01) ---- */
+#lp{padding:0;background:
+  radial-gradient(circle at 80% 8%,rgba(255,255,255,.9),transparent 34%),
+  linear-gradient(200deg,#FFD9EA 0%,#E6D9FF 45%,#BFD9FF 100%);
+  text-align:center;inset:0;z-index:45;}
+#lp .kv{padding:64px 20px 22px;}
+#lp .anniv{font-family:Inter;font-weight:800;font-size:10px;letter-spacing:.34em;color:var(--hot-dk);}
+#lp h1{font-size:29px;font-weight:800;line-height:1.5;margin:10px 0 2px;}
+#lp h1 .x{color:var(--hot);font-family:Inter;}
+#lp .bible{
+  display:inline-block;background:var(--hot);color:#fff;font-family:Inter;font-weight:800;
+  font-size:17px;padding:7px 20px;transform:rotate(-2deg);margin:14px 0 10px;
+  box-shadow:4px 4px 0 rgba(35,31,38,.25);
+}
+#lp .copy{font-size:11px;font-weight:700;color:#7A5C74;line-height:2;margin:10px 0 4px;}
+#lp .inner{padding:0 20px 30px;}
+.packrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 4px;text-align:left;}
+.packbox{background:rgba(255,255,255,.85);border:2px solid var(--pink);border-radius:12px;padding:10px 11px;}
+.packbox b{font-family:Inter;font-size:11px;color:var(--hot-dk);}
+.packbox .sname{display:block;margin:2px 0 0;font-size:11px;font-weight:800;}
+.packbox small{font-size:9px;color:var(--sub);font-weight:700;line-height:1.5;display:block;}
+#lp .rightsnote{font-family:Inter;font-size:7.5px;color:#8A6E85;letter-spacing:.05em;line-height:1.8;margin-top:16px;}
+
+/* ---- TOP ---- */
+#top{background:
+  radial-gradient(circle at 20% 15%,rgba(255,255,255,.8),transparent 40%),
+  linear-gradient(170deg,var(--pink),var(--blue));text-align:center;}
+#top .logo{margin-top:26px;font-family:Inter;font-weight:800;font-size:11px;letter-spacing:.34em;color:var(--hot-dk);}
+#top h1{font-size:26px;font-weight:800;line-height:1.5;margin:8px 0 2px;}
+#top h1 .x{color:var(--hot);font-family:Inter;}
+#top .bible{
+  display:inline-block;background:var(--hot);color:#fff;font-family:Inter;font-weight:800;
+  font-size:15px;padding:6px 18px;transform:rotate(-2deg);margin:10px 0 12px;
+  box-shadow:4px 4px 0 rgba(35,31,38,.25);
+}
+.heartrow{font-size:18px;letter-spacing:8px;margin:2px 0 12px;}
+#top .menu{margin-top:4px;}
+.proto-note{
+  margin-top:18px;font-size:9.5px;color:#8A6E85;font-weight:700;line-height:1.7;
+  background:rgba(255,255,255,.65);border-radius:10px;padding:10px 12px;text-align:left;
+}
+
+/* ---- scan (physical cards) ---- */
+.packhead{display:flex;align-items:center;gap:8px;margin:14px 0 8px;font-size:11.5px;font-weight:800;}
+.packhead .pk{font-family:Inter;font-size:8.5px;background:var(--ink);color:#fff;border-radius:3px;padding:2px 7px;letter-spacing:.08em;}
+.packhead small{color:var(--sub);font-size:9px;font-weight:700;margin-left:auto;}
+.cardgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.pcard{
+  position:relative;border-radius:10px;padding:10px 9px 22px;cursor:pointer;
+  background:linear-gradient(150deg,#FFE3F0,#FFD1E6);
+  border:2.5px solid var(--hot);overflow:hidden;transition:transform .1s;
+}
+.pcard:active{transform:scale(.96);}
+.pcard.sp{background:linear-gradient(150deg,#FFF3D6,#FFE3A8);border-color:var(--gold);}
+.pcard::after{ /* holo shine */
+  content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.75) 45%,transparent 60%);
+  transform:translateX(-120%);animation:shine 3.4s infinite;pointer-events:none;
+}
+@keyframes shine{55%{transform:translateX(120%);}100%{transform:translateX(120%);}}
+.pcard .tag{font-family:Inter;font-size:8px;font-weight:800;letter-spacing:.1em;color:#B0387A;}
+.pcard.sp .tag{color:#9A6B10;}
+.pcard .nm{font-size:11.5px;font-weight:800;line-height:1.35;margin:2px 0 6px;min-height:30px;}
+.pcard .art{
+  height:54px;border-radius:6px;border:1.5px dashed rgba(176,56,122,.5);
+  display:flex;align-items:center;justify-content:center;font-size:26px;
+  background:rgba(255,255,255,.6);
+}
+.pcard .code{position:absolute;bottom:5px;left:9px;font-family:Inter;font-size:7.5px;font-weight:700;color:#A98BA0;letter-spacing:.06em;}
+.pcard .qr{
+  position:absolute;bottom:6px;right:7px;width:20px;height:20px;border-radius:3px;
+  background:
+   linear-gradient(#231F26,#231F26) 0 0/7px 7px no-repeat,
+   linear-gradient(#231F26,#231F26) 100% 0/7px 7px no-repeat,
+   linear-gradient(#231F26,#231F26) 0 100%/7px 7px no-repeat,
+   #fff;border:2px solid #231F26;
+}
+.pcard.used{filter:grayscale(.85);border-color:#9A8E97;}
+.usedlbl{position:absolute;top:34%;left:-6%;right:-6%;background:#5C5560;color:#fff;
+  text-align:center;font-size:11px;font-weight:800;transform:rotate(-8deg);padding:3px;z-index:2;}
+.pcard.bad{background:repeating-linear-gradient(45deg,#EEE6EC,#EEE6EC 8px,#E2D6DF 8px,#E2D6DF 16px);border-color:#9A8E97;}
+
+/* ---- scan overlay ---- */
+#scanfx{position:absolute;inset:0;z-index:50;display:none;background:rgba(20,8,18,.88);
+  align-items:center;justify-content:center;flex-direction:column;color:#fff;}
+#scanfx.act{display:flex;}
+#scanfx .frame{width:180px;height:180px;border-radius:14px;position:relative;margin-bottom:18px;
+  border:2px solid rgba(255,255,255,.35);}
+#scanfx .frame::before{content:"";position:absolute;left:8px;right:8px;height:3px;background:var(--hot);
+  border-radius:3px;animation:scanline 1s infinite alternate;box-shadow:0 0 14px var(--hot);}
+@keyframes scanline{from{top:8px;}to{top:calc(100% - 11px);}}
+#scanfx p{font-weight:800;font-size:13px;letter-spacing:.1em;}
+
+/* ---- manual input (SC-04) ---- */
+.field{margin:12px 0 6px;}
+.field label{display:block;font-size:10px;font-weight:800;color:var(--sub);letter-spacing:.08em;margin-bottom:6px;}
+.field input{
+  width:100%;border:2.5px solid var(--pink);border-radius:12px;background:#fff;
+  font-family:Inter;font-weight:800;font-size:17px;letter-spacing:.14em;text-transform:uppercase;
+  padding:13px 14px;outline:none;text-align:center;color:var(--ink);
+}
+.field input:focus{border-color:var(--hot);}
+.field input.err{border-color:#C24545;animation:shake .3s;}
+@keyframes shake{25%{transform:translateX(-5px);}75%{transform:translateX(5px);}}
+.fielderr{font-size:10px;font-weight:800;color:#C24545;min-height:16px;margin-top:6px;text-align:center;}
+.hint{background:#fff;border:2px solid var(--pink);border-radius:10px;padding:9px 11px;font-size:9.5px;color:var(--sub);font-weight:700;line-height:1.7;margin-top:12px;}
+
+/* ---- result card reveal ---- */
+.reveal{
+  margin:6px auto 12px;width:210px;border-radius:14px;padding:14px 12px;
+  background:linear-gradient(150deg,#FFE3F0,#FFD1E6);border:3px solid var(--hot);
+  text-align:center;animation:pop .45s cubic-bezier(.2,1.6,.4,1);position:relative;overflow:hidden;
+}
+.reveal.sp{background:linear-gradient(150deg,#FFF3D6,#FFE3A8);border-color:var(--gold);}
+.reveal::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.8) 45%,transparent 60%);transform:translateX(-120%);animation:shine 2.6s infinite;}
+@keyframes pop{from{transform:scale(.4) rotate(-8deg);opacity:0;}}
+.reveal .art{height:92px;border-radius:8px;background:rgba(255,255,255,.65);display:flex;align-items:center;justify-content:center;font-size:44px;margin:8px 0;}
+.reveal .nm{font-size:14px;font-weight:800;}
+.reveal .tag{font-family:Inter;font-size:8.5px;font-weight:800;letter-spacing:.12em;color:#B0387A;}
+.gain{display:flex;gap:8px;justify-content:center;margin:10px 0 2px;}
+.gain span{background:#fff;border:2px solid var(--ok);color:var(--ok);font-weight:800;font-size:11px;
+  border-radius:20px;padding:5px 12px;}
+.gain span.pr{border-color:var(--hot);color:var(--hot-dk);}
+
+/* ---- my cards ---- */
+.prog{
+  background:#fff;border-radius:12px;padding:12px 14px;border:2px solid var(--pink);margin-bottom:12px;
+}
+.prog .row{display:flex;justify-content:space-between;font-weight:800;font-size:12px;margin-bottom:6px;}
+.bar{height:10px;border-radius:6px;background:#F3E3EC;overflow:hidden;}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--hot),#FF7DB4);border-radius:6px;transition:width .4s;}
+.compbadge{margin-top:10px;background:linear-gradient(90deg,#FFF3D6,#FFE3A8);border:2px solid var(--gold);
+  border-radius:10px;padding:8px;text-align:center;font-size:11px;font-weight:800;color:#9A6B10;}
+.songsec{margin-bottom:14px;}
+.songsec h3{font-size:12px;font-weight:800;margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.songsec h3 .mus{font-family:Inter;font-size:8.5px;background:var(--ink);color:#fff;border-radius:3px;padding:2px 6px;letter-spacing:.06em;}
+.slotrow{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
+.slotrow.five{grid-template-columns:repeat(5,1fr);}
+.mini{
+  border-radius:8px;border:2px solid var(--pink);background:#fff;text-align:center;
+  padding:7px 2px;font-size:9.5px;font-weight:800;color:var(--sub);
+}
+.mini.own{border-color:var(--hot);color:var(--ink);background:linear-gradient(160deg,#FFF,#FFE9F3);}
+.mini.own.sp{border-color:var(--gold);background:linear-gradient(160deg,#FFF,#FFF3D6);}
+.mini .ic{font-size:19px;display:block;filter:grayscale(1) opacity(.35);}
+.mini.own .ic{filter:none;}
+
+/* ---- dress-up ---- */
+#chara{
+  position:relative;width:190px;height:230px;margin:2px auto 8px;
+  background:linear-gradient(180deg,#FFF0F7,#FFE0EE);border-radius:16px;border:3px solid #fff;
+  box-shadow:0 6px 18px rgba(212,14,103,.18);overflow:hidden;
+}
+#chara .stage{position:absolute;inset:auto 0 0 0;height:44px;background:repeating-linear-gradient(90deg,#F9C7DE 0 22px,#F4B7D4 22px 44px);}
+.fig{position:absolute;left:50%;transform:translateX(-50%);}
+.fig.head{top:36px;width:52px;height:52px;border-radius:50%;background:#FFDFC9;z-index:3;}
+.fig.head::before{content:"";position:absolute;left:14px;top:24px;width:5px;height:5px;border-radius:50%;background:#3A2B33;box-shadow:19px 0 0 #3A2B33;}
+.fig.head::after{content:"";position:absolute;left:22px;top:35px;width:8px;height:4px;border-radius:0 0 8px 8px;background:#E86A8F;}
+.fig.hair{top:28px;width:62px;height:26px;border-radius:31px 31px 10px 10px;z-index:4;background:#E8B4C8;transition:.25s;}
+.fig.hairback{top:40px;width:84px;height:118px;border-radius:42px 42px 30px 30px;z-index:1;background:#E8B4C8;transition:.25s;}
+.fig.body{top:84px;width:64px;height:86px;border-radius:20px 20px 14px 14px;background:#EED7E4;z-index:2;transition:.25s;}
+.fig.boots{top:162px;width:56px;height:54px;z-index:2;display:flex;gap:8px;justify-content:center;}
+.fig.boots i{width:20px;height:100%;border-radius:8px 8px 4px 4px;background:#EED7E4;transition:.25s;}
+.fig.prop{top:96px;left:76%;font-size:30px;z-index:5;transition:.25s;}
+#coordname{text-align:center;font-weight:800;font-size:11px;color:var(--hot-dk);min-height:16px;margin-bottom:8px;}
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.slot{border-radius:10px;background:#fff;border:2px solid var(--pink);padding:8px 4px;text-align:center;cursor:pointer;}
+.slot .lbl{font-family:Inter;font-size:8px;font-weight:800;letter-spacing:.14em;color:#B0387A;}
+.slot .cur{font-size:9.5px;font-weight:800;line-height:1.3;margin-top:3px;min-height:25px;}
+.slot.def .cur{color:var(--sub);}
+.slot.sel{border-color:var(--hot);box-shadow:0 0 0 2px var(--pink);}
+.pick{margin-top:10px;background:#fff;border-radius:12px;border:2px solid var(--pink);padding:10px;display:none;}
+.pick.act{display:block;}
+.pick h4{font-size:11px;font-weight:800;margin-bottom:8px;}
+.pick .opt{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;border:2px solid #F3E0EB;margin-bottom:6px;cursor:pointer;font-size:11px;font-weight:800;}
+.pick .opt small{color:var(--sub);font-size:9px;font-weight:700;margin-left:auto;}
+.pick .opt.on{border-color:var(--hot);background:#FFF0F7;}
+
+/* ---- song select ---- */
+.song{
+  display:flex;align-items:center;gap:12px;background:#fff;border:2.5px solid var(--pink);
+  border-radius:14px;padding:12px;margin-bottom:10px;cursor:pointer;position:relative;
+}
+.song.on{border-color:var(--hot);}
+.song.spsong{border-color:var(--gold);background:linear-gradient(160deg,#FFF,#FFF7E0);}
+.song .disc{width:46px;height:46px;border-radius:50%;flex:none;
+  background:conic-gradient(var(--hot),#FF9DC6,var(--hot));border:3px solid var(--ink);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-family:Inter;font-weight:800;font-size:9px;}
+.song.spsong .disc{background:conic-gradient(var(--gold),#FFF0C0,var(--gold));color:var(--ink);}
+.song .inf{flex:1;}
+.song .inf b{font-family:Inter;font-size:14px;letter-spacing:.02em;}
+.song .inf small{display:block;font-size:9.5px;color:var(--sub);font-weight:700;margin-top:2px;}
+.song .hs{font-family:Inter;font-size:9px;font-weight:800;color:var(--hot-dk);text-align:right;}
+.song.lock{filter:grayscale(.7);background:#F5EEF3;cursor:default;}
+.song.lock .disc{background:#B7ABB4;}
+.setrow{display:flex;align-items:center;gap:10px;background:#fff;border:2px solid var(--pink);border-radius:12px;padding:10px 12px;margin-top:4px;}
+.setrow label{font-size:10.5px;font-weight:800;flex:none;}
+.setrow input[type=range]{flex:1;accent-color:var(--hot);}
+.setrow output{font-family:Inter;font-size:10px;font-weight:800;color:var(--hot-dk);width:52px;text-align:right;}
+
+/* ---- how to play (SC-12) ---- */
+.howstep{display:flex;gap:10px;background:#fff;border:2px solid var(--pink);border-radius:12px;padding:11px 12px;margin-bottom:9px;}
+.howstep .no{flex:none;width:26px;height:26px;border-radius:50%;background:var(--hot);color:#fff;font-family:Inter;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;}
+.howstep .tx{font-size:11px;font-weight:700;line-height:1.6;}
+.howstep .tx b{display:block;font-size:12px;}
+.notebox{background:#FFF6E8;border:2px solid var(--gold);border-radius:12px;padding:11px 12px;font-size:10px;font-weight:700;color:#7A5C2E;line-height:1.8;margin-top:12px;}
+
+/* ---- closed (SC-14) ---- */
+#closed{text-align:center;background:linear-gradient(170deg,#EFE3EE,#D9D2E6);}
+#closed .big{font-size:44px;margin:44px 0 6px;}
+
+/* ---- modal ---- */
+#modal,#tutmodal,#pausemodal{position:absolute;inset:0;z-index:55;background:rgba(30,12,26,.55);display:none;align-items:center;justify-content:center;padding:24px;}
+#modal.act,#tutmodal.act,#pausemodal.act{display:flex;}
+.mbox{background:#fff;border-radius:16px;padding:20px 18px;width:100%;max-width:300px;text-align:center;border:3px solid var(--hot);}
+.mbox h3{font-size:15px;font-weight:800;margin-bottom:8px;}
+.mbox p{font-size:11.5px;font-weight:700;color:var(--sub);line-height:1.7;margin-bottom:4px;}
+.mbox .big{font-size:13px;color:var(--ink);}
+.mbox .big b{color:var(--hot-dk);font-family:Inter;font-size:18px;}
+.tutdots{margin:10px 0 2px;letter-spacing:6px;color:#E3C7D6;font-size:13px;}
+.tutdots .on{color:var(--hot);}
+.tutart{font-size:42px;margin:6px 0;}
+#cnt{position:absolute;inset:0;z-index:58;display:none;align-items:center;justify-content:center;
+  font-family:Inter;font-size:80px;font-weight:800;color:#fff;text-shadow:0 0 24px var(--hot);background:rgba(20,8,18,.45);}
+#cnt.act{display:flex;}
+
+/* ---- game ---- */
+#play{padding:0;background:#1C1024;overflow:hidden;}
+#gwrap{position:relative;height:100%;display:flex;flex-direction:column;}
+#gbg{position:absolute;inset:0;opacity:.5;transition:background 1s;
+  background:radial-gradient(circle at 50% 30%,#5A2450,#1C1024 70%);}
+#ghud{position:relative;z-index:3;display:flex;justify-content:space-between;align-items:center;padding:12px 14px 4px;color:#fff;}
+#ghud .sc{font-family:Inter;font-weight:800;font-size:20px;}
+#ghud .cb{font-family:Inter;font-weight:800;font-size:12px;color:#FF8FC0;text-align:right;}
+#pausebtn{border:2px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:#fff;
+  border-radius:20px;font-family:inherit;font-weight:800;font-size:11px;padding:5px 12px;cursor:pointer;margin-left:10px;}
+#gchar{position:relative;z-index:2;text-align:center;color:#FFB7D8;font-size:10px;font-weight:800;letter-spacing:.1em;}
+#gchar .avatar{width:74px;height:74px;margin:2px auto 2px;border-radius:50%;border:3px solid var(--hot);
+  background:linear-gradient(160deg,#FFE3F0,#FF9DC6);display:flex;align-items:center;justify-content:center;font-size:34px;}
+#lyric{position:relative;z-index:3;text-align:center;color:#fff;font-weight:800;font-size:13px;min-height:20px;
+  text-shadow:0 0 12px var(--hot);}
+#lanes{position:relative;flex:1;z-index:2;margin:6px 18px 0;display:flex;gap:8px;}
+.lane{flex:1;position:relative;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,45,135,.12));
+  border:1.5px solid rgba(255,141,190,.35);border-radius:10px 10px 0 0;overflow:hidden;}
+.note{position:absolute;left:8%;width:84%;height:20px;border-radius:10px;background:linear-gradient(90deg,#FF2D87,#FF7DB4);
+  box-shadow:0 0 10px rgba(255,45,135,.7);}
+#hitline{position:absolute;left:18px;right:18px;bottom:86px;height:4px;background:#fff;z-index:3;border-radius:3px;box-shadow:0 0 14px #fff;}
+#pads{position:relative;z-index:4;display:flex;gap:8px;margin:0 18px;padding:10px 0 18px;}
+.pad{flex:1;height:58px;border-radius:14px;border:2.5px solid var(--hot);background:rgba(255,45,135,.16);
+  color:#FFB7D8;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.pad:active{background:rgba(255,45,135,.5);}
+#judge{position:absolute;left:0;right:0;bottom:190px;z-index:5;text-align:center;font-family:Inter;font-weight:800;font-size:22px;pointer-events:none;opacity:0;}
+#judge.show{animation:jd .4s;}
+@keyframes jd{0%{opacity:1;transform:scale(.6);}60%{opacity:1;transform:scale(1.15);}100%{opacity:0;}}
+
+/* ---- result ---- */
+#result{text-align:center;}
+.rank{width:110px;height:110px;margin:8px auto;border-radius:50%;background:conic-gradient(var(--gold),#FFE9A8,var(--gold));
+  border:4px solid var(--ink);display:flex;align-items:center;justify-content:center;
+  font-family:Inter;font-size:52px;font-weight:800;color:var(--ink);animation:pop .5s cubic-bezier(.2,1.6,.4,1);}
+.retired{display:inline-block;background:#5C5560;color:#fff;font-size:10px;font-weight:800;border-radius:14px;padding:3px 12px;margin-bottom:4px;}
+.rstats{display:flex;justify-content:center;gap:14px;margin:8px 0 4px;font-weight:800;}
+.rstats div{background:#fff;border:2px solid var(--pink);border-radius:10px;padding:8px 14px;font-size:11px;}
+.rstats b{display:block;font-family:Inter;font-size:17px;color:var(--hot-dk);}
+.jdrow{display:flex;justify-content:center;gap:8px;margin:6px 0 2px;}
+.jdrow span{font-family:Inter;font-size:9.5px;font-weight:800;background:#fff;border:2px solid #EADCE6;border-radius:14px;padding:4px 10px;}
+.jdrow .p{color:#C79A12;}
+.jdrow .g{color:#2C9AC2;}
+.jdrow .m{color:#9A8E97;}
+.shareimg{
+  margin:12px auto;width:230px;border-radius:12px;background:linear-gradient(160deg,var(--pink),var(--blue));
+  border:3px solid #fff;box-shadow:0 6px 16px rgba(0,0,0,.15);padding:12px;text-align:center;
+}
+.shareimg .ht{font-size:10px;font-weight:800;color:var(--hot-dk);margin-top:6px;}
+.shareimg .cr{font-family:Inter;font-size:7px;color:#7A5C74;margin-top:4px;letter-spacing:.06em;}
+
+/* toast */
+#toast{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);z-index:70;
+  background:var(--ink);color:#fff;font-size:11px;font-weight:800;padding:9px 16px;border-radius:24px;
+  opacity:0;transition:.3s;pointer-events:none;white-space:nowrap;max-width:92%;}
+#toast.show{opacity:1;}
+.errbox{background:#fff;border:3px solid #C24545;border-radius:14px;padding:16px;text-align:center;margin-top:14px;}
+.errbox h3{color:#C24545;font-size:15px;margin-bottom:6px;}
+.errbox p{font-size:11px;font-weight:700;color:var(--sub);line-height:1.7;}
+</style>
+</head>
+<body>
+<div id="phone">
+  <div id="hd">
+    <button id="back" class="hide" onclick="goBack()">← 戻る</button>
+    <div class="ttl">ちゃんみな × ラブandベリー<small id="scrname">PROTOTYPE v0.2</small></div>
+    <div id="rights">🎫 <b id="rn">0</b></div>
+    <span class="scid" id="scid">SC-01</span>
+  </div>
+
+  <!-- ============ LP SC-01 ============ -->
+  <section class="scr act" id="lp" data-sc="SC-01" data-name="特設LP">
+    <div class="kv">
+      <div class="anniv">CHANMINA 10TH ANNIVERSARY</div>
+      <h1>ラブandベリー<br><span class="x">×</span> ちゃんみな</h1>
+      <div class="bible">Collect Your Bible.</div>
+      <div class="copy">かつて私たちは、カードを集めながら「なりたい自分」を信じていた。<br>一枚一枚が、お守りになる。<br>集めるほどに、世界に一つだけのバイブルが完成する。</div>
+      <div class="heartrow">💗🩵💜🩷💛</div>
+    </div>
+    <div class="inner">
+      <button class="btn" onclick="startFromLP()">START ▶</button>
+      <div class="packrow">
+        <div class="packbox"><b>PACK A</b><span class="sname">WORK HARD</span><small>ヘア／服／靴／小道具（4枚）</small></div>
+        <div class="packbox"><b>PACK B</b><span class="sname">TEST ME</span><small>ヘア／服／靴／小道具（4枚）</small></div>
+        <div class="packbox"><b>PACK C</b><span class="sname">FLIP-FLAP</span><small>ヘア／服／靴／小道具（4枚）</small></div>
+        <div class="packbox"><b>PACK D</b><span class="sname">SECRET ✨</span><small>SP衣装＋歌詞カード（5枚）</small></div>
+      </div>
+      <div style="font-size:10px;font-weight:800;color:var(--hot-dk);">各パック 2,500円（税込表記は要確認）｜2027.3.15 START・3ヶ月限定</div>
+      <div class="rightsnote">©SEGA ／ 楽曲・アーティスト表記等、権利者指定のクレジットが入ります（NFR-010）<br>本ページはプロトタイプであり、実際の商品・デザインとは異なります。</div>
+    </div>
+    <div class="cq" style="top:76px;left:16px;">CQ-13<i>裏面QR(LP用)と表面QR(登録用)の2種併存か。§5-3のURL形式なら1QRで兼用可</i></div>
+    <div class="cq" style="bottom:180px;right:14px;">CQ-01<i>パック封入は確定構成前提で表示（ランダム表記との整合要確認）</i></div>
+  </section>
+
+  <!-- ============ TOP SC-02 ============ -->
+  <section class="scr" id="top" data-sc="SC-02" data-name="ゲームTOP">
+    <div class="logo">CHANMINA 10TH ANNIVERSARY</div>
+    <h1>ラブandベリー<br><span class="x">×</span> ちゃんみな</h1>
+    <div class="bible">Collect Your Bible.</div>
+    <div class="heartrow">💗🩵💜🩷💛</div>
+    <div class="menu">
+      <button class="btn" onclick="go('scan')">カードを読み込む</button>
+      <button class="btn ghost" onclick="go('mycards')">マイカード</button>
+      <button class="btn ghost" onclick="go('dress')">着せ替えてプレイ</button>
+      <button class="btn dark" onclick="go('howto')">あそびかた</button>
+    </div>
+    <div class="proto-note">
+      ⚠️ 本プロトタイプは要件定義書 v0.3 の検証用です。QR読取はカードのタップで代替しています。楽曲音源・歌詞・実画像は権利未クリアのため、すべてダミー表現です。所持状態はlocalStorageに保存されます（左下🛠でデータ消失の再現・リセットが可能）。右下の「CQ」ボタンで未確定論点の該当箇所を表示できます。
+    </div>
+    <div class="cq" style="top:238px;left:20px;">CQ-17<i>プレイ権=購入枚数。体験量の妥当性を要確認</i></div>
+  </section>
+
+  <!-- ============ SCAN SC-03 ============ -->
+  <section class="scr" id="scan" data-sc="SC-03" data-name="カード読取">
+    <div class="h1">カードを読み込もう</div>
+    <div class="lead">カード表面のQRをスキャン（プロトタイプではタップで代替）。読込＝パーツ解放＋プレイ権+1。</div>
+    <button class="btn ghost" style="margin-bottom:2px;" onclick="go('manual')">QRが読めないとき（コード手入力）</button>
+    <div id="cardgrid"></div>
+    <div class="cq" style="top:64px;right:14px;">FR-105<i>手入力導線（SC-04）を常設</i></div>
+    <div class="cq" style="bottom:120px;left:16px;">CQ-01<i>パック封入は確定構成かランダムか</i></div>
+  </section>
+
+  <!-- ============ MANUAL SC-04 ============ -->
+  <section class="scr" id="manual" data-sc="SC-04" data-name="コード手入力">
+    <div class="h1">コードを入力</div>
+    <div class="lead">カード表面のQR横に印字された英数字コードを入力してください。</div>
+    <div class="field">
+      <label>SERIAL CODE（例：A1-7F2K）</label>
+      <input id="codein" placeholder="XX-XXXX" maxlength="7" autocomplete="off">
+      <div class="fielderr" id="codeerr"></div>
+    </div>
+    <button class="btn" id="codesubmit" onclick="submitCode()">このコードで登録する</button>
+    <div class="hint">
+      ・コードは<b>紛らわしい英字（I／L／O／U）を使わない文字種</b>で構成されています（読み間違い防止：要件定義書 §5-3）<br>
+      ・形式が正しくない場合は送信前にエラーになります（E-008／チェックサム相当）<br>
+      ・連続で失敗すると一時的に入力できなくなります（E-004／FR-107 レート制限）
+    </div>
+    <div class="cq" style="top:64px;right:14px;">FR-105/107<i>手入力＋レート制限。E-001/002/004/008 の実演</i></div>
+  </section>
+
+  <!-- ============ RESULT OF SCAN SC-05 ============ -->
+  <section class="scr" id="scanresult" data-sc="SC-05" data-name="読取結果">
+    <div id="scanok">
+      <div class="h1" style="text-align:center;">カードゲット！</div>
+      <div class="reveal" id="revealcard"></div>
+      <div class="gain"><span>👗 パーツ解放</span><span class="pr">🎫 プレイ権 +1</span></div>
+      <button class="btn" onclick="go('scan')">続けて読み込む</button>
+      <button class="btn ghost" onclick="go('dress')">着せ替えへ</button>
+      <div class="cq" style="top:104px;left:14px;">CQ-03<i>プレイ権の消費は開始時（推奨）か完走時か</i></div>
+    </div>
+    <div id="scanng" style="display:none;">
+      <div class="errbox" id="errmsg"></div>
+      <button class="btn dark" onclick="go('scan')">読取に戻る</button>
+      <div class="cq" style="top:190px;left:16px;">FR-104 / CQ-03<i>使用済コードの案内と救済フロー（CS差戻し）</i></div>
+    </div>
+  </section>
+
+  <!-- ============ MY CARDS SC-06 ============ -->
+  <section class="scr" id="mycards" data-sc="SC-06" data-name="マイカード">
+    <div class="h1">マイカード</div>
+    <div class="prog">
+      <div class="row"><span>コレクション</span><span id="colcnt">0 / 17</span></div>
+      <div class="bar"><i id="colbar" style="width:0%"></i></div>
+      <div class="row" style="margin-top:10px;"><span>残りプレイ権</span><span id="rn2" style="color:var(--hot-dk)">0</span></div>
+      <div class="compbadge" id="compbadge" style="display:none;">🏆 COMPLETE! 全17種コンプリート達成（FR-506：特典演出は検討中）</div>
+    </div>
+    <div id="collist"></div>
+    <button class="btn" onclick="go('scan')">カードを読み込む</button>
+    <div class="cq" style="top:150px;right:12px;">CQ-04<i>解放パーツは期間中保持（推奨）。データ消失時、使用済分は復元不可</i></div>
+  </section>
+
+  <!-- ============ DRESS SC-07 ============ -->
+  <section class="scr" id="dress" data-sc="SC-07" data-name="着せ替え">
+    <div id="chara">
+      <div class="stage"></div>
+      <div class="fig hairback" id="f_hairback"></div>
+      <div class="fig body" id="f_body"></div>
+      <div class="fig boots" id="f_boots"><i></i><i></i></div>
+      <div class="fig head"></div>
+      <div class="fig hair" id="f_hair"></div>
+      <div class="fig prop" id="f_prop"></div>
+    </div>
+    <div id="coordname"></div>
+    <div class="slots" id="slots"></div>
+    <div class="pick" id="pick"></div>
+    <button class="btn" onclick="go('songsel')">この姿でプレイへ ▶</button>
+    <div class="cq" style="top:70px;left:12px;">CQ-02<i>未所持はデフォルト着用で1枚から遊べる仕様（推奨）。楽曲跨ぎ自由組合せ可</i></div>
+  </section>
+
+  <!-- ============ SONG SELECT SC-08 ============ -->
+  <section class="scr" id="songsel" data-sc="SC-08" data-name="楽曲選択">
+    <div class="h1">楽曲をえらぶ</div>
+    <div class="lead">プレイ開始でプレイ権を1消費します。</div>
+    <div id="songlist"></div>
+    <div class="setrow">
+      <label>🎧 音ズレ補正</label>
+      <input type="range" id="offset" min="-200" max="200" step="10" value="0" oninput="setOffset(this.value)">
+      <output id="offsetv">0ms</output>
+    </div>
+    <div class="cq" style="top:64px;right:12px;">FR-407/408<i>音ズレ補正（Should）。難易度は単一・判定幅広め（NFR-004）</i></div>
+    <div class="cq" style="bottom:130px;left:16px;">CQ-06/07<i>歌詞演出は出版権クリア前提／使用尺は60〜90秒抜粋を推奨</i></div>
+  </section>
+
+  <!-- ============ PLAY SC-09 ============ -->
+  <section class="scr" id="play" data-sc="SC-09" data-name="ゲームプレイ">
+    <div id="gwrap">
+      <div id="gbg"></div>
+      <div id="ghud">
+        <div class="sc" id="score">0</div>
+        <div style="display:flex;align-items:center;">
+          <div class="cb"><span id="combo">0</span> COMBO</div>
+          <button id="pausebtn" onclick="pauseGame()">❚❚</button>
+        </div>
+      </div>
+      <div id="gchar"><div class="avatar" id="gavatar">💃</div><span id="gcoord"></span></div>
+      <div id="lyric">♪</div>
+      <div id="lanes">
+        <div class="lane" data-l="0"></div>
+        <div class="lane" data-l="1"></div>
+        <div class="lane" data-l="2"></div>
+      </div>
+      <div id="hitline"></div>
+      <div id="judge"></div>
+      <div id="pads">
+        <div class="pad" data-l="0">💗</div>
+        <div class="pad" data-l="1">⭐</div>
+        <div class="pad" data-l="2">🩵</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RESULT SC-10/11 ============ -->
+  <section class="scr" id="result" data-sc="SC-10/11" data-name="リザルト・シェア">
+    <div class="h1">RESULT</div>
+    <div class="retired" id="retlbl" style="display:none;">リタイア（プレイ権は返却されません：FR-406）</div>
+    <div class="rank" id="rankchip">S</div>
+    <div class="rstats">
+      <div>SCORE<b id="fscore">0</b></div>
+      <div>MAX COMBO<b id="fcombo">0</b></div>
+    </div>
+    <div class="jdrow">
+      <span class="p">PERFECT <b id="jp">0</b></span>
+      <span class="g">GOOD <b id="jg">0</b></span>
+      <span class="m">MISS <b id="jm">0</b></span>
+    </div>
+    <div class="shareimg">
+      <div style="font-weight:800;font-size:12px;" id="shcoord">—</div>
+      <div style="font-family:Inter;font-weight:800;font-size:22px;color:var(--hot-dk);" id="shscore">0</div>
+      <div class="ht">#ラブベリ #ちゃんみな</div>
+      <div class="cr">©SEGA ／ 楽曲クレジット（権利者指定表記が入ります）</div>
+    </div>
+    <button class="btn" onclick="toast('SNSシェア（モック）：X / Instagram / TikTok へ規定ハッシュタグ付きで遷移（FR-503）')">SNSでシェアする（モック）</button>
+    <button class="btn ghost" onclick="go('songsel')">もう一度プレイ</button>
+    <button class="btn dark" onclick="go('top')">TOPへ戻る</button>
+    <div class="cq" style="top:330px;left:14px;">CQ-14<i>シェア画像の権利表記・二次利用可否</i></div>
+  </section>
+
+  <!-- ============ HOW TO SC-12 ============ -->
+  <section class="scr" id="howto" data-sc="SC-12" data-name="遊び方">
+    <div class="h1">あそびかた</div>
+    <div class="lead">4ステップで「じぶんだけのバイブル」を集めよう。</div>
+    <div class="howstep"><div class="no">1</div><div class="tx"><b>📷 カードを読み込む</b>カード表面のQRをスキャン。パーツが解放されて、プレイ権も1つもらえるよ。</div></div>
+    <div class="howstep"><div class="no">2</div><div class="tx"><b>👗 着せ替える</b>ヘア・服・靴・小道具の4スロットを自由にコーディネート。1枚だけでも遊べる！（足りない部位はデフォルト衣装）</div></div>
+    <div class="howstep"><div class="no">3</div><div class="tx"><b>🎵 リズムゲーム</b>着せ替えた姿を背景に、曲に合わせてタップ！ プレイ開始でプレイ権を1つ使うよ。</div></div>
+    <div class="howstep"><div class="no">4</div><div class="tx"><b>📸 シェアする</b>リザルトのコーデ＆スコアをSNSでシェア。#ラブベリ #ちゃんみな</div></div>
+    <div class="notebox">
+      ⚠️ だいじな注意（利用規約・FAQに明記予定：NFR-011）<br>
+      ・コードは1枚につき1回だけ使えます。プレイ開始後のプレイ権は戻りません<br>
+      ・ブラウザのデータを消すと、使用済みカードのパーツは元に戻せません（未使用カードは再読込でOK）<br>
+      ・プライベートブラウズでの利用はおすすめしません
+    </div>
+    <button class="btn ghost" onclick="showTutorial(0)">チュートリアルをもう一度見る</button>
+    <div class="cq" style="top:64px;right:12px;">FR-005<i>初回チュートリアル＋常設ページ。FAQ草案は要件定義書 §13</i></div>
+  </section>
+
+  <!-- ============ CLOSED SC-14 ============ -->
+  <section class="scr" id="closed" data-sc="SC-14" data-name="提供終了">
+    <div class="big" id="closedic">🌙</div>
+    <div class="h1" id="closedttl">キャンペーンは終了しました</div>
+    <p class="lead" id="closedtx" style="margin-top:6px;"></p>
+    <button class="btn dark" onclick="periodMode='open';go('lp')">（デバッグ）提供中に戻す</button>
+    <div class="cq" style="top:70px;left:16px;">FR-003/604 / CQ-12<i>開始前・終了後の出し分け。正式期間は要確定</i></div>
+  </section>
+
+  <div id="scanfx"><div class="frame"></div><p>スキャン中…</p></div>
+
+  <!-- play-right consumption modal -->
+  <div id="modal">
+    <div class="mbox">
+      <h3>プレイ権を使用します</h3>
+      <p class="big">🎫 <b id="mrn">0</b> → <b id="mrn2">0</b></p>
+      <p>プレイ開始時にプレイ権を1消費します。<br>中断してもプレイ権は戻りません。<br><span style="font-family:Inter;font-size:9px;">［二重送信は冪等キーで防止：FR-207］</span></p>
+      <button class="btn" onclick="startGame()">プレイする！</button>
+      <button class="btn ghost" onclick="closeModal()">やめておく</button>
+    </div>
+  </div>
+
+  <!-- tutorial modal -->
+  <div id="tutmodal">
+    <div class="mbox" id="tutbox"></div>
+  </div>
+
+  <!-- pause modal -->
+  <div id="pausemodal">
+    <div class="mbox">
+      <h3>一時停止中</h3>
+      <p>リタイアしてもプレイ権は返却されません（FR-406／CQ-03）。</p>
+      <div class="setrow" style="margin-top:10px;">
+        <label>🎧 補正</label>
+        <input type="range" min="-200" max="200" step="10" value="0" id="offset2" oninput="setOffset(this.value)">
+        <output id="offsetv2">0ms</output>
+      </div>
+      <button class="btn" onclick="resumeGame()">つづける</button>
+      <button class="btn dark" onclick="retireGame()">リタイアする</button>
+    </div>
+  </div>
+  <div id="cnt"></div>
+
+  <!-- debug sheet -->
+  <div id="dbg" onclick="if(event.target===this)this.classList.remove('act')">
+    <div class="sheet">
+      <h3>🛠 デバッグメニュー（プロトタイプ専用）</h3>
+      <p>サーバー側（コード使用状態）とローカル側（解放パーツ・プレイ権）を分けて保持しています。要件 FR-203／NFR-014 の非対称性を再現できます。</p>
+      <button class="btn ghost" onclick="simulateDataLoss()">📵 ブラウザデータ消失を再現（ローカルのみ消去）</button>
+      <button class="btn ghost" onclick="simulateClosed('before')">⏳ 開始前画面を表示（SC-14）</button>
+      <button class="btn ghost" onclick="simulateClosed('after')">🌙 終了後画面を表示（SC-14）</button>
+      <button class="btn dark" onclick="fullReset()">♻️ デモを完全リセット（サーバー状態も初期化）</button>
+    </div>
+  </div>
+
+  <button id="cqbtn" onclick="document.body.classList.toggle('cqmode');this.classList.toggle('on')">CQ</button>
+  <button id="dbgbtn" onclick="document.getElementById('dbg').classList.add('act')">🛠</button>
+  <div id="toast"></div>
+</div>
+
+<script>
+/* =========== master data（要件定義書 §5-1 カード構成に準拠・全17種） =========== */
+const SONGS = {
+  WH :{name:'WORK HARD', pack:'A', hair:'#FF2D87', body:'#FF5CA3', boots:'#E5177A', prop:'🚲', coord:'ピンクシャイニー'},
+  TM :{name:'TEST ME',   pack:'B', hair:'#EFE3C8', body:'#241F2E', boots:'#141018', prop:'👁', coord:'ブラックシャイニー'},
+  FF :{name:'FLIP-FLAP', pack:'C', hair:'#F2E9DC', body:'#F5F1EA', boots:'#2B2530', prop:'📖', coord:'クールビューティ'},
+  WHS:{name:'WORK HARD -SECRET-', pack:'D', hair:'#F5C64C', body:'#E8B84B', boots:'#C9992F', prop:'👑', coord:'レインボー箔スペシャル', secret:true}
+};
+const PARTS = ['ヘア','服','靴','小道具'];
+const CARDS = [
+  {id:'A1',song:'WH', part:'ヘア',  name:'ピンクシャイニーヘア',ic:'💇‍♀️'},
+  {id:'A2',song:'WH', part:'服',    name:'ピンクシャイニーレオタード',ic:'👗'},
+  {id:'A3',song:'WH', part:'靴',    name:'ピンクシャイニーロングブーツ',ic:'👢'},
+  {id:'A4',song:'WH', part:'小道具',name:'ピンクシャイニーバイク',ic:'🚲'},
+  {id:'B1',song:'TM', part:'ヘア',  name:'プラチナシャイニーウェーブヘア',ic:'💇‍♀️'},
+  {id:'B2',song:'TM', part:'服',    name:'ブラックシャイニーロングドレス',ic:'👗'},
+  {id:'B3',song:'TM', part:'靴',    name:'ヌーディディープブラックピンヒール',ic:'👠'},
+  {id:'B4',song:'TM', part:'小道具',name:'スターライトカラコン',ic:'👁'},
+  {id:'C1',song:'FF', part:'ヘア',  name:'クールビューティヘア',ic:'💇‍♀️'},
+  {id:'C2',song:'FF', part:'服',    name:'スポーティーブラ＆ショートパンツ',ic:'🩳'},
+  {id:'C3',song:'FF', part:'靴',    name:'セクシーニーハイブーツ',ic:'👢'},
+  {id:'C4',song:'FF', part:'小道具',name:'ファッションマガジン',ic:'📖'},
+  {id:'D1',song:'WHS',part:'ヘア',  name:'レインボー箔シャイニーヘア',ic:'💇‍♀️',sp:true},
+  {id:'D2',song:'WHS',part:'服',    name:'ツアーKVスペシャルドレス',ic:'👗',sp:true},
+  {id:'D3',song:'WHS',part:'靴',    name:'レインボー箔ロングブーツ',ic:'👢',sp:true},
+  {id:'D4',song:'WHS',part:'小道具',name:'10周年アニバーサリークラウン',ic:'👑',sp:true},
+  {id:'D5',song:'WHS',part:'歌詞',  name:'歌詞カード「WORK HARD」',ic:'📜',sp:true},
+];
+/* 物理カード（デモ）：全17種＋使用済1＋対象外1。コードは §5-3 の簡略形（0/O/1/I/L不使用） */
+const PHYS = [
+  {code:'A1-7F2K',card:'A1'},{code:'A2-9Q4M',card:'A2'},{code:'A3-3R8T',card:'A3'},{code:'A4-5X2P',card:'A4'},
+  {code:'B1-2J6V',card:'B1'},{code:'B2-8W3D',card:'B2'},{code:'B3-2SED',card:'B3',preUsed:true},{code:'B4-6E9H',card:'B4'},
+  {code:'C1-4N7S',card:'C1'},{code:'C2-8KQ2',card:'C2'},{code:'C3-5TM3',card:'C3'},{code:'C4-2GX8',card:'C4'},
+  {code:'D1-9ZR4',card:'D1'},{code:'D2-3VF7',card:'D2'},{code:'D3-6HJ5',card:'D3'},{code:'D4-8PW2',card:'D4'},{code:'D5-4SK9',card:'D5'},
+  {code:'??-????',card:null,bad:true},
+];
+const PACK_LABEL = {A:'パックA｜WORK HARD',B:'パックB｜TEST ME',C:'パックC｜FLIP-FLAP',D:'パックD｜SECRET（ツアーKV連動）'};
+
+/* =========== state（localStorage永続化：FR-002相当） =========== */
+/* 「サーバー側」＝コード使用状態、「ローカル側」＝解放パーツ・プレイ権。別キーで保持し、
+   データ消失シミュレーション（FR-203）ではローカル側のみ消す。 */
+const LS_LOCAL='geki2.local', LS_SERVER='geki2.server';
+let S={}, USED=new Set();
+let periodMode='open';
+
+function defaultLocal(){
+  return {rights:0, owned:{}, equip:{'ヘア':null,'服':null,'靴':null,'小道具':null}, hs:{}, offset:0, tut:false, cur:'lp', song:null};
+}
+function loadState(){
+  try{ S=Object.assign(defaultLocal(), JSON.parse(localStorage.getItem(LS_LOCAL)||'{}')); }
+  catch(e){ S=defaultLocal(); }
+  S.cur='lp'; S.song=null;
+  try{ USED=new Set(JSON.parse(localStorage.getItem(LS_SERVER)||'null')||['B3-2SED']); }
+  catch(e){ USED=new Set(['B3-2SED']); }
+}
+function save(){
+  localStorage.setItem(LS_LOCAL, JSON.stringify({rights:S.rights,owned:S.owned,equip:S.equip,hs:S.hs,offset:S.offset,tut:S.tut}));
+  localStorage.setItem(LS_SERVER, JSON.stringify([...USED]));
+}
+loadState();
+
+const PARENT={scan:'top',manual:'scan',scanresult:'scan',mycards:'top',dress:'top',songsel:'dress',result:'top',howto:'top',closed:'lp',top:'lp'};
+
+/* =========== nav =========== */
+function go(id){
+  if(periodMode!=='open' && id!=='closed'){ id='closed'; }
+  document.getElementById(S.cur).classList.remove('act');
+  document.getElementById(id).classList.add('act');
+  S.cur=id;
+  const sec=document.getElementById(id);
+  document.getElementById('scid').textContent=sec.dataset.sc;
+  document.getElementById('scrname').textContent=sec.dataset.name;
+  document.getElementById('back').classList.toggle('hide', id==='top'||id==='play'||id==='lp'||id==='closed');
+  if(id==='scan') renderScan();
+  if(id==='manual') resetManual();
+  if(id==='mycards') renderMy();
+  if(id==='dress') renderDress();
+  if(id==='songsel') renderSongs();
+}
+function goBack(){ go(PARENT[S.cur]||'top'); }
+function startFromLP(){
+  if(!S.tut){ showTutorial(0); } else { go('top'); }
+}
+function toast(t){
+  const el=document.getElementById('toast');
+  el.textContent=t;el.classList.add('show');
+  clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2600);
+}
+function syncRights(){
+  document.getElementById('rn').textContent=S.rights;
+  const r2=document.getElementById('rn2'); if(r2) r2.textContent=S.rights;
+  document.getElementById('rights').classList.add('pulse');
+  setTimeout(()=>document.getElementById('rights').classList.remove('pulse'),500);
+  save();
+}
+
+/* =========== tutorial（FR-005） =========== */
+const TUT=[
+  {ic:'📷',ttl:'① カードを読み込もう',tx:'カード表面のQRをスキャンすると、パーツが解放されてプレイ権が1つもらえるよ。'},
+  {ic:'👗',ttl:'② 着せ替えよう',tx:'ヘア・服・靴・小道具を自由にコーデ。1枚だけでもOK！ 足りない部位はデフォルト衣装で遊べるよ。'},
+  {ic:'🎵',ttl:'③ リズムゲーム！',tx:'着せ替えた姿を背景に、曲に合わせてタップ。プレイ開始でプレイ権を1つ使うよ。結果はSNSでシェアしよう！'},
+];
+function showTutorial(i){
+  const m=document.getElementById('tutmodal'),b=document.getElementById('tutbox');
+  const t=TUT[i], last=i===TUT.length-1;
+  b.innerHTML=`<div class="tutart">${t.ic}</div><h3>${t.ttl}</h3><p>${t.tx}</p>
+    <div class="tutdots">${TUT.map((_,j)=>`<span class="${j===i?'on':''}">●</span>`).join('')}</div>
+    <button class="btn" onclick="${last?'endTutorial()':'showTutorial('+(i+1)+')'}">${last?'はじめる！':'つぎへ'}</button>`;
+  m.classList.add('act');
+}
+function endTutorial(){
+  document.getElementById('tutmodal').classList.remove('act');
+  S.tut=true;save();
+  if(S.cur==='lp') go('top');
+}
+
+/* =========== scan（SC-03） =========== */
+function renderScan(){
+  const g=document.getElementById('cardgrid');g.innerHTML='';
+  for(const pk of ['A','B','C','D']){
+    const head=document.createElement('div');head.className='packhead';
+    head.innerHTML=`<span class="pk">PACK ${pk}</span>${PACK_LABEL[pk].split('｜')[1]}<small>${pk==='D'?'SP 5枚（CQ-09/11）':'4枚'}</small>`;
+    g.appendChild(head);
+    const grid=document.createElement('div');grid.className='cardgrid';
+    PHYS.filter(p=>!p.bad&&CARDS.find(c=>c.id===p.card).id[0]===pk).forEach(p=>grid.appendChild(physCard(p)));
+    g.appendChild(grid);
+  }
+  const head=document.createElement('div');head.className='packhead';
+  head.innerHTML=`<span class="pk" style="background:#9A8E97;">?</span>対象外QR（エラー動作の確認用）`;
+  g.appendChild(head);
+  const grid=document.createElement('div');grid.className='cardgrid';
+  grid.appendChild(physCard(PHYS.find(p=>p.bad)));
+  g.appendChild(grid);
+}
+function physCard(p){
+  const d=document.createElement('div');
+  if(p.bad){
+    d.className='pcard bad';
+    d.innerHTML=`<div class="tag">UNKNOWN QR</div><div class="nm">対象外のQRコード</div><div class="art">❓</div><div class="qr"></div>`;
+  }else{
+    const c=CARDS.find(x=>x.id===p.card);
+    const isUsed=USED.has(p.code);
+    d.className='pcard'+(c.sp?' sp':'')+(isUsed?' used':'');
+    d.innerHTML=`<div class="tag">${SONGS[c.song].name}｜${c.part}</div><div class="nm">${c.name}</div><div class="art">${c.ic}</div>${isUsed?'<div class="usedlbl">使用済み</div>':''}<div class="code">${p.code}</div><div class="qr"></div>`;
+  }
+  d.onclick=()=>scanCard(p);
+  return d;
+}
+function scanCard(p){
+  const fx=document.getElementById('scanfx');fx.classList.add('act');
+  setTimeout(()=>{ fx.classList.remove('act'); resolveCode(p); },900);
+}
+function resolveCode(p){
+  const ok=document.getElementById('scanok'),ng=document.getElementById('scanng');
+  if(p.bad){
+    ok.style.display='none';ng.style.display='block';
+    document.getElementById('errmsg').innerHTML='<h3>読み取れないコードです</h3><p>本キャンペーン対象のカードではありません。<br>カード表面のQRコードをご確認ください。<br><span style="font-family:Inter;font-size:9px;">［FR-102／E-002：無効コード判定］</span></p>';
+    go('scanresult');return;
+  }
+  if(USED.has(p.code)){
+    ok.style.display='none';ng.style.display='block';
+    document.getElementById('errmsg').innerHTML='<h3>このカードは使用済みです</h3><p>このコードのプレイ権はすでに使われています。<br>お心当たりがない場合はお問い合わせください。<br><span style="font-family:Inter;font-size:9px;">［FR-104／E-001：使用済み判定。転売・譲渡カード、またはデータ消失後の再読込のケース］</span></p><button class="btn ghost" style="margin-top:10px;" onclick="toast(\'CS窓口フォームへ（モック）。管理画面から差戻し可：FR-605/606\')">お問い合わせ</button>';
+    go('scanresult');return;
+  }
+  /* 正常系：パーツ解放＋プレイ権+1（FR-103／API-02 redeem相当） */
+  const c=CARDS.find(x=>x.id===p.card);
+  const dup=!!S.owned[c.id];
+  USED.add(p.code);
+  S.owned[c.id]=true;
+  S.rights++;syncRights();
+  ok.style.display='block';ng.style.display='none';
+  const rv=document.getElementById('revealcard');
+  rv.className='reveal'+(c.sp?' sp':'');
+  rv.innerHTML=`<div class="tag">${SONGS[c.song].name}｜${c.part}カード${c.sp?'（SECRET）':''}</div><div class="art">${c.ic}</div><div class="nm">${c.name}</div>`;
+  if(dup) toast('同じパーツは解放済み。プレイ権のみ +1（FR-204）');
+  else if(c.sp) toast('✨ シークレット解放！ SECRET ver が楽曲に追加（FR-305）');
+  if(Object.keys(S.owned).length===17) setTimeout(()=>toast('🏆 全17種コンプリート！（FR-506）'),1200);
+  save();
+  go('scanresult');
+}
+
+/* =========== manual input（SC-04／FR-105/107） =========== */
+let failCount=0, lockUntil=0;
+function resetManual(){
+  document.getElementById('codein').value='';
+  document.getElementById('codeerr').textContent='';
+  document.getElementById('codein').classList.remove('err');
+}
+function submitCode(){
+  const inp=document.getElementById('codein'),err=document.getElementById('codeerr');
+  inp.classList.remove('err');err.textContent='';
+  const now=Date.now();
+  if(now<lockUntil){
+    err.textContent=`試行回数が上限に達しました。あと${Math.ceil((lockUntil-now)/1000)}秒お待ちください（E-004／FR-107）`;
+    return;
+  }
+  const v=inp.value.trim().toUpperCase();
+  /* 形式チェック＝チェックサム相当（§5-3／E-008）。API到達前に弾く */
+  if(!/^[0-9A-HJKMNP-TV-Z]{2}-[0-9A-HJKMNP-TV-Z]{4}$/.test(v)){
+    inp.classList.add('err');
+    err.textContent='コードの形式が正しくありません（E-008：チェックサム相当の事前検証）';
+    return;
+  }
+  const p=PHYS.find(x=>x.code===v&&!x.bad);
+  if(!p){
+    failCount++;
+    inp.classList.add('err');
+    if(failCount>=5){ lockUntil=now+30000; failCount=0;
+      err.textContent='連続で失敗したため30秒間ロックします（E-004／FR-107 レート制限）';
+    }else{
+      err.textContent=`存在しないコードです（E-002）。残り試行 ${5-failCount} 回でロックされます`;
+    }
+    return;
+  }
+  failCount=0;
+  resolveCode(p); /* 使用済みなら E-001 のエラー画面へ */
+}
+
+/* =========== my cards（SC-06） =========== */
+function renderMy(){
+  const n=Object.keys(S.owned).length;
+  document.getElementById('colcnt').textContent=`${n} / 17`;
+  document.getElementById('colbar').style.width=(n/17*100)+'%';
+  document.getElementById('rn2').textContent=S.rights;
+  document.getElementById('compbadge').style.display = n===17?'block':'none';
+  const wrap=document.getElementById('collist');wrap.innerHTML='';
+  for(const key of ['WH','TM','FF']){
+    const sec=document.createElement('div');sec.className='songsec';
+    sec.innerHTML=`<h3><span class="mus">♪</span>${SONGS[key].name}</h3>`;
+    const row=document.createElement('div');row.className='slotrow';
+    PARTS.forEach(pt=>{
+      const c=CARDS.find(x=>x.song===key&&x.part===pt);
+      row.innerHTML+=`<div class="mini ${S.owned[c.id]?'own':''}"><span class="ic">${c.ic}</span>${pt}</div>`;
+    });
+    sec.appendChild(row);wrap.appendChild(sec);
+  }
+  const secD=document.createElement('div');secD.className='songsec';
+  secD.innerHTML=`<h3><span class="mus" style="background:#B8860B;">SP</span>シークレット（ツアーKV連動）</h3>`;
+  const rowD=document.createElement('div');rowD.className='slotrow five';
+  CARDS.filter(c=>c.sp).forEach(c=>{
+    rowD.innerHTML+=`<div class="mini ${S.owned[c.id]?'own sp':''}"><span class="ic">${c.ic}</span>${c.part}</div>`;
+  });
+  secD.appendChild(rowD);
+  secD.innerHTML+=`<p style="font-size:9px;color:var(--sub);font-weight:700;margin-top:6px;">パックD（CQ-09：ツアーKV確定待ち／CQ-11：後追い展開の可能性）。歌詞カードは装着パーツではなく、SECRET ver の歌詞スペシャル演出を解放します（FR-305/405）</p>`;
+  wrap.appendChild(secD);
+}
+
+/* =========== dress-up（SC-07） =========== */
+let pickSlot=null;
+function renderDress(){
+  const s=document.getElementById('slots');s.innerHTML='';
+  PARTS.forEach(pt=>{
+    const eq=S.equip[pt];
+    const d=document.createElement('div');
+    d.className='slot'+(eq?'':' def')+(pickSlot===pt?' sel':'');
+    d.innerHTML=`<div class="lbl">${pt}</div><div class="cur">${eq?CARDS.find(c=>c.id===eq).name:'デフォルト'}</div>`;
+    d.onclick=()=>{pickSlot=pt;renderDress();renderPick();};
+    s.appendChild(d);
+  });
+  applyFig();
+  renderPick();
+}
+function renderPick(){
+  const p=document.getElementById('pick');
+  if(!pickSlot){p.classList.remove('act');return;}
+  const opts=CARDS.filter(c=>c.part===pickSlot&&S.owned[c.id]);
+  p.classList.add('act');
+  p.innerHTML=`<h4>${pickSlot} をえらぶ</h4>`
+   +`<div class="opt ${S.equip[pickSlot]?'':'on'}" onclick="setEq(null)">デフォルト<small>未所持でもOK（CQ-02）</small></div>`
+   +(opts.length? opts.map(c=>`<div class="opt ${S.equip[pickSlot]===c.id?'on':''}" onclick="setEq('${c.id}')">${c.ic} ${c.name}<small>${SONGS[c.song].name}</small></div>`).join('')
+     :`<p style="font-size:10px;color:var(--sub);font-weight:700;">このパーツはまだ持っていません。カードを読み込むと解放されます。</p>`);
+}
+function setEq(id){S.equip[pickSlot]=id;save();renderDress();}
+function applyFig(){
+  const get=pt=>S.equip[pt]?CARDS.find(c=>c.id===S.equip[pt]):null;
+  const hair=get('ヘア'),cloth=get('服'),boots=get('靴'),prop=get('小道具');
+  const hc = hair?SONGS[hair.song].hair:'#E8B4C8';
+  document.getElementById('f_hair').style.background=hc;
+  document.getElementById('f_hairback').style.background=hc;
+  document.getElementById('f_body').style.background=cloth?SONGS[cloth.song].body:'#EED7E4';
+  document.querySelectorAll('#f_boots i').forEach(i=>i.style.background=boots?SONGS[boots.song].boots:'#EED7E4');
+  document.getElementById('f_prop').textContent=prop?SONGS[prop.song].prop:'';
+  /* コーデ完成判定（FR-304） */
+  const songs=[hair,cloth,boots,prop].map(x=>x?x.song:null);
+  const full=songs.every(x=>x&&x===songs[0]);
+  document.getElementById('coordname').textContent=
+    full?`✨ コーデ完成！「${SONGS[songs[0]].coord}」✨`:
+    (songs.some(x=>x)?'ミックスコーデ（自由組合せ）':'デフォルトコーデ');
+}
+
+/* =========== song select（SC-08） =========== */
+function setOffset(v){
+  S.offset=+v;save();
+  ['offset','offset2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=v;});
+  ['offsetv','offsetv2'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=(v>0?'+':'')+v+'ms';});
+}
+function renderSongs(){
+  setOffset(S.offset||0);
+  const w=document.getElementById('songlist');w.innerHTML='';
+  ['WH','TM','FF'].forEach(k=>{
+    const d=document.createElement('div');d.className='song';
+    d.innerHTML=`<div class="disc">PLAY</div><div class="inf"><b>${SONGS[k].name}</b><small>60秒デモ譜面（抜粋尺想定・CQ-07）</small></div><div class="hs">HI-SCORE<br>${S.hs[k]||0}</div>`;
+    d.onclick=()=>askPlay(k);
+    w.appendChild(d);
+  });
+  const spUnlocked=CARDS.some(c=>c.sp&&S.owned[c.id]);
+  const hasLyric=S.owned['D5'];
+  const d=document.createElement('div');
+  if(spUnlocked){
+    d.className='song spsong';
+    d.innerHTML=`<div class="disc">SP</div><div class="inf"><b>WORK HARD -SECRET-</b><small>${hasLyric?'歌詞スペシャル演出つき（D5解放済）':'歌詞カード（D5）でSP歌詞演出が解放'}</small></div><div class="hs">HI-SCORE<br>${S.hs['WHS']||0}</div>`;
+    d.onclick=()=>askPlay('WHS');
+  }else{
+    d.className='song lock';
+    d.innerHTML=`<div class="disc">🔒</div><div class="inf"><b>SECRET</b><small>パックDのシークレットカード読込で解放（FR-305）</small></div>`;
+  }
+  w.appendChild(d);
+}
+function askPlay(k){
+  if(S.rights<=0){
+    toast('プレイ権がありません。カードを読み込んでください（FR-206）');
+    setTimeout(()=>go('scan'),1200);return;
+  }
+  S.song=k;
+  document.getElementById('mrn').textContent=S.rights;
+  document.getElementById('mrn2').textContent=S.rights-1;
+  document.getElementById('modal').classList.add('act');
+}
+function closeModal(){document.getElementById('modal').classList.remove('act');}
+
+/* =========== rhythm game（SC-09） =========== */
+let G=null;
+function startGame(){
+  closeModal();
+  /* FR-205：開始時にプレイ権消費（CQ-03推奨案）。FR-207：二重起動ガード */
+  if(G&&!G.end) return;
+  S.rights--;syncRights();
+  toast('プレイ権を1消費しました（開始時消費：CQ-03推奨案）');
+  document.body.classList.add('playing');
+  go('play');
+  document.getElementById('gcoord').textContent=document.getElementById('coordname').textContent||'デフォルトコーデ';
+  document.getElementById('gavatar').textContent=S.song==='WHS'?'👑':'💃';
+  document.getElementById('gbg').style.background=S.song==='WHS'
+    ?'radial-gradient(circle at 50% 30%,#7A5C10,#241C04 70%)'
+    :'radial-gradient(circle at 50% 30%,#5A2450,#1C1024 70%)';
+  const bpm=128, beat=60000/bpm, dur=60000;
+  const notes=[];let t=1600;
+  while(t<dur-2000){ notes.push({t, l:Math.floor(Math.random()*3), el:null, hit:false}); t+=beat*(Math.random()<.3?0.5:1); }
+  G={t0:performance.now(),notes,score:0,combo:0,maxc:0,end:false,dur,paused:false,pauseAt:0,cnt:{P:0,G:0,M:0}};
+  document.getElementById('score').textContent='0';
+  document.getElementById('combo').textContent='0';
+  /* ダミー歌詞（実歌詞は権利未クリアのため使用しない：CQ-06） */
+  const lyr=S.song==='WHS'&&S.owned['D5']
+    ?['✨ SP歌詞演出（歌詞カードD5で解放）','✨ タイポグラフィ強調で歌詞が舞います','✨ 出版権クリア後に実歌詞を実装（CQ-06）']
+    :['♪ （歌詞演出エリア）','♪ ここに歌詞が同期表示されます','♪ 出版権クリア後に実装（CQ-06）','♪ サビで背景が切り替わります（FR-404）'];
+  let li=0;
+  document.getElementById('lyric').textContent=lyr[0];
+  G.lyrTimer=setInterval(()=>{if(!G.paused)document.getElementById('lyric').textContent=lyr[li++%lyr.length];},3800);
+  requestAnimationFrame(loop);
+  /* 簡易ビート音（WebAudio） */
+  try{
+    G.ac=new (window.AudioContext||window.webkitAudioContext)();
+    G.beatTimer=setInterval(()=>{
+      if(G.paused)return;
+      const o=G.ac.createOscillator(),g=G.ac.createGain();
+      o.frequency.value=S.song==='WHS'?240:180;o.type='square';g.gain.value=.05;
+      o.connect(g);g.connect(G.ac.destination);o.start();o.stop(G.ac.currentTime+.05);
+    },beat);
+  }catch(e){}
+}
+const TRAVEL=1500, HITY=()=>document.getElementById('lanes').clientHeight-4;
+function loop(){
+  if(!G||G.end||G.paused)return;
+  const now=performance.now()-G.t0;
+  const lanes=document.querySelectorAll('.lane');
+  G.notes.forEach(n=>{
+    const dt=n.t-now;
+    if(dt<TRAVEL&&!n.el&&!n.hit){
+      n.el=document.createElement('div');n.el.className='note';
+      lanes[n.l].appendChild(n.el);
+    }
+    if(n.el&&!n.hit){
+      const y=(1-dt/TRAVEL)*HITY();
+      n.el.style.top=(y-10)+'px';
+      if(dt<-220){n.hit=true;n.el.remove();n.el=null;G.combo=0;G.cnt.M++;judge('MISS','#9A8E97');updHud();}
+    }
+  });
+  if(now>G.dur){endGame(false);return;}
+  requestAnimationFrame(loop);
+}
+function tap(l){
+  if(!G||G.end||G.paused)return;
+  const now=performance.now()-G.t0-S.offset; /* FR-407：補正値を判定に反映 */
+  let best=null,bd=1e9;
+  G.notes.forEach(n=>{if(!n.hit&&n.l===l){const d=Math.abs(n.t-now);if(d<bd){bd=d;best=n;}}});
+  if(best&&bd<240){
+    best.hit=true;if(best.el){best.el.remove();best.el=null;}
+    if(bd<110){G.score+=300;G.combo++;G.cnt.P++;judge('PERFECT','#FFD84C');}
+    else{G.score+=100;G.combo++;G.cnt.G++;judge('GOOD','#7DE3FF');}
+    G.maxc=Math.max(G.maxc,G.combo);updHud();
+  }
+}
+function judge(t,c){const j=document.getElementById('judge');j.textContent=t;j.style.color=c;j.classList.remove('show');void j.offsetWidth;j.classList.add('show');}
+function updHud(){document.getElementById('score').textContent=G.score;document.getElementById('combo').textContent=G.combo;}
+
+/* --- pause / resume / retire（FR-406/410） --- */
+function pauseGame(){
+  if(!G||G.end||G.paused)return;
+  G.paused=true;G.pauseAt=performance.now();
+  document.getElementById('pausemodal').classList.add('act');
+}
+function resumeGame(){
+  if(!G||!G.paused)return;
+  document.getElementById('pausemodal').classList.remove('act');
+  const c=document.getElementById('cnt');let n=3;
+  c.textContent=n;c.classList.add('act');
+  const iv=setInterval(()=>{
+    n--;
+    if(n>0){c.textContent=n;}
+    else{
+      clearInterval(iv);c.classList.remove('act');
+      G.t0+=performance.now()-G.pauseAt; /* 停止時間ぶん譜面時刻を補正 */
+      G.paused=false;
+      requestAnimationFrame(loop);
+    }
+  },700);
+}
+function retireGame(){
+  document.getElementById('pausemodal').classList.remove('act');
+  endGame(true);
+}
+document.addEventListener('visibilitychange',()=>{
+  /* FR-410：タブ切替・着信で自動一時停止 */
+  if(document.hidden&&G&&!G.end&&!G.paused) pauseGame();
+});
+
+function endGame(retired){
+  G.end=true;clearInterval(G.lyrTimer);clearInterval(G.beatTimer);
+  if(G.ac)G.ac.close();
+  document.querySelectorAll('.note').forEach(n=>n.remove());
+  S.hs[S.song]=Math.max(S.hs[S.song]||0,G.score);save();
+  const rank=retired?'—':(G.score>=7000?'S':G.score>=4500?'A':G.score>=2500?'B':'C');
+  document.getElementById('retlbl').style.display=retired?'inline-block':'none';
+  document.getElementById('rankchip').textContent=rank;
+  document.getElementById('fscore').textContent=G.score;
+  document.getElementById('fcombo').textContent=G.maxc;
+  document.getElementById('jp').textContent=G.cnt.P;
+  document.getElementById('jg').textContent=G.cnt.G;
+  document.getElementById('jm').textContent=G.cnt.M;
+  document.getElementById('shscore').textContent=G.score;
+  document.getElementById('shcoord').textContent=document.getElementById('gcoord').textContent;
+  document.body.classList.remove('playing');
+  go('result');
+}
+document.querySelectorAll('.pad').forEach(p=>{
+  const h=e=>{e.preventDefault();tap(+p.dataset.l);};
+  p.addEventListener('touchstart',h,{passive:false});
+  p.addEventListener('mousedown',h);
+});
+window.addEventListener('keydown',e=>{
+  const m={'a':0,'s':1,'d':2,'ArrowLeft':0,'ArrowDown':1,'ArrowRight':2};
+  if(m[e.key]!==undefined)tap(m[e.key]);
+});
+
+/* =========== debug（FR-203／FR-003 の再現） =========== */
+function simulateDataLoss(){
+  document.getElementById('dbg').classList.remove('act');
+  localStorage.removeItem(LS_LOCAL); /* サーバー側（USED）は残す */
+  S=defaultLocal();S.tut=true;save();
+  syncRights();
+  toast('📵 ローカルデータを消去。未使用カードは再読込で復元可、使用済みは復元不可（FR-203）');
+  go('mycards');
+}
+function fullReset(){
+  document.getElementById('dbg').classList.remove('act');
+  localStorage.removeItem(LS_LOCAL);localStorage.removeItem(LS_SERVER);
+  loadState();syncRights();
+  toast('♻️ デモを初期状態に戻しました');
+  go('lp');
+}
+function simulateClosed(mode){
+  document.getElementById('dbg').classList.remove('act');
+  periodMode=mode;
+  if(mode==='before'){
+    document.getElementById('closedic').textContent='⏳';
+    document.getElementById('closedttl').textContent='公開までもう少し！';
+    document.getElementById('closedtx').innerHTML='2027年3月15日 スタート予定です。<br>カードのご購入は発売をお待ちください。（FR-003：開始前の出し分け）';
+  }else{
+    document.getElementById('closedic').textContent='🌙';
+    document.getElementById('closedttl').textContent='キャンペーンは終了しました';
+    document.getElementById('closedtx').innerHTML='たくさんのプレイありがとうございました。<br>実施報告・アーカイブは公式サイトへ。（FR-604／期間はCQ-12で確定）';
+  }
+  go('closed');
+}
+
+/* =========== init =========== */
+syncRights();
+</script>
+</body>
+</html>

@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>ちゃんみな × ラブandベリー｜プロトタイプ v0.1</title>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --hot:#FF2D87;
+  --hot-dk:#D40E67;
+  --pink:#FFD9EA;
+  --blue:#BFD9FF;
+  --lav:#E6D9FF;
+  --cream:#FFF7FB;
+  --ink:#231F26;
+  --sub:#8A7D88;
+  --gold:#F5C64C;
+  --ok:#25B77B;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;}
+body{
+  font-family:'M PLUS Rounded 1c','Inter',sans-serif;color:var(--ink);
+  background:linear-gradient(160deg,#F2A9C9,#A9C4F2);
+  display:flex;align-items:center;justify-content:center;min-height:100vh;
+}
+/* ---- phone frame ---- */
+#phone{
+  width:min(400px,100vw);height:min(860px,100vh);
+  background:var(--cream);position:relative;overflow:hidden;
+  box-shadow:0 20px 60px rgba(60,20,50,.35);
+}
+@media(min-width:480px){#phone{border-radius:34px;border:8px solid #2A2230;height:min(820px,94vh);}}
+
+/* ---- global header ---- */
+#hd{
+  position:absolute;top:0;left:0;right:0;height:52px;z-index:40;
+  display:flex;align-items:center;gap:8px;padding:0 12px;
+  background:linear-gradient(90deg,var(--pink),var(--blue));
+  border-bottom:2px solid #fff;
+}
+#hd .ttl{font-weight:800;font-size:12px;letter-spacing:.04em;flex:1;line-height:1.2;}
+#hd .ttl small{display:block;font-family:Inter;font-size:8.5px;color:#7A5C74;font-weight:700;letter-spacing:.14em;}
+.scid{
+  font-family:Inter;font-size:9px;font-weight:800;letter-spacing:.08em;
+  background:var(--ink);color:#fff;border-radius:20px;padding:3px 9px;
+}
+#back{border:2px solid var(--ink);background:#fff;border-radius:20px;font-family:inherit;
+  font-weight:800;font-size:11px;padding:4px 10px;cursor:pointer;}
+#back.hide{visibility:hidden;}
+
+/* rights pill */
+#rights{
+  display:flex;align-items:center;gap:4px;background:#fff;border:2px solid var(--hot);
+  border-radius:20px;padding:3px 9px;font-weight:800;font-size:11px;color:var(--hot-dk);
+}
+#rights b{font-family:Inter;font-size:14px;}
+#rights.pulse{animation:pulse .5s;}
+@keyframes pulse{40%{transform:scale(1.25);}}
+
+/* ---- CQ mode ---- */
+#cqbtn{
+  position:absolute;bottom:16px;right:14px;z-index:60;
+  width:46px;height:46px;border-radius:50%;border:3px solid #fff;cursor:pointer;
+  background:var(--ink);color:var(--gold);font-family:Inter;font-weight:800;font-size:13px;
+  box-shadow:0 4px 14px rgba(0,0,0,.3);
+}
+#cqbtn.on{background:var(--gold);color:var(--ink);}
+.cq{
+  display:none;position:absolute;z-index:35;
+  background:var(--gold);color:var(--ink);border:2px solid var(--ink);
+  font-family:Inter;font-size:9px;font-weight:800;letter-spacing:.04em;
+  padding:3px 7px;border-radius:4px;box-shadow:2px 2px 0 var(--ink);
+  max-width:230px;line-height:1.45;pointer-events:none;
+}
+body.cqmode .cq{display:block;}
+body.playing #cqbtn{display:none;}
+.cq i{font-style:normal;display:block;font-family:'M PLUS Rounded 1c';font-weight:700;font-size:9px;}
+
+/* ---- screens ---- */
+.scr{position:absolute;inset:52px 0 0 0;overflow-y:auto;display:none;padding:18px 16px 90px;}
+.scr.act{display:block;animation:in .28s;}
+@keyframes in{from{opacity:0;transform:translateX(18px);}to{opacity:1;transform:none;}}
+
+/* ---- shared bits ---- */
+.h1{font-size:20px;font-weight:800;line-height:1.4;margin-bottom:4px;}
+.lead{font-size:11.5px;color:var(--sub);font-weight:700;margin-bottom:14px;line-height:1.6;}
+.btn{
+  display:block;width:100%;border:none;cursor:pointer;font-family:inherit;
+  background:var(--hot);color:#fff;font-weight:800;font-size:15px;
+  padding:14px;border-radius:30px;box-shadow:0 4px 0 var(--hot-dk);margin-top:10px;
+  transition:transform .06s;
+}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--hot-dk);}
+.btn.ghost{background:#fff;color:var(--hot-dk);box-shadow:0 4px 0 #E9BED3;border:2px solid var(--hot);}
+.btn.dark{background:var(--ink);box-shadow:0 4px 0 #000;}
+.btn:disabled{background:#D8CDD5;box-shadow:0 4px 0 #BDB0BA;cursor:default;}
+
+/* ---- TOP ---- */
+#top{background:
+  radial-gradient(circle at 20% 15%,rgba(255,255,255,.8),transparent 40%),
+  linear-gradient(170deg,var(--pink),var(--blue));text-align:center;}
+#top .logo{margin-top:34px;font-family:Inter;font-weight:800;font-size:11px;letter-spacing:.34em;color:var(--hot-dk);}
+#top h1{font-size:27px;font-weight:800;line-height:1.5;margin:8px 0 2px;}
+#top h1 .x{color:var(--hot);font-family:Inter;}
+#top .bible{
+  display:inline-block;background:var(--hot);color:#fff;font-family:Inter;font-weight:800;
+  font-size:16px;padding:6px 18px;transform:rotate(-2deg);margin:12px 0 16px;
+  box-shadow:4px 4px 0 rgba(35,31,38,.25);
+}
+.heartrow{font-size:18px;letter-spacing:8px;margin:4px 0 14px;}
+#top .menu{margin-top:6px;}
+.proto-note{
+  margin-top:22px;font-size:9.5px;color:#8A6E85;font-weight:700;line-height:1.7;
+  background:rgba(255,255,255,.65);border-radius:10px;padding:10px 12px;text-align:left;
+}
+
+/* ---- scan (physical cards) ---- */
+.cardgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px;}
+.pcard{
+  position:relative;border-radius:10px;padding:10px 9px 9px;cursor:pointer;
+  background:linear-gradient(150deg,#FFE3F0,#FFD1E6);
+  border:2.5px solid var(--hot);overflow:hidden;transition:transform .1s;
+}
+.pcard:active{transform:scale(.96);}
+.pcard::after{ /* holo shine */
+  content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.75) 45%,transparent 60%);
+  transform:translateX(-120%);animation:shine 3.4s infinite;
+}
+@keyframes shine{55%{transform:translateX(120%);}100%{transform:translateX(120%);}}
+.pcard .tag{font-family:Inter;font-size:8px;font-weight:800;letter-spacing:.1em;color:#B0387A;}
+.pcard .nm{font-size:11.5px;font-weight:800;line-height:1.35;margin:2px 0 6px;min-height:30px;}
+.pcard .art{
+  height:58px;border-radius:6px;border:1.5px dashed rgba(176,56,122,.5);
+  display:flex;align-items:center;justify-content:center;font-size:26px;
+  background:rgba(255,255,255,.6);
+}
+.pcard .qr{
+  position:absolute;bottom:7px;right:7px;width:22px;height:22px;border-radius:3px;
+  background:
+   linear-gradient(#231F26,#231F26) 0 0/8px 8px no-repeat,
+   linear-gradient(#231F26,#231F26) 100% 0/8px 8px no-repeat,
+   linear-gradient(#231F26,#231F26) 0 100%/8px 8px no-repeat,
+   #fff;border:2px solid #231F26;
+}
+.pcard.used{filter:grayscale(.85);border-color:#9A8E97;}
+.usedlbl{position:absolute;top:34%;left:-6%;right:-6%;background:#5C5560;color:#fff;
+  text-align:center;font-size:11px;font-weight:800;transform:rotate(-8deg);padding:3px;z-index:2;}
+.pcard.bad{background:repeating-linear-gradient(45deg,#EEE6EC,#EEE6EC 8px,#E2D6DF 8px,#E2D6DF 16px);border-color:#9A8E97;}
+
+/* ---- scan overlay ---- */
+#scanfx{position:absolute;inset:0;z-index:50;display:none;background:rgba(20,8,18,.88);
+  align-items:center;justify-content:center;flex-direction:column;color:#fff;}
+#scanfx.act{display:flex;}
+#scanfx .frame{width:180px;height:180px;border-radius:14px;position:relative;margin-bottom:18px;
+  border:2px solid rgba(255,255,255,.35);}
+#scanfx .frame::before{content:"";position:absolute;left:8px;right:8px;height:3px;background:var(--hot);
+  border-radius:3px;animation:scanline 1s infinite alternate;box-shadow:0 0 14px var(--hot);}
+@keyframes scanline{from{top:8px;}to{top:calc(100% - 11px);}}
+#scanfx p{font-weight:800;font-size:13px;letter-spacing:.1em;}
+
+/* ---- result card reveal ---- */
+.reveal{
+  margin:6px auto 12px;width:210px;border-radius:14px;padding:14px 12px;
+  background:linear-gradient(150deg,#FFE3F0,#FFD1E6);border:3px solid var(--hot);
+  text-align:center;animation:pop .45s cubic-bezier(.2,1.6,.4,1);position:relative;overflow:hidden;
+}
+.reveal::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.8) 45%,transparent 60%);transform:translateX(-120%);animation:shine 2.6s infinite;}
+@keyframes pop{from{transform:scale(.4) rotate(-8deg);opacity:0;}}
+.reveal .art{height:92px;border-radius:8px;background:rgba(255,255,255,.65);display:flex;align-items:center;justify-content:center;font-size:44px;margin:8px 0;}
+.reveal .nm{font-size:14px;font-weight:800;}
+.reveal .tag{font-family:Inter;font-size:8.5px;font-weight:800;letter-spacing:.12em;color:#B0387A;}
+.gain{
+  display:flex;gap:8px;justify-content:center;margin:10px 0 2px;
+}
+.gain span{background:#fff;border:2px solid var(--ok);color:var(--ok);font-weight:800;font-size:11px;
+  border-radius:20px;padding:5px 12px;}
+.gain span.pr{border-color:var(--hot);color:var(--hot-dk);}
+
+/* ---- my cards ---- */
+.prog{
+  background:#fff;border-radius:12px;padding:12px 14px;border:2px solid var(--pink);margin-bottom:12px;
+}
+.prog .row{display:flex;justify-content:space-between;font-weight:800;font-size:12px;margin-bottom:6px;}
+.bar{height:10px;border-radius:6px;background:#F3E3EC;overflow:hidden;}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--hot),#FF7DB4);border-radius:6px;transition:width .4s;}
+.songsec{margin-bottom:14px;}
+.songsec h3{font-size:12px;font-weight:800;margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.songsec h3 .mus{font-family:Inter;font-size:8.5px;background:var(--ink);color:#fff;border-radius:3px;padding:2px 6px;letter-spacing:.06em;}
+.slotrow{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
+.slotrow.five{grid-template-columns:repeat(5,1fr);}
+.mini{
+  border-radius:8px;border:2px solid var(--pink);background:#fff;text-align:center;
+  padding:7px 2px;font-size:9.5px;font-weight:800;color:var(--sub);
+}
+.mini.own{border-color:var(--hot);color:var(--ink);background:linear-gradient(160deg,#FFF,#FFE9F3);}
+.mini .ic{font-size:19px;display:block;}
+.mini.own .ic{filter:none;}
+.mini .ic{filter:grayscale(1) opacity(.35);}
+
+/* ---- dress-up ---- */
+#chara{
+  position:relative;width:190px;height:230px;margin:2px auto 8px;
+  background:linear-gradient(180deg,#FFF0F7,#FFE0EE);border-radius:16px;border:3px solid #fff;
+  box-shadow:0 6px 18px rgba(212,14,103,.18);overflow:hidden;
+}
+#chara .stage{position:absolute;inset:auto 0 0 0;height:44px;background:repeating-linear-gradient(90deg,#F9C7DE 0 22px,#F4B7D4 22px 44px);}
+.fig{position:absolute;left:50%;transform:translateX(-50%);}
+.fig.head{top:36px;width:52px;height:52px;border-radius:50%;background:#FFDFC9;z-index:3;}
+.fig.head::before{content:"";position:absolute;left:14px;top:24px;width:5px;height:5px;border-radius:50%;background:#3A2B33;box-shadow:19px 0 0 #3A2B33;}
+.fig.head::after{content:"";position:absolute;left:22px;top:35px;width:8px;height:4px;border-radius:0 0 8px 8px;background:#E86A8F;}
+.fig.hair{top:28px;width:62px;height:26px;border-radius:31px 31px 10px 10px;z-index:4;background:#E8B4C8;transition:.25s;}
+.fig.hairback{top:40px;width:84px;height:118px;border-radius:42px 42px 30px 30px;z-index:1;background:#E8B4C8;transition:.25s;}
+.fig.body{top:84px;width:64px;height:86px;border-radius:20px 20px 14px 14px;background:#EED7E4;z-index:2;transition:.25s;}
+.fig.boots{top:162px;width:56px;height:54px;z-index:2;display:flex;gap:8px;justify-content:center;}
+.fig.boots i{width:20px;height:100%;border-radius:8px 8px 4px 4px;background:#EED7E4;transition:.25s;}
+.fig.prop{top:96px;left:76%;font-size:30px;z-index:5;transition:.25s;}
+#coordname{text-align:center;font-weight:800;font-size:11px;color:var(--hot-dk);min-height:16px;margin-bottom:8px;}
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.slot{border-radius:10px;background:#fff;border:2px solid var(--pink);padding:8px 4px;text-align:center;cursor:pointer;}
+.slot .lbl{font-family:Inter;font-size:8px;font-weight:800;letter-spacing:.14em;color:#B0387A;}
+.slot .cur{font-size:9.5px;font-weight:800;line-height:1.3;margin-top:3px;min-height:25px;}
+.slot.def .cur{color:var(--sub);}
+.slot.sel{border-color:var(--hot);box-shadow:0 0 0 2px var(--pink);}
+.pick{margin-top:10px;background:#fff;border-radius:12px;border:2px solid var(--pink);padding:10px;display:none;}
+.pick.act{display:block;}
+.pick h4{font-size:11px;font-weight:800;margin-bottom:8px;}
+.pick .opt{display:flex;align-items:center;gap:8px;padding:8px;border-radius:8px;border:2px solid #F3E0EB;margin-bottom:6px;cursor:pointer;font-size:11px;font-weight:800;}
+.pick .opt small{color:var(--sub);font-size:9px;font-weight:700;margin-left:auto;}
+.pick .opt.on{border-color:var(--hot);background:#FFF0F7;}
+
+/* ---- song select ---- */
+.song{
+  display:flex;align-items:center;gap:12px;background:#fff;border:2.5px solid var(--pink);
+  border-radius:14px;padding:12px;margin-bottom:10px;cursor:pointer;position:relative;
+}
+.song.on{border-color:var(--hot);}
+.song .disc{width:46px;height:46px;border-radius:50%;flex:none;
+  background:conic-gradient(var(--hot),#FF9DC6,var(--hot));border:3px solid var(--ink);
+  display:flex;align-items:center;justify-content:center;color:#fff;font-family:Inter;font-weight:800;font-size:9px;}
+.song .inf{flex:1;}
+.song .inf b{font-family:Inter;font-size:14px;letter-spacing:.02em;}
+.song .inf small{display:block;font-size:9.5px;color:var(--sub);font-weight:700;margin-top:2px;}
+.song .hs{font-family:Inter;font-size:9px;font-weight:800;color:var(--hot-dk);text-align:right;}
+.song.lock{filter:grayscale(.7);background:#F5EEF3;cursor:default;}
+.song.lock .disc{background:#B7ABB4;}
+
+/* ---- modal ---- */
+#modal{position:absolute;inset:0;z-index:55;background:rgba(30,12,26,.55);display:none;align-items:center;justify-content:center;padding:24px;}
+#modal.act{display:flex;}
+#modal .box{background:#fff;border-radius:16px;padding:20px 18px;width:100%;max-width:300px;text-align:center;border:3px solid var(--hot);}
+#modal h3{font-size:15px;font-weight:800;margin-bottom:8px;}
+#modal p{font-size:11.5px;font-weight:700;color:var(--sub);line-height:1.7;margin-bottom:4px;}
+#modal .big{font-size:13px;color:var(--ink);}
+#modal .big b{color:var(--hot-dk);font-family:Inter;font-size:18px;}
+
+/* ---- game ---- */
+#play{padding:0;background:#1C1024;overflow:hidden;}
+#gwrap{position:relative;height:100%;display:flex;flex-direction:column;}
+#gbg{position:absolute;inset:0;opacity:.5;transition:background 1s;
+  background:radial-gradient(circle at 50% 30%,#5A2450,#1C1024 70%);}
+#ghud{position:relative;z-index:3;display:flex;justify-content:space-between;padding:12px 14px 4px;color:#fff;}
+#ghud .sc{font-family:Inter;font-weight:800;font-size:20px;}
+#ghud .cb{font-family:Inter;font-weight:800;font-size:12px;color:#FF8FC0;text-align:right;}
+#gchar{position:relative;z-index:2;text-align:center;color:#FFB7D8;font-size:10px;font-weight:800;letter-spacing:.1em;}
+#gchar .avatar{width:74px;height:74px;margin:2px auto 2px;border-radius:50%;border:3px solid var(--hot);
+  background:linear-gradient(160deg,#FFE3F0,#FF9DC6);display:flex;align-items:center;justify-content:center;font-size:34px;}
+#lyric{position:relative;z-index:3;text-align:center;color:#fff;font-weight:800;font-size:13px;min-height:20px;
+  text-shadow:0 0 12px var(--hot);}
+#lanes{position:relative;flex:1;z-index:2;margin:6px 18px 0;display:flex;gap:8px;}
+.lane{flex:1;position:relative;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,45,135,.12));
+  border:1.5px solid rgba(255,141,190,.35);border-radius:10px 10px 0 0;overflow:hidden;}
+.note{position:absolute;left:8%;width:84%;height:20px;border-radius:10px;background:linear-gradient(90deg,#FF2D87,#FF7DB4);
+  box-shadow:0 0 10px rgba(255,45,135,.7);}
+#hitline{position:absolute;left:18px;right:18px;bottom:86px;height:4px;background:#fff;z-index:3;border-radius:3px;box-shadow:0 0 14px #fff;}
+#pads{position:relative;z-index:4;display:flex;gap:8px;margin:0 18px;padding:10px 0 18px;}
+.pad{flex:1;height:58px;border-radius:14px;border:2.5px solid var(--hot);background:rgba(255,45,135,.16);
+  color:#FFB7D8;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.pad:active{background:rgba(255,45,135,.5);}
+#judge{position:absolute;left:0;right:0;bottom:190px;z-index:5;text-align:center;font-family:Inter;font-weight:800;font-size:22px;pointer-events:none;opacity:0;}
+#judge.show{animation:jd .4s;}
+@keyframes jd{0%{opacity:1;transform:scale(.6);}60%{opacity:1;transform:scale(1.15);}100%{opacity:0;}}
+
+/* ---- result ---- */
+#result{text-align:center;}
+.rank{width:110px;height:110px;margin:8px auto;border-radius:50%;background:conic-gradient(var(--gold),#FFE9A8,var(--gold));
+  border:4px solid var(--ink);display:flex;align-items:center;justify-content:center;
+  font-family:Inter;font-size:52px;font-weight:800;color:var(--ink);animation:pop .5s cubic-bezier(.2,1.6,.4,1);}
+.rstats{display:flex;justify-content:center;gap:14px;margin:8px 0 4px;font-weight:800;}
+.rstats div{background:#fff;border:2px solid var(--pink);border-radius:10px;padding:8px 14px;font-size:11px;}
+.rstats b{display:block;font-family:Inter;font-size:17px;color:var(--hot-dk);}
+.shareimg{
+  margin:12px auto;width:230px;border-radius:12px;background:linear-gradient(160deg,var(--pink),var(--blue));
+  border:3px solid #fff;box-shadow:0 6px 16px rgba(0,0,0,.15);padding:12px;text-align:center;
+}
+.shareimg .ht{font-size:10px;font-weight:800;color:var(--hot-dk);margin-top:6px;}
+.shareimg .cr{font-family:Inter;font-size:7px;color:#7A5C74;margin-top:4px;letter-spacing:.06em;}
+
+/* toast */
+#toast{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);z-index:70;
+  background:var(--ink);color:#fff;font-size:11px;font-weight:800;padding:9px 16px;border-radius:24px;
+  opacity:0;transition:.3s;pointer-events:none;white-space:nowrap;}
+#toast.show{opacity:1;}
+.errbox{background:#fff;border:3px solid #C24545;border-radius:14px;padding:16px;text-align:center;margin-top:14px;}
+.errbox h3{color:#C24545;font-size:15px;margin-bottom:6px;}
+.errbox p{font-size:11px;font-weight:700;color:var(--sub);line-height:1.7;}
+</style>
+</head>
+<body>
+<div id="phone">
+  <div id="hd">
+    <button id="back" class="hide" onclick="goBack()">← 戻る</button>
+    <div class="ttl">ちゃんみな × ラブandベリー<small id="scrname">PROTOTYPE v0.1</small></div>
+    <div id="rights">🎫 <b id="rn">0</b></div>
+    <span class="scid" id="scid">SC-02</span>
+  </div>
+
+  <!-- ============ TOP SC-02 ============ -->
+  <section class="scr act" id="top" data-sc="SC-02" data-name="ゲームTOP">
+    <div class="logo">CHANMINA 10TH ANNIVERSARY</div>
+    <h1>ラブandベリー<br><span class="x">×</span> ちゃんみな</h1>
+    <div class="bible">Collect Your Bible.</div>
+    <div class="heartrow">💗🩵💜🩷💛</div>
+    <div class="menu">
+      <button class="btn" onclick="go('scan')">カードを読み込む</button>
+      <button class="btn ghost" onclick="go('mycards')">マイカード</button>
+      <button class="btn ghost" onclick="go('dress')">着せ替えてプレイ</button>
+    </div>
+    <div class="proto-note">
+      ⚠️ 本プロトタイプは要件定義書 v0.2 の検証用です。QR読取はカードのタップで代替しています。楽曲音源・歌詞・実画像は権利未クリアのため、すべてダミー表現です。右下の「CQ」ボタンで未確定論点の該当箇所を表示できます。
+    </div>
+    <div class="cq" style="top:238px;left:20px;">CQ-17<i>プレイ権=購入枚数。体験量の妥当性を要確認</i></div>
+  </section>
+
+  <!-- ============ SCAN SC-03 ============ -->
+  <section class="scr" id="scan" data-sc="SC-03" data-name="カード読取">
+    <div class="h1">カードを読み込もう</div>
+    <div class="lead">カード表面のQRをスキャン（プロトタイプではタップで代替）。読込＝パーツ解放＋プレイ権+1。</div>
+    <div class="cardgrid" id="cardgrid"></div>
+    <div class="cq" style="top:64px;right:14px;">CQ-13<i>表QR/裏QRの2種併存で確定か</i></div>
+    <div class="cq" style="bottom:120px;left:16px;">CQ-01<i>パック封入は確定構成かランダムか</i></div>
+  </section>
+
+  <!-- ============ RESULT OF SCAN SC-05 ============ -->
+  <section class="scr" id="scanresult" data-sc="SC-05" data-name="読取結果">
+    <div id="scanok">
+      <div class="h1" style="text-align:center;">カードゲット！</div>
+      <div class="reveal" id="revealcard"></div>
+      <div class="gain"><span>👗 パーツ解放</span><span class="pr">🎫 プレイ権 +1</span></div>
+      <button class="btn" onclick="go('scan')">続けて読み込む</button>
+      <button class="btn ghost" onclick="go('dress')">着せ替えへ</button>
+      <div class="cq" style="top:104px;left:14px;">CQ-03<i>プレイ権の消費は開始時（推奨）か完走時か</i></div>
+    </div>
+    <div id="scanng" style="display:none;">
+      <div class="errbox" id="errmsg"></div>
+      <button class="btn dark" onclick="go('scan')">読取に戻る</button>
+      <div class="cq" style="top:190px;left:16px;">FR-104 / CQ-03<i>使用済コードの案内と救済フロー（CS差戻し）</i></div>
+    </div>
+  </section>
+
+  <!-- ============ MY CARDS SC-06 ============ -->
+  <section class="scr" id="mycards" data-sc="SC-06" data-name="マイカード">
+    <div class="h1">マイカード</div>
+    <div class="prog">
+      <div class="row"><span>コレクション</span><span id="colcnt">0 / 17</span></div>
+      <div class="bar"><i id="colbar" style="width:0%"></i></div>
+      <div class="row" style="margin-top:10px;"><span>残りプレイ権</span><span id="rn2" style="color:var(--hot-dk)">0</span></div>
+    </div>
+    <div id="collist"></div>
+    <button class="btn" onclick="go('scan')">カードを読み込む</button>
+    <div class="cq" style="top:150px;right:12px;">CQ-04<i>解放パーツは期間中保持（推奨）。データ消失時、使用済分は復元不可</i></div>
+  </section>
+
+  <!-- ============ DRESS SC-07 ============ -->
+  <section class="scr" id="dress" data-sc="SC-07" data-name="着せ替え">
+    <div id="chara">
+      <div class="stage"></div>
+      <div class="fig hairback" id="f_hairback"></div>
+      <div class="fig body" id="f_body"></div>
+      <div class="fig boots" id="f_boots"><i></i><i></i></div>
+      <div class="fig head"></div>
+      <div class="fig hair" id="f_hair"></div>
+      <div class="fig prop" id="f_prop"></div>
+    </div>
+    <div id="coordname"></div>
+    <div class="slots" id="slots"></div>
+    <div class="pick" id="pick"></div>
+    <button class="btn" onclick="go('songsel')">この姿でプレイへ ▶</button>
+    <div class="cq" style="top:70px;left:12px;">CQ-02<i>未所持はデフォルト着用で1枚から遊べる仕様（推奨）。楽曲跨ぎ自由組合せ可</i></div>
+  </section>
+
+  <!-- ============ SONG SELECT SC-08 ============ -->
+  <section class="scr" id="songsel" data-sc="SC-08" data-name="楽曲選択">
+    <div class="h1">楽曲をえらぶ</div>
+    <div class="lead">プレイ開始でプレイ権を1消費します。</div>
+    <div id="songlist"></div>
+    <div class="cq" style="top:64px;right:12px;">FR-408<i>難易度は単一。判定幅広め（NFR-004）</i></div>
+    <div class="cq" style="bottom:130px;left:16px;">CQ-06/07<i>歌詞演出は出版権クリア前提／使用尺は60〜90秒抜粋を推奨</i></div>
+  </section>
+
+  <!-- ============ PLAY SC-09 ============ -->
+  <section class="scr" id="play" data-sc="SC-09" data-name="ゲームプレイ">
+    <div id="gwrap">
+      <div id="gbg"></div>
+      <div id="ghud">
+        <div class="sc" id="score">0</div>
+        <div class="cb"><span id="combo">0</span> COMBO</div>
+      </div>
+      <div id="gchar"><div class="avatar" id="gavatar">💃</div><span id="gcoord"></span></div>
+      <div id="lyric">♪</div>
+      <div id="lanes">
+        <div class="lane" data-l="0"></div>
+        <div class="lane" data-l="1"></div>
+        <div class="lane" data-l="2"></div>
+      </div>
+      <div id="hitline"></div>
+      <div id="judge"></div>
+      <div id="pads">
+        <div class="pad" data-l="0">💗</div>
+        <div class="pad" data-l="1">⭐</div>
+        <div class="pad" data-l="2">🩵</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RESULT SC-10/11 ============ -->
+  <section class="scr" id="result" data-sc="SC-10/11" data-name="リザルト・シェア">
+    <div class="h1">RESULT</div>
+    <div class="rank" id="rankchip">S</div>
+    <div class="rstats">
+      <div>SCORE<b id="fscore">0</b></div>
+      <div>MAX COMBO<b id="fcombo">0</b></div>
+    </div>
+    <div class="shareimg">
+      <div style="font-weight:800;font-size:12px;" id="shcoord">—</div>
+      <div style="font-family:Inter;font-weight:800;font-size:22px;color:var(--hot-dk);" id="shscore">0</div>
+      <div class="ht">#ラブベリ #ちゃんみな</div>
+      <div class="cr">©SEGA ／ 楽曲クレジット（権利者指定表記が入ります）</div>
+    </div>
+    <button class="btn">SNSでシェアする（モック）</button>
+    <button class="btn ghost" onclick="go('songsel')">もう一度プレイ</button>
+    <button class="btn dark" onclick="go('top')">TOPへ戻る</button>
+    <div class="cq" style="top:330px;left:14px;">CQ-14<i>シェア画像の権利表記・二次利用可否</i></div>
+  </section>
+
+  <div id="scanfx"><div class="frame"></div><p>スキャン中…</p></div>
+  <div id="modal">
+    <div class="box">
+      <h3>プレイ権を使用します</h3>
+      <p class="big">🎫 <b id="mrn">0</b> → <b id="mrn2">0</b></p>
+      <p>プレイ開始時にプレイ権を1消費します。<br>中断してもプレイ権は戻りません。</p>
+      <button class="btn" onclick="startGame()">プレイする！</button>
+      <button class="btn ghost" onclick="closeModal()">やめておく</button>
+    </div>
+  </div>
+  <button id="cqbtn" onclick="document.body.classList.toggle('cqmode');this.classList.toggle('on')">CQ</button>
+  <div id="toast"></div>
+</div>
+
+<script>
+/* =========== master data（要件定義書 5-1 カード構成に準拠） =========== */
+const SONGS = {
+  WH:{name:'WORK HARD', theme:'#FF2D87', hair:'#FF2D87', body:'#FF5CA3', boots:'#E5177A', prop:'🚲', coord:'ピンクシャイニー'},
+  TM:{name:'TEST ME', theme:'#8A5CFF', hair:'#EFE3C8', body:'#241F2E', boots:'#141018', prop:'👁', coord:'ブラックシャイニー'},
+  FF:{name:'FLIP-FLAP', theme:'#4CC9F0', hair:'#F2E9DC', body:'#F5F1EA', boots:'#2B2530', prop:'📖', coord:'クールビューティ'}
+};
+const PARTS = ['ヘア','服','靴','小道具'];
+const CARDS = [
+  {id:'A1',song:'WH',part:'ヘア',  name:'ピンクシャイニーヘア',ic:'💇‍♀️'},
+  {id:'A2',song:'WH',part:'服',    name:'ピンクシャイニーレオタード',ic:'👗'},
+  {id:'A3',song:'WH',part:'靴',    name:'ピンクシャイニーロングブーツ',ic:'👢'},
+  {id:'A4',song:'WH',part:'小道具',name:'ピンクシャイニーバイク',ic:'🚲'},
+  {id:'B1',song:'TM',part:'ヘア',  name:'プラチナシャイニーウェーブヘア',ic:'💇‍♀️'},
+  {id:'B2',song:'TM',part:'服',    name:'ブラックシャイニーロングドレス',ic:'👗'},
+  {id:'B3',song:'TM',part:'靴',    name:'ヌーディディープブラックピンヒール',ic:'👠'},
+  {id:'B4',song:'TM',part:'小道具',name:'スターライトカラコン',ic:'👁'},
+  {id:'C1',song:'FF',part:'ヘア',  name:'クールビューティヘア',ic:'💇‍♀️'},
+  {id:'C2',song:'FF',part:'服',    name:'スポーティーブラ＆ショートパンツ',ic:'🩳'},
+  {id:'C3',song:'FF',part:'靴',    name:'セクシーニーハイブーツ',ic:'👢'},
+  {id:'C4',song:'FF',part:'小道具',name:'ファッションマガジン',ic:'📖'},
+];
+/* 物理カード（デモ）：パックA全4枚＋B2枚＋使用済＋無効 */
+const PHYS = [
+  {code:'WH-7F2K',card:'A1'},{code:'WH-9Q4M',card:'A2'},
+  {code:'WH-3R8T',card:'A3'},{code:'WH-5X1P',card:'A4'},
+  {code:'TM-2J6V',card:'B1'},{code:'TM-8L3D',card:'B2'},
+  {code:'TM-USED',card:'B3',used:true},
+  {code:'??-????',card:null,bad:true},
+];
+
+/* =========== state（メモリのみ・リロードでリセット） =========== */
+const S = {
+  rights:0, owned:{},           /* owned[cardId]=true */
+  usedCodes:new Set(['TM-USED']),
+  equip:{'ヘア':null,'服':null,'靴':null,'小道具':null},
+  cur:'top', song:null,
+};
+const PARENT={scan:'top',scanresult:'scan',mycards:'top',dress:'top',songsel:'dress',result:'top'};
+
+/* =========== nav =========== */
+function go(id){
+  document.getElementById(S.cur).classList.remove('act');
+  document.getElementById(id).classList.add('act');
+  S.cur=id;
+  const sec=document.getElementById(id);
+  document.getElementById('scid').textContent=sec.dataset.sc;
+  document.getElementById('scrname').textContent=sec.dataset.name;
+  document.getElementById('back').classList.toggle('hide', id==='top'||id==='play');
+  if(id==='scan') renderScan();
+  if(id==='mycards') renderMy();
+  if(id==='dress') renderDress();
+  if(id==='songsel') renderSongs();
+}
+function goBack(){ go(PARENT[S.cur]||'top'); }
+function toast(t){
+  const el=document.getElementById('toast');
+  el.textContent=t;el.classList.add('show');
+  clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2200);
+}
+function syncRights(){
+  document.getElementById('rn').textContent=S.rights;
+  const r2=document.getElementById('rn2'); if(r2) r2.textContent=S.rights;
+  document.getElementById('rights').classList.add('pulse');
+  setTimeout(()=>document.getElementById('rights').classList.remove('pulse'),500);
+}
+
+/* =========== scan =========== */
+function renderScan(){
+  const g=document.getElementById('cardgrid');g.innerHTML='';
+  PHYS.forEach((p,i)=>{
+    const c=CARDS.find(x=>x.id===p.card);
+    const d=document.createElement('div');
+    d.className='pcard'+(p.bad?' bad':'')+((p.used||S.usedCodes.has(p.code)&&!p.used)?'':'');
+    const isUsed=S.usedCodes.has(p.code);
+    if(isUsed&&!p.bad)d.classList.add('used');
+    d.innerHTML=p.bad
+      ? `<div class="tag">UNKNOWN QR</div><div class="nm">対象外のQRコード</div><div class="art">❓</div><div class="qr"></div>`
+      : `<div class="tag">${SONGS[c.song].name}</div><div class="nm">${c.name}</div><div class="art">${c.ic}</div>${isUsed?'<div class="usedlbl">使用済み</div>':''}<div class="qr"></div>`;
+    d.onclick=()=>scanCard(p);
+    g.appendChild(d);
+  });
+}
+function scanCard(p){
+  const fx=document.getElementById('scanfx');fx.classList.add('act');
+  setTimeout(()=>{
+    fx.classList.remove('act');
+    const ok=document.getElementById('scanok'),ng=document.getElementById('scanng');
+    if(p.bad){
+      ok.style.display='none';ng.style.display='block';
+      document.getElementById('errmsg').innerHTML='<h3>読み取れないコードです</h3><p>本キャンペーン対象のカードではありません。<br>カード表面のQRコードをご確認ください。<br><span style="font-family:Inter;font-size:9px;">［FR-102：無効コード判定］</span></p>';
+      go('scanresult');return;
+    }
+    if(S.usedCodes.has(p.code)){
+      ok.style.display='none';ng.style.display='block';
+      document.getElementById('errmsg').innerHTML='<h3>このカードは使用済みです</h3><p>このコードのプレイ権はすでに使われています。<br>お心当たりがない場合はお問い合わせください。<br><span style="font-family:Inter;font-size:9px;">［FR-104：使用済み判定／転売・譲渡カードのケース］</span></p><button class="btn ghost" style="margin-top:10px;" onclick="toast(\'CS窓口フォームへ（モック）\')">お問い合わせ</button>';
+      go('scanresult');return;
+    }
+    /* 正常系：パーツ解放＋プレイ権+1（FR-103） */
+    const c=CARDS.find(x=>x.id===p.card);
+    const dup=!!S.owned[c.id];
+    S.usedCodes.add(p.code);
+    S.owned[c.id]=true;
+    S.rights++;syncRights();
+    ok.style.display='block';ng.style.display='none';
+    document.getElementById('revealcard').innerHTML=
+      `<div class="tag">${SONGS[c.song].name}｜${c.part}カード</div><div class="art">${c.ic}</div><div class="nm">${c.name}</div>`;
+    if(dup) toast('同じパーツは解放済み。プレイ権のみ +1（FR-204）');
+    go('scanresult');
+  },900);
+}
+
+/* =========== my cards =========== */
+function renderMy(){
+  const n=Object.keys(S.owned).length;
+  document.getElementById('colcnt').textContent=`${n} / 17`;
+  document.getElementById('colbar').style.width=(n/17*100)+'%';
+  document.getElementById('rn2').textContent=S.rights;
+  const wrap=document.getElementById('collist');wrap.innerHTML='';
+  for(const key of ['WH','TM','FF']){
+    const sec=document.createElement('div');sec.className='songsec';
+    sec.innerHTML=`<h3><span class="mus">♪</span>${SONGS[key].name}</h3>`;
+    const row=document.createElement('div');row.className='slotrow';
+    PARTS.forEach(pt=>{
+      const c=CARDS.find(x=>x.song===key&&x.part===pt);
+      const own=S.owned[c.id];
+      row.innerHTML+=`<div class="mini ${own?'own':''}"><span class="ic">${c.ic}</span>${pt}</div>`;
+    });
+    sec.appendChild(row);wrap.appendChild(sec);
+  }
+  const secD=document.createElement('div');secD.className='songsec';
+  secD.innerHTML=`<h3><span class="mus" style="background:#7A5C74;">SP</span>シークレット（ツアーKV連動）</h3>
+  <div class="slotrow five">
+    ${['ヘア','服','靴','小道具','歌詞'].map(p=>`<div class="mini"><span class="ic">✨</span>${p}</div>`).join('')}
+  </div>
+  <p style="font-size:9px;color:var(--sub);font-weight:700;margin-top:6px;">パックD（CQ-09：ツアーKV確定待ち／CQ-11：後追い展開の可能性）— 本プロトタイプ未収録</p>`;
+  wrap.appendChild(secD);
+}
+
+/* =========== dress-up =========== */
+let pickSlot=null;
+function renderDress(){
+  const s=document.getElementById('slots');s.innerHTML='';
+  PARTS.forEach(pt=>{
+    const eq=S.equip[pt];
+    const d=document.createElement('div');
+    d.className='slot'+(eq?'':' def')+(pickSlot===pt?' sel':'');
+    d.innerHTML=`<div class="lbl">${pt}</div><div class="cur">${eq?CARDS.find(c=>c.id===eq).name:'デフォルト'}</div>`;
+    d.onclick=()=>{pickSlot=pt;renderDress();renderPick();};
+    s.appendChild(d);
+  });
+  applyFig();
+  renderPick();
+}
+function renderPick(){
+  const p=document.getElementById('pick');
+  if(!pickSlot){p.classList.remove('act');return;}
+  const opts=CARDS.filter(c=>c.part===pickSlot&&S.owned[c.id]);
+  p.classList.add('act');
+  p.innerHTML=`<h4>${pickSlot} をえらぶ</h4>`
+   +`<div class="opt ${S.equip[pickSlot]?'':'on'}" onclick="setEq(null)">デフォルト<small>未所持でもOK（CQ-02）</small></div>`
+   +(opts.length? opts.map(c=>`<div class="opt ${S.equip[pickSlot]===c.id?'on':''}" onclick="setEq('${c.id}')">${c.ic} ${c.name}<small>${SONGS[c.song].name}</small></div>`).join('')
+     :`<p style="font-size:10px;color:var(--sub);font-weight:700;">このパーツはまだ持っていません。カードを読み込むと解放されます。</p>`);
+}
+function setEq(id){S.equip[pickSlot]=id;renderDress();}
+function applyFig(){
+  const get=pt=>S.equip[pt]?CARDS.find(c=>c.id===S.equip[pt]):null;
+  const hair=get('ヘア'),cloth=get('服'),boots=get('靴'),prop=get('小道具');
+  const hc = hair?SONGS[hair.song].hair:'#E8B4C8';
+  document.getElementById('f_hair').style.background=hc;
+  document.getElementById('f_hairback').style.background=hc;
+  document.getElementById('f_body').style.background=cloth?SONGS[cloth.song].body:'#EED7E4';
+  document.querySelectorAll('#f_boots i').forEach(i=>i.style.background=boots?SONGS[boots.song].boots:'#EED7E4');
+  document.getElementById('f_prop').textContent=prop?SONGS[prop.song].prop:'';
+  /* コーデ完成判定（FR-304） */
+  const songs=[hair,cloth,boots,prop].map(x=>x?x.song:null);
+  const full=songs.every(x=>x&&x===songs[0]);
+  document.getElementById('coordname').textContent=
+    full?`✨ コーデ完成！「${SONGS[songs[0]].coord}」✨`:
+    (songs.some(x=>x)?'ミックスコーデ（自由組合せ）':'デフォルトコーデ');
+}
+
+/* =========== song select & play-right consumption =========== */
+function renderSongs(){
+  const w=document.getElementById('songlist');w.innerHTML='';
+  [['WH','#FF2D87'],['TM','#8A5CFF'],['FF','#4CC9F0']].forEach(([k])=>{
+    const d=document.createElement('div');d.className='song';
+    d.innerHTML=`<div class="disc">PLAY</div><div class="inf"><b>${SONGS[k].name}</b><small>60秒デモ譜面（抜粋尺想定・CQ-07）</small></div><div class="hs">HI-SCORE<br>${S['hs_'+k]||0}</div>`;
+    d.onclick=()=>askPlay(k);
+    w.appendChild(d);
+  });
+  const lk=document.createElement('div');lk.className='song lock';
+  lk.innerHTML=`<div class="disc">🔒</div><div class="inf"><b>SECRET</b><small>シークレットカード読込で解放（FR-305／パックD未収録）</small></div>`;
+  w.appendChild(lk);
+}
+function askPlay(k){
+  if(S.rights<=0){
+    toast('プレイ権がありません。カードを読み込んでください（FR-206）');
+    setTimeout(()=>go('scan'),1200);return;
+  }
+  S.song=k;
+  document.getElementById('mrn').textContent=S.rights;
+  document.getElementById('mrn2').textContent=S.rights-1;
+  document.getElementById('modal').classList.add('act');
+}
+function closeModal(){document.getElementById('modal').classList.remove('act');}
+
+/* =========== rhythm game =========== */
+let G=null;
+function startGame(){
+  closeModal();
+  /* FR-205：開始時にプレイ権消費（CQ-03推奨案） */
+  S.rights--;syncRights();
+  toast('プレイ権を1消費しました（開始時消費：CQ-03推奨案）');
+  document.body.classList.add('playing');
+  go('play');
+  const eqNames=Object.values(S.equip).filter(Boolean).length;
+  document.getElementById('gcoord').textContent=document.getElementById('coordname').textContent||'デフォルトコーデ';
+  document.getElementById('gavatar').textContent='💃';
+  const bpm=128, beat=60000/bpm, dur=60000;
+  const notes=[];let t=1600;
+  while(t<dur-2000){ notes.push({t, l:Math.floor(Math.random()*3), el:null, hit:false}); t+=beat*(Math.random()<.3?0.5:1); }
+  G={t0:performance.now(),notes,score:0,combo:0,maxc:0,end:false,dur};
+  document.getElementById('score').textContent='0';
+  document.getElementById('combo').textContent='0';
+  /* ダミー歌詞（実歌詞は権利未クリアのため使用しない） */
+  const lyr=['♪ （歌詞演出エリア）','♪ ここに歌詞が同期表示されます','♪ 出版権クリア後に実装（CQ-06）','♪ サビで背景が切り替わります（FR-404）'];
+  let li=0;
+  G.lyrTimer=setInterval(()=>{document.getElementById('lyric').textContent=lyr[li++%lyr.length];},3800);
+  /* サビ想定の背景切替 */
+  G.bgTimer=setTimeout(()=>{document.getElementById('gbg').style.background='radial-gradient(circle at 50% 30%,#8A1B5E,#2A0C22 70%)';},28000);
+  requestAnimationFrame(loop);
+  /* 簡易ビート音（WebAudio） */
+  try{
+    G.ac=new (window.AudioContext||window.webkitAudioContext)();
+    G.beatTimer=setInterval(()=>{
+      const o=G.ac.createOscillator(),g=G.ac.createGain();
+      o.frequency.value=180;o.type='square';g.gain.value=.05;
+      o.connect(g);g.connect(G.ac.destination);o.start();o.stop(G.ac.currentTime+.05);
+    },beat);
+  }catch(e){}
+}
+const TRAVEL=1500, HITY=()=>document.getElementById('lanes').clientHeight-4;
+function loop(){
+  if(!G||G.end)return;
+  const now=performance.now()-G.t0;
+  const lanes=document.querySelectorAll('.lane');
+  G.notes.forEach(n=>{
+    const dt=n.t-now;
+    if(dt<TRAVEL&&!n.el&&!n.hit){
+      n.el=document.createElement('div');n.el.className='note';
+      lanes[n.l].appendChild(n.el);
+    }
+    if(n.el&&!n.hit){
+      const y=(1-dt/TRAVEL)*HITY();
+      n.el.style.top=(y-10)+'px';
+      if(dt<-220){n.hit=true;n.el.remove();n.el=null;G.combo=0;judge('MISS','#9A8E97');updHud();}
+    }
+  });
+  if(now>G.dur){endGame();return;}
+  requestAnimationFrame(loop);
+}
+function tap(l){
+  if(!G||G.end)return;
+  const now=performance.now()-G.t0;
+  let best=null,bd=1e9;
+  G.notes.forEach(n=>{if(!n.hit&&n.l===l){const d=Math.abs(n.t-now);if(d<bd){bd=d;best=n;}}});
+  if(best&&bd<240){
+    best.hit=true;if(best.el){best.el.remove();best.el=null;}
+    if(bd<110){G.score+=300;G.combo++;judge('PERFECT','#FFD84C');}
+    else{G.score+=100;G.combo++;judge('GOOD','#7DE3FF');}
+    G.maxc=Math.max(G.maxc,G.combo);updHud();
+  }
+}
+function judge(t,c){const j=document.getElementById('judge');j.textContent=t;j.style.color=c;j.classList.remove('show');void j.offsetWidth;j.classList.add('show');}
+function updHud(){document.getElementById('score').textContent=G.score;document.getElementById('combo').textContent=G.combo;}
+function endGame(){
+  G.end=true;clearInterval(G.lyrTimer);clearInterval(G.beatTimer);clearTimeout(G.bgTimer);
+  if(G.ac)G.ac.close();
+  document.querySelectorAll('.note').forEach(n=>n.remove());
+  const k='hs_'+S.song;S[k]=Math.max(S[k]||0,G.score);
+  const rank=G.score>=7000?'S':G.score>=4500?'A':G.score>=2500?'B':'C';
+  document.getElementById('rankchip').textContent=rank;
+  document.getElementById('fscore').textContent=G.score;
+  document.getElementById('fcombo').textContent=G.maxc;
+  document.getElementById('shscore').textContent=G.score;
+  document.getElementById('shcoord').textContent=document.getElementById('gcoord').textContent;
+  document.body.classList.remove('playing');
+  go('result');
+}
+document.querySelectorAll('.pad').forEach(p=>{
+  const h=e=>{e.preventDefault();tap(+p.dataset.l);};
+  p.addEventListener('touchstart',h,{passive:false});
+  p.addEventListener('mousedown',h);
+});
+window.addEventListener('keydown',e=>{
+  const m={'a':0,'s':1,'d':2,'ArrowLeft':0,'ArrowDown':1,'ArrowRight':2};
+  if(m[e.key]!==undefined)tap(m[e.key]);
+});
+syncRights();
+</script>
+</body>
+</html>
