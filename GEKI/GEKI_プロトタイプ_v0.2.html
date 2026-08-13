@@ -2,7 +2,12 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="コラボゲーム">
+<meta name="theme-color" content="#FFD9EA">
 <title>コラボWEBミニゲーム プロトタイプ</title>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
@@ -19,23 +24,29 @@
   --ok:#25B77B;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{height:100%;}
+html,body{height:100%;overscroll-behavior:none;}
 body{
   font-family:'M PLUS Rounded 1c','Inter',sans-serif;color:var(--ink);
   background:linear-gradient(160deg,#F2A9C9,#A9C4F2);
-  display:flex;align-items:center;justify-content:center;min-height:100vh;
+  position:fixed;inset:0;overflow:hidden;                /* スマホ：スクロールバウンス防止＋実表示領域に追従 */
+  display:flex;align-items:center;justify-content:center;
+  touch-action:manipulation;                              /* ダブルタップズーム抑止 */
 }
-/* ---- phone frame ---- */
+/* ---- game fills the screen (mobile-first). PCのみ端末フレーム付きプレビュー ---- */
 #phone{
-  width:min(400px,100vw);height:min(860px,100vh);
+  width:100%;height:100%;
   background:var(--cream);position:relative;overflow:hidden;
   box-shadow:0 20px 60px rgba(60,20,50,.35);
 }
-@media(min-width:480px){#phone{border-radius:34px;border:8px solid #2A2230;height:min(820px,94vh);}}
+@media(min-width:480px) and (min-height:600px){
+  #phone{width:min(400px,100vw);height:min(820px,94vh);border-radius:34px;border:8px solid #2A2230;}
+}
 
 /* ---- global header ---- */
 #hd{
-  position:absolute;top:0;left:0;right:0;height:52px;z-index:40;
+  position:absolute;top:0;left:0;right:0;z-index:40;
+  height:calc(52px + env(safe-area-inset-top,0px));
+  padding-top:env(safe-area-inset-top,0px);
   display:flex;align-items:center;gap:8px;padding:0 12px;
   background:linear-gradient(90deg,var(--pink),var(--blue));
   border-bottom:2px solid #fff;
@@ -61,7 +72,7 @@ body{
 
 /* ---- CQ mode ---- */
 #cqbtn{
-  position:absolute;bottom:16px;right:14px;z-index:60;
+  position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));right:14px;z-index:60;
   width:46px;height:46px;border-radius:50%;border:3px solid #fff;cursor:pointer;
   background:var(--ink);color:var(--gold);font-family:Inter;font-weight:800;font-size:13px;
   box-shadow:0 4px 14px rgba(0,0,0,.3);
@@ -80,19 +91,19 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
 
 /* ---- debug ---- */
 #dbgbtn{
-  position:absolute;bottom:16px;left:14px;z-index:60;
+  position:absolute;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:14px;z-index:60;
   width:46px;height:46px;border-radius:50%;border:3px solid #fff;cursor:pointer;
   background:#4A4152;color:#fff;font-size:19px;box-shadow:0 4px 14px rgba(0,0,0,.3);
 }
 #dbg{position:absolute;inset:0;z-index:65;background:rgba(30,12,26,.6);display:none;align-items:flex-end;}
 #dbg.act{display:flex;}
-#dbg .sheet{background:#fff;width:100%;border-radius:20px 20px 0 0;padding:18px 18px 26px;}
+#dbg .sheet{background:#fff;width:100%;border-radius:20px 20px 0 0;padding:18px 18px calc(26px + env(safe-area-inset-bottom,0px));}
 #dbg h3{font-size:13px;font-weight:800;margin-bottom:4px;}
 #dbg p{font-size:10px;color:var(--sub);font-weight:700;margin-bottom:10px;line-height:1.6;}
 #dbg .btn{margin-top:8px;font-size:12.5px;padding:11px;}
 
 /* ---- screens ---- */
-.scr{position:absolute;inset:52px 0 0 0;overflow-y:auto;display:none;padding:18px 16px 90px;}
+.scr{position:absolute;inset:calc(52px + env(safe-area-inset-top,0px)) 0 0 0;overflow-y:auto;display:none;padding:18px 16px calc(90px + env(safe-area-inset-bottom,0px));}
 .scr.act{display:block;animation:in .28s;}
 @keyframes in{from{opacity:0;transform:translateX(18px);}to{opacity:1;transform:none;}}
 
@@ -115,7 +126,7 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
   radial-gradient(circle at 80% 8%,rgba(255,255,255,.9),transparent 34%),
   linear-gradient(200deg,#FFD9EA 0%,#E6D9FF 45%,#BFD9FF 100%);
   text-align:center;inset:0;z-index:45;}
-#lp .kv{padding:64px 20px 22px;}
+#lp .kv{padding:calc(64px + env(safe-area-inset-top,0px)) 20px 22px;}
 #lp .anniv{font-family:Inter;font-weight:800;font-size:10px;letter-spacing:.34em;color:var(--hot-dk);}
 #lp h1{font-size:29px;font-weight:800;line-height:1.5;margin:10px 0 2px;}
 #lp h1 .x{color:var(--hot);font-family:Inter;}
@@ -125,7 +136,7 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
   box-shadow:4px 4px 0 rgba(35,31,38,.25);
 }
 #lp .copy{font-size:11px;font-weight:700;color:#7A5C74;line-height:2;margin:10px 0 4px;}
-#lp .inner{padding:0 20px 30px;}
+#lp .inner{padding:0 20px calc(30px + env(safe-area-inset-bottom,0px));}
 .packrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 4px;text-align:left;}
 .packbox{background:rgba(255,255,255,.85);border:2px solid var(--pink);border-radius:12px;padding:10px 11px;}
 .packbox b{font-family:Inter;font-size:11px;color:var(--hot-dk);}
@@ -409,8 +420,8 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
   border:1.5px solid rgba(255,141,190,.35);border-radius:10px 10px 0 0;overflow:hidden;}
 .note{position:absolute;left:8%;width:84%;height:20px;border-radius:10px;background:linear-gradient(90deg,#FF2D87,#FF7DB4);
   box-shadow:0 0 10px rgba(255,45,135,.7);}
-#hitline{position:absolute;left:18px;right:18px;bottom:86px;height:4px;background:#fff;z-index:3;border-radius:3px;box-shadow:0 0 14px #fff;}
-#pads{position:relative;z-index:4;display:flex;gap:8px;margin:0 18px;padding:10px 0 18px;}
+#hitline{position:absolute;left:18px;right:18px;bottom:calc(86px + env(safe-area-inset-bottom,0px));height:4px;background:#fff;z-index:3;border-radius:3px;box-shadow:0 0 14px #fff;}
+#pads{position:relative;z-index:4;display:flex;gap:8px;margin:0 18px;padding:10px 0 calc(18px + env(safe-area-inset-bottom,0px));}
 .pad{flex:1;height:58px;border-radius:14px;border:2.5px solid var(--hot);background:rgba(255,45,135,.16);
   color:#FFB7D8;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
 .pad:active{background:rgba(255,45,135,.5);}
@@ -440,7 +451,7 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
 .shareimg .cr{font-family:Inter;font-size:7px;color:#7A5C74;margin-top:4px;letter-spacing:.06em;}
 
 /* toast */
-#toast{position:absolute;left:50%;bottom:78px;transform:translateX(-50%);z-index:70;
+#toast{position:absolute;left:50%;bottom:calc(78px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:70;
   background:var(--ink);color:#fff;font-size:11px;font-weight:800;padding:9px 16px;border-radius:24px;
   opacity:0;transition:.3s;pointer-events:none;white-space:nowrap;max-width:92%;}
 #toast.show{opacity:1;}
@@ -453,7 +464,7 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
 <div id="phone">
   <div id="hd">
     <button id="back" class="hide" onclick="goBack()">← 戻る</button>
-    <div class="ttl">コラボWEBミニゲーム（仮）<small id="scrname">PROTOTYPE v0.2.2</small></div>
+    <div class="ttl">コラボWEBミニゲーム（仮）<small id="scrname">PROTOTYPE v0.2.3</small></div>
     <div id="rights">🎫 <b id="rn">0</b></div>
     <span class="scid" id="scid">SC-01</span>
   </div>
