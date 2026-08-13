@@ -143,11 +143,16 @@ export interface EntityCreateOp {
   data: EntityData;
 }
 
-/** Shallow merge patch of the entity data (top-level keys). */
+/**
+ * Patch of the entity data. Default is a shallow merge of top-level keys;
+ * `replace: true` substitutes the whole payload (used by compensating
+ * transactions to restore an exact prior state).
+ */
 export interface EntityUpdateOp {
   op: 'entity.update';
   id: SemanticId;
   patch: Record<string, unknown>;
+  replace?: boolean;
 }
 
 export interface EntityDeleteOp {
