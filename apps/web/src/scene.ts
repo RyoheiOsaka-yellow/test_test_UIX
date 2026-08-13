@@ -6,9 +6,11 @@ import {
   CSS2DRenderer,
 } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import {
+  halfBreadthAt,
   verticalInShip,
   type Entity,
   type HullEntityData,
+  type Station,
   type TankEntityData,
   type VesselEntityData,
 } from '@dock/shared';
@@ -25,6 +27,16 @@ export interface TankBox {
 }
 
 export type GizmoMode = 'off' | 'translate' | 'scale';
+
+export type ViewPreset = 'iso' | 'side' | 'front' | 'top';
+
+export interface LayerVisibility {
+  hull: boolean;
+  frames: boolean;
+  tanks: boolean;
+  labels: boolean;
+  water: boolean;
+}
 
 /** Attitude of the free-surface plane, as solved by the L1 engine. */
 export interface WaterAttitude {
@@ -77,7 +89,21 @@ export class DockScene {
   private disposed = false;
   private lpp = 100;
   private depth = 12;
+  private beam = 20;
   private attitude: WaterAttitude = { heelDeg: 0, trimDeg: 0, waterlineConstant: 0 };
+  private hullStations: Station[] = [];
+  private layers: LayerVisibility = {
+    hull: true,
+    frames: true,
+    tanks: true,
+    labels: true,
+    water: true,
+  };
+  private clipX: number | null = null;
+  private clipPlane = new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0);
+  private clippableMaterials: THREE.Material[] = [];
+  private frameObjects: THREE.Object3D[] = [];
+  private sectionOutline: THREE.Object3D | null = null;
 
   // --- drag editing ---
   private gizmo: TransformControls;
@@ -97,6 +123,7 @@ export class DockScene {
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setClearColor(0x0f1722);
+    this.renderer.localClippingEnabled = true;
     container.appendChild(this.renderer.domElement);
 
     this.labelRenderer = new CSS2DRenderer();
@@ -219,13 +246,17 @@ export class DockScene {
     this.clearGroup(this.hullGroup);
     this.clearGroup(this.tankGroup);
     this.tanks.clear();
+    this.clippableMaterials = [];
+    this.frameObjects = [];
 
     const vessel = entities.find((e) => e.kind === 'vessel')?.data as VesselEntityData | undefined;
     const hull = entities.find((e) => e.kind === 'hull')?.data as HullEntityData | undefined;
     if (vessel) {
       this.lpp = vessel.principal.lpp;
       this.depth = vessel.principal.depth;
+      this.beam = vessel.principal.beam;
     }
+    this.hullStations = hull?.geometry.stations ?? [];
 
     if (hull) {
       const { surface, stationLines, deckLine } = buildHullGeometry(hull.geometry);
@@ -238,22 +269,31 @@ export class DockScene {
         side: THREE.DoubleSide,
         depthWrite: false,
       });
+      this.clippableMaterials.push(shellMat);
       const mesh = new THREE.Mesh(surface, shellMat);
       mesh.renderOrder = 2;
+      mesh.userData.layer = 'hull';
       this.hullGroup.add(mesh);
 
-      this.hullGroup.add(
-        new THREE.LineSegments(
-          stationLines,
-          new THREE.LineBasicMaterial({ color: 0x5d6b82, transparent: true, opacity: 0.55 }),
-        ),
-      );
-      this.hullGroup.add(
-        new THREE.LineSegments(
-          deckLine,
-          new THREE.LineBasicMaterial({ color: 0x9fb2cc, transparent: true, opacity: 0.9 }),
-        ),
-      );
+      const frameMat = new THREE.LineBasicMaterial({
+        color: 0x5d6b82,
+        transparent: true,
+        opacity: 0.55,
+      });
+      this.clippableMaterials.push(frameMat);
+      const frames = new THREE.LineSegments(stationLines, frameMat);
+      this.frameObjects.push(frames);
+      this.hullGroup.add(frames);
+
+      const deckMat = new THREE.LineBasicMaterial({
+        color: 0x9fb2cc,
+        transparent: true,
+        opacity: 0.9,
+      });
+      this.clippableMaterials.push(deckMat);
+      const deck = new THREE.LineSegments(deckLine, deckMat);
+      deck.userData.layer = 'hull';
+      this.hullGroup.add(deck);
 
       // baseline + perpendicular ticks
       const marks = new THREE.BufferGeometry().setFromPoints([
@@ -277,6 +317,97 @@ export class DockScene {
     this.buildWater();
     this.applySelection();
     this.syncGizmo();
+    this.applyLayers();
+    this.applyClip();
+  }
+
+  // -------------------------------------------------------------------------
+  // Layers, clip section, view presets
+  // -------------------------------------------------------------------------
+
+  setVisibility(patch: Partial<LayerVisibility>): void {
+    this.layers = { ...this.layers, ...patch };
+    this.applyLayers();
+  }
+
+  private applyLayers(): void {
+    for (const obj of this.hullGroup.children) {
+      if (obj.userData.layer === 'hull') obj.visible = this.layers.hull;
+    }
+    for (const f of this.frameObjects) f.visible = this.layers.frames;
+    this.tankGroup.visible = this.layers.tanks;
+    this.labelRenderer.domElement.style.display = this.layers.labels ? '' : 'none';
+    if (this.water) this.water.visible = this.layers.water;
+    if (this.waterGrid) this.waterGrid.visible = this.layers.water;
+  }
+
+  /** Longitudinal clip: keep the part aft of x, and outline the cut section. */
+  setClipX(x: number | null): void {
+    this.clipX = x;
+    this.applyClip();
+  }
+
+  private applyClip(): void {
+    if (this.sectionOutline) {
+      this.shipRoot.remove(this.sectionOutline);
+      this.sectionOutline = null;
+    }
+    const x = this.clipX;
+    if (x === null) {
+      for (const m of this.clippableMaterials) m.clippingPlanes = null;
+      return;
+    }
+    // the plane lives on the ship, so transform it with the ship's attitude
+    this.clipPlane.set(new THREE.Vector3(-1, 0, 0), x);
+    const world = this.clipPlane
+      .clone()
+      .applyMatrix4(this.shipRoot.matrixWorld);
+    for (const m of this.clippableMaterials) m.clippingPlanes = [world];
+
+    // exact section outline at the cut, sampled from the offsets table
+    const st = this.hullStations;
+    if (st.length >= 2 && x > st[0].x && x < st[st.length - 1].x) {
+      let i = 0;
+      while (i < st.length - 2 && st[i + 1].x < x) i++;
+      const a = st[i];
+      const b = st[i + 1];
+      const t = (x - a.x) / (b.x - a.x);
+      const zTop =
+        a.offsets[a.offsets.length - 1].z * (1 - t) +
+        b.offsets[b.offsets.length - 1].z * t;
+      const pts: THREE.Vector3[] = [];
+      const N = 32;
+      for (let j = 0; j <= N; j++) {
+        const z = (zTop * j) / N;
+        const y = halfBreadthAt(a, z) * (1 - t) + halfBreadthAt(b, z) * t;
+        pts.push(new THREE.Vector3(x, z, y));
+      }
+      for (let j = N; j >= 0; j--) {
+        const p = pts[j];
+        pts.push(new THREE.Vector3(x, p.y, -p.z));
+      }
+      const outline = new THREE.LineLoop(
+        new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineBasicMaterial({ color: 0xf0f4fa }),
+      );
+      this.sectionOutline = outline;
+      this.shipRoot.add(outline);
+    }
+  }
+
+  /** Standard drafting views, framed on the vessel. */
+  setView(view: ViewPreset): void {
+    const q = this.shipRoot.quaternion;
+    const target = new THREE.Vector3(this.lpp / 2, this.depth * 0.45, 0).applyQuaternion(q);
+    const d = this.lpp * 1.05;
+    const offsets: Record<ViewPreset, THREE.Vector3> = {
+      iso: new THREE.Vector3(-this.lpp * 0.2, this.depth * 2.7, this.lpp * 0.62),
+      side: new THREE.Vector3(0, this.depth * 0.4, d),
+      front: new THREE.Vector3(d, this.depth * 0.6, 0),
+      top: new THREE.Vector3(0.001, d, 0),
+    };
+    this.controls.target.copy(target);
+    this.camera.position.copy(target).add(offsets[view]);
   }
 
   private addTank(id: string, t: TankEntityData): void {
@@ -289,37 +420,37 @@ export class DockScene {
     const cz = (t.z0 + t.z1) / 2;
 
     const shellGeom = new THREE.BoxGeometry(dims.l, dims.h, dims.b);
-    const shell = new THREE.Mesh(
-      shellGeom,
-      new THREE.MeshStandardMaterial({
-        color,
-        transparent: true,
-        opacity: 0.12,
-        depthWrite: false,
-      }),
-    );
+    const shellMat = new THREE.MeshStandardMaterial({
+      color,
+      transparent: true,
+      opacity: 0.12,
+      depthWrite: false,
+    });
+    this.clippableMaterials.push(shellMat);
+    const shell = new THREE.Mesh(shellGeom, shellMat);
     shell.position.set(cx, cz, cy);
     shell.userData.semanticId = id;
     shell.renderOrder = 1;
 
-    const edges = new THREE.LineSegments(
-      new THREE.EdgesGeometry(shellGeom),
-      new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.9 }),
-    );
+    const edgeMat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.9 });
+    this.clippableMaterials.push(edgeMat);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(shellGeom), edgeMat);
     edges.position.copy(shell.position);
 
     // fluid volume — box tank, so fill height is linear in fill percent
     const fillRatio = Math.min(100, Math.max(0, t.fillPercent)) / 100;
     const fillH = Math.max(dims.h * fillRatio, 0.02);
+    const fillMat = new THREE.MeshStandardMaterial({
+      color,
+      transparent: true,
+      opacity: 0.55,
+      metalness: 0.1,
+      roughness: 0.35,
+    });
+    this.clippableMaterials.push(fillMat);
     const fill = new THREE.Mesh(
       new THREE.BoxGeometry(dims.l * 0.985, fillH, dims.b * 0.985),
-      new THREE.MeshStandardMaterial({
-        color,
-        transparent: true,
-        opacity: 0.55,
-        metalness: 0.1,
-        roughness: 0.35,
-      }),
+      fillMat,
     );
     fill.position.set(cx, t.z0 + fillH / 2, cy);
     fill.visible = fillRatio > 0.001;
@@ -383,6 +514,7 @@ export class DockScene {
     const up = new THREE.Vector3(0, 1, 0);
     this.shipRoot.quaternion.setFromUnitVectors(n, up);
     this.shipRoot.updateMatrixWorld(true);
+    this.applyClip(); // the clip plane rides on the ship
 
     const centre = new THREE.Vector3(this.lpp / 2, 0, 0).applyQuaternion(
       this.shipRoot.quaternion,

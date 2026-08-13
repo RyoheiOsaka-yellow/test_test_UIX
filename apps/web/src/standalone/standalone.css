@@ -98,6 +98,7 @@ a:focus-visible {
   font-weight: 650;
   letter-spacing: 0.01em;
 }
+.product-sub { font-weight: 400; color: var(--ink-3); font-size: 15px; }
 
 .dims {
   margin: 2px 0 0;
@@ -111,7 +112,7 @@ a:focus-visible {
   font-weight: 500;
 }
 
-.modes { display: flex; gap: 4px; }
+.modes, .modules { display: flex; gap: 4px; }
 
 .mode {
   background: transparent;
@@ -161,16 +162,200 @@ a:focus-visible {
   padding: 0 4px;
 }
 
-/* ------------------------------------------------------------------- stage */
+/* --------------------------------------------------------------- workspace */
 
 /*
- * The viewport is capped rather than greedy: the charts and the criteria are
- * part of the answer, and should not sit a full screen below the fold.
+ * Three-pane CAD workspace: model tree, viewport (or drawing board), and a
+ * contextual properties rail. The viewport is capped rather than greedy so
+ * the detail band — charts and tables — stays within reach.
  */
-.stage {
+.workspace {
   display: flex;
-  height: min(68vh, 760px);
-  min-height: 520px;
+  height: min(70vh, 780px);
+  min-height: 540px;
+}
+
+.centre {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ground);
+}
+
+/* ---- model tree ---- */
+.tree {
+  width: 236px;
+  flex: none;
+  overflow-y: auto;
+  padding: 10px;
+  background: var(--surface);
+  border-right: 1px solid var(--edge);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tree-head {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  margin: 8px 0 3px;
+}
+.tree-head:first-child { margin-top: 0; }
+.tree-node {
+  font-size: 12px;
+  color: var(--ink-2);
+  padding: 3px 8px;
+}
+.tree-node.root { color: var(--ink); font-weight: 600; }
+.tree-node.mono { font-family: var(--mono); font-size: 11px; color: var(--accent); }
+
+.tree-list, .layer-list { list-style: none; margin: 0; padding: 0; }
+.tree-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 10px 52px 1fr 40px;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  padding: 4px 8px;
+  text-align: left;
+  color: var(--ink-2);
+}
+.tree-row:hover { background: var(--surface-2); }
+.tree-row.on { background: var(--surface-2); border-color: var(--accent); }
+.tree-id { font-family: var(--mono); font-size: 11px; color: var(--accent); }
+.tree-mass { font-size: 10px; color: var(--ink-3); text-align: right; }
+
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  font-size: 12px;
+  color: var(--ink-2);
+  cursor: pointer;
+  border-radius: var(--r-sm);
+}
+.layer-row:hover { background: var(--surface-2); }
+.layer-row input { accent-color: var(--accent); }
+
+/* ---- viewport toolbar ---- */
+.viewbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 6px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--edge);
+}
+.viewbar-group { display: flex; align-items: center; gap: 4px; }
+.vbtn {
+  background: var(--surface-2);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-sm);
+  color: var(--ink-2);
+  font-size: 11px;
+  padding: 3px 11px;
+}
+.vbtn:hover { color: var(--ink); border-color: var(--accent); }
+.clip-group { margin-left: auto; gap: 10px; }
+.clip-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.clip-toggle input { accent-color: var(--accent); }
+.clip-slider { width: 180px; accent-color: var(--accent); }
+.clip-x { font-size: 11px; color: var(--ink-2); min-width: 84px; }
+
+/* ---- lines board ---- */
+.lines-board {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.lines-row {
+  display: grid;
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.lines-fig svg { min-width: 320px; }
+.line-strong { fill: none; stroke: var(--ink); stroke-width: 1.6; }
+.line-thin { fill: none; stroke: var(--accent); stroke-width: 1.1; }
+.section-line { stroke: var(--ink-2); }
+.wl-design { stroke: var(--fresh); stroke-width: 1.2; stroke-dasharray: 6 3; }
+.wl-tag { fill: var(--fresh); }
+
+.particulars .parts { margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.particulars .parts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px dotted var(--edge-soft);
+  padding: 3px 0;
+}
+.particulars dt { font-size: 12px; color: var(--ink-2); }
+.particulars dd { margin: 0; font-size: 12.5px; color: var(--ink); }
+
+/* ---- status bar ---- */
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 5px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--edge);
+  font-size: 11px;
+  color: var(--ink-2);
+}
+.status-mode { color: var(--accent); font-weight: 600; }
+.statusbar .sel { color: var(--ink-3); }
+.status-note { margin-left: auto; color: var(--ink-3); }
+
+/* ---- engineering tables ---- */
+.table-card { grid-column: auto; }
+.table-scroll { overflow-x: auto; }
+table.eng {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+table.eng th, table.eng td {
+  padding: 4px 10px;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--edge-soft);
+}
+table.eng th {
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--edge);
+}
+table.eng th span { font-weight: 400; font-size: 9.5px; color: var(--ink-3); }
+table.eng .txt { text-align: left; font-family: var(--sans); }
+table.eng tbody tr.now td { background: var(--accent-dim); color: var(--ink); }
+table.eng tbody tr.empty td { color: var(--ink-3); }
+table.eng tfoot td {
+  border-top: 1.5px solid var(--edge);
+  border-bottom: none;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .viewport {
@@ -536,16 +721,23 @@ a:focus-visible {
 
 /* ------------------------------------------------------------- responsive */
 
-@media (max-width: 1080px) {
-  .stage { flex-direction: column; }
+@media (max-width: 1180px) {
+  .workspace { flex-direction: column; height: auto; }
+  .tree {
+    width: auto;
+    max-height: 220px;
+    border-right: none;
+    border-bottom: 1px solid var(--edge);
+  }
+  .centre { min-height: 460px; }
   .viewport { min-height: 420px; }
   .rail {
     width: auto;
-    max-height: none;
     border-left: none;
     border-top: 1px solid var(--edge);
   }
   .detail { grid-template-columns: minmax(0, 1fr); }
+  .lines-row { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (prefers-reduced-motion: reduce) {
