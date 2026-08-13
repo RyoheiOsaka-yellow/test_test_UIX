@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>ちゃんみな × ラブandベリー｜プロトタイプ v0.2</title>
+<title>コラボWEBミニゲーム プロトタイプ</title>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -453,7 +453,7 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
 <div id="phone">
   <div id="hd">
     <button id="back" class="hide" onclick="goBack()">← 戻る</button>
-    <div class="ttl">ちゃんみな × ラブandベリー<small id="scrname">PROTOTYPE v0.2.1</small></div>
+    <div class="ttl">コラボWEBミニゲーム（仮）<small id="scrname">PROTOTYPE v0.2.2</small></div>
     <div id="rights">🎫 <b id="rn">0</b></div>
     <span class="scid" id="scid">SC-01</span>
   </div>
@@ -461,8 +461,8 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
   <!-- ============ LP SC-01 ============ -->
   <section class="scr act" id="lp" data-sc="SC-01" data-name="特設LP">
     <div class="kv">
-      <div class="anniv">CHANMINA 10TH ANNIVERSARY</div>
-      <h1>ラブandベリー<br><span class="x">×</span> ちゃんみな</h1>
+      <div class="anniv">ARTIST X 10TH ANNIVERSARY</div>
+      <h1>着せ替えカードIP<br><span class="x">×</span> アーティストX</h1>
       <div class="bible">Collect Your Bible.</div>
       <div class="copy">かつて私たちは、カードを集めながら「なりたい自分」を信じていた。<br>一枚一枚が、お守りになる。<br>集めるほどに、世界に一つだけのバイブルが完成する。</div>
       <div class="heartrow">💗🩵💜🩷💛</div>
@@ -470,13 +470,13 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
     <div class="inner">
       <button class="btn" onclick="startFromLP()">START ▶</button>
       <div class="packrow">
-        <div class="packbox"><b>PACK A</b><span class="sname">WORK HARD</span><small>ヘア／服／靴／小道具（4枚）</small></div>
-        <div class="packbox"><b>PACK B</b><span class="sname">TEST ME</span><small>ヘア／服／靴／小道具（4枚）</small></div>
-        <div class="packbox"><b>PACK C</b><span class="sname">FLIP-FLAP</span><small>ヘア／服／靴／小道具（4枚）</small></div>
+        <div class="packbox"><b>PACK A</b><span class="sname">楽曲A</span><small>ヘア／服／靴／小道具（4枚）</small></div>
+        <div class="packbox"><b>PACK B</b><span class="sname">楽曲B</span><small>ヘア／服／靴／小道具（4枚）</small></div>
+        <div class="packbox"><b>PACK C</b><span class="sname">楽曲C</span><small>ヘア／服／靴／小道具（4枚）</small></div>
         <div class="packbox"><b>PACK D</b><span class="sname">SECRET ✨</span><small>SP衣装＋歌詞カード（5枚）</small></div>
       </div>
       <div style="font-size:10px;font-weight:800;color:var(--hot-dk);">各パック 2,500円（税込表記は要確認）｜2027.3.15 START・3ヶ月限定</div>
-      <div class="rightsnote">©SEGA ／ 楽曲・アーティスト表記等、権利者指定のクレジットが入ります（NFR-010）<br>本ページはプロトタイプであり、実際の商品・デザインとは異なります。</div>
+      <div class="rightsnote">©（IP権利者） ／ 楽曲・アーティスト表記等、権利者指定のクレジットが入ります（NFR-010）<br>本ページはプロトタイプであり、実際の商品・デザインとは異なります。</div>
     </div>
     <div class="cq" style="top:76px;left:16px;">CQ-13<i>裏面QR(LP用)と表面QR(登録用)の2種併存か。§5-3のURL形式なら1QRで兼用可</i></div>
     <div class="cq" style="bottom:180px;right:14px;">CQ-01<i>パック封入は確定構成前提で表示（ランダム表記との整合要確認）</i></div>
@@ -484,8 +484,8 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
 
   <!-- ============ TOP SC-02 ============ -->
   <section class="scr" id="top" data-sc="SC-02" data-name="ゲームTOP">
-    <div class="logo">CHANMINA 10TH ANNIVERSARY</div>
-    <h1>ラブandベリー<br><span class="x">×</span> ちゃんみな</h1>
+    <div class="logo">ARTIST X 10TH ANNIVERSARY</div>
+    <h1>着せ替えカードIP<br><span class="x">×</span> アーティストX</h1>
     <div class="bible">Collect Your Bible.</div>
     <div class="heartrow">💗🩵💜🩷💛</div>
     <div class="menu">
@@ -516,11 +516,12 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
     <div class="lead">カード表面のQR横に印字された英数字コードを入力してください。</div>
     <div class="field">
       <label>SERIAL CODE（例：A1-7F2K）</label>
-      <input id="codein" placeholder="XX-XXXX" maxlength="7" autocomplete="off">
+      <input id="codein" placeholder="XX-XXXX ／ AAAA" maxlength="7" autocomplete="off">
       <div class="fielderr" id="codeerr"></div>
     </div>
     <button class="btn" id="codesubmit" onclick="submitCode()">このコードで登録する</button>
     <div class="hint">
+      ・<b>デモ用ダミーコード「AAAA」</b>：未読込のカードを順に仮登録して先へ進めます<br>
       ・コードは<b>紛らわしい英字（I／L／O／U）を使わない文字種</b>で構成されています（読み間違い防止：要件定義書 §5-3）<br>
       ・形式が正しくない場合は送信前にエラーになります（E-008／チェックサム相当）<br>
       ・連続で失敗すると一時的に入力できなくなります（E-004／FR-107 レート制限）
@@ -652,8 +653,8 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
     <div class="shareimg">
       <div style="font-weight:800;font-size:12px;" id="shcoord">—</div>
       <div style="font-family:Inter;font-weight:800;font-size:22px;color:var(--hot-dk);" id="shscore">0</div>
-      <div class="ht">#ラブベリ #ちゃんみな</div>
-      <div class="cr">©SEGA ／ 楽曲クレジット（権利者指定表記が入ります）</div>
+      <div class="ht">#（規定ハッシュタグA） #（規定ハッシュタグB）</div>
+      <div class="cr">©（IP権利者） ／ 楽曲クレジット（権利者指定表記が入ります）</div>
     </div>
     <button class="btn" onclick="toast('SNSシェア（モック）：X / Instagram / TikTok へ規定ハッシュタグ付きで遷移（FR-503）')">SNSでシェアする（モック）</button>
     <button class="btn ghost" onclick="go('songsel')">もう一度プレイ</button>
@@ -668,7 +669,7 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
     <div class="howstep"><div class="no">1</div><div class="tx"><b>📷 カードを読み込む</b>カード表面のQRをスキャン。パーツが解放されて、プレイ権も1つもらえるよ。</div></div>
     <div class="howstep"><div class="no">2</div><div class="tx"><b>👗 着せ替える</b>ヘア・服・靴・小道具の4スロットを自由にコーディネート。1枚だけでも遊べる！（足りない部位はデフォルト衣装）</div></div>
     <div class="howstep"><div class="no">3</div><div class="tx"><b>🎵 リズムゲーム</b>着せ替えた姿を背景に、曲に合わせてタップ！ プレイ開始でプレイ権を1つ使うよ。</div></div>
-    <div class="howstep"><div class="no">4</div><div class="tx"><b>📸 シェアする</b>リザルトのコーデ＆スコアをSNSでシェア。#ラブベリ #ちゃんみな</div></div>
+    <div class="howstep"><div class="no">4</div><div class="tx"><b>📸 シェアする</b>リザルトのコーデ＆スコアをSNSでシェア。規定のハッシュタグが自動で付きます。</div></div>
     <div class="notebox">
       ⚠️ だいじな注意（利用規約・FAQに明記予定：NFR-011）<br>
       ・コードは1枚につき1回だけ使えます。プレイ開始後のプレイ権は戻りません<br>
@@ -742,10 +743,10 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
 <script>
 /* =========== master data（要件定義書 §5-1 カード構成に準拠・全17種） =========== */
 const SONGS = {
-  WH :{name:'WORK HARD', pack:'A', hair:'#FF2D87', body:'#FF5CA3', boots:'#E5177A', prop:'🚲', coord:'ピンクシャイニー'},
-  TM :{name:'TEST ME',   pack:'B', hair:'#EFE3C8', body:'#241F2E', boots:'#141018', prop:'👁', coord:'ブラックシャイニー'},
-  FF :{name:'FLIP-FLAP', pack:'C', hair:'#F2E9DC', body:'#F5F1EA', boots:'#2B2530', prop:'📖', coord:'クールビューティ'},
-  WHS:{name:'WORK HARD -SECRET-', pack:'D', hair:'#F5C64C', body:'#E8B84B', boots:'#C9992F', prop:'👑', coord:'レインボー箔スペシャル', secret:true}
+  WH :{name:'楽曲A', pack:'A', hair:'#FF2D87', body:'#FF5CA3', boots:'#E5177A', prop:'🚲', coord:'ピンクシャイニー'},
+  TM :{name:'楽曲B',   pack:'B', hair:'#EFE3C8', body:'#241F2E', boots:'#141018', prop:'👁', coord:'ブラックシャイニー'},
+  FF :{name:'楽曲C',   pack:'C', hair:'#F2E9DC', body:'#F5F1EA', boots:'#2B2530', prop:'📖', coord:'クールビューティ'},
+  WHS:{name:'楽曲A -SECRET-', pack:'D', hair:'#F5C64C', body:'#E8B84B', boots:'#C9992F', prop:'👑', coord:'レインボー箔スペシャル', secret:true}
 };
 const PARTS = ['ヘア','服','靴','小道具'];
 const CARDS = [
@@ -765,7 +766,7 @@ const CARDS = [
   {id:'D2',song:'WHS',part:'服',    name:'ツアーKVスペシャルドレス',ic:'👗',sp:true},
   {id:'D3',song:'WHS',part:'靴',    name:'レインボー箔ロングブーツ',ic:'👢',sp:true},
   {id:'D4',song:'WHS',part:'小道具',name:'10周年アニバーサリークラウン',ic:'👑',sp:true},
-  {id:'D5',song:'WHS',part:'歌詞',  name:'歌詞カード「WORK HARD」',ic:'📜',sp:true},
+  {id:'D5',song:'WHS',part:'歌詞',  name:'歌詞カード（楽曲A）',ic:'📜',sp:true},
 ];
 /* 物理カード（デモ）：全17種＋使用済1＋対象外1。コードは §5-3 の簡略形（0/O/1/I/L不使用） */
 const PHYS = [
@@ -775,7 +776,7 @@ const PHYS = [
   {code:'D1-9ZR4',card:'D1'},{code:'D2-3VF7',card:'D2'},{code:'D3-6HJ5',card:'D3'},{code:'D4-8PW2',card:'D4'},{code:'D5-4SK9',card:'D5'},
   {code:'??-????',card:null,bad:true},
 ];
-const PACK_LABEL = {A:'パックA｜WORK HARD',B:'パックB｜TEST ME',C:'パックC｜FLIP-FLAP',D:'パックD｜SECRET（ツアーKV連動）'};
+const PACK_LABEL = {A:'パックA｜楽曲A',B:'パックB｜楽曲B',C:'パックC｜楽曲C',D:'パックD｜SECRET（ツアーKV連動）'};
 
 /* =========== state（localStorage永続化：FR-002相当） =========== */
 /* 「サーバー側」＝コード使用状態、「ローカル側」＝解放パーツ・プレイ権。別キーで保持し、
@@ -936,6 +937,14 @@ function submitCode(){
     return;
   }
   const v=inp.value.trim().toUpperCase();
+  /* デモ用ダミーコード：AAAA で未読込のカードを順に仮登録（プロトタイプ専用） */
+  if(v==='AAAA'||v==='AA-AAAA'){
+    const p=PHYS.find(x=>!x.bad&&!USED.has(x.code));
+    if(!p){err.textContent='すべてのカードが読込済みです（デモ用ダミーコード）';return;}
+    failCount=0;
+    resolveCode(p);
+    return;
+  }
   /* 形式チェック＝チェックサム相当（§5-3／E-008）。API到達前に弾く */
   if(!/^[0-9A-HJKMNP-TV-Z]{2}-[0-9A-HJKMNP-TV-Z]{4}$/.test(v)){
     inp.classList.add('err');
@@ -1049,7 +1058,7 @@ function renderSongs(){
   const d=document.createElement('div');
   if(spUnlocked){
     d.className='song spsong';
-    d.innerHTML=`<div class="disc">SP</div><div class="inf"><b>WORK HARD -SECRET-</b><small>${hasLyric?'歌詞スペシャル演出つき（D5解放済）':'歌詞カード（D5）でSP歌詞演出が解放'}</small></div><div class="hs">HI-SCORE<br>${S.hs['WHS']||0}</div>`;
+    d.innerHTML=`<div class="disc">SP</div><div class="inf"><b>${SONGS.WHS.name}</b><small>${hasLyric?'歌詞スペシャル演出つき（D5解放済）':'歌詞カード（D5）でSP歌詞演出が解放'}</small></div><div class="hs">HI-SCORE<br>${S.hs['WHS']||0}</div>`;
     d.onclick=()=>askPlay('WHS');
   }else{
     d.className='song lock';
