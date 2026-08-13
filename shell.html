@@ -58,6 +58,13 @@
   td:nth-child(2),td:nth-child(3),td:nth-child(4){text-align:right}
   .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)} .cache{color:var(--dim)}
   .hint{color:var(--dim);padding:4px 10px 10px;line-height:1.6}
+  #pickinfo{position:absolute;left:10px;top:10px;z-index:5;background:rgba(21,24,29,.93);
+    border:1px solid var(--line);border-radius:4px;padding:8px 10px;max-width:250px;
+    pointer-events:none;display:none;font-variant-numeric:tabular-nums}
+  #pickinfo b{color:var(--acc);display:block;margin-bottom:4px}
+  #pickinfo table{width:auto;table-layout:auto}
+  #pickinfo td{border:none;padding:1px 8px 1px 0;white-space:nowrap}
+  #pickinfo td:first-child{color:var(--dim)}
 </style>
 </head>
 <body>
@@ -73,7 +80,7 @@
     <h2>シーン</h2>
     <div id="outliner"></div>
     <div class="hint">
-      左ドラッグ=回転 / 右ドラッグ=移動 / ホイール=ズーム
+      左ドラッグ=回転 / 右ドラッグ=移動 / ホイール=ズーム / クリック=プリム選択
       <div style="margin-top:8px;color:#5f6b7a;line-height:1.5">
         建物: PLATEAU 静岡市 建築物モデル LOD1 (2023)<br>
         道路: OpenStreetMap<br>
@@ -82,7 +89,7 @@
     </div>
   </aside>
 
-  <div id="viewport"></div>
+  <div id="viewport"><div id="pickinfo"></div></div>
 
   <aside id="right">
     <h2>ノード</h2>

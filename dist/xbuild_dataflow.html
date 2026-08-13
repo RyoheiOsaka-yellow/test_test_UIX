@@ -58,6 +58,13 @@
   td:nth-child(2),td:nth-child(3),td:nth-child(4){text-align:right}
   .ok{color:var(--ok)} .bad{color:var(--bad)} .warn{color:var(--warn)} .cache{color:var(--dim)}
   .hint{color:var(--dim);padding:4px 10px 10px;line-height:1.6}
+  #pickinfo{position:absolute;left:10px;top:10px;z-index:5;background:rgba(21,24,29,.93);
+    border:1px solid var(--line);border-radius:4px;padding:8px 10px;max-width:250px;
+    pointer-events:none;display:none;font-variant-numeric:tabular-nums}
+  #pickinfo b{color:var(--acc);display:block;margin-bottom:4px}
+  #pickinfo table{width:auto;table-layout:auto}
+  #pickinfo td{border:none;padding:1px 8px 1px 0;white-space:nowrap}
+  #pickinfo td:first-child{color:var(--dim)}
 </style>
 </head>
 <body>
@@ -73,7 +80,7 @@
     <h2>シーン</h2>
     <div id="outliner"></div>
     <div class="hint">
-      左ドラッグ=回転 / 右ドラッグ=移動 / ホイール=ズーム
+      左ドラッグ=回転 / 右ドラッグ=移動 / ホイール=ズーム / クリック=プリム選択
       <div style="margin-top:8px;color:#5f6b7a;line-height:1.5">
         建物: PLATEAU 静岡市 建築物モデル LOD1 (2023)<br>
         道路: OpenStreetMap<br>
@@ -82,7 +89,7 @@
     </div>
   </aside>
 
-  <div id="viewport"></div>
+  <div id="viewport"><div id="pickinfo"></div></div>
 
   <aside id="right">
     <h2>ノード</h2>
@@ -2734,6 +2741,20 @@ const KINDS = {
     isTimeDependent(node) {
       return node.payload.graph.isTimeDependent(node.payload.displayNode);
     },
+    /**
+     * ピッキング用の属性読み出し（P6.5）。
+     * primId バッファでプリムを引いた後、そのプリムの属性を返す。
+     * cook はキャッシュヒットするので実質コストはない。
+     * シーン層は GeoSet を知らないまま（この kind の中に閉じる）。
+     */
+    inspect(node, primIndex, ctx) {
+      const pl = node.payload;
+      const geo = pl.graph.cook(pl.displayNode, ctx);
+      if (!(primIndex >= 0 && primIndex < geo.numPrims)) return null;
+      const attribs = {};
+      for (const [name, a] of geo.prim.map) attribs[name] = a.get(primIndex);
+      return { prim: primIndex, vertices: geo.primPoints(primIndex).length, attribs };
+    },
   },
 };
 
@@ -2767,6 +2788,14 @@ class SceneStore {
   roots() { return this.order.filter(k => !this.nodes[k].parentId); }
 
   markDirty(id) { this.dirty.add(id); }
+
+  /** ピッキング結果の属性照会。kind が inspect を持たなければ null */
+  inspect(id, primIndex, ctx = {}) {
+    const n = this.nodes[id];
+    if (!n) return null;
+    const k = KINDS[n.kind];
+    return k.inspect ? k.inspect(n, primIndex, ctx) : null;
+  }
 
   setVisible(id, v) { this.nodes[id].visible = v; this.dirty.add(id); }
 
@@ -2904,6 +2933,9 @@ store.add('lm', 'geo', {
 const canvasWrap = document.getElementById('viewport');
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+/* 静的シャドウマップ（P6.5）: 毎フレームではなく、レイヤ再構築時にだけ描き直す */
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.autoUpdate = false;
 canvasWrap.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -2915,16 +2947,39 @@ camera.up.set(0, 0, 1);
 
 scene.add(new THREE.HemisphereLight(0x9fb4c8, 0x1a1c20, 0.85));
 const sun = new THREE.DirectionalLight(0xfff2d0, 0.85);
-sun.position.set(120, -180, 260);
+sun.position.set(240, -360, 520);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -700; sun.shadow.camera.right = 700;
+sun.shadow.camera.top = 700; sun.shadow.camera.bottom = -700;
+sun.shadow.camera.near = 1; sun.shadow.camera.far = 1600;
+sun.shadow.bias = -0.0004;
+sun.shadow.normalBias = 0.6;
 scene.add(sun);
+scene.add(sun.target);
 
 const grid = new THREE.GridHelper(1400, 28, 0x2b3038, 0x1b1f25);
 grid.rotation.x = Math.PI / 2;
 scene.add(grid);
 
-const groups = {};
+/* 影の受け皿（PlaneGeometry は XY 面 = この座標系の地面） */
+const groundShadow = new THREE.Mesh(
+  new THREE.PlaneGeometry(1400, 1400),
+  new THREE.ShadowMaterial({ opacity: 0.32 }),
+);
+groundShadow.receiveShadow = true;
+groundShadow.userData.aux = true;
+scene.add(groundShadow);
 
-function makeSurface(bufs, style) {
+const groups = {};
+const updateStats = { inPlace: 0, rebuilt: 0 };   // 差分更新 / 全再構築の回数（P6.5）
+
+/** 不透明に近いサーフェスだけが影を落とす（半透明ヒートマップの影は不自然） */
+function castsShadow(node) {
+  return !!node.style.surface && (node.style.opacity || 1) >= 0.9;
+}
+
+function makeSurface(bufs, style, shadow) {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(bufs.tris.position, 3));
   g.setAttribute('normal', new THREE.BufferAttribute(bufs.tris.normal, 3));
@@ -2933,7 +2988,12 @@ function makeSurface(bufs, style) {
     vertexColors: true, side: THREE.DoubleSide,
     transparent: (style.opacity || 1) < 1, opacity: style.opacity || 1,
   });
-  return new THREE.Mesh(g, m);
+  const mesh = new THREE.Mesh(g, m);
+  mesh.userData.role = 'surface';
+  mesh.userData.primId = bufs.tris.primId;   // ピッキング用（三角形 -> プリム）
+  mesh.castShadow = shadow;
+  mesh.receiveShadow = shadow;
+  return mesh;
 }
 
 function makePoints(bufs, style) {
@@ -2941,7 +3001,9 @@ function makePoints(bufs, style) {
   g.setAttribute('position', new THREE.BufferAttribute(bufs.points.position, 3));
   g.setAttribute('color', new THREE.BufferAttribute(bufs.points.color, 3));
   const m = new THREE.PointsMaterial({ size: style.pointSize || 2, vertexColors: true, sizeAttenuation: false });
-  return new THREE.Points(g, m);
+  const p = new THREE.Points(g, m);
+  p.userData.role = 'points';
+  return p;
 }
 
 function makeLines(bufs, style) {
@@ -2949,26 +3011,101 @@ function makeLines(bufs, style) {
   g.setAttribute('position', new THREE.BufferAttribute(bufs.lines.position, 3));
   if (bufs.lines.color) g.setAttribute('color', new THREE.BufferAttribute(bufs.lines.color, 3));
   const m = new THREE.LineBasicMaterial({ vertexColors: !!bufs.lines.color });
-  return new THREE.LineSegments(g, m);
+  const l = new THREE.LineSegments(g, m);
+  l.userData.role = 'lines';
+  return l;
+}
+
+function disposeGroup(id) {
+  if (!groups[id]) return;
+  groups[id].traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+  scene.remove(groups[id]);
+  delete groups[id];
+}
+
+/* ---------- 差分更新（P6.5） ----------
+   頂点数が前回と一致する限り BufferGeometry を作り直さず、
+   属性配列を上書きして needsUpdate を立てるだけにする。
+   人流エージェント（毎フレーム 900 点）はこの経路に乗る。 */
+
+function roleSig(node, bufs) {
+  return (node.style.surface && bufs.tris.count ? 's' : '') +
+         (node.style.points && bufs.points.count ? 'p' : '') +
+         (node.style.lines && bufs.lines.count ? 'l' : '');
+}
+
+function updateAttr(geom, name, arr) {
+  const a = geom.attributes[name];
+  if (!a || a.array.length !== arr.length) return false;
+  a.array.set(arr);
+  a.needsUpdate = true;
+  return true;
+}
+
+function tryUpdateInPlace(grp, node, bufs) {
+  if (grp.userData.sig !== roleSig(node, bufs)) return false;
+  let ok = true;
+  const jobs = [];
+  grp.traverse(o => {
+    if (!ok || !o.userData.role) return;
+    if (o.userData.role === 'surface') {
+      ok = o.geometry.attributes.position.array.length === bufs.tris.position.length;
+      if (ok) jobs.push(() => {
+        updateAttr(o.geometry, 'position', bufs.tris.position);
+        updateAttr(o.geometry, 'normal', bufs.tris.normal);
+        updateAttr(o.geometry, 'color', bufs.tris.color);
+        o.userData.primId = bufs.tris.primId;
+        o.geometry.computeBoundingSphere();
+      });
+    } else if (o.userData.role === 'points') {
+      ok = o.geometry.attributes.position.array.length === bufs.points.position.length;
+      if (ok) jobs.push(() => {
+        updateAttr(o.geometry, 'position', bufs.points.position);
+        updateAttr(o.geometry, 'color', bufs.points.color);
+        o.geometry.computeBoundingSphere();
+      });
+    } else if (o.userData.role === 'lines') {
+      ok = o.geometry.attributes.position.array.length === bufs.lines.position.length;
+      if (ok) jobs.push(() => {
+        updateAttr(o.geometry, 'position', bufs.lines.position);
+        updateAttr(o.geometry, 'color', bufs.lines.color);
+        o.geometry.computeBoundingSphere();
+      });
+    }
+  });
+  if (!ok || !jobs.length) return false;
+  for (const j of jobs) j();   // 全役割が更新可能と確認してから書き込む（中途半端な状態を作らない）
+  return true;
 }
 
 function rebuild(id, bufs, err) {
-  if (groups[id]) {
-    groups[id].traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
-    scene.remove(groups[id]);
-    delete groups[id];
-  }
   const node = store.get(id);
-  if (err) { node.error = err; return; }
+  if (err) { node.error = err; disposeGroup(id); clearPickIf(id); return; }
   node.error = null;
-  if (!bufs || !node.visible) return;
+  if (!bufs || !node.visible) { disposeGroup(id); clearPickIf(id); needsRender = true; return; }
 
+  const existing = groups[id];
+  if (existing && tryUpdateInPlace(existing, node, bufs)) {
+    updateStats.inPlace++;
+    if (castsShadow(node)) renderer.shadowMap.needsUpdate = true;
+    refreshPick(id);
+    needsRender = true;
+    return;
+  }
+
+  disposeGroup(id);
+  const shadow = castsShadow(node);
   const grp = new THREE.Group();
-  if (node.style.surface && bufs.tris.count) grp.add(makeSurface(bufs, node.style));
+  if (node.style.surface && bufs.tris.count) grp.add(makeSurface(bufs, node.style, shadow));
   if (node.style.points && bufs.points.count) grp.add(makePoints(bufs, node.style));
   if (node.style.lines && bufs.lines.count) grp.add(makeLines(bufs, node.style));
+  grp.userData.sig = roleSig(node, bufs);
+  grp.traverse(o => { o.userData.sceneId = id; });
   groups[id] = grp;
   scene.add(grp);
+  updateStats.rebuilt++;
+  if (shadow) renderer.shadowMap.needsUpdate = true;
+  refreshPick(id);
 }
 
 /* ---------- カメラ操作（r128 に OrbitControls は同梱されない） ---------- */
@@ -2988,12 +3125,24 @@ function applyCamera() {
 (function bindControls() {
   const el = renderer.domElement;
   let drag = null;
+  let press = null;                       // クリック（≒ドラッグしていない）判定用
   el.addEventListener('contextmenu', e => e.preventDefault());
   el.addEventListener('pointerdown', e => {
     drag = { x: e.clientX, y: e.clientY, btn: e.button };
+    press = { x: e.clientX, y: e.clientY, btn: e.button };
     el.setPointerCapture(e.pointerId);
   });
-  el.addEventListener('pointerup', e => { drag = null; el.releasePointerCapture(e.pointerId); });
+  el.addEventListener('pointerup', e => {
+    drag = null;
+    el.releasePointerCapture(e.pointerId);
+    if (press && press.btn === 0 &&
+        Math.hypot(e.clientX - press.x, e.clientY - press.y) < 5) {
+      const r = el.getBoundingClientRect();
+      pickAt(((e.clientX - r.left) / r.width) * 2 - 1,
+             -((e.clientY - r.top) / r.height) * 2 + 1);
+    }
+    press = null;
+  });
   el.addEventListener('pointermove', e => {
     if (!drag) return;
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
@@ -3024,6 +3173,112 @@ function resize() {
   needsRender = true;
 }
 window.addEventListener('resize', resize);
+
+/* ============================================================
+   3.5 ピッキング（P6.5）
+   ------------------------------------------------------------
+   toRenderBuffers が三角形ごとに出力している primId バッファで
+   レイキャスト結果（faceIndex）からプリムを引き、シーン層の
+   inspect（geo kind に閉じた属性読み出し）で属性を表示する。
+   ============================================================ */
+
+const raycaster = new THREE.Raycaster();
+let lastPick = null;      // { sceneId, prim, info, point }
+let highlight = null;     // 選択プリムのハイライトメッシュ
+
+function clearHighlight() {
+  if (!highlight) return;
+  highlight.geometry.dispose();
+  highlight.material.dispose();
+  scene.remove(highlight);
+  highlight = null;
+}
+
+function clearPick() {
+  lastPick = null;
+  clearHighlight();
+  renderPickInfo();
+  needsRender = true;
+}
+
+function clearPickIf(sceneId) {
+  if (lastPick && lastPick.sceneId === sceneId) clearPick();
+}
+
+/** 選択プリムの三角形を primId バッファから抜き出してハイライトにする */
+function buildHighlight(sceneId) {
+  clearHighlight();
+  if (!lastPick) return;
+  const grp = groups[sceneId];
+  if (!grp) return;
+  let mesh = null;
+  grp.traverse(o => { if (!mesh && o.userData.primId) mesh = o; });
+  if (!mesh) return;
+  const primId = mesh.userData.primId;
+  const pos = mesh.geometry.attributes.position.array;
+  const out = [];
+  for (let t = 0; t < primId.length; t += 3)
+    if (primId[t] === lastPick.prim)
+      for (let k = 0; k < 9; k++) out.push(pos[t * 3 + k]);
+  if (!out.length) return;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(out), 3));
+  const m = new THREE.MeshBasicMaterial({
+    color: 0xf0c341, transparent: true, opacity: 0.45, side: THREE.DoubleSide,
+    depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+  });
+  highlight = new THREE.Mesh(g, m);
+  highlight.userData.aux = true;
+  scene.add(highlight);
+}
+
+function pickAt(nx, ny) {
+  raycaster.setFromCamera({ x: nx, y: ny }, camera);
+  const cands = [];
+  for (const grp of Object.values(groups))
+    grp.traverse(o => { if (o.isMesh && o.userData.primId) cands.push(o); });
+  const hits = raycaster.intersectObjects(cands, false);
+  if (!hits.length) { clearPick(); return null; }
+  const hit = hits[0];
+  const sceneId = hit.object.userData.sceneId;
+  const prim = hit.object.userData.primId[hit.faceIndex * 3];
+  const info = store.inspect(sceneId, prim, { time });
+  if (!info) { clearPick(); return null; }
+  lastPick = { sceneId, prim, info, point: [hit.point.x, hit.point.y, hit.point.z] };
+  buildHighlight(sceneId);
+  renderPickInfo();
+  needsRender = true;
+  return lastPick;
+}
+
+/** レイヤ再構築 / 差分更新後に、選択中プリムの表示を追随させる */
+function refreshPick(sceneId) {
+  if (!lastPick || lastPick.sceneId !== sceneId) return;
+  const info = store.inspect(sceneId, lastPick.prim, { time });
+  if (!info) { clearPick(); return; }
+  lastPick.info = info;
+  buildHighlight(sceneId);
+  renderPickInfo();
+}
+
+function fmtVal(v) {
+  if (typeof v === 'number') return Number.isInteger(v) ? String(v) : v.toFixed(2);
+  return String(v);
+}
+
+function renderPickInfo() {
+  const host = document.getElementById('pickinfo');
+  if (!lastPick) { host.style.display = 'none'; return; }
+  const n = store.get(lastPick.sceneId);
+  const rows = Object.entries(lastPick.info.attribs)
+    .filter(([k]) => k !== 'closed')
+    .map(([k, v]) => `<tr><td>${k}</td><td>${fmtVal(v)}</td></tr>`)
+    .join('');
+  host.innerHTML = `<b>${n.name}</b>` +
+    `<table><tr><td>prim</td><td>#${lastPick.prim}</td></tr>` +
+    `<tr><td>頂点数</td><td>${lastPick.info.vertices}</td></tr>${rows}</table>`;
+  host.style.display = 'block';   // '' だとスタイルシートの display:none に戻ってしまう
+}
 
 /* ============================================================
    4. 評価ループ
@@ -3260,11 +3515,19 @@ window.__xb = { store, cityGraph, arenaGraph, flowGraph, roadGraph, lmGraph, sce
   counts() {
     let tri = 0, pts = 0;
     scene.traverse(o => {
+      if (o.userData.aux) return;                     // ハイライト / 影の受け皿は数えない
       if (o.isMesh) tri += o.geometry.attributes.position.count / 3;
       if (o.isPoints) pts += o.geometry.attributes.position.count;
     });
     return { tri, pts, layers: Object.keys(groups).length };
-  } };
+  },
+  /* P6.5 */
+  pick: (nx, ny) => pickAt(nx, ny),
+  getPick: () => lastPick,
+  clearPick,
+  updateStats,
+  render() { renderer.render(scene, camera); },
+  shadows: () => renderer.shadowMap.enabled };
 
 });
 require("app");

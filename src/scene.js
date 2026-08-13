@@ -43,6 +43,20 @@ const KINDS = {
     isTimeDependent(node) {
       return node.payload.graph.isTimeDependent(node.payload.displayNode);
     },
+    /**
+     * ピッキング用の属性読み出し（P6.5）。
+     * primId バッファでプリムを引いた後、そのプリムの属性を返す。
+     * cook はキャッシュヒットするので実質コストはない。
+     * シーン層は GeoSet を知らないまま（この kind の中に閉じる）。
+     */
+    inspect(node, primIndex, ctx) {
+      const pl = node.payload;
+      const geo = pl.graph.cook(pl.displayNode, ctx);
+      if (!(primIndex >= 0 && primIndex < geo.numPrims)) return null;
+      const attribs = {};
+      for (const [name, a] of geo.prim.map) attribs[name] = a.get(primIndex);
+      return { prim: primIndex, vertices: geo.primPoints(primIndex).length, attribs };
+    },
   },
 };
 
@@ -76,6 +90,14 @@ class SceneStore {
   roots() { return this.order.filter(k => !this.nodes[k].parentId); }
 
   markDirty(id) { this.dirty.add(id); }
+
+  /** ピッキング結果の属性照会。kind が inspect を持たなければ null */
+  inspect(id, primIndex, ctx = {}) {
+    const n = this.nodes[id];
+    if (!n) return null;
+    const k = KINDS[n.kind];
+    return k.inspect ? k.inspect(n, primIndex, ctx) : null;
+  }
 
   setVisible(id, v) { this.nodes[id].visible = v; this.dirty.add(id); }
 
