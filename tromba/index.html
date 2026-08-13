@@ -198,6 +198,34 @@ button.big.ghost { background: transparent; color: var(--agave); border: 1px sol
 }
 .sub-read { font-size: max(8px, calc(9 * var(--s))); color: var(--ink-faint); margin-top: calc(2 * var(--s)); }
 
+/* --- 得点の獲得表示 ---
+
+   壊した瞬間に、渦の頭の上に数字が浮いて流れる。合算は0.2秒単位で、
+   一株ごとに「+1」が四十個出るのは数字ではなく吹雪になる。 */
+.pops { position: absolute; inset: 0; overflow: hidden; }
+.pop {
+  position: absolute;
+  font-size: max(12px, calc(15 * var(--s)));
+  letter-spacing: 0.06em; color: var(--agave);
+  text-shadow: 0 0 calc(10 * var(--s)) rgba(0, 0, 0, 0.85), 0 1px 2px rgba(0, 0, 0, 0.9);
+  transform: translate(-50%, -50%);
+  animation: popUp 1.25s cubic-bezier(0.16, 0.9, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+.pop.big { font-size: max(16px, calc(23 * var(--s))); color: var(--amber); }
+.pop.huge { font-size: max(20px, calc(31 * var(--s))); color: var(--red); }
+@keyframes popUp {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+  14% { opacity: 1; transform: translate(-50%, -60%) scale(1.06); }
+  100% { opacity: 0; transform: translate(-50%, -190%) scale(1); }
+}
+
+.next-read {
+  font-size: max(9px, calc(10 * var(--s)));
+  letter-spacing: 0.06em; color: var(--agave);
+  margin-top: calc(2 * var(--s)); font-family: var(--jp);
+}
+
 /* --- 階級のはしご --- */
 .ladder { width: calc(146 * var(--s)); }
 .rung {
@@ -538,9 +566,10 @@ button.big.ghost { background: transparent; color: var(--agave); border: 1px sol
     </div>
 
     <div class="panel clock" id="pClock">
-      <label>VIDA · 寿命</label>
-      <div class="big-read" id="stormClock">00:00</div>
-      <div class="sub-read"><span id="stormPath">0.00 km</span> · <span id="stormWidth">幅 0 m</span></div>
+      <label>PUNTOS · 得点</label>
+      <div class="big-read" id="score">0</div>
+      <div class="next-read" id="nextStage">次の段まで 40</div>
+      <div class="sub-read"><span id="stormClock">00:00</span> · <span id="stormPath">0.00 km</span> · <span id="stormWidth">幅 0 m</span></div>
     </div>
   </div>
 
@@ -574,6 +603,7 @@ button.big.ghost { background: transparent; color: var(--agave); border: 1px sol
     </div>
   </div>
 
+  <div class="pops" id="pops"></div>
   <div class="toast-wrap" id="toasts"></div>
   <div class="banner hidden" id="banner"><span id="bannerTag"></span><b id="bannerText"></b></div>
   <div class="prompt hidden" id="prompt"><b>E</b><span id="promptText"></span></div>
@@ -3987,16 +4017,16 @@ const { m4, m4compose, qt, qFromAxisAngle, qMul, qNorm, qIntegrate, clamp } = __
 /* 壊せるものの一覧。minStage は「この階級にならないと倒せない」、
    hp は噛み砕くのに要る秒×強さ、value は倒したときに入る力。 */
 const KINDS = {
-  agave:  { label: 'アガベ',   minStage: 0, hp: 0.5,  value: 0.6,  r: 1.1, tone: 'leaf' },
-  bush:   { label: '灌木',     minStage: 0, hp: 0.7,  value: 0.5,  r: 1.0, tone: 'leaf' },
-  post:   { label: '柵',       minStage: 0, hp: 0.8,  value: 0.6,  r: 0.5, tone: 'wood' },
-  cactus: { label: 'サボテン', minStage: 1, hp: 3.4,  value: 5.0,  r: 1.8, tone: 'leaf' },
-  pile:   { label: 'ピニャ',   minStage: 1, hp: 3.0,  value: 6.0,  r: 2.6, tone: 'leaf' },
-  truck:  { label: 'トラック', minStage: 2, hp: 8.0,  value: 16.0, r: 3.0, tone: 'metal' },
-  shed:   { label: '納屋',     minStage: 2, hp: 12.0, value: 26.0, r: 6.4, tone: 'wood' },
-  tower:  { label: '給水塔',   minStage: 3, hp: 18.0, value: 48.0, r: 3.8, tone: 'metal' },
-  mill:   { label: '風車',     minStage: 3, hp: 18.0, value: 48.0, r: 3.4, tone: 'metal' },
-  casa:   { label: '母屋',     minStage: 4, hp: 34.0, value: 120.0, r: 11.5, tone: 'adobe' }
+  agave:  { label: 'アガベ',   minStage: 0, hp: 0.35, value: 1,   r: 1.1, tone: 'leaf', count: 'agave' },
+  bush:   { label: '灌木',     minStage: 0, hp: 0.5,  value: 1,   r: 1.0, tone: 'leaf' },
+  post:   { label: '柵',       minStage: 0, hp: 0.5,  value: 2,   r: 0.5, tone: 'wood' },
+  cactus: { label: 'サボテン', minStage: 1, hp: 2.0,  value: 10,  r: 1.8, tone: 'leaf', count: 'cactus' },
+  pile:   { label: 'ピニャ',   minStage: 1, hp: 1.6,  value: 15,  r: 2.6, tone: 'leaf' },
+  truck:  { label: 'トラック', minStage: 1, hp: 4.0,  value: 30,  r: 3.0, tone: 'metal', count: 'building' },
+  shed:   { label: '納屋',     minStage: 1, hp: 5.5,  value: 40,  r: 6.4, tone: 'wood', count: 'building' },
+  tower:  { label: '給水塔',   minStage: 2, hp: 8.0,  value: 60,  r: 3.8, tone: 'metal', count: 'building' },
+  mill:   { label: '風車',     minStage: 2, hp: 8.0,  value: 60,  r: 3.4, tone: 'metal', count: 'building' },
+  casa:   { label: '母屋',     minStage: 3, hp: 14.0, value: 200, r: 11.5, tone: 'adobe', count: 'building' }
 };
 
 const GRID = 8;
@@ -4468,7 +4498,7 @@ class Props {
       const a = 0.7 + i * 0.9;
       struct('pile', this.mPile, F.x - 214 + Math.cos(a) * 24, F.z + 176 + Math.sin(a) * 24, a, { scale: 1.45 });
     }
-    this.total.building = this.structures.filter((s) => KINDS[s.kind].minStage >= 2).length;
+    this.total.building = this.structures.filter((s) => KINDS[s.kind].count === 'building').length;
   }
 
   /* 倒す。株なら静止側から飛翔側へ移し、建物なら倒すか持っていく。 */
@@ -4501,9 +4531,8 @@ class Props {
     } else {
       item.fall = instant ? 1 : 0.0001;
     }
-    if (item.kind === 'agave') this.tally.agave++;
-    else if (item.kind === 'cactus') this.tally.cactus++;
-    else if (KINDS[item.kind].minStage >= 2) this.tally.building++;
+    const c = KINDS[item.kind].count;
+    if (c) this.tally[c]++;
   }
 
   /* 株を一つ、渦へ投げ込む。初速はその場の速度場そのもの。だから
@@ -4976,12 +5005,17 @@ const { makeRng } = __req("core/rng.js");
 /* 階級。しきい値は吸い上げた総量。 */
 const STAGES = [
   { ef: 'EF0', es: 'POLVO',     jp: '塵旋風', at: 0,    radius: 3.4, top: 62,  swirl: 24, updraft: 9,  wedge: 0.00, cloud: 0.00, rain: 0.00, bolt: 0, red: 0.00 },
-  { ef: 'EF1', es: 'REMOLINO',  jp: '旋風',   at: 70,   radius: 5.4, top: 105, swirl: 34, updraft: 13, wedge: 0.05, cloud: 0.38, rain: 0.00, bolt: 0, red: 0.00 },
-  { ef: 'EF2', es: 'TORMENTA',  jp: '嵐',     at: 230,  radius: 8.2, top: 160, swirl: 46, updraft: 18, wedge: 0.20, cloud: 0.62, rain: 0.35, bolt: 0, red: 0.05 },
-  { ef: 'EF3', es: 'RAYO',      jp: '雷',     at: 520,  radius: 12.5, top: 225, swirl: 58, updraft: 24, wedge: 0.45, cloud: 0.80, rain: 0.58, bolt: 1, red: 0.18 },
-  { ef: 'EF4', es: 'SANGRE',    jp: '紅蓮',   at: 1000, radius: 18.5, top: 285, swirl: 72, updraft: 30, wedge: 0.75, cloud: 0.92, rain: 0.70, bolt: 1, red: 0.78 },
-  { ef: 'EF5', es: 'FIN',       jp: '終焉',   at: 1750, radius: 27.0, top: 330, swirl: 90, updraft: 37, wedge: 1.00, cloud: 1.00, rain: 0.80, bolt: 1, red: 1.00 }
+  { ef: 'EF1', es: 'REMOLINO',  jp: '旋風',   at: 40,   radius: 5.4, top: 105, swirl: 34, updraft: 13, wedge: 0.05, cloud: 0.38, rain: 0.00, bolt: 0, red: 0.00 },
+  { ef: 'EF2', es: 'TORMENTA',  jp: '嵐',     at: 140,  radius: 8.2, top: 160, swirl: 46, updraft: 18, wedge: 0.20, cloud: 0.62, rain: 0.35, bolt: 0, red: 0.05 },
+  { ef: 'EF3', es: 'RAYO',      jp: '雷',     at: 360,  radius: 12.5, top: 225, swirl: 58, updraft: 24, wedge: 0.45, cloud: 0.80, rain: 0.58, bolt: 1, red: 0.18 },
+  { ef: 'EF4', es: 'SANGRE',    jp: '紅蓮',   at: 800,  radius: 18.5, top: 285, swirl: 72, updraft: 30, wedge: 0.75, cloud: 0.92, rain: 0.70, bolt: 1, red: 0.78 },
+  { ef: 'EF5', es: 'FIN',       jp: '終焉',   at: 1500, radius: 27.0, top: 330, swirl: 90, updraft: 37, wedge: 1.00, cloud: 1.00, rain: 0.80, bolt: 1, red: 1.00 }
 ];
+
+/* 次の段まであと何点か。HUDが数字で出すので、ここが唯一の出どころ。 */
+function nextThreshold(stage) {
+  return stage >= STAGES.length - 1 ? null : STAGES[stage + 1].at;
+}
 
 /* ---------- 漏斗 ---------- */
 
@@ -5408,7 +5442,7 @@ class Tornado {
     this.moisture = clamp(this.moisture, 0, 1);
 
     // 電荷。雷を持てる階級になってから溜まり始める。
-    if (this.params.bolt > 0) this.charge = Math.min(1, this.charge + dt * 0.11);
+    if (this.params.bolt > 0) this.charge = Math.min(1, this.charge + dt * 0.17);
     this.flash = Math.max(0, this.flash - dt * 5.6);
     this._stepBolts(dt);
 
@@ -5429,9 +5463,9 @@ class Tornado {
   /* 周りにあるものを噛む。倒れたものは events に積んで返す。 */
   consume(props, dt, debris, events) {
     if (!this.alive) return;
-    const reach = this.radius * 1.75 + 3;
+    const reach = this.radius * 1.9 + 4;
     const list = props.query(this.pos[0], this.pos[2], reach, this._q || (this._q = []));
-    const strength = (1.4 + this.stage * 0.9 + this.surge * 0.6) * (0.62 + this.moisture * 0.38);
+    const strength = (2.2 + this.stage * 1.1 + this.surge * 0.8) * (0.62 + this.moisture * 0.38);
     for (let i = 0; i < list.length; i++) {
       const it = list[i];
       const d = Math.hypot(it.x - this.pos[0], it.z - this.pos[2]);
@@ -5445,11 +5479,14 @@ class Tornado {
         }
         continue;
       }
-      it.chew += f * f * strength * dt;
+      /* 噛む速さは距離に比例。二乗にすると、渦の縁を掠めた株がほとんど
+         削れず、時速七十キロで畑を横切っても一株も倒れない。実際、
+         最初の版はそうなっていた。 */
+      it.chew += f * strength * dt;
       if (it.chew < it.hp) continue;
       props.destroy(it, false, this);
       this.energy += it.value;
-      this.moisture = clamp(this.moisture + it.value * 0.010, 0, 1);
+      this.moisture = clamp(this.moisture + it.value * 0.006, 0, 1);
       const n = Math.min(90, 6 + it.value * 1.6);
       debris.burst(it.x, it.y + (it.h || 1) * 0.5, it.z, n, it.tone, 5 + it.value * 0.25);
       if (it.tone === 'adobe' || it.tone === 'metal') {
@@ -5522,7 +5559,7 @@ class Tornado {
       for (const it of list) {
         props.destroy(it, false, this);
         this.energy += it.value;
-        this.moisture = clamp(this.moisture + it.value * 0.006, 0, 1);
+        this.moisture = clamp(this.moisture + it.value * 0.004, 0, 1);
         debris.burst(it.x, it.y + (it.h || 1) * 0.5, it.z, Math.min(80, 8 + it.value), it.tone, 9);
         debris.burst(it.x, it.y + 0.6, it.z, 14, 'ember', 7, 1.5);
         events.push({ type: 'kill', item: it, bolt: true });
@@ -5648,6 +5685,7 @@ class Tornado {
 }
 
   __e.STAGES = STAGES;
+  __e.nextThreshold = nextThreshold;
   __e.Tornado = Tornado;
 });
 
@@ -5897,6 +5935,11 @@ class Gameplay {
     return clamp(m.get(this.state) / m.need, 0, 1);
   }
 
+  missionHave() {
+    const m = this.mission;
+    return m ? m.get(this.state) : 0;
+  }
+
   /* 渦が積んだ出来事を読んで、帳簿を進める。 */
   digest(raw) {
     for (const e of raw) {
@@ -6057,7 +6100,7 @@ const CODEX = [
     body: [
       '幹は稜のある柱で、稜は蛇腹になっている。雨が降ると水を吸って膨らみ、乾くと痩せて溝が深くなる。生きた水筒の形をしている。',
       '内側には木質の骨がある。この骨があるから、直径三十センチの柱が七メートル立っていられる。折れるときは、その骨ごと縦に裂ける。',
-      'EF0の渦では揺らすのが精一杯で、倒すには最低でも旋風の階級が要る。'
+      'EF0の渦では揺らすのが精一杯で、倒すには最低でも旋風の階級が要る。一本で10点。'
     ]
   },
   {
@@ -6128,7 +6171,7 @@ const CODEX = [
     meta: '一八九四年建造 · 日干し煉瓦 厚さ 90 cm',
     body: [
       '壁は九十センチの日干し煉瓦で、夏の熱も冬の冷えも、その厚みの中で一日かけて往復する。だから中はいつも同じ温度でいられた。',
-      '厚い壁は風にも強い。EF3の渦は屋根を持っていくが、壁は残す。壁が抜けるには、それ以上が要る。',
+      '厚い壁は風にも強い。EF2の渦は屋根を持っていくが、壁は残す。壁が抜けるには、それ以上が要る。二百点の建物である。',
       '残っているのは基礎と、玄関の前の敷石と、回廊の柱が立っていた穴の列だけになった。'
     ]
   },
@@ -6146,17 +6189,17 @@ const CODEX = [
 /* 目標。need に届いたら次へ。 */
 function buildMissions() {
   return [
-    { id: 'field', title: '畑に降りる', detail: 'アガベを40株薙ぐ。渦は生きているものを食べて育つ。', need: 40, get: (s) => s.tally.agave },
-    { id: 'ef1', title: '旋風になる', detail: 'EF1へ。土を巻き上げるほど柱は太くなる。', need: 1, get: (s) => (s.stage >= 1 ? 1 : 0) },
-    { id: 'cactus', title: 'サボテンを倒す', detail: '柱サボテンを12本。硬いものはEF1から噛める。', need: 12, get: (s) => s.tally.cactus },
-    { id: 'ef2', title: '雲を戴く', detail: 'EF2へ。雲底が下がり、あなたに雨がつく。', need: 1, get: (s) => (s.stage >= 2 ? 1 : 0) },
-    { id: 'yard', title: 'ハシエンダを荒らす', detail: '納屋・トラック・給水塔を合わせて4つ。', need: 4, get: (s) => s.tally.building },
-    { id: 'stock', title: '家畜を散らす', detail: '牛やロバを10回巻き上げる。落ちて、起きて、また走る。', need: 10, get: (s) => s.tally.livestock },
-    { id: 'ef3', title: '雷を持つ', detail: 'EF3へ。電荷が満ちたら E で落とせる。', need: 1, get: (s) => (s.stage >= 3 ? 1 : 0) },
-    { id: 'strike', title: '雷を落とす', detail: '落雷を3回。何に落とすかはあなたが決める。', need: 3, get: (s) => s.boltsUsed },
-    { id: 'ef4', title: '赤くなる', detail: 'EF4へ。赤い土が柱を染める。', need: 1, get: (s) => (s.stage >= 4 ? 1 : 0) },
-    { id: 'casa', title: '母屋を消す', detail: 'サン・ロマンの母屋。EF4の歯でなければ立たない。', need: 1, get: (s) => (s.casaGone ? 1 : 0) },
-    { id: 'ef5', title: '終焉', detail: 'EF5へ。ここから先に段は無い。', need: 1, get: (s) => (s.stage >= 5 ? 1 : 0) }
+    { id: 'field', title: '畑に降りる', detail: 'アガベを12株薙ぐ。一株で1点。', need: 12, get: (s) => s.tally.agave },
+    { id: 'ef1', title: '旋風になる', detail: '40点でEF1へ。土を巻き上げるほど柱は太くなる。', need: 1, get: (s) => (s.stage >= 1 ? 1 : 0) },
+    { id: 'cactus', title: 'サボテンを倒す', detail: '柱サボテンを4本。一本10点。EF1から噛める。', need: 4, get: (s) => s.tally.cactus },
+    { id: 'ef2', title: '雲を戴く', detail: '140点でEF2へ。雲底が下がり、雨がつく。', need: 1, get: (s) => (s.stage >= 2 ? 1 : 0) },
+    { id: 'stock', title: '家畜を散らす', detail: '牛やロバを3回巻き上げる。一頭15〜20点。', need: 3, get: (s) => s.tally.livestock },
+    { id: 'yard', title: 'ハシエンダを荒らす', detail: '納屋かトラックを2つ。30〜40点。', need: 2, get: (s) => s.tally.building },
+    { id: 'ef3', title: '雷を持つ', detail: '360点でEF3へ。電荷が満ちたら E で落とせる。', need: 1, get: (s) => (s.stage >= 3 ? 1 : 0) },
+    { id: 'strike', title: '雷を落とす', detail: '落雷を2回。落ちた場所のものは階級を問わず壊れる。', need: 2, get: (s) => s.boltsUsed },
+    { id: 'casa', title: '母屋を消す', detail: 'サン・ロマンの母屋。200点。EF3の歯が要る。', need: 1, get: (s) => (s.casaGone ? 1 : 0) },
+    { id: 'ef4', title: '赤くなる', detail: '800点でEF4へ。赤い土が柱を染める。', need: 1, get: (s) => (s.stage >= 4 ? 1 : 0) },
+    { id: 'ef5', title: '終焉', detail: '1,500点でEF5へ。ここから先に段は無い。', need: 1, get: (s) => (s.stage >= 5 ? 1 : 0) }
   ];
 }
 
@@ -6174,7 +6217,7 @@ __def("ui/hud.js", function (__e, __req) {
    ============================================================ */
 
 const { CODEX } = __req("game/lore.js");
-const { STAGES } = __req("game/tornado.js");
+const { STAGES, nextThreshold } = __req("game/tornado.js");
 const { clamp, wrapPi, DEG } = __req("core/math.js");
 
 const $ = (id) => document.getElementById(id);
@@ -6202,9 +6245,11 @@ const CONTROLS = [
   ['マウス', '見回す · ホイールで寄る']
 ];
 
+/* 被害の集計。何点になるかを併記しておく。渦が何を狙うべきかは、
+   この一覧を見れば分かる。 */
 const TALLY_ROWS = [
-  ['agave', 'アガベ'], ['cactus', 'サボテン'], ['building', '建物'],
-  ['livestock', '家畜'], ['people', '人']
+  ['agave', 'アガベ', '1'], ['cactus', 'サボテン', '10'], ['building', '建物', '30-200'],
+  ['livestock', '家畜', '15-20'], ['people', '人', '10']
 ];
 
 class Hud {
@@ -6214,6 +6259,7 @@ class Hud {
     this.el = {
       hud: $('hud'), objTitle: $('objTitle'), objDetail: $('objDetail'), objFill: $('objFill'),
       stormClock: $('stormClock'), stormPath: $('stormPath'), stormWidth: $('stormWidth'),
+      score: $('score'), nextStage: $('nextStage'), pops: $('pops'),
       ladderRows: $('ladderRows'), tallyRows: $('tallyRows'), chips: $('chips'),
       gCore: $('gCore'), tCore: $('tCore'), gMoist: $('gMoist'), tMoist: $('tMoist'),
       gCharge: $('gCharge'), tCharge: $('tCharge'),
@@ -6345,10 +6391,10 @@ class Hud {
   _buildTally() {
     this.el.tallyRows.innerHTML = '';
     this.tallyCells = {};
-    for (const [key, label] of TALLY_ROWS) {
+    for (const [key, label, pts] of TALLY_ROWS) {
       const d = document.createElement('div');
       d.className = 'tally-row';
-      d.innerHTML = `<span>${label}</span><b>0</b>`;
+      d.innerHTML = `<span>${label} <i style="font-style:normal;opacity:0.55">+${pts}</i></span><b>0</b>`;
       this.el.tallyRows.appendChild(d);
       this.tallyCells[key] = d;
     }
@@ -6471,6 +6517,20 @@ class Hud {
     this._bannerT = 4.0;
   }
 
+  /* 獲得した点を、渦の頭の上に浮かせる。CSSアニメーションが終わったら
+     自分で消える。同時に四十個出さないよう、呼ぶ側が合算している。 */
+  pop(value, x, y) {
+    const d = document.createElement('div');
+    d.className = `pop${value >= 100 ? ' huge' : value >= 25 ? ' big' : ''}`;
+    d.textContent = `+${value}`;
+    d.style.left = `${x}px`;
+    d.style.top = `${y}px`;
+    this.el.pops.appendChild(d);
+    // フレームが詰まってタイマーが遅れても、器が膨らまないようにする。
+    while (this.el.pops.childElementCount > 14) this.el.pops.firstElementChild.remove();
+    setTimeout(() => d.remove(), 1300);
+  }
+
   /* 地図に残す被害の点。全部覚えると際限が無いので間引く。 */
   mark(x, z, kind) {
     this._marks.push([x, z, kind]);
@@ -6492,11 +6552,20 @@ class Hud {
     }
     if (!this.visible || !this.s.hudShow) return;
 
-    /* 目標 */
+    /* 目標。数の要る目標には「いくつ中いくつ」を出す。 */
     const m = st.mission;
-    this.el.objTitle.textContent = m ? m.title : '走り切った';
-    this.el.objDetail.textContent = m ? m.detail : '畑はもう無い。あとは乾くまでの時間だけ。';
+    this.el.objTitle.textContent = m
+      ? (m.need > 1 ? `${m.title}　${Math.min(st.missionHave, m.need)} / ${m.need}` : m.title)
+      : '走り切った';
+    this.el.objDetail.textContent = m ? m.detail : '畑はもう無い。あとは好きなだけ。';
     this.el.objFill.style.width = `${(st.missionProgress * 100).toFixed(0)}%`;
+
+    /* 得点。次の段までの残りも数字で出す。 */
+    this.el.score.textContent = Math.floor(st.score).toLocaleString('en-US');
+    const nx = nextThreshold(st.stage);
+    this.el.nextStage.textContent = nx === null
+      ? '最高段 · EF5'
+      : `${STAGES[st.stage + 1].ef} まで あと ${Math.max(0, Math.ceil(nx - st.score)).toLocaleString('en-US')}`;
 
     /* 寿命と経路 */
     const T = st.life;
@@ -6776,10 +6845,10 @@ const { m4, m4compose, qt, qFromAxisAngle, qIntegrate, clamp, wrapPi } = __req("
 
 /* 種類。run は逃げ足、walk は普段の速さ、legY は「脚とみなす高さ」。 */
 const KIND = {
-  jimador: { label: 'ヒマドール', walk: 1.5, run: 5.2, legY: 0.95, r: 0.6, value: 4, tone: 'wood', livestock: false },
-  vaca:    { label: '牛',         walk: 0.9, run: 6.4, legY: 1.05, r: 1.3, value: 8, tone: 'leaf', livestock: true },
-  burro:   { label: 'ロバ',       walk: 1.1, run: 5.6, legY: 0.90, r: 1.0, value: 6, tone: 'wood', livestock: true },
-  perro:   { label: '犬',         walk: 2.0, run: 8.2, legY: 0.45, r: 0.4, value: 2, tone: 'wood', livestock: true }
+  jimador: { label: 'ヒマドール', walk: 1.5, run: 5.2, legY: 0.95, r: 0.6, value: 10, tone: 'wood', livestock: false },
+  vaca:    { label: '牛',         walk: 0.9, run: 5.6, legY: 1.05, r: 1.3, value: 20, tone: 'leaf', livestock: true },
+  burro:   { label: 'ロバ',       walk: 1.1, run: 5.6, legY: 0.90, r: 1.0, value: 15, tone: 'wood', livestock: true },
+  perro:   { label: '犬',         walk: 2.0, run: 7.0, legY: 0.45, r: 0.4, value: 8, tone: 'wood', livestock: true }
 };
 
 /* ---------- 形 ----------
@@ -7221,6 +7290,7 @@ function begin(resume) {
   let last = performance.now();
   let saveTimer = 0;
   let boltCount = 0;
+  let popAcc = 0, popT = 0;
   const basis = {};
   const rawEvents = [];
   const ctx = {
@@ -7354,12 +7424,14 @@ function begin(resume) {
         if (e.type === 'snatch') {
           // 巻き上げたものは力になる。誰も死んでいないので、値は控えめ。
           tornado.energy += e.actor.k.value;
-          tornado.moisture = Math.min(1, tornado.moisture + e.actor.k.value * 0.012);
+          popAcc += e.actor.k.value;
+          tornado.moisture = Math.min(1, tornado.moisture + e.actor.k.value * 0.006);
           hud.mark(e.actor.x, e.actor.z, 'building');
           audio.crack('wood', 1.2);
           continue;
         }
         if (e.type !== 'kill') continue;
+        popAcc += e.item.value;
         const k = e.item.kind;
         hud.mark(e.item.x, e.item.z,
           k === 'agave' || k === 'bush' || k === 'post' ? 'plant' : k === 'cactus' ? 'cactus' : 'building');
@@ -7415,6 +7487,23 @@ function begin(resume) {
     ctx.pixelScale = engine.scale;
     if (paused) weather();
 
+    /* 溜まった獲得点を、渦の頭の上に一つの数字として出す。一株ごとに
+       「+1」を四十個出すと、数字ではなく吹雪になる。 */
+    popT += dt;
+    if (popAcc > 0 && popT > 0.22) {
+      const px = tornado.pos[0], py = tornado.pos[1] + tornado.radius * 1.6 + 10, pz = tornado.pos[2];
+      const vp = cam.viewProj;
+      const w = vp[3] * px + vp[7] * py + vp[11] * pz + vp[15];
+      if (w > 0.001) {
+        const nx = (vp[0] * px + vp[4] * py + vp[8] * pz + vp[12]) / w;
+        const ny = (vp[1] * px + vp[5] * py + vp[9] * pz + vp[13]) / w;
+        hud.pop(Math.round(popAcc),
+          (nx * 0.5 + 0.5) * engine.cssWidth + (Math.random() - 0.5) * 40,
+          (1 - (ny * 0.5 + 0.5)) * engine.cssHeight + (Math.random() - 0.5) * 24);
+      }
+      popAcc = 0; popT = 0;
+    }
+
     /* ---- 描画 ---- */
     engine.beginScene();
     sky.render(ctx);
@@ -7441,6 +7530,8 @@ function begin(resume) {
     const P = tornado.params;
     hudState.mission = game.mission;
     hudState.missionProgress = game.missionProgress();
+    hudState.missionHave = game.missionHave();
+    hudState.score = tornado.energy;
     hudState.life = game.time;
     hudState.path = tornado.pathLength;
     hudState.width = tornado.radius * 2;
