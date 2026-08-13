@@ -6668,6 +6668,8 @@ function ensureCameraDefaults(cut) {
   if (!cut.wfStatus) cut.wfStatus = "plan";
   /* 参照画像 (ワークフローの素材) — プレビュー/first frameに使う */
   if (cut.refImgId === undefined) cut.refImgId = null;
+  if (cut.refOffX == null) cut.refOffX = 0; // 画像の寄り位置 (%)
+  if (cut.refOffY == null) cut.refOffY = 0;
   const c = cut.camera;
   if (!c.moveSpeed) c.moveSpeed = "normal";
   if (!c.endShotSize) c.endShotSize = "same";
@@ -7551,8 +7553,48 @@ function renderPreviewSVG(cut, idPrefix) {
       </radialGradient>`;
     const tempTint = an.avgTemp >= 7000 ? `<rect width="${W}" height="${H}" fill="#3d78ff" opacity="0.10"/>`
       : an.avgTemp <= 3800 ? `<rect width="${W}" height="${H}" fill="#ff9a3d" opacity="0.10"/>` : "";
+
+    /* フレーミング: カットサイズ→ズーム、アングル→視点シフト/傾き、位置調整→アンカー */
+    const zoom = Math.max(1, Math.min(2.6, 0.9 + ((size.scale || 1) - 0.45) * 0.55));
+    const dutch = angId === "dutch" ? -7 : 0;
+    const ax = W / 2 + (W * (cut.refOffX || 0)) / 100;
+    const ay = H * 0.42 + (H * (cut.refOffY || 0)) / 100
+      + (angId === "high" || angId === "topdown" || angId === "drone" ? -H * 0.05 : angId === "low" ? H * 0.05 : 0);
+    const frameTf = `translate(${(W / 2).toFixed(1)} ${(H * 0.45).toFixed(1)}) rotate(${dutch}) scale(${zoom.toFixed(3)}) translate(${(-ax).toFixed(1)} ${(-ay).toFixed(1)})`;
+    const imgTag = `<image href="${refImg.dataUrl}" x="${-W * 0.06}" y="${-H * 0.06}" width="${W * 1.12}" height="${H * 1.12}" preserveAspectRatio="xMidYMid slice" filter="url(#${p}imf)"/>`;
+
+    /* 被写界深度: 開放絞りでは周辺をボカす (radialマスク) */
+    const dof = (cut.camera.apertureF || 2.8) <= 2.2;
+    if (dof) {
+      const blurStd = Math.min(6, Math.max(2, (2.2 - cut.camera.apertureF) * 3 + 2));
+      defs += `
+        <filter id="${p}imblf" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="${blurStd.toFixed(1)}"/></filter>
+        <radialGradient id="${p}dofg" cx="0.5" cy="0.45" r="0.72">
+          <stop offset="0.42" stop-color="#000"/>
+          <stop offset="1" stop-color="#fff"/>
+        </radialGradient>
+        <mask id="${p}dofm" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}">
+          <rect width="${W}" height="${H}" fill="url(#${p}dofg)"/>
+        </mask>`;
+    }
+
+    /* ビネット (コントラスト/ローキーに連動) とフィルムグレイン (ルック連動) */
+    const vigOp = Math.min(0.5, an.contrast * 0.3 + (silhouette ? 0.18 : 0));
+    if (vigOp > 0.12) {
+      defs += `<radialGradient id="${p}imvig" cx="0.5" cy="0.5" r="0.75">
+        <stop offset="0.55" stop-color="#000" stop-opacity="0"/>
+        <stop offset="1" stop-color="#000" stop-opacity="${vigOp.toFixed(2)}"/>
+      </radialGradient>`;
+    }
+    const grainy = ["filmwarm", "bleach", "mono"].includes(cut.look);
+    if (grainy) {
+      defs += `<filter id="${p}imgr"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>`;
+    }
+
     refScene = `
-      <image href="${refImg.dataUrl}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid slice" filter="url(#${p}imf)"/>
+      <rect x="${-W * 0.15}" y="${-H * 0.15}" width="${W * 1.3}" height="${H * 1.3}" fill="url(#${p}bg)"/>
+      <g transform="${frameTf}">${imgTag}</g>
+      ${dof ? `<g transform="${frameTf}" filter="url(#${p}imblf)" mask="url(#${p}dofm)">${imgTag}</g>` : ""}
       ${silhouette ? `<rect width="${W}" height="${H}" fill="url(#${p}imglow)" style="mix-blend-mode:screen"/>
                       <rect width="${W}" height="${H}" fill="#0a0c12" opacity="0.5" style="mix-blend-mode:multiply"/>` : ""}
       <rect width="${W}" height="${H}" fill="url(#${p}imshad)" style="mix-blend-mode:multiply"/>
@@ -7563,6 +7605,8 @@ function renderPreviewSVG(cut, idPrefix) {
       ${cut.options.includes("gel") ? `
         <rect x="0" y="0" width="${W / 2}" height="${H}" fill="#e040c8" opacity="0.18" style="mix-blend-mode:screen"/>
         <rect x="${W / 2}" y="0" width="${W / 2}" height="${H}" fill="#2a6ae8" opacity="0.18" style="mix-blend-mode:screen"/>` : ""}
+      ${vigOp > 0.12 ? `<rect width="${W}" height="${H}" fill="url(#${p}imvig)"/>` : ""}
+      ${grainy ? `<rect width="${W}" height="${H}" filter="url(#${p}imgr)" opacity="0.07" style="mix-blend-mode:overlay"/>` : ""}
       ${fx}`;
   }
 
@@ -7622,6 +7666,8 @@ function applyPreset(presetId) {
   fresh.takes = cut.takes;
   fresh.setupMin = cut.setupMin;
   fresh.refImgId = cut.refImgId;
+  fresh.refOffX = cut.refOffX;
+  fresh.refOffY = cut.refOffY;
   fresh.wfStatus = cut.wfStatus;
   state.cuts[idx] = fresh;
   state.selectedItem = null;
@@ -7989,6 +8035,8 @@ function renderInspector() {
         <option value="">なし (図解プレビュー)</option>
         ${state.story.refs.map(r => `<option value="${esc(r.id)}" ${cut.refImgId === r.id ? "selected" : ""}>${esc(r.name)}</option>`).join("")}
       </select>`) : ""}
+      ${cut.refImgId ? fieldRow("画像位置 X", `<input type="range" id="cRefOffX" min="-25" max="25" step="1" value="${cut.refOffX || 0}" title="寄りの中心を左右に調整">`)
+        + fieldRow("画像位置 Y", `<input type="range" id="cRefOffY" min="-25" max="25" step="1" value="${cut.refOffY || 0}" title="寄りの中心を上下に調整">`) : ""}
       ${fieldRow("アスペクト比", selectHtml("cAspect", ASPECTS, cut.aspect))}
       ${fieldRow("ルック/グレード", selectHtml("cLook", LOOKS, cut.look))}
       ${fieldRow("天候", selectHtml("cWeather", WEATHERS, cut.weather))}
@@ -8101,7 +8149,9 @@ function renderInspector() {
   bind("cAction", e => { cut.action = e.target.value; renderPrompt(); });
   bind("cSubNote", e => { cut.subjectNote = e.target.value; renderPrompt(); }, "input");
   bind("cBg", e => { cut.bgStyle = e.target.value; refresh(); });
-  bind("cRefImg", e => { cut.refImgId = e.target.value || null; refresh(); });
+  bind("cRefImg", e => { cut.refImgId = e.target.value || null; refresh(); renderInspector(); });
+  bind("cRefOffX", e => { cut.refOffX = +e.target.value; renderPreview(); renderCutStrip(); }, "input");
+  bind("cRefOffY", e => { cut.refOffY = +e.target.value; renderPreview(); renderCutStrip(); }, "input");
   bind("cAspect", e => { cut.aspect = e.target.value; refresh(); });
   bind("cLook", e => { cut.look = e.target.value; renderPreview(); renderPrompt(); renderCutStrip(); });
   bind("cWeather", e => { cut.weather = e.target.value; renderPrompt(); });
