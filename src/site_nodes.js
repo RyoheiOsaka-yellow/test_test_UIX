@@ -68,6 +68,7 @@ reg.register({
     const aYear    = g.addAttrib('prim', 'year', 'int');
     const aPart    = g.addAttrib('prim', 'part', 'string');
     const aDelta   = g.addAttrib('prim', 'mhDelta', 'float');   // |幾何高さ − measuredHeight|
+    const aBid     = g.addAttrib('prim', 'bid', 'int');         // 建物インデックス（棟別 For-Each のキー）
 
     let used = 0, skippedFar = 0, skippedLow = 0, noMh = 0;
     for (const b of src) {
@@ -93,6 +94,7 @@ reg.register({
         aHeight.set(pi, h); aUsage.set(pi, b.usage);
         aStoreys.set(pi, b.storeys); aYear.set(pi, b.year);
         aDelta.set(pi, hasMh ? Math.abs(b.h - b.mh) : 0);
+        aBid.set(pi, used);
       };
       tag(roof); aPart.set(roof, 'roof');
       for (let i = 0; i < n; i++) {

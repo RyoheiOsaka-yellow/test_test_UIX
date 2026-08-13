@@ -386,6 +386,10 @@ reg.register({
 const { installSubnet, registerAsset, assetFromSubnet } = require('./subnet');
 installSubnet(reg);
 
+/* ---------- P5: For-Each ブロック（src/foreach.js） ---------- */
+const { installForEach } = require('./foreach');
+installForEach(reg);
+
 module.exports = {
   reg, compileSnippet, snippetIsTimeDependent, stripNonCode,
   registerAsset, assetFromSubnet,

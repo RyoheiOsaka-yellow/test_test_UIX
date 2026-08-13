@@ -222,4 +222,8 @@ function assetFromSubnet(node, meta = {}) {
   };
 }
 
-module.exports = { installSubnet, registerAsset, assetFromSubnet, XDA_FORMAT };
+module.exports = {
+  installSubnet, registerAsset, assetFromSubnet, XDA_FORMAT,
+  // foreach.js（P5）が再利用する内側グラフ機構
+  innerGraph, innerOutputId, parentContext, subnetTimeDep,
+};
