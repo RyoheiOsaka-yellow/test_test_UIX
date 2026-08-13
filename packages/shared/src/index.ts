@@ -2,3 +2,7 @@ export * from './types.js';
 export * from './hydro.js';
 export * from './hullgen.js';
 export * from './canonical.js';
+export * from './section.js';
+export * from './polyhedron.js';
+export * from './hydroL1.js';
+export * from './stability.js';

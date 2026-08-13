@@ -12,12 +12,15 @@
  *   hydro.run            → hydro_run
  *   branch.create        → branch_create
  *   transaction.revert   → transaction_revert
+ *   stability.run        → stability_run    (L1 free-trim equilibrium + GZ curve)
+ *   stability.check      → stability_check  (IMO IS Code verdicts, compact)
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
+import type { L1Result as L1ResultShape } from '@dock/shared';
 
 const API_URL = process.env.DOCK_API_URL ?? 'http://127.0.0.1:8787';
 
@@ -229,6 +232,108 @@ export function createServer(): McpServer {
             body: JSON.stringify({ version, draft, kg }),
           }),
         );
+      } catch (err) {
+        return asError(err);
+      }
+    },
+  );
+
+  const weightSchema = z.object({
+    id: z.string(),
+    name: z.string().optional(),
+    mass: z.number().positive().describe('mass [t]'),
+    x: z.number().describe('LCG from the aft perpendicular [m]'),
+    y: z.number().describe('TCG from the centreline, starboard positive [m]'),
+    z: z.number().describe('VCG above the baseline [m]'),
+  });
+
+  server.tool(
+    'stability_run',
+    'stability.run — Hydrostatics L1: solve the floating attitude (sinkage, ' +
+      'trim and heel) for the loading condition, then build the free-trim GZ ' +
+      'curve and evaluate the IMO intact stability criteria. Returns the full ' +
+      'result including the GZ curve; use stability_check for a compact verdict. ' +
+      'Results are immutable and pinned to the exact branch version.',
+    {
+      branchId: z.string().uuid().optional(),
+      version: z.number().int().nonnegative().optional(),
+      extraWeights: z
+        .array(weightSchema)
+        .optional()
+        .describe('cargo and other discrete weights added to lightship and tanks'),
+      floodingAngleDeg: z
+        .number()
+        .positive()
+        .max(90)
+        .optional()
+        .describe('down-flooding angle θf; area criteria are capped at min(40°, θf)'),
+      heelStepDeg: z.number().positive().max(10).optional(),
+      maxHeelDeg: z.number().min(40).max(90).optional(),
+    },
+    async ({ branchId, ...body }) => {
+      try {
+        const b = await resolveBranchId(branchId);
+        return asText(
+          await api(`/api/branches/${b}/stability/run`, {
+            method: 'POST',
+            body: JSON.stringify(body),
+          }),
+        );
+      } catch (err) {
+        return asError(err);
+      }
+    },
+  );
+
+  server.tool(
+    'stability_check',
+    'stability.check — run L1 and return only the intact-stability verdict: ' +
+      'each IMO IS Code criterion with its required value, actual value and ' +
+      'margin, plus the equilibrium attitude and GM. Use this to answer ' +
+      '"does this loading condition comply?".',
+    {
+      branchId: z.string().uuid().optional(),
+      version: z.number().int().nonnegative().optional(),
+      extraWeights: z.array(weightSchema).optional(),
+      floodingAngleDeg: z.number().positive().max(90).optional(),
+      heelStepDeg: z.number().positive().max(10).optional(),
+    },
+    async ({ branchId, ...body }) => {
+      try {
+        const b = await resolveBranchId(branchId);
+        const res = await api<{
+          cached: boolean;
+          derived: { version: number; inputHash: string; result: L1ResultShape };
+        }>(`/api/branches/${b}/stability/run`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        const r = res.derived.result;
+        return asText({
+          branchId: b,
+          version: res.derived.version,
+          cached: res.cached,
+          verdict: r.allCriteriaPassed ? 'PASS' : 'FAIL',
+          failedCriteria: r.criteria.filter((c) => !c.passed).map((c) => c.id),
+          equilibrium: {
+            draftAP: r.equilibrium.draftAP,
+            draftFP: r.equilibrium.draftFP,
+            draftMean: r.equilibrium.draftMean,
+            trimByStern: r.equilibrium.trimByStern,
+            heelDeg: r.equilibrium.heelDeg,
+            displacement: r.equilibrium.displacement,
+            converged: r.equilibrium.converged,
+          },
+          gm0: r.gm0,
+          gmSolid: r.gmSolid,
+          freeSurfaceCorrection: r.fsc,
+          gzMax: r.gzMax,
+          gzMaxAngleDeg: r.gzMaxAngleDeg,
+          vanishingAngleDeg: r.vanishingAngleDeg,
+          deckImmersionAngleDeg: r.deckImmersionAngleDeg,
+          floodingAngleDeg: r.floodingAngleDeg,
+          criteria: r.criteria,
+        });
       } catch (err) {
         return asError(err);
       }

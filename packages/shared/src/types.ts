@@ -61,6 +61,21 @@ export interface VesselEntityData {
   rhoWater: number;
   /** Vertical centre of gravity above baseline [m] (lightship + fixed load, L0 assumption) */
   kg: number;
+  /**
+   * Lightship weight and centres. Required by the L1 free-trim/stability
+   * engine, which solves for the floating attitude rather than assuming a
+   * draft the way L0 does.
+   */
+  lightship?: {
+    /** Lightship mass [t] */
+    mass: number;
+    /** Longitudinal centre of gravity from AP [m] */
+    lcg: number;
+    /** Vertical centre of gravity above baseline [m] */
+    vcg: number;
+    /** Transverse centre of gravity from centerline [m] */
+    tcg?: number;
+  };
 }
 
 export interface HullEntityData {

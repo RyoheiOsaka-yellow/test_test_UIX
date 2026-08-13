@@ -47,12 +47,14 @@ afterAll(async () => {
 });
 
 describe('MCP server (Step 4)', () => {
-  it('lists exactly the seven vessel tools', async () => {
+  it('lists exactly the nine vessel tools', async () => {
     const tools = await client.listTools();
     const names = tools.tools.map((t) => t.name).sort();
     expect(names).toEqual([
       'branch_create',
       'hydro_run',
+      'stability_check',
+      'stability_run',
       'tank_resize',
       'transaction_revert',
       'vessel_get',
@@ -152,6 +154,53 @@ describe('MCP server (Step 4)', () => {
       }),
     );
     expect(tank.data.fillPercent).toBe(100); // back to the seeded value
+  });
+
+  it('stability_check returns a compact IMO verdict', async () => {
+    const res = text(
+      await client.callTool({
+        name: 'stability_check',
+        arguments: { heelStepDeg: 5 },
+      }),
+    );
+    expect(['PASS', 'FAIL']).toContain(res.verdict);
+    expect(res.criteria).toHaveLength(6);
+    expect(res.equilibrium.converged).toBe(true);
+    expect(res.equilibrium.draftMean).toBeGreaterThan(0);
+    expect(typeof res.gm0).toBe('number');
+    // the compact view must not carry the full curve
+    expect(res.gz).toBeUndefined();
+    expect(res.verdict === 'PASS').toBe(res.failedCriteria.length === 0);
+  });
+
+  it('stability_run returns the full GZ curve and caches by input', async () => {
+    const first = text(
+      await client.callTool({ name: 'stability_run', arguments: { heelStepDeg: 10, maxHeelDeg: 40 } }),
+    );
+    expect(first.derived.kind).toBe('stability.L1');
+    expect(first.derived.result.gz.length).toBeGreaterThan(3);
+    const second = text(
+      await client.callTool({ name: 'stability_run', arguments: { heelStepDeg: 10, maxHeelDeg: 40 } }),
+    );
+    expect(second.cached).toBe(true);
+    expect(second.derived.id).toBe(first.derived.id);
+  });
+
+  it('extra weights change the equilibrium reported by stability_check', async () => {
+    const light = text(
+      await client.callTool({ name: 'stability_check', arguments: { heelStepDeg: 10 } }),
+    );
+    const loaded = text(
+      await client.callTool({
+        name: 'stability_check',
+        arguments: {
+          heelStepDeg: 10,
+          extraWeights: [{ id: 'cargo:hold1', mass: 2600, x: 66, y: 0, z: 6.2 }],
+        },
+      }),
+    );
+    expect(loaded.equilibrium.draftMean).toBeGreaterThan(light.equilibrium.draftMean);
+    expect(loaded.equilibrium.displacement).toBeGreaterThan(light.equilibrium.displacement);
   });
 
   it('surfaces API validation errors as tool errors', async () => {

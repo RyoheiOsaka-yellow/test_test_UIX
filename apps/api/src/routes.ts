@@ -21,6 +21,7 @@ import {
   revertTransaction,
 } from './services/transactions.js';
 import { runHydro } from './services/hydro.js';
+import { runStabilityL1 } from './services/stability.js';
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
   app.get('/api/health', async () => ({ ok: true, service: 'digital-dock-api', version: 12 }));
@@ -148,6 +149,20 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   }>('/api/branches/:id/hydro/run', async (req) => {
     const { version, draft, kg } = req.body ?? {};
     return runHydro({ branchId: req.params.id, version, draft, kg });
+  });
+
+  app.post<{
+    Params: { id: string };
+    Body: {
+      version?: number;
+      extraWeights?: import('@dock/shared').WeightItem[];
+      floodingAngleDeg?: number;
+      heelStepDeg?: number;
+      maxHeelDeg?: number;
+    };
+  }>('/api/branches/:id/stability/run', async (req) => {
+    const body = req.body ?? {};
+    return runStabilityL1({ branchId: req.params.id, ...body });
   });
 
   app.get<{

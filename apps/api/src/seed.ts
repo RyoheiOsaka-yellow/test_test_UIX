@@ -52,6 +52,8 @@ export function buildInitialOperations(): Operation[] {
         principal: { lpp: LPP, beam: BEAM, depth: DEPTH, designDraft: DESIGN_DRAFT },
         rhoWater: 1.025,
         kg: 7.4,
+        // engine room aft, so the lightship centre sits a little abaft midship
+        lightship: { mass: 2100, lcg: 54, vcg: 7.8 },
       },
     },
     {
