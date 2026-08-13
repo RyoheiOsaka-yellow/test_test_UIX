@@ -382,4 +382,11 @@ reg.register({
   },
 });
 
-module.exports = { reg, compileSnippet, snippetIsTimeDependent, stripNonCode };
+/* ---------- P4: サブネット + XDA（src/subnet.js） ---------- */
+const { installSubnet, registerAsset, assetFromSubnet } = require('./subnet');
+installSubnet(reg);
+
+module.exports = {
+  reg, compileSnippet, snippetIsTimeDependent, stripNonCode,
+  registerAsset, assetFromSubnet,
+};

@@ -12,6 +12,67 @@
 const { GeoSet, EMPTY } = require('./geo');
 
 /* ============================================================
+   パラメータ参照の解決（P4）
+   ------------------------------------------------------------
+   '@parent.name' という文字列値は、cook 時に親（サブネット / XDA）の
+   昇格パラメータへ解決される。解決結果はキャッシュキーに含まれるため、
+   親の値が変わると該当ノードだけが再 cook される（SPEC.md §18）。
+
+   'graph' という名前のキーの中身は内側グラフの保存データであり、
+   別スコープで解決されるべきものなので、ここでは走査しない。
+   ============================================================ */
+
+const PARENT_REF_RE = /^@parent\.(\w+)$/;
+
+function resolveParams(params, tc) {
+  const used = [];
+  const walk = (v, path) => {
+    if (typeof v === 'string') {
+      const m = PARENT_REF_RE.exec(v);
+      if (!m) return v;
+      const key = m[1];
+      if (!tc.parent)
+        throw new Error(`parameter "${path}" references @parent.${key} but there is no parent parameter context`);
+      if (!(key in tc.parent))
+        throw new Error(`parameter "${path}" references @parent.${key} which is not a promoted parameter`);
+      const val = tc.parent[key];
+      used.push([path, val]);
+      return val;
+    }
+    if (Array.isArray(v)) {
+      let out = null;
+      for (let i = 0; i < v.length; i++) {
+        const w = walk(v[i], `${path}[${i}]`);
+        if (w !== v[i] && !out) out = v.slice(0, i);
+        if (out) out.push(w);
+      }
+      return out || v;
+    }
+    if (v && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype) {
+      let out = null;
+      const entries = Object.entries(v);
+      for (let i = 0; i < entries.length; i++) {
+        const [k, x] = entries[i];
+        const w = k === 'graph' ? x : walk(x, `${path}.${k}`);
+        if (w !== x && !out) out = Object.fromEntries(entries.slice(0, i));
+        if (out) out[k] = w;
+      }
+      return out || v;
+    }
+    return v;
+  };
+  let resolved = null;
+  const entries = Object.entries(params);
+  for (let i = 0; i < entries.length; i++) {
+    const [k, v] = entries[i];
+    const w = k === 'graph' ? v : walk(v, k);
+    if (w !== v && !resolved) resolved = Object.fromEntries(entries.slice(0, i));
+    if (resolved) resolved[k] = w;
+  }
+  return { params: resolved || params, key: used.length ? JSON.stringify(used) : null };
+}
+
+/* ============================================================
    NodeDef レジストリ
    ------------------------------------------------------------
    def = {
@@ -60,6 +121,7 @@ class Registry {
       params: Object.fromEntries(
         Object.entries(d.params).map(([k, v]) => [k, { type: v.type, default: v.default }])
       ),
+      ...(d.asset ? { asset: { name: d.asset.name, version: d.asset.version } } : {}),
     }));
   }
 }
@@ -98,6 +160,8 @@ class Node {
     this._cache = null;
     this._valid = false;
     this._cookTime = null;   // キャッシュ時の ctx.time
+    this._parentKey = null;  // キャッシュ時の @parent 解決結果（JSON）
+    this._dynKey = undefined; // キャッシュ時の def.cookKey(node, tc) の値
     this._timeDep = !!def.timeDep;
     this.error = null;
     this.warnings = [];
@@ -198,7 +262,39 @@ class Graph {
   cook(id, ctx = {}) {
     const time = ctx.time ?? 0;
     const frame = ctx.frame ?? 0;
-    return this._cookNode(id, { time, frame }, new Set());
+    // parent / subInputs はサブネットが内側グラフを評価するときに渡す（SPEC.md §18）
+    const parent = ctx.parent ?? null;
+    const subInputs = ctx.subInputs ?? null;
+    const tc = { time, frame, parent, subInputs };
+    this._syncContext(tc);
+    return this._cookNode(id, tc, new Set());
+  }
+
+  /**
+   * 評価文脈（親パラメータ / サブネット入力）が前回の cook から変わった
+   * ノードを push 型で無効化する。
+   *
+   * これが必要な理由: プル評価は「キャッシュが古くなるのは invalidate 経由
+   * のみで、invalidate は下流へ伝播する」という不変条件の上に成り立っている。
+   * ノード単体のキャッシュキー比較だけでは、キャッシュ済みの出力ノードが
+   * 上流に遡らずに古い結果を返してしまう（@parent の値を変えても表示が
+   * 変わらない）。そのためキーの変化を検知した時点で invalidate に変換する。
+   */
+  _syncContext(tc) {
+    for (const [id, n] of this.nodes) {
+      const key = this._refKey(n, tc);
+      if (key !== n._parentKey) { this.invalidate(id); n._parentKey = key; continue; }
+      if (typeof n.def.cookKey === 'function') {
+        const k = n.def.cookKey(n, tc);
+        if (k !== n._dynKey) { this.invalidate(id); n._dynKey = k; }
+      }
+    }
+  }
+
+  /** '@parent.*' の解決結果キー。解決に失敗した場合もキーとして表現する */
+  _refKey(n, tc) {
+    try { return resolveParams(n.params, tc).key; }
+    catch (e) { return '!' + (e && e.message ? e.message : String(e)); }
   }
 
   _cookNode(id, tc, stack) {
@@ -213,7 +309,23 @@ class Graph {
     const timeDep = this.isTimeDependent(id);
     n._timeDep = timeDep;
 
-    if (n._valid && (!timeDep || n._cookTime === tc.time)) return n._cache;
+    // '@parent.*' の解決。結果がキャッシュキーになるので判定より先に行う
+    let rp;
+    try {
+      rp = resolveParams(n.params, tc);
+    } catch (e) {
+      n.error = e && e.message ? e.message : String(e);
+      n._cache = EMPTY; n._valid = true; n._cookTime = tc.time;
+      n._parentKey = '!' + n.error;   // _refKey と同じ表現（解決失敗もキー）
+      n._dynKey = undefined;
+      return EMPTY;
+    }
+    // def.cookKey(node, tc) は任意の値を返してよい。前回と === でなければ再 cook
+    const dynKey = typeof n.def.cookKey === 'function' ? n.def.cookKey(n, tc) : undefined;
+
+    if (n._valid && (!timeDep || n._cookTime === tc.time)
+        && n._parentKey === rp.key
+        && (dynKey === undefined || n._dynKey === dynKey)) return n._cache;
 
     stack.add(id);
     const t0 = Date.now();
@@ -229,6 +341,7 @@ class Graph {
           n.error = `input "${n.def.inputs[i].name}" is required but not connected`;
           stack.delete(id);
           n._cache = EMPTY; n._valid = true; n._cookTime = tc.time;
+          n._parentKey = rp.key; n._dynKey = dynKey;
           return EMPTY;
         }
         ins.push(null);
@@ -240,6 +353,7 @@ class Graph {
         n.error = `upstream error in ${src}: ${up.error}`;
         stack.delete(id);
         n._cache = EMPTY; n._valid = true; n._cookTime = tc.time;
+        n._parentKey = rp.key; n._dynKey = dynKey;
         return EMPTY;
       }
       ins.push(g);
@@ -250,11 +364,14 @@ class Graph {
       out = n.def.cook({
         in: (i = 0) => (ins[i] ? ins[i].clone() : null),
         inRaw: (i = 0) => ins[i],
-        params: n.params,
+        params: rp.params,
         time: tc.time,
         frame: tc.frame,
         node: n,
         warn: (m) => n.warnings.push(String(m)),
+        // サブネットの入力ジオメトリ（subinput ノードが読む。SPEC.md §18）
+        subInput: (i = 0) => (tc.subInputs && tc.subInputs[i] ? tc.subInputs[i].clone() : null),
+        subInputRaw: (i = 0) => (tc.subInputs && tc.subInputs[i]) || null,
         GeoSet,
       });
       if (!(out instanceof GeoSet)) throw new Error('cook() must return a GeoSet');
@@ -268,6 +385,8 @@ class Graph {
     n._cache = out;
     n._valid = true;
     n._cookTime = tc.time;
+    n._parentKey = rp.key;
+    n._dynKey = dynKey;
     n.stats = {
       serial: this.cookCount,
       ms: Date.now() - t0,
@@ -291,7 +410,10 @@ class Graph {
   report() {
     const out = {};
     for (const [id, n] of this.nodes)
-      if (n.stats) out[id] = { type: n.type, ...n.stats };
+      if (n.stats) {
+        out[id] = { type: n.type, ...n.stats };
+        if (n._innerReport) out[id].inner = n._innerReport;  // サブネット / XDA の内側レポート
+      }
     return out;
   }
 

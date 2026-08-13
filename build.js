@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = __dirname;
-const MODULES = ['geo', 'cook', 'convert', 'nodes', 'demo_nodes', 'site_data', 'site_nodes', 'scene', 'app'];
+const MODULES = ['geo', 'cook', 'convert', 'subnet', 'nodes', 'demo_nodes', 'site_data', 'site_nodes', 'scene', 'app'];
 const ENTRY = 'app';
 
 function wrap(name) {

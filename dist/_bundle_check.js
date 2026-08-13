@@ -1,0 +1,2960 @@
+
+(function(){
+"use strict";
+var __defs = {}, __cache = {};
+function __def(n, f){ __defs[n] = f; }
+function require(p){
+  var n = String(p).replace(/^\.\//, '').replace(/\.js$/, '');
+  if (__cache[n]) return __cache[n].exports;
+  if (!__defs[n]) throw new Error('module not found: ' + n);
+  var m = { exports: {} };
+  __cache[n] = m;
+  __defs[n](m, m.exports, require);
+  return m.exports;
+}
+__def("geo", function(module, exports, require){
+/* ============================================================
+   XBUILD SOP Layer — geo.js
+   統一ジオメトリ型 GeoSet と属性システム。
+   依存なし（DOM / three.js を参照しない純粋 JS）。
+   ============================================================ */
+
+'use strict';
+
+/* ---------- 属性型テーブル ---------- */
+
+const TYPES = {
+  float: { size: 1, array: Float32Array, zero: 0 },
+  int:   { size: 1, array: Int32Array,   zero: 0 },
+  vec2:  { size: 2, array: Float32Array, zero: 0 },
+  vec3:  { size: 3, array: Float32Array, zero: 0 },
+  vec4:  { size: 4, array: Float32Array, zero: 0 },
+  quat:  { size: 4, array: Float32Array, zero: 0 },
+  mat3:  { size: 9, array: Float32Array, zero: 0 },
+  mat4:  { size: 16, array: Float32Array, zero: 0 },
+  // string は文字列テーブルへのインデックスを Int32Array で保持する
+  string:{ size: 1, array: Int32Array,   zero: 0 },
+};
+
+const OWNERS = ['point', 'vertex', 'prim', 'detail'];
+
+/* ============================================================
+   Attribute
+   - data は TypedArray。string 型のみ strings テーブルを併せ持つ。
+   - frozen=true の間は共有バッファ。書き込み時に自動でコピーする（COW）。
+   ============================================================ */
+
+class Attribute {
+  constructor(name, type, count, opts = {}) {
+    const t = TYPES[type];
+    if (!t) throw new Error(`unknown attribute type: ${type}`);
+    this.name = name;
+    this.type = type;
+    this.size = t.size;
+    this.data = opts.data || new t.array(count * t.size);
+    this.strings = type === 'string' ? (opts.strings || ['']) : null;
+    this.frozen = false;
+  }
+
+  /** 確保済み容量（論理要素数ではない。論理数は AttribSet.count が持つ） */
+  get capacity() { return this.data.length / this.size; }
+
+  /** COW: 共有中なら実体を複製してから書き込み可能にする */
+  _unshare() {
+    if (!this.frozen) return;
+    this.data = this.data.slice();
+    if (this.strings) this.strings = this.strings.slice();
+    this.frozen = false;
+  }
+
+  /** 共有クローン。実バッファはコピーしない */
+  shareClone() {
+    this.frozen = true;
+    const a = Object.create(Attribute.prototype);
+    a.name = this.name; a.type = this.type; a.size = this.size;
+    a.data = this.data; a.strings = this.strings; a.frozen = true;
+    return a;
+  }
+
+  /** 容量を newCount 以上に確保する（縮小はしない）。倍化により append は償却 O(1) */
+  reserve(newCount) {
+    if (!this.frozen && this.capacity >= newCount) return;
+    const t = TYPES[this.type];
+    const cap = Math.max(newCount, this.capacity * 2, 8);
+    const next = new t.array(cap * this.size);
+    next.set(this.data.subarray(0, Math.min(this.data.length, next.length)));
+    // 共有中だった場合、文字列テーブルもここで切り離す
+    if (this.frozen && this.strings) this.strings = this.strings.slice();
+    this.data = next;
+    this.frozen = false;
+  }
+
+  /* --- 読み --- */
+  get(i) {
+    if (this.type === 'string') return this.strings[this.data[i]] ?? '';
+    if (this.size === 1) return this.data[i];
+    return Array.from(this.data.subarray(i * this.size, (i + 1) * this.size));
+  }
+
+  /* --- 書き --- */
+  set(i, v) {
+    this._unshare();
+    if (this.type === 'string') {
+      let idx = this.strings.indexOf(v);
+      if (idx < 0) { idx = this.strings.length; this.strings.push(String(v)); }
+      this.data[i] = idx;
+      return;
+    }
+    if (this.size === 1) { this.data[i] = v; return; }
+    this.data.set(v, i * this.size);
+  }
+
+  /** 書き込み用の生バッファ（COW 解除済み）を返す。ホットループ用 */
+  raw() { this._unshare(); return this.data; }
+}
+
+/* ============================================================
+   AttribSet : 1 階層ぶんの属性辞書
+   ============================================================ */
+
+class AttribSet {
+  constructor(owner, count) {
+    this.owner = owner;
+    this.count = count;
+    this.map = new Map();
+  }
+
+  add(name, type, count) {
+    if (this.map.has(name)) {
+      const ex = this.map.get(name);
+      if (ex.type !== type)
+        throw new Error(`attribute "${name}" on ${this.owner} already exists as ${ex.type}, requested ${type}`);
+      return ex;
+    }
+    let cap = count ?? this.count;
+    for (const v of this.map.values()) cap = Math.max(cap, v.capacity);
+    const a = new Attribute(name, type, cap);
+    this.map.set(name, a);
+    return a;
+  }
+
+  get(name) { return this.map.get(name) || null; }
+  has(name) { return this.map.has(name); }
+  remove(name) { return this.map.delete(name); }
+  names() { return [...this.map.keys()]; }
+
+  reserve(n) { for (const a of this.map.values()) a.reserve(n); }
+
+  setCount(n) {
+    if (n === this.count) return;
+    if (n > this.count) for (const a of this.map.values()) a.reserve(n);
+    this.count = n;
+  }
+
+  shareClone() {
+    const s = new AttribSet(this.owner, this.count);
+    for (const [k, v] of this.map) s.map.set(k, v.shareClone());
+    return s;
+  }
+}
+
+/* ============================================================
+   GeoSet
+   トポロジ (CSR):
+     primStart : Int32Array(primCount + 1)   各プリミティブの vertex 開始位置
+     vertPoint : Int32Array(vertCount)       vertex -> point 参照
+   ============================================================ */
+
+class GeoSet {
+  constructor() {
+    this.point  = new AttribSet('point', 0);
+    this.vertex = new AttribSet('vertex', 0);
+    this.prim   = new AttribSet('prim', 0);
+    this.detail = new AttribSet('detail', 1);
+
+    this.primStart = new Int32Array([0]);
+    this.vertPoint = new Int32Array(0);
+    this._topoShared = false;
+
+    this.groups = { point: new Map(), vertex: new Map(), prim: new Map() };
+
+    // P は常に存在する
+    this.point.add('P', 'vec3', 0);
+  }
+
+  get numPoints() { return this.point.count; }
+  get numVerts()  { return this.vertex.count; }
+  get numPrims()  { return this.prim.count; }
+
+  /* ---------- 生成 ---------- */
+
+  addPoint(x = 0, y = 0, z = 0) {
+    const i = this.point.count;
+    this.point.setCount(i + 1);
+    this.point.get('P').set(i, [x, y, z]);
+    return i;
+  }
+
+  /** トポロジ配列の COW 解除 */
+  _unshareTopo() {
+    if (!this._topoShared) return;
+    this.primStart = this.primStart.slice();
+    this.vertPoint = this.vertPoint.slice();
+    this._topoShared = false;
+  }
+
+  static _growI32(arr, need) {
+    if (arr.length >= need) return arr;
+    const next = new Int32Array(Math.max(need, arr.length * 2, 8));
+    next.set(arr);
+    return next;
+  }
+
+  /** 事前に容量を確保する。大量生成時は必ず呼ぶこと */
+  reserve(nPoints = 0, nVerts = 0, nPrims = 0) {
+    if (nPoints) this.point.reserve(nPoints);
+    if (nVerts) { this.vertex.reserve(nVerts); this._unshareTopo(); this.vertPoint = GeoSet._growI32(this.vertPoint, nVerts); }
+    if (nPrims) { this.prim.reserve(nPrims); this._unshareTopo(); this.primStart = GeoSet._growI32(this.primStart, nPrims + 1); }
+    return this;
+  }
+
+  /** ptIndices: point インデックスの配列。戻り値は prim インデックス */
+  addPrim(ptIndices, closed = true) {
+    const pi = this.prim.count;
+    const v0 = this.vertex.count;
+    const n = ptIndices.length;
+
+    this._unshareTopo();
+    this.vertex.setCount(v0 + n);
+    this.vertPoint = GeoSet._growI32(this.vertPoint, v0 + n);
+    for (let k = 0; k < n; k++) this.vertPoint[v0 + k] = ptIndices[k];
+
+    this.primStart = GeoSet._growI32(this.primStart, pi + 2);
+    this.primStart[pi + 1] = v0 + n;
+
+    this.prim.setCount(pi + 1);
+    this.prim.add('closed', 'int').set(pi, closed ? 1 : 0);
+    return pi;
+  }
+
+  /* ---------- トポロジ照会 ---------- */
+
+  primVerts(pi) {
+    const a = this.primStart[pi], b = this.primStart[pi + 1];
+    const out = new Array(b - a);
+    for (let k = a; k < b; k++) out[k - a] = k;
+    return out;
+  }
+
+  primPoints(pi) {
+    const a = this.primStart[pi], b = this.primStart[pi + 1];
+    const out = new Array(b - a);
+    for (let k = a; k < b; k++) out[k - a] = this.vertPoint[k];
+    return out;
+  }
+
+  vertexPrim(vi) {
+    // 二分探索
+    let lo = 0, hi = this.prim.count - 1;
+    while (lo <= hi) {
+      const m = (lo + hi) >> 1;
+      if (vi < this.primStart[m]) hi = m - 1;
+      else if (vi >= this.primStart[m + 1]) lo = m + 1;
+      else return m;
+    }
+    return -1;
+  }
+
+  /* ---------- 属性ショートカット ---------- */
+
+  attrib(owner, name) { return this[owner].get(name); }
+
+  addAttrib(owner, name, type) { return this[owner].add(name, type); }
+
+  getP(i) { return this.point.get('P').get(i); }
+  setP(i, v) { this.point.get('P').set(i, v); }
+
+  /* ---------- グループ ---------- */
+
+  addGroup(owner, name) {
+    const g = this.groups[owner];
+    if (!g.has(name)) g.set(name, new Set());
+    return g.get(name);
+  }
+  group(owner, name) { return this.groups[owner].get(name) || null; }
+
+  /* ---------- 属性の階層間移動 ---------- */
+
+  /**
+   * point 属性 -> prim 属性 へ集約。
+   * mode: 'mean' | 'min' | 'max' | 'sum' | 'first'
+   */
+  promotePointToPrim(name, mode = 'mean', outName = name) {
+    const src = this.point.get(name);
+    if (!src) throw new Error(`no point attribute: ${name}`);
+    const dst = this.prim.add(outName, src.type);
+    dst._unshare();
+    for (let pi = 0; pi < this.prim.count; pi++) {
+      const pts = this.primPoints(pi);
+      if (!pts.length) continue;
+      if (src.size === 1) {
+        let acc = src.get(pts[0]);
+        for (let k = 1; k < pts.length; k++) {
+          const v = src.get(pts[k]);
+          if (mode === 'mean' || mode === 'sum') acc += v;
+          else if (mode === 'min') acc = Math.min(acc, v);
+          else if (mode === 'max') acc = Math.max(acc, v);
+        }
+        if (mode === 'mean') acc /= pts.length;
+        dst.set(pi, acc);
+      } else {
+        const acc = src.get(pts[0]).slice();
+        for (let k = 1; k < pts.length; k++) {
+          const v = src.get(pts[k]);
+          for (let c = 0; c < src.size; c++) {
+            if (mode === 'mean' || mode === 'sum') acc[c] += v[c];
+            else if (mode === 'min') acc[c] = Math.min(acc[c], v[c]);
+            else if (mode === 'max') acc[c] = Math.max(acc[c], v[c]);
+          }
+        }
+        if (mode === 'mean') for (let c = 0; c < src.size; c++) acc[c] /= pts.length;
+        dst.set(pi, acc);
+      }
+    }
+    return dst;
+  }
+
+  /** prim 属性 -> point 属性 へ配布（同一 point に複数 prim が来た場合は最後が勝つ） */
+  promotePrimToPoint(name, outName = name) {
+    const src = this.prim.get(name);
+    if (!src) throw new Error(`no prim attribute: ${name}`);
+    const dst = this.point.add(outName, src.type);
+    if (src.type === 'string') dst.strings = (src.strings || ['']).slice();
+    for (let pi = 0; pi < this.prim.count; pi++) {
+      const v = src.get(pi);
+      for (const p of this.primPoints(pi)) dst.set(p, v);
+    }
+    return dst;
+  }
+
+  /* ---------- 複製 / 結合 ---------- */
+
+  /** COW クローン。実バッファは共有し、書き込み時にのみ複製される */
+  clone() {
+    const g = Object.create(GeoSet.prototype);
+    g.point  = this.point.shareClone();
+    g.vertex = this.vertex.shareClone();
+    g.prim   = this.prim.shareClone();
+    g.detail = this.detail.shareClone();
+    g.primStart = this.primStart;
+    g.vertPoint = this.vertPoint;
+    g._topoShared = true;
+    this._topoShared = true;
+    g.groups = { point: new Map(), vertex: new Map(), prim: new Map() };
+    for (const o of ['point', 'vertex', 'prim'])
+      for (const [k, v] of this.groups[o]) g.groups[o].set(k, new Set(v));
+    return g;
+  }
+
+  /** other を自身へマージ（Merge SOP 相当） */
+  merge(other) {
+    const pOff = this.point.count;
+    const vOff = this.vertex.count;
+    const primOff = this.prim.count;
+
+    for (const o of ['point', 'vertex', 'prim']) {
+      const srcSet = other[o], dstSet = this[o];
+      const base = dstSet.count;
+      dstSet.setCount(base + srcSet.count);
+      for (const [name, sa] of srcSet.map) {
+        const da = dstSet.add(name, sa.type);
+        da._unshare();
+        for (let i = 0; i < srcSet.count; i++) da.set(base + i, sa.get(i));
+      }
+    }
+    for (const [name, sa] of other.detail.map) {
+      if (!this.detail.has(name)) {
+        const da = this.detail.add(name, sa.type);
+        da.set(0, sa.get(0));
+      }
+    }
+
+    const vp = new Int32Array(vOff + other.vertex.count);
+    vp.set(this.vertPoint.subarray(0, vOff));
+    for (let k = 0; k < other.vertex.count; k++) vp[vOff + k] = other.vertPoint[k] + pOff;
+    this.vertPoint = vp;
+
+    const ps = new Int32Array(primOff + other.prim.count + 1);
+    ps.set(this.primStart.subarray(0, primOff + 1));
+    for (let k = 1; k <= other.prim.count; k++) ps[primOff + k] = other.primStart[k] + vOff;
+    this.primStart = ps;
+    this._topoShared = false;
+
+    for (const o of ['point', 'vertex', 'prim']) {
+      const off = o === 'point' ? pOff : o === 'vertex' ? vOff : primOff;
+      for (const [name, set] of other.groups[o]) {
+        const g = this.addGroup(o, name);
+        for (const i of set) g.add(i + off);
+      }
+    }
+    return this;
+  }
+
+  /* ---------- 診断（AI フィードバック用） ---------- */
+
+  stats() {
+    return {
+      points: this.point.count,
+      verts: this.vertex.count,
+      prims: this.prim.count,
+      attribs: {
+        point: this.point.names(),
+        vertex: this.vertex.names(),
+        prim: this.prim.names(),
+        detail: this.detail.names(),
+      },
+      groups: {
+        point: [...this.groups.point.keys()],
+        vertex: [...this.groups.vertex.keys()],
+        prim: [...this.groups.prim.keys()],
+      },
+      bounds: this.bounds(),
+    };
+  }
+
+  bounds() {
+    const n = this.point.count;
+    if (!n) return null;
+    const P = this.point.get('P').data;
+    const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+    for (let i = 0; i < n; i++)
+      for (let c = 0; c < 3; c++) {
+        const v = P[i * 3 + c];
+        if (v < min[c]) min[c] = v;
+        if (v > max[c]) max[c] = v;
+      }
+    return { min, max };
+  }
+}
+
+/* ---------- 空ジオメトリ（cook 失敗時の戻り値） ---------- */
+const EMPTY = new GeoSet();
+Object.freeze(EMPTY);
+
+module.exports = { GeoSet, Attribute, AttribSet, TYPES, OWNERS, EMPTY };
+
+});
+__def("cook", function(module, exports, require){
+/* ============================================================
+   XBUILD SOP Layer — cook.js
+   遅延プル評価エンジン。
+   - ノードは出力 GeoSet をキャッシュする
+   - 末端（display ノード）から遡って必要なものだけ cook する
+   - timeDep フラグの立ったノードだけ時刻変化で再 cook する
+   依存なし（DOM / three.js を参照しない純粋 JS）。
+   ============================================================ */
+
+'use strict';
+
+const { GeoSet, EMPTY } = require('./geo');
+
+/* ============================================================
+   パラメータ参照の解決（P4）
+   ------------------------------------------------------------
+   '@parent.name' という文字列値は、cook 時に親（サブネット / XDA）の
+   昇格パラメータへ解決される。解決結果はキャッシュキーに含まれるため、
+   親の値が変わると該当ノードだけが再 cook される（SPEC.md §18）。
+
+   'graph' という名前のキーの中身は内側グラフの保存データであり、
+   別スコープで解決されるべきものなので、ここでは走査しない。
+   ============================================================ */
+
+const PARENT_REF_RE = /^@parent\.(\w+)$/;
+
+function resolveParams(params, tc) {
+  const used = [];
+  const walk = (v, path) => {
+    if (typeof v === 'string') {
+      const m = PARENT_REF_RE.exec(v);
+      if (!m) return v;
+      const key = m[1];
+      if (!tc.parent)
+        throw new Error(`parameter "${path}" references @parent.${key} but there is no parent parameter context`);
+      if (!(key in tc.parent))
+        throw new Error(`parameter "${path}" references @parent.${key} which is not a promoted parameter`);
+      const val = tc.parent[key];
+      used.push([path, val]);
+      return val;
+    }
+    if (Array.isArray(v)) {
+      let out = null;
+      for (let i = 0; i < v.length; i++) {
+        const w = walk(v[i], `${path}[${i}]`);
+        if (w !== v[i] && !out) out = v.slice(0, i);
+        if (out) out.push(w);
+      }
+      return out || v;
+    }
+    if (v && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype) {
+      let out = null;
+      const entries = Object.entries(v);
+      for (let i = 0; i < entries.length; i++) {
+        const [k, x] = entries[i];
+        const w = k === 'graph' ? x : walk(x, `${path}.${k}`);
+        if (w !== x && !out) out = Object.fromEntries(entries.slice(0, i));
+        if (out) out[k] = w;
+      }
+      return out || v;
+    }
+    return v;
+  };
+  let resolved = null;
+  const entries = Object.entries(params);
+  for (let i = 0; i < entries.length; i++) {
+    const [k, v] = entries[i];
+    const w = k === 'graph' ? v : walk(v, k);
+    if (w !== v && !resolved) resolved = Object.fromEntries(entries.slice(0, i));
+    if (resolved) resolved[k] = w;
+  }
+  return { params: resolved || params, key: used.length ? JSON.stringify(used) : null };
+}
+
+/* ============================================================
+   NodeDef レジストリ
+   ------------------------------------------------------------
+   def = {
+     type:    'box',
+     label:   'Box',
+     inputs:  [{ name:'geo', required:false }],
+     params:  { size: { type:'vec3', default:[1,1,1] } },
+     timeDep: false,                 // 明示的な時間依存
+     cook(ctx) -> GeoSet
+   }
+   ctx = { in(i), params, time, frame, node, warn(msg), GeoSet }
+   ============================================================ */
+
+class Registry {
+  constructor() { this.defs = new Map(); this.aliases = new Map(); }
+
+  register(def) {
+    if (!def.type) throw new Error('NodeDef requires type');
+    if (typeof def.cook !== 'function') throw new Error(`${def.type}: cook() required`);
+    def.inputs = def.inputs || [];
+    def.params = def.params || {};
+    this.defs.set(def.type, def);
+    for (const a of def.aliases || []) this.aliases.set(a, def.type);
+    return def;
+  }
+
+  get(type) {
+    const resolved = this.aliases.get(type) || type;
+    const d = this.defs.get(resolved);
+    if (!d) throw new Error(`unknown node type: ${type}`);
+    return d;
+  }
+
+  /** 旧型名 -> 現行型名（保存済みグラフの読み込み互換） */
+  resolveType(type) { return this.aliases.get(type) || type; }
+
+  has(type) { return this.defs.has(this.aliases.get(type) || type); }
+  types() { return [...this.defs.keys()]; }
+
+  /** AI エージェントへ渡すカタログ */
+  catalog() {
+    return [...this.defs.values()].map(d => ({
+      type: d.type,
+      label: d.label || d.type,
+      inputs: d.inputs.map(i => i.name),
+      params: Object.fromEntries(
+        Object.entries(d.params).map(([k, v]) => [k, { type: v.type, default: v.default }])
+      ),
+      ...(d.asset ? { asset: { name: d.asset.name, version: d.asset.version } } : {}),
+    }));
+  }
+}
+
+/* ============================================================
+   Node
+   ============================================================ */
+
+let _uid = 0;
+
+class Node {
+  constructor(graph, type, params = {}, id = null) {
+    const def = graph.registry.get(type);
+    const resolved = graph.registry.resolveType(type);
+    this.graph = graph;
+    this.id = id || `${resolved}_${++_uid}`;
+    this.type = resolved;
+    this.def = def;
+
+    // 旧いパラメータ名で保存されたグラフを読み込むための移行フック
+    let src = params;
+    if (typeof def.migrateParams === 'function') {
+      try { src = def.migrateParams({ ...params }) || params; }
+      catch (e) { src = params; }
+    }
+
+    this.params = {};
+    for (const [k, spec] of Object.entries(def.params))
+      this.params[k] = k in src ? src[k] : structuredClone(spec.default);
+    for (const k of Object.keys(src))
+      if (!(k in def.params)) this.params[k] = src[k];
+
+    this.inputs = new Array(def.inputs.length).fill(null); // node id | null
+
+    // --- cook 状態 ---
+    this._cache = null;
+    this._valid = false;
+    this._cookTime = null;   // キャッシュ時の ctx.time
+    this._parentKey = null;  // キャッシュ時の @parent 解決結果（JSON）
+    this._dynKey = undefined; // キャッシュ時の def.cookKey(node, tc) の値
+    this._timeDep = !!def.timeDep;
+    this.error = null;
+    this.warnings = [];
+    this.stats = null;
+  }
+
+  setParam(name, value) {
+    this.params[name] = value;
+    this.graph.invalidate(this.id);
+    return this;
+  }
+
+  setInput(index, nodeId) {
+    this.inputs[index] = nodeId;
+    this.graph.invalidate(this.id);
+    return this;
+  }
+}
+
+/* ============================================================
+   Graph
+   ============================================================ */
+
+class Graph {
+  constructor(registry) {
+    this.registry = registry;
+    this.nodes = new Map();
+    this.displayNode = null;
+    this.cookCount = 0;
+  }
+
+  add(type, params = {}, id = null) {
+    const n = new Node(this, type, params, id);
+    this.nodes.set(n.id, n);
+    return n;
+  }
+
+  get(id) {
+    const n = this.nodes.get(id);
+    if (!n) throw new Error(`no such node: ${id}`);
+    return n;
+  }
+
+  remove(id) {
+    this.nodes.delete(id);
+    for (const n of this.nodes.values())
+      n.inputs = n.inputs.map(i => (i === id ? null : i));
+    this.invalidateAll();
+  }
+
+  connect(fromId, toId, inputIndex = 0) {
+    this.get(fromId);
+    this.get(toId).setInput(inputIndex, fromId);
+    return this;
+  }
+
+  /** 下流のキャッシュを再帰的に無効化する（プッシュ側） */
+  invalidate(id) {
+    const seen = new Set();
+    const walk = (nid) => {
+      if (seen.has(nid)) return;
+      seen.add(nid);
+      const n = this.nodes.get(nid);
+      if (!n) return;
+      n._valid = false;
+      n._cache = null;
+      for (const other of this.nodes.values())
+        if (other.inputs.includes(nid)) walk(other.id);
+    };
+    walk(id);
+  }
+
+  invalidateAll() {
+    for (const n of this.nodes.values()) { n._valid = false; n._cache = null; }
+  }
+
+  /** 時間依存の伝播: 自身 or 上流に時間依存があれば true */
+  isTimeDependent(id, seen = new Set()) {
+    if (seen.has(id)) return false;
+    seen.add(id);
+    const n = this.nodes.get(id);
+    if (!n) return false;
+    if (Graph.nodeDeclaresTimeDep(n)) return true;
+    return n.inputs.some(i => i && this.isTimeDependent(i, seen));
+  }
+
+  /** def.timeDep は真偽値でも (node)=>boolean でもよい */
+  static nodeDeclaresTimeDep(n) {
+    const td = n.def.timeDep;
+    if (typeof td === 'function') {
+      try { return !!td(n); } catch (e) { return false; }
+    }
+    return !!td;
+  }
+
+  /* ---------- cook（プル側） ---------- */
+
+  cook(id, ctx = {}) {
+    const time = ctx.time ?? 0;
+    const frame = ctx.frame ?? 0;
+    // parent / subInputs はサブネットが内側グラフを評価するときに渡す（SPEC.md §18）
+    const parent = ctx.parent ?? null;
+    const subInputs = ctx.subInputs ?? null;
+    const tc = { time, frame, parent, subInputs };
+    this._syncContext(tc);
+    return this._cookNode(id, tc, new Set());
+  }
+
+  /**
+   * 評価文脈（親パラメータ / サブネット入力）が前回の cook から変わった
+   * ノードを push 型で無効化する。
+   *
+   * これが必要な理由: プル評価は「キャッシュが古くなるのは invalidate 経由
+   * のみで、invalidate は下流へ伝播する」という不変条件の上に成り立っている。
+   * ノード単体のキャッシュキー比較だけでは、キャッシュ済みの出力ノードが
+   * 上流に遡らずに古い結果を返してしまう（@parent の値を変えても表示が
+   * 変わらない）。そのためキーの変化を検知した時点で invalidate に変換する。
+   */
+  _syncContext(tc) {
+    for (const [id, n] of this.nodes) {
+      const key = this._refKey(n, tc);
+      if (key !== n._parentKey) { this.invalidate(id); n._parentKey = key; continue; }
+      if (typeof n.def.cookKey === 'function') {
+        const k = n.def.cookKey(n, tc);
+        if (k !== n._dynKey) { this.invalidate(id); n._dynKey = k; }
+      }
+    }
+  }
+
+  /** '@parent.*' の解決結果キー。解決に失敗した場合もキーとして表現する */
+  _refKey(n, tc) {
+    try { return resolveParams(n.params, tc).key; }
+    catch (e) { return '!' + (e && e.message ? e.message : String(e)); }
+  }
+
+  _cookNode(id, tc, stack) {
+    const n = this.nodes.get(id);
+    if (!n) throw new Error(`no such node: ${id}`);
+
+    if (stack.has(id)) {
+      n.error = 'cycle detected';
+      return EMPTY;
+    }
+
+    const timeDep = this.isTimeDependent(id);
+    n._timeDep = timeDep;
+
+    // '@parent.*' の解決。結果がキャッシュキーになるので判定より先に行う
+    let rp;
+    try {
+      rp = resolveParams(n.params, tc);
+    } catch (e) {
+      n.error = e && e.message ? e.message : String(e);
+      n._cache = EMPTY; n._valid = true; n._cookTime = tc.time;
+      n._parentKey = '!' + n.error;   // _refKey と同じ表現（解決失敗もキー）
+      n._dynKey = undefined;
+      return EMPTY;
+    }
+    // def.cookKey(node, tc) は任意の値を返してよい。前回と === でなければ再 cook
+    const dynKey = typeof n.def.cookKey === 'function' ? n.def.cookKey(n, tc) : undefined;
+
+    if (n._valid && (!timeDep || n._cookTime === tc.time)
+        && n._parentKey === rp.key
+        && (dynKey === undefined || n._dynKey === dynKey)) return n._cache;
+
+    stack.add(id);
+    const t0 = Date.now();
+    n.error = null;
+    n.warnings = [];
+
+    // 入力を先に cook
+    const ins = [];
+    for (let i = 0; i < n.inputs.length; i++) {
+      const src = n.inputs[i];
+      if (!src) {
+        if (n.def.inputs[i]?.required) {
+          n.error = `input "${n.def.inputs[i].name}" is required but not connected`;
+          stack.delete(id);
+          n._cache = EMPTY; n._valid = true; n._cookTime = tc.time;
+          n._parentKey = rp.key; n._dynKey = dynKey;
+          return EMPTY;
+        }
+        ins.push(null);
+        continue;
+      }
+      const g = this._cookNode(src, tc, stack);
+      const up = this.nodes.get(src);
+      if (up && up.error) {
+        n.error = `upstream error in ${src}: ${up.error}`;
+        stack.delete(id);
+        n._cache = EMPTY; n._valid = true; n._cookTime = tc.time;
+        n._parentKey = rp.key; n._dynKey = dynKey;
+        return EMPTY;
+      }
+      ins.push(g);
+    }
+
+    let out;
+    try {
+      out = n.def.cook({
+        in: (i = 0) => (ins[i] ? ins[i].clone() : null),
+        inRaw: (i = 0) => ins[i],
+        params: rp.params,
+        time: tc.time,
+        frame: tc.frame,
+        node: n,
+        warn: (m) => n.warnings.push(String(m)),
+        // サブネットの入力ジオメトリ（subinput ノードが読む。SPEC.md §18）
+        subInput: (i = 0) => (tc.subInputs && tc.subInputs[i] ? tc.subInputs[i].clone() : null),
+        subInputRaw: (i = 0) => (tc.subInputs && tc.subInputs[i]) || null,
+        GeoSet,
+      });
+      if (!(out instanceof GeoSet)) throw new Error('cook() must return a GeoSet');
+    } catch (e) {
+      n.error = e && e.message ? e.message : String(e);
+      out = EMPTY;
+    }
+
+    stack.delete(id);
+    this.cookCount++;
+    n._cache = out;
+    n._valid = true;
+    n._cookTime = tc.time;
+    n._parentKey = rp.key;
+    n._dynKey = dynKey;
+    n.stats = {
+      serial: this.cookCount,
+      ms: Date.now() - t0,
+      points: out.numPoints,
+      prims: out.numPrims,
+      timeDep,
+      error: n.error,
+      warnings: n.warnings.slice(),
+    };
+    return out;
+  }
+
+  /** display ノードを cook。AI へ返す診断つき */
+  cookDisplay(ctx = {}) {
+    if (!this.displayNode) return { geo: EMPTY, report: this.report() };
+    const geo = this.cook(this.displayNode, ctx);
+    return { geo, report: this.report() };
+  }
+
+  /** ノードごとの cook 結果サマリ（エージェントの自己修正ループ用） */
+  report() {
+    const out = {};
+    for (const [id, n] of this.nodes)
+      if (n.stats) {
+        out[id] = { type: n.type, ...n.stats };
+        if (n._innerReport) out[id].inner = n._innerReport;  // サブネット / XDA の内側レポート
+      }
+    return out;
+  }
+
+  serialize() {
+    return {
+      displayNode: this.displayNode,
+      nodes: [...this.nodes.values()].map(n => ({
+        id: n.id, type: n.type, params: structuredClone(n.params), inputs: n.inputs.slice(),
+      })),
+    };
+  }
+
+  static deserialize(registry, data) {
+    const g = new Graph(registry);
+    for (const nd of data.nodes) g.add(nd.type, nd.params, nd.id);
+    for (const nd of data.nodes) g.get(nd.id).inputs = nd.inputs.slice();
+    g.displayNode = data.displayNode;
+    g.invalidateAll();
+    return g;
+  }
+}
+
+module.exports = { Registry, Graph, Node };
+
+});
+__def("convert", function(module, exports, require){
+/* ============================================================
+   XBUILD データフロー層 — convert.js
+   GeoSet -> 描画バッファ（プレーンな TypedArray）。
+   three.js を import しない。ビューア側が THREE.BufferAttribute に包む。
+   ------------------------------------------------------------
+   検証したい構造的論点:
+     vertex 階層（面のコーナー）を three.js の非インデックス頂点へ
+     1:1 で写せるか。写せるなら P1 のトポロジ設計は正しい。
+   ============================================================ */
+
+'use strict';
+
+/* ---------- 多角形の三角形分割（耳切り法） ---------- */
+
+/** Newell 法による面法線 */
+function faceNormal(pts) {
+  let nx = 0, ny = 0, nz = 0;
+  for (let i = 0, n = pts.length; i < n; i++) {
+    const a = pts[i], b = pts[(i + 1) % n];
+    nx += (a[1] - b[1]) * (a[2] + b[2]);
+    ny += (a[2] - b[2]) * (a[0] + b[0]);
+    nz += (a[0] - b[0]) * (a[1] + b[1]);
+  }
+  const L = Math.hypot(nx, ny, nz) || 1;
+  return [nx / L, ny / L, nz / L];
+}
+
+/** 法線から正規直交基底 (u, v) を作る */
+function planeBasis(N) {
+  const a = Math.abs(N[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+  let ux = a[1] * N[2] - a[2] * N[1];
+  let uy = a[2] * N[0] - a[0] * N[2];
+  let uz = a[0] * N[1] - a[1] * N[0];
+  const L = Math.hypot(ux, uy, uz) || 1;
+  ux /= L; uy /= L; uz /= L;
+  return [
+    [ux, uy, uz],
+    [N[1] * uz - N[2] * uy, N[2] * ux - N[0] * uz, N[0] * uy - N[1] * ux],
+  ];
+}
+
+function signedArea2D(p) {
+  let s = 0;
+  for (let i = 0, n = p.length; i < n; i++) {
+    const a = p[i], b = p[(i + 1) % n];
+    s += a[0] * b[1] - b[0] * a[1];
+  }
+  return s / 2;
+}
+
+function pointInTri(px, py, ax, ay, bx, by, cx, cy) {
+  const d1 = (px - bx) * (ay - by) - (ax - bx) * (py - by);
+  const d2 = (px - cx) * (by - cy) - (bx - cx) * (py - cy);
+  const d3 = (px - ax) * (cy - ay) - (cx - ax) * (py - ay);
+  const neg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+  const pos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+  return !(neg && pos);
+}
+
+/**
+ * 3D 多角形を三角形へ分割する。
+ * pts: [[x,y,z], ...]（凹多角形可、自己交差は非対応）
+ * 戻り値: ローカルインデックスの三つ組配列 [[i,j,k], ...]
+ */
+function triangulate(pts) {
+  const n = pts.length;
+  if (n < 3) return [];
+  if (n === 3) return [[0, 1, 2]];
+
+  const N = faceNormal(pts);
+  const [U, V] = planeBasis(N);
+  const p2 = pts.map(p => [
+    p[0] * U[0] + p[1] * U[1] + p[2] * U[2],
+    p[0] * V[0] + p[1] * V[1] + p[2] * V[2],
+  ]);
+
+  let idx = [...Array(n).keys()];
+  if (signedArea2D(p2) < 0) idx.reverse();
+
+  const out = [];
+  let guard = 0;
+  while (idx.length > 3 && guard++ < n * n) {
+    let clipped = false;
+    for (let i = 0; i < idx.length; i++) {
+      const ia = idx[(i + idx.length - 1) % idx.length];
+      const ib = idx[i];
+      const ic = idx[(i + 1) % idx.length];
+      const a = p2[ia], b = p2[ib], c = p2[ic];
+      const cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
+      if (cross <= 0) continue;                    // 凸でない頂点は耳にならない
+      let contains = false;
+      for (const k of idx) {
+        if (k === ia || k === ib || k === ic) continue;
+        if (pointInTri(p2[k][0], p2[k][1], a[0], a[1], b[0], b[1], c[0], c[1])) { contains = true; break; }
+      }
+      if (contains) continue;
+      out.push([ia, ib, ic]);
+      idx.splice(i, 1);
+      clipped = true;
+      break;
+    }
+    if (!clipped) break;                           // 退化多角形。残りは扇分割で処理
+  }
+  if (idx.length === 3) out.push([idx[0], idx[1], idx[2]]);
+  else for (let i = 1; i < idx.length - 1; i++) out.push([idx[0], idx[i], idx[i + 1]]);
+  return out;
+}
+
+/* ---------- カラーランプ ---------- */
+
+const RAMPS = {
+  // 低 -> 高
+  yellow: [[0.10, 0.11, 0.13], [0.55, 0.42, 0.12], [0.98, 0.78, 0.20]],
+  cool:   [[0.08, 0.12, 0.20], [0.20, 0.45, 0.62], [0.62, 0.86, 0.94]],
+  heat:   [[0.10, 0.10, 0.16], [0.72, 0.24, 0.20], [0.98, 0.85, 0.55]],
+};
+
+function sampleRamp(name, t) {
+  const r = RAMPS[name] || RAMPS.yellow;
+  t = Math.max(0, Math.min(1, t));
+  const s = t * (r.length - 1);
+  const i = Math.min(r.length - 2, Math.floor(s));
+  const f = s - i;
+  return [
+    r[i][0] + (r[i + 1][0] - r[i][0]) * f,
+    r[i][1] + (r[i + 1][1] - r[i][1]) * f,
+    r[i][2] + (r[i + 1][2] - r[i][2]) * f,
+  ];
+}
+
+/* ============================================================
+   toRenderBuffers
+   ------------------------------------------------------------
+   opts:
+     colorBy   : 属性名（point / prim の float 属性）。省略時は Cd か既定色
+     ramp      : 'yellow' | 'cool' | 'heat'
+     range     : [min, max]（省略時は自動）
+   戻り値:
+     tris  { position, normal, color, primId, count }
+     lines { position, color, count }
+   ============================================================ */
+
+function toRenderBuffers(geo, opts = {}) {
+  const nPrim = geo.prim.count;
+  const P = geo.point.get('P');
+  const closedA = geo.prim.get('closed');
+  const vN = geo.vertex.get('N');
+  const pN = geo.point.get('N');
+  const pCd = geo.point.get('Cd');
+  const primCd = geo.prim.get('Cd');
+
+  // ---- 色の元になるスカラー属性を解決 ----
+  let scalar = null, owner = null, lo = 0, hi = 1;
+  if (opts.colorBy) {
+    if (geo.prim.has(opts.colorBy)) { scalar = geo.prim.get(opts.colorBy); owner = 'prim'; }
+    else if (geo.point.has(opts.colorBy)) { scalar = geo.point.get(opts.colorBy); owner = 'point'; }
+    if (scalar) {
+      const n = owner === 'prim' ? geo.prim.count : geo.point.count;
+      if (opts.range) { lo = opts.range[0]; hi = opts.range[1]; }
+      else {
+        lo = Infinity; hi = -Infinity;
+        for (let i = 0; i < n; i++) { const v = scalar.get(i); if (v < lo) lo = v; if (v > hi) hi = v; }
+        if (!isFinite(lo)) { lo = 0; hi = 1; }
+      }
+      if (hi === lo) hi = lo + 1;
+    }
+  }
+  const ramp = opts.ramp || 'yellow';
+  const base = opts.baseColor || [0.72, 0.74, 0.78];
+
+  // ---- 三角形数を先に数える ----
+  let triCount = 0, lineVerts = 0;
+  const triCache = new Array(nPrim);
+  for (let pi = 0; pi < nPrim; pi++) {
+    const a = geo.primStart[pi], b = geo.primStart[pi + 1];
+    const nv = b - a;
+    const closed = closedA ? closedA.get(pi) : 1;
+    if (!closed || nv < 3) { lineVerts += Math.max(0, (nv - 1)) * 2; triCache[pi] = null; continue; }
+    const pts = new Array(nv);
+    for (let k = 0; k < nv; k++) pts[k] = P.get(geo.vertPoint[a + k]);
+    const t = triangulate(pts);
+    triCache[pi] = { t, pts };
+    triCount += t.length;
+  }
+
+  const position = new Float32Array(triCount * 9);
+  const normal = new Float32Array(triCount * 9);
+  const color = new Float32Array(triCount * 9);
+  const primId = new Int32Array(triCount * 3);
+
+  let o = 0, oi = 0;
+  for (let pi = 0; pi < nPrim; pi++) {
+    const c = triCache[pi];
+    if (!c) continue;
+    const a = geo.primStart[pi];
+    const fn = faceNormal(c.pts);
+
+    let primColor = null;
+    if (scalar && owner === 'prim') primColor = sampleRamp(ramp, (scalar.get(pi) - lo) / (hi - lo));
+    else if (primCd) primColor = primCd.get(pi);
+
+    for (const tri of c.t) {
+      for (const li of tri) {
+        const vi = a + li;               // グローバル vertex インデックス
+        const pt = geo.vertPoint[vi];    // 参照先 point
+        const p = P.get(pt);
+        position[o] = p[0]; position[o + 1] = p[1]; position[o + 2] = p[2];
+
+        // 法線: vertex 属性 > point 属性 > 面法線 の優先順
+        const nrm = vN ? vN.get(vi) : (pN ? pN.get(pt) : fn);
+        normal[o] = nrm[0]; normal[o + 1] = nrm[1]; normal[o + 2] = nrm[2];
+
+        let col = primColor;
+        if (!col) {
+          if (scalar && owner === 'point') col = sampleRamp(ramp, (scalar.get(pt) - lo) / (hi - lo));
+          else if (pCd) col = pCd.get(pt);
+          else col = base;
+        }
+        color[o] = col[0]; color[o + 1] = col[1]; color[o + 2] = col[2];
+
+        primId[oi++] = pi;
+        o += 3;
+      }
+    }
+  }
+
+  // ---- 開いたプリミティブは線分として ----
+  const lpos = new Float32Array(lineVerts * 3);
+  const lcol = new Float32Array(lineVerts * 3);
+  let lo2 = 0;
+  const colorOf = (pi, pt) => {
+    if (scalar && owner === 'prim') return sampleRamp(ramp, (scalar.get(pi) - lo) / (hi - lo));
+    if (primCd) return primCd.get(pi);
+    if (scalar && owner === 'point') return sampleRamp(ramp, (scalar.get(pt) - lo) / (hi - lo));
+    if (pCd) return pCd.get(pt);
+    return base;
+  };
+  for (let pi = 0; pi < nPrim; pi++) {
+    if (triCache[pi]) continue;
+    const a = geo.primStart[pi], b = geo.primStart[pi + 1];
+    for (let k = a; k < b - 1; k++) {
+      const i0 = geo.vertPoint[k], i1 = geo.vertPoint[k + 1];
+      const p0 = P.get(i0), p1 = P.get(i1);
+      const c0 = colorOf(pi, i0), c1 = colorOf(pi, i1);
+      lpos[lo2] = p0[0]; lpos[lo2 + 1] = p0[1]; lpos[lo2 + 2] = p0[2];
+      lcol[lo2] = c0[0]; lcol[lo2 + 1] = c0[1]; lcol[lo2 + 2] = c0[2];
+      lo2 += 3;
+      lpos[lo2] = p1[0]; lpos[lo2 + 1] = p1[1]; lpos[lo2 + 2] = p1[2];
+      lcol[lo2] = c1[0]; lcol[lo2 + 1] = c1[1]; lcol[lo2 + 2] = c1[2];
+      lo2 += 3;
+    }
+  }
+
+  // ---- 全 point を点群バッファとしても出力する ----
+  const nPt = geo.point.count;
+  const ppos = new Float32Array(nPt * 3);
+  const pcol = new Float32Array(nPt * 3);
+  for (let i = 0; i < nPt; i++) {
+    const p = P.get(i);
+    ppos[i * 3] = p[0]; ppos[i * 3 + 1] = p[1]; ppos[i * 3 + 2] = p[2];
+    let col;
+    if (scalar && owner === 'point') col = sampleRamp(ramp, (scalar.get(i) - lo) / (hi - lo));
+    else if (pCd) col = pCd.get(i);
+    else col = base;
+    pcol[i * 3] = col[0]; pcol[i * 3 + 1] = col[1]; pcol[i * 3 + 2] = col[2];
+  }
+
+  return {
+    tris: { position, normal, color, primId, count: triCount * 3 },
+    lines: { position: lpos, color: lcol, count: lineVerts },
+    points: { position: ppos, color: pcol, count: nPt },
+    colorRange: scalar ? [lo, hi] : null,
+  };
+}
+
+module.exports = { toRenderBuffers, triangulate, faceNormal, sampleRamp, RAMPS };
+
+});
+__def("subnet", function(module, exports, require){
+/* ============================================================
+   XBUILD SOP Layer — subnet.js (P4)
+   サブネット + パラメータ昇格 + XDA（XBUILD アセット）。
+   依存なし（DOM / three.js を参照しない純粋 JS）。SPEC.md §18。
+
+   仕組みの要点:
+   - サブネットは内側グラフを1本持ち、cook 時に内側の出力ノードを
+     プル評価する。内側グラフのキャッシュはサブネットの cook を跨いで
+     生き続けるので、昇格パラメータを変えても '@parent.*' を参照する
+     内側ノードだけが再 cook される（cook.js の resolveParams / _parentKey）。
+   - subinput は外側から渡されたジオメトリを内側へ持ち込む。
+     入力ジオメトリの実体（オブジェクト同一性）を cookKey にすることで、
+     外側の上流が再 cook されたときだけ内側が追随する。
+   - XDA は「グラフを def 側に固定したサブネット」。昇格パラメータが
+     そのままノードパラメータになり、name がノード型名になる。
+   ============================================================ */
+
+'use strict';
+
+const { GeoSet } = require('./geo');
+const { Graph } = require('./cook');
+
+/* ---------- 内側グラフの実体化（ノード実インスタンス単位でキャッシュ） ---------- */
+
+function innerGraph(node, graphData) {
+  if (!graphData || !Array.isArray(graphData.nodes)) return null;
+  // graphData のオブジェクト同一性で判定する。差し替えは setParam('graph', ...) 経由で
+  // 行うこと（その場書き換えは検知できない）。
+  if (node._innerFor !== graphData) {
+    node._inner = Graph.deserialize(node.graph.registry, graphData);
+    node._innerFor = graphData;
+  }
+  return node._inner;
+}
+
+function innerOutputId(inner) {
+  if (inner.displayNode && inner.nodes.has(inner.displayNode)) return inner.displayNode;
+  for (const [id, n] of inner.nodes) if (n.type === 'suboutput') return id;
+  return null;
+}
+
+/** defs と values から、内側グラフへ渡す親パラメータ文脈を作る */
+function parentContext(defs, values) {
+  const out = {};
+  for (const [k, d] of Object.entries(defs || {}))
+    out[k] = values && k in values ? values[k] : d && d.default;
+  return out;
+}
+
+/** 内側グラフを評価し、警告・レポートを外側ノードへ持ち上げる */
+function cookInner(ctx, inner, parent) {
+  const outId = innerOutputId(inner);
+  if (!outId) throw new Error('subnet has no output (set displayNode or add a suboutput node)');
+  const subInputs = [];
+  for (let i = 0; i < ctx.node.inputs.length; i++) subInputs.push(ctx.inRaw(i));
+  const geo = inner.cook(outId, { time: ctx.time, frame: ctx.frame, parent, subInputs });
+  ctx.node._innerReport = inner.report();
+  for (const [id, inode] of inner.nodes)
+    for (const w of inode.warnings) ctx.warn(`[${id}] ${w}`);
+  const on = inner.get(outId);
+  if (on.error) throw new Error(`inner error in ${outId}: ${on.error}`);
+  return geo;
+}
+
+/** 内側の出力が時間依存なら、サブネット自身も時間依存 */
+function subnetTimeDep(node, graphData) {
+  const inner = innerGraph(node, graphData);
+  if (!inner) return false;
+  const outId = innerOutputId(inner);
+  return outId ? inner.isTimeDependent(outId) : false;
+}
+
+/* ============================================================
+   ノード定義の登録
+   ============================================================ */
+
+function installSubnet(reg) {
+  /* ---------- subinput : 外側から渡されたジオメトリを内側へ ---------- */
+  reg.register({
+    type: 'subinput',
+    label: 'サブネット入力',
+    inputs: [],
+    params: { index: { type: 'int', default: 0 } },
+    // 入力ジオメトリの実体が替わったときだけ再 cook する
+    cookKey(node, tc) {
+      const i = node.params.index | 0;
+      return (tc.subInputs && tc.subInputs[i]) || null;
+    },
+    cook(ctx) {
+      const i = ctx.params.index | 0;
+      const g = ctx.subInput(i);
+      if (!g) { ctx.warn(`subnet input ${i} is not connected`); return new GeoSet(); }
+      return g;
+    },
+  });
+
+  /* ---------- suboutput : 内側グラフの出力マーカー ---------- */
+  reg.register({
+    type: 'suboutput',
+    label: 'サブネット出力',
+    inputs: [{ name: 'geo', required: true }],
+    params: {},
+    cook(ctx) { return ctx.in(0); },
+  });
+
+  /* ---------- subnet : 編集可能なサブネット ---------- */
+  reg.register({
+    type: 'subnet',
+    label: 'サブネット',
+    inputs: [{ name: 'in0' }, { name: 'in1' }, { name: 'in2' }, { name: 'in3' }],
+    params: {
+      graph:  { type: 'dict', default: null },  // 内側グラフ（Graph.serialize 形式）
+      defs:   { type: 'dict', default: {} },    // 昇格パラメータ定義 { name: { type, default } }
+      values: { type: 'dict', default: {} },    // 昇格パラメータの現在値
+    },
+    timeDep(node) { return subnetTimeDep(node, node.params.graph); },
+    cook(ctx) {
+      const inner = innerGraph(ctx.node, ctx.params.graph);
+      if (!inner) { ctx.warn('subnet has no inner graph'); return new GeoSet(); }
+      // values 自体が '@parent.*' を含んでもよい（入れ子サブネット）。
+      // その解決は cook.js が済ませているので、ここでは解決済みの値を使う。
+      const parent = parentContext(ctx.params.defs, ctx.params.values);
+      return cookInner(ctx, inner, parent);
+    },
+  });
+}
+
+/* ============================================================
+   XDA — XBUILD アセット
+   ------------------------------------------------------------
+   形式（xda: 1）:
+     {
+       xda: 1,
+       name: 'arena_bowl',          // ノード型名になる
+       version: '1.2.0',            // MAJOR.MINOR.PATCH
+       label?, inputs?, aliases?,
+       params: { size: { type: 'float', default: 10 } },   // 昇格パラメータ
+       graph: { nodes: [...], displayNode },               // subinput / suboutput を含む
+       migrate?(params, fromVersion) -> params             // 旧バージョン読み込みフック
+     }
+
+   バージョンの規約:
+   - ノードは生成時のアセットバージョンを params._xdaVersion に保存する
+     （serialize に含まれるので、保存グラフに焼き付く）
+   - 旧バージョンの保存ノードを新バージョンのレジストリで読み込むと、
+     migrate(params, fromVersion) が（定義されていれば）呼ばれてから
+     現行バージョンが刻まれる。パラメータの改名・削除は migrate で吸収する
+   - migrate を書かずに互換を壊す変更をしたら、それは MAJOR を上げる場面
+   ============================================================ */
+
+const XDA_FORMAT = 1;
+const VERSION_RE = /^\d+\.\d+\.\d+$/;
+
+function registerAsset(reg, asset) {
+  if (!asset || asset.xda !== XDA_FORMAT)
+    throw new Error(`unsupported XDA format (expected xda: ${XDA_FORMAT})`);
+  if (!asset.name) throw new Error('XDA requires a name');
+  if (!VERSION_RE.test(asset.version || ''))
+    throw new Error(`XDA "${asset.name}": version must be MAJOR.MINOR.PATCH (got "${asset.version}")`);
+  if (!asset.graph || !Array.isArray(asset.graph.nodes))
+    throw new Error(`XDA "${asset.name}": graph is required`);
+
+  const params = {};
+  for (const [k, d] of Object.entries(asset.params || {})) {
+    if (k.startsWith('_'))
+      throw new Error(`XDA "${asset.name}": parameter names must not start with "_" (got "${k}")`);
+    params[k] = { type: d.type, default: structuredClone(d.default) };
+  }
+  params._xdaVersion = { type: 'string', default: asset.version };
+
+  if (!reg.assets) reg.assets = new Map();
+  reg.assets.set(asset.name, asset);
+
+  return reg.register({
+    type: asset.name,
+    label: asset.label || asset.name,
+    aliases: asset.aliases || [],
+    asset: { name: asset.name, version: asset.version },
+    inputs: (asset.inputs || []).map(i => ({ name: i.name, required: !!i.required })),
+    params,
+    migrateParams(p) {
+      const from = p._xdaVersion;
+      if (from && from !== asset.version && typeof asset.migrate === 'function') {
+        const out = asset.migrate({ ...p }, from);
+        if (out) p = out;
+      }
+      p._xdaVersion = asset.version;
+      return p;
+    },
+    timeDep(node) { return subnetTimeDep(node, asset.graph); },
+    cook(ctx) {
+      const inner = innerGraph(ctx.node, asset.graph);
+      const parent = {};
+      for (const k of Object.keys(asset.params || {})) parent[k] = ctx.params[k];
+      return cookInner(ctx, inner, parent);
+    },
+  });
+}
+
+/**
+ * サブネットノードから XDA 定義を作る（「公開」操作）。
+ * 昇格パラメータの既定値には、作者が現在セットしている値を採用する。
+ */
+function assetFromSubnet(node, meta = {}) {
+  if (!node || node.type !== 'subnet') throw new Error('assetFromSubnet expects a subnet node');
+  if (!meta.name) throw new Error('assetFromSubnet requires meta.name');
+  if (!node.params.graph) throw new Error('subnet has no inner graph');
+
+  const defs = structuredClone(node.params.defs || {});
+  const values = node.params.values || {};
+  for (const [k, d] of Object.entries(defs))
+    if (k in values) d.default = structuredClone(values[k]);
+
+  return {
+    xda: XDA_FORMAT,
+    name: meta.name,
+    version: meta.version || '1.0.0',
+    label: meta.label || meta.name,
+    inputs: meta.inputs || node.def.inputs.map(i => ({ name: i.name })),
+    params: defs,
+    graph: structuredClone(node.params.graph),
+  };
+}
+
+module.exports = { installSubnet, registerAsset, assetFromSubnet, XDA_FORMAT };
+
+});
+__def("nodes", function(module, exports, require){
+/* ============================================================
+   XBUILD SOP Layer — nodes.js
+   仕様検証用のリファレンスノード定義。
+   ここでの目的は網羅ではなく「cook 契約が破綻しないこと」の証明。
+   ============================================================ */
+
+'use strict';
+
+const { GeoSet } = require('./geo');
+const { Registry } = require('./cook');
+
+const reg = new Registry();
+
+/* ---------- grid : 点とプリミティブを生成 ---------- */
+reg.register({
+  type: 'grid',
+  label: 'Grid',
+  inputs: [],
+  params: {
+    size: { type: 'vec2', default: [10, 10] },
+    rows: { type: 'int', default: 3 },
+    cols: { type: 'int', default: 3 },
+  },
+  cook(ctx) {
+    const { size, rows, cols } = ctx.params;
+    const g = new GeoSet();
+    const ids = [];
+    for (let r = 0; r < rows; r++) {
+      const row = [];
+      for (let c = 0; c < cols; c++) {
+        const x = (c / Math.max(1, cols - 1) - 0.5) * size[0];
+        const y = (r / Math.max(1, rows - 1) - 0.5) * size[1];
+        row.push(g.addPoint(x, y, 0));
+      }
+      ids.push(row);
+    }
+    for (let r = 0; r < rows - 1; r++)
+      for (let c = 0; c < cols - 1; c++)
+        g.addPrim([ids[r][c], ids[r][c + 1], ids[r + 1][c + 1], ids[r + 1][c]], true);
+    return g;
+  },
+});
+
+/* ---------- transform ---------- */
+reg.register({
+  type: 'transform',
+  label: 'Transform',
+  inputs: [{ name: 'geo', required: true }],
+  params: { translate: { type: 'vec3', default: [0, 0, 0] } },
+  cook(ctx) {
+    const g = ctx.in(0);
+    const t = ctx.params.translate;
+    const P = g.point.get('P').raw();
+    for (let i = 0; i < g.numPoints; i++) {
+      P[i * 3] += t[0]; P[i * 3 + 1] += t[1]; P[i * 3 + 2] += t[2];
+    }
+    return g;
+  },
+});
+
+/* ---------- merge ---------- */
+reg.register({
+  type: 'merge',
+  label: 'Merge',
+  inputs: [{ name: 'a' }, { name: 'b' }],
+  params: {},
+  cook(ctx) {
+    const a = ctx.in(0) || new GeoSet();
+    const b = ctx.inRaw(1);
+    if (b) a.merge(b);
+    return a;
+  },
+});
+
+/* ---------- oscillate : 時間依存ノード ---------- */
+reg.register({
+  type: 'oscillate',
+  label: 'Oscillate',
+  inputs: [{ name: 'geo', required: true }],
+  params: { amp: { type: 'float', default: 1 }, freq: { type: 'float', default: 1 } },
+  timeDep: true,
+  cook(ctx) {
+    const g = ctx.in(0);
+    const { amp, freq } = ctx.params;
+    const dz = amp * Math.sin(ctx.time * freq * Math.PI * 2);
+    const P = g.point.get('P').raw();
+    for (let i = 0; i < g.numPoints; i++) P[i * 3 + 2] += dz;
+    return g;
+  },
+});
+
+/* ---------- boom : 常に失敗するノード（エラー伝播の検証用） ---------- */
+reg.register({
+  type: 'boom',
+  label: 'Boom',
+  inputs: [{ name: 'geo' }],
+  params: {},
+  cook() { throw new Error('intentional failure'); },
+});
+
+/* ============================================================
+   snippet : 要素ごとに JS スニペットを実行する
+   ------------------------------------------------------------
+   構文:
+     @P, @N ...       既存属性のバインド（vec は {x,y,z}）
+     f@w, i@n, v@up, s@name, 2@uv, 4@q   新規属性の宣言つきバインド
+     @ptnum, @numpt, @Time, @Frame       読み取り専用の組込み
+
+   旧名 `wrangle` は型エイリアスとして受け付ける（保存済みグラフ互換）。
+   ============================================================ */
+
+const TYPE_PREFIX = { f: 'float', i: 'int', v: 'vec3', s: 'string', 2: 'vec2', 4: 'vec4' };
+const CLASS_TO_OWNER = { point: 'point', prim: 'prim', vertex: 'vertex', detail: 'detail' };
+const BUILTINS = new Set(['ptnum', 'primnum', 'elemnum', 'numpt', 'numprim', 'Time', 'Frame']);
+
+/* 時間依存の自動検出 */
+const TIME_RE = /@(Time|Frame)\b/;
+
+/**
+ * コメントと文字列リテラルを取り除く。
+ * これを通さないと `// @Time を書くと…` のような説明文が
+ * 時間依存として検出され、属性バインドにも拾われてしまう。
+ */
+function stripNonCode(src) {
+  let out = '', i = 0, n = src.length;
+  while (i < n) {
+    const c = src[i], d = src[i + 1];
+    if (c === '/' && d === '/') {
+      while (i < n && src[i] !== '\n') i++;
+      continue;
+    }
+    if (c === '/' && d === '*') {
+      i += 2;
+      while (i < n && !(src[i] === '*' && src[i + 1] === '/')) i++;
+      i += 2;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === '`') {
+      const q = c;
+      out += c; i++;
+      while (i < n) {
+        if (src[i] === '\\') { out += '  '; i += 2; continue; }
+        if (src[i] === q) break;
+        out += ' '; i++;                 // 文字列の中身は空白に潰す
+      }
+      out += q; i++;
+      continue;
+    }
+    out += c; i++;
+  }
+  return out;
+}
+
+/* コンパイル結果のキャッシュ（同じソースを毎フレーム再コンパイルしない） */
+const _compileCache = new Map();
+const COMPILE_CACHE_MAX = 200;
+
+function compileSnippet(source) {
+  const src = source || '';
+  const hit = _compileCache.get(src);
+  if (hit) {
+    if (hit.error) throw new Error(hit.error);
+    return hit;
+  }
+
+  const scan = stripNonCode(src);      // 検出とバインドはコメント/文字列を除いた本体で行う
+  const declared = new Map();
+  let code = src.replace(/\b([fiv24s])@(\w+)/g, (_m, t, n) => {
+    declared.set(n, TYPE_PREFIX[t]);
+    return `_v.${n}`;
+  });
+  code = code.replace(/@(\w+)/g, (_m, n) => `_v.${n}`);
+
+  const bound = new Set();
+  let scanCode = scan.replace(/\b([fiv24s])@(\w+)/g, (_m, t, n) => `_v.${n}`)
+                     .replace(/@(\w+)/g, (_m, n) => `_v.${n}`);
+  for (const m of scanCode.matchAll(/_v\.(\w+)/g)) bound.add(m[1]);
+
+  let fn;
+  try {
+    fn = new Function('_v', `"use strict";\n${code}\n`);
+  } catch (e) {
+    const msg = `snippet syntax error: ${e.message}`;
+    if (_compileCache.size < COMPILE_CACHE_MAX) _compileCache.set(src, { error: msg });
+    throw new Error(msg);
+  }
+
+  for (const k of [...declared.keys()]) if (!bound.has(k)) declared.delete(k);
+  const out = { fn, declared, bound, timeDep: TIME_RE.test(scan) };
+  if (_compileCache.size >= COMPILE_CACHE_MAX) _compileCache.clear();
+  _compileCache.set(src, out);
+  return out;
+}
+
+/** 例外を投げずに時間依存だけ知りたい場合 */
+function snippetIsTimeDependent(source) {
+  return TIME_RE.test(stripNonCode(source || ''));
+}
+
+reg.register({
+  type: 'snippet',
+  label: 'スニペット',
+  aliases: ['wrangle'],
+  inputs: [{ name: 'geo', required: true }],
+  params: {
+    class: { type: 'string', default: 'point' },
+    code:  { type: 'string', default: '' },
+  },
+  /** 旧パラメータ名 `snippet` を `code` へ移行する */
+  migrateParams(p) {
+    if ('snippet' in p && !('code' in p)) { p.code = p.snippet; delete p.snippet; }
+    return p;
+  },
+  /** ソースが @Time / @Frame を参照していれば時間依存として扱う */
+  timeDep(node) { return snippetIsTimeDependent(node.params.code); },
+  cook(ctx) {
+    const g = ctx.in(0);
+    const owner = CLASS_TO_OWNER[ctx.params.class] || 'point';
+    const { fn, declared, bound } = compileSnippet(ctx.params.code);
+
+    // 属性の解決 / 新規作成
+    const attribs = new Map();
+    for (const name of bound) {
+      if (BUILTINS.has(name)) continue;
+      let a = g[owner].get(name);
+      if (a && declared.has(name) && a.type !== declared.get(name))
+        ctx.warn(`@${name} already exists as ${a.type}; the declared ${declared.get(name)} is ignored`);
+      if (!a && declared.has(name)) a = g[owner].add(name, declared.get(name));
+      if (!a && name === 'P' && owner !== 'point') continue;
+      if (a) attribs.set(name, a);
+      else ctx.warn(`unbound attribute @${name} (declare it, e.g. f@${name})`);
+    }
+
+    const n = owner === 'detail' ? 1 : g[owner].count;
+    const _v = Object.create(null);
+
+    for (let i = 0; i < n; i++) {
+      for (const [name, a] of attribs) {
+        const v = a.get(i);
+        _v[name] = Array.isArray(v) ? { x: v[0], y: v[1], z: v[2], w: v[3] } : v;
+      }
+      _v.ptnum = i; _v.primnum = i; _v.elemnum = i;
+      _v.numpt = g.numPoints; _v.numprim = g.numPrims;
+      _v.Time = ctx.time; _v.Frame = ctx.frame;
+
+      fn(_v);
+
+      for (const [name, a] of attribs) {
+        const v = _v[name];
+        if (v && typeof v === 'object')
+          a.set(i, a.size === 2 ? [v.x, v.y] : a.size === 4 ? [v.x, v.y, v.z, v.w] : [v.x, v.y, v.z]);
+        else a.set(i, v);
+      }
+    }
+    return g;
+  },
+});
+
+/* ============================================================
+   属性操作ノード群
+   ============================================================ */
+
+const OWNER_LIST = ['point', 'vertex', 'prim', 'detail'];
+
+function requireOwner(o) {
+  if (!OWNER_LIST.includes(o)) throw new Error(`unknown class "${o}" (point|vertex|prim|detail)`);
+  return o;
+}
+
+/* ---------- attribpromote : 階層間の移動 ---------- */
+reg.register({
+  type: 'attribpromote',
+  label: '属性の昇格',
+  inputs: [{ name: 'geo', required: true }],
+  params: {
+    name:    { type: 'string', default: '' },
+    from:    { type: 'string', default: 'point' },
+    to:      { type: 'string', default: 'prim' },
+    mode:    { type: 'string', default: 'mean' },   // mean|min|max|sum|first
+    outName: { type: 'string', default: '' },
+  },
+  cook(ctx) {
+    const g = ctx.in(0);
+    const { name, mode } = ctx.params;
+    const from = requireOwner(ctx.params.from), to = requireOwner(ctx.params.to);
+    const out = ctx.params.outName || name;
+    if (!name) throw new Error('name is required');
+    if (!g[from].has(name)) throw new Error(`no ${from} attribute "${name}"`);
+
+    if (from === 'point' && to === 'prim') g.promotePointToPrim(name, mode, out);
+    else if (from === 'prim' && to === 'point') g.promotePrimToPoint(name, out);
+    else throw new Error(`promotion ${from} -> ${to} is not supported yet`);
+    return g;
+  },
+});
+
+/* ---------- attribconvert : 型変換 / 成分抽出 ---------- */
+reg.register({
+  type: 'attribconvert',
+  label: '属性の型変換',
+  inputs: [{ name: 'geo', required: true }],
+  params: {
+    class:     { type: 'string', default: 'point' },
+    name:      { type: 'string', default: '' },
+    type:      { type: 'string', default: 'float' },  // float|int
+    component: { type: 'int',    default: -1 },       // vec からの成分抽出。-1 で無効
+    outName:   { type: 'string', default: '' },
+  },
+  cook(ctx) {
+    const g = ctx.in(0);
+    const owner = requireOwner(ctx.params.class);
+    const { name, type, component } = ctx.params;
+    const out = ctx.params.outName || name;
+    if (!name) throw new Error('name is required');
+    const src = g[owner].get(name);
+    if (!src) throw new Error(`no ${owner} attribute "${name}"`);
+    if (type !== 'float' && type !== 'int')
+      throw new Error(`target type must be float or int (got "${type}")`);
+    if (src.size > 1 && component < 0)
+      throw new Error(`"${name}" is ${src.type}; set component (0..${src.size - 1}) to extract a scalar`);
+    if (component >= 0 && component >= src.size)
+      throw new Error(`component ${component} out of range for ${src.type}`);
+
+    const n = owner === 'detail' ? 1 : g[owner].count;
+    const vals = new Array(n);
+    for (let i = 0; i < n; i++) {
+      const v = src.get(i);
+      let s = src.size > 1 ? v[component] : (typeof v === 'string' ? parseFloat(v) : v);
+      if (!isFinite(s)) s = 0;
+      vals[i] = type === 'int' ? Math.round(s) : s;
+    }
+    if (out === name) g[owner].remove(name);
+    const dst = g[owner].add(out, type);
+    for (let i = 0; i < n; i++) dst.set(i, vals[i]);
+    return g;
+  },
+});
+
+/* ---------- attribrename ---------- */
+reg.register({
+  type: 'attribrename',
+  label: '属性の改名',
+  inputs: [{ name: 'geo', required: true }],
+  params: {
+    class: { type: 'string', default: 'point' },
+    from:  { type: 'string', default: '' },
+    to:    { type: 'string', default: '' },
+  },
+  cook(ctx) {
+    const g = ctx.in(0);
+    const owner = requireOwner(ctx.params.class);
+    const { from, to } = ctx.params;
+    if (!from || !to) throw new Error('from and to are required');
+    const a = g[owner].get(from);
+    if (!a) throw new Error(`no ${owner} attribute "${from}"`);
+    if (g[owner].has(to)) throw new Error(`${owner} attribute "${to}" already exists`);
+    g[owner].map.delete(from);
+    a.name = to;
+    g[owner].map.set(to, a);
+    return g;
+  },
+});
+
+/* ---------- attribdelete ---------- */
+reg.register({
+  type: 'attribdelete',
+  label: '属性の削除',
+  inputs: [{ name: 'geo', required: true }],
+  params: {
+    class: { type: 'string', default: 'point' },
+    names: { type: 'string', default: '' },   // 空白 or カンマ区切り
+  },
+  cook(ctx) {
+    const g = ctx.in(0);
+    const owner = requireOwner(ctx.params.class);
+    const list = String(ctx.params.names || '').split(/[\s,]+/).filter(Boolean);
+    for (const nm of list) {
+      if (owner === 'point' && nm === 'P') { ctx.warn('point attribute "P" cannot be deleted'); continue; }
+      if (!g[owner].remove(nm)) ctx.warn(`no ${owner} attribute "${nm}"`);
+    }
+    return g;
+  },
+});
+
+/* ---------- P4: サブネット + XDA（src/subnet.js） ---------- */
+const { installSubnet, registerAsset, assetFromSubnet } = require('./subnet');
+installSubnet(reg);
+
+module.exports = {
+  reg, compileSnippet, snippetIsTimeDependent, stripNonCode,
+  registerAsset, assetFromSubnet,
+};
+
+});
+__def("demo_nodes", function(module, exports, require){
+/* ============================================================
+   XBUILD データフロー層 — demo_nodes.js
+   P6 のエンドツーエンド検証用ノード群。
+   XBUILD / FLOW·LAB / xPop の3系統が同じ GeoSet に載ることを示す。
+   ============================================================ */
+
+'use strict';
+
+const { GeoSet } = require('./geo');
+const { reg } = require('./nodes');
+
+/* 決定論 PRNG（シード固定で毎回同じ街が出る） */
+function prng(seed) {
+  let s = seed >>> 0 || 1;
+  return () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+}
+
+/* ---------- ctxbuildings : PLATEAU 文脈建物相当 ---------- */
+reg.register({
+  type: 'ctxbuildings',
+  label: '文脈建物',
+  inputs: [],
+  params: {
+    count:  { type: 'int',   default: 400 },
+    seed:   { type: 'int',   default: 20260813 },
+    radius: { type: 'float', default: 260 },
+    clear:  { type: 'float', default: 55 },
+  },
+  cook(ctx) {
+    const { count, seed, radius, clear } = ctx.params;
+    const rnd = prng(seed);
+    const g = new GeoSet();
+    g.reserve(count * 8, count * 20, count * 5);
+    const name = g.addAttrib('prim', 'name', 'string');
+    const height = g.addAttrib('prim', 'height', 'float');
+    const part = g.addAttrib('prim', 'part', 'string');
+
+    let made = 0, guard = 0;
+    while (made < count && guard++ < count * 20) {
+      const a = rnd() * Math.PI * 2;
+      const r = clear + Math.sqrt(rnd()) * (radius - clear);
+      const cx = Math.cos(a) * r, cy = Math.sin(a) * r;
+      const w = 8 + rnd() * 18, d = 8 + rnd() * 18;
+      const ht = 6 + Math.pow(rnd(), 2.2) * 52;
+      const x = cx - w / 2, y = cy - d / 2;
+
+      const lo = [
+        g.addPoint(x, y, 0), g.addPoint(x + w, y, 0),
+        g.addPoint(x + w, y + d, 0), g.addPoint(x, y + d, 0),
+      ];
+      const hi = [
+        g.addPoint(x, y, ht), g.addPoint(x + w, y, ht),
+        g.addPoint(x + w, y + d, ht), g.addPoint(x, y + d, ht),
+      ];
+      const roof = g.addPrim(hi);
+      name.set(roof, 'bldg_' + made); height.set(roof, ht); part.set(roof, 'roof');
+      for (let k = 0; k < 4; k++) {
+        const pi = g.addPrim([lo[k], lo[(k + 1) % 4], hi[(k + 1) % 4], hi[k]]);
+        name.set(pi, 'bldg_' + made); height.set(pi, ht); part.set(pi, 'wall');
+      }
+      made++;
+    }
+    g.detail.add('source', 'string').set(0, 'ctx');
+    return g;
+  },
+});
+
+/* ---------- tower : パラメトリック建物 ---------- */
+reg.register({
+  type: 'tower',
+  label: '建物',
+  inputs: [],
+  params: {
+    floors:      { type: 'int',   default: 8 },
+    floorHeight: { type: 'float', default: 4.2 },
+    width:       { type: 'float', default: 32 },
+    depth:       { type: 'float', default: 20 },
+    setback:     { type: 'float', default: 0.0 },
+  },
+  cook(ctx) {
+    const { floors, floorHeight, width, depth, setback } = ctx.params;
+    const g = new GeoSet();
+    g.reserve(floors * 16, floors * 40, floors * 12);
+    const part = g.addAttrib('prim', 'part', 'string');
+    const lvl = g.addAttrib('prim', 'level', 'int');
+    const height = g.addAttrib('prim', 'height', 'float');
+
+    for (let f = 0; f < floors; f++) {
+      const t = floors > 1 ? f / (floors - 1) : 0;
+      const w = width * (1 - setback * t) / 2, d = depth * (1 - setback * t) / 2;
+      const z0 = f * floorHeight, z1 = z0 + floorHeight;
+
+      const lo = [
+        g.addPoint(-w, -d, z0), g.addPoint(w, -d, z0),
+        g.addPoint(w, d, z0), g.addPoint(-w, d, z0),
+      ];
+      const hi = [
+        g.addPoint(-w, -d, z1), g.addPoint(w, -d, z1),
+        g.addPoint(w, d, z1), g.addPoint(-w, d, z1),
+      ];
+      const slab = g.addPrim(lo);
+      part.set(slab, 'slab'); lvl.set(slab, f); height.set(slab, z0);
+      for (let k = 0; k < 4; k++) {
+        const pi = g.addPrim([lo[k], lo[(k + 1) % 4], hi[(k + 1) % 4], hi[k]]);
+        part.set(pi, 'facade'); lvl.set(pi, f); height.set(pi, z0);
+      }
+      if (f === floors - 1) {
+        const roof = g.addPrim(hi);
+        part.set(roof, 'roof'); lvl.set(roof, f); height.set(roof, z1);
+      }
+    }
+    g.detail.add('source', 'string').set(0, 'tower');
+    return g;
+  },
+});
+
+/* ---------- agents : 時間依存の人流点 ---------- */
+reg.register({
+  type: 'agents',
+  label: '人流エージェント',
+  inputs: [],
+  params: {
+    count:  { type: 'int',   default: 600 },
+    seed:   { type: 'int',   default: 7 },
+    radius: { type: 'float', default: 90 },
+    speed:  { type: 'float', default: 0.35 },
+  },
+  timeDep: true,
+  cook(ctx) {
+    const { count, seed, radius, speed } = ctx.params;
+    const rnd = prng(seed);
+    const g = new GeoSet();
+    g.reserve(count, count, count);
+    const v = g.addAttrib('point', 'speed', 'float');
+    const P = g.point.get('P');
+
+    for (let i = 0; i < count; i++) {
+      const r = 20 + rnd() * radius;
+      const w = (0.3 + rnd() * 0.9) * (rnd() < 0.5 ? -1 : 1) * speed;
+      const ph = rnd() * Math.PI * 2;
+      const drift = 0.6 + rnd() * 0.8;
+      const a = ph + ctx.time * w;
+      const rr = r * (1 + 0.12 * Math.sin(ctx.time * drift + ph));
+      const pt = g.addPoint(Math.cos(a) * rr, Math.sin(a) * rr, 1.2);
+      v.set(pt, Math.abs(w) * rr);
+      P.get(pt);
+    }
+    g.detail.add('source', 'string').set(0, 'agents');
+    return g;
+  },
+});
+
+/* ---------- heatmap : 点 -> グリッドセルへの集約 ---------- */
+reg.register({
+  type: 'heatmap',
+  label: 'ヒートマップ',
+  inputs: [{ name: 'points', required: true }],
+  params: {
+    cell:   { type: 'float', default: 14 },
+    extent: { type: 'float', default: 140 },
+    lift:   { type: 'float', default: 0.4 },
+  },
+  cook(ctx) {
+    const src = ctx.inRaw(0);
+    const { cell, extent, lift } = ctx.params;
+    const n = Math.max(1, Math.ceil((extent * 2) / cell));
+    const counts = new Float64Array(n * n);
+    const P = src.point.get('P');
+
+    for (let i = 0; i < src.point.count; i++) {
+      const p = P.get(i);
+      const cx = Math.floor((p[0] + extent) / cell);
+      const cy = Math.floor((p[1] + extent) / cell);
+      if (cx < 0 || cy < 0 || cx >= n || cy >= n) continue;
+      counts[cy * n + cx] += 1;
+    }
+
+    let max = 0;
+    for (let i = 0; i < counts.length; i++) if (counts[i] > max) max = counts[i];
+    if (!max) max = 1;
+
+    const g = new GeoSet();
+    g.reserve(n * n * 4, n * n * 4, n * n);
+    const dens = g.addAttrib('prim', 'density', 'float');
+    for (let cy = 0; cy < n; cy++) {
+      for (let cx = 0; cx < n; cx++) {
+        const c = counts[cy * n + cx];
+        if (!c) continue;
+        const x = cx * cell - extent, y = cy * cell - extent;
+        const z = lift + (c / max) * 0.2;
+        const pi = g.addPrim([
+          g.addPoint(x, y, z), g.addPoint(x + cell, y, z),
+          g.addPoint(x + cell, y + cell, z), g.addPoint(x, y + cell, z),
+        ]);
+        dens.set(pi, c);
+      }
+    }
+    g.detail.add('source', 'string').set(0, 'heatmap');
+    return g;
+  },
+});
+
+module.exports = { reg };
+
+});
+__def("site_data", function(module, exports, require){
+/* 自動生成: PLATEAU LOD1 + OSM から bake したデータ。手で編集しないこと。 */
+'use strict';
+module.exports = {"v":1,"origin":{"lat":34.9858,"lon":138.4125},"radius":600.0,"source":"PLATEAU 静岡市 建築物モデル LOD1 (2023) 22101葵区 / 22102駿河区 + OpenStreetMap","usages":["その他","不明","住宅","作業所併用住宅","共同住宅","商業施設","官公庁施設","工場","店舗等併用住宅","店舗等併用共同住宅","文教厚生施設","業務施設","運輸倉庫施設"],"buildings":[[489,68,2,2,2014,79,6,770,5891,23,-37,71,46,-36,56,-84,-54,13,-20],[492,68,2,2,2014,80,6,1019,5674,50,33,-52,82,-34,-23,-7,10,-16,-11],[491,63,2,2,2013,74,6,884,5673,89,59,-39,60,-45,-30,5,-8,-44,-29],[492,68,1,0,0,87,6,922,5661,21,-33,68,44,-37,56,-86,-56,15,-23],[491,84,11,2,2007,91,6,-82,5954,59,-197,270,81,-53,175,-202,-60,-6,21],[490,30,2,1,1966,27,4,509,5912,28,9,-16,55,-29,-9],[493,74,2,2,2013,89,6,1059,5758,28,-43,36,23,-60,91,-46,-30,31,-48],[493,66,2,2,2002,77,4,1154,5704,119,76,-48,75,-118,-76],[492,37,1,0,0,40,4,216,5941,12,-40,26,7,-12,40],[490,69,2,2,2014,78,4,825,5783,82,54,-35,54,-83,-54],[491,30,11,1,1992,26,4,1102,5795,73,48,-20,31,-74,-47],[500,47,10,2,2001,92,6,-1359,5673,156,66,-23,52,-19,-8,-19,45,-136,-58],[492,72,2,2,2011,84,8,-753,5925,28,-91,-44,-13,-5,15,-36,-11,-17,57,18,5,-6,19],[494,35,1,0,0,38,7,-854,5683,42,12,43,13,8,-25,-43,-13,14,-48,-41,-12],[495,30,2,1,1989,25,4,-327,5808,33,10,-12,37,-33,-10],[493,30,2,1,1975,31,4,-336,5690,34,10,-22,70,-34,-10],[495,83,2,3,1997,101,9,-1072,5854,-3,10,25,8,-18,61,-82,-25,-4,-14,19,-24,9,2,9,-32],[501,30,1,0,0,29,4,-1380,5610,18,8,-54,133,-18,-8],[495,65,5,2,1990,70,4,-960,5655,32,10,-25,84,-33,-10],[492,68,2,2,2000,81,6,-505,5732,136,42,-32,103,-128,-39,11,-38,-7,-2],[503,30,1,0,0,27,4,-1438,5611,39,17,-37,88,-39,-16],[492,65,2,2,2011,68,6,-926,5932,26,-85,-23,-7,4,-15,-40,-12,-31,100],[494,64,2,2,1981,73,6,-242,5952,21,7,-4,13,-136,-41,20,-66,115,35],[494,59,7,2,1987,71,6,-1048,5889,13,-44,-65,-20,74,-94,72,22,-46,151],[491,59,12,1,1976,66,4,-539,5843,84,26,-37,122,-85,-26],[493,64,2,2,2011,73,4,-802,5736,98,30,-20,63,-97,-30],[493,65,2,2,2012,68,4,-922,5686,59,18,-26,84,-58,-18],[501,30,1,0,0,32,4,5467,1587,42,33,-23,29,-42,-33],[499,30,1,0,0,0,4,3981,2892,49,38,-25,31,-49,-38],[501,63,2,2,2005,89,4,3974,2941,149,124,-67,80,-148,-124],[498,187,4,7,2010,238,8,4182,3829,13,-17,-20,-16,44,-56,299,238,-96,120,-297,-236,39,-48],[500,69,2,2,2018,78,6,4272,3307,43,-55,-50,-38,9,-11,-25,-19,-51,67],[497,146,4,5,2007,151,4,4608,3444,166,131,-75,96,-167,-130],[499,43,2,1,2006,64,12,4041,2775,38,-51,-25,-19,34,-46,36,28,-18,25,112,83,-77,103,-100,-74,-8,11,-47,-34,32,-43],[501,103,12,2,1992,119,6,5145,1544,38,-47,473,383,-143,177,-615,-496,106,-131],[508,30,12,1,0,30,4,4112,1363,33,29,-19,21,-32,-29],[499,74,2,2,2005,90,4,4926,3217,94,73,-81,104,-94,-73],[497,71,2,2,2019,79,6,4623,3791,63,-79,-26,-20,5,-6,-34,-27,-67,85],[498,101,2,3,2007,136,4,3733,2894,85,67,-91,115,-85,-68],[500,136,1,0,0,139,6,3824,2490,80,64,91,-114,-144,-115,-100,125,64,51],[500,59,2,2,2008,79,4,3880,3305,90,72,-68,83,-89,-73],[503,55,12,1,0,55,4,3847,1713,58,46,-33,42,-58,-46],[504,30,1,0,0,23,4,3822,1698,18,17,-18,19,-18,-16],[499,30,2,1,0,31,4,3729,2689,51,40,-30,39,-51,-40],[498,71,2,2,2006,83,6,4654,3012,24,-29,76,64,-74,87,-85,-71,50,-58],[503,40,1,0,0,43,4,4084,1842,78,36,-22,46,-78,-36],[504,39,1,0,0,43,4,3987,1795,79,36,-22,47,-79,-36],[504,49,12,1,2002,49,4,4203,1893,71,48,-56,83,-71,-48],[501,30,1,0,0,27,4,5294,1392,86,64,-16,23,-87,-64],[499,30,1,0,0,28,4,4034,2931,37,30,-27,33,-37,-30],[498,79,2,2,2017,89,4,4519,3563,90,71,-60,75,-89,-71],[501,73,11,2,2001,111,6,4073,2659,66,-83,-95,-74,26,-34,-38,-29,-91,116],[503,30,1,0,0,31,8,5540,1652,13,11,-11,13,-8,-7,-9,11,-22,-19,24,-29,17,15],[500,68,2,2,2006,82,4,3754,2778,135,104,-60,77,-135,-104],[498,63,1,0,0,92,6,3660,2371,86,69,-84,106,-59,-47,31,-40,-26,-21],[503,33,1,0,0,33,4,5509,1547,70,54,-26,34,-70,-54],[499,91,2,3,2000,91,8,3822,2553,25,19,12,-16,32,26,-62,79,-31,-24,-7,8,-26,-20],[499,83,2,2,2006,94,4,3767,3232,74,56,-52,69,-74,-57],[500,73,1,0,0,85,4,4025,3127,48,41,-77,91,-48,-41],[504,30,1,0,0,26,4,4168,1873,20,10,-27,56,-20,-10],[500,197,4,7,2008,224,8,3624,3473,18,-22,92,75,78,-95,-219,-179,-79,95,72,59,-18,22],[500,30,1,0,0,24,4,4291,3447,65,52,-11,14,-65,-51],[500,73,1,0,0,83,4,4174,3654,54,37,-49,72,-54,-37],[500,35,2,1,2006,40,4,3674,2761,43,34,-33,42,-43,-34],[499,81,7,2,2005,84,6,4366,3001,16,-21,79,60,-62,80,-110,-85,45,-59],[501,42,1,0,0,133,4,3943,2399,52,41,25,-31,-51,-42],[500,75,10,2,2003,103,8,3675,4824,69,-88,13,10,31,-40,-104,-81,-33,42,-14,-11,-67,85],[502,48,12,1,0,53,4,5149,2646,103,86,-66,80,-104,-86],[497,73,4,7,2010,180,10,4562,3889,22,-28,-268,-213,-14,17,-14,-11,-69,86,299,238,38,-48,9,7,22,-28],[498,76,2,2,2006,85,4,4798,3309,106,78,-60,81,-106,-78],[499,95,2,3,2005,100,4,3694,3172,62,51,-62,75,-62,-51],[499,30,1,0,0,25,4,4306,3487,22,18,-30,37,-22,-18],[499,81,1,0,0,95,4,3774,2500,50,39,-58,74,-51,-39],[499,152,4,5,2007,158,10,4368,3490,25,-31,114,90,86,-110,-175,-138,-79,100,19,15,-22,27,18,14,-11,14],[500,50,2,2,2006,76,6,4261,2797,118,103,-88,101,-92,-81,11,-13,-26,-22],[500,69,2,2,2002,86,8,3836,3154,23,10,-5,12,55,24,45,-105,-103,-45,-44,101,26,11],[500,38,5,2,2012,63,4,3841,3784,153,121,-70,88,-153,-121],[499,66,2,2,2004,77,4,4428,2866,118,102,-63,72,-117,-102],[505,30,1,0,0,26,4,4246,1405,19,16,-10,13,-19,-17],[500,68,1,0,0,82,4,4135,3060,86,69,-69,87,-86,-69],[499,73,2,2,2009,87,6,4122,3857,46,-61,-72,-54,8,-11,-30,-22,-54,70],[500,37,2,1,2005,42,4,4771,3200,71,51,-35,49,-71,-51],[500,30,1,0,0,31,4,4213,3164,30,21,-43,59,-30,-22],[499,74,5,2,1993,97,7,2374,3630,31,21,142,23,12,-17,-230,-177,-137,177,96,86],[491,97,2,3,1999,99,4,1188,5399,67,40,-47,77,-66,-41],[499,47,2,2,1990,77,6,1280,4406,38,-43,-14,-13,16,-18,-92,-81,-55,62],[492,69,2,2,1997,82,6,1350,5147,7,-10,57,37,-68,104,-124,-80,60,-94],[494,45,11,1,2001,56,4,353,2054,72,68,-57,59,-71,-67],[498,43,5,3,2016,126,5,1195,2842,27,-36,191,147,-28,36,-190,-147],[494,133,5,3,2009,198,7,413,2208,241,177,-17,52,57,19,71,-211,-172,-125,-74,101],[492,30,1,0,0,28,4,1536,5206,41,24,-28,46,-41,-25],[500,37,2,2,1964,72,8,2871,4841,75,-120,-97,-61,-52,83,9,6,-19,31,64,40,-4,6],[503,30,1,0,0,31,4,974,1383,27,24,-15,18,-28,-24],[504,73,10,2,1996,115,16,2232,4812,19,-33,-18,-10,27,-46,7,4,43,-75,-42,-24,18,-30,50,28,-11,18,62,36,-194,338,-158,-90,89,-154,39,23,11,-18],[496,67,2,2,2010,82,6,394,5182,10,-16,111,69,-55,89,-143,-89,45,-73],[498,37,2,1,1969,46,14,2133,3808,10,-11,-19,-19,26,-27,-9,-8,28,-29,-32,-31,-126,129,48,60,21,-16,11,11,10,-9,6,6,41,-41],[501,70,2,2,2011,78,4,1558,4303,51,31,-48,79,-51,-30],[496,30,1,0,0,30,4,101,5389,20,6,-9,30,-20,-6],[500,42,2,2,1963,73,6,2527,4348,-43,-34,-47,61,-26,-21,-82,105,70,55],[498,66,2,2,1982,86,8,1561,3957,36,18,-6,12,60,30,54,-106,-134,-68,-51,102,37,19],[496,45,2,2,1964,79,14,550,3533,47,22,7,-14,25,12,8,-15,36,18,-56,119,-31,-14,-6,12,-38,-18,-4,7,-35,-17,9,-19,-5,-2],[502,39,2,2,1955,55,6,2905,4571,82,55,-29,44,-15,-10,-1,2,-68,-45],[498,69,2,2,2011,78,6,1622,4377,10,-16,67,41,-43,72,-89,-54,34,-56],[487,79,2,2,2015,88,6,2266,5404,20,-32,60,38,-44,69,-68,-43,24,-37],[501,875,11,18,2003,1705,20,2535,1590,54,24,-1,8,-14,57,-28,33,-31,29,-28,14,-13,17,65,51,192,-244,-233,-183,-176,228,-13,17,64,51,13,-16,-5,-22,19,-47,39,-44,36,-23,15,0],[499,59,1,0,0,100,4,1575,2138,226,182,-24,30,-229,-178],[506,30,1,0,0,27,4,1510,550,28,21,-24,32,-28,-20],[502,46,2,2,1963,72,22,3103,4510,11,15,-26,23,9,10,-50,44,-19,-22,-18,17,-16,-18,-5,4,-18,-21,-22,19,-40,-45,11,-10,-6,-7,21,-18,-9,-11,33,-29,17,19,51,-45,26,29,24,-21,44,51],[492,44,2,2,1967,75,5,617,4980,43,29,-74,108,-26,5,-27,-18],[496,33,2,1,1973,40,4,158,5159,37,22,-37,63,-37,-22],[500,43,2,1,1964,0,6,2801,4937,45,28,-15,26,-8,-5,-15,25,-39,-24],[499,63,4,2,2011,69,6,2945,4321,27,-60,32,15,-56,124,-59,-27,29,-64],[497,116,5,3,2016,172,12,1030,2476,138,106,6,-9,325,251,-6,7,8,7,-88,115,-191,-147,-27,36,-262,-202,75,-96,-19,-14],[498,30,2,1,1987,28,4,1677,3610,30,15,-26,56,-30,-14],[494,30,1,0,0,23,4,1460,5505,36,24,-11,17,-37,-24],[494,65,4,2,1985,78,4,1450,5367,99,63,-47,74,-99,-63],[500,38,2,2,1967,72,16,2866,4602,-38,-26,-14,21,-56,-38,-12,18,-4,-3,-39,58,11,8,-16,24,-11,-8,-29,43,47,31,33,-49,42,28,12,-17,10,6],[501,39,2,1,1963,47,4,2404,4260,38,29,-51,63,-37,-29],[498,37,2,1,1966,45,4,2328,3850,48,50,-50,49,-49,-50],[492,40,4,3,1976,97,8,273,5739,80,-262,-148,-45,-13,41,-17,-5,-16,52,5,2,-52,168],[500,44,2,1,1952,67,6,2975,4807,33,-50,40,27,-81,121,-92,-62,47,-71],[494,63,2,2,1991,64,5,1063,5057,60,-77,-49,-38,-60,75,0,1],[494,62,4,2,1971,74,4,212,5038,81,49,-51,84,-81,-49],[509,35,1,0,0,79,6,346,-474,2,-3,107,84,-17,22,-118,-93,15,-19],[500,69,9,2,1998,70,6,1970,3964,70,49,-92,131,-38,-27,-30,43,-32,-22],[502,63,2,2,1988,74,4,2168,4520,68,44,-55,84,-68,-44],[506,31,12,1,1986,33,4,1178,-642,37,38,-24,23,-37,-38],[496,87,11,3,1987,113,13,207,4410,4,-6,4,-6,5,-6,6,-5,6,-4,73,-65,250,282,112,127,-74,66,-286,-322,-31,27,-72,-81],[494,31,1,0,0,89,4,743,3415,61,38,-23,36,-61,-38],[499,66,2,2,1994,83,6,2253,3772,9,-9,32,32,-77,76,-48,-49,67,-66],[500,34,2,1,0,42,4,2720,5231,52,27,-34,66,-52,-27],[492,68,4,2,1995,89,4,1884,5093,77,50,-63,98,-77,-50],[505,30,4,28,2014,0,4,128,-80,24,18,-146,187,-24,-19],[507,30,1,0,0,28,4,1336,424,94,76,-15,19,-95,-77],[502,55,2,1,0,61,4,2867,4623,40,24,-19,31,-40,-23],[506,37,1,0,0,38,4,2297,1782,95,71,-32,43,-95,-72],[495,30,10,1,0,22,4,137,2370,65,20,-9,27,-64,-21],[494,67,4,2,2009,77,12,921,4999,7,-10,-23,-17,-7,11,-59,-42,8,-10,-27,-20,53,-73,165,119,-54,75,-26,-19,-6,9],[493,30,10,1,0,29,4,132,2303,16,11,-35,54,-16,-10],[497,63,12,2,1963,70,4,217,2849,65,41,-29,45,-65,-40],[499,30,2,1,0,28,4,962,3260,26,15,-46,81,-27,-15],[501,36,11,1,1996,36,4,1613,3478,45,25,-24,44,-46,-25],[502,67,2,2,2011,79,8,3115,4700,15,11,-8,11,36,25,54,-78,-90,-61,-57,83,39,26],[504,98,10,1,0,148,4,3165,3553,53,39,-46,62,-53,-40],[498,65,2,2,2016,74,4,470,3516,64,28,-42,95,-64,-28],[500,95,7,2,1965,110,4,2797,711,336,267,-127,159,-336,-267],[500,1603,11,18,2003,1705,13,2475,1540,15,0,45,50,54,24,-1,8,-14,57,-27,33,-32,29,-28,14,-101,-79,-5,-22,19,-47,39,-44],[500,48,1,0,0,49,4,2192,3347,30,75,-210,84,-30,-75],[494,30,1,0,0,25,4,327,5063,47,29,-26,41,-47,-29],[495,68,4,2,2007,71,4,1787,5495,157,101,-53,82,-157,-100],[494,30,2,1,1970,43,6,1374,4850,39,-49,14,11,-53,67,-50,-39,14,-18],[492,30,1,0,0,30,4,770,5202,47,23,-17,35,-47,-23],[499,61,2,1,0,96,16,3344,3012,62,48,7,-9,164,121,-123,167,-98,-73,18,-25,-73,-54,-19,24,-160,-125,16,-21,-8,-7,106,-136,44,34,12,-16,67,52],[497,68,2,2,2017,71,6,1160,3923,18,-30,-17,-10,24,-40,-50,-30,-42,69],[500,74,5,3,2005,95,8,1575,2138,226,182,-10,12,93,75,157,-195,-391,-313,-154,192,71,57],[492,71,2,2,2016,81,6,2089,5471,37,-58,-29,-18,9,-15,-50,-32,-46,73],[498,53,5,1,1992,67,7,3032,4036,32,2,3,-18,-247,-192,-31,73,-76,-32,-48,112],[498,30,11,1,1987,84,4,593,4793,29,-26,28,32,-29,26],[495,45,2,1,1970,57,6,1309,4798,65,52,39,-49,14,11,30,-37,-80,-63],[496,72,2,2,2012,79,6,1859,3706,4,-7,52,36,-40,58,-77,-54,35,-51],[500,74,2,2,2011,83,9,2451,4219,58,26,42,-16,-6,-25,8,-3,-12,-50,-80,23,4,16,-19,6],[495,37,2,2,1963,76,8,508,3135,34,-51,33,21,36,-55,-88,-58,-23,36,-31,-21,-47,71],[498,64,2,2,1982,64,8,874,3312,9,-14,17,10,26,-43,-60,-35,-48,81,60,36,14,-24],[494,57,2,2,1993,76,4,51,4498,45,-76,87,51,-46,76],[504,37,1,0,0,106,39,917,54,11,24,10,27,1,1,3,36,1,23,-5,29,-8,28,-13,24,-77,99,-20,-15,79,-98,10,-27,4,-28,0,-30,-4,-30,-8,-27,-14,-28,-20,-24,-116,-97,-318,-239,-23,-15,-26,-14,-30,-6,-22,1,-22,8,-16,12,-79,100,-24,-15,93,-113,23,-14,22,-10,60,4,28,15,-3,5,413,325,8,-10,35,27,30,28],[501,70,2,2,2012,80,6,1492,4106,6,-10,47,28,-46,76,-78,-47,39,-66],[499,41,2,2,1976,74,12,2433,4155,20,-7,7,23,56,-19,-35,-106,-55,17,-3,-9,-51,17,32,94,3,-1,20,38,23,-13],[507,30,1,0,0,0,4,1348,332,2,29,-30,2,-3,-29],[499,65,12,1,1952,77,4,758,4727,154,-136,-274,-309,-154,136],[504,201,5,4,2016,221,8,2543,2769,8,-10,258,202,7,-10,57,44,-202,259,-404,-316,186,-239],[498,69,2,2,2018,76,4,1185,3508,64,39,-75,124,-64,-39],[492,92,2,3,2008,100,4,19,5454,46,13,-43,142,-45,-14],[503,59,2,2,2004,64,4,3015,4699,64,38,-26,44,-64,-37],[492,69,2,2,2001,80,10,1054,5118,24,-30,79,62,-35,44,-7,-5,-19,25,-20,-15,-26,33,-97,-76,56,-73],[499,90,4,3,1975,98,4,2221,4111,67,77,-55,47,-67,-77],[505,30,1,0,0,31,4,3076,2315,3,39,-37,3,-3,-39],[494,30,1,0,0,27,4,157,4807,28,17,-31,50,-28,-17],[498,30,1,0,0,176,4,992,2526,29,-38,-22,-17,-29,37],[492,30,2,1,2019,29,4,1197,4977,50,32,-25,39,-49,-32],[491,30,1,0,0,29,4,1214,5603,52,31,-32,54,-52,-32],[496,38,2,1,1965,43,4,1782,3643,40,22,-44,77,-39,-21],[502,66,2,2,2005,79,4,2534,4370,70,48,-33,48,-70,-48],[508,31,1,0,0,53,4,1849,948,27,3,-12,98,-27,-3],[498,93,4,3,2020,94,14,3580,2966,8,-10,44,36,83,-103,-143,-115,-12,15,-19,-15,-48,61,22,17,-5,7,25,20,-19,23,20,17,-6,7],[502,103,1,0,0,109,4,2378,377,198,153,-49,64,-199,-153],[498,65,2,2,1980,76,4,1769,4415,78,59,-51,66,-78,-60],[504,814,11,18,2003,1705,6,2731,1579,67,53,-133,170,-17,-13,-44,57,-51,-40],[491,69,2,2,1999,75,6,1116,5397,19,-30,44,27,-46,76,-77,-47,28,-46],[496,30,2,1,1965,36,4,1154,3343,65,34,-37,69,-64,-34],[495,66,2,2,1985,80,6,1481,5358,47,-72,-42,-27,6,-11,-66,-42,-54,82],[497,77,2,2,2010,96,6,1872,3873,18,-26,-15,-11,15,-20,-96,-68,-33,46],[502,44,2,1,2009,47,4,1803,3481,42,29,-46,64,-41,-30],[496,70,3,2,1970,77,4,315,2890,76,47,-128,204,-76,-47],[508,30,1,0,0,45,4,1688,609,17,14,-9,10,-17,-14],[502,61,2,2,1995,71,8,1179,4103,7,-11,53,32,-8,12,23,14,-28,48,-100,-60,30,-49],[502,77,5,2,2005,98,6,3098,4809,25,-30,59,51,-101,118,-81,-70,75,-89],[494,69,2,2,2006,79,4,34,5299,77,25,-38,113,-76,-25],[501,30,1,0,0,34,4,2977,2609,42,32,-25,32,-42,-32],[491,30,1,0,0,30,4,1118,5542,48,31,-23,36,-48,-30],[502,74,2,2,2014,96,6,1113,4159,98,59,-45,73,-49,-30,6,-10,-48,-30],[496,30,2,2,1970,22,4,1306,4798,15,12,-18,23,-15,-12],[500,94,7,2,1955,95,4,1816,4725,87,52,112,-186,-88,-52],[496,43,11,1,2015,45,4,830,4673,34,38,-79,70,-34,-38],[500,62,2,2,2011,74,6,1672,4171,70,42,-49,82,-56,-34,21,-35,-15,-8],[497,64,1,0,0,74,6,724,3705,40,-94,-21,-9,9,-20,-70,-30,-49,114],[500,86,1,0,0,94,4,1423,1529,235,185,-248,315,-235,-186],[500,74,12,2,2010,75,4,3382,3434,45,36,-72,91,-45,-36],[500,37,1,0,0,54,4,3308,4215,64,50,-71,92,-64,-50],[501,59,7,2,1955,59,4,2034,4427,62,44,-80,113,-62,-43],[496,41,12,1,1953,45,10,251,3484,-73,-64,14,-15,-33,-29,7,-9,-98,-101,-25,28,7,9,-14,20,196,182],[500,59,2,2,2004,71,4,3286,4699,43,34,-94,121,-43,-34],[508,30,1,0,0,28,4,1305,287,1,28,-28,1,0,-28],[504,66,2,2,2013,79,6,1063,3998,10,-18,67,37,-31,56,-80,-45,21,-37],[495,86,5,3,2009,97,6,242,2304,395,133,17,-52,-241,-177,-31,-4,-95,-34],[499,80,2,2,1995,96,8,1358,3840,50,-119,-61,-25,-16,39,-7,-2,-19,45,31,13,-14,34],[497,40,2,1,2005,51,4,957,3456,64,40,-57,90,-63,-39],[495,158,10,5,2002,215,35,584,2618,22,-65,-10,-11,-13,-21,-8,-17,-1,-15,7,-20,14,-15,100,26,-56,173,79,48,-26,44,313,165,27,-55,344,148,-116,184,6,45,-64,-9,-24,-28,-33,-13,-40,86,-20,-9,-12,24,-133,-60,13,-30,-15,-7,60,-139,-45,-15,14,-29,-23,-12,-46,80,-741,-440,87,-171,293,180,21,-35],[499,65,4,2,1976,68,7,1486,4588,51,-65,-122,-112,-25,27,-10,-9,-35,38,9,9],[503,68,2,2,2006,77,8,2788,4293,23,-36,-69,-45,-43,67,30,19,10,-15,26,17,10,-15],[499,79,2,2,1997,88,10,2395,3907,17,18,13,-13,47,48,-29,28,-19,-19,-41,41,-17,-18,-23,23,-28,-29],[498,61,10,2,1988,63,4,1446,3678,70,33,-81,172,-70,-33],[499,68,2,2,2011,76,6,1384,4195,66,40,-50,83,-59,-36,29,-48,-7,-5],[501,63,2,2,2009,65,4,2028,3573,46,36,-73,94,-46,-36],[499,66,2,2,1994,83,4,2161,3830,48,49,-60,59,-48,-49],[500,72,2,2,2011,78,4,1445,4263,74,45,-35,57,-74,-44],[493,64,2,2,1983,74,6,1423,4933,106,69,-33,50,-6,-4,-12,19,-99,-64],[498,81,10,5,2002,98,4,244,2460,17,-28,293,180,-17,28],[503,40,2,2,2003,75,6,2482,5085,53,23,59,-139,-113,-49,-78,183,61,25],[501,77,5,2,1996,78,4,1834,3089,89,56,-109,175,-89,-55],[502,99,12,2,2010,113,4,1891,1583,249,197,-227,286,-248,-197],[501,65,4,2,1998,78,4,2346,4114,65,104,-67,42,-64,-104],[495,63,8,2,1975,72,6,681,3418,42,-68,-12,-8,5,-9,-38,-24,-48,78],[493,65,2,2,1975,79,8,1278,4967,29,-37,12,9,40,-50,-65,-52,-33,42,-31,-25,-36,46],[495,30,2,1,1967,30,4,796,5107,7,-12,-68,-41,-7,11],[500,65,2,2,1970,0,6,2629,4678,100,-149,-58,-39,-32,48,-10,-7,-68,101],[494,53,2,2,1932,80,11,465,4979,14,6,20,-50,-14,-5,-130,-53,-36,86,47,19,-6,13,49,20,5,-13,36,14],[503,31,2,1,1996,33,4,2477,4755,56,25,-45,100,-56,-25],[499,78,10,2,1980,88,8,1650,3047,11,-14,120,95,-85,108,-111,-88,-14,19,-130,-103,89,-112],[493,93,2,3,2008,97,4,1550,5292,66,41,-47,77,-67,-41],[505,30,1,0,0,27,6,2357,4761,73,30,-34,83,-19,-8,12,-30,-53,-23],[496,69,2,2,1991,76,4,743,5370,47,30,-53,83,-46,-28],[496,39,2,1,1883,51,14,1112,3549,15,-24,2,1,36,-58,-53,-32,-37,61,12,7,-15,25,6,3,-17,29,-30,-18,-44,73,70,42,63,-104],[507,36,2,2,1995,72,4,2319,4845,140,62,-61,137,-140,-63],[501,63,1,0,0,64,8,3332,4822,7,-11,-27,-18,-8,11,-12,-9,-45,66,73,50,45,-66],[497,70,2,2,1997,80,4,213,3275,51,21,-41,97,-37,-54],[491,78,2,3,1992,90,8,915,5472,-16,-11,7,-11,-39,-25,3,-4,-59,-37,-66,104,115,70],[492,65,2,2,2000,82,4,877,5125,60,36,-46,76,-60,-36],[493,66,4,2,1985,78,4,1369,5493,100,65,-46,71,-101,-64],[500,64,5,2,1970,81,6,1857,4285,63,44,-89,128,-36,-26,13,-19,-27,-19],[494,94,1,0,0,96,4,961,3705,123,74,-47,77,-122,-74],[499,68,2,2,2012,84,4,2834,4245,51,30,-47,80,-51,-30],[497,39,2,2,1998,70,11,243,3428,43,14,28,-90,-11,-4,8,-25,-46,-15,-12,39,13,4,-8,27,-20,-6,-8,25],[493,49,2,2,1972,74,4,2063,5212,43,28,-84,131,-43,-28],[493,35,2,2,1991,71,6,1188,5053,10,-13,-70,-55,-60,77,97,77,51,-64],[502,47,10,1,2008,118,4,3171,3447,103,91,-38,44,-103,-91],[501,73,2,2,1984,85,4,2294,4225,52,44,-105,124,-52,-43],[497,113,4,4,1976,114,4,189,5226,239,143,-45,75,-239,-143],[497,62,2,2,1990,77,6,640,5327,11,-17,75,48,-62,97,-151,-97,51,-80],[497,76,4,2,2017,84,4,1986,4783,75,49,-57,87,-75,-50],[504,70,4,2,2017,76,4,2067,4649,80,52,-52,79,-80,-53],[501,67,2,2,2013,68,4,968,4053,83,73,-36,41,-83,-73],[495,40,2,1,1958,50,4,1655,4565,75,57,-48,63,-75,-57],[496,69,2,2,1997,81,4,135,3217,73,41,-33,68,-53,-82],[494,55,5,1,2003,58,4,254,1882,108,94,-191,220,-108,-94],[506,54,12,1,0,58,4,1285,-514,116,104,-43,47,-116,-104],[500,68,2,2,2010,70,7,1763,4037,39,-76,-28,-15,-13,28,-30,-15,-34,70,36,21],[507,30,1,0,0,22,4,2307,1666,140,113,-20,25,-140,-113],[508,65,2,2,2003,0,4,2495,4982,30,10,-14,39,-29,-10],[501,44,2,1,1970,56,10,2756,4131,9,-39,13,2,4,-18,77,16,-18,84,-15,-3,-10,45,-120,-27,15,-70],[501,47,5,1,2009,61,10,2182,3648,81,-106,-51,-39,-15,20,-7,-6,-21,26,6,5,-11,13,-11,-9,-36,46],[498,43,4,1,1968,0,6,2035,3993,52,-52,-66,-65,12,-13,-31,-31,-65,65],[498,30,1,0,0,53,4,3260,2876,34,27,-21,28,-35,-27],[501,30,2,1,2020,29,4,1712,3294,37,20,-24,43,-37,-20],[492,91,11,3,2020,92,4,1090,5580,88,54,-56,92,-88,-54],[498,32,11,2,1975,34,4,655,3256,28,16,-45,77,-27,-16],[499,47,1,0,0,51,4,555,4600,58,66,51,-45,-59,-66],[493,30,1,0,0,25,4,89,5427,21,7,-14,47,-21,-7],[498,55,5,3,2016,152,4,1027,2797,41,-54,-112,-86,-41,53],[507,30,1,0,0,33,4,2159,4719,13,9,-27,41,-14,-9],[498,60,2,2,1978,65,4,1714,4502,65,49,-42,54,-64,-49],[493,30,1,0,0,28,4,1167,4823,13,8,-27,46,-14,-8],[496,30,1,0,0,29,4,329,3349,53,24,-27,59,-52,-23],[498,30,2,1,1916,35,5,3157,4398,31,-43,18,13,18,24,-25,36],[502,30,1,0,0,24,4,611,3752,16,15,-8,9,-16,-15],[499,42,2,1,1957,50,4,1625,3735,115,58,-29,56,-115,-58],[497,82,10,5,2002,150,4,1005,2910,15,-31,-306,-173,-22,39],[500,66,4,2,1988,75,4,2872,4383,70,31,-51,113,-70,-32],[497,62,11,2,1975,73,6,614,3189,57,34,-73,121,-25,-15,-5,8,-32,-19],[496,30,1,0,0,23,4,103,4292,9,6,-43,73,-9,-5],[496,43,11,1,1987,46,4,628,4863,90,62,-44,64,-90,-61],[494,68,4,2,2009,78,8,1125,4861,50,-77,-128,-83,-49,76,35,23,-5,7,58,37,3,-6],[491,69,2,2,2009,79,4,973,5516,104,64,-50,81,-104,-63],[501,64,2,2,1955,78,4,2775,5128,51,27,-51,95,-51,-27],[502,46,1,0,0,62,4,2362,3745,49,39,-28,34,-48,-40],[496,30,1,0,0,22,4,116,5340,15,4,-13,43,-15,-4],[492,73,2,2,2016,82,4,2222,5460,64,40,-45,71,-64,-40],[498,90,2,3,1978,91,4,1571,4504,47,36,-72,94,-47,-37],[497,42,5,2,1986,72,8,35,2981,88,-129,-9,-6,34,-51,68,46,-136,201,-71,-48,14,-21],[505,63,1,0,0,83,8,2293,1513,13,11,-42,54,8,7,-27,33,-54,-43,181,-226,30,24],[500,64,2,2,1965,72,4,1861,4004,44,35,-66,83,-43,-35],[494,67,4,2,1998,78,4,1657,5344,151,97,-45,71,-151,-97],[491,71,4,2,1998,81,4,1656,5501,70,45,-137,214,-70,-45],[500,39,2,2,1965,74,14,2676,5074,6,-11,26,13,10,-18,46,25,-54,101,-13,-7,-21,38,-67,-35,-10,18,-59,-31,52,-100,13,7,16,-29],[494,39,2,1,2009,41,4,259,4794,91,56,-53,86,-91,-56],[503,30,1,0,0,31,4,2016,450,44,33,-37,51,-45,-32],[502,265,11,6,2010,303,4,2167,1804,290,229,-194,246,-291,-229],[494,42,2,1,1967,52,14,820,5181,10,6,28,-46,-14,-8,24,-40,-46,-29,-26,43,-95,-59,-32,52,19,12,-23,37,50,30,10,-17,78,48],[497,67,4,2,1994,77,6,1073,4484,175,119,-43,62,-164,-112,12,-17,-11,-7],[494,63,2,2,1966,77,4,139,4982,58,35,-61,102,-58,-34],[507,42,1,0,0,43,4,835,-596,648,511,-70,89,-648,-511],[492,30,1,0,0,29,4,1616,5252,42,25,-26,45,-43,-25],[494,30,1,0,0,54,4,96,4422,-17,-10,-54,92,17,10],[494,30,1,0,0,32,4,52,2413,36,24,-29,42,-35,-24],[501,74,7,2,1984,90,8,1831,4607,6,-10,36,20,-58,104,-26,-15,8,-14,-65,-36,45,-79],[495,46,2,2,1973,73,4,-8,5101,128,76,-54,90,-128,-77],[495,65,2,2,2017,68,8,555,5056,57,-86,-49,-32,-26,40,-10,-7,-21,33,15,10,-9,14],[490,30,1,0,0,38,4,1121,5388,14,-21,-37,-23,-14,22],[502,100,4,4,2015,101,6,3237,5027,62,-96,-16,-11,11,-18,-96,-63,-74,115],[498,37,2,1,1964,44,5,2090,3959,98,97,-17,17,-46,13,-81,-81],[501,52,2,2,1971,73,6,2166,4261,29,-34,52,43,-68,81,-75,-63,39,-46],[502,182,12,2,1998,203,10,856,-631,-218,276,282,222,-93,118,-413,-325,41,-53,-107,-84,22,-28,-16,-13,247,-314],[495,36,12,1,1987,37,6,148,4420,24,-43,-18,-10,8,-15,-47,-27,-33,58],[503,61,1,0,0,85,4,1054,1387,56,41,-42,58,-56,-42],[499,33,2,1,1961,40,10,3144,4507,46,-66,-37,-26,-17,24,-10,-7,-20,27,11,8,-6,7,20,14,-5,7],[498,31,1,0,0,40,10,2909,4205,3,-26,2,0,9,-69,-57,-7,-8,69,10,2,-3,22,9,2,0,2],[497,68,2,2,2003,81,4,1011,3319,100,65,-47,72,-100,-65],[505,47,11,1,2003,50,6,2524,2045,44,-54,-113,-91,65,-80,-57,-46,-108,133],[498,30,1,0,0,23,4,265,5163,14,9,-16,26,-14,-8],[492,93,1,0,0,93,4,1552,4993,54,34,-59,92,-54,-35],[502,67,2,2,2005,75,6,2639,4427,31,-42,-43,-32,8,-11,-50,-36,-38,53],[493,68,2,2,1975,75,6,1854,4829,1,-2,65,48,-36,50,-105,-77,35,-48],[499,43,2,1,1966,0,8,1281,4237,51,32,23,-37,-12,-7,29,-47,-58,-36,-54,87,18,12],[499,36,1,0,0,74,4,1620,3023,24,19,53,-66,-25,-19],[491,31,1,0,0,37,4,827,5219,45,28,-29,47,-45,-27],[501,66,2,2,2012,69,8,1553,4136,37,22,10,-16,26,16,-40,67,-12,-7,-10,16,-51,-31],[503,815,11,18,2003,1705,6,2322,1624,176,-228,-71,-55,-134,172,13,11,-42,54],[508,30,1,0,0,28,8,1643,647,19,15,-9,12,15,12,26,-32,-54,-44,-26,33,20,16],[499,30,1,0,0,0,4,1235,4194,27,17,-9,16,-28,-17],[495,76,2,2,2020,104,8,829,3345,5,-7,38,23,-34,56,-7,-3,-21,35,-60,-36,51,-85],[500,69,2,2,2010,95,6,1820,3948,19,-36,-25,-13,21,-42,-40,-21,-40,79],[492,30,1,0,0,28,4,548,5199,49,30,-25,43,-50,-31],[500,39,1,0,0,68,8,3397,3792,15,-20,84,63,-65,87,-38,-28,12,-15,-77,-58,38,-52],[496,38,4,1,1973,46,8,1296,4797,80,-101,-62,-49,-16,21,-11,-8,-49,62,13,11,-14,18],[497,77,1,0,0,98,10,1257,3901,2,-16,-10,-2,1,-8,-39,-5,-1,11,-12,-2,-8,56,113,16,7,-43],[498,101,4,3,2001,102,6,1577,3549,91,41,-66,145,-44,-20,14,-29,-48,-22],[501,70,7,2,1955,80,4,1990,4399,40,31,-83,107,-40,-32],[495,50,11,2,1938,68,6,321,3194,79,-127,-20,-13,74,-118,-40,-25,-154,245],[499,62,4,2,2003,63,4,3466,4607,55,77,-70,50,-55,-77],[501,70,2,2,2006,79,4,2656,4210,51,41,-54,67,-50,-40],[499,30,1,0,0,30,4,757,3659,45,20,-19,41,-45,-20],[492,79,2,2,1972,84,4,1950,5173,92,59,-94,145,-91,-58],[500,30,5,2,1972,38,5,1976,4190,15,8,-13,24,-19,-11,0,-13],[497,41,12,1,1971,72,7,6,3393,281,248,77,68,-29,34,-330,-289,7,-10,-18,-15],[500,68,2,2,2009,87,4,2085,3626,48,44,-84,92,-48,-43],[492,59,1,0,0,72,4,2358,5417,72,48,-36,55,-73,-48],[498,75,10,5,2002,154,6,1455,3097,7,-17,15,12,-18,40,-129,-56,16,-26],[500,71,2,2,1993,85,4,3274,4591,52,37,-103,143,-52,-37],[495,70,2,2,2019,79,6,406,3104,77,51,-41,62,-39,-26,-27,40,-37,-25],[502,30,1,0,0,32,4,1812,3564,36,29,-11,14,-37,-28],[492,90,2,3,1993,98,4,97,4937,38,23,-67,109,-38,-23],[499,100,11,3,2014,113,4,3544,3552,142,110,-79,103,-143,-110],[499,30,2,1,1964,34,8,3133,4372,8,6,16,-25,-5,-3,11,-16,-76,-48,-32,51,72,45],[497,30,1,0,0,34,4,732,3285,18,12,-25,39,-19,-11],[500,56,5,2,1972,68,4,2013,4173,100,72,-34,47,-100,-72],[500,40,1,0,0,42,4,3385,4285,47,38,-28,35,-47,-38],[496,76,10,2,1998,86,6,472,5346,77,50,-67,105,-30,-19,14,-22,-48,-30],[493,71,2,2,2015,82,6,2120,5257,68,44,-30,48,-24,-16,-17,27,-44,-28],[495,63,2,2,1968,68,6,1694,4761,28,-37,-96,-73,-5,7,-9,-6,-23,29],[497,67,5,2,1984,77,4,162,2942,66,43,-65,100,-66,-44],[501,970,4,28,2014,975,5,152,-62,212,166,58,46,-189,242,-271,-211],[492,36,2,2,1943,72,8,34,4667,9,-14,55,33,18,-29,19,11,-84,142,-112,-68,58,-97],[501,45,2,1,1967,69,6,1940,4372,18,-24,39,29,-94,125,-61,-46,76,-101],[500,251,9,8,2009,255,4,3245,3339,128,101,-74,94,-129,-101],[501,30,1,0,0,27,4,2589,557,13,9,-13,20,-13,-9],[500,35,7,1,0,95,6,1801,4750,47,28,8,-13,22,13,7,-12,-69,-41],[498,34,11,1,0,47,4,3331,4335,35,29,-53,66,-35,-29],[501,66,2,2,2004,74,8,2707,4440,21,-32,-5,-4,41,-61,57,39,-88,130,-61,-41,25,-38],[501,62,2,2,1987,62,4,2310,4323,64,51,-59,75,-64,-51],[490,176,12,2,1998,0,12,797,-1068,32,-24,121,-154,143,112,-122,156,-20,40,-30,38,-37,32,-126,160,-140,-110,124,-157,16,-44],[508,37,12,2,1998,0,4,1424,-1617,22,-28,-113,-89,-22,28],[484,199,12,2,1998,0,22,803,-1580,57,-72,24,18,26,-34,218,171,150,-191,12,9,21,-27,113,89,38,-49,419,329,-90,114,-238,-187,3,-4,-52,-41,-313,398,-257,-202,36,-47,-233,-184,25,-31,-154,-122,44,-56],[505,55,12,2,1998,0,10,608,-1643,44,-56,151,119,12,-15,-619,-454,-209,-155,-49,62,731,578,79,61,14,-18],[507,30,1,0,0,0,4,405,-1044,12,11,-95,114,-13,-11],[503,30,12,1,0,0,4,147,-1420,54,43,-15,18,-54,-43],[513,30,1,0,0,0,4,106,-1353,52,41,-11,14,-52,-42],[513,86,5,2,2016,0,4,89,-1340,290,243,-145,173,-290,-243],[505,30,1,0,0,0,4,42,-1580,41,33,-16,20,-41,-34],[515,38,2,1,1970,46,4,-3149,635,86,66,-39,51,-86,-67],[513,100,5,2,2018,107,4,-3067,-741,319,268,-85,101,-319,-267],[501,30,1,0,0,25,4,-1135,3936,45,17,-10,26,-45,-17],[514,68,2,2,2008,82,8,-3201,1300,38,33,22,-25,42,37,-59,68,-43,-38,-12,13,-37,-31],[492,30,1,0,0,0,8,-276,4549,10,-18,-8,-5,27,-46,-50,-29,-67,115,72,41,29,-50],[512,68,2,2,1977,71,4,-2585,1091,40,34,-78,92,-40,-34],[502,88,11,2,1992,90,5,-1758,1175,157,-238,64,-98,-78,-51,-221,336],[513,70,1,0,0,82,5,-3653,2815,54,37,57,-83,31,-17,-68,-46],[516,62,2,2,2016,71,6,-3267,897,10,-18,-20,-11,27,-49,-59,-33,-37,67],[496,45,5,4,2009,46,4,-825,1255,90,67,-35,46,-89,-67],[492,35,2,1,1952,48,16,-625,5320,24,13,10,-18,10,6,8,-15,40,21,-27,53,24,12,-26,51,-98,-52,8,-16,-48,-26,-6,12,-46,-24,44,-84,92,49],[511,71,2,2,1976,83,6,-3514,3514,41,45,-57,51,-16,-18,-26,23,-24,-27],[493,69,8,2,1961,81,4,-175,2733,48,32,-65,104,-59,-35],[506,30,1,0,0,24,4,-2240,5196,41,18,-29,69,-41,-18],[502,449,4,14,2013,450,22,-744,-175,108,-137,33,26,19,-23,-34,-26,6,-7,8,6,40,-51,-26,-20,6,-7,-103,-81,-270,341,9,7,-4,5,112,88,34,-44,25,21,22,-28,-24,-19,24,-30,32,25,16,-21],[516,68,2,2,2011,87,4,-3473,837,98,53,-24,44,-97,-53],[495,48,2,1,2007,57,4,-701,2362,51,29,-44,75,-51,-30],[516,67,2,2,1973,76,6,-3344,867,103,57,-21,36,-13,-7,-11,19,-89,-50],[508,229,9,9,2014,297,8,14,-39,-36,44,15,12,-28,34,-11,-8,-3,4,-196,-159,66,-82],[500,66,2,2,2001,76,4,-1419,1618,75,66,-57,65,-75,-66],[514,30,1,0,0,26,4,-3376,560,17,9,-20,43,-18,-8],[493,76,2,2,2014,94,4,-425,4698,55,21,-35,94,-56,-21],[510,72,2,2,1976,78,4,-2689,126,45,56,-110,87,-44,-56],[493,74,2,2,2016,83,4,-395,4434,68,26,-33,86,-68,-26],[509,30,1,0,0,25,4,-2278,1522,196,76,-14,36,-196,-76],[506,30,1,0,0,24,4,-2295,5173,40,17,-28,69,-40,-16],[492,69,2,2,1999,77,4,-125,4910,27,-71,-111,-42,-27,72],[491,72,2,2,2001,84,4,-196,4665,80,46,51,-88,-80,-46],[496,43,5,4,2009,47,4,-758,1188,130,99,-51,66,-130,-99],[513,67,2,2,1979,76,4,-3178,724,100,58,-36,62,-100,-58],[519,39,1,0,0,51,12,-3459,4390,5,-6,-10,-33,-21,2,-19,21,54,50,13,110,81,-9,-6,-53,-20,2,-6,-58,-36,4],[516,68,2,2,2006,70,6,-2982,451,4,-4,16,16,-69,67,-55,-57,65,-63],[494,78,11,2,1977,88,4,-393,2611,55,33,-55,92,-55,-33],[496,71,2,2,1984,81,6,-615,5080,121,44,-26,71,-35,-13,-5,13,-86,-32],[508,73,2,2,1978,81,6,-3462,3568,50,59,-43,35,-16,-20,-36,30,-32,-39],[497,66,2,2,2008,80,6,-662,5162,103,37,-14,39,-90,-32,9,-24,-13,-4],[493,66,2,2,2017,78,4,-464,5322,91,25,-25,93,-92,-26],[492,46,2,1,2008,62,7,-122,5336,1,0,26,-86,123,37,-37,124,-164,-49,12,-38],[514,69,2,2,1989,75,6,-2936,1820,-40,46,-12,-11,-24,28,-28,-25,64,-73],[498,81,7,2,1990,96,6,-1570,1342,99,97,-49,67,-65,-46,-72,91,-48,-35],[503,30,1,0,0,27,4,-1492,5590,39,16,-26,66,-39,-15],[513,30,1,0,0,24,4,-2730,709,36,42,-38,31,-35,-42],[493,60,1,0,0,65,6,-314,2620,39,-58,-8,-6,33,-50,-37,-25,-72,109],[500,59,2,1,1968,64,6,-1418,1501,50,46,-131,142,-38,-35,99,-107,-12,-11],[502,43,1,0,0,91,4,-1601,937,18,12,-155,237,-18,-13],[504,37,11,1,0,50,4,-2155,519,114,114,-168,161,-111,-115],[495,67,2,2,1994,79,8,-270,1692,72,-92,15,12,13,-16,63,50,-66,83,-15,-12,-19,25],[513,61,1,0,0,83,4,-3060,-372,38,43,-87,76,-38,-44],[514,44,2,2,1972,74,8,-3019,1762,16,-19,-31,-27,-13,15,-13,-11,-62,73,69,60,60,-69],[506,70,4,1,0,87,7,-2294,5335,68,31,-31,66,26,89,-72,20,-65,-224,64,-19],[496,221,4,1,2002,242,22,-2300,5151,201,84,-7,16,62,26,-12,29,25,10,11,-27,178,75,67,-158,-244,-103,11,-26,-354,-148,-10,25,-253,-107,-38,90,31,13,-23,53,18,8,-6,15,261,110,-16,37,75,31],[512,30,1,0,0,29,4,-3089,4435,17,14,-69,77,-16,-14],[519,66,2,2,1986,73,4,-3382,2087,61,54,-52,59,-61,-54],[502,49,1,0,0,101,4,-1603,1060,276,216,-18,22,-276,-215],[494,43,2,2,1968,53,6,-199,1484,54,43,-50,65,-14,-11,-21,28,-42,-33],[509,69,4,2,2015,71,10,-2287,1295,29,-30,-8,-8,9,-10,-60,-57,10,-10,-44,-42,-63,66,92,87,14,-16],[515,71,2,2,2004,79,4,-3404,724,79,43,-26,49,-80,-42],[512,88,12,2,1994,98,6,-3058,393,60,-58,-27,-27,7,-7,-60,-90,-81,80],[509,35,1,0,0,48,11,-2065,3968,19,-57,-90,-35,158,-416,44,17,-140,370,122,54,-14,38,-33,-12,-37,97,-44,-16],[508,31,1,0,0,32,4,-636,-290,19,14,-67,83,-18,-14],[495,66,2,2,1990,80,4,-300,4206,103,40,-30,78,-103,-40],[513,85,2,3,2013,97,6,-3268,2165,46,-54,-10,-8,26,-31,-28,-24,-72,84],[505,37,4,1,2002,43,6,-2058,5375,22,-57,-24,-10,6,-14,-85,-33,-28,72],[498,202,4,1,2003,209,18,-1499,5571,17,-43,-20,-8,-36,92,-102,-40,26,-67,-34,-13,-10,25,-103,-41,67,-171,89,35,8,-21,125,50,9,-25,146,58,-69,173,-65,-26,-14,36],[500,451,4,14,2013,463,17,-1010,163,107,-137,29,23,18,-23,-29,-23,37,-48,-125,-97,-171,217,-138,176,123,96,82,-105,24,19,26,-33,-22,-16,19,-24,30,24,20,-26],[494,66,2,2,1980,70,4,-933,5622,80,23,-10,35,-80,-24],[508,30,1,0,0,25,4,-2261,1487,408,155,-7,19,-409,-155],[493,44,7,2,1942,78,8,-277,1564,71,-90,-128,-101,-44,55,80,63,-37,47,38,30,10,-12],[496,60,1,0,0,61,4,-465,818,104,-130,124,99,-105,130],[500,35,1,0,0,212,4,-1185,1386,139,-178,47,37,-139,178],[513,70,2,2,1975,81,6,-3097,1093,11,-13,69,57,-56,66,-90,-75,44,-53],[509,107,10,3,2008,128,4,-1615,3390,70,-105,40,15,-70,105],[497,64,5,2,1978,64,4,-797,2165,50,32,-103,162,-50,-32],[493,37,5,1,2002,37,10,-599,1693,54,47,15,-17,26,23,-13,16,6,5,-39,46,-48,-41,-9,11,-40,-34],[491,30,1,0,0,30,4,-687,5588,11,-35,29,8,-11,36],[515,67,2,2,2007,76,10,-3420,1927,16,-19,35,30,-65,76,-82,-70,8,-9,-12,-10,30,-35,8,7,11,-13],[513,52,2,2,1971,71,8,-2955,971,22,18,8,-9,26,21,-69,83,-38,-31,18,-21,-11,-9],[498,75,2,2,2007,86,4,-649,2246,64,41,-54,83,-64,-41],[505,76,2,2,2017,91,4,-2091,78,71,55,-71,91,-71,-54],[504,36,11,1,0,48,6,-2264,767,10,-8,35,40,-77,68,-89,-101,68,-60],[515,70,1,0,0,84,8,-2961,516,8,-7,43,46,-18,17,13,15,-28,27,-72,-77,39,-37],[511,67,2,2,1985,76,6,-2745,122,38,-30,-35,-44,-104,84,53,66,67,-53],[513,66,11,2,1990,82,10,-2643,1956,30,27,11,-12,58,52,-38,43,-86,-77,1,-2,-35,-31,32,-35,33,29],[513,62,2,2,1987,72,4,-2903,1010,49,40,-56,69,-50,-40],[515,90,4,3,1984,91,8,-3177,880,30,16,14,-26,-27,-14,12,-24,-68,-34,-35,68,64,33],[512,69,2,2,1973,86,8,-3502,2742,14,-24,15,8,35,-64,-97,-54,-44,78,19,10,-6,10],[521,30,1,0,0,23,4,-3605,4220,105,94,-12,12,-104,-94],[501,36,1,0,0,38,9,-1150,5059,256,104,72,-37,-32,-18,-44,22,-298,-120,-5,11,19,8,-6,14],[498,30,1,0,0,23,4,24,3614,24,9,-77,190,-23,-10],[512,93,2,3,2001,104,10,-3534,2317,13,10,-17,21,23,19,74,-92,-63,-51,-24,31,13,10,-16,20,14,12],[493,48,2,2,1982,82,4,-769,5708,71,21,40,-132,-71,-21],[515,41,2,2,1981,75,10,-3543,1506,9,-16,-46,-23,-4,8,-56,-28,-46,90,41,21,-9,16,86,50,52,-104],[491,69,2,2,1998,80,8,-333,5382,3,-9,23,8,-3,8,45,14,-24,77,-101,-31,24,-78],[496,74,5,2,1982,85,4,-1078,1896,40,31,-55,70,-40,-31],[494,63,1,0,0,76,4,-581,2476,66,40,-61,101,-66,-39],[501,70,7,2,1964,79,10,-1805,1319,12,13,51,-49,-5,-5,9,-8,-73,-75,-9,8,2,2,-92,88,63,66],[498,67,2,2,1989,75,6,-4,2742,66,41,-74,121,-25,-15,-10,16,-41,-25],[495,67,2,2,2016,76,6,-256,4341,1,-3,85,36,-25,58,-112,-48,23,-54],[518,40,1,0,0,41,4,-998,-703,48,38,-45,56,-48,-38],[500,30,1,0,0,0,6,-1083,3357,109,-3,78,5,-93,-74,-13,-133,-8,-2],[508,42,2,2,1966,70,10,-3310,2490,34,-58,-15,-9,11,-18,-124,-73,7,-12,-44,-25,-22,37,17,10,-29,51],[507,33,1,0,0,48,4,-114,-287,36,28,-44,56,-36,-28],[507,33,11,1,0,46,4,-2277,637,122,-118,-49,-46,-120,116],[495,66,2,2,2014,75,4,-453,2435,89,51,-38,68,-90,-51],[492,34,12,1,0,49,6,-1010,1702,36,-47,362,276,-140,184,-376,-286,105,-137],[512,43,2,1,1962,0,4,-2671,4612,1,50,-47,1,10,-50],[514,160,4,8,2002,237,22,-3623,4232,24,-25,110,106,-24,25,20,18,27,-29,109,105,-10,11,31,30,17,-18,39,37,47,-6,73,-83,-4,-26,-388,-341,-106,120,38,34,-23,27,0,6,4,9,6,1,5,0],[515,68,2,2,1980,76,8,-3002,643,13,14,23,-23,-12,-13,20,-20,-55,-58,-47,46,56,57],[516,71,2,2,2010,92,4,-3203,1578,71,59,-72,87,-71,-58],[514,41,2,2,1974,72,4,-3266,1692,71,65,-83,90,-71,-65],[496,94,4,3,1988,102,5,-232,4079,352,204,73,-124,-314,-183,-38,-22],[507,63,5,2,2005,100,11,-2577,-16,23,-29,-61,-46,21,-29,164,-105,339,267,-108,137,-107,-83,-39,51,-144,-111,-8,10],[503,431,1,0,0,432,6,-169,253,52,46,180,141,50,-63,-230,-180,-6,-4],[494,91,8,3,1996,94,6,-529,2627,22,-37,-7,-4,34,-57,-23,-14,-56,94],[509,89,10,3,2008,137,12,-2320,3869,23,-60,-98,-37,157,-412,230,88,-158,416,74,29,-21,57,48,18,-15,40,-431,-159,18,-46],[511,82,4,3,2003,83,4,-2684,1984,85,80,-80,86,-86,-80],[509,123,10,3,2008,131,4,-1906,3163,-36,100,-38,-14,36,-101],[494,69,2,2,2014,81,4,-489,4674,58,22,-36,97,-59,-22],[494,33,2,1,1957,62,4,-391,1436,81,63,-60,77,-81,-63],[496,69,4,2,2006,83,4,-68,4328,133,83,-64,104,-133,-83],[497,57,5,2,2004,87,8,-510,571,216,-270,91,72,-212,264,58,46,-116,144,-158,-127,110,-138],[506,67,2,2,1978,71,4,-2779,4961,21,86,-68,17,-21,-87],[513,67,1,0,0,78,6,-3091,1348,56,50,-62,69,-13,-11,-14,17,-44,-38],[497,63,2,2,1980,67,4,-902,5576,66,19,-12,39,-66,-19],[490,68,7,1,1997,78,6,-134,5457,20,-64,79,24,-60,196,-142,-43,40,-132],[494,78,1,0,0,90,8,-24,2684,32,22,-53,78,-32,-22,-11,16,-74,-51,58,-86,74,51],[498,30,1,0,0,27,4,-750,2143,32,22,-18,26,-32,-22],[497,65,5,2,2004,0,4,-416,778,99,77,-27,35,-99,-77],[493,65,2,2,2017,67,6,-747,5351,110,56,-19,37,-29,-15,-10,19,-80,-42],[493,43,2,1,1925,0,8,-217,2648,25,17,8,-12,23,16,45,-65,-73,-51,-78,112,26,18],[502,34,2,1,1956,40,6,-2732,5306,0,-39,44,0,0,64,-53,0,0,-25],[497,30,12,1,0,23,4,-46,3572,18,7,-80,206,-19,-7],[509,125,10,3,2008,141,12,-1530,2556,120,46,-244,641,274,105,302,-795,-253,-96,47,-124,-170,-65,-50,132,-253,-96,-304,800,282,107],[514,64,2,2,1980,77,6,-3586,1403,35,-68,-88,-45,18,-35,-31,-16,-53,103],[502,30,1,0,0,30,4,-1379,3843,129,48,-8,23,-129,-48],[506,46,7,1,2005,48,4,-2059,428,54,41,-71,91,-54,-41],[515,30,2,1,1970,25,4,-3080,731,21,18,-19,22,-21,-17],[512,72,2,2,1991,85,6,-2526,1123,82,69,-68,81,-29,-24,-17,20,-53,-44],[509,78,2,3,1995,94,6,-2391,1253,39,33,-56,66,-9,-7,-10,12,-31,-26],[504,38,7,1,2005,40,4,-2043,530,42,31,-28,39,-43,-31],[492,69,2,2,2014,81,4,-300,4745,62,24,-36,97,-62,-23],[515,77,2,3,2010,105,6,-3256,1562,11,-12,34,31,-68,75,-65,-60,56,-63],[512,30,1,0,0,27,4,-2986,-324,30,34,-19,16,-29,-34],[494,30,1,0,0,27,4,-62,5190,17,-28,-51,-31,-17,28],[510,93,2,3,2001,99,4,-2441,1214,41,31,-72,93,-41,-31],[505,30,10,1,0,74,6,-2126,2827,52,19,-43,116,-26,-9,-11,31,-26,-9],[509,31,1,0,0,34,4,-2577,2168,40,14,-17,47,-40,-14],[515,35,2,1,1992,36,4,-3592,1104,47,24,-28,55,-47,-24],[503,30,1,0,0,24,4,-1436,3819,21,7,-9,29,-22,-7],[509,31,10,1,0,44,4,-3503,2796,123,48,-15,37,-122,-48],[504,71,1,0,0,430,5,-166,247,84,-114,-35,-26,-30,-3,-76,101],[505,30,1,0,0,23,4,-1933,978,18,19,-83,82,-19,-19],[512,66,2,2,2008,81,10,-3593,3446,10,13,13,-10,18,23,9,-7,34,42,-91,73,-55,-67,10,-8,-8,-10],[509,39,1,0,0,41,4,-2128,1695,95,35,-7,19,-95,-35],[521,30,1,0,0,38,4,-3624,4299,147,132,-38,42,-147,-132],[501,57,1,0,0,161,6,-1239,3760,111,-286,-76,-28,-54,145,39,14,-53,143],[515,89,2,3,2000,101,6,-3482,1472,43,-79,-59,-32,10,-17,-39,-22,-53,97],[513,59,2,2,1991,73,6,-2915,1441,52,-62,-30,-25,6,-7,-49,-41,-58,68],[514,39,2,1,1943,52,16,-3248,677,41,-93,9,5,21,-48,-43,-18,-13,30,-103,-45,-23,51,11,5,-11,25,29,12,-11,25,31,13,6,-15,14,6,-10,24],[508,57,7,1,2005,62,4,-2252,243,204,161,-83,106,-205,-162],[504,42,2,2,1990,74,8,-2168,830,30,35,8,-7,36,41,-49,43,-13,-15,-48,42,-53,-61],[497,50,1,0,0,53,4,-1145,5182,104,43,-34,82,-104,-44],[506,30,1,0,0,24,4,-2184,5220,40,17,-29,68,-40,-17],[498,30,12,1,0,23,4,-21,3593,38,15,-78,196,-38,-15],[492,70,2,2,2014,80,6,-345,4837,35,-93,-23,-9,5,-11,-33,-12,-39,104],[514,68,1,0,0,133,4,-3037,4471,11,17,-64,39,-11,-17],[517,67,2,2,1986,76,7,-3471,2021,10,-12,63,51,-44,55,-67,-54,-4,-29,22,-28],[505,30,1,0,0,26,4,-2011,5315,22,10,-18,44,-22,-10],[515,64,2,2,2011,71,4,-3416,3638,58,71,-75,63,-59,-70],[504,82,11,2,2015,106,6,-2044,1064,108,-104,-9,-9,145,-140,-59,-61,-254,243],[511,67,2,2,1962,96,7,-2718,4516,16,-14,18,21,18,52,-35,31,-68,-76,35,-32],[519,30,1,0,0,93,4,-3586,1631,2,48,-16,1,-3,-48],[515,64,2,2,1981,71,6,-3350,1477,53,49,-42,44,-14,-8,-15,16,-41,-39],[502,40,1,0,0,41,4,-2671,4353,48,18,-14,35,-47,-18],[510,30,1,0,0,30,4,-1411,2118,45,49,-21,21,-46,-50],[499,155,7,4,2006,181,19,-878,3361,105,16,91,26,86,34,80,41,100,70,-82,-31,-22,56,278,108,-158,409,-50,-19,-9,24,-51,-19,9,-22,-574,-222,-167,-64,114,-294,45,-117,109,-3],[505,30,1,0,0,48,8,-1524,2005,2,19,-125,322,16,6,128,-331,-3,-22,-322,-347,-13,10],[513,62,2,2,1995,80,4,-2513,996,120,108,-60,66,-120,-107],[508,75,1,0,0,88,4,-72,-254,96,77,-44,54,-95,-77],[499,47,1,0,0,52,4,-1194,1383,98,71,-34,46,-97,-71],[502,68,1,0,0,84,5,-767,-571,49,39,-502,635,-57,72,-50,-39],[500,41,5,2,1988,88,5,-918,5221,24,-58,-256,-104,-40,99,215,87],[496,30,1,0,0,32,4,-388,1570,19,16,-14,18,-19,-15],[508,31,1,0,0,48,4,-2257,432,43,45,-56,53,-43,-46],[497,88,5,2,1988,92,9,-791,4916,145,-374,39,-180,29,-53,80,30,-26,133,-226,582,-51,84,-88,-50],[512,74,2,2,2014,88,8,-3099,-420,23,26,4,-3,12,14,-68,60,-16,-18,-4,3,-20,-21],[507,54,10,1,0,58,4,-3602,3048,125,47,-27,71,-125,-47],[506,30,1,0,0,25,4,-1973,5330,20,8,-18,47,-20,-8],[495,58,1,0,0,67,4,-573,2334,54,35,-37,57,-53,-35],[514,66,2,2,1975,74,6,-3325,2052,49,-59,46,38,-76,91,-54,-44,27,-33],[515,91,5,3,1977,92,4,-3147,129,59,60,-88,87,-59,-59],[495,73,8,2,1965,75,4,-1135,1971,35,30,-71,84,-35,-30],[496,31,4,1,1988,34,4,-230,4107,39,22,-25,42,-38,-22],[493,42,2,1,1957,51,10,-505,5079,17,-42,-7,-3,19,-48,-31,-12,0,-2,-69,-28,-42,103,71,28,4,-11],[501,34,1,0,0,38,4,-1100,279,36,27,-58,77,-36,-27],[494,43,1,0,0,53,4,-492,2338,68,41,-79,129,-67,-42],[498,67,4,2,1988,74,4,-840,2114,48,30,-56,89,-48,-30],[514,62,2,2,2005,76,8,-3457,917,17,21,10,-8,39,48,-134,111,-48,-57,46,-39,-8,-10],[511,97,11,3,1990,98,4,-2512,1309,104,94,-77,86,-104,-93],[509,84,4,2,1996,97,4,-3453,2452,148,78,-42,79,-148,-78],[503,157,4,5,2015,161,13,-1807,1009,59,-52,45,-78,-63,-71,-73,65,4,5,-79,70,6,6,-8,7,22,24,8,-7,57,64,29,-26],[502,30,1,0,0,28,4,-1312,5446,19,7,-65,160,-18,-8],[513,35,11,1,1999,36,4,-2783,625,49,60,-46,38,-50,-60],[502,92,7,2,2004,97,4,-1859,186,162,126,-139,137,-142,-110],[505,30,1,0,0,24,4,-802,-73,14,11,-49,62,-15,-11],[507,50,10,1,0,52,14,-1791,2058,24,-62,26,10,34,-86,-26,-11,17,-43,-86,-33,-50,127,32,13,-14,37,-30,-11,-22,56,112,44,11,-30],[495,57,8,1,1950,75,4,-798,2296,61,39,-68,106,-56,-47],[514,32,11,1,2017,34,4,-2943,773,34,28,-82,101,-34,-29],[498,107,5,1,2009,194,14,-1460,873,8,-11,123,96,168,-215,156,122,-55,71,121,95,-110,140,20,15,-156,200,-418,-326,76,-99,-21,-16,68,-88],[503,93,5,3,2004,96,4,-2001,212,75,59,-53,67,-75,-59],[493,55,5,1,2002,90,6,-680,1504,9,-11,135,115,-116,137,-193,-164,107,-127],[516,63,2,2,1978,76,8,-3384,1125,6,-13,-19,-9,9,-20,-65,-31,-39,83,113,54,24,-50],[509,81,2,2,2001,94,6,-3387,3859,80,-34,-7,-17,19,-8,-21,-49,-99,42],[514,72,2,2,1986,82,4,-3480,2145,83,59,-41,58,-84,-59],[521,30,1,0,0,23,4,-3618,4252,88,77,-13,14,-87,-77],[499,40,5,1,2001,41,4,-1248,5406,116,48,-63,153,-116,-48],[494,34,2,1,2007,35,4,-234,2517,41,30,-57,80,-42,-30],[516,72,2,2,2017,87,4,-3357,1943,52,45,-67,77,-52,-45],[494,33,1,0,0,36,4,-693,5203,108,40,-11,30,-108,-40],[513,71,2,2,2010,83,4,-3037,1167,48,42,-86,100,-49,-41],[509,92,2,3,1991,97,6,-2351,1389,49,-52,-19,-18,7,-6,-24,-22,-55,59],[496,34,12,1,0,36,4,-1373,1443,169,134,-33,42,-169,-135],[509,30,1,0,0,27,4,-2617,4376,39,14,-10,27,-39,-14],[515,64,2,2,1979,71,4,-3126,1654,66,62,-64,70,-67,-62],[505,48,5,1,2015,52,4,-409,-500,108,86,-115,144,-108,-85],[515,58,2,2,1976,69,4,-3480,1167,115,55,-29,61,-115,-54],[508,41,2,1,2003,42,4,-3365,3985,46,-113,-61,23,5,90],[509,30,1,0,0,24,4,-2064,1603,198,76,-15,38,-197,-76],[510,57,7,1,1961,75,7,-2896,-171,30,-25,-84,-95,-159,141,32,64,26,30,147,-125],[512,56,2,2,1973,70,6,-3316,2144,57,49,-69,80,-23,-21,6,-7,-33,-29],[492,43,5,1,1970,0,6,-241,2695,18,-23,39,30,-90,117,-68,-51,73,-95],[508,64,10,2,2008,66,5,-1921,3822,154,60,-232,599,-154,-59,187,-483],[508,149,10,2,2008,177,11,-2599,4266,299,110,-11,31,70,26,12,-33,56,21,146,-393,-484,-179,-23,-9,-157,427,80,30],[500,56,1,0,0,59,4,-1075,3832,504,195,-25,65,-504,-195],[504,45,5,1,1992,49,5,-1320,5012,51,20,84,-2,-36,82,-120,-50],[515,65,2,2,1972,78,6,-2932,1453,-98,101,-45,-44,59,-61,17,17,40,-40],[501,50,1,0,0,430,4,-1160,63,16,12,-138,176,-16,-13],[494,68,2,2,1950,83,4,-652,2417,69,40,-68,115,-64,-49],[493,97,1,0,0,98,4,-298,1691,58,47,-50,61,-58,-47],[506,69,10,2,0,77,6,-3074,4145,15,-39,355,138,-32,82,-386,-150,17,-43],[510,30,1,0,0,34,4,-1726,2205,73,24,-27,81,-73,-24],[516,72,1,0,0,78,4,-3116,565,62,50,-39,49,-62,-50],[516,67,2,2,1998,77,4,-3368,636,141,73,-36,70,-141,-73],[509,230,10,5,2008,242,7,-1402,3471,-71,184,-461,-178,-364,-140,71,-184,243,94,365,141],[516,72,2,2,2005,77,4,-3466,763,92,49,-26,49,-92,-49],[501,40,1,0,0,41,4,-1222,3887,82,31,-18,48,-82,-31],[512,92,4,3,2012,96,4,-2840,2056,64,58,-68,74,-64,-58],[493,63,5,1,2003,67,4,-121,2583,132,-181,-347,-253,-132,181],[496,62,5,1,2003,97,4,-42,1657,118,99,-147,176,-118,-99],[496,80,2,2,1997,98,4,-973,2044,57,35,-70,111,-57,-35],[499,71,2,2,2012,78,4,-1017,2002,43,28,-68,105,-43,-27],[497,78,11,2,1976,96,8,-1096,2079,53,-59,-7,-6,44,-49,-29,-27,-133,148,44,40,36,-40],[498,60,2,2,1982,67,8,-722,2192,28,18,8,-12,41,26,-48,75,-23,-14,-16,26,-47,-29],[515,72,2,2,1994,82,4,-3363,970,117,66,-25,46,-117,-66],[498,65,5,2,2015,106,16,-530,381,125,-159,-20,-16,61,-77,15,12,12,-16,86,68,-270,342,-5,-4,-151,190,-428,-338,117,-148,167,132,36,-47,133,105,69,-86],[513,30,1,0,0,30,4,-3415,613,41,21,-23,46,-41,-21],[518,32,10,1,0,73,4,-3975,1436,47,23,-17,33,-47,-23],[519,30,1,0,0,38,4,-3780,3277,11,12,-30,28,-11,-12],[514,30,1,0,0,33,4,-5975,-338,35,12,-12,33,-35,-12],[513,30,1,0,0,0,4,-4763,-55,51,12,-10,45,-51,-12],[516,60,2,2,1977,68,4,-3776,3157,10,94,-62,6,-9,-94],[511,30,1,0,0,0,4,-3841,509,0,21,-22,0,0,-21],[517,53,1,0,0,193,4,-5508,885,56,14,-15,58,-56,-14],[516,39,1,0,0,44,4,-3925,-343,29,54,-22,11,-29,-54],[515,31,1,0,0,82,4,-4307,1014,48,11,-9,40,-48,-11],[519,75,2,2,1972,240,4,-3706,2413,94,3,-1,48,-94,-2],[511,71,2,2,2009,95,4,-5910,-666,60,21,-33,96,-60,-21],[516,40,2,1,0,82,6,-3810,1475,39,-76,-32,-16,13,-26,-81,-41,-52,103],[515,43,2,1,0,153,4,-3810,1175,69,33,-59,125,-69,-32],[520,76,2,3,2004,96,8,-3632,2365,1,-20,-24,-2,2,-33,-67,-4,-6,94,105,6,2,-40],[513,30,1,0,0,0,4,-3939,-611,54,111,-118,57,-54,-111],[511,98,11,2,2000,156,6,-3715,-616,137,249,-275,151,-108,-197,132,-73,-28,-52],[515,75,10,2,0,246,38,-4964,1940,44,14,-15,48,75,25,48,-150,110,27,243,-67,75,-262,189,55,40,-138,-61,-18,14,-47,-196,-57,-54,185,42,12,-71,248,-221,61,-101,-25,5,-18,-79,-26,-26,80,-38,-13,6,-19,-160,-52,-9,28,-51,-16,25,-77,-78,-25,-61,187,80,26,17,-51,39,13,-10,30,43,14,-51,159,90,29,52,-161,35,11],[530,30,1,0,0,28,4,-3861,1687,33,16,-14,27,-32,-16],[506,77,1,0,0,84,4,-3701,3201,1,-65,-68,3,5,111],[518,30,1,0,0,0,4,-5381,1074,6,60,-70,8,-7,-60],[520,80,1,0,0,84,4,-3720,4178,57,21,-19,51,-57,-21],[511,52,2,2,1977,81,6,-3712,3260,51,57,-81,73,-41,-45,18,-17,-10,-12],[522,61,2,2,1979,70,6,-3739,1988,104,5,-3,59,-70,-3,1,-8,-34,-2],[515,48,1,0,0,174,4,-4709,227,65,16,-21,87,-65,-15],[512,87,10,1,1978,149,4,-5349,26,37,13,-73,210,-38,-13],[512,71,2,2,2001,88,8,-5845,-282,16,-41,-38,-13,4,-9,-54,-20,-29,78,95,35,11,-28],[521,30,1,0,0,0,4,-5511,1092,66,101,-65,42,-66,-100],[519,46,10,1,0,156,6,-3901,1440,87,46,-91,174,-83,-43,76,-144,-5,-3],[516,30,1,0,0,0,4,-3818,341,2,69,-60,1,-2,-69],[510,70,2,2,2001,79,8,-5804,-361,24,-65,-13,-5,4,-13,-41,-15,-12,31,-47,-17,-17,47],[526,52,2,1,1993,67,12,-3723,1634,43,25,4,-7,44,25,-64,109,-53,-30,6,-10,-14,-7,7,-12,-100,-58,57,-99,80,46],[507,63,10,1,1978,117,10,-5579,-130,42,15,4,-11,64,23,-7,20,147,52,-114,325,-416,-146,125,-356,162,57],[510,72,2,2,1988,92,4,-5773,-651,59,21,-44,124,-60,-21],[517,47,2,2,1979,73,6,-3709,1890,87,5,-4,62,-25,-1,-1,18,-61,-3],[507,100,1,0,0,179,4,-3747,955,87,14,-10,64,-87,-15],[506,81,11,2,2016,84,4,-3651,3327,57,64,-53,47,-57,-64],[511,51,2,2,1961,68,12,-6017,-113,42,15,-5,14,6,2,-4,11,49,18,4,-11,11,4,40,-111,-122,-46,-42,112,16,6],[521,30,1,0,0,38,4,-3745,4238,53,20,-52,135,-53,-20],[512,30,1,0,0,26,4,-5913,-479,23,7,-15,47,-23,-7],[517,39,10,1,0,88,4,-4047,1540,35,21,-29,48,-35,-21],[513,83,10,1,0,99,4,-4389,1140,379,118,-60,191,-378,-118],[517,63,2,2,1976,76,4,-3729,2226,130,6,-4,67,-129,-6],[522,30,1,0,0,208,4,-3721,4423,158,141,-40,45,-158,-141],[518,30,12,1,1979,108,4,-3727,2167,68,0,0,47,-68,0],[522,89,12,1,2010,151,12,-3019,-3016,50,-63,397,317,37,-47,73,58,201,-253,-1320,-1051,-208,261,142,113,-36,46,373,297,-44,56],[513,30,1,0,0,29,4,-2234,-3768,87,67,-17,22,-87,-68],[513,30,1,0,0,24,4,-1527,-3199,30,23,-8,11,-30,-23],[512,30,1,0,0,28,4,-1440,-3141,14,11,-15,18,-14,-11],[521,38,5,3,2011,41,6,-3547,-2823,27,-35,-7,-5,17,-22,-73,-57,-44,57],[521,94,5,3,2011,98,6,-3518,-3023,83,65,-41,51,-2,-2,-21,27,-80,-64],[522,30,1,0,0,32,4,-3590,-3083,64,50,-32,40,-63,-49],[516,40,1,0,0,88,4,4,-1306,30,25,-44,52,-30,-25],[522,53,1,0,0,62,4,-1468,-2362,70,56,-64,79,-70,-56],[519,192,5,6,2013,281,4,-2731,-1711,30,23,-47,62,-31,-23],[519,199,5,6,2013,278,8,-3072,-1710,12,-15,-129,-98,-16,21,69,52,-17,22,129,97,20,-27],[523,33,1,0,0,34,4,-1283,-2318,20,16,-15,17,-19,-17],[522,30,1,0,0,30,4,-1820,-2350,48,21,-11,23,-47,-22],[521,225,5,6,2013,275,4,-3398,-2241,22,17,-46,60,-22,-16],[519,101,10,3,2016,137,32,-1016,-1168,89,70,11,-13,140,110,-79,101,16,13,-38,48,-17,-12,-40,51,16,12,-38,48,-17,-13,-79,100,-143,-112,12,-16,-238,-187,47,-60,-29,-23,47,-59,34,26,154,-197,55,43,45,-58,94,73,-5,6,225,177,14,-19,90,70,-40,51,-90,-70,5,-7,-223,-175],[518,158,5,6,2013,282,4,-2601,-1606,60,46,-45,60,-60,-47],[522,40,1,0,0,41,4,-1258,-2303,45,34,-59,76,-44,-33],[520,227,5,6,2013,277,4,-2377,-1616,59,45,-15,18,-59,-44],[519,159,5,6,2013,277,4,-2908,-2031,125,95,-11,13,-125,-94],[519,234,5,6,2013,302,4,-3002,-2121,60,45,-13,17,-60,-45],[524,30,1,0,0,28,4,-1387,-2231,38,29,-20,26,-38,-29],[519,227,5,6,2013,276,4,-2145,-1430,95,72,-13,18,-96,-73],[520,228,5,6,2013,280,4,-2916,-1810,20,15,-24,32,-20,-16],[520,218,5,6,2013,280,4,-3224,-2103,19,14,-46,61,-19,-15],[521,31,1,0,0,31,4,-778,-855,19,15,-60,77,-19,-15],[517,52,10,1,2016,66,4,-849,-1448,69,54,-90,114,-69,-54],[523,68,12,1,2013,77,12,-2010,-2293,10,-19,-199,-103,-8,16,-59,-30,-35,67,61,31,-10,18,197,101,9,-17,31,16,33,-65],[508,33,1,0,0,35,4,-258,-2198,43,34,-27,33,-42,-34],[519,226,5,6,2013,281,4,-3024,-1946,18,14,-47,63,-19,-14],[516,229,5,6,2013,278,4,-2407,-973,32,25,-23,31,-33,-25],[513,30,1,0,0,0,4,-3211,-909,44,42,-68,72,-44,-42],[520,232,5,6,2013,277,4,-3520,-2084,128,97,-14,19,-128,-98],[523,94,10,3,2016,113,40,-1317,-1120,5,-1,4,-1,5,-2,4,-3,3,-4,3,-4,2,-4,2,-5,1,-5,0,-5,-1,-5,-2,-4,-2,-5,-3,-4,-3,-3,-4,-3,-5,-3,-4,-1,-5,-1,-5,0,-5,1,-5,1,-4,3,-4,3,-4,3,-3,4,-2,5,-2,4,0,5,0,5,0,5,2,5,2,4,3,4,4,4,4,3,4,2,5,1,5,1],[513,30,1,0,0,0,4,-3250,-946,30,28,-62,66,-30,-27],[508,33,12,1,0,33,4,-984,-2409,49,38,-20,26,-49,-38],[524,30,1,0,0,28,4,-1428,-2255,21,17,-24,30,-21,-16],[516,229,5,6,2013,279,4,-2505,-1099,19,14,-47,62,-19,-14],[519,158,5,6,2013,280,4,-2401,-1450,62,47,-48,63,-62,-47],[517,228,5,6,2013,280,4,-2448,-1231,184,140,-14,18,-184,-140],[523,30,1,0,0,30,4,-1898,-2400,56,25,-13,30,-56,-24],[516,48,10,1,2015,81,14,-938,-1447,34,-43,-53,-41,-18,23,-42,-33,-136,175,93,73,4,-6,18,14,26,-33,-18,-13,64,-82,22,17,27,-35],[523,230,5,6,2013,270,4,-1996,-1498,37,27,-16,21,-36,-28],[519,226,5,6,2013,276,4,-3188,-1641,19,14,-46,59,-18,-14],[517,195,5,6,2013,277,4,-2736,-1231,93,71,-23,29,-92,-70],[512,33,1,0,0,33,8,-687,-1997,18,14,2,-2,75,59,-17,22,-73,-57,-3,3,-20,-16],[517,227,5,6,2013,277,4,-2159,-1258,19,14,-47,62,-19,-15],[525,53,12,1,0,54,4,-2034,-2763,200,159,-38,49,-200,-159],[520,221,5,6,2013,276,4,-3308,-2352,127,96,-13,18,-127,-97],[508,276,5,6,2013,312,95,-2235,-1828,15,-8,11,-10,11,-16,6,-18,3,-22,-1,-28,-7,-21,-16,-23,-22,-15,-258,-131,-15,-6,-14,-4,-15,-2,-19,-1,-17,4,-14,10,-16,14,-17,23,-28,-2,59,-76,-647,-507,-54,69,-70,-55,-167,212,-4,-22,-13,-19,-16,-19,-24,-14,-29,-7,-29,1,-30,12,-213,152,-20,20,-14,27,-3,24,2,31,9,21,13,18,15,14,23,12,14,5,-2,22,80,60,-60,82,224,282,214,171,-10,14,117,151,44,44,31,28,54,39,55,41,48,47,71,84,55,63,22,21,40,32,119,80,60,38,98,96,211,170,130,-160,26,23,490,-616,72,-72,45,-57,-57,-42,32,-43,-58,-43,-32,44,-19,-14,-11,5,-2,-11,4,-14,13,-43,15,-9,10,-16,8,-22,3,-24,-4,-30,-14,-27,-18,-17,-22,-12,-256,-83,-20,-2,-25,2,-25,10,-18,15,-17,19,-8,19,-4,24,1,26,-39,46,-75,-28],[517,229,5,6,2013,281,8,-2867,-1548,71,54,7,-9,126,96,-15,20,-136,-103,-13,16,-61,-46],[522,34,12,1,1991,37,4,-2023,-2484,118,61,-25,49,-118,-62],[519,228,5,6,2013,277,4,-2601,-1794,84,65,-14,19,-85,-65],[520,232,5,6,2013,277,4,-3108,-2195,46,35,-14,19,-46,-35],[519,233,5,6,2013,279,4,-3339,-1942,80,60,-16,21,-80,-61],[515,76,1,0,0,148,4,-814,-1970,36,28,-21,27,-37,-29],[518,195,10,5,1989,235,11,-5135,-2741,8,14,-22,13,78,131,202,-120,-341,-573,-153,92,211,354,33,57,-13,8,10,16],[523,437,4,14,2013,441,28,-4483,-3229,43,-26,20,33,20,-12,-20,-33,106,-64,-7,-13,8,-5,-6,-10,5,-3,-10,-16,8,-5,-30,-49,-9,-6,-19,-32,-308,185,3,4,-11,7,6,10,-3,2,56,93,4,-2,5,7,24,-14,7,11,85,-51,21,34,21,-13],[524,75,2,2,2011,90,6,-3643,-2894,74,-95,-47,-36,5,-6,-67,-52,-78,102],[519,30,1,0,0,29,4,-5168,-2791,28,-18,-12,-21,-29,19],[524,30,1,0,0,28,4,-4083,-3442,27,46,-40,23,-27,-45],[523,100,9,3,2007,112,6,-4376,-2772,49,-29,-14,-24,55,-32,-82,-141,-105,60],[524,34,1,0,0,36,4,-4422,-3522,11,18,-70,43,-11,-18],[524,72,11,2,2011,84,6,-4028,-3172,20,-12,19,32,-153,91,-42,-71,133,-78],[522,30,1,0,0,25,4,-4292,-3356,54,91,-19,11,-53,-91],[527,242,9,8,2017,247,12,-4636,-3440,40,-24,6,10,58,-35,-23,-39,-14,8,-95,-157,-117,70,105,174,11,-6,13,22,22,-13],[521,435,4,14,2013,436,4,-4524,-3157,37,61,-70,43,-37,-61],[525,49,2,2,2010,74,6,-3847,-3205,3,-4,19,15,-63,80,-75,-59,59,-76],[523,30,1,0,0,25,4,-4335,-3494,128,212,-21,13,-127,-213],[521,90,10,2,2012,101,12,-3763,-2940,38,57,38,-25,49,72,-38,26,31,45,-214,147,-278,-408,179,-122,114,168,32,-22,44,65],[524,71,2,2,2011,83,10,-4210,-3364,18,31,50,-30,-18,-30,24,-14,-68,-115,-101,61,46,78,12,-7,21,35],[521,30,1,0,0,27,4,-4443,-3139,10,19,-49,29,-11,-18],[525,30,1,0,0,25,4,-4499,-3474,12,20,-106,63,-11,-19],[526,30,1,0,0,29,8,-4317,-3535,25,-15,14,22,-18,12,12,19,-27,17,-40,-62,21,-14],[525,81,11,3,2007,118,16,-4306,-3602,45,73,23,-14,-9,-14,110,-67,-147,-242,-56,34,-20,-34,-63,39,19,32,-171,104,43,70,-23,14,37,61,19,-12,33,54],[523,72,2,2,2011,85,4,-3984,-3476,33,57,-83,48,-32,-57],[525,65,2,2,2011,77,6,-3778,-2996,67,-85,-35,-27,7,-8,-70,-55,-73,93],[517,31,12,1,1965,34,4,-4972,-2582,21,33,-84,54,-21,-32],[515,65,4,2,1989,79,8,-5576,-2216,27,-17,-10,-15,39,-26,48,75,-109,71,-48,-74,44,-28],[513,30,1,0,0,33,4,-5570,-1219,63,23,-11,30,-63,-24],[512,30,1,0,0,30,4,-5561,-1175,46,15,-18,52,-46,-15],[515,68,2,2,2002,75,6,-5470,-2182,24,43,-101,58,-17,-29,36,-20,-8,-15],[514,30,1,0,0,29,6,-5608,-1223,32,12,-13,37,-25,-9,7,-17,-8,-3],[513,30,1,0,0,59,4,-5646,-1377,13,-35,-38,-14,-13,35],[517,30,9,4,1983,52,4,-5284,-2237,10,16,-26,18,-11,-17],[517,30,1,0,0,0,8,-4121,-1834,14,-9,20,27,-72,51,-18,-25,9,-7,-36,-50,49,-35],[522,43,1,0,0,94,4,-3975,-2788,109,160,-32,22,-109,-160],[515,97,4,3,1999,104,6,-3933,-1618,51,62,-96,78,-27,-34,14,-11,-23,-29],[515,71,2,2,2016,80,6,-5585,-1856,33,51,-49,31,-3,-5,-28,17,-29,-46],[513,30,1,0,0,0,4,-3878,-831,57,129,-248,111,-58,-129],[513,30,2,1,1962,34,4,-5869,-1136,26,9,-24,64,-25,-10],[513,70,4,2,1986,74,6,-5615,-1406,41,-113,-60,-21,-13,36,-13,-5,-27,77],[507,46,10,1,2015,52,4,-5543,-1687,189,71,-33,89,-190,-71],[515,75,2,3,1996,100,8,-4089,-1747,35,-26,71,94,-78,58,-51,-67,6,-4,-45,-60,37,-28],[518,95,2,3,2004,101,4,-3983,-1654,34,40,-70,60,-34,-40],[514,85,1,0,0,156,4,-3979,-934,44,64,-92,63,-44,-65],[513,30,1,0,0,24,4,-5659,-1327,25,-73,176,60,-25,73],[513,30,1,0,0,24,4,-5659,-1327,176,60,-15,44,-176,-60],[514,65,2,2,2014,69,6,-5795,-651,13,-37,-8,-2,12,-33,-68,-24,-25,68],[517,37,2,1,2000,42,4,-4765,-2454,30,46,-46,31,-31,-46],[513,30,12,1,0,24,4,-5838,-1313,17,6,-87,247,-17,-6],[516,128,9,4,2014,131,8,-3878,-1488,139,150,-88,83,-36,-39,11,-10,-39,-42,11,-10,-65,-70],[515,48,2,1,1961,74,10,-5332,-2184,66,115,-90,52,-62,-108,-4,2,-36,-61,85,-49,3,6,13,-8,29,49],[517,39,2,1,1972,45,4,-4705,-2479,51,87,-45,27,-51,-88],[514,30,1,0,0,24,4,-5899,-948,29,10,-12,36,-29,-10],[513,91,2,3,1996,101,6,-5506,-1479,95,32,-20,60,-9,-3,-14,41,-87,-29],[514,52,5,1,1992,86,8,-3680,-1021,154,-150,-142,-141,-59,62,-41,-36,-59,61,35,32,-8,6],[513,66,2,1,1963,79,6,-5827,-766,29,-75,-27,-11,5,-12,-82,-32,-34,88],[513,36,2,1,1961,49,6,-5794,-1241,79,25,-66,201,-34,-11,18,-57,-44,-14],[518,30,1,0,0,0,4,-4949,-1572,6,34,-60,11,-7,-34],[514,72,2,2,2016,82,6,-5648,-1971,33,50,-79,52,-27,-41,19,-12,-6,-9],[517,40,2,1,1961,47,12,-4882,-2249,7,-5,8,11,142,-93,-34,-52,-73,48,-30,-46,-65,42,19,30,-6,3,18,27,-6,4],[513,59,1,0,0,153,4,-4224,-1256,239,317,-86,65,-239,-317],[512,62,2,2,2010,63,10,-5691,-756,7,-19,-30,-11,6,-18,-22,-8,2,-6,-46,-16,-31,86,103,37,16,-43],[515,66,2,2,2008,66,10,-5429,-1980,16,-10,18,31,49,-29,-30,-50,-9,5,-24,-41,-105,61,42,72,49,-29],[513,43,2,2,1961,67,6,-5784,-1516,9,-28,107,37,-25,75,-134,-46,16,-47],[523,30,1,0,0,23,4,-4030,-2636,42,61,-15,10,-42,-61],[518,104,9,4,1983,105,14,-5143,-2204,23,-15,-12,-18,21,-13,-14,-22,24,-15,-12,-17,19,-13,-16,-24,-84,55,7,10,-115,74,49,75,113,-73],[516,60,4,2,1989,77,8,-5459,-2288,25,-15,-10,-16,47,-29,46,77,-115,70,-47,-78,43,-27],[517,30,1,0,0,33,4,-4724,-2400,25,40,-26,17,-26,-41],[515,67,2,2,2016,77,6,-5620,-1885,26,-17,21,31,-83,56,-33,-50,57,-38],[515,61,2,2,2002,72,8,-5447,-2104,15,-9,20,35,-101,58,-19,-34,38,-22,-12,-22,47,-27],[512,62,4,2,2010,63,4,-5731,-930,113,38,-19,54,-113,-39],[512,52,2,2,2014,80,6,-5640,-969,47,-137,-48,-17,3,-7,-75,-26,-50,145],[513,61,4,2,1965,74,4,-5566,-1518,60,23,-40,105,-60,-23],[517,43,2,2,1967,75,16,-4858,-2445,8,13,-9,6,5,7,-70,48,-50,-73,-6,4,-14,-22,6,-4,-22,-32,40,-27,3,4,40,-27,8,12,11,-7,62,90],[502,630,4,0,0,0,12,4159,-2019,23,-44,167,89,75,-142,-350,-187,-76,144,56,30,-16,31,31,16,17,-32,33,17,-24,44],[502,992,9,0,0,0,4,3194,-2412,271,210,-194,252,-272,-209],[507,915,9,0,0,0,8,798,-4484,136,-177,-12,-76,-112,-88,-83,6,-141,175,10,76,116,93],[508,56,11,3,1978,61,14,4899,-2887,28,-63,-51,-23,26,-49,219,117,-21,45,25,11,-79,166,-4,-2,-100,221,-85,-39,90,-200,-331,-150,62,-135],[511,30,1,0,0,30,4,5139,-2901,29,14,-18,35,-28,-14],[501,193,9,6,2011,196,16,5734,-166,10,8,19,-25,-9,-7,26,-34,-400,-317,-83,105,34,28,-18,22,22,17,-9,11,21,16,25,-32,346,275,31,-40,-22,-18],[501,42,1,0,0,68,10,5313,-386,22,17,-9,11,3,2,-30,39,-66,-51,61,-78,7,6,-4,4,34,28],[508,388,9,14,2013,389,4,5361,-1493,53,41,-40,51,-53,-41],[505,30,1,0,0,24,4,4953,-1060,15,12,-62,75,-14,-12],[506,127,9,4,2012,132,8,4716,-1609,43,35,22,-28,211,168,-67,84,-221,-175,10,-13,-33,-27],[505,155,4,5,2013,160,8,4932,-1677,24,-30,19,15,89,-112,-140,-112,-90,114,81,64,-23,29],[508,258,4,8,2012,260,12,4966,-1530,69,55,80,-99,-7,-6,8,-10,-119,-95,-41,51,-7,-6,-21,25,11,9,-41,51,53,43],[503,436,9,14,2013,450,16,5550,-1367,21,-25,70,56,-24,30,24,19,22,-28,44,36,106,-133,-296,-237,-106,133,34,27,-23,28,21,16,23,-30,73,58,-21,25],[504,61,7,3,2010,127,6,4853,-974,69,-85,-45,-36,18,-23,-131,-107,-87,108],[510,36,1,0,0,191,6,5405,-2143,13,-40,-16,-9,3,-8,-28,-9,-17,52],[506,32,1,0,0,33,4,5551,-1288,121,97,-14,19,-121,-97],[507,38,12,1,1995,39,4,5323,-2632,98,45,-26,54,-98,-45],[505,405,9,14,2013,405,4,5517,-1373,57,46,-40,50,-57,-46],[506,44,5,2,2014,82,10,4823,-1921,26,22,-21,26,-17,-14,-37,46,-97,-79,55,-67,61,50,17,-21,25,21],[505,161,9,5,2011,172,10,5054,-622,30,-37,24,19,79,-101,-291,-230,-78,99,230,182,-15,18,17,13,-16,20],[509,310,11,6,2013,351,8,5308,-2512,20,9,-53,118,-17,-8,-40,86,-254,-116,108,-237,251,115],[509,52,1,0,0,351,4,4964,-2423,254,116,-20,45,-255,-116],[508,221,11,5,2011,251,23,5654,-2095,23,3,25,2,2,-8,27,10,55,-162,-36,-13,4,-12,-281,-96,-3,10,-39,-14,-56,165,30,10,-3,8,23,13,35,19,27,13,22,10,24,9,30,10,32,10,18,6,20,4],[512,307,4,10,2005,308,16,5167,-3083,21,11,10,-18,11,6,45,-84,-637,-338,-63,118,118,63,-23,44,43,22,24,-46,326,173,-22,42,26,14,23,-42,90,49],[513,44,1,0,0,45,4,5100,-2981,47,22,-13,26,-47,-22],[511,53,1,0,0,53,4,4678,-2988,159,73,18,-41,-159,-72],[506,43,5,1,0,0,6,3832,-2875,62,29,-26,57,-23,-11,-16,36,-40,-18],[508,70,5,2,0,0,4,4052,-2887,130,39,-66,218,-130,-39],[508,40,1,0,0,0,4,4529,-2829,44,17,-22,60,-45,-17],[506,69,8,2,0,0,6,3951,-2680,53,-99,-30,-16,5,-9,-57,-30,-58,107],[509,98,1,0,0,0,8,-332,-2582,12,10,4,-6,29,23,-21,27,-30,-23,2,-2,-12,-9],[503,355,4,9,0,0,6,4523,-1144,96,74,-106,137,-55,-43,13,-17,-40,-32],[503,77,1,0,0,0,4,4684,-1402,55,43,-139,176,-55,-43],[505,214,4,7,0,0,8,3683,-1650,-16,18,16,13,109,-129,-118,-99,-121,144,25,22,28,-33],[512,30,1,0,0,0,4,483,-2281,24,17,-18,25,-24,-18],[507,30,1,0,0,0,4,4726,-1670,57,48,-15,18,-57,-48],[501,186,4,6,0,0,8,4683,-820,14,11,-6,8,23,18,79,-101,-187,-148,-82,104,150,119],[502,37,1,0,0,0,34,2063,-1269,24,-9,22,-17,28,-27,207,-260,16,17,-203,254,54,43,-9,11,1062,853,-18,23,-1062,-853,-12,15,-56,-45,-42,19,-37,7,-52,-4,-113,-84,9,-11,-419,-329,-19,-35,-7,-38,4,-31,12,-35,74,-89,20,20,-67,80,-16,30,-2,23,3,25,15,24,35,32,480,392,45,2],[500,44,1,0,0,0,4,1405,-1322,1369,1004,-39,53,-1369,-1004],[506,43,1,0,0,0,4,4610,-1743,53,43,-60,74,-53,-42],[502,58,1,0,0,0,11,4335,393,251,117,-32,46,-142,-66,-177,-91,-224,-128,-268,-164,-55,-38,29,-36,65,41,314,191],[505,52,5,1,0,0,4,3876,-2418,158,87,-77,140,-158,-87],[506,30,1,0,0,0,4,3503,-2656,56,41,-190,256,-56,-41],[506,30,1,0,0,0,4,2711,-1748,749,591,-17,22,-749,-592],[505,430,4,14,0,0,14,3621,-2432,16,13,-7,10,22,17,82,-107,-151,-115,-202,265,108,82,7,-9,30,22,27,-35,-16,-12,78,-102,-10,-8],[506,64,1,0,0,0,4,3484,-1178,237,189,-37,46,-237,-188],[503,442,4,1,0,0,4,4202,-1995,102,83,-48,59,-102,-82],[504,31,1,0,0,0,8,2623,-1786,69,55,17,-21,-10,-8,22,-27,-88,-69,-446,562,28,22],[505,74,11,2,0,0,8,4208,-1436,90,73,22,-27,18,15,-119,146,-22,-17,22,-27,-86,-70],[500,52,1,0,0,0,8,4339,-594,117,89,16,-20,163,124,-62,82,-451,-351,65,-85,174,132],[506,107,5,3,0,0,5,3374,-2524,123,-150,-32,-27,-93,1,-85,103],[504,503,5,12,0,0,26,4114,129,213,161,222,166,182,88,149,61,65,8,37,-5,12,-5,11,-11,7,-11,6,-28,-8,-17,-24,-44,-119,-146,-232,-250,-314,-261,93,-143,-10,-9,-222,-182,-5,-5,-99,138,-521,-409,-225,285,543,437,-87,118,259,153],[507,33,1,0,0,0,8,2158,-1059,48,55,8,0,39,24,-48,27,-73,-57,7,-8,-12,-21],[507,33,1,0,0,0,7,2323,-912,13,26,-12,10,3,8,-8,5,-81,-63,44,-29],[506,55,1,0,0,0,4,3213,-374,166,134,-42,53,-166,-135],[504,30,11,2,0,0,4,4231,-1464,58,45,-12,16,-58,-45],[508,113,11,3,0,0,4,4616,-2853,331,150,-91,201,-331,-150],[504,183,5,12,0,0,5,4047,218,242,135,38,-63,-213,-161,-67,89],[507,59,1,0,0,0,4,4694,-1841,97,77,-35,44,-97,-77],[501,386,4,12,0,0,12,4522,-1250,20,-25,7,6,76,-96,-11,-9,6,-7,-208,-165,-92,115,50,40,7,-9,37,29,-18,22],[504,182,9,6,0,0,4,3512,-2200,247,201,-222,272,-247,-200],[504,198,5,12,0,0,5,3332,-490,543,437,-87,118,-16,-10,-536,-424],[505,30,1,0,0,0,4,4434,-1266,22,16,-32,42,-21,-16],[504,173,5,12,0,0,27,5012,581,6,-28,-8,-17,-24,-44,-119,-146,-233,-250,-313,-261,93,-143,-10,-9,-222,-182,-5,-5,-99,138,-521,-409,161,-203,510,403,236,187,627,496,97,77,-154,216,19,74,-1,50,-4,37,-13,20,-20,17,-33,9,12,-5,11,-11],[505,39,4,7,0,0,4,3578,-1681,28,-33,36,30,-28,33],[508,30,1,0,0,0,4,3611,-2368,19,15,-48,61,-19,-15],[502,138,1,0,0,0,4,3259,-2560,89,72,-64,79,-89,-72],[505,100,9,3,0,0,6,4715,-1290,54,40,-73,98,-13,-10,-16,22,-41,-31],[501,155,9,5,0,0,8,4058,-1438,10,-13,-7,-5,69,-88,95,74,-150,191,-95,-75,70,-90],[507,47,5,2,0,0,12,4293,-2692,32,-82,-18,-6,22,-58,12,4,19,-52,156,60,-134,349,-148,-57,40,-105,-14,-6,20,-52],[515,74,2,2,2000,90,4,-131,-3913,54,-68,-127,-102,-54,67],[514,34,1,0,0,34,4,-148,-4078,38,-47,-62,-50,-38,46],[516,73,2,2,2004,82,4,-313,-3510,120,95,-57,71,-120,-95],[512,105,8,3,2001,121,8,-313,-4206,70,-88,-116,-93,-34,42,-9,-7,-33,40,10,8,-5,5],[514,96,2,3,2003,109,6,-322,-4190,69,50,-49,68,-29,-21,-5,6,-40,-29],[513,122,4,4,2008,125,4,-253,-4275,94,73,-47,60,-94,-72],[516,30,2,1,2004,28,6,-281,-3572,67,49,-10,13,-26,-19,-30,41,-40,-30],[514,50,5,1,0,54,8,-222,-5736,117,99,-106,127,-39,-32,-18,22,-43,-35,15,-18,-37,-31],[512,101,8,3,2001,116,4,-73,-4151,78,58,-62,84,-78,-58],[517,36,5,2,1997,59,8,-234,-5492,-81,98,-65,-53,25,-30,-93,-75,51,-62,46,39,6,-8],[512,65,1,0,0,126,8,-139,-4953,160,123,128,-166,-200,-153,-279,365,191,149,143,-180,-155,-122],[514,30,1,0,0,0,6,-316,-3949,96,72,-48,62,-47,-36,7,-9,-48,-37],[515,76,1,0,0,97,6,-331,-3863,97,79,-61,74,-79,-65,11,-14,-16,-14],[514,202,9,7,2011,223,20,-24,-3715,20,15,-17,22,36,28,17,-21,26,20,-5,6,5,4,-15,19,17,13,79,-104,-101,-78,10,-12,-74,-57,-6,7,-12,-10,-97,126,70,53,12,-15,14,11],[516,30,12,2,0,40,4,-369,-3416,157,126,-36,45,-157,-126],[514,30,1,0,0,30,4,-331,-3986,22,18,-28,35,-22,-18],[514,41,1,0,0,125,4,1419,-3702,69,54,-17,23,-69,-54],[516,47,5,1,1998,49,4,239,-5906,73,55,-32,43,-73,-55],[512,55,5,1,0,56,4,364,-5571,71,-83,-222,-191,-70,83],[510,70,5,2,2014,87,6,1859,-3578,19,-26,122,95,-269,345,-136,-106,249,-320],[516,162,4,5,2014,163,8,417,-5834,16,-21,-137,-107,71,-92,252,196,-70,91,-47,-37,-17,23],[513,79,2,2,1989,92,4,4102,-3257,108,40,-44,117,-108,-40],[518,36,1,0,0,37,4,2874,-4437,25,16,-40,69,-26,-15],[512,204,1,0,0,245,11,133,-3800,49,39,53,-67,-10,-96,-129,-101,-11,13,-4,-3,-82,105,14,11,-9,11,123,96],[508,43,1,0,0,51,6,681,-4401,44,-57,32,25,-102,132,-108,-84,59,-75],[512,30,1,0,0,24,4,4285,-3582,59,22,-12,33,-59,-23],[513,122,9,4,2004,129,8,140,-5144,16,-20,162,128,68,-87,-204,-161,-69,88,6,4,-15,20],[516,36,1,0,0,87,4,3607,-4372,59,-82,14,10,-59,81],[506,180,9,6,2002,181,8,2085,-3459,28,-36,54,43,139,-173,-90,-72,-146,183,19,15,-21,27],[512,80,7,2,1979,81,6,2732,-4423,138,86,-204,327,-26,-16,-35,57,-113,-71],[513,64,1,0,0,100,4,4299,-3350,58,23,-7,18,-58,-22],[509,119,11,3,1978,137,4,4681,-3013,-91,199,-129,-59,91,-199],[512,52,1,0,0,56,7,4666,-3074,26,-50,-133,-64,-12,25,1,11,3,8,6,7],[514,30,1,0,0,62,4,2296,-5204,187,127,-86,127,-187,-127],[513,39,1,0,0,40,4,4125,-3506,18,7,-22,56,-18,-7],[511,153,4,5,2008,156,4,1320,-5453,226,192,-60,70,-226,-192],[517,30,1,0,0,22,4,2869,-5183,84,58,-11,15,-84,-58],[513,288,4,9,2008,290,8,1023,-5679,9,-11,36,30,-11,14,84,70,-46,56,-207,-171,49,-59],[506,91,5,3,2005,250,6,2738,-2764,184,-232,-58,-46,64,-81,-123,-97,-248,313],[520,34,4,5,2014,161,4,485,-5782,17,-22,47,37,-17,21],[507,442,4,15,2016,445,4,2516,-3134,118,94,-297,375,-119,-94],[513,53,7,1,1968,77,6,3917,-4551,97,59,-94,156,-76,-46,-80,133,-50,-35],[511,41,7,1,1961,74,4,4173,-3306,70,26,87,-232,-70,-27],[508,213,9,7,2015,217,8,999,-3989,35,27,31,-41,-30,-22,50,-66,-104,-80,-104,136,100,75],[512,89,11,3,1978,133,4,4581,-3058,55,25,6,-14,-55,-25],[512,31,1,0,0,35,4,4307,-3663,53,19,-20,55,-53,-19],[509,92,9,3,2008,93,4,1976,-3452,46,38,-94,119,-47,-37],[513,117,11,3,2007,146,4,155,-4978,108,86,-211,265,-109,-86],[512,76,11,2,1969,84,6,4318,-3203,9,-25,-10,-4,27,-70,-71,-26,-36,95],[511,35,1,0,0,44,4,4472,-3228,33,13,-17,40,-32,-13],[517,30,4,4,2013,114,4,2797,-4761,90,64,16,-22,-90,-64],[509,121,4,4,2002,125,4,4246,-3214,95,32,-52,158,-95,-32],[508,76,1,0,0,91,4,2442,-3202,55,43,-286,358,-55,-44],[512,100,7,3,1988,101,6,4284,-3356,121,-311,67,26,-46,118,15,6,-75,193],[505,276,10,7,2007,289,4,2394,-3573,198,162,-125,152,-198,-162],[510,376,9,13,2002,377,4,600,-4315,53,43,-40,50,-54,-43],[513,58,1,0,0,63,4,677,-5853,78,58,-39,52,-78,-58],[513,77,1,0,0,89,4,925,-5316,47,36,-74,98,-47,-36],[516,76,11,2,1978,77,6,3655,-4732,71,47,-76,117,-40,-27,-16,24,-31,-20],[508,54,5,2,2010,82,8,1961,-3589,168,-215,-78,-61,-47,61,-18,-14,-91,118,40,31,-29,37],[513,133,4,4,2019,139,4,947,-3952,69,52,-84,113,-70,-52],[509,44,11,2,1987,45,9,2657,-3916,95,32,-29,35,11,9,-27,34,6,5,-28,35,-116,-94,62,-77],[514,147,4,5,2019,150,4,1094,-6002,173,143,-79,96,-173,-143],[514,64,4,2,2019,70,4,1628,-5491,99,80,-53,65,-99,-80],[513,136,5,3,2010,166,4,1256,-3830,232,182,123,-156,-233,-183],[506,432,4,14,2014,436,24,2650,-3162,5,-6,18,15,3,-3,16,13,6,-6,12,10,60,-70,-8,-7,25,-29,-172,-147,-8,10,-1,-1,-24,27,-4,-4,-50,58,7,6,-25,29,46,40,-25,29,24,21,11,-12,16,14,23,-26],[512,30,1,0,0,30,4,4088,-3402,22,10,-48,107,-22,-10],[513,72,10,2,2017,82,6,2380,-4221,361,-498,-17,-12,13,-18,-48,-35,-374,516],[513,30,1,0,0,25,6,2711,-4059,31,19,-60,97,-16,-10,-7,10,-14,-9],[512,75,7,2,1975,84,6,1644,-5069,78,55,-135,191,-62,-44,19,-27,-17,-11],[508,416,1,0,0,417,4,2628,-3159,60,47,-42,54,-60,-47],[511,69,1,0,0,83,4,1426,-4059,240,190,-37,47,-240,-190],[511,278,4,9,2003,279,6,626,-4959,30,-37,53,43,-189,234,-104,-84,159,-198],[514,56,7,2,1973,76,4,1983,-5505,63,47,-192,259,-63,-47],[514,42,1,0,0,43,4,2642,-4022,24,15,-32,53,-24,-15],[512,64,1,0,0,66,10,905,-5313,23,-28,-32,-27,-10,12,-71,-60,-81,97,47,40,-22,26,64,54,90,-108],[515,84,1,0,0,108,13,1688,-4573,14,5,15,4,15,2,16,2,-124,-93,-15,22,7,9,8,9,9,8,9,8,10,7,11,5],[515,38,5,1,2001,40,6,1886,-5499,20,-24,-12,-11,41,-49,-82,-68,-61,73],[510,404,9,13,2014,406,12,1480,-4075,201,164,-18,22,14,11,92,-113,-9,-7,31,-38,-215,-176,-55,67,-9,-7,-70,86,18,15],[511,91,5,2,2015,97,10,1009,-5045,283,231,52,-64,-11,-10,132,-161,-270,-221,-46,57,-24,-19,-52,63,23,18],[513,128,5,2,2014,134,8,1581,-3291,22,-29,17,13,135,-177,-87,-66,-136,178,10,8,-21,27],[513,154,5,4,2014,199,11,3552,-4113,692,315,-263,575,-25,55,-306,-140,-11,23,-154,-70,14,-29,-191,-87,18,-40,-41,-18],[516,30,1,0,0,24,4,287,-5908,99,78,-13,16,-99,-78],[515,127,5,3,2006,129,4,1624,-4653,163,122,212,-281,-163,-123],[515,88,7,1,1977,95,6,3707,-4425,55,-75,-15,-11,100,-138,-78,-57,-156,213],[512,30,1,0,0,28,4,1022,-5398,42,33,-34,42,-41,-32],[511,82,5,2,2014,93,5,806,-3956,53,-64,79,65,-84,106,-40,-26],[510,45,5,1,2008,54,4,2406,-4205,58,42,-143,198,-58,-42],[516,30,1,0,0,23,4,2733,-5099,96,79,-12,15,-96,-79],[510,101,5,4,2011,135,6,1421,-4366,145,114,-196,249,-123,-98,7,-9,-22,-17],[516,125,4,4,2013,130,4,2764,-4524,123,-173,-90,-64,-122,173],[513,386,9,13,2002,405,51,509,-4242,5,0,6,-1,5,-3,4,-3,4,-4,3,-4,2,-5,1,-5,0,-6,-1,-5,14,-17,-25,-20,-6,-11,-7,-11,-7,-9,-9,-10,-9,-8,-10,-7,-11,-7,-11,-5,-12,-5,-12,-3,-31,-25,-16,19,-11,6,-10,7,-9,7,-9,9,-9,9,-7,10,-6,10,-6,11,-4,12,-3,12,-12,14,21,17,4,9,6,9,6,8,7,8,9,6,8,6,10,4,9,4,11,2,10,9,5,-5,17,14,30,-37,31,25],[511,99,5,2,2015,109,8,2329,-4886,25,-33,122,91,-21,29,130,96,-414,557,-385,-287,410,-551],[517,30,1,0,0,141,4,314,-5944,83,64,-11,15,-83,-65],[514,30,1,0,0,28,4,3917,-4325,18,11,-78,123,-18,-11],[512,60,11,2,1975,62,6,1490,-4855,70,56,-48,60,-59,-47,-9,11,-11,-9],[515,323,11,8,1998,362,4,67,-6042,159,133,-92,110,-159,-133],[515,52,7,1,1977,57,6,3747,-4511,15,11,-55,75,19,14,156,-213,-35,-25],[513,41,5,1,2014,197,8,3789,-4005,7,-16,39,18,7,-17,96,44,-8,18,72,33,-7,14],[514,69,2,2,2001,79,4,1783,-5571,82,66,-53,66,-82,-66],[509,351,12,1,2010,352,4,645,-4836,53,42,-86,109,-53,-42],[511,30,1,0,0,31,4,1126,-5468,41,32,-29,36,-41,-32],[514,30,1,0,0,24,4,4182,-3303,41,16,-9,23,-41,-15],[509,135,1,0,0,179,125,3346,-3826,8,-12,7,-13,6,-14,6,-17,6,-17,4,-18,4,-19,3,-19,3,-25,2,-18,3,-16,4,-15,4,-13,6,-12,6,-12,7,-12,9,-11,11,-15,13,-13,12,-12,10,-8,11,-7,11,-6,12,-5,12,-3,13,-3,14,-2,15,-1,15,-1,19,1,16,1,13,3,13,3,14,5,13,6,11,6,12,8,13,10,15,12,71,62,-17,37,-224,-102,-267,584,41,18,-18,40,191,87,-14,29,154,70,11,-23,306,140,25,-55,50,22,-4,12,-7,19,-6,14,-4,7,-6,7,-7,7,-9,6,-7,5,-7,3,-8,4,-9,2,-12,2,-11,1,-7,-1,-8,-1,-7,-2,-6,-2,-7,-4,-9,-5,-8,-5,-10,-4,-10,-3,-18,-4,-43,-7,-19,-4,-20,-5,-20,-6,-19,-7,-18,-8,-18,-9,-18,-10,-20,-13,-58,-39,-13,-7,-9,-5,-9,-3,-176,-48,-19,-7,-18,-7,-17,-8,-15,-8,-15,-9,-13,-9,-13,-10,-11,-10,-10,-11,-10,-13,-9,-13,-9,-15,-7,-17,-7,-17,-5,-19,-5,-20,-5,-26,-3,-23,-2,-15,0,-14,1,-10,2,-10,4,-17,5,-18,7,-19,8,-17,6,-11,7,-10,6,-10,7,-8,16,-19,19,-19,26,-26,19,-20,12,-14],[516,57,7,1,1977,87,4,3554,-4411,53,39,59,-82,-53,-39],[514,73,2,2,2000,85,8,-748,-4181,2,-2,-45,-36,-17,21,18,15,-37,45,45,36,52,-64],[512,95,2,3,2000,102,4,-714,-4633,83,64,-50,65,-83,-64],[515,62,1,0,0,71,6,-1548,-4196,68,55,-72,87,-42,-34,14,-16,-26,-22],[513,356,4,11,2002,358,17,-420,-3139,28,20,-15,21,25,18,28,-38,14,10,41,-55,-8,-6,33,-44,-153,-118,-93,121,-12,-9,-105,136,8,30,79,58,6,-10,17,12],[517,71,4,2,2001,82,4,-909,-3657,76,59,-53,68,-76,-59],[517,93,8,3,2000,99,4,-527,-3644,79,64,-60,75,-79,-64],[517,104,11,3,1999,119,16,-2267,-4578,75,61,26,-31,20,17,-11,13,17,13,-11,14,37,29,-4,5,6,4,-80,98,-236,-191,80,-98,39,32,6,-8,42,34],[512,64,1,0,0,76,6,-721,-4497,16,-20,46,36,-72,90,-83,-67,55,-70],[518,34,1,0,0,35,4,-374,-5657,19,14,-19,25,-19,-14],[514,64,2,2,2013,72,8,-513,-4248,8,6,11,-14,18,14,34,-43,-65,-51,-50,63,39,31],[515,125,4,5,2018,125,6,-832,-3468,100,80,-110,138,-16,-12,-12,15,-85,-67],[518,35,5,1,2004,37,4,-729,-6040,133,112,-72,86,-133,-112],[516,65,2,2,2001,73,4,-1257,-3926,85,66,-49,62,-85,-65],[514,74,2,2,2001,84,6,-987,-4139,4,-6,40,30,-54,72,-108,-81,50,-67],[518,89,2,3,2008,91,4,-2411,-5465,44,33,-40,52,-43,-33],[521,62,2,3,2001,73,4,-2979,-4939,73,59,-55,69,-73,-59],[521,69,4,2,2001,83,4,-3098,-5034,111,89,-65,80,-111,-89],[520,41,1,0,0,42,4,-1388,-5695,56,46,-30,37,-57,-46],[519,41,1,0,0,50,4,-2504,-4753,70,53,-62,81,-70,-54],[515,64,2,2,2000,78,8,-825,-3760,59,-76,-53,-40,-4,5,-43,-33,-58,75,77,59,3,-4],[515,30,1,0,0,28,4,-1026,-4050,38,30,-33,42,-38,-30],[515,30,1,0,0,41,4,-985,-3972,21,14,-42,63,-21,-15],[516,42,12,1,1999,47,8,-1652,-3835,59,-75,-47,-36,-15,18,-7,-5,-27,34,8,6,-17,21],[522,107,4,3,1999,118,4,-3011,-5018,81,-96,37,32,-80,95],[516,30,1,0,0,30,4,-460,-3547,32,25,-29,37,-32,-24],[516,31,1,0,0,78,4,-695,-3794,58,-70,-23,-19,-57,71],[514,69,2,2,2003,79,6,-634,-4092,75,53,-45,65,-34,-23,-4,5,-41,-29],[517,45,2,1,2002,60,6,-679,-3479,3,28,17,13,-40,55,-97,-71,54,-75],[512,30,1,0,0,33,4,-1196,-4830,30,25,-24,29,-30,-25],[516,91,4,3,2001,118,8,-2467,-4525,143,108,-91,119,-77,-59,5,-7,-141,-107,101,-132,76,57],[519,30,1,0,0,38,4,-2935,-4776,41,30,-35,46,-40,-31],[522,104,4,3,1999,117,4,-2910,-4935,80,-97,-60,-48,-79,97],[517,100,0,2,1970,101,4,-2336,-5026,29,24,-64,77,-29,-25],[519,62,2,2,2003,71,4,-2809,-4833,51,42,-82,101,-51,-42],[519,30,1,0,0,30,4,-2434,-4691,33,28,-48,57,-33,-28],[513,64,2,3,2000,80,4,-764,-4324,65,51,-52,66,-65,-51],[523,30,1,0,0,25,4,-2878,-4903,16,14,-6,7,-17,-13],[523,30,1,0,0,64,4,-3082,-5076,16,12,-18,25,-16,-12],[515,71,2,2,2000,84,6,-616,-3839,14,-17,76,63,-67,82,-102,-83,54,-66],[514,63,2,2,2013,72,8,-549,-4300,34,-44,-63,-51,-51,64,36,28,4,-5,11,8,11,-14],[514,99,8,3,2001,122,5,-1170,-4056,58,-72,88,71,-71,88,-71,-57],[514,100,4,3,2001,112,17,-1657,-4136,9,-10,26,21,68,-85,-7,-6,5,-7,-25,-20,-5,5,-41,-32,-23,3,-11,14,-8,-7,-28,34,8,6,-23,28,26,22,-5,6],[514,89,2,3,2000,99,10,-864,-4272,5,-7,33,26,-53,68,-83,-65,3,-4,-24,-19,25,-33,25,19,19,-24],[516,45,2,2,2001,76,6,-873,-3939,56,-70,-46,-37,5,-7,-33,-27,-62,76],[521,75,2,2,1999,90,4,-2817,-5014,92,78,-79,94,-93,-77],[516,112,0,2,1987,112,12,-2166,-4997,23,20,122,-144,-39,-33,6,-8,-45,-37,-5,6,-5,-5,-105,126,6,5,-12,14,59,50],[516,63,4,2,2000,64,4,-608,-3424,43,35,-56,68,-42,-35],[519,30,1,0,0,26,4,-2488,-4615,23,18,-11,13,-23,-17],[515,72,2,3,1999,91,4,-1983,-4352,100,80,-82,101,-99,-80],[515,30,1,0,0,29,5,-924,-3829,56,-73,-14,-11,-57,74,14,11],[518,67,1,0,0,77,6,-2318,-5413,35,-46,-30,-23,5,-6,-96,-74,-40,53],[515,42,5,1,1969,48,4,-1769,-5814,114,86,-49,65,-114,-87],[516,30,1,0,0,29,4,-707,-3379,60,43,-15,21,-60,-43],[514,115,1,0,0,125,4,-1476,-4139,47,38,-69,87,-47,-37],[516,65,1,0,0,92,4,-934,-3977,54,44,-57,71,-55,-45],[520,30,1,0,0,21,4,-2667,-5174,24,21,-30,36,-25,-21],[516,34,4,7,2005,221,8,-704,-5357,8,6,-12,15,4,3,-16,20,-46,-37,28,-36,35,27],[514,30,12,1,2007,28,4,-1652,-5694,34,23,-30,45,-34,-24],[516,101,4,4,2015,102,6,-2302,-4386,103,83,-76,95,-88,-70,11,-14,-16,-12],[513,60,8,3,2000,93,6,-489,-4349,48,-60,-27,-21,21,-26,-40,-33,-69,86],[515,30,1,0,0,25,4,-379,-3664,35,29,-26,31,-35,-30],[518,71,11,2,2003,76,5,-2688,-4744,106,86,-81,103,-87,-68,-47,15],[514,91,4,3,2009,94,6,-408,-4274,91,71,-62,78,-35,-27,15,-20,-55,-44],[514,306,4,10,2017,308,26,-1404,-3661,5,-7,32,25,13,-16,9,6,16,-21,10,8,34,-45,-8,-6,23,-29,-9,-7,12,-15,-253,-200,-10,14,-5,-4,-76,97,3,3,-15,19,42,33,-23,29,20,16,24,-30,105,83,-20,26,35,27,16,-21],[516,30,1,0,0,23,4,-962,-4006,20,15,-14,18,-20,-15],[520,45,1,0,0,62,6,-2576,-5210,9,120,-58,4,-4,-46,-6,0,-6,-73],[514,92,2,3,2000,104,4,-601,-4195,74,57,-58,75,-73,-57],[522,65,4,2,2002,72,4,-2980,-5214,65,58,-110,125,-65,-58],[520,100,2,4,2006,130,4,-2703,-4904,106,88,-58,70,-106,-88],[521,66,2,2,2001,81,4,-3200,-5118,98,79,-78,97,-98,-80],[519,30,1,0,0,24,4,-2896,-4729,16,13,-24,30,-16,-12],[516,75,4,2,2000,84,4,-993,-3713,77,62,-48,61,-78,-62],[513,30,1,0,0,128,4,-970,-3320,69,52,-12,17,-69,-53],[515,35,2,1,2001,36,4,-952,-4081,26,21,-37,48,-27,-20],[519,30,1,0,0,35,4,-3036,-4861,42,34,-32,40,-42,-33],[516,90,1,0,0,98,4,-1147,-3883,64,49,-71,94,-65,-49],[514,64,2,2,2013,72,8,-622,-4358,35,-44,-64,-51,-49,62,36,29,4,-5,11,8,10,-13],[514,70,2,2,2005,80,6,-698,-3191,54,-67,-52,-42,4,-6,-45,-35,-58,72],[514,65,2,2,2000,75,6,-561,-4409,45,-55,-43,-35,4,-5,-49,-39,-48,59],[517,31,1,0,0,31,4,-716,-5792,34,26,-32,41,-34,-26],[515,68,1,0,0,80,8,-743,-3956,4,-5,49,41,-12,15,32,27,-52,62,-113,-94,60,-72],[514,87,2,3,2000,109,4,-693,-4250,69,53,-44,58,-69,-54],[515,51,2,2,2001,77,8,-415,-4013,7,-9,64,49,-17,22,11,8,-27,34,-114,-88,36,-47],[516,30,1,0,0,25,4,-407,-3627,35,29,-28,34,-35,-29],[521,30,1,0,0,21,4,-2905,-4923,22,17,-13,16,-22,-17],[515,81,2,3,2000,98,6,-411,-3806,47,-58,-28,-23,9,-11,-71,-57,-56,68],[514,30,1,0,0,29,4,-928,-4129,37,32,-31,37,-37,-32],[512,93,2,3,2000,93,4,-882,-4405,81,59,-45,61,-81,-58],[515,30,1,0,0,0,4,-485,-3980,19,15,-56,73,-20,-15],[515,30,1,0,0,22,4,-980,-4017,14,11,-39,53,-14,-10],[513,68,1,0,0,81,4,-1203,-3756,48,37,-141,178,-47,-37],[516,64,2,2,2000,78,8,-440,-3697,6,-9,-10,-8,10,-12,-63,-51,-69,86,120,97,53,-65],[516,68,4,2,2000,79,8,-688,-3684,40,-47,-107,-88,-33,40,22,18,-20,23,71,59,13,-16],[516,70,2,2,2000,82,4,-1078,-3821,94,75,-69,87,-94,-74],[521,47,2,1,1986,63,4,-2703,-5283,62,51,-68,82,-61,-51],[513,30,6,1,0,26,4,-1163,-4875,20,16,-31,37,-19,-16],[516,30,1,0,0,30,4,-437,-3577,32,26,-23,28,-31,-26],[515,73,2,2,2000,85,6,-1356,-4027,8,-10,60,47,-68,86,-92,-72,61,-76],[515,30,1,0,0,0,4,-803,-4011,22,18,-54,69,-23,-18],[514,218,4,7,2005,224,21,-391,-5146,28,-36,-294,-235,-17,21,-9,6,-8,6,-4,8,-2,10,-7,9,8,6,-12,15,4,3,-16,20,51,40,16,-20,15,12,-8,11,216,172,25,-30,5,4,14,-18],[521,64,2,2,2001,76,4,-2889,-4885,68,53,-65,82,-67,-53]],"roads":[[1,25,3261,-3042,-82,103,-305,395,-160,207,-88,113,-95,116,-390,478,-42,34,-54,4,-80,-38,-205,-166,-37,-2,-35,5,-40,32,-11,59,20,51,308,270,47,16,51,-9,57,-30,494,-641,91,-117,92,-110,482,-573,91,-106],[0,4,1173,-4774,-64,77,-547,686,-67,84],[0,32,-1038,-5147,418,334,585,475,118,96,58,47,281,209,73,59,85,70,82,64,407,324,122,98,148,118,363,289,84,67,314,251,212,170,212,169,102,83,79,62,124,99,801,638,216,172,300,240,496,396,197,158,452,361,33,26,125,68,42,23,140,58,169,63,267,93],[0,36,5920,-467,-33,207,-29,188,-27,102,-31,110,-29,101,-59,146,-52,95,-347,453,-31,25,-47,19,-44,2,-64,-16,-119,-64,-1097,-597,-415,-245,-328,-204,-296,-198,-977,-730,-825,-615,-314,-234,-260,-186,-206,-146,-543,-387,-213,-158,-291,-211,-1136,-887,-34,-37,-18,-45,1,-39,9,-28,23,-39,42,-50,141,-170,65,-79,626,-763],[0,2,-2571,-4994,842,689],[1,29,-173,1390,98,-25,55,-69,178,-224,181,-218,66,-80,199,-250,102,-164,47,-63,59,-88,12,-37,-8,-56,-21,-50,-68,-58,-219,-178,-51,-27,-49,12,-44,34,-22,86,32,51,247,198,9,47,0,46,-23,49,-38,54,-281,346,-400,494,-56,69,-5,101],[1,7,-3450,-5124,3,24,19,25,1355,1091,35,19,39,-2,54,-12],[1,18,-3156,-158,-42,36,-28,16,-46,26,-31,11,-34,-1,-44,-35,-44,-66,-10,-42,17,-38,10,-37,-146,-255,-806,-1288,-215,-400,-46,-68,-42,-13,-39,16,-203,129],[1,7,-5422,-3028,372,618,145,243,-246,160,-291,189,-310,202,-306,2067],[1,10,-6185,798,127,-347,172,-473,160,-435,170,-458,405,-1092,79,-191,27,-86,7,-64,-12,-62],[0,16,76,3125,-115,-64,-265,-175,-73,-46,-269,-188,-169,-127,-205,-177,-312,-331,-757,-842,-228,-248,-390,-434,-58,-74,-12,-16,-157,-214,-89,-129,-133,-218],[1,4,594,5209,284,-443,434,271,1049,689],[0,16,76,3125,77,45,507,317,13,8,745,452,24,14,300,186,122,75,16,9,35,21,215,152,293,227,185,123,390,255,228,153,181,95],[1,7,1864,4222,660,-218,131,8,258,48,161,15,17,-32,45,-57],[1,7,1338,4650,154,121,-13,39,-34,58,-133,169,-314,405,-318,495],[0,6,1901,3017,57,-73,54,-68,407,-513,555,-712,68,-87],[0,6,-2606,4717,349,157,43,20,1353,570,554,168,987,305],[1,5,-304,2886,130,-177,144,-208,144,-210,351,-401],[1,9,-3533,1694,431,366,127,59,225,-249,284,-302,37,-40,266,-283,27,-29,47,-41],[1,37,-2707,493,-55,42,-24,24,-292,298,-64,118,-206,378,-185,341,-34,858,-17,76,-41,73,-218,389,-25,74,-3,66,25,105,76,100,115,127,196,237,46,88,12,74,-4,83,31,49,51,22,84,27,24,15,78,132,44,54,69,51,71,27,93,20,101,16,42,8,45,12,43,31,29,46,15,58,-7,58,-14,47],[1,6,-2317,927,174,-160,231,-212,96,-89,128,-137,60,-64],[0,34,5245,3315,-560,-443,-904,-731,-739,-577,-682,-538,-785,-646,-522,-472,-875,-743,-367,-301,-19,-15,-194,-150,-87,-68,-263,-185,-284,-162,-213,-95,-121,-33,-457,-118,-262,-108,-159,-65,-154,-81,-73,-44,-117,-72,-201,-144,-232,-182,-199,-160,-37,-24,-25,-15,-25,-10,-26,-8,-21,3,-31,18,-397,274,-413,299,-91,71],[1,2,-41,4834,-266,798],[1,6,205,6294,-78,-38,-101,-32,-102,15,-98,28,-1059,-323],[1,4,-487,4552,446,282,635,375,404,233],[1,2,-5442,-1818,20,-1210],[1,4,909,-5920,-224,280,-156,195,-65,76],[1,5,-1723,-6024,-180,219,-288,349,-126,153,-254,309],[1,2,2863,-4914,130,-206],[1,5,-757,-3010,300,-396,183,-241,165,-217,250,-331],[1,2,-109,-3864,-777,-617],[1,2,-1047,-4278,773,631],[1,2,-1246,-4030,789,624],[1,4,-1246,-4030,199,-248,161,-203,266,-332],[1,2,-1664,-4384,418,354],[1,4,1786,-2897,61,-77,523,-667,66,-87],[1,7,2768,-3452,58,-68,71,-85,91,-115,112,-141,98,-124,311,-392],[1,6,1268,-4694,62,-73,225,-280,165,-206,115,-143,177,-221],[0,26,5267,-3362,-488,-254,-210,-109,-62,-33,-47,-25,-120,-63,-145,-77,-115,-61,-32,-17,-154,-81,-152,-103,-95,-88,-52,-39,-86,-65,-144,-120,-128,-106,-123,-102,-125,-104,-74,-61,-52,-44,-54,-44,-96,-79,-443,-367,-127,-105,-24,-20,-107,-88],[1,3,4569,-3725,-410,1200,-39,79],[1,2,3968,-4687,-321,414],[0,21,-1233,5944,159,-176,84,-102,70,-104,59,-98,57,-100,46,-98,50,-117,62,-157,159,-440,85,-220,11,-28,39,-98,23,-60,104,-265,80,-204,95,-243,3,-8,27,-65,16,-37,80,-199],[1,9,-2471,3776,247,-673,156,-47,428,-1103,-1,-32,-33,-41,-66,-71,-576,-219,-113,-62],[1,6,-3272,-80,89,149,-408,904,-47,220,290,160,598,517],[1,3,-1038,-5147,630,-806,70,-81],[1,3,-4668,703,-33,110,-269,886],[1,3,2419,2363,57,46,677,537],[1,2,3276,2783,909,720],[1,2,3517,2476,903,729],[1,5,3935,3819,107,-136,143,-180,235,-298,265,-333],[1,6,3781,2141,-38,48,-226,287,-241,307,-123,163,-112,142],[1,3,2524,4004,14,-33,146,-339],[1,3,3041,3088,498,407,396,324],[1,12,-2606,4717,-8,30,-92,158,-12,45,34,119,37,134,2,57,0,135,13,58,27,78,34,66,51,130],[0,4,495,-3927,-68,83,-118,145,-460,610],[0,5,-1288,-1642,-634,782,-163,183,-209,206,-30,67],[0,2,-151,-3089,-1137,1447],[0,4,-3023,60,541,-350,65,-43,93,-71],[0,3,-3156,-158,-58,-140,-143,-513],[1,6,-3337,-2875,-6,-62,-6,-23,-13,-20,-520,-421,-784,474],[1,5,-1249,-1811,-80,97,-583,710,-14,35,4,109],[1,4,309,-3699,-130,59,-380,512,-265,329],[1,5,-1847,-825,82,-6,26,-21,641,-787,62,-77],[1,3,-253,-2641,625,-826,10,-148],[1,9,-1332,2017,291,-347,72,-87,33,-39,50,-60,175,-53,96,-28,71,-91,102,-131],[1,11,4284,-1789,134,108,155,126,564,455,154,125,73,58,122,99,115,93,15,12,110,89,194,157],[1,6,3846,-1253,292,-357,29,-36,117,-143,161,-213,149,-211],[1,4,3206,3920,53,-68,114,-145,166,-212],[1,2,3074,4075,-23,172],[1,4,2608,4754,301,-465,62,-34,80,-8],[1,7,3226,5162,176,-266,-36,-128,-16,-129,-114,-248,-45,-55,-140,-89],[1,2,1742,4147,272,-404],[1,3,2191,3694,163,154,184,123],[1,6,-3357,-811,-37,-95,-32,-87,11,-54,39,-38,49,-47],[0,12,3370,-2951,76,63,109,79,243,177,322,186,264,129,210,104,160,70,374,169,137,61,26,11,668,296],[1,2,5952,2061,-839,-668],[1,5,1492,4771,11,-29,17,-20,23,-27,337,-464],[1,29,5524,2982,-92,105,-68,-53,-2057,-1663,-279,-151,-107,-83,-397,-319,-224,-173,-59,-65,-28,-75,-40,-83,-72,-81,-1515,-1208,99,-112,-516,-459,-778,-618,-94,-66,-230,-81,-137,-100,-76,4,-81,84,-71,87,-47,18,-57,-14,-107,-70,-254,-166,-164,-129,-332,-127,-206,-95],[1,4,1058,4221,132,-223,192,28,60,-65],[0,2,3261,-3042,109,91],[0,19,-338,-6034,740,612,62,53,59,49,347,291,194,169,109,86,95,80,108,90,62,51,519,433,126,106,40,34,145,113,168,139,332,276,303,252,107,89,83,69],[0,3,-1227,-1594,811,-1004,324,-439],[0,3,-92,-3037,474,-578,198,-242],[0,7,-2324,-404,86,-22,235,-209,94,-121,62,-69,402,-484,218,-285],[1,10,5235,979,18,43,52,53,163,127,582,-705,-35,-24,-37,-15,-52,-17,-126,-27,-88,-27],[1,15,39,-200,260,-332,-123,-97,-99,-77,-29,-23,-126,-99,-120,-94,-98,-77,-35,-27,-121,-95,-219,280,-151,192,121,95,133,104,110,-140],[1,3,178,-835,-45,57,-56,72],[1,3,-296,-999,57,-73,50,-64],[1,11,-4760,-1690,20,377,102,304,182,215,107,245,15,225,-35,150,-10,42,-146,625,-20,83,-123,127],[1,9,-4740,-1313,-181,32,-135,95,-132,168,-117,189,-86,64,5,108,-73,249,-54,154],[1,8,-3381,-105,-124,77,-142,121,-101,187,-40,170,-17,150,69,162,69,28],[1,6,-3337,-70,39,70,-369,790,-40,114,-128,125,-67,65],[1,8,-3638,1193,-44,-16,-220,-83,-462,-85,69,-360,276,16,117,-20,97,-45],[1,6,-5363,255,43,33,210,54,114,30,471,121,230,156],[1,4,-4369,-174,-608,17,-260,33,-51,70],[1,4,-4379,-132,205,17,232,195,194,200],[1,13,-4406,-1857,23,234,4,158,-18,222,14,158,93,214,343,603,74,93,42,18,56,-13,125,-98,107,9,108,46],[1,2,-3947,-268,-227,153],[1,2,-4456,-794,166,-77],[1,3,-4364,1009,-56,41,-79,269],[1,5,-5454,929,68,-306,195,48,126,31,69,-330],[1,67,-5081,218,-29,124,-81,329,-35,145,86,18,39,-119,400,98,276,76,-108,422,34,8,39,14,81,-265,144,33,-9,62,82,22,22,-60,157,47,-11,46,123,7,-4,-84,183,75,10,-39,14,-43,-179,-55,12,-50,-268,-78,-28,37,-117,-22,-9,-84,137,29,90,-492,-331,-66,35,-133,-75,-11,22,-139,45,-20,53,-252,-38,-8,24,-100,2,-238,-86,-206,-79,-114,-161,-241,-42,-124,-16,-145,2,-297,-141,-25,0,348,27,88,53,175,86,157,104,132,33,29,106,225,11,62,-5,145,-20,102,-35,-7,-64,265,29,36,-18,117,-35,0,2,20,-77,46,-89,-22,-19,63,-354,-63],[1,6,3765,4357,64,-83,107,-139,-200,-154,-107,139,-62,82],[1,5,3414,4083,62,-80,105,-137,-184,-141,-24,-18],[1,3,3794,3491,221,171,27,21],[1,3,3168,3348,-184,-143,-30,-23],[1,3,3101,3416,-175,-136,-30,-23],[1,3,3031,3565,-203,-157,-32,-25],[1,10,3041,3088,-87,94,-51,55,-7,20,-1,13,-19,36,-28,27,-26,15,-26,35,-105,135],[1,4,-27,-1375,-654,-530,-101,125,654,530],[1,4,-208,-1151,61,-75,19,-24,101,-125],[1,3,-1371,353,70,-87,603,-765],[1,4,-665,382,197,-240,182,-222,-129,-107],[1,2,-795,276,130,106],[1,2,-598,36,130,106],[1,6,-279,-385,-94,114,16,14,-58,70,-183,223,-197,240],[1,5,-458,-590,120,94,126,99,128,100,123,97],[1,2,-84,-297,260,-332],[1,2,-212,-397,260,-332],[1,3,-701,-554,151,-192,219,-280],[1,3,-671,-841,121,95,133,104],[1,2,-338,-496,260,-332],[1,3,-458,-590,41,-52,219,-280],[1,4,-615,-1096,-215,-172,71,-88,157,126],[1,5,-489,-1369,-51,62,-12,15,-50,62,-1,120],[1,5,-603,-1110,54,-33,27,-18,70,-81,50,-59],[1,9,-603,-1110,-12,14,-50,63,-14,17,-40,42,-30,53,7,24,37,32,34,24],[1,6,-150,775,-134,170,46,41,31,0,274,-354,35,-46],[1,6,288,726,-186,-140,-253,-191,-182,242,142,108,41,30],[1,5,776,1208,-278,344,-134,-109,-114,-92,278,-343],[1,2,364,1443,278,-343],[1,5,339,854,116,95,73,59,114,92,134,108],[1,2,2437,3056,-28,38],[1,3,2381,2713,43,33,18,14],[1,3,2409,3094,267,206,20,15],[1,4,2696,3315,270,-352,-488,-375,-97,125],[1,2,2311,3220,98,-126],[1,3,2442,2760,140,108,-145,188],[1,2,1524,2183,-94,121],[1,3,1932,2498,137,-177,35,-46],[1,4,2040,2582,-108,-84,-206,-158,-202,-157],[1,6,1430,2304,203,157,313,242,94,-121,137,-178,-108,-83],[1,4,1520,2606,67,-86,46,-59,93,-121],[1,3,721,2494,146,113,40,31],[1,3,861,2201,-76,156,-64,137],[1,3,950,2470,-145,-100,-20,-13],[1,11,1188,2831,-96,-69,-55,61,-160,-103,2,-24,28,-58,53,-106,-5,-30,-5,-32,37,-51,55,-76],[1,2,1959,3170,50,-68],[1,4,1666,3541,113,-195,36,22,144,-198],[1,2,1404,3064,-19,30],[1,2,1597,2779,-193,285],[1,6,1158,3266,130,57,288,126,66,-151,-267,-117,-22,-10],[1,7,1342,3195,-61,-12,-16,0,-60,11,-15,13,-19,28,-13,31],[1,5,1385,3094,-32,77,-11,24,-43,101,-11,27],[1,3,673,3495,230,-378,-32,-19],[1,5,871,3098,-690,-422,-18,38,-112,-85,101,-172],[1,5,-863,856,-55,67,-41,55,64,46,4,30],[1,3,-891,1054,306,227,41,31],[1,2,-986,1507,123,-168],[1,5,-936,1544,-36,-27,-14,-10,-113,-83,175,-239],[1,2,-589,1536,171,-219],[1,5,-492,1867,120,-145,-217,-186,-105,-90,-17,-15],[1,4,-109,2200,88,-123,211,-295,49,-69],[1,2,-301,1858,280,219],[1,3,-109,2200,106,75,29,-39],[1,8,-350,2024,-153,213,-147,-113,138,-165,39,32,37,-29,86,62,241,176],[1,3,-969,1583,29,25,356,306],[1,3,-11,3996,17,-40,64,-157],[1,6,-225,3881,36,19,178,96,240,131,31,91,-77,127],[1,4,36,4374,-257,-162,-71,-44,-37,-22],[1,3,-1344,1318,-204,-140,-88,-62],[1,2,-1720,1409,172,-231],[1,7,-1041,1670,-45,-36,-222,-173,-12,-47,6,-30,21,-30,-51,-36],[1,6,-1669,769,56,-53,-45,-59,80,-79,-13,-27,65,-85],[1,4,-1688,329,16,13,55,43,91,81],[1,2,-1769,546,152,-161],[1,3,-1764,719,-134,-148,-14,-16],[1,3,-2055,852,-73,-70,-15,-15],[1,7,-2580,107,83,55,51,35,73,-7,89,59,32,-38,280,222],[1,2,-2777,403,280,-241],[1,2,-3142,975,676,593],[1,4,-1315,3817,-16,-22,1,-21,198,-553],[1,5,-352,4206,-58,-22,-717,-272,-155,-67,-33,-28],[1,3,-479,3444,283,193,51,40],[1,3,-1863,3824,21,-54,1440,562],[1,2,-2431,4650,78,-211],[1,4,-2273,4709,79,-211,-159,-59,-326,-122],[1,3,-2205,4735,-40,107,-12,32],[1,6,-2503,4624,72,26,158,59,68,26,25,9,99,-267],[1,3,2639,-4917,45,-72,29,-48],[1,3,2555,-4793,84,-124,-140,-96],[1,2,2188,-4065,118,-178],[1,2,2123,-3980,65,-85],[1,4,2486,-4167,89,-159,82,-157,-53,-47],[1,2,2268,-3867,218,-300],[1,4,1918,-4915,10,-42,302,-407,40,-40],[0,7,580,-3857,67,-82,272,-333,98,-119,102,-124,75,-92,74,-87],[1,4,1438,-4553,94,-121,577,-788,34,-47],[1,4,1066,-5451,91,75,378,313,20,16],[1,3,870,-5029,63,-75,224,-272],[1,2,3960,-2930,44,-100],[1,3,3785,-3124,219,94,217,77],[1,2,3726,-3041,234,111],[1,3,3671,-2963,-46,62,-70,92],[1,3,3194,-3354,-51,68,-72,86],[1,2,3595,-4312,-41,46],[1,4,3785,-3124,-270,-170,-82,-45,-362,-311],[1,3,3671,-2963,55,-78,59,-83],[1,2,3515,-3294,-92,128],[1,6,3554,-4266,-483,616,-93,120,216,176,229,188,248,203],[1,3,2749,-3829,220,100,19,9],[1,3,3118,-4019,244,-371,-132,-92],[1,5,2834,-4139,144,61,140,59,62,26,18,8],[1,2,3230,-4482,-252,404],[1,6,3100,-3861,-19,-8,-263,-104,-66,-25,82,-141,269,-469],[1,5,2897,-3605,-19,-13,-169,-126,40,-85,69,-144],[1,2,4445,-2002,22,17],[1,2,4446,-1717,-28,36],[1,3,4467,-1985,117,91,-138,177],[1,2,4811,-1637,55,-71],[1,4,4641,-1771,63,50,38,29,69,55],[1,2,4573,-1555,131,-166],[1,2,5216,-1808,75,-94],[1,2,5093,-1662,123,-146],[1,2,5910,-1091,-267,343],[1,2,5779,-1193,131,102],[1,2,5486,-818,27,-34],[1,2,5643,-748,-27,35],[1,2,5726,-624,27,-35],[1,2,5753,-659,145,-196],[1,2,5513,-852,266,-341],[1,2,4185,-1632,-18,-14],[1,2,5701,-593,25,-31],[1,2,5576,-693,25,-32],[1,2,5268,-945,23,-30],[1,2,5364,-917,26,-33],[1,2,5159,-1129,-22,29],[1,2,5215,-1200,230,179],[1,6,5390,-950,55,-71,106,-137,-230,-179,-106,137,-56,71],[1,2,5344,383,-279,359],[1,2,5462,474,-118,-91],[1,2,5182,833,280,-359],[1,3,5008,901,55,-71,44,-56],[1,3,5065,742,42,32,75,59],[1,2,5807,-321,80,61],[1,2,5383,-212,-92,114],[1,2,5525,-97,-76,93],[1,2,5438,-279,-55,67],[1,2,5578,-162,-53,65],[1,2,5447,-526,129,-167],[1,2,5667,-426,140,105],[1,2,5570,-430,131,-163],[1,2,2822,-5095,48,-60],[1,3,2166,-5599,210,176,446,328],[1,3,2216,-5674,-50,75,-47,70],[1,2,2335,-5632,-101,-69],[1,2,2234,-5701,-18,27],[1,2,1572,-5535,-323,-256],[1,4,1835,-5396,-202,-160,-27,-22,-34,43],[1,3,1232,-5459,-81,-67,95,-116],[1,6,1720,-5253,-24,-20,-182,-149,-268,-220,-316,-261,-21,-17],[1,2,936,-5433,105,-127],[1,3,665,-5355,148,-179,100,-120],[1,4,685,-5640,22,18,106,88,123,101],[1,2,62,-4461,-97,123],[1,2,83,-4242,98,-125],[1,4,181,-4367,286,-364,-119,-93,-286,363],[1,2,1186,-4472,-67,-43],[1,2,1017,-4391,73,50],[1,6,1090,-4341,132,96,39,-2,73,-92,-6,-45,-142,-88],[1,2,993,-4213,-74,-59],[1,2,1116,-3921,99,79],[1,3,1316,-3957,-105,-83,-218,-173],[1,4,1112,-3720,-96,-75,100,-126,95,-119],[1,2,2015,-3930,-160,201],[1,2,1893,-4032,64,-88],[1,2,2083,-4014,-68,84],[1,4,1916,-3681,-61,-48,-124,-99,162,-204],[1,2,1792,-3084,-90,120],[1,3,1844,-3267,55,41,-107,142],[1,2,1454,-3405,-115,152],[1,2,1716,-3750,-262,345],[1,2,1283,-3489,-92,118],[1,2,1069,-3469,90,-116],[1,4,1159,-3585,128,-165,124,95,-128,166],[1,2,5355,-2195,351,110],[1,2,5323,-2092,341,113],[1,4,5265,-1913,33,-100,25,-79,32,-103],[1,2,5128,-1974,42,-98],[1,3,5170,-2072,42,-115,-225,-98],[1,2,4754,-2143,42,-96],[1,2,4459,-2488,374,163],[1,4,4499,-2579,-40,91,-32,72,-43,99],[1,2,4873,-2416,-374,-163],[1,3,4796,-2239,37,-86,40,-91],[1,2,5293,-3415,-26,53],[1,2,5361,-2990,155,82],[1,2,5153,-2787,250,134],[1,2,5403,-2653,113,-255],[1,2,3935,-4711,33,24],[1,2,4498,-3841,-38,58],[1,2,4674,-4176,-176,335],[1,2,4373,-3909,-33,63],[1,2,3894,-4082,36,-67],[1,2,4086,-4064,-38,63],[1,2,4230,-3986,-35,63],[1,2,4446,-4372,-216,386],[1,2,4323,-4487,-237,423],[1,2,4565,-4279,-192,370],[1,4,4185,-4618,138,131,123,115,119,93],[1,2,3930,-4149,255,-469],[1,2,3774,-4830,161,119],[1,3,3726,-4751,48,-79,52,-86],[1,2,3389,-4535,-24,38],[1,2,3262,-4639,-25,36],[1,2,3114,-4705,25,-34],[1,2,3011,-4845,-22,36],[1,2,3433,-4921,-171,282],[1,5,3139,-4739,152,-275,142,93,147,95,-191,291],[1,2,2940,-4951,97,64],[1,4,3159,-5085,-32,50,-90,148,-26,42],[1,3,2993,-5120,13,9,121,76],[1,2,5194,-848,-227,-174],[1,3,5155,-797,39,-51,74,-97],[1,2,4730,-729,-88,112],[1,2,4839,-459,89,-114],[1,4,4928,-573,50,-63,-199,-156,-49,63],[1,2,4300,-1535,-115,-97],[1,2,4236,-1129,-90,116],[1,2,4371,-1304,-135,175],[1,3,4138,-1610,-40,-31,-76,-60],[1,3,3986,-1956,-111,141,147,114],[1,2,3753,-2139,85,-109],[1,7,3880,-1519,142,-182,110,-140,-146,-115,-233,-183,-135,-105,90,-115],[1,3,3836,-1554,44,35,61,47],[1,2,3720,-1540,-90,115],[1,2,3849,-1703,-129,163],[1,3,2459,-2659,139,-174,149,120],[1,2,2230,-2807,-130,161],[1,2,2512,-3158,-282,351],[1,3,2714,-2672,54,42,106,86],[1,7,2459,-2659,104,83,74,-1,77,-95,33,-41,240,-298,-32,-26],[1,3,2312,-2476,91,-113,56,-70],[1,2,2297,-2218,-461,-368],[1,2,1523,-2183,447,369],[1,2,1734,-2454,492,387],[1,2,1626,-2315,488,390],[1,6,1970,-1814,62,-11,82,-100,112,-142,76,-93,-5,-58],[1,3,944,-2128,242,-314,320,-413],[1,3,1067,-2032,243,-314,318,-412],[1,3,1190,-1937,243,-314,316,-410],[1,2,1058,-2540,-242,313],[1,2,1058,-2540,321,-416],[1,3,725,-2108,78,-102,13,-17],[1,9,816,-2227,128,99,123,96,123,95,89,69,244,-315,103,-132,108,-139,102,-132],[1,7,940,-2631,47,35,71,56,128,98,124,96,123,95,90,68],[1,3,725,-2108,-143,-111,-86,111],[1,15,1836,-2586,-87,-75,-121,-97,-122,-97,-127,-101,-62,-50,-26,-20,-34,1,-22,24,-295,370,-270,338,-17,3,-36,-10,-175,-147,-152,193],[1,5,1070,-1688,49,-69,8,-21,-7,-23,-395,-307],[1,4,630,231,61,1,67,-6,54,-17],[1,7,63,1363,783,-980,85,-133,30,-118,-14,-103,-301,-247,-229,-183],[1,5,417,-401,234,-297,406,-516,64,-81,220,-279],[1,3,1341,-1574,283,223,56,-69],[1,3,646,-218,-32,44,-320,-255],[1,10,396,-569,-102,140,-172,246,26,107,347,275,9,83,-678,887,62,51,92,76,83,67],[1,4,1099,-143,-46,51,-49,56,-57,65],[1,22,1004,-36,-608,-533,-263,-209,-372,-294,-213,-170,-88,-65,-225,-165,-254,-141,-79,-26,-231,-75,-110,-36,-86,135,-82,129,-393,488,-374,463,80,64,56,45,169,135,363,-475,379,-508,82,-66,226,-273],[1,5,-1525,-1615,-71,36,-89,98,-361,445,-140,-111],[1,2,-2046,-1036,46,38],[1,2,-893,-2848,2014,1553],[1,13,2524,-2307,-124,212,-313,406,-73,11,-387,-288,-95,13,-158,206,18,91,288,236,285,233,123,-20,567,-708,174,-148],[1,7,651,-698,54,-12,349,-443,3,-61,-53,12,-354,449,1,55],[1,2,-2128,-1977,39,-93],[1,2,-2475,-2260,-51,111]],"landmarks":[["JR東静岡駅",529,-1748,"station"],["静鉄長沼駅",73,3495,"station"],["グランシップ",4195,-111,"poi"],["バンダイホビーセンター",-821,3963,"poi"],["東静岡駅北口公園",1341,701,"poi"]]};
+
+});
+__def("site_nodes", function(module, exports, require){
+/* ============================================================
+   XBUILD — site_nodes.js
+   実データ（PLATEAU LOD1 + OpenStreetMap）を GeoSet へ載せるノード群。
+   データは src/site_data.js（bake 済み、原点からのデシメートル整数、差分符号化）。
+   ============================================================ */
+
+'use strict';
+
+const { GeoSet } = require('./geo');
+const { reg } = require('./demo_nodes');
+const DATA = require('./site_data');
+
+/* ---------- 差分符号化の展開 ---------- */
+
+function decodeRing(rec, at, n) {
+  const ring = new Array(n);
+  let x = 0, y = 0;
+  for (let i = 0; i < n; i++) {
+    x += rec[at + i * 2]; y += rec[at + i * 2 + 1];
+    ring[i] = [x / 10, y / 10];
+  }
+  return ring;
+}
+
+/** buildings レコード: [base, h, usageIdx, storeys, year, mh, ringLen, dx, dy, ...] */
+function decodeBuildings() {
+  if (decodeBuildings._c) return decodeBuildings._c;
+  const out = DATA.buildings.map(r => ({
+    base: r[0] / 10, h: r[1] / 10,
+    usage: r[2] >= 0 ? DATA.usages[r[2]] : '不明',
+    storeys: r[3], year: r[4], mh: r[5] / 10,
+    ring: decodeRing(r, 7, r[6]),
+  }));
+  decodeBuildings._c = out;
+  return out;
+}
+
+/** roads レコード: [walkable, n, dx, dy, ...] */
+function decodeRoads() {
+  if (decodeRoads._c) return decodeRoads._c;
+  const out = DATA.roads.map(r => ({ walk: !!r[0], pts: decodeRing(r, 2, r[1]) }));
+  decodeRoads._c = out;
+  return out;
+}
+
+/* ============================================================
+   sitectx : PLATEAU LOD1 の実建物
+   ============================================================ */
+
+reg.register({
+  type: 'sitectx',
+  label: '文脈建物 (PLATEAU)',
+  inputs: [],
+  params: {
+    radius:    { type: 'float',  default: 600 },
+    minHeight: { type: 'float',  default: 0 },
+    useMh:     { type: 'int',    default: 0 },   // 1 で measuredHeight を高さに使う
+  },
+  cook(ctx) {
+    const src = decodeBuildings();
+    const { radius, minHeight, useMh } = ctx.params;
+    const g = new GeoSet();
+    g.reserve(src.length * 14, src.length * 40, src.length * 9);
+
+    const aHeight  = g.addAttrib('prim', 'height', 'float');
+    const aUsage   = g.addAttrib('prim', 'usage', 'string');
+    const aStoreys = g.addAttrib('prim', 'storeys', 'int');
+    const aYear    = g.addAttrib('prim', 'year', 'int');
+    const aPart    = g.addAttrib('prim', 'part', 'string');
+    const aDelta   = g.addAttrib('prim', 'mhDelta', 'float');   // |幾何高さ − measuredHeight|
+
+    let used = 0, skippedFar = 0, skippedLow = 0, noMh = 0;
+    for (const b of src) {
+      let cx = 0, cy = 0;
+      for (const p of b.ring) { cx += p[0]; cy += p[1]; }
+      cx /= b.ring.length; cy /= b.ring.length;
+      if (Math.hypot(cx, cy) > radius) { skippedFar++; continue; }
+
+      const hasMh = b.mh > 0;
+      if (!hasMh) noMh++;
+      const h = (useMh && hasMh) ? b.mh : b.h;
+      if (h < minHeight) { skippedLow++; continue; }
+
+      const z0 = b.base, z1 = b.base + h;
+      const n = b.ring.length;
+      const lo = new Array(n), hi = new Array(n);
+      for (let i = 0; i < n; i++) {
+        lo[i] = g.addPoint(b.ring[i][0], b.ring[i][1], z0);
+        hi[i] = g.addPoint(b.ring[i][0], b.ring[i][1], z1);
+      }
+      const roof = g.addPrim(hi);
+      const tag = (pi) => {
+        aHeight.set(pi, h); aUsage.set(pi, b.usage);
+        aStoreys.set(pi, b.storeys); aYear.set(pi, b.year);
+        aDelta.set(pi, hasMh ? Math.abs(b.h - b.mh) : 0);
+      };
+      tag(roof); aPart.set(roof, 'roof');
+      for (let i = 0; i < n; i++) {
+        const pi = g.addPrim([lo[i], lo[(i + 1) % n], hi[(i + 1) % n], hi[i]]);
+        tag(pi); aPart.set(pi, 'wall');
+      }
+      used++;
+    }
+
+    g.detail.add('source', 'string').set(0, DATA.source);
+    g.detail.add('buildings', 'int').set(0, used);
+    if (skippedFar) ctx.warn(`${skippedFar} buildings outside radius ${radius}m`);
+    if (skippedLow) ctx.warn(`${skippedLow} buildings below minHeight ${minHeight}m`);
+    if (noMh) ctx.warn(`${noMh} buildings have no measuredHeight attribute`);
+    return g;
+  },
+});
+
+/* ============================================================
+   siteroads : OSM 道路網（開いたプリミティブ = 線分）
+   ============================================================ */
+
+reg.register({
+  type: 'siteroads',
+  label: '道路網 (OSM)',
+  inputs: [],
+  params: {
+    walkableOnly: { type: 'int',   default: 1 },
+    lift:         { type: 'float', default: 0.3 },
+  },
+  cook(ctx) {
+    const src = decodeRoads();
+    const g = new GeoSet();
+    let nv = 0;
+    for (const w of src) nv += w.pts.length;
+    g.reserve(nv, nv, src.length);
+    const aWalk = g.addAttrib('prim', 'walk', 'int');
+    let n = 0;
+    for (const w of src) {
+      if (ctx.params.walkableOnly && !w.walk) continue;
+      const idx = w.pts.map(p => g.addPoint(p[0], p[1], ctx.params.lift));
+      aWalk.set(g.addPrim(idx, false), w.walk ? 1 : 0);   // closed=false -> 線分
+      n++;
+    }
+    g.detail.add('roads', 'int').set(0, n);
+    return g;
+  },
+});
+
+/* ============================================================
+   roadagents : 実道路網の上を歩く人流エージェント（時間依存）
+   ------------------------------------------------------------
+   cook は時刻の純関数でなければならない（任意時刻で呼ばれ、結果がキャッシュされる）。
+   そのため各エージェントには「固定経路 + 経路上の弧長」を持たせ、
+   位置は t から解析的に求める。経路生成はコストが高いのでメモ化する。
+   ============================================================ */
+
+function buildGraph() {
+  if (buildGraph._c) return buildGraph._c;
+  const roads = decodeRoads().filter(w => w.walk);
+  const key = new Map();     // "x,y" -> node index
+  const pos = [];
+  const adj = [];
+  const id = (p) => {
+    const k = Math.round(p[0] * 2) + ',' + Math.round(p[1] * 2);   // 0.5m で溶接
+    let v = key.get(k);
+    if (v === undefined) { v = pos.length; key.set(k, v); pos.push([p[0], p[1]]); adj.push([]); }
+    return v;
+  };
+  for (const w of roads) {
+    for (let i = 0; i + 1 < w.pts.length; i++) {
+      const a = id(w.pts[i]), b = id(w.pts[i + 1]);
+      if (a === b) continue;
+      const d = Math.hypot(pos[a][0] - pos[b][0], pos[a][1] - pos[b][1]);
+      adj[a].push([b, d]); adj[b].push([a, d]);
+    }
+  }
+  buildGraph._c = { pos, adj };
+  return buildGraph._c;
+}
+
+function prng(seed) {
+  let s = seed >>> 0 || 1;
+  return () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+}
+
+const _routeCache = new Map();
+
+function buildRoutes(count, seed, steps, attract) {
+  const ck = `${count}|${seed}|${steps}|${attract}`;
+  const hit = _routeCache.get(ck);
+  if (hit) return hit;
+
+  const { pos, adj } = buildGraph();
+  const starts = [];
+  for (let i = 0; i < pos.length; i++) if (adj[i].length) starts.push(i);
+  const rnd = prng(seed);
+  const routes = [];
+
+  for (let a = 0; a < count; a++) {
+    let cur = starts[Math.floor(rnd() * starts.length)];
+    let prev = -1;
+    const path = [cur];
+    const cum = [0];
+    let total = 0;
+    for (let s = 0; s < steps; s++) {
+      const opts = adj[cur].filter(e => e[0] !== prev);
+      const list = opts.length ? opts : adj[cur];
+      if (!list.length) break;
+      let pick;
+      if (attract > 0 && rnd() < attract) {
+        // 会場（原点）へ近づく枝を選ぶ
+        let best = list[0], bd = Infinity;
+        for (const e of list) {
+          const d = Math.hypot(pos[e[0]][0], pos[e[0]][1]);
+          if (d < bd) { bd = d; best = e; }
+        }
+        pick = best;
+      } else {
+        pick = list[Math.floor(rnd() * list.length)];
+      }
+      total += pick[1];
+      prev = cur; cur = pick[0];
+      path.push(cur); cum.push(total);
+    }
+    if (total < 1) { a--; continue; }
+    routes.push({ path, cum, total, offset: rnd() * total, speed: 1.1 + rnd() * 0.7 });
+  }
+
+  const out = { routes, pos };
+  if (_routeCache.size > 12) _routeCache.clear();
+  _routeCache.set(ck, out);
+  return out;
+}
+
+reg.register({
+  type: 'roadagents',
+  label: '人流 (道路網)',
+  inputs: [],
+  params: {
+    count:   { type: 'int',   default: 900 },
+    seed:    { type: 'int',   default: 20260813 },
+    steps:   { type: 'int',   default: 26 },
+    attract: { type: 'float', default: 0.55 },   // 0=ランダム歩行, 1=会場へ直行
+    speed:   { type: 'float', default: 1.0 },    // 倍率
+  },
+  timeDep: true,
+  cook(ctx) {
+    const { count, seed, steps, attract, speed } = ctx.params;
+    const { routes, pos } = buildRoutes(count, seed, steps, attract);
+
+    const g = new GeoSet();
+    g.reserve(routes.length, 0, 0);
+    const aSpeed = g.addAttrib('point', 'speed', 'float');
+    const aDist  = g.addAttrib('point', 'toVenue', 'float');
+
+    for (const r of routes) {
+      let d = (r.offset + ctx.time * r.speed * speed) % r.total;
+      if (d < 0) d += r.total;
+      // 弧長 d の位置を二分探索
+      let lo = 0, hi = r.cum.length - 1;
+      while (lo + 1 < hi) {
+        const m = (lo + hi) >> 1;
+        if (r.cum[m] <= d) lo = m; else hi = m;
+      }
+      const seg = r.cum[hi] - r.cum[lo] || 1;
+      const t = (d - r.cum[lo]) / seg;
+      const A = pos[r.path[lo]], B = pos[r.path[hi]];
+      const x = A[0] + (B[0] - A[0]) * t;
+      const y = A[1] + (B[1] - A[1]) * t;
+      const pt = g.addPoint(x, y, 1.4);
+      aSpeed.set(pt, r.speed * speed);
+      aDist.set(pt, Math.hypot(x, y));
+    }
+    g.detail.add('source', 'string').set(0, 'OSM walkable network');
+    return g;
+  },
+});
+
+/* ============================================================
+   arena : 計画アリーナのマッシング（公表値ベース）
+   敷地面積 約29,359m2 / 建築面積 約16,900m2 / 最高高さ 約30.9m / 鉄骨造4階
+   ============================================================ */
+
+reg.register({
+  type: 'arena',
+  label: 'アリーナ (計画値)',
+  inputs: [],
+  params: {
+    width:     { type: 'float', default: 152 },
+    depth:     { type: 'float', default: 111 },
+    height:    { type: 'float', default: 30.9 },
+    floors:    { type: 'int',   default: 4 },
+    rotate:    { type: 'float', default: -26 },  // 度。街区の向きに合わせる
+    cx:        { type: 'float', default: 55 },
+    cy:        { type: 'float', default: 65 },
+  },
+  cook(ctx) {
+    const { width, depth, height, floors, rotate, cx, cy } = ctx.params;
+    const g = new GeoSet();
+    const a = rotate * Math.PI / 180, C = Math.cos(a), S = Math.sin(a);
+    const put = (u, v, z) => g.addPoint(cx + u * C - v * S, cy + u * S + v * C, z);
+
+    const aPart = g.addAttrib('prim', 'part', 'string');
+    const aLevel = g.addAttrib('prim', 'level', 'int');
+    const aHeight = g.addAttrib('prim', 'height', 'float');
+    const fh = height / floors;
+
+    for (let f = 0; f < floors; f++) {
+      const k = 1 - 0.06 * (f / Math.max(1, floors - 1));
+      const w = width * k / 2, d = depth * k / 2;
+      const z0 = f * fh, z1 = z0 + fh;
+      const lo = [put(-w, -d, z0), put(w, -d, z0), put(w, d, z0), put(-w, d, z0)];
+      const hi = [put(-w, -d, z1), put(w, -d, z1), put(w, d, z1), put(-w, d, z1)];
+      const slab = g.addPrim(lo);
+      aPart.set(slab, 'slab'); aLevel.set(slab, f); aHeight.set(slab, z0);
+      for (let i = 0; i < 4; i++) {
+        const pi = g.addPrim([lo[i], lo[(i + 1) % 4], hi[(i + 1) % 4], hi[i]]);
+        aPart.set(pi, 'facade'); aLevel.set(pi, f); aHeight.set(pi, z0);
+      }
+      if (f === floors - 1) {
+        const roof = g.addPrim(hi);
+        aPart.set(roof, 'roof'); aLevel.set(roof, f); aHeight.set(roof, z1);
+      }
+    }
+    /* 既存建物との干渉チェック。推測で配置せず、数を出して判断できるようにする */
+    const clash = countClashes(cx, cy, width, depth, rotate);
+    g.detail.add('footprint', 'float').set(0, width * depth);
+    g.detail.add('clashes', 'int').set(0, clash.n);
+    g.detail.add('clashArea', 'float').set(0, clash.area);
+    if (clash.n) ctx.warn(`${clash.n} existing buildings inside the footprint (${clash.area.toFixed(0)}m2 of PLATEAU building area)`);
+    return g;
+  },
+});
+
+/** フットプリント内に重心が入る既存建物を数える */
+function countClashes(cx, cy, w, d, rotate) {
+  if (!countClashes._c) {
+    countClashes._c = decodeBuildings().map(b => {
+      let x = 0, y = 0, n = b.ring.length;
+      for (const p of b.ring) { x += p[0]; y += p[1]; }
+      let a = 0;
+      for (let i = 0; i < n; i++) {
+        const p = b.ring[i], q = b.ring[(i + 1) % n];
+        a += p[0] * q[1] - q[0] * p[1];
+      }
+      return { x: x / n, y: y / n, area: Math.abs(a) / 2 };
+    });
+  }
+  const a = -rotate * Math.PI / 180, C = Math.cos(a), S = Math.sin(a);
+  let n = 0, area = 0;
+  for (const b of countClashes._c) {
+    const dx = b.x - cx, dy = b.y - cy;
+    const u = dx * C - dy * S, v = dx * S + dy * C;
+    if (Math.abs(u) <= w / 2 && Math.abs(v) <= d / 2) { n++; area += b.area; }
+  }
+  return { n, area };
+}
+
+/* ---------- landmarks : OSM の実在ランドマークを縦線マーカーとして ---------- */
+reg.register({
+  type: 'landmarks',
+  label: 'ランドマーク',
+  inputs: [],
+  params: { height: { type: 'float', default: 42 } },
+  cook(ctx) {
+    const g = new GeoSet();
+    const aName = g.addAttrib('prim', 'name', 'string');
+    const aKind = g.addAttrib('prim', 'kind', 'string');
+    for (const [name, xdm, ydm, kind] of DATA.landmarks) {
+      const x = xdm / 10, y = ydm / 10;
+      const pi = g.addPrim([g.addPoint(x, y, 0), g.addPoint(x, y, ctx.params.height)], false);
+      aName.set(pi, name); aKind.set(pi, kind);
+    }
+    return g;
+  },
+});
+
+module.exports = { reg, decodeBuildings, decodeRoads, buildGraph, DATA };
+
+});
+__def("scene", function(module, exports, require){
+/* ============================================================
+   XBUILD — scene.js
+   シーン層（Pascal 系レジストリの最小形）。
+   ------------------------------------------------------------
+   ここでの目的は、シーン層を作り直すことではない。
+   「geo という kind を1つ足すだけでデータフロー層が接続できる」
+   という非破壊拡張の契約を実証すること。
+   実運用では既存の xbuild_node_editor.html のレジストリへ
+   同じ形の kind を1件追加するだけでよい。
+   ============================================================ */
+
+'use strict';
+
+const { toRenderBuffers } = require('./convert');
+
+/* ---------- kind 定義 ---------- */
+
+const KINDS = {
+  site:     { label: '敷地',   container: true },
+  building: { label: '建物',   container: true },
+  layer:    { label: 'レイヤ', container: true },
+
+  /* データフロー層の接続点 */
+  geo: {
+    label: 'ジオメトリ',
+    container: false,
+    /**
+     * payload = { graph, displayNode, colorBy, ramp, baseColor, range }
+     * ctx = { time, frame }
+     * 戻り値は描画バッファ。シーン層は GeoSet を一切知らない。
+     */
+    build(node, ctx) {
+      const pl = node.payload;
+      const geo = pl.graph.cook(pl.displayNode, ctx);
+      return toRenderBuffers(geo, {
+        colorBy: pl.colorBy,
+        ramp: pl.ramp,
+        baseColor: pl.baseColor,
+        range: pl.range,
+      });
+    },
+    /** 時間依存かどうかはデータフロー層に委譲する */
+    isTimeDependent(node) {
+      return node.payload.graph.isTimeDependent(node.payload.displayNode);
+    },
+  },
+};
+
+/* ---------- ストア ---------- */
+
+class SceneStore {
+  constructor() {
+    this.nodes = {};          // id -> node
+    this.order = [];
+    this.dirty = new Set();
+  }
+
+  add(id, kind, opts = {}) {
+    if (!KINDS[kind]) throw new Error(`unknown scene kind: ${kind}`);
+    const n = {
+      id, kind,
+      name: opts.name || id,
+      parentId: opts.parentId || null,
+      visible: opts.visible !== false,
+      payload: opts.payload || {},
+      style: opts.style || {},
+    };
+    this.nodes[id] = n;
+    this.order.push(id);
+    this.dirty.add(id);
+    return n;
+  }
+
+  get(id) { return this.nodes[id]; }
+  children(id) { return this.order.filter(k => this.nodes[k].parentId === id); }
+  roots() { return this.order.filter(k => !this.nodes[k].parentId); }
+
+  markDirty(id) { this.dirty.add(id); }
+
+  setVisible(id, v) { this.nodes[id].visible = v; this.dirty.add(id); }
+
+  /** 時間依存のシーンノードだけを列挙する（毎フレーム再構築の対象） */
+  timeDependentIds() {
+    return this.order.filter(id => {
+      const n = this.nodes[id];
+      const k = KINDS[n.kind];
+      return k.isTimeDependent ? k.isTimeDependent(n) : false;
+    });
+  }
+
+  /**
+   * dirty なノードだけ build する。
+   * emit(id, buffers) が呼ばれる。
+   */
+  buildDirty(ctx, emit) {
+    const built = [];
+    for (const id of this.dirty) {
+      const n = this.nodes[id];
+      const k = KINDS[n.kind];
+      if (!k.build) continue;
+      let bufs = null, err = null;
+      try { bufs = k.build(n, ctx); }
+      catch (e) { err = e && e.message ? e.message : String(e); }
+      emit(id, bufs, err);
+      built.push(id);
+    }
+    this.dirty.clear();
+    return built;
+  }
+}
+
+module.exports = { SceneStore, KINDS };
+
+});
+__def("app", function(module, exports, require){
+/* ============================================================
+   XBUILD — app.js（ブラウザ エントリ）
+   シーン層 + データフロー層 + three.js r128 ビューア
+   ============================================================ */
+
+'use strict';
+
+const { Graph } = require('./cook');
+const { reg } = require('./site_nodes');
+const { SceneStore } = require('./scene');
+
+if (typeof THREE.ColorManagement !== 'undefined') THREE.ColorManagement.enabled = false;
+
+/* ============================================================
+   1. データフロー グラフの構築（すべて実データ）
+   ============================================================ */
+
+/* --- PLATEAU LOD1 の実建物 --- */
+const cityGraph = new Graph(reg);
+cityGraph.add('sitectx', { radius: 600, minHeight: 0, useMh: 0 }, 'ctx1');
+cityGraph.add('snippet', {
+  class: 'prim',
+  code: '// prim 単位。@height @usage @storeys @year @mhDelta が使える\n// 例: 5m 未満を持ち上げて見やすくする\n// @height = Math.max(@height, 5);',
+}, 'cityw');
+cityGraph.connect('ctx1', 'cityw', 0);
+cityGraph.displayNode = 'cityw';
+
+/* --- 計画アリーナ（公表値ベースのマッシング） --- */
+const arenaGraph = new Graph(reg);
+arenaGraph.add('arena', {}, 'arena1');
+arenaGraph.add('snippet', {
+  class: 'point',
+  code: '// point 単位。@Time を書くと自動で時間依存になる',
+}, 'aw');
+arenaGraph.add('attribconvert', {
+  class: 'point', name: 'P', type: 'float', component: 2, outName: 'zh',
+}, 'azh');
+arenaGraph.connect('arena1', 'aw', 0);
+arenaGraph.connect('aw', 'azh', 0);
+arenaGraph.displayNode = 'azh';
+
+/* --- 道路網とその上を歩く人流（時間依存） --- */
+const flowGraph = new Graph(reg);
+flowGraph.add('roadagents', { count: 900, attract: 0.55, speed: 1.0 }, 'agents1');
+flowGraph.add('heatmap', { cell: 22, extent: 600, lift: 0.6 }, 'heat1');
+flowGraph.connect('agents1', 'heat1', 0);
+flowGraph.displayNode = 'heat1';
+
+const roadGraph = new Graph(reg);
+roadGraph.add('siteroads', { walkableOnly: 1, lift: 0.25 }, 'roads1');
+roadGraph.displayNode = 'roads1';
+
+const lmGraph = new Graph(reg);
+lmGraph.add('landmarks', { height: 46 }, 'lm1');
+lmGraph.displayNode = 'lm1';
+
+/* ============================================================
+   2. シーン層
+   ============================================================ */
+
+const store = new SceneStore();
+store.add('site', 'site', { name: '東静岡 アリーナ予定地' });
+store.add('city', 'geo', {
+  name: '文脈建物 PLATEAU LOD1', parentId: 'site',
+  payload: { graph: cityGraph, displayNode: 'cityw', colorBy: 'height', ramp: 'cool' },
+  style: { surface: true, opacity: 0.95 },
+});
+store.add('arena', 'geo', {
+  name: 'アリーナ 計画マッシング', parentId: 'site',
+  payload: { graph: arenaGraph, displayNode: 'azh', colorBy: 'zh', ramp: 'yellow' },
+  style: { surface: true, opacity: 0.92 },
+});
+store.add('roads', 'geo', {
+  name: '道路網 OSM', parentId: 'site',
+  payload: { graph: roadGraph, displayNode: 'roads1', baseColor: [0.32, 0.36, 0.42] },
+  style: { lines: true },
+});
+store.add('heat', 'geo', {
+  name: '滞留ヒートマップ', parentId: 'site',
+  payload: { graph: flowGraph, displayNode: 'heat1', colorBy: 'density', ramp: 'heat' },
+  style: { surface: true, opacity: 0.5 },
+});
+store.add('agents', 'geo', {
+  name: '人流エージェント', parentId: 'site',
+  payload: { graph: flowGraph, displayNode: 'agents1', colorBy: 'toVenue', ramp: 'heat' },
+  style: { points: true, pointSize: 2.8 },
+});
+store.add('lm', 'geo', {
+  name: 'ランドマーク', parentId: 'site',
+  payload: { graph: lmGraph, displayNode: 'lm1', baseColor: [0.95, 0.78, 0.35] },
+  style: { lines: true },
+});
+
+/* ============================================================
+   3. three.js ビューア
+   ============================================================ */
+
+const canvasWrap = document.getElementById('viewport');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+canvasWrap.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0e1013);
+scene.fog = new THREE.Fog(0x0e1013, 700, 1900);
+
+const camera = new THREE.PerspectiveCamera(46, 1, 0.5, 4000);
+camera.up.set(0, 0, 1);
+
+scene.add(new THREE.HemisphereLight(0x9fb4c8, 0x1a1c20, 0.85));
+const sun = new THREE.DirectionalLight(0xfff2d0, 0.85);
+sun.position.set(120, -180, 260);
+scene.add(sun);
+
+const grid = new THREE.GridHelper(1400, 28, 0x2b3038, 0x1b1f25);
+grid.rotation.x = Math.PI / 2;
+scene.add(grid);
+
+const groups = {};
+
+function makeSurface(bufs, style) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(bufs.tris.position, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(bufs.tris.normal, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(bufs.tris.color, 3));
+  const m = new THREE.MeshLambertMaterial({
+    vertexColors: true, side: THREE.DoubleSide,
+    transparent: (style.opacity || 1) < 1, opacity: style.opacity || 1,
+  });
+  return new THREE.Mesh(g, m);
+}
+
+function makePoints(bufs, style) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(bufs.points.position, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(bufs.points.color, 3));
+  const m = new THREE.PointsMaterial({ size: style.pointSize || 2, vertexColors: true, sizeAttenuation: false });
+  return new THREE.Points(g, m);
+}
+
+function makeLines(bufs, style) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(bufs.lines.position, 3));
+  if (bufs.lines.color) g.setAttribute('color', new THREE.BufferAttribute(bufs.lines.color, 3));
+  const m = new THREE.LineBasicMaterial({ vertexColors: !!bufs.lines.color });
+  return new THREE.LineSegments(g, m);
+}
+
+function rebuild(id, bufs, err) {
+  if (groups[id]) {
+    groups[id].traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+    scene.remove(groups[id]);
+    delete groups[id];
+  }
+  const node = store.get(id);
+  if (err) { node.error = err; return; }
+  node.error = null;
+  if (!bufs || !node.visible) return;
+
+  const grp = new THREE.Group();
+  if (node.style.surface && bufs.tris.count) grp.add(makeSurface(bufs, node.style));
+  if (node.style.points && bufs.points.count) grp.add(makePoints(bufs, node.style));
+  if (node.style.lines && bufs.lines.count) grp.add(makeLines(bufs, node.style));
+  groups[id] = grp;
+  scene.add(grp);
+}
+
+/* ---------- カメラ操作（r128 に OrbitControls は同梱されない） ---------- */
+
+const cam = { az: -1.15, el: 0.46, dist: 900, target: new THREE.Vector3(20, 30, 15) };
+
+function applyCamera() {
+  const ce = Math.cos(cam.el), se = Math.sin(cam.el);
+  camera.position.set(
+    cam.target.x + cam.dist * ce * Math.cos(cam.az),
+    cam.target.y + cam.dist * ce * Math.sin(cam.az),
+    cam.target.z + cam.dist * se,
+  );
+  camera.lookAt(cam.target);
+}
+
+(function bindControls() {
+  const el = renderer.domElement;
+  let drag = null;
+  el.addEventListener('contextmenu', e => e.preventDefault());
+  el.addEventListener('pointerdown', e => {
+    drag = { x: e.clientX, y: e.clientY, btn: e.button };
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener('pointerup', e => { drag = null; el.releasePointerCapture(e.pointerId); });
+  el.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    drag.x = e.clientX; drag.y = e.clientY;
+    if (drag.btn === 0) {
+      cam.az -= dx * 0.006;
+      cam.el = Math.max(0.04, Math.min(1.5, cam.el + dy * 0.005));
+    } else {
+      const s = cam.dist * 0.0016;
+      const right = new THREE.Vector3(-Math.sin(cam.az), Math.cos(cam.az), 0);
+      cam.target.addScaledVector(right, -dx * s);
+      cam.target.z += dy * s;
+    }
+    applyCamera(); needsRender = true;
+  });
+  el.addEventListener('wheel', e => {
+    e.preventDefault();
+    cam.dist = Math.max(60, Math.min(3000, cam.dist * (1 + Math.sign(e.deltaY) * 0.12)));
+    applyCamera(); needsRender = true;
+  }, { passive: false });
+})();
+
+function resize() {
+  const w = canvasWrap.clientWidth, h = canvasWrap.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / Math.max(1, h);
+  camera.updateProjectionMatrix();
+  needsRender = true;
+}
+window.addEventListener('resize', resize);
+
+/* ============================================================
+   4. 評価ループ
+   ============================================================ */
+
+let time = 0, playing = false, needsRender = true;
+let lastBuildMs = 0, lastBuilt = [];
+
+const graphBase = new Map();   // graph -> このフレーム開始時点の cookCount
+
+function snapshotGraphBase() {
+  graphBase.clear();
+  for (const id of store.order) {
+    const n = store.get(id);
+    if (n.kind === 'geo') graphBase.set(n.payload.graph, n.payload.graph.cookCount);
+  }
+}
+
+function buildFrame() {
+  snapshotGraphBase();
+  const t0 = performance.now();
+  lastBuilt = store.buildDirty({ time, frame: Math.round(time * 30) }, rebuild);
+  lastBuildMs = performance.now() - t0;
+  needsRender = true;
+  renderReport();
+}
+
+function markAllDirty() { for (const id of store.order) store.markDirty(id); }
+
+let lastT = performance.now();
+function loop() {
+  requestAnimationFrame(loop);
+  const now = performance.now();
+  const dt = Math.min(0.05, (now - lastT) / 1000);
+  lastT = now;
+
+  if (playing) {
+    time += dt;
+    // 時間依存のシーンノードだけを dirty にする
+    for (const id of store.timeDependentIds()) store.markDirty(id);
+  }
+  if (store.dirty.size) buildFrame();
+  if (needsRender) { renderer.render(scene, camera); needsRender = false; }
+}
+
+/* ============================================================
+   5. UI
+   ============================================================ */
+
+const el = (id) => document.getElementById(id);
+
+/* ---- アウトライナ ---- */
+function renderOutliner() {
+  const host = el('outliner');
+  host.innerHTML = '';
+  for (const id of store.order) {
+    const n = store.get(id);
+    const row = document.createElement('div');
+    row.className = 'row' + (n.parentId ? ' indent' : '') + (id === selectedScene ? ' sel' : '');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = n.visible;
+    cb.onclick = (e) => { e.stopPropagation(); store.setVisible(id, cb.checked); buildFrame(); };
+    if (n.kind !== 'geo') cb.style.visibility = 'hidden';
+    row.appendChild(cb);
+    const label = document.createElement('span');
+    label.textContent = n.name;
+    row.appendChild(label);
+    if (n.kind === 'geo') {
+      const tag = document.createElement('em');
+      tag.textContent = n.payload.graph.isTimeDependent(n.payload.displayNode) ? 'time' : 'static';
+      tag.className = 'tag';
+      row.appendChild(tag);
+    }
+    if (n.kind === 'geo') row.onclick = () => { selectedScene = id; selectedNode = n.payload.displayNode; renderAll(); };
+    host.appendChild(row);
+  }
+}
+
+/* ---- ノード一覧とパラメータ ---- */
+let selectedScene = 'arena';
+let selectedNode = 'arena1';
+
+function currentGraph() { return store.get(selectedScene).payload.graph; }
+
+function renderNodeList() {
+  const host = el('nodelist');
+  host.innerHTML = '';
+  const g = currentGraph();
+  for (const [id, n] of g.nodes) {
+    const row = document.createElement('div');
+    row.className = 'row' + (id === selectedNode ? ' sel' : '');
+    row.textContent = (n.def.label || n.type);
+    const s = document.createElement('em');
+    s.className = 'tag'; s.textContent = id;
+    row.appendChild(s);
+    if (n.error) row.classList.add('err');
+    row.onclick = () => { selectedNode = id; renderAll(); };
+    host.appendChild(row);
+  }
+}
+
+function renderParams() {
+  const host = el('params');
+  host.innerHTML = '';
+  const g = currentGraph();
+  const n = g.nodes.get(selectedNode);
+  if (!n) return;
+
+  for (const [k, spec] of Object.entries(n.def.params)) {
+    if (spec.type === 'string' && k === 'code') continue;
+    const wrap = document.createElement('div');
+    wrap.className = 'pfield';
+    const lab = document.createElement('label');
+    lab.textContent = k;
+    wrap.appendChild(lab);
+
+    if (spec.type === 'int' || spec.type === 'float') {
+      const inp = document.createElement('input');
+      inp.type = 'number'; inp.value = n.params[k];
+      inp.step = spec.type === 'int' ? 1 : 0.1;
+      inp.oninput = () => {
+        const v = spec.type === 'int' ? parseInt(inp.value, 10) : parseFloat(inp.value);
+        if (!isFinite(v)) return;
+        n.setParam(k, v);
+        store.markDirty(selectedScene);
+        for (const id of store.order)
+          if (store.get(id).kind === 'geo' && store.get(id).payload.graph === g) store.markDirty(id);
+        buildFrame();
+      };
+      wrap.appendChild(inp);
+    } else if (spec.type === 'vec2' || spec.type === 'vec3') {
+      const box = document.createElement('div');
+      box.className = 'vec';
+      (n.params[k] || []).forEach((val, i) => {
+        const inp = document.createElement('input');
+        inp.type = 'number'; inp.value = val; inp.step = 0.1;
+        inp.oninput = () => {
+          const arr = n.params[k].slice(); arr[i] = parseFloat(inp.value) || 0;
+          n.setParam(k, arr); store.markDirty(selectedScene); buildFrame();
+        };
+        box.appendChild(inp);
+      });
+      wrap.appendChild(box);
+    } else {
+      const inp = document.createElement('input');
+      inp.type = 'text'; inp.value = n.params[k];
+      inp.oninput = () => { n.setParam(k, inp.value); store.markDirty(selectedScene); buildFrame(); };
+      wrap.appendChild(inp);
+    }
+    host.appendChild(wrap);
+  }
+
+  /* スニペット */
+  const sn = el('snipwrap');
+  if (n.type === 'snippet') {
+    sn.style.display = '';
+    el('snippet').value = n.params.code || '';
+    el('snipclass').value = n.params.class || 'point';
+  } else {
+    sn.style.display = 'none';
+  }
+}
+
+el('snipapply').onclick = () => {
+  /* 適用のたびに時間依存が変わりうるのでアウトライナも描き直す */
+  const g = currentGraph();
+  const n = g.nodes.get(selectedNode);
+  if (!n || n.type !== 'snippet') return;
+  n.setParam('class', el('snipclass').value);
+  n.setParam('code', el('snippet').value);
+  for (const id of store.order)
+    if (store.get(id).kind === 'geo' && store.get(id).payload.graph === g) store.markDirty(id);
+  buildFrame();
+  renderOutliner();
+  renderNodeList();
+};
+
+/* ---- cook レポート ---- */
+function renderReport() {
+  const host = el('report');
+  const rows = [];
+  const seenG = new Set();
+  for (const id of store.order) {
+    const n = store.get(id);
+    if (n.kind !== 'geo') continue;
+    const g = n.payload.graph;
+    if (seenG.has(g)) continue;
+    seenG.add(g);
+    const base = graphBase.has(g) ? graphBase.get(g) : 0;
+    for (const [nid, nd] of g.nodes) {
+      if (!nd.stats) continue;
+      rows.push({ id: nid, fresh: (nd.stats.serial || 0) > base, ...nd.stats });
+    }
+  }
+  const uniq = rows;
+
+  host.innerHTML =
+    '<table><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"></colgroup><thead><tr><th>ノード</th><th>ms</th><th>点</th><th>面</th><th>time</th><th>状態</th></tr></thead><tbody>' +
+    uniq.map(r => {
+      const fresh = r.fresh;
+      const state = r.error
+        ? `<span class="bad">${r.error}</span>`
+        : (r.warnings && r.warnings.length ? `<span class="warn">${r.warnings[0]}</span>`
+          : (fresh ? '<span class="ok">再計算</span>' : '<span class="cache">キャッシュ</span>'));
+      return `<tr><td>${r.id}</td><td>${r.ms}</td><td>${r.points}</td><td>${r.prims}</td><td>${r.timeDep ? '●' : ''}</td><td>${state}</td></tr>`;
+    }).join('') + '</tbody></table>';
+
+  el('stats').textContent =
+    `build ${lastBuildMs.toFixed(1)}ms / 再構築 ${lastBuilt.length} レイヤ / t=${time.toFixed(2)}s`;
+}
+
+function renderAll() { renderOutliner(); renderNodeList(); renderParams(); renderReport(); }
+
+/* ---- 再生 ---- */
+el('play').onclick = () => {
+  playing = !playing;
+  el('play').textContent = playing ? '■ 停止' : '▶ 再生';
+};
+el('reset').onclick = () => { time = 0; markAllDirty(); buildFrame(); };
+
+/* ============================================================
+   6. 起動
+   ============================================================ */
+
+resize();
+applyCamera();
+buildFrame();
+renderAll();
+loop();
+
+/* テスト用フック */
+window.__xb = { store, cityGraph, arenaGraph, flowGraph, roadGraph, lmGraph, scene, camera,
+  step(dt) { time += dt; for (const id of store.timeDependentIds()) store.markDirty(id); buildFrame(); },
+  counts() {
+    let tri = 0, pts = 0;
+    scene.traverse(o => {
+      if (o.isMesh) tri += o.geometry.attributes.position.count / 3;
+      if (o.isPoints) pts += o.geometry.attributes.position.count;
+    });
+    return { tri, pts, layers: Object.keys(groups).length };
+  } };
+
+});
+require("app");
+})();

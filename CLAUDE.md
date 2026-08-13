@@ -22,12 +22,16 @@ XBUILD のジオメトリ データフロー層。`SPEC.md` が唯一の真実�
   `resize` が共有バッファを切り離し損ねる漏れが実際に発生している（SPEC.md §6.1）。
 - 反復処理では `AttribSet.count`（論理要素数）を使う。`Attribute.capacity` は容量であって要素数ではない。
 - ノードの `cook` は入力を破壊しない。書き換えるなら必ず `ctx.in(i)`（COW クローン）を経由する。
+- **キャッシュを古くしてよいのは invalidate 経由のみ**（invalidate は下流へ伝播する）。
+  ノード単位のキャッシュキー比較だけで鮮度を判断する実装は、プル評価では上流に
+  遡らず古い結果を返す（SPEC.md §18.3）。新しい評価文脈を足すときは
+  `Graph._syncContext` で push 型 invalidate に変換すること。
 
 ## 検証
 
 ```bash
 node --check src/*.js
-node --test test/basic.test.js
+node --test test/*.test.js
 ```
 
 P6（ビューア結合）以降のみ、追加で:
@@ -92,13 +96,17 @@ node --check dist/_bundle_check.js # HTML に直接 --check をかけないこ�
 
 ## 現在地
 
-P1 / P2 / P3 / P6 / 実データ結合 完了。テスト 66件すべて緑。
+P1 / P2 / P3 / P4 / P6 / 実データ結合 完了。テスト 87件すべて緑。
 
 `dist/xbuild_dataflow.html` は東静岡アリーナ予定地の実データ（PLATEAU LOD1 1,088棟 +
 OSM 道路網 + 人流900体 + 計画アリーナ）で動作する。遅延プル評価・動的な時間依存・
 エラー伝播・属性操作・干渉チェックがブラウザ実機で確認済み（SPEC.md §15, §16, §17）。
 
-次の候補は P4（サブネット + パラメータ昇格 = XDA）、P6.5（ピッキング + 差分更新 + LOD）、
+P4（サブネット + パラメータ昇格 + XDA）はエンジンと形式が確定（SPEC.md §18）。
+`'@parent.name'` 参照は cook 時に解決され、変化は push 型 invalidate に変換される
+（プル評価とノード単位キャッシュキーは両立しない — §18.3 の罠を読むこと）。
+
+次の候補は P5（For-Each ブロック）、P6.5（ピッキング + 差分更新 + LOD + サブネット編集 UI）、
 人流モデルの精緻化（SPEC.md §17.8）。マイルストーン全体は SPEC.md §13 を参照。
 
 ## データの再生成
