@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BASE SPORTS PERFORMANCE — ELITE COURT プランナー（プロトタイプ）</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;font-family:"Hiragino Sans","Noto Sans JP",sans-serif}
+#view{position:fixed;inset:0}
+.panel{position:fixed;background:rgba(255,255,255,.94);border:1px solid #d5dde4;border-radius:10px;
+  padding:12px 14px;font-size:12px;color:#26313c;box-shadow:0 4px 14px rgba(30,50,70,.10)}
+#hud{top:14px;left:14px;width:248px;max-height:calc(100vh - 288px);overflow:auto}
+#hud h1{font-size:14px;margin:0 0 2px;letter-spacing:.02em}
+#hud h1 .b{color:#c8352e}
+#hud .sub{color:#7d8a96;font-size:10.5px;margin-bottom:8px}
+.sec{border-top:1px solid #e3e9ee;margin-top:8px;padding-top:8px}
+.sec h3{font-size:11px;margin:0 0 5px;color:#5a6774;letter-spacing:.04em}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+.gbtn{border:1px solid #c9d3dc;background:#fff;border-radius:6px;padding:6px 2px;font-size:11px;
+  cursor:pointer;color:#26313c;text-align:center;line-height:1.25}
+.gbtn small{display:block;color:#8b98a4;font-size:9px}
+.gbtn.on{background:#1b355e;color:#fff;border-color:#1b355e}
+.gbtn.on small{color:#b8c6da}
+.stat{display:flex;justify-content:space-between;gap:10px;padding:1.5px 0}
+.stat b{font-variant-numeric:tabular-nums}
+.spec{color:#5a6774;font-size:10.5px;line-height:1.55;margin-top:4px}
+.chart{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:3px 0 2px}
+.sw{height:20px;border-radius:4px;border:2px solid rgba(0,0,0,.12);cursor:pointer;position:relative}
+.sw.on{border-color:#1b355e;box-shadow:0 0 0 1.5px #1b355e}
+.sw:hover::after{content:attr(data-n);position:absolute;bottom:110%;left:50%;transform:translateX(-50%);
+  background:#26313c;color:#fff;font-size:9.5px;padding:2px 6px;border-radius:4px;white-space:nowrap;z-index:5}
+.zl{font-size:10px;color:#8b98a4;margin-top:5px}
+#boothsel{top:14px;right:14px;width:220px;display:none}
+#boothsel h2{font-size:12.5px;margin:0 0 4px}
+#boothsel .spec{margin-bottom:8px}
+.act{display:flex;gap:6px;margin-top:6px}
+.act button{flex:1;border:1px solid #c9d3dc;background:#fff;border-radius:6px;padding:6px 4px;
+  font-size:11.5px;cursor:pointer;color:#26313c}
+.act button:active{background:#e8f0f8}
+#bs_del{color:#b8323a;border-color:#e0b6b9}
+#pal{bottom:16px;right:14px;width:252px;max-height:46vh;overflow:auto}
+#pal h3{font-size:11px;margin:0 0 6px;color:#5a6774}
+#pal .hintt{font-size:10px;color:#8b98a4;margin-top:6px}
+#tile3d{bottom:16px;left:14px;width:196px;padding:10px 12px}
+#tile3d h3{font-size:11px;margin:0 0 6px;color:#5a6774}
+#tileview{width:172px;height:150px;border-radius:8px;overflow:hidden;background:#e9eef3}
+#tile3d .cap{font-size:10px;color:#8b98a4;margin-top:5px;line-height:1.4}
+#bar{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px}
+#bar button{border:1px solid #c9d3dc;background:rgba(255,255,255,.94);border-radius:8px;
+  padding:7px 12px 5px;cursor:pointer;color:#26313c;display:flex;flex-direction:column;align-items:center;gap:2px}
+#bar svg{width:18px;height:18px}
+#bar span{font-size:9.5px;letter-spacing:.02em}
+#bar button.on{background:#1b355e;color:#fff;border-color:#1b355e}
+#hint{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:rgba(38,49,60,.85);
+  color:#fff;font-size:11.5px;padding:6px 14px;border-radius:20px;pointer-events:none;opacity:0;transition:opacity .3s;z-index:10}
+</style></head><body>
+<div id="view"></div>
+<div id="hint"></div>
+
+<!-- ========= 左パネル：コート / 床材 / カラー ========= -->
+<div id="hud" class="panel">
+<h1>BASE <span class="b">SPORTS</span> PERFORMANCE<br><span style="font-size:11px;color:#5a6774">ELITE COURT シミュレーター（試作）</span></h1>
+<div class="sub">コート・床材・カラーを切替 / ブースはドラッグで配置</div>
+
+<div class="sec"><h3>競技コート</h3>
+<div class="grid2" id="sports"></div>
+</div>
+
+<div class="sec"><h3>床材（ELITE COURT シリーズ）</h3>
+<div class="grid3" id="floors"></div>
+<div class="spec" id="floorspec"></div>
+</div>
+
+<div class="sec"><h3>カラーチャート</h3>
+<div class="zl">メインカラー（コート内）</div><div class="chart" id="ch_main"></div>
+<div class="zl">サブカラー（外周）</div><div class="chart" id="ch_sub"></div>
+<div class="zl">アクセント（キー・ゴールエリア等）</div><div class="chart" id="ch_acc"></div>
+<div class="zl">ラインカラー</div><div class="chart" id="ch_line" style="grid-template-columns:repeat(6,1fr)"></div>
+</div>
+
+<div class="sec"><h3>概算数量</h3>
+<div class="stat"><span>床面積</span><b id="st_area">—</b></div>
+<div class="stat"><span>必要タイル</span><b id="st_tiles">—</b></div>
+<div class="stat"><span>箱数</span><b id="st_boxes">—</b></div>
+<div class="stat"><span>概算重量</span><b id="st_weight">—</b></div>
+</div>
+</div>
+
+<!-- ========= 右上：選択ブース ========= -->
+<div id="boothsel" class="panel">
+<h2 id="bs_name">—</h2>
+<div class="spec" id="bs_spec">ドラッグで移動できます</div>
+<div class="act">
+<button id="bs_rotL">⟲ 45°</button>
+<button id="bs_rotR">⟳ 45°</button>
+</div>
+<div class="act">
+<button id="bs_dup">⧉ 複製</button>
+<button id="bs_del">🗑 削除</button>
+<button id="bs_close">✕</button>
+</div>
+</div>
+
+<!-- ========= 右下：ブースパレット ========= -->
+<div id="pal" class="panel">
+<h3>ブース配置（クリックで追加 → ドラッグで移動）</h3>
+<div class="grid2" id="booths"></div>
+<div class="hintt">コート外周に自動配置されます。選択後 ⟲⟳ で回転、複製・削除も可能。</div>
+</div>
+
+<!-- ========= 左下：タイル3D ========= -->
+<div id="tile3d" class="panel">
+<h3>タイル構造モデル（実寸比）</h3>
+<div id="tileview"></div>
+<div class="cap" id="tilecap">—</div>
+</div>
+
+<!-- ========= 下部：ビュー ========= -->
+<div id="bar">
+<button class="vb on" id="vb_bird" onclick="setView('bird')"><svg viewBox="0 0 24 24"><path d="M12 3 3 8v8l9 5 9-5V8z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 8l9 5 9-5M12 13v8" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>俯瞰</span></button>
+<button class="vb" id="vb_top" onclick="setView('top')"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 12h16M12 4v16" stroke="currentColor" stroke-width="0.9"/></svg><span>真上</span></button>
+<button class="vb" id="vb_side" onclick="setView('side')"><svg viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 17h16" stroke="currentColor" stroke-width="0.9"/></svg><span>サイド</span></button>
+<button id="rotBtn" class="on"><svg viewBox="0 0 24 24"><path d="M4.5 12a7.5 7.5 0 1 1 2.2 5.3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M4.5 21v-4.2h4.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg><span>回転</span></button>
+</div>
+
+<script src="three.min.js"></script>
+<script>
+(function(){
+"use strict";
+/* ================= 基本セットアップ ================= */
+var scene=new THREE.Scene(); scene.background=new THREE.Color(0xeef2f6);
+scene.fog=new THREE.Fog(0xeef2f6,180,460);
+var cam=new THREE.PerspectiveCamera(46,innerWidth/innerHeight,0.2,1200);
+cam.up.set(0,0,1);
+var renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+document.getElementById('view').appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xffffff,0xb8c4cc,0.78));
+var dl=new THREE.DirectionalLight(0xffffff,0.42); dl.position.set(70,-60,110); scene.add(dl);
+var dl2=new THREE.DirectionalLight(0xdfe8ff,0.18); dl2.position.set(-60,80,50); scene.add(dl2);
+var ANISO=renderer.capabilities.getMaxAnisotropy();
+
+function shade(hex,p){ /* hex "#rrggbb", p=-100..100 */
+  var n=parseInt(hex.slice(1),16),r=n>>16,g=(n>>8)&255,b=n&255,t=p<0?0:255,a=Math.abs(p)/100;
+  r=Math.round(r+(t-r)*a);g=Math.round(g+(t-g)*a);b=Math.round(b+(t-b)*a);
+  return "#"+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+function Ph(c,op){var m=new THREE.MeshPhongMaterial({color:c,flatShading:true,shininess:18});
+  if(op!==undefined){m.transparent=true;m.opacity=op;}return m;}
+
+/* ================= 床材マスタ（basesp.jp/court.html 準拠） ================= */
+var FLOORS={
+ pro:{
+  name:"ELITE COURT PRO", tile:0.3048, th:0.021, perBox:36, boxKg:25, tileG:645, warranty:"最大10年",
+  use:"屋内・屋外", pattern:"tri",
+  desc:"304.8×304.8×21mm / 32個のクッションで衝撃吸収 / 屋内外対応",
+  chart:[
+   {n:"Yellow",c:"#f0c020"},{n:"Orange",c:"#e87722"},{n:"Red",c:"#c8352e"},
+   {n:"Light blue",c:"#4aa3df"},{n:"Navy",c:"#1f3a6e"},{n:"Green",c:"#1f7a4d"},
+   {n:"Purple",c:"#6b4fa0"},{n:"Light Brown",c:"#b98d5f"},{n:"Light Green",c:"#7fbf5f"},
+   {n:"Grey",c:"#9aa0a6"},{n:"Dark Grey",c:"#4a4f55"},{n:"Black",c:"#23262a"}]
+ },
+ control:{
+  name:"ELITE COURT CONTROL", tile:0.3071, th:0.012, perBox:60, boxKg:21, tileG:395, warranty:"最大5年",
+  use:"屋外（ピックルボール設計）", pattern:"dot",
+  desc:"307.1×307.1×12mm / 弾性素材でグリップと自然な球足を両立",
+  chart:[ /* 10色（参考色） */
+   {n:"Red",c:"#c8352e"},{n:"Orange",c:"#e87722"},{n:"Yellow",c:"#f0c020"},
+   {n:"Green",c:"#1f7a4d"},{n:"Light Green",c:"#7fbf5f"},{n:"Light Blue",c:"#4aa3df"},
+   {n:"Blue",c:"#2b62b0"},{n:"Navy",c:"#1f3a6e"},{n:"Grey",c:"#9aa0a6"},{n:"Black",c:"#23262a"}]
+ },
+ smooth:{
+  name:"ELITE COURT SMOOTH", tile:0.304, th:0.01455, perBox:54, boxKg:23, tileG:396, warranty:"最大10年",
+  use:"屋内専用（木目調）", pattern:"wood",
+  desc:"304×304×14.55mm / 天然木のような外観＋TPEクッション構造",
+  chart:[ /* 木目トーン（参考） */
+   {n:"メープル",c:"#d9b382"},{n:"オーク",c:"#c69a63"},{n:"チェリー",c:"#a9683c"},
+   {n:"ウォルナット",c:"#6f4a2f"}]
+ }
+};
+var LINECOLORS=[{n:"White",c:"#ffffff"},{n:"Yellow",c:"#f5d327"},{n:"Black",c:"#1c1e22"}];
+
+/* ================= 競技マスタ ================= */
+/* court: ライン基準の内寸 / floorW,floorD: 床材敷設全体 */
+var SPORTS={
+ b3x3:{label:"バスケット 3on3",sub:"屋外 15×11m",courtW:15,courtD:11,floorW:21,floorD:17,
+   def:{floor:"pro",main:"#4aa3df",subc:"#1f3a6e",acc:"#9aa0a6",line:"#ffffff"}},
+ bball:{label:"バスケット 屋内",sub:"28×15m",courtW:28,courtD:15,floorW:32,floorD:19,
+   def:{floor:"smooth",main:"#d9b382",subc:"#a9683c",acc:"#c69a63",line:"#c8352e"}},
+ handball:{label:"ハンドボール",sub:"40×20m",courtW:40,courtD:20,floorW:44,floorD:24,
+   def:{floor:"pro",main:"#4aa3df",subc:"#9aa0a6",acc:"#f0c020",line:"#ffffff"}},
+ futsal:{label:"フットサル",sub:"40×20m",courtW:40,courtD:20,floorW:45,floorD:25,
+   def:{floor:"pro",main:"#1f7a4d",subc:"#4a4f55",acc:"#7fbf5f",line:"#ffffff"}},
+ tennis:{label:"テニス",sub:"23.77×10.97m",courtW:23.77,courtD:10.97,floorW:34.8,floorD:17.1,
+   def:{floor:"control",main:"#2b62b0",subc:"#1f7a4d",acc:"#2b62b0",line:"#ffffff"}},
+ tt:{label:"テーブルテニス",sub:"卓球 14×7m",courtW:14,courtD:7,floorW:17,floorD:10,
+   def:{floor:"pro",main:"#c8352e",subc:"#4a4f55",acc:"#c8352e",line:"#ffffff"}}
+};
+var state={sport:"b3x3",floor:"pro",main:"#4aa3df",subc:"#1f3a6e",acc:"#9aa0a6",line:"#ffffff"};
+
+/* ================= 床テクスチャ生成 ================= */
+function makeFloorTexture(){
+  var sp=SPORTS[state.sport],fl=FLOORS[state.floor];
+  var FW=sp.floorW,FD=sp.floorD;
+  var CW=4096,CH=Math.round(CW*FD/FW);
+  var cv=document.createElement('canvas');cv.width=CW;cv.height=CH;
+  var ctx=cv.getContext('2d'),s=CW/FW;
+  function X(x){return (FW/2+x)*s;}    /* コート中心原点(m)→px */
+  function Y(y){return (FD/2+y)*s;}
+  /* --- ゾーン塗り --- */
+  ctx.fillStyle=state.subc; ctx.fillRect(0,0,CW,CH);
+  ctx.fillStyle=state.main;
+  ctx.fillRect(X(-sp.courtW/2),Y(-sp.courtD/2),sp.courtW*s,sp.courtD*s);
+
+  /* --- アクセントゾーン --- */
+  ctx.fillStyle=state.acc;
+  if(state.sport==="bball"){
+    [-1,1].forEach(function(e){
+      var x0=Math.min(X(e*14),X(e*(14-5.8)));
+      ctx.fillRect(x0,Y(-2.45),5.8*s,4.9*s);
+    });
+    ctx.beginPath();ctx.arc(X(0),Y(0),1.8*s,0,7);ctx.fill();
+  }
+  if(state.sport==="b3x3"){
+    ctx.fillRect(X(-4.9/2),Y(-5.5),4.9*s,5.8*s);
+  }
+  if(state.sport==="handball"){
+    [-1,1].forEach(function(e){
+      ctx.beginPath();
+      var bx=e*20;
+      ctx.moveTo(X(bx),Y(-7.5));
+      ctx.arc(X(bx),Y(-1.5),6*s,(e>0?Math.PI/2:Math.PI/2),(e>0?Math.PI:0),e>0);
+      ctx.arc(X(bx),Y(1.5),6*s,(e>0?Math.PI:0),(e>0?Math.PI*1.5:Math.PI*1.5),e>0);
+      ctx.lineTo(X(bx),Y(7.5));
+      ctx.closePath();ctx.fill();
+    });
+  }
+  if(state.sport==="futsal"){
+    [-1,1].forEach(function(e){
+      ctx.beginPath();
+      var bx=e*20;
+      ctx.moveTo(X(bx),Y(-7.58));
+      ctx.arc(X(bx),Y(-1.58),6*s,(e>0?Math.PI/2:Math.PI/2),(e>0?Math.PI:0),e>0);
+      ctx.arc(X(bx),Y(1.58),6*s,(e>0?Math.PI:0),(e>0?Math.PI*1.5:Math.PI*1.5),e>0);
+      ctx.lineTo(X(bx),Y(7.58));
+      ctx.closePath();ctx.fill();
+    });
+  }
+
+  /* --- タイルパターン --- */
+  var t=fl.tile,nx=Math.ceil(FW/t),ny=Math.ceil(FD/t),tp=t*s;
+  if(fl.pattern==="wood"){
+    /* 木目調：板張り表現（決定論的レイアウトを2パスで描き、ゾーン境界はクリップ） */
+    var ph=t/3; /* 1タイル3枚板 */
+    function drawPlanks(base){
+      var row,x0;
+      for(row=0;row<ny*3;row++){
+        var py=row*ph*s, off=((row*7919)%100)/100*1.2;
+        x0=-off;
+        while(x0<FW){
+          var len=0.9+((Math.abs(Math.sin(row*12.9898+x0*78.233))*43758.5453)%1)*1.2;
+          var jit=(((Math.abs(Math.sin(row*3.7+x0*9.1))*10000)%1)-0.5)*14;
+          ctx.fillStyle=shade(base,jit);
+          ctx.fillRect(x0*s,py,len*s+1,ph*s+1);
+          /* 木目線 */
+          ctx.strokeStyle=shade(base,-18);ctx.globalAlpha=0.35;ctx.lineWidth=1;
+          ctx.beginPath();
+          ctx.moveTo(x0*s+4,py+ph*s*0.35);ctx.lineTo((x0+len)*s-4,py+ph*s*0.30);
+          ctx.moveTo(x0*s+4,py+ph*s*0.72);ctx.lineTo((x0+len)*s-4,py+ph*s*0.78);
+          ctx.stroke();ctx.globalAlpha=1;
+          /* 板端 */
+          ctx.fillStyle="rgba(40,25,12,.45)";ctx.fillRect((x0+len)*s-1,py,2,ph*s);
+          x0+=len;
+        }
+        ctx.fillStyle="rgba(40,25,12,.5)";ctx.fillRect(0,py,CW,1.6);
+      }
+    }
+    drawPlanks(state.subc);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(X(-sp.courtW/2),Y(-sp.courtD/2),sp.courtW*s,sp.courtD*s);
+    ctx.clip();
+    drawPlanks(state.main);
+    ctx.restore();
+  }else{
+    /* 樹脂タイル：目地＋表面パターン */
+    var i,j;
+    for(i=0;i<nx;i++)for(j=0;j<ny;j++){
+      var px=i*tp,py2=j*tp;
+      var cxm2=i*t+t/2-FW/2, cym2=j*t+t/2-FD/2;
+      var inC2=Math.abs(cxm2)<sp.courtW/2&&Math.abs(cym2)<sp.courtD/2;
+      var b=inC2?state.main:state.subc;
+      /* アクセント帯の中はキャンバス色をそのまま活かすため塗り直さない */
+      ctx.strokeStyle="rgba(0,0,0,.22)";ctx.lineWidth=Math.max(1,tp*0.025);
+      ctx.strokeRect(px,py2,tp,tp);
+      ctx.strokeStyle="rgba(0,0,0,.10)";ctx.lineWidth=1;
+      if(fl.pattern==="tri"){
+        ctx.beginPath();
+        ctx.moveTo(px,py2);ctx.lineTo(px+tp,py2+tp);
+        ctx.moveTo(px+tp,py2);ctx.lineTo(px,py2+tp);
+        ctx.moveTo(px+tp/2,py2);ctx.lineTo(px+tp/2,py2+tp);
+        ctx.moveTo(px,py2+tp/2);ctx.lineTo(px+tp,py2+tp/2);
+        ctx.stroke();
+        ctx.strokeStyle="rgba(255,255,255,.07)";
+        ctx.strokeRect(px+tp*0.08,py2+tp*0.08,tp*0.84,tp*0.84);
+      }else{ /* dot（パンチング） */
+        ctx.fillStyle="rgba(0,0,0,.16)";
+        var k,l,dn=5,dr=tp*0.045;
+        for(k=0;k<dn;k++)for(l=0;l<dn;l++){
+          ctx.beginPath();
+          ctx.arc(px+tp*(k+0.5)/dn,py2+tp*(l+0.5)/dn,dr,0,7);ctx.fill();
+        }
+      }
+    }
+  }
+
+  /* --- コートライン --- */
+  ctx.strokeStyle=state.line;ctx.fillStyle=state.line;
+  ctx.lineWidth=0.05*s;ctx.lineCap="butt";
+  var W2=sp.courtW/2,D2=sp.courtD/2;
+  function rect(x0,y0,w,h){ctx.strokeRect(X(x0),Y(y0),w*s,h*s);}
+  function seg(x0,y0,x1,y1){ctx.beginPath();ctx.moveTo(X(x0),Y(y0));ctx.lineTo(X(x1),Y(y1));ctx.stroke();}
+  function arc(cx,cy,r,a0,a1,ccw){ctx.beginPath();ctx.arc(X(cx),Y(cy),r*s,a0,a1,!!ccw);ctx.stroke();}
+
+  if(state.sport==="b3x3"){
+    /* 15m(横=x)×11m(縦=y)、ベースラインは y=-5.5 側 */
+    rect(-W2,-D2,sp.courtW,sp.courtD);
+    var ry=-5.5+1.575;               /* リング直下 */
+    rect(-2.45,-5.5,4.9,5.8);        /* キー */
+    arc(0,0.3,1.8,0,Math.PI,false);  /* FTサークル(コート側半円) */
+    /* 3Pアーク＋コーナー直線（サイドラインから0.9m） */
+    seg(-6.6,-5.5,-6.6,ry+1.417); seg(6.6,-5.5,6.6,ry+1.417);
+    var a=Math.atan2(1.417,6.6);
+    arc(0,ry,6.75,a,Math.PI-a,false);
+    arc(0,ry,1.25,0,Math.PI,false);  /* ノーチャージ */
+  }
+  if(state.sport==="bball"){
+    rect(-14,-7.5,28,15);
+    seg(0,-7.5,0,7.5);
+    arc(0,0,1.8,0,7);
+    [-1,1].forEach(function(e){
+      var rx=e*(14-1.575);
+      rect(Math.min(e*14,e*(14-5.8)),-2.45,5.8,4.9);
+      arc(e*(14-5.8),0,1.8,0,7);
+      seg(e*14,-6.6,rx+ -e*1.417,-6.6);
+      seg(e*14, 6.6,rx+ -e*1.417, 6.6);
+      var a0=Math.atan2(6.6,-e*1.417);
+      if(e>0)arc(rx,0,6.75,a0,Math.PI*2-a0,false);
+      else arc(rx,0,6.75,-a0,a0,false);
+      /* ノーチャージ */
+      if(e>0)arc(rx,0,1.25,Math.PI/2,Math.PI*1.5,false);
+      else arc(rx,0,1.25,-Math.PI/2,Math.PI/2,false);
+    });
+  }
+  if(state.sport==="handball"){
+    rect(-20,-10,40,20); seg(0,-10,0,10);
+    [-1,1].forEach(function(e){
+      var bx=e*20;
+      /* 6mライン */
+      ctx.beginPath();
+      ctx.moveTo(X(bx),Y(e>0?-7.5:-7.5));
+      ctx.arc(X(bx),Y(-1.5),6*s,Math.PI/2,e>0?Math.PI:0,e>0);
+      ctx.arc(X(bx),Y(1.5),6*s,e>0?Math.PI:0,Math.PI*1.5,e>0);
+      ctx.lineTo(X(bx),Y(7.5));
+      ctx.stroke();
+      /* 9mライン（破線） */
+      ctx.setLineDash([0.35*s,0.30*s]);
+      ctx.beginPath();
+      ctx.arc(X(bx),Y(-1.5),9*s,Math.PI/2,e>0?Math.PI:0,e>0);
+      ctx.arc(X(bx),Y(1.5),9*s,e>0?Math.PI:0,Math.PI*1.5,e>0);
+      ctx.stroke();ctx.setLineDash([]);
+      seg(e*13,-0.5,e*13,0.5);       /* 7mスロー */
+      seg(e*16,-0.15,e*16,0.15);     /* 4mマーク */
+      seg(bx,-1.5,bx,1.5);           /* ゴールライン強調 */
+    });
+  }
+  if(state.sport==="futsal"){
+    rect(-20,-10,40,20); seg(0,-10,0,10);
+    arc(0,0,3,0,7);
+    [-1,1].forEach(function(e){
+      var bx=e*20;
+      ctx.beginPath();
+      ctx.moveTo(X(bx),Y(-7.58));
+      ctx.arc(X(bx),Y(-1.58),6*s,Math.PI/2,e>0?Math.PI:0,e>0);
+      ctx.arc(X(bx),Y(1.58),6*s,e>0?Math.PI:0,Math.PI*1.5,e>0);
+      ctx.lineTo(X(bx),Y(7.58));
+      ctx.stroke();
+      /* ペナルティマーク */
+      ctx.beginPath();ctx.arc(X(e*14),Y(0),0.06*s,0,7);ctx.fill();
+      ctx.beginPath();ctx.arc(X(e*10),Y(0),0.06*s,0,7);ctx.fill();
+      /* コーナーアーク */
+      [-1,1].forEach(function(f){
+        arc(bx,f*10,0.25,0,7);
+      });
+    });
+  }
+  if(state.sport==="tennis"){
+    rect(-11.885,-5.485,23.77,10.97);      /* ダブルス */
+    seg(-11.885,-4.115,11.885,-4.115);     /* シングルス */
+    seg(-11.885,4.115,11.885,4.115);
+    seg(-6.4,-4.115,-6.4,4.115);           /* サービスライン */
+    seg(6.4,-4.115,6.4,4.115);
+    seg(-6.4,0,6.4,0);                     /* センターサービス */
+    seg(-11.885,-0.0,-11.685,0);           /* センターマーク */
+    seg(11.685,0,11.885,0);
+    seg(0,-5.485,0,5.485);                 /* ネット位置 */
+  }
+  if(state.sport==="tt"){
+    rect(-7,-3.5,14,7);
+  }
+  var tex=new THREE.CanvasTexture(cv);
+  tex.anisotropy=ANISO;
+  tex.flipY=false;   /* キャンバス座標(+y=奥)とワールド座標を一致させる */
+  return tex;
+}
+
+/* ================= コート構築 ================= */
+var courtG=new THREE.Group(); scene.add(courtG);
+var ground=null;
+function buildGround(){
+  if(ground){scene.remove(ground);ground.geometry.dispose();ground.material.dispose();}
+  ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),
+    new THREE.MeshPhongMaterial({color:0x9aa2a8,flatShading:true}));
+  ground.position.z=-0.012;
+  scene.add(ground);
+}
+function clearGroup(g){
+  g.traverse(function(o){
+    if(o.geometry)o.geometry.dispose();
+    if(o.material){
+      (Array.isArray(o.material)?o.material:[o.material]).forEach(function(m){
+        if(m.map)m.map.dispose(); m.dispose();
+      });
+    }
+  });
+  while(g.children.length)g.remove(g.children[0]);
+}
+function buildCourt(){
+  clearGroup(courtG);
+  var sp=SPORTS[state.sport],fl=FLOORS[state.floor];
+  var tex=makeFloorTexture();
+  var side=Ph(shade(state.subc,-25));
+  var topM=new THREE.MeshPhongMaterial({map:tex,shininess:14});
+  var th=fl.th;
+  var slab=new THREE.Mesh(new THREE.BoxGeometry(sp.floorW,sp.floorD,th),
+    [side,side,side,side,topM,side]);
+  slab.position.z=th/2;
+  courtG.add(slab);
+  buildEquipment(sp,th);
+  refreshStats();
+}
+/* --- 競技用具 --- */
+function hoop(x,dir,z0){
+  var g=new THREE.Group();
+  var pole=new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.09,3.6,10),Ph(0x2a3138));
+  pole.geometry.rotateX(Math.PI/2);pole.position.set(x,0,1.8);g.add(pole);
+  var arm=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.12,0.12),Ph(0x2a3138));
+  arm.position.set(x+dir*0.65,0,3.35);g.add(arm);
+  var bb=new THREE.Mesh(new THREE.BoxGeometry(0.05,1.8,1.05),Ph(0xf4f6f8,0.92));
+  bb.position.set(x+dir*1.25,0,3.35);g.add(bb);
+  var ring=new THREE.Mesh(new THREE.TorusGeometry(0.225,0.02,8,24),Ph(0xe87722));
+  ring.position.set(x+dir*(1.25+0.30),0,3.05);g.add(ring);
+  var net=new THREE.Mesh(new THREE.CylinderGeometry(0.225,0.12,0.4,10,3,true),
+    new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true,transparent:true,opacity:0.5}));
+  net.geometry.rotateX(Math.PI/2);
+  net.position.set(x+dir*(1.25+0.30),0,2.85);g.add(net);
+  g.position.z=z0;
+  return g;
+}
+function goal(x,dir,z0){
+  var g=new THREE.Group(),M=Ph(0xc8352e);
+  [[-1.5],[1.5]].forEach(function(yy){
+    var p=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.08,2),M);
+    p.position.set(x,yy[0],1);g.add(p);
+  });
+  var cb=new THREE.Mesh(new THREE.BoxGeometry(0.08,3.08,0.08),M);
+  cb.position.set(x,0,2);g.add(cb);
+  var net=new THREE.Mesh(new THREE.BoxGeometry(0.8,3,1.9),
+    new THREE.MeshBasicMaterial({color:0xdde4ea,wireframe:true,transparent:true,opacity:0.35}));
+  net.position.set(x+dir*0.45,0,0.98);g.add(net);
+  g.position.z=z0;return g;
+}
+function tennisNet(z0){
+  var g=new THREE.Group();
+  [-1,1].forEach(function(e){
+    var p=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,1.1,8),Ph(0x2a3138));
+    p.geometry.rotateX(Math.PI/2);p.position.set(0,e*6.4,0.55);g.add(p);
+  });
+  var net=new THREE.Mesh(new THREE.BoxGeometry(0.02,12.8,0.95),
+    new THREE.MeshBasicMaterial({color:0x30363c,transparent:true,opacity:0.55}));
+  net.position.set(0,0,0.475);g.add(net);
+  var band=new THREE.Mesh(new THREE.BoxGeometry(0.03,12.8,0.07),Ph(0xffffff));
+  band.position.set(0,0,0.95);g.add(band);
+  g.position.z=z0;return g;
+}
+function ttTable(z0){
+  var g=new THREE.Group();
+  var top=new THREE.Mesh(new THREE.BoxGeometry(2.74,1.525,0.04),Ph(0x1b4f8a));
+  top.position.z=0.76;g.add(top);
+  var edge=new THREE.Mesh(new THREE.BoxGeometry(2.78,1.565,0.012),Ph(0xffffff));
+  edge.position.z=0.735;g.add(edge);
+  var cl=new THREE.Mesh(new THREE.BoxGeometry(2.74,0.03,0.006),Ph(0xffffff));
+  cl.position.z=0.784;g.add(cl);
+  [[-1.2,-0.6],[1.2,-0.6],[-1.2,0.6],[1.2,0.6]].forEach(function(p){
+    var leg=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.06,0.74),Ph(0x2a3138));
+    leg.position.set(p[0],p[1],0.37);g.add(leg);
+  });
+  var net=new THREE.Mesh(new THREE.BoxGeometry(0.015,1.83,0.1525),
+    new THREE.MeshBasicMaterial({color:0x233040,transparent:true,opacity:0.6}));
+  net.position.set(0,0,0.856);g.add(net);
+  g.position.z=z0;return g;
+}
+function buildEquipment(sp,th){
+  if(state.sport==="b3x3")courtG.add((function(){
+    var h=hoop(0,1,th); h.rotation.z=Math.PI/2;
+    /* ポール y=-5.475 → リング直下 y=-3.925（ベースラインから1.575m） */
+    h.position.x=0; h.position.y=-5.475;
+    return h;})());
+  if(state.sport==="bball"){
+    courtG.add(hoop(-14-0.55,1,th));
+    courtG.add(hoop(14+0.55,-1,th));
+  }
+  if(state.sport==="handball"||state.sport==="futsal"){
+    courtG.add(goal(-20,-1,th));
+    courtG.add(goal(20,1,th));
+  }
+  if(state.sport==="tennis")courtG.add(tennisNet(th));
+  if(state.sport==="tt")courtG.add(ttTable(th));
+}
+
+/* ================= ブース ================= */
+var boothG=new THREE.Group(); scene.add(boothG);
+var booths=[],boothSeq=0,selBooth=null;
+var TENTCOLS=[0xc8352e,0x2b62b0,0x1f7a4d,0xe87722,0x6b4fa0];
+function grp(name,spec){var g=new THREE.Group();g.userData={booth:true,name:name,spec:spec,id:++boothSeq};return g;}
+var BOOTHS={
+ tent:{label:"テントブース",spec:"3.0×3.0m 定番イベントテント",make:function(i){
+   var g=grp("テントブース","3.0×3.0m / ワンタッチ式"),c=TENTCOLS[i%TENTCOLS.length];
+   [[-1.4,-1.4],[1.4,-1.4],[-1.4,1.4],[1.4,1.4]].forEach(function(p){
+     var leg=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.06,2.0),Ph(0xd8dde2));
+     leg.position.set(p[0],p[1],1.0);g.add(leg);});
+   var roof=new THREE.Mesh(new THREE.ConeGeometry(2.15,0.9,4),Ph(c));
+   roof.geometry.rotateX(Math.PI/2);roof.geometry.rotateZ(Math.PI/4);
+   roof.position.z=2.45;g.add(roof);
+   var eave=new THREE.Mesh(new THREE.BoxGeometry(3.1,3.1,0.12),Ph(shade("#"+c.toString(16).padStart(6,"0"),-12)));
+   eave.position.z=2.0;g.add(eave);
+   var tbl=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.6,0.72),Ph(0xffffff));
+   tbl.position.set(0,-1.0,0.36);g.add(tbl);
+   return g;}},
+ kitchen:{label:"キッチンカー",spec:"全長4.8m フードトラック",make:function(i){
+   var cols=[0xf0c020,0xe87722,0x7fbf5f,0x4aa3df];
+   var g=grp("キッチンカー","全長4.8m / 販売窓・オーニング付"),c=cols[i%cols.length];
+   var body=new THREE.Mesh(new THREE.BoxGeometry(3.4,1.9,1.9),Ph(c));
+   body.position.set(-0.5,0,1.35);g.add(body);
+   var cab=new THREE.Mesh(new THREE.BoxGeometry(1.3,1.85,1.35),Ph(0xf4f6f8));
+   cab.position.set(1.75,0,1.05);g.add(cab);
+   var ws=new THREE.Mesh(new THREE.BoxGeometry(0.06,1.6,0.5),Ph(0x9cc4e0));
+   ws.position.set(2.35,0,1.45);g.add(ws);
+   [[-1.6,-0.95],[0.6,-0.95],[-1.6,0.95],[0.6,0.95],[1.8,-0.95],[1.8,0.95]].forEach(function(p){
+     var wh=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.34,0.22,14),Ph(0x23262a));
+     wh.position.set(p[0],p[1],0.34);g.add(wh);});
+   var win=new THREE.Mesh(new THREE.BoxGeometry(2.2,0.06,0.9),Ph(0x30363c));
+   win.position.set(-0.5,-0.96,1.6);g.add(win);
+   var aw=new THREE.Mesh(new THREE.BoxGeometry(2.5,0.9,0.05),Ph(0xffffff));
+   aw.position.set(-0.5,-1.45,2.25);aw.rotation.x=0.5;g.add(aw);
+   var counter=new THREE.Mesh(new THREE.BoxGeometry(2.4,0.3,0.08),Ph(0xd9b382));
+   counter.position.set(-0.5,-1.05,1.1);g.add(counter);
+   return g;}},
+ reception:{label:"受付ブース",spec:"受付テーブル＋チェア",make:function(){
+   var g=grp("受付ブース","1.8m テーブル＋チェア2脚");
+   var cloth=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.6,0.72),Ph(0x1b355e));
+   cloth.position.z=0.36;g.add(cloth);
+   var top=new THREE.Mesh(new THREE.BoxGeometry(1.86,0.66,0.04),Ph(0xf4f6f8));
+   top.position.z=0.74;g.add(top);
+   [[-0.5],[0.5]].forEach(function(x){
+     var ch=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.42,0.45),Ph(0x4a4f55));
+     ch.position.set(x[0],0.65,0.225);g.add(ch);
+     var bk=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.06,0.45),Ph(0x4a4f55));
+     bk.position.set(x[0],0.86,0.62);g.add(bk);});
+   return g;}},
+ bench:{label:"ベンチ",spec:"選手・観客用 1.8m",make:function(){
+   var g=grp("ベンチ","1.8m アルミベンチ");
+   var seat=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.36,0.06),Ph(0xd8dde2));
+   seat.position.z=0.45;g.add(seat);
+   var bk=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.06,0.34),Ph(0xd8dde2));
+   bk.position.set(0,0.2,0.75);g.add(bk);
+   [[-0.8],[0.8]].forEach(function(x){
+     var l=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.36,0.45),Ph(0x6a737c));
+     l.position.set(x[0],0,0.225);g.add(l);});
+   return g;}},
+ stand:{label:"観客スタンド",spec:"3段ベンチスタンド 5m",make:function(){
+   var g=grp("観客スタンド","3段 × 5.0m");
+   for(var k=0;k<3;k++){
+     var st=new THREE.Mesh(new THREE.BoxGeometry(5,0.45,0.35),Ph(k%2?0x2b62b0:0x35618f));
+     st.position.set(0,k*0.5,0.35+k*0.35-0.175+0.175);
+     st.position.z=0.175+k*0.35;g.add(st);
+   }
+   var fr=new THREE.Mesh(new THREE.BoxGeometry(5,1.5,0.08),Ph(0x6a737c));
+   fr.position.set(0,0.5,0.04);g.add(fr);
+   return g;}},
+ parasol:{label:"パラソル席",spec:"パラソル＋テーブルセット",make:function(i){
+   var g=grp("パラソル席","φ2.6mパラソル＋テーブル");
+   var c=TENTCOLS[(i+2)%TENTCOLS.length];
+   var pole=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,2.4,8),Ph(0xd8dde2));
+   pole.geometry.rotateX(Math.PI/2);pole.position.z=1.2;g.add(pole);
+   var top=new THREE.Mesh(new THREE.ConeGeometry(1.3,0.5,8),Ph(c));
+   top.geometry.rotateX(Math.PI/2);top.position.z=2.3;g.add(top);
+   var tbl=new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,0.05,16),Ph(0xf4f6f8));
+   tbl.geometry.rotateX(Math.PI/2);tbl.position.z=0.72;g.add(tbl);
+   [[0.75,0],[-0.75,0],[0,0.75],[0,-0.75]].forEach(function(p){
+     var st=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.45,10),Ph(0x4a4f55));
+     st.geometry.rotateX(Math.PI/2);st.position.set(p[0],p[1],0.225);g.add(st);});
+   return g;}},
+ flag:{label:"のぼり旗",spec:"フェザーフラッグ H4m",make:function(i){
+   var cols=[0xc8352e,0x2b62b0,0xe87722,0x1f7a4d];
+   var g=grp("のぼり旗","フェザーフラッグ H4.0m"),c=cols[i%cols.length];
+   var pole=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,4,8),Ph(0x6a737c));
+   pole.geometry.rotateX(Math.PI/2);pole.position.z=2;g.add(pole);
+   var fl2=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.65,3),Ph(c));
+   fl2.position.set(0,0.35,2.3);g.add(fl2);
+   var base=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.35,0.08,12),Ph(0x30363c));
+   base.geometry.rotateX(Math.PI/2);base.position.z=0.04;g.add(base);
+   return g;}},
+ vending:{label:"自動販売機",spec:"飲料自販機",make:function(i){
+   var g=grp("自動販売機","W1.0×D0.8×H1.9m");
+   var body=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.8,1.9),Ph(i%2?0xc8352e:0x2b62b0));
+   body.position.z=0.95;g.add(body);
+   var face=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.05,1.0),Ph(0xf4f6f8));
+   face.position.set(-0.05,-0.41,1.3);g.add(face);
+   return g;}},
+ stage:{label:"ステージ",spec:"イベントステージ 6×4m",make:function(){
+   var g=grp("ステージ","6×4m / バックパネル付");
+   var pf=new THREE.Mesh(new THREE.BoxGeometry(6,4,0.6),Ph(0x4a4f55));
+   pf.position.z=0.3;g.add(pf);
+   var bk=new THREE.Mesh(new THREE.BoxGeometry(6,0.15,3),Ph(0x1b355e));
+   bk.position.set(0,1.95,1.5+0.6-0.6+1.5-1.5+1.5);
+   bk.position.z=2.1;g.add(bk);
+   var step=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.8,0.3),Ph(0x6a737c));
+   step.position.set(0,-2.4,0.15);g.add(step);
+   return g;}},
+ toilet:{label:"仮設トイレ",spec:"仮設トイレユニット",make:function(){
+   var g=grp("仮設トイレ","1.2×1.2×H2.4m");
+   var body=new THREE.Mesh(new THREE.BoxGeometry(1.2,1.2,2.3),Ph(0xbfd5c6));
+   body.position.z=1.2;g.add(body);
+   var roof=new THREE.Mesh(new THREE.BoxGeometry(1.3,1.3,0.1),Ph(0x8fa89a));
+   roof.position.z=2.4;g.add(roof);
+   var door=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.04,1.8),Ph(0x9db8a8));
+   door.position.set(0,-0.62,1.0);g.add(door);
+   return g;}},
+ trash:{label:"ゴミステーション",spec:"分別ゴミ箱 3連",make:function(){
+   var g=grp("ゴミステーション","分別3連（可燃・ビン缶・ペット）");
+   [[-0.45,0x4a4f55],[0,0x2b62b0],[0.45,0xf0c020]].forEach(function(p){
+     var b=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.18,0.7,12),Ph(p[1]));
+     b.geometry.rotateX(Math.PI/2);b.position.set(p[0],0,0.35);g.add(b);});
+   var base=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.6,0.04),Ph(0x9aa0a6));
+   base.position.z=0.02;g.add(base);
+   return g;}},
+ score:{label:"スコアボード",spec:"移動式スコアボード",make:function(){
+   var g=grp("スコアボード","移動式 電光表示");
+   var pole=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.1,1.6),Ph(0x30363c));
+   pole.position.z=0.8;g.add(pole);
+   var bd=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.15,1.0),Ph(0x23262a));
+   bd.position.z=2.1;g.add(bd);
+   var sc=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.03,0.8),
+     new THREE.MeshBasicMaterial({color:0x1fd47a}));
+   sc.position.set(0,-0.09,2.1);g.add(sc);
+   var base=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.9,0.08),Ph(0x4a4f55));
+   base.position.z=0.04;g.add(base);
+   return g;}}
+};
+function spawnBooth(key){
+  var def=BOOTHS[key],sp=SPORTS[state.sport];
+  var count=booths.filter(function(b){return b.userData.key===key;}).length;
+  var g=def.make(count);
+  g.userData.key=key;
+  /* コート外周へ自動配置 */
+  var side=(booths.length)%4, off=2.5+ (booths.length%3)*3.5;
+  var hx=sp.floorW/2, hy=sp.floorD/2;
+  if(side===0){g.position.set(-hx+off, hy+3,0);}
+  else if(side===1){g.position.set(hx+3, hy-off,0);g.rotation.z=Math.PI/2;}
+  else if(side===2){g.position.set(hx-off, -hy-3,0);g.rotation.z=Math.PI;}
+  else {g.position.set(-hx-3, -hy+off,0);g.rotation.z=-Math.PI/2;}
+  boothG.add(g);booths.push(g);
+  selectBooth(g);
+  showHint(def.label+" を配置しました。ドラッグで移動できます");
+}
+function boothRoot(o){
+  while(o&&!(o.userData&&o.userData.booth))o=o.parent;
+  return o;
+}
+function setEmissive(g,on){
+  g.traverse(function(o){
+    if(o.material&&o.material.emissive!==undefined){
+      o.material.emissive=new THREE.Color(on?0xff7a1a:0x000000);
+      o.material.emissiveIntensity=on?0.4:0;
+    }
+  });
+}
+var bsPanel=document.getElementById('boothsel');
+function selectBooth(g){
+  deselectBooth();
+  selBooth=g;setEmissive(g,true);
+  document.getElementById('bs_name').textContent=g.userData.name;
+  document.getElementById('bs_spec').textContent=g.userData.spec+" / ドラッグで移動";
+  bsPanel.style.display='block';
+}
+function deselectBooth(){
+  if(!selBooth)return;
+  setEmissive(selBooth,false);selBooth=null;bsPanel.style.display='none';
+}
+document.getElementById('bs_rotL').onclick=function(){if(selBooth)selBooth.rotation.z+=Math.PI/4;};
+document.getElementById('bs_rotR').onclick=function(){if(selBooth)selBooth.rotation.z-=Math.PI/4;};
+document.getElementById('bs_dup').onclick=function(){
+  if(!selBooth)return;
+  var key=selBooth.userData.key,src=selBooth;
+  var count=booths.filter(function(b){return b.userData.key===key;}).length;
+  var g=BOOTHS[key].make(count);g.userData.key=key;
+  g.position.copy(src.position);g.position.x+=2.5;g.rotation.copy(src.rotation);
+  boothG.add(g);booths.push(g);selectBooth(g);
+};
+document.getElementById('bs_del').onclick=function(){
+  if(!selBooth)return;
+  var g=selBooth;deselectBooth();
+  boothG.remove(g);booths.splice(booths.indexOf(g),1);
+  g.traverse(function(o){if(o.geometry)o.geometry.dispose();});
+};
+document.getElementById('bs_close').onclick=deselectBooth;
+
+/* ================= タイル3D（左下インセット） ================= */
+var scene2=new THREE.Scene();scene2.background=new THREE.Color(0xe9eef3);
+var cam2=new THREE.PerspectiveCamera(38,172/150,0.01,10);cam2.up.set(0,0,1);
+var r2=new THREE.WebGLRenderer({antialias:true});
+r2.setPixelRatio(Math.min(devicePixelRatio,2));r2.setSize(172,150);
+document.getElementById('tileview').appendChild(r2.domElement);
+scene2.add(new THREE.HemisphereLight(0xffffff,0xb0bcc6,1.0));
+var tl=new THREE.DirectionalLight(0xffffff,0.7);tl.position.set(1,-1,1.5);scene2.add(tl);
+var tileG=new THREE.Group();scene2.add(tileG);
+function tilePatternTex(type,color){
+  var cv=document.createElement('canvas');cv.width=cv.height=256;
+  var c=cv.getContext('2d');
+  c.fillStyle=color;c.fillRect(0,0,256,256);
+  if(type==="tri"){
+    c.strokeStyle="rgba(0,0,0,.28)";c.lineWidth=3;
+    var n=4,st=256/n;
+    for(var i=0;i<n;i++)for(var j=0;j<n;j++){
+      var x=i*st,y=j*st;
+      c.strokeRect(x,y,st,st);
+      c.beginPath();
+      c.moveTo(x,y);c.lineTo(x+st,y+st);
+      c.moveTo(x+st,y);c.lineTo(x,y+st);
+      c.moveTo(x+st/2,y);c.lineTo(x+st/2,y+st);
+      c.moveTo(x,y+st/2);c.lineTo(x+st,y+st/2);
+      c.stroke();
+    }
+    c.strokeStyle="rgba(255,255,255,.14)";c.lineWidth=2;c.strokeRect(4,4,248,248);
+  }else if(type==="dot"){
+    c.fillStyle="rgba(0,0,0,.22)";
+    var m=10;
+    for(var k=0;k<m;k++)for(var l=0;l<m;l++){
+      c.beginPath();c.arc(256*(k+0.5)/m,256*(l+0.5)/m,5,0,7);c.fill();
+    }
+    c.strokeStyle="rgba(0,0,0,.3)";c.lineWidth=4;c.strokeRect(0,0,256,256);
+  }else{ /* wood */
+    for(var r=0;r<3;r++){
+      var y2=r*256/3;
+      c.fillStyle=shade(color,(r%2?6:-6));
+      c.fillRect(0,y2,256,256/3);
+      c.strokeStyle=shade(color,-25);c.globalAlpha=0.5;c.lineWidth=1.5;
+      c.beginPath();c.moveTo(8,y2+24);c.lineTo(248,y2+20);
+      c.moveTo(8,y2+58);c.lineTo(248,y2+64);c.stroke();c.globalAlpha=1;
+      c.fillStyle="rgba(40,25,12,.6)";c.fillRect(0,y2,256,2);
+    }
+  }
+  var t=new THREE.CanvasTexture(cv);t.anisotropy=ANISO;return t;
+}
+function buildTileModel(){
+  clearGroup(tileG);
+  var fl=FLOORS[state.floor];
+  var S=fl.tile,T=fl.th;
+  var col=state.main;
+  var topTex=tilePatternTex(fl.pattern,col);
+  var topM=new THREE.MeshPhongMaterial({map:topTex,shininess:20});
+  var sideM=Ph(shade(col,-20));
+  var topT=Math.min(0.005,T*0.35);
+  var plate=new THREE.Mesh(new THREE.BoxGeometry(S,S,topT),[sideM,sideM,sideM,sideM,topM,sideM]);
+  plate.position.z=T-topT/2;tileG.add(plate);
+  /* リブ格子 */
+  var ribM=Ph(shade(col,-14)),n=8,ribH=T-topT,i;
+  for(i=0;i<=n;i++){
+    var rx=new THREE.Mesh(new THREE.BoxGeometry(0.004,S,ribH),ribM);
+    rx.position.set(-S/2+S*i/n,0,ribH/2);tileG.add(rx);
+    var ry=new THREE.Mesh(new THREE.BoxGeometry(S,0.004,ribH),ribM);
+    ry.position.set(0,-S/2+S*i/n,ribH/2);tileG.add(ry);
+  }
+  /* 斜めリブ（PRO/SMOOTHのトラス表現） */
+  if(fl.pattern!=="dot"){
+    for(i=0;i<n;i++)for(var j=0;j<n;j++){
+      if((i+j)%2)continue;
+      var d=new THREE.Mesh(new THREE.BoxGeometry(0.003,S/n*1.35,ribH*0.9),ribM);
+      d.position.set(-S/2+S*(i+0.5)/n,-S/2+S*(j+0.5)/n,ribH*0.45);
+      d.rotation.z=((i%2)?1:-1)*Math.PI/4;tileG.add(d);
+    }
+  }
+  /* クッション脚（PRO=32個相当 / SMOOTH=白TPE） */
+  if(fl.pattern!=="dot"){
+    var cM=Ph(0xf2f4f5),m=(fl.pattern==="tri")?6:4;
+    for(i=0;i<m;i++)for(var j2=0;j2<m;j2++){
+      if(fl.pattern==="tri"&&(i%2===1&&j2%2===1))continue;
+      var cyl=new THREE.Mesh(new THREE.CylinderGeometry(0.010,0.012,ribH*0.85,10),cM);
+      cyl.geometry.rotateX(Math.PI/2);
+      cyl.position.set(-S/2+S*(i+0.5)/m,-S/2+S*(j2+0.5)/m,ribH*0.42);
+      tileG.add(cyl);
+    }
+  }
+  /* 連結フック（2辺） */
+  var hM=Ph(shade(col,-18));
+  for(i=0;i<4;i++){
+    var h1=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.02,T*0.6),hM);
+    h1.position.set(-S/2+S*(i+0.5)/4,S/2+0.012,T*0.3);tileG.add(h1);
+    var h2=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.03,T*0.6),hM);
+    h2.position.set(S/2+0.012,-S/2+S*(i+0.5)/4,T*0.3);tileG.add(h2);
+  }
+  document.getElementById('tilecap').textContent=
+    fl.name+" / "+(fl.tile*1000).toFixed(1)+"mm角 × 厚"+(fl.th*1000).toFixed(2)+"mm / "+fl.tileG+"g・"+fl.warranty+"保証";
+}
+var t2=0;
+function renderTile(){
+  t2+=0.008;
+  var R=0.52;
+  cam2.position.set(R*Math.cos(t2),R*Math.sin(t2),0.30);
+  cam2.lookAt(0,0,FLOORS[state.floor].th*0.6);
+  r2.render(scene2,cam2);
+}
+
+/* ================= UI 構築 ================= */
+function el(id){return document.getElementById(id);}
+function buildSportUI(){
+  var d=el('sports');d.innerHTML="";
+  Object.keys(SPORTS).forEach(function(k){
+    var b=document.createElement('button');
+    b.className="gbtn"+(k===state.sport?" on":"");
+    b.innerHTML=SPORTS[k].label+"<small>"+SPORTS[k].sub+"</small>";
+    b.onclick=function(){
+      state.sport=k;
+      var def=SPORTS[k].def;
+      state.floor=def.floor;state.main=def.main;state.subc=def.subc;state.acc=def.acc;state.line=def.line;
+      rebuildAll();fitCamera();
+    };
+    d.appendChild(b);
+  });
+}
+function buildFloorUI(){
+  var d=el('floors');d.innerHTML="";
+  [["pro","PRO","屋内外"],["control","CONTROL","屋外"],["smooth","SMOOTH","木目/屋内"]].forEach(function(f){
+    var b=document.createElement('button');
+    b.className="gbtn"+(f[0]===state.floor?" on":"");
+    b.innerHTML=f[1]+"<small>"+f[2]+"</small>";
+    b.onclick=function(){
+      state.floor=f[0];
+      var ch=FLOORS[f[0]].chart;
+      function ok(c){return ch.some(function(x){return x.c===c;});}
+      if(!ok(state.main))state.main=ch[0].c;
+      if(!ok(state.subc))state.subc=ch[Math.min(1,ch.length-1)].c;
+      if(!ok(state.acc))state.acc=ch[Math.min(2,ch.length-1)].c;
+      rebuildAll();
+    };
+    d.appendChild(b);
+  });
+  var fl=FLOORS[state.floor];
+  el('floorspec').innerHTML="<b>"+fl.name+"</b>（"+fl.use+"）<br>"+fl.desc+
+    "<br>1箱 "+fl.perBox+"枚（約"+fl.boxKg+"kg）/ 保証 "+fl.warranty;
+}
+function buildChart(id,key){
+  var d=el(id);d.innerHTML="";
+  FLOORS[state.floor].chart.forEach(function(c){
+    var s=document.createElement('div');
+    s.className="sw"+(state[key]===c.c?" on":"");
+    s.style.background=c.c;s.dataset.n=c.n;
+    s.onclick=function(){state[key]=c.c;rebuildAll();};
+    d.appendChild(s);
+  });
+}
+function buildLineChart(){
+  var d=el('ch_line');d.innerHTML="";
+  LINECOLORS.forEach(function(c){
+    var s=document.createElement('div');
+    s.className="sw"+(state.line===c.c?" on":"");
+    s.style.background=c.c;s.dataset.n=c.n;
+    s.onclick=function(){state.line=c.c;rebuildAll();};
+    d.appendChild(s);
+  });
+}
+function buildBoothUI(){
+  var d=el('booths');d.innerHTML="";
+  Object.keys(BOOTHS).forEach(function(k){
+    var b=document.createElement('button');
+    b.className="gbtn";
+    b.innerHTML=BOOTHS[k].label+"<small>"+BOOTHS[k].spec+"</small>";
+    b.onclick=function(){spawnBooth(k);};
+    d.appendChild(b);
+  });
+}
+function refreshStats(){
+  var sp=SPORTS[state.sport],fl=FLOORS[state.floor];
+  var cols=Math.ceil(sp.floorW/fl.tile),rows=Math.ceil(sp.floorD/fl.tile);
+  var tiles=cols*rows,boxes=Math.ceil(tiles/fl.perBox);
+  el('st_area').textContent=(sp.floorW*sp.floorD).toFixed(1)+" ㎡（"+sp.floorW+"×"+sp.floorD+"m）";
+  el('st_tiles').textContent=tiles.toLocaleString()+" 枚（"+cols+"×"+rows+"）";
+  el('st_boxes').textContent=boxes.toLocaleString()+" 箱（"+fl.perBox+"枚入）";
+  el('st_weight').textContent="約 "+(boxes*fl.boxKg/1000).toFixed(1)+" t";
+}
+function rebuildAll(){
+  buildSportUI();buildFloorUI();
+  buildChart('ch_main','main');buildChart('ch_sub','subc');buildChart('ch_acc','acc');
+  buildLineChart();
+  buildCourt();buildTileModel();
+}
+
+/* ================= カメラ・操作 ================= */
+var theta=-1.05,phi=0.95,dist=42,target=new THREE.Vector3(0,0,0),rot=true;
+function applyCam(){
+  var sp=Math.sin(phi);
+  cam.position.set(target.x+dist*sp*Math.cos(theta),target.y+dist*sp*Math.sin(theta),target.z+dist*Math.cos(phi));
+  cam.lookAt(target);
+}
+function fitCamera(){
+  var sp=SPORTS[state.sport];
+  dist=Math.max(sp.floorW,sp.floorD)*1.35;
+  target.set(0,0,0);
+}
+var rotBtn=el('rotBtn');
+rotBtn.onclick=function(){rot=!rot;rotBtn.classList.toggle('on',rot);};
+window.setView=function(name){
+  rot=false;rotBtn.classList.remove('on');
+  document.querySelectorAll('.vb').forEach(function(b){b.classList.remove('on');});
+  el('vb_'+name).classList.add('on');
+  var sp=SPORTS[state.sport],span=Math.max(sp.floorW,sp.floorD);
+  if(name==='bird'){theta=-1.05;phi=0.95;dist=span*1.35;target.set(0,0,0);}
+  if(name==='top'){theta=-Math.PI/2;phi=0.06;dist=span*1.5;target.set(0,0,0);}
+  if(name==='side'){theta=-Math.PI/2;phi=1.35;dist=span*1.3;target.set(0,0,2);}
+};
+
+var ray=new THREE.Raycaster(),mv2=new THREE.Vector2();
+var dragB=null,dragOff=new THREE.Vector3(),zPlane=new THREE.Plane(new THREE.Vector3(0,0,1),0);
+var drag=0,px=0,py=0,downX=0,downY=0,downBooth=null;
+var cv=renderer.domElement;
+function castBooth(x,y){
+  mv2.x=(x/innerWidth)*2-1;mv2.y=-(y/innerHeight)*2+1;
+  ray.setFromCamera(mv2,cam);
+  var hit=ray.intersectObjects(boothG.children,true)[0];
+  return hit?boothRoot(hit.object):null;
+}
+function groundPoint(x,y){
+  mv2.x=(x/innerWidth)*2-1;mv2.y=-(y/innerHeight)*2+1;
+  ray.setFromCamera(mv2,cam);
+  var p=new THREE.Vector3();
+  return ray.ray.intersectPlane(zPlane,p)?p:null;
+}
+cv.addEventListener('mousedown',function(e){
+  downX=px=e.clientX;downY=py=e.clientY;
+  downBooth=castBooth(e.clientX,e.clientY);
+  if(downBooth){drag=0;}
+  else drag=(e.button===2||e.shiftKey)?2:1;
+});
+addEventListener('mousemove',function(e){
+  var mx=e.clientX,my=e.clientY;
+  if(downBooth&&!dragB&&(Math.abs(mx-downX)>4||Math.abs(my-downY)>4)){
+    rot=false;rotBtn.classList.remove('on');
+    selectBooth(downBooth);
+    var gp=groundPoint(mx,my);
+    if(gp){dragB=downBooth;dragOff.copy(downBooth.position).sub(gp);}
+  }
+  if(dragB){
+    var gp2=groundPoint(mx,my);
+    if(gp2){
+      dragB.position.x=Math.round((gp2.x+dragOff.x)*10)/10;
+      dragB.position.y=Math.round((gp2.y+dragOff.y)*10)/10;
+    }
+    px=mx;py=my;return;
+  }
+  if(!drag)return;
+  var dx=mx-px,dy=my-py;px=mx;py=my;
+  if(Math.abs(mx-downX)>4||Math.abs(my-downY)>4){rot=false;rotBtn.classList.remove('on');}
+  if(drag===1){theta-=dx*0.005;phi=Math.min(1.52,Math.max(0.06,phi-dy*0.005));}
+  else if(drag===2){var sc=dist*0.0012;
+    var f=new THREE.Vector3().subVectors(target,cam.position);f.z=0;f.normalize();
+    var r=new THREE.Vector3(f.y,-f.x,0);
+    target.addScaledVector(r,dx*sc).addScaledVector(f,dy*sc);}
+});
+addEventListener('mouseup',function(e){
+  if(dragB){dragB=null;downBooth=null;drag=0;return;}
+  if(Math.abs(e.clientX-downX)<5&&Math.abs(e.clientY-downY)<5){
+    if(downBooth)selectBooth(downBooth);else deselectBooth();
+  }
+  downBooth=null;drag=0;
+});
+cv.addEventListener('wheel',function(e){e.preventDefault();
+  dist=Math.min(400,Math.max(5,dist*(1+Math.sign(e.deltaY)*0.09)));},{passive:false});
+cv.addEventListener('contextmenu',function(e){e.preventDefault();});
+var tp=null;
+cv.addEventListener('touchstart',function(e){if(e.touches.length===1){tp=[e.touches[0].clientX,e.touches[0].clientY];rot=false;rotBtn.classList.remove('on');}},{passive:true});
+cv.addEventListener('touchmove',function(e){
+  if(e.touches.length===1&&tp){var dx=e.touches[0].clientX-tp[0],dy=e.touches[0].clientY-tp[1];
+    tp=[e.touches[0].clientX,e.touches[0].clientY];theta-=dx*0.006;phi=Math.min(1.52,Math.max(0.06,phi-dy*0.006));}
+  if(e.touches.length===2){var d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+    if(cv._pd)dist=Math.min(400,Math.max(5,dist*cv._pd/d));cv._pd=d;}
+},{passive:true});
+cv.addEventListener('touchend',function(){tp=null;cv._pd=null;},{passive:true});
+addEventListener('keydown',function(e){
+  if(!selBooth)return;
+  if(e.key==='r'||e.key==='R')selBooth.rotation.z+=Math.PI/4;
+  if(e.key==='Delete'||e.key==='Backspace'){el('bs_del').onclick();}
+});
+
+var hintT=null;
+function showHint(t){
+  var h=el('hint');h.textContent=t;h.style.opacity=1;
+  clearTimeout(hintT);hintT=setTimeout(function(){h.style.opacity=0;},2800);
+}
+addEventListener('resize',function(){cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+
+/* ================= 起動 ================= */
+buildGround();buildBoothUI();rebuildAll();fitCamera();
+setTimeout(function(){showHint("コート・床材・カラーは左パネル、ブースは右下パレットから");},1000);
+(function loop(){
+  requestAnimationFrame(loop);
+  if(rot)theta+=0.0024;
+  applyCam();
+  renderer.render(scene,cam);
+  renderTile();
+})();
+})();
+</script>
+</body></html>
