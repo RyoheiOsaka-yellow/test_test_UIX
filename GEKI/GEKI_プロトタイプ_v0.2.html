@@ -450,6 +450,24 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
 .shareimg .ht{font-size:10px;font-weight:800;color:var(--hot-dk);margin-top:6px;}
 .shareimg .cr{font-family:Inter;font-size:7px;color:#7A5C74;margin-top:4px;letter-spacing:.06em;}
 
+/* ---- password lock（プロトタイプ閲覧用の簡易ゲート） ---- */
+#lock{position:absolute;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;
+  padding:24px;background:
+  radial-gradient(circle at 80% 8%,rgba(255,255,255,.9),transparent 34%),
+  linear-gradient(200deg,#FFD9EA 0%,#E6D9FF 45%,#BFD9FF 100%);}
+#lock.off{display:none;}
+#lock .box{width:100%;max-width:300px;text-align:center;background:#fff;border:3px solid var(--hot);
+  border-radius:18px;padding:26px 20px calc(24px + env(safe-area-inset-bottom,0px));box-shadow:0 10px 30px rgba(60,20,50,.2);}
+#lock .ic{font-size:40px;}
+#lock h2{font-size:16px;font-weight:800;margin:8px 0 4px;}
+#lock p{font-size:10.5px;font-weight:700;color:var(--sub);line-height:1.7;margin-bottom:12px;}
+#lock input{width:100%;border:2.5px solid var(--pink);border-radius:12px;background:#fff;
+  font-family:Inter;font-weight:800;font-size:17px;letter-spacing:.3em;text-align:center;
+  padding:12px 14px;outline:none;color:var(--ink);}
+#lock input:focus{border-color:var(--hot);}
+#lock input.err{border-color:#C24545;animation:shake .3s;}
+#lock .lockerr{font-size:10px;font-weight:800;color:#C24545;min-height:16px;margin-top:6px;}
+
 /* toast */
 #toast{position:absolute;left:50%;bottom:calc(78px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:70;
   background:var(--ink);color:#fff;font-size:11px;font-weight:800;padding:9px 16px;border-radius:24px;
@@ -464,7 +482,7 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
 <div id="phone">
   <div id="hd">
     <button id="back" class="hide" onclick="goBack()">← 戻る</button>
-    <div class="ttl">コラボWEBミニゲーム（仮）<small id="scrname">PROTOTYPE v0.2.3</small></div>
+    <div class="ttl">コラボWEBミニゲーム（仮）<small id="scrname">PROTOTYPE v0.2.4</small></div>
     <div id="rights">🎫 <b id="rn">0</b></div>
     <span class="scid" id="scid">SC-01</span>
   </div>
@@ -699,6 +717,18 @@ body.playing #cqbtn,body.playing #dbgbtn{display:none;}
     <button class="btn dark" onclick="periodMode='open';go('lp')">（デバッグ）提供中に戻す</button>
     <div class="cq" style="top:70px;left:16px;">FR-003/604 / CQ-12<i>開始前・終了後の出し分け。正式期間は要確定</i></div>
   </section>
+
+  <!-- password lock -->
+  <div id="lock">
+    <div class="box">
+      <div class="ic">🔒</div>
+      <h2>関係者確認</h2>
+      <p>本プロトタイプは関係者限定です。<br>共有されたパスワードを入力してください。</p>
+      <input id="pwin" type="password" inputmode="text" autocomplete="off" placeholder="パスワード">
+      <div class="lockerr" id="pwerr"></div>
+      <button class="btn" style="margin-top:8px;" onclick="tryUnlock()">ひらく</button>
+    </div>
+  </div>
 
   <div id="scanfx"><div class="frame"></div><p>スキャン中…</p></div>
 
@@ -1276,6 +1306,25 @@ function simulateClosed(mode){
     document.getElementById('closedtx').innerHTML='たくさんのプレイありがとうございました。<br>実施報告・アーカイブは公式サイトへ。（FR-604／期間はCQ-12で確定）';
   }
   go('closed');
+}
+
+/* =========== password lock（簡易ゲート。判定はハッシュ照合・同一タブ内は再入力不要） =========== */
+const PW_HASH=2090069583;
+function pwHash(str){let h=5381;for(const c of str){h=((h*33)+c.codePointAt(0))>>>0;}return h;}
+function tryUnlock(){
+  const inp=document.getElementById('pwin'),err=document.getElementById('pwerr');
+  inp.classList.remove('err');
+  if(pwHash(inp.value.trim())===PW_HASH){
+    sessionStorage.setItem('geki2.auth','1');
+    document.getElementById('lock').classList.add('off');
+  }else{
+    inp.classList.add('err');inp.value='';
+    err.textContent='パスワードが違います';
+  }
+}
+document.getElementById('pwin').addEventListener('keydown',e=>{if(e.key==='Enter')tryUnlock();});
+if(sessionStorage.getItem('geki2.auth')==='1'){
+  document.getElementById('lock').classList.add('off');
 }
 
 /* =========== init =========== */
