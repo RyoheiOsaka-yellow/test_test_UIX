@@ -243,6 +243,44 @@ button.big.ghost { background: transparent; color: var(--agave); border: 1px sol
 
    壊した瞬間に、渦の頭の上に数字が浮いて流れる。合算は0.2秒単位で、
    一株ごとに「+1」が四十個出るのは数字ではなく吹雪になる。 */
+/* --- 目標の標 ---
+
+   画面の中に目標が見えていれば、その場所に環を出す。外にいるときは
+   画面の縁に寄せて、矢印だけを目標の方へ向ける。どちらの場合も距離を
+   数字で出す。方角だけでは、あと十秒なのか二分なのかが分からない。 */
+.guide {
+  position: absolute; left: 0; top: 0; pointer-events: none;
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: calc(3 * var(--s));
+  transition: opacity 0.25s ease;
+  will-change: transform;
+}
+.guide.hidden { opacity: 0; }
+.guide-arrow {
+  width: calc(30 * var(--s)); height: calc(30 * var(--s));
+  fill: var(--amber); filter: drop-shadow(0 0 calc(6 * var(--s)) rgba(0, 0, 0, 0.9));
+  transform-origin: 50% 50%;
+}
+.guide-ring {
+  width: calc(34 * var(--s)); height: calc(34 * var(--s));
+  border: calc(2 * var(--s)) solid var(--amber);
+  border-radius: 50%; opacity: 0.9;
+  box-shadow: 0 0 calc(8 * var(--s)) rgba(0, 0, 0, 0.8), inset 0 0 calc(6 * var(--s)) rgba(255, 201, 92, 0.3);
+  animation: guidePulse 1.6s ease-in-out infinite;
+}
+@keyframes guidePulse {
+  0%, 100% { transform: scale(0.82); opacity: 0.55; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+.guide-text {
+  display: flex; flex-direction: column; align-items: center; line-height: 1.25;
+  text-shadow: 0 0 calc(8 * var(--s)) rgba(0, 0, 0, 0.95), 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+.guide-text b { font-size: max(10px, calc(12 * var(--s))); color: var(--ink); letter-spacing: 0.06em; }
+.guide-text span { font-size: max(9px, calc(11 * var(--s))); color: var(--amber); letter-spacing: 0.08em; }
+.guide.far .guide-ring { display: none; }
+.guide.near .guide-arrow { display: none; }
+
 .pops { position: absolute; inset: 0; overflow: hidden; }
 .pop {
   position: absolute;
@@ -638,6 +676,12 @@ button.big.ghost { background: transparent; color: var(--agave); border: 1px sol
       <label>HACIENDA · 1:2000</label>
       <canvas id="cMap" width="190" height="190"></canvas>
     </div>
+  </div>
+
+  <div class="guide hidden" id="guide">
+    <svg viewBox="0 0 40 40" class="guide-arrow" id="guideArrow"><path d="M20 3 L31 30 L20 24 L9 30 Z"/></svg>
+    <div class="guide-ring" id="guideRing"></div>
+    <div class="guide-text"><b id="guideLabel">—</b><span id="guideDist">0 m</span></div>
   </div>
 
   <div class="pops" id="pops"></div>
@@ -4993,6 +5037,40 @@ class Props {
     return out;
   }
 
+  labelOf(item) { const k = KINDS[item.kind]; return k ? k.label : ''; }
+
+  /* 案内のための探索。いまの歯で噛めるもののうち、want の枠に入る
+     一番近いものを返す。近いところから輪を広げるので、普段は最初の
+     一輪で見つかる。見つからなければ最後に全部を一度だけ見る。
+     want は 'small' | 'mid' | 'building' | 'livestock' | 'any'。 */
+  nearest(x, z, want, stage) {
+    const fits = (it) => {
+      if (!it.alive || it.minStage > stage) return false;
+      if (want === 'any') return it.value >= 2;
+      return (KINDS[it.kind].count || '') === want;
+    };
+    const out = this._nq || (this._nq = []);
+    for (const r of [80, 190, 420, 900]) {
+      this.query(x, z, r, out);
+      let best = null, bd = r * r;
+      for (let i = 0; i < out.length; i++) {
+        const it = out[i];
+        if (!fits(it)) continue;
+        const d = (it.x - x) * (it.x - x) + (it.z - z) * (it.z - z);
+        if (d < bd) { bd = d; best = it; }
+      }
+      if (best) return best;
+    }
+    let best = null, bd = Infinity;
+    for (let i = 0; i < this.items.length; i++) {
+      const it = this.items[i];
+      if (!fits(it)) continue;
+      const d = (it.x - x) * (it.x - x) + (it.z - z) * (it.z - z);
+      if (d < bd) { bd = d; best = it; }
+    }
+    return best;
+  }
+
   _add(kind, x, z, extra) {
     const k = KINDS[kind];
     const it = {
@@ -6806,15 +6884,70 @@ class Gameplay {
     this.ended = false;
     this._toughAt = -9;
     this._snatchAt = -9;
+    this.target = null;      // { x, z, y, label, far } 案内はこれだけを見る
+    this._aimT = 9;
     this._checkUnlocks();
+  }
+
+  /* ---------- 案内 ----------
+     いまの目標に対して「次に触るもの」を一つ選ぶ。毎フレーム選び直すと
+     同じ距離の株の間で矢印が震えるので、四分の一秒に一度だけ。選んだ
+     ものが壊れたか、飛んでいったら、その場で選び直す。 */
+  _pickTarget() {
+    const m = this.mission;
+    if (!m) return null;
+    const t = this.tornado.pos, st = this.tornado.stage;
+    const seek = m.seek || 'any';
+
+    if (seek === 'landmark') {
+      const L = this.props.landmark;
+      if (!L || !L.alive) return null;
+      return { x: L.x, z: L.z, y: L.y, item: L, label: this.stage.landmark, hard: st < L.minStage };
+    }
+
+    /* 生きているものは props ではなく actors にいる。街の「車」のように
+       両方に居る枠もあるので、近いほうを採る。 */
+    const best = this.props.nearest(t[0], t[2], seek, st);
+    if (seek === 'livestock' || seek === 'any') {
+      const a = this.actors.nearest(t[0], t[2], true);
+      if (a && (!best || Math.hypot(a.x - t[0], a.z - t[2]) < Math.hypot(best.x - t[0], best.z - t[2]))) {
+        return { x: a.x, z: a.z, y: a.y, actor: a, label: a.k.label, hard: false };
+      }
+    }
+    if (!best) return null;
+    return { x: best.x, z: best.z, y: best.y, item: best, label: this.props.labelOf(best), hard: false };
+  }
+
+  _updateTarget(dt) {
+    const t = this.target;
+    const stale = !t || (t.item && !t.item.alive) || (t.actor && t.actor.fly);
+    this._aimT += dt;
+    if (this._aimT > 0.25 || stale) {
+      this._aimT = 0;
+      const n = this._pickTarget();
+      if (n) {
+        n.dist = Math.hypot(n.x - this.tornado.pos[0], n.z - this.tornado.pos[2]);
+        n.title = this.mission ? this.mission.title : '';
+      }
+      this.target = n;
+    } else if (t) {
+      // 動くものを追っているときは、位置も追う。
+      if (t.actor) { t.x = t.actor.x; t.z = t.actor.z; t.y = t.actor.y; }
+      t.dist = Math.hypot(t.x - this.tornado.pos[0], t.z - this.tornado.pos[2]);
+    }
   }
 
   get mission() { return this.missions[this.missionIndex] || null; }
 
   get state() {
-    // 集計は二箇所から来る。畑と建物は props、生きているものは actors。
+    /* 集計は二箇所から来る。畑と建物は props、生きているものは actors。
+       同じ枠に両方が入ることがある（街の「車」と犬はどちらも livestock）
+       ので、上書きではなく足す。上書きにすると、車を何台飛ばしても
+       目標が進まない。 */
     const tally = this._tally || (this._tally = {});
-    Object.assign(tally, this.props.tally, this.actors.tally);
+    for (const k in tally) tally[k] = 0;
+    Object.assign(tally, this.props.tally);
+    for (const k in this.actors.tally) tally[k] = (tally[k] || 0) + this.actors.tally[k];
     return {
       tally, stage: this.tornado.stage,
       killed: this.killed, boltsUsed: this.boltsUsed, boltsSeen: this.boltsSeen,
@@ -6898,6 +7031,7 @@ class Gameplay {
       }
     }
 
+    this._updateTarget(dt);
     this._checkUnlocks();
   }
 
@@ -7130,22 +7264,26 @@ function codexFor(stageId) {
   return CODEX.filter((c) => !c.stage || c.stage === stageId);
 }
 
-/* 目標。骨格は共通で、呼び名だけ土地から来る。 */
+/* 目標。骨格は共通で、呼び名だけ土地から来る。
+
+   seek は「次にどこへ行けばいいか」の探し方。案内の矢印はこれだけを
+   見て目標物を選ぶ。点を貯めるだけの段（lv2 など）には決まった行き先が
+   無いので 'any'、つまり今の歯で噛める一番近いものを指す。 */
 function buildMissions(stage) {
   const L = stage.labels;
   return [
-    { id: 'first', title: `${L.small}を薙ぐ`, detail: `${L.small}を12。一つ1〜3点。`, need: 12, get: (s) => s.tally.small },
-    { id: 'lv2', title: '旋風になる', detail: '40点でL2へ。巻き上げるほど柱は太くなる。', need: 1, get: (s) => (s.stage >= 1 ? 1 : 0) },
-    { id: 'mid', title: `${L.mid}を倒す`, detail: `${L.mid}を4つ。一つ8〜12点。L2から噛める。`, need: 4, get: (s) => s.tally.mid },
-    { id: 'lv3', title: '雲を戴く', detail: '140点でL3へ。雲底が下がり、雨がつく。', need: 1, get: (s) => (s.stage >= 2 ? 1 : 0) },
-    { id: 'stock', title: `${L.livestock}を巻き上げる`, detail: `${L.livestock}を3つ。15〜35点。`, need: 3, get: (s) => s.tally.livestock },
-    { id: 'yard', title: `${L.building}を壊す`, detail: `${L.building}を2つ。30〜60点。`, need: 2, get: (s) => s.tally.building },
-    { id: 'lv4', title: '雷を持つ', detail: '360点でL4へ。電荷が満ちたら E で落とせる。', need: 1, get: (s) => (s.stage >= 3 ? 1 : 0) },
-    { id: 'strike', title: '雷を落とす', detail: '落雷を2回。落ちた場所のものは段を問わず壊れる。', need: 2, get: (s) => s.boltsUsed },
-    { id: 'lv5', title: '双子になる', detail: '700点でL5へ。渦の中にもう一本立つ。', need: 1, get: (s) => (s.stage >= 4 ? 1 : 0) },
-    { id: 'landmark', title: `${stage.landmark}を消す`, detail: `${stage.landmark}。200点。L4の歯が要る。`, need: 1, get: (s) => (s.landmarkGone ? 1 : 0) },
-    { id: 'lv7', title: '三つ子になる', detail: '2,000点でL7へ。子は三本になる。', need: 1, get: (s) => (s.stage >= 6 ? 1 : 0) },
-    { id: 'lv10', title: '終焉', detail: '7,000点でL10へ。ここから先に段は無い。', need: 1, get: (s) => (s.stage >= 9 ? 1 : 0) }
+    { id: 'first', seek: 'small', title: `${L.small}を薙ぐ`, detail: `${L.small}を12。一つ1〜3点。`, need: 12, get: (s) => s.tally.small },
+    { id: 'lv2', seek: 'any', title: '旋風になる', detail: '40点でL2へ。巻き上げるほど柱は太くなる。', need: 1, get: (s) => (s.stage >= 1 ? 1 : 0) },
+    { id: 'mid', seek: 'mid', title: `${L.mid}を倒す`, detail: `${L.mid}を4つ。一つ8〜12点。L2から噛める。`, need: 4, get: (s) => s.tally.mid },
+    { id: 'lv3', seek: 'any', title: '雲を戴く', detail: '140点でL3へ。雲底が下がり、雨がつく。', need: 1, get: (s) => (s.stage >= 2 ? 1 : 0) },
+    { id: 'stock', seek: 'livestock', title: `${L.livestock}を巻き上げる`, detail: `${L.livestock}を3つ。15〜35点。`, need: 3, get: (s) => s.tally.livestock },
+    { id: 'yard', seek: 'building', title: `${L.building}を壊す`, detail: `${L.building}を2つ。30〜60点。`, need: 2, get: (s) => s.tally.building },
+    { id: 'lv4', seek: 'any', title: '雷を持つ', detail: '360点でL4へ。電荷が満ちたら E で落とせる。', need: 1, get: (s) => (s.stage >= 3 ? 1 : 0) },
+    { id: 'strike', seek: 'building', title: '雷を落とす', detail: '落雷を2回。落ちた場所のものは段を問わず壊れる。', need: 2, get: (s) => s.boltsUsed },
+    { id: 'lv5', seek: 'any', title: '双子になる', detail: '700点でL5へ。渦の中にもう一本立つ。', need: 1, get: (s) => (s.stage >= 4 ? 1 : 0) },
+    { id: 'landmark', seek: 'landmark', title: `${stage.landmark}を消す`, detail: `${stage.landmark}。200点。L4の歯が要る。`, need: 1, get: (s) => (s.landmarkGone ? 1 : 0) },
+    { id: 'lv7', seek: 'any', title: '三つ子になる', detail: '2,000点でL7へ。子は三本になる。', need: 1, get: (s) => (s.stage >= 6 ? 1 : 0) },
+    { id: 'lv10', seek: 'any', title: '終焉', detail: '7,000点でL10へ。ここから先に段は無い。', need: 1, get: (s) => (s.stage >= 9 ? 1 : 0) }
   ];
 }
 
@@ -7211,6 +7349,8 @@ class Hud {
       hud: $('hud'), objTitle: $('objTitle'), objDetail: $('objDetail'), objFill: $('objFill'),
       stormClock: $('stormClock'), stormPath: $('stormPath'), stormWidth: $('stormWidth'),
       score: $('score'), nextStage: $('nextStage'), pops: $('pops'),
+      guide: $('guide'), guideArrow: $('guideArrow'), guideRing: $('guideRing'),
+      guideLabel: $('guideLabel'), guideDist: $('guideDist'),
       ladderRows: $('ladderRows'), tallyRows: $('tallyRows'), chips: $('chips'),
       gCore: $('gCore'), tCore: $('tCore'), gMoist: $('gMoist'), tMoist: $('tMoist'),
       gCharge: $('gCharge'), tCharge: $('tCharge'),
@@ -7471,6 +7611,26 @@ class Hud {
 
   /* 獲得した点を、渦の頭の上に浮かせる。CSSアニメーションが終わったら
      自分で消える。同時に四十個出さないよう、呼ぶ側が合算している。 */
+  /* 目標の標。g は { on, x, y, inFront, dist, label }。
+     x,y は CSS ピクセルで、画面外なら縁に寄せた後の座標が来る。
+     どこに寄せるかを決めるのは投影する側の仕事で、ここは置くだけ。 */
+  guide(g) {
+    const el = this.el.guide;
+    if (!g || !g.on || !this.visible) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    el.classList.toggle('far', !g.onScreen);
+    el.classList.toggle('near', g.onScreen);
+    el.style.transform = `translate(${g.x}px, ${g.y}px) translate(-50%, -50%)`;
+    if (!g.onScreen) {
+      // 矢印は目標のほうへ。SVGの三角は上を向いているので、そこから回す。
+      this.el.guideArrow.style.transform = `rotate(${(g.angle * 180) / Math.PI}deg)`;
+    }
+    const d = g.dist;
+    const txt = d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d)} m`;
+    if (this._guideTxt !== txt) { this.el.guideDist.textContent = txt; this._guideTxt = txt; }
+    if (this._guideLbl !== g.label) { this.el.guideLabel.textContent = g.label; this._guideLbl = g.label; }
+  }
+
   pop(value, x, y) {
     const d = document.createElement('div');
     d.className = `pop${value >= 100 ? ' huge' : value >= 25 ? ' big' : ''}`;
@@ -7987,6 +8147,22 @@ class Actors {
       people: this.list.filter((a) => !a.k.livestock).length };
   }
 
+  /* 案内のための探索。まだ一度も巻き上げていないものを先に返す。
+     一度飛ばした牛をもう一度指しても、目標は進まない。 */
+  nearest(x, z, livestock) {
+    let best = null, bd = Infinity;
+    for (let pass = 0; pass < 2 && !best; pass++) {
+      bd = Infinity;
+      for (const a of this.list) {
+        if (a.fly || !!a.k.livestock !== livestock) continue;
+        if (pass === 0 && a.taken) continue;
+        const d = (a.x - x) * (a.x - x) + (a.z - z) * (a.z - z);
+        if (d < bd) { bd = d; best = a; }
+      }
+    }
+    return best;
+  }
+
   /* 一歩。逃げるか、歩くか、飛んでいるか、伸びているか。 */
   update(dt, tornado, debris, events) {
     const T = this.terrain;
@@ -8019,6 +8195,7 @@ class Actors {
           av: [(r() - 0.5) * 8, (r() - 0.5) * 6, (r() - 0.5) * 8], t: 0
         };
         a.state = 'flying';
+        a.taken = true;
         if (a.k.livestock) this.tally.livestock++; else this.tally.people++;
         debris.burst(a.x, a.y + 0.8, a.z, 14, a.k.tone, 6);
         events.push({ type: 'snatch', actor: a });
@@ -8113,6 +8290,152 @@ class Actors {
   __e.Actors = Actors;
 });
 
+__def("game/guide.js", function (__e, __req) {
+/* ============================================================
+   GUIDE — 目標の場所を示す標
+
+   目標が「何を壊すか」しか言わないと、広い土地では次にどっちへ
+   行けばいいのか分からない。だから目標の場所に、地面の環と、
+   立ち上がる細い光の柱を置く。遠くからでも見え、近づくと消える。
+
+   位置は gameplay が選ぶ。ここは描くだけで、何が目標かを知らない。
+
+   柱はY軸まわりのビルボード。カメラの向きに合わせて回すので、
+   どこから見ても同じ幅に見える。二枚交差させる手もあるが、
+   斜めから見たときに交差線が出る。一枚を回すほうが素直。
+   ============================================================ */
+
+const { createProgram, buffer, vao } = __req("core/gl.js");
+
+const VS = `#version 300 es
+precision highp float;
+in vec3 aPos;        // 柱: x=-1..1, y=0..1, z=0 / 環: 単位円 x,z
+in vec2 aInfo;       // x: 0 柱 / 1 環,  y: 高さ or 環の内外
+uniform mat4 uViewProj;
+uniform vec3 uBase;
+uniform vec3 uCamPos;
+uniform float uHeight;
+uniform float uWidth;
+uniform float uRadius;
+out vec2 vInfo;
+void main() {
+  vec3 w;
+  if (aInfo.x < 0.5) {
+    /* 柱。カメラへ向く水平な向きを作る。真上から見下ろしたときに
+       向きが決まらなくなるので、長さで正規化を守る。 */
+    vec2 d = uBase.xz - uCamPos.xz;
+    float L = max(length(d), 0.001);
+    vec2 right = vec2(-d.y, d.x) / L;
+    w = uBase + vec3(right.x * aPos.x * uWidth, aPos.y * uHeight, right.y * aPos.x * uWidth);
+  } else {
+    w = uBase + vec3(aPos.x * uRadius, 0.45, aPos.z * uRadius);
+  }
+  vInfo = aInfo;
+  gl_Position = uViewProj * vec4(w, 1.0);
+}`;
+
+const FS = `#version 300 es
+precision highp float;
+in vec2 vInfo;
+uniform vec3 uColor;
+uniform float uPulse;
+uniform float uFade;
+out vec4 fragColor;
+void main() {
+  float a;
+  if (vInfo.x < 0.5) {
+    // 柱は上へ行くほど薄い。根元も少しだけ抜いて、地面と縁を切らない。
+    float h = vInfo.y;
+    a = (1.0 - h) * (1.0 - h) * (0.55 + 0.45 * uPulse) * smoothstep(0.0, 0.06, h);
+  } else {
+    // 環は縁だけ。内側は抜く。
+    a = (1.0 - abs(vInfo.y * 2.0 - 1.0)) * (0.55 + 0.45 * uPulse);
+  }
+  a *= uFade;
+  if (a < 0.004) discard;
+  fragColor = vec4(uColor * a, a);   // 乗算済み
+}`;
+
+const SEG = 44;
+
+function build() {
+  const v = [];
+  // 柱。二つの三角形。
+  const quad = [[-1, 0], [1, 0], [1, 1], [-1, 0], [1, 1], [-1, 1]];
+  for (const [x, y] of quad) v.push(x, y, 0, 0, y);
+  // 環。内側と外側の輪を帯で結ぶ。
+  const IN = 0.86;
+  for (let i = 0; i < SEG; i++) {
+    const a0 = (i / SEG) * Math.PI * 2, a1 = ((i + 1) / SEG) * Math.PI * 2;
+    const p = (a, r, t) => v.push(Math.cos(a) * r, 0, Math.sin(a) * r, 1, t);
+    p(a0, IN, 0); p(a1, IN, 0); p(a1, 1, 1);
+    p(a0, IN, 0); p(a1, 1, 1); p(a0, 1, 1);
+  }
+  return new Float32Array(v);
+}
+
+class Guide {
+  constructor(gl) {
+    this.gl = gl;
+    this.prog = createProgram(gl, VS, FS, 'guide');
+    const data = build();
+    this.count = data.length / 5;
+    const b = buffer(gl, data);
+    const a = this.prog.a;
+    this.vao = vao(gl, [
+      { buffer: b, loc: a.aPos, size: 3, stride: 20, offset: 0 },
+      { buffer: b, loc: a.aInfo, size: 2, stride: 20, offset: 12 }
+    ]);
+    this.t = 0;
+    this.fade = 0;
+  }
+
+  /* 標は近づくと消える。足元に立っている柱は視界を塞ぐだけで、
+     もう案内する必要がない。 */
+  update(dt, target, tornado) {
+    this.t += dt;
+    let want = 0;
+    if (target) {
+      const d = target.dist ?? Math.hypot(target.x - tornado.pos[0], target.z - tornado.pos[2]);
+      want = Math.min(1, Math.max(0, (d - (tornado.radius + 14)) / 30));
+    }
+    this.fade += (want - this.fade) * Math.min(1, dt * 4);
+  }
+
+  render(ctx, target) {
+    if (!target || this.fade < 0.01) return;
+    const gl = this.gl, p = this.prog, u = p.u;
+    p.use();
+    gl.uniformMatrix4fv(u.uViewProj, false, ctx.viewProj);
+    gl.uniform3f(u.uBase, target.x, target.y, target.z);
+    gl.uniform3fv(u.uCamPos, ctx.camPos);
+    /* 遠いほど高く太くする。三百メートル先の三十メートルの柱は、
+       画面では髪の毛一本になる。 */
+    const d = Math.hypot(target.x - ctx.camPos[0], target.z - ctx.camPos[2]);
+    gl.uniform1f(u.uHeight, 30 + d * 0.17);
+    gl.uniform1f(u.uWidth, 1.3 + d * 0.006);
+    gl.uniform1f(u.uRadius, 5.0 + d * 0.010);
+    const pulse = 0.5 + 0.5 * Math.sin(this.t * 3.4);
+    gl.uniform1f(u.uPulse, pulse);
+    gl.uniform1f(u.uFade, this.fade * 0.85);
+    // 目標の色は琥珀。渦の赤とも、海の青とも当たらない。
+    if (target.hard) gl.uniform3f(u.uColor, 1.30, 0.42, 0.30);
+    else gl.uniform3f(u.uColor, 1.35, 0.92, 0.34);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.depthMask(false);
+    gl.disable(gl.CULL_FACE);
+    gl.bindVertexArray(this.vao);
+    gl.drawArrays(gl.TRIANGLES, 0, this.count);
+    gl.bindVertexArray(null);
+    gl.enable(gl.CULL_FACE);
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+  }
+}
+
+  __e.Guide = Guide;
+});
 __def("main.js", function (__e, __req) {
 /* ============================================================
    MAIN — 舞台選び、焼き込み、フレームループ
@@ -8142,6 +8465,7 @@ const { Debris } = __req("world/debris.js");
 const { Tornado } = __req("game/tornado.js");
 const { Camera, CAM_MODES, CAM_LABEL } = __req("game/camera.js");
 const { Gameplay } = __req("game/gameplay.js");
+const { Guide } = __req("game/guide.js");
 const { Hud } = __req("ui/hud.js");
 const { v3, clamp, lerp, DEG } = __req("core/math.js");
 
@@ -8253,6 +8577,7 @@ function begin(stage, terrain, resume) {
     seed: stage.seed
   });
   const game = new Gameplay(terrain, tornado, props, actors, debris, stage.seed);
+  const guide = new Guide(gl);
   const cam = new Camera(terrain);
   cam.fov = settings.fov * DEG;
   cam.autoCentre = settings.autoCentre;
@@ -8450,6 +8775,7 @@ function begin(stage, terrain, resume) {
       sky.update(dt);
       if (water) water.update(dt);
       game.update(dt);
+      guide.update(dt, game.target, tornado);
       handleEvents();
 
       // 新しい稲妻には雷鳴を付ける。距離は音速で遅れる。
@@ -8513,6 +8839,7 @@ function begin(stage, terrain, resume) {
     if (water) water.render(ctx);
     props.render(solid, ctx);
     actors.render(solid, ctx);
+    guide.render(ctx, game.target);
     tornado.render(ctx);
     debris.render(ctx);
 
@@ -8554,9 +8881,56 @@ function begin(stage, terrain, resume) {
     hudState.camMode = CAM_LABEL[cam.mode];
     hudState.landmarks = landmarks();
     hudState.bearings = bearings();
+    hud.guide(guideOverlay());
     hud.update(dt, hudState);
 
     input.end();
+  }
+
+  /* 目標をどこに描くか。画面の中にいれば、その場所に環を置く。外に
+     いれば画面の縁へ寄せて、矢印だけをそちらへ向ける。
+
+     後ろにある目標は、素直に投影すると符号が反転して逆向きに出る。
+     だからカメラの基底へ落として、右成分と上成分から向きを取る。
+     真後ろでは右成分が消えて向きが決まらないので、そのときは下へ
+     倒す。振り向け、という意味になる。 */
+  function guideOverlay() {
+    const t = game.target;
+    if (!t || !settings.hudShow || hud.anyOverlay) return null;
+    const W = engine.cssWidth, H = engine.cssHeight;
+    const px = t.x, py = t.y + 9, pz = t.z;
+    const dx = px - cam.pos[0], dy = py - cam.pos[1], dz = pz - cam.pos[2];
+    const f = basis.fwd, r = basis.right, u = basis.up;
+    const fwd = f[0] * dx + f[1] * dy + f[2] * dz;
+
+    const vp = cam.viewProj;
+    const w = vp[3] * px + vp[7] * py + vp[11] * pz + vp[15];
+    let sx = W / 2, sy = H / 2;
+    if (fwd > 0.05 && w > 0.001) {
+      sx = ((vp[0] * px + vp[4] * py + vp[8] * pz + vp[12]) / w * 0.5 + 0.5) * W;
+      sy = (1 - ((vp[1] * px + vp[5] * py + vp[9] * pz + vp[13]) / w * 0.5 + 0.5)) * H;
+    }
+    const pad = Math.min(W, H) * 0.10;
+    const onScreen = fwd > 0.05 && sx > pad && sx < W - pad && sy > pad && sy < H - pad;
+
+    let angle = 0;
+    if (!onScreen) {
+      let ax, ay;
+      if (fwd > 0.05) { ax = sx - W / 2; ay = sy - H / 2; }
+      else {
+        ax = r[0] * dx + r[1] * dy + r[2] * dz;
+        ay = -(u[0] * dx + u[1] * dy + u[2] * dz);
+      }
+      let L = Math.hypot(ax, ay);
+      if (L < 1e-4) { ax = 0; ay = 1; L = 1; }
+      ax /= L; ay /= L;
+      const ex = W / 2 - pad, ey = H / 2 - pad;
+      const k = Math.min(ex / Math.max(Math.abs(ax), 1e-4), ey / Math.max(Math.abs(ay), 1e-4));
+      sx = W / 2 + ax * k;
+      sy = H / 2 + ay * k;
+      angle = Math.atan2(ax, -ay);     // SVGの三角は上を向いている
+    }
+    return { on: true, onScreen, x: sx, y: sy, angle, dist: t.dist || 0, label: t.label || '目標' };
   }
 
   function landmarks() {
@@ -8570,6 +8944,9 @@ function begin(stage, terrain, resume) {
         out.push({ x: s.x, z: s.z, color: 'rgba(255,201,92,0.6)', label: '' });
       }
     }
+    if (game.target) {
+      out.unshift({ x: game.target.x, z: game.target.z, color: 'rgba(255,201,92,1)', label: '目標' });
+    }
     return out.slice(0, 14);
   }
 
@@ -8578,6 +8955,8 @@ function begin(stage, terrain, resume) {
     const push = (x, z, color) => out.push({ bearing: Math.atan2(x - tornado.pos[0], z - tornado.pos[2]), color });
     push(Z.x, Z.z, 'rgba(111,220,192,0.9)');
     if (props.landmark && props.landmark.alive) push(props.landmark.x, props.landmark.z, 'rgba(251,241,230,0.8)');
+    // 目標は羅針にも出す。首を振れば、どちらを向いても方角が分かる。
+    if (game.target) push(game.target.x, game.target.z, 'rgba(255,201,92,1)');
     return out;
   }
 
