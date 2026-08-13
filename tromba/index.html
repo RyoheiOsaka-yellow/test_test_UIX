@@ -119,6 +119,47 @@ button.big {
 button.big:hover { transform: translateY(-1px); box-shadow: 0 6px 22px rgba(111, 220, 192, 0.28); }
 button.big.ghost { background: transparent; color: var(--agave); border: 1px solid var(--edge-hot); }
 
+/* ============ 舞台の選択 ============ */
+
+.stage-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 12px; margin: 30px 0 26px; text-align: left;
+}
+.stage-card {
+  border: 1px solid var(--edge); background: rgba(22, 16, 14, 0.55);
+  padding: 16px 15px 15px; cursor: pointer; position: relative;
+  transition: border-color 0.14s ease, transform 0.14s ease, background 0.14s ease;
+}
+.stage-card:hover {
+  border-color: var(--edge-hot); transform: translateY(-2px);
+  background: rgba(30, 24, 20, 0.75);
+}
+.stage-card .no { font-size: 9px; letter-spacing: 0.3em; color: var(--ink-faint); }
+.stage-card h3 {
+  margin: 6px 0 2px; font-size: 19px; font-weight: 500; letter-spacing: 0.12em;
+  color: #f6ece0; font-family: var(--jp);
+}
+.stage-card .es { font-size: 9.5px; letter-spacing: 0.22em; color: var(--agave); }
+.stage-card .tag { margin-top: 8px; font-size: 9px; letter-spacing: 0.08em; color: var(--ink-faint); font-family: var(--jp); }
+.stage-card p {
+  margin: 10px 0 0; font-size: 11px; line-height: 1.85; color: var(--ink-dim);
+  font-family: var(--jp); letter-spacing: 0.02em;
+}
+.stage-card .save {
+  position: absolute; top: 12px; right: 12px;
+  font-size: 8.5px; letter-spacing: 0.14em; color: var(--amber);
+  border: 1px solid rgba(255, 201, 92, 0.5); padding: 2px 6px;
+  font-family: var(--jp);
+}
+.stage-card .save:hover { background: rgba(255, 201, 92, 0.14); }
+
+@media (max-width: 720px) {
+  .stage-grid { grid-template-columns: 1fr; gap: 8px; }
+  .stage-card p { display: none; }
+  .stage-card { padding: 11px 12px; }
+  .stage-card h3 { font-size: 16px; margin: 3px 0 1px; }
+}
+
 /* ============ HUD スケール系 ============ */
 
 .hud {
@@ -523,7 +564,7 @@ button.big.ghost { background: transparent; color: var(--agave); border: 1px sol
 <canvas id="view"></canvas>
 
 <!-- ============ 起動 ============ -->
-<div id="boot" class="boot">
+<div id="boot" class="boot hidden">
   <div class="boot-inner">
     <div class="boot-mark">SERVICIO METEOROLÓGICO · LOS ALTOS DE JALISCO</div>
     <h1>TROMBA</h1>
@@ -536,17 +577,13 @@ button.big.ghost { background: transparent; color: var(--agave); border: 1px sol
 </div>
 
 <!-- ============ 表題 ============ -->
-<div id="title" class="title hidden">
+<div id="title" class="title">
   <div class="title-inner">
-    <div class="boot-mark">HACIENDA SAN ROMÁN · 標高 2,050 m</div>
+    <div class="boot-mark">SERVICIO METEOROLÓGICO · TROMBA</div>
     <h1>TROMBA</h1>
-    <div class="boot-sub">アガベ平原の竜巻</div>
-    <p class="title-brief">五月、雨季の前。<b>ハリスコ高原</b>の赤い土の上に、四十年ぶんの<b>アオノリュウゼツラン</b>が畝を作って並んでいる。正午過ぎ、乾いた地面が熱を返し、そこに<b>あなた</b>が生まれる。最初はただの塵の渦。畑を薙ぎ、サボテンを倒し、赤い土を吸い上げるたび、あなたは雲を戴き、雷を持ち、赤く染まって大きくなる。</p>
-    <div class="title-buttons">
-      <button id="btnStart" class="big">渦を起こす</button>
-      <button id="btnContinue" class="big ghost hidden">続きから</button>
-    </div>
-    <div class="title-foot">WASD 移動 · Space 突進 · E 落雷 · Tab 記録帳 · Esc 設定</div>
+    <div class="boot-sub">舞台を選ぶ</div>
+    <div class="stage-grid" id="stageGrid"></div>
+    <div class="title-foot">WASD 移動 · Space 突進 · E 落雷 · C 視点 · Tab 記録帳 · Esc 設定</div>
   </div>
 </div>
 
@@ -2552,97 +2589,95 @@ __def("core/save.js", function (__e, __req) {
    消えたものの一覧だけでいい。地形はこの中に入っていない。
    ============================================================ */
 
-const KEY = 'tromba.sanroman.v1';
+/* 舞台ごとに別の枠。畑の続きと港の続きは別の話である。 */
+const KEY = (stage) => `tromba.${stage}.v2`;
 
-function load() {
+function load(stage) {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(KEY(stage));
     if (!raw) return null;
     const data = JSON.parse(raw);
     return data && data.v === 1 ? data : null;
   } catch {
-    // Private mode, disabled storage, corrupt entry — all the same to us.
+    // 匿名ウィンドウ、無効化、壊れた値。どれも同じ扱いでいい。
     return null;
   }
 }
 
-function save(data) {
+function save(stage, data) {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ v: 1, t: Date.now(), ...data }));
+    localStorage.setItem(KEY(stage), JSON.stringify({ v: 1, t: Date.now(), ...data }));
     return true;
   } catch {
     return false;
   }
 }
 
-function clear() {
-  try { localStorage.removeItem(KEY); } catch { /* nothing to do */ }
+function clear(stage) {
+  try { localStorage.removeItem(KEY(stage)); } catch { /* 消せないなら消せないでいい */ }
 }
 
   __e.load = load;
   __e.save = save;
   __e.clear = clear;
 });
-__def("world/terrain.js", function (__e, __req) {
+__def("game/stages.js", function (__e, __req) {
 /* ============================================================
-   TERRAIN — 焼き込み、クリップマップ、抉り、日射マスク
+   STAGES — 三つの土地
 
-   このファイルが守らせる規則は一つだけ。GPUは高さを自分で作らない。
-   渦の足元も、地面のピクセルも、同じ焼き込み済みの場を同じ補間で
-   読む。だから竜巻が地面から浮くことも沈むこともない。残りの機構
-   ——クリップマップの環、ミップ連鎖、汚れ矩形の転送——は全部その
-   ためにある。
+   地形の高さ関数、地面の描き方、何が建っていて誰が住んでいるか、
+   目標の言い回し。土地ごとに違うものを全部ここに集めてある。
+   terrain も props も actors も、渡されたこの一枚を読むだけで、
+   自分がどこにいるかを知らなくていい。
 
-   地形はハリスコ高原。玄武岩の台地に赤い火山灰土が乗り、涸れ谷が
-   北東へ抜けていく。アガベ畑の段は人が均したものなので、そこだけ
-   は数式の側で平らにしてある。
+   zone は「人が均した区画」。農園なら畑、街なら街区、湾岸なら埠頭。
+   向き dir と間隔 gap は、地面のテクスチャ・建物の配置・地形の段の
+   三者が共有する。別々に決めた瞬間にずれる。
    ============================================================ */
 
-const { fbm2, ridged2, hash2, makeRng, valueNoise2 } = __req("core/rng.js");
-const { createProgram, texture2D, buffer, vao } = __req("core/gl.js");
-const { clamp, smoothstep } = __req("core/math.js");
+const { fbm2, ridged2 } = __req("core/rng.js");
+const { smoothstep, clamp } = __req("core/math.js");
 
-/* 入れ子になった二つの場。細かい方が実際に走る土地で、抉りが触る
-   のもこちらだけ。粗い方が遠くのシエラと台地を水平線まで運ぶ。 */
-const FIELD = {
-  low:  { fineN: 1024, fineCell: 1.0,  coarseN: 512,  coarseCell: 16 },
-  high: { fineN: 2048, fineCell: 0.5,  coarseN: 1024, coarseCell: 8 }
-};
-
-const CLIP_M = 64;              // クリップマップ塊の半幅（セル数）
-const CLIP_LEVELS = 9;
-const SUN_ANGULAR_RADIUS = 0.00465;   // 太陽の視半径
-
-/* ---------- 解析的な世界 ----------
-   ここから下は位置と種だけの純関数。焼き込みはこれを標本化する。
-   それ以外の場所が地面を発明することは許さない。 */
-
-/* 畑の段。人が均した土地なので、縁の外から内へ向かって高さが
-   一定に寄っていく。中は完全な平面ではなく、畝の分だけ波打つ。 */
-const FARM = { x: 40, z: -30, halfX: 232, halfZ: 196, level: 3.2, rowDir: 0.42, rowGap: 6.0 };
-
-function farmMask(x, z) {
-  // 角の丸い矩形の内側で1、外へ40mで0。
-  const dx = Math.abs(x - FARM.x) - (FARM.halfX - 40);
-  const dz = Math.abs(z - FARM.z) - (FARM.halfZ - 40);
+/* 角の丸い矩形の内側で1、外へ fade で0。区画の縁はどの土地でも同じ形。 */
+function rectMask(x, z, Z, fade) {
+  const dx = Math.abs(x - Z.x) - (Z.halfX - fade);
+  const dz = Math.abs(z - Z.z) - (Z.halfZ - fade);
   const d = Math.hypot(Math.max(dx, 0), Math.max(dz, 0)) + Math.min(Math.max(dx, dz), 0);
-  return 1 - smoothstep(0, 40, d);
+  return 1 - smoothstep(0, fade, d);
 }
 
-/* 畝の座標。畑の向きに沿った軸で、地形にもテクスチャにも props の
-   配置にも同じものを使う。ここが唯一の定義。 */
-function rowCoord(x, z) {
-  const c = Math.cos(FARM.rowDir), s = Math.sin(FARM.rowDir);
-  const u = (x - FARM.x) * c + (z - FARM.z) * s;      // 畝に沿う
-  const v = -(x - FARM.x) * s + (z - FARM.z) * c;     // 畝を横切る
-  return [u, v];
+/* 区画に沿った座標。u は畝（あるいは街路）に沿い、v は横切る。 */
+function zoneCoord(x, z, Z) {
+  const c = Math.cos(Z.dir), s = Math.sin(Z.dir);
+  const dx = x - Z.x, dz = z - Z.z;
+  return [dx * c + dz * s, -dx * s + dz * c];
 }
 
-function makeWorldFunction(seed) {
-  /* 標高2,050m、ロス・アルトスの縁。見えるものは、赤土の緩い高原、
-     北東へ抜ける涸れ谷、西の側に一枚のメサ、そして地平を閉じる
-     遠いシエラ。 */
+/* ---------- 共通の地形の部品 ---------- */
 
+function sierraAt(x, z, seed, crestR, height) {
+  /* 遠い山列。角度ではなく円周上で標本化する。atan2 は ±π に切れ目が
+     あり、稜線に継ぎ目が入ると数百メートルの崖になる。 */
+  const r = Math.hypot(x, z);
+  const a = Math.atan2(z, x);
+  const scallop = ridged2(Math.cos(a) * 4.2, Math.sin(a) * 4.2 + r * 0.0003, 5, seed ^ 0xabc);
+  const crest = crestR + scallop * 620;
+  if (r < crest - 2000) return 0;
+  const u = (r - (crest - 2000)) / 2000;
+  return smoothstep(0, 1, u) * (height + scallop * height * 1.3);
+}
+
+function rolling(x, z, seed, big, small) {
+  let h = fbm2(x * 0.0013, z * 0.0013, 4, seed) * big;
+  h += fbm2(x * 0.0074, z * 0.0074, 4, seed + 91) * small;
+  h += fbm2(x * 0.062, z * 0.062, 3, seed + 401) * 0.30;
+  h += fbm2(x * 0.34, z * 0.34, 2, seed + 733) * 0.05;
+  return h;
+}
+
+/* ---------- 一つめ：アガベ農園 ---------- */
+
+function campoWorld(seed, Z) {
   function arroyo(x, z) {
     // 北東へうねる涸れ谷。底は平ら、岸は切り立つ。
     const t = (x * 0.62 + z * 0.78);
@@ -2653,64 +2688,207 @@ function makeWorldFunction(seed) {
     const u = d / halfW;
     if (u > 4) return 0;
     const DEPTH = -9.5;
-    // 底：中心線で最も深く、縁でその四分の三。
     if (u < 1) return DEPTH * (1 - 0.30 * u * u);
-    /* 壁：床が終わったところから始まり、打ち切り点でちょうど零に
-       届かなければならない。どちらかを外すと両岸に三メートルの
-       縁石が立つ。この注釈はそこから来ている。 */
+    /* 壁は床が終わったところから始まり、打ち切り点でちょうど零に届く。
+       どちらかを外すと両岸に三メートルの縁石が立つ。 */
     const lip = DEPTH * 0.70;
     return lip * Math.exp(-(u - 1) * 2.4) * (1 - smoothstep(3, 4, u));
   }
 
   function mesa(x, z) {
-    // 西の一枚岩。上面は平ら、崖は急、裾に崩れた岩屑。
     const dx = (x + 620) * 1.0, dz = (z - 330) * 0.82;
     const r = Math.hypot(dx, dz);
     const wob = ridged2(Math.atan2(dz, dx) * 2.4, r * 0.0022, 4, seed ^ 0x333) * 60;
     const R = 310 + wob;
     if (r > R + 190) return 0;
-    const cap = 1 - smoothstep(R - 26, R + 8, r);       // 頂上の平面
+    const cap = 1 - smoothstep(R - 26, R + 8, r);
     const talus = (1 - smoothstep(R + 8, R + 190, r)) * (1 - cap);
-    return cap * 96 + talus * 26 + (1 - cap) * 0;
+    return cap * 96 + talus * 26;
   }
 
-  function sierra(x, z) {
-    /* 遠いシエラ。角度ではなく円周上で標本化する。atan2 は ±π に
-       切れ目があり、稜線に継ぎ目が入ると数百メートルの崖になる。 */
-    const r = Math.hypot(x, z);
-    const a = Math.atan2(z, x);
-    const scallop = ridged2(Math.cos(a) * 4.2, Math.sin(a) * 4.2 + r * 0.0003, 5, seed ^ 0xabc);
-    const crest = 2900 + scallop * 620;
-    if (r < crest - 2000) return 0;
-    const u = (r - (crest - 2000)) / 2000;
-    return smoothstep(0, 1, u) * (420 + scallop * 540);
-  }
-
-  /* 高原の基準面からのメートル。 */
   function height(x, z) {
-    let h = 0;
-    // 数百メートルに数メートルの、長い波。
-    h += fbm2(x * 0.0013, z * 0.0013, 4, seed) * 17;
-    h += fbm2(x * 0.0074, z * 0.0074, 4, seed + 91) * 2.8;
-    // メートル規模のうねり。渦の足はここを撫でていく。
-    h += fbm2(x * 0.062, z * 0.062, 3, seed + 401) * 0.30;
-    h += fbm2(x * 0.34, z * 0.34, 2, seed + 733) * 0.05;
+    let h = rolling(x, z, seed, 17, 2.8);
     h += arroyo(x, z);
     h += mesa(x, z);
-    h += sierra(x, z);
-
-    // 畑の段。均した高さへ寄せ、畝の凹凸だけ残す。
-    const m = farmMask(x, z);
+    h += sierraAt(x, z, seed, 2900, 420);
+    const m = rectMask(x, z, Z, 40);
     if (m > 0.001) {
-      const [, v] = rowCoord(x, z);
-      const furrow = Math.cos((v / FARM.rowGap) * Math.PI * 2) * 0.11;
-      h = h * (1 - m) + (FARM.level + furrow) * m;
+      const v = zoneCoord(x, z, Z)[1];
+      const furrow = Math.cos((v / Z.gap) * Math.PI * 2) * 0.11;
+      h = h * (1 - m) + (Z.level + furrow) * m;
     }
     return h;
   }
-
-  return { height, arroyo, mesa, sierra, farmMask, rowCoord, FARM };
+  return { height, mask: (x, z) => rectMask(x, z, Z, 40), arroyo, mesa };
 }
+
+/* ---------- 二つめ：街 ---------- */
+
+function ciudadWorld(seed, Z) {
+  /* 盆地の底の街。街区は完全な平面ではなく、通りごとに僅かに傾いて
+     いる。碁盤の目でも、水は必ずどこかへ流れなければならない。 */
+  function river(x, z) {
+    const t = (x * 0.2 + z * 0.98);
+    const along = (-x * 0.98 + z * 0.2);
+    const wander = fbm2(along * 0.0015, 3.0, 3, seed ^ 0x51) * 120 - 60;
+    const d = Math.abs(t + 430 - wander);
+    const halfW = 26 + fbm2(along * 0.004, 1.0, 3, seed ^ 0x63) * 14;
+    const u = d / halfW;
+    if (u > 3.5) return 0;
+    const DEPTH = -7.5;
+    if (u < 1) return DEPTH;
+    return DEPTH * Math.exp(-(u - 1) * 2.2) * (1 - smoothstep(2.6, 3.5, u));
+  }
+
+  function height(x, z) {
+    let h = rolling(x, z, seed, 26, 3.4);
+    h += river(x, z);
+    h += sierraAt(x, z, seed, 3200, 520);
+    const m = rectMask(x, z, Z, 60);
+    if (m > 0.001) {
+      const [u, v] = zoneCoord(x, z, Z);
+      // 通りは僅かに窪む。雨の日に水が流れる先が分かる。
+      const gx = Math.abs(((u / Z.gap) % 1 + 1) % 1 - 0.5);
+      const gz = Math.abs(((v / Z.gap) % 1 + 1) % 1 - 0.5);
+      const street = (1 - smoothstep(0.34, 0.47, Math.min(gx, gz))) * -0.22;
+      h = h * (1 - m) + (Z.level + street + u * 0.004) * m;
+    }
+    return h;
+  }
+  return { height, mask: (x, z) => rectMask(x, z, Z, 60), river };
+}
+
+/* ---------- 三つめ：湾岸 ---------- */
+
+function costaWorld(seed, Z) {
+  /* 海は y=0。汀線は東西に走り、そこから陸へ上がっていく。埠頭だけは
+     人が均したので平ら。竜巻が海に出ると、吸い上げるのは水になる。 */
+  function coastZ(x) {
+    return -120 + fbm2(x * 0.0011, 5.0, 4, seed ^ 0x2b) * 260 - 130;
+  }
+
+  function height(x, z) {
+    const c = coastZ(x);
+    const d = z - c;                      // 正で陸、負で海
+    let h;
+    if (d >= 0) {
+      // 砂浜 → 低い段丘。奥は丘。
+      h = 1.2 * smoothstep(0, 26, d) + 9 * smoothstep(20, 320, d) + 26 * smoothstep(300, 1400, d);
+      h += rolling(x, z, seed, 9, 1.8) * smoothstep(30, 260, d);
+    } else {
+      // 遠浅から、沖で急に落ちる。
+      const s = -d;
+      h = -(2.2 * smoothstep(0, 60, s) + 9 * smoothstep(40, 420, s) + 16 * smoothstep(400, 1600, s));
+      h += fbm2(x * 0.004, z * 0.004, 3, seed + 12) * 1.4 * smoothstep(0, 200, s);
+    }
+    h += sierraAt(x, z, seed, 3400, 380) * smoothstep(-200, 400, d);
+    // 埠頭。海の上にも張り出している平らな面。
+    const m = rectMask(x, z, Z, 34);
+    if (m > 0.001) h = h * (1 - m) + Z.level * m;
+    return h;
+  }
+  return { height, mask: (x, z) => rectMask(x, z, Z, 34), coastZ };
+}
+
+/* ---------- 定義 ---------- */
+
+const LIST = [
+  {
+    id: 'campo', ground: 0,
+    name: 'アガベ農園', sub: 'HACIENDA SAN ROMÁN',
+    tag: '高原 · 標高 2,050 m',
+    brief: '五月の午後。四十年ぶんのアオノリュウゼツランが赤い土に畝を作って並んでいる。渦はここで生まれる。',
+    zone: { x: 40, z: -30, halfX: 232, halfZ: 196, dir: 0.42, gap: 6.0, level: 3.2 },
+    sun: { az: 2.40, el: 54 },
+    sea: null,
+    seed: 20260517,
+    labels: { small: 'アガベ', mid: 'サボテン', building: '建物', livestock: '家畜', people: '人' },
+    landmark: '母屋',
+    spawn: (w, Z) => [Z.x - 60, Z.z + 40],
+    world: campoWorld
+  },
+  {
+    id: 'ciudad', ground: 1,
+    name: '街', sub: 'CIUDAD DE ÁLAMOS',
+    tag: '人口 12,000 · 川沿いの碁盤の目',
+    brief: '日干し煉瓦の家が六十メートル角の街区に並ぶ。屋根は素焼き、通りは砂利。教会の塔だけが飛び抜けて高い。',
+    zone: { x: 0, z: 0, halfX: 300, halfZ: 260, dir: 0.24, gap: 62, level: 4.0 },
+    sun: { az: 1.85, el: 44 },
+    sea: null,
+    seed: 20260518,
+    labels: { small: '街路樹', mid: '街灯と電柱', building: '家屋', livestock: '車', people: '人' },
+    landmark: '教会',
+    spawn: (w, Z) => {
+      // 街区の角。街路樹が二方向に並んでいるところへ降りる。
+      const c = Math.cos(Z.dir), s2 = Math.sin(Z.dir);
+      const u = Z.gap * 1.5, v = Z.gap * 0.5;
+      return [Z.x + u * c - v * s2, Z.z + u * s2 + v * c];
+    },
+    world: ciudadWorld
+  },
+  {
+    id: 'costa', ground: 2,
+    name: '湾岸', sub: 'PUERTO SALINA',
+    tag: '汀線 · 海面 0 m',
+    brief: '積み上がったコンテナ、錆びたクレーン、係留されたボート。渦が海に出ると、吸い上げるのは土ではなく水になる。',
+    zone: { x: 60, z: -60, halfX: 260, halfZ: 150, dir: 0.06, gap: 40, level: 2.6 },
+    sun: { az: 2.9, el: 38 },
+    sea: { level: 0 },
+    seed: 20260519,
+    labels: { small: 'ヤシ', mid: 'コンテナ', building: '建物', livestock: 'ボート', people: '人' },
+    landmark: '灯台',
+    /* 埠頭の内陸側、ヤシ林の中に降ろす。最初の目標はヤシで、埠頭の
+       コンテナは二段目にならないと噛めない。正面（-Z）へ進めばヤシを
+       薙いでから埠頭に出る、という順序になる位置。汀線は場所によって
+       百メートル以上ずれるので、陸に乗るまで内陸へ下がる。 */
+    spawn: (w, Z) => {
+      const x = Z.x - 20;
+      let z = Z.z + Z.halfZ + 60;
+      for (let i = 0; i < 40 && w.height(x, z) < 1.0; i++) z += 20;
+      return [x, z + 60];
+    },
+    world: costaWorld
+  }
+];
+
+function byId(id) { return LIST.find((s) => s.id === id) || LIST[0]; }
+
+  __e.STAGE_LIST = LIST;
+  __e.stageById = byId;
+  __e.rectMask = rectMask;
+  __e.zoneCoord = zoneCoord;
+  void clamp;
+});
+
+__def("world/terrain.js", function (__e, __req) {
+/* ============================================================
+   TERRAIN — 焼き込み、クリップマップ、抉り、日射マスク
+
+   このファイルが守らせる規則は一つだけ。GPUは高さを自分で作らない。
+   渦の足元も、地面のピクセルも、同じ焼き込み済みの場を同じ補間で
+   読む。だから竜巻が地面から浮くことも沈むこともない。残りの機構
+   ——クリップマップの環、ミップ連鎖、汚れ矩形の転送——は全部その
+   ためにある。
+
+   どんな土地かはこのファイルの管轄ではない。高さ関数も、地面の
+   描き方の番号も、人が均した区画も、stages.js から渡ってくる。
+   ここがやるのは「渡された関数を標本化して、GPUに載せる」だけ。
+   ============================================================ */
+
+const { fbm2, ridged2, hash2, makeRng, valueNoise2 } = __req("core/rng.js");
+const { createProgram, texture2D, buffer, vao } = __req("core/gl.js");
+const { clamp, smoothstep } = __req("core/math.js");
+
+/* 入れ子になった二つの場。細かい方が実際に走る土地で、抉りが触る
+   のもこちらだけ。粗い方が遠くの山列を水平線まで運ぶ。 */
+const FIELD = {
+  low:  { fineN: 1024, fineCell: 1.0,  coarseN: 512,  coarseCell: 16 },
+  high: { fineN: 2048, fineCell: 0.5,  coarseN: 1024, coarseCell: 8 }
+};
+
+const CLIP_M = 64;              // クリップマップ塊の半幅（セル数）
+const CLIP_LEVELS = 9;
+const SUN_ANGULAR_RADIUS = 0.00465;   // 太陽の視半径
 
 /* ---------- mip chain ----------
    Without this the coarse rings interpolate straight across crater
@@ -2873,22 +3051,26 @@ float sampleHeightLod(vec2 p, int fineLod, int coarseLod) {
 /* ---------- Terrain ---------- */
 
 class Terrain {
-  constructor(gl, { seed = 20260812, tier = 'high', sunAzimuth = 2.40, sunElevation = 0.95 } = {}) {
+  constructor(gl, { seed = 20260517, tier = 'high', stage } = {}) {
     this.gl = gl;
     this.seed = seed | 0;
     this.cfg = FIELD[tier] || FIELD.high;
-    this.sunAz = sunAzimuth;
-    this.sunEl = sunElevation;
+    this.stage = stage;
+    this.sunAz = stage.sun.az;
+    this.sunEl = stage.sun.el * Math.PI / 180;
     this.sunDir = [
-      Math.cos(sunElevation) * Math.cos(sunAzimuth),
-      Math.sin(sunElevation),
-      Math.cos(sunElevation) * Math.sin(sunAzimuth)
+      Math.cos(this.sunEl) * Math.cos(this.sunAz),
+      Math.sin(this.sunEl),
+      Math.cos(this.sunEl) * Math.sin(this.sunAz)
     ];
-    this.world = makeWorldFunction(this.seed);
-    const F = this.world.FARM;
-    this.farm = F;
-    this.farmInfo = new Float32Array([F.x, F.z, F.halfX, F.halfZ]);
-    this.rowInfo = new Float32Array([F.rowDir, F.rowGap]);
+    /* 高さ関数も区画も土地の側から来る。ここは標本化するだけ。 */
+    this.zone = stage.zone;
+    this.world = stage.world(this.seed, this.zone);
+    this.sea = stage.sea ? stage.sea.level : null;
+    const Z = this.zone;
+    this.zoneInfo = new Float32Array([Z.x, Z.z, Z.halfX, Z.halfZ]);
+    this.rowInfo = new Float32Array([Z.dir, Z.gap]);
+    this.groundMode = stage.ground | 0;
 
     this.fineN = this.cfg.fineN;
     this.fineCell = this.cfg.fineCell;
@@ -2909,7 +3091,7 @@ class Terrain {
     const { fineN, fineCell, fineHalf, coarseN, coarseCell, coarseHalf } = this;
     const H = this.world.height;
 
-    yield { phase: '高原の地形を測っています', t: 0.02 };
+    yield { phase: '土地を測っています', t: 0.02 };
 
     const fine = new Float32Array(fineN * fineN);
     const rowsPerChunk = 64;
@@ -2922,13 +3104,13 @@ class Terrain {
           fine[row + x] = H(-fineHalf + (x + 0.5) * fineCell, wz);
         }
       }
-      yield { phase: '高原の地形を測っています', t: 0.02 + 0.52 * (y1 / fineN) };
+      yield { phase: '土地を測っています', t: 0.02 + 0.52 * (y1 / fineN) };
     }
     this.fine = fine;
     // Signed displacement already applied to each texel, in millimetres.
     this.cut = new Int16Array(fineN * fineN);
 
-    yield { phase: '遠いシエラを描いています', t: 0.56 };
+    yield { phase: '遠くの山を描いています', t: 0.56 };
     const coarse = new Float32Array(coarseN * coarseN);
     for (let y0 = 0; y0 < coarseN; y0 += rowsPerChunk) {
       const y1 = Math.min(coarseN, y0 + rowsPerChunk);
@@ -2939,7 +3121,7 @@ class Terrain {
           coarse[row + x] = H(-coarseHalf + (x + 0.5) * coarseCell, wz);
         }
       }
-      yield { phase: '遠いシエラを描いています', t: 0.56 + 0.16 * (y1 / coarseN) };
+      yield { phase: '遠くの山を描いています', t: 0.56 + 0.16 * (y1 / coarseN) };
     }
     this.coarse = coarse;
 
@@ -3293,8 +3475,10 @@ class Terrain {
     gl.uniform4fv(u.uStorm, ctx.storm);
     gl.uniform4fv(u.uWeather, ctx.weather);
     gl.uniform4fv(u.uVortex, ctx.vortex);
-    gl.uniform4fv(u.uFarm, this.farmInfo);
+    gl.uniform4fv(u.uZone, this.zoneInfo);
     gl.uniform2fv(u.uRow, this.rowInfo);
+    gl.uniform1i(u.uGround, this.groundMode);
+    gl.uniform1f(u.uSea, this.sea === null ? -9999 : this.sea);
     gl.uniform1i(u.uDebug, this.debug | 0);
 
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.fineTex);
@@ -3395,8 +3579,10 @@ uniform sampler2D uCoarseMask;
 uniform vec4 uStorm;         // x,z, メソサイクロン半径, 発達度
 uniform vec4 uWeather;       // 稲光, 雨量, 赤み, 巻き上がった土埃
 uniform vec4 uVortex;        // x,z, 渦の足の半径, 強さ
-uniform vec4 uFarm;          // 畑の中心x,z と 半幅x,z
-uniform vec2 uRow;           // 畝の向き, 畝の間隔
+uniform vec4 uZone;          // 人が均した区画。中心x,z と 半幅x,z
+uniform vec2 uRow;           // 区画の向き, 間隔
+uniform int uGround;         // 0 農園 / 1 街 / 2 湾岸
+uniform float uSea;          // 海面。無い土地では -9999
 uniform int uDebug;
 ${HEIGHT_GLSL}
 
@@ -3434,14 +3620,14 @@ float sunMask(vec2 p) {
   return mix(mc, mf, w);
 }
 
-/* 畑の座標。畝に沿う u と畝を横切る v。地形の関数、プロップの配置、
-   ここのテクスチャは同じ一つの定義を共有している。 */
-vec3 farmCoord(vec2 p) {
-  vec2 d = p - uFarm.xy;
+/* 区画の座標。u は畝（街路）に沿い、v は横切る。z は区画の内側度。
+   地形の関数、プロップの配置、ここのテクスチャは同じ定義を共有する。 */
+vec3 zoneCoord(vec2 p, float fade) {
+  vec2 d = p - uZone.xy;
   float c = cos(uRow.x), s = sin(uRow.x);
-  vec2 q = vec2(abs(d.x) - (uFarm.z - 40.0), abs(d.y) - (uFarm.w - 40.0));
+  vec2 q = vec2(abs(d.x) - (uZone.z - fade), abs(d.y) - (uZone.w - fade));
   float dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0);
-  return vec3(d.x * c + d.y * s, -d.x * s + d.y * c, 1.0 - smoothstep(0.0, 40.0, dist));
+  return vec3(d.x * c + d.y * s, -d.x * s + d.y * c, 1.0 - smoothstep(0.0, fade, dist));
 }
 
 void main() {
@@ -3460,16 +3646,15 @@ void main() {
   float dist = length(uCam - vWorld);
 
   /* 渦が抉った跡は、粗いミップとの差として出てくる。溝は負、畝は正。
-     わざわざ被害テクスチャを持たなくても、地面の形そのものが跡を
-     知っている。 */
+     被害テクスチャを持たなくても、地面の形そのものが跡を知っている。 */
   float relief = hc - sampleHeightLod(p, min(uLod.x + 3, 8), min(uLod.y + 3, 8));
   float gouge = clamp(-relief * 3.2, 0.0, 1.0);
 
-  vec3 fc = farmCoord(p);
-  float inFarm = fc.z;
+  vec3 zc = zoneCoord(p, uGround == 1 ? 60.0 : (uGround == 2 ? 34.0 : 40.0));
+  float inZone = zc.z;
 
   /* 細かい起伏。二乗で落ちて40mで消える。毎メートル二周期の法線マップ
-     を浅い角度で見ると白色雑音の絨毯になる。最初の版がまさにそれだった。 */
+     を浅い角度で見ると白色雑音の絨毯になる。 */
   float micro = clamp(1.0 - dist / 58.0, 0.0, 1.0);
   micro *= micro;
   if (micro > 0.002) {
@@ -3478,97 +3663,128 @@ void main() {
     float nx = fbm(p * s + vec2(0.10, 0.0)) - n1;
     float nz = fbm(p * s + vec2(0.0, 0.10)) - n1;
     N = normalize(N + vec3(-nx, 0.0, -nz) * 3.0 * micro);
-    // 畑の畝：耕された土は畝に直交する細い溝を持つ。
-    if (inFarm > 0.01) {
-      float g = sin(fc.y * (6.2831853 / uRow.y)) * 0.5 + 0.5;
-      g = g * 0.7 + 0.15;
-      float rake = sin(fc.x * 5.4) * 0.06 + sin(fc.y * 41.0) * 0.03;
-      vec2 c2 = vec2(cos(uRow.x), sin(uRow.x));
-      N = normalize(N + vec3(-c2.y, 0.0, c2.x) * (g - 0.5) * 0.55 * inFarm * micro
-                      + vec3(c2.x, 0.0, c2.y) * rake * inFarm * micro);
+  }
+
+  vec3 albedo;
+  float rough = 1.0;          // 1 で完全に拡散。舗装と濡れた砂だけ下がる
+
+  /* ---- 土。どの土地も下はこれ ---- */
+  float mott = fbm(p * 0.024) * 0.55 + fbm(p * 0.17) * 0.30;
+  vec3 tierra = vec3(0.126, 0.048, 0.028);
+  vec3 caliche = vec3(0.235, 0.196, 0.142);
+  vec3 basalt = vec3(0.046, 0.042, 0.040);
+  vec3 grass = vec3(0.160, 0.128, 0.048);
+  albedo = mix(tierra, caliche, smoothstep(0.48, 0.86, mott));
+  float steep = smoothstep(0.86, 0.55, N.y);
+  albedo = mix(albedo, basalt, steep * 0.85);
+  float grassAmt = smoothstep(0.45, 0.85, fbm(p * 0.09 + 13.0)) * smoothstep(0.80, 0.96, N.y);
+  albedo = mix(albedo, grass, grassAmt * 0.55 * (1.0 - inZone * 0.7));
+
+  if (uGround == 0) {
+    /* 畑。畝の帯だけ耕され、色が濃く、株の足元に枯葉が敷かれている。 */
+    if (inZone > 0.01) {
+      if (micro > 0.002) {
+        float g = sin(zc.y * (6.2831853 / uRow.y)) * 0.5 + 0.5;
+        g = g * 0.7 + 0.15;
+        float rake = sin(zc.x * 5.4) * 0.06 + sin(zc.y * 41.0) * 0.03;
+        vec2 c2 = vec2(cos(uRow.x), sin(uRow.x));
+        N = normalize(N + vec3(-c2.y, 0.0, c2.x) * (g - 0.5) * 0.55 * inZone * micro
+                        + vec3(c2.x, 0.0, c2.y) * rake * inZone * micro);
+      }
+      float ph = fract(zc.y / uRow.y);
+      float band = 1.0 - smoothstep(0.08, 0.26, min(ph, 1.0 - ph));
+      vec3 tilled = mix(vec3(0.108, 0.044, 0.026), vec3(0.140, 0.062, 0.036), fbm(p * 0.6));
+      vec3 litter = vec3(0.115, 0.090, 0.042);
+      albedo = mix(albedo, mix(tilled, litter, band * 0.55), inZone * 0.62);
+    }
+  } else if (uGround == 1) {
+    /* 街。通りは砂利、街区の縁に歩道、真ん中に家が建つ地面。
+       格子は区画の向きに沿う。地形の段差もプロップの配置も同じ向き。 */
+    if (inZone > 0.01) {
+      vec2 g = fract(zc.xy / uRow.y) - 0.5;
+      float road = 1.0 - smoothstep(0.055, 0.085, min(abs(g.x), abs(g.y)));
+      float walk = smoothstep(0.085, 0.095, min(abs(g.x), abs(g.y))) *
+                   (1.0 - smoothstep(0.105, 0.125, min(abs(g.x), abs(g.y))));
+      vec3 gravel = mix(vec3(0.088, 0.078, 0.070), vec3(0.130, 0.118, 0.105), fbm(p * 1.6));
+      vec3 kerb = vec3(0.190, 0.178, 0.158);
+      vec3 yard = mix(vec3(0.115, 0.086, 0.052), grass, smoothstep(0.4, 0.8, fbm(p * 0.4 + 7.0)));
+      vec3 town = mix(yard, gravel, road);
+      town = mix(town, kerb, walk);
+      albedo = mix(albedo, town, inZone);
+      rough = mix(rough, 0.72, road * inZone);
+      // 交差点の轍。
+      float wear = road * (0.5 + 0.5 * sin(zc.x * 0.7)) * 0.12;
+      albedo *= 1.0 - wear * inZone;
+    }
+  } else {
+    /* 湾岸。汀線から陸へ、濡れた砂・乾いた砂・草地。埠頭はコンクリート。 */
+    float depth = uSea - vWorld.y;             // 正で水面下
+    float wet = smoothstep(-0.6, 1.4, depth + 1.2);
+    vec3 sand = mix(vec3(0.245, 0.205, 0.148), vec3(0.300, 0.262, 0.198), fbm(p * 0.5));
+    vec3 wetSand = vec3(0.105, 0.088, 0.070);
+    vec3 seabed = mix(vec3(0.070, 0.075, 0.062), vec3(0.040, 0.048, 0.045), smoothstep(0.0, 12.0, depth));
+    float beach = 1.0 - smoothstep(1.0, 16.0, vWorld.y - uSea);
+    albedo = mix(albedo, sand, beach);
+    albedo = mix(albedo, wetSand, wet * (1.0 - step(2.0, depth)));
+    albedo = mix(albedo, seabed, smoothstep(0.0, 2.5, depth));
+    rough = mix(rough, 0.55, wet * 0.7);
+    if (inZone > 0.01) {
+      // 埠頭。目地の入ったコンクリート。
+      vec2 g = fract(zc.xy / 8.0) - 0.5;
+      float joint = 1.0 - smoothstep(0.02, 0.045, min(abs(g.x), abs(g.y)));
+      vec3 conc = mix(vec3(0.130, 0.126, 0.118), vec3(0.163, 0.158, 0.148), fbm(p * 0.9));
+      albedo = mix(albedo, mix(conc, conc * 0.72, joint), inZone);
+      rough = mix(rough, 0.80, inZone);
     }
   }
 
-  /* ---- 土の色 ---- */
-  float mott = fbm(p * 0.024) * 0.55 + fbm(p * 0.17) * 0.30;
-  vec3 tierra = vec3(0.126, 0.048, 0.028);            // 火山灰の赤土
-  vec3 caliche = vec3(0.235, 0.196, 0.142);           // 石灰の白い露頭
-  vec3 basalt = vec3(0.046, 0.042, 0.040);            // 玄武岩
-  vec3 grass = vec3(0.160, 0.128, 0.048);             // 枯れ草
-
-  vec3 albedo = mix(tierra, caliche, smoothstep(0.48, 0.86, mott));
-  // 急斜面は土を落とし、岩が出る。
-  float steep = smoothstep(0.86, 0.55, N.y);
-  albedo = mix(albedo, basalt, steep * 0.85);
-  // 草は緩斜面の窪みに溜まる。
-  float grassAmt = smoothstep(0.45, 0.85, fbm(p * 0.09 + 13.0)) * smoothstep(0.80, 0.96, N.y);
-  albedo = mix(albedo, grass, grassAmt * 0.55 * (1.0 - inFarm * 0.7));
-
-  // 畑：畝の帯だけ耕され、色が濃く、株の足元に枯葉が敷かれている。
-  if (inFarm > 0.01) {
-    float ph = fract(fc.y / uRow.y);
-    float band = 1.0 - smoothstep(0.08, 0.26, min(ph, 1.0 - ph));   // 株の列
-    vec3 tilled = mix(vec3(0.108, 0.044, 0.026), vec3(0.140, 0.062, 0.036), fbm(p * 0.6));
-    vec3 litter = vec3(0.115, 0.090, 0.042);
-    albedo = mix(albedo, mix(tilled, litter, band * 0.55), inFarm * 0.62);
-  }
-
-  // 抉った溝は下の湿った土。乾いた表土より暗く、赤い。
-  albedo = mix(albedo, vec3(0.085, 0.034, 0.022), gouge * 0.75);
+  // 抉った溝は下の湿った土。乾いた表土より暗い。
+  albedo = mix(albedo, albedo * 0.55, gouge * 0.75);
 
   /* ---- 光 ---- */
   float shadow = sunMask(p);
-
-  // メソサイクロンの影。嵐が育つほど、その真下は昼でなくなる。
   float md = length(p - uStorm.xy) / max(uStorm.z, 1.0);
   float cloudShadow = 1.0 - uStorm.w * (1.0 - smoothstep(0.55, 1.25, md)) * 0.88;
 
   float ndl = max(dot(N, uSun), 0.0);
-  // 乾いた土は後方散乱が強い。真下から見ると平らな板に見えるのはそれ。
   float back = pow(max(dot(N, uSun) * 0.5 + 0.5, 0.0), 1.6) * 0.22;
   vec3 col = albedo * (ndl + back) * uSunColor * shadow * cloudShadow * 1.62;
 
-  // 半球アンビエント。上は空、下は赤土の照り返し。
   vec3 bounce = vec3(0.20, 0.09, 0.055);
   col += albedo * mix(bounce, uSkyColor, N.y * 0.5 + 0.5) * (0.22 + 0.55 * clamp(N.y, 0.0, 1.0));
 
-  // 雨。濡れた土は暗く、少しだけ鏡になる。
-  float rain = uWeather.y * (1.0 - smoothstep(0.4, 1.1, md));
-  if (rain > 0.001) {
-    col *= mix(1.0, 0.62, rain);
+  // 濡れた面は空を映す。舗装も、雨も、汀線も同じ式で足りる。
+  float gloss = (1.0 - rough) + uWeather.y * (1.0 - smoothstep(0.4, 1.1, md)) * 0.6;
+  if (gloss > 0.02) {
     vec3 H = normalize(uSun + V);
-    col += uSunColor * shadow * cloudShadow * pow(max(dot(N, H), 0.0), 42.0) * rain * 0.30;
+    col *= mix(1.0, 0.74, gloss * 0.5);
+    col += uSunColor * shadow * cloudShadow * pow(max(dot(N, H), 0.0), 44.0) * gloss * 0.55;
+    col += uSkyColor * pow(1.0 - max(dot(N, V), 0.0), 4.0) * gloss * 0.30;
   }
 
   /* 渦の足。地面を擦り、土を剥がし、埃を薄く敷く輪。 */
   if (uVortex.w > 0.0) {
     float d = length(p - uVortex.xy);
     float core = 1.0 - smoothstep(uVortex.z * 0.55, uVortex.z * 1.35, d);
-    // 巻き上げの縞。渦の回転に合わせて回る。
     float ang = atan(p.y - uVortex.y, p.x - uVortex.x);
     float swirl = sin(ang * 3.0 - uTime * 4.4 + d * 0.5) * 0.5 + 0.5;
     col = mix(col, col * 0.72 + vec3(0.115, 0.062, 0.042) * (0.5 + swirl), core * uVortex.w * 0.75);
   }
 
-  // 稲光。空全体が光源になる瞬間なので、面の向きはほとんど効かない。
   col += albedo * vec3(0.62, 0.70, 1.0) * uWeather.x * (0.30 + 0.45 * clamp(N.y, 0.0, 1.0));
 
-  /* 空気遠近。ここは月ではないので遠くは霞む。太陽の方向はミー散乱で
-     明るく、反対側は青く沈む。 */
   float fog = 1.0 - exp(-dist * uFog);
   float mie = pow(max(dot(-V, uSun), 0.0), 6.0);
   vec3 haze = uHaze * (1.0 + mie * 0.8) + vec3(0.35, 0.30, 0.22) * uWeather.x;
-  // 舞い上がった土埃は霞そのものを赤くする。
   haze = mix(haze, haze * vec3(1.30, 0.62, 0.44), uWeather.z * 0.30);
   col = mix(col, haze, fog);
 
-  /* 開発用。window.TROMBA.debug = 1..6 で各項を見る。この大きさの
-     シェーダで陰影のバグを追う正気な方法はこれしかない。 */
+  /* 開発用。window.TROMBA.debug = 1..6 で各項を見る。 */
   if (uDebug != 0) {
     if (uDebug == 1) col = vec3(shadow * cloudShadow);
     else if (uDebug == 2) col = N * 0.5 + 0.5;
     else if (uDebug == 3) col = vec3(ndl);
-    else if (uDebug == 4) col = vec3(inFarm, gouge, rain);
+    else if (uDebug == 4) col = vec3(inZone, gouge, rough);
     else if (uDebug == 5) col = vec3(fract(vLevel / 8.0), 1.0 - vLevel / 8.0, 0.4);
     else if (uDebug == 6) col = albedo * 3.0;
     fragColor = vec4(col, 1.0);
@@ -3580,10 +3796,10 @@ void main() {
 
 
   __e.FIELD = FIELD;
-  __e.makeWorldFunction = makeWorldFunction;
   __e.HEIGHT_GLSL = HEIGHT_GLSL;
   __e.Terrain = Terrain;
 });
+
 
 __def("core/rng.js", function (__e, __req) {
 /* ============================================================
@@ -3991,57 +4207,292 @@ function cameraBasis(view, out = {}) {
   __e.cameraBasis = cameraBasis;
 });
 
+__def("world/water.js", function (__e, __req) {
+/* ============================================================
+   WATER — 湾岸の海
+
+   カメラを中心に置いた一枚の円盤。半径方向に指数で伸ばした格子なので、
+   足元は数十センチ刻み、水平線の手前は数百メートル刻みになる。同じ
+   頂点数で、近くの波と、沖まで届く面の両方が出る。
+
+   水深は地形の場から読む。地面と水面が同じ高さ場を共有しているので、
+   汀線は「二つの面が交わる線」として自動的に出てくる。砂浜を別に
+   描く必要はないし、潮位を変えれば汀線がひとりでに動く。
+   ============================================================ */
+
+const { createProgram, buffer, vao } = __req("core/gl.js");
+const { HEIGHT_GLSL } = __req("world/terrain.js");
+
+const RINGS = 128, SEG = 96;
+const REACH = 5200;
+
+const VS = `#version 300 es
+precision highp float;
+precision highp sampler2D;
+in vec2 aRing;             // x 半径 0..1, y 角度 0..1
+
+uniform mat4 uViewProj;
+uniform vec3 uCam;
+uniform float uSea;
+uniform float uTime;
+uniform vec4 uVortex;      // x,z, 半径, 強さ
+${HEIGHT_GLSL}
+
+out vec3 vWorld;
+out vec3 vNrm;
+out float vDepth;
+out float vSuck;
+
+/* 三つの正弦を違う向きに重ねる。それだけで、規則正しく見えない
+   うねりになる。ゲルストナー波の水平変位までは要らない。 */
+float waveH(vec2 p, float t, out vec2 grad) {
+  float h = 0.0;
+  grad = vec2(0.0);
+  vec2 d1 = vec2(0.86, 0.51), d2 = vec2(-0.42, 0.91), d3 = vec2(0.66, -0.75);
+  float k1 = 0.055, k2 = 0.11, k3 = 0.27;
+  float a1 = 0.55, a2 = 0.24, a3 = 0.09;
+  float p1 = dot(p, d1) * k1 - t * 0.62;
+  float p2 = dot(p, d2) * k2 - t * 0.95;
+  float p3 = dot(p, d3) * k3 - t * 1.7;
+  h = sin(p1) * a1 + sin(p2) * a2 + sin(p3) * a3;
+  grad += d1 * (cos(p1) * a1 * k1);
+  grad += d2 * (cos(p2) * a2 * k2);
+  grad += d3 * (cos(p3) * a3 * k3);
+  return h;
+}
+
+void main() {
+  // 半径は指数。足元は細かく、沖は粗く。
+  float r = (exp(aRing.x * 5.2) - 1.0) / (exp(5.2) - 1.0) * ${REACH}.0;
+  float a = aRing.y * 6.2831853;
+  vec2 p = uCam.xz + vec2(cos(a), sin(a)) * r;
+
+  float bed = sampleHeightLod(p, 0, 0);
+  float depth = uSea - bed;
+
+  vec2 grad;
+  // 浅いところでは波が立たない。汀線が波でギザギザにならない。
+  float shoal = clamp(depth / 3.0, 0.0, 1.0);
+  float h = waveH(p, uTime, grad) * shoal;
+
+  /* 渦の足元では水が持ち上がり、外へ環が走る。水上竜巻の足。 */
+  float vd = length(p - uVortex.xy);
+  float suck = uVortex.w * exp(-vd * vd / (uVortex.z * uVortex.z * 3.0));
+  float ring = uVortex.w * exp(-pow((vd - uVortex.z * 2.2) / max(uVortex.z, 4.0), 2.0));
+  h += suck * uVortex.z * 0.16 + ring * 0.9;
+
+  vWorld = vec3(p.x, uSea + h, p.y);
+  vNrm = normalize(vec3(-grad.x * shoal, 1.0, -grad.y * shoal));
+  vDepth = depth;
+  vSuck = suck + ring * 0.6;
+  gl_Position = uViewProj * vec4(vWorld, 1.0);
+}`;
+
+const FS = `#version 300 es
+precision highp float;
+in vec3 vWorld;
+in vec3 vNrm;
+in float vDepth;
+in float vSuck;
+
+uniform vec3 uCam;
+uniform vec3 uSun;
+uniform vec3 uSunColor;
+uniform vec3 uSkyColor;
+uniform vec3 uHaze;
+uniform float uFog;
+uniform float uExposure;
+uniform float uTime;
+uniform vec4 uStorm;
+uniform vec4 uWeather;
+
+out vec4 fragColor;
+
+float hash21(vec2 p) {
+  p = fract(p * vec2(123.34, 345.45));
+  p += dot(p, p + 34.345);
+  return fract(p.x * p.y);
+}
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash21(i), hash21(i + vec2(1, 0)), f.x),
+             mix(hash21(i + vec2(0, 1)), hash21(i + vec2(1, 1)), f.x), f.y);
+}
+
+void main() {
+  if (vDepth <= 0.02) discard;          // 陸の上には水を置かない
+
+  vec3 V = normalize(uCam - vWorld);
+  float dist = length(uCam - vWorld);
+
+  // 細かいさざ波。法線にだけ効かせる。
+  vec2 q = vWorld.xz * 0.9;
+  float n1 = vnoise(q + vec2(uTime * 0.7, -uTime * 0.4));
+  float n2 = vnoise(q * 2.3 - vec2(uTime * 1.1, uTime * 0.6));
+  vec3 N = normalize(vNrm + vec3((n1 - 0.5) * 0.5 + (n2 - 0.5) * 0.3, 0.0,
+                                 (n2 - 0.5) * 0.5 + (n1 - 0.5) * 0.3)
+                            * clamp(1.0 - dist / 260.0, 0.0, 1.0));
+
+  /* 深いほど暗く青い。浅いところは底の色が透ける。 */
+  vec3 deep = vec3(0.012, 0.036, 0.055);
+  vec3 shallow = vec3(0.055, 0.115, 0.110);
+  vec3 body = mix(shallow, deep, clamp(vDepth / 9.0, 0.0, 1.0));
+
+  // フレネル。水を水に見せているのは、ほとんどこの一行。
+  float fres = pow(1.0 - max(dot(N, V), 0.0), 4.2);
+  float md = length(vWorld.xz - uStorm.xy) / max(uStorm.z, 1.0);
+  float cloudShadow = 1.0 - uStorm.w * (1.0 - smoothstep(0.55, 1.25, md)) * 0.88;
+  vec3 sky = mix(uHaze, uSkyColor, 0.55) * cloudShadow;
+  vec3 col = mix(body * (0.35 + 0.65 * cloudShadow), sky, clamp(fres * 1.25, 0.0, 0.92));
+
+  // 太陽の道。うねりの上に伸びる、あの帯。
+  vec3 H = normalize(uSun + V);
+  col += uSunColor * cloudShadow * pow(max(dot(N, H), 0.0), 220.0) * 2.4;
+  col += uSunColor * cloudShadow * pow(max(dot(N, H), 0.0), 24.0) * 0.10;
+
+  // 白波。汀線と、渦の足元。
+  float surf = smoothstep(1.6, 0.15, vDepth) * (0.35 + 0.65 * vnoise(q * 3.0 + uTime * 1.6));
+  float foam = clamp(surf + vSuck * 1.5, 0.0, 1.0);
+  col = mix(col, vec3(0.62, 0.66, 0.68) * (0.5 + 0.5 * cloudShadow), foam * 0.85);
+
+  col += vec3(0.62, 0.70, 1.0) * uWeather.x * 0.5;
+
+  float fog = 1.0 - exp(-dist * uFog);
+  float mie = pow(max(dot(-V, uSun), 0.0), 6.0);
+  vec3 haze = uHaze * (1.0 + mie * 0.8) + vec3(0.35, 0.30, 0.22) * uWeather.x;
+  col = mix(col, haze, fog);
+
+  fragColor = vec4(col * uExposure, 1.0);
+}`;
+
+class Water {
+  constructor(gl, terrain, level) {
+    this.gl = gl;
+    this.terrain = terrain;
+    this.level = level;
+    this.time = 0;
+    this.prog = createProgram(gl, VS, FS, 'water');
+
+    const verts = new Float32Array((RINGS + 1) * (SEG + 1) * 2);
+    let p = 0;
+    for (let j = 0; j <= RINGS; j++) {
+      for (let i = 0; i <= SEG; i++) { verts[p++] = j / RINGS; verts[p++] = i / SEG; }
+    }
+    const idx = [];
+    const at = (i, j) => j * (SEG + 1) + i;
+    for (let j = 0; j < RINGS; j++) {
+      for (let i = 0; i < SEG; i++) {
+        idx.push(at(i, j), at(i, j + 1), at(i + 1, j));
+        idx.push(at(i + 1, j), at(i, j + 1), at(i + 1, j + 1));
+      }
+    }
+    this.count = idx.length;
+    const vb = buffer(gl, verts);
+    const ib = buffer(gl, new Uint32Array(idx), gl.ELEMENT_ARRAY_BUFFER);
+    this.vao = vao(gl, [{ buffer: vb, loc: this.prog.a.aRing, size: 2 }], ib);
+  }
+
+  update(dt) { this.time += dt; }
+
+  render(ctx) {
+    const gl = this.gl, p = this.prog, u = p.u, T = this.terrain;
+    p.use();
+    gl.uniformMatrix4fv(u.uViewProj, false, ctx.viewProj);
+    gl.uniform3fv(u.uCam, ctx.camPos);
+    gl.uniform3fv(u.uSun, T.sunDir);
+    gl.uniform3fv(u.uSunColor, ctx.sunColor);
+    gl.uniform3fv(u.uSkyColor, ctx.skyColor);
+    gl.uniform3fv(u.uHaze, ctx.haze);
+    gl.uniform1f(u.uFog, ctx.fog);
+    gl.uniform1f(u.uExposure, ctx.exposure);
+    gl.uniform1f(u.uTime, this.time);
+    gl.uniform1f(u.uSea, this.level);
+    gl.uniform4fv(u.uStorm, ctx.storm);
+    gl.uniform4fv(u.uWeather, ctx.weather);
+    gl.uniform4fv(u.uVortex, ctx.vortex);
+    gl.uniform4fv(u.uFineInfo, [-T.fineHalf, -T.fineHalf, T.fineCell, T.fineN]);
+    gl.uniform4fv(u.uCoarseInfo, [-T.coarseHalf, -T.coarseHalf, T.coarseCell, T.coarseN]);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, T.fineTex);
+    gl.uniform1i(u.uFine, 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, T.coarseTex);
+    gl.uniform1i(u.uCoarse, 1);
+    // 面は上からしか見ない。裏面を描くと、水中に潜ったとき天地が反転する。
+    gl.disable(gl.CULL_FACE);
+    gl.bindVertexArray(this.vao);
+    gl.drawElements(gl.TRIANGLES, this.count, gl.UNSIGNED_INT, 0);
+    gl.bindVertexArray(null);
+    gl.enable(gl.CULL_FACE);
+  }
+}
+
+  __e.Water = Water;
+});
+
 __def("world/props.js", function (__e, __req) {
 /* ============================================================
-   PROPS — 畑、サボテン、ハシエンダ
+   PROPS — 立っているもの、そして飛んでいくもの
 
-   アオノリュウゼツランは畝に沿って並ぶ。畝の向きも間隔も地形の
-   関数と共有しているので、地面のテクスチャの筋と株の列は必ず一致
-   する。別々に決めると、一度でもどちらかを触った瞬間にずれる。
+   三つの土地が同じ骨格を共有する。小さいもの（アガベ・街路樹・ヤシ）と
+   中くらいのもの（サボテン・街灯・コンテナ）は四つの枠にインスタンス
+   描画で敷き詰められ、建物は模型行列を一つずつ持つ。倒したときの扱い
+   も、集計の仕方も、土地によって変わらない。変わるのは形と配置だけで、
+   それは stages.js が決める。
 
-   壊れるものは全部一つの配列に入り、8mのグリッドに索引される。
-   渦は毎フレーム自分の周りのセルだけを見る。四千株を総当たりしても
-   動きはするが、それは秒間六十回やっていい仕事ではない。
+   壊れるものは全部一つの配列に入り、8mのグリッドに索引される。渦は
+   毎フレーム自分の周りのセルだけを見る。
 
-   株はインスタンス描画なので、倒れた株は静止側のスケールを0にして
-   潰し、同じ形を「飛んでいる側」のインスタンス群へ移す。飛んでいる
-   ものは渦の速度場に引きずられ、回りながら螺旋を描いて上がっていく。
-   建物は模型行列を持っているので、渦が自分より充分大きくなるまでは
-   根元を軸に倒れ、大きくなったら丸ごと持っていかれる。
+   倒れた株は静止側のインスタンスを潰して「飛んでいる側」の群れへ移り、
+   渦の速度場に引きずられて回りながら螺旋を描いて上がる。建物は、渦が
+   自分より充分大きくなるまでは根元から倒れ、大きくなったら丸ごと
+   持っていかれる。
    ============================================================ */
 
 const { MeshBuilder } = __req("core/mesh.js");
 const { makeRng, hash2, fbm2 } = __req("core/rng.js");
-const { m4, m4compose, qt, qFromAxisAngle, qMul, qNorm, qIntegrate, clamp } = __req("core/math.js");
+const { m4, m4compose, qt, qFromAxisAngle, qMul, qNorm, qIntegrate } = __req("core/math.js");
 
-/* 壊せるものの一覧。minStage は「この階級にならないと倒せない」、
-   hp は噛み砕くのに要る秒×強さ、value は倒したときに入る力。 */
+/* 壊せるものの一覧。minStage は「この段にならないと噛めない」、
+   hp は噛み砕くのに要る秒×強さ、value は点、count は集計の欄。 */
 const KINDS = {
-  agave:  { label: 'アガベ',   minStage: 0, hp: 0.35, value: 1,   r: 1.1, tone: 'leaf', count: 'agave' },
-  bush:   { label: '灌木',     minStage: 0, hp: 0.5,  value: 1,   r: 1.0, tone: 'leaf' },
-  post:   { label: '柵',       minStage: 0, hp: 0.5,  value: 2,   r: 0.5, tone: 'wood' },
-  cactus: { label: 'サボテン', minStage: 1, hp: 2.0,  value: 10,  r: 1.8, tone: 'leaf', count: 'cactus' },
-  pile:   { label: 'ピニャ',   minStage: 1, hp: 1.6,  value: 15,  r: 2.6, tone: 'leaf' },
-  truck:  { label: 'トラック', minStage: 1, hp: 4.0,  value: 30,  r: 3.0, tone: 'metal', count: 'building' },
-  shed:   { label: '納屋',     minStage: 1, hp: 5.5,  value: 40,  r: 6.4, tone: 'wood', count: 'building' },
-  tower:  { label: '給水塔',   minStage: 2, hp: 8.0,  value: 60,  r: 3.8, tone: 'metal', count: 'building' },
-  mill:   { label: '風車',     minStage: 2, hp: 8.0,  value: 60,  r: 3.4, tone: 'metal', count: 'building' },
-  casa:   { label: '母屋',     minStage: 3, hp: 14.0, value: 200, r: 11.5, tone: 'adobe', count: 'building' }
+  // 農園
+  agave:  { label: 'アガベ',   minStage: 0, hp: 0.35, value: 1,   r: 1.1,  tone: 'leaf',  count: 'small' },
+  bush:   { label: '灌木',     minStage: 0, hp: 0.5,  value: 1,   r: 1.0,  tone: 'leaf' },
+  post:   { label: '柵',       minStage: 0, hp: 0.5,  value: 2,   r: 0.5,  tone: 'wood' },
+  cactus: { label: 'サボテン', minStage: 1, hp: 2.0,  value: 10,  r: 1.8,  tone: 'leaf',  count: 'mid' },
+  pile:   { label: 'ピニャ',   minStage: 1, hp: 1.6,  value: 15,  r: 2.6,  tone: 'leaf' },
+  truck:  { label: 'トラック', minStage: 1, hp: 4.0,  value: 30,  r: 3.0,  tone: 'metal', count: 'building' },
+  shed:   { label: '納屋',     minStage: 1, hp: 5.5,  value: 40,  r: 6.4,  tone: 'wood',  count: 'building' },
+  tower:  { label: '給水塔',   minStage: 2, hp: 8.0,  value: 60,  r: 3.8,  tone: 'metal', count: 'building' },
+  mill:   { label: '風車',     minStage: 2, hp: 8.0,  value: 60,  r: 3.4,  tone: 'metal', count: 'building' },
+  casa:   { label: '母屋',     minStage: 3, hp: 14.0, value: 200, r: 11.5, tone: 'adobe', count: 'building' },
+  // 街
+  tree:   { label: '街路樹',   minStage: 0, hp: 0.6,  value: 2,   r: 1.2,  tone: 'leaf',  count: 'small' },
+  lamp:   { label: '街灯',     minStage: 1, hp: 1.4,  value: 8,   r: 0.6,  tone: 'metal', count: 'mid' },
+  pole:   { label: '電柱',     minStage: 1, hp: 2.0,  value: 10,  r: 0.7,  tone: 'wood',  count: 'mid' },
+  car:    { label: '車',       minStage: 1, hp: 3.0,  value: 25,  r: 2.2,  tone: 'metal', count: 'livestock' },
+  house:  { label: '家',       minStage: 2, hp: 7.0,  value: 50,  r: 7.5,  tone: 'adobe', count: 'building' },
+  church: { label: '教会',     minStage: 3, hp: 15.0, value: 200, r: 12.0, tone: 'adobe', count: 'building' },
+  // 湾岸
+  palm:   { label: 'ヤシ',     minStage: 0, hp: 0.55,  value: 3,   r: 1.0,  tone: 'leaf',  count: 'small' },
+  bollard: { label: '係船柱',  minStage: 0, hp: 0.8,  value: 2,   r: 0.5,  tone: 'metal' },
+  /* コンテナだけは一段目から噛める。湾岸は陸が狭く、埠頭に乗った渦が
+     何も噛めないまま海へ出ると詰む。空のコンテナは実際よく飛ぶ。 */
+  crate:  { label: 'コンテナ', minStage: 0, hp: 1.4,  value: 8,   r: 3.2,  tone: 'metal', count: 'mid' },
+  boat:   { label: 'ボート',   minStage: 1, hp: 3.6,  value: 35,  r: 3.4,  tone: 'wood',  count: 'livestock' },
+  store:  { label: '倉庫',     minStage: 2, hp: 8.5,  value: 60,  r: 9.0,  tone: 'metal', count: 'building' },
+  crane:  { label: 'クレーン', minStage: 2, hp: 10.0, value: 90,  r: 4.5,  tone: 'metal', count: 'building' },
+  faro:   { label: '灯台',     minStage: 3, hp: 15.0, value: 200, r: 6.0,  tone: 'adobe', count: 'building' }
 };
 
 const GRID = 8;
-
-/* 空を飛べる株の数。上限に当たったら古いものから消える。地面に落ちて
-   転がっているものも同じ枠を使うので、渦の通った後には倒れた株が
-   散らばって残る。 */
 const FLY_CAP = [120, 28, 44, 34];
 
-/* ---------- 形 ---------- */
+/* ---------- 形：農園 ---------- */
 
 function agaveShape(seed, blades) {
   const b = new MeshBuilder();
   const rng = makeRng(seed);
-  // 株元の締まった芯。ピニャ（頭）はここに埋まっている。
   b.mat([0.088, 0.115, 0.072], 0.85, 0.0);
   b.translate(0, 0.16, 0).scale(1, 0.62, 1).sphere(0.34, 10, 6).pop().pop();
   for (let i = 0; i < blades; i++) {
@@ -4050,14 +4501,11 @@ function agaveShape(seed, blades) {
     const t = i / blades;
     const len = 1.05 + rng() * 0.55 - t * 0.25;
     const lean = 0.30 + t * 0.85 + rng() * 0.22;
-    // 青灰色。乾いた個体ほど白い粉を吹く。
     const blue = 0.30 + rng() * 0.34;
     b.mat([0.115 + blue * 0.10, 0.175 + blue * 0.10, 0.135 + blue * 0.14], 0.78, 0.85);
     b.rotate(0, 1, 0, a).rotate(0, 0, 1, lean);
     b.blade(len, 0.088 + rng() * 0.02, 0.030, 0.20 + rng() * 0.2, 5, rng() * 0.5 - 0.25);
     b.pop().pop();
-    // 葉先の棘。刺さると本当に痛い、という一点のためだけの三角形。
-    b.mat([0.30, 0.18, 0.10], 0.5, 0.4);
   }
   return b.build();
 }
@@ -4065,10 +4513,8 @@ function agaveShape(seed, blades) {
 function cactusShape(seed) {
   const b = new MeshBuilder();
   const rng = makeRng(seed);
-  const green = [0.055 + rng() * 0.02, 0.125 + rng() * 0.03, 0.058];
-  b.mat(green, 0.80, 0.7);
+  b.mat([0.055 + rng() * 0.02, 0.125 + rng() * 0.03, 0.058], 0.80, 0.7);
   const H = 5.0 + rng() * 3.6;
-  // 幹は稜のある柱。稜は細い葉で作れば同じ関数で済む。
   b.translate(0, H / 2, 0).cylinder(0.30, H, 12, false, 0.24).pop();
   b.translate(0, H, 0).scale(1, 0.55, 1).sphere(0.26, 12, 7).pop().pop();
   for (let k = 0; k < 9; k++) {
@@ -4076,7 +4522,6 @@ function cactusShape(seed) {
     b.translate(Math.cos(a) * 0.28, H / 2, Math.sin(a) * 0.28)
       .rotate(0, 1, 0, -a).scale(0.5, 1, 0.5).blade(H * 0.94, 0.05, 0.035, 0, 3).pop().pop().pop();
   }
-  // 腕。曲がって立ち上がる、あの形。
   const arms = 1 + ((rng() * 3) | 0);
   for (let i = 0; i < arms; i++) {
     const a = rng() * Math.PI * 2;
@@ -4084,11 +4529,9 @@ function cactusShape(seed) {
     const len = 1.0 + rng() * 1.2;
     b.translate(Math.cos(a) * 0.26, y, Math.sin(a) * 0.26).rotate(0, 1, 0, -a);
     b.rotate(0, 0, 1, -1.15).cylinder(0.19, len, 10, false, 0.17).pop();
-    const ex = Math.cos(-1.15 + Math.PI / 2) * 0;
     b.translate(len * 0.82, len * 0.36, 0).cylinder(0.18, len * 0.9, 10, false, 0.15).pop();
     b.translate(len * 0.82, len * 0.36 + len * 0.45, 0).scale(1, 0.6, 1).sphere(0.19, 10, 6).pop().pop();
     b.pop().pop();
-    void ex;
   }
   return b.build();
 }
@@ -4111,19 +4554,14 @@ function postShape() {
   const b = new MeshBuilder();
   b.mat([0.105, 0.078, 0.048], 0.92, 1.0);
   b.translate(0, 0.62, 0).cylinder(0.058, 1.24, 7, true, 0.050).pop();
-  // 有刺鉄線を三本。柱ごとに描いているので、抜けた区間は本当に空く。
   b.mat([0.16, 0.15, 0.14], 0.45, 0.6);
-  for (let i = 0; i < 3; i++) {
-    const y = 0.42 + i * 0.30;
-    b.strut([0, y, 0], [0, y, 3.0], 0.010, 4);
-  }
+  for (let i = 0; i < 3; i++) b.strut([0, 0.42 + i * 0.30, 0], [0, 0.42 + i * 0.30, 3.0], 0.010, 4);
   return b.build();
 }
 
 function pileShape(seed) {
   const b = new MeshBuilder();
   const rng = makeRng(seed);
-  // 刈り取ったピニャの山。葉を落とした頭は白い巨大な松ぼっくり。
   for (let i = 0; i < 14; i++) {
     const a = rng() * Math.PI * 2, r = rng() * 1.5;
     const s = 0.34 + rng() * 0.16;
@@ -4135,28 +4573,283 @@ function pileShape(seed) {
   return b.build();
 }
 
-/* ---------- 建物 ---------- */
+/* ---------- 形：街 ---------- */
+
+function treeShape(seed) {
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  b.mat([0.105, 0.078, 0.052], 0.92, 1.0);
+  b.translate(0, 1.5, 0).cylinder(0.17, 3.0, 8, false, 0.13).pop();
+  for (let i = 0; i < 4; i++) {
+    const a = rng() * 6.283;
+    b.strut([0, 2.6, 0], [Math.cos(a) * 1.1, 3.6 + rng() * 0.6, Math.sin(a) * 1.1], 0.07, 6);
+  }
+  // 葉は球の寄せ集め。並木は遠くからしか見ないので、これで足りる。
+  for (let i = 0; i < 9; i++) {
+    const a = rng() * 6.283, r = rng() * 1.5;
+    const g = 0.055 + rng() * 0.045;
+    b.mat([g * 0.7, 0.105 + g, 0.048], 0.9, 0.9);
+    b.translate(Math.cos(a) * r, 3.5 + rng() * 1.4, Math.sin(a) * r)
+      .scale(1, 0.82, 1).sphere(0.85 + rng() * 0.5, 9, 6).pop().pop();
+  }
+  return b.build();
+}
+
+function lampShape() {
+  const b = new MeshBuilder();
+  b.mat([0.13, 0.125, 0.118], 0.35, 0.8);
+  b.translate(0, 2.4, 0).cylinder(0.075, 4.8, 8, false, 0.055).pop();
+  b.strut([0, 4.7, 0], [0.9, 5.1, 0], 0.055, 6);
+  b.mat([0.55, 0.52, 0.42], 0.25, 0.4);
+  b.translate(1.0, 5.0, 0).scale(1, 0.45, 1).sphere(0.24, 10, 6).pop().pop();
+  return b.build();
+}
+
+function poleShape() {
+  const b = new MeshBuilder();
+  b.mat([0.098, 0.078, 0.058], 0.94, 1.0);
+  b.translate(0, 4.2, 0).cylinder(0.13, 8.4, 8, false, 0.10).pop();
+  b.mat([0.115, 0.098, 0.078], 0.9, 0.9);
+  for (let i = 0; i < 2; i++) b.box(2.2, 0.10, 0.10, 0, 7.4 - i * 0.7, 0);
+  b.mat([0.16, 0.15, 0.14], 0.4, 0.5);
+  // 電線。次の柱まで届く長さで垂れている。
+  for (let i = 0; i < 3; i++) {
+    const y = 7.42 - (i % 2) * 0.7;
+    b.strut([-0.9 + i * 0.9, y, 0], [-0.9 + i * 0.9, y - 0.35, 34.0], 0.018, 4);
+  }
+  b.mat([0.20, 0.16, 0.10], 0.5, 0.7);
+  b.box(0.5, 0.7, 0.28, 0, 5.6, 0.2);
+  return b.build();
+}
+
+function carShape(seed) {
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const paint = [[0.075, 0.115, 0.14], [0.14, 0.11, 0.055], [0.13, 0.055, 0.045],
+    [0.16, 0.16, 0.155], [0.05, 0.09, 0.06]][(rng() * 5) | 0];
+  b.mat(paint, 0.28, 0.9);
+  b.box(1.85, 0.62, 4.3, 0, 0.82, 0);
+  b.mat([0.020, 0.030, 0.038], 0.12, 0.3);
+  b.box(1.70, 0.52, 1.9, 0, 1.34, -0.15);
+  b.mat(paint, 0.28, 0.9);
+  b.box(1.78, 0.10, 1.9, 0, 1.60, -0.15);
+  b.mat([0.030, 0.028, 0.026], 0.75, 1.0);
+  for (const sx of [-1, 1]) for (const sz of [1.35, -1.35]) {
+    b.translate(sx * 0.86, 0.36, sz).rotate(0, 0, 1, Math.PI / 2).cylinder(0.36, 0.24, 12).pop().pop();
+  }
+  return b.build();
+}
+
+function houseShape(seed) {
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const W = 8 + rng() * 5, D = 7 + rng() * 4, H = rng() < 0.35 ? 6.4 : 3.6;
+  const wall = [[0.36, 0.27, 0.19], [0.40, 0.33, 0.24], [0.32, 0.25, 0.22], [0.42, 0.30, 0.20]][(rng() * 4) | 0];
+  b.mat(wall, 0.92, 0.9);
+  b.box(W, H, D, 0, H / 2, 0);
+  // 素焼き瓦の切妻。二枚の板を寄せるだけで屋根に見える。
+  b.mat([0.24, 0.086, 0.052], 0.80, 0.8);
+  for (const s of [-1, 1]) {
+    b.translate(0, H + 0.7, s * D * 0.27).rotate(1, 0, 0, s * 0.44)
+      .box(W + 0.8, 0.20, D * 0.62).pop().pop();
+  }
+  // 開口部は板に描くより穴を掘った方が早い。深い影が落ちる。
+  b.mat([0.020, 0.016, 0.014], 0.6, 0.2);
+  b.box(1.3, 2.3, 0.18, -W * 0.22, 1.15, D / 2 + 0.01);
+  for (let i = 0; i < 3; i++) b.box(1.0, 1.2, 0.14, -W * 0.3 + i * W * 0.3, H - 1.4, D / 2 + 0.01);
+  if (H > 5) for (let i = 0; i < 3; i++) b.box(1.0, 1.2, 0.14, -W * 0.3 + i * W * 0.3, H - 4.6, D / 2 + 0.01);
+  b.mat([0.10, 0.11, 0.12], 0.4, 0.5);
+  b.box(0.7, 1.2, 0.7, W * 0.3, H + 1.1, -D * 0.2);
+  // 屋上の水槽。街の屋根はいつも何か載っている。
+  b.mat([0.14, 0.15, 0.16], 0.4, 0.9);
+  b.translate(-W * 0.28, H + 1.2, D * 0.1).cylinder(0.55, 0.9, 12).pop();
+  return b.build();
+}
+
+function churchShape() {
+  const b = new MeshBuilder();
+  const STONE = [0.40, 0.35, 0.28];
+  b.mat(STONE, 0.90, 0.9);
+  b.box(14, 9, 26, 0, 4.5, 0);
+  b.box(9, 7, 8, 0, 3.5, -16);
+  b.mat([0.26, 0.10, 0.062], 0.82, 0.8);
+  for (const s of [-1, 1]) {
+    b.translate(0, 9.9, s * 3.6).rotate(1, 0, 0, s * 0.42).box(15, 0.26, 9).pop().pop();
+  }
+  // 塔。街のどこからでも見える。
+  b.mat(STONE, 0.90, 0.9);
+  b.box(6.4, 26, 6.4, 0, 13, 14.5);
+  b.mat([0.020, 0.016, 0.014], 0.6, 0.2);
+  b.box(1.6, 3.4, 0.2, 0, 1.7, 14.7);
+  for (const sx of [-1, 1]) b.box(0.16, 2.6, 1.4, sx * 3.2, 22, 14.5);
+  b.mat([0.30, 0.24, 0.16], 0.8, 0.7);
+  b.translate(0, 27.5, 14.5).scale(1, 1.1, 1).sphere(4.2, 8, 5).pop().pop();
+  b.mat([0.42, 0.40, 0.36], 0.3, 0.4);
+  b.strut([0, 30.5, 14.5], [0, 33.4, 14.5], 0.16, 6);
+  b.box(1.5, 0.16, 0.16, 0, 32.4, 14.5);
+  b.mat([0.20, 0.24, 0.30], 0.55, 0.6);
+  b.translate(0, 10.5, -16).scale(1, 0.85, 1).sphere(5.0, 16, 9).pop().pop();
+  return b.build();
+}
+
+/* ---------- 形：湾岸 ---------- */
+
+function palmShape(seed) {
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const H = 6.5 + rng() * 4;
+  const lean = (rng() - 0.5) * 0.5;
+  b.mat([0.125, 0.098, 0.068], 0.92, 1.0);
+  // 幹は少し反る。ヤシが海の側へ傾いているのはそのため。
+  const seg = 6;
+  for (let i = 0; i < seg; i++) {
+    const t0 = i / seg, t1 = (i + 1) / seg;
+    b.strut([lean * t0 * t0 * H, t0 * H, 0], [lean * t1 * t1 * H, t1 * H, 0], 0.28 - t0 * 0.13, 8);
+  }
+  const top = [lean * H, H, 0];
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * 6.283 + rng() * 0.3;
+    const droop = 0.9 + rng() * 0.5;
+    b.mat([0.070 + rng() * 0.03, 0.135 + rng() * 0.04, 0.055], 0.85, 0.85);
+    b.translate(top[0], top[1], top[2]).rotate(0, 1, 0, a).rotate(0, 0, 1, droop)
+      .blade(3.0 + rng() * 1.2, 0.30, 0.035, 0.55, 5).pop().pop().pop();
+  }
+  b.mat([0.24, 0.20, 0.10], 0.8, 0.7);
+  for (let i = 0; i < 4; i++) {
+    const a = rng() * 6.283;
+    b.translate(top[0] + Math.cos(a) * 0.3, top[1] - 0.35, top[2] + Math.sin(a) * 0.3).sphere(0.16, 7, 5).pop();
+  }
+  return b.build();
+}
+
+function crateShape(seed) {
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const paint = [[0.16, 0.055, 0.045], [0.055, 0.085, 0.13], [0.13, 0.115, 0.045],
+    [0.075, 0.115, 0.075], [0.14, 0.14, 0.135]][(rng() * 5) | 0];
+  b.mat(paint, 0.40, 1.0);
+  b.box(2.44, 2.59, 6.06, 0, 1.30, 0);
+  // 波板の稜。箱に縦の筋が入るだけで、鉄のコンテナに見える。
+  b.mat([paint[0] * 0.78, paint[1] * 0.78, paint[2] * 0.78], 0.42, 1.0);
+  for (let i = 0; i < 11; i++) b.box(2.50, 2.3, 0.08, 0, 1.30, -2.7 + i * 0.54);
+  b.mat([0.10, 0.095, 0.090], 0.5, 1.0);
+  b.box(2.46, 0.14, 6.10, 0, 0.07, 0);
+  b.box(2.46, 0.14, 6.10, 0, 2.55, 0);
+  return b.build();
+}
+
+function bollardShape() {
+  const b = new MeshBuilder();
+  b.mat([0.115, 0.105, 0.098], 0.45, 0.9);
+  b.translate(0, 0.35, 0).cylinder(0.22, 0.70, 10, true, 0.26).pop();
+  b.translate(0, 0.74, 0).scale(1, 0.5, 1).sphere(0.26, 10, 6).pop().pop();
+  return b.build();
+}
+
+function boatShape(seed) {
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const hull = [[0.28, 0.26, 0.24], [0.16, 0.20, 0.26], [0.24, 0.14, 0.10]][(rng() * 3) | 0];
+  b.mat(hull, 0.35, 0.9);
+  // 船体は前へ細る箱の連なり。舳先が尖っていれば船に見える。
+  for (let i = 0; i < 6; i++) {
+    const t = i / 6;
+    b.box(2.2 * (1 - t * t * 0.85), 1.2, 1.3, 0, 0.6, -3.4 + i * 1.3);
+  }
+  b.mat([0.32, 0.30, 0.27], 0.4, 0.8);
+  b.box(2.3, 0.14, 8.0, 0, 1.18, -0.2);
+  b.mat([0.34, 0.33, 0.31], 0.3, 0.7);
+  b.box(1.7, 1.5, 2.2, 0, 1.9, -1.6);
+  b.mat([0.020, 0.030, 0.038], 0.12, 0.3);
+  b.box(1.75, 0.6, 0.12, 0, 2.2, -0.55);
+  b.mat([0.42, 0.40, 0.36], 0.3, 0.5);
+  b.strut([0, 2.6, -1.6], [0, 5.4, -1.6], 0.06, 6);
+  return b.build();
+}
+
+function storeShape(seed) {
+  const b = new MeshBuilder();
+  const rng = makeRng(seed);
+  const W = 18 + rng() * 8, D = 12 + rng() * 6, H = 7.5;
+  b.mat([0.15, 0.145, 0.135], 0.45, 1.0);
+  b.box(W, H, D, 0, H / 2, 0);
+  // 波トタンの筋。錆の回り方は個体で違う。
+  const rust = rng();
+  b.mat([0.17 + rust * 0.13, 0.13 + rust * 0.02, 0.10], 0.42, 1.0);
+  for (let i = 0; i < 16; i++) b.box(0.10, H - 0.4, D + 0.06, -W / 2 + 0.5 + i * (W / 16), H / 2, 0);
+  b.mat([0.19, 0.185, 0.175], 0.40, 0.9);
+  for (const s of [-1, 1]) {
+    b.translate(0, H + 0.9, s * D * 0.26).rotate(1, 0, 0, s * 0.34).box(W + 0.6, 0.18, D * 0.60).pop().pop();
+  }
+  b.mat([0.055, 0.050, 0.048], 0.6, 0.5);
+  b.box(W * 0.36, H * 0.66, 0.2, 0, H * 0.33, D / 2 + 0.02);
+  return b.build();
+}
+
+function craneShape() {
+  const b = new MeshBuilder();
+  b.mat([0.22, 0.17, 0.055], 0.45, 0.9);
+  const legs = [[-3.2, -3.2], [3.2, -3.2], [3.2, 3.2], [-3.2, 3.2]];
+  for (const [x, z] of legs) b.strut([x, 0, z], [x * 0.45, 18, z * 0.45], 0.24, 7);
+  for (let i = 1; i <= 4; i++) {
+    const y = i * 3.6, k = 1 - (y / 18) * 0.55;
+    for (let e = 0; e < 4; e++) {
+      const a = legs[e], c = legs[(e + 1) % 4];
+      b.strut([a[0] * k, y, a[1] * k], [c[0] * k, y, c[1] * k], 0.10, 5);
+    }
+  }
+  // 腕。海の方へ伸びている。
+  b.mat([0.24, 0.19, 0.06], 0.45, 0.9);
+  b.strut([0, 18.4, 0], [0, 18.4, -22], 0.34, 8);
+  b.strut([0, 18.4, 0], [0, 18.4, 7], 0.30, 8);
+  b.strut([0, 24, 0], [0, 18.6, -20], 0.10, 5);
+  b.strut([0, 24, 0], [0, 18.6, 6], 0.10, 5);
+  b.strut([0, 18.4, 0], [0, 24, 0], 0.16, 6);
+  b.mat([0.14, 0.14, 0.135], 0.4, 0.8);
+  b.box(2.6, 2.2, 3.2, 0, 17.0, 3.0);
+  b.mat([0.10, 0.10, 0.098], 0.5, 0.9);
+  b.strut([0, 18.2, -14], [0, 12.5, -14], 0.05, 5);
+  b.box(2.0, 0.9, 2.0, 0, 12.0, -14);
+  return b.build();
+}
+
+function faroShape() {
+  const b = new MeshBuilder();
+  b.mat([0.42, 0.40, 0.37], 0.85, 0.9);
+  b.translate(0, 9, 0).cylinder(3.1, 18, 20, false, 2.1).pop();
+  // 赤い帯。灯台が灯台に見えるのは、この二本のせい。
+  b.mat([0.30, 0.075, 0.055], 0.85, 0.9);
+  b.translate(0, 5.5, 0).cylinder(3.0, 2.2, 20, false, 2.75).pop();
+  b.translate(0, 12.5, 0).cylinder(2.5, 2.2, 20, false, 2.3).pop();
+  b.mat([0.30, 0.29, 0.27], 0.4, 0.7);
+  b.translate(0, 18.4, 0).cylinder(3.0, 0.5, 20).pop();
+  b.mat([0.10, 0.115, 0.13], 0.20, 0.3);
+  b.translate(0, 20.2, 0).cylinder(1.9, 3.2, 14).pop();
+  b.mat([0.35, 0.34, 0.32], 0.35, 0.5);
+  b.translate(0, 22.2, 0).cylinder(2.2, 0.4, 16).pop();
+  b.translate(0, 23.3, 0).scale(1, 0.9, 1).sphere(1.6, 12, 7).pop().pop();
+  b.mat([0.38, 0.35, 0.30], 0.9, 0.9);
+  b.box(6.5, 3.2, 5.0, 5.5, 1.6, 2.0);
+  b.mat([0.26, 0.10, 0.062], 0.8, 0.8);
+  b.box(7.2, 0.2, 5.6, 5.5, 3.35, 2.0);
+  return b.build();
+}
+
+/* ---------- 農園の建物。街と湾岸でも使い回す ---------- */
 
 function casaMesh() {
   const b = new MeshBuilder();
-  const ADOBE = [0.36, 0.27, 0.19];
-  const TILE = [0.24, 0.086, 0.052];
-  b.mat(ADOBE, 0.92, 0.9);
+  b.mat([0.36, 0.27, 0.19], 0.92, 0.9);
   b.box(15.0, 4.2, 9.0, 0, 2.1, 0);
   b.box(7.0, 3.6, 6.4, -9.5, 1.8, 1.2);
-  // 素焼き瓦の切妻。二枚の板を寄せるだけで屋根に見える。
-  b.mat(TILE, 0.80, 0.8);
+  b.mat([0.24, 0.086, 0.052], 0.80, 0.8);
   for (const s of [-1, 1]) {
     b.translate(0, 4.9, s * 2.45).rotate(1, 0, 0, s * 0.42).box(15.8, 0.22, 5.6).pop().pop();
   }
   b.translate(-9.5, 4.1, 1.2).box(7.6, 0.20, 7.0).pop();
-  // 回廊のアーチ列。柱だけで充分それに見える。
   b.mat([0.40, 0.31, 0.22], 0.9, 0.85);
-  for (let i = 0; i < 5; i++) {
-    b.translate(-6.0 + i * 3.0, 1.5, 5.1).cylinder(0.28, 3.0, 10).pop();
-  }
+  for (let i = 0; i < 5; i++) b.translate(-6.0 + i * 3.0, 1.5, 5.1).cylinder(0.28, 3.0, 10).pop();
   b.translate(0, 3.15, 5.1).box(14.0, 0.36, 1.6).pop();
-  // 開口部。深い影が落ちるので、板に窓を描くより穴を掘った方が早い。
   b.mat([0.020, 0.016, 0.014], 0.6, 0.2);
   b.box(1.5, 2.6, 0.20, 0, 1.3, 4.55);
   for (const x of [-5.2, -2.6, 2.6, 5.2]) b.box(1.1, 1.3, 0.16, x, 2.4, 4.55);
@@ -4169,24 +4862,18 @@ function shedMesh(seed) {
   const b = new MeshBuilder();
   const rng = makeRng(seed);
   b.mat([0.115, 0.086, 0.052], 0.92, 1.0);
-  for (const sx of [-1, 1]) {
-    for (const sz of [-1, 1]) {
-      b.strut([sx * 3.4, 0, sz * 2.4], [sx * 3.4, 2.9, sz * 2.4], 0.13, 6);
-    }
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    b.strut([sx * 3.4, 0, sz * 2.4], [sx * 3.4, 2.9, sz * 2.4], 0.13, 6);
   }
   b.strut([-3.4, 2.9, -2.4], [3.4, 2.9, -2.4], 0.10, 5);
   b.strut([-3.4, 2.9, 2.4], [3.4, 2.9, 2.4], 0.10, 5);
-  // 波トタン。錆が回っている個体ほど赤い。
   const rust = rng();
   b.mat([0.17 + rust * 0.14, 0.13 + rust * 0.03, 0.10], 0.42, 0.9);
   b.translate(0, 3.15, 0).rotate(1, 0, 0, 0.12).box(7.6, 0.09, 5.6).pop().pop();
   b.mat([0.13, 0.098, 0.062], 0.9, 1.0);
   b.box(7.2, 2.2, 0.14, 0, 1.1, -2.42);
-  // 積んである樽と木箱。
   b.mat([0.16, 0.10, 0.055], 0.85, 0.9);
-  for (let i = 0; i < 4; i++) {
-    b.translate(-2.4 + i * 1.3, 0.42, -1.6).cylinder(0.36, 0.84, 10).pop();
-  }
+  for (let i = 0; i < 4; i++) b.translate(-2.4 + i * 1.3, 0.42, -1.6).cylinder(0.36, 0.84, 10).pop();
   return b.build();
 }
 
@@ -4203,7 +4890,6 @@ function towerMesh() {
       b.strut([a[0] * k, y, a[1] * k], [c[0] * k, y, c[1] * k], 0.045, 4);
     }
   }
-  // 貯水槽。上げ底の錆びた鉄板。
   b.mat([0.15, 0.115, 0.088], 0.40, 1.0);
   b.translate(0, 7.3, 0).cylinder(1.55, 2.2, 18).pop();
   b.mat([0.19, 0.16, 0.13], 0.35, 0.8);
@@ -4226,18 +4912,16 @@ function millMesh() {
   return b.build();
 }
 
-/* 羽根だけ別のメッシュ。風で回り、渦に入ると千切れるほど速く回る。 */
 function fanMesh() {
   const b = new MeshBuilder();
   b.mat([0.30, 0.28, 0.25], 0.35, 0.7);
-  b.translate(0, 0, 0).rotate(1, 0, 0, Math.PI / 2).cylinder(0.16, 0.34, 10).pop().pop();
+  b.rotate(1, 0, 0, Math.PI / 2).cylinder(0.16, 0.34, 10).pop();
   for (let i = 0; i < 18; i++) {
     const a = (i / 18) * Math.PI * 2;
-    b.rotate(0, 0, 1, a).translate(0, 0.95, 0).rotate(0, 1, 0, 0.42)
-      .box(0.28, 1.35, 0.02).pop().pop().pop();
+    b.rotate(0, 0, 1, a).translate(0, 0.95, 0).rotate(0, 1, 0, 0.42).box(0.28, 1.35, 0.02).pop().pop().pop();
   }
   b.mat([0.20, 0.18, 0.16], 0.4, 0.8);
-  b.translate(0, 0, -0.9).box(0.06, 0.55, 1.6).pop();
+  b.box(0.06, 0.55, 1.6, 0, 0, -0.9);
   return b.build();
 }
 
@@ -4246,11 +4930,11 @@ function truckMesh(seed) {
   const rng = makeRng(seed);
   const paint = [[0.075, 0.115, 0.14], [0.14, 0.11, 0.055], [0.13, 0.055, 0.045]][(rng() * 3) | 0];
   b.mat(paint, 0.30, 0.9);
-  b.box(2.1, 0.85, 2.3, 0, 1.05, 0.9);        // 運転台
+  b.box(2.1, 0.85, 2.3, 0, 1.05, 0.9);
   b.mat([0.020, 0.030, 0.038], 0.15, 0.3);
-  b.box(1.95, 0.55, 0.10, 0, 1.28, 2.02);      // 前面ガラス
+  b.box(1.95, 0.55, 0.10, 0, 1.28, 2.02);
   b.mat(paint, 0.30, 0.9);
-  b.box(2.2, 0.55, 3.4, 0, 0.85, -1.4);        // 荷台
+  b.box(2.2, 0.55, 3.4, 0, 0.85, -1.4);
   b.mat([0.11, 0.085, 0.052], 0.9, 1.0);
   for (let i = 0; i < 6; i++) {
     b.translate(-0.8 + (i % 3) * 0.8, 1.25, -2.2 + ((i / 3) | 0) * 1.0)
@@ -4269,16 +4953,18 @@ class Props {
   constructor(gl, terrain, solid, seed, { density = 1 } = {}) {
     this.gl = gl;
     this.terrain = terrain;
+    this.stage = terrain.stage;
     this.solid = solid;
     this.seed = seed;
-    this.items = [];              // 壊せるもの、全部
+    this.items = [];
     this.grid = new Map();
-    this.structures = [];         // 模型行列を持つもの
-    this.tally = { agave: 0, cactus: 0, building: 0 };
-    this.total = { agave: 0, cactus: 0, building: 0 };
+    this.structures = [];
+    this.tally = { small: 0, mid: 0, building: 0 };
+    this.total = { small: 0, mid: 0, building: 0 };
     this._m = m4();
     this._q = qt();
-    this.millSpin = 0;
+    this.spin = 0;
+    this.fly = [[], [], [], []];
     this._build(density);
   }
 
@@ -4307,130 +4993,50 @@ class Props {
     return out;
   }
 
-  _build(density) {
-    const T = this.terrain, F = T.farm;
-    const rng = makeRng(this.seed ^ 0x2b17);
-    const add = (kind, x, z, extra) => {
-      const k = KINDS[kind];
-      const it = {
-        kind, x, z, y: T.height(x, z), r: k.r, hp: k.hp, chew: 0,
-        minStage: k.minStage, value: k.value, tone: k.tone, alive: true, ...extra
-      };
-      this.items.push(it);
-      this._index(it);
-      return it;
+  _add(kind, x, z, extra) {
+    const k = KINDS[kind];
+    const it = {
+      kind, x, z, y: this.terrain.height(x, z), r: k.r, hp: k.hp, chew: 0,
+      minStage: k.minStage, value: k.value, tone: k.tone, alive: true, ...extra
     };
+    this.items.push(it);
+    this._index(it);
+    return it;
+  }
 
-    /* ---- アガベ畑 ---- */
-    const agaveN = Math.round(5200 * density);
-    const inst = { rot: [], posScale: [], tint: [], count: 0 };
-    const cos = Math.cos(F.rowDir), sin = Math.sin(F.rowDir);
-    /* 畝は畑を端から端まで埋める。budget に届いたら「途中でやめる」の
-       ではなく、間引く。途中でやめると畑が半分だけ植わった絵になる。 */
-    const SPACING = 4.4;
-    const rowsHalf = Math.floor((F.halfZ - 46) / F.rowGap);
-    const alongHalf = Math.floor((F.halfX - 46) / SPACING);
-    const candidates = (rowsHalf * 2 + 1) * (alongHalf * 2 + 1);
-    const keep = Math.min(1, agaveN / candidates);
-    let placed = 0;
-    for (let row = -rowsHalf; row <= rowsHalf; row++) {
-      const v = row * F.rowGap;
-      for (let j = -alongHalf; j <= alongHalf; j++) {
-        if (keep < 1 && hash2(j, row, this.seed + 61) > keep) continue;
-        const u = j * SPACING + (row % 2) * 2.0;
-        const x = F.x + u * cos - v * sin + (rng() - 0.5) * 0.5;
-        const z = F.z + u * sin + v * cos + (rng() - 0.5) * 0.5;
-        if (T.world.farmMask(x, z) < 0.9) continue;
-        // 畑にも欠株はある。工場のように埋めると嘘になる。
-        if (hash2(row, j, this.seed) < 0.06) continue;
-        // 涸れ谷は畑にできない。
-        if (Math.abs(T.world.arroyo(x, z)) > 0.6) continue;
-        const y = T.height(x, z);
-        const s = 1.45 + hash2(j, row, this.seed + 7) * 0.70;
-        const q = qt();
-        qFromAxisAngle(q, 0, 1, 0, hash2(j, row, this.seed + 3) * 6.283);
-        const tilt = qt();
-        qFromAxisAngle(tilt, rng() - 0.5, 0, rng() - 0.5, rng() * 0.14);
-        qMul(q, tilt, q); qNorm(q);
-        // 育ち具合の差。植えた年で色も丈も違う。
-        const age = 0.82 + fbm2(x * 0.01, z * 0.01, 3, this.seed) * 0.5;
-        inst.rot.push(q[0], q[1], q[2], q[3]);
-        inst.posScale.push(x, y, z, s * age);
-        inst.tint.push(age * 1.02, age, age * 0.98);
-        add('agave', x, z, { inst: 0, idx: inst.count, h: 1.5 * s * age });
-        inst.count++;
-        placed++;
-      }
-    }
-    this.total.agave = inst.count;
+  /* インスタンスを一つ置く。 */
+  _place(slot, kind, x, z, scale, yaw, tint, h) {
+    const list = this.slots[slot];
+    const y = this.terrain.height(x, z);
+    const q = qt();
+    qFromAxisAngle(q, 0, 1, 0, yaw);
+    list.rot.push(q[0], q[1], q[2], q[3]);
+    list.posScale.push(x, y, z, scale);
+    const t = tint === undefined ? 1 : tint;
+    list.tint.push(t, t, t);
+    const it = this._add(kind, x, z, { inst: slot, idx: list.count, h });
+    list.count++;
+    return it;
+  }
 
-    /* ---- 畑の外：柱サボテン、灌木、柵 ---- */
-    const cactusInst = { rot: [], posScale: [], tint: [], count: 0 };
-    const bushInst = { rot: [], posScale: [], tint: [], count: 0 };
-    const postInst = { rot: [], posScale: [], tint: [], count: 0 };
-    const reach = T.fineHalf - 20;
-    const outside = (x, z) => T.world.farmMask(x, z) < 0.25;
+  _struct(kind, mesh, x, z, yaw, extra = {}) {
+    const it = this._add(kind, x, z, {
+      mesh, yaw, fall: 0, scale: 1, fly: null,
+      fallAxis: [Math.cos(yaw + 1.2), 0, Math.sin(yaw + 1.2)], ...extra
+    });
+    this.structures.push(it);
+    return it;
+  }
 
-    for (let i = 0; i < Math.round(4200 * density); i++) {
-      const x = (rng() * 2 - 1) * reach, z = (rng() * 2 - 1) * reach;
-      if (!outside(x, z)) continue;
-      if (T.world.mesa(x, z) > 30) continue;
-      // サボテンは群れる。一本だけ立っている砂漠は絵にしか無い。
-      const clump = fbm2(x * 0.004, z * 0.004, 3, this.seed ^ 0x55);
-      if (clump < 0.40) continue;
-      const y = T.height(x, z);
-      const q = qt();
-      qFromAxisAngle(q, 0, 1, 0, rng() * 6.283);
-      const s = 0.86 + rng() * 0.55;
-      cactusInst.rot.push(q[0], q[1], q[2], q[3]);
-      cactusInst.posScale.push(x, y, z, s);
-      const t = 0.88 + rng() * 0.28;
-      cactusInst.tint.push(t, t * 1.04, t);
-      add('cactus', x, z, { inst: 1, idx: cactusInst.count, h: 7.0 * s });
-      cactusInst.count++;
-    }
-    this.total.cactus = cactusInst.count;
+  /* ---------- 世界を建てる ---------- */
 
-    for (let i = 0; i < Math.round(1600 * density); i++) {
-      const x = (rng() * 2 - 1) * reach, z = (rng() * 2 - 1) * reach;
-      if (!outside(x, z)) continue;
-      const y = T.height(x, z);
-      const q = qt();
-      qFromAxisAngle(q, 0, 1, 0, rng() * 6.283);
-      const s = 1.05 + rng() * 0.95;
-      bushInst.rot.push(q[0], q[1], q[2], q[3]);
-      bushInst.posScale.push(x, y, z, s);
-      const t = 0.85 + rng() * 0.35;
-      bushInst.tint.push(t, t, t * 0.9);
-      add('bush', x, z, { inst: 2, idx: bushInst.count, h: 1.5 * s });
-      bushInst.count++;
-    }
-
-    // 柵。畑の縁と、牧区を仕切る線に沿って三メートル間隔で。
-    const fenceLines = [
-      [F.x - F.halfX + 30, F.z - F.halfZ + 30, F.x + F.halfX - 30, F.z - F.halfZ + 30],
-      [F.x + F.halfX - 30, F.z - F.halfZ + 30, F.x + F.halfX - 30, F.z + F.halfZ - 30],
-      [F.x + F.halfX - 30, F.z + F.halfZ - 30, F.x - F.halfX + 30, F.z + F.halfZ - 30],
-      [F.x - F.halfX + 30, F.z + F.halfZ - 30, F.x - F.halfX + 30, F.z - F.halfZ + 30],
-      [-360, 180, -80, 260], [-80, 260, 40, 420]
-    ];
-    for (const [x0, z0, x1, z1] of fenceLines) {
-      const len = Math.hypot(x1 - x0, z1 - z0);
-      const n = Math.floor(len / 3.0);
-      const ang = Math.atan2(z1 - z0, x1 - x0);
-      for (let i = 0; i < n; i++) {
-        const t = i / n;
-        const x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t;
-        const y = T.height(x, z);
-        const q = qt();
-        qFromAxisAngle(q, 0, 1, 0, -ang + Math.PI / 2);
-        postInst.rot.push(q[0], q[1], q[2], q[3]);
-        postInst.posScale.push(x, y, z, 1.35);
-        postInst.tint.push(1, 0.98, 0.95);
-        add('post', x, z, { inst: 3, idx: postInst.count, h: 1.7 });
-        postInst.count++;
-      }
-    }
+  _build(density) {
+    this.rng = makeRng(this.seed ^ 0x2b17);
+    this.slots = [0, 1, 2, 3].map(() => ({ rot: [], posScale: [], tint: [], count: 0 }));
+    const id = this.stage.id;
+    if (id === 'ciudad') this._buildCiudad(density);
+    else if (id === 'costa') this._buildCosta(density);
+    else this._buildCampo(density);
 
     const mk = (data, list) => this.solid.instancedMesh(data, {
       rot: new Float32Array(list.rot),
@@ -4438,70 +5044,280 @@ class Props {
       tint: new Float32Array(list.tint),
       count: list.count
     });
-    const shapes = [agaveShape(this.seed, 11), cactusShape(this.seed + 5),
-      bushShape(this.seed + 9), postShape()];
-    this.instMeshes = [
-      mk(shapes[0], inst), mk(shapes[1], cactusInst),
-      mk(shapes[2], bushInst), mk(shapes[3], postInst)
-    ];
-    /* 飛んでいる株は、静止している株と同じ形の別のインスタンス群。
-       毎フレーム全部書き換わるので、静止側とバッファを分けてある。 */
-    this.flyMeshes = shapes.map((data, i) => this.solid.instancedMesh(data, {
+    this.instMeshes = this.shapes.map((d, i) => mk(d, this.slots[i]));
+    /* 飛んでいる株は同じ形の別の群れ。毎フレーム全部書き換わるので、
+       静止側とバッファを分けてある。 */
+    this.flyMeshes = this.shapes.map((data, i) => this.solid.instancedMesh(data, {
       rot: new Float32Array(FLY_CAP[i] * 4),
       posScale: new Float32Array(FLY_CAP[i] * 4),
       tint: new Float32Array(FLY_CAP[i] * 3),
       count: 0
     }));
-    this.fly = [[], [], [], []];
-    this.flyBig = [];
-
-    /* ---- ハシエンダ ---- */
-    const casa = casaMesh();
-    const shedA = shedMesh(this.seed + 1);
-    const tower = towerMesh();
-    const mill = millMesh();
-    const fan = fanMesh();
-    const truck = truckMesh(this.seed + 2);
-    const pile = pileShape(this.seed + 3);
-    this.mCasa = this.solid.mesh(casa);
-    this.mShed = this.solid.mesh(shedA);
-    this.mTower = this.solid.mesh(tower);
-    this.mMill = this.solid.mesh(mill);
-    this.mFan = this.solid.mesh(fan);
-    this.mTruck = this.solid.mesh(truck);
-    this.mPile = this.solid.mesh(pile);
-
-    const struct = (kind, mesh, x, z, yaw, extra) => {
-      const it = add(kind, x, z, {
-        mesh, yaw, fall: 0, scale: 1, fly: null,
-        fallAxis: [Math.cos(yaw + 1.2), 0, Math.sin(yaw + 1.2)], ...extra
-      });
-      it.y = T.height(x, z);
-      this.structures.push(it);
-      return it;
-    };
-
-    // 母屋は畑の南の縁。前庭が畑を向いている。
-    this.casaPos = [F.x - 250, F.z + 190];
-    struct('casa', this.mCasa, this.casaPos[0], this.casaPos[1], 0.32, { scale: 1.28 });
-    struct('shed', this.mShed, F.x - 226, F.z + 212, 1.1, { scale: 1.4 });
-    struct('shed', this.mShed, F.x - 272, F.z + 218, 0.2, { scale: 1.4 });
-    struct('shed', this.mShed, F.x + 210, F.z - 176, 2.4, { scale: 1.4 });
-    struct('tower', this.mTower, F.x - 238, F.z + 166, 0, { scale: 1.35 });
-    struct('tower', this.mTower, F.x + 168, F.z + 96, 0, { scale: 1.35 });
-    struct('mill', this.mMill, F.x + 20, F.z - 210, 0.6, { fanSpin: 0, scale: 1.4 });
-    struct('mill', this.mMill, F.x - 190, F.z - 120, 2.1, { fanSpin: 1.7, scale: 1.4 });
-    struct('mill', this.mMill, F.x + 250, F.z + 210, 4.0, { fanSpin: 3.3, scale: 1.4 });
-    struct('truck', this.mTruck, F.x - 246, F.z + 198, 0.9, { scale: 1.3 });
-    struct('truck', this.mTruck, F.x + 60, F.z + 150, 2.7, { scale: 1.3 });
-    for (let i = 0; i < 5; i++) {
-      const a = 0.7 + i * 0.9;
-      struct('pile', this.mPile, F.x - 214 + Math.cos(a) * 24, F.z + 176 + Math.sin(a) * 24, a, { scale: 1.45 });
+    for (const it of this.items) {
+      const c = KINDS[it.kind].count;
+      if (c && this.total[c] !== undefined) this.total[c]++;
     }
-    this.total.building = this.structures.filter((s) => KINDS[s.kind].count === 'building').length;
   }
 
-  /* 倒す。株なら静止側から飛翔側へ移し、建物なら倒すか持っていく。 */
+  /* ---- 農園 ---- */
+  _buildCampo(density) {
+    const T = this.terrain, Z = T.zone, rng = this.rng;
+    this.shapes = [agaveShape(this.seed, 11), cactusShape(this.seed + 5),
+      bushShape(this.seed + 9), postShape()];
+
+    const cos = Math.cos(Z.dir), sin = Math.sin(Z.dir);
+    const SPACING = 4.4;
+    const rowsHalf = Math.floor((Z.halfZ - 46) / Z.gap);
+    const alongHalf = Math.floor((Z.halfX - 46) / SPACING);
+    const keep = Math.min(1, Math.round(5200 * density) / ((rowsHalf * 2 + 1) * (alongHalf * 2 + 1)));
+    for (let row = -rowsHalf; row <= rowsHalf; row++) {
+      const v = row * Z.gap;
+      for (let j = -alongHalf; j <= alongHalf; j++) {
+        if (keep < 1 && hash2(j, row, this.seed + 61) > keep) continue;
+        const u = j * SPACING + (row % 2) * 2.0;
+        const x = Z.x + u * cos - v * sin + (rng() - 0.5) * 0.5;
+        const z = Z.z + u * sin + v * cos + (rng() - 0.5) * 0.5;
+        if (T.world.mask(x, z) < 0.9) continue;
+        // 畑にも欠株はある。工場のように埋めると嘘になる。
+        if (hash2(row, j, this.seed) < 0.06) continue;
+        if (Math.abs(T.world.arroyo(x, z)) > 0.6) continue;
+        const age = 0.82 + fbm2(x * 0.01, z * 0.01, 3, this.seed) * 0.5;
+        const s = (1.45 + hash2(j, row, this.seed + 7) * 0.70) * age;
+        this._place(0, 'agave', x, z, s, hash2(j, row, this.seed + 3) * 6.283, age, 1.6 * s);
+      }
+    }
+
+    const reach = T.fineHalf - 20;
+    const outside = (x, z) => T.world.mask(x, z) < 0.25;
+    for (let i = 0; i < Math.round(4200 * density); i++) {
+      const x = (rng() * 2 - 1) * reach, z = (rng() * 2 - 1) * reach;
+      if (!outside(x, z) || T.world.mesa(x, z) > 30) continue;
+      // サボテンは群れる。一本だけ立っている砂漠は絵にしか無い。
+      if (fbm2(x * 0.004, z * 0.004, 3, this.seed ^ 0x55) < 0.40) continue;
+      const s = 0.86 + rng() * 0.55;
+      this._place(1, 'cactus', x, z, s, rng() * 6.283, 0.88 + rng() * 0.28, 7 * s);
+    }
+    for (let i = 0; i < Math.round(1600 * density); i++) {
+      const x = (rng() * 2 - 1) * reach, z = (rng() * 2 - 1) * reach;
+      if (!outside(x, z)) continue;
+      const s = 1.05 + rng() * 0.95;
+      this._place(2, 'bush', x, z, s, rng() * 6.283, 0.85 + rng() * 0.35, 1.5 * s);
+    }
+    const fences = [
+      [Z.x - Z.halfX + 30, Z.z - Z.halfZ + 30, Z.x + Z.halfX - 30, Z.z - Z.halfZ + 30],
+      [Z.x + Z.halfX - 30, Z.z - Z.halfZ + 30, Z.x + Z.halfX - 30, Z.z + Z.halfZ - 30],
+      [Z.x + Z.halfX - 30, Z.z + Z.halfZ - 30, Z.x - Z.halfX + 30, Z.z + Z.halfZ - 30],
+      [Z.x - Z.halfX + 30, Z.z + Z.halfZ - 30, Z.x - Z.halfX + 30, Z.z - Z.halfZ + 30],
+      [-360, 180, -80, 260], [-80, 260, 40, 420]
+    ];
+    for (const [x0, z0, x1, z1] of fences) {
+      const n = Math.floor(Math.hypot(x1 - x0, z1 - z0) / 3.0);
+      const ang = Math.atan2(z1 - z0, x1 - x0);
+      for (let i = 0; i < n; i++) {
+        const t = i / n;
+        this._place(3, 'post', x0 + (x1 - x0) * t, z0 + (z1 - z0) * t, 1.35, -ang + Math.PI / 2, 1, 1.7);
+      }
+    }
+
+    const fan = this.solid.mesh(fanMesh());
+    const M = {
+      casa: this.solid.mesh(casaMesh()), shed: this.solid.mesh(shedMesh(this.seed + 1)),
+      tower: this.solid.mesh(towerMesh()), mill: this.solid.mesh(millMesh()),
+      truck: this.solid.mesh(truckMesh(this.seed + 2)), pile: this.solid.mesh(pileShape(this.seed + 3))
+    };
+    this.landmark = this._struct('casa', M.casa, Z.x - 250, Z.z + 190, 0.32, { scale: 1.28 });
+    this._struct('shed', M.shed, Z.x - 226, Z.z + 212, 1.1, { scale: 1.4 });
+    this._struct('shed', M.shed, Z.x - 272, Z.z + 218, 0.2, { scale: 1.4 });
+    this._struct('shed', M.shed, Z.x + 210, Z.z - 176, 2.4, { scale: 1.4 });
+    this._struct('tower', M.tower, Z.x - 238, Z.z + 166, 0, { scale: 1.35 });
+    this._struct('tower', M.tower, Z.x + 168, Z.z + 96, 0, { scale: 1.35 });
+    for (const [x, z, yaw, ph] of [[Z.x + 20, Z.z - 210, 0.6, 0], [Z.x - 190, Z.z - 120, 2.1, 1.7],
+      [Z.x + 250, Z.z + 210, 4.0, 3.3]]) {
+      this._struct('mill', M.mill, x, z, yaw, { scale: 1.4, spinMesh: fan, spinPhase: ph, spinY: 7.5 });
+    }
+    this._struct('truck', M.truck, Z.x - 246, Z.z + 198, 0.9, { scale: 1.3 });
+    this._struct('truck', M.truck, Z.x + 60, Z.z + 150, 2.7, { scale: 1.3 });
+    for (let i = 0; i < 5; i++) {
+      const a = 0.7 + i * 0.9;
+      this._struct('pile', M.pile, Z.x - 214 + Math.cos(a) * 24, Z.z + 176 + Math.sin(a) * 24, a, { scale: 1.45 });
+    }
+  }
+
+  /* ---- 街 ---- */
+  _buildCiudad(density) {
+    const T = this.terrain, Z = T.zone, rng = this.rng;
+    this.shapes = [treeShape(this.seed + 21), lampShape(), bushShape(this.seed + 9), poleShape()];
+    const cos = Math.cos(Z.dir), sin = Math.sin(Z.dir);
+    const toWorld = (u, v) => [Z.x + u * cos - v * sin, Z.z + u * sin + v * cos];
+
+    const blocksU = Math.floor((Z.halfX - 70) / Z.gap);
+    const blocksV = Math.floor((Z.halfZ - 70) / Z.gap);
+    const houses = [0, 1, 2, 3, 4].map((i) => this.solid.mesh(houseShape(this.seed + 40 + i)));
+    const cars = [0, 1, 2].map((i) => this.solid.mesh(carShape(this.seed + 70 + i)));
+
+    for (let bu = -blocksU; bu <= blocksU; bu++) {
+      for (let bv = -blocksV; bv <= blocksV; bv++) {
+        const cu = bu * Z.gap, cv = bv * Z.gap;
+        const [cx, cz] = toWorld(cu, cv);
+        if (T.world.mask(cx, cz) < 0.8) continue;
+        if (T.world.river(cx, cz) < -0.4) continue;   // 川に落ちる街区は空き地
+        if (bu === 0 && bv === 0) continue;           // 中央広場は教会のもの
+
+        /* 街区の四隅に家、内側は庭。碁盤の目の街は実際にこう並ぶ。 */
+        const n = 2 + ((rng() * 3) | 0);
+        for (let i = 0; i < n; i++) {
+          const su = (i % 2 ? 1 : -1) * (Z.gap * 0.26 + rng() * 4);
+          const sv = (i < 2 ? 1 : -1) * (Z.gap * 0.26 + rng() * 4);
+          const [hx, hz] = toWorld(cu + su, cv + sv);
+          this._struct('house', houses[(rng() * houses.length) | 0], hx, hz,
+            Z.dir + (su > 0 ? 0 : Math.PI) + (rng() - 0.5) * 0.06, { scale: 0.95 + rng() * 0.35 });
+        }
+        for (let i = 0; i < 7; i++) {
+          const t = -0.5 + (i + 0.5) / 7;
+          for (const side of [-0.46, 0.46]) {
+            const [tx, tz] = toWorld(cu + t * Z.gap, cv + side * Z.gap);
+            if (rng() < 0.92 * density) this._place(0, 'tree', tx, tz, 0.9 + rng() * 0.5, rng() * 6.283, 0.85 + rng() * 0.3, 5.5);
+            const [ux, uz] = toWorld(cu + side * Z.gap, cv + t * Z.gap);
+            if (rng() < 0.82 * density) this._place(0, 'tree', ux, uz, 0.9 + rng() * 0.5, rng() * 6.283, 0.85 + rng() * 0.3, 5.5);
+          }
+          if (i % 2 === 0) {
+            const [lx, lz] = toWorld(cu + t * Z.gap, cv + Z.gap * 0.5);
+            if (rng() < 0.6) this._place(1, 'lamp', lx, lz, 1, Z.dir + Math.PI / 2, 1, 5.2);
+          }
+        }
+        /* 街区の内側は庭。ここを空けておくと、街を斜めに突っ切った渦が
+           何にも当たらないまま通り抜けてしまう。 */
+        for (let i = 0; i < 5; i++) {
+          const [gx, gz] = toWorld(cu + (rng() - 0.5) * Z.gap * 0.62, cv + (rng() - 0.5) * Z.gap * 0.62);
+          if (rng() < 0.55 * density) this._place(0, 'tree', gx, gz, 0.8 + rng() * 0.45, rng() * 6.283, 0.85 + rng() * 0.3, 5.0);
+          else this._place(2, 'bush', gx, gz, 1.1 + rng() * 0.8, rng() * 6.283, 1, 1.5);
+        }
+        if (rng() < 0.5) {
+          const [px, pz] = toWorld(cu - Z.gap * 0.46, cv - Z.gap * 0.4);
+          this._place(3, 'pole', px, pz, 1, Z.dir, 1, 8.4);
+        }
+        for (const [p, off] of [[0.95, -0.42], [0.5, 0.42]]) {
+          if (rng() >= p * density) continue;
+          const [ax, az] = toWorld(cu + (rng() - 0.5) * Z.gap * 0.7, cv + off * Z.gap);
+          this._struct('car', cars[(rng() * cars.length) | 0], ax, az, Z.dir + (rng() < 0.5 ? 0 : Math.PI), {});
+        }
+        if (rng() < 0.5) {
+          const [bx, bz] = toWorld(cu + (rng() - 0.5) * Z.gap * 0.5, cv + (rng() - 0.5) * Z.gap * 0.5);
+          this._place(2, 'bush', bx, bz, 1.0 + rng() * 0.8, rng() * 6.283, 1, 1.5);
+        }
+      }
+    }
+
+    // 街の外は乾いた原野。
+    const reach = T.fineHalf - 20;
+    for (let i = 0; i < Math.round(2400 * density); i++) {
+      const x = (rng() * 2 - 1) * reach, z = (rng() * 2 - 1) * reach;
+      if (T.world.mask(x, z) > 0.2) continue;
+      this._place(2, 'bush', x, z, 1.0 + rng() * 0.9, rng() * 6.283, 0.9 + rng() * 0.3, 1.5);
+    }
+    for (let i = 0; i < Math.round(700 * density); i++) {
+      const x = (rng() * 2 - 1) * reach, z = (rng() * 2 - 1) * reach;
+      if (T.world.mask(x, z) > 0.2 || T.world.river(x, z) < -0.5) continue;
+      this._place(0, 'tree', x, z, 0.8 + rng() * 0.5, rng() * 6.283, 0.9, 5.0);
+    }
+
+    const [chx, chz] = toWorld(0, 0);
+    this.landmark = this._struct('church', this.solid.mesh(churchShape()), chx, chz, Z.dir + Math.PI / 2, {});
+    const shed = this.solid.mesh(shedMesh(this.seed + 3));
+    for (let i = 0; i < 5; i++) {
+      const [sx, sz] = toWorld((rng() - 0.5) * Z.halfX * 1.2, (rng() - 0.5) * Z.halfZ * 1.2);
+      this._struct('shed', shed, sx, sz, rng() * 6.283, { scale: 1.5 });
+    }
+    const [tx2, tz2] = toWorld(Z.gap * 2.2, -Z.gap * 1.6);
+    this._struct('tower', this.solid.mesh(towerMesh()), tx2, tz2, 0, { scale: 1.6 });
+  }
+
+  /* ---- 湾岸 ---- */
+  _buildCosta(density) {
+    const T = this.terrain, Z = T.zone, rng = this.rng;
+    this.shapes = [palmShape(this.seed + 31), crateShape(this.seed + 33),
+      bushShape(this.seed + 9), bollardShape()];
+    const sea = T.sea === null ? 0 : T.sea;
+    const onLand = (x, z) => T.height(x, z) > sea + 0.6;
+    const reach = T.fineHalf - 30;
+
+    // ヤシは汀線に沿って並ぶ。
+    for (let i = 0; i < Math.round(4200 * density); i++) {
+      const x = (rng() * 2 - 1) * reach;
+      const z = T.world.coastZ(x) + 10 + Math.pow(rng(), 1.2) * 380;
+      if (Math.abs(z) > reach || !onLand(x, z) || T.world.mask(x, z) > 0.4) continue;
+      const s = 0.85 + rng() * 0.5;
+      this._place(0, 'palm', x, z, s, rng() * 6.283, 0.9 + rng() * 0.25, 9 * s);
+    }
+    for (let i = 0; i < Math.round(2600 * density); i++) {
+      const x = (rng() * 2 - 1) * reach, z = (rng() * 2 - 1) * reach;
+      if (!onLand(x, z) || T.world.mask(x, z) > 0.3 || T.height(x, z) < sea + 3) continue;
+      this._place(2, 'bush', x, z, 1.0 + rng() * 0.8, rng() * 6.283, 0.9, 1.5);
+    }
+
+    /* コンテナは埠頭に積む。三段まで、列は埠頭の向きに揃える。 */
+    const cos = Math.cos(Z.dir), sin = Math.sin(Z.dir);
+    const toWorld = (u, v) => [Z.x + u * cos - v * sin, Z.z + u * sin + v * cos];
+    for (let row = -5; row <= 5; row++) {
+      for (let col = -14; col <= 14; col++) {
+        if (rng() > 0.72 * density) continue;
+        const stack = 1 + ((rng() * 3) | 0);
+        for (let k = 0; k < stack; k++) {
+          const [x, z] = toWorld(col * 7.2 + (rng() - 0.5) * 0.5, row * 12 + (rng() - 0.5) * 0.5);
+          if (T.world.mask(x, z) < 0.8) continue;
+          const list = this.slots[1];
+          const y = T.height(x, z) + k * 2.62;
+          const q = qt();
+          qFromAxisAngle(q, 0, 1, 0, Z.dir + (rng() - 0.5) * 0.03);
+          list.rot.push(q[0], q[1], q[2], q[3]);
+          list.posScale.push(x, y, z, 1);
+          /* 色味は箱ごとに振る。形は一つしか作っていないので、色を
+             振らないと同じ緑のコンテナが二百個並ぶ。 */
+          const hue = rng();
+          list.tint.push(0.55 + hue * 1.5, 0.62 + (1 - hue) * 1.1, 0.6 + Math.abs(hue - 0.5) * 1.6);
+          const it = this._add('crate', x, z, { inst: 1, idx: list.count, h: 2.6 });
+          it.y = y;
+          list.count++;
+        }
+      }
+    }
+    for (let i = -12; i <= 12; i++) {
+      const [x, z] = toWorld(i * 18, -Z.halfZ + 12);
+      if (T.world.mask(x, z) < 0.5) continue;
+      this._place(3, 'bollard', x, z, 1.2, 0, 1, 0.9);
+    }
+
+    const M = {
+      store: this.solid.mesh(storeShape(this.seed + 5)),
+      crane: this.solid.mesh(craneShape()),
+      boat: this.solid.mesh(boatShape(this.seed + 7)),
+      truck: this.solid.mesh(truckMesh(this.seed + 2)),
+      faro: this.solid.mesh(faroShape())
+    };
+    for (let i = 0; i < 3; i++) {
+      const [x, z] = toWorld(-Z.halfX * 0.55 + i * Z.halfX * 0.55, Z.halfZ * 0.45);
+      this._struct('store', M.store, x, z, Z.dir, { scale: 1.15 });
+    }
+    for (let i = 0; i < 3; i++) {
+      const [x, z] = toWorld(-90 + i * 95, -Z.halfZ + 26);
+      this._struct('crane', M.crane, x, z, Z.dir + Math.PI, {});
+    }
+    // ボートは岸壁のすぐ外、水の上に舫ってある。
+    for (let i = 0; i < 7; i++) {
+      const [x, z] = toWorld(-110 + i * 34, -Z.halfZ - 8 - (i % 2) * 7);
+      this._struct('boat', M.boat, x, z, Z.dir + Math.PI / 2 + (rng() - 0.5) * 0.2, { scale: 1.2, float: sea });
+    }
+    for (let i = 0; i < 4; i++) {
+      const [x, z] = toWorld((rng() - 0.5) * Z.halfX, Z.halfZ * 0.1 + (rng() - 0.5) * 40);
+      this._struct('truck', M.truck, x, z, rng() * 6.283, { scale: 1.3 });
+    }
+    // 灯台は岬の先。
+    const fx = Z.x - Z.halfX - 70;
+    this.landmark = this._struct('faro', M.faro, fx, T.world.coastZ(fx) + 26, 0.6, {});
+  }
+
+  /* ---------- 壊す ---------- */
+
   destroy(item, instant = false, tornado = null) {
     item.alive = false;
     const V = tornado && tornado.state;
@@ -4532,18 +5348,16 @@ class Props {
       item.fall = instant ? 1 : 0.0001;
     }
     const c = KINDS[item.kind].count;
-    if (c) this.tally[c]++;
+    if (c) this.tally[c] = (this.tally[c] || 0) + 1;
   }
 
-  /* 株を一つ、渦へ投げ込む。初速はその場の速度場そのもの。だから
-     引き抜かれた瞬間から、既に渦に乗っている。 */
+  /* 株を一つ、渦へ投げ込む。初速はその場の速度場に、中心へ向かう分を
+     足したもの。速度場だけだと外周を回ったまま落ちて終わる。 */
   _launch(inst, x, y, z, scale, q, tornado, h) {
     const list = this.fly[inst];
     if (list.length >= FLY_CAP[inst]) list.shift();
     const f = tornado.flow(x, y + h * 0.5, z, [0, 0, 0]);
     const r = Math.random;
-    /* 引き抜かれた瞬間に、中心へ向かう分を余分に持たせる。速度場に
-       任せるだけだと、抜けた株は外周を回ったまま落ちて終わる。 */
     const V = tornado.state;
     const dx = V.x - x, dz = V.z - z;
     const d = Math.hypot(dx, dz) || 1;
@@ -4555,14 +5369,11 @@ class Props {
       vz: f[2] * 0.85 + (dz / d) * pull + (r() - 0.5) * 4,
       q: new Float32Array(q),
       av: [(r() - 0.5) * 9, (r() - 0.5) * 7, (r() - 0.5) * 9],
-      // 軽いものほど流れに早く同期する。柵の柱は葉より置いていかれる。
       drag: inst === 3 ? 1.1 : inst === 1 ? 1.4 : 2.6,
       t: 0, grounded: false
     });
   }
 
-  /* 飛んでいるものを一歩進める。速度場は渦から借りるので、漏斗の
-     見た目と破片の軌跡と株の飛び方が食い違わない。 */
   _stepFlight(o, dt, tornado, bounce) {
     const T = this.terrain;
     if (o.grounded) { o.t += dt; return; }
@@ -4581,7 +5392,6 @@ class Props {
     if (o.y <= g) {
       o.y = g;
       if (o.vy < -bounce && o.t < 30) {
-        // 一度だけ跳ねて、あとは転がって止まる。
         o.vy *= -0.30; o.vx *= 0.45; o.vz *= 0.45;
         for (let i = 0; i < 3; i++) o.av[i] *= 0.5;
       } else {
@@ -4593,7 +5403,7 @@ class Props {
   }
 
   update(dt, tornado, debris) {
-    this.millSpin += dt;
+    this.spin += dt;
     for (const s of this.structures) {
       if (s.fall > 0 && s.fall < 1) s.fall = Math.min(1, s.fall + dt * (0.7 + s.fall * 1.6));
       if (s.fly) {
@@ -4604,8 +5414,7 @@ class Props {
       }
     }
     /* 飛んでいるものには埃の尾を引かせる。二百メートル先の一株は
-       十数ピクセルしかないので、尾が無いと空に何も居ないように見える。
-       実際、渦に持っていかれたものは自分の埃を連れている。 */
+       十数ピクセルしかないので、尾が無いと空に何も居ないように見える。 */
     for (const list of this.fly) {
       for (let i = 0; i < list.length; i++) {
         const o = list[i];
@@ -4622,14 +5431,13 @@ class Props {
 
     solid.beginFrame(solid.plant, ctx, T);
     for (const m of this.instMeshes) solid.drawInstanced(m);
-
-    // 飛んでいる株。位置も姿勢も毎フレーム変わるので、まとめて転送する。
     for (let k = 0; k < this.flyMeshes.length; k++) {
       const list = this.fly[k], m = this.flyMeshes[k];
       for (let i = 0; i < list.length; i++) {
         const o = list[i];
         m.posScale[i * 4] = o.x; m.posScale[i * 4 + 1] = o.y;
         m.posScale[i * 4 + 2] = o.z;
+        // 飛んでいる間だけ少し大きく描く。遠くの一株を見せるための嘘。
         m.posScale[i * 4 + 3] = o.scale * (o.grounded ? 1 : 1.35);
         m.rot[i * 4] = o.q[0]; m.rot[i * 4 + 1] = o.q[1];
         m.rot[i * 4 + 2] = o.q[2]; m.rot[i * 4 + 3] = o.q[3];
@@ -4643,12 +5451,11 @@ class Props {
     const M = this._m, q = this._q;
     for (const s of this.structures) {
       if (s.fly) {
-        // 持っていかれた建物。回りながら飛ぶ。
         m4compose(M, [s.fly.x, s.fly.y, s.fly.z], s.fly.q, s.scale);
         solid.draw(s.mesh, M);
-        if (s.kind === 'mill') {
+        if (s.spinMesh) {
           m4compose(M, [s.fly.x, s.fly.y + 4, s.fly.z], s.fly.q, s.scale);
-          solid.draw(this.mFan, M);
+          solid.draw(s.spinMesh, M);
         }
         continue;
       }
@@ -4663,33 +5470,34 @@ class Props {
       } else {
         qFromAxisAngle(q, 0, 1, 0, s.yaw);
       }
-      m4compose(M, [s.x, s.y, s.z], q, s.scale);
-      solid.draw(s.mesh, M, { occlude: s.kind === 'casa' ? 0.85 : 1 });
+      // 舫ってあるものは波に合わせて上下する。
+      const y = s.float !== undefined && !s.fall
+        ? s.float + Math.sin(ctx.time * 0.9 + s.x * 0.1) * 0.35
+        : s.y;
+      m4compose(M, [s.x, y, s.z], q, s.scale);
+      solid.draw(s.mesh, M, { occlude: s.r > 8 ? 0.85 : 1 });
 
-      if (s.kind === 'mill') {
-        // 羽根は塔の頭に乗る。倒れた後は回らない。
-        const spin = s.alive ? this.millSpin * (0.8 + (ctx.vortex[3] || 0) * 9) + s.fanSpin : s.fanSpin;
+      if (s.spinMesh) {
+        // 羽根は塔の頭に乗る。渦が近いほど速く回り、倒れたら止まる。
+        const spin = s.alive ? this.spin * (0.8 + (ctx.vortex[3] || 0) * 9) + s.spinPhase : s.spinPhase;
         const head = qt();
         qFromAxisAngle(head, 0, 1, 0, s.yaw);
         const roll = qt();
         qFromAxisAngle(roll, 0, 0, 1, spin);
         qMul(head, head, roll); qNorm(head);
+        const armY = s.spinY * s.scale;
         if (ang > 0) {
           const a = s.fallAxis;
           const f = qt();
           qFromAxisAngle(f, a[0], 0, a[2], ang);
           qMul(head, f, head); qNorm(head);
         }
-        const hx = Math.cos(s.yaw) * 0.0, hz = Math.sin(s.yaw) * 0.0;
-        const armY = 7.5 * s.scale;
-        const py = s.y + armY * Math.cos(ang);
-        const lean = armY * Math.sin(ang);
         const a2 = s.fallAxis;
-        m4compose(M, [s.x + hx - a2[2] * lean, py, s.z + hz + a2[0] * lean], head, s.scale);
-        solid.draw(this.mFan, M);
+        const lean = armY * Math.sin(ang);
+        m4compose(M, [s.x - a2[2] * lean, s.y + armY * Math.cos(ang), s.z + a2[0] * lean], head, s.scale);
+        solid.draw(s.spinMesh, M);
       }
     }
-    void clamp;
   }
 }
 
@@ -5002,14 +5810,24 @@ const { CLOUD_BASE } = __req("world/sky.js");
 const { clamp, lerp, smoothstep, wrapPi, v3 } = __req("core/math.js");
 const { makeRng } = __req("core/rng.js");
 
-/* 階級。しきい値は吸い上げた総量。 */
+/* 段。しきい値は吸い上げた総点。十段あり、境目で数字が飛ぶのではなく
+   半径も丈も旋回もうねりも連続に補間される。段は「名前が変わる点」に
+   過ぎない。
+
+   sat は衛星渦の本数。多重渦竜巻は実際にこうなる——親の渦の中で、
+   小さい渦が二本三本と立って、親の周りを公転する。被害の跡が何本もの
+   筋になって残るのはそのため。 */
 const STAGES = [
-  { ef: 'EF0', es: 'POLVO',     jp: '塵旋風', at: 0,    radius: 3.4, top: 62,  swirl: 24, updraft: 9,  wedge: 0.00, cloud: 0.00, rain: 0.00, bolt: 0, red: 0.00 },
-  { ef: 'EF1', es: 'REMOLINO',  jp: '旋風',   at: 40,   radius: 5.4, top: 105, swirl: 34, updraft: 13, wedge: 0.05, cloud: 0.38, rain: 0.00, bolt: 0, red: 0.00 },
-  { ef: 'EF2', es: 'TORMENTA',  jp: '嵐',     at: 140,  radius: 8.2, top: 160, swirl: 46, updraft: 18, wedge: 0.20, cloud: 0.62, rain: 0.35, bolt: 0, red: 0.05 },
-  { ef: 'EF3', es: 'RAYO',      jp: '雷',     at: 360,  radius: 12.5, top: 225, swirl: 58, updraft: 24, wedge: 0.45, cloud: 0.80, rain: 0.58, bolt: 1, red: 0.18 },
-  { ef: 'EF4', es: 'SANGRE',    jp: '紅蓮',   at: 800,  radius: 18.5, top: 285, swirl: 72, updraft: 30, wedge: 0.75, cloud: 0.92, rain: 0.70, bolt: 1, red: 0.78 },
-  { ef: 'EF5', es: 'FIN',       jp: '終焉',   at: 1500, radius: 27.0, top: 330, swirl: 90, updraft: 37, wedge: 1.00, cloud: 1.00, rain: 0.80, bolt: 1, red: 1.00 }
+  { lv: 'L1',  ef: 'EF0', es: 'POLVO',     jp: '塵旋風', at: 0,    radius: 3.4,  top: 62,  swirl: 24,  updraft: 9,  wedge: 0.00, snake: 1.35, cloud: 0.00, rain: 0.00, bolt: 0, red: 0.00, sat: 0 },
+  { lv: 'L2',  ef: 'EF1', es: 'REMOLINO',  jp: '旋風',   at: 40,   radius: 5.4,  top: 105, swirl: 34,  updraft: 13, wedge: 0.03, snake: 1.55, cloud: 0.34, rain: 0.00, bolt: 0, red: 0.00, sat: 0 },
+  { lv: 'L3',  ef: 'EF2', es: 'TORMENTA',  jp: '嵐',     at: 140,  radius: 8.2,  top: 160, swirl: 46,  updraft: 18, wedge: 0.12, snake: 1.60, cloud: 0.60, rain: 0.30, bolt: 0, red: 0.03, sat: 0 },
+  { lv: 'L4',  ef: 'EF2', es: 'RAYO',      jp: '雷',     at: 360,  radius: 11.5, top: 210, swirl: 56,  updraft: 23, wedge: 0.24, snake: 1.45, cloud: 0.76, rain: 0.50, bolt: 1, red: 0.10, sat: 0 },
+  { lv: 'L5',  ef: 'EF3', es: 'GEMELO',    jp: '双子',   at: 700,  radius: 15.0, top: 250, swirl: 64,  updraft: 27, wedge: 0.38, snake: 1.25, cloud: 0.84, rain: 0.58, bolt: 1, red: 0.18, sat: 1 },
+  { lv: 'L6',  ef: 'EF3', es: 'SANGRE',    jp: '紅蓮',   at: 1200, radius: 18.5, top: 285, swirl: 72,  updraft: 30, wedge: 0.52, snake: 1.10, cloud: 0.90, rain: 0.66, bolt: 1, red: 0.72, sat: 1 },
+  { lv: 'L7',  ef: 'EF4', es: 'TRILLIZO',  jp: '三つ子', at: 2000, radius: 22.0, top: 300, swirl: 80,  updraft: 33, wedge: 0.66, snake: 1.00, cloud: 0.94, rain: 0.70, bolt: 1, red: 0.80, sat: 2 },
+  { lv: 'L8',  ef: 'EF4', es: 'COLOSO',    jp: '大渦',   at: 3200, radius: 26.0, top: 320, swirl: 88,  updraft: 35, wedge: 0.80, snake: 0.90, cloud: 0.97, rain: 0.74, bolt: 1, red: 0.86, sat: 2 },
+  { lv: 'L9',  ef: 'EF5', es: 'NEGRO',     jp: '黒',     at: 4800, radius: 30.0, top: 340, swirl: 96,  updraft: 37, wedge: 0.92, snake: 0.82, cloud: 1.00, rain: 0.78, bolt: 1, red: 0.94, sat: 3 },
+  { lv: 'L10', ef: 'EF5', es: 'FIN',       jp: '終焉',   at: 7000, radius: 36.0, top: 366, swirl: 108, updraft: 40, wedge: 1.00, snake: 0.78, cloud: 1.00, rain: 0.82, bolt: 1, red: 1.00, sat: 3 }
 ];
 
 /* 次の段まであと何点か。HUDが数字で出すので、ここが唯一の出どころ。 */
@@ -5031,6 +5849,7 @@ uniform float uWedge;
 uniform float uTime;
 uniform float uSpin;
 uniform vec2 uLean;       // 進行方向へのなびき
+uniform float uSnake;     // うねりの深さ。細い段ほど大きく振る
 
 out vec3 vWorld;
 out vec3 vNrm;
@@ -5069,11 +5888,13 @@ void main() {
   // うねり。高さと時間でずれる二つの正弦に雑音を足すと、同じ形が
   // 二度と来ない。竜巻が生きて見えるのはほとんどこれ一つ。
   float t = uTime;
-  float snake = (1.0 - uWedge * 0.6);
+  float snake = uSnake;
+  /* うねりは三つの正弦の重ね合わせ。周期が互いに素なので、同じ形が
+     二度と来ない。竜巻が生きて見えるのは、ほとんどこれ一つ。 */
   vec2 wob = vec2(
-    sin(v * 3.1 - t * 1.7) * 0.9 + sin(v * 7.3 + t * 2.6) * 0.35,
-    cos(v * 2.7 - t * 1.35) * 0.9 + cos(v * 6.1 + t * 2.1) * 0.35
-  ) * uRadius * 0.42 * snake * pow(v, 0.8);
+    sin(v * 3.1 - t * 1.7) * 0.9 + sin(v * 7.3 + t * 2.6) * 0.35 + sin(v * 1.7 - t * 0.9) * 0.6,
+    cos(v * 2.7 - t * 1.35) * 0.9 + cos(v * 6.1 + t * 2.1) * 0.35 + cos(v * 1.4 - t * 0.75) * 0.6
+  ) * uRadius * 0.46 * snake * pow(v, 0.75);
 
   // 上へ行くほど進行方向へ倒れる。
   wob += uLean * pow(v, 1.6) * uTop * 0.5;
@@ -5249,6 +6070,13 @@ class Tornado {
     this.boltTimer = 4;
     this.lastFlashSound = 0;
     this._digT = 0;
+    /* 衛星渦。親の周りを公転する小さい渦で、段が上がると増える。
+       位置は親からの角度と距離だけ。形は同じシェーダを使い回す。 */
+    this.sats = [
+      { ang: 0.0, orbit: 1.9, rate: 0.85, scale: 0.42 },
+      { ang: 2.1, orbit: 2.3, rate: -0.62, scale: 0.34 },
+      { ang: 4.2, orbit: 2.7, rate: 0.48, scale: 0.28 }
+    ];
 
     this.params = { ...STAGES[0] };
     this._applyParams();
@@ -5315,11 +6143,12 @@ class Tornado {
     const t = i === STAGES.length - 1 ? 1 : clamp((this.energy - a.at) / span, 0, 1);
     const e = t * t * (3 - 2 * t);
     const P = this.params;
-    for (const k of ['radius', 'top', 'swirl', 'updraft', 'wedge', 'cloud', 'rain', 'red']) {
+    for (const k of ['radius', 'top', 'swirl', 'updraft', 'wedge', 'snake', 'cloud', 'rain', 'red']) {
       P[k] = lerp(a[k], b[k], e);
     }
     P.bolt = Math.max(a.bolt, b.bolt * (e > 0.35 ? 1 : 0));
-    P.ef = a.ef; P.es = a.es; P.jp = a.jp;
+    P.sat = a.sat;
+    P.ef = a.ef; P.es = a.es; P.jp = a.jp; P.lv = a.lv;
     this.stageProgress = t;
     this.power = clamp(this.energy / STAGES[STAGES.length - 1].at, 0, 1);
     this.radius = P.radius;
@@ -5415,6 +6244,9 @@ class Tornado {
     this.lean[0] = lerp(this.lean[0], -this.vel[0] * 0.010, Math.min(1, dt * 2));
     this.lean[1] = lerp(this.lean[1], -this.vel[2] * 0.010, Math.min(1, dt * 2));
     this.spin += dt * (this.params.swirl / Math.max(this.radius, 1)) * 0.55;
+    // 衛星は親の回転に引きずられて公転する。速さは親の旋回速度から。
+    const orb = (this.params.swirl / Math.max(this.radius, 1)) * 0.22;
+    for (const st of this.sats) st.ang += dt * orb * st.rate * 6;
 
     /* 地面を抉る。深さは勢力、幅は半径。抉った跡は地形の場に残り、
        次のフレームからは地面の形そのものが被害の記録になる。
@@ -5461,11 +6293,20 @@ class Tornado {
   /* ---------- 吸い上げ ---------- */
 
   /* 周りにあるものを噛む。倒れたものは events に積んで返す。 */
+  /* 衛星渦のワールド位置。描画も、抉りも、噛み判定も同じものを見る。 */
+  satAt(i, out = [0, 0]) {
+    const st = this.sats[i];
+    const d = this.radius * st.orbit;
+    out[0] = this.pos[0] + Math.cos(st.ang) * d;
+    out[1] = this.pos[2] + Math.sin(st.ang) * d;
+    return out;
+  }
+
   consume(props, dt, debris, events) {
     if (!this.alive) return;
     const reach = this.radius * 1.9 + 4;
     const list = props.query(this.pos[0], this.pos[2], reach, this._q || (this._q = []));
-    const strength = (2.2 + this.stage * 1.1 + this.surge * 0.8) * (0.62 + this.moisture * 0.38);
+    const strength = (3.1 + this.stage * 1.15 + this.surge * 0.9) * (0.62 + this.moisture * 0.38);
     for (let i = 0; i < list.length; i++) {
       const it = list[i];
       const d = Math.hypot(it.x - this.pos[0], it.z - this.pos[2]);
@@ -5494,6 +6335,29 @@ class Tornado {
       }
       events.push({ type: 'kill', item: it });
     }
+    /* 衛星の足元も噛む。多重渦の被害が何本もの筋になって残るのは、
+       小さい渦が親とは別のところを削っているからだ。 */
+    const n = this.params.sat | 0;
+    for (let k = 0; k < n; k++) {
+      const p = this.satAt(k, this._sp || (this._sp = [0, 0]));
+      const sr = this.radius * this.sats[k].scale * 1.9 + 3;
+      const near = props.query(p[0], p[1], sr, this._q2 || (this._q2 = []));
+      for (let i = 0; i < near.length; i++) {
+        const it = near[i];
+        if (this.stage < it.minStage) continue;
+        const d = Math.hypot(it.x - p[0], it.z - p[1]);
+        if (d > sr) continue;
+        it.chew += (1 - d / sr) * strength * 0.8 * dt;
+        if (it.chew < it.hp) continue;
+        props.destroy(it, false, this);
+        this.energy += it.value;
+        this.moisture = clamp(this.moisture + it.value * 0.006, 0, 1);
+        debris.burst(it.x, it.y + (it.h || 1) * 0.5, it.z, Math.min(70, 6 + it.value * 1.4),
+          it.tone, 5 + it.value * 0.25);
+        events.push({ type: 'kill', item: it });
+      }
+    }
+
     const before = this.stage;
     this._applyParams();
     if (this.stage > before) events.push({ type: 'stage', stage: this.stage });
@@ -5592,6 +6456,54 @@ class Tornado {
   _renderFunnel(ctx) {
     const gl = this.gl, p = this.funnelProg, u = p.u;
     p.use();
+    this._funnelCommon(ctx, u);
+
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);   // 乗算済みアルファ
+    gl.depthMask(false);
+    gl.enable(gl.CULL_FACE);
+    gl.bindVertexArray(this.funnelVao);
+
+    // 親の柱。
+    this._drawShells(gl, u, this.pos[0], this.pos[1] - 1.5, this.pos[2],
+      this.radius, this.top, this.params.wedge, this.params.snake, this.spin);
+
+    /* 衛星渦。同じ形を小さくして、親の周りに置くだけ。多重渦竜巻が
+       多重渦に見えるのに、別のシェーダは要らない。 */
+    const n = this.params.sat | 0;
+    for (let k = 0; k < n; k++) {
+      const st = this.sats[k];
+      const p2 = this.satAt(k, this._sp2 || (this._sp2 = [0, 0]));
+      const gy = this.terrain.height(p2[0], p2[1]);
+      this._drawShells(gl, u, p2[0], gy - 1.2, p2[1],
+        this.radius * st.scale, this.top * (0.45 + st.scale * 0.5),
+        this.params.wedge * 0.35, this.params.snake * 1.6,
+        this.spin * 1.7 + st.ang * 3);
+    }
+
+    gl.bindVertexArray(null);
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+  }
+
+  /* 一本ぶんの殻二枚。裏から描いて表を重ねると中心が濃くなる。 */
+  _drawShells(gl, u, x, y, z, radius, top, wedge, snake, spin) {
+    gl.uniform3f(u.uBase, x, y, z);
+    gl.uniform1f(u.uRadius, radius);
+    gl.uniform1f(u.uTop, top);
+    gl.uniform1f(u.uWedge, wedge);
+    gl.uniform1f(u.uSnake, snake);
+    gl.uniform1f(u.uSpin, spin);
+    gl.cullFace(gl.FRONT);
+    gl.uniform1f(u.uInner, 1);
+    gl.drawElements(gl.TRIANGLES, this.funnelCount, gl.UNSIGNED_INT, 0);
+    gl.cullFace(gl.BACK);
+    gl.uniform1f(u.uInner, 0);
+    gl.drawElements(gl.TRIANGLES, this.funnelCount, gl.UNSIGNED_INT, 0);
+  }
+
+  _funnelCommon(ctx, u) {
+    const gl = this.gl;
     gl.uniformMatrix4fv(u.uViewProj, false, ctx.viewProj);
     gl.uniform3fv(u.uCam, ctx.camPos);
     gl.uniform3fv(u.uSun, ctx.sunDir);
@@ -5601,31 +6513,10 @@ class Tornado {
     gl.uniform1f(u.uFog, ctx.fog);
     gl.uniform1f(u.uExposure, ctx.exposure);
     gl.uniform1f(u.uTime, ctx.time);
-    gl.uniform3f(u.uBase, this.pos[0], this.pos[1] - 1.5, this.pos[2]);
-    gl.uniform1f(u.uRadius, this.radius);
-    gl.uniform1f(u.uTop, this.top);
-    gl.uniform1f(u.uWedge, this.params.wedge);
-    gl.uniform1f(u.uSpin, this.spin);
     gl.uniform2fv(u.uLean, this.lean);
     gl.uniform1f(u.uPower, 0.25 + this.power * 0.85);
     gl.uniform1f(u.uRed, this.params.red);
     gl.uniform1f(u.uFlash, this.flash);
-
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);   // 乗算済みアルファ
-    gl.depthMask(false);
-    gl.enable(gl.CULL_FACE);
-    gl.bindVertexArray(this.funnelVao);
-    // 裏の殻、それから表の殻。二枚重ねると中心が濃くなる。
-    gl.cullFace(gl.FRONT);
-    gl.uniform1f(u.uInner, 1);
-    gl.drawElements(gl.TRIANGLES, this.funnelCount, gl.UNSIGNED_INT, 0);
-    gl.cullFace(gl.BACK);
-    gl.uniform1f(u.uInner, 0);
-    gl.drawElements(gl.TRIANGLES, this.funnelCount, gl.UNSIGNED_INT, 0);
-    gl.bindVertexArray(null);
-    gl.depthMask(true);
-    gl.disable(gl.BLEND);
   }
 
   _renderBolts(ctx) {
@@ -5870,7 +6761,7 @@ __def("game/gameplay.js", function (__e, __req) {
    ない。両方が読むのは、毎フレーム同じ形で出てくる一つの状態だけ。
    ============================================================ */
 
-const { CODEX, buildMissions } = __req("game/lore.js");
+const { codexFor, buildMissions } = __req("game/lore.js");
 const { clamp } = __req("core/math.js");
 
 /* 記録帳の封を切る条件。壊してみるまで開かない。 */
@@ -5898,17 +6789,19 @@ class Gameplay {
     this.debris = debris;
     this.seed = seed;
 
-    this.missions = buildMissions();
+    this.stage = terrain.stage;
+    this.codexList = codexFor(this.stage.id);
+    this.missions = buildMissions(this.stage);
     this.missionIndex = 0;
     this.time = 0;
     this.events = [];
     this.codex = new Set();
     this.codexNew = new Set();
     this.killed = Object.create(null);
-    for (const k of ['agave', 'bush', 'post', 'cactus', 'pile', 'truck', 'shed', 'tower', 'mill', 'casa']) this.killed[k] = 0;
     this.boltsUsed = 0;
     this.boltsSeen = 0;
-    this.casaGone = false;
+    this.landmarkGone = false;
+    this.overSea = false;
     this.dissipated = false;
     this.ended = false;
     this._toughAt = -9;
@@ -5925,7 +6818,7 @@ class Gameplay {
     return {
       tally, stage: this.tornado.stage,
       killed: this.killed, boltsUsed: this.boltsUsed, boltsSeen: this.boltsSeen,
-      casaGone: this.casaGone, dissipated: this.dissipated
+      landmarkGone: this.landmarkGone, overSea: this.overSea, dissipated: this.dissipated
     };
   }
 
@@ -5945,11 +6838,11 @@ class Gameplay {
     for (const e of raw) {
       if (e.type === 'kill') {
         this.killed[e.item.kind] = (this.killed[e.item.kind] || 0) + 1;
-        if (e.item.kind === 'casa') {
-          this.casaGone = true;
-          this.events.push({ type: 'banner', text: '母屋が無くなった', tag: 'SAN ROMÁN' });
-        } else if (e.item.kind === 'mill' || e.item.kind === 'tower') {
-          this.events.push({ type: 'toast', text: `${e.item.kind === 'mill' ? '風車' : '給水塔'}が折れた`, tone: 'hot' });
+        if (e.item === this.props.landmark) {
+          this.landmarkGone = true;
+          this.events.push({ type: 'banner', text: `${this.stage.landmark}が無くなった`, tag: this.stage.sub });
+        } else if (e.item.value >= 60) {
+          this.events.push({ type: 'toast', text: `${e.item.label || ''}大物が折れた`.trim(), tone: 'hot' });
         }
       } else if (e.type === 'stage') {
         const t = this.tornado.params;
@@ -5984,6 +6877,11 @@ class Gameplay {
 
   update(dt) {
     this.time += dt;
+    // 海の上に出たか。記録帳の一枚がこれを待っている。
+    if (this.terrain.sea !== null && !this.overSea) {
+      const t = this.tornado.pos;
+      if (this.terrain.height(t[0], t[2]) < this.terrain.sea - 0.5) this.overSea = true;
+    }
     if (this.tornado.flash > 0.8) this.boltsSeen = Math.max(this.boltsSeen, 1);
 
     /* 目標。届いていたら次へ送る。最後まで行ったら終わりの言葉。 */
@@ -6007,10 +6905,12 @@ class Gameplay {
     const st = this.state;
     for (const u of UNLOCKS) {
       if (this.codex.has(u.id)) continue;
+      if (!this.codexList.some((c) => c.id === u.id)) continue;
       if (!u.when(st)) continue;
       this.codex.add(u.id);
       this.codexNew.add(u.id);
-      const e = CODEX.find((c) => c.id === u.id);
+      const e = this.codexList.find((c) => c.id === u.id);
+      if (!e) { this.codex.delete(u.id); continue; }
       if (e && this.time > 0.5) this.events.push({ type: 'codex', text: `記録帳 — ${e.title}` });
       else this.events.push({ type: 'codex', silent: true });
     }
@@ -6026,6 +6926,7 @@ class Gameplay {
     for (let i = 0; i < items.length; i++) if (!items[i].alive) dead.push(i);
     return {
       seed: this.seed,
+      stage: this.stage.id,
       energy: this.tornado.energy,
       moisture: this.tornado.moisture,
       charge: this.tornado.charge,
@@ -6041,7 +6942,7 @@ class Gameplay {
   }
 
   restore(s) {
-    if (!s || s.seed !== this.seed) return false;
+    if (!s || s.seed !== this.seed || s.stage !== this.stage.id) return false;
     const items = this.props.items;
     for (const i of s.dead || []) {
       const it = items[i];
@@ -6058,7 +6959,7 @@ class Gameplay {
     this.boltsUsed = s.boltsUsed || 0;
     if (s.snatched) Object.assign(this.actors.tally, s.snatched);
     for (const id of s.codex || []) this.codex.add(id);
-    this.casaGone = !!items.find((it) => it.kind === 'casa' && !it.alive);
+    this.landmarkGone = !!(this.props.landmark && !this.props.landmark.alive);
     for (const it of items) if (!it.alive) this.killed[it.kind] = (this.killed[it.kind] || 0) + 1;
     return true;
   }
@@ -6071,49 +6972,18 @@ __def("game/lore.js", function (__e, __req) {
 /* ============================================================
    LORE — 記録帳と目標
 
-   十二枚の記録。ほとんどは、行ってみるか、壊してみるまで開かない。
-   目標は十一段。最後の一つは終わりではなく、終わりの名前。
+   記録は土地ごとに三枚と、どこでも読める共通の六枚。ほとんどは、
+   行ってみるか、壊してみるまで開かない。
+
+   目標は十二段。骨格は三つの土地で共通で、呼び名だけが土地から来る。
+   「小さいものを12」「中くらいのものを4つ」という枠に、アガベ・街路樹・
+   ヤシが入る。だから土地を足しても目標を書き直さなくていい。
    ============================================================ */
 
 const CODEX = [
+  /* ---- 共通 ---- */
   {
-    id: 'hacienda', tag: 'HACIENDA', title: 'サン・ロマン農園',
-    meta: 'ハリスコ州 ロス・アルトス · 標高 2,050 m',
-    body: [
-      '一八九〇年代、この高原に十四の農園があった。今も名前が残っているのは三つで、そのうち一つがここ、サン・ロマン。母屋は日干し煉瓦、屋根は素焼きの瓦、回廊は北を向いている。真昼に影を落とすためだ。',
-      '畑は六百ヘクタール。畝の向きは磁北から二十四度、傾斜を横切る方向に取ってある。雨季の水が畝を流れ下って土を持っていかないように、という一世紀前の判断で、それは今も正しい。',
-      '五月の午後、地面の温度は五十度を超える。上昇した空気が高いところの湿った層とぶつかると、雲底の下で回り始めるものがある。この土地の人はそれをトロンバと呼ぶ。'
-    ]
-  },
-  {
-    id: 'agave', tag: 'AGAVE', title: 'アオノリュウゼツラン',
-    meta: 'Agave tequilana Weber var. azul',
-    body: [
-      '葉は硬く、青灰色で、縁と先端に棘がある。粉を吹いたようなその色は、蒸散を抑えるための蝋の層で、乾季の高原で生きるための唯一の装備でもある。',
-      '株の中心には「ピニャ」と呼ばれる頭がある。松ぼっくりに似ているからその名で、重さは四十キロから百キロ。糖に変わるまで、植えてから七年から十年かかる。',
-      'つまりあなたが一度の旋回で薙ぎ払う一列は、誰かが九年前に屈んで植えたものだ。渦にはその区別がつかない。'
-    ]
-  },
-  {
-    id: 'cactus', tag: 'CARDÓN', title: '柱サボテン',
-    meta: '樹高 4〜7 m · 樹齢 60〜120 年',
-    body: [
-      '幹は稜のある柱で、稜は蛇腹になっている。雨が降ると水を吸って膨らみ、乾くと痩せて溝が深くなる。生きた水筒の形をしている。',
-      '内側には木質の骨がある。この骨があるから、直径三十センチの柱が七メートル立っていられる。折れるときは、その骨ごと縦に裂ける。',
-      'EF0の渦では揺らすのが精一杯で、倒すには最低でも旋風の階級が要る。一本で10点。'
-    ]
-  },
-  {
-    id: 'soil', tag: 'TIERRA', title: '赤い土',
-    meta: '玄武岩質火山灰土 · 酸化鉄',
-    body: [
-      'この高原の赤は酸化鉄の色で、百万年前の火山灰が風化した結果として今ここにある。粒は細かく、乾くと軽く、風で簡単に浮く。',
-      '柱が赤く見えるのは、あなたが赤いからではない。赤い土を吸い上げているからだ。地面から二百メートル上まで運ばれた土は、そのまま雲の底を染める。',
-      'この土地の記録には「血の雲」と書かれた年がいくつかある。同じ現象を、別の言い方で書いただけのものだ。'
-    ]
-  },
-  {
-    id: 'meso', tag: 'MESO', title: 'メソサイクロン',
+    id: 'meso', stage: null, tag: 'MESO', title: 'メソサイクロン',
     meta: '直径 2〜10 km · 回転周期 数分',
     body: [
       '竜巻の上にあるのは雲ではなく、回っている雲だ。上昇気流そのものが直径数キロで回転していて、その回転が下へ絞り込まれた先端が、地面に触れているあなたである。',
@@ -6122,43 +6992,34 @@ const CODEX = [
     ]
   },
   {
-    id: 'bolt', tag: 'RAYO', title: '雷',
+    id: 'bolt', stage: null, tag: 'RAYO', title: '雷',
     meta: '一撃 3〜30 kA · 経路温度 30,000 K',
     body: [
       '雲の中で氷の粒とあられが擦れ、電荷が分かれる。軽い方は上へ、重い方は下へ。雲底が負に帯電すると、地面の側の正電荷がそれを追いかけて集まる。',
       '先に降りてくるのは目に見えない階段状の道で、地面から伸びる小さな穂がそれに触れた瞬間に、道が繋がって光る。順序が逆に見えるのは、返る方が桁違いに明るいからだ。',
-      '電荷が満ちているとき、あなたはその道の落ちる先を選べる。落ちた場所のものは、階級に関係なく壊れる。'
+      '電荷が満ちているとき、あなたはその道の落ちる先を選べる。落ちた場所のものは、段に関係なく壊れる。'
     ]
   },
   {
-    id: 'jimador', tag: 'JIMADOR', title: 'ヒマドール',
-    meta: '刈り取り人 · コア（一本刃の道具）',
+    id: 'multi', stage: null, tag: 'MÚLTIPLE', title: '多重渦',
+    meta: '衛星渦 · 一本から五本',
     body: [
-      '株を刈るのはコアと呼ばれる、長い柄の先に円い刃がついた道具で、それ一本で葉を落とし、頭を切り離す。熟練した者は一日に百株を捌く。',
-      '刈った頭は畑の隅に積まれ、荷台が来るのを待つ。あなたが今まき散らしたその山は、四人が朝から積んだものだ。',
-      '彼らは畑の端まで走り、石垣の陰に伏せている。渦はそれを追わない。追う理由が無い。'
+      '大きな渦の中には、小さな渦が立つ。親の回転が速すぎて一本では支えきれなくなると、渦の芯が二つ三つに分かれ、それぞれが親の周りを公転しはじめる。',
+      '被害の跡を上から見ると、一本の帯ではなく、何本もの筋が絡み合った縄のように残っている。踏まれた家と、隣の無傷の家を分けたのは、その筋の位置だけだ。',
+      'L5で双子、L7で三つ子になる。子はそれぞれ自分の足元を削っていく。'
     ]
   },
   {
-    id: 'ef', tag: 'ESCALA', title: '藤田スケール',
+    id: 'ef', stage: null, tag: 'ESCALA', title: '藤田スケール',
     meta: '改良藤田スケール EF0〜EF5',
     body: [
       '風速そのものを測ることは、ほとんどの場合できない。だから被害の方から風速を逆算する。倒れた木、剥がれた屋根、動いた車。物差しは壊れたものの側にある。',
       'EF0は枝が折れる。EF1は屋根が剥がれる。EF2は木が根ごと抜け、EF3は壁が抜ける。EF4で家が飛び、EF5では基礎だけが残る。',
-      'あなたが今どの段にいるかを決めているのも、あなたが壊したものの一覧である。'
+      'この記録帳が十段に切ってあるのは、EFが五段では、育っていく渦の刻みとしては粗すぎるからだ。'
     ]
   },
   {
-    id: 'vaca', tag: 'VACA', title: '飛ぶ牛',
-    meta: '体重 450 kg · 目撃例 多数',
-    body: [
-      '竜巻の記録に牛が出てくるのは、牛が特別に飛びやすいからではない。屋根の下にいないからで、畑にいるものの中でいちばん大きいからだ。四百五十キロが宙にあるのを見た人間は、それを一生忘れない。',
-      '牛は逃げる。真っ直ぐ外へではなく、少し斜めに走る。まっすぐ逃げれば、追いかけてくるものからは永遠に逃げ切れないからで、これは教わったことではない。',
-      'そして、たいていは落ちて、立ち上がって、また走る。この農園でも今のところ、一頭も死んでいない。'
-    ]
-  },
-  {
-    id: 'red', tag: 'SANGRE', title: '紅い渦',
+    id: 'red', stage: null, tag: 'SANGRE', title: '紅い渦',
     meta: '観測 · 一九三五年五月十七日',
     body: [
       '祖母の代の記録に一行だけある。「午後四時、赤い柱が畑の上を東へ歩いた。二時間、誰も口をきかなかった」。',
@@ -6167,43 +7028,129 @@ const CODEX = [
     ]
   },
   {
-    id: 'casa', tag: 'CASA', title: '母屋',
-    meta: '一八九四年建造 · 日干し煉瓦 厚さ 90 cm',
-    body: [
-      '壁は九十センチの日干し煉瓦で、夏の熱も冬の冷えも、その厚みの中で一日かけて往復する。だから中はいつも同じ温度でいられた。',
-      '厚い壁は風にも強い。EF2の渦は屋根を持っていくが、壁は残す。壁が抜けるには、それ以上が要る。二百点の建物である。',
-      '残っているのは基礎と、玄関の前の敷石と、回廊の柱が立っていた穴の列だけになった。'
-    ]
-  },
-  {
-    id: 'end', tag: 'FIN', title: '終わり方',
+    id: 'end', stage: null, tag: 'FIN', title: '終わり方',
     meta: '寿命 · 平均 十分 · 最長 三時間半',
     body: [
       '竜巻は倒されて終わるのではない。乾いて終わる。上昇気流に湿った空気が供給されなくなると、下降気流が回転を絞め殺し、柱は細くなって、ロープになって、消える。',
-      'ただし、この日の渦は消えなかった。乾いても痩せず、畑の端から端まで歩き、丘を越えて、記録の外へ出ていった。何が起きたのかは誰にも分からない。',
-      '土は残る。畝は掘り直せる。人は石垣の陰にいる。九年後、ここにはまた同じ青い列が並んでいて、そのときにはあなたのことは誰も憶えていない。'
+      'ただし、この日の渦は消えなかった。乾いても痩せず、端から端まで歩き、丘を越えて、記録の外へ出ていった。何が起きたのかは誰にも分からない。',
+      '土は残る。畝は掘り直せる。人は石垣の陰にいる。九年後、ここにはまた同じ列が並んでいて、そのときにはあなたのことは誰も憶えていない。'
+    ]
+  },
+
+  /* ---- 農園 ---- */
+  {
+    id: 'hacienda', stage: 'campo', tag: 'HACIENDA', title: 'サン・ロマン農園',
+    meta: 'ハリスコ州 ロス・アルトス · 標高 2,050 m',
+    body: [
+      '一八九〇年代、この高原に十四の農園があった。今も名前が残っているのは三つで、そのうち一つがここ、サン・ロマン。母屋は日干し煉瓦、屋根は素焼きの瓦、回廊は北を向いている。真昼に影を落とすためだ。',
+      '畑は六百ヘクタール。畝の向きは磁北から二十四度、傾斜を横切る方向に取ってある。雨季の水が畝を流れ下って土を持っていかないように、という一世紀前の判断で、それは今も正しい。',
+      '五月の午後、地面の温度は五十度を超える。上昇した空気が高いところの湿った層とぶつかると、雲底の下で回り始めるものがある。この土地の人はそれをトロンバと呼ぶ。'
+    ]
+  },
+  {
+    id: 'agave', stage: 'campo', tag: 'AGAVE', title: 'アオノリュウゼツラン',
+    meta: 'Agave tequilana Weber var. azul',
+    body: [
+      '葉は硬く、青灰色で、縁と先端に棘がある。粉を吹いたようなその色は、蒸散を抑えるための蝋の層で、乾季の高原で生きるための唯一の装備でもある。',
+      '株の中心には「ピニャ」と呼ばれる頭がある。松ぼっくりに似ているからその名で、重さは四十キロから百キロ。糖に変わるまで、植えてから七年から十年かかる。',
+      'つまりあなたが一度の旋回で薙ぎ払う一列は、誰かが九年前に屈んで植えたものだ。渦にはその区別がつかない。一株で1点である。'
+    ]
+  },
+  {
+    id: 'vaca', stage: 'campo', tag: 'VACA', title: '飛ぶ牛',
+    meta: '体重 450 kg · 目撃例 多数',
+    body: [
+      '竜巻の記録に牛が出てくるのは、牛が特別に飛びやすいからではない。屋根の下にいないからで、畑にいるものの中でいちばん大きいからだ。四百五十キロが宙にあるのを見た人間は、それを一生忘れない。',
+      '牛は逃げる。真っ直ぐ外へではなく、少し斜めに走る。まっすぐ逃げれば、追いかけてくるものからは永遠に逃げ切れないからで、これは教わったことではない。',
+      'そして、たいていは落ちて、立ち上がって、また走る。この農園でも今のところ、一頭も死んでいない。'
+    ]
+  },
+
+  /* ---- 街 ---- */
+  {
+    id: 'ciudad', stage: 'ciudad', tag: 'CIUDAD', title: 'アラモスの町',
+    meta: '人口 12,000 · 街区 62 m 角',
+    body: [
+      '一五七〇年代の測量で切られた碁盤の目が、四百五十年そのまま残っている。街区は六十二メートル角、通りは八メートル。中央の広場に教会が建ち、そこから数えて何番目の街区か、で住所を言う。',
+      '家は日干し煉瓦で、壁は厚く、窓は小さい。屋根には必ず水槽が載っている。上水が一日に二度しか来ないからで、竜巻に持っていかれて困るものの筆頭でもある。',
+      '風は谷筋に沿って吹く。だから通りの向きは、風に対して斜めに切ってある。これも四百五十年前の判断だ。'
+    ]
+  },
+  {
+    id: 'torre', stage: 'ciudad', tag: 'TORRE', title: '教会の塔',
+    meta: '一六八四年 · 高さ 33 m · 200点',
+    body: [
+      '町でいちばん高いものが教会の塔で、二番目が給水塔である。塔の鐘は三つあり、いちばん大きいものは火事と洪水のときにしか鳴らさない。',
+      '厚い壁は風に強い。屋根は飛ぶが、壁は残る。壁が抜けるには、それ以上の何かが要る。',
+      '倒せるのはL4から。'
+    ]
+  },
+  {
+    id: 'calle', stage: 'ciudad', tag: 'CALLE', title: '通りにあるもの',
+    meta: '街路樹 2点 · 街灯 8点 · 電柱 10点 · 車 25点',
+    body: [
+      '街路樹は八メートル間隔で植わっている。日陰のためで、実用でもある。倒れると通りを塞ぐ。',
+      '電柱の間には電線が三本渡っていて、渦がそれを引っ掛けると、次の柱まで一緒に持っていく。停電の範囲が通り一本ぶんになるのはそのためだ。',
+      '駐まっている車は、L2でもう転がる。屋根が地面につくまでに、およそ二秒。'
+    ]
+  },
+
+  /* ---- 湾岸 ---- */
+  {
+    id: 'puerto', stage: 'costa', tag: 'PUERTO', title: 'サリーナ港',
+    meta: '岸壁 420 m · 水深 9 m',
+    body: [
+      '塩の積み出しから始まった小さな港で、今はコンテナと漁船が半分ずつ使っている。埠頭はコンクリート、その先は砂浜、砂浜の先はヤシの列。',
+      'コンテナは三段まで積む。四段目を積まないのは、この湾に吹く春の突風のせいだと聞かされる。実際には、クレーンの腕が三段までしか届かない。',
+      '灯台は岬の先端。赤い帯が二本入っているのは、昼間に沖から見分けるためで、夜のためではない。'
+    ]
+  },
+  {
+    id: 'tromba', stage: 'costa', tag: 'TROMBA MARINA', title: '水上竜巻',
+    meta: '海上 · 直径 20〜100 m',
+    body: [
+      '海の上に降りた渦は、土のかわりに水を吸う。柱は白くなり、足元には直径数十メートルの環が走る。持ち上がった水は上空で細かい霧になり、雲底まで届かずに散る。',
+      '陸のものより弱いことが多い。地面と違って海面は平らで、渦を乱すものが何もないので、形だけは驚くほど整う。',
+      'そのまま陸へ上がると、吸うものが水から砂に変わる。色が変わる瞬間が、汀線を越えた瞬間だ。'
+    ]
+  },
+  {
+    id: 'grua', stage: 'costa', tag: 'GRÚA', title: 'クレーン',
+    meta: '荷重 40 t · 自重 190 t · 90点',
+    body: [
+      '港のクレーンは風速二十五メートルで作業を止め、三十五メートルでレールに固定する。固定したクレーンは、設計上は毎秒五十五メートルまで耐える。',
+      'あなたはそれを軽々と超える。',
+      '倒れるときは、腕から先に海へ落ちる。'
     ]
   }
 ];
 
-/* 目標。need に届いたら次へ。 */
-function buildMissions() {
+/* この土地で読める記録だけ。 */
+function codexFor(stageId) {
+  return CODEX.filter((c) => !c.stage || c.stage === stageId);
+}
+
+/* 目標。骨格は共通で、呼び名だけ土地から来る。 */
+function buildMissions(stage) {
+  const L = stage.labels;
   return [
-    { id: 'field', title: '畑に降りる', detail: 'アガベを12株薙ぐ。一株で1点。', need: 12, get: (s) => s.tally.agave },
-    { id: 'ef1', title: '旋風になる', detail: '40点でEF1へ。土を巻き上げるほど柱は太くなる。', need: 1, get: (s) => (s.stage >= 1 ? 1 : 0) },
-    { id: 'cactus', title: 'サボテンを倒す', detail: '柱サボテンを4本。一本10点。EF1から噛める。', need: 4, get: (s) => s.tally.cactus },
-    { id: 'ef2', title: '雲を戴く', detail: '140点でEF2へ。雲底が下がり、雨がつく。', need: 1, get: (s) => (s.stage >= 2 ? 1 : 0) },
-    { id: 'stock', title: '家畜を散らす', detail: '牛やロバを3回巻き上げる。一頭15〜20点。', need: 3, get: (s) => s.tally.livestock },
-    { id: 'yard', title: 'ハシエンダを荒らす', detail: '納屋かトラックを2つ。30〜40点。', need: 2, get: (s) => s.tally.building },
-    { id: 'ef3', title: '雷を持つ', detail: '360点でEF3へ。電荷が満ちたら E で落とせる。', need: 1, get: (s) => (s.stage >= 3 ? 1 : 0) },
-    { id: 'strike', title: '雷を落とす', detail: '落雷を2回。落ちた場所のものは階級を問わず壊れる。', need: 2, get: (s) => s.boltsUsed },
-    { id: 'casa', title: '母屋を消す', detail: 'サン・ロマンの母屋。200点。EF3の歯が要る。', need: 1, get: (s) => (s.casaGone ? 1 : 0) },
-    { id: 'ef4', title: '赤くなる', detail: '800点でEF4へ。赤い土が柱を染める。', need: 1, get: (s) => (s.stage >= 4 ? 1 : 0) },
-    { id: 'ef5', title: '終焉', detail: '1,500点でEF5へ。ここから先に段は無い。', need: 1, get: (s) => (s.stage >= 5 ? 1 : 0) }
+    { id: 'first', title: `${L.small}を薙ぐ`, detail: `${L.small}を12。一つ1〜3点。`, need: 12, get: (s) => s.tally.small },
+    { id: 'lv2', title: '旋風になる', detail: '40点でL2へ。巻き上げるほど柱は太くなる。', need: 1, get: (s) => (s.stage >= 1 ? 1 : 0) },
+    { id: 'mid', title: `${L.mid}を倒す`, detail: `${L.mid}を4つ。一つ8〜12点。L2から噛める。`, need: 4, get: (s) => s.tally.mid },
+    { id: 'lv3', title: '雲を戴く', detail: '140点でL3へ。雲底が下がり、雨がつく。', need: 1, get: (s) => (s.stage >= 2 ? 1 : 0) },
+    { id: 'stock', title: `${L.livestock}を巻き上げる`, detail: `${L.livestock}を3つ。15〜35点。`, need: 3, get: (s) => s.tally.livestock },
+    { id: 'yard', title: `${L.building}を壊す`, detail: `${L.building}を2つ。30〜60点。`, need: 2, get: (s) => s.tally.building },
+    { id: 'lv4', title: '雷を持つ', detail: '360点でL4へ。電荷が満ちたら E で落とせる。', need: 1, get: (s) => (s.stage >= 3 ? 1 : 0) },
+    { id: 'strike', title: '雷を落とす', detail: '落雷を2回。落ちた場所のものは段を問わず壊れる。', need: 2, get: (s) => s.boltsUsed },
+    { id: 'lv5', title: '双子になる', detail: '700点でL5へ。渦の中にもう一本立つ。', need: 1, get: (s) => (s.stage >= 4 ? 1 : 0) },
+    { id: 'landmark', title: `${stage.landmark}を消す`, detail: `${stage.landmark}。200点。L4の歯が要る。`, need: 1, get: (s) => (s.landmarkGone ? 1 : 0) },
+    { id: 'lv7', title: '三つ子になる', detail: '2,000点でL7へ。子は三本になる。', need: 1, get: (s) => (s.stage >= 6 ? 1 : 0) },
+    { id: 'lv10', title: '終焉', detail: '7,000点でL10へ。ここから先に段は無い。', need: 1, get: (s) => (s.stage >= 9 ? 1 : 0) }
   ];
 }
 
   __e.CODEX = CODEX;
+  __e.codexFor = codexFor;
   __e.buildMissions = buildMissions;
 });
 
@@ -6216,7 +7163,7 @@ __def("ui/hud.js", function (__e, __req) {
    直接読まないし、シミュレーションはこのファイルの存在を知らない。
    ============================================================ */
 
-const { CODEX } = __req("game/lore.js");
+const { codexFor } = __req("game/lore.js");
 const { STAGES, nextThreshold } = __req("game/tornado.js");
 const { clamp, wrapPi, DEG } = __req("core/math.js");
 
@@ -6247,15 +7194,19 @@ const CONTROLS = [
 
 /* 被害の集計。何点になるかを併記しておく。渦が何を狙うべきかは、
    この一覧を見れば分かる。 */
+/* 被害の集計。呼び名は土地から来る。単価を併記しておくと、渦が何を
+   狙うべきかが一覧で分かる。 */
 const TALLY_ROWS = [
-  ['agave', 'アガベ', '1'], ['cactus', 'サボテン', '10'], ['building', '建物', '30-200'],
-  ['livestock', '家畜', '15-20'], ['people', '人', '10']
+  ['small', '1-3'], ['mid', '8-12'], ['building', '30-200'],
+  ['livestock', '15-35'], ['people', '10']
 ];
 
 class Hud {
-  constructor(settings, callbacks) {
+  constructor(settings, callbacks, stage) {
     this.s = settings;
     this.cb = callbacks;
+    this.stage = stage;
+    this.codex = codexFor(stage.id);
     this.el = {
       hud: $('hud'), objTitle: $('objTitle'), objDetail: $('objDetail'), objFill: $('objFill'),
       stormClock: $('stormClock'), stormPath: $('stormPath'), stormWidth: $('stormWidth'),
@@ -6276,7 +7227,7 @@ class Hud {
     this.codexOpen = false;
     this.systemsOpen = false;
     this.visible = true;
-    this.codexSel = CODEX[0].id;
+    this.codexSel = this.codex[0].id;
     this._toasts = [];
     this._bannerT = 0;
     this._trail = [];
@@ -6381,8 +7332,8 @@ class Hud {
     this.el.ladderRows.innerHTML = '';
     this.rungs = STAGES.map((s, i) => {
       const d = document.createElement('div');
-      d.className = `rung${i >= 4 ? ' hot' : ''}`;
-      d.innerHTML = `<b>${s.ef}</b><span>${s.jp}</span>`;
+      d.className = `rung${i >= 5 ? ' hot' : ''}`;
+      d.innerHTML = `<b>${s.lv}</b><span>${s.jp}</span>`;
       this.el.ladderRows.appendChild(d);
       return d;
     });
@@ -6391,7 +7342,8 @@ class Hud {
   _buildTally() {
     this.el.tallyRows.innerHTML = '';
     this.tallyCells = {};
-    for (const [key, label, pts] of TALLY_ROWS) {
+    for (const [key, pts] of TALLY_ROWS) {
+      const label = this.stage.labels[key] || key;
       const d = document.createElement('div');
       d.className = 'tally-row';
       d.innerHTML = `<span>${label} <i style="font-style:normal;opacity:0.55">+${pts}</i></span><b>0</b>`;
@@ -6468,7 +7420,7 @@ class Hud {
   renderCodex(unlocked = this._unlocked || new Set(), fresh = this._fresh || new Set()) {
     this._unlocked = unlocked; this._fresh = fresh;
     this.el.codexList.innerHTML = '';
-    for (const e of CODEX) {
+    for (const e of this.codex) {
       const has = unlocked.has(e.id);
       const d = document.createElement('div');
       d.className = `codex-item${has ? '' : ' locked'}${e.id === this.codexSel ? ' active' : ''}`;
@@ -6483,9 +7435,9 @@ class Hud {
       }
       this.el.codexList.appendChild(d);
     }
-    const sel = CODEX.find((c) => c.id === this.codexSel);
+    const sel = this.codex.find((c) => c.id === this.codexSel);
     if (!sel || !unlocked.has(this.codexSel)) {
-      const first = CODEX.find((c) => unlocked.has(c.id));
+      const first = this.codex.find((c) => unlocked.has(c.id));
       if (first) { this.codexSel = first.id; return this.renderCodex(unlocked, fresh); }
       this.el.codexRead.innerHTML = '<div class="codex-empty">まだ何も書かれていない。</div>';
       return;
@@ -6564,8 +7516,8 @@ class Hud {
     this.el.score.textContent = Math.floor(st.score).toLocaleString('en-US');
     const nx = nextThreshold(st.stage);
     this.el.nextStage.textContent = nx === null
-      ? '最高段 · EF5'
-      : `${STAGES[st.stage + 1].ef} まで あと ${Math.max(0, Math.ceil(nx - st.score)).toLocaleString('en-US')}`;
+      ? '最高段 · L10'
+      : `${STAGES[st.stage + 1].lv} まで あと ${Math.max(0, Math.ceil(nx - st.score)).toLocaleString('en-US')}`;
 
     /* 寿命と経路 */
     const T = st.life;
@@ -6582,7 +7534,7 @@ class Hud {
     /* ゲージ */
     this.el.gCore.style.width = `${clamp(st.stageProgress, 0, 1) * 100}%`;
     this.el.gCore.style.background = st.stage >= 4 ? 'var(--red)' : 'var(--agave)';
-    this.el.tCore.textContent = `${STAGES[st.stage].ef}`;
+    this.el.tCore.textContent = `${STAGES[st.stage].lv}`;
     this.el.gMoist.style.width = `${clamp(st.moisture, 0, 1) * 100}%`;
     this.el.gMoist.style.background = st.moisture < 0.15 ? 'var(--red)'
       : st.moisture < 0.32 ? 'var(--amber)' : 'var(--agave)';
@@ -6629,6 +7581,7 @@ class Hud {
       ['雲', st.cloud > 0.2, false],
       ['雨', st.rain > 0.1, false],
       ['雷', st.hasBolt, false],
+      [st.sat >= 3 ? '三つ子' : st.sat === 2 ? '双子+' : st.sat === 1 ? '双子' : '単渦', st.sat > 0, false],
       ['紅', st.red > 0.3, st.red > 0.3],
       [st.camMode, true, false]
     ];
@@ -6692,12 +7645,12 @@ class Hud {
     const p = this._prep('dial'); if (!p) return;
     const { g, w, h } = p;
     const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 5;
-    const maxV = 160;
+    const maxV = 200;
     const a0 = Math.PI * 0.78, a1 = Math.PI * 2.22;
     g.strokeStyle = 'rgba(190,160,130,0.25)';
     g.lineWidth = 2;
     g.beginPath(); g.arc(cx, cy, R, a0, a1); g.stroke();
-    const ticks = [0, 29, 42, 60, 74, 90, 116, 160];
+    const ticks = [0, 29, 42, 60, 74, 90, 116, 160, 200];
     ticks.forEach((v, i) => {
       const a = a0 + (v / maxV) * (a1 - a0);
       const r0 = R - (i % 2 === 0 ? 9 : 5);
@@ -6740,14 +7693,14 @@ class Hud {
     const to = (x, z) => [cx + (x - rx) * scale, cy + (z - rz) * scale];
 
     // 畑。畝の向きに沿った細い線を数本引くだけで、畑に見える。
-    const F = st.farm;
+    const F = st.zone;
     g.save();
     g.beginPath();
     const c0 = to(F.x - F.halfX, F.z - F.halfZ), c1 = to(F.x + F.halfX, F.z + F.halfZ);
     g.rect(c0[0], c0[1], c1[0] - c0[0], c1[1] - c0[1]);
     g.clip();
     g.strokeStyle = 'rgba(111,220,192,0.16)';
-    const dirx = Math.cos(F.rowDir), dirz = Math.sin(F.rowDir);
+    const dirx = Math.cos(F.dir), dirz = Math.sin(F.dir);
     for (let i = -30; i <= 30; i++) {
       const ox = F.x - dirz * i * 20, oz = F.z + dirx * i * 20;
       const a = to(ox - dirx * 400, oz - dirz * 400);
@@ -6845,10 +7798,10 @@ const { m4, m4compose, qt, qFromAxisAngle, qIntegrate, clamp, wrapPi } = __req("
 
 /* 種類。run は逃げ足、walk は普段の速さ、legY は「脚とみなす高さ」。 */
 const KIND = {
-  jimador: { label: 'ヒマドール', walk: 1.5, run: 5.2, legY: 0.95, r: 0.6, value: 10, tone: 'wood', livestock: false },
-  vaca:    { label: '牛',         walk: 0.9, run: 5.6, legY: 1.05, r: 1.3, value: 20, tone: 'leaf', livestock: true },
-  burro:   { label: 'ロバ',       walk: 1.1, run: 5.6, legY: 0.90, r: 1.0, value: 15, tone: 'wood', livestock: true },
-  perro:   { label: '犬',         walk: 2.0, run: 7.0, legY: 0.45, r: 0.4, value: 8, tone: 'wood', livestock: true }
+  jimador: { label: '人',   walk: 1.5, run: 5.2, legY: 0.95, r: 0.8, value: 10, tone: 'wood', scale: 1.25, livestock: false },
+  vaca:    { label: '牛',   walk: 0.9, run: 5.6, legY: 1.05, r: 1.8, value: 20, tone: 'leaf', scale: 1.45, livestock: true },
+  burro:   { label: 'ロバ', walk: 1.1, run: 5.6, legY: 0.90, r: 1.4, value: 15, tone: 'wood', scale: 1.35, livestock: true },
+  perro:   { label: '犬',   walk: 2.0, run: 7.0, legY: 0.45, r: 0.6, value: 8,  tone: 'wood', scale: 1.40, livestock: true }
 };
 
 /* ---------- 形 ----------
@@ -6956,13 +7909,14 @@ class Actors {
     this.rng = makeRng(seed ^ 0x4c11);
     this.list = [];
     this.tally = { livestock: 0, people: 0 };
+    this.sea = terrain.sea;
     this._m = m4();
     this._q = qt();
     this._build(density);
   }
 
   _build(density) {
-    const T = this.terrain, F = T.farm, rng = this.rng;
+    const T = this.terrain, F = T.zone, rng = this.rng;
     this.mesh = {
       jimador: [jimadorMesh(1), jimadorMesh(2), jimadorMesh(3)].map((d) => this.solid.mesh(d)),
       vaca: [vacaMesh(11), vacaMesh(12), vacaMesh(13)].map((d) => this.solid.mesh(d)),
@@ -6980,27 +7934,55 @@ class Actors {
       });
     };
 
-    // ヒマドールは畑の中。刈り取りは畝に沿って進む。
-    const cos = Math.cos(F.rowDir), sin = Math.sin(F.rowDir);
-    for (let i = 0; i < Math.round(11 * density); i++) {
-      const u = (rng() * 2 - 1) * (F.halfX - 70), v = (rng() * 2 - 1) * (F.halfZ - 70);
-      spawn('jimador', F.x + u * cos - v * sin, F.z + u * sin + v * cos);
-    }
-    // 牛は群れでいる。一頭だけの牛は牧場に見えない。
-    for (let h = 0; h < 6; h++) {
-      const hx = F.x + (rng() * 2 - 1) * (F.halfX + 130);
-      const hz = F.z + (rng() * 2 - 1) * (F.halfZ + 130);
-      const n = Math.round((4 + rng() * 4) * density);
-      for (let i = 0; i < n; i++) {
-        spawn('vaca', hx + (rng() - 0.5) * 26, hz + (rng() - 0.5) * 26);
+    const id = this.terrain.stage.id;
+    const R = (n) => Math.round(n * density);
+    if (id === 'ciudad') {
+      /* 街。人は通りにいて、犬は好きなところにいる。 */
+      for (let i = 0; i < R(22); i++) {
+        const u = (rng() * 2 - 1) * (F.halfX - 60), v = (rng() * 2 - 1) * (F.halfZ - 60);
+        const c = Math.cos(F.dir), sn = Math.sin(F.dir);
+        spawn('jimador', F.x + u * c - v * sn, F.z + u * sn + v * c);
       }
+      for (let i = 0; i < R(10); i++) {
+        spawn('perro', F.x + (rng() * 2 - 1) * F.halfX, F.z + (rng() * 2 - 1) * F.halfZ);
+      }
+      for (let i = 0; i < R(4); i++) {
+        spawn('burro', F.x + (rng() * 2 - 1) * (F.halfX + 200), F.z + (rng() * 2 - 1) * (F.halfZ + 200));
+      }
+    } else if (id === 'costa') {
+      /* 湾岸。人は埠頭に、犬は浜にいる。牛はいない。 */
+      for (let i = 0; i < R(16); i++) {
+        const u = (rng() * 2 - 1) * (F.halfX - 40), v = (rng() * 2 - 1) * (F.halfZ - 30);
+        const c = Math.cos(F.dir), sn = Math.sin(F.dir);
+        spawn('jimador', F.x + u * c - v * sn, F.z + u * sn + v * c);
+      }
+      for (let i = 0; i < R(10); i++) {
+        const x = (rng() * 2 - 1) * (T.fineHalf - 120);
+        spawn('perro', x, T.world.coastZ(x) + 12 + rng() * 90);
+      }
+      for (let i = 0; i < R(5); i++) {
+        const x = (rng() * 2 - 1) * (T.fineHalf - 200);
+        spawn('burro', x, T.world.coastZ(x) + 120 + rng() * 260);
+      }
+    } else {
+      // 農園。ヒマドールは畑の中、牛は外の草地に群れでいる。
+      const c = Math.cos(F.dir), sn = Math.sin(F.dir);
+      for (let i = 0; i < R(11); i++) {
+        const u = (rng() * 2 - 1) * (F.halfX - 70), v = (rng() * 2 - 1) * (F.halfZ - 70);
+        spawn('jimador', F.x + u * c - v * sn, F.z + u * sn + v * c);
+      }
+      // 牛は群れでいる。一頭だけの牛は牧場に見えない。
+      for (let h = 0; h < 6; h++) {
+        const hx = F.x + (rng() * 2 - 1) * (F.halfX + 130);
+        const hz = F.z + (rng() * 2 - 1) * (F.halfZ + 130);
+        for (let i = 0; i < R(4 + rng() * 4); i++) {
+          spawn('vaca', hx + (rng() - 0.5) * 26, hz + (rng() - 0.5) * 26);
+        }
+      }
+      for (let i = 0; i < R(5); i++) spawn('burro', F.x - 240 + (rng() - 0.5) * 60, F.z + 190 + (rng() - 0.5) * 60);
+      for (let i = 0; i < R(5); i++) spawn('perro', F.x - 250 + (rng() - 0.5) * 80, F.z + 195 + (rng() - 0.5) * 80);
     }
-    for (let i = 0; i < Math.round(5 * density); i++) {
-      spawn('burro', F.x - 240 + (rng() - 0.5) * 60, F.z + 190 + (rng() - 0.5) * 60);
-    }
-    for (let i = 0; i < Math.round(5 * density); i++) {
-      spawn('perro', F.x - 250 + (rng() - 0.5) * 80, F.z + 195 + (rng() - 0.5) * 80);
-    }
+
     this.total = { livestock: this.list.filter((a) => a.k.livestock).length,
       people: this.list.filter((a) => !a.k.livestock).length };
   }
@@ -7070,8 +8052,11 @@ class Actors {
         a.state = a.speed > 0 ? 'walk' : 'idle';
       }
 
-      a.x = clamp(a.x + Math.sin(a.yaw) * a.speed * dt, -lim, lim);
-      a.z = clamp(a.z + Math.cos(a.yaw) * a.speed * dt, -lim, lim);
+      const nx = clamp(a.x + Math.sin(a.yaw) * a.speed * dt, -lim, lim);
+      const nz = clamp(a.z + Math.cos(a.yaw) * a.speed * dt, -lim, lim);
+      // 海には入らない。人も牛も、そこで足を止めて向きを変える。
+      if (this.sea === null || T.height(nx, nz) > this.sea + 0.4) { a.x = nx; a.z = nz; }
+      else { a.yaw += 1.7; a.think = 0; }
       a.y = T.height(a.x, a.z);
       // 歩容の位相は歩いた距離で進む。速く走るほど脚が速く回る。
       a.phase += a.speed * dt * 3.4;
@@ -7105,19 +8090,19 @@ class Actors {
     solid.beginFrame(solid.plain, ctx, this.terrain);
     for (const a of this.list) {
       if (a.fly) {
-        m4compose(M, [a.x, a.fly.y, a.z], a.fly.q);
+        m4compose(M, [a.x, a.fly.y, a.z], a.fly.q, a.k.scale);
         solid.draw(this.mesh[a.kind][a.variant], M);
         continue;
       }
       if (a.state === 'down') {
         // 横になっている。起き上がるまでの数秒。
         qFromAxisAngle(q, Math.cos(a.yaw), 0, Math.sin(a.yaw), 1.5);
-        m4compose(M, [a.x, a.y + a.k.r * 0.35, a.z], q);
+        m4compose(M, [a.x, a.y + a.k.r * 0.35, a.z], q, a.k.scale);
         solid.draw(this.mesh[a.kind][a.variant], M);
         continue;
       }
       qFromAxisAngle(q, 0, 1, 0, a.yaw);
-      m4compose(M, [a.x, a.y, a.z], q);
+      m4compose(M, [a.x, a.y, a.z], q, a.k.scale);
       const swing = a.speed > 0.05 ? Math.min(1, a.speed / a.k.run + 0.25) : 0;
       solid.draw(this.mesh[a.kind][a.variant], M, { gait: [a.phase, swing, a.k.legY] });
     }
@@ -7130,12 +8115,15 @@ class Actors {
 
 __def("main.js", function (__e, __req) {
 /* ============================================================
-   MAIN — 起動、焼き込み、画面、フレームループ
+   MAIN — 舞台選び、焼き込み、フレームループ
 
-   焼き込みはジェネレータなので、進捗の棒が実際に動く。タブが四秒
-   白くならないのはそのためだけの構造。それ以降は順序の決まった一本道で、
-   入力、シミュレーション、天気、カメラ、奥から手前へ描画、最後に同じ
-   状態オブジェクトをHUDへ渡す。
+   起動して最初に出るのは舞台の選択で、地形の焼き込みはそれから
+   始まる。選ばれていない二つの土地を焼く理由はないし、最初の画面が
+   四秒待たされる理由もない。
+
+   焼き込みはジェネレータなので、進捗の棒が実際に動く。それ以降は
+   順序の決まった一本道で、入力、シミュレーション、天気、カメラ、
+   奥から手前へ描画、最後に同じ状態オブジェクトをHUDへ渡す。
    ============================================================ */
 
 const { createContext } = __req("core/gl.js");
@@ -7144,8 +8132,10 @@ const { Input } = __req("core/input.js");
 const { SolidRenderer } = __req("core/solid.js");
 const { Audio } = __req("core/audio.js");
 const { load: loadSave, save: writeSave, clear: clearSave } = __req("core/save.js");
+const { STAGE_LIST } = __req("game/stages.js");
 const { Terrain } = __req("world/terrain.js");
 const { Sky, cameraBasis } = __req("world/sky.js");
+const { Water } = __req("world/water.js");
 const { Props } = __req("world/props.js");
 const { Actors } = __req("world/actors.js");
 const { Debris } = __req("world/debris.js");
@@ -7155,7 +8145,6 @@ const { Gameplay } = __req("game/gameplay.js");
 const { Hud } = __req("ui/hud.js");
 const { v3, clamp, lerp, DEG } = __req("core/math.js");
 
-const SEED = 20260517;
 const AUTOSAVE = 20;
 
 const canvas = document.getElementById('view');
@@ -7165,14 +8154,15 @@ const el = {
   bootPhase: document.getElementById('bootPhase'),
   bootSpec: document.getElementById('bootSpec'),
   title: document.getElementById('title'),
-  start: document.getElementById('btnStart'),
-  cont: document.getElementById('btnContinue')
+  grid: document.getElementById('stageGrid')
 };
 
 let gl;
 try {
   gl = createContext(canvas);
 } catch (e) {
+  el.title.classList.add('hidden');
+  el.boot.classList.remove('hidden');
   el.bootPhase.textContent = e.message;
   el.bootPhase.style.color = '#ff5f47';
   throw e;
@@ -7192,82 +8182,96 @@ engine.settings.bloom = settings.bloom;
 engine.settings.grain = settings.grain;
 engine.settings.vignette = 0.26;
 
-const terrain = new Terrain(gl, {
-  seed: SEED,
-  tier: settings.quality === 'low' || settings.quality === 'medium' ? 'low' : 'high',
-  sunAzimuth: 2.40,
-  sunElevation: 54 * DEG
-});
+/* ---------- 舞台の選択 ---------- */
 
-el.bootSpec.innerHTML = [
-  `RENDER TIER ${TIERS[settings.quality].label} · ${(TIERS[settings.quality].pixels / 1e6).toFixed(1)} Mpx BUDGET`,
-  `HEIGHT FIELD ${terrain.fineN}² AT ${terrain.fineCell} m · ±${terrain.fineHalf} m`,
-  `SUN ${(terrain.sunEl / DEG).toFixed(0)}° · MAY 17, 16:10 · CST`
-].join('<br>');
+STAGE_LIST.forEach((stage, i) => {
+  const saved = loadSave(stage.id);
+  const card = document.createElement('div');
+  card.className = 'stage-card';
+  card.innerHTML =
+    `<div class="no">${String(i + 1).padStart(2, '0')}</div>` +
+    `<h3>${stage.name}</h3>` +
+    `<div class="es">${stage.sub}</div>` +
+    `<div class="tag">${stage.tag}</div>` +
+    `<p>${stage.brief}</p>` +
+    (saved ? '<div class="save" data-resume="1">続きから</div>' : '');
+  card.addEventListener('click', (e) => {
+    start(stage, !!(e.target && e.target.dataset && e.target.dataset.resume && saved));
+  });
+  el.grid.appendChild(card);
+});
 
 /* ---------- 焼き込み ---------- */
 
-const steps = terrain.bakeSteps();
-function bakeChunk() {
-  const t0 = performance.now();
-  let r;
-  // 24msごとにスレッドを返す。棒が動き、タブが生きているのはこれ。
-  do { r = steps.next(); } while (!r.done && performance.now() - t0 < 24);
-  if (r.value) {
-    el.bootFill.style.width = `${(r.value.t * 100).toFixed(1)}%`;
-    el.bootPhase.textContent = r.value.phase;
-  }
-  if (r.done) showTitle(); else requestAnimationFrame(bakeChunk);
-}
-requestAnimationFrame(bakeChunk);
+function start(stage, resume) {
+  el.title.classList.add('hidden');
+  el.boot.classList.remove('hidden');
+  el.bootPhase.textContent = '土地を測っています';
 
-let saved = null;
-function showTitle() {
-  el.boot.classList.add('hidden');
-  el.title.classList.remove('hidden');
-  saved = loadSave();
-  if (saved && saved.seed === SEED) el.cont.classList.remove('hidden');
-  el.start.addEventListener('click', () => begin(false));
-  el.cont.addEventListener('click', () => begin(true));
+  const terrain = new Terrain(gl, {
+    seed: stage.seed,
+    tier: settings.quality === 'low' || settings.quality === 'medium' ? 'low' : 'high',
+    stage
+  });
+  el.bootSpec.innerHTML = [
+    `${stage.sub} · ${stage.tag}`,
+    `HEIGHT FIELD ${terrain.fineN}² AT ${terrain.fineCell} m · ±${terrain.fineHalf} m`,
+    `RENDER TIER ${TIERS[settings.quality].label} · ${(TIERS[settings.quality].pixels / 1e6).toFixed(1)} Mpx`
+  ].join('<br>');
+
+  const steps = terrain.bakeSteps();
+  function bakeChunk() {
+    const t0 = performance.now();
+    let r;
+    // 24msごとにスレッドを返す。棒が動き、タブが生きているのはこれ。
+    do { r = steps.next(); } while (!r.done && performance.now() - t0 < 24);
+    if (r.value) {
+      el.bootFill.style.width = `${(r.value.t * 100).toFixed(1)}%`;
+      el.bootPhase.textContent = r.value.phase;
+    }
+    if (r.done) { el.boot.classList.add('hidden'); begin(stage, terrain, resume); }
+    else requestAnimationFrame(bakeChunk);
+  }
+  requestAnimationFrame(bakeChunk);
 }
 
 /* ---------- 本編 ---------- */
 
-function begin(resume) {
-  el.title.classList.add('hidden');
-
+function begin(stage, terrain, resume) {
   const solid = new SolidRenderer(gl);
   const sky = new Sky(gl, { sunDir: terrain.sunDir });
+  const water = terrain.sea !== null ? new Water(gl, terrain, terrain.sea) : null;
   const density = settings.quality === 'low' ? 0.45 : settings.quality === 'medium' ? 0.7 : 1;
-  const props = new Props(gl, terrain, solid, SEED, { density });
-  const actors = new Actors(gl, terrain, solid, SEED, { density: Math.max(0.6, density) });
-  const tornado = new Tornado(terrain, gl, SEED);
-  const F = terrain.farm;
-  tornado.placeAt(F.x - 60, F.z + 40);
+  const props = new Props(gl, terrain, solid, stage.seed, { density });
+  const actors = new Actors(gl, terrain, solid, stage.seed, { density: Math.max(0.6, density) });
+  const tornado = new Tornado(terrain, gl, stage.seed);
+  const Z = terrain.zone;
+  const sp = stage.spawn ? stage.spawn(terrain.world, Z) : [Z.x, Z.z];
+  tornado.placeAt(sp[0], sp[1]);
   const debris = new Debris(gl, terrain, {
     budget: settings.quality === 'low' ? 900 : settings.quality === 'medium' ? 1700 : 2800,
-    seed: SEED
+    seed: stage.seed
   });
-  const game = new Gameplay(terrain, tornado, props, actors, debris, SEED);
+  const game = new Gameplay(terrain, tornado, props, actors, debris, stage.seed);
   const cam = new Camera(terrain);
   cam.fov = settings.fov * DEG;
   cam.autoCentre = settings.autoCentre;
   const input = new Input(canvas);
   const audio = new Audio();
 
-  if (resume && saved) game.restore(saved);
+  if (resume) game.restore(loadSave(stage.id));
 
   const hud = new Hud(settings, {
     settingChanged: applySetting,
-    save: () => writeSave(game.toJSON()),
-    restart: () => { clearSave(); location.reload(); },
+    save: () => writeSave(stage.id, game.toJSON()),
+    restart: () => { clearSave(stage.id); location.reload(); },
     pixelInfo: () => `${engine.width}×${engine.height}`,
     overlayChanged: (open) => {
       input.enabled = !open;
       if (open && document.pointerLockElement) document.exitPointerLock();
       paused = open;
     }
-  });
+  }, stage);
   hud.show(true);
   hud.mountTouch(input);
   hud.renderCodex(game.codex, game.codexNew);
@@ -7303,7 +8307,7 @@ function begin(resume) {
     focus: tornado.pos, pixelScale: 1,
     camRight: null, camUp: null, camFwd: null, tanFovX: 1, tanFovY: 1
   };
-  const hudState = { pos: tornado.pos, farm: F, bearings: [], landmarks: [] };
+  const hudState = { pos: tornado.pos, zone: Z, bearings: [], landmarks: [] };
 
   /* 画面の中心が地面のどこを指しているか。落雷の落とし先に使う。
      解析的に解ける地形ではないので、粗く進んで細かく戻る。 */
@@ -7316,7 +8320,6 @@ function begin(resume) {
       const x = o[0] + d[0] * t, y = o[1] + d[1] * t, z = o[2] + d[2] * t;
       const diff = y - terrain.height(x, z);
       if (diff <= 0) {
-        // 一歩戻って線形に詰める。
         const f = prev / Math.max(prev - diff, 1e-4);
         const tt = t - 4 + 4 * f;
         return [o[0] + d[0] * tt, o[2] + d[2] * tt];
@@ -7328,7 +8331,7 @@ function begin(resume) {
     return null;
   }
 
-  /* 天気は渦の状態から出てくる。空も、地面も、霞も、影も、
+  /* 天気は渦の状態から出てくる。空も、地面も、海も、霞も、影も、
      全部この一箇所で決まる。 */
   function weather() {
     const P = tornado.params;
@@ -7408,7 +8411,7 @@ function begin(resume) {
         const x = aim ? aim[0] : tornado.pos[0];
         const z = aim ? aim[1] : tornado.pos[2];
         if (!tornado.strike(x, z, true, props, debris, rawEvents)) {
-          hud.toast(tornado.params.bolt ? '電荷が足りない' : '雷を持つにはEF3が要る', 'warn');
+          hud.toast(tornado.params.bolt ? '電荷が足りない' : '雷を持つにはL4が要る', 'warn');
         }
       }
 
@@ -7419,24 +8422,22 @@ function begin(resume) {
       tornado.step(dt, ctrl);
       actors.update(dt, tornado, debris, rawEvents);
       tornado.consume(props, dt, debris, rawEvents);
-      // 壊れたものを地図に落としておく。被害の記録はここにしか残らない。
       for (const e of rawEvents) {
         if (e.type === 'snatch') {
           // 巻き上げたものは力になる。誰も死んでいないので、値は控えめ。
           tornado.energy += e.actor.k.value;
-          popAcc += e.actor.k.value;
           tornado.moisture = Math.min(1, tornado.moisture + e.actor.k.value * 0.006);
+          popAcc += e.actor.k.value;
           hud.mark(e.actor.x, e.actor.z, 'building');
           audio.crack('wood', 1.2);
           continue;
         }
         if (e.type !== 'kill') continue;
         popAcc += e.item.value;
-        const k = e.item.kind;
-        hud.mark(e.item.x, e.item.z,
-          k === 'agave' || k === 'bush' || k === 'post' ? 'plant' : k === 'cactus' ? 'cactus' : 'building');
-        if (e.item.value >= 3 || Math.random() < 0.12) {
-          audio.crack(e.item.tone === 'leaf' ? 'wood' : e.item.tone, 0.5 + e.item.value * 0.1);
+        const c = e.item.value;
+        hud.mark(e.item.x, e.item.z, c >= 25 ? 'building' : c >= 8 ? 'cactus' : 'plant');
+        if (c >= 3 || Math.random() < 0.12) {
+          audio.crack(e.item.tone === 'leaf' ? 'wood' : e.item.tone, 0.5 + c * 0.1);
         }
       }
       game.digest(rawEvents);
@@ -7447,6 +8448,7 @@ function begin(resume) {
       debris.emitRain(cam.pos, ctx.weather[1] * (tornado.alive ? 1 : 0), dt);
       debris.update(dt, tornado.state);
       sky.update(dt);
+      if (water) water.update(dt);
       game.update(dt);
       handleEvents();
 
@@ -7469,7 +8471,7 @@ function begin(resume) {
       });
 
       saveTimer += dt;
-      if (saveTimer > AUTOSAVE) { saveTimer = 0; writeSave(game.toJSON()); }
+      if (saveTimer > AUTOSAVE) { saveTimer = 0; writeSave(stage.id, game.toJSON()); }
     }
 
     /* ---- カメラとフレームの文脈 ---- */
@@ -7508,6 +8510,7 @@ function begin(resume) {
     engine.beginScene();
     sky.render(ctx);
     terrain.render(ctx);
+    if (water) water.render(ctx);
     props.render(solid, ctx);
     actors.render(solid, ctx);
     tornado.render(ctx);
@@ -7522,7 +8525,6 @@ function begin(resume) {
     const cy = vp[1] * px + vp[5] * py + vp[9] * pz + vp[13];
     const facing = basis.fwd[0] * s[0] + basis.fwd[1] * s[1] + basis.fwd[2] * s[2];
     const sunNdc = cw > 0 ? [cx / cw, cy / cw] : [0, 0];
-    // 雲が出れば太陽の滲みも引く。
     const glare = facing > 0.1 ? clamp((facing - 0.1) * 1.4, 0, 1) * (1 - tornado.params.cloud * 0.8) : 0;
     engine.present(sunNdc, glare, ctx.time);
 
@@ -7543,6 +8545,7 @@ function begin(resume) {
     hudState.cloud = P.cloud;
     hudState.rain = P.rain;
     hudState.red = P.red;
+    hudState.sat = P.sat | 0;
     hudState.windSpeed = P.swirl * 1.55 + (tornado.speed || 0);
     hudState.heading = tornado.heading;
     hudState.spin = tornado.spin;
@@ -7558,19 +8561,23 @@ function begin(resume) {
 
   function landmarks() {
     const out = [];
-    for (const s of props.structures) {
-      if (s.kind === 'casa') out.push({ x: s.x, z: s.z, color: s.alive ? 'rgba(251,241,230,0.9)' : 'rgba(255,95,71,0.7)', label: '母屋' });
-      else if ((s.kind === 'mill' || s.kind === 'tower') && s.alive) out.push({ x: s.x, z: s.z, color: 'rgba(255,201,92,0.7)', label: '' });
+    if (props.landmark) {
+      out.push({ x: props.landmark.x, z: props.landmark.z, label: stage.landmark,
+        color: props.landmark.alive ? 'rgba(251,241,230,0.9)' : 'rgba(255,95,71,0.7)' });
     }
-    return out;
+    for (const s of props.structures) {
+      if (s.alive && s.value >= 60 && s !== props.landmark) {
+        out.push({ x: s.x, z: s.z, color: 'rgba(255,201,92,0.6)', label: '' });
+      }
+    }
+    return out.slice(0, 14);
   }
 
   function bearings() {
     const out = [];
     const push = (x, z, color) => out.push({ bearing: Math.atan2(x - tornado.pos[0], z - tornado.pos[2]), color });
-    push(F.x, F.z, 'rgba(111,220,192,0.9)');
-    const casa = props.structures.find((s) => s.kind === 'casa');
-    if (casa && casa.alive) push(casa.x, casa.z, 'rgba(251,241,230,0.8)');
+    push(Z.x, Z.z, 'rgba(111,220,192,0.9)');
+    if (props.landmark && props.landmark.alive) push(props.landmark.x, props.landmark.z, 'rgba(251,241,230,0.8)');
     return out;
   }
 
@@ -7583,12 +8590,12 @@ function begin(resume) {
   }
   requestAnimationFrame(frame);
 
-  window.addEventListener('beforeunload', () => writeSave(game.toJSON()));
+  window.addEventListener('beforeunload', () => writeSave(stage.id, game.toJSON()));
 
-  /* 走っているもの一式と、一フレームだけ手で進める口。README の
-     図はすべてこれで撮った。 */
+  /* 走っているもの一式と、一フレームだけ手で進める口。 */
   window.TROMBA = {
-    terrain, tornado, props, actors, game, cam, engine, hud, audio, sky, debris, solid, gl, settings, input,
+    stage, terrain, tornado, props, actors, game, cam, engine, hud, audio, sky, water,
+    debris, solid, gl, settings, input,
     tick: (dt = 1 / 60) => tick(dt),
     pause: (v) => { paused = v; },
     set debug(v) { terrain.debug = v; },
@@ -7596,6 +8603,7 @@ function begin(resume) {
   };
 }
 
+void CAM_MODES;
 
 });
 
