@@ -104,18 +104,20 @@ class TeamColorClassifier:
         ]
         order = list(np.argsort(scores)[::-1])
         first = order[0]
-        # 2チーム目は1チーム目と色相が十分離れたクラスタから選ぶ。
-        # 同系色 (同じユニフォームの明部/暗部) を2チームに割らないため。
-        second = None
-        for i in order[1:]:
-            if scores[i] <= 0:
+        # 2チーム目: 1チーム目と色相が十分離れたクラスタのうち最大人数のもの。
+        # 同じユニフォームの明部/暗部を2チームに割らないための色相条件で、
+        # 暗所で彩度が落ちる濃色ユニフォーム (紺・青) も拾えるよう
+        # 彩度の下限は低め (5) に取る。
+        cands = []
+        for i in range(k):
+            if i == first or self._chroma(centers[i]) < 5.0:
                 continue
             dh = abs(self._hue(centers[i]) - self._hue(centers[first]))
-            dh = min(dh, 360 - dh)
-            if dh >= 45.0:
-                second = i
-                break
-        if second is None:
+            if min(dh, 360 - dh) >= 40.0:
+                cands.append(i)
+        if cands:
+            second = max(cands, key=lambda i: counts[i])
+        else:
             second = order[1] if scores[order[1]] > 0 else \
                 int(np.argsort(-counts)[1])
         best = centers[[first, second]]

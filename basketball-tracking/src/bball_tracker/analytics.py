@@ -80,9 +80,15 @@ class Analyzer:
         """
         players = {}
         for tid, data in player_tracks.items():
-            xy = smooth(data["xy"])
+            raw = data["xy"]
+            xy = smooth(raw)
+            # smooth() は NaN を全区間補間するため、長い未観測ギャップ
+            # (>0.5秒) と観測範囲外は NaN に戻す (断片トラックの凍結防止)
+            mask = self._long_gap_mask(np.isnan(raw[:, 0]),
+                                       int(0.5 * self.fps))
+            xy[mask] = np.nan
             v = np.linalg.norm(np.diff(xy, axis=0), axis=1) * self.fps
-            v = np.clip(v, 0, MAX_PLAUSIBLE_SPEED)
+            v = np.clip(np.nan_to_num(v), 0, MAX_PLAUSIBLE_SPEED)
             v = np.concatenate([[v[0] if len(v) else 0.0], v])
             players[tid] = {"xy": xy, "speed": v, "team": data["team"]}
 
@@ -97,11 +103,29 @@ class Analyzer:
             self._events(res)
         return res
 
+    @staticmethod
+    def _long_gap_mask(nan_mask: np.ndarray, tol: int) -> np.ndarray:
+        """補間を許さないフレームの mask: 長い NaN 連続区間と両端の外挿部."""
+        out = np.zeros_like(nan_mask)
+        n = len(nan_mask)
+        i = 0
+        while i < n:
+            if nan_mask[i]:
+                j = i
+                while j < n and nan_mask[j]:
+                    j += 1
+                if j - i > tol or i == 0 or j == n:
+                    out[i:j] = True
+                i = j
+            else:
+                i += 1
+        return out
+
     # ------------------------------------------------------------ physical
     def _physical_metrics(self, res: AnalysisResult):
         for tid, p in res.players.items():
             step = np.linalg.norm(np.diff(p["xy"], axis=0), axis=1)
-            step = np.clip(step, 0, MAX_PLAUSIBLE_SPEED * self.dt)
+            step = np.clip(np.nan_to_num(step), 0, MAX_PLAUSIBLE_SPEED * self.dt)
             v = p["speed"]
             zones = np.digitize(v[1:], SPEED_ZONES)
             zone_dist = [float(step[zones == z].sum()) for z in range(4)]

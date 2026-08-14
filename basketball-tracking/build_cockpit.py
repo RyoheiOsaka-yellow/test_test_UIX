@@ -64,14 +64,24 @@ def main():
     ap.add_argument("--label", default="トラッキング セッション")
     ap.add_argument("--team-a", default="ホーム")
     ap.add_argument("--team-b", default="ゲスト")
+    ap.add_argument("--min-track-s", type=float, default=0.0,
+                    help="この秒数未満しか観測されなかったトラックを表示から除外")
     ap.add_argument("--out", default="cockpit.html")
     args = ap.parse_args()
 
     dims = RULESETS[args.ruleset]
     n, teams, tracks, speeds = load_tracks(
         os.path.join(args.data_dir, "tracks.csv"))
-    stats = list(csv.DictReader(
-        open(os.path.join(args.data_dir, "player_stats.csv"))))
+    # 短すぎる断片トラックは UI ノイズになるので除外
+    fps = args.fps
+    keep = {tid for tid, tr in tracks.items()
+            if sum(p is not None for p in tr) >= args.min_track_s * fps}
+    tracks = {t: v for t, v in tracks.items() if t in keep}
+    speeds = {t: v for t, v in speeds.items() if t in keep}
+    teams = {t: v for t, v in teams.items() if t in keep}
+    stats = [r for r in csv.DictReader(
+        open(os.path.join(args.data_dir, "player_stats.csv")))
+        if r["track_id"] in keep]
     heats = {tid: heat_grid(tr, dims) for tid, tr in tracks.items()}
     video_b64 = base64.b64encode(open(args.video, "rb").read()).decode()
     print(f"tracks={len(tracks)} frames={n} video={len(video_b64)//1024}KB")
@@ -189,10 +199,13 @@ TEMPLATE = r"""<title>CourtScope</title>
     <button data-tab="heat">ヒートマップ</button>
     <button data-tab="sum">サマリー</button>
   </div>
-  <div class="tabpanel" id="tp-live"><div class="live" id="liveGrid"></div></div>
+  <div class="tabpanel" id="tp-live">
+    <p class="note" id="liveEmpty">映像を再生すると、その時点でコート内にいる選手の速度がここに表示されます。</p>
+    <div class="live" id="liveGrid"></div>
+  </div>
   <div class="tabpanel" id="tp-stats" hidden>
     <div id="chart"></div>
-    <table id="statTable"></table>
+    <div style="max-height:420px;overflow-y:auto"><table id="statTable"></table></div>
     <p class="note">行をクリックするとコートビューでハイライトされます。トラックIDは
     映像から自動生成された識別子(見切れ・重なりで同一選手が複数トラックに分かれる場合があります)。</p>
   </div>
@@ -210,6 +223,8 @@ const TEAM = { A: getComputedStyle(document.documentElement).getPropertyValue('-
                B: getComputedStyle(document.documentElement).getPropertyValue('--teamB').trim() };
 const SEQ = ['#0d366b','#184f95','#1c5cab','#256abf','#2a78d6','#3987e5','#6da7ec','#9ec5f4'];
 const ids = Object.keys(D.tracks).sort();
+const obsCount = Object.fromEntries(ids.map(t =>
+  [t, D.tracks[t].reduce((a, p) => a + (p ? 1 : 0), 0)]));
 let selected = null;
 
 document.getElementById('gameLabel').textContent = D.label;
@@ -339,12 +354,17 @@ for (const tid of ids) {
 let lastLive = -1;
 function updateLive(f) {
   if (f === lastLive) return; lastLive = f;
+  let visible = 0;
   for (const tid of ids) {
+    const present = !!D.tracks[tid][f];
+    liveEls[tid].style.display = present ? '' : 'none';
+    if (!present) continue;
+    visible++;
     const v = D.speeds[tid][f] || 0;
     liveEls[tid].querySelector('.sp').textContent = v.toFixed(1);
     liveEls[tid].querySelector('.bar i').style.width = Math.min(100, v / 8 * 100) + '%';
-    liveEls[tid].style.opacity = D.tracks[tid][f] ? 1 : 0.35;
   }
+  document.getElementById('liveEmpty').style.display = visible ? 'none' : '';
 }
 
 // ---------------- 選手スタッツ ----------------
@@ -352,7 +372,11 @@ const ZONES = ['walk_m', 'jog_m', 'run_m', 'sprint_m'];
 const ZLBL = ['ウォーク', 'ジョグ', 'ラン', 'スプリント'];
 const ZCOL = ['#6da7ec', '#3987e5', '#1c5cab', '#0d366b'];
 function buildStats() {
-  const rows = [...D.stats].sort((a, b) =>
+  const all = [...D.stats].sort((a, b) =>
+      a.team === b.team ? b.total_dist_m - a.total_dist_m : (a.team < b.team ? -1 : 1));
+  // チャートは走行距離上位のみ (トラック断片が多い実映像で読めるように)
+  const rows = [...all].sort((a, b) => b.total_dist_m - a.total_dist_m)
+      .slice(0, 14).sort((a, b) =>
       a.team === b.team ? b.total_dist_m - a.total_dist_m : (a.team < b.team ? -1 : 1));
   const maxD = Math.max(...rows.map(r => +r.total_dist_m));
   // 距離チャート (SVG 積み上げ横棒)
@@ -383,7 +407,7 @@ function buildStats() {
   const tb = document.getElementById('statTable');
   tb.innerHTML = `<thead><tr><th>トラック</th><th>距離[m]</th><th>平均速度</th>
     <th>最高速度</th><th>スプリント</th><th>加速</th></tr></thead><tbody>` +
-    rows.map(r => `<tr data-tid="${r.track_id}">
+    all.map(r => `<tr data-tid="${r.track_id}">
       <td><span class="badge" style="background:${TEAM[r.team]}"></span>${r.track_id}</td>
       <td>${Math.round(r.total_dist_m)}</td><td>${(+r.avg_speed_mps).toFixed(2)}</td>
       <td>${(+r.max_speed_mps).toFixed(2)}</td><td>${r.sprint_count}</td>
@@ -396,7 +420,10 @@ function buildStats() {
 // ---------------- ヒートマップ ----------------
 function buildHeat() {
   const wrap = document.getElementById('heatCards');
-  for (const tid of ids) {
+  // 観測時間の長い順に上位16トラックのみ表示
+  const top = [...ids].sort((a, b) => obsCount[b] - obsCount[a]).slice(0, 16)
+      .sort();
+  for (const tid of top) {
     const card = document.createElement('div');
     card.className = 'card';
     card.dataset.tid = tid;

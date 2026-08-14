@@ -71,7 +71,11 @@ def load_calibration(path: str):
     H, _ = cv2.findHomography(img_pts, court_pts, 0)
     dims = RULESETS[d.get("ruleset", "fiba")]
     masks = [tuple(m) for m in d.get("static_masks", [])]
-    return d.get("ref_frame", 0), H, dims, masks
+    # 基準フレーム上でコート床が見えている縦バンド [y_min, y_max]。
+    # スコアラーズテーブル等で足元が隠れた人物 (誤ってコート内に投影される)
+    # を除外するのに使う。
+    band = d.get("court_band_ref_y")
+    return d.get("ref_frame", 0), H, dims, masks, band
 
 
 def iter_frames(video, start_s, duration_s):
@@ -120,7 +124,8 @@ def main():
 
     os.makedirs(args.out, exist_ok=True)
     fps = video_fps(args.video)
-    ref_frame, H_court_from_ref, dims, static_masks = load_calibration(args.calib)
+    (ref_frame, H_court_from_ref, dims, static_masks,
+     band) = load_calibration(args.calib)
 
     cache_path = args.cache_file or os.path.join(args.out, "pass1_cache.pkl")
     if os.path.exists(cache_path):
@@ -163,13 +168,23 @@ def main():
     H_ref_from_first = np.linalg.inv(H_first_from[min(ref_frame, n - 1)])
     H_ref_from = [H_ref_from_first @ h for h in H_first_from]
 
+    def accept(d, H, H_ref):
+        """コート内 + 基準フレーム可視バンド内の足元位置のみ受け入れる."""
+        if not in_court(apply_h(H, [d.foot])[0], dims):
+            return False
+        if band is not None:
+            ry = apply_h(H_ref, [d.foot])[0][1]
+            if not (band[0] <= ry <= band[1]):
+                return False
+        return True
+
     print("[2/5] チーム色学習 ...")
     classifier = TeamColorClassifier()
     samples = []
     for i in range(0, n, max(1, n // 60)):
         H = H_court_from_ref @ H_ref_from[i]
         for d in detections[i]:
-            if d.color is not None and in_court(apply_h(H, [d.foot])[0], dims):
+            if d.color is not None and accept(d, H, H_ref_from[i]):
                 samples.append(d.color)
     classifier.fit(samples)
     print(f"      {len(samples)} サンプル / 中心(Lab) "
@@ -185,9 +200,9 @@ def main():
         H = H_court_from_ref @ H_ref_from[i]
         court_dets = {"A": [], "B": []}
         for d in detections[i]:
-            court = apply_h(H, [d.foot])[0]
-            if not in_court(court, dims):
+            if not accept(d, H, H_ref_from[i]):
                 continue
+            court = apply_h(H, [d.foot])[0]
             d.team = classifier.predict(d.color)
             if d.team in court_dets:
                 court_dets[d.team].append(
