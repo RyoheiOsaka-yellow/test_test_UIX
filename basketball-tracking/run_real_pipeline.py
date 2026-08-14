@@ -207,16 +207,22 @@ def main():
             if d.team in court_dets:
                 court_dets[d.team].append(
                     Detection(float(court[0]), float(court[1]),
-                              (d.x2 - d.x1) * (d.y2 - d.y1), d.team))
+                              (d.x2 - d.x1) * (d.y2 - d.y1), d.team, src=d))
         row = {"players": [], "H": H}
         for team in ("A", "B"):
             for tr in trackers[team].step(court_dets[team]):
                 # 0.5 秒以上観測が無いトラックは出力しない
                 # (カメラ外・誤検出由来の予測位置を引き回さない)
                 if tr.hits >= tcfg.min_hits and tr.misses <= int(0.5 * fps):
+                    bbox = None
+                    if tr.detected and tr.last_det is not None \
+                            and tr.last_det.src is not None:
+                        s = tr.last_det.src
+                        bbox = (s.x1, s.y1, s.x2, s.y2)
+                    speed = float(np.hypot(*tr.kf.x[2:]))
                     row["players"].append(
                         (tr.track_id, team, float(tr.kf.pos[0]),
-                         float(tr.kf.pos[1]), tr.detected))
+                         float(tr.kf.pos[1]), tr.detected, bbox, speed))
         per_frame.append(row)
 
     track_ids = {}
@@ -229,7 +235,7 @@ def main():
         for tid, team in track_ids.items()
     }
     for f, row in enumerate(per_frame):
-        for tid, team, x, y, det in row["players"]:
+        for tid, team, x, y, det, _bbox, _spd in row["players"]:
             player_tracks[tid]["xy"][f] = (x, y)
             player_tracks[tid]["detected"][f] = det
 
@@ -291,6 +297,8 @@ def annotate(args, per_frame, fps, dims, out_path):
     colors = {t: tuple(int(TEAM_COLOR[t][i:i + 2], 16) for i in (5, 3, 1))
               for t in ("A", "B")}
     court_lines = _court_wireframe(dims)
+    trails: dict[str, list] = {}   # tid -> コート座標の履歴
+    trail_len = int(2.0 * fps)
     writer = None
     for i, frame in iter_frames(args.video, args.start, args.duration):
         if i >= len(per_frame):
@@ -303,21 +311,65 @@ def annotate(args, per_frame, fps, dims, out_path):
         H_img_from_court = np.linalg.inv(row["H"])
         for poly in court_lines:
             p = apply_h(H_img_from_court, poly).astype(np.int32)
-            cv2.polylines(frame, [p], False, (80, 220, 80), 1, cv2.LINE_AA)
-        for tid, team, x, y, det in row["players"]:
-            px = apply_h(H_img_from_court, [(x, y)])[0]
-            c = (int(px[0]), int(px[1]))
-            cv2.ellipse(frame, c, (16, 6), 0, 0, 360, colors[team], 2)
-            cv2.putText(frame, tid, (c[0] - 14, c[1] - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1,
-                        cv2.LINE_AA)
-        hud = f"t={i / fps:5.1f}s  tracks={len(row['players'])}"
-        cv2.rectangle(frame, (6, 6), (250, 32), (30, 30, 30), -1)
-        cv2.putText(frame, hud, (12, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.55,
+            cv2.polylines(frame, [p], False, (110, 190, 110), 1, cv2.LINE_AA)
+
+        # 床面トレイル (コート座標履歴を現フレームの射影で描く)
+        overlay = frame.copy()
+        for tid, team, x, y, det, bbox, spd in row["players"]:
+            trails.setdefault(tid, []).append((x, y))
+            tr = trails[tid][-trail_len:]
+            if len(tr) >= 2:
+                p = apply_h(H_img_from_court, np.array(tr)).astype(np.int32)
+                cv2.polylines(overlay, [p], False, colors[team], 2, cv2.LINE_AA)
+        frame = cv2.addWeighted(overlay, 0.45, frame, 0.55, 0)
+
+        for tid, team, x, y, det, bbox, spd in row["players"]:
+            col = colors[team]
+            foot = apply_h(H_img_from_court, [(x, y)])[0]
+            c = (int(foot[0]), int(foot[1]))
+            # 接地マーカー
+            cv2.ellipse(frame, c, (15, 6), 0, 0, 360, col, 2, cv2.LINE_AA)
+            if bbox is not None:
+                x1, y1, x2, y2 = map(int, bbox)
+                _corner_box(frame, x1, y1, x2, y2, col)
+                label = f"{tid}  {spd:3.1f}m/s"
+                _chip(frame, x1, y1, label, col)
+            else:
+                # 一時的に見失っている (カルマン予測のみ) → 破線サークル
+                for a0 in range(0, 360, 45):
+                    cv2.ellipse(frame, c, (15, 6), 0, a0, a0 + 22,
+                                (200, 200, 200), 1, cv2.LINE_AA)
+                _chip(frame, c[0] - 20, c[1] - 12, tid, (90, 90, 90))
+
+        n_det = sum(1 for p in row["players"] if p[4])
+        hud = f"COURTSCOPE   t={i / fps:5.1f}s   検出 {n_det}  追跡 {len(row['players'])}"
+        cv2.rectangle(frame, (6, 6), (410, 34), (25, 25, 24), -1)
+        cv2.putText(frame, hud, (14, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.55,
                     (255, 255, 255), 1, cv2.LINE_AA)
         writer.write(frame)
     if writer is not None:
         writer.release()
+
+
+def _corner_box(frame, x1, y1, x2, y2, col, l=None):
+    """バウンディングボックスをコーナーブラケット + 細枠で描く."""
+    if l is None:
+        l = max(8, int(min(x2 - x1, y2 - y1) * 0.22))
+    cv2.rectangle(frame, (x1, y1), (x2, y2), col, 1, cv2.LINE_AA)
+    for (cx, cy, dx, dy) in ((x1, y1, 1, 1), (x2, y1, -1, 1),
+                             (x1, y2, 1, -1), (x2, y2, -1, -1)):
+        cv2.line(frame, (cx, cy), (cx + dx * l, cy), col, 3, cv2.LINE_AA)
+        cv2.line(frame, (cx, cy), (cx, cy + dy * l), col, 3, cv2.LINE_AA)
+
+
+def _chip(frame, x, y, text, col):
+    """チーム色の下地付きラベル."""
+    (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.48, 1)
+    x = max(0, min(x, frame.shape[1] - tw - 12))
+    y = max(th + 10, y)
+    cv2.rectangle(frame, (x, y - th - 10), (x + tw + 12, y - 2), col, -1)
+    cv2.putText(frame, text, (x + 6, y - 8), cv2.FONT_HERSHEY_SIMPLEX,
+                0.48, (255, 255, 255), 1, cv2.LINE_AA)
 
 
 def _court_wireframe(dims):

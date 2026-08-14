@@ -51,6 +51,7 @@ class Track:
     hits: int = 1
     misses: int = 0
     detected: bool = True
+    last_det: Detection | None = None  # 直近に対応付いた検出 (描画用)
     history: list = field(default_factory=list)
 
 
@@ -93,6 +94,7 @@ class TeamTracker:
                     self.tracks[i].hits += 1
                     self.tracks[i].misses = 0
                     self.tracks[i].detected = True
+                    self.tracks[i].last_det = detections[j]
                     used.add(j)
             unmatched = [d for j, d in enumerate(detections) if j not in used]
         else:

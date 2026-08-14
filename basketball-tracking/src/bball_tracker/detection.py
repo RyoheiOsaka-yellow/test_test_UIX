@@ -19,6 +19,7 @@ class Detection:
     cy: float
     area: float
     kind: str  # "A" / "B" / "ball"
+    src: object = None  # 元検出 (実映像パイプラインでは PersonDet: bbox 描画用)
 
 
 class ColorDetector:
