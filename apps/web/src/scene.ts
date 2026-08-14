@@ -46,6 +46,16 @@ export interface WaterAttitude {
   waterlineConstant: number;
 }
 
+/** Buoyancy/gravity centroids and the righting lever, all in hull coordinates. */
+export interface EquilibriumMarkers {
+  b: { x: number; y: number; z: number };
+  g: { x: number; y: number; z: number };
+  /** righting lever [m]; positive restores toward upright */
+  gz: number;
+  heelDeg: number;
+  trimDeg: number;
+}
+
 export const FLUID_COLORS: Record<string, number> = {
   ballast: 0x5b8def,
   fuel: 0xc58330,
@@ -104,6 +114,7 @@ export class DockScene {
   private clippableMaterials: THREE.Material[] = [];
   private frameObjects: THREE.Object3D[] = [];
   private sectionOutline: THREE.Object3D | null = null;
+  private markerGroup = new THREE.Group();
 
   // --- drag editing ---
   private gizmo: TransformControls;
@@ -149,7 +160,13 @@ export class DockScene {
     // The ship hangs off a root group that carries the floating attitude, so
     // the sea stays level and the vessel heels — the way it looks from a quay,
     // rather than the ship-fixed frame the solver works in.
-    this.shipRoot.add(this.hullGroup, this.tankGroup, this.ghostGroup, this.dragProxy);
+    this.shipRoot.add(
+      this.hullGroup,
+      this.tankGroup,
+      this.ghostGroup,
+      this.dragProxy,
+      this.markerGroup,
+    );
     this.scene.add(this.shipRoot);
     this.scene.fog = new THREE.Fog(0x0f1722, 400, 1400);
 
@@ -393,6 +410,107 @@ export class DockScene {
       this.sectionOutline = outline;
       this.shipRoot.add(outline);
     }
+  }
+
+  /**
+   * Buoyancy and gravity markers with their earth-vertical action lines and
+   * the righting lever between them — the picture of the GZ definition.
+   */
+  setMarkers(m: EquilibriumMarkers | null): void {
+    this.clearGroup(this.markerGroup);
+    if (!m) return;
+
+    const u = verticalInShip((m.heelDeg * Math.PI) / 180, (m.trimDeg * Math.PI) / 180);
+    // hull frame → three frame: (x, y, z) → (x, z, y)
+    const upShip = new THREE.Vector3(u.x, u.z, u.y).normalize();
+    const bPos = new THREE.Vector3(m.b.x, m.b.z, m.b.y);
+    const gPos = new THREE.Vector3(m.g.x, m.g.z, m.g.y);
+
+    const sphere = (pos: THREE.Vector3, color: number): THREE.Mesh => {
+      const mesh = new THREE.Mesh(
+        new THREE.SphereGeometry(0.9, 20, 14),
+        new THREE.MeshBasicMaterial({ color }),
+      );
+      mesh.position.copy(pos);
+      return mesh;
+    };
+    const label = (pos: THREE.Vector3, text: string, cls: string): CSS2DObject => {
+      const el = document.createElement('div');
+      el.className = `marker-label ${cls}`;
+      el.textContent = text;
+      const obj = new CSS2DObject(el);
+      obj.position.copy(pos).addScaledVector(upShip, 1.6);
+      return obj;
+    };
+    const line = (a: THREE.Vector3, b: THREE.Vector3, color: number, dashed = false) => {
+      const geom = new THREE.BufferGeometry().setFromPoints([a, b]);
+      const mat = dashed
+        ? new THREE.LineDashedMaterial({ color, dashSize: 0.9, gapSize: 0.6 })
+        : new THREE.LineBasicMaterial({ color });
+      const l = new THREE.Line(geom, mat);
+      if (dashed) l.computeLineDistances();
+      return l;
+    };
+
+    const span = this.depth * 1.6;
+    // action lines: buoyancy pushes up through B, weight pulls down through G
+    this.markerGroup.add(
+      sphere(bPos, 0x2fa895),
+      sphere(gPos, 0xc58330),
+      label(bPos, `B 浮心`, 'b'),
+      label(gPos, `G 重心`, 'g'),
+      line(bPos.clone().addScaledVector(upShip, -span * 0.25), bPos.clone().addScaledVector(upShip, span), 0x2fa895, true),
+      line(gPos.clone().addScaledVector(upShip, -span * 0.25), gPos.clone().addScaledVector(upShip, span), 0xc58330, true),
+    );
+
+    // the lever itself: perpendicular distance between the two action lines,
+    // drawn at G's height
+    const d = bPos.clone().sub(gPos);
+    const along = upShip.clone().multiplyScalar(d.dot(upShip));
+    const perp = d.clone().sub(along); // horizontal offset, |perp| = |GZ|
+    if (perp.length() > 0.02) {
+      const zPos = gPos.clone().add(perp);
+      const leverLine = line(gPos, zPos, 0xf0f4fa);
+      const el = document.createElement('div');
+      el.className = 'marker-label gz';
+      el.textContent = `GZ ${m.gz.toFixed(3)} m`;
+      const gzLabel = new CSS2DObject(el);
+      gzLabel.position.copy(gPos).add(perp.clone().multiplyScalar(0.5)).addScaledVector(upShip, -1.2);
+      this.markerGroup.add(leverLine, sphere(zPos, 0xf0f4fa), gzLabel);
+    }
+  }
+
+  private damageZone: THREE.Group | null = null;
+
+  /** Translucent red block marking a flooded zone. */
+  setDamageZone(zone: { x0: number; x1: number } | null): void {
+    if (this.damageZone) {
+      this.shipRoot.remove(this.damageZone);
+      this.damageZone = null;
+    }
+    if (!zone) return;
+    const g = new THREE.Group();
+    const l = zone.x1 - zone.x0;
+    const geom = new THREE.BoxGeometry(l, this.depth, this.beam);
+    const mesh = new THREE.Mesh(
+      geom,
+      new THREE.MeshBasicMaterial({
+        color: 0xe0637a,
+        transparent: true,
+        opacity: 0.1,
+        depthWrite: false,
+      }),
+    );
+    mesh.position.set((zone.x0 + zone.x1) / 2, this.depth / 2, 0);
+    const edges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(geom),
+      new THREE.LineDashedMaterial({ color: 0xe0637a, dashSize: 1.4, gapSize: 0.9 }),
+    );
+    edges.computeLineDistances();
+    edges.position.copy(mesh.position);
+    g.add(mesh, edges);
+    this.damageZone = g;
+    this.shipRoot.add(g);
   }
 
   /** Standard drafting views, framed on the vessel. */

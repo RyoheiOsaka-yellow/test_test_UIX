@@ -719,6 +719,134 @@ table.eng tfoot td {
   color: var(--ink-3);
 }
 
+/* ---- strength / KN / weather charts ---- */
+.legend { display: inline-flex; gap: 12px; margin-left: auto; }
+.legend-item { font-size: 10px; color: var(--ink-2); padding-left: 14px; position: relative; }
+.legend-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 50%;
+  width: 10px; height: 2px;
+  transform: translateY(-50%);
+}
+.legend-item.w::before { background: var(--fuel); }
+.legend-item.b::before { background: var(--accent); }
+.legend-item.intact::before { background: var(--ink-3); }
+.legend-item.damaged::before { background: var(--bad); }
+
+.sline { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sline.w { stroke: var(--fuel); }
+.sline.b { stroke: var(--accent); }
+.sline.q { stroke: var(--fresh); }
+.sline.m { stroke: var(--accent); }
+.fill-q { fill: var(--fresh); opacity: 0.12; }
+.fill-m { fill: var(--accent); opacity: 0.12; }
+
+.strength-detail { grid-template-columns: minmax(0, 1fr); }
+
+.kn-line { fill: none; stroke: var(--accent); stroke-width: 1.8; stroke-linecap: round; }
+.kn-tag { fill: var(--ink-2); }
+
+.lever { stroke-width: 1.4; }
+.lever.lw1 { stroke: var(--fuel); stroke-dasharray: 7 3; }
+.lever.lw2 { stroke: var(--bad); }
+.lever-tag { fill: var(--ink-2); }
+.area-a { fill: var(--bad); opacity: 0.22; }
+.area-b { fill: var(--ok); opacity: 0.2; }
+.area-tag { font-size: 13px; font-weight: 700; }
+.area-tag.a { fill: var(--bad); }
+.area-tag.b { fill: var(--ok); }
+.wx-pass { color: var(--ok); font-weight: 600; font-size: 12px; }
+.wx-fail { color: var(--bad); font-weight: 600; font-size: 12px; }
+
+.intact-line { stroke: var(--ink-3); stroke-width: 1.6; }
+.damaged-line { stroke: var(--bad); }
+
+.dmg-fields { grid-template-columns: 1fr; }
+.dmg-fields select {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+/* ---- 3D marker labels ---- */
+.marker-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(13, 21, 32, 0.82);
+  white-space: nowrap;
+}
+.marker-label.b { color: var(--fresh); border: 1px solid var(--fresh); }
+.marker-label.g { color: var(--fuel); border: 1px solid var(--fuel); }
+.marker-label.gz { color: var(--ink); border: 1px solid var(--edge); }
+
+/* ---- report ---- */
+.report-doc {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.report-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 2px solid var(--edge);
+  padding-bottom: 14px;
+}
+.report-eyebrow { margin: 0; font-size: 11px; letter-spacing: 0.14em; color: var(--ink-3); }
+.report-title { margin: 2px 0 4px; font-size: 24px; }
+.report-meta { margin: 0; font-size: 12px; color: var(--ink-3); }
+.print-btn { flex: none; width: auto; padding: 9px 18px; }
+.report-sec { display: flex; flex-direction: column; gap: 10px; }
+.report-sec h3 { margin: 0; font-size: 14px; color: var(--ink); }
+.report-table td, .report-table th { text-align: right; }
+.report-table .txt { color: var(--ink-2); }
+.report-note { margin: 0; font-size: 11.5px; color: var(--ink-3); line-height: 1.7; }
+.report-foot { border-top: 1px solid var(--edge-soft); padding-top: 10px; }
+.report-foot p { margin: 0; font-size: 11px; color: var(--ink-3); max-width: 78ch; line-height: 1.7; }
+.v-ok { color: var(--ok); font-weight: 600; }
+.v-bad { color: var(--bad); font-weight: 600; }
+
+/* ---- print: ink on paper ---- */
+@media print {
+  :root {
+    --ground: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #ffffff;
+    --edge: #9aa4b0;
+    --edge-soft: #c8ced6;
+    --ink: #111418;
+    --ink-2: #333a42;
+    --ink-3: #5a636e;
+    --accent: #1d4fa8;
+    --accent-dim: #dfe8f6;
+    --ok: #1d7a4d;
+    --bad: #b3273e;
+    --fuel: #8a5a10;
+    --fresh: #0f7a6c;
+    --ballast: #1d4fa8;
+  }
+  body { background: #ffffff; }
+  .masthead, .alert, .workspace .tree, .workspace .rail, .viewbar,
+  .viewport, .statusbar, .print-btn, .detail { display: none !important; }
+  .workspace { height: auto; min-height: 0; display: block; }
+  .centre { background: #ffffff; }
+  .lines-board { overflow: visible; padding: 0; }
+  .card, .chart { border-color: var(--edge-soft); box-shadow: none; }
+  .report-sec { break-inside: avoid; }
+  a { color: inherit; }
+}
+
 /* ------------------------------------------------------------- responsive */
 
 @media (max-width: 1180px) {

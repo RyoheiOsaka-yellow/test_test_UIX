@@ -2,8 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   computeHydrostatics,
   tankState,
+  type KnCurve,
   type L1Result,
+  type StrengthResult,
   type TankEntityData,
+  type WeatherResult,
   type WeightItem,
 } from '@dock/shared';
 import {
@@ -17,23 +20,41 @@ import {
 import {
   envelopeIssues,
   initialModel,
+  inspectHeel,
+  runDamage,
+  runKnCurves,
   runL0,
   runStability,
+  runStrengthCalc,
+  runWeather,
   withTank,
   type Model,
 } from './store.js';
 import { DisplacementChart, GzChart, StatTile, fmt, hydroTiles } from './charts.js';
 import { BodyPlan, ProfileAndPlan, computeLines } from './lines.js';
 import { HydroTable, LoadingTable } from './tables.js';
+import { GzOverlay, KnChart, StrengthCharts, WeatherFigure } from './advanced.js';
+import { ReportDoc } from './report.js';
 
-type Module = 'design' | 'lines' | 'hydro' | 'stability' | 'loading';
+type Module =
+  | 'design'
+  | 'lines'
+  | 'hydro'
+  | 'stability'
+  | 'strength'
+  | 'damage'
+  | 'loading'
+  | 'report';
 
 const MODULES: { id: Module; label: string }[] = [
   { id: 'design', label: '設計' },
   { id: 'lines', label: '線図' },
   { id: 'hydro', label: '流体静力学' },
   { id: 'stability', label: '復原性' },
+  { id: 'strength', label: '縦強度' },
+  { id: 'damage', label: '損傷時' },
   { id: 'loading', label: '積付' },
+  { id: 'report', label: '帳票' },
 ];
 
 const FLUID_LABEL: Record<string, string> = {
@@ -74,8 +95,21 @@ export default function App() {
   const [draft, setDraft] = useState(model.vessel.principal.designDraft);
   const [cargo, setCargo] = useState({ mass: 0, x: 66, z: 6.2 });
   const [stability, setStability] = useState<L1Result | null>(null);
+  const [weather, setWeather] = useState<WeatherResult | null>(null);
   const [solving, setSolving] = useState(false);
   const [issue, setIssue] = useState<string | null>(null);
+  const [kn, setKn] = useState<KnCurve[] | null>(null);
+  const [knBusy, setKnBusy] = useState(false);
+  /** heel inspection slider [deg]; null = show the solved equilibrium */
+  const [inspect, setInspect] = useState<number | null>(null);
+  const [strength, setStrength] = useState<StrengthResult | null>(null);
+  const [strengthBusy, setStrengthBusy] = useState(false);
+  const [dmgZone, setDmgZone] = useState<{ compId: string; permeability: number }>({
+    compId: 'comp:CH1',
+    permeability: 0.7,
+  });
+  const [dmgResult, setDmgResult] = useState<L1Result | null>(null);
+  const [dmgBusy, setDmgBusy] = useState(false);
 
   const modelRef = useRef(model);
   modelRef.current = model;
@@ -133,19 +167,13 @@ export default function App() {
     }
   }, [module]);
 
-  // sea follows the module: solved attitude in stability, level draft elsewhere
+  // sea follows the module: the stability and damage effects below own the
+  // attitude when they have a solution; everything else shows the level draft
   useEffect(() => {
-    if (module === 'stability' && stability) {
-      const e = stability.equilibrium;
-      sceneRef.current?.setWaterAttitude({
-        heelDeg: e.heelDeg,
-        trimDeg: e.trimDeg,
-        waterlineConstant: e.waterlineConstant,
-      });
-    } else {
-      sceneRef.current?.setDraft(draft);
-    }
-  }, [module, stability, draft, model]);
+    const solvedHere =
+      (module === 'stability' && stability) || (module === 'damage' && dmgResult);
+    if (!solvedHere) sceneRef.current?.setDraft(draft);
+  }, [module, stability, dmgResult, draft, model]);
 
   // ---- edits ---------------------------------------------------------------
   const applyBox = useCallback((id: string, box: TankBox, commit: boolean) => {
@@ -203,9 +231,12 @@ export default function App() {
   const solve = useCallback(() => {
     setSolving(true);
     setStability(null);
+    setWeather(null);
     window.setTimeout(() => {
       try {
-        setStability(runStability(modelRef.current, cargoWeights));
+        const r = runStability(modelRef.current, cargoWeights);
+        setStability(r);
+        setWeather(runWeather(modelRef.current, r));
         setIssue(null);
       } catch (err) {
         setIssue(err instanceof Error ? err.message : String(err));
@@ -215,13 +246,135 @@ export default function App() {
     }, 40);
   }, [cargoWeights]);
 
+  const computeKn = useCallback(() => {
+    setKnBusy(true);
+    window.setTimeout(() => {
+      try {
+        setKn(runKnCurves(modelRef.current));
+      } catch (err) {
+        setIssue(err instanceof Error ? err.message : String(err));
+      } finally {
+        setKnBusy(false);
+      }
+    }, 40);
+  }, []);
+
+  const computeStrengthNow = useCallback(() => {
+    setStrengthBusy(true);
+    window.setTimeout(() => {
+      try {
+        setStrength(runStrengthCalc(modelRef.current, cargoWeights));
+        setIssue(null);
+      } catch (err) {
+        setIssue(err instanceof Error ? err.message : String(err));
+      } finally {
+        setStrengthBusy(false);
+      }
+    }, 40);
+  }, [cargoWeights]);
+
+  const computeDamage = useCallback(() => {
+    setDmgBusy(true);
+    setDmgResult(null);
+    window.setTimeout(() => {
+      try {
+        const comp = modelRef.current.entities.find((e) => e.id === dmgZone.compId);
+        const data = comp?.data as { x0: number; x1: number } | undefined;
+        if (!data) throw new Error('浸水区画が見つかりません');
+        setDmgResult(
+          runDamage(modelRef.current, cargoWeights, {
+            x0: data.x0,
+            x1: data.x1,
+            permeability: dmgZone.permeability,
+          }),
+        );
+        setIssue(null);
+      } catch (err) {
+        setIssue(err instanceof Error ? err.message : String(err));
+      } finally {
+        setDmgBusy(false);
+      }
+    }, 40);
+  }, [cargoWeights, dmgZone]);
+
+  // a model or loading-condition change invalidates everything derived from it
+  // (KN excepted on cargo changes: it is a hull property, independent of loading)
   useEffect(() => {
     setStability(null);
+    setWeather(null);
+    setStrength(null);
+    setDmgResult(null);
+    setInspect(null);
+  }, [model, cargoWeights]);
+
+  useEffect(() => {
+    setKn(null);
   }, [model]);
+
+  // entering a module auto-runs its main calculation when the inputs are ready;
+  // the report also fills in the strength section so its numbers are complete
+  useEffect(() => {
+    if (module === 'strength' && !strength && !strengthBusy) computeStrengthNow();
+    if ((module === 'stability' || module === 'report') && !stability && !solving) solve();
+    if (module === 'report' && !strength && !strengthBusy) computeStrengthNow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [module, stability, strength]);
+
+  // 3D lever inspection: markers at the inspected (or equilibrium) heel
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    if (module !== 'stability' || !stability) {
+      scene.setMarkers(null);
+      return;
+    }
+    const state =
+      inspect === null
+        ? stability.equilibrium
+        : inspectHeel(modelRef.current, cargoWeights, inspect);
+    scene.setWaterAttitude({
+      heelDeg: state.heelDeg,
+      trimDeg: state.trimDeg,
+      waterlineConstant: state.waterlineConstant,
+    });
+    scene.setMarkers({
+      b: { x: state.lcb, y: state.tcb, z: state.kb },
+      g: { x: state.lcg, y: state.tcg, z: state.kg },
+      gz: state.gz,
+      heelDeg: state.heelDeg,
+      trimDeg: state.trimDeg,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [module, stability, inspect]);
+
+  // flooded-zone visual in the damage module
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    if (module !== 'damage') {
+      scene.setDamageZone(null);
+      return;
+    }
+    const comp = model.entities.find((e) => e.id === dmgZone.compId);
+    const data = comp?.data as { x0: number; x1: number } | undefined;
+    scene.setDamageZone(data ? { x0: data.x0, x1: data.x1 } : null);
+    if (dmgResult) {
+      const e = dmgResult.equilibrium;
+      scene.setWaterAttitude({
+        heelDeg: e.heelDeg,
+        trimDeg: e.trimDeg,
+        waterlineConstant: e.waterlineConstant,
+      });
+    }
+  }, [module, dmgZone, dmgResult, model]);
 
   const selected = selectedId ? model.tanks.find((t) => t.id === selectedId) ?? null : null;
   const p = model.vessel.principal;
-  const showViewport = module !== 'lines';
+  const showViewport = module !== 'lines' && module !== 'report';
+  const compartments = model.entities.filter((e) => e.kind === 'compartment');
+  const dmgLabel =
+    (compartments.find((c) => c.id === dmgZone.compId)?.data as { name?: string })?.name ??
+    dmgZone.compId;
 
   const cargoFields = (
     <div className="fields">
@@ -380,6 +533,27 @@ export default function App() {
             ref={mountRef}
             style={{ display: showViewport ? undefined : 'none' }}
           />
+          {module === 'report' && (
+            <div className="lines-board">
+              <ReportDoc
+                model={model}
+                cargo={cargoWeights}
+                stability={stability}
+                weather={weather}
+                strength={strength}
+                damage={
+                  dmgResult
+                    ? {
+                        zoneLabel: dmgLabel,
+                        permeability: dmgZone.permeability,
+                        result: dmgResult,
+                      }
+                    : null
+                }
+                onPrint={() => window.print()}
+              />
+            </div>
+          )}
           {module === 'lines' && (
             <div className="lines-board">
               <ProfileAndPlan data={lines} />
@@ -550,8 +724,153 @@ export default function App() {
                     <StatTile label="トリム 船尾" value={fmt(stability.equilibrium.trimByStern, 3)} unit="m" />
                     <StatTile label="横傾斜" value={fmt(stability.equilibrium.heelDeg, 2)} unit="°" />
                   </div>
+                  <label className="slider">
+                    <span className="slider-head">
+                      <span>傾斜検分 — B・G と GZ を 3D 表示</span>
+                      <b className="num">
+                        {inspect === null ? '釣合' : `${fmt(inspect, 0)}°`}
+                      </b>
+                    </span>
+                    <input
+                      type="range" min={0} max={60} step={1}
+                      value={inspect ?? Math.round(Math.abs(stability.equilibrium.heelDeg))}
+                      onChange={(e) => setInspect(Number(e.target.value))}
+                    />
+                  </label>
+                  {inspect !== null && (
+                    <button className="seg" onClick={() => setInspect(null)}>
+                      釣合姿勢に戻す
+                    </button>
+                  )}
                 </>
               )}
+            </section>
+          )}
+
+          {module === 'strength' && (
+            <section className="card">
+              <h2>静水中縦強度</h2>
+              {cargoFields}
+              <button className="solve" onClick={computeStrengthNow} disabled={strengthBusy}>
+                {strengthBusy ? '計算中…' : 'SF / BM を計算'}
+              </button>
+              {strength && (
+                <>
+                  <div className="stats">
+                    <StatTile
+                      label="最大せん断力"
+                      value={fmt(Math.abs(strength.maxShear.value), 0)}
+                      unit="t"
+                      emphasis
+                    />
+                    <StatTile
+                      label={strength.maxSagging.value >= Math.abs(strength.maxHogging.value) ? '最大サギング' : '最大ホギング'}
+                      value={fmt(
+                        Math.max(strength.maxSagging.value, Math.abs(strength.maxHogging.value)), 0,
+                      )}
+                      unit="t·m"
+                      emphasis
+                    />
+                    <StatTile label="Q 位置" value={fmt(strength.maxShear.x, 1)} unit="m" />
+                    <StatTile
+                      label="M 位置"
+                      value={fmt(
+                        strength.maxSagging.value >= Math.abs(strength.maxHogging.value)
+                          ? strength.maxSagging.x
+                          : strength.maxHogging.x, 1,
+                      )}
+                      unit="m"
+                    />
+                  </div>
+                  <p className="muted">
+                    閉合残差 Q {fmt(strength.closure.shearResidual * 100, 2)}% ·
+                    M {fmt(strength.closure.momentResidual * 100, 2)}%
+                    (補正前、最大値比)。
+                  </p>
+                </>
+              )}
+            </section>
+          )}
+
+          {module === 'damage' && (
+            <section className="card">
+              <h2>損傷時復原性 — 喪失浮力法</h2>
+              <div className="fields dmg-fields">
+                <label className="wide">
+                  <span>浸水区画</span>
+                  <select
+                    value={dmgZone.compId}
+                    onChange={(e) => setDmgZone({ ...dmgZone, compId: e.target.value })}
+                  >
+                    {compartments.map((c) => {
+                      const d = c.data as { name: string; x0: number; x1: number };
+                      return (
+                        <option key={c.id} value={c.id}>
+                          {d.name}(x {d.x0}–{d.x1} m)
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              </div>
+              <label className="slider">
+                <span className="slider-head">
+                  <span>浸水率 μ</span>
+                  <b className="num">{fmt(dmgZone.permeability * 100, 0)}%</b>
+                </span>
+                <input
+                  type="range" min={0.4} max={1} step={0.05}
+                  value={dmgZone.permeability}
+                  onChange={(e) => setDmgZone({ ...dmgZone, permeability: Number(e.target.value) })}
+                />
+              </label>
+              <button className="solve" onClick={computeDamage} disabled={dmgBusy}>
+                {dmgBusy ? '解いています…' : '損傷時釣合を解く'}
+              </button>
+              {dmgResult && (
+                <>
+                  <div className={`verdict ${dmgResult.gm0 > 0.05 && dmgResult.gzMax > 0.1 ? 'ok' : 'bad'}`}>
+                    <span className="verdict-mark" aria-hidden="true">
+                      {dmgResult.gm0 > 0.05 && dmgResult.gzMax > 0.1 ? '✓' : '✗'}
+                    </span>
+                    <span>
+                      残存復原性 {dmgResult.gm0 > 0.05 && dmgResult.gzMax > 0.1 ? '確保' : '不足'}
+                      (参考: GM&gt;0.05 m かつ GZmax&gt;0.1 m)
+                    </span>
+                  </div>
+                  <div className="stats">
+                    <StatTile
+                      label="損傷時 GM₀" value={fmt(dmgResult.gm0, 3)} unit="m" emphasis
+                      tone={dmgResult.gm0 > 0.05 ? 'ok' : 'bad'}
+                    />
+                    <StatTile
+                      label="損傷時最大 GZ" value={fmt(dmgResult.gzMax, 3)} unit="m" emphasis
+                      tone={dmgResult.gzMax > 0.1 ? 'ok' : 'bad'}
+                    />
+                    <StatTile label="船尾喫水" value={fmt(dmgResult.equilibrium.draftAP, 3)} unit="m" />
+                    <StatTile label="船首喫水" value={fmt(dmgResult.equilibrium.draftFP, 3)} unit="m" />
+                    <StatTile label="トリム 船尾" value={fmt(dmgResult.equilibrium.trimByStern, 3)} unit="m" />
+                    <StatTile label="平均喫水" value={fmt(dmgResult.equilibrium.draftMean, 3)} unit="m" />
+                  </div>
+                </>
+              )}
+              <p className="muted">
+                喪失浮力法: 排水量・重心は非損傷のまま、浸水範囲の浮力と水線面を
+                (1 − μ)に低減して釣合を解き直します。
+              </p>
+            </section>
+          )}
+
+          {module === 'report' && (
+            <section className="card">
+              <h2>計算書</h2>
+              <p className="muted">
+                現在の積付条件から計算書を組み立てます。復原性は自動計算されます。
+                縦強度・損傷時・KN 曲線は各モジュールで計算すると本書に載ります。
+              </p>
+              <button className="solve" onClick={() => window.print()}>
+                印刷 / PDF 保存
+              </button>
             </section>
           )}
 
@@ -609,6 +928,53 @@ export default function App() {
               </span>{' '}
               · 面積基準の上限 <span className="num">{stability.floodingAngleDeg}°</span>
               {stability.gzMaxAtRangeEdge && ' · 最大 GZ は計算範囲の端'}
+            </p>
+          </section>
+          {weather?.applicable ? (
+            <WeatherFigure gz={stability.gz} weather={weather} />
+          ) : (
+            weather && (
+              <section className="card">
+                <h2>気象基準</h2>
+                <p className="muted">評価不能: {weather.reason}</p>
+              </section>
+            )
+          )}
+          <section className="card">
+            <h2>KN 交差曲線</h2>
+            {kn ? (
+              <KnChart curves={kn} />
+            ) : (
+              <>
+                <p className="muted">
+                  排水量 × 傾斜角の交差曲線(KN)。任意の条件の GZ は
+                  GZ = KN − KG·sinφ で得られます。42 回の自由トリム釣合解を伴います。
+                </p>
+                <button className="solve" onClick={computeKn} disabled={knBusy}>
+                  {knBusy ? '計算中…(数秒)' : 'KN 曲線を計算'}
+                </button>
+              </>
+            )}
+          </section>
+        </div>
+      )}
+      {module === 'strength' && strength && (
+        <div className="detail strength-detail">
+          <StrengthCharts result={strength} lpp={p.lpp} />
+        </div>
+      )}
+      {module === 'damage' && dmgResult && (
+        <div className="detail">
+          <GzOverlay intact={stability?.gz ?? null} damaged={dmgResult.gz} />
+          <section className="card">
+            <h2>損傷時判定の考え方</h2>
+            <p className="muted">
+              浸水区画「{dmgLabel}」を浸水率 μ = {fmt(dmgZone.permeability * 100, 0)}% で
+              解放し、喪失浮力法で釣合を解き直しました。喫水は増加し、水線面の喪失により
+              GM は低下します。重ね描きした非損傷時曲線(復原性モジュールで計算)との差が
+              損傷の影響です。参考判定は SOLAS 系の残存復原性の目安
+              (GM &gt; 0.05 m・GZmax &gt; 0.1 m)であり、正式な区画基準の適用は
+              対象船種の規則によります。
             </p>
           </section>
         </div>

@@ -70,6 +70,19 @@ export interface IdentifiedTank {
   data: TankEntityData;
 }
 
+/**
+ * A single flooded zone, assessed by the lost-buoyancy (constant-displacement)
+ * method: weight and centre of gravity stay as intact, while hull sections
+ * inside the zone keep only (1 − μ) of their buoyancy and waterplane.
+ */
+export interface DamageCase {
+  /** flooded extent, hull coordinates [m] */
+  x0: number;
+  x1: number;
+  /** volume permeability μ (0 = intact structure, ~0.85 machinery, ~0.7 cargo) */
+  permeability: number;
+}
+
 export interface L1Input {
   rhoWater: number;
   lightship: LightshipData;
@@ -78,6 +91,15 @@ export interface L1Input {
   /** Lpp, used for the perpendicular drafts and trim reporting */
   lpp: number;
   beam: number;
+  /** optional flooded zone (lost-buoyancy damage assessment) */
+  damage?: DamageCase;
+}
+
+/** Fraction of a station's buoyancy that survives the damage. */
+export function damageFactor(x: number, damage?: DamageCase): number {
+  if (!damage) return 1;
+  if (x < damage.x0 - 1e-9 || x > damage.x1 + 1e-9) return 1;
+  return 1 - Math.min(1, Math.max(0, damage.permeability));
 }
 
 // ---------------------------------------------------------------------------
@@ -234,6 +256,7 @@ export function buoyancyAt(
   polys: P2[][],
   xs: number[],
   att: Attitude,
+  damage?: DamageCase,
 ): Buoyancy {
   const u = verticalInShip(att.phi, att.theta);
   const areas: number[] = new Array(xs.length);
@@ -241,9 +264,10 @@ export function buoyancyAt(
   const mz: number[] = new Array(xs.length);
   for (let i = 0; i < xs.length; i++) {
     const s = immersedSection(polys[i], u.y, u.z, att.c - u.x * xs[i]);
-    areas[i] = s.area;
-    my[i] = s.area * s.cy;
-    mz[i] = s.area * s.cz;
+    const f = damageFactor(xs[i], damage);
+    areas[i] = s.area * f;
+    my[i] = s.area * f * s.cy;
+    mz[i] = s.area * f * s.cz;
   }
   const volume = integrateSamples(xs, areas);
   if (volume <= 0) return { volume: 0, bx: 0, by: 0, bz: 0 };
@@ -417,7 +441,8 @@ export function solveAtHeel(
   /** Sinkage for a given trim: monotone in c, so bisection is unconditionally safe. */
   const solveSinkage = (theta: number): number => {
     let [lo, hi] = cRange(theta);
-    const volAt = (c: number) => buoyancyAt(polys, xs, { phi, theta, c }).volume;
+    const volAt = (c: number) =>
+      buoyancyAt(polys, xs, { phi, theta, c }, input.damage).volume;
     if (volAt(hi) < targetVolume) {
       throw new EquilibriumError(
         `vessel cannot float this weight: required volume ${targetVolume.toFixed(1)} m³ ` +
@@ -440,7 +465,7 @@ export function solveAtHeel(
   /** Longitudinal moment residual at a trim, with the sinkage re-solved. */
   const momentResidual = (th: number): { r: number; c: number; b: Buoyancy; g: WeightSummary } => {
     const cc = solveSinkage(th);
-    const b = buoyancyAt(polys, xs, { phi, theta: th, c: cc });
+    const b = buoyancyAt(polys, xs, { phi, theta: th, c: cc }, input.damage);
     const g = weightsAt(input, phi, th);
     const l = longitudinalInShip(phi, th);
     const r = (b.bx - g.x) * l.x + (b.by - g.y) * l.y + (b.bz - g.z) * l.z;

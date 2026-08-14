@@ -12,6 +12,7 @@
 
 import { halfBreadthAt, integrateSamples } from './hydro.js';
 import {
+  damageFactor,
   defaultHeelAngles,
   gzCurve,
   solveAtHeel,
@@ -19,6 +20,7 @@ import {
   stationPolygonsOf,
   verticalInShip,
   type CriterionResult,
+  type DamageCase,
   type EquilibriumState,
   type GzPoint,
   type L1Input,
@@ -126,6 +128,7 @@ export function waterplaneAt(
   hull: HullGeometry,
   state: EquilibriumState,
   rhoWater: number,
+  damage?: DamageCase,
 ): WaterplaneProps {
   const u = verticalInShip(0, state.trimDeg * DEG);
   const xs = hull.stations.map((s) => s.x);
@@ -133,8 +136,9 @@ export function waterplaneAt(
     const zWl = (state.waterlineConstant - u.x * xs[i]) / u.z;
     return Math.max(0, halfBreadthAt(s, zWl));
   });
-  const awp = 2 * integrateSamples(xs, halfB);
-  const it = (2 / 3) * integrateSamples(xs, halfB.map((b) => b * b * b));
+  const fs = xs.map((x) => damageFactor(x, damage));
+  const awp = 2 * integrateSamples(xs, halfB.map((b, i) => b * fs[i]));
+  const it = (2 / 3) * integrateSamples(xs, halfB.map((b, i) => b * b * b * fs[i]));
   const bmt = state.volume > 0 ? it / state.volume : 0;
   return {
     awp,
@@ -268,7 +272,7 @@ export function runL1(
   stationPolygonsOf(hull);
 
   const equilibrium = solveFreeEquilibrium(hull, input);
-  const wp = waterplaneAt(hull, equilibrium, input.rhoWater);
+  const wp = waterplaneAt(hull, equilibrium, input.rhoWater, input.damage);
 
   const gmSolid = wp.kmt - equilibrium.kg;
   const fsm = fsmOf(input);

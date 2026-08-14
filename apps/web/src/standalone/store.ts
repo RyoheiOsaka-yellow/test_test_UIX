@@ -9,16 +9,28 @@
 
 import {
   computeHydrostatics,
+  computeStrength,
+  crossCurves,
   defaultHeelAngles,
+  defaultKnDisplacements,
   demoEntities,
+  evaluateWeather,
   runL1,
+  solveAtHeel,
   tankState,
+  weightsAt,
+  type DamageCase,
   type Entity,
+  type EquilibriumState,
   type HullEntityData,
   type HydroResult,
+  type KnCurve,
+  type L1Input,
   type L1Result,
+  type StrengthResult,
   type TankEntityData,
   type VesselEntityData,
+  type WeatherResult,
   type WeightItem,
 } from '@dock/shared';
 
@@ -114,6 +126,77 @@ export function runStability(
     },
     { heelAngles: defaultHeelAngles(75, heelStepDeg) },
   );
+}
+
+export function l1InputOf(
+  model: Model,
+  extraWeights: WeightItem[],
+  damage?: DamageCase,
+): L1Input {
+  return {
+    rhoWater: model.vessel.rhoWater,
+    lightship: model.vessel.lightship!,
+    tanks: model.tanks,
+    extraWeights,
+    lpp: model.vessel.principal.lpp,
+    beam: model.vessel.principal.beam,
+    damage,
+  };
+}
+
+export function runStrengthCalc(model: Model, extraWeights: WeightItem[]): StrengthResult {
+  return computeStrength(model.hull.geometry, l1InputOf(model, extraWeights));
+}
+
+export function runDamage(
+  model: Model,
+  extraWeights: WeightItem[],
+  damage: DamageCase,
+): L1Result {
+  return runL1(model.hull.geometry, l1InputOf(model, extraWeights, damage), {
+    heelAngles: defaultHeelAngles(75, 2.5),
+  });
+}
+
+export function runWeather(model: Model, l1: L1Result): WeatherResult {
+  return evaluateWeather({
+    hull: model.hull.geometry,
+    gz: l1.gz,
+    equilibrium: l1.equilibrium,
+    gm0: l1.gm0,
+    lpp: model.vessel.principal.lpp,
+    beam: model.vessel.principal.beam,
+    kg: l1.equilibrium.kg,
+    floodingAngleDeg: l1.floodingAngleDeg,
+  });
+}
+
+export function runKnCurves(model: Model): KnCurve[] {
+  const p = model.vessel.principal;
+  // sweep to the displacement at ~90% depth draft
+  const maxDisp = computeHydrostatics(
+    model.hull.geometry,
+    { draft: p.depth * 0.9, rhoWater: model.vessel.rhoWater, kg: model.vessel.kg },
+    { lpp: p.lpp, beam: p.beam },
+  ).displacement;
+  const w = weightsAt(l1InputOf(model, []), 0, 0);
+  return crossCurves(model.hull.geometry, {
+    rhoWater: model.vessel.rhoWater,
+    lpp: p.lpp,
+    beam: p.beam,
+    lcg: w.x,
+    displacements: defaultKnDisplacements(maxDisp),
+    heelsDeg: [10, 20, 30, 40, 50, 60],
+  });
+}
+
+/** One equilibrium solve at an imposed heel, for the 3D lever inspection. */
+export function inspectHeel(
+  model: Model,
+  extraWeights: WeightItem[],
+  heelDeg: number,
+): EquilibriumState {
+  return solveAtHeel(model.hull.geometry, l1InputOf(model, extraWeights), heelDeg);
 }
 
 /** Deadweight summary of the current tank contents. */

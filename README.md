@@ -43,7 +43,7 @@ npm test                 # shared + api
 npm test -w apps/mcp     # MCP 統合テスト(要 digitaldock_test)
 ```
 
-- `packages/shared` — 解析解(箱型バージ / V 型プリズム / 壁面近似 GZ 式)との厳密照合 51 件
+- `packages/shared` — 解析解(箱型バージ / V 型プリズム / 壁面近似 GZ 式 / 損傷時沈下 / KN 換算恒等式)との厳密照合 68 件
 - `apps/api` — PostgreSQL 統合テスト 29 件(下記セマンティクスを検証)
 - `apps/mcp` — InMemory トランスポートでの 9 ツール統合テスト 12 件
 

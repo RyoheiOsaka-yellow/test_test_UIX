@@ -7,3 +7,6 @@ export * from './polyhedron.js';
 export * from './hydroL1.js';
 export * from './stability.js';
 export * from './demoVessel.js';
+export * from './strength.js';
+export * from './crossCurves.js';
+export * from './weather.js';
