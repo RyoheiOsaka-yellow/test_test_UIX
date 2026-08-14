@@ -66,26 +66,43 @@ def torso_color(frame: np.ndarray, det: PersonDet) -> np.ndarray | None:
 class TeamColorClassifier:
     """ユニフォーム色の教師なし2チーム分類.
 
-    コート内検出の胴体色を k-means (k=3) にかけ、メンバー数の多い
-    2クラスタをチームとみなす。残るクラスタと、どのチーム中心からも
-    遠い色は「その他」(審判・コーチ等) として除外する。
+    コート内検出の胴体色を k-means (k=5) にかけ、「彩度が高く
+    メンバー数も多い」2クラスタをチームとみなす。ユニフォームは
+    彩度が高く、審判の黒・白 / 観客の混色は彩度が低いことを利用する。
+    どのチーム中心からも遠い色は「その他」として除外する。
     """
 
-    def __init__(self, max_team_dist: float = 55.0):
-        self.centers: np.ndarray | None = None   # (2,3) チーム色中心
+    def __init__(self, max_team_dist: float = 45.0, min_chroma: float = 12.0,
+                 k: int = 5):
+        self.centers: np.ndarray | None = None   # (2,3) チーム色中心 (Lab)
         self.max_team_dist = max_team_dist
+        self.min_chroma = min_chroma
+        self.k = k
+
+    @staticmethod
+    def _chroma(center: np.ndarray) -> float:
+        # OpenCV Lab: a,b は 128 が無彩色
+        return float(np.hypot(center[1] - 128.0, center[2] - 128.0))
 
     def fit(self, colors: list[np.ndarray]):
         data = np.array(colors, dtype=np.float32)
         crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 50, 0.5)
-        best = None
-        for k in (3,):
-            _, labels, centers = cv2.kmeans(data, k, None, crit, 8,
-                                            cv2.KMEANS_PP_CENTERS)
-            counts = np.bincount(labels.ravel(), minlength=k)
+        k = min(self.k, len(data))
+        _, labels, centers = cv2.kmeans(data, k, None, crit, 10,
+                                        cv2.KMEANS_PP_CENTERS)
+        counts = np.bincount(labels.ravel(), minlength=k)
+        # スコア = クラスタ人数 × 彩度 (低彩度クラスタは審判・観客とみなす)
+        scores = [
+            counts[i] * self._chroma(centers[i])
+            if self._chroma(centers[i]) >= self.min_chroma else -1.0
+            for i in range(k)
+        ]
+        order = np.argsort(scores)[::-1]
+        if scores[order[1]] <= 0:
+            # 高彩度クラスタが2つ見つからない場合は人数順にフォールバック
             order = np.argsort(-counts)
-            best = centers[order[:2]]
-        # 明るい方を A (白系ユニフォーム想定)、暗い方を B に固定
+        best = centers[order[:2]]
+        # 明るい方を A、暗い方を B に固定 (ホーム=明色ユニフォーム想定)
         if best[0][0] < best[1][0]:
             best = best[::-1]
         self.centers = best

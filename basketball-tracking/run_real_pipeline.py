@@ -142,6 +142,9 @@ def main():
     n = len(detections)
     duration_s = n / fps
     print(f"      合計 {n} フレーム @ {fps:.1f}fps")
+    if est is not None:
+        print(f"      カメラ補償: 絶対アンカー {est.anchor_frames} / "
+              f"LK連結フォールバック {est.chain_frames} フレーム")
 
     # 基準フレーム系への変換に揃える
     H_ref_from_first = np.linalg.inv(H_first_from[min(ref_frame, n - 1)])
