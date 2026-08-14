@@ -73,7 +73,11 @@ class Analyzer:
         self.fps = fps
         self.dt = 1.0 / fps
 
-    def run(self, player_tracks: dict, ball_xy: np.ndarray, n_frames: int) -> AnalysisResult:
+    def run(self, player_tracks: dict, ball_xy: np.ndarray | None,
+            n_frames: int) -> AnalysisResult:
+        """ball_xy が None (実映像でボール検出器なし) の場合は
+        フィジカル指標のみ算出し、ボール依存のイベント推定をスキップする。
+        """
         players = {}
         for tid, data in player_tracks.items():
             xy = smooth(data["xy"])
@@ -82,12 +86,15 @@ class Analyzer:
             v = np.concatenate([[v[0] if len(v) else 0.0], v])
             players[tid] = {"xy": xy, "speed": v, "team": data["team"]}
 
-        ball_s = smooth(ball_xy, win=5)
+        has_ball = ball_xy is not None and not np.isnan(ball_xy).all()
+        ball_s = smooth(ball_xy, win=5) if has_ball else \
+            np.full((n_frames, 2), np.nan)
         res = AnalysisResult(fps=self.fps, n_frames=n_frames,
                              players=players, ball_xy=ball_s)
         self._physical_metrics(res)
-        self._possessions(res)
-        self._events(res)
+        if has_ball:
+            self._possessions(res)
+            self._events(res)
         return res
 
     # ------------------------------------------------------------ physical

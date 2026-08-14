@@ -228,20 +228,23 @@ def _fmt_pct(v):
     return "-" if v is None else f"{v * 100:.1f}%"
 
 
-def build_report(res: AnalysisResult, gt_events: list, evaluation: dict,
-                 event_eval: dict, duration_s: float, score: dict,
-                 out_path: str):
+def build_report(res: AnalysisResult, duration_s: float, out_path: str,
+                 gt_events: list | None = None, evaluation: dict | None = None,
+                 event_eval: dict | None = None, score: dict | None = None,
+                 source_label: str = "ダミー映像", extra_notes: list | None = None):
+    """レポート生成。真値・ボール由来データが無い場合は該当セクションを省略."""
+    has_ball = bool(res.possessions)
     charts = {
         "dist": chart_distance_zones(res),
         "speed": chart_speed_profile(res),
         "heat": chart_heatmaps(res),
-        "net": chart_pass_network(res),
-        "timeline": chart_possession_timeline(res),
-        "shots": chart_shot_chart(res, [e for e in gt_events if e["type"] == "shot"]),
     }
+    if has_ball:
+        charts["net"] = chart_pass_network(res)
+        charts["timeline"] = chart_possession_timeline(res)
+        charts["shots"] = chart_shot_chart(
+            res, [e for e in (gt_events or []) if e["type"] == "shot"])
 
-    pos = res.team_possession_s
-    pos_total = max(pos["A"] + pos["B"], 1e-6)
     ms = _sorted_metrics(res)
     stat_rows = [
         [m.track_id, TEAM_NAME[m.team].split(" ")[0], f"{m.total_dist:.0f}",
@@ -249,26 +252,14 @@ def build_report(res: AnalysisResult, gt_events: list, evaluation: dict,
          m.accel_count, m.touches, m.passes, m.shots]
         for m in ms
     ]
-    ev = evaluation
-    eval_rows = [
-        ["選手位置 RMSE", f"{ev['player_position_rmse_m']:.3f} m"],
-        ["選手検出カバレッジ", _fmt_pct(ev["player_coverage"])],
-        ["ID 一貫性", _fmt_pct(ev["id_consistency"])],
-        ["ボール検出カバレッジ", _fmt_pct(ev["ball_coverage"])],
-        ["ボール位置 RMSE", f"{ev['ball_position_rmse_m']:.3f} m"],
-    ]
-    ee_rows = [
-        [name,
-         d["gt_count"], d["detected_count"], d["true_positive"],
-         _fmt_pct(d["precision"]), _fmt_pct(d["recall"])]
-        for name, d in event_eval.items()
-    ]
-    gt_pass = sum(1 for e in gt_events if e["type"] == "pass")
 
     insights = []
-    pa = pos["A"] / pos_total * 100
-    insights.append(
-        f"ボール保持率は チームA {pa:.0f}% / チームB {100 - pa:.0f}%。")
+    if has_ball:
+        pos = res.team_possession_s
+        pos_total = max(pos["A"] + pos["B"], 1e-6)
+        pa = pos["A"] / pos_total * 100
+        insights.append(
+            f"ボール保持率は チームA {pa:.0f}% / チームB {100 - pa:.0f}%。")
     top = max(res.metrics, key=lambda m: m.total_dist)
     insights.append(
         f"最長走行距離は {top.track_id}({top.total_dist:.0f}m、"
@@ -279,9 +270,53 @@ def build_report(res: AnalysisResult, gt_events: list, evaluation: dict,
         insights.append(
             f"推定シュート {len(res.shots)} 本(うち3P圏 {threes} 本、"
             f"平均距離 {avg_d:.1f}m)。")
-    insights.append(
-        f"推定パス {len(res.passes)} 本(真値 {gt_pass} 本)、"
-        f"ターンオーバー推定 {len(res.turnovers)} 回。")
+    if has_ball:
+        gt_pass = sum(1 for e in (gt_events or []) if e["type"] == "pass")
+        gt_note = f"(真値 {gt_pass} 本)" if gt_events else ""
+        insights.append(
+            f"推定パス {len(res.passes)} 本{gt_note}、"
+            f"ターンオーバー推定 {len(res.turnovers)} 回。")
+    insights.extend(extra_notes or [])
+
+    score_html = ""
+    if score is not None:
+        score_html = f"""<div class="score">
+  <span><span class="badge" style="background:{TEAM_COLOR['A']}"></span>
+  チームA <b>{score['A']}</b></span> <span>-</span>
+  <span><b>{score['B']}</b> チームB
+  <span class="badge" style="background:{TEAM_COLOR['B']}"></span></span>
+</div>"""
+
+    ball_html = ""
+    if has_ball:
+        ball_html = f"""
+<h2>ボール運び</h2>
+<div class="card"><img src="data:image/png;base64,{charts['timeline']}" alt="保持タイムライン"></div>
+<div class="card"><img src="data:image/png;base64,{charts['net']}" alt="パスネットワーク"></div>
+
+<h2>シュート</h2>
+<div class="card"><img src="data:image/png;base64,{charts['shots']}" alt="シュートチャート"></div>"""
+
+    eval_html = ""
+    if evaluation is not None:
+        eval_rows = [
+            ["選手位置 RMSE", f"{evaluation['player_position_rmse_m']:.3f} m"],
+            ["選手検出カバレッジ", _fmt_pct(evaluation["player_coverage"])],
+            ["ID 一貫性", _fmt_pct(evaluation["id_consistency"])],
+            ["ボール検出カバレッジ", _fmt_pct(evaluation["ball_coverage"])],
+            ["ボール位置 RMSE", f"{evaluation['ball_position_rmse_m']:.3f} m"],
+        ]
+        ee_rows = [
+            [name, d["gt_count"], d["detected_count"], d["true_positive"],
+             _fmt_pct(d["precision"]), _fmt_pct(d["recall"])]
+            for name, d in (event_eval or {}).items()
+        ]
+        eval_html = f"""
+<h2>トラッキング精度(真値との突合)</h2>
+<div class="card">{_table(["指標", "値"], eval_rows)}</div>
+<div class="card">{_table(
+    ["イベント", "真値数", "検出数", "一致", "適合率", "再現率"], ee_rows)}
+<div class="note">イベントは ±1.5 秒以内の時刻一致でマッチング。</div></div>"""
 
     html = f"""<!doctype html>
 <html lang="ja"><head><meta charset="utf-8">
@@ -311,16 +346,11 @@ def build_report(res: AnalysisResult, gt_events: list, evaluation: dict,
   .note {{ color:{MUTED}; font-size:12px; }}
 </style></head><body><main>
 <h1>🏀 試合トラッキングレポート</h1>
-<div class="sub">ダミー映像 {duration_s:.0f} 秒 / {res.fps}fps ・
+<div class="sub">{source_label} {duration_s:.0f} 秒 / {res.fps}fps ・
 検出→トラッキング→コート座標変換→分析の全自動パイプライン出力</div>
-<div class="score">
-  <span><span class="badge" style="background:{TEAM_COLOR['A']}"></span>
-  チームA <b>{score['A']}</b></span> <span>-</span>
-  <span><b>{score['B']}</b> チームB
-  <span class="badge" style="background:{TEAM_COLOR['B']}"></span></span>
-</div>
+{score_html}
 
-<div class="card"><h2 style="margin-top:0">戦術サマリー(自動生成)</h2>
+<div class="card"><h2 style="margin-top:0">サマリー(自動生成)</h2>
 <ul>{"".join(f"<li>{s}</li>" for s in insights)}</ul></div>
 
 <h2>フィジカル指標</h2>
@@ -333,22 +363,9 @@ def build_report(res: AnalysisResult, gt_events: list, evaluation: dict,
 
 <h2>ポジショニング</h2>
 <div class="card"><img src="data:image/png;base64,{charts['heat']}" alt="ヒートマップ"></div>
-
-<h2>ボール運び</h2>
-<div class="card"><img src="data:image/png;base64,{charts['timeline']}" alt="保持タイムライン"></div>
-<div class="card"><img src="data:image/png;base64,{charts['net']}" alt="パスネットワーク"></div>
-
-<h2>シュート</h2>
-<div class="card"><img src="data:image/png;base64,{charts['shots']}" alt="シュートチャート"></div>
-
-<h2>トラッキング精度(真値との突合)</h2>
-<div class="card">{_table(["指標", "値"], eval_rows)}</div>
-<div class="card">{_table(
-    ["イベント", "真値数", "検出数", "一致", "適合率", "再現率"], ee_rows)}
-<div class="note">イベントは ±1.5 秒以内の時刻一致でマッチング。</div></div>
-
-<div class="note">このレポートはプロトタイプの自動生成物です。実映像への適用時は
-検出器を YOLO 系に、キャリブレーションをコート基準点指定に差し替えます。</div>
+{ball_html}
+{eval_html}
+<div class="note">このレポートはプロトタイプの自動生成物です。</div>
 </main></body></html>"""
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)

@@ -263,8 +263,9 @@ def main():
 
     export_data(args.out, res, player_tracks, ball_xy, ball_detected,
                 events_gt, score, evaluation, event_eval, args.fps)
-    build_report(res, events_gt, evaluation, event_eval, args.duration,
-                 score, os.path.join(args.out, "report.html"))
+    build_report(res, args.duration, os.path.join(args.out, "report.html"),
+                 gt_events=events_gt, evaluation=evaluation,
+                 event_eval=event_eval, score=score, source_label="ダミー映像")
     print(f"      -> {args.out}/report.html ほか CSV/JSON")
 
     annotate_video(raw_path, os.path.join(args.out, "annotated.mp4"),
