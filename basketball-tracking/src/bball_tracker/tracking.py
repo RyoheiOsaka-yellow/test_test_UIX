@@ -105,6 +105,8 @@ class TeamTracker:
         for tr in self.tracks:
             if not tr.detected:
                 tr.misses += 1
+                # 未検出中は速度を減衰させ、等速予測の暴走 (画面外へ飛ぶ) を防ぐ
+                tr.kf.x[2:] *= 0.88
         # コート内競技なので原則保持するが、誤生成トラックは寿命で破棄
         self.tracks = [t for t in self.tracks
                        if t.misses <= self.cfg.max_misses or t.hits >= self.cfg.min_hits]

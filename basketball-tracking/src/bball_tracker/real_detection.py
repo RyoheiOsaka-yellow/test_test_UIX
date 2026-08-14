@@ -84,6 +84,11 @@ class TeamColorClassifier:
         # OpenCV Lab: a,b は 128 が無彩色
         return float(np.hypot(center[1] - 128.0, center[2] - 128.0))
 
+    @staticmethod
+    def _hue(center: np.ndarray) -> float:
+        return float(np.degrees(np.arctan2(center[2] - 128.0,
+                                           center[1] - 128.0)))
+
     def fit(self, colors: list[np.ndarray]):
         data = np.array(colors, dtype=np.float32)
         crit = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 50, 0.5)
@@ -97,11 +102,23 @@ class TeamColorClassifier:
             if self._chroma(centers[i]) >= self.min_chroma else -1.0
             for i in range(k)
         ]
-        order = np.argsort(scores)[::-1]
-        if scores[order[1]] <= 0:
-            # 高彩度クラスタが2つ見つからない場合は人数順にフォールバック
-            order = np.argsort(-counts)
-        best = centers[order[:2]]
+        order = list(np.argsort(scores)[::-1])
+        first = order[0]
+        # 2チーム目は1チーム目と色相が十分離れたクラスタから選ぶ。
+        # 同系色 (同じユニフォームの明部/暗部) を2チームに割らないため。
+        second = None
+        for i in order[1:]:
+            if scores[i] <= 0:
+                continue
+            dh = abs(self._hue(centers[i]) - self._hue(centers[first]))
+            dh = min(dh, 360 - dh)
+            if dh >= 45.0:
+                second = i
+                break
+        if second is None:
+            second = order[1] if scores[order[1]] > 0 else \
+                int(np.argsort(-counts)[1])
+        best = centers[[first, second]]
         # 明るい方を A、暗い方を B に固定 (ホーム=明色ユニフォーム想定)
         if best[0][0] < best[1][0]:
             best = best[::-1]

@@ -114,37 +114,50 @@ def main():
                     help="固定カメラ (運動補償をスキップ)")
     ap.add_argument("--max-tracks", type=int, default=7,
                     help="チーム毎の同時トラック上限 (見切れ再入場のフラグメント含む)")
+    ap.add_argument("--cache-file", default=None,
+                    help="pass1 (検出+カメラ推定) のキャッシュ。存在すれば再利用")
     args = ap.parse_args()
 
     os.makedirs(args.out, exist_ok=True)
     fps = video_fps(args.video)
     ref_frame, H_court_from_ref, dims, static_masks = load_calibration(args.calib)
-    detector = YoloPersonDetector(args.weights, args.imgsz)
-    est = None if args.static_camera else CameraMotionEstimator()
 
-    print("[1/5] 検出 + カメラ運動推定 (pass1) ...")
-    detections = []      # frame -> [PersonDet] (胴体色を .color に付与)
-    H_first_from = []    # frame -> H(現在→先頭)
-    for i, frame in iter_frames(args.video, args.start, args.duration):
-        dets = detector.detect(frame)
-        for d in dets:
-            d.color = torso_color(frame, d)
-        detections.append(dets)
+    cache_path = args.cache_file or os.path.join(args.out, "pass1_cache.pkl")
+    if os.path.exists(cache_path):
+        print(f"[1/5] pass1 キャッシュを再利用: {cache_path}")
+        import pickle
+        with open(cache_path, "rb") as fh:
+            detections, H_first_from = pickle.load(fh)
+    else:
+        detector = YoloPersonDetector(args.weights, args.imgsz)
+        est = None if args.static_camera else CameraMotionEstimator()
+        print("[1/5] 検出 + カメラ運動推定 (pass1) ...")
+        detections = []      # frame -> [PersonDet] (胴体色を .color に付与)
+        H_first_from = []    # frame -> H(現在→先頭)
+        for i, frame in iter_frames(args.video, args.start, args.duration):
+            dets = detector.detect(frame)
+            for d in dets:
+                d.color = torso_color(frame, d)
+            detections.append(dets)
+            if est is not None:
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                # 動体 (選手) と静止オーバーレイを特徴点から除外
+                boxes = [(d.x1, d.y1, d.x2, d.y2)
+                         for d in dets] + list(static_masks)
+                H_first_from.append(est.step(gray, boxes))
+            else:
+                H_first_from.append(np.eye(3))
+            if (i + 1) % 100 == 0:
+                print(f"      {i + 1} フレーム処理")
         if est is not None:
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            # 動体 (選手) と静止オーバーレイ (スコアバグ等) を特徴点から除外
-            boxes = [(d.x1, d.y1, d.x2, d.y2) for d in dets] + list(static_masks)
-            H_first_from.append(est.step(gray, boxes))
-        else:
-            H_first_from.append(np.eye(3))
-        if (i + 1) % 100 == 0:
-            print(f"      {i + 1} フレーム処理")
+            print(f"      カメラ補償: 絶対アンカー {est.anchor_frames} / "
+                  f"LK連結フォールバック {est.chain_frames} フレーム")
+        import pickle
+        with open(cache_path, "wb") as fh:
+            pickle.dump((detections, H_first_from), fh)
     n = len(detections)
     duration_s = n / fps
     print(f"      合計 {n} フレーム @ {fps:.1f}fps")
-    if est is not None:
-        print(f"      カメラ補償: 絶対アンカー {est.anchor_frames} / "
-              f"LK連結フォールバック {est.chain_frames} フレーム")
 
     # 基準フレーム系への変換に揃える
     H_ref_from_first = np.linalg.inv(H_first_from[min(ref_frame, n - 1)])
@@ -183,7 +196,9 @@ def main():
         row = {"players": [], "H": H}
         for team in ("A", "B"):
             for tr in trackers[team].step(court_dets[team]):
-                if tr.hits >= tcfg.min_hits:
+                # 0.5 秒以上観測が無いトラックは出力しない
+                # (カメラ外・誤検出由来の予測位置を引き回さない)
+                if tr.hits >= tcfg.min_hits and tr.misses <= int(0.5 * fps):
                     row["players"].append(
                         (tr.track_id, team, float(tr.kf.pos[0]),
                          float(tr.kf.pos[1]), tr.detected))
