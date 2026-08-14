@@ -943,17 +943,22 @@ function renderPreviewSVG(cut, idPrefix) {
     ? state.story.refs.find(r => r.id === cut.refImgId) : null;
   let refScene = "";
   if (refImg) {
-    const B = silhouette ? 0.45 : Math.max(0.55, Math.min(1.15, 0.55 + keyF * 0.5));
+    const isSubject = !!refImg.hasAlpha; // 背景透過 = 被写体レイヤーとして合成
+    const B = silhouette ? (isSubject ? 0.18 : 0.45) : Math.max(0.55, Math.min(1.15, 0.55 + keyF * 0.5));
     const C = silhouette ? 1.35 : 1 + an.contrast * 0.6;
     const slope = +(B * C).toFixed(3);
     const inter = +(B * (1 - C) * 0.5).toFixed(3);
     const gx1 = keySide > 0 ? 0 : 1, gx2 = keySide > 0 ? 1 : 0;
+    /* 被写体レイヤーは露出補正の後にリム光 (feDropShadow) を背後に描く */
+    const rimGlow = isSubject && an.rimPower > 0
+      ? `<feDropShadow dx="0" dy="-1.5" stdDeviation="${silhouette ? 6 : 4.5}" flood-color="${rimColor}" flood-opacity="${Math.min(0.95, (silhouette ? 0.55 : 0.3) + an.rimPower / 90).toFixed(2)}"/>`
+      : "";
     defs += `
-      <filter id="${p}imf"><feComponentTransfer>
+      <filter id="${p}imf" x="-25%" y="-25%" width="150%" height="150%"><feComponentTransfer>
         <feFuncR type="linear" slope="${slope}" intercept="${inter}"/>
         <feFuncG type="linear" slope="${slope}" intercept="${inter}"/>
         <feFuncB type="linear" slope="${slope}" intercept="${inter}"/>
-      </feComponentTransfer></filter>
+      </feComponentTransfer>${rimGlow}</filter>
       <linearGradient id="${p}imkey" x1="${gx1}" y1="0" x2="${gx2}" y2="0">
         <stop offset="0" stop-color="${rimColor}" stop-opacity="${silhouette ? 0 : (0.10 + keyF * 0.16).toFixed(2)}"/>
         <stop offset="0.6" stop-color="${rimColor}" stop-opacity="0"/>
@@ -1014,23 +1019,42 @@ function renderPreviewSVG(cut, idPrefix) {
       defs += `<filter id="${p}imgr"><feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>`;
     }
 
-    refScene = `
-      <rect x="${-W * 0.15}" y="${-H * 0.15}" width="${W * 1.3}" height="${H * 1.3}" fill="url(#${p}bg)"/>
-      <g transform="${frameTf}">${imgTag}</g>
-      ${dof ? `<g transform="${frameTf}" filter="url(#${p}imblf)" mask="url(#${p}dofm)">${imgTag}</g>` : ""}
-      ${silhouette ? `<rect width="${W}" height="${H}" fill="url(#${p}imglow)" style="mix-blend-mode:screen"/>
-                      <rect width="${W}" height="${H}" fill="#0a0c12" opacity="0.5" style="mix-blend-mode:multiply"/>` : ""}
-      <rect width="${W}" height="${H}" fill="url(#${p}imshad)" style="mix-blend-mode:multiply"/>
-      <rect width="${W}" height="${H}" fill="url(#${p}imkey)" style="mix-blend-mode:screen"/>
-      <rect width="${W}" height="${H}" fill="url(#${p}imtop)" style="mix-blend-mode:screen"/>
-      ${an.rimPower > 0 ? `<rect width="${W}" height="${H}" fill="url(#${p}imrim)" style="mix-blend-mode:screen"/>` : ""}
-      ${tempTint}
-      ${cut.options.includes("gel") ? `
-        <rect x="0" y="0" width="${W / 2}" height="${H}" fill="#e040c8" opacity="0.18" style="mix-blend-mode:screen"/>
-        <rect x="${W / 2}" y="0" width="${W / 2}" height="${H}" fill="#2a6ae8" opacity="0.18" style="mix-blend-mode:screen"/>` : ""}
+    const gelRects = cut.options.includes("gel") ? `
+      <rect x="0" y="0" width="${W / 2}" height="${H}" fill="#e040c8" opacity="0.18" style="mix-blend-mode:screen"/>
+      <rect x="${W / 2}" y="0" width="${W / 2}" height="${H}" fill="#2a6ae8" opacity="0.18" style="mix-blend-mode:screen"/>` : "";
+    const finishing = `${tempTint}${gelRects}
       ${vigOp > 0.12 ? `<rect width="${W}" height="${H}" fill="url(#${p}imvig)"/>` : ""}
       ${grainy ? `<rect width="${W}" height="${H}" filter="url(#${p}imgr)" opacity="0.07" style="mix-blend-mode:overlay"/>` : ""}
       ${fx}`;
+
+    if (isSubject) {
+      /* 被写体合成モード: スタジオ背景 (既存のシーン描画) + 透過被写体。
+       * ライティングの明暗は被写体のアルファ形状にだけ乗せる */
+      defs += `<mask id="${p}sm" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" style="mask-type:alpha">
+        <g transform="${frameTf}"><image href="${refImg.dataUrl}" x="${-W * 0.06}" y="${-H * 0.06}" width="${W * 1.12}" height="${H * 1.12}" preserveAspectRatio="xMidYMid slice"/></g>
+      </mask>`;
+      refScene = `
+        <rect x="${-W * 0.15}" y="${-H * 0.15}" width="${W * 1.3}" height="${H * 1.3}" fill="url(#${p}bg)"/>
+        ${bgExtra}
+        <rect width="${W}" height="${H}" fill="url(#${p}imshad)" opacity="0.5" style="mix-blend-mode:multiply"/>
+        <g transform="${frameTf}">${imgTag}</g>
+        <rect width="${W}" height="${H}" fill="url(#${p}imshad)" mask="url(#${p}sm)" style="mix-blend-mode:multiply"/>
+        <rect width="${W}" height="${H}" fill="url(#${p}imkey)" mask="url(#${p}sm)" style="mix-blend-mode:screen"/>
+        <rect width="${W}" height="${H}" fill="url(#${p}imtop)" mask="url(#${p}sm)" style="mix-blend-mode:screen"/>
+        ${finishing}`;
+    } else {
+      refScene = `
+        <rect x="${-W * 0.15}" y="${-H * 0.15}" width="${W * 1.3}" height="${H * 1.3}" fill="url(#${p}bg)"/>
+        <g transform="${frameTf}">${imgTag}</g>
+        ${dof ? `<g transform="${frameTf}" filter="url(#${p}imblf)" mask="url(#${p}dofm)">${imgTag}</g>` : ""}
+        ${silhouette ? `<rect width="${W}" height="${H}" fill="url(#${p}imglow)" style="mix-blend-mode:screen"/>
+                        <rect width="${W}" height="${H}" fill="#0a0c12" opacity="0.5" style="mix-blend-mode:multiply"/>` : ""}
+        <rect width="${W}" height="${H}" fill="url(#${p}imshad)" style="mix-blend-mode:multiply"/>
+        <rect width="${W}" height="${H}" fill="url(#${p}imkey)" style="mix-blend-mode:screen"/>
+        <rect width="${W}" height="${H}" fill="url(#${p}imtop)" style="mix-blend-mode:screen"/>
+        ${an.rimPower > 0 ? `<rect width="${W}" height="${H}" fill="url(#${p}imrim)" style="mix-blend-mode:screen"/>` : ""}
+        ${finishing}`;
+    }
   }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}">
@@ -2090,12 +2114,13 @@ function setupDocOverlay() {
     catch { window.print(); }
   });
   byId("btnDocDownload").addEventListener("click", () => {
-    const blob = new Blob([docCurrent.html], { type: "text/html" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = docCurrent.name;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    saveFileAs(docCurrent.name, new Blob([docCurrent.html], { type: "text/html" }));
+  });
+  // ドキュメント内 (iframe) からの保存依頼 (EDLの.edl等) を親で受けて保存する
+  window.addEventListener("message", e => {
+    if (e.data && e.data.vsSave && typeof e.data.vsSave.name === "string" && typeof e.data.vsSave.text === "string") {
+      saveFileAs(e.data.vsSave.name, e.data.vsSave.text);
+    }
   });
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") {
@@ -2240,12 +2265,7 @@ function exportBoard() {
 function downloadPlanSVG() {
   const cut = activeCut();
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" style="background:#fbfcfd">${renderCanvasSVG(cut, false)}</svg>`;
-  const blob = new Blob([svg], { type: "image/svg+xml" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `studio-plan-C${state.activeCut + 1}.svg`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  saveFileAs(`studio-plan-C${state.activeCut + 1}.svg`, new Blob([svg], { type: "image/svg+xml" }));
 }
 
 /* =========================================================
@@ -2526,14 +2546,15 @@ function buildEdlDoc() {
     <div class="meta">${fps}fps Non-Drop ｜ ビデオカット ${vcuts.length}${stills ? ` (スチール${stills}は対象外)` : ""} ｜ 合計 ${tc(rec)} ｜ Generated by Virtual Studio</div>
     <div class="toolbar">
       <button onclick="window.print()">🖨 印刷 / PDFに保存</button>
-      <a download="${esc(state.projectTitle)}.edl" href="data:text/plain;charset=utf-8,${encodeURIComponent(edl)}">⬇ .edl をダウンロード (CMX3600)</a>
+      <button onclick="parent.postMessage({vsSave:{name:document.getElementById('edlName').value,text:document.getElementById('edlSrc').textContent}},'*')">⬇ .edl をダウンロード (CMX3600)</button>
+      <input type="hidden" id="edlName" value="${esc(state.projectTitle)}.edl">
     </div>
     <table>
       <thead><tr><th>#</th><th>カット</th><th>採用テイク</th><th>素材 IN/OUT</th><th>レコード IN/OUT</th><th>尺</th><th>入りの繋ぎ</th><th>音の繋ぎ</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     <h2>CMX3600 EDL</h2>
-    <pre>${esc(edl)}</pre>
+    <pre id="edlSrc">${esc(edl)}</pre>
     <ul>
       <li>素材INは各カットの「素材イン点(秒)」設定 (録画開始→アクション頭のプリロール)。テイクを変えたら撮影時のメモに合わせて更新すること</li>
       <li>ディゾルブ系は D + フレーム数で表現 (ディゾルブ1.5s / フェード2s / ホワイトアウト1s)。マッチカット等はコメント行で指示</li>
@@ -2658,21 +2679,11 @@ function exportCanonicalJSON() {
     project_id: projectId,
     shots: state.cuts.map((c, i) => cutToCanonicalShot(c, i, projectId)),
   };
-  const blob = new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "canonical-shots.json";
-  a.click();
-  URL.revokeObjectURL(a.href);
+  saveFileAs("canonical-shots.json", new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" }));
 }
 
 function exportJSON() {
-  const blob = new Blob([JSON.stringify({ version: 1, ...state }, null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "virtual-studio-project.json";
-  a.click();
-  URL.revokeObjectURL(a.href);
+  saveFileAs("virtual-studio-project.json", new Blob([JSON.stringify({ version: 1, ...state }, null, 2)], { type: "application/json" }));
 }
 
 function importJSON(file) {
@@ -2867,8 +2878,17 @@ async function downscaleImage(file, maxPx) {
   const cv = document.createElement("canvas");
   cv.width = Math.max(1, Math.round(bmp.width * scale));
   cv.height = Math.max(1, Math.round(bmp.height * scale));
-  cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
-  return cv.toDataURL("image/jpeg", 0.82);
+  const cx = cv.getContext("2d");
+  cx.drawImage(bmp, 0, 0, cv.width, cv.height);
+  /* 背景透過PNG/WebPの検出 (間引きスキャン) — 透過があれば「被写体レイヤー」として合成する */
+  let hasAlpha = false;
+  if (/png|webp/i.test(file.type)) {
+    const d = cx.getImageData(0, 0, cv.width, cv.height).data;
+    for (let i = 3; i < d.length; i += 4 * 7) {
+      if (d[i] < 250) { hasAlpha = true; break; }
+    }
+  }
+  return { url: cv.toDataURL(hasAlpha ? "image/png" : "image/jpeg", 0.82), hasAlpha };
 }
 
 async function wfAddRefFiles(files) {
@@ -2878,7 +2898,8 @@ async function wfAddRefFiles(files) {
     if (!(file.type || "").startsWith("image/")) continue;
     if (state.story.refs.length >= MAX) { alert(`参照画像は${MAX}枚までです (ブラウザ保存容量のため)`); break; }
     try {
-      state.story.refs.push({ id: uid(), name: file.name, dataUrl: await downscaleImage(file, 768), assign: null });
+      const d = await downscaleImage(file, 768);
+      state.story.refs.push({ id: uid(), name: file.name, dataUrl: d.url, hasAlpha: d.hasAlpha });
       added++;
     } catch { /* 読めない画像はスキップ */ }
   }
@@ -2985,7 +3006,7 @@ function renderWorkflow() {
     <div class="wf-ref">
       <img src="${r.dataUrl}" alt="${esc(r.name)}">
       <div class="wf-ref-body">
-        <div class="wf-ref-name" title="${esc(r.name)}">${esc(r.name)}${usedBy.length ? `<span class="wf-ref-used">${usedBy.join(" ")}</span>` : ""}</div>
+        <div class="wf-ref-name" title="${esc(r.name)}">${esc(r.name)}${r.hasAlpha ? `<span class="wf-ref-used" title="背景透過 — スタジオ背景に被写体として合成されます">透過</span>` : ""}${usedBy.length ? `<span class="wf-ref-used">${usedBy.join(" ")}</span>` : ""}</div>
         <select data-refassign="${r.id}" title="選んだカットにこの画像を割り当て (プレビュー/first frameに反映。複数カットにも割当可)">
           <option value="">カットに割当…</option>
           ${state.cuts.map((c, i) => `<option value="${c.id}" ${c.refImgId === r.id ? "selected" : ""}>C${i + 1} ${esc(c.name.slice(0, 10))}</option>`).join("")}
@@ -3145,7 +3166,41 @@ function setupWorkflow() {
  * (= EDLと同じ値で仮組みできる)。書き出しはWebM (プレビュー品質)。
  * ======================================================= */
 const IDB_NAME = "vsMedia", IDB_STORE = "clips";
-const roughCut = { index: {}, playing: false, stopFlag: false, urls: {}, ac: null, dest: null };
+const roughCut = { index: {}, playing: false, stopFlag: false, urls: {}, ac: null, dest: null, wired: new Set(), stats: { cross: 0, veil: 0 } };
+
+/* =========================================================
+ * ファイル保存 — Artifact上では claude.use("downloads") 経由
+ * (ビューアが確認して保存)、通常ブラウザではアンカーで直接保存。
+ * ======================================================= */
+async function saveFileAs(filename, data) {
+  try {
+    const dl = typeof claude !== "undefined" && claude.use ? await claude.use("downloads") : null;
+    if (dl) {
+      try {
+        await dl.save({ filename, data });
+        return true;
+      } catch (err) {
+        const code = err && err.code;
+        if (code === "declined" || code === "rate_limited") return false; // ビューアの判断を尊重
+        if (code === "rejected_extension" || code === "extension_not_enabled") {
+          // 許可外の拡張子 (.edl / .html等) はテキストとして保存し直す
+          try { await dl.save({ filename: filename.replace(/\.[^.]+$/, "") + ".txt", data }); return true; }
+          catch { return false; }
+        }
+        /* unavailable等 → アンカーにフォールバック */
+      }
+    }
+  } catch { /* claude名前空間なし → フォールバック */ }
+  const blob = data instanceof Blob ? data : new Blob([data]);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); // DOM外のアンカーだとファイル名が失われるブラウザがある
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  return true;
+}
 
 function idbOpen() {
   return new Promise((res, rej) => {
@@ -3235,97 +3290,180 @@ async function rcGetUrl(cutId) {
   return roughCut.urls[cutId];
 }
 
-function rcPlaySegment(v, url, inSec, durSec) {
-  return new Promise(resolve => {
-    const onMeta = () => {
-      let start = inSec;
-      if (start >= v.duration - 0.2) start = 0; // 素材がイン点より短い場合はイン点を無視
-      const endT = Math.min(v.duration, start + durSec);
-      v.currentTime = start;
-      const tick = () => {
-        if (roughCut.stopFlag || v.ended || v.currentTime >= endT - 0.03) { v.pause(); resolve(); return; }
-        requestAnimationFrame(tick);
-      };
-      v.play().then(() => requestAnimationFrame(tick)).catch(() => resolve());
-    };
-    v.addEventListener("loadedmetadata", onMeta, { once: true });
-    v.addEventListener("error", () => resolve(), { once: true });
+/* 音声: MediaElementSource は要素につき1回しか作れないため配線済みを記録 */
+function rcWireAudio(v) {
+  try {
+    if (!roughCut.ac) {
+      roughCut.ac = new (window.AudioContext || window.webkitAudioContext)();
+      roughCut.dest = roughCut.ac.createMediaStreamDestination();
+    }
+    if (!roughCut.wired.has(v.id)) {
+      const s = roughCut.ac.createMediaElementSource(v);
+      s.connect(roughCut.dest);
+      s.connect(roughCut.ac.destination);
+      roughCut.wired.add(v.id);
+    }
+  } catch { /* 音声なしで続行 */ }
+}
+
+function rcLoad(v, url) {
+  return new Promise(res => {
+    v.addEventListener("loadeddata", res, { once: true });
+    v.addEventListener("error", res, { once: true });
     v.src = url;
     v.load();
   });
 }
 
+/* ラフカット再生/書き出し — 常にcanvasに合成描画する。
+ * A/B 2系統の<video>でディゾルブ (クロスフェード0.7s)、
+ * フェードアウト=黒経由0.5s / ホワイトアウト=白経由0.35s。その他は直つなぎ。 */
 async function rcRun(record) {
   if (roughCut.playing) return;
-  const v = byId("rcVideo");
   const cuts = state.cuts.filter(c => c.kind !== "still" && roughCut.index[c.id]);
   if (!cuts.length) { byId("rcMsg").textContent = "⚠️ 添付された動画がありません。各カットに生成動画を添付してください"; return; }
   roughCut.playing = true;
   roughCut.stopFlag = false;
+  roughCut.stats = { cross: 0, veil: 0 };
+
+  const canvas = byId("rcCanvas");
+  canvas.width = 1280; canvas.height = 720;
+  const c2 = canvas.getContext("2d");
+  const vids = [byId("rcVideoA"), byId("rcVideoB")];
+  const draw = { a: null, b: null, alphaB: 0, veil: 0, veilColor: "#000" };
+  let stopDraw = false;
+
+  const paint = () => {
+    c2.fillStyle = "#000";
+    c2.fillRect(0, 0, canvas.width, canvas.height);
+    const dv = (v, alpha) => {
+      if (!v || !v.videoWidth || alpha <= 0) return;
+      c2.globalAlpha = Math.min(1, alpha);
+      const s = Math.min(canvas.width / v.videoWidth, canvas.height / v.videoHeight);
+      const w = v.videoWidth * s, h = v.videoHeight * s;
+      c2.drawImage(v, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+      c2.globalAlpha = 1;
+    };
+    dv(draw.a, 1);
+    dv(draw.b, draw.alphaB);
+    if (draw.veil > 0) {
+      c2.globalAlpha = Math.min(1, draw.veil);
+      c2.fillStyle = draw.veilColor;
+      c2.fillRect(0, 0, canvas.width, canvas.height);
+      c2.globalAlpha = 1;
+    }
+    if (!stopDraw) requestAnimationFrame(paint);
+  };
+  requestAnimationFrame(paint);
+
+  vids.forEach(rcWireAudio);
+  if (roughCut.ac) roughCut.ac.resume();
 
   let recorder = null;
   const chunks = [];
-  let drawStop = false;
   if (record) {
-    const canvas = byId("rcCanvas");
-    canvas.width = 1280; canvas.height = 720;
-    const c2 = canvas.getContext("2d");
     const stream = canvas.captureStream(30);
-    try {
-      if (!roughCut.ac) { // MediaElementSource は要素につき1回しか作れない
-        roughCut.ac = new (window.AudioContext || window.webkitAudioContext)();
-        roughCut.dest = roughCut.ac.createMediaStreamDestination();
-        const srcNode = roughCut.ac.createMediaElementSource(v);
-        srcNode.connect(roughCut.dest);
-        srcNode.connect(roughCut.ac.destination);
-      }
-      roughCut.ac.resume();
-      const at = roughCut.dest.stream.getAudioTracks()[0];
-      if (at) stream.addTrack(at);
-    } catch { /* 音声なしで続行 */ }
+    const at = roughCut.dest && roughCut.dest.stream.getAudioTracks()[0];
+    if (at) stream.addTrack(at);
     const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm";
     recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6000000 });
     recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
     recorder.start(250);
-    const draw = () => {
-      if (drawStop) return;
-      c2.fillStyle = "#000";
-      c2.fillRect(0, 0, canvas.width, canvas.height);
-      if (v.videoWidth) {
-        const s = Math.min(canvas.width / v.videoWidth, canvas.height / v.videoHeight);
-        const w = v.videoWidth * s, h = v.videoHeight * s;
-        c2.drawImage(v, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+  }
+
+  const frame = () => new Promise(r => requestAnimationFrame(r));
+  const startSeg = async (v, cut) => {
+    let s0 = cut.srcInSec || 0;
+    if (v.duration && s0 >= v.duration - 0.2) s0 = 0; // 素材がイン点より短ければ頭から
+    v.currentTime = s0;
+    v._segStart = s0;
+    try { await v.play(); } catch { /* 再生不可素材はスキップ扱い */ }
+  };
+
+  await rcLoad(vids[0], await rcGetUrl(cuts[0].id));
+  let veilIn = 0;
+
+  for (let k = 0; k < cuts.length && !roughCut.stopFlag; k++) {
+    const v = vids[k % 2], nv = vids[(k + 1) % 2];
+    const cut = cuts[k];
+    const dur = cut.duration || 5;
+    if (!v._prestarted) await startSeg(v, cut);
+    v._prestarted = false;
+    draw.a = v; draw.b = null; draw.alphaB = 0;
+    byId("rcMsg").textContent = `${record ? "録画中" : "再生中"}: C${state.cuts.indexOf(cut) + 1} (${k + 1}/${cuts.length})`;
+
+    // フェード明け (前カットが黒/白経由だった場合)
+    if (veilIn > 0) {
+      const t0 = performance.now();
+      while (!roughCut.stopFlag && performance.now() - t0 < veilIn * 1000) {
+        draw.veil = 1 - (performance.now() - t0) / (veilIn * 1000);
+        await frame();
       }
-      requestAnimationFrame(draw);
-    };
-    requestAnimationFrame(draw);
-  }
+      draw.veil = 0;
+      veilIn = 0;
+    }
 
-  for (let k = 0; k < cuts.length; k++) {
+    // 次カットを先読み
+    let preload = null;
+    if (k + 1 < cuts.length) preload = rcGetUrl(cuts[k + 1].id).then(u => rcLoad(nv, u));
+
+    const endT = Math.min(v.duration || 1e9, (v._segStart || 0) + dur);
+    const trans = k + 1 < cuts.length ? (cut.transition || "cut") : "cut";
+    const X = trans === "dissolve" ? 0.7 : 0;
+    const FADE = trans === "fadeout" ? 0.5 : trans === "whiteout" ? 0.35 : 0;
+
+    // 本編 (トランジション分を残して再生)
+    while (!roughCut.stopFlag && !v.ended && v.currentTime < endT - X - FADE - 0.03) await frame();
+
     if (roughCut.stopFlag) break;
-    byId("rcMsg").textContent = `${record ? "録画中" : "再生中"}: C${state.cuts.indexOf(cuts[k]) + 1} (${k + 1}/${cuts.length})`;
-    const url = await rcGetUrl(cuts[k].id);
-    if (url) await rcPlaySegment(v, url, cuts[k].srcInSec || 0, cuts[k].duration || 5);
+    if (X > 0) {
+      // ディゾルブ: 次カットを重ねてクロスフェード
+      await preload;
+      const nc = cuts[k + 1];
+      await startSeg(nv, nc);
+      nv._prestarted = true;
+      draw.b = nv;
+      roughCut.stats.cross++;
+      const t0 = performance.now();
+      while (!roughCut.stopFlag && performance.now() - t0 < X * 1000) {
+        draw.alphaB = (performance.now() - t0) / (X * 1000);
+        await frame();
+      }
+      draw.a = nv; draw.b = null; draw.alphaB = 0;
+      v.pause();
+    } else if (FADE > 0) {
+      // 黒/白経由
+      draw.veilColor = trans === "whiteout" ? "#ffffff" : "#000000";
+      roughCut.stats.veil++;
+      const t0 = performance.now();
+      while (!roughCut.stopFlag && performance.now() - t0 < FADE * 1000) {
+        draw.veil = (performance.now() - t0) / (FADE * 1000);
+        await frame();
+      }
+      draw.veil = 1;
+      v.pause();
+      veilIn = FADE;
+    } else {
+      while (!roughCut.stopFlag && !v.ended && v.currentTime < endT - 0.03) await frame();
+      v.pause();
+    }
   }
 
+  vids.forEach(v => v.pause());
   roughCut.playing = false;
   if (recorder) {
     await new Promise(res => { recorder.onstop = res; recorder.stop(); });
-    drawStop = true;
+    stopDraw = true;
     if (!roughCut.stopFlag && chunks.length) {
       const blob = new Blob(chunks, { type: recorder.mimeType });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `${state.projectTitle.replace(/[\\/:*?"<>|]/g, "_")}-roughcut.webm`;
-      document.body.appendChild(a); // DOM外のアンカーだとファイル名が失われるブラウザがある
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      const name = `${state.projectTitle.replace(/[\\/:*?"<>|]/g, "_")}-roughcut.webm`;
+      await saveFileAs(name, blob);
       byId("rcMsg").textContent = `✓ 書き出しました (${(blob.size / 1048576).toFixed(1)}MB WebM)。納品品質はEDL+元素材で編集ソフトへ`;
     } else {
       byId("rcMsg").textContent = "停止しました";
     }
   } else {
+    stopDraw = true;
     byId("rcMsg").textContent = roughCut.stopFlag ? "停止しました" : "✓ 最後まで再生しました";
   }
 }

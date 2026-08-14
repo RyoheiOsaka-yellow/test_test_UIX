@@ -972,7 +972,7 @@ input[type="range"]::-moz-range-thumb {
 .rc-row .btn:first-of-type { margin-left: auto; }
 .rc-clip + .btn { margin-left: 0 !important; }
 .rc-player { background: var(--surface); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow-sm); }
-#rcVideo { width: 100%; max-width: 640px; aspect-ratio: 16 / 9; background: #000; border-radius: 10px; display: block; }
+#rcCanvas { width: 100%; max-width: 640px; aspect-ratio: 16 / 9; background: #000; border-radius: 10px; display: block; }
 .rc-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 
 /* 参照画像の使用中カット表示 */

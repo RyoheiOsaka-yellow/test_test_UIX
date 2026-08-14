@@ -356,8 +356,10 @@
         <div id="rcList"></div>
         <input type="file" id="rcClipInput" accept="video/*" hidden>
         <div class="rc-player">
-          <video id="rcVideo" playsinline></video>
-          <canvas id="rcCanvas" hidden></canvas>
+          <!-- 再生も書き出しも同じcanvasに描く (A/B 2系統でクロスフェード) -->
+          <video id="rcVideoA" playsinline hidden></video>
+          <video id="rcVideoB" playsinline hidden></video>
+          <canvas id="rcCanvas" width="1280" height="720"></canvas>
           <div class="rc-controls">
             <button id="btnRcPlay" class="btn small primary"><svg class="ic"><use href="#i-play"/></svg> ラフカット再生</button>
             <button id="btnRcStop" class="btn small"><svg class="ic"><use href="#i-pause"/></svg> 停止</button>
