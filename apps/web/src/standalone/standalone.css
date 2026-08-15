@@ -773,6 +773,113 @@ table.eng tfoot td {
   font-size: 13px;
 }
 
+/* ---- envelope limits on strength charts ---- */
+.sline.lim { stroke: var(--bad); stroke-width: 1.3; }
+.sline.limit { stroke-dasharray: 7 4; }
+.perm-fields { grid-template-columns: 1fr 1fr 1fr; }
+
+/* ---- damage space picker ---- */
+.space-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+.space-row {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  color: var(--ink-2);
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.space-row:hover { background: var(--surface-2); }
+.space-row.on { background: var(--surface-2); border-color: var(--bad); }
+.space-row input { accent-color: var(--bad); }
+.space-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wing-tag {
+  font-style: normal;
+  font-size: 9px;
+  color: var(--accent);
+  border: 1px solid var(--accent-dim);
+  border-radius: 999px;
+  padding: 0 5px;
+  margin-left: 6px;
+}
+.space-extent { font-size: 10px; color: var(--ink-3); }
+
+.equalize-note {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: var(--surface-2);
+  border: 1px solid var(--edge-soft);
+  border-radius: var(--r-sm);
+  padding: 7px 10px;
+  font-size: 12px;
+  color: var(--ink);
+}
+.equalize-note .tag { font-size: 10px; color: var(--ink-3); }
+.muted-inline { color: var(--ink-3); font-size: 11px; }
+
+/* ---- condition manager ---- */
+.cond-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.cond-list li { display: flex; align-items: center; gap: 6px; }
+.cond-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  padding: 5px 9px;
+  text-align: left;
+  color: var(--ink-2);
+}
+.cond-row:hover { background: var(--surface-2); }
+.cond-row.on { background: var(--surface-2); border-color: var(--accent); color: var(--ink); }
+.cond-name { font-size: 12.5px; }
+.cond-meta { font-size: 10.5px; color: var(--ink-3); flex: none; }
+.cond-del { flex: none; background: none; border: none; font-size: 11px; color: var(--bad); padding: 0 2px; }
+.cond-save { display: flex; gap: 6px; }
+.cond-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-2);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+/* ---- comparison table ---- */
+table.cmp td, table.cmp th { padding: 4px 8px; }
+.cmp-ok { color: var(--ok); font-weight: 600; }
+.cmp-bad { color: var(--bad); font-weight: 600; }
+tr.cmp-fail-row td { background: rgba(224, 99, 122, 0.06); }
+
+/* ---- load line mark ---- */
+.ll-deck { fill: var(--ink-2); }
+.ll-ring { fill: none; stroke: var(--ink); stroke-width: 4; }
+.ll-line { stroke: var(--ink); stroke-width: 3; }
+.ll-line.strong { stroke-width: 4; }
+.ll-line.fresh { stroke: var(--fresh); }
+.ll-tag { fill: var(--ink-2); }
+.ll-tag.fresh { fill: var(--fresh); }
+.ll-current { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 6 4; }
+.ll-current-tag { fill: var(--accent); }
+.note-cell { font-size: 10px; color: var(--ink-3); white-space: normal; max-width: 300px; }
+
 /* ---- 3D marker labels ---- */
 .marker-label {
   font-family: var(--mono);

@@ -482,33 +482,39 @@ export class DockScene {
 
   private damageZone: THREE.Group | null = null;
 
-  /** Translucent red block marking a flooded zone. */
-  setDamageZone(zone: { x0: number; x1: number } | null): void {
+  /** Translucent red blocks marking flooded zones (wing zones keep their y extent). */
+  setDamageZone(
+    zones: { x0: number; x1: number; y0?: number; y1?: number }[] | null,
+  ): void {
     if (this.damageZone) {
       this.shipRoot.remove(this.damageZone);
       this.damageZone = null;
     }
-    if (!zone) return;
+    if (!zones || !zones.length) return;
     const g = new THREE.Group();
-    const l = zone.x1 - zone.x0;
-    const geom = new THREE.BoxGeometry(l, this.depth, this.beam);
-    const mesh = new THREE.Mesh(
-      geom,
-      new THREE.MeshBasicMaterial({
-        color: 0xe0637a,
-        transparent: true,
-        opacity: 0.1,
-        depthWrite: false,
-      }),
-    );
-    mesh.position.set((zone.x0 + zone.x1) / 2, this.depth / 2, 0);
-    const edges = new THREE.LineSegments(
-      new THREE.EdgesGeometry(geom),
-      new THREE.LineDashedMaterial({ color: 0xe0637a, dashSize: 1.4, gapSize: 0.9 }),
-    );
-    edges.computeLineDistances();
-    edges.position.copy(mesh.position);
-    g.add(mesh, edges);
+    for (const zone of zones) {
+      const l = zone.x1 - zone.x0;
+      const y0 = zone.y0 ?? -this.beam / 2;
+      const y1 = zone.y1 ?? this.beam / 2;
+      const geom = new THREE.BoxGeometry(l, this.depth, y1 - y0);
+      const mesh = new THREE.Mesh(
+        geom,
+        new THREE.MeshBasicMaterial({
+          color: 0xe0637a,
+          transparent: true,
+          opacity: 0.1,
+          depthWrite: false,
+        }),
+      );
+      mesh.position.set((zone.x0 + zone.x1) / 2, this.depth / 2, (y0 + y1) / 2);
+      const edges = new THREE.LineSegments(
+        new THREE.EdgesGeometry(geom),
+        new THREE.LineDashedMaterial({ color: 0xe0637a, dashSize: 1.4, gapSize: 0.9 }),
+      );
+      edges.computeLineDistances();
+      edges.position.copy(mesh.position);
+      g.add(mesh, edges);
+    }
     this.damageZone = g;
     this.shipRoot.add(g);
   }

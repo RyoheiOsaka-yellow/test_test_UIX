@@ -12,15 +12,15 @@
 
 import { halfBreadthAt, integrateSamples } from './hydro.js';
 import {
-  damageFactor,
   defaultHeelAngles,
   gzCurve,
+  normalizeDamage,
   solveAtHeel,
   solveFreeEquilibrium,
   stationPolygonsOf,
   verticalInShip,
   type CriterionResult,
-  type DamageCase,
+  type DamageInput,
   type EquilibriumState,
   type GzPoint,
   type L1Input,
@@ -128,7 +128,7 @@ export function waterplaneAt(
   hull: HullGeometry,
   state: EquilibriumState,
   rhoWater: number,
-  damage?: DamageCase,
+  damage?: DamageInput,
 ): WaterplaneProps {
   const u = verticalInShip(0, state.trimDeg * DEG);
   const xs = hull.stations.map((s) => s.x);
@@ -136,9 +136,29 @@ export function waterplaneAt(
     const zWl = (state.waterlineConstant - u.x * xs[i]) / u.z;
     return Math.max(0, halfBreadthAt(s, zWl));
   });
-  const fs = xs.map((x) => damageFactor(x, damage));
-  const awp = 2 * integrateSamples(xs, halfB.map((b, i) => b * fs[i]));
-  const it = (2 / 3) * integrateSamples(xs, halfB.map((b, i) => b * b * b * fs[i]));
+  const zones = normalizeDamage(damage);
+  // per-station waterplane width and transverse inertia integrand, with each
+  // flooded zone's strip removed (limited to its transverse band, if any)
+  const widths: number[] = new Array(xs.length);
+  const inertias: number[] = new Array(xs.length);
+  for (let i = 0; i < xs.length; i++) {
+    const b = halfB[i];
+    let w = 2 * b;
+    let iy = (2 / 3) * b * b * b; // ∫ y² dy over [−b, b]
+    for (const z of zones) {
+      if (xs[i] < z.x0 - 1e-9 || xs[i] > z.x1 + 1e-9) continue;
+      const mu = Math.min(1, Math.max(0, z.permeability));
+      const lo = Math.max(z.y0 ?? -b, -b);
+      const hi = Math.min(z.y1 ?? b, b);
+      if (hi <= lo) continue;
+      w -= mu * (hi - lo);
+      iy -= (mu * (hi * hi * hi - lo * lo * lo)) / 3;
+    }
+    widths[i] = Math.max(0, w);
+    inertias[i] = Math.max(0, iy);
+  }
+  const awp = integrateSamples(xs, widths);
+  const it = integrateSamples(xs, inertias);
   const bmt = state.volume > 0 ? it / state.volume : 0;
   return {
     awp,

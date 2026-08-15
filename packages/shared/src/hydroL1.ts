@@ -34,7 +34,7 @@
 import { integrateSamples } from './hydro.js';
 import { halfBreadthAt } from './hydro.js';
 import { boxBelowPlane } from './polyhedron.js';
-import { immersedSection, stationPolygon, type P2 } from './section.js';
+import { clipHalfPlane, immersedSection, stationPolygon, type P2 } from './section.js';
 import type { HullGeometry, TankEntityData } from './types.js';
 
 const DEG = Math.PI / 180;
@@ -63,6 +63,13 @@ export interface WeightItem {
   x: number;
   y: number;
   z: number;
+  /**
+   * Longitudinal extent for the strength distribution [m]. Omitted, the item
+   * is spread over a short Lpp/20 footprint around its LCG. Equilibrium and
+   * stability use the centre of gravity either way.
+   */
+  x0?: number;
+  x1?: number;
 }
 
 export interface IdentifiedTank {
@@ -71,9 +78,14 @@ export interface IdentifiedTank {
 }
 
 /**
- * A single flooded zone, assessed by the lost-buoyancy (constant-displacement)
- * method: weight and centre of gravity stay as intact, while hull sections
- * inside the zone keep only (1 − μ) of their buoyancy and waterplane.
+ * A flooded zone, assessed by the lost-buoyancy (constant-displacement)
+ * method: weight and centre of gravity stay as intact, while the hull volume
+ * inside the zone keeps only (1 − μ) of its buoyancy and waterplane.
+ *
+ * A zone may be limited transversely (y0/y1) — a flooded wing space — in
+ * which case the lost buoyancy is off-centre and the ship heels toward the
+ * damage. Cross-flooding arrangements are modelled by adding the mirrored
+ * zone, which restores symmetry at the cost of extra sinkage.
  */
 export interface DamageCase {
   /** flooded extent, hull coordinates [m] */
@@ -81,6 +93,16 @@ export interface DamageCase {
   x1: number;
   /** volume permeability μ (0 = intact structure, ~0.85 machinery, ~0.7 cargo) */
   permeability: number;
+  /** optional transverse extent [m]; omitted = full beam */
+  y0?: number;
+  y1?: number;
+}
+
+export type DamageInput = DamageCase | DamageCase[];
+
+export function normalizeDamage(damage?: DamageInput): DamageCase[] {
+  if (!damage) return [];
+  return Array.isArray(damage) ? damage : [damage];
 }
 
 export interface L1Input {
@@ -91,15 +113,8 @@ export interface L1Input {
   /** Lpp, used for the perpendicular drafts and trim reporting */
   lpp: number;
   beam: number;
-  /** optional flooded zone (lost-buoyancy damage assessment) */
-  damage?: DamageCase;
-}
-
-/** Fraction of a station's buoyancy that survives the damage. */
-export function damageFactor(x: number, damage?: DamageCase): number {
-  if (!damage) return 1;
-  if (x < damage.x0 - 1e-9 || x > damage.x1 + 1e-9) return 1;
-  return 1 - Math.min(1, Math.max(0, damage.permeability));
+  /** optional flooded zones (lost-buoyancy damage assessment) */
+  damage?: DamageInput;
 }
 
 // ---------------------------------------------------------------------------
@@ -251,23 +266,65 @@ interface Buoyancy {
   bz: number;
 }
 
+/** y-clipped station polygons, cached per (polygon set, transverse band). */
+const yClipCache = new WeakMap<P2[][], Map<string, (P2[] | null)[]>>();
+
+function zonePolys(polys: P2[][], y0: number, y1: number): (P2[] | null)[] {
+  let perSet = yClipCache.get(polys);
+  if (!perSet) {
+    perSet = new Map();
+    yClipCache.set(polys, perSet);
+  }
+  const key = `${y0}|${y1}`;
+  let clipped = perSet.get(key);
+  if (!clipped) {
+    clipped = polys.map((p) => {
+      // keep y ≥ y0 (−y ≤ −y0) then y ≤ y1
+      const a = clipHalfPlane(p, -1, 0, -y0);
+      const b = clipHalfPlane(a, 1, 0, y1);
+      return b.length >= 3 ? b : null;
+    });
+    perSet.set(key, clipped);
+  }
+  return clipped;
+}
+
 /** Immersed volume and centre of buoyancy at a given attitude. */
 export function buoyancyAt(
   polys: P2[][],
   xs: number[],
   att: Attitude,
-  damage?: DamageCase,
+  damage?: DamageInput,
 ): Buoyancy {
   const u = verticalInShip(att.phi, att.theta);
+  const zones = normalizeDamage(damage);
+  const zoneClips = zones.map((z) =>
+    z.y0 !== undefined && z.y1 !== undefined ? zonePolys(polys, z.y0, z.y1) : null,
+  );
   const areas: number[] = new Array(xs.length);
   const my: number[] = new Array(xs.length);
   const mz: number[] = new Array(xs.length);
   for (let i = 0; i < xs.length; i++) {
-    const s = immersedSection(polys[i], u.y, u.z, att.c - u.x * xs[i]);
-    const f = damageFactor(xs[i], damage);
-    areas[i] = s.area * f;
-    my[i] = s.area * f * s.cy;
-    mz[i] = s.area * f * s.cz;
+    const cAt = att.c - u.x * xs[i];
+    const s = immersedSection(polys[i], u.y, u.z, cAt);
+    let area = s.area;
+    let m2 = s.area * s.cy;
+    let m3 = s.area * s.cz;
+    for (let k = 0; k < zones.length; k++) {
+      const z = zones[k];
+      if (xs[i] < z.x0 - 1e-9 || xs[i] > z.x1 + 1e-9) continue;
+      const mu = Math.min(1, Math.max(0, z.permeability));
+      const clip = zoneClips[k];
+      const part = clip
+        ? (clip[i] ? immersedSection(clip[i]!, u.y, u.z, cAt) : { area: 0, cy: 0, cz: 0 })
+        : s;
+      area -= mu * part.area;
+      m2 -= mu * part.area * part.cy;
+      m3 -= mu * part.area * part.cz;
+    }
+    areas[i] = area;
+    my[i] = m2;
+    mz[i] = m3;
   }
   const volume = integrateSamples(xs, areas);
   if (volume <= 0) return { volume: 0, bx: 0, by: 0, bz: 0 };

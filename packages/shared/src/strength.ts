@@ -112,7 +112,7 @@ export function computeStrength(hull: HullGeometry, input: L1Input): StrengthRes
   }
   const footprint = L / 20;
   for (const w of input.extraWeights ?? []) {
-    addUniform(w.mass, w.x - footprint / 2, w.x + footprint / 2);
+    addUniform(w.mass, w.x0 ?? w.x - footprint / 2, w.x1 ?? w.x + footprint / 2);
   }
 
   // ---- buoyancy distribution at the solved attitude ------------------------

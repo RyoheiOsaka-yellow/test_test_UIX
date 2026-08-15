@@ -10,3 +10,5 @@ export * from './demoVessel.js';
 export * from './strength.js';
 export * from './crossCurves.js';
 export * from './weather.js';
+export * from './classRules.js';
+export * from './freeboard.js';

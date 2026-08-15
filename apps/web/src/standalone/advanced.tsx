@@ -4,7 +4,14 @@
  */
 
 import { useState } from 'react';
-import type { GzPoint, KnCurve, StrengthResult, WeatherResult } from '@dock/shared';
+import {
+  bendingDistribution,
+  shearDistribution,
+  type GzPoint,
+  type KnCurve,
+  type StrengthResult,
+  type WeatherResult,
+} from '@dock/shared';
 import { fmt } from './charts.js';
 
 const M = { l: 56, r: 18, t: 16, b: 26 };
@@ -20,15 +27,20 @@ function niceStep(range: number): number {
 // Longitudinal strength — three stacked panels sharing the x axis
 // ---------------------------------------------------------------------------
 
-export function StrengthCharts(props: { result: StrengthResult; lpp: number }) {
-  const { result, lpp } = props;
+export function StrengthCharts(props: {
+  result: StrengthResult;
+  lpp: number;
+  /** class-rule permissible values; drawn as dashed limit curves when given */
+  envelope?: { permHog: number; permSag: number; permShear: number };
+}) {
+  const { result, lpp, envelope } = props;
   const xs = result.stations.map((s) => s.x);
   const W = 860;
 
   const panel = (
     title: string,
     unit: string,
-    series: { label: string; values: number[]; cls: string }[],
+    series: { label: string; values: number[]; cls: string; dashed?: boolean }[],
     H: number,
     shadeZero = false,
   ) => {
@@ -71,15 +83,21 @@ export function StrengthCharts(props: { result: StrengthResult; lpp: number }) {
             ))}
             <line x1={M.l} y1={py(0)} x2={W - M.r} y2={py(0)} className="axis" />
             {shadeZero &&
-              series.map((s) => (
-                <path
-                  key={`a${s.label}`}
-                  d={`${path(s.values)} L${px(lpp).toFixed(1)},${py(0).toFixed(1)} L${px(0).toFixed(1)},${py(0).toFixed(1)} Z`}
-                  className={`fill-${s.cls}`}
-                />
-              ))}
+              series
+                .filter((s) => !s.dashed)
+                .map((s) => (
+                  <path
+                    key={`a${s.label}`}
+                    d={`${path(s.values)} L${px(lpp).toFixed(1)},${py(0).toFixed(1)} L${px(0).toFixed(1)},${py(0).toFixed(1)} Z`}
+                    className={`fill-${s.cls}`}
+                  />
+                ))}
             {series.map((s) => (
-              <path key={s.label} d={path(s.values)} className={`sline ${s.cls}`} />
+              <path
+                key={s.label}
+                d={path(s.values)}
+                className={`sline ${s.cls}${s.dashed ? ' limit' : ''}`}
+              />
             ))}
             <text x={M.l} y={H - 8} className="tick">AP</text>
             <text x={W - M.r} y={H - 8} className="tick" textAnchor="end">FP</text>
@@ -88,6 +106,23 @@ export function StrengthCharts(props: { result: StrengthResult; lpp: number }) {
       </figure>
     );
   };
+
+  const shearSeries: { label: string; values: number[]; cls: string; dashed?: boolean }[] = [
+    { label: 'Q', values: result.stations.map((s) => s.shear), cls: 'q' },
+  ];
+  const momentSeries: { label: string; values: number[]; cls: string; dashed?: boolean }[] = [
+    { label: 'M', values: result.stations.map((s) => s.moment), cls: 'm' },
+  ];
+  if (envelope) {
+    shearSeries.push(
+      { label: '許容+', values: xs.map((x) => envelope.permShear * shearDistribution(x, lpp)), cls: 'lim', dashed: true },
+      { label: '許容−', values: xs.map((x) => -envelope.permShear * shearDistribution(x, lpp)), cls: 'lim', dashed: true },
+    );
+    momentSeries.push(
+      { label: '許容サギング', values: xs.map((x) => envelope.permSag * bendingDistribution(x, lpp)), cls: 'lim', dashed: true },
+      { label: '許容ホギング', values: xs.map((x) => -envelope.permHog * bendingDistribution(x, lpp)), cls: 'lim', dashed: true },
+    );
+  }
 
   return (
     <>
@@ -100,12 +135,14 @@ export function StrengthCharts(props: { result: StrengthResult; lpp: number }) {
         ],
         200,
       )}
-      {panel('せん断力 Q(x)', 't', [
-        { label: 'Q', values: result.stations.map((s) => s.shear), cls: 'q' },
-      ], 180, true)}
-      {panel('曲げモーメント M(x) — サギング正', 't·m', [
-        { label: 'M', values: result.stations.map((s) => s.moment), cls: 'm' },
-      ], 200, true)}
+      {panel('せん断力 Q(x)' + (envelope ? ' と許容包絡線' : ''), 't', shearSeries, 190, true)}
+      {panel(
+        '曲げモーメント M(x) — サギング正' + (envelope ? ' と許容包絡線' : ''),
+        't·m',
+        momentSeries,
+        210,
+        true,
+      )}
     </>
   );
 }

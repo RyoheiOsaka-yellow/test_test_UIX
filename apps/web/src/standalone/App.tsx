@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  checkEnvelope,
   computeHydrostatics,
   tankState,
   type KnCurve,
@@ -19,21 +20,39 @@ import {
 } from '../scene.js';
 import {
   envelopeIssues,
+  hasAsymmetricZone,
   initialModel,
   inspectHeel,
+  ruleDefaults,
   runDamage,
+  runFreeboardCalc,
   runKnCurves,
   runL0,
   runStability,
   runStrengthCalc,
   runWeather,
+  withCrossFlooding,
   withTank,
+  zonesForSpaces,
   type Model,
 } from './store.js';
+import {
+  applyCondition,
+  cargoAsWeights,
+  evaluateCondition,
+  loadSavedConditions,
+  persistConditions,
+  presetConditions,
+  snapshotCondition,
+  type ConditionRow,
+  type LoadingCondition,
+} from './conditions.js';
 import { DisplacementChart, GzChart, StatTile, fmt, hydroTiles } from './charts.js';
 import { BodyPlan, ProfileAndPlan, computeLines } from './lines.js';
 import { HydroTable, LoadingTable } from './tables.js';
 import { GzOverlay, KnChart, StrengthCharts, WeatherFigure } from './advanced.js';
+import { ComparisonTable, ConditionManager } from './conditionsPanel.js';
+import { FreeboardBreakdown, LoadLineMark } from './freeboardPanel.js';
 import { ReportDoc } from './report.js';
 
 type Module =
@@ -43,6 +62,7 @@ type Module =
   | 'stability'
   | 'strength'
   | 'damage'
+  | 'freeboard'
   | 'loading'
   | 'report';
 
@@ -53,6 +73,7 @@ const MODULES: { id: Module; label: string }[] = [
   { id: 'stability', label: '復原性' },
   { id: 'strength', label: '縦強度' },
   { id: 'damage', label: '損傷時' },
+  { id: 'freeboard', label: '乾舷' },
   { id: 'loading', label: '積付' },
   { id: 'report', label: '帳票' },
 ];
@@ -104,22 +125,35 @@ export default function App() {
   const [inspect, setInspect] = useState<number | null>(null);
   const [strength, setStrength] = useState<StrengthResult | null>(null);
   const [strengthBusy, setStrengthBusy] = useState(false);
-  const [dmgZone, setDmgZone] = useState<{ compId: string; permeability: number }>({
-    compId: 'comp:CH1',
-    permeability: 0.7,
-  });
+  /** flooded spaces (compartment/tank ids), permeability, cross-flood toggle */
+  const [dmgSel, setDmgSel] = useState<string[]>(['comp:CH1']);
+  const [dmgMu, setDmgMu] = useState(0.7);
+  const [crossFlood, setCrossFlood] = useState(true);
   const [dmgResult, setDmgResult] = useState<L1Result | null>(null);
+  /** pre-equalization state, shown when cross-flooding applies */
+  const [dmgPre, setDmgPre] = useState<L1Result | null>(null);
   const [dmgBusy, setDmgBusy] = useState(false);
+  // class-rule permissible values (editable, prefilled from UR S7/S11 defaults)
+  const [perms, setPerms] = useState(() => {
+    const env = ruleDefaults(initialModel());
+    return { permHog: env.mPermHog, permSag: env.mPermSag, permShear: env.qPerm };
+  });
+  const [conditions, setConditions] = useState<LoadingCondition[]>(() => [
+    ...presetConditions(initialModel()),
+    ...loadSavedConditions(),
+  ]);
+  const [activeCondId, setActiveCondId] = useState<string | null>(null);
+  const [storageOk, setStorageOk] = useState(true);
+  const [cmpRows, setCmpRows] = useState<ConditionRow[] | null>(null);
+  const [cmpBusy, setCmpBusy] = useState(false);
 
   const modelRef = useRef(model);
   modelRef.current = model;
 
   const cargoWeights = useMemo(
-    (): WeightItem[] =>
-      cargo.mass > 0
-        ? [{ id: 'cargo:hold', name: '貨物', mass: cargo.mass, x: cargo.x, y: 0, z: cargo.z }]
-        : [],
-    [cargo],
+    (): WeightItem[] => cargoAsWeights(modelRef.current, cargo),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cargo, model],
   );
 
   // ---- three.js ------------------------------------------------------------
@@ -276,18 +310,20 @@ export default function App() {
   const computeDamage = useCallback(() => {
     setDmgBusy(true);
     setDmgResult(null);
+    setDmgPre(null);
     window.setTimeout(() => {
       try {
-        const comp = modelRef.current.entities.find((e) => e.id === dmgZone.compId);
-        const data = comp?.data as { x0: number; x1: number } | undefined;
-        if (!data) throw new Error('浸水区画が見つかりません');
-        setDmgResult(
-          runDamage(modelRef.current, cargoWeights, {
-            x0: data.x0,
-            x1: data.x1,
-            permeability: dmgZone.permeability,
-          }),
-        );
+        const zones = zonesForSpaces(modelRef.current, dmgSel, dmgMu);
+        if (!zones.length) throw new Error('浸水させる区画・タンクを選択してください');
+        if (crossFlood && hasAsymmetricZone(zones)) {
+          // pre-equalization first, then the equalized state that stands
+          setDmgPre(runDamage(modelRef.current, cargoWeights, zones));
+          setDmgResult(
+            runDamage(modelRef.current, cargoWeights, withCrossFlooding(zones)),
+          );
+        } else {
+          setDmgResult(runDamage(modelRef.current, cargoWeights, zones));
+        }
         setIssue(null);
       } catch (err) {
         setIssue(err instanceof Error ? err.message : String(err));
@@ -295,7 +331,70 @@ export default function App() {
         setDmgBusy(false);
       }
     }, 40);
-  }, [cargoWeights, dmgZone]);
+  }, [cargoWeights, dmgSel, dmgMu, crossFlood]);
+
+  // ---- loading conditions --------------------------------------------------
+  const applyCond = useCallback((c: LoadingCondition) => {
+    setModel((m) => applyCondition(m, c));
+    setCargo(c.cargo);
+    setActiveCondId(c.id);
+  }, []);
+
+  const saveCond = useCallback(
+    (name: string) => {
+      const snap = snapshotCondition(modelRef.current, cargo, name);
+      setConditions((prev) => {
+        const next = [...prev, snap];
+        setStorageOk(persistConditions(next));
+        return next;
+      });
+      setActiveCondId(snap.id);
+    },
+    [cargo],
+  );
+
+  const deleteCond = useCallback((id: string) => {
+    setConditions((prev) => {
+      const next = prev.filter((c) => c.id !== id);
+      setStorageOk(persistConditions(next));
+      return next;
+    });
+    setActiveCondId((cur) => (cur === id ? null : cur));
+  }, []);
+
+  const freeboard = useMemo(() => {
+    try {
+      return runFreeboardCalc(model);
+    } catch {
+      return null; // hull outside the embedded Type B table range
+    }
+  }, [model]);
+
+  const compareAll = useCallback(() => {
+    setCmpBusy(true);
+    setCmpRows(null);
+    // evaluate sequentially so the UI can breathe between conditions
+    const conds = [...conditions];
+    const rows: ConditionRow[] = [];
+    const step = (i: number) => {
+      if (i >= conds.length) {
+        setCmpRows(rows);
+        setCmpBusy(false);
+        return;
+      }
+      window.setTimeout(() => {
+        try {
+          rows.push(
+            evaluateCondition(modelRef.current, conds[i], perms, freeboard?.summerDraft ?? null),
+          );
+        } catch (err) {
+          setIssue(`条件「${conds[i].name}」の評価に失敗: ${err instanceof Error ? err.message : err}`);
+        }
+        step(i + 1);
+      }, 30);
+    };
+    step(0);
+  }, [conditions, perms, freeboard]);
 
   // a model or loading-condition change invalidates everything derived from it
   // (KN excepted on cargo changes: it is a hull property, independent of loading)
@@ -304,7 +403,9 @@ export default function App() {
     setWeather(null);
     setStrength(null);
     setDmgResult(null);
+    setDmgPre(null);
     setInspect(null);
+    setCmpRows(null);
   }, [model, cargoWeights]);
 
   useEffect(() => {
@@ -347,7 +448,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [module, stability, inspect]);
 
-  // flooded-zone visual in the damage module
+  // flooded-zone visuals in the damage module
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
@@ -355,9 +456,11 @@ export default function App() {
       scene.setDamageZone(null);
       return;
     }
-    const comp = model.entities.find((e) => e.id === dmgZone.compId);
-    const data = comp?.data as { x0: number; x1: number } | undefined;
-    scene.setDamageZone(data ? { x0: data.x0, x1: data.x1 } : null);
+    let zones = zonesForSpaces(model, dmgSel, dmgMu);
+    if (crossFlood && hasAsymmetricZone(zones) && dmgResult) {
+      zones = withCrossFlooding(zones);
+    }
+    scene.setDamageZone(zones);
     if (dmgResult) {
       const e = dmgResult.equilibrium;
       scene.setWaterAttitude({
@@ -366,15 +469,24 @@ export default function App() {
         waterlineConstant: e.waterlineConstant,
       });
     }
-  }, [module, dmgZone, dmgResult, model]);
+  }, [module, dmgSel, dmgMu, crossFlood, dmgResult, model]);
 
   const selected = selectedId ? model.tanks.find((t) => t.id === selectedId) ?? null : null;
   const p = model.vessel.principal;
   const showViewport = module !== 'lines' && module !== 'report';
-  const compartments = model.entities.filter((e) => e.kind === 'compartment');
-  const dmgLabel =
-    (compartments.find((c) => c.id === dmgZone.compId)?.data as { name?: string })?.name ??
-    dmgZone.compId;
+  const floodableSpaces = model.entities.filter(
+    (e) => e.kind === 'compartment' || e.kind === 'tank',
+  );
+  const dmgLabel = dmgSel
+    .map((id) => {
+      const e = model.entities.find((x) => x.id === id);
+      return (e?.data as { name?: string })?.name ?? id;
+    })
+    .join('、');
+  const strengthEnvelopeCheck =
+    strength && checkEnvelope(strength.stations, p.lpp, perms.permHog, perms.permSag, perms.permShear);
+  const activeCondName =
+    conditions.find((c) => c.id === activeCondId)?.name ?? '手動条件';
 
   const cargoFields = (
     <div className="fields">
@@ -537,15 +649,22 @@ export default function App() {
             <div className="lines-board">
               <ReportDoc
                 model={model}
+                conditionName={activeCondName}
                 cargo={cargoWeights}
                 stability={stability}
                 weather={weather}
                 strength={strength}
+                envelope={
+                  strengthEnvelopeCheck
+                    ? { check: strengthEnvelopeCheck, ...perms }
+                    : null
+                }
+                freeboard={freeboard}
                 damage={
                   dmgResult
                     ? {
                         zoneLabel: dmgLabel,
-                        permeability: dmgZone.permeability,
+                        permeability: dmgMu,
                         result: dmgResult,
                       }
                     : null
@@ -792,41 +911,210 @@ export default function App() {
             </section>
           )}
 
+          {module === 'strength' && (
+            <section className="card">
+              <h2>許容値(クラス規則系)</h2>
+              <div className="fields perm-fields">
+                <label>
+                  <span>許容サギング</span>
+                  <input
+                    type="number" step={500}
+                    value={perms.permSag}
+                    onChange={(e) => setPerms({ ...perms, permSag: Number(e.target.value) })}
+                  />
+                  <em>t·m</em>
+                </label>
+                <label>
+                  <span>許容ホギング</span>
+                  <input
+                    type="number" step={500}
+                    value={perms.permHog}
+                    onChange={(e) => setPerms({ ...perms, permHog: Number(e.target.value) })}
+                  />
+                  <em>t·m</em>
+                </label>
+                <label>
+                  <span>許容せん断力</span>
+                  <input
+                    type="number" step={50}
+                    value={perms.permShear}
+                    onChange={(e) => setPerms({ ...perms, permShear: Number(e.target.value) })}
+                  />
+                  <em>t</em>
+                </label>
+              </div>
+              <button
+                className="seg"
+                onClick={() => {
+                  const env = ruleDefaults(modelRef.current);
+                  setPerms({ permHog: env.mPermHog, permSag: env.mPermSag, permShear: env.qPerm });
+                }}
+              >
+                UR S7/S11 既定値に戻す
+              </button>
+              {strengthEnvelopeCheck && (
+                <>
+                  <div className={`verdict ${strengthEnvelopeCheck.passed ? 'ok' : 'bad'}`}>
+                    <span className="verdict-mark" aria-hidden="true">
+                      {strengthEnvelopeCheck.passed ? '✓' : '✗'}
+                    </span>
+                    <span>許容包絡線 {strengthEnvelopeCheck.passed ? '内' : '超過'}</span>
+                  </div>
+                  <div className="stats">
+                    <StatTile
+                      label="サギング利用率"
+                      value={fmt(strengthEnvelopeCheck.saggingUtil * 100, 0)}
+                      unit="%"
+                      tone={strengthEnvelopeCheck.saggingUtil <= 1 ? 'ok' : 'bad'}
+                    />
+                    <StatTile
+                      label="ホギング利用率"
+                      value={fmt(strengthEnvelopeCheck.hoggingUtil * 100, 0)}
+                      unit="%"
+                      tone={strengthEnvelopeCheck.hoggingUtil <= 1 ? 'ok' : 'bad'}
+                    />
+                    <StatTile
+                      label="せん断利用率"
+                      value={fmt(strengthEnvelopeCheck.shearUtil * 100, 0)}
+                      unit="%"
+                      tone={strengthEnvelopeCheck.shearUtil <= 1 ? 'ok' : 'bad'}
+                    />
+                    <StatTile
+                      label="最悪位置"
+                      value={fmt(strengthEnvelopeCheck.worstMomentX, 1)}
+                      unit="m"
+                    />
+                  </div>
+                </>
+              )}
+              <p className="muted">
+                既定値は IACS UR S7/S11 の波浪荷重と最小断面係数から導出
+                (船体桁が規則最小要求で設計されたと仮定)。承認済み積付マニュアルの
+                値があればここで上書きします。
+              </p>
+            </section>
+          )}
+
+          {module === 'freeboard' && freeboard && (
+            <section className="card">
+              <h2>乾舷と満載喫水線</h2>
+              <div className="stats">
+                <StatTile
+                  label="夏期乾舷"
+                  value={fmt(freeboard.summerFreeboard, 3)}
+                  unit="m"
+                  emphasis
+                />
+                <StatTile
+                  label="夏期満載喫水"
+                  value={fmt(freeboard.summerDraft, 3)}
+                  unit="m"
+                  emphasis
+                />
+                <StatTile label="熱帯" value={fmt(freeboard.tropicalDraft, 3)} unit="m" />
+                <StatTile label="冬期" value={fmt(freeboard.winterDraft, 3)} unit="m" />
+                <StatTile
+                  label="FWA"
+                  value={freeboard.fwa === null ? '—' : String(freeboard.fwa)}
+                  unit="mm"
+                />
+                <StatTile
+                  label="船首高さ"
+                  value={fmt(freeboard.bowHeightActual, 2)}
+                  unit="m"
+                  tone={freeboard.bowHeightPassed ? 'ok' : 'bad'}
+                />
+              </div>
+              {stability && (
+                <div
+                  className={`verdict ${
+                    stability.equilibrium.draftMean <= freeboard.summerDraft ? 'ok' : 'bad'
+                  }`}
+                >
+                  <span className="verdict-mark" aria-hidden="true">
+                    {stability.equilibrium.draftMean <= freeboard.summerDraft ? '✓' : '✗'}
+                  </span>
+                  <span>
+                    現条件 {fmt(stability.equilibrium.draftMean, 3)} m —{' '}
+                    {stability.equilibrium.draftMean <= freeboard.summerDraft
+                      ? `余裕 ${fmt(freeboard.summerDraft - stability.equilibrium.draftMean, 3)} m`
+                      : `過積載 ${fmt(stability.equilibrium.draftMean - freeboard.summerDraft, 3)} m`}
+                  </span>
+                </div>
+              )}
+              {!stability && (
+                <p className="muted">
+                  現条件との照合には「復原性」モジュールで釣合を解いてください。
+                </p>
+              )}
+            </section>
+          )}
+
           {module === 'damage' && (
             <section className="card">
               <h2>損傷時復原性 — 喪失浮力法</h2>
-              <div className="fields dmg-fields">
-                <label className="wide">
-                  <span>浸水区画</span>
-                  <select
-                    value={dmgZone.compId}
-                    onChange={(e) => setDmgZone({ ...dmgZone, compId: e.target.value })}
-                  >
-                    {compartments.map((c) => {
-                      const d = c.data as { name: string; x0: number; x1: number };
-                      return (
-                        <option key={c.id} value={c.id}>
-                          {d.name}(x {d.x0}–{d.x1} m)
-                        </option>
-                      );
-                    })}
-                  </select>
-                </label>
+              <div className="space-list" role="group" aria-label="浸水させる区画・タンク">
+                {floodableSpaces.map((e) => {
+                  const d = e.data as { name: string; x0: number; x1: number; y0?: number };
+                  const isTank = e.kind === 'tank';
+                  const on = dmgSel.includes(e.id);
+                  return (
+                    <label key={e.id} className={`space-row${on ? ' on' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={(ev) =>
+                          setDmgSel((prev) =>
+                            ev.target.checked
+                              ? [...prev, e.id]
+                              : prev.filter((x) => x !== e.id),
+                          )
+                        }
+                      />
+                      <span className="space-name">
+                        {d.name}
+                        {isTank && <em className="wing-tag">舷側</em>}
+                      </span>
+                      <span className="space-extent num">
+                        x {d.x0}–{d.x1}
+                      </span>
+                    </label>
+                  );
+                })}
               </div>
               <label className="slider">
                 <span className="slider-head">
                   <span>浸水率 μ</span>
-                  <b className="num">{fmt(dmgZone.permeability * 100, 0)}%</b>
+                  <b className="num">{fmt(dmgMu * 100, 0)}%</b>
                 </span>
                 <input
                   type="range" min={0.4} max={1} step={0.05}
-                  value={dmgZone.permeability}
-                  onChange={(e) => setDmgZone({ ...dmgZone, permeability: Number(e.target.value) })}
+                  value={dmgMu}
+                  onChange={(e) => setDmgMu(Number(e.target.value))}
                 />
+              </label>
+              <label className="clip-toggle">
+                <input
+                  type="checkbox"
+                  checked={crossFlood}
+                  onChange={(e) => setCrossFlood(e.target.checked)}
+                />
+                <span>クロスフラッディング(左右均圧管で対称化)</span>
               </label>
               <button className="solve" onClick={computeDamage} disabled={dmgBusy}>
                 {dmgBusy ? '解いています…' : '損傷時釣合を解く'}
               </button>
+              {dmgPre && dmgResult && (
+                <div className="equalize-note">
+                  <span className="tag">均圧効果</span>
+                  <span className="num">
+                    横傾斜 {fmt(dmgPre.equilibrium.heelDeg, 1)}° → {fmt(dmgResult.equilibrium.heelDeg, 1)}°
+                  </span>
+                  <span className="num muted-inline">
+                    (平均喫水 {fmt(dmgPre.equilibrium.draftMean, 2)} → {fmt(dmgResult.equilibrium.draftMean, 2)} m)
+                  </span>
+                </div>
+              )}
               {dmgResult && (
                 <>
                   <div className={`verdict ${dmgResult.gm0 > 0.05 && dmgResult.gzMax > 0.1 ? 'ok' : 'bad'}`}>
@@ -875,14 +1163,26 @@ export default function App() {
           )}
 
           {module === 'loading' && (
-            <section className="card">
-              <h2>貨物(積付条件)</h2>
-              {cargoFields}
-              <p className="muted">
-                タンクの充填率は「設計」モジュールで変更します。ここで組んだ積付
-                条件は「復原性」の釣合解にそのまま使われます。
-              </p>
-            </section>
+            <>
+              <ConditionManager
+                conditions={conditions}
+                activeId={activeCondId}
+                busy={cmpBusy}
+                storageOk={storageOk}
+                onApply={applyCond}
+                onSaveCurrent={saveCond}
+                onDelete={deleteCond}
+                onCompare={compareAll}
+              />
+              <section className="card">
+                <h2>貨物</h2>
+                {cargoFields}
+                <p className="muted">
+                  タンクの充填率は「設計」モジュール、または上の条件の適用で
+                  変わります。ここで組んだ条件が全モジュールの解析に使われます。
+                </p>
+              </section>
+            </>
           )}
         </aside>
       </div>
@@ -960,7 +1260,17 @@ export default function App() {
       )}
       {module === 'strength' && strength && (
         <div className="detail strength-detail">
-          <StrengthCharts result={strength} lpp={p.lpp} />
+          <StrengthCharts result={strength} lpp={p.lpp} envelope={perms} />
+        </div>
+      )}
+      {module === 'freeboard' && freeboard && (
+        <div className="detail">
+          <LoadLineMark
+            fb={freeboard}
+            depth={p.depth}
+            currentDraft={stability?.equilibrium.draftMean ?? null}
+          />
+          <FreeboardBreakdown fb={freeboard} />
         </div>
       )}
       {module === 'damage' && dmgResult && (
@@ -969,18 +1279,19 @@ export default function App() {
           <section className="card">
             <h2>損傷時判定の考え方</h2>
             <p className="muted">
-              浸水区画「{dmgLabel}」を浸水率 μ = {fmt(dmgZone.permeability * 100, 0)}% で
-              解放し、喪失浮力法で釣合を解き直しました。喫水は増加し、水線面の喪失により
-              GM は低下します。重ね描きした非損傷時曲線(復原性モジュールで計算)との差が
-              損傷の影響です。参考判定は SOLAS 系の残存復原性の目安
-              (GM &gt; 0.05 m・GZmax &gt; 0.1 m)であり、正式な区画基準の適用は
-              対象船種の規則によります。
+              浸水区画「{dmgLabel}」を浸水率 μ = {fmt(dmgMu * 100, 0)}% で解放し、
+              喪失浮力法で釣合を解き直しました。舷側タンクの浸水は非対称で、船は損傷側へ
+              傾斜します。クロスフラッディングを有効にすると均圧管で左右対称化された
+              最終状態を解き、均圧前後の横傾斜を併記します。参考判定は SOLAS 系の
+              残存復原性の目安(GM &gt; 0.05 m・GZmax &gt; 0.1 m)であり、正式な
+              区画基準の適用は対象船種の規則によります。
             </p>
           </section>
         </div>
       )}
       {module === 'loading' && (
         <div className="detail">
+          {cmpRows && <ComparisonTable rows={cmpRows} summerDraft={freeboard?.summerDraft ?? null} />}
           <LoadingTable model={model} cargo={cargoWeights} />
         </div>
       )}

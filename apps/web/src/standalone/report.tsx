@@ -3,7 +3,14 @@
  * printing swaps to a light, ink-on-paper stylesheet (see @media print).
  */
 
-import type { L1Result, StrengthResult, WeatherResult, WeightItem } from '@dock/shared';
+import type {
+  EnvelopeCheck,
+  FreeboardResult,
+  L1Result,
+  StrengthResult,
+  WeatherResult,
+  WeightItem,
+} from '@dock/shared';
 import { fmt } from './charts.js';
 import { GzChart } from './charts.js';
 import { LoadingTable } from './tables.js';
@@ -12,14 +19,17 @@ import type { Model } from './store.js';
 
 export function ReportDoc(props: {
   model: Model;
+  conditionName: string;
   cargo: WeightItem[];
   stability: L1Result | null;
   weather: WeatherResult | null;
   strength: StrengthResult | null;
+  envelope: { check: EnvelopeCheck; permHog: number; permSag: number; permShear: number } | null;
+  freeboard: FreeboardResult | null;
   damage: { zoneLabel: string; permeability: number; result: L1Result } | null;
   onPrint: () => void;
 }) {
-  const { model, stability, weather, strength, damage } = props;
+  const { model, stability, weather, strength, envelope, freeboard, damage } = props;
   const p = model.vessel.principal;
   const today = new Date().toLocaleDateString('ja-JP', {
     year: 'numeric', month: 'long', day: 'numeric',
@@ -32,7 +42,8 @@ export function ReportDoc(props: {
           <p className="report-eyebrow">復原性・縦強度計算書</p>
           <h2 className="report-title">{model.vessel.name}</h2>
           <p className="report-meta">
-            Digital Dock v12 により作成 · {today} · 海水密度 ρ = {model.vessel.rhoWater} t/m³
+            積付条件: {props.conditionName} · Digital Dock v12 により作成 · {today} ·
+            海水密度 ρ = {model.vessel.rhoWater} t/m³
           </p>
         </div>
         <button className="solve print-btn" onClick={props.onPrint}>
@@ -147,10 +158,74 @@ export function ReportDoc(props: {
               </tr>
             </tbody>
           </table>
+          {envelope && (
+            <table className="eng report-table">
+              <tbody>
+                <tr>
+                  <td className="txt">許容包絡線(サギング / ホギング / せん断)</td>
+                  <td>
+                    {fmt(envelope.permSag, 0)} / {fmt(envelope.permHog, 0)} t·m ·{' '}
+                    {fmt(envelope.permShear, 0)} t
+                  </td>
+                  <td className="txt">利用率(最悪)</td>
+                  <td className={envelope.check.passed ? 'v-ok' : 'v-bad'}>
+                    {fmt(
+                      Math.max(
+                        envelope.check.saggingUtil,
+                        envelope.check.hoggingUtil,
+                        envelope.check.shearUtil,
+                      ) * 100, 0,
+                    )}
+                    % — {envelope.check.passed ? '包絡線内' : '超過'}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          )}
           <p className="report-note">
             軽荷重量は全長台形分布(質量・LCG 厳密一致)、タンク液は各タンク範囲に均等分布、
             貨物は Lpp/20 の設置幅で分布。浮力は自由トリム釣合姿勢での断面積分布。
+            許容値は IACS UR S7/S11 系の既定値(編集可)。
           </p>
+        </section>
+      )}
+
+      {freeboard && (
+        <section className="report-sec">
+          <h3>{damage ? '7' : '6'}. 乾舷(ILLC 1966 · Type B)</h3>
+          <table className="eng report-table">
+            <tbody>
+              <tr>
+                <td className="txt">夏期乾舷 / 夏期満載喫水</td>
+                <td>{fmt(freeboard.summerFreeboard, 3)} / {fmt(freeboard.summerDraft, 3)} m</td>
+                <td className="txt">熱帯 / 冬期喫水</td>
+                <td>{fmt(freeboard.tropicalDraft, 3)} / {fmt(freeboard.winterDraft, 3)} m</td>
+              </tr>
+              <tr>
+                <td className="txt">淡水許容量 FWA</td>
+                <td>{freeboard.fwa === null ? '—' : `${freeboard.fwa} mm`}</td>
+                <td className="txt">船首高さ(実 / 要求)</td>
+                <td className={freeboard.bowHeightPassed ? 'v-ok' : 'v-bad'}>
+                  {fmt(freeboard.bowHeightActual, 2)} / {fmt(freeboard.bowHeightRequired, 2)} m —{' '}
+                  {freeboard.bowHeightPassed ? '適合' : '不適合'}
+                </td>
+              </tr>
+              {stability && (
+                <tr>
+                  <td className="txt">現条件平均喫水</td>
+                  <td>{fmt(stability.equilibrium.draftMean, 3)} m</td>
+                  <td className="txt">夏期満載までの余裕</td>
+                  <td
+                    className={
+                      stability.equilibrium.draftMean <= freeboard.summerDraft ? 'v-ok' : 'v-bad'
+                    }
+                  >
+                    {fmt(freeboard.summerDraft - stability.equilibrium.draftMean, 3)} m
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </section>
       )}
 
