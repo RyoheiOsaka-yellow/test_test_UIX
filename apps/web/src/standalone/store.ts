@@ -15,16 +15,24 @@ import {
   defaultHeelAngles,
   defaultKnDisplacements,
   demoEntities,
+  evaluateGrain,
+  evaluateSubdivision,
   evaluateWeather,
   ruleEnvelope,
   runL1,
+  simulateFlooding,
   solveAtHeel,
   tankState,
   weightsAt,
   type DamageInput,
   type Entity,
   type EquilibriumState,
+  type FloodSpace,
+  type FloodingResult,
+  type FloodingScenario,
   type FreeboardResult,
+  type GrainHold,
+  type GrainResult,
   type HullEntityData,
   type HydroResult,
   type KnCurve,
@@ -32,6 +40,8 @@ import {
   type L1Result,
   type RuleEnvelope,
   type StrengthResult,
+  type SubdivisionResult,
+  type SubdivisionZone,
   type TankEntityData,
   type VesselEntityData,
   type WeatherResult,
@@ -284,6 +294,141 @@ export function hasAsymmetricZone(zones: DamageZone[]): boolean {
   return zones.some(
     (z) => z.y0 !== undefined && z.y1 !== undefined && Math.abs(z.y0 + z.y1) > 1e-9,
   );
+}
+
+// ---- regulatory extensions -------------------------------------------------
+
+/** Grain surfaces of the cargo holds (full-beam rectangles in this model). */
+export function grainHoldsOf(model: Model, partlyFilledIds: string[]): GrainHold[] {
+  return model.entities
+    .filter((e) => e.kind === 'compartment' && (e.data as { purpose?: string }).purpose === 'cargo')
+    .map((e) => {
+      const d = e.data as { name: string; x0: number; x1: number };
+      return {
+        id: e.id,
+        name: d.name,
+        length: d.x1 - d.x0,
+        breadth: model.vessel.principal.beam,
+        partlyFilled: partlyFilledIds.includes(e.id),
+      };
+    });
+}
+
+export function runGrain(
+  model: Model,
+  l1: L1Result,
+  partlyFilledIds: string[],
+  stowageFactor: number,
+): GrainResult {
+  return evaluateGrain({
+    holds: grainHoldsOf(model, partlyFilledIds),
+    stowageFactor,
+    displacement: l1.equilibrium.displacement,
+    gz: l1.gz,
+    gm0: l1.gm0,
+    floodingAngleDeg: l1.floodingAngleDeg,
+    deckImmersionAngleDeg: l1.deckImmersionAngleDeg,
+  });
+}
+
+/** Watertight zones for the subdivision index: peaks + compartments. */
+export function subdivisionZonesOf(model: Model): SubdivisionZone[] {
+  const lpp = model.vessel.principal.lpp;
+  const comps = model.entities
+    .filter((e) => e.kind === 'compartment')
+    .map((e) => e.data as { name: string; x0: number; x1: number; purpose?: string })
+    .sort((a, b) => a.x0 - b.x0);
+  const zones: SubdivisionZone[] = [];
+  const first = comps[0]?.x0 ?? lpp / 3;
+  if (first > 0.5) {
+    zones.push({ id: 'zone:apt', name: '船尾ピーク', x0: 0, x1: first, permeability: 0.95 });
+  }
+  for (const c of comps) {
+    zones.push({
+      id: `zone:${c.name}`,
+      name: c.name,
+      x0: c.x0,
+      x1: c.x1,
+      permeability: c.purpose === 'machinery' ? 0.85 : 0.7,
+    });
+  }
+  const last = comps[comps.length - 1]?.x1 ?? (2 * lpp) / 3;
+  if (last < lpp - 0.5) {
+    zones.push({ id: 'zone:fpt', name: '船首ピーク', x0: last, x1: lpp, permeability: 0.95 });
+  }
+  return zones;
+}
+
+export function runSubdivision(model: Model, extraWeights: WeightItem[]): SubdivisionResult {
+  const zones = subdivisionZonesOf(model);
+  return evaluateSubdivision(model.vessel.principal.lpp, zones, {
+    solveDamage: (damage) =>
+      runL1(model.hull.geometry, l1InputOf(model, extraWeights, damage), {
+        heelAngles: defaultHeelAngles(40, 5),
+      }),
+    floodingAngleDeg: 40,
+  });
+}
+
+/** Wing tanks that can host a breach (they have a mirrored partner). */
+export function breachableTanks(model: Model): { id: string; name: string; mirror: string | null }[] {
+  const out: { id: string; name: string; mirror: string | null }[] = [];
+  for (const t of model.tanks) {
+    const d = t.data;
+    if (Math.abs(d.y0 + d.y1) < 1e-9) continue; // centreline space
+    const mirror =
+      model.tanks.find(
+        (m) =>
+          Math.abs(m.data.x0 - d.x0) < 1e-6 &&
+          Math.abs(m.data.x1 - d.x1) < 1e-6 &&
+          Math.abs(m.data.y0 + d.y1) < 1e-6 &&
+          Math.abs(m.data.y1 + d.y0) < 1e-6,
+      )?.id ?? null;
+    out.push({ id: t.id, name: d.name, mirror });
+  }
+  return out;
+}
+
+function spaceOfTank(model: Model, id: string, mu: number): FloodSpace {
+  const t = model.tanks.find((x) => x.id === id)!;
+  const d = t.data;
+  return {
+    id,
+    x0: d.x0, x1: d.x1, y0: d.y0, y1: d.y1, z0: d.z0, z1: d.z1,
+    permeability: mu,
+  };
+}
+
+export function runTransient(
+  model: Model,
+  extraWeights: WeightItem[],
+  opts: { tankId: string; breachArea: number; duct: boolean; ductArea: number },
+): FloodingResult {
+  const space = spaceOfTank(model, opts.tankId, 0.95);
+  const mirror = breachableTanks(model).find((b) => b.id === opts.tankId)?.mirror ?? null;
+  const scenario: FloodingScenario = {
+    space,
+    breach: {
+      area: opts.breachArea,
+      cd: 0.6,
+      z: space.z0 + 0.25 * (space.z1 - space.z0),
+    },
+    duct:
+      opts.duct && mirror
+        ? {
+            toSpace: spaceOfTank(model, mirror, 0.95),
+            area: opts.ductArea,
+            cd: 0.6,
+            z: space.z0 + 0.1,
+          }
+        : undefined,
+    dt: 4,
+    tMax: 480,
+  };
+  // the flooded tank's own contents are irrelevant once breached — empty it
+  const emptied = withTank(model, opts.tankId, { fillPercent: 0 });
+  const base = mirror && opts.duct ? withTank(emptied, mirror, { fillPercent: 0 }) : emptied;
+  return simulateFlooding(model.hull.geometry, l1InputOf(base, extraWeights), scenario);
 }
 
 /** One equilibrium solve at an imposed heel, for the 3D lever inspection. */

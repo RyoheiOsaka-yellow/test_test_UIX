@@ -880,6 +880,41 @@ tr.cmp-fail-row td { background: rgba(224, 99, 122, 0.06); }
 .ll-current-tag { fill: var(--accent); }
 .note-cell { font-size: 10px; color: var(--ink-3); white-space: normal; max-width: 300px; }
 
+/* ---- grain / subdivision / transient ---- */
+.grain-holds { display: flex; flex-direction: column; gap: 6px; }
+.grain-hold {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.grain-mode { display: flex; gap: 4px; }
+.sf-field { grid-template-columns: minmax(0, 200px); }
+.tr-fields { grid-template-columns: 1fr auto auto; align-items: end; }
+.tr-fields select {
+  width: 100%;
+  background: var(--surface-2);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-sm);
+  color: var(--ink);
+  padding: 6px 8px;
+  font-size: 12px;
+}
+.tr-fields input { width: 90px; }
+
+.guide.ev-eq { stroke: var(--ok); }
+.tick.ev-eq { fill: var(--ok); }
+.guide.ev-sea { stroke: var(--accent); }
+.tick.ev-sea { fill: var(--accent); }
+.guide.ev-cap { stroke: var(--bad); }
+.tick.ev-cap { fill: var(--bad); }
+.sline.vb { stroke: var(--bad); }
+.sline.vd { stroke: var(--ok); }
+.legend-item.vb::before { background: var(--bad); }
+.legend-item.vd::before { background: var(--ok); }
+
 /* ---- 3D marker labels ---- */
 .marker-label {
   font-family: var(--mono);

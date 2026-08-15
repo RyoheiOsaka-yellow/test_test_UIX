@@ -19,23 +19,29 @@ import {
   type ViewPreset,
 } from '../scene.js';
 import {
+  breachableTanks,
   envelopeIssues,
+  grainHoldsOf,
   hasAsymmetricZone,
   initialModel,
   inspectHeel,
   ruleDefaults,
   runDamage,
   runFreeboardCalc,
+  runGrain,
   runKnCurves,
   runL0,
   runStability,
   runStrengthCalc,
+  runSubdivision,
+  runTransient,
   runWeather,
   withCrossFlooding,
   withTank,
   zonesForSpaces,
   type Model,
 } from './store.js';
+import { GrainCard, SubdivisionCard, TransientChart } from './regPanels.js';
 import {
   applyCondition,
   cargoAsWeights,
@@ -146,6 +152,16 @@ export default function App() {
   const [storageOk, setStorageOk] = useState(true);
   const [cmpRows, setCmpRows] = useState<ConditionRow[] | null>(null);
   const [cmpBusy, setCmpBusy] = useState(false);
+  // grain, subdivision index and flooding transient
+  const [grainCfg, setGrainCfg] = useState<{ partly: string[]; sf: number }>({
+    partly: [],
+    sf: 1.3,
+  });
+  const [subResult, setSubResult] = useState<import('@dock/shared').SubdivisionResult | null>(null);
+  const [subBusy, setSubBusy] = useState(false);
+  const [tr, setTr] = useState({ tankId: 'tank:WB2.P', area: 0.5, duct: true, ductArea: 0.3 });
+  const [trResult, setTrResult] = useState<import('@dock/shared').FloodingResult | null>(null);
+  const [trBusy, setTrBusy] = useState(false);
 
   const modelRef = useRef(model);
   modelRef.current = model;
@@ -406,6 +422,8 @@ export default function App() {
     setDmgPre(null);
     setInspect(null);
     setCmpRows(null);
+    setSubResult(null);
+    setTrResult(null);
   }, [model, cargoWeights]);
 
   useEffect(() => {
@@ -470,6 +488,46 @@ export default function App() {
       });
     }
   }, [module, dmgSel, dmgMu, crossFlood, dmgResult, model]);
+
+  const grainResult = useMemo(
+    () => (stability ? runGrain(model, stability, grainCfg.partly, grainCfg.sf) : null),
+    [model, stability, grainCfg],
+  );
+
+  const computeSubdivision = useCallback(() => {
+    setSubBusy(true);
+    setSubResult(null);
+    window.setTimeout(() => {
+      try {
+        setSubResult(runSubdivision(modelRef.current, cargoWeights));
+        setIssue(null);
+      } catch (err) {
+        setIssue(err instanceof Error ? err.message : String(err));
+      } finally {
+        setSubBusy(false);
+      }
+    }, 40);
+  }, [cargoWeights]);
+
+  const computeTransient = useCallback(() => {
+    setTrBusy(true);
+    setTrResult(null);
+    window.setTimeout(() => {
+      try {
+        setTrResult(runTransient(modelRef.current, cargoWeights, {
+          tankId: tr.tankId,
+          breachArea: tr.area,
+          duct: tr.duct,
+          ductArea: tr.ductArea,
+        }));
+        setIssue(null);
+      } catch (err) {
+        setIssue(err instanceof Error ? err.message : String(err));
+      } finally {
+        setTrBusy(false);
+      }
+    }, 40);
+  }, [cargoWeights, tr]);
 
   const selected = selectedId ? model.tanks.find((t) => t.id === selectedId) ?? null : null;
   const p = model.vessel.principal;
@@ -669,6 +727,8 @@ export default function App() {
                       }
                     : null
                 }
+                grain={grainResult}
+                subdivision={subResult}
                 onPrint={() => window.print()}
               />
             </div>
@@ -1055,8 +1115,14 @@ export default function App() {
               <h2>損傷時復原性 — 喪失浮力法</h2>
               <div className="space-list" role="group" aria-label="浸水させる区画・タンク">
                 {floodableSpaces.map((e) => {
-                  const d = e.data as { name: string; x0: number; x1: number; y0?: number };
-                  const isTank = e.kind === 'tank';
+                  const d = e.data as {
+                    name: string; x0: number; x1: number; y0?: number; y1?: number;
+                  };
+                  const isWing =
+                    e.kind === 'tank' &&
+                    d.y0 !== undefined &&
+                    d.y1 !== undefined &&
+                    Math.abs(d.y0 + d.y1) > 1e-9;
                   const on = dmgSel.includes(e.id);
                   return (
                     <label key={e.id} className={`space-row${on ? ' on' : ''}`}>
@@ -1073,7 +1139,7 @@ export default function App() {
                       />
                       <span className="space-name">
                         {d.name}
-                        {isTank && <em className="wing-tag">舷側</em>}
+                        {isWing && <em className="wing-tag">舷側</em>}
                       </span>
                       <span className="space-extent num">
                         x {d.x0}–{d.x1}
@@ -1256,6 +1322,19 @@ export default function App() {
               </>
             )}
           </section>
+          <GrainCard
+            holds={grainHoldsOf(model, grainCfg.partly)}
+            partlyFilledIds={grainCfg.partly}
+            stowageFactor={grainCfg.sf}
+            result={grainResult}
+            onTogglePartly={(id, partly) =>
+              setGrainCfg((g) => ({
+                ...g,
+                partly: partly ? [...new Set([...g.partly, id])] : g.partly.filter((x) => x !== id),
+              }))
+            }
+            onStowageFactor={(sf) => setGrainCfg((g) => ({ ...g, sf }))}
+          />
         </div>
       )}
       {module === 'strength' && strength && (
@@ -1287,6 +1366,66 @@ export default function App() {
               区画基準の適用は対象船種の規則によります。
             </p>
           </section>
+        </div>
+      )}
+      {module === 'damage' && (
+        <div className="detail">
+          <SubdivisionCard result={subResult} busy={subBusy} onCompute={computeSubdivision} />
+          <section className="card">
+            <h2>浸水過渡解析 — 均圧完了時間</h2>
+            <div className="fields tr-fields">
+              <label className="wide">
+                <span>破口タンク(舷側)</span>
+                <select
+                  value={tr.tankId}
+                  onChange={(e) => setTr({ ...tr, tankId: e.target.value })}
+                >
+                  {breachableTanks(model).map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                      {b.mirror ? '' : '(対側なし — 均圧不可)'}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>破口面積</span>
+                <input
+                  type="number" step={0.1} min={0.1} max={5}
+                  value={tr.area}
+                  onChange={(e) => setTr({ ...tr, area: Number(e.target.value) })}
+                />
+                <em>m²</em>
+              </label>
+              <label>
+                <span>均圧管断面</span>
+                <input
+                  type="number" step={0.05} min={0.05} max={2}
+                  value={tr.ductArea}
+                  disabled={!tr.duct}
+                  onChange={(e) => setTr({ ...tr, ductArea: Number(e.target.value) })}
+                />
+                <em>m²</em>
+              </label>
+            </div>
+            <label className="clip-toggle">
+              <input
+                type="checkbox"
+                checked={tr.duct}
+                onChange={(e) => setTr({ ...tr, duct: e.target.checked })}
+              />
+              <span>クロスフラッディング管を有効化</span>
+            </label>
+            <button className="solve" onClick={computeTransient} disabled={trBusy}>
+              {trBusy ? '時間発展を解いています…(数秒)' : '過渡解析を実行(8 分間)'}
+            </button>
+            <p className="muted">
+              追加重量法の準静的時間発展。破口・均圧管ともオリフィス流
+              Q = Cd·A·√(2gΔh)(Cd = 0.6)で、各時刻に自由トリム釣合を解き直します。
+              静的な損傷判定(上)は喪失浮力法 — 慣行どおり手法を使い分けています。
+            </p>
+          </section>
+          {trResult && <TransientChart result={trResult} />}
         </div>
       )}
       {module === 'loading' && (

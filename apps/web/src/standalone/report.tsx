@@ -6,8 +6,10 @@
 import type {
   EnvelopeCheck,
   FreeboardResult,
+  GrainResult,
   L1Result,
   StrengthResult,
+  SubdivisionResult,
   WeatherResult,
   WeightItem,
 } from '@dock/shared';
@@ -27,6 +29,8 @@ export function ReportDoc(props: {
   envelope: { check: EnvelopeCheck; permHog: number; permSag: number; permShear: number } | null;
   freeboard: FreeboardResult | null;
   damage: { zoneLabel: string; permeability: number; result: L1Result } | null;
+  grain: GrainResult | null;
+  subdivision: SubdivisionResult | null;
   onPrint: () => void;
 }) {
   const { model, stability, weather, strength, envelope, freeboard, damage } = props;
@@ -117,6 +121,31 @@ export function ReportDoc(props: {
                   <td>≥ 1.00</td>
                   <td>{Number.isFinite(weather.ratio) ? fmt(weather.ratio - 1, 2) : '—'}</td>
                   <td className={weather.passed ? 'v-ok' : 'v-bad'}>{weather.passed ? '適合' : '不適合'}</td>
+                </tr>
+              )}
+              {props.grain && (
+                <tr>
+                  <td className="txt">穀類復原性(Grain Code: 傾斜・残存面積・GM)</td>
+                  <td>
+                    θg {props.grain.heelAngleDeg === null ? '—' : fmt(props.grain.heelAngleDeg, 1) + '°'} ·{' '}
+                    {fmt(props.grain.residualArea, 3)} m·rad
+                  </td>
+                  <td>≤12° · ≥0.075</td>
+                  <td>—</td>
+                  <td className={props.grain.passed ? 'v-ok' : 'v-bad'}>
+                    {props.grain.passed ? '適合' : '不適合'}
+                  </td>
+                </tr>
+              )}
+              {props.subdivision && (
+                <tr>
+                  <td className="txt">確率論的区画指標(簡易 p × Reg 7-2 s)</td>
+                  <td>A = {fmt(props.subdivision.attained, 3)}</td>
+                  <td>R = {fmt(props.subdivision.required, 3)}</td>
+                  <td>{fmt(props.subdivision.attained - props.subdivision.required, 3)}</td>
+                  <td className={props.subdivision.passed ? 'v-ok' : 'v-bad'}>
+                    {props.subdivision.passed ? '適合' : '不適合'}
+                  </td>
                 </tr>
               )}
             </tbody>

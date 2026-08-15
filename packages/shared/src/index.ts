@@ -12,3 +12,6 @@ export * from './crossCurves.js';
 export * from './weather.js';
 export * from './classRules.js';
 export * from './freeboard.js';
+export * from './grain.js';
+export * from './subdivision.js';
+export * from './flooding.js';
