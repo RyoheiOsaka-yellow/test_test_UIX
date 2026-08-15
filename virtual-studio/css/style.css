@@ -981,3 +981,9 @@ input[type="range"]::-moz-range-thumb {
   font-size: 9px; font-weight: 700; border-radius: 980px;
   background: var(--accent-soft); color: var(--accent);
 }
+
+/* ---------- ラフカット音声トラック ---------- */
+.rc-audio { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.rc-audio-row { display: flex; align-items: center; gap: 10px; }
+.rc-audio-name { font-size: 11px; color: var(--dim); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-audio-row input[type="range"] { width: 130px; }

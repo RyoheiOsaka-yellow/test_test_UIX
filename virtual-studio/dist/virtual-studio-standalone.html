@@ -989,6 +989,12 @@ input[type="range"]::-moz-range-thumb {
   background: var(--accent-soft); color: var(--accent);
 }
 
+/* ---------- ラフカット音声トラック ---------- */
+.rc-audio { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.rc-audio-row { display: flex; align-items: center; gap: 10px; }
+.rc-audio-name { font-size: 11px; color: var(--dim); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-audio-row input[type="range"] { width: 130px; }
+
 </style>
 </head>
 <body>
@@ -1321,6 +1327,7 @@ input[type="range"]::-moz-range-thumb {
       <div class="wf-actions">
         <button id="btnWfCopySeq" class="btn small"><svg class="ic"><use href="#i-copy"/></svg> 連結シーケンスをコピー (1プロンプト)</button>
         <button id="btnWfPngs" class="btn small" title="全カットの想定カット画像をPNG化し、連結シート付きZIPで保存 (参照画像・テロップ込み)"><svg class="ic"><use href="#i-image"/></svg> 画像一括書き出し (PNG)</button>
+        <button id="btnWfMd" class="btn small" title="ストーリー+全カットの生成プロンプト・パラメータ・繋ぎを1つのMarkdownに (ChatGPT/Seedanceへの受け渡し用)"><svg class="ic"><use href="#i-doc"/></svg> プロンプト一式 (MD)</button>
         <span id="wfPngMsg" class="insp-hint"></span>
         <details id="wfApi">
           <summary>API連携 (実験的)</summary>
@@ -1353,6 +1360,24 @@ input[type="range"]::-moz-range-thumb {
             <button id="btnRcExport" class="btn small"><svg class="ic"><use href="#i-download"/></svg> WebMで書き出す (プレビュー品質)</button>
             <span id="rcMsg" class="insp-hint"></span>
           </div>
+          <!-- 音声トラック: BGM (ループ) とナレーション (1回) をミックス -->
+          <div class="rc-audio">
+            <audio id="rcBgmEl" hidden></audio>
+            <audio id="rcNarEl" hidden></audio>
+            <input type="file" id="rcAudioInput" accept="audio/*" hidden>
+            <div class="rc-audio-row">
+              <button class="btn small" data-audiokey="bgm">♪ BGMを添付</button>
+              <span id="rcBgmName" class="rc-audio-name">なし</span>
+              <input type="range" id="rcBgmVol" min="0" max="100" value="40" title="BGM音量">
+              <button class="icon-btn small danger" data-audiodel="bgm" title="BGMを削除" hidden id="rcBgmDel"><svg class="ic"><use href="#i-trash"/></svg></button>
+            </div>
+            <div class="rc-audio-row">
+              <button class="btn small" data-audiokey="nar">🎙 ナレーションを添付</button>
+              <span id="rcNarName" class="rc-audio-name">なし</span>
+              <input type="range" id="rcNarVol" min="0" max="100" value="100" title="ナレーション音量">
+              <button class="icon-btn small danger" data-audiodel="nar" title="ナレーションを削除" hidden id="rcNarDel"><svg class="ic"><use href="#i-trash"/></svg></button>
+            </div>
+          </div>
           <p class="insp-hint">つなぎはカット (直つなぎ) で再生されます。ディゾルブ等の最終表現・納品品質の書き出しは「編集リスト (EDL)」+元素材で編集ソフトへ</p>
         </div>
       </div>
@@ -1376,6 +1401,9 @@ input[type="range"]::-moz-range-thumb {
     <span class="panel-title small">現在のプロジェクト</span>
     <input type="text" id="projName" placeholder="プロジェクト名">
     <button id="btnProjSave" class="btn small primary">保存</button>
+    <button id="btnProjBackup" class="btn small" title="プロジェクト設定+参照画像+添付動画/音声を1つのZIPに書き出し (他ブラウザ/他PCへ持ち運べます)"><svg class="ic"><use href="#i-download"/></svg> 一式バックアップ (ZIP)</button>
+    <button id="btnProjRestore" class="btn small" title="バックアップZIPを読み込んで完全復元"><svg class="ic"><use href="#i-upload"/></svg> 一式読み込み</button>
+    <input type="file" id="projRestoreInput" accept=".zip,application/zip" hidden>
     <span id="projSavedMsg" class="insp-hint"></span>
   </div>
   <div id="projGrid"></div>
@@ -6620,7 +6648,7 @@ const state = {
   kit: { body: null, lens: null, support: null, drone: null },
   customDNA: [], // 参照の手動注釈から作られたPattern DNA (V8 Phase 2)
   // 制作ワークフロー: ChatGPT等で作った参照画像+ストーリーの受け入れ (ステップ1)
-  story: { text: "", refs: [] }, // refs: {id, name, dataUrl, assign: cutId|null}
+  story: { text: "", refs: [], audioVol: { bgm: 0.4, nar: 1 } }, // refs: {id, name, dataUrl, hasAlpha}
 };
 
 function allPresets() { return PRESETS.concat(state.customPresets); }
@@ -9347,6 +9375,7 @@ function applySnapshot(s) {
   state.story = s.story && typeof s.story === "object"
     ? { text: s.story.text || "", refs: Array.isArray(s.story.refs) ? s.story.refs : [] }
     : { text: "", refs: [] };
+  state.story.audioVol = Object.assign({ bgm: 0.4, nar: 1 }, s.story && s.story.audioVol || {});
   // 旧形式 (ref.assign = cutId) からの移行: カット側ポインタに変換
   state.story.refs.forEach(r => {
     if (r.assign) {
@@ -9441,6 +9470,18 @@ function setupProjects() {
   });
   byId("btnProjBack").addEventListener("click", () => { byId("projOverlay").hidden = true; });
   byId("btnProjSave").addEventListener("click", saveCurrentProject);
+  byId("btnProjBackup").addEventListener("click", () => {
+    exportBackupZip(byId("projSavedMsg")).catch(err => { byId("projSavedMsg").textContent = "⚠️ " + err.message; });
+  });
+  byId("btnProjRestore").addEventListener("click", () => byId("projRestoreInput").click());
+  byId("projRestoreInput").addEventListener("change", e => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!confirm("バックアップZIPから復元しますか?\n(現在の作業はこの内容で置き換わります。自動保存には残ります)")) return;
+    importBackupZip(file, byId("projSavedMsg")).then(() => renderProjPage())
+      .catch(err => { byId("projSavedMsg").textContent = "⚠️ " + err.message; });
+  });
   byId("projName").addEventListener("keydown", e => { if (e.key === "Enter") saveCurrentProject(); });
   byId("btnProjNew").addEventListener("click", () => {
     if (!confirm("新規プロジェクトを開始しますか? (現在の作業は自動保存に残ります。名前を付けて保存していない変更は失われます)")) return;
@@ -9684,6 +9725,9 @@ function setupWorkflow() {
   byId("btnWfPngs").addEventListener("click", () => {
     exportBoardPngs(byId("wfPngMsg")).catch(err => { byId("wfPngMsg").textContent = "⚠️ " + err.message; });
   });
+  byId("btnWfMd").addEventListener("click", () => {
+    exportPromptPack(byId("wfPngMsg")).catch(err => { byId("wfPngMsg").textContent = "⚠️ " + err.message; });
+  });
   byId("btnWfApiSave").addEventListener("click", () => {
     lsSet(LS_APICFG, { endpoint: byId("wfApiUrl").value.trim() });
     byId("wfApiMsg").textContent = "✓ 保存しました";
@@ -9763,7 +9807,7 @@ function setupWorkflow() {
  * (= EDLと同じ値で仮組みできる)。書き出しはWebM (プレビュー品質)。
  * ======================================================= */
 const IDB_NAME = "vsMedia", IDB_STORE = "clips";
-const roughCut = { index: {}, playing: false, stopFlag: false, urls: {}, ac: null, dest: null, wired: new Set(), stats: { cross: 0, veil: 0 } };
+const roughCut = { index: {}, playing: false, stopFlag: false, urls: {}, ac: null, dest: null, wired: new Set(), gains: {}, stats: { cross: 0, veil: 0 } };
 
 /* =========================================================
  * ファイル保存 — Artifact上では claude.use("downloads") 経由
@@ -9920,6 +9964,7 @@ async function exportBoardPngs(msgEl) {
   });
   const sheetBlob = await new Promise(r => sheet.toBlob(r, "image/png"));
   files.unshift({ name: "storyboard-sheet.png", data: new Uint8Array(await sheetBlob.arrayBuffer()) });
+  files.push({ name: "prompts.md", data: new TextEncoder().encode(buildPromptPackMd()) });
 
   if (msgEl) msgEl.textContent = "保存中…";
   const okZip = await saveFileAs(`${title}-storyboard.zip`, buildZip(files));
@@ -9929,7 +9974,137 @@ async function exportBoardPngs(msgEl) {
     if (msgEl) msgEl.textContent = okPng ? `✓ 連結シートPNGを保存しました (この環境ではZIPが保存できないため。単体HTMLならZIPで${files.length}枚)` : "保存をキャンセルしました";
     return;
   }
-  if (msgEl) msgEl.textContent = `✓ ZIPを保存しました (シート+各カットPNG ${files.length}ファイル)`;
+  if (msgEl) msgEl.textContent = `✓ ZIPを保存しました (シート+各カットPNG+prompts.md ${files.length}ファイル)`;
+}
+
+/* =========================================================
+ * プロンプト一式 Markdown — ストーリー+全カットの生成指示を1ファイルに
+ * (ChatGPT/Seedance へそのまま貼れる受け渡し資料)
+ * ======================================================= */
+function buildPromptPackMd() {
+  const total = state.cuts.reduce((s, c) => s + (c.kind === "still" ? 0 : c.duration || 5), 0);
+  const L = [];
+  L.push(`# ${state.projectTitle} — 生成プロンプト一式`);
+  L.push(`カット数 ${state.cuts.length} ｜ 合計 ${total}s ｜ Generated by Virtual Studio`);
+  if (state.story.text.trim()) {
+    L.push(`\n## ストーリー\n`);
+    L.push(state.story.text.trim());
+  }
+  L.push(`\n## カット別プロンプト (Seedance)`);
+  state.cuts.forEach((c, i) => {
+    const ref = state.story.refs.find(r => r.id === c.refImgId);
+    const t = TRANSITIONS.find(x => x.id === (c.transition || "cut"));
+    L.push(`\n### C${i + 1}　${c.name}`);
+    const meta = [
+      `${c.kind === "still" ? "静止画" : (c.duration || 5) + "s"}`,
+      seedanceRatio(c.aspect), "1080p",
+      `camerafixed: ${c.camera.move === "fix"}`,
+    ];
+    L.push(`- パラメータ: ${meta.join(" / ")}`);
+    if (c.aim) L.push(`- 狙い: ${c.aim}`);
+    if (ref) L.push(`- first frame 参照画像: ${ref.name}${ref.hasAlpha ? " (背景透過)" : ""}`);
+    if (c.caption) L.push(`- テロップ (編集時に付ける — プロンプトには入れない): ${c.caption}`);
+    if (i < state.cuts.length - 1 && t) L.push(`- 次カットへの繋ぎ: ${t.label}`);
+    L.push("\n```");
+    L.push(generatePrompt(c, "seedance"));
+    L.push("```");
+  });
+  const seq = buildSeedanceSequence();
+  if (seq) {
+    L.push(`\n## 連結シーケンス (1プロンプト版)\n`);
+    L.push("```");
+    L.push(seq);
+    L.push("```");
+  }
+  return L.join("\n");
+}
+
+async function exportPromptPack(msgEl) {
+  const title = state.projectTitle.replace(/[\\/:*?"<>|]/g, "_");
+  const ok = await saveFileAs(`${title}-prompts.md`, buildPromptPackMd());
+  if (msgEl) msgEl.textContent = ok ? "✓ プロンプト一式 (Markdown) を保存しました" : "保存をキャンセルしました";
+}
+
+/* =========================================================
+ * プロジェクト一式バックアップ — 設定JSON+参照画像+動画/音声をZIPに
+ * (無圧縮ストアZIPのみ対応の自前パーサで完全復元できる)
+ * ======================================================= */
+function parseZip(buf) { // Uint8Array → [{name, data}]
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  let e = buf.length - 22;
+  while (e >= 0 && dv.getUint32(e, true) !== 0x06054b50) e--;
+  if (e < 0) throw new Error("ZIPファイルではありません");
+  const count = dv.getUint16(e + 10, true);
+  let off = dv.getUint32(e + 16, true);
+  const dec = new TextDecoder();
+  const files = [];
+  for (let i = 0; i < count; i++) {
+    if (dv.getUint32(off, true) !== 0x02014b50) throw new Error("ZIPの解析に失敗しました");
+    const method = dv.getUint16(off + 10, true);
+    const size = dv.getUint32(off + 24, true);
+    const nameLen = dv.getUint16(off + 28, true);
+    const extraLen = dv.getUint16(off + 30, true);
+    const cmtLen = dv.getUint16(off + 32, true);
+    const lho = dv.getUint32(off + 42, true);
+    const name = dec.decode(buf.subarray(off + 46, off + 46 + nameLen));
+    if (method !== 0) throw new Error(`圧縮されたZIPは未対応です (${name}) — 本アプリが書き出したZIPを指定してください`);
+    const lnl = dv.getUint16(lho + 26, true), lel = dv.getUint16(lho + 28, true);
+    const dataOff = lho + 30 + lnl + lel;
+    files.push({ name, data: buf.subarray(dataOff, dataOff + size) });
+    off += 46 + nameLen + extraLen + cmtLen;
+  }
+  return files;
+}
+
+async function exportBackupZip(msgEl) {
+  const enc = new TextEncoder();
+  const title = state.projectTitle.replace(/[\\/:*?"<>|]/g, "_");
+  if (msgEl) msgEl.textContent = "バックアップ作成中…";
+  const files = [{
+    name: "project.json",
+    data: enc.encode(JSON.stringify({ kind: "vs-backup", version: 2, data: snapshotState() }, null, 1)),
+  }];
+  const manifest = [];
+  try {
+    for (const c of await idbAllClips()) {
+      const special = Object.values(RC_AUDIO_KEYS).includes(c.cutId);
+      if (!special && !state.cuts.some(x => x.id === c.cutId)) continue; // 現プロジェクト分のみ
+      const extM = String(c.name || "").match(/\.([a-z0-9]{2,4})$/i);
+      const fname = `media/${c.cutId}.${extM ? extM[1] : "webm"}`;
+      files.push({ name: fname, data: new Uint8Array(await c.blob.arrayBuffer()) });
+      manifest.push({ cutId: c.cutId, file: fname, name: c.name, type: c.type });
+    }
+  } catch { /* IDB不可でも設定だけは保存する */ }
+  files.push({ name: "media-manifest.json", data: enc.encode(JSON.stringify(manifest)) });
+  const blob = buildZip(files);
+  const ok = await saveFileAs(`${title}-backup.zip`, blob);
+  if (msgEl) {
+    msgEl.textContent = ok
+      ? `✓ バックアップを保存しました (${(blob.size / 1048576).toFixed(1)}MB / メディア${manifest.length}件)`
+      : "⚠️ この環境ではZIPを保存できません (単体HTML版で実行してください)";
+  }
+}
+
+async function importBackupZip(file, msgEl) {
+  if (msgEl) msgEl.textContent = "読み込み中…";
+  const entries = parseZip(new Uint8Array(await file.arrayBuffer()));
+  const pj = entries.find(f => f.name === "project.json");
+  if (!pj) throw new Error("project.json が見つかりません (本アプリのバックアップZIPを指定してください)");
+  const parsed = JSON.parse(new TextDecoder().decode(pj.data));
+  applySnapshot(parsed.data || parsed);
+  let n = 0;
+  const mf = entries.find(f => f.name === "media-manifest.json");
+  if (mf) {
+    for (const m of JSON.parse(new TextDecoder().decode(mf.data))) {
+      const ent = entries.find(f => f.name === m.file);
+      if (!ent) continue;
+      await idbPutClip({ cutId: m.cutId, name: m.name, type: m.type, size: ent.data.length, blob: new Blob([ent.data], { type: m.type }), addedAt: Date.now() });
+      if (roughCut.urls[m.cutId]) { URL.revokeObjectURL(roughCut.urls[m.cutId]); delete roughCut.urls[m.cutId]; }
+      n++;
+    }
+  }
+  rcRefreshIndex();
+  if (msgEl) msgEl.textContent = `✓ 復元しました (${state.cuts.length}カット / メディア${n}件)`;
 }
 
 function idbOpen() {
@@ -9981,8 +10156,22 @@ async function rcRefreshIndex() {
     roughCut.index = {};
     all.forEach(r => { roughCut.index[r.cutId] = { name: r.name, size: r.size }; });
     renderRcList();
+    renderRcAudio();
   } catch {
     byId("rcList").innerHTML = `<p class="insp-hint">⚠️ このブラウザでは動画保存 (IndexedDB) が使えません</p>`;
+  }
+}
+
+/* 音声トラック (BGM/ナレーション) はIDBの特別キーに保存 */
+const RC_AUDIO_KEYS = { bgm: "__bgm", nar: "__nar" };
+
+function renderRcAudio() {
+  for (const [key, id] of Object.entries(RC_AUDIO_KEYS)) {
+    const clip = roughCut.index[id];
+    const cap = key === "bgm" ? "Bgm" : "Nar";
+    byId(`rc${cap}Name`).textContent = clip ? `${clip.name} (${(clip.size / 1048576).toFixed(1)}MB)` : "なし";
+    byId(`rc${cap}Del`).hidden = !clip;
+    byId(`rc${cap}Vol`).value = Math.round((state.story.audioVol?.[key] ?? (key === "bgm" ? 0.4 : 1)) * 100);
   }
 }
 
@@ -10029,8 +10218,11 @@ function rcWireAudio(v) {
     }
     if (!roughCut.wired.has(v.id)) {
       const s = roughCut.ac.createMediaElementSource(v);
-      s.connect(roughCut.dest);
-      s.connect(roughCut.ac.destination);
+      const g = roughCut.ac.createGain();
+      s.connect(g);
+      g.connect(roughCut.dest);
+      g.connect(roughCut.ac.destination);
+      roughCut.gains[v.id] = g;
       roughCut.wired.add(v.id);
     }
   } catch { /* 音声なしで続行 */ }
@@ -10099,6 +10291,20 @@ async function rcRun(record) {
   requestAnimationFrame(paint);
 
   vids.forEach(rcWireAudio);
+
+  /* 音声トラック: BGM=ループ / ナレーション=1回。GainNodeで音量調整 */
+  const audioEls = [];
+  for (const [key, id] of Object.entries(RC_AUDIO_KEYS)) {
+    if (!roughCut.index[id]) continue;
+    const el = byId(key === "bgm" ? "rcBgmEl" : "rcNarEl");
+    const url = await rcGetUrl(id);
+    if (!url) continue;
+    if (el.src !== url) { el.src = url; el.load(); }
+    el.loop = key === "bgm";
+    rcWireAudio(el);
+    if (roughCut.gains[el.id]) roughCut.gains[el.id].gain.value = state.story.audioVol?.[key] ?? (key === "bgm" ? 0.4 : 1);
+    audioEls.push(el);
+  }
   if (roughCut.ac) roughCut.ac.resume();
 
   let recorder = null;
@@ -10123,6 +10329,7 @@ async function rcRun(record) {
   };
 
   await rcLoad(vids[0], await rcGetUrl(cuts[0].id));
+  audioEls.forEach(el => { el.currentTime = 0; el.play().catch(() => {}); });
   let veilIn = 0;
 
   for (let k = 0; k < cuts.length && !roughCut.stopFlag; k++) {
@@ -10194,6 +10401,7 @@ async function rcRun(record) {
   }
 
   vids.forEach(v => v.pause());
+  audioEls.forEach(el => el.pause());
   roughCut.playing = false;
   if (recorder) {
     await new Promise(res => { recorder.onstop = res; recorder.stop(); });
@@ -10222,6 +10430,37 @@ function setupRoughCut() {
     e.target.value = "";
     if (file && cut) await wfAttachClip(cut, file);
   });
+
+  /* 音声トラックの添付/削除/音量 */
+  document.querySelectorAll("[data-audiokey]").forEach(btn => btn.addEventListener("click", () => {
+    const input = byId("rcAudioInput");
+    input.dataset.key = btn.dataset.audiokey;
+    input.click();
+  }));
+  byId("rcAudioInput").addEventListener("change", async e => {
+    const file = e.target.files[0];
+    const key = e.target.dataset.key;
+    e.target.value = "";
+    if (!file || !RC_AUDIO_KEYS[key]) return;
+    const id = RC_AUDIO_KEYS[key];
+    await idbPutClip({ cutId: id, name: file.name, type: file.type, size: file.size, blob: file, addedAt: Date.now() });
+    if (roughCut.urls[id]) { URL.revokeObjectURL(roughCut.urls[id]); delete roughCut.urls[id]; }
+    rcRefreshIndex();
+  });
+  document.querySelectorAll("[data-audiodel]").forEach(btn => btn.addEventListener("click", async () => {
+    const id = RC_AUDIO_KEYS[btn.dataset.audiodel];
+    await idbDelClip(id);
+    if (roughCut.urls[id]) { URL.revokeObjectURL(roughCut.urls[id]); delete roughCut.urls[id]; }
+    rcRefreshIndex();
+  }));
+  const volBind = (elId, key, audioElId) => byId(elId).addEventListener("input", e => {
+    state.story.audioVol = state.story.audioVol || { bgm: 0.4, nar: 1 };
+    state.story.audioVol[key] = +e.target.value / 100;
+    const g = roughCut.gains[audioElId];
+    if (g) g.gain.value = state.story.audioVol[key]; // 再生中もライブ反映
+  });
+  volBind("rcBgmVol", "bgm", "rcBgmEl");
+  volBind("rcNarVol", "nar", "rcNarEl");
 }
 
 /* =========================================================

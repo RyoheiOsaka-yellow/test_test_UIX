@@ -336,6 +336,7 @@
       <div class="wf-actions">
         <button id="btnWfCopySeq" class="btn small"><svg class="ic"><use href="#i-copy"/></svg> 連結シーケンスをコピー (1プロンプト)</button>
         <button id="btnWfPngs" class="btn small" title="全カットの想定カット画像をPNG化し、連結シート付きZIPで保存 (参照画像・テロップ込み)"><svg class="ic"><use href="#i-image"/></svg> 画像一括書き出し (PNG)</button>
+        <button id="btnWfMd" class="btn small" title="ストーリー+全カットの生成プロンプト・パラメータ・繋ぎを1つのMarkdownに (ChatGPT/Seedanceへの受け渡し用)"><svg class="ic"><use href="#i-doc"/></svg> プロンプト一式 (MD)</button>
         <span id="wfPngMsg" class="insp-hint"></span>
         <details id="wfApi">
           <summary>API連携 (実験的)</summary>
@@ -368,6 +369,24 @@
             <button id="btnRcExport" class="btn small"><svg class="ic"><use href="#i-download"/></svg> WebMで書き出す (プレビュー品質)</button>
             <span id="rcMsg" class="insp-hint"></span>
           </div>
+          <!-- 音声トラック: BGM (ループ) とナレーション (1回) をミックス -->
+          <div class="rc-audio">
+            <audio id="rcBgmEl" hidden></audio>
+            <audio id="rcNarEl" hidden></audio>
+            <input type="file" id="rcAudioInput" accept="audio/*" hidden>
+            <div class="rc-audio-row">
+              <button class="btn small" data-audiokey="bgm">♪ BGMを添付</button>
+              <span id="rcBgmName" class="rc-audio-name">なし</span>
+              <input type="range" id="rcBgmVol" min="0" max="100" value="40" title="BGM音量">
+              <button class="icon-btn small danger" data-audiodel="bgm" title="BGMを削除" hidden id="rcBgmDel"><svg class="ic"><use href="#i-trash"/></svg></button>
+            </div>
+            <div class="rc-audio-row">
+              <button class="btn small" data-audiokey="nar">🎙 ナレーションを添付</button>
+              <span id="rcNarName" class="rc-audio-name">なし</span>
+              <input type="range" id="rcNarVol" min="0" max="100" value="100" title="ナレーション音量">
+              <button class="icon-btn small danger" data-audiodel="nar" title="ナレーションを削除" hidden id="rcNarDel"><svg class="ic"><use href="#i-trash"/></svg></button>
+            </div>
+          </div>
           <p class="insp-hint">つなぎはカット (直つなぎ) で再生されます。ディゾルブ等の最終表現・納品品質の書き出しは「編集リスト (EDL)」+元素材で編集ソフトへ</p>
         </div>
       </div>
@@ -391,6 +410,9 @@
     <span class="panel-title small">現在のプロジェクト</span>
     <input type="text" id="projName" placeholder="プロジェクト名">
     <button id="btnProjSave" class="btn small primary">保存</button>
+    <button id="btnProjBackup" class="btn small" title="プロジェクト設定+参照画像+添付動画/音声を1つのZIPに書き出し (他ブラウザ/他PCへ持ち運べます)"><svg class="ic"><use href="#i-download"/></svg> 一式バックアップ (ZIP)</button>
+    <button id="btnProjRestore" class="btn small" title="バックアップZIPを読み込んで完全復元"><svg class="ic"><use href="#i-upload"/></svg> 一式読み込み</button>
+    <input type="file" id="projRestoreInput" accept=".zip,application/zip" hidden>
     <span id="projSavedMsg" class="insp-hint"></span>
   </div>
   <div id="projGrid"></div>
