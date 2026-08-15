@@ -1320,6 +1320,8 @@ input[type="range"]::-moz-range-thumb {
       <h2><span class="wf-no">3</span>生成へ書き出し <small>Seedance等へ — プロンプト+パラメータ+参照画像をカット毎に</small></h2>
       <div class="wf-actions">
         <button id="btnWfCopySeq" class="btn small"><svg class="ic"><use href="#i-copy"/></svg> 連結シーケンスをコピー (1プロンプト)</button>
+        <button id="btnWfPngs" class="btn small" title="全カットの想定カット画像をPNG化し、連結シート付きZIPで保存 (参照画像・テロップ込み)"><svg class="ic"><use href="#i-image"/></svg> 画像一括書き出し (PNG)</button>
+        <span id="wfPngMsg" class="insp-hint"></span>
         <details id="wfApi">
           <summary>API連携 (実験的)</summary>
           <div class="wf-api-row">
@@ -6672,6 +6674,7 @@ function ensureCameraDefaults(cut) {
   if (cut.refImgId === undefined) cut.refImgId = null;
   if (cut.refOffX == null) cut.refOffX = 0; // 画像の寄り位置 (%)
   if (cut.refOffY == null) cut.refOffY = 0;
+  if (cut.caption == null) cut.caption = ""; // テロップ/セリフ (編集用・プロンプトには入れない)
   const c = cut.camera;
   if (!c.moveSpeed) c.moveSpeed = "normal";
   if (!c.endShotSize) c.endShotSize = "same";
@@ -7612,10 +7615,17 @@ function renderPreviewSVG(cut, idPrefix) {
       defs += `<mask id="${p}sm" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" style="mask-type:alpha">
         <g transform="${frameTf}"><image href="${refImg.dataUrl}" x="${-W * 0.06}" y="${-H * 0.06}" width="${W * 1.12}" height="${H * 1.12}" preserveAspectRatio="xMidYMid slice"/></g>
       </mask>`;
+      /* 接地影: 被写体の足元に楕円影 (キーの逆側へ寄せ、ズームに追従) */
+      defs += `<filter id="${p}gsb" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="${(5 * Math.sqrt(zoom)).toFixed(1)}"/></filter>`;
+      const gsX = W / 2 - keySide * W * 0.035 * zoom;
+      const gsY = Math.min(H * 0.96, H * 0.45 + (H * 0.5) * zoom * 0.92);
+      const groundShadow = `<ellipse cx="${gsX.toFixed(1)}" cy="${gsY.toFixed(1)}" rx="${(W * 0.2 * zoom).toFixed(1)}" ry="${(H * 0.035 * Math.sqrt(zoom)).toFixed(1)}"
+        fill="#000" opacity="${Math.min(0.5, 0.22 + an.contrast * 0.2).toFixed(2)}" filter="url(#${p}gsb)"/>`;
       refScene = `
         <rect x="${-W * 0.15}" y="${-H * 0.15}" width="${W * 1.3}" height="${H * 1.3}" fill="url(#${p}bg)"/>
         ${bgExtra}
         <rect width="${W}" height="${H}" fill="url(#${p}imshad)" opacity="0.5" style="mix-blend-mode:multiply"/>
+        ${groundShadow}
         <g transform="${frameTf}">${imgTag}</g>
         <rect width="${W}" height="${H}" fill="url(#${p}imshad)" mask="url(#${p}sm)" style="mix-blend-mode:multiply"/>
         <rect width="${W}" height="${H}" fill="url(#${p}imkey)" mask="url(#${p}sm)" style="mix-blend-mode:screen"/>
@@ -7643,6 +7653,9 @@ function renderPreviewSVG(cut, idPrefix) {
       <rect x="${-W * 0.15}" y="${-H * 0.15}" width="${W * 1.3}" height="${H * 1.3}" fill="url(#${p}bg)"/>
       ${bgExtra}${subjectSvg}${fx}`}
     </g></g>
+    ${cut.caption ? `
+    <rect x="${W * 0.08}" y="${H - 60}" width="${W * 0.84}" height="26" rx="5" fill="#000" opacity="0.45"/>
+    <text x="${W / 2}" y="${H - 42}" text-anchor="middle" fill="#ffffff" font-size="15" font-weight="600" font-family="'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif">${esc(cut.caption.slice(0, 48))}</text>` : ""}
     ${lookTint}${overlay}
     ${refImg ? `<text x="${W - 8}" y="14" text-anchor="end" fill="#ffd98a" font-size="10" font-family="monospace" opacity="0.85">REF: ${esc(refImg.name.slice(0, 18))}</text>` : ""}
   </svg>`;
@@ -8056,6 +8069,7 @@ function renderInspector() {
       ${fieldRow("被写体", selectHtml("cSubject", SUBJECT_TYPES, cut.subjectType))}
       ${fieldRow("演技/動き", selectHtml("cAction", SUBJECT_ACTIONS, cut.action))}
       ${fieldRow("被写体メモ", `<input type="text" id="cSubNote" value="${esc(cut.subjectNote)}" placeholder="例: 20代女性・白ワンピース / 青いガラス瓶のジン">`)}
+      ${fieldRow("テロップ/セリフ", `<input type="text" id="cCaption" value="${esc(cut.caption)}" placeholder="編集用の字幕 — プレビューとラフカットに焼き込み (プロンプトには入れない)">`)}
       ${fieldRow("背景", selectHtml("cBg", Object.keys(BG_STYLES).map(k => ({ id: k, label: k + " — " + BG_STYLES[k].en })), cut.bgStyle))}
       ${state.story.refs.length ? fieldRow("参照画像", `<select id="cRefImg">
         <option value="">なし (図解プレビュー)</option>
@@ -8174,6 +8188,7 @@ function renderInspector() {
   });
   bind("cAction", e => { cut.action = e.target.value; renderPrompt(); });
   bind("cSubNote", e => { cut.subjectNote = e.target.value; renderPrompt(); }, "input");
+  bind("cCaption", e => { cut.caption = e.target.value; renderPreview(); renderCutStrip(); }, "input");
   bind("cBg", e => { cut.bgStyle = e.target.value; refresh(); });
   bind("cRefImg", e => { cut.refImgId = e.target.value || null; refresh(); renderInspector(); });
   bind("cRefOffX", e => { cut.refOffX = +e.target.value; renderPreview(); renderCutStrip(); }, "input");
@@ -8693,7 +8708,7 @@ function setupDocOverlay() {
     catch { window.print(); }
   });
   byId("btnDocDownload").addEventListener("click", () => {
-    saveFileAs(docCurrent.name, new Blob([docCurrent.html], { type: "text/html" }));
+    saveFileAs(docCurrent.name, docCurrent.html);
   });
   // ドキュメント内 (iframe) からの保存依頼 (EDLの.edl等) を親で受けて保存する
   window.addEventListener("message", e => {
@@ -8844,7 +8859,7 @@ function exportBoard() {
 function downloadPlanSVG() {
   const cut = activeCut();
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" style="background:#fbfcfd">${renderCanvasSVG(cut, false)}</svg>`;
-  saveFileAs(`studio-plan-C${state.activeCut + 1}.svg`, new Blob([svg], { type: "image/svg+xml" }));
+  saveFileAs(`studio-plan-C${state.activeCut + 1}.svg`, svg);
 }
 
 /* =========================================================
@@ -9258,11 +9273,11 @@ function exportCanonicalJSON() {
     project_id: projectId,
     shots: state.cuts.map((c, i) => cutToCanonicalShot(c, i, projectId)),
   };
-  saveFileAs("canonical-shots.json", new Blob([JSON.stringify(doc, null, 2)], { type: "application/json" }));
+  saveFileAs("canonical-shots.json", JSON.stringify(doc, null, 2));
 }
 
 function exportJSON() {
-  saveFileAs("virtual-studio-project.json", new Blob([JSON.stringify({ version: 1, ...state }, null, 2)], { type: "application/json" }));
+  saveFileAs("virtual-studio-project.json", JSON.stringify({ version: 1, ...state }, null, 2));
 }
 
 function importJSON(file) {
@@ -9666,6 +9681,9 @@ function setupWorkflow() {
     state.cuts.forEach(c => { if (c.wfStatus === "plan" && c.kind !== "still") c.wfStatus = "prompted"; });
     renderCutStrip(); renderWorkflow();
   });
+  byId("btnWfPngs").addEventListener("click", () => {
+    exportBoardPngs(byId("wfPngMsg")).catch(err => { byId("wfPngMsg").textContent = "⚠️ " + err.message; });
+  });
   byId("btnWfApiSave").addEventListener("click", () => {
     lsSet(LS_APICFG, { endpoint: byId("wfApiUrl").value.trim() });
     byId("wfApiMsg").textContent = "✓ 保存しました";
@@ -9752,24 +9770,24 @@ const roughCut = { index: {}, playing: false, stopFlag: false, urls: {}, ac: nul
  * (ビューアが確認して保存)、通常ブラウザではアンカーで直接保存。
  * ======================================================= */
 async function saveFileAs(filename, data) {
-  try {
-    const dl = typeof claude !== "undefined" && claude.use ? await claude.use("downloads") : null;
-    if (dl) {
-      try {
-        await dl.save({ filename, data });
-        return true;
-      } catch (err) {
-        const code = err && err.code;
-        if (code === "declined" || code === "rate_limited") return false; // ビューアの判断を尊重
-        if (code === "rejected_extension" || code === "extension_not_enabled") {
-          // 許可外の拡張子 (.edl / .html等) はテキストとして保存し直す
-          try { await dl.save({ filename: filename.replace(/\.[^.]+$/, "") + ".txt", data }); return true; }
-          catch { return false; }
-        }
-        /* unavailable等 → アンカーにフォールバック */
+  let dl = null;
+  try { dl = typeof claude !== "undefined" && claude.use ? await claude.use("downloads") : null; }
+  catch { dl = null; }
+  if (dl) {
+    /* Artifact内: アンカーは効かないので downloads のみ。失敗は false を返し呼び出し側で代替 */
+    try {
+      await dl.save({ filename, data });
+      return true;
+    } catch (err) {
+      const code = err && err.code;
+      if ((code === "rejected_extension" || code === "extension_not_enabled") && typeof data === "string") {
+        // 許可外の拡張子 (.edl / .html / .svg等) のテキストは .txt として保存し直す
+        try { await dl.save({ filename: filename.replace(/\.[^.]+$/, "") + ".txt", data }); return true; }
+        catch { return false; }
       }
+      return false;
     }
-  } catch { /* claude名前空間なし → フォールバック */ }
+  }
   const blob = data instanceof Blob ? data : new Blob([data]);
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -9779,6 +9797,139 @@ async function saveFileAs(filename, data) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
   return true;
+}
+
+/* =========================================================
+ * ZIPライタ (無圧縮ストア・依存ゼロ) + SVG→PNGラスタライズ
+ * ======================================================= */
+function crc32(buf) {
+  if (!crc32.t) {
+    crc32.t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1;
+      crc32.t[n] = c;
+    }
+  }
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < buf.length; i++) c = crc32.t[(c ^ buf[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+
+function buildZip(files) { // files: [{name, data: Uint8Array}]
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+  for (const f of files) {
+    const nameB = enc.encode(f.name);
+    const crc = crc32(f.data);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true);
+    lh.setUint16(4, 20, true);
+    lh.setUint16(6, 0x0800, true); // UTF-8ファイル名
+    lh.setUint32(14, crc, true);
+    lh.setUint32(18, f.data.length, true);
+    lh.setUint32(22, f.data.length, true);
+    lh.setUint16(26, nameB.length, true);
+    parts.push(lh.buffer, nameB, f.data);
+    const cd = new DataView(new ArrayBuffer(46));
+    cd.setUint32(0, 0x02014b50, true);
+    cd.setUint16(4, 20, true);
+    cd.setUint16(6, 20, true);
+    cd.setUint16(8, 0x0800, true);
+    cd.setUint32(16, crc, true);
+    cd.setUint32(20, f.data.length, true);
+    cd.setUint32(24, f.data.length, true);
+    cd.setUint16(28, nameB.length, true);
+    cd.setUint32(42, offset, true);
+    central.push(cd.buffer, nameB);
+    offset += 30 + nameB.length + f.data.length;
+  }
+  const cdSize = central.reduce((s, b) => s + b.byteLength, 0);
+  const eocd = new DataView(new ArrayBuffer(22));
+  eocd.setUint32(0, 0x06054b50, true);
+  eocd.setUint16(8, files.length, true);
+  eocd.setUint16(10, files.length, true);
+  eocd.setUint32(12, cdSize, true);
+  eocd.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, eocd.buffer], { type: "application/zip" });
+}
+
+function svgToCanvas(svgStr, w, h) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(new Blob([svgStr], { type: "image/svg+xml" }));
+    img.onload = () => {
+      const cv = document.createElement("canvas");
+      cv.width = w; cv.height = h;
+      cv.getContext("2d").drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      resolve(cv);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("SVGを描画できませんでした")); };
+    img.src = url;
+  });
+}
+
+/* 全カットをPNG化してZIP (+連結シート)。Artifactでzipが保存できない場合はシートPNG単体で保存 */
+async function exportBoardPngs(msgEl) {
+  const title = state.projectTitle.replace(/[\\/:*?"<>|]/g, "_");
+  const files = [];
+  const panels = [];
+  for (let i = 0; i < state.cuts.length; i++) {
+    if (msgEl) msgEl.textContent = `画像化中… C${i + 1}/${state.cuts.length}`;
+    const cut = state.cuts[i];
+    const d = aspectDims(cut.aspect);
+    const tw = 1280, th = Math.round(1280 * d.H / d.W);
+    let svg = renderPreviewSVG(cut, "bp" + i);
+    svg = svg.replace("<svg ", `<svg width="${tw}" height="${th}" `);
+    const cv = await svgToCanvas(svg, tw, th);
+    const blob = await new Promise(r => cv.toBlob(r, "image/png"));
+    files.push({ name: `C${String(i + 1).padStart(2, "0")}.png`, data: new Uint8Array(await blob.arrayBuffer()) });
+    panels.push({ cv, cut, i });
+  }
+
+  /* 連結シート (2列グリッド + キャプションバー) */
+  const cols = 2, pw = 640, gap = 18, capH = 30, pad = 24;
+  const rows = [];
+  for (let i = 0; i < panels.length; i += cols) rows.push(panels.slice(i, i + cols));
+  const rowHs = rows.map(r => Math.max(...r.map(p => Math.round(pw * p.cv.height / p.cv.width))) + capH);
+  const sheet = document.createElement("canvas");
+  sheet.width = pad * 2 + cols * pw + (cols - 1) * gap;
+  sheet.height = pad * 2 + 34 + rowHs.reduce((a, b) => a + b + gap, -gap);
+  const sc = sheet.getContext("2d");
+  sc.fillStyle = "#f5f5f7";
+  sc.fillRect(0, 0, sheet.width, sheet.height);
+  sc.fillStyle = "#1a1d24";
+  sc.font = "700 20px 'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif";
+  sc.fillText(`${state.projectTitle} — 絵コンテ (${panels.length}カット)`, pad, pad + 16);
+  let y = pad + 34;
+  rows.forEach((row, ri) => {
+    row.forEach((pn, ci) => {
+      const x = pad + ci * (pw + gap);
+      const ph = Math.round(pw * pn.cv.height / pn.cv.width);
+      sc.drawImage(pn.cv, x, y, pw, ph);
+      sc.fillStyle = "#1a1d24";
+      sc.font = "600 13px 'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif";
+      const t = TRANSITIONS.find(x2 => x2.id === (pn.cut.transition || "cut"));
+      sc.fillText(
+        `C${pn.i + 1}  ${pn.cut.name.slice(0, 22)} ｜ ${pn.cut.kind === "still" ? "スチール" : (pn.cut.duration || 5) + "s"}${pn.i < state.cuts.length - 1 && t ? " ｜ →" + t.label.split(" ")[0] : ""}`,
+        x, y + ph + 19);
+    });
+    y += rowHs[ri] + gap;
+  });
+  const sheetBlob = await new Promise(r => sheet.toBlob(r, "image/png"));
+  files.unshift({ name: "storyboard-sheet.png", data: new Uint8Array(await sheetBlob.arrayBuffer()) });
+
+  if (msgEl) msgEl.textContent = "保存中…";
+  const okZip = await saveFileAs(`${title}-storyboard.zip`, buildZip(files));
+  if (!okZip) {
+    // Artifact等でzipが保存できない場合は連結シートPNG単体で
+    const okPng = await saveFileAs(`${title}-storyboard-sheet.png`, sheetBlob);
+    if (msgEl) msgEl.textContent = okPng ? `✓ 連結シートPNGを保存しました (この環境ではZIPが保存できないため。単体HTMLならZIPで${files.length}枚)` : "保存をキャンセルしました";
+    return;
+  }
+  if (msgEl) msgEl.textContent = `✓ ZIPを保存しました (シート+各カットPNG ${files.length}ファイル)`;
 }
 
 function idbOpen() {
@@ -9909,7 +10060,7 @@ async function rcRun(record) {
   canvas.width = 1280; canvas.height = 720;
   const c2 = canvas.getContext("2d");
   const vids = [byId("rcVideoA"), byId("rcVideoB")];
-  const draw = { a: null, b: null, alphaB: 0, veil: 0, veilColor: "#000" };
+  const draw = { a: null, b: null, alphaB: 0, veil: 0, veilColor: "#000", caption: "" };
   let stopDraw = false;
 
   const paint = () => {
@@ -9925,6 +10076,18 @@ async function rcRun(record) {
     };
     dv(draw.a, 1);
     dv(draw.b, draw.alphaB);
+    if (draw.caption) {
+      /* テロップ焼き込み (編集用字幕) */
+      c2.font = "600 34px 'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif";
+      c2.textAlign = "center";
+      const tw = Math.min(canvas.width * 0.86, c2.measureText(draw.caption).width + 56);
+      c2.globalAlpha = 0.45;
+      c2.fillStyle = "#000";
+      c2.fillRect((canvas.width - tw) / 2, canvas.height - 100, tw, 54);
+      c2.globalAlpha = 1;
+      c2.fillStyle = "#fff";
+      c2.fillText(draw.caption, canvas.width / 2, canvas.height - 62);
+    }
     if (draw.veil > 0) {
       c2.globalAlpha = Math.min(1, draw.veil);
       c2.fillStyle = draw.veilColor;
@@ -9969,6 +10132,7 @@ async function rcRun(record) {
     if (!v._prestarted) await startSeg(v, cut);
     v._prestarted = false;
     draw.a = v; draw.b = null; draw.alphaB = 0;
+    draw.caption = cut.caption || "";
     byId("rcMsg").textContent = `${record ? "録画中" : "再生中"}: C${state.cuts.indexOf(cut) + 1} (${k + 1}/${cuts.length})`;
 
     // フェード明け (前カットが黒/白経由だった場合)
@@ -10009,6 +10173,7 @@ async function rcRun(record) {
         await frame();
       }
       draw.a = nv; draw.b = null; draw.alphaB = 0;
+      draw.caption = cuts[k + 1].caption || "";
       v.pause();
     } else if (FADE > 0) {
       // 黒/白経由
