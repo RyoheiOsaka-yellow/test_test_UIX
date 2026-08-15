@@ -408,6 +408,35 @@
   </div>
 </div>
 
+<!-- ようこそ (初回起動のみ) -->
+<div id="welcome" hidden>
+  <div class="wel-card">
+    <div class="wel-mark"></div>
+    <h2>Virtual Studio へようこそ</h2>
+    <p>画像とストーリーからカットを設計し、ライティング・カメラ・機材を決めて、<br>Seedance等の生成AIに渡す「仮想撮影スタジオ」です。</p>
+    <div class="wel-actions">
+      <button id="btnWelSample" class="btn primary">サンプルを開いてツアーを見る</button>
+      <button id="btnWelEmpty" class="btn">空のプロジェクトで始める</button>
+    </div>
+    <p class="wel-hint">ツアーは <kbd>?</kbd> キーのヘルプからいつでも再開できます</p>
+  </div>
+</div>
+
+<!-- オンボーディングツアー (スポットライト) -->
+<div id="tourWrap" hidden>
+  <div id="tourHole"></div>
+  <div id="tourCard">
+    <div id="tourTitle"></div>
+    <div id="tourBody"></div>
+    <div class="tour-actions">
+      <span id="tourStep"></span>
+      <button id="btnTourPrev" class="btn small">戻る</button>
+      <button id="btnTourNext" class="btn small primary">次へ</button>
+      <button id="btnTourSkip" class="btn small ghost">スキップ</button>
+    </div>
+  </div>
+</div>
+
 <!-- キーボードショートカット一覧 ("?"で開閉) -->
 <div id="kbdHelp" hidden>
   <div class="kbd-title">キーボードショートカット <button id="btnKbdClose" class="icon-btn small"><svg class="ic"><use href="#i-close"/></svg></button></div>
@@ -418,6 +447,7 @@
     <span><kbd>?</kbd></span><span>このヘルプ</span>
     <span><kbd>Esc</kbd></span><span>ページ / ヘルプを閉じる</span>
   </div>
+  <button id="btnTourAgain" class="btn small" style="margin-top:10px">🎓 ツアーをもう一度見る</button>
 </div>
 
 <div id="projOverlay" class="overlay" hidden>

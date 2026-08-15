@@ -1099,6 +1099,7 @@ function togglePresetFav(id) {
   lsSet(LS_PRESETSTATS, st);
 }
 
+let presetListMemo = "";
 function renderPresetList() {
   const q = byId("presetSearch").value.trim().toLowerCase();
   const wrap = byId("presetList");
@@ -1106,6 +1107,10 @@ function renderPresetList() {
   const keepScroll = scroller.scrollTop; // 再描画でスクロール位置を失わない
   const cut = activeCut();
   const stats = presetStats();
+  /* 検索語・モード・選択中プリセット・統計が同じなら再構築しない */
+  const memoKey = `${q}|${state.mode}|${cut ? cut.presetId : ""}|${JSON.stringify(stats)}|${allPresets().length}`;
+  if (memoKey === presetListMemo) return;
+  presetListMemo = memoKey;
   const groups = {};
   const visible = [];
   for (const p of allPresets()) {
@@ -1207,8 +1212,13 @@ function setupViewToggle() {
   });
 }
 
+let previewMemo = "";
 function renderPreview() {
-  byId("previewFrame").innerHTML = renderPreviewSVG(activeCut(), "live");
+  const svg = renderPreviewCached(activeCut(), "live");
+  if (svg !== previewMemo) {
+    previewMemo = svg;
+    byId("previewFrame").innerHTML = svg;
+  }
   byId("explainList").innerHTML = explainCut(activeCut()).map(l => `<li>${esc(l)}</li>`).join("");
   updatePlayButton();
   renderAspectChips();
@@ -1336,21 +1346,25 @@ function renderPrompt() {
   byId("promptHint").textContent = m ? `${m.label}: ${m.hint}` : "";
 }
 
+let cutStripMemo = "";
 function renderCutStrip() {
   const strip = byId("cutStrip");
   const keepScroll = strip.scrollLeft; // 再描画で横スクロール位置を失わない
-  strip.innerHTML = state.cuts.map((c, i) => {
+  const html = state.cuts.map((c, i) => {
     const trans = i < state.cuts.length - 1 ? TRANSITIONS.find(t => t.id === (c.transition || "cut")) : null;
     // サムネイルはカットの実アスペクト比 (9:16なら縦長) で表示する
     const d = aspectDims(c.aspect);
     const tw = Math.max(56, Math.min(150, Math.round(76 * d.W / d.H)));
     return `
     <div class="cut-thumb ${i === state.activeCut ? "active" : ""}" data-idx="${i}" style="width:${tw + 4}px">
-      ${renderPreviewSVG(c, "th" + i)}
+      ${renderPreviewCached(c, "th" + i)}
       <div class="cut-cap"><span class="wf-dot ${c.wfStatus || "plan"}" title="${(WF_STATUS.find(w => w.id === c.wfStatus) || WF_STATUS[0]).label}"></span>C${i + 1}　${esc(c.name)}</div>
     </div>
     ${trans ? `<div class="trans-chip" title="${esc(trans.note)}">${esc(trans.label.split(" ")[0])}</div>` : ""}`;
   }).join("");
+  if (html === cutStripMemo && strip.children.length) return; // 変化なし → DOM再構築しない
+  cutStripMemo = html;
+  strip.innerHTML = html;
   strip.querySelectorAll(".cut-thumb").forEach(el => {
     el.addEventListener("click", () => {
       state.activeCut = +el.dataset.idx;
@@ -4070,6 +4084,205 @@ function setupRoughCut() {
 }
 
 /* =========================================================
+ * パフォーマンス: プレビューSVGのキャッシュ
+ * 参照画像 (base64) を埋め込むSVGの再構築は重いので、
+ * カット内容が変わらない限り文字列を再利用する。
+ * ======================================================= */
+const previewCache = new Map();
+function renderPreviewCached(cut, prefix) {
+  const ref = cut.refImgId && state.story && state.story.refs
+    ? state.story.refs.find(r => r.id === cut.refImgId) : null;
+  const key = JSON.stringify(cut) + "|" + (ref ? `${ref.id}:${ref.dataUrl.length}` : "") + "|" + prefix;
+  const slot = `${cut.id}|${prefix}`;
+  const hit = previewCache.get(slot);
+  if (hit && hit.key === key) return hit.svg;
+  const svg = renderPreviewSVG(cut, prefix);
+  if (previewCache.size > 80) previewCache.clear(); // 際限なく貯めない
+  previewCache.set(slot, { key, svg });
+  return svg;
+}
+
+/* =========================================================
+ * サンプルプロジェクト (初回起動用) — 画像もコードで生成する
+ * ======================================================= */
+function makeSampleStreetImage() {
+  const cv = document.createElement("canvas");
+  cv.width = 768; cv.height = 432;
+  const g = cv.getContext("2d");
+  const sky = g.createLinearGradient(0, 0, 0, 300);
+  sky.addColorStop(0, "#3a2a55");
+  sky.addColorStop(0.55, "#c75b39");
+  sky.addColorStop(1, "#f5a54a");
+  g.fillStyle = sky;
+  g.fillRect(0, 0, 768, 300);
+  g.fillStyle = "#ffe9b0";
+  g.beginPath(); g.arc(520, 258, 34, 0, 7); g.fill();
+  g.fillStyle = "rgba(255,210,120,0.35)";
+  g.beginPath(); g.arc(520, 258, 62, 0, 7); g.fill();
+  // スカイライン
+  g.fillStyle = "#241a30";
+  const bl = [[0, 190, 90, 110], [80, 160, 70, 140], [160, 210, 60, 90], [230, 150, 80, 150], [320, 195, 66, 105], [598, 170, 76, 130], [686, 200, 82, 100], [420, 205, 70, 95]];
+  bl.forEach(([x, y, w, h]) => g.fillRect(x, y, w, h));
+  // 路面 (反射)
+  const rd = g.createLinearGradient(0, 300, 0, 432);
+  rd.addColorStop(0, "#3a2f42");
+  rd.addColorStop(1, "#191320");
+  g.fillStyle = rd;
+  g.fillRect(0, 300, 768, 132);
+  g.fillStyle = "rgba(245,165,74,0.28)";
+  g.fillRect(492, 300, 56, 132);
+  return cv.toDataURL("image/jpeg", 0.85);
+}
+
+function makeSampleHeroineImage() {
+  const cv = document.createElement("canvas");
+  cv.width = 400; cv.height = 520; // 背景透過 (被写体合成のデモ用)
+  const g = cv.getContext("2d");
+  g.fillStyle = "#caa287";
+  g.beginPath(); g.arc(200, 120, 62, 0, 7); g.fill();          // 顔
+  g.fillStyle = "#43301f";
+  g.beginPath(); g.arc(200, 96, 66, Math.PI, 0); g.fill();     // 髪
+  g.fillRect(134, 96, 18, 120); g.fillRect(248, 96, 18, 120);  // サイドの髪
+  g.fillStyle = "#2a2e36";
+  g.beginPath(); g.arc(176, 122, 6, 0, 7); g.arc(224, 122, 6, 0, 7); g.fill(); // 目
+  g.fillStyle = "#8a3d4d";
+  g.fillRect(150, 190, 100, 40);                               // 首元
+  const coat = g.createLinearGradient(0, 200, 0, 520);
+  coat.addColorStop(0, "#7d3646");
+  coat.addColorStop(1, "#4c1f2e");
+  g.fillStyle = coat;
+  g.beginPath();
+  g.moveTo(120, 240); g.quadraticCurveTo(200, 196, 280, 240);
+  g.lineTo(300, 520); g.lineTo(100, 520); g.closePath(); g.fill(); // コート
+  return cv.toDataURL("image/png");
+}
+
+function loadSampleProject() {
+  const refStreet = { id: uid(), name: "sample-street.jpg", dataUrl: makeSampleStreetImage(), hasAlpha: false };
+  const refHeroine = { id: uid(), name: "sample-heroine.png", dataUrl: makeSampleHeroineImage(), hasAlpha: true };
+  const mk = (pid, patch, cam) => {
+    const c = makeCut(allPresets().find(p => p.id === pid));
+    Object.assign(c, patch || {});
+    Object.assign(c.camera, cam || {});
+    return c;
+  };
+  const cuts = [
+    mk("three-point", {
+      name: "夕暮れの街 (状況説明)", aim: "シーンの地理と時間帯を見せるエスタブリッシング。",
+      refImgId: refStreet.id, duration: 5, transition: "dissolve", bgStyle: "sunset", timeOfDay: "golden",
+    }, { shotSize: "LS", move: "fix", focalMm: 24, lens: "24" }),
+    mk("loop", {
+      name: "ヒロイン、歩き出す", aim: "決意して歩き出す姿。街の光を背負う。",
+      refImgId: refHeroine.id, duration: 4, transition: "cut", action: "walk", bgStyle: "sunset",
+      caption: "「行かなきゃ。」",
+    }, { shotSize: "BS", move: "track" }),
+    mk("rembrandt", {
+      name: "ふり返る", aim: "感情の転換点。浅い被写界深度で表情に寄る。",
+      refImgId: refHeroine.id, duration: 4, transition: "fadeout", action: "turn", look: "filmwarm",
+    }, { shotSize: "CU", move: "dollyin", moveSpeed: "slow", apertureF: 1.8, aperture: "F1.8" }),
+    mk("backlight-silhouette", {
+      name: "シルエットで決める", aim: "夕陽を背にしたシルエットで余韻を残すラストカット。",
+      refImgId: refHeroine.id, duration: 5, bgStyle: "sunset",
+    }, { shotSize: "FF", move: "fix", angle: "low" }),
+  ];
+  applySnapshot({
+    mode: "video",
+    projectTitle: "サンプル: 夕暮れのヒロイン",
+    cuts,
+    activeCut: 0,
+    story: {
+      text: "夕暮れの街。ビルの谷間に金色の光が沈んでいく。\nヒロインは意を決して歩き出す。\nふと立ち止まり、ゆっくりふり返る。\n最後は夕陽を背にしたシルエットで。",
+      refs: [refStreet, refHeroine],
+      audioVol: { bgm: 0.4, nar: 1 },
+    },
+  });
+}
+
+/* =========================================================
+ * オンボーディング: ようこそ画面 + スポットライトツアー
+ * ======================================================= */
+const TOUR_STEPS = [
+  { el: "#libraryPanel", title: "1. 技法ライブラリ", body: "86の撮影技法プリセット。クリックすると照明・カメラ・機材がまるごとカットに適用されます。★でお気に入り、よく使う技法は先頭に固定されます。" },
+  { el: "#canvasWrap", title: "2. スタジオ俯瞰図", body: "灯体や機材をドラッグで配置。上のトグルで3Dビュー/カメラPOVにも切り替えられます。配置は右のプレビューに即反映されます。" },
+  { el: "#previewWrap", title: "3. 想定カット", body: "ライティング解析の結果 (キーの方向・コントラスト・リム) を反映したプレビュー。参照画像を割り当てると実画像に技法の効果が乗ります。▶でカメラワークも再生できます。" },
+  { el: "#rightPanel", title: "4. インスペクタ", body: "カメラボディ・レンズ・絞り・尺・テロップ・編集 (テイク/イン点) まで全てここで微調整。下にはAIプロンプトが常に自動生成されています。" },
+  { el: "#storyboard", title: "5. カット割りとタイムライン", body: "カバレッジ充足チップ (⚠クリックで自動補完)、尺タイムライン (右端ドラッグでトリム・ブロックドラッグで並べ替え)、カット間の繋ぎ表示。", },
+  { el: "#intentInput", title: "6. 言葉からカット設計", body: "「夜の雨の街を走る。35mmで緊張感」のように書いて設計ボタンを押すと、IntentParserがカットを自動設計します。複文なら複数カットに分解されます。" },
+  { el: "#btnFlowPage", title: "7. 制作ワークフロー", body: "画像+ストーリーの受け入れ→カット設計→Seedanceへの書き出し→生成動画のラフカット編集 (BGM/ナレーション/字幕付き) まで、制作ループ全体をここで回します。" },
+  { el: "#btnExportDoc", title: "8. 書き出し", body: "撮影指示書・絵コンテ・香盤表・DMX・編集リスト (EDL)・プロンプト一式MD・画像ZIP。最終編集は編集ソフトへ、このアプリはその手前の全部を担当します。ショートカットは ? キーで。" },
+];
+let tourIdx = 0;
+
+function tourShow(i) {
+  const step = TOUR_STEPS[i];
+  const el = document.querySelector(step.el);
+  if (!el) { tourNext(1); return; } // 見つからないステップは飛ばす
+  tourIdx = i;
+  byId("tourWrap").hidden = false;
+  el.scrollIntoView({ block: "nearest", behavior: "instant" });
+  const r = el.getBoundingClientRect();
+  const hole = byId("tourHole");
+  const pad = 6;
+  Object.assign(hole.style, {
+    left: `${Math.max(0, r.left - pad)}px`,
+    top: `${Math.max(0, r.top - pad)}px`,
+    width: `${Math.min(window.innerWidth, r.width + pad * 2)}px`,
+    height: `${Math.min(window.innerHeight, r.height + pad * 2)}px`,
+  });
+  byId("tourTitle").textContent = step.title;
+  byId("tourBody").textContent = step.body;
+  byId("tourStep").textContent = `${i + 1} / ${TOUR_STEPS.length}`;
+  byId("btnTourPrev").disabled = i === 0;
+  byId("btnTourNext").textContent = i === TOUR_STEPS.length - 1 ? "完了" : "次へ";
+  // カードは対象の下、入らなければ上に
+  const card = byId("tourCard");
+  card.style.visibility = "hidden";
+  requestAnimationFrame(() => {
+    const ch = card.offsetHeight, cw = card.offsetWidth;
+    let top = r.bottom + 14;
+    if (top + ch > window.innerHeight - 10) top = Math.max(10, r.top - ch - 14);
+    let left = Math.max(10, Math.min(window.innerWidth - cw - 10, r.left + r.width / 2 - cw / 2));
+    card.style.top = `${top}px`;
+    card.style.left = `${left}px`;
+    card.style.visibility = "visible";
+  });
+}
+
+function tourNext(dir) {
+  const n = tourIdx + dir;
+  if (n < 0) return;
+  if (n >= TOUR_STEPS.length) { tourEnd(); return; }
+  tourShow(n);
+}
+
+function tourEnd() {
+  byId("tourWrap").hidden = true;
+  lsSet("vsTourDone", true);
+}
+
+function startTour() {
+  byId("kbdHelp").hidden = true;
+  ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay", "wfOverlay"].forEach(id => { byId(id).hidden = true; });
+  tourShow(0);
+}
+
+function setupOnboarding() {
+  byId("btnWelSample").addEventListener("click", () => {
+    byId("welcome").hidden = true;
+    loadSampleProject();
+    startTour();
+  });
+  byId("btnWelEmpty").addEventListener("click", () => {
+    byId("welcome").hidden = true;
+    lsSet("vsTourDone", true);
+  });
+  byId("btnTourNext").addEventListener("click", () => tourNext(1));
+  byId("btnTourPrev").addEventListener("click", () => tourNext(-1));
+  byId("btnTourSkip").addEventListener("click", tourEnd);
+  byId("btnTourAgain").addEventListener("click", startTour);
+}
+
+/* =========================================================
  * キーボードショートカット
  *   Space=再生/停止 (WF中はラフカット) / ←→=カット選択 /
  *   1-8=カットサイズ / ?=ヘルプ / Esc=閉じる (既存)
@@ -4943,6 +5156,7 @@ function init() {
   setupWorkflow();
   setupRoughCut();
   setupShortcuts();
+  setupOnboarding();
   byId("btnPlayPreview").addEventListener("click", () => {
     state.previewPlay = !state.previewPlay;
     if (state.previewPlay) startPreviewAnim(); else stopPreviewAnim();
@@ -4950,7 +5164,11 @@ function init() {
   });
   // 前回の作業を復元 (自動保存)。無ければデモ用の初期カット割り
   const saved = lsGet(LS_CURRENT, null);
-  if (saved && Array.isArray(saved.cuts) && saved.cuts.length) {
+  const firstRun = !(saved && Array.isArray(saved.cuts) && saved.cuts.length);
+  if ((firstRun && !lsGet("vsTourDone", false) && !navigator.webdriver) || lsGet("vsForceWelcome", false)) {
+    byId("welcome").hidden = false; // 初回だけ (自動テスト環境では出さない)
+  }
+  if (!firstRun) {
     applySnapshot(saved);
   } else {
     state.cuts = [
