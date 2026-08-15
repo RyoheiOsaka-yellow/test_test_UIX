@@ -991,10 +991,11 @@ input[type="range"]::-moz-range-thumb {
 /* ---------- シークバー ---------- */
 #rcSeek {
   position: relative; height: 22px; margin-top: 8px;
-  max-width: 640px; cursor: pointer; border-radius: 6px; overflow: hidden;
+  max-width: 640px; cursor: pointer; border-radius: 6px;
 }
 #rcSeek.empty { display: none; }
-#rcSeekBlocks { display: flex; gap: 2px; height: 100%; }
+#rcSeekBlocks { display: flex; gap: 2px; height: 100%; border-radius: 6px; overflow: hidden; }
+#rcNarWave { position: absolute; inset: 0; width: 100%; pointer-events: none; }
 .rc-seg {
   display: flex; align-items: center; justify-content: center;
   background: var(--fill-2); color: var(--text2);
@@ -1021,3 +1022,33 @@ input[type="range"]::-moz-range-thumb {
 .p-fav.on { color: #f5a623; }
 .preset-group-title.pinned { color: #b07708; }
 .p-tag.p-used { background: var(--accent-soft); color: var(--accent); }
+
+/* ---------- シークバーのホバーサムネイル ---------- */
+#rcSeekTip {
+  position: absolute; bottom: calc(100% + 8px); width: 168px;
+  background: var(--surface); border-radius: 10px; overflow: hidden;
+  box-shadow: var(--shadow-md); pointer-events: none; z-index: 20;
+}
+#rcSeekTip .tip-thumb svg { display: block; width: 100%; }
+#rcSeekTip .tip-cap {
+  font-size: 10px; font-weight: 600; color: var(--text2);
+  padding: 4px 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ---------- ショートカットヘルプ ---------- */
+#kbdHelp {
+  position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%);
+  background: var(--glass);
+  -webkit-backdrop-filter: saturate(1.8) blur(20px); backdrop-filter: saturate(1.8) blur(20px);
+  border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 18px; z-index: 300; box-shadow: var(--shadow-md);
+}
+.kbd-title { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.kbd-title .icon-btn { margin-left: auto; }
+.kbd-grid { display: grid; grid-template-columns: auto 1fr; gap: 7px 16px; font-size: 12px; color: var(--text2); }
+kbd {
+  display: inline-block; min-width: 20px; text-align: center;
+  padding: 2px 6px; border-radius: 5px; font-size: 11px; font-family: inherit;
+  background: var(--fill-2); border: 1px solid var(--line-strong);
+  box-shadow: 0 1.5px 0 var(--line-strong);
+}

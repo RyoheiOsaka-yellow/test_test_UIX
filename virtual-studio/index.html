@@ -366,7 +366,9 @@
           <!-- シークバー: クリック/再生中クリックで途中から再生 -->
           <div id="rcSeek" title="クリックでその位置から再生">
             <div id="rcSeekBlocks"></div>
+            <canvas id="rcNarWave" height="22"></canvas>
             <div id="rcPlayhead"></div>
+            <div id="rcSeekTip" hidden></div>
           </div>
           <div class="rc-controls">
             <button id="btnRcPlay" class="btn small primary"><svg class="ic"><use href="#i-play"/></svg> ラフカット再生</button>
@@ -403,6 +405,18 @@
         <span class="insp-hint">現在のプロジェクトを保存してから、新しい空のプロジェクトを開始します。全体の編集は「編集リスト (EDL)」を書き出して編集ソフトで</span>
       </div>
     </section>
+  </div>
+</div>
+
+<!-- キーボードショートカット一覧 ("?"で開閉) -->
+<div id="kbdHelp" hidden>
+  <div class="kbd-title">キーボードショートカット <button id="btnKbdClose" class="icon-btn small"><svg class="ic"><use href="#i-close"/></svg></button></div>
+  <div class="kbd-grid">
+    <span><kbd>Space</kbd></span><span>プレビュー再生 / 停止 (ワークフローではラフカット)</span>
+    <span><kbd>←</kbd> <kbd>→</kbd></span><span>前 / 次のカットを選択</span>
+    <span><kbd>1</kbd>〜<kbd>8</kbd></span><span>カットサイズ (1=超CU 〜 8=超ロング)</span>
+    <span><kbd>?</kbd></span><span>このヘルプ</span>
+    <span><kbd>Esc</kbd></span><span>ページ / ヘルプを閉じる</span>
   </div>
 </div>
 

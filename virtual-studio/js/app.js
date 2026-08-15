@@ -3625,6 +3625,62 @@ function renderRcSeek() {
     `<div class="rc-seg" style="flex:${c.duration || 5}" title="C${state.cuts.indexOf(c) + 1} ${esc(c.name)} (${c.duration || 5}s)">C${state.cuts.indexOf(c) + 1}</div>`).join("");
   const tm = byId("rcTime");
   if (tm && !roughCut.playing) tm.textContent = `0.0 / ${total.toFixed(1)}s`;
+  rcRenderNarWave(); // 非同期でナレーション波形を重ねる
+}
+
+/* ナレーション波形: decodeAudioDataでピークを取り、シークバー上の
+ * 「開始カット位置から音声の長さ分」に重ねて描く — どこで喋るかが見える */
+async function rcRenderNarWave() {
+  const cvs = byId("rcNarWave");
+  const clipInfo = roughCut.index[RC_AUDIO_KEYS.nar];
+  const cuts = state.cuts.filter(c => c.kind !== "still" && roughCut.index[c.id]);
+  if (!clipInfo || !cuts.length) { cvs.hidden = true; return; }
+  const key = `${clipInfo.name}:${clipInfo.size}`;
+  if (!roughCut.narPeaks || roughCut.narPeaks.key !== key) {
+    try {
+      const rec = await idbGetClip(RC_AUDIO_KEYS.nar);
+      const dac = new (window.AudioContext || window.webkitAudioContext)();
+      const buf = await dac.decodeAudioData(await rec.blob.arrayBuffer());
+      dac.close();
+      const ch = buf.getChannelData(0);
+      const N = 240;
+      const peaks = new Float32Array(N);
+      const step = Math.max(1, Math.floor(ch.length / N));
+      for (let i = 0; i < N; i++) {
+        let mx = 0;
+        const base = i * step;
+        for (let j = 0; j < step; j += 16) mx = Math.max(mx, Math.abs(ch[base + j] || 0));
+        peaks[i] = mx;
+      }
+      roughCut.narPeaks = { key, peaks, dur: buf.duration };
+    } catch {
+      roughCut.narPeaks = { key, peaks: null };
+    }
+  }
+  const pk = roughCut.narPeaks;
+  if (!pk.peaks) { cvs.hidden = true; return; }
+  cvs.hidden = false;
+  cvs.width = cvs.offsetWidth || 640;
+  const g = cvs.getContext("2d");
+  g.clearRect(0, 0, cvs.width, cvs.height);
+  let acc = 0;
+  const sched = cuts.map(c => { const s0 = acc; acc += c.duration || 5; return s0; });
+  const total = acc;
+  let startSec = 0;
+  if (state.story.narStartCutId) {
+    const t = state.cuts.findIndex(c => c.id === state.story.narStartCutId);
+    const kk = cuts.findIndex(c => state.cuts.indexOf(c) >= t);
+    if (kk > 0) startSec = sched[kk];
+  }
+  const x0 = startSec / total * cvs.width;
+  const w = Math.max(2, Math.min(pk.dur, total - startSec) / total * cvs.width);
+  const shown = Math.min(1, (total - startSec) / pk.dur); // タイムラインからはみ出す分は切る
+  const n = Math.max(1, Math.floor(pk.peaks.length * shown));
+  g.fillStyle = "rgba(10, 132, 255, 0.5)";
+  for (let i = 0; i < n; i++) {
+    const h = Math.max(1.5, pk.peaks[i] * (cvs.height - 4));
+    g.fillRect(x0 + (i / n) * w, (cvs.height - h) / 2, Math.max(1, w / n - 0.6), h);
+  }
 }
 
 function renderRcList() {
@@ -3963,7 +4019,36 @@ function setupRoughCut() {
   });
   volBind("rcBgmVol", "bgm", "rcBgmEl");
   volBind("rcNarVol", "nar", "rcNarEl");
-  byId("rcNarStart").addEventListener("change", e => { state.story.narStartCutId = e.target.value || null; });
+  byId("rcNarStart").addEventListener("change", e => {
+    state.story.narStartCutId = e.target.value || null;
+    renderRcSeek(); // 波形の開始位置を引き直す
+  });
+
+  /* ホバーでカットのプレビューサムネイルを出す */
+  const seekEl = byId("rcSeek"), tip = byId("rcSeekTip");
+  seekEl.addEventListener("mousemove", e => {
+    const cuts = state.cuts.filter(c => c.kind !== "still" && roughCut.index[c.id]);
+    if (!cuts.length) { tip.hidden = true; return; }
+    const rect = seekEl.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    let acc = 0;
+    const sched = cuts.map(c => { const s0 = acc; acc += c.duration || 5; return s0; });
+    const t = frac * acc;
+    let k = cuts.length - 1;
+    for (let i = 0; i < cuts.length; i++) {
+      if (t < sched[i] + (cuts[i].duration || 5)) { k = i; break; }
+    }
+    const cut = cuts[k];
+    if (tip.dataset.cid !== cut.id) {
+      tip.innerHTML = `<div class="tip-thumb">${renderPreviewSVG(cut, "sktip")}</div>
+        <div class="tip-cap">C${state.cuts.indexOf(cut) + 1}　${esc(cut.name.slice(0, 16))} ｜ ${cut.duration || 5}s</div>`;
+      tip.dataset.cid = cut.id;
+    }
+    tip.hidden = false;
+    const tw = tip.offsetWidth || 160;
+    tip.style.left = `${Math.max(0, Math.min(rect.width - tw, e.clientX - rect.left - tw / 2))}px`;
+  });
+  seekEl.addEventListener("mouseleave", () => { tip.hidden = true; });
 
   /* シーク: クリック位置のカット/オフセットから再生 (録画中は無効) */
   byId("rcSeek").addEventListener("click", e => {
@@ -3981,6 +4066,54 @@ function setupRoughCut() {
     const target = { k, offset: Math.max(0, t - sched[k]) };
     if (roughCut.playing) roughCut.seekReq = target; // ループが検知して再入する
     else rcRun(false, target);
+  });
+}
+
+/* =========================================================
+ * キーボードショートカット
+ *   Space=再生/停止 (WF中はラフカット) / ←→=カット選択 /
+ *   1-8=カットサイズ / ?=ヘルプ / Esc=閉じる (既存)
+ * ======================================================= */
+function setupShortcuts() {
+  byId("btnKbdClose").addEventListener("click", () => { byId("kbdHelp").hidden = true; });
+  document.addEventListener("keydown", e => {
+    if (e.target.matches("input, textarea, select") || e.metaKey || e.ctrlKey || e.altKey) return;
+    const wfOpen = !byId("wfOverlay").hidden;
+    const otherOverlay = ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay"].some(id => !byId(id).hidden);
+
+    if (e.key === "?") {
+      e.preventDefault();
+      byId("kbdHelp").hidden = !byId("kbdHelp").hidden;
+      return;
+    }
+    if (e.key === "Escape") { byId("kbdHelp").hidden = true; return; /* ページ側は既存ハンドラが閉じる */ }
+
+    if (e.key === " ") {
+      e.preventDefault();
+      if (wfOpen) {
+        if (roughCut.playing) roughCut.stopFlag = true;
+        else rcRun(false);
+      } else if (!otherOverlay) {
+        byId("btnPlayPreview").click();
+      }
+      return;
+    }
+    if (wfOpen || otherOverlay) return;
+
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      e.preventDefault();
+      const next = state.activeCut + (e.key === "ArrowRight" ? 1 : -1);
+      if (next < 0 || next >= state.cuts.length) return;
+      state.activeCut = next;
+      state.selectedItem = null;
+      renderAll();
+    } else if (/^[1-8]$/.test(e.key)) {
+      const size = SHOT_SIZES[+e.key - 1];
+      if (!size) return;
+      activeCut().camera.shotSize = size.id;
+      refresh();
+      renderInspector();
+    }
   });
 }
 
@@ -4809,6 +4942,7 @@ function init() {
   setupTimeline();
   setupWorkflow();
   setupRoughCut();
+  setupShortcuts();
   byId("btnPlayPreview").addEventListener("click", () => {
     state.previewPlay = !state.previewPlay;
     if (state.previewPlay) startPreviewAnim(); else stopPreviewAnim();
