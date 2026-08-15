@@ -1083,29 +1083,70 @@ function renderPreviewSVG(cut, idPrefix) {
 /* =========================================================
  * UI レンダリング
  * ======================================================= */
+/* 技法の使用統計とお気に入り (ブラウザに永続) */
+const LS_PRESETSTATS = "vsPresetStats";
+function presetStats() { return lsGet(LS_PRESETSTATS, {}); }
+function bumpPresetUse(id) {
+  const st = presetStats();
+  st[id] = st[id] || { used: 0, fav: false };
+  st[id].used++;
+  lsSet(LS_PRESETSTATS, st);
+}
+function togglePresetFav(id) {
+  const st = presetStats();
+  st[id] = st[id] || { used: 0, fav: false };
+  st[id].fav = !st[id].fav;
+  lsSet(LS_PRESETSTATS, st);
+}
+
 function renderPresetList() {
   const q = byId("presetSearch").value.trim().toLowerCase();
   const wrap = byId("presetList");
   const scroller = byId("libraryPanel");
   const keepScroll = scroller.scrollTop; // 再描画でスクロール位置を失わない
   const cut = activeCut();
+  const stats = presetStats();
   const groups = {};
+  const visible = [];
   for (const p of allPresets()) {
     if (!p.modes.includes(state.mode)) continue;
     const text = (p.name + p.desc + p.tags.join(" ")).toLowerCase();
     if (q && !text.includes(q)) continue;
     (groups[p.group] = groups[p.group] || []).push(p);
+    visible.push(p);
   }
-  wrap.innerHTML = Object.entries(groups).map(([g, ps]) => `
-    <div class="preset-group-title">${esc(g)}</div>
-    ${ps.map(p => `
+
+  const cardHtml = p => {
+    const st = stats[p.id] || {};
+    return `
       <div class="preset-card ${cut && cut.presetId === p.id ? "active" : ""}" data-preset="${p.id}">
+        <button class="p-fav ${st.fav ? "on" : ""}" data-fav="${p.id}" title="${st.fav ? "お気に入りを解除" : "お気に入りに追加 (一覧の先頭に固定)"}">${st.fav ? "★" : "☆"}</button>
         <div class="p-name">${esc(p.name)}</div>
         <div class="p-desc">${esc(p.desc)}</div>
-        <div class="p-tags">${p.tags.map(t => `<span class="p-tag">${esc(t)}</span>`).join("")}</div>
-      </div>`).join("")}
+        <div class="p-tags">${p.tags.map(t => `<span class="p-tag">${esc(t)}</span>`).join("")}${st.used ? `<span class="p-tag p-used">${st.used}回使用</span>` : ""}</div>
+      </div>`;
+  };
+
+  /* ★ よく使う: お気に入り + 使用2回以上 (使用回数順・最大8件) を先頭に固定 */
+  const pinned = visible.filter(p => stats[p.id]?.fav)
+    .concat(visible
+      .filter(p => !stats[p.id]?.fav && (stats[p.id]?.used || 0) >= 2)
+      .sort((a, b) => stats[b.id].used - stats[a.id].used))
+    .slice(0, 8);
+
+  wrap.innerHTML = (pinned.length ? `
+    <div class="preset-group-title pinned">★ よく使う・お気に入り</div>
+    ${pinned.map(cardHtml).join("")}` : "")
+    + Object.entries(groups).map(([g, ps]) => `
+    <div class="preset-group-title">${esc(g)}</div>
+    ${ps.map(cardHtml).join("")}
   `).join("") || `<div class="insp-hint" style="margin-top:12px">該当する技法がありません</div>`;
 
+  wrap.querySelectorAll(".p-fav").forEach(b => b.addEventListener("click", e => {
+    e.stopPropagation();
+    togglePresetFav(b.dataset.fav);
+    renderPresetList();
+  }));
   wrap.querySelectorAll(".preset-card").forEach(el => {
     el.addEventListener("click", () => applyPreset(el.dataset.preset));
   });
@@ -1115,6 +1156,7 @@ function renderPresetList() {
 function applyPreset(presetId) {
   const preset = allPresets().find(p => p.id === presetId);
   if (!preset) return;
+  bumpPresetUse(presetId); // 使用統計 (「よく使う」への昇格に使う)
   const cut = activeCut();
   const idx = state.activeCut;
   const fresh = makeCut(preset);
@@ -3564,6 +3606,25 @@ function renderRcAudio() {
     byId(`rc${cap}Del`).hidden = !clip;
     byId(`rc${cap}Vol`).value = Math.round((state.story.audioVol?.[key] ?? (key === "bgm" ? 0.4 : 1)) * 100);
   }
+  /* ナレーションの開始カット選択 */
+  const sel = byId("rcNarStart");
+  sel.hidden = !roughCut.index[RC_AUDIO_KEYS.nar];
+  sel.innerHTML = state.cuts.map((c, i) =>
+    `<option value="${esc(c.id)}" ${state.story.narStartCutId === c.id || (!state.story.narStartCutId && i === 0) ? "selected" : ""}>C${i + 1}から</option>`).join("");
+  renderRcSeek();
+}
+
+/* シークバー: 再生可能カットを尺比例のブロックで表示 */
+function renderRcSeek() {
+  const cuts = state.cuts.filter(c => c.kind !== "still" && roughCut.index[c.id]);
+  const wrap = byId("rcSeekBlocks");
+  if (!cuts.length) { wrap.innerHTML = ""; byId("rcSeek").classList.add("empty"); return; }
+  byId("rcSeek").classList.remove("empty");
+  const total = cuts.reduce((s, c) => s + (c.duration || 5), 0);
+  wrap.innerHTML = cuts.map(c =>
+    `<div class="rc-seg" style="flex:${c.duration || 5}" title="C${state.cuts.indexOf(c) + 1} ${esc(c.name)} (${c.duration || 5}s)">C${state.cuts.indexOf(c) + 1}</div>`).join("");
+  const tm = byId("rcTime");
+  if (tm && !roughCut.playing) tm.textContent = `0.0 / ${total.toFixed(1)}s`;
 }
 
 function renderRcList() {
@@ -3631,13 +3692,28 @@ function rcLoad(v, url) {
 /* ラフカット再生/書き出し — 常にcanvasに合成描画する。
  * A/B 2系統の<video>でディゾルブ (クロスフェード0.7s)、
  * フェードアウト=黒経由0.5s / ホワイトアウト=白経由0.35s。その他は直つなぎ。 */
-async function rcRun(record) {
+async function rcRun(record, startAt) {
   if (roughCut.playing) return;
   const cuts = state.cuts.filter(c => c.kind !== "still" && roughCut.index[c.id]);
   if (!cuts.length) { byId("rcMsg").textContent = "⚠️ 添付された動画がありません。各カットに生成動画を添付してください"; return; }
+  startAt = startAt || { k: 0, offset: 0 };
   roughCut.playing = true;
+  roughCut.recording = !!record;
   roughCut.stopFlag = false;
+  roughCut.seekReq = null;
   roughCut.stats = { cross: 0, veil: 0 };
+
+  /* シーク用スケジュール (レコードイン概算 — ディゾルブの重なりは無視) */
+  const sched = [];
+  let totalDur = 0;
+  cuts.forEach(c => { sched.push(totalDur); totalDur += c.duration || 5; });
+  const updHead = (k2, v) => {
+    const pos = Math.min(totalDur, sched[k2] + Math.max(0, v && v._segStart != null ? v.currentTime - v._segStart : 0));
+    const ph = byId("rcPlayhead");
+    if (ph) ph.style.left = `${(pos / totalDur * 100).toFixed(2)}%`;
+    const tm = byId("rcTime");
+    if (tm) tm.textContent = `${pos.toFixed(1)} / ${totalDur.toFixed(1)}s`;
+  };
 
   const canvas = byId("rcCanvas");
   canvas.width = 1280; canvas.height = 720;
@@ -3711,24 +3787,46 @@ async function rcRun(record) {
   }
 
   const frame = () => new Promise(r => requestAnimationFrame(r));
-  const startSeg = async (v, cut) => {
-    let s0 = cut.srcInSec || 0;
-    if (v.duration && s0 >= v.duration - 0.2) s0 = 0; // 素材がイン点より短ければ頭から
+  const startSeg = async (v, cut, extra = 0) => {
+    let s0 = (cut.srcInSec || 0) + extra;
+    if (v.duration && s0 >= v.duration - 0.2) s0 = extra; // 素材がイン点より短ければ頭から
+    if (v.duration && s0 >= v.duration - 0.1) s0 = 0;
     v.currentTime = s0;
-    v._segStart = s0;
+    v._segStart = s0 - extra; // 経過時間の基準はイン点 (シーク位置表示のため extra を引く)
     try { await v.play(); } catch { /* 再生不可素材はスキップ扱い */ }
   };
 
-  await rcLoad(vids[0], await rcGetUrl(cuts[0].id));
-  audioEls.forEach(el => { el.currentTime = 0; el.play().catch(() => {}); });
+  await rcLoad(vids[startAt.k % 2], await rcGetUrl(cuts[startAt.k].id));
+  /* ナレーションは指定カット到達時に開始 (BGMは常に頭から) */
+  const narEl = byId("rcNarEl");
+  const hasNar = audioEls.includes(narEl);
+  let narStarted = false;
+  const narStartK = (() => {
+    const id = state.story.narStartCutId;
+    if (!id) return 0;
+    const target = state.cuts.findIndex(c => c.id === id);
+    if (target < 0) return 0;
+    const kk = cuts.findIndex(c => state.cuts.indexOf(c) >= target);
+    return kk < 0 ? 0 : kk;
+  })();
+  audioEls.forEach(el => {
+    if (el === narEl && hasNar) return;
+    el.currentTime = 0;
+    el.play().catch(() => {});
+  });
   let veilIn = 0;
 
-  for (let k = 0; k < cuts.length && !roughCut.stopFlag; k++) {
+  for (let k = startAt.k; k < cuts.length && !roughCut.stopFlag && !roughCut.seekReq; k++) {
     const v = vids[k % 2], nv = vids[(k + 1) % 2];
     const cut = cuts[k];
     const dur = cut.duration || 5;
-    if (!v._prestarted) await startSeg(v, cut);
+    if (!v._prestarted) await startSeg(v, cut, k === startAt.k ? startAt.offset : 0);
     v._prestarted = false;
+    if (hasNar && !narStarted && k >= narStartK) {
+      narEl.currentTime = 0;
+      narEl.play().catch(() => {});
+      narStarted = true;
+    }
     draw.a = v; draw.b = null; draw.alphaB = 0;
     draw.caption = cut.caption || "";
     byId("rcMsg").textContent = `${record ? "録画中" : "再生中"}: C${state.cuts.indexOf(cut) + 1} (${k + 1}/${cuts.length})`;
@@ -3736,7 +3834,7 @@ async function rcRun(record) {
     // フェード明け (前カットが黒/白経由だった場合)
     if (veilIn > 0) {
       const t0 = performance.now();
-      while (!roughCut.stopFlag && performance.now() - t0 < veilIn * 1000) {
+      while (!roughCut.stopFlag && !roughCut.seekReq && performance.now() - t0 < veilIn * 1000) {
         draw.veil = 1 - (performance.now() - t0) / (veilIn * 1000);
         await frame();
       }
@@ -3754,9 +3852,12 @@ async function rcRun(record) {
     const FADE = trans === "fadeout" ? 0.5 : trans === "whiteout" ? 0.35 : 0;
 
     // 本編 (トランジション分を残して再生)
-    while (!roughCut.stopFlag && !v.ended && v.currentTime < endT - X - FADE - 0.03) await frame();
+    while (!roughCut.stopFlag && !roughCut.seekReq && !v.ended && v.currentTime < endT - X - FADE - 0.03) {
+      updHead(k, v);
+      await frame();
+    }
 
-    if (roughCut.stopFlag) break;
+    if (roughCut.stopFlag || roughCut.seekReq) break;
     if (X > 0) {
       // ディゾルブ: 次カットを重ねてクロスフェード
       await preload;
@@ -3766,8 +3867,9 @@ async function rcRun(record) {
       draw.b = nv;
       roughCut.stats.cross++;
       const t0 = performance.now();
-      while (!roughCut.stopFlag && performance.now() - t0 < X * 1000) {
+      while (!roughCut.stopFlag && !roughCut.seekReq && performance.now() - t0 < X * 1000) {
         draw.alphaB = (performance.now() - t0) / (X * 1000);
+        updHead(k, v);
         await frame();
       }
       draw.a = nv; draw.b = null; draw.alphaB = 0;
@@ -3778,15 +3880,19 @@ async function rcRun(record) {
       draw.veilColor = trans === "whiteout" ? "#ffffff" : "#000000";
       roughCut.stats.veil++;
       const t0 = performance.now();
-      while (!roughCut.stopFlag && performance.now() - t0 < FADE * 1000) {
+      while (!roughCut.stopFlag && !roughCut.seekReq && performance.now() - t0 < FADE * 1000) {
         draw.veil = (performance.now() - t0) / (FADE * 1000);
+        updHead(k, v);
         await frame();
       }
       draw.veil = 1;
       v.pause();
       veilIn = FADE;
     } else {
-      while (!roughCut.stopFlag && !v.ended && v.currentTime < endT - 0.03) await frame();
+      while (!roughCut.stopFlag && !roughCut.seekReq && !v.ended && v.currentTime < endT - 0.03) {
+        updHead(k, v);
+        await frame();
+      }
       v.pause();
     }
   }
@@ -3807,6 +3913,11 @@ async function rcRun(record) {
     }
   } else {
     stopDraw = true;
+    if (roughCut.seekReq) {
+      const rq = roughCut.seekReq;
+      roughCut.seekReq = null;
+      return rcRun(false, rq); // シーク位置から再入
+    }
     byId("rcMsg").textContent = roughCut.stopFlag ? "停止しました" : "✓ 最後まで再生しました";
   }
 }
@@ -3852,6 +3963,25 @@ function setupRoughCut() {
   });
   volBind("rcBgmVol", "bgm", "rcBgmEl");
   volBind("rcNarVol", "nar", "rcNarEl");
+  byId("rcNarStart").addEventListener("change", e => { state.story.narStartCutId = e.target.value || null; });
+
+  /* シーク: クリック位置のカット/オフセットから再生 (録画中は無効) */
+  byId("rcSeek").addEventListener("click", e => {
+    const cuts = state.cuts.filter(c => c.kind !== "still" && roughCut.index[c.id]);
+    if (!cuts.length || roughCut.recording && roughCut.playing) return;
+    const rect = byId("rcSeek").getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    let acc = 0;
+    const sched = cuts.map(c => { const s0 = acc; acc += c.duration || 5; return s0; });
+    const t = frac * acc;
+    let k = cuts.length - 1;
+    for (let i = 0; i < cuts.length; i++) {
+      if (t < sched[i] + (cuts[i].duration || 5)) { k = i; break; }
+    }
+    const target = { k, offset: Math.max(0, t - sched[k]) };
+    if (roughCut.playing) roughCut.seekReq = target; // ループが検知して再入する
+    else rcRun(false, target);
+  });
 }
 
 /* =========================================================

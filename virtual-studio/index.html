@@ -363,10 +363,16 @@
           <video id="rcVideoA" playsinline hidden></video>
           <video id="rcVideoB" playsinline hidden></video>
           <canvas id="rcCanvas" width="1280" height="720"></canvas>
+          <!-- シークバー: クリック/再生中クリックで途中から再生 -->
+          <div id="rcSeek" title="クリックでその位置から再生">
+            <div id="rcSeekBlocks"></div>
+            <div id="rcPlayhead"></div>
+          </div>
           <div class="rc-controls">
             <button id="btnRcPlay" class="btn small primary"><svg class="ic"><use href="#i-play"/></svg> ラフカット再生</button>
             <button id="btnRcStop" class="btn small"><svg class="ic"><use href="#i-pause"/></svg> 停止</button>
             <button id="btnRcExport" class="btn small"><svg class="ic"><use href="#i-download"/></svg> WebMで書き出す (プレビュー品質)</button>
+            <span id="rcTime" class="rc-time"></span>
             <span id="rcMsg" class="insp-hint"></span>
           </div>
           <!-- 音声トラック: BGM (ループ) とナレーション (1回) をミックス -->
@@ -383,6 +389,7 @@
             <div class="rc-audio-row">
               <button class="btn small" data-audiokey="nar">🎙 ナレーションを添付</button>
               <span id="rcNarName" class="rc-audio-name">なし</span>
+              <select id="rcNarStart" title="ナレーションの読み始めカット"></select>
               <input type="range" id="rcNarVol" min="0" max="100" value="100" title="ナレーション音量">
               <button class="icon-btn small danger" data-audiodel="nar" title="ナレーションを削除" hidden id="rcNarDel"><svg class="ic"><use href="#i-trash"/></svg></button>
             </div>

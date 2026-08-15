@@ -987,3 +987,37 @@ input[type="range"]::-moz-range-thumb {
 .rc-audio-row { display: flex; align-items: center; gap: 10px; }
 .rc-audio-name { font-size: 11px; color: var(--dim); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rc-audio-row input[type="range"] { width: 130px; }
+
+/* ---------- シークバー ---------- */
+#rcSeek {
+  position: relative; height: 22px; margin-top: 8px;
+  max-width: 640px; cursor: pointer; border-radius: 6px; overflow: hidden;
+}
+#rcSeek.empty { display: none; }
+#rcSeekBlocks { display: flex; gap: 2px; height: 100%; }
+.rc-seg {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--fill-2); color: var(--text2);
+  font-size: 9px; font-weight: 700; border-radius: 5px;
+  min-width: 16px; overflow: hidden;
+}
+#rcPlayhead {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 2px;
+  background: var(--accent); border-radius: 2px; pointer-events: none;
+  transition: left 0.1s linear;
+}
+.rc-time { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
+#rcNarStart { font-size: 11px; border: none; background: var(--fill-1); border-radius: 6px; padding: 3px 6px; color: var(--text); }
+
+/* ---------- 技法カードのお気に入り ---------- */
+.preset-card { position: relative; }
+.p-fav {
+  position: absolute; top: 8px; right: 8px;
+  border: none; background: transparent; cursor: pointer;
+  font-size: 14px; line-height: 1; color: var(--dim); padding: 3px;
+  border-radius: 6px; transition: all 0.15s var(--ease);
+}
+.p-fav:hover { background: var(--hover); color: var(--text); transform: scale(1.15); }
+.p-fav.on { color: #f5a623; }
+.preset-group-title.pinned { color: #b07708; }
+.p-tag.p-used { background: var(--accent-soft); color: var(--accent); }
