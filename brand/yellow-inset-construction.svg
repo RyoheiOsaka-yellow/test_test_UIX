@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="400 -62 408 246" role="img" aria-label="YELLOW inset construction">
+  <title>YELLOW inset construction</title>
+  <desc>Construction drawing for the mark set inside the O</desc>
+  <rect x="400" y="-62" width="408" height="246" fill="#FFFFFF"/>
+  <g stroke-width="0.7" fill="none">
+    <path d="M460 50H748" stroke="#C6CEDA" stroke-dasharray="6 5"/>
+    <path d="M604 -34V134" stroke="#C6CEDA" stroke-dasharray="6 5"/>
+    <path d="M562 -18v14M646 -18v14" stroke="#7E8BA3"/>
+    <path d="M490 118v14M718 118v14" stroke="#7E8BA3"/>
+  </g>
+  <g fill="none" stroke="#000000" stroke-width="3.4">
+    <path d="M0 50A42 50 0 1 0 84 50A42 50 0 1 0 0 50" transform="translate(562 0)"/>
+  </g>
+  <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
+    <circle cx="604" cy="50" r="26" fill="#000000" stroke="none"/>
+    <path d="M490 50H718"/>
+    <path d="M576.7 50H631.3" stroke="#FFFFFF"/>
+  </g>
+  <text x="604" y="-24" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9" fill="#7E8BA3">O は変更しない</text>
+  <text x="604" y="146" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9" fill="#7E8BA3">disk \u00b11.14 H  =  O + \u5b57\u9593</text>
+  <text x="640" y="18" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9" fill="#7E8BA3">horizon r = 0.26 H</text>
+</svg>

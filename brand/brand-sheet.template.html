@@ -101,6 +101,7 @@
   figcaption b { color: var(--ink); font-weight: 400; }
   figcaption span { font-family: var(--body); font-size: 0.85rem; letter-spacing: 0; color: var(--muted); }
 
+  .plates { display: grid; gap: 2rem; }
   .grid2 { display: grid; gap: 2rem; grid-template-columns: 1fr; }
   .grid4 { display: grid; gap: 1.25rem; grid-template-columns: repeat(2, 1fr); }
   @media (min-width: 46rem) {
@@ -152,10 +153,50 @@
 
   <section>
     <div class="head">
-      <p class="eyebrow">Form</p>
-      <h2>形の候補</h2>
+      <p class="eyebrow">Lockup</p>
+      <h2>O の中に納める</h2>
     </div>
-    <p>地平面は常に黒で塗り、円盤が手前を横切る部分を白く抜きます。決めるのは、レンズ弧を出すか、光子リングを足すか、そのどちらも省いて静かにするか。</p>
+    <p>
+      O をそのまま光子リングとして使い、その内側に穴を置きます。文字の形には一切触れず、
+      外に出るのは円盤の線だけ。円盤は左右の字間をちょうど埋める長さ——
+      <strong>L の右端から W の左端まで</strong>——で止めているので、長さも組版が決めています。
+    </p>
+    <div class="plates">
+      <figure>
+        <div class="frame">{{svg:yellow-inset-mid.svg}}</div>
+        <figcaption><b>yellow-inset-mid.svg</b> <span>基本形。円盤が字間を埋める。</span></figcaption>
+      </figure>
+      <figure>
+        <div class="frame">{{svg:yellow-inset-short.svg}}</div>
+        <figcaption><b>yellow-inset-short.svg</b> <span>円盤を O の幅で止めた、完全に収まる形。</span></figcaption>
+      </figure>
+      <figure>
+        <div class="frame">{{svg:yellow-inset-arcs.svg}}</div>
+        <figcaption><b>yellow-inset-arcs.svg</b> <span>カウンター内にレンズ弧を追加。</span></figcaption>
+      </figure>
+      <figure>
+        <div class="frame">{{svg:yellow-inset-knockout.svg}}</div>
+        <figcaption><b>yellow-inset-knockout.svg</b> <span>黒地用。地平面が地色になるので輪郭を引く。</span></figcaption>
+      </figure>
+    </div>
+    <div class="grid2">
+      <figure>
+        <div class="frame">{{svg:yellow-inset-symbol.svg}}</div>
+        <figcaption><b>yellow-inset-symbol.svg</b> <span>O だけを切り出したシンボル。アイコン用。</span></figcaption>
+      </figure>
+      <figure>
+        <div class="frame">{{svg:yellow-inset-construction.svg}}</div>
+        <figcaption><b>作図</b> <span>穴の半径 0.26 H。O は変更しない。</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <p class="eyebrow">Form</p>
+      <h2>単体マークの形</h2>
+    </div>
+    <p>文字から離して単体で使うときは、O の代わりになる輪が必要です。地平面は常に黒で塗り、円盤が手前を横切る部分を白く抜いた上で、レンズ弧を出すか、光子リングを足すか、そのどちらも省くかを決めます。</p>
     <div class="grid4">
       <figure>
         <div class="frame">{{svg:yellow-mark-eclipse.svg}}</div>
@@ -247,7 +288,8 @@
       <h2>決めたいこと</h2>
     </div>
     <ol>
-      <li>形は <b>eclipse</b> / <b>halo</b> / <b>core</b> のどれか</li>
+      <li>ロックアップは <b>O の中に納める</b>案（mid / short / arcs）か、横に置く案（A–H）か</li>
+      <li>単体マークの形は <b>eclipse</b> / <b>halo</b> / <b>core</b> のどれか</li>
       <li>配置は A–H のどれか。横組みなら A / B、縦の余白が取れるなら C / G</li>
       <li>マークの大きさ（現状は穴の直径＝O の字幅、G は2倍）</li>
       <li>ロゴタイプの元データ。頂ければ仮組みを差し替えて確定版を出します</li>

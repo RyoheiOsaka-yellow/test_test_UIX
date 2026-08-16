@@ -30,10 +30,27 @@ python3 build_sheet.py                    # 検討シート brand-sheet.html を
 
 SVG が原本。比率・形を変えるときは `generate_logos.py` を編集して再生成する。
 
+## ロックアップ：O の中に納める
+
+O をそのまま光子リングとして使い、内側に穴を置く。文字は変更せず、外に出るのは
+円盤の線だけ。円盤の長さは左右の字間をちょうど埋める寸法（L の右端から W の左端まで）。
+
+| 要素 | 値 |
+| --- | --- |
+| 穴（地平面） | r = 0.26 H |
+| 円盤の伸び | ±1.14 H（O の半径 + 字間） |
+| 白抜き | 1.05 r |
+
 ## ファイル
 
 | ファイル | 内容 |
 | --- | --- |
+| `yellow-inset-mid.svg` | **基本形** — O の中に納めた形。円盤が字間を埋める |
+| `yellow-inset-short.svg` | 円盤を O の幅で止めた形 |
+| `yellow-inset-arcs.svg` | カウンター内にレンズ弧を追加 |
+| `yellow-inset-knockout.svg` | 黒地用 |
+| `yellow-inset-symbol.svg` | O だけを切り出したシンボル（アイコン用） |
+| `yellow-inset-construction.svg` | O 内の作図・寸法図 |
 | `yellow-mark-{eclipse,halo,core}.svg` | マーク単体・形の3案 |
 | `yellow-mark-knockout.svg` | 黒地用（白線・地平面は地色） |
 | `yellow-place-{a..h}-{eclipse,core}.svg` | 配置案 A–H |
