@@ -10,6 +10,19 @@
 <!-- ══ FONTS ══
      D-DIN = SpaceXが実際に使用している書体。本番では下記woffをサーバに置いて自己ホストすることを推奨。
      日本語はNoto Sans JP。D-DINに日本語グリフが無いため、文字単位で自動フォールバックします。 -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23000'/%3E%3Ctext x='32' y='45' font-family='Helvetica,Arial,sans-serif' font-size='38' font-weight='300' fill='%23fff' text-anchor='middle'%3EY%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#000000">
+<!-- 本番ドメイン確定時に見直すこと（og:image は絶対URL必須。og.png をサイト直下に置く） -->
+<link rel="canonical" href="https://yellow.technology/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="株式会社YELLOW">
+<meta property="og:title" content="株式会社YELLOW">
+<meta property="og:description" content="株式会社YELLOWは、大学・研究機関・企業の技術シーズを社会へ橋渡しする会社です。">
+<meta property="og:url" content="https://yellow.technology/">
+<meta property="og:image" content="https://yellow.technology/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&family=Raleway:wght@300&display=swap" rel="stylesheet">
@@ -614,6 +627,19 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
 <div class="intro" id="intro" aria-hidden="true">
   <div class="intro__logo">YELLO<span>W</span></div>
 </div>
+<noscript><style>.intro{display:none !important}</style></noscript>
+<script>
+/* イントロの保険: 後続のスクリプトが何かで落ちても5秒で必ず幕を上げる */
+setTimeout(function () {
+  var i = document.getElementById('intro');
+  if (i && !i.classList.contains('is-out')) {
+    i.classList.add('is-out');
+    document.body.classList.remove('intro-lock');
+    setTimeout(function () { i.classList.add('is-gone'); }, 900);
+  }
+}, 5000);
+</script>
+
 
 <!-- ═══════════════════ HEADER ═══════════════════ -->
 <header class="hdr" id="hdr">
@@ -1732,6 +1758,8 @@ window.addEventListener('popstate', function () { routeFromHash(location.hash); 
   var mqReduce = window.matchMedia('(prefers-reduced-motion: reduce)');
   var mqSmall = window.matchMedia('(max-width: 900px)');
   if (mqReduce.matches) return;
+  // モバイル・省データ環境では動画を読み込まず、先頭フレームの poster のままにする
+  if (mqSmall.matches || (navigator.connection && navigator.connection.saveData)) return;
 
   var live = [];
 
