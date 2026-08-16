@@ -139,21 +139,61 @@ with sync_playwright() as pw:
     pg.click("[data-layer='perio']")
     pg.wait_for_timeout(600)
 
-    # ---- B-3.2: 2D 表示モード ----
+    # ---- B-3.3: 2D 表示モード（上下顎の咬合面俯瞰ツインビュー） ----
     pg.click("#dimBtn")
-    pg.wait_for_timeout(800)
+    pg.wait_for_timeout(1500)
     is2d = pg.evaluate("() => document.body.classList.contains('mode2d')")
-    chart_vis = pg.evaluate(
-        "() => getComputedStyle(document.getElementById('chart')).display !== 'none'")
-    view_hidden = pg.evaluate(
-        "() => getComputedStyle(document.getElementById('view')).display === 'none'")
-    print("2D mode:", is2d, "| chart visible:", chart_vis, "| 3D hidden:", view_hidden)
-    if not (is2d and chart_vis and view_hidden):
+    # ページ内の 2D カメラで歯の重心を投影し、正確な画面座標をタップする
+    pt_u = pg.evaluate("""() => {
+      const S = window.__DT, t = S.teeth.get(16);
+      const p = t.centroid.clone().applyMatrix4(t.mesh.matrixWorld).project(S.cam2dU);
+      const r = document.getElementById('view').getBoundingClientRect();
+      return { x: r.left + (p.x + 1) / 2 * r.width,
+               y: r.top + (1 - (p.y + 1) / 2) * (r.height / 2) };
+    }""")
+    pg.mouse.click(pt_u["x"], pt_u["y"])
+    pg.wait_for_timeout(700)
+    sel_u = pg.evaluate("() => window.__DT.selected")
+    pt_l = pg.evaluate("""() => {
+      const S = window.__DT, t = S.teeth.get(46);
+      const p = t.centroid.clone().applyMatrix4(t.mesh.matrixWorld).project(S.cam2dL);
+      const r = document.getElementById('view').getBoundingClientRect();
+      return { x: r.left + (p.x + 1) / 2 * r.width,
+               y: r.top + r.height / 2 + (1 - (p.y + 1) / 2) * (r.height / 2) };
+    }""")
+    pg.mouse.click(pt_l["x"], pt_l["y"])
+    pg.wait_for_timeout(700)
+    sel_l = pg.evaluate("() => window.__DT.selected")
+    print("2D mode:", is2d, "| 上顎16タップ →", sel_u, "| 下顎46タップ →", sel_l)
+    if not (is2d and sel_u == 16 and sel_l == 46):
         ok = False
+    pg.click("#reset")
+    pg.wait_for_timeout(700)
     shot2 = os.path.join(DOCS, "shot_2d.png")
     pg.screenshot(path=shot2); shots.append(shot2)
     pg.click("#dimBtn")
     pg.wait_for_timeout(800)
+
+    # ---- B-3.3: パネルの折りたたみ ----
+    pg.click("#sideTgl")
+    pg.wait_for_timeout(500)
+    aside_hidden = pg.evaluate(
+        "() => getComputedStyle(document.querySelector('aside')).display === 'none'")
+    pg.click("#chartTgl")
+    pg.wait_for_timeout(500)
+    rows_hidden = pg.evaluate(
+        "() => getComputedStyle(document.querySelector('#chart .crow')).display === 'none'")
+    undo_alive = pg.evaluate(
+        "() => getComputedStyle(document.getElementById('undoBtn')).display !== 'none'")
+    print("collapse: aside hidden =", aside_hidden,
+          "| chart rows hidden =", rows_hidden, "| undo visible =", undo_alive)
+    if not (aside_hidden and rows_hidden and undo_alive):
+        ok = False
+    shotc = os.path.join(DOCS, "shot_collapsed.png")
+    pg.screenshot(path=shotc); shots.append(shotc)
+    pg.click("#sideTgl")
+    pg.click("#chartTgl")
+    pg.wait_for_timeout(500)
 
     # ---- B-3: 説明プリセット ----
     pg.click("[data-seq='caries']")

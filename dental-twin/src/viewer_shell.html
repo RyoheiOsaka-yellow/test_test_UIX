@@ -140,14 +140,26 @@ body.patient .drow{font-size:16px;padding:9px 0}
 body.patient #legend{font-size:14px}
 body.patient .side{font-size:15px}
 
-/* ---- 2D 表示モード ---- */
-body.mode2d #view,body.mode2d .only3d{display:none}
-body.mode2d #chart{display:flex!important;flex:1;flex-direction:column;
-  justify-content:center;padding:14px 18px;overflow:auto}
-body.mode2d .tc{max-width:110px}
-body.mode2d .crow{gap:6px}
-body.mode2d .crow+.crow{margin-top:8px}
-body.mode2d .tc .tn{font-size:13px}
+/* ---- 2D 表示モード（上下顎の咬合面俯瞰ツインビュー） ---- */
+body.mode2d .only3d{display:none}
+.jawTag{position:absolute;left:12px;z-index:5;background:rgba(255,255,255,.9);
+  border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:13px;
+  font-weight:700;color:var(--sub);pointer-events:none}
+#jawTagU{top:10px}
+#jawTagL{bottom:10px}
+.jawTag.hide{display:none}
+#split2d{position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line);
+  z-index:4;pointer-events:none}
+
+/* ---- パネルの折りたたみ（3Dを最大化） ---- */
+#sideTgl{position:absolute;right:0;top:50%;transform:translateY(-50%);z-index:8;
+  width:30px;min-height:76px;padding:0;border:1px solid var(--line);border-right:none;
+  border-radius:10px 0 0 10px;background:rgba(255,255,255,.92);font-size:15px;
+  color:var(--sub)}
+body.noside aside{display:none}
+#chartTgl{min-height:38px;padding:0 12px;font-size:13px}
+body.nochart #chart .crow,body.nochart #chart .mline{display:none}
+body.nochart #chart{padding-bottom:6px}
 
 @media(max-width:900px){
   main{grid-template-columns:1fr;grid-template-rows:1fr auto}
@@ -176,6 +188,10 @@ body.mode2d .tc .tn{font-size:13px}
       <div id="tip" class="hide"></div>
       <div id="simNote" class="banner hide">治療後シミュレーション表示中（実際の治療結果とは異なります）</div>
       <div id="seqNote" class="banner hide"></div>
+      <div id="jawTagU" class="jawTag hide">上顎（咬合面）</div>
+      <div id="jawTagL" class="jawTag hide">下顎（咬合面）</div>
+      <div id="split2d" class="hide"></div>
+      <button id="sideTgl" title="右パネルをたたむ／ひらく">⟩</button>
       <div id="isoNote" class="side hide" style="top:92px;left:50%;transform:translateX(-50%);
         background:rgba(47,111,235,.92);color:#fff;border-color:transparent"></div>
       <div id="loading">モデルを読み込んでいます…</div>
@@ -203,6 +219,7 @@ body.mode2d .tc .tn{font-size:13px}
         <div class="spacer"></div>
         <button id="undoBtn" disabled>↩ 元に戻す</button>
         <button id="saveBtn">所見JSONを保存</button>
+        <button id="chartTgl">たたむ</button>
       </div>
       <div class="crow" id="rowU"></div>
       <div class="crow" id="rowL"></div>

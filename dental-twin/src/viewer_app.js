@@ -121,6 +121,17 @@
     S.camera = new THREE.PerspectiveCamera(CONFIG.CAMERA.FOV,
       host.clientWidth / host.clientHeight, 1, 2000);
 
+    // 2D モード用: 上下顎の咬合面を俯瞰する平行投影カメラ（SPEC §5.11）。
+    // 両ビューとも患者の右が画面左、前歯が画面の外側（開いた口を覗く向き）
+    S.cam2dU = new THREE.OrthographicCamera(-50, 50, 36, -36, 1, 500);
+    S.cam2dU.position.set(0, -140, -8);
+    S.cam2dU.up.set(0, 0, 1);
+    S.cam2dU.lookAt(0, 0, -8);
+    S.cam2dL = new THREE.OrthographicCamera(-50, 50, 36, -36, 1, 500);
+    S.cam2dL.position.set(0, 140, -8);
+    S.cam2dL.up.set(0, 0, -1);
+    S.cam2dL.lookAt(0, 0, -8);
+
     S.scene.add(new THREE.HemisphereLight(0xFFFFFF, 0x9AA5B1, 0.72));
     const d1 = new THREE.DirectionalLight(0xFFFFFF, 0.62); d1.position.set(60, 90, 120);
     const d2 = new THREE.DirectionalLight(0xFFFFFF, 0.30); d2.position.set(-80, 40, -90);
@@ -410,6 +421,7 @@
   }
 
   function focusTooth(fdi) {
+    if (S.view2d) return;   // 2D は固定ビュー（選択のみ。カメラは動かさない）
     const t = S.teeth.get(fdi); if (!t) return;
     if (!S.isolated) {
       if (S.maxilla) S.maxilla.visible = true;
@@ -435,6 +447,7 @@
       if (!dragging) return;
       const dx = x - lx, dy = y - ly; lx = x; ly = y;
       moved += Math.abs(dx) + Math.abs(dy);
+      if (S.view2d) return;   // 2D は固定ビュー（タップ判定のための moved 加算のみ）
       if (panning) {
         const s = S.desired.dist * 0.0016;
         const right = new THREE.Vector3().setFromMatrixColumn(S.camera.matrix, 0);
@@ -461,6 +474,7 @@
     });
     dom.addEventListener('wheel', function (e) {
       e.preventDefault();
+      if (S.view2d) return;
       const d = S.desired.dist * (1 + Math.sign(e.deltaY) * 0.09);
       S.desired.dist = Math.max(CONFIG.CAMERA.MIN_D, Math.min(CONFIG.CAMERA.MAX_D, d));
     }, { passive: false });
@@ -475,7 +489,7 @@
     }, { passive: true });
     dom.addEventListener('touchmove', function (e) {
       if (e.touches.length === 1) move(e.touches[0].clientX, e.touches[0].clientY);
-      else if (e.touches.length === 2 && pinch) {
+      else if (e.touches.length === 2 && pinch && !S.view2d) {
         const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
                              e.touches[0].clientY - e.touches[1].clientY);
         S.desired.dist = Math.max(CONFIG.CAMERA.MIN_D,
@@ -498,15 +512,27 @@
     if (!S.ready) return;
     const host = document.getElementById('view');
     const r = host.getBoundingClientRect();
-    _ndc.x = ((cx - r.left) / r.width) * 2 - 1;
-    _ndc.y = -((cy - r.top) / r.height) * 2 + 1;
-    S.raycaster.setFromCamera(_ndc, S.camera);
+    let cam = S.camera, jawFilter = null;
+    if (S.view2d) {
+      // 上半分 = 上顎ビュー / 下半分 = 下顎ビュー のカメラでピッキング
+      const topHalf = (cy - r.top) < r.height / 2;
+      cam = topHalf ? S.cam2dU : S.cam2dL;
+      jawFilter = topHalf ? 'U' : 'L';
+      const subTop = topHalf ? r.top : r.top + r.height / 2;
+      _ndc.x = ((cx - r.left) / r.width) * 2 - 1;
+      _ndc.y = -((cy - subTop) / (r.height / 2)) * 2 + 1;
+    } else {
+      _ndc.x = ((cx - r.left) / r.width) * 2 - 1;
+      _ndc.y = -((cy - r.top) / r.height) * 2 + 1;
+    }
+    S.raycaster.setFromCamera(_ndc, cam);
 
     const meshes = [];
     S.teeth.forEach(function (t) {
       if (!t.mesh.visible) return;
       const jaw = t.ex.jaw;
       if (S.isolated && S.isolated !== jaw) return;
+      if (jawFilter && jaw !== jawFilter) return;
       meshes.push(t.mesh);
     });
     const hits = S.raycaster.intersectObjects(meshes, false);
@@ -649,15 +675,42 @@
       setPreset('front'); renderDetail(null); updateChart();
     });
 
-    /* --- B-3.2: 2D 表示モード --- */
+    /* --- B-3.3: 2D 表示モード（咬合面俯瞰ツインビュー） --- */
     document.getElementById('dimBtn').addEventListener('click', function () {
       S.view2d = !S.view2d;
       document.body.classList.toggle('mode2d', S.view2d);
       this.textContent = S.view2d ? '3D表示' : '2D表示';
       this.classList.toggle('on', S.view2d);
       stopSeq(); closePop();
-      if (!S.view2d) onResize();   // 3D 復帰時にキャンバス寸法を取り直す
+      document.getElementById('jawTagU').classList.toggle('hide', !S.view2d);
+      document.getElementById('jawTagL').classList.toggle('hide', !S.view2d);
+      document.getElementById('split2d').classList.toggle('hide', !S.view2d);
+      if (S.view2d) {
+        // 顎の isolation を解除して両顎を表示（3D のカメラ状態は保持したまま）
+        if (S.maxilla) S.maxilla.visible = true;
+        if (S.mandible) S.mandible.visible = true;
+        S.isolated = null;
+        const iso = document.getElementById('isoNote');
+        if (iso) iso.classList.add('hide');
+        document.querySelectorAll('[data-preset]').forEach(function (b) {
+          b.classList.remove('on');
+        });
+      }
+      onResize();
       updateChart();
+    });
+
+    /* --- B-3.3: パネルの折りたたみ（3Dを最大化） --- */
+    document.getElementById('sideTgl').addEventListener('click', function () {
+      const closed = document.body.classList.toggle('noside');
+      this.textContent = closed ? '⟨' : '⟩';
+      this.title = closed ? '右パネルをひらく' : '右パネルをたたむ';
+      onResize();
+    });
+    document.getElementById('chartTgl').addEventListener('click', function () {
+      const closed = document.body.classList.toggle('nochart');
+      this.textContent = closed ? 'ひらく' : 'たたむ';
+      onResize();
     });
 
     /* --- B-3: チャート入力・シミュレーション・プリセット --- */
@@ -1353,6 +1406,14 @@
   /* ------------------------------------------------------------ 患者右左ラベル */
   const _vx = new THREE.Vector3();
   function updateSideLabels() {
+    if (S.view2d) {
+      // 2D の両ビューは患者の右=画面左に固定してある（SPEC §5.11）
+      document.getElementById('sideL').textContent = '← 患者さんの右';
+      document.getElementById('sideR').textContent = '患者さんの左 →';
+      document.getElementById('sideL').style.opacity = 1;
+      document.getElementById('sideR').style.opacity = 1;
+      return;
+    }
     _vx.set(1, 0, 0).project(S.camera);
     const o = new THREE.Vector3(0, 0, 0).project(S.camera);
     const leftEl = document.getElementById('sideL');
@@ -1421,8 +1482,10 @@
       m.visible = S.boneAlphaCur > 0.01;
       m.material.opacity = S.boneAlphaCur;
     });
-    S.openCur += (S.openDeg - S.openCur) * fO;
-    if (Math.abs(S.openDeg - S.openCur) < 0.02) S.openCur = S.openDeg;
+    // 2D（咬合面観）中は開口を閉じる（回転した顎の咬合面観は成立しない）
+    const openTgt = S.view2d ? 0 : S.openDeg;
+    S.openCur += (openTgt - S.openCur) * fO;
+    if (Math.abs(openTgt - S.openCur) < 0.02) S.openCur = openTgt;
 
     // 開口中の全体ビューは注視点・距離・仰角を補正して両顎を俯瞰で収める（SPEC §5.4）
     let ty = S.cur.target.y, td = S.cur.dist, tphi = S.cur.phi;
@@ -1447,7 +1510,45 @@
 
     if (S.needsRecolor && S.ready) recolorAll();
     if (S.ready) updateSideLabels();
-    S.renderer.render(S.scene, S.camera);
+
+    if (S.view2d) render2D();
+    else S.renderer.render(S.scene, S.camera);
+  }
+
+  /* ------------------------------------ 2D: 上下顎の咬合面俯瞰ツインビュー */
+  function updateOrtho(cam, wpix, hpix) {
+    const aspect = wpix / Math.max(1, hpix);
+    let halfH = 36, halfW = halfH * aspect;
+    if (halfW < 52) { halfH *= 52 / halfW; halfW = 52; }
+    cam.left = -halfW; cam.right = halfW; cam.top = halfH; cam.bottom = -halfH;
+    cam.updateProjectionMatrix();
+  }
+
+  function render2D() {
+    const host = document.getElementById('view');
+    const w = host.clientWidth, h = host.clientHeight, hh = Math.floor(h / 2);
+    const mv = S.maxilla ? S.maxilla.visible : true;
+    const lv = S.mandible ? S.mandible.visible : true;
+    S.renderer.setScissorTest(true);
+
+    if (S.maxilla) S.maxilla.visible = true;
+    if (S.mandible) S.mandible.visible = false;
+    updateOrtho(S.cam2dU, w, h - hh);
+    S.renderer.setViewport(0, hh, w, h - hh);
+    S.renderer.setScissor(0, hh, w, h - hh);
+    S.renderer.render(S.scene, S.cam2dU);
+
+    if (S.maxilla) S.maxilla.visible = false;
+    if (S.mandible) S.mandible.visible = true;
+    updateOrtho(S.cam2dL, w, hh);
+    S.renderer.setViewport(0, 0, w, hh);
+    S.renderer.setScissor(0, 0, w, hh);
+    S.renderer.render(S.scene, S.cam2dL);
+
+    S.renderer.setScissorTest(false);
+    S.renderer.setViewport(0, 0, w, h);
+    if (S.maxilla) S.maxilla.visible = mv;
+    if (S.mandible) S.mandible.visible = lv;
   }
 
   /* -------------------------------------------------- 検証用: 歯面判定テスト */
