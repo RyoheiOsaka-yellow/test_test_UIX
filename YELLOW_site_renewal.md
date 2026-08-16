@@ -385,6 +385,9 @@ xBUILD / xAD / xINTERACTIVE の内容は名称からの推測で「つくる／�
 - **キーボード操作**: スキップリンク／全画面メニューの focus trap（role=dialog、Esc でバーガーへ復帰）／--grey-d を #767676 へ（黒地4.5:1）
 - **ヘッダー**: 下スクロールで隠れ、上スクロールで現れる。最上部・メニュー中・フォーカス中は常時表示
 - **イントロ頻度**: セッション初回のみフル尺、2回目以降は短縮（sessionStorage）
+- **SEOの残り**: Organization の JSON-LD を head へ。404.html / robots.txt / sitemap.xml を別ファイルで用意（URLは yellow.technology 仮置き。XServer で 404 を使う場合は .htaccess に `ErrorDocument 404 /404.html` が必要）
+- **戻る/進むのスクロール位置復元**: 遷移時に現在位置を履歴へ記録し、popstate で瞬時復元（scrollRestoration=manual、スムーススクロールを一時停止して戻す）
+- **ドロップダウンの残留解消**: 選択直後はカーソルが乗ったままでも閉じる。離れて戻れば従来どおりホバーで開く。キーボード操作では抑制を付けない（付けると解除機会が無いため）
 - **法務ページ**: #/privacy #/terms をルーターページとして追加（**仮文面・要リーガル確認**・ja のみ）。フッターとメニューのリンクを接続
 
 ### 優先度：中

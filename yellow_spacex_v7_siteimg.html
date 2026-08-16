@@ -23,6 +23,24 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "株式会社YELLOW",
+  "url": "https://yellow.technology/",
+  "logo": "https://yellow.technology/og.png",
+  "email": "t.iwabuchi@yellow.technology",
+  "foundingDate": "2022",
+  "address": {
+    "@type": "PostalAddress",
+    "addressCountry": "JP",
+    "addressRegion": "群馬県",
+    "addressLocality": "高崎市",
+    "streetAddress": "白銀町9番地 白銀ビル3F"
+  }
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700;900&family=Raleway:wght@300&display=swap" rel="stylesheet">
@@ -210,6 +228,8 @@ body.intro-lock{overflow:hidden;}
   opacity:0;visibility:hidden;transform:translateY(-10px);
   transition:opacity .34s var(--ease),transform .34s var(--ease),visibility .34s;
 }
+/* 選択直後はカーソルが乗ったままでも閉じる。離れたら通常のホバー動作に戻る */
+.nav__item.drop-cool .drop{opacity:0 !important;visibility:hidden !important;transform:translateY(-10px) !important;}
 .nav__item:hover .drop,.nav__item:focus-within .drop,.nav__item.is-open .drop{
   opacity:1;visibility:visible;transform:none;
 }
@@ -1755,7 +1775,7 @@ function setLang(lang) {
 /* ═══════════════════ ROUTER（ホーム／プロダクト個別ページ） ═══════════════════ */
 var PAGES = ['home', 'xbuild', 'xad', 'xinteractive', 'privacy', 'terms'];
 
-function showPage(name, scrollTo) {
+function showPage(name, scrollTo, restoreY) {
   if (PAGES.indexOf(name) === -1) name = 'home';
   for (var i = 0; i < PAGES.length; i++) {
     var el = document.getElementById('page-' + PAGES[i]);
@@ -1775,6 +1795,15 @@ function showPage(name, scrollTo) {
     }
   }
 
+  // 戻る/進むでは元のスクロール位置へ瞬時に復帰する（スムーススクロールを一時停止）
+  if (typeof restoreY === 'number') {
+    var htmlEl = document.documentElement;
+    var prevBehavior = htmlEl.style.scrollBehavior;
+    htmlEl.style.scrollBehavior = 'auto';
+    window.scrollTo(0, restoreY);
+    requestAnimationFrame(function () { htmlEl.style.scrollBehavior = prevBehavior; });
+    return;
+  }
   if (scrollTo) {
     var t = document.getElementById(scrollTo);
     if (t) { t.scrollIntoView(); return; }
@@ -1782,14 +1811,14 @@ function showPage(name, scrollTo) {
   window.scrollTo(0, 0);
 }
 
-function routeFromHash(hash) {
+function routeFromHash(hash, restoreY) {
   hash = (hash || '').replace('#', '');
   if (hash.charAt(0) === '/') {
-    showPage(hash.slice(1));
+    showPage(hash.slice(1), null, restoreY);
   } else if (hash && hash !== 'top') {
-    showPage('home', hash);
+    showPage('home', typeof restoreY === 'number' ? null : hash, restoreY);
   } else {
-    showPage('home');
+    showPage('home', null, restoreY);
   }
 }
 
@@ -1799,12 +1828,22 @@ document.addEventListener('click', function (e) {
   var href = a.getAttribute('href');
   if (!href || href.charAt(0) !== '#') return;
   e.preventDefault();
-  if (history && history.pushState) history.pushState(null, '', href);
-  else location.hash = href;
+  if (history && history.pushState) {
+    // いまの位置を現在の履歴エントリへ記録してから遷移する（戻ってきたとき復元される）
+    history.replaceState({ y: window.scrollY }, '');
+    history.pushState(null, '', href);
+  } else {
+    location.hash = href;
+  }
   routeFromHash(href);
 });
 
-window.addEventListener('popstate', function () { routeFromHash(location.hash); });
+window.addEventListener('popstate', function (ev) {
+  var y = ev.state && typeof ev.state.y === 'number' ? ev.state.y : null;
+  routeFromHash(location.hash, y === null ? undefined : y);
+});
+// ブラウザ標準の復元と競合しないよう自前で管理する
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
 /* ═══════════════════ PRODUCT DROPDOWN ═══════════════════ */
 (function () {
@@ -1827,7 +1866,14 @@ window.addEventListener('popstate', function () { routeFromHash(location.hash); 
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
   var ps = item.querySelectorAll('.drop a');
-  for (var i = 0; i < ps.length; i++) ps[i].addEventListener('click', close);
+  for (var i = 0; i < ps.length; i++) ps[i].addEventListener('click', function () {
+    close();
+    // カーソルが実際に乗っている場合のみ「選択直後の抑制」を付ける。
+    // キーボード操作やスクリプトからのクリックでは付けない（解除の機会が無いため）
+    if (item.matches(':hover')) item.classList.add('drop-cool');
+  });
+  item.addEventListener('mouseleave', function () { item.classList.remove('drop-cool'); });
+  trig.addEventListener('click', function () { item.classList.remove('drop-cool'); });
 })();
 
 /* ═══════════════════ HEADER 背景 ═══════════════════ */
