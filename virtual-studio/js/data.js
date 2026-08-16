@@ -319,6 +319,117 @@ const PROMPT_MODELS = [
   { id: "generic",  label: "汎用",      hint: "標準フォーマット" },
 ];
 
+/* =========================================================
+ * 人の動き (演技演出) — カメラ/技術とは別レイヤー
+ *
+ * 動きの正解は「◯◯という名前の動き」では決まらない。概念名は解釈の幅が
+ * そのまま出力の幅になるため、質 (速さ・雑さ・誰に向けた動きか) と
+ * 時間軸のビート (いつ何をするか) で書く。カメラ側の設計には手を入れず、
+ * 尺・カメラワーク・カットサイズと相互にチェックして噛み合わせる。
+ * ======================================================= */
+
+/* 動きの質 — 名前ではなく質で指定する */
+const MOTION_SPEEDS = [
+  { id: "slow", label: "遅い", en: "slow" },
+  { id: "moderate", label: "ふつう", en: "moderate speed" },
+  { id: "fast", label: "速い", en: "fast" },
+];
+const MOTION_CARES = [
+  { id: "loose", label: "雑", en: "loose and unpolished" },
+  { id: "natural", label: "自然", en: "natural" },
+  { id: "precise", label: "丁寧", en: "careful and precise" },
+];
+const MOTION_TOWARDS = [
+  { id: "alone", label: "一人で (見せていない)", en: "performed alone, not for an audience" },
+  { id: "camera", label: "カメラに向けて", en: "directed at the camera" },
+  { id: "partner", label: "相手に向けて", en: "directed at the other person" },
+];
+/* 演技の温度 — 誰かに見せているのか、一人でやっているのか */
+const PERF_TEMPS = [
+  { id: "private", label: "一人でやっている", en: "private, unaware of being watched" },
+  { id: "shown", label: "誰かに見せている", en: "aware of an audience" },
+  { id: "observed", label: "観察されている (気づいていない)", en: "observational, does not acknowledge the camera" },
+];
+/* 視線 — どこを見ているかは動画参照が持つ情報だが、無い場合は指定する */
+const GAZE_TARGETS = [
+  { id: "none", label: "指定なし", en: "" },
+  { id: "ahead", label: "前方", en: "looking ahead" },
+  { id: "camera", label: "カメラ", en: "looking into the camera" },
+  { id: "partner", label: "相手", en: "looking at the other person" },
+  { id: "object", label: "手元/対象物", en: "looking at the object in hand" },
+  { id: "away", label: "外す/逸らす", en: "looking away" },
+];
+/* 人同士の接触 — risk が高いほど「先に撮る」向き */
+const CONTACT_TYPES = [
+  { id: "none", label: "接触なし", en: "no physical contact", risk: 0 },
+  { id: "near", label: "すれ違い/近接", en: "passing close to each other", risk: 1 },
+  { id: "touch", label: "触れる/手をつなぐ", en: "touching / holding hands", risk: 2 },
+  { id: "handoff", label: "受け渡し", en: "handing an object over", risk: 2 },
+  { id: "embrace", label: "抱擁/組み合う", en: "embracing / grappling", risk: 3 },
+];
+/* カメラが体の動きに連動するか — カメラワーク側と矛盾しないか診断する */
+const CAM_LINKS = [
+  { id: "none", label: "連動しない", en: "camera stays independent of the body" },
+  { id: "follow", label: "体に連動 (追う)", en: "camera motion is linked to the body, following it" },
+  { id: "lead", label: "先回りする", en: "camera leads the movement" },
+];
+
+/* 作り方3通り。難しい動きは先に撮る */
+const PROD_METHODS = [
+  { id: "gen", label: "全部AIに作らせる", en: "full generation",
+    fit: "実在しない世界・単純な動き・強い世界観" },
+  { id: "ref", label: "見本を渡して作らせる", en: "reference-guided generation",
+    fit: "顔・商品の形が決まっている / 構図を継続したい" },
+  { id: "shoot", label: "先に撮ってから変える", en: "shoot first, then restyle",
+    fit: "複雑な動き・人同士の接触・複数人の絡み" },
+];
+/* 「先に撮る」でも解決しないケース */
+const UNFIT_CASES = [
+  { id: "nosrc", label: "元素材なしで全部を生成したい" },
+  { id: "complex", label: "接触が複雑すぎる" },
+  { id: "hidden", label: "顔が完全に隠れる" },
+  { id: "ambiguous", label: "誰がどこにいるか曖昧" },
+  { id: "broken", label: "元素材の段階で立ち位置が崩れている" },
+];
+
+/* 残す / 変える — 先に撮った素材を作り変えるときの境界 */
+const PRESERVE_ITEMS = [
+  { id: "performance", label: "演技", en: "the performance" },
+  { id: "timing", label: "タイミング", en: "the timing" },
+  { id: "gaze", label: "視線", en: "the gaze" },
+  { id: "blocking", label: "立ち位置", en: "the blocking" },
+  { id: "cameraMotion", label: "カメラの動き", en: "the camera motion" },
+];
+const CHANGE_ITEMS = [
+  { id: "person", label: "人物", en: "the person" },
+  { id: "environment", label: "環境", en: "the environment" },
+  { id: "wardrobe", label: "衣装", en: "the wardrobe" },
+  { id: "timeOfDay", label: "時間帯", en: "the time of day" },
+  { id: "style", label: "質感/スタイル", en: "the visual style" },
+];
+
+/* 一本撮りの時間配分ガイド (公式の目安)。尺に合わせて比率で流し込む */
+const BEAT_TEMPLATES = [
+  { id: "oneTake", label: "一本撮りの配分 (引き→寄り→展開→収束)",
+    beats: [
+      { r: 0.20, do: "引きの画で状況を見せる", gaze: "ahead", cam: "none" },
+      { r: 0.27, do: "寄りの画で本題の動きに入る", gaze: "object", cam: "follow" },
+      { r: 0.33, do: "カメラを動かすかインサートで展開する", gaze: "none", cam: "follow" },
+      { r: 0.20, do: "収束させる", gaze: "away", cam: "none" },
+    ] },
+  { id: "actReact", label: "動作 → 反応 (2ビート)",
+    beats: [
+      { r: 0.55, do: "動作を起こす", gaze: "object", cam: "follow" },
+      { r: 0.45, do: "反応する", gaze: "partner", cam: "none" },
+    ] },
+  { id: "enterExit", label: "入り → 芝居 → 抜け (3ビート)",
+    beats: [
+      { r: 0.25, do: "フレームインする", gaze: "ahead", cam: "lead" },
+      { r: 0.5, do: "止まって芝居をする", gaze: "partner", cam: "none" },
+      { r: 0.25, do: "フレームアウトする", gaze: "away", cam: "follow" },
+    ] },
+];
+
 /* ---------- 消費電力デフォルト (W) — 電源プラン自動計算用 ---------- */
 const TYPE_WATT = {
   key: 300, fill: 200, back: 150, rim: 150, top: 300, bg: 200,

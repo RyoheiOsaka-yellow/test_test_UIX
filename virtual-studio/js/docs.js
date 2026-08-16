@@ -111,6 +111,35 @@ function buildInstructionDoc() {
         </tr></tbody>
       </table>
 
+      ${(() => {
+        /* 演技演出 — 現場と生成の両方で読めるビート表 */
+        if (!perfActive(cut)) return "";
+        const p = cut.perf;
+        const lab = (arr, id) => (arr.find(x => x.id === id) || {}).label || "";
+        const meth = PROD_METHODS.find(m => m.id === perfMethodOf(cut)) || PROD_METHODS[0];
+        let acc = 0;
+        return `<h3>演技演出 (人の動き)</h3>
+        <p class="memo"><b>作り方:</b> ${esc(meth.label)} ｜ <b>動きの質:</b> ${esc(lab(MOTION_SPEEDS, p.speed))}・${esc(lab(MOTION_CARES, p.care))}・${esc(lab(MOTION_TOWARDS, p.toward))} ｜
+        <b>温度:</b> ${esc(lab(PERF_TEMPS, p.temp))} ｜ <b>人数:</b> ${p.people}人 ｜ <b>接触:</b> ${esc(lab(CONTACT_TYPES, p.contact))} ｜ <b>カメラ連動:</b> ${esc(lab(CAM_LINKS, p.camLink))}</p>
+        ${p.beats.length ? `<table>
+          <thead><tr><th>IN–OUT</th><th>長さ</th><th>何をする</th><th>視線</th><th>カメラ</th></tr></thead>
+          <tbody>${p.beats.map(b => {
+            const from = acc; acc += +b.sec || 0;
+            return `<tr>
+              <td>${from.toFixed(1)}–${acc.toFixed(1)}s</td><td>${(+b.sec || 0).toFixed(1)}s</td>
+              <td>${esc(b.do || "—")}</td><td>${esc(lab(GAZE_TARGETS, b.gaze))}</td><td>${esc(lab(CAM_LINKS, b.cam))}</td>
+            </tr>`;
+          }).join("")}</tbody></table>` : ""}
+        ${p.preserve.length || p.change.length ? `<p class="memo"><b>残す:</b> ${esc(p.preserve.map(id => lab(PRESERVE_ITEMS, id)).join("・") || "—")} ／ <b>変える:</b> ${esc(p.change.map(id => lab(CHANGE_ITEMS, id)).join("・") || "—")}</p>` : ""}`;
+      })()}
+      ${(() => {
+        /* プロンプト診断 — 生成前に潰すべき指摘 */
+        const li = lintCut(cut);
+        if (!li.length) return "";
+        return `<h3>プロンプト診断</h3>
+        <ul class="feas-doc">${li.map(x =>
+          `<li class="lv-${x.lv}">${x.lv === "danger" ? "⛔" : x.lv === "warn" ? "⚠️" : "💡"} <b>${esc(x.code)}</b> ${esc(x.t)}</li>`).join("")}</ul>`;
+      })()}
       ${opts.length ? `<h3>演出オプションと実施上の注意</h3>
       <ul>${opts.map(o => `<li><b>${esc(o.label)}</b> — ${esc(o.note)}</li>`).join("")}</ul>` : ""}
 

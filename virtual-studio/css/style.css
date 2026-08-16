@@ -963,6 +963,65 @@ input[type="range"]::-moz-range-thumb {
 .mode-badge.mb-still { background: rgba(154, 106, 224, 0.16); color: #8a5ad0; }
 .mode-badge.mb-outdoor { background: rgba(42, 168, 126, 0.16); color: #1d8a63; }
 
+/* ---------- 人の動き (演技演出) セクション ---------- */
+.perf-sec > summary {
+  font-size: 11px; font-weight: 600; color: var(--dim);
+  letter-spacing: 0.03em; cursor: pointer; list-style: none;
+  display: flex; align-items: center; gap: 6px;
+}
+.perf-sec > summary::-webkit-details-marker { display: none; }
+.perf-sec > summary::before { content: "▸"; font-size: 9px; transition: transform 0.15s var(--ease); }
+.perf-sec[open] > summary::before { transform: rotate(90deg); }
+.perf-sec > summary small { font-weight: 400; opacity: 0.85; }
+.perf-h {
+  font-size: 10.5px; font-weight: 700; color: var(--text2);
+  margin: 12px 0 6px; padding-top: 8px; border-top: 1px solid var(--line);
+}
+.perf-h small { font-weight: 400; color: var(--dim); margin-left: 4px; }
+.insp-hint.warn { color: #b06e06; }
+.beat-list { display: flex; flex-direction: column; gap: 4px; }
+.beat-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.beat-t {
+  flex: 0 0 auto; font-size: 9.5px; font-variant-numeric: tabular-nums;
+  color: var(--accent); font-weight: 700; min-width: 62px;
+}
+.beat-sec { flex: 0 0 52px; }
+.beat-do { flex: 1 1 120px; min-width: 90px; }
+.beat-row input {
+  background: var(--fill-1); color: var(--text); border: 1px solid transparent;
+  border-radius: 6px; padding: 4px 7px; font-size: 11px; font-family: inherit;
+}
+.beat-row input:focus { outline: none; background: var(--surface); border-color: var(--accent); }
+.beat-row select { font-size: 10px; padding: 3px 20px 3px 6px; max-width: 92px; }
+.beat-row .icon-btn { width: 22px; height: 22px; font-size: 12px; }
+.beat-actions { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.beat-actions select { font-size: 11px; }
+
+/* ---------- プロンプト診断 ---------- */
+#lintBox {
+  background: var(--surface); border-radius: var(--radius);
+  padding: 12px 14px; box-shadow: var(--shadow-sm);
+  border-left: 3px solid #9a6ae0;
+}
+#lintBox .panel-title small { font-weight: 400; color: var(--dim); font-size: 10px; }
+#lintList { list-style: none; margin-top: 4px; }
+#lintList li {
+  font-size: 11.5px; line-height: 1.6; color: var(--text2);
+  padding: 5px 0 5px 20px; position: relative;
+  border-bottom: 1px solid var(--line);
+}
+#lintList li:last-child { border-bottom: none; padding-bottom: 0; }
+#lintList li::before { position: absolute; left: 0; top: 5px; font-size: 11px; }
+#lintList li.lv-danger::before { content: "⛔"; }
+#lintList li.lv-warn::before { content: "⚠️"; }
+#lintList li.lv-info::before { content: "💡"; }
+#lintList li b {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.04em;
+  color: var(--dim); margin-right: 5px;
+  font-family: "SF Mono", ui-monospace, monospace;
+}
+.mode-badge.mb-perf { background: rgba(10, 132, 255, 0.16); color: var(--accent); }
+
 /* ---------- ラフカット編集 (生成動画の添付・連結再生・WebM書き出し) ---------- */
 #rcSection { margin-bottom: 18px; }
 .rc-title { font-size: 12.5px; font-weight: 700; margin-bottom: 8px; }

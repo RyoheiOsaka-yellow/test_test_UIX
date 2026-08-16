@@ -94,6 +94,21 @@ function ensureCameraDefaults(cut) {
   if (cut.refOffX == null) cut.refOffX = 0; // 画像の寄り位置 (%)
   if (cut.refOffY == null) cut.refOffY = 0;
   if (cut.caption == null) cut.caption = ""; // テロップ/セリフ (編集用・プロンプトには入れない)
+  /* 人の動き (演技演出) — 使わなければ空のまま。既存の出力には影響しない */
+  if (!cut.perf || typeof cut.perf !== "object") cut.perf = {};
+  const pf = cut.perf;
+  if (!Array.isArray(pf.beats)) pf.beats = [];   // [{id, sec, do, gaze, cam}]
+  if (!pf.speed) pf.speed = "moderate";
+  if (!pf.care) pf.care = "natural";
+  if (!pf.toward) pf.toward = "alone";
+  if (!pf.temp) pf.temp = "private";
+  if (pf.people == null) pf.people = 1;
+  if (!pf.contact) pf.contact = "none";
+  if (!pf.camLink) pf.camLink = "none";
+  if (!pf.method) pf.method = "auto";            // auto = 推奨に従う
+  if (!Array.isArray(pf.preserve)) pf.preserve = [];
+  if (!Array.isArray(pf.change)) pf.change = [];
+  if (!Array.isArray(pf.unfit)) pf.unfit = [];
   /* どのモード (動画/スチール/屋外・ドローン) で作られたカットか。
    * 旧データはkindとプリセットの対応モードから推定する */
   if (!cut.originMode) {
@@ -341,10 +356,196 @@ const AUDIO_EN = {
 };
 
 /* ---------- モデル別プロンプト方言フォーマッタ ---------- */
+/* =========================================================
+ * 人の動き (演技演出) レイヤー
+ * カメラ/技術の設計には手を入れず、使われたときだけプロンプトに足す。
+ * ======================================================= */
+
+/* このカットで演技演出が「使われている」か (未使用なら出力は従来のまま) */
+function perfActive(cut) {
+  const p = cut.perf;
+  if (!p) return false;
+  return p.beats.length > 0 || p.people > 1 || p.contact !== "none"
+    || p.camLink !== "none" || p.preserve.length > 0 || p.change.length > 0;
+}
+
+function perfBeatTotal(cut) {
+  return (cut.perf.beats || []).reduce((s, b) => s + (+b.sec || 0), 0);
+}
+
+/* ビートのテンプレを尺に合わせて比率で流し込む */
+function perfApplyTemplate(cut, tplId) {
+  const tpl = BEAT_TEMPLATES.find(t => t.id === tplId);
+  if (!tpl) return;
+  const dur = cut.kind === "still" ? 5 : (cut.duration || 5);
+  cut.perf.beats = tpl.beats.map(b => ({
+    id: uid(),
+    sec: Math.max(0.5, Math.round(dur * b.r * 10) / 10),
+    do: b.do, gaze: b.gaze, cam: b.cam,
+  }));
+}
+
+/* 作り方の推奨 — 開発元が「複数被写体が相互作用するシーンの安定性」を
+ * 改善余地として挙げている領域を、文章で押し切らせない */
+function recommendMethod(cut) {
+  const p = cut.perf;
+  const risk = (CONTACT_TYPES.find(c => c.id === p.contact) || {}).risk || 0;
+  const many = (+p.people || 1) > 1;
+  const busy = p.beats.length >= 4 || (p.beats.length >= 2 && p.speed === "fast" && p.care === "loose");
+  const why = [];
+  let id = "gen";
+  if (many && risk >= 2) {
+    id = "shoot";
+    why.push("複数人が接触する — 開発元が安定性の改善余地として挙げている領域");
+  } else if (risk >= 1 || many) {
+    id = "shoot";
+    why.push(many ? "複数人が同じ画にいる" : "人同士が近接する");
+  } else if (busy) {
+    id = "shoot";
+    why.push("ビートが多く動きが速い/雑 — 演技の発明をAIに任せると崩れやすい");
+  } else if (cut.refImgId) {
+    id = "ref";
+    why.push("参照画像があるので顔・構図を保ったまま生成できる");
+  } else {
+    why.push("単純な動きで参照も不要 — 全部AIに任せられる");
+  }
+  if (id === "shoot") why.push("AIの仕事を『演技の発明』から『見た目の変更』に置き換えられる");
+  return { id, why };
+}
+
+/* 実際に採用される作り方 (auto なら推奨) */
+function perfMethodOf(cut) {
+  return cut.perf.method === "auto" ? recommendMethod(cut).id : cut.perf.method;
+}
+
+/* プロンプトに足す演技ブロック (未使用なら空文字) */
+function buildPerfBlock(cut, prose) {
+  if (!perfActive(cut)) return "";
+  const p = cut.perf;
+  const g = (arr, id) => (arr.find(x => x.id === id) || {}).en || "";
+  const contact = CONTACT_TYPES.find(c => c.id === p.contact) || CONTACT_TYPES[0];
+  const head = [
+    `${p.people} ${p.people > 1 ? "people" : "person"}`,
+    contact.en,
+    `motion quality: ${g(MOTION_SPEEDS, p.speed)}, ${g(MOTION_CARES, p.care)}, ${g(MOTION_TOWARDS, p.toward)}`,
+    g(PERF_TEMPS, p.temp),
+    p.camLink !== "none" ? g(CAM_LINKS, p.camLink) : "",
+  ].filter(Boolean).join("; ");
+
+  let t = 0;
+  const beats = p.beats.map(b => {
+    const from = t; t += +b.sec || 0;
+    const gz = g(GAZE_TARGETS, b.gaze);
+    const cm = b.cam && b.cam !== "none" ? g(CAM_LINKS, b.cam) : "";
+    return `${from.toFixed(1)}–${t.toFixed(1)}s — ${b.do}${gz ? ` (${gz})` : ""}${cm ? `; ${cm}` : ""}`;
+  });
+  const pres = p.preserve.map(id => g(PRESERVE_ITEMS, id)).filter(Boolean);
+  const chg = p.change.map(id => g(CHANGE_ITEMS, id)).filter(Boolean);
+
+  if (prose) {
+    /* 文章系の方言では1段落にまとめる */
+    return [
+      `Performance: ${head}.`,
+      beats.length ? `Beats: ${beats.join(" / ")}.` : "",
+      pres.length || chg.length ? `Preserve ${pres.join(", ") || "—"}; change ${chg.join(", ") || "—"}.` : "",
+    ].filter(Boolean).join(" ");
+  }
+  return [
+    `PERFORMANCE: ${head}`,
+    beats.length ? `BEATS:\n${beats.map(b => `- ${b}`).join("\n")}` : "",
+    pres.length || chg.length
+      ? `PRESERVE / CHANGE: preserve = ${pres.join(", ") || "—"} / change = ${chg.join(", ") || "—"}` : "",
+  ].filter(Boolean).join("\n");
+}
+
+/* =========================================================
+ * プロンプト診断 — 書いてはいけない5項目 + 設計同士の噛み合わせ
+ * ======================================================= */
+const LINT_BODY_PARTS = ["腕", "肩", "手", "指", "首", "腰", "脚", "膝", "肘", "背中", "足"];
+const LINT_MOTION_NAMES = /ダンス|踊り|踊る|ポーズ|パフォーマンス|ムーブ|っぽい動き|風の動き|dance|choreo/i;
+const LINT_REF_OWNED = ["顔", "髪", "服", "衣装", "目元", "肌", "瞳"];
+
+function lintCut(cut) {
+  const out = [];
+  const p = cut.perf || {};
+  const texts = [cut.aim || "", cut.subjectNote || "", ...(p.beats || []).map(b => b.do || "")];
+  const all = texts.join(" ");
+
+  /* ① 形容詞の積み上げ — 具体的な動きとレンズの選択のほうがうまくいく */
+  const mods = (cut.aim + " " + (cut.subjectNote || ""))
+    .split(/[、,。\s]+/)
+    .filter(t => t.length >= 2 && t.length <= 10 && /(い|く|な|に|で|的|げ|そう|やか)$/.test(t));
+  if (mods.length >= 3) {
+    out.push({ lv: "warn", code: "ADJ-PILE",
+      t: `形容詞が積み上がっています (${mods.slice(0, 4).join("・")})。雰囲気の描写より、動きとレンズの選択を具体的に書くほうが効きます` });
+  }
+  /* ② 動きの「名前」— 概念名は解釈の幅がそのまま出力の幅になる */
+  if (LINT_MOTION_NAMES.test(all)) {
+    out.push({ lv: "warn", code: "MOTION-NAME",
+      t: "動きを「名前」で指定しています。速さ・雑さ・誰に向けた動きかで書くか、動きの見本を先に撮って渡すほうが再現されます" });
+  }
+  /* ③ 身体の各部位の分解 — 分解して長くしても参照1本の情報量には届かない */
+  const parts = LINT_BODY_PARTS.filter(w => all.includes(w));
+  if (parts.length >= 3) {
+    out.push({ lv: "warn", code: "BODY-PARTS",
+      t: `身体の部位を分解して書いています (${parts.slice(0, 4).join("・")})。長い分解より、動きの見本1本のほうが正確です` });
+  }
+  /* ④ 参照素材がすでに持っている情報の重複 */
+  if (cut.refImgId) {
+    const dup = LINT_REF_OWNED.filter(w => (cut.subjectNote || "").includes(w));
+    if (dup.length) {
+      out.push({ lv: "warn", code: "REF-DUP",
+        t: `参照画像が持つ情報 (${dup.join("・")}) を文章でも書いています。参照と文章が別々のことを言い出して破綻する原因になります` });
+    }
+  }
+  /* ⑤ 互いに矛盾する指示 — 守れない指示が混ざるとAIが取捨を自分で決める */
+  if (p.camLink && p.camLink !== "none" && cut.camera.move === "fix") {
+    out.push({ lv: "danger", code: "CONFLICT-CAM",
+      t: "カメラワークが「フィックス」なのに、演技側で「カメラが体に連動」を指定しています。どちらかに揃えてください" });
+  }
+  if ((p.contact || "none") !== "none" && (+p.people || 1) <= 1) {
+    out.push({ lv: "warn", code: "CONFLICT-CONTACT",
+      t: "人同士の接触を指定していますが、人数が1人です" });
+  }
+  if (p.preserve && p.change) {
+    const clash = [];
+    if (p.preserve.includes("performance") && p.change.includes("person") && perfMethodOf(cut) === "gen") {
+      clash.push("演技を残しつつ人物を変える (見本なしでは両立しない)");
+    }
+    if (clash.length) out.push({ lv: "info", code: "CONFLICT-PC", t: `${clash.join(" / ")} — 「先に撮ってから変える」向きの設計です` });
+  }
+  /* 尺との噛み合わせ */
+  if (p.beats && p.beats.length && cut.kind !== "still") {
+    const total = perfBeatTotal(cut);
+    const dur = cut.duration || 5;
+    if (Math.abs(total - dur) > 0.5) {
+      out.push({ lv: "warn", code: "BEAT-DUR",
+        t: `ビート合計 ${total.toFixed(1)}秒 に対してカットの尺は ${dur}秒 です (${total > dur ? "尺を超えています" : "尺が余ります"})` });
+    }
+  }
+  /* 立ち位置が読めない寄り */
+  const risk = (CONTACT_TYPES.find(c => c.id === p.contact) || {}).risk || 0;
+  if (risk >= 2 && ["CU", "BCU", "ECU"].includes(cut.camera.shotSize)) {
+    out.push({ lv: "info", code: "CONTACT-SIZE",
+      t: "接触のあるカットを寄りで撮ると、誰がどこにいるかが読めなくなります。引きのカバレッジを1カット足すのが安全です" });
+  }
+  /* 「先に撮る」でも解決しないケース */
+  if (perfMethodOf(cut) === "shoot" && p.unfit && p.unfit.length) {
+    const names = p.unfit.map(id => (UNFIT_CASES.find(u => u.id === id) || {}).label).filter(Boolean);
+    out.push({ lv: "danger", code: "UNFIT",
+      t: `先に撮っても解決しないケースに該当しています (${names.join(" / ")})。設計そのものを見直してください` });
+  }
+  return out;
+}
+
 function generatePrompt(cut, modelId) {
   const P = buildPromptParts(cut);
   const model = modelId || state.promptModel || "seedance";
   const j = (arr, sep) => arr.filter(Boolean).join(sep);
+  /* 人の動き (演技演出) は使われたときだけ足す。未使用なら従来の出力のまま */
+  const proseModel = ["veo", "sora", "runway", "mj"].includes(model);
+  const perf = buildPerfBlock(cut, proseModel);
+  const withPerf = (text, sep) => perf ? text + sep + perf : text;
 
   switch (model) {
     case "veo": { // 自然な英文パラグラフ + 音声指示
@@ -359,10 +560,10 @@ function generatePrompt(cut, modelId) {
       if (!P.isStill) s.push(`Audio: ${AUDIO_EN[P.audio] || "fitting ambient sound"}.`);
       if (P.transEn) s.push(`The shot ends with a ${P.transEn}.`);
       s.push(`${P.aspectEn}. Photorealistic, professional cinematography.`);
-      return s.join(" ");
+      return withPerf(s.join(" "), " ");
     }
     case "kling": { // 項目ラベル形式
-      return j([
+      return withPerf(j([
         `Subject: ${P.subjClause}`,
         `Camera: ${j([P.sizeEn, P.angEn, P.movPhrase, P.framingPhrase, P.supPhrase], ", ")}`,
         `Lens: ${j([P.lensStr, P.dofPhrase, P.filterStr], ", ")}`,
@@ -370,13 +571,13 @@ function generatePrompt(cut, modelId) {
         `Environment: ${j([P.bgEn, P.envPhrase], ", ")}`,
         `Style: ${j([P.lookEn, P.aspectEn, P.motionStr, "photorealistic, high detail"], ", ")}`,
         P.transEn ? `Transition out: ${P.transEn}` : "",
-      ], "\n");
+      ], "\n"), "\n");
     }
     case "runway": { // [camera]: [scene] 簡潔形式
       const cam = j([P.movPhrase, P.sizeEn, P.angEn], ", ");
       const scene = j([P.subjClause, P.bgEn, P.envPhrase], ", ");
       const detail = j([P.lightStr, P.lensStr, P.dofPhrase, P.lookEn, P.filterStr], ". ");
-      return `[${cam}]: [${scene}]. ${detail}. Cinematic, photorealistic.`;
+      return withPerf(`[${cam}]: [${scene}]. ${detail}. Cinematic, photorealistic.`, " ");
     }
     case "sora": { // 情景描写の長文
       const s = [];
@@ -386,7 +587,7 @@ function generatePrompt(cut, modelId) {
       s.push(`${P.lensStr}${P.dofPhrase ? ", " + P.dofPhrase : ""}.`);
       if (P.lookEn || P.filterStr) s.push(`${j([P.lookEn, P.filterStr], ", ")}.`);
       s.push(`${P.aspectEn}, ${P.motionStr}, photorealistic, rich in detail and atmosphere.`);
-      return s.join(" ");
+      return withPerf(s.join(" "), " ");
     }
     case "mj": { // Midjourney: タグ列 + パラメータ
       const arMap = { "16:9": "16:9", "9:16": "9:16", "2.39:1": "21:9", "4:3": "4:3", "1:1": "1:1", "3:2": "3:2", "4:5": "4:5" };
@@ -395,7 +596,7 @@ function generatePrompt(cut, modelId) {
         P.bgEn, P.envPhrase, P.lensStr, P.dofPhrase, P.filterStr, P.lookEn,
         "professional photography, photorealistic, high detail",
       ], ", ");
-      return `${tags} --ar ${arMap[P.aspectId] || "16:9"} --style raw`;
+      return `${withPerf(tags, ", ")} --ar ${arMap[P.aspectId] || "16:9"} --style raw`;
     }
     case "seedance": {
       // CineOS プロンプトコンパイル順序 (cineos/CLAUDE.md §10) に準拠した構造化ブロック
@@ -414,6 +615,7 @@ function generatePrompt(cut, modelId) {
         `COLOR / FINISH: ${j([P.lookEn || "natural true-to-life color grade", "photorealistic, professional cinematography, high detail"], ", ")}`,
         P.transEn ? `EDIT: shot ends with a ${P.transEn}` : "",
         P.dnaTokens.length ? `STYLE DNA: ${P.dnaTokens.join(", ")}` : "",
+        perf,
         `NEGATIVE: no subtitles, no watermark, no on-screen text, no morphing artifacts${P.dnaAvoid.length ? ", " + P.dnaAvoid.join(", ") : ""}`,
       ], "\n");
     }
@@ -428,7 +630,7 @@ function generatePrompt(cut, modelId) {
         P.dnaTokens.join(", "),
         P.motionStr,
         "photorealistic, professional cinematography, high detail",
-      ], ". ") + ".";
+      ], ". ") + "." + (perf ? "\n" + perf : "");
     }
   }
 }
@@ -1183,6 +1385,9 @@ function applyPreset(presetId) {
   fresh.refOffX = cut.refOffX;
   fresh.refOffY = cut.refOffY;
   fresh.wfStatus = cut.wfStatus;
+  fresh.caption = cut.caption;
+  fresh.perf = cut.perf; // 人の動きは技法を変えても維持する
+  fresh.originMode = cut.originMode;
   state.cuts[idx] = fresh;
   state.selectedItem = null;
   renderAll();
@@ -1241,6 +1446,16 @@ function renderFeasibility() {
   box.hidden = warnings.length === 0;
   byId("feasList").innerHTML = warnings
     .map(x => `<li class="lv-${x.lv}">${esc(x.t)}</li>`).join("");
+}
+
+/* プロンプト診断パネル (書いてはいけない5項目 + 噛み合わせ) */
+function renderLint() {
+  const box = byId("lintBox");
+  if (!box) return;
+  const items = lintCut(activeCut());
+  box.hidden = items.length === 0;
+  byId("lintList").innerHTML = items
+    .map(x => `<li class="lv-${x.lv}"><b>${esc(x.code)}</b> ${esc(x.t)}</li>`).join("");
 }
 
 /* アスペクト比クイック切替チップ (プレビュー直上) */
@@ -1367,10 +1582,13 @@ function renderCutStrip() {
     // 動画モード以外で作られたカットには由来バッジを出す (混在時の見分け用)
     const mb = c.originMode === "still" ? { cls: "mb-still", t: "ス", tip: "スチールモードで作成 (静止画カット)" }
       : c.originMode === "outdoor" ? { cls: "mb-outdoor", t: "屋", tip: "屋外・ドローンモードで作成" } : null;
+    // 演技演出が設計されているカットには「演」バッジ
+    const pb = perfActive(c)
+      ? `<span class="mode-badge mb-perf" title="演技演出あり: ${c.perf.beats.length}ビート / ${(c.perf.beats.reduce((s2, b) => s2 + (+b.sec || 0), 0)).toFixed(1)}秒">演</span>` : "";
     return `
     <div class="cut-thumb ${i === state.activeCut ? "active" : ""}" data-idx="${i}" style="width:${tw + 4}px">
       ${renderPreviewCached(c, "th" + i)}
-      <div class="cut-cap"><span class="wf-dot ${c.wfStatus || "plan"}" title="${(WF_STATUS.find(w => w.id === c.wfStatus) || WF_STATUS[0]).label}"></span>C${i + 1}${mb ? `<span class="mode-badge ${mb.cls}" title="${mb.tip}">${mb.t}</span>` : ""}　${esc(c.name)}</div>
+      <div class="cut-cap"><span class="wf-dot ${c.wfStatus || "plan"}" title="${(WF_STATUS.find(w => w.id === c.wfStatus) || WF_STATUS[0]).label}"></span>C${i + 1}${mb ? `<span class="mode-badge ${mb.cls}" title="${mb.tip}">${mb.t}</span>` : ""}${pb}　${esc(c.name)}</div>
     </div>
     ${trans ? `<div class="trans-chip" title="${esc(trans.note)}">${esc(trans.label.split(" ")[0])}</div>` : ""}`;
   }).join("");
@@ -1502,6 +1720,72 @@ function selectHtml(id, options, value) {
     `<option value="${esc(o.id)}" ${o.id === value ? "selected" : ""}>${esc(o.label)}</option>`).join("")}</select>`;
 }
 
+/* 人の動き (演技演出) セクション。開閉状態は再描画をまたいで保持する */
+let perfOpen = false;
+function perfSectionHtml(cut) {
+  const p = cut.perf;
+  const rec = recommendMethod(cut);
+  const used = perfMethodOf(cut);
+  const total = perfBeatTotal(cut);
+  const dur = cut.duration || 5;
+  const chip = (arr, sel, attr) => arr.map(x =>
+    `<span class="opt-toggle ${sel.includes(x.id) ? "on" : ""}" data-${attr}="${x.id}">${esc(x.label)}</span>`).join("");
+  let acc = 0;
+  return `
+  <details class="insp-section perf-sec"${perfOpen ? " open" : ""}>
+    <summary>人の動き (演技演出) <small>${perfActive(cut) ? `${p.beats.length}ビート / ${total.toFixed(1)}s` : "未設定"}</small></summary>
+
+    <h4 class="perf-h">動きの質 <small>「◯◯という動き」ではなく速さ・雑さ・向き先で</small></h4>
+    ${fieldRow("速さ", selectHtml("pSpeed", MOTION_SPEEDS, p.speed))}
+    ${fieldRow("丁寧さ", selectHtml("pCare", MOTION_CARES, p.care))}
+    ${fieldRow("向き先", selectHtml("pToward", MOTION_TOWARDS, p.toward))}
+    ${fieldRow("演技の温度", selectHtml("pTemp", PERF_TEMPS, p.temp))}
+
+    <h4 class="perf-h">人数と接触 <small>接触が多いほど「先に撮る」向き</small></h4>
+    ${fieldRow("人数", `<input type="number" id="pPeople" value="${p.people}" min="1" max="20">`)}
+    ${fieldRow("接触", selectHtml("pContact", CONTACT_TYPES, p.contact))}
+    ${fieldRow("カメラ連動", selectHtml("pCamLink", CAM_LINKS, p.camLink))}
+    ${p.camLink !== "none" && cut.camera.move === "fix"
+      ? `<div class="insp-hint warn">⚠️ カメラワークが「フィックス」です。連動させるならカメラワークを手持ち/ジンバル系に変えてください</div>` : ""}
+
+    <h4 class="perf-h">ビート (時間軸の動き) <small>合計 ${total.toFixed(1)}s / 尺 ${dur}s</small></h4>
+    <div class="beat-list">
+      ${p.beats.map((b, i) => {
+        const from = acc; acc += +b.sec || 0;
+        return `
+        <div class="beat-row">
+          <span class="beat-t">${from.toFixed(1)}–${acc.toFixed(1)}s</span>
+          <input type="number" class="beat-sec" data-bsec="${i}" value="${b.sec}" min="0.5" max="60" step="0.5" title="このビートの長さ(秒)">
+          <input type="text" class="beat-do" data-bdo="${i}" value="${esc(b.do)}" placeholder="何をする (例: 立ち止まって振り返る)">
+          <select data-bgaze="${i}" title="視線">${GAZE_TARGETS.map(g => `<option value="${g.id}" ${g.id === b.gaze ? "selected" : ""}>${esc(g.label)}</option>`).join("")}</select>
+          <select data-bcam="${i}" title="このビートでのカメラ">${CAM_LINKS.map(c => `<option value="${c.id}" ${c.id === b.cam ? "selected" : ""}>${esc(c.label)}</option>`).join("")}</select>
+          <button class="icon-btn small" data-bup="${i}" title="上へ" ${i === 0 ? "disabled" : ""}>↑</button>
+          <button class="icon-btn small danger" data-bdel="${i}" title="削除">×</button>
+        </div>`;
+      }).join("") || `<div class="insp-hint">ビート未設定 — 「いつ・何をするか」を並べると、尺とカメラの噛み合わせを診断できます</div>`}
+    </div>
+    <div class="beat-actions">
+      <button class="btn small" id="pBeatAdd"><svg class="ic"><use href="#i-plus"/></svg> ビート追加</button>
+      <select id="pBeatTpl" title="尺に合わせて比率で流し込みます">
+        <option value="">配分テンプレ…</option>
+        ${BEAT_TEMPLATES.map(t => `<option value="${t.id}">${esc(t.label)}</option>`).join("")}
+      </select>
+      ${p.beats.length ? `<button class="btn small ghost" id="pBeatFit" title="ビートの比率を保ったまま合計をカットの尺に合わせます">尺に合わせる</button>` : ""}
+    </div>
+
+    <h4 class="perf-h">作り方 <small>難しい動きは先に撮る</small></h4>
+    ${fieldRow("方式", `<select id="pMethod">
+      <option value="auto" ${p.method === "auto" ? "selected" : ""}>自動 (推奨に従う)</option>
+      ${PROD_METHODS.map(m => `<option value="${m.id}" ${p.method === m.id ? "selected" : ""}>${esc(m.label)}</option>`).join("")}
+    </select>`)}
+    <div class="insp-hint">${p.method === "auto" ? "推奨: " : "採用: "}<b>${esc((PROD_METHODS.find(m => m.id === used) || {}).label || "")}</b> — ${esc(rec.why[0] || "")}</div>
+    ${used === "shoot" ? `
+      <div class="field"><label>残す</label><div class="opt-toggles">${chip(PRESERVE_ITEMS, p.preserve, "pres")}</div></div>
+      <div class="field"><label>変える</label><div class="opt-toggles">${chip(CHANGE_ITEMS, p.change, "chg")}</div></div>
+      <div class="field"><label>解決しない例</label><div class="opt-toggles">${chip(UNFIT_CASES, p.unfit, "unfit")}</div></div>` : ""}
+  </details>`;
+}
+
 function renderInspector() {
   const cut = activeCut();
   const insp = byId("inspector");
@@ -1581,6 +1865,7 @@ function renderInspector() {
         return t && state.activeCut < state.cuts.length - 1 ? `<div class="insp-hint">🎬 ${esc(t.note)}</div>` : "";
       })()}
     </div>
+    ${cut.kind !== "still" ? perfSectionHtml(cut) : ""}
     ${cut.kind !== "still" ? `
     <div class="insp-section">
       <h3>編集 (EditDecision)</h3>
@@ -1759,6 +2044,74 @@ function renderInspector() {
   bind("cWb", e => { cut.camera.wb = e.target.value; });
   bind("cNotes", e => { cut.notes = e.target.value; });
 
+  /* ---------- 人の動き (演技演出) ---------- */
+  {
+    const sec = insp.querySelector(".perf-sec");
+    if (sec) sec.addEventListener("toggle", () => { perfOpen = sec.open; });
+    const p = cut.perf;
+    const redraw = () => { renderInspector(); renderPrompt(); renderLint(); renderCutStrip(); };
+    bind("pSpeed", e => { p.speed = e.target.value; renderPrompt(); renderLint(); });
+    bind("pCare", e => { p.care = e.target.value; renderPrompt(); renderLint(); });
+    bind("pToward", e => { p.toward = e.target.value; renderPrompt(); renderLint(); });
+    bind("pTemp", e => { p.temp = e.target.value; renderPrompt(); renderLint(); });
+    bind("pPeople", e => { p.people = Math.max(1, +e.target.value || 1); redraw(); });
+    bind("pContact", e => { p.contact = e.target.value; redraw(); });
+    bind("pCamLink", e => { p.camLink = e.target.value; redraw(); });
+    bind("pMethod", e => { p.method = e.target.value; redraw(); });
+    bind("pBeatAdd", () => {
+      /* 残り尺を初期値にする (尺との噛み合わせを崩さない) */
+      const rest = Math.max(0.5, Math.round(((cut.duration || 5) - perfBeatTotal(cut)) * 10) / 10);
+      p.beats.push({ id: uid(), sec: rest || 1, do: "", gaze: "none", cam: "none" });
+      redraw();
+    }, "click");
+    bind("pBeatTpl", e => {
+      if (!e.target.value) return;
+      perfApplyTemplate(cut, e.target.value);
+      redraw();
+      showToast("配分テンプレをカットの尺に合わせて流し込みました");
+    });
+    bind("pBeatFit", () => {
+      const total = perfBeatTotal(cut);
+      if (!total) return;
+      const k = (cut.duration || 5) / total;
+      p.beats.forEach(b => { b.sec = Math.max(0.5, Math.round(b.sec * k * 10) / 10); });
+      redraw();
+    }, "click");
+    insp.querySelectorAll("[data-bsec]").forEach(el => el.addEventListener("change", () => {
+      p.beats[+el.dataset.bsec].sec = Math.max(0.5, +el.value || 0.5); redraw();
+    }));
+    insp.querySelectorAll("[data-bdo]").forEach(el => el.addEventListener("input", () => {
+      p.beats[+el.dataset.bdo].do = el.value; renderPrompt(); renderLint();
+    }));
+    insp.querySelectorAll("[data-bgaze]").forEach(el => el.addEventListener("change", () => {
+      p.beats[+el.dataset.bgaze].gaze = el.value; renderPrompt();
+    }));
+    insp.querySelectorAll("[data-bcam]").forEach(el => el.addEventListener("change", () => {
+      p.beats[+el.dataset.bcam].cam = el.value; renderPrompt(); renderLint();
+    }));
+    insp.querySelectorAll("[data-bup]").forEach(el => el.addEventListener("click", () => {
+      const i = +el.dataset.bup;
+      [p.beats[i - 1], p.beats[i]] = [p.beats[i], p.beats[i - 1]];
+      redraw();
+    }));
+    insp.querySelectorAll("[data-bdel]").forEach(el => el.addEventListener("click", () => {
+      p.beats.splice(+el.dataset.bdel, 1); redraw();
+    }));
+    const toggleIn = (arr, id) => {
+      const i = arr.indexOf(id);
+      if (i >= 0) arr.splice(i, 1); else arr.push(id);
+    };
+    insp.querySelectorAll(".perf-sec [data-pres]").forEach(el => el.addEventListener("click", () => {
+      toggleIn(p.preserve, el.dataset.pres); redraw();
+    }));
+    insp.querySelectorAll(".perf-sec [data-chg]").forEach(el => el.addEventListener("click", () => {
+      toggleIn(p.change, el.dataset.chg); redraw();
+    }));
+    insp.querySelectorAll(".perf-sec [data-unfit]").forEach(el => el.addEventListener("click", () => {
+      toggleIn(p.unfit, el.dataset.unfit); redraw();
+    }));
+  }
+
   insp.querySelectorAll(".opt-toggle[data-opt]").forEach(el => {
     el.addEventListener("click", () => {
       const o = el.dataset.opt;
@@ -1807,8 +2160,8 @@ function updateRangeFill(el) {
   el.style.setProperty("--fill", pct.toFixed(1) + "%");
 }
 
-function refresh() { renderCanvas(); renderPreview(); renderPrompt(); renderCutStrip(); renderCoverage(); renderTimeline(); captureUndo(); }
-function renderAll() { renderPresetList(); renderCanvas(); renderPreview(); renderPrompt(); renderCutStrip(); renderInspector(); renderTimeline(); renderCoverage(); captureUndo(); }
+function refresh() { renderCanvas(); renderPreview(); renderPrompt(); renderCutStrip(); renderCoverage(); renderTimeline(); renderLint(); captureUndo(); }
+function renderAll() { renderPresetList(); renderCanvas(); renderPreview(); renderPrompt(); renderCutStrip(); renderInspector(); renderTimeline(); renderCoverage(); renderLint(); captureUndo(); }
 
 /* =========================================================
  * Undo / Redo — 描画フックで状態差分を自動キャプチャする。
@@ -2045,6 +2398,22 @@ function cutToCanonicalShot(cut, i, projectId) {
         audio_overlap_s: cut.audioEdit && cut.audioEdit !== "none" ? cut.audioOverlapSec : null,
         caption: cut.caption || "",
       },
+    performance: perfActive(cut) ? (() => {
+      /* 人の動き — 時間軸のビートと動きの質。カメラ設計とは独立に記録する */
+      const p = cut.perf;
+      let acc = 0;
+      return {
+        method: perfMethodOf(cut),
+        people: p.people, contact: p.contact, camera_link: p.camLink,
+        motion_quality: { speed: p.speed, care: p.care, toward: p.toward },
+        temperature: p.temp,
+        beats: p.beats.map(b => {
+          const from = acc; acc += +b.sec || 0;
+          return { in_s: +from.toFixed(1), out_s: +acc.toFixed(1), duration_s: +b.sec || 0, action: b.do || "", gaze: b.gaze, camera: b.cam };
+        }),
+        preserve: p.preserve, change: p.change,
+      };
+    })() : null,
     first_frame_ref: (() => {
       const r = cut.refImgId && state.story && state.story.refs
         ? state.story.refs.find(x => x.id === cut.refImgId) : null;
@@ -3145,6 +3514,25 @@ function cutFromCanonicalShot(shot) {
     cut.audioEdit = shot.edit_decision.audio_edit || "none";
     if (shot.edit_decision.audio_overlap_s != null) cut.audioOverlapSec = shot.edit_decision.audio_overlap_s;
     if (shot.edit_decision.caption) cut.caption = shot.edit_decision.caption;
+  }
+  if (shot.performance) {
+    const P2 = shot.performance;
+    const p = cut.perf;
+    if (P2.method) p.method = P2.method;
+    if (P2.people) p.people = P2.people;
+    if (P2.contact) p.contact = P2.contact;
+    if (P2.camera_link) p.camLink = P2.camera_link;
+    if (P2.motion_quality) {
+      p.speed = P2.motion_quality.speed || p.speed;
+      p.care = P2.motion_quality.care || p.care;
+      p.toward = P2.motion_quality.toward || p.toward;
+    }
+    if (P2.temperature) p.temp = P2.temperature;
+    if (Array.isArray(P2.beats)) {
+      p.beats = P2.beats.map(b => ({ id: uid(), sec: +b.duration_s || 1, do: b.action || "", gaze: b.gaze || "none", cam: b.camera || "none" }));
+    }
+    if (Array.isArray(P2.preserve)) p.preserve = P2.preserve;
+    if (Array.isArray(P2.change)) p.change = P2.change;
   }
   if (P.logistics) { cut.takes = P.logistics.estimated_takes ?? cut.takes; cut.setupMin = P.logistics.setup_min ?? cut.setupMin; }
 
