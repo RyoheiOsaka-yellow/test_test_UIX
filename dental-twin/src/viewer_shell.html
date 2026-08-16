@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>DENTAL TWIN — 口腔3Dビューア</title>
+<style>
+:root{
+  --bg:#F4F6F8; --panel:#FFFFFF; --line:#DCE1E6; --ink:#1B2430; --sub:#5A6675;
+  --accent:#2F6FEB; --tap:60px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,"Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+  font-size:14px;font-weight:500}
+#app{display:grid;grid-template-rows:auto 1fr auto;height:100%;position:relative}
+
+/* ---- header ---- */
+header{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--panel);
+  border-bottom:1px solid var(--line)}
+.logo{font-size:16px;font-weight:700;letter-spacing:.04em}
+.logo em{font-style:normal;color:var(--accent)}
+#summary{display:flex;gap:8px;flex-wrap:wrap;margin-left:6px}
+.kpi{background:#EEF2F7;border-radius:6px;padding:4px 9px;font-size:13px;color:var(--sub)}
+.kpi b{color:var(--ink);font-size:15px}
+.spacer{flex:1}
+#meta{font-size:12px;color:var(--sub)}
+button,label.btn{min-height:44px;padding:0 14px;border:1px solid var(--line);background:#fff;
+  border-radius:9px;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:6px}
+button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+button:active{transform:translateY(1px)}
+#modeBtn{min-width:132px}
+
+/* ---- main ---- */
+main{display:grid;grid-template-columns:1fr 300px;min-height:0}
+#stack{display:flex;flex-direction:column;min-height:0}
+#view{position:relative;min-height:0;overflow:hidden;flex:1}
+#view canvas{display:block;width:100%;height:100%}
+
+/* ---- 2D 歯式チャート（入力） ---- */
+#chart{background:var(--panel);border-top:1px solid var(--line);padding:6px 10px 8px;
+  user-select:none}
+#chartHead{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+#chartHead h3{margin:0;font-size:12px;font-weight:700;color:var(--sub);letter-spacing:.05em}
+#chartHead .spacer{flex:1}
+#chartHead button{min-height:38px;padding:0 12px;font-size:13px}
+.crow{display:flex;gap:2px;justify-content:center}
+.crow+.crow{margin-top:2px}
+.tc{flex:1 1 0;max-width:64px;min-width:34px;cursor:pointer;text-align:center;
+  border-radius:6px;padding:2px 1px 1px;border:2px solid transparent}
+.tc:active{background:#EEF2F7}
+.tc.sel{border-color:var(--accent);background:#EAF1FE}
+.tc svg{width:100%;height:auto;display:block}
+.tc .tn{font-size:11px;font-weight:700;color:var(--sub);line-height:1.2}
+.tc.mid{border-left:1px solid var(--line);border-radius:0 6px 6px 0}
+.mline{width:1px;background:var(--line);margin:0 3px}
+
+/* ---- 入力ポップオーバー ---- */
+#pop{position:absolute;z-index:20;background:#fff;border:1px solid var(--line);
+  border-radius:14px;box-shadow:0 12px 34px rgba(27,36,48,.18);padding:12px 14px;
+  width:min(560px,94vw);left:50%;transform:translateX(-50%);bottom:12px}
+#pop .ph2{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+#pop .ph2 b{font-size:17px}
+#pop .ph2 .spacer{flex:1}
+#pop h4{margin:8px 0 6px;font-size:11px;font-weight:700;color:var(--sub);letter-spacing:.05em}
+#pop .grp{display:flex;gap:6px;flex-wrap:wrap}
+#pop .grp button{min-height:52px;min-width:56px;flex:1 0 auto;font-size:14px;padding:0 10px}
+#pop .grp button.fon{outline:3px solid var(--accent);outline-offset:-3px}
+#pop .grp button i.sw{margin-right:2px}
+#popClose{min-height:44px}
+
+/* ---- シミュレーション/ナレーション バナー ---- */
+.banner{position:absolute;left:50%;transform:translateX(-50%);z-index:6;
+  padding:7px 14px;border-radius:9px;font-size:14px;font-weight:700;color:#fff;
+  pointer-events:none;white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis}
+#simNote{top:12px;background:rgba(214,94,28,.94)}
+#seqNote{top:52px;background:rgba(27,36,48,.88);font-weight:600}
+body.patient .banner{font-size:17px}
+
+.side{position:absolute;top:50%;transform:translateY(-50%);font-size:13px;font-weight:700;
+  color:var(--sub);background:rgba(255,255,255,.86);padding:6px 10px;border-radius:8px;
+  border:1px solid var(--line);pointer-events:none;white-space:nowrap}
+#sideL{left:10px}
+#sideR{right:10px}
+
+#legend{position:absolute;left:10px;bottom:10px;background:rgba(255,255,255,.94);
+  border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:12px;
+  display:flex;flex-wrap:wrap;gap:6px 12px;max-width:min(560px,72%);pointer-events:none}
+#legend span{display:flex;align-items:center;gap:5px;color:var(--sub)}
+i.sw{width:12px;height:12px;border-radius:3px;border:1px solid rgba(0,0,0,.15);display:inline-block}
+
+#tip{position:absolute;pointer-events:none;background:rgba(27,36,48,.94);color:#fff;
+  padding:8px 11px;border-radius:8px;font-size:13px;line-height:1.45;max-width:250px;z-index:5}
+#tip .sub{color:#B8C2CE;font-size:11px}
+.hide{display:none!important}
+
+#loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  background:var(--bg);font-size:15px;color:var(--sub);z-index:9}
+.err{color:#C1121F;max-width:70%;text-align:center;line-height:1.6}
+
+/* ---- right panel ---- */
+aside{background:var(--panel);border-left:1px solid var(--line);display:flex;
+  flex-direction:column;min-height:0;overflow-y:auto}
+aside .sec{flex:0 0 auto}
+#detail{min-height:110px}
+.sec{padding:12px 14px;border-bottom:1px solid var(--line)}
+.sec h3{margin:0 0 9px;font-size:12px;font-weight:700;color:var(--sub);letter-spacing:.06em}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row button{flex:1 0 auto;min-width:62px;padding:0 8px;font-size:13px}
+.slider{display:flex;align-items:center;gap:10px}
+input[type=range]{flex:1;height:36px;accent-color:var(--accent)}
+#stageLabel{font-size:13px;font-weight:700;min-width:88px}
+#detail{padding:12px 14px;overflow:auto;flex:1;min-height:0}
+.ph{color:var(--sub);font-size:13px;padding:22px 4px;text-align:center}
+.dh{font-size:19px;font-weight:700;margin-bottom:8px}
+.dsec{margin:12px 0 6px;font-size:12px;font-weight:700;color:var(--sub)}
+.drow{display:flex;justify-content:space-between;align-items:center;gap:8px;
+  padding:6px 0;border-bottom:1px dotted var(--line);font-size:13px}
+.drow span{display:flex;align-items:center;gap:6px;color:var(--sub)}
+.drow b{font-weight:700}
+.note{font-size:12px;color:var(--sub);padding:2px 0 6px}
+.perio{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.pc{border-radius:6px;padding:5px 4px;text-align:center;font-size:14px;font-weight:700;color:#fff}
+.pc em{display:block;font-style:normal;font-size:10px;font-weight:600;opacity:.85}
+.pc u{text-decoration:none}
+.pc.ok{background:#2A9D8F}.pc.mid{background:#E9C46A;color:#5A4A16}.pc.bad{background:#E63946}
+
+/* ---- footer ---- */
+footer{padding:8px 14px;background:var(--panel);border-top:1px solid var(--line);
+  font-size:12px;color:var(--sub);display:flex;gap:14px;align-items:center}
+
+/* ---- 患者説明モード ---- */
+body.patient{font-size:16px}
+body.patient #summary,body.patient #meta,body.patient .adv{display:none}
+body.patient aside{width:auto}
+body.patient .dh{font-size:23px}
+body.patient .drow{font-size:16px;padding:9px 0}
+body.patient #legend{font-size:14px}
+body.patient .side{font-size:15px}
+
+@media(max-width:900px){
+  main{grid-template-columns:1fr;grid-template-rows:1fr auto}
+  aside{border-left:none;border-top:1px solid var(--line);max-height:44%}
+}
+@media(max-height:760px){ #chart .tn{display:none} }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">DENTAL <em>TWIN</em></div>
+    <div id="summary"></div>
+    <div class="spacer"></div>
+    <div id="meta"></div>
+    <button id="modeBtn">術者モード</button>
+  </header>
+
+  <main>
+    <div id="stack">
+    <div id="view">
+      <div id="sideL" class="side">← 患者さんの右</div>
+      <div id="sideR" class="side">患者さんの左 →</div>
+      <div id="tip" class="hide"></div>
+      <div id="simNote" class="banner hide">治療後シミュレーション表示中（実際の治療結果とは異なります）</div>
+      <div id="seqNote" class="banner hide"></div>
+      <div id="isoNote" class="side hide" style="top:92px;left:50%;transform:translateX(-50%);
+        background:rgba(47,111,235,.92);color:#fff;border-color:transparent"></div>
+      <div id="legend">
+        <span><i class="sw" style="background:#F2EDE4"></i>健全</span>
+        <span><i class="sw" style="background:#FFF3B0"></i>要観察 CO</span>
+        <span><i class="sw" style="background:#FFD166"></i>C1</span>
+        <span><i class="sw" style="background:#F3722C"></i>C2</span>
+        <span><i class="sw" style="background:#D62828"></i>C3</span>
+        <span><i class="sw" style="background:#6A040F"></i>C4</span>
+        <span><i class="sw" style="background:#A8DADC"></i>レジン</span>
+        <span><i class="sw" style="background:#9AA3AC"></i>金属</span>
+        <span><i class="sw" style="background:#EFEDE8"></i>セラミック</span>
+        <span><i class="sw" style="background:#4A5A6A"></i>インプラント</span>
+        <span class="adv"><i class="sw" style="background:#2A9D8F;border-radius:50%"></i>ポケット1–3</span>
+        <span class="adv"><i class="sw" style="background:#E9C46A;border-radius:50%"></i>4–5</span>
+        <span class="adv"><i class="sw" style="background:#E63946;border-radius:50%"></i>6mm以上</span>
+      </div>
+      <div id="loading">モデルを読み込んでいます…</div>
+    </div>
+
+    <div id="chart" class="adv">
+      <div id="chartHead">
+        <h3>歯式チャート（セルをタップで入力）</h3>
+        <div class="spacer"></div>
+        <button id="undoBtn" disabled>↩ 元に戻す</button>
+        <button id="saveBtn">所見JSONを保存</button>
+      </div>
+      <div class="crow" id="rowU"></div>
+      <div class="crow" id="rowL"></div>
+    </div>
+    </div>
+
+    <aside>
+      <div class="sec">
+        <h3>視点</h3>
+        <div class="row">
+          <button data-preset="front">正面</button>
+          <button data-preset="occ_up">上顎</button>
+          <button data-preset="occ_low">下顎</button>
+          <button data-preset="right">右側</button>
+          <button data-preset="left">左側</button>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h3>表示の段階</h3>
+        <div class="slider">
+          <input type="range" id="stage" min="0" max="2" step="1" value="0">
+          <span id="stageLabel">① 通常</span>
+        </div>
+        <div class="slider" style="margin-top:6px">
+          <input type="range" id="open" min="0" max="28" step="1" value="0">
+          <span id="stageLabel" style="min-width:88px;font-size:13px;color:var(--sub)">開口</span>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h3>治療後の見え方</h3>
+        <div class="row">
+          <button id="simBtn">治療後シミュレーション</button>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h3>説明プリセット（ワンタップ）</h3>
+        <div class="row">
+          <button data-seq="caries">虫歯の説明</button>
+          <button data-seq="perio">歯周病の説明</button>
+          <button data-seq="plan">治療の流れ</button>
+          <button data-seq="summary">全体サマリー</button>
+        </div>
+      </div>
+
+      <div class="sec adv">
+        <h3>レイヤ</h3>
+        <div class="row">
+          <button data-layer="caries" class="on">う蝕</button>
+          <button data-layer="restoration" class="on">修復物</button>
+          <button data-layer="perio">歯周</button>
+          <button data-layer="bone">歯槽骨</button>
+        </div>
+      </div>
+
+      <div id="detail"><div class="ph">歯をタップすると詳細が表示されます</div></div>
+
+      <div class="sec adv" style="border-bottom:none;border-top:1px solid var(--line)">
+        <div class="row">
+          <label class="btn" for="file">所見JSONを開く</label>
+          <input type="file" id="file" accept=".json,application/json" style="display:none">
+          <button id="reset">リセット</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    <span>⚠ 本表示は説明用であり、診断結果を代替するものではありません。</span>
+    <span class="adv">サンプルデータは架空症例です。</span>
+  </footer>
+
+  <div id="pop" class="hide"></div>
+</div>
+<!--LIB-->
+<!--DATA-->
+<!--APP-->
+</body>
+</html>
