@@ -1801,8 +1801,9 @@ function renderAll() { renderPresetList(); renderCanvas(); renderPreview(); rend
  * 個々の操作ハンドラに手を入れず、refresh()/renderAll() の後に
  * スナップショットを比較して変化があれば履歴に積む。
  * ======================================================= */
-const undoState = { stack: [], redo: [], last: null, applying: false };
+const undoState = { stack: [], redo: [], last: null, applying: false, lastPushAt: 0 };
 const UNDO_MAX = 50, UNDO_MAX_CHARS = 25 * 1024 * 1024; // 件数と総容量の両方で制限
+const UNDO_COALESCE_MS = 500; // この間隔以内の連続変化 (スライダードラッグ等) は1ステップに合体
 
 function captureUndo() {
   if (undoState.applying) return;
@@ -1810,9 +1811,19 @@ function captureUndo() {
   try { snap = JSON.stringify(snapshotState()); } catch { return; }
   if (undoState.last === null) { undoState.last = snap; return; } // 初回は基準登録のみ
   if (snap === undoState.last) return;
+  const now = performance.now();
+  if (now - undoState.lastPushAt < UNDO_COALESCE_MS && undoState.stack.length) {
+    // ドラッグ中の連続入力: 直前にpushした「操作前」を保ったまま最新状態だけ更新
+    // → 1回のUndoでドラッグ開始前まで戻る
+    undoState.redo.length = 0;
+    undoState.last = snap;
+    undoState.lastPushAt = now;
+    return;
+  }
   undoState.stack.push(undoState.last);
   undoState.redo.length = 0;
   undoState.last = snap;
+  undoState.lastPushAt = now;
   // 上限を超えたら古いものから捨てる
   while (undoState.stack.length > UNDO_MAX) undoState.stack.shift();
   let total = undoState.stack.reduce((s, x) => s + x.length, 0);
@@ -1824,6 +1835,7 @@ function doUndo() {
   undoState.redo.push(undoState.last);
   const snap = undoState.stack.pop();
   undoState.last = snap;
+  undoState.lastPushAt = 0; // Undo直後の変化は合体させず新しいステップにする
   undoState.applying = true;
   try { applySnapshot(JSON.parse(snap)); } finally { undoState.applying = false; }
   showToast(`↩ 元に戻しました (残り${undoState.stack.length})`);
@@ -1834,6 +1846,7 @@ function doRedo() {
   undoState.stack.push(undoState.last);
   const snap = undoState.redo.pop();
   undoState.last = snap;
+  undoState.lastPushAt = 0;
   undoState.applying = true;
   try { applySnapshot(JSON.parse(snap)); } finally { undoState.applying = false; }
   showToast(`↪ やり直しました`);
@@ -2072,7 +2085,7 @@ function importJSON(file) {
       document.querySelectorAll(".mode-tab").forEach(b => b.classList.toggle("active", b.dataset.mode === state.mode));
       renderAll();
     } catch (err) {
-      alert("読み込みに失敗しました: " + err.message);
+      showToast("⚠️ 読み込みに失敗しました: " + err.message);
     }
   };
   reader.readAsText(file);
@@ -2493,6 +2506,13 @@ function setupOnboarding() {
   byId("btnTourPrev").addEventListener("click", () => tourNext(-1));
   byId("btnTourSkip").addEventListener("click", tourEnd);
   byId("btnTourAgain").addEventListener("click", startTour);
+  /* ウィンドウリサイズでスポットライトとカードを引き直す (回転・分割表示対応) */
+  let tourResizeTimer = null;
+  window.addEventListener("resize", () => {
+    if (byId("tourWrap").hidden) return;
+    clearTimeout(tourResizeTimer);
+    tourResizeTimer = setTimeout(() => { if (!byId("tourWrap").hidden) tourShow(tourIdx); }, 150);
+  });
 }
 
 /* =========================================================
@@ -3321,7 +3341,7 @@ function setupHeader() {
     } catch { /* IDBなし環境 */ }
   });
   byId("btnDelCut").addEventListener("click", () => {
-    if (state.cuts.length <= 1) { alert("最後のカットは削除できません"); return; }
+    if (state.cuts.length <= 1) { showToast("⚠️ 最後のカットは削除できません"); return; }
     state.cuts.splice(state.activeCut, 1);
     state.activeCut = Math.max(0, state.activeCut - 1);
     state.selectedItem = null;
@@ -3344,7 +3364,7 @@ function setupHeader() {
   });
   byId("btnCopySequence").addEventListener("click", async () => {
     const seq = buildSeedanceSequence();
-    if (!seq) { alert("動画カットがありません (スチールのみのため)"); return; }
+    if (!seq) { showToast("⚠️ 動画カットがありません (スチールのみのため)"); return; }
     try { await navigator.clipboard.writeText(seq); } catch { /* clipboard不可環境 */ }
     copyFeedback(byId("btnCopySequence"), "i-board");
   });
@@ -3463,6 +3483,15 @@ function init() {
   }
   startAutosave();
   setTimeout(async () => { await rcMigrateLegacyAudio(); rcRefreshIndex(); gcMediaClips(); }, 2500); // 旧音声キー移行→孤児回収
+
+  /* ラフカットのWebM書き出しに必要なAPIが無いブラウザ (Safari等) には一度だけ案内 */
+  const webmOk = typeof MediaRecorder !== "undefined"
+    && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported("video/webm")
+    && !!HTMLCanvasElement.prototype.captureStream;
+  if (!webmOk && !lsGet("vsBrowserWarned", false) && !navigator.webdriver) {
+    lsSet("vsBrowserWarned", true);
+    setTimeout(() => showToast("⚠️ このブラウザはWebM録画に未対応のため、ラフカットの書き出しが使えない可能性があります (再生・EDL・指示書は利用可)。Chrome / Edge を推奨します"), 1500);
+  }
 }
 
 init();

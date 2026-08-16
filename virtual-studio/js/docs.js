@@ -437,7 +437,7 @@ function importKnowledgeMdFiles(files) {
   const finish = () => {
     if (--pending > 0) return;
     renderPresetList();
-    alert(`技法mdインポート: ${ok}件成功` + (errs.length ? `\n失敗:\n` + errs.join("\n") : ""));
+    showToast(`技法mdインポート: ${ok}件成功` + (errs.length ? ` ｜ ⚠️ 失敗: ${errs.join(" / ")}` : ""));
   };
   for (const file of files) {
     const reader = new FileReader();
@@ -591,7 +591,7 @@ function buildDmxDoc() {
 
 function exportDmx() {
   const html = buildDmxDoc();
-  if (!html) { alert("パッチ対象のライトがありません"); return; }
+  if (!html) { showToast("⚠️ パッチ対象のライトがありません"); return; }
   openDocWindow(html, "dmx-cue-sheet.html", "DMXキューシート");
 }
 

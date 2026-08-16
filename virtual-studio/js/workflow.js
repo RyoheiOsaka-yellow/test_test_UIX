@@ -41,7 +41,7 @@ async function wfAddRefFiles(files) {
   let added = 0;
   for (const file of files) {
     if (!(file.type || "").startsWith("image/")) continue;
-    if (state.story.refs.length >= MAX) { alert(`参照画像は${MAX}枚までです (ブラウザ保存容量のため)`); break; }
+    if (state.story.refs.length >= MAX) { showToast(`⚠️ 参照画像は${MAX}枚までです (ブラウザ保存容量のため)`); break; }
     try {
       const d = await downscaleImage(file, 768);
       state.story.refs.push({ id: uid(), name: file.name, dataUrl: d.url, hasAlpha: d.hasAlpha });
