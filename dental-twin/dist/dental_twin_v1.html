@@ -84,10 +84,11 @@ body.patient .banner{font-size:17px}
 #sideL{left:10px}
 #sideR{right:10px}
 
-#legend{position:absolute;left:10px;bottom:10px;background:rgba(255,255,255,.94);
-  border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:12px;
-  display:flex;flex-wrap:wrap;gap:6px 12px;max-width:min(560px,72%);pointer-events:none}
-#legend span{display:flex;align-items:center;gap:5px;color:var(--sub)}
+/* 凡例: 3Dに被らない常設バー（畳まない） */
+#legend{background:var(--panel);border-top:1px solid var(--line);
+  padding:6px 12px;font-size:12px;display:flex;flex-wrap:wrap;gap:4px 12px;
+  align-items:center}
+#legend span{display:flex;align-items:center;gap:5px;color:var(--sub);white-space:nowrap}
 i.sw{width:12px;height:12px;border-radius:3px;border:1px solid rgba(0,0,0,.15);display:inline-block}
 
 #tip{position:absolute;pointer-events:none;background:rgba(27,36,48,.94);color:#fff;
@@ -139,6 +140,15 @@ body.patient .drow{font-size:16px;padding:9px 0}
 body.patient #legend{font-size:14px}
 body.patient .side{font-size:15px}
 
+/* ---- 2D 表示モード ---- */
+body.mode2d #view,body.mode2d .only3d{display:none}
+body.mode2d #chart{display:flex!important;flex:1;flex-direction:column;
+  justify-content:center;padding:14px 18px;overflow:auto}
+body.mode2d .tc{max-width:110px}
+body.mode2d .crow{gap:6px}
+body.mode2d .crow+.crow{margin-top:8px}
+body.mode2d .tc .tn{font-size:13px}
+
 @media(max-width:900px){
   main{grid-template-columns:1fr;grid-template-rows:1fr auto}
   aside{border-left:none;border-top:1px solid var(--line);max-height:44%}
@@ -153,6 +163,8 @@ body.patient .side{font-size:15px}
     <div id="summary"></div>
     <div class="spacer"></div>
     <div id="meta"></div>
+    <button id="dimBtn">2D表示</button>
+    <button id="reset">リセット</button>
     <button id="modeBtn">術者モード</button>
   </header>
 
@@ -166,22 +178,23 @@ body.patient .side{font-size:15px}
       <div id="seqNote" class="banner hide"></div>
       <div id="isoNote" class="side hide" style="top:92px;left:50%;transform:translateX(-50%);
         background:rgba(47,111,235,.92);color:#fff;border-color:transparent"></div>
-      <div id="legend">
-        <span><i class="sw" style="background:#F2EDE4"></i>健全</span>
-        <span><i class="sw" style="background:#FFF3B0"></i>要観察 CO</span>
-        <span><i class="sw" style="background:#FFD166"></i>C1</span>
-        <span><i class="sw" style="background:#F3722C"></i>C2</span>
-        <span><i class="sw" style="background:#D62828"></i>C3</span>
-        <span><i class="sw" style="background:#6A040F"></i>C4</span>
-        <span><i class="sw" style="background:#A8DADC"></i>レジン</span>
-        <span><i class="sw" style="background:#9AA3AC"></i>金属</span>
-        <span><i class="sw" style="background:#EFEDE8"></i>セラミック</span>
-        <span><i class="sw" style="background:#4A5A6A"></i>インプラント</span>
-        <span class="adv"><i class="sw" style="background:#2A9D8F;border-radius:50%"></i>ポケット1–3</span>
-        <span class="adv"><i class="sw" style="background:#E9C46A;border-radius:50%"></i>4–5</span>
-        <span class="adv"><i class="sw" style="background:#E63946;border-radius:50%"></i>6mm以上</span>
-      </div>
       <div id="loading">モデルを読み込んでいます…</div>
+    </div>
+
+    <div id="legend">
+      <span><i class="sw" style="background:#F2EDE4"></i>健全</span>
+      <span><i class="sw" style="background:#FFF3B0"></i>要観察 CO</span>
+      <span><i class="sw" style="background:#FFD166"></i>C1</span>
+      <span><i class="sw" style="background:#F3722C"></i>C2</span>
+      <span><i class="sw" style="background:#D62828"></i>C3</span>
+      <span><i class="sw" style="background:#6A040F"></i>C4</span>
+      <span><i class="sw" style="background:#A8DADC"></i>レジン</span>
+      <span><i class="sw" style="background:#9AA3AC"></i>金属</span>
+      <span><i class="sw" style="background:#EFEDE8"></i>セラミック</span>
+      <span><i class="sw" style="background:#4A5A6A"></i>インプラント</span>
+      <span class="adv"><i class="sw" style="background:#2A9D8F;border-radius:50%"></i>ポケット1–3</span>
+      <span class="adv"><i class="sw" style="background:#E9C46A;border-radius:50%"></i>4–5</span>
+      <span class="adv"><i class="sw" style="background:#E63946;border-radius:50%"></i>6mm以上</span>
     </div>
 
     <div id="chart" class="adv">
@@ -197,7 +210,7 @@ body.patient .side{font-size:15px}
     </div>
 
     <aside>
-      <div class="sec">
+      <div class="sec only3d">
         <h3>視点</h3>
         <div class="row">
           <button data-preset="front">正面</button>
@@ -208,14 +221,14 @@ body.patient .side{font-size:15px}
         </div>
       </div>
 
-      <div class="sec">
+      <div class="sec only3d">
         <h3>表示の段階</h3>
         <div class="slider">
           <input type="range" id="stage" min="0" max="2" step="1" value="0">
           <span id="stageLabel">① 通常</span>
         </div>
         <div class="slider" style="margin-top:6px">
-          <input type="range" id="open" min="0" max="28" step="1" value="0">
+          <input type="range" id="open" min="0" max="60" step="1" value="0">
           <span id="openLabel" style="min-width:88px;font-size:13px;color:var(--sub)">開口</span>
         </div>
       </div>
@@ -248,14 +261,6 @@ body.patient .side{font-size:15px}
       </div>
 
       <div id="detail"><div class="ph">歯をタップすると詳細が表示されます</div></div>
-
-      <div class="sec adv" style="border-bottom:none;border-top:1px solid var(--line)">
-        <div class="row">
-          <label class="btn" for="file">所見JSONを開く</label>
-          <input type="file" id="file" accept=".json,application/json" style="display:none">
-          <button id="reset">リセット</button>
-        </div>
-      </div>
     </aside>
   </main>
 
@@ -4541,7 +4546,10 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
       renderChartSummary();
     });
 
-    document.getElementById('file').addEventListener('change', function (e) {
+    // 所見JSONの読み込みUIはプロトタイプ評価中は撤去（SPEC §5.13）。
+    // input#file を復活させればそのまま動く
+    const fileEl = document.getElementById('file');
+    if (fileEl) fileEl.addEventListener('change', function (e) {
       const f = e.target.files && e.target.files[0]; if (!f) return;
       const rd = new FileReader();
       rd.onload = function () {
@@ -4558,6 +4566,17 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
       stopSeq(); closePop(); setSimulated(false);
       S.selected = null; S.needsRecolor = true;
       setPreset('front'); renderDetail(null); updateChart();
+    });
+
+    /* --- B-3.2: 2D 表示モード --- */
+    document.getElementById('dimBtn').addEventListener('click', function () {
+      S.view2d = !S.view2d;
+      document.body.classList.toggle('mode2d', S.view2d);
+      this.textContent = S.view2d ? '3D表示' : '2D表示';
+      this.classList.toggle('on', S.view2d);
+      stopSeq(); closePop();
+      if (!S.view2d) onResize();   // 3D 復帰時にキャンバス寸法を取り直す
+      updateChart();
     });
 
     /* --- B-3: チャート入力・シミュレーション・プリセット --- */
@@ -4951,8 +4970,9 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     const pop = document.getElementById('pop');
     const chart = document.getElementById('chart');
     const footer = document.querySelector('footer');
+    // 3D: チャートの上に重ならない位置 / 2D: 画面下部（チャートが主役なので浅めに）
     pop.style.bottom = ((footer ? footer.offsetHeight : 0) +
-      (chart ? chart.offsetHeight : 0) + 14) + 'px';
+      (S.view2d ? 20 : (chart ? chart.offsetHeight : 0) + 14)) + 'px';
     pop.classList.remove('hide');
   }
 
@@ -5266,6 +5286,27 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
 
   /* ---------------------------------------------------------------- ループ */
   const _lookTmp = new THREE.Vector3();
+
+  // 模型式開口のヒンジ。解剖学的な顆頭 (z=-75) だと開口時の上下の隙間が
+  // 大きくなりすぎるため、顎模型と同じく臼歯直後に置く（SPEC §5.4）
+  const MODEL_HINGE = [0, -10, -48];
+
+  // 顎グループをヒンジ回りに deg 度回転させる。
+  // ヒンジ前方の点は y' = y·cosθ − z_rel·sinθ なので、下顎は正・上顎は負が「開く」向き
+  function applyHinge(group, deg, hpOverride) {
+    const hp = hpOverride ||
+      (group.userData && group.userData.hinge_point) || [0, -12, -75];
+    const a = deg * Math.PI / 180;
+    group.position.set(0, 0, 0);
+    group.rotation.set(0, 0, 0);
+    group.updateMatrix();
+    const m = new THREE.Matrix4()
+      .makeTranslation(hp[0], hp[1], hp[2])
+      .multiply(new THREE.Matrix4().makeRotationX(a))
+      .multiply(new THREE.Matrix4().makeTranslation(-hp[0], -hp[1], -hp[2]));
+    m.decompose(group.position, group.quaternion, group.scale);
+  }
+
   function animate() {
     requestAnimationFrame(animate);
     const L = CONFIG.CAMERA.LERP;
@@ -5302,13 +5343,14 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     S.openCur += (S.openDeg - S.openCur) * fO;
     if (Math.abs(S.openDeg - S.openCur) < 0.02) S.openCur = S.openDeg;
 
-    // 開口中の全体ビューは注視点を下げ距離を伸ばして両顎をフレームに収める（SPEC §5.4）
-    let ty = S.cur.target.y, td = S.cur.dist;
+    // 開口中の全体ビューは注視点・距離・仰角を補正して両顎を俯瞰で収める（SPEC §5.4）
+    let ty = S.cur.target.y, td = S.cur.dist, tphi = S.cur.phi;
     if (S.selected == null) {
-      ty -= S.openCur * 0.8;
-      td *= 1 + S.openCur * 0.012;
+      ty -= S.openCur * 0.15;
+      td *= 1 + S.openCur * 0.018;
+      tphi = Math.max(0.3, tphi - S.openCur * 0.007);
     }
-    const sp = Math.sin(S.cur.phi), cp = Math.cos(S.cur.phi);
+    const sp = Math.sin(tphi), cp = Math.cos(tphi);
     S.camera.position.set(
       S.cur.target.x + td * sp * Math.sin(S.cur.theta),
       ty + td * cp,
@@ -5317,21 +5359,10 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     _lookTmp.set(S.cur.target.x, ty, S.cur.target.z);
     S.camera.lookAt(_lookTmp);
 
-    if (S.mandible) {
-      const ex = S.mandible.userData || {};
-      const hp = ex.hinge_point || [0, -12, -75];
-      // 開口 = 下顎の前方（オトガイ側）が下がる。ヒンジより前方の点は
-      // y' = y·cosθ − z_rel·sinθ なので回転角は正（SPEC §5.4）。負にすると逆に上がる
-      const a = S.openCur * Math.PI / 180;
-      S.mandible.position.set(0, 0, 0);
-      S.mandible.rotation.set(0, 0, 0);
-      S.mandible.updateMatrix();
-      const m = new THREE.Matrix4()
-        .makeTranslation(hp[0], hp[1], hp[2])
-        .multiply(new THREE.Matrix4().makeRotationX(a))
-        .multiply(new THREE.Matrix4().makeTranslation(-hp[0], -hp[1], -hp[2]));
-      m.decompose(S.mandible.position, S.mandible.quaternion, S.mandible.scale);
-    }
+    // 模型式の両開き（SPEC §5.4）: 下顎 +θ（前方が下がる）、上顎 −0.8θ（前方が上がる）。
+    // 開口すると上下両方の咬合面が視線側を向き、俯瞰で観察できる
+    if (S.mandible) applyHinge(S.mandible, S.openCur, MODEL_HINGE);
+    if (S.maxilla) applyHinge(S.maxilla, -S.openCur * 0.8, MODEL_HINGE);
 
     if (S.needsRecolor && S.ready) recolorAll();
     if (S.ready) updateSideLabels();

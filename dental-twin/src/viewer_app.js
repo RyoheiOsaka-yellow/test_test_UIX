@@ -627,7 +627,10 @@
       renderChartSummary();
     });
 
-    document.getElementById('file').addEventListener('change', function (e) {
+    // 所見JSONの読み込みUIはプロトタイプ評価中は撤去（SPEC §5.13）。
+    // input#file を復活させればそのまま動く
+    const fileEl = document.getElementById('file');
+    if (fileEl) fileEl.addEventListener('change', function (e) {
       const f = e.target.files && e.target.files[0]; if (!f) return;
       const rd = new FileReader();
       rd.onload = function () {
@@ -644,6 +647,17 @@
       stopSeq(); closePop(); setSimulated(false);
       S.selected = null; S.needsRecolor = true;
       setPreset('front'); renderDetail(null); updateChart();
+    });
+
+    /* --- B-3.2: 2D 表示モード --- */
+    document.getElementById('dimBtn').addEventListener('click', function () {
+      S.view2d = !S.view2d;
+      document.body.classList.toggle('mode2d', S.view2d);
+      this.textContent = S.view2d ? '3D表示' : '2D表示';
+      this.classList.toggle('on', S.view2d);
+      stopSeq(); closePop();
+      if (!S.view2d) onResize();   // 3D 復帰時にキャンバス寸法を取り直す
+      updateChart();
     });
 
     /* --- B-3: チャート入力・シミュレーション・プリセット --- */
@@ -1037,8 +1051,9 @@
     const pop = document.getElementById('pop');
     const chart = document.getElementById('chart');
     const footer = document.querySelector('footer');
+    // 3D: チャートの上に重ならない位置 / 2D: 画面下部（チャートが主役なので浅めに）
     pop.style.bottom = ((footer ? footer.offsetHeight : 0) +
-      (chart ? chart.offsetHeight : 0) + 14) + 'px';
+      (S.view2d ? 20 : (chart ? chart.offsetHeight : 0) + 14)) + 'px';
     pop.classList.remove('hide');
   }
 
@@ -1352,6 +1367,27 @@
 
   /* ---------------------------------------------------------------- ループ */
   const _lookTmp = new THREE.Vector3();
+
+  // 模型式開口のヒンジ。解剖学的な顆頭 (z=-75) だと開口時の上下の隙間が
+  // 大きくなりすぎるため、顎模型と同じく臼歯直後に置く（SPEC §5.4）
+  const MODEL_HINGE = [0, -10, -48];
+
+  // 顎グループをヒンジ回りに deg 度回転させる。
+  // ヒンジ前方の点は y' = y·cosθ − z_rel·sinθ なので、下顎は正・上顎は負が「開く」向き
+  function applyHinge(group, deg, hpOverride) {
+    const hp = hpOverride ||
+      (group.userData && group.userData.hinge_point) || [0, -12, -75];
+    const a = deg * Math.PI / 180;
+    group.position.set(0, 0, 0);
+    group.rotation.set(0, 0, 0);
+    group.updateMatrix();
+    const m = new THREE.Matrix4()
+      .makeTranslation(hp[0], hp[1], hp[2])
+      .multiply(new THREE.Matrix4().makeRotationX(a))
+      .multiply(new THREE.Matrix4().makeTranslation(-hp[0], -hp[1], -hp[2]));
+    m.decompose(group.position, group.quaternion, group.scale);
+  }
+
   function animate() {
     requestAnimationFrame(animate);
     const L = CONFIG.CAMERA.LERP;
@@ -1388,13 +1424,14 @@
     S.openCur += (S.openDeg - S.openCur) * fO;
     if (Math.abs(S.openDeg - S.openCur) < 0.02) S.openCur = S.openDeg;
 
-    // 開口中の全体ビューは注視点を下げ距離を伸ばして両顎をフレームに収める（SPEC §5.4）
-    let ty = S.cur.target.y, td = S.cur.dist;
+    // 開口中の全体ビューは注視点・距離・仰角を補正して両顎を俯瞰で収める（SPEC §5.4）
+    let ty = S.cur.target.y, td = S.cur.dist, tphi = S.cur.phi;
     if (S.selected == null) {
-      ty -= S.openCur * 0.8;
-      td *= 1 + S.openCur * 0.012;
+      ty -= S.openCur * 0.15;
+      td *= 1 + S.openCur * 0.018;
+      tphi = Math.max(0.3, tphi - S.openCur * 0.007);
     }
-    const sp = Math.sin(S.cur.phi), cp = Math.cos(S.cur.phi);
+    const sp = Math.sin(tphi), cp = Math.cos(tphi);
     S.camera.position.set(
       S.cur.target.x + td * sp * Math.sin(S.cur.theta),
       ty + td * cp,
@@ -1403,21 +1440,10 @@
     _lookTmp.set(S.cur.target.x, ty, S.cur.target.z);
     S.camera.lookAt(_lookTmp);
 
-    if (S.mandible) {
-      const ex = S.mandible.userData || {};
-      const hp = ex.hinge_point || [0, -12, -75];
-      // 開口 = 下顎の前方（オトガイ側）が下がる。ヒンジより前方の点は
-      // y' = y·cosθ − z_rel·sinθ なので回転角は正（SPEC §5.4）。負にすると逆に上がる
-      const a = S.openCur * Math.PI / 180;
-      S.mandible.position.set(0, 0, 0);
-      S.mandible.rotation.set(0, 0, 0);
-      S.mandible.updateMatrix();
-      const m = new THREE.Matrix4()
-        .makeTranslation(hp[0], hp[1], hp[2])
-        .multiply(new THREE.Matrix4().makeRotationX(a))
-        .multiply(new THREE.Matrix4().makeTranslation(-hp[0], -hp[1], -hp[2]));
-      m.decompose(S.mandible.position, S.mandible.quaternion, S.mandible.scale);
-    }
+    // 模型式の両開き（SPEC §5.4）: 下顎 +θ（前方が下がる）、上顎 −0.8θ（前方が上がる）。
+    // 開口すると上下両方の咬合面が視線側を向き、俯瞰で観察できる
+    if (S.mandible) applyHinge(S.mandible, S.openCur, MODEL_HINGE);
+    if (S.maxilla) applyHinge(S.maxilla, -S.openCur * 0.8, MODEL_HINGE);
 
     if (S.needsRecolor && S.ready) recolorAll();
     if (S.ready) updateSideLabels();

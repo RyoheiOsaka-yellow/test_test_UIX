@@ -139,6 +139,22 @@ with sync_playwright() as pw:
     pg.click("[data-layer='perio']")
     pg.wait_for_timeout(600)
 
+    # ---- B-3.2: 2D 表示モード ----
+    pg.click("#dimBtn")
+    pg.wait_for_timeout(800)
+    is2d = pg.evaluate("() => document.body.classList.contains('mode2d')")
+    chart_vis = pg.evaluate(
+        "() => getComputedStyle(document.getElementById('chart')).display !== 'none'")
+    view_hidden = pg.evaluate(
+        "() => getComputedStyle(document.getElementById('view')).display === 'none'")
+    print("2D mode:", is2d, "| chart visible:", chart_vis, "| 3D hidden:", view_hidden)
+    if not (is2d and chart_vis and view_hidden):
+        ok = False
+    shot2 = os.path.join(DOCS, "shot_2d.png")
+    pg.screenshot(path=shot2); shots.append(shot2)
+    pg.click("#dimBtn")
+    pg.wait_for_timeout(800)
+
     # ---- B-3: 説明プリセット ----
     pg.click("[data-seq='caries']")
     pg.wait_for_timeout(3400)
@@ -156,10 +172,12 @@ with sync_playwright() as pw:
     pg.click("#modeBtn")
     pg.wait_for_timeout(4000)
 
-    # 開口方向: 下顎の前方が下がる = X軸回りの回転角が正（SPEC §5.4）
+    # 開口方向: 下顎は正（下がる）・上顎は負（上がる）の両開き（SPEC §5.4）
     rotx = pg.evaluate("() => window.__DT.mandible.rotation.x")
-    print("開口 24° → mandible.rotation.x =", round(rotx, 3), "(正=下顎が下がる)")
-    if not rotx > 0.2:
+    rotu = pg.evaluate("() => window.__DT.maxilla.rotation.x")
+    print("開口 24° → mandible.rotation.x =", round(rotx, 3),
+          "/ maxilla.rotation.x =", round(rotu, 3))
+    if not (rotx > 0.2 and rotu < -0.15):
         ok = False
     # 表示段階②: 歯肉の不透明度が目標値 0.25 まで滑らかに遷移している
     galpha = pg.evaluate("() => window.__DT.gingiva[0].material.opacity")
