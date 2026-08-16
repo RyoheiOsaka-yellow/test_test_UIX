@@ -14,18 +14,20 @@ are re-struck on the same skeleton (cap height 100, stroke 3.4 = 1:29, tracking
 official letterforms are not modified by anything in this file — drop the real
 artwork in and the mark geometry is unchanged.
 
-Mark geometry, all relative to the ring radius r
-------------------------------------------------
-The disk is seen exactly edge-on: its plane runs flat through the middle of the
-hole, and the far side is gravitationally lensed into arcs above and below.
+Mark geometry, all relative to the event horizon radius r
+---------------------------------------------------------
+The disk is seen exactly edge-on. Its near side crosses the face of the hole
+and is knocked out of the black; its far side is bent up and over by gravity
+and reads as two arcs riding outside the hole. A ringed planet hides its ring
+behind itself — a black hole never does, and that is the whole difference.
 
-    ring          r
-    horizon       0.66 r   (filled variants only)
-    disk          ±2.60 r  wide, ±0.26 r open (a hair off perfectly edge-on,
-                           so the disk reads as a disk and not as a rule)
-    lensed arc    ±1.18 r  tall, ±1.42 r wide
+    event horizon   r      (always filled)
+    disk            ±3.60 r
+    lensed arc      1.45 r radius, stopping 25 degrees short of the disk plane
+    photon ring     1.14 r ("halo" and "core" forms)
 """
 
+import math
 import os
 import sys
 
@@ -79,55 +81,65 @@ def wordmark(ink=INK, x=0.0, y=0.0, stroke=STROKE):
 # Mark
 # --------------------------------------------------------------------------
 
-HORIZON_K = 0.80   # filled event horizon, inside the photon ring
-EXTENT_K = 2.90    # disk half-width
-OPEN_K = 0.22      # how far the disk ellipse opens; 0 would be a bare rule
-ARC_K = 1.34       # lensed arc apex
-ARC_SPAN_K = 1.72  # lensed arc width
+EXTENT_K = 3.60    # disk half-width, in event-horizon radii
+ARC_K = 1.45       # radius of the lensed arcs
+ARC_OPEN_DEG = 25  # how far the arcs stop short of the disk plane
+RING_K = 1.14      # photon ring, "halo" form only
+SLIT_K = 1.03      # the near side of the disk, crossing the face of the hole
 
-FORMS = ("ring", "solid", "lens", "lens-solid")
+FORMS = ("eclipse", "halo", "core")
+
+# default horizon radius: the mark then stands exactly one cap height tall
+MARK_R = CAP / (2 * ARC_K)
 
 
-def mark(cx, cy, r, form="solid", ink=INK, paper=PAPER, stroke=None):
+def mark(cx, cy, r, form="eclipse", ink=INK, paper=PAPER, stroke=None,
+         invert=False):
     """
-    Edge-on black hole in hairline. The disk is always a flat ellipse whose
-    near half crosses in front of the hole.
+    Edge-on black hole in hairline. `r` is the event horizon radius.
+
+    Saturn's ring disappears behind the planet; a black hole's never does — the
+    far side of the disk is bent up and over, so it reads as two arcs riding
+    outside the hole, while the near side crosses the face and is knocked out
+    of the black. That knockout is what keeps this from reading as a ringed
+    planet, so the horizon stays filled in every form.
 
     form:
-      ring        photon ring + disk, hollow
-      solid       photon ring + disk, event horizon filled
-      lens        hollow, with the far side of the disk lensed above and below
-      lens-solid  filled, with the lensed arcs
+      eclipse   arcs + disk. The default.
+      halo      arcs + disk + photon ring hugging the horizon.
+      core      disk + photon ring, no arcs. The quietest, for small sizes.
+
+    invert: white line on a black ground. The horizon is then the ground
+    itself, so the disk runs straight through and the photon ring draws it.
     """
-    sw = STROKE * r / 42.0 if stroke is None else stroke
-    ext, ry = r * EXTENT_K, r * OPEN_K
-    span, apex = r * ARC_SPAN_K, r * ARC_K
-    k = apex / 0.75
-    solid = form.endswith("solid")
-    lensed = form.startswith("lens")
-
+    sw = STROKE * r / MARK_R if stroke is None else stroke
+    ext = r * EXTENT_K
+    # the horizon is always the dark; on an inverted ground that dark *is* the
+    # ground, which is why the knockout form has no slit to cut
+    line = paper if invert else ink
     out = []
-    if lensed:
-        out.append(f'    <path d="M{cx - span:g} {cy:g}'
-                   f'C{cx - 0.62 * span:g} {cy - k:g} {cx + 0.62 * span:g} {cy - k:g} '
-                   f'{cx + span:g} {cy:g}'
-                   f'M{cx - span:g} {cy:g}'
-                   f'C{cx - 0.62 * span:g} {cy + k:g} {cx + 0.62 * span:g} {cy + k:g} '
-                   f'{cx + span:g} {cy:g}"/>')
 
-    # back half of the disk, then the hole, then the near half in front of it
-    out.append(f'    <path d="M{cx - ext:g} {cy:g}'
-               f'A{ext:g} {ry:g} 0 0 1 {cx + ext:g} {cy:g}"/>')
-    out.append(f'    <circle cx="{cx:g}" cy="{cy:g}" r="{r:g}" '
-               f'fill="{paper}"/>')
-    if solid:
-        out.append(f'    <circle cx="{cx:g}" cy="{cy:g}" r="{r * HORIZON_K:g}" '
-                   f'fill="{ink}" stroke="none"/>')
-    out.append(f'    <path d="M{cx - ext:g} {cy:g}'
-               f'A{ext:g} {ry:g} 0 0 0 {cx + ext:g} {cy:g}"/>')
+    if form in ("eclipse", "halo"):
+        a = math.radians(ARC_OPEN_DEG)
+        ax, ay = ARC_K * r * math.cos(a), ARC_K * r * math.sin(a)
+        for s in (-1, 1):
+            out.append(f'    <path d="M{cx - ax:g} {cy + s * ay:g}'
+                       f'A{ARC_K * r:g} {ARC_K * r:g} 0 0 {0 if s > 0 else 1} '
+                       f'{cx + ax:g} {cy + s * ay:g}"/>')
+
+    out.append(f'    <circle cx="{cx:g}" cy="{cy:g}" r="{r:g}" fill="{ink}" '
+               f'stroke="none"/>')
+    if form in ("halo", "core") or invert:
+        out.append(f'    <circle cx="{cx:g}" cy="{cy:g}" r="{r * RING_K:g}"/>')
+
+    out.append(f'    <path d="M{cx - ext:g} {cy:g}H{cx + ext:g}"/>')
+    if not invert:
+        # the near side of the disk, in front of the hole
+        out.append(f'    <path d="M{cx - r * SLIT_K:g} {cy:g}H{cx + r * SLIT_K:g}" '
+                   f'stroke="{paper}"/>')
 
     body = "\n".join(out)
-    return (f'  <g fill="none" stroke="{ink}" stroke-width="{sw:g}" '
+    return (f'  <g fill="none" stroke="{line}" stroke-width="{sw:g}" '
             f'stroke-linecap="butt">\n{body}\n  </g>')
 
 
@@ -169,7 +181,7 @@ def _bounds(items):
     return min(xs), min(ys), max(xs), max(ys)
 
 
-def placement(kind, form="solid", ink=INK, paper=PAPER, bg=None):
+def placement(kind, form="eclipse", ink=INK, paper=PAPER, bg=None):
     """
     Candidates, all with the mark set beside the wordmark — never over it.
 
@@ -178,7 +190,8 @@ def placement(kind, form="solid", ink=INK, paper=PAPER, bg=None):
     c  above, centred                    g  above, centred, mark at 2x
     d  below, centred                    h  left, on the centre line, small
     """
-    r = {"g": 84.0, "h": 30.0}.get(kind, 42.0)
+    # default: the mark stands exactly one cap height tall
+    r = {"g": 2 * MARK_R, "h": 0.62 * MARK_R}.get(kind, MARK_R)
     mw, mh = mark_box(r)
     gap = TRACK
     wordbox = (0.0, 0.0, WORD_W, CAP)
@@ -208,46 +221,44 @@ def placement(kind, form="solid", ink=INK, paper=PAPER, bg=None):
                "YELLOW wordmark with the edge-on black hole mark placed beside it")
 
 
-def form_plate(form, ink=INK, paper=PAPER, bg=None, size=512.0):
-    r = size * 0.155
+def form_plate(form, invert=False, size=512.0):
+    r = size * 0.115
     c = size / 2
-    return svg((0, 0, size, size), mark(c, c, r, form, ink, paper),
-               f"YELLOW mark ({form})", bg, "Edge-on black hole mark")
+    return svg((0, 0, size, size), mark(c, c, r, form, invert=invert),
+               f"YELLOW mark ({form})", INK if invert else PAPER,
+               "Edge-on black hole mark")
 
 
-def construction(form="solid"):
-    """Dimension drawing for the mark, in multiples of the ring radius r."""
+def construction(form="eclipse"):
+    """Dimension drawing for the mark, in multiples of the horizon radius r."""
     g, gl = "#7E8BA3", "#C6CEDA"
-    r = 42.0
-    cx, cy = 0.0, 0.0
-    ext, apex = r * EXTENT_K, r * ARC_K
+    r = MARK_R
+    ext, arc = r * EXTENT_K, r * ARC_K
     lab = ('font-family="ui-monospace, SFMono-Regular, Menlo, monospace" '
            f'font-size="9" fill="{g}"')
 
     guides = [
-        f'<path d="M{-ext - 30:g} {cy:g}H{ext + 30:g}" stroke="{gl}" stroke-dasharray="6 5"/>',
-        f'<path d="M{cx:g} {-apex - 34:g}V{apex + 34:g}" stroke="{gl}" stroke-dasharray="6 5"/>',
-        f'<circle cx="0" cy="0" r="{r:g}" fill="none" stroke="{g}" stroke-dasharray="4 4"/>',
-        f'<path d="M{-ext:g} {-14:g}v28M{ext:g} {-14:g}v28" stroke="{g}"/>',
-        f'<path d="M{-ext - 26:g} {-apex:g}h{2 * ext + 52:g}M{-ext - 26:g} {apex:g}'
-        f'h{2 * ext + 52:g}" stroke="{gl}" stroke-dasharray="4 4"/>',
+        f'<path d="M{-ext - 34:g} 0H{ext + 34:g}" stroke="{gl}" stroke-dasharray="6 5"/>',
+        f'<path d="M0 {-arc - 34:g}V{arc + 34:g}" stroke="{gl}" stroke-dasharray="6 5"/>',
+        f'<circle cx="0" cy="0" r="{arc:g}" fill="none" stroke="{gl}" stroke-dasharray="4 4"/>',
+        f'<path d="M{-ext:g} -14v28M{ext:g} -14v28" stroke="{g}"/>',
     ]
     labels = [
-        (0, -apex - 12, "middle", f"lensed arc  ±{ARC_K:.2f} r"),
-        (0, apex + 20, "middle", f"disk  ±{EXTENT_K:.2f} r wide  ·  ±{OPEN_K:.2f} r open"),
-        (r + 8, -r - 6, "start", "photon ring  r"),
-        (-ext - 26, 4, "end", "stroke = wordmark stroke"),
+        (0, -arc - 14, "middle", f"lensed arc  {ARC_K:.2f} r,  open {ARC_OPEN_DEG}\u00b0"),
+        (0, arc + 22, "middle", f"disk  \u00b1{EXTENT_K:.2f} r"),
+        (arc + 16, r * 0.95, "start", "event horizon  r"),
+        (-ext - 30, 4, "end", "stroke = wordmark stroke"),
     ]
     text = "\n".join(f'  <text x="{x:g}" y="{y:g}" text-anchor="{a}" {lab}>{t}</text>'
                      for x, y, a, t in labels)
     body = ('  <g stroke-width="0.7" fill="none">\n    ' + "\n    ".join(guides)
-            + "\n  </g>\n" + mark(cx, cy, r, form) + "\n" + text)
-    vb = (-ext - 150, -apex - 46, 2 * (ext + 150), 2 * (apex + 46))
+            + "\n  </g>\n" + mark(0, 0, r, form) + "\n" + text)
+    vb = (-ext - 160, -arc - 48, 2 * (ext + 160), 2 * (arc + 48))
     return svg(vb, body, "YELLOW mark construction", PAPER,
                "Construction drawing for the edge-on black hole mark")
 
 
-PLACEMENT_FORMS = ("ring", "solid")   # weight-matched, and the heavier black hole
+PLACEMENT_FORMS = ("eclipse", "core")   # the full mark, and the quiet one
 
 
 def main():
@@ -258,14 +269,13 @@ def main():
 
     for f in FORMS:
         write(f"yellow-mark-{f}.svg", form_plate(f))
-    write("yellow-mark-knockout.svg",
-          form_plate("solid", ink=PAPER, paper=INK, bg=INK))
+    write("yellow-mark-knockout.svg", form_plate("halo", invert=True))
 
     for f in forms:
         for kind in "abcdefgh":
             write(f"yellow-place-{kind}-{f}.svg", placement(kind, f))
 
-    write("yellow-mark-construction.svg", construction("ring"))
+    write("yellow-mark-construction.svg", construction("eclipse"))
 
 
 if __name__ == "__main__":

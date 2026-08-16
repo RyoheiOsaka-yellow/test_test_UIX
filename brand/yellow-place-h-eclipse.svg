@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-297.931 -72 1245.93 244" role="img" aria-label="YELLOW placement h">
+  <title>YELLOW placement h</title>
+  <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
+  <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
+    <path d="M0 0L42 55L84 0M42 55V100" transform="translate(0 0)"/>
+    <path d="M0 0V100M0 0H66M0 50H57M0 100H66" transform="translate(156 0)"/>
+    <path d="M0 0V100H62" transform="translate(294 0)"/>
+    <path d="M0 0V100H62" transform="translate(428 0)"/>
+    <path d="M0 50A42 50 0 1 0 84 50A42 50 0 1 0 0 50" transform="translate(562 0)"/>
+    <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
+  </g>
+  <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
+    <path d="M-177.061 36.8988A31 31 0 0 1 -120.87 36.8988"/>
+    <path d="M-177.061 63.1012A31 31 0 0 0 -120.87 63.1012"/>
+    <circle cx="-148.966" cy="50" r="21.3793" fill="#000000" stroke="none"/>
+    <path d="M-225.931 50H-72"/>
+    <path d="M-170.986 50H-126.945" stroke="#FFFFFF"/>
+  </g>
+</svg>

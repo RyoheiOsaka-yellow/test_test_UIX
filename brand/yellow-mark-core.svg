@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="YELLOW mark (core)">
+  <title>YELLOW mark (core)</title>
+  <desc>Edge-on black hole mark</desc>
+  <rect x="0" y="0" width="512" height="512" fill="#FFFFFF"/>
+  <g fill="none" stroke="#000000" stroke-width="5.80557" stroke-linecap="butt">
+    <circle cx="256" cy="256" r="58.88" fill="#000000" stroke="none"/>
+    <circle cx="256" cy="256" r="67.1232"/>
+    <path d="M44.032 256H467.968"/>
+    <path d="M195.354 256H316.646" stroke="#FFFFFF"/>
+  </g>
+</svg>

@@ -134,12 +134,14 @@
     <h1>真横から見た穴</h1>
     <p class="lede">
       TON 618 のポスターは降着円盤を斜めから捉えています。これを真横に回すと、
-      円盤は一本の細い楕円になってブラックホールの正面を横切ります。
-      手前側は穴の前を、向こう側は穴の後ろを通る——その前後関係だけで奥行きが出る図形です。
+      円盤は一本の光の帯になって穴の正面を横切ります。手前側は穴の前を通るので黒く塗った
+      地平面から白く抜け、向こう側は重力で持ち上げられて穴の上下に弧として現れます。
     </p>
     <p>
-      マークは YELLOW のロゴタイプと<strong>まったく同じ線幅の黒い線だけ</strong>で引いてあります。
-      文字には重ねません。マークを大きくしても線は太らせず、字と同じ細さのまま拡大します。
+      土星の輪は球の<strong>後ろに隠れます</strong>が、ブラックホールの円盤は決して隠れません。
+      光が穴を回り込むからです。前回の案が土星に見えたのはまさにそこで、
+      いまは輪が背後に回らず、上下に分かれた弧として穴の外側を走ります。
+      線は YELLOW のロゴタイプと同じ太さ。マークを拡大しても線は太らせません。
     </p>
     <p class="note">
       <strong>この頁のロゴタイプは仮組みです。</strong>
@@ -153,74 +155,82 @@
       <p class="eyebrow">Form</p>
       <h2>形の候補</h2>
     </div>
-    <p>まず穴の描き方を決めます。中を白く抜くか黒く塗るか、重力レンズの弧を足すか。</p>
+    <p>地平面は常に黒で塗り、円盤が手前を横切る部分を白く抜きます。決めるのは、レンズ弧を出すか、光子リングを足すか、そのどちらも省いて静かにするか。</p>
     <div class="grid4">
       <figure>
-        <div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="YELLOW mark (ring)">
-  <title>YELLOW mark (ring)</title>
+        <div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="YELLOW mark (eclipse)">
+  <title>YELLOW mark (eclipse)</title>
   <desc>Edge-on black hole mark</desc>
-  <g fill="none" stroke="#000000" stroke-width="6.42438" stroke-linecap="butt">
-    <path d="M25.856 256A230.144 17.4592 0 0 1 486.144 256"/>
-    <circle cx="256" cy="256" r="79.36" fill="#FFFFFF"/>
-    <path d="M25.856 256A230.144 17.4592 0 0 0 486.144 256"/>
+  <rect x="0" y="0" width="512" height="512" fill="#FFFFFF"/>
+  <g fill="none" stroke="#000000" stroke-width="5.80557" stroke-linecap="butt">
+    <path d="M178.623 219.919A85.376 85.376 0 0 1 333.377 219.919"/>
+    <path d="M178.623 292.081A85.376 85.376 0 0 0 333.377 292.081"/>
+    <circle cx="256" cy="256" r="58.88" fill="#000000" stroke="none"/>
+    <path d="M44.032 256H467.968"/>
+    <path d="M195.354 256H316.646" stroke="#FFFFFF"/>
   </g>
 </svg></div>
-        <figcaption><b>ring</b> <span>線だけ。字と最も馴染む。</span></figcaption>
+        <figcaption><b>eclipse</b> <span>弧＋円盤。標準。</span></figcaption>
       </figure>
       <figure>
-        <div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="YELLOW mark (solid)">
-  <title>YELLOW mark (solid)</title>
+        <div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="YELLOW mark (halo)">
+  <title>YELLOW mark (halo)</title>
   <desc>Edge-on black hole mark</desc>
-  <g fill="none" stroke="#000000" stroke-width="6.42438" stroke-linecap="butt">
-    <path d="M25.856 256A230.144 17.4592 0 0 1 486.144 256"/>
-    <circle cx="256" cy="256" r="79.36" fill="#FFFFFF"/>
-    <circle cx="256" cy="256" r="63.488" fill="#000000" stroke="none"/>
-    <path d="M25.856 256A230.144 17.4592 0 0 0 486.144 256"/>
+  <rect x="0" y="0" width="512" height="512" fill="#FFFFFF"/>
+  <g fill="none" stroke="#000000" stroke-width="5.80557" stroke-linecap="butt">
+    <path d="M178.623 219.919A85.376 85.376 0 0 1 333.377 219.919"/>
+    <path d="M178.623 292.081A85.376 85.376 0 0 0 333.377 292.081"/>
+    <circle cx="256" cy="256" r="58.88" fill="#000000" stroke="none"/>
+    <circle cx="256" cy="256" r="67.1232"/>
+    <path d="M44.032 256H467.968"/>
+    <path d="M195.354 256H316.646" stroke="#FFFFFF"/>
   </g>
 </svg></div>
-        <figcaption><b>solid</b> <span>地平面を塗る。穴として一番強い。</span></figcaption>
+        <figcaption><b>halo</b> <span>光子リングを追加。情報量は最大。</span></figcaption>
       </figure>
       <figure>
-        <div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="YELLOW mark (lens)">
-  <title>YELLOW mark (lens)</title>
+        <div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="YELLOW mark (core)">
+  <title>YELLOW mark (core)</title>
   <desc>Edge-on black hole mark</desc>
-  <g fill="none" stroke="#000000" stroke-width="6.42438" stroke-linecap="butt">
-    <path d="M119.501 256C171.37 114.21 340.63 114.21 392.499 256M119.501 256C171.37 397.79 340.63 397.79 392.499 256"/>
-    <path d="M25.856 256A230.144 17.4592 0 0 1 486.144 256"/>
-    <circle cx="256" cy="256" r="79.36" fill="#FFFFFF"/>
-    <path d="M25.856 256A230.144 17.4592 0 0 0 486.144 256"/>
+  <rect x="0" y="0" width="512" height="512" fill="#FFFFFF"/>
+  <g fill="none" stroke="#000000" stroke-width="5.80557" stroke-linecap="butt">
+    <circle cx="256" cy="256" r="58.88" fill="#000000" stroke="none"/>
+    <circle cx="256" cy="256" r="67.1232"/>
+    <path d="M44.032 256H467.968"/>
+    <path d="M195.354 256H316.646" stroke="#FFFFFF"/>
   </g>
 </svg></div>
-        <figcaption><b>lens</b> <span>レンズ効果の弧つき。</span></figcaption>
+        <figcaption><b>core</b> <span>弧なし。小サイズ向けの静かな形。</span></figcaption>
       </figure>
       <figure>
-        <div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="YELLOW mark (lens-solid)">
-  <title>YELLOW mark (lens-solid)</title>
+        <div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="YELLOW mark (halo)">
+  <title>YELLOW mark (halo)</title>
   <desc>Edge-on black hole mark</desc>
-  <g fill="none" stroke="#000000" stroke-width="6.42438" stroke-linecap="butt">
-    <path d="M119.501 256C171.37 114.21 340.63 114.21 392.499 256M119.501 256C171.37 397.79 340.63 397.79 392.499 256"/>
-    <path d="M25.856 256A230.144 17.4592 0 0 1 486.144 256"/>
-    <circle cx="256" cy="256" r="79.36" fill="#FFFFFF"/>
-    <circle cx="256" cy="256" r="63.488" fill="#000000" stroke="none"/>
-    <path d="M25.856 256A230.144 17.4592 0 0 0 486.144 256"/>
+  <rect x="0" y="0" width="512" height="512" fill="#000000"/>
+  <g fill="none" stroke="#FFFFFF" stroke-width="5.80557" stroke-linecap="butt">
+    <path d="M178.623 219.919A85.376 85.376 0 0 1 333.377 219.919"/>
+    <path d="M178.623 292.081A85.376 85.376 0 0 0 333.377 292.081"/>
+    <circle cx="256" cy="256" r="58.88" fill="#000000" stroke="none"/>
+    <circle cx="256" cy="256" r="67.1232"/>
+    <path d="M44.032 256H467.968"/>
   </g>
 </svg></div>
-        <figcaption><b>lens-solid</b> <span>塗り＋弧。情報量は最大。</span></figcaption>
+        <figcaption><b>knockout</b> <span>黒地用。地平面＝地色になる。</span></figcaption>
       </figure>
     </div>
     <p>
-      以下の配置検討は <b>ring</b> と <b>solid</b> の2案で出しています。
-      <b>ring</b> は字と同じ細さのまま視覚的な重さも揃い、<b>solid</b> は小さくしても穴が消えません。
+      以下の配置検討は <b>eclipse</b> と <b>core</b> の2案。
+      マークの高さはキャップハイトと同寸（G のみ2倍）で、字とマークの間隔は字間と同じです。
     </p>
   </section>
 
   <section>
     <div class="head">
-      <p class="eyebrow">Placement · ring</p>
-      <h2>配置検討 — 線のみ</h2>
+      <p class="eyebrow">Placement · eclipse</p>
+      <h2>配置検討 — eclipse</h2>
     </div>
     <div class="grid2">
-      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-387.6 -78.28 1335.6 256.56" role="img" aria-label="YELLOW placement a">
+      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-392.276 -72 1340.28 244" role="img" aria-label="YELLOW placement a">
   <title>YELLOW placement a</title>
   <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
@@ -232,12 +242,14 @@
     <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M-315.6 50A121.8 9.24 0 0 1 -72 50"/>
-    <circle cx="-193.8" cy="50" r="42" fill="#FFFFFF"/>
-    <path d="M-315.6 50A121.8 9.24 0 0 0 -72 50"/>
+    <path d="M-241.453 28.8691A50 50 0 0 1 -150.823 28.8691"/>
+    <path d="M-241.453 71.1309A50 50 0 0 0 -150.823 71.1309"/>
+    <circle cx="-196.138" cy="50" r="34.4828" fill="#000000" stroke="none"/>
+    <path d="M-320.276 50H-72"/>
+    <path d="M-231.655 50H-160.621" stroke="#FFFFFF"/>
   </g>
 </svg></div><figcaption><b>A</b> <span>左・センターライン</span></figcaption></figure>
-      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -78.28 1335.6 256.56" role="img" aria-label="YELLOW placement b">
+      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -72 1340.28 244" role="img" aria-label="YELLOW placement b">
   <title>YELLOW placement b</title>
   <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
@@ -249,12 +261,14 @@
     <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M948 50A121.8 9.24 0 0 1 1191.6 50"/>
-    <circle cx="1069.8" cy="50" r="42" fill="#FFFFFF"/>
-    <path d="M948 50A121.8 9.24 0 0 0 1191.6 50"/>
+    <path d="M1026.82 28.8691A50 50 0 0 1 1117.45 28.8691"/>
+    <path d="M1026.82 71.1309A50 50 0 0 0 1117.45 71.1309"/>
+    <circle cx="1072.14" cy="50" r="34.4828" fill="#000000" stroke="none"/>
+    <path d="M948 50H1196.28"/>
+    <path d="M1036.62 50H1107.66" stroke="#FFFFFF"/>
   </g>
 </svg></div><figcaption><b>B</b> <span>右・センターライン</span></figcaption></figure>
-      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -256.56 1020 428.56" role="img" aria-label="YELLOW placement c">
+      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -244 1020 416" role="img" aria-label="YELLOW placement c">
   <title>YELLOW placement c</title>
   <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
@@ -266,12 +280,14 @@
     <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M316.2 -128.28A121.8 9.24 0 0 1 559.8 -128.28"/>
-    <circle cx="438" cy="-128.28" r="42" fill="#FFFFFF"/>
-    <path d="M316.2 -128.28A121.8 9.24 0 0 0 559.8 -128.28"/>
+    <path d="M392.685 -143.131A50 50 0 0 1 483.315 -143.131"/>
+    <path d="M392.685 -100.869A50 50 0 0 0 483.315 -100.869"/>
+    <circle cx="438" cy="-122" r="34.4828" fill="#000000" stroke="none"/>
+    <path d="M313.862 -122H562.138"/>
+    <path d="M402.483 -122H473.517" stroke="#FFFFFF"/>
   </g>
 </svg></div><figcaption><b>C</b> <span>上・中央</span></figcaption></figure>
-      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -72 1020 428.56" role="img" aria-label="YELLOW placement d">
+      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -72 1020 416" role="img" aria-label="YELLOW placement d">
   <title>YELLOW placement d</title>
   <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
@@ -283,12 +299,14 @@
     <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M316.2 228.28A121.8 9.24 0 0 1 559.8 228.28"/>
-    <circle cx="438" cy="228.28" r="42" fill="#FFFFFF"/>
-    <path d="M316.2 228.28A121.8 9.24 0 0 0 559.8 228.28"/>
+    <path d="M392.685 200.869A50 50 0 0 1 483.315 200.869"/>
+    <path d="M392.685 243.131A50 50 0 0 0 483.315 243.131"/>
+    <circle cx="438" cy="222" r="34.4828" fill="#000000" stroke="none"/>
+    <path d="M313.862 222H562.138"/>
+    <path d="M402.483 222H473.517" stroke="#FFFFFF"/>
   </g>
 </svg></div><figcaption><b>D</b> <span>下・中央</span></figcaption></figure>
-      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -256.56 1020 428.56" role="img" aria-label="YELLOW placement e">
+      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -244 1020 416" role="img" aria-label="YELLOW placement e">
   <title>YELLOW placement e</title>
   <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
@@ -300,12 +318,14 @@
     <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M0 -128.28A121.8 9.24 0 0 1 243.6 -128.28"/>
-    <circle cx="121.8" cy="-128.28" r="42" fill="#FFFFFF"/>
-    <path d="M0 -128.28A121.8 9.24 0 0 0 243.6 -128.28"/>
+    <path d="M78.8225 -143.131A50 50 0 0 1 169.453 -143.131"/>
+    <path d="M78.8225 -100.869A50 50 0 0 0 169.453 -100.869"/>
+    <circle cx="124.138" cy="-122" r="34.4828" fill="#000000" stroke="none"/>
+    <path d="M0 -122H248.276"/>
+    <path d="M88.6207 -122H159.655" stroke="#FFFFFF"/>
   </g>
 </svg></div><figcaption><b>E</b> <span>上・左寄せ（Y と左端揃え）</span></figcaption></figure>
-      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -72 1020 428.56" role="img" aria-label="YELLOW placement f">
+      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -72 1020 416" role="img" aria-label="YELLOW placement f">
   <title>YELLOW placement f</title>
   <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
@@ -317,12 +337,14 @@
     <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M632.4 228.28A121.8 9.24 0 0 1 876 228.28"/>
-    <circle cx="754.2" cy="228.28" r="42" fill="#FFFFFF"/>
-    <path d="M632.4 228.28A121.8 9.24 0 0 0 876 228.28"/>
+    <path d="M706.547 200.869A50 50 0 0 1 797.177 200.869"/>
+    <path d="M706.547 243.131A50 50 0 0 0 797.177 243.131"/>
+    <circle cx="751.862" cy="222" r="34.4828" fill="#000000" stroke="none"/>
+    <path d="M627.724 222H876"/>
+    <path d="M716.345 222H787.379" stroke="#FFFFFF"/>
   </g>
 </svg></div><figcaption><b>F</b> <span>下・右寄せ（W と右端揃え）</span></figcaption></figure>
-      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -369.12 1020 541.12" role="img" aria-label="YELLOW placement g">
+      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -344 1020 516" role="img" aria-label="YELLOW placement g">
   <title>YELLOW placement g</title>
   <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
@@ -334,12 +356,14 @@
     <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M194.4 -184.56A243.6 18.48 0 0 1 681.6 -184.56"/>
-    <circle cx="438" cy="-184.56" r="84" fill="#FFFFFF"/>
-    <path d="M194.4 -184.56A243.6 18.48 0 0 0 681.6 -184.56"/>
+    <path d="M347.369 -214.262A100 100 0 0 1 528.631 -214.262"/>
+    <path d="M347.369 -129.738A100 100 0 0 0 528.631 -129.738"/>
+    <circle cx="438" cy="-172" r="68.9655" fill="#000000" stroke="none"/>
+    <path d="M189.724 -172H686.276"/>
+    <path d="M366.966 -172H509.034" stroke="#FFFFFF"/>
   </g>
 </svg></div><figcaption><b>G</b> <span>上・中央・2倍</span></figcaption></figure>
-      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-318 -72 1266 244" role="img" aria-label="YELLOW placement h">
+      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-297.931 -72 1245.93 244" role="img" aria-label="YELLOW placement h">
   <title>YELLOW placement h</title>
   <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
@@ -351,9 +375,11 @@
     <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M-246 50A87 6.6 0 0 1 -72 50"/>
-    <circle cx="-159" cy="50" r="30" fill="#FFFFFF"/>
-    <path d="M-246 50A87 6.6 0 0 0 -72 50"/>
+    <path d="M-177.061 36.8988A31 31 0 0 1 -120.87 36.8988"/>
+    <path d="M-177.061 63.1012A31 31 0 0 0 -120.87 63.1012"/>
+    <circle cx="-148.966" cy="50" r="21.3793" fill="#000000" stroke="none"/>
+    <path d="M-225.931 50H-72"/>
+    <path d="M-170.986 50H-126.945" stroke="#FFFFFF"/>
   </g>
 </svg></div><figcaption><b>H</b> <span>左・小サイズ</span></figcaption></figure>
     </div>
@@ -361,11 +387,11 @@
 
   <section>
     <div class="head">
-      <p class="eyebrow">Placement · solid</p>
-      <h2>配置検討 — 地平面あり</h2>
+      <p class="eyebrow">Placement · core</p>
+      <h2>配置検討 — core</h2>
     </div>
     <div class="grid2">
-      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-387.6 -78.28 1335.6 256.56" role="img" aria-label="YELLOW placement a">
+      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-392.276 -72 1340.28 244" role="img" aria-label="YELLOW placement a">
   <title>YELLOW placement a</title>
   <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
@@ -377,13 +403,13 @@
     <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M-315.6 50A121.8 9.24 0 0 1 -72 50"/>
-    <circle cx="-193.8" cy="50" r="42" fill="#FFFFFF"/>
-    <circle cx="-193.8" cy="50" r="33.6" fill="#000000" stroke="none"/>
-    <path d="M-315.6 50A121.8 9.24 0 0 0 -72 50"/>
+    <circle cx="-196.138" cy="50" r="34.4828" fill="#000000" stroke="none"/>
+    <circle cx="-196.138" cy="50" r="39.3103"/>
+    <path d="M-320.276 50H-72"/>
+    <path d="M-231.655 50H-160.621" stroke="#FFFFFF"/>
   </g>
 </svg></div><figcaption><b>A</b> <span>左・センターライン</span></figcaption></figure>
-      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -78.28 1335.6 256.56" role="img" aria-label="YELLOW placement b">
+      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -72 1340.28 244" role="img" aria-label="YELLOW placement b">
   <title>YELLOW placement b</title>
   <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
@@ -395,13 +421,13 @@
     <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M948 50A121.8 9.24 0 0 1 1191.6 50"/>
-    <circle cx="1069.8" cy="50" r="42" fill="#FFFFFF"/>
-    <circle cx="1069.8" cy="50" r="33.6" fill="#000000" stroke="none"/>
-    <path d="M948 50A121.8 9.24 0 0 0 1191.6 50"/>
+    <circle cx="1072.14" cy="50" r="34.4828" fill="#000000" stroke="none"/>
+    <circle cx="1072.14" cy="50" r="39.3103"/>
+    <path d="M948 50H1196.28"/>
+    <path d="M1036.62 50H1107.66" stroke="#FFFFFF"/>
   </g>
 </svg></div><figcaption><b>B</b> <span>右・センターライン</span></figcaption></figure>
-      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -256.56 1020 428.56" role="img" aria-label="YELLOW placement c">
+      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -244 1020 416" role="img" aria-label="YELLOW placement c">
   <title>YELLOW placement c</title>
   <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
@@ -413,13 +439,13 @@
     <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M316.2 -128.28A121.8 9.24 0 0 1 559.8 -128.28"/>
-    <circle cx="438" cy="-128.28" r="42" fill="#FFFFFF"/>
-    <circle cx="438" cy="-128.28" r="33.6" fill="#000000" stroke="none"/>
-    <path d="M316.2 -128.28A121.8 9.24 0 0 0 559.8 -128.28"/>
+    <circle cx="438" cy="-122" r="34.4828" fill="#000000" stroke="none"/>
+    <circle cx="438" cy="-122" r="39.3103"/>
+    <path d="M313.862 -122H562.138"/>
+    <path d="M402.483 -122H473.517" stroke="#FFFFFF"/>
   </g>
 </svg></div><figcaption><b>C</b> <span>上・中央</span></figcaption></figure>
-      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -72 1020 428.56" role="img" aria-label="YELLOW placement d">
+      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -72 1020 416" role="img" aria-label="YELLOW placement d">
   <title>YELLOW placement d</title>
   <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
@@ -431,13 +457,13 @@
     <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M316.2 228.28A121.8 9.24 0 0 1 559.8 228.28"/>
-    <circle cx="438" cy="228.28" r="42" fill="#FFFFFF"/>
-    <circle cx="438" cy="228.28" r="33.6" fill="#000000" stroke="none"/>
-    <path d="M316.2 228.28A121.8 9.24 0 0 0 559.8 228.28"/>
+    <circle cx="438" cy="222" r="34.4828" fill="#000000" stroke="none"/>
+    <circle cx="438" cy="222" r="39.3103"/>
+    <path d="M313.862 222H562.138"/>
+    <path d="M402.483 222H473.517" stroke="#FFFFFF"/>
   </g>
 </svg></div><figcaption><b>D</b> <span>下・中央</span></figcaption></figure>
-      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -256.56 1020 428.56" role="img" aria-label="YELLOW placement e">
+      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -244 1020 416" role="img" aria-label="YELLOW placement e">
   <title>YELLOW placement e</title>
   <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
@@ -449,13 +475,13 @@
     <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M0 -128.28A121.8 9.24 0 0 1 243.6 -128.28"/>
-    <circle cx="121.8" cy="-128.28" r="42" fill="#FFFFFF"/>
-    <circle cx="121.8" cy="-128.28" r="33.6" fill="#000000" stroke="none"/>
-    <path d="M0 -128.28A121.8 9.24 0 0 0 243.6 -128.28"/>
+    <circle cx="124.138" cy="-122" r="34.4828" fill="#000000" stroke="none"/>
+    <circle cx="124.138" cy="-122" r="39.3103"/>
+    <path d="M0 -122H248.276"/>
+    <path d="M88.6207 -122H159.655" stroke="#FFFFFF"/>
   </g>
 </svg></div><figcaption><b>E</b> <span>上・左寄せ</span></figcaption></figure>
-      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -72 1020 428.56" role="img" aria-label="YELLOW placement f">
+      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -72 1020 416" role="img" aria-label="YELLOW placement f">
   <title>YELLOW placement f</title>
   <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
@@ -467,13 +493,13 @@
     <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M632.4 228.28A121.8 9.24 0 0 1 876 228.28"/>
-    <circle cx="754.2" cy="228.28" r="42" fill="#FFFFFF"/>
-    <circle cx="754.2" cy="228.28" r="33.6" fill="#000000" stroke="none"/>
-    <path d="M632.4 228.28A121.8 9.24 0 0 0 876 228.28"/>
+    <circle cx="751.862" cy="222" r="34.4828" fill="#000000" stroke="none"/>
+    <circle cx="751.862" cy="222" r="39.3103"/>
+    <path d="M627.724 222H876"/>
+    <path d="M716.345 222H787.379" stroke="#FFFFFF"/>
   </g>
 </svg></div><figcaption><b>F</b> <span>下・右寄せ</span></figcaption></figure>
-      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -369.12 1020 541.12" role="img" aria-label="YELLOW placement g">
+      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-72 -344 1020 516" role="img" aria-label="YELLOW placement g">
   <title>YELLOW placement g</title>
   <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
@@ -485,13 +511,13 @@
     <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M194.4 -184.56A243.6 18.48 0 0 1 681.6 -184.56"/>
-    <circle cx="438" cy="-184.56" r="84" fill="#FFFFFF"/>
-    <circle cx="438" cy="-184.56" r="67.2" fill="#000000" stroke="none"/>
-    <path d="M194.4 -184.56A243.6 18.48 0 0 0 681.6 -184.56"/>
+    <circle cx="438" cy="-172" r="68.9655" fill="#000000" stroke="none"/>
+    <circle cx="438" cy="-172" r="78.6207"/>
+    <path d="M189.724 -172H686.276"/>
+    <path d="M366.966 -172H509.034" stroke="#FFFFFF"/>
   </g>
 </svg></div><figcaption><b>G</b> <span>上・中央・2倍</span></figcaption></figure>
-      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-318 -72 1266 244" role="img" aria-label="YELLOW placement h">
+      <figure><div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-297.931 -72 1245.93 244" role="img" aria-label="YELLOW placement h">
   <title>YELLOW placement h</title>
   <desc>YELLOW wordmark with the edge-on black hole mark placed beside it</desc>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="6">
@@ -503,10 +529,10 @@
     <path d="M0 0L40 100L86 0M72 0L118 100L158 0" transform="translate(718 0)"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M-246 50A87 6.6 0 0 1 -72 50"/>
-    <circle cx="-159" cy="50" r="30" fill="#FFFFFF"/>
-    <circle cx="-159" cy="50" r="24" fill="#000000" stroke="none"/>
-    <path d="M-246 50A87 6.6 0 0 0 -72 50"/>
+    <circle cx="-148.966" cy="50" r="21.3793" fill="#000000" stroke="none"/>
+    <circle cx="-148.966" cy="50" r="24.3724"/>
+    <path d="M-225.931 50H-72"/>
+    <path d="M-170.986 50H-126.945" stroke="#FFFFFF"/>
   </g>
 </svg></div><figcaption><b>H</b> <span>左・小サイズ</span></figcaption></figure>
     </div>
@@ -517,42 +543,44 @@
       <p class="eyebrow">Construction</p>
       <h2>作図</h2>
     </div>
-    <div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-271.8 -102.28 543.6 204.56" role="img" aria-label="YELLOW mark construction">
+    <div class="frame"><svg xmlns="http://www.w3.org/2000/svg" viewBox="-284.138 -98 568.276 196" role="img" aria-label="YELLOW mark construction">
   <title>YELLOW mark construction</title>
   <desc>Construction drawing for the edge-on black hole mark</desc>
-  <rect x="-271.8" y="-102.28" width="543.6" height="204.56" fill="#FFFFFF"/>
+  <rect x="-284.138" y="-98" width="568.276" height="196" fill="#FFFFFF"/>
   <g stroke-width="0.7" fill="none">
-    <path d="M-151.8 0H151.8" stroke="#C6CEDA" stroke-dasharray="6 5"/>
-    <path d="M0 -90.28V90.28" stroke="#C6CEDA" stroke-dasharray="6 5"/>
-    <circle cx="0" cy="0" r="42" fill="none" stroke="#7E8BA3" stroke-dasharray="4 4"/>
-    <path d="M-121.8 -14v28M121.8 -14v28" stroke="#7E8BA3"/>
-    <path d="M-147.8 -56.28h295.6M-147.8 56.28h295.6" stroke="#C6CEDA" stroke-dasharray="4 4"/>
+    <path d="M-158.138 0H158.138" stroke="#C6CEDA" stroke-dasharray="6 5"/>
+    <path d="M0 -84V84" stroke="#C6CEDA" stroke-dasharray="6 5"/>
+    <circle cx="0" cy="0" r="50" fill="none" stroke="#C6CEDA" stroke-dasharray="4 4"/>
+    <path d="M-124.138 -14v28M124.138 -14v28" stroke="#7E8BA3"/>
   </g>
   <g fill="none" stroke="#000000" stroke-width="3.4" stroke-linecap="butt">
-    <path d="M-121.8 0A121.8 9.24 0 0 1 121.8 0"/>
-    <circle cx="0" cy="0" r="42" fill="#FFFFFF"/>
-    <path d="M-121.8 0A121.8 9.24 0 0 0 121.8 0"/>
+    <path d="M-45.3154 -21.1309A50 50 0 0 1 45.3154 -21.1309"/>
+    <path d="M-45.3154 21.1309A50 50 0 0 0 45.3154 21.1309"/>
+    <circle cx="0" cy="0" r="34.4828" fill="#000000" stroke="none"/>
+    <path d="M-124.138 0H124.138"/>
+    <path d="M-35.5172 0H35.5172" stroke="#FFFFFF"/>
   </g>
-  <text x="0" y="-68.28" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9" fill="#7E8BA3">lensed arc  ±1.34 r</text>
-  <text x="0" y="76.28" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9" fill="#7E8BA3">disk  ±2.90 r wide  ·  ±0.22 r open</text>
-  <text x="50" y="-48" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9" fill="#7E8BA3">photon ring  r</text>
-  <text x="-147.8" y="4" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9" fill="#7E8BA3">stroke = wordmark stroke</text>
+  <text x="0" y="-64" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9" fill="#7E8BA3">lensed arc  1.45 r,  open 25°</text>
+  <text x="0" y="72" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9" fill="#7E8BA3">disk  ±3.60 r</text>
+  <text x="66" y="32.7586" text-anchor="start" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9" fill="#7E8BA3">event horizon  r</text>
+  <text x="-154.138" y="4" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="9" fill="#7E8BA3">stroke = wordmark stroke</text>
 </svg></div>
     <div class="scroll">
       <table>
         <thead><tr><th>要素</th><th>値</th><th>備考</th></tr></thead>
         <tbody>
           <tr><td>線幅</td><td class="num">0.034 H</td><td>ロゴタイプと同一。拡大しても太らせない</td></tr>
-          <tr><td>穴（光子球）</td><td class="num">r = 0.42 H</td><td>O の字幅と同じ直径</td></tr>
-          <tr><td>事象の地平面</td><td class="num">0.80 r</td><td>solid のときだけ塗る</td></tr>
-          <tr><td>円盤</td><td class="num">±2.90 r ／ 開き 0.22 r</td><td>真横から僅かに開き、円盤と読ませる</td></tr>
-          <tr><td>レンズ弧</td><td class="num">±1.34 r</td><td>lens のときだけ</td></tr>
+          <tr><td>事象の地平面</td><td class="num">r = 0.345 H</td><td>常に黒で塗る</td></tr>
+          <tr><td>円盤</td><td class="num">±3.60 r</td><td>穴の手前を横切る部分は白く抜く</td></tr>
+          <tr><td>レンズ弧</td><td class="num">半径 1.45 r ／ 開き 25°</td><td>円盤面には接しない</td></tr>
+          <tr><td>光子リング</td><td class="num">1.14 r</td><td>halo / core のみ</td></tr>
+          <tr><td>マークの高さ</td><td class="num">2.90 r = 1.00 H</td><td>キャップハイトと同寸</td></tr>
           <tr><td>字とマークの間隔</td><td class="num">0.72 H</td><td>ロゴタイプの字間と同じ</td></tr>
         </tbody>
       </table>
     </div>
     <p>
-      すべての寸法は穴の半径 <code>r</code> とキャップハイト <code>H</code> の比で持っています。
+      すべての寸法は地平面の半径 <code>r</code> とキャップハイト <code>H</code> の比で持っています。
       書き出した SVG には字間ひとつ分（0.72 H）の余白が含まれているので、
       ファイルの外形をそのまま詰めればクリアスペースを満たします。
     </p>
@@ -564,7 +592,7 @@
       <h2>決めたいこと</h2>
     </div>
     <ol>
-      <li>形は <b>ring</b> か <b>solid</b> か（弧つきの2案も残せます）</li>
+      <li>形は <b>eclipse</b> / <b>halo</b> / <b>core</b> のどれか</li>
       <li>配置は A–H のどれか。横組みなら A / B、縦の余白が取れるなら C / G</li>
       <li>マークの大きさ（現状は穴の直径＝O の字幅、G は2倍）</li>
       <li>ロゴタイプの元データ。頂ければ仮組みを差し替えて確定版を出します</li>

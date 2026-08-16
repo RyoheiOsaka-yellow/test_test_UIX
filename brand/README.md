@@ -3,6 +3,15 @@
 TON 618 の降着円盤を真横（エッジオン）に回したシンボル。YELLOW のロゴタイプと
 同じ線幅の黒い線だけで引いてあり、文字には重ねず横に置いて使う。
 
+## 土星に見せないための作図
+
+土星の輪は球の**後ろに隠れる**。ブラックホールの円盤は光が穴を回り込むので隠れない。
+そこがこの図形の分かれ目で、輪を背後に通した瞬間に土星の記号になる。
+
+- 事象の地平面は**常に黒く塗る**
+- 円盤の手前側は穴の正面を横切るので、黒からの**白抜き**として描く
+- 円盤の向こう側は重力で持ち上がり、穴の**外側を走る上下2本の弧**になる（円盤面には接しない）
+
 ## ロゴタイプについて
 
 このディレクトリの `YELLOW` の文字は**仮組み**。支給されたロゴが画像だったため、
@@ -13,10 +22,10 @@ TON 618 の降着円盤を真横（エッジオン）に回したシンボル。
 ## 生成
 
 ```bash
-python3 generate_logos.py            # SVG を書き出す（ring / solid の配置案）
-python3 generate_logos.py lens       # 別の形で配置案を出す
-python3 export_png.py                # png/ に PNG を書き出す
-python3 build_sheet.py               # 検討シート brand-sheet.html を組む
+python3 generate_logos.py                 # SVG を書き出す（eclipse / core の配置案）
+python3 generate_logos.py eclipse halo    # 別の形の組み合わせで配置案を出す
+python3 export_png.py                     # png/ に PNG を書き出す
+python3 build_sheet.py                    # 検討シート brand-sheet.html を組む
 ```
 
 SVG が原本。比率・形を変えるときは `generate_logos.py` を編集して再生成する。
@@ -25,25 +34,34 @@ SVG が原本。比率・形を変えるときは `generate_logos.py` を編集�
 
 | ファイル | 内容 |
 | --- | --- |
-| `yellow-mark-{ring,solid,lens,lens-solid}.svg` | マーク単体・形の4案 |
-| `yellow-mark-knockout.svg` | 黒地用（白線） |
-| `yellow-place-{a..h}-{ring,solid}.svg` | 配置案 A–H |
+| `yellow-mark-{eclipse,halo,core}.svg` | マーク単体・形の3案 |
+| `yellow-mark-knockout.svg` | 黒地用（白線・地平面は地色） |
+| `yellow-place-{a..h}-{eclipse,core}.svg` | 配置案 A–H |
 | `yellow-mark-construction.svg` | 作図・寸法図 |
 | `brand-sheet.html` | 検討シート（SVG をインライン化した単体ページ） |
 | `png/` | 書き出し済み PNG |
 
-## 作図
+## 寸法
 
-穴の半径 `r` とキャップハイト `H` の比で全寸法を持つ。
+地平面の半径 `r` とキャップハイト `H` の比で全寸法を持つ。
 
 | 要素 | 値 |
 | --- | --- |
 | 線幅 | 0.034 H（ロゴタイプと同一。拡大しても太らせない） |
-| 穴（光子球） | r = 0.42 H（O の字幅と同じ直径） |
-| 事象の地平面 | 0.80 r（solid のみ） |
-| 円盤 | ±2.90 r / 開き 0.22 r |
-| レンズ弧 | ±1.34 r（lens のみ） |
+| 事象の地平面 | r = 0.345 H |
+| 円盤 | ±3.60 r（手前を横切る部分は白抜き） |
+| レンズ弧 | 半径 1.45 r / 開き 25°（eclipse・halo のみ） |
+| 光子リング | 1.14 r（halo・core のみ） |
+| マークの高さ | 2.90 r = 1.00 H |
 | 字とマークの間隔 | 0.72 H（＝字間） |
 
 書き出した SVG には字間ひとつ分の余白が含まれる。ファイルの外形をそのまま詰めれば
 クリアスペースを満たす。
+
+## 形の使い分け
+
+| 形 | 内容 | 使いどころ |
+| --- | --- | --- |
+| `eclipse` | 弧＋円盤 | 標準 |
+| `halo` | 弧＋光子リング＋円盤 | 大きく使うとき |
+| `core` | 円盤＋光子リング（弧なし） | 小サイズ、ファビコン |
