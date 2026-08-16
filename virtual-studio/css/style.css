@@ -898,7 +898,25 @@ input[type="range"]::-moz-range-thumb {
 .wf-ref img { width: 100%; height: 84px; object-fit: cover; display: block; }
 .wf-ref-body { display: flex; align-items: center; gap: 4px; padding: 6px; }
 .wf-ref-name { flex: 1; min-width: 0; font-size: 10px; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wf-ref-body { flex-wrap: wrap; }
 .wf-ref-body select { max-width: 90px; font-size: 10px; border: none; background: var(--fill-1); border-radius: 6px; padding: 3px 4px; color: var(--text); }
+.wf-ref-body select[data-refrole] { flex: 1 0 100%; max-width: none; font-weight: 600; }
+/* 動画/音声の参照 */
+.wf-ref-audio {
+  height: 84px; display: flex; align-items: center; justify-content: center;
+  font-size: 28px; background: var(--fill-1);
+}
+.wf-ref-kind {
+  display: inline-block; margin-left: 4px; padding: 1px 5px;
+  font-size: 9px; font-weight: 700; border-radius: 980px;
+  background: var(--fill-2); color: var(--text2);
+}
+/* 役割が持つ「使う/使わない」情報 */
+.wf-ref-role {
+  font-size: 9.5px; line-height: 1.5; color: var(--dim);
+  padding: 0 8px 8px; border-top: 1px solid var(--line); margin-top: 2px; padding-top: 6px;
+}
+.wf-ref-role b { display: inline-block; min-width: 42px; color: var(--text2); font-size: 9px; }
 .wf-sum { display: flex; gap: 8px; flex-wrap: wrap; }
 .wf-pill {
   display: inline-flex; align-items: center;
@@ -962,6 +980,58 @@ input[type="range"]::-moz-range-thumb {
 }
 .mode-badge.mb-still { background: rgba(154, 106, 224, 0.16); color: #8a5ad0; }
 .mode-badge.mb-outdoor { background: rgba(42, 168, 126, 0.16); color: #1d8a63; }
+
+/* ---------- 素材の役割分担 (参照オーケストレーション) ---------- */
+.orch-sec > summary {
+  font-size: 11px; font-weight: 600; color: var(--dim);
+  letter-spacing: 0.03em; cursor: pointer; list-style: none;
+  display: flex; align-items: center; gap: 6px;
+}
+.orch-sec > summary::-webkit-details-marker { display: none; }
+.orch-sec > summary::before {
+  content: "▸"; font-size: 9px; transition: transform 0.15s var(--ease);
+}
+.orch-sec[open] > summary::before { transform: rotate(90deg); }
+.orch-sec > summary small { font-weight: 400; color: var(--dim); opacity: 0.8; }
+.orch-sec > summary + * { margin-top: 10px; }
+.orch-h {
+  font-size: 10.5px; font-weight: 700; color: var(--text2);
+  margin: 12px 0 6px; padding-top: 8px; border-top: 1px solid var(--line);
+}
+.orch-h small { font-weight: 400; color: var(--dim); margin-left: 4px; }
+.orch-ref { background: var(--fill-1); border-radius: 8px; padding: 7px 8px; margin-bottom: 6px; }
+.orch-ref-head { display: flex; align-items: center; gap: 6px; }
+.orch-ref-head select { flex: 1; min-width: 0; font-size: 11px; }
+.orch-tag {
+  flex: 0 0 auto; font-size: 9.5px; font-weight: 800; font-family: "SF Mono", ui-monospace, monospace;
+  background: var(--accent-soft); color: var(--accent); border-radius: 5px; padding: 2px 5px;
+}
+.orch-refname {
+  flex: 0 1 auto; min-width: 0; max-width: 96px; font-size: 10.5px; color: var(--text2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.orch-use { font-size: 10px; color: var(--dim); line-height: 1.55; margin-top: 5px; }
+.orch-use b {
+  display: inline-block; min-width: 46px; color: var(--text2); font-size: 9.5px;
+}
+.orch-locks { display: flex; flex-direction: column; gap: 5px; }
+.orch-lock { display: flex; align-items: center; gap: 8px; }
+.ol-name { flex: 1; min-width: 0; font-size: 11px; color: var(--text2); line-height: 1.35; }
+.ol-name small { display: block; font-size: 9.5px; color: var(--dim); }
+.ol-seg { flex: 0 0 auto; display: flex; gap: 2px; background: var(--seg-track); border-radius: 7px; padding: 2px; }
+.ol-btn {
+  border: none; background: transparent; color: var(--text2);
+  font-size: 10px; font-weight: 500; padding: 3px 8px; border-radius: 5px; cursor: pointer;
+  transition: all 0.16s var(--ease);
+}
+.ol-btn.on { background: var(--seg-active); color: var(--text); font-weight: 700; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
+.orch-pri { list-style: decimal; padding-left: 20px; margin-bottom: 8px; }
+.orch-pri li {
+  display: flex; align-items: center; gap: 3px;
+  font-size: 10.5px; color: var(--text2); line-height: 1.5; padding: 3px 0;
+}
+.orch-pri li span { flex: 1; min-width: 0; }
+.orch-pri .icon-btn { width: 20px; height: 20px; font-size: 11px; }
 
 /* ---------- ラフカット編集 (生成動画の添付・連結再生・WebM書き出し) ---------- */
 #rcSection { margin-bottom: 18px; }

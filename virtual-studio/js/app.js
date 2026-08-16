@@ -94,6 +94,20 @@ function ensureCameraDefaults(cut) {
   if (cut.refOffX == null) cut.refOffX = 0; // 画像の寄り位置 (%)
   if (cut.refOffY == null) cut.refOffY = 0;
   if (cut.caption == null) cut.caption = ""; // テロップ/セリフ (編集用・プロンプトには入れない)
+  /* 参照オーケストレーション: 素材の役割分担・守らせる強さ・優先順位 */
+  if (!cut.orch || typeof cut.orch !== "object") cut.orch = {};
+  const o = cut.orch;
+  if (!Array.isArray(o.refs)) o.refs = []; // [{refId, role}] — このカットで使う参照と役割
+  if (!Array.isArray(o.preserve)) o.preserve = [];
+  if (!Array.isArray(o.change)) o.change = [];
+  if (!Array.isArray(o.priority)) o.priority = []; // 表示時に文へ展開するキー配列
+  if (!o.locks || typeof o.locks !== "object") o.locks = {};
+  LOCK_TARGETS.forEach(t => { if (!o.locks[t.id]) o.locks[t.id] = t.def; });
+  if (!o.method) o.method = "gen";
+  if (!o.speed) o.speed = "moderate";
+  if (!o.care) o.care = "natural";
+  if (!o.toward) o.toward = "alone";
+  if (!o.perf) o.perf = "private";
   /* どのモード (動画/スチール/屋外・ドローン) で作られたカットか。
    * 旧データはkindとプリセットの対応モードから推定する */
   if (!cut.originMode) {
@@ -341,12 +355,190 @@ const AUDIO_EN = {
 };
 
 /* ---------- モデル別プロンプト方言フォーマッタ ---------- */
+/* =========================================================
+ * 参照オーケストレーション — 素材の役割分担を組み立てる
+ * プロンプトが責任を持てる範囲は狭い。動きの正解は動画が、顔の正解は
+ * 画像が、空間の正解は白模型が持つ。ここではその配置だけを決める。
+ * ======================================================= */
+
+/* このカットで使う参照を解決し、@Image1/@Video1/@Audio1 のタグを振る。
+ * プレビュー用の参照画像 (refImgId) は未登録ならシーン役として自動参加させる */
+function orchRefsOf(cut) {
+  const all = (state.story && Array.isArray(state.story.refs)) ? state.story.refs : [];
+  const assigns = (cut.orch && Array.isArray(cut.orch.refs)) ? cut.orch.refs.slice() : [];
+  if (cut.refImgId && !assigns.some(a => a.refId === cut.refImgId)) {
+    assigns.unshift({ refId: cut.refImgId, role: "scene" });
+  }
+  const count = { image: 0, video: 0, audio: 0 };
+  const PRE = { image: "Image", video: "Video", audio: "Audio" };
+  const out = [];
+  for (const a of assigns) {
+    const ref = all.find(r => r.id === a.refId);
+    if (!ref) continue;
+    const media = ref.mediaKind || "image";
+    const roleDef = REF_ROLES.find(x => x.id === a.role)
+      || REF_ROLES.find(x => x.media === media) || REF_ROLES[0];
+    count[media] = (count[media] || 0) + 1;
+    out.push({
+      ref, roleDef, media,
+      tag: `@${PRE[media] || "Image"}${count[media]}`,
+      use: a.use || roleDef.use,
+      avoid: a.avoid || roleDef.avoid,
+    });
+  }
+  return out;
+}
+
+/* 優先順位キー → 英文。全部を同時に守れない場面で何を先に守るかを指定する */
+function orchPriorityLines(cut) {
+  const rs = orchRefsOf(cut);
+  return ((cut.orch && cut.orch.priority) || []).map(k => {
+    if (k.startsWith("ref:")) {
+      const r = rs.find(x => x.ref.id === k.slice(4));
+      return r ? `Match ${r.use} of ${r.tag}.` : null;
+    }
+    if (k.startsWith("pres:")) {
+      const p = PRESERVE_ITEMS.find(x => x.id === k.slice(5));
+      return p ? `Preserve ${p.en}.` : null;
+    }
+    if (k.startsWith("lock:")) {
+      const t = LOCK_TARGETS.find(x => x.id === k.slice(5));
+      return t ? `Keep ${t.en} exactly as specified.` : null;
+    }
+    if (k.startsWith("free:")) return k.slice(5);
+    return null;
+  }).filter(Boolean);
+}
+
+/* 既定の優先順位: 動き→空間→同一性→質感→残すもの (公式例の並びに倣う) */
+function orchDefaultPriority(cut) {
+  const rs = orchRefsOf(cut);
+  const keys = [];
+  const push = ids => rs.filter(r => ids.includes(r.roleDef.id)).forEach(r => keys.push("ref:" + r.ref.id));
+  push(["motion", "greenscreen"]);
+  push(["whitemodel"]);
+  push(["identity", "product"]);
+  push(["scene", "style", "audio"]);
+  ((cut.orch && cut.orch.preserve) || []).forEach(p => keys.push("pres:" + p));
+  return [...new Set(keys)].slice(0, 6);
+}
+
+/* その要素がこのカットに関係あるか (無関係な固定指示はノイズになる) */
+function orchLockRelevant(cut, targetId, rs) {
+  const has = ids => rs.some(r => ids.includes(r.roleDef.id));
+  const isProduct = ["bottle", "cosme", "food", "car"].includes(cut.subjectType);
+  switch (targetId) {
+    case "identity": return cut.subjectType === "person" || has(["identity"]);
+    case "motion": return cut.kind !== "still" || has(["motion", "greenscreen"]);
+    case "product": return isProduct || has(["product"]);
+    case "space": return cut.camera.move !== "fix" || has(["whitemodel"]);
+    default: return true; // mood / props は常に効く
+  }
+}
+
+/* 固定/誘導/おまかせの一覧 (固定と誘導だけを書き出す。おまかせは書かない) */
+function orchLockLines(cut, rs) {
+  const locks = (cut.orch && cut.orch.locks) || {};
+  rs = rs || orchRefsOf(cut);
+  return LOCK_TARGETS.map(t => {
+    const lv = LOCK_LEVELS.find(l => l.id === locks[t.id]);
+    if (!lv || lv.id === "free") return null;
+    if (!orchLockRelevant(cut, t.id, rs)) return null;
+    return `${t.en}: ${lv.en}`;
+  }).filter(Boolean);
+}
+
+/* 公式型のブロック群を組み立てる */
+function buildOrchestration(cut, P) {
+  P = P || buildPromptParts(cut);
+  const o = cut.orch || {};
+  const rs = orchRefsOf(cut);
+  const spd = MOTION_SPEEDS.find(x => x.id === o.speed) || MOTION_SPEEDS[1];
+  const care = MOTION_CARES.find(x => x.id === o.care) || MOTION_CARES[1];
+  const toward = MOTION_TOWARDS.find(x => x.id === o.toward) || MOTION_TOWARDS[0];
+  const perf = PERF_TEMPS.find(x => x.id === o.perf) || PERF_TEMPS[0];
+
+  /* どの情報を、どの参照がすでに持っているか。
+   * 参照が持つ情報を文章で重ねると、参照と文章が別々のことを言い出して破綻する */
+  const own = id => rs.find(r => r.roleDef.id === id);
+  const motionRef = own("motion") || own("greenscreen");
+  const pathRef = own("whitemodel");
+  const sceneRef = own("scene");
+  const styleRef = own("style");
+  const idRef = own("identity") || own("product");
+
+  /* やってはいけないカメラの挙動 — 参照が持つ情報を壊さないための禁止 */
+  const donts = [];
+  if (cut.camera.move === "fix") donts.push("add camera movement, zoom or shake");
+  else donts.push("cut to another angle — keep it a single continuous take");
+  if (pathRef) donts.push("invent a different camera path");
+  if (motionRef) donts.push("re-time or re-choreograph the motion");
+
+  const preserve = (o.preserve || []).map(id => (PRESERVE_ITEMS.find(x => x.id === id) || {}).en).filter(Boolean);
+  const change = (o.change || []).map(id => (CHANGE_ITEMS.find(x => x.id === id) || {}).en).filter(Boolean);
+
+  /* ACTION: 何が起こるかは文章の担当。動きの質は動画参照が無いときだけ書く */
+  const subj = idRef ? P.subjClause.replace(/\s*\([^)]*\)/, "") : P.subjClause;
+  const action = [
+    `${subj}${P.bgEn && !sceneRef ? ` in ${P.bgEn}` : ""}.`,
+    idRef ? `Character/product identity comes from ${idRef.tag} — do not restate appearance.` : "",
+    motionRef
+      ? `Follow ${motionRef.tag} for the motion itself — do not re-describe or invent it.`
+      : `Motion quality: ${spd.en}, ${care.en}, ${toward.en}.`,
+  ].filter(Boolean).join(" ");
+
+  /* CAMERA: 軌道の正解が白模型にあるならそちらへ委ねる */
+  const camMove = pathRef
+    ? `Follow ${pathRef.tag} for camera path, pacing and shot-size changes.`
+    : `${P.movPhrase}${P.framingPhrase ? "; " + P.framingPhrase : ""}${P.supPhrase ? "; " + P.supPhrase : ""}.`;
+
+  /* ENVIRONMENT: シーン参照があるなら場所・素材・照明・色はそこから取らせる */
+  const env = sceneRef
+    ? `Follow ${sceneRef.tag} for scene, materials, lighting and color.`
+      + `${P.envPhrase ? ` Change only: ${P.envPhrase}.` : ""}`
+    : [P.bgEn, P.envPhrase, P.lightStr].filter(Boolean).join(", ") + ".";
+
+  return {
+    refs: rs,
+    references: rs.map(r => `${r.tag} = ${r.roleDef.en}. Use only: ${r.use}. Do not copy: ${r.avoid}.`),
+    action,
+    camera: `${P.sizeEn}, ${P.angEn}, ${P.lensStr}. ${camMove} Do not: ${donts.join("; ")}.`,
+    performance: motionRef && (o.preserve || []).includes("performance")
+      ? `Performance comes from ${motionRef.tag}.`
+      : `${perf.en}; ${toward.en}.`,
+    environment: env + (styleRef ? ` Follow ${styleRef.tag} for color and finish.` : "")
+      + " Leave small details (furniture, props, background) to your own choice.",
+    preserve, change,
+    locks: orchLockLines(cut, rs),
+    priority: orchPriorityLines(cut),
+  };
+}
+
 function generatePrompt(cut, modelId) {
   const P = buildPromptParts(cut);
   const model = modelId || state.promptModel || "seedance";
   const j = (arr, sep) => arr.filter(Boolean).join(sep);
 
   switch (model) {
+    case "orchestrate": {
+      /* 公式型: 文章の仕事を「映像の描写」から「素材の役割分担の指揮」に変える。
+       * 並びは REFERENCES → ACTION → CAMERA → PERFORMANCE → ENVIRONMENT
+       *      → PRESERVE/CHANGE → PRIORITY */
+      const O = buildOrchestration(cut, P);
+      const pri = O.priority.length ? O.priority : orchPriorityLines({ ...cut, orch: { ...cut.orch, priority: orchDefaultPriority(cut) } });
+      return j([
+        `FORMAT: ${P.aspectEn}${P.isStill ? ", still photograph" : `, video, ${P.dur}s`}`,
+        O.references.length ? `REFERENCES:\n${O.references.join("\n")}` : "",
+        `ACTION:\n${O.action}`,
+        `CAMERA:\n${O.camera}`,
+        `PERFORMANCE:\n${O.performance}`,
+        `ENVIRONMENT:\n${O.environment}`,
+        O.preserve.length || O.change.length
+          ? `PRESERVE / CHANGE:\nPreserve = ${O.preserve.join(", ") || "—"}\nChange = ${O.change.join(", ") || "—"}` : "",
+        O.locks.length ? `CONSTRAINTS:\n${O.locks.join("\n")}` : "",
+        pri.length ? `PRIORITY:\n${pri.map((t, i) => `${i + 1}. ${t}`).join("\n")}` : "",
+      ], "\n\n");
+    }
     case "veo": { // 自然な英文パラグラフ + 音声指示
       const s = [];
       s.push(`A ${P.sizeEn} of ${P.subjClause}, seen from ${P.angEn}.`);
@@ -399,8 +591,11 @@ function generatePrompt(cut, modelId) {
     }
     case "seedance": {
       // CineOS プロンプトコンパイル順序 (cineos/CLAUDE.md §10) に準拠した構造化ブロック
+      // 参照に役割が付いていれば、先頭に役割分担・末尾に優先順位を足す
+      const O = buildOrchestration(cut, P);
       return j([
         `FORMAT: ${P.aspectEn}${P.isStill ? ", still photograph, ultra high resolution" : `, video, ${P.dur}s`}`,
+        O.references.length ? `REFERENCES:\n${O.references.join("\n")}` : "",
         `SUBJECT & ACTION: ${P.subjClause}`,
         `ENVIRONMENT: ${j([P.bgEn, P.envPhrase], ", ")}`,
         P.bodyPhrase ? `CAMERA FORMAT: ${P.bodyPhrase}` : "",
@@ -414,6 +609,9 @@ function generatePrompt(cut, modelId) {
         `COLOR / FINISH: ${j([P.lookEn || "natural true-to-life color grade", "photorealistic, professional cinematography, high detail"], ", ")}`,
         P.transEn ? `EDIT: shot ends with a ${P.transEn}` : "",
         P.dnaTokens.length ? `STYLE DNA: ${P.dnaTokens.join(", ")}` : "",
+        O.preserve.length || O.change.length
+          ? `PRESERVE / CHANGE: preserve = ${O.preserve.join(", ") || "—"} / change = ${O.change.join(", ") || "—"}` : "",
+        O.priority.length ? `PRIORITY:\n${O.priority.map((t, i) => `${i + 1}. ${t}`).join("\n")}` : "",
         `NEGATIVE: no subtitles, no watermark, no on-screen text, no morphing artifacts${P.dnaAvoid.length ? ", " + P.dnaAvoid.join(", ") : ""}`,
       ], "\n");
     }
@@ -1183,6 +1381,9 @@ function applyPreset(presetId) {
   fresh.refOffX = cut.refOffX;
   fresh.refOffY = cut.refOffY;
   fresh.wfStatus = cut.wfStatus;
+  fresh.caption = cut.caption;
+  fresh.orch = cut.orch; // 素材の役割分担は技法を変えても維持する
+  fresh.originMode = cut.originMode;
   state.cuts[idx] = fresh;
   state.selectedItem = null;
   renderAll();
@@ -1502,6 +1703,71 @@ function selectHtml(id, options, value) {
     `<option value="${esc(o.id)}" ${o.id === value ? "selected" : ""}>${esc(o.label)}</option>`).join("")}</select>`;
 }
 
+/* 素材の役割分担セクション (インスペクタ)。開閉状態は再描画をまたいで保持する */
+let orchOpen = false;
+function orchSectionHtml(cut) {
+  const O = cut.orch;
+  const rs = orchRefsOf(cut);
+  const avail = (state.story.refs || []).filter(r => !rs.some(x => x.ref.id === r.id));
+  const priLines = orchPriorityLines(cut);
+  const chip = (arr, sel, attr) => arr.map(x =>
+    `<span class="opt-toggle ${sel.includes(x.id) ? "on" : ""}" data-${attr}="${x.id}">${esc(x.label)}</span>`).join("");
+  return `
+  <details class="insp-section orch-sec"${orchOpen ? " open" : ""}>
+    <summary>素材の役割分担 <small>正解を持たせる先を決める</small></summary>
+    ${fieldRow("作り方", selectHtml("oMethod", PROD_METHODS, O.method))}
+    <div class="insp-hint">向いている場面: ${esc((PROD_METHODS.find(m => m.id === O.method) || {}).fit || "")}</div>
+
+    <h4 class="orch-h">参照素材の役割 <small>役割と「使わない情報」を必ず対で</small></h4>
+    ${rs.length ? rs.map(r => `
+      <div class="orch-ref">
+        <div class="orch-ref-head">
+          <span class="orch-tag">${r.tag}</span>
+          <span class="orch-refname" title="${esc(r.ref.name)}">${esc(r.ref.name)}</span>
+          <select data-orchrole="${esc(r.ref.id)}" title="この参照に持たせる役割">
+            ${REF_ROLES.map(rr => `<option value="${rr.id}" ${rr.id === r.roleDef.id ? "selected" : ""}>${esc(rr.label)}</option>`).join("")}
+          </select>
+          <button class="icon-btn small danger" data-orchdel="${esc(r.ref.id)}" title="このカットから外す"><svg class="ic"><use href="#i-trash"/></svg></button>
+        </div>
+        <div class="orch-use"><b>使う</b> ${esc(r.use)}<br><b>使わない</b> ${esc(r.avoid)}</div>
+      </div>`).join("") : `<div class="insp-hint">参照なし。ワークフローの素材をカットに割り当てると、ここで役割を指定できます</div>`}
+    ${avail.length ? `<select id="oAddRef" title="このカットで使う参照を追加">
+        <option value="">参照を追加…</option>
+        ${avail.map(r => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join("")}
+      </select>` : ""}
+
+    <h4 class="orch-h">動きの質 <small>「名前」ではなく速さ・雑さ・向き先で書く</small></h4>
+    ${fieldRow("速さ", selectHtml("oSpeed", MOTION_SPEEDS, O.speed))}
+    ${fieldRow("丁寧さ", selectHtml("oCare", MOTION_CARES, O.care))}
+    ${fieldRow("向き先", selectHtml("oToward", MOTION_TOWARDS, O.toward))}
+    ${fieldRow("演技の温度", selectHtml("oPerf", PERF_TEMPS, O.perf))}
+
+    <h4 class="orch-h">守らせる強さ <small>全部固定=不自然 / 全部おまかせ=狙いから外れる</small></h4>
+    <div class="orch-locks">
+      ${LOCK_TARGETS.map(t => `
+        <div class="orch-lock" title="${esc(t.why)}">
+          <div class="ol-name">${esc(t.label)}<small>正解: ${esc(t.source)}</small></div>
+          <div class="ol-seg">${LOCK_LEVELS.map(l =>
+            `<button class="ol-btn ${O.locks[t.id] === l.id ? "on" : ""}" data-lock="${t.id}" data-lv="${l.id}">${esc(l.label)}</button>`).join("")}</div>
+        </div>`).join("")}
+    </div>
+
+    <h4 class="orch-h">残す / 変える <small>書かないとAIは全部を作り直す</small></h4>
+    <div class="field"><label>残す</label><div class="opt-toggles">${chip(PRESERVE_ITEMS, O.preserve, "pres")}</div></div>
+    <div class="field"><label>変える</label><div class="opt-toggles">${chip(CHANGE_ITEMS, O.change, "chg")}</div></div>
+
+    <h4 class="orch-h">優先順位 <small>同時に守れない場面で何を先に守るか</small></h4>
+    ${priLines.length ? `<ol class="orch-pri">${priLines.map((t, i) => `
+      <li><span>${esc(t)}</span>
+        <button class="icon-btn small" data-priup="${i}" title="上へ" ${i === 0 ? "disabled" : ""}>↑</button>
+        <button class="icon-btn small" data-pridn="${i}" title="下へ" ${i === priLines.length - 1 ? "disabled" : ""}>↓</button>
+        <button class="icon-btn small danger" data-pridel="${i}" title="削除">×</button>
+      </li>`).join("")}</ol>`
+      : `<div class="insp-hint">未設定 — 参照と「残す」から自動生成できます</div>`}
+    <button class="btn small" id="oPriAuto">優先順位を自動生成</button>
+  </details>`;
+}
+
 function renderInspector() {
   const cut = activeCut();
   const insp = byId("inspector");
@@ -1581,6 +1847,7 @@ function renderInspector() {
         return t && state.activeCut < state.cuts.length - 1 ? `<div class="insp-hint">🎬 ${esc(t.note)}</div>` : "";
       })()}
     </div>
+    ${orchSectionHtml(cut)}
     ${cut.kind !== "still" ? `
     <div class="insp-section">
       <h3>編集 (EditDecision)</h3>
@@ -1758,6 +2025,72 @@ function renderInspector() {
   bind("cFps", e => { cut.camera.fps = e.target.value; renderPrompt(); });
   bind("cWb", e => { cut.camera.wb = e.target.value; });
   bind("cNotes", e => { cut.notes = e.target.value; });
+
+  /* ---------- 素材の役割分担 ---------- */
+  {
+    const sec = insp.querySelector(".orch-sec");
+    if (sec) sec.addEventListener("toggle", () => { orchOpen = sec.open; });
+    const O = cut.orch;
+    /* 暗黙の参照 (プレビュー用) を編集したら明示登録に昇格させる */
+    const materialize = refId => {
+      if (!O.refs.some(a => a.refId === refId)) O.refs.push({ refId, role: "scene" });
+      return O.refs.find(a => a.refId === refId);
+    };
+    bind("oMethod", e => { O.method = e.target.value; renderInspector(); renderPrompt(); });
+    bind("oSpeed", e => { O.speed = e.target.value; renderPrompt(); });
+    bind("oCare", e => { O.care = e.target.value; renderPrompt(); });
+    bind("oToward", e => { O.toward = e.target.value; renderPrompt(); });
+    bind("oPerf", e => { O.perf = e.target.value; renderPrompt(); });
+    bind("oAddRef", e => {
+      if (!e.target.value) return;
+      const ref = (state.story.refs || []).find(r => r.id === e.target.value);
+      const media = ref && ref.mediaKind || "image";
+      const def = REF_ROLES.find(x => x.media === media) || REF_ROLES[0];
+      O.refs.push({ refId: e.target.value, role: def.id });
+      renderInspector(); renderPrompt();
+    });
+    insp.querySelectorAll("[data-orchrole]").forEach(el => el.addEventListener("change", () => {
+      materialize(el.dataset.orchrole).role = el.value;
+      renderInspector(); renderPrompt();
+    }));
+    insp.querySelectorAll("[data-orchdel]").forEach(el => el.addEventListener("click", () => {
+      const id = el.dataset.orchdel;
+      O.refs = O.refs.filter(a => a.refId !== id);
+      if (cut.refImgId === id) cut.refImgId = null; // 暗黙参加も解除
+      O.priority = O.priority.filter(k => k !== "ref:" + id);
+      refresh(); renderInspector();
+    }));
+    insp.querySelectorAll("[data-lock]").forEach(el => el.addEventListener("click", () => {
+      O.locks[el.dataset.lock] = el.dataset.lv;
+      renderInspector(); renderPrompt();
+    }));
+    const toggleIn = (arr, id) => {
+      const i = arr.indexOf(id);
+      if (i >= 0) arr.splice(i, 1); else arr.push(id);
+    };
+    insp.querySelectorAll("[data-pres]").forEach(el => el.addEventListener("click", () => {
+      toggleIn(O.preserve, el.dataset.pres); renderInspector(); renderPrompt();
+    }));
+    insp.querySelectorAll("[data-chg]").forEach(el => el.addEventListener("click", () => {
+      toggleIn(O.change, el.dataset.chg); renderInspector(); renderPrompt();
+    }));
+    const priMove = (i, d) => {
+      const a = O.priority;
+      if (i + d < 0 || i + d >= a.length) return;
+      [a[i], a[i + d]] = [a[i + d], a[i]];
+      renderInspector(); renderPrompt();
+    };
+    insp.querySelectorAll("[data-priup]").forEach(el => el.addEventListener("click", () => priMove(+el.dataset.priup, -1)));
+    insp.querySelectorAll("[data-pridn]").forEach(el => el.addEventListener("click", () => priMove(+el.dataset.pridn, 1)));
+    insp.querySelectorAll("[data-pridel]").forEach(el => el.addEventListener("click", () => {
+      O.priority.splice(+el.dataset.pridel, 1); renderInspector(); renderPrompt();
+    }));
+    bind("oPriAuto", () => {
+      O.priority = orchDefaultPriority(cut);
+      renderInspector(); renderPrompt();
+      showToast(O.priority.length ? "優先順位を自動生成しました" : "参照や「残す」を設定すると自動生成できます");
+    }, "click");
+  }
 
   insp.querySelectorAll(".opt-toggle[data-opt]").forEach(el => {
     el.addEventListener("click", () => {
@@ -2045,6 +2378,22 @@ function cutToCanonicalShot(cut, i, projectId) {
         audio_overlap_s: cut.audioEdit && cut.audioEdit !== "none" ? cut.audioOverlapSec : null,
         caption: cut.caption || "",
       },
+    orchestration: (() => {
+      /* 素材の役割分担 — 要素ごとに「正解を持たせる先」を記録する */
+      const O = buildOrchestration(cut);
+      const o = cut.orch || {};
+      if (!O.refs.length && !O.preserve.length && !O.change.length && !O.priority.length) return null;
+      return {
+        method: o.method || "gen",
+        references: O.refs.map(r => ({ tag: r.tag, name: r.ref.name, media: r.media, role: r.roleDef.id, use: r.use, avoid: r.avoid })),
+        motion_quality: { speed: o.speed, care: o.care, toward: o.toward },
+        performance: o.perf,
+        preserve: o.preserve || [],
+        change: o.change || [],
+        locks: o.locks || {},
+        priority: O.priority,
+      };
+    })(),
     first_frame_ref: (() => {
       const r = cut.refImgId && state.story && state.story.refs
         ? state.story.refs.find(x => x.id === cut.refImgId) : null;
@@ -2189,6 +2538,8 @@ async function gcMediaClips() {
     const addSnap = snap => {
       (snap?.cuts || []).forEach(c => valid.add(c.id));
       Object.values(snap?.story?.audio || {}).forEach(k => valid.add(k));
+      /* 参照素材の動画/音声本体 (ref-*) も生存扱い */
+      (snap?.story?.refs || []).forEach(r => { if (r.clipId) valid.add(r.clipId); });
     };
     addSnap(state);
     addSnap(lsGet(LS_CURRENT, null));
@@ -3145,6 +3496,20 @@ function cutFromCanonicalShot(shot) {
     cut.audioEdit = shot.edit_decision.audio_edit || "none";
     if (shot.edit_decision.audio_overlap_s != null) cut.audioOverlapSec = shot.edit_decision.audio_overlap_s;
     if (shot.edit_decision.caption) cut.caption = shot.edit_decision.caption;
+  }
+  if (shot.orchestration) {
+    /* 参照ファイル自体はJSONに含まれないため、役割分担の設計だけを復元する */
+    const O = shot.orchestration;
+    cut.orch.method = O.method || cut.orch.method;
+    if (O.motion_quality) {
+      cut.orch.speed = O.motion_quality.speed || cut.orch.speed;
+      cut.orch.care = O.motion_quality.care || cut.orch.care;
+      cut.orch.toward = O.motion_quality.toward || cut.orch.toward;
+    }
+    if (O.performance) cut.orch.perf = O.performance;
+    if (Array.isArray(O.preserve)) cut.orch.preserve = O.preserve;
+    if (Array.isArray(O.change)) cut.orch.change = O.change;
+    if (O.locks && typeof O.locks === "object") Object.assign(cut.orch.locks, O.locks);
   }
   if (P.logistics) { cut.takes = P.logistics.estimated_takes ?? cut.takes; cut.setupMin = P.logistics.setup_min ?? cut.setupMin; }
 
