@@ -223,6 +223,7 @@ function setupScriptPage() {
     renderScriptPage();
     renderCutStrip(); renderTimeline(); renderPrompt(); renderLint();
     if (full) renderInspector();
+    captureUndo();   // 台本側の編集も ⌘Z で戻せるようにする
   };
 
   body.addEventListener("click", e => {
@@ -380,5 +381,6 @@ function setupScriptPage() {
     else if (d.scname != null) cut.name = t.value;
     else return;
     renderCutStrip(); renderPreview(); renderPrompt();
+    captureUndo();   // 連続入力は500ms以内なら1ステップに合体する
   });
 }

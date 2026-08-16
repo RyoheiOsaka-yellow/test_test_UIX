@@ -560,6 +560,33 @@ function lintCut(cut) {
     out.push({ lv: "info", code: "CONTACT-SIZE",
       t: "絡みのあるカットを寄りで撮ると、どの要素がどこにいるかが読めなくなります。引きのカバレッジを1カット足すのが安全です" });
   }
+  /* ロケ地とスタジオ設定の食い違い */
+  if (typeof locActive === "function" && locActive(cut)) {
+    const lp = locPreset(cut);
+    if (lp && lp.region === "studio") {
+      if (cut.items.some(i => i.type === "sun")) {
+        out.push({ lv: "warn", code: "LOC-INDOOR-SUN",
+          t: `ロケ地が屋内 (${lp.label}) ですが、スタジオに太陽 (自然光) が置かれています` });
+      }
+      if (cut.weather && cut.weather !== "none") {
+        out.push({ lv: "info", code: "LOC-INDOOR-WX",
+          t: "屋内ロケ地に天候が指定されています。窓外の見え方として意図したものか確認してください" });
+      }
+    }
+    const sn = typeof locSunNow === "function" ? locSunNow(cut) : null;
+    if (sn) {
+      const dayTod = ["morning", "noon", "afternoon", "golden"].includes(cut.timeOfDay);
+      const nightTod = ["night", "midnight", "blue"].includes(cut.timeOfDay);
+      if (sn.elevation <= -6 && dayTod) {
+        out.push({ lv: "warn", code: "LOC-SUN-TOD",
+          t: `指定日時の太陽高度は ${sn.elevation.toFixed(1)}° (夜) ですが、時間帯設定は昼系です` });
+      } else if (sn.elevation > 10 && nightTod) {
+        out.push({ lv: "warn", code: "LOC-SUN-TOD",
+          t: `指定日時の太陽高度は ${sn.elevation.toFixed(1)}° (昼) ですが、時間帯設定は夜系です` });
+      }
+    }
+  }
+
   /* 「先に撮る」でも解決しないケース */
   if (perfMethodOf(cut) === "shoot" && p.unfit && p.unfit.length) {
     const names = p.unfit.map(id => (UNFIT_CASES.find(u => u.id === id) || {}).label).filter(Boolean);
@@ -2829,15 +2856,35 @@ function loadSampleProject() {
     Object.assign(c.camera, cam || {});
     return c;
   };
+  /* サンプルは新しい層 (ロケ地・演出ビート) も一通り使った状態にする */
+  const sampleLoc = {
+    presetId: "jp-alley", name: "夕暮れの路地",
+    coords: { lat: 35.6936, lng: 139.7047 },
+    date: new Date().toISOString().slice(0, 10), time: "17:30", camBearing: 270,
+    note: "私道のため店舗ごとに許可を取る",
+    keep: LOCATION_ASPECTS.map(a => a.id),
+  };
   const cuts = [
     mk("three-point", {
       name: "夕暮れの街 (状況説明)", aim: "シーンの地理と時間帯を見せるエスタブリッシング。",
       refImgId: refStreet.id, duration: 5, transition: "dissolve", bgStyle: "sunset", timeOfDay: "golden",
+      location: { ...sampleLoc },
     }, { shotSize: "LS", move: "fix", focalMm: 24, lens: "24" }),
     mk("loop", {
       name: "ヒロイン、歩き出す", aim: "決意して歩き出す姿。街の光を背負う。",
       refImgId: refHeroine.id, duration: 4, transition: "cut", action: "walk", bgStyle: "sunset",
       caption: "「行かなきゃ。」",
+      location: { ...sampleLoc },
+      perf: {
+        actors: [{ id: "sa1", type: "person", name: "ヒロイン" }],
+        beats: [
+          { id: "sb1", sec: 2, who: "sa1", do: "立ち止まったまま息を整える", gaze: "away", cam: "none" },
+          { id: "sb2", sec: 2, who: "sa1", do: "顔を上げて歩き出す", gaze: "ahead", cam: "follow" },
+        ],
+        speed: "moderate", care: "natural", toward: "alone", temp: "observed",
+        people: 1, contact: "none", camLink: "follow", method: "auto",
+        preserve: [], change: [], unfit: [],
+      },
     }, { shotSize: "BS", move: "track" }),
     mk("rembrandt", {
       name: "ふり返る", aim: "感情の転換点。浅い被写界深度で表情に寄る。",
@@ -2871,8 +2918,9 @@ const TOUR_STEPS = [
   { el: "#rightPanel", title: "4. インスペクタ", body: "カメラボディ・レンズ・絞り・尺・テロップ・編集 (テイク/イン点) まで全てここで微調整。下にはAIプロンプトが常に自動生成されています。" },
   { el: "#storyboard", title: "5. カット割りとタイムライン", body: "カバレッジ充足チップ (⚠クリックで自動補完)、尺タイムライン (右端ドラッグでトリム・ブロックドラッグで並べ替え)、カット間の繋ぎ表示。", },
   { el: "#intentInput", title: "6. 言葉からカット設計", body: "「夜の雨の街を走る。35mmで緊張感」のように書いて設計ボタンを押すと、IntentParserがカットを自動設計します。複文なら複数カットに分解されます。" },
-  { el: "#btnFlowPage", title: "7. 制作ワークフロー", body: "画像+ストーリーの受け入れ→カット設計→Seedanceへの書き出し→生成動画のラフカット編集 (BGM/ナレーション/字幕付き) まで、制作ループ全体をここで回します。" },
-  { el: "#btnExportDoc", title: "8. 書き出し", body: "撮影指示書・絵コンテ・香盤表・DMX・編集リスト (EDL)・プロンプト一式MD・画像ZIP。最終編集は編集ソフトへ、このアプリはその手前の全部を担当します。ショートカットは ? キーで。" },
+  { el: "#btnScriptPage", title: "7. 台本・コンテ (演出)", body: "「何が起きるか」はここで設計します — セリフ、登場要素 (人物だけでなく車両・動物・群衆も)、時間軸のビート、そしてロケ地。ロケ地は国・地域別のライブラリから選べ、Google Mapsの座標を貼ると太陽の方位・高度・ゴールデンアワーまで計算してスタジオの太陽に反映できます。カメラ設定はスタジオ側の担当です。" },
+  { el: "#btnFlowPage", title: "8. 制作ワークフロー", body: "画像+ストーリーの受け入れ→カット設計→Seedanceへの書き出し→生成動画のラフカット編集 (BGM/ナレーション/字幕付き) まで、制作ループ全体をここで回します。" },
+  { el: "#btnExportDoc", title: "9. 書き出し", body: "撮影指示書・絵コンテ・香盤表・DMX・編集リスト (EDL)・プロンプト一式MD・画像ZIP。最終編集は編集ソフトへ、このアプリはその手前の全部を担当します。ショートカットは ? キーで。" },
 ];
 let tourIdx = 0;
 
@@ -2958,7 +3006,7 @@ function setupOnboarding() {
  * ======================================================= */
 function setupA11y() {
   const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-  ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay", "wfOverlay", "welcome"].forEach(id => {
+  ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay", "wfOverlay", "scriptOverlay", "locOverlay", "welcome"].forEach(id => {
     const el = byId(id);
     if (!el) return;
     el.addEventListener("keydown", e => {
@@ -3012,14 +3060,21 @@ function setupShortcuts() {
     }
     if (e.target.matches("input, textarea, select") || e.metaKey || e.ctrlKey || e.altKey) return;
     const wfOpen = !byId("wfOverlay").hidden;
-    const otherOverlay = ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay"].some(id => !byId(id).hidden);
+    const otherOverlay = ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay", "scriptOverlay", "locOverlay"].some(id => !byId(id).hidden);
 
     if (e.key === "?") {
       e.preventDefault();
       byId("kbdHelp").hidden = !byId("kbdHelp").hidden;
       return;
     }
-    if (e.key === "Escape") { byId("kbdHelp").hidden = true; return; /* ページ側は既存ハンドラが閉じる */ }
+    if (e.key === "Escape") {
+      if (!byId("kbdHelp").hidden) { byId("kbdHelp").hidden = true; return; }
+      /* 前面 (後から開いたもの) から閉じる */
+      for (const id of ["locOverlay", "scriptOverlay", "wfOverlay", "docOverlay", "equipOverlay", "dnaOverlay", "projOverlay"]) {
+        if (!byId(id).hidden) { byId(id).hidden = true; return; }
+      }
+      return;
+    }
 
     if (e.key === " ") {
       e.preventDefault();

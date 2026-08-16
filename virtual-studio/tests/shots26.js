@@ -23,6 +23,7 @@ const { chromium } = require('playwright-core');
   await page.screenshot({ path: 'v29-welcome.png' });
   await page.click('#btnWelSample');
   await page.waitForTimeout(800);
+  const TOUR_LEN = await page.evaluate(() => TOUR_STEPS.length);
   const sample = await page.evaluate(() => ({
     title: state.projectTitle,
     cuts: state.cuts.length,
@@ -36,11 +37,11 @@ const { chromium } = require('playwright-core');
   }));
   console.log({ welShown, sample,
     sampleOk: welShown && sample.title.includes('サンプル') && sample.cuts === 4 && sample.refs === 2
-      && sample.alpha && sample.thumbsWithImage >= 4 && sample.storyFilled && sample.tourShown && sample.tourStep === '1 / 8' });
+      && sample.alpha && sample.thumbsWithImage >= 4 && sample.storyFilled && sample.tourShown && sample.tourStep === `1 / ${TOUR_LEN}` });  // v4.5でステップ追加
   await page.screenshot({ path: 'v29-tour-step1.png' });
 
   // --- 2) ツアーを最後まで進める
-  for (let i = 0; i < 7; i++) { await page.click('#btnTourNext'); await page.waitForTimeout(250); }
+  for (let i = 0; i < TOUR_LEN - 1; i++) { await page.click('#btnTourNext'); await page.waitForTimeout(250); }
   const lastLabel = await page.evaluate(() => document.getElementById('btnTourNext').textContent);
   await page.screenshot({ path: 'v29-tour-step8.png' });
   await page.click('#btnTourNext'); // 完了

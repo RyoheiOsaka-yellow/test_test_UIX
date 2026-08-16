@@ -680,7 +680,33 @@ function buildScheduleDoc() {
   let clock = 9 * 60; // 9:00 開始
   let lunchDone = false;
   const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  /* ロケ地が変わったら移動時間を挟む — 香盤はロケ地単位で読むもの */
+  const MOVE_MIN = 30;
+  let prevLocKey = null;
+  const locKeyOf = c => {
+    const L = c.location || {};
+    return [L.presetId || "", L.name || ""].join("|") || "—";
+  };
   const rows = state.cuts.map((cut, i) => {
+    // ロケ地の切り替わり: 見出し行 + 移動時間
+    let locRow = "";
+    const key = locKeyOf(cut);
+    if (key !== prevLocKey) {
+      const lp = locPreset(cut);
+      const L = cut.location || {};
+      const move = prevLocKey === null ? 0 : MOVE_MIN;
+      if (move) clock += move;
+      const ev = L.coords && L.date ? sunEvents(L.coords.lat, L.coords.lng, L.date) : null;
+      const label = [lp ? lp.label : null, L.name || null].filter(Boolean).join(" / ") || "ロケ地未設定";
+      locRow = `<tr class="loc-row"><td colspan="8">
+        📍 <b>${esc(label)}</b>
+        ${L.coords ? ` ｜ ${L.coords.lat}, ${L.coords.lng}` : ""}
+        ${move ? ` ｜ 🚚 移動 ${move}分 (${fmt(clock - move)}–${fmt(clock)})` : ""}
+        ${ev && !ev.polar ? ` ｜ ☀️ 日の出 ${esc(ev.rise || "—")} / 夕GH ${esc(ev.goldenStart || "—")}〜 / 日の入 ${esc(ev.set || "—")} (現地太陽時)` : ""}
+        ${lp ? `<br><small>📋 ${esc(lp.permit)}</small>` : ""}
+      </td></tr>`;
+      prevLocKey = key;
+    }
     // 昼休憩 (12:00を跨いだ最初の区切りで60分)
     let lunch = "";
     if (!lunchDone && clock >= 12 * 60) { lunch = `<tr class="lunch"><td colspan="8">🍱 昼休憩 (${fmt(clock)}–${fmt(clock + 60)})</td></tr>`; clock += 60; lunchDone = true; }
@@ -691,7 +717,7 @@ function buildScheduleDoc() {
     const preset = allPresets().find(p => p.id === cut.presetId);
     const sfx = cut.items.filter(it => SFX_SAFETY_CLASS[it.type]).map(it => `${EQUIP_TYPES[it.type].label}(${SFX_SAFETY_CLASS[it.type]})`);
     const lights = cut.items.filter(it => LIGHT_TYPES.includes(it.type) && it.type !== "sun").length;
-    return lunch + `<tr>
+    return locRow + lunch + `<tr>
       <td>C${i + 1}</td>
       <td>${fmt(start)}–${fmt(clock)}</td>
       <td><b>${esc(cut.name)}</b><br><small>${esc((cut.aim || "").slice(0, 42))}</small></td>
@@ -714,7 +740,9 @@ function buildScheduleDoc() {
     table { border-collapse: collapse; width: 100%; font-size: 12px; }
     th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; vertical-align: top; font-variant-numeric: tabular-nums; }
     th { background: #eef4ff; font-size: 11px; }
-    tr.lunch td { background: #fff7e8; text-align: center; font-weight: 700; }
+    tr.loc-row td { background: #eef4ff; font-size: 11.5px; padding: 6px 8px; }
+    .loc-row small { color: #667; }
+    .lunch td { background: #fff7e8; text-align: center; font-weight: 700; }
     small { color: #667; }
     ul { padding-left: 20px; font-size: 12px; line-height: 1.7; margin-top: 10px; }
     @media print { .toolbar { display: none; } body { padding: 0; } }
