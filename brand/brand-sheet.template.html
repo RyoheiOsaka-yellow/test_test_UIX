@@ -1,0 +1,254 @@
+<title>YELLOW Edge-On Study</title>
+
+<style>
+  :root {
+    --paper: #FBFAF8;
+    --surface: #FFFFFF;
+    --ink: #121213;
+    --muted: #6C6C70;
+    --line: #E3E2DF;
+    --spec: #6F7C93;
+    --flag: #B4531F;
+
+    --display: "Futura", "Avenir Next", "Century Gothic", "Trebuchet MS", ui-sans-serif, sans-serif;
+    --body: "Iowan Old Style", "Hiragino Mincho ProN", "Yu Mincho", Palatino, Georgia, serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+    --measure: 34rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0B0B0C;
+      --surface: #141416;
+      --ink: #EDECE9;
+      --muted: #98979B;
+      --line: #262628;
+      --spec: #8D99B0;
+      --flag: #E08C55;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper: #0B0B0C;
+    --surface: #141416;
+    --ink: #EDECE9;
+    --muted: #98979B;
+    --line: #262628;
+    --spec: #8D99B0;
+    --flag: #E08C55;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 17px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 62rem;
+    margin: 0 auto;
+    padding: 3.5rem 1.5rem 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4rem;
+  }
+
+  p, li { max-width: var(--measure); }
+
+  .eyebrow {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 0.66rem;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--spec);
+  }
+
+  h1, h2, h3 { font-family: var(--display); font-weight: 400; text-wrap: balance; margin: 0; }
+  h1 { font-size: 1.75rem; letter-spacing: 0.2em; text-transform: uppercase; }
+  h2 { font-size: 1.05rem; letter-spacing: 0.2em; text-transform: uppercase; }
+  h3 { font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+
+  section { display: flex; flex-direction: column; gap: 1.5rem; }
+  .head { display: flex; flex-direction: column; gap: 0.4rem; }
+  .head::after { content: ""; height: 1px; background: var(--line); margin-top: 0.7rem; }
+
+  /* the specimens are black ink on white paper, whatever the page theme is */
+  .frame {
+    background: #fff;
+    border: 1px solid var(--line);
+  }
+  .frame svg { display: block; width: 100%; height: auto; }
+
+  figure { margin: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+  figcaption {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    color: var(--spec);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem 0.8rem;
+    align-items: baseline;
+  }
+  figcaption b { color: var(--ink); font-weight: 400; }
+  figcaption span { font-family: var(--body); font-size: 0.85rem; letter-spacing: 0; color: var(--muted); }
+
+  .grid2 { display: grid; gap: 2rem; grid-template-columns: 1fr; }
+  .grid4 { display: grid; gap: 1.25rem; grid-template-columns: repeat(2, 1fr); }
+  @media (min-width: 46rem) {
+    .grid2 { grid-template-columns: 1fr 1fr; }
+    .grid4 { grid-template-columns: repeat(4, 1fr); }
+  }
+
+  .note {
+    border-left: 2px solid var(--flag);
+    padding: 0.1rem 0 0.1rem 1.1rem;
+    color: var(--muted);
+    font-size: 0.95rem;
+  }
+  .note strong { color: var(--ink); font-weight: 400; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 0.5rem 0.9rem 0.5rem 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--display); font-size: 0.66rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--spec); font-weight: 400; }
+  td.num, code { font-family: var(--mono); font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+  .scroll { overflow-x: auto; }
+
+  .lede { font-size: 1.1rem; }
+  a { color: var(--flag); text-underline-offset: 3px; }
+  a:focus-visible { outline: 2px solid var(--flag); outline-offset: 3px; }
+</style>
+
+<div class="wrap">
+
+  <section>
+    <p class="eyebrow">YELLOW &nbsp;·&nbsp; TON 618, edge-on</p>
+    <h1>真横から見た穴</h1>
+    <p class="lede">
+      TON 618 のポスターは降着円盤を斜めから捉えています。これを真横に回すと、
+      円盤は一本の細い楕円になってブラックホールの正面を横切ります。
+      手前側は穴の前を、向こう側は穴の後ろを通る——その前後関係だけで奥行きが出る図形です。
+    </p>
+    <p>
+      マークは YELLOW のロゴタイプと<strong>まったく同じ線幅の黒い線だけ</strong>で引いてあります。
+      文字には重ねません。マークを大きくしても線は太らせず、字と同じ細さのまま拡大します。
+    </p>
+    <p class="note">
+      <strong>この頁のロゴタイプは仮組みです。</strong>
+      お預かりしたロゴが画像だったため、比較用に同じ骨格（キャップハイト・字間・線幅）で引き直したものを置いています。
+      元のベクターデータ（SVG / AI）を頂ければそのまま差し替えます。マーク側の作図は変わりません。
+    </p>
+  </section>
+
+  <section>
+    <div class="head">
+      <p class="eyebrow">Form</p>
+      <h2>形の候補</h2>
+    </div>
+    <p>まず穴の描き方を決めます。中を白く抜くか黒く塗るか、重力レンズの弧を足すか。</p>
+    <div class="grid4">
+      <figure>
+        <div class="frame">{{svg:yellow-mark-ring.svg}}</div>
+        <figcaption><b>ring</b> <span>線だけ。字と最も馴染む。</span></figcaption>
+      </figure>
+      <figure>
+        <div class="frame">{{svg:yellow-mark-solid.svg}}</div>
+        <figcaption><b>solid</b> <span>地平面を塗る。穴として一番強い。</span></figcaption>
+      </figure>
+      <figure>
+        <div class="frame">{{svg:yellow-mark-lens.svg}}</div>
+        <figcaption><b>lens</b> <span>レンズ効果の弧つき。</span></figcaption>
+      </figure>
+      <figure>
+        <div class="frame">{{svg:yellow-mark-lens-solid.svg}}</div>
+        <figcaption><b>lens-solid</b> <span>塗り＋弧。情報量は最大。</span></figcaption>
+      </figure>
+    </div>
+    <p>
+      以下の配置検討は <b>ring</b> と <b>solid</b> の2案で出しています。
+      <b>ring</b> は字と同じ細さのまま視覚的な重さも揃い、<b>solid</b> は小さくしても穴が消えません。
+    </p>
+  </section>
+
+  <section>
+    <div class="head">
+      <p class="eyebrow">Placement · ring</p>
+      <h2>配置検討 — 線のみ</h2>
+    </div>
+    <div class="grid2">
+      <figure><div class="frame">{{svg:yellow-place-a-ring.svg}}</div><figcaption><b>A</b> <span>左・センターライン</span></figcaption></figure>
+      <figure><div class="frame">{{svg:yellow-place-b-ring.svg}}</div><figcaption><b>B</b> <span>右・センターライン</span></figcaption></figure>
+      <figure><div class="frame">{{svg:yellow-place-c-ring.svg}}</div><figcaption><b>C</b> <span>上・中央</span></figcaption></figure>
+      <figure><div class="frame">{{svg:yellow-place-d-ring.svg}}</div><figcaption><b>D</b> <span>下・中央</span></figcaption></figure>
+      <figure><div class="frame">{{svg:yellow-place-e-ring.svg}}</div><figcaption><b>E</b> <span>上・左寄せ（Y と左端揃え）</span></figcaption></figure>
+      <figure><div class="frame">{{svg:yellow-place-f-ring.svg}}</div><figcaption><b>F</b> <span>下・右寄せ（W と右端揃え）</span></figcaption></figure>
+      <figure><div class="frame">{{svg:yellow-place-g-ring.svg}}</div><figcaption><b>G</b> <span>上・中央・2倍</span></figcaption></figure>
+      <figure><div class="frame">{{svg:yellow-place-h-ring.svg}}</div><figcaption><b>H</b> <span>左・小サイズ</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <p class="eyebrow">Placement · solid</p>
+      <h2>配置検討 — 地平面あり</h2>
+    </div>
+    <div class="grid2">
+      <figure><div class="frame">{{svg:yellow-place-a-solid.svg}}</div><figcaption><b>A</b> <span>左・センターライン</span></figcaption></figure>
+      <figure><div class="frame">{{svg:yellow-place-b-solid.svg}}</div><figcaption><b>B</b> <span>右・センターライン</span></figcaption></figure>
+      <figure><div class="frame">{{svg:yellow-place-c-solid.svg}}</div><figcaption><b>C</b> <span>上・中央</span></figcaption></figure>
+      <figure><div class="frame">{{svg:yellow-place-d-solid.svg}}</div><figcaption><b>D</b> <span>下・中央</span></figcaption></figure>
+      <figure><div class="frame">{{svg:yellow-place-e-solid.svg}}</div><figcaption><b>E</b> <span>上・左寄せ</span></figcaption></figure>
+      <figure><div class="frame">{{svg:yellow-place-f-solid.svg}}</div><figcaption><b>F</b> <span>下・右寄せ</span></figcaption></figure>
+      <figure><div class="frame">{{svg:yellow-place-g-solid.svg}}</div><figcaption><b>G</b> <span>上・中央・2倍</span></figcaption></figure>
+      <figure><div class="frame">{{svg:yellow-place-h-solid.svg}}</div><figcaption><b>H</b> <span>左・小サイズ</span></figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="head">
+      <p class="eyebrow">Construction</p>
+      <h2>作図</h2>
+    </div>
+    <div class="frame">{{svg:yellow-mark-construction.svg}}</div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>要素</th><th>値</th><th>備考</th></tr></thead>
+        <tbody>
+          <tr><td>線幅</td><td class="num">0.034 H</td><td>ロゴタイプと同一。拡大しても太らせない</td></tr>
+          <tr><td>穴（光子球）</td><td class="num">r = 0.42 H</td><td>O の字幅と同じ直径</td></tr>
+          <tr><td>事象の地平面</td><td class="num">0.80 r</td><td>solid のときだけ塗る</td></tr>
+          <tr><td>円盤</td><td class="num">±2.90 r ／ 開き 0.22 r</td><td>真横から僅かに開き、円盤と読ませる</td></tr>
+          <tr><td>レンズ弧</td><td class="num">±1.34 r</td><td>lens のときだけ</td></tr>
+          <tr><td>字とマークの間隔</td><td class="num">0.72 H</td><td>ロゴタイプの字間と同じ</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      すべての寸法は穴の半径 <code>r</code> とキャップハイト <code>H</code> の比で持っています。
+      書き出した SVG には字間ひとつ分（0.72 H）の余白が含まれているので、
+      ファイルの外形をそのまま詰めればクリアスペースを満たします。
+    </p>
+  </section>
+
+  <section>
+    <div class="head">
+      <p class="eyebrow">Next</p>
+      <h2>決めたいこと</h2>
+    </div>
+    <ol>
+      <li>形は <b>ring</b> か <b>solid</b> か（弧つきの2案も残せます）</li>
+      <li>配置は A–H のどれか。横組みなら A / B、縦の余白が取れるなら C / G</li>
+      <li>マークの大きさ（現状は穴の直径＝O の字幅、G は2倍）</li>
+      <li>ロゴタイプの元データ。頂ければ仮組みを差し替えて確定版を出します</li>
+    </ol>
+  </section>
+
+</div>
