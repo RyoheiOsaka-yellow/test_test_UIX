@@ -255,7 +255,8 @@ header.hero .wrap { position: relative; }
 .panel-canvas { display: block; width: 100%; height: 540px; touch-action: pan-y; cursor: grab; }
 .panel-canvas:active { cursor: grabbing; }
 .panel-canvas.tall { height: 575px; }
-@media (max-width: 720px) { .panel-canvas, .panel-canvas.tall { height: 440px; } }
+.panel-canvas.spine { height: 720px; }
+@media (max-width: 720px) { .panel-canvas, .panel-canvas.tall { height: 440px; } .panel-canvas.spine { height: 560px; } }
 
 .panel-foot {
   border-top: 1px solid var(--panel-line);
@@ -291,6 +292,78 @@ header.hero .wrap { position: relative; }
   font-weight: 700;
 }
 .segbtns button:focus-visible { outline: 2px solid #35C6AC; outline-offset: 2px; }
+
+/* ── Panel slider ───────────────────────────────────────────── */
+.slider-row { display: flex; align-items: center; gap: 14px; }
+.slider-row label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--panel-muted);
+  flex: none;
+}
+.slider-row output {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  color: #35C6AC;
+  min-width: 4.5ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+#cobb {
+  flex: 1 1 auto;
+  min-width: 120px;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to right,
+    #22383B 0%, #22383B 50%,
+    #5E5330 50%, #5E5330 80%,
+    #6B3A33 90%, #6B3A33 100%);
+  outline: none;
+}
+#cobb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #35C6AC;
+  border: 3px solid #0C1618;
+  box-shadow: 0 0 0 1px #35C6AC;
+  cursor: pointer;
+}
+#cobb::-moz-range-thumb {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #35C6AC;
+  border: 3px solid #0C1618;
+  box-shadow: 0 0 0 1px #35C6AC;
+  cursor: pointer;
+}
+#cobb:focus-visible { outline: 2px solid #35C6AC; outline-offset: 4px; }
+.zones {
+  display: flex;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--panel-muted);
+  gap: 0;
+}
+.zones span { padding-right: 18px; position: relative; }
+.zones span::before {
+  content: "";
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 1px;
+  margin-right: 6px;
+  vertical-align: 0;
+}
+.zones .z1::before { background: #22383B; }
+.zones .z2::before { background: #5E5330; }
+.zones .z3::before { background: #6B3A33; }
 
 /* ── Figures ────────────────────────────────────────────────── */
 figure { margin: 0; }
@@ -622,11 +695,91 @@ footer.foot .wrap { display: flex; justify-content: space-between; gap: 20px; fl
   </div>
 </section>
 
+<!-- ══ 2. 脊柱の3Dモデル ════════════════════════════════════ -->
+<section class="chapter">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-num">02 / 解剖</div>
+      <div>
+        <h2>変形しているのは、この立体である</h2>
+        <p class="lede">
+          脊柱は頸椎7・胸椎12・腰椎5・仙骨・尾骨からなり、矢状面では前弯と後弯が交互に並ぶS字を描く。
+          側弯症で加わるのは、この立体に対する<strong>冠状面の弯曲と椎体の軸回旋</strong>である。
+          Cobb角のスライダーを動かすと、両者が同時に進むことが見える。
+        </p>
+      </div>
+    </div>
+
+    <div class="chapter-body">
+      <div class="chapter-num"></div>
+      <div class="flow">
+
+        <div class="panel">
+          <div class="panel-bar">
+            <span class="title">図2 — 脊柱の3Dモデル</span>
+            <div class="segbtns">
+              <button type="button" id="spine-reset">向きを戻す</button>
+            </div>
+          </div>
+
+          <canvas class="panel-canvas spine" id="cv-spine" aria-label="頸椎7個・胸椎12個・腰椎5個・仙骨・尾骨からなる脊柱の3Dモデルを、冠状面（背面）と矢状面（側面）の2面で並べて表示する。Cobb角スライダーに応じて冠状面の弯曲と椎体の軸回旋が加わる。"></canvas>
+
+          <div class="panel-foot" style="flex-direction:column; align-items:stretch; gap:12px">
+            <div class="slider-row">
+              <label for="cobb">Cobb角</label>
+              <input type="range" id="cobb" min="0" max="50" step="1" value="0"
+                     aria-describedby="cobb-note">
+              <output id="cobb-out" for="cobb">0°</output>
+            </div>
+            <p id="rot-out" style="margin:0;font-family:var(--font-mono);font-size:11.5px;letter-spacing:.06em">
+              頂椎の回旋 0.0° — 生理的弯曲のみ
+            </p>
+            <div class="zones" aria-hidden="true">
+              <span class="z1">観察域 &lt;25°</span>
+              <span class="z2">装具検討域 25–40°</span>
+              <span class="z3">手術検討域 &gt;45°</span>
+            </div>
+            <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:center">
+              <span class="hint">ドラッグで回転</span>
+              <div class="legend">
+                <span><i style="background:#E4CDBA"></i>椎骨</span>
+                <span><i style="background:#8FA0A6"></i>椎間板</span>
+                <span><i style="background:#35C6AC"></i>脊柱の中心線</span>
+                <span><i style="background:transparent;border:1.5px dashed #7E979A"></i>垂線（体幹偏位の基準）</span>
+              </div>
+            </div>
+            <p id="cobb-note" style="margin:0;font-size:12px;line-height:1.7">
+              角度域は一般的な目安であり、実際の治療方針は骨成熟度・カーブタイプ・年齢等を含めて医師が判断する。
+            </p>
+          </div>
+        </div>
+
+        <p>
+          背面から見えるのは<strong>左右非対称</strong>、側面から見えるのは<strong>前後弯</strong>、
+          そして上から見なければ分からないのが<strong>軸回旋</strong>である。
+          スマートフォンの背面画像が捉えているのはこのうち体表に現れた成分にすぎず、
+          X線のCobb角は冠状面の投影角にすぎない。同じ変形を、どの断面から見るかで測っている値が違う。
+        </p>
+
+        <div class="callout">
+          <span class="lbl">この立体と、取得データの対応</span>
+          <strong>背面画像</strong>は肩・肩甲骨・腰部の非対称として冠状面成分を、
+          <strong>前屈画像</strong>は肋骨隆起として軸回旋成分を、
+          <strong>垂線からのずれ</strong>は体幹偏位を捉える。
+          一方<strong>足底荷重・COP</strong>は、この立体が地面に伝えている力の偏りを捉える —
+          形が写る前に、力の配り方が先に変わっている可能性がある、というのが本提案の仮説である。
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ══ 2. 制御系 ════════════════════════════════════════════ -->
 <section class="chapter">
   <div class="wrap">
     <div class="chapter-head">
-      <div class="chapter-num">02 / WHAT</div>
+      <div class="chapter-num">03 / WHAT</div>
       <div>
         <h2>側弯症を「構造変形」ではなく「制御系」として見る</h2>
         <p class="lede">
@@ -642,7 +795,7 @@ footer.foot .wrap { display: flex; justify-content: space-between; gap: 20px; fl
 
         <div class="panel">
           <div class="panel-bar">
-            <span class="title">Fig.2 — 姿勢制御の閉ループ系</span>
+            <span class="title">図3 — 姿勢制御の閉ループ系</span>
             <div class="segbtns" id="loop-ctl">
               <button type="button" data-view="all" aria-pressed="true">全体</button>
               <button type="button" data-view="obs" aria-pressed="false">観測可能な面だけ</button>
@@ -686,7 +839,7 @@ footer.foot .wrap { display: flex; justify-content: space-between; gap: 20px; fl
 <section class="chapter">
   <div class="wrap">
     <div class="chapter-head">
-      <div class="chapter-num">03 / HOW</div>
+      <div class="chapter-num">04 / HOW</div>
       <div>
         <h2>観測レイヤーを時間軸の上に積む</h2>
         <p class="lede">
@@ -702,7 +855,7 @@ footer.foot .wrap { display: flex; justify-content: space-between; gap: 20px; fl
 
         <div class="panel">
           <div class="panel-bar">
-            <span class="title">Fig.3 — マルチモーダル × 時系列データ立体</span>
+            <span class="title">図4 — マルチモーダル × 時系列データ立体</span>
             <div class="segbtns" id="stack-ctl">
               <button type="button" data-model="A" aria-pressed="false">Model A 画像のみ</button>
               <button type="button" data-model="B" aria-pressed="false">Model B ＋センサー</button>
@@ -750,7 +903,7 @@ footer.foot .wrap { display: flex; justify-content: space-between; gap: 20px; fl
 <section class="chapter">
   <div class="wrap">
     <div class="chapter-head">
-      <div class="chapter-num">04</div>
+      <div class="chapter-num">05</div>
       <div>
         <h2>各データが観測しているものは、重なっていない</h2>
         <p class="lede">
@@ -796,7 +949,7 @@ footer.foot .wrap { display: flex; justify-content: space-between; gap: 20px; fl
 <section class="chapter">
   <div class="wrap">
     <div class="chapter-head">
-      <div class="chapter-num">05 / MVP</div>
+      <div class="chapter-num">06 / MVP</div>
       <div>
         <h2>MVPが検証するのは、追加した層の価値だけ</h2>
         <p class="lede">
@@ -874,7 +1027,7 @@ footer.foot .wrap { display: flex; justify-content: space-between; gap: 20px; fl
           </svg>
           </div>
           <figcaption>
-            <b>図4｜A/B/Cの差分。</b>出力は3モデルとも同一。違いは入力経路が1本ずつ増える点だけであり、
+            <b>図5｜A/B/Cの差分。</b>出力は3モデルとも同一。違いは入力経路が1本ずつ増える点だけであり、
             <b>その増分が予測性能をどれだけ動かすか</b>が唯一の測定対象になる。足底データを加える意義は、この比較でのみ客観的に検証できる。
           </figcaption>
         </figure>
@@ -917,7 +1070,7 @@ footer.foot .wrap { display: flex; justify-content: space-between; gap: 20px; fl
 <section class="chapter">
   <div class="wrap">
     <div class="chapter-head">
-      <div class="chapter-num">06</div>
+      <div class="chapter-num">07</div>
       <div>
         <h2>検証は4段。到達点は仮説4にある</h2>
         <p class="lede">
@@ -1016,7 +1169,7 @@ footer.foot .wrap { display: flex; justify-content: space-between; gap: 20px; fl
           </svg>
           </div>
           <figcaption>
-            <b>図5｜仮説4の主張。</b>3つの指標が同じ現象を異なる遅れで捉えるなら、最も早く動く指標が受診タイミングの判断材料になる。
+            <b>図6｜仮説4の主張。</b>3つの指標が同じ現象を異なる遅れで捉えるなら、最も早く動く指標が受診タイミングの判断材料になる。
             この模式図は時間順序の主張を表したものであり、実測データではない。
           </figcaption>
         </figure>
@@ -1030,7 +1183,7 @@ footer.foot .wrap { display: flex; justify-content: space-between; gap: 20px; fl
 <section class="chapter">
   <div class="wrap">
     <div class="chapter-head">
-      <div class="chapter-num">07</div>
+      <div class="chapter-num">08</div>
       <div>
         <h2>AIに与えるのは「現在の写真」ではなく、変化履歴</h2>
         <p class="lede">
@@ -1076,7 +1229,7 @@ footer.foot .wrap { display: flex; justify-content: space-between; gap: 20px; fl
 <section class="chapter">
   <div class="wrap">
     <div class="chapter-head">
-      <div class="chapter-num">08</div>
+      <div class="chapter-num">09</div>
       <div>
         <h2>順番に潰す5つの問い</h2>
         <p class="lede">
@@ -1110,7 +1263,7 @@ footer.foot .wrap { display: flex; justify-content: space-between; gap: 20px; fl
 <section class="chapter">
   <div class="wrap">
     <div class="chapter-head">
-      <div class="chapter-num">09</div>
+      <div class="chapter-num">10</div>
       <div>
         <h2>次回協議で決める12項目</h2>
         <p class="lede">クライアント・医師・研究者との協議で、少なくとも以下を決定する必要がある。</p>
@@ -1143,7 +1296,7 @@ footer.foot .wrap { display: flex; justify-content: space-between; gap: 20px; fl
 <section class="chapter">
   <div class="wrap">
     <div class="chapter-head">
-      <div class="chapter-num">10</div>
+      <div class="chapter-num">11</div>
       <div>
         <h2>結論</h2>
       </div>
@@ -1279,15 +1432,20 @@ footer.foot .wrap { display: flex; justify-content: space-between; gap: 20px; fl
     }
   }
 
-  Scene.prototype.project = function (p) {
-    var r = rotate(p, this.yaw, this.pitch);
+  Scene.prototype.rotPt = function (p) { return rotate(p, this.yaw, this.pitch); };
+
+  Scene.prototype.fromRot = function (r) {
     var s = this.dist / (this.dist + r.z);
     return {
-      x: this.w / 2 + r.x * s * this.zoom,
-      y: this.h / 2 - r.y * s * this.zoom,
+      x: this.w / 2 + r.x * s * this.zoom + (this.ox || 0),
+      y: this.h / 2 - r.y * s * this.zoom + (this.oy || 0),
       z: r.z,
       s: s
     };
+  };
+
+  Scene.prototype.project = function (p) {
+    return this.fromRot(rotate(p, this.yaw, this.pitch));
   };
 
   Scene.prototype.draw = function () {
@@ -1754,6 +1912,500 @@ footer.foot .wrap { display: flex; justify-content: space-between; gap: 20px; fl
 
   var stackScene = new Scene(document.getElementById("cv-stack"), {
     yaw: -0.42, pitch: 0.30, dist: 16, zoom: 74, spin: 0.0011, build: buildStack
+  });
+
+
+  /* ═══ Scene 3 — 脊柱の3Dモデル ══════════════════════════════
+     椎骨は手続き的に生成する。矢状面のS字を通る中心線に沿って
+     椎体・椎弓・棘突起・横突起を積み、Cobb角に応じて冠状面の
+     弯曲と椎体の軸回旋を重ねる。                                */
+
+  var BONE = [231, 208, 189];
+  var DISC = [140, 158, 165];
+
+  /* 矢状面カーブ — u=0 仙骨上端 → u=1 環椎。+z が前方 */
+  var SAG = [
+    [0.00,  1.30], [0.10,  2.30], [0.22,  1.00], [0.34, -0.80],
+    [0.47, -1.55], [0.61, -1.10], [0.74,  0.15], [0.86,  1.05],
+    [0.95,  1.40], [1.00,  1.05]
+  ];
+
+  function curveAt(pts, u) {
+    var n = pts.length;
+    if (u <= pts[0][0]) return pts[0][1];
+    if (u >= pts[n - 1][0]) return pts[n - 1][1];
+    var i = 0;
+    while (i < n - 2 && pts[i + 1][0] < u) i++;
+    var p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(n - 1, i + 2)];
+    var h = p2[0] - p1[0], t = (u - p1[0]) / h;
+    var m1 = (p2[1] - p0[1]) / (p2[0] - p0[0]) * h;
+    var m2 = (p3[1] - p1[1]) / (p3[0] - p1[0]) * h;
+    var t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * p1[1] + (t3 - 2 * t2 + t) * m1
+         + (-2 * t3 + 3 * t2) * p2[1] + (t3 - t2) * m2;
+  }
+
+  /* 冠状面 — 主胸椎カーブと、上下の代償カーブ */
+  var TH0 = 0.30, TH1 = 0.70;
+  function coronalAt(u, A) {
+    if (A === 0) return 0;
+    if (u < TH0)  return -0.42 * A * Math.sin(Math.PI * u / TH0);
+    if (u <= TH1) return  A * Math.sin(Math.PI * (u - TH0) / (TH1 - TH0));
+    return -0.34 * A * Math.sin(Math.PI * (u - TH1) / (1 - TH1));
+  }
+
+  /* 椎骨の並び。下から L5→L1, T12→T1, C7→C1 */
+  function levelSpec() {
+    var out = [], i;
+    for (i = 0; i < 5; i++) {                       // 腰椎
+      var f = i / 4;
+      out.push({ reg: "L", name: "L" + (5 - i), h: 2.10 - 0.10 * f, disc: 0.38,
+                 rx: 1.54 - 0.12 * f, rz: 1.20 - 0.08 * f,
+                 sp: 1.60, drop: 0.20, spH: 0.95, tp: 1.05 });
+    }
+    for (i = 0; i < 12; i++) {                      // 胸椎
+      var g = i / 11;
+      out.push({ reg: "T", name: "T" + (12 - i), h: 1.78 - 0.50 * g, disc: 0.28,
+                 rx: 1.36 - 0.40 * g, rz: 1.08 - 0.26 * g,
+                 sp: 1.60 + 0.25 * g, drop: 0.85 + 0.55 * g, spH: 0.42, tp: 1.16 - 0.22 * g });
+    }
+    for (i = 0; i < 7; i++) {                       // 頸椎
+      var k = i / 6;
+      out.push({ reg: "C", name: "C" + (7 - i), h: 1.06 - 0.14 * k, disc: 0.22,
+                 rx: 0.90 - 0.14 * k, rz: 0.70 - 0.10 * k,
+                 sp: 0.90 - 0.25 * k, drop: 0.18, spH: 0.36, tp: 0.72 });
+    }
+    return out;
+  }
+
+  var LEVELS = levelSpec();
+
+  /* 局所座標のプリミティブ ------------------------------------ */
+
+  function prismMesh(rx, rz, h, n) {
+    var v = [], f = [], i;
+    for (i = 0; i < n; i++) {
+      var a = i / n * Math.PI * 2;
+      var cx = Math.cos(a) * rx, cz = Math.sin(a) * rz;
+      v.push([cx, -h / 2, cz]);
+      v.push([cx,  h / 2, cz]);
+    }
+    for (i = 0; i < n; i++) {
+      var j = (i + 1) % n;
+      f.push([i * 2, j * 2, j * 2 + 1, i * 2 + 1]);
+    }
+    var top = [], bot = [];
+    for (i = 0; i < n; i++) { bot.push(i * 2); top.push(i * 2 + 1); }
+    f.push(top); f.push(bot.reverse());
+    return { v: v, f: f };
+  }
+
+  /* 2つの矩形断面を結ぶ角柱。断面は axis に垂直な面内 */
+  function slab(c0, w0, h0, c1, w1, h1, axis) {
+    var v, f = [[0,1,2,3],[4,5,6,7],[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7]];
+    function rect(c, w, h) {
+      if (axis === "z") return [
+        [c[0]-w/2, c[1]-h/2, c[2]], [c[0]+w/2, c[1]-h/2, c[2]],
+        [c[0]+w/2, c[1]+h/2, c[2]], [c[0]-w/2, c[1]+h/2, c[2]]];
+      if (axis === "x") return [
+        [c[0], c[1]-h/2, c[2]-w/2], [c[0], c[1]-h/2, c[2]+w/2],
+        [c[0], c[1]+h/2, c[2]+w/2], [c[0], c[1]+h/2, c[2]-w/2]];
+      return [                                   // axis "y"
+        [c[0]-w/2, c[1], c[2]-h/2], [c[0]+w/2, c[1], c[2]-h/2],
+        [c[0]+w/2, c[1], c[2]+h/2], [c[0]-w/2, c[1], c[2]+h/2]];
+    }
+    v = rect(c0, w0, h0).concat(rect(c1, w1, h1));
+    return { v: v, f: f };
+  }
+
+  function vertebraMesh(L) {
+    var parts = [];
+    var arcZ = -(L.rz + 0.50);
+
+    parts.push(prismMesh(L.rx, L.rz, L.h * 0.86, 14));                       // 椎体
+    parts.push(slab([0, 0, arcZ - 0.30], L.rx * 1.55, L.h * 0.62,           // 椎弓
+                    [0, 0, arcZ + 0.30], L.rx * 1.30, L.h * 0.72, "z"));
+    [-1, 1].forEach(function (s) {                                          // 椎弓根
+      parts.push(slab([s * L.rx * 0.60, 0, -L.rz + 0.05], 0.34, L.h * 0.50,
+                      [s * L.rx * 0.60, 0, arcZ + 0.20], 0.30, L.h * 0.44, "z"));
+      parts.push(slab([s * L.rx * 0.75, 0.02, arcZ], 0.34, L.h * 0.42,      // 横突起
+                      [s * (L.rx + L.tp), 0.02, arcZ - 0.15], 0.26, L.h * 0.30, "x"));
+    });
+    parts.push(slab([0, -0.05, arcZ - 0.45], L.rx * 0.62, L.h * 0.55,       // 棘突起
+                    [0, -0.05 - L.drop, arcZ - 0.45 - L.sp], L.spH * 0.62, L.h * 0.34, "z"));
+    return parts;
+  }
+
+  var VMESH = LEVELS.map(vertebraMesh);
+
+  /* 位置決め ---------------------------------------------------- */
+
+  var COL_H = 0, YC = [];
+  (function () {
+    var y = 0;
+    for (var i = 0; i < LEVELS.length; i++) {
+      y += LEVELS[i].h / 2;
+      YC.push(y);
+      y += LEVELS[i].h / 2 + LEVELS[i].disc;
+    }
+    COL_H = y;
+  })();
+  var SAC_DROP = 7.4;
+  var Y_MID = (COL_H - SAC_DROP) / 2;
+
+  function amplitudeFor(cobbDeg) {
+    if (cobbDeg <= 0) return 0;
+    var w = TH1 - TH0;
+    return Math.tan(cobbDeg * Math.PI / 360) * w * COL_H / Math.PI;
+  }
+
+  function centerAt(u, A) {
+    return { x: coronalAt(u, A), y: u * COL_H - Y_MID, z: curveAt(SAG, u) };
+  }
+
+  /* 局所→世界の変換。軸回旋 → 矢状傾斜 → 冠状傾斜 → 平行移動 */
+  function placer(u, A) {
+    var du = 0.004;
+    var dz = (curveAt(SAG, Math.min(1, u + du)) - curveAt(SAG, Math.max(0, u - du)));
+    var dx = (coronalAt(Math.min(1, u + du), A) - coronalAt(Math.max(0, u - du), A));
+    var dy = (Math.min(1, u + du) - Math.max(0, u - du)) * COL_H;
+    var sa = Math.atan2(dz, dy);            // 矢状面の傾き
+    var ca = -Math.atan2(dx, dy);           // 冠状面の傾き
+    var ax = 0.16 * coronalAt(u, A);        // 椎体は凸側へ回旋する
+    var c = centerAt(u, A);
+    var cs = Math.cos(sa), ss = Math.sin(sa);
+    var cc = Math.cos(ca), sc = Math.sin(ca);
+    var cx2 = Math.cos(ax), sx2 = Math.sin(ax);
+    return function (p) {
+      var x = p[0] * cx2 + p[2] * sx2;      // Ry
+      var z = -p[0] * sx2 + p[2] * cx2;
+      var y = p[1];
+      var y2 = y * cs - z * ss;             // Rx
+      var z2 = y * ss + z * cs;
+      var x3 = x * cc - y2 * sc;            // Rz
+      var y3 = x * sc + y2 * cc;
+      return { x: x3 + c.x, y: y3 + c.y, z: z2 + c.z };
+    };
+  }
+
+  var spineCache = { cobb: null, parts: null, ends: null };
+
+  function buildSpine(cobbDeg) {
+    if (spineCache.cobb === cobbDeg) return spineCache;
+    var A = amplitudeFor(cobbDeg);
+    var parts = [], i, j;
+
+    for (i = 0; i < LEVELS.length; i++) {
+      var u = YC[i] / COL_H;
+      var put = placer(u, A);
+      var meshes = VMESH[i];
+      for (j = 0; j < meshes.length; j++) {
+        parts.push({ v: meshes[j].v.map(put), f: meshes[j].f, tone: BONE });
+      }
+      if (i < LEVELS.length - 1) {                       // 椎間板
+        var ud = (YC[i] + LEVELS[i].h / 2 + LEVELS[i].disc / 2) / COL_H;
+        var pd = placer(ud, A);
+        var d = prismMesh(LEVELS[i].rx * 0.97, LEVELS[i].rz * 0.97, LEVELS[i].disc * 0.92, 14);
+        parts.push({ v: d.v.map(pd), f: d.f, tone: DISC });
+      }
+    }
+
+    // 仙骨・尾骨 — 中心線の続きを、傾きを強めながら分節で降ろす
+    var base = centerAt(0, A);
+    var segs = [
+      { len: 1.60, tilt:  0.30, w: [3.70, 3.25], d: [1.90, 1.76] },
+      { len: 1.55, tilt:  0.36, w: [3.25, 2.70], d: [1.76, 1.58] },
+      { len: 1.45, tilt:  0.32, w: [2.70, 2.05], d: [1.58, 1.34] },
+      { len: 1.30, tilt:  0.18, w: [2.05, 1.45], d: [1.34, 1.10] },
+      { len: 0.80, tilt:  0.00, w: [1.20, 0.92], d: [0.92, 0.72] },
+      { len: 0.66, tilt: -0.24, w: [0.92, 0.54], d: [0.72, 0.46] }
+    ];
+    var sx = base.x * 0.5, sy = base.y - LEVELS[0].h / 2 - 0.36, sz = base.z - 0.1;
+    var sTop = sy, cTop = sy;
+    segs.forEach(function (g, gi) {
+      var y1 = sy - g.len * Math.cos(g.tilt), z1 = sz - g.len * Math.sin(g.tilt);
+      var m = slab([sx, sy, sz], g.w[0], g.d[0], [sx, y1, z1], g.w[1], g.d[1], "y");
+      parts.push({ v: m.v.map(function (q) { return { x: q[0], y: q[1], z: q[2] }; }), f: m.f, tone: BONE });
+      if (gi === 3) cTop = y1;
+      sy = y1; sz = z1;
+    });
+
+    spineCache = {
+      cobb: cobbDeg, A: A, parts: parts,
+      sacTop: sTop, cocMid: cTop, cocBot: sy,
+      centers: LEVELS.map(function (L, k) { return centerAt(YC[k] / COL_H, A); })
+    };
+    return spineCache;
+  }
+
+  /* 面の描画 ---------------------------------------------------- */
+
+  var LIGHT = (function () {
+    var l = [-0.34, 0.56, -0.76];
+    var m = Math.hypot(l[0], l[1], l[2]);
+    return [l[0] / m, l[1] / m, l[2] / m];
+  })();
+
+  function emitSolid(scene, part, items) {
+    var rot = [], scr = [], i;
+    for (i = 0; i < part.v.length; i++) {
+      var r = scene.rotPt(part.v[i]);
+      rot.push(r);
+      scr.push(scene.fromRot(r));
+    }
+    for (i = 0; i < part.f.length; i++) {
+      var idx = part.f[i];
+      var a = rot[idx[0]], b = rot[idx[1]], c = rot[idx[2]];
+      var ux = b.x - a.x, uy = b.y - a.y, uz = b.z - a.z;
+      var vx = c.x - a.x, vy = c.y - a.y, vz = c.z - a.z;
+      var nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+      var nl = Math.hypot(nx, ny, nz) || 1;
+      var d = Math.abs((nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2]) / nl);
+      var k = 0.26 + 0.78 * d;
+      var t = part.tone;
+      var col = "rgb(" + Math.min(255, t[0] * k | 0) + "," + Math.min(255, t[1] * k | 0) + "," + Math.min(255, t[2] * k | 0) + ")";
+      var z = 0, n = idx.length;
+      for (var q = 0; q < n; q++) z += rot[idx[q]].z;
+      z /= n;
+      items.push({ z: z, idx: idx, col: col, scr: scr, draw: drawFace });
+    }
+  }
+
+  function drawFace(ctx) {
+    var s = this.scr, idx = this.idx;
+    ctx.beginPath();
+    ctx.moveTo(s[idx[0]].x, s[idx[0]].y);
+    for (var i = 1; i < idx.length; i++) ctx.lineTo(s[idx[i]].x, s[idx[i]].y);
+    ctx.closePath();
+    ctx.fillStyle = this.col;
+    ctx.fill();
+  }
+
+  /* シーン本体 -------------------------------------------------- */
+
+  var cobbDeg = 0;
+
+  var SAG_NOTES = [
+    { a: 17, b: 23, t: "頸椎前弯" },
+    { a: 5,  b: 16, t: "胸椎後弯" },
+    { a: 0,  b: 4,  t: "腰椎前弯" }
+  ];
+
+  function nearestLevel(u) {
+    var best = 0, d = 9e9;
+    for (var q = 0; q < LEVELS.length; q++) {
+      var dd = Math.abs(YC[q] / COL_H - u);
+      if (dd < d) { d = dd; best = q; }
+    }
+    return best;
+  }
+
+  function buildSpineScene(scene) {
+    var it = [], i;
+    var S = buildSpine(cobbDeg);
+    var baseYaw = scene.yaw, baseOx = scene.ox || 0;
+    var twoUp = scene.w >= 640;
+
+    scene.zoom = Math.min((scene.h - 96) / 56, scene.w / (twoUp ? 30 : 15));
+
+    var panes = twoUp
+      ? [{ yaw: baseYaw, ox: -scene.w * 0.20, cap: "冠状面 — 背面から", coronal: true },
+         { yaw: baseYaw - Math.PI / 2, ox: scene.w * 0.21, cap: "矢状面 — 左側面から", coronal: false }]
+      : [{ yaw: baseYaw, ox: scene.w * 0.04, cap: "冠状面 — 背面から", coronal: true }];
+
+    var keyLevels = {};
+    if (cobbDeg > 0) {
+      keyLevels[nearestLevel(TH1)] = "上端椎";
+      keyLevels[nearestLevel(0.5)] = "頂椎";
+      keyLevels[nearestLevel(TH0)] = "下端椎";
+    }
+
+    var overlays = [];
+
+    panes.forEach(function (pane) {
+      scene.yaw = pane.yaw;
+      scene.ox = pane.ox;
+
+      // 垂線
+      it.push(edgeItem(scene,
+        { x: 0, y: COL_H - Y_MID + 3.0, z: 0 }, { x: 0, y: S.cocBot - 1.6, z: 0 },
+        { color: "rgba(126,151,154,0.42)", width: 1, dash: [5, 5], arrow: false, pad: 0, padStart: 0 }));
+
+      for (i = 0; i < S.parts.length; i++) emitSolid(scene, S.parts[i], it);
+
+      if (pane.coronal) {
+        for (i = 0; i < S.centers.length - 1; i++) {
+          var q0 = S.centers[i], q1 = S.centers[i + 1];
+          it.push(edgeItem(scene,
+            { x: q0.x, y: q0.y, z: q0.z - 3.6 }, { x: q1.x, y: q1.y, z: q1.z - 3.6 }, {
+              color: cobbDeg > 0 ? "#35C6AC" : "rgba(53,198,172,0.55)",
+              width: 2, arrow: false, pad: 0, padStart: 0
+            }));
+        }
+      }
+
+      if (cobbDeg > 0 && pane.coronal) {
+        [TH0, TH1].forEach(function (u) {
+          var put = placer(u, S.A);
+          it.push(edgeItem(scene, put([-4.6, 0, -3.6]), put([4.6, 0, -3.6]), {
+            color: "#35C6AC", width: 1.4, dash: [4, 4], arrow: false, pad: 0, padStart: 0
+          }));
+        });
+      }
+
+      var cx = scene.w / 2 + pane.ox;
+      var o = { cx: cx, cap: pane.cap, coronal: pane.coronal, levels: [], regions: [], sag: [] };
+
+      if (pane.coronal) {
+        [{ name: "頸椎", n: "7個", a: 17, b: 23 },
+         { name: "胸椎", n: "12個", a: 5, b: 16 },
+         { name: "腰椎", n: "5個", a: 0, b: 4 }].forEach(function (R) {
+          o.regions.push({
+            name: R.name, n: R.n,
+            y0: scene.project({ x: 0, y: YC[R.b] - Y_MID + LEVELS[R.b].h / 2, z: 0 }).y,
+            y1: scene.project({ x: 0, y: YC[R.a] - Y_MID - LEVELS[R.a].h / 2, z: 0 }).y
+          });
+        });
+        o.sacY = scene.project({ x: 0, y: (S.sacTop + S.cocMid) / 2, z: 0 }).y;
+        o.cocY = scene.project({ x: 0, y: (S.cocMid + S.cocBot) / 2, z: 0 }).y;
+        for (i = 0; i < LEVELS.length; i++) {
+          var pl = scene.project(S.centers[i]);
+          o.levels.push({ name: LEVELS[i].name, x: pl.x, y: pl.y, key: keyLevels[i] || null });
+        }
+      } else {
+        SAG_NOTES.forEach(function (N) {
+          var y0 = scene.project(S.centers[N.b]).y, y1 = scene.project(S.centers[N.a]).y;
+          var xs = 0;
+          for (var q = N.a; q <= N.b; q++) xs = Math.max(xs, scene.project(S.centers[q]).x);
+          o.sag.push({ t: N.t, y: (y0 + y1) / 2, x: xs });
+        });
+      }
+      o.capY = scene.h - 16;
+      overlays.push(o);
+    });
+
+    scene.yaw = baseYaw;
+    scene.ox = baseOx;
+
+    it.push({
+      z: -1e6,
+      draw: function (ctx) {
+        ctx.save();
+        ctx.textBaseline = "middle";
+
+        overlays.forEach(function (o) {
+          // ペイン名
+          ctx.textAlign = "center";
+          ctx.font = "10.5px " + MONO;
+          ctx.fillStyle = C.muted;
+          ctx.fillText(o.cap, o.cx, o.capY);
+
+          if (o.coronal) {
+            var bx = o.cx - 108;
+            ctx.strokeStyle = "rgba(126,151,154,0.5)";
+            ctx.lineWidth = 1;
+            o.regions.forEach(function (m) {
+              ctx.beginPath();
+              ctx.moveTo(bx + 8, m.y0); ctx.lineTo(bx, m.y0);
+              ctx.lineTo(bx, m.y1); ctx.lineTo(bx + 8, m.y1);
+              ctx.stroke();
+              var mid = (m.y0 + m.y1) / 2;
+              ctx.textAlign = "right";
+              ctx.font = "700 15px " + FONT;
+              ctx.fillStyle = C.ink;
+              ctx.fillText(m.name, bx - 10, mid - 9);
+              ctx.font = "10.5px " + MONO;
+              ctx.fillStyle = C.muted;
+              ctx.fillText(m.n, bx - 10, mid + 9);
+            });
+            [[o.sacY, "仙骨"], [o.cocY, "尾骨"]].forEach(function (g) {
+              ctx.beginPath();
+              ctx.moveTo(bx, g[0]); ctx.lineTo(bx + 8, g[0]);
+              ctx.stroke();
+              ctx.textAlign = "right";
+              ctx.font = "700 13.5px " + FONT;
+              ctx.fillStyle = C.ink;
+              ctx.fillText(g[1], bx - 10, g[0]);
+            });
+
+            var lx = o.cx + 72, lastY = -99;
+            o.levels.forEach(function (m) {
+              if (!m.key && Math.abs(m.y - lastY) < 12) return;
+              lastY = m.y;
+              ctx.beginPath();
+              ctx.strokeStyle = m.key ? "#35C6AC" : "rgba(126,151,154,0.28)";
+              ctx.lineWidth = m.key ? 1.4 : 1;
+              ctx.moveTo(m.x + 15, m.y); ctx.lineTo(lx - 6, m.y);
+              ctx.stroke();
+              ctx.textAlign = "left";
+              ctx.font = (m.key ? "700 11.5px " : "10.5px ") + MONO;
+              ctx.fillStyle = m.key ? "#35C6AC" : C.muted;
+              ctx.fillText(m.name, lx, m.y);
+              if (m.key) {
+                ctx.font = "700 11.5px " + FONT;
+                ctx.fillText(m.key, lx + 34, m.y);
+              }
+            });
+          } else {
+            ctx.textAlign = "left";
+            o.sag.forEach(function (n) {
+              ctx.strokeStyle = "rgba(126,151,154,0.28)";
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(n.x + 12, n.y); ctx.lineTo(o.cx + 74, n.y);
+              ctx.stroke();
+              ctx.font = "700 12.5px " + FONT;
+              ctx.fillStyle = C.muted;
+              ctx.fillText(n.t, o.cx + 80, n.y);
+            });
+          }
+        });
+
+        // 読み値（2面表示のときだけ。狭い画面はスライダー行が担う）
+        if (!twoUp) { ctx.restore(); return; }
+        var rx = 22, ry = 26;
+        ctx.textAlign = "left";
+        ctx.font = "10.5px " + MONO;
+        ctx.fillStyle = C.muted;
+        ctx.fillText("COBB ANGLE", rx, ry);
+        ctx.font = "700 30px " + MONO;
+        ctx.fillStyle = cobbDeg > 0 ? "#35C6AC" : C.muted;
+        var num = String(cobbDeg);
+        var nw = ctx.measureText(num).width;
+        ctx.fillText(num, rx, ry + 28);
+        ctx.font = "700 18px " + MONO;
+        ctx.fillText("°", rx + nw + 3, ry + 22);
+        ctx.font = "10.5px " + MONO;
+        ctx.fillStyle = C.muted;
+        ctx.fillText("頂椎の回旋 " + (Math.abs(0.16 * coronalAt(0.5, buildSpine(cobbDeg).A)) * 180 / Math.PI).toFixed(1) + "°", rx, ry + 52);
+        ctx.fillText(cobbDeg === 0 ? "生理的弯曲のみ" : "冠状面弯曲 ＋ 軸回旋", rx, ry + 70);
+        ctx.restore();
+      }
+    });
+
+    return it;
+  }
+
+  var spineScene = new Scene(document.getElementById("cv-spine"), {
+    yaw: 0, pitch: 0, dist: 150, zoom: 11, ox: 0, spin: 0, build: buildSpineScene
+  });
+
+  document.getElementById("spine-reset").addEventListener("click", function () {
+    spineScene.yaw = 0;
+    spineScene.pitch = 0;
+    spineScene.draw();
+  });
+
+  var cobbInput = document.getElementById("cobb");
+  var cobbOut = document.getElementById("cobb-out");
+  var rotOut = document.getElementById("rot-out");
+  cobbInput.addEventListener("input", function () {
+    cobbDeg = parseInt(cobbInput.value, 10);
+    cobbOut.textContent = cobbDeg + "°";
+    var rot = Math.abs(0.16 * coronalAt(0.5, amplitudeFor(cobbDeg))) * 180 / Math.PI;
+    rotOut.textContent = "頂椎の回旋 " + rot.toFixed(1) + "° — "
+      + (cobbDeg === 0 ? "生理的弯曲のみ" : "冠状面弯曲 ＋ 軸回旋");
+    spineScene.draw();
   });
 
   var stackCtl = document.getElementById("stack-ctl");
