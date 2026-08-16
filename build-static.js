@@ -132,12 +132,14 @@ let base = fs.readFileSync(REPO + 'yellow_spacex_v8.html', 'utf8');
   const n = `  document.documentElement.lang = lang;
   // 静的ビルドでは window.__PAGE ごとの title / description を優先する
   var pk = window.__PAGE;
-  document.title = (pk && d['meta_title_' + pk]) ? d['meta_title_' + pk] : d.meta_title;`;
+  if (!window.__TITLE_FIXED) {
+    document.title = (pk && d['meta_title_' + pk]) ? d['meta_title_' + pk] : d.meta_title;
+  }`;
   if (!base.includes(o)) throw new Error('setLang title anchor');
   base = base.replace(o, n);
 
   const o2 = `  if (md) md.setAttribute('content', d.meta_desc);`;
-  const n2 = `  if (md) md.setAttribute('content', (pk && d['meta_desc_' + pk]) ? d['meta_desc_' + pk] : d.meta_desc);`;
+  const n2 = `  if (md && !window.__TITLE_FIXED) md.setAttribute('content', (pk && d['meta_desc_' + pk]) ? d['meta_desc_' + pk] : d.meta_desc);`;
   if (!base.includes(o2)) throw new Error('setLang desc anchor');
   base = base.replace(o2, n2);
 }
@@ -180,6 +182,39 @@ const IMG_DIR = DIST + 'assets/img/';
 
 // 1f. アセット参照を絶対パスへ（/xbuild/ 配下から相対解決されて404になるのを防ぐ）
 base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
+
+// 1g. ナビに「事例」を追加（実績の隣）
+{
+  const o = '<a class="hdr__link" href="#record"  data-i18n="nav_record">実績</a>';
+  if (!base.includes(o)) throw new Error('nav anchor');
+  base = base.replace(o, '<a class="hdr__link" href="/cases/" data-i18n="nav_cases">事例</a>\n    ' + o);
+  base = base.replace(/(    nav_work: "事業",)/, '    nav_cases: "事例",\n$1');
+  base = base.replace(/(    nav_work: "Work",)/, '    nav_cases: "Cases",\n$1');
+  // 全画面メニューにも
+  const m = '<a class="menu__item" href="#record"';
+  if (base.includes(m)) base = base.replace(m, '<a class="menu__item" href="/cases/" data-i18n="nav_cases" style="--dl:.10s">事例</a>\n    ' + m);
+  // ドロップダウンの「事業の一覧へ」の隣に事例導線
+  base = base.replace('<a class="drop__all" href="#xbuild" data-i18n="drop_all">',
+    '<a class="drop__all" href="/cases/" style="display:block;margin-bottom:10px">事例を見る →</a>\n            <a class="drop__all" href="#xbuild" data-i18n="drop_all">');
+}
+
+// 1h. 旧サイトのアンカー(#case-01 等)で来た人を新URLへ送る
+{
+  const map = JSON.parse(fs.readFileSync('/home/user/test_test_UIX/cases.json', 'utf8'))
+    .reduce((a, c, i) => (a['case-' + String(i + 1).padStart(2, '0')] = '/cases/' + c.key + '/', a), {});
+  const script = `<script>
+/* 旧サイトのアンカーで来た訪問者を対応するページへ送る（フラグメントはサーバに届かないためJSで処理） */
+(function () {
+  var M = ${JSON.stringify(map)};
+  M['about'] = '/#company'; M['profile'] = '/#company'; M['intro'] = '/';
+  var k = (location.hash || '').replace('#', '');
+  if (k && M[k] && location.pathname === '/') location.replace(M[k]);
+})();
+</script>
+`;
+  base = base.replace('<link rel="preconnect" href="https://fonts.googleapis.com">',
+    script + '<link rel="preconnect" href="https://fonts.googleapis.com">');
+}
 
 // ── 2. ルートごとに出力
 for (const r of ROUTES) {
@@ -242,6 +277,11 @@ for (const r of ROUTES) {
   console.log(('/' + r.dir).padEnd(16), (h.length / 1024).toFixed(0).padStart(5) + 'KB  ' + r.title.slice(0, 40));
 }
 
+// ── 2.5 事例ページ（現行サイトから移植した17件）
+const buildCases = require('/tmp/claude-0/-home-user-test-test-UIX/4f81ed0b-8615-559c-9e3d-ce90713e1d69/scratchpad/cases-append.js');
+const CASES = buildCases({ DIST, ORIGIN, base, ORG_ID: ORIGIN + '/#organization' });
+for (const [u, n] of CASES.sizes) console.log(u.padEnd(30), (n / 1024).toFixed(0).padStart(4) + 'KB');
+
 // ── 3. 付随ファイル
 for (const f of ['og.png', '404.html']) fs.copyFileSync(REPO + f, DIST + f);
 fs.cpSync(REPO + 'assets', DIST + 'assets', { recursive: true });
@@ -283,6 +323,8 @@ ${ROUTES.map(r => `  <url>
     <lastmod>${today}</lastmod>
     <priority>${r.dir === '' ? '1.0' : (r.service ? '0.8' : '0.3')}</priority>
   </url>`).join('\n')}
+  <url><loc>${ORIGIN}/cases/</loc><lastmod>${today}</lastmod><priority>0.9</priority></url>
+${CASES.cases.map(c => `  <url><loc>${ORIGIN}/cases/${c.key}/</loc><lastmod>${today}</lastmod><priority>0.7</priority></url>`).join('\n')}
 </urlset>
 `);
 
@@ -314,6 +356,10 @@ fs.writeFileSync(DIST + 'llms.txt', `# 株式会社YELLOW（YELLOW Inc.）
 - [xINTERACTIVE](${ORIGIN}/xinteractive/): スポーツDXと体験実装
 - [プライバシーポリシー](${ORIGIN}/privacy/)
 - [利用規約](${ORIGIN}/terms/)
+
+## 事例（すべてブラウザで動くデモを公開）
+
+${CASES.cases.map(c => `- [${c.title}](${ORIGIN}/cases/${c.key}/): ${c.lead}`).join('\n')}
 
 ## 実績（公開記録）
 
