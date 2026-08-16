@@ -37,7 +37,7 @@
   --ink:#0b0b0b;
   --white:#fff;
   --grey:#9b9b9b;
-  --grey-d:#5a5a5a;
+  --grey-d:#767676;   /* 小さなラベル用。黒地で4.5:1を満たす */
   --line:rgba(255,255,255,.22);
   --line-s:rgba(255,255,255,.10);
   --yellow:#FFD93D;
@@ -113,6 +113,19 @@ html[lang="en"] .lede{line-height:1.85;}
 .rv[data-d="1"]{transition-delay:.09s;}
 .rv[data-d="2"]{transition-delay:.18s;}
 .rv[data-d="3"]{transition-delay:.27s;}
+
+/* 項目単位のエラー表示 */
+.field.is-err input,.field.is-err select,.field.is-err textarea{border-bottom-color:#ff8a80;}
+.field.is-err label{color:#ff8a80;}
+
+/* スキップリンク（キーボード操作時のみ現れる） */
+.skiplink{
+  position:fixed;top:10px;left:10px;z-index:300;
+  background:var(--white);color:var(--black);
+  padding:10px 18px;font-size:12px;letter-spacing:.12em;
+  transform:translateY(-200%);transition:transform .2s var(--ease);
+}
+.skiplink:focus-visible{transform:none;outline-offset:0;}
 
 /* ═══════════════════════════════════════════════════════════
    INTRO（黒背景に中央ロゴ → サイトが現れる）
@@ -610,6 +623,7 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
 </head>
 
 <body>
+<a class="skiplink" href="#top" data-i18n="skip_link">本文へスキップ</a>
 
 <!-- ═══════════════════ INTRO ═══════════════════ -->
 <div class="intro" id="intro" aria-hidden="true">
@@ -741,7 +755,7 @@ setTimeout(function () {
   </div>
 </div>
 
-<main id="top">
+<main id="top" tabindex="-1">
 
 <div class="page active" id="page-home">
 
@@ -1341,6 +1355,7 @@ var I18N = {
     meta_title: "株式会社YELLOW",
     meta_desc: "株式会社YELLOWは、大学・研究機関・企業の技術シーズを社会へ橋渡しする会社です。人流分析、スポーツDX、そして研究と現場のあいだの運用レイヤーを担います。",
 
+    skip_link: "本文へスキップ",
     nav_work: "事業", nav_record: "実績", nav_company: "会社情報",
     nav_careers: "採用", nav_contact: "お問い合わせ",
 
@@ -1466,6 +1481,7 @@ var I18N = {
     meta_title: "YELLOW Inc.",
     meta_desc: "YELLOW bridges technology seeds from universities, research institutions, and companies into society — mobility analytics, sports DX, and the operational layer between research and real-world use.",
 
+    skip_link: "Skip to content",
     nav_work: "Work", nav_record: "Record", nav_company: "Company",
     nav_careers: "Careers", nav_contact: "Contact",
 
@@ -1801,9 +1817,24 @@ window.addEventListener('popstate', function () { routeFromHash(location.hash); 
     var message = document.getElementById('cf_message').value.trim();
 
     note.className = 'form__note';
-    if (!name || !email || !message) {
+    // 項目単位でエラーを付け、最初の未入力欄へフォーカスを移す
+    var required = [
+      [document.getElementById('cf_name'), name],
+      [document.getElementById('cf_email'), email],
+      [document.getElementById('cf_message'), message]
+    ];
+    var firstBad = null;
+    for (var ri = 0; ri < required.length; ri++) {
+      var el = required[ri][0];
+      var bad = !required[ri][1];
+      el.closest('.field').classList.toggle('is-err', bad);
+      if (bad) { el.setAttribute('aria-invalid', 'true'); if (!firstBad) firstBad = el; }
+      else el.removeAttribute('aria-invalid');
+    }
+    if (firstBad) {
       note.className = 'form__note is-ng';
       note.textContent = d.ct_required;
+      firstBad.focus();
       return;
     }
 
@@ -1831,6 +1862,20 @@ window.addEventListener('popstate', function () { routeFromHash(location.hash); 
       })
       .then(function () { btn.disabled = false; });
   });
+
+  // 入力し直したらその場でエラー表示を消す
+  var reqIds = ['cf_name', 'cf_email', 'cf_message'];
+  for (var ci = 0; ci < reqIds.length; ci++) {
+    (function (el) {
+      if (!el) return;
+      el.addEventListener('input', function () {
+        if (el.value.trim()) {
+          el.closest('.field').classList.remove('is-err');
+          el.removeAttribute('aria-invalid');
+        }
+      });
+    })(document.getElementById(reqIds[ci]));
+  }
 })();
 
 /* ═══════════════════ INIT ═══════════════════ */
@@ -1839,6 +1884,50 @@ routeFromHash(location.hash);
 </script>
 
 <script>
+
+/* ═══════════════════ メニューのフォーカス管理 ═══════════════════
+   全画面メニューを開いたら先頭リンクへフォーカスを移し、Tab を内側で循環させる。
+   閉じたらバーガーへ戻す。 */
+(function () {
+  var burger = document.getElementById('burger');
+  var menu = document.getElementById('menu');
+  if (!burger || !menu) return;
+  menu.setAttribute('role', 'dialog');
+  menu.setAttribute('aria-modal', 'true');
+  function links() { return menu.querySelectorAll('a'); }
+  burger.addEventListener('click', function () {
+    if (document.body.classList.contains('menu-open')) {
+      // 開くアニメーションで visibility が切り替わるのを待ってからフォーカス
+      setTimeout(function () {
+        var l = links();
+        if (l.length) l[0].focus();
+      }, 80);
+    } else {
+      burger.focus();
+    }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && menu.contains(document.activeElement)) { burger.focus(); return; }
+    if (e.key !== 'Tab' || !document.body.classList.contains('menu-open')) return;
+    var l = links();
+    if (!l.length) return;
+    var first = l[0], last = l[l.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+})();
+
+/* スキップリンクは ルーターを通さず素のアンカー挙動でフォーカスを移す */
+(function () {
+  var s = document.querySelector('.skiplink');
+  if (!s) return;
+  s.addEventListener('click', function (e) {
+    e.stopPropagation();
+    var t = document.getElementById('top');
+    if (t) { t.focus(); }
+  });
+})();
+
 /* ═══════════════════ INTRO ═══════════════════
    黒背景に中央ロゴ → ロゴが立ち上がったらオーバーレイを溶かしてサイトを見せる。
    溶け始めと同時にヒーローの出現アニメーションを再生し直すので、
