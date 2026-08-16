@@ -184,6 +184,7 @@ html[lang="en"] .lede{line-height:1.85;}
 }
 .intro.is-gone{display:none;}
 body.intro-lock{overflow:hidden;}
+
 @media (prefers-reduced-motion:reduce){
   .intro{display:none;}
 }
@@ -656,6 +657,55 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
   .hero__scroll i::after{animation:none;}
   .card__img img{transition:none;}
 }
+
+/* ═══════════════════════════════════════════════════════════
+   スマホ最適化
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width:900px){
+  /* iOSは16px未満の入力欄でフォーカス時に画面を拡大してしまう */
+  .field input,.field select,.field textarea{font-size:16px;min-height:44px;}
+
+  /* タップ領域を44px以上に。見た目は変えず疑似要素で当たり判定だけ広げる */
+  .burger{position:relative;}
+  .burger::after{content:"";position:absolute;top:-15px;left:-9px;right:-9px;bottom:-15px;}
+  .lang button{min-height:44px;padding:0 10px;display:inline-flex;align-items:center;}
+  .hdr__logo{display:inline-flex;align-items:center;min-height:44px;}
+  .skiplink{padding:14px 20px;}
+
+  /* 全画面メニュー: 行間を広げて誤タップを防ぐ */
+  .menu__list{gap:clamp(14px,2.6vh,26px);}
+  .menu__sub{gap:10px 22px;margin:10px 0 6px;}
+  .menu__sub a,.menu__foot a{display:inline-flex;align-items:center;min-height:44px;}
+
+  /* フッターと事例カードのリンクも指で押せる高さに */
+  .ft__cols a{display:inline-flex;align-items:center;min-height:44px;}
+  .aside__v a{display:inline-block;padding:12px 0;}
+  .case__nav a{display:inline-flex;align-items:center;min-height:44px;}
+  .back{display:inline-flex;align-items:center;min-height:44px;}
+  .legal a{display:inline-block;min-height:44px;padding:10px 0;}
+  .menu__item{min-height:48px;display:flex;align-items:center;}
+  .nextprod a{min-height:48px;}
+  .case__demo{min-height:48px;box-sizing:border-box;}
+  .case__demo{padding:16px 30px;}
+
+  /* 画像の上に載る文字を読みやすく（スマホは本文が画像の明るい部分に重なりやすい） */
+  .panel__scrim{
+    background:
+      linear-gradient(to top,rgba(0,0,0,.94) 0%,rgba(0,0,0,.66) 38%,rgba(0,0,0,.20) 70%,rgba(0,0,0,.05) 100%),
+      linear-gradient(to right,rgba(0,0,0,.55) 0%,rgba(0,0,0,0) 72%);
+  }
+
+  /* 事例一覧は1カラムでも詰まって見えないように */
+  .cases__grid{grid-template-columns:1fr;}
+  .case__shots{grid-template-columns:1fr;gap:12px;}
+}
+
+/* 横向き（ランドスケープ）で全画面パネルが窮屈にならないように */
+@media (max-width:900px) and (orientation:landscape){
+  .panel{min-height:auto;padding-top:78px;padding-bottom:40px;}
+  .hero{min-height:100svh;}
+}
+
 </style>
 </head>
 
