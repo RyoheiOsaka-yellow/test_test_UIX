@@ -2444,6 +2444,8 @@ function cutToCanonicalShot(cut, i, projectId) {
         camera_bearing_deg: +L.camBearing || 0,
         sun: s2 ? { azimuth_deg: +s2.azimuth.toFixed(1), elevation_deg: +s2.elevation.toFixed(1) } : null,
         keep_aspects: L.keep,
+        photo_traits: L.photoTraits && L.usePhoto !== false
+          ? { descriptors_en: L.photoTraits.en, measured: L.photoTraits.stats } : null,
       };
     })() : null,
     performance: perfActive(cut) ? (() => {

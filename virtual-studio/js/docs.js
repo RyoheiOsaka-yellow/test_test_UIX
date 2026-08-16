@@ -129,6 +129,16 @@ function buildInstructionDoc() {
         </table>
         ${ev && !ev.polar ? `<p class="memo">☀️ <b>当日の太陽 (現地太陽時)</b>: 日の出 ${esc(ev.rise || "—")} ｜ 朝ゴールデンアワー 〜${esc(ev.goldenEnd || "—")} ｜ 夕ゴールデンアワー ${esc(ev.goldenStart || "—")}〜 ｜ 日の入 ${esc(ev.set || "—")} ｜ 南中高度 ${ev.maxEl.toFixed(1)}°</p>` : ""}
         ${ev && ev.polar ? `<p class="memo">☀️ ${esc(ev.polar)}</p>` : ""}
+        ${(() => {
+          const ph = (state.story.refs || []).find(r => r.id === L.photoRefId);
+          const tr = L.photoTraits;
+          if (!ph || !tr) return "";
+          return `<div class="loc-photo-doc">
+            <img src="${ph.dataUrl}" alt="${esc(ph.name)}">
+            <div><b>ロケ地写真から測った光と色</b><br>${esc(tr.ja.join(" ／ "))}
+            <br><small>${esc(tr.en.join(", "))}</small></div>
+          </div>`;
+        })()}
         ${lp ? `<p class="memo">🎬 <b>光の傾向</b>: ${esc(lp.lightNote)}<br>📋 <b>許可・段取り</b>: ${esc(lp.permit)}</p>` : ""}
         ${L.note ? `<p class="memo">📝 ${esc(L.note)}</p>` : ""}`;
       })()}
@@ -349,6 +359,9 @@ function buildStoryboardDoc() {
     .panel-beats { margin: 3px 0 0 14px; padding: 0; font-size: 9.5px; color: #1a1d24; line-height: 1.5; }
     .panel-beats span { color: #8a6d3b; font-weight: 700; font-variant-numeric: tabular-nums; }
     .panel-cap { font-size: 10px; margin-top: 3px; padding: 2px 5px; background: #f2f4f7; border-radius: 3px; }
+    .loc-photo-doc { display: flex; gap: 10px; align-items: center; font-size: 11px; margin-top: 8px; }
+    .loc-photo-doc img { width: 120px; height: 74px; object-fit: cover; border-radius: 5px; }
+    .loc-photo-doc small { color: #667; }
     .panel-dur { font-size: 12px; font-weight: 700; color: #b06e06; }
     .panel-trans { font-size: 10px; text-align: center; background: #f0f2f5; padding: 3px; color: #445; border-top: 1px dashed #ccc; }
     .panel-trans.end { color: #999; }

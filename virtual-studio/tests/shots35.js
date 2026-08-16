@@ -1,4 +1,4 @@
-// v4.3: ロケ地 (演出) — 地域ライブラリ / Maps座標 / 太陽計算 / プロンプト化
+// v4.3/v4.4: ロケ地 — 地域ライブラリ / Maps座標 / 太陽計算 / 写真からの空気感取り込み
 // 可搬版: VS_CHROME でChromiumパス指定 (未指定ならplaywright-core既定)
 const { chromium } = require('playwright-core');
 (async () => {
@@ -147,6 +147,59 @@ const { chromium } = require('playwright-core');
     };
   });
   console.log({ ...out, outOk: Object.values(out).every(Boolean) });
+
+  // ============ ⑦ ロケ地写真から光と色を取り込む ============
+  const photo = await page.evaluate(async () => {
+    // 夕方の暖色・高コントラスト・彩度高めの写真を合成して取り込む
+    const mk = (draw) => {
+      const cv = document.createElement('canvas'); cv.width = 240; cv.height = 135;
+      draw(cv.getContext('2d'), 240, 135); return cv.toDataURL('image/jpeg', 0.9);
+    };
+    const warm = mk((g, w, h) => {
+      const gr = g.createLinearGradient(0, 0, 0, h);
+      gr.addColorStop(0, '#ff9a3c'); gr.addColorStop(0.6, '#c14a12'); gr.addColorStop(1, '#140a06');
+      g.fillStyle = gr; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#fff3c4'; g.beginPath(); g.arc(180, 40, 18, 0, 7); g.fill();
+    });
+    const cool = mk((g, w, h) => { g.fillStyle = '#93a4b3'; g.fillRect(0, 0, w, h); });
+
+    state.story.refs.push({ id: 'ph-warm', name: 'sunset.jpg', mediaKind: 'image', dataUrl: warm });
+    state.story.refs.push({ id: 'ph-cool', name: 'overcast.jpg', mediaKind: 'image', dataUrl: cool });
+    const c = state.cuts[0];
+    const t1 = await locSetPhoto(c, 'ph-warm');
+    const p1 = generatePrompt(c, 'seedance');
+    const beforeTod = c.timeOfDay;
+    locApplyPhotoGuess(c);
+    const afterTod = c.timeOfDay;
+    // プロンプトから外せる
+    c.location.usePhoto = false;
+    const off = generatePrompt(c, 'seedance');
+    c.location.usePhoto = true;
+    // 寒色・低コントラストの写真は別の言葉になる
+    const t2 = await locSetPhoto(c, 'ph-cool');
+    await locSetPhoto(c, 'ph-warm');
+    return {
+      warmJa: t1.ja.join('/'), warmEn: t1.en.join(', '),
+      coolJa: t2.ja.join('/'),
+      inPrompt: p1.includes('LOCATION LIGHT (from photo): warm golden light'),
+      offWorks: !off.includes('LOCATION LIGHT'),
+      guessApplied: beforeTod !== afterTod && afterTod === 'golden',
+      differs: t1.ja.join() !== t2.ja.join(),
+    };
+  });
+  console.log({ ...photo,
+    photoOk: photo.warmEn.includes('warm golden light') && photo.coolJa.includes('寒色')
+      && photo.inPrompt && photo.offWorks && photo.guessApplied && photo.differs });
+
+  // 写真だけでもロケ地として成立し、指示書にも出る
+  const photoDoc = await page.evaluate(() => {
+    const c = state.cuts[1];
+    c.location.photoRefId = 'ph-warm';
+    c.location.photoTraits = state.cuts[0].location.photoTraits;
+    const doc = buildInstructionDoc();
+    return { active: locActive(c), doc: doc.includes('ロケ地写真から測った光と色') };
+  });
+  console.log({ ...photoDoc, photoDocOk: photoDoc.active && photoDoc.doc });
 
   await page.evaluate(() => document.querySelector('.sc-cut').scrollIntoView({ block: 'start', behavior: 'instant' }));
   await page.waitForTimeout(300);

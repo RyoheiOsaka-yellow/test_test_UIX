@@ -1126,6 +1126,15 @@ input[type="range"]::-moz-range-thumb {
   padding: 5px 9px; font-size: 11px; color: var(--text2); font-family: inherit;
 }
 
+.sc-locphoto { align-items: flex-start; }
+.sc-photo {
+  width: 84px; height: 52px; object-fit: cover; border-radius: 7px;
+  box-shadow: var(--shadow-sm); flex: 0 0 auto;
+}
+.sc-photo-tags { display: flex; flex-wrap: wrap; gap: 3px; flex: 1 1 auto; min-width: 0; }
+.sc-photo-use { font-size: 10.5px; color: var(--text2); display: inline-flex; align-items: center; gap: 4px; }
+.sc-locphoto .insp-hint { flex: 1 1 100%; }
+
 /* ---------- ロケ地ライブラリ ---------- */
 /* 台本ページの上に重ねて開くため、他のオーバーレイより前面に置く */
 #locOverlay { z-index: 110; }
@@ -1832,6 +1841,8 @@ kbd {
   </div>
   <div id="locGrid"></div>
 </div>
+
+<input type="file" id="locPhotoInput" accept="image/*" hidden>
 
 <div id="scriptOverlay" class="overlay" role="dialog" aria-modal="true" aria-label="台本・絵コンテ" hidden>
   <div class="overlay-bar">
@@ -7611,6 +7622,16 @@ function buildInstructionDoc() {
         </table>
         ${ev && !ev.polar ? `<p class="memo">☀️ <b>当日の太陽 (現地太陽時)</b>: 日の出 ${esc(ev.rise || "—")} ｜ 朝ゴールデンアワー 〜${esc(ev.goldenEnd || "—")} ｜ 夕ゴールデンアワー ${esc(ev.goldenStart || "—")}〜 ｜ 日の入 ${esc(ev.set || "—")} ｜ 南中高度 ${ev.maxEl.toFixed(1)}°</p>` : ""}
         ${ev && ev.polar ? `<p class="memo">☀️ ${esc(ev.polar)}</p>` : ""}
+        ${(() => {
+          const ph = (state.story.refs || []).find(r => r.id === L.photoRefId);
+          const tr = L.photoTraits;
+          if (!ph || !tr) return "";
+          return `<div class="loc-photo-doc">
+            <img src="${ph.dataUrl}" alt="${esc(ph.name)}">
+            <div><b>ロケ地写真から測った光と色</b><br>${esc(tr.ja.join(" ／ "))}
+            <br><small>${esc(tr.en.join(", "))}</small></div>
+          </div>`;
+        })()}
         ${lp ? `<p class="memo">🎬 <b>光の傾向</b>: ${esc(lp.lightNote)}<br>📋 <b>許可・段取り</b>: ${esc(lp.permit)}</p>` : ""}
         ${L.note ? `<p class="memo">📝 ${esc(L.note)}</p>` : ""}`;
       })()}
@@ -7831,6 +7852,9 @@ function buildStoryboardDoc() {
     .panel-beats { margin: 3px 0 0 14px; padding: 0; font-size: 9.5px; color: #1a1d24; line-height: 1.5; }
     .panel-beats span { color: #8a6d3b; font-weight: 700; font-variant-numeric: tabular-nums; }
     .panel-cap { font-size: 10px; margin-top: 3px; padding: 2px 5px; background: #f2f4f7; border-radius: 3px; }
+    .loc-photo-doc { display: flex; gap: 10px; align-items: center; font-size: 11px; margin-top: 8px; }
+    .loc-photo-doc img { width: 120px; height: 74px; object-fit: cover; border-radius: 5px; }
+    .loc-photo-doc small { color: #667; }
     .panel-dur { font-size: 12px; font-weight: 700; color: #b06e06; }
     .panel-trans { font-size: 10px; text-align: center; background: #f0f2f5; padding: 3px; color: #445; border-top: 1px dashed #ccc; }
     .panel-trans.end { color: #999; }
@@ -9779,6 +9803,9 @@ function buildLocationBlock(cut, prose) {
           : s.elevation > 60 ? " (high overhead sun, short hard shadows)" : "");
     }
   }
+  /* 写真から測った空気感 (光と色) — 参照写真が一番正確に持っている情報 */
+  const photo = L.photoTraits && L.usePhoto !== false ? L.photoTraits.en.join(", ") : "";
+
   const negs = [];
   if (p) LOC_SIGNAGE_NEG.forEach(n => { if (n.re.test(p.signage || "")) negs.push(n.neg); });
   if (p && /none/i.test(p.vegetation || "")) negs.push("no trees or planting");
@@ -9787,6 +9814,7 @@ function buildLocationBlock(cut, prose) {
     return [
       `Location: ${head}.`,
       details.length ? details.join("; ") + "." : "",
+      photo ? `Light and colour as in the location photo: ${photo}.` : "",
       sun ? `Sun: ${sun}.` : "",
       negs.length ? `Avoid: ${negs.join(", ")}.` : "",
     ].filter(Boolean).join(" ");
@@ -9794,6 +9822,7 @@ function buildLocationBlock(cut, prose) {
   return [
     `LOCATION: ${head}`,
     details.length ? details.map(d => `- ${d}`).join("\n") : "",
+    photo ? `LOCATION LIGHT (from photo): ${photo}` : "",
     sun ? `SUN: ${sun}` : "",
     negs.length ? `LOCATION NEGATIVE: ${negs.join(", ")}` : "",
   ].filter(Boolean).join("\n");
@@ -9849,6 +9878,96 @@ function applySunToStudio(cut) {
   return true;
 }
 
+/* =========================================================
+ * ロケ地写真からの空気感の取り込み
+ * 写真が一番正確に持っているのは「その場の光と色」。
+ * 解析はブラウザ内だけで完結し、画像はどこにも送信されない。
+ * ======================================================= */
+
+/* 画像 (dataURL) の輝度・コントラスト・色温度・彩度を測る */
+function locPhotoStats(dataUrl) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const W = 96, H = 54;
+      const cv = document.createElement("canvas");
+      cv.width = W; cv.height = H;
+      const cx = cv.getContext("2d", { willReadFrequently: true });
+      cx.drawImage(img, 0, 0, W, H);
+      try {
+        const st = frameStats(cx, W, H);
+        resolve({ mean: st.mean, contrast: st.contrast, warmth: st.warmth, sat: st.sat });
+      } catch { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+/* 測定値を、言葉 (日本語の確認用 / 英語のプロンプト用) と設定の推定に変換する */
+function locPhotoDescribe(st) {
+  if (!st) return null;
+  const ja = [], en = [];
+  if (st.warmth > 0.06) { ja.push("暖色 (夕方・タングステン寄り)"); en.push("warm golden light"); }
+  else if (st.warmth < -0.03) { ja.push("寒色 (曇天・日陰寄り)"); en.push("cool blue-grey light"); }
+  else { ja.push("ニュートラルな色"); en.push("neutral daylight colour"); }
+
+  if (st.contrast > 0.7) { ja.push("硬い光 (影が濃い)"); en.push("hard directional light with deep shadows"); }
+  else if (st.contrast < 0.35) { ja.push("柔らかい光 (影が薄い)"); en.push("soft flat light, shadows barely visible"); }
+  else { ja.push("中間のコントラスト"); en.push("moderate contrast"); }
+
+  if (st.mean > 0.6) { ja.push("明るい (ハイキー)"); en.push("bright high-key exposure"); }
+  else if (st.mean < 0.26) { ja.push("暗い (ローキー)"); en.push("dark low-key exposure"); }
+
+  if (st.sat > 0.28) { ja.push("彩度が高い"); en.push("saturated colour palette"); }
+  else if (st.sat < 0.09) { ja.push("彩度が低い (ほぼ無彩色)"); en.push("desaturated, near-monochrome palette"); }
+
+  /* 設定の推定 (自動適用はせず、ボタンで反映させる) */
+  const guess = {};
+  if (st.warmth > 0.07 && st.contrast > 0.45 && st.mean > 0.3) guess.timeOfDay = "golden";
+  else if (st.warmth < -0.03 && st.contrast < 0.4) { guess.weather = "cloudy"; }
+  else if (st.mean < 0.26) guess.timeOfDay = "night";
+  if (st.sat < 0.09) guess.look = "mono";
+  else if (st.sat > 0.3 && st.warmth > 0.03) guess.look = "filmwarm";
+  return { ja, en, guess, stats: st };
+}
+
+/* カットにロケ地写真を割り当てて解析する (参照素材として保存され、
+ * プロジェクト保存・バックアップにも乗る) */
+async function locSetPhoto(cut, refId) {
+  cut.location.photoRefId = refId || null;
+  cut.location.photoTraits = null;
+  if (!refId) return null;
+  const ref = (state.story.refs || []).find(r => r.id === refId);
+  if (!ref || !ref.dataUrl) return null;
+  const st = await locPhotoStats(ref.dataUrl);
+  const desc = locPhotoDescribe(st);
+  cut.location.photoTraits = desc ? { ja: desc.ja, en: desc.en, guess: desc.guess, stats: desc.stats } : null;
+  return cut.location.photoTraits;
+}
+
+/* 推定した時間帯・天候・ルックをカットへ反映する (明示操作) */
+function locApplyPhotoGuess(cut) {
+  const g = cut.location.photoTraits && cut.location.photoTraits.guess;
+  if (!g || !Object.keys(g).length) { showToast("この写真からは時間帯・天候の推定ができませんでした"); return false; }
+  const done = [];
+  if (g.timeOfDay && TIMES_OF_DAY.some(t => t.id === g.timeOfDay)) {
+    cut.timeOfDay = g.timeOfDay;
+    done.push("時間帯: " + (TIMES_OF_DAY.find(t => t.id === g.timeOfDay) || {}).label);
+  }
+  if (g.weather && WEATHERS.some(w => w.id === g.weather)) {
+    cut.weather = g.weather;
+    done.push("天候: " + (WEATHERS.find(w => w.id === g.weather) || {}).label);
+  }
+  if (g.look && LOOKS.some(l => l.id === g.look)) {
+    cut.look = g.look;
+    done.push("ルック: " + (LOOKS.find(l => l.id === g.look) || {}).label);
+  }
+  refresh(); renderInspector();
+  showToast(done.length ? "写真から反映しました — " + done.join(" / ") : "反映できる項目がありませんでした");
+  return true;
+}
+
 /* ---------- ロケ地ライブラリ (オーバーレイ) ---------- */
 let locTargetCut = null;   // 適用先のカット index
 function renderLocationLib() {
@@ -9886,6 +10005,23 @@ function openLocationLib(cutIdx) {
 }
 
 function setupLocationPage() {
+  /* ロケ地写真の取り込み — 参照素材として保存してから解析する */
+  byId("locPhotoInput").addEventListener("change", async e => {
+    const file = e.target.files[0];
+    const ci = +e.target.dataset.ci;
+    e.target.value = "";
+    const cut = state.cuts[ci];
+    if (!file || !cut) return;
+    const before = state.story.refs.length;
+    await wfAddRefFiles([file]);
+    if (state.story.refs.length === before) { showToast("⚠️ この画像は読み込めませんでした"); return; }
+    const ref = state.story.refs[state.story.refs.length - 1];
+    await locSetPhoto(cut, ref.id);
+    refresh(); renderInspector();
+    if (!byId("scriptOverlay").hidden) renderScriptPage();
+    showToast("ロケ地写真の光と色を取り込みました");
+  });
+
   byId("locRegion").innerHTML = `<option value="">すべての地域</option>`
     + LOCATION_REGIONS.map(r => `<option value="${r.id}">${esc(r.label)}</option>`).join("");
   byId("btnLocBack").addEventListener("click", () => { byId("locOverlay").hidden = true; });
@@ -10031,6 +10167,28 @@ function renderScriptPage() {
               日の出 ${ev.rise || "—"} ｜ 朝GH〜${ev.goldenEnd || "—"} ｜ 夕GH ${ev.goldenStart || "—"}〜 ｜ 日の入 ${ev.set || "—"}</span>`;
           })()}
         </div>` : ""}
+        <div class="sc-loc sc-locphoto">
+          ${(() => {
+            const ph = (state.story.refs || []).find(r => r.id === cut.location.photoRefId);
+            const tr = cut.location.photoTraits;
+            if (!ph) {
+              const imgs = (state.story.refs || []).filter(r => (r.mediaKind || "image") === "image" && r.dataUrl);
+              return `<button class="btn small" data-scphotoadd="${ci}"><svg class="ic"><use href="#i-image"/></svg> ロケ地写真から取り込む</button>
+                ${imgs.length ? `<select data-scphotopick="${ci}" title="取り込み済みの素材から選ぶ">
+                  <option value="">素材から選ぶ…</option>
+                  ${imgs.map(r => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join("")}
+                </select>` : ""}
+                <span class="insp-hint">写真の光と色 (暖色/硬さ/明るさ/彩度) を測ってプロンプトに渡します</span>`;
+            }
+            return `<img class="sc-photo" src="${ph.dataUrl}" alt="${esc(ph.name)}" title="${esc(ph.name)}">
+              <span class="sc-photo-tags">${tr ? tr.ja.map(t => `<span class="p-tag">${esc(t)}</span>`).join("") : "解析中…"}</span>
+              <label class="sc-photo-use" title="オフにするとプロンプトには渡しません">
+                <input type="checkbox" data-scphotouse="${ci}" ${cut.location.usePhoto === false ? "" : "checked"}> プロンプトに使う
+              </label>
+              ${tr && Object.keys(tr.guess || {}).length ? `<button class="btn tiny" data-scphotoguess="${ci}" title="推定した時間帯・天候・ルックをカットに反映">時間帯/天候に反映</button>` : ""}
+              <button class="icon-btn small danger" data-scphotodel="${ci}" title="写真を外す"><svg class="ic"><use href="#i-trash"/></svg></button>`;
+          })()}
+        </div>
         <input type="text" class="sc-locnote" data-scsitenote="${ci}" value="${esc(cut.location.note)}" placeholder="ロケ地メモ (許可・段取り・その場所固有の注意)">
 
         <div class="sc-sub">登場要素 <small>動くのは人だけではない (車両・動物・群衆・物・カメラ自身)</small></div>
@@ -10165,6 +10323,25 @@ function setupScriptPage() {
     if (lib) { openLocationLib(+lib.dataset.scloclib); return; }
     const lclr = e.target.closest("[data-sclocclear]");
     if (lclr) { state.cuts[+lclr.dataset.sclocclear].location.presetId = null; sync(true); return; }
+    const padd = e.target.closest("[data-scphotoadd]");
+    if (padd) {
+      const inp = byId("locPhotoInput");
+      inp.dataset.ci = padd.dataset.scphotoadd;
+      inp.click();
+      return;
+    }
+    const pdel = e.target.closest("[data-scphotodel]");
+    if (pdel) {
+      locSetPhoto(state.cuts[+pdel.dataset.scphotodel], null);
+      sync(true);
+      return;
+    }
+    const pg = e.target.closest("[data-scphotoguess]");
+    if (pg) {
+      locApplyPhotoGuess(state.cuts[+pg.dataset.scphotoguess]);
+      renderScriptPage();
+      return;
+    }
     const sunb = e.target.closest("[data-scsun]");
     if (sunb) { applySunToStudio(state.cuts[+sunb.dataset.scsun]); renderScriptPage(); return; }
     const bup = e.target.closest("[data-scbup]");
@@ -10217,6 +10394,12 @@ function setupScriptPage() {
     else if (d.scdate != null) cut.location.date = t.value;
     else if (d.sctime != null) cut.location.time = t.value;
     else if (d.scbearing != null) cut.location.camBearing = ((+t.value || 0) % 360 + 360) % 360;
+    else if (d.scphotopick != null) {
+      if (!t.value) return;
+      locSetPhoto(cut, t.value).then(() => { renderScriptPage(); renderPrompt(); });
+      return;
+    }
+    else if (d.scphotouse != null) { cut.location.usePhoto = t.checked; }
     else if (d.sctpl != null) {
       if (!t.value) return;
       perfApplyTemplate(cut, t.value);
@@ -12694,6 +12877,8 @@ function cutToCanonicalShot(cut, i, projectId) {
         camera_bearing_deg: +L.camBearing || 0,
         sun: s2 ? { azimuth_deg: +s2.azimuth.toFixed(1), elevation_deg: +s2.elevation.toFixed(1) } : null,
         keep_aspects: L.keep,
+        photo_traits: L.photoTraits && L.usePhoto !== false
+          ? { descriptors_en: L.photoTraits.en, measured: L.photoTraits.stats } : null,
       };
     })() : null,
     performance: perfActive(cut) ? (() => {

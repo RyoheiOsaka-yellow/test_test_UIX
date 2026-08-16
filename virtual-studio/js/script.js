@@ -121,6 +121,28 @@ function renderScriptPage() {
               日の出 ${ev.rise || "—"} ｜ 朝GH〜${ev.goldenEnd || "—"} ｜ 夕GH ${ev.goldenStart || "—"}〜 ｜ 日の入 ${ev.set || "—"}</span>`;
           })()}
         </div>` : ""}
+        <div class="sc-loc sc-locphoto">
+          ${(() => {
+            const ph = (state.story.refs || []).find(r => r.id === cut.location.photoRefId);
+            const tr = cut.location.photoTraits;
+            if (!ph) {
+              const imgs = (state.story.refs || []).filter(r => (r.mediaKind || "image") === "image" && r.dataUrl);
+              return `<button class="btn small" data-scphotoadd="${ci}"><svg class="ic"><use href="#i-image"/></svg> ロケ地写真から取り込む</button>
+                ${imgs.length ? `<select data-scphotopick="${ci}" title="取り込み済みの素材から選ぶ">
+                  <option value="">素材から選ぶ…</option>
+                  ${imgs.map(r => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join("")}
+                </select>` : ""}
+                <span class="insp-hint">写真の光と色 (暖色/硬さ/明るさ/彩度) を測ってプロンプトに渡します</span>`;
+            }
+            return `<img class="sc-photo" src="${ph.dataUrl}" alt="${esc(ph.name)}" title="${esc(ph.name)}">
+              <span class="sc-photo-tags">${tr ? tr.ja.map(t => `<span class="p-tag">${esc(t)}</span>`).join("") : "解析中…"}</span>
+              <label class="sc-photo-use" title="オフにするとプロンプトには渡しません">
+                <input type="checkbox" data-scphotouse="${ci}" ${cut.location.usePhoto === false ? "" : "checked"}> プロンプトに使う
+              </label>
+              ${tr && Object.keys(tr.guess || {}).length ? `<button class="btn tiny" data-scphotoguess="${ci}" title="推定した時間帯・天候・ルックをカットに反映">時間帯/天候に反映</button>` : ""}
+              <button class="icon-btn small danger" data-scphotodel="${ci}" title="写真を外す"><svg class="ic"><use href="#i-trash"/></svg></button>`;
+          })()}
+        </div>
         <input type="text" class="sc-locnote" data-scsitenote="${ci}" value="${esc(cut.location.note)}" placeholder="ロケ地メモ (許可・段取り・その場所固有の注意)">
 
         <div class="sc-sub">登場要素 <small>動くのは人だけではない (車両・動物・群衆・物・カメラ自身)</small></div>
@@ -255,6 +277,25 @@ function setupScriptPage() {
     if (lib) { openLocationLib(+lib.dataset.scloclib); return; }
     const lclr = e.target.closest("[data-sclocclear]");
     if (lclr) { state.cuts[+lclr.dataset.sclocclear].location.presetId = null; sync(true); return; }
+    const padd = e.target.closest("[data-scphotoadd]");
+    if (padd) {
+      const inp = byId("locPhotoInput");
+      inp.dataset.ci = padd.dataset.scphotoadd;
+      inp.click();
+      return;
+    }
+    const pdel = e.target.closest("[data-scphotodel]");
+    if (pdel) {
+      locSetPhoto(state.cuts[+pdel.dataset.scphotodel], null);
+      sync(true);
+      return;
+    }
+    const pg = e.target.closest("[data-scphotoguess]");
+    if (pg) {
+      locApplyPhotoGuess(state.cuts[+pg.dataset.scphotoguess]);
+      renderScriptPage();
+      return;
+    }
     const sunb = e.target.closest("[data-scsun]");
     if (sunb) { applySunToStudio(state.cuts[+sunb.dataset.scsun]); renderScriptPage(); return; }
     const bup = e.target.closest("[data-scbup]");
@@ -307,6 +348,12 @@ function setupScriptPage() {
     else if (d.scdate != null) cut.location.date = t.value;
     else if (d.sctime != null) cut.location.time = t.value;
     else if (d.scbearing != null) cut.location.camBearing = ((+t.value || 0) % 360 + 360) % 360;
+    else if (d.scphotopick != null) {
+      if (!t.value) return;
+      locSetPhoto(cut, t.value).then(() => { renderScriptPage(); renderPrompt(); });
+      return;
+    }
+    else if (d.scphotouse != null) { cut.location.usePhoto = t.checked; }
     else if (d.sctpl != null) {
       if (!t.value) return;
       perfApplyTemplate(cut, t.value);

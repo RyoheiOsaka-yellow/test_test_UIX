@@ -139,6 +139,9 @@ function buildLocationBlock(cut, prose) {
           : s.elevation > 60 ? " (high overhead sun, short hard shadows)" : "");
     }
   }
+  /* 写真から測った空気感 (光と色) — 参照写真が一番正確に持っている情報 */
+  const photo = L.photoTraits && L.usePhoto !== false ? L.photoTraits.en.join(", ") : "";
+
   const negs = [];
   if (p) LOC_SIGNAGE_NEG.forEach(n => { if (n.re.test(p.signage || "")) negs.push(n.neg); });
   if (p && /none/i.test(p.vegetation || "")) negs.push("no trees or planting");
@@ -147,6 +150,7 @@ function buildLocationBlock(cut, prose) {
     return [
       `Location: ${head}.`,
       details.length ? details.join("; ") + "." : "",
+      photo ? `Light and colour as in the location photo: ${photo}.` : "",
       sun ? `Sun: ${sun}.` : "",
       negs.length ? `Avoid: ${negs.join(", ")}.` : "",
     ].filter(Boolean).join(" ");
@@ -154,6 +158,7 @@ function buildLocationBlock(cut, prose) {
   return [
     `LOCATION: ${head}`,
     details.length ? details.map(d => `- ${d}`).join("\n") : "",
+    photo ? `LOCATION LIGHT (from photo): ${photo}` : "",
     sun ? `SUN: ${sun}` : "",
     negs.length ? `LOCATION NEGATIVE: ${negs.join(", ")}` : "",
   ].filter(Boolean).join("\n");
@@ -209,6 +214,96 @@ function applySunToStudio(cut) {
   return true;
 }
 
+/* =========================================================
+ * ロケ地写真からの空気感の取り込み
+ * 写真が一番正確に持っているのは「その場の光と色」。
+ * 解析はブラウザ内だけで完結し、画像はどこにも送信されない。
+ * ======================================================= */
+
+/* 画像 (dataURL) の輝度・コントラスト・色温度・彩度を測る */
+function locPhotoStats(dataUrl) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const W = 96, H = 54;
+      const cv = document.createElement("canvas");
+      cv.width = W; cv.height = H;
+      const cx = cv.getContext("2d", { willReadFrequently: true });
+      cx.drawImage(img, 0, 0, W, H);
+      try {
+        const st = frameStats(cx, W, H);
+        resolve({ mean: st.mean, contrast: st.contrast, warmth: st.warmth, sat: st.sat });
+      } catch { resolve(null); }
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+/* 測定値を、言葉 (日本語の確認用 / 英語のプロンプト用) と設定の推定に変換する */
+function locPhotoDescribe(st) {
+  if (!st) return null;
+  const ja = [], en = [];
+  if (st.warmth > 0.06) { ja.push("暖色 (夕方・タングステン寄り)"); en.push("warm golden light"); }
+  else if (st.warmth < -0.03) { ja.push("寒色 (曇天・日陰寄り)"); en.push("cool blue-grey light"); }
+  else { ja.push("ニュートラルな色"); en.push("neutral daylight colour"); }
+
+  if (st.contrast > 0.7) { ja.push("硬い光 (影が濃い)"); en.push("hard directional light with deep shadows"); }
+  else if (st.contrast < 0.35) { ja.push("柔らかい光 (影が薄い)"); en.push("soft flat light, shadows barely visible"); }
+  else { ja.push("中間のコントラスト"); en.push("moderate contrast"); }
+
+  if (st.mean > 0.6) { ja.push("明るい (ハイキー)"); en.push("bright high-key exposure"); }
+  else if (st.mean < 0.26) { ja.push("暗い (ローキー)"); en.push("dark low-key exposure"); }
+
+  if (st.sat > 0.28) { ja.push("彩度が高い"); en.push("saturated colour palette"); }
+  else if (st.sat < 0.09) { ja.push("彩度が低い (ほぼ無彩色)"); en.push("desaturated, near-monochrome palette"); }
+
+  /* 設定の推定 (自動適用はせず、ボタンで反映させる) */
+  const guess = {};
+  if (st.warmth > 0.07 && st.contrast > 0.45 && st.mean > 0.3) guess.timeOfDay = "golden";
+  else if (st.warmth < -0.03 && st.contrast < 0.4) { guess.weather = "cloudy"; }
+  else if (st.mean < 0.26) guess.timeOfDay = "night";
+  if (st.sat < 0.09) guess.look = "mono";
+  else if (st.sat > 0.3 && st.warmth > 0.03) guess.look = "filmwarm";
+  return { ja, en, guess, stats: st };
+}
+
+/* カットにロケ地写真を割り当てて解析する (参照素材として保存され、
+ * プロジェクト保存・バックアップにも乗る) */
+async function locSetPhoto(cut, refId) {
+  cut.location.photoRefId = refId || null;
+  cut.location.photoTraits = null;
+  if (!refId) return null;
+  const ref = (state.story.refs || []).find(r => r.id === refId);
+  if (!ref || !ref.dataUrl) return null;
+  const st = await locPhotoStats(ref.dataUrl);
+  const desc = locPhotoDescribe(st);
+  cut.location.photoTraits = desc ? { ja: desc.ja, en: desc.en, guess: desc.guess, stats: desc.stats } : null;
+  return cut.location.photoTraits;
+}
+
+/* 推定した時間帯・天候・ルックをカットへ反映する (明示操作) */
+function locApplyPhotoGuess(cut) {
+  const g = cut.location.photoTraits && cut.location.photoTraits.guess;
+  if (!g || !Object.keys(g).length) { showToast("この写真からは時間帯・天候の推定ができませんでした"); return false; }
+  const done = [];
+  if (g.timeOfDay && TIMES_OF_DAY.some(t => t.id === g.timeOfDay)) {
+    cut.timeOfDay = g.timeOfDay;
+    done.push("時間帯: " + (TIMES_OF_DAY.find(t => t.id === g.timeOfDay) || {}).label);
+  }
+  if (g.weather && WEATHERS.some(w => w.id === g.weather)) {
+    cut.weather = g.weather;
+    done.push("天候: " + (WEATHERS.find(w => w.id === g.weather) || {}).label);
+  }
+  if (g.look && LOOKS.some(l => l.id === g.look)) {
+    cut.look = g.look;
+    done.push("ルック: " + (LOOKS.find(l => l.id === g.look) || {}).label);
+  }
+  refresh(); renderInspector();
+  showToast(done.length ? "写真から反映しました — " + done.join(" / ") : "反映できる項目がありませんでした");
+  return true;
+}
+
 /* ---------- ロケ地ライブラリ (オーバーレイ) ---------- */
 let locTargetCut = null;   // 適用先のカット index
 function renderLocationLib() {
@@ -246,6 +341,23 @@ function openLocationLib(cutIdx) {
 }
 
 function setupLocationPage() {
+  /* ロケ地写真の取り込み — 参照素材として保存してから解析する */
+  byId("locPhotoInput").addEventListener("change", async e => {
+    const file = e.target.files[0];
+    const ci = +e.target.dataset.ci;
+    e.target.value = "";
+    const cut = state.cuts[ci];
+    if (!file || !cut) return;
+    const before = state.story.refs.length;
+    await wfAddRefFiles([file]);
+    if (state.story.refs.length === before) { showToast("⚠️ この画像は読み込めませんでした"); return; }
+    const ref = state.story.refs[state.story.refs.length - 1];
+    await locSetPhoto(cut, ref.id);
+    refresh(); renderInspector();
+    if (!byId("scriptOverlay").hidden) renderScriptPage();
+    showToast("ロケ地写真の光と色を取り込みました");
+  });
+
   byId("locRegion").innerHTML = `<option value="">すべての地域</option>`
     + LOCATION_REGIONS.map(r => `<option value="${r.id}">${esc(r.label)}</option>`).join("");
   byId("btnLocBack").addEventListener("click", () => { byId("locOverlay").hidden = true; });
