@@ -95,6 +95,7 @@
     undoStack: [],
     layers: { caries: true, restoration: true, root: false, bone: false, perio: false },
     stage: 0,                  // 0=通常 1=歯根 2=骨
+    chartTab: 'caries',        // 'caries' | 'perio'
     mode: 'clinician',         // 'clinician' | 'patient'
     openDeg: 0, openCur: 0,    // 開口: スライダー値と表示値（lerp で追従）
     gAlphaCur: 1.0, gAlphaTarget: 1.0,     // 歯肉の不透明度（滑らかに遷移）
@@ -212,6 +213,9 @@
           transparent: true, opacity: 0.34, depthWrite: false, side: THREE.DoubleSide
         });
         o.visible = false;
+        o.userData.__jaw = /upper/.test(nm) ? 'U' : 'L';
+        // 骨吸収の頂点変位（SPEC §4.8）用に原形状を保持する
+        o.userData.__base = o.geometry.attributes.position.array.slice();
         S.bone.push(o);
       } else {
         unknown.push(nm);
@@ -384,6 +388,7 @@
     S.gAlphaTarget = CONFIG.GINGIVA_ALPHA[S.stage];
     S.boneAlphaTarget = (CONFIG.BONE_VISIBLE[S.stage] || S.layers.bone) ? 0.34 : 0.0;
     updatePerioMarkers();
+    updateBoneLevels();
     S.needsRecolor = false;
   }
 
@@ -726,6 +731,24 @@
       onResize();
     });
 
+    /* --- B-4: う蝕 / 歯周 のチャート切替（1段のみ） --- */
+    document.querySelectorAll('[data-ctab]').forEach(function (b) {
+      b.addEventListener('click', function () { setChartTab(b.dataset.ctab); });
+    });
+    document.getElementById('pdfBtn').addEventListener('click', openHandout);
+    document.getElementById('hoClose').addEventListener('click', function () {
+      document.getElementById('handout').classList.add('hide');
+    });
+    document.getElementById('hoSave').addEventListener('click', saveHandoutPDF);
+    document.getElementById('hoPrint').addEventListener('click', function () { window.print(); });
+    document.getElementById('hoNameOn').addEventListener('change', function () {
+      const tx = document.getElementById('hoNameTxt');
+      tx.disabled = !this.checked;          // 患者名の印字は既定オフ（SPEC §5.8）
+      if (this.checked) tx.focus(); else tx.value = '';
+      if (!document.getElementById('handout').classList.contains('hide')) renderHandout();
+    });
+    document.getElementById('hoNameTxt').addEventListener('change', renderHandout);
+
     /* --- B-3: チャート入力・シミュレーション・プリセット --- */
     document.getElementById('undoBtn').addEventListener('click', undo);
     document.getElementById('saveBtn').addEventListener('click', saveFindings);
@@ -903,6 +926,26 @@
     refreshDisplay();
   }
 
+  // 歯周6点法の実測値（SPEC §5.7.2）。シミュレーションでは書き換えない値
+  function setPerio(fdi, site, patch) {
+    pushUndo();
+    const rec = toothRec(fdi);
+    if (!rec.perio) rec.perio = {};
+    const cur = rec.perio[site] || { pd: 0, gm: 0, bop: false };
+    rec.perio[site] = {
+      pd: patch.pd !== undefined ? patch.pd : cur.pd,
+      gm: cur.gm || 0,
+      bop: patch.bop !== undefined ? patch.bop : !!cur.bop
+    };
+    refreshDisplay();
+  }
+
+  function setBoneLevel(fdi, mm) {
+    pushUndo();
+    toothRec(fdi).bone_level_mm = mm;
+    refreshDisplay();
+  }
+
   function setToothStatus(fdi, status) {
     pushUndo();
     const rec = toothRec(fdi);
@@ -1024,6 +1067,7 @@
       const map = cellMap(fdi);
       const el = document.createElement('div');
       el.className = 'tc'; el.dataset.fdi = fdi;
+      const svgWrap = document.createElement('div');
       let svg = '<svg viewBox="0 0 40 40">';
       CELL_REGIONS.forEach(function (r) {
         svg += '<path data-surf="' + map[r[0]] + '" d="' + r[1] +
@@ -1031,11 +1075,19 @@
       });
       svg += '<path class="mx" d="M9 9 L31 31 M31 9 L9 31" stroke="#9AA3AC"' +
              ' stroke-width="3.5" fill="none" style="display:none"/></svg>';
-      el.innerHTML = svg + '<span class="tn">' + fdi + '</span>';
+      svgWrap.innerHTML = svg;
+      const perioWrap = document.createElement('div');
+      perioWrap.className = 'pgrid';
+      perioWrap.style.display = 'none';
+      el.appendChild(svgWrap);
+      el.appendChild(perioWrap);
+      const tn = document.createElement('span');
+      tn.className = 'tn'; tn.textContent = fdi;
+      el.appendChild(tn);
       el.addEventListener('click', function () { onCellTap(fdi); });
       row.appendChild(el);
       S.chartCells.set(fdi, {
-        el: el,
+        el: el, svgWrap: svgWrap, perio: perioWrap,
         paths: Array.prototype.slice.call(el.querySelectorAll('path[data-surf]')),
         mx: el.querySelector('.mx')
       });
@@ -1065,12 +1117,48 @@
     return C.SOUND;
   }
 
+  // 歯周チャートで入力を受け付けない歯（欠損・未萌出・埋伏）
+  function perioNA(st) {
+    return st === 'MISSING' || st === 'UNERUPTED' || st === 'IMPACTED';
+  }
+
+  const PERIO_ROW = [['MB', 'B', 'DB'], ['ML', 'L', 'DL']];
+
+  function perioCellHTML(fdi, rec) {
+    // 表示の左右をチャート上の歯の位置に合わせる（正中に近い側が M）
+    const mesialRight = (Math.floor(fdi / 10) === 1 || Math.floor(fdi / 10) === 4);
+    let h = '';
+    PERIO_ROW.forEach(function (row, ri) {
+      const order = mesialRight ? row.slice().reverse() : row;
+      order.forEach(function (site) {
+        const m = (rec && rec.perio) ? rec.perio[site] : null;
+        const pd = m && typeof m.pd === 'number' ? m.pd : null;
+        const col = pd == null ? '#C9CFD6' : cssHex(pdColor(pd));
+        h += '<b class="' + (m && m.bop ? 'bop' : '') + '" style="background:' + col +
+             '">' + (pd == null ? '–' : pd) + '</b>';
+      });
+      if (ri === 0) h += '<i class="sepr"></i>';
+    });
+    const bl = rec && typeof rec.bone_level_mm === 'number' ? rec.bone_level_mm : null;
+    h += '<i class="blv" style="grid-column:1/4">骨 ' + (bl == null ? '–' : bl) + 'mm</i>';
+    return h;
+  }
+
   function updateChart() {
     if (!S.chartCells) return;
+    const perioTab = (S.chartTab === 'perio');
     S.chartCells.forEach(function (cell, fdi) {
       const rec = S.byTooth ? S.byTooth.get(fdi) : null;
       const st = rec ? rec.status : 'SOUND';
       cell.el.classList.toggle('sel', S.selected === fdi);
+      cell.svgWrap.style.display = perioTab ? 'none' : '';
+      cell.perio.style.display = perioTab ? '' : 'none';
+      cell.el.classList.toggle('na', perioTab && perioNA(st));
+
+      if (perioTab) {
+        cell.perio.innerHTML = perioCellHTML(fdi, rec);
+        return;
+      }
       const missing = (st === 'MISSING');
       cell.mx.style.display = missing ? '' : 'none';
       cell.paths.forEach(function (p) {
@@ -1084,12 +1172,25 @@
     });
   }
 
+  function setChartTab(tab) {
+    S.chartTab = tab;
+    document.querySelectorAll('[data-ctab]').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.ctab === tab);
+    });
+    closePop();
+    updateChart();
+    // 歯周タブを開いたら 3D 側も歯周レイヤを出す（見えているものと一致させる）
+    if (tab === 'perio' && !S.layers.perio) setLayer('perio', true);
+  }
+
   function onCellTap(fdi) {
     stopSeq();
     S.selected = fdi; S.needsRecolor = true;
     focusTooth(fdi); renderDetail(fdi); updateChart();
     // 入力は術者モード + 現在の状態表示のときだけ（シミュレーションは導出値なので編集不可）
-    if (S.mode === 'clinician' && !S.simulated) openPop(fdi);
+    const rec = S.byTooth ? S.byTooth.get(fdi) : null;
+    const na = S.chartTab === 'perio' && perioNA(rec ? rec.status : 'SOUND');
+    if (S.mode === 'clinician' && !S.simulated && !na) openPop(fdi);
     else closePop();
   }
 
@@ -1109,11 +1210,15 @@
     return { M: 'M 近心', D: 'D 遠心', L: 'L 舌側' }[k] || k;
   }
 
+  const PERIO_SITE_KEYS = ['MB', 'B', 'DB', 'ML', 'L', 'DL'];
+  let popSite = 'MB';
+
   function openPop(fdi) {
     popFdi = fdi;
     const rec = baseRec(fdi);
     popSurf = (rec && rec.surfaces && rec.surfaces.length)
       ? normSurf(rec.surfaces[0].surface) : 'O';
+    popSite = 'MB';
     renderPop();
     // 下にある常設要素（フッタ・チャート・凡例バー）の高さを積んで、
     // どれにも被らない位置に出す
@@ -1132,8 +1237,54 @@
     if (pop) pop.classList.add('hide');
   }
 
+  const SITE_JA = {
+    MB: 'MB 近心頬側', B: 'B 頬側', DB: 'DB 遠心頬側',
+    ML: 'ML 近心舌側', L: 'L 舌側', DL: 'DL 遠心舌側'
+  };
+
+  function renderPerioPop() {
+    const pop = document.getElementById('pop');
+    const rec = baseRec(popFdi);
+    const m = (rec && rec.perio) ? rec.perio[popSite] : null;
+    const pd = m && typeof m.pd === 'number' ? m.pd : null;
+    const bl = rec && typeof rec.bone_level_mm === 'number' ? rec.bone_level_mm : null;
+
+    let h = '<div class="ph2"><b>' + popFdi + '（' + fdiToPalmer(popFdi) + '）</b>' +
+      '<span style="color:var(--sub);font-size:13px">歯周ポケット 6点法</span>' +
+      '<div class="spacer"></div><button id="popClose" data-pclose="1">閉じる</button></div>';
+
+    h += '<h4>部位を選ぶ</h4><div class="grp">';
+    PERIO_SITE_KEYS.forEach(function (k) {
+      const v = (rec && rec.perio && rec.perio[k]) ? rec.perio[k].pd : null;
+      h += '<button data-psite="' + k + '" class="' + (popSite === k ? 'fon' : '') + '">' +
+        SITE_JA[k] + (typeof v === 'number' ? '<br>' + v : '') + '</button>';
+    });
+    h += '</div>';
+
+    h += '<h4>' + SITE_JA[popSite] + ' の深さ (mm)</h4><div class="grp">';
+    for (let v = 1; v <= 12; v++) {
+      h += '<button data-ppd="' + v + '" class="' + (pd === v ? 'fon' : '') +
+        '" style="min-width:60px">' + v + '</button>';
+    }
+    h += '</div>';
+
+    h += '<h4>出血 (BOP)</h4><div class="grp">' +
+      '<button data-pbop="0" class="' + (m && !m.bop ? 'fon' : '') + '">なし</button>' +
+      '<button data-pbop="1" class="' + (m && m.bop ? 'fon' : '') + '">' +
+      '<i class="sw" style="background:#C1121F"></i>あり</button></div>';
+
+    h += '<h4>骨のレベル（CEJ からの距離 mm・X線から術者が入力）</h4><div class="grp">';
+    for (let v = 0; v <= 12; v += 2) {
+      h += '<button data-pbone="' + v + '" class="' + (bl === v ? 'fon' : '') +
+        '" style="min-width:60px">' + v + '</button>';
+    }
+    h += '</div>';
+    pop.innerHTML = h;
+  }
+
   function renderPop() {
     if (popFdi == null) return;
+    if (S.chartTab === 'perio') { renderPerioPop(); return; }
     const pop = document.getElementById('pop');
     const rec = baseRec(popFdi);
     const st = rec ? rec.status : 'SOUND';
@@ -1182,6 +1333,16 @@
     const b = e.target.closest('button');
     if (!b || popFdi == null) return;
     if (b.dataset.pclose) { closePop(); return; }
+    if (b.dataset.psite) { popSite = b.dataset.psite; renderPop(); return; }
+    if (b.dataset.ppd) {
+      setPerio(popFdi, popSite, { pd: parseInt(b.dataset.ppd, 10) }); renderPop(); return;
+    }
+    if (b.dataset.pbop) {
+      setPerio(popFdi, popSite, { bop: b.dataset.pbop === '1' }); renderPop(); return;
+    }
+    if (b.dataset.pbone) {
+      setBoneLevel(popFdi, parseInt(b.dataset.pbone, 10)); renderPop(); return;
+    }
     if (b.dataset.psurf) { popSurf = b.dataset.psurf; renderPop(); return; }
     if (b.dataset.pfind) { setSurfaceFinding(popFdi, popSurf, b.dataset.pfind); renderPop(); return; }
     if (b.dataset.pmat) { setSurfaceFinding(popFdi, popSurf, 'RESTORED', b.dataset.pmat); renderPop(); return; }
@@ -1244,6 +1405,76 @@
           group.add(bp);
         }
       });
+    });
+  }
+
+  /* ------------------------------------------ 骨吸収レベルの 3D 反映（§4.8） */
+  const BONE_BASE_MM = 2.0;   // アセット生成時の基準（dental_arch_gen.py と一致）
+  const BONE_FALLOFF = 12.0;  // 骨頂からこの距離までを動かす
+
+  function boneLevelOf(fdi) {
+    const rec = S.byTooth ? S.byTooth.get(fdi) : null;
+    if (rec && typeof rec.bone_level_mm === 'number') return rec.bone_level_mm;
+    const t = S.teeth.get(fdi);
+    if (t && typeof t.ex.bone_level_mm === 'number') return t.ex.bone_level_mm;
+    return BONE_BASE_MM;
+  }
+
+  // 骨メッシュごとに「近い2歯とその重み」を一度だけ求めておく（毎フレーム探索しない）
+  function prepareBoneBinding(mesh) {
+    const base = mesh.userData.__base;
+    const jaw = mesh.userData.__jaw;
+    const list = [];
+    S.teeth.forEach(function (t) { if (t.ex.jaw === jaw) list.push(t); });
+    if (!list.length) return null;
+    const n = base.length / 3;
+    const i0 = new Int32Array(n), i1 = new Int32Array(n);
+    const w0 = new Float32Array(n), wt = new Float32Array(n);
+    const up = (jaw === 'U') ? 1 : -1;
+
+    for (let i = 0; i < n; i++) {
+      const x = base[i * 3], y = base[i * 3 + 1], z = base[i * 3 + 2];
+      let a = -1, b = -1, da = Infinity, db = Infinity;
+      for (let k = 0; k < list.length; k++) {
+        const c = list[k].centroid;
+        const d = (x - c.x) * (x - c.x) + (z - c.z) * (z - c.z);
+        if (d < da) { db = da; b = a; da = d; a = k; }
+        else if (d < db) { db = d; b = k; }
+      }
+      if (b < 0) b = a;
+      const ra = Math.sqrt(da) + 0.001, rb = Math.sqrt(db) + 0.001;
+      const wa = (1 / ra) / (1 / ra + 1 / rb);
+      i0[i] = a; i1[i] = b; w0[i] = wa;
+
+      // 骨頂（cej_y から根尖方向へ BONE_BASE_MM）からの距離で減衰させる
+      const cej = list[a].ex.cej_y * wa + list[b].ex.cej_y * (1 - wa);
+      const d = up * (y - cej) - BONE_BASE_MM;
+      wt[i] = Math.max(0, Math.min(1, 1 - d / BONE_FALLOFF));
+    }
+    mesh.userData.__bind = { list: list, i0: i0, i1: i1, w0: w0, wt: wt, up: up };
+    return mesh.userData.__bind;
+  }
+
+  function updateBoneLevels() {
+    S.bone.forEach(function (mesh) {
+      const bind = mesh.userData.__bind || prepareBoneBinding(mesh);
+      if (!bind) return;
+      const base = mesh.userData.__base;
+      const pos = mesh.geometry.attributes.position.array;
+      const n = base.length / 3;
+      const lv = bind.list.map(function (t) { return boneLevelOf(t.fdi) - BONE_BASE_MM; });
+
+      let changed = false;
+      for (let i = 0; i < n; i++) {
+        const d = (lv[bind.i0[i]] * bind.w0[i] + lv[bind.i1[i]] * (1 - bind.w0[i]))
+                  * bind.wt[i];
+        const y = base[i * 3 + 1] + bind.up * d;
+        if (pos[i * 3 + 1] !== y) { pos[i * 3 + 1] = y; changed = true; }
+      }
+      if (changed) {
+        mesh.geometry.attributes.position.needsUpdate = true;
+        mesh.geometry.computeVertexNormals();
+      }
     });
   }
 
@@ -1431,12 +1662,434 @@
     }
   }
 
+  /* =======================================================================
+     患者渡し物 PDF（A4 1枚・ローカル完結・外部ライブラリなし）— SPEC §5.8
+     ページ全体を canvas に描いて 1 枚の JPEG として PDF に載せる。
+     PDF 標準フォントに日本語がないため、文字も canvas で描いて画像化する。
+     ======================================================================= */
+  const A4 = { w: 1240, h: 1754, dpi: 150 };   // A4 210×297mm @150dpi
+
+  // 現在のシーンを指定カメラでレンダリングして JPEG を取り出す
+  function grabView(theta, phi, dist, target) {
+    const cam = S.camera;
+    const pos = cam.position.clone(), quat = cam.quaternion.clone();
+    const mv = S.maxilla ? S.maxilla.visible : true;
+    const lv = S.mandible ? S.mandible.visible : true;
+    if (S.maxilla) S.maxilla.visible = true;
+    if (S.mandible) S.mandible.visible = true;
+    const sp = Math.sin(phi), cp = Math.cos(phi);
+    cam.position.set(target.x + dist * sp * Math.sin(theta),
+                     target.y + dist * cp,
+                     target.z + dist * sp * Math.cos(theta));
+    cam.lookAt(target);
+    S.renderer.render(S.scene, cam);
+    const url = S.renderer.domElement.toDataURL('image/jpeg', 0.92);
+    cam.position.copy(pos); cam.quaternion.copy(quat);
+    if (S.maxilla) S.maxilla.visible = mv;
+    if (S.mandible) S.mandible.visible = lv;
+    return url;
+  }
+
+  function loadImg(url) {
+    return new Promise(function (res) {
+      const im = new Image();
+      im.onload = function () { res(im); };
+      im.onerror = function () { res(null); };
+      im.src = url;
+    });
+  }
+
+  // モノクロ印刷でも判別できるようにするハッチ（色 + パターン併用: SPEC §5.8）
+  function hatch(ctx, x, y, w, h, kind) {
+    if (!kind || kind === 'none') return;
+    ctx.save();
+    ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+    ctx.strokeStyle = 'rgba(30,36,45,.62)'; ctx.lineWidth = 1.6;
+    const step = 5;
+    ctx.beginPath();
+    if (kind === 'fwd' || kind === 'cross') {
+      for (let i = -h; i < w; i += step) { ctx.moveTo(x + i, y + h); ctx.lineTo(x + i + h, y); }
+    }
+    if (kind === 'back' || kind === 'cross') {
+      for (let i = -h; i < w; i += step) { ctx.moveTo(x + i, y); ctx.lineTo(x + i + h, y + h); }
+    }
+    if (kind === 'horz') {
+      for (let j = 0; j < h; j += 4) { ctx.moveTo(x, y + j); ctx.lineTo(x + w, y + j); }
+    }
+    ctx.stroke();
+    if (kind === 'dot') {
+      ctx.fillStyle = 'rgba(30,36,45,.55)';
+      for (let j = 2; j < h; j += 5) for (let i = 2; i < w; i += 5) {
+        ctx.beginPath(); ctx.arc(x + i, y + j, 1.0, 0, 6.284); ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+  const HATCH = {
+    SOUND: 'none', CO: 'dot', C1: 'fwd', C2: 'back', C3: 'cross', C4: 'cross',
+    RESTORED: 'horz'
+  };
+
+  function drawChartCell(ctx, x, y, s, fdi, rec) {
+    const st = rec ? rec.status : 'SOUND';
+    const map = cellMap(fdi);
+    const m = s * 0.32;
+    const regions = [
+      [map.top, [[0, 0], [s, 0], [s - m, m], [m, m]]],
+      [map.bottom, [[0, s], [m, s - m], [s - m, s - m], [s, s]]],
+      [map.left, [[0, 0], [m, m], [m, s - m], [0, s]]],
+      [map.right, [[s, 0], [s, s], [s - m, s - m], [s - m, m]]],
+      [map.center, [[m, m], [s - m, m], [s - m, s - m], [m, s - m]]]
+    ];
+    regions.forEach(function (r) {
+      let hex = CONFIG.COLORS.SOUND, kind = 'none';
+      if (st === 'MISSING') hex = 0xEDEFF2;
+      else if (st === 'IMPLANT') { hex = CONFIG.COLORS.IMPLANT; kind = 'cross'; }
+      else if (st === 'UNERUPTED' || st === 'IMPACTED') hex = 0xD8DDE3;
+      else {
+        hex = chartSurfaceColor(rec, r[0]);
+        const f = findingOf(fdi, r[0]);
+        if (f) kind = HATCH[f.finding] || 'none';
+        if (st === 'CROWN' || st === 'BRIDGE_PONTIC') kind = 'horz';
+      }
+      ctx.beginPath();
+      ctx.moveTo(x + r[1][0][0], y + r[1][0][1]);
+      for (let i = 1; i < r[1].length; i++) ctx.lineTo(x + r[1][i][0], y + r[1][i][1]);
+      ctx.closePath();
+      ctx.fillStyle = cssHex(hex); ctx.fill();
+      ctx.strokeStyle = '#9AA3AC'; ctx.lineWidth = 0.8; ctx.stroke();
+      const bb = [x, y, s, s];
+      ctx.save(); ctx.clip(); hatch(ctx, bb[0], bb[1], bb[2], bb[3], kind); ctx.restore();
+    });
+    if (st === 'MISSING') {
+      ctx.strokeStyle = '#5A6675'; ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      ctx.moveTo(x + 5, y + 5); ctx.lineTo(x + s - 5, y + s - 5);
+      ctx.moveTo(x + s - 5, y + 5); ctx.lineTo(x + 5, y + s - 5);
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#5A6675';
+    ctx.font = '600 15px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(String(fdi), x + s / 2, y + s + 17);
+  }
+
+  // 歯ぐきの状態の集計（判定はしない。入力済みの実測値を数えるだけ）
+  function perioSummary() {
+    let deep = 0, bop = 0, bone = 0;
+    const teeth = (S.baseDoc && S.baseDoc.teeth) ? S.baseDoc.teeth : [];
+    teeth.forEach(function (t) {
+      if (t.status === 'MISSING') return;
+      if (t.perio) {
+        Object.keys(t.perio).forEach(function (k) {
+          const m = t.perio[k];
+          if (m && typeof m.pd === 'number' && m.pd >= 4) deep++;
+          if (m && m.bop) bop++;
+        });
+      }
+      if (typeof t.bone_level_mm === 'number' && t.bone_level_mm >= 4) bone++;
+    });
+    let msg;
+    if (!deep && !bop && !bone) msg = '歯ぐきの状態はおおむね良好です。今の歯みがきを続けましょう。';
+    else if (bone) msg = '骨が下がっている歯があります。歯ぐきのケアと定期的なチェックが必要です。';
+    else msg = '深いすき間や出血のあるところがあります。歯ぐきのケアを一緒に進めましょう。';
+    return { deep: deep, bop: bop, bone: bone, msg: msg };
+  }
+
+  function planRows() {
+    return planItems().map(function (p) {
+      const rec = S.baseDoc ? baseRec(p.fdi) : null;
+      let what = '';
+      if (rec && rec.surfaces) {
+        const hit = rec.surfaces.filter(function (s) { return (SEVERITY[s.finding] || 0) >= 1; });
+        if (hit.length) what = FINDING_PT[hit[0].finding] || '';
+      }
+      if (!what && rec) what = STATUS_PT[rec.status] || '';
+      return {
+        fdi: p.fdi, tooth: fdiToPalmer(p.fdi) + 'の歯',
+        cond: what || '—',
+        proc: PROC_PT[p.procedure] || PROC_JA[p.procedure] || p.procedure,
+        visits: p.visits ? p.visits + '回' : '—'
+      };
+    });
+  }
+
+  async function drawHandout(canvas, opt) {
+    const ctx = canvas.getContext('2d');
+    canvas.width = A4.w; canvas.height = A4.h;
+    ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0, 0, A4.w, A4.h);
+    const M = 68;   // 余白
+
+    // ---- ヘッダ
+    ctx.fillStyle = '#1B2430';
+    ctx.font = '700 34px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('お口の状態のご説明', M, M + 34);
+    ctx.font = '500 19px sans-serif'; ctx.fillStyle = '#5A6675';
+    const d = opt.date;
+    ctx.textAlign = 'right';
+    ctx.fillText(d, A4.w - M, M + 14);
+    ctx.fillText(opt.clinic, A4.w - M, M + 42);
+    if (opt.name) {
+      ctx.textAlign = 'left';
+      ctx.font = '600 21px sans-serif'; ctx.fillStyle = '#1B2430';
+      ctx.fillText(opt.name + ' 様', M, M + 68);
+    }
+    ctx.strokeStyle = '#DCE1E6'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(M, M + 88); ctx.lineTo(A4.w - M, M + 88); ctx.stroke();
+
+    // ---- 3D キャプチャ 2 枚
+    let y = M + 112;
+    const iw = (A4.w - M * 2 - 20) / 2, ih = 400;
+    const caps = ['今のお口の中', opt.closeLabel];
+    for (let i = 0; i < 2; i++) {
+      const x = M + i * (iw + 20);
+      ctx.fillStyle = '#F4F6F8'; ctx.fillRect(x, y, iw, ih);
+      const im = opt.images[i];
+      if (im) {
+        const r = Math.min(iw / im.width, ih / im.height);
+        const w = im.width * r, h = im.height * r;
+        ctx.drawImage(im, x + (iw - w) / 2, y + (ih - h) / 2, w, h);
+      }
+      ctx.strokeStyle = '#DCE1E6'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, iw, ih);
+      ctx.fillStyle = '#1B2430'; ctx.font = '700 19px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText(caps[i], x + 4, y + ih + 26);
+    }
+    y += ih + 52;
+
+    // ---- 歯式チャート（見出しの行に左右の明示を置き、セルと重ねない）
+    ctx.fillStyle = '#1B2430'; ctx.font = '700 22px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('歯の状態', M, y);
+    ctx.fillStyle = '#5A6675'; ctx.font = '600 17px sans-serif';
+    ctx.fillText('← 患者さんの右', M + 130, y);
+    ctx.textAlign = 'right'; ctx.fillText('患者さんの左 →', A4.w - M, y);
+    ctx.textAlign = 'left';
+    y += 26;
+    const cs = 58, gap = 5, mid = 16;
+    const totalW = 16 * cs + 15 * gap + mid;
+    const cx0 = (A4.w - totalW) / 2;
+    const rowPitch = cs + 26;                 // セル + 歯番ラベル
+    [CHART_U, CHART_L].forEach(function (row, ri) {
+      const yy = y + ri * rowPitch;
+      row.forEach(function (fdi, i) {
+        const x = cx0 + i * (cs + gap) + (i >= 8 ? mid : 0);
+        drawChartCell(ctx, x, yy, cs, fdi, S.baseDoc ? baseRec(fdi) : null);
+      });
+    });
+    // 正中線（患者の右が紙面の左。3D・画面チャートと同じ規約）
+    const midX = cx0 + 8 * (cs + gap) - gap + mid / 2;
+    ctx.strokeStyle = '#9AA3AC'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(midX, y - 4); ctx.lineTo(midX, y + rowPitch + cs + 4);
+    ctx.stroke();
+    y += rowPitch + cs + 40;
+
+    // ---- 凡例（色 + パターン）
+    ctx.textAlign = 'left';
+    const lg = [['SOUND', '健全'], ['CO', '要観察'], ['C1', '初期の虫歯'],
+      ['C2', '内側まで進んだ虫歯'], ['C3', '神経に達した虫歯'], ['C4', '根だけ残った状態'],
+      ['RESTORED', '治療済み']];
+    let lx = M;
+    lg.forEach(function (it) {
+      const col = it[0] === 'RESTORED' ? CONFIG.COLORS.CR : CONFIG.COLORS[it[0]];
+      ctx.fillStyle = cssHex(col); ctx.fillRect(lx, y - 14, 20, 20);
+      hatch(ctx, lx, y - 14, 20, 20, HATCH[it[0]]);
+      ctx.strokeStyle = '#9AA3AC'; ctx.lineWidth = 0.8; ctx.strokeRect(lx, y - 14, 20, 20);
+      ctx.fillStyle = '#5A6675'; ctx.font = '500 16px sans-serif';
+      ctx.fillText(it[1], lx + 26, y + 2);
+      lx += 26 + ctx.measureText(it[1]).width + 22;
+    });
+    y += 34;
+
+    // ---- 要処置一覧
+    ctx.fillStyle = '#1B2430'; ctx.font = '700 22px sans-serif';
+    ctx.fillText('これからの治療', M, y + 10);
+    y += 28;
+    const rows = planRows();
+    const cols = [M + 6, M + 150, M + 520, A4.w - M - 12];
+    ctx.fillStyle = '#EEF2F7'; ctx.fillRect(M, y, A4.w - M * 2, 40);
+    ctx.fillStyle = '#5A6675'; ctx.font = '700 18px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('歯', cols[0], y + 27);
+    ctx.fillText('いまの状態', cols[1], y + 27);
+    ctx.fillText('ご提案する治療', cols[2], y + 27);
+    ctx.textAlign = 'right'; ctx.fillText('回数', cols[3], y + 27);
+    y += 40;
+    // 残りの紙面に収まる行数だけ出す（免責の手前で必ず止める）
+    const RH = 46, bottomLimit = A4.h - M - 96;
+    const maxRows = Math.max(0, Math.min(rows.length, Math.floor((bottomLimit - y) / RH)));
+    for (let i = 0; i < maxRows; i++) {
+      const r = rows[i];
+      if (i % 2) { ctx.fillStyle = '#FAFBFC'; ctx.fillRect(M, y, A4.w - M * 2, RH); }
+      ctx.fillStyle = '#1B2430'; ctx.font = '600 19px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText(r.tooth, cols[0], y + 30);
+      ctx.font = '500 19px sans-serif'; ctx.fillStyle = '#5A6675';
+      ctx.fillText(r.cond, cols[1], y + 30);
+      ctx.fillStyle = '#1B2430';
+      ctx.fillText(r.proc, cols[2], y + 30);
+      ctx.textAlign = 'right'; ctx.fillText(r.visits, cols[3], y + 30);
+      ctx.strokeStyle = '#E7EBEF'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(M, y + RH); ctx.lineTo(A4.w - M, y + RH); ctx.stroke();
+      y += RH;
+    }
+    if (rows.length > maxRows) {
+      ctx.fillStyle = '#5A6675'; ctx.font = '500 16px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText('ほか ' + (rows.length - maxRows) + ' 件', cols[0], y + 22);
+      y += 28;
+    }
+    if (!rows.length) {
+      ctx.fillStyle = '#5A6675'; ctx.font = '500 18px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText('現在ご提案中の治療はありません。', cols[0], y + 25);
+      y += 38;
+    }
+
+    // ---- 歯ぐきの状態（SPEC §5.8 下段2）
+    y += 26;
+    ctx.fillStyle = '#1B2430'; ctx.font = '700 22px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('歯ぐきの状態', M, y + 10);
+    y += 30;
+    const ps = perioSummary();
+    ctx.fillStyle = '#F7F9FB'; ctx.fillRect(M, y, A4.w - M * 2, 108);
+    ctx.strokeStyle = '#E7EBEF'; ctx.lineWidth = 1.2;
+    ctx.strokeRect(M, y, A4.w - M * 2, 108);
+    const stat = [
+      ['歯と歯ぐきのすき間が深いところ', ps.deep + ' か所', ps.deep > 0],
+      ['歯ぐきから出血したところ', ps.bop + ' か所', ps.bop > 0],
+      ['歯を支える骨が下がっている歯', ps.bone + ' 本', ps.bone > 0]
+    ];
+    stat.forEach(function (s, i) {
+      const x = M + 24 + i * ((A4.w - M * 2 - 48) / 3);
+      ctx.fillStyle = '#5A6675'; ctx.font = '500 16px sans-serif';
+      ctx.fillText(s[0], x, y + 32);
+      ctx.fillStyle = s[2] ? '#C1121F' : '#2A9D8F';
+      ctx.font = '700 30px sans-serif';
+      ctx.fillText(s[1], x, y + 70);
+    });
+    ctx.fillStyle = '#5A6675'; ctx.font = '500 16px sans-serif';
+    ctx.fillText(ps.msg, M + 24, y + 95);
+    y += 108;
+
+    // ---- 免責（削除しない: CLAUDE.md §1-6）
+    ctx.textAlign = 'left';
+    ctx.strokeStyle = '#DCE1E6'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(M, A4.h - M - 46); ctx.lineTo(A4.w - M, A4.h - M - 46); ctx.stroke();
+    ctx.fillStyle = '#5A6675'; ctx.font = '500 15px sans-serif';
+    ctx.fillText('本表示は説明用であり、診断結果を代替するものではありません。'
+      + '3D の形は標準的な模型で、実際の歯の形とは異なります。', M, A4.h - M - 20);
+    ctx.fillText('ご不明な点は担当の歯科医師・歯科衛生士におたずねください。', M, A4.h - M + 4);
+  }
+
+  /* ------------------------------------------------- 最小限の PDF ライタ */
+  function asciiToU8(s) {
+    const u = new Uint8Array(s.length);
+    for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i) & 0xFF;
+    return u;
+  }
+  function dataURLToU8(url) {
+    const bin = atob(url.slice(url.indexOf(',') + 1));
+    const u = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+    return u;
+  }
+
+  // JPEG を 1 枚全面に配置した 1 ページの PDF を組み立てる（DCTDecode）
+  function buildPDF(jpeg, iw, ih) {
+    const PW = 595.276, PH = 841.89;          // A4 (pt)
+    const parts = [], offsets = [0];
+    let len = 0;
+    function put(x) {
+      const u = (typeof x === 'string') ? asciiToU8(x) : x;
+      parts.push(u); len += u.length;
+    }
+    function obj(n, body, stream) {
+      offsets[n] = len;
+      put(n + ' 0 obj\n' + body + '\n');
+      if (stream) { put('stream\n'); put(stream); put('\nendstream\n'); }
+      put('endobj\n');
+    }
+    put('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+    obj(1, '<</Type/Catalog/Pages 2 0 R>>');
+    obj(2, '<</Type/Pages/Kids[3 0 R]/Count 1>>');
+    obj(3, '<</Type/Page/Parent 2 0 R/MediaBox[0 0 ' + PW.toFixed(2) + ' ' + PH.toFixed(2) +
+        ']/Resources<</XObject<</Im0 4 0 R>>/ProcSet[/PDF/ImageC]>>/Contents 5 0 R>>');
+    obj(4, '<</Type/XObject/Subtype/Image/Width ' + iw + '/Height ' + ih +
+        '/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length ' +
+        jpeg.length + '>>', jpeg);
+    const content = 'q ' + PW.toFixed(2) + ' 0 0 ' + PH.toFixed(2) + ' 0 0 cm /Im0 Do Q';
+    obj(5, '<</Length ' + content.length + '>>', asciiToU8(content));
+    obj(6, '<</Type/Info/Title(DENTAL TWIN handout)/Creator(DENTAL TWIN)>>');
+
+    const xref = len;
+    let x = 'xref\n0 7\n0000000000 65535 f \n';
+    for (let i = 1; i <= 6; i++) {
+      x += ('0000000000' + offsets[i]).slice(-10) + ' 00000 n \n';
+    }
+    put(x);
+    put('trailer\n<</Size 7/Root 1 0 R/Info 6 0 R>>\nstartxref\n' + xref + '\n%%EOF\n');
+
+    const out = new Uint8Array(len);
+    let p = 0;
+    parts.forEach(function (u) { out.set(u, p); p += u.length; });
+    return out;
+  }
+
+  /* ------------------------------------------------------- 渡し物の導線 */
+  async function renderHandout() {
+    const target = new THREE.Vector3(0, 0, 0);
+    const front = grabView(0, Math.PI / 2, 150, target);
+
+    // クローズアップ: 選択歯 → なければ最も重い所見の歯
+    let fdi = S.selected;
+    if (fdi == null) { const w = worstCariesTooth(); fdi = w ? w.fdi : null; }
+    if (fdi == null) { const p = planItems()[0]; fdi = p ? p.fdi : null; }
+    let close = null, closeLabel = 'アップで見たところ';
+    const t = fdi != null ? S.teeth.get(fdi) : null;
+    if (t) {
+      t.mesh.updateWorldMatrix(true, false);
+      const c = t.centroid.clone().applyMatrix4(t.mesh.matrixWorld);
+      const th = Math.atan2(c.x * 0.9 + t.ax.b.x * 20, c.z * 0.9 + t.ax.b.z * 20);
+      close = grabView(th, Math.PI / 2 - t.ax.b.y * 0.6, 58, c);
+      closeLabel = fdiToPalmer(fdi) + 'の歯（アップ）';
+    }
+
+    const images = await Promise.all([loadImg(front), close ? loadImg(close) : null]);
+    const nameOn = document.getElementById('hoNameOn').checked;
+    const nameTx = document.getElementById('hoNameTxt').value.trim();
+    const now = new Date();
+    await drawHandout(document.getElementById('hoCanvas'), {
+      date: now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日',
+      clinic: '○○歯科医院',
+      name: nameOn && nameTx ? nameTx : '',
+      images: images, closeLabel: closeLabel
+    });
+  }
+
+  async function openHandout() {
+    stopSeq(); closePop(); hideTip();
+    document.getElementById('handout').classList.remove('hide');
+    await renderHandout();
+  }
+
+  function saveHandoutPDF() {
+    const canvas = document.getElementById('hoCanvas');
+    const jpeg = dataURLToU8(canvas.toDataURL('image/jpeg', 0.9));
+    const pdf = buildPDF(jpeg, canvas.width, canvas.height);
+    const url = URL.createObjectURL(new Blob([pdf], { type: 'application/pdf' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'dental_handout_' +
+      (S.baseDoc && S.baseDoc.exam_id ? S.baseDoc.exam_id : 'sample') + '.pdf';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  }
+
   // 検証用フック
   S.api = {
     loadFindings: loadFindings, setSurfaceFinding: setSurfaceFinding,
     setToothStatus: setToothStatus, undo: undo, setSimulated: setSimulated,
     runSeq: runSeq, stopSeq: stopSeq, simulateAfter: simulateAfter,
-    openPop: openPop, closePop: closePop
+    openPop: openPop, closePop: closePop,
+    setPerio: setPerio, setBoneLevel: setBoneLevel, setChartTab: setChartTab,
+    openHandout: openHandout, renderHandout: renderHandout,
+    buildPDF: buildPDF, dataURLToU8: dataURLToU8, boneLevelOf: boneLevelOf
   };
 
   /* ------------------------------------------------------------ 患者右左ラベル */

@@ -48,6 +48,17 @@ main{display:grid;grid-template-columns:1fr 300px;min-height:0}
 #chartHead .spacer{flex:1}
 #chartHead button{min-height:48px;padding:0 12px;font-size:13px}
 #chartHead .simlock{color:#C1121F;font-weight:700;font-size:12px}
+#chartHead [data-ctab]{min-width:62px}
+
+/* 歯周チャートのセル（6点法の読み取り表示） */
+.tc .pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;font-size:11px;
+  font-weight:700;line-height:1.35}
+.tc .pgrid b{display:block;border-radius:3px;color:#fff;font-weight:700}
+.tc .pgrid b.bop{text-decoration:underline;text-decoration-color:#7A0A12;
+  text-decoration-thickness:2px}
+.tc .pgrid .sepr{grid-column:1/4;height:2px}
+.tc .blv{font-size:10px;color:var(--sub);font-weight:700}
+.tc.na{opacity:.42}
 .crow{display:flex;gap:2px;justify-content:center}
 .crow+.crow{margin-top:2px}
 .tc{flex:1 1 0;max-width:64px;min-width:34px;min-height:60px;cursor:pointer;text-align:center;
@@ -162,6 +173,34 @@ body.mode2d .only3d{display:none}
 #split2d{position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line);
   z-index:4;pointer-events:none}
 
+/* ---- 患者渡し物（A4プレビュー） ---- */
+#handout{position:fixed;inset:0;z-index:40;background:rgba(27,36,48,.55);
+  display:flex;align-items:center;justify-content:center;padding:18px}
+.hoBox{background:#fff;border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.3);
+  display:flex;flex-direction:column;max-height:100%;max-width:min(880px,96vw)}
+.hoHead{display:flex;align-items:center;gap:10px;padding:10px 14px;
+  border-bottom:1px solid var(--line);flex-wrap:wrap}
+.hoHead b{font-size:16px}
+.hoHead .spacer{flex:1}
+.hoName{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--sub);
+  min-height:48px}
+.hoName input{width:22px;height:22px;accent-color:var(--accent)}
+#hoNameTxt{min-height:44px;border:1px solid var(--line);border-radius:8px;padding:0 10px;
+  font-size:14px;width:150px;font-family:inherit}
+.hoPrev{overflow:auto;padding:14px;background:#EEF1F5}
+.hoPrev canvas{display:block;width:100%;height:auto;max-width:760px;margin:0 auto;
+  box-shadow:0 3px 14px rgba(0,0,0,.18);background:#fff}
+
+@media print{
+  body>#app>*{display:none!important}
+  #handout{position:static;background:#fff;padding:0;display:block}
+  #handout .hoHead{display:none}
+  .hoBox{box-shadow:none;max-width:none;max-height:none}
+  .hoPrev{overflow:visible;padding:0;background:#fff}
+  .hoPrev canvas{max-width:100%;box-shadow:none}
+  @page{size:A4 portrait;margin:0}
+}
+
 /* ---- パネルの折りたたみ（3Dを最大化） ---- */
 #sideTgl{position:absolute;right:0;top:50%;transform:translateY(-50%);z-index:8;
   width:30px;min-height:76px;padding:0;border:1px solid var(--line);border-right:none;
@@ -228,7 +267,10 @@ body.nochart #chart{padding-bottom:6px}
     <div id="chart" class="adv">
       <div id="chartHead">
         <h3>歯式チャート（セルをタップで入力）</h3>
+        <button id="tabCaries" class="on" data-ctab="caries">う蝕</button>
+        <button id="tabPerio" data-ctab="perio">歯周</button>
         <div class="spacer"></div>
+        <button id="pdfBtn">患者さんへの渡し物</button>
         <button id="undoBtn" disabled>↩ 元に戻す</button>
         <button id="saveBtn">所見JSONを保存</button>
         <button id="chartTgl">たたむ</button>
@@ -299,6 +341,21 @@ body.nochart #chart{padding-bottom:6px}
   </footer>
 
   <div id="pop" class="hide"></div>
+
+  <div id="handout" class="hide">
+    <div class="hoBox">
+      <div class="hoHead">
+        <b>患者さんへの渡し物（A4・1枚）</b>
+        <label class="hoName"><input type="checkbox" id="hoNameOn">患者名を印字</label>
+        <input type="text" id="hoNameTxt" placeholder="患者名" disabled>
+        <div class="spacer"></div>
+        <button id="hoPrint">印刷</button>
+        <button id="hoSave">PDFを保存</button>
+        <button id="hoClose">閉じる</button>
+      </div>
+      <div class="hoPrev"><canvas id="hoCanvas"></canvas></div>
+    </div>
+  </div>
 </div>
 <!--LIB-->
 <!--DATA-->

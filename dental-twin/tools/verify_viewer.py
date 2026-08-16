@@ -250,6 +250,78 @@ with sync_playwright() as pw:
         ok = False
     pg.click("#modeBtn"); pg.wait_for_timeout(800)
 
+    # ---- B-4: 歯周6点法の入力グリッド ----
+    pg.click("[data-ctab='perio']")
+    pg.wait_for_timeout(1200)
+    perio_shown = pg.evaluate(
+        "() => document.querySelector('.tc[data-fdi=\"16\"] .pgrid').style.display !== 'none'")
+    pg.click(".tc[data-fdi='16']")
+    pg.wait_for_timeout(1500)
+    pg.click("#pop button[data-psite='DB']")
+    pg.wait_for_timeout(400)
+    pg.click("#pop button[data-ppd='9']")
+    pg.wait_for_timeout(600)
+    pd_new = pg.evaluate(
+        "() => window.__DT.baseDoc.teeth.find(t=>t.fdi===16).perio.DB.pd")
+    pg.click("#pop button[data-pbop='1']")
+    pg.wait_for_timeout(500)
+    bop_new = pg.evaluate(
+        "() => window.__DT.baseDoc.teeth.find(t=>t.fdi===16).perio.DB.bop")
+    print("歯周入力: 16-DB pd =", pd_new, "/ bop =", bop_new, "| セル表示:", perio_shown)
+    if not (perio_shown and pd_new == 9 and bop_new):
+        ok = False
+    shotp = os.path.join(DOCS, "shot_perio_input.png")
+    pg.screenshot(path=shotp); shots.append(shotp)
+
+    # ---- B-4: 骨吸収レベルの 3D 反映 ----
+    pg.click("#pop button[data-pbone='10']")
+    pg.wait_for_timeout(2000)
+    bone = pg.evaluate("""() => {
+      const m = window.__DT.bone.find(b => b.userData.__jaw === 'U');
+      const base = m.userData.__base, pos = m.geometry.attributes.position.array;
+      let maxd = 0;
+      for (let i = 0; i < base.length; i += 3) maxd = Math.max(maxd, Math.abs(pos[i+1] - base[i+1]));
+      return { maxDisp: +maxd.toFixed(2), level16: window.__DT.api.boneLevelOf(16) };
+    }""")
+    print("骨吸収: 16 の bone_level =", bone["level16"], "mm / 骨メッシュ最大変位 =",
+          bone["maxDisp"], "mm")
+    if not (bone["level16"] == 10 and bone["maxDisp"] > 3):
+        ok = False
+    pg.click("#undoBtn")   # 骨レベルを戻す
+    pg.wait_for_timeout(800)
+    pg.click("#popClose")
+    pg.click("[data-ctab='caries']")
+    pg.wait_for_timeout(800)
+
+    # ---- B-4: 患者渡し物 PDF ----
+    pg.click("#pdfBtn")
+    pg.wait_for_timeout(6000)
+    ho = pg.evaluate("""() => {
+      const c = document.getElementById('hoCanvas');
+      const px = c.getContext('2d').getImageData(0, 0, 1, 1).data;
+      return { open: !document.getElementById('handout').classList.contains('hide'),
+               w: c.width, h: c.height, white: px[0] === 255 };
+    }""")
+    pdf = pg.evaluate("""() => {
+      const c = document.getElementById('hoCanvas'), S = window.__DT;
+      const u = S.api.buildPDF(S.api.dataURLToU8(c.toDataURL('image/jpeg', 0.9)),
+                               c.width, c.height);
+      let head = '';
+      for (let i = 0; i < 8; i++) head += String.fromCharCode(u[i]);
+      let tail = '';
+      for (let i = u.length - 6; i < u.length; i++) tail += String.fromCharCode(u[i]);
+      return { head: head, tail: tail.trim(), bytes: u.length };
+    }""")
+    print("渡し物:", ho, "| PDF:", pdf)
+    if not (ho["open"] and ho["w"] == 1240 and ho["h"] == 1754
+            and pdf["head"] == "%PDF-1.4" and pdf["tail"] == "%%EOF"
+            and pdf["bytes"] > 50000):
+        ok = False
+    shoth = os.path.join(DOCS, "shot_handout_modal.png")
+    pg.screenshot(path=shoth); shots.append(shoth)
+    pg.click("#hoClose")
+    pg.wait_for_timeout(600)
+
     # ---- B-3.3: パネルの折りたたみ ----
     pg.click("#sideTgl")
     pg.wait_for_timeout(500)

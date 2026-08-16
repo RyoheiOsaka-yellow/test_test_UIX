@@ -259,7 +259,8 @@
      "gm": 1,
      "bop": true
     }
-   }
+   },
+   "bone_level_mm": 5
   },
   {
    "fdi": 17,
@@ -305,7 +306,8 @@
      "gm": 1,
      "bop": true
     }
-   }
+   },
+   "bone_level_mm": 7
   },
   {
    "fdi": 18,
@@ -560,7 +562,8 @@
      "gm": 0,
      "bop": false
     }
-   }
+   },
+   "bone_level_mm": 6
   },
   {
    "fdi": 27,
@@ -606,7 +609,8 @@
      "gm": 0,
      "bop": false
     }
-   }
+   },
+   "bone_level_mm": 3
   },
   {
    "fdi": 28,
@@ -868,7 +872,8 @@
      "gm": 0,
      "bop": false
     }
-   }
+   },
+   "bone_level_mm": 5
   },
   {
    "fdi": 38,
@@ -1166,7 +1171,8 @@
      "gm": 0,
      "bop": false
     }
-   }
+   },
+   "bone_level_mm": 8
   },
   {
    "fdi": 48,
