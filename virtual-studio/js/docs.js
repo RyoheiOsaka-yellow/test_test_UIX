@@ -142,28 +142,6 @@ function buildInstructionDoc() {
       })() : ""}
 
       <h3>Seedance プロンプト (英語)</h3>
-      ${(() => {
-        /* 素材の役割分担 — 正解を持たせる先を撮影/生成の担当者に渡す */
-        const O = buildOrchestration(cut);
-        const meth = PROD_METHODS.find(m => m.id === (cut.orch && cut.orch.method)) || PROD_METHODS[0];
-        if (!O.refs.length && !O.preserve.length && !O.change.length && !O.priority.length) return "";
-        return `<h3>素材の役割分担 (${esc(meth.label)})</h3>
-        ${O.refs.length ? `<table class="orch-tbl">
-          <thead><tr><th>参照</th><th>役割</th><th>使う情報</th><th>使わない情報</th></tr></thead>
-          <tbody>${O.refs.map(r => `<tr>
-            <td><b>${esc(r.tag)}</b><br><small>${esc(r.ref.name)}</small></td>
-            <td>${esc(r.roleDef.label)}</td><td>${esc(r.use)}</td><td>${esc(r.avoid)}</td>
-          </tr>`).join("")}</tbody></table>` : ""}
-        <ul class="orch-ul">
-          ${O.preserve.length ? `<li><b>残す</b>: ${esc((cut.orch.preserve || []).map(id => (PRESERVE_ITEMS.find(x => x.id === id) || {}).label).filter(Boolean).join("・"))}</li>` : ""}
-          ${O.change.length ? `<li><b>変える</b>: ${esc((cut.orch.change || []).map(id => (CHANGE_ITEMS.find(x => x.id === id) || {}).label).filter(Boolean).join("・"))}</li>` : ""}
-          <li><b>守らせる強さ</b>: ${esc(LOCK_TARGETS.map(t => {
-            const lv = LOCK_LEVELS.find(l => l.id === (cut.orch.locks || {})[t.id]);
-            return lv ? `${t.label}=${lv.label}(${t.source})` : null;
-          }).filter(Boolean).join(" / "))}</li>
-          ${O.priority.length ? `<li><b>優先順位</b>: <ol class="orch-pri-doc">${O.priority.map(t => `<li>${esc(t)}</li>`).join("")}</ol></li>` : ""}
-        </ul>`;
-      })()}
       <pre class="prompt">${esc(generatePrompt(cut, "seedance"))}</pre>
       ${(() => {
         const sp = seedanceParams(cut);
@@ -192,12 +170,6 @@ function buildInstructionDoc() {
     .toolbar button { padding: 10px 22px; font-size: 14px; cursor: pointer; background: #1a1d24; color: #fff; border: 0; border-radius: 6px; }
     .toc { margin-bottom: 24px; border-collapse: collapse; width: 100%; }
     .cut-page { page-break-after: always; border-top: 3px solid #1a1d24; padding-top: 14px; margin-bottom: 36px; }
-    .orch-tbl { border-collapse: collapse; width: 100%; font-size: 11px; margin-bottom: 8px; }
-    .orch-tbl th, .orch-tbl td { border: 1px solid #ccc; padding: 5px 7px; text-align: left; vertical-align: top; }
-    .orch-tbl th { background: #f3efe6; font-size: 10.5px; }
-    .orch-tbl small { color: #667; }
-    .orch-ul { padding-left: 18px; font-size: 11.5px; line-height: 1.7; }
-    .orch-pri-doc { padding-left: 18px; }
     h2 { font-size: 19px; margin-bottom: 8px; }
     h2 .dur { font-size: 12px; color: #667; font-weight: 400; margin-left: 10px; }
     h3 { font-size: 14px; margin: 16px 0 6px; border-left: 4px solid #ffb547; padding-left: 8px; }

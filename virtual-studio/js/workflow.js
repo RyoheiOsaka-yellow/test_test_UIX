@@ -36,78 +36,19 @@ async function downscaleImage(file, maxPx) {
   return { url: cv.toDataURL(hasAlpha ? "image/png" : "image/jpeg", 0.82), hasAlpha };
 }
 
-/* 動画参照のポスターフレーム (先頭付近の1枚) と尺を取り出す。
- * 本体のblobはIndexedDBへ置き、localStorageにはポスターだけを残す */
-async function videoPoster(file, maxPx) {
-  const url = URL.createObjectURL(file);
-  const v = document.createElement("video");
-  v.muted = true; v.playsInline = true; v.preload = "metadata"; v.src = url;
-  await new Promise(res => {
-    v.addEventListener("loadeddata", res, { once: true });
-    v.addEventListener("error", res, { once: true });
-    setTimeout(res, 3000);
-  });
-  const w = v.videoWidth || 320, h = v.videoHeight || 180;
-  const scale = Math.min(1, maxPx / Math.max(w, h));
-  const cv = document.createElement("canvas");
-  cv.width = Math.max(1, Math.round(w * scale));
-  cv.height = Math.max(1, Math.round(h * scale));
-  try {
-    v.currentTime = Math.min(0.2, (v.duration || 1) / 10);
-    await new Promise(res => { v.addEventListener("seeked", res, { once: true }); setTimeout(res, 800); });
-    cv.getContext("2d").drawImage(v, 0, 0, cv.width, cv.height);
-  } catch { /* 描けなければ黒ポスター */ }
-  const dur = isFinite(v.duration) ? v.duration : 0;
-  URL.revokeObjectURL(url);
-  return { url: cv.toDataURL("image/jpeg", 0.7), dur };
-}
-
-/* 参照素材の取り込み。Seedance 2.5 は画像30/動画10/音声10を参照に取れるが、
- * ブラウザ保存の都合で画像12・動画/音声10までに制限する */
 async function wfAddRefFiles(files) {
-  const MAX = { image: 12, video: 10, audio: 10 };
-  const cnt = k => state.story.refs.filter(r => (r.mediaKind || "image") === k).length;
+  const MAX = 12;
   let added = 0;
   for (const file of files) {
-    const t = file.type || "";
-    const kind = t.startsWith("image/") ? "image" : t.startsWith("video/") ? "video" : t.startsWith("audio/") ? "audio" : null;
-    if (!kind) continue;
-    if (cnt(kind) >= MAX[kind]) { showToast(`⚠️ 参照${kind === "image" ? "画像" : kind === "video" ? "動画" : "音声"}は${MAX[kind]}件までです`); continue; }
+    if (!(file.type || "").startsWith("image/")) continue;
+    if (state.story.refs.length >= MAX) { showToast(`⚠️ 参照画像は${MAX}枚までです (ブラウザ保存容量のため)`); break; }
     try {
-      const id = uid();
-      if (kind === "image") {
-        const d = await downscaleImage(file, 768);
-        // 背景透過は人物の切り抜き = 同一性の参照であることが多い
-        state.story.refs.push({ id, name: file.name, mediaKind: "image", dataUrl: d.url, hasAlpha: d.hasAlpha, role: d.hasAlpha ? "identity" : "scene" });
-      } else {
-        const clipId = `ref-${id}`;
-        await idbPutClip({ cutId: clipId, name: file.name, type: file.type, size: file.size, blob: file, addedAt: Date.now() });
-        const p = kind === "video" ? await videoPoster(file, 320) : { url: "", dur: 0 };
-        state.story.refs.push({
-          id, name: file.name, mediaKind: kind, clipId,
-          dataUrl: p.url, dur: Math.round(p.dur * 10) / 10, size: file.size,
-          role: kind === "video" ? "motion" : "audio",
-        });
-      }
+      const d = await downscaleImage(file, 768);
+      state.story.refs.push({ id: uid(), name: file.name, dataUrl: d.url, hasAlpha: d.hasAlpha });
       added++;
-    } catch { /* 読めない素材はスキップ */ }
+    } catch { /* 読めない画像はスキップ */ }
   }
-  if (added) { renderWorkflow(); rcRefreshIndex(); }
-}
-
-/* 参照をカットに割り当てる。画像はプレビュー(first frame)にも反映し、
- * 動画/音声は役割付きの参照としてだけ参加させる */
-function wfAssignRefToCut(refId, cut) {
-  const ref = state.story.refs.find(r => r.id === refId);
-  if (!ref || !cut) return false;
-  ensureCameraDefaults(cut);
-  const kind = ref.mediaKind || "image";
-  if (kind === "image") cut.refImgId = refId;
-  if (!cut.orch.refs.some(a => a.refId === refId)) {
-    const def = ref.role || (REF_ROLES.find(x => x.media === kind) || REF_ROLES[0]).id;
-    cut.orch.refs.push({ refId, role: def });
-  }
-  return true;
+  if (added) renderWorkflow();
 }
 
 /* ストーリー文 → カット群 (IntentParserを文単位に適用) */
@@ -205,32 +146,21 @@ function renderWorkflow() {
 
   /* ステップ1: 参照画像 */
   byId("wfRefGrid").innerHTML = state.story.refs.map(r => {
-    const kind = r.mediaKind || "image";
-    const role = REF_ROLES.find(x => x.id === r.role) || REF_ROLES.find(x => x.media === kind) || REF_ROLES[0];
-    const usedBy = state.cuts.map((c, i) =>
-      (c.refImgId === r.id || (c.orch && c.orch.refs || []).some(a => a.refId === r.id)) ? `C${i + 1}` : null).filter(Boolean);
-    const kindBadge = kind === "video" ? `<span class="wf-ref-kind">🎞 動画${r.dur ? ` ${r.dur}s` : ""}</span>`
-      : kind === "audio" ? `<span class="wf-ref-kind">🎙 音声</span>` : "";
+    const usedBy = state.cuts.map((c, i) => c.refImgId === r.id ? `C${i + 1}` : null).filter(Boolean);
     return `
     <div class="wf-ref" draggable="true" data-refdrag="${r.id}" title="ドラッグしてカットや書き出しカードへドロップすると割り当てられます">
-      ${kind === "audio" || !r.dataUrl
-        ? `<div class="wf-ref-audio">🎙</div>`
-        : `<img src="${r.dataUrl}" alt="${esc(r.name)}">`}
+      <img src="${r.dataUrl}" alt="${esc(r.name)}">
       <div class="wf-ref-body">
-        <div class="wf-ref-name" title="${esc(r.name)}">${esc(r.name)}${kindBadge}${r.hasAlpha ? `<span class="wf-ref-used" title="背景透過 — スタジオ背景に被写体として合成されます">透過</span>` : ""}${usedBy.length ? `<span class="wf-ref-used">${usedBy.join(" ")}</span>` : ""}</div>
-        <select data-refrole="${r.id}" title="この素材に持たせる役割 — ${esc(role.note)}">
-          ${REF_ROLES.map(rr => `<option value="${rr.id}" ${rr.id === role.id ? "selected" : ""}>${esc(rr.label)}</option>`).join("")}
-        </select>
-        <select data-refassign="${r.id}" title="選んだカットにこの素材を割り当て (画像はプレビュー/first frameにも反映)">
+        <div class="wf-ref-name" title="${esc(r.name)}">${esc(r.name)}${r.hasAlpha ? `<span class="wf-ref-used" title="背景透過 — スタジオ背景に被写体として合成されます">透過</span>` : ""}${usedBy.length ? `<span class="wf-ref-used">${usedBy.join(" ")}</span>` : ""}</div>
+        <select data-refassign="${r.id}" title="選んだカットにこの画像を割り当て (プレビュー/first frameに反映。複数カットにも割当可)">
           <option value="">カットに割当…</option>
-          ${state.cuts.map((c, i) => `<option value="${c.id}" ${usedBy.includes(`C${i + 1}`) ? "selected" : ""}>C${i + 1} ${esc(c.name.slice(0, 10))}</option>`).join("")}
+          ${state.cuts.map((c, i) => `<option value="${c.id}" ${c.refImgId === r.id ? "selected" : ""}>C${i + 1} ${esc(c.name.slice(0, 10))}</option>`).join("")}
           <option value="__clear">— 割当をすべて外す</option>
         </select>
         <button class="icon-btn small danger" data-refdel="${r.id}" title="削除"><svg class="ic"><use href="#i-trash"/></svg></button>
       </div>
-      <div class="wf-ref-role"><b>使う</b> ${esc(role.use)}<br><b>使わない</b> ${esc(role.avoid)}</div>
     </div>`;
-  }).join("") || `<p class="insp-hint">まだ素材がありません。ChatGPT等で作成したキャラクター/シーン画像、動きの見本動画、声の音声をドロップしてください</p>`;
+  }).join("") || `<p class="insp-hint">まだ画像がありません。ChatGPT等で作成したキャラクター/シーン画像をドロップしてください</p>`;
 
   /* ステップ2: 設計サマリー */
   const cov = n ? evaluateCoverage(state.cuts) : [];
@@ -344,16 +274,8 @@ function setupWorkflow() {
       renderCutStrip(); renderWorkflow();
     } else if (e.target.closest("[data-refdel]")) {
       const id = e.target.closest("[data-refdel]").getAttribute("data-refdel");
-      const ref = state.story.refs.find(r => r.id === id);
-      if (ref && ref.clipId) idbDelClip(ref.clipId).catch(() => {}); // 動画/音声の本体も破棄
       state.story.refs = state.story.refs.filter(r => r.id !== id);
-      state.cuts.forEach(c => {
-        if (c.refImgId === id) c.refImgId = null;
-        if (c.orch) {
-          c.orch.refs = (c.orch.refs || []).filter(a => a.refId !== id);
-          c.orch.priority = (c.orch.priority || []).filter(k => k !== "ref:" + id);
-        }
-      });
+      state.cuts.forEach(c => { if (c.refImgId === id) c.refImgId = null; });
       refresh(); renderInspector();
       renderWorkflow();
     } else if (e.target.closest("[data-rcattach]")) {
@@ -369,28 +291,14 @@ function setupWorkflow() {
     }
   });
   byId("wfBody").addEventListener("change", e => {
-    const roleSel = e.target.closest("[data-refrole]");
-    if (roleSel) {
-      /* 素材の役割を変更 — 既に割り当て済みのカット側にも反映する */
-      const refId = roleSel.getAttribute("data-refrole");
-      const ref = state.story.refs.find(r => r.id === refId);
-      if (ref) {
-        ref.role = roleSel.value;
-        state.cuts.forEach(c => (c.orch && c.orch.refs || []).forEach(a => { if (a.refId === refId) a.role = roleSel.value; }));
-      }
-      renderPrompt(); renderInspector(); renderWorkflow();
-      return;
-    }
     const sel = e.target.closest("[data-refassign]");
     if (!sel) return;
     const refId = sel.getAttribute("data-refassign");
     if (sel.value === "__clear") {
-      state.cuts.forEach(c => {
-        if (c.refImgId === refId) c.refImgId = null;
-        if (c.orch) c.orch.refs = (c.orch.refs || []).filter(a => a.refId !== refId);
-      });
+      state.cuts.forEach(c => { if (c.refImgId === refId) c.refImgId = null; });
     } else if (sel.value) {
-      wfAssignRefToCut(refId, state.cuts.find(c2 => c2.id === sel.value));
+      const c = state.cuts.find(c2 => c2.id === sel.value);
+      if (c) c.refImgId = refId;
     }
     refresh(); renderInspector();
     renderWorkflow();
@@ -435,7 +343,8 @@ function setupWorkflow() {
     exp.classList.remove("drop-hint");
     const refId = e.dataTransfer.getData("text/vs-ref");
     const cut = state.cuts.find(c => c.id === exp.dataset.cid);
-    if (!cut || !refId || !wfAssignRefToCut(refId, cut)) return;
+    if (!cut || !refId || !state.story.refs.some(r => r.id === refId)) return;
+    cut.refImgId = refId;
     refresh(); renderInspector();
     renderWorkflow();
   });
@@ -462,18 +371,18 @@ function setupRefDnD() {
     const cut = state.cuts[+th.dataset.idx];
     if (!cut) return;
     const refId = e.dataTransfer.getData("text/vs-ref");
-    if (refId && wfAssignRefToCut(refId, cut)) {
-      /* 内部ドラッグ: 役割付きで割り当て済み */
+    if (refId && state.story.refs.some(r => r.id === refId)) {
+      cut.refImgId = refId;
     } else if (e.dataTransfer.files && e.dataTransfer.files.length) {
       const before = state.story.refs.length;
-      await wfAddRefFiles([...e.dataTransfer.files]); // 取り込み (画像は縮小+透過検出 / 動画・音声はIDBへ)
-      if (state.story.refs.length === before) return; // 対応外のファイル
-      wfAssignRefToCut(state.story.refs[state.story.refs.length - 1].id, cut);
+      await wfAddRefFiles([...e.dataTransfer.files]); // 取り込み+縮小 (透過検出込み)
+      if (state.story.refs.length === before) return; // 画像でなかった等
+      cut.refImgId = state.story.refs[state.story.refs.length - 1].id;
     } else {
       return;
     }
     refresh(); renderInspector();
-    showToast(`C${state.cuts.indexOf(cut) + 1} に参照素材を割り当てました`);
+    showToast(`C${state.cuts.indexOf(cut) + 1} に参照画像を割り当てました`);
   });
 }
 
@@ -745,9 +654,7 @@ async function exportBackupZip(msgEl) {
   try {
     for (const c of await idbAllClips()) {
       const audioKeys = Object.values(state.story.audio || {});
-      const refKeys = (state.story.refs || []).map(r => r.clipId).filter(Boolean); // 参照の動画/音声
-      const special = audioKeys.includes(c.cutId) || refKeys.includes(c.cutId)
-        || Object.values(RC_AUDIO_LEGACY).includes(c.cutId);
+      const special = audioKeys.includes(c.cutId) || Object.values(RC_AUDIO_LEGACY).includes(c.cutId);
       if (!special && !state.cuts.some(x => x.id === c.cutId)) continue; // 現プロジェクト分のみ
       const extM = String(c.name || "").match(/\.([a-z0-9]{2,4})$/i);
       const fname = `media/${c.cutId}.${extM ? extM[1] : "webm"}`;

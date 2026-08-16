@@ -39,8 +39,8 @@ const { chromium } = require('playwright-core');
   const inspHasItem = await page.locator('#inspector').textContent();
   console.log({ hasEquipSection: inspHasItem.includes('選択中の機材') });
 
-  // オプション toggle (演出オプション — v4.0で役割分担のチップも .opt-toggle になったため明示)
-  await page.locator('.opt-toggle[data-opt]').first().click();
+  // オプション toggle
+  await page.locator('.opt-toggle').first().click();
   await page.waitForTimeout(200);
 
   // カット追加・複製
