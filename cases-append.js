@@ -79,7 +79,7 @@ function casePageHtml(c, prod) {
   const spec = c.spec.map(([k, v]) => `          <tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('\n');
 
   return `<div class="page active" id="page-case">
-  <section class="case">
+  <section class="case" lang="ja">
     <div class="case__wrap">
       <a class="back" href="/cases/">← 事例一覧へ戻る</a>
       <p class="case__eyebrow">${esc(c.eyebrow)}</p>
@@ -126,7 +126,7 @@ function indexPageHtml(cases) {
   }).join('\n');
 
   return `<div class="page active" id="page-cases">
-  <section class="cases">
+  <section class="cases" lang="ja">
     <div class="cases__head">
       <a class="back" href="/">← ホームへ戻る</a>
       <p class="eyebrow">Cases</p>
@@ -163,6 +163,12 @@ module.exports = function buildCases({ DIST, ORIGIN, base, ORG_ID }) {
     h = h.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, '<script type="application/ld+json">\n' + meta.ld + '\n</script>');
     h = h.replace('<link rel="preconnect" href="https://fonts.googleapis.com">',
       '<script>window.__PAGE=null;window.__TITLE_FIXED=true;</script>\n<link rel="preconnect" href="https://fonts.googleapis.com">');
+    // ハッシュルーターのリンクを実URLへ（これが無いと事例ページから事業・法務へ飛べない）
+    h = h.replace(/href="#\/xbuild"/g, 'href="/xbuild/"')
+         .replace(/href="#\/xad"/g, 'href="/xad/"')
+         .replace(/href="#\/xinteractive"/g, 'href="/xinteractive/"')
+         .replace(/href="#\/privacy"/g, 'href="/privacy/"')
+         .replace(/href="#\/terms"/g, 'href="/terms/"');
     // ヘッダー/フッターのリンクはサブページ扱い
     h = h.replace(/<a class="back" href="#top"/g, '<a class="back" href="/"')
          .replace(/href="#(contact|record|company|careers|xbuild|xad|xinteractive|hero)"/g, 'href="/#$1"')
