@@ -82,7 +82,7 @@ const { chromium } = require('playwright-core');
   await page.click('#btnProjPage');
   await page.waitForTimeout(600);
   const meter = await page.evaluate(() => document.getElementById('storageMeter').textContent);
-  console.log({ meter: meter.slice(0, 40), meterOk: /MB/.test(meter) && meter.includes('約5MB') });
+  console.log({ meter: meter.slice(0, 40), meterOk: /MB/.test(meter) && meter.includes('目安5MB') }); // v3.4で文言変更
 
   console.log('ERRORS:', errors);
   await browser.close();

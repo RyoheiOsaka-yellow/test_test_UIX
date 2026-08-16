@@ -961,6 +961,15 @@ input[type="range"]::-moz-range-thumb {
 .wf-dot.generated { background: #e8920a; }
 .wf-dot.approved { background: #2aa87e; }
 
+/* カットの由来モードバッジ (動画モード以外のみ表示) */
+.mode-badge {
+  display: inline-block; margin-left: 4px; padding: 0.5px 4.5px;
+  font-size: 8.5px; font-weight: 800; border-radius: 4px;
+  vertical-align: 0.5px; line-height: 1.5;
+}
+.mode-badge.mb-still { background: rgba(154, 106, 224, 0.16); color: #8a5ad0; }
+.mode-badge.mb-outdoor { background: rgba(42, 168, 126, 0.16); color: #1d8a63; }
+
 /* ---------- ラフカット編集 (生成動画の添付・連結再生・WebM書き出し) ---------- */
 #rcSection { margin-bottom: 18px; }
 .rc-title { font-size: 12.5px; font-weight: 700; margin-bottom: 8px; }
@@ -1493,7 +1502,7 @@ kbd {
       <h2><span class="wf-no">4</span>レビュー & 次のストーリーへ <small>生成結果を確認し、採用したらループを回す</small></h2>
       <!-- ラフカット編集: 生成動画をカットに添付 → トリム値で連結再生 → WebM書き出し -->
       <div id="rcSection">
-        <h3 class="rc-title">ラフカット編集 <small>生成した動画を各カットに添付すると、タイムラインのイン点/尺で連結再生・書き出しができます (保存はこのブラウザ内)</small></h3>
+        <h3 class="rc-title">ラフカット編集 <small>生成した動画を各カットに添付すると、タイムラインのイン点/尺で連結再生・書き出しができます (スチールはプレビュー画が3秒静止で自動参加・保存はこのブラウザ内)</small></h3>
         <div id="rcList"></div>
         <input type="file" id="rcClipInput" accept="video/*" hidden>
         <div class="rc-player">
@@ -7758,7 +7767,7 @@ function renderWorkflow() {
   const warns = state.cuts.reduce((s, c) => s + evaluateFeasibility(c).filter(w => w.lv === "warn").length, 0);
   byId("wfSummary").innerHTML = n
     ? `<div class="wf-sum">
-        <span class="wf-pill">${n}カット / 計${state.cuts.reduce((s, c) => s + (c.kind === "still" ? 0 : c.duration || 5), 0)}秒</span>
+        <span class="wf-pill">${n}カット / 動画 計${state.cuts.reduce((s, c) => s + (c.kind === "still" ? 0 : c.duration || 5), 0)}秒${(x => x ? ` + スチール${x}枚` : "")(state.cuts.filter(c => c.kind === "still").length)}</span>
         <span class="wf-pill ${ngs.length ? "warn" : "ok"}">カバレッジ: ${ngs.length ? ngs.map(x => x.label).join("・") : "OK"}</span>
         <span class="wf-pill ${warns ? "warn" : "ok"}">フィージビリティ警告: ${warns}件</span>
       </div>`
@@ -9000,6 +9009,14 @@ function ensureCameraDefaults(cut) {
   if (cut.refOffX == null) cut.refOffX = 0; // 画像の寄り位置 (%)
   if (cut.refOffY == null) cut.refOffY = 0;
   if (cut.caption == null) cut.caption = ""; // テロップ/セリフ (編集用・プロンプトには入れない)
+  /* どのモード (動画/スチール/屋外・ドローン) で作られたカットか。
+   * 旧データはkindとプリセットの対応モードから推定する */
+  if (!cut.originMode) {
+    const p = cut.presetId ? allPresets().find(x => x.id === cut.presetId) : null;
+    cut.originMode = cut.kind === "still" ? "still"
+      : p && Array.isArray(p.modes) && p.modes.length === 1 && p.modes[0] === "outdoor" ? "outdoor"
+      : "video";
+  }
   const c = cut.camera;
   if (!c.moveSpeed) c.moveSpeed = "normal";
   if (!c.endShotSize) c.endShotSize = "same";
@@ -9030,6 +9047,7 @@ function makeCut(preset) {
     notes: "",
     duration: 5,
     kind: state.mode === "still" ? "still" : "video",
+    originMode: state.mode,
     aspect: state.mode === "still" ? "3:2" : "16:9",
     subjectType: preset ? preset.subjectType : "person",
     bgStyle: preset ? preset.bgStyle : "dark",
@@ -10261,10 +10279,13 @@ function renderCutStrip() {
     // サムネイルはカットの実アスペクト比 (9:16なら縦長) で表示する
     const d = aspectDims(c.aspect);
     const tw = Math.max(56, Math.min(150, Math.round(76 * d.W / d.H)));
+    // 動画モード以外で作られたカットには由来バッジを出す (混在時の見分け用)
+    const mb = c.originMode === "still" ? { cls: "mb-still", t: "ス", tip: "スチールモードで作成 (静止画カット)" }
+      : c.originMode === "outdoor" ? { cls: "mb-outdoor", t: "屋", tip: "屋外・ドローンモードで作成" } : null;
     return `
     <div class="cut-thumb ${i === state.activeCut ? "active" : ""}" data-idx="${i}" style="width:${tw + 4}px">
       ${renderPreviewCached(c, "th" + i)}
-      <div class="cut-cap"><span class="wf-dot ${c.wfStatus || "plan"}" title="${(WF_STATUS.find(w => w.id === c.wfStatus) || WF_STATUS[0]).label}"></span>C${i + 1}　${esc(c.name)}</div>
+      <div class="cut-cap"><span class="wf-dot ${c.wfStatus || "plan"}" title="${(WF_STATUS.find(w => w.id === c.wfStatus) || WF_STATUS[0]).label}"></span>C${i + 1}${mb ? `<span class="mode-badge ${mb.cls}" title="${mb.tip}">${mb.t}</span>` : ""}　${esc(c.name)}</div>
     </div>
     ${trans ? `<div class="trans-chip" title="${esc(trans.note)}">${esc(trans.label.split(" ")[0])}</div>` : ""}`;
   }).join("");
@@ -10315,14 +10336,16 @@ function renderCoverage() {
 function renderTimeline() {
   const bar = byId("timelineBar");
   const durs = state.cuts.map(c => c.kind === "still" ? 2 : (c.duration || 5));
-  const total = state.cuts.reduce((s2, c) => s2 + (c.kind === "still" ? 0 : c.duration || 5), 0);
+  const vTotal = state.cuts.reduce((s2, c) => s2 + (c.kind === "still" ? 0 : c.duration || 5), 0);
+  const stills = state.cuts.filter(c => c.kind === "still").length;
+  const total = `${vTotal}s${stills ? ` +ス${stills}` : ""}`;
   bar.innerHTML = state.cuts.map((c, i) =>
     `<div class="tl-block ${i === state.activeCut ? "active" : ""}" style="flex:${durs[i]}"
        title="C${i + 1} ${esc(c.name)} — ${c.kind === "still" ? "スチール" : (c.duration || 5) + "秒"}。ドラッグで並べ替え${c.kind === "still" ? "" : "、右端で尺トリム"}" data-idx="${i}" data-cid="${esc(c.id)}">
        <span class="tl-label">C${i + 1}${c.kind === "still" ? "" : " " + (c.duration || 5) + "s"}</span>
        ${c.kind === "still" ? "" : `<span class="tl-handle" data-h="${i}" title="ドラッグで尺を変更"></span>`}
      </div>`).join("")
-    + `<span class="tl-total">計 ${total}s</span>`;
+    + `<span class="tl-total" title="動画カットの合計尺${stills ? `。スチール${stills}枚はラフカットで各3秒静止` : ""}">計 ${total}</span>`;
 }
 
 /* タイムライン操作 (委譲・1回だけ登録): 右端ドラッグ=トリム / ブロックドラッグ=並べ替え / クリック=選択 */
@@ -11106,19 +11129,23 @@ async function gcMediaClips() {
 async function renderStorageMeter() {
   const el = byId("storageMeter");
   if (!el) return;
-  let lsBytes = 0;
-  try { for (const k of Object.keys(localStorage)) lsBytes += (localStorage.getItem(k) || "").length * 2; } catch { /* 権限なし */ }
-  const pct = Math.min(100, lsBytes / (5 * 1048576) * 100);
+  /* localStorageの上限は「文字数 (UTF-16単位)」で数えられ、一般的に約5M文字。
+   * バイト換算 (×2) で数えると使用率を2倍に見積もってしまうので文字数で数える */
+  let lsUnits = 0;
+  try { for (const k of Object.keys(localStorage)) lsUnits += k.length + (localStorage.getItem(k) || "").length; } catch { /* 権限なし */ }
+  const LS_LIMIT = 5 * 1024 * 1024; // 目安。実際の上限はブラウザにより異なる
+  const pct = Math.min(100, lsUnits / LS_LIMIT * 100);
   let idbNote = "";
   try {
     if (navigator.storage && navigator.storage.estimate) {
       const est = await navigator.storage.estimate();
-      idbNote = ` ｜ メディア (IndexedDB等) ${(est.usage / 1048576).toFixed(1)}MB`;
+      const free = est.quota ? ` (空き目安 ${((est.quota - est.usage) / 1073741824).toFixed(1)}GB)` : "";
+      idbNote = ` ｜ 動画/音声 ${(est.usage / 1048576).toFixed(1)}MB${free}`;
     }
   } catch { /* 未対応ブラウザ */ }
   el.innerHTML = `
-    <div class="sm-bar" title="localStorage (設定・参照画像・保存プロジェクト) の使用量"><div class="sm-fill${pct > 80 ? " warn" : ""}" style="width:${pct.toFixed(1)}%"></div></div>
-    <span class="sm-label">設定/画像 ${(lsBytes / 1048576).toFixed(2)}MB / 約5MB${idbNote}</span>`;
+    <div class="sm-bar" title="ブラウザ内保存 (localStorage) の使用量 — 設定・参照画像・保存プロジェクトが対象。上限は一般的に約5MBでブラウザにより異なります。動画/音声はIndexedDBに別枠で保存されます"><div class="sm-fill${pct > 80 ? " warn" : ""}" style="width:${pct.toFixed(1)}%"></div></div>
+    <span class="sm-label">設定/画像 ${(lsUnits / 1048576).toFixed(2)}MB / 目安5MB${idbNote}</span>`;
 }
 
 function saveCurrentProject() {
@@ -12005,6 +12032,7 @@ function cutFromCanonicalShot(shot) {
   cut.name = shot.name || shot.shot_id || "インポートカット";
   cut.aim = shot.intent?.purpose || "";
   cut.kind = P.timing?.kind || "video";
+  cut.originMode = cut.kind === "still" ? "still" : cut.originMode; // kindと由来バッジを揃える
   if (P.timing?.duration_s) cut.duration = P.timing.duration_s;
   if (P.composition) {
     cut.camera.shotSize = P.composition.shot_size || cut.camera.shotSize;

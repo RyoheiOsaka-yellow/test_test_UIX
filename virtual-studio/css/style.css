@@ -954,6 +954,15 @@ input[type="range"]::-moz-range-thumb {
 .wf-dot.generated { background: #e8920a; }
 .wf-dot.approved { background: #2aa87e; }
 
+/* カットの由来モードバッジ (動画モード以外のみ表示) */
+.mode-badge {
+  display: inline-block; margin-left: 4px; padding: 0.5px 4.5px;
+  font-size: 8.5px; font-weight: 800; border-radius: 4px;
+  vertical-align: 0.5px; line-height: 1.5;
+}
+.mode-badge.mb-still { background: rgba(154, 106, 224, 0.16); color: #8a5ad0; }
+.mode-badge.mb-outdoor { background: rgba(42, 168, 126, 0.16); color: #1d8a63; }
+
 /* ---------- ラフカット編集 (生成動画の添付・連結再生・WebM書き出し) ---------- */
 #rcSection { margin-bottom: 18px; }
 .rc-title { font-size: 12.5px; font-weight: 700; margin-bottom: 8px; }

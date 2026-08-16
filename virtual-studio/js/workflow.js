@@ -168,7 +168,7 @@ function renderWorkflow() {
   const warns = state.cuts.reduce((s, c) => s + evaluateFeasibility(c).filter(w => w.lv === "warn").length, 0);
   byId("wfSummary").innerHTML = n
     ? `<div class="wf-sum">
-        <span class="wf-pill">${n}カット / 計${state.cuts.reduce((s, c) => s + (c.kind === "still" ? 0 : c.duration || 5), 0)}秒</span>
+        <span class="wf-pill">${n}カット / 動画 計${state.cuts.reduce((s, c) => s + (c.kind === "still" ? 0 : c.duration || 5), 0)}秒${(x => x ? ` + スチール${x}枚` : "")(state.cuts.filter(c => c.kind === "still").length)}</span>
         <span class="wf-pill ${ngs.length ? "warn" : "ok"}">カバレッジ: ${ngs.length ? ngs.map(x => x.label).join("・") : "OK"}</span>
         <span class="wf-pill ${warns ? "warn" : "ok"}">フィージビリティ警告: ${warns}件</span>
       </div>`
