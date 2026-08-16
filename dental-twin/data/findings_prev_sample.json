@@ -1,0 +1,1218 @@
+{
+ "schema_version": "1.0",
+ "patient_ref": "P-000123",
+ "exam_id": "E-2026-0210-01",
+ "exam_date": "2026-02-10",
+ "examiner": "D-004",
+ "notation": "FDI",
+ "note": "サンプル（架空症例）の前回検査。実患者データではありません。",
+ "teeth": [
+  {
+   "fdi": 11,
+   "status": "CARIES",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 12,
+   "status": "SOUND",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 13,
+   "status": "SOUND",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 14,
+   "status": "SOUND",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 15,
+   "status": "SOUND",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 16,
+   "status": "CARIES",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [
+    {
+     "surface": "D",
+     "finding": "RESTORED",
+     "material": "CR",
+     "placed_on": "2023-05-11"
+    },
+    {
+     "surface": "O",
+     "finding": "C1"
+    }
+   ],
+   "perio": {
+    "MB": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 6,
+     "gm": 1,
+     "bop": true
+    },
+    "L": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 5,
+     "gm": 1,
+     "bop": true
+    }
+   },
+   "bone_level_mm": 3
+  },
+  {
+   "fdi": 17,
+   "status": "RESTORED",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [
+    {
+     "surface": "O",
+     "finding": "RESTORED",
+     "material": "CR",
+     "placed_on": "2023-05-11"
+    }
+   ],
+   "perio": {
+    "MB": {
+     "pd": 5,
+     "gm": 1,
+     "bop": true
+    },
+    "B": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 3,
+     "gm": 1,
+     "bop": true
+    },
+    "ML": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 6,
+     "gm": 1,
+     "bop": true
+    },
+    "DL": {
+     "pd": 5,
+     "gm": 1,
+     "bop": true
+    }
+   },
+   "bone_level_mm": 5
+  },
+  {
+   "fdi": 18,
+   "status": "IMPACTED",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": []
+  },
+  {
+   "fdi": 21,
+   "status": "RESTORED",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [
+    {
+     "surface": "M",
+     "finding": "C2"
+    }
+   ],
+   "perio": {
+    "MB": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 22,
+   "status": "SOUND",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 23,
+   "status": "SOUND",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 24,
+   "status": "CARIES",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [
+    {
+     "surface": "M",
+     "finding": "CO",
+     "icdas": 1
+    }
+   ],
+   "perio": {
+    "MB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 25,
+   "status": "SOUND",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 26,
+   "status": "CROWN",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 5,
+     "gm": 1,
+     "bop": true
+    },
+    "B": {
+     "pd": 5,
+     "gm": 1,
+     "bop": true
+    },
+    "DB": {
+     "pd": 5,
+     "gm": 1,
+     "bop": true
+    },
+    "ML": {
+     "pd": 5,
+     "gm": 1,
+     "bop": true
+    },
+    "L": {
+     "pd": 6,
+     "gm": 1,
+     "bop": true
+    },
+    "DL": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    }
+   },
+   "bone_level_mm": 4
+  },
+  {
+   "fdi": 27,
+   "status": "CARIES",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [
+    {
+     "surface": "B",
+     "finding": "C1",
+     "icdas": 2,
+     "cavity_class": "V"
+    }
+   ],
+   "perio": {
+    "MB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    }
+   },
+   "bone_level_mm": 2
+  },
+  {
+   "fdi": 28,
+   "status": "UNERUPTED",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": []
+  },
+  {
+   "fdi": 31,
+   "status": "SOUND",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 32,
+   "status": "SOUND",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 33,
+   "status": "SOUND",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 34,
+   "status": "CARIES",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 35,
+   "status": "SOUND",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 36,
+   "status": "CARIES",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [
+    {
+     "surface": "O",
+     "finding": "C4"
+    }
+   ]
+  },
+  {
+   "fdi": 37,
+   "status": "ROOT_CANAL_TREATED",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [
+    {
+     "surface": "O",
+     "finding": "RESTORED",
+     "material": "CR",
+     "placed_on": "2023-05-11"
+    }
+   ],
+   "perio": {
+    "MB": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 5,
+     "gm": 1,
+     "bop": true
+    },
+    "DB": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 5,
+     "gm": 1,
+     "bop": true
+    },
+    "DL": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    }
+   },
+   "bone_level_mm": 4
+  },
+  {
+   "fdi": 38,
+   "status": "IMPACTED",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": []
+  },
+  {
+   "fdi": 41,
+   "status": "SOUND",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 42,
+   "status": "SOUND",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 43,
+   "status": "CARIES",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [
+    {
+     "surface": "B",
+     "finding": "CO",
+     "icdas": 1
+    }
+   ],
+   "perio": {
+    "MB": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 44,
+   "status": "SOUND",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 45,
+   "status": "SOUND",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 46,
+   "status": "IMPLANT",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": [],
+   "perio": {
+    "MB": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "B": {
+     "pd": 2,
+     "gm": 0,
+     "bop": false
+    },
+    "DB": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "L": {
+     "pd": 3,
+     "gm": 0,
+     "bop": false
+    },
+    "DL": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    }
+   }
+  },
+  {
+   "fdi": 47,
+   "status": "CARIES",
+   "mobility": 1,
+   "furcation": 0,
+   "surfaces": [
+    {
+     "surface": "B",
+     "finding": "C1",
+     "icdas": 2
+    },
+    {
+     "surface": "O",
+     "finding": "C2"
+    }
+   ],
+   "perio": {
+    "MB": {
+     "pd": 4,
+     "gm": 1,
+     "bop": true
+    },
+    "B": {
+     "pd": 5,
+     "gm": 1,
+     "bop": true
+    },
+    "DB": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    },
+    "ML": {
+     "pd": 6,
+     "gm": 1,
+     "bop": true
+    },
+    "L": {
+     "pd": 6,
+     "gm": 1,
+     "bop": true
+    },
+    "DL": {
+     "pd": 4,
+     "gm": 0,
+     "bop": false
+    }
+   },
+   "bone_level_mm": 5
+  },
+  {
+   "fdi": 48,
+   "status": "IMPACTED",
+   "mobility": 0,
+   "furcation": 0,
+   "surfaces": []
+  }
+ ],
+ "plan": [
+  {
+   "fdi": 16,
+   "surfaces": "O",
+   "procedure": "CR_FILLING",
+   "priority": 1,
+   "visits": 1,
+   "note": "同日充填可"
+  },
+  {
+   "fdi": 47,
+   "surfaces": "O",
+   "procedure": "RCT",
+   "priority": 1,
+   "visits": 3,
+   "note": "根管治療後にクラウン"
+  },
+  {
+   "fdi": 34,
+   "surfaces": "O",
+   "procedure": "CR_FILLING",
+   "priority": 2,
+   "visits": 1
+  },
+  {
+   "fdi": 11,
+   "surfaces": "M",
+   "procedure": "CR_FILLING",
+   "priority": 2,
+   "visits": 1,
+   "note": "審美的配慮"
+  },
+  {
+   "fdi": 24,
+   "surfaces": "M",
+   "procedure": "OBSERVE",
+   "priority": 3,
+   "visits": 0,
+   "note": "要観察・フッ化物塗布"
+  },
+  {
+   "fdi": 36,
+   "surfaces": "",
+   "procedure": "BRIDGE",
+   "priority": 2,
+   "visits": 4,
+   "note": "35-37 支台"
+  }
+ ]
+}

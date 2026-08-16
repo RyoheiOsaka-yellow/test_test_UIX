@@ -322,6 +322,51 @@ with sync_playwright() as pw:
     pg.click("#hoClose")
     pg.wait_for_timeout(600)
 
+    # ---- Phase 2: 経過比較（T0 / T1） ----
+    prev = os.path.join(ROOT, "data", "findings_prev_sample.json")
+    with open(prev, encoding="utf-8") as f:
+        prev_doc = f.read()
+    cmp_res = pg.evaluate("""(txt) => {
+      const S = window.__DT;
+      S.api.loadPrev(JSON.parse(txt));
+      const c = S.cmp;
+      const pick = k => c.rows.filter(r => r.kind === k).length;
+      return { on: S.compare, sim: S.simulated,
+               worse: c.worse, better: c.better,
+               rowsWorse: pick('worse'), rowsBetter: pick('better'),
+               t16: (c.teeth.get(16) || {}).state,
+               t21: (c.teeth.get(21) || {}).state,
+               t36: (c.teeth.get(36) || {}).state,
+               banner: document.getElementById('cmpNote').textContent };
+    }""", prev_doc)
+    print("経過比較:", {k: cmp_res[k] for k in
+                    ("on", "worse", "better", "t16", "t21", "t36")})
+    print("  バナー:", cmp_res["banner"])
+    lg = pg.evaluate("""() => ({
+      cmp: document.querySelectorAll('.cmpLg:not(.hide)').length,
+      caries: document.querySelectorAll('#legend span:not(.perioLg):not(.cmpLg):not(.hide)').length
+    })""")
+    print("  凡例の切替(比較用/う蝕用):", lg)
+    if not (lg["cmp"] == 3 and lg["caries"] == 0):
+        ok = False
+    if not (cmp_res["on"] and cmp_res["worse"] > 0 and cmp_res["better"] > 0
+            and cmp_res["t16"] == "worse" and cmp_res["t21"] == "better"
+            and cmp_res["t36"] == "worse" and not cmp_res["sim"]):
+        ok = False
+    pg.wait_for_timeout(2500)
+    shotcmp = os.path.join(DOCS, "shot_compare.png")
+    pg.screenshot(path=shotcmp); shots.append(shotcmp)
+
+    # 比較中にシミュレーションへ切り替えると比較は解除される（ACTUAL/SIM 排他）
+    pg.click("#simBtn")
+    pg.wait_for_timeout(1200)
+    excl = pg.evaluate("() => ({cmp: window.__DT.compare, sim: window.__DT.simulated})")
+    print("  ACTUAL/SIMULATION 排他:", excl)
+    if excl["cmp"] or not excl["sim"]:
+        ok = False
+    pg.click("#simBtn")
+    pg.wait_for_timeout(800)
+
     # ---- B-3.3: パネルの折りたたみ ----
     pg.click("#sideTgl")
     pg.wait_for_timeout(500)

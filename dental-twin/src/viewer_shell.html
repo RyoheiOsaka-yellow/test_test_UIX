@@ -89,6 +89,7 @@ main{display:grid;grid-template-columns:1fr 300px;min-height:0}
   padding:7px 14px;border-radius:9px;font-size:14px;font-weight:700;color:#fff;
   pointer-events:none;white-space:nowrap;max-width:92%;overflow:hidden;text-overflow:ellipsis}
 #simNote{top:12px;background:rgba(214,94,28,.94)}
+#cmpNote{top:12px;background:rgba(47,111,235,.94)}
 #seqNote{top:52px;background:rgba(27,36,48,.88);font-weight:600}
 body.patient .banner{font-size:17px}
 
@@ -237,6 +238,7 @@ body.nochart #chart{padding-bottom:6px}
       <div id="sideR" class="side">患者さんの左 →</div>
       <div id="tip" class="hide"></div>
       <div id="simNote" class="banner hide">治療後シミュレーション表示中（実際の治療結果とは異なります）</div>
+      <div id="cmpNote" class="banner hide"></div>
       <div id="seqNote" class="banner hide"></div>
       <div id="jawTagU" class="jawTag hide">上顎（咬合面）</div>
       <div id="jawTagL" class="jawTag hide">下顎（咬合面）</div>
@@ -262,6 +264,9 @@ body.nochart #chart{padding-bottom:6px}
       <span class="perioLg hide"><i class="sw" style="background:#E9C46A;border-radius:50%"></i>4–5mm</span>
       <span class="perioLg hide"><i class="sw" style="background:#E63946;border-radius:50%"></i>6mm以上</span>
       <span class="perioLg hide"><i class="sw" style="background:#C1121F;border-radius:50%"></i>出血あり</span>
+      <span class="cmpLg hide"><i class="sw" style="background:#E63946"></i>前回より悪化</span>
+      <span class="cmpLg hide"><i class="sw" style="background:#2A9D8F"></i>改善・処置済</span>
+      <span class="cmpLg hide"><i class="sw" style="background:#F2EDE4"></i>変化なし</span>
     </div>
 
     <div id="chart" class="adv">
@@ -308,6 +313,15 @@ body.nochart #chart{padding-bottom:6px}
         <h3>治療後の見え方</h3>
         <div class="row">
           <button id="simBtn">治療後シミュレーション</button>
+        </div>
+      </div>
+
+      <div class="sec adv">
+        <h3>経過をくらべる</h3>
+        <div class="row">
+          <label class="btn" for="prevFile">前回の所見を開く</label>
+          <input type="file" id="prevFile" accept=".json,application/json" style="display:none">
+          <button id="cmpBtn" disabled>経過比較</button>
         </div>
       </div>
 

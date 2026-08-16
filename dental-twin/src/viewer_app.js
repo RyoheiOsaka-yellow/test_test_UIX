@@ -323,6 +323,13 @@
 
   function surfaceColorFor(fdi, rec, surf) {
     const C = CONFIG.COLORS;
+    // 経過比較中は「変化のあった面」だけを塗る（全部色が付くと差分が読めない）
+    if (S.compare && S.cmp) {
+      const e = S.cmp.teeth.get(fdi);
+      if (!e) return C.SOUND;
+      const k = e.per[surf === 'I' ? 'O' : surf];
+      return k && k !== 'same' ? CMP_COLORS[k] : C.SOUND;
+    }
     if (!rec) return C.SOUND;
     if (rec.status === 'IMPLANT') return C.IMPLANT;
     if (rec.status === 'CROWN' || rec.status === 'BRIDGE_PONTIC') return C.CERAMIC;
@@ -753,7 +760,20 @@
     document.getElementById('undoBtn').addEventListener('click', undo);
     document.getElementById('saveBtn').addEventListener('click', saveFindings);
     document.getElementById('simBtn').addEventListener('click', function () {
+      if (S.compare) setCompare(false);   // ACTUAL と SIMULATION は排他
       setSimulated(!S.simulated);
+    });
+    document.getElementById('cmpBtn').addEventListener('click', function () {
+      setCompare(!S.compare);
+    });
+    document.getElementById('prevFile').addEventListener('change', function (e) {
+      const f = e.target.files && e.target.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = function () {
+        try { loadPrev(JSON.parse(rd.result)); }
+        catch (err) { alert('前回の所見を読み込めませんでした: ' + err.message); }
+      };
+      rd.readAsText(f);
     });
     document.querySelectorAll('[data-seq]').forEach(function (b) {
       b.addEventListener('click', function () { runSeq(b.dataset.seq); });
@@ -762,8 +782,35 @@
     document.getElementById('view').addEventListener('pointerdown', function () { stopSeq(); });
   }
 
+  function cmpRowsHTML(only) {
+    if (!S.cmp) return '';
+    const rows = S.cmp.rows.filter(function (r) {
+      return only == null || r.fdi === only;
+    });
+    if (!rows.length) {
+      return '<div class="note">' +
+        (only == null ? '前回から変化はありません' : 'この歯に変化はありません') + '</div>';
+    }
+    let h = '';
+    rows.forEach(function (r) {
+      const col = r.kind === 'worse' ? CMP_COLORS.worse : CMP_COLORS.better;
+      const what = r.perio ? ('歯周 ' + r.surf)
+        : (r.surf ? surfName(r.fdi, r.surf) : '歯の状態');
+      h += '<div class="drow"><span><i class="sw" style="background:' + cssHex(col) +
+        '"></i>' + (only == null ? r.fdi + ' ' : '') + what + '</span><b>' +
+        r.from + ' → ' + r.to + '</b></div>';
+    });
+    return h;
+  }
+
   function renderDetail(fdi, surf) {
     const el = document.getElementById('detail');
+    if (S.compare) {
+      const head = fdi == null ? '前回からの変化' :
+        (fdi + '　' + fdiToPalmer(fdi) + ' の変化');
+      el.innerHTML = '<div class="dh">' + head + '</div>' + cmpRowsHTML(fdi);
+      return;
+    }
     if (fdi == null) {
       el.innerHTML = '<div class="ph">歯をタップすると詳細が表示されます</div>';
       return;
@@ -1103,8 +1150,14 @@
     });
   }
 
-  function chartSurfaceColor(rec, surf) {
+  function chartSurfaceColor(rec, surf, fdi) {
     const C = CONFIG.COLORS;
+    if (S.compare && S.cmp && fdi != null) {
+      const e = S.cmp.teeth.get(fdi);
+      if (!e) return C.SOUND;
+      const k = e.per[surf === 'I' ? 'O' : surf];
+      return k && k !== 'same' ? CMP_COLORS[k] : C.SOUND;
+    }
     if (!rec) return C.SOUND;
     if (rec.status === 'CROWN' || rec.status === 'BRIDGE_PONTIC') return C.CERAMIC;
     const list = rec.surfaces || [];
@@ -1166,7 +1219,7 @@
         if (missing) hex = 0xEDEFF2;
         else if (st === 'IMPLANT') hex = CONFIG.COLORS.IMPLANT;
         else if (st === 'UNERUPTED' || st === 'IMPACTED') hex = 0xD8DDE3;
-        else hex = chartSurfaceColor(rec, p.dataset.surf);
+        else hex = chartSurfaceColor(rec, p.dataset.surf, fdi);
         p.setAttribute('fill', cssHex(hex));
       });
     });
@@ -1520,6 +1573,12 @@
     document.querySelectorAll('.perioLg').forEach(function (el) {
       el.classList.toggle('hide', !S.layers.perio);
     });
+    // 経過比較中はう蝕の配色を使わないので、凡例も比較用に差し替える
+    document.querySelectorAll('.cmpLg').forEach(function (el) {
+      el.classList.toggle('hide', !S.compare);
+    });
+    document.querySelectorAll('#legend span:not(.perioLg):not(.cmpLg)')
+      .forEach(function (el) { el.classList.toggle('hide', !!S.compare); });
   }
 
   // シミュレーション中はチャート入力を受け付けないので、その理由を見出しに出す
@@ -1660,6 +1719,143 @@
       });
       at(2600 + 1500 * items.length + 1200, stopSeq);
     }
+  }
+
+  /* =======================================================================
+     経過比較（T0 / T1）— SPEC §5.18 / 研究資料 §28・§29
+     ACTUAL 同士の比較。SIMULATION とは排他にする。
+     ======================================================================= */
+  const CMP_COLORS = { worse: 0xE63946, better: 0x2A9D8F, same: 0xF2EDE4 };
+
+  function surfMapOf(doc, fdi) {
+    const m = {};
+    if (!doc || !doc.teeth) return m;
+    for (let i = 0; i < doc.teeth.length; i++) {
+      if (doc.teeth[i].fdi !== fdi) continue;
+      (doc.teeth[i].surfaces || []).forEach(function (s) {
+        m[normSurf(s.surface)] = s;
+      });
+      break;
+    }
+    return m;
+  }
+
+  function statusOf(doc, fdi) {
+    if (!doc || !doc.teeth) return 'SOUND';
+    for (let i = 0; i < doc.teeth.length; i++) {
+      if (doc.teeth[i].fdi === fdi) return doc.teeth[i].status || 'SOUND';
+    }
+    return 'SOUND';
+  }
+
+  // 1歯面の変化を判定する。う蝕は SEVERITY の順序で比較し、RESTORED は「処置済」
+  function surfaceDelta(a, b) {
+    const sa = a ? (a.finding === 'RESTORED' ? -1 : (SEVERITY[a.finding] || 0)) : 0;
+    const sb = b ? (b.finding === 'RESTORED' ? -1 : (SEVERITY[b.finding] || 0)) : 0;
+    if (sa === sb) return 'same';
+    return sb > sa ? 'worse' : 'better';
+  }
+
+  function buildComparison() {
+    const t0 = S.prevDoc, t1 = S.baseDoc;
+    const res = { teeth: new Map(), rows: [], worse: 0, better: 0 };
+    if (!t0 || !t1) return res;
+
+    const fdis = new Set();
+    [t0, t1].forEach(function (d) {
+      (d.teeth || []).forEach(function (t) { fdis.add(t.fdi); });
+    });
+
+    Array.from(fdis).sort(function (x, y) { return x - y; }).forEach(function (fdi) {
+      const A = surfMapOf(t0, fdi), B = surfMapOf(t1, fdi);
+      const per = {};
+      let toothState = 'same';
+      ['O', 'B', 'L', 'M', 'D'].forEach(function (k) {
+        const d = surfaceDelta(A[k], B[k]);
+        per[k] = d;
+        if (d === 'worse') toothState = 'worse';
+        else if (d === 'better' && toothState === 'same') toothState = 'better';
+        if (d !== 'same') {
+          res.rows.push({
+            fdi: fdi, surf: k, kind: d,
+            from: A[k] ? (FINDING_JA[A[k].finding] || A[k].finding) : '健全',
+            to: B[k] ? (FINDING_JA[B[k].finding] || B[k].finding) : '健全'
+          });
+        }
+      });
+      // 歯単位の状態変化（欠損・インプラント等）も拾う
+      const s0 = statusOf(t0, fdi), s1 = statusOf(t1, fdi);
+      if (s0 !== s1) {
+        const bad = (s1 === 'MISSING' || s1 === 'RETAINED_ROOT');
+        if (bad) toothState = 'worse'; else if (toothState === 'same') toothState = 'better';
+        res.rows.push({
+          fdi: fdi, surf: null, kind: bad ? 'worse' : 'better',
+          from: STATUS_JA[s0] || s0, to: STATUS_JA[s1] || s1
+        });
+      }
+      if (toothState !== 'same') {
+        res.teeth.set(fdi, { state: toothState, per: per });
+        if (toothState === 'worse') res.worse++; else res.better++;
+      }
+    });
+
+    // 歯周（実測値）の変化は数値で一覧に出す。3D の着色はう蝕所見に絞る
+    (t1.teeth || []).forEach(function (t) {
+      if (!t.perio) return;
+      const prev = (t0.teeth || []).filter(function (x) { return x.fdi === t.fdi; })[0];
+      if (!prev || !prev.perio) return;
+      let mx = 0, site = null;
+      Object.keys(t.perio).forEach(function (k) {
+        const a = prev.perio[k] && prev.perio[k].pd, b = t.perio[k] && t.perio[k].pd;
+        if (typeof a !== 'number' || typeof b !== 'number') return;
+        if (Math.abs(b - a) > Math.abs(mx)) { mx = b - a; site = k; }
+      });
+      if (site && Math.abs(mx) >= 2) {
+        res.rows.push({
+          fdi: t.fdi, surf: site, kind: mx > 0 ? 'worse' : 'better', perio: true,
+          from: prev.perio[site].pd + 'mm', to: t.perio[site].pd + 'mm'
+        });
+      }
+    });
+    return res;
+  }
+
+  function setCompare(on) {
+    if (on && !S.prevDoc) return;
+    S.compare = on;
+    if (on) setSimulatedUI(false);      // ACTUAL と SIMULATION は排他（研究資料 §29）
+    const b = document.getElementById('cmpBtn');
+    if (b) {
+      b.classList.toggle('on', on);
+      b.textContent = on ? '比較をやめる' : '経過比較';
+    }
+    const note = document.getElementById('cmpNote');
+    if (note) {
+      note.classList.toggle('hide', !on);
+      if (on) {
+        S.cmp = buildComparison();
+        note.textContent = '経過比較：' + (S.prevDoc.exam_date || '前回') + ' → ' +
+          (S.baseDoc.exam_date || '今回') +
+          '　悪化 ' + S.cmp.worse + '歯 / 改善・処置済 ' + S.cmp.better + '歯';
+      }
+    }
+    syncLegend();
+    S.needsRecolor = true;
+    updateChart();
+    renderDetail(S.selected);
+  }
+
+  function loadPrev(doc) {
+    S.prevDoc = doc;
+    // exam_date で新旧を決める。古い方を T0 にする
+    if (S.baseDoc && doc && doc.exam_date && S.baseDoc.exam_date &&
+        doc.exam_date > S.baseDoc.exam_date) {
+      const t = S.prevDoc; S.prevDoc = S.baseDoc; S.baseDoc = t;
+      loadFindings(S.baseDoc);
+    }
+    const b = document.getElementById('cmpBtn');
+    if (b) b.disabled = false;
+    setCompare(true);
   }
 
   /* =======================================================================
@@ -2089,6 +2285,7 @@
     openPop: openPop, closePop: closePop,
     setPerio: setPerio, setBoneLevel: setBoneLevel, setChartTab: setChartTab,
     openHandout: openHandout, renderHandout: renderHandout,
+    loadPrev: loadPrev, setCompare: setCompare, buildComparison: buildComparison,
     buildPDF: buildPDF, dataURLToU8: dataURLToU8, boneLevelOf: boneLevelOf
   };
 
