@@ -42,13 +42,30 @@ function scriptBeatRows(cut, ci) {
   return rows || `<div class="insp-hint">ビート未設定 — 「何が・いつ起きるか」を並べると、尺とカメラの噛み合わせを診断します</div>`;
 }
 
+/* ヘッダーの合計だけを更新する (尺の変更時) */
+function renderScriptTotal() {
+  const el = byId("scriptTotal");
+  if (el) el.textContent = `${state.cuts.length}カット / 計${scriptTotalSec()}秒`;
+}
+
 function renderScriptPage() {
   const body = byId("scriptBody");
   if (!body) return;
-  const total = scriptTotalSec();
-  byId("scriptTotal").textContent = `${state.cuts.length}カット / 計${total}秒`;
+  renderScriptTotal();
+  body.innerHTML = state.cuts.map((cut, ci) => scriptCutHtml(cut, ci)).join("")
+    || `<p class="insp-hint">カットがありません。スタジオで技法を選ぶか、ワークフローのストーリーから設計してください</p>`;
+}
 
-  body.innerHTML = state.cuts.map((cut, ci) => {
+/* 編集したカットの1枚だけを描き直す (20カットでも操作が重くならないように) */
+function renderScriptCut(ci) {
+  const el = document.querySelector(`.sc-cut[data-sccut="${ci}"]`);
+  if (!el || !state.cuts[ci]) { renderScriptPage(); return; }
+  el.outerHTML = scriptCutHtml(state.cuts[ci], ci);
+  renderScriptTotal();
+}
+
+function scriptCutHtml(cut, ci) {
+  return (() => {
     ensureCameraDefaults(cut);
     const p = cut.perf;
     const size = SHOT_SIZES.find(s => s.id === cut.camera.shotSize) || {};
@@ -196,7 +213,7 @@ function renderScriptPage() {
           `<li class="lv-${x.lv}">${x.lv === "danger" ? "⛔" : x.lv === "warn" ? "⚠️" : "💡"} ${esc(x.t)}</li>`).join("")}</ul>` : ""}
       </div>
     </section>`;
-  }).join("") || `<p class="insp-hint">カットがありません。スタジオで技法を選ぶか、ワークフローのストーリーから設計してください</p>`;
+  })();
 }
 
 /* data属性で束ねるセレクト (台本ページ用の簡易ヘルパー) */
@@ -219,8 +236,9 @@ function setupScriptPage() {
   const body = byId("scriptBody");
   const cutOf = el => state.cuts[+el.closest("[data-sccut]").dataset.sccut];
   /* 台本を編集したらスタジオ側の描画も更新する (カメラ設定には触れない) */
-  const sync = (full) => {
-    renderScriptPage();
+  /* ci を渡すとそのカットだけ描き直す (全体再描画は構造が変わったときだけ) */
+  const sync = (full, ci) => {
+    if (ci == null) renderScriptPage(); else renderScriptCut(ci);
     renderCutStrip(); renderTimeline(); renderPrompt(); renderLint();
     if (full) renderInspector();
     captureUndo();   // 台本側の編集も ⌘Z で戻せるようにする
@@ -241,7 +259,7 @@ function setupScriptPage() {
       const cut = state.cuts[+add.dataset.scbadd];
       const rest = Math.max(0.5, Math.round(((cut.duration || 5) - perfBeatTotal(cut)) * 10) / 10);
       cut.perf.beats.push({ id: uid(), sec: rest || 1, who: "", do: "", gaze: "none", cam: "none" });
-      sync(true);
+      sync(true, +add.dataset.scbadd);
       return;
     }
     const fit = e.target.closest("[data-scfit]");
@@ -252,7 +270,7 @@ function setupScriptPage() {
         const k = (cut.duration || 5) / t;
         cut.perf.beats.forEach(b => { b.sec = Math.max(0.5, Math.round(b.sec * k * 10) / 10); });
       }
-      sync(true);
+      sync(true, +fit.dataset.scfit);
       return;
     }
     const aadd = e.target.closest("[data-scaadd]");
@@ -260,7 +278,7 @@ function setupScriptPage() {
       const cut = state.cuts[+aadd.dataset.scaadd];
       cut.perf.actors.push({ id: uid(), type: "person", name: String(cut.perf.actors.length + 1) });
       cut.perf.people = cut.perf.actors.length;
-      sync(true);
+      sync(true, +aadd.dataset.scaadd);
       return;
     }
     const adel = e.target.closest("[data-scadel]");
@@ -271,13 +289,13 @@ function setupScriptPage() {
       cut.perf.actors = cut.perf.actors.filter(a => a.id !== id);
       cut.perf.beats.forEach(b => { if (b.who === id) b.who = ""; });
       cut.perf.people = cut.perf.actors.length;
-      sync(true);
+      sync(true, state.cuts.indexOf(cut));
       return;
     }
     const lib = e.target.closest("[data-scloclib]");
     if (lib) { openLocationLib(+lib.dataset.scloclib); return; }
     const lclr = e.target.closest("[data-sclocclear]");
-    if (lclr) { state.cuts[+lclr.dataset.sclocclear].location.presetId = null; sync(true); return; }
+    if (lclr) { state.cuts[+lclr.dataset.sclocclear].location.presetId = null; sync(true, +lclr.dataset.sclocclear); return; }
     const padd = e.target.closest("[data-scphotoadd]");
     if (padd) {
       const inp = byId("locPhotoInput");
@@ -288,7 +306,7 @@ function setupScriptPage() {
     const pdel = e.target.closest("[data-scphotodel]");
     if (pdel) {
       locSetPhoto(state.cuts[+pdel.dataset.scphotodel], null);
-      sync(true);
+      sync(true, +pdel.dataset.scphotodel);
       return;
     }
     const pg = e.target.closest("[data-scphotoguess]");
@@ -303,13 +321,14 @@ function setupScriptPage() {
     if (bup) {
       const cut = cutOf(bup); const i = +bup.dataset.scbup;
       [cut.perf.beats[i - 1], cut.perf.beats[i]] = [cut.perf.beats[i], cut.perf.beats[i - 1]];
-      sync(true);
+      sync(true, state.cuts.indexOf(cut));
       return;
     }
     const bdel = e.target.closest("[data-scbdel]");
     if (bdel) {
-      cutOf(bdel).perf.beats.splice(+bdel.dataset.scbdel, 1);
-      sync(true);
+      const dcut = cutOf(bdel);
+      dcut.perf.beats.splice(+bdel.dataset.scbdel, 1);
+      sync(true, state.cuts.indexOf(dcut));
     }
   });
 
@@ -360,7 +379,7 @@ function setupScriptPage() {
       perfApplyTemplate(cut, t.value);
       showToast("配分テンプレを尺に合わせて流し込みました");
     } else return;
-    sync(true);
+    sync(true, state.cuts.indexOf(cut));
   });
 
   /* テキスト入力は再描画せず値だけ反映 (入力中のフォーカスを失わない) */

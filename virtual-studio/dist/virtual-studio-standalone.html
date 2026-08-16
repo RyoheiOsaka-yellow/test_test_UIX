@@ -9726,9 +9726,21 @@ function sunPosition(lat, lng, date) {
   };
 }
 
+/* 同じ座標・同じ日付なら結果は変わらないのでキャッシュする
+ * (台本ページはカットごとに呼ぶため、再描画のたびの再計算を避ける) */
+const sunEventCache = new Map();
+function sunEvents(lat, lng, ymd) {
+  const key = `${(+lat).toFixed(3)},${(+lng).toFixed(3)},${ymd}`;
+  if (sunEventCache.has(key)) return sunEventCache.get(key);
+  const r = sunEventsCompute(lat, lng, ymd);
+  if (sunEventCache.size > 200) sunEventCache.clear();
+  sunEventCache.set(key, r);
+  return r;
+}
+
 /* 日の出/日の入り・ゴールデンアワー・ブルーアワーを走査で求める。
  * 時刻は経度から求めた現地太陽時 (時計時刻とは時差分ずれる) */
-function sunEvents(lat, lng, ymd) {
+function sunEventsCompute(lat, lng, ymd) {
   const [y, m, dd] = ymd.split("-").map(Number);
   if (!y || !m || !dd) return null;
   const base = Date.UTC(y, m - 1, dd, 0, 0, 0);
@@ -10118,13 +10130,30 @@ function scriptBeatRows(cut, ci) {
   return rows || `<div class="insp-hint">ビート未設定 — 「何が・いつ起きるか」を並べると、尺とカメラの噛み合わせを診断します</div>`;
 }
 
+/* ヘッダーの合計だけを更新する (尺の変更時) */
+function renderScriptTotal() {
+  const el = byId("scriptTotal");
+  if (el) el.textContent = `${state.cuts.length}カット / 計${scriptTotalSec()}秒`;
+}
+
 function renderScriptPage() {
   const body = byId("scriptBody");
   if (!body) return;
-  const total = scriptTotalSec();
-  byId("scriptTotal").textContent = `${state.cuts.length}カット / 計${total}秒`;
+  renderScriptTotal();
+  body.innerHTML = state.cuts.map((cut, ci) => scriptCutHtml(cut, ci)).join("")
+    || `<p class="insp-hint">カットがありません。スタジオで技法を選ぶか、ワークフローのストーリーから設計してください</p>`;
+}
 
-  body.innerHTML = state.cuts.map((cut, ci) => {
+/* 編集したカットの1枚だけを描き直す (20カットでも操作が重くならないように) */
+function renderScriptCut(ci) {
+  const el = document.querySelector(`.sc-cut[data-sccut="${ci}"]`);
+  if (!el || !state.cuts[ci]) { renderScriptPage(); return; }
+  el.outerHTML = scriptCutHtml(state.cuts[ci], ci);
+  renderScriptTotal();
+}
+
+function scriptCutHtml(cut, ci) {
+  return (() => {
     ensureCameraDefaults(cut);
     const p = cut.perf;
     const size = SHOT_SIZES.find(s => s.id === cut.camera.shotSize) || {};
@@ -10272,7 +10301,7 @@ function renderScriptPage() {
           `<li class="lv-${x.lv}">${x.lv === "danger" ? "⛔" : x.lv === "warn" ? "⚠️" : "💡"} ${esc(x.t)}</li>`).join("")}</ul>` : ""}
       </div>
     </section>`;
-  }).join("") || `<p class="insp-hint">カットがありません。スタジオで技法を選ぶか、ワークフローのストーリーから設計してください</p>`;
+  })();
 }
 
 /* data属性で束ねるセレクト (台本ページ用の簡易ヘルパー) */
@@ -10295,8 +10324,9 @@ function setupScriptPage() {
   const body = byId("scriptBody");
   const cutOf = el => state.cuts[+el.closest("[data-sccut]").dataset.sccut];
   /* 台本を編集したらスタジオ側の描画も更新する (カメラ設定には触れない) */
-  const sync = (full) => {
-    renderScriptPage();
+  /* ci を渡すとそのカットだけ描き直す (全体再描画は構造が変わったときだけ) */
+  const sync = (full, ci) => {
+    if (ci == null) renderScriptPage(); else renderScriptCut(ci);
     renderCutStrip(); renderTimeline(); renderPrompt(); renderLint();
     if (full) renderInspector();
     captureUndo();   // 台本側の編集も ⌘Z で戻せるようにする
@@ -10317,7 +10347,7 @@ function setupScriptPage() {
       const cut = state.cuts[+add.dataset.scbadd];
       const rest = Math.max(0.5, Math.round(((cut.duration || 5) - perfBeatTotal(cut)) * 10) / 10);
       cut.perf.beats.push({ id: uid(), sec: rest || 1, who: "", do: "", gaze: "none", cam: "none" });
-      sync(true);
+      sync(true, +add.dataset.scbadd);
       return;
     }
     const fit = e.target.closest("[data-scfit]");
@@ -10328,7 +10358,7 @@ function setupScriptPage() {
         const k = (cut.duration || 5) / t;
         cut.perf.beats.forEach(b => { b.sec = Math.max(0.5, Math.round(b.sec * k * 10) / 10); });
       }
-      sync(true);
+      sync(true, +fit.dataset.scfit);
       return;
     }
     const aadd = e.target.closest("[data-scaadd]");
@@ -10336,7 +10366,7 @@ function setupScriptPage() {
       const cut = state.cuts[+aadd.dataset.scaadd];
       cut.perf.actors.push({ id: uid(), type: "person", name: String(cut.perf.actors.length + 1) });
       cut.perf.people = cut.perf.actors.length;
-      sync(true);
+      sync(true, +aadd.dataset.scaadd);
       return;
     }
     const adel = e.target.closest("[data-scadel]");
@@ -10347,13 +10377,13 @@ function setupScriptPage() {
       cut.perf.actors = cut.perf.actors.filter(a => a.id !== id);
       cut.perf.beats.forEach(b => { if (b.who === id) b.who = ""; });
       cut.perf.people = cut.perf.actors.length;
-      sync(true);
+      sync(true, state.cuts.indexOf(cut));
       return;
     }
     const lib = e.target.closest("[data-scloclib]");
     if (lib) { openLocationLib(+lib.dataset.scloclib); return; }
     const lclr = e.target.closest("[data-sclocclear]");
-    if (lclr) { state.cuts[+lclr.dataset.sclocclear].location.presetId = null; sync(true); return; }
+    if (lclr) { state.cuts[+lclr.dataset.sclocclear].location.presetId = null; sync(true, +lclr.dataset.sclocclear); return; }
     const padd = e.target.closest("[data-scphotoadd]");
     if (padd) {
       const inp = byId("locPhotoInput");
@@ -10364,7 +10394,7 @@ function setupScriptPage() {
     const pdel = e.target.closest("[data-scphotodel]");
     if (pdel) {
       locSetPhoto(state.cuts[+pdel.dataset.scphotodel], null);
-      sync(true);
+      sync(true, +pdel.dataset.scphotodel);
       return;
     }
     const pg = e.target.closest("[data-scphotoguess]");
@@ -10379,13 +10409,14 @@ function setupScriptPage() {
     if (bup) {
       const cut = cutOf(bup); const i = +bup.dataset.scbup;
       [cut.perf.beats[i - 1], cut.perf.beats[i]] = [cut.perf.beats[i], cut.perf.beats[i - 1]];
-      sync(true);
+      sync(true, state.cuts.indexOf(cut));
       return;
     }
     const bdel = e.target.closest("[data-scbdel]");
     if (bdel) {
-      cutOf(bdel).perf.beats.splice(+bdel.dataset.scbdel, 1);
-      sync(true);
+      const dcut = cutOf(bdel);
+      dcut.perf.beats.splice(+bdel.dataset.scbdel, 1);
+      sync(true, state.cuts.indexOf(dcut));
     }
   });
 
@@ -10436,7 +10467,7 @@ function setupScriptPage() {
       perfApplyTemplate(cut, t.value);
       showToast("配分テンプレを尺に合わせて流し込みました");
     } else return;
-    sync(true);
+    sync(true, state.cuts.indexOf(cut));
   });
 
   /* テキスト入力は再描画せず値だけ反映 (入力中のフォーカスを失わない) */
@@ -12937,7 +12968,7 @@ function cutToCanonicalShot(cut, i, projectId) {
         sun: s2 ? { azimuth_deg: +s2.azimuth.toFixed(1), elevation_deg: +s2.elevation.toFixed(1) } : null,
         keep_aspects: L.keep,
         photo_traits: L.photoTraits && L.usePhoto !== false
-          ? { descriptors_en: L.photoTraits.en, measured: L.photoTraits.stats } : null,
+          ? { descriptors_en: L.photoTraits.en, descriptors_ja: L.photoTraits.ja, measured: L.photoTraits.stats } : null,
       };
     })() : null,
     performance: perfActive(cut) ? (() => {
@@ -12946,12 +12977,17 @@ function cutToCanonicalShot(cut, i, projectId) {
       let acc = 0;
       return {
         method: perfMethodOf(cut),
+        cast: (p.actors || []).map(a => ({ id: a.id, type: a.type, name: a.name || "", label_en: actorEn(cut, a.id) })),
         people: p.people, contact: p.contact, camera_link: p.camLink,
         motion_quality: { speed: p.speed, care: p.care, toward: p.toward },
         temperature: p.temp,
         beats: p.beats.map(b => {
           const from = acc; acc += +b.sec || 0;
-          return { in_s: +from.toFixed(1), out_s: +acc.toFixed(1), duration_s: +b.sec || 0, action: b.do || "", gaze: b.gaze, camera: b.cam };
+          return {
+            in_s: +from.toFixed(1), out_s: +acc.toFixed(1), duration_s: +b.sec || 0,
+            actor_id: b.who || null, actor: b.who ? actorEn(cut, b.who) : null,
+            action: b.do || "", gaze: b.gaze, camera: b.cam,
+          };
         }),
         preserve: p.preserve, change: p.change,
       };
@@ -14095,6 +14131,14 @@ function cutFromCanonicalShot(shot) {
     if (L.shoot_time_solar) cut.location.time = L.shoot_time_solar;
     if (L.camera_bearing_deg != null) cut.location.camBearing = L.camera_bearing_deg;
     if (Array.isArray(L.keep_aspects)) cut.location.keep = L.keep_aspects;
+    if (L.photo_traits && Array.isArray(L.photo_traits.descriptors_en)) {
+      /* 写真そのものはJSONに含まれないが、測った光と色は設計として復元する */
+      cut.location.photoTraits = {
+        ja: L.photo_traits.descriptors_ja || L.photo_traits.descriptors_en,
+        en: L.photo_traits.descriptors_en,
+        guess: {}, stats: L.photo_traits.measured || null,
+      };
+    }
   }
   if (shot.performance) {
     const P2 = shot.performance;
@@ -14109,8 +14153,16 @@ function cutFromCanonicalShot(shot) {
       p.toward = P2.motion_quality.toward || p.toward;
     }
     if (P2.temperature) p.temp = P2.temperature;
+    if (Array.isArray(P2.cast) && P2.cast.length) {
+      p.actors = P2.cast.map(a => ({ id: a.id || uid(), type: a.type || "person", name: a.name || "" }));
+      p.people = p.actors.length;
+    }
     if (Array.isArray(P2.beats)) {
-      p.beats = P2.beats.map(b => ({ id: uid(), sec: +b.duration_s || 1, do: b.action || "", gaze: b.gaze || "none", cam: b.camera || "none" }));
+      p.beats = P2.beats.map(b => ({
+        id: uid(), sec: +b.duration_s || 1,
+        who: b.actor_id && p.actors.some(a => a.id === b.actor_id) ? b.actor_id : "",
+        do: b.action || "", gaze: b.gaze || "none", cam: b.camera || "none",
+      }));
     }
     if (Array.isArray(P2.preserve)) p.preserve = P2.preserve;
     if (Array.isArray(P2.change)) p.change = P2.change;

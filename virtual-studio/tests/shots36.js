@@ -139,6 +139,51 @@ const { chromium } = require('playwright-core');
   console.log({ ...sample,
     sampleOk: sample.cuts >= 3 && sample.loc >= 2 && sample.perf >= 1 && sample.sun && sample.prompt });
 
+  // ============ ⑧ 全体レビューで見つかった穴 (canonical往復と描画コスト) ============
+  const review = await page.evaluate(() => {
+    const c = state.cuts[0];
+    c.perf.actors = [{ id: 'ax1', type: 'vehicle', name: 'トラック' }, { id: 'ax2', type: 'person', name: '運転手' }];
+    c.perf.beats = [{ id: 'bx1', sec: 4, who: 'ax2', do: '降りる', gaze: 'ahead', cam: 'none' }];
+    c.location.presetId = 'jp-kyoto';
+    c.location.photoTraits = { ja: ['暖色'], en: ['warm golden light'], guess: {}, stats: { mean: .5, contrast: .5, warmth: .1, sat: .2 } };
+    c.location.usePhoto = true;
+    const shot = cutToCanonicalShot(c, 0, 'PRJ');
+    const back = cutFromCanonicalShot(shot);
+    return {
+      castOut: !!shot.performance.cast && shot.performance.cast.length === 2
+        && shot.performance.cast[0].type === 'vehicle' && shot.performance.beats[0].actor_id === 'ax2',
+      castBack: back.perf.actors.length === 2 && back.perf.actors[0].name === 'トラック'
+        && back.perf.beats[0].who === back.perf.actors[1].id,   // 「誰が」が往復で保たれる
+      photoBack: !!back.location.photoTraits && back.location.photoTraits.en[0] === 'warm golden light',
+    };
+  });
+  console.log({ ...review, reviewOk: Object.values(review).every(Boolean) });
+
+  // 20カット + 座標つきでも台本ページの描画が実用速度に収まる
+  const perf = await page.evaluate(() => {
+    state.cuts = [];
+    for (let i = 0; i < 20; i++) {
+      const c = makeCut(allPresets()[0]);
+      c.location.presetId = 'jp-alley';
+      c.location.coords = { lat: 35.69, lng: 139.70 };
+      c.location.date = '2026-06-21'; c.location.time = '17:00';
+      c.perf.beats = [{ id: 'b' + i, sec: 3, who: '', do: 'テスト', gaze: 'ahead', cam: 'none' }];
+      state.cuts.push(c);
+    }
+    state.activeCut = 0;
+    byId('scriptOverlay').hidden = false;
+    renderScriptPage();                       // ウォームアップ
+    const t0 = performance.now();
+    renderScriptPage();
+    const full = performance.now() - t0;
+    const t1 = performance.now();
+    renderScriptCut(5);                       // 1カットだけ描き直す
+    const one = performance.now() - t1;
+    return { full: +full.toFixed(1), one: +one.toFixed(1),
+      rendered: document.querySelectorAll('.sc-cut').length };
+  });
+  console.log({ ...perf, perfOk: perf.rendered === 20 && perf.full < 120 && perf.one < perf.full / 2 });
+
   console.log('ERRORS:', errors);
   await browser.close();
 })();

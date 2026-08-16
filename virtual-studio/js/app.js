@@ -2472,7 +2472,7 @@ function cutToCanonicalShot(cut, i, projectId) {
         sun: s2 ? { azimuth_deg: +s2.azimuth.toFixed(1), elevation_deg: +s2.elevation.toFixed(1) } : null,
         keep_aspects: L.keep,
         photo_traits: L.photoTraits && L.usePhoto !== false
-          ? { descriptors_en: L.photoTraits.en, measured: L.photoTraits.stats } : null,
+          ? { descriptors_en: L.photoTraits.en, descriptors_ja: L.photoTraits.ja, measured: L.photoTraits.stats } : null,
       };
     })() : null,
     performance: perfActive(cut) ? (() => {
@@ -2481,12 +2481,17 @@ function cutToCanonicalShot(cut, i, projectId) {
       let acc = 0;
       return {
         method: perfMethodOf(cut),
+        cast: (p.actors || []).map(a => ({ id: a.id, type: a.type, name: a.name || "", label_en: actorEn(cut, a.id) })),
         people: p.people, contact: p.contact, camera_link: p.camLink,
         motion_quality: { speed: p.speed, care: p.care, toward: p.toward },
         temperature: p.temp,
         beats: p.beats.map(b => {
           const from = acc; acc += +b.sec || 0;
-          return { in_s: +from.toFixed(1), out_s: +acc.toFixed(1), duration_s: +b.sec || 0, action: b.do || "", gaze: b.gaze, camera: b.cam };
+          return {
+            in_s: +from.toFixed(1), out_s: +acc.toFixed(1), duration_s: +b.sec || 0,
+            actor_id: b.who || null, actor: b.who ? actorEn(cut, b.who) : null,
+            action: b.do || "", gaze: b.gaze, camera: b.cam,
+          };
         }),
         preserve: p.preserve, change: p.change,
       };
@@ -3630,6 +3635,14 @@ function cutFromCanonicalShot(shot) {
     if (L.shoot_time_solar) cut.location.time = L.shoot_time_solar;
     if (L.camera_bearing_deg != null) cut.location.camBearing = L.camera_bearing_deg;
     if (Array.isArray(L.keep_aspects)) cut.location.keep = L.keep_aspects;
+    if (L.photo_traits && Array.isArray(L.photo_traits.descriptors_en)) {
+      /* 写真そのものはJSONに含まれないが、測った光と色は設計として復元する */
+      cut.location.photoTraits = {
+        ja: L.photo_traits.descriptors_ja || L.photo_traits.descriptors_en,
+        en: L.photo_traits.descriptors_en,
+        guess: {}, stats: L.photo_traits.measured || null,
+      };
+    }
   }
   if (shot.performance) {
     const P2 = shot.performance;
@@ -3644,8 +3657,16 @@ function cutFromCanonicalShot(shot) {
       p.toward = P2.motion_quality.toward || p.toward;
     }
     if (P2.temperature) p.temp = P2.temperature;
+    if (Array.isArray(P2.cast) && P2.cast.length) {
+      p.actors = P2.cast.map(a => ({ id: a.id || uid(), type: a.type || "person", name: a.name || "" }));
+      p.people = p.actors.length;
+    }
     if (Array.isArray(P2.beats)) {
-      p.beats = P2.beats.map(b => ({ id: uid(), sec: +b.duration_s || 1, do: b.action || "", gaze: b.gaze || "none", cam: b.camera || "none" }));
+      p.beats = P2.beats.map(b => ({
+        id: uid(), sec: +b.duration_s || 1,
+        who: b.actor_id && p.actors.some(a => a.id === b.actor_id) ? b.actor_id : "",
+        do: b.action || "", gaze: b.gaze || "none", cam: b.camera || "none",
+      }));
     }
     if (Array.isArray(P2.preserve)) p.preserve = P2.preserve;
     if (Array.isArray(P2.change)) p.change = P2.change;

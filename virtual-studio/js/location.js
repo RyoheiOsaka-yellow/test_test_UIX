@@ -32,9 +32,21 @@ function sunPosition(lat, lng, date) {
   };
 }
 
+/* 同じ座標・同じ日付なら結果は変わらないのでキャッシュする
+ * (台本ページはカットごとに呼ぶため、再描画のたびの再計算を避ける) */
+const sunEventCache = new Map();
+function sunEvents(lat, lng, ymd) {
+  const key = `${(+lat).toFixed(3)},${(+lng).toFixed(3)},${ymd}`;
+  if (sunEventCache.has(key)) return sunEventCache.get(key);
+  const r = sunEventsCompute(lat, lng, ymd);
+  if (sunEventCache.size > 200) sunEventCache.clear();
+  sunEventCache.set(key, r);
+  return r;
+}
+
 /* 日の出/日の入り・ゴールデンアワー・ブルーアワーを走査で求める。
  * 時刻は経度から求めた現地太陽時 (時計時刻とは時差分ずれる) */
-function sunEvents(lat, lng, ymd) {
+function sunEventsCompute(lat, lng, ymd) {
   const [y, m, dd] = ymd.split("-").map(Number);
   if (!y || !m || !dd) return null;
   const base = Date.UTC(y, m - 1, dd, 0, 0, 0);
