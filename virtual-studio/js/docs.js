@@ -112,6 +112,27 @@ function buildInstructionDoc() {
       </table>
 
       ${(() => {
+        /* ロケ地 — 現場が使う情報 (座標・地図・太陽・許可) */
+        if (!locActive(cut)) return "";
+        const L = cut.location, lp = locPreset(cut), sn = locSunRelative(cut);
+        const ev = L.coords && L.date ? sunEvents(L.coords.lat, L.coords.lng, L.date) : null;
+        return `<h3>ロケ地</h3>
+        <table>
+          <thead><tr><th>ロケ地</th><th>地名</th><th>座標</th><th>撮影日時 (現地太陽時)</th><th>太陽</th></tr></thead>
+          <tbody><tr>
+            <td>${esc(lp ? lp.label : "—")}</td>
+            <td>${esc(L.name || "—")}</td>
+            <td>${L.coords ? `${L.coords.lat}, ${L.coords.lng}<br><small>${esc(mapsLink(L.coords.lat, L.coords.lng))}</small>` : "—"}</td>
+            <td>${esc([L.date, L.time].filter(Boolean).join(" ") || "—")}</td>
+            <td>${sn ? `方位${Math.round(sn.azimuth)}° / 高度${sn.elevation.toFixed(1)}°<br><small>カメラ方位${Math.round(+L.camBearing || 0)}° → ${Math.abs(sn.rel) < 30 ? "逆光" : Math.abs(sn.rel) > 150 ? "順光" : sn.rel > 0 ? "右サイド" : "左サイド"}</small>` : "—"}</td>
+          </tr></tbody>
+        </table>
+        ${ev && !ev.polar ? `<p class="memo">☀️ <b>当日の太陽 (現地太陽時)</b>: 日の出 ${esc(ev.rise || "—")} ｜ 朝ゴールデンアワー 〜${esc(ev.goldenEnd || "—")} ｜ 夕ゴールデンアワー ${esc(ev.goldenStart || "—")}〜 ｜ 日の入 ${esc(ev.set || "—")} ｜ 南中高度 ${ev.maxEl.toFixed(1)}°</p>` : ""}
+        ${ev && ev.polar ? `<p class="memo">☀️ ${esc(ev.polar)}</p>` : ""}
+        ${lp ? `<p class="memo">🎬 <b>光の傾向</b>: ${esc(lp.lightNote)}<br>📋 <b>許可・段取り</b>: ${esc(lp.permit)}</p>` : ""}
+        ${L.note ? `<p class="memo">📝 ${esc(L.note)}</p>` : ""}`;
+      })()}
+      ${(() => {
         /* 演技演出 — 現場と生成の両方で読めるビート表 */
         if (!perfActive(cut)) return "";
         const p = cut.perf;

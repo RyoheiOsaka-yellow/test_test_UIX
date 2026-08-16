@@ -1099,6 +1099,63 @@ input[type="range"]::-moz-range-thumb {
   .sc-quality { margin-left: 0; }
 }
 
+/* ---------- ロケ地 (台本ページ内) ---------- */
+.sc-loc { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sc-loc input[type="text"] {
+  flex: 1 1 200px; min-width: 140px;
+  background: var(--fill-1); border: 1px solid transparent; border-radius: 7px;
+  padding: 5px 9px; font-size: 11.5px; color: var(--text); font-family: inherit;
+}
+.sc-loc input:focus { outline: none; background: var(--surface); border-color: var(--accent); }
+.sc-loc input[type="date"], .sc-loc input[type="time"], .sc-loc input[type="number"] {
+  background: var(--fill-1); border: 1px solid transparent; border-radius: 6px;
+  padding: 4px 7px; font-size: 11px; color: var(--text); font-family: inherit;
+}
+.sc-loc label { font-size: 10.5px; color: var(--text2); display: inline-flex; align-items: center; gap: 4px; }
+.sc-loc label input { width: 58px; }
+.sc-loc-name {
+  font-size: 11px; font-weight: 700; color: var(--accent);
+  background: var(--accent-soft); border-radius: 980px; padding: 3px 10px;
+}
+.sc-loc a.btn { text-decoration: none; }
+.sc-sun { background: var(--fill-1); border-radius: 9px; padding: 6px 8px; }
+.sc-sun-info { font-size: 11px; color: var(--text2); }
+.sc-sun-ev { font-size: 10px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.sc-locnote {
+  width: 100%; background: var(--fill-1); border: 1px solid transparent; border-radius: 7px;
+  padding: 5px 9px; font-size: 11px; color: var(--text2); font-family: inherit;
+}
+
+/* ---------- ロケ地ライブラリ ---------- */
+/* 台本ページの上に重ねて開くため、他のオーバーレイより前面に置く */
+#locOverlay { z-index: 110; }
+#locGrid {
+  flex: 1; overflow-y: auto;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px; padding: 14px 16px 20px; align-content: start;
+}
+.loc-card {
+  background: var(--surface); border-radius: var(--radius);
+  padding: 13px 14px; box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 7px;
+  border: 2px solid transparent; transition: all 0.18s var(--ease);
+}
+.loc-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.loc-card.current { border-color: var(--accent); }
+.loc-head { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.loc-name { font-size: 13.5px; font-weight: 700; }
+.loc-region { font-size: 10px; color: var(--dim); margin-top: 2px; }
+.loc-tags { display: flex; gap: 3px; flex-wrap: wrap; justify-content: flex-end; }
+.loc-aspects {
+  display: grid; grid-template-columns: 64px 1fr; gap: 2px 8px;
+  font-size: 10.5px; line-height: 1.5;
+}
+.loc-aspects dt { color: var(--text2); font-weight: 600; }
+.loc-aspects dd { color: var(--dim); }
+.loc-note { font-size: 10px; color: var(--text2); line-height: 1.5; }
+.loc-card .btn { margin-top: auto; }
+#locRegion { font-size: 12px; }
+
 /* ---------- プロンプト診断 ---------- */
 #lintBox {
   background: var(--surface); border-radius: var(--radius);
@@ -1760,6 +1817,20 @@ kbd {
     <span><kbd>Esc</kbd></span><span>ページ / ヘルプを閉じる</span>
   </div>
   <button id="btnTourAgain" class="btn small" style="margin-top:10px">🎓 ツアーをもう一度見る</button>
+</div>
+
+<div id="locOverlay" class="overlay" role="dialog" aria-modal="true" aria-label="ロケ地ライブラリ" hidden>
+  <div class="overlay-bar">
+    <button id="btnLocBack" class="btn small"><svg class="ic"><use href="#i-back"/></svg> 戻る</button>
+    <span class="panel-title">ロケ地ライブラリ <small id="locCount"></small></span>
+    <div class="search-field overlay-search">
+      <svg class="ic"><use href="#i-search"/></svg>
+      <input type="search" id="locSearch" placeholder="ロケ地を検索 (東京 / 砂漠 / 石畳…)">
+    </div>
+    <select id="locRegion" title="地域で絞り込み"></select>
+    <span class="overlay-spacer"></span>
+  </div>
+  <div id="locGrid"></div>
 </div>
 
 <div id="scriptOverlay" class="overlay" role="dialog" aria-modal="true" aria-label="台本・絵コンテ" hidden>
@@ -3674,6 +3745,298 @@ const BG_STYLES = {
   green:    { top: "#4cbf6b", bottom: "#2f9c50", en: "even chroma-key green screen background" },
   gel:      { top: "#c94fd4", bottom: "#1f4fd8", en: "magenta and cyan duotone gel-lit background" },
 };
+
+/* =========================================================
+ * ロケ地 (演出) — 「どこで起きるか」
+ *
+ * 場所が場所らしく見えるのは、建築・素材・看板の言語・植生・路面・
+ * 人の気配といった具体の積み重ねによる。「パリの街」では出力が定まらない。
+ * ここではその要素を土地ごとに分解して持ち、プロンプトへ渡す。
+ * ======================================================= */
+const LOCATION_REGIONS = [
+  { id: "jp", label: "日本" },
+  { id: "asia", label: "アジア" },
+  { id: "eu", label: "ヨーロッパ" },
+  { id: "na", label: "北米" },
+  { id: "latam", label: "中南米" },
+  { id: "mena", label: "中東・アフリカ" },
+  { id: "oce", label: "オセアニア・極地" },
+  { id: "studio", label: "スタジオ・屋内" },
+];
+
+/* その土地らしさを作る軸。プロンプトでは「残すもの」として明示する */
+const LOCATION_ASPECTS = [
+  { id: "arch", label: "建築", en: "architecture" },
+  { id: "material", label: "素材・質感", en: "materials" },
+  { id: "signage", label: "看板・文字", en: "signage" },
+  { id: "vegetation", label: "植生", en: "vegetation" },
+  { id: "ground", label: "路面・地面", en: "ground surface" },
+  { id: "life", label: "人の気配", en: "ambient life" },
+  { id: "sky", label: "空・大気", en: "sky and atmosphere" },
+];
+
+const LOCATION_PRESETS = [
+  /* ---------- 日本 ---------- */
+  { id: "jp-alley", region: "jp", label: "東京の裏路地 (新宿・ゴールデン街風)",
+    en: "a narrow Tokyo back alley", tags: ["夜", "ネオン", "狭い"],
+    arch: "low-rise mixed concrete and tiled buildings, exterior steel staircases",
+    material: "weathered concrete, corrugated metal, plastic crates",
+    signage: "dense vertical signage in Japanese kanji and kana, small izakaya lanterns",
+    vegetation: "potted plants crowded along the walls",
+    ground: "narrow wet asphalt with reflected light, drainage grates",
+    life: "vending machines, bicycles, overhead power lines and cables",
+    sky: "sky barely visible between buildings",
+    lightNote: "自然光はほぼ入らない。看板・自販機の実用光が主光源になる",
+    permit: "私道・店舗前が多く、撮影許可と近隣配慮が必須" },
+  { id: "jp-kyoto", region: "jp", label: "京都の町家通り",
+    en: "a traditional Kyoto machiya street", tags: ["朝", "木造", "静か"],
+    arch: "two-storey wooden machiya townhouses with latticed facades and tiled roofs",
+    material: "dark stained cedar, plaster, kawara roof tiles",
+    signage: "small wooden noren curtains and discreet hand-painted signs in Japanese",
+    vegetation: "pruned pine and bamboo in tiny front gardens",
+    ground: "stone-paved lane, no curbs",
+    life: "few people, bicycles, no overhead wires in preserved districts",
+    sky: "open strip of sky above a narrow lane",
+    lightNote: "早朝は東西の通りに長い順光が入る。日中は軒の影が強い",
+    permit: "景観保護地区。三脚と機材車の規制が厳しい" },
+  { id: "jp-suburb", region: "jp", label: "日本の郊外住宅街",
+    en: "a Japanese suburban residential street", tags: ["昼", "生活感"],
+    arch: "detached two-storey houses with carports and small balconies",
+    material: "siding panels, concrete block walls, aluminium fences",
+    signage: "street mirrors, small Japanese address plates, no large signage",
+    vegetation: "hedges, hydrangeas, utility-trimmed street trees",
+    ground: "narrow asphalt road with white edge lines, no sidewalk",
+    life: "power poles and wires, parked kei cars, laundry on balconies",
+    sky: "wide open sky crossed by power lines",
+    lightNote: "遮蔽物が少なく日中はフラット。夕方に西日が長く伸びる",
+    permit: "生活道路のため通行と騒音への配慮が必要" },
+  { id: "jp-rice", region: "jp", label: "日本の田園・棚田",
+    en: "Japanese rice paddies", tags: ["夏", "緑", "水面"],
+    arch: "scattered farmhouses with dark tiled roofs, small storage sheds",
+    material: "water surface, earth banks, concrete irrigation channels",
+    signage: "almost none, occasional weathered agricultural notice boards",
+    vegetation: "flooded rice paddies, cedar hills in the distance",
+    ground: "narrow farm road between paddies",
+    life: "distant farm machinery, herons, insect sound",
+    sky: "large sky reflected in the flooded paddies",
+    lightNote: "水面が巨大なレフになる。朝夕は空の色がそのまま地面に乗る",
+    permit: "農道は私有地のことが多い。農家への事前連絡が必要" },
+  { id: "jp-station", region: "jp", label: "日本の駅前・スクランブル",
+    en: "a Japanese station-front crossing", tags: ["夜", "群衆", "都市"],
+    arch: "glass-fronted commercial towers, pedestrian decks, station entrances",
+    material: "glass, polished stone, LED panels",
+    signage: "massive illuminated advertising in Japanese, station name boards",
+    vegetation: "planters and a few street trees",
+    ground: "wide paved crossing with tactile paving",
+    life: "dense crowds, taxis queueing, station announcements",
+    sky: "sky washed out by advertising light at night",
+    lightNote: "広告の面光源が主光源。色が刻々と変わるためWB固定が必要",
+    permit: "公道・駅施設。人物の写り込みと撮影許可の管理が重い" },
+  /* ---------- アジア ---------- */
+  { id: "asia-hk", region: "asia", label: "香港の高密度住宅街",
+    en: "a dense Hong Kong residential district", tags: ["夜", "高層", "看板"],
+    arch: "tightly packed high-rise towers with caged balconies and air-conditioners",
+    material: "stained painted concrete, steel cages, plastic awnings",
+    signage: "large projecting neon and LED signs in traditional Chinese",
+    vegetation: "banyan trees growing out of retaining walls",
+    ground: "narrow streets with tram tracks and steep stepped alleys",
+    life: "market stalls, minibuses, laundry poles from windows",
+    sky: "sliver of sky between towers",
+    lightNote: "看板の色被りが強い。夜は混色を前提にグレーディングする",
+    permit: "私設通路が多い。管理組合の許可が要る場合がある" },
+  { id: "asia-bangkok", region: "asia", label: "バンコクの運河沿い",
+    en: "a Bangkok canal-side neighbourhood", tags: ["昼", "熱", "水"],
+    arch: "stilted wooden houses and low concrete shophouses along the canal",
+    material: "weathered timber, corrugated roofing, tropical mould stains",
+    signage: "Thai script shop signs, temple flags",
+    vegetation: "banana leaves, bougainvillea, water hyacinth on the canal",
+    ground: "narrow concrete walkway along the water",
+    life: "long-tail boats, street vendors, stray cats",
+    sky: "hazy tropical sky with towering clouds",
+    lightNote: "強い直射と濃い影。日中は減光と反射のコントロールが要る",
+    permit: "住民の生活動線。ボートの往来に注意" },
+  { id: "asia-seoul", region: "asia", label: "ソウルの路地・階段街",
+    en: "a Seoul hillside alley", tags: ["夕", "坂", "壁画"],
+    arch: "low brick and painted concrete houses stacked on a slope",
+    material: "red brick, painted stucco, corrugated metal gates",
+    signage: "Hangul shop signs, small hand-painted numbers",
+    vegetation: "rooftop pots, persimmon trees",
+    ground: "steep stepped alleys with painted handrails",
+    life: "delivery scooters, drying peppers, satellite dishes",
+    sky: "open above the slope, city visible below",
+    lightNote: "斜面のため夕方の横光が長く入る。俯瞰の抜けが作りやすい",
+    permit: "住宅地。早朝夜間の騒音に注意" },
+  /* ---------- ヨーロッパ ---------- */
+  { id: "eu-paris", region: "eu", label: "パリのオスマン様式街路",
+    en: "a Haussmannian Paris boulevard", tags: ["曇", "石", "均質"],
+    arch: "uniform six-storey cream limestone facades with wrought-iron balconies and mansard roofs",
+    material: "limestone, zinc roofing, wrought iron",
+    signage: "restrained shop fronts with gold lettering in French",
+    vegetation: "pollarded plane trees in a regular rhythm",
+    ground: "wide pavement with granite kerbs, cobbled side streets",
+    life: "café terraces with rattan chairs, kiosks, Vélib stands",
+    sky: "soft overcast sky typical of the region",
+    lightNote: "石の反射で全体に柔らかい。曇天でも階調が保たれる",
+    permit: "公道撮影は市の許可制。歩道占有に申請が要る" },
+  { id: "eu-nordic", region: "eu", label: "北欧の港町 (ノルウェー/デンマーク)",
+    en: "a Nordic harbour town", tags: ["薄明", "寒色", "木造"],
+    arch: "colourful timber warehouses and gabled houses along the quay",
+    material: "painted wood, tarred timber, granite quay stones",
+    signage: "small restrained signs in Scandinavian languages",
+    vegetation: "sparse birch and pine, moss on stone",
+    ground: "wet stone quay, wooden jetties",
+    life: "fishing boats, bicycles, few people",
+    sky: "long low sun or extended blue twilight",
+    lightNote: "太陽高度が低く、薄明が長い。青の時間が撮りやすい",
+    permit: "港湾管理者の許可。潮位と風に注意" },
+  { id: "eu-italy", region: "eu", label: "南イタリアの旧市街",
+    en: "a southern Italian old town", tags: ["昼", "石灰", "暖色"],
+    arch: "whitewashed stone houses with external staircases and arched doorways",
+    material: "lime-washed stone, terracotta, iron railings",
+    signage: "hand-painted Italian shop signs, ceramic street plaques",
+    vegetation: "lemon trees, geraniums in terracotta pots",
+    ground: "polished stone lanes worn smooth, steps",
+    life: "laundry across the alley, scooters, elderly residents on chairs",
+    sky: "hard blue Mediterranean sky",
+    lightNote: "白壁が強力なレフになる。影の中も明るく色が回る",
+    permit: "狭い生活路地。住民の同意が事実上必要" },
+  { id: "eu-london", region: "eu", label: "ロンドンのテラスハウス街",
+    en: "a London terraced street", tags: ["曇", "レンガ"],
+    arch: "continuous brick terraced houses with bay windows and painted doors",
+    material: "London stock brick, painted render, black iron railings",
+    signage: "small enamel street signs in English",
+    vegetation: "hedges in tiny front gardens, plane trees",
+    ground: "asphalt road with paving slab pavements, double yellow lines",
+    life: "parked cars, wheelie bins, red post boxes",
+    sky: "flat grey overcast",
+    lightNote: "曇天が基本。ソフトで低コントラスト、雨後は路面が光る",
+    permit: "住宅街。駐車と機材の路上展開に許可が要る" },
+  /* ---------- 北米 ---------- */
+  { id: "na-ny", region: "na", label: "ニューヨークのブラウンストーン街",
+    en: "a New York brownstone block", tags: ["秋", "階段", "都市"],
+    arch: "brownstone row houses with stoops and cornices",
+    material: "brownstone, cast iron, brick",
+    signage: "green street signs in English, small deli awnings",
+    vegetation: "street trees in metal grates, planters on stoops",
+    ground: "hexagonal paving or concrete sidewalk, asphalt road",
+    life: "fire escapes, steam from manholes, yellow cabs on the avenue",
+    sky: "narrow strip of sky between blocks",
+    lightNote: "東西の通りは日の出/日の入りに抜ける。マンハッタンヘンジ的な直射",
+    permit: "市の撮影許可 (無料/要申請)。歩道使用は別途" },
+  { id: "na-desert", region: "na", label: "アメリカ西部の砂漠ハイウェイ",
+    en: "an American desert highway", tags: ["昼", "乾燥", "地平"],
+    arch: "isolated gas station, water tower, motel sign",
+    material: "cracked asphalt, rusted steel, sun-bleached paint",
+    signage: "large roadside signs in English, route markers",
+    vegetation: "creosote bush, joshua trees, dry scrub",
+    ground: "straight two-lane asphalt with heat shimmer",
+    life: "almost none, occasional passing truck",
+    sky: "vast clear sky with distant mesas",
+    lightNote: "遮蔽物ゼロ。日中はハード、マジックアワーは地平まで色が乗る",
+    permit: "BLM/州道の撮影許可。路上停車の安全管理が必須" },
+  { id: "na-diner", region: "na", label: "アメリカのダイナー (屋内)",
+    en: "an American roadside diner interior", tags: ["夜", "実用光", "レトロ"],
+    arch: "long counter with stools, booth seating, chrome trim",
+    material: "vinyl upholstery, formica, chrome, checkered floor",
+    signage: "neon signage in English, menu boards",
+    vegetation: "none",
+    ground: "checkerboard tiled floor",
+    life: "coffee machines, waiting staff, parking lot visible through glass",
+    sky: "night visible through large windows",
+    lightNote: "蛍光灯とネオンの混色。窓の外を持ち上げるか捨てるかを決める",
+    permit: "営業時間外の借り切りが基本" },
+  /* ---------- 中南米 ---------- */
+  { id: "latam-havana", region: "latam", label: "ハバナの旧市街",
+    en: "the old town of Havana", tags: ["昼", "退色", "パステル"],
+    arch: "colonial facades with tall shuttered windows and columned arcades",
+    material: "peeling pastel plaster, weathered wood, iron balconies",
+    signage: "faded hand-painted Spanish lettering",
+    vegetation: "palms in plazas, plants on balconies",
+    ground: "uneven stone paving, potholes",
+    life: "vintage American cars, laundry lines, children playing",
+    sky: "bright tropical sky with fast clouds",
+    lightNote: "退色した壁が優しく反射する。日陰でも色が豊か",
+    permit: "撮影許可と現地コーディネーターがほぼ必須" },
+  { id: "latam-andes", region: "latam", label: "アンデスの山村",
+    en: "an Andean mountain village", tags: ["高地", "強光", "土壁"],
+    arch: "adobe houses with tin roofs on a steep slope",
+    material: "adobe, corrugated tin, hand-woven textiles",
+    signage: "minimal, painted Spanish text on walls",
+    vegetation: "terraced fields, eucalyptus, high-altitude grass",
+    ground: "dirt roads, stone terraces",
+    life: "llamas, market days, distant church bell",
+    sky: "deep blue high-altitude sky, thin air",
+    lightNote: "紫外線が強く空が濃い。影が極端に暗くなるので起こしが要る",
+    permit: "コミュニティの許可。高地順応と機材のバッテリー消耗に注意" },
+  /* ---------- 中東・アフリカ ---------- */
+  { id: "mena-medina", region: "mena", label: "モロッコのメディナ",
+    en: "a Moroccan medina", tags: ["昼", "土色", "迷路"],
+    arch: "earthen walls, keyhole arches, riad doorways",
+    material: "rammed earth, zellige tile, carved cedar",
+    signage: "Arabic and French shop lettering, hand-painted",
+    vegetation: "orange trees in courtyards, potted mint",
+    ground: "packed earth and worn stone lanes",
+    life: "handcarts, cats, spice stalls, call to prayer",
+    sky: "slots of hard sky over shaded lanes",
+    lightNote: "上部の簀の子越しに縞状の光が落ちる。強い明暗差が土地の顔",
+    permit: "商人・住民への謝礼と許可が慣習。ガイド同行が現実的" },
+  { id: "mena-savanna", region: "mena", label: "東アフリカのサバンナ",
+    en: "an East African savanna", tags: ["朝夕", "赤土", "地平"],
+    arch: "none, occasional thorn-fence enclosure",
+    material: "red laterite dust, dry grass, acacia bark",
+    signage: "none",
+    vegetation: "flat-topped acacia trees, tall dry grass",
+    ground: "red dirt track with deep ruts",
+    life: "wildlife at distance, dust raised by wind",
+    sky: "huge sky with dramatic cloud build-up",
+    lightNote: "朝夕に赤土が発色する。日中は白く飛びやすい",
+    permit: "国立公園の撮影許可とレンジャー同行が必要" },
+  /* ---------- オセアニア・極地 ---------- */
+  { id: "oce-iceland", region: "oce", label: "アイスランドの溶岩台地",
+    en: "an Icelandic lava field", tags: ["曇", "苔", "無彩"],
+    arch: "none, occasional lone church or hut",
+    material: "black basalt, thick green moss, glacial gravel",
+    signage: "none",
+    vegetation: "moss and lichen only, no trees",
+    ground: "black volcanic gravel, cracked lava",
+    life: "empty, wind, distant sheep",
+    sky: "fast-moving low cloud, long twilight",
+    lightNote: "曇天でも方向が残る。太陽高度が低く一日中斜光になる季節がある",
+    permit: "自然保護区。オフロード走行は違法" },
+  { id: "oce-coast", region: "oce", label: "オーストラリアの海岸",
+    en: "an Australian coastal headland", tags: ["昼", "強光", "青"],
+    arch: "timber boardwalks, surf club buildings",
+    material: "sandstone cliffs, bleached timber, salt-corroded metal",
+    signage: "English beach signage and warning boards",
+    vegetation: "coastal banksia, spinifex grass",
+    ground: "white sand, weathered rock platforms",
+    life: "surfers, gulls, distant swimmers",
+    sky: "intense clear blue with hard sun",
+    lightNote: "反射が強くコントラストが跳ねる。NDと偏光が前提",
+    permit: "自治体のビーチ撮影許可。潮汐に注意" },
+  /* ---------- スタジオ・屋内 ---------- */
+  { id: "studio-white", region: "studio", label: "白ホリスタジオ",
+    en: "a white cyclorama studio", tags: ["無地", "制御"],
+    arch: "seamless curved white cyclorama wall",
+    material: "painted plaster, matte white floor",
+    signage: "none", vegetation: "none",
+    ground: "seamless white floor blending into the wall",
+    life: "none, fully controlled",
+    sky: "none",
+    lightNote: "背景の明るさを被写体と独立に作れる。分離が命",
+    permit: "スタジオ予約のみ" },
+  { id: "studio-warehouse", region: "studio", label: "倉庫・工場跡",
+    en: "a disused warehouse interior", tags: ["硬質", "高窓"],
+    arch: "steel truss roof, tall industrial windows, concrete columns",
+    material: "raw concrete, rusted steel, dusty glass",
+    signage: "faded industrial markings",
+    vegetation: "weeds through floor cracks",
+    ground: "stained concrete floor with drainage channels",
+    life: "empty, dust in the air",
+    sky: "daylight falling through high windows",
+    lightNote: "高窓からの単一方向光が主役。ヘイズで光条を可視化できる",
+    permit: "所有者の許可・保険・安全確認 (床/粉塵) が必要" },
+];
 
 </script>
 <script>
@@ -7231,6 +7594,27 @@ function buildInstructionDoc() {
       </table>
 
       ${(() => {
+        /* ロケ地 — 現場が使う情報 (座標・地図・太陽・許可) */
+        if (!locActive(cut)) return "";
+        const L = cut.location, lp = locPreset(cut), sn = locSunRelative(cut);
+        const ev = L.coords && L.date ? sunEvents(L.coords.lat, L.coords.lng, L.date) : null;
+        return `<h3>ロケ地</h3>
+        <table>
+          <thead><tr><th>ロケ地</th><th>地名</th><th>座標</th><th>撮影日時 (現地太陽時)</th><th>太陽</th></tr></thead>
+          <tbody><tr>
+            <td>${esc(lp ? lp.label : "—")}</td>
+            <td>${esc(L.name || "—")}</td>
+            <td>${L.coords ? `${L.coords.lat}, ${L.coords.lng}<br><small>${esc(mapsLink(L.coords.lat, L.coords.lng))}</small>` : "—"}</td>
+            <td>${esc([L.date, L.time].filter(Boolean).join(" ") || "—")}</td>
+            <td>${sn ? `方位${Math.round(sn.azimuth)}° / 高度${sn.elevation.toFixed(1)}°<br><small>カメラ方位${Math.round(+L.camBearing || 0)}° → ${Math.abs(sn.rel) < 30 ? "逆光" : Math.abs(sn.rel) > 150 ? "順光" : sn.rel > 0 ? "右サイド" : "左サイド"}</small>` : "—"}</td>
+          </tr></tbody>
+        </table>
+        ${ev && !ev.polar ? `<p class="memo">☀️ <b>当日の太陽 (現地太陽時)</b>: 日の出 ${esc(ev.rise || "—")} ｜ 朝ゴールデンアワー 〜${esc(ev.goldenEnd || "—")} ｜ 夕ゴールデンアワー ${esc(ev.goldenStart || "—")}〜 ｜ 日の入 ${esc(ev.set || "—")} ｜ 南中高度 ${ev.maxEl.toFixed(1)}°</p>` : ""}
+        ${ev && ev.polar ? `<p class="memo">☀️ ${esc(ev.polar)}</p>` : ""}
+        ${lp ? `<p class="memo">🎬 <b>光の傾向</b>: ${esc(lp.lightNote)}<br>📋 <b>許可・段取り</b>: ${esc(lp.permit)}</p>` : ""}
+        ${L.note ? `<p class="memo">📝 ${esc(L.note)}</p>` : ""}`;
+      })()}
+      ${(() => {
         /* 演技演出 — 現場と生成の両方で読めるビート表 */
         if (!perfActive(cut)) return "";
         const p = cut.perf;
@@ -9255,6 +9639,276 @@ function setupRoughCut() {
 </script>
 <script>
 /* =========================================================
+ * Virtual Studio — ロケ地 (演出レイヤー)
+ *
+ * 「パリの街」では出力が定まらない。場所が場所らしく見えるのは
+ * 建築・素材・看板の言語・植生・路面・人の気配の積み重ねによる。
+ * ここではその要素を土地ごとに持ち、プロンプトへ渡す。
+ *
+ * 地図はオフライン動作 (外部通信なし) のため埋め込まない。代わりに
+ * Google Maps のURLから座標を取り出し、太陽の方位・高度を自前計算して
+ * スタジオの太陽配置とゴールデンアワーの時刻に変換する。
+ * 読み込み順: app.js より前
+ * ======================================================= */
+
+/* ---------- 太陽位置 (NOAA/SunCalc系の近似・通信不要) ---------- */
+const SUN_RAD = Math.PI / 180;
+function sunPosition(lat, lng, date) {
+  const dayMs = 86400000, J1970 = 2440588, J2000 = 2451545;
+  const d = date.valueOf() / dayMs - 0.5 + J1970 - J2000;
+  const e = SUN_RAD * 23.4397;                        // 地軸の傾き
+  const M = SUN_RAD * (357.5291 + 0.98560028 * d);    // 平均近点角
+  const C = SUN_RAD * (1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M));
+  const L = M + C + SUN_RAD * 102.9372 + Math.PI;     // 黄経
+  const dec = Math.asin(Math.sin(e) * Math.sin(L));
+  const ra = Math.atan2(Math.sin(L) * Math.cos(e), Math.cos(L));
+  const lw = SUN_RAD * -lng, phi = SUN_RAD * lat;
+  const H = SUN_RAD * (280.16 + 360.9856235 * d) - lw - ra;
+  const az = Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(phi) - Math.tan(dec) * Math.cos(phi));
+  const alt = Math.asin(Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(H));
+  return {
+    azimuth: (az / SUN_RAD + 180 + 360) % 360,        // 北を0°とした時計回り
+    elevation: alt / SUN_RAD,
+  };
+}
+
+/* 日の出/日の入り・ゴールデンアワー・ブルーアワーを走査で求める。
+ * 時刻は経度から求めた現地太陽時 (時計時刻とは時差分ずれる) */
+function sunEvents(lat, lng, ymd) {
+  const [y, m, dd] = ymd.split("-").map(Number);
+  if (!y || !m || !dd) return null;
+  const base = Date.UTC(y, m - 1, dd, 0, 0, 0);
+  const step = 2 * 60000;
+  const solarOff = lng / 15 * 3600000;                 // 経度による太陽時オフセット
+  const fmt = ms => {
+    const t = new Date(ms + solarOff);
+    return `${String(t.getUTCHours()).padStart(2, "0")}:${String(t.getUTCMinutes()).padStart(2, "0")}`;
+  };
+  const marks = [
+    { key: "rise", th: -0.833, dir: 1 }, { key: "set", th: -0.833, dir: -1 },
+    { key: "goldenEnd", th: 6, dir: 1 }, { key: "goldenStart", th: 6, dir: -1 },
+    { key: "blueEnd", th: -6, dir: 1 }, { key: "blueStart", th: -6, dir: -1 },
+  ];
+  const out = { maxEl: -90, maxAt: null };
+  let prev = sunPosition(lat, lng, new Date(base)).elevation;
+  for (let t = base + step; t <= base + 86400000; t += step) {
+    const el = sunPosition(lat, lng, new Date(t)).elevation;
+    if (el > out.maxEl) { out.maxEl = el; out.maxAt = fmt(t); }
+    for (const mk of marks) {
+      if (out[mk.key]) continue;
+      const crossed = mk.dir > 0 ? (prev < mk.th && el >= mk.th) : (prev >= mk.th && el < mk.th);
+      if (crossed) out[mk.key] = fmt(t);
+    }
+    prev = el;
+  }
+  out.polar = !out.rise && !out.set ? (out.maxEl > 0 ? "白夜 (一日中日が沈まない)" : "極夜 (一日中日が昇らない)") : "";
+  return out;
+}
+
+/* ---------- Google Maps URL / 座標のパース ---------- */
+function parseMapsUrl(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return null;
+  let lat = null, lng = null, name = "";
+  let m = s.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);           // 場所ピンの正確な座標
+  if (!m) m = s.match(/[@?&](?:ll=|q=)?(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)/);
+  if (!m) m = s.match(/^\s*(-?\d{1,3}\.\d+)\s*[,\s]\s*(-?\d{1,3}\.\d+)\s*$/); // 生の緯度経度
+  if (m) { lat = +m[1]; lng = +m[2]; }
+  const pn = s.match(/\/maps\/place\/([^/@]+)/);
+  if (pn) name = decodeURIComponent(pn[1].replace(/\+/g, " "));
+  if (lat === null || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+    return { error: /goo\.gl|maps\.app/.test(s)
+      ? "短縮URLからは座標を読み取れません。Mapsで開いてからアドレスバーの完全なURL (…/@35.68,139.76,17z…) を貼ってください"
+      : "座標が見つかりません。Google MapsのURL、または「35.6586, 139.7454」の形式で入力してください" };
+  }
+  return { lat, lng, name };
+}
+
+function mapsLink(lat, lng) {
+  return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+}
+function streetViewLink(lat, lng) {
+  return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`;
+}
+
+/* ---------- ロケ地の状態 ---------- */
+function locActive(cut) {
+  const L = cut.location;
+  return !!(L && (L.presetId || L.name || L.coords || L.photoRefId || (L.note || "").trim()));
+}
+function locPreset(cut) {
+  return LOCATION_PRESETS.find(p => p.id === (cut.location && cut.location.presetId)) || null;
+}
+
+/* 看板の言語から「その土地では出てはいけないもの」を導く */
+const LOC_SIGNAGE_NEG = [
+  { re: /Japanese|kanji|kana/i, neg: "no Latin/English shop signage" },
+  { re: /Chinese/i, neg: "no Latin/English shop signage" },
+  { re: /Hangul|Korean/i, neg: "no Latin/English shop signage" },
+  { re: /Thai script/i, neg: "no Latin/English shop signage" },
+  { re: /Arabic/i, neg: "no Latin-only signage" },
+  { re: /French/i, neg: "no English-language signage" },
+  { re: /Italian/i, neg: "no English-language signage" },
+  { re: /Spanish/i, neg: "no English-language signage" },
+];
+
+/* プロンプトに足すロケ地ブロック (未設定なら空文字) */
+function buildLocationBlock(cut, prose) {
+  if (!locActive(cut)) return "";
+  const L = cut.location;
+  const p = locPreset(cut);
+  const keep = (L.keep && L.keep.length ? L.keep : LOCATION_ASPECTS.map(a => a.id));
+  const partsMap = p ? {
+    arch: p.arch, material: p.material, signage: p.signage,
+    vegetation: p.vegetation, ground: p.ground, life: p.life, sky: p.sky,
+  } : {};
+  const details = LOCATION_ASPECTS
+    .filter(a => keep.includes(a.id) && partsMap[a.id])
+    .map(a => `${a.en}: ${partsMap[a.id]}`);
+  /* メモ (許可・段取り) は現場向けの情報なので生成プロンプトには入れない */
+  const head = [p ? p.en : "", L.name || ""].filter(Boolean).join(" — ");
+
+  /* 太陽 (座標と日時があるときだけ) */
+  let sun = "";
+  if (L.coords && L.date && L.time) {
+    const s = locSunNow(cut);
+    if (s) {
+      sun = `natural sun from ${Math.round(s.azimuth)}° compass at ${Math.round(s.elevation)}° above the horizon`
+        + (s.elevation < 0 ? " (below the horizon — night)"
+          : s.elevation < 6 ? " (golden hour, long warm shadows)"
+          : s.elevation > 60 ? " (high overhead sun, short hard shadows)" : "");
+    }
+  }
+  const negs = [];
+  if (p) LOC_SIGNAGE_NEG.forEach(n => { if (n.re.test(p.signage || "")) negs.push(n.neg); });
+  if (p && /none/i.test(p.vegetation || "")) negs.push("no trees or planting");
+
+  if (prose) {
+    return [
+      `Location: ${head}.`,
+      details.length ? details.join("; ") + "." : "",
+      sun ? `Sun: ${sun}.` : "",
+      negs.length ? `Avoid: ${negs.join(", ")}.` : "",
+    ].filter(Boolean).join(" ");
+  }
+  return [
+    `LOCATION: ${head}`,
+    details.length ? details.map(d => `- ${d}`).join("\n") : "",
+    sun ? `SUN: ${sun}` : "",
+    negs.length ? `LOCATION NEGATIVE: ${negs.join(", ")}` : "",
+  ].filter(Boolean).join("\n");
+}
+
+/* 現在設定の日時での太陽位置 */
+function locSunNow(cut) {
+  const L = cut.location;
+  if (!L || !L.coords || !L.date || !L.time) return null;
+  const [hh, mm] = String(L.time).split(":").map(Number);
+  const [y, mo, d] = String(L.date).split("-").map(Number);
+  if (!y || isNaN(hh)) return null;
+  /* 入力時刻は現地太陽時として扱う (時差はUTCへ戻して計算) */
+  const utcMs = Date.UTC(y, mo - 1, d, hh, mm || 0) - (L.coords.lng / 15) * 3600000;
+  return sunPosition(L.coords.lat, L.coords.lng, new Date(utcMs));
+}
+
+/* 太陽の方位をカメラ基準の相対角へ (カメラの向き camBearing を基準) */
+function locSunRelative(cut) {
+  const s = locSunNow(cut);
+  if (!s) return null;
+  const bearing = +(cut.location.camBearing ?? 0);
+  const rel = ((s.azimuth - bearing + 540) % 360) - 180; // -180..180 (0=被写体の奥=逆光)
+  return { ...s, rel };
+}
+
+/* スタジオの太陽アイテムへ反映 — ロケ地とスタジオを繋ぐ */
+function applySunToStudio(cut) {
+  const s = locSunRelative(cut);
+  if (!s) { showToast("⚠️ 座標と日時を入力すると太陽を配置できます"); return false; }
+  if (s.elevation <= 0) { showToast("⚠️ その日時は日の出前/日の入り後です (太陽高度 " + s.elevation.toFixed(1) + "°)"); return false; }
+  const sub = cut.items.find(i => i.type === "subject") || SUBJECT_POS;
+  const cam = cut.items.find(i => i.type === "camera") || CAMERA_POS;
+  /* カメラの向き (方位) が camDir に対応する。太陽の方位差 rel をそのまま
+   * studio角へ移し、被写体から見た太陽の方向に配置する
+   * (rel≈0 = カメラが太陽を向いている = 逆光 → 太陽は被写体の奥) */
+  const camDir = Math.atan2(sub.y - cam.y, sub.x - cam.x);     // カメラ→被写体
+  const toSun = camDir + s.rel * SUN_RAD;                       // 被写体→太陽
+  const R = 420;                                               // 配置半径 (cm)
+  let sun = cut.items.find(i => i.type === "sun");
+  if (!sun) {
+    sun = makeItem({ type: "sun", x: 0, y: 0, power: 100, colorTemp: 5600 });
+    cut.items.push(sun);
+  }
+  sun.x = sub.x + R * Math.cos(toSun);
+  sun.y = sub.y + R * Math.sin(toSun);
+  sun.height = Math.max(60, Math.min(5000, Math.round(R * Math.tan(Math.max(3, s.elevation) * SUN_RAD))));
+  /* 低い太陽ほど暖色 (大気による減衰) */
+  sun.colorTemp = s.elevation < 5 ? 2800 : s.elevation < 12 ? 3600 : s.elevation < 25 ? 4800 : 5600;
+  sun.power = Math.min(100, Math.round(40 + s.elevation));
+  refresh(); renderInspector();
+  showToast(`太陽を配置しました (方位${Math.round(s.azimuth)}° / 高度${s.elevation.toFixed(1)}° / ${sun.colorTemp}K)`);
+  return true;
+}
+
+/* ---------- ロケ地ライブラリ (オーバーレイ) ---------- */
+let locTargetCut = null;   // 適用先のカット index
+function renderLocationLib() {
+  const q = (byId("locSearch").value || "").trim().toLowerCase();
+  const region = byId("locRegion").value;
+  const list = LOCATION_PRESETS.filter(p =>
+    (!region || p.region === region)
+    && (!q || `${p.label} ${p.en} ${p.tags.join(" ")} ${p.arch} ${p.life}`.toLowerCase().includes(q)));
+  const cut = state.cuts[locTargetCut] || activeCut();
+  const cur = cut.location && cut.location.presetId;
+  byId("locGrid").innerHTML = list.map(p => `
+    <div class="loc-card ${p.id === cur ? "current" : ""}">
+      <div class="loc-head">
+        <div>
+          <div class="loc-name">${esc(p.label)}</div>
+          <div class="loc-region">${esc((LOCATION_REGIONS.find(r => r.id === p.region) || {}).label || "")} ｜ ${esc(p.en)}</div>
+        </div>
+        <div class="loc-tags">${p.tags.map(t => `<span class="p-tag">${esc(t)}</span>`).join("")}</div>
+      </div>
+      <dl class="loc-aspects">
+        ${LOCATION_ASPECTS.map(a => p[a.id === "material" ? "material" : a.id] ? `
+          <dt>${esc(a.label)}</dt><dd>${esc(p[a.id === "material" ? "material" : a.id])}</dd>` : "").join("")}
+      </dl>
+      <div class="loc-note">☀️ ${esc(p.lightNote)}</div>
+      <div class="loc-note">📋 ${esc(p.permit)}</div>
+      <button class="btn small primary" data-locapply="${p.id}">C${(locTargetCut ?? state.activeCut) + 1} に適用</button>
+    </div>`).join("") || `<p class="insp-hint">該当するロケ地がありません</p>`;
+  byId("locCount").textContent = `${list.length}件`;
+}
+
+function openLocationLib(cutIdx) {
+  locTargetCut = cutIdx != null ? cutIdx : state.activeCut;
+  byId("locOverlay").hidden = false;
+  renderLocationLib();
+}
+
+function setupLocationPage() {
+  byId("locRegion").innerHTML = `<option value="">すべての地域</option>`
+    + LOCATION_REGIONS.map(r => `<option value="${r.id}">${esc(r.label)}</option>`).join("");
+  byId("btnLocBack").addEventListener("click", () => { byId("locOverlay").hidden = true; });
+  byId("locSearch").addEventListener("input", renderLocationLib);
+  byId("locRegion").addEventListener("change", renderLocationLib);
+  byId("locGrid").addEventListener("click", e => {
+    const b = e.target.closest("[data-locapply]");
+    if (!b) return;
+    const cut = state.cuts[locTargetCut] || activeCut();
+    const p = LOCATION_PRESETS.find(x => x.id === b.dataset.locapply);
+    if (!cut || !p) return;
+    cut.location = Object.assign({ keep: LOCATION_ASPECTS.map(a => a.id) }, cut.location, { presetId: p.id });
+    /* 空・大気の傾向を環境設定にも軽く反映 (上書きはしない) */
+    byId("locOverlay").hidden = true;
+    refresh(); renderInspector();
+    if (!byId("scriptOverlay").hidden) renderScriptPage();
+    showToast(`C${state.cuts.indexOf(cut) + 1} のロケ地を「${p.label}」にしました`);
+  });
+}
+
+</script>
+<script>
+/* =========================================================
  * Virtual Studio — 台本 / 絵コンテ ページ
  *
  * 役割分担:
@@ -9339,6 +9993,45 @@ function renderScriptPage() {
           <label>狙い</label>
           <input type="text" data-scaim="${ci}" value="${esc(cut.aim)}" placeholder="このカットで何を伝えるか">
         </div>
+
+        <div class="sc-sub">ロケ地 <small>どこで起きるか — 地図は使わず座標から太陽を計算します</small></div>
+        <div class="sc-loc">
+          <button class="btn small" data-scloclib="${ci}"><svg class="ic"><use href="#i-search"/></svg> ${cut.location.presetId ? "ロケ地を変更" : "ロケ地を選ぶ"}</button>
+          ${(() => {
+            const lp = locPreset(cut);
+            return lp ? `<span class="sc-loc-name" title="${esc(lp.en)}">${esc(lp.label)}</span>
+              <button class="icon-btn small danger" data-sclocclear="${ci}" title="ロケ地を外す"><svg class="ic"><use href="#i-trash"/></svg></button>` : "";
+          })()}
+          <input type="text" data-scsite="${ci}" value="${esc(cut.location.name)}" placeholder="実際の地名 (例: 新宿ゴールデン街)">
+        </div>
+        <div class="sc-loc">
+          <input type="text" data-scmaps="${ci}" value="${cut.location.coords ? `${cut.location.coords.lat}, ${cut.location.coords.lng}` : ""}"
+            placeholder="Google MapsのURL か 緯度,経度 を貼る" title="MapsのURL (…/@35.68,139.76,17z…) または「35.6586, 139.7454」">
+          ${cut.location.coords ? `
+            <a class="btn tiny" href="${mapsLink(cut.location.coords.lat, cut.location.coords.lng)}" target="_blank" rel="noopener">地図で開く</a>
+            <a class="btn tiny" href="${streetViewLink(cut.location.coords.lat, cut.location.coords.lng)}" target="_blank" rel="noopener">ストリートビュー</a>` : ""}
+        </div>
+        ${cut.location.coords ? `
+        <div class="sc-loc sc-sun">
+          <input type="date" data-scdate="${ci}" value="${esc(cut.location.date || "")}" title="撮影日">
+          <input type="time" data-sctime="${ci}" value="${esc(cut.location.time || "")}" title="撮影時刻 (現地の太陽時)">
+          <label title="カメラが向いている方位 (北=0°)">カメラ方位 <input type="number" data-scbearing="${ci}" value="${+cut.location.camBearing || 0}" min="0" max="359" step="5">°</label>
+          ${(() => {
+            const sn = locSunRelative(cut);
+            if (!sn) return `<span class="insp-hint">日付と時刻を入れると太陽の方位・高度を計算します</span>`;
+            const side = Math.abs(sn.rel) < 30 ? "逆光" : Math.abs(sn.rel) > 150 ? "順光" : sn.rel > 0 ? "右サイド" : "左サイド";
+            return `<span class="sc-sun-info">☀️ 方位${Math.round(sn.azimuth)}° / 高度${sn.elevation.toFixed(1)}° → <b>${side}</b>${sn.elevation < 6 && sn.elevation > 0 ? " (ゴールデンアワー)" : sn.elevation <= 0 ? " (日没後)" : ""}</span>
+              <button class="btn tiny primary" data-scsun="${ci}">スタジオの太陽に反映</button>`;
+          })()}
+          ${(() => {
+            const ev = cut.location.date ? sunEvents(cut.location.coords.lat, cut.location.coords.lng, cut.location.date) : null;
+            if (!ev) return "";
+            if (ev.polar) return `<span class="sc-sun-ev">${esc(ev.polar)}</span>`;
+            return `<span class="sc-sun-ev" title="経度から求めた現地太陽時 (時計時刻とは時差分ずれます)">
+              日の出 ${ev.rise || "—"} ｜ 朝GH〜${ev.goldenEnd || "—"} ｜ 夕GH ${ev.goldenStart || "—"}〜 ｜ 日の入 ${ev.set || "—"}</span>`;
+          })()}
+        </div>` : ""}
+        <input type="text" class="sc-locnote" data-scsitenote="${ci}" value="${esc(cut.location.note)}" placeholder="ロケ地メモ (許可・段取り・その場所固有の注意)">
 
         <div class="sc-sub">登場要素 <small>動くのは人だけではない (車両・動物・群衆・物・カメラ自身)</small></div>
         <div class="sc-actors">
@@ -9468,6 +10161,12 @@ function setupScriptPage() {
       sync(true);
       return;
     }
+    const lib = e.target.closest("[data-scloclib]");
+    if (lib) { openLocationLib(+lib.dataset.scloclib); return; }
+    const lclr = e.target.closest("[data-sclocclear]");
+    if (lclr) { state.cuts[+lclr.dataset.sclocclear].location.presetId = null; sync(true); return; }
+    const sunb = e.target.closest("[data-scsun]");
+    if (sunb) { applySunToStudio(state.cuts[+sunb.dataset.scsun]); renderScriptPage(); return; }
     const bup = e.target.closest("[data-scbup]");
     if (bup) {
       const cut = cutOf(bup); const i = +bup.dataset.scbup;
@@ -9502,6 +10201,22 @@ function setupScriptPage() {
     else if (d.sccamlink != null) cut.perf.camLink = t.value;
     else if (d.scmethod != null) cut.perf.method = t.value;
     else if (d.scdur != null) cut.duration = Math.max(1, +t.value || 5);
+    else if (d.scmaps != null) {
+      const v = t.value.trim();
+      if (!v) delete cut.location.coords;
+      else {
+        const r = parseMapsUrl(v);
+        if (r && r.error) { showToast("⚠️ " + r.error); return; }
+        if (r) {
+          cut.location.coords = { lat: +r.lat.toFixed(6), lng: +r.lng.toFixed(6) };
+          if (r.name && !cut.location.name) cut.location.name = r.name;
+          showToast(`座標を読み取りました (${r.lat.toFixed(4)}, ${r.lng.toFixed(4)})`);
+        }
+      }
+    }
+    else if (d.scdate != null) cut.location.date = t.value;
+    else if (d.sctime != null) cut.location.time = t.value;
+    else if (d.scbearing != null) cut.location.camBearing = ((+t.value || 0) % 360 + 360) % 360;
     else if (d.sctpl != null) {
       if (!t.value) return;
       perfApplyTemplate(cut, t.value);
@@ -9521,7 +10236,9 @@ function setupScriptPage() {
     else if (d.scaname != null) {
       const a = cut.perf.actors.find(x => x.id === d.scaname);
       if (a) a.name = t.value;
-    } else if (d.sccap != null) cut.caption = t.value;
+    } else if (d.scsite != null) cut.location.name = t.value;
+    else if (d.scsitenote != null) cut.location.note = t.value;
+    else if (d.sccap != null) cut.caption = t.value;
     else if (d.scaim != null) cut.aim = t.value;
     else if (d.scname != null) cut.name = t.value;
     else return;
@@ -9627,6 +10344,13 @@ function ensureCameraDefaults(cut) {
   if (cut.refOffX == null) cut.refOffX = 0; // 画像の寄り位置 (%)
   if (cut.refOffY == null) cut.refOffY = 0;
   if (cut.caption == null) cut.caption = ""; // テロップ/セリフ (編集用・プロンプトには入れない)
+  /* ロケ地 (演出) — 未設定なら既存の出力に影響しない */
+  if (!cut.location || typeof cut.location !== "object") cut.location = {};
+  const lc = cut.location;
+  if (!Array.isArray(lc.keep)) lc.keep = LOCATION_ASPECTS.map(a => a.id);
+  if (lc.name == null) lc.name = "";
+  if (lc.note == null) lc.note = "";
+  if (lc.camBearing == null) lc.camBearing = 0;
   /* 人の動き (演技演出) — 使わなければ空のまま。既存の出力には影響しない */
   if (!cut.perf || typeof cut.perf !== "object") cut.perf = {};
   const pf = cut.perf;
@@ -10102,7 +10826,9 @@ function generatePrompt(cut, modelId) {
   /* 人の動き (演技演出) は使われたときだけ足す。未使用なら従来の出力のまま */
   const proseModel = ["veo", "sora", "runway", "mj"].includes(model);
   const perf = buildPerfBlock(cut, proseModel);
-  const withPerf = (text, sep) => perf ? text + sep + perf : text;
+  const loc = buildLocationBlock(cut, proseModel);
+  const extra = [loc, perf].filter(Boolean).join(proseModel ? " " : "\n");
+  const withPerf = (text, sep) => extra ? text + sep + extra : text;
 
   switch (model) {
     case "veo": { // 自然な英文パラグラフ + 音声指示
@@ -10172,6 +10898,7 @@ function generatePrompt(cut, modelId) {
         `COLOR / FINISH: ${j([P.lookEn || "natural true-to-life color grade", "photorealistic, professional cinematography, high detail"], ", ")}`,
         P.transEn ? `EDIT: shot ends with a ${P.transEn}` : "",
         P.dnaTokens.length ? `STYLE DNA: ${P.dnaTokens.join(", ")}` : "",
+        loc,
         perf,
         `NEGATIVE: no subtitles, no watermark, no on-screen text, no morphing artifacts${P.dnaAvoid.length ? ", " + P.dnaAvoid.join(", ") : ""}`,
       ], "\n");
@@ -10187,7 +10914,7 @@ function generatePrompt(cut, modelId) {
         P.dnaTokens.join(", "),
         P.motionStr,
         "photorealistic, professional cinematography, high detail",
-      ], ". ") + "." + (perf ? "\n" + perf : "");
+      ], ". ") + "." + (extra ? "\n" + extra : "");
     }
   }
 }
@@ -10944,6 +11671,7 @@ function applyPreset(presetId) {
   fresh.wfStatus = cut.wfStatus;
   fresh.caption = cut.caption;
   fresh.perf = cut.perf; // 人の動きは技法を変えても維持する
+  fresh.location = cut.location; // ロケ地も維持する
   fresh.originMode = cut.originMode;
   state.cuts[idx] = fresh;
   state.selectedItem = null;
@@ -11956,6 +12684,18 @@ function cutToCanonicalShot(cut, i, projectId) {
         audio_overlap_s: cut.audioEdit && cut.audioEdit !== "none" ? cut.audioOverlapSec : null,
         caption: cut.caption || "",
       },
+    location: locActive(cut) ? (() => {
+      const L = cut.location, p = locPreset(cut), s2 = locSunNow(cut);
+      return {
+        preset_id: L.presetId || null, name: L.name || "", note: L.note || "",
+        region: p ? p.region : null, descriptor_en: p ? p.en : "",
+        coordinates: L.coords || null, map_url: L.coords ? mapsLink(L.coords.lat, L.coords.lng) : null,
+        shoot_date: L.date || null, shoot_time_solar: L.time || null,
+        camera_bearing_deg: +L.camBearing || 0,
+        sun: s2 ? { azimuth_deg: +s2.azimuth.toFixed(1), elevation_deg: +s2.elevation.toFixed(1) } : null,
+        keep_aspects: L.keep,
+      };
+    })() : null,
     performance: perfActive(cut) ? (() => {
       /* 人の動き — 時間軸のビートと動きの質。カメラ設計とは独立に記録する */
       const p = cut.perf;
@@ -12433,7 +13173,7 @@ function tourEnd() {
 
 function startTour() {
   byId("kbdHelp").hidden = true;
-  ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay", "wfOverlay", "scriptOverlay"].forEach(id => { byId(id).hidden = true; });
+  ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay", "wfOverlay", "scriptOverlay", "locOverlay"].forEach(id => { byId(id).hidden = true; });
   tourShow(0);
 }
 
@@ -13073,6 +13813,17 @@ function cutFromCanonicalShot(shot) {
     if (shot.edit_decision.audio_overlap_s != null) cut.audioOverlapSec = shot.edit_decision.audio_overlap_s;
     if (shot.edit_decision.caption) cut.caption = shot.edit_decision.caption;
   }
+  if (shot.location) {
+    const L = shot.location;
+    cut.location.presetId = L.preset_id || null;
+    cut.location.name = L.name || "";
+    cut.location.note = L.note || "";
+    if (L.coordinates) cut.location.coords = L.coordinates;
+    if (L.shoot_date) cut.location.date = L.shoot_date;
+    if (L.shoot_time_solar) cut.location.time = L.shoot_time_solar;
+    if (L.camera_bearing_deg != null) cut.location.camBearing = L.camera_bearing_deg;
+    if (Array.isArray(L.keep_aspects)) cut.location.keep = L.keep_aspects;
+  }
   if (shot.performance) {
     const P2 = shot.performance;
     const p = cut.perf;
@@ -13423,6 +14174,7 @@ function init() {
   setupShortcuts();
   setupOnboarding();
   setupScriptPage();
+  setupLocationPage();
   setupRefDnD();
   setupA11y();
   byId("btnPlayPreview").addEventListener("click", () => {

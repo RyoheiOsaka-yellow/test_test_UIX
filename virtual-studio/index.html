@@ -462,6 +462,20 @@
   <button id="btnTourAgain" class="btn small" style="margin-top:10px">🎓 ツアーをもう一度見る</button>
 </div>
 
+<div id="locOverlay" class="overlay" role="dialog" aria-modal="true" aria-label="ロケ地ライブラリ" hidden>
+  <div class="overlay-bar">
+    <button id="btnLocBack" class="btn small"><svg class="ic"><use href="#i-back"/></svg> 戻る</button>
+    <span class="panel-title">ロケ地ライブラリ <small id="locCount"></small></span>
+    <div class="search-field overlay-search">
+      <svg class="ic"><use href="#i-search"/></svg>
+      <input type="search" id="locSearch" placeholder="ロケ地を検索 (東京 / 砂漠 / 石畳…)">
+    </div>
+    <select id="locRegion" title="地域で絞り込み"></select>
+    <span class="overlay-spacer"></span>
+  </div>
+  <div id="locGrid"></div>
+</div>
+
 <div id="scriptOverlay" class="overlay" role="dialog" aria-modal="true" aria-label="台本・絵コンテ" hidden>
   <div class="overlay-bar">
     <button id="btnScriptBack" class="btn small"><svg class="ic"><use href="#i-back"/></svg> スタジオに戻る</button>
@@ -531,6 +545,7 @@
 <script src="js/studio3d.js"></script>
 <script src="js/docs.js"></script>
 <script src="js/workflow.js"></script>
+<script src="js/location.js"></script>
 <script src="js/script.js"></script>
 <script src="js/app.js"></script>
 </body>

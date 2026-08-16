@@ -94,6 +94,13 @@ function ensureCameraDefaults(cut) {
   if (cut.refOffX == null) cut.refOffX = 0; // 画像の寄り位置 (%)
   if (cut.refOffY == null) cut.refOffY = 0;
   if (cut.caption == null) cut.caption = ""; // テロップ/セリフ (編集用・プロンプトには入れない)
+  /* ロケ地 (演出) — 未設定なら既存の出力に影響しない */
+  if (!cut.location || typeof cut.location !== "object") cut.location = {};
+  const lc = cut.location;
+  if (!Array.isArray(lc.keep)) lc.keep = LOCATION_ASPECTS.map(a => a.id);
+  if (lc.name == null) lc.name = "";
+  if (lc.note == null) lc.note = "";
+  if (lc.camBearing == null) lc.camBearing = 0;
   /* 人の動き (演技演出) — 使わなければ空のまま。既存の出力には影響しない */
   if (!cut.perf || typeof cut.perf !== "object") cut.perf = {};
   const pf = cut.perf;
@@ -569,7 +576,9 @@ function generatePrompt(cut, modelId) {
   /* 人の動き (演技演出) は使われたときだけ足す。未使用なら従来の出力のまま */
   const proseModel = ["veo", "sora", "runway", "mj"].includes(model);
   const perf = buildPerfBlock(cut, proseModel);
-  const withPerf = (text, sep) => perf ? text + sep + perf : text;
+  const loc = buildLocationBlock(cut, proseModel);
+  const extra = [loc, perf].filter(Boolean).join(proseModel ? " " : "\n");
+  const withPerf = (text, sep) => extra ? text + sep + extra : text;
 
   switch (model) {
     case "veo": { // 自然な英文パラグラフ + 音声指示
@@ -639,6 +648,7 @@ function generatePrompt(cut, modelId) {
         `COLOR / FINISH: ${j([P.lookEn || "natural true-to-life color grade", "photorealistic, professional cinematography, high detail"], ", ")}`,
         P.transEn ? `EDIT: shot ends with a ${P.transEn}` : "",
         P.dnaTokens.length ? `STYLE DNA: ${P.dnaTokens.join(", ")}` : "",
+        loc,
         perf,
         `NEGATIVE: no subtitles, no watermark, no on-screen text, no morphing artifacts${P.dnaAvoid.length ? ", " + P.dnaAvoid.join(", ") : ""}`,
       ], "\n");
@@ -654,7 +664,7 @@ function generatePrompt(cut, modelId) {
         P.dnaTokens.join(", "),
         P.motionStr,
         "photorealistic, professional cinematography, high detail",
-      ], ". ") + "." + (perf ? "\n" + perf : "");
+      ], ". ") + "." + (extra ? "\n" + extra : "");
     }
   }
 }
@@ -1411,6 +1421,7 @@ function applyPreset(presetId) {
   fresh.wfStatus = cut.wfStatus;
   fresh.caption = cut.caption;
   fresh.perf = cut.perf; // 人の動きは技法を変えても維持する
+  fresh.location = cut.location; // ロケ地も維持する
   fresh.originMode = cut.originMode;
   state.cuts[idx] = fresh;
   state.selectedItem = null;
@@ -2423,6 +2434,18 @@ function cutToCanonicalShot(cut, i, projectId) {
         audio_overlap_s: cut.audioEdit && cut.audioEdit !== "none" ? cut.audioOverlapSec : null,
         caption: cut.caption || "",
       },
+    location: locActive(cut) ? (() => {
+      const L = cut.location, p = locPreset(cut), s2 = locSunNow(cut);
+      return {
+        preset_id: L.presetId || null, name: L.name || "", note: L.note || "",
+        region: p ? p.region : null, descriptor_en: p ? p.en : "",
+        coordinates: L.coords || null, map_url: L.coords ? mapsLink(L.coords.lat, L.coords.lng) : null,
+        shoot_date: L.date || null, shoot_time_solar: L.time || null,
+        camera_bearing_deg: +L.camBearing || 0,
+        sun: s2 ? { azimuth_deg: +s2.azimuth.toFixed(1), elevation_deg: +s2.elevation.toFixed(1) } : null,
+        keep_aspects: L.keep,
+      };
+    })() : null,
     performance: perfActive(cut) ? (() => {
       /* 人の動き — 時間軸のビートと動きの質。カメラ設計とは独立に記録する */
       const p = cut.perf;
@@ -2900,7 +2923,7 @@ function tourEnd() {
 
 function startTour() {
   byId("kbdHelp").hidden = true;
-  ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay", "wfOverlay", "scriptOverlay"].forEach(id => { byId(id).hidden = true; });
+  ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay", "wfOverlay", "scriptOverlay", "locOverlay"].forEach(id => { byId(id).hidden = true; });
   tourShow(0);
 }
 
@@ -3540,6 +3563,17 @@ function cutFromCanonicalShot(shot) {
     if (shot.edit_decision.audio_overlap_s != null) cut.audioOverlapSec = shot.edit_decision.audio_overlap_s;
     if (shot.edit_decision.caption) cut.caption = shot.edit_decision.caption;
   }
+  if (shot.location) {
+    const L = shot.location;
+    cut.location.presetId = L.preset_id || null;
+    cut.location.name = L.name || "";
+    cut.location.note = L.note || "";
+    if (L.coordinates) cut.location.coords = L.coordinates;
+    if (L.shoot_date) cut.location.date = L.shoot_date;
+    if (L.shoot_time_solar) cut.location.time = L.shoot_time_solar;
+    if (L.camera_bearing_deg != null) cut.location.camBearing = L.camera_bearing_deg;
+    if (Array.isArray(L.keep_aspects)) cut.location.keep = L.keep_aspects;
+  }
   if (shot.performance) {
     const P2 = shot.performance;
     const p = cut.perf;
@@ -3890,6 +3924,7 @@ function init() {
   setupShortcuts();
   setupOnboarding();
   setupScriptPage();
+  setupLocationPage();
   setupRefDnD();
   setupA11y();
   byId("btnPlayPreview").addEventListener("click", () => {

@@ -1092,6 +1092,63 @@ input[type="range"]::-moz-range-thumb {
   .sc-quality { margin-left: 0; }
 }
 
+/* ---------- ロケ地 (台本ページ内) ---------- */
+.sc-loc { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.sc-loc input[type="text"] {
+  flex: 1 1 200px; min-width: 140px;
+  background: var(--fill-1); border: 1px solid transparent; border-radius: 7px;
+  padding: 5px 9px; font-size: 11.5px; color: var(--text); font-family: inherit;
+}
+.sc-loc input:focus { outline: none; background: var(--surface); border-color: var(--accent); }
+.sc-loc input[type="date"], .sc-loc input[type="time"], .sc-loc input[type="number"] {
+  background: var(--fill-1); border: 1px solid transparent; border-radius: 6px;
+  padding: 4px 7px; font-size: 11px; color: var(--text); font-family: inherit;
+}
+.sc-loc label { font-size: 10.5px; color: var(--text2); display: inline-flex; align-items: center; gap: 4px; }
+.sc-loc label input { width: 58px; }
+.sc-loc-name {
+  font-size: 11px; font-weight: 700; color: var(--accent);
+  background: var(--accent-soft); border-radius: 980px; padding: 3px 10px;
+}
+.sc-loc a.btn { text-decoration: none; }
+.sc-sun { background: var(--fill-1); border-radius: 9px; padding: 6px 8px; }
+.sc-sun-info { font-size: 11px; color: var(--text2); }
+.sc-sun-ev { font-size: 10px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.sc-locnote {
+  width: 100%; background: var(--fill-1); border: 1px solid transparent; border-radius: 7px;
+  padding: 5px 9px; font-size: 11px; color: var(--text2); font-family: inherit;
+}
+
+/* ---------- ロケ地ライブラリ ---------- */
+/* 台本ページの上に重ねて開くため、他のオーバーレイより前面に置く */
+#locOverlay { z-index: 110; }
+#locGrid {
+  flex: 1; overflow-y: auto;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px; padding: 14px 16px 20px; align-content: start;
+}
+.loc-card {
+  background: var(--surface); border-radius: var(--radius);
+  padding: 13px 14px; box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; gap: 7px;
+  border: 2px solid transparent; transition: all 0.18s var(--ease);
+}
+.loc-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.loc-card.current { border-color: var(--accent); }
+.loc-head { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.loc-name { font-size: 13.5px; font-weight: 700; }
+.loc-region { font-size: 10px; color: var(--dim); margin-top: 2px; }
+.loc-tags { display: flex; gap: 3px; flex-wrap: wrap; justify-content: flex-end; }
+.loc-aspects {
+  display: grid; grid-template-columns: 64px 1fr; gap: 2px 8px;
+  font-size: 10.5px; line-height: 1.5;
+}
+.loc-aspects dt { color: var(--text2); font-weight: 600; }
+.loc-aspects dd { color: var(--dim); }
+.loc-note { font-size: 10px; color: var(--text2); line-height: 1.5; }
+.loc-card .btn { margin-top: auto; }
+#locRegion { font-size: 12px; }
+
 /* ---------- プロンプト診断 ---------- */
 #lintBox {
   background: var(--surface); border-radius: var(--radius);

@@ -84,6 +84,45 @@ function renderScriptPage() {
           <input type="text" data-scaim="${ci}" value="${esc(cut.aim)}" placeholder="このカットで何を伝えるか">
         </div>
 
+        <div class="sc-sub">ロケ地 <small>どこで起きるか — 地図は使わず座標から太陽を計算します</small></div>
+        <div class="sc-loc">
+          <button class="btn small" data-scloclib="${ci}"><svg class="ic"><use href="#i-search"/></svg> ${cut.location.presetId ? "ロケ地を変更" : "ロケ地を選ぶ"}</button>
+          ${(() => {
+            const lp = locPreset(cut);
+            return lp ? `<span class="sc-loc-name" title="${esc(lp.en)}">${esc(lp.label)}</span>
+              <button class="icon-btn small danger" data-sclocclear="${ci}" title="ロケ地を外す"><svg class="ic"><use href="#i-trash"/></svg></button>` : "";
+          })()}
+          <input type="text" data-scsite="${ci}" value="${esc(cut.location.name)}" placeholder="実際の地名 (例: 新宿ゴールデン街)">
+        </div>
+        <div class="sc-loc">
+          <input type="text" data-scmaps="${ci}" value="${cut.location.coords ? `${cut.location.coords.lat}, ${cut.location.coords.lng}` : ""}"
+            placeholder="Google MapsのURL か 緯度,経度 を貼る" title="MapsのURL (…/@35.68,139.76,17z…) または「35.6586, 139.7454」">
+          ${cut.location.coords ? `
+            <a class="btn tiny" href="${mapsLink(cut.location.coords.lat, cut.location.coords.lng)}" target="_blank" rel="noopener">地図で開く</a>
+            <a class="btn tiny" href="${streetViewLink(cut.location.coords.lat, cut.location.coords.lng)}" target="_blank" rel="noopener">ストリートビュー</a>` : ""}
+        </div>
+        ${cut.location.coords ? `
+        <div class="sc-loc sc-sun">
+          <input type="date" data-scdate="${ci}" value="${esc(cut.location.date || "")}" title="撮影日">
+          <input type="time" data-sctime="${ci}" value="${esc(cut.location.time || "")}" title="撮影時刻 (現地の太陽時)">
+          <label title="カメラが向いている方位 (北=0°)">カメラ方位 <input type="number" data-scbearing="${ci}" value="${+cut.location.camBearing || 0}" min="0" max="359" step="5">°</label>
+          ${(() => {
+            const sn = locSunRelative(cut);
+            if (!sn) return `<span class="insp-hint">日付と時刻を入れると太陽の方位・高度を計算します</span>`;
+            const side = Math.abs(sn.rel) < 30 ? "逆光" : Math.abs(sn.rel) > 150 ? "順光" : sn.rel > 0 ? "右サイド" : "左サイド";
+            return `<span class="sc-sun-info">☀️ 方位${Math.round(sn.azimuth)}° / 高度${sn.elevation.toFixed(1)}° → <b>${side}</b>${sn.elevation < 6 && sn.elevation > 0 ? " (ゴールデンアワー)" : sn.elevation <= 0 ? " (日没後)" : ""}</span>
+              <button class="btn tiny primary" data-scsun="${ci}">スタジオの太陽に反映</button>`;
+          })()}
+          ${(() => {
+            const ev = cut.location.date ? sunEvents(cut.location.coords.lat, cut.location.coords.lng, cut.location.date) : null;
+            if (!ev) return "";
+            if (ev.polar) return `<span class="sc-sun-ev">${esc(ev.polar)}</span>`;
+            return `<span class="sc-sun-ev" title="経度から求めた現地太陽時 (時計時刻とは時差分ずれます)">
+              日の出 ${ev.rise || "—"} ｜ 朝GH〜${ev.goldenEnd || "—"} ｜ 夕GH ${ev.goldenStart || "—"}〜 ｜ 日の入 ${ev.set || "—"}</span>`;
+          })()}
+        </div>` : ""}
+        <input type="text" class="sc-locnote" data-scsitenote="${ci}" value="${esc(cut.location.note)}" placeholder="ロケ地メモ (許可・段取り・その場所固有の注意)">
+
         <div class="sc-sub">登場要素 <small>動くのは人だけではない (車両・動物・群衆・物・カメラ自身)</small></div>
         <div class="sc-actors">
           ${p.actors.map(a => `
@@ -212,6 +251,12 @@ function setupScriptPage() {
       sync(true);
       return;
     }
+    const lib = e.target.closest("[data-scloclib]");
+    if (lib) { openLocationLib(+lib.dataset.scloclib); return; }
+    const lclr = e.target.closest("[data-sclocclear]");
+    if (lclr) { state.cuts[+lclr.dataset.sclocclear].location.presetId = null; sync(true); return; }
+    const sunb = e.target.closest("[data-scsun]");
+    if (sunb) { applySunToStudio(state.cuts[+sunb.dataset.scsun]); renderScriptPage(); return; }
     const bup = e.target.closest("[data-scbup]");
     if (bup) {
       const cut = cutOf(bup); const i = +bup.dataset.scbup;
@@ -246,6 +291,22 @@ function setupScriptPage() {
     else if (d.sccamlink != null) cut.perf.camLink = t.value;
     else if (d.scmethod != null) cut.perf.method = t.value;
     else if (d.scdur != null) cut.duration = Math.max(1, +t.value || 5);
+    else if (d.scmaps != null) {
+      const v = t.value.trim();
+      if (!v) delete cut.location.coords;
+      else {
+        const r = parseMapsUrl(v);
+        if (r && r.error) { showToast("⚠️ " + r.error); return; }
+        if (r) {
+          cut.location.coords = { lat: +r.lat.toFixed(6), lng: +r.lng.toFixed(6) };
+          if (r.name && !cut.location.name) cut.location.name = r.name;
+          showToast(`座標を読み取りました (${r.lat.toFixed(4)}, ${r.lng.toFixed(4)})`);
+        }
+      }
+    }
+    else if (d.scdate != null) cut.location.date = t.value;
+    else if (d.sctime != null) cut.location.time = t.value;
+    else if (d.scbearing != null) cut.location.camBearing = ((+t.value || 0) % 360 + 360) % 360;
     else if (d.sctpl != null) {
       if (!t.value) return;
       perfApplyTemplate(cut, t.value);
@@ -265,7 +326,9 @@ function setupScriptPage() {
     else if (d.scaname != null) {
       const a = cut.perf.actors.find(x => x.id === d.scaname);
       if (a) a.name = t.value;
-    } else if (d.sccap != null) cut.caption = t.value;
+    } else if (d.scsite != null) cut.location.name = t.value;
+    else if (d.scsitenote != null) cut.location.note = t.value;
+    else if (d.sccap != null) cut.caption = t.value;
     else if (d.scaim != null) cut.aim = t.value;
     else if (d.scname != null) cut.name = t.value;
     else return;

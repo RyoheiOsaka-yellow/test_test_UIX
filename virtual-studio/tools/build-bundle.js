@@ -6,12 +6,12 @@ const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
 const js = {};
-for (const name of ["data", "equipment_db", "engine", "dna", "intent", "studio3d", "docs", "workflow", "script", "app"]) {
+for (const name of ["data", "equipment_db", "engine", "dna", "intent", "studio3d", "docs", "workflow", "location", "script", "app"]) {
   js[name] = fs.readFileSync(path.join(root, `js/${name}.js`), "utf8");
 }
 
 let bundled = html.replace('<link rel="stylesheet" href="css/style.css">', `<style>\n${css}\n</style>`);
-for (const name of ["data", "equipment_db", "engine", "dna", "intent", "studio3d", "docs", "workflow", "script", "app"]) {
+for (const name of ["data", "equipment_db", "engine", "dna", "intent", "studio3d", "docs", "workflow", "location", "script", "app"]) {
   bundled = bundled.replace(`<script src="js/${name}.js"></script>`, `<script>\n${js[name]}\n</script>`);
 }
 
