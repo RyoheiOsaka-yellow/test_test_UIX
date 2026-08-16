@@ -1,0 +1,3338 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>鉱物標本 手描きスケッチャー / HAND-DRAWN MINERALOGY</title>
+<style>
+:root{
+  --ink:#3a3a40;
+  --ink-soft:#6a6a72;
+  --ink-faint:#9a989e;
+  --paper:#e5e3da;
+  --paper-2:#f2efe6;
+  --paper-3:#fbf9f3;
+  --line:#c4c2bd;
+  --accent:#2b6e7f;
+  --accent-2:#8a5a2b;
+  --tape:rgba(200,196,150,.42);
+  --red:#a44a3f;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  font-family:"Hiragino Maru Gothic ProN","Yu Gothic","Zen Kurenaido",-apple-system,"Segoe UI",sans-serif;
+  color:var(--ink);
+  background:var(--paper);
+  overflow:hidden;
+  display:flex; flex-direction:column;
+  -webkit-font-smoothing:antialiased;
+  font-size:13px;
+}
+body::before{
+  /* 作業台の紙目 */
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image:var(--desk-tex);
+  opacity:.5; mix-blend-mode:multiply;
+}
+/* ---------- 手描き風の囲み ---------- */
+.sk{ position:relative; }
+.sk::before{
+  content:''; position:absolute; inset:0;
+  border:1.4px solid var(--ink);
+  border-radius:5px;
+  filter:url(#rough);
+  pointer-events:none;
+  opacity:.62;
+}
+.sk.dbl::after{
+  content:''; position:absolute; inset:2px 1px 0 2px;
+  border:1px solid var(--ink);
+  border-radius:6px; opacity:.22;
+  filter:url(#rough2);
+  pointer-events:none;
+}
+.hand{ filter:url(#ink); }
+
+/* ---------- ヘッダ ---------- */
+header{
+  position:relative; z-index:2;
+  display:flex; align-items:center; gap:14px;
+  padding:8px 16px 9px;
+  background:linear-gradient(180deg,var(--paper-3),var(--paper-2));
+  border-bottom:1.5px solid var(--line);
+  flex-wrap:wrap;
+}
+header::after{
+  content:''; position:absolute; left:0; right:0; bottom:-3px; height:3px;
+  background:repeating-linear-gradient(90deg,var(--ink-faint) 0 7px,transparent 7px 15px);
+  opacity:.25;
+}
+h1{
+  font-size:15px; font-weight:700; letter-spacing:.04em; white-space:nowrap; line-height:1.25;
+}
+h1 small{
+  display:block; font-size:8.5px; letter-spacing:.22em; color:var(--accent);
+  font-weight:700; font-family:"Courier New",monospace;
+}
+.tabs{ display:flex; gap:5px; flex:1; min-width:0; flex-wrap:wrap; }
+.genres{ display:flex; gap:5px; flex:none; padding-right:10px; margin-right:2px; border-right:1.5px dashed var(--line); }
+.gbtn{
+  font:inherit; font-size:11.5px; font-weight:700; cursor:pointer;
+  padding:6px 10px 7px; background:transparent; color:var(--ink-soft);
+  border:none; white-space:nowrap; position:relative;
+}
+.gbtn::before{
+  content:''; position:absolute; inset:0; border:1.4px solid var(--accent);
+  border-radius:13px 11px 14px 12px; opacity:.28; filter:url(#rough); transition:opacity .15s;
+}
+.gbtn:hover{ color:var(--accent); } .gbtn:hover::before{ opacity:.6; }
+.gbtn.on{ color:#fff; background:var(--accent); border-radius:13px 11px 14px 12px; }
+.gbtn.on::before{ opacity:1; }
+.gbtn span{ position:relative; }
+.tab{
+  font:inherit; font-size:11.5px; font-weight:600; cursor:pointer;
+  padding:6px 11px 7px; background:transparent; color:var(--ink-soft);
+  border:none; white-space:nowrap; position:relative;
+}
+.tab::before{
+  content:''; position:absolute; inset:0; border:1.3px solid var(--ink);
+  border-radius:14px 12px 15px 11px; opacity:.3; filter:url(#rough);
+  transition:opacity .15s;
+}
+.tab:hover{ color:var(--ink); }
+.tab:hover::before{ opacity:.6; }
+.tab.on{ color:#fff; background:var(--ink); border-radius:14px 12px 15px 11px; }
+.tab.on::before{ opacity:1; }
+.tab span{ position:relative; }
+.tab em{
+  font-style:normal; font-family:"Courier New",monospace; font-size:9px;
+  opacity:.6; margin-right:4px; letter-spacing:.05em;
+}
+
+/* ---------- 本体 ---------- */
+main{ flex:1; display:flex; min-height:0; position:relative; z-index:1; }
+aside{
+  width:272px; flex:none; overflow-y:auto; overflow-x:hidden;
+  background:var(--paper-2);
+  border-right:1.5px solid var(--line);
+  padding:14px 14px 60px;
+}
+aside.right{ width:296px; border-right:none; border-left:1.5px solid var(--line); }
+aside::-webkit-scrollbar{ width:9px; }
+aside::-webkit-scrollbar-thumb{ background:var(--line); border-radius:6px; }
+
+.sec{ margin-bottom:20px; }
+.sec > h3{
+  font-size:10.5px; letter-spacing:.16em; color:var(--accent);
+  font-weight:700; margin-bottom:9px; padding-bottom:5px;
+  font-family:"Courier New",monospace;
+  border-bottom:1.2px dashed var(--line);
+  display:flex; justify-content:space-between; align-items:baseline;
+}
+.sec > h3 b{ font-family:inherit; font-size:11px; letter-spacing:0; color:var(--ink-soft); font-weight:600; }
+h4{ font-size:11px; color:var(--ink-soft); margin:11px 0 5px; font-weight:600; letter-spacing:.02em; }
+
+.grid2{ display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+.grid3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; }
+.chip{
+  font:inherit; font-size:11px; cursor:pointer; padding:6px 4px 7px;
+  background:transparent; color:var(--ink-soft); border:none;
+  position:relative; text-align:center; line-height:1.3;
+}
+.chip::before{
+  content:''; position:absolute; inset:0; border:1.2px solid var(--ink);
+  border-radius:4px 6px 4px 7px; opacity:.28; filter:url(#rough2);
+}
+.chip:hover{ color:var(--ink); }
+.chip:hover::before{ opacity:.55; }
+.chip.on{ color:var(--ink); font-weight:700; background:rgba(43,110,127,.15); border-radius:4px 6px 4px 7px; }
+.chip.on::before{ opacity:.95; border-width:1.6px; }
+.chip small{ display:block; font-size:8.5px; font-family:"Courier New",monospace; opacity:.55; letter-spacing:.06em; }
+
+.row{ display:flex; align-items:center; gap:9px; margin-bottom:9px; }
+.row label{ font-size:11px; color:var(--ink-soft); width:58px; flex:none; font-weight:600; }
+.row .val{
+  min-width:46px; text-align:right; font-family:"Courier New",monospace;
+  font-size:11.5px; font-weight:700; color:var(--ink);
+}
+input[type=range]{
+  flex:1; min-width:0; -webkit-appearance:none; appearance:none;
+  height:16px; background:transparent; cursor:pointer;
+}
+input[type=range]::-webkit-slider-runnable-track{
+  height:3px; border-radius:2px;
+  background:repeating-linear-gradient(90deg,var(--ink) 0 5px,transparent 5px 8px);
+  opacity:.5;
+}
+input[type=range]::-moz-range-track{
+  height:3px; border-radius:2px;
+  background:repeating-linear-gradient(90deg,var(--ink) 0 5px,transparent 5px 8px);
+  opacity:.5;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:15px; height:15px; margin-top:-6px;
+  border-radius:50% 45% 52% 48%; background:var(--paper-3);
+  border:1.8px solid var(--ink); box-shadow:1px 1.5px 0 rgba(58,58,64,.25);
+}
+input[type=range]::-moz-range-thumb{
+  width:14px; height:14px; border-radius:50%; background:var(--paper-3);
+  border:1.8px solid var(--ink);
+}
+input[type=text]{
+  font:inherit; font-size:12px; width:100%; padding:6px 8px;
+  background:transparent; border:none; color:var(--ink);
+  position:relative; z-index:1;
+}
+input[type=text]:focus{ outline:none; }
+.field{ position:relative; margin-bottom:7px; }
+.field::before{
+  content:''; position:absolute; inset:0; border:1.2px solid var(--ink);
+  border-radius:4px; opacity:.3; filter:url(#rough2); pointer-events:none;
+}
+
+.swatches{ display:flex; gap:7px; flex-wrap:wrap; }
+.sw{
+  width:33px; height:33px; cursor:pointer; position:relative;
+  border-radius:50% 48% 52% 47%; padding:3px;
+  display:flex; flex-wrap:wrap; overflow:hidden;
+}
+.sw::before{
+  content:''; position:absolute; inset:0; border:1.5px solid var(--ink);
+  border-radius:50% 48% 52% 47%; opacity:.3; filter:url(#rough2);
+}
+.sw.on::before{ opacity:1; border-width:2.2px; }
+.sw.on::after{
+  content:''; position:absolute; inset:-4px; border:1.2px dashed var(--accent);
+  border-radius:50%; opacity:.85;
+}
+.sw i{ width:50%; height:50%; display:block; }
+
+.note{ font-size:10px; color:var(--ink-faint); line-height:1.6; margin-top:7px; }
+.tray{ display:flex; gap:6px; flex-wrap:wrap; }
+.pen{
+  width:30px; height:30px; padding:3px; cursor:pointer; background:transparent;
+  border:none; position:relative; border-radius:50% 47% 53% 48%;
+}
+.pen::before{
+  content:''; position:absolute; inset:0; border:1.4px solid var(--ink);
+  border-radius:50% 47% 53% 48%; opacity:.26; filter:url(#rough2);
+}
+.pen i{ display:block; width:100%; height:100%; border-radius:50%; }
+.pen.erase i{ background:repeating-linear-gradient(45deg,#f2efe4 0 4px,#d8d2c0 4px 8px); }
+.pen.on::before{ opacity:1; border-width:2.4px; }
+.pen.on::after{
+  content:''; position:absolute; inset:-4px; border:1.2px dashed var(--accent);
+  border-radius:50%; opacity:.9;
+}
+
+/* ---------- ビューポート ---------- */
+#viewport{
+  flex:1; position:relative; min-width:0; overflow:hidden;
+  background:
+    radial-gradient(ellipse at 50% 0%,rgba(255,255,255,.5),transparent 60%),
+    linear-gradient(160deg,#d7d5cb,#c9c6bc 60%,#bebbb1);
+  display:flex; align-items:center; justify-content:center;
+  cursor:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26'><g transform='rotate(35 13 13)'><rect x='11' y='3' width='4' height='15' fill='%23c9a227' stroke='%233a3a40' stroke-width='.8'/><path d='M11 18 L13 23 L15 18 Z' fill='%23f0e6d0' stroke='%233a3a40' stroke-width='.8'/><path d='M12.2 21 L13 23 L13.8 21 Z' fill='%233a3a40'/></g></svg>") 3 23, crosshair;
+}
+#sheetWrap{
+  position:relative;
+  box-shadow:0 10px 34px rgba(40,35,35,.35), 0 2px 6px rgba(40,35,35,.25);
+  transition:transform .18s ease-out;
+  will-change:transform;
+}
+#sheet{ display:block; background:#efeade; }
+#sheetWrap::after{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  box-shadow:inset 0 0 60px rgba(84,74,66,.10);
+}
+.tape{
+  position:absolute; width:74px; height:23px; background:var(--tape);
+  border-left:1px solid rgba(255,255,255,.35); border-right:1px solid rgba(150,140,90,.3);
+  box-shadow:0 1px 3px rgba(0,0,0,.12);
+}
+.tape.tl{ left:-24px; top:-11px; transform:rotate(-38deg); }
+.tape.tr{ right:-24px; top:-11px; transform:rotate(38deg); }
+.tape.bl{ left:-24px; bottom:-11px; transform:rotate(38deg); }
+.tape.br{ right:-24px; bottom:-11px; transform:rotate(-38deg); }
+
+/* ---------- ツールバー ---------- */
+.toolbar{
+  position:absolute; left:50%; bottom:14px; transform:translateX(-50%);
+  display:flex; align-items:center; gap:6px; z-index:4;
+  background:rgba(250,247,240,.94); padding:7px 12px;
+  border-radius:24px 22px 25px 23px;
+  box-shadow:0 5px 20px rgba(50,42,40,.22);
+  flex-wrap:wrap; justify-content:center; max-width:min(94%,760px);
+}
+.toolbar::before{
+  content:''; position:absolute; inset:0; border:1.5px solid var(--ink);
+  border-radius:24px 22px 25px 23px; opacity:.5; filter:url(#rough);
+  pointer-events:none;
+}
+.tbtn{
+  font:inherit; font-size:11px; font-weight:600; cursor:pointer;
+  padding:5px 10px 6px; background:transparent; color:var(--ink-soft);
+  border:none; position:relative; white-space:nowrap;
+}
+.tbtn::before{
+  content:''; position:absolute; inset:0; border:1.2px solid var(--ink);
+  border-radius:12px 10px 13px 11px; opacity:.3; filter:url(#rough2);
+}
+.tbtn:hover{ color:var(--ink); } .tbtn:hover::before{ opacity:.62; }
+.tbtn.on{ color:#fff; background:var(--ink); border-radius:12px 10px 13px 11px; }
+.tbtn.on::before{ opacity:1; }
+.tbtn.big{ font-size:11.5px; padding:6px 13px 7px; font-weight:700; color:var(--ink);
+  background:rgba(43,110,127,.16); border-radius:12px 10px 13px 11px; }
+.tbtn.big::before{ opacity:.75; }
+.tsep{ width:1px; height:19px; background:var(--line); }
+
+/* ---------- 右パネル ---------- */
+.plate{ background:var(--paper-3); padding:11px 12px 12px; margin-bottom:13px; }
+.plate h2{
+  font-size:13px; font-weight:700; letter-spacing:.02em; margin-bottom:2px;
+  font-family:"Courier New",monospace; font-style:italic;
+}
+.plate .sub{ font-size:9.5px; color:var(--accent); letter-spacing:.16em; font-family:"Courier New",monospace; }
+table.spec{ width:100%; border-collapse:collapse; font-size:10.5px; font-family:"Courier New",monospace; margin-top:8px; }
+table.spec td{ padding:3.5px 2px; border-bottom:1px dotted var(--line); letter-spacing:.04em; }
+table.spec td:first-child{ color:var(--ink-faint); width:44%; }
+table.spec td:last-child{ text-align:right; font-weight:700; }
+table.leg{ width:100%; border-collapse:collapse; font-size:10.5px; font-family:"Courier New",monospace; }
+table.leg td{ padding:3px 2px; border-bottom:1px dotted var(--line); }
+table.leg td.k{ width:16px; }
+table.leg td.n{ text-align:right; font-weight:700; width:38px; }
+table.leg i{ display:inline-block; width:10px; height:10px; border:1.2px solid var(--ink); border-radius:2px; }
+.stat{ display:flex; justify-content:space-between; font-size:10.5px; font-family:"Courier New",monospace; padding:2.5px 0; color:var(--ink-soft); }
+.stat b{ color:var(--ink); }
+
+/* ---------- 進捗 ---------- */
+#prog{
+  position:absolute; left:50%; top:14px; transform:translateX(-50%);
+  background:rgba(250,247,240,.95); padding:5px 14px 6px; border-radius:20px;
+  font-size:10.5px; font-family:"Courier New",monospace; letter-spacing:.1em;
+  display:flex; align-items:center; gap:9px; z-index:5;
+  box-shadow:0 3px 12px rgba(50,42,40,.2);
+}
+#prog[hidden]{ display:none; }
+#prog .bar{ width:96px; height:4px; background:rgba(58,58,64,.15); border-radius:3px; overflow:hidden; }
+#prog .bar i{ display:block; height:100%; width:0; background:var(--accent); transition:width .1s linear; }
+.pencil{ animation:scratch .45s infinite alternate ease-in-out; display:inline-block; }
+@keyframes scratch{ from{ transform:translate(-1px,1px) rotate(-6deg);} to{ transform:translate(1px,-1px) rotate(4deg);} }
+
+.hint{
+  position:absolute; right:12px; bottom:16px; z-index:3;
+  font-size:9.5px; color:rgba(60,52,52,.55); font-family:"Courier New",monospace;
+  letter-spacing:.08em; text-align:right; line-height:1.7; pointer-events:none;
+}
+@media (max-width:1100px){
+  aside{ width:232px; } aside.right{ width:246px; }
+}
+@media (max-width:820px){
+  main{ flex-direction:column; }
+  aside{ width:100%; max-height:172px; border-right:none; border-bottom:1.5px solid var(--line); padding-bottom:14px; }
+  aside.right{ width:100%; max-height:210px; border-left:none; border-top:1.5px solid var(--line); }
+  #viewport{ min-height:400px; flex:1 1 400px; }
+  .grid2{ grid-template-columns:repeat(4,1fr); }
+  .grid3{ grid-template-columns:repeat(6,1fr); }
+  .sec{ margin-bottom:14px; }
+  .row label{ width:48px; }
+  h1{ font-size:13px; }
+  .hint{ display:none; }
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <filter id="rough">
+    <feTurbulence type="fractalNoise" baseFrequency="0.035" numOctaves="3" seed="11" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="2.6" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="rough2">
+    <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="4" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="1.7" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+  <filter id="ink">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" seed="3" result="n"/>
+    <feDisplacementMap in="SourceGraphic" in2="n" scale="0.9" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+
+<header>
+  <h1><small>HAND-DRAWN MINERALOGY</small>鉱物標本 手描きスケッチャー</h1>
+  <div class="genres" id="genres"></div>
+  <div class="tabs" id="tabs"></div>
+  <button class="tbtn big" id="btnRoll">🎲 新しい試料</button>
+</header>
+
+<main>
+  <aside id="opts" class="hand"></aside>
+
+  <div id="viewport">
+    <div id="prog" hidden><span class="pencil">✎</span><span id="progTxt">DRAWING</span><span class="bar"><i id="progBar"></i></span></div>
+    <div id="sheetWrap">
+      <span class="tape tl"></span><span class="tape tr"></span>
+      <span class="tape bl"></span><span class="tape br"></span>
+      <canvas id="sheet"></canvas>
+    </div>
+    <div class="toolbar">
+      <button class="tbtn" id="btnRotL">◀ 試料回転</button>
+      <button class="tbtn" id="btnRotR">試料回転 ▶</button>
+      <span class="tsep"></span>
+      <button class="tbtn" id="btnZoomOut">−</button>
+      <button class="tbtn" id="btnZoomIn">＋</button>
+      <button class="tbtn" id="btnFit">原寸</button>
+      <span class="tsep"></span>
+      <button class="tbtn" id="btnLineart">塗り絵(線画)</button>
+      <button class="tbtn on" id="btnAnim">描画アニメ</button>
+      <button class="tbtn" id="btnRedraw">引き直す</button>
+      <span class="tsep"></span>
+      <button class="tbtn" id="btnPng">PNG保存</button>
+      <button class="tbtn" id="btnPng2">高解像度</button>
+    </div>
+    <div class="hint">DRAG: 試料を動かす<br>WHEEL: ズーム / R: 再抽選</div>
+  </div>
+
+  <aside class="right hand" id="info"></aside>
+</main>
+<script>
+"use strict";
+/* =========================================================================
+   鉱物標本 手描きスケッチャー
+   結晶・薄片・集合体・岩石を写生したような鉱物スケッチを生成するエディター
+   ========================================================================= */
+/* ---------------- 乱数 (シード固定) ---------------- */
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+let R = mulberry32(20270101);
+const rnd = () => R();
+const rr  = (a,b) => a + (b-a)*R();
+const ri  = (a,b) => Math.floor(a + (b-a+1)*R());
+const pick = a => a[Math.floor(R()*a.length)];
+const chance = p => R() < p;
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+const lerp = (a,b,t) => a+(b-a)*t;
+const TAU = Math.PI*2;
+
+/* ---------------- 色鉛筆(鉱物色) ---------------- */
+/* line: 稜線・輪郭の色 / deep: 濃色部・不透明鉱物の色 / cols: 面の塗りとハッチング */
+const PALETTES = {
+  QUARTZ:    { label:'石英・長石',     line:'#65656d', deep:'#2c2c34', cols:['#b8b6af','#8f9aa4','#d6d2c6','#7e7b78'] },
+  XPL:       { label:'直交ニコル',     line:'#4a3f6b', deep:'#1b1440', cols:['#d8a13a','#c2496f','#3f7fbf','#5fae7a'] },
+  AMETHYST:  { label:'紫水晶',         line:'#6b4a9e', deep:'#2c1a55', cols:['#a37cc9','#7b52ab','#c8aade','#5b3a86'] },
+  MALACHITE: { label:'孔雀石',         line:'#2f7a5a', deep:'#123a2a', cols:['#4f9e74','#7cc09a','#2f6b4c','#a8d6bd'] },
+  AZURITE:   { label:'藍銅鉱',         line:'#2a5b96', deep:'#0f2350', cols:['#4a7fc0','#7ba5d8','#2d5f9e','#a9c4e2'] },
+  HEMATITE:  { label:'赤鉄鉱',         line:'#8a3a2e', deep:'#3a1712', cols:['#b5604a','#8f3b2c','#d69a80','#6d2c21'] },
+  PYRITE:    { label:'黄鉄鉱',         line:'#8a6a1e', deep:'#3a2a08', cols:['#c9a227','#e0c261','#a3811c','#efdc9a'] },
+  GRAPHITE:  { label:'鉛筆(無彩色)',   line:'#55535a', deep:'#2b2a30', cols:['#8a888e','#6c6a72','#a8a5a2','#57555c'] },
+};
+
+const PAPERS = {
+  FIELD:   { label:'野帳',       base:'#ece7d8', grain:.042, warm:1.0 },
+  SKETCH:  { label:'スケッチ紙', base:'#f4efe3', grain:.062, warm:1.02 },
+  GRAPH:   { label:'方眼紙',     base:'#eef1ea', grain:.040, warm:.95, grid:true },
+  VELLUM:  { label:'トレペ',     base:'#f8f6ec', grain:.026, warm:.98 },
+  WHITE:   { label:'白紙',       base:'#fcfaf5', grain:.016, warm:1.0 },
+};
+
+/* ---------------- ジャンルとモード ---------------- */
+const MODES = {
+  /* 結晶 */
+  prism:        { g:'crystal', no:'01', jp:'柱状結晶',  en:'PRISM',       sheet:'PRISMATIC CRYSTAL' },
+  rhomb:        { g:'crystal', no:'02', jp:'菱面体',    en:'RHOMB',       sheet:'RHOMBOHEDRA' },
+  twin:         { g:'crystal', no:'03', jp:'双晶',      en:'TWIN',        sheet:'TWINNED CRYSTAL' },
+  druse:        { g:'crystal', no:'04', jp:'群晶',      en:'DRUSE',       sheet:'CRYSTAL DRUSE' },
+  /* 薄片 */
+  granitic:     { g:'section', no:'01', jp:'花崗岩',    en:'GRANITIC',    sheet:'GRANITE T.S.' },
+  porphyry:     { g:'section', no:'02', jp:'斑状組織',  en:'PORPHYRITIC', sheet:'PORPHYRY T.S.' },
+  ophitic:      { g:'section', no:'03', jp:'玄武岩',    en:'OPHITIC',     sheet:'BASALT T.S.' },
+  schist:       { g:'section', no:'04', jp:'片岩',      en:'SCHISTOSE',   sheet:'SCHIST T.S.' },
+  /* 集合体 */
+  geode:        { g:'aggregate', no:'01', jp:'晶洞',    en:'GEODE',       sheet:'GEODE SECTION' },
+  agate:        { g:'aggregate', no:'02', jp:'縞瑪瑙',  en:'BANDED',      sheet:'AGATE SLICE' },
+  vein:         { g:'aggregate', no:'03', jp:'鉱脈',    en:'VEIN',        sheet:'VEIN SECTION' },
+  dendrite:     { g:'aggregate', no:'04', jp:'樹枝状',  en:'DENDRITE',    sheet:'DENDRITE ON SLAB' },
+  /* 岩石 */
+  conglomerate: { g:'rock', no:'01', jp:'礫岩',      en:'CONGLOMERATE', sheet:'CONGLOMERATE' },
+  oolite:       { g:'rock', no:'02', jp:'鮞状岩',    en:'OOLITIC',      sheet:'OOLITIC LIMESTONE' },
+  breccia:      { g:'rock', no:'03', jp:'角礫岩',    en:'BRECCIA',      sheet:'BRECCIA' },
+  bedding:      { g:'rock', no:'04', jp:'葉理',      en:'BEDDING',      sheet:'LAMINATED BEDS' },
+};
+const GENRES = {
+  crystal:   { jp:'結晶',   en:'CRYSTAL',   icon:'◈' },
+  section:   { jp:'薄片',   en:'SECTION',   icon:'▨' },
+  aggregate: { jp:'集合体', en:'AGGREGATE', icon:'❖' },
+  rock:      { jp:'岩石',   en:'ROCK',      icon:'▲' },
+};
+const modesOf = g => Object.keys(MODES).filter(k=>MODES[k].g===g);
+
+/* ジャンルごとに意味を変える選択肢 */
+const SHAPESETS = {
+  crystal:   { HEX:'六方', TET:'正方', MONO:'単斜', CUBIC:'等軸' },
+  section:   { EQUIGRAN:'等粒状', PORPHYRO:'斑状', FOLIATED:'片状', GLASSY:'ガラス質' },
+  aggregate: { MASSIVE:'塊状', BOTRYOID:'ブドウ状', ACICULAR:'針状', TABULAR:'板状' },
+  rock:      { SORTED:'淘汰良', POORLY:'淘汰不良', GRADED:'級化', LAMINAR:'葉理' },
+};
+const SITESETS = {
+  crystal:   { PEGMATITE:'ペグマタイト', HYDRO:'熱水脈', CAVITY:'晶洞', PLACER:'漂砂' },
+  section:   { OUTCROP:'露頭', CORE:'ボーリング', BOULDER:'転石', XENOLITH:'捕獲岩' },
+  aggregate: { VUG:'空隙', NODULE:'ノジュール', SEAM:'鉱染', DRUSY:'晶洞壁' },
+  rock:      { BEACH:'海浜', RIVER:'河川', TURBID:'混濁流', LAGOON:'潟' },
+};
+const STATES = { FRESH:'新鮮', ZONED:'累帯', ALTERED:'変質', FRACT:'破断' };
+
+const SIZEL  = { crystal:{jp:'結晶径',en:'CRYSTAL'}, section:{jp:'粒径',en:'GRAIN'},
+                 aggregate:{jp:'帯の幅',en:'BAND'},  rock:{jp:'礫径',en:'CLAST'} };
+const SHAPEL = { crystal:{jp:'晶系',en:'SYSTEM'},    section:{jp:'組織',en:'TEXTURE'},
+                 aggregate:{jp:'産状',en:'HABIT'},   rock:{jp:'淘汰',en:'SORTING'} };
+const SITEL  = { crystal:{jp:'産状',en:'OCCURR'},    section:{jp:'採取',en:'SAMPLING'},
+                 aggregate:{jp:'産状',en:'SETTING'}, rock:{jp:'堆積環境',en:'ENVIRON'} };
+const UNITL  = { crystal:{jp:'群数',en:'GROUPS'},    section:{jp:'視野数',en:'FIELDS'},
+                 aggregate:{jp:'試料数',en:'SAMPLES'}, rock:{jp:'視野数',en:'FIELDS'} };
+
+const LEVELS3 = { MINIMAL:'ミニマル', MODERATE:'標準', DETAILED:'緻密' };
+const DENS3   = { FEW:'疎', MODERATE:'中', MANY:'密' };
+const INKS    = { FINE:'細', MEDIUM:'中', BOLD:'太' };
+const GRIDS   = { SMALL:'細', MEDIUM:'中', LARGE:'粗' };
+const FIELDS  = { RECT:'矩形', CIRCLE:'円形視野' };
+
+/* ---------------- 命名生成(鉱物名ふう) ---------------- */
+const MINERALS = {
+  crystal:   ['QUARTZ','BERYL','TOURMALINE','APATITE','TOPAZ','FLUORITE','CALCITE','GYPSUM',
+              'PYRITE','GARNET','ZIRCON','STAUROLITE','EPIDOTE','BARITE','ORTHOCLASE'],
+  section:   ['GRANITE','DIORITE','GABBRO','BASALT','ANDESITE','RHYOLITE','SCHIST','GNEISS',
+              'PERIDOTITE','SYENITE','TONALITE','AMPHIBOLITE'],
+  aggregate: ['AGATE','CHALCEDONY','MALACHITE','AZURITE','AMETHYST','HEMATITE','GOETHITE',
+              'RHODOCHROSITE','PSILOMELANE','CHRYSOCOLLA','SPHALERITE','GALENA'],
+  rock:      ['CONGLOMERATE','SANDSTONE','LIMESTONE','OOLITE','BRECCIA','CHERT','ARKOSE',
+              'GREYWACKE','MUDSTONE','TRAVERTINE','DOLOMITE'],
+};
+const VARIETY = ['ALBA','LACTEA','FUMOSA','RUBRA','VIRIDIS','NIGRA','AURATA','FIBROSA','RADIATA',
+  'STELLATA','ZONATA','GEMINATA','COMPACTA','LAMELLARIS','CRYSTALLINA','MASSIVA','TENUIS','VULGARIS'];
+function genName(){
+  const m = pick(MINERALS[S.genre]);
+  return { style: m+' var. '+pick(VARIETY).toLowerCase(), sub: m.slice(0,4)+'-'+ri(11,99) };
+}
+
+/* ---------------- 状態 ---------------- */
+const S = {
+  genre:'crystal',
+  mode:'prism', size:6, groups:1, shape:'HEX', state:'ZONED',
+  incl:'MODERATE', detail:'DETAILED', site:'PEGMATITE', density:'MODERATE',
+  palette:'AMETHYST', paper:'FIELD', ink:'MEDIUM', grid:'MEDIUM', fieldsh:'RECT',
+  color:52, rough:48, seed:31415, title:'', animate:true,
+  lineart:false, pencil:null,
+  rot:0, zoom:1, panx:0, pany:0,
+};
+
+/* ---------------- シート寸法 ---------------- */
+const SW = 900, SH = 1270;      // 論理サイズ
+let EX = 2;                      // 内部解像度倍率
+const cv = document.getElementById('sheet');
+const ctx = cv.getContext('2d');
+
+/* ---------------- 紙テクスチャ ---------------- */
+let paperTex = null, paperKey = '';
+function makePaper(w,h,type){
+  const P = PAPERS[type];
+  const c = document.createElement('canvas'); c.width=w; c.height=h;
+  const g = c.getContext('2d');
+  g.fillStyle = P.base; g.fillRect(0,0,w,h);
+  const rr2 = mulberry32(999);
+  for(let i=0;i<70;i++){
+    const x=rr2()*w, y=rr2()*h, r=60+rr2()*260;
+    const gr=g.createRadialGradient(x,y,0,x,y,r);
+    const dark = rr2()<.5;
+    gr.addColorStop(0, dark?'rgba(110,102,88,.045)':'rgba(255,253,248,.06)');
+    gr.addColorStop(1,'rgba(0,0,0,0)');
+    g.fillStyle=gr; g.beginPath(); g.arc(x,y,r,0,7); g.fill();
+  }
+  const id = g.getImageData(0,0,w,h), d = id.data, amp = P.grain*255;
+  for(let i=0;i<d.length;i+=4){
+    const n = (rr2()-.5)*amp;
+    d[i]=clamp(d[i]+n*1.02,0,255); d[i+1]=clamp(d[i+1]+n,0,255); d[i+2]=clamp(d[i+2]+n*.94,0,255);
+  }
+  g.putImageData(id,0,0);
+  g.globalAlpha=.05; g.strokeStyle='#8a7c68'; g.lineWidth=.6;
+  for(let i=0;i<160;i++){
+    const x=rr2()*w, y=rr2()*h, a=rr2()*6.28, l=6+rr2()*30;
+    g.beginPath(); g.moveTo(x,y); g.lineTo(x+Math.cos(a)*l,y+Math.sin(a)*l); g.stroke();
+  }
+  if(P.grid){
+    g.globalAlpha=.18; g.strokeStyle='#7b93a8'; g.lineWidth=.5;
+    for(let x=0;x<w;x+=w/90){ g.beginPath(); g.moveTo(x,0); g.lineTo(x,h); g.stroke(); }
+    for(let y=0;y<h;y+=w/90){ g.beginPath(); g.moveTo(0,y); g.lineTo(w,y); g.stroke(); }
+  }
+  g.globalAlpha=.05; g.strokeStyle='#6b5c50'; g.lineWidth=1.4;
+  for(let i=0;i<3;i++){
+    const vert = rr2()<.5;
+    const p = (.2+rr2()*.6);
+    g.beginPath();
+    if(vert){ g.moveTo(w*p,0); g.lineTo(w*p+ (rr2()-.5)*10, h); } else { g.moveTo(0,h*p); g.lineTo(w, h*p+(rr2()-.5)*10); }
+    g.stroke();
+  }
+  g.globalAlpha=1;
+  return c;
+}
+function paperFor(type){
+  const key = type+'@'+SW+'x'+SH;
+  if(key!==paperKey){ paperTex = makePaper(SW,SH,type); paperKey=key; }
+  return paperTex;
+}
+/* ---------------- 視野(2D投影) ---------------- */
+const FRAD = 300;                       /* 視野の基準半径(ワールド単位) */
+let ASPY = 1.38;                        /* 視野の縦横比(用紙にあわせる) */
+let FIELD = { cx:0, cy:0, rx:FRAD, ry:FRAD*1.38 };
+/* 視野のなかのランダムな位置 */
+function FPOS(k){
+  const a=R()*TAU, t=Math.sqrt(R())*(k!=null?k:1);
+  return [Math.cos(a)*t*FRAD, Math.sin(a)*t*FRAD*ASPY];
+}
+/* 画面上のずれ(u,v)をワールド座標に戻す */
+function unrot(u,v){
+  const c=Math.cos(-V.rot), s=Math.sin(-V.rot);
+  return [u*c - v*s, u*s + v*c];
+}
+const V = { rot:0, s:1, cx:SW/2, cy:SH*0.47 };
+let MEASURE = false, BX = null;
+let TR = null;   /* {ox,oy,s,rz} 群をまとめて並べるときの配置変換 */
+function TX(x,y){
+  if(!TR) return [x,y];
+  const c=Math.cos(TR.rz), s=Math.sin(TR.rz);
+  return [TR.ox+(x*c-y*s)*TR.s, TR.oy+(x*s+y*c)*TR.s];
+}
+function P(x,y){
+  if(TR){ const t=TX(x,y); x=t[0]; y=t[1]; }
+  const c = Math.cos(V.rot), s = Math.sin(V.rot);
+  const px = V.cx + (x*c - y*s)*V.s, py = V.cy + (x*s + y*c)*V.s;
+  if(MEASURE){
+    if(px<BX.x0)BX.x0=px; if(px>BX.x1)BX.x1=px;
+    if(py<BX.y0)BX.y0=py; if(py>BX.y1)BX.y1=py;
+  }
+  return [px,py];
+}
+/* ワールド長 → 画面長 */
+const PS = v => v*V.s*(TR?TR.s:1);
+/* ポリゴン(ワールド) → 画面 */
+const SCR = pts => pts.map(p=>P(p[0],p[1]));
+
+/* ---------------- 鉛筆・ペンのストローク ---------------- */
+let INK = 'rgba(62,60,64,1)';
+let INKW = 1.0;
+let ROUGH = 1.0;
+let strokes = 0;
+
+function wob(a,b,amp){
+  const dx=b[0]-a[0], dy=b[1]-a[1], len=Math.hypot(dx,dy)||.001;
+  const n = clamp(Math.round(len/18), 2, 14);
+  const nx=-dy/len, ny=dx/len;
+  const bow = (R()*2-1) * Math.min(2.6, len*0.014) * amp;
+  const pts=[];
+  for(let i=0;i<=n;i++){
+    const t=i/n, env=Math.sin(Math.PI*t);
+    const d = bow*env + (R()*2-1)*0.42*amp;
+    pts.push([a[0]+dx*t+nx*d, a[1]+dy*t+ny*d]);
+  }
+  return pts;
+}
+function stroke(pts,o){
+  if(MEASURE) return;
+  o = o||{};
+  const col = o.color||INK, w = (o.w!=null?o.w:1)*INKW;
+  const a = (o.a!=null?o.a:.80), passes = o.passes!=null?o.passes:2;
+  const j = (o.jit!=null?o.jit:.5)*ROUGH;
+  ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=col;
+  strokes++;
+  for(let p=0;p<passes;p++){
+    const ox=(R()*2-1)*j*.8, oy=(R()*2-1)*j*.8;
+    ctx.beginPath();
+    for(let i=0;i<pts.length;i++){
+      const x=pts[i][0]+ox+(R()*2-1)*j*.35, y=pts[i][1]+oy+(R()*2-1)*j*.35;
+      i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+    }
+    ctx.globalAlpha = a*(p===0?1:.5+R()*.25);
+    ctx.lineWidth = w*(p===0?1:.72);
+    ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+}
+/* 画面座標の線 */
+function ln2(a,b,o){
+  if(MEASURE) return;
+  o=o||{};
+  const amp = o.amp!=null?o.amp:1;
+  let A=a, B=b;
+  if(o.over){
+    const dx=B[0]-A[0], dy=B[1]-A[1], L=Math.hypot(dx,dy)||1;
+    const e=o.over*ROUGH;
+    A=[A[0]-dx/L*e*R(), A[1]-dy/L*e*R()];
+    B=[B[0]+dx/L*e*R(), B[1]+dy/L*e*R()];
+  }
+  stroke(wob(A,B,amp), o);
+}
+/* ワールド座標の線 */
+function lnw(p,q,o){ ln2(P(p[0],p[1]), P(q[0],q[1]), o); }
+function poly2(pts,o,close){
+  for(let i=0;i<pts.length-1;i++) ln2(pts[i],pts[i+1],o);
+  if(close) ln2(pts[pts.length-1],pts[0],o);
+}
+/* なめらかな閉曲線(丸い粒の輪郭)を一筆で描く */
+function curve2(pts,o,close){
+  if(MEASURE) return;
+  o=o||{};
+  const col=o.color||INK, w=(o.w!=null?o.w:1)*INKW;
+  const a=(o.a!=null?o.a:.8), passes=o.passes!=null?o.passes:2;
+  const j=(o.jit!=null?o.jit:.4)*ROUGH;
+  ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle=col;
+  strokes++;
+  const n=pts.length;
+  for(let p=0;p<passes;p++){
+    const ox=(R()*2-1)*j*.7, oy=(R()*2-1)*j*.7;
+    ctx.beginPath();
+    const first = close ? [(pts[0][0]+pts[n-1][0])/2, (pts[0][1]+pts[n-1][1])/2] : pts[0];
+    ctx.moveTo(first[0]+ox, first[1]+oy);
+    const end = close ? n : n-1;
+    for(let i=0;i<end;i++){
+      const c=pts[i], d=pts[(i+1)%n];
+      const mx=(c[0]+d[0])/2+ox+(R()*2-1)*j*.3, my=(c[1]+d[1])/2+oy+(R()*2-1)*j*.3;
+      ctx.quadraticCurveTo(c[0]+ox+(R()*2-1)*j*.3, c[1]+oy+(R()*2-1)*j*.3, mx, my);
+    }
+    if(!close) ctx.lineTo(pts[n-1][0]+ox, pts[n-1][1]+oy);
+    ctx.globalAlpha=a*(p===0?1:.48+R()*.28);
+    ctx.lineWidth=w*(p===0?1:.7);
+    ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+}
+
+/* ---------------- 色鉛筆ハッチング ---------------- */
+function hatch2(pts, o){
+  if(MEASURE) return;
+  o=o||{};
+  let col = o.color||'#888';
+  let sp  = o.sp || 4.2;
+  const ang = o.ang!=null?o.ang : -Math.PI/4;
+  let a   = (o.a!=null?o.a:.20) * (S.color/42);
+  let wash = o.wash;
+  if(!o.raw){
+    if(o.reg!==false) regPush(pts);
+    const pc = PAINT[CURPART];
+    if(pc!=null){ col=pc; a=PAINTO.a; sp=PAINTO.sp; wash=true; }
+    else if(LINEART) return;
+  }else{
+    a = (o.a!=null?o.a:.20);
+  }
+  if(a<=0.005 || pts.length<3) return;
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  for(const p of pts){ if(p[0]<x0)x0=p[0]; if(p[0]>x1)x1=p[0]; if(p[1]<y0)y0=p[1]; if(p[1]>y1)y1=p[1]; }
+  const w=x1-x0, h=y1-y0;
+  if(w<1.2||h<1.2) return;
+  ctx.save();
+  ctx.beginPath();
+  pts.forEach(function(p,i){ i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]); });
+  ctx.closePath();
+  ctx.clip();
+  if(wash){ ctx.globalAlpha=a*.55; ctx.fillStyle=col; ctx.fillRect(x0-2,y0-2,w+4,h+4); }
+  const cx=(x0+x1)/2, cy=(y0+y1)/2;
+  const dx=Math.cos(ang), dy=Math.sin(ang);
+  const nx=-dy, ny=dx;
+  const L=Math.hypot(w,h)*.62;
+  const steps=Math.ceil(L*2/sp);
+  ctx.strokeStyle=col; ctx.lineCap='round';
+  ctx.globalCompositeOperation='multiply';
+  for(let i=-steps;i<=steps;i++){
+    const off=i*sp + (R()*2-1)*sp*.22;
+    const sx=cx+nx*off, sy=cy+ny*off;
+    let t0=-L, t1=L;
+    if(R()<.30){ t0 += R()*L*.7; }
+    if(R()<.30){ t1 -= R()*L*.7; }
+    const A=[sx+dx*t0,sy+dy*t0], B=[sx+dx*t1,sy+dy*t1];
+    ctx.globalAlpha = a*(.55+R()*.75);
+    ctx.lineWidth = (o.w||1.05)*(.75+R()*.6);
+    const seg = wob(A,B,1.1);
+    ctx.beginPath();
+    seg.forEach(function(p,k){ k?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]); });
+    ctx.stroke();
+  }
+  if(o.cross){
+    const dx2=Math.cos(ang+1.15), dy2=Math.sin(ang+1.15);
+    const nx2=-dy2, ny2=dx2;
+    for(let i=-steps;i<=steps;i++){
+      const off=i*sp*1.5 + (R()*2-1)*sp*.2;
+      const sx=cx+nx2*off, sy=cy+ny2*off;
+      ctx.globalAlpha = a*(.35+R()*.45);
+      ctx.lineWidth = (o.w||1)*(.7+R()*.5);
+      const seg = wob([sx+dx2*-L,sy+dy2*-L],[sx+dx2*L,sy+dy2*L],1.1);
+      ctx.beginPath();
+      seg.forEach(function(p,k){ k?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]); });
+      ctx.stroke();
+    }
+  }
+  ctx.globalCompositeOperation='source-over';
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+let PAPERC='#f0ebdd';
+/* --- 塗り絵 --- */
+let LINEART=false;              /* 線画モード(自動彩色を止める) */
+let PAINT={};                   /* 部位番号 -> 色 */
+let REGIONS=[];                 /* 当たり判定用 {p:部位番号, pts:画面座標} */
+let CURPART=-1;                 /* いま描いている部位 */
+function regPush(pts){ if(!MEASURE && CURPART>=0) REGIONS.push({p:CURPART,pts:pts}); }
+function inPoly(pts,x,y){
+  let c=false;
+  for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+    const a=pts[i], b=pts[j];
+    if(((a[1]>y)!==(b[1]>y)) && (x < (b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])) c=!c;
+  }
+  return c;
+}
+function hitPart(x,y){
+  for(let i=REGIONS.length-1;i>=0;i--) if(inPoly(REGIONS[i].pts,x,y)) return REGIONS[i].p;
+  return -1;
+}
+const PAINTO = {a:.34,sp:3.2,wash:true,raw:true};
+function fillPoly(pts,c,a){
+  if(MEASURE||!a||pts.length<3) return;
+  ctx.save(); ctx.beginPath();
+  pts.forEach(function(p,i){ i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]); });
+  ctx.closePath(); ctx.globalAlpha=a; ctx.fillStyle=c; ctx.fill(); ctx.restore();
+}
+
+/* =========================================================================
+   描画オペレーション・キュー(奥→手前に並べ替えてから順に描く)
+   ========================================================================= */
+let OPS = [];
+function op(d,f){
+  const tr=TR;
+  OPS.push({d:d, f: tr? function(){ const s=TR; TR=tr; f(); TR=s; } : f});
+}
+
+/* 凡例カウンタ */
+let LEG = [];
+function leg(name,n){
+  if(!n) return;
+  const f = LEG.find(function(l){ return l.name===name; });
+  if(f) f.n += n; else LEG.push({name:name, n:n, ci:LEG.length});
+}
+/* 引き出し線つきの書き込み */
+let NOTES = [];
+function note(x,y,txt,dir){
+  if(TR) return;
+  if(NOTES.length>7) return;
+  NOTES.push({x:x, y:y, t:txt, d:dir||(x<0?-1:1)});
+}
+
+/* パレット取得 */
+let COLS = PALETTES.QUARTZ.cols;
+let EDGE = PALETTES.QUARTZ.line;
+let DEEP = PALETTES.QUARTZ.deep;
+const col = i => COLS[((i%COLS.length)+COLS.length)%COLS.length];
+/* =========================================================================
+   幾何ヘルパ
+   ========================================================================= */
+function polyCentroid(pts){
+  let a=0,cx=0,cy=0;
+  for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+    const f = pts[j][0]*pts[i][1] - pts[i][0]*pts[j][1];
+    a += f; cx += (pts[j][0]+pts[i][0])*f; cy += (pts[j][1]+pts[i][1])*f;
+  }
+  if(Math.abs(a)<1e-9){
+    let sx=0,sy=0; for(const p of pts){ sx+=p[0]; sy+=p[1]; }
+    return [sx/pts.length, sy/pts.length];
+  }
+  a*=0.5;
+  return [cx/(6*a), cy/(6*a)];
+}
+function polyArea(pts){
+  let a=0;
+  for(let i=0,j=pts.length-1;i<pts.length;j=i++) a += pts[j][0]*pts[i][1] - pts[i][0]*pts[j][1];
+  return Math.abs(a/2);
+}
+function polyRad(pts,c){
+  c=c||polyCentroid(pts);
+  let r=0; for(const p of pts) r=Math.max(r,Math.hypot(p[0]-c[0],p[1]-c[1]));
+  return r;
+}
+function bbox(pts){
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  for(const p of pts){ if(p[0]<x0)x0=p[0]; if(p[0]>x1)x1=p[0]; if(p[1]<y0)y0=p[1]; if(p[1]>y1)y1=p[1]; }
+  return {x0:x0,y0:y0,x1:x1,y1:y1};
+}
+function shrinkPoly(pts,k,c){
+  c = c || polyCentroid(pts);
+  return pts.map(function(p){ return [lerp(c[0],p[0],k), lerp(c[1],p[1],k)]; });
+}
+function movePoly(pts,dx,dy){ return pts.map(function(p){ return [p[0]+dx,p[1]+dy]; }); }
+function scalePoly(pts,sx,sy){ return pts.map(function(p){ return [p[0]*sx,p[1]*sy]; }); }
+function rotPoly(pts,a,c){
+  c=c||[0,0];
+  const co=Math.cos(a), si=Math.sin(a);
+  return pts.map(function(p){
+    const x=p[0]-c[0], y=p[1]-c[1];
+    return [c[0]+x*co-y*si, c[1]+x*si+y*co];
+  });
+}
+function chaikin(pts,n){
+  let p=pts;
+  for(let k=0;k<(n||1);k++){
+    const q=[];
+    for(let i=0;i<p.length;i++){
+      const a=p[i], b=p[(i+1)%p.length];
+      q.push([a[0]*.75+b[0]*.25, a[1]*.75+b[1]*.25]);
+      q.push([a[0]*.25+b[0]*.75, a[1]*.25+b[1]*.75]);
+    }
+    p=q;
+  }
+  return p;
+}
+/* ゆがんだ円(粒・団塊の輪郭) */
+function wobRing(cx,cy,r,o){
+  o=o||{};
+  const n = o.n||36;
+  const lobes = o.lobes!=null?o.lobes:ri(4,7);
+  const amp = o.amp!=null?o.amp:.10;
+  const ph1=R()*TAU, ph2=R()*TAU, lb2=lobes+ri(2,5);
+  const ry = r*(o.ry!=null?o.ry:1);
+  const pts=[];
+  for(let i=0;i<n;i++){
+    const a=i/n*TAU;
+    const m = 1 + Math.sin(a*lobes+ph1)*amp + Math.sin(a*lb2+ph2)*amp*.45 + (R()*2-1)*amp*.16;
+    pts.push([cx+Math.cos(a)*r*m, cy+Math.sin(a)*ry*m]);
+  }
+  return o.rot? rotPoly(pts,o.rot,[cx,cy]) : pts;
+}
+function ellipsePts(cx,cy,rx,ry,rot,n){
+  n=n||28; const pts=[];
+  const co=Math.cos(rot||0), si=Math.sin(rot||0);
+  for(let i=0;i<n;i++){
+    const a=i/n*TAU, x=Math.cos(a)*rx, y=Math.sin(a)*ry;
+    pts.push([cx+x*co-y*si, cy+x*si+y*co]);
+  }
+  return pts;
+}
+/* 正多角形(結晶断面) */
+function nGon(cx,cy,r,n,rot,jit){
+  const pts=[];
+  for(let i=0;i<n;i++){
+    const a=rot+i/n*TAU, m=1+(jit? (R()*2-1)*jit : 0);
+    pts.push([cx+Math.cos(a)*r*m, cy+Math.sin(a)*r*m]);
+  }
+  return pts;
+}
+/* 半平面クリップ(a側を残す) */
+function clipHalf(poly,ax,ay,bx,by){
+  const mx=(ax+bx)/2, my=(ay+by)/2, nx=bx-ax, ny=by-ay;
+  const out=[];
+  const sd = function(p){ return (p[0]-mx)*nx + (p[1]-my)*ny; };
+  for(let i=0;i<poly.length;i++){
+    const A=poly[i], B=poly[(i+1)%poly.length];
+    const da=sd(A), db=sd(B);
+    if(da<=0) out.push(A);
+    if((da<=0)!==(db<=0)){
+      const t=da/(da-db);
+      out.push([A[0]+(B[0]-A[0])*t, A[1]+(B[1]-A[1])*t]);
+    }
+  }
+  return out;
+}
+/* ボロノイ分割。近い種点から順に切り、これ以上効かなくなったら打ち切る
+   (総当たりだと粒が細かいときに二乗で重くなるため、格子で近傍だけを見る) */
+function voronoiCells(sites,bound){
+  const n=sites.length;
+  if(n<2) return sites.map(function(){ return bound; });
+  const b=bbox(bound);
+  const W=Math.max(1e-6,b.x1-b.x0), H=Math.max(1e-6,b.y1-b.y0);
+  const cell=Math.max(W,H)/clamp(Math.ceil(Math.sqrt(n)),1,64);
+  const gw=Math.max(1,Math.ceil(W/cell)), gh=Math.max(1,Math.ceil(H/cell));
+  const grid=new Array(gw*gh);
+  const cx=function(x){ return clamp(Math.floor((x-b.x0)/cell),0,gw-1); };
+  const cy=function(y){ return clamp(Math.floor((y-b.y0)/cell),0,gh-1); };
+  for(let i=0;i<n;i++){
+    const k=cy(sites[i][1])*gw+cx(sites[i][0]);
+    (grid[k]||(grid[k]=[])).push(i);
+  }
+  const maxR=Math.max(gw,gh);
+  return sites.map(function(s,i){
+    let poly=bound;
+    const ix=cx(s[0]), iy=cy(s[1]);
+    for(let r=0;r<=maxR;r++){
+      const cand=[];
+      for(let yy=iy-r; yy<=iy+r; yy++){
+        if(yy<0||yy>=gh) continue;
+        for(let xx=ix-r; xx<=ix+r; xx++){
+          if(xx<0||xx>=gw) continue;
+          if(r>0 && Math.abs(xx-ix)!==r && Math.abs(yy-iy)!==r) continue;
+          const arr=grid[yy*gw+xx];
+          if(arr) for(let k=0;k<arr.length;k++) if(arr[k]!==i) cand.push(arr[k]);
+        }
+      }
+      if(cand.length>1) cand.sort(function(a,c){
+        return (Math.hypot(sites[a][0]-s[0],sites[a][1]-s[1]) -
+                Math.hypot(sites[c][0]-s[0],sites[c][1]-s[1]));
+      });
+      for(let k=0;k<cand.length;k++){
+        const j=cand[k];
+        poly=clipHalf(poly, s[0],s[1], sites[j][0],sites[j][1]);
+        if(poly.length<3) break;
+      }
+      if(poly.length<3) break;
+      /* 距離 d の種点は d/2 より近い部分しか削れない。外周の輪がその範囲を超えたら終了 */
+      if(r>0 && polyRad(poly,s)*2 <= r*cell) break;
+    }
+    return poly;
+  });
+}
+/* 多角形の内側に散らばる種点 */
+function sitesIn(poly,spacing){
+  const b=bbox(poly);
+  const out=[];
+  for(let y=b.y0+spacing*.4; y<b.y1; y+=spacing*.88){
+    const off = ((Math.round((y-b.y0)/spacing)%2)? spacing*.5 : 0);
+    for(let x=b.x0+spacing*.4+off; x<b.x1; x+=spacing){
+      const p=[x+(R()*2-1)*spacing*.24, y+(R()*2-1)*spacing*.24];
+      if(inPoly(poly,p[0],p[1])) out.push(p);
+    }
+  }
+  return out;
+}
+/* 結晶モザイク(粒どうしが噛みあった組織)をつくる */
+function mosaic(outline,spacing,o){
+  o=o||{};
+  const st = o.stretch||1;                    /* >1 で横に引き伸ばす */
+  const bound = st!==1? scalePoly(outline,1,st) : outline;
+  /* 粒が細かすぎると描画が重くなるので、上限の枚数に収まるまで間隔を広げる */
+  const cap = o.maxCells||620;
+  const est = polyArea(bound)/(spacing*spacing);
+  if(est>cap) spacing *= Math.sqrt(est/cap);
+  let sites=sitesIn(bound,spacing);
+  /* 種点をまばらに間引くと、粒の大きさにばらつきが出る */
+  if(o.vary) sites=sites.filter(function(){ return !chance(o.vary); });
+  if(!sites.length) sites=[polyCentroid(bound)];
+  const relax = o.relax!=null?o.relax:2;
+  for(let k=0;k<relax;k++){
+    const cs=voronoiCells(sites,bound);
+    sites=cs.map(function(c,i){ return c.length>2? polyCentroid(c) : sites[i]; });
+  }
+  let cells = voronoiCells(sites,bound)
+    .filter(function(c){ return c.length>2 && polyArea(c)>spacing*spacing*.10; })
+    .map(function(c){ return shrinkPoly(c, o.gap!=null?o.gap:.90); });
+  if(st!==1) cells = cells.map(function(c){ return scalePoly(c,1,1/st); });
+  if(o.smooth) cells = cells.map(function(c){ return chaikin(c,o.smooth); });
+  return cells;
+}
+/* 縁をうねらせる(縫合状の粒界) */
+function wavyEdges(poly,amp,waves){
+  const out=[];
+  for(let i=0;i<poly.length;i++){
+    const A=poly[i], B=poly[(i+1)%poly.length];
+    const dx=B[0]-A[0], dy=B[1]-A[1], L=Math.hypot(dx,dy)||1;
+    const a2=Math.min(amp, L*.30);
+    const lobes=Math.max(1, Math.min(waves||2, Math.round(L/(a2*3.2))));
+    const nx=-dy/L, ny=dx/L, ph=chance(.5)?0:Math.PI, m=Math.max(5,lobes*5);
+    for(let j=0;j<m;j++){
+      const t=j/m;
+      const d=Math.sin(t*Math.PI*lobes+ph)*a2*Math.sin(Math.PI*t);
+      out.push([A[0]+dx*t+nx*d, A[1]+dy*t+ny*d]);
+    }
+  }
+  return out;
+}
+/* 多角形と線分の交差(内側だけ残す) */
+function clipSeg(poly,A,B){
+  const ts=[0,1];
+  for(let i=0;i<poly.length;i++){
+    const C=poly[i], D=poly[(i+1)%poly.length];
+    const d=(B[0]-A[0])*(D[1]-C[1])-(B[1]-A[1])*(D[0]-C[0]);
+    if(Math.abs(d)<1e-9) continue;
+    const t=((C[0]-A[0])*(D[1]-C[1])-(C[1]-A[1])*(D[0]-C[0]))/d;
+    const u=((C[0]-A[0])*(B[1]-A[1])-(C[1]-A[1])*(B[0]-A[0]))/d;
+    if(u>=0&&u<=1&&t>=0&&t<=1) ts.push(t);
+  }
+  ts.sort(function(a,b){ return a-b; });
+  for(let i=0;i<ts.length-1;i++){
+    const m=(ts[i]+ts[i+1])/2;
+    const px=A[0]+(B[0]-A[0])*m, py=A[1]+(B[1]-A[1])*m;
+    if(inPoly(poly,px,py)){
+      return [[A[0]+(B[0]-A[0])*ts[i], A[1]+(B[1]-A[1])*ts[i]],
+              [A[0]+(B[0]-A[0])*ts[i+1], A[1]+(B[1]-A[1])*ts[i+1]]];
+    }
+  }
+  return null;
+}
+/* 折れ線のうち多角形の内側にある部分だけを取り出す */
+function clipCurve(poly,pts){
+  const runs=[]; let cur=[];
+  for(const p of pts){
+    if(inPoly(poly,p[0],p[1])) cur.push(p);
+    else { if(cur.length>1) runs.push(cur); cur=[]; }
+  }
+  if(cur.length>1) runs.push(cur);
+  return runs;
+}
+/* ゆらぐ経路 */
+function walkPath(x,y,ang,seg,steps,curl){
+  const pts=[[x,y]];
+  let a=ang;
+  for(let i=0;i<steps;i++){
+    a += (R()*2-1)*curl;
+    pts.push([pts[i][0]+Math.cos(a)*seg, pts[i][1]+Math.sin(a)*seg]);
+  }
+  return pts;
+}
+/* 経路に沿って粒を数珠つなぎにする(針状結晶・櫛状脈) */
+function chainCells(path,w,cellLen,o){
+  o=o||{};
+  const N=path.length;
+  if(N<2) return [];
+  const cum=[0];
+  for(let i=1;i<N;i++) cum.push(cum[i-1]+Math.hypot(path[i][0]-path[i-1][0], path[i][1]-path[i-1][1]));
+  const total=cum[N-1];
+  if(total<cellLen*.6) return [];
+  const n=Math.max(1,Math.round(total/cellLen));
+  const at=function(s){
+    s=clamp(s,0,total);
+    let i=1; while(i<N-1 && cum[i]<s) i++;
+    const t=(s-cum[i-1])/Math.max(1e-6,cum[i]-cum[i-1]);
+    const x=lerp(path[i-1][0],path[i][0],t), y=lerp(path[i-1][1],path[i][1],t);
+    const dx=path[i][0]-path[i-1][0], dy=path[i][1]-path[i-1][1], L=Math.hypot(dx,dy)||1;
+    return [x,y,dx/L,dy/L];
+  };
+  const cells=[];
+  for(let k=0;k<n;k++){
+    const s0=total*k/n, s1=total*(k+1)/n;
+    const m=9, LL=[], RG=[];
+    for(let i=0;i<=m;i++){
+      const t=i/m, s=lerp(s0,s1,t);
+      const p=at(s);
+      let ww=w*(.80+.20*Math.sin(Math.PI*t));
+      if(o.taper){
+        if(k===n-1){ const d=total-s; ww *= (d<w*2? clamp(d/(w*2),.06,1) : 1); }
+      }
+      const nx=-p[3], ny=p[2];
+      LL.push([p[0]+nx*ww, p[1]+ny*ww]);
+      RG.push([p[0]-nx*ww, p[1]-ny*ww]);
+    }
+    RG.reverse();
+    cells.push(o.sharp? LL.concat(RG) : chaikin(LL.concat(RG),2));
+  }
+  return cells;
+}
+/* 帯状に粒を並べる(層・脈・葉理で共用) */
+function bandCells(path,h0,h1,cellLen,o){
+  o=o||{};
+  const N=path.length;
+  if(N<2) return [];
+  const cum=[0];
+  for(let i=1;i<N;i++) cum.push(cum[i-1]+Math.hypot(path[i][0]-path[i-1][0], path[i][1]-path[i-1][1]));
+  const total=cum[N-1];
+  const n=Math.max(1,Math.round(total/cellLen));
+  const at=function(s){
+    s=clamp(s,0,total);
+    let i=1; while(i<N-1 && cum[i]<s) i++;
+    const t=(s-cum[i-1])/Math.max(1e-6,cum[i]-cum[i-1]);
+    const dx=path[i][0]-path[i-1][0], dy=path[i][1]-path[i-1][1], L=Math.hypot(dx,dy)||1;
+    return [lerp(path[i-1][0],path[i][0],t), lerp(path[i-1][1],path[i][1],t), dx/L, dy/L];
+  };
+  const gap = o.gap!=null?o.gap:.06;
+  const cells=[];
+  for(let k=0;k<n;k++){
+    const s0=total*(k+gap*.5)/n, s1=total*(k+1-gap*.5)/n;
+    const m=o.m||5, A=[], B=[];
+    for(let i=0;i<=m;i++){
+      const t=i/m, s=lerp(s0,s1,t), p=at(s);
+      const nx=-p[3], ny=p[2];
+      const bulge = o.bulge? (1+o.bulge*Math.sin(Math.PI*t)) : 1;
+      A.push([p[0]+nx*h0*bulge, p[1]+ny*h0*bulge]);
+      B.push([p[0]+nx*h1*bulge, p[1]+ny*h1*bulge]);
+    }
+    B.reverse();
+    const c=A.concat(B);
+    cells.push(o.smooth!=null&&o.smooth===0? c : chaikin(c, o.smooth!=null?o.smooth:2));
+  }
+  return cells;
+}
+/* まっすぐな行 */
+function rowCells(x0,x1,y0,y1,n,o){
+  return bandCells([[x0,(y0+y1)/2],[x1,(y0+y1)/2]], (y0-y1)/2, (y1-y0)/2, Math.abs(x1-x0)/Math.max(1,n), o);
+}
+/* 円環にならぶ粒(晶洞の縁・累帯) */
+function ringCells(cx,cy,r0,r1,n,o){
+  o=o||{};
+  const cells=[];
+  const ph=o.ph!=null?o.ph:R()*TAU;
+  for(let i=0;i<n;i++){
+    const a0=ph+i/n*TAU+rr(-.01,.01), a1=ph+(i+1)/n*TAU-rr(.005,.02);
+    const pts=[];
+    for(let k=0;k<=5;k++){ const a=lerp(a0,a1,k/5); pts.push([cx+Math.cos(a)*r0, cy+Math.sin(a)*r0*(o.ry||1)]); }
+    for(let k=5;k>=0;k--){ const a=lerp(a0,a1,k/5); pts.push([cx+Math.cos(a)*r1, cy+Math.sin(a)*r1*(o.ry||1)]); }
+    cells.push(chaikin(shrinkPoly(pts,o.gap!=null?o.gap:.93), o.smooth!=null?o.smooth:1));
+  }
+  return cells;
+}
+/* 群ごとに配置を変えて呼ぶ */
+function forGroups(fn){
+  const n=S.groups;
+  if(n<=1){ fn(0); return; }
+  for(let i=0;i<n;i++){
+    const a = i*2.35+1.1;
+    TR = { ox:Math.cos(a)*FRAD*rr(.34,.56), oy:Math.sin(a)*FRAD*rr(.30,.50),
+           s: (i===0? .70 : rr(.42,.62)), rz: rr(-3.1,3.1) };
+    fn(i);
+    TR=null;
+  }
+}
+/* 基準寸法 */
+function GRAINR(){ return 9 + S.size*3.2; }
+function INCN(){ return S.incl==='MANY'? 1.5 : S.incl==='MODERATE'? 1 : .45; }
+function DETN(){ return S.detail==='DETAILED'? 1.4 : S.detail==='MODERATE'? 1 : .55; }
+function DENN(){ return S.density==='MANY'? 1.5 : S.density==='MODERATE'? 1 : .55; }
+/* =========================================================================
+   鉱物の描画
+   ========================================================================= */
+/* ワールド多角形をひとつの結晶面として描く(稜線は直線) */
+function faceDraw(w,o){
+  o=o||{};
+  const pts=SCR(w);
+  if(o.solid!==0) fillPoly(pts, PAPERC, o.solid!=null?o.solid:.55);
+  hatch2(pts,{ color:o.color||col(0), a:o.a!=null?o.a:.17, sp:o.sp||3.6,
+               ang:o.ang!=null?o.ang:-.7, wash:o.wash!==false, cross:o.cross });
+  const lw=o.lw!=null?o.lw:1.15;
+  const eo={ w:lw, a:o.ea!=null?o.ea:.80, color:o.edgec||EDGE, passes:o.passes||2,
+             jit:.35, over:o.over!=null?o.over:2.2 };
+  /* 頂点が多い輪郭は一筆書き(直線をひとつずつ引くと重くなる) */
+  const rnd = o.round || (o.round!==false && pts.length>24);
+  if(o.edge!==false){ if(rnd) curve2(pts,eo,true); else poly2(pts,eo,true); }
+  if(o.inner){
+    const k=(o.inner===true)?.84:o.inner;
+    const ip=SCR(shrinkPoly(w,k));
+    const io={ w:lw*.6, a:.28, color:o.edgec||EDGE, passes:1, jit:.3 };
+    if(rnd) curve2(ip,io,true); else poly2(ip,io,true);
+  }
+  return pts;
+}
+/* 丸い粒(礫・ooid・変晶) */
+function grainDraw(w,o){
+  o=o||{}; o.round=true;
+  return faceDraw(w,o);
+}
+/* 深度つきで積む */
+function putFace(w,o,d){
+  const dd = (d!=null)? d : polyCentroid(w)[1];
+  op(dd, function(){ faceDraw(w,o); });
+}
+function putGrain(w,o,d){
+  const dd = (d!=null)? d : polyCentroid(w)[1];
+  op(dd, function(){ grainDraw(w,o); });
+}
+/* 小さな粒(不透明鉱物・胞子状の点) */
+function blobW(x,y,r,o){
+  o=o||{};
+  const c=P(x,y), rp=PS(r);
+  if(MEASURE) return;
+  ctx.save();
+  ctx.globalAlpha=o.a!=null?o.a:.85;
+  ctx.fillStyle=o.color||DEEP;
+  ctx.beginPath();
+  const n=o.n||9;
+  for(let i=0;i<n;i++){
+    const a=i/n*TAU, rad=rp*(1+(R()*2-1)*(o.jag!=null?o.jag:.16));
+    const x2=c[0]+Math.cos(a)*rad, y2=c[1]+Math.sin(a)*rad;
+    i?ctx.lineTo(x2,y2):ctx.moveTo(x2,y2);
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+  strokes++;
+  if(o.ring) curve2(SCR(wobRing(x,y,r*1.5,{n:12,lobes:3,amp:.07})),{w:.7,a:.4,color:o.color||DEEP,passes:1},true);
+}
+/* 微細な包有物・散点 */
+function speckW(cx,cy,r,n,o){
+  o=o||{};
+  for(let i=0;i<n;i++){
+    const a=R()*TAU, rad=r*Math.sqrt(R())*.85;
+    blobW(cx+Math.cos(a)*rad, cy+Math.sin(a)*rad, r*rr(.05,.11), {color:o.color||col(1), a:o.a!=null?o.a:.4});
+  }
+}
+/* 短い濃線(劈開片・微細な針) */
+function flakeW(cx,cy,r,n,o){
+  o=o||{};
+  for(let i=0;i<n;i++){
+    const a=R()*TAU, rad=r*rr(0,.5);
+    const x=cx+Math.cos(a)*rad, y=cy+Math.sin(a)*rad;
+    const ang=o.ang!=null?o.ang:R()*TAU, L=r*rr(.35,.72);
+    lnw([x-Math.cos(ang)*L,y-Math.sin(ang)*L],[x+Math.cos(ang)*L,y+Math.sin(ang)*L],
+        {w:(o.w||2.1),a:o.a!=null?o.a:.5,color:o.color||EDGE,passes:1,jit:.4});
+  }
+}
+/* 多角形の内側に平行線(条線・劈開・双晶ラメラ) */
+function traceW(pts,n,ang,o){
+  o=o||{};
+  if(n<1) return;
+  const c=polyCentroid(pts);
+  const rad=polyRad(pts,c);
+  const dx=Math.cos(ang), dy=Math.sin(ang), nx=-dy, ny=dx;
+  const sp=2*rad/n;
+  let drawn=0;
+  for(let i=-n/2;i<=n/2;i++){
+    const off=i*sp + (o.jitter? (R()*2-1)*sp*.25 : 0);
+    const A=[c[0]+nx*off-dx*rad, c[1]+ny*off-dy*rad];
+    const B=[c[0]+nx*off+dx*rad, c[1]+ny*off+dy*rad];
+    const seg=clipSeg(pts,A,B);
+    if(seg){
+      const alt = (o.alt && (i%2===0));
+      lnw(seg[0],seg[1],{w:(o.w||.8)*(alt?1.6:1), a:(o.a!=null?o.a:.4)*(alt?1.25:1),
+                          color:o.color||EDGE, passes:1, jit:.35});
+      drawn++;
+    }
+  }
+  return drawn;
+}
+/* 面の2辺方向にそった劈開線 */
+function edgeTraces(pts,n,o){
+  if(pts.length<3) return;
+  const d1=Math.atan2(pts[1][1]-pts[0][1], pts[1][0]-pts[0][0]);
+  const d2=Math.atan2(pts[2][1]-pts[1][1], pts[2][0]-pts[1][0]);
+  traceW(pts,n,d1,o);
+  traceW(pts,Math.round(n*.75),d2,o);
+}
+/* しなやかな細線(針状結晶・繊維) */
+function wispW(x,y,ang,len,o){
+  o=o||{};
+  const pts=[[x,y]];
+  let a=ang;
+  const n=o.n||9;
+  for(let i=0;i<n;i++){
+    a += (o.curl!=null?o.curl:.28)*(R()*2-1) + (o.bend||0);
+    pts.push([pts[i][0]+Math.cos(a)*len/n, pts[i][1]+Math.sin(a)*len/n]);
+  }
+  curve2(SCR(pts),{w:o.w||.75,a:o.a!=null?o.a:.5,color:o.color||EDGE,passes:1,jit:.35},false);
+  return pts;
+}
+
+/* ---------------- 結晶の内部状態(新鮮・累帯・変質・破断) ---------------- */
+function interior(poly,o){
+  o=o||{};
+  const st=o.state||S.state;
+  const c=polyCentroid(poly), rad=polyRad(poly,c);
+  if(PS(rad)<7) return;
+  const dc=o.color||DEEP;
+  /* 頂点の多い輪郭は一筆書きにする(直線をなぞるとストロークが増えすぎる) */
+  const rnd2 = o.round || poly.length>24;
+  if(st==='ZONED'){
+    const n=Math.max(1,Math.round(rr(2,4)*DETN()));
+    for(let i=1;i<=n;i++){
+      const k=1-i/(n+1.35);
+      const zp=SCR(shrinkPoly(poly,k,c));
+      if(rnd2) curve2(zp,{w:.75,a:.30,color:dc,passes:1,jit:.35},true);
+      else poly2(zp,{w:.75,a:.30,color:dc,passes:1,jit:.35,over:1.0},true);
+    }
+    hatch2(SCR(shrinkPoly(poly,.36,c)),{color:o.wash||col(1),a:.20,sp:2.8,ang:o.ang!=null?o.ang:-.4,wash:true,raw:true});
+    leg('ZONING',1);
+  }else if(st==='ALTERED'){
+    const n=Math.max(2,Math.round(4*DETN()));
+    for(let i=0;i<n;i++){
+      const a=R()*TAU, d2=rad*Math.sqrt(R())*.62;
+      const px=c[0]+Math.cos(a)*d2, py=c[1]+Math.sin(a)*d2;
+      hatch2(SCR(wobRing(px,py,rad*rr(.14,.30),{n:14,lobes:4,amp:.26})),
+             {color:o.wash||col(2),a:.28,sp:2.2,ang:rr(-1.2,.4),wash:true,raw:true});
+    }
+    speckW(c[0],c[1],rad*.8,Math.round(6*DETN()),{color:dc,a:.30});
+    leg('ALTERATION',1);
+  }else if(st==='FRACT'){
+    const n=ri(2,4);
+    for(let i=0;i<n;i++){
+      const a=R()*TAU;
+      const A=[c[0]+Math.cos(a)*rad*1.4, c[1]+Math.sin(a)*rad*1.4];
+      const B=[c[0]-Math.cos(a)*rad*1.4+rr(-rad*.4,rad*.4), c[1]-Math.sin(a)*rad*1.4+rr(-rad*.4,rad*.4)];
+      const seg=clipSeg(poly,A,B);
+      if(seg) lnw(seg[0],seg[1],{w:.9,a:.44,color:dc,passes:1,jit:.6});
+    }
+    leg('FRACTURES',n);
+  }else{
+    if(INCN()>.8) speckW(c[0],c[1],rad*.7,Math.round(3*INCN()),{color:o.wash||col(1),a:.34});
+  }
+  if(INCN()>1.2 && st!=='FRESH') speckW(c[0],c[1],rad*.7,2,{color:dc,a:.30});
+}
+
+/* ---------------- 結晶多面体 ---------------- */
+/* 柱面 k 枚 + 錐面(roof=0 で錐、>0 で稜) */
+function prismFaces(W,H,k,o){
+  o=o||{};
+  const tip=o.tip!=null?o.tip:H*.5, btm=o.btm!=null?o.btm:0;
+  const rk=o.roof!=null?o.roof:0, shear=o.shear||0;
+  const sx=function(x,y){ return [x - shear*y/H*W, y]; };
+  const xs=[];
+  for(let i=0;i<=k;i++) xs.push(-W + 2*W*(i/k));
+  if(o.uneven) for(let i=1;i<k;i++) xs[i]+=rr(-.16,.16)*2*W/k;
+  const F=[];
+  for(let i=0;i<k;i++)
+    F.push({t:'p', i:i, pts:[sx(xs[i],-H),sx(xs[i+1],-H),sx(xs[i+1],H),sx(xs[i],H)]});
+  if(tip>0){
+    const a0=-W*rk, a1=W*rk, ay=-H-tip;
+    for(let i=0;i<k;i++){
+      const t0=a0+(a1-a0)*(i/k), t1=a0+(a1-a0)*((i+1)/k);
+      const p=[sx(xs[i],-H), sx(xs[i+1],-H), sx(t1,ay)];
+      if(Math.abs(t1-t0)>1e-6) p.push(sx(t0,ay));
+      F.push({t:'t', i:i, pts:p});
+    }
+  }
+  if(btm>0){
+    const a0=-W*rk, a1=W*rk, ay=H+btm;
+    for(let i=0;i<k;i++){
+      const t0=a0+(a1-a0)*(i/k), t1=a0+(a1-a0)*((i+1)/k);
+      const p=[sx(xs[i],H), sx(xs[i+1],H), sx(t1,ay)];
+      if(Math.abs(t1-t0)>1e-6) p.push(sx(t0,ay));
+      F.push({t:'b', i:i, pts:p});
+    }
+  }
+  return F;
+}
+/* 立方体・菱面体(可視3面) */
+function boxFaces(ex,ey,ez){
+  const V3=function(a,b,c){ return [a*ex[0]+b*ey[0]+c*ez[0], a*ex[1]+b*ey[1]+c*ez[1]]; };
+  return centerFaces([
+    {t:'top', i:0, pts:[V3(0,0,1),V3(1,0,1),V3(1,1,1),V3(0,1,1)]},
+    {t:'r',   i:1, pts:[V3(1,0,0),V3(1,1,0),V3(1,1,1),V3(1,0,1)]},
+    {t:'l',   i:2, pts:[V3(0,1,0),V3(1,1,0),V3(1,1,1),V3(0,1,1)]},
+  ]);
+}
+/* 八面体(可視4面) */
+function octaFaces(r,o){
+  o=o||{};
+  const w=r*(o.w||.92), e=r*(o.e||.34), h=r*(o.h||1.0);
+  const T=[0,-h], B=[0,h], Lp=[-w,0], Rp=[w,0], Fr=[0,e];
+  return centerFaces([
+    {t:'o', i:0, pts:[T,Lp,Fr]}, {t:'o', i:1, pts:[T,Fr,Rp]},
+    {t:'o', i:2, pts:[B,Lp,Fr]}, {t:'o', i:3, pts:[B,Fr,Rp]},
+  ]);
+}
+function centerFaces(F){
+  let all=[]; F.forEach(function(f){ all=all.concat(f.pts); });
+  const b=bbox(all), mx=(b.x0+b.x1)/2, my=(b.y0+b.y1)/2;
+  return F.map(function(f){ return {t:f.t, i:f.i, pts:movePoly(f.pts,-mx,-my)}; });
+}
+function placeFaces(F,cx,cy,rot){
+  return F.map(function(f){ return {t:f.t, i:f.i, pts:movePoly(rotPoly(f.pts,rot),cx,cy)}; });
+}
+/* 多面体をまとめて描く(面ごとに濃さを変えて陰影をつける) */
+function drawCrystal(F,o){
+  o=o||{};
+  const base = o.d!=null? o.d : polyCentroid(F[0].pts)[1];
+  let big=0, ba=0;
+  F.forEach(function(f,i){ const a=polyArea(f.pts); if(a>ba){ ba=a; big=i; } });
+  F.forEach(function(f,i){
+    const t = F.length>1? i/(F.length-1) : .5;
+    const sh = o.shade!=null? o.shade : (.62+t*.85);
+    putFace(f.pts,{ color:o.color||col(o.ci||0), a:(o.a!=null?o.a:.16)*sh,
+                    sp:o.sp||3.4, ang:(o.ang!=null?o.ang:-.7)+i*.55,
+                    lw:o.lw!=null?o.lw:1.25, ea:o.ea, edgec:o.edgec, over:o.over },
+             base+i*.02);
+    op(base+i*.02+.008, function(){
+      if(o.stri && f.t==='p') traceW(f.pts, Math.round(o.stri), o.striang||0, {w:.6,a:.30,jitter:true});
+      if(o.cleav) edgeTraces(f.pts, Math.round(o.cleav), {w:.55,a:.24});
+      if(i===big) interior(f.pts,{ang:o.ang});
+    });
+  });
+  leg('CRYSTAL FACES',F.length);
+}
+/* 視野に散る岩粉・微細片 */
+function matrixField(){
+  const n = S.density==='MANY'? 34 : S.density==='MODERATE'? 18 : 7;
+  /* 岩粉は視野の大きさに対して小さく(結晶を描くときも薄片のときも同じ見えかたに) */
+  const cr = Math.min(GRAINR()*.10, FIELD.rx*.010);
+  for(let i=0;i<n;i++){
+    const a=R()*TAU, t=Math.sqrt(R())*.99;
+    const d=unrot(Math.cos(a)*t*FIELD.rx, Math.sin(a)*t*FIELD.ry);
+    const x=FIELD.cx+d[0], y=FIELD.cy+d[1];
+    const r=Math.max(.8, cr*rr(.6,1.4));
+    const shard = chance(.42);
+    op(-8000+i, function(){
+      if(shard){
+        const ang=R()*TAU;
+        lnw([x-Math.cos(ang)*r*1.7,y-Math.sin(ang)*r*1.7],[x+Math.cos(ang)*r*1.7,y+Math.sin(ang)*r*1.7],
+            {w:Math.max(.7,PS(r)*.85),a:.42,color:DEEP,passes:1,jit:.3});
+      }else{
+        blobW(x,y,r,{color:DEEP,a:.50,jag:.30});
+      }
+    });
+  }
+  leg('ROCK DUST',n);
+  /* ピントの外れたぼんやりした影 */
+  const nb = S.detail==='MINIMAL'? 2 : 5;
+  for(let i=0;i<nb;i++){
+    const a=R()*TAU, t=rr(.3,1.0);
+    const d=unrot(Math.cos(a)*t*FIELD.rx, Math.sin(a)*t*FIELD.ry);
+    const x=FIELD.cx+d[0], y=FIELD.cy+d[1], r=FIELD.rx*rr(.05,.13);
+    op(-9000+i, function(){
+      const pts=SCR(wobRing(x,y,r,{n:20,lobes:4,amp:.2}));
+      hatch2(pts,{color:col(2),a:.05,sp:5.2,ang:-.5,wash:true,raw:true});
+    });
+  }
+}
+/* 視野いっぱいを採寸させる基準(描かれない) */
+function fieldBounds(){
+  op(-99999, function(){
+    if(!MEASURE) return;
+    const c=P(FIELD.cx,FIELD.cy);
+    if(c[0]-FIELD.rx<BX.x0) BX.x0=c[0]-FIELD.rx;
+    if(c[0]+FIELD.rx>BX.x1) BX.x1=c[0]+FIELD.rx;
+    if(c[1]-FIELD.ry<BX.y0) BX.y0=c[1]-FIELD.ry;
+    if(c[1]+FIELD.ry>BX.y1) BX.y1=c[1]+FIELD.ry;
+  });
+}
+/* 描いた試料の広がりから視野の大きさを決める */
+function measureField(){
+  const rot=V.rot, sc=V.s, cx=V.cx, cy=V.cy;
+  V.rot=0; V.s=1; V.cx=0; V.cy=0;
+  MEASURE=true; BX={x0:1e9,y0:1e9,x1:-1e9,y1:-1e9};
+  for(const o of OPS) o.f();
+  MEASURE=false;
+  V.rot=rot; V.s=sc; V.cx=cx; V.cy=cy;
+  const AR=(FR.y1-FR.y0)/(FR.x1-FR.x0);
+  if(BX.x1<BX.x0){ FIELD={cx:0,cy:0,rx:FRAD,ry:FRAD*AR}; return; }
+  const mx=(BX.x0+BX.x1)/2, my=(BX.y0+BX.y1)/2;
+  let rx=Math.max(24,(BX.x1-BX.x0)/2)*1.10, ry=Math.max(24,(BX.y1-BX.y0)/2)*1.10;
+  if(S.fieldsh==='CIRCLE'){ const r=Math.max(rx,ry); rx=r; ry=r; }
+  else if(ry/rx < AR) ry=rx*AR; else rx=ry/AR;
+  FIELD={ cx:mx, cy:my, rx:rx, ry:ry };
+}
+
+/* =========================================================================
+   試料生成 — 16種
+   ========================================================================= */
+const SCENE = { name:null, grainUm:2000, layers:[], mode:'' };
+
+const BUILD = {
+
+/* ---------- 結晶 01 柱状結晶 ---------- */
+prism(){
+  SCENE.grainUm = 45000;
+  const sys=S.shape;
+  forGroups(function(){
+    const n = S.density==='MANY'? 3 : S.density==='MODERATE'? 2 : 1;
+    for(let i=0;i<n;i++){
+      const sc = i===0? 1 : rr(.40,.62);
+      const r  = GRAINR()*1.45*sc;
+      let px=0, py=0, rot=rr(-.16,.16);
+      if(i>0){
+        const a=R()*TAU;
+        px=Math.cos(a)*GRAINR()*rr(3.0,4.4); py=Math.sin(a)*GRAINR()*rr(2.2,3.6);
+        rot=rr(-1.1,1.1);
+      }
+      let F;
+      if(sys==='CUBIC'){
+        F = octaFaces(r*1.9,{e:.34});
+      }else{
+        const k = sys==='MONO'? 2 : 3;
+        F = prismFaces(r*(sys==='TET'?.82:1), r*(sys==='MONO'?1.7:2.4), k, {
+          tip:  sys==='MONO'? r*.50 : r*(sys==='TET'?.72:.60),
+          roof: sys==='MONO'? .60 : (sys==='HEX'? .22 : 0),
+          shear:sys==='MONO'? .42 : 0,
+          uneven: sys!=='TET',
+          btm: (S.site==='PLACER'||S.site==='CAVITY')? 0 : (chance(.45)? r*.65:0),
+        });
+      }
+      F = placeFaces(F,px,py,rot);
+      drawCrystal(F,{ ci:0, d:py,
+        stri: sys==='HEX'? Math.round(rr(8,15)*DETN()) : (sys==='TET'? Math.round(6*DETN()):0),
+        striang: rot,
+        cleav: sys==='CUBIC'? Math.round(5*DETN()) : 0 });
+      leg('CRYSTALS',1);
+      /* 母岩に生えた根もと */
+      if(i===0 && (S.site==='PEGMATITE'||S.site==='HYDRO')){
+        const yb=r*(sys==='CUBIC'?1.7:2.4);
+        op(yb+40, function(){
+          const gp=[];
+          for(let k2=0;k2<=22;k2++){
+            const t=k2/22;
+            gp.push([lerp(-r*2.6,r*2.6,t), yb*rr(.98,1.02)+Math.sin(t*7+px)*r*.20]);
+          }
+          gp.push([r*2.6, yb+r*1.5]); gp.push([-r*2.6, yb+r*1.5]);
+          hatch2(SCR(gp),{color:col(3),a:.20,sp:3.0,ang:-.9,wash:true,cross:true});
+          curve2(SCR(gp.slice(0,23)),{w:1.2,a:.42,color:EDGE,passes:1,jit:.7},false);
+        });
+        leg('MATRIX',1);
+      }
+    }
+  });
+  const rr0=GRAINR()*1.45;
+  note(0,-rr0*2.6,'TERMINATION',1);
+  note(-rr0*.75, rr0*.9,'PRISM FACE',-1);
+  if(S.state==='ZONED') note(rr0*.3,-rr0*.4,'ZONING',1);
+},
+
+/* ---------- 結晶 02 菱面体 ---------- */
+rhomb(){
+  SCENE.grainUm = 22000;
+  const sys=S.shape;
+  const n = S.density==='MANY'? ri(7,10) : S.density==='MODERATE'? ri(4,6) : ri(2,3);
+  const pos=[];
+  for(let i=0;i<n*4 && pos.length<n;i++){
+    const p=FPOS(.70);
+    let ok=true;
+    for(const q of pos) if(Math.hypot(p[0]-q[0],p[1]-q[1])<GRAINR()*1.7){ ok=false; break; }
+    if(ok) pos.push(p);
+  }
+  pos.forEach(function(p,i){
+    const r=GRAINR()*rr(.70,1.15)*(i===0?1.55:1);
+    const rot=rr(-.45,.45);
+    let ex,ey,ez;
+    if(sys==='CUBIC'){      ex=[.866*r,.50*r];  ey=[-.866*r,.50*r];  ez=[0,-1.00*r]; }
+    else if(sys==='TET'){   ex=[.880*r,.42*r];  ey=[-.880*r,.42*r];  ez=[0,-1.30*r]; }
+    else if(sys==='MONO'){  ex=[.900*r,.38*r];  ey=[-.820*r,.46*r];  ez=[.34*r,-1.15*r]; }
+    else {                  ex=[.900*r,.40*r];  ey=[-.900*r,.40*r];  ez=[.10*r,-1.18*r]; }
+    const F=placeFaces(boxFaces(ex,ey,ez),p[0],p[1],rot);
+    drawCrystal(F,{ ci:i%2, d:p[1], cleav:Math.round(4*DETN())+2, lw:1.3 });
+    leg('RHOMBOHEDRA',1);
+    leg('CLEAVAGE TRACES',Math.round(4*DETN())+2);
+  });
+  /* 小さな伴晶 */
+  const ns = Math.round(6*DENN());
+  for(let i=0;i<ns;i++){
+    const p=FPOS(.92), r=GRAINR()*rr(.16,.30);
+    op(p[1]-2, function(){
+      const F=placeFaces(boxFaces([.866*r,.5*r],[-.866*r,.5*r],[0,-1.05*r]),p[0],p[1],rr(-.5,.5));
+      F.forEach(function(f,k){
+        faceDraw(f.pts,{color:col(2),a:.16*(.7+k*.4),sp:2.6,ang:-.6+k*.5,lw:.95,solid:.4});
+      });
+    });
+  }
+  leg('ACCESSORY CRYSTALS',ns);
+  note(0,0,'RHOMB FACE',1);
+  note(-GRAINR()*.8,GRAINR()*.6,'CLEAVAGE',-1);
+},
+
+/* ---------- 結晶 03 双晶 ---------- */
+twin(){
+  SCENE.grainUm = 30000;
+  const kind=S.shape;
+  const r=GRAINR()*1.95;
+  if(kind==='MONO'){
+    /* 接触双晶(燕尾) */
+    for(const sg of [1,-1]){
+      const F0=prismFaces(r*.55, r*2.0, 2, {tip:r*.55, roof:.55, shear:sg*.30});
+      const F=placeFaces(F0, sg*r*.42, -r*.10, sg*.30);
+      drawCrystal(F,{ci:sg>0?0:1, d:-r*.10+sg*.5, stri:Math.round(7*DETN()), striang:sg*.30});
+    }
+    op(60,function(){
+      lnw([0,-r*2.9],[0,r*2.1],{w:1.1,a:.45,color:DEEP,passes:1,jit:.5});
+    });
+    leg('CONTACT TWIN',1); leg('TWIN PLANE',1);
+    note(0,-r*1.4,'TWIN PLANE',1);
+  }else if(kind==='TET'){
+    /* 貫入双晶(十字) */
+    const angs=[rr(-.12,.12), Math.PI/2+rr(-.3,.3)];
+    angs.forEach(function(a,i){
+      const F=placeFaces(prismFaces(r*.62, r*2.3, 3, {tip:r*.42, uneven:true}), 0,0, a);
+      drawCrystal(F,{ci:i, d:i*20, stri:Math.round(8*DETN()), striang:a, lw:1.3});
+    });
+    leg('PENETRATION TWIN',1); leg('RE-ENTRANT ANGLES',4);
+    note(0,0,'PENETRATION',1);
+  }else if(kind==='HEX'){
+    /* 環状双晶(6セクター) */
+    const R0=r*2.1;
+    const hex=nGon(0,0,R0,6,rr(0,1),.03);
+    op(-10,function(){ poly2(SCR(hex),{w:1.5,a:.55,color:EDGE,passes:2,jit:.4,over:3},true); });
+    for(let i=0;i<6;i++){
+      const sect=[[0,0],hex[i],hex[(i+1)%6]];
+      putFace(sect,{color:col(i%2),a:.17*(.75+(i%3)*.30),sp:3.2,ang:i*Math.PI/3,lw:1.1,solid:.45}, i*.02);
+      op(i*.02+.01, function(){
+        traceW(sect, Math.round(8*DETN()), i*Math.PI/3+Math.PI/2, {w:.6,a:.30});
+        if(i===0) interior(sect,{});
+      });
+    }
+    leg('CYCLIC TWIN',1); leg('TWIN SECTORS',6);
+    note(0,-R0*.5,'TWIN SECTOR',1);
+  }else{
+    /* 多重双晶(ラメラ) */
+    const F=placeFaces(prismFaces(r*1.5, r*2.1, 1, {tip:r*.45, roof:.7}), 0,0, rr(-.12,.12));
+    drawCrystal(F,{ci:0, d:0, lw:1.35});
+    op(30, function(){
+      const body=F[0].pts;
+      const n=Math.round(rr(9,15)*DETN());
+      traceW(body, n, Math.PI/2+rr(-.1,.1), {w:.9,a:.36,alt:true});
+      leg('POLYSYNTHETIC LAMELLAE',n);
+    });
+    leg('ALBITE TWIN',1);
+    note(0,r*.6,'LAMELLAE',-1);
+  }
+  /* 周囲の小結晶 */
+  const ns=Math.round(4*DENN());
+  for(let i=0;i<ns;i++){
+    const p=FPOS(.62), rr2=r*rr(.16,.30);
+    op(p[1]-30, function(){
+      const F=placeFaces(prismFaces(rr2*.5,rr2*1.4,2,{tip:rr2*.4}),p[0],p[1],R()*TAU);
+      F.forEach(function(f,k){ faceDraw(f.pts,{color:col(3),a:.13,sp:3.0,ang:-.5+k*.6,lw:.9,solid:.35}); });
+    });
+  }
+  leg('ACCESSORY CRYSTALS',ns);
+},
+
+/* ---------- 結晶 04 群晶 ---------- */
+druse(){
+  SCENE.grainUm = 25000;
+  const u=GRAINR();
+  const baseY=FRAD*.30;
+  const base=walkPath(-FRAD*1.02, baseY+rr(-20,20), rr(-.10,.10), FRAD*.29, 7, .18);
+  /* 母岩 */
+  op(-200, function(){
+    const gp=base.slice();
+    gp.push([FRAD*1.1, baseY+FRAD*.42]); gp.push([-FRAD*1.1, baseY+FRAD*.42]);
+    hatch2(SCR(gp),{color:col(3),a:.20,sp:3.2,ang:-.95,wash:true,cross:true});
+    curve2(SCR(base),{w:1.6,a:.5,color:EDGE,passes:2,jit:.8},false);
+    for(let i=0;i<Math.round(14*DETN());i++){
+      const t=R(), idx=clamp(Math.floor(t*(base.length-1)),0,base.length-2);
+      const bx=lerp(base[idx][0],base[idx+1][0],R());
+      const by=lerp(base[idx][1],base[idx+1][1],R())+u*rr(.4,3.0);
+      blobW(bx,by,u*rr(.06,.16),{color:DEEP,a:.4,jag:.35});
+    }
+  });
+  leg('MATRIX',1);
+  /* 結晶群(奥→手前) */
+  const rowsN = S.density==='MANY'? 3 : S.density==='MODERATE'? 2 : 2;
+  let total=0;
+  for(let rw=0; rw<rowsN; rw++){
+    const back = rw<rowsN-1;
+    const n = back? Math.round(rr(7,11)) : Math.round(rr(4,7));
+    for(let i=0;i<n;i++){
+      const t=(i+rr(.1,.9))/n;
+      const idx=clamp(Math.floor(t*(base.length-1)),0,base.length-2);
+      const ft=(t*(base.length-1))%1;
+      const bx=lerp(base[idx][0],base[idx+1][0],ft);
+      const by=lerp(base[idx][1],base[idx+1][1],ft) - rw*u*.30;
+      const sys=S.shape;
+      const slim = sys==='HEX';               /* 六方: すらりとした柱 */
+      const tab  = sys==='MONO';              /* 単斜: 板状で傾く */
+      const stub = sys==='CUBIC';             /* 等軸: ずんぐり */
+      const sc=(back? rr(.40,.66) : rr(.80,1.30)) * (slim? .92 : 1);
+      const cr=u*sc;
+      const lean=rr(-.50,.50) + (tab? rr(-.35,.35) : 0);
+      const hh = cr*(slim? 2.9 : stub? 1.15 : tab? 1.8 : 2.1);
+      const ww = cr*(tab? 1.25 : stub? 1.15 : slim? .82 : .92);
+      const F=placeFaces(prismFaces(ww, hh, (tab||stub)?2:3,
+              {tip:cr*(slim?1.1:stub?.45:.80), uneven:!stub,
+               roof: tab? .55 : 0, shear: tab? .30 : 0}),
+              bx, by-hh*.98, lean);
+      drawCrystal(F,{ ci:back?3:0, d: back? -150+rw*10+i*.1 : by+i*.1,
+                      a: back? .11 : .17, lw: back? 1.0 : 1.28,
+                      stri: back?0:Math.round(7*DETN()), striang:lean,
+                      shade: back? .8 : null });
+      total++;
+    }
+  }
+  leg('DRUSE CRYSTALS',total);
+  note(0,baseY-u*2.6,'TERMINATION',1);
+  note(-FRAD*.5,baseY+u*.3,'MATRIX',-1);
+},
+/* ---------- 薄片 01 花崗岩 ---------- */
+granitic(){
+  SCENE.grainUm = 900;
+  const X=FRAD*.95, Y=FRAD*ASPY*.95;
+  const region=[[-X,-Y],[X,-Y],[X,Y],[-X,Y]];
+  const tex=S.shape;
+  const sp=GRAINR()*(tex==='GLASSY'? 3.1 : 2.05);
+  const cells=mosaic(region, sp, {gap:.93, smooth:0, maxCells:300,
+                                  relax: tex==='EQUIGRAN'? 2 : 1,
+                                  vary:  tex==='EQUIGRAN'? .12 : tex==='PORPHYRO'? .46 : .30,
+                                  stretch: tex==='FOLIATED'? 2.0 : 1});
+  let cnt={QZ:0,FSP:0,BIO:0,HBL:0};
+  cells.forEach(function(cp,i){
+    const c=polyCentroid(cp), rad=polyRad(cp,c);
+    const roll=R();
+    const kind = roll<.34? 'QZ' : roll<.66? 'FSP' : roll<.83? 'BIO' : 'HBL';
+    cnt[kind]++;
+    if(kind==='QZ'){
+      /* 石英は縫合状の粒界。累帯はしないので内部は波動消光だけ */
+      const q=wavyEdges(cp, rad*.055, 2);
+      putFace(q,{color:col(2),a:.13,sp:4.0,ang:-.55,lw:1.05,ea:.72}, c[1]);
+      op(c[1]+.4, function(){
+        if(DETN()>.9) traceW(q, Math.round(3*DETN()), rr(0,3.1), {w:.5,a:.14});
+        if(S.state==='FRACT' && chance(.4)) interior(q,{wash:col(2),round:true});
+      });
+    }else if(kind==='FSP'){
+      putFace(cp,{color:col(0),a:.14,sp:3.6,ang:-.75,lw:1.15,inner:.88}, c[1]);
+      op(c[1]+.4, function(){
+        const n=Math.round(rr(3,7)*DETN());
+        traceW(cp, n, Math.atan2(cp[1][1]-cp[0][1],cp[1][0]-cp[0][0])+Math.PI/2, {w:.65,a:.26,alt:true});
+        leg('ALBITE TWINNING',n);
+        /* 累帯・変質は長石だけ、しかも一部の粒に */
+        if(chance(.45)) interior(cp,{wash:col(3)});
+      });
+    }else if(kind==='BIO'){
+      const ang=tex==='FOLIATED'? rr(-.2,.2) : R()*TAU;
+      const flat=scalePoly(movePoly(cp,-c[0],-c[1]),1,.55);
+      const bp=movePoly(rotPoly(flat,ang),c[0],c[1]);
+      /* 黒雲母はいちばん濃い鉛筆で */
+      putFace(bp,{color:DEEP,a:.30,sp:2.4,ang:ang,lw:1.3,ea:.9}, c[1]+.2);
+      op(c[1]+.5, function(){
+        traceW(bp, Math.round(rr(7,12)*DETN()), ang, {w:.65,a:.40});
+        if(chance(.4)) speckW(c[0],c[1],rad*.5,3,{color:DEEP,a:.5});
+      });
+    }else{
+      putFace(cp,{color:col(3),a:.26,sp:2.8,ang:-.4,lw:1.25,inner:.86}, c[1]+.1);
+      op(c[1]+.5, function(){
+        const a0=R()*TAU;
+        traceW(cp, Math.round(5*DETN()), a0, {w:.6,a:.34});
+        traceW(cp, Math.round(4*DETN()), a0+1.05, {w:.6,a:.34});
+        if(chance(.35)) interior(cp,{wash:col(3)});
+      });
+      leg('CLEAVAGE 56/124',1);
+    }
+  });
+  leg('QUARTZ',cnt.QZ); leg('FELDSPAR',cnt.FSP);
+  leg('BIOTITE',cnt.BIO); leg('HORNBLENDE',cnt.HBL);
+  /* 副成分鉱物 */
+  const na=Math.round(6*DENN()*DETN());
+  for(let i=0;i<na;i++){
+    const p=FPOS(.9), r=GRAINR()*rr(.10,.22);
+    op(p[1]+3, function(){
+      const g=nGon(p[0],p[1],r,ri(4,6),R()*TAU,.12);
+      fillPoly(SCR(g),DEEP,.62);
+      poly2(SCR(g),{w:.8,a:.55,color:DEEP,passes:1,jit:.3,over:1},true);
+    });
+  }
+  leg('ACCESSORY (ZIRCON/OPAQUE)',na);
+  note(0,0,'QUARTZ',1);
+  note(-FRAD*.45, FRAD*.35,'BIOTITE',-1);
+},
+
+/* ---------- 薄片 02 斑状組織 ---------- */
+porphyry(){
+  SCENE.grainUm = 700;
+  const X=FRAD*.95, Y=FRAD*ASPY*.95;
+  const region=[[-X,-Y],[X,-Y],[X,Y],[-X,Y]];
+  const u=GRAINR();
+  /* 石基 */
+  const gm=mosaic(region, u*.62, {gap:.90, smooth:0, relax:1});
+  const flow=rr(-.5,.5);
+  gm.forEach(function(cp,i){
+    const c=polyCentroid(cp);
+    op(-500+i*.01, function(){
+      hatch2(SCR(cp),{color:col(i%2? 2:3),a:.08,sp:4.6,ang:flow-.4,wash:true});
+      poly2(SCR(cp),{w:.55,a:.20,color:EDGE,passes:1,jit:.4},true);
+    });
+  });
+  leg('GROUNDMASS',gm.length);
+  /* 石基のマイクロライト(流理) */
+  if(S.shape!=='EQUIGRAN'){
+    const nm=Math.round(90*DETN()*DENN());
+    for(let i=0;i<nm;i++){
+      const p=FPOS(.97), a=flow+rr(-.35,.35), L=u*rr(.12,.30);
+      op(-400+i*.001, function(){
+        lnw([p[0]-Math.cos(a)*L,p[1]-Math.sin(a)*L],[p[0]+Math.cos(a)*L,p[1]+Math.sin(a)*L],
+            {w:.75,a:.30,color:EDGE,passes:1,jit:.3});
+      });
+    }
+    leg('MICROLITES',nm);
+  }
+  /* 斑晶 */
+  const n = S.density==='MANY'? ri(7,10) : S.density==='MODERATE'? ri(5,7) : ri(3,4);
+  const pos=[];
+  for(let i=0;i<n*5 && pos.length<n;i++){
+    const p=FPOS(.72);
+    let ok=true;
+    for(const q of pos) if(Math.hypot(p[0]-q[0],p[1]-q[1])<u*2.0){ ok=false; break; }
+    if(ok) pos.push(p);
+  }
+  pos.forEach(function(p,i){
+    const r=u*rr(.75,1.35)*(i===0?1.4:1);
+    const rot=R()*TAU;
+    const type = i%3;
+    if(type===0){
+      /* 長石斑晶(自形の短冊) */
+      const w2=r*.55, h2=r*1.30;
+      let poly=[[-w2,-h2],[w2,-h2],[w2,h2],[-w2,h2]];
+      poly=[[-w2,-h2],[0,-h2*1.22],[w2,-h2],[w2,h2],[0,h2*1.22],[-w2,h2]];
+      poly=movePoly(rotPoly(poly,rot),p[0],p[1]);
+      putFace(poly,{color:col(0),a:.15,sp:3.4,ang:rot,lw:1.35,inner:.88}, p[1]);
+      op(p[1]+.5, function(){
+        traceW(poly, Math.round(rr(5,10)*DETN()), rot+Math.PI/2, {w:.75,a:.32,alt:true});
+        interior(poly,{ang:rot});
+      });
+      leg('FELDSPAR PHENOCRYST',1);
+    }else if(type===1){
+      /* 石英斑晶(融食の湾入) */
+      let poly=nGon(0,0,r*.95,6,rot,.06);
+      poly=poly.map(function(q,k){ return k%2? [q[0]*.78,q[1]*.78] : q; });
+      poly=movePoly(chaikin(poly,1),p[0],p[1]);
+      putFace(poly,{color:col(2),a:.09,sp:4.4,ang:rot-.5,lw:1.2,round:true}, p[1]);
+      op(p[1]+.5, function(){ interior(poly,{round:true,wash:col(2)}); });
+      leg('QUARTZ PHENOCRYST',1);
+    }else{
+      /* 有色鉱物斑晶(輝石・角閃石) */
+      const poly=movePoly(nGon(0,0,r*.85,ri(6,8),rot,.10),p[0],p[1]);
+      putFace(poly,{color:col(1),a:.30,sp:2.6,ang:rot-.4,lw:1.3,inner:.85}, p[1]);
+      op(p[1]+.5, function(){
+        traceW(poly,Math.round(5*DETN()),rot,{w:.6,a:.34});
+        traceW(poly,Math.round(4*DETN()),rot+1.05,{w:.6,a:.34});
+        speckW(p[0],p[1],r*.55,Math.round(4*INCN()),{color:DEEP,a:.5});
+      });
+      leg('MAFIC PHENOCRYST',1);
+    }
+  });
+  note(pos.length?pos[0][0]:0, pos.length?pos[0][1]:0, 'PHENOCRYST', 1);
+  note(-FRAD*.5, -FRAD*.5, 'GROUNDMASS', -1);
+},
+
+/* ---------- 薄片 03 玄武岩(オフィティック) ---------- */
+ophitic(){
+  SCENE.grainUm = 320;
+  const X=FRAD*.95, Y=FRAD*ASPY*.95;
+  const region=[[-X,-Y],[X,-Y],[X,Y],[-X,Y]];
+  const u=GRAINR();
+  /* 間隙を埋める輝石 */
+  const px=mosaic(region, u*2.4, {gap:.99, smooth:1, relax:2});
+  px.forEach(function(cp,i){
+    op(-600+i*.01, function(){
+      hatch2(SCR(cp),{color:col(1),a:.20,sp:2.8,ang:-.35+i*.7,wash:true});
+      curve2(SCR(cp),{w:.7,a:.22,color:EDGE,passes:1,jit:.5},true);
+    });
+  });
+  leg('PYROXENE (OPHITIC)',px.length);
+  /* 斜長石の短冊 */
+  const nl = Math.round((S.shape==='GLASSY'? 22 : 46)*DENN()*.8);
+  const flow = S.shape==='FOLIATED'? rr(-.3,.3) : null;
+  for(let i=0;i<nl;i++){
+    const p=FPOS(.95);
+    const ang = flow!=null? flow+rr(-.30,.30) : R()*TAU;
+    const L=u*rr(.75,1.7), W=L*rr(.14,.24);
+    let poly=[[-L,-W],[L*.92,-W*.86],[L,0],[L*.92,W*.86],[-L,W],[-L*1.02,0]];
+    poly=movePoly(rotPoly(poly,ang),p[0],p[1]);
+    putFace(poly,{color:col(0),a:.11,sp:3.2,ang:ang,lw:1.1,ea:.8}, p[1]);
+    if(DETN()>.8) op(p[1]+.4, function(){
+      traceW(poly, Math.round(rr(3,6)*DETN()), ang, {w:.55,a:.30,alt:true});
+    });
+  }
+  leg('PLAGIOCLASE LATHS',nl);
+  leg('TWIN LAMELLAE',Math.round(nl*4*DETN()));
+  /* かんらん石 */
+  const no=Math.round(7*DENN());
+  for(let i=0;i<no;i++){
+    const p=FPOS(.85), r=u*rr(.42,.75);
+    const poly=chaikin(nGon(p[0],p[1],r,ri(5,7),R()*TAU,.14),1);
+    putFace(poly,{color:col(3),a:.20,sp:3.0,ang:-.7,lw:1.2,round:true}, p[1]+1);
+    op(p[1]+1.5, function(){
+      const nf=ri(2,4);
+      for(let k=0;k<nf;k++){
+        const a=R()*TAU;
+        const seg=clipSeg(poly,[p[0]+Math.cos(a)*r*1.5,p[1]+Math.sin(a)*r*1.5],
+                               [p[0]-Math.cos(a)*r*1.5,p[1]-Math.sin(a)*r*1.5]);
+        if(seg) lnw(seg[0],seg[1],{w:.85,a:.45,color:DEEP,passes:1,jit:.6});
+      }
+      if(S.state==='ALTERED') hatch2(SCR(shrinkPoly(poly,.9)),{color:col(1),a:.24,sp:2.2,ang:.5,wash:true,raw:true});
+    });
+  }
+  leg('OLIVINE',no);
+  /* 気孔 / 杏仁 */
+  const nv = S.detail==='MINIMAL'? 1 : ri(2,4);
+  for(let i=0;i<nv;i++){
+    const p=FPOS(.80), r=u*rr(.55,1.0);
+    const vp=wobRing(p[0],p[1],r,{n:24,lobes:5,amp:.07});
+    op(p[1]+8, function(){
+      fillPoly(SCR(vp),PAPERC,.90);
+      curve2(SCR(vp),{w:1.2,a:.5,color:EDGE,passes:2,jit:.4},true);
+      const m=ri(2,3);
+      for(let k=1;k<=m;k++)
+        curve2(SCR(shrinkPoly(vp,1-k/(m+1.2))),{w:.7,a:.30,color:col(2),passes:1,jit:.3},true);
+    });
+  }
+  leg('VESICLES/AMYGDULES',nv);
+  note(0,0,'PLAGIOCLASE LATH',1);
+  note(FRAD*.4,-FRAD*.4,'PYROXENE',1);
+},
+
+/* ---------- 薄片 04 片岩 ---------- */
+schist(){
+  SCENE.grainUm = 600;
+  const X=FRAD*.97, Y=FRAD*ASPY*.92;
+  const u=GRAINR();
+  const nb=clamp(Math.round((2*Y)/(u*1.5)), 4, 22);
+  const lay=[];
+  let qz=0, mica=0;
+  for(let b=0;b<nb;b++){
+    const y=-Y + (b+.5)*(2*Y/nb);
+    const path=walkPath(-X, y, rr(-.08,.08), 2*X/7, 7, .09);
+    const h=(2*Y/nb)*.50;
+    const fol=Math.atan2(path[4][1]-path[3][1], path[4][0]-path[3][0]);
+    const micaBand = (b%2===1);
+    if(micaBand){
+      /* 雲母の縞 — 葉理をなぞる濃い平行線の束として引く */
+      op(y, function(){
+        const m=Math.round(rr(5,9)*DETN());
+        for(let k=0;k<m;k++){
+          const off=lerp(-h*.78,h*.78,m>1? k/(m-1):.5)+rr(-h*.06,h*.06);
+          const p2=path.map(function(p,i){ const nn=normalAt(path,i); return [p[0]+nn[0]*off, p[1]+nn[1]*off]; });
+          curve2(SCR(p2),{w:rr(.6,1.25),a:rr(.24,.46),color:DEEP,passes:1,jit:.55},false);
+        }
+      });
+      /* きらめく雲母片 */
+      const nf=Math.round(rr(4,8)*DENN());
+      for(let k=0;k<nf;k++){
+        const t=(k+rr(.15,.85))/nf;
+        const idx=clamp(Math.floor(t*(path.length-1)),0,path.length-2);
+        const ft=(t*(path.length-1))%1;
+        const fx=lerp(path[idx][0],path[idx+1][0],ft);
+        const fy=lerp(path[idx][1],path[idx+1][1],ft)+rr(-h*.5,h*.5);
+        const fl=u*rr(1.0,2.0), fw=fl*rr(.16,.26);
+        const fp=movePoly(rotPoly([[-fl,-fw],[fl*.9,-fw*.8],[fl,0],[fl*.9,fw*.8],[-fl,fw],[-fl*1.05,0]],
+                                  fol+rr(-.10,.10)),fx,fy);
+        putFace(fp,{color:DEEP,a:.26,sp:2.2,ang:fol,lw:1.15,ea:.85}, fy+.3);
+        op(fy+.6, function(){ traceW(fp, Math.round(rr(3,6)*DETN()), fol, {w:.55,a:.42}); });
+        mica++;
+      }
+    }else{
+      /* 石英・長石のレンズ(引き伸ばされて両端が尖る) */
+      const cells=bandCells(path,-h*.94,h*.94, u*rr(3.2,5.6), {bulge:.55,smooth:2,gap:.18});
+      cells.forEach(function(cp,i){
+        const c=polyCentroid(cp);
+        putFace(cp,{color:col(i%2? 2:0),a:.11,sp:4.0,ang:fol-.5,lw:1.05,round:true,ea:.70}, c[1]);
+        op(c[1]+.4, function(){ if(DETN()>1) traceW(cp,2,fol+rr(-.6,.6),{w:.5,a:.14}); });
+        qz++;
+      });
+    }
+    if(b%3===0) lay.push({y:y, label: micaBand?'MICA FOLIA':'QTZ LAYER'});
+  }
+  leg('QUARTZ LENSES',qz); leg('MICA FLAKES',mica); leg('FOLIATION PLANES',nb);
+  /* ざくろ石の斑状変晶 */
+  const ng = S.density==='MANY'? ri(3,5) : S.density==='MODERATE'? ri(2,3) : 1;
+  for(let i=0;i<ng;i++){
+    const p=FPOS(.62), r=u*rr(1.6,2.6);
+    const poly=nGon(p[0],p[1],r,ri(6,8),R()*TAU,.05);
+    putFace(poly,{color:col(3),a:.30,sp:2.6,ang:-.6,lw:1.5,inner:.90}, 900+i);
+    op(901+i, function(){
+      /* 包有物の螺旋(スノーボール) */
+      const m=Math.round(14*INCN()*DETN());
+      for(let k=0;k<m;k++){
+        const t=k/m, a=t*3.2-1.6;
+        const rad=r*.72*Math.sin(Math.PI*t*.9+.15);
+        blobW(p[0]+Math.cos(a)*rad*1.0, p[1]+Math.sin(a)*rad*.45, r*.055,{color:DEEP,a:.6,jag:.3});
+      }
+      if(S.state==='FRACT'){
+        for(let k=0;k<3;k++){
+          const a=R()*TAU;
+          const seg=clipSeg(poly,[p[0]+Math.cos(a)*r*1.4,p[1]+Math.sin(a)*r*1.4],
+                                 [p[0]-Math.cos(a)*r*1.4,p[1]-Math.sin(a)*r*1.4]);
+          if(seg) lnw(seg[0],seg[1],{w:.9,a:.45,color:DEEP,passes:1,jit:.6});
+        }
+      }
+    });
+    leg('GARNET PORPHYROBLAST',1);
+    if(i===0) note(p[0],p[1],'PORPHYROBLAST',1);
+  }
+  SCENE.layers = lay.slice(0,5);
+  note(-X*.6, 0, 'FOLIATION', -1);
+},
+/* ---------- 集合体 01 晶洞 ---------- */
+geode(){
+  SCENE.grainUm = 40000;
+  const RO=FRAD*.88;
+  const lobes = S.shape==='BOTRYOID'? ri(9,14) : ri(5,8);
+  const amp   = S.shape==='BOTRYOID'? .11 : .055;
+  /* 外殻 */
+  const shell=wobRing(0,0,RO,{n:80,lobes:lobes,amp:amp});
+  putGrain(shell,{color:col(3),a:.24,sp:3.0,ang:-.9,lw:1.8,cross:true,solid:.5}, -900);
+  leg('NODULE WALL',1);
+  /* 玉髄の縞(外から内へ) */
+  const nb = Math.max(3,Math.round(rr(4,7)*DETN()));
+  let r=RO*.90;
+  const lay=[{y:-RO,label:'WALL'}];
+  for(let i=0;i<nb;i++){
+    const rNext=r*rr(.82,.90);
+    const band=wobRing(0,0,r,{n:72,lobes:lobes,amp:amp*.9});
+    putGrain(band,{color:col(i%2? 0:2),a:.20*(1-i*.06),sp:2.6+i*.4,ang:-.6+i*.5,lw:1.15,solid:.85}, -800+i*10);
+    if(i===1) lay.push({y:-r,label:'CHALCEDONY'});
+    r=rNext;
+  }
+  leg('CHALCEDONY BANDS',nb);
+  /* 空洞 */
+  const cav=wobRing(0,0,r,{n:60,lobes:lobes,amp:amp*.8});
+  op(-700, function(){
+    fillPoly(SCR(cav),PAPERC,.95);
+    curve2(SCR(cav),{w:1.3,a:.5,color:EDGE,passes:2,jit:.5},true);
+  });
+  lay.push({y:-r,label:'DRUSE'});
+  /* 内壁を覆う結晶 */
+  const cwB=GRAINR()*(S.shape==='TABULAR'? .58 : .40);
+  const nc=Math.max(6,Math.round((TAU*r/(cwB*2.4))*(S.shape==='ACICULAR'?1.25:1)));
+  for(let i=0;i<nc;i++){
+    const a=i/nc*TAU+rr(-.05,.05);
+    const rad=r*(1+ (Math.sin(a*lobes)*amp*.8));
+    const cw=cwB*rr(.72,1.25);
+    const ch=cw*(S.shape==='ACICULAR'? rr(4.0,6.5) : S.shape==='TABULAR'? rr(1.4,2.2) : rr(2.2,3.4));
+    const bx=Math.cos(a)*rad, by=Math.sin(a)*rad;
+    /* 内壁から中心に向かって伸びる(先端は視野の内側) */
+    const F=placeFaces(prismFaces(cw,ch,S.shape==='TABULAR'?2:3,{tip:cw*1.15,uneven:true}),
+                       bx-Math.cos(a)*ch, by-Math.sin(a)*ch, a+Math.PI/2);
+    const d=-600+i*.1+(Math.sin(a)>0? 200:0);
+    F.forEach(function(f,k){
+      putFace(f.pts,{color:col(0),a:.15*(.7+k*.5),sp:3.0,ang:a+k*.6,lw:1.05,solid:.55}, d+k*.02);
+    });
+  }
+  leg('DRUSY CRYSTALS',nc);
+  /* 中央の空隙 */
+  op(400, function(){
+    const inner=wobRing(0,0,r*.42,{n:40,lobes:5,amp:.10});
+    fillPoly(SCR(inner),PAPERC,.85);
+    hatch2(SCR(inner),{color:col(2),a:.05,sp:6.0,ang:-.5,wash:true,raw:true});
+  });
+  SCENE.layers = lay;
+  note(0,-RO*.95,'NODULE WALL',1);
+  note(0,r*.55,'DRUSY LINING',-1);
+},
+
+/* ---------- 集合体 02 縞瑪瑙 ---------- */
+agate(){
+  SCENE.grainUm = 30000;
+  const RO=FRAD*.86;
+  const lobes = S.shape==='BOTRYOID'? ri(8,13) : ri(4,7);
+  const amp   = S.shape==='BOTRYOID'? .10 : .05;
+  const horiz = (S.shape==='TABULAR');
+  /* 外形 */
+  const out=wobRing(0,0,RO,{n:80,lobes:lobes,amp:amp});
+  putGrain(out,{color:col(3),a:.18,sp:3.4,ang:-.9,lw:1.7,solid:.55}, -900);
+  /* 同心の縞 */
+  const nb=Math.round(rr(9,16)*DETN());
+  let r=RO*.94;
+  for(let i=0;i<nb && r>RO*.16;i++){
+    const th=RO*rr(.030,.075)*(1+ (i%3===0? .8:0));
+    const band=wobRing(0,0,r,{n:76,lobes:lobes,amp:amp*.92});
+    putGrain(band,{color:col(i%3),a:(i%3===0? .26:.13),sp:(i%3===0?2.2:3.6),
+                   ang:-.7+i*.4,lw:(i%3===0?1.2:.85),solid:.88, ea:.62}, -800+i*8);
+    r-=th;
+  }
+  leg('AGATE BANDS',nb);
+  /* 水平縞(ウルグアイ縞) */
+  if(horiz){
+    const core=wobRing(0,0,r*1.05,{n:56,lobes:lobes,amp:amp*.8});
+    op(-100, function(){ fillPoly(SCR(core),PAPERC,.92); });
+    const nh=Math.round(rr(6,11)*DETN());
+    const b=bbox(core);
+    for(let i=0;i<nh;i++){
+      const y=lerp(b.y0,b.y1,(i+.5)/nh);
+      let poly=core.slice();
+      poly=clipHalf(poly,0,y,0,y+1);
+      const poly2b=clipHalf(core,0,y+ (b.y1-b.y0)/nh, 0, y+(b.y1-b.y0)/nh-1);
+      const strip=clipHalf(clipHalf(core,0,y-1,0,y),0,y+(b.y1-b.y0)/nh+1,0,y+(b.y1-b.y0)/nh);
+      if(strip.length>2)
+        putGrain(strip,{color:col(i%2),a:i%2?.20:.10,sp:3.0,ang:0,lw:.8,solid:0,ea:.4}, -50+i);
+    }
+    leg('HORIZONTAL BANDS',nh);
+    note(0,0,'HORIZONTAL BANDING',1);
+  }else{
+    /* 中心の水晶 */
+    const cav=wobRing(0,0,r,{n:48,lobes:5,amp:.09});
+    op(-40, function(){
+      fillPoly(SCR(cav),PAPERC,.95);
+      curve2(SCR(cav),{w:1.2,a:.5,color:EDGE,passes:2,jit:.5},true);
+    });
+    const nc=Math.max(5,Math.round(TAU*r/(GRAINR()*.8)));
+    for(let i=0;i<nc;i++){
+      const a=i/nc*TAU;
+      const cw=GRAINR()*rr(.16,.28), ch=GRAINR()*rr(.5,1.1);
+      const F=placeFaces(prismFaces(cw,ch,2,{tip:cw*1.4}),
+                         Math.cos(a)*(r-ch), Math.sin(a)*(r-ch), a+Math.PI/2);
+      F.forEach(function(f,k){
+        putFace(f.pts,{color:col(0),a:.14,sp:3.0,ang:a,lw:.95,solid:.5}, 100+i*.1+k*.02);
+      });
+    }
+    leg('QUARTZ CENTRE',nc);
+    note(0,0,'QUARTZ CORE',1);
+  }
+  /* 流入口 */
+  if(chance(.7)){
+    const a=R()*TAU;
+    op(600, function(){
+      const w2=RO*.10;
+      const p0=[Math.cos(a)*RO*1.02, Math.sin(a)*RO*1.02];
+      const p1=[Math.cos(a)*RO*.45, Math.sin(a)*RO*.45];
+      const tube=chainCells([p0,p1], w2, RO*2)[0];
+      if(tube){
+        fillPoly(SCR(tube),PAPERC,.75);
+        curve2(SCR(tube),{w:.9,a:.4,color:EDGE,passes:1,jit:.5},true);
+      }
+    });
+    leg('INFILL CHANNEL',1);
+  }
+  note(0,-RO*.85,'CONCENTRIC BAND',1);
+},
+
+/* ---------- 集合体 03 鉱脈 ---------- */
+vein(){
+  SCENE.grainUm = 18000;
+  const X=FRAD*.98, Y=FRAD*ASPY*.98;
+  const region=[[-X,-Y],[X,-Y],[X,Y],[-X,Y]];
+  const u=GRAINR();
+  /* 母岩 */
+  const host=mosaic(region, u*1.25, {gap:.90, smooth:1, relax:0, vary:.34, maxCells:420});
+  host.forEach(function(cp,i){
+    op(-900+i*.01, function(){
+      hatch2(SCR(cp),{color:col(3),a:.11,sp:4.2,ang:-.8+((i%3)*.4),wash:true});
+      curve2(SCR(cp),{w:.6,a:.24,color:EDGE,passes:1,jit:.5},true);
+    });
+  });
+  leg('HOST ROCK GRAINS',host.length);
+  /* 脈の走向 */
+  const ang=rr(-1.05,-.45);
+  const cx0=-Math.cos(ang)*Y*1.3, cy0=-Math.sin(ang)*Y*1.3;
+  const path=walkPath(cx0,cy0,ang,Y*2.6/7,7,.10);
+  const hw=u*rr(1.5,2.4);
+  /* 脈の壁 */
+  op(-500, function(){
+    const wallA=path.map(function(p,i){ const t=i/(path.length-1);
+      const n=normalAt(path,i); return [p[0]+n[0]*hw, p[1]+n[1]*hw]; });
+    const wallB=path.map(function(p,i){ const n=normalAt(path,i); return [p[0]-n[0]*hw, p[1]-n[1]*hw]; });
+    curve2(SCR(wallA),{w:1.5,a:.55,color:EDGE,passes:2,jit:.5},false);
+    curve2(SCR(wallB),{w:1.5,a:.55,color:EDGE,passes:2,jit:.5},false);
+  });
+  /* 櫛状構造(両壁から中央へ伸びる結晶) */
+  let comb=0;
+  for(const sg of [1,-1]){
+    const cells=bandCells(path, sg*hw, sg*hw*.06, u*rr(.34,.5), {smooth:1,gap:.10,m:3});
+    cells.forEach(function(cp,i){
+      const c=polyCentroid(cp);
+      putFace(cp,{color:col(i%2? 0:2),a:.15,sp:3.0,ang:ang+Math.PI/2,lw:1.0,ea:.72}, -300+i*.1);
+      comb++;
+    });
+  }
+  leg('COMB CRYSTALS',comb);
+  /* 中央の縫合線 */
+  op(-100, function(){
+    const dashed=path;
+    for(let i=0;i<dashed.length-1;i++){
+      if(chance(.25)) continue;
+      lnw(dashed[i],dashed[i+1],{w:.8,a:.32,color:DEEP,passes:1,jit:.7});
+    }
+  });
+  leg('MEDIAN SUTURE',1);
+  /* 鉱染(硫化物) */
+  const nS=Math.round(rr(6,14)*DENN()*DETN());
+  for(let i=0;i<nS;i++){
+    const t=R(), idx=clamp(Math.floor(t*(path.length-1)),0,path.length-2);
+    const ft=(t*(path.length-1))%1;
+    const n=normalAt(path,idx);
+    const off=rr(-hw*.85,hw*.85);
+    const bx=lerp(path[idx][0],path[idx+1][0],ft)+n[0]*off;
+    const by=lerp(path[idx][1],path[idx+1][1],ft)+n[1]*off;
+    const r=u*rr(.14,.34);
+    op(0+i, function(){
+      const g=nGon(bx,by,r,ri(4,6),R()*TAU,.16);
+      fillPoly(SCR(g),DEEP,.72);
+      poly2(SCR(g),{w:.9,a:.6,color:DEEP,passes:1,jit:.4,over:1.2},true);
+      if(DETN()>1) hatch2(SCR(shrinkPoly(g,.8)),{color:col(1),a:.3,sp:1.8,ang:.6,wash:false,raw:true});
+    });
+  }
+  leg('SULPHIDE BLEBS',nS);
+  /* 分岐脈 */
+  if(S.shape!=='MASSIVE'){
+    const nB=ri(1,2);
+    for(let i=0;i<nB;i++){
+      const idx=ri(2,path.length-3);
+      const bp=walkPath(path[idx][0],path[idx][1], ang+rr(.5,1.2)*(chance(.5)?1:-1), Y*.28, 4, .18);
+      const bc=bandCells(bp,-hw*.35,hw*.35, u*.5,{smooth:1,m:3});
+      bc.forEach(function(cp,k){ putFace(cp,{color:col(2),a:.13,sp:3.2,ang:ang,lw:.9,ea:.65}, -200+k*.1); });
+      leg('BRANCH VEINLET',1);
+    }
+  }
+  note(0,0,'COMB TEXTURE',1);
+  note(-X*.55,Y*.4,'HOST ROCK',-1);
+},
+
+/* ---------- 集合体 04 樹枝状 ---------- */
+dendrite(){
+  SCENE.grainUm = 12000;
+  const X=FRAD*.98, Y=FRAD*ASPY*.96;
+  const u=GRAINR();
+  /* 石灰岩の面 */
+  op(-2000, function(){
+    const slab=[[-X,-Y],[X,-Y],[X,Y],[-X,Y]];
+    hatch2(SCR(slab),{color:col(2),a:.07,sp:6.5,ang:-.5,wash:true});
+    poly2(SCR(slab),{w:1.4,a:.4,color:EDGE,passes:1,jit:1.0,over:4},true);
+    for(let i=0;i<Math.round(9*DETN());i++){
+      const y=rr(-Y,Y);
+      const p=walkPath(-X,y,rr(-.05,.05),2*X/6,6,.05);
+      curve2(SCR(p),{w:.6,a:.10,color:EDGE,passes:1,jit:.6},false);
+    }
+  });
+  leg('LIMESTONE SLAB',1);
+  /* 割れ目 */
+  const seedAng = S.shape==='TABULAR'? 0 : rr(-.35,.35);
+  const crack=walkPath(-X*.95, rr(-Y*.3,Y*.3), seedAng, 2*X*.95/8, 8, .10);
+  op(-1500, function(){
+    curve2(SCR(crack),{w:1.0,a:.30,color:EDGE,passes:1,jit:.8},false);
+  });
+  leg('BEDDING JOINT',1);
+  /* 樹枝(60度分岐) */
+  const spread = S.shape==='ACICULAR'? .38 : S.shape==='MASSIVE'? .75 : Math.PI/3;
+  let segs=0, tips=0;
+  function grow(x,y,ang,len,w,depth){
+    const steps=4;
+    const path=walkPath(x,y,ang,len/steps,steps,.10);
+    op(y+depth*.01, function(){
+      curve2(SCR(path),{w:Math.max(.55,PS(w)),a:.78,color:DEEP,passes:1,jit:.45},false);
+      if(w>u*.06) curve2(SCR(path),{w:Math.max(.4,PS(w)*.45),a:.30,color:DEEP,passes:1,jit:.8},false);
+    });
+    segs++;
+    if(depth<=0){ tips++; op(y+1,function(){ blobW(path[steps][0],path[steps][1],w*.7,{color:DEEP,a:.7,jag:.4}); }); return; }
+    for(let i=1;i<=steps;i++){
+      if(i<steps && !chance(.72)) continue;
+      const sg = (i%2? 1:-1)*(chance(.5)?1:-1);
+      const nl = len*rr(.48,.66), nw = w*rr(.52,.68);
+      if(i===steps){ grow(path[i][0],path[i][1], ang+rr(-.12,.12), nl*1.1, nw*1.1, depth-1); }
+      else grow(path[i][0],path[i][1], ang + sg*spread + rr(-.14,.14), nl, nw, depth-1);
+    }
+  }
+  const nRoot = S.density==='MANY'? 4 : S.density==='MODERATE'? 3 : 2;
+  const dep = S.detail==='MINIMAL'? 2 : S.detail==='MODERATE'? 3 : 4;
+  for(let i=0;i<nRoot;i++){
+    const t=(i+.5)/nRoot;
+    const idx=clamp(Math.floor(t*(crack.length-1)),0,crack.length-2);
+    const ft=(t*(crack.length-1))%1;
+    const bx=lerp(crack[idx][0],crack[idx+1][0],ft);
+    const by=lerp(crack[idx][1],crack[idx+1][1],ft);
+    grow(bx,by, (chance(.5)? -Math.PI/2 : Math.PI/2)+rr(-.3,.3), u*rr(3.0,4.4), u*.30, dep);
+  }
+  leg('DENDRITE BRANCHES',segs); leg('GROWTH TIPS',tips);
+  /* 微細な酸化物の点 */
+  const nd=Math.round(40*DENN()*DETN());
+  for(let i=0;i<nd;i++){
+    const p=FPOS(.9);
+    op(-1000+i*.01, function(){ blobW(p[0],p[1],u*rr(.02,.05),{color:DEEP,a:.35,jag:.4}); });
+  }
+  leg('MN OXIDE SPECKS',nd);
+  note(0,0,'DENDRITIC HABIT',1);
+},
+/* ---------- 岩石 01 礫岩 ---------- */
+conglomerate(){
+  SCENE.grainUm = 24000;
+  const u=GRAINR();
+  const sortk=S.shape;
+  const rBase=u*1.85;
+  const spread = sortk==='POORLY'? [.35,1.7] : sortk==='SORTED'? [.85,1.15] : [.55,1.4];
+  const n = S.density==='MANY'? 46 : S.density==='MODERATE'? 32 : 18;
+  /* 基質 */
+  op(-2000, function(){
+    const reg=[[-FRAD*1.02,-FRAD*ASPY*1.02],[FRAD*1.02,-FRAD*ASPY*1.02],
+               [FRAD*1.02,FRAD*ASPY*1.02],[-FRAD*1.02,FRAD*ASPY*1.02]];
+    hatch2(SCR(reg),{color:col(3),a:.10,sp:5.0,ang:-.7,wash:true,cross:true});
+  });
+  const clasts=[];
+  for(let i=0;i<n*7 && clasts.length<n;i++){
+    const p=FPOS(.97);
+    let rad=rBase*rr(spread[0],spread[1]);
+    if(sortk==='GRADED') rad = rBase*lerp(spread[1],spread[0], clamp((p[1]+FRAD*ASPY)/(2*FRAD*ASPY),0,1));
+    if(sortk==='LAMINAR'){
+      const bandI=Math.round((p[1]+FRAD*ASPY)/(FRAD*ASPY*.5));
+      rad = rBase*(bandI%2? spread[0]*1.15 : spread[1]*.85);
+    }
+    let ok=true;
+    /* 礫岩は礫どうしが支えあう。すこし触れるくらいまで詰める */
+    for(const q of clasts) if(Math.hypot(p[0]-q[0],p[1]-q[1]) < (rad+q[2])*.99){ ok=false; break; }
+    if(ok) clasts.push([p[0],p[1],rad]);
+  }
+  const imb=rr(-.5,-.2);
+  clasts.forEach(function(c,i){
+    const el = sortk==='LAMINAR'? rr(1.5,2.2) : rr(1.05,1.7);
+    const ang = (sortk==='LAMINAR'||S.site==='RIVER')? imb+rr(-.22,.22) : R()*TAU;
+    /* 円磨された礫なので輪郭はゆるやかに */
+    let poly=wobRing(0,0,c[2],{n:30,lobes:ri(3,5),amp:rr(.03,.075),ry:1/el});
+    poly=movePoly(rotPoly(poly,ang),c[0],c[1]);
+    const kind=i%4;
+    putGrain(poly,{color:col(kind),a:kind===1?.24:.14,sp:kind===1?2.6:3.8,
+                   ang:ang-.6,lw:1.25,inner:kind===3?.88:0}, c[1]);
+    op(c[1]+.4, function(){
+      if(kind===0 && DETN()>.8) traceW(poly, Math.round(rr(3,7)*DETN()), ang, {w:.6,a:.26});
+      if(kind===2) speckW(c[0],c[1],c[2]*.7,Math.round(6*DETN()),{color:DEEP,a:.34});
+      if(kind===3 && chance(.45)){
+        const a2=R()*TAU;
+        const seg=clipSeg(poly,[c[0]+Math.cos(a2)*c[2]*1.5,c[1]+Math.sin(a2)*c[2]*1.5],
+                               [c[0]-Math.cos(a2)*c[2]*1.5,c[1]-Math.sin(a2)*c[2]*1.5]);
+        if(seg) lnw(seg[0],seg[1],{w:.9,a:.4,color:DEEP,passes:1,jit:.5});
+      }
+      /* 礫は累帯しない。変質・破断のときだけ内部を描き込む */
+      if((S.state==='ALTERED'||S.state==='FRACT') && chance(.55)) interior(poly,{round:true,wash:col(kind)});
+    });
+  });
+  leg('CLASTS',clasts.length);
+  leg('MATRIX',1);
+  /* 基質の砂粒 */
+  const ns=Math.round(70*DENN()*DETN());
+  for(let i=0;i<ns;i++){
+    const p=FPOS(.99);
+    let inside=false;
+    for(const c of clasts) if(Math.hypot(p[0]-c[0],p[1]-c[1])<c[2]*.95){ inside=true; break; }
+    if(inside) continue;
+    op(-1500+i*.01, function(){ blobW(p[0],p[1],u*rr(.03,.08),{color:DEEP,a:.36,jag:.35}); });
+  }
+  leg('MATRIX SAND',ns);
+  note(clasts.length?clasts[0][0]:0, clasts.length?clasts[0][1]:0, 'ROUNDED CLAST', 1);
+  note(-FRAD*.6, FRAD*.6, 'MATRIX', -1);
+},
+
+/* ---------- 岩石 02 鮞状岩 ---------- */
+oolite(){
+  SCENE.grainUm = 700;
+  const u=GRAINR();
+  const X=FRAD*.97, Y=FRAD*ASPY*.97;
+  const region=[[-X,-Y],[X,-Y],[X,Y],[-X,Y]];
+  /* 膠結物 */
+  const cem=mosaic(region, u*1.7, {gap:.94, smooth:0, relax:1, vary:.30, maxCells:340});
+  cem.forEach(function(cp,i){
+    op(-1200+i*.01, function(){
+      hatch2(SCR(cp),{color:col(2),a:.09,sp:4.4,ang:-.6+((i%4)*.4),wash:true});
+      poly2(SCR(cp),{w:.55,a:.22,color:EDGE,passes:1,jit:.4},true);
+    });
+  });
+  leg('SPARRY CEMENT',cem.length);
+  /* ooid */
+  const rB=u*1.15;
+  const spread = S.shape==='POORLY'? [.55,1.5] : S.shape==='SORTED'? [.9,1.1] : [.72,1.28];
+  const n = S.density==='MANY'? 90 : S.density==='MODERATE'? 60 : 34;
+  const oo=[];
+  for(let i=0;i<n*10 && oo.length<n;i++){
+    const p=FPOS(.99);
+    let rad=rB*rr(spread[0],spread[1]);
+    if(S.shape==='GRADED') rad=rB*lerp(spread[1],spread[0], clamp((p[1]+Y)/(2*Y),0,1));
+    let ok=true;
+    /* 鮞状岩は粒が支えあう組織 */
+    for(const q of oo) if(Math.hypot(p[0]-q[0],p[1]-q[1])<(rad+q[2])*1.0){ ok=false; break; }
+    if(ok) oo.push([p[0],p[1],rad]);
+  }
+  let brk=0;
+  oo.forEach(function(o2,i){
+    const broken = chance(.10) && S.state!=='FRESH';
+    let poly=wobRing(o2[0],o2[1],o2[2],{n:26,lobes:ri(4,7),amp:.05});
+    if(broken){ poly=clipHalf(poly, o2[0],o2[1], o2[0]+Math.cos(R()*TAU)*o2[2], o2[1]+Math.sin(R()*TAU)*o2[2]); brk++; }
+    if(poly.length<3) return;
+    putGrain(poly,{color:col(i%2),a:.13,sp:3.4,ang:-.7,lw:1.15}, o2[1]);
+    op(o2[1]+.4, function(){
+      const m=Math.max(2,Math.round(rr(2,4)*DETN()));
+      for(let k=1;k<=m;k++){
+        const kk=1-k/(m+1.4);
+        curve2(SCR(shrinkPoly(poly,kk,[o2[0],o2[1]])),{w:.6,a:.30,color:EDGE,passes:1,jit:.3},true);
+      }
+      blobW(o2[0],o2[1],o2[2]*.16,{color:DEEP,a:.6});
+      leg('CORTICAL LAYERS',m);
+    });
+  });
+  leg('OOIDS',oo.length);
+  if(brk) leg('BROKEN OOIDS',brk);
+  /* 生砕屑 */
+  const nf=Math.round(6*DENN());
+  for(let i=0;i<nf;i++){
+    const p=FPOS(.9), r=u*rr(.5,.95), a=R()*TAU;
+    op(p[1]+2, function(){
+      const sh=[];
+      for(let k=0;k<=16;k++){ const t=k/16*Math.PI; sh.push([Math.cos(t)*r, -Math.sin(t)*r*.30]); }
+      for(let k=16;k>=0;k--){ const t=k/16*Math.PI; sh.push([Math.cos(t)*r, -Math.sin(t)*r*.30-r*.10]); }
+      const poly=movePoly(rotPoly(chaikin(sh,1),a),p[0],p[1]);
+      grainDraw(poly,{color:col(3),a:.22,sp:2.4,ang:a,lw:1.1,solid:.6});
+    });
+  }
+  leg('BIOCLASTS',nf);
+  note(oo.length?oo[0][0]:0, oo.length?oo[0][1]:0, 'CONCENTRIC CORTEX', 1);
+  note(-X*.5,-Y*.5,'SPARRY CEMENT',-1);
+},
+
+/* ---------- 岩石 03 角礫岩 ---------- */
+breccia(){
+  SCENE.grainUm = 20000;
+  const u=GRAINR();
+  const X=FRAD*.98, Y=FRAD*ASPY*.98;
+  const region=[[-X,-Y],[X,-Y],[X,Y],[-X,Y]];
+  /* 基質 */
+  op(-2000, function(){
+    hatch2(SCR(region),{color:col(3),a:.16,sp:3.4,ang:-.8,wash:true,cross:true});
+  });
+  leg('MATRIX',1);
+  const gapk = S.shape==='POORLY'? .74 : S.shape==='SORTED'? .86 : .80;
+  const cells=mosaic(region, u*1.7, {gap:gapk, smooth:0, maxCells:340,
+                                     relax: S.shape==='SORTED'? 3 : 1,
+                                     vary:  S.shape==='SORTED'? .08 : .34});
+  /* 二次的な細粒破片 */
+  const small = S.shape==='POORLY'? mosaic(region, u*.58, {gap:.72, smooth:0, relax:1}) : [];
+  small.forEach(function(cp,i){
+    if(!chance(.35)) return;
+    const c=polyCentroid(cp);
+    const rp=rotPoly(cp,rr(-.14,.14),c);
+    putFace(rp,{color:col(2),a:.12,sp:3.6,ang:-.6,lw:.85,ea:.6}, -900+i*.01);
+  });
+  if(small.length) leg('FINE FRAGMENTS',Math.round(small.length*.35));
+  cells.forEach(function(cp,i){
+    const c=polyCentroid(cp), rad=polyRad(cp,c);
+    const rp=rotPoly(cp, rr(-.20,.20), c);
+    const kind=i%3;
+    putFace(rp,{color:col(kind),a:kind===1?.24:.13,sp:kind===1?2.6:3.8,ang:-.7+kind*.5,
+                lw:1.3,inner:kind===2?.88:0}, c[1]);
+    op(c[1]+.4, function(){
+      if(kind===0 && DETN()>.8) traceW(rp, Math.round(4*DETN()), rr(0,3.1), {w:.6,a:.26});
+      if(kind===2) speckW(c[0],c[1],rad*.6,Math.round(5*DETN()),{color:DEEP,a:.32});
+      if(rad>u*.95) interior(rp,{wash:col(kind)});   /* 大きい破片だけ内部を描き込む */
+    });
+  });
+  leg('ANGULAR CLASTS',cells.length);
+  /* 破片を切る細脈 */
+  const nv=S.detail==='MINIMAL'? 1 : ri(2,3);
+  for(let i=0;i<nv;i++){
+    const a=rr(-1.2,1.2);
+    const p0=[-Math.cos(a)*X*1.3, -Math.sin(a)*Y*1.3];
+    const pth=walkPath(p0[0],p0[1],a,X*2.4/6,6,.14);
+    const w2=u*rr(.06,.13);
+    op(1200+i, function(){
+      const band=bandCells(pth,-w2,w2, X*4, {smooth:1,m:7})[0];
+      if(band){
+        fillPoly(SCR(band),PAPERC,.8);
+        hatch2(SCR(band),{color:col(0),a:.30,sp:2.0,ang:a,wash:true,raw:true});
+        curve2(SCR(band),{w:.85,a:.5,color:EDGE,passes:1,jit:.4},true);
+      }
+    });
+  }
+  leg('CROSS-CUTTING VEINLETS',nv);
+  note(0,0,'ANGULAR CLAST',1);
+  note(-X*.55,Y*.5,'MATRIX',-1);
+},
+
+/* ---------- 岩石 04 葉理 ---------- */
+bedding(){
+  SCENE.grainUm = 6000;
+  const u=GRAINR();
+  const X=FRAD*.98, Y=FRAD*ASPY*.96;
+  const nb=Math.max(4, Math.round(rr(5,8)*DETN()));
+  const lay=[];
+  let y=-Y;
+  const beds=[];
+  for(let i=0;i<nb;i++){
+    const h=(2*Y/nb)*rr(.6,1.5);
+    beds.push({y0:y, y1:Math.min(Y,y+h), k:i});
+    y+=h;
+    if(y>=Y) break;
+  }
+  beds[beds.length-1].y1=Y;
+  const styles=['COARSE','CROSS','FINE','MUD','GRADED'];
+  beds.forEach(function(b,i){
+    const st = S.shape==='LAMINAR'? (i%2? 'FINE':'MUD')
+             : S.shape==='GRADED'? (i%2? 'GRADED':'FINE')
+             : styles[i%styles.length];
+    const top=walkPath(-X, b.y0, rr(-.05,.05), 2*X/6, 6, .05);
+    const bot=walkPath(-X, b.y1, rr(-.05,.05), 2*X/6, 6, .05);
+    const poly=top.concat(bot.slice().reverse());
+    const h=b.y1-b.y0;
+    /* 層の地色(輪郭は上下の層理面だけを引く) */
+    putFace(poly,{color:col(i%4), a: st==='MUD'? .26 : st==='FINE'? .13 : .09,
+                  sp: st==='MUD'? 2.4 : 4.2, ang:-.55, edge:false, solid:.35},
+            -1000+i*10);
+    op(-990+i*10, function(){
+      if(st==='COARSE'){
+        const m=Math.round(26*DENN()*DETN());
+        for(let k=0;k<m;k++){
+          const px=rr(-X,X), py=rr(b.y0+h*.12,b.y1-h*.12);
+          const rp=u*rr(.10,.22);
+          const g=wobRing(px,py,rp,{n:14,lobes:5,amp:.14});
+          grainDraw(g,{color:col((i+1)%4),a:.16,sp:2.6,ang:-.6,lw:.9,solid:.4});
+        }
+        leg('COARSE GRAINS',m);
+      }else if(st==='CROSS'){
+        /* 斜交層理(フォアセット) */
+        const dir=chance(.5)?1:-1;
+        const m=Math.round(rr(7,13)*DETN());
+        for(let k=0;k<m;k++){
+          const x0=lerp(-X-h*1.5,X,k/m);
+          const pts=[];
+          for(let t=0;t<=12;t++){
+            const tt=t/12;
+            pts.push([x0+dir*h*1.5*tt, b.y0 + h*Math.pow(tt,.55)]);
+          }
+          /* フォアセットは層のなかだけに収める */
+          clipCurve(poly,pts).forEach(function(run){
+            curve2(SCR(run),{w:.7,a:.34,color:EDGE,passes:1,jit:.4},false);
+          });
+        }
+        leg('CROSS-BEDS',m);
+      }else if(st==='GRADED'){
+        const m=Math.round(30*DENN()*DETN());
+        for(let k=0;k<m;k++){
+          const t=R();
+          const py=lerp(b.y1,b.y0,t);
+          const rp=u*lerp(.20,.05,t);
+          blobW(rr(-X,X),py,rp,{color:DEEP,a:.42,jag:.3});
+        }
+        leg('GRADED GRAINS',m);
+      }else if(st==='FINE'){
+        const m=Math.round(rr(4,8)*DETN());
+        for(let k=1;k<m;k++){
+          const yy=lerp(b.y0,b.y1,k/m);
+          const p2=walkPath(-X,yy,rr(-.03,.03),2*X/5,5,.04);
+          curve2(SCR(p2),{w:.55,a:.24,color:EDGE,passes:1,jit:.5},false);
+        }
+        leg('LAMINAE',m);
+      }else{
+        if(DETN()>.9){
+          const m=ri(2,4);
+          for(let k=0;k<m;k++){
+            const px=rr(-X*.8,X*.8), py=rr(b.y0+h*.2,b.y1-h*.2);
+            hatch2(SCR(wobRing(px,py,h*.18,{n:14,lobes:4,amp:.2})),
+                   {color:DEEP,a:.20,sp:2.0,ang:.4,wash:true,raw:true});
+          }
+        }
+      }
+    });
+    /* 層理面 */
+    op(-980+i*10, function(){
+      curve2(SCR(top),{w:1.3,a:.45,color:EDGE,passes:1,jit:.6},false);
+      if(i===beds.length-1) curve2(SCR(bot),{w:1.3,a:.45,color:EDGE,passes:1,jit:.6},false);
+    });
+    lay.push({y:(b.y0+b.y1)/2, label:st});
+  });
+  leg('BEDS',beds.length);
+  /* スタイロライト */
+  if(S.detail!=='MINIMAL' && beds.length>2){
+    const b=beds[ri(1,beds.length-2)];
+    op(2000, function(){
+      const pts=[];
+      let yy=b.y0;
+      for(let x=-X; x<X; x+=u*rr(.10,.22)){
+        yy = b.y0 + (chance(.5)? u*rr(.05,.20) : -u*rr(.05,.20));
+        pts.push([x,b.y0]); pts.push([x,yy]);
+      }
+      poly2(SCR(pts),{w:.9,a:.5,color:DEEP,passes:1,jit:.3},false);
+    });
+    leg('STYLOLITE',1);
+  }
+  /* 生痕・ノジュール */
+  const nn=Math.round(3*DENN());
+  for(let i=0;i<nn;i++){
+    const p=[rr(-X*.8,X*.8), rr(-Y*.8,Y*.8)];
+    const r=u*rr(.4,.8);
+    op(2500+i, function(){
+      const g=wobRing(p[0],p[1],r,{n:22,lobes:5,amp:.10});
+      grainDraw(g,{color:col(1),a:.24,sp:2.4,ang:-.5,lw:1.2,solid:.55,inner:.85});
+    });
+  }
+  leg('NODULES',nn);
+  SCENE.layers = lay.slice(0,6);
+  note(0, beds[0].y1, 'BEDDING PLANE', 1);
+  note(-X*.5, beds[beds.length-1].y0, 'LAMINATION', -1);
+},
+
+};
+
+/* 経路の法線 */
+function normalAt(path,i){
+  const a=path[clamp(i,0,path.length-2)], b=path[clamp(i+1,1,path.length-1)];
+  const dx=b[0]-a[0], dy=b[1]-a[1], L=Math.hypot(dx,dy)||1;
+  return [-dy/L, dx/L];
+}
+/* =========================================================================
+   手書き文字(1文字ずつ揺らして観察ノートの手書き風に)
+   ========================================================================= */
+function twidth(str,size,tr){
+  ctx.font = size+'px "Courier New",ui-monospace,monospace';
+  let w=0; for(const ch of str) w += ctx.measureText(ch).width + tr;
+  return w-tr;
+}
+function tech(str,x,y,size,o){
+  o=o||{};
+  const tr = o.tr!=null?o.tr:size*.20;
+  ctx.save();
+  ctx.font = (o.bold?'bold ':'')+(o.italic?'italic ':'')+size+'px "Courier New",ui-monospace,monospace';
+  ctx.fillStyle = o.color||'rgba(66,63,66,.86)';
+  ctx.textBaseline='alphabetic';
+  let cx = x;
+  if(o.align==='center') cx = x - twidth(str,size,tr)/2;
+  else if(o.align==='right') cx = x - twidth(str,size,tr);
+  const j = (o.jit!=null?o.jit:.34)*ROUGH;
+  for(const ch of str){
+    const w = ctx.measureText(ch).width;
+    if(ch!==' '){
+      ctx.save();
+      ctx.translate(cx+w/2+(R()*2-1)*j, y+(R()*2-1)*j*1.1);
+      ctx.rotate((R()*2-1)*.017);
+      ctx.globalAlpha = o.a!=null?o.a:(.78+R()*.22);
+      ctx.fillText(ch,-w/2,0);
+      if(o.bold){ ctx.globalAlpha*=.5; ctx.fillText(ch,-w/2+.35,.3); }
+      ctx.restore();
+    }
+    cx += w + tr;
+  }
+  ctx.restore();
+  return cx-x-tr;
+}
+function boxr(x0,y0,x1,y1,o){
+  o=o||{w:.7,a:.42,passes:1};
+  poly2([[x0,y0],[x1,y0],[x1,y1],[x0,y1]],o,true);
+}
+
+/* =========================================================================
+   観察条件(倍率・スケール)
+   ========================================================================= */
+function optics(){
+  const um = SCENE.grainUm/(2*GRAINR());     /* 1ワールド単位が何µmか */
+  const fieldUm = 2*FIELD.rx*um;
+  const objs=[0.5,1,2,4,10,20,40,100];
+  let best=objs[0], bd=1e9;
+  for(const o of objs){ const d=Math.abs(Math.log(20000/o) - Math.log(fieldUm)); if(d<bd){ bd=d; best=o; } }
+  return { um:um, fieldUm:fieldUm, obj:best, mag:Math.round(best*10), grainUm:SCENE.grainUm };
+}
+function scaleChoice(um){
+  const cands=[1,2,5,10,20,50,100,200,500,1000,2000,5000,10000,20000,50000];
+  let best=cands[0], bd=1e9;
+  for(const c of cands){
+    const px=c/um*V.s;
+    const d=Math.abs(px-130) + (px<50||px>200? 400:0);
+    if(d<bd){ bd=d; best=c; }
+  }
+  return best;
+}
+/* µm を読みやすい単位に */
+function fmtLen(v){
+  if(v>=10000) return (Math.round(v/100)/10)+' mm';
+  if(v>=1000)  return (Math.round(v/10)/100)+' mm';
+  return (Math.round(v*10)/10)+' um';
+}
+function fmtBar(v){
+  if(v>=1000) return (v/1000)+' mm';
+  return v+' um';
+}
+
+/* =========================================================================
+   用紙の枠・記入欄・凡例
+   ========================================================================= */
+const M = { x0:30, y0:30, x1:SW-30, y1:SH-30 };
+const TB = { y0:40, y1:96 };
+const FR = { x0:104, y0:112, x1:SW-44, y1:1152 };
+const BB = { y0:1176, y1:1248 };
+
+function alnum(n){ const s='0123456789ABCDEFGHJKLMNPRSTUVWXYZ'; let o=''; for(let i=0;i<n;i++) o+=s[Math.floor(R()*s.length)]; return o; }
+
+function chrome(){
+  const md = MODES[S.mode];
+  const nm = SCENE.name;
+  const spec = 'SP-' + alnum(6);
+  const acc = '#' + ri(1000,99999);
+  const OP = optics();
+  const q = [];
+  const thin = {w:.62,a:.4,passes:1,jit:.4};
+  const thin2 = {w:.5,a:.26,passes:1,jit:.4};
+
+  /* --- 記入欄 --- */
+  q.push(function(){
+    boxr(44,TB.y0,SW-44,TB.y1,thin);
+    ln2([300,TB.y0],[300,TB.y1],thin);
+    ln2([560,TB.y0],[560,TB.y1],thin);
+    ln2([SW-118,TB.y0],[SW-118,TB.y1],thin);
+    ln2([44,TB.y1-16],[300,TB.y1-16],thin2);
+    tech(md.sheet, 52, TB.y0+21, 15, {tr:2.6,bold:true,color:'rgba(58,56,58,.9)'});
+    tech(nm.style+' / '+nm.sub, 52, TB.y0+35, 8.5, {tr:1.5,color:'rgba(90,86,84,.85)'});
+    tech('SPEC: '+spec, 52, TB.y1-5, 7.6, {tr:1.1,color:'rgba(96,92,88,.8)'});
+    tech('SHEET 1/1', 196, TB.y1-5, 7.6, {tr:1.1,color:'rgba(96,92,88,.8)'});
+    const rows=[['PENCIL:',S.palette],['SITE:',S.site],['STATE:',S.state],['DETAIL:',S.detail]];
+    rows.forEach(function(r,i){
+      const y=TB.y0+14+i*12;
+      tech(r[0], 310, y, 7.4, {tr:1.0,color:'rgba(104,100,94,.8)'});
+      tech(r[1], 384, y, 7.4, {tr:1.0,color:'rgba(70,66,66,.88)'});
+    });
+    /* 色鉛筆の色見本 */
+    for(let i=0;i<4;i++){
+      const x=596+i*32, y=TB.y0+20;
+      ctx.save();
+      hatch2([[x,y],[x+17,y],[x+17,y+17],[x,y+17]],{color:col(i),a:.5,sp:2.6,ang:-.7,wash:true,raw:true});
+      ctx.restore();
+      boxr(x,y,x+17,y+17,{w:.6,a:.4,passes:1});
+    }
+    /* 対物レンズ */
+    const nx=SW-81, ny=TB.y0+30;
+    const pts=[]; for(let k=0;k<=24;k++){ const a=k/24*TAU; pts.push([nx+Math.cos(a)*17,ny+Math.sin(a)*17]); }
+    poly2(pts,{w:.7,a:.45,passes:1,jit:.4},true);
+    const pts2=[]; for(let k=0;k<=20;k++){ const a=k/20*TAU; pts2.push([nx+Math.cos(a)*11,ny+Math.sin(a)*11]); }
+    poly2(pts2,{w:.55,a:.3,passes:1,jit:.4},true);
+    tech('x'+OP.obj, nx, ny+3.5, 9, {align:'center',tr:0,color:'rgba(70,66,66,.9)',bold:true});
+    tech('OBJ', nx, TB.y0+7, 7.4, {align:'center',tr:.6,color:'rgba(96,92,88,.8)'});
+  });
+
+  /* --- 視野の枠 --- */
+  q.push(function(){
+    boxr(FR.x0,FR.y0,FR.x1,FR.y1,{w:.55,a:.22,passes:1,jit:.5});
+    if(S.fieldsh==='CIRCLE'){
+      const c=P(FIELD.cx,FIELD.cy), r=FIELD.rx*V.s;
+      const pts=[]; for(let k=0;k<=72;k++){ const a=k/72*TAU; pts.push([c[0]+Math.cos(a)*r,c[1]+Math.sin(a)*r]); }
+      poly2(pts,{w:1.1,a:.4,passes:1,jit:.4},true);
+    }
+  });
+
+  /* --- 接眼ミクロメーターの目盛 --- */
+  q.push(function(){
+    const sp = S.grid==='SMALL'? 26 : S.grid==='MEDIUM'? 46 : 78;
+    const c=P(FIELD.cx,FIELD.cy);
+    const lim = S.fieldsh==='CIRCLE'? FIELD.rx*V.s : 1e9;
+    for(let i=-14;i<=14;i++){
+      const x=c[0]+i*sp, y=c[1]+i*sp;
+      if(x>FR.x0 && x<FR.x1){
+        const dy = S.fieldsh==='CIRCLE'? Math.sqrt(Math.max(0,lim*lim-(x-c[0])*(x-c[0]))) : 1e9;
+        const y0=Math.max(FR.y0+4, c[1]-dy), y1=Math.min(FR.y1-4, c[1]+dy);
+        if(y1-y0>6) ln2([x,y0],[x,y1],{w:.45,a:.075,passes:1,jit:.3});
+      }
+      if(y>FR.y0 && y<FR.y1){
+        const dx = S.fieldsh==='CIRCLE'? Math.sqrt(Math.max(0,lim*lim-(y-c[1])*(y-c[1]))) : 1e9;
+        const x0=Math.max(FR.x0+4, c[0]-dx), x1=Math.min(FR.x1-4, c[0]+dx);
+        if(x1-x0>6) ln2([x0,y],[x1,y],{w:.45,a:.075,passes:1,jit:.3});
+      }
+    }
+  });
+
+  /* --- 層のラベル(断面のとき) --- */
+  q.push(function(){
+    const lv=SCENE.layers;
+    if(!lv || !lv.length) return;
+    const xs=44;
+    const ys=lv.map(function(l){ return P(0,l.y)[1]; });
+    const top=Math.min.apply(null,ys)-12, bot=Math.max.apply(null,ys)+12;
+    ln2([xs,top],[xs,bot],{w:.55,a:.3,passes:1,jit:.4});
+    ln2([xs-4,top],[xs+4,top],{w:.55,a:.3,passes:1});
+    ln2([xs-4,bot],[xs+4,bot],{w:.55,a:.3,passes:1});
+    lv.forEach(function(l,i){
+      const y=ys[i];
+      ln2([xs,y],[xs+9,y],{w:.6,a:.34,passes:1});
+      tech(l.label, xs+13, y+3, 7.6, {tr:.9,color:'rgba(88,84,82,.82)'});
+    });
+  });
+
+  /* --- 引き出し線の書き込み --- */
+  q.push(function(){
+    NOTES.forEach(function(n,i){
+      const p=P(n.x,n.y);
+      if(p[0]<FR.x0||p[0]>FR.x1||p[1]<FR.y0||p[1]>FR.y1) return;
+      const dir=n.d;
+      let lx = p[0] + dir*rr(70,120), ly = p[1] - rr(38,96);
+      lx = clamp(lx, FR.x0+70, FR.x1-70);
+      ly = clamp(ly, FR.y0+18, FR.y1-18);
+      ln2(p,[lx,ly],{w:.6,a:.42,passes:1,jit:.5});
+      ln2([lx,ly],[lx+dir*30,ly],{w:.6,a:.42,passes:1,jit:.4});
+      const pts=[]; for(let k=0;k<=10;k++){ const a=k/10*TAU; pts.push([p[0]+Math.cos(a)*2.6,p[1]+Math.sin(a)*2.6]); }
+      poly2(pts,{w:.6,a:.5,passes:1,jit:.3},true);
+      tech(n.t, lx+dir*34, ly+3, 7.8, {align:dir>0?'left':'right', tr:.9, color:'rgba(76,72,72,.86)'});
+    });
+  });
+
+  /* --- 下段の記入欄 --- */
+  q.push(function(){
+    /* 凡例 */
+    boxr(44,BB.y0,300,BB.y1,thin);
+    tech('LEGEND', 52, BB.y0+11, 8.2, {tr:1.6,color:'rgba(80,76,74,.85)'});
+    ln2([44,BB.y0+16],[300,BB.y0+16],thin2);
+    const items = LEG.slice().sort(function(a,b){ return b.n-a.n; }).slice(0,12);
+    items.forEach(function(it,i){
+      const cx = 52 + (i%2)*126, cy = BB.y0+30 + Math.floor(i/2)*11;
+      glyph(cx, cy-3.4, i);
+      tech(it.name+'('+it.n+')', cx+11, cy, 6.4, {tr:.5,color:'rgba(96,92,88,.8)'});
+    });
+    /* 中央: スケールバー */
+    tech('SPECIMEN '+acc, 470, BB.y0+11, 8.6, {align:'center',tr:1.6,color:'rgba(74,70,70,.85)'});
+    const um = OP.um;
+    const bar = scaleChoice(um);
+    const px = clamp(bar/um*V.s, 40, 180);
+    const sx0=470-px/2, sx1=470+px/2, sy=BB.y0+40;
+    ln2([sx0,sy],[sx1,sy],{w:1.4,a:.6,passes:1});
+    ln2([sx0,sy-5],[sx0,sy+5],{w:1.0,a:.55,passes:1});
+    ln2([sx1,sy-5],[sx1,sy+5],{w:1.0,a:.55,passes:1});
+    tech(fmtBar(bar), 470, sy-9, 8, {align:'center',tr:1.0,color:'rgba(80,76,74,.85)'});
+    tech('TOTAL x'+OP.mag+'  FIELD '+fmtLen(OP.fieldUm), 470, sy+15, 7,
+         {align:'center',tr:.8,color:'rgba(96,92,88,.78)'});
+    tech(SCENE.name.sub, 470, BB.y1-6, 8, {align:'center',tr:1.6,color:'rgba(80,76,74,.8)'});
+    /* 観察表 */
+    boxr(614,BB.y0,SW-44,BB.y1,thin);
+    tech('OBSERVATION', 622, BB.y0+11, 8.2, {tr:1.5,color:'rgba(80,76,74,.85)'});
+    ln2([614,BB.y0+16],[SW-44,BB.y0+16],thin2);
+    const gg=S.genre;
+    const L=[['MINERAL:',SCENE.name.style.toUpperCase()],[SHAPEL[gg].en+':',S.shape],['PENCIL:',S.palette],
+             ['SHEET:',S.paper],[UNITL[gg].en+':',String(S.groups)]];
+    const Rr=[[SIZEL[gg].en+':',fmtLen(OP.grainUm)],['GRAT:',S.grid],['LINE:',S.ink],
+              ['INCL:',S.incl],['MODE:',md.en]];
+    L.forEach(function(r,i){
+      const y=BB.y0+29+i*10;
+      tech(r[0], 622, y, 6.5, {tr:.5,color:'rgba(112,108,102,.8)'});
+      tech(r[1], 678, y, 6.5, {tr:.5,color:'rgba(72,68,68,.85)'});
+    });
+    Rr.forEach(function(r,i){
+      const y=BB.y0+29+i*10;
+      tech(r[0], 766, y, 6.5, {tr:.5,color:'rgba(112,108,102,.8)'});
+      tech(r[1], 822, y, 6.5, {tr:.5,color:'rgba(72,68,68,.85)'});
+    });
+  });
+
+  /* --- 端の細かい記号 --- */
+  q.push(function(){
+    for(let k=0;k<3;k++){
+      const x = k===1? SW-52 : 42+ (k===2? SW-96:0);
+      const y = 380+k*300+R()*120;
+      for(let i=0;i<12;i++){
+        const px=x+(i%4)*3.2, py=y+Math.floor(i/4)*3.2;
+        if(R()<.45) continue;
+        ctx.globalAlpha=.35; ctx.fillStyle='rgba(90,86,84,.8)';
+        ctx.fillRect(px,py,2.4,2.4); ctx.globalAlpha=1;
+      }
+    }
+    const nstray = S.detail==='DETAILED'? 4 : 2;
+    for(let i=0;i<nstray;i++){
+      const a=[rr(FR.x0,FR.x1),rr(FR.y0,FR.y1)];
+      const l=rr(120,420), ang=rr(-1.2,-.2);
+      ln2(a,[a[0]+Math.cos(ang)*l,a[1]+Math.sin(ang)*l],{w:.5,a:.06,passes:1,jit:1.2});
+    }
+  });
+  return q;
+}
+function glyph(x,y,i){
+  const st={w:.55,a:.4,passes:1,jit:.35};
+  const k=i%6, s=5;
+  if(k===0){ const p=[]; for(let t=0;t<=10;t++){ const a=t/10*TAU; p.push([x+s/2+Math.cos(a)*s/2,y+s/2+Math.sin(a)*s/2]); } poly2(p,st,true); }
+  else if(k===1) boxr(x,y,x+s,y+s,st);
+  else if(k===2){ const p=[]; for(let t=0;t<=10;t++){ const a=t/10*TAU; p.push([x+s/2+Math.cos(a)*s/2,y+s/2+Math.sin(a)*s/3]); } poly2(p,st,true); }
+  else if(k===3){ ln2([x,y],[x+s,y+s],st); ln2([x,y+s],[x+s,y],st); }
+  else if(k===4){ ln2([x,y+s/2],[x+s,y+s/2],st); ln2([x+s/2,y],[x+s/2,y+s],st); }
+  else { boxr(x,y,x+s,y+s,st); ln2([x,y+s],[x+s,y],st); }
+}
+/* =========================================================================
+   仕上げ(紙の粒子・視野のけられ)
+   ========================================================================= */
+let grainTex=null;
+function finishSheet(){
+  /* 円形視野のときは外側を紙で隠す */
+  if(S.fieldsh==='CIRCLE'){
+    const c=P(FIELD.cx,FIELD.cy), r=FIELD.rx*V.s;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(FR.x0-1,FR.y0-1,FR.x1-FR.x0+2,FR.y1-FR.y0+2);
+    ctx.arc(c[0],c[1],r,0,TAU,true);
+    ctx.fillStyle=PAPERC; ctx.globalAlpha=.97; ctx.fill();
+    ctx.restore();
+    const g3=ctx.createRadialGradient(c[0],c[1],r*.72,c[0],c[1],r);
+    g3.addColorStop(0,'rgba(0,0,0,0)'); g3.addColorStop(1,'rgba(60,52,48,.16)');
+    ctx.fillStyle=g3;
+    ctx.save(); ctx.beginPath(); ctx.arc(c[0],c[1],r,0,TAU); ctx.fill(); ctx.restore();
+  }
+  if(!grainTex){
+    const g=document.createElement('canvas'); g.width=200; g.height=200;
+    const gg=g.getContext('2d'); const id=gg.createImageData(200,200), d=id.data;
+    const r2=mulberry32(7);
+    for(let i=0;i<d.length;i+=4){
+      const v=r2()*255; d[i]=d[i+1]=d[i+2]=v; d[i+3]=26;
+    }
+    gg.putImageData(id,0,0); grainTex=g;
+  }
+  ctx.save();
+  ctx.globalCompositeOperation='overlay'; ctx.globalAlpha=.16;
+  const p=ctx.createPattern(grainTex,'repeat');
+  ctx.fillStyle=p; ctx.fillRect(0,0,SW,SH);
+  ctx.restore();
+  const g2=ctx.createRadialGradient(SW/2,SH*.45,SW*.28,SW/2,SH*.45,SW*.95);
+  g2.addColorStop(0,'rgba(0,0,0,0)'); g2.addColorStop(1,'rgba(86,76,60,.08)');
+  ctx.fillStyle=g2; ctx.fillRect(0,0,SW,SH);
+}
+
+/* =========================================================================
+   生成 → 描画パイプライン
+   ========================================================================= */
+let queue=[], qi=0, raf=0, t0=0, lastMs=0, PAINTING=false;
+const progEl=document.getElementById('prog'), progBar=document.getElementById('progBar'), progTxt=document.getElementById('progTxt');
+
+function fitScene(){
+  MEASURE=true;
+  BX={x0:1e9,y0:1e9,x1:-1e9,y1:-1e9};
+  V.s=1; V.cx=0; V.cy=0;
+  for(const o of OPS) o.f();
+  MEASURE=false;
+  const bw=Math.max(1,BX.x1-BX.x0), bh=Math.max(1,BX.y1-BX.y0);
+  const FW=(FR.x1-FR.x0)*0.90, FHh=(FR.y1-FR.y0)*0.88;
+  V.s=Math.min(FW/bw, FHh/bh);
+  V.cx=(FR.x0+FR.x1)/2 - (BX.x0+BX.x1)/2*V.s;
+  V.cy=(FR.y0+FR.y1)/2 - (BX.y0+BX.y1)/2*V.s;
+}
+function generate(keepPaint){
+  R = mulberry32((S.seed>>>0)||1);
+  const PAL = PALETTES[S.palette];
+  COLS = PAL.cols; DEEP = PAL.deep;
+  LINEART = S.lineart;
+  EDGE = LINEART? 'rgba(74,70,78,1)' : PAL.line;
+  INK = EDGE;
+  INKW = S.ink==='FINE'?.80 : S.ink==='BOLD'?1.75 : 1.24;
+  if(LINEART) INKW *= 1.12;
+  ROUGH = 0.35 + (S.rough/100)*1.9;
+  PAPERC = PAPERS[S.paper].base;
+  OPS=[]; LEG=[]; NOTES=[]; strokes=0;
+  SCENE.name = genName();
+  SCENE.layers = [];
+  SCENE.grainUm = 2000;
+  SCENE.mode = S.mode;
+  if(S.title.trim()){
+    const t=S.title.trim();
+    const sp=t.indexOf(' ');
+    SCENE.name={ style:t, sub: sp>0? t.slice(0,sp).toUpperCase() : MODES[S.mode].en.split(' ')[0] };
+  }
+  V.rot = S.rot*Math.PI/6;
+
+  ASPY = (S.fieldsh==='CIRCLE')? 1 : (FR.y1-FR.y0)/(FR.x1-FR.x0);
+  BUILD[S.mode]();
+  TR=null;
+  measureField();
+  matrixField();
+  fieldBounds();
+
+  OPS.sort(function(a,b){ return a.d-b.d; });
+  fitScene();
+  R = mulberry32((((S.seed>>>0)||1) ^ 0x5f356495)>>>0);
+
+  queue = [];
+  queue.push(function(){
+    CURPART=-1; REGIONS=[];
+    ctx.setTransform(EX,0,0,EX,0,0);
+    ctx.clearRect(0,0,SW,SH);
+    ctx.drawImage(paperFor(S.paper),0,0,SW,SH);
+  });
+  OPS.forEach(function(o,i){ queue.push(function(){ CURPART=i; o.f(); }); });
+  const ch=chrome();
+  queue.push(function(){ CURPART=-1; });
+  for(const f of ch) queue.push(f);
+  queue.push(finishSheet);
+  if(!keepPaint) PAINT={};
+  qi=0; t0=performance.now();
+  if(raf) cancelAnimationFrame(raf);
+  progEl.hidden=false; progTxt.textContent='DRAWING';
+  raf=requestAnimationFrame(flush);
+}
+function flush(){
+  const budget = (S.animate && !PAINTING)? 10 : 46;
+  const st=performance.now();
+  while(qi<queue.length && performance.now()-st<budget){ queue[qi++](); }
+  progBar.style.width = Math.round(qi/queue.length*100)+'%';
+  if(qi<queue.length){ raf=requestAnimationFrame(flush); }
+  else{
+    raf=0; lastMs=Math.round(performance.now()-t0);
+    progEl.hidden=true; progBar.style.width='0%'; PAINTING=false;
+    renderInfo();
+  }
+}
+function renderSync(){
+  R = mulberry32((((S.seed>>>0)||1) ^ 0x5f356495)>>>0);
+  qi=0;
+  while(qi<queue.length) queue[qi++]();
+}
+function repaint(){
+  if(!queue.length) return generate(true);
+  if(raf){ cancelAnimationFrame(raf); raf=0; }
+  R = mulberry32((((S.seed>>>0)||1) ^ 0x5f356495)>>>0);
+  qi=0; t0=performance.now();
+  progEl.hidden=false; progTxt.textContent='COLOURING';
+  raf=requestAnimationFrame(flush);
+}
+
+/* =========================================================================
+   右パネル
+   ========================================================================= */
+const infoEl=document.getElementById('info');
+function renderInfo(){
+  const md=MODES[S.mode];
+  const OP=optics();
+  const items=LEG.slice().sort(function(a,b){ return b.n-a.n; }).slice(0,14);
+  const gg=S.genre;
+  const spec=[
+    ['MINERAL', SCENE.name.style],['SPECIMEN', SCENE.name.sub],['MODE', md.en],
+    ['OBJECTIVE', 'x'+OP.obj],['TOTAL MAG', 'x'+OP.mag],
+    ['FIELD', fmtLen(OP.fieldUm)],[SIZEL[gg].en, fmtLen(OP.grainUm)],
+    [SHAPEL[gg].en, S.shape],[UNITL[gg].en, S.groups],['STATE', S.state],
+    ['INCLUSION', S.incl],['DETAIL', S.detail],['ROCK DUST', S.density],[SITEL[gg].en, S.site],
+    ['PENCIL', S.palette],['SHEET', S.paper],['LINE', S.ink],
+    ['ROTATION', (S.rot*30)+'°'],['SEED', S.seed],
+  ];
+  infoEl.innerHTML =
+    '<div class="plate sk dbl"><div class="sub">SPECIMEN</div><h2>'+esc(SCENE.name.style)+'</h2>'+
+    '<div class="sub" style="margin-top:3px">'+esc(md.sheet)+'</div>'+
+    '<table class="spec">'+spec.map(function(r){
+      return '<tr><td>'+r[0]+'</td><td>'+esc(String(r[1]))+'</td></tr>'; }).join('')+'</table></div>'+
+    '<div class="sec"><h3>LEGEND <b>凡例</b></h3><table class="leg">'+
+      items.map(function(it,i){
+        return '<tr><td class="k"><i style="background:'+hexa(col(i),.42)+'"></i></td><td>'+it.name+'</td><td class="n">'+it.n+'</td></tr>';
+      }).join('')+'</table></div>'+
+    '<div class="sec"><h3>SHEET LOG <b>観察記録</b></h3>'+
+      '<div class="stat"><span>ストローク数</span><b>'+strokes.toLocaleString()+'</b></div>'+
+      '<div class="stat"><span>描画部位数</span><b>'+OPS.length.toLocaleString()+'</b></div>'+
+      '<div class="stat"><span>作図時間</span><b>'+(lastMs/1000).toFixed(2)+' s</b></div>'+
+      '<div class="stat"><span>用紙</span><b>'+PAPERS[S.paper].label+'</b></div>'+
+      '<div class="stat"><span>色鉛筆</span><b>'+PALETTES[S.palette].label+'</b></div>'+
+      '<p class="note">同じシードと設定なら、何度描いても同じ試料になります。シードを変えると別の結晶が現れます。</p></div>';
+}
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function hexa(h,a){
+  const n=parseInt(h.slice(1),16);
+  return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')';
+}
+
+/* =========================================================================
+   左パネル(UI)
+   ========================================================================= */
+const optsEl=document.getElementById('opts');
+function chipset(key,map,cls){
+  return '<div class="'+(cls||'grid2')+'">'+Object.keys(map).map(function(k){
+    return '<button class="chip" data-k="'+key+'" data-v="'+k+'">'+map[k]+'<small>'+k+'</small></button>';
+  }).join('')+'</div>';
+}
+function slider(key,label,min,max,step){
+  return '<div class="row"><label>'+label+'</label>'+
+    '<input type="range" data-k="'+key+'" min="'+min+'" max="'+max+'" step="'+(step||1)+'">'+
+    '<span class="val" data-val="'+key+'"></span></div>';
+}
+function buildOpts(){
+  const g=S.genre;
+  optsEl.innerHTML =
+    '<div class="sec"><h3>GRAIN <b>結晶・粒子</b></h3>'+
+      slider('size',SIZEL[g].jp,1,12)+
+      slider('groups',UNITL[g].jp,1,4)+
+      '<h4>'+SHAPEL[g].jp+'</h4>'+chipset('shape',SHAPESETS[g])+
+    '</div>'+
+    '<div class="sec"><h3>TEXTURE <b>内部構造</b></h3>'+
+      '<h4>結晶の状態</h4>'+chipset('state',STATES)+
+      '<h4>包有物</h4>'+chipset('incl',DENS3,'grid3')+
+      '<h4>ディテール</h4>'+chipset('detail',LEVELS3,'grid3')+
+    '</div>'+
+    '<div class="sec"><h3>FIELD <b>視野</b></h3>'+
+      '<h4>'+SITEL[g].jp+'</h4>'+chipset('site',SITESETS[g])+
+      '<h4>岩粉の密度</h4>'+chipset('density',DENS3,'grid3')+
+      '<h4>視野の形</h4>'+chipset('fieldsh',FIELDS)+
+    '</div>'+
+    '<div class="sec"><h3>MEDIA <b>画材</b></h3>'+
+      '<h4>色鉛筆(鉱物色)</h4><div class="swatches" id="swatches">'+
+        Object.keys(PALETTES).map(function(k){
+          return '<button class="sw" data-k="palette" data-v="'+k+'" title="'+PALETTES[k].label+'">'+
+            PALETTES[k].cols.map(function(c){ return '<i style="background:'+c+'"></i>'; }).join('')+'</button>';
+        }).join('')+'</div>'+
+      '<h4>用紙</h4>'+chipset('paper',(function(){ const m={}; Object.keys(PAPERS).forEach(function(k){ m[k]=PAPERS[k].label; }); return m; })())+
+      '<h4>線の太さ</h4>'+chipset('ink',INKS,'grid3')+
+      '<h4>接眼目盛</h4>'+chipset('grid',GRIDS,'grid3')+
+      slider('color','彩色の濃さ',0,100,1)+
+      slider('rough','線の荒さ',0,100,1)+
+    '</div>'+
+    '<div class="sec"><h3>COLOURING <b>塗り絵</b></h3>'+
+      '<div class="grid2" style="margin-bottom:8px">'+
+        '<button class="chip" data-k="lineart" data-v="false">彩色ずみ<small>COLOURED</small></button>'+
+        '<button class="chip" data-k="lineart" data-v="true">線画<small>LINE ART</small></button>'+
+      '</div>'+
+      '<h4>色鉛筆(結晶面をクリックで塗る)</h4>'+
+      '<div class="tray" id="tray"></div>'+
+      '<button class="tbtn" id="btnClearPaint" style="margin-top:9px;width:100%;padding:7px 0">塗りを全部消す</button>'+
+      '<p class="note">結晶面や礫をクリックすると、その一つだけを色鉛筆で塗れます。'+
+      'ドラッグは試料の移動です。線画にすると自動彩色が止まり、塗り絵の下絵になります。</p>'+
+    '</div>'+
+    '<div class="sec"><h3>SHEET <b>記録</b></h3>'+
+      '<h4>試料名(空欄で自動生成)</h4>'+
+      '<div class="field"><input type="text" id="fTitle" placeholder="例: Quartz var. lactea" maxlength="26"></div>'+
+      '<h4>シード</h4>'+
+      '<div style="display:flex;gap:6px"><div class="field" style="flex:1;margin:0"><input type="text" id="fSeed" inputmode="numeric"></div>'+
+      '<button class="tbtn" id="btnSeedRoll" style="padding:6px 10px">🎲</button></div>'+
+      '<p class="note">左のつまみを動かすたびに、鉛筆で引き直します。</p>'+
+    '</div>';
+  document.getElementById('fTitle').value=S.title;
+  document.getElementById('fSeed').value=S.seed;
+}
+function buildTabs(){
+  document.getElementById('genres').innerHTML = Object.keys(GENRES).map(function(k){
+    return '<button class="gbtn" data-k="genre" data-v="'+k+'"><span>'+GENRES[k].icon+' '+GENRES[k].jp+'</span></button>';
+  }).join('');
+  document.getElementById('tabs').innerHTML = modesOf(S.genre).map(function(k){
+    return '<button class="tab" data-k="mode" data-v="'+k+'"><span><em>'+MODES[k].no+'</em>'+MODES[k].jp+'</span></button>';
+  }).join('');
+}
+function buildTray(){
+  const t=document.getElementById('tray');
+  if(!t) return;
+  const cols=COLS.concat([DEEP]);
+  t.innerHTML = cols.map(function(c){
+    return '<button class="pen" data-pen="'+c+'" title="'+c+'"><i style="background:'+c+'"></i></button>';
+  }).join('') + '<button class="pen erase" data-pen="erase" title="消しゴム"><i></i></button>';
+  t.querySelectorAll('.pen').forEach(function(b){
+    b.classList.toggle('on', S.pencil===b.dataset.pen);
+  });
+}
+function penCursor(){
+  const c = S.pencil==='erase' ? '#f2efe4' : (S.pencil||'#c9a227');
+  const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26'><g transform='rotate(35 13 13)'>"+
+    "<rect x='11' y='3' width='4' height='15' fill='"+c+"' stroke='%233a3a40' stroke-width='.8'/>"+
+    "<path d='M11 18 L13 23 L15 18 Z' fill='%23f0e6d0' stroke='%233a3a40' stroke-width='.8'/>"+
+    "<path d='M12.2 21 L13 23 L13.8 21 Z' fill='"+(S.pencil==='erase'?'%23b9b3a2':c)+"'/></g></svg>";
+  return "url(\"data:image/svg+xml;utf8,"+svg.replace(/#/g,'%23')+"\") 3 23, crosshair";
+}
+function sync(){
+  document.querySelectorAll('[data-k][data-v]').forEach(function(b){
+    b.classList.toggle('on', String(S[b.dataset.k])===b.dataset.v);
+  });
+  buildTray();
+  document.getElementById('viewport').style.cursor = penCursor();
+  const bl=document.getElementById('btnLineart');
+  if(bl) bl.classList.toggle('on',S.lineart);
+  document.querySelectorAll('input[type=range][data-k]').forEach(function(r){
+    r.value=S[r.dataset.k];
+    const v=document.querySelector('[data-val="'+r.dataset.k+'"]');
+    if(v) v.textContent = (r.dataset.k==='color'||r.dataset.k==='rough') ? S[r.dataset.k]+'%' : S[r.dataset.k];
+  });
+  document.getElementById('btnAnim').classList.toggle('on',S.animate);
+}
+
+/* =========================================================================
+   イベント
+   ========================================================================= */
+let deb=0;
+function regen(now){
+  clearTimeout(deb);
+  if(now) generate(); else deb=setTimeout(generate,190);
+}
+document.body.addEventListener('click',function(e){
+  const b=e.target.closest('[data-k][data-v]');
+  if(!b) return;
+  const k=b.dataset.k, v=b.dataset.v;
+  if(k==='genre'){
+    if(S.genre===v) return;
+    S.genre=v;
+    S.mode=modesOf(v)[0];
+    S.shape=Object.keys(SHAPESETS[v])[0];
+    S.site=Object.keys(SITESETS[v])[0];
+    buildTabs(); buildOpts(); sync(); generate();
+    return;
+  }
+  if(k==='lineart'){ S.lineart = (v==='true'); sync(); generate(true); return; }
+  S[k]= (k==='size'||k==='groups') ? +v : v;
+  sync(); regen(true);
+});
+optsEl.addEventListener('input',function(e){
+  const r=e.target;
+  if(r.type==='range'){ S[r.dataset.k]=+r.value; sync(); regen(); return; }
+  if(r.id==='fTitle'){ S.title=r.value; regen(); return; }
+  if(r.id==='fSeed'){
+    const n=parseInt(r.value.replace(/\D/g,''),10);
+    if(!isNaN(n)){ S.seed=n; regen(); }
+  }
+});
+optsEl.addEventListener('click',function(e){
+  if(e.target.closest('#btnSeedRoll')) return newSeed();
+  const pen=e.target.closest('[data-pen]');
+  if(pen){ S.pencil = (S.pencil===pen.dataset.pen)? null : pen.dataset.pen; sync(); return; }
+  if(e.target.closest('#btnClearPaint')){
+    if(!Object.keys(PAINT).length) return;
+    PAINT={}; PAINTING=true; repaint();
+  }
+});
+document.getElementById('btnRoll').addEventListener('click',newSeed);
+function newSeed(){
+  S.seed=Math.floor(Math.random()*99999)+1;
+  const f=document.getElementById('fSeed'); if(f) f.value=S.seed;
+  generate();
+}
+document.getElementById('btnRedraw').addEventListener('click',function(){ generate(); });
+document.getElementById('btnAnim').addEventListener('click',function(){ S.animate=!S.animate; sync(); });
+document.getElementById('btnLineart').addEventListener('click',function(){
+  S.lineart=!S.lineart;
+  if(S.lineart && S.pencil===null) S.pencil=COLS[0];
+  sync(); generate(true);
+});
+document.getElementById('btnRotL').addEventListener('click',function(){ S.rot=(S.rot+11)%12; generate(); });
+document.getElementById('btnRotR').addEventListener('click',function(){ S.rot=(S.rot+1)%12; generate(); });
+
+/* ズーム・パン */
+const wrap=document.getElementById('sheetWrap'), vp=document.getElementById('viewport');
+let base=1;
+function fitView(){
+  const r=vp.getBoundingClientRect();
+  base=Math.min((r.height-112)/SH,(r.width-44)/SW);
+  applyView();
+}
+function applyView(){
+  wrap.style.transform='translate('+S.panx+'px,'+S.pany+'px) scale('+(base*S.zoom)+')';
+}
+document.getElementById('btnZoomIn').addEventListener('click',function(){ S.zoom=clamp(S.zoom*1.25,.4,5); applyView(); });
+document.getElementById('btnZoomOut').addEventListener('click',function(){ S.zoom=clamp(S.zoom/1.25,.4,5); applyView(); });
+document.getElementById('btnFit').addEventListener('click',function(){ S.zoom=1; S.panx=0; S.pany=0; applyView(); });
+vp.addEventListener('wheel',function(e){
+  e.preventDefault();
+  S.zoom=clamp(S.zoom*(e.deltaY<0?1.12:1/1.12),.4,5); applyView();
+},{passive:false});
+let drag=null;
+vp.addEventListener('pointerdown',function(e){
+  if(e.target.closest('.toolbar, #prog, .hint')) return;
+  drag={x:e.clientX,y:e.clientY,px:S.panx,py:S.pany,moved:0};
+  vp.setPointerCapture(e.pointerId);
+});
+vp.addEventListener('pointermove',function(e){
+  if(!drag) return;
+  drag.moved=Math.max(drag.moved, Math.abs(e.clientX-drag.x)+Math.abs(e.clientY-drag.y));
+  S.panx=drag.px+(e.clientX-drag.x); S.pany=drag.py+(e.clientY-drag.y); applyView();
+});
+vp.addEventListener('pointerup',function(e){
+  const d=drag; drag=null;
+  if(!d || d.moved>4) return;
+  if(!S.pencil) return;
+  if(raf) return;
+  const r=cv.getBoundingClientRect();
+  if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom) return;
+  const x=(e.clientX-r.left)/r.width*SW, y=(e.clientY-r.top)/r.height*SH;
+  const part=hitPart(x,y);
+  if(part<0) return;
+  if(S.pencil==='erase'){ if(PAINT[part]==null) return; delete PAINT[part]; }
+  else { if(PAINT[part]===S.pencil) return; PAINT[part]=S.pencil; }
+  PAINTING=true; repaint();
+});
+vp.addEventListener('pointercancel',function(){ drag=null; });
+window.addEventListener('resize',fitView);
+window.addEventListener('keydown',function(e){
+  if(e.target.tagName==='INPUT') return;
+  if(e.key==='r'||e.key==='R') newSeed();
+  if(e.key==='ArrowLeft'){ S.rot=(S.rot+11)%12; generate(); }
+  if(e.key==='ArrowRight'){ S.rot=(S.rot+1)%12; generate(); }
+});
+
+/* 書き出し */
+function download(name,after){
+  cv.toBlob(function(b){
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(b); a.download=name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); },2000);
+    if(after) after();
+  },'image/png');
+}
+function fname(){
+  return (SCENE.name.style.toUpperCase().replace(/[^A-Z0-9]+/g,'_')||'SPECIMEN')+'_'+S.seed+'.png';
+}
+document.getElementById('btnPng').addEventListener('click',function(){
+  if(raf){ cancelAnimationFrame(raf); raf=0; renderSync(); progEl.hidden=true; renderInfo(); }
+  download(fname());
+});
+document.getElementById('btnPng2').addEventListener('click',function(){
+  const old=EX; EX=3.6;
+  cv.width=SW*EX; cv.height=SH*EX;
+  if(raf){ cancelAnimationFrame(raf); raf=0; }
+  progEl.hidden=false; progTxt.textContent='HI-RES';
+  generate(); renderSync();
+  progEl.hidden=true; progBar.style.width='0%';
+  download(fname().replace('.png','_HQ.png'), function(){
+    EX=old; cv.width=SW*EX; cv.height=SH*EX;
+    generate();
+  });
+});
+
+/* =========================================================================
+   起動
+   ========================================================================= */
+function boot(){
+  cv.width=SW*EX; cv.height=SH*EX;
+  cv.style.width=SW+'px'; cv.style.height=SH+'px';
+  const dt=makePaper(240,240,'SKETCH');
+  document.documentElement.style.setProperty('--desk-tex','url('+dt.toDataURL()+')');
+  buildTabs(); buildOpts(); sync(); fitView();
+  generate();
+}
+boot();
+</script>
+</body>
+</html>
