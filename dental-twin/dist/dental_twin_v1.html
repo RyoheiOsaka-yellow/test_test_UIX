@@ -25,9 +25,11 @@ header{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var
 .kpi b{color:var(--ink);font-size:15px}
 .spacer{flex:1}
 #meta{font-size:12px;color:var(--sub)}
-button,label.btn{min-height:44px;padding:0 14px;border:1px solid var(--line);background:#fff;
+/* タップ対象は 60px が既定（SPEC §5.16）。ヘッダ chrome のみ 48px に緩和 */
+button,label.btn{min-height:60px;padding:0 14px;border:1px solid var(--line);background:#fff;
   border-radius:9px;font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;
   display:inline-flex;align-items:center;justify-content:center;gap:6px}
+header button{min-height:48px}
 button.on{background:var(--accent);border-color:var(--accent);color:#fff}
 button:active{transform:translateY(1px)}
 #modeBtn{min-width:132px}
@@ -44,10 +46,11 @@ main{display:grid;grid-template-columns:1fr 300px;min-height:0}
 #chartHead{display:flex;align-items:center;gap:10px;margin-bottom:4px}
 #chartHead h3{margin:0;font-size:12px;font-weight:700;color:var(--sub);letter-spacing:.05em}
 #chartHead .spacer{flex:1}
-#chartHead button{min-height:38px;padding:0 12px;font-size:13px}
+#chartHead button{min-height:48px;padding:0 12px;font-size:13px}
+#chartHead .simlock{color:#C1121F;font-weight:700;font-size:12px}
 .crow{display:flex;gap:2px;justify-content:center}
 .crow+.crow{margin-top:2px}
-.tc{flex:1 1 0;max-width:64px;min-width:34px;cursor:pointer;text-align:center;
+.tc{flex:1 1 0;max-width:64px;min-width:34px;min-height:60px;cursor:pointer;text-align:center;
   border-radius:6px;padding:2px 1px 1px;border:2px solid transparent}
 .tc:active{background:#EEF2F7}
 .tc.sel{border-color:var(--accent);background:#EAF1FE}
@@ -65,7 +68,7 @@ main{display:grid;grid-template-columns:1fr 300px;min-height:0}
 #pop .ph2 .spacer{flex:1}
 #pop h4{margin:8px 0 6px;font-size:11px;font-weight:700;color:var(--sub);letter-spacing:.05em}
 #pop .grp{display:flex;gap:6px;flex-wrap:wrap}
-#pop .grp button{min-height:52px;min-width:56px;flex:1 0 auto;font-size:14px;padding:0 10px}
+#pop .grp button{min-height:60px;min-width:60px;flex:1 0 auto;font-size:14px;padding:0 10px}
 #pop .grp button.fon{outline:3px solid var(--accent);outline-offset:-3px}
 #pop .grp button i.sw{margin-right:2px}
 #popClose{min-height:44px}
@@ -131,14 +134,22 @@ input[type=range]{flex:1;height:36px;accent-color:var(--accent)}
 footer{padding:8px 14px;background:var(--panel);border-top:1px solid var(--line);
   font-size:12px;color:var(--sub);display:flex;gap:14px;align-items:center}
 
-/* ---- 患者説明モード ---- */
-body.patient{font-size:16px}
+/* ---- 患者説明モード（文字は最小 18px: SPEC §5.6-8） ---- */
+body.patient{font-size:18px}
 body.patient #summary,body.patient #meta,body.patient .adv{display:none}
 body.patient aside{width:auto}
-body.patient .dh{font-size:23px}
-body.patient .drow{font-size:16px;padding:9px 0}
-body.patient #legend{font-size:14px}
-body.patient .side{font-size:15px}
+body.patient .dh{font-size:24px}
+body.patient .drow{font-size:18px;padding:10px 0}
+body.patient .sec h3{font-size:14px}
+body.patient button,body.patient label.btn{font-size:18px}
+body.patient .row button{font-size:18px}
+body.patient #legend{font-size:18px;gap:6px 16px;padding:9px 12px}
+body.patient #legend i.sw{width:15px;height:15px}
+body.patient .side{font-size:18px}
+body.patient .ph{font-size:18px}
+body.patient #tip{font-size:18px;max-width:290px}
+/* 免責も患者が読むテキスト。18px を下回らせない */
+body.patient footer{font-size:18px}
 
 /* ---- 2D 表示モード（上下顎の咬合面俯瞰ツインビュー） ---- */
 body.mode2d .only3d{display:none}
@@ -208,9 +219,10 @@ body.nochart #chart{padding-bottom:6px}
       <span><i class="sw" style="background:#9AA3AC"></i>金属</span>
       <span><i class="sw" style="background:#EFEDE8"></i>セラミック</span>
       <span><i class="sw" style="background:#4A5A6A"></i>インプラント</span>
-      <span class="adv"><i class="sw" style="background:#2A9D8F;border-radius:50%"></i>ポケット1–3</span>
-      <span class="adv"><i class="sw" style="background:#E9C46A;border-radius:50%"></i>4–5</span>
-      <span class="adv"><i class="sw" style="background:#E63946;border-radius:50%"></i>6mm以上</span>
+      <span class="perioLg hide"><i class="sw" style="background:#2A9D8F;border-radius:50%"></i>歯と歯ぐきのすき間 1–3mm</span>
+      <span class="perioLg hide"><i class="sw" style="background:#E9C46A;border-radius:50%"></i>4–5mm</span>
+      <span class="perioLg hide"><i class="sw" style="background:#E63946;border-radius:50%"></i>6mm以上</span>
+      <span class="perioLg hide"><i class="sw" style="background:#C1121F;border-radius:50%"></i>出血あり</span>
     </div>
 
     <div id="chart" class="adv">
@@ -4408,6 +4420,7 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     dom.addEventListener('mousemove', function (e) {
       if (!dragging) pick(e.clientX, e.clientY, false);
     });
+    dom.addEventListener('mouseleave', hideTip);
     dom.addEventListener('wheel', function (e) {
       e.preventDefault();
       if (S.view2d) return;
@@ -4444,6 +4457,12 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
 
   /* -------------------------------------------------------------- ピッキング */
   const _ndc = new THREE.Vector2();
+
+  // ツールチップは出しっぱなしにしない（古い所見が残ると誤読の原因。SPEC §5.15）
+  function hideTip() {
+    const tip = document.getElementById('tip');
+    if (tip) tip.classList.add('hide');
+  }
   function pick(cx, cy, isClick) {
     if (!S.ready) return;
     const host = document.getElementById('view');
@@ -4475,7 +4494,7 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
 
     const tip = document.getElementById('tip');
     if (!hits.length) {
-      tip.classList.add('hide');
+      hideTip();
       if (isClick) {
         S.selected = null; S.needsRecolor = true; renderDetail(null);
         updateChart(); closePop();   // 2D チャートの選択ハイライトと入力UIも解除する
@@ -4487,10 +4506,15 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     const t = S.teeth.get(fdi);
     const surf = surfaceAt(t, h);
 
-    tip.classList.remove('hide');
-    tip.style.left = (cx - r.left + 14) + 'px';
-    tip.style.top = (cy - r.top + 14) + 'px';
     tip.innerHTML = tipHTML(t, surf);
+    tip.classList.remove('hide');
+    // ビュー矩形内に収める。右下に置けない場合は反転させる（SPEC §5.15）
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let tx = cx - r.left + 14, ty = cy - r.top + 14;
+    if (tx + tw > r.width - 6) tx = Math.max(6, cx - r.left - 14 - tw);
+    if (ty + th > r.height - 6) ty = Math.max(6, cy - r.top - 14 - th);
+    tip.style.left = tx + 'px';
+    tip.style.top = ty + 'px';
 
     if (isClick) {
       S.selected = fdi; S.needsRecolor = true;
@@ -4563,6 +4587,7 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
         const k = b.dataset.layer;
         S.layers[k] = !S.layers[k];
         b.classList.toggle('on', S.layers[k]);
+        syncLegend();
         S.needsRecolor = true;
       });
     });
@@ -4584,7 +4609,7 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
       S.mode = (S.mode === 'clinician') ? 'patient' : 'clinician';
       document.body.classList.toggle('patient', S.mode === 'patient');
       this.textContent = (S.mode === 'patient') ? '患者説明モード' : '術者モード';
-      closePop();                       // 入力UIは術者モード専用。視点と選択歯は維持する
+      closePop(); hideTip();            // 入力UIは術者モード専用。視点と選択歯は維持する
       renderDetail(S.selected);
       renderChartSummary();
     });
@@ -4606,7 +4631,7 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
       rd.readAsText(f);
     });
     document.getElementById('reset').addEventListener('click', function () {
-      stopSeq(); closePop(); setSimulated(false);
+      stopSeq(); closePop(); hideTip(); setSimulated(false);
       S.selected = null; S.needsRecolor = true;
       setPreset('front'); renderDetail(null); updateChart();
     });
@@ -4617,7 +4642,7 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
       document.body.classList.toggle('mode2d', S.view2d);
       this.textContent = S.view2d ? '3D表示' : '2D表示';
       this.classList.toggle('on', S.view2d);
-      stopSeq(); closePop();
+      stopSeq(); closePop(); hideTip();
       document.getElementById('jawTagU').classList.toggle('hide', !S.view2d);
       document.getElementById('jawTagL').classList.toggle('hide', !S.view2d);
       document.getElementById('split2d').classList.toggle('hide', !S.view2d);
@@ -4902,6 +4927,7 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     }
     const note = document.getElementById('simNote');
     if (note) note.classList.toggle('hide', !on);
+    syncChartHead();
   }
 
   function setSimulated(on) {
@@ -5037,12 +5063,14 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     popSurf = (rec && rec.surfaces && rec.surfaces.length)
       ? normSurf(rec.surfaces[0].surface) : 'O';
     renderPop();
+    // 下にある常設要素（フッタ・チャート・凡例バー）の高さを積んで、
+    // どれにも被らない位置に出す
     const pop = document.getElementById('pop');
-    const chart = document.getElementById('chart');
-    const footer = document.querySelector('footer');
-    // 3D: チャートの上に重ならない位置 / 2D: 画面下部（チャートが主役なので浅めに）
-    pop.style.bottom = ((footer ? footer.offsetHeight : 0) +
-      (S.view2d ? 20 : (chart ? chart.offsetHeight : 0) + 14)) + 'px';
+    const h = function (sel) {
+      const el = document.querySelector(sel);
+      return (el && el.offsetParent !== null) ? el.offsetHeight : 0;
+    };
+    pop.style.bottom = (h('footer') + h('#chart') + h('#legend') + 12) + 'px';
     pop.classList.remove('hide');
   }
 
@@ -5200,7 +5228,27 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     S.layers[k] = on;
     const b = document.querySelector('[data-layer=' + k + ']');
     if (b) b.classList.toggle('on', on);
+    syncLegend();
     S.needsRecolor = true;
+  }
+
+  // 凡例は画面に出ている色だけを出す（SPEC §5.17）
+  function syncLegend() {
+    document.querySelectorAll('.perioLg').forEach(function (el) {
+      el.classList.toggle('hide', !S.layers.perio);
+    });
+  }
+
+  // シミュレーション中はチャート入力を受け付けないので、その理由を見出しに出す
+  function syncChartHead() {
+    const h = document.querySelector('#chartHead h3');
+    if (!h) return;
+    if (S.simulated) {
+      h.innerHTML = '歯式チャート　<span class="simlock">' +
+        'シミュレーション表示中は入力できません</span>';
+    } else {
+      h.textContent = '歯式チャート（セルをタップで入力）';
+    }
   }
 
   function worstCariesTooth() {

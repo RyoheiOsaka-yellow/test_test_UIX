@@ -472,6 +472,7 @@
     dom.addEventListener('mousemove', function (e) {
       if (!dragging) pick(e.clientX, e.clientY, false);
     });
+    dom.addEventListener('mouseleave', hideTip);
     dom.addEventListener('wheel', function (e) {
       e.preventDefault();
       if (S.view2d) return;
@@ -508,6 +509,12 @@
 
   /* -------------------------------------------------------------- ピッキング */
   const _ndc = new THREE.Vector2();
+
+  // ツールチップは出しっぱなしにしない（古い所見が残ると誤読の原因。SPEC §5.15）
+  function hideTip() {
+    const tip = document.getElementById('tip');
+    if (tip) tip.classList.add('hide');
+  }
   function pick(cx, cy, isClick) {
     if (!S.ready) return;
     const host = document.getElementById('view');
@@ -539,7 +546,7 @@
 
     const tip = document.getElementById('tip');
     if (!hits.length) {
-      tip.classList.add('hide');
+      hideTip();
       if (isClick) {
         S.selected = null; S.needsRecolor = true; renderDetail(null);
         updateChart(); closePop();   // 2D チャートの選択ハイライトと入力UIも解除する
@@ -551,10 +558,15 @@
     const t = S.teeth.get(fdi);
     const surf = surfaceAt(t, h);
 
-    tip.classList.remove('hide');
-    tip.style.left = (cx - r.left + 14) + 'px';
-    tip.style.top = (cy - r.top + 14) + 'px';
     tip.innerHTML = tipHTML(t, surf);
+    tip.classList.remove('hide');
+    // ビュー矩形内に収める。右下に置けない場合は反転させる（SPEC §5.15）
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let tx = cx - r.left + 14, ty = cy - r.top + 14;
+    if (tx + tw > r.width - 6) tx = Math.max(6, cx - r.left - 14 - tw);
+    if (ty + th > r.height - 6) ty = Math.max(6, cy - r.top - 14 - th);
+    tip.style.left = tx + 'px';
+    tip.style.top = ty + 'px';
 
     if (isClick) {
       S.selected = fdi; S.needsRecolor = true;
@@ -627,6 +639,7 @@
         const k = b.dataset.layer;
         S.layers[k] = !S.layers[k];
         b.classList.toggle('on', S.layers[k]);
+        syncLegend();
         S.needsRecolor = true;
       });
     });
@@ -648,7 +661,7 @@
       S.mode = (S.mode === 'clinician') ? 'patient' : 'clinician';
       document.body.classList.toggle('patient', S.mode === 'patient');
       this.textContent = (S.mode === 'patient') ? '患者説明モード' : '術者モード';
-      closePop();                       // 入力UIは術者モード専用。視点と選択歯は維持する
+      closePop(); hideTip();            // 入力UIは術者モード専用。視点と選択歯は維持する
       renderDetail(S.selected);
       renderChartSummary();
     });
@@ -670,7 +683,7 @@
       rd.readAsText(f);
     });
     document.getElementById('reset').addEventListener('click', function () {
-      stopSeq(); closePop(); setSimulated(false);
+      stopSeq(); closePop(); hideTip(); setSimulated(false);
       S.selected = null; S.needsRecolor = true;
       setPreset('front'); renderDetail(null); updateChart();
     });
@@ -681,7 +694,7 @@
       document.body.classList.toggle('mode2d', S.view2d);
       this.textContent = S.view2d ? '3D表示' : '2D表示';
       this.classList.toggle('on', S.view2d);
-      stopSeq(); closePop();
+      stopSeq(); closePop(); hideTip();
       document.getElementById('jawTagU').classList.toggle('hide', !S.view2d);
       document.getElementById('jawTagL').classList.toggle('hide', !S.view2d);
       document.getElementById('split2d').classList.toggle('hide', !S.view2d);
@@ -966,6 +979,7 @@
     }
     const note = document.getElementById('simNote');
     if (note) note.classList.toggle('hide', !on);
+    syncChartHead();
   }
 
   function setSimulated(on) {
@@ -1101,12 +1115,14 @@
     popSurf = (rec && rec.surfaces && rec.surfaces.length)
       ? normSurf(rec.surfaces[0].surface) : 'O';
     renderPop();
+    // 下にある常設要素（フッタ・チャート・凡例バー）の高さを積んで、
+    // どれにも被らない位置に出す
     const pop = document.getElementById('pop');
-    const chart = document.getElementById('chart');
-    const footer = document.querySelector('footer');
-    // 3D: チャートの上に重ならない位置 / 2D: 画面下部（チャートが主役なので浅めに）
-    pop.style.bottom = ((footer ? footer.offsetHeight : 0) +
-      (S.view2d ? 20 : (chart ? chart.offsetHeight : 0) + 14)) + 'px';
+    const h = function (sel) {
+      const el = document.querySelector(sel);
+      return (el && el.offsetParent !== null) ? el.offsetHeight : 0;
+    };
+    pop.style.bottom = (h('footer') + h('#chart') + h('#legend') + 12) + 'px';
     pop.classList.remove('hide');
   }
 
@@ -1264,7 +1280,27 @@
     S.layers[k] = on;
     const b = document.querySelector('[data-layer=' + k + ']');
     if (b) b.classList.toggle('on', on);
+    syncLegend();
     S.needsRecolor = true;
+  }
+
+  // 凡例は画面に出ている色だけを出す（SPEC §5.17）
+  function syncLegend() {
+    document.querySelectorAll('.perioLg').forEach(function (el) {
+      el.classList.toggle('hide', !S.layers.perio);
+    });
+  }
+
+  // シミュレーション中はチャート入力を受け付けないので、その理由を見出しに出す
+  function syncChartHead() {
+    const h = document.querySelector('#chartHead h3');
+    if (!h) return;
+    if (S.simulated) {
+      h.innerHTML = '歯式チャート　<span class="simlock">' +
+        'シミュレーション表示中は入力できません</span>';
+    } else {
+      h.textContent = '歯式チャート（セルをタップで入力）';
+    }
   }
 
   function worstCariesTooth() {

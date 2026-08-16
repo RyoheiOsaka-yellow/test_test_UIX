@@ -174,6 +174,82 @@ with sync_playwright() as pw:
     pg.click("#dimBtn")
     pg.wait_for_timeout(800)
 
+    # ---- B-3.4: ツールチップの消去・クランプ / 凡例のレイヤ連動 / タップ 60px ----
+    box = pg.locator("#view").bounding_box()
+    pg.mouse.move(box["x"] + box["width"] * 0.5, box["y"] + box["height"] * 0.45)
+    pg.wait_for_timeout(500)
+    tip_on = pg.evaluate("() => !document.getElementById('tip').classList.contains('hide')")
+    pg.mouse.move(box["x"] + box["width"] + 120, box["y"] + 200)   # ビュー外へ
+    pg.wait_for_timeout(500)
+    tip_off = pg.evaluate("() => document.getElementById('tip').classList.contains('hide')")
+    print("tooltip: ビュー内で表示 =", tip_on, "/ ビュー外で消える =", tip_off)
+    if not tip_off:
+        ok = False
+    # 右端でのはみ出し（クランプ）
+    over = pg.evaluate("""() => {
+      const S = window.__DT, t = S.teeth.get(11);
+      const p = t.centroid.clone().applyMatrix4(t.mesh.matrixWorld).project(S.camera);
+      const r = document.getElementById('view').getBoundingClientRect();
+      return { x: r.left + (p.x + 1) / 2 * r.width, y: r.top + (1 - (p.y + 1) / 2) * r.height };
+    }""")
+    pg.mouse.move(over["x"], over["y"])
+    pg.wait_for_timeout(400)
+    clamp = pg.evaluate("""() => {
+      const tip = document.getElementById('tip').getBoundingClientRect();
+      const v = document.getElementById('view').getBoundingClientRect();
+      return tip.right <= v.right + 1 && tip.bottom <= v.bottom + 1;
+    }""")
+    print("tooltip clamp (ビュー内に収まる):", clamp)
+    if not clamp:
+        ok = False
+
+    # 凡例は perio レイヤ ON のときだけポケット色を出す
+    lg_off = pg.evaluate(
+        "() => document.querySelectorAll('.perioLg:not(.hide)').length")
+    pg.click("[data-layer='perio']"); pg.wait_for_timeout(500)
+    lg_on = pg.evaluate("() => document.querySelectorAll('.perioLg:not(.hide)').length")
+    pg.click("[data-layer='perio']"); pg.wait_for_timeout(500)
+    print("凡例の歯周項目: OFF時 =", lg_off, "/ ON時 =", lg_on)
+    if not (lg_off == 0 and lg_on == 4):
+        ok = False
+
+    # タップ対象 60px（入力面: ポップオーバー / チャートセル / 右パネル）
+    pg.click(".tc[data-fdi='16']"); pg.wait_for_timeout(1200)
+    sizes = pg.evaluate("""() => {
+      const min = sel => Math.min(...[...document.querySelectorAll(sel)]
+        .map(e => e.getBoundingClientRect().height));
+      return { pop: min('#pop .grp button'), cell: min('.tc'),
+               panel: min('aside .row button'), header: min('header button') };
+    }""")
+    print("タップ高さ最小値:", sizes)
+    if not (sizes["pop"] >= 59.5 and sizes["cell"] >= 59.5 and sizes["panel"] >= 59.5):
+        ok = False
+    # 入力ポップオーバーが凡例バー・チャートに被らない
+    nolap = pg.evaluate("""() => {
+      const p = document.getElementById('pop').getBoundingClientRect();
+      return ['#legend', '#chart', 'footer'].every(s => {
+        const r = document.querySelector(s).getBoundingClientRect();
+        return p.bottom <= r.top + 1;
+      });
+    }""")
+    print("ポップオーバーが凡例/チャート/フッタに被らない:", nolap)
+    if not nolap:
+        ok = False
+    pg.click("#popClose"); pg.click("#reset"); pg.wait_for_timeout(800)
+
+    # 患者モードの文字は 18px 以上（SPEC §5.6-8）
+    pg.click("#modeBtn"); pg.wait_for_timeout(800)
+    fonts = pg.evaluate("""() => {
+      const px = sel => { const e = document.querySelector(sel);
+        return e ? parseFloat(getComputedStyle(e).fontSize) : null; };
+      return { body: px('body'), legend: px('#legend span'), side: px('#sideL'),
+               btn: px('aside .row button'), detail: px('#detail') };
+    }""")
+    print("患者モードの文字サイズ:", fonts)
+    if min(v for v in fonts.values() if v) < 18:
+        ok = False
+    pg.click("#modeBtn"); pg.wait_for_timeout(800)
+
     # ---- B-3.3: パネルの折りたたみ ----
     pg.click("#sideTgl")
     pg.wait_for_timeout(500)
