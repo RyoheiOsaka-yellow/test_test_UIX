@@ -2009,12 +2009,20 @@ function cutToCanonicalShot(cut, i, projectId) {
       },
     },
     transition_out: cut.transition,
-    edit_decision: cut.kind === "still" ? null : {
-      take: cut.take || 1,
-      src_in_s: cut.srcInSec || 0,
-      audio_edit: cut.audioEdit || "none",
-      audio_overlap_s: cut.audioEdit && cut.audioEdit !== "none" ? cut.audioOverlapSec : null,
-    },
+    edit_decision: cut.kind === "still"
+      ? (cut.caption ? { caption: cut.caption } : null)
+      : {
+        take: cut.take || 1,
+        src_in_s: cut.srcInSec || 0,
+        audio_edit: cut.audioEdit || "none",
+        audio_overlap_s: cut.audioEdit && cut.audioEdit !== "none" ? cut.audioOverlapSec : null,
+        caption: cut.caption || "",
+      },
+    first_frame_ref: (() => {
+      const r = cut.refImgId && state.story && state.story.refs
+        ? state.story.refs.find(x => x.id === cut.refImgId) : null;
+      return r ? { name: r.name, has_alpha: !!r.hasAlpha } : null;
+    })(),
     feasibility_flags: evaluateFeasibility(cut).map(w => ({ level: w.lv, message: w.t })),
     safety_classification: maxSafety,
     equipment_capabilities: recommendForCut(cut).map(r => ({ role: r.role, need: r.need, example_skus: r.examples })),
@@ -2030,6 +2038,7 @@ function exportCanonicalJSON() {
     generator: "Virtual Studio",
     coordinate_convention: "+X=subject right, +Y=behind subject, -Y=camera side, +Z=up, meters",
     project_id: projectId,
+    story_text: state.story.text || "",
     shots: state.cuts.map((c, i) => cutToCanonicalShot(c, i, projectId)),
   };
   saveFileAs("canonical-shots.json", JSON.stringify(doc, null, 2));
@@ -2107,6 +2116,7 @@ function applySnapshot(s) {
     ? { text: s.story.text || "", refs: Array.isArray(s.story.refs) ? s.story.refs : [] }
     : { text: "", refs: [] };
   state.story.audioVol = Object.assign({ bgm: 0.4, nar: 1 }, s.story && s.story.audioVol || {});
+  state.story.audio = Object.assign({}, s.story && s.story.audio || {});
   // 旧形式 (ref.assign = cutId) からの移行: カット側ポインタに変換
   state.story.refs.forEach(r => {
     if (r.assign) {
@@ -2148,10 +2158,14 @@ function startAutosave() {
  * ======================================================= */
 async function gcMediaClips() {
   try {
-    const valid = new Set(Object.values(RC_AUDIO_KEYS));
-    state.cuts.forEach(c => valid.add(c.id));
-    (lsGet(LS_CURRENT, {})?.cuts || []).forEach(c => valid.add(c.id));
-    Object.values(lsGet(LS_PROJECTS, {})).forEach(p => (p.data?.cuts || []).forEach(c => valid.add(c.id)));
+    const valid = new Set(Object.values(RC_AUDIO_LEGACY));
+    const addSnap = snap => {
+      (snap?.cuts || []).forEach(c => valid.add(c.id));
+      Object.values(snap?.story?.audio || {}).forEach(k => valid.add(k));
+    };
+    addSnap(state);
+    addSnap(lsGet(LS_CURRENT, null));
+    Object.values(lsGet(LS_PROJECTS, {})).forEach(p => addSnap(p.data));
     let removed = 0;
     for (const clip of await idbAllClips()) {
       if (valid.has(clip.cutId)) continue;
@@ -3091,6 +3105,7 @@ function cutFromCanonicalShot(shot) {
     cut.srcInSec = shot.edit_decision.src_in_s || 0;
     cut.audioEdit = shot.edit_decision.audio_edit || "none";
     if (shot.edit_decision.audio_overlap_s != null) cut.audioOverlapSec = shot.edit_decision.audio_overlap_s;
+    if (shot.edit_decision.caption) cut.caption = shot.edit_decision.caption;
   }
   if (P.logistics) { cut.takes = P.logistics.estimated_takes ?? cut.takes; cut.setupMin = P.logistics.setup_min ?? cut.setupMin; }
 
@@ -3149,6 +3164,7 @@ function importCanonical(data) {
     drone: state.kit?.drone || null,
   };
   state.cuts = data.shots.map(cutFromCanonicalShot);
+  if (typeof data.story_text === "string" && data.story_text) state.story.text = data.story_text;
   state.activeCut = 0;
   state.selectedItem = null;
   renderAll();
@@ -3446,7 +3462,7 @@ function init() {
     renderAll();
   }
   startAutosave();
-  setTimeout(gcMediaClips, 2500); // 前回セッションの孤児メディアを回収
+  setTimeout(async () => { await rcMigrateLegacyAudio(); rcRefreshIndex(); gcMediaClips(); }, 2500); // 旧音声キー移行→孤児回収
 }
 
 init();

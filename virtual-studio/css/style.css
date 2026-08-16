@@ -971,6 +971,9 @@ input[type="range"]::-moz-range-thumb {
 .rc-clip small { color: var(--dim); }
 .rc-row .btn:first-of-type { margin-left: auto; }
 .rc-clip + .btn { margin-left: 0 !important; }
+/* スチール行: 添付不要 — プレビューが静止画として自動参加 */
+.rc-row.rc-still { background: color-mix(in srgb, var(--surface) 88%, var(--accent) 12%); }
+.rc-row.rc-still .rc-clip { color: var(--dim); }
 .rc-player { background: var(--surface); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow-sm); }
 #rcCanvas { width: 100%; max-width: 640px; aspect-ratio: 16 / 9; background: #000; border-radius: 10px; display: block; }
 .rc-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
@@ -1001,6 +1004,9 @@ input[type="range"]::-moz-range-thumb {
   background: var(--fill-2); color: var(--text2);
   font-size: 9px; font-weight: 700; border-radius: 5px;
   min-width: 16px; overflow: hidden;
+}
+.rc-seg.still {
+  background: repeating-linear-gradient(45deg, var(--fill-2) 0 6px, var(--fill-1) 6px 12px);
 }
 #rcPlayhead {
   position: absolute; top: 0; bottom: 0; left: 0; width: 2px;

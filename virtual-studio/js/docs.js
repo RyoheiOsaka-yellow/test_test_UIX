@@ -703,6 +703,7 @@ function buildEdlDoc() {
     const trans = ev.dFrames ? `D    ${String(ev.dFrames).padStart(3, "0")}` : "C        ";
     edlLines.push(`${n}  ${ev.reel.padEnd(8)} V     ${trans} ${tc(ev.srcIn)} ${tc(ev.srcOut)} ${tc(ev.recIn)} ${tc(ev.recOut)}`);
     edlLines.push(`* FROM CLIP NAME: C${state.cuts.indexOf(ev.cut) + 1} ${ev.cut.name}`);
+    if (ev.cut.caption) edlLines.push(`* CAPTION: ${ev.cut.caption}`);
     if (ev.transIn && ev.transIn !== "cut" && !ev.dFrames) {
       const t = TRANSITIONS.find(x => x.id === ev.transIn);
       edlLines.push(`* TRANSITION NOTE: ${t ? t.en.toUpperCase() : ev.transIn}`);
@@ -726,6 +727,7 @@ function buildEdlDoc() {
       <td>${ev.dur}s</td>
       <td>${ev.no === 1 ? "—" : esc(t ? t.label : "カット")}${ev.dFrames ? `<br><small>${ev.dFrames}f</small>` : ""}</td>
       <td>${ev.no === 1 || !ae || ae.id === "none" ? "—" : `${esc(ae.label)}<br><small>${ev.audioOv}s</small>`}</td>
+      <td>${ev.cut.caption ? esc(ev.cut.caption) : "—"}</td>
     </tr>`;
   }).join("");
 
@@ -754,7 +756,7 @@ function buildEdlDoc() {
       <input type="hidden" id="edlName" value="${esc(state.projectTitle)}.edl">
     </div>
     <table>
-      <thead><tr><th>#</th><th>カット</th><th>採用テイク</th><th>素材 IN/OUT</th><th>レコード IN/OUT</th><th>尺</th><th>入りの繋ぎ</th><th>音の繋ぎ</th></tr></thead>
+      <thead><tr><th>#</th><th>カット</th><th>採用テイク</th><th>素材 IN/OUT</th><th>レコード IN/OUT</th><th>尺</th><th>入りの繋ぎ</th><th>音の繋ぎ</th><th>テロップ</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     <h2>CMX3600 EDL</h2>

@@ -653,7 +653,8 @@ async function exportBackupZip(msgEl) {
   const manifest = [];
   try {
     for (const c of await idbAllClips()) {
-      const special = Object.values(RC_AUDIO_KEYS).includes(c.cutId);
+      const audioKeys = Object.values(state.story.audio || {});
+      const special = audioKeys.includes(c.cutId) || Object.values(RC_AUDIO_LEGACY).includes(c.cutId);
       if (!special && !state.cuts.some(x => x.id === c.cutId)) continue; // 現プロジェクト分のみ
       const extM = String(c.name || "").match(/\.([a-z0-9]{2,4})$/i);
       const fname = `media/${c.cutId}.${extM ? extM[1] : "webm"}`;
@@ -749,11 +750,30 @@ async function rcRefreshIndex() {
 }
 
 /* 音声トラック (BGM/ナレーション) はIDBの特別キーに保存 */
-const RC_AUDIO_KEYS = { bgm: "__bgm", nar: "__nar" };
+const RC_AUDIO_LEGACY = { bgm: "__bgm", nar: "__nar" };
+/* 音声クリップのIDBキーはプロジェクトのstory.audioに保持する
+ * (= プロジェクト保存/切替/バックアップに音声の紐付けが乗る) */
+function rcAudioKey(kind) {
+  return state.story.audio && state.story.audio[kind] || null;
+}
+async function rcMigrateLegacyAudio() {
+  /* 旧グローバルキー (__bgm/__nar) を現プロジェクトに取り込む (一度だけ) */
+  for (const [kind, legacy] of Object.entries(RC_AUDIO_LEGACY)) {
+    if (rcAudioKey(kind)) continue;
+    try {
+      const clip = await idbGetClip(legacy);
+      if (clip) {
+        state.story.audio = state.story.audio || {};
+        state.story.audio[kind] = legacy;
+      }
+    } catch { /* IDBなし */ }
+  }
+}
 
 function renderRcAudio() {
-  for (const [key, id] of Object.entries(RC_AUDIO_KEYS)) {
-    const clip = roughCut.index[id];
+  for (const key of ["bgm", "nar"]) {
+    const id = rcAudioKey(key);
+    const clip = id ? roughCut.index[id] : null;
     const cap = key === "bgm" ? "Bgm" : "Nar";
     byId(`rc${cap}Name`).textContent = clip ? `${clip.name} (${(clip.size / 1048576).toFixed(1)}MB)` : "なし";
     byId(`rc${cap}Del`).hidden = !clip;
@@ -761,21 +781,31 @@ function renderRcAudio() {
   }
   /* ナレーションの開始カット選択 */
   const sel = byId("rcNarStart");
-  sel.hidden = !roughCut.index[RC_AUDIO_KEYS.nar];
+  sel.hidden = !(rcAudioKey("nar") && roughCut.index[rcAudioKey("nar")]);
   sel.innerHTML = state.cuts.map((c, i) =>
     `<option value="${esc(c.id)}" ${state.story.narStartCutId === c.id || (!state.story.narStartCutId && i === 0) ? "selected" : ""}>C${i + 1}から</option>`).join("");
   renderRcSeek();
 }
 
+/* ラフカット内での1カットの尺: スチールは3秒静止、ビデオは指定尺 */
+const RC_STILL_SEC = 3;
+function rcDurOf(c) {
+  return c.kind === "still" ? RC_STILL_SEC : (c.duration || 5);
+}
+/* ラフカットで再生できるカット: 動画添付済みビデオ + 全スチール (プレビュー静止画) */
+function rcPlayableCuts() {
+  return state.cuts.filter(c => c.kind === "still" || roughCut.index[c.id]);
+}
+
 /* シークバー: 再生可能カットを尺比例のブロックで表示 */
 function renderRcSeek() {
-  const cuts = state.cuts.filter(c => c.kind !== "still" && roughCut.index[c.id]);
+  const cuts = rcPlayableCuts();
   const wrap = byId("rcSeekBlocks");
   if (!cuts.length) { wrap.innerHTML = ""; byId("rcSeek").classList.add("empty"); return; }
   byId("rcSeek").classList.remove("empty");
-  const total = cuts.reduce((s, c) => s + (c.duration || 5), 0);
+  const total = cuts.reduce((s, c) => s + rcDurOf(c), 0);
   wrap.innerHTML = cuts.map(c =>
-    `<div class="rc-seg" style="flex:${c.duration || 5}" title="C${state.cuts.indexOf(c) + 1} ${esc(c.name)} (${c.duration || 5}s)">C${state.cuts.indexOf(c) + 1}</div>`).join("");
+    `<div class="rc-seg${c.kind === "still" ? " still" : ""}" style="flex:${rcDurOf(c)}" title="C${state.cuts.indexOf(c) + 1} ${esc(c.name)} (${rcDurOf(c)}s${c.kind === "still" ? " スチール" : ""})">C${state.cuts.indexOf(c) + 1}</div>`).join("");
   const tm = byId("rcTime");
   if (tm && !roughCut.playing) tm.textContent = `0.0 / ${total.toFixed(1)}s`;
   rcRenderNarWave(); // 非同期でナレーション波形を重ねる
@@ -785,13 +815,14 @@ function renderRcSeek() {
  * 「開始カット位置から音声の長さ分」に重ねて描く — どこで喋るかが見える */
 async function rcRenderNarWave() {
   const cvs = byId("rcNarWave");
-  const clipInfo = roughCut.index[RC_AUDIO_KEYS.nar];
-  const cuts = state.cuts.filter(c => c.kind !== "still" && roughCut.index[c.id]);
+  const narKey = rcAudioKey("nar");
+  const clipInfo = narKey ? roughCut.index[narKey] : null;
+  const cuts = rcPlayableCuts();
   if (!clipInfo || !cuts.length) { cvs.hidden = true; return; }
   const key = `${clipInfo.name}:${clipInfo.size}`;
   if (!roughCut.narPeaks || roughCut.narPeaks.key !== key) {
     try {
-      const rec = await idbGetClip(RC_AUDIO_KEYS.nar);
+      const rec = await idbGetClip(narKey);
       const dac = new (window.AudioContext || window.webkitAudioContext)();
       const buf = await dac.decodeAudioData(await rec.blob.arrayBuffer());
       dac.close();
@@ -817,7 +848,7 @@ async function rcRenderNarWave() {
   const g = cvs.getContext("2d");
   g.clearRect(0, 0, cvs.width, cvs.height);
   let acc = 0;
-  const sched = cuts.map(c => { const s0 = acc; acc += c.duration || 5; return s0; });
+  const sched = cuts.map(c => { const s0 = acc; acc += rcDurOf(c); return s0; });
   const total = acc;
   let startSec = 0;
   if (state.story.narStartCutId) {
@@ -837,8 +868,16 @@ async function rcRenderNarWave() {
 }
 
 function renderRcList() {
-  const rows = state.cuts.filter(c => c.kind !== "still").map(c => {
-    const i = state.cuts.indexOf(c);
+  const rows = state.cuts.map((c, i) => {
+    if (c.kind === "still") {
+      /* スチールは添付不要 — プレビューを3秒の静止画として自動参加 */
+      return `<div class="rc-row rc-still">
+        <b>C${i + 1}</b>
+        <span class="rc-name">${esc(c.name)}</span>
+        <span class="rc-trim">スチール ｜ ${RC_STILL_SEC}s静止</span>
+        <span class="rc-clip" title="プレビュー画をそのまま静止カットとして再生します">🖼 プレビューを静止画で挿入</span>
+      </div>`;
+    }
     const clip = roughCut.index[c.id];
     return `<div class="rc-row">
       <b>C${i + 1}</b>
@@ -851,7 +890,7 @@ function renderRcList() {
         : `<button class="btn small" data-rcattach="${c.id}"><svg class="ic"><use href="#i-plus"/></svg> 生成動画を添付</button>`}
     </div>`;
   }).join("");
-  byId("rcList").innerHTML = rows || `<p class="insp-hint">ビデオカットがありません</p>`;
+  byId("rcList").innerHTML = rows || `<p class="insp-hint">カットがありません</p>`;
 }
 
 async function wfAttachClip(cut, file) {
@@ -903,8 +942,8 @@ function rcLoad(v, url) {
  * フェードアウト=黒経由0.5s / ホワイトアウト=白経由0.35s。その他は直つなぎ。 */
 async function rcRun(record, startAt) {
   if (roughCut.playing) return;
-  const cuts = state.cuts.filter(c => c.kind !== "still" && roughCut.index[c.id]);
-  if (!cuts.length) { byId("rcMsg").textContent = "⚠️ 添付された動画がありません。各カットに生成動画を添付してください"; return; }
+  const cuts = rcPlayableCuts();
+  if (!cuts.length) { byId("rcMsg").textContent = "⚠️ 再生できるカットがありません。各カットに生成動画を添付してください"; return; }
   startAt = startAt || { k: 0, offset: 0 };
   roughCut.playing = true;
   roughCut.recording = !!record;
@@ -915,14 +954,15 @@ async function rcRun(record, startAt) {
   /* シーク用スケジュール (レコードイン概算 — ディゾルブの重なりは無視) */
   const sched = [];
   let totalDur = 0;
-  cuts.forEach(c => { sched.push(totalDur); totalDur += c.duration || 5; });
-  const updHead = (k2, v) => {
-    const pos = Math.min(totalDur, sched[k2] + Math.max(0, v && v._segStart != null ? v.currentTime - v._segStart : 0));
+  cuts.forEach(c => { sched.push(totalDur); totalDur += rcDurOf(c); });
+  const updHeadSec = (k2, secs) => {
+    const pos = Math.min(totalDur, sched[k2] + Math.max(0, secs));
     const ph = byId("rcPlayhead");
     if (ph) ph.style.left = `${(pos / totalDur * 100).toFixed(2)}%`;
     const tm = byId("rcTime");
     if (tm) tm.textContent = `${pos.toFixed(1)} / ${totalDur.toFixed(1)}s`;
   };
+  const updHead = (k2, v) => updHeadSec(k2, v && v._segStart != null ? v.currentTime - v._segStart : 0);
 
   const canvas = byId("rcCanvas");
   canvas.width = 1280; canvas.height = 720;
@@ -935,10 +975,13 @@ async function rcRun(record, startAt) {
     c2.fillStyle = "#000";
     c2.fillRect(0, 0, canvas.width, canvas.height);
     const dv = (v, alpha) => {
-      if (!v || !v.videoWidth || alpha <= 0) return;
+      /* <video>もスチールのcanvasも同じ"contain"配置で描く */
+      const vw = v && (v.videoWidth || v.width) || 0;
+      const vh = v && (v.videoHeight || v.height) || 0;
+      if (!vw || !vh || alpha <= 0) return;
       c2.globalAlpha = Math.min(1, alpha);
-      const s = Math.min(canvas.width / v.videoWidth, canvas.height / v.videoHeight);
-      const w = v.videoWidth * s, h = v.videoHeight * s;
+      const s = Math.min(canvas.width / vw, canvas.height / vh);
+      const w = vw * s, h = vh * s;
       c2.drawImage(v, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
       c2.globalAlpha = 1;
     };
@@ -970,8 +1013,9 @@ async function rcRun(record, startAt) {
 
   /* 音声トラック: BGM=ループ / ナレーション=1回。GainNodeで音量調整 */
   const audioEls = [];
-  for (const [key, id] of Object.entries(RC_AUDIO_KEYS)) {
-    if (!roughCut.index[id]) continue;
+  for (const key of ["bgm", "nar"]) {
+    const id = rcAudioKey(key);
+    if (!id || !roughCut.index[id]) continue;
     const el = byId(key === "bgm" ? "rcBgmEl" : "rcNarEl");
     const url = await rcGetUrl(id);
     if (!url) continue;
@@ -1005,7 +1049,7 @@ async function rcRun(record, startAt) {
     try { await v.play(); } catch { /* 再生不可素材はスキップ扱い */ }
   };
 
-  await rcLoad(vids[startAt.k % 2], await rcGetUrl(cuts[startAt.k].id));
+  if (cuts[startAt.k].kind !== "still") await rcLoad(vids[startAt.k % 2], await rcGetUrl(cuts[startAt.k].id));
   /* ナレーションは指定カット到達時に開始 (BGMは常に頭から) */
   const narEl = byId("rcNarEl");
   const hasNar = audioEls.includes(narEl);
@@ -1028,17 +1072,30 @@ async function rcRun(record, startAt) {
   for (let k = startAt.k; k < cuts.length && !roughCut.stopFlag && !roughCut.seekReq; k++) {
     const v = vids[k % 2], nv = vids[(k + 1) % 2];
     const cut = cuts[k];
-    const dur = cut.duration || 5;
-    if (!v._prestarted) await startSeg(v, cut, k === startAt.k ? startAt.offset : 0);
-    v._prestarted = false;
+    const isStill = cut.kind === "still";
+    const dur = rcDurOf(cut);
+    if (!isStill) {
+      if (!v._prestarted) await startSeg(v, cut, k === startAt.k ? startAt.offset : 0);
+      v._prestarted = false;
+    }
     if (hasNar && !narStarted && k >= narStartK) {
       narEl.currentTime = 0;
       narEl.play().catch(() => {});
       narStarted = true;
     }
-    draw.a = v; draw.b = null; draw.alphaB = 0;
+    if (isStill) {
+      /* スチール: プレビューSVGをその場でラスタライズして静止フレームに */
+      try {
+        const svg = renderPreviewSVG(cut, `rcst${k}`)
+          .replace("<svg ", `<svg width="${canvas.width}" height="${canvas.height}" `);
+        draw.a = await svgToCanvas(svg, canvas.width, canvas.height);
+      } catch { draw.a = null; }
+    } else {
+      draw.a = v;
+    }
+    draw.b = null; draw.alphaB = 0;
     draw.caption = cut.caption || "";
-    byId("rcMsg").textContent = `${record ? "録画中" : "再生中"}: C${state.cuts.indexOf(cut) + 1} (${k + 1}/${cuts.length})`;
+    byId("rcMsg").textContent = `${record ? "録画中" : "再生中"}: C${state.cuts.indexOf(cut) + 1} (${k + 1}/${cuts.length})${isStill ? " ｜ スチール" : ""}`;
 
     // フェード明け (前カットが黒/白経由だった場合)
     if (veilIn > 0) {
@@ -1051,14 +1108,41 @@ async function rcRun(record, startAt) {
       veilIn = 0;
     }
 
-    // 次カットを先読み
+    // 次カットを先読み (ビデオのみ)
     let preload = null;
-    if (k + 1 < cuts.length) preload = rcGetUrl(cuts[k + 1].id).then(u => rcLoad(nv, u));
+    if (k + 1 < cuts.length && cuts[k + 1].kind !== "still") preload = rcGetUrl(cuts[k + 1].id).then(u => rcLoad(nv, u));
 
-    const endT = Math.min(v.duration || 1e9, (v._segStart || 0) + dur);
-    const trans = k + 1 < cuts.length ? (cut.transition || "cut") : "cut";
+    let trans = k + 1 < cuts.length ? (cut.transition || "cut") : "cut";
+    if (trans === "dissolve" && (isStill || cuts[k + 1].kind === "still")) trans = "cut"; // スチール絡みは直つなぎ
     const X = trans === "dissolve" ? 0.7 : 0;
     const FADE = trans === "fadeout" ? 0.5 : trans === "whiteout" ? 0.35 : 0;
+
+    if (isStill) {
+      /* 静止画を尺分表示 → 必要ならフェードで抜ける */
+      const startOff = k === startAt.k ? Math.min(startAt.offset, dur) : 0;
+      const mainLen = Math.max(0, dur - startOff - FADE);
+      const t0 = performance.now();
+      while (!roughCut.stopFlag && !roughCut.seekReq && performance.now() - t0 < mainLen * 1000) {
+        updHeadSec(k, startOff + (performance.now() - t0) / 1000);
+        await frame();
+      }
+      if (roughCut.stopFlag || roughCut.seekReq) break;
+      if (FADE > 0) {
+        draw.veilColor = trans === "whiteout" ? "#ffffff" : "#000000";
+        roughCut.stats.veil++;
+        const t1 = performance.now();
+        while (!roughCut.stopFlag && !roughCut.seekReq && performance.now() - t1 < FADE * 1000) {
+          draw.veil = (performance.now() - t1) / (FADE * 1000);
+          updHeadSec(k, startOff + mainLen + (performance.now() - t1) / 1000);
+          await frame();
+        }
+        draw.veil = 1;
+        veilIn = FADE;
+      }
+      continue;
+    }
+
+    const endT = Math.min(v.duration || 1e9, (v._segStart || 0) + dur);
 
     // 本編 (トランジション分を残して再生)
     while (!roughCut.stopFlag && !roughCut.seekReq && !v.ended && v.currentTime < endT - X - FADE - 0.03) {
@@ -1152,16 +1236,21 @@ function setupRoughCut() {
     const file = e.target.files[0];
     const key = e.target.dataset.key;
     e.target.value = "";
-    if (!file || !RC_AUDIO_KEYS[key]) return;
-    const id = RC_AUDIO_KEYS[key];
+    if (!file || (key !== "bgm" && key !== "nar")) return;
+    const id = `aud-${key}-${uid()}`; // プロジェクト固有のキー
     await idbPutClip({ cutId: id, name: file.name, type: file.type, size: file.size, blob: file, addedAt: Date.now() });
-    if (roughCut.urls[id]) { URL.revokeObjectURL(roughCut.urls[id]); delete roughCut.urls[id]; }
+    state.story.audio = state.story.audio || {};
+    state.story.audio[key] = id; // 旧クリップはGCが回収する
     rcRefreshIndex();
   });
   document.querySelectorAll("[data-audiodel]").forEach(btn => btn.addEventListener("click", async () => {
-    const id = RC_AUDIO_KEYS[btn.dataset.audiodel];
-    await idbDelClip(id);
-    if (roughCut.urls[id]) { URL.revokeObjectURL(roughCut.urls[id]); delete roughCut.urls[id]; }
+    const kind = btn.dataset.audiodel;
+    const id = rcAudioKey(kind);
+    if (id) {
+      await idbDelClip(id);
+      if (roughCut.urls[id]) { URL.revokeObjectURL(roughCut.urls[id]); delete roughCut.urls[id]; }
+      delete state.story.audio[kind];
+    }
     rcRefreshIndex();
   }));
   const volBind = (elId, key, audioElId) => byId(elId).addEventListener("input", e => {
@@ -1180,21 +1269,21 @@ function setupRoughCut() {
   /* ホバーでカットのプレビューサムネイルを出す */
   const seekEl = byId("rcSeek"), tip = byId("rcSeekTip");
   seekEl.addEventListener("mousemove", e => {
-    const cuts = state.cuts.filter(c => c.kind !== "still" && roughCut.index[c.id]);
+    const cuts = rcPlayableCuts();
     if (!cuts.length) { tip.hidden = true; return; }
     const rect = seekEl.getBoundingClientRect();
     const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     let acc = 0;
-    const sched = cuts.map(c => { const s0 = acc; acc += c.duration || 5; return s0; });
+    const sched = cuts.map(c => { const s0 = acc; acc += rcDurOf(c); return s0; });
     const t = frac * acc;
     let k = cuts.length - 1;
     for (let i = 0; i < cuts.length; i++) {
-      if (t < sched[i] + (cuts[i].duration || 5)) { k = i; break; }
+      if (t < sched[i] + rcDurOf(cuts[i])) { k = i; break; }
     }
     const cut = cuts[k];
     if (tip.dataset.cid !== cut.id) {
       tip.innerHTML = `<div class="tip-thumb">${renderPreviewSVG(cut, "sktip")}</div>
-        <div class="tip-cap">C${state.cuts.indexOf(cut) + 1}　${esc(cut.name.slice(0, 16))} ｜ ${cut.duration || 5}s</div>`;
+        <div class="tip-cap">C${state.cuts.indexOf(cut) + 1}　${esc(cut.name.slice(0, 16))} ｜ ${cut.kind === "still" ? "スチール " : ""}${rcDurOf(cut)}s</div>`;
       tip.dataset.cid = cut.id;
     }
     tip.hidden = false;
@@ -1205,16 +1294,16 @@ function setupRoughCut() {
 
   /* シーク: クリック位置のカット/オフセットから再生 (録画中は無効) */
   byId("rcSeek").addEventListener("click", e => {
-    const cuts = state.cuts.filter(c => c.kind !== "still" && roughCut.index[c.id]);
+    const cuts = rcPlayableCuts();
     if (!cuts.length || roughCut.recording && roughCut.playing) return;
     const rect = byId("rcSeek").getBoundingClientRect();
     const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     let acc = 0;
-    const sched = cuts.map(c => { const s0 = acc; acc += c.duration || 5; return s0; });
+    const sched = cuts.map(c => { const s0 = acc; acc += rcDurOf(c); return s0; });
     const t = frac * acc;
     let k = cuts.length - 1;
     for (let i = 0; i < cuts.length; i++) {
-      if (t < sched[i] + (cuts[i].duration || 5)) { k = i; break; }
+      if (t < sched[i] + rcDurOf(cuts[i])) { k = i; break; }
     }
     const target = { k, offset: Math.max(0, t - sched[k]) };
     if (roughCut.playing) roughCut.seekReq = target; // ループが検知して再入する

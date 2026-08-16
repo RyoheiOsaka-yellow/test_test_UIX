@@ -69,6 +69,7 @@ const { chromium } = require('playwright-core');
       rec2.start(); setTimeout(() => { rec2.stop(); osc.stop(); }, 2500);
     });
     await idbPutClip({ cutId: '__nar', name: narFile.name, type: narFile.type, size: narFile.size, blob: narFile, addedAt: 1 });
+    await rcMigrateLegacyAudio(); // v3.2: 旧グローバルキーは現プロジェクトへ紐付けてから使う
     await rcRefreshIndex();
     await new Promise(r => setTimeout(r, 800));
   });

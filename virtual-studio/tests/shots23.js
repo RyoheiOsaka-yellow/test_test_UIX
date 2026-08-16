@@ -48,6 +48,7 @@ const fs = require('fs');
       rec2.start(); setTimeout(() => { rec2.stop(); osc.stop(); }, 3000);
     });
     await idbPutClip({ cutId: '__bgm', name: bgmFile.name, type: bgmFile.type, size: bgmFile.size, blob: bgmFile, addedAt: 1 });
+    await rcMigrateLegacyAudio(); // v3.2: 旧グローバルキーは現プロジェクトへ紐付けてから使う
     await rcRefreshIndex();
     await new Promise(r => setTimeout(r, 300));
   });
