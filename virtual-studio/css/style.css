@@ -997,6 +997,101 @@ input[type="range"]::-moz-range-thumb {
 .beat-actions { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .beat-actions select { font-size: 11px; }
 
+/* ---------- 台本 / 絵コンテ ページ ---------- */
+#scriptHint {
+  padding: 10px 20px 0; font-size: 11.5px; line-height: 1.6;
+}
+#scriptHint b { color: var(--text); }
+#scriptBody {
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding: 12px 20px 40px; display: flex; flex-direction: column; gap: 12px;
+}
+.sc-cut {
+  display: flex; gap: 14px; align-items: flex-start;
+  background: var(--surface); border-radius: 14px; padding: 12px 14px;
+  box-shadow: var(--shadow-sm); border: 2px solid transparent;
+  transition: border-color 0.18s var(--ease);
+}
+.sc-cut.active { border-color: var(--accent); }
+.sc-left { flex: 0 0 190px; display: flex; flex-direction: column; gap: 5px; }
+.sc-frame {
+  border-radius: 9px; overflow: hidden; background: #101114; cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+.sc-frame svg { display: block; width: 100%; height: 108px; }
+.sc-no { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; }
+.sc-name {
+  background: var(--fill-1); border: 1px solid transparent; border-radius: 7px;
+  padding: 4px 8px; font-size: 12px; font-weight: 600; color: var(--text); font-family: inherit;
+}
+.sc-tech { font-size: 10px; color: var(--dim); font-family: "SF Mono", ui-monospace, monospace; line-height: 1.5; }
+.sc-dur { font-size: 11px; color: var(--text2); }
+.sc-dur input { width: 58px; background: var(--fill-1); border: 1px solid transparent; border-radius: 6px; padding: 3px 6px; color: var(--text); font-family: inherit; }
+
+.sc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.sc-row { display: flex; align-items: center; gap: 8px; }
+.sc-row label { flex: 0 0 92px; font-size: 11px; color: var(--text2); }
+.sc-row input {
+  flex: 1; min-width: 0; background: var(--fill-1); border: 1px solid transparent;
+  border-radius: 7px; padding: 5px 9px; font-size: 12px; color: var(--text); font-family: inherit;
+}
+.sc-row input:focus, .sc-name:focus, .sc-dur input:focus {
+  outline: none; background: var(--surface); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.sc-sub {
+  font-size: 10.5px; font-weight: 700; color: var(--text2);
+  margin-top: 4px; padding-top: 7px; border-top: 1px solid var(--line);
+}
+.sc-sub small { font-weight: 400; color: var(--dim); margin-left: 6px; }
+.sc-sub small.sc-gap { color: #b06e06; font-weight: 700; }
+.sc-actors { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sc-actor {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: var(--fill-1); border-radius: 980px; padding: 2px 4px 2px 6px;
+}
+.sc-actor select, .sc-actors > select { font-size: 10.5px; padding: 3px 20px 3px 7px; }
+.sc-actor input {
+  background: transparent; border: none; font-size: 10.5px; color: var(--text);
+  font-family: inherit; width: 54px;
+}
+.sc-actor input:focus { outline: none; background: var(--surface); border-radius: 5px; }
+.sc-beats { display: flex; flex-direction: column; gap: 4px; }
+.sc-beat { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.sc-t {
+  flex: 0 0 auto; min-width: 64px; font-size: 9.5px; font-weight: 700;
+  color: var(--accent); font-variant-numeric: tabular-nums;
+}
+.sc-beat input, .sc-beat select {
+  background: var(--fill-1); border: 1px solid transparent; border-radius: 6px;
+  padding: 4px 7px; font-size: 11px; color: var(--text); font-family: inherit;
+}
+.sc-beat input:focus { outline: none; background: var(--surface); border-color: var(--accent); }
+.sc-sec { width: 54px; }
+.sc-do { flex: 1 1 220px; min-width: 140px; }
+.sc-who { max-width: 96px; }
+.sc-gaze, .sc-cam { font-size: 10px; padding: 3px 18px 3px 6px; max-width: 108px; }
+.sc-beat .icon-btn { width: 22px; height: 22px; font-size: 12px; }
+.sc-beat-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.sc-beat-actions select { font-size: 10.5px; }
+.sc-quality { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+.sc-quality select { font-size: 10px; padding: 3px 18px 3px 6px; max-width: 118px; }
+.sc-foot {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding-top: 7px; border-top: 1px solid var(--line); font-size: 11px; color: var(--text2);
+}
+.sc-method select { font-size: 10.5px; margin-left: 6px; }
+.sc-method small { color: var(--dim); }
+.sc-trans { margin-left: auto; font-size: 10.5px; color: var(--dim); }
+.sc-lint { list-style: none; margin-top: 2px; }
+.sc-lint li { font-size: 10.5px; line-height: 1.55; color: var(--text2); padding: 2px 0; }
+
+@media (max-width: 900px) {
+  .sc-cut { flex-direction: column; }
+  .sc-left { flex: 1 1 auto; width: 100%; flex-direction: row; align-items: center; flex-wrap: wrap; }
+  .sc-frame { width: 150px; }
+  .sc-quality { margin-left: 0; }
+}
+
 /* ---------- プロンプト診断 ---------- */
 #lintBox {
   background: var(--surface); border-radius: var(--radius);

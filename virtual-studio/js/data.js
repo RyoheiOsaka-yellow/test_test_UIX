@@ -350,22 +350,34 @@ const PERF_TEMPS = [
   { id: "shown", label: "誰かに見せている", en: "aware of an audience" },
   { id: "observed", label: "観察されている (気づいていない)", en: "observational, does not acknowledge the camera" },
 ];
-/* 視線 — どこを見ているかは動画参照が持つ情報だが、無い場合は指定する */
+/* 登場要素 (アクター) — 動くのは人だけではない。車両・動物・群衆・物、
+ * そしてカメラ自身も「動き」を持つ。台本上ではすべて同じ扱いにする */
+const ACTOR_TYPES = [
+  { id: "person", label: "人物", en: "a person" },
+  { id: "vehicle", label: "車両", en: "a vehicle" },
+  { id: "animal", label: "動物", en: "an animal" },
+  { id: "crowd", label: "群衆", en: "a crowd" },
+  { id: "object", label: "商品・物", en: "an object" },
+  { id: "camera", label: "カメラ自身", en: "the camera itself" },
+];
+
+/* 視線・向き — どこを見ている/向いているか (車なら進行方向) */
 const GAZE_TARGETS = [
   { id: "none", label: "指定なし", en: "" },
-  { id: "ahead", label: "前方", en: "looking ahead" },
+  { id: "ahead", label: "前方", en: "facing ahead" },
   { id: "camera", label: "カメラ", en: "looking into the camera" },
   { id: "partner", label: "相手", en: "looking at the other person" },
   { id: "object", label: "手元/対象物", en: "looking at the object in hand" },
   { id: "away", label: "外す/逸らす", en: "looking away" },
 ];
-/* 人同士の接触 — risk が高いほど「先に撮る」向き */
+/* 要素同士の絡み — risk が高いほど「先に撮る」向き。
+ * 人同士に限らず、車と人・動物と人の絡みも同じ判断でよい */
 const CONTACT_TYPES = [
-  { id: "none", label: "接触なし", en: "no physical contact", risk: 0 },
+  { id: "none", label: "絡みなし", en: "no physical interaction", risk: 0 },
   { id: "near", label: "すれ違い/近接", en: "passing close to each other", risk: 1 },
-  { id: "touch", label: "触れる/手をつなぐ", en: "touching / holding hands", risk: 2 },
+  { id: "touch", label: "触れる/接触する", en: "physical contact between subjects", risk: 2 },
   { id: "handoff", label: "受け渡し", en: "handing an object over", risk: 2 },
-  { id: "embrace", label: "抱擁/組み合う", en: "embracing / grappling", risk: 3 },
+  { id: "embrace", label: "組み合う/衝突", en: "grappling / colliding", risk: 3 },
 ];
 /* カメラが体の動きに連動するか — カメラワーク側と矛盾しないか診断する */
 const CAM_LINKS = [

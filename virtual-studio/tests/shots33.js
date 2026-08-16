@@ -93,12 +93,12 @@ const { chromium } = require('playwright-core');
   // ============ ⑤ 制作方式の推奨と向かないケース ============
   const method = await page.evaluate(() => {
     const c = state.cuts[0];
-    c.perf.people = 1; c.perf.contact = 'none'; c.perf.beats = [];
+    c.perf.actors = [{ id: 'a1', type: 'person', name: '' }]; c.perf.people = 1; c.perf.contact = 'none'; c.perf.beats = [];
     c.refImgId = null;
     const solo = recommendMethod(c).id;
     c.refImgId = 'r1';
     const withRef = recommendMethod(c).id;
-    c.perf.people = 2; c.perf.contact = 'embrace';
+    c.perf.actors = [{ id: 'a1', type: 'person', name: '1' }, { id: 'a2', type: 'vehicle', name: '' }]; c.perf.people = 2; c.perf.contact = 'embrace';
     const rec = recommendMethod(c);
     const auto = perfMethodOf(c);
     // 向かないケースにチェック → 先に撮っても解決しない警告
@@ -135,7 +135,7 @@ const { chromium } = require('playwright-core');
     const c = state.cuts[0];
     c.duration = 8;
     perfApplyTemplate(c, 'enterExit');
-    c.perf.people = 2; c.perf.contact = 'handoff';
+    c.perf.actors = [{ id: 'a1', type: 'person', name: '1' }, { id: 'a2', type: 'person', name: '2' }]; c.perf.people = 2; c.perf.contact = 'handoff';
     c.perf.preserve = ['performance', 'timing']; c.perf.change = ['person'];
     const shot = cutToCanonicalShot(c, 0, 'PRJ_T');
     const back = cutFromCanonicalShot(shot);

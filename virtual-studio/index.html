@@ -60,6 +60,9 @@
     <button id="btnFlowPage" class="btn" title="制作ワークフロー — 1 素材(画像+ストーリー) → 2 カット設計 → 3 生成 → 4 レビュー → 次のストーリーへ">
       <svg class="ic"><use href="#i-flow"/></svg><span>ワークフロー</span>
     </button>
+    <button id="btnScriptPage" class="btn" title="台本 / 絵コンテ — 演出・動き・セリフを設計 (カメラ設定はスタジオ側)">
+      <svg class="ic"><use href="#i-doc"/></svg><span>台本・コンテ</span>
+    </button>
     <span class="v-sep" aria-hidden="true"></span>
     <button id="btnProjPage" class="icon-btn" title="プロジェクト (保存・切替)" aria-label="プロジェクト">
       <svg class="ic"><use href="#i-folder"/></svg>
@@ -459,6 +462,20 @@
   <button id="btnTourAgain" class="btn small" style="margin-top:10px">🎓 ツアーをもう一度見る</button>
 </div>
 
+<div id="scriptOverlay" class="overlay" role="dialog" aria-modal="true" aria-label="台本・絵コンテ" hidden>
+  <div class="overlay-bar">
+    <button id="btnScriptBack" class="btn small"><svg class="ic"><use href="#i-back"/></svg> スタジオに戻る</button>
+    <span class="panel-title">台本 / 絵コンテ <small id="scriptTotal"></small></span>
+    <span class="overlay-spacer"></span>
+    <button id="btnScriptBoard" class="btn small" title="絵コンテ (動き・セリフ入り) を書き出す"><svg class="ic"><use href="#i-board"/></svg> 絵コンテ書き出し</button>
+    <button id="btnScriptDoc" class="btn small" title="撮影指示書を書き出す"><svg class="ic"><use href="#i-doc"/></svg> 指示書</button>
+  </div>
+  <div id="scriptHint" class="insp-hint">
+    ここは<b>何が起きるか</b>を書く場所です (演出・動き・セリフ)。<b>どう撮るか</b> (カメラ・レンズ・照明・機材) はスタジオ側で設計します。
+  </div>
+  <div id="scriptBody"></div>
+</div>
+
 <div id="projOverlay" class="overlay" role="dialog" aria-modal="true" aria-label="プロジェクト" hidden>
   <div class="overlay-bar">
     <button id="btnProjBack" class="btn small"><svg class="ic"><use href="#i-back"/></svg> スタジオに戻る</button>
@@ -514,6 +531,7 @@
 <script src="js/studio3d.js"></script>
 <script src="js/docs.js"></script>
 <script src="js/workflow.js"></script>
+<script src="js/script.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

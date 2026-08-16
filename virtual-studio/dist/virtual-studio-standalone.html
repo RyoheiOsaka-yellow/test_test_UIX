@@ -1004,6 +1004,101 @@ input[type="range"]::-moz-range-thumb {
 .beat-actions { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
 .beat-actions select { font-size: 11px; }
 
+/* ---------- 台本 / 絵コンテ ページ ---------- */
+#scriptHint {
+  padding: 10px 20px 0; font-size: 11.5px; line-height: 1.6;
+}
+#scriptHint b { color: var(--text); }
+#scriptBody {
+  flex: 1; min-height: 0; overflow-y: auto;
+  padding: 12px 20px 40px; display: flex; flex-direction: column; gap: 12px;
+}
+.sc-cut {
+  display: flex; gap: 14px; align-items: flex-start;
+  background: var(--surface); border-radius: 14px; padding: 12px 14px;
+  box-shadow: var(--shadow-sm); border: 2px solid transparent;
+  transition: border-color 0.18s var(--ease);
+}
+.sc-cut.active { border-color: var(--accent); }
+.sc-left { flex: 0 0 190px; display: flex; flex-direction: column; gap: 5px; }
+.sc-frame {
+  border-radius: 9px; overflow: hidden; background: #101114; cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+.sc-frame svg { display: block; width: 100%; height: 108px; }
+.sc-no { font-size: 15px; font-weight: 800; letter-spacing: -0.02em; }
+.sc-name {
+  background: var(--fill-1); border: 1px solid transparent; border-radius: 7px;
+  padding: 4px 8px; font-size: 12px; font-weight: 600; color: var(--text); font-family: inherit;
+}
+.sc-tech { font-size: 10px; color: var(--dim); font-family: "SF Mono", ui-monospace, monospace; line-height: 1.5; }
+.sc-dur { font-size: 11px; color: var(--text2); }
+.sc-dur input { width: 58px; background: var(--fill-1); border: 1px solid transparent; border-radius: 6px; padding: 3px 6px; color: var(--text); font-family: inherit; }
+
+.sc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
+.sc-row { display: flex; align-items: center; gap: 8px; }
+.sc-row label { flex: 0 0 92px; font-size: 11px; color: var(--text2); }
+.sc-row input {
+  flex: 1; min-width: 0; background: var(--fill-1); border: 1px solid transparent;
+  border-radius: 7px; padding: 5px 9px; font-size: 12px; color: var(--text); font-family: inherit;
+}
+.sc-row input:focus, .sc-name:focus, .sc-dur input:focus {
+  outline: none; background: var(--surface); border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.sc-sub {
+  font-size: 10.5px; font-weight: 700; color: var(--text2);
+  margin-top: 4px; padding-top: 7px; border-top: 1px solid var(--line);
+}
+.sc-sub small { font-weight: 400; color: var(--dim); margin-left: 6px; }
+.sc-sub small.sc-gap { color: #b06e06; font-weight: 700; }
+.sc-actors { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.sc-actor {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: var(--fill-1); border-radius: 980px; padding: 2px 4px 2px 6px;
+}
+.sc-actor select, .sc-actors > select { font-size: 10.5px; padding: 3px 20px 3px 7px; }
+.sc-actor input {
+  background: transparent; border: none; font-size: 10.5px; color: var(--text);
+  font-family: inherit; width: 54px;
+}
+.sc-actor input:focus { outline: none; background: var(--surface); border-radius: 5px; }
+.sc-beats { display: flex; flex-direction: column; gap: 4px; }
+.sc-beat { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.sc-t {
+  flex: 0 0 auto; min-width: 64px; font-size: 9.5px; font-weight: 700;
+  color: var(--accent); font-variant-numeric: tabular-nums;
+}
+.sc-beat input, .sc-beat select {
+  background: var(--fill-1); border: 1px solid transparent; border-radius: 6px;
+  padding: 4px 7px; font-size: 11px; color: var(--text); font-family: inherit;
+}
+.sc-beat input:focus { outline: none; background: var(--surface); border-color: var(--accent); }
+.sc-sec { width: 54px; }
+.sc-do { flex: 1 1 220px; min-width: 140px; }
+.sc-who { max-width: 96px; }
+.sc-gaze, .sc-cam { font-size: 10px; padding: 3px 18px 3px 6px; max-width: 108px; }
+.sc-beat .icon-btn { width: 22px; height: 22px; font-size: 12px; }
+.sc-beat-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.sc-beat-actions select { font-size: 10.5px; }
+.sc-quality { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+.sc-quality select { font-size: 10px; padding: 3px 18px 3px 6px; max-width: 118px; }
+.sc-foot {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding-top: 7px; border-top: 1px solid var(--line); font-size: 11px; color: var(--text2);
+}
+.sc-method select { font-size: 10.5px; margin-left: 6px; }
+.sc-method small { color: var(--dim); }
+.sc-trans { margin-left: auto; font-size: 10.5px; color: var(--dim); }
+.sc-lint { list-style: none; margin-top: 2px; }
+.sc-lint li { font-size: 10.5px; line-height: 1.55; color: var(--text2); padding: 2px 0; }
+
+@media (max-width: 900px) {
+  .sc-cut { flex-direction: column; }
+  .sc-left { flex: 1 1 auto; width: 100%; flex-direction: row; align-items: center; flex-wrap: wrap; }
+  .sc-frame { width: 150px; }
+  .sc-quality { margin-left: 0; }
+}
+
 /* ---------- プロンプト診断 ---------- */
 #lintBox {
   background: var(--surface); border-radius: var(--radius);
@@ -1264,6 +1359,9 @@ kbd {
   <div class="header-actions">
     <button id="btnFlowPage" class="btn" title="制作ワークフロー — 1 素材(画像+ストーリー) → 2 カット設計 → 3 生成 → 4 レビュー → 次のストーリーへ">
       <svg class="ic"><use href="#i-flow"/></svg><span>ワークフロー</span>
+    </button>
+    <button id="btnScriptPage" class="btn" title="台本 / 絵コンテ — 演出・動き・セリフを設計 (カメラ設定はスタジオ側)">
+      <svg class="ic"><use href="#i-doc"/></svg><span>台本・コンテ</span>
     </button>
     <span class="v-sep" aria-hidden="true"></span>
     <button id="btnProjPage" class="icon-btn" title="プロジェクト (保存・切替)" aria-label="プロジェクト">
@@ -1662,6 +1760,20 @@ kbd {
     <span><kbd>Esc</kbd></span><span>ページ / ヘルプを閉じる</span>
   </div>
   <button id="btnTourAgain" class="btn small" style="margin-top:10px">🎓 ツアーをもう一度見る</button>
+</div>
+
+<div id="scriptOverlay" class="overlay" role="dialog" aria-modal="true" aria-label="台本・絵コンテ" hidden>
+  <div class="overlay-bar">
+    <button id="btnScriptBack" class="btn small"><svg class="ic"><use href="#i-back"/></svg> スタジオに戻る</button>
+    <span class="panel-title">台本 / 絵コンテ <small id="scriptTotal"></small></span>
+    <span class="overlay-spacer"></span>
+    <button id="btnScriptBoard" class="btn small" title="絵コンテ (動き・セリフ入り) を書き出す"><svg class="ic"><use href="#i-board"/></svg> 絵コンテ書き出し</button>
+    <button id="btnScriptDoc" class="btn small" title="撮影指示書を書き出す"><svg class="ic"><use href="#i-doc"/></svg> 指示書</button>
+  </div>
+  <div id="scriptHint" class="insp-hint">
+    ここは<b>何が起きるか</b>を書く場所です (演出・動き・セリフ)。<b>どう撮るか</b> (カメラ・レンズ・照明・機材) はスタジオ側で設計します。
+  </div>
+  <div id="scriptBody"></div>
 </div>
 
 <div id="projOverlay" class="overlay" role="dialog" aria-modal="true" aria-label="プロジェクト" hidden>
@@ -2064,22 +2176,34 @@ const PERF_TEMPS = [
   { id: "shown", label: "誰かに見せている", en: "aware of an audience" },
   { id: "observed", label: "観察されている (気づいていない)", en: "observational, does not acknowledge the camera" },
 ];
-/* 視線 — どこを見ているかは動画参照が持つ情報だが、無い場合は指定する */
+/* 登場要素 (アクター) — 動くのは人だけではない。車両・動物・群衆・物、
+ * そしてカメラ自身も「動き」を持つ。台本上ではすべて同じ扱いにする */
+const ACTOR_TYPES = [
+  { id: "person", label: "人物", en: "a person" },
+  { id: "vehicle", label: "車両", en: "a vehicle" },
+  { id: "animal", label: "動物", en: "an animal" },
+  { id: "crowd", label: "群衆", en: "a crowd" },
+  { id: "object", label: "商品・物", en: "an object" },
+  { id: "camera", label: "カメラ自身", en: "the camera itself" },
+];
+
+/* 視線・向き — どこを見ている/向いているか (車なら進行方向) */
 const GAZE_TARGETS = [
   { id: "none", label: "指定なし", en: "" },
-  { id: "ahead", label: "前方", en: "looking ahead" },
+  { id: "ahead", label: "前方", en: "facing ahead" },
   { id: "camera", label: "カメラ", en: "looking into the camera" },
   { id: "partner", label: "相手", en: "looking at the other person" },
   { id: "object", label: "手元/対象物", en: "looking at the object in hand" },
   { id: "away", label: "外す/逸らす", en: "looking away" },
 ];
-/* 人同士の接触 — risk が高いほど「先に撮る」向き */
+/* 要素同士の絡み — risk が高いほど「先に撮る」向き。
+ * 人同士に限らず、車と人・動物と人の絡みも同じ判断でよい */
 const CONTACT_TYPES = [
-  { id: "none", label: "接触なし", en: "no physical contact", risk: 0 },
+  { id: "none", label: "絡みなし", en: "no physical interaction", risk: 0 },
   { id: "near", label: "すれ違い/近接", en: "passing close to each other", risk: 1 },
-  { id: "touch", label: "触れる/手をつなぐ", en: "touching / holding hands", risk: 2 },
+  { id: "touch", label: "触れる/接触する", en: "physical contact between subjects", risk: 2 },
   { id: "handoff", label: "受け渡し", en: "handing an object over", risk: 2 },
-  { id: "embrace", label: "抱擁/組み合う", en: "embracing / grappling", risk: 3 },
+  { id: "embrace", label: "組み合う/衝突", en: "grappling / colliding", risk: 3 },
 ];
 /* カメラが体の動きに連動するか — カメラワーク側と矛盾しないか診断する */
 const CAM_LINKS = [
@@ -7281,6 +7405,17 @@ function buildStoryboardDoc() {
           <div class="panel-name">${esc(cut.name)}</div>
           <div class="panel-tech">${esc(cut.camera.shotSize)}${endS} ｜ ${esc(mov.label || "")} ｜ ${cut.camera.focalMm}mm</div>
           <div class="panel-action">${esc(act ? act.label : "")}${cut.subjectNote ? " — " + esc(cut.subjectNote) : ""}</div>
+          ${(() => {
+            /* 台本の動き (ビート) — コンテは「画 + 動き + セリフ」で読む */
+            if (!cut.perf || !cut.perf.beats.length) return "";
+            let acc = 0;
+            return `<ol class="panel-beats">${cut.perf.beats.map(b => {
+              const from = acc; acc += +b.sec || 0;
+              const who = b.who ? actorLabel(cut, b.who) + ": " : "";
+              return `<li><span>${from.toFixed(1)}s</span> ${esc(who + (b.do || ""))}</li>`;
+            }).join("")}</ol>`;
+          })()}
+          ${cut.caption ? `<div class="panel-cap">「${esc(cut.caption)}」</div>` : ""}
           <div class="panel-aim">${esc((cut.aim || "").slice(0, 60))}</div>
         </div>
         <div class="panel-dur">${cut.kind === "still" ? "STILL" : cut.duration + "s"}</div>
@@ -7309,6 +7444,9 @@ function buildStoryboardDoc() {
     .panel-tech { font-size: 10px; color: #446; margin-top: 2px; font-family: ui-monospace, monospace; }
     .panel-action { font-size: 10px; color: #333; margin-top: 2px; }
     .panel-aim { font-size: 10px; color: #667; margin-top: 2px; }
+    .panel-beats { margin: 3px 0 0 14px; padding: 0; font-size: 9.5px; color: #1a1d24; line-height: 1.5; }
+    .panel-beats span { color: #8a6d3b; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .panel-cap { font-size: 10px; margin-top: 3px; padding: 2px 5px; background: #f2f4f7; border-radius: 3px; }
     .panel-dur { font-size: 12px; font-weight: 700; color: #b06e06; }
     .panel-trans { font-size: 10px; text-align: center; background: #f0f2f5; padding: 3px; color: #445; border-top: 1px dashed #ccc; }
     .panel-trans.end { color: #999; }
@@ -9117,6 +9255,283 @@ function setupRoughCut() {
 </script>
 <script>
 /* =========================================================
+ * Virtual Studio — 台本 / 絵コンテ ページ
+ *
+ * 役割分担:
+ *   スタジオ = カメラ・照明・機材 (どう撮るか)
+ *   台本コンテ = 演出・動き・セリフ (何が起きるか)
+ * 動くのは人だけではないため、登場要素 (人物/車両/動物/群衆/物/カメラ) を
+ * 同じ台本の上で扱う。カメラ側の設定はここでは読み取り専用で並べ、
+ * 尺・カメラワークとの噛み合わせだけを診断する。
+ * 読み込み順: app.js より前 (呼び出しはすべて実行時)
+ * ======================================================= */
+
+function scriptTotalSec() {
+  return state.cuts.reduce((s, c) => s + (c.kind === "still" ? 0 : c.duration || 5), 0);
+}
+
+/* カットのビート行 (台本の本体) */
+function scriptBeatRows(cut, ci) {
+  const p = cut.perf;
+  let acc = 0;
+  const rows = p.beats.map((b, i) => {
+    const from = acc; acc += +b.sec || 0;
+    return `
+    <div class="sc-beat" data-ci="${ci}" data-bi="${i}">
+      <span class="sc-t">${from.toFixed(1)}–${acc.toFixed(1)}s</span>
+      <input type="number" class="sc-sec" data-scsec="${i}" value="${b.sec}" min="0.5" max="120" step="0.5" title="長さ(秒)">
+      <select class="sc-who" data-scwho="${i}" title="どの要素の動きか">
+        <option value="">主体</option>
+        ${p.actors.map(a => `<option value="${esc(a.id)}" ${a.id === b.who ? "selected" : ""}>${esc(actorLabel(cut, a.id))}</option>`).join("")}
+      </select>
+      <input type="text" class="sc-do" data-scdo="${i}" value="${esc(b.do)}" placeholder="何が起きる (例: 車が右から進入して停まる)">
+      <select class="sc-gaze" data-scgaze="${i}" title="視線・向き">
+        ${GAZE_TARGETS.map(g => `<option value="${g.id}" ${g.id === b.gaze ? "selected" : ""}>${esc(g.label)}</option>`).join("")}
+      </select>
+      <select class="sc-cam" data-sccam="${i}" title="このビートでのカメラ">
+        ${CAM_LINKS.map(c => `<option value="${c.id}" ${c.id === b.cam ? "selected" : ""}>${esc(c.label)}</option>`).join("")}
+      </select>
+      <button class="icon-btn small" data-scbup="${i}" title="上へ" ${i === 0 ? "disabled" : ""}>↑</button>
+      <button class="icon-btn small danger" data-scbdel="${i}" title="削除">×</button>
+    </div>`;
+  }).join("");
+  return rows || `<div class="insp-hint">ビート未設定 — 「何が・いつ起きるか」を並べると、尺とカメラの噛み合わせを診断します</div>`;
+}
+
+function renderScriptPage() {
+  const body = byId("scriptBody");
+  if (!body) return;
+  const total = scriptTotalSec();
+  byId("scriptTotal").textContent = `${state.cuts.length}カット / 計${total}秒`;
+
+  body.innerHTML = state.cuts.map((cut, ci) => {
+    ensureCameraDefaults(cut);
+    const p = cut.perf;
+    const size = SHOT_SIZES.find(s => s.id === cut.camera.shotSize) || {};
+    const mov = CAM_MOVES.find(s => s.id === cut.camera.move) || {};
+    const beatTotal = perfBeatTotal(cut);
+    const dur = cut.duration || 5;
+    const gap = cut.kind !== "still" && p.beats.length && Math.abs(beatTotal - dur) > 0.5;
+    const rec = recommendMethod(cut);
+    const used = perfMethodOf(cut);
+    const lint = lintCut(cut);
+    const trans = ci < state.cuts.length - 1 ? TRANSITIONS.find(t => t.id === (cut.transition || "cut")) : null;
+    return `
+    <section class="sc-cut ${ci === state.activeCut ? "active" : ""}" data-sccut="${ci}">
+      <div class="sc-left">
+        <div class="sc-frame" data-scselect="${ci}" title="クリックでこのカットをスタジオ側でも選択">${renderPreviewCached(cut, "sc" + ci)}</div>
+        <div class="sc-no">C${ci + 1}</div>
+        <input type="text" class="sc-name" data-scname="${ci}" value="${esc(cut.name)}" title="カット名">
+        <div class="sc-tech" title="カメラ設定はスタジオ側で編集します">
+          ${esc(size.label || cut.camera.shotSize)} ｜ ${esc(mov.label || "")} ｜ ${cut.camera.focalMm}mm F${cut.camera.apertureF}
+        </div>
+        <div class="sc-dur">
+          ${cut.kind === "still" ? "スチール" : `<input type="number" data-scdur="${ci}" value="${dur}" min="1" max="120" step="1" title="カットの尺(秒)"> 秒`}
+        </div>
+      </div>
+
+      <div class="sc-main">
+        <div class="sc-row">
+          <label>セリフ / テロップ</label>
+          <input type="text" data-sccap="${ci}" value="${esc(cut.caption)}" placeholder="画に焼き込む字幕・セリフ">
+        </div>
+        <div class="sc-row">
+          <label>狙い</label>
+          <input type="text" data-scaim="${ci}" value="${esc(cut.aim)}" placeholder="このカットで何を伝えるか">
+        </div>
+
+        <div class="sc-sub">登場要素 <small>動くのは人だけではない (車両・動物・群衆・物・カメラ自身)</small></div>
+        <div class="sc-actors">
+          ${p.actors.map(a => `
+            <span class="sc-actor">
+              <select data-scatype="${esc(a.id)}" title="要素の種類">
+                ${ACTOR_TYPES.map(t => `<option value="${t.id}" ${t.id === a.type ? "selected" : ""}>${esc(t.label)}</option>`).join("")}
+              </select>
+              <input type="text" data-scaname="${esc(a.id)}" value="${esc(a.name)}" placeholder="名前/識別" size="6">
+              <button class="icon-btn small danger" data-scadel="${esc(a.id)}" title="削除">×</button>
+            </span>`).join("")}
+          <button class="btn tiny" data-scaadd="${ci}"><svg class="ic"><use href="#i-plus"/></svg> 要素を追加</button>
+          <select data-sccontact="${ci}" title="要素同士の絡み">
+            ${CONTACT_TYPES.map(c => `<option value="${c.id}" ${c.id === p.contact ? "selected" : ""}>${esc(c.label)}</option>`).join("")}
+          </select>
+        </div>
+
+        <div class="sc-sub">
+          動き (ビート)
+          <small class="${gap ? "sc-gap" : ""}">合計 ${beatTotal.toFixed(1)}s / 尺 ${dur}s${gap ? " ⚠️ ズレています" : ""}</small>
+        </div>
+        <div class="sc-beats">${scriptBeatRows(cut, ci)}</div>
+        <div class="sc-beat-actions">
+          <button class="btn small" data-scbadd="${ci}"><svg class="ic"><use href="#i-plus"/></svg> ビート追加</button>
+          <select data-sctpl="${ci}" title="尺に合わせて比率で流し込みます">
+            <option value="">配分テンプレ…</option>
+            ${BEAT_TEMPLATES.map(t => `<option value="${t.id}">${esc(t.label)}</option>`).join("")}
+          </select>
+          ${p.beats.length ? `<button class="btn small ghost" data-scfit="${ci}">尺に合わせる</button>` : ""}
+          <span class="sc-quality">
+            ${selectHtml2(`scspeed-${ci}`, MOTION_SPEEDS, p.speed, "scspeed", ci, "動きの速さ")}
+            ${selectHtml2(`sccare-${ci}`, MOTION_CARES, p.care, "sccare", ci, "動きの丁寧さ")}
+            ${selectHtml2(`sctoward-${ci}`, MOTION_TOWARDS, p.toward, "sctoward", ci, "誰に向けた動きか")}
+            ${selectHtml2(`sccam-${ci}`, CAM_LINKS, p.camLink, "sccamlink", ci, "カメラが動きに連動するか")}
+          </span>
+        </div>
+
+        <div class="sc-foot">
+          <span class="sc-method" title="${esc(rec.why.join(" / "))}">
+            作り方: <b>${esc((PROD_METHODS.find(m => m.id === used) || {}).label || "")}</b>
+            ${p.method === "auto" ? `<small>(推奨)</small>` : ""}
+            <select data-scmethod="${ci}">
+              <option value="auto" ${p.method === "auto" ? "selected" : ""}>自動</option>
+              ${PROD_METHODS.map(m => `<option value="${m.id}" ${p.method === m.id ? "selected" : ""}>${esc(m.label)}</option>`).join("")}
+            </select>
+          </span>
+          ${trans ? `<span class="sc-trans">次へ: ${esc(trans.label)}</span>` : `<span class="sc-trans">— 最終カット —</span>`}
+        </div>
+        ${lint.length ? `<ul class="sc-lint">${lint.map(x =>
+          `<li class="lv-${x.lv}">${x.lv === "danger" ? "⛔" : x.lv === "warn" ? "⚠️" : "💡"} ${esc(x.t)}</li>`).join("")}</ul>` : ""}
+      </div>
+    </section>`;
+  }).join("") || `<p class="insp-hint">カットがありません。スタジオで技法を選ぶか、ワークフローのストーリーから設計してください</p>`;
+}
+
+/* data属性で束ねるセレクト (台本ページ用の簡易ヘルパー) */
+function selectHtml2(id, arr, val, attr, ci, title) {
+  return `<select id="${id}" data-${attr}="${ci}" title="${esc(title || "")}">
+    ${arr.map(o => `<option value="${o.id}" ${o.id === val ? "selected" : ""}>${esc(o.label)}</option>`).join("")}
+  </select>`;
+}
+
+function setupScriptPage() {
+  const open = () => {
+    byId("scriptOverlay").hidden = false;
+    renderScriptPage();
+  };
+  byId("btnScriptPage").addEventListener("click", open);
+  byId("btnScriptBack").addEventListener("click", () => { byId("scriptOverlay").hidden = true; });
+  byId("btnScriptBoard").addEventListener("click", () => exportBoard());
+  byId("btnScriptDoc").addEventListener("click", () => exportDoc());
+
+  const body = byId("scriptBody");
+  const cutOf = el => state.cuts[+el.closest("[data-sccut]").dataset.sccut];
+  /* 台本を編集したらスタジオ側の描画も更新する (カメラ設定には触れない) */
+  const sync = (full) => {
+    renderScriptPage();
+    renderCutStrip(); renderTimeline(); renderPrompt(); renderLint();
+    if (full) renderInspector();
+  };
+
+  body.addEventListener("click", e => {
+    const sel = e.target.closest("[data-scselect]");
+    if (sel) {
+      state.activeCut = +sel.dataset.scselect;
+      state.selectedItem = null;
+      renderAll();
+      renderScriptPage();
+      showToast(`C${state.activeCut + 1} をスタジオでも選択しました`);
+      return;
+    }
+    const add = e.target.closest("[data-scbadd]");
+    if (add) {
+      const cut = state.cuts[+add.dataset.scbadd];
+      const rest = Math.max(0.5, Math.round(((cut.duration || 5) - perfBeatTotal(cut)) * 10) / 10);
+      cut.perf.beats.push({ id: uid(), sec: rest || 1, who: "", do: "", gaze: "none", cam: "none" });
+      sync(true);
+      return;
+    }
+    const fit = e.target.closest("[data-scfit]");
+    if (fit) {
+      const cut = state.cuts[+fit.dataset.scfit];
+      const t = perfBeatTotal(cut);
+      if (t) {
+        const k = (cut.duration || 5) / t;
+        cut.perf.beats.forEach(b => { b.sec = Math.max(0.5, Math.round(b.sec * k * 10) / 10); });
+      }
+      sync(true);
+      return;
+    }
+    const aadd = e.target.closest("[data-scaadd]");
+    if (aadd) {
+      const cut = state.cuts[+aadd.dataset.scaadd];
+      cut.perf.actors.push({ id: uid(), type: "person", name: String(cut.perf.actors.length + 1) });
+      cut.perf.people = cut.perf.actors.length;
+      sync(true);
+      return;
+    }
+    const adel = e.target.closest("[data-scadel]");
+    if (adel) {
+      const cut = cutOf(adel);
+      const id = adel.dataset.scadel;
+      if (cut.perf.actors.length <= 1) { showToast("⚠️ 登場要素は1つ以上必要です"); return; }
+      cut.perf.actors = cut.perf.actors.filter(a => a.id !== id);
+      cut.perf.beats.forEach(b => { if (b.who === id) b.who = ""; });
+      cut.perf.people = cut.perf.actors.length;
+      sync(true);
+      return;
+    }
+    const bup = e.target.closest("[data-scbup]");
+    if (bup) {
+      const cut = cutOf(bup); const i = +bup.dataset.scbup;
+      [cut.perf.beats[i - 1], cut.perf.beats[i]] = [cut.perf.beats[i], cut.perf.beats[i - 1]];
+      sync(true);
+      return;
+    }
+    const bdel = e.target.closest("[data-scbdel]");
+    if (bdel) {
+      cutOf(bdel).perf.beats.splice(+bdel.dataset.scbdel, 1);
+      sync(true);
+    }
+  });
+
+  /* 入力系 (change) — セレクトと数値 */
+  body.addEventListener("change", e => {
+    const t = e.target;
+    const d = t.dataset;
+    const cut = t.closest("[data-sccut]") ? cutOf(t) : null;
+    if (!cut) return;
+    if (d.scsec != null) cut.perf.beats[+d.scsec].sec = Math.max(0.5, +t.value || 0.5);
+    else if (d.scwho != null) cut.perf.beats[+d.scwho].who = t.value;
+    else if (d.scgaze != null) cut.perf.beats[+d.scgaze].gaze = t.value;
+    else if (d.sccam != null) cut.perf.beats[+d.sccam].cam = t.value;
+    else if (d.scatype != null) {
+      const a = cut.perf.actors.find(x => x.id === d.scatype);
+      if (a) a.type = t.value;
+    } else if (d.sccontact != null) cut.perf.contact = t.value;
+    else if (d.scspeed != null) cut.perf.speed = t.value;
+    else if (d.sccare != null) cut.perf.care = t.value;
+    else if (d.sctoward != null) cut.perf.toward = t.value;
+    else if (d.sccamlink != null) cut.perf.camLink = t.value;
+    else if (d.scmethod != null) cut.perf.method = t.value;
+    else if (d.scdur != null) cut.duration = Math.max(1, +t.value || 5);
+    else if (d.sctpl != null) {
+      if (!t.value) return;
+      perfApplyTemplate(cut, t.value);
+      showToast("配分テンプレを尺に合わせて流し込みました");
+    } else return;
+    sync(true);
+  });
+
+  /* テキスト入力は再描画せず値だけ反映 (入力中のフォーカスを失わない) */
+  body.addEventListener("input", e => {
+    const t = e.target;
+    const d = t.dataset;
+    const wrap = t.closest("[data-sccut]");
+    if (!wrap) return;
+    const cut = state.cuts[+wrap.dataset.sccut];
+    if (d.scdo != null) cut.perf.beats[+d.scdo].do = t.value;
+    else if (d.scaname != null) {
+      const a = cut.perf.actors.find(x => x.id === d.scaname);
+      if (a) a.name = t.value;
+    } else if (d.sccap != null) cut.caption = t.value;
+    else if (d.scaim != null) cut.aim = t.value;
+    else if (d.scname != null) cut.name = t.value;
+    else return;
+    renderCutStrip(); renderPreview(); renderPrompt();
+  });
+}
+
+</script>
+<script>
+/* =========================================================
  * Virtual Studio — アプリ本体
  *  - スタジオ俯瞰図 (機材ドラッグ配置)
  *  - ライティング解析 → 想定カットプレビュー自動生成
@@ -9215,12 +9630,20 @@ function ensureCameraDefaults(cut) {
   /* 人の動き (演技演出) — 使わなければ空のまま。既存の出力には影響しない */
   if (!cut.perf || typeof cut.perf !== "object") cut.perf = {};
   const pf = cut.perf;
-  if (!Array.isArray(pf.beats)) pf.beats = [];   // [{id, sec, do, gaze, cam}]
+  if (!Array.isArray(pf.beats)) pf.beats = [];   // [{id, sec, who, do, gaze, cam}]
   if (!pf.speed) pf.speed = "moderate";
   if (!pf.care) pf.care = "natural";
   if (!pf.toward) pf.toward = "alone";
   if (!pf.temp) pf.temp = "private";
   if (pf.people == null) pf.people = 1;
+  /* 登場要素 — 動くのは人だけではない。旧データの人数から自動生成する */
+  if (!Array.isArray(pf.actors) || !pf.actors.length) {
+    const t = cut.subjectType === "car" ? "vehicle"
+      : ["bottle", "cosme", "food", "arch"].includes(cut.subjectType) ? "object" : "person";
+    const n = Math.max(1, +pf.people || 1);
+    pf.actors = Array.from({ length: n }, (_, i) => ({ id: uid(), type: t, name: n > 1 ? `${i + 1}` : "" }));
+  }
+  pf.people = pf.actors.length; // 人数は登場要素数から導出
   if (!pf.contact) pf.contact = "none";
   if (!pf.camLink) pf.camLink = "none";
   if (!pf.method) pf.method = "auto";            // auto = 推奨に従う
@@ -9483,7 +9906,7 @@ const AUDIO_EN = {
 function perfActive(cut) {
   const p = cut.perf;
   if (!p) return false;
-  return p.beats.length > 0 || p.people > 1 || p.contact !== "none"
+  return p.beats.length > 0 || (p.actors || []).length > 1 || p.contact !== "none"
     || p.camLink !== "none" || p.preserve.length > 0 || p.change.length > 0;
 }
 
@@ -9508,16 +9931,16 @@ function perfApplyTemplate(cut, tplId) {
 function recommendMethod(cut) {
   const p = cut.perf;
   const risk = (CONTACT_TYPES.find(c => c.id === p.contact) || {}).risk || 0;
-  const many = (+p.people || 1) > 1;
+  const many = (p.actors || []).length > 1;
   const busy = p.beats.length >= 4 || (p.beats.length >= 2 && p.speed === "fast" && p.care === "loose");
   const why = [];
   let id = "gen";
   if (many && risk >= 2) {
     id = "shoot";
-    why.push("複数人が接触する — 開発元が安定性の改善余地として挙げている領域");
+    why.push("複数の要素が絡む — 開発元が安定性の改善余地として挙げている領域");
   } else if (risk >= 1 || many) {
     id = "shoot";
-    why.push(many ? "複数人が同じ画にいる" : "人同士が近接する");
+    why.push(many ? "複数の要素が同じ画にいる" : "要素同士が近接する");
   } else if (busy) {
     id = "shoot";
     why.push("ビートが多く動きが速い/雑 — 演技の発明をAIに任せると崩れやすい");
@@ -9536,14 +9959,29 @@ function perfMethodOf(cut) {
   return cut.perf.method === "auto" ? recommendMethod(cut).id : cut.perf.method;
 }
 
-/* プロンプトに足す演技ブロック (未使用なら空文字) */
+/* 登場要素の表示名 (台本・プロンプト共通) */
+function actorLabel(cut, actorId) {
+  const a = (cut.perf.actors || []).find(x => x.id === actorId);
+  if (!a) return "";
+  const t = ACTOR_TYPES.find(x => x.id === a.type) || ACTOR_TYPES[0];
+  return a.name ? `${t.label}${a.name}` : t.label;
+}
+function actorEn(cut, actorId) {
+  const a = (cut.perf.actors || []).find(x => x.id === actorId);
+  if (!a) return "";
+  const t = ACTOR_TYPES.find(x => x.id === a.type) || ACTOR_TYPES[0];
+  return a.name ? `${t.en} (${a.name})` : t.en;
+}
+
+/* プロンプトに足す演出ブロック (未使用なら空文字) */
 function buildPerfBlock(cut, prose) {
   if (!perfActive(cut)) return "";
   const p = cut.perf;
   const g = (arr, id) => (arr.find(x => x.id === id) || {}).en || "";
   const contact = CONTACT_TYPES.find(c => c.id === p.contact) || CONTACT_TYPES[0];
+  const cast = (p.actors || []).map(a => actorEn(cut, a.id)).filter(Boolean);
   const head = [
-    `${p.people} ${p.people > 1 ? "people" : "person"}`,
+    cast.length ? `cast: ${cast.join(", ")}` : "",
     contact.en,
     `motion quality: ${g(MOTION_SPEEDS, p.speed)}, ${g(MOTION_CARES, p.care)}, ${g(MOTION_TOWARDS, p.toward)}`,
     g(PERF_TEMPS, p.temp),
@@ -9555,7 +9993,8 @@ function buildPerfBlock(cut, prose) {
     const from = t; t += +b.sec || 0;
     const gz = g(GAZE_TARGETS, b.gaze);
     const cm = b.cam && b.cam !== "none" ? g(CAM_LINKS, b.cam) : "";
-    return `${from.toFixed(1)}–${t.toFixed(1)}s — ${b.do}${gz ? ` (${gz})` : ""}${cm ? `; ${cm}` : ""}`;
+    const who = b.who ? actorEn(cut, b.who) : "";
+    return `${from.toFixed(1)}–${t.toFixed(1)}s — ${who ? who + ": " : ""}${b.do}${gz ? ` (${gz})` : ""}${cm ? `; ${cm}` : ""}`;
   });
   const pres = p.preserve.map(id => g(PRESERVE_ITEMS, id)).filter(Boolean);
   const chg = p.change.map(id => g(CHANGE_ITEMS, id)).filter(Boolean);
@@ -9621,9 +10060,9 @@ function lintCut(cut) {
     out.push({ lv: "danger", code: "CONFLICT-CAM",
       t: "カメラワークが「フィックス」なのに、演技側で「カメラが体に連動」を指定しています。どちらかに揃えてください" });
   }
-  if ((p.contact || "none") !== "none" && (+p.people || 1) <= 1) {
+  if ((p.contact || "none") !== "none" && (p.actors || []).length <= 1) {
     out.push({ lv: "warn", code: "CONFLICT-CONTACT",
-      t: "人同士の接触を指定していますが、人数が1人です" });
+      t: "要素同士の絡みを指定していますが、登場要素が1つしかありません" });
   }
   if (p.preserve && p.change) {
     const clash = [];
@@ -9645,7 +10084,7 @@ function lintCut(cut) {
   const risk = (CONTACT_TYPES.find(c => c.id === p.contact) || {}).risk || 0;
   if (risk >= 2 && ["CU", "BCU", "ECU"].includes(cut.camera.shotSize)) {
     out.push({ lv: "info", code: "CONTACT-SIZE",
-      t: "接触のあるカットを寄りで撮ると、誰がどこにいるかが読めなくなります。引きのカバレッジを1カット足すのが安全です" });
+      t: "絡みのあるカットを寄りで撮ると、どの要素がどこにいるかが読めなくなります。引きのカバレッジを1カット足すのが安全です" });
   }
   /* 「先に撮る」でも解決しないケース */
   if (perfMethodOf(cut) === "shoot" && p.unfit && p.unfit.length) {
@@ -10851,17 +11290,18 @@ function perfSectionHtml(cut) {
   let acc = 0;
   return `
   <details class="insp-section perf-sec"${perfOpen ? " open" : ""}>
-    <summary>人の動き (演技演出) <small>${perfActive(cut) ? `${p.beats.length}ビート / ${total.toFixed(1)}s` : "未設定"}</small></summary>
+    <summary>演出・動き <small>${perfActive(cut) ? `${p.beats.length}ビート / ${total.toFixed(1)}s` : "未設定"}</small></summary>
 
+    <button class="btn small" id="pOpenScript" style="margin-bottom:8px"><svg class="ic"><use href="#i-doc"/></svg> 台本・コンテで編集</button>
     <h4 class="perf-h">動きの質 <small>「◯◯という動き」ではなく速さ・雑さ・向き先で</small></h4>
     ${fieldRow("速さ", selectHtml("pSpeed", MOTION_SPEEDS, p.speed))}
     ${fieldRow("丁寧さ", selectHtml("pCare", MOTION_CARES, p.care))}
     ${fieldRow("向き先", selectHtml("pToward", MOTION_TOWARDS, p.toward))}
     ${fieldRow("演技の温度", selectHtml("pTemp", PERF_TEMPS, p.temp))}
 
-    <h4 class="perf-h">人数と接触 <small>接触が多いほど「先に撮る」向き</small></h4>
-    ${fieldRow("人数", `<input type="number" id="pPeople" value="${p.people}" min="1" max="20">`)}
-    ${fieldRow("接触", selectHtml("pContact", CONTACT_TYPES, p.contact))}
+    <h4 class="perf-h">登場要素と絡み <small>絡みが多いほど「先に撮る」向き</small></h4>
+    ${fieldRow("登場要素", `<span class="insp-hint">${esc(p.actors.map(a => actorLabel(cut, a.id)).join("・"))} <small>(台本ページで追加/変更)</small></span>`)}
+    ${fieldRow("絡み", selectHtml("pContact", CONTACT_TYPES, p.contact))}
     ${fieldRow("カメラ連動", selectHtml("pCamLink", CAM_LINKS, p.camLink))}
     ${p.camLink !== "none" && cut.camera.move === "fix"
       ? `<div class="insp-hint warn">⚠️ カメラワークが「フィックス」です。連動させるならカメラワークを手持ち/ジンバル系に変えてください</div>` : ""}
@@ -11172,7 +11612,7 @@ function renderInspector() {
     bind("pCare", e => { p.care = e.target.value; renderPrompt(); renderLint(); });
     bind("pToward", e => { p.toward = e.target.value; renderPrompt(); renderLint(); });
     bind("pTemp", e => { p.temp = e.target.value; renderPrompt(); renderLint(); });
-    bind("pPeople", e => { p.people = Math.max(1, +e.target.value || 1); redraw(); });
+    bind("pOpenScript", () => { byId("scriptOverlay").hidden = false; renderScriptPage(); }, "click");
     bind("pContact", e => { p.contact = e.target.value; redraw(); });
     bind("pCamLink", e => { p.camLink = e.target.value; redraw(); });
     bind("pMethod", e => { p.method = e.target.value; redraw(); });
@@ -11993,7 +12433,7 @@ function tourEnd() {
 
 function startTour() {
   byId("kbdHelp").hidden = true;
-  ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay", "wfOverlay"].forEach(id => { byId(id).hidden = true; });
+  ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay", "wfOverlay", "scriptOverlay"].forEach(id => { byId(id).hidden = true; });
   tourShow(0);
 }
 
@@ -12982,6 +13422,7 @@ function init() {
   setupRoughCut();
   setupShortcuts();
   setupOnboarding();
+  setupScriptPage();
   setupRefDnD();
   setupA11y();
   byId("btnPlayPreview").addEventListener("click", () => {

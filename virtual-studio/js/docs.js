@@ -286,6 +286,17 @@ function buildStoryboardDoc() {
           <div class="panel-name">${esc(cut.name)}</div>
           <div class="panel-tech">${esc(cut.camera.shotSize)}${endS} ｜ ${esc(mov.label || "")} ｜ ${cut.camera.focalMm}mm</div>
           <div class="panel-action">${esc(act ? act.label : "")}${cut.subjectNote ? " — " + esc(cut.subjectNote) : ""}</div>
+          ${(() => {
+            /* 台本の動き (ビート) — コンテは「画 + 動き + セリフ」で読む */
+            if (!cut.perf || !cut.perf.beats.length) return "";
+            let acc = 0;
+            return `<ol class="panel-beats">${cut.perf.beats.map(b => {
+              const from = acc; acc += +b.sec || 0;
+              const who = b.who ? actorLabel(cut, b.who) + ": " : "";
+              return `<li><span>${from.toFixed(1)}s</span> ${esc(who + (b.do || ""))}</li>`;
+            }).join("")}</ol>`;
+          })()}
+          ${cut.caption ? `<div class="panel-cap">「${esc(cut.caption)}」</div>` : ""}
           <div class="panel-aim">${esc((cut.aim || "").slice(0, 60))}</div>
         </div>
         <div class="panel-dur">${cut.kind === "still" ? "STILL" : cut.duration + "s"}</div>
@@ -314,6 +325,9 @@ function buildStoryboardDoc() {
     .panel-tech { font-size: 10px; color: #446; margin-top: 2px; font-family: ui-monospace, monospace; }
     .panel-action { font-size: 10px; color: #333; margin-top: 2px; }
     .panel-aim { font-size: 10px; color: #667; margin-top: 2px; }
+    .panel-beats { margin: 3px 0 0 14px; padding: 0; font-size: 9.5px; color: #1a1d24; line-height: 1.5; }
+    .panel-beats span { color: #8a6d3b; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .panel-cap { font-size: 10px; margin-top: 3px; padding: 2px 5px; background: #f2f4f7; border-radius: 3px; }
     .panel-dur { font-size: 12px; font-weight: 700; color: #b06e06; }
     .panel-trans { font-size: 10px; text-align: center; background: #f0f2f5; padding: 3px; color: #445; border-top: 1px dashed #ccc; }
     .panel-trans.end { color: #999; }

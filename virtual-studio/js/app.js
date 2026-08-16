@@ -97,12 +97,20 @@ function ensureCameraDefaults(cut) {
   /* 人の動き (演技演出) — 使わなければ空のまま。既存の出力には影響しない */
   if (!cut.perf || typeof cut.perf !== "object") cut.perf = {};
   const pf = cut.perf;
-  if (!Array.isArray(pf.beats)) pf.beats = [];   // [{id, sec, do, gaze, cam}]
+  if (!Array.isArray(pf.beats)) pf.beats = [];   // [{id, sec, who, do, gaze, cam}]
   if (!pf.speed) pf.speed = "moderate";
   if (!pf.care) pf.care = "natural";
   if (!pf.toward) pf.toward = "alone";
   if (!pf.temp) pf.temp = "private";
   if (pf.people == null) pf.people = 1;
+  /* 登場要素 — 動くのは人だけではない。旧データの人数から自動生成する */
+  if (!Array.isArray(pf.actors) || !pf.actors.length) {
+    const t = cut.subjectType === "car" ? "vehicle"
+      : ["bottle", "cosme", "food", "arch"].includes(cut.subjectType) ? "object" : "person";
+    const n = Math.max(1, +pf.people || 1);
+    pf.actors = Array.from({ length: n }, (_, i) => ({ id: uid(), type: t, name: n > 1 ? `${i + 1}` : "" }));
+  }
+  pf.people = pf.actors.length; // 人数は登場要素数から導出
   if (!pf.contact) pf.contact = "none";
   if (!pf.camLink) pf.camLink = "none";
   if (!pf.method) pf.method = "auto";            // auto = 推奨に従う
@@ -365,7 +373,7 @@ const AUDIO_EN = {
 function perfActive(cut) {
   const p = cut.perf;
   if (!p) return false;
-  return p.beats.length > 0 || p.people > 1 || p.contact !== "none"
+  return p.beats.length > 0 || (p.actors || []).length > 1 || p.contact !== "none"
     || p.camLink !== "none" || p.preserve.length > 0 || p.change.length > 0;
 }
 
@@ -390,16 +398,16 @@ function perfApplyTemplate(cut, tplId) {
 function recommendMethod(cut) {
   const p = cut.perf;
   const risk = (CONTACT_TYPES.find(c => c.id === p.contact) || {}).risk || 0;
-  const many = (+p.people || 1) > 1;
+  const many = (p.actors || []).length > 1;
   const busy = p.beats.length >= 4 || (p.beats.length >= 2 && p.speed === "fast" && p.care === "loose");
   const why = [];
   let id = "gen";
   if (many && risk >= 2) {
     id = "shoot";
-    why.push("複数人が接触する — 開発元が安定性の改善余地として挙げている領域");
+    why.push("複数の要素が絡む — 開発元が安定性の改善余地として挙げている領域");
   } else if (risk >= 1 || many) {
     id = "shoot";
-    why.push(many ? "複数人が同じ画にいる" : "人同士が近接する");
+    why.push(many ? "複数の要素が同じ画にいる" : "要素同士が近接する");
   } else if (busy) {
     id = "shoot";
     why.push("ビートが多く動きが速い/雑 — 演技の発明をAIに任せると崩れやすい");
@@ -418,14 +426,29 @@ function perfMethodOf(cut) {
   return cut.perf.method === "auto" ? recommendMethod(cut).id : cut.perf.method;
 }
 
-/* プロンプトに足す演技ブロック (未使用なら空文字) */
+/* 登場要素の表示名 (台本・プロンプト共通) */
+function actorLabel(cut, actorId) {
+  const a = (cut.perf.actors || []).find(x => x.id === actorId);
+  if (!a) return "";
+  const t = ACTOR_TYPES.find(x => x.id === a.type) || ACTOR_TYPES[0];
+  return a.name ? `${t.label}${a.name}` : t.label;
+}
+function actorEn(cut, actorId) {
+  const a = (cut.perf.actors || []).find(x => x.id === actorId);
+  if (!a) return "";
+  const t = ACTOR_TYPES.find(x => x.id === a.type) || ACTOR_TYPES[0];
+  return a.name ? `${t.en} (${a.name})` : t.en;
+}
+
+/* プロンプトに足す演出ブロック (未使用なら空文字) */
 function buildPerfBlock(cut, prose) {
   if (!perfActive(cut)) return "";
   const p = cut.perf;
   const g = (arr, id) => (arr.find(x => x.id === id) || {}).en || "";
   const contact = CONTACT_TYPES.find(c => c.id === p.contact) || CONTACT_TYPES[0];
+  const cast = (p.actors || []).map(a => actorEn(cut, a.id)).filter(Boolean);
   const head = [
-    `${p.people} ${p.people > 1 ? "people" : "person"}`,
+    cast.length ? `cast: ${cast.join(", ")}` : "",
     contact.en,
     `motion quality: ${g(MOTION_SPEEDS, p.speed)}, ${g(MOTION_CARES, p.care)}, ${g(MOTION_TOWARDS, p.toward)}`,
     g(PERF_TEMPS, p.temp),
@@ -437,7 +460,8 @@ function buildPerfBlock(cut, prose) {
     const from = t; t += +b.sec || 0;
     const gz = g(GAZE_TARGETS, b.gaze);
     const cm = b.cam && b.cam !== "none" ? g(CAM_LINKS, b.cam) : "";
-    return `${from.toFixed(1)}–${t.toFixed(1)}s — ${b.do}${gz ? ` (${gz})` : ""}${cm ? `; ${cm}` : ""}`;
+    const who = b.who ? actorEn(cut, b.who) : "";
+    return `${from.toFixed(1)}–${t.toFixed(1)}s — ${who ? who + ": " : ""}${b.do}${gz ? ` (${gz})` : ""}${cm ? `; ${cm}` : ""}`;
   });
   const pres = p.preserve.map(id => g(PRESERVE_ITEMS, id)).filter(Boolean);
   const chg = p.change.map(id => g(CHANGE_ITEMS, id)).filter(Boolean);
@@ -503,9 +527,9 @@ function lintCut(cut) {
     out.push({ lv: "danger", code: "CONFLICT-CAM",
       t: "カメラワークが「フィックス」なのに、演技側で「カメラが体に連動」を指定しています。どちらかに揃えてください" });
   }
-  if ((p.contact || "none") !== "none" && (+p.people || 1) <= 1) {
+  if ((p.contact || "none") !== "none" && (p.actors || []).length <= 1) {
     out.push({ lv: "warn", code: "CONFLICT-CONTACT",
-      t: "人同士の接触を指定していますが、人数が1人です" });
+      t: "要素同士の絡みを指定していますが、登場要素が1つしかありません" });
   }
   if (p.preserve && p.change) {
     const clash = [];
@@ -527,7 +551,7 @@ function lintCut(cut) {
   const risk = (CONTACT_TYPES.find(c => c.id === p.contact) || {}).risk || 0;
   if (risk >= 2 && ["CU", "BCU", "ECU"].includes(cut.camera.shotSize)) {
     out.push({ lv: "info", code: "CONTACT-SIZE",
-      t: "接触のあるカットを寄りで撮ると、誰がどこにいるかが読めなくなります。引きのカバレッジを1カット足すのが安全です" });
+      t: "絡みのあるカットを寄りで撮ると、どの要素がどこにいるかが読めなくなります。引きのカバレッジを1カット足すのが安全です" });
   }
   /* 「先に撮る」でも解決しないケース */
   if (perfMethodOf(cut) === "shoot" && p.unfit && p.unfit.length) {
@@ -1733,17 +1757,18 @@ function perfSectionHtml(cut) {
   let acc = 0;
   return `
   <details class="insp-section perf-sec"${perfOpen ? " open" : ""}>
-    <summary>人の動き (演技演出) <small>${perfActive(cut) ? `${p.beats.length}ビート / ${total.toFixed(1)}s` : "未設定"}</small></summary>
+    <summary>演出・動き <small>${perfActive(cut) ? `${p.beats.length}ビート / ${total.toFixed(1)}s` : "未設定"}</small></summary>
 
+    <button class="btn small" id="pOpenScript" style="margin-bottom:8px"><svg class="ic"><use href="#i-doc"/></svg> 台本・コンテで編集</button>
     <h4 class="perf-h">動きの質 <small>「◯◯という動き」ではなく速さ・雑さ・向き先で</small></h4>
     ${fieldRow("速さ", selectHtml("pSpeed", MOTION_SPEEDS, p.speed))}
     ${fieldRow("丁寧さ", selectHtml("pCare", MOTION_CARES, p.care))}
     ${fieldRow("向き先", selectHtml("pToward", MOTION_TOWARDS, p.toward))}
     ${fieldRow("演技の温度", selectHtml("pTemp", PERF_TEMPS, p.temp))}
 
-    <h4 class="perf-h">人数と接触 <small>接触が多いほど「先に撮る」向き</small></h4>
-    ${fieldRow("人数", `<input type="number" id="pPeople" value="${p.people}" min="1" max="20">`)}
-    ${fieldRow("接触", selectHtml("pContact", CONTACT_TYPES, p.contact))}
+    <h4 class="perf-h">登場要素と絡み <small>絡みが多いほど「先に撮る」向き</small></h4>
+    ${fieldRow("登場要素", `<span class="insp-hint">${esc(p.actors.map(a => actorLabel(cut, a.id)).join("・"))} <small>(台本ページで追加/変更)</small></span>`)}
+    ${fieldRow("絡み", selectHtml("pContact", CONTACT_TYPES, p.contact))}
     ${fieldRow("カメラ連動", selectHtml("pCamLink", CAM_LINKS, p.camLink))}
     ${p.camLink !== "none" && cut.camera.move === "fix"
       ? `<div class="insp-hint warn">⚠️ カメラワークが「フィックス」です。連動させるならカメラワークを手持ち/ジンバル系に変えてください</div>` : ""}
@@ -2054,7 +2079,7 @@ function renderInspector() {
     bind("pCare", e => { p.care = e.target.value; renderPrompt(); renderLint(); });
     bind("pToward", e => { p.toward = e.target.value; renderPrompt(); renderLint(); });
     bind("pTemp", e => { p.temp = e.target.value; renderPrompt(); renderLint(); });
-    bind("pPeople", e => { p.people = Math.max(1, +e.target.value || 1); redraw(); });
+    bind("pOpenScript", () => { byId("scriptOverlay").hidden = false; renderScriptPage(); }, "click");
     bind("pContact", e => { p.contact = e.target.value; redraw(); });
     bind("pCamLink", e => { p.camLink = e.target.value; redraw(); });
     bind("pMethod", e => { p.method = e.target.value; redraw(); });
@@ -2875,7 +2900,7 @@ function tourEnd() {
 
 function startTour() {
   byId("kbdHelp").hidden = true;
-  ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay", "wfOverlay"].forEach(id => { byId(id).hidden = true; });
+  ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay", "wfOverlay", "scriptOverlay"].forEach(id => { byId(id).hidden = true; });
   tourShow(0);
 }
 
@@ -3864,6 +3889,7 @@ function init() {
   setupRoughCut();
   setupShortcuts();
   setupOnboarding();
+  setupScriptPage();
   setupRefDnD();
   setupA11y();
   byId("btnPlayPreview").addEventListener("click", () => {
