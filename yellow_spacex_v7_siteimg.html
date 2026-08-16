@@ -144,6 +144,7 @@ html[lang="en"] .lede{line-height:1.85;}
 @keyframes introLogo{
   to{opacity:1;transform:none;}
 }
+.intro--quick .intro__logo{animation-duration:.5s;animation-delay:0s;}
 .intro.is-out{
   opacity:0;visibility:hidden;
   transition:opacity .85s var(--ease),visibility .85s;
@@ -169,6 +170,10 @@ body.intro-lock{overflow:hidden;}
   background:linear-gradient(to bottom,rgba(0,0,0,.62),rgba(0,0,0,0));
   transition:background .4s var(--ease);
 }
+.hdr.is-hidden{transform:translateY(-100%);}
+.hdr{transition:background .4s var(--ease),transform .45s var(--ease);}
+/* ヘッダーが隠れていてもドロップダウン操作中は出しておく */
+.hdr:has(.nav__item.is-open),.hdr:has(:focus-visible){transform:none;}
 .hdr.is-solid{background:rgba(0,0,0,.9);backdrop-filter:saturate(140%) blur(6px);}
 .hdr__logo{
   font-family:var(--font-logo);
@@ -427,6 +432,8 @@ html[lang="en"] .prodhero .title{text-transform:none;}
 .nextprod__v{font-size:clamp(22px,3vw,40px);font-weight:700;letter-spacing:.06em;}
 .nextprod a{display:flex;align-items:baseline;gap:18px;transition:opacity .3s var(--ease);}
 .nextprod a:hover{opacity:.6;}
+.nextprod a .nextprod__k{transition:transform .35s var(--ease);}
+.nextprod a:hover .nextprod__k{transform:translateX(8px);}
 
 @media (max-width:900px){
   .split--rev .split__media{order:1;}
@@ -1743,9 +1750,18 @@ window.addEventListener('popstate', function () { routeFromHash(location.hash); 
   var hdr = document.getElementById('hdr');
   if (!hdr) return;
   var ticking = false;
+  var lastY = 0;
   function upd() {
-    if (window.scrollY > window.innerHeight * 0.7) hdr.classList.add('is-solid');
+    var y = window.scrollY;
+    if (y > window.innerHeight * 0.7) hdr.classList.add('is-solid');
     else hdr.classList.remove('is-solid');
+    // 下へスクロール中は隠し、上へ戻ったら現す。最上部付近では常に表示
+    if (y > lastY && y > window.innerHeight * 0.9 && !document.body.classList.contains('menu-open')) {
+      hdr.classList.add('is-hidden');
+    } else {
+      hdr.classList.remove('is-hidden');
+    }
+    lastY = y;
     ticking = false;
   }
   window.addEventListener('scroll', function () {
@@ -1939,6 +1955,14 @@ routeFromHash(location.hash);
 
   document.body.classList.add('intro-lock');
 
+  // 同一セッションの2回目以降は間を短くする（初回だけフル尺）
+  var seen = false;
+  try { seen = sessionStorage.getItem('yellow_intro') === '1'; } catch (e) {}
+  try { sessionStorage.setItem('yellow_intro', '1'); } catch (e) {}
+  var HOLD = seen ? 500 : 1650;
+  var GONE = seen ? 1300 : 2600;
+  if (seen) intro.classList.add('intro--quick');
+
   function replayReveal() {
     var page = document.querySelector('.page.active');
     if (!page || !window.__rvObserve) return;
@@ -1953,9 +1977,9 @@ routeFromHash(location.hash);
     intro.classList.add('is-out');
     replayReveal();
     document.body.classList.remove('intro-lock');
-  }, 1650);
+  }, HOLD);
 
-  setTimeout(function () { intro.classList.add('is-gone'); }, 2600);
+  setTimeout(function () { intro.classList.add('is-gone'); }, GONE);
 })();
 </script>
 </body>
