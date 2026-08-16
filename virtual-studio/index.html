@@ -408,6 +408,9 @@
   </div>
 </div>
 
+<!-- トースト通知 -->
+<div id="toast" hidden></div>
+
 <!-- ようこそ (初回起動のみ) -->
 <div id="welcome" hidden>
   <div class="wel-card">
@@ -441,6 +444,7 @@
 <div id="kbdHelp" hidden>
   <div class="kbd-title">キーボードショートカット <button id="btnKbdClose" class="icon-btn small"><svg class="ic"><use href="#i-close"/></svg></button></div>
   <div class="kbd-grid">
+    <span><kbd>⌘/Ctrl</kbd>+<kbd>Z</kbd></span><span>元に戻す (+<kbd>Shift</kbd>でやり直し)</span>
     <span><kbd>Space</kbd></span><span>プレビュー再生 / 停止 (ワークフローではラフカット)</span>
     <span><kbd>←</kbd> <kbd>→</kbd></span><span>前 / 次のカットを選択</span>
     <span><kbd>1</kbd>〜<kbd>8</kbd></span><span>カットサイズ (1=超CU 〜 8=超ロング)</span>
@@ -461,6 +465,7 @@
     <span class="panel-title small">現在のプロジェクト</span>
     <input type="text" id="projName" placeholder="プロジェクト名">
     <button id="btnProjSave" class="btn small primary">保存</button>
+    <span id="storageMeter" class="storage-meter"></span>
     <button id="btnProjBackup" class="btn small" title="プロジェクト設定+参照画像+添付動画/音声を1つのZIPに書き出し (他ブラウザ/他PCへ持ち運べます)"><svg class="ic"><use href="#i-download"/></svg> 一式バックアップ (ZIP)</button>
     <button id="btnProjRestore" class="btn small" title="バックアップZIPを読み込んで完全復元"><svg class="ic"><use href="#i-upload"/></svg> 一式読み込み</button>
     <input type="file" id="projRestoreInput" accept=".zip,application/zip" hidden>

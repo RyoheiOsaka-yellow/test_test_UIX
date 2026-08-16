@@ -140,6 +140,30 @@ cd virtual-studio && python3 -m http.server 8080
   順序マーカー付きの文章から**複数カットを一括生成**。天候・時間帯・被写体は全体文から
   継承し、文中のトランジション語 (ディゾルブ等) はカット間の繋ぎに自動設定
 
+## Undo/Redo・メディアGC・テスト収録 (v2.9)
+
+- **Undo / Redo**: ⌘/Ctrl+Z で元に戻す、+Shift (またはCtrl+Y) でやり直し。
+  カット削除・プリセット適用・機材移動・タイムライン編集など**全ての操作を
+  自動キャプチャ** (描画フックで差分検知、最大50段/25MB)。トーストで結果表示
+- **メディアGC**: どのプロジェクトからも参照されない添付動画/音声を
+  IndexedDBから自動回収 (起動時・ストーリー完了時・プロジェクト削除時)。
+  Undo可能な間はクリップを残す設計
+- **保存の見える化**: 自動保存の失敗を初めて**トーストで通知** (復帰も通知)。
+  プロジェクトページに**容量メーター** (localStorage使用量/約5MB + IndexedDB
+  使用量) を追加
+- **テストをrepoに収録**: Playwright回帰テスト15本を `tests/` に可搬化
+  (`npm test` で一括実行・環境変数 `VS_CHROME` でブラウザ指定)。
+  バンドラも `tools/build-bundle.js` として収録 (`npm run build`)
+
+## 開発 (テスト & ビルド)
+
+```bash
+cd virtual-studio
+npm i            # playwright-core (テスト用のみ。アプリ自体は依存ゼロ)
+npm test         # 回帰テスト15本を一括実行 (tests/run-all.js)
+npm run build    # dist/virtual-studio-standalone.html を生成
+```
+
 ## オンボーディング・サンプル同梱・高速化 (v2.8)
 
 - **ようこそ画面 (初回のみ)**: 「サンプルを開いてツアーを見る / 空で始める」。

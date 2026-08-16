@@ -1101,6 +1101,23 @@ kbd {
 .tour-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 #tourStep { font-size: 11px; color: var(--dim); margin-right: auto; font-variant-numeric: tabular-nums; }
 
+/* ---------- トースト / 容量メーター ---------- */
+#toast {
+  position: fixed; bottom: 20px; right: 20px; z-index: 500;
+  max-width: 380px; padding: 11px 16px;
+  background: var(--glass);
+  -webkit-backdrop-filter: saturate(1.8) blur(20px); backdrop-filter: saturate(1.8) blur(20px);
+  border: 1px solid var(--line-strong); border-radius: 12px;
+  font-size: 12.5px; line-height: 1.6; color: var(--text);
+  box-shadow: var(--shadow-md);
+}
+#toast[hidden] { display: none; }
+.storage-meter { display: inline-flex; align-items: center; gap: 8px; margin-left: 6px; }
+.sm-bar { width: 110px; height: 6px; border-radius: 3px; background: var(--fill-2); overflow: hidden; }
+.sm-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+.sm-fill.warn { background: #e8920a; }
+.sm-label { font-size: 10.5px; color: var(--dim); white-space: nowrap; }
+
 </style>
 </head>
 <body>
@@ -1505,6 +1522,9 @@ kbd {
   </div>
 </div>
 
+<!-- トースト通知 -->
+<div id="toast" hidden></div>
+
 <!-- ようこそ (初回起動のみ) -->
 <div id="welcome" hidden>
   <div class="wel-card">
@@ -1538,6 +1558,7 @@ kbd {
 <div id="kbdHelp" hidden>
   <div class="kbd-title">キーボードショートカット <button id="btnKbdClose" class="icon-btn small"><svg class="ic"><use href="#i-close"/></svg></button></div>
   <div class="kbd-grid">
+    <span><kbd>⌘/Ctrl</kbd>+<kbd>Z</kbd></span><span>元に戻す (+<kbd>Shift</kbd>でやり直し)</span>
     <span><kbd>Space</kbd></span><span>プレビュー再生 / 停止 (ワークフローではラフカット)</span>
     <span><kbd>←</kbd> <kbd>→</kbd></span><span>前 / 次のカットを選択</span>
     <span><kbd>1</kbd>〜<kbd>8</kbd></span><span>カットサイズ (1=超CU 〜 8=超ロング)</span>
@@ -1558,6 +1579,7 @@ kbd {
     <span class="panel-title small">現在のプロジェクト</span>
     <input type="text" id="projName" placeholder="プロジェクト名">
     <button id="btnProjSave" class="btn small primary">保存</button>
+    <span id="storageMeter" class="storage-meter"></span>
     <button id="btnProjBackup" class="btn small" title="プロジェクト設定+参照画像+添付動画/音声を1つのZIPに書き出し (他ブラウザ/他PCへ持ち運べます)"><svg class="ic"><use href="#i-download"/></svg> 一式バックアップ (ZIP)</button>
     <button id="btnProjRestore" class="btn small" title="バックアップZIPを読み込んで完全復元"><svg class="ic"><use href="#i-upload"/></svg> 一式読み込み</button>
     <input type="file" id="projRestoreInput" accept=".zip,application/zip" hidden>
@@ -8139,8 +8161,6 @@ function renderCutStrip() {
     });
   });
   strip.scrollLeft = keepScroll;
-  renderCoverage();
-  renderTimeline();
 }
 
 /* ---------- CoverageSufficiency 表示 (V6) ---------- */
@@ -8561,8 +8581,62 @@ function updateRangeFill(el) {
   el.style.setProperty("--fill", pct.toFixed(1) + "%");
 }
 
-function refresh() { renderCanvas(); renderPreview(); renderPrompt(); renderCutStrip(); }
-function renderAll() { renderPresetList(); renderCanvas(); renderPreview(); renderPrompt(); renderCutStrip(); renderInspector(); }
+function refresh() { renderCanvas(); renderPreview(); renderPrompt(); renderCutStrip(); renderCoverage(); renderTimeline(); captureUndo(); }
+function renderAll() { renderPresetList(); renderCanvas(); renderPreview(); renderPrompt(); renderCutStrip(); renderInspector(); renderTimeline(); renderCoverage(); captureUndo(); }
+
+/* =========================================================
+ * Undo / Redo — 描画フックで状態差分を自動キャプチャする。
+ * 個々の操作ハンドラに手を入れず、refresh()/renderAll() の後に
+ * スナップショットを比較して変化があれば履歴に積む。
+ * ======================================================= */
+const undoState = { stack: [], redo: [], last: null, applying: false };
+const UNDO_MAX = 50, UNDO_MAX_CHARS = 25 * 1024 * 1024; // 件数と総容量の両方で制限
+
+function captureUndo() {
+  if (undoState.applying) return;
+  let snap;
+  try { snap = JSON.stringify(snapshotState()); } catch { return; }
+  if (undoState.last === null) { undoState.last = snap; return; } // 初回は基準登録のみ
+  if (snap === undoState.last) return;
+  undoState.stack.push(undoState.last);
+  undoState.redo.length = 0;
+  undoState.last = snap;
+  // 上限を超えたら古いものから捨てる
+  while (undoState.stack.length > UNDO_MAX) undoState.stack.shift();
+  let total = undoState.stack.reduce((s, x) => s + x.length, 0);
+  while (total > UNDO_MAX_CHARS && undoState.stack.length > 1) total -= undoState.stack.shift().length;
+}
+
+function doUndo() {
+  if (!undoState.stack.length) { showToast("これ以上戻れません"); return; }
+  undoState.redo.push(undoState.last);
+  const snap = undoState.stack.pop();
+  undoState.last = snap;
+  undoState.applying = true;
+  try { applySnapshot(JSON.parse(snap)); } finally { undoState.applying = false; }
+  showToast(`↩ 元に戻しました (残り${undoState.stack.length})`);
+}
+
+function doRedo() {
+  if (!undoState.redo.length) { showToast("やり直す操作がありません"); return; }
+  undoState.stack.push(undoState.last);
+  const snap = undoState.redo.pop();
+  undoState.last = snap;
+  undoState.applying = true;
+  try { applySnapshot(JSON.parse(snap)); } finally { undoState.applying = false; }
+  showToast(`↪ やり直しました`);
+}
+
+/* ---------- トースト通知 ---------- */
+let toastTimer = null;
+function showToast(msg, sticky) {
+  const t = byId("toast");
+  if (!t) return;
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  if (!sticky) toastTimer = setTimeout(() => { t.hidden = true; }, 4000);
+}
 
 /* =========================================================
  * キャンバス ドラッグ操作
@@ -9604,14 +9678,70 @@ function applySnapshot(s) {
 
 /* 自動保存 (3秒ごと・変化時のみ) */
 let lastAutosave = "";
+let autosaveFailNotified = false;
 function startAutosave() {
   setInterval(() => {
     const snap = JSON.stringify(snapshotState());
     if (snap !== lastAutosave) {
       lastAutosave = snap;
-      lsSet(LS_CURRENT, JSON.parse(snap));
+      const ok = lsSet(LS_CURRENT, JSON.parse(snap));
+      if (!ok && !autosaveFailNotified) {
+        autosaveFailNotified = true; // 直るまで繰り返し出さない
+        showToast("⚠️ 自動保存に失敗しました — ブラウザ保存容量が不足しています。プロジェクトページで容量を確認し、不要な参照画像や保存済みプロジェクトを削除してください", true);
+      } else if (ok && autosaveFailNotified) {
+        autosaveFailNotified = false;
+        showToast("✓ 自動保存が復帰しました");
+      }
     }
   }, 3000);
+}
+
+/* =========================================================
+ * メディアGC — どのプロジェクトからも参照されない添付動画/音声を
+ * IndexedDBから削除する (起動時・ストーリー完了時・プロジェクト削除時)。
+ * 現在編集中(state)・自動保存(vsCurrent)・全保存プロジェクトを生存扱い
+ * にするため、削除直後でもUndo可能な間はクリップが残る。
+ * ======================================================= */
+async function gcMediaClips() {
+  try {
+    const valid = new Set(Object.values(RC_AUDIO_KEYS));
+    state.cuts.forEach(c => valid.add(c.id));
+    (lsGet(LS_CURRENT, {})?.cuts || []).forEach(c => valid.add(c.id));
+    Object.values(lsGet(LS_PROJECTS, {})).forEach(p => (p.data?.cuts || []).forEach(c => valid.add(c.id)));
+    let removed = 0;
+    for (const clip of await idbAllClips()) {
+      if (valid.has(clip.cutId)) continue;
+      await idbDelClip(clip.cutId);
+      if (roughCut.urls[clip.cutId]) {
+        URL.revokeObjectURL(roughCut.urls[clip.cutId]);
+        delete roughCut.urls[clip.cutId];
+      }
+      removed++;
+    }
+    if (removed) rcRefreshIndex();
+    return removed;
+  } catch {
+    return 0;
+  }
+}
+
+/* ストレージ使用量メーター (プロジェクトページ) */
+async function renderStorageMeter() {
+  const el = byId("storageMeter");
+  if (!el) return;
+  let lsBytes = 0;
+  try { for (const k of Object.keys(localStorage)) lsBytes += (localStorage.getItem(k) || "").length * 2; } catch { /* 権限なし */ }
+  const pct = Math.min(100, lsBytes / (5 * 1048576) * 100);
+  let idbNote = "";
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      const est = await navigator.storage.estimate();
+      idbNote = ` ｜ メディア (IndexedDB等) ${(est.usage / 1048576).toFixed(1)}MB`;
+    }
+  } catch { /* 未対応ブラウザ */ }
+  el.innerHTML = `
+    <div class="sm-bar" title="localStorage (設定・参照画像・保存プロジェクト) の使用量"><div class="sm-fill${pct > 80 ? " warn" : ""}" style="width:${pct.toFixed(1)}%"></div></div>
+    <span class="sm-label">設定/画像 ${(lsBytes / 1048576).toFixed(2)}MB / 約5MB${idbNote}</span>`;
 }
 
 function saveCurrentProject() {
@@ -9626,6 +9756,7 @@ function saveCurrentProject() {
 }
 
 function renderProjPage() {
+  renderStorageMeter();
   const all = lsGet(LS_PROJECTS, {});
   const list = Object.values(all).sort((a, b) => b.updated - a.updated);
   byId("projName").value = state.projectTitle;
@@ -9668,6 +9799,7 @@ function renderProjPage() {
   grid.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
     const all2 = lsGet(LS_PROJECTS, {});
     if (!confirm(`「${all2[b.dataset.del]?.title}」を削除しますか?`)) return;
+    setTimeout(gcMediaClips, 500); // 参照が消えた添付メディアを回収
     delete all2[b.dataset.del];
     lsSet(LS_PROJECTS, all2);
     if (state.projectId === b.dataset.del) state.projectId = null;
@@ -10011,6 +10143,7 @@ function setupWorkflow() {
     });
     renderWorkflow();
     byId("wfBody").scrollTop = 0;
+    setTimeout(gcMediaClips, 4000); // 自動保存が新しい状態を書いた後に回収
   });
 }
 
@@ -11056,6 +11189,19 @@ function setupOnboarding() {
 function setupShortcuts() {
   byId("btnKbdClose").addEventListener("click", () => { byId("kbdHelp").hidden = true; });
   document.addEventListener("keydown", e => {
+    /* Undo / Redo (入力欄ではブラウザ既定に任せる) */
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === "z" || e.key === "Z")) {
+      if (e.target.matches("input, textarea")) return;
+      e.preventDefault();
+      if (e.shiftKey) doRedo(); else doUndo();
+      return;
+    }
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === "y" || e.key === "Y")) {
+      if (e.target.matches("input, textarea")) return;
+      e.preventDefault();
+      doRedo();
+      return;
+    }
     if (e.target.matches("input, textarea, select") || e.metaKey || e.ctrlKey || e.altKey) return;
     const wfOpen = !byId("wfOverlay").hidden;
     const otherOverlay = ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay"].some(id => !byId(id).hidden);
@@ -11946,6 +12092,7 @@ function init() {
     renderAll();
   }
   startAutosave();
+  setTimeout(gcMediaClips, 2500); // 前回セッションの孤児メディアを回収
 }
 
 init();

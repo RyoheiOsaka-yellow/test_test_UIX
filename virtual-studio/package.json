@@ -1,0 +1,12 @@
+{
+  "name": "virtual-studio",
+  "private": true,
+  "description": "仮想撮影スタジオ — 依存ゼロの単体HTMLアプリ (このpackage.jsonはテストとビルド専用)",
+  "scripts": {
+    "test": "node tests/run-all.js",
+    "build": "node tools/build-bundle.js"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.49.0"
+  }
+}

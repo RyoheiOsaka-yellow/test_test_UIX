@@ -1093,3 +1093,20 @@ kbd {
 #tourBody { font-size: 12.5px; color: var(--text2); line-height: 1.75; }
 .tour-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 #tourStep { font-size: 11px; color: var(--dim); margin-right: auto; font-variant-numeric: tabular-nums; }
+
+/* ---------- トースト / 容量メーター ---------- */
+#toast {
+  position: fixed; bottom: 20px; right: 20px; z-index: 500;
+  max-width: 380px; padding: 11px 16px;
+  background: var(--glass);
+  -webkit-backdrop-filter: saturate(1.8) blur(20px); backdrop-filter: saturate(1.8) blur(20px);
+  border: 1px solid var(--line-strong); border-radius: 12px;
+  font-size: 12.5px; line-height: 1.6; color: var(--text);
+  box-shadow: var(--shadow-md);
+}
+#toast[hidden] { display: none; }
+.storage-meter { display: inline-flex; align-items: center; gap: 8px; margin-left: 6px; }
+.sm-bar { width: 110px; height: 6px; border-radius: 3px; background: var(--fill-2); overflow: hidden; }
+.sm-fill { height: 100%; border-radius: 3px; background: var(--accent); }
+.sm-fill.warn { background: #e8920a; }
+.sm-label { font-size: 10.5px; color: var(--dim); white-space: nowrap; }

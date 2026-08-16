@@ -1373,8 +1373,6 @@ function renderCutStrip() {
     });
   });
   strip.scrollLeft = keepScroll;
-  renderCoverage();
-  renderTimeline();
 }
 
 /* ---------- CoverageSufficiency 表示 (V6) ---------- */
@@ -1795,8 +1793,62 @@ function updateRangeFill(el) {
   el.style.setProperty("--fill", pct.toFixed(1) + "%");
 }
 
-function refresh() { renderCanvas(); renderPreview(); renderPrompt(); renderCutStrip(); }
-function renderAll() { renderPresetList(); renderCanvas(); renderPreview(); renderPrompt(); renderCutStrip(); renderInspector(); }
+function refresh() { renderCanvas(); renderPreview(); renderPrompt(); renderCutStrip(); renderCoverage(); renderTimeline(); captureUndo(); }
+function renderAll() { renderPresetList(); renderCanvas(); renderPreview(); renderPrompt(); renderCutStrip(); renderInspector(); renderTimeline(); renderCoverage(); captureUndo(); }
+
+/* =========================================================
+ * Undo / Redo — 描画フックで状態差分を自動キャプチャする。
+ * 個々の操作ハンドラに手を入れず、refresh()/renderAll() の後に
+ * スナップショットを比較して変化があれば履歴に積む。
+ * ======================================================= */
+const undoState = { stack: [], redo: [], last: null, applying: false };
+const UNDO_MAX = 50, UNDO_MAX_CHARS = 25 * 1024 * 1024; // 件数と総容量の両方で制限
+
+function captureUndo() {
+  if (undoState.applying) return;
+  let snap;
+  try { snap = JSON.stringify(snapshotState()); } catch { return; }
+  if (undoState.last === null) { undoState.last = snap; return; } // 初回は基準登録のみ
+  if (snap === undoState.last) return;
+  undoState.stack.push(undoState.last);
+  undoState.redo.length = 0;
+  undoState.last = snap;
+  // 上限を超えたら古いものから捨てる
+  while (undoState.stack.length > UNDO_MAX) undoState.stack.shift();
+  let total = undoState.stack.reduce((s, x) => s + x.length, 0);
+  while (total > UNDO_MAX_CHARS && undoState.stack.length > 1) total -= undoState.stack.shift().length;
+}
+
+function doUndo() {
+  if (!undoState.stack.length) { showToast("これ以上戻れません"); return; }
+  undoState.redo.push(undoState.last);
+  const snap = undoState.stack.pop();
+  undoState.last = snap;
+  undoState.applying = true;
+  try { applySnapshot(JSON.parse(snap)); } finally { undoState.applying = false; }
+  showToast(`↩ 元に戻しました (残り${undoState.stack.length})`);
+}
+
+function doRedo() {
+  if (!undoState.redo.length) { showToast("やり直す操作がありません"); return; }
+  undoState.stack.push(undoState.last);
+  const snap = undoState.redo.pop();
+  undoState.last = snap;
+  undoState.applying = true;
+  try { applySnapshot(JSON.parse(snap)); } finally { undoState.applying = false; }
+  showToast(`↪ やり直しました`);
+}
+
+/* ---------- トースト通知 ---------- */
+let toastTimer = null;
+function showToast(msg, sticky) {
+  const t = byId("toast");
+  if (!t) return;
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  if (!sticky) toastTimer = setTimeout(() => { t.hidden = true; }, 4000);
+}
 
 /* =========================================================
  * キャンバス ドラッグ操作
@@ -2838,14 +2890,70 @@ function applySnapshot(s) {
 
 /* 自動保存 (3秒ごと・変化時のみ) */
 let lastAutosave = "";
+let autosaveFailNotified = false;
 function startAutosave() {
   setInterval(() => {
     const snap = JSON.stringify(snapshotState());
     if (snap !== lastAutosave) {
       lastAutosave = snap;
-      lsSet(LS_CURRENT, JSON.parse(snap));
+      const ok = lsSet(LS_CURRENT, JSON.parse(snap));
+      if (!ok && !autosaveFailNotified) {
+        autosaveFailNotified = true; // 直るまで繰り返し出さない
+        showToast("⚠️ 自動保存に失敗しました — ブラウザ保存容量が不足しています。プロジェクトページで容量を確認し、不要な参照画像や保存済みプロジェクトを削除してください", true);
+      } else if (ok && autosaveFailNotified) {
+        autosaveFailNotified = false;
+        showToast("✓ 自動保存が復帰しました");
+      }
     }
   }, 3000);
+}
+
+/* =========================================================
+ * メディアGC — どのプロジェクトからも参照されない添付動画/音声を
+ * IndexedDBから削除する (起動時・ストーリー完了時・プロジェクト削除時)。
+ * 現在編集中(state)・自動保存(vsCurrent)・全保存プロジェクトを生存扱い
+ * にするため、削除直後でもUndo可能な間はクリップが残る。
+ * ======================================================= */
+async function gcMediaClips() {
+  try {
+    const valid = new Set(Object.values(RC_AUDIO_KEYS));
+    state.cuts.forEach(c => valid.add(c.id));
+    (lsGet(LS_CURRENT, {})?.cuts || []).forEach(c => valid.add(c.id));
+    Object.values(lsGet(LS_PROJECTS, {})).forEach(p => (p.data?.cuts || []).forEach(c => valid.add(c.id)));
+    let removed = 0;
+    for (const clip of await idbAllClips()) {
+      if (valid.has(clip.cutId)) continue;
+      await idbDelClip(clip.cutId);
+      if (roughCut.urls[clip.cutId]) {
+        URL.revokeObjectURL(roughCut.urls[clip.cutId]);
+        delete roughCut.urls[clip.cutId];
+      }
+      removed++;
+    }
+    if (removed) rcRefreshIndex();
+    return removed;
+  } catch {
+    return 0;
+  }
+}
+
+/* ストレージ使用量メーター (プロジェクトページ) */
+async function renderStorageMeter() {
+  const el = byId("storageMeter");
+  if (!el) return;
+  let lsBytes = 0;
+  try { for (const k of Object.keys(localStorage)) lsBytes += (localStorage.getItem(k) || "").length * 2; } catch { /* 権限なし */ }
+  const pct = Math.min(100, lsBytes / (5 * 1048576) * 100);
+  let idbNote = "";
+  try {
+    if (navigator.storage && navigator.storage.estimate) {
+      const est = await navigator.storage.estimate();
+      idbNote = ` ｜ メディア (IndexedDB等) ${(est.usage / 1048576).toFixed(1)}MB`;
+    }
+  } catch { /* 未対応ブラウザ */ }
+  el.innerHTML = `
+    <div class="sm-bar" title="localStorage (設定・参照画像・保存プロジェクト) の使用量"><div class="sm-fill${pct > 80 ? " warn" : ""}" style="width:${pct.toFixed(1)}%"></div></div>
+    <span class="sm-label">設定/画像 ${(lsBytes / 1048576).toFixed(2)}MB / 約5MB${idbNote}</span>`;
 }
 
 function saveCurrentProject() {
@@ -2860,6 +2968,7 @@ function saveCurrentProject() {
 }
 
 function renderProjPage() {
+  renderStorageMeter();
   const all = lsGet(LS_PROJECTS, {});
   const list = Object.values(all).sort((a, b) => b.updated - a.updated);
   byId("projName").value = state.projectTitle;
@@ -2902,6 +3011,7 @@ function renderProjPage() {
   grid.querySelectorAll("[data-del]").forEach(b => b.addEventListener("click", () => {
     const all2 = lsGet(LS_PROJECTS, {});
     if (!confirm(`「${all2[b.dataset.del]?.title}」を削除しますか?`)) return;
+    setTimeout(gcMediaClips, 500); // 参照が消えた添付メディアを回収
     delete all2[b.dataset.del];
     lsSet(LS_PROJECTS, all2);
     if (state.projectId === b.dataset.del) state.projectId = null;
@@ -3245,6 +3355,7 @@ function setupWorkflow() {
     });
     renderWorkflow();
     byId("wfBody").scrollTop = 0;
+    setTimeout(gcMediaClips, 4000); // 自動保存が新しい状態を書いた後に回収
   });
 }
 
@@ -4290,6 +4401,19 @@ function setupOnboarding() {
 function setupShortcuts() {
   byId("btnKbdClose").addEventListener("click", () => { byId("kbdHelp").hidden = true; });
   document.addEventListener("keydown", e => {
+    /* Undo / Redo (入力欄ではブラウザ既定に任せる) */
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === "z" || e.key === "Z")) {
+      if (e.target.matches("input, textarea")) return;
+      e.preventDefault();
+      if (e.shiftKey) doRedo(); else doUndo();
+      return;
+    }
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.key === "y" || e.key === "Y")) {
+      if (e.target.matches("input, textarea")) return;
+      e.preventDefault();
+      doRedo();
+      return;
+    }
     if (e.target.matches("input, textarea, select") || e.metaKey || e.ctrlKey || e.altKey) return;
     const wfOpen = !byId("wfOverlay").hidden;
     const otherOverlay = ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay"].some(id => !byId(id).hidden);
@@ -5180,6 +5304,7 @@ function init() {
     renderAll();
   }
   startAutosave();
+  setTimeout(gcMediaClips, 2500); // 前回セッションの孤児メディアを回収
 }
 
 init();
