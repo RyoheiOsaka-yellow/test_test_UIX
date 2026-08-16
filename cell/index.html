@@ -280,6 +280,8 @@ input[type=text]:focus{ outline:none; }
   border-radius:12px 10px 13px 11px; opacity:.3; filter:url(#rough2);
 }
 .tbtn:hover{ color:var(--ink); } .tbtn:hover::before{ opacity:.62; }
+.tbtn:disabled{ opacity:.32; cursor:default; }
+.tbtn:disabled:hover{ color:var(--ink-soft); } .tbtn:disabled:hover::before{ opacity:.3; }
 .tbtn.on{ color:#fff; background:var(--ink); border-radius:12px 10px 13px 11px; }
 .tbtn.on::before{ opacity:1; }
 .tbtn.big{ font-size:11.5px; padding:6px 13px 7px; font-weight:700; color:var(--ink);
@@ -386,12 +388,13 @@ table.leg i{ display:inline-block; width:10px; height:10px; border:1.2px solid v
       <span class="tsep"></span>
       <button class="tbtn" id="btnLineart">塗り絵(線画)</button>
       <button class="tbtn on" id="btnAnim">描画アニメ</button>
+      <button class="tbtn" id="btnLive" title="微生物が視野の中で動きます">▶ 生きた視野</button>
       <button class="tbtn" id="btnRedraw">引き直す</button>
       <span class="tsep"></span>
       <button class="tbtn" id="btnPng">PNG保存</button>
       <button class="tbtn" id="btnPng2">高解像度</button>
     </div>
-    <div class="hint">DRAG: 標本を動かす<br>WHEEL: ズーム / R: 再抽選</div>
+    <div class="hint">DRAG: 標本を動かす<br>WHEEL: ズーム / R: 再抽選<br>SPACE: 生きた視野</div>
   </div>
 
   <aside class="right hand" id="info"></aside>
@@ -536,7 +539,8 @@ const S = {
 const SW = 900, SH = 1270;      // 論理サイズ
 let EX = 2;                      // 内部解像度倍率
 const cv = document.getElementById('sheet');
-const ctx = cv.getContext('2d');
+const mainCtx = cv.getContext('2d');
+let ctx = mainCtx;                       /* 背景を焼くときだけ差し替える */
 
 /* ---------------- 紙テクスチャ ---------------- */
 let paperTex = null, paperKey = '';
@@ -596,6 +600,22 @@ function FPOS(k){
   const a=R()*TAU, t=Math.sqrt(R())*(k!=null?k:1);
   return [Math.cos(a)*t*FRAD, Math.sin(a)*t*FRAD*ASPY];
 }
+/* ---- 動く個体(アクター) ---- */
+const LIVEMODES = { bacilli:1, cocci:1, yeast:1, mycelium:1, flagellate:1 };
+let ACTORS = [];          /* 視野のなかで動くもの */
+let ACTOR  = null;        /* いま生成中の個体 */
+let MOV    = null;        /* 描画時に適用する移動・回転 */
+let TWAVE  = 0;           /* 鞭毛のうねりの位相 */
+let RM = mulberry32(7717);            /* 動きだけに使う乱数(絵柄には影響しない) */
+const rmr = (a,b) => a + (b-a)*RM();
+function actorNew(ox,oy,o){
+  const a = Object.assign({ ox:ox, oy:oy, dx:0, dy:0, a:0, vx:0, vy:0,
+    kind:'drift', head:0, head0:0, sp:0, spin:0, acc:40, r:10, tumble:rmr(.4,2.2),
+    t0:0, tn:0, ops:[] }, o||{});
+  a.head0 = a.head;
+  ACTORS.push(a);
+  return a;
+}
 /* 画面上のずれ(u,v)をワールド座標に戻す */
 function unrot(u,v){
   const c=Math.cos(-V.rot), s=Math.sin(-V.rot);
@@ -611,6 +631,11 @@ function TX(x,y){
 }
 function P(x,y){
   if(TR){ const t=TX(x,y); x=t[0]; y=t[1]; }
+  if(MOV){
+    const dx=x-MOV.ox, dy=y-MOV.oy, mc=Math.cos(MOV.a), ms=Math.sin(MOV.a);
+    x = MOV.ox + MOV.dx + dx*mc - dy*ms;
+    y = MOV.oy + MOV.dy + dx*ms + dy*mc;
+  }
   const c = Math.cos(V.rot), s = Math.sin(V.rot);
   const px = V.cx + (x*c - y*s)*V.s, py = V.cy + (x*s + y*c)*V.s;
   if(MEASURE){
@@ -812,8 +837,8 @@ function fillPoly(pts,c,a){
    ========================================================================= */
 let OPS = [];
 function op(d,f){
-  const tr=TR;
-  OPS.push({d:d, c:CTXMODE, f: tr? function(){ const s=TR; TR=tr; f(); TR=s; } : f});
+  const tr=TR, ac=ACTOR;
+  OPS.push({d:d, c:CTXMODE, act:ac, f:tr? function(){ const s=TR; TR=tr; f(); TR=s; } : f});
 }
 
 /* 凡例カウンタ */
@@ -1119,7 +1144,8 @@ function hairW(x,y,ang,len,o){
   let a=ang;
   const n=o.n||9;
   for(let i=0;i<n;i++){
-    a += (o.curl!=null?o.curl:.28)*(R()*2-1) + (o.bend||0);
+    a += (o.curl!=null?o.curl:.28)*(R()*2-1) + (o.bend||0)
+       + (o.wave? Math.sin(i*.85 + TWAVE*7 + (o.ph||0))*o.wave : 0);
     pts.push([pts[i][0]+Math.cos(a)*len/n, pts[i][1]+Math.sin(a)*len/n]);
   }
   curve2(SCR(pts),{w:o.w||.75,a:o.a!=null?o.a:.5,color:o.color||WALL,passes:1,jit:.35},false);
@@ -1184,6 +1210,7 @@ function debrisField(){
     const x=FIELD.cx+d[0], y=FIELD.cy+d[1];
     const r=Math.max(1.6, cr*rr(.7,1.5));
     const rod = chance(.22);
+    if(LIVEMODES[S.mode]) ACTOR = actorNew(x,y,{kind:'drift', r:r, acc:clamp(220/r,14,150), spin:rmr(-.9,.9)});
     op(-8000+i, function(){
       if(rod){
         const ang=R()*TAU;
@@ -1193,6 +1220,7 @@ function debrisField(){
         dotW(x,y,r,{color:DEEP,a:.72});
       }
     });
+    ACTOR=null;
   }
   leg('DEBRIS',n);
   /* ピントの外れたぼんやりした影 */
@@ -1325,6 +1353,7 @@ function forGroups(fn){
    標本生成 — 16種
    ========================================================================= */
 const SCENE = { name:null, cellUm:30, layers:[], mode:'' };
+let GROWN = 1;                      /* 菌糸が伸びる順番 */
 
 const BUILD = {
 
@@ -1519,6 +1548,8 @@ flagellate(){
       pts.push([Math.cos(t)*rr2*.72, Math.sin(t)*rr2*1.15]);
     }
     const poly = movePoly(rotPoly(chaikin(pts,1),rot),cx,cy);
+    if(LIVEMODES[S.mode]) ACTOR = actorNew(cx,cy,{kind:'swim', head:rot-Math.PI/2,
+      sp:r*rmr(1.4,2.6), r:r, spin:rmr(-.5,.5), tumble:rmr(1.0,3.4)});
     putCell(poly,{ color:col(0), a:.15, sp:3.4, ang:rot, inner:.84, lw:1.2 });
     op(cy+.5, function(){
       const c=polyCentroid(poly);
@@ -1531,9 +1562,10 @@ flagellate(){
       for(let k=0;k<nf;k++){
         const ang = rot - Math.PI/2 + (k?-.35:.35);
         hairW(c[0]+Math.cos(rot+Math.PI/2)*r*.9, c[1]+Math.sin(rot+Math.PI/2)*r*.9,
-              ang+Math.PI, r*rr(2.0,3.0), {curl:.45,w:.8,a:.5,n:12});
+              ang+Math.PI, r*rr(2.0,3.0), {curl:.45,w:.8,a:.5,n:12,wave:.30,ph:k*2.1});
       }
     });
+    ACTOR=null;
   }
   leg('FLAGELLATE CELLS',n); leg('FLAGELLA',n*2);
   leg('EYESPOT',n); leg('CHLOROPLAST',n*Math.round(4*ORGN()));
@@ -2094,6 +2126,8 @@ bacilli(){
     const fp=FPOS(.86);
     const gx=fp[0], gy=fp[1];
     const dir=R()*TAU;
+    ACTOR = actorNew(gx,gy,{kind:'swim', head:dir, sp:L*rmr(3.4,6.2), r:L,
+                            spin:rmr(-.25,.25), tumble:rmr(.5,2.6)});
     const n = S.shape==='CHAIN'? ri(4,9) : S.shape==='CLUMP'? ri(3,6) : S.shape==='PALISADE'? ri(3,6) : 1;
     for(let i=0;i<n;i++){
       let x=gx, y=gy, ang=dir;
@@ -2120,11 +2154,13 @@ bacilli(){
       if(spore) spores++;
       if(DETN()>1.2 && chance(.25)){
         op(y, function(){
-          for(let k=0;k<3;k++) hairW(x+Math.cos(ang)*L, y+Math.sin(ang)*L, ang+rr(-.7,.7), L*rr(1.2,2.2),{curl:.5,w:.5,a:.30});
+          for(let k=0;k<3;k++) hairW(x+Math.cos(ang)*L, y+Math.sin(ang)*L, ang+rr(-.7,.7), L*rr(1.2,2.2),
+                                     {curl:.5,w:.5,a:.30,wave:.26,ph:k*1.7});
         });
         leg('FLAGELLA',3);
       }
     }
+    ACTOR=null;
   }
   leg('BACILLI',cells);
   if(spores) leg('ENDOSPORES',spores);
@@ -2141,6 +2177,7 @@ cocci(){
   for(let g=0; g<groups; g++){
     const fp=FPOS(.86);
     const gx=fp[0], gy=fp[1];
+    ACTOR = actorNew(gx,gy,{kind:'drift', r:r*2.2, acc:clamp(150/r,10,70), spin:rmr(-.5,.5)});
     const put=function(x,y,rc){
       cells++;
       const poly=wobRing(x,y,rc,{n:18,lobes:ri(3,5),amp:.05});
@@ -2164,6 +2201,7 @@ cocci(){
       const dir=R()*TAU;
       put(gx,gy,r); put(gx+Math.cos(dir)*r*1.9, gy+Math.sin(dir)*r*1.9, r*rr(.92,1.08));
     }
+    ACTOR=null;
   }
   leg(S.shape==='CHAIN'?'STREPTOCOCCI':S.shape==='CLUMP'?'STAPHYLOCOCCI':S.shape==='PALISADE'?'SARCINA':'DIPLOCOCCI',cells);
   note(0,0,'COCCUS',1);
@@ -2179,6 +2217,7 @@ yeast(){
     const fp=FPOS(.80);
     const cx=fp[0], cy=fp[1];
     const rc=r*rr(.8,1.2), rot=R()*TAU;
+    ACTOR = actorNew(cx,cy,{kind:'drift', r:rc, acc:clamp(260/rc,8,52), spin:rmr(-.42,.42)});
     const poly=chaikin(ellipsePts(cx,cy,rc*1.12,rc*.88,rot,22),1);
     putCell(poly,{color:col(0),a:.20,sp:2.8,ang:rot-.6,inner:.84,lw:1.2});
     op(cy+.5, function(){
@@ -2208,6 +2247,7 @@ yeast(){
         px=bx; py=by; pr=br; ang+=rr(-.6,.6);
       }
     }
+    ACTOR=null;
   }
   leg('YEAST CELLS',n); leg('BUDS',buds); leg('VACUOLES',n);
   note(0,0,'BUDDING CELL',1);
@@ -2216,6 +2256,7 @@ yeast(){
 /* ---------- 微生物 04 菌糸 ---------- */
 mycelium(){
   SCENE.cellUm = 9;
+  GROWN = 1;
   const w=CELLR()*.29;
   const roots = S.shape==='SINGLE'? 2 : S.shape==='CHAIN'? 2 : 3;
   let comp=0, tips=[];
@@ -2223,11 +2264,14 @@ mycelium(){
     const path=walkPath(x,y,ang,w*3.0,steps,.20);
     const cells=filamentCells(path,w,w*rr(5,8),{blunt:true});
     cells.forEach(function(cp,i){
+      const c0=polyCentroid(cp);
+      ACTOR = actorNew(c0[0],c0[1],{kind:'grow', t0:(GROWN++)});
       putCell(cp,{color:col(i%2),a:.13,sp:3.2,ang:ang-.5,lw:1.05});
       if(ORGN()>1){
         const c=polyCentroid(cp);
         op(c[1]+.4, function(){ granulesW(c[0],c[1],w*.6,Math.round(3*ORGN()),{color:col(1),a:.32}); });
       }
+      ACTOR=null;
     });
     comp+=cells.length;
     const end=path[path.length-1];
@@ -2252,6 +2296,7 @@ mycelium(){
     const hr=w*rr(2.6,3.8);
     const hx=t[0]+Math.cos(t[2])*hr*.8, hy=t[1]+Math.sin(t[2])*hr*.8;
     const head=wobRing(hx,hy,hr,{n:30,lobes:ri(5,9),amp:.06});
+    ACTOR = actorNew(hx,hy,{kind:'grow', t0:(GROWN+=3)});
     putCell(head,{color:col(2),a:.22,sp:2.8,ang:-.6,lw:1.3}, hy+2);
     op(hy+3, function(){
       const nsp=Math.round(rr(8,16)*DETN());
@@ -2260,6 +2305,7 @@ mycelium(){
         dotW(hx+Math.cos(aa)*rd, hy+Math.sin(aa)*rd, hr*.12,{color:DEEP,a:.55});
       }
     });
+    ACTOR=null;
     leg('SPORANGIA',1); leg('SPORES',Math.round(12*DETN()));
   }
   note(0,0,'SEPTUM',1);
@@ -2594,7 +2640,7 @@ function finishSheet(){
 /* =========================================================================
    生成 → 描画パイプライン
    ========================================================================= */
-let queue=[], qi=0, raf=0, t0=0, lastMs=0, PAINTING=false;
+let queue=[], QACT=[], qi=0, raf=0, t0=0, lastMs=0, PAINTING=false;
 const progEl=document.getElementById('prog'), progBar=document.getElementById('progBar'), progTxt=document.getElementById('progTxt');
 
 function fitScene(){
@@ -2620,7 +2666,8 @@ function generate(keepPaint){
   PAPERC = PAPERS[S.paper].base;
   LINEART = S.lineart;
   if(LINEART) INKW *= 1.12;
-  OPS=[]; LEG=[]; NOTES=[]; strokes=0;
+  OPS=[]; LEG=[]; NOTES=[]; ACTORS=[]; strokes=0;
+  if(LIVE && !LIVEMODES[S.mode]){ LIVE=false; syncLiveBtn(); }
   SCENE.name = genName();
   SCENE.layers = [];
   SCENE.cellUm = 30;
@@ -2640,24 +2687,32 @@ function generate(keepPaint){
   fieldBounds();
 
   OPS.sort(function(a,b){ return a.d-b.d; });
+  /* 動く個体に、自分を描く手順をひもづける */
+  ACTORS.forEach(function(a){ a.ops=[]; });
+  OPS.forEach(function(o,i){ if(o.act) o.act.ops.push({i:i, f:o.f}); });
+  ACTORS = ACTORS.filter(function(a){ return a.ops.length; });
+  const gmax = ACTORS.reduce(function(m,a){ return a.kind==='grow'? Math.max(m,a.t0) : m; },0) || 1;
+  ACTORS.forEach(function(a){ a.tn = (a.kind==='grow')? a.t0/gmax : 0; });
   fitScene();
   R = mulberry32((((S.seed>>>0)||1) ^ 0x5f356495)>>>0);
 
-  queue = [];
-  queue.push(function(){
+  queue = []; QACT = [];
+  const qpush=function(f,act){ queue.push(f); QACT.push(act||null); };
+  qpush(function(){
     CURPART=-1; REGIONS=[];
     ctx.setTransform(EX,0,0,EX,0,0);
     ctx.clearRect(0,0,SW,SH);
     ctx.drawImage(paperFor(S.paper),0,0,SW,SH);
   });
-  OPS.forEach(function(o,i){ queue.push(function(){ CURPART=i; o.f(); }); });
+  OPS.forEach(function(o,i){ qpush(function(){ CURPART=i; o.f(); }, o.act); });
   const ch=chrome();
-  queue.push(function(){ CURPART=-1; });
-  for(const f of ch) queue.push(f);
-  queue.push(finishSheet);
+  qpush(function(){ CURPART=-1; });
+  for(const f of ch) qpush(f);
+  qpush(finishSheet);
   if(!keepPaint) PAINT={};
   qi=0; t0=performance.now();
   if(raf) cancelAnimationFrame(raf);
+  stopLive();
   progEl.hidden=false; progTxt.textContent='DRAWING';
   raf=requestAnimationFrame(flush);
 }
@@ -2671,6 +2726,7 @@ function flush(){
     raf=0; lastMs=Math.round(performance.now()-t0);
     progEl.hidden=true; progBar.style.width='0%'; PAINTING=false;
     renderInfo();
+    if(LIVE) startLive();
   }
 }
 function renderSync(){
@@ -2685,6 +2741,94 @@ function repaint(){
   qi=0; t0=performance.now();
   progEl.hidden=false; progTxt.textContent='COLOURING';
   raf=requestAnimationFrame(flush);
+}
+
+/* =========================================================================
+   生きた視野(微生物を動かす)
+   ========================================================================= */
+let LIVE=false, liveRaf=0, liveLast=0, GROWPH=1, growHold=0, bgCv=null;
+
+/* 動かないものだけを描いた背景を一度だけ焼く */
+function buildBG(){
+  if(!bgCv) bgCv=document.createElement('canvas');
+  bgCv.width=SW*EX; bgCv.height=SH*EX;
+  const save=ctx;
+  ctx=bgCv.getContext('2d');
+  R = mulberry32((((S.seed>>>0)||1) ^ 0x5f356495)>>>0);
+  for(let i=0;i<queue.length;i++) if(!QACT[i]) queue[i]();
+  ctx=save;
+  CURPART=-1;
+}
+/* 位置と向きを進める */
+function stepActors(dt){
+  if(S.mode==='mycelium'){
+    if(GROWPH<1){ GROWPH += dt/9; if(GROWPH>=1){ GROWPH=1; growHold=3.2; } }
+    else if(growHold>0){ growHold-=dt; if(growHold<=0) GROWPH=0; }
+  }
+  const rx=FIELD.rx*.95, ry=FIELD.ry*.95;
+  for(const a of ACTORS){
+    if(a.kind==='grow') continue;
+    if(a.kind==='swim'){
+      a.tumble-=dt;
+      if(a.tumble<=0){ a.tumble=rmr(.7,3.0); a.head+=rmr(-2.4,2.4); }
+      a.head += Math.sin(TWAVE*2.1+a.ox*.05)*dt*1.1;
+      a.dx += Math.cos(a.head)*a.sp*dt;
+      a.dy += Math.sin(a.head)*a.sp*dt;
+      a.a   = a.head - a.head0 + Math.sin(TWAVE*5.5+a.oy*.05)*.06;
+    }else{
+      const k=Math.max(0,1-2.6*dt);
+      a.vx = a.vx*k + rmr(-1,1)*a.acc*dt;
+      a.vy = a.vy*k + rmr(-1,1)*a.acc*dt;
+      a.dx += a.vx*dt; a.dy += a.vy*dt;
+      a.a  += a.spin*dt;
+    }
+    /* 視野からはみ出したら引き戻す */
+    const px=a.ox+a.dx-FIELD.cx, py=a.oy+a.dy-FIELD.cy;
+    if((px*px)/(rx*rx)+(py*py)/(ry*ry) > 1){
+      const ang=Math.atan2(-py,-px);
+      if(a.kind==='swim'){ a.head=ang+rmr(-.55,.55); a.tumble=Math.max(a.tumble,1.0); }
+      else{ a.vx += Math.cos(ang)*a.acc*dt*9; a.vy += Math.sin(ang)*a.acc*dt*9; }
+    }
+  }
+}
+function liveFrame(ts){
+  if(!LIVE){ liveRaf=0; return; }
+  const dt = liveLast? clamp((ts-liveLast)/1000, 0, .05) : .016;
+  liveLast=ts;
+  TWAVE += dt;
+  stepActors(dt);
+  ctx.setTransform(EX,0,0,EX,0,0);
+  ctx.clearRect(0,0,SW,SH);
+  ctx.drawImage(bgCv,0,0,SW,SH);
+  ctx.save();
+  ctx.beginPath();
+  if(S.fieldsh==='CIRCLE'){ const c=P(FIELD.cx,FIELD.cy); ctx.arc(c[0],c[1],FIELD.rx*V.s,0,TAU); }
+  else ctx.rect(FR.x0+1.5,FR.y0+1.5,FR.x1-FR.x0-3,FR.y1-FR.y0-3);
+  ctx.clip();
+  R = mulberry32(0x9e3779b9);           /* 毎フレーム同じ線を引く(絵がぶれない) */
+  for(const a of ACTORS){
+    if(a.kind==='grow' && a.tn>GROWPH) continue;
+    MOV=a;
+    for(const o of a.ops){ CURPART=o.i; o.f(); }
+  }
+  MOV=null; CURPART=-1;
+  ctx.restore();
+  liveRaf=requestAnimationFrame(liveFrame);
+}
+function startLive(){
+  if(raf) return;                        /* まだ描いている途中 */
+  if(!ACTORS.length){ LIVE=false; sync(); return; }
+  buildBG();
+  RM = mulberry32((((S.seed>>>0)||1) ^ 0x1a2b3c4d)>>>0);
+  ACTORS.forEach(function(a){ a.dx=0; a.dy=0; a.a=0; a.vx=0; a.vy=0; });
+  GROWPH = (S.mode==='mycelium')? 0 : 1;
+  growHold=0; liveLast=0;
+  if(liveRaf) cancelAnimationFrame(liveRaf);
+  liveRaf=requestAnimationFrame(liveFrame);
+}
+function stopLive(){
+  if(liveRaf){ cancelAnimationFrame(liveRaf); liveRaf=0; }
+  liveLast=0; MOV=null;
 }
 
 /* =========================================================================
@@ -2781,7 +2925,8 @@ function buildOpts(){
       '<div class="tray" id="tray"></div>'+
       '<button class="tbtn" id="btnClearPaint" style="margin-top:9px;width:100%;padding:7px 0">塗りを全部消す</button>'+
       '<p class="note">細胞をクリックすると、その一つだけを色鉛筆で塗れます。'+
-      'ドラッグは標本の移動です。線画にすると自動彩色が止まり、塗り絵の下絵になります。</p>'+
+      'ドラッグは標本の移動です。線画にすると自動彩色が止まり、塗り絵の下絵になります。'+
+      '「生きた視野」で動かしている間は塗れません。</p>'+
     '</div>'+
     '<div class="sec"><h3>SHEET <b>記録</b></h3>'+
       '<h4>標本名(空欄で自動生成)</h4>'+
@@ -2835,6 +2980,16 @@ function sync(){
     if(v) v.textContent = (r.dataset.k==='color'||r.dataset.k==='rough') ? S[r.dataset.k]+'%' : S[r.dataset.k];
   });
   document.getElementById('btnAnim').classList.toggle('on',S.animate);
+  syncLiveBtn();
+}
+function syncLiveBtn(){
+  const bv=document.getElementById('btnLive');
+  if(!bv) return;
+  bv.disabled = !LIVEMODES[S.mode];
+  bv.classList.toggle('on', LIVE);
+  bv.textContent = LIVE? '■ 停止' : '▶ 生きた視野';
+  bv.title = LIVEMODES[S.mode]? '微生物が視野の中で動きます(塗り絵は停止中のみ)'
+                              : 'この標本は動きません(微生物ジャンルで使えます)';
 }
 
 /* =========================================================================
@@ -2888,6 +3043,13 @@ function newSeed(){
 }
 document.getElementById('btnRedraw').addEventListener('click',function(){ generate(); });
 document.getElementById('btnAnim').addEventListener('click',function(){ S.animate=!S.animate; sync(); });
+document.getElementById('btnLive').addEventListener('click',function(){
+  if(!LIVEMODES[S.mode]) return;
+  LIVE=!LIVE;
+  sync();
+  if(LIVE) startLive();
+  else { stopLive(); generate(true); }
+});
 document.getElementById('btnLineart').addEventListener('click',function(){
   S.lineart=!S.lineart;
   if(S.lineart && S.pencil===null) S.pencil=COLS[0];
@@ -2928,6 +3090,7 @@ vp.addEventListener('pointermove',function(e){
 vp.addEventListener('pointerup',function(e){
   const d=drag; drag=null;
   if(!d || d.moved>4) return;
+  if(LIVE) return;                            /* 動いている間は塗れない */
   if(!S.pencil) return;
   if(raf) return;
   const r=cv.getBoundingClientRect();
@@ -2943,6 +3106,7 @@ vp.addEventListener('pointercancel',function(){ drag=null; });
 window.addEventListener('resize',fitView);
 window.addEventListener('keydown',function(e){
   if(e.target.tagName==='INPUT') return;
+  if(e.key===' '){ e.preventDefault(); const bl=document.getElementById('btnLive'); if(!bl.disabled) bl.click(); return; }
   if(e.key==='r'||e.key==='R') newSeed();
   if(e.key==='ArrowLeft'){ S.rot=(S.rot+11)%12; generate(); }
   if(e.key==='ArrowRight'){ S.rot=(S.rot+1)%12; generate(); }
@@ -2962,10 +3126,12 @@ function fname(){
   return (SCENE.name.style.toUpperCase().replace(/[^A-Z0-9]+/g,'_')||'SPECIMEN')+'_'+S.seed+'.png';
 }
 document.getElementById('btnPng').addEventListener('click',function(){
+  if(LIVE){ download(fname()); return; }     /* 動いている今の一枚を切り取る */
   if(raf){ cancelAnimationFrame(raf); raf=0; renderSync(); progEl.hidden=true; renderInfo(); }
   download(fname());
 });
 document.getElementById('btnPng2').addEventListener('click',function(){
+  stopLive();
   const old=EX; EX=3.6;
   cv.width=SW*EX; cv.height=SH*EX;
   if(raf){ cancelAnimationFrame(raf); raf=0; }
