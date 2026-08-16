@@ -1118,3 +1118,12 @@ kbd {
 }
 .wf-ref[draggable="true"] { cursor: grab; }
 #wfModelSel { font-size: 12px; border: 1px solid var(--line-strong); background: var(--surface); border-radius: 980px; padding: 4px 10px; color: var(--text); }
+
+/* ---------- モバイル/タブレット: ヘッダー折りたたみ ---------- */
+@media (max-width: 760px) {
+  #appHeader { gap: 10px; padding: 8px 10px; }
+  .header-actions { flex-wrap: wrap; justify-content: flex-end; row-gap: 4px; }
+  #appHeader .btn > span { display: none; } /* ラベルを隠しアイコンのみに */
+  #appHeader .btn { padding: 6.5px 10px; }
+  .brand-sub { display: none; }
+}
