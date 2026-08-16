@@ -216,7 +216,7 @@ body.patient .side{font-size:15px}
         </div>
         <div class="slider" style="margin-top:6px">
           <input type="range" id="open" min="0" max="28" step="1" value="0">
-          <span id="stageLabel" style="min-width:88px;font-size:13px;color:var(--sub)">開口</span>
+          <span id="openLabel" style="min-width:88px;font-size:13px;color:var(--sub)">開口</span>
         </div>
       </div>
 
@@ -3995,6 +3995,7 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
     return t * t * (3 - 2 * t);
   }
+  function normAngle(a) { return Math.atan2(Math.sin(a), Math.cos(a)); }  // -π..π
 
   /* ------------------------------------------------------------------ STATE */
   const S = {
@@ -4009,7 +4010,9 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     layers: { caries: true, restoration: true, root: false, bone: false, perio: false },
     stage: 0,                  // 0=通常 1=歯根 2=骨
     mode: 'clinician',         // 'clinician' | 'patient'
-    openDeg: 0,
+    openDeg: 0, openCur: 0,    // 開口: スライダー値と表示値（lerp で追従）
+    gAlphaCur: 1.0, gAlphaTarget: 1.0,     // 歯肉の不透明度（滑らかに遷移）
+    boneAlphaCur: 0.0, boneAlphaTarget: 0.0,
     selected: null, hovered: null,
     target: new THREE.Vector3(0, 0, 0),
     desired: { theta: 0, phi: Math.PI / 2, dist: 165, target: new THREE.Vector3(0, 0, 0) },
@@ -4280,13 +4283,9 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
       t.mesh.geometry.attributes.color.needsUpdate = true;
     });
 
-    const ga = CONFIG.GINGIVA_ALPHA[S.stage];
-    S.gingiva.forEach(function (m) {
-      m.material.opacity = ga;
-      m.material.transparent = ga < 1;
-      m.material.depthWrite = ga >= 1;
-    });
-    S.bone.forEach(function (m) { m.visible = CONFIG.BONE_VISIBLE[S.stage] || S.layers.bone; });
+    // 不透明度は目標値だけ更新し、実際の遷移は animate() が毎フレーム lerp する
+    S.gAlphaTarget = CONFIG.GINGIVA_ALPHA[S.stage];
+    S.boneAlphaTarget = (CONFIG.BONE_VISIBLE[S.stage] || S.layers.bone) ? 0.34 : 0.0;
     updatePerioMarkers();
     S.needsRecolor = false;
   }
@@ -4330,7 +4329,9 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
       if (S.maxilla) S.maxilla.visible = true;
       if (S.mandible) S.mandible.visible = true;
     }
-    S.desired.target.copy(t.centroid);
+    // 開口中の下顎回転を含むワールド座標でフレーミングする
+    t.mesh.updateWorldMatrix(true, false);
+    S.desired.target.copy(t.centroid).applyMatrix4(t.mesh.matrixWorld);
     S.desired.dist = 62;
     const c = t.centroid;
     S.desired.theta = Math.atan2(c.x * 0.9 + t.ax.b.x * 20, c.z * 0.9 + t.ax.b.z * 20);
@@ -4427,7 +4428,10 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     const tip = document.getElementById('tip');
     if (!hits.length) {
       tip.classList.add('hide');
-      if (isClick) { S.selected = null; S.needsRecolor = true; renderDetail(null); }
+      if (isClick) {
+        S.selected = null; S.needsRecolor = true; renderDetail(null);
+        updateChart(); closePop();   // 2D チャートの選択ハイライトと入力UIも解除する
+      }
       return;
     }
     const h = hits[0];
@@ -4450,7 +4454,9 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
   }
 
   function surfaceAt(t, hit) {
-    const p = hit.point.clone().sub(t.centroid);
+    // ヒット点はワールド座標。開口中の下顎は回転しているため、
+    // extras の軸（ローカル座標）と比較する前に必ずローカルへ戻す
+    const p = t.mesh.worldToLocal(hit.point.clone()).sub(t.centroid);
     const h = p.dot(t.ax.o);
     const hr = (h - t.ex.cej_h) / t.span;
     if (hr < CONFIG.SURFACE_PICK.ROOT_HR) return { key: 'ROOT', hr: hr, cervical: false };
@@ -4520,7 +4526,11 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
       S.needsRecolor = true;
     });
     const open = document.getElementById('open');
-    open.addEventListener('input', function () { S.openDeg = parseFloat(open.value); });
+    open.addEventListener('input', function () {
+      S.openDeg = parseFloat(open.value);
+      const lb = document.getElementById('openLabel');
+      if (lb) lb.textContent = S.openDeg > 0 ? '開口 ' + Math.round(S.openDeg) + '°' : '開口';
+    });
 
     document.getElementById('modeBtn').addEventListener('click', function () {
       S.mode = (S.mode === 'clinician') ? 'patient' : 'clinician';
@@ -5255,26 +5265,64 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
   }
 
   /* ---------------------------------------------------------------- ループ */
+  const _lookTmp = new THREE.Vector3();
   function animate() {
     requestAnimationFrame(animate);
     const L = CONFIG.CAMERA.LERP;
-    S.cur.theta += (S.desired.theta - S.cur.theta) * L;
+    // 方位角は最短経路で補間する（何周も回した後にプリセットで長回りしない）
+    let dth = S.desired.theta - S.cur.theta;
+    dth = Math.atan2(Math.sin(dth), Math.cos(dth));
+    S.cur.theta += dth * L;
+    if (Math.abs(dth) < 1e-4) S.cur.theta = S.desired.theta = normAngle(S.desired.theta);
     S.cur.phi += (S.desired.phi - S.cur.phi) * L;
     S.cur.dist += (S.desired.dist - S.cur.dist) * L;
     S.cur.target.lerp(S.desired.target, L);
 
+    // 歯肉・歯槽骨の不透明度と開口角を滑らかに遷移させる。
+    // フレームレート非依存（SwiftShader のような低 fps 環境でも同じ速度で収束する）
+    const now = performance.now();
+    const dt = Math.min(0.1, (now - (S._lastT || now)) / 1000);
+    S._lastT = now;
+    const fA = 1 - Math.exp(-6 * dt);    // 不透明度: 時定数 ~1/6 s
+    const fO = 1 - Math.exp(-9 * dt);    // 開口: すこし速め
+
+    S.gAlphaCur += (S.gAlphaTarget - S.gAlphaCur) * fA;
+    if (Math.abs(S.gAlphaTarget - S.gAlphaCur) < 0.004) S.gAlphaCur = S.gAlphaTarget;
+    S.gingiva.forEach(function (m) {
+      m.material.opacity = S.gAlphaCur;
+      m.material.transparent = S.gAlphaCur < 0.995;
+      m.material.depthWrite = S.gAlphaCur > 0.95;
+    });
+    S.boneAlphaCur += (S.boneAlphaTarget - S.boneAlphaCur) * fA;
+    if (Math.abs(S.boneAlphaTarget - S.boneAlphaCur) < 0.004) S.boneAlphaCur = S.boneAlphaTarget;
+    S.bone.forEach(function (m) {
+      m.visible = S.boneAlphaCur > 0.01;
+      m.material.opacity = S.boneAlphaCur;
+    });
+    S.openCur += (S.openDeg - S.openCur) * fO;
+    if (Math.abs(S.openDeg - S.openCur) < 0.02) S.openCur = S.openDeg;
+
+    // 開口中の全体ビューは注視点を下げ距離を伸ばして両顎をフレームに収める（SPEC §5.4）
+    let ty = S.cur.target.y, td = S.cur.dist;
+    if (S.selected == null) {
+      ty -= S.openCur * 0.8;
+      td *= 1 + S.openCur * 0.012;
+    }
     const sp = Math.sin(S.cur.phi), cp = Math.cos(S.cur.phi);
     S.camera.position.set(
-      S.cur.target.x + S.cur.dist * sp * Math.sin(S.cur.theta),
-      S.cur.target.y + S.cur.dist * cp,
-      S.cur.target.z + S.cur.dist * sp * Math.cos(S.cur.theta)
+      S.cur.target.x + td * sp * Math.sin(S.cur.theta),
+      ty + td * cp,
+      S.cur.target.z + td * sp * Math.cos(S.cur.theta)
     );
-    S.camera.lookAt(S.cur.target);
+    _lookTmp.set(S.cur.target.x, ty, S.cur.target.z);
+    S.camera.lookAt(_lookTmp);
 
     if (S.mandible) {
       const ex = S.mandible.userData || {};
       const hp = ex.hinge_point || [0, -12, -75];
-      const a = -S.openDeg * Math.PI / 180;
+      // 開口 = 下顎の前方（オトガイ側）が下がる。ヒンジより前方の点は
+      // y' = y·cosθ − z_rel·sinθ なので回転角は正（SPEC §5.4）。負にすると逆に上がる
+      const a = S.openCur * Math.PI / 180;
       S.mandible.position.set(0, 0, 0);
       S.mandible.rotation.set(0, 0, 0);
       S.mandible.updateMatrix();

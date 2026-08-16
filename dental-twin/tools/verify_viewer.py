@@ -155,6 +155,17 @@ with sync_playwright() as pw:
     pg.eval_on_selector("#open", "el => { el.value = 24; el.dispatchEvent(new Event('input')); }")
     pg.click("#modeBtn")
     pg.wait_for_timeout(4000)
+
+    # 開口方向: 下顎の前方が下がる = X軸回りの回転角が正（SPEC §5.4）
+    rotx = pg.evaluate("() => window.__DT.mandible.rotation.x")
+    print("開口 24° → mandible.rotation.x =", round(rotx, 3), "(正=下顎が下がる)")
+    if not rotx > 0.2:
+        ok = False
+    # 表示段階②: 歯肉の不透明度が目標値 0.25 まで滑らかに遷移している
+    galpha = pg.evaluate("() => window.__DT.gingiva[0].material.opacity")
+    print("歯肉 opacity(stage②) =", round(galpha, 3))
+    if abs(galpha - 0.25) > 0.04:
+        ok = False
     pg.screenshot(path=os.path.join(DOCS, "shot_patient.png"))
     shots.append(os.path.join(DOCS, "shot_patient.png"))
     mode = pg.evaluate("() => window.__DT.mode")
