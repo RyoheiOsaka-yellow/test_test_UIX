@@ -334,6 +334,7 @@
     <section class="wf-step" id="wfStep3">
       <h2><span class="wf-no">3</span>生成へ書き出し <small>Seedance等へ — プロンプト+パラメータ+参照画像をカット毎に</small></h2>
       <div class="wf-actions">
+        <select id="wfModelSel" title="書き出すプロンプトのモデル方言 (ヘッダーの選択と同期)"></select>
         <button id="btnWfCopySeq" class="btn small"><svg class="ic"><use href="#i-copy"/></svg> 連結シーケンスをコピー (1プロンプト)</button>
         <button id="btnWfPngs" class="btn small" title="全カットの想定カット画像をPNG化し、連結シート付きZIPで保存 (参照画像・テロップ込み)"><svg class="ic"><use href="#i-image"/></svg> 画像一括書き出し (PNG)</button>
         <button id="btnWfMd" class="btn small" title="ストーリー+全カットの生成プロンプト・パラメータ・繋ぎを1つのMarkdownに (ChatGPT/Seedanceへの受け渡し用)"><svg class="ic"><use href="#i-doc"/></svg> プロンプト一式 (MD)</button>

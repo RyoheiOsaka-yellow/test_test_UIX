@@ -3145,8 +3145,8 @@ async function wfSendCut(cut, statusEl) {
         project: state.projectTitle,
         cut_no: state.cuts.indexOf(cut) + 1,
         name: cut.name,
-        model_hint: "seedance",
-        prompt: generatePrompt(cut, "seedance"),
+        model_hint: state.promptModel,
+        prompt: generatePrompt(cut, state.promptModel),
         params: {
           ratio: seedanceRatio(cut.aspect),
           duration_s: cut.kind === "still" ? null : (cut.duration || 5),
@@ -3195,7 +3195,7 @@ function renderWorkflow() {
   byId("wfRefGrid").innerHTML = state.story.refs.map(r => {
     const usedBy = state.cuts.map((c, i) => c.refImgId === r.id ? `C${i + 1}` : null).filter(Boolean);
     return `
-    <div class="wf-ref">
+    <div class="wf-ref" draggable="true" data-refdrag="${r.id}" title="ドラッグしてカットや書き出しカードへドロップすると割り当てられます">
       <img src="${r.dataUrl}" alt="${esc(r.name)}">
       <div class="wf-ref-body">
         <div class="wf-ref-name" title="${esc(r.name)}">${esc(r.name)}${r.hasAlpha ? `<span class="wf-ref-used" title="背景透過 — スタジオ背景に被写体として合成されます">透過</span>` : ""}${usedBy.length ? `<span class="wf-ref-used">${usedBy.join(" ")}</span>` : ""}</div>
@@ -3224,6 +3224,7 @@ function renderWorkflow() {
   /* ステップ3: 書き出しセンター */
   const cfg = wfApiCfg();
   byId("wfApiUrl").value = cfg.endpoint || "";
+  byId("wfModelSel").value = state.promptModel;
   byId("wfExportList").innerHTML = state.cuts.map((c, i) => {
     const ref = state.story.refs.find(r => r.id === c.refImgId);
     const sp = seedanceParams(c);
@@ -3236,7 +3237,7 @@ function renderWorkflow() {
       </div>
       <div class="wf-exp-row">
         ${ref ? `<img class="wf-exp-ref" src="${ref.dataUrl}" title="first frame 参照: ${esc(ref.name)}">` : `<div class="wf-exp-noref" title="ステップ1で参照画像を割り当てると first frame として使えます">参照<br>なし</div>`}
-        <textarea readonly rows="3">${esc(generatePrompt(c, "seedance"))}</textarea>
+        <textarea readonly rows="3">${esc(generatePrompt(c, state.promptModel))}</textarea>
       </div>
       <div class="wf-exp-actions">
         <button class="btn small" data-wfcopy="${c.id}"><svg class="ic"><use href="#i-copy"/></svg> プロンプトをコピー</button>
@@ -3274,6 +3275,15 @@ function setupWorkflow() {
   drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); wfAddRefFiles([...e.dataTransfer.files]); });
   byId("wfRefInput").addEventListener("change", e => { wfAddRefFiles([...e.target.files]); e.target.value = ""; });
 
+  const wfm = byId("wfModelSel");
+  wfm.innerHTML = PROMPT_MODELS.map(m => `<option value="${m.id}">${esc(m.label)}</option>`).join("");
+  wfm.addEventListener("change", () => {
+    state.promptModel = wfm.value;
+    const pm2 = byId("promptModelSelect");
+    if (pm2) pm2.value = wfm.value; // ヘッダー側と同期
+    renderPrompt();
+    renderWorkflow();
+  });
   byId("btnWfCopySeq").addEventListener("click", async () => {
     try { await navigator.clipboard.writeText(buildSeedanceSequence()); } catch { /* file://等 */ }
     state.cuts.forEach(c => { if (c.wfStatus === "plan" && c.kind !== "still") c.wfStatus = "prompted"; });
@@ -3296,7 +3306,7 @@ function setupWorkflow() {
     const cutBy = attr => { const el = e.target.closest(`[${attr}]`); return el ? { el, cut: state.cuts.find(c => c.id === el.getAttribute(attr)) } : null; };
     let hit;
     if ((hit = cutBy("data-wfcopy")) && hit.cut) {
-      try { await navigator.clipboard.writeText(generatePrompt(hit.cut, "seedance")); } catch { /* 手動コピーにフォールバック */ }
+      try { await navigator.clipboard.writeText(generatePrompt(hit.cut, state.promptModel)); } catch { /* 手動コピーにフォールバック */ }
       if (hit.cut.wfStatus === "plan") hit.cut.wfStatus = "prompted";
       renderCutStrip(); renderWorkflow();
     } else if ((hit = cutBy("data-wfsend")) && hit.cut) {
@@ -3356,6 +3366,70 @@ function setupWorkflow() {
     renderWorkflow();
     byId("wfBody").scrollTop = 0;
     setTimeout(gcMediaClips, 4000); // 自動保存が新しい状態を書いた後に回収
+  });
+
+  /* 参照画像のドラッグ&ドロップ割当 (WF内: 画像カード → 書き出しカード) */
+  byId("wfRefGrid").addEventListener("dragstart", e => {
+    const card = e.target.closest("[data-refdrag]");
+    if (card) e.dataTransfer.setData("text/vs-ref", card.dataset.refdrag);
+  });
+  byId("wfBody").addEventListener("dragover", e => {
+    const exp = e.target.closest(".wf-exp");
+    if (!exp) return;
+    e.preventDefault();
+    exp.classList.add("drop-hint");
+  });
+  byId("wfBody").addEventListener("dragleave", e => {
+    const exp = e.target.closest(".wf-exp");
+    if (exp) exp.classList.remove("drop-hint");
+  });
+  byId("wfBody").addEventListener("drop", e => {
+    const exp = e.target.closest(".wf-exp");
+    if (!exp) return;
+    e.preventDefault();
+    exp.classList.remove("drop-hint");
+    const refId = e.dataTransfer.getData("text/vs-ref");
+    const cut = state.cuts.find(c => c.id === exp.dataset.cid);
+    if (!cut || !refId || !state.story.refs.some(r => r.id === refId)) return;
+    cut.refImgId = refId;
+    refresh(); renderInspector();
+    renderWorkflow();
+  });
+}
+
+/* スタジオ側: カット割りサムネへ参照画像 (内部ドラッグ or OSの画像ファイル) をドロップ */
+function setupRefDnD() {
+  const strip = byId("cutStrip");
+  strip.addEventListener("dragover", e => {
+    const th = e.target.closest(".cut-thumb");
+    if (!th) return;
+    e.preventDefault();
+    th.classList.add("drop-hint");
+  });
+  strip.addEventListener("dragleave", e => {
+    const th = e.target.closest(".cut-thumb");
+    if (th) th.classList.remove("drop-hint");
+  });
+  strip.addEventListener("drop", async e => {
+    const th = e.target.closest(".cut-thumb");
+    if (!th) return;
+    e.preventDefault();
+    th.classList.remove("drop-hint");
+    const cut = state.cuts[+th.dataset.idx];
+    if (!cut) return;
+    const refId = e.dataTransfer.getData("text/vs-ref");
+    if (refId && state.story.refs.some(r => r.id === refId)) {
+      cut.refImgId = refId;
+    } else if (e.dataTransfer.files && e.dataTransfer.files.length) {
+      const before = state.story.refs.length;
+      await wfAddRefFiles([...e.dataTransfer.files]); // 取り込み+縮小 (透過検出込み)
+      if (state.story.refs.length === before) return; // 画像でなかった等
+      cut.refImgId = state.story.refs[state.story.refs.length - 1].id;
+    } else {
+      return;
+    }
+    refresh(); renderInspector();
+    showToast(`C${state.cuts.indexOf(cut) + 1} に参照画像を割り当てました`);
   });
 }
 
@@ -3548,7 +3622,8 @@ function buildPromptPackMd() {
     L.push(`\n## ストーリー\n`);
     L.push(state.story.text.trim());
   }
-  L.push(`\n## カット別プロンプト (Seedance)`);
+  const pmLabel = (PROMPT_MODELS.find(m => m.id === state.promptModel) || PROMPT_MODELS[0]).label;
+  L.push(`\n## カット別プロンプト (${pmLabel})`);
   state.cuts.forEach((c, i) => {
     const ref = state.story.refs.find(r => r.id === c.refImgId);
     const t = TRANSITIONS.find(x => x.id === (c.transition || "cut"));
@@ -3564,12 +3639,12 @@ function buildPromptPackMd() {
     if (c.caption) L.push(`- テロップ (編集時に付ける — プロンプトには入れない): ${c.caption}`);
     if (i < state.cuts.length - 1 && t) L.push(`- 次カットへの繋ぎ: ${t.label}`);
     L.push("\n```");
-    L.push(generatePrompt(c, "seedance"));
+    L.push(generatePrompt(c, state.promptModel));
     L.push("```");
   });
   const seq = buildSeedanceSequence();
   if (seq) {
-    L.push(`\n## 連結シーケンス (1プロンプト版)\n`);
+    L.push(`\n## 連結シーケンス (1プロンプト版・Seedance形式)\n`);
     L.push("```");
     L.push(seq);
     L.push("```");
@@ -5119,7 +5194,13 @@ function setupHeader() {
   const pm = byId("promptModelSelect");
   pm.innerHTML = PROMPT_MODELS.map(m => `<option value="${m.id}">${esc(m.label)}</option>`).join("");
   pm.value = state.promptModel;
-  pm.addEventListener("change", () => { state.promptModel = pm.value; renderPrompt(); });
+  pm.addEventListener("change", () => {
+    state.promptModel = pm.value;
+    renderPrompt();
+    const wfm2 = byId("wfModelSel");
+    if (wfm2) wfm2.value = pm.value;
+    if (!byId("wfOverlay").hidden) renderWorkflow();
+  });
 
   // 技法md インポート
   byId("btnImportMd").addEventListener("click", () => byId("fileMdImport").click());
@@ -5155,14 +5236,23 @@ function setupHeader() {
     state.selectedItem = null;
     renderAll();
   });
-  byId("btnDupCut").addEventListener("click", () => {
-    const clone = JSON.parse(JSON.stringify(activeCut()));
+  byId("btnDupCut").addEventListener("click", async () => {
+    const src = activeCut();
+    const clone = JSON.parse(JSON.stringify(src));
     clone.id = uid();
     clone.items.forEach(i => i.id = uid());
     clone.name += " (複製)";
     state.cuts.splice(state.activeCut + 1, 0, clone);
     state.activeCut++;
     renderAll();
+    try {
+      const clip = await idbGetClip(src.id); // 添付動画も複製に引き継ぐ
+      if (clip) {
+        await idbPutClip({ ...clip, cutId: clone.id, addedAt: Date.now() });
+        rcRefreshIndex();
+        showToast("カットを複製しました (添付動画もコピー)");
+      }
+    } catch { /* IDBなし環境 */ }
   });
   byId("btnDelCut").addEventListener("click", () => {
     if (state.cuts.length <= 1) { alert("最後のカットは削除できません"); return; }
@@ -5281,6 +5371,7 @@ function init() {
   setupRoughCut();
   setupShortcuts();
   setupOnboarding();
+  setupRefDnD();
   byId("btnPlayPreview").addEventListener("click", () => {
     state.previewPlay = !state.previewPlay;
     if (state.previewPlay) startPreviewAnim(); else stopPreviewAnim();
