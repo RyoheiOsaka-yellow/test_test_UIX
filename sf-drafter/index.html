@@ -209,6 +209,22 @@ input[type=text]:focus{ outline:none; }
 .sw i{ width:50%; height:50%; display:block; }
 
 .note{ font-size:10px; color:var(--ink-faint); line-height:1.6; margin-top:7px; }
+.tray{ display:flex; gap:6px; flex-wrap:wrap; }
+.pen{
+  width:30px; height:30px; padding:3px; cursor:pointer; background:transparent;
+  border:none; position:relative; border-radius:50% 47% 53% 48%;
+}
+.pen::before{
+  content:''; position:absolute; inset:0; border:1.4px solid var(--ink);
+  border-radius:50% 47% 53% 48%; opacity:.26; filter:url(#rough2);
+}
+.pen i{ display:block; width:100%; height:100%; border-radius:50%; }
+.pen.erase i{ background:repeating-linear-gradient(45deg,#f2efe4 0 4px,#d8d2c0 4px 8px); }
+.pen.on::before{ opacity:1; border-width:2.4px; }
+.pen.on::after{
+  content:''; position:absolute; inset:-4px; border:1.2px dashed var(--accent);
+  border-radius:50%; opacity:.9;
+}
 
 /* ---------- ビューポート ---------- */
 #viewport{
@@ -369,6 +385,7 @@ table.leg i{ display:inline-block; width:10px; height:10px; border:1.2px solid v
       <button class="tbtn" id="btnZoomIn">＋</button>
       <button class="tbtn" id="btnFit">原寸</button>
       <span class="tsep"></span>
+      <button class="tbtn" id="btnLineart">塗り絵(線画)</button>
       <button class="tbtn on" id="btnAnim">描画アニメ</button>
       <button class="tbtn" id="btnRedraw">引き直す</button>
       <span class="tsep"></span>
@@ -423,6 +440,7 @@ const PAPERS = {
   ROUGH:    { label:'ラフ紙',   base:'#f2ecdf', grain:.075, warm:1.02 },
   VELLUM:   { label:'トレペ',   base:'#f8f6ec', grain:.030, warm:.98 },
   BLUEGRID: { label:'方眼紙',   base:'#f0f2ec', grain:.042, warm:.93, grid:true },
+  WHITE:    { label:'白紙',     base:'#fdfbf5', grain:.018, warm:1.0 },
 };
 
 /* ---------------- ジャンルとモード ---------------- */
@@ -522,6 +540,7 @@ const S = {
   struct:'MANY', detail:'DETAILED', site:'INDUSTRIAL', density:'MANY',
   palette:'CHROMIUM', paper:'ROUGH', ink:'MEDIUM', grid:'LARGE',
   color:60, rough:52, seed:42928, title:'', animate:true,
+  lineart:false, pencil:null,
   rot:0, zoom:1, panx:0, pany:0,
 };
 
@@ -681,10 +700,19 @@ function poly2(pts,o,close){
 function hatch2(pts, o){
   if(MEASURE) return;
   o=o||{};
-  const col = o.color||'#888';
-  const sp  = o.sp || 4.2;
+  let col = o.color||'#888';
+  let sp  = o.sp || 4.2;
   const ang = o.ang!=null?o.ang : -Math.PI/4;
-  const a   = (o.a!=null?o.a:.20) * (S.color/42);
+  let a   = (o.a!=null?o.a:.20) * (S.color/42);
+  let wash = o.wash;
+  if(!o.raw){
+    if(o.reg!==false) regPush(pts);
+    const pc = PAINT[CURPART];
+    if(pc!=null){ col=pc; a=PAINTO.a; sp=PAINTO.sp; wash=true; }
+    else if(LINEART) return;
+  }else{
+    a = (o.a!=null?o.a:.20);
+  }
   if(a<=0.005 || pts.length<3) return;
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
   for(const p of pts){ if(p[0]<x0)x0=p[0]; if(p[0]>x1)x1=p[0]; if(p[1]<y0)y0=p[1]; if(p[1]>y1)y1=p[1]; }
@@ -695,7 +723,7 @@ function hatch2(pts, o){
   pts.forEach((p,i)=> i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));
   ctx.closePath();
   ctx.clip();
-  if(o.wash){ ctx.globalAlpha=a*.55; ctx.fillStyle=col; ctx.fillRect(x0-2,y0-2,w+4,h+4); }
+  if(wash){ ctx.globalAlpha=a*.55; ctx.fillStyle=col; ctx.fillRect(x0-2,y0-2,w+4,h+4); }
   const cx=(x0+x1)/2, cy=(y0+y1)/2;
   const dx=Math.cos(ang), dy=Math.sin(ang);
   const nx=-dy, ny=dx;
@@ -737,6 +765,25 @@ function hatch2(pts, o){
   ctx.restore();
 }
 let SOL=0, PAPERC='#f0ebdd';
+/* --- 塗り絵 --- */
+let LINEART=false;              /* 線画モード(自動彩色を止める) */
+let PAINT={};                   /* 部材番号 -> 色 */
+let REGIONS=[];                 /* 当たり判定用 {p:部材番号, pts:画面座標} */
+let CURPART=-1;                 /* いま描いている部材 */
+function regPush(pts){ if(!MEASURE && CURPART>=0) REGIONS.push({p:CURPART,pts:pts}); }
+function inPoly(pts,x,y){
+  let c=false;
+  for(let i=0,j=pts.length-1;i<pts.length;j=i++){
+    const a=pts[i], b=pts[j];
+    if(((a[1]>y)!==(b[1]>y)) && (x < (b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])) c=!c;
+  }
+  return c;
+}
+function hitPart(x,y){
+  for(let i=REGIONS.length-1;i>=0;i--) if(inPoly(REGIONS[i].pts,x,y)) return REGIONS[i].p;
+  return -1;
+}
+const PAINTO = {a:.34,sp:3.2,wash:true,raw:true};
 function fillPoly(pts,c,a){
   if(MEASURE||!a||pts.length<3) return;
   ctx.save(); ctx.beginPath();
@@ -747,7 +794,7 @@ function face3(list,o){
   o=o||{};
   const pts=list.map(p=>P(p[0],p[1],p[2]));
   if(o.solid) fillPoly(pts,PAPERC,o.solid);
-  if(o.color) hatch2(pts,o);
+  if(o.color) hatch2(pts,o); else if(o.reg!==false) regPush(pts);
   if(o.edge!==false) poly2(pts,{w:o.w||.9,a:o.ea!=null?o.ea:.78,passes:o.passes||1,over:o.over||1.5},true);
   return pts;
 }
@@ -2798,7 +2845,7 @@ function chrome(){
     for(let i=0;i<=4;i++){
       const x=lerp(sx0,sx1,i/4);
       ln2([x,sy-4],[x,sy+4],{w:.6,a:.4,passes:1});
-      if(i%2===0 && i<4) hatch2([[x,sy],[lerp(sx0,sx1,(i+1)/4),sy],[lerp(sx0,sx1,(i+1)/4),sy+4],[x,sy+4]],{color:'#55525a',a:.35,sp:1.8,ang:-.9});
+      if(i%2===0 && i<4) hatch2([[x,sy],[lerp(sx0,sx1,(i+1)/4),sy],[lerp(sx0,sx1,(i+1)/4),sy+4],[x,sy+4]],{color:'#55525a',a:.35,sp:1.8,ang:-.9,raw:true});
     }
     tech('0', sx0-8, sy+3, 7, {align:'right',color:'rgba(96,92,88,.75)'});
     tech('M', sx1+8, sy+3, 7, {color:'rgba(96,92,88,.75)'});
@@ -2900,7 +2947,7 @@ function satellite(i){
 /* =========================================================================
    生成 → 描画パイプライン
    ========================================================================= */
-let strokes=0, queue=[], qi=0, raf=0, t0=0, lastMs=0;
+let strokes=0, queue=[], qi=0, raf=0, t0=0, lastMs=0, PAINTING=false;
 const progEl=document.getElementById('prog'), progBar=document.getElementById('progBar'), progTxt=document.getElementById('progTxt');
 
 /* 実際に描かれる範囲を採寸してから、図面枠いっぱいに収める */
@@ -2918,14 +2965,16 @@ function fitScene(){
   V.cx=(FR.x0+FR.x1)/2 - (BX.x0+BX.x1)/2*V.s;
   V.cy=(FR.y0+FR.y1)/2 - (BX.y0+BX.y1)/2*V.s;
 }
-function generate(){
+function generate(keepPaint){
   R = mulberry32((S.seed>>>0)||1);
   COLS = PALETTES[S.palette].cols;
   INKW = S.ink==='FINE'?.80 : S.ink==='BOLD'?1.75 : 1.24;
   ROUGH = 0.35 + (S.rough/100)*1.9;
   INK = S.palette==='CYANOTYPE' ? 'rgba(44,58,82,1)' : 'rgba(54,52,58,1)';
   PAPERC = PAPERS[S.paper].base;
-  SOL = S.genre==='arch' ? 0 : .60;
+  LINEART = S.lineart;
+  SOL = LINEART ? .90 : (S.genre==='arch' ? 0 : .60);
+  if(LINEART) INKW *= 1.12;
   OPS=[]; LEG=[]; strokes=0;
   SCENE.name = genName();
   if(S.title.trim()){
@@ -2948,33 +2997,47 @@ function generate(){
 
   queue = [];
   queue.push(function(){
+    CURPART=-1; REGIONS=[];
     ctx.setTransform(EX,0,0,EX,0,0);
     ctx.clearRect(0,0,SW,SH);
     ctx.drawImage(paperFor(S.paper),0,0,SW,SH);
   });
-  for(const o of OPS) queue.push(o.f);
-  for(const f of chrome()) queue.push(f);
+  OPS.forEach(function(o,i){ queue.push(function(){ CURPART=i; o.f(); }); });
+  const ch=chrome();
+  queue.push(function(){ CURPART=-1; });
+  for(const f of ch) queue.push(f);
   queue.push(finishSheet);
+  if(!keepPaint) PAINT={};
   qi=0; t0=performance.now();
   if(raf) cancelAnimationFrame(raf);
   progEl.hidden=false; progTxt.textContent='DRAWING';
   raf=requestAnimationFrame(flush);
 }
 function flush(){
-  const budget = S.animate? 10 : 46;
+  const budget = (S.animate && !PAINTING)? 10 : 46;
   const st=performance.now();
   while(qi<queue.length && performance.now()-st<budget){ queue[qi++](); }
   progBar.style.width = Math.round(qi/queue.length*100)+'%';
   if(qi<queue.length){ raf=requestAnimationFrame(flush); }
   else{
     raf=0; lastMs=Math.round(performance.now()-t0);
-    progEl.hidden=true; progBar.style.width='0%';
+    progEl.hidden=true; progBar.style.width='0%'; PAINTING=false;
     renderInfo();
   }
 }
 function renderSync(){
+  R = mulberry32((((S.seed>>>0)||1) ^ 0x5f356495)>>>0);
   qi=0;
   while(qi<queue.length) queue[qi++]();
+}
+/* 塗るたびに一から作り直さず、同じ手順をもう一度なぞる */
+function repaint(){
+  if(!queue.length) return generate(true);
+  if(raf){ cancelAnimationFrame(raf); raf=0; }
+  R = mulberry32((((S.seed>>>0)||1) ^ 0x5f356495)>>>0);
+  qi=0; t0=performance.now();
+  progEl.hidden=false; progTxt.textContent='COLOURING';
+  raf=requestAnimationFrame(flush);
 }
 
 /* =========================================================================
@@ -3060,6 +3123,17 @@ function buildOpts(){
       slider('color','着彩量',0,100,1)+
       slider('rough','線の荒さ',0,100,1)+
     '</div>'+
+    '<div class="sec"><h3>COLOURING <b>塗り絵</b></h3>'+
+      '<div class="grid2" style="margin-bottom:8px">'+
+        '<button class="chip" data-k="lineart" data-v="false">彩色ずみ<small>SHADED</small></button>'+
+        '<button class="chip" data-k="lineart" data-v="true">線画<small>LINE ART</small></button>'+
+      '</div>'+
+      '<h4>色鉛筆(図面をクリックで塗る)</h4>'+
+      '<div class="tray" id="tray"></div>'+
+      '<button class="tbtn" id="btnClearPaint" style="margin-top:9px;width:100%;padding:7px 0">塗りを全部消す</button>'+
+      '<p class="note">図面の面をクリックすると、その部材が色鉛筆で塗られます。'+
+      'ドラッグは図面の移動です。線画にすると自動彩色が止まり、塗り絵の下絵になります。</p>'+
+    '</div>'+
     '<div class="sec"><h3>SHEET <b>図面</b></h3>'+
       '<h4>'+(S.genre==='arch'?'建物名':'機体名')+'(空欄で自動生成)</h4>'+
       '<div class="field"><input type="text" id="fTitle" placeholder="例: SALT ARCHIVE" maxlength="26"></div>'+
@@ -3079,10 +3153,33 @@ function buildTabs(){
     return '<button class="tab" data-k="mode" data-v="'+k+'"><span><em>'+MODES[k].no+'</em>'+MODES[k].jp+'</span></button>';
   }).join('');
 }
+function buildTray(){
+  const t=document.getElementById('tray');
+  if(!t) return;
+  const cols=COLS.concat(['#54525a']);
+  t.innerHTML = cols.map(function(c){
+    return '<button class="pen" data-pen="'+c+'" title="'+c+'"><i style="background:'+c+'"></i></button>';
+  }).join('') + '<button class="pen erase" data-pen="erase" title="消しゴム"><i></i></button>';
+  t.querySelectorAll('.pen').forEach(function(b){
+    b.classList.toggle('on', S.pencil===b.dataset.pen);
+  });
+}
+function penCursor(){
+  const c = S.pencil==='erase' ? '#f2efe4' : (S.pencil||'#c9a227');
+  const svg = "<svg xmlns='http://www.w3.org/2000/svg' width='26' height='26'><g transform='rotate(35 13 13)'>"+
+    "<rect x='11' y='3' width='4' height='15' fill='"+c+"' stroke='%233b3b42' stroke-width='.8'/>"+
+    "<path d='M11 18 L13 23 L15 18 Z' fill='%23f0e6d0' stroke='%233b3b42' stroke-width='.8'/>"+
+    "<path d='M12.2 21 L13 23 L13.8 21 Z' fill='"+(S.pencil==='erase'?'%23b9b3a2':c)+"'/></g></svg>";
+  return "url(\"data:image/svg+xml;utf8,"+svg.replace(/#/g,'%23')+"\") 3 23, crosshair";
+}
 function sync(){
   document.querySelectorAll('[data-k][data-v]').forEach(function(b){
     b.classList.toggle('on', String(S[b.dataset.k])===b.dataset.v);
   });
+  buildTray();
+  document.getElementById('viewport').style.cursor = penCursor();
+  const bl=document.getElementById('btnLineart');
+  if(bl) bl.classList.toggle('on',S.lineart);
   document.querySelectorAll('input[type=range][data-k]').forEach(function(r){
     r.value=S[r.dataset.k];
     const v=document.querySelector('[data-val="'+r.dataset.k+'"]');
@@ -3113,6 +3210,7 @@ document.body.addEventListener('click',function(e){
     buildTabs(); buildOpts(); sync(); generate();
     return;
   }
+  if(k==='lineart'){ S.lineart = (v==='true'); sync(); generate(true); return; }
   S[k]= (k==='floors'||k==='bldgs') ? +v : v;
   sync(); regen(true);
 });
@@ -3126,7 +3224,13 @@ optsEl.addEventListener('input',function(e){
   }
 });
 optsEl.addEventListener('click',function(e){
-  if(e.target.closest('#btnSeedRoll')) newSeed();
+  if(e.target.closest('#btnSeedRoll')) return newSeed();
+  const pen=e.target.closest('[data-pen]');
+  if(pen){ S.pencil = (S.pencil===pen.dataset.pen)? null : pen.dataset.pen; sync(); return; }
+  if(e.target.closest('#btnClearPaint')){
+    if(!Object.keys(PAINT).length) return;
+    PAINT={}; PAINTING=true; repaint();
+  }
 });
 document.getElementById('btnRoll').addEventListener('click',newSeed);
 function newSeed(){
@@ -3136,6 +3240,11 @@ function newSeed(){
 }
 document.getElementById('btnRedraw').addEventListener('click',function(){ generate(); });
 document.getElementById('btnAnim').addEventListener('click',function(){ S.animate=!S.animate; sync(); });
+document.getElementById('btnLineart').addEventListener('click',function(){
+  S.lineart=!S.lineart;
+  if(S.lineart && S.pencil===null) S.pencil=COLS[0];
+  sync(); generate(true);
+});
 document.getElementById('btnRotL').addEventListener('click',function(){ S.rot=(S.rot+3)%4; generate(); });
 document.getElementById('btnRotR').addEventListener('click',function(){ S.rot=(S.rot+1)%4; generate(); });
 
@@ -3161,14 +3270,28 @@ let drag=null;
 vp.addEventListener('pointerdown',function(e){
   /* ツールバー等の操作を邪魔しない */
   if(e.target.closest('.toolbar, #prog, .hint')) return;
-  drag={x:e.clientX,y:e.clientY,px:S.panx,py:S.pany};
+  drag={x:e.clientX,y:e.clientY,px:S.panx,py:S.pany,moved:0};
   vp.setPointerCapture(e.pointerId);
 });
 vp.addEventListener('pointermove',function(e){
   if(!drag) return;
+  drag.moved=Math.max(drag.moved, Math.abs(e.clientX-drag.x)+Math.abs(e.clientY-drag.y));
   S.panx=drag.px+(e.clientX-drag.x); S.pany=drag.py+(e.clientY-drag.y); applyView();
 });
-vp.addEventListener('pointerup',function(){ drag=null; });
+vp.addEventListener('pointerup',function(e){
+  const d=drag; drag=null;
+  if(!d || d.moved>4) return;
+  if(!S.pencil) return;                       /* 鉛筆を選んでいなければ塗らない */
+  if(raf) return;                             /* 描画中は受け付けない */
+  const r=cv.getBoundingClientRect();
+  if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom) return;
+  const x=(e.clientX-r.left)/r.width*SW, y=(e.clientY-r.top)/r.height*SH;
+  const part=hitPart(x,y);
+  if(part<0) return;
+  if(S.pencil==='erase'){ if(PAINT[part]==null) return; delete PAINT[part]; }
+  else { if(PAINT[part]===S.pencil) return; PAINT[part]=S.pencil; }
+  PAINTING=true; repaint();
+});
 vp.addEventListener('pointercancel',function(){ drag=null; });
 window.addEventListener('resize',fitView);
 window.addEventListener('keydown',function(e){
