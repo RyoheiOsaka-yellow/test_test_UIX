@@ -245,6 +245,43 @@ body.ph .split__media,
 body.ph .card__img img { filter: grayscale(1) contrast(1.08) brightness(.94); }
 ```
 
+### SEO・AI検索対応（静的マルチページビルド）
+
+**背景** — v8 までは6ページ分の内容が1つのURLに同居していた（`#/xbuild` などのハッシュルーター）。検索エンジンは `#` 以降を別URLと見なさないため、**実質1ページしかインデックスされない**。AI検索も引用できるURLがトップだけになる。
+
+`build-static.js` が v8 から `dist/` を生成する。**ドメインを変える場合は先頭の `ORIGIN` 1行だけ**。
+
+```
+dist/
+  index.html            /                105KB
+  xbuild/index.html     /xbuild/          92KB
+  xad/index.html        /xad/             92KB
+  xinteractive/index.html                 92KB
+  privacy/ terms/                     88KB / 87KB
+  assets/img/*.webp|jpg  17枚（全ページ共有）
+  assets/video/*.mp4     12本
+  robots.txt  sitemap.xml  llms.txt  og.png  404.html
+  .htaccess（XServer）  _headers（Netlify）
+```
+
+**各ページに持たせたもの**
+
+- 独自の title / description / canonical / OGP、`<h1>` は1ページ1本
+- JSON-LD を `@graph` 化。Organization ＋ WebSite ＋ WebPage を全ページに、プロダクトページには Service ＋ OfferCatalog ＋ BreadcrumbList を追加
+- `setLang` がページ別 meta を尊重（辞書にページ別 meta を日英対称で追加）
+
+**軽量化** — 埋め込みbase64画像17枚を `/assets/img/` へ外部化し、**1ページ 5.44MB → 105KB（52分の1）**。全ページで共有されるためブラウザキャッシュも効く。
+
+**AI検索対応**
+
+- `llms.txt` を新設。会社概要・3プロダクト・実績・会社情報を、AIが読む前提の構造で要約
+- `robots.txt` で GPTBot / OAI-SearchBot / ClaudeBot / PerplexityBot / Google-Extended / Applebot-Extended / CCBot を明示的に許可
+- 主要なAIクローラはJSを実行しないため、**JS非実行でも本文が読めること**を実測（トップ2771字、各プロダクト約1050字）
+
+**検証済み** — 全URLが200／`<h1>`各1本／4xxなし／JSエラーなし／ページ間遷移とセクションアンカー／EN切替でもページ別titleを維持。
+
+**未確定** — `ORIGIN` は `https://yellow.technology` を仮置き。ドメインと現行サイトからの切替方法が決まり次第、1行変えて再生成する。
+
 ### 現行サイトの画像をはめた試作（`yellow_spacex_v7_siteimg.html`）
 
 picsum のダミー20箇所（15種）を、現行サイトに載っている実制作物の画像に差し替えたもの。画像は webp のまま data URI で埋め込んであるので**単一HTMLのまま**（2.5MB）。
