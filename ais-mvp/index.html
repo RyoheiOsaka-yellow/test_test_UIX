@@ -1,0 +1,1771 @@
+<title>側弯症MVPロジックマップ</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+/* ─────────────────────────────────────────────────────────────
+   Tokens — light is the base; dark redefines tokens only.
+   Neutrals carry a slight teal bias toward the plantar accent.
+   ───────────────────────────────────────────────────────────── */
+:root {
+  --ground:   #EAEFEE;
+  --surface:  #FFFFFF;
+  --surface-2:#F3F7F6;
+  --ink:      #0F1B1D;
+  --ink-2:    #33474A;
+  --muted:    #5C7074;
+  --line:     #CBD8D7;
+  --line-soft:#DEE7E6;
+
+  /* modality hues — validated categorical set (light mode) */
+  --m-image:    #C0503E;
+  --m-motion:   #6A5CD4;
+  --m-plantar:  #0E8A78;
+  --m-growth:   #B0851A;
+  --m-clinical: #1D6FB8;
+
+  --accent: var(--m-plantar);
+  --accent-wash: #E1F0EC;
+
+  /* the instrument panel is a single-theme island: a reading-room screen */
+  --panel:      #0C1618;
+  --panel-2:    #101F22;
+  --panel-line: #22383B;
+  --panel-ink:  #DCE9E8;
+  --panel-muted:#7E979A;
+
+  --font-display: "Hiragino Mincho ProN", "Yu Mincho", YuMincho, "Noto Serif JP", "Songti SC", "Times New Roman", serif;
+  --font-body: "Hiragino Kaku Gothic ProN", "Yu Gothic", YuGothic, "Noto Sans JP", "Helvetica Neue", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Noto Sans Mono", monospace;
+
+  --col: 68ch;
+  --wide: 1180px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:   #0A1213;
+    --surface:  #101A1C;
+    --surface-2:#152124;
+    --ink:      #E2ECEB;
+    --ink-2:    #BCCDCC;
+    --muted:    #8CA1A3;
+    --line:     #223234;
+    --line-soft:#1A282A;
+
+    --m-image:    #D4705C;
+    --m-motion:   #8A7FD8;
+    --m-plantar:  #0FA48C;
+    --m-growth:   #B08A1E;
+    --m-clinical: #4A8CCC;
+
+    --accent-wash: #10312C;
+  }
+}
+:root[data-theme="dark"] {
+  --ground:   #0A1213;
+  --surface:  #101A1C;
+  --surface-2:#152124;
+  --ink:      #E2ECEB;
+  --ink-2:    #BCCDCC;
+  --muted:    #8CA1A3;
+  --line:     #223234;
+  --line-soft:#1A282A;
+
+  --m-image:    #D4705C;
+  --m-motion:   #8A7FD8;
+  --m-plantar:  #0FA48C;
+  --m-growth:   #B08A1E;
+  --m-clinical: #4A8CCC;
+
+  --accent-wash: #10312C;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.85;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── Layout ─────────────────────────────────────────────────── */
+.wrap { max-width: var(--wide); margin: 0 auto; padding: 0 24px; }
+.col  { max-width: var(--col); }
+
+main { display: block; }
+
+section.chapter {
+  border-top: 1px solid var(--line);
+  padding: 72px 0 84px;
+}
+section.chapter:first-of-type { border-top: none; }
+
+.chapter-head {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 0 20px;
+  align-items: start;
+  margin-bottom: 34px;
+}
+.chapter-num {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  padding-top: 12px;
+  border-top: 2px solid var(--accent);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.chapter-head h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(26px, 3.4vw, 38px);
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  margin: 0 0 10px;
+  text-wrap: balance;
+}
+.chapter-head p.lede {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 16px;
+  max-width: var(--col);
+}
+.chapter-body { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 0 20px; }
+.chapter-body > .flow { display: flex; flex-direction: column; gap: 30px; min-width: 0; }
+
+@media (max-width: 720px) {
+  .chapter-head, .chapter-body { grid-template-columns: 1fr; gap: 12px; }
+  .chapter-num { border-top: none; padding-top: 0; }
+}
+
+p { margin: 0; max-width: var(--col); }
+p + p { margin-top: 1em; }
+.flow > p, .flow > ul, .flow > ol { max-width: var(--col); }
+
+h3 {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  margin: 0 0 -12px;
+  letter-spacing: 0.01em;
+}
+
+ul, ol { margin: 0; padding-left: 1.3em; }
+li { margin: 0.3em 0; }
+li::marker { color: var(--muted); }
+
+strong { font-weight: 700; color: var(--ink); }
+em { font-style: normal; background: linear-gradient(transparent 62%, var(--accent-wash) 62%); }
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── Hero ───────────────────────────────────────────────────── */
+header.hero {
+  padding: 88px 0 64px;
+  position: relative;
+  overflow: hidden;
+}
+header.hero .wrap { position: relative; }
+.hero h1 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(34px, 6vw, 66px);
+  line-height: 1.28;
+  letter-spacing: 0.005em;
+  margin: 18px 0 0;
+  max-width: 14em;
+  text-wrap: balance;
+}
+.hero .sub {
+  margin-top: 22px;
+  font-size: 17px;
+  color: var(--ink-2);
+  max-width: 56ch;
+}
+.thesis {
+  margin-top: 40px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-family: var(--font-display);
+  font-size: clamp(18px, 2.6vw, 26px);
+}
+.thesis .from { color: var(--muted); }
+.thesis .to { color: var(--accent); font-weight: 600; }
+.thesis .arrow { color: var(--accent); font-family: var(--font-mono); }
+
+.meta-strip {
+  margin-top: 52px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.meta-strip div { background: var(--surface); padding: 16px 18px; }
+.meta-strip dt {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+.meta-strip dd { margin: 0; font-size: 14.5px; line-height: 1.6; color: var(--ink); }
+
+/* ── Instrument panel (3D scenes) ───────────────────────────── */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  border-radius: 3px;
+  overflow: hidden;
+  color: var(--panel-ink);
+}
+.panel-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--panel-line);
+  background: var(--panel-2);
+}
+.panel-bar .title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--panel-muted);
+}
+.panel-canvas { display: block; width: 100%; height: 540px; touch-action: pan-y; cursor: grab; }
+.panel-canvas:active { cursor: grabbing; }
+.panel-canvas.tall { height: 575px; }
+@media (max-width: 720px) { .panel-canvas, .panel-canvas.tall { height: 440px; } }
+
+.panel-foot {
+  border-top: 1px solid var(--panel-line);
+  padding: 12px 16px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--panel-muted);
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.hint { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; }
+
+.segbtns { display: flex; gap: 6px; flex-wrap: wrap; }
+.segbtns button {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  padding: 6px 12px;
+  border: 1px solid var(--panel-line);
+  background: transparent;
+  color: var(--panel-muted);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.segbtns button:hover { color: var(--panel-ink); border-color: #35555A; }
+.segbtns button[aria-pressed="true"] {
+  color: #0C1618;
+  background: #35C6AC;
+  border-color: #35C6AC;
+  font-weight: 700;
+}
+.segbtns button:focus-visible { outline: 2px solid #35C6AC; outline-offset: 2px; }
+
+/* ── Figures ────────────────────────────────────────────────── */
+figure { margin: 0; }
+figure svg { display: block; width: 100%; height: auto; }
+.figbox {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 22px 22px 0;
+}
+.figbox.flush { padding: 22px; }
+figcaption {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--muted);
+  padding: 14px 0 18px;
+  border-top: 1px solid var(--line-soft);
+  margin-top: 18px;
+  max-width: 78ch;
+}
+figcaption b { color: var(--ink-2); font-weight: 700; }
+.scroller { overflow-x: auto; }
+
+/* ── Legend ─────────────────────────────────────────────────── */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }
+.legend i { width: 11px; height: 11px; border-radius: 2px; display: block; flex: none; }
+.panel .legend span { color: var(--panel-muted); }
+
+/* ── Table ──────────────────────────────────────────────────── */
+table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 620px; }
+caption { text-align: left; font-size: 13px; color: var(--muted); padding-bottom: 10px; }
+th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+thead th {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 400;
+  border-bottom: 1px solid var(--line);
+}
+tbody tr:last-child td { border-bottom: none; }
+td.src { white-space: nowrap; }
+.chip { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+.chip i { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+td.freq { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* ── Model cards ────────────────────────────────────────────── */
+.models { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.model {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 18px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.model.lead { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.model .tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--muted);
+}
+.model.lead .tag { color: var(--accent); }
+.model h4 { margin: 0; font-family: var(--font-display); font-size: 17px; font-weight: 600; }
+.model .inputs { display: flex; flex-wrap: wrap; gap: 6px; }
+.model .inputs b {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 2px;
+  color: var(--surface);
+  letter-spacing: 0.02em;
+}
+.model p { font-size: 13.5px; color: var(--muted); line-height: 1.7; margin: 0; }
+
+/* ── Hypothesis ladder ──────────────────────────────────────── */
+.ladder { display: flex; flex-direction: column; gap: 0; border-left: 2px solid var(--line); }
+.rung { position: relative; padding: 0 0 26px 28px; }
+.rung:last-child { padding-bottom: 0; }
+.rung::before {
+  content: "";
+  position: absolute;
+  left: -7px; top: 7px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--line);
+}
+.rung.peak::before { background: var(--accent); border-color: var(--accent); }
+.rung .h {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 2px;
+}
+.rung.peak .h { color: var(--accent); }
+.rung .q { font-family: var(--font-display); font-size: 17px; line-height: 1.6; margin: 0 0 4px; }
+.rung .n { font-size: 13.5px; color: var(--muted); margin: 0; line-height: 1.7; }
+
+/* ── Formula ────────────────────────────────────────────────── */
+.formula {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 3px;
+  padding: 26px 24px;
+  overflow-x: auto;
+}
+.formula .expr {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 2.2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.formula .expr .v { font-weight: 700; }
+.formula .note { margin-top: 16px; font-size: 13.5px; color: var(--muted); white-space: normal; }
+
+/* ── Steps ──────────────────────────────────────────────────── */
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.steps .step { background: var(--surface); padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 6px; }
+.steps .step .k { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; color: var(--accent); }
+.steps .step .t { font-size: 14.5px; font-weight: 700; line-height: 1.55; }
+.steps .step .d { font-size: 12.5px; color: var(--muted); line-height: 1.65; }
+
+/* ── Agenda ─────────────────────────────────────────────────── */
+.flow > ol.agenda { max-width: none; }
+.agenda { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0 34px; counter-reset: ag; list-style: none; padding: 0; max-width: none; }
+.agenda li {
+  counter-increment: ag;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 14.5px;
+  line-height: 1.65;
+  margin: 0;
+}
+.agenda li::before {
+  content: counter(ag, decimal-leading-zero);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--muted);
+  padding-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Pull quote ─────────────────────────────────────────────── */
+blockquote {
+  margin: 0;
+  padding: 18px 0 18px 22px;
+  border-left: 3px solid var(--accent);
+  font-family: var(--font-display);
+  font-size: clamp(17px, 2.2vw, 21px);
+  line-height: 1.75;
+  color: var(--ink);
+  max-width: 60ch;
+}
+blockquote .attr { display: block; margin-top: 10px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.14em; color: var(--muted); }
+
+.callout {
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 3px;
+  padding: 18px 20px;
+  font-size: 14.5px;
+  line-height: 1.8;
+  color: var(--ink-2);
+  max-width: var(--col);
+}
+.callout .lbl {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 6px;
+}
+
+footer.foot {
+  border-top: 1px solid var(--line);
+  padding: 40px 0 64px;
+  color: var(--muted);
+  font-size: 13px;
+}
+footer.foot .wrap { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+
+:where(a, button, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+</style>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">思春期特発性側弯症 / AIS — MVP設計</span>
+    <h1>観察するAIから、<br>予測するモニタリング基盤へ</h1>
+    <p class="sub">
+      スマートフォン画像を中核に据えたまま、足底荷重・動作センサー・時間軸を加える。
+      本ページは提案書のロジックを、3D/2Dの図として展開したものです。
+    </p>
+    <div class="thesis">
+      <span class="from">画像による「観察」</span>
+      <span class="arrow">──▶</span>
+      <span class="to">マルチモーダルデータによる「予測」</span>
+    </div>
+
+    <dl class="meta-strip">
+      <div><dt>課題</dt><dd>誰が進行するのか事前に予測できない</dd></div>
+      <div><dt>制約</dt><dd>被曝・フォローの空白期間・見逃し</dd></div>
+      <div><dt>MVPの問い</dt><dd>足底データの追加に予測的価値はあるか</dd></div>
+      <div><dt>検証形式</dt><dd>Model A / B / C の比較</dd></div>
+    </dl>
+  </div>
+</header>
+
+<main>
+
+<!-- ══ 1. 課題 ══════════════════════════════════════════════ -->
+<section class="chapter">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-num">01 / WHY</div>
+      <div>
+        <h2>現行フォローには、構造的な「空白」がある</h2>
+        <p class="lede">
+          AISの発症・進行メカニズムは未解明で、進行の兆候が視覚的に顕在化するまでに時間差がある。
+          現在の診療は一定期間ごとのX線評価と経験に基づく経過観察に依存しており、被曝制約がその頻度を縛る。
+        </p>
+      </div>
+    </div>
+
+    <div class="chapter-body">
+      <div class="chapter-num"></div>
+      <div class="flow">
+
+        <figure class="figbox">
+          <div class="scroller">
+          <svg viewBox="0 0 1080 300" role="img" aria-label="X線評価は6か月ごとの点でしかなく、その間の進行は観測されないまま経過する。日次で取得できる信号がその空白を埋める。">
+            <defs>
+              <marker id="ah-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+              </marker>
+              <marker id="ah-acc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="#0E8A78"/>
+              </marker>
+              <pattern id="gap" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
+                <line x1="0" y1="0" x2="0" y2="8" stroke="currentColor" stroke-width="1.4" opacity="0.16"/>
+              </pattern>
+            </defs>
+
+            <!-- blind gaps -->
+            <rect x="150" y="60" width="270" height="86" fill="url(#gap)"/>
+            <rect x="450" y="60" width="270" height="86" fill="url(#gap)"/>
+            <rect x="750" y="60" width="270" height="86" fill="url(#gap)"/>
+
+            <!-- axis -->
+            <line x1="90" y1="196" x2="1040" y2="196" stroke="currentColor" stroke-width="1.5" opacity="0.4" marker-end="url(#ah-ink)"/>
+            <text x="1042" y="184" font-size="12" text-anchor="end" fill="currentColor" opacity="0.55" font-family="ui-monospace, monospace">時間</text>
+
+            <!-- x-ray ticks -->
+            <g font-family="ui-monospace, monospace" font-size="11.5">
+              <g>
+                <line x1="130" y1="60" x2="130" y2="196" stroke="#1D6FB8" stroke-width="2"/>
+                <circle cx="130" cy="196" r="6" fill="#1D6FB8"/>
+                <text x="130" y="46" text-anchor="middle" fill="#1D6FB8" font-weight="700">X線</text>
+                <text x="130" y="222" text-anchor="middle" fill="currentColor" opacity="0.55">0か月</text>
+              </g>
+              <g>
+                <line x1="440" y1="60" x2="440" y2="196" stroke="#1D6FB8" stroke-width="2"/>
+                <circle cx="440" cy="196" r="6" fill="#1D6FB8"/>
+                <text x="440" y="46" text-anchor="middle" fill="#1D6FB8" font-weight="700">X線</text>
+                <text x="440" y="222" text-anchor="middle" fill="currentColor" opacity="0.55">6か月</text>
+              </g>
+              <g>
+                <line x1="740" y1="60" x2="740" y2="196" stroke="#1D6FB8" stroke-width="2"/>
+                <circle cx="740" cy="196" r="6" fill="#1D6FB8"/>
+                <text x="740" y="46" text-anchor="middle" fill="#1D6FB8" font-weight="700">X線</text>
+                <text x="740" y="222" text-anchor="middle" fill="currentColor" opacity="0.55">12か月</text>
+              </g>
+              <g>
+                <line x1="1010" y1="60" x2="1010" y2="196" stroke="#1D6FB8" stroke-width="2"/>
+                <circle cx="1010" cy="196" r="6" fill="#1D6FB8"/>
+                <text x="1010" y="46" text-anchor="middle" fill="#1D6FB8" font-weight="700">X線</text>
+                <text x="1010" y="222" text-anchor="middle" fill="currentColor" opacity="0.55">18か月</text>
+              </g>
+            </g>
+
+            <text x="285" y="112" text-anchor="middle" font-size="13.5" fill="currentColor" opacity="0.75">観測されない進行</text>
+            <text x="595" y="112" text-anchor="middle" font-size="13.5" fill="currentColor" opacity="0.75">観測されない進行</text>
+            <text x="875" y="112" text-anchor="middle" font-size="13.5" fill="currentColor" opacity="0.75">観測されない進行</text>
+
+            <!-- daily signal band -->
+            <line x1="90" y1="262" x2="1040" y2="262" stroke="#0E8A78" stroke-width="2" stroke-dasharray="3 5"/>
+            <g fill="#0E8A78">
+              <circle cx="110" cy="262" r="3"/><circle cx="162" cy="262" r="3"/><circle cx="214" cy="262" r="3"/>
+              <circle cx="266" cy="262" r="3"/><circle cx="318" cy="262" r="3"/><circle cx="370" cy="262" r="3"/>
+              <circle cx="422" cy="262" r="3"/><circle cx="474" cy="262" r="3"/><circle cx="526" cy="262" r="3"/>
+              <circle cx="578" cy="262" r="3"/><circle cx="630" cy="262" r="3"/><circle cx="682" cy="262" r="3"/>
+              <circle cx="734" cy="262" r="3"/><circle cx="786" cy="262" r="3"/><circle cx="838" cy="262" r="3"/>
+              <circle cx="890" cy="262" r="3"/><circle cx="942" cy="262" r="3"/><circle cx="994" cy="262" r="3"/>
+            </g>
+            <text x="90" y="288" font-size="12.5" fill="#0E8A78" font-weight="700">在宅で日次取得できる信号（画像・動作・足底）</text>
+          </svg>
+          </div>
+          <figcaption>
+            <b>図1｜フォローの空白。</b>X線は被曝制約により点でしか置けず、その間の進行は事後にしか分からない。
+            在宅・非侵襲・高頻度で取れる信号だけが、この空白を連続的に埋められる。
+          </figcaption>
+        </figure>
+
+        <div class="callout">
+          <span class="lbl">クライアントの前提</span>
+          スマートフォンで取得可能な画像情報を主軸とした解決。在宅で継続取得でき、被曝がなく、スケーラブルという点で方向性は合理的である。
+          一方で、<strong>画像単体では側弯症の本質的課題を十分に捉えきれない可能性</strong>がある — 本提案はこの一点から出発する。
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 2. 制御系 ════════════════════════════════════════════ -->
+<section class="chapter">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-num">02 / WHAT</div>
+      <div>
+        <h2>側弯症を「構造変形」ではなく「制御系」として見る</h2>
+        <p class="lede">
+          人間の姿勢制御は、入力 → 制御系 → 出力 → フィードバックという閉ループ系としてモデル化できる。
+          このとき決定的なのは、<strong>制御系そのものは直接観測できない</strong>という事実である。観測できるのは入力側と出力側だけだ。
+        </p>
+      </div>
+    </div>
+
+    <div class="chapter-body">
+      <div class="chapter-num"></div>
+      <div class="flow">
+
+        <div class="panel">
+          <div class="panel-bar">
+            <span class="title">Fig.2 — 姿勢制御の閉ループ系</span>
+            <div class="segbtns" id="loop-ctl">
+              <button type="button" data-view="all" aria-pressed="true">全体</button>
+              <button type="button" data-view="obs" aria-pressed="false">観測可能な面だけ</button>
+            </div>
+          </div>
+          <canvas class="panel-canvas tall" id="cv-loop" aria-label="姿勢制御の閉ループ系の3Dモデル。足底・視覚・前庭・固有感覚の入力が中枢神経系に入り、神経筋制御・筋骨格系を経て、姿勢・歩行・体幹アライメント・脊柱形態として出力され、荷重と固有感覚に還る。制御系の3ノードは直接観測できない。"></canvas>
+          <div class="panel-foot">
+            <span class="hint">ドラッグで回転</span>
+            <div class="legend">
+              <span><i style="background:#0FA48C"></i>荷重・接地</span>
+              <span><i style="background:#D4705C"></i>形態</span>
+              <span><i style="background:#8A7FD8"></i>動作</span>
+              <span><i style="background:#4A8CCC"></i>臨床（X線）</span>
+              <span><i style="background:transparent;border:1.5px dashed #7E979A"></i>直接観測できない</span>
+            </div>
+          </div>
+        </div>
+
+        <p>
+          AISでは、このシステムを構成する複数因子と成長過程との相互作用が、発症・進行に関係している可能性がある。
+          したがって研究上は、<em>脊柱の形状という「結果」だけを観察するのではなく、荷重・姿勢・動作・成長・治療介入を時間軸上で統合する</em>ことが重要になる。
+        </p>
+
+        <blockquote>
+          成長期における姿勢制御・荷重制御・神経筋制御の偏りが、時間とともに骨格変形の発生・進行と関連する可能性がある。
+          <span class="attr">研究仮説</span>
+        </blockquote>
+
+        <div class="callout">
+          <span class="lbl">研究上のポジション</span>
+          足底荷重等がAISの発症原因であることは現時点で確立していない。MVPでは「原因」と断定せず、
+          <strong>発症・進行と関連するデジタルバイオマーカー候補として検証する</strong>位置づけをとる。
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 3. 観測レイヤー × 時間軸 ═════════════════════════════ -->
+<section class="chapter">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-num">03 / HOW</div>
+      <div>
+        <h2>観測レイヤーを時間軸の上に積む</h2>
+        <p class="lede">
+          MVPの本体はこの立体である。取得頻度の異なる5つのデータ層を同じ時間軸に載せ、
+          個人内の変化履歴そのものを学習対象にする。Model A / B / C の切替で、各モデルが実際に何を見ているかを比較できる。
+        </p>
+      </div>
+    </div>
+
+    <div class="chapter-body">
+      <div class="chapter-num"></div>
+      <div class="flow">
+
+        <div class="panel">
+          <div class="panel-bar">
+            <span class="title">Fig.3 — マルチモーダル × 時系列データ立体</span>
+            <div class="segbtns" id="stack-ctl">
+              <button type="button" data-model="A" aria-pressed="false">Model A 画像のみ</button>
+              <button type="button" data-model="B" aria-pressed="false">Model B ＋センサー</button>
+              <button type="button" data-model="C" aria-pressed="true">Model C ＋足底</button>
+            </div>
+          </div>
+          <canvas class="panel-canvas" id="cv-stack" aria-label="足底・センサー・画像・成長・臨床の5つのデータ層を時間軸上に積み上げた3Dモデル。足底とセンサーは日次、画像は月次、成長は月次、X線とCobb角は6か月ごとに観測される。全層が進行リスク推定に収束する。"></canvas>
+          <div class="panel-foot">
+            <span class="hint">ドラッグで回転</span>
+            <div class="legend">
+              <span><i style="background:#0FA48C"></i>足底・荷重（日次）</span>
+              <span><i style="background:#8A7FD8"></i>動画・センサー（日次）</span>
+              <span><i style="background:#D4705C"></i>背面・前屈画像（月次）</span>
+              <span><i style="background:#B08A1E"></i>成長情報（月次）</span>
+              <span><i style="background:#4A8CCC"></i>Cobb角・X線（6か月）</span>
+            </div>
+          </div>
+        </div>
+
+        <p>
+          重要なのは、一度だけ測定するのではなく、<strong>日常環境下で反復取得すること</strong>である。
+          これによって一時的な姿勢変化と慢性的な左右差を区別し、集団平均ではなく「個人内変化」を捉えることができる。
+        </p>
+
+        <h3>足底から取得しうる特徴量</h3>
+        <ul>
+          <li>左右荷重比／前後荷重比</li>
+          <li>足圧中心（Center of Pressure: COP）とCOP軌跡</li>
+          <li>立位時の揺動、左右差の変動</li>
+          <li>歩行時の接地時間、左右ステップ差</li>
+          <li>日ごとの変動量、長期間にわたる偏りの持続性</li>
+        </ul>
+
+        <blockquote>
+          AIS進行群では、非進行群と比較して、足底荷重・重心動揺・左右非対称性などの時系列特徴に異なるパターンが存在する。
+          <span class="attr">研究仮説</span>
+        </blockquote>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 4. 役割分担 ══════════════════════════════════════════ -->
+<section class="chapter">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-num">04</div>
+      <div>
+        <h2>各データが観測しているものは、重なっていない</h2>
+        <p class="lede">
+          画像から直接得られるのは主として体表形状・非対称性という形態情報である。
+          荷重の偏り、動作中の左右差、その変化が一時的か慢性的か — これらは画像の外側にある。
+        </p>
+      </div>
+    </div>
+
+    <div class="chapter-body">
+      <div class="chapter-num"></div>
+      <div class="flow">
+        <div class="figbox flush">
+          <div class="scroller">
+            <table>
+              <caption>表1｜データソースと観測対象の対応。取得頻度が高いものほど「個人内変化」を捉えられる。</caption>
+              <thead>
+                <tr><th scope="col">データ</th><th scope="col">主に観測するもの</th><th scope="col">取得頻度</th></tr>
+              </thead>
+              <tbody>
+                <tr><td class="src"><span class="chip"><i style="background:var(--m-image)"></i>背面画像・前屈画像</span></td><td>体表形状・左右非対称性</td><td class="freq">月次</td></tr>
+                <tr><td class="src"><span class="chip"><i style="background:var(--m-motion)"></i>動画</span></td><td>動作時の姿勢制御（歩行・立ち上がり・前屈・片脚立位）</td><td class="freq">日次〜週次</td></tr>
+                <tr><td class="src"><span class="chip"><i style="background:var(--m-motion)"></i>スマホセンサー</span></td><td>揺れ・角速度・動作特性（加速度／ジャイロ／端末姿勢）</td><td class="freq">日次</td></tr>
+                <tr><td class="src"><span class="chip"><i style="background:var(--m-plantar)"></i>足底データ</span></td><td>荷重・接地・重心移動（左右荷重比／COP／動揺／接地時間）</td><td class="freq">日次</td></tr>
+                <tr><td class="src"><span class="chip"><i style="background:var(--m-clinical)"></i>X線 / Cobb角</span></td><td>脊柱構造の臨床的評価</td><td class="freq">6か月</td></tr>
+                <tr><td class="src"><span class="chip"><i style="background:var(--m-growth)"></i>成長情報</span></td><td>発症・進行リスクに関係する時間軸（身長変化／Risser sign／初経）</td><td class="freq">月次</td></tr>
+                <tr><td class="src"><span class="chip"><i style="background:var(--m-growth)"></i>運動・装具ログ</span></td><td>治療介入・行動</td><td class="freq">日次</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <p>
+          これらを時間軸で統合することで、<strong>「構造」×「動作」×「荷重」×「成長」×「介入」</strong>という多面的なデータセットを構築できる。
+          これは単なる画像認識AIではなく、AISの進行を時系列で理解・予測するマルチモーダルAIへの発展を可能にする。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 5. Model A/B/C ═══════════════════════════════════════ -->
+<section class="chapter">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-num">05 / MVP</div>
+      <div>
+        <h2>MVPが検証するのは、追加した層の価値だけ</h2>
+        <p class="lede">
+          最初から「原因を解明する」「数年後のCobb角を正確に予測する」ことは目標にしない。
+          画像単独モデルをBaselineに置き、層を1つずつ足したときに性能が実際に上がるかを見る。
+        </p>
+      </div>
+    </div>
+
+    <div class="chapter-body">
+      <div class="chapter-num"></div>
+      <div class="flow">
+
+        <figure class="figbox">
+          <div class="scroller">
+          <svg viewBox="0 0 1080 400" role="img" aria-label="Model A は画像のみ、Model B は画像とスマホセンサー、Model C はさらに足底データを入力とし、いずれも同一の出力すなわちAIS状態・進行リスクを予測する。BとCが追加する入力経路が比較対象となる。">
+            <defs>
+              <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="currentColor" opacity="0.5"/>
+              </marker>
+              <marker id="a2m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="#6A5CD4"/>
+              </marker>
+              <marker id="a2p" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="#0E8A78"/>
+              </marker>
+            </defs>
+
+            <g font-size="13">
+              <!-- row labels -->
+              <text x="16" y="80"  font-family="ui-monospace, monospace" font-size="12" fill="currentColor" opacity="0.55" font-weight="700">MODEL A</text>
+              <text x="16" y="206" font-family="ui-monospace, monospace" font-size="12" fill="currentColor" opacity="0.55" font-weight="700">MODEL B</text>
+              <text x="16" y="332" font-family="ui-monospace, monospace" font-size="12" fill="#0E8A78" font-weight="700">MODEL C</text>
+
+              <!-- ROW A -->
+              <rect x="110" y="54" width="176" height="42" rx="3" fill="#C0503E"/>
+              <text x="198" y="80" text-anchor="middle" fill="#fff" font-weight="700">画像</text>
+              <line x1="286" y1="75" x2="700" y2="75" stroke="currentColor" opacity="0.5" stroke-width="1.6" marker-end="url(#a2)"/>
+
+              <!-- ROW B -->
+              <rect x="110" y="150" width="176" height="42" rx="3" fill="#C0503E"/>
+              <text x="198" y="176" text-anchor="middle" fill="#fff" font-weight="700">画像</text>
+              <rect x="110" y="200" width="176" height="42" rx="3" fill="#6A5CD4"/>
+              <text x="198" y="226" text-anchor="middle" fill="#fff" font-weight="700">スマホセンサー</text>
+              <line x1="286" y1="171" x2="700" y2="196" stroke="currentColor" opacity="0.5" stroke-width="1.6" marker-end="url(#a2)"/>
+              <line x1="286" y1="221" x2="700" y2="200" stroke="#6A5CD4" stroke-width="2.2" marker-end="url(#a2m)"/>
+              <text x="470" y="248" font-size="12" fill="#6A5CD4" font-weight="700">＋動作情報</text>
+
+              <!-- ROW C -->
+              <rect x="110" y="252" width="176" height="38" rx="3" fill="#C0503E"/>
+              <text x="198" y="276" text-anchor="middle" fill="#fff" font-weight="700">画像</text>
+              <rect x="110" y="296" width="176" height="38" rx="3" fill="#6A5CD4"/>
+              <text x="198" y="320" text-anchor="middle" fill="#fff" font-weight="700">スマホセンサー</text>
+              <rect x="110" y="340" width="176" height="38" rx="3" fill="#0E8A78"/>
+              <text x="198" y="364" text-anchor="middle" fill="#fff" font-weight="700">足底データ</text>
+              <line x1="286" y1="271" x2="700" y2="310" stroke="currentColor" opacity="0.5" stroke-width="1.6" marker-end="url(#a2)"/>
+              <line x1="286" y1="315" x2="700" y2="316" stroke="#6A5CD4" stroke-width="2.2" marker-end="url(#a2m)"/>
+              <line x1="286" y1="359" x2="700" y2="322" stroke="#0E8A78" stroke-width="2.6" marker-end="url(#a2p)"/>
+              <text x="470" y="382" font-size="12" fill="#0E8A78" font-weight="700">＋荷重情報 ← MVPの検証対象</text>
+
+              <!-- targets -->
+              <rect x="704" y="52"  width="182" height="46" rx="3" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+              <text x="795" y="80" text-anchor="middle" fill="currentColor">AIS状態・進行リスク</text>
+              <rect x="704" y="172" width="182" height="46" rx="3" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+              <text x="795" y="200" text-anchor="middle" fill="currentColor">AIS状態・進行リスク</text>
+              <rect x="704" y="288" width="182" height="46" rx="3" fill="none" stroke="#0E8A78" stroke-width="1.8"/>
+              <text x="795" y="316" text-anchor="middle" fill="currentColor">AIS状態・進行リスク</text>
+
+              <!-- comparison brace -->
+              <path d="M910 75 L940 75 L940 311 L910 311" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+              <line x1="940" y1="193" x2="968" y2="193" stroke="currentColor" stroke-opacity="0.35" stroke-width="1.5"/>
+              <text x="976" y="188" font-size="13" fill="currentColor" font-weight="700">同一の</text>
+              <text x="976" y="206" font-size="13" fill="currentColor" font-weight="700">評価指標で比較</text>
+            </g>
+          </svg>
+          </div>
+          <figcaption>
+            <b>図4｜A/B/Cの差分。</b>出力は3モデルとも同一。違いは入力経路が1本ずつ増える点だけであり、
+            <b>その増分が予測性能をどれだけ動かすか</b>が唯一の測定対象になる。足底データを加える意義は、この比較でのみ客観的に検証できる。
+          </figcaption>
+        </figure>
+
+        <div class="models">
+          <div class="model">
+            <span class="tag">MODEL A — BASELINE</span>
+            <h4>画像のみ</h4>
+            <div class="inputs"><b style="background:var(--m-image)">画像</b></div>
+            <p>スマートフォン画像 → AIS状態・進行リスク。体表形状と左右非対称性のみから推定する基準線。</p>
+          </div>
+          <div class="model">
+            <span class="tag">MODEL B</span>
+            <h4>画像 ＋ スマホセンサー</h4>
+            <div class="inputs"><b style="background:var(--m-image)">画像</b><b style="background:var(--m-motion)">動作</b></div>
+            <p>身体が「どのように制御されているか」を加える。揺れ・角速度・動作特性が形態情報を補う。</p>
+          </div>
+          <div class="model lead">
+            <span class="tag">MODEL C — 本提案</span>
+            <h4>画像 ＋ センサー ＋ 足底</h4>
+            <div class="inputs"><b style="background:var(--m-image)">画像</b><b style="background:var(--m-motion)">動作</b><b style="background:var(--m-plantar)">荷重</b></div>
+            <p>地面との力学的相互作用を加える。Cobb角とは異なる非侵襲デジタルバイオマーカー候補として検証する。</p>
+          </div>
+        </div>
+
+        <div class="callout">
+          <span class="lbl">MVPで取得するデータ</span>
+          <strong>A. スマートフォン</strong> — 定期背面画像／前屈画像／簡易歩行動画／加速度・ジャイロ。
+          <strong>B. 足底</strong> — 左右荷重比／COP／重心動揺／接地時間／左右非対称指標。
+          <strong>C. 基本情報</strong> — 年齢・性別・身長・体重・身長変化・初経情報・運動習慣。
+          <strong>D. 医療情報</strong> — Cobb角／カーブタイプ／Risser sign等の骨成熟情報／装具治療／運動療法／診療履歴。
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 6. 仮説 ══════════════════════════════════════════════ -->
+<section class="chapter">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-num">06</div>
+      <div>
+        <h2>検証は4段。到達点は仮説4にある</h2>
+        <p class="lede">
+          仮説1〜3までなら「側弯症をよく評価するAI」で終わる。
+          仮説4 — 動的・力学的特徴量が形態変化より前に動く — が示せたとき、プロダクトの性質そのものが変わる。
+        </p>
+      </div>
+    </div>
+
+    <div class="chapter-body">
+      <div class="chapter-num"></div>
+      <div class="flow">
+
+        <div class="ladder">
+          <div class="rung">
+            <span class="h">仮説 1 — 画像仮説</span>
+            <p class="q">背面画像の時系列変化はCobb角進行と関連する。</p>
+            <p class="n">クライアントの前提を検証する段。ここが成立しなければ以降は成立しない。</p>
+          </div>
+          <div class="rung">
+            <span class="h">仮説 2 — 足底仮説</span>
+            <p class="q">足底荷重・COP・左右非対称性の時系列パターンはCobb角進行と関連する。</p>
+            <p class="n">足底情報がCobb角とは独立した情報を持つかどうか。</p>
+          </div>
+          <div class="rung">
+            <span class="h">仮説 3 — マルチモーダル仮説</span>
+            <p class="q">画像＋足底＋動作情報を統合したモデルは、画像単独モデルよりAIS進行予測性能が高い。</p>
+            <p class="n">Model C > Model A。MVPが直接答えを出す問い。</p>
+          </div>
+          <div class="rung peak">
+            <span class="h">仮説 4 — 先行指標仮説</span>
+            <p class="q">一部の動的・力学的特徴量は、画像上の形態変化またはCobb角進行より前に変化する。</p>
+            <p class="n">ここまで証明できれば、「側弯症を画像から評価するAI」ではなく、<strong>進行前の兆候を検出するPredictive Monitoring</strong>へ発展できる。</p>
+          </div>
+        </div>
+
+        <figure class="figbox">
+          <div class="scroller">
+          <svg viewBox="0 0 1080 380" role="img" aria-label="仮説4の模式図。動的・力学的特徴量が最初に基準から乖離し、次に体表形態が、最後にCobb角が変化する。動的特徴の乖離からCobb角の変化までの区間が、先行検出可能な期間となる。">
+            <defs>
+              <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+              </marker>
+              <linearGradient id="lead" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#0E8A78" stop-opacity="0.20"/>
+                <stop offset="100%" stop-color="#0E8A78" stop-opacity="0.02"/>
+              </linearGradient>
+            </defs>
+
+            <!-- lead-time band -->
+            <rect x="352" y="46" width="386" height="248" fill="url(#lead)"/>
+            <line x1="352" y1="46" x2="352" y2="294" stroke="#0E8A78" stroke-width="1.6" stroke-dasharray="4 4"/>
+            <line x1="738" y1="46" x2="738" y2="294" stroke="#0E8A78" stroke-width="1.6" stroke-dasharray="4 4"/>
+            <text x="545" y="36" text-anchor="middle" font-size="13" font-weight="700" fill="#0E8A78">先行検出が可能な期間（Lead time）</text>
+
+            <!-- grid -->
+            <g stroke="currentColor" stroke-opacity="0.10" stroke-width="1">
+              <line x1="80" y1="294" x2="1000" y2="294"/>
+              <line x1="80" y1="232" x2="1000" y2="232"/>
+              <line x1="80" y1="170" x2="1000" y2="170"/>
+              <line x1="80" y1="108" x2="1000" y2="108"/>
+            </g>
+
+            <!-- axes -->
+            <line x1="80" y1="294" x2="1010" y2="294" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#a3)"/>
+            <line x1="80" y1="294" x2="80" y2="52" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5" marker-end="url(#a3)"/>
+            <text x="1010" y="318" text-anchor="end" font-size="12" fill="currentColor" opacity="0.55" font-family="ui-monospace, monospace">時間</text>
+            <text x="80" y="40" font-size="12" fill="currentColor" opacity="0.55" font-family="ui-monospace, monospace">基準からの乖離</text>
+
+            <!-- curves -->
+            <path d="M80 292 C 200 290, 300 286, 352 268 C 430 240, 520 172, 620 128 C 720 88, 850 70, 1000 64"
+                  fill="none" stroke="#0E8A78" stroke-width="2.4" stroke-linecap="round"/>
+            <path d="M80 293 C 260 292, 460 290, 545 274 C 640 254, 760 190, 870 148 C 930 126, 970 116, 1000 112"
+                  fill="none" stroke="#C0503E" stroke-width="2.4" stroke-linecap="round"/>
+            <path d="M80 294 C 320 293, 620 292, 738 282 C 830 272, 920 234, 1000 196"
+                  fill="none" stroke="#1D6FB8" stroke-width="2.4" stroke-linecap="round"/>
+
+            <!-- onset markers -->
+            <circle cx="352" cy="268" r="5.5" fill="#0E8A78"/>
+            <circle cx="545" cy="274" r="5.5" fill="#C0503E"/>
+            <circle cx="738" cy="282" r="5.5" fill="#1D6FB8"/>
+
+            <!-- direct labels -->
+            <text x="1000" y="52" text-anchor="end" font-size="13" font-weight="700" fill="#0E8A78">動的・力学的特徴量（足底・動作）</text>
+            <text x="1000" y="104" text-anchor="end" font-size="13" font-weight="700" fill="#C0503E">体表形態（画像）</text>
+            <text x="1000" y="188" text-anchor="end" font-size="13" font-weight="700" fill="#1D6FB8">Cobb角（X線）</text>
+
+            <!-- onset annotations -->
+            <g font-size="11.5" font-family="ui-monospace, monospace" fill="currentColor" opacity="0.6">
+              <text x="352" y="314" text-anchor="middle">乖離開始</text>
+              <text x="545" y="314" text-anchor="middle">画像で識別可能</text>
+              <text x="738" y="314" text-anchor="middle">Cobb角が動く</text>
+            </g>
+
+            <text x="80" y="352" font-size="12.5" fill="currentColor" opacity="0.62">※ 実測値ではなく、仮説4が主張する時間順序を示す模式図</text>
+          </svg>
+          </div>
+          <figcaption>
+            <b>図5｜仮説4の主張。</b>3つの指標が同じ現象を異なる遅れで捉えるなら、最も早く動く指標が受診タイミングの判断材料になる。
+            この模式図は時間順序の主張を表したものであり、実測データではない。
+          </figcaption>
+        </figure>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 7. AI ═══════════════════════════════════════════════ -->
+<section class="chapter">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-num">07</div>
+      <div>
+        <h2>AIに与えるのは「現在の写真」ではなく、変化履歴</h2>
+        <p class="lede">
+          患者 i、時点 t における進行リスクを、複数モダリティの関数としてモデル化する。
+          各項は前章までの色分けにそのまま対応する。
+        </p>
+      </div>
+    </div>
+
+    <div class="chapter-body">
+      <div class="chapter-num"></div>
+      <div class="flow">
+
+        <div class="formula">
+          <div class="expr">
+            P(Progression<sub>i,t+1</sub>) = f(
+            <span class="v" style="color:var(--m-image)">Image</span><sub>i,t</sub>,
+            <span class="v" style="color:var(--m-plantar)">Plantar</span><sub>i,t</sub>,
+            <span class="v" style="color:var(--m-motion)">Motion</span><sub>i,t</sub>,
+            <span class="v" style="color:var(--m-growth)">Growth</span><sub>i,t</sub>,
+            <span class="v" style="color:var(--m-clinical)">Clinical</span><sub>i,t</sub>,
+            <span class="v" style="color:var(--m-growth)">Treatment</span><sub>i,t</sub> )
+          </div>
+          <div class="expr" style="margin-top:14px; color:var(--muted)">
+            学習単位 :&nbsp; t<sub>1</sub> ─▶ t<sub>2</sub> ─▶ t<sub>3</sub> ─▶ ⋯
+          </div>
+          <p class="note">
+            重要なのは、AIに単一時点のスナップショットを与えるのではなく、<strong>個人の変化履歴そのものを学習させること</strong>である。
+          </p>
+        </div>
+
+        <p>
+          最終的に目指すのは、「この患者は現在何度程度なのか」という状態推定にとどまらず、
+          <em>「この患者の身体は現在どの方向へ変化しているのか」</em>を推定するAIである。
+        </p>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 8. 検証ステップ ══════════════════════════════════════ -->
+<section class="chapter">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-num">08</div>
+      <div>
+        <h2>順番に潰す5つの問い</h2>
+        <p class="lede">
+          スマートフォン画像 × 足底データ × スマートフォンセンサー × 時系列AI というMVPを構築し、
+          以下を順番に検証する。前の問いが否定されれば、その先へは進まない。
+        </p>
+      </div>
+    </div>
+
+    <div class="chapter-body">
+      <div class="chapter-num"></div>
+      <div class="flow">
+        <div class="steps">
+          <div class="step"><span class="k">STEP 01</span><span class="t">本当に取得可能なのか</span><span class="d">在宅環境で、規定のプロトコルどおりにデータが取れるか。</span></div>
+          <div class="step"><span class="k">STEP 02</span><span class="t">継続取得できるのか</span><span class="d">日次取得の患者負担に対し、脱落せずに縦断データが積み上がるか。</span></div>
+          <div class="step"><span class="k">STEP 03</span><span class="t">臨床指標と関連するのか</span><span class="d">Cobb角等との紐付けが成立するか（仮説1・2）。</span></div>
+          <div class="step"><span class="k">STEP 04</span><span class="t">画像単独より上がるのか</span><span class="d">Model C が Model A を上回るか（仮説3）。</span></div>
+          <div class="step"><span class="k">STEP 05</span><span class="t">形態変化より前に出るのか</span><span class="d">先行して動くシグナルが存在するか（仮説4）。</span></div>
+        </div>
+
+        <p>
+          この検証結果が得られれば、その先に<strong>AIS進行予測、個別化された運動療法、受診タイミング支援、治療効果評価、
+          さらには発症・進行メカニズムの研究</strong>へ発展させることが可能になる。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 9. 協議事項 ══════════════════════════════════════════ -->
+<section class="chapter">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-num">09</div>
+      <div>
+        <h2>次回協議で決める12項目</h2>
+        <p class="lede">クライアント・医師・研究者との協議で、少なくとも以下を決定する必要がある。</p>
+      </div>
+    </div>
+
+    <div class="chapter-body">
+      <div class="chapter-num"></div>
+      <div class="flow">
+        <ol class="agenda">
+          <li>MVPの第一目的を「状態推定」と「進行予測」のどちらに置くか</li>
+          <li>スマートフォン画像の撮影プロトコルをどう標準化するか</li>
+          <li>足底データをどのデバイス・方式で取得するか</li>
+          <li>日次取得の患者負担とデータ価値のバランスをどう設計するか</li>
+          <li>Cobb角との紐付けをどの頻度で行えるか</li>
+          <li>Risser sign、成長速度、初経等の臨床・成長情報をどこまで取得できるか</li>
+          <li>運動療法・装具治療を解析上どのように扱うか</li>
+          <li>画像単独モデルをBaselineとして、統合モデルの追加価値をどの指標で評価するか</li>
+          <li>前向き研究として何人・何か月から開始するか</li>
+          <li>研究用途のMVPと、将来的なSaMDをどの段階で分離・接続するか</li>
+          <li>未成年者の身体画像・センサーデータに関する同意、アセント、データ管理をどう設計するか</li>
+          <li>研究成果をプロダクトIP・論文・共同研究成果としてどのように整理するか</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 10. 結論 ═════════════════════════════════════════════ -->
+<section class="chapter">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-num">10</div>
+      <div>
+        <h2>結論</h2>
+      </div>
+    </div>
+    <div class="chapter-body">
+      <div class="chapter-num"></div>
+      <div class="flow">
+        <p>
+          本課題に対するMVPでは、スマートフォン画像のみで解決を目指すのではなく、
+          画像・動画/センサー・足底荷重・成長情報・臨床情報を時間軸上で統合するアプローチを検討する価値が高い。
+          ただし、足底データや姿勢制御異常をAISの「原因」と現段階で断定することは避けるべきである。
+        </p>
+        <blockquote>
+          足底・動作・画像に現れる特徴が、AISの進行を予測する新しいデジタルバイオマーカーになり得るかを検証すること。
+          <span class="attr">MVPにおける正しい研究ポジション</span>
+        </blockquote>
+        <p>
+          クライアントが検討しているスマートフォン画像は、このシステムの中核となり得る。
+          その上で足底・動作・時系列情報を組み合わせ、<em>画像による「観察」から、マルチモーダルデータによる「予測」へ</em>
+          プロダクトを発展させることが、本提案の基本方針となる。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <span>側弯症に対するスマートデバイス活用型AIソリューション — 工学的・生体力学的観点からの課題整理とMVP設計</span>
+    <span class="eyebrow">ロジック可視化</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ═══ Minimal 3D renderer ═══════════════════════════════════
+     Canvas 2D + perspective projection + painter's algorithm.
+     No libraries: the scenes are small enough that sorting a few
+     hundred drawables per frame is cheaper than a WebGL setup.   */
+
+  var C = {
+    bg:      "#0C1618",
+    grid:    "rgba(126,151,154,0.16)",
+    ink:     "#DCE9E8",
+    muted:   "#7E979A",
+    edge:    "rgba(126,151,154,0.42)",
+    plantar: "#0FA48C",
+    image:   "#D4705C",
+    motion:  "#8A7FD8",
+    growth:  "#B08A1E",
+    clinical:"#4A8CCC",
+    ghost:   "rgba(126,151,154,0.55)"
+  };
+
+  var FONT = '"Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",system-ui,sans-serif';
+  var MONO = 'ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function rotate(p, yaw, pitch) {
+    var cy = Math.cos(yaw), sy = Math.sin(yaw);
+    var x1 = p.x * cy - p.z * sy;
+    var z1 = p.x * sy + p.z * cy;
+    var cp = Math.cos(pitch), sp = Math.sin(pitch);
+    var y1 = p.y * cp - z1 * sp;
+    var z2 = p.y * sp + z1 * cp;
+    return { x: x1, y: y1, z: z2 };
+  }
+
+  function Scene(canvas, opts) {
+    this.cv = canvas;
+    this.ctx = canvas.getContext("2d");
+    this.yaw = opts.yaw;
+    this.pitch = opts.pitch;
+    this.dist = opts.dist;
+    this.zoom = opts.zoom;
+    this.build = opts.build;      // fn(scene) -> {items:[]}
+    this.spin = reduce ? 0 : (opts.spin || 0);
+    this.dragging = false;
+    this.visible = true;
+    this.dpr = 1;
+    var self = this;
+
+    function resize() {
+      var r = self.cv.getBoundingClientRect();
+      self.dpr = Math.min(window.devicePixelRatio || 1, 2);
+      self.cv.width = Math.max(1, Math.round(r.width * self.dpr));
+      self.cv.height = Math.max(1, Math.round(r.height * self.dpr));
+      self.w = r.width; self.h = r.height;
+      self.draw();
+    }
+    this.resize = resize;
+    if (window.ResizeObserver) new ResizeObserver(resize).observe(canvas);
+    else window.addEventListener("resize", resize);
+    resize();
+
+    var lastX = 0, lastY = 0;
+    canvas.addEventListener("pointerdown", function (e) {
+      self.dragging = true; lastX = e.clientX; lastY = e.clientY;
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener("pointermove", function (e) {
+      if (!self.dragging) return;
+      self.yaw += (e.clientX - lastX) * 0.008;
+      self.pitch += (e.clientY - lastY) * 0.005;
+      self.pitch = Math.max(-0.85, Math.min(0.85, self.pitch));
+      lastX = e.clientX; lastY = e.clientY;
+      self.draw();
+    });
+    function up(e) {
+      if (!self.dragging) return;
+      self.dragging = false;
+      try { canvas.releasePointerCapture(e.pointerId); } catch (err) {}
+    }
+    canvas.addEventListener("pointerup", up);
+    canvas.addEventListener("pointercancel", up);
+
+    if (window.IntersectionObserver) {
+      new IntersectionObserver(function (es) {
+        self.visible = es[0].isIntersecting;
+      }, { threshold: 0.05 }).observe(canvas);
+    }
+
+    if (this.spin) {
+      var tick = function () {
+        if (self.visible && !self.dragging) { self.yaw += self.spin; self.draw(); }
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+  }
+
+  Scene.prototype.project = function (p) {
+    var r = rotate(p, this.yaw, this.pitch);
+    var s = this.dist / (this.dist + r.z);
+    return {
+      x: this.w / 2 + r.x * s * this.zoom,
+      y: this.h / 2 - r.y * s * this.zoom,
+      z: r.z,
+      s: s
+    };
+  };
+
+  Scene.prototype.draw = function () {
+    var ctx = this.ctx;
+    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    ctx.clearRect(0, 0, this.w, this.h);
+    ctx.fillStyle = C.bg;
+    ctx.fillRect(0, 0, this.w, this.h);
+
+    var items = this.build(this) || [];
+    items.sort(function (a, b) { return b.z - a.z; });
+    for (var i = 0; i < items.length; i++) items[i].draw(ctx);
+  };
+
+  /* ── drawing helpers ─────────────────────────────────────── */
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  function arrowHead(ctx, from, to, color, size) {
+    var dx = to.x - from.x, dy = to.y - from.y;
+    var len = Math.hypot(dx, dy);
+    if (len < 1) return;
+    dx /= len; dy /= len;
+    ctx.beginPath();
+    ctx.moveTo(to.x, to.y);
+    ctx.lineTo(to.x - dx * size - dy * size * 0.45, to.y - dy * size + dx * size * 0.45);
+    ctx.lineTo(to.x - dx * size + dy * size * 0.45, to.y - dy * size - dx * size * 0.45);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  function shorten(a, b, pad) {
+    var dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+    if (len < pad * 2 + 1) return { x: b.x, y: b.y };
+    return { x: b.x - dx / len * pad, y: b.y - dy / len * pad };
+  }
+
+  function edgeItem(scene, pa, pb, opt) {
+    var A = scene.project(pa), B = scene.project(pb);
+    return {
+      z: (A.z + B.z) / 2 + 0.02,
+      draw: function (ctx) {
+        var end = shorten(A, B, opt.pad === undefined ? 34 : opt.pad);
+        var start = shorten(B, A, opt.padStart === undefined ? 34 : opt.padStart);
+        ctx.save();
+        ctx.globalAlpha = opt.alpha === undefined ? 1 : opt.alpha;
+        ctx.strokeStyle = opt.color || C.edge;
+        ctx.lineWidth = opt.width || 1.3;
+        if (opt.dash) ctx.setLineDash(opt.dash);
+        ctx.beginPath();
+        if (opt.bow) {
+          var mx = (start.x + end.x) / 2, my = (start.y + end.y) / 2;
+          ctx.moveTo(start.x, start.y);
+          ctx.quadraticCurveTo(mx, my + opt.bow, end.x, end.y);
+        } else {
+          ctx.moveTo(start.x, start.y);
+          ctx.lineTo(end.x, end.y);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        if (opt.arrow !== false) arrowHead(ctx, start, end, opt.color || C.edge, opt.head || 7);
+        if (opt.label) {
+          var lx = (start.x + end.x) / 2, ly = (start.y + end.y) / 2 + (opt.bow ? opt.bow / 2 : 0);
+          ctx.font = "10.5px " + MONO;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          var tw = ctx.measureText(opt.label).width;
+          ctx.fillStyle = C.bg;
+          ctx.fillRect(lx - tw / 2 - 4, ly - 8, tw + 8, 15);
+          ctx.fillStyle = opt.labelColor || C.muted;
+          ctx.fillText(opt.label, lx, ly);
+        }
+        ctx.restore();
+      }
+    };
+  }
+
+  function chipItem(scene, p, opt) {
+    var P = scene.project(p);
+    return {
+      z: P.z,
+      draw: function (ctx) {
+        var sc = Math.max(0.72, Math.min(1.18, P.s));
+        var fs = (opt.big ? 14 : 12.5) * sc;
+        ctx.font = (opt.big ? "700 " : "700 ") + fs.toFixed(1) + "px " + FONT;
+        var tw = ctx.measureText(opt.label).width;
+        var padX = 11 * sc, padY = 7 * sc;
+        var w = tw + padX * 2, h = fs + padY * 2;
+        var x = P.x - w / 2, y = P.y - h / 2;
+
+        ctx.save();
+        ctx.globalAlpha = opt.dim ? 0.28 : 1;
+
+        if (opt.hollow) {
+          ctx.fillStyle = "rgba(12,22,24,0.86)";
+          roundRect(ctx, x, y, w, h, 3); ctx.fill();
+          ctx.strokeStyle = opt.color;
+          ctx.lineWidth = 1.4;
+          ctx.setLineDash([4, 3]);
+          roundRect(ctx, x, y, w, h, 3); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = opt.color;
+        } else {
+          ctx.fillStyle = opt.color;
+          roundRect(ctx, x, y, w, h, 3); ctx.fill();
+          ctx.fillStyle = "#0C1618";
+        }
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(opt.label, P.x, P.y + 0.5);
+
+        if (opt.sub) {
+          ctx.font = (10 * sc).toFixed(1) + "px " + MONO;
+          ctx.fillStyle = C.muted;
+          ctx.fillText(opt.sub, P.x, y + h + 10 * sc);
+        }
+        ctx.restore();
+      }
+    };
+  }
+
+  function dotItem(scene, p, opt) {
+    var P = scene.project(p);
+    return {
+      z: P.z,
+      draw: function (ctx) {
+        ctx.save();
+        ctx.globalAlpha = opt.dim ? 0.18 : (opt.alpha === undefined ? 1 : opt.alpha);
+        ctx.fillStyle = opt.color;
+        ctx.beginPath();
+        ctx.arc(P.x, P.y, Math.max(1.4, (opt.r || 3) * P.s), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    };
+  }
+
+  function quadItem(scene, pts, opt) {
+    var Ps = pts.map(function (p) { return scene.project(p); });
+    var zAvg = Ps.reduce(function (a, P) { return a + P.z; }, 0) / Ps.length;
+    return {
+      z: zAvg + (opt.behind ? 0.6 : 0),
+      draw: function (ctx) {
+        ctx.save();
+        ctx.globalAlpha = opt.dim ? 0.25 : 1;
+        ctx.beginPath();
+        ctx.moveTo(Ps[0].x, Ps[0].y);
+        for (var i = 1; i < Ps.length; i++) ctx.lineTo(Ps[i].x, Ps[i].y);
+        ctx.closePath();
+        if (opt.fill) { ctx.fillStyle = opt.fill; ctx.fill(); }
+        if (opt.stroke) {
+          ctx.strokeStyle = opt.stroke;
+          ctx.lineWidth = opt.width || 1;
+          if (opt.dash) ctx.setLineDash(opt.dash);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        ctx.restore();
+      }
+    };
+  }
+
+  /* a smooth polyline through 3D waypoints — used for the feedback loops,
+     which have to visibly travel around the system to read as a loop */
+  function pathItem(scene, pts, opt) {
+    var Ps = pts.map(function (p) { return scene.project(p); });
+    var zAvg = Ps.reduce(function (a, P) { return a + P.z; }, 0) / Ps.length;
+    return {
+      z: zAvg,
+      draw: function (ctx) {
+        ctx.save();
+        ctx.globalAlpha = opt.alpha === undefined ? 1 : opt.alpha;
+        ctx.strokeStyle = opt.color;
+        ctx.lineWidth = opt.width || 1.6;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        if (opt.dash) ctx.setLineDash(opt.dash);
+        ctx.beginPath();
+        ctx.moveTo(Ps[0].x, Ps[0].y);
+        for (var i = 1; i < Ps.length - 1; i++) {
+          var mx = (Ps[i].x + Ps[i + 1].x) / 2, my = (Ps[i].y + Ps[i + 1].y) / 2;
+          ctx.quadraticCurveTo(Ps[i].x, Ps[i].y, mx, my);
+        }
+        ctx.lineTo(Ps[Ps.length - 1].x, Ps[Ps.length - 1].y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        arrowHead(ctx, Ps[Ps.length - 2], Ps[Ps.length - 1], opt.color, 8);
+        if (opt.label) {
+          var m = Ps[opt.labelAt === undefined ? Math.floor(Ps.length / 2) : opt.labelAt];
+          ctx.font = "10.5px " + MONO;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          var tw = ctx.measureText(opt.label).width;
+          ctx.fillStyle = C.bg;
+          ctx.fillRect(m.x - tw / 2 - 5, m.y - 8, tw + 10, 16);
+          ctx.fillStyle = opt.color;
+          ctx.fillText(opt.label, m.x, m.y);
+        }
+        ctx.restore();
+      }
+    };
+  }
+
+  function textItem(scene, p, opt) {
+    var P = scene.project(p);
+    return {
+      z: P.z - 40,   // labels ride above the geometry
+      draw: function (ctx) {
+        ctx.save();
+        ctx.globalAlpha = opt.dim ? 0.3 : 1;
+        ctx.font = (opt.weight || "") + " " + (opt.size || 11) + "px " + (opt.mono ? MONO : FONT);
+        ctx.textAlign = opt.align || "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = opt.color || C.muted;
+        ctx.fillText(opt.text, P.x + (opt.dx || 0), P.y + (opt.dy || 0));
+        ctx.restore();
+      }
+    };
+  }
+
+  /* ═══ Scene 1 — 姿勢制御の閉ループ系 ════════════════════════ */
+
+  var loopView = "all";
+
+  var INPUTS = [
+    { id: "plantar", label: "足底荷重・接地", x: -3.5, y:  1.60, z:  1.0, color: C.plantar },
+    { id: "prop",    label: "固有感覚",       x: -4.2, y:  0.55, z: -1.0, color: C.ghost },
+    { id: "vest",    label: "前庭",           x: -3.5, y: -0.55, z:  1.0, color: C.ghost },
+    { id: "vis",     label: "視覚",           x: -4.2, y: -1.60, z: -1.0, color: C.ghost }
+  ];
+  var CTRL = [
+    { id: "cns",  label: "中枢神経系",   x: -0.15, y:  1.15, z: 0,    color: C.muted },
+    { id: "nmc",  label: "神経筋制御",   x:  0.0,  y:  0.0,  z: 0.85, color: C.muted },
+    { id: "msk",  label: "筋骨格系",     x: -0.15, y: -1.15, z: 0,    color: C.muted }
+  ];
+  var OUTPUTS = [
+    { id: "post", label: "姿勢",           x: 3.5, y:  1.60, z: -1.0, color: C.image },
+    { id: "gait", label: "歩行・動作",     x: 4.1, y:  0.55, z:  1.0, color: C.motion },
+    { id: "trunk",label: "体幹アライメント",x: 3.5, y: -0.55, z: -1.0, color: C.image },
+    { id: "spine",label: "脊柱・胸郭形態", x: 4.1, y: -1.60, z:  1.0, color: C.clinical }
+  ];
+  var NODES = {};
+  INPUTS.concat(CTRL, OUTPUTS).forEach(function (n) { NODES[n.id] = n; });
+
+  /* screen-space half-width of a chip, so arrowheads land on its edge
+     instead of disappearing underneath it */
+  function padFor(node) { return 13 + node.label.length * 6.4; }
+
+  function buildLoop(scene) {
+    var it = [];
+    var obsOnly = loopView === "obs";
+    var GY = -2.75;
+
+    // ground grid — a floor to read depth against
+    for (var gx = -4.5; gx <= 4.5; gx += 1) {
+      it.push(edgeItem(scene, { x: gx, y: GY, z: -2.6 }, { x: gx, y: GY, z: 2.6 },
+        { color: "rgba(126,151,154,0.13)", width: 1, arrow: false, pad: 0, padStart: 0 }));
+    }
+    for (var gz = -2.5; gz <= 2.5; gz += 1) {
+      it.push(edgeItem(scene, { x: -4.5, y: GY, z: gz }, { x: 4.5, y: GY, z: gz },
+        { color: "rgba(126,151,154,0.10)", width: 1, arrow: false, pad: 0, padStart: 0 }));
+    }
+
+    // stage labels on the floor
+    [[-3.6, "入力 INPUT"], [0, "制御系 CONTROLLER"], [3.6, "出力 OUTPUT"]].forEach(function (g) {
+      it.push(textItem(scene, { x: g[0], y: GY + 0.02, z: 3.15 },
+        { text: g[1], size: 10.5, mono: true, color: C.muted }));
+    });
+
+    // controller boundary — the un-observable box
+    var bx = [-1.25, 1.25], by = [-1.95, 1.95], bz = [-1.25, 1.25];
+    var corners = [
+      { x: bx[0], y: by[0], z: bz[0] }, { x: bx[1], y: by[0], z: bz[0] },
+      { x: bx[1], y: by[0], z: bz[1] }, { x: bx[0], y: by[0], z: bz[1] },
+      { x: bx[0], y: by[1], z: bz[0] }, { x: bx[1], y: by[1], z: bz[0] },
+      { x: bx[1], y: by[1], z: bz[1] }, { x: bx[0], y: by[1], z: bz[1] }
+    ];
+    [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]].forEach(function (e) {
+      it.push(edgeItem(scene, corners[e[0]], corners[e[1]], {
+        color: obsOnly ? C.plantar : "rgba(126,151,154,0.55)",
+        width: 1, dash: [3, 4], arrow: false, pad: 0, padStart: 0,
+        alpha: obsOnly ? 0.85 : 0.45
+      }));
+    });
+    it.push(textItem(scene, { x: 0, y: by[1] + 0.42, z: 0 }, {
+      text: "直接観測できない", size: 11.5, mono: true,
+      color: obsOnly ? C.plantar : C.muted, weight: "700"
+    }));
+
+    // inputs → 中枢神経系
+    INPUTS.forEach(function (n) {
+      it.push(edgeItem(scene, n, NODES.cns, {
+        color: n.id === "plantar" ? C.plantar : C.edge,
+        width: n.id === "plantar" ? 2 : 1.2,
+        pad: padFor(NODES.cns), padStart: padFor(n),
+        alpha: obsOnly ? 0.22 : 1
+      }));
+    });
+    // controller chain
+    it.push(edgeItem(scene, NODES.cns, NODES.nmc, { color: C.edge, width: 1.2, pad: padFor(NODES.nmc), padStart: padFor(NODES.cns), alpha: obsOnly ? 0.22 : 1 }));
+    it.push(edgeItem(scene, NODES.nmc, NODES.msk, { color: C.edge, width: 1.2, pad: padFor(NODES.msk), padStart: padFor(NODES.nmc), alpha: obsOnly ? 0.22 : 1 }));
+    // 筋骨格系 → outputs
+    OUTPUTS.forEach(function (n) {
+      it.push(edgeItem(scene, NODES.msk, n, {
+        color: C.edge, width: 1.2, pad: padFor(n), padStart: padFor(NODES.msk),
+        alpha: obsOnly ? 0.22 : 1
+      }));
+    });
+
+    // feedback loop A — 脊柱形態が荷重分布を変える（前面をまわる）
+    it.push(pathItem(scene, [
+      { x: 3.5,  y: -2.05, z: 1.1 },
+      { x: 4.3,  y: -2.35, z: 2.4 },
+      { x: 0,    y: -2.45, z: 3.0 },
+      { x: -4.8, y: -2.35, z: 2.4 },
+      { x: -5.6, y: -0.30, z: 1.6 },
+      { x: -4.9, y:  1.62, z: 1.1 },
+      { x: -4.42,y:  1.62, z: 1.02 }
+    ], { color: C.plantar, width: 2, label: "荷重の再分配", labelAt: 2 }));
+
+    // feedback loop B — 姿勢が固有感覚に還る（背面をまわる）
+    it.push(pathItem(scene, [
+      { x: 3.5,  y: 2.05, z: -1.1 },
+      { x: 4.3,  y: 2.30, z: -2.3 },
+      { x: 0,    y: 2.38, z: -2.9 },
+      { x: -4.4, y: 2.20, z: -2.3 },
+      { x: -4.2, y: 1.12, z: -1.02 }
+    ], { color: C.ghost, width: 1.5, dash: [6, 4], label: "感覚フィードバック",
+         alpha: obsOnly ? 0.3 : 1 }));
+
+    // nodes
+    INPUTS.forEach(function (n) {
+      it.push(chipItem(scene, n, { label: n.label, color: n.color, dim: obsOnly && n.id !== "plantar" }));
+    });
+    CTRL.forEach(function (n) {
+      it.push(chipItem(scene, n, { label: n.label, color: C.muted, hollow: true, dim: obsOnly }));
+    });
+    OUTPUTS.forEach(function (n) {
+      it.push(chipItem(scene, n, { label: n.label, color: n.color }));
+    });
+
+    return it;
+  }
+
+  var loopScene = new Scene(document.getElementById("cv-loop"), {
+    yaw: -0.40, pitch: 0.34, dist: 16, zoom: 70, spin: 0.0014, build: buildLoop
+  });
+
+  var loopCtl = document.getElementById("loop-ctl");
+  loopCtl.addEventListener("click", function (e) {
+    var b = e.target.closest("button");
+    if (!b) return;
+    loopView = b.dataset.view;
+    Array.prototype.forEach.call(loopCtl.querySelectorAll("button"), function (x) {
+      x.setAttribute("aria-pressed", String(x === b));
+    });
+    loopScene.draw();
+  });
+
+  /* ═══ Scene 2 — マルチモーダル × 時系列 ═════════════════════ */
+
+  var model = "C";
+
+  var LAYERS = [
+    { id: "plantar", y:  2.45, color: C.plantar,  label: "足底・荷重",       freq: "日次",  n: 25, r: 3.1 },
+    { id: "motion",  y:  1.22, color: C.motion,   label: "動画・センサー",   freq: "日次",  n: 25, r: 3.1 },
+    { id: "image",   y:  0.0,  color: C.image,    label: "背面・前屈画像",   freq: "月次",  n: 13, r: 3.6 },
+    { id: "growth",  y: -1.22, color: C.growth,   label: "成長情報",         freq: "月次",  n: 7,  r: 3.6 },
+    { id: "clinical",y: -2.45, color: C.clinical, label: "Cobb角・X線",      freq: "6か月", n: 4,  r: 6.0 }
+  ];
+
+  var MODEL_LAYERS = {
+    A: { image: 1 },
+    B: { image: 1, motion: 1 },
+    C: { image: 1, motion: 1, plantar: 1 }
+  };
+
+  var X0 = -4.3, X1 = 3.1, Z0 = -1.0, Z1 = 1.0;
+
+  function buildStack(scene) {
+    var it = [];
+    var inModel = MODEL_LAYERS[model];
+
+    LAYERS.forEach(function (L) {
+      // clinical + growth are always context (the label being predicted / covariates)
+      var contextual = (L.id === "clinical" || L.id === "growth");
+      var off = !contextual && !inModel[L.id];
+
+      it.push(quadItem(scene, [
+        { x: X0, y: L.y, z: Z0 }, { x: X1, y: L.y, z: Z0 },
+        { x: X1, y: L.y, z: Z1 }, { x: X0, y: L.y, z: Z1 }
+      ], {
+        fill: off ? "rgba(126,151,154,0.035)" : hexA(L.color, 0.10),
+        stroke: off ? "rgba(126,151,154,0.13)" : hexA(L.color, 0.38),
+        width: 1, behind: true
+      }));
+
+      // samples along the time axis
+      for (var i = 0; i < L.n; i++) {
+        var t = L.n === 1 ? 0 : i / (L.n - 1);
+        var x = X0 + 0.12 + t * (X1 - X0 - 0.24);
+        it.push(dotItem(scene, { x: x, y: L.y + 0.02, z: 0 }, {
+          color: off ? C.muted : L.color, r: L.r, dim: off
+        }));
+      }
+
+      it.push(textItem(scene, { x: X0 - 0.15, y: L.y + 0.34, z: 0 }, {
+        text: L.label, size: 12.5, weight: "700", align: "right",
+        color: off ? C.muted : L.color, dim: off
+      }));
+      it.push(textItem(scene, { x: X0 - 0.15, y: L.y - 0.16, z: 0 }, {
+        text: L.freq, size: 10, mono: true, align: "right", color: C.muted, dim: off
+      }));
+    });
+
+    // time axis ticks along the bottom
+    ["t₁", "t₂", "t₃", "t₄", "t₅"].forEach(function (t, i) {
+      var x = X0 + 0.3 + i * ((X1 - X0 - 0.6) / 4);
+      it.push(edgeItem(scene,
+        { x: x, y: -2.95, z: 0 }, { x: x, y: 2.95, z: 0 },
+        { color: "rgba(126,151,154,0.10)", width: 1, arrow: false, pad: 0, padStart: 0 }));
+      it.push(textItem(scene, { x: x, y: -3.15, z: 0 },
+        { text: t, size: 11, mono: true, color: C.muted }));
+    });
+    it.push(textItem(scene, { x: X1 + 0.35, y: -3.15, z: 0 },
+      { text: "時間 ▶", size: 10.5, mono: true, color: C.muted, align: "left" }));
+
+    // convergence into the prediction node
+    var target = { x: 5.15, y: 0, z: 0 };
+    LAYERS.forEach(function (L) {
+      var contextual = (L.id === "clinical" || L.id === "growth");
+      var off = !contextual && !inModel[L.id];
+      it.push(edgeItem(scene, { x: X1 + 0.05, y: L.y, z: 0 }, target, {
+        color: off ? "rgba(126,151,154,0.18)" : hexA(L.color, 0.75),
+        width: off ? 1 : 1.7, pad: 46, padStart: 4,
+        dash: L.id === "clinical" ? [5, 4] : null,
+        label: L.id === "clinical" ? "教師ラベル" : null,
+        labelColor: L.color
+      }));
+    });
+    it.push(chipItem(scene, target, {
+      label: "P(進行)", color: C.plantar, big: true,
+      sub: "Model " + model
+    }));
+
+    return it;
+  }
+
+  function hexA(hex, a) {
+    var r = parseInt(hex.slice(1, 3), 16),
+        g = parseInt(hex.slice(3, 5), 16),
+        b = parseInt(hex.slice(5, 7), 16);
+    return "rgba(" + r + "," + g + "," + b + "," + a + ")";
+  }
+
+  var stackScene = new Scene(document.getElementById("cv-stack"), {
+    yaw: -0.42, pitch: 0.30, dist: 16, zoom: 74, spin: 0.0011, build: buildStack
+  });
+
+  var stackCtl = document.getElementById("stack-ctl");
+  stackCtl.addEventListener("click", function (e) {
+    var b = e.target.closest("button");
+    if (!b) return;
+    model = b.dataset.model;
+    Array.prototype.forEach.call(stackCtl.querySelectorAll("button"), function (x) {
+      x.setAttribute("aria-pressed", String(x === b));
+    });
+    stackScene.draw();
+  });
+
+})();
+</script>
