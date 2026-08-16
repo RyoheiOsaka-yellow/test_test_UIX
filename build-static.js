@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const REPO = '/home/user/test_test_UIX/';
+const REPO = __dirname + '/';          // このスクリプトが置かれた場所を基準にする
 const DIST = REPO + 'dist/';
 const ORIGIN = 'https://yellow.technology';   // ★ドメイン確定時はここ1行を変えるだけ
 
@@ -200,7 +200,7 @@ base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
 
 // 1h. 旧サイトのアンカー(#case-01 等)で来た人を新URLへ送る
 {
-  const map = JSON.parse(fs.readFileSync('/home/user/test_test_UIX/cases.json', 'utf8'))
+  const map = JSON.parse(fs.readFileSync(REPO + 'cases.json', 'utf8'))
     .reduce((a, c, i) => (a['case-' + String(i + 1).padStart(2, '0')] = '/cases/' + c.key + '/', a), {});
   const script = `<script>
 /* 旧サイトのアンカーで来た訪問者を対応するページへ送る（フラグメントはサーバに届かないためJSで処理） */
@@ -278,7 +278,7 @@ for (const r of ROUTES) {
 }
 
 // ── 2.5 事例ページ（現行サイトから移植した17件）
-const buildCases = require('/tmp/claude-0/-home-user-test-test-UIX/4f81ed0b-8615-559c-9e3d-ce90713e1d69/scratchpad/cases-append.js');
+const buildCases = require('./cases-append.js');
 const CASES = buildCases({ DIST, ORIGIN, base, ORG_ID: ORIGIN + '/#organization' });
 for (const [u, n] of CASES.sizes) console.log(u.padEnd(30), (n / 1024).toFixed(0).padStart(4) + 'KB');
 

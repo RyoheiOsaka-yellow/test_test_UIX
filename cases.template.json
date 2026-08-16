@@ -1,0 +1,50 @@
+[
+  {
+    "key": "sample-case",
+    "tags": "製造",
+    "eyebrow": "XBUILD ／ 3Dツイン／製造",
+    "title": "事例のタイトル",
+    "lead": "1〜3文の要約。一覧のカードと検索結果の説明文に使われます。",
+    "demo": "https://example.netlify.app/",
+    "imgs": [
+      {
+        "src": "/assets/case/sample-case-01.webp",
+        "alt": "画面の説明"
+      }
+    ],
+    "sections": [
+      {
+        "heading": "案件背景",
+        "paras": [
+          "背景の説明。"
+        ],
+        "items": []
+      },
+      {
+        "heading": "できること",
+        "paras": [],
+        "items": [
+          "機能1",
+          "機能2"
+        ]
+      },
+      {
+        "heading": "活用シーン",
+        "paras": [
+          "想定される使い方。"
+        ],
+        "items": []
+      }
+    ],
+    "spec": [
+      [
+        "対象",
+        "工場敷地"
+      ],
+      [
+        "提供形態",
+        "Webデモ（ブラウザ）"
+      ]
+    ]
+  }
+]

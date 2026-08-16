@@ -1,9 +1,13 @@
 // 現行サイトの <article class="sheet" id="case-NN"> 17件を構造化JSONへ抽出する。
 // 画像は assets/case/ へ書き出し、本文はそのまま持ち越す（内容は改変しない）。
 const fs = require('fs');
-const SRC = '/root/.claude/uploads/4f81ed0b-8615-559c-9e3d-ce90713e1d69/6eabb3e3-index__20260813T163054.033.html';
-const OUT_IMG = '/home/user/test_test_UIX/assets/case/';
-const OUT_JSON = '/home/user/test_test_UIX/cases.json';
+// 【一回限りの移行用】旧サイトの index.html から cases.json を作り直すスクリプト。
+// 通常の運用（事例の追加・修正）では使わない。cases.json を直接編集すること。
+//   使い方: node extract-cases.js <旧サイトのindex.htmlのパス>
+const SRC = process.argv[2];
+if (!SRC) { console.error('使い方: node extract-cases.js <旧サイトのindex.htmlのパス>'); process.exit(1); }
+const OUT_IMG = __dirname + '/assets/case/';
+const OUT_JSON = __dirname + '/cases.json';
 
 const h = fs.readFileSync(SRC, 'utf8');
 fs.rmSync(OUT_IMG, { recursive: true, force: true });

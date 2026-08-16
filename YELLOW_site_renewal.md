@@ -245,6 +245,17 @@ body.ph .split__media,
 body.ph .card__img img { filter: grayscale(1) contrast(1.08) brightness(.94); }
 ```
 
+### 事例（/cases/）— 今後はYELLOW側で追加
+
+旧サイトの17件を `cases.json` に移植済み。**追加・修正は `cases.json` の編集＋`node build-static.js` だけ**で、HTMLは触らない。手順は `CASES_HOWTO.md`、雛形は `cases.template.json`。
+
+- 1件追加すると、詳細ページ・一覧カード・`sitemap.xml`・`llms.txt`・JSON-LD がすべて自動更新される
+- ビルド時に検証が走り、必須項目の欠落・`key`の重複や不正・画像の不在・`demo`のURL形式を**日本語で指摘して停止**する
+- `key` がそのままURL（`/cases/<key>/`）になるため、公開後の変更は既存リンクが切れる点に注意
+- `extract-cases.js` は旧サイトからの一回限りの移行用。通常運用では使わない（`cases.json` を上書きするため）
+
+**スクリプトの可搬性** — `build-static.js` / `cases-append.js` は `__dirname` 基準で動くので、リポジトリごと移動しても、どのディレクトリから実行しても動く。
+
 ### SEO・AI検索対応（静的マルチページビルド）
 
 **背景** — v8 までは6ページ分の内容が1つのURLに同居していた（`#/xbuild` などのハッシュルーター）。検索エンジンは `#` 以降を別URLと見なさないため、**実質1ページしかインデックスされない**。AI検索も引用できるURLがトップだけになる。
@@ -280,7 +291,7 @@ dist/
 
 **検証済み** — 全URLが200／`<h1>`各1本／4xxなし／JSエラーなし／ページ間遷移とセクションアンカー／EN切替でもページ別titleを維持。
 
-**未確定** — `ORIGIN` は `https://yellow.technology` を仮置き。ドメインと現行サイトからの切替方法が決まり次第、1行変えて再生成する。
+**ドメイン確定** — `https://yellow.technology` 直下への置き換えで確定。現行サイトはHTML1枚のみのため、パス単位の301リダイレクトは不要。旧アンカー（`#case-01`〜17 / `#about` / `#profile` / `#intro`）はJSで新URLへ転送している。
 
 ### 現行サイトの画像をはめた試作（`yellow_spacex_v7_siteimg.html`）
 
