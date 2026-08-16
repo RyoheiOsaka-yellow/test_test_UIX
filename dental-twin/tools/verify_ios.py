@@ -74,6 +74,21 @@ def tooth_centroid(js, bins, name):
     raise KeyError(name)
 
 
+def drop_below_gingiva(V, F, cej_y, margin=1.0):
+    """歯肉に覆われた部分（歯根側）を落とす。
+
+    実際の IOS スキャンは**歯根を撮れない**。歯根を残したまま検証すると、
+    実データでは起こらない条件で判定してしまう。
+    """
+    keep_v = V[:, 1] <= cej_y + margin        # 上顎: 歯冠は cej_y より下
+    keep_f = keep_v[F].all(axis=1)
+    F2 = F[keep_f]
+    if len(F2) == 0:
+        return None, None
+    used, inv = np.unique(F2.reshape(-1), return_inverse=True)
+    return V[used], inv.reshape(-1, 3)
+
+
 def collect_upper(js, bins):
     """上顎の歯と歯肉だけを集めて 1 つのメッシュにする（IOS スキャン相当）"""
     Vs, Fs, base = [], [], 0
@@ -81,13 +96,17 @@ def collect_upper(js, bins):
         nm = node.get("name", "")
         if "mesh" not in node:
             continue
-        keep = (nm.startswith("tooth_1") or nm.startswith("tooth_2")
-                or nm == "gingiva_upper" or nm == "palate_upper")
-        if not keep:
+        is_tooth = nm.startswith("tooth_1") or nm.startswith("tooth_2")
+        if not (is_tooth or nm in ("gingiva_upper", "palate_upper")):
             continue
         for prim in js["meshes"][node["mesh"]]["primitives"]:
             V = read_acc(js, bins, prim["attributes"]["POSITION"])
             F = read_acc(js, bins, prim["indices"]).reshape(-1, 3)
+            if is_tooth:
+                ex = node.get("extras") or {}
+                V, F = drop_below_gingiva(V, F, ex.get("cej_y", 1e9))
+                if V is None:
+                    continue
             Vs.append(V)
             Fs.append(F + base)
             base += len(V)

@@ -16,8 +16,9 @@ if [ "$step" = "all" ] || [ "$step" = "model" ]; then
 fi
 
 if [ "$step" = "all" ] || [ "$step" = "pipeline" ]; then
-  echo "── 3/6  IOS 取り込みの正規化検証 (Phase 2) ─────"
+  echo "── 3/6  IOS 取り込みの検証 (Phase 2/3) ─────────"
   python3 tools/verify_ios.py
+  python3 tools/verify_segment.py
   echo "── 4/6  DB ブリッジの往復検証 (Phase 2) ────────"
   python3 tools/db_bridge.py roundtrip data/findings_sample.json
   python3 tools/db_bridge.py roundtrip data/findings_prev_sample.json

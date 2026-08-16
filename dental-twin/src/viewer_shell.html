@@ -331,6 +331,7 @@ body.nochart #chart{padding-bottom:6px}
           <button data-seq="caries">虫歯の説明</button>
           <button data-seq="perio">歯周病の説明</button>
           <button data-seq="plan">治療の流れ</button>
+          <button data-seq="steps">治療の工程</button>
           <button data-seq="summary">全体サマリー</button>
         </div>
       </div>
@@ -342,6 +343,11 @@ body.nochart #chart{padding-bottom:6px}
           <button data-layer="restoration" class="on">修復物</button>
           <button data-layer="perio">歯周</button>
           <button data-layer="bone">歯槽骨</button>
+          <button data-layer="xray">X線・写真</button>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <label class="btn" for="imgFile">画像を開く</label>
+          <input type="file" id="imgFile" accept="image/*" style="display:none">
         </div>
       </div>
 

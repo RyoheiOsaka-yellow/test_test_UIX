@@ -428,7 +428,9 @@ def normalize(V, F, arch=None, flip=False):
     P = np.stack([(Vs - centroid) @ u, (Vs - centroid) @ v], axis=1)
     theta, sym, mid_u = estimate_midsagittal(P)
     report["symmetry_score"] = round(sym, 4)
-    if sym < 0.55:
+    # 実スキャン相当（歯冠のみの開いた殻）では 0.5 前後が正常値。
+    # 閾値を高くすると毎回警告が出て意味を失うので 0.45 とする
+    if sym < 0.45:
         report["warnings"].append(
             "LOW_SYMMETRY: 正中面の一致率 %.2f。術者の確認が必要です" % sym)
 

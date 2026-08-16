@@ -367,6 +367,64 @@ with sync_playwright() as pw:
     pg.click("#simBtn")
     pg.wait_for_timeout(800)
 
+    # ---- Phase 3: 治療工程アニメーション ----
+    pg.click("[data-seq='steps']")
+    pg.wait_for_timeout(1200)
+    st0 = pg.evaluate("() => window.__DT.stepSim && window.__DT.stepSim.stage")
+    banner0 = pg.evaluate("() => document.getElementById('simNote').textContent")
+    pg.wait_for_timeout(3600)
+    st2 = pg.evaluate("() => window.__DT.stepSim && window.__DT.stepSim.stage")
+    narr = pg.evaluate("() => document.getElementById('seqNote').textContent")
+    shotstep = os.path.join(DOCS, "shot_steps.png")
+    pg.screenshot(path=shotstep); shots.append(shotstep)
+    pg.wait_for_timeout(6000)
+    st4 = pg.evaluate("() => window.__DT.stepSim && window.__DT.stepSim.stage")
+    print("治療工程: stage %s → %s → %s | %s" % (st0, st2, st4, narr))
+    if not (st0 == 0 and st2 and st2 >= 1 and "工程" in banner0):
+        ok = False
+    # 中断すると上書きが破棄され、所見データは元のまま
+    pg.click("#reset")
+    pg.wait_for_timeout(1200)
+    cleared = pg.evaluate("""() => ({
+      step: window.__DT.stepSim,
+      f16: (window.__DT.baseDoc.teeth.find(t=>t.fdi===16).surfaces
+             .find(s=>s.surface==='O')||{}).finding })""")
+    print("  中断後: stepSim =", cleared["step"], "/ 16-O の所見 =", cleared["f16"])
+    if cleared["step"] is not None or cleared["f16"] != "C2":
+        ok = False
+
+    # ---- Phase 3: X線・写真の空間配置 ----
+    media = pg.evaluate("""async () => {
+      // 1x1 ではなく判別できる大きさのダミー画像をその場で作る（外部通信なし）
+      const c = document.createElement('canvas');
+      c.width = 240; c.height = 180;
+      const g = c.getContext('2d');
+      g.fillStyle = '#111'; g.fillRect(0, 0, 240, 180);
+      g.fillStyle = '#ddd'; g.fillRect(40, 30, 160, 120);
+      const S = window.__DT;
+      S.selected = 16;
+      S.api.setMediaImage(c.toDataURL('image/png'));
+      await new Promise(r => setTimeout(r, 1200));
+      const m = S.mediaMesh;
+      return m ? { on: S.layers.xray, visible: m.visible,
+                   pos: [Math.round(m.position.x), Math.round(m.position.y),
+                         Math.round(m.position.z)],
+                   hasTex: !!(m.material && m.material.map) } : null;
+    }""")
+    print("画像配置:", media)
+    if not (media and media["on"] and media["visible"] and media["hasTex"]):
+        ok = False
+    pg.wait_for_timeout(1500)
+    shotx = os.path.join(DOCS, "shot_xray.png")
+    pg.screenshot(path=shotx); shots.append(shotx)
+    # リセットで患者画像が破棄される（ローカルにも残さない）
+    pg.click("#reset")
+    pg.wait_for_timeout(1000)
+    gone = pg.evaluate("() => !window.__DT.mediaMesh && !window.__DT.layers.xray")
+    print("  リセットで画像を破棄:", gone)
+    if not gone:
+        ok = False
+
     # ---- B-3.3: パネルの折りたたみ ----
     pg.click("#sideTgl")
     pg.wait_for_timeout(500)

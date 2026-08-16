@@ -331,6 +331,7 @@ body.nochart #chart{padding-bottom:6px}
           <button data-seq="caries">虫歯の説明</button>
           <button data-seq="perio">歯周病の説明</button>
           <button data-seq="plan">治療の流れ</button>
+          <button data-seq="steps">治療の工程</button>
           <button data-seq="summary">全体サマリー</button>
         </div>
       </div>
@@ -342,6 +343,11 @@ body.nochart #chart{padding-bottom:6px}
           <button data-layer="restoration" class="on">修復物</button>
           <button data-layer="perio">歯周</button>
           <button data-layer="bone">歯槽骨</button>
+          <button data-layer="xray">X線・写真</button>
+        </div>
+        <div class="row" style="margin-top:6px">
+          <label class="btn" for="imgFile">画像を開く</label>
+          <input type="file" id="imgFile" accept="image/*" style="display:none">
         </div>
       </div>
 
@@ -4112,7 +4118,8 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     baseDoc: null,             // 現在の状態（唯一の編集対象。シミュレーションは導出値）
     simulated: false,          // 治療後シミュレーション表示中か
     undoStack: [],
-    layers: { caries: true, restoration: true, root: false, bone: false, perio: false },
+    layers: { caries: true, restoration: true, root: false, bone: false,
+              perio: false, xray: false },
     stage: 0,                  // 0=通常 1=歯根 2=骨
     chartTab: 'caries',        // 'caries' | 'perio'
     mode: 'clinician',         // 'clinician' | 'patient'
@@ -4342,6 +4349,9 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
 
   function surfaceColorFor(fdi, rec, surf) {
     const C = CONFIG.COLORS;
+    // 治療工程の再生中は、その面だけ工程色で上書きする（データは変えない）
+    const sc = stepColorFor(fdi, surf);
+    if (sc !== null) return sc;
     // 経過比較中は「変化のあった面」だけを塗る（全部色が付くと差分が読めない）
     if (S.compare && S.cmp) {
       const e = S.cmp.teeth.get(fdi);
@@ -4415,6 +4425,10 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     S.boneAlphaTarget = (CONFIG.BONE_VISIBLE[S.stage] || S.layers.bone) ? 0.34 : 0.0;
     updatePerioMarkers();
     updateBoneLevels();
+    if (S.mediaMesh) {
+      S.mediaMesh.visible = !!S.layers.xray;
+      placeMedia();
+    }
     S.needsRecolor = false;
   }
 
@@ -4715,6 +4729,7 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     });
     document.getElementById('reset').addEventListener('click', function () {
       stopSeq(); closePop(); hideTip(); setSimulated(false);
+      clearMedia(); setLayer('xray', false);   // 患者画像はリセットで破棄する
       S.selected = null; S.needsRecolor = true;
       setPreset('front'); renderDetail(null); updateChart();
     });
@@ -4784,6 +4799,13 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     });
     document.getElementById('cmpBtn').addEventListener('click', function () {
       setCompare(!S.compare);
+    });
+    document.getElementById('imgFile').addEventListener('change', function (e) {
+      const f = e.target.files && e.target.files[0]; if (!f) return;
+      const rd = new FileReader();
+      // 患者データなので HTML にもストレージにも保存しない（SPEC §5.20 / §8.3）
+      rd.onload = function () { setMediaImage(rd.result); };
+      rd.readAsDataURL(f);
     });
     document.getElementById('prevFile').addEventListener('change', function (e) {
       const f = e.target.files && e.target.files[0]; if (!f) return;
@@ -5559,6 +5581,15 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     const el = document.getElementById('seqNote');
     if (el) el.classList.add('hide');
     document.querySelectorAll('[data-seq]').forEach(function (b) { b.classList.remove('on'); });
+    if (S.stepSim) {                 // 工程の上書きを破棄して現在の状態へ戻す
+      S.stepSim = null;
+      const sn = document.getElementById('simNote');
+      if (sn) {
+        sn.textContent = '治療後シミュレーション表示中（実際の治療結果とは異なります）';
+        sn.classList.toggle('hide', !S.simulated);
+      }
+      S.needsRecolor = true;
+    }
   }
   function at(ms, fn) { SEQ.timers.push(setTimeout(fn, ms)); }
   function narrate(t) {
@@ -5724,6 +5755,9 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
       });
       at(tEnd + 3400, stopSeq);
 
+    } else if (name === 'steps') {
+      runStepSeq();
+
     } else if (name === 'summary') {
       const k = computeKPI();
       const items = planItems();
@@ -5738,6 +5772,137 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
       });
       at(2600 + 1500 * items.length + 1200, stopSeq);
     }
+  }
+
+  /* =======================================================================
+     治療工程アニメーション — SPEC §5.19 / 研究資料 §9
+     所見データは書き換えず、再生中だけ有効な表示上書きとして持つ
+     ======================================================================= */
+  const STEP_COLORS = { cavity: 0x6B5B4B, prepared: 0x8A7A68 };
+  const STEP_TEXT = [
+    'いまの状態です',
+    '虫歯になっているところを取り除きます',
+    '詰め物が入る形に整えます',
+    '白い詰め物を入れます',
+    'これで噛めるようになります'
+  ];
+
+  // 再生中の上書き（{fdi, surf, stage, material}）。終了時に破棄する
+  function stepColorFor(fdi, surf) {
+    const st = S.stepSim;
+    if (!st || st.fdi !== fdi) return null;
+    if (normSurf(surf) !== st.surf) return null;
+    if (st.stage === 1) return STEP_COLORS.cavity;
+    if (st.stage === 2) return STEP_COLORS.prepared;
+    if (st.stage >= 3) return CONFIG.COLORS[st.material] || CONFIG.COLORS.CR;
+    return null;   // stage 0 は現在の所見色のまま
+  }
+
+  function pickStepTarget() {
+    // 選択歯に計画があればそれ。無ければ計画の先頭
+    const items = planItems().filter(function (p) {
+      return p.procedure !== 'OBSERVE' && p.procedure !== 'EXTRACTION';
+    });
+    if (S.selected != null) {
+      const own = items.filter(function (p) { return p.fdi === S.selected; })[0];
+      if (own) return own;
+    }
+    return items[0] || null;
+  }
+
+  function runStepSeq() {
+    const p = pickStepTarget();
+    if (!p) {
+      at(0, function () { narrate('工程を再生できる治療計画がありません'); });
+      at(2600, stopSeq);
+      return;
+    }
+    const surf = normSurf((p.surfaces || 'O')[0] || 'O');
+    const mat = (p.procedure === 'INLAY') ? 'IN_METAL' : 'CR';
+    const t = [0, 2400, 4600, 6800, 9000];
+
+    at(0, function () {
+      setSimulated(false); setStage(0);
+      S.stepSim = { fdi: p.fdi, surf: surf, stage: 0, material: mat };
+      selectTooth(p.fdi);
+      const el = document.getElementById('simNote');
+      if (el) {
+        el.textContent = '治療の工程（シミュレーション。実際の治療結果とは異なります）';
+        el.classList.remove('hide');
+      }
+      narrate(fdiToPalmer(p.fdi) + 'の歯：' + STEP_TEXT[0]);
+      S.needsRecolor = true;
+    });
+    for (let i = 1; i <= 4; i++) {
+      (function (k) {
+        at(t[k], function () {
+          S.stepSim.stage = k;
+          if (k === 4) { S.desired.dist = 110; }
+          narrate(STEP_TEXT[k]);
+          S.needsRecolor = true;
+        });
+      })(i);
+    }
+    at(t[4] + 3000, stopSeq);
+  }
+
+  /* =======================================================================
+     X線・口腔内写真の空間配置 — SPEC §5.20
+     画像はローカル読み込みのみ。HTML にもストレージにも保存しない
+     ======================================================================= */
+  function setMediaImage(dataUrl) {
+    const img = new Image();
+    img.onload = function () {
+      if (S.mediaMesh) {
+        S.scene.remove(S.mediaMesh);
+        if (S.mediaMesh.material.map) S.mediaMesh.material.map.dispose();
+        S.mediaMesh.material.dispose();
+        S.mediaMesh.geometry.dispose();
+        S.mediaMesh = null;
+      }
+      const tex = new THREE.Texture(img);
+      tex.needsUpdate = true;
+      tex.encoding = THREE.sRGBEncoding;
+      const long = 34, r = img.height / Math.max(1, img.width);
+      const w = r <= 1 ? long : long / r;
+      const h = r <= 1 ? long * r : long;
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(w, h),
+        new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide,
+                                      transparent: false })
+      );
+      mesh.name = 'media_plate';
+      mesh.visible = !!S.layers.xray;
+      S.scene.add(mesh);
+      S.mediaMesh = mesh;
+      setLayer('xray', true);
+      placeMedia();
+    };
+    img.src = dataUrl;
+  }
+
+  function placeMedia() {
+    const m = S.mediaMesh;
+    if (!m) return;
+    const t = (S.selected != null) ? S.teeth.get(S.selected) : null;
+    if (t) {
+      t.mesh.updateWorldMatrix(true, false);
+      const c = t.centroid.clone().applyMatrix4(t.mesh.matrixWorld);
+      const b = t.ax.b.clone().applyQuaternion(
+        t.mesh.parent ? t.mesh.parent.quaternion : new THREE.Quaternion());
+      m.position.copy(c).addScaledVector(b, 28);
+    } else {
+      m.position.set(0, 6, 46);
+    }
+  }
+
+  function clearMedia() {
+    if (!S.mediaMesh) return;
+    S.scene.remove(S.mediaMesh);
+    if (S.mediaMesh.material.map) S.mediaMesh.material.map.dispose();
+    S.mediaMesh.material.dispose();
+    S.mediaMesh.geometry.dispose();
+    S.mediaMesh = null;
   }
 
   /* =======================================================================
@@ -6305,6 +6470,7 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     setPerio: setPerio, setBoneLevel: setBoneLevel, setChartTab: setChartTab,
     openHandout: openHandout, renderHandout: renderHandout,
     loadPrev: loadPrev, setCompare: setCompare, buildComparison: buildComparison,
+    setMediaImage: setMediaImage, clearMedia: clearMedia, runStepSeq: runStepSeq,
     buildPDF: buildPDF, dataURLToU8: dataURLToU8, boneLevelOf: boneLevelOf
   };
 
@@ -6414,6 +6580,7 @@ window.__FINDINGS={"schema_version":"1.0","patient_ref":"P-000123","exam_id":"E-
     if (S.maxilla) applyHinge(S.maxilla, -S.openCur * 0.8, MODEL_HINGE);
 
     if (S.needsRecolor && S.ready) recolorAll();
+    if (S.mediaMesh && S.mediaMesh.visible) S.mediaMesh.quaternion.copy(S.camera.quaternion);
     if (S.ready) updateSideLabels();
 
     if (S.view2d) render2D();
