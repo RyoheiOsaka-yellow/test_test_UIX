@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FOOT TWIN — 足の現在と、その先を見る</title>
+<style>
+:root{
+  --paper:#E9EBE6; --paper2:#F5F6F3; --ink:#14202A; --ink2:#54636D; --ink3:#8A959C;
+  --rule:#C6CCC4; --rule2:#D9DED7; --teal:#1D6B66; --teal-l:#2E9089;
+  --brass:#A8851C; --alert:#A63A2B; --bg3d:#F4F5F2;
+  --panelW:340px; --headH:48px; --timeH:72px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Noto Sans JP","Helvetica Neue",Arial,sans-serif;
+  font-size:13px; line-height:1.7; font-feature-settings:"palt" 1;
+  -webkit-font-smoothing:antialiased; overflow:hidden;
+}
+.mono{font-family:ui-monospace,"SFMono-Regular","Menlo","Consolas",monospace;font-variant-numeric:tabular-nums}
+
+/* ---------- shell ---------- */
+#app{display:grid;grid-template-rows:var(--headH) 1fr var(--timeH);height:100vh;height:100dvh}
+#head{
+  display:flex;align-items:center;gap:14px;padding:0 16px;
+  border-bottom:1px solid var(--rule);background:var(--paper);
+}
+#head .logo{font-weight:900;letter-spacing:.2em;font-size:12.5px;white-space:nowrap}
+#head .logo em{font-style:normal;color:var(--brass)}
+#head .spacer{flex:1}
+#head .who{font-size:11px;color:var(--ink3);letter-spacing:.12em;white-space:nowrap}
+select,button{font:inherit;color:var(--ink)}
+select{
+  background:var(--paper2);border:1px solid var(--rule);padding:5px 8px;
+  font-size:12px;border-radius:0;
+}
+.seg{display:flex;border:1px solid var(--rule);background:var(--paper2)}
+.seg button{
+  background:none;border:0;padding:5px 11px;font-size:12px;cursor:pointer;
+  border-right:1px solid var(--rule2);
+}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper);font-weight:800}
+.btn{
+  background:var(--paper2);border:1px solid var(--rule);padding:5px 11px;
+  font-size:12px;cursor:pointer;
+}
+.btn:hover{background:#fff}
+
+/* ---------- main ---------- */
+#main{display:grid;grid-template-columns:1fr var(--panelW);min-height:0}
+#stage{position:relative;min-width:0;overflow:hidden;background:var(--bg3d)}
+/* canvas を絶対配置にして、レイアウト幅に影響させない */
+#stage canvas{display:block;position:absolute;left:0;top:0}
+#hud{
+  position:absolute;left:12px;top:12px;pointer-events:none;
+  background:rgba(245,246,243,.9);border:1px solid var(--rule);
+  padding:8px 11px;font-size:11.5px;line-height:1.6;min-width:186px;
+}
+#hud b{font-weight:800}
+#hud .k{color:var(--ink3);display:inline-block;min-width:66px}
+#legend{
+  position:absolute;left:12px;bottom:12px;background:rgba(245,246,243,.9);
+  border:1px solid var(--rule);padding:8px 11px;font-size:11px;pointer-events:none;
+}
+#legend .bar{height:9px;width:170px;margin:5px 0 3px;border:1px solid var(--rule)}
+#legend .ends{display:flex;justify-content:space-between;color:var(--ink3)}
+#viewbtns{position:absolute;right:12px;top:12px;display:flex;gap:0}
+#pinbox{
+  position:absolute;right:12px;bottom:12px;background:rgba(245,246,243,.92);
+  border:1px solid var(--rule);padding:8px 11px;font-size:11.5px;max-width:240px;
+}
+#pinbox.empty{display:none}
+
+/* ---------- panel ---------- */
+#panel{
+  border-left:1px solid var(--rule);background:var(--paper);
+  overflow-y:auto;overflow-x:hidden;min-width:0;
+}
+.sec{border-bottom:1px solid var(--rule)}
+.sec > h2{
+  margin:0;padding:11px 14px 8px;font-size:10.5px;letter-spacing:.2em;
+  color:var(--teal);font-weight:800;display:flex;align-items:center;gap:10px;
+}
+.sec > h2::after{content:"";flex:1;height:1px;background:var(--rule2)}
+.sec .body{padding:0 14px 14px}
+
+/* 指標 */
+table.m{width:100%;border-collapse:collapse;font-size:12.5px}
+table.m td{padding:5px 0;border-bottom:1px solid var(--rule2);vertical-align:baseline}
+table.m td.lab{color:var(--ink2);white-space:nowrap}
+table.m td.val{text-align:right;font-weight:800;white-space:nowrap;
+  font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums}
+table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:nowrap;padding-left:8px}
+.arche{
+  margin-top:10px;border:1px solid var(--ink);background:var(--paper2);padding:9px 11px;
+}
+.arche .t{font-size:10px;letter-spacing:.16em;color:var(--ink3);font-weight:800}
+.arche .n{font-size:15px;font-weight:900;margin-top:2px}
+.arche .d{font-size:11px;color:var(--ink2);margin-top:2px}
+
+/* レイヤ */
+.layer{
+  display:grid;grid-template-columns:22px 1fr 34px;gap:9px;align-items:center;
+  width:100%;padding:7px 0;border:0;border-bottom:1px solid var(--rule2);
+  background:none;text-align:left;font:inherit;color:var(--ink);cursor:pointer;
+}
+.layer:hover{background:rgba(29,107,102,.05)}
+.layer .ln{font-family:ui-monospace,monospace;font-size:10.5px;color:var(--ink3)}
+.layer .lt{font-size:12.5px;font-weight:700}
+.layer .lh{font-size:10.5px;color:var(--ink3);display:block;line-height:1.45}
+.sw{width:30px;height:15px;border:1px solid var(--ink3);position:relative;justify-self:end}
+.sw i{position:absolute;top:2px;bottom:2px;left:2px;width:10px;background:var(--ink3);transition:.15s}
+.layer[aria-pressed="true"] .sw{border-color:var(--teal);background:rgba(29,107,102,.14)}
+.layer[aria-pressed="true"] .sw i{left:calc(100% - 12px);background:var(--teal)}
+.layer[aria-pressed="true"] .lt{color:var(--teal)}
+
+/* コホート */
+#histWrap svg{width:100%;height:auto;display:block}
+.hnote{font-size:11px;color:var(--ink2);margin:6px 0 0}
+.metricsel{display:flex;gap:0;margin-bottom:8px}
+.metricsel button{
+  flex:1;background:var(--paper2);border:1px solid var(--rule);border-right:0;
+  padding:4px 2px;font-size:11px;cursor:pointer;
+}
+.metricsel button:last-child{border-right:1px solid var(--rule)}
+.metricsel button[aria-pressed="true"]{background:var(--ink);color:var(--paper);font-weight:800}
+
+/* 処方リスト */
+.rxrow{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:12px;
+  padding:5px 0;border-bottom:1px solid var(--rule2)}
+.rxrow .mm{font-family:ui-monospace,monospace;font-weight:800;color:var(--brass)}
+.rxrow .yr{font-size:10.5px;color:var(--ink3)}
+
+/* ---------- timeline ---------- */
+#time{
+  border-top:1px solid var(--rule);background:var(--paper);
+  display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;
+  padding:0 16px;min-width:0;
+}
+#time .yr{font-family:ui-monospace,monospace;font-weight:900;font-size:20px;white-space:nowrap}
+#time .yr small{font-size:10px;letter-spacing:.14em;display:block;color:var(--ink3);font-weight:700}
+#track{position:relative;min-width:0}
+#track input{width:100%;margin:0;accent-color:var(--teal)}
+#ticks{position:relative;height:15px;font-size:10px;color:var(--ink3);
+  font-family:ui-monospace,monospace}
+#ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+/* 両端の目盛は中央揃えにすると半分がトラックの外へはみ出し、
+   狭い画面で横スクロールを発生させる。内側へ寄せる。 */
+#ticks span.first{transform:translateX(0)}
+#ticks span.last{transform:translateX(-100%)}
+#ticks span.ex{color:var(--brass)}
+#disc{font-size:10.5px;color:var(--ink2);max-width:330px;line-height:1.45}
+#disc.on{color:var(--brass);font-weight:700}
+
+/* ---------- responsive（SPEC §9-1：768px 未満で下部にスタック） ---------- */
+@media (max-width:768px){
+  body{overflow:auto}
+  #app{grid-template-rows:auto 1fr auto;height:auto;min-height:100vh}
+  #main{grid-template-columns:1fr;grid-template-rows:56vh auto}
+  #panel{border-left:0;border-top:1px solid var(--rule);overflow-y:visible}
+  #head{flex-wrap:wrap;padding:8px 12px;gap:8px}
+  #head .who{display:none}
+  #time{grid-template-columns:1fr;gap:6px;padding:10px 12px}
+  #disc{max-width:none}
+  #pinbox{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header id="head">
+    <div class="logo">FOOT<em>·</em>TWIN</div>
+    <select id="subjectSel" aria-label="subject"></select>
+    <div class="seg" id="sideSeg">
+      <button type="button" data-side="R" aria-pressed="true">右足</button>
+      <button type="button" data-side="L" aria-pressed="false">左足</button>
+    </div>
+    <button type="button" class="btn" id="resetBtn">視点リセット</button>
+    <div class="spacer"></div>
+    <div class="who mono">PHASE 0 — 合成データによるデモ</div>
+  </header>
+
+  <div id="main">
+    <div id="stage">
+      <div id="hud">subject を選択してください</div>
+      <div id="viewbtns" class="seg">
+        <button type="button" data-view="T">真上</button>
+        <button type="button" data-view="B">底面</button>
+        <button type="button" data-view="M">内側</button>
+        <button type="button" data-view="L">外側</button>
+      </div>
+      <div id="legend"></div>
+      <div id="pinbox" class="empty"></div>
+    </div>
+
+    <aside id="panel">
+      <section class="sec">
+        <h2>計測結果</h2>
+        <div class="body">
+          <table class="m"><tbody id="metricBody"></tbody></table>
+          <div class="arche" id="archeBox"></div>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h2>表示レイヤ</h2>
+        <div class="body"><div id="layerList"></div></div>
+      </section>
+
+      <section class="sec">
+        <h2>6万人の中での位置</h2>
+        <div class="body">
+          <div class="metricsel" id="metricSel"></div>
+          <div id="histWrap"></div>
+          <p class="hnote" id="histNote"></p>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h2>インソールの補正</h2>
+        <div class="body"><div id="rxList"></div></div>
+      </section>
+    </aside>
+  </div>
+
+  <div id="time">
+    <div class="yr"><span id="yearLabel">2026</span><small id="yearKind">計測</small></div>
+    <div id="track">
+      <input type="range" id="yearRange" min="2013" max="2036" step="1" value="2026">
+      <div id="ticks"></div>
+    </div>
+    <div id="disc"></div>
+  </div>
+
+</div>
+<!--__SCRIPTS__-->
+</body>
+</html>

@@ -1,0 +1,248 @@
+# CLAUDE.md — FOOT TWIN 開発規約
+
+> このファイルは Claude Code が本プロジェクトで作業する際の**作業手順書**である。
+> 仕様は `SPEC.md` にある。本書は「どう作るか」だけを扱う。
+> **セッション開始時に SPEC.md と本書の両方を読むこと。**
+
+---
+
+## 1. プロジェクト概要（30秒）
+
+ファーストワン社（オーダーメイドインソール）の約6万人分の足部3D計測データを
+活用するための 3D ビューア。Phase 0 は合成データによるコンセプトデモ。
+
+**成果物は `dist/foot_twin_v0.html` の1ファイルのみ。**
+
+---
+
+## 2. 絶対規約
+
+これらに違反した実装は、動いていても差し戻す。
+
+| # | 規約 |
+|---|---|
+| 1 | 成果物は**単一 HTML**。外部ファイル参照・CDN 参照ゼロ |
+| 2 | `file://` で完全に動くこと。`fetch()` によるローカルファイル読み込みは CORS で落ちるので使わない |
+| 3 | Three.js は **r128 UMD をインライン**。ESM・r180+ を混在させない |
+| 4 | `localStorage` / `sessionStorage` を使わない |
+| 5 | 単位は mm。他の単位をモデル内に持ち込まない |
+| 6 | `side`（R/L）と `axis_medial` は**明示保存**。導出禁止（SPEC §2-2） |
+| 7 | `ctxRoot` 配下（床グリッド・ライト等）は store／undo の対象外 |
+| 8 | 医療的表現の禁止（SPEC §9-4） |
+| 9 | マジックナンバーを散らさない。定数は `CONST` オブジェクトに集約 |
+| 10 | SPEC.md と矛盾する実装をしない。必要ならまず SPEC.md を更新する |
+
+---
+
+## 3. 検証儀式（**省略不可**）
+
+コードを変更したら、毎回この順で通す。1つでも落ちたら次に進まない。
+
+### Step 1 — 構文チェック
+
+```bash
+python3 - <<'PY'
+import re
+h = open('dist/foot_twin_v0.html', encoding='utf-8').read()
+js = "\n".join(re.findall(r'<script[^>]*>(.*?)</script>', h, re.S))
+open('/tmp/_check.js','w',encoding='utf-8').write(js)
+PY
+node --check /tmp/_check.js
+```
+
+### Step 2 — ヘッドレス描画（SwiftShader）
+
+```bash
+python3 verify.py
+```
+
+`verify.py` は以下を必ず行う：
+
+```python
+from playwright.sync_api import sync_playwright
+
+with sync_playwright() as p:
+    b = p.chromium.launch(args=[
+        "--use-gl=angle",
+        "--use-angle=swiftshader",
+        "--enable-unsafe-swiftshader",
+    ])
+    pg = b.new_page(viewport={"width": 1600, "height": 900})
+    errs = []
+    pg.on("pageerror", lambda e: errs.append("PAGEERROR: " + str(e)))
+    pg.on("console", lambda m: errs.append(m.type + ": " + m.text)
+          if m.type in ("error", "warning") else None)
+    pg.goto("file:///abs/path/dist/foot_twin_v0.html")
+    pg.wait_for_timeout(3000)
+    pg.screenshot(path="shots/default.png")
+    # 全レイヤ・全定型ビューを走査してスクリーンショット
+    assert not errs, errs
+    b.close()
+```
+
+**コンソールに error / warning が1件でもあれば失敗扱い。**
+
+### Step 3 — ピクセル検証（numpy / PIL）
+
+「真っ黒」「真っ白」「前回と同一」を機械的に弾く。
+
+```python
+from PIL import Image
+import numpy as np
+
+a = np.array(Image.open("shots/default.png").convert("RGB"))
+uniq = len(np.unique(a.reshape(-1, 3), axis=0))
+assert uniq > 2000,        f"描画されていない疑い: uniq={uniq}"
+assert 30 < a.mean() < 245, f"全面塗り潰しの疑い: mean={a.mean()}"
+
+# ビューポート矩形内に足が描かれているか（背景色以外の画素の面積比）
+vp = a[80:820, 0:1240]
+bg = np.array([244, 245, 242])
+ink = (np.abs(vp.astype(int) - bg).sum(axis=2) > 24).mean()
+assert 0.05 < ink < 0.75, f"足の描画面積が異常: {ink:.3f}"
+```
+
+さらにレイヤトグルごとに、**トグル前後で画像が変化していること**を差分で確認する。
+
+```python
+d = np.abs(before.astype(int) - after.astype(int)).mean()
+assert d > 0.5, "レイヤをONにしたのに描画が変わっていない"
+```
+
+### Step 4 — 納品
+
+```bash
+cp dist/foot_twin_v0.html /mnt/user-data/outputs/
+```
+
+`present_files` で提示する。**outputs 以外に置いた時点で顧客からは見えない。**
+
+---
+
+## 4. パッチ手順（既存ファイルの部分置換）
+
+文字列置換で壊す事故を防ぐため、必ずこの形を取る。
+
+```python
+h = open(path, encoding='utf-8').read()
+
+old = """...置換対象..."""
+assert h.count(old) == 1, f"一致数が1でない: {h.count(old)}"
+h = h.replace(old, new)
+
+open(path, 'w', encoding='utf-8').write(h)
+```
+
+- `count == 1` の assert を**必ず**入れる。0 でも 2 でも即停止
+- 置換後は Step 1 からやり直す
+- 複数箇所を1回のスクリプトで置換する場合も、各置換ごとに assert する
+
+### 非破壊拡張パターン
+
+既存の巨大な関数を書き換えるより、IIFE を末尾に追記して差し込む方が安全。
+
+```javascript
+(function(){
+  var _prev = window.renderPanel;
+  window.renderPanel = function(){
+    _prev.apply(this, arguments);
+    // 追加処理
+  };
+})();
+```
+
+**ラップの順序は意味を持つ。既存のラップチェーンの順序を入れ替えてはならない。**
+
+---
+
+## 5. 実装順序（Phase 0）
+
+依存関係の順に積む。各ステップ完了時に §3 の儀式を通す。
+
+| # | 内容 | 完了条件 |
+|---|---|---|
+| B-1 | `geom.js` 足型ジェネレータ | パラメータを振って 20 個生成し、すべて単一連結の閉領域になる |
+| B-2 | 高さ場 → BufferGeometry | メッシュが表示され、法線が正しい（片面が黒くならない） |
+| B-3 | カメラ・自前 OrbitControls | 全方向から破綻なく見える。ジンバルロックなし |
+| B-4 | 等高線抽出（marching squares） | 2mm 間隔で閉曲線になる。破線・途切れがない |
+| B-5 | `metrics.js` 指標算出 | 既知パラメータの合成足に対し、算出値が入力値と ±2% 以内で一致。<br>ただし `hva` は **±2% または ±0.2°** のいずれか緩い方（後述） |
+| B-6 | `cohort.js` 統計 | パーセンタイルが 0–100 に収まり、中央値の個体で 50±2 |
+| B-7 | レイヤ系 L0–L9 | 全 1024 通りの組み合わせのうちランダム 30 通りで破綻なし |
+| B-8 | ピッキング | 100 点ランダムクリックで、読み出した高さが真値と ±0.05mm |
+| B-9 | タイムライン | スクラブ中に 60fps 維持。補間が単調 |
+| B-10 | UI パネル・レスポンシブ | 768px でスタックし、横スクロールが出ない |
+| B-11 | `insole.js` インソール上面（SPEC §4-5） | 外形が単一連結。全セルで肉厚 ≥ `BASE_THICK`。処方 `lift_mm` と差分ピーク値が ±5% で一致 |
+
+**B-1 と B-4 が最大の難所。** ここを雑にやると以降すべてが崩れる。
+
+**B-5 の `hva` に絶対値の下限を置く理由。** HVA は 30mm ほどの区間で
+内側輪郭の傾きを取って求める角度である。グリッドは `nx=96`（pitch_x ≈ 1.5mm）なので、
+縁の位置をセル未満の精度で取っても角度分解能は 0.1° 前後が限界になる。
+相対 2% だけを課すと、HVA 2° の足で 0.04° を要求することになり、
+**測定の限界であってコードの欠陥ではないものを不合格にしてしまう。**
+そのため絶対値 0.2° を下限として併記する。長さ・幅は相対 2% のみで判定する。
+
+**B-11 の外形は足のシルエットではない。** 実物写真（`ref/insole_bestposition.md` の観察メモ）の通り、
+インソールは靴のラスト底面に従うため趾が分離せず、先端は単一の丸みで閉じる。
+足の輪郭をそのまま押し出すと、顧客が実物と結び付けられない絵になる。
+
+---
+
+## 6. 既知の落とし穴
+
+過去プロジェクトで実際に踏んだもの。同じ穴に落ちないこと。
+
+| 現象 | 原因 | 対処 |
+|---|---|---|
+| 足形が複数の島に割れる | 円の union でシルエットを作った | 半幅プロファイル方式（SPEC §4-2）を使う |
+| ミラーで法線・回転が反転 | 行列式の符号反転を無視 | `axis_medial` を明示保存。`side` を全箇所で参照 |
+| 等高線が途切れる | marching squares の鞍点（case 5 / 10）を単一線分で処理 | 鞍点は2線分に分解して処理する |
+| 等高線がつながらない | 端点の浮動小数比較 | 座標を `toFixed(4)` でキー化して連結 |
+| undo が MB 級になる | 参照レイヤを store に入れた | `ctxRoot` を store 対象外にする |
+| メッシュ演算が破綻 | 頂点重複（未 welding） | トポロジ処理前に必ず weld |
+| 色がくすむ／飛ぶ | r128 の ColorManagement 前提のずれ | sRGB 直値。`outputEncoding` を触らない |
+| SwiftShader で真っ黒 | WebGL コンテキスト生成失敗 | 起動フラグ3点セット（§3 Step 2）を必ず付ける |
+| `file://` で読み込み失敗 | `fetch()` / ESM `import` | すべてインライン化する |
+
+---
+
+## 7. コーディング規約
+
+- **ES5 相当で書く。** 店頭端末のブラウザ更新状況が不明なため、`?.` `??` `class fields` を使わない
+- `"use strict"` を IIFE 先頭に置く
+- 変数名は SPEC.md の用語に揃える（`asi`, `archAmp`, `navicular` 等）
+- 座標は必ず `(u, v)` = 正規化グリッド座標、`(x, y, z)` = ワールド mm と区別して命名
+- コメントは日本語。**「何をしているか」ではなく「なぜそうしているか」**を書く
+- 1関数 60 行を超えたら分割を検討する
+
+---
+
+## 8. やってはいけないこと
+
+- SPEC.md を読まずに実装を始める
+- 検証儀式を飛ばして「たぶん動く」で納品する
+- 顧客向け画面に医療的表現（診断・異常・治療・予測）を出す
+- `AGING_COEFF` を「実データに基づく」と説明する（Phase 0 では暫定値）
+- 6万人という数字を、実データを見ずに断定的に使う（人数か点数かは未確定。SPEC §0-1 の注記を守る）
+- Three.js のバージョンを勝手に上げる
+- 成果物を複数ファイルに分ける
+
+---
+
+## 9. 進め方
+
+1. Claude が実装オプションを **A / B / C** で提示し、推奨を明示する
+2. 選択を受けてから実装する
+3. 実装完了後は §3 の儀式をすべて通し、スクリーンショットとともに報告する
+4. 「たぶん大丈夫」で報告しない。検証結果を数値で示す
+
+---
+
+## 10. 次のアクション
+
+**現在地：Phase 0 / B-1〜B-11 実装済み（SPEC v0.2）。**
+
+次に確定させること：
+- ファーストワン社ヒアリング（SPEC §0-3 および提案書 第6章の7項目）
+- 実データの形式が判明した場合、SPEC §10-1 の `rasterizeToGrid()` 要件を先に更新する
+- `L9_insole` の補正カーネル（SPEC §3-6 の表）を、実際の設計値の記録形式に合わせて再定義する
