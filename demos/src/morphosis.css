@@ -1,0 +1,14 @@
+/* 埋め込み用の上書き。
+   サイトのヘッダー・見出しとぶつかる表示を消し、計器類だけを右下に残す。
+   操作系（タッチ説明・AIRカメラ）は iframe が pointer-events:none のため出さない。 */
+html,body{background:#000;}
+#title,#hint,#fx,#airBtn,#cam,#fallback{display:none !important;}
+#stats{top:auto;left:auto;
+       right:clamp(16px,3.4vw,44px);bottom:clamp(78px,10vh,120px);
+       text-align:right;font-size:clamp(8px,1vw,10.5px);opacity:.55;}
+#caption{left:auto;right:clamp(16px,3.4vw,44px);bottom:clamp(196px,24vh,258px);
+         text-align:right;max-width:min(44ch,40vw);padding:0;margin-left:auto;
+         font-size:clamp(9.5px,1.05vw,12px);opacity:.6;}
+#shapeName{top:auto;left:auto;right:clamp(16px,3.4vw,44px);
+           bottom:clamp(240px,29vh,308px);
+           font-size:clamp(9.5px,1.15vw,12px);opacity:.75;}

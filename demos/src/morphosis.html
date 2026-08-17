@@ -1,0 +1,1782 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>MORPHOSIS — interactive point cloud</title>
+<style>
+  html, body { margin:0; padding:0; background:#000; overflow:hidden; height:100%; }
+  #stage { position:fixed; inset:0; width:100%; height:100%; touch-action:none;
+           cursor:crosshair; background:#000; }
+  .hud { position:fixed; z-index:10; color:#cfd3dc; pointer-events:none;
+         font-family:"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+         text-shadow:0 0 6px rgba(0,0,0,.9); user-select:none; -webkit-user-select:none; }
+  #stats { top:calc(12px + env(safe-area-inset-top)); left:calc(14px + env(safe-area-inset-left));
+           font-size:clamp(8.5px, 1.5vw, 11px); line-height:1.55; letter-spacing:.04em;
+           opacity:.85; white-space:pre; }
+  #title { top:calc(12px + env(safe-area-inset-top)); right:calc(16px + env(safe-area-inset-right));
+           text-align:right; }
+  #title .t1 { font-size:clamp(14px, 2.4vw, 17px); letter-spacing:.14em; color:#e8eaf0; }
+  #title .t2 { font-size:clamp(8px, 1.4vw, 10px); letter-spacing:.22em; opacity:.55; margin-top:2px; }
+  #shapeName { top:calc(60px + env(safe-area-inset-top)); right:calc(16px + env(safe-area-inset-right));
+               font-size:clamp(10px, 1.7vw, 12px); letter-spacing:.18em;
+               color:#9aa3b5; text-align:right; transition:opacity .4s; }
+  #caption { left:0; right:0; bottom:calc(48px + env(safe-area-inset-bottom));
+             text-align:center; font-style:italic;
+             font-size:clamp(10.5px, 1.8vw, 12.5px); color:#b9bfcc; opacity:.85;
+             padding:0 24px; transition:opacity .5s; }
+  #hint { left:0; right:0; bottom:calc(26px + env(safe-area-inset-bottom));
+          text-align:center; font-size:clamp(8.5px, 1.5vw, 10px);
+          letter-spacing:.14em; color:#6d7489; opacity:.7; }
+  #fx { left:0; right:0; bottom:calc(92px + env(safe-area-inset-bottom));
+        text-align:center; font-size:clamp(13px, 2.2vw, 15px);
+        letter-spacing:.3em; color:#fff; opacity:0; transition:opacity .55s;
+        text-shadow:0 0 14px rgba(255,120,220,.8); }
+  @media (max-width: 420px) {
+    #shapeName { top:calc(54px + env(safe-area-inset-top)); }
+    #caption { padding:0 14px; }
+  }
+  #airBtn { position:fixed; z-index:11; right:calc(16px + env(safe-area-inset-right));
+        bottom:calc(24px + env(safe-area-inset-bottom)); pointer-events:auto;
+        background:rgba(18,20,28,.55); color:#aab2c4;
+        border:1px solid rgba(140,150,175,.35); border-radius:999px;
+        padding:8px 14px; font-size:12px; letter-spacing:.08em;
+        font-family:"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+        backdrop-filter:blur(6px); cursor:pointer; transition:all .18s; }
+  #airBtn.on { color:#fff; border-color:rgba(120,255,190,.8);
+        background:rgba(30,140,90,.35); box-shadow:0 0 14px rgba(80,255,180,.35); }
+  #airBtn:active { transform:scale(.94); }
+  #cam { position:fixed; z-index:10; right:calc(16px + env(safe-area-inset-right));
+        bottom:calc(68px + env(safe-area-inset-bottom)); width:120px; height:90px;
+        border:1px solid rgba(140,150,175,.3); border-radius:6px; opacity:.75;
+        display:none; transform:scaleX(-1); pointer-events:none; }
+  #fallback { position:fixed; inset:0; display:none; place-items:center; color:#889;
+          font-family:sans-serif; font-size:14px; }
+</style>
+</head>
+<body>
+
+<canvas id="stage"></canvas>
+<div id="stats" class="hud"></div>
+<div id="title" class="hud"><div class="t1">MORPHOSIS</div><div class="t2">POINT CLOUD FIELD</div></div>
+<div id="shapeName" class="hud"></div>
+<div id="caption" class="hud"></div>
+<div id="fx" class="hud"></div>
+<div id="hint" class="hud">指で触れるとランダムに反応 ／ ダブルタップで変形</div>
+<canvas id="cam" width="128" height="96"></canvas>
+<button id="airBtn">📷 AIR</button>
+<div id="fallback">WebGL2 が利用できない環境です。</div>
+
+<script>
+/**
+ * mathcat v0.1.0 — A lean, allocation-free, data-oriented math kernel for interactive apps on the web.
+ * Generated from src/ by scripts/build.mjs. Do not edit by hand.
+ *
+ * The usage contract: every operation is op(out, a, b) — writes into the
+ * caller-owned `out`, returns it, never allocates. `out` may alias an
+ * input. Keep call sites monomorphic (one array type per code path).
+ */
+(() => {
+/** The tolerance used by approximate comparisons. */
+const EPSILON = 0.000001;
+
+const vec2 = (() => {
+/** Allocates a new zero vector. The only allocating function in this module. */
+const create = () => [0, 0];
+
+const set = (out, x, y) => {
+  out[0] = x;
+  out[1] = y;
+  return out;
+};
+
+const copy = (out, a) => {
+  out[0] = a[0];
+  out[1] = a[1];
+  return out;
+};
+
+const add = (out, a, b) => {
+  out[0] = a[0] + b[0];
+  out[1] = a[1] + b[1];
+  return out;
+};
+
+const subtract = (out, a, b) => {
+  out[0] = a[0] - b[0];
+  out[1] = a[1] - b[1];
+  return out;
+};
+
+const scale = (out, a, s) => {
+  out[0] = a[0] * s;
+  out[1] = a[1] * s;
+  return out;
+};
+
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1];
+
+/** The z-component of the 3D cross product of two 2D vectors. */
+const cross = (a, b) => a[0] * b[1] - a[1] * b[0];
+
+const length = (a) => Math.sqrt(a[0] * a[0] + a[1] * a[1]);
+
+const squaredLength = (a) => a[0] * a[0] + a[1] * a[1];
+
+const distance = (a, b) => {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  return Math.sqrt(dx * dx + dy * dy);
+};
+
+const normalize = (out, a) => {
+  const len = Math.sqrt(a[0] * a[0] + a[1] * a[1]);
+  const inv = len > EPSILON ? 1 / len : 0;
+  out[0] = a[0] * inv;
+  out[1] = a[1] * inv;
+  return out;
+};
+
+const lerp = (out, a, b, t) => {
+  out[0] = a[0] + (b[0] - a[0]) * t;
+  out[1] = a[1] + (b[1] - a[1]) * t;
+  return out;
+};
+
+/** Rotates `a` around `origin` by `rad` radians, counter-clockwise. */
+const rotate = (out, a, origin, rad) => {
+  const x = a[0] - origin[0];
+  const y = a[1] - origin[1];
+  const s = Math.sin(rad);
+  const c = Math.cos(rad);
+  out[0] = origin[0] + x * c - y * s;
+  out[1] = origin[1] + x * s + y * c;
+  return out;
+};
+
+const equals = (a, b, epsilon         = EPSILON) =>
+  Math.abs(a[0] - b[0]) <= epsilon && Math.abs(a[1] - b[1]) <= epsilon;
+
+return Object.freeze({ create, set, copy, add, subtract, scale, dot, cross, length, squaredLength, distance, normalize, lerp, rotate, equals });
+})();
+
+const vec3 = (() => {
+/** Allocates a new zero vector. The only allocating function in this module. */
+const create = () => [0, 0, 0];
+
+const set = (out, x, y, z) => {
+  out[0] = x;
+  out[1] = y;
+  out[2] = z;
+  return out;
+};
+
+const copy = (out, a) => {
+  out[0] = a[0];
+  out[1] = a[1];
+  out[2] = a[2];
+  return out;
+};
+
+const add = (out, a, b) => {
+  out[0] = a[0] + b[0];
+  out[1] = a[1] + b[1];
+  out[2] = a[2] + b[2];
+  return out;
+};
+
+const subtract = (out, a, b) => {
+  out[0] = a[0] - b[0];
+  out[1] = a[1] - b[1];
+  out[2] = a[2] - b[2];
+  return out;
+};
+
+const multiply = (out, a, b) => {
+  out[0] = a[0] * b[0];
+  out[1] = a[1] * b[1];
+  out[2] = a[2] * b[2];
+  return out;
+};
+
+const scale = (out, a, s) => {
+  out[0] = a[0] * s;
+  out[1] = a[1] * s;
+  out[2] = a[2] * s;
+  return out;
+};
+
+/** out = a + b * s. The fused workhorse of integration loops. */
+const scaleAndAdd = (out, a, b, s) => {
+  out[0] = a[0] + b[0] * s;
+  out[1] = a[1] + b[1] * s;
+  out[2] = a[2] + b[2] * s;
+  return out;
+};
+
+const dot = (a, b) =>
+  a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+const cross = (out, a, b) => {
+  const ax = a[0], ay = a[1], az = a[2];
+  const bx = b[0], by = b[1], bz = b[2];
+  out[0] = ay * bz - az * by;
+  out[1] = az * bx - ax * bz;
+  out[2] = ax * by - ay * bx;
+  return out;
+};
+
+const length = (a) =>
+  Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+
+const squaredLength = (a) =>
+  a[0] * a[0] + a[1] * a[1] + a[2] * a[2];
+
+const distance = (a, b) => {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const dz = b[2] - a[2];
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+};
+
+const normalize = (out, a) => {
+  const len = Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+  const inv = len > EPSILON ? 1 / len : 0;
+  out[0] = a[0] * inv;
+  out[1] = a[1] * inv;
+  out[2] = a[2] * inv;
+  return out;
+};
+
+const negate = (out, a) => {
+  out[0] = -a[0];
+  out[1] = -a[1];
+  out[2] = -a[2];
+  return out;
+};
+
+const lerp = (out, a, b, t) => {
+  out[0] = a[0] + (b[0] - a[0]) * t;
+  out[1] = a[1] + (b[1] - a[1]) * t;
+  out[2] = a[2] + (b[2] - a[2]) * t;
+  return out;
+};
+
+/** Transforms `a` by the quaternion `q` (q must be normalized). */
+const transformQuat = (out, a, q) => {
+  // t = 2 * cross(q.xyz, a); out = a + q.w * t + cross(q.xyz, t)
+  const qx = q[0], qy = q[1], qz = q[2], qw = q[3];
+  const x = a[0], y = a[1], z = a[2];
+
+  const tx = 2 * (qy * z - qz * y);
+  const ty = 2 * (qz * x - qx * z);
+  const tz = 2 * (qx * y - qy * x);
+
+  out[0] = x + qw * tx + qy * tz - qz * ty;
+  out[1] = y + qw * ty + qz * tx - qx * tz;
+  out[2] = z + qw * tz + qx * ty - qy * tx;
+  return out;
+};
+
+/** Transforms the point `a` by the matrix `m` (with perspective divide). */
+const transformMat4 = (out, a, m) => {
+  const x = a[0], y = a[1], z = a[2];
+  const w = m[3] * x + m[7] * y + m[11] * z + m[15] || 1;
+  out[0] = (m[0] * x + m[4] * y + m[8] * z + m[12]) / w;
+  out[1] = (m[1] * x + m[5] * y + m[9] * z + m[13]) / w;
+  out[2] = (m[2] * x + m[6] * y + m[10] * z + m[14]) / w;
+  return out;
+};
+
+const equals = (a, b, epsilon         = EPSILON) =>
+  Math.abs(a[0] - b[0]) <= epsilon &&
+  Math.abs(a[1] - b[1]) <= epsilon &&
+  Math.abs(a[2] - b[2]) <= epsilon;
+
+return Object.freeze({ create, set, copy, add, subtract, multiply, scale, scaleAndAdd, dot, cross, length, squaredLength, distance, normalize, negate, lerp, transformQuat, transformMat4, equals });
+})();
+
+const quat = (() => {
+/** Allocates a new identity quaternion. The only allocating function in this module. */
+const create = () => [0, 0, 0, 1];
+
+const identity = (out) => {
+  out[0] = 0;
+  out[1] = 0;
+  out[2] = 0;
+  out[3] = 1;
+  return out;
+};
+
+const set = (out, x, y, z, w) => {
+  out[0] = x;
+  out[1] = y;
+  out[2] = z;
+  out[3] = w;
+  return out;
+};
+
+const copy = (out, a) => {
+  out[0] = a[0];
+  out[1] = a[1];
+  out[2] = a[2];
+  out[3] = a[3];
+  return out;
+};
+
+/** Sets `out` to a rotation of `rad` radians around the normalized `axis`. */
+const setAxisAngle = (out, axis, rad) => {
+  const half = rad * 0.5;
+  const s = Math.sin(half);
+  out[0] = axis[0] * s;
+  out[1] = axis[1] * s;
+  out[2] = axis[2] * s;
+  out[3] = Math.cos(half);
+  return out;
+};
+
+/**
+ * Sets `out` from euler angles in radians, applied in x-then-y-then-z
+ * (intrinsic XYZ) order.
+ */
+const fromEuler = (out, x, y, z) => {
+  const sx = Math.sin(x * 0.5), cx = Math.cos(x * 0.5);
+  const sy = Math.sin(y * 0.5), cy = Math.cos(y * 0.5);
+  const sz = Math.sin(z * 0.5), cz = Math.cos(z * 0.5);
+
+  out[0] = sx * cy * cz + cx * sy * sz;
+  out[1] = cx * sy * cz - sx * cy * sz;
+  out[2] = cx * cy * sz + sx * sy * cz;
+  out[3] = cx * cy * cz - sx * sy * sz;
+  return out;
+};
+
+/** Hamilton product: the rotation `b` followed by the rotation `a`. */
+const multiply = (out, a, b) => {
+  const ax = a[0], ay = a[1], az = a[2], aw = a[3];
+  const bx = b[0], by = b[1], bz = b[2], bw = b[3];
+
+  out[0] = ax * bw + aw * bx + ay * bz - az * by;
+  out[1] = ay * bw + aw * by + az * bx - ax * bz;
+  out[2] = az * bw + aw * bz + ax * by - ay * bx;
+  out[3] = aw * bw - ax * bx - ay * by - az * bz;
+  return out;
+};
+
+/** The inverse rotation of a normalized quaternion. */
+const conjugate = (out, a) => {
+  out[0] = -a[0];
+  out[1] = -a[1];
+  out[2] = -a[2];
+  out[3] = a[3];
+  return out;
+};
+
+const dot = (a, b) =>
+  a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+
+const normalize = (out, a) => {
+  const len = Math.sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2] + a[3] * a[3]);
+  const inv = len > EPSILON ? 1 / len : 0;
+  out[0] = a[0] * inv;
+  out[1] = a[1] * inv;
+  out[2] = a[2] * inv;
+  out[3] = a[3] * inv;
+  return out;
+};
+
+/** Spherical linear interpolation between `a` and `b` by `t` in [0, 1]. */
+const slerp = (out, a, b, t) => {
+  const ax = a[0], ay = a[1], az = a[2], aw = a[3];
+  let bx = b[0], by = b[1], bz = b[2], bw = b[3];
+
+  // Take the shortest arc: if the quaternions point away from each other,
+  // negate one of them.
+  let cosom = ax * bx + ay * by + az * bz + aw * bw;
+  if (cosom < 0) {
+    cosom = -cosom;
+    bx = -bx;
+    by = -by;
+    bz = -bz;
+    bw = -bw;
+  }
+
+  // Fall back to linear interpolation when the arc is tiny, where the
+  // spherical formula divides by ~0.
+  let scale0 = 1 - t;
+  let scale1 = t;
+  if (1 - cosom > EPSILON) {
+    const omega = Math.acos(cosom);
+    const sinom = Math.sin(omega);
+    scale0 = Math.sin((1 - t) * omega) / sinom;
+    scale1 = Math.sin(t * omega) / sinom;
+  }
+
+  out[0] = scale0 * ax + scale1 * bx;
+  out[1] = scale0 * ay + scale1 * by;
+  out[2] = scale0 * az + scale1 * bz;
+  out[3] = scale0 * aw + scale1 * bw;
+  return out;
+};
+
+const equals = (a, b, epsilon         = EPSILON) =>
+  Math.abs(a[0] - b[0]) <= epsilon &&
+  Math.abs(a[1] - b[1]) <= epsilon &&
+  Math.abs(a[2] - b[2]) <= epsilon &&
+  Math.abs(a[3] - b[3]) <= epsilon;
+
+return Object.freeze({ create, identity, set, copy, setAxisAngle, fromEuler, multiply, conjugate, dot, normalize, slerp, equals });
+})();
+
+const mat4 = (() => {
+/** Allocates a new identity matrix. The only allocating function in this module. */
+const create = () => [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+
+const identity = (out) => {
+  out[0] = 1; out[1] = 0; out[2] = 0; out[3] = 0;
+  out[4] = 0; out[5] = 1; out[6] = 0; out[7] = 0;
+  out[8] = 0; out[9] = 0; out[10] = 1; out[11] = 0;
+  out[12] = 0; out[13] = 0; out[14] = 0; out[15] = 1;
+  return out;
+};
+
+const copy = (out, a) => {
+  for (let i = 0; i < 16; i++) out[i] = a[i];
+  return out;
+};
+
+/** out = a * b (b is applied first when transforming column vectors). */
+const multiply = (out, a, b) => {
+  const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+  const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+  const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+  const a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+
+  let b0 = b[0], b1 = b[1], b2 = b[2], b3 = b[3];
+  out[0] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+  out[1] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+  out[2] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+  out[3] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+  b0 = b[4]; b1 = b[5]; b2 = b[6]; b3 = b[7];
+  out[4] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+  out[5] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+  out[6] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+  out[7] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+  b0 = b[8]; b1 = b[9]; b2 = b[10]; b3 = b[11];
+  out[8] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+  out[9] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+  out[10] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+  out[11] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+  b0 = b[12]; b1 = b[13]; b2 = b[14]; b3 = b[15];
+  out[12] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+  out[13] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+  out[14] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+  out[15] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+  return out;
+};
+
+/**
+ * Composes a transform from a translation, a normalized rotation quaternion,
+ * and a non-uniform scale — the standard TRS used by scene graphs.
+ */
+const compose = (out, translation, rotation, scale) => {
+  const x = rotation[0], y = rotation[1], z = rotation[2], w = rotation[3];
+  const x2 = x + x, y2 = y + y, z2 = z + z;
+  const xx = x * x2, xy = x * y2, xz = x * z2;
+  const yy = y * y2, yz = y * z2, zz = z * z2;
+  const wx = w * x2, wy = w * y2, wz = w * z2;
+  const sx = scale[0], sy = scale[1], sz = scale[2];
+
+  out[0] = (1 - (yy + zz)) * sx;
+  out[1] = (xy + wz) * sx;
+  out[2] = (xz - wy) * sx;
+  out[3] = 0;
+  out[4] = (xy - wz) * sy;
+  out[5] = (1 - (xx + zz)) * sy;
+  out[6] = (yz + wx) * sy;
+  out[7] = 0;
+  out[8] = (xz + wy) * sz;
+  out[9] = (yz - wx) * sz;
+  out[10] = (1 - (xx + yy)) * sz;
+  out[11] = 0;
+  out[12] = translation[0];
+  out[13] = translation[1];
+  out[14] = translation[2];
+  out[15] = 1;
+  return out;
+};
+
+/** General inverse via the adjugate. Returns `out` zeroed if `a` is singular. */
+const invert = (out, a) => {
+  const a00 = a[0], a01 = a[1], a02 = a[2], a03 = a[3];
+  const a10 = a[4], a11 = a[5], a12 = a[6], a13 = a[7];
+  const a20 = a[8], a21 = a[9], a22 = a[10], a23 = a[11];
+  const a30 = a[12], a31 = a[13], a32 = a[14], a33 = a[15];
+
+  const b00 = a00 * a11 - a01 * a10;
+  const b01 = a00 * a12 - a02 * a10;
+  const b02 = a00 * a13 - a03 * a10;
+  const b03 = a01 * a12 - a02 * a11;
+  const b04 = a01 * a13 - a03 * a11;
+  const b05 = a02 * a13 - a03 * a12;
+  const b06 = a20 * a31 - a21 * a30;
+  const b07 = a20 * a32 - a22 * a30;
+  const b08 = a20 * a33 - a23 * a30;
+  const b09 = a21 * a32 - a22 * a31;
+  const b10 = a21 * a33 - a23 * a31;
+  const b11 = a22 * a33 - a23 * a32;
+
+  const det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+  if (det === 0) {
+    for (let i = 0; i < 16; i++) out[i] = 0;
+    return out;
+  }
+  const inv = 1 / det;
+
+  out[0] = (a11 * b11 - a12 * b10 + a13 * b09) * inv;
+  out[1] = (a02 * b10 - a01 * b11 - a03 * b09) * inv;
+  out[2] = (a31 * b05 - a32 * b04 + a33 * b03) * inv;
+  out[3] = (a22 * b04 - a21 * b05 - a23 * b03) * inv;
+  out[4] = (a12 * b08 - a10 * b11 - a13 * b07) * inv;
+  out[5] = (a00 * b11 - a02 * b08 + a03 * b07) * inv;
+  out[6] = (a32 * b02 - a30 * b05 - a33 * b01) * inv;
+  out[7] = (a20 * b05 - a22 * b02 + a23 * b01) * inv;
+  out[8] = (a10 * b10 - a11 * b08 + a13 * b06) * inv;
+  out[9] = (a01 * b08 - a00 * b10 - a03 * b06) * inv;
+  out[10] = (a30 * b04 - a31 * b02 + a33 * b00) * inv;
+  out[11] = (a21 * b02 - a20 * b04 - a23 * b00) * inv;
+  out[12] = (a11 * b07 - a10 * b09 - a12 * b06) * inv;
+  out[13] = (a00 * b09 - a01 * b07 + a02 * b06) * inv;
+  out[14] = (a31 * b01 - a30 * b03 - a32 * b00) * inv;
+  out[15] = (a20 * b03 - a21 * b01 + a22 * b00) * inv;
+  return out;
+};
+
+/**
+ * Right-handed perspective projection mapping z to clip-space [-1, 1]
+ * (the WebGL convention). `fovy` is the vertical field of view in radians.
+ */
+const perspective = (
+  out,
+  fovy,
+  aspect,
+  near,
+  far,
+) => {
+  const f = 1 / Math.tan(fovy / 2);
+  const nf = 1 / (near - far);
+
+  out[0] = f / aspect;
+  out[1] = 0; out[2] = 0; out[3] = 0;
+  out[4] = 0;
+  out[5] = f;
+  out[6] = 0; out[7] = 0;
+  out[8] = 0; out[9] = 0;
+  out[10] = (far + near) * nf;
+  out[11] = -1;
+  out[12] = 0; out[13] = 0;
+  out[14] = 2 * far * near * nf;
+  out[15] = 0;
+  return out;
+};
+
+/** Right-handed view matrix looking from `eye` toward `target`. */
+const lookAt = (out, eye, target, up) => {
+  // Forward (z), right (x), and true up (y) axes of the camera.
+  let zx = eye[0] - target[0];
+  let zy = eye[1] - target[1];
+  let zz = eye[2] - target[2];
+  let len = Math.sqrt(zx * zx + zy * zy + zz * zz);
+  if (len > 0) { zx /= len; zy /= len; zz /= len; }
+
+  let xx = up[1] * zz - up[2] * zy;
+  let xy = up[2] * zx - up[0] * zz;
+  let xz = up[0] * zy - up[1] * zx;
+  len = Math.sqrt(xx * xx + xy * xy + xz * xz);
+  if (len > 0) { xx /= len; xy /= len; xz /= len; }
+
+  const yx = zy * xz - zz * xy;
+  const yy = zz * xx - zx * xz;
+  const yz = zx * xy - zy * xx;
+
+  out[0] = xx; out[1] = yx; out[2] = zx; out[3] = 0;
+  out[4] = xy; out[5] = yy; out[6] = zy; out[7] = 0;
+  out[8] = xz; out[9] = yz; out[10] = zz; out[11] = 0;
+  out[12] = -(xx * eye[0] + xy * eye[1] + xz * eye[2]);
+  out[13] = -(yx * eye[0] + yy * eye[1] + yz * eye[2]);
+  out[14] = -(zx * eye[0] + zy * eye[1] + zz * eye[2]);
+  out[15] = 1;
+  return out;
+};
+
+const transpose = (out, a) => {
+  if (out === a) {
+    // In-place: swap the off-diagonal pairs.
+    let t = a[1]; out[1] = a[4]; out[4] = t;
+    t = a[2]; out[2] = a[8]; out[8] = t;
+    t = a[3]; out[3] = a[12]; out[12] = t;
+    t = a[6]; out[6] = a[9]; out[9] = t;
+    t = a[7]; out[7] = a[13]; out[13] = t;
+    t = a[11]; out[11] = a[14]; out[14] = t;
+    return out;
+  }
+  out[0] = a[0]; out[1] = a[4]; out[2] = a[8]; out[3] = a[12];
+  out[4] = a[1]; out[5] = a[5]; out[6] = a[9]; out[7] = a[13];
+  out[8] = a[2]; out[9] = a[6]; out[10] = a[10]; out[11] = a[14];
+  out[12] = a[3]; out[13] = a[7]; out[14] = a[11]; out[15] = a[15];
+  return out;
+};
+
+const equals = (a, b, epsilon         = 0.000001) => {
+  for (let i = 0; i < 16; i++) {
+    if (Math.abs(a[i] - b[i]) > epsilon) return false;
+  }
+  return true;
+};
+
+return Object.freeze({ create, identity, copy, multiply, compose, invert, perspective, lookAt, transpose, equals });
+})();
+
+const color = (() => {
+/** Allocates a new black color. The only allocating function in this module. */
+const create = () => [0, 0, 0];
+
+const set = (out, r, g, b) => {
+  out[0] = r;
+  out[1] = g;
+  out[2] = b;
+  return out;
+};
+
+/** Parses a 0xRRGGBB integer (e.g. 0xff8800) into `out`. */
+const fromHex = (out, hex) => {
+  out[0] = ((hex >> 16) & 0xff) / 255;
+  out[1] = ((hex >> 8) & 0xff) / 255;
+  out[2] = (hex & 0xff) / 255;
+  return out;
+};
+
+/** Packs `a` into a 0xRRGGBB integer, clamping each component to [0, 1]. */
+const toHex = (a) => {
+  const r = Math.round(Math.min(Math.max(a[0], 0), 1) * 255);
+  const g = Math.round(Math.min(Math.max(a[1], 0), 1) * 255);
+  const b = Math.round(Math.min(Math.max(a[2], 0), 1) * 255);
+  return (r << 16) | (g << 8) | b;
+};
+
+/** Sets `out` from hue [0, 1), saturation [0, 1], and lightness [0, 1]. */
+const fromHsl = (out, h, s, l) => {
+  const hue2rgb = (p, q, t) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+
+  if (s === 0) {
+    out[0] = out[1] = out[2] = l;
+    return out;
+  }
+
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  out[0] = hue2rgb(p, q, h + 1 / 3);
+  out[1] = hue2rgb(p, q, h);
+  out[2] = hue2rgb(p, q, h - 1 / 3);
+  return out;
+};
+
+const lerp = (out, a, b, t) => {
+  out[0] = a[0] + (b[0] - a[0]) * t;
+  out[1] = a[1] + (b[1] - a[1]) * t;
+  out[2] = a[2] + (b[2] - a[2]) * t;
+  return out;
+};
+
+/** Converts sRGB components to linear-light, as GPUs expect for shading. */
+const srgbToLinear = (out, a) => {
+  for (let i = 0; i < 3; i++) {
+    const c = a[i];
+    out[i] = c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  }
+  return out;
+};
+
+/** Converts linear-light components back to sRGB for display. */
+const linearToSrgb = (out, a) => {
+  for (let i = 0; i < 3; i++) {
+    const c = a[i];
+    out[i] = c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055;
+  }
+  return out;
+};
+
+return Object.freeze({ create, set, fromHex, toHex, fromHsl, lerp, srgbToLinear, linearToSrgb });
+})();
+
+const random = (() => {
+/**
+ * Creates a mulberry32 generator from a 32-bit integer seed. Fast, tiny, and
+ * statistically solid for interactive use (not for cryptography). This is
+ * the only allocating function in this module.
+ */
+const createRng = (seed) => {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
+
+/** A uniform float in [min, max). */
+const range = (rng, min, max) =>
+  min + rng() * (max - min);
+
+/** A uniform integer in [min, max] inclusive. */
+const intRange = (rng, min, max) =>
+  min + Math.floor(rng() * (max - min + 1));
+
+/** A uniform point on the unit circle. */
+const onCircle = (out, rng) => {
+  const angle = rng() * Math.PI * 2;
+  out[0] = Math.cos(angle);
+  out[1] = Math.sin(angle);
+  return out;
+};
+
+/** A uniform point on the unit sphere's surface. */
+const onSphere = (out, rng) => {
+  // Uniform via z-slice: z uniform in [-1, 1], angle uniform in [0, 2pi).
+  const z = rng() * 2 - 1;
+  const angle = rng() * Math.PI * 2;
+  const r = Math.sqrt(1 - z * z);
+  out[0] = r * Math.cos(angle);
+  out[1] = r * Math.sin(angle);
+  out[2] = z;
+  return out;
+};
+
+/** A uniform point inside the unit sphere. */
+const inSphere = (out, rng) => {
+  onSphere(out, rng);
+  // Cube root makes the radial distribution uniform by volume.
+  const r = Math.cbrt(rng());
+  out[0] *= r;
+  out[1] *= r;
+  out[2] *= r;
+  return out;
+};
+
+return Object.freeze({ createRng, range, intRange, onCircle, onSphere, inSphere });
+})();
+
+const easing = (() => {
+const linear = (t) => t;
+
+const quadIn = (t) => t * t;
+
+const quadOut = (t) => t * (2 - t);
+
+const quadInOut = (t) =>
+  t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+
+const cubicIn = (t) => t * t * t;
+
+const cubicOut = (t) => 1 - (1 - t) ** 3;
+
+const cubicInOut = (t) =>
+  t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+
+const expoOut = (t) =>
+  t === 1 ? 1 : 1 - 2 ** (-10 * t);
+
+const elasticOut = (t) => {
+  if (t === 0 || t === 1) return t;
+  const c = (2 * Math.PI) / 3;
+  return 2 ** (-10 * t) * Math.sin((t * 10 - 0.75) * c) + 1;
+};
+
+const bounceOut = (t) => {
+  const n = 7.5625;
+  const d = 2.75;
+  if (t < 1 / d) return n * t * t;
+  if (t < 2 / d) { t -= 1.5 / d; return n * t * t + 0.75; }
+  if (t < 2.5 / d) { t -= 2.25 / d; return n * t * t + 0.9375; }
+  t -= 2.625 / d;
+  return n * t * t + 0.984375;
+};
+
+/** Hermite smoothing between two edges; the GLSL smoothstep. */
+const smoothstep = (edge0, edge1, x) => {
+  const t = Math.min(Math.max((x - edge0) / (edge1 - edge0), 0), 1);
+  return t * t * (3 - 2 * t);
+};
+
+const clamp = (x, min, max) =>
+  Math.min(Math.max(x, min), max);
+
+/** Linear interpolation between scalars. */
+const mix = (a, b, t) => a + (b - a) * t;
+
+/** Maps `x` from [inMin, inMax] to [outMin, outMax], without clamping. */
+const remap = (
+  x,
+  inMin,
+  inMax,
+  outMin,
+  outMax,
+) => outMin + ((x - inMin) / (inMax - inMin)) * (outMax - outMin);
+
+return Object.freeze({ linear, quadIn, quadOut, quadInOut, cubicIn, cubicOut, cubicInOut, expoOut, elasticOut, bounceOut, smoothstep, clamp, mix, remap });
+})();
+
+globalThis.mathcat = Object.freeze({ EPSILON, vec2, vec3, quat, mat4, color, random, easing });
+})();
+</script>
+
+<script>
+'use strict';
+(function(){
+
+// ---------- setup ----------
+const canvas = document.getElementById('stage');
+const gl = canvas.getContext('webgl2', { antialias:false, alpha:false,
+  premultipliedAlpha:true, powerPreference:'high-performance' });
+if (!gl) { document.getElementById('fallback').style.display = 'grid'; return; }
+
+const params = new URLSearchParams(location.search);
+const coarse = matchMedia('(pointer: coarse)').matches;
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const COUNT = Math.max(1000, Math.min(600000,
+  parseInt(params.get('n') || (coarse ? 150000 : 280000), 10)));
+
+const DPR = Math.min(coarse ? 1.8 : 2, window.devicePixelRatio || 1);
+const FOV = 55 * Math.PI / 180;
+const MORPH_SEC = 4.2;
+const AUTO_SEC = 7.5;
+const NTOUCH = 8;
+
+// ---------- shaders ----------
+const VS = `#version 300 es
+precision highp float;
+layout(location=0) in vec3 aPosFrom;
+layout(location=1) in vec3 aPosTo;
+layout(location=2) in vec3 aColFrom;
+layout(location=3) in vec3 aColTo;
+layout(location=4) in vec4 aRand;
+uniform mat4 uProj, uModel;
+uniform float uTime, uMorph, uPress, uSpin, uSize, uCamDist;
+uniform vec3 uPointer, uSweep;
+uniform int uMode;
+uniform vec4 uTouches[${NTOUCH}];
+out vec3 vColor;
+out float vAlpha;
+
+float hash1(float n){ return fract(sin(n)*43758.5453123); }
+
+void main(){
+  // morph timing: a wave sweeps through space (mixed with per-grain randomness)
+  float spatial = clamp(dot(aPosFrom, uSweep)*0.5 + 0.5, 0.0, 1.0);
+  float delay = mix(spatial, aRand.x, 0.45);
+  float stag = 0.7;
+  float tt = clamp(uMorph*(1.0+stag) - delay*stag, 0.0, 1.0);
+  float e = tt*tt*tt*(tt*(tt*6.0-15.0)+10.0);
+
+  // curved travel: each grain arcs along its own bowed path
+  vec3 travel = aPosTo - aPosFrom;
+  vec3 rv = vec3(aRand.y, aRand.z, aRand.w) - 0.5;
+  vec3 bowDir = normalize(cross(travel, rv) + vec3(1e-5));
+  float bow = e*(1.0-e)*4.0;
+  vec3 p = mix(aPosFrom, aPosTo, e)
+         + bowDir * bow * min(length(travel), 1.2) * (0.07 + 0.32*aRand.x);
+
+  // gentle streaming while in flight
+  p += bow * 0.05 * vec3(
+    sin(p.y*2.0 + uTime*0.8 + aRand.y*6.2831),
+    sin(p.z*2.2 + uTime*0.7 + aRand.z*6.2831),
+    sin(p.x*1.8 + uTime*0.9 + aRand.w*6.2831));
+
+  // slow fluid drift (shared flow field)
+  p += 0.014 * vec3(
+    sin(p.y*1.8 + uTime*0.60) + sin(p.z*2.3 + uTime*0.42),
+    sin(p.z*1.9 + uTime*0.50) + sin(p.x*2.1 + uTime*0.38),
+    sin(p.x*1.7 + uTime*0.55) + sin(p.y*2.4 + uTime*0.47));
+  // fine granular trickle — the "sand" shimmer
+  p += 0.009 * vec3(
+    sin(p.x*6.0 + uTime*0.9 + aRand.y*6.2831),
+    sin(p.y*5.5 - uTime*0.8 + aRand.z*6.2831),
+    sin(p.z*6.5 + uTime*0.7 + aRand.w*6.2831));
+
+  vec3 wp = (uModel * vec4(p, 1.0)).xyz;
+  float glow = 0.0;
+
+  if (uMode == 1) { // follow / attract
+    vec3 d = uPointer - wp;
+    float f = uPress * exp(-dot(d,d)/0.55);
+    wp += d * f * (0.78 + 0.15*sin(uTime*2.2 + aRand.y*6.2831));
+    vec3 tang = cross(vec3(0.0,0.0,1.0), d);
+    wp += tang * f * 0.28 * sin(uTime*1.8 + aRand.z*6.2831);
+    glow += f * 0.7;
+  } else if (uMode == 2) { // vortex
+    vec2 off = wp.xy - uPointer.xy;
+    float r2 = dot(off,off);
+    float fall = exp(-r2/0.9);
+    float ang = uSpin * (0.12 + fall);
+    float c = cos(ang), s = sin(ang);
+    wp.xy = uPointer.xy + mat2(c,-s,s,c) * off;
+    wp.z += fall * uPress * 0.22 * sin(uTime*3.2 + aRand.y*6.2831);
+    glow += fall * uPress * 0.55;
+  }
+
+  // touch ring buffer: w>0 scatter burst, w<0 expanding ripple
+  for (int i = 0; i < ${NTOUCH}; i++) {
+    vec4 tch = uTouches[i];
+    if (tch.w == 0.0) continue;
+    float age = uTime - tch.z;
+    if (age < 0.0 || age > 4.5) continue;
+    vec2 off = wp.xy - tch.xy;
+    if (tch.w < 0.0) { // ripple
+      float amp = -tch.w * exp(-age*0.9);
+      float r = length(off);
+      float band = exp(-pow(r - age*1.5, 2.0)/0.035);
+      vec2 dirO = off / max(r, 1e-3);
+      wp.xy += dirO * band * amp * 0.30;
+      wp.z  += band * amp * 0.45 * (0.4 + aRand.w);
+      glow += band * amp * 0.5;
+      continue;
+    }
+    float w = tch.w * exp(-age*1.5);
+    if (w < 0.004) continue;
+    float infl = exp(-dot(off,off)/0.5);
+    if (infl < 0.01) continue;
+    float fi = float(i);
+    vec3 rdir = normalize(vec3(
+      hash1(aRand.x*37.0 + fi*17.0) - 0.5,
+      hash1(aRand.y*57.0 + fi*23.0) - 0.5,
+      (hash1(aRand.z*71.0 + fi*31.0) - 0.5)*0.8));
+    vec3 outward = normalize(vec3(off, 0.15*(aRand.w-0.5)) + vec3(1e-4));
+    wp += normalize(mix(outward, rdir, 0.65)) * infl * w * (0.9 + 1.8*aRand.w);
+    glow += infl * w * 0.4;
+  }
+
+  vec4 mv = vec4(wp.xy, wp.z - uCamDist, 1.0);
+  gl_Position = uProj * mv;
+  float dist = max(0.2, -mv.z);
+  // size skewed small: mostly fine grains, a few brighter specks
+  gl_PointSize = clamp(uSize * (0.45 + 1.15*aRand.w*aRand.w) / dist, 1.0, 4.0);
+
+  vColor = mix(aColFrom, aColTo, e)
+         + glow * vec3(0.95, 0.9, 0.85)
+         + bow * 0.12 * vec3(0.55, 0.45, 0.9);
+  vAlpha = 0.42 + 0.45*aRand.z;
+}`;
+
+const FS = `#version 300 es
+precision mediump float;
+in vec3 vColor;
+in float vAlpha;
+out vec4 frag;
+void main(){
+  vec2 uv = gl_PointCoord - 0.5;
+  float d = dot(uv, uv);
+  if (d > 0.25) discard;
+  float a = smoothstep(0.24, 0.05, d);
+  a *= a * vAlpha; // crisp grain core, fast falloff
+  frag = vec4(vColor * a, a);
+}`;
+
+function compile(type, src){
+  const s = gl.createShader(type);
+  gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+    throw new Error(gl.getShaderInfoLog(s));
+  return s;
+}
+const prog = gl.createProgram();
+gl.attachShader(prog, compile(gl.VERTEX_SHADER, VS));
+gl.attachShader(prog, compile(gl.FRAGMENT_SHADER, FS));
+gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS))
+  throw new Error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+const U = {};
+for (const n of ['uProj','uModel','uTime','uMorph','uPress','uSpin','uSize',
+                 'uCamDist','uPointer','uSweep','uMode','uTouches'])
+  U[n] = gl.getUniformLocation(prog, n);
+
+// ---------- mathcat + seeded randomness ----------
+const { quat: mquat, mat4: mmat4, color: mcolor,
+        random: mrandom, easing: mease } = globalThis.mathcat;
+
+const seedP = parseInt(params.get('seed'), 10);
+const SEED = Number.isInteger(seedP) ? seedP >>> 0 : (Math.random()*4294967296) >>> 0;
+const rnd = mrandom.createRng(SEED);
+const g = () => (rnd() + rnd() + rnd() - 1.5) * 2.0; // ~N(0,1)
+const TAU = Math.PI * 2;
+
+function hsl2rgb(h, s, l){
+  return mcolor.fromHsl([0, 0, 0], (((h % 360) + 360) % 360) / 360, s, l);
+}
+
+function randomPalette(){
+  const h0 = rnd() * 360;
+  const t = rnd();
+  let h1, h2;
+  if (t < 0.4)      { h1 = h0 + 28 + rnd()*40; h2 = h0 + 180 + (rnd()*60 - 30); }
+  else if (t < 0.7) { h1 = h0 + 120; h2 = h0 + 240; }
+  else              { h1 = h0 + 180; h2 = h0 + 90 + rnd()*40; }
+  return [
+    hsl2rgb(h0, 0.75 + 0.25*rnd(), 0.55 + 0.10*rnd()),
+    hsl2rgb(h1, 0.70 + 0.30*rnd(), 0.60 + 0.12*rnd()),
+    hsl2rgb(h2, 0.90,              0.68),
+  ];
+}
+
+function colorize(col, i, t, pal){
+  const [c1, c2, c3] = pal;
+  let r, gr, b;
+  if (rnd() < 0.12) { [r, gr, b] = c3; }
+  else {
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    r  = c1[0] + (c2[0]-c1[0]) * t;
+    gr = c1[1] + (c2[1]-c1[1]) * t;
+    b  = c1[2] + (c2[2]-c1[2]) * t;
+  }
+  const br = 0.65 + rnd()*0.65;
+  col[i*3]   = Math.min(1, r*br);
+  col[i*3+1] = Math.min(1, gr*br);
+  col[i*3+2] = Math.min(1, b*br);
+}
+
+function fuzz(){ return rnd() < 0.13 ? 0.4 : 0.035; } // dust halo vs surface
+
+// ---------- shapes ----------
+const SHAPES = [
+  { name:'KNOT-FIELD',
+    caption:'位相結び目が自己交差を回避しながら再構成中。',
+    gen(pos, col, i, pal){
+      const u = rnd()*TAU, s = 0.42, f = fuzz();
+      const x = (2 + Math.cos(3*u)) * Math.cos(2*u);
+      const y = (2 + Math.cos(3*u)) * Math.sin(2*u);
+      const z = Math.sin(3*u);
+      pos[i*3]   = x*s + g()*(f*1.4);
+      pos[i*3+1] = z*s*1.4 + g()*(f*1.4);
+      pos[i*3+2] = y*s + g()*(f*1.4);
+      colorize(col, i, u/TAU, pal);
+    } },
+  { name:'HYPERSPHERE',
+    caption:'球面調和が安定解に収束。表面張力は臨界値未満。',
+    gen(pos, col, i, pal){
+      let x = g(), y = g(), z = g();
+      const n = Math.hypot(x, y, z) || 1;
+      const r = 1.08, f = fuzz();
+      pos[i*3]   = x/n*r + g()*f;
+      pos[i*3+1] = y/n*r + g()*f;
+      pos[i*3+2] = z/n*r + g()*f;
+      colorize(col, i, (y/n + 1) * 0.5, pal);
+    } },
+  { name:'GALAXY-ARM',
+    caption:'角運動量が保存されたまま渦状腕が展開する。',
+    gen(pos, col, i, pal){
+      if (rnd() < 0.14) {
+        pos[i*3] = g()*0.2; pos[i*3+1] = g()*0.14; pos[i*3+2] = g()*0.2;
+        colorize(col, i, 0.05, pal);
+        return;
+      }
+      const arm = i % 3;
+      const r = 1.38 * Math.pow(rnd(), 0.62);
+      const a = -r*2.1 + arm*(TAU/3) + g()*0.2*(0.35 + r*0.5);
+      pos[i*3]   = r * Math.cos(a) + g()*0.02;
+      pos[i*3+1] = g() * 0.05 * (1.6 - r);
+      pos[i*3+2] = r * Math.sin(a) + g()*0.02;
+      colorize(col, i, Math.min(1, r/1.35), pal);
+    } },
+  { name:'TOPO-SHEET',
+    caption:'高可塑性の多様体が折り畳みを開始。トポロジーは維持される。',
+    gen(pos, col, i, pal){
+      const u = (rnd()*2-1) * 1.3, v = (rnd()*2-1) * 1.3, f = fuzz()*0.8;
+      const y = 0.42*Math.sin(2.2*u + 0.8)*Math.cos(2.0*v)
+              + 0.18*Math.sin(3.4*(u+v));
+      pos[i*3]   = u + g()*f;
+      pos[i*3+1] = y + g()*f;
+      pos[i*3+2] = v + g()*f;
+      colorize(col, i, (y + 0.6) / 1.2, pal);
+    } },
+  { name:'DOUBLE-HELIX',
+    caption:'二重らせんの塩基対密度が同期振動している。',
+    gen(pos, col, i, pal){
+      const t = rnd(), s = t*TAU*2.2, r0 = 0.5, f = fuzz()*0.7;
+      const y = t*2.5 - 1.25;
+      if (rnd() < 0.1) {
+        const k = rnd()*2-1;
+        pos[i*3]   = Math.cos(s)*r0*k + g()*0.02;
+        pos[i*3+1] = y + g()*0.02;
+        pos[i*3+2] = Math.sin(s)*r0*k + g()*0.02;
+      } else {
+        const ph = (i % 2) * Math.PI;
+        pos[i*3]   = Math.cos(s+ph)*r0 + g()*f;
+        pos[i*3+1] = y + g()*f;
+        pos[i*3+2] = Math.sin(s+ph)*r0 + g()*f;
+      }
+      colorize(col, i, t, pal);
+    } },
+  { name:'CARDIOID',
+    caption:'情動場が局所的に濃縮。拍動周期は安定。',
+    gen(pos, col, i, pal){
+      const a = rnd()*TAU, sc = 1.12/17, f = fuzz()*0.7;
+      const s3 = Math.sin(a);
+      const hx = 16 * s3*s3*s3;
+      const hy = 13*Math.cos(a) - 5*Math.cos(2*a) - 2*Math.cos(3*a) - Math.cos(4*a);
+      const k = Math.pow(rnd(), 0.35);
+      pos[i*3]   = hx*sc*k + g()*f;
+      pos[i*3+1] = hy*sc*k + 0.12 + g()*f;
+      pos[i*3+2] = g() * (0.06 + 0.16*k);
+      colorize(col, i, 1 - k*0.9, pal);
+    } },
+  { name:'MOBIUS-BAND',
+    caption:'向き付け不能な帯が単一の面を巡回している。',
+    gen(pos, col, i, pal){
+      const u = rnd()*TAU, v = (rnd()*2-1)*0.42, s = 0.92, f = fuzz()*0.6;
+      const w = 1 + v*Math.cos(u/2);
+      pos[i*3]   = w*Math.cos(u)*s + g()*f;
+      pos[i*3+1] = v*Math.sin(u/2)*1.2 + g()*f;
+      pos[i*3+2] = w*Math.sin(u)*s + g()*f;
+      colorize(col, i, u/TAU, pal);
+    } },
+  { name:'ROSE-FIELD',
+    caption:'花弁状の極曲線が開花フェーズに入った。',
+    prep(){ this.k = 3 + 2*((rnd()*3)|0); }, // 3,5,7 petals
+    gen(pos, col, i, pal){
+      const th = rnd()*TAU, f = fuzz()*0.6;
+      const rad = 1.32 * Math.cos(this.k*th);
+      const fill = Math.pow(rnd(), 0.4);
+      pos[i*3]   = rad*Math.cos(th)*fill + g()*f;
+      pos[i*3+1] = rad*Math.sin(th)*fill + g()*f;
+      pos[i*3+2] = 0.22*(1-fill) - 0.08 + g()*(0.04 + f*0.5);
+      colorize(col, i, fill, pal);
+    } },
+  { name:'BUTTERFLY-CURVE',
+    caption:'鱗粉場が対称軸に沿って羽ばたきを記録。',
+    gen(pos, col, i, pal){
+      const t = rnd()*12*Math.PI, s = 0.30, f = fuzz()*0.55;
+      const st = Math.sin((2*t - Math.PI)/24);
+      const r = Math.exp(Math.sin(t)) - 2*Math.cos(4*t) + st*st*st*st*st;
+      pos[i*3]   = Math.sin(t)*r*s + g()*f;
+      pos[i*3+1] = (Math.cos(t)*r - 0.9)*s + g()*f;
+      pos[i*3+2] = g()*0.09;
+      colorize(col, i, Math.abs(Math.sin(t)), pal);
+    } },
+  { name:'RIPPLE-DISC',
+    caption:'界面波が同心円状に干渉している。',
+    gen(pos, col, i, pal){
+      const r = 1.4*Math.sqrt(rnd()), th = rnd()*TAU, f = fuzz()*0.6;
+      const y = 0.30*Math.sin(r*7 - 1.2)*Math.exp(-r*0.7);
+      pos[i*3]   = r*Math.cos(th) + g()*f;
+      pos[i*3+1] = y + g()*(0.02 + f*0.4);
+      pos[i*3+2] = r*Math.sin(th) + g()*f;
+      colorize(col, i, (y*3 + 0.5), pal);
+    } },
+  { name:'CONCH-SPIRAL',
+    caption:'対数螺旋の成長率は黄金比に漸近する。',
+    gen(pos, col, i, pal){
+      const t = Math.pow(rnd(), 0.55);
+      const th = t * 6.5 * Math.PI;
+      const r0 = 0.052 * Math.exp(0.15*th);
+      const tube = 0.012 + 0.09*r0;
+      pos[i*3]   = r0*Math.cos(th) + g()*tube;
+      pos[i*3+1] = 0.62 - th*0.058 + g()*tube;
+      pos[i*3+2] = r0*Math.sin(th) + g()*tube;
+      colorize(col, i, t, pal);
+    } },
+  { name:'LISSAJOUS-ORBIT',
+    caption:'周波数比 3:2:5 の軌道が閉じた。',
+    gen(pos, col, i, pal){
+      const t = rnd()*TAU, f = fuzz()*0.6;
+      pos[i*3]   = Math.sin(3*t + Math.PI/2)*1.05 + g()*f;
+      pos[i*3+1] = Math.sin(2*t)*0.95 + g()*f;
+      pos[i*3+2] = Math.sin(5*t + Math.PI/4)*0.6 + g()*f;
+      colorize(col, i, t/TAU, pal);
+    } },
+  { name:'SUPERSHAPE',
+    caption:'超公式のパラメータ空間を無作為に探索中。',
+    prep(){
+      this.m1 = 2 + ((rnd()*7)|0);
+      this.m2 = 2 + ((rnd()*7)|0);
+      this.n1 = 0.25 + rnd()*1.8;
+      this.n2 = 0.4 + rnd()*1.6;
+      this.n3 = 0.4 + rnd()*1.6;
+    },
+    gen(pos, col, i, pal){
+      const sf = (ang, m, n1, n2, n3) => {
+        const a = Math.abs(Math.cos(m*ang/4));
+        const b = Math.abs(Math.sin(m*ang/4));
+        const base = Math.pow(a, n2) + Math.pow(b, n3);
+        const r = Math.pow(base, -1/n1);
+        return isFinite(r) ? Math.min(r, 2.4) : 0;
+      };
+      const lon = rnd()*TAU - Math.PI;
+      const lat = Math.asin(rnd()*2 - 1);
+      const r1 = sf(lon, this.m1, this.n1, this.n2, this.n3);
+      const r2 = sf(lat, this.m2, this.n1, this.n2, this.n3);
+      const s = 0.95, f = fuzz()*0.7;
+      pos[i*3]   = r1*Math.cos(lon)*r2*Math.cos(lat)*s + g()*f;
+      pos[i*3+1] = r2*Math.sin(lat)*s + g()*f;
+      pos[i*3+2] = r1*Math.sin(lon)*r2*Math.cos(lat)*s + g()*f;
+      colorize(col, i, (Math.sin(lat) + 1)*0.5, pal);
+    } },
+  { name:'RING-PLANET',
+    caption:'降着円盤が潮汐限界の外側で安定した。',
+    gen(pos, col, i, pal){
+      const f = fuzz()*0.5;
+      if (rnd() < 0.62) { // planet body
+        let x = g(), y = g(), z = g();
+        const n = Math.hypot(x, y, z) || 1;
+        pos[i*3]   = x/n*0.72 + g()*f;
+        pos[i*3+1] = y/n*0.72 + g()*f;
+        pos[i*3+2] = z/n*0.72 + g()*f;
+        colorize(col, i, (y/n + 1)*0.5, pal);
+      } else { // ring
+        const rr = 1.02 + rnd()*0.45, th = rnd()*TAU;
+        pos[i*3]   = rr*Math.cos(th) + g()*0.02;
+        pos[i*3+1] = g()*0.015 + (rr - 1.02)*0.18;
+        pos[i*3+2] = rr*Math.sin(th) + g()*0.02;
+        colorize(col, i, 0.9, pal);
+      }
+    } },
+  { name:'LATTICE-FRAME',
+    caption:'立方格子の稜線に確率密度が集中している。',
+    gen(pos, col, i, pal){
+      const h = 0.85, f = 0.03;
+      if (rnd() < 0.12) {
+        pos[i*3] = g()*0.45; pos[i*3+1] = g()*0.45; pos[i*3+2] = g()*0.45;
+        colorize(col, i, 0.5, pal);
+        return;
+      }
+      const axis = (rnd()*3)|0;
+      const s1 = rnd() < 0.5 ? -h : h, s2 = rnd() < 0.5 ? -h : h;
+      const t = rnd()*2*h - h;
+      const p = axis === 0 ? [t, s1, s2] : axis === 1 ? [s1, t, s2] : [s1, s2, t];
+      pos[i*3]   = p[0] + g()*f;
+      pos[i*3+1] = p[1] + g()*f;
+      pos[i*3+2] = p[2] + g()*f;
+      colorize(col, i, (t/h + 1)*0.5, pal);
+    } },
+  { name:'POLY-16 CRYSTAL',
+    caption:'支持面が凸多面体を切り出した。面ごとに色相が結晶化する。',
+    prep(){
+      const Ns = [8, 12, 14, 16, 20, 24];
+      this.nf = Ns[(rnd()*Ns.length)|0];
+      this.name = 'POLY-' + this.nf + ' CRYSTAL';
+      // face normals spread evenly via a fibonacci sphere
+      this.normals = [];
+      const ga = Math.PI * (3 - Math.sqrt(5));
+      for (let k = 0; k < this.nf; k++) {
+        const z = 1 - (2*k + 1)/this.nf;
+        const r = Math.sqrt(Math.max(0, 1 - z*z));
+        const a = ga * k;
+        this.normals.push([r*Math.cos(a), z, r*Math.sin(a)]);
+      }
+    },
+    gen(pos, col, i, pal){
+      let x = g(), y = g(), z = g();
+      const n = Math.hypot(x, y, z) || 1;
+      x /= n; y /= n; z /= n;
+      // polyhedron = intersection of half-spaces: surface hit along this ray
+      let tmin = Infinity, face = 0;
+      for (let k = 0; k < this.nf; k++) {
+        const nn = this.normals[k];
+        const d = x*nn[0] + y*nn[1] + z*nn[2];
+        if (d > 1e-4) {
+          const t = 1/d;
+          if (t < tmin) { tmin = t; face = k; }
+        }
+      }
+      if (!isFinite(tmin)) tmin = 1;
+      const s = 0.8, f = fuzz()*0.5;
+      const fill = rnd() < 0.85 ? 1 : Math.pow(rnd(), 0.5);
+      pos[i*3]   = x*tmin*s*fill + g()*f;
+      pos[i*3+1] = y*tmin*s*fill + g()*f;
+      pos[i*3+2] = z*tmin*s*fill + g()*f;
+      colorize(col, i, face/(this.nf - 1), pal);
+    } },
+];
+
+// ---------- buffers ----------
+const posFrom = new Float32Array(COUNT*3), posTo = new Float32Array(COUNT*3);
+const colFrom = new Float32Array(COUNT*3), colTo = new Float32Array(COUNT*3);
+const rands   = new Float32Array(COUNT*4);
+for (let i = 0; i < COUNT*4; i++) rands[i] = rnd();
+
+// intro: from a huge random cloud into the first shape
+for (let i = 0; i < COUNT; i++) {
+  posFrom[i*3] = g()*1.6; posFrom[i*3+1] = g()*1.6; posFrom[i*3+2] = g()*1.6;
+  const b = 0.25 + rnd()*0.3;
+  colFrom[i*3] = b; colFrom[i*3+1] = b*0.9; colFrom[i*3+2] = b*1.2;
+}
+let shapeIdx = (() => {
+  const f = parseInt(params.get('f'), 10);
+  return Number.isInteger(f) ? ((f % SHAPES.length) + SHAPES.length) % SHAPES.length
+                             : (rnd()*SHAPES.length)|0;
+})();
+function generateInto(pos, col, idx){
+  const s = SHAPES[idx];
+  if (s.prep) s.prep();
+  const pal = randomPalette();
+  for (let i = 0; i < COUNT; i++) s.gen(pos, col, i, pal);
+}
+generateInto(posTo, colTo, shapeIdx);
+
+function makeBuf(arr, loc, size){
+  const b = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, b);
+  gl.bufferData(gl.ARRAY_BUFFER, arr, gl.DYNAMIC_DRAW);
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+  return b;
+}
+const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+const bPosFrom = makeBuf(posFrom, 0, 3);
+const bPosTo   = makeBuf(posTo,   1, 3);
+const bColFrom = makeBuf(colFrom, 2, 3);
+const bColTo   = makeBuf(colTo,   3, 3);
+makeBuf(rands, 4, 4);
+
+function upload(buf, arr){
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, arr);
+}
+
+// ---------- morph control ----------
+let morphT = 0; // plays the intro morph
+let autoTimer = 0;
+let sweep = [0, 1, 0]; // morph wave direction (random per morph)
+function randomSweep(){
+  let x = g(), y = g(), z = g();
+  const n = Math.hypot(x, y, z) || 1;
+  sweep = [x/n, y/n, z/n];
+}
+randomSweep();
+
+const shapeNameEl = document.getElementById('shapeName');
+const captionEl = document.getElementById('caption');
+function showShapeText(){
+  shapeNameEl.textContent = 'FORM ' + String(shapeIdx+1).padStart(2,'0')
+    + ' : ' + SHAPES[shapeIdx].name;
+  captionEl.textContent = SHAPES[shapeIdx].caption;
+}
+showShapeText();
+
+function bakeCurrentInto(fromP, fromC){
+  // freeze the currently displayed state, matching the shader's timing math
+  const stag = 0.7;
+  const em = mease.cubicInOut(morphT);
+  const [sx, sy, sz] = sweep;
+  for (let i = 0; i < COUNT; i++) {
+    const j0 = i*3;
+    let spatial = (posFrom[j0]*sx + posFrom[j0+1]*sy + posFrom[j0+2]*sz)*0.5 + 0.5;
+    spatial = spatial < 0 ? 0 : spatial > 1 ? 1 : spatial;
+    const delay = spatial*0.55 + rands[i*4]*0.45;
+    let tt = em*(1+stag) - delay*stag;
+    tt = tt < 0 ? 0 : tt > 1 ? 1 : tt;
+    const e = tt*tt*tt*(tt*(tt*6-15)+10);
+    for (let k = 0; k < 3; k++) {
+      const j = j0+k;
+      fromP[j] = posFrom[j] + (posTo[j]-posFrom[j])*e;
+      fromC[j] = colFrom[j] + (colTo[j]-colFrom[j])*e;
+    }
+  }
+}
+
+function morphTo(idx){
+  if (morphT < 1) {
+    bakeCurrentInto(posFrom, colFrom);
+  } else {
+    posFrom.set(posTo); colFrom.set(colTo);
+  }
+  shapeIdx = ((idx % SHAPES.length) + SHAPES.length) % SHAPES.length;
+  generateInto(posTo, colTo, shapeIdx);
+  upload(bPosFrom, posFrom); upload(bColFrom, colFrom);
+  upload(bPosTo, posTo);     upload(bColTo, colTo);
+  randomSweep();
+  morphT = 0; autoTimer = 0;
+  showShapeText();
+}
+function nextShape(){
+  let idx = (rnd()*SHAPES.length)|0;
+  if (idx === shapeIdx) idx = (idx + 1) % SHAPES.length;
+  morphTo(idx);
+}
+
+// ---------- interaction (random effect per touch) ----------
+const FX_NAMES = ['ばらける', 'ついてくる', 'ぐるぐる', '波紋'];
+let mode = 0;
+let press = 0, pressTarget = 0;
+let spin = 0;
+const pointerTarget = [0, 0];
+const pointer = [0, 0];
+const touches = new Float32Array(NTOUCH*4);
+let touchIdx = 0, lastBurst = 0, lastRipple = 0, lastTap = 0, downPos = null, moved = 0;
+
+const fxEl = document.getElementById('fx');
+let fxTimer = 0;
+function showFx(name){
+  fxEl.textContent = name;
+  fxEl.style.opacity = 1;
+  clearTimeout(fxTimer);
+  fxTimer = setTimeout(() => { fxEl.style.opacity = 0; }, 900);
+}
+
+let camDist = 3.3;
+function toWorld(cx, cy){
+  const r = canvas.getBoundingClientRect();
+  const ndcX = (cx - r.left) / r.width * 2 - 1;
+  const ndcY = 1 - (cy - r.top) / r.height * 2;
+  const halfH = Math.tan(FOV/2) * camDist;
+  return [ndcX * halfH * (r.width/r.height), ndcY * halfH];
+}
+function addBurst(x, y, strength, now){
+  const j = (touchIdx++ % NTOUCH) * 4;
+  touches[j] = x; touches[j+1] = y; touches[j+2] = now; touches[j+3] = strength;
+}
+
+canvas.addEventListener('pointerdown', ev => {
+  canvas.setPointerCapture(ev.pointerId);
+  const [x, y] = toWorld(ev.clientX, ev.clientY);
+  pointerTarget[0] = x; pointerTarget[1] = y;
+  pointer[0] = x; pointer[1] = y;
+  pressTarget = 1; moved = 0; downPos = [ev.clientX, ev.clientY];
+  mode = (rnd()*FX_NAMES.length)|0;
+  showFx(FX_NAMES[mode]);
+  const now = performance.now()/1000;
+  if (mode === 0) { addBurst(x, y, 1.2, now); lastBurst = now; }
+  if (mode === 3) { addBurst(x, y, -1.3, now); lastRipple = now; }
+});
+canvas.addEventListener('pointermove', ev => {
+  const [x, y] = toWorld(ev.clientX, ev.clientY);
+  pointerTarget[0] = x; pointerTarget[1] = y;
+  if (downPos) moved = Math.max(moved,
+    Math.hypot(ev.clientX-downPos[0], ev.clientY-downPos[1]));
+  if (pressTarget > 0) {
+    const now = performance.now()/1000;
+    if (mode === 0 && now - lastBurst > 0.07) {
+      addBurst(x, y, 0.7, now); lastBurst = now;
+    }
+    if (mode === 3 && now - lastRipple > 0.4) {
+      addBurst(x, y, -1.0, now); lastRipple = now;
+    }
+  }
+});
+function endPress(){
+  pressTarget = 0;
+  if (downPos && moved < 24) {
+    const now = performance.now();
+    if (now - lastTap < 320) { nextShape(); lastTap = 0; }
+    else lastTap = now;
+  }
+  downPos = null;
+}
+canvas.addEventListener('pointerup', endPress);
+canvas.addEventListener('pointercancel', endPress);
+
+// ---------- AIR mode: control by waving a hand at the camera ----------
+const airBtn = document.getElementById('airBtn');
+const camCanvas = document.getElementById('cam');
+const camCtx = camCanvas.getContext('2d', { willReadFrequently: true });
+const hintEl = document.getElementById('hint');
+const HINT_TOUCH = hintEl.textContent;
+const CW = 128, CH = 96, NPIX = CW*CH;
+let airOn = false, video = null, stream = null;
+let bgL = null, noiseAvg = 8;
+const actX = new Int16Array(NPIX), actY = new Int16Array(NPIX);
+const actSkin = new Uint8Array(NPIX);
+let airActive = false, activeFrames = 0, lastMotionT = 0;
+let lastAirBurst = 0, lastAirRipple = 0;
+let trkX = CW/2, trkY = CH/2, trkLocked = false;
+let airX = 0, airY = 0; // filtered world-space hand position
+
+async function toggleAir(){
+  if (airOn) { stopAir(); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showFx('カメラ非対応の環境です'); return;
+  }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: {ideal: 320}, height: {ideal: 240} },
+      audio: false });
+  } catch (e) { showFx('カメラを利用できません'); return; }
+  video = document.createElement('video');
+  video.srcObject = stream;
+  video.muted = true;
+  video.setAttribute('playsinline', '');
+  try { await video.play(); } catch (e) { stopAir(); return; }
+  bgL = null; trkLocked = false; activeFrames = 0;
+  airOn = true;
+  airBtn.classList.add('on');
+  camCanvas.style.display = 'block';
+  hintEl.textContent = 'カメラに向かって手を振る ／ ダブルタップで変形';
+}
+function stopAir(){
+  airOn = false;
+  airBtn.classList.remove('on');
+  camCanvas.style.display = 'none';
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = null; video = null; bgL = null;
+  trkLocked = false; activeFrames = 0;
+  if (airActive) { airActive = false; pressTarget = 0; }
+  hintEl.textContent = HINT_TOUCH;
+}
+airBtn.addEventListener('click', toggleAir);
+
+function processAir(now){
+  camCtx.drawImage(video, 0, 0, CW, CH);
+  const img = camCtx.getImageData(0, 0, CW, CH);
+  const d = img.data;
+  const first = !bgL;
+  if (first) bgL = new Float32Array(NPIX);
+  // threshold rides on the measured noise floor
+  const thr = Math.max(14, noiseAvg*3 + 6);
+  let diffSum = 0, cnt = 0, skinCnt = 0;
+  let sumMX = 0, sumMY = 0, sumSX = 0, sumSY = 0;
+  for (let i = 0; i < NPIX; i++) {
+    const r = d[i*4], gg = d[i*4+1], b = d[i*4+2];
+    const l = r*0.3 + gg*0.6 + b*0.1;
+    if (first) bgL[i] = l;
+    const diff = Math.abs(l - bgL[i]);
+    diffSum += diff;
+    const motion = diff > thr;
+    // background learns fast where the scene is static, slowly under the hand
+    bgL[i] += (l - bgL[i]) * (motion ? 0.015 : 0.10);
+    let lvl = 0;
+    if (motion) {
+      const x = i % CW, y = (i / CW)|0;
+      const cb = 128 - 0.169*r - 0.331*gg + 0.5*b;
+      const cr = 128 + 0.5*r - 0.419*gg - 0.081*b;
+      const skin = cr > 133 && cr < 180 && cb > 75 && cb < 130 && r > 55;
+      actX[cnt] = x; actY[cnt] = y; actSkin[cnt] = skin ? 1 : 0; cnt++;
+      sumMX += x; sumMY += y;
+      if (skin) { skinCnt++; sumSX += x; sumSY += y; lvl = 2; }
+      else lvl = 1;
+    }
+    // preview: skin+motion bright green, other motion dim teal, rest dimmed
+    d[i*4]   = lvl === 2 ? 60  : lvl === 1 ? 30  : r*0.22;
+    d[i*4+1] = lvl === 2 ? 255 : lvl === 1 ? 95  : gg*0.22;
+    d[i*4+2] = lvl === 2 ? 140 : lvl === 1 ? 120 : b*0.22;
+  }
+  noiseAvg += (diffSum/NPIX - noiseAvg) * 0.05;
+  camCtx.putImageData(img, 0, 0);
+
+  // lighting change / camera bump: nearly everything "moved" — don't track it
+  if (cnt > NPIX*0.5) { trkLocked = false; activeFrames = 0; return; }
+
+  // prefer skin-colored moving pixels; fall back to any motion
+  const useSkin = skinCnt >= Math.max(12, cnt*0.18);
+  const effCnt = useSkin ? skinCnt : cnt;
+  const MIN = useSkin ? 12 : 26;
+
+  if (effCnt >= MIN) {
+    const gx = useSkin ? sumSX/skinCnt : sumMX/cnt;
+    const gy = useSkin ? sumSY/skinCnt : sumMY/cnt;
+    // mean shift: slide a window onto the densest cluster instead of
+    // averaging every stray pixel across the frame
+    let cx = trkLocked ? trkX : gx, cy = trkLocked ? trkY : gy;
+    const R2 = 28*28;
+    for (let it = 0; it < 3; it++) {
+      let sx = 0, sy = 0, sc = 0;
+      for (let k = 0; k < cnt; k++) {
+        if (useSkin && !actSkin[k]) continue;
+        const dx = actX[k] - cx, dy = actY[k] - cy;
+        if (dx*dx + dy*dy < R2) { sx += actX[k]; sy += actY[k]; sc++; }
+      }
+      if (sc < 6) { cx = gx; cy = gy; continue; } // lost: re-seek globally
+      cx = sx/sc; cy = sy/sc;
+    }
+    trkX = cx; trkY = cy; trkLocked = true;
+    lastMotionT = now;
+    activeFrames++;
+
+    // map with gain around center (small hand motions cover the screen), mirrored
+    const nx = Math.min(1, Math.max(0, ((1 - cx/CW) - 0.5)*1.45 + 0.5));
+    const ny = Math.min(1, Math.max(0, ((cy/CH) - 0.5)*1.45 + 0.5));
+    const rr = canvas.getBoundingClientRect();
+    const halfH = Math.tan(FOV/2) * camDist;
+    const wx = (nx*2 - 1) * halfH * (rr.width/rr.height);
+    const wy = (1 - ny*2) * halfH;
+    // adaptive filter: a steady hand is heavily smoothed, a sweep tracks tightly
+    const ddist = Math.hypot(wx - airX, wy - airY);
+    const alpha = airActive ? Math.min(0.85, 0.18 + ddist*1.6) : 1;
+    airX += (wx - airX) * alpha;
+    airY += (wy - airY) * alpha;
+    pointerTarget[0] = airX; pointerTarget[1] = airY;
+
+    // effect strength follows how much of the frame is moving
+    const strength = 0.55 + Math.min(0.9, effCnt/(NPIX*0.06));
+    if (!airActive && activeFrames >= 3) { // debounce against one-frame noise
+      airActive = true;
+      pressTarget = 1;
+      mode = (rnd()*FX_NAMES.length)|0;
+      showFx(FX_NAMES[mode]);
+      if (mode === 0) { addBurst(airX, airY, strength + 0.3, now); lastAirBurst = now; }
+      if (mode === 3) { addBurst(airX, airY, -(strength + 0.3), now); lastAirRipple = now; }
+    } else if (airActive) {
+      if (mode === 0 && now - lastAirBurst > 0.12) {
+        addBurst(airX, airY, strength*0.6, now); lastAirBurst = now;
+      }
+      if (mode === 3 && now - lastAirRipple > 0.5) {
+        addBurst(airX, airY, -strength*0.8, now); lastAirRipple = now;
+      }
+    }
+    // crosshair on the preview at the tracked point
+    camCtx.strokeStyle = 'rgba(255,255,255,0.9)';
+    camCtx.lineWidth = 1.5;
+    camCtx.beginPath();
+    camCtx.arc(cx, cy, 5, 0, 6.2832);
+    camCtx.stroke();
+  } else {
+    activeFrames = 0;
+    if (airActive && now - lastMotionT > 0.7) {
+      airActive = false;
+      pressTarget = 0;
+    }
+    if (now - lastMotionT > 1.5) trkLocked = false;
+  }
+}
+
+// ---------- matrices & organic tumbling (mathcat quat/mat4) ----------
+const proj = new Float32Array(16), model = new Float32Array(16);
+const qa = [0,0,0,1], qb = [0,0,0,1], qCur = [0,0,0,1];
+const qSpin = [0,0,0,1], qTmp = [0,0,0,1];
+const vZero = [0,0,0], vScale = [1,1,1], yAxis = [0,1,0];
+function randQuat(out){
+  let x = g(), y = g(), z = g(), w = g();
+  const n = Math.hypot(x, y, z, w) || 1;
+  out[0] = x/n; out[1] = y/n; out[2] = z/n; out[3] = w/n;
+  return out;
+}
+randQuat(qa); randQuat(qb);
+let qt = 0;
+const ROT_SEG = 16; // seconds per orientation drift segment
+
+// ---------- HUD fake telemetry ----------
+const statsEl = document.getElementById('stats');
+let iter = 10000, topo = 0.15;
+function updateStats(t){
+  iter += 7 + (Math.random()*9|0);
+  topo += (Math.random()-0.5)*0.004;
+  topo = Math.max(0.02, Math.min(0.6, topo));
+  const lr = 0.081 * (1 + 0.12*Math.sin(t*0.4));
+  const sig = 1.57 * (1 + 0.1*Math.sin(t*0.23 + 2));
+  statsEl.textContent =
+    'KOHONEN ITERATION : ' + iter.toLocaleString('en-US') + '\n' +
+    'LEARNING RATE (η) : ' + lr.toFixed(4) + '\n' +
+    'NEIGHBORHOOD (σ)  : ' + sig.toFixed(4) + '\n' +
+    'TOPO-TENSION      : ' + topo.toFixed(4) + '\n' +
+    'PARTICLES         : ' + drawCount.toLocaleString('en-US') + '\n' +
+    'SEED              : ' + SEED;
+}
+
+// ---------- render loop ----------
+function resize(){
+  const w = Math.floor(canvas.clientWidth * DPR) || 1;
+  const h = Math.floor(canvas.clientHeight * DPR) || 1;
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w; canvas.height = h;
+    gl.viewport(0, 0, w, h);
+    const aspect = w/h;
+    mmat4.perspective(proj, FOV, aspect, 0.1, 30);
+    // portrait screens: pull the camera back so wide shapes still fit
+    camDist = Math.max(3.3, 1.62 / (Math.tan(FOV/2) * aspect));
+  }
+}
+window.addEventListener('resize', resize);
+
+gl.disable(gl.DEPTH_TEST);
+gl.enable(gl.BLEND);
+gl.blendFunc(gl.ONE, gl.ONE);
+gl.clearColor(0, 0, 0, 1);
+
+// adaptive quality: keep the frame rate silky by trimming drawn grains
+let drawCount = COUNT;
+let fpsFrames = 0, fpsTime = 0, warmup = 2;
+
+let prev = performance.now()/1000, statT = 0, frameNo = 0;
+function frame(){
+  const now = performance.now()/1000;
+  const dt = Math.min(0.05, now - prev);
+  prev = now;
+  resize();
+  frameNo++;
+
+  if (airOn && video && video.readyState >= 2)
+    processAir(now);
+
+  if (warmup > 0) warmup -= dt;
+  else {
+    fpsFrames++; fpsTime += dt;
+    if (fpsTime > 1.5) {
+      const fps = fpsFrames / fpsTime;
+      if (fps < 42 && drawCount > 60000)
+        drawCount = Math.max(60000, (drawCount*0.75)|0);
+      else if (fps > 56 && drawCount < COUNT)
+        drawCount = Math.min(COUNT, (drawCount*1.12)|0);
+      fpsFrames = 0; fpsTime = 0;
+    }
+  }
+
+  if (morphT < 1) morphT = Math.min(1, morphT + dt/MORPH_SEC);
+  else {
+    autoTimer += dt;
+    if (autoTimer > AUTO_SEC) nextShape();
+  }
+
+  press += (pressTarget - press) * Math.min(1, dt * (pressTarget > press ? 10 : 4));
+  pointer[0] += (pointerTarget[0] - pointer[0]) * Math.min(1, dt*12);
+  pointer[1] += (pointerTarget[1] - pointer[1]) * Math.min(1, dt*12);
+  if (mode === 2 && pressTarget > 0) spin = Math.min(14, spin + dt*3.0);
+  else spin *= Math.exp(-dt/1.3);
+
+  // organic tumbling: slerp between random orientations, over a slow base spin
+  qt += dt / ROT_SEG;
+  if (qt >= 1) { mquat.copy(qa, qb); randQuat(qb); qt -= 1; }
+  mquat.slerp(qCur, qa, qb, mease.cubicInOut(qt));
+  mquat.setAxisAngle(qSpin, yAxis, now * (reducedMotion ? 0.02 : 0.07));
+  mquat.normalize(qTmp, mquat.multiply(qTmp, qCur, qSpin));
+  const breathe = 1 + 0.012 * Math.sin(now * 0.5);
+  vScale[0] = vScale[1] = vScale[2] = breathe;
+  mmat4.compose(model, vZero, qTmp, vScale);
+
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.uniformMatrix4fv(U.uProj, false, proj);
+  gl.uniformMatrix4fv(U.uModel, false, model);
+  gl.uniform1f(U.uTime, now);
+  gl.uniform1f(U.uMorph, mease.cubicInOut(morphT));
+  gl.uniform1f(U.uPress, press);
+  gl.uniform1f(U.uSpin, spin);
+  gl.uniform1f(U.uSize, canvas.height * 0.0038 * (coarse ? 1.2 : 1));
+  gl.uniform1f(U.uCamDist, camDist);
+  gl.uniform3f(U.uPointer, pointer[0], pointer[1], 0);
+  gl.uniform3f(U.uSweep, sweep[0], sweep[1], sweep[2]);
+  gl.uniform1i(U.uMode, mode);
+  gl.uniform4fv(U.uTouches, touches);
+  gl.drawArrays(gl.POINTS, 0, drawCount);
+
+  statT += dt;
+  if (statT > 0.1) { statT = 0; updateStats(now); }
+  requestAnimationFrame(frame);
+}
+resize();
+requestAnimationFrame(frame);
+
+})();
+</script>
+
+</body>
+</html>

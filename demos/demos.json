@@ -1,0 +1,26 @@
+{
+  "_": "どのパネルでどのデモを回すか。値は demos/src/<id>.html の <id>。空配列にすると従来の動画に戻る。",
+
+  "cycleSec": 45,
+
+  "slots": {
+    "home-hero":            [],
+    "home-xbuild":          [],
+    "home-xad":             [],
+    "home-xinteractive":    [],
+    "home-careers":         [],
+    "home-contact":         [],
+
+    "xbuild-hero":          [],
+    "xbuild-cap01":         [],
+    "xbuild-cap02":         [],
+
+    "xad-hero":             [],
+    "xad-cap01":            [],
+    "xad-cap02":            [],
+
+    "xinteractive-hero":    ["morphosis"],
+    "xinteractive-cap01":   [],
+    "xinteractive-cap02":   []
+  }
+}

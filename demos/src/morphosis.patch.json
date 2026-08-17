@@ -1,0 +1,4 @@
+[
+  ["(coarse ? 150000 : 280000)", "(coarse ? 110000 : 190000)"],
+  ["Math.min(coarse ? 1.8 : 2,", "Math.min(coarse ? 1.5 : 1.75,"]
+]

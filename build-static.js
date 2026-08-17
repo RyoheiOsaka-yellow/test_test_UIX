@@ -183,6 +183,36 @@ const IMG_DIR = DIST + 'assets/img/';
 // 1f. アセット参照を絶対パスへ（/xbuild/ 配下から相対解決されて404になるのを防ぐ）
 base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
 
+// 1e2. パネル背景デモ(<template>)を単体HTMLへ切り出す。
+//      単一ファイル版は srcdoc で動かすが、公開版は外部ファイルにして
+//      ページ本体を軽くし、ブラウザにキャッシュさせる（本文からは丸ごと取り除く）
+{
+  const DEMO_DIR = DIST + 'assets/demo/';
+  const A = '<!-- ══ DEMO-EMBED:TPL:START ══ -->';
+  const B = '<!-- ══ DEMO-EMBED:TPL:END ══ -->';
+  const a = base.indexOf(A);
+  if (a !== -1) {
+    const b = base.indexOf(B, a);
+    if (b === -1) throw new Error('DEMO-EMBED:TPL:END が見つかりません');
+    const block = base.slice(a, b);
+    fs.mkdirSync(DEMO_DIR, { recursive: true });
+    const re = /<template id="tpl-demo-([a-z0-9_-]+)">\n([\s\S]*?)\n<\/template>/g;
+    let m, n = 0;
+    while ((m = re.exec(block)) !== null) {
+      const page = '<!doctype html>\n<html lang="ja">\n<head>\n<meta charset="utf-8">\n'
+                 + '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
+                 + '<title>' + m[1] + '</title>\n</head>\n<body>\n' + m[2] + '\n</body>\n</html>\n';
+      fs.writeFileSync(DEMO_DIR + m[1] + '.html', page);
+      n++;
+    }
+    if (!n) throw new Error('デモの <template> が1つも取り出せませんでした');
+    base = base.slice(0, a) + base.slice(b + B.length);
+    // 外部ファイルを読ませる
+    base = base.replace(/<div class="panel__embed" /g, '<div class="panel__embed" data-demo-base="/assets/demo/" ');
+    console.log('デモを外部化:', n, '件 →', '/assets/demo/');
+  }
+}
+
 // 1g. ナビに「事例」を追加（実績の隣）
 {
   const o = '<a class="hdr__link" href="#record"  data-i18n="nav_record">実績</a>';
