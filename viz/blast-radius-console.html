@@ -1,0 +1,1177 @@
+<title>Blast Radius Console</title>
+<!--
+  Blast Radius Console — a live telemetry view of six agents sharing one
+  browser profile, one login, one credential set.
+
+  Deterministic by construction: seeded PRNG (mulberry32), all motion driven by
+  an integer tick counter, no Date.now() / Math.random() / network. A fixed-fps
+  renderer that calls step() N times per frame reproduces the same footage every
+  run, so this composition can be dropped into the HyperFrames pipeline as-is.
+
+  Controls: Space play/pause · 1234 speed ×1 ×2 ×4 ×8 · R reset
+-->
+<style>
+  :root {
+    --ground: #07080a;
+    --panel: #0b0d11;
+    --rule: #1b2028;
+    --rule-soft: #14181e;
+    --amber: #f0b32a;
+    --amber-dim: #8a6a1c;
+    --bone: #e8edf2;
+    --slate: #5c6773;
+    --slate-dim: #3c454e;
+    --pink: #ff4d7d;
+    --cyan: #31e2cf;
+
+    --step: 6px;
+    --label: 8.5px;
+    --data: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--slate);
+    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: var(--data);
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .console {
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    height: 100dvh;
+    min-height: 620px;
+    background: var(--ground);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ---------- status rails ---------- */
+
+  .rail {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 0 12px;
+    height: 26px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--panel);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .rail-b {
+    height: 22px;
+    gap: 0;
+    background: var(--ground);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .field {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex: none;
+  }
+
+  .k {
+    font-size: var(--label);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--amber-dim);
+  }
+
+  .v {
+    color: var(--bone);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .v-amber { color: var(--amber); }
+  .v-pink { color: var(--pink); }
+  .v-cyan { color: var(--cyan); }
+
+  .swarm-id {
+    color: var(--amber);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: var(--label);
+  }
+
+  .rail .spacer { flex: 1 1 auto; }
+
+  /* tab strip */
+  .tab {
+    flex: none;
+    padding: 0 10px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    font-size: var(--label);
+    letter-spacing: 0.08em;
+    color: var(--slate-dim);
+    border-right: 1px solid var(--rule-soft);
+  }
+
+  .tab-on {
+    color: #100c02;
+    background: var(--amber);
+    font-weight: 700;
+  }
+
+  /* ---------- controls ---------- */
+
+  .ctl {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .btn {
+    font: inherit;
+    font-size: var(--label);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--slate);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 0;
+    padding: 2px 7px;
+    cursor: pointer;
+  }
+
+  .btn:hover { color: var(--bone); border-color: var(--slate-dim); }
+
+  .btn[aria-pressed="true"] {
+    color: var(--amber);
+    border-color: var(--amber-dim);
+    background: #1a1305;
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 1px;
+  }
+
+  /* ---------- stage ---------- */
+
+  .stage {
+    position: relative;
+    min-height: 0;
+    background: var(--ground);
+  }
+
+  .stage canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .veil {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(to bottom, rgba(0,0,0,0.22) 0 1px, transparent 1px 3px),
+      radial-gradient(120% 90% at 50% 45%, transparent 45%, rgba(0,0,0,0.55) 100%);
+  }
+
+  .thesis {
+    position: absolute;
+    left: 14px;
+    bottom: 12px;
+    pointer-events: none;
+    display: grid;
+    gap: 2px;
+    margin: 0;
+    max-width: 46ch;
+    font-size: 9.5px;
+    letter-spacing: 0.04em;
+  }
+
+  .thesis span { color: var(--slate-dim); }
+  .thesis .lead { color: var(--pink); }
+
+  /* ---------- instrument strip ---------- */
+
+  .strip {
+    display: grid;
+    grid-template-columns: 1.45fr 1fr 0.85fr 1.35fr 1.05fr 1.1fr 1fr;
+    border-top: 1px solid var(--rule);
+    background: var(--panel);
+    height: 172px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .panel {
+    border-right: 1px solid var(--rule);
+    padding: 5px 8px 6px;
+    min-width: 132px;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 3px;
+    overflow: hidden;
+  }
+
+  .panel:last-child { border-right: 0; }
+
+  .panel h2 {
+    margin: 0;
+    font-size: var(--label);
+    font-weight: 400;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--amber-dim);
+  }
+
+  .panel-body {
+    min-height: 0;
+    overflow: hidden;
+    display: grid;
+    align-content: start;
+    gap: 1px;
+  }
+
+  /* run log */
+  .log-line {
+    display: grid;
+    grid-template-columns: 5ch 6ch 1fr;
+    gap: 6px;
+    font-size: 9.5px;
+    line-height: 1.35;
+    color: var(--slate);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .log-line b { font-weight: 400; color: var(--amber-dim); }
+  .log-line i { font-style: normal; color: var(--slate); }
+  .lv-alert b, .lv-warn b { color: var(--pink); }
+  .lv-alert i, .lv-warn i { color: var(--pink); }
+  .lv-grant b { color: var(--cyan); }
+  .lv-grant i { color: var(--cyan); }
+
+  /* ledger + bots: label / bar / value rows */
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 34px 2ch;
+    align-items: center;
+    gap: 5px;
+    white-space: nowrap;
+  }
+
+  .row span { overflow: hidden; text-overflow: ellipsis; }
+  .row em { font-style: normal; color: var(--bone); font-variant-numeric: tabular-nums; text-align: right; }
+
+  .bar {
+    height: 4px;
+    background: #161a20;
+    position: relative;
+  }
+
+  .bar i {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--amber);
+  }
+
+  .bar-cyan i { background: var(--cyan); }
+  .bar-pink i { background: var(--pink); }
+
+  .zero em { color: var(--pink); }
+
+  /* action heat */
+  .heat {
+    font-size: 9px;
+    line-height: 1.1;
+    letter-spacing: 0;
+    white-space: pre;
+    overflow: hidden;
+  }
+
+  .heat div { color: #39424c; }
+  .heat .warm { color: var(--bone); }
+  .heat .hot { color: var(--pink); }
+
+  /* big readouts */
+  .big {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--bone);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+  }
+
+  .note {
+    font-size: var(--label);
+    letter-spacing: 0.06em;
+    color: var(--slate-dim);
+    text-transform: uppercase;
+  }
+
+  .panel canvas { width: 100%; display: block; }
+
+  /* spend bar, uncapped */
+  .spend {
+    position: relative;
+    height: 5px;
+    background: #161a20;
+    margin-top: 2px;
+  }
+
+  .spend i {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--pink);
+  }
+
+  .spend u {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 1px;
+    background: var(--slate-dim);
+    text-decoration: none;
+  }
+
+  @media (max-width: 720px) {
+    .strip { grid-template-columns: repeat(7, minmax(150px, 1fr)); }
+    .rail .drop { display: none; }
+  }
+</style>
+
+<div class="console">
+  <div class="rail">
+    <span class="swarm-id">swarm-01</span>
+    <span class="field"><span class="k">bots</span><span class="v" id="f-bots">6</span></span>
+    <span class="field"><span class="k">actions</span><span class="v" id="f-actions">0</span></span>
+    <span class="field drop"><span class="k">one profile</span><span class="v v-pink">6 bots</span></span>
+    <span class="field drop"><span class="k">shared login</span><span class="v v-amber">google</span></span>
+    <span class="field drop"><span class="k">spend cap</span><span class="v v-pink">none</span></span>
+    <span class="field drop"><span class="k">audit</span><span class="v v-pink">pending</span></span>
+    <span class="field"><span class="k">t</span><span class="v" id="f-t">0.00</span></span>
+    <span class="field"><span class="k">frame</span><span class="v" id="f-frame">0000</span></span>
+    <span class="spacer"></span>
+    <span class="ctl">
+      <button class="btn" id="b-play" type="button">Pause</button>
+      <button class="btn" data-speed="1" type="button">×1</button>
+      <button class="btn" data-speed="2" type="button">×2</button>
+      <button class="btn" data-speed="4" type="button">×4</button>
+      <button class="btn" data-speed="8" type="button">×8</button>
+      <button class="btn" id="b-reset" type="button">Reset</button>
+    </span>
+  </div>
+
+  <div class="rail rail-b">
+    <span class="tab">6 bots live</span>
+    <span class="tab">1 profile</span>
+    <span class="tab">actions armed</span>
+    <span class="tab">same login</span>
+    <span class="tab">granted</span>
+    <span class="tab">blast radius</span>
+    <span class="tab">not a boundary</span>
+    <span class="tab">credentials held</span>
+    <span class="tab">supervision</span>
+    <span class="tab">stage</span>
+    <span class="tab tab-on">fold</span>
+    <span class="spacer"></span>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="graph"></canvas>
+    <div class="veil"></div>
+    <p class="thesis">
+      <span class="lead" id="t-reach">6 of 6 bots reachable from one session</span>
+      <span>it travels the login, not the code</span>
+      <span>a bot is not a security boundary</span>
+      <span id="t-kill">delete a bot — the session stays open</span>
+    </p>
+  </div>
+
+  <div class="strip">
+    <article class="panel">
+      <h2>Run log</h2>
+      <div class="panel-body" id="log"></div>
+    </article>
+
+    <article class="panel">
+      <h2>Access ledger</h2>
+      <div class="panel-body" id="ledger"></div>
+    </article>
+
+    <article class="panel">
+      <h2>Blast radius</h2>
+      <div class="panel-body"><canvas id="hex" height="112"></canvas></div>
+    </article>
+
+    <article class="panel">
+      <h2>Action heat</h2>
+      <div class="panel-body heat" id="heat"></div>
+    </article>
+
+    <article class="panel">
+      <h2>Throughput</h2>
+      <div class="panel-body">
+        <canvas id="spark" height="52"></canvas>
+        <div class="big" id="aps">0</div>
+        <div class="note">actions / second · peak <span id="peak">0</span></div>
+        <div class="note">spend this run <span class="v-pink" id="spend">$0.00</span></div>
+        <div class="spend"><i id="spend-bar"></i><u id="spend-mark"></u></div>
+        <div class="note">no cap set · no stop rule</div>
+      </div>
+    </article>
+
+    <article class="panel">
+      <h2>Bot status</h2>
+      <div class="panel-body" id="bots"></div>
+    </article>
+
+    <article class="panel">
+      <h2>Shared between all</h2>
+      <div class="panel-body" id="shared"></div>
+    </article>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* ---------------- deterministic randomness ---------------- */
+
+  const mulberry32 = (a) => () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+
+  const SEED = 0x5eed1e;
+  let rnd = mulberry32(SEED);          // simulation stream, reset on Reset
+  const build = mulberry32(0xc0ffee);  // one-time layout stream
+
+  const gauss = (r) => {
+    let u = 0, v = 0;
+    while (u === 0) u = r();
+    while (v === 0) v = r();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  };
+
+  const pick = (r, arr) => arr[(r() * arr.length) | 0];
+  const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+  const fmt = (n) => Math.round(n).toLocaleString("en-US");
+  const pad = (n, w) => String(n).padStart(w, "0");
+
+  /* ---------------- palette ---------------- */
+
+  const C = {
+    ground: "#07080a",
+    bone: [232, 237, 242],
+    pink: [255, 77, 125],
+    cyan: [49, 226, 207],
+    amber: "#f0b32a",
+    amberDim: "#8a6a1c",
+    slate: "#5c6773",
+  };
+  const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+  /* ---------------- graph layout (normalized 0..1 space) ---------------- */
+
+  const CLUSTERS = [
+    { cx: 0.385, cy: 0.252, rx: 0.205, ry: 0.126, n: 186 },
+    { cx: 0.470, cy: 0.722, rx: 0.222, ry: 0.140, n: 208 },
+  ];
+
+  const HUBS = [
+    { x: 0.320, y: 0.180, c: 0, name: "calendar sync", rate: 3.1, state: "running" },
+    { x: 0.648, y: 0.195, c: 0, name: "inbox triage", rate: 2.4, state: "running" },
+    { x: 0.298, y: 0.430, c: 0, name: "lead scrape", rate: 1.9, state: "running" },
+    { x: 0.560, y: 0.625, c: 1, name: "invoice run", rate: 3.6, state: "running", tag: "google · same login" },
+    { x: 0.612, y: 0.735, c: 1, name: "report build", rate: 2.1, state: "running" },
+    { x: 0.800, y: 0.790, c: 1, name: "outreach", rate: 1.6, state: "held" },
+  ];
+
+  // dim vernacular tags scattered through the web, anchored in stage space
+  const TAGS = [
+    { x: 0.088, y: 0.410, t: "open profile" },
+    { x: 0.128, y: 0.312, t: "decline hold" },
+    { x: 0.152, y: 0.238, t: "same event" },
+    { x: 0.322, y: 0.362, t: "google · same login" },
+    { x: 0.520, y: 0.352, t: "label as invoice" },
+    { x: 0.352, y: 0.470, t: "session reused ×4" },
+    { x: 0.268, y: 0.545, t: "google · same login" },
+    { x: 0.212, y: 0.640, t: "open invoice #412" },
+    { x: 0.372, y: 0.815, t: "render chart" },
+    { x: 0.492, y: 0.848, t: "export summary" },
+    { x: 0.636, y: 0.852, t: "full access granted" },
+    { x: 0.700, y: 0.780, t: "google · same login" },
+    { x: 0.560, y: 0.470, t: "cookie jar reused" },
+  ];
+
+  const nodes = [];
+  CLUSTERS.forEach((cl, ci) => {
+    for (let i = 0; i < cl.n; i++) {
+      // tight core plus a minority of strays — a flat gaussian reads as haze
+      const s = build() < 0.80 ? 0.30 : 0.62;
+      const g1 = gauss(build) * s, g2 = gauss(build) * s;
+      nodes.push({
+        x: clamp(cl.cx + g1 * cl.rx, 0.03, 0.97),
+        y: clamp(cl.cy + g2 * cl.ry, 0.03, 0.97),
+        c: ci,
+        hub: -1,
+        ph: build() * 6.283,
+      });
+    }
+  });
+  // sparse halo — the strays that make the boundary legible
+  for (let i = 0; i < 46; i++) {
+    const a = build() * 6.283, r = 0.55 + build() * 0.45;
+    nodes.push({
+      x: clamp(0.44 + Math.cos(a) * r * 0.40, 0.02, 0.98),
+      y: clamp(0.49 + Math.sin(a) * r * 0.44, 0.03, 0.97),
+      c: build() < 0.5 ? 0 : 1,
+      hub: -1,
+      ph: build() * 6.283,
+    });
+  }
+  // hubs join the graph so edges actually terminate on them
+  const hubNodeIndex = HUBS.map((h, hi) => {
+    nodes.push({ x: h.x, y: h.y, c: h.c, hub: hi, ph: build() * 6.283 });
+    return nodes.length - 1;
+  });
+  const hubsByCluster = [[], []];
+  hubNodeIndex.forEach((ni, hi) => hubsByCluster[HUBS[hi].c].push(ni));
+
+  const byCluster = [[], []];
+  nodes.forEach((n, i) => byCluster[n.c].push(i));
+
+  /* ---------------- edge set ---------------- */
+
+  // Half of the intra-cluster traffic goes to a near neighbour: that short-range
+  // bias is what gives each blob its fibrous grain instead of uniform haze.
+  const nearIn = (pool, ai) => {
+    const A = nodes[ai];
+    let best = -1, bd = Infinity;
+    for (let k = 0; k < 8; k++) {
+      const cand = pick(build, pool);
+      if (cand === ai) continue;
+      const B = nodes[cand];
+      const d = (A.x - B.x) ** 2 + (A.y - B.y) ** 2;
+      if (d < bd) { bd = d; best = cand; }
+    }
+    return best === -1 ? pick(build, pool) : best;
+  };
+
+  const EDGE_COUNT = 3200;
+  const edges = new Array(EDGE_COUNT);
+  for (let i = 0; i < EDGE_COUNT; i++) {
+    const r = build();
+    let a, b, cross = false;
+    if (r < 0.43) {
+      a = pick(build, byCluster[0]);
+      b = build() < 0.5 ? nearIn(byCluster[0], a) : pick(build, byCluster[0]);
+    } else if (r < 0.89) {
+      a = pick(build, byCluster[1]);
+      b = build() < 0.5 ? nearIn(byCluster[1], a) : pick(build, byCluster[1]);
+    } else {
+      cross = true;
+      a = pick(build, byCluster[0]); b = pick(build, byCluster[1]);
+      if (build() < 0.5) { const t = a; a = b; b = t; }
+    }
+    if (a === b) b = (b + 7) % nodes.length;
+
+    // A quarter of all traffic terminates on a named job. Keep most of those
+    // fans inside their own cluster — otherwise every blob drains into the
+    // hubs of the other one and the two masses smear into a single column.
+    if (build() < 0.26) {
+      const pool = build() < 0.85 ? hubsByCluster[nodes[a].c] : hubNodeIndex;
+      b = pick(build, pool);
+    }
+    cross = nodes[a].c !== nodes[b].c;
+
+    const cr = build();
+    const ci = cross
+      ? (cr < 0.84 ? 0 : cr < 0.95 ? 1 : 2)
+      : (cr < 0.44 ? 0 : cr < 0.82 ? 1 : 2);
+    const lr = build();
+    const li = cross ? (lr < 0.72 ? 0 : 1) : (lr < 0.34 ? 0 : lr < 0.78 ? 1 : 2);
+
+    edges[i] = {
+      a, b, cross,
+      bk: ci * 3 + li,
+      bow: (build() * 2 - 1) * (cross ? 0.62 : 0.34), // perpendicular sweep
+      breathe: 0.10 + build() * 0.30,
+      ph: build() * 6.283,
+    };
+  }
+
+  // Strokes are batched by colour+weight bucket: one path and one stroke() call
+  // per bucket per step, instead of one per edge. That is what makes a few
+  // hundred fresh strands per frame affordable.
+  // Bone saturates fastest under "lighter", so pink and cyan carry more alpha to
+  // hold their own against the white cores.
+  const BUCKETS = [];
+  [
+    [C.bone, [0.032, 0.056, 0.090]],
+    [C.pink, [0.044, 0.078, 0.124]],
+    [C.cyan, [0.040, 0.070, 0.108]],
+  ].forEach(([col, alphas]) => {
+    alphas.forEach((a, li) => BUCKETS.push({ col, a, w: 0.45 + li * 0.26 }));
+  });
+
+  const qx = (x0, cx, x1, t) => { const u = 1 - t; return u * u * x0 + 2 * u * t * cx + t * t * x1; };
+
+  /* ---------------- canvas plumbing ---------------- */
+
+  const stage = document.getElementById("stage");
+  const view = document.getElementById("graph");
+  const ctx = view.getContext("2d");
+  let acc = document.createElement("canvas");
+  let actx = acc.getContext("2d");
+  let W = 0, H = 0, DPR = 1;
+
+  // The graph lives in a near-square box centred in the stage, so a wide
+  // viewport gives it margins instead of stretching the swarm sideways.
+  let GX = 0, GY = 0, GW = 0, GH = 0;
+  const MX = (nx) => GX + nx * GW;
+  const MY = (ny) => GY + ny * GH;
+
+  function resize() {
+    const r = stage.getBoundingClientRect();
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.max(1, Math.round(r.width * DPR));
+    H = Math.max(1, Math.round(r.height * DPR));
+    GH = H;
+    GW = Math.min(W, H * 1.35);
+    GX = (W - GW) / 2;
+    GY = 0;
+    view.width = W; view.height = H;
+    acc.width = W; acc.height = H;
+    actx = acc.getContext("2d");
+    clearAcc();
+    ctx.textBaseline = "alphabetic";
+  }
+
+  // step() leaves the buffer in "lighter" mode; painting the ground over it in
+  // that mode adds instead of erases, so always restore source-over first.
+  function clearAcc() {
+    if (!actx) return;
+    actx.globalCompositeOperation = "source-over";
+    actx.fillStyle = C.ground;
+    actx.fillRect(0, 0, W, H);
+  }
+
+  resize();
+
+  const S = Math.min(1.6, Math.max(0.7, DPR)); // stroke scale
+
+  /* ---------------- simulation state ---------------- */
+
+  const SURFACES = ["login", "cookie", "files", "cal", "mail", "pay"];
+  const LEDGER = [
+    { app: "google", grants: 6, bar: "bar-pink" },
+    { app: "stripe", grants: 3, bar: "" },
+    { app: "notion", grants: 2, bar: "" },
+    { app: "calendar", grants: 2, bar: "" },
+    { app: "x / api", grants: 1, bar: "bar-cyan" },
+  ];
+  const SHARED = [
+    ["computer", 1], ["browser profile", 1], ["cookie jar", 1], ["credential set", 1],
+    ["ip address", 1], ["download folder", 1], ["approval step", 0], ["per-bot sandbox", 0],
+  ];
+
+  const HEAT_ROWS = ["ext", "ldr", "inv", "rep", "out", "cal", "pay"];
+  const HEAT_LOAD = [0.62, 0.80, 2.60, 0.70, 1.05, 0.60, 0.45];
+  const HEAT_COLS = 42;
+
+  let tick, cursor, actions, spend, aps, apsPeak, logClock, logLines, sparks, heat, exposure, packets;
+
+  function reset() {
+    rnd = mulberry32(SEED);
+    tick = 0;
+    cursor = 0;
+    actions = 0;
+    spend = 0;
+    aps = 0;
+    apsPeak = 0;
+    logClock = 9 * 3600 + 45 * 60;
+    logLines = [];
+    sparks = new Array(96).fill(0);
+    heat = HEAT_ROWS.map(() => new Float32Array(HEAT_COLS));
+    exposure = SURFACES.map(() => 0.25);
+    HUBS.forEach((h) => { h.actions = 0; h.pulse = 0; });
+    packets = [];
+    for (let i = 0; i < 210; i++) {
+      packets.push({
+        e: (rnd() * EDGE_COUNT) | 0,
+        t: rnd(),
+        v: 0.010 + rnd() * 0.030,
+        col: rnd() < 0.55 ? C.bone : rnd() < 0.78 ? C.pink : C.cyan,
+      });
+    }
+    clearAcc();
+    renderStatic();
+  }
+
+  /* ---------------- log ---------------- */
+
+  const LOG_TEMPLATES = [
+    ["sync", "one browser profile", "n"],
+    ["cookie", "session reused ×{r}", "n"],
+    ["check", "audit trail — pending", "warn"],
+    ["note", "bots are not a boundary", "n"],
+    ["spawn", "{job} armed", "n"],
+    ["index", "{n} artifacts read", "n"],
+    ["grant", "{app} — full access", "grant"],
+    ["grant", "calendar — write scope", "grant"],
+    ["warn", "{job} wrote {r} threads", "warn"],
+    ["reach", "{job} reached {app}", "n"],
+    ["trace", "same login as {job}", "n"],
+    ["alert", "blast radius {r} bots", "alert"],
+    ["fold", "report signed by {job}", "n"],
+    ["reach", "downloads shared", "n"],
+    ["audit", "no per-bot sandbox", "warn"],
+    ["spend", "${n}.00 — no cap", "warn"],
+  ];
+
+  function newLogLine() {
+    const [lv, tpl, cls] = pick(rnd, LOG_TEMPLATES);
+    const msg = tpl
+      .replace("{job}", pick(rnd, HUBS).name)
+      .replace("{app}", pick(rnd, LEDGER).app)
+      .replace("{r}", String(2 + ((rnd() * 6) | 0)))
+      .replace("{n}", fmt(40 + rnd() * 2400));
+    logClock += 1 + ((rnd() * 3) | 0);
+    const s = logClock % 60, m = ((logClock / 60) | 0) % 60, h = ((logClock / 3600) | 0) % 24;
+    logLines.push({ ts: `${pad(h, 2)}:${pad(m, 2)}:${pad(s, 2)}`, lv, msg, cls });
+    if (logLines.length > 9) logLines.shift();
+  }
+
+  /* ---------------- one simulation step ---------------- */
+
+  const EDGES_PER_STEP = 330;
+
+  function step() {
+    tick++;
+
+    // Fade the accumulation buffer, then lay down fresh traffic. The fade is
+    // slow relative to the spawn rate, so ~30 steps of strands are visible at
+    // once — that is where the density of the web comes from, not the per-frame
+    // stroke count.
+    actx.globalCompositeOperation = "source-over";
+    actx.fillStyle = "rgba(7,8,10,0.022)";
+    actx.fillRect(0, 0, W, H);
+    actx.globalCompositeOperation = "lighter";
+
+    cursor = (cursor + 1 + ((rnd() * 9) | 0)) % EDGE_COUNT;
+    for (let bk = 0; bk < BUCKETS.length; bk++) {
+      const bu = BUCKETS[bk];
+      actx.strokeStyle = rgba(bu.col, bu.a);
+      actx.lineWidth = bu.w * S;
+      actx.beginPath();
+      for (let i = 0; i < EDGES_PER_STEP; i++) {
+        const e = edges[(cursor + i * 37) % EDGE_COUNT];
+        if (e.bk !== bk) continue;
+        const A = nodes[e.a], B = nodes[e.b];
+        const x0 = MX(A.x), y0 = MY(A.y), x1 = MX(B.x), y1 = MY(B.y);
+        const dx = x1 - x0, dy = y1 - y0;
+        const bow = e.bow * (1 + Math.sin(tick * 0.021 + e.ph) * e.breathe);
+        actx.moveTo(x0, y0);
+        actx.quadraticCurveTo((x0 + x1) / 2 - dy * bow * 0.5, (y0 + y1) / 2 + dx * bow * 0.5, x1, y1);
+      }
+      actx.stroke();
+    }
+
+    // packets advance; each arrival is a completed action
+    for (const p of packets) {
+      p.t += p.v;
+      if (p.t >= 1) {
+        p.t -= 1;
+        p.e = (p.e + 1 + ((rnd() * 190) | 0)) % EDGE_COUNT;
+        p.v = 0.010 + rnd() * 0.030;
+        actions += 1;
+        const hb = nodes[edges[p.e].b].hub;
+        if (hb >= 0) { HUBS[hb].actions += 1; HUBS[hb].pulse = 1; }
+      }
+    }
+
+    // counters
+    HUBS.forEach((h) => {
+      if (h.state === "running") h.actions += h.rate;
+      h.pulse *= 0.86;
+    });
+    actions += 9 + rnd() * 4;
+    spend += 0.031 + rnd() * 0.020;
+
+    const inst = 560 + Math.sin(tick * 0.043) * 90 + Math.sin(tick * 0.011) * 60 + rnd() * 70;
+    aps = aps * 0.86 + inst * 0.14;
+    if (aps > apsPeak) apsPeak = aps;
+    sparks.push(aps);
+    sparks.shift();
+
+    // heat: every channel decays at the same rate, so a row only reads hot when
+    // that surface is genuinely being hammered
+    for (let r = 0; r < heat.length; r++) {
+      const row = heat[r];
+      for (let c = 0; c < HEAT_COLS; c++) row[c] *= 0.90;
+      const hits = 2 + ((rnd() * 4) | 0);
+      for (let k = 0; k < hits; k++) {
+        const c = (rnd() * HEAT_COLS) | 0;
+        row[c] = clamp(row[c] + (0.30 + rnd() * 0.50) * HEAT_LOAD[r], 0, 1.30);
+      }
+    }
+
+    // exposure per surface — login and cookie jar never come back down
+    for (let i = 0; i < exposure.length; i++) {
+      const floor = i < 2 ? 0.86 : 0.46;
+      const target = floor + Math.abs(Math.sin(tick * 0.017 + i * 1.1)) * (1 - floor) * 0.9;
+      exposure[i] += (target - exposure[i]) * 0.06;
+    }
+
+    if (tick % 5 === 0) newLogLine();
+  }
+
+  /* ---------------- stage rendering ---------------- */
+
+  // Labels sit on top of the densest part of the web, so each one gets a dark
+  // halo stroke rather than a plate — keeps the console look, stays readable.
+  function label(text, x, y, fill) {
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 3 * S;
+    ctx.strokeStyle = "rgba(7,8,10,0.88)";
+    ctx.strokeText(text, x, y);
+    ctx.fillStyle = fill;
+    ctx.fillText(text, x, y);
+  }
+
+  function drawStage() {
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = C.ground;
+    ctx.fillRect(0, 0, W, H);
+    ctx.drawImage(acc, 0, 0);
+
+    // containment ellipse — the boundary everyone assumes exists
+    const cx = MX(0.45), cy = MY(0.49), rx = GW * 0.45, ry = GH * 0.455;
+    ctx.save();
+    ctx.setLineDash([3 * S, 7 * S]);
+    ctx.lineDashOffset = -tick * 0.9;
+    ctx.strokeStyle = "rgba(92,103,115,0.34)";
+    ctx.lineWidth = 1 * S;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, 0, 0, 6.2832);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(92,103,115,0.18)";
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx * 0.86, ry * 0.9, 0, -2.5, 0.7);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx * 1.02, ry * 0.62, 0, 2.2, 4.1);
+    ctx.stroke();
+    ctx.restore();
+
+    // nodes
+    for (const n of nodes) {
+      if (n.hub >= 0) continue;
+      const x = MX(n.x), y = MY(n.y);
+      const tw = 0.45 + 0.55 * Math.abs(Math.sin(tick * 0.05 + n.ph));
+      ctx.fillStyle = n.c === 0 ? rgba(C.bone, 0.30 + tw * 0.45) : rgba(C.pink, 0.24 + tw * 0.40);
+      ctx.fillRect(x, y, 1.3 * S, 1.3 * S);
+    }
+
+    // packets — two passes so they read as lit, not just bright
+    ctx.globalCompositeOperation = "lighter";
+    for (const p of packets) {
+      const e = edges[p.e], A = nodes[e.a], B = nodes[e.b];
+      const x0 = MX(A.x), y0 = MY(A.y), x1 = MX(B.x), y1 = MY(B.y);
+      const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+      const dx = x1 - x0, dy = y1 - y0;
+      const bow = e.bow * (1 + Math.sin(tick * 0.021 + e.ph) * e.breathe);
+      const px = qx(x0, mx - dy * bow * 0.5, x1, p.t);
+      const py = qx(y0, my + dx * bow * 0.5, y1, p.t);
+      ctx.fillStyle = rgba(p.col, 0.13);
+      ctx.beginPath(); ctx.arc(px, py, 2.6 * S, 0, 6.2832); ctx.fill();
+      ctx.fillStyle = rgba(p.col, 0.92);
+      ctx.beginPath(); ctx.arc(px, py, 0.9 * S, 0, 6.2832); ctx.fill();
+    }
+    ctx.globalCompositeOperation = "source-over";
+
+    // dim tags
+    ctx.font = `${9 * S}px ui-monospace, Menlo, Consolas, monospace`;
+    for (const g of TAGS) label(g.t, MX(g.x), MY(g.y), "rgba(138,106,28,0.82)");
+
+    // hubs
+    for (const h of HUBS) {
+      const x = MX(h.x), y = MY(h.y);
+      const held = h.state === "held";
+      const col = held ? C.pink : C.bone;
+      const r = (2.2 + h.pulse * 2.6) * S;
+
+      ctx.strokeStyle = rgba(col, 0.30 + h.pulse * 0.5);
+      ctx.lineWidth = 1 * S;
+      ctx.beginPath(); ctx.arc(x, y, r + 3.5 * S, 0, 6.2832); ctx.stroke();
+      ctx.fillStyle = rgba(col, 0.95);
+      ctx.beginPath(); ctx.arc(x, y, r * 0.6, 0, 6.2832); ctx.fill();
+
+      ctx.font = `700 ${10.5 * S}px ui-monospace, Menlo, Consolas, monospace`;
+      label(h.name, x + 7 * S, y - 2 * S, held ? "#ff4d7d" : C.amber);
+      ctx.font = `${9 * S}px ui-monospace, Menlo, Consolas, monospace`;
+      label(`${fmt(h.actions)} actions · ${h.state}`, x + 7 * S, y + 8 * S, "rgba(160,172,184,0.95)");
+      if (h.tag) label(h.tag, x + 7 * S, y + 18 * S, "rgba(255,77,125,0.85)");
+    }
+  }
+
+  /* ---------------- panel rendering ---------------- */
+
+  const $ = (id) => document.getElementById(id);
+  const elLog = $("log"), elLedger = $("ledger"), elHeat = $("heat"), elBots = $("bots"), elShared = $("shared");
+  const hex = $("hex"), hctx = hex.getContext("2d");
+  const spark = $("spark"), sctx = spark.getContext("2d");
+
+  function sizePanelCanvas(cv, cssH) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w = cv.clientWidth || 120;
+    cv.width = Math.round(w * dpr);
+    cv.height = Math.round(cssH * dpr);
+    cv.style.height = cssH + "px";
+    return dpr;
+  }
+  let hexDpr = sizePanelCanvas(hex, 100);
+  let sparkDpr = sizePanelCanvas(spark, 44);
+  window.addEventListener("resize", () => {
+    hexDpr = sizePanelCanvas(hex, 100);
+    sparkDpr = sizePanelCanvas(spark, 44);
+  });
+
+  function renderStatic() {
+    elShared.innerHTML = SHARED.map(([k, v]) => `
+      <div class="row${v === 0 ? " zero" : ""}">
+        <span>${k}</span>
+        <span class="bar${v === 0 ? " bar-pink" : ""}"><i style="width:${v ? 100 : 6}%"></i></span>
+        <em>${v}</em>
+      </div>`).join("");
+  }
+
+  function renderPanels() {
+    $("f-actions").textContent = fmt(actions);
+    $("f-t").textContent = (tick / 60).toFixed(2);
+    $("f-frame").textContent = pad(tick, 4);
+
+    elLog.innerHTML = logLines.map((l) =>
+      `<div class="log-line lv-${l.cls}"><span>${l.ts.slice(0, 5)}</span><b>${l.lv}</b><i>${l.msg}</i></div>`
+    ).join("");
+
+    elLedger.innerHTML = LEDGER.map((d, i) => {
+      const w = clamp(d.grants / 6 * 100 * (0.86 + Math.abs(Math.sin(tick * 0.03 + i)) * 0.14), 6, 100);
+      return `<div class="row">
+        <span>${d.app}</span>
+        <span class="bar ${d.bar}"><i style="width:${w.toFixed(1)}%"></i></span>
+        <em>${d.grants}</em>
+      </div>`;
+    }).join("") + `<div class="note" style="margin-top:3px">1 app opens · 6 bots enter</div>`;
+
+    elHeat.innerHTML = heat.map((row, r) => {
+      let s = "";
+      let sum = 0;
+      for (let c = 0; c < HEAT_COLS; c++) {
+        const v = row[c];
+        sum += v;
+        s += v > 1.0 ? "█" : v > 0.66 ? "▓" : v > 0.34 ? "▒" : v > 0.12 ? "░" : " ";
+      }
+      const mean = sum / HEAT_COLS;
+      const cls = mean > 0.55 ? "hot" : mean > 0.14 ? "warm" : "";
+      return `<div class="${cls}">${HEAT_ROWS[r]} ${s}</div>`;
+    }).join("");
+
+    $("aps").textContent = fmt(aps);
+    $("peak").textContent = fmt(apsPeak);
+    $("spend").textContent = "$" + spend.toFixed(2);
+    $("spend-bar").style.width = clamp(spend / 400 * 100, 0, 100).toFixed(1) + "%";
+    $("spend-mark").style.left = "100%";
+
+    elBots.innerHTML = HUBS.map((h, i) => {
+      const load = clamp(0.35 + Math.abs(Math.sin(tick * 0.04 + i * 0.9)) * 0.65, 0, 1);
+      const held = h.state === "held";
+      return `<div class="row">
+        <span>${h.name}</span>
+        <span class="bar ${held ? "bar-pink" : ""}"><i style="width:${(load * 100).toFixed(0)}%"></i></span>
+        <em>${held ? "H" : "R"}</em>
+      </div>`;
+    }).join("");
+
+    drawHex();
+    drawSpark();
+  }
+
+  function drawHex() {
+    const w = hex.width, h = hex.height, cx = w / 2, cy = h / 2;
+    const R = Math.min(w, h) * 0.34;
+    hctx.clearRect(0, 0, w, h);
+    hctx.lineWidth = 1 * hexDpr;
+
+    // grid rings
+    for (let ring = 1; ring <= 3; ring++) {
+      hctx.strokeStyle = `rgba(92,103,115,${0.10 + ring * 0.05})`;
+      hctx.beginPath();
+      for (let i = 0; i <= 6; i++) {
+        const a = -Math.PI / 2 + (i / 6) * 6.2832;
+        const x = cx + Math.cos(a) * R * (ring / 3), y = cy + Math.sin(a) * R * (ring / 3);
+        i ? hctx.lineTo(x, y) : hctx.moveTo(x, y);
+      }
+      hctx.stroke();
+    }
+
+    // exposure polygon
+    const pulse = 0.94 + Math.abs(Math.sin(tick * 0.06)) * 0.10;
+    hctx.beginPath();
+    for (let i = 0; i <= 6; i++) {
+      const k = i % 6;
+      const a = -Math.PI / 2 + (k / 6) * 6.2832;
+      const rr = R * clamp(exposure[k] * pulse, 0.08, 1.02);
+      const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
+      i ? hctx.lineTo(x, y) : hctx.moveTo(x, y);
+    }
+    hctx.closePath();
+    hctx.fillStyle = "rgba(255,77,125,0.20)";
+    hctx.fill();
+    hctx.strokeStyle = "rgba(255,77,125,0.85)";
+    hctx.stroke();
+
+    // axis labels
+    hctx.font = `${8 * hexDpr}px ui-monospace, Menlo, Consolas, monospace`;
+    hctx.fillStyle = "rgba(138,106,28,0.85)";
+    for (let i = 0; i < 6; i++) {
+      const a = -Math.PI / 2 + (i / 6) * 6.2832;
+      const x = cx + Math.cos(a) * (R + 12 * hexDpr), y = cy + Math.sin(a) * (R + 12 * hexDpr);
+      hctx.textAlign = Math.cos(a) > 0.3 ? "left" : Math.cos(a) < -0.3 ? "right" : "center";
+      hctx.fillText(SURFACES[i].split(" ")[0], x, y + 3 * hexDpr);
+    }
+    hctx.textAlign = "left";
+  }
+
+  function drawSpark() {
+    const w = spark.width, h = spark.height;
+    sctx.clearRect(0, 0, w, h);
+    let max = 1;
+    for (const v of sparks) if (v > max) max = v;
+    const yOf = (v) => h - 3 * sparkDpr - (v / (max * 1.12)) * (h - 8 * sparkDpr);
+    const xOf = (i) => (i / (sparks.length - 1)) * w;
+
+    sctx.strokeStyle = "rgba(27,32,40,0.9)";
+    sctx.lineWidth = 1 * sparkDpr;
+    for (let g = 1; g <= 2; g++) {
+      const y = (h / 3) * g;
+      sctx.beginPath(); sctx.moveTo(0, y); sctx.lineTo(w, y); sctx.stroke();
+    }
+
+    sctx.beginPath();
+    sctx.moveTo(0, h);
+    sparks.forEach((v, i) => sctx.lineTo(xOf(i), yOf(v)));
+    sctx.lineTo(w, h);
+    sctx.closePath();
+    sctx.fillStyle = "rgba(49,226,207,0.12)";
+    sctx.fill();
+
+    sctx.beginPath();
+    sparks.forEach((v, i) => (i ? sctx.lineTo(xOf(i), yOf(v)) : sctx.moveTo(xOf(i), yOf(v))));
+    sctx.strokeStyle = "rgba(49,226,207,0.9)";
+    sctx.lineWidth = 1.2 * sparkDpr;
+    sctx.stroke();
+
+    const last = sparks[sparks.length - 1];
+    sctx.fillStyle = "#31e2cf";
+    sctx.beginPath(); sctx.arc(w - 1.5 * sparkDpr, yOf(last), 1.8 * sparkDpr, 0, 6.2832); sctx.fill();
+  }
+
+  /* ---------------- loop + controls ---------------- */
+
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let speed = 4;
+  let playing = !reduce.matches;
+  let raf = 0;
+
+  function frame() {
+    for (let i = 0; i < speed; i++) step();
+    drawStage();
+    renderPanels();
+    if (playing) raf = requestAnimationFrame(frame);
+  }
+
+  function setPlaying(on) {
+    playing = on;
+    $("b-play").textContent = on ? "Pause" : "Play";
+    cancelAnimationFrame(raf);
+    if (on) raf = requestAnimationFrame(frame);
+  }
+
+  function setSpeed(s) {
+    speed = s;
+    document.querySelectorAll("[data-speed]").forEach((b) => {
+      b.setAttribute("aria-pressed", String(Number(b.dataset.speed) === s));
+    });
+  }
+
+  document.querySelectorAll("[data-speed]").forEach((b) => {
+    b.addEventListener("click", () => setSpeed(Number(b.dataset.speed)));
+  });
+  $("b-play").addEventListener("click", () => setPlaying(!playing));
+  $("b-reset").addEventListener("click", () => {
+    reset();
+    drawStage();
+    renderPanels();
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (e.target instanceof HTMLButtonElement && e.key === " ") return;
+    if (e.key === " ") { e.preventDefault(); setPlaying(!playing); }
+    else if (e.key === "1") setSpeed(1);
+    else if (e.key === "2") setSpeed(2);
+    else if (e.key === "4") setSpeed(4);
+    else if (e.key === "8") setSpeed(8);
+    else if (e.key === "3") setSpeed(4);
+    else if (e.key.toLowerCase() === "r") { reset(); drawStage(); renderPanels(); }
+  });
+
+  // Run the simulation forward without animating, then draw once. Resizing
+  // reallocates the accumulation buffer, so a console that is not playing has to
+  // rebuild its web this way or the stage comes back empty.
+  function paintStill(n) {
+    for (let i = 0; i < n; i++) step();
+    drawStage();
+    renderPanels();
+  }
+
+  reset();
+  setSpeed(speed);
+
+  if (reduce.matches) {
+    // a viewer who asked for less motion still gets the composed picture
+    $("b-play").textContent = "Play";
+    paintStill(260);
+  } else {
+    drawStage();
+    renderPanels();
+  }
+
+  new ResizeObserver(() => {
+    resize();
+    if (!playing) paintStill(70);
+  }).observe(stage);
+
+  if (playing) raf = requestAnimationFrame(frame);
+
+  // exposed for a fixed-fps renderer: seek deterministically to any frame
+  window.__blastRadius = {
+    seek(n) { reset(); for (let i = 0; i < n; i++) step(); drawStage(); renderPanels(); },
+    step, drawStage, renderPanels,
+    get tick() { return tick; },
+  };
+})();
+</script>
