@@ -54,7 +54,7 @@
    * ------------------------------------------------------------------ */
   var S = {
     subject: null, side: "R", week: 0,
-    layers: {}, histMetric: "asi", viewer: null, sectionPct: 44,
+    layers: {}, histMetric: "asi", viewer: null, sectionPct: 44, mode: "3d",
     lastHeavyAt: 0, contours: null, insole: null, scrubbing: false, raf: 0,
     bootMs: 0, lastRebuildMs: 0
   };
@@ -474,7 +474,9 @@
       + ' ／ ' + weekText(S.week) + '<br>'
       + '<span class="k">足長</span>' + st.metrics.foot_length.toFixed(1) + ' mm<br>'
       + '<span class="k">土踏まず</span>' + st.metrics.asi.toFixed(1) + ' %<br>'
-      + '<span class="k">操作</span>ドラッグで回転／ホイールで拡大';
+      + '<span class="k">操作</span>'
+      + (S.mode === "2d" ? "ドラッグで移動／ホイールで拡大"
+                         : "ドラッグで回転／ホイールで拡大／右ドラッグで移動");
   }
 
   function onHover(e) {
@@ -562,6 +564,23 @@
       if (b) S.viewer.setView(b.getAttribute("data-view"), S.side);
     });
     $("resetBtn").addEventListener("click", function () { S.viewer.setView("R", S.side); });
+
+    /* 表示モード 3D / 2D */
+    var modeSeg = $("modeSeg");
+    modeSeg.addEventListener("click", function (e) {
+      var b = e.target.closest ? e.target.closest("button") : null;
+      if (!b) return;
+      setMode(b.getAttribute("data-mode"));
+    });
+
+    /* 自動回転。店頭では「触っていいもの」だと分かりにくいので、
+       回っていること自体を見せられるようにする。 */
+    var spinBtn = $("spinBtn");
+    spinBtn.addEventListener("click", function () {
+      var on = spinBtn.getAttribute("aria-pressed") !== "true";
+      spinBtn.setAttribute("aria-pressed", on ? "true" : "false");
+      S.viewer.setAutoRotate(on);
+    });
 
     /* 画像の書き出し（SPEC §10-2）。接客時の印刷・お渡し用。
        preserveDrawingBuffer を常時 true にすると描画が重くなるので、
@@ -696,9 +715,29 @@
         rebuild();
       },
       setView: function (v) { S.viewer.setView(v, S.side); },
+      setMode: setMode,
+      setAutoRotate: function (on) {
+        $("spinBtn").setAttribute("aria-pressed", on ? "true" : "false");
+        S.viewer.setAutoRotate(on);
+      },
       state: function () { return S; },
       FT: FT
     };
+  }
+
+  function setMode(m) {
+    S.mode = (m === "2d") ? "2d" : "3d";
+    var bs = $("modeSeg").getElementsByTagName("button"), i;
+    for (i = 0; i < bs.length; i++) {
+      bs[i].setAttribute("aria-pressed",
+        bs[i].getAttribute("data-mode") === S.mode ? "true" : "false");
+    }
+    // 2D は視点が固定なので、定型ビューと自動回転は意味を持たない
+    $("viewbtns").className = "seg" + (S.mode === "2d" ? " off" : "");
+    $("spinBtn").style.display = (S.mode === "2d") ? "none" : "";
+    $("spinBtn").setAttribute("aria-pressed", "false");
+    S.viewer.setMode(S.mode);
+    hudDefault();
   }
 
   function toggleLayer(id) {

@@ -105,7 +105,9 @@
     },
 
     /* カメラ（SPEC §7） */
-    CAM: { minDist: 60, maxDist: 600, initDist: 430 },
+    CAM: { minDist: 60, maxDist: 600, initDist: 430,
+           /* 2D（正射影）の表示半高 mm。足長 300mm が収まる初期値にする */
+           ortho2d: 168, ortho2dMin: 45, ortho2dMax: 260 },
 
     /* 配色（SPEC §9-2 / §8） */
     COL: {
@@ -672,6 +674,31 @@
     return out;
   }
   FT.outline = outline;
+
+  /* 閉じた折れ線の平滑化（移動平均）。
+     マスク境界から取った輪郭は列ピッチ 1.6mm の階段になる。
+     3D では陰影に紛れるが、2D の図面では線そのものがギザギザに見える。 */
+  function smoothLoop(pts, iter) {
+    var n = pts.length;
+    if (n < 5) return pts;
+    var closed = Math.abs(pts[0][0] - pts[n - 1][0]) < 1e-6
+              && Math.abs(pts[0][1] - pts[n - 1][1]) < 1e-6;
+    var m = closed ? n - 1 : n;
+    var a = new Array(m), i, t;
+    for (i = 0; i < m; i++) a[i] = [pts[i][0], pts[i][1]];
+    for (t = 0; t < (iter || 3); t++) {
+      var b = new Array(m);
+      for (i = 0; i < m; i++) {
+        var p = a[(i - 1 + m) % m], c = a[i], q = a[(i + 1) % m];
+        if (!closed && (i === 0 || i === m - 1)) { b[i] = [c[0], c[1]]; continue; }
+        b[i] = [(p[0] + 2 * c[0] + q[0]) / 4, (p[1] + 2 * c[1] + q[1]) / 4];
+      }
+      a = b;
+    }
+    if (closed) a.push([a[0][0], a[0][1]]);
+    return a;
+  }
+  FT.smoothLoop = smoothLoop;
 
   /* ------------------------------------------------------------------ *
    * 加齢モデル（SPEC §4-3）

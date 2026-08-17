@@ -67,6 +67,22 @@
 
   /* 等高線の帯の半幅（mm）。主曲線を太くする（SPEC §6 L1） */
   var CONTOUR_W = { major: 0.45, minor: 0.22 };
+  var OUTLINE_W = 0.62;   // 2D の外形線の半幅（mm）
+
+  /* インソールの縁（t=±1 の列）を1本の閉じた折れ線にする */
+  function insoleRim(ins) {
+    var pts = [], j, k;
+    for (j = 0; j < ins.nS; j++) {
+      k = j * ins.nW;
+      pts.push([ins.x[k], ins.zRow[j]]);
+    }
+    for (j = ins.nS - 1; j >= 0; j--) {
+      k = j * ins.nW + ins.nW - 1;
+      pts.push([ins.x[k], ins.zRow[j]]);
+    }
+    pts.push(pts[0].slice());
+    return [{ level: 0, pts: pts }];
+  }
 
   /* 甲側の色。医療的な意味を持たせないよう、無彩色に近い紙色にする。
      白に寄せすぎると陰影が飛んで立体に見えないので、中明度に落とす。 */
@@ -379,14 +395,18 @@
    * 自前 OrbitControls（r128 に同梱されないため / SPEC §7）
    * 球面座標で持ち、phi をクランプしてジンバルロックを避ける。
    * ------------------------------------------------------------------ */
-  function Orbit(camera, dom, target) {
-    this.cam = camera; this.dom = dom;
+  function Orbit(camera, cam2d, dom, target) {
+    this.cam = camera; this.cam2 = cam2d; this.dom = dom;
     this.target = target.clone();
     this.theta = -0.62; this.phi = 0.78; this.radius = CONST.CAM.initDist;
+    this.orthoH = CONST.CAM.ortho2d;   // 2D の表示半高（mm）
+    this.aspect = 1;
+    this.view = "3d";
     this.enabled = true;
     var self = this, mode = 0, px = 0, py = 0;
 
     function apply() {
+      if (self.view === "2d") { apply2d(); return; }
       self.phi = FT.clamp(self.phi, 0.02, Math.PI - 0.02);
       self.radius = FT.clamp(self.radius, CONST.CAM.minDist, CONST.CAM.maxDist);
       var sp = Math.sin(self.phi), cp = Math.cos(self.phi);
@@ -398,9 +418,31 @@
       self.cam.up.set(0, 1, 0);
       self.cam.lookAt(self.target);
     }
+
+    /* 2D は正射影の真下からの平面図。透視だと手前が大きく写り、
+       画面上で長さを比べられなくなる（＝図面として使えない）。
+       足底面を見るので視点は床の下、つま先が画面の上を向く。 */
+    function apply2d() {
+      self.orthoH = FT.clamp(self.orthoH, CONST.CAM.ortho2dMin, CONST.CAM.ortho2dMax);
+      var h = self.orthoH, w = h * self.aspect;
+      var c = self.cam2;
+      c.left = -w; c.right = w; c.top = h; c.bottom = -h;
+      c.near = 1; c.far = 3000;
+      c.position.set(self.target.x, -900, self.target.z);
+      c.up.set(0, 0, 1);
+      c.lookAt(self.target.x, 0, self.target.z);
+      c.updateProjectionMatrix();
+    }
     this.apply = apply;
 
     function pan(dx, dy) {
+      if (self.view === "2d") {
+        var k = self.orthoH / 380;
+        self.target.x -= dx * k;
+        self.target.z -= dy * k;
+        apply();
+        return;
+      }
       var d = self.radius / 420;
       var right = new THREE.Vector3().setFromMatrixColumn(self.cam.matrix, 0);
       var up = new THREE.Vector3().setFromMatrixColumn(self.cam.matrix, 1);
@@ -411,7 +453,8 @@
 
     dom.addEventListener("mousedown", function (e) {
       if (!self.enabled) return;
-      mode = (e.button === 2 || e.shiftKey) ? 2 : 1;
+      // 2D は回転しない。左ドラッグもパンに割り当てる（図面として動かす）
+      mode = (e.button === 2 || e.shiftKey || self.view === "2d") ? 2 : 1;
       px = e.clientX; py = e.clientY;
       e.preventDefault();
     });
@@ -421,14 +464,17 @@
       px = e.clientX; py = e.clientY;
       if (mode === 1) { self.theta -= dx * 0.0075; self.phi -= dy * 0.0075; apply(); }
       else pan(dx, dy);
+      if (self.onChange) self.onChange();
     });
     window.addEventListener("mouseup", function () { mode = 0; });
     dom.addEventListener("contextmenu", function (e) { e.preventDefault(); });
     dom.addEventListener("wheel", function (e) {
       if (!self.enabled) return;
       e.preventDefault();
-      self.radius *= Math.pow(1.0015, e.deltaY);
+      if (self.view === "2d") self.orthoH *= Math.pow(1.0015, e.deltaY);
+      else self.radius *= Math.pow(1.0015, e.deltaY);
       apply();
+      if (self.onChange) self.onChange();
     }, { passive: false });
 
     var tPrev = null, tDist = 0;
@@ -447,16 +493,22 @@
       if (e.touches.length === 1) {
         var dx = e.touches[0].clientX - tPrev[0], dy = e.touches[0].clientY - tPrev[1];
         tPrev = [e.touches[0].clientX, e.touches[0].clientY];
-        self.theta -= dx * 0.008; self.phi -= dy * 0.008; apply();
+        // 2D は 1本指もパン（回転しない）
+        if (self.view === "2d") pan(dx, dy);
+        else { self.theta -= dx * 0.008; self.phi -= dy * 0.008; apply(); }
       } else if (e.touches.length === 2) {
         var d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX,
                            e.touches[0].clientY - e.touches[1].clientY);
         var cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
         var cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-        if (tDist > 0) self.radius *= tDist / Math.max(d, 1);
+        if (tDist > 0) {
+          var s = tDist / Math.max(d, 1);
+          if (self.view === "2d") self.orthoH *= s; else self.radius *= s;
+        }
         pan(cx - tPrev[0], cy - tPrev[1]);
         tDist = d; tPrev = [cx, cy];
       }
+      if (self.onChange) self.onChange();
     }, { passive: false });
     dom.addEventListener("touchend", function () { tPrev = null; tDist = 0; }, { passive: true });
 
@@ -475,7 +527,10 @@
     this.scene = scene;
 
     var cam = new THREE.PerspectiveCamera(38, 1, 1, 4000);
+    this.camera3d = cam;
+    this.camera2d = new THREE.OrthographicCamera(-100, 100, 100, -100, 1, 3000);
     this.camera = cam;
+    this.mode = "3d";
 
     // preserveDrawingBuffer は画像の書き出し（SPEC §10-2）に要る。
     // 常時 true は描画コストが上がるが、店頭端末の解像度では実測で誤差の範囲。
@@ -518,6 +573,32 @@
     this.matFoot = matFoot;
     this.footMesh = new SolidMesh(CONST.NZ, CONST.SOLID_NB + CONST.SOLID_NT - 2, matFoot);
     this.footRoot.add(this.footMesh.mesh);
+
+    /* 2D 用の足底面。陰影のない平面図にしたいので Basic（無照明）で描く。
+       立体と同じ材質で真下から見ると、光の当たり方で色が変わってしまい
+       カラーマップの値が読めなくなる。 */
+    this.matSole2D = new THREE.MeshBasicMaterial({
+      vertexColors: true, side: THREE.DoubleSide, depthTest: false });
+    this.soleMesh = new FieldMesh(CONST.NX, CONST.NZ, this.matSole2D);
+    this.soleMesh.mesh.visible = false;
+    this.soleMesh.mesh.renderOrder = 4;
+    this.footRoot.add(this.soleMesh.mesh);
+
+    /* 2D の足の輪郭。陰影がないので、これがないと足底面の縁が
+       背景（ほぼ同じ明度）に溶けて図面にならない。
+       インソールを見るときは「足がどこに載るか」も同じ線が担う。 */
+    this.footOutline2D = new RibbonMesh(3000, CONST.COL.ink, 0.9);
+    this.footOutline2D.mesh.material.depthTest = false;
+    this.footOutline2D.mesh.renderOrder = 7;
+    this.footOutline2D.mesh.visible = false;
+    this.footRoot.add(this.footOutline2D.mesh);
+
+    // 2D のインソール外形。補正量 0 の縁は無彩色に近く、これがないと形が出ない
+    this.insoleOutline2D = new RibbonMesh(2000, "#8C7346", 0.9);
+    this.insoleOutline2D.mesh.material.depthTest = false;
+    this.insoleOutline2D.mesh.renderOrder = 5;
+    this.insoleOutline2D.mesh.visible = false;
+    this.footRoot.add(this.insoleOutline2D.mesh);
 
     // 等高線（L1）。主曲線 72% / 副曲線 36%（SPEC §8）
     this.contourMajor = new RibbonMesh(24000, CONST.COL.ink, 0.72);
@@ -569,12 +650,66 @@
     this.pinGroup = new THREE.Group(); this.footRoot.add(this.pinGroup);
     this.pins = [];
 
-    this.controls = new Orbit(cam, rend.domElement, new THREE.Vector3(0, 12, 125));
+    this.controls = new Orbit(cam, this.camera2d, rend.domElement,
+                              new THREE.Vector3(0, 12, 125));
+    this.controls.onChange = function () { self.render(); };
     this.raycaster = new THREE.Raycaster();
 
     this.resize();
     window.addEventListener("resize", function () { self.resize(); });
   }
+
+  /* ---------------- 表示モード（3D / 2D） ---------------- */
+  Viewer.prototype.setMode = function (m) {
+    this.mode = (m === "2d") ? "2d" : "3d";
+    var is2d = (this.mode === "2d");
+    this.camera = is2d ? this.camera2d : this.camera3d;
+    this.controls.view = this.mode;
+    this.setAutoRotate(false);
+
+    /* 2D は図面なので、奥行きではなく描画順で重なりを決める。
+       深度テストを残すと、土踏まずでインソールが足底面より上に来て
+       互いを虫食い状に隠し合う。 */
+    var flat = [
+      [this.matInsole, 1], [this.insoleSkirt.mesh.material, 2],
+      [this.insoleBottom.mesh.material, 3],
+      [this.contourMajor.mesh.material, 8], [this.contourMinor.mesh.material, 8],
+      [this.driftLines.obj.material, 7]
+    ];
+    for (var i = 0; i < flat.length; i++) {
+      flat[i][0].depthTest = !is2d;
+      flat[i][0].needsUpdate = true;
+    }
+    this.insoleTop.mesh.renderOrder = is2d ? 1 : 0;
+    this.insoleSkirt.mesh.renderOrder = is2d ? 2 : 0;
+    this.insoleBottom.mesh.renderOrder = is2d ? 3 : 0;
+    this.contourGroup.renderOrder = is2d ? 8 : 0;
+    this.contourMajor.mesh.renderOrder = is2d ? 9 : 8;
+    this.contourMinor.mesh.renderOrder = is2d ? 8 : 8;
+
+    this.resize();
+    if (this.state) this.update(this.state);
+    else { this.controls.apply(); this.render(); }
+  };
+
+  /* ---------------- 自動回転 ----------------
+     店頭では「触っていいもの」だと分かりにくいので、
+     回っていること自体を見せられるようにする。 */
+  Viewer.prototype.setAutoRotate = function (on) {
+    var self = this;
+    this.autoRotate = !!on && this.mode === "3d";
+    if (this._spin) { cancelAnimationFrame(this._spin); this._spin = 0; }
+    if (!this.autoRotate) return;
+    var last = 0;
+    (function step(t) {
+      if (!self.autoRotate) return;
+      if (last) self.controls.theta -= (t - last) * 0.00022;   // 約 28 秒で一周
+      last = t;
+      self.controls.apply();
+      self.render();
+      self._spin = requestAnimationFrame(step);
+    })(0);
+  };
 
   Viewer.prototype._makeScaleBar = function () {
     var g = new THREE.Group();
@@ -668,8 +803,10 @@
   Viewer.prototype.resize = function () {
     var w = this.container.clientWidth, h = this.container.clientHeight;
     if (w < 2 || h < 2) return;
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
+    this.camera3d.aspect = w / h;
+    this.camera3d.updateProjectionMatrix();
+    this.controls.aspect = w / h;
+    this.controls.apply();
     // updateStyle を切ると canvas の CSS 幅が古いまま残り、
     // 狭い画面で横スクロールが出る。必ず style も更新させる。
     this.renderer.setSize(w, h);
@@ -706,7 +843,7 @@
     var lift = L.L9_insole ? CONST.INSOLE.BASE_THICK : 0;
     this.footLift = lift;
 
-    this.footMesh.update(st.solid, function (k, vi, out) {
+    var soleColor = function (k, vi, out) {
       if (mode === "L2_height") return RAMP.height(grid.height[k] / HEIGHT_RANGE, out);
       if (mode === "L4_pressure") return RAMP.pressure(pressure[k], out);
       if (mode === "L7_drift") {
@@ -719,9 +856,35 @@
       }
       out[0] = flat[0]; out[1] = flat[1]; out[2] = flat[2];
       return out;
-    }, SKIN_RGB, lift);
+    };
+    this.footMesh.update(st.solid, soleColor, SKIN_RGB, lift);
 
-    this.footMesh.mesh.visible = !!L.L0_surface;
+    var is2d = (this.mode === "2d");
+
+    /* 2D は平面図。立体を真下から見るのではなく足底面だけを描く。
+       インソールを見るときは足底面を伏せ、代わりに足の輪郭線を重ねる
+       （どちらも描くと、土踏まずでインソールが足より上に来て互いを隠す）。 */
+    this.soleMesh.mesh.visible = is2d && !!L.L0_surface && !L.L9_insole;
+    if (this.soleMesh.mesh.visible) {
+      // FieldMesh の色コールバックは (cell, i, j, out)、立体側は (cell, vertex, out)。
+      // 同じ配色を使い回すために引数を合わせる。
+      this.soleMesh.update(grid, function (k, i, j, out) {
+        return soleColor(k, 0, out);
+      }, lift);
+    }
+    this.footOutline2D.mesh.visible = is2d && !!L.L0_surface;
+    if (this.footOutline2D.mesh.visible) {
+      if (!grid.__outline2d) {
+        var loops = FT.outline(grid), wrapped = [];
+        for (var q = 0; q < loops.length; q++) {
+          wrapped.push({ level: 0, pts: FT.smoothLoop(loops[q], 4) });
+        }
+        grid.__outline2d = wrapped;
+      }
+      this.footOutline2D.fill(grid.__outline2d, OUTLINE_W, lift);
+    }
+
+    this.footMesh.mesh.visible = !is2d && !!L.L0_surface;
     // L9 が ON のとき L0 は半透明にする。消さずに関係を見せる（SPEC §6）
     this.matFoot.opacity = L.L9_insole ? 0.30 : 1.0;
     this.matFoot.depthWrite = !L.L9_insole;
@@ -895,6 +1058,14 @@
       this._updateInsole(st.insole);
       this._lastInsole = st.insole;
     }
+    /* 2D では上面の補正マップだけを見せる。真下から見ているので
+       側面と底面（無地の茶）が手前に来て、肝心の上面を覆ってしまう。 */
+    this.insoleBottom.mesh.visible = !is2d;
+    this.insoleSkirt.mesh.visible = !is2d;
+    this.insoleOutline2D.mesh.visible = is2d && !!L.L9_insole;
+    if (this.insoleOutline2D.mesh.visible && st.insole) {
+      this.insoleOutline2D.fill(insoleRim(st.insole), OUTLINE_W, 0);
+    }
 
     // 描画の投げ込みだけ別に測る。SwiftShader ではここがソフトウェア
     // ラスタライズを含んで大きく出るため、JS 側の予算と混ぜない。
@@ -1015,6 +1186,21 @@
       ((clientX - r.left) / r.width) * 2 - 1,
       -((clientY - r.top) / r.height) * 2 + 1
     );
+    /* 2D は足底面のフィールドメッシュを撃つ。立体は伏せてある。 */
+    if (this.mode === "2d") {
+      this.raycaster.setFromCamera(m, this.camera);
+      var h2 = this.raycaster.intersectObject(this.soleMesh.mesh, false);
+      if (!h2.length || !h2[0].face) return null;
+      var g2 = this.state.grid;
+      var cell2 = this.soleMesh.vertexToCell[h2[0].face.a];
+      var i2 = cell2 % g2.nx, j2 = Math.floor(cell2 / g2.nx);
+      return {
+        vertex: h2[0].face.a, cell: cell2, i: i2, j: j2, sole: true,
+        u: (i2 / (g2.nx - 1) - 0.5) * CONST.FW, v: j2 / (g2.nz - 1),
+        height: g2.height[cell2],
+        world: [FT.cellX(g2, i2), g2.height[cell2] + (this.footLift || 0), FT.cellZ(g2, j2)]
+      };
+    }
     this.raycaster.setFromCamera(m, this.camera);
     var hits = this.raycaster.intersectObject(this.footMesh.mesh, false);
     if (!hits.length || !hits[0].face) return null;
@@ -1055,6 +1241,16 @@
   /* ---------------- 定型ビュー（SPEC §7） ---------------- */
   Viewer.prototype.setView = function (name, side) {
     var c = this.controls;
+    if (this.mode === "2d") {
+      // 2D は視点が固定。R だけ「全体が入る倍率へ戻す」意味を持たせる。
+      if (name === "R") {
+        c.orthoH = CONST.CAM.ortho2d;
+        c.target.set(0, 0, (this.state ? this.state.grid.params.length : 250) / 2);
+      }
+      c.apply();
+      this.render();
+      return;
+    }
     var medialIsMinusX = (FT.medialSign(side || "R") < 0);
     if (name === "T") { c.theta = 0; c.phi = 0.05; }
     else if (name === "B") { c.theta = 0; c.phi = Math.PI - 0.05; }
@@ -1087,7 +1283,8 @@
     // 床より下から見ているときは床グリッドを消す。
     // 残すと足裏の手前に線が重なって、等高線と見分けがつかなくなる。
     this.floorGrid.visible = this.camera.position.y > 0.5;
-    this.scaleBar.visible = this.floorGrid.visible;
+    // 目盛りは 2D の図面でこそ要る（長さを目で確かめられるように）
+    this.scaleBar.visible = this.floorGrid.visible || this.mode === "2d";
     this.renderer.render(this.scene, this.camera);
   };
 

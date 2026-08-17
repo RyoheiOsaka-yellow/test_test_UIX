@@ -116,6 +116,82 @@ def main():
             frac = (np.abs(sub.astype(int) - bg).sum(axis=2) > 24).mean()
             check(0.02 < frac < 0.85, "ビュー %s に足が描かれている: %.3f" % (v, frac))
 
+        # ---- 3D で回せること ----
+        # ドラッグ・ホイール・自動回転を、実際のマウス入力とカメラの動きで確かめる。
+        pg.evaluate("FOOT_TWIN.setMode('3d'); FOOT_TWIN.setView('R');")
+        pg.wait_for_timeout(200)
+        p0 = pg.evaluate("FOOT_TWIN.state().viewer.camera3d.position.toArray()")
+        pg.mouse.move(600, 450)
+        pg.mouse.down()
+        for x in range(600, 830, 20):
+            pg.mouse.move(x, 450 - (x - 600) // 6)
+        pg.mouse.up()
+        pg.wait_for_timeout(250)
+        p1 = pg.evaluate("FOOT_TWIN.state().viewer.camera3d.position.toArray()")
+        moved = sum((a - b2) ** 2 for a, b2 in zip(p0, p1)) ** 0.5
+        check(moved > 20, "ドラッグで視点が回る（カメラが %.0f mm 移動）" % moved)
+        shot(pg, "rotated")
+
+        r0 = pg.evaluate("FOOT_TWIN.state().viewer.controls.radius")
+        pg.mouse.move(600, 450)
+        pg.mouse.wheel(0, -400)
+        pg.wait_for_timeout(200)
+        r1 = pg.evaluate("FOOT_TWIN.state().viewer.controls.radius")
+        check(r1 < r0 * 0.92, "ホイールで拡大できる（%.0f → %.0f mm）" % (r0, r1))
+
+        th0 = pg.evaluate("FOOT_TWIN.state().viewer.controls.theta")
+        pg.evaluate("FOOT_TWIN.setAutoRotate(true)")
+        pg.wait_for_timeout(900)
+        th1 = pg.evaluate("FOOT_TWIN.state().viewer.controls.theta")
+        pg.evaluate("FOOT_TWIN.setAutoRotate(false)")
+        check(abs(th1 - th0) > 0.02,
+              "自動回転で角度が進む（Δθ=%.3f rad）" % abs(th1 - th0))
+        th2 = pg.evaluate("FOOT_TWIN.state().viewer.controls.theta")
+        pg.wait_for_timeout(500)
+        th3 = pg.evaluate("FOOT_TWIN.state().viewer.controls.theta")
+        check(abs(th3 - th2) < 1e-9, "自動回転を止めると角度が固定される")
+        pg.evaluate("FOOT_TWIN.setView('R')")
+
+        # ---- 2D モード ----
+        pg.evaluate("FOOT_TWIN.setMode('2d')")
+        pg.wait_for_timeout(400)
+        im = shot(pg, "mode_2d")[:, 0:1260]
+        frac = (np.abs(im.astype(int) - bg).sum(axis=2) > 24).mean()
+        check(0.02 < frac < 0.70, "2D に足底面が描かれている: %.3f" % frac)
+        check(pg.evaluate("FOOT_TWIN.state().viewer.camera.isOrthographicCamera === true"),
+              "2D は正射影カメラ（透視ではない）")
+        # 2D では回転しない＝ドラッグしてもカメラの向きが変わらない
+        d0 = pg.evaluate("FOOT_TWIN.state().viewer.camera2d.position.toArray()")
+        pg.mouse.move(600, 450)
+        pg.mouse.down()
+        for x in range(600, 700, 20):
+            pg.mouse.move(x, 450)
+        pg.mouse.up()
+        pg.wait_for_timeout(200)
+        d1 = pg.evaluate("FOOT_TWIN.state().viewer.camera2d.position.toArray()")
+        check(abs(d1[1] - d0[1]) < 1e-6 and abs(d1[0] - d0[0]) > 1e-3,
+              "2D のドラッグは回転せず平行移動する")
+        # 2D でもピッキングが効く
+        pg.evaluate("FOOT_TWIN.setView('R')")
+        pg.wait_for_timeout(200)
+        hit = pg.evaluate("""(function(){
+          var r = FOOT_TWIN.state().viewer.renderer.domElement.getBoundingClientRect();
+          var h = FOOT_TWIN.state().viewer.pick(r.left + r.width/2, r.top + r.height/2);
+          return h ? h.height : null;
+        })()""")
+        check(hit is not None, "2D でもピッキングが効く（高さ %s）" % hit)
+        # 2D でのレイヤ切替
+        pg.evaluate("FOOT_TWIN.setLayer('L9_insole', true)")
+        pg.wait_for_timeout(350)
+        im9 = shot(pg, "mode_2d_insole")[:, 0:1260]
+        d = np.abs(im.astype(int) - im9.astype(int)).mean()
+        check(d > 0.5, "2D で L9 のトグルが効く: diff=%.3f" % d)
+        pg.evaluate("FOOT_TWIN.setLayer('L9_insole', false); FOOT_TWIN.setMode('3d');")
+        pg.wait_for_timeout(350)
+        im3 = shot(pg, "mode_3d_back")[:, 0:1260]
+        d = np.abs(im.astype(int) - im3.astype(int)).mean()
+        check(d > 0.5, "3D へ戻せる: diff=%.3f" % d)
+
         # ---- subject / 左右 / 経過週 ----
         pg.evaluate("FOOT_TWIN.setView('R')")
         for sid in ["S000142", "S001987", "S004310", "S005806"]:

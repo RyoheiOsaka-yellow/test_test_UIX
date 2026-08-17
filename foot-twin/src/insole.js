@@ -180,6 +180,17 @@
     return h0 + (h1 - h0) * fr;
   }
 
+  /* その位置に足が載っているか。インソールは足より一回り大きいので、
+     はみ出した縁の帯まで「持ち上げている量」で塗ると、
+     肝心の補正部位が縁の色に埋もれる。 */
+  function footCovers(grid, jF, x) {
+    if (jF < 0 || jF >= grid.nz) return false;
+    var f = (x - grid.origin[0]) / grid.pitch_x;
+    var i0 = Math.floor(f), i1 = i0 + 1, b = jF * grid.nx;
+    return (i0 >= 0 && i0 < grid.nx && !!grid.mask[b + i0])
+        || (i1 >= 0 && i1 < grid.nx && !!grid.mask[b + i1]);
+  }
+
   /* ------------------------------------------------------------------ *
    * インソール生成
    * 長さ方向は足グリッドの行ピッチに揃え、前後にだけ整数行ぶんはみ出させる。
@@ -247,7 +258,7 @@
         var h = Math.max(bh + lf + cup - settle, INS.BASE_THICK);
         top[k] = h;
         lift[k] = lf;
-        diff[k] = h - fh;
+        diff[k] = footCovers(footGrid, jF, xWorld) ? (h - fh) : 0;
       }
     }
 

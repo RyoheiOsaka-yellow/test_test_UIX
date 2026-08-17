@@ -48,6 +48,9 @@ select{
   font-size:12px;cursor:pointer;
 }
 .btn:hover{background:#fff}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--paper);font-weight:800;
+  border-color:var(--ink)}
+#viewbtns.off{display:none}
 
 /* ---------- main ---------- */
 #main{display:grid;grid-template-columns:1fr var(--panelW);min-height:0}
@@ -199,6 +202,11 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
       <button type="button" data-side="R" aria-pressed="true">右足</button>
       <button type="button" data-side="L" aria-pressed="false">左足</button>
     </div>
+    <div class="seg" id="modeSeg">
+      <button type="button" data-mode="3d" aria-pressed="true">3D</button>
+      <button type="button" data-mode="2d" aria-pressed="false">2D</button>
+    </div>
+    <button type="button" class="btn" id="spinBtn" aria-pressed="false">自動回転</button>
     <button type="button" class="btn" id="resetBtn">視点リセット</button>
     <button type="button" class="btn" id="pngBtn">画像を保存</button>
     <div class="spacer"></div>
