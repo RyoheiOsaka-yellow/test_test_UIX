@@ -134,7 +134,7 @@ function buildInstructionDoc() {
           const tr = L.photoTraits;
           if (!ph || !tr) return "";
           return `<div class="loc-photo-doc">
-            <img src="${ph.dataUrl}" alt="${esc(ph.name)}">
+            <img src="${refUrl(ph)}" alt="${esc(ph.name)}">
             <div><b>ロケ地写真から測った光と色</b><br>${esc(tr.ja.join(" ／ "))}
             <br><small>${esc(tr.en.join(", "))}</small></div>
           </div>`;
@@ -680,9 +680,10 @@ function buildScheduleDoc() {
   let clock = 9 * 60; // 9:00 開始
   let lunchDone = false;
   const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-  /* ロケ地が変わったら移動時間を挟む — 香盤はロケ地単位で読むもの */
-  const MOVE_MIN = 30;
-  let prevLocKey = null;
+  /* ロケ地が変わったら移動時間を挟む — 香盤はロケ地単位で読むもの。
+   * 座標が入っていれば距離から見積もり、なければ一律30分の目安を置く */
+  let prevLocKey = null, prevCoords = null;
+  let moveTotal = 0, moveGuessed = 0;
   const locKeyOf = c => {
     const L = c.location || {};
     return [L.presetId || "", L.name || ""].join("|") || "—";
@@ -694,22 +695,29 @@ function buildScheduleDoc() {
     if (key !== prevLocKey) {
       const lp = locPreset(cut);
       const L = cut.location || {};
-      const move = prevLocKey === null ? 0 : MOVE_MIN;
-      if (move) clock += move;
+      const mv = prevLocKey === null ? null : moveEstimate(prevCoords, L.coords);
+      const move = mv ? mv.min : 0;
+      if (move) { clock += move; moveTotal += move; if (mv.guess) moveGuessed++; }
       const ev = L.coords && L.date ? sunEvents(L.coords.lat, L.coords.lng, L.date) : null;
       const label = [lp ? lp.label : null, L.name || null].filter(Boolean).join(" / ") || "ロケ地未設定";
       locRow = `<tr class="loc-row"><td colspan="8">
         📍 <b>${esc(label)}</b>
         ${L.coords ? ` ｜ ${L.coords.lat}, ${L.coords.lng}` : ""}
-        ${move ? ` ｜ 🚚 移動 ${move}分 (${fmt(clock - move)}–${fmt(clock)})` : ""}
+        ${move ? ` ｜ 🚚 移動 ${mv.km != null ? `${mv.km}km / ` : ""}${move}分 (${fmt(clock - move)}–${fmt(clock)})${mv.guess ? " ※座標未設定の目安" : ""}${move >= 240 ? " — 別日/前泊を検討" : ""}` : ""}
         ${ev && !ev.polar ? ` ｜ ☀️ 日の出 ${esc(ev.rise || "—")} / 夕GH ${esc(ev.goldenStart || "—")}〜 / 日の入 ${esc(ev.set || "—")} (現地太陽時)` : ""}
         ${lp ? `<br><small>📋 ${esc(lp.permit)}</small>` : ""}
       </td></tr>`;
       prevLocKey = key;
+      prevCoords = L.coords || null;
     }
     // 昼休憩 (12:00を跨いだ最初の区切りで60分)
     let lunch = "";
-    if (!lunchDone && clock >= 12 * 60) { lunch = `<tr class="lunch"><td colspan="8">🍱 昼休憩 (${fmt(clock)}–${fmt(clock + 60)})</td></tr>`; clock += 60; lunchDone = true; }
+    if (!lunchDone && clock >= 12 * 60) {
+      // 長距離移動で昼を大きく回ったときは、移動中に取ったものとして時間を積まない
+      if (clock >= 14 * 60) lunch = `<tr class="lunch"><td colspan="8">🍱 昼休憩は移動中に取得 (想定)</td></tr>`;
+      else { lunch = `<tr class="lunch"><td colspan="8">🍱 昼休憩 (${fmt(clock)}–${fmt(clock + 60)})</td></tr>`; clock += 60; }
+      lunchDone = true;
+    }
     const setup = cut.setupMin || 30;
     const shootMin = Math.max(10, Math.ceil((cut.takes || 3) * Math.max(cut.kind === "still" ? 2 : (cut.duration || 5) / 60, 0.5) * 2 + 5));
     const start = clock;
@@ -758,6 +766,7 @@ function buildScheduleDoc() {
       <li>撮影時間は「テイク数 × 尺 × 2 + 5分」の概算。特効・ハイスピードはリセット時間を上乗せして調整すること</li>
       <li>段取り時間は各カットの「準備時間(分)」設定から。並行仕込みができる場合は前倒し可</li>
       <li>Class B/C 特効のあるカットは安全ブリーフィングの時間を別途確保する</li>
+      ${moveTotal ? `<li>移動は合計 ${moveTotal}分。座標のあるロケ地は距離 (直線×1.3) と距離帯ごとの平均速度 + 積み降ろし${MOVE_LOAD_MIN}分から見積もった目安${moveGuessed ? `。うち${moveGuessed}区間は座標未設定のため一律30分` : ""}。実際の交通事情・駐車位置で前後する</li>` : ""}
     </ul>
   </body></html>`;
 }

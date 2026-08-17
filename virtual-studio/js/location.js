@@ -32,6 +32,29 @@ function sunPosition(lat, lng, date) {
   };
 }
 
+/* ---------- ロケ地間の距離と移動時間 ---------- */
+/* 球面距離 (km) */
+function haversineKm(a, b) {
+  const R = 6371;
+  const dLat = (b.lat - a.lat) * SUN_RAD, dLng = (b.lng - a.lng) * SUN_RAD;
+  const s = Math.sin(dLat / 2) ** 2
+    + Math.cos(a.lat * SUN_RAD) * Math.cos(b.lat * SUN_RAD) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+/* 香盤表の移動時間 — 機材の積み降ろし20分 + 距離帯ごとの平均速度で走行。
+ * 直線距離は道なりに1.3倍して見積もる。座標がなければ従来どおり一律30分。
+ * 実際の交通事情までは分からないので「目安」として出す。 */
+const MOVE_LOAD_MIN = 20;
+function moveEstimate(from, to) {
+  const ok = p => p && isFinite(p.lat) && isFinite(p.lng);
+  if (!ok(from) || !ok(to)) return { min: 30, km: null, guess: true };
+  const km = haversineKm(from, to);
+  const kmh = km < 5 ? 15 : km < 20 ? 25 : km < 80 ? 45 : km < 300 ? 65 : 80; // 市街地→郊外→幹線→高速
+  const min = Math.max(5, Math.round((MOVE_LOAD_MIN + (km * 1.3) / kmh * 60) / 5) * 5);
+  return { min, km: +km.toFixed(km < 10 ? 1 : 0), guess: false };
+}
+
 /* 同じ座標・同じ日付なら結果は変わらないのでキャッシュする
  * (台本ページはカットごとに呼ぶため、再描画のたびの再計算を避ける) */
 const sunEventCache = new Map();
@@ -287,8 +310,10 @@ async function locSetPhoto(cut, refId) {
   cut.location.photoTraits = null;
   if (!refId) return null;
   const ref = (state.story.refs || []).find(r => r.id === refId);
-  if (!ref || !ref.dataUrl) return null;
-  const st = await locPhotoStats(ref.dataUrl);
+  if (!ref) return null;
+  const url = await refBody(ref);          // 本体はIDBから (未読ならサムネで代用)
+  if (!url) return null;
+  const st = await locPhotoStats(url);
   const desc = locPhotoDescribe(st);
   cut.location.photoTraits = desc ? { ja: desc.ja, en: desc.en, guess: desc.guess, stats: desc.stats } : null;
   return cut.location.photoTraits;

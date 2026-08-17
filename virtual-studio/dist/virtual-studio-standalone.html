@@ -1034,6 +1034,13 @@ input[type="range"]::-moz-range-thumb {
 .sc-tech { font-size: 10px; color: var(--dim); font-family: "SF Mono", ui-monospace, monospace; line-height: 1.5; }
 .sc-dur { font-size: 11px; color: var(--text2); }
 .sc-dur input { width: 58px; background: var(--fill-1); border: 1px solid transparent; border-radius: 6px; padding: 3px 6px; color: var(--text); font-family: inherit; }
+.sc-ops { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 2px; }
+.sc-ops .icon-btn { background: var(--fill-1); border-radius: 6px; }
+.sc-ops .icon-btn:disabled { opacity: 0.3; cursor: default; }
+.sc-addcut {
+  display: flex; align-items: center; gap: 10px; justify-content: center;
+  padding: 4px 0 10px;
+}
 
 .sc-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px; }
 .sc-row { display: flex; align-items: center; gap: 8px; }
@@ -7629,7 +7636,7 @@ function buildInstructionDoc() {
           const tr = L.photoTraits;
           if (!ph || !tr) return "";
           return `<div class="loc-photo-doc">
-            <img src="${ph.dataUrl}" alt="${esc(ph.name)}">
+            <img src="${refUrl(ph)}" alt="${esc(ph.name)}">
             <div><b>ロケ地写真から測った光と色</b><br>${esc(tr.ja.join(" ／ "))}
             <br><small>${esc(tr.en.join(", "))}</small></div>
           </div>`;
@@ -8175,9 +8182,10 @@ function buildScheduleDoc() {
   let clock = 9 * 60; // 9:00 開始
   let lunchDone = false;
   const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-  /* ロケ地が変わったら移動時間を挟む — 香盤はロケ地単位で読むもの */
-  const MOVE_MIN = 30;
-  let prevLocKey = null;
+  /* ロケ地が変わったら移動時間を挟む — 香盤はロケ地単位で読むもの。
+   * 座標が入っていれば距離から見積もり、なければ一律30分の目安を置く */
+  let prevLocKey = null, prevCoords = null;
+  let moveTotal = 0, moveGuessed = 0;
   const locKeyOf = c => {
     const L = c.location || {};
     return [L.presetId || "", L.name || ""].join("|") || "—";
@@ -8189,22 +8197,29 @@ function buildScheduleDoc() {
     if (key !== prevLocKey) {
       const lp = locPreset(cut);
       const L = cut.location || {};
-      const move = prevLocKey === null ? 0 : MOVE_MIN;
-      if (move) clock += move;
+      const mv = prevLocKey === null ? null : moveEstimate(prevCoords, L.coords);
+      const move = mv ? mv.min : 0;
+      if (move) { clock += move; moveTotal += move; if (mv.guess) moveGuessed++; }
       const ev = L.coords && L.date ? sunEvents(L.coords.lat, L.coords.lng, L.date) : null;
       const label = [lp ? lp.label : null, L.name || null].filter(Boolean).join(" / ") || "ロケ地未設定";
       locRow = `<tr class="loc-row"><td colspan="8">
         📍 <b>${esc(label)}</b>
         ${L.coords ? ` ｜ ${L.coords.lat}, ${L.coords.lng}` : ""}
-        ${move ? ` ｜ 🚚 移動 ${move}分 (${fmt(clock - move)}–${fmt(clock)})` : ""}
+        ${move ? ` ｜ 🚚 移動 ${mv.km != null ? `${mv.km}km / ` : ""}${move}分 (${fmt(clock - move)}–${fmt(clock)})${mv.guess ? " ※座標未設定の目安" : ""}${move >= 240 ? " — 別日/前泊を検討" : ""}` : ""}
         ${ev && !ev.polar ? ` ｜ ☀️ 日の出 ${esc(ev.rise || "—")} / 夕GH ${esc(ev.goldenStart || "—")}〜 / 日の入 ${esc(ev.set || "—")} (現地太陽時)` : ""}
         ${lp ? `<br><small>📋 ${esc(lp.permit)}</small>` : ""}
       </td></tr>`;
       prevLocKey = key;
+      prevCoords = L.coords || null;
     }
     // 昼休憩 (12:00を跨いだ最初の区切りで60分)
     let lunch = "";
-    if (!lunchDone && clock >= 12 * 60) { lunch = `<tr class="lunch"><td colspan="8">🍱 昼休憩 (${fmt(clock)}–${fmt(clock + 60)})</td></tr>`; clock += 60; lunchDone = true; }
+    if (!lunchDone && clock >= 12 * 60) {
+      // 長距離移動で昼を大きく回ったときは、移動中に取ったものとして時間を積まない
+      if (clock >= 14 * 60) lunch = `<tr class="lunch"><td colspan="8">🍱 昼休憩は移動中に取得 (想定)</td></tr>`;
+      else { lunch = `<tr class="lunch"><td colspan="8">🍱 昼休憩 (${fmt(clock)}–${fmt(clock + 60)})</td></tr>`; clock += 60; }
+      lunchDone = true;
+    }
     const setup = cut.setupMin || 30;
     const shootMin = Math.max(10, Math.ceil((cut.takes || 3) * Math.max(cut.kind === "still" ? 2 : (cut.duration || 5) / 60, 0.5) * 2 + 5));
     const start = clock;
@@ -8253,6 +8268,7 @@ function buildScheduleDoc() {
       <li>撮影時間は「テイク数 × 尺 × 2 + 5分」の概算。特効・ハイスピードはリセット時間を上乗せして調整すること</li>
       <li>段取り時間は各カットの「準備時間(分)」設定から。並行仕込みができる場合は前倒し可</li>
       <li>Class B/C 特効のあるカットは安全ブリーフィングの時間を別途確保する</li>
+      ${moveTotal ? `<li>移動は合計 ${moveTotal}分。座標のあるロケ地は距離 (直線×1.3) と距離帯ごとの平均速度 + 積み降ろし${MOVE_LOAD_MIN}分から見積もった目安${moveGuessed ? `。うち${moveGuessed}区間は座標未設定のため一律30分` : ""}。実際の交通事情・駐車位置で前後する</li>` : ""}
     </ul>
   </body></html>`;
 }
@@ -8411,18 +8427,167 @@ async function downscaleImage(file, maxPx) {
       if (d[i] < 250) { hasAlpha = true; break; }
     }
   }
-  return { url: cv.toDataURL(hasAlpha ? "image/png" : "image/jpeg", 0.82), hasAlpha };
+  return {
+    url: cv.toDataURL(hasAlpha ? "image/png" : "image/jpeg", 0.82),
+    thumb: thumbOf(cv, hasAlpha),
+    hasAlpha,
+  };
+}
+
+/* =========================================================
+ * 参照画像のストレージ — 本体はIndexedDB、localStorageにはサムネだけ
+ *   ref = { id, name, hasAlpha, clipId:"ref-<id>", thumb:"data:…(96px)" }
+ * 本体 (768px) はIDBの clips ストアに ref-<id> で入れる。
+ *   → プロジェクトを増やしてもlocalStorageがほぼ増えない
+ *   → 既存のGC (clipIdを生存扱い) とバックアップZIPがそのまま効く
+ * 描画は同期なので、読み出し済み本体を refFull に持ち、
+ * 未読のうちはサムネで描いてから差し替える。
+ * ======================================================= */
+const refFull = new Map();     // ref.id → 本体dataURL (メモリキャッシュ)
+const REF_THUMB_PX = 96;
+
+function thumbOf(canvas, hasAlpha) {
+  const tv = document.createElement("canvas");
+  const s = Math.min(1, REF_THUMB_PX / Math.max(canvas.width, canvas.height));
+  tv.width = Math.max(1, Math.round(canvas.width * s));
+  tv.height = Math.max(1, Math.round(canvas.height * s));
+  tv.getContext("2d").drawImage(canvas, 0, 0, tv.width, tv.height);
+  return tv.toDataURL(hasAlpha ? "image/png" : "image/jpeg", 0.6);
+}
+
+/* 描画用: 本体があれば本体、なければサムネ (旧形式のdataUrlも読める) */
+function refUrl(ref) {
+  if (!ref) return "";
+  return refFull.get(ref.id) || ref.dataUrl || ref.thumb || "";
+}
+/* 本体が要る場面 (API送信・写真解析) 用の非同期取得 */
+async function refBody(ref) {
+  if (!ref) return "";
+  if (refFull.has(ref.id)) return refFull.get(ref.id);
+  if (ref.dataUrl) return ref.dataUrl;
+  if (!ref.clipId) return ref.thumb || "";
+  try {
+    const rec = await idbGetClip(ref.clipId);
+    if (!rec || !rec.blob) return ref.thumb || "";
+    const url = await blobToDataUrl(rec.blob);
+    refFull.set(ref.id, url);
+    return url;
+  } catch { return ref.thumb || ""; }
+}
+
+function dataUrlToBlob(url) {
+  const m = /^data:([^;,]*)(;base64)?,/.exec(url) || [];
+  const type = m[1] || "application/octet-stream";
+  const body = url.slice(url.indexOf(",") + 1);
+  if (!m[2]) return new Blob([decodeURIComponent(body)], { type });
+  const bin = atob(body);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type });
+}
+function blobToDataUrl(blob) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result);
+    fr.onerror = () => rej(fr.error);
+    fr.readAsDataURL(blob);
+  });
+}
+
+/* 本体をIDBへ移す。IDBが使えないブラウザではdataUrlのまま残す (従来動作) */
+async function refStoreBody(ref, dataUrl) {
+  refFull.set(ref.id, dataUrl);
+  const key = "ref-" + ref.id;
+  try {
+    const blob = dataUrlToBlob(dataUrl);
+    await idbPutClip({ cutId: key, name: ref.name, type: blob.type, size: blob.size, blob, addedAt: Date.now(), isRef: true });
+    ref.clipId = key;
+    delete ref.dataUrl;
+    return true;
+  } catch {
+    ref.dataUrl = dataUrl;   // 保存できなければ従来どおりlocalStorageに置く
+    return false;
+  }
+}
+
+/* 旧形式 (dataUrl入り) の参照画像をIDBへ移行する。
+ * サムネは画像を読み直して作る (元の解像度は保てないので本体から縮小) */
+async function refIngest(refs) {
+  let moved = 0;
+  for (const r of refs || []) {
+    if (!r || !r.dataUrl || r.clipId) continue;
+    const url = r.dataUrl;
+    if (!r.thumb) {
+      try { r.thumb = await thumbFromUrl(url, !!r.hasAlpha); } catch { /* サムネなしでも本体で描ける */ }
+    }
+    if (await refStoreBody(r, url)) moved++;
+  }
+  return moved;
+}
+function thumbFromUrl(url, hasAlpha) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement("canvas");
+      cv.width = img.naturalWidth || 1; cv.height = img.naturalHeight || 1;
+      cv.getContext("2d").drawImage(img, 0, 0);
+      res(thumbOf(cv, hasAlpha));
+    };
+    img.onerror = () => rej(new Error("image"));
+    img.src = url;
+  });
+}
+
+/* 起動時の一括移行 — 編集中・自動保存・保存済みプロジェクトのすべてを対象にする */
+async function refMigrateToIdb() {
+  let moved = 0;
+  try {
+    moved += await refIngest(state.story && state.story.refs);
+    const cur = lsGet(LS_CURRENT, null);
+    if (cur && cur.story && Array.isArray(cur.story.refs)) {
+      const n = await refIngest(cur.story.refs);
+      if (n) { moved += n; lsSet(LS_CURRENT, cur); }
+    }
+    const all = lsGet(LS_PROJECTS, {});
+    let touched = false;
+    for (const p of Object.values(all)) {
+      if (!p || !p.data || !p.data.story || !Array.isArray(p.data.story.refs)) continue;
+      const n = await refIngest(p.data.story.refs);
+      if (n) { moved += n; touched = true; }
+    }
+    if (touched) lsSet(LS_PROJECTS, all);
+  } catch { /* 移行できなくても旧形式のまま動く */ }
+  if (moved) { refreshAllPreviews(); renderWorkflow(); }
+  return moved;
+}
+
+/* 表示中プロジェクトの本体をIDBから読み戻し、サムネ表示を差し替える */
+async function refLoadAll() {
+  let loaded = 0;
+  for (const r of (state.story && state.story.refs) || []) {
+    if (refFull.has(r.id) || r.dataUrl || !r.clipId) continue;
+    await refBody(r);
+    if (refFull.has(r.id)) loaded++;
+  }
+  if (loaded) { refreshAllPreviews(); renderWorkflow(); }
+  return loaded;
+}
+function refreshAllPreviews() {
+  previewCache.clear();
+  renderPreview(); renderCutStrip(); renderTimeline();
 }
 
 async function wfAddRefFiles(files) {
-  const MAX = 12;
+  const MAX = 30;   // Seedance系が1回に受け取れる参照画像の上限に合わせる
   let added = 0;
   for (const file of files) {
     if (!(file.type || "").startsWith("image/")) continue;
-    if (state.story.refs.length >= MAX) { showToast(`⚠️ 参照画像は${MAX}枚までです (ブラウザ保存容量のため)`); break; }
+    if (state.story.refs.length >= MAX) { showToast(`⚠️ 参照画像は${MAX}枚までです (生成側が受け取れる枚数の上限)`); break; }
     try {
       const d = await downscaleImage(file, 768);
-      state.story.refs.push({ id: uid(), name: file.name, dataUrl: d.url, hasAlpha: d.hasAlpha });
+      const ref = { id: uid(), name: file.name, hasAlpha: d.hasAlpha, thumb: d.thumb };
+      await refStoreBody(ref, d.url);
+      state.story.refs.push(ref);
       added++;
     } catch { /* 読めない画像はスキップ */ }
   }
@@ -8484,7 +8649,7 @@ async function wfSendCut(cut, statusEl) {
           resolution: "1080p",
           camerafixed: cut.camera.move === "fix",
         },
-        first_frame_data_url: ref ? ref.dataUrl : null,
+        first_frame_data_url: ref ? await refBody(ref) : null,
       }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -8527,7 +8692,7 @@ function renderWorkflow() {
     const usedBy = state.cuts.map((c, i) => c.refImgId === r.id ? `C${i + 1}` : null).filter(Boolean);
     return `
     <div class="wf-ref" draggable="true" data-refdrag="${r.id}" title="ドラッグしてカットや書き出しカードへドロップすると割り当てられます">
-      <img src="${r.dataUrl}" alt="${esc(r.name)}">
+      <img src="${refUrl(r)}" alt="${esc(r.name)}">
       <div class="wf-ref-body">
         <div class="wf-ref-name" title="${esc(r.name)}">${esc(r.name)}${r.hasAlpha ? `<span class="wf-ref-used" title="背景透過 — スタジオ背景に被写体として合成されます">透過</span>` : ""}${usedBy.length ? `<span class="wf-ref-used">${usedBy.join(" ")}</span>` : ""}</div>
         <select data-refassign="${r.id}" title="選んだカットにこの画像を割り当て (プレビュー/first frameに反映。複数カットにも割当可)">
@@ -8567,7 +8732,7 @@ function renderWorkflow() {
         <span class="wf-exp-params">${esc(sp.ratio)} ｜ ${c.kind === "still" ? "静止画" : (c.duration || 5) + "s"} ｜ 1080p ｜ camerafixed: ${c.camera.move === "fix"}</span>
       </div>
       <div class="wf-exp-row">
-        ${ref ? `<img class="wf-exp-ref" src="${ref.dataUrl}" title="first frame 参照: ${esc(ref.name)}">` : `<div class="wf-exp-noref" title="ステップ1で参照画像を割り当てると first frame として使えます">参照<br>なし</div>`}
+        ${ref ? `<img class="wf-exp-ref" src="${refUrl(ref)}" title="first frame 参照: ${esc(ref.name)}">` : `<div class="wf-exp-noref" title="ステップ1で参照画像を割り当てると first frame として使えます">参照<br>なし</div>`}
         <textarea readonly rows="3">${esc(generatePrompt(c, state.promptModel))}</textarea>
       </div>
       <div class="wf-exp-actions">
@@ -9030,9 +9195,11 @@ async function exportBackupZip(msgEl) {
   }];
   const manifest = [];
   try {
+    const refKeys = new Set(((state.story && state.story.refs) || []).map(r => r.clipId).filter(Boolean));
     for (const c of await idbAllClips()) {
       const audioKeys = Object.values(state.story.audio || {});
-      const special = audioKeys.includes(c.cutId) || Object.values(RC_AUDIO_LEGACY).includes(c.cutId);
+      const special = audioKeys.includes(c.cutId) || Object.values(RC_AUDIO_LEGACY).includes(c.cutId)
+        || refKeys.has(c.cutId);   // 参照画像の本体もZIPに含める
       if (!special && !state.cuts.some(x => x.id === c.cutId)) continue; // 現プロジェクト分のみ
       const extM = String(c.name || "").match(/\.([a-z0-9]{2,4})$/i);
       const fname = `media/${c.cutId}.${extM ? extM[1] : "webm"}`;
@@ -9069,6 +9236,9 @@ async function importBackupZip(file, msgEl) {
     }
   }
   rcRefreshIndex();
+  refFull.clear();          // 別プロジェクトの本体が残らないようにする
+  await refLoadAll();
+  await refIngest(state.story && state.story.refs);   // 旧形式ZIPの参照画像もIDBへ寄せる
   if (msgEl) msgEl.textContent = `✓ 復元しました (${state.cuts.length}カット / メディア${n}件)`;
 }
 
@@ -9726,6 +9896,29 @@ function sunPosition(lat, lng, date) {
   };
 }
 
+/* ---------- ロケ地間の距離と移動時間 ---------- */
+/* 球面距離 (km) */
+function haversineKm(a, b) {
+  const R = 6371;
+  const dLat = (b.lat - a.lat) * SUN_RAD, dLng = (b.lng - a.lng) * SUN_RAD;
+  const s = Math.sin(dLat / 2) ** 2
+    + Math.cos(a.lat * SUN_RAD) * Math.cos(b.lat * SUN_RAD) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+/* 香盤表の移動時間 — 機材の積み降ろし20分 + 距離帯ごとの平均速度で走行。
+ * 直線距離は道なりに1.3倍して見積もる。座標がなければ従来どおり一律30分。
+ * 実際の交通事情までは分からないので「目安」として出す。 */
+const MOVE_LOAD_MIN = 20;
+function moveEstimate(from, to) {
+  const ok = p => p && isFinite(p.lat) && isFinite(p.lng);
+  if (!ok(from) || !ok(to)) return { min: 30, km: null, guess: true };
+  const km = haversineKm(from, to);
+  const kmh = km < 5 ? 15 : km < 20 ? 25 : km < 80 ? 45 : km < 300 ? 65 : 80; // 市街地→郊外→幹線→高速
+  const min = Math.max(5, Math.round((MOVE_LOAD_MIN + (km * 1.3) / kmh * 60) / 5) * 5);
+  return { min, km: +km.toFixed(km < 10 ? 1 : 0), guess: false };
+}
+
 /* 同じ座標・同じ日付なら結果は変わらないのでキャッシュする
  * (台本ページはカットごとに呼ぶため、再描画のたびの再計算を避ける) */
 const sunEventCache = new Map();
@@ -9981,8 +10174,10 @@ async function locSetPhoto(cut, refId) {
   cut.location.photoTraits = null;
   if (!refId) return null;
   const ref = (state.story.refs || []).find(r => r.id === refId);
-  if (!ref || !ref.dataUrl) return null;
-  const st = await locPhotoStats(ref.dataUrl);
+  if (!ref) return null;
+  const url = await refBody(ref);          // 本体はIDBから (未読ならサムネで代用)
+  if (!url) return null;
+  const st = await locPhotoStats(url);
   const desc = locPhotoDescribe(st);
   cut.location.photoTraits = desc ? { ja: desc.ja, en: desc.en, guess: desc.guess, stats: desc.stats } : null;
   return cut.location.photoTraits;
@@ -10124,6 +10319,7 @@ function scriptBeatRows(cut, ci) {
         ${CAM_LINKS.map(c => `<option value="${c.id}" ${c.id === b.cam ? "selected" : ""}>${esc(c.label)}</option>`).join("")}
       </select>
       <button class="icon-btn small" data-scbup="${i}" title="上へ" ${i === 0 ? "disabled" : ""}>↑</button>
+      <button class="icon-btn small" data-scbsplit="${i}" title="ここでカットを2つに割る" ${i === 0 ? "disabled" : ""}>✂</button>
       <button class="icon-btn small danger" data-scbdel="${i}" title="削除">×</button>
     </div>`;
   }).join("");
@@ -10140,8 +10336,12 @@ function renderScriptPage() {
   const body = byId("scriptBody");
   if (!body) return;
   renderScriptTotal();
-  body.innerHTML = state.cuts.map((cut, ci) => scriptCutHtml(cut, ci)).join("")
-    || `<p class="insp-hint">カットがありません。スタジオで技法を選ぶか、ワークフローのストーリーから設計してください</p>`;
+  body.innerHTML = (state.cuts.map((cut, ci) => scriptCutHtml(cut, ci)).join("")
+    || `<p class="insp-hint">カットがありません。スタジオで技法を選ぶか、ワークフローのストーリーから設計してください</p>`)
+    + `<div class="sc-addcut">
+        <button class="btn" data-scnewcut="1"><svg class="ic"><use href="#i-plus"/></svg> カットを追加</button>
+        <span class="insp-hint">照明・カメラは追加後にスタジオ側で決めます</span>
+      </div>`;
 }
 
 /* 編集したカットの1枚だけを描き直す (20カットでも操作が重くならないように) */
@@ -10176,6 +10376,13 @@ function scriptCutHtml(cut, ci) {
         </div>
         <div class="sc-dur">
           ${cut.kind === "still" ? "スチール" : `<input type="number" data-scdur="${ci}" value="${dur}" min="1" max="120" step="1" title="カットの尺(秒)"> 秒`}
+        </div>
+        <div class="sc-ops" title="カットの並びをここで直せます">
+          <button class="icon-btn small" data-scup="${ci}" title="前のカットと入れ替え" ${ci === 0 ? "disabled" : ""}>↑</button>
+          <button class="icon-btn small" data-scdown="${ci}" title="次のカットと入れ替え" ${ci >= state.cuts.length - 1 ? "disabled" : ""}>↓</button>
+          <button class="icon-btn small" data-scdup="${ci}" title="このカットを複製"><svg class="ic"><use href="#i-dup"/></svg></button>
+          <button class="icon-btn small" data-scins="${ci}" title="後ろに新しいカットを追加"><svg class="ic"><use href="#i-plus"/></svg></button>
+          <button class="icon-btn small danger" data-sccutdel="${ci}" title="このカットを削除 (⌘Zで戻せます)"><svg class="ic"><use href="#i-trash"/></svg></button>
         </div>
       </div>
 
@@ -10231,7 +10438,7 @@ function scriptCutHtml(cut, ci) {
             const ph = (state.story.refs || []).find(r => r.id === cut.location.photoRefId);
             const tr = cut.location.photoTraits;
             if (!ph) {
-              const imgs = (state.story.refs || []).filter(r => (r.mediaKind || "image") === "image" && r.dataUrl);
+              const imgs = (state.story.refs || []).filter(r => (r.mediaKind || "image") === "image" && refUrl(r));
               return `<button class="btn small" data-scphotoadd="${ci}"><svg class="ic"><use href="#i-image"/></svg> ロケ地写真から取り込む</button>
                 ${imgs.length ? `<select data-scphotopick="${ci}" title="取り込み済みの素材から選ぶ">
                   <option value="">素材から選ぶ…</option>
@@ -10239,7 +10446,7 @@ function scriptCutHtml(cut, ci) {
                 </select>` : ""}
                 <span class="insp-hint">写真の光と色 (暖色/硬さ/明るさ/彩度) を測ってプロンプトに渡します</span>`;
             }
-            return `<img class="sc-photo" src="${ph.dataUrl}" alt="${esc(ph.name)}" title="${esc(ph.name)}">
+            return `<img class="sc-photo" src="${refUrl(ph)}" alt="${esc(ph.name)}" title="${esc(ph.name)}">
               <span class="sc-photo-tags">${tr ? tr.ja.map(t => `<span class="p-tag">${esc(t)}</span>`).join("") : "解析中…"}</span>
               <label class="sc-photo-use" title="オフにするとプロンプトには渡しません">
                 <input type="checkbox" data-scphotouse="${ci}" ${cut.location.usePhoto === false ? "" : "checked"}> プロンプトに使う
@@ -10332,7 +10539,42 @@ function setupScriptPage() {
     captureUndo();   // 台本側の編集も ⌘Z で戻せるようにする
   };
 
+  /* カットの増減・並べ替えは番号が動くので全体を描き直す */
+  const structural = (focusIdx, msg) => {
+    renderAll();               // スタジオ側 (ストリップ/タイムライン/プレビュー) も追従する
+    renderScriptPage();
+    if (focusIdx != null) {
+      const el = document.querySelector(`.sc-cut[data-sccut="${focusIdx}"]`);
+      if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    if (msg) showToast(msg);
+  };
+
   body.addEventListener("click", e => {
+    /* ---- カット操作 (追加・複製・削除・並べ替え・分割) ---- */
+    const up = e.target.closest("[data-scup]");
+    if (up) { const i = +up.dataset.scup; if (cutMove(i, i - 1)) structural(i - 1); return; }
+    const down = e.target.closest("[data-scdown]");
+    if (down) { const i = +down.dataset.scdown; if (cutMove(i, i + 1)) structural(i + 1); return; }
+    const dup = e.target.closest("[data-scdup]");
+    if (dup) { cutDuplicate(+dup.dataset.scdup).then(i => structural(i, "カットを複製しました")); return; }
+    const ins = e.target.closest("[data-scins]");
+    if (ins) { structural(cutInsert(+ins.dataset.scins + 1), "カットを追加しました"); return; }
+    const cdel = e.target.closest("[data-sccutdel]");
+    if (cdel) {
+      const i = +cdel.dataset.sccutdel;
+      if (cutDelete(i)) structural(Math.max(0, i - 1), "カットを削除しました (⌘Zで戻せます)");
+      return;
+    }
+    if (e.target.closest("[data-scnewcut]")) { structural(cutInsert(state.cuts.length), "カットを追加しました"); return; }
+    const split = e.target.closest("[data-scbsplit]");
+    if (split) {
+      const ci = +split.closest("[data-sccut]").dataset.sccut;
+      const at = cutSplitAtBeat(ci, +split.dataset.scbsplit);
+      if (at >= 0) structural(at, `C${ci + 1} をここで2つに割りました`);
+      return;
+    }
+
     const sel = e.target.closest("[data-scselect]");
     if (sel) {
       state.activeCut = +sel.dataset.scselect;
@@ -10535,12 +10777,17 @@ const state = {
   kit: { body: null, lens: null, support: null, drone: null },
   customDNA: [], // 参照の手動注釈から作られたPattern DNA (V8 Phase 2)
   // 制作ワークフロー: ChatGPT等で作った参照画像+ストーリーの受け入れ (ステップ1)
-  story: { text: "", refs: [], audioVol: { bgm: 0.4, nar: 1 } }, // refs: {id, name, dataUrl, hasAlpha}
+  story: { text: "", refs: [], audioVol: { bgm: 0.4, nar: 1 } }, // refs: {id, name, thumb, clipId, hasAlpha} 本体はIDB
 };
 
 function allPresets() { return PRESETS.concat(state.customPresets); }
 
-function activeCut() { return state.cuts[state.activeCut]; }
+/* 選択インデックスは常にカット数の範囲へ丸める
+ * (非同期の再描画がカット削除と行き違っても落ちないように) */
+function activeCut() {
+  if (state.activeCut >= state.cuts.length) state.activeCut = Math.max(0, state.cuts.length - 1);
+  return state.cuts[state.activeCut];
+}
 
 function makeItem(def) {
   return {
@@ -10673,6 +10920,86 @@ function makeCut(preset) {
     ],
   };
   return ensureCameraDefaults(cut);
+}
+
+/* =========================================================
+ * カット操作 (追加・複製・削除・並べ替え・分割)
+ * スタジオのボタンと台本ページの両方から呼ぶ。描画は呼び出し側の担当。
+ * ======================================================= */
+function cutInsert(at, preset) {
+  const cut = makeCut(preset || null);
+  const i = Math.max(0, Math.min(at == null ? state.cuts.length : at, state.cuts.length));
+  state.cuts.splice(i, 0, cut);
+  state.activeCut = i;
+  state.selectedItem = null;
+  return i;
+}
+
+async function cutDuplicate(at) {
+  const src = state.cuts[at];
+  if (!src) return -1;
+  const clone = JSON.parse(JSON.stringify(src));
+  clone.id = uid();
+  clone.items.forEach(i => i.id = uid());
+  clone.name += " (複製)";
+  state.cuts.splice(at + 1, 0, clone);
+  state.activeCut = at + 1;
+  state.selectedItem = null;
+  try {
+    const clip = await idbGetClip(src.id); // 添付動画も複製に引き継ぐ
+    if (clip) {
+      await idbPutClip({ ...clip, cutId: clone.id, addedAt: Date.now() });
+      rcRefreshIndex();
+      showToast("カットを複製しました (添付動画もコピー)");
+    }
+  } catch { /* IDBなし環境 */ }
+  return at + 1;
+}
+
+function cutDelete(at) {
+  if (state.cuts.length <= 1) { showToast("⚠️ 最後のカットは削除できません"); return false; }
+  if (!state.cuts[at]) return false;
+  state.cuts.splice(at, 1);
+  state.activeCut = Math.max(0, Math.min(at, state.cuts.length - 1));
+  state.selectedItem = null;
+  return true;
+}
+
+function cutMove(from, to) {
+  if (from === to || !state.cuts[from] || to < 0 || to >= state.cuts.length) return false;
+  const [mv] = state.cuts.splice(from, 1);
+  state.cuts.splice(to, 0, mv);
+  state.activeCut = to;
+  return true;
+}
+
+/* ビートの切れ目でカットを2つに割る。
+ * 台本を書いているうちに「1カットに詰め込みすぎた」と気づく場面のための操作で、
+ * 前半/後半の尺はそれぞれのビート合計に合わせ直す。
+ * 登場要素は両方に残す (ビートの「誰が」がidで結ばれているため)。 */
+function cutSplitAtBeat(at, bi) {
+  const cut = state.cuts[at];
+  if (!cut) return -1;
+  const beats = (cut.perf && cut.perf.beats) || [];
+  if (bi < 1 || bi >= beats.length) { showToast("⚠️ 分割はビートとビートの間でのみできます"); return -1; }
+  const tail = JSON.parse(JSON.stringify(cut));
+  tail.id = uid();
+  tail.items.forEach(i => i.id = uid());
+  tail.perf.beats = beats.slice(bi).map(b => ({ ...b, id: uid() }));
+  cut.perf.beats = beats.slice(0, bi);
+  const sum = arr => arr.reduce((s, b) => s + (+b.sec || 0), 0);
+  if (cut.kind !== "still") {
+    cut.duration = Math.max(1, Math.round(sum(cut.perf.beats)) || 1);
+    tail.duration = Math.max(1, Math.round(sum(tail.perf.beats)) || 1);
+  }
+  tail.name = cut.name + " (後半)";
+  tail.caption = "";                 // セリフは前半のもの。後半へは複製しない
+  tail.transition = cut.transition;  // 次カットへの繋ぎは後半が引き継ぐ
+  cut.transition = "cut";            // 割った境目はカット繋ぎ
+  state.cuts.splice(at + 1, 0, tail);
+  state.activeCut = at + 1;
+  state.selectedItem = null;
+  return at + 1;
 }
 
 /* =========================================================
@@ -11758,7 +12085,7 @@ function renderPreviewSVG(cut, idPrefix) {
     const ay = H * 0.42 + (H * (cut.refOffY || 0)) / 100
       + (angId === "high" || angId === "topdown" || angId === "drone" ? -H * 0.05 : angId === "low" ? H * 0.05 : 0);
     const frameTf = `translate(${(W / 2).toFixed(1)} ${(H * 0.45).toFixed(1)}) rotate(${dutch}) scale(${zoom.toFixed(3)}) translate(${(-ax).toFixed(1)} ${(-ay).toFixed(1)})`;
-    const imgTag = `<image href="${refImg.dataUrl}" x="${-W * 0.06}" y="${-H * 0.06}" width="${W * 1.12}" height="${H * 1.12}" preserveAspectRatio="xMidYMid slice" filter="url(#${p}imf)"/>`;
+    const imgTag = `<image href="${refUrl(refImg)}" x="${-W * 0.06}" y="${-H * 0.06}" width="${W * 1.12}" height="${H * 1.12}" preserveAspectRatio="xMidYMid slice" filter="url(#${p}imf)"/>`;
 
     /* 被写界深度: 開放絞りでは周辺をボカす (radialマスク) */
     const dof = (cut.camera.apertureF || 2.8) <= 2.2;
@@ -11800,7 +12127,7 @@ function renderPreviewSVG(cut, idPrefix) {
       /* 被写体合成モード: スタジオ背景 (既存のシーン描画) + 透過被写体。
        * ライティングの明暗は被写体のアルファ形状にだけ乗せる */
       defs += `<mask id="${p}sm" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" style="mask-type:alpha">
-        <g transform="${frameTf}"><image href="${refImg.dataUrl}" x="${-W * 0.06}" y="${-H * 0.06}" width="${W * 1.12}" height="${H * 1.12}" preserveAspectRatio="xMidYMid slice"/></g>
+        <g transform="${frameTf}"><image href="${refUrl(refImg)}" x="${-W * 0.06}" y="${-H * 0.06}" width="${W * 1.12}" height="${H * 1.12}" preserveAspectRatio="xMidYMid slice"/></g>
       </mask>`;
       /* 接地影: 被写体の足元に楕円影 (キーの逆側へ寄せ、ズームに追従) */
       defs += `<filter id="${p}gsb" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="${(5 * Math.sqrt(zoom)).toFixed(1)}"/></filter>`;
@@ -13102,6 +13429,8 @@ function applySnapshot(s) {
   const pm = byId("promptModelSelect");
   if (pm && pm.options.length) pm.value = state.promptModel;
   renderAll();
+  /* 参照画像の本体はIDBにあるので、まずサムネで描いてから差し替える */
+  if (state.story.refs.some(r => r.clipId && !refFull.has(r.id))) setTimeout(refLoadAll, 0);
 }
 
 /* 自動保存 (3秒ごと・変化時のみ) */
@@ -13136,6 +13465,7 @@ async function gcMediaClips() {
     const addSnap = snap => {
       (snap?.cuts || []).forEach(c => valid.add(c.id));
       Object.values(snap?.story?.audio || {}).forEach(k => valid.add(k));
+      (snap?.story?.refs || []).forEach(r => { if (r.clipId) valid.add(r.clipId); });
     };
     addSnap(state);
     addSnap(lsGet(LS_CURRENT, null));
@@ -13172,12 +13502,12 @@ async function renderStorageMeter() {
     if (navigator.storage && navigator.storage.estimate) {
       const est = await navigator.storage.estimate();
       const free = est.quota ? ` (空き目安 ${((est.quota - est.usage) / 1073741824).toFixed(1)}GB)` : "";
-      idbNote = ` ｜ 動画/音声 ${(est.usage / 1048576).toFixed(1)}MB${free}`;
+      idbNote = ` ｜ 画像/動画/音声 ${(est.usage / 1048576).toFixed(1)}MB${free}`;
     }
   } catch { /* 未対応ブラウザ */ }
   el.innerHTML = `
-    <div class="sm-bar" title="ブラウザ内保存 (localStorage) の使用量 — 設定・参照画像・保存プロジェクトが対象。上限は一般的に約5MBでブラウザにより異なります。動画/音声はIndexedDBに別枠で保存されます"><div class="sm-fill${pct > 80 ? " warn" : ""}" style="width:${pct.toFixed(1)}%"></div></div>
-    <span class="sm-label">設定/画像 ${(lsUnits / 1048576).toFixed(2)}MB / 目安5MB${idbNote}</span>`;
+    <div class="sm-bar" title="ブラウザ内保存 (localStorage) の使用量 — 設定・カット・保存プロジェクトが対象。上限は一般的に約5MBでブラウザにより異なります。参照画像の本体・動画・音声はIndexedDBに別枠で保存されます (localStorageにはサムネだけ)"><div class="sm-fill${pct > 80 ? " warn" : ""}" style="width:${pct.toFixed(1)}%"></div></div>
+    <span class="sm-label">設定/カット ${(lsUnits / 1048576).toFixed(2)}MB / 目安5MB${idbNote}</span>`;
 }
 
 function saveCurrentProject() {
@@ -13283,7 +13613,7 @@ const previewCache = new Map();
 function renderPreviewCached(cut, prefix) {
   const ref = cut.refImgId && state.story && state.story.refs
     ? state.story.refs.find(r => r.id === cut.refImgId) : null;
-  const key = JSON.stringify(cut) + "|" + (ref ? `${ref.id}:${ref.dataUrl.length}` : "") + "|" + prefix;
+  const key = JSON.stringify(cut) + "|" + (ref ? `${ref.id}:${refUrl(ref).length}` : "") + "|" + prefix;
   const slot = `${cut.id}|${prefix}`;
   const hit = previewCache.get(slot);
   if (hit && hit.key === key) return hit.svg;
@@ -13407,6 +13737,7 @@ function loadSampleProject() {
       audioVol: { bgm: 0.4, nar: 1 },
     },
   });
+  refIngest(state.story.refs).then(n => { if (n) refreshAllPreviews(); }); // 本体をIDBへ寄せる
 }
 
 /* =========================================================
@@ -13506,7 +13837,9 @@ function setupOnboarding() {
  * 開閉時のフォーカス移動 (hidden属性の変化を監視して汎用対応)
  * ======================================================= */
 function setupA11y() {
-  const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+  /* [href] ではSVGの <use href="#icon"> まで拾ってしまう (フォーカスできない要素が
+   * 末尾に来るとトラップが効かなくなる) ので、リンクは a[href] に限定する */
+  const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
   ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay", "wfOverlay", "scriptOverlay", "locOverlay", "welcome"].forEach(id => {
     const el = byId(id);
     if (!el) return;
@@ -14356,37 +14689,9 @@ function setupHeader() {
   });
 
   // カット操作
-  byId("btnAddCut").addEventListener("click", () => {
-    state.cuts.push(makeCut(null));
-    state.activeCut = state.cuts.length - 1;
-    state.selectedItem = null;
-    renderAll();
-  });
-  byId("btnDupCut").addEventListener("click", async () => {
-    const src = activeCut();
-    const clone = JSON.parse(JSON.stringify(src));
-    clone.id = uid();
-    clone.items.forEach(i => i.id = uid());
-    clone.name += " (複製)";
-    state.cuts.splice(state.activeCut + 1, 0, clone);
-    state.activeCut++;
-    renderAll();
-    try {
-      const clip = await idbGetClip(src.id); // 添付動画も複製に引き継ぐ
-      if (clip) {
-        await idbPutClip({ ...clip, cutId: clone.id, addedAt: Date.now() });
-        rcRefreshIndex();
-        showToast("カットを複製しました (添付動画もコピー)");
-      }
-    } catch { /* IDBなし環境 */ }
-  });
-  byId("btnDelCut").addEventListener("click", () => {
-    if (state.cuts.length <= 1) { showToast("⚠️ 最後のカットは削除できません"); return; }
-    state.cuts.splice(state.activeCut, 1);
-    state.activeCut = Math.max(0, state.activeCut - 1);
-    state.selectedItem = null;
-    renderAll();
-  });
+  byId("btnAddCut").addEventListener("click", () => { cutInsert(state.cuts.length); renderAll(); });
+  byId("btnDupCut").addEventListener("click", async () => { await cutDuplicate(state.activeCut); renderAll(); });
+  byId("btnDelCut").addEventListener("click", () => { if (cutDelete(state.activeCut)) renderAll(); });
 
   const copyFeedback = (btn, restoreIcon) => {
     btn.innerHTML = '<svg class="ic"><use href="#i-check"/></svg>';
@@ -14524,7 +14829,13 @@ function init() {
     renderAll();
   }
   startAutosave();
-  setTimeout(async () => { await rcMigrateLegacyAudio(); rcRefreshIndex(); gcMediaClips(); }, 2500); // 旧音声キー移行→孤児回収
+  setTimeout(async () => {
+    await rcMigrateLegacyAudio();
+    await refMigrateToIdb();   // 参照画像の本体をlocalStorage→IndexedDBへ
+    await refLoadAll();
+    rcRefreshIndex();
+    gcMediaClips();
+  }, 2500); // 旧形式の移行→孤児回収
 
   /* ラフカットのWebM書き出しに必要なAPIが無いブラウザ (Safari等) には一度だけ案内 */
   const webmOk = typeof MediaRecorder !== "undefined"

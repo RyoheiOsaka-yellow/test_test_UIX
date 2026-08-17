@@ -33,18 +33,167 @@ async function downscaleImage(file, maxPx) {
       if (d[i] < 250) { hasAlpha = true; break; }
     }
   }
-  return { url: cv.toDataURL(hasAlpha ? "image/png" : "image/jpeg", 0.82), hasAlpha };
+  return {
+    url: cv.toDataURL(hasAlpha ? "image/png" : "image/jpeg", 0.82),
+    thumb: thumbOf(cv, hasAlpha),
+    hasAlpha,
+  };
+}
+
+/* =========================================================
+ * 参照画像のストレージ — 本体はIndexedDB、localStorageにはサムネだけ
+ *   ref = { id, name, hasAlpha, clipId:"ref-<id>", thumb:"data:…(96px)" }
+ * 本体 (768px) はIDBの clips ストアに ref-<id> で入れる。
+ *   → プロジェクトを増やしてもlocalStorageがほぼ増えない
+ *   → 既存のGC (clipIdを生存扱い) とバックアップZIPがそのまま効く
+ * 描画は同期なので、読み出し済み本体を refFull に持ち、
+ * 未読のうちはサムネで描いてから差し替える。
+ * ======================================================= */
+const refFull = new Map();     // ref.id → 本体dataURL (メモリキャッシュ)
+const REF_THUMB_PX = 96;
+
+function thumbOf(canvas, hasAlpha) {
+  const tv = document.createElement("canvas");
+  const s = Math.min(1, REF_THUMB_PX / Math.max(canvas.width, canvas.height));
+  tv.width = Math.max(1, Math.round(canvas.width * s));
+  tv.height = Math.max(1, Math.round(canvas.height * s));
+  tv.getContext("2d").drawImage(canvas, 0, 0, tv.width, tv.height);
+  return tv.toDataURL(hasAlpha ? "image/png" : "image/jpeg", 0.6);
+}
+
+/* 描画用: 本体があれば本体、なければサムネ (旧形式のdataUrlも読める) */
+function refUrl(ref) {
+  if (!ref) return "";
+  return refFull.get(ref.id) || ref.dataUrl || ref.thumb || "";
+}
+/* 本体が要る場面 (API送信・写真解析) 用の非同期取得 */
+async function refBody(ref) {
+  if (!ref) return "";
+  if (refFull.has(ref.id)) return refFull.get(ref.id);
+  if (ref.dataUrl) return ref.dataUrl;
+  if (!ref.clipId) return ref.thumb || "";
+  try {
+    const rec = await idbGetClip(ref.clipId);
+    if (!rec || !rec.blob) return ref.thumb || "";
+    const url = await blobToDataUrl(rec.blob);
+    refFull.set(ref.id, url);
+    return url;
+  } catch { return ref.thumb || ""; }
+}
+
+function dataUrlToBlob(url) {
+  const m = /^data:([^;,]*)(;base64)?,/.exec(url) || [];
+  const type = m[1] || "application/octet-stream";
+  const body = url.slice(url.indexOf(",") + 1);
+  if (!m[2]) return new Blob([decodeURIComponent(body)], { type });
+  const bin = atob(body);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type });
+}
+function blobToDataUrl(blob) {
+  return new Promise((res, rej) => {
+    const fr = new FileReader();
+    fr.onload = () => res(fr.result);
+    fr.onerror = () => rej(fr.error);
+    fr.readAsDataURL(blob);
+  });
+}
+
+/* 本体をIDBへ移す。IDBが使えないブラウザではdataUrlのまま残す (従来動作) */
+async function refStoreBody(ref, dataUrl) {
+  refFull.set(ref.id, dataUrl);
+  const key = "ref-" + ref.id;
+  try {
+    const blob = dataUrlToBlob(dataUrl);
+    await idbPutClip({ cutId: key, name: ref.name, type: blob.type, size: blob.size, blob, addedAt: Date.now(), isRef: true });
+    ref.clipId = key;
+    delete ref.dataUrl;
+    return true;
+  } catch {
+    ref.dataUrl = dataUrl;   // 保存できなければ従来どおりlocalStorageに置く
+    return false;
+  }
+}
+
+/* 旧形式 (dataUrl入り) の参照画像をIDBへ移行する。
+ * サムネは画像を読み直して作る (元の解像度は保てないので本体から縮小) */
+async function refIngest(refs) {
+  let moved = 0;
+  for (const r of refs || []) {
+    if (!r || !r.dataUrl || r.clipId) continue;
+    const url = r.dataUrl;
+    if (!r.thumb) {
+      try { r.thumb = await thumbFromUrl(url, !!r.hasAlpha); } catch { /* サムネなしでも本体で描ける */ }
+    }
+    if (await refStoreBody(r, url)) moved++;
+  }
+  return moved;
+}
+function thumbFromUrl(url, hasAlpha) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement("canvas");
+      cv.width = img.naturalWidth || 1; cv.height = img.naturalHeight || 1;
+      cv.getContext("2d").drawImage(img, 0, 0);
+      res(thumbOf(cv, hasAlpha));
+    };
+    img.onerror = () => rej(new Error("image"));
+    img.src = url;
+  });
+}
+
+/* 起動時の一括移行 — 編集中・自動保存・保存済みプロジェクトのすべてを対象にする */
+async function refMigrateToIdb() {
+  let moved = 0;
+  try {
+    moved += await refIngest(state.story && state.story.refs);
+    const cur = lsGet(LS_CURRENT, null);
+    if (cur && cur.story && Array.isArray(cur.story.refs)) {
+      const n = await refIngest(cur.story.refs);
+      if (n) { moved += n; lsSet(LS_CURRENT, cur); }
+    }
+    const all = lsGet(LS_PROJECTS, {});
+    let touched = false;
+    for (const p of Object.values(all)) {
+      if (!p || !p.data || !p.data.story || !Array.isArray(p.data.story.refs)) continue;
+      const n = await refIngest(p.data.story.refs);
+      if (n) { moved += n; touched = true; }
+    }
+    if (touched) lsSet(LS_PROJECTS, all);
+  } catch { /* 移行できなくても旧形式のまま動く */ }
+  if (moved) { refreshAllPreviews(); renderWorkflow(); }
+  return moved;
+}
+
+/* 表示中プロジェクトの本体をIDBから読み戻し、サムネ表示を差し替える */
+async function refLoadAll() {
+  let loaded = 0;
+  for (const r of (state.story && state.story.refs) || []) {
+    if (refFull.has(r.id) || r.dataUrl || !r.clipId) continue;
+    await refBody(r);
+    if (refFull.has(r.id)) loaded++;
+  }
+  if (loaded) { refreshAllPreviews(); renderWorkflow(); }
+  return loaded;
+}
+function refreshAllPreviews() {
+  previewCache.clear();
+  renderPreview(); renderCutStrip(); renderTimeline();
 }
 
 async function wfAddRefFiles(files) {
-  const MAX = 12;
+  const MAX = 30;   // Seedance系が1回に受け取れる参照画像の上限に合わせる
   let added = 0;
   for (const file of files) {
     if (!(file.type || "").startsWith("image/")) continue;
-    if (state.story.refs.length >= MAX) { showToast(`⚠️ 参照画像は${MAX}枚までです (ブラウザ保存容量のため)`); break; }
+    if (state.story.refs.length >= MAX) { showToast(`⚠️ 参照画像は${MAX}枚までです (生成側が受け取れる枚数の上限)`); break; }
     try {
       const d = await downscaleImage(file, 768);
-      state.story.refs.push({ id: uid(), name: file.name, dataUrl: d.url, hasAlpha: d.hasAlpha });
+      const ref = { id: uid(), name: file.name, hasAlpha: d.hasAlpha, thumb: d.thumb };
+      await refStoreBody(ref, d.url);
+      state.story.refs.push(ref);
       added++;
     } catch { /* 読めない画像はスキップ */ }
   }
@@ -106,7 +255,7 @@ async function wfSendCut(cut, statusEl) {
           resolution: "1080p",
           camerafixed: cut.camera.move === "fix",
         },
-        first_frame_data_url: ref ? ref.dataUrl : null,
+        first_frame_data_url: ref ? await refBody(ref) : null,
       }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -149,7 +298,7 @@ function renderWorkflow() {
     const usedBy = state.cuts.map((c, i) => c.refImgId === r.id ? `C${i + 1}` : null).filter(Boolean);
     return `
     <div class="wf-ref" draggable="true" data-refdrag="${r.id}" title="ドラッグしてカットや書き出しカードへドロップすると割り当てられます">
-      <img src="${r.dataUrl}" alt="${esc(r.name)}">
+      <img src="${refUrl(r)}" alt="${esc(r.name)}">
       <div class="wf-ref-body">
         <div class="wf-ref-name" title="${esc(r.name)}">${esc(r.name)}${r.hasAlpha ? `<span class="wf-ref-used" title="背景透過 — スタジオ背景に被写体として合成されます">透過</span>` : ""}${usedBy.length ? `<span class="wf-ref-used">${usedBy.join(" ")}</span>` : ""}</div>
         <select data-refassign="${r.id}" title="選んだカットにこの画像を割り当て (プレビュー/first frameに反映。複数カットにも割当可)">
@@ -189,7 +338,7 @@ function renderWorkflow() {
         <span class="wf-exp-params">${esc(sp.ratio)} ｜ ${c.kind === "still" ? "静止画" : (c.duration || 5) + "s"} ｜ 1080p ｜ camerafixed: ${c.camera.move === "fix"}</span>
       </div>
       <div class="wf-exp-row">
-        ${ref ? `<img class="wf-exp-ref" src="${ref.dataUrl}" title="first frame 参照: ${esc(ref.name)}">` : `<div class="wf-exp-noref" title="ステップ1で参照画像を割り当てると first frame として使えます">参照<br>なし</div>`}
+        ${ref ? `<img class="wf-exp-ref" src="${refUrl(ref)}" title="first frame 参照: ${esc(ref.name)}">` : `<div class="wf-exp-noref" title="ステップ1で参照画像を割り当てると first frame として使えます">参照<br>なし</div>`}
         <textarea readonly rows="3">${esc(generatePrompt(c, state.promptModel))}</textarea>
       </div>
       <div class="wf-exp-actions">
@@ -652,9 +801,11 @@ async function exportBackupZip(msgEl) {
   }];
   const manifest = [];
   try {
+    const refKeys = new Set(((state.story && state.story.refs) || []).map(r => r.clipId).filter(Boolean));
     for (const c of await idbAllClips()) {
       const audioKeys = Object.values(state.story.audio || {});
-      const special = audioKeys.includes(c.cutId) || Object.values(RC_AUDIO_LEGACY).includes(c.cutId);
+      const special = audioKeys.includes(c.cutId) || Object.values(RC_AUDIO_LEGACY).includes(c.cutId)
+        || refKeys.has(c.cutId);   // 参照画像の本体もZIPに含める
       if (!special && !state.cuts.some(x => x.id === c.cutId)) continue; // 現プロジェクト分のみ
       const extM = String(c.name || "").match(/\.([a-z0-9]{2,4})$/i);
       const fname = `media/${c.cutId}.${extM ? extM[1] : "webm"}`;
@@ -691,6 +842,9 @@ async function importBackupZip(file, msgEl) {
     }
   }
   rcRefreshIndex();
+  refFull.clear();          // 別プロジェクトの本体が残らないようにする
+  await refLoadAll();
+  await refIngest(state.story && state.story.refs);   // 旧形式ZIPの参照画像もIDBへ寄せる
   if (msgEl) msgEl.textContent = `✓ 復元しました (${state.cuts.length}カット / メディア${n}件)`;
 }
 

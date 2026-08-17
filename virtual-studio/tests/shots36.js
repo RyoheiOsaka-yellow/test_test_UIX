@@ -53,7 +53,7 @@ const { chromium } = require('playwright-core');
   const trap = await page.evaluate(() => {
     const el = byId('scriptOverlay');
     el.hidden = false; renderScriptPage();
-    const f = [...el.querySelectorAll('button, [href], input, select, textarea')]
+    const f = [...el.querySelectorAll('a[href], button, input, select, textarea')]
       .filter(x => !x.disabled && x.offsetParent !== null);
     f[f.length - 1].focus();
     el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));

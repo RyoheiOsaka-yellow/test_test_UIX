@@ -74,7 +74,7 @@ const fs = require('fs');
     const svg = renderPreviewSVG(state.cuts[0], 'al');
     return {
       hasAlpha: ref.hasAlpha,
-      isPng: ref.dataUrl.startsWith('data:image/png'),
+      isPng: refUrl(ref).startsWith('data:image/png'),
       maskAlpha: svg.includes('mask-type:alpha'),
       bgScene: svg.includes('imshad') && svg.includes(`fill="url(#albg)"`),
       sunsetCircle: svg.includes('#fff0c0'),

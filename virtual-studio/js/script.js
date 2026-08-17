@@ -36,6 +36,7 @@ function scriptBeatRows(cut, ci) {
         ${CAM_LINKS.map(c => `<option value="${c.id}" ${c.id === b.cam ? "selected" : ""}>${esc(c.label)}</option>`).join("")}
       </select>
       <button class="icon-btn small" data-scbup="${i}" title="上へ" ${i === 0 ? "disabled" : ""}>↑</button>
+      <button class="icon-btn small" data-scbsplit="${i}" title="ここでカットを2つに割る" ${i === 0 ? "disabled" : ""}>✂</button>
       <button class="icon-btn small danger" data-scbdel="${i}" title="削除">×</button>
     </div>`;
   }).join("");
@@ -52,8 +53,12 @@ function renderScriptPage() {
   const body = byId("scriptBody");
   if (!body) return;
   renderScriptTotal();
-  body.innerHTML = state.cuts.map((cut, ci) => scriptCutHtml(cut, ci)).join("")
-    || `<p class="insp-hint">カットがありません。スタジオで技法を選ぶか、ワークフローのストーリーから設計してください</p>`;
+  body.innerHTML = (state.cuts.map((cut, ci) => scriptCutHtml(cut, ci)).join("")
+    || `<p class="insp-hint">カットがありません。スタジオで技法を選ぶか、ワークフローのストーリーから設計してください</p>`)
+    + `<div class="sc-addcut">
+        <button class="btn" data-scnewcut="1"><svg class="ic"><use href="#i-plus"/></svg> カットを追加</button>
+        <span class="insp-hint">照明・カメラは追加後にスタジオ側で決めます</span>
+      </div>`;
 }
 
 /* 編集したカットの1枚だけを描き直す (20カットでも操作が重くならないように) */
@@ -88,6 +93,13 @@ function scriptCutHtml(cut, ci) {
         </div>
         <div class="sc-dur">
           ${cut.kind === "still" ? "スチール" : `<input type="number" data-scdur="${ci}" value="${dur}" min="1" max="120" step="1" title="カットの尺(秒)"> 秒`}
+        </div>
+        <div class="sc-ops" title="カットの並びをここで直せます">
+          <button class="icon-btn small" data-scup="${ci}" title="前のカットと入れ替え" ${ci === 0 ? "disabled" : ""}>↑</button>
+          <button class="icon-btn small" data-scdown="${ci}" title="次のカットと入れ替え" ${ci >= state.cuts.length - 1 ? "disabled" : ""}>↓</button>
+          <button class="icon-btn small" data-scdup="${ci}" title="このカットを複製"><svg class="ic"><use href="#i-dup"/></svg></button>
+          <button class="icon-btn small" data-scins="${ci}" title="後ろに新しいカットを追加"><svg class="ic"><use href="#i-plus"/></svg></button>
+          <button class="icon-btn small danger" data-sccutdel="${ci}" title="このカットを削除 (⌘Zで戻せます)"><svg class="ic"><use href="#i-trash"/></svg></button>
         </div>
       </div>
 
@@ -143,7 +155,7 @@ function scriptCutHtml(cut, ci) {
             const ph = (state.story.refs || []).find(r => r.id === cut.location.photoRefId);
             const tr = cut.location.photoTraits;
             if (!ph) {
-              const imgs = (state.story.refs || []).filter(r => (r.mediaKind || "image") === "image" && r.dataUrl);
+              const imgs = (state.story.refs || []).filter(r => (r.mediaKind || "image") === "image" && refUrl(r));
               return `<button class="btn small" data-scphotoadd="${ci}"><svg class="ic"><use href="#i-image"/></svg> ロケ地写真から取り込む</button>
                 ${imgs.length ? `<select data-scphotopick="${ci}" title="取り込み済みの素材から選ぶ">
                   <option value="">素材から選ぶ…</option>
@@ -151,7 +163,7 @@ function scriptCutHtml(cut, ci) {
                 </select>` : ""}
                 <span class="insp-hint">写真の光と色 (暖色/硬さ/明るさ/彩度) を測ってプロンプトに渡します</span>`;
             }
-            return `<img class="sc-photo" src="${ph.dataUrl}" alt="${esc(ph.name)}" title="${esc(ph.name)}">
+            return `<img class="sc-photo" src="${refUrl(ph)}" alt="${esc(ph.name)}" title="${esc(ph.name)}">
               <span class="sc-photo-tags">${tr ? tr.ja.map(t => `<span class="p-tag">${esc(t)}</span>`).join("") : "解析中…"}</span>
               <label class="sc-photo-use" title="オフにするとプロンプトには渡しません">
                 <input type="checkbox" data-scphotouse="${ci}" ${cut.location.usePhoto === false ? "" : "checked"}> プロンプトに使う
@@ -244,7 +256,42 @@ function setupScriptPage() {
     captureUndo();   // 台本側の編集も ⌘Z で戻せるようにする
   };
 
+  /* カットの増減・並べ替えは番号が動くので全体を描き直す */
+  const structural = (focusIdx, msg) => {
+    renderAll();               // スタジオ側 (ストリップ/タイムライン/プレビュー) も追従する
+    renderScriptPage();
+    if (focusIdx != null) {
+      const el = document.querySelector(`.sc-cut[data-sccut="${focusIdx}"]`);
+      if (el) el.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    if (msg) showToast(msg);
+  };
+
   body.addEventListener("click", e => {
+    /* ---- カット操作 (追加・複製・削除・並べ替え・分割) ---- */
+    const up = e.target.closest("[data-scup]");
+    if (up) { const i = +up.dataset.scup; if (cutMove(i, i - 1)) structural(i - 1); return; }
+    const down = e.target.closest("[data-scdown]");
+    if (down) { const i = +down.dataset.scdown; if (cutMove(i, i + 1)) structural(i + 1); return; }
+    const dup = e.target.closest("[data-scdup]");
+    if (dup) { cutDuplicate(+dup.dataset.scdup).then(i => structural(i, "カットを複製しました")); return; }
+    const ins = e.target.closest("[data-scins]");
+    if (ins) { structural(cutInsert(+ins.dataset.scins + 1), "カットを追加しました"); return; }
+    const cdel = e.target.closest("[data-sccutdel]");
+    if (cdel) {
+      const i = +cdel.dataset.sccutdel;
+      if (cutDelete(i)) structural(Math.max(0, i - 1), "カットを削除しました (⌘Zで戻せます)");
+      return;
+    }
+    if (e.target.closest("[data-scnewcut]")) { structural(cutInsert(state.cuts.length), "カットを追加しました"); return; }
+    const split = e.target.closest("[data-scbsplit]");
+    if (split) {
+      const ci = +split.closest("[data-sccut]").dataset.sccut;
+      const at = cutSplitAtBeat(ci, +split.dataset.scbsplit);
+      if (at >= 0) structural(at, `C${ci + 1} をここで2つに割りました`);
+      return;
+    }
+
     const sel = e.target.closest("[data-scselect]");
     if (sel) {
       state.activeCut = +sel.dataset.scselect;

@@ -39,12 +39,17 @@ const state = {
   kit: { body: null, lens: null, support: null, drone: null },
   customDNA: [], // 参照の手動注釈から作られたPattern DNA (V8 Phase 2)
   // 制作ワークフロー: ChatGPT等で作った参照画像+ストーリーの受け入れ (ステップ1)
-  story: { text: "", refs: [], audioVol: { bgm: 0.4, nar: 1 } }, // refs: {id, name, dataUrl, hasAlpha}
+  story: { text: "", refs: [], audioVol: { bgm: 0.4, nar: 1 } }, // refs: {id, name, thumb, clipId, hasAlpha} 本体はIDB
 };
 
 function allPresets() { return PRESETS.concat(state.customPresets); }
 
-function activeCut() { return state.cuts[state.activeCut]; }
+/* 選択インデックスは常にカット数の範囲へ丸める
+ * (非同期の再描画がカット削除と行き違っても落ちないように) */
+function activeCut() {
+  if (state.activeCut >= state.cuts.length) state.activeCut = Math.max(0, state.cuts.length - 1);
+  return state.cuts[state.activeCut];
+}
 
 function makeItem(def) {
   return {
@@ -177,6 +182,86 @@ function makeCut(preset) {
     ],
   };
   return ensureCameraDefaults(cut);
+}
+
+/* =========================================================
+ * カット操作 (追加・複製・削除・並べ替え・分割)
+ * スタジオのボタンと台本ページの両方から呼ぶ。描画は呼び出し側の担当。
+ * ======================================================= */
+function cutInsert(at, preset) {
+  const cut = makeCut(preset || null);
+  const i = Math.max(0, Math.min(at == null ? state.cuts.length : at, state.cuts.length));
+  state.cuts.splice(i, 0, cut);
+  state.activeCut = i;
+  state.selectedItem = null;
+  return i;
+}
+
+async function cutDuplicate(at) {
+  const src = state.cuts[at];
+  if (!src) return -1;
+  const clone = JSON.parse(JSON.stringify(src));
+  clone.id = uid();
+  clone.items.forEach(i => i.id = uid());
+  clone.name += " (複製)";
+  state.cuts.splice(at + 1, 0, clone);
+  state.activeCut = at + 1;
+  state.selectedItem = null;
+  try {
+    const clip = await idbGetClip(src.id); // 添付動画も複製に引き継ぐ
+    if (clip) {
+      await idbPutClip({ ...clip, cutId: clone.id, addedAt: Date.now() });
+      rcRefreshIndex();
+      showToast("カットを複製しました (添付動画もコピー)");
+    }
+  } catch { /* IDBなし環境 */ }
+  return at + 1;
+}
+
+function cutDelete(at) {
+  if (state.cuts.length <= 1) { showToast("⚠️ 最後のカットは削除できません"); return false; }
+  if (!state.cuts[at]) return false;
+  state.cuts.splice(at, 1);
+  state.activeCut = Math.max(0, Math.min(at, state.cuts.length - 1));
+  state.selectedItem = null;
+  return true;
+}
+
+function cutMove(from, to) {
+  if (from === to || !state.cuts[from] || to < 0 || to >= state.cuts.length) return false;
+  const [mv] = state.cuts.splice(from, 1);
+  state.cuts.splice(to, 0, mv);
+  state.activeCut = to;
+  return true;
+}
+
+/* ビートの切れ目でカットを2つに割る。
+ * 台本を書いているうちに「1カットに詰め込みすぎた」と気づく場面のための操作で、
+ * 前半/後半の尺はそれぞれのビート合計に合わせ直す。
+ * 登場要素は両方に残す (ビートの「誰が」がidで結ばれているため)。 */
+function cutSplitAtBeat(at, bi) {
+  const cut = state.cuts[at];
+  if (!cut) return -1;
+  const beats = (cut.perf && cut.perf.beats) || [];
+  if (bi < 1 || bi >= beats.length) { showToast("⚠️ 分割はビートとビートの間でのみできます"); return -1; }
+  const tail = JSON.parse(JSON.stringify(cut));
+  tail.id = uid();
+  tail.items.forEach(i => i.id = uid());
+  tail.perf.beats = beats.slice(bi).map(b => ({ ...b, id: uid() }));
+  cut.perf.beats = beats.slice(0, bi);
+  const sum = arr => arr.reduce((s, b) => s + (+b.sec || 0), 0);
+  if (cut.kind !== "still") {
+    cut.duration = Math.max(1, Math.round(sum(cut.perf.beats)) || 1);
+    tail.duration = Math.max(1, Math.round(sum(tail.perf.beats)) || 1);
+  }
+  tail.name = cut.name + " (後半)";
+  tail.caption = "";                 // セリフは前半のもの。後半へは複製しない
+  tail.transition = cut.transition;  // 次カットへの繋ぎは後半が引き継ぐ
+  cut.transition = "cut";            // 割った境目はカット繋ぎ
+  state.cuts.splice(at + 1, 0, tail);
+  state.activeCut = at + 1;
+  state.selectedItem = null;
+  return at + 1;
 }
 
 /* =========================================================
@@ -1262,7 +1347,7 @@ function renderPreviewSVG(cut, idPrefix) {
     const ay = H * 0.42 + (H * (cut.refOffY || 0)) / 100
       + (angId === "high" || angId === "topdown" || angId === "drone" ? -H * 0.05 : angId === "low" ? H * 0.05 : 0);
     const frameTf = `translate(${(W / 2).toFixed(1)} ${(H * 0.45).toFixed(1)}) rotate(${dutch}) scale(${zoom.toFixed(3)}) translate(${(-ax).toFixed(1)} ${(-ay).toFixed(1)})`;
-    const imgTag = `<image href="${refImg.dataUrl}" x="${-W * 0.06}" y="${-H * 0.06}" width="${W * 1.12}" height="${H * 1.12}" preserveAspectRatio="xMidYMid slice" filter="url(#${p}imf)"/>`;
+    const imgTag = `<image href="${refUrl(refImg)}" x="${-W * 0.06}" y="${-H * 0.06}" width="${W * 1.12}" height="${H * 1.12}" preserveAspectRatio="xMidYMid slice" filter="url(#${p}imf)"/>`;
 
     /* 被写界深度: 開放絞りでは周辺をボカす (radialマスク) */
     const dof = (cut.camera.apertureF || 2.8) <= 2.2;
@@ -1304,7 +1389,7 @@ function renderPreviewSVG(cut, idPrefix) {
       /* 被写体合成モード: スタジオ背景 (既存のシーン描画) + 透過被写体。
        * ライティングの明暗は被写体のアルファ形状にだけ乗せる */
       defs += `<mask id="${p}sm" maskUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}" style="mask-type:alpha">
-        <g transform="${frameTf}"><image href="${refImg.dataUrl}" x="${-W * 0.06}" y="${-H * 0.06}" width="${W * 1.12}" height="${H * 1.12}" preserveAspectRatio="xMidYMid slice"/></g>
+        <g transform="${frameTf}"><image href="${refUrl(refImg)}" x="${-W * 0.06}" y="${-H * 0.06}" width="${W * 1.12}" height="${H * 1.12}" preserveAspectRatio="xMidYMid slice"/></g>
       </mask>`;
       /* 接地影: 被写体の足元に楕円影 (キーの逆側へ寄せ、ズームに追従) */
       defs += `<filter id="${p}gsb" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="${(5 * Math.sqrt(zoom)).toFixed(1)}"/></filter>`;
@@ -2606,6 +2691,8 @@ function applySnapshot(s) {
   const pm = byId("promptModelSelect");
   if (pm && pm.options.length) pm.value = state.promptModel;
   renderAll();
+  /* 参照画像の本体はIDBにあるので、まずサムネで描いてから差し替える */
+  if (state.story.refs.some(r => r.clipId && !refFull.has(r.id))) setTimeout(refLoadAll, 0);
 }
 
 /* 自動保存 (3秒ごと・変化時のみ) */
@@ -2640,6 +2727,7 @@ async function gcMediaClips() {
     const addSnap = snap => {
       (snap?.cuts || []).forEach(c => valid.add(c.id));
       Object.values(snap?.story?.audio || {}).forEach(k => valid.add(k));
+      (snap?.story?.refs || []).forEach(r => { if (r.clipId) valid.add(r.clipId); });
     };
     addSnap(state);
     addSnap(lsGet(LS_CURRENT, null));
@@ -2676,12 +2764,12 @@ async function renderStorageMeter() {
     if (navigator.storage && navigator.storage.estimate) {
       const est = await navigator.storage.estimate();
       const free = est.quota ? ` (空き目安 ${((est.quota - est.usage) / 1073741824).toFixed(1)}GB)` : "";
-      idbNote = ` ｜ 動画/音声 ${(est.usage / 1048576).toFixed(1)}MB${free}`;
+      idbNote = ` ｜ 画像/動画/音声 ${(est.usage / 1048576).toFixed(1)}MB${free}`;
     }
   } catch { /* 未対応ブラウザ */ }
   el.innerHTML = `
-    <div class="sm-bar" title="ブラウザ内保存 (localStorage) の使用量 — 設定・参照画像・保存プロジェクトが対象。上限は一般的に約5MBでブラウザにより異なります。動画/音声はIndexedDBに別枠で保存されます"><div class="sm-fill${pct > 80 ? " warn" : ""}" style="width:${pct.toFixed(1)}%"></div></div>
-    <span class="sm-label">設定/画像 ${(lsUnits / 1048576).toFixed(2)}MB / 目安5MB${idbNote}</span>`;
+    <div class="sm-bar" title="ブラウザ内保存 (localStorage) の使用量 — 設定・カット・保存プロジェクトが対象。上限は一般的に約5MBでブラウザにより異なります。参照画像の本体・動画・音声はIndexedDBに別枠で保存されます (localStorageにはサムネだけ)"><div class="sm-fill${pct > 80 ? " warn" : ""}" style="width:${pct.toFixed(1)}%"></div></div>
+    <span class="sm-label">設定/カット ${(lsUnits / 1048576).toFixed(2)}MB / 目安5MB${idbNote}</span>`;
 }
 
 function saveCurrentProject() {
@@ -2787,7 +2875,7 @@ const previewCache = new Map();
 function renderPreviewCached(cut, prefix) {
   const ref = cut.refImgId && state.story && state.story.refs
     ? state.story.refs.find(r => r.id === cut.refImgId) : null;
-  const key = JSON.stringify(cut) + "|" + (ref ? `${ref.id}:${ref.dataUrl.length}` : "") + "|" + prefix;
+  const key = JSON.stringify(cut) + "|" + (ref ? `${ref.id}:${refUrl(ref).length}` : "") + "|" + prefix;
   const slot = `${cut.id}|${prefix}`;
   const hit = previewCache.get(slot);
   if (hit && hit.key === key) return hit.svg;
@@ -2911,6 +2999,7 @@ function loadSampleProject() {
       audioVol: { bgm: 0.4, nar: 1 },
     },
   });
+  refIngest(state.story.refs).then(n => { if (n) refreshAllPreviews(); }); // 本体をIDBへ寄せる
 }
 
 /* =========================================================
@@ -3010,7 +3099,9 @@ function setupOnboarding() {
  * 開閉時のフォーカス移動 (hidden属性の変化を監視して汎用対応)
  * ======================================================= */
 function setupA11y() {
-  const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+  /* [href] ではSVGの <use href="#icon"> まで拾ってしまう (フォーカスできない要素が
+   * 末尾に来るとトラップが効かなくなる) ので、リンクは a[href] に限定する */
+  const FOCUSABLE = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
   ["equipOverlay", "docOverlay", "projOverlay", "dnaOverlay", "wfOverlay", "scriptOverlay", "locOverlay", "welcome"].forEach(id => {
     const el = byId(id);
     if (!el) return;
@@ -3860,37 +3951,9 @@ function setupHeader() {
   });
 
   // カット操作
-  byId("btnAddCut").addEventListener("click", () => {
-    state.cuts.push(makeCut(null));
-    state.activeCut = state.cuts.length - 1;
-    state.selectedItem = null;
-    renderAll();
-  });
-  byId("btnDupCut").addEventListener("click", async () => {
-    const src = activeCut();
-    const clone = JSON.parse(JSON.stringify(src));
-    clone.id = uid();
-    clone.items.forEach(i => i.id = uid());
-    clone.name += " (複製)";
-    state.cuts.splice(state.activeCut + 1, 0, clone);
-    state.activeCut++;
-    renderAll();
-    try {
-      const clip = await idbGetClip(src.id); // 添付動画も複製に引き継ぐ
-      if (clip) {
-        await idbPutClip({ ...clip, cutId: clone.id, addedAt: Date.now() });
-        rcRefreshIndex();
-        showToast("カットを複製しました (添付動画もコピー)");
-      }
-    } catch { /* IDBなし環境 */ }
-  });
-  byId("btnDelCut").addEventListener("click", () => {
-    if (state.cuts.length <= 1) { showToast("⚠️ 最後のカットは削除できません"); return; }
-    state.cuts.splice(state.activeCut, 1);
-    state.activeCut = Math.max(0, state.activeCut - 1);
-    state.selectedItem = null;
-    renderAll();
-  });
+  byId("btnAddCut").addEventListener("click", () => { cutInsert(state.cuts.length); renderAll(); });
+  byId("btnDupCut").addEventListener("click", async () => { await cutDuplicate(state.activeCut); renderAll(); });
+  byId("btnDelCut").addEventListener("click", () => { if (cutDelete(state.activeCut)) renderAll(); });
 
   const copyFeedback = (btn, restoreIcon) => {
     btn.innerHTML = '<svg class="ic"><use href="#i-check"/></svg>';
@@ -4028,7 +4091,13 @@ function init() {
     renderAll();
   }
   startAutosave();
-  setTimeout(async () => { await rcMigrateLegacyAudio(); rcRefreshIndex(); gcMediaClips(); }, 2500); // 旧音声キー移行→孤児回収
+  setTimeout(async () => {
+    await rcMigrateLegacyAudio();
+    await refMigrateToIdb();   // 参照画像の本体をlocalStorage→IndexedDBへ
+    await refLoadAll();
+    rcRefreshIndex();
+    gcMediaClips();
+  }, 2500); // 旧形式の移行→孤児回収
 
   /* ラフカットのWebM書き出しに必要なAPIが無いブラウザ (Safari等) には一度だけ案内 */
   const webmOk = typeof MediaRecorder !== "undefined"
