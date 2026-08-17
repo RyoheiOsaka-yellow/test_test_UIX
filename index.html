@@ -1,0 +1,1853 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>かえるのうたのもり</title>
+<meta name="description" content="夜の森をはねてすすみ、みっつの精霊のうたをおぼえる — カエルの音あそび">
+<style>
+  :root{
+    --ink:#e8f2ea;
+    --dim:#8fa79a;
+    --accent:#8ee6b8;
+    --warm:#ffd9a0;
+    --panel:rgba(6,12,14,.72);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#05090e}
+  body{
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","Yu Gothic",Meiryo,system-ui,sans-serif;
+    color:var(--ink);
+    user-select:none;
+    touch-action:none;
+  }
+  canvas#game{display:block;width:100%;height:100%;position:fixed;inset:0}
+
+  #ui{position:fixed;inset:0;pointer-events:none;z-index:5}
+  .panel{background:var(--panel);border:1px solid rgba(142,230,184,.18);border-radius:14px;backdrop-filter:blur(6px)}
+
+  /* ---------- HUD ---------- */
+  #hud{
+    position:absolute;top:max(14px,env(safe-area-inset-top));left:14px;right:14px;
+    display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+    opacity:0;transition:opacity .6s ease;
+  }
+  #hud.on{opacity:1}
+  #spirits{display:flex;gap:9px;align-items:center;padding:9px 13px}
+  .sdot{width:13px;height:13px;border-radius:50%;border:2px solid rgba(255,255,255,.28);background:transparent;transition:all .5s ease}
+  .sdot.on{border-color:transparent;box-shadow:0 0 12px 3px currentColor;background:currentColor}
+  #dist{font-size:12px;letter-spacing:.08em;color:var(--dim);padding:9px 13px;white-space:nowrap}
+  #dist b{color:var(--ink);font-weight:600}
+  #flies{padding:9px 13px;font-size:12px;color:var(--warm);letter-spacing:.06em}
+
+  /* ---------- prompt ---------- */
+  #prompt{
+    position:absolute;left:50%;bottom:19%;transform:translate(-50%,14px);
+    padding:11px 20px;font-size:14px;letter-spacing:.1em;
+    opacity:0;transition:all .35s ease;
+  }
+  #prompt.on{opacity:1;transform:translate(-50%,0)}
+  #prompt kbd{
+    display:inline-block;min-width:24px;text-align:center;
+    background:rgba(142,230,184,.16);border:1px solid rgba(142,230,184,.5);
+    border-radius:6px;padding:2px 7px;margin-right:9px;font-family:inherit;font-size:13px;color:var(--accent)
+  }
+
+  /* ---------- song game hud ---------- */
+  #song{
+    position:absolute;left:50%;top:16%;transform:translate(-50%,-10px);
+    text-align:center;opacity:0;transition:all .4s ease;padding:14px 26px;
+  }
+  #song.on{opacity:1;transform:translate(-50%,0)}
+  #songState{font-size:19px;letter-spacing:.22em;margin-bottom:10px;text-shadow:0 0 18px currentColor}
+  #rounds{display:flex;gap:8px;justify-content:center}
+  .rdot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.2);transition:all .4s}
+  .rdot.on{background:var(--accent);box-shadow:0 0 10px var(--accent)}
+  #seqbar{display:flex;gap:6px;justify-content:center;margin-top:10px;min-height:6px}
+  .qdot{width:20px;height:5px;border-radius:3px;background:rgba(255,255,255,.16);transition:all .25s}
+  .qdot.hit{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+  .qdot.miss{background:#ff7b7b;box-shadow:0 0 8px #ff7b7b}
+
+  /* ---------- toast ---------- */
+  #toast{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.94);
+    font-size:30px;letter-spacing:.3em;opacity:0;text-shadow:0 0 30px currentColor;
+    transition:opacity .3s ease,transform .3s ease;font-weight:600;
+  }
+  #toast.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+
+  /* ---------- screens ---------- */
+  .screen{
+    position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:22px;text-align:center;pointer-events:auto;
+    background:radial-gradient(120% 100% at 50% 40%,rgba(9,18,20,.62),rgba(3,6,9,.94));
+    transition:opacity .8s ease;padding:24px;
+  }
+  .screen.hide{opacity:0;pointer-events:none}
+  .screen.gone{display:none}
+  h1{
+    margin:0;font-size:clamp(30px,7.2vw,58px);letter-spacing:.42em;font-weight:600;
+    text-indent:.42em;text-shadow:0 0 44px rgba(142,230,184,.45);
+  }
+  .sub{color:var(--dim);font-size:13px;letter-spacing:.34em;text-indent:.34em;margin-top:-8px}
+  .keys{display:grid;grid-template-columns:auto auto;gap:9px 16px;font-size:13px;color:var(--dim);align-items:center}
+  .keys b{color:var(--ink);font-weight:500;letter-spacing:.06em;justify-self:start;text-align:left}
+  .keys span{justify-self:end;color:var(--accent);font-size:12px;letter-spacing:.06em}
+  button.big{
+    pointer-events:auto;cursor:pointer;font-family:inherit;
+    background:rgba(142,230,184,.1);border:1px solid rgba(142,230,184,.55);color:var(--accent);
+    padding:14px 42px;border-radius:999px;font-size:15px;letter-spacing:.3em;text-indent:.3em;
+    transition:all .3s ease;
+  }
+  button.big:hover{background:rgba(142,230,184,.2);box-shadow:0 0 28px rgba(142,230,184,.32)}
+
+  #bar{width:min(240px,60vw);height:3px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden}
+  #barIn{height:100%;width:0;background:var(--accent);box-shadow:0 0 12px var(--accent);transition:width .3s ease}
+
+  #credits .roll{max-width:520px;display:flex;flex-direction:column;gap:16px;font-size:13px;color:var(--dim);line-height:1.9;letter-spacing:.08em}
+  #credits .roll b{color:var(--ink);font-weight:500;letter-spacing:.16em}
+  #credits a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(142,230,184,.3)}
+
+  /* ---------- touch controls ---------- */
+  #stick{position:absolute;left:0;bottom:0;width:46%;height:52%;pointer-events:auto;touch-action:none}
+  #stickBase,#stickKnob{position:absolute;border-radius:50%;opacity:0;transition:opacity .2s;pointer-events:none}
+  #stickBase{width:112px;height:112px;margin:-56px 0 0 -56px;border:1px solid rgba(142,230,184,.32);background:rgba(6,14,16,.3)}
+  #stickKnob{width:48px;height:48px;margin:-24px 0 0 -24px;background:rgba(142,230,184,.28);border:1px solid rgba(142,230,184,.6)}
+  #stick.on #stickBase,#stick.on #stickKnob{opacity:1}
+  #touchBtns{position:absolute;right:20px;bottom:max(28px,env(safe-area-inset-bottom));display:none;flex-direction:column;gap:14px;pointer-events:auto}
+  body.touch #touchBtns{display:flex}
+  .tbtn{
+    width:74px;height:74px;border-radius:50%;font-family:inherit;font-size:12px;letter-spacing:.1em;
+    background:rgba(6,14,16,.5);border:1px solid rgba(142,230,184,.4);color:var(--accent);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .tbtn:active{background:rgba(142,230,184,.25)}
+
+  #fps{position:absolute;right:10px;bottom:8px;font-size:11px;color:#4c6b5e;display:none}
+  body.debug #fps{display:block}
+  .fade{position:absolute;inset:0;background:#03060a;opacity:0;transition:opacity 1s ease;pointer-events:none}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="ui">
+  <div id="hud">
+    <div id="spirits" class="panel">
+      <span class="sdot" id="sd0"></span><span class="sdot" id="sd1"></span><span class="sdot" id="sd2"></span>
+    </div>
+    <div id="flies" class="panel">ホタル 0</div>
+    <div id="dist" class="panel">つぎのせいれい <b>--</b> m</div>
+  </div>
+
+  <div id="prompt" class="panel"><kbd>E</kbd>うたをきく</div>
+
+  <div id="song" class="panel">
+    <div id="songState">きいて</div>
+    <div id="rounds"><span class="rdot"></span><span class="rdot"></span><span class="rdot"></span></div>
+    <div id="seqbar"></div>
+  </div>
+
+  <div id="toast"></div>
+
+  <div id="stick"><div id="stickBase"></div><div id="stickKnob"></div></div>
+  <div id="touchBtns">
+    <div class="tbtn" id="btnTongue">ペロ</div>
+    <div class="tbtn" id="btnCroak">ケロ</div>
+  </div>
+
+  <div class="fade" id="fade"></div>
+  <div id="fps"></div>
+
+  <div class="screen" id="loading">
+    <h1>かえるのうたのもり</h1>
+    <div class="sub">KAERU NO UTANOMORI</div>
+    <div id="bar"><div id="barIn"></div></div>
+    <div class="sub" id="loadTxt">よるのもりを　そだてています…</div>
+  </div>
+
+  <div class="screen gone" id="title">
+    <h1>かえるのうたのもり</h1>
+    <div class="sub">よるのもりで　みっつのうたを　おぼえる</div>
+    <div class="keys panel" style="padding:20px 26px">
+      <span>WASD / ↑←↓→</span><b>はねる</b>
+      <span>Shift</span><b>おおきくはねる</b>
+      <span>Space</span><b>したをのばす（ホタルとり）</b>
+      <span>C</span><b>ケロと鳴く</b>
+      <span>E</span><b>せいれいのうたをきく</b>
+      <span>クリック / 1-5</span><b>いしをたたく</b>
+    </div>
+    <button class="big" id="startBtn">はじめる</button>
+    <div class="sub" style="font-size:11px;letter-spacing:.14em;opacity:.6">音が出ます　—　mesqme/utanomori へのオマージュ</div>
+  </div>
+
+  <div class="screen gone" id="credits">
+    <h1 style="font-size:clamp(24px,5vw,40px)">よあけ</h1>
+    <div class="roll">
+      <div><b>かえるのうたのもり</b><br>よるのもりを　みっつのうたが　わたっていった。</div>
+      <div>
+        <b>もとになったさくひん</b><br>
+        <a href="https://github.com/mesqme/utanomori" target="_blank" rel="noopener">mesqme / utanomori</a><br>
+        （React Three Fiber / three.js）
+      </div>
+      <div>
+        <b>このばん</b><br>
+        HTML Canvas 2D ＋ WebAudio　だけでつくった　カエルばん。<br>
+        もり・くさ・いけ・ほたるは　すべて　その場でうまれます。
+      </div>
+    </div>
+    <button class="big" id="againBtn">もういちど</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================================
+   かえるのうたのもり  —  a frog-hero homage to mesqme/utanomori
+   single file · canvas2d · webaudio · zero assets
+   ========================================================================= */
+
+const DEBUG = location.hash.indexOf('debug') >= 0;
+if (DEBUG) document.body.classList.add('debug');
+
+/* ---------------------------------------------------------------- utils */
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = t => t * t * (3 - 2 * t);
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+const easeIn = t => t * t * t;
+const dist2 = (ax, ay, bx, by) => { const dx = ax - bx, dy = ay - by; return dx * dx + dy * dy; };
+const now = () => performance.now() / 1000;
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function hashi(x, y, s) {
+  let h = Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263) + Math.imul(s | 0, 1274126177);
+  h = (h ^ h >>> 13) | 0;
+  h = Math.imul(h, 1274126177);
+  return ((h ^ h >>> 16) >>> 0) / 4294967296;
+}
+
+/* palette helpers ------------------------------------------------------- */
+function hex2rgb(h) { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
+function mixc(a, b, t) { return [lerp(a[0], b[0], t) | 0, lerp(a[1], b[1], t) | 0, lerp(a[2], b[2], t) | 0]; }
+function rgb(c, a) { return a === undefined ? `rgb(${c[0]},${c[1]},${c[2]})` : `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
+
+const NIGHT = {
+  skyTop: hex2rgb('#050a12'), skyBot: hex2rgb('#0c1a20'),
+  ground: hex2rgb('#0c1614'), ground2: hex2rgb('#122420'),
+  grassLo: hex2rgb('#16352b'), grassHi: hex2rgb('#2b6b4e'),
+  trunk: hex2rgb('#0a1214'), canopy: hex2rgb('#0e2a26'), canopy2: hex2rgb('#16463a'),
+  water: hex2rgb('#08222e'), waterHi: hex2rgb('#1c5c6b'),
+  fog: hex2rgb('#050a10'), rock: hex2rgb('#1b2a2e'),
+  frog: hex2rgb('#4fbf7d'), frogDark: hex2rgb('#2a7a52'), frogBelly: hex2rgb('#d9f2c8')
+};
+const DAWN = {
+  skyTop: hex2rgb('#2a1f3c'), skyBot: hex2rgb('#8a5a5e'),
+  ground: hex2rgb('#22302a'), ground2: hex2rgb('#2e4034'),
+  grassLo: hex2rgb('#33543c'), grassHi: hex2rgb('#8fc07a'),
+  trunk: hex2rgb('#241c1c'), canopy: hex2rgb('#2e4433'), canopy2: hex2rgb('#5d7f4c'),
+  water: hex2rgb('#2b4a58'), waterHi: hex2rgb('#a8cdd0'),
+  fog: hex2rgb('#3a2c38'), rock: hex2rgb('#3b3f3c'),
+  frog: hex2rgb('#68d68c'), frogDark: hex2rgb('#3d9463'), frogBelly: hex2rgb('#f2f8dd')
+};
+let themeT = 0;               // 0 = night, 1 = dawn
+const P = {};                 // live palette
+function updatePalette() {
+  for (const k in NIGHT) P[k] = mixc(NIGHT[k], DAWN[k], themeT);
+}
+updatePalette();
+
+/* ---------------------------------------------------------------- canvas */
+const cvs = document.getElementById('game');
+const ctx = cvs.getContext('2d', { alpha: false });
+let CW = 0, CH = 0, DPR = 1, SCALE = 46;
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  CW = window.innerWidth; CH = window.innerHeight;
+  cvs.width = Math.round(CW * DPR); cvs.height = Math.round(CH * DPR);
+  cvs.style.width = CW + 'px'; cvs.style.height = CH + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  SCALE = clamp(Math.min(CW, CH) / 15.5, 34, 78);
+}
+window.addEventListener('resize', resize);
+resize();
+
+/* pseudo-perspective projection */
+const SQUASH = 0.60;
+const cam = { x: 0, y: -6, zoom: 1, shake: 0 };
+function sx(wx) { return (wx - cam.x) * SCALE * cam.zoom + CW * 0.5; }
+function sy(wy, z) { return (wy - cam.y) * SCALE * cam.zoom * SQUASH - (z || 0) * SCALE * cam.zoom + CH * 0.56; }
+function screen2world(px, py) {
+  const wx = (px - CW * 0.5) / (SCALE * cam.zoom) + cam.x;
+  const wy = (py - CH * 0.56) / (SCALE * cam.zoom * SQUASH) + cam.y;
+  return [wx, wy];
+}
+
+/* ---------------------------------------------------------------- audio */
+const A = {
+  ctx: null, master: null, revIn: null, ready: false,
+  layers: [], layerGain: [], padGain: null,
+  step: 0, nextTime: 0, stepDur: 60 / 82 / 2, timer: 0
+};
+
+function initAudio() {
+  if (A.ctx) return;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const ac = new AC();
+  A.ctx = ac;
+
+  A.master = ac.createGain(); A.master.gain.value = 0.0; A.master.connect(ac.destination);
+
+  // simple generated reverb
+  const len = Math.floor(ac.sampleRate * 2.6);
+  const ir = ac.createBuffer(2, len, ac.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ir.getChannelData(ch);
+    for (let i = 0; i < len; i++) {
+      const t = i / len;
+      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 2.6) * (1 - t * 0.2);
+    }
+  }
+  const conv = ac.createConvolver(); conv.buffer = ir;
+  const revGain = ac.createGain(); revGain.gain.value = 0.42;
+  conv.connect(revGain); revGain.connect(A.master);
+  A.revIn = ac.createGain(); A.revIn.gain.value = 1; A.revIn.connect(conv);
+
+  // ---- ambience: crickets (band noise + tremolo) --------------------
+  const nb = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+  const nd = nb.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  A.noiseBuf = nb;
+
+  const cr = ac.createBufferSource(); cr.buffer = nb; cr.loop = true;
+  const crF = ac.createBiquadFilter(); crF.type = 'bandpass'; crF.frequency.value = 4600; crF.Q.value = 9;
+  const crG = ac.createGain(); crG.gain.value = 0.05;
+  const trem = ac.createOscillator(); trem.type = 'sine'; trem.frequency.value = 11.5;
+  const tremG = ac.createGain(); tremG.gain.value = 0.045;
+  trem.connect(tremG); tremG.connect(crG.gain);
+  cr.connect(crF); crF.connect(crG); crG.connect(A.master); crG.connect(A.revIn);
+  cr.start(); trem.start();
+  A.cricket = crG;
+
+  // ---- ambience: wind ------------------------------------------------
+  const wn = ac.createBufferSource(); wn.buffer = nb; wn.loop = true;
+  const wf = ac.createBiquadFilter(); wf.type = 'lowpass'; wf.frequency.value = 340;
+  const wg = ac.createGain(); wg.gain.value = 0.1;
+  const wl = ac.createOscillator(); wl.type = 'sine'; wl.frequency.value = 0.09;
+  const wlg = ac.createGain(); wlg.gain.value = 0.06;
+  wl.connect(wlg); wlg.connect(wg.gain);
+  wn.connect(wf); wf.connect(wg); wg.connect(A.master);
+  wn.start(); wl.start();
+
+  // ---- music layers (one per spirit) ---------------------------------
+  for (let i = 0; i < 3; i++) {
+    const g = ac.createGain(); g.gain.value = 0;
+    g.connect(A.master);
+    const s = ac.createGain(); s.gain.value = 0.6; g.connect(s); s.connect(A.revIn);
+    A.layerGain.push(g);
+  }
+  A.padGain = ac.createGain(); A.padGain.gain.value = 0; A.padGain.connect(A.master); A.padGain.connect(A.revIn);
+
+  // slow drone pad
+  [55, 82.4, 110, 164.8].forEach((f, i) => {
+    const o = ac.createOscillator(); o.type = i % 2 ? 'sine' : 'triangle'; o.frequency.value = f;
+    const dg = ac.createGain(); dg.gain.value = i === 0 ? 0.16 : 0.05;
+    const lfo = ac.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = 0.05 + i * 0.017;
+    const lg = ac.createGain(); lg.gain.value = 0.03;
+    lfo.connect(lg); lg.connect(dg.gain);
+    o.connect(dg); dg.connect(A.padGain); o.start(); lfo.start();
+  });
+
+  A.ready = true;
+  A.nextTime = ac.currentTime + 0.1;
+  A.timer = setInterval(schedule, 60);
+}
+
+function fadeMaster(v, t) {
+  if (!A.ready) return;
+  const g = A.master.gain;
+  g.cancelScheduledValues(A.ctx.currentTime);
+  g.setValueAtTime(g.value, A.ctx.currentTime);
+  g.linearRampToValueAtTime(v, A.ctx.currentTime + t);
+}
+function setGain(node, v, t) {
+  if (!A.ready) return;
+  const g = node.gain, c = A.ctx.currentTime;
+  g.cancelScheduledValues(c); g.setValueAtTime(g.value, c);
+  g.linearRampToValueAtTime(v, c + t);
+}
+
+/* a soft mallet / water-drop note — the "singing stone" voice */
+function note(freq, when, dur, vol, dest, froggy) {
+  if (!A.ready) return;
+  const ac = A.ctx, t = when || ac.currentTime;
+  dur = dur || 1.1; vol = vol === undefined ? 0.25 : vol;
+  const out = ac.createGain(); out.gain.value = 0;
+  out.connect(dest || A.master); out.connect(A.revIn);
+
+  const o1 = ac.createOscillator(); o1.type = 'sine'; o1.frequency.setValueAtTime(freq, t);
+  const o2 = ac.createOscillator(); o2.type = 'triangle'; o2.frequency.setValueAtTime(freq * 2.01, t);
+  const g2 = ac.createGain(); g2.gain.value = 0.22;
+  o2.connect(g2); g2.connect(out); o1.connect(out);
+
+  if (froggy) {          // tiny pitch warble = a throat-sac wobble
+    const lfo = ac.createOscillator(); lfo.type = 'sine'; lfo.frequency.setValueAtTime(15, t);
+    const lg = ac.createGain(); lg.gain.setValueAtTime(freq * 0.012, t);
+    lfo.connect(lg); lg.connect(o1.frequency); lg.connect(o2.frequency);
+    lfo.start(t); lfo.stop(t + dur);
+    o1.frequency.setValueAtTime(freq * 0.94, t);
+    o1.frequency.exponentialRampToValueAtTime(freq, t + 0.06);
+  }
+  out.gain.setValueAtTime(0, t);
+  out.gain.linearRampToValueAtTime(vol, t + 0.012);
+  out.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o1.start(t); o2.start(t); o1.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
+}
+
+/* ケロ — the frog croak */
+function croakSound(pitch, vol) {
+  if (!A.ready) return;
+  const ac = A.ctx, t = ac.currentTime;
+  pitch = pitch || 1; vol = vol === undefined ? 0.3 : vol;
+  const out = ac.createGain(); out.gain.value = 0;
+  out.connect(A.master); const rv = ac.createGain(); rv.gain.value = 0.5; out.connect(rv); rv.connect(A.revIn);
+
+  const o = ac.createOscillator(); o.type = 'sawtooth';
+  const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 6;
+  o.frequency.setValueAtTime(150 * pitch, t);
+  o.frequency.exponentialRampToValueAtTime(102 * pitch, t + 0.09);
+  o.frequency.exponentialRampToValueAtTime(128 * pitch, t + 0.17);
+  f.frequency.setValueAtTime(900, t);
+  f.frequency.exponentialRampToValueAtTime(420, t + 0.2);
+  // a two-slap "ke-ro" amplitude envelope
+  out.gain.setValueAtTime(0, t);
+  out.gain.linearRampToValueAtTime(vol, t + 0.015);
+  out.gain.linearRampToValueAtTime(vol * 0.25, t + 0.08);
+  out.gain.linearRampToValueAtTime(vol * 0.85, t + 0.11);
+  out.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+  o.connect(f); f.connect(out); o.start(t); o.stop(t + 0.34);
+
+  const n = ac.createBufferSource(); n.buffer = A.noiseBuf;
+  const nf = ac.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 1500 * pitch; nf.Q.value = 2;
+  const ng = ac.createGain(); ng.gain.setValueAtTime(vol * 0.5, t);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+  n.connect(nf); nf.connect(ng); ng.connect(A.master);
+  n.start(t); n.stop(t + 0.15);
+}
+
+function plop(vol) {          // water / landing
+  if (!A.ready) return;
+  const ac = A.ctx, t = ac.currentTime;
+  const o = ac.createOscillator(); o.type = 'sine';
+  const g = ac.createGain();
+  o.frequency.setValueAtTime(620, t); o.frequency.exponentialRampToValueAtTime(150, t + 0.11);
+  g.gain.setValueAtTime(vol === undefined ? 0.16 : vol, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+  o.connect(g); g.connect(A.master); g.connect(A.revIn); o.start(t); o.stop(t + 0.16);
+}
+function sparkle(freq) {
+  if (!A.ready) return;
+  const ac = A.ctx, t = ac.currentTime;
+  for (let i = 0; i < 3; i++) note(freq * (1 + i * 0.5), t + i * 0.055, 0.7, 0.12, null, false);
+}
+
+/* backing patterns — one per spirit theme, 16 steps of a pentatonic loop */
+const PENTA = [
+  [220.00, 261.63, 293.66, 329.63, 392.00],           // A minor pentatonic
+  [246.94, 293.66, 329.63, 369.99, 440.00],           // B  (brighter)
+  [174.61, 196.00, 233.08, 261.63, 311.13]            // F  (deeper, mossy)
+];
+const PATTERNS = [
+  [0, null, 2, null, 4, null, 2, null, 1, null, 3, null, 2, null, null, null],
+  [4, null, null, 2, 3, null, 1, null, 4, null, 2, null, 0, null, 2, null],
+  [0, null, null, null, 3, null, null, 2, 1, null, null, null, 4, null, 2, null]
+];
+function schedule() {
+  if (!A.ready) return;
+  const ac = A.ctx;
+  while (A.nextTime < ac.currentTime + 0.35) {
+    const s = A.step % 16;
+    for (let i = 0; i < 3; i++) {
+      const p = PATTERNS[i][s];
+      if (p !== null && p !== undefined) {
+        const oct = (A.step % 32) >= 16 ? 2 : 1;
+        note(PENTA[i][p] * oct * 0.5, A.nextTime, 1.6, 0.2, A.layerGain[i], false);
+      }
+    }
+    A.nextTime += A.stepDur; A.step++;
+  }
+}
+
+/* ------------------------------------------------------------ world gen */
+const CHUNK = 9;
+const chunkCache = new Map();
+const SPIRIT_POS = [[16, -22], [-27, 9], [24, 27]];
+
+function chunkKey(cx, cy) { return cx + ',' + cy; }
+function nearSpirit(wx, wy, r) {
+  for (let i = 0; i < 3; i++) {
+    const dx = wx - SPIRIT_POS[i][0], dy = wy - SPIRIT_POS[i][1];
+    if (dx * dx + dy * dy < r * r) return i;
+  }
+  return -1;
+}
+
+function getChunk(cx, cy) {
+  const k = chunkKey(cx, cy);
+  let c = chunkCache.get(k);
+  if (c) return c;
+  const rnd = mulberry32((cx * 73856093 ^ cy * 19349663) >>> 0);
+  const ox = cx * CHUNK, oy = cy * CHUNK;
+
+  // pond
+  let pond = null;
+  if (rnd() < 0.17) {
+    const px = ox + rnd() * CHUNK, py = oy + rnd() * CHUNK;
+    const rr = 2.2 + rnd() * 2.3;
+    if (nearSpirit(px, py, rr + 6) < 0 && dist2(px, py, 0, 0) > 90) {
+      pond = { x: px, y: py, r: rr, r2: rr * (0.72 + rnd() * 0.2), pads: [] };
+      const n = 3 + (rnd() * 4 | 0);
+      for (let i = 0; i < n; i++) {
+        const a = rnd() * TAU, d = Math.sqrt(rnd()) * 0.78;
+        pond.pads.push({
+          x: pond.x + Math.cos(a) * pond.r * d,
+          y: pond.y + Math.sin(a) * pond.r2 * d,
+          s: 0.34 + rnd() * 0.4, a: rnd() * TAU, ph: rnd() * TAU,
+          flower: rnd() < 0.3
+        });
+      }
+    }
+  }
+  const inPond = (x, y, pad) => pond && (Math.pow((x - pond.x) / (pond.r + pad), 2) + Math.pow((y - pond.y) / (pond.r2 + pad), 2) < 1);
+
+  // trees
+  const trees = [];
+  const tn = 1 + (rnd() * 3 | 0);
+  for (let i = 0; i < tn; i++) {
+    const x = ox + rnd() * CHUNK, y = oy + rnd() * CHUNK;
+    if (inPond(x, y, 0.6)) continue;
+    if (nearSpirit(x, y, 8.5) >= 0) continue;
+    if (dist2(x, y, 0, 0) < 26) continue;
+    const h = 2.2 + rnd() * 1.9;
+    trees.push({
+      x, y, h, w: 0.72 + rnd() * 0.5, ph: rnd() * TAU,
+      lean: (rnd() - 0.5) * 0.28, kind: rnd() < 0.28 ? 1 : 0,
+      tint: rnd()
+    });
+  }
+
+  // grass
+  const grass = [];
+  const gn = 96;
+  for (let i = 0; i < gn; i++) {
+    const x = ox + rnd() * CHUNK, y = oy + rnd() * CHUNK;
+    if (inPond(x, y, 0.25)) continue;
+    grass.push({ x, y, h: 0.3 + rnd() * 0.62, ph: rnd() * TAU, b: (rnd() - 0.5) * 0.4, t: rnd() });
+  }
+  grass.sort((a, b) => a.y - b.y);
+
+  // props: mushrooms / rocks / reeds
+  const props = [];
+  const pn = 2 + (rnd() * 3 | 0);
+  for (let i = 0; i < pn; i++) {
+    const x = ox + rnd() * CHUNK, y = oy + rnd() * CHUNK;
+    if (inPond(x, y, 0.2)) continue;
+    const r = rnd();
+    props.push({
+      x, y, kind: r < 0.34 ? 'mush' : r < 0.62 ? 'rock' : 'reed',
+      s: 0.4 + rnd() * 0.45, ph: rnd() * TAU, glow: rnd() < 0.5
+    });
+  }
+
+  c = { cx, cy, pond, trees, grass, props };
+  chunkCache.set(k, c);
+  if (chunkCache.size > 900) {          // keep memory bounded
+    const first = chunkCache.keys().next().value;
+    chunkCache.delete(first);
+  }
+  return c;
+}
+
+function pondAt(wx, wy) {
+  const cx = Math.floor(wx / CHUNK), cy = Math.floor(wy / CHUNK);
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+    const c = getChunk(cx + i, cy + j);
+    if (c.pond) {
+      const p = c.pond;
+      if (Math.pow((wx - p.x) / p.r, 2) + Math.pow((wy - p.y) / p.r2, 2) < 1) return p;
+    }
+  }
+  return null;
+}
+function collideTrees(o, r) {
+  const cx = Math.floor(o.x / CHUNK), cy = Math.floor(o.y / CHUNK);
+  for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+    const c = getChunk(cx + i, cy + j);
+    for (const t of c.trees) {
+      const rr = r + t.w * 0.26;
+      const dx = o.x - t.x, dy = (o.y - t.y) * 1.4;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < rr * rr && d2 > 0.0001) {
+        const d = Math.sqrt(d2), push = (rr - d);
+        o.x += dx / d * push; o.y += dy / d * push * 0.7;
+      }
+    }
+  }
+}
+
+/* ------------------------------------------------------------- entities */
+const frog = {
+  x: 0, y: 0, z: 0, face: -Math.PI / 2,
+  hop: 0, hopDur: 0, hopping: false, sx: 0, sy: 0, dx: 0, dy: 0, dist: 0,
+  cool: 0, blink: 0, blinkT: 2, sac: 0, croakT: 0,
+  swim: 0, vx: 0, vy: 0, kick: 0,
+  tongue: 0, tongueTarget: null, squash: 0, flies: 0
+};
+
+const ripples = [];
+function ripple(x, y, big) {
+  ripples.push({ x, y, t: 0, life: big ? 1.5 : 1.0, r0: big ? 0.3 : 0.15, r1: big ? 3.2 : 1.4, wet: !!pondAt(x, y) });
+  if (ripples.length > 60) ripples.shift();
+}
+const sparks = [];
+function spark(x, y, z, col, n, spd) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * TAU, s = (0.4 + Math.random()) * (spd || 1.6);
+    sparks.push({
+      x, y, z, vx: Math.cos(a) * s, vy: Math.sin(a) * s * 0.5, vz: Math.random() * 2.2,
+      t: 0, life: 0.7 + Math.random() * 0.8, col
+    });
+  }
+  if (sparks.length > 400) sparks.splice(0, sparks.length - 400);
+}
+
+/* fireflies drift around the camera */
+const flies = [];
+for (let i = 0; i < 80; i++) {
+  flies.push({
+    x: (Math.random() - 0.5) * 26, y: (Math.random() - 0.5) * 22,
+    z: 0.3 + Math.random() * 2.2, ph: Math.random() * TAU,
+    sp: 0.25 + Math.random() * 0.5, a: Math.random() * TAU,
+    hue: Math.random() < 0.25 ? 1 : 0, gone: 0
+  });
+}
+
+/* spirits ---------------------------------------------------------------- */
+const SPIRIT_NAME = ['あおのせいれい', 'きんのせいれい', 'むらさきのせいれい'];
+const SPIRIT_COL = ['#7fe3ff', '#ffd27a', '#c69bff'];
+const spirits = SPIRIT_POS.map((p, i) => ({
+  i, x: p[0], y: p[1], z: 1.25, freed: false, active: false,
+  col: hex2rgb(SPIRIT_COL[i]), colStr: SPIRIT_COL[i], name: SPIRIT_NAME[i],
+  ph: Math.random() * TAU, glow: 0, hover: 0, sing: 0, orbit: 0,
+  stones: null
+}));
+function makeStones(sp) {
+  const st = [];
+  const R = 3.5;
+  for (let i = 0; i < 5; i++) {
+    const a = -Math.PI / 2 + i / 5 * TAU + 0.28;
+    st.push({
+      x: sp.x + Math.cos(a) * R, y: sp.y + Math.sin(a) * R * 0.92,
+      base: -1.6, z: -1.6, rise: 0, glow: 0, shake: 0,
+      h: 0.85 + hashi(sp.i, i, 7) * 0.7, w: 0.52 + hashi(sp.i, i, 11) * 0.22,
+      note: PENTA[sp.i][i], idx: i, tilt: (hashi(sp.i, i, 3) - 0.5) * 0.3
+    });
+  }
+  return st;
+}
+spirits.forEach(s => s.stones = makeStones(s));
+
+/* ----------------------------------------------------------- game state */
+const G = {
+  phase: 'load',         // load · title · intro · play · finale · credits
+  t: 0, phaseT: 0,
+  target: 0,             // current spirit index
+  mini: {
+    state: 'idle',       // idle·setup·countdown·playback·input·roundClear·fail·clear
+    sp: null, round: 0, seq: [], idx: 0, timer: 0, playIdx: -1, results: []
+  },
+  loadP: 0, introT: 0, finaleT: 0
+};
+
+/* -------------------------------------------------------------- input */
+const keys = new Set();
+let padX = 0, padY = 0, running = false;
+window.addEventListener('keydown', e => {
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+  if (e.repeat) return;
+  keys.add(e.key.toLowerCase());
+  onKey(e.key.toLowerCase());
+});
+window.addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+window.addEventListener('blur', () => keys.clear());
+
+function onKey(k) {
+  if (G.phase === 'title' && (k === 'enter' || k === ' ')) { startGame(); return; }
+  if (G.phase !== 'play') return;
+  if (k === 'e') tryStartSong();
+  if (k === 'c') doCroak();
+  if (k === ' ') doTongue();
+  if (k >= '1' && k <= '5') {
+    const m = G.mini;
+    if (m.state === 'input') hitStone(m.sp.stones[+k - 1]);
+  }
+}
+
+/* pointer: tap a stone, tap to croak elsewhere */
+/* returns true when the tap landed on a singing stone */
+function tryStoneTap(px, py) {
+  const m = G.mini;
+  if (G.phase !== 'play' || !m.sp) return false;
+  if (m.state !== 'input' && m.state !== 'playback') return false;
+  let best = null, bd = 1e9;
+  for (const s of m.sp.stones) {
+    const dx = px - sx(s.x), dy = py - sy(s.y, s.z + s.h * 0.5);
+    const d = dx * dx + dy * dy;
+    if (d < bd) { bd = d; best = s; }
+  }
+  const rad = Math.max(52, SCALE * 0.9);
+  if (best && bd < rad * rad) {
+    if (m.state === 'input') hitStone(best);
+    return true;
+  }
+  return false;
+}
+
+cvs.addEventListener('pointerdown', e => {
+  if (G.phase !== 'play') return;
+  const px = e.clientX, py = e.clientY;
+  if (tryStoneTap(px, py)) return;
+  // otherwise: aim a hop toward the tap on desktop-ish input
+  if (e.pointerType === 'mouse') {
+    const [wx, wy] = screen2world(px, py);
+    const d = Math.hypot(wx - frog.x, wy - frog.y);
+    if (d > 0.4 && !frog.hopping && frog.cool <= 0) startHop((wx - frog.x) / d, (wy - frog.y) / d, false);
+  }
+});
+
+/* touch joystick */
+const stick = document.getElementById('stick');
+const knob = document.getElementById('stickKnob'), base = document.getElementById('stickBase');
+let stickId = null, sx0 = 0, sy0 = 0;
+stick.addEventListener('pointerdown', e => {
+  document.body.classList.add('touch');
+  // during the melody game a tap on a stone wins over the joystick
+  if (tryStoneTap(e.clientX, e.clientY)) return;
+  stickId = e.pointerId; sx0 = e.clientX; sy0 = e.clientY;
+  stick.classList.add('on');
+  base.style.left = knob.style.left = sx0 + 'px';
+  base.style.top = knob.style.top = sy0 + 'px';
+  stick.setPointerCapture(e.pointerId);
+});
+stick.addEventListener('pointermove', e => {
+  if (e.pointerId !== stickId) return;
+  const dx = e.clientX - sx0, dy = e.clientY - sy0;
+  const d = Math.hypot(dx, dy), max = 56;
+  const c = Math.min(d, max);
+  const nx = d > 0.001 ? dx / d : 0, ny = d > 0.001 ? dy / d : 0;
+  knob.style.left = (sx0 + nx * c) + 'px'; knob.style.top = (sy0 + ny * c) + 'px';
+  padX = nx * (c / max); padY = ny * (c / max);
+  running = (c / max) > 0.82;
+});
+function stickEnd(e) {
+  if (e.pointerId !== stickId) return;
+  stickId = null; padX = padY = 0; running = false; stick.classList.remove('on');
+}
+stick.addEventListener('pointerup', stickEnd);
+stick.addEventListener('pointercancel', stickEnd);
+window.addEventListener('touchstart', () => document.body.classList.add('touch'), { once: true });
+window.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'touch') document.body.classList.add('touch');
+}, true);
+
+document.getElementById('btnCroak').addEventListener('pointerdown', e => { e.preventDefault(); if (isNearSpirit() && G.mini.state === 'idle') tryStartSong(); else doCroak(); });
+document.getElementById('btnTongue').addEventListener('pointerdown', e => { e.preventDefault(); doTongue(); });
+
+/* ------------------------------------------------------------- actions */
+function startHop(dx, dy, run) {
+  frog.hopping = true; frog.hop = 0;
+  frog.hopDur = run ? 0.34 : 0.44;
+  frog.dist = run ? 2.15 : 1.3;
+  frog.sx = frog.x; frog.sy = frog.y; frog.dx = dx; frog.dy = dy;
+  frog.face = Math.atan2(dy, dx);
+  frog.squash = 1;
+}
+function doCroak() {
+  if (frog.croakT > 0.2) return;
+  frog.croakT = 0.62; frog.sac = 1;
+  croakSound(1 + (Math.random() - 0.5) * 0.08, 0.32);
+  ripple(frog.x, frog.y, true);
+  const sp = spirits[G.target];
+  if (sp && !sp.freed && dist2(frog.x, frog.y, sp.x, sp.y) < 100) sp.glow = Math.min(1, sp.glow + 0.4);
+}
+function doTongue() {
+  if (frog.tongue > 0) return;
+  let best = null, bd = 3.2 * 3.2;
+  for (const f of flies) {
+    if (f.gone > 0) continue;
+    const dx = f.x - frog.x, dy = f.y - frog.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 > bd) continue;
+    const ang = Math.atan2(dy, dx);
+    let da = Math.abs(((ang - frog.face + Math.PI * 3) % TAU) - Math.PI);
+    if (da > 1.1) continue;
+    if (f.z > 2.0) continue;
+    bd = d2; best = f;
+  }
+  frog.tongue = 0.001; frog.tongueTarget = best;
+  if (best) {
+    best.gone = 0.28;
+    frog.flies++;
+    document.getElementById('flies').textContent = 'ホタル ' + frog.flies;
+    sparkle(660 + Math.random() * 220);
+    spark(best.x, best.y, best.z, [255, 224, 150], 8, 1.1);
+  } else {
+    plop(0.07);
+  }
+}
+function isNearSpirit() {
+  const sp = spirits[G.target];
+  if (!sp || sp.freed) return false;
+  return dist2(frog.x, frog.y, sp.x, sp.y) < 42;
+}
+
+/* -------------------------------------------------- the melody minigame */
+const seqDom = document.getElementById('seqbar');
+const songDom = document.getElementById('song');
+const songState = document.getElementById('songState');
+const roundDots = document.querySelectorAll('#rounds .rdot');
+
+function tryStartSong() {
+  const m = G.mini;
+  if (m.state !== 'idle') return;
+  const sp = spirits[G.target];
+  if (!sp || sp.freed) return;
+  if (dist2(frog.x, frog.y, sp.x, sp.y) > 42) return;
+  m.sp = sp; m.round = 0; m.state = 'setup'; m.timer = 0;
+  sp.active = true;
+  songDom.style.setProperty('--accent', sp.colStr);
+  songState.style.color = sp.colStr;
+  document.getElementById('prompt').classList.remove('on');
+  songDom.classList.add('on');
+  setSongState('うたが　はじまる');
+  drawRounds(-1); drawSeq(0, -1);
+  croakSound(0.8, 0.2);
+  setGain(A.layerGain[sp.i], 0.9, 1.2);
+  setGain(A.cricket, 0.015, 1.0);
+}
+function setSongState(txt) { songState.textContent = txt; }
+function drawRounds(done) {
+  roundDots.forEach((d, i) => d.classList.toggle('on', i <= done));
+}
+function drawSeq(len, upto, missAt) {
+  seqDom.innerHTML = '';
+  for (let i = 0; i < len; i++) {
+    const d = document.createElement('span');
+    d.className = 'qdot' + (missAt === i ? ' miss' : i < upto ? ' hit' : '');
+    d.style.background = (i < upto && missAt !== i) ? (G.mini.sp ? G.mini.sp.colStr : '') : '';
+    seqDom.appendChild(d);
+  }
+}
+function newSeq(round) {
+  const len = 3 + round;              // 3 · 4 · 5
+  const s = [];
+  let prev = -1;
+  for (let i = 0; i < len; i++) {
+    let v = Math.floor(Math.random() * 5);
+    if (v === prev && Math.random() < 0.7) v = (v + 1 + Math.floor(Math.random() * 4)) % 5;
+    s.push(v); prev = v;
+  }
+  return s;
+}
+function beginRound() {
+  const m = G.mini;
+  m.seq = newSeq(m.round); m.idx = 0; m.playIdx = -1;
+  m.state = 'countdown'; m.timer = 0;
+  setSongState('きいて');
+  drawRounds(m.round - 1); drawSeq(m.seq.length, 0);
+}
+function hitStone(st) {
+  const m = G.mini;
+  if (m.state !== 'input' || !st) return;
+  st.glow = 1; st.shake = 0.25;
+  note(st.note * 2, 0, 1.2, 0.3, null, true);
+  ripple(st.x, st.y + 0.2, false);
+  spark(st.x, st.y, st.z + st.h, m.sp.col, 6, 1.0);
+  if (st.idx === m.seq[m.idx]) {
+    m.idx++;
+    drawSeq(m.seq.length, m.idx);
+    if (m.idx >= m.seq.length) {
+      m.state = 'roundClear'; m.timer = 0;
+      setSongState('そのとおり');
+      drawRounds(m.round);
+      sparkle(m.sp ? PENTA[m.sp.i][4] : 440);
+      spark(m.sp.x, m.sp.y, 1.4, m.sp.col, 24, 2.2);
+      m.sp.glow = 1;
+    }
+  } else {
+    m.state = 'fail'; m.timer = 0;
+    drawSeq(m.seq.length, m.idx, m.idx);
+    setSongState('ちがう…　もういちど');
+    croakSound(0.62, 0.28);
+    cam.shake = 0.5;
+    m.sp.stones.forEach(s => s.shake = 0.5);
+  }
+}
+function updateMini(dt) {
+  const m = G.mini;
+  if (m.state === 'idle') return;
+  const sp = m.sp;
+  m.timer += dt;
+
+  switch (m.state) {
+    case 'setup': {
+      const t = clamp(m.timer / 1.5, 0, 1);
+      sp.stones.forEach((s, i) => {
+        const tt = clamp((m.timer - i * 0.09) / 1.1, 0, 1);
+        s.rise = easeOut(tt);
+        if (tt > 0 && tt < 1 && Math.random() < dt * 6) spark(s.x, s.y, 0, sp.col, 1, 0.6);
+      });
+      sp.hover = lerp(sp.hover, 1, dt * 2.2);
+      if (m.timer > 1.6) { m.round = 0; beginRound(); }
+      break;
+    }
+    case 'countdown': {
+      if (m.timer > 0.9) {
+        m.state = 'playback'; m.timer = 0; m.playIdx = -1;
+        setSongState('きいて');
+        // schedule the whole phrase at once, glow follows in update
+        const t0 = A.ready ? A.ctx.currentTime + 0.12 : 0;
+        m.seq.forEach((v, i) => note(sp.stones[v].note * 2, t0 + i * 0.52, 1.3, 0.32, null, true));
+        m.playStart = G.t + 0.12;
+      }
+      break;
+    }
+    case 'playback': {
+      const el = G.t - m.playStart;
+      const i = Math.floor(el / 0.52);
+      if (i !== m.playIdx && i >= 0 && i < m.seq.length) {
+        m.playIdx = i;
+        const s = sp.stones[m.seq[i]];
+        s.glow = 1; s.shake = 0.16;
+        ripple(s.x, s.y + 0.2, false);
+        spark(s.x, s.y, s.z + s.h, sp.col, 5, 0.9);
+        sp.sing = 1;
+      }
+      if (el > m.seq.length * 0.52 + 0.5) {
+        m.state = 'input'; m.timer = 0; m.idx = 0;
+        setSongState('まねして');
+        drawSeq(m.seq.length, 0);
+      }
+      break;
+    }
+    case 'input': {
+      if (m.timer > 12) {           // too slow → gentle re-listen
+        m.state = 'fail'; m.timer = 0;
+        setSongState('もういちど　きこう');
+      }
+      break;
+    }
+    case 'roundClear': {
+      if (m.timer > 1.4) {
+        m.round++;
+        if (m.round >= 3) {
+          m.state = 'clear'; m.timer = 0;
+          setSongState('うたを　おぼえた');
+          sp.freed = true; sp.active = false;
+          document.getElementById('sd' + sp.i).classList.add('on');
+          document.getElementById('sd' + sp.i).style.color = sp.colStr;
+          toast(sp.name + 'が　ついてきた', sp.colStr, 2.4);
+          spark(sp.x, sp.y, 1.4, sp.col, 46, 3.0);
+          setGain(A.layerGain[sp.i], 0.55, 2.5);
+          for (let i = 0; i < 5; i++) note(PENTA[sp.i][i] * 2, (A.ready ? A.ctx.currentTime : 0) + i * 0.13, 1.8, 0.26, null, true);
+        } else beginRound();
+      }
+      break;
+    }
+    case 'fail': {
+      if (m.timer > 1.5) { m.state = 'countdown'; m.timer = 0; setSongState('きいて'); drawSeq(m.seq.length, 0); }
+      break;
+    }
+    case 'clear': {
+      sp.stones.forEach((s, i) => { s.rise = lerp(s.rise, 0, dt * 1.6); });
+      sp.hover = lerp(sp.hover, 0, dt * 1.4);
+      if (m.timer > 2.6) {
+        m.state = 'idle'; m.sp = null;
+        songDom.classList.remove('on');
+        setGain(A.cricket, 0.05, 2.0);
+        // next target
+        const next = spirits.findIndex(s => !s.freed);
+        if (next < 0) startFinale(); else G.target = next;
+      }
+      break;
+    }
+  }
+}
+
+/* ------------------------------------------------------------ overlays */
+const toastDom = document.getElementById('toast');
+let toastT = 0;
+function toast(txt, col, time) {
+  toastDom.textContent = txt;
+  toastDom.style.color = col || '#e8f2ea';
+  toastDom.classList.add('on');
+  toastT = time || 1.8;
+}
+
+/* ---------------------------------------------------------- phase flow */
+function startGame() {
+  initAudio();
+  if (A.ctx && A.ctx.state === 'suspended') A.ctx.resume();
+  fadeMaster(0.85, 2.0);
+  setGain(A.padGain, 0.5, 4.0);
+  hideScreen('title');
+  G.phase = 'intro'; G.phaseT = 0;
+  cam.zoom = 2.4;
+  document.getElementById('hud').classList.add('on');
+  croakSound(1, 0.34);
+}
+function startFinale() {
+  G.phase = 'finale'; G.phaseT = 0;
+  G.mini.state = 'idle'; G.mini.sp = null;
+  songDom.classList.remove('on');
+  document.getElementById('prompt').classList.remove('on');
+  spirits.forEach(s => {
+    document.getElementById('sd' + s.i).classList.add('on');
+    document.getElementById('sd' + s.i).style.color = s.colStr;
+  });
+  toast('よが　あける', '#ffd9a0', 3.0);
+  for (let i = 0; i < 3; i++) setGain(A.layerGain[i], 0.75, 3.0);
+  setGain(A.padGain, 0.7, 3.0);
+  setGain(A.cricket, 0.02, 4.0);
+}
+function showScreen(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('gone');
+  requestAnimationFrame(() => el.classList.remove('hide'));
+}
+function hideScreen(id) {
+  const el = document.getElementById(id);
+  el.classList.add('hide');
+  setTimeout(() => el.classList.add('gone'), 900);
+}
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('againBtn').addEventListener('click', () => location.reload());
+
+/* -------------------------------------------------------------- update */
+function update(dt) {
+  G.t += dt;
+  G.phaseT += dt;
+
+  // ---- theme sweep
+  const wantTheme = (G.phase === 'finale' || G.phase === 'credits') ? clamp((G.phaseT - 0.5) / 7, 0, 1) : 0;
+  if (Math.abs(wantTheme - themeT) > 0.001) { themeT = lerp(themeT, wantTheme, 1 - Math.pow(0.001, dt)); updatePalette(); }
+
+  // ---- toast
+  if (toastT > 0) { toastT -= dt; if (toastT <= 0) toastDom.classList.remove('on'); }
+
+  // ---- phases
+  if (G.phase === 'load') {
+    G.loadP = Math.min(1, G.loadP + dt * 0.75);
+    document.getElementById('barIn').style.width = (G.loadP * 100) + '%';
+    // pre-bake nearby chunks while the bar fills
+    const n = Math.floor(G.loadP * 9);
+    for (let j = -n; j <= n; j++) for (let i = -n; i <= n; i++) getChunk(i, j);
+    if (G.loadP >= 1) {
+      G.phase = 'title'; G.phaseT = 0;
+      hideScreen('loading'); showScreen('title');
+    }
+  }
+  if (G.phase === 'intro') {
+    const t = clamp(G.phaseT / 3.4, 0, 1);
+    cam.zoom = lerp(2.4, 1, smooth(t));
+    if (G.phaseT > 3.4) { G.phase = 'play'; G.phaseT = 0; cam.zoom = 1; toast('もりへ', '#8ee6b8', 1.6); }
+  }
+  if (G.phase === 'finale') {
+    cam.zoom = lerp(cam.zoom, 1.22, dt * 0.6);
+    if (G.phaseT > 9.5) {
+      G.phase = 'credits'; G.phaseT = 0;
+      document.getElementById('hud').classList.remove('on');
+      showScreen('credits');
+    }
+  }
+
+  updateFrog(dt);
+  if (G.phase === 'play') updateMini(dt);
+
+  // ---- spirits
+  for (const sp of spirits) {
+    sp.ph += dt * (0.8 + sp.i * 0.12);
+    sp.glow = lerp(sp.glow, sp.active ? 0.9 : (sp.freed ? 0.7 : 0.42 + 0.2 * Math.sin(G.t * 1.4 + sp.i)), dt * 2.4);
+    sp.sing = Math.max(0, sp.sing - dt * 1.6);
+    if (sp.freed) {
+      // freed spirits orbit the frog like a little procession
+      sp.orbit += dt * (0.7 + sp.i * 0.16);
+      const idx = spirits.filter(s => s.freed).indexOf(sp);
+      const R = G.phase === 'finale' ? lerp(2.4, 3.4, 0.5 + 0.5 * Math.sin(G.t * 0.4)) : 2.0 + idx * 0.55;
+      const a = sp.orbit + idx * TAU / 3;
+      const tx = frog.x + Math.cos(a) * R, ty = frog.y + Math.sin(a) * R * 0.72;
+      sp.x = lerp(sp.x, tx, 1 - Math.pow(0.02, dt));
+      sp.y = lerp(sp.y, ty, 1 - Math.pow(0.02, dt));
+      sp.z = lerp(sp.z, 1.5 + 0.25 * Math.sin(G.t * 1.2 + idx * 2), dt * 2);
+      if (Math.random() < dt * 3) spark(sp.x, sp.y, sp.z, sp.col, 1, 0.4);
+    } else {
+      sp.z = 1.15 + Math.sin(sp.ph) * 0.16 + sp.hover * 0.6;
+      // proximity swell of that spirit's music layer
+      if (A.ready && G.phase === 'play' && !sp.active) {
+        const d = Math.sqrt(dist2(frog.x, frog.y, sp.x, sp.y));
+        const v = clamp(1 - (d - 5) / 22, 0, 1) * 0.5;
+        A.layerGain[sp.i].gain.value += (v - A.layerGain[sp.i].gain.value) * Math.min(1, dt * 1.5);
+      }
+    }
+    // stones settle back when idle
+    if (!sp.active && sp.stones) sp.stones.forEach(s => { s.rise = lerp(s.rise, 0, dt * 2); });
+    if (sp.stones) sp.stones.forEach(s => {
+      s.z = s.base + (0 - s.base) * s.rise + (s.shake > 0 ? Math.sin(G.t * 60) * s.shake * 0.06 : 0);
+      s.glow = Math.max(0, s.glow - dt * 1.7);
+      s.shake = Math.max(0, s.shake - dt * 1.4);
+    });
+  }
+
+  // ---- prompt
+  const pr = document.getElementById('prompt');
+  const near = G.phase === 'play' && G.mini.state === 'idle' && isNearSpirit();
+  pr.classList.toggle('on', near);
+
+  // ---- distance readout
+  if (G.phase === 'play' || G.phase === 'intro') {
+    const sp = spirits[G.target];
+    const dEl = document.querySelector('#dist b');
+    if (sp && !sp.freed) {
+      dEl.textContent = Math.round(Math.sqrt(dist2(frog.x, frog.y, sp.x, sp.y)));
+      dEl.style.color = sp.colStr;
+    } else dEl.textContent = '--';
+  }
+
+  // ---- camera
+  const lead = 0.9;
+  let tx = frog.x + Math.cos(frog.face) * lead * 0.4;
+  let ty = frog.y + Math.sin(frog.face) * lead * 0.4 + 1.2;
+  if (G.mini.state !== 'idle' && G.mini.sp) {
+    tx = lerp(tx, (frog.x + G.mini.sp.x) / 2, 0.6);
+    ty = lerp(ty, (frog.y + G.mini.sp.y) / 2 + 0.8, 0.6);
+  }
+  const k = 1 - Math.pow(0.0015, dt);
+  cam.x = lerp(cam.x, tx, k); cam.y = lerp(cam.y, ty, k);
+  cam.shake = Math.max(0, cam.shake - dt * 1.8);
+
+  // ---- ripples & sparks
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    const r = ripples[i]; r.t += dt; if (r.t > r.life) ripples.splice(i, 1);
+  }
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const s = sparks[i]; s.t += dt;
+    s.x += s.vx * dt; s.y += s.vy * dt; s.z += s.vz * dt; s.vz -= dt * 2.4;
+    if (s.z < 0) { s.z = 0; s.vz *= -0.3; }
+    if (s.t > s.life) sparks.splice(i, 1);
+  }
+
+  // ---- fireflies wander, and respawn around the camera
+  for (const f of flies) {
+    if (f.gone > 0) {
+      f.gone -= dt;
+      if (f.gone <= 0) {
+        const a = Math.random() * TAU, d = 12 + Math.random() * 10;
+        f.x = cam.x + Math.cos(a) * d; f.y = cam.y + Math.sin(a) * d;
+        f.z = 0.3 + Math.random() * 2.2;
+      }
+      continue;
+    }
+    f.a += (Math.random() - 0.5) * dt * 5;
+    f.x += Math.cos(f.a) * f.sp * dt; f.y += Math.sin(f.a) * f.sp * 0.6 * dt;
+    f.z += Math.sin(G.t * 0.9 + f.ph) * dt * 0.5;
+    f.z = clamp(f.z, 0.2, 3.0);
+    f.ph += dt * 2;
+    const dx = f.x - cam.x, dy = f.y - cam.y;
+    if (dx * dx + dy * dy > 26 * 26) {
+      const a = Math.random() * TAU, d = 10 + Math.random() * 8;
+      f.x = cam.x + Math.cos(a) * d; f.y = cam.y + Math.sin(a) * d;
+    }
+  }
+}
+
+function updateFrog(dt) {
+  const f = frog;
+  f.croakT = Math.max(0, f.croakT - dt);
+  f.sac = lerp(f.sac, f.croakT > 0.25 ? 1 : 0, dt * 9);
+  f.squash = Math.max(0, f.squash - dt * 3.2);
+  f.blinkT -= dt;
+  if (f.blinkT < 0) { f.blink = 0.16; f.blinkT = 1.6 + Math.random() * 3.4; }
+  f.blink = Math.max(0, f.blink - dt);
+  if (f.tongue > 0) { f.tongue += dt; if (f.tongue > 0.34) { f.tongue = 0; f.tongueTarget = null; } }
+
+  if (G.phase === 'load' || G.phase === 'title') return;
+
+  // input vector
+  let ix = padX, iy = padY;
+  if (keys.has('a') || keys.has('arrowleft')) ix -= 1;
+  if (keys.has('d') || keys.has('arrowright')) ix += 1;
+  if (keys.has('w') || keys.has('arrowup')) iy -= 1;
+  if (keys.has('s') || keys.has('arrowdown')) iy += 1;
+  const run = running || keys.has('shift');
+  const mag = Math.hypot(ix, iy);
+  if (mag > 1) { ix /= mag; iy /= mag; }
+
+  const inWater = !!pondAt(f.x, f.y);
+  f.swim = lerp(f.swim, inWater ? 1 : 0, dt * 6);
+
+  if (inWater) {
+    // ---- swimming: kick-and-glide
+    f.hopping = false; f.z = lerp(f.z, -0.06, dt * 8);
+    f.kick -= dt;
+    const spd = run ? 3.0 : 2.1;
+    if (mag > 0.15) {
+      f.face = angleLerp(f.face, Math.atan2(iy, ix));
+      if (f.kick <= 0) {
+        f.kick = run ? 0.42 : 0.6;
+        f.vx += ix * spd * 0.75; f.vy += iy * spd * 0.75;
+        ripple(f.x, f.y, false);
+        plop(0.05);
+      }
+    }
+    f.x += f.vx * dt; f.y += f.vy * dt;
+    const damp = Math.pow(0.08, dt);
+    f.vx *= damp; f.vy *= damp;
+    if (Math.random() < dt * 1.4) ripple(f.x, f.y, false);
+  } else {
+    f.vx = f.vy = 0;
+    if (f.hopping) {
+      f.hop += dt / f.hopDur;
+      if (f.hop >= 1) {
+        f.hop = 1; f.hopping = false; f.z = 0;
+        f.cool = f.hopDur < 0.4 ? 0.05 : 0.1;
+        f.squash = 1;
+        if (pondAt(f.x, f.y)) { ripple(f.x, f.y, true); plop(0.14); }
+        else if (Math.random() < 0.16) plop(0.05);
+      } else {
+        const t = f.hop;
+        const d = easeOut(t) * f.dist;
+        f.x = f.sx + f.dx * d; f.y = f.sy + f.dy * d;
+        f.z = Math.sin(Math.PI * t) * (f.dist > 1.8 ? 0.95 : 0.62);
+      }
+    } else {
+      f.cool -= dt; f.z = lerp(f.z, 0, dt * 10);
+      if (mag > 0.2 && f.cool <= 0 && G.phase !== 'finale') {
+        const n = Math.max(mag, 1e-4), amp = clamp(mag, 0.55, 1);
+        startHop(ix / n * amp, iy / n * amp, run);
+      }
+    }
+  }
+  collideTrees(f, 0.34);
+}
+function angleLerp(a, b) {
+  let d = ((b - a + Math.PI * 3) % TAU) - Math.PI;
+  return a + d * 0.35;
+}
+
+/* --------------------------------------------------------------- render */
+function visibleChunks() {
+  const halfW = CW / (2 * SCALE * cam.zoom) + 2;
+  const halfH = CH / (2 * SCALE * cam.zoom * SQUASH) + 4;
+  const x0 = Math.floor((cam.x - halfW) / CHUNK), x1 = Math.floor((cam.x + halfW) / CHUNK);
+  const y0 = Math.floor((cam.y - halfH - 2) / CHUNK), y1 = Math.floor((cam.y + halfH) / CHUNK);
+  const out = [];
+  for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) out.push(getChunk(cx, cy));
+  return out;
+}
+
+let quality = 1;   // scales grass density on slow devices
+
+function render() {
+  const s = cam.shake;
+  ctx.save();
+  if (s > 0.001) ctx.translate((Math.random() - 0.5) * s * 12, (Math.random() - 0.5) * s * 10);
+
+  // ---- ground / sky wash
+  const g = ctx.createLinearGradient(0, 0, 0, CH);
+  g.addColorStop(0, rgb(P.skyTop));
+  g.addColorStop(0.42, rgb(P.ground));
+  g.addColorStop(1, rgb(P.ground2));
+  ctx.fillStyle = g; ctx.fillRect(-20, -20, CW + 40, CH + 40);
+
+  const chunks = visibleChunks();
+
+  // ---- soft ground mottling per chunk
+  ctx.globalAlpha = 0.5;
+  for (const c of chunks) {
+    const v = hashi(c.cx, c.cy, 5);
+    ctx.fillStyle = rgb(mixc(P.ground, P.grassLo, 0.25 + v * 0.5), 0.55);
+    const x = sx(c.cx * CHUNK), y = sy(c.cy * CHUNK, 0);
+    const w = CHUNK * SCALE * cam.zoom, h = CHUNK * SCALE * cam.zoom * SQUASH;
+    ctx.fillRect(x, y, w + 1, h + 1);
+  }
+  ctx.globalAlpha = 1;
+
+  // ---- ponds
+  for (const c of chunks) if (c.pond) drawPond(c.pond);
+
+  // ---- ripples on the ground/water
+  ctx.lineWidth = 1.4;
+  for (const r of ripples) {
+    const t = r.t / r.life;
+    const rr = lerp(r.r0, r.r1, easeOut(t));
+    ctx.strokeStyle = rgb(r.wet ? P.waterHi : P.grassHi, (1 - t) * (r.wet ? 0.45 : 0.16));
+    ctx.beginPath();
+    ctx.ellipse(sx(r.x), sy(r.y, 0), rr * SCALE * cam.zoom, rr * SCALE * cam.zoom * SQUASH, 0, 0, TAU);
+    ctx.stroke();
+  }
+
+  // ---- grass (painted per chunk row, cheap and dense)
+  drawGrass(chunks);
+
+  // ---- collect the tall things and depth-sort them
+  const items = [];
+  for (const c of chunks) {
+    for (const t of c.trees) items.push({ y: t.y, kind: 'tree', o: t });
+    for (const p of c.props) items.push({ y: p.y, kind: 'prop', o: p });
+    if (c.pond) for (const p of c.pond.pads) items.push({ y: p.y, kind: 'pad', o: p });
+  }
+  for (const sp of spirits) {
+    if (sp.stones) for (const st of sp.stones) if (st.rise > 0.01) items.push({ y: st.y, kind: 'stone', o: st, sp });
+    const d2c = dist2(sp.x, sp.y, cam.x, cam.y);
+    if (d2c < 60 * 60) items.push({ y: sp.y, kind: 'spirit', o: sp });
+  }
+  items.push({ y: frog.y, kind: 'frog', o: frog });
+  items.sort((a, b) => a.y - b.y);
+
+  for (const it of items) {
+    switch (it.kind) {
+      case 'tree': drawTree(it.o); break;
+      case 'prop': drawProp(it.o); break;
+      case 'pad': drawPad(it.o); break;
+      case 'stone': drawStone(it.o, it.sp); break;
+      case 'spirit': drawSpirit(it.o); break;
+      case 'frog': drawFrog(); break;
+    }
+  }
+
+  // ---- glow pass
+  ctx.globalCompositeOperation = 'lighter';
+  for (const sp of spirits) {
+    const d2c = dist2(sp.x, sp.y, cam.x, cam.y);
+    if (d2c > 60 * 60) continue;
+    glowAt(sp.x, sp.y, sp.z, (2.6 + sp.sing * 1.4 + sp.hover) * (0.8 + sp.glow), sp.col, 0.36 * (0.5 + sp.glow));
+  }
+  for (const sp of spirits) if (sp.stones) for (const st of sp.stones) {
+    if (st.glow > 0.02 && st.rise > 0.05) glowAt(st.x, st.y, st.z + st.h * 0.6, 1.9 * st.glow, sp.col, 0.4 * st.glow);
+  }
+  glowAt(frog.x, frog.y, frog.z + 0.25, 2.2 + frog.sac * 0.7, P.frog, 0.10 + frog.sac * 0.06);
+  drawFlies();
+  drawSparks();
+  ctx.globalCompositeOperation = 'source-over';
+
+  // ---- guide arrow
+  if ((G.phase === 'play' || G.phase === 'intro') && spirits[G.target] && !spirits[G.target].freed) drawGuide(spirits[G.target]);
+
+  // ---- night grade + vignette
+  const vg = ctx.createRadialGradient(CW * 0.5, CH * 0.52, Math.min(CW, CH) * 0.22, CW * 0.5, CH * 0.52, Math.max(CW, CH) * 0.78);
+  vg.addColorStop(0, rgb(P.fog, 0));
+  vg.addColorStop(1, rgb(P.fog, themeT > 0.5 ? 0.55 : 0.82));
+  ctx.fillStyle = vg; ctx.fillRect(0, 0, CW, CH);
+
+  if (G.phase === 'finale') {
+    const a = clamp((G.phaseT - 0.6) / 6, 0, 1) * 0.35;
+    ctx.fillStyle = `rgba(255,196,140,${a * (0.6 + 0.4 * Math.sin(G.t * 0.6))})`;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillRect(0, 0, CW, CH);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  ctx.restore();
+}
+
+function glowAt(wx, wy, wz, r, col, a) {
+  const X = sx(wx), Y = sy(wy, wz), R = r * SCALE * cam.zoom;
+  if (X < -R || X > CW + R || Y < -R || Y > CH + R) return;
+  const gg = ctx.createRadialGradient(X, Y, 0, X, Y, R);
+  gg.addColorStop(0, rgb(col, a));
+  gg.addColorStop(0.45, rgb(col, a * 0.35));
+  gg.addColorStop(1, rgb(col, 0));
+  ctx.fillStyle = gg;
+  ctx.beginPath(); ctx.arc(X, Y, R, 0, TAU); ctx.fill();
+}
+
+function drawPond(p) {
+  const X = sx(p.x), Y = sy(p.y, 0);
+  const RX = p.r * SCALE * cam.zoom, RY = p.r2 * SCALE * cam.zoom * SQUASH;
+  const gg = ctx.createRadialGradient(X, Y - RY * 0.3, RY * 0.1, X, Y, RX);
+  gg.addColorStop(0, rgb(mixc(P.water, P.waterHi, 0.35)));
+  gg.addColorStop(1, rgb(P.water));
+  ctx.fillStyle = gg;
+  ctx.beginPath(); ctx.ellipse(X, Y, RX, RY, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = rgb(P.waterHi, 0.28); ctx.lineWidth = 1.6;
+  ctx.stroke();
+  // shimmer lines
+  ctx.strokeStyle = rgb(P.waterHi, 0.16); ctx.lineWidth = 1;
+  for (let i = 0; i < 3; i++) {
+    const yy = Y - RY * 0.4 + i * RY * 0.42 + Math.sin(G.t * 0.7 + i + p.x) * 2;
+    const w = RX * (0.62 - i * 0.13);
+    ctx.beginPath(); ctx.moveTo(X - w, yy); ctx.lineTo(X + w, yy); ctx.stroke();
+  }
+}
+function drawPad(p) {
+  const bob = Math.sin(G.t * 1.1 + p.ph) * 0.03;
+  const X = sx(p.x), Y = sy(p.y + bob, 0.02);
+  const R = p.s * SCALE * cam.zoom;
+  ctx.fillStyle = rgb(mixc(P.grassLo, P.grassHi, 0.35), 0.95);
+  ctx.beginPath();
+  ctx.ellipse(X, Y, R, R * SQUASH, p.a, 0.35, TAU + 0.05);
+  ctx.lineTo(X, Y);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = rgb(mixc(P.grassHi, [255, 255, 255], 0.15), 0.25);
+  ctx.lineWidth = 1; ctx.stroke();
+  if (p.flower) {
+    ctx.fillStyle = rgb(mixc([255, 240, 250], P.grassHi, themeT * 0.3), 0.9);
+    for (let i = 0; i < 5; i++) {
+      const a = i / 5 * TAU + p.ph;
+      ctx.beginPath();
+      ctx.ellipse(X + Math.cos(a) * R * 0.28, Y - R * 0.35 + Math.sin(a) * R * 0.18 * SQUASH, R * 0.19, R * 0.11, a, 0, TAU);
+      ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(255,224,150,.95)';
+    ctx.beginPath(); ctx.arc(X, Y - R * 0.35, R * 0.11, 0, TAU); ctx.fill();
+  }
+}
+
+function drawGrass(chunks) {
+  const sway = G.t * 1.15;
+  const zoom = SCALE * cam.zoom;
+  const step = quality < 0.7 ? 2 : 1;
+  ctx.lineCap = 'round';
+  for (const c of chunks) {
+    const gl = c.grass;
+    for (let i = 0; i < gl.length; i += step) {
+      const b = gl[i];
+      const X = sx(b.x), Y = sy(b.y, 0);
+      if (X < -20 || X > CW + 20 || Y < -30 || Y > CH + 30) continue;
+      const lit = clamp(1 - Math.sqrt(dist2(b.x, b.y, frog.x, frog.y)) / 6.5, 0, 1);
+      const col = mixc(P.grassLo, P.grassHi, 0.1 + b.t * 0.5 + lit * 0.45);
+      ctx.fillStyle = rgb(col, 0.92);
+      // a tuft: one tall blade flanked by two short ones (only up close)
+      const full = quality > 0.7 && dist2(b.x, b.y, cam.x, cam.y) < 90;
+      for (let k = full ? -1 : 0; k <= (full ? 1 : 0); k++) {
+        const h = b.h * zoom * (k === 0 ? 1 : 0.6);
+        const bx = X + k * zoom * 0.075;
+        const s = Math.sin(sway + b.ph + k * 0.9) * 0.24 + b.b + k * 0.18;
+        const w = Math.max(1, zoom * (k === 0 ? 0.05 : 0.034));
+        ctx.beginPath();
+        ctx.moveTo(bx - w, Y);
+        ctx.quadraticCurveTo(bx + s * h * 0.3 - w * 0.5, Y - h * 0.62, bx + s * h, Y - h);
+        ctx.quadraticCurveTo(bx + s * h * 0.3 + w * 0.5, Y - h * 0.62, bx + w, Y);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+}
+
+function drawTree(t) {
+  const X = sx(t.x), Y = sy(t.y, 0);
+  const zoom = SCALE * cam.zoom;
+  if (X < -160 || X > CW + 160) return;
+  const sway = Math.sin(G.t * 0.55 + t.ph) * 0.06 + t.lean;
+  const H = t.h * zoom, W = t.w * zoom;
+
+  // a canopy in front of the frog turns to gauze so you never lose yourself
+  let fade = 1;
+  if (t.y > frog.y) {
+    const fx = sx(frog.x), fy = sy(frog.y, frog.z + 0.3);
+    const cxs = X + sway * H, cys = Y - H;
+    const dx = (fx - cxs) / (W * 1.9), dy = (fy - cys) / (W * 1.5);
+    if (dx * dx + dy * dy < 1) fade = 0.3;
+  }
+  ctx.globalAlpha = fade;
+
+  // trunk
+  ctx.strokeStyle = rgb(P.trunk);
+  ctx.lineWidth = Math.max(2, W * 0.2);
+  ctx.beginPath();
+  ctx.moveTo(X, Y);
+  ctx.quadraticCurveTo(X + sway * H * 0.3, Y - H * 0.55, X + sway * H, Y - H);
+  ctx.stroke();
+  // canopy
+  const cx = X + sway * H, cy = Y - H;
+  const c1 = mixc(P.canopy, P.canopy2, t.tint * 0.7);
+  if (t.kind === 0) {
+    // a few overlapping leaf clusters instead of one flat disc
+    for (let i = 0; i < 5; i++) {
+      const a = i / 5 * TAU + t.ph;
+      const v = hashi(i, t.ph * 100 | 0, 21);
+      const rr = W * (0.62 + v * 0.45);
+      const ox2 = Math.cos(a) * W * 0.66 + Math.sin(G.t * 0.4 + t.ph + i) * W * 0.07;
+      const oy2 = Math.sin(a) * W * 0.36 - W * 0.22;
+      ctx.fillStyle = rgb(mixc(c1, P.canopy2, v * 0.75), 1);
+      ctx.beginPath();
+      ctx.ellipse(cx + ox2, cy + oy2, rr, rr * 0.7, 0, 0, TAU);
+      ctx.fill();
+    }
+    ctx.fillStyle = rgb(mixc(c1, P.canopy2, 0.42), 0.95);
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - W * 0.4, W * 0.78, W * 0.5, 0, 0, TAU);
+    ctx.fill();
+  } else {
+    // droopy willow-ish
+    ctx.fillStyle = rgb(c1, 0.95);
+    ctx.beginPath(); ctx.ellipse(cx, cy, W * 1.15, W * 0.66, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = rgb(mixc(c1, P.grassHi, 0.3), 0.55);
+    ctx.lineWidth = Math.max(1, zoom * 0.03);
+    for (let i = -3; i <= 3; i++) {
+      const bx = cx + i * W * 0.4;
+      const l = W * (1.1 + Math.sin(i * 2.3 + t.ph) * 0.4);
+      ctx.beginPath(); ctx.moveTo(bx, cy);
+      ctx.quadraticCurveTo(bx + Math.sin(G.t * 0.6 + i) * W * 0.12, cy + l * 0.6, bx + Math.sin(G.t * 0.6 + i) * W * 0.22, cy + l);
+      ctx.stroke();
+    }
+  }
+  // rim light from the moon
+  ctx.strokeStyle = rgb(mixc(P.canopy2, [180, 230, 255], 0.35), 0.2);
+  ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.ellipse(cx, cy - W * 0.3, W * 1.05, W * 0.6, 0, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function drawProp(p) {
+  const X = sx(p.x), Y = sy(p.y, 0), zoom = SCALE * cam.zoom, s = p.s * zoom;
+  if (X < -60 || X > CW + 60) return;
+  if (p.kind === 'mush') {
+    ctx.fillStyle = rgb(mixc(P.rock, [230, 230, 210], 0.35), 0.9);
+    ctx.fillRect(X - s * 0.07, Y - s * 0.42, s * 0.14, s * 0.42);
+    const pulse = 0.6 + 0.4 * Math.sin(G.t * 1.6 + p.ph);
+    ctx.fillStyle = p.glow ? `rgba(${140 + 60 * pulse},${220},${200},.92)` : rgb(mixc(P.rock, P.grassHi, 0.4), 0.95);
+    ctx.beginPath(); ctx.ellipse(X, Y - s * 0.42, s * 0.3, s * 0.2, 0, Math.PI, TAU); ctx.fill();
+    if (p.glow) glowSmall(X, Y - s * 0.45, s * 1.1, [150, 240, 210], 0.09 * pulse);
+  } else if (p.kind === 'rock') {
+    ctx.fillStyle = rgb(P.rock, 0.95);
+    ctx.beginPath();
+    ctx.ellipse(X, Y - s * 0.13, s * 0.4, s * 0.26, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = rgb(mixc(P.rock, [200, 230, 235], 0.22), 0.5);
+    ctx.beginPath(); ctx.ellipse(X - s * 0.1, Y - s * 0.2, s * 0.18, s * 0.09, -0.3, 0, TAU); ctx.fill();
+  } else {
+    ctx.strokeStyle = rgb(mixc(P.grassLo, P.grassHi, 0.45), 0.85);
+    ctx.lineWidth = Math.max(1, zoom * 0.035);
+    for (let i = -2; i <= 2; i++) {
+      const bx = X + i * s * 0.1;
+      const h = s * (0.9 + Math.sin(i * 1.7 + p.ph) * 0.3);
+      const sw = Math.sin(G.t * 0.9 + p.ph + i) * s * 0.14;
+      ctx.beginPath(); ctx.moveTo(bx, Y);
+      ctx.quadraticCurveTo(bx + sw * 0.4, Y - h * 0.6, bx + sw, Y - h);
+      ctx.stroke();
+    }
+  }
+}
+function glowSmall(X, Y, R, col, a) {
+  const gg = ctx.createRadialGradient(X, Y, 0, X, Y, R);
+  gg.addColorStop(0, rgb(col, a)); gg.addColorStop(1, rgb(col, 0));
+  ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(X, Y, R, 0, TAU); ctx.fill();
+}
+
+function drawStone(st, sp) {
+  const zoom = SCALE * cam.zoom;
+  const X = sx(st.x), Y = sy(st.y, st.z);
+  const W = st.w * zoom, H = st.h * zoom;
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,.35)';
+  ctx.beginPath(); ctx.ellipse(sx(st.x), sy(st.y, 0), W * 0.9, W * 0.5, 0, 0, TAU); ctx.fill();
+  // body
+  const gg = ctx.createLinearGradient(X, Y - H, X, Y);
+  gg.addColorStop(0, rgb(mixc(P.rock, sp.col, 0.22 + st.glow * 0.5)));
+  gg.addColorStop(1, rgb(mixc(P.rock, [0, 0, 0], 0.35)));
+  ctx.fillStyle = gg;
+  ctx.beginPath();
+  roundedStone(X, Y, W, H, st.tilt);
+  ctx.fill();
+  // engraved ring
+  ctx.strokeStyle = rgb(sp.col, 0.35 + st.glow * 0.6);
+  ctx.lineWidth = Math.max(1.2, zoom * 0.03);
+  ctx.beginPath(); ctx.ellipse(X, Y - H * 0.55, W * 0.42, W * 0.22, st.tilt, 0, TAU); ctx.stroke();
+  // moss cap
+  ctx.fillStyle = rgb(mixc(P.grassLo, P.grassHi, 0.3), 0.75);
+  ctx.beginPath(); ctx.ellipse(X + st.tilt * H * 0.2, Y - H, W * 0.55, W * 0.22, st.tilt, Math.PI, TAU); ctx.fill();
+  // index numeral for keyboard players
+  if (G.mini.state === 'input' && G.mini.sp === sp) {
+    ctx.fillStyle = rgb(sp.col, 0.75);
+    ctx.font = `${Math.max(11, zoom * 0.26)}px system-ui,sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.fillText(String(st.idx + 1), X, Y - H - zoom * 0.22);
+  }
+}
+function roundedStone(X, Y, W, H, tilt) {
+  const t = tilt * H * 0.25;
+  ctx.moveTo(X - W * 0.55, Y);
+  ctx.quadraticCurveTo(X - W * 0.7, Y - H * 0.55, X - W * 0.42 + t, Y - H * 0.95);
+  ctx.quadraticCurveTo(X + t, Y - H * 1.12, X + W * 0.42 + t, Y - H * 0.95);
+  ctx.quadraticCurveTo(X + W * 0.7, Y - H * 0.55, X + W * 0.55, Y);
+  ctx.quadraticCurveTo(X, Y + H * 0.1, X - W * 0.55, Y);
+}
+
+function drawSpirit(sp) {
+  const zoom = SCALE * cam.zoom;
+  const X = sx(sp.x), Y = sy(sp.y, sp.z);
+  const R = zoom * (0.42 + sp.sing * 0.06);
+  const bob = Math.sin(sp.ph * 1.6) * zoom * 0.05;
+
+  // trailing motes
+  for (let i = 0; i < 5; i++) {
+    const a = sp.ph * 1.3 + i * TAU / 5;
+    const rr = R * (1.5 + 0.35 * Math.sin(sp.ph * 2 + i));
+    ctx.fillStyle = rgb(sp.col, 0.35);
+    ctx.beginPath();
+    ctx.arc(X + Math.cos(a) * rr, Y + bob + Math.sin(a) * rr * 0.6, R * 0.13, 0, TAU);
+    ctx.fill();
+  }
+  // a spirit shaped like a little floating frog-lantern
+  ctx.save();
+  ctx.translate(X, Y + bob);
+  const s = 1 + sp.sing * 0.12;
+  ctx.scale(s, s);
+  // veil
+  ctx.fillStyle = rgb(sp.col, 0.16);
+  ctx.beginPath(); ctx.ellipse(0, R * 0.5, R * 1.5, R * 1.15, 0, 0, TAU); ctx.fill();
+  // body
+  const gg = ctx.createRadialGradient(-R * 0.25, -R * 0.35, R * 0.1, 0, 0, R * 1.25);
+  gg.addColorStop(0, rgb(mixc(sp.col, [255, 255, 255], 0.55), 0.98));
+  gg.addColorStop(0.6, rgb(sp.col, 0.85));
+  gg.addColorStop(1, rgb(sp.col, 0.12));
+  ctx.fillStyle = gg;
+  ctx.beginPath(); ctx.ellipse(0, 0, R, R * 0.9, 0, 0, TAU); ctx.fill();
+  // eyes (frog-ish: two domes on top)
+  ctx.fillStyle = rgb(mixc(sp.col, [255, 255, 255], 0.7), 0.95);
+  ctx.beginPath(); ctx.arc(-R * 0.42, -R * 0.62, R * 0.3, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(R * 0.42, -R * 0.62, R * 0.3, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(10,18,20,.85)';
+  ctx.beginPath(); ctx.arc(-R * 0.42, -R * 0.6, R * 0.13, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(R * 0.42, -R * 0.6, R * 0.13, 0, TAU); ctx.fill();
+  // singing mouth
+  ctx.strokeStyle = 'rgba(10,18,20,.6)'; ctx.lineWidth = Math.max(1.2, R * 0.09);
+  ctx.beginPath();
+  if (sp.sing > 0.1) ctx.ellipse(0, R * 0.28, R * 0.22, R * 0.2 * (0.6 + sp.sing * 0.6), 0, 0, TAU);
+  else ctx.arc(0, R * 0.05, R * 0.42, 0.35, Math.PI - 0.35);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawFrog() {
+  const f = frog, zoom = SCALE * cam.zoom;
+  const X = sx(f.x), Y = sy(f.y, f.z);
+  const GY = sy(f.y, 0);
+  const S = zoom * 0.5;
+
+  // shadow
+  const sh = clamp(1 - f.z * 0.6, 0.25, 1);
+  ctx.fillStyle = `rgba(0,0,0,${0.4 * sh})`;
+  ctx.beginPath(); ctx.ellipse(X, GY, S * 0.72 * sh, S * 0.34 * sh, 0, 0, TAU); ctx.fill();
+
+  ctx.save();
+  ctx.translate(X, Y);
+
+  // face left/right — mirror the whole frog
+  const dir = Math.cos(f.face) < -0.05 ? -1 : 1;
+  const facingAway = Math.sin(f.face) < -0.35;      // moving "up" the screen
+  const stretchH = f.hopping ? 1 + Math.sin(Math.PI * f.hop) * 0.14 : 1 - f.squash * 0.12;
+  const stretchV = f.hopping ? 1 - Math.sin(Math.PI * f.hop) * 0.1 : 1 + f.squash * 0.16;
+  ctx.scale(dir * stretchH, stretchV);
+
+  const swimT = f.swim;
+  const bodyC = rgb(P.frog), darkC = rgb(P.frogDark), belly = rgb(P.frogBelly);
+
+  // hind legs
+  const legOut = f.hopping ? Math.sin(Math.PI * f.hop) : (swimT > 0.5 ? (Math.sin(G.t * 8) * 0.4 + 0.5) : 0.12);
+  ctx.strokeStyle = darkC; ctx.lineCap = 'round';
+  ctx.lineWidth = S * 0.2;
+  for (const side of [-1, 1]) {
+    const hy = S * 0.1 + side * S * 0.16;
+    ctx.beginPath();
+    ctx.moveTo(-S * 0.25, hy);
+    ctx.quadraticCurveTo(-S * (0.55 + legOut * 0.5), hy + side * S * 0.22, -S * (0.75 + legOut * 0.75), hy + side * S * 0.1);
+    ctx.stroke();
+    // webbed foot
+    ctx.fillStyle = darkC;
+    ctx.beginPath();
+    ctx.ellipse(-S * (0.8 + legOut * 0.8), hy + side * S * 0.1, S * 0.15, S * 0.09, 0.2 * side, 0, TAU);
+    ctx.fill();
+  }
+  // front arms
+  ctx.lineWidth = S * 0.13;
+  for (const side of [-1, 1]) {
+    const hy = S * 0.16 + side * S * 0.13;
+    const reach = f.hopping ? Math.sin(Math.PI * f.hop) * 0.35 : 0;
+    ctx.beginPath();
+    ctx.moveTo(S * 0.2, hy - S * 0.1);
+    ctx.quadraticCurveTo(S * (0.45 + reach), hy, S * (0.5 + reach * 1.2), hy + S * 0.12);
+    ctx.stroke();
+  }
+
+  // body
+  const bg = ctx.createLinearGradient(0, -S * 0.6, 0, S * 0.4);
+  bg.addColorStop(0, rgb(mixc(P.frog, [255, 255, 255], 0.18)));
+  bg.addColorStop(0.65, bodyC);
+  bg.addColorStop(1, darkC);
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, S * 0.62, S * 0.44, 0, 0, TAU);
+  ctx.fill();
+  // belly
+  ctx.fillStyle = rgb(P.frogBelly, 0.85);
+  ctx.beginPath(); ctx.ellipse(S * 0.06, S * 0.2, S * 0.34, S * 0.16, 0, 0, TAU); ctx.fill();
+  // back spots
+  ctx.fillStyle = rgb(P.frogDark, 0.75);
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.ellipse(-S * (0.05 + i * 0.16), -S * (0.12 - (i % 2) * 0.16), S * 0.1, S * 0.07, 0.4, 0, TAU);
+    ctx.fill();
+  }
+
+  // throat sac (croak!)
+  if (f.sac > 0.01) {
+    const r = S * (0.14 + f.sac * 0.3);
+    ctx.fillStyle = rgb(mixc(P.frogBelly, P.frog, 0.25), 0.95);
+    ctx.beginPath(); ctx.ellipse(S * 0.34, S * 0.22, r, r * 0.85, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = rgb(P.frogDark, 0.5); ctx.lineWidth = 1; ctx.stroke();
+  }
+
+  // head
+  ctx.fillStyle = bodyC;
+  ctx.beginPath(); ctx.ellipse(S * 0.34, -S * 0.1, S * 0.34, S * 0.29, 0, 0, TAU); ctx.fill();
+  // mouth
+  ctx.strokeStyle = rgb(P.frogDark, 0.85); ctx.lineWidth = Math.max(1, S * 0.055);
+  ctx.beginPath();
+  ctx.moveTo(S * 0.24, S * 0.02);
+  ctx.quadraticCurveTo(S * 0.48, S * 0.14, S * 0.64, -S * 0.02);
+  ctx.stroke();
+
+  // eyes: two bulging domes on top of the head
+  const eyeY = -S * 0.36, blink = f.blink > 0 ? 1 : 0;
+  for (const side of [0, 1]) {
+    const ex = S * (0.2 + side * 0.3), ey = eyeY - side * S * 0.02;
+    const er = S * (0.2 - side * 0.02);
+    ctx.fillStyle = rgb(mixc(P.frog, [255, 255, 255], 0.28));
+    ctx.beginPath(); ctx.arc(ex, ey, er, 0, TAU); ctx.fill();
+    if (blink) {
+      ctx.strokeStyle = darkC; ctx.lineWidth = Math.max(1, S * 0.06);
+      ctx.beginPath(); ctx.moveTo(ex - er * 0.7, ey); ctx.lineTo(ex + er * 0.7, ey); ctx.stroke();
+    } else {
+      ctx.fillStyle = '#f7fff4';
+      ctx.beginPath(); ctx.arc(ex, ey, er * 0.72, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#0b1416';
+      ctx.beginPath(); ctx.ellipse(ex + er * 0.12, ey, er * 0.3, er * 0.44, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.9)';
+      ctx.beginPath(); ctx.arc(ex + er * 0.3, ey - er * 0.28, er * 0.14, 0, TAU); ctx.fill();
+    }
+  }
+
+  // tongue
+  if (f.tongue > 0) {
+    const t = f.tongue / 0.34;
+    const ext = Math.sin(Math.PI * t);
+    let tx = S * 0.7 + ext * S * 2.6, ty = -S * 0.02;
+    if (f.tongueTarget) {
+      const tg = f.tongueTarget;
+      const lx = (tg.x - f.x), ly = (tg.y - f.y);
+      const d = Math.hypot(lx, ly) * zoom;
+      tx = S * 0.6 + ext * d * (dir > 0 ? 1 : 1);
+      ty = -S * 0.1 - (tg.z - f.z) * zoom * ext * 0.5;
+    }
+    ctx.strokeStyle = '#ef7f9d'; ctx.lineWidth = S * 0.1; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(S * 0.55, S * 0.02);
+    ctx.quadraticCurveTo((S * 0.55 + tx) / 2, ty - S * 0.2, tx, ty);
+    ctx.stroke();
+    ctx.fillStyle = '#ff9db6';
+    ctx.beginPath(); ctx.arc(tx, ty, S * 0.09, 0, TAU); ctx.fill();
+  }
+  ctx.restore();
+
+  // swim ring
+  if (swimT > 0.2) {
+    ctx.strokeStyle = rgb(P.waterHi, 0.3 * swimT);
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.ellipse(X, GY, S * 0.8, S * 0.36, 0, 0, TAU);
+    ctx.stroke();
+  }
+}
+
+function drawFlies() {
+  for (const f of flies) {
+    if (f.gone > 0) continue;
+    const X = sx(f.x), Y = sy(f.y, f.z);
+    if (X < -30 || X > CW + 30 || Y < -30 || Y > CH + 30) continue;
+    const p = 0.45 + 0.55 * Math.pow(Math.max(0, Math.sin(f.ph)), 2);
+    const col = f.hue ? [150, 240, 200] : [255, 216, 130];
+    const R = SCALE * cam.zoom * 0.34 * p;
+    const gg = ctx.createRadialGradient(X, Y, 0, X, Y, R);
+    gg.addColorStop(0, rgb(col, 0.85 * p));
+    gg.addColorStop(0.3, rgb(col, 0.28 * p));
+    gg.addColorStop(1, rgb(col, 0));
+    ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(X, Y, R, 0, TAU); ctx.fill();
+  }
+}
+function drawSparks() {
+  for (const s of sparks) {
+    const t = s.t / s.life;
+    const X = sx(s.x), Y = sy(s.y, s.z);
+    const a = (1 - t) * 0.9;
+    const R = SCALE * cam.zoom * 0.09 * (1 - t * 0.5);
+    ctx.fillStyle = rgb(s.col, a);
+    ctx.beginPath(); ctx.arc(X, Y, R, 0, TAU); ctx.fill();
+  }
+}
+
+function drawGuide(sp) {
+  const d = Math.sqrt(dist2(frog.x, frog.y, sp.x, sp.y));
+  if (d < 7) return;
+  const a = Math.atan2(sp.y - frog.y, sp.x - frog.x);
+  const R = 1.7;
+  const X = sx(frog.x + Math.cos(a) * R), Y = sy(frog.y + Math.sin(a) * R * 0.9, 0.55);
+  const pulse = 0.55 + 0.45 * Math.sin(G.t * 3);
+  const s = SCALE * cam.zoom * 0.3;
+  ctx.save();
+  ctx.translate(X, Y);
+  ctx.rotate(Math.atan2(Math.sin(a) * SQUASH, Math.cos(a)));
+  ctx.fillStyle = rgb(sp.col, 0.35 + pulse * 0.45);
+  ctx.beginPath();
+  ctx.moveTo(s, 0); ctx.lineTo(-s * 0.5, s * 0.55); ctx.lineTo(-s * 0.16, 0); ctx.lineTo(-s * 0.5, -s * 0.55);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+/* ---------------------------------------------------------------- loop */
+let last = now(), acc = 0, frames = 0, fpsT = 0, fps = 60;
+function frame() {
+  const t = now();
+  let dt = t - last; last = t;
+  if (dt > 0.1) dt = 0.1;
+
+  update(dt);
+  render();
+
+  frames++; fpsT += dt;
+  if (fpsT > 0.5) {
+    fps = frames / fpsT; frames = 0; fpsT = 0;
+    if (DEBUG) document.getElementById('fps').textContent =
+      fps.toFixed(0) + ' fps · chunks ' + chunkCache.size + ' · ' + G.phase + '/' + G.mini.state;
+    if (fps < 40 && quality > 0.6) quality = 0.5;
+    else if (fps > 55 && quality < 1) quality = 1;
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+/* first gesture unlocks audio on mobile */
+['pointerdown', 'keydown'].forEach(ev => window.addEventListener(ev, () => {
+  if (A.ctx && A.ctx.state === 'suspended') A.ctx.resume();
+}, { passive: true }));
+</script>
+</body>
+</html>
