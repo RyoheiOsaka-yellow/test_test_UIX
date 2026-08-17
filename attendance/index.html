@@ -4,7 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>みんなで積み上げる、来場者数。｜アスルクラロ沼津 2026 SEASON</title>
-<meta name="description" content="アスルクラロ沼津 2026シーズン、ホームゲーム累計来場者数を積み上げていく公式カウンター。">
+<meta name="description" content="アスルクラロ沼津 2026シーズン、ホームゲーム累計来場者数を積み上げていく公式カウンター。1マス＝100人。">
+
+<!-- ▼ SNS シェア時のカード（OGP）
+     og:image と og:url は「絶対URL」でないと X／Facebook が画像を取得できません。
+     クローラーは JavaScript を実行しないため、ここは静的に書き換えが必要です。
+     公開ドメインが決まったら REPLACE-WITH-YOUR-DOMAIN を差し替えてください。      -->
+<link rel="canonical" href="https://REPLACE-WITH-YOUR-DOMAIN/attendance/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="アスルクラロ沼津">
+<meta property="og:locale" content="ja_JP">
+<meta property="og:title" content="みんなで積み上げる、来場者数。｜アスルクラロ沼津 2026 SEASON">
+<meta property="og:description" content="ホームゲームに来てくれた一人ひとりが、1マス＝100人のマスを埋めていきます。3万人はJリーグ昇格の目安ライン。">
+<meta property="og:url" content="https://REPLACE-WITH-YOUR-DOMAIN/attendance/">
+<meta property="og:image" content="https://REPLACE-WITH-YOUR-DOMAIN/attendance/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="アスルクラロ沼津 みんなで積み上げる、来場者数。">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="theme-color" content="#002F6C">
 
 <!--
   ============================================================
@@ -43,8 +64,18 @@
   --gold:#FFB03A;
   --line:#D5E5F2;
   --brand-navy:#001886;   /* DIC 222s ロゴタイプの紺 */
+  /* 補助テキスト色。白／紙の上で 4.5:1 以上を満たす値に調整済み。
+     薄くしたくなったら、コントラスト比を確認してから変えてください。 */
+  --muted:#5E758D;
+  --muted-2:#597692;
+  --muted-3:#61768A;
+  --muted-4:#67747F;
   --dh:88px;
   --dw:64px;
+}
+.sr-only{
+  position:absolute;width:1px;height:1px;margin:-1px;padding:0;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
@@ -182,11 +213,37 @@ h1{
 .chip.near .dot{background:var(--cyan-lt);animation:pulse 1.6s ease-in-out infinite}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(127,214,247,.5)}50%{box-shadow:0 0 0 7px rgba(127,214,247,0)}}
 
+/* ---------- 次のホームゲームへの導線 ---------- */
+.nextgame{
+  margin-top:22px;border:1px solid var(--line);border-radius:24px;background:#fff;
+  padding:20px 22px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+  box-shadow:0 12px 30px -26px rgba(0,47,108,.55);
+}
+.ng-when{display:flex;flex-direction:column;gap:3px}
+.ng-when em{
+  font-style:normal;font-family:"Outfit",sans-serif;font-weight:700;font-size:10.5px;
+  letter-spacing:.18em;color:var(--cyan);
+}
+.ng-when b{font-size:19px;font-weight:900;color:var(--navy);line-height:1.4}
+.ng-when span{font-size:12.5px;color:var(--muted)}
+.ng-act{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;padding:12px 22px;border-radius:999px;
+  font-family:inherit;font-weight:700;font-size:14px;text-decoration:none;cursor:pointer;
+  border:1px solid transparent;transition:.2s;
+}
+.btn-main{background:var(--navy);color:#fff}
+.btn-main:hover{background:var(--navy-2)}
+.btn-sub{background:#fff;color:var(--navy);border-color:var(--cyan)}
+.btn-sub:hover{background:var(--sky)}
+.btn-todo{background:#F1F5F8;color:#7C8A96;border:1px dashed #B9CFE0;cursor:not-allowed}
+.btn:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+
 /* ---------- sections ---------- */
 section{padding:56px 0 0}
 .sec-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
 h2{font-weight:900;font-size:22px;color:var(--navy)}
-.sec-note{font-size:13px;color:#6E8AA6}
+.sec-note{font-size:13px;color:var(--muted)}
 
 .card{
   background:#fff;border:1px solid var(--line);border-radius:26px;padding:26px 22px;margin-top:18px;
@@ -194,7 +251,7 @@ h2{font-weight:900;font-size:22px;color:var(--navy)}
 }
 
 /* ---------- dot grid ---------- */
-.grid-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:#5C7A97;margin-bottom:16px}
+.grid-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted-2);margin-bottom:16px}
 .grid-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 .gridbox{position:relative;padding:4px 0}
 .dots{display:grid;grid-template-columns:repeat(50,1fr);gap:3px}
@@ -212,21 +269,83 @@ h2{font-weight:900;font-size:22px;color:var(--navy)}
 }
 .mline.gold{border-top-color:var(--gold);opacity:.75}
 .mline.gold em{background:var(--gold);color:#4A2E00}
+/* 自分が行った試合のマス。
+   凡例の色（金＝4.5万〜5万）と混ざらないよう、塗りは変えず輪郭だけで示す。
+   連続したマスの輪郭がつながって、ひとかたまりの範囲に見える。 */
+.dots b.mine{
+  opacity:1;transform:scale(1);position:relative;z-index:1;
+  box-shadow:0 0 0 1.5px #fff, 0 0 0 3px var(--ink);
+}
+
+/* ---------- 「私も行った」 ---------- */
+.mine-card{margin-top:14px}
+.mine-lead{font-size:13.5px;color:var(--muted);margin-bottom:14px}
+.mine-pick{display:flex;gap:8px;flex-wrap:wrap}
+.mine-pick button{
+  padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--sky);
+  font-family:inherit;font-size:12.5px;font-weight:700;color:var(--navy-2);cursor:pointer;
+  display:inline-flex;align-items:center;gap:7px;transition:.18s;
+}
+.mine-pick button::before{
+  content:"";width:14px;height:14px;border-radius:4px;border:1.5px solid #A9BED0;background:#fff;
+  flex:none;
+}
+.mine-pick button[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
+.mine-pick button[aria-pressed="true"]::before{
+  background:var(--gold);border-color:var(--gold);
+  /* チェックマーク */
+  background-image:linear-gradient(45deg,transparent 42%,#4A2E00 42%,#4A2E00 58%,transparent 58%),
+                   linear-gradient(-45deg,transparent 55%,#4A2E00 55%,#4A2E00 70%,transparent 70%);
+}
+.mine-pick button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+.mine-sum{
+  margin-top:16px;padding:15px 18px;border-radius:16px;background:var(--sky);
+  border:1px solid var(--cyan-pale);font-size:14px;color:var(--navy);line-height:1.7;
+}
+.mine-sum b{font-family:"Outfit",sans-serif;font-weight:800;color:var(--cyan);font-size:17px}
+.mine-act{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center}
+.mine-note{font-size:11.5px;color:var(--muted);margin-top:12px}
+.copied{font-size:12.5px;font-weight:700;color:var(--cyan)}
 
 /* ---------- chart ---------- */
+.chartwrap{position:relative}
 .chart{width:100%;height:auto;display:block}
 .chart text{font-family:"Outfit",sans-serif;font-weight:700}
+.c-hit{fill:transparent;cursor:pointer}
+.c-hit:focus-visible{outline:3px solid var(--cyan);outline-offset:-3px}
+.c-top.mine,.c-base.mine{stroke:var(--gold);stroke-width:2}
+.tip{
+  position:absolute;left:0;top:0;transform:translate(-50%,-100%);
+  background:var(--navy);color:#fff;border-radius:12px;padding:9px 13px;
+  font-size:12.5px;line-height:1.6;white-space:nowrap;pointer-events:none;
+  opacity:0;transition:opacity .15s;z-index:3;
+  box-shadow:0 10px 24px -14px rgba(0,20,50,.9);
+}
+.tip::after{
+  content:"";position:absolute;left:50%;bottom:-5px;width:10px;height:10px;
+  background:var(--navy);transform:translateX(-50%) rotate(45deg);border-radius:2px;
+}
+.tip.on{opacity:1}
+.tip b{font-family:"Outfit",sans-serif;font-weight:800;font-size:14px}
+.tip i{font-style:normal;color:var(--cyan-lt)}
+
+/* 表：最多来場のしるし */
+.badge{
+  display:inline-block;margin-left:7px;padding:2px 8px;border-radius:999px;
+  background:var(--cyan);color:#fff;font-family:"Zen Maru Gothic",sans-serif;
+  font-size:10.5px;font-weight:700;letter-spacing:.04em;vertical-align:1px;
+}
 
 /* ---------- pace cards ---------- */
 .pace{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
 .pcard{background:#fff;border:1px solid var(--line);border-radius:22px;padding:20px 18px}
 .pcard.lead{background:linear-gradient(160deg,#00A0E9 0%,#0F4C81 100%);border-color:transparent;color:#fff}
-.pcard h3{font-size:13px;font-weight:700;color:#5C7A97;letter-spacing:.04em}
+.pcard h3{font-size:13px;font-weight:700;color:var(--muted-2);letter-spacing:.04em}
 .pcard.lead h3{color:#CDEBFB}
 .pcard .big{font-family:"Outfit",sans-serif;font-weight:800;font-size:38px;line-height:1.1;color:var(--navy);margin-top:8px}
 .pcard.lead .big{color:#fff}
 .pcard .big small{font-size:15px;font-weight:700;margin-left:3px}
-.pcard p{font-size:12.5px;color:#6E8AA6;margin-top:8px;line-height:1.6}
+.pcard p{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.6}
 .pcard.lead p{color:#D9F0FC}
 
 /* ---------- cheer band (アスルくん本体) ---------- */
@@ -260,7 +379,7 @@ h2{font-weight:900;font-size:22px;color:var(--navy)}
 .balloon p b{color:var(--cyan);font-weight:900}
 .cheer-meta{
   display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;
-  font-size:12px;color:#5C7A97;
+  font-size:12px;color:var(--muted-2);
 }
 .cheer-meta span{background:rgba(255,255,255,.72);border:1px solid var(--line);border-radius:999px;padding:5px 12px}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
@@ -277,10 +396,10 @@ h2{font-weight:900;font-size:22px;color:var(--navy)}
 /* ---------- table ---------- */
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{padding:11px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
-th{font-size:11.5px;color:#7C97B1;font-weight:700;letter-spacing:.06em}
+th{font-size:11.5px;color:var(--muted-3);font-weight:700;letter-spacing:.06em}
 th:nth-child(-n+3),td:nth-child(-n+3){text-align:left}
 td.n{font-family:"Outfit",sans-serif;font-weight:700}
-tr.future td{color:#A9BED0}
+tr.future td{color:var(--muted-4)}
 tr.best td.n{color:var(--cyan)}
 .scroller{overflow-x:auto}
 
@@ -291,8 +410,10 @@ tr.best td.n{color:var(--cyan)}
 }
 .replay:hover{background:var(--sky)}
 .replay:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+.board-act{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.board-act .btn{margin-top:22px}
 .demo{margin-top:44px;padding:20px;border:1px dashed #B9CFE0;border-radius:20px;background:#fff}
-.demo p{font-size:12.5px;color:#6E8AA6;margin-bottom:12px}
+.demo p{font-size:12.5px;color:var(--muted);margin-bottom:12px}
 .demo-btns{display:flex;gap:9px;flex-wrap:wrap}
 .demo-btns button{
   padding:9px 15px;border-radius:999px;border:1px solid var(--line);background:var(--sky);
@@ -387,12 +508,21 @@ footer{
     <svg class="emblem board-emblem" aria-hidden="true"><use href="#ac-emblem"/></svg>
     <svg class="mascot board-mascot" aria-hidden="true"><use href="#ac-mascot"/></svg>
     <div class="board-label">今シーズン ホームゲーム累計来場者数</div>
-    <div class="counter num" id="counter" role="status" aria-live="polite" aria-label="累計来場者数"></div>
+    <!-- カウンター自体は role="img"。1フレームごとに読み上げられないよう、
+         読み上げは下の #counterLive が確定値だけを担当する。 -->
+    <div class="counter num" id="counter" role="img" aria-label="累計来場者数"></div>
+    <p class="sr-only" id="counterLive" role="status" aria-live="polite"></p>
     <div class="board-sub" id="boardSub">集計中…</div>
     <div class="chips" id="chips"></div>
   </div>
 
-  <button class="replay" id="replay" type="button">↻ もう一度、1人から積み上げる</button>
+  <div class="board-act">
+    <button class="replay" id="replay" type="button">↻ もう一度、1人から積み上げる</button>
+    <button class="btn btn-sub" id="shareNow" type="button">いまの数字をシェアする</button>
+  </div>
+
+  <!-- 次のホームゲームへの導線。シェアで人が来ても、行き先がないと止まってしまう。 -->
+  <div class="nextgame" id="nextGame"></div>
 
   <section>
     <div class="sec-head">
@@ -412,6 +542,22 @@ footer{
         <div class="mline gold" style="top:90%"><em>45,000 目標</em></div>
       </div>
     </div>
+
+    <!-- 行った試合を選ぶと、その試合で埋まったマスが上のグリッドで光る -->
+    <div class="card mine-card">
+      <div class="sec-head">
+        <h2>あなたが埋めたマス</h2>
+      </div>
+      <p class="mine-lead">スタジアムに行った試合を選んでください。その試合で埋まったマスが、上のグリッドで光ります。</p>
+      <div class="mine-pick" id="minePick"></div>
+      <div class="mine-sum" id="mineSum"></div>
+      <div class="mine-act">
+        <button class="btn btn-main" id="shareMine" type="button">私も行った、をシェアする</button>
+        <button class="btn btn-sub" id="copyMine" type="button">文章をコピー</button>
+        <span class="copied sr-only" id="copied" role="status" aria-live="polite"></span>
+      </div>
+      <p class="mine-note">選んだ試合はこのブラウザにだけ保存されます（サーバーには送信されません）。</p>
+    </div>
   </section>
 
   <section>
@@ -420,7 +566,10 @@ footer{
       <span class="sec-note">濃い部分がその試合で増えた分です</span>
     </div>
     <div class="card">
-      <svg class="chart" id="chart" viewBox="0 0 840 330" role="img" aria-label="試合ごとの累計来場者数グラフ"></svg>
+      <div class="chartwrap">
+        <svg class="chart" id="chart" viewBox="0 0 840 330" role="group" aria-label="試合ごとの累計来場者数グラフ"></svg>
+        <div class="tip" id="tip" aria-hidden="true"></div>
+      </div>
     </div>
   </section>
 
@@ -720,6 +869,22 @@ const SEASON = {
     { round: 29, date: "11/15", vs: "O FC", attendance: 4180 }
   ]
 };
+
+/* ---- リンク先（空のままだと「URL未設定」と表示され、押せません）---- */
+const LINKS = {
+  ticket:   "",   /* ← チケット販売ページ */
+  access:   "",   /* ← アクセス・スタジアム案内 */
+  official: ""    /* ← クラブ公式サイト（左上ロゴのリンク先） */
+};
+
+/* ---- シェア設定 ---- */
+const SHARE = {
+  /* 公開URL。空ならページ自身のURLを使います（file:// では空扱い） */
+  url: "",
+  /* ハッシュタグ。キャンペーンタグが決まったら 2つ目に足してください。
+     例: ["アスルクラロ沼津", "みんなで積み上げる"]  ※増やしすぎない方が伸びます */
+  tags: ["アスルクラロ沼津"]
+};
 /* ================================================================= */
 
 /* デモ用：何試合目まで消化済みとして表示するか */
@@ -802,7 +967,13 @@ function renderCounter(v, exact){
     reels[i].style.transform = `translateY(${-pos * itemH}px)`;
     digitCards[i].classList.toggle("lead0", n < exp && i < DIGITS - 1);
   }
-  counterEl.setAttribute("aria-label", `累計来場者数 ${yen(n)}人`);
+  /* 読み上げは止まったときだけ。毎フレーム更新すると読み上げが渋滞する。 */
+  if(exact){
+    const txt = `累計来場者数 ${yen(n)}人`;
+    counterEl.setAttribute("aria-label", txt);
+    const live = document.getElementById("counterLive");
+    if(live) live.textContent = txt;
+  }
 }
 function flipSettle(){
   digitCards.forEach((c,i)=>{
@@ -892,12 +1063,53 @@ function buildChart(){
   SEASON.matches.forEach((m,i)=>{
     if(i % 2 !== 0 && n > 10) return;
     const cx = PAD_L + band*(i+0.5);
-    svg += `<text x="${cx}" y="${BOT+20}" font-size="11" fill="#8AA3B8" text-anchor="middle">${m.date}</text>`;
+    svg += `<text x="${cx}" y="${BOT+20}" font-size="11" fill="#61768A" text-anchor="middle">${m.date}</text>`;
+  });
+
+  /* ホバー／フォーカスで内訳を出すための当たり判定。
+     キーボードでも1試合ずつたどれるよう tabindex を持たせている。 */
+  SEASON.matches.forEach((m,i)=>{
+    const done = i < PLAYED;
+    const label = done
+      ? `第${m.round}節 ${m.date} vs ${m.vs} 入場者数 ${yen(m.attendance)}人 累計 ${yen(s.cum[i])}人`
+      : `第${m.round}節 ${m.date} vs ${m.vs} 未開催`;
+    svg += `<rect class="c-hit" data-i="${i}" x="${PAD_L + band*i}" y="${TOP}" `
+         + `width="${band}" height="${BOT-TOP}" tabindex="0" role="img" aria-label="${label}"/>`;
   });
 
   chartEl.innerHTML = svg;
   baseRects = Array.from(chartEl.querySelectorAll(".c-base"));
   topRects  = Array.from(chartEl.querySelectorAll(".c-top"));
+  bindChartTips();
+}
+
+/* ---------- グラフのツールチップ ---------- */
+const tipEl = document.getElementById("tip");
+function showTip(i){
+  const m = SEASON.matches[i], s = state();
+  if(i >= PLAYED){
+    tipEl.innerHTML = `第${m.round}節 ${m.date}<br><i>vs ${m.vs}／未開催</i>`;
+  } else {
+    tipEl.innerHTML = `第${m.round}節 ${m.date}　vs ${m.vs}<br>`
+      + `この試合 <b>${yen(m.attendance)}</b>人<br><i>累計 ${yen(s.cum[i])}人</i>`;
+  }
+  const wrap = tipEl.parentElement.getBoundingClientRect();
+  const bar  = (i < PLAYED ? topRects[i] : chartEl.querySelector(`.c-hit[data-i="${i}"]`));
+  const r = bar.getBoundingClientRect();
+  tipEl.style.left = (r.left - wrap.left + r.width/2) + "px";
+  tipEl.style.top  = (r.top  - wrap.top  - 10) + "px";
+  tipEl.classList.add("on");
+}
+function hideTip(){ tipEl.classList.remove("on"); }
+function bindChartTips(){
+  chartEl.querySelectorAll(".c-hit").forEach(h=>{
+    const i = +h.dataset.i;
+    h.addEventListener("pointerenter", ()=>showTip(i));
+    h.addEventListener("pointermove",  ()=>showTip(i));
+    h.addEventListener("pointerleave", hideTip);
+    h.addEventListener("focus", ()=>showTip(i));
+    h.addEventListener("blur",  hideTip);
+  });
 }
 
 function renderChart(v){
@@ -1000,6 +1212,149 @@ function renderCheer(){
   ].map(t=>`<span>${t}</span>`).join("");
 }
 
+/* ---------- 次のホームゲーム ---------- */
+function renderNextGame(){
+  const el = document.getElementById("nextGame");
+  const next = SEASON.matches[PLAYED];
+  const s = state();
+  if(!next){
+    el.innerHTML = `<div class="ng-when"><em>THIS SEASON</em>
+      <b>今シーズンのホームゲームは全日程終了しました</b>
+      <span>1年間で ${yen(s.total)}人。ありがとうございました。</span></div>`;
+    return;
+  }
+  const act = [
+    ["ticket", "チケットを買う", "btn-main"],
+    ["access", "アクセス・スタジアム", "btn-sub"]
+  ].map(([key,label,cls])=>{
+    const href = LINKS[key];
+    return href
+      ? `<a class="btn ${cls}" href="${href}" target="_blank" rel="noopener">${label}</a>`
+      : `<span class="btn btn-todo" aria-disabled="true">${label}（URL未設定）</span>`;
+  }).join("");
+  el.innerHTML = `<div class="ng-when"><em>NEXT HOME GAME</em>
+      <b>第${next.round}節 ${next.date}　vs ${next.vs}</b>
+      <span>あなたが行くと、このマスがもう1つ埋まります</span></div>
+    <div class="ng-act">${act}</div>`;
+}
+
+/* ---------- 「私も行った」 ---------- */
+const MINE_KEY = "acn26_mine";
+let MINE = new Set();
+try{
+  const raw = localStorage.getItem(MINE_KEY);
+  if(raw) MINE = new Set(JSON.parse(raw).filter(n=>Number.isInteger(n)));
+}catch(e){ /* localStorage が使えない環境では、選択を保持しないだけ */ }
+function saveMine(){
+  try{ localStorage.setItem(MINE_KEY, JSON.stringify([...MINE])); }catch(e){}
+}
+
+/* 試合 i が埋めたマスの範囲 */
+function dotRange(i){
+  const s = state();
+  const prev = i === 0 ? 0 : s.cum[i-1];
+  return [Math.floor(prev / PER_DOT), Math.floor(s.cum[i] / PER_DOT)];
+}
+function renderMinePick(){
+  const el = document.getElementById("minePick");
+  const played = SEASON.matches.slice(0, PLAYED);
+  if(!played.length){ el.innerHTML = `<p class="mine-lead">まだ開催された試合がありません。</p>`; return; }
+  el.innerHTML = played.map((m,i)=>
+    `<button type="button" data-i="${i}" aria-pressed="${MINE.has(i)}">第${m.round}節 ${m.date} vs ${m.vs}</button>`
+  ).join("");
+}
+function renderMine(){
+  dotNodes.forEach(n=>n.classList.remove("mine"));
+  topRects.forEach(r=>r.classList.remove("mine"));
+  const picked = [...MINE].filter(i=>i < PLAYED);
+  let people = 0, cells = 0;
+  picked.forEach(i=>{
+    const [a,b] = dotRange(i);
+    for(let d=a; d<b; d++) if(dotNodes[d]) dotNodes[d].classList.add("mine");
+    if(topRects[i]) topRects[i].classList.add("mine");
+    people += SEASON.matches[i].attendance;
+    cells  += (b - a);
+  });
+  const sum = document.getElementById("mineSum");
+  const s = state();
+  if(!picked.length){
+    sum.innerHTML = `試合を選ぶと、あなたが立ち会った来場者数とマスの数が出ます。`;
+  } else {
+    const share = (people / s.total * 100).toFixed(1);
+    sum.innerHTML = `あなたが立ち会ったのは <b>${picked.length}</b>試合。`
+      + `その日スタジアムにいたのは合計 <b>${yen(people)}</b>人 ＝ <b>${cells}</b>マス。<br>`
+      + `今シーズンの積み上げ（${yen(s.total)}人）の <b>${share}%</b> に、あなたがいました。`;
+  }
+}
+function bindMine(){
+  document.getElementById("minePick").addEventListener("click", e=>{
+    const b = e.target.closest("button"); if(!b) return;
+    const i = +b.dataset.i;
+    if(MINE.has(i)) MINE.delete(i); else MINE.add(i);
+    b.setAttribute("aria-pressed", MINE.has(i));
+    saveMine(); renderMine();
+  });
+}
+
+/* ---------- シェア ---------- */
+function tagText(){ return SHARE.tags.map(t=>"#"+t).join(" "); }
+function shareUrl(){
+  if(SHARE.url) return SHARE.url;
+  return location.protocol.startsWith("http") ? location.href.split("#")[0] : "";
+}
+function textNow(){
+  const s = state();
+  const next = SEASON.goals.find(g => s.total < g.value);
+  const head = `アスルクラロ沼津 2026、ホームゲーム累計来場者数は ${yen(s.total)}人。`;
+  const body = !next ? `目標はすべて達成しました。`
+    : (s.remaining > 0
+        ? `${next.name}まであと ${yen(next.value - s.total)}人、残り${s.remaining}試合。`
+        : `${next.name}まであと ${yen(next.value - s.total)}人でした。`);
+  return `${head}\n${body}\n1マス＝100人、みんなで積み上げよう。\n${tagText()}`;
+}
+function textMine(){
+  const s = state();
+  const picked = [...MINE].filter(i=>i < PLAYED).sort((a,b)=>a-b);
+  if(!picked.length) return textNow();
+  const people = picked.reduce((t,i)=>t + SEASON.matches[i].attendance, 0);
+  const names = picked.slice(0,2).map(i=>{
+    const m = SEASON.matches[i];
+    return `第${m.round}節 vs ${m.vs}`;
+  }).join("、");
+  const more = picked.length > 2 ? ` ほか計${picked.length}試合` : "";
+  return `私も、アスルクラロ沼津のホームゲームに行きました。\n${names}${more}。\n`
+    + `その日スタジアムにいたのは合計 ${yen(people)}人。`
+    + `今シーズンの積み上げは ${yen(s.total)}人になりました。\n`
+    + `1マス＝100人。次はあなたの1マスを。\n${tagText()}`;
+}
+async function doShare(text){
+  const url = shareUrl();
+  if(navigator.share){
+    try{ await navigator.share({ text, url: url || undefined }); return; }
+    catch(err){ if(err && err.name === "AbortError") return; }
+  }
+  /* Web Share が無い環境（主にPC）は X の投稿画面を開く。
+     X は URL パラメータで画像を添付できないので、画像はOGPカードが担当する。 */
+  const q = new URLSearchParams({ text });
+  if(url) q.set("url", url);
+  window.open("https://x.com/intent/post?" + q.toString(), "_blank", "noopener,width=600,height=540");
+}
+function flash(msg){
+  const el = document.getElementById("copied");
+  el.textContent = msg;
+  el.classList.remove("sr-only");
+  setTimeout(()=>el.classList.add("sr-only"), 2600);
+}
+function bindShare(){
+  document.getElementById("shareNow").addEventListener("click", ()=>doShare(textNow()));
+  document.getElementById("shareMine").addEventListener("click", ()=>doShare(textMine()));
+  document.getElementById("copyMine").addEventListener("click", async ()=>{
+    const text = textMine() + (shareUrl() ? "\n" + shareUrl() : "");
+    try{ await navigator.clipboard.writeText(text); flash("コピーしました"); }
+    catch(e){ flash("コピーできませんでした"); }
+  });
+}
+
 /* ---------- pace cards ---------- */
 function renderPace(){
   const s = state();
@@ -1033,43 +1388,96 @@ function renderTable(){
     const cls = !done ? "future" : (m.attendance === best ? "best" : "");
     return `<tr class="${cls}">
       <td>第${m.round}節</td><td>${m.date}</td><td>vs ${m.vs}</td>
-      <td class="n">${done ? yen(m.attendance) : "—"}</td>
+      <td class="n">${done ? yen(m.attendance) : "—"}${
+        done && m.attendance === best ? '<span class="badge">最多</span>' : ""}</td>
       <td class="n">${done ? yen(s.cum[i]) : "—"}</td></tr>`;
   }).join("");
 }
 
-/* ---------- animation timeline ---------- */
-let rafId = null;
-function play(){
-  cancelAnimationFrame(rafId);
+/* ---------- animation timeline ----------
+   カウンター／マス／グラフはそれぞれ画面に入った時点で動き出す。
+   まとめて先に動かしてしまうと、スクロールして辿り着いた頃には
+   もう積み上がり終わっていて、いちばん見せたい動きが見られないため。 */
+let cancels = [], observers = [];
+function tween(dur, step, done){
+  if(reduceMotion){ step(1); if(done) done(); return null; }
+  const t0 = performance.now(), ease = t => 1 - Math.pow(1 - t, 3);
+  let id;
+  (function frame(now){
+    const p = Math.min(1, (now - t0) / dur);
+    step(ease(p));
+    if(p < 1) id = requestAnimationFrame(frame);
+    else if(done) done();
+  })(t0);
+  return ()=>cancelAnimationFrame(id);
+}
+/* すでに通り過ぎている場所は、動かさず最終形にする。
+   （動かす約束のまま放置すると、前の表示のまま古い数字が残ってしまう） */
+function whenVisible(el, play, snap){
+  if(!el){ snap(); return; }
+  const r = el.getBoundingClientRect();
+  if(r.bottom <= 0){ snap(); return; }
+  if(r.top < innerHeight * 0.85){ play(); return; }
+  const io = new IntersectionObserver(es=>{
+    if(es.some(e=>e.isIntersecting)){ io.disconnect(); play(); }
+  }, { threshold:.2 });
+  io.observe(el);
+  observers.push(io);
+}
+
+function playBoard(){
   const target = state().total;
   lastHitCount = -1;
-  if(reduceMotion){
-    renderCounter(target, true); renderDots(target); renderChart(target); renderChips(target);
-    return;
-  }
+  cancels.push(tween(3200,
+    e => { const v = 1 + (target - 1) * e; renderCounter(v, false); renderChips(v); },
+    () => { renderCounter(target, true); renderChips(target); flipSettle(); }));
+}
+function resetDots(){
   lastFilled = -1;
   dotNodes.forEach(n=>n.classList.remove("on","tier2","tier3"));
-  const dur = 3200, t0 = performance.now();
-  const ease = t => 1 - Math.pow(1 - t, 3);
-  function step(now){
-    const p = Math.min(1, (now - t0) / dur);
-    const v = 1 + (target - 1) * ease(p);
-    renderCounter(v); renderDots(v); renderChart(v); renderChips(v);
-    if(p < 1){ rafId = requestAnimationFrame(step); }
-    else { renderCounter(target, true); flipSettle(); }
-  }
-  rafId = requestAnimationFrame(step);
+}
+function playDots(){
+  const target = state().total;
+  resetDots();
+  cancels.push(tween(2400,
+    e => renderDots(1 + (target - 1) * e),
+    () => { renderDots(target); renderMine(); }));
+}
+function snapDots(){ resetDots(); renderDots(state().total); renderMine(); }
+function playChart(){
+  const target = state().total;
+  cancels.push(tween(2000,
+    e => renderChart(1 + (target - 1) * e),
+    () => { renderChart(target); renderMine(); }));
+}
+function snapChart(){ renderChart(state().total); renderMine(); }
+function play(){
+  cancels.forEach(c => c && c()); cancels = [];
+  observers.forEach(o => o.disconnect()); observers = [];
+  hideTip();
+  playBoard();
+  whenVisible(document.getElementById("dots"),  playDots,  snapDots);
+  whenVisible(document.getElementById("chart"), playChart, snapChart);
 }
 
 /* ---------- init ---------- */
 function renderAll(){
   buildCounter(); buildChart(); buildChips();
   renderSub(); renderPace(); renderCheer(); renderTable();
+  renderNextGame(); renderMinePick(); renderMine();
   play();
 }
 buildDots();
 renderAll();
+bindMine();
+bindShare();
+
+/* 左上ロゴのリンク先 */
+(function(){
+  const a = document.querySelector(".lockup");
+  if(LINKS.official){ a.href = LINKS.official; a.target = "_blank"; a.rel = "noopener"; }
+  else a.removeAttribute("href");
+})();
 
 document.getElementById("replay").addEventListener("click", play);
 window.addEventListener("resize", ()=>{
