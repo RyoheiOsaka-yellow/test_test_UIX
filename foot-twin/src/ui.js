@@ -11,14 +11,14 @@
 
   /* レイヤ定義（SPEC §6）。ラベルは顧客提示の言い方にする。 */
   var LAYERS = [
-    { id: "L0_surface",   n: "0", t: "足底面",           h: "計測した足の裏の形",            on: true },
+    { id: "L0_surface",   n: "0", t: "足の立体",          h: "計測した足。裏面が計測結果",     on: true },
     { id: "L1_contour",   n: "1", t: "等高線",           h: "2mm 間隔／6mm ごとに太線",      on: true },
-    { id: "L2_height",    n: "2", t: "高さの色分け",      h: "床からの高さ 0–30mm",           on: true },
+    { id: "L2_height",    n: "2", t: "高さの色分け",      h: "床からの高さ 0–28mm",           on: true },
     { id: "L3_landmark",  n: "3", t: "基準点",           h: "計測の基準になる6点",           on: false },
     { id: "L4_pressure",  n: "4", t: "荷重の分布（推定）", h: "形状からの推定。実測ではない",  on: false },
     { id: "L5_complaint", n: "5", t: "不調の申告部位",    h: "来店時に伺った箇所",            on: false },
     { id: "L6_rx",        n: "6", t: "インソールの補正",  h: "どこを何mm持ち上げたか",        on: false },
-    { id: "L7_drift",     n: "7", t: "経年の変化",        h: "2013年の計測との差 ±5mm",       on: false },
+    { id: "L7_drift",     n: "7", t: "作製時からの変化",   h: "0週の計測との差 ±2mm",          on: false },
     { id: "L8_cohort",    n: "8", t: "6万人平均との差",   h: "同年代・同性の平均形状との差",  on: false },
     { id: "L9_insole",    n: "9", t: "インソール形状",    h: "補正を反映した上面（参考表示）", on: false }
   ];
@@ -29,7 +29,7 @@
                    css: "linear-gradient(90deg,#F2F4F0,#7FB2AA,#1D6B66,#0E3D3A)" },
     L4_pressure: { title: "荷重の分布（推定）", lo: "低", hi: "高",
                    css: "linear-gradient(90deg,#F5F2EA,#D8A64A,#A8851C)" },
-    L7_drift:    { title: "2013年の計測との差", lo: "−2 mm", hi: "+2 mm", css: DIVERGE },
+    L7_drift:    { title: "作製時（0週）の計測との差", lo: "−2 mm", hi: "+2 mm", css: DIVERGE },
     L8_cohort:   { title: "6万人平均との差", lo: "−5 mm", hi: "+5 mm", css: DIVERGE },
     L9_insole:   { title: "インソールが足を持ち上げている量", lo: "0 mm", hi: "+8 mm",
                    css: DIVERGE }
@@ -53,8 +53,8 @@
    * 状態
    * ------------------------------------------------------------------ */
   var S = {
-    subject: null, side: "R", year: CONST.YEAR_NOW,
-    layers: {}, histMetric: "asi", viewer: null,
+    subject: null, side: "R", week: 0,
+    layers: {}, histMetric: "asi", viewer: null, sectionPct: 44,
     lastHeavyAt: 0, contours: null, insole: null, scrubbing: false, raf: 0,
     bootMs: 0, lastRebuildMs: 0
   };
@@ -69,22 +69,26 @@
   function rebuild() {
     var t0 = performance.now();
     var sub = S.subject;
-    var params = FT.paramsAtYear(sub, S.year);
+    var params = FT.paramsAtWeek(sub, S.week);
     // 表示中のグリッドは毎フレーム作り直すので配列を使い回す。
     // 保持する過去 scan / 母集団平均には reuse を渡さない。
     var grid = FT.buildGrid(params, S.side, S.gridBuf);
     S.gridBuf = grid;
+    S.solidBuf = FT.buildSolid(grid, S.solidBuf);
     var lm = FT.landmarks(grid);
     var mt = FT.metrics(grid, lm);
 
-    // 処方は「その年までに適用済み」のもの。将来外挿の年でも現在の処方までしか出さない。
-    var rxYear = Math.min(S.year, CONST.YEAR_NOW);
-    var rx = FT.prescriptionsAtYear(sub, rxYear);
-    var cp = FT.complaintsAtYear(sub, rxYear);
+    // 記録があるのは最終計測週まで。その先は外挿なので処方は増やさない。
+    var recW = Math.min(S.week, sub.lastScanWeek);
+    var rx = FT.prescriptionsAtWeek(sub, recW);
+    var cp = FT.complaintsAtWeek(sub, recW);
+    // 直近に材を足してからの経過ぶんだけ沈む
+    var settle = FT.settleMm(S.week - FT.lastAdjustWeek(sub, recW));
 
     var st = {
-      grid: grid, landmarks: lm, metrics: mt,
-      prescriptions: rx, complaints: cp, params: params
+      grid: grid, solid: S.solidBuf, landmarks: lm, metrics: mt,
+      prescriptions: rx, complaints: cp, params: params,
+      settle: settle, recordedWeek: recW
     };
     st.fast = false;   // heavy 判定のあとで確定させる
 
@@ -93,7 +97,7 @@
       S.pressureBuf = st.pressure;
     }
     if (S.layers.L7_drift) {
-      // 比較対象は最初の計測。スクラブ中も変わらないので作り直さない。
+      // 比較対象は作製時（0週）の計測。スクラブ中も変わらないので作り直さない。
       var pk = sub.subject_id + S.side;
       if (S.pastKey !== pk) { S.pastGrid = FT.buildGrid(sub.scans[0].params, S.side); S.pastKey = pk; }
       st.pastGrid = S.pastGrid;
@@ -112,7 +116,7 @@
     st.fast = !heavy;
 
     if (S.layers.L9_insole) {
-      if (heavy || !S.insole) S.insole = FT.buildInsole(grid, rx);
+      if (heavy || !S.insole) S.insole = FT.buildInsole(grid, rx, settle);
       st.insole = S.insole;
     }
     if (S.layers.L1_contour) {
@@ -185,6 +189,7 @@
     }
     $("metricBody").innerHTML = html;
     renderTime();
+    renderSection(st);
     if (!full) return;
 
     /* --- 類型 --- */
@@ -216,15 +221,160 @@
       for (i = 0; i < st.prescriptions.length; i++) {
         var rx = st.prescriptions[i];
         rxHtml += '<div class="rxrow"><div>' + (RX_JP[rx.landmark] || rx.landmark)
-          + '<span class="yr"> ／ ' + rx.applied_at.slice(0, 4) + ' ／ '
+          + '<span class="yr"> ／ ' + rx.week + '週 ／ '
           + (GRADE_JP[rx.grade] || rx.grade) + '</span></div>'
           + '<div class="mm">+' + rx.lift_mm.toFixed(1) + ' mm</div></div>';
       }
+      var dAdj = Math.max(0, S.week - FT.lastAdjustWeek(S.subject, st.recordedWeek));
+      rxHtml += '<div class="rxrow"><div>沈み込み<span class="yr"> ／ 前回の調整から '
+        + Math.round(dAdj) + '週</span></div>'
+        + '<div class="mm" style="color:var(--alert)">−' + st.settle.toFixed(2)
+        + ' mm</div></div>';
       rxHtml += '<p class="hnote">レイヤ 9 で、この補正を反映したインソール形状を表示します。'
         + '画面上の形状は説明用の参考表示です。</p>';
     }
     $("rxList").innerHTML = rxHtml;
+    renderLog();
+    renderTrend();
     renderHist(g, m);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 断面。立体にした以上、土踏まずの隙間とインソールの関係は
+   * 断面で見せるのがいちばん早い。
+   * ------------------------------------------------------------------ */
+  function sectionRow() {
+    return Math.round(S.sectionPct / 100 * (CONST.NZ - 1));
+  }
+
+  function renderSection(st) {
+    var sec = FT.sectionOf(st.solid, sectionRow());
+    S.viewer.setSectionRow(sec.row);
+    var ins = st.insole ? FT.insoleSectionOf(st.insole, sec.row) : null;
+    var L = st.params.length;
+
+    // 表示範囲は足長比で固定する。断面ごとにスケールが変わると比較できない。
+    var halfX = L * 0.24, topY = L * 0.30;
+    var W = 300, H = 158, PAD = 14;
+    var sx = (W - PAD * 2) / (halfX * 2), sy = (H - PAD * 2) / topY;
+    var sc = Math.min(sx, sy);
+    var cx = W / 2, base = H - PAD;
+    function X(x) { return cx + x * sc; }
+    function Y(y) { return base - y * sc; }
+
+    var d = "", i;
+    for (i = 0; i < sec.length; i++) {
+      d += (i ? "L" : "M") + X(sec[i][0]).toFixed(1) + " " + Y(sec[i][1]).toFixed(1);
+    }
+    d += "Z";
+
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="断面">';
+    svg += '<line x1="0" y1="' + base + '" x2="' + W + '" y2="' + base
+         + '" stroke="#C6CCC4" stroke-width="1"/>';
+    if (ins) {
+      var di = "";
+      for (i = 0; i < ins.length; i++) {
+        di += (i ? "L" : "M") + X(ins[i][0]).toFixed(1) + " " + Y(ins[i][1]).toFixed(1);
+      }
+      di += "L" + X(ins[ins.length - 1][0]).toFixed(1) + " " + base
+          + "L" + X(ins[0][0]).toFixed(1) + " " + base + "Z";
+      svg += '<path d="' + di + '" fill="#B99A6B" fill-opacity="0.45" stroke="#8C7346"'
+           + ' stroke-width="1"/>';
+    }
+    svg += '<path d="' + d + '" fill="#1D6B66" fill-opacity="0.13" stroke="#14202A"'
+         + ' stroke-width="1.4" stroke-linejoin="round"/>';
+    // 断面の最大高さ（＝この位置での足の高さ）
+    var maxY = 0, maxX = 0;
+    for (i = 0; i < sec.length; i++) { if (sec[i][1] > maxY) { maxY = sec[i][1]; maxX = sec[i][0]; } }
+    svg += '<line x1="' + X(maxX).toFixed(1) + '" y1="' + Y(maxY).toFixed(1)
+         + '" x2="' + X(maxX).toFixed(1) + '" y2="' + base
+         + '" stroke="#A8851C" stroke-width="1" stroke-dasharray="3 3"/>';
+    svg += '<text x="' + (X(maxX) + 5).toFixed(1) + '" y="' + (Y(maxY) + 12).toFixed(1)
+         + '" font-size="10.5" fill="#A8851C" font-family="ui-monospace,monospace">'
+         + maxY.toFixed(0) + ' mm</text>';
+    // 内外がわからないと断面は読めない。左右のラベルは side で入れ替える。
+    var medialLeft = (FT.medialSign(S.side) < 0);
+    svg += '<text x="3" y="' + (H - 3) + '" font-size="10" fill="#8A959C">'
+         + (medialLeft ? "内側" : "外側") + '</text>';
+    svg += '<text x="' + (W - 3) + '" y="' + (H - 3) + '" text-anchor="end"'
+         + ' font-size="10" fill="#8A959C">' + (medialLeft ? "外側" : "内側") + '</text>';
+    svg += '</svg>';
+    $("sectionWrap").innerHTML = svg;
+
+    // 足底とインソールの隙間（＝支えている量）を数値でも出す
+    var gapTxt = "";
+    if (ins) {
+      var gap = 0;
+      for (i = 0; i < ins.length; i++) {
+        var g2 = ins[i][1] - soleYAt(sec, ins[i][0]);
+        if (g2 > gap) gap = g2;
+      }
+      gapTxt = " ／ インソールとの最大の隙間 <b>" + gap.toFixed(1) + " mm</b>";
+    }
+    $("sectionNote").innerHTML = "かかとから <b>" + S.sectionPct + "%</b>（"
+      + (L * S.sectionPct / 100).toFixed(0) + " mm）の断面" + gapTxt;
+  }
+
+  /* 断面の輪郭上で、指定 x にいちばん近い点の高さ */
+  function soleYAt(sec, x) {
+    var best = 0, bd = 1e9;
+    for (var i = 0; i < sec.length; i++) {
+      var dx = Math.abs(sec[i][0] - x);
+      if (dx < bd) { bd = dx; best = sec[i][1]; }
+    }
+    return best;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 主訴の推移。週単位にした意味がいちばん出るところ。
+   * ------------------------------------------------------------------ */
+  function renderTrend() {
+    var sub = S.subject, byRegion = {}, i, c;
+    for (i = 0; i < sub.complaints.length; i++) {
+      c = sub.complaints[i];
+      if (!byRegion[c.region]) byRegion[c.region] = [];
+      byRegion[c.region].push(c);
+    }
+    var html = "", k;
+    var W = 160, H = 26;
+    for (k in byRegion) {
+      if (!byRegion.hasOwnProperty(k)) continue;
+      var pts = byRegion[k].slice().sort(function (a, b) { return a.week - b.week; });
+      var P = FT.COMPLAINT_POS[k];
+      var d = "", dots = "";
+      for (i = 0; i < pts.length; i++) {
+        var x = pts[i].week / CONST.WEEK_MAX * W;
+        var y = H - 3 - (pts[i].severity / 5) * (H - 8);
+        d += (i ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+        dots += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1)
+              + '" r="2.6" fill="#A63A2B"/>';
+      }
+      var nowX = S.week / CONST.WEEK_MAX * W;
+      html += '<div class="trend"><div class="tn">' + (P ? P.label : k) + '</div>'
+        + '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">'
+        + '<line x1="0" y1="' + (H - 3) + '" x2="' + W + '" y2="' + (H - 3)
+        + '" stroke="#D9DED7" stroke-width="1"/>'
+        + '<line x1="' + nowX.toFixed(1) + '" y1="0" x2="' + nowX.toFixed(1)
+        + '" y2="' + H + '" stroke="#A8851C" stroke-width="1"/>'
+        + '<path d="' + d + '" fill="none" stroke="#A63A2B" stroke-width="1.6"/>'
+        + dots + '</svg></div>';
+    }
+    $("trendList").innerHTML = html
+      || '<p class="hnote">不調の申告の記録はありません。</p>';
+  }
+
+  /* --- 経過の記録（作製・調整・フォロー） --- */
+  var KIND_COL = { "作製": "var(--ink)", "調整": "var(--brass)", "フォロー": "var(--teal)" };
+  function renderLog() {
+    var log = S.subject.log, html = "", i;
+    for (i = 0; i < log.length; i++) {
+      var e = log[i], done = e.week <= S.week;
+      html += '<div class="logrow' + (done ? "" : " future") + '">'
+        + '<div class="lw">' + e.week + '週</div>'
+        + '<div><b style="color:' + (done ? (KIND_COL[e.kind] || "var(--ink)") : "var(--ink3)")
+        + '">' + e.kind + '</b><span>' + e.note + '</span></div></div>';
+    }
+    $("logList").innerHTML = html;
   }
 
   function rank(g, key, v) {
@@ -271,20 +421,46 @@
       + FT.rankText(pct) + '</b>';
   }
 
-  /* --- タイムライン --- */
+  /* --- タイムライン（インソール作製からの経過週） --- */
+  function weekText(w) {
+    if (w < 52) return w + "週";
+    var y = Math.floor(w / 52), r = w - y * 52;
+    return w + "週（" + y + "年" + (r ? r + "週" : "") + "）";
+  }
   function renderTime() {
-    var future = S.year > CONST.YEAR_NOW;
-    var isScan = false;
-    for (var i = 0; i < FT.SCAN_YEARS.length; i++) {
-      if (FT.SCAN_YEARS[i] === S.year) isScan = true;
+    var sub = S.subject;
+    var future = S.week > sub.lastScanWeek;
+    var isScan = false, i;
+    for (i = 0; i < sub.scanWeeks.length; i++) {
+      if (sub.scanWeeks[i] === S.week) isScan = true;
     }
-    $("yearLabel").textContent = S.year;
+    $("yearLabel").textContent = S.week + "週";
     $("yearKind").textContent = future ? "参考表示" : (isScan ? "計測" : "計測間の補間");
     var d = $("disc");
     d.textContent = future
-      ? "※ 現在の計測値を年齢変化の一般的傾向で延長した参考表示です。個別の予後を示すものではありません。"
-      : "2013 / 2019 / 2026 が計測、その間は補間です。2026 より先は参考表示に切り替わります。";
+      ? "※ 直近の計測値を、経過の一般的な傾向で延長した参考表示です。個別の予後を示すものではありません。"
+      : "0週＝インソール作製時。" + sub.scanWeeks.join(" / ") + "週 が計測、その間は補間です。"
+        + sub.lastScanWeek + "週より先は参考表示に切り替わります。";
     d.className = future ? "on" : "";
+    renderTicks();
+  }
+
+  /* 目盛りは subject ごとの計測週に合わせて置き直す */
+  function renderTicks() {
+    var sub = S.subject, ticks = $("ticks"), html = "", i;
+    var marks = sub.scanWeeks.slice();
+    if (marks.indexOf(CONST.WEEK_MAX) < 0) marks.push(CONST.WEEK_MAX);
+    for (i = 0; i < marks.length; i++) {
+      var w = marks[i];
+      var t = (w - CONST.WEEK_MIN) / (CONST.WEEK_MAX - CONST.WEEK_MIN);
+      var cls = [];
+      if (w > sub.lastScanWeek) cls.push("ex");
+      if (i === 0) cls.push("first");
+      if (i === marks.length - 1) cls.push("last");
+      html += '<span class="' + cls.join(" ") + '" style="left:' + (t * 100) + '%">'
+        + w + (w > sub.lastScanWeek ? "週 参考" : "週") + '</span>';
+    }
+    ticks.innerHTML = html;
   }
 
   /* ------------------------------------------------------------------ *
@@ -295,7 +471,7 @@
     if (!st) return;
     $("hud").innerHTML =
       '<b>' + S.subject.label + '</b> ／ ' + (S.side === "R" ? "右足" : "左足")
-      + ' ／ ' + S.year + '<br>'
+      + ' ／ ' + weekText(S.week) + '<br>'
       + '<span class="k">足長</span>' + st.metrics.foot_length.toFixed(1) + ' mm<br>'
       + '<span class="k">土踏まず</span>' + st.metrics.asi.toFixed(1) + ' %<br>'
       + '<span class="k">操作</span>ドラッグで回転／ホイールで拡大';
@@ -353,7 +529,7 @@
       var o = document.createElement("option");
       o.value = s.subject_id;
       o.textContent = s.label + "　" + (s.sex === "M" ? "男性" : "女性")
-        + " " + (CONST.YEAR_NOW - s.birth_year) + "歳";
+        + " " + s.age + "歳";
       sel.appendChild(o);
     }
     sel.addEventListener("change", function () {
@@ -386,6 +562,28 @@
       if (b) S.viewer.setView(b.getAttribute("data-view"), S.side);
     });
     $("resetBtn").addEventListener("click", function () { S.viewer.setView("R", S.side); });
+
+    /* 画像の書き出し（SPEC §10-2）。接客時の印刷・お渡し用。
+       preserveDrawingBuffer を常時 true にすると描画が重くなるので、
+       押された瞬間に一度描き直してから読み出す。 */
+    $("pngBtn").addEventListener("click", function () {
+      S.viewer.render();
+      var url = S.viewer.renderer.domElement.toDataURL("image/png");
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "foot_twin_" + S.subject.subject_id + "_" + S.side + "_"
+        + S.week + "w.png";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+
+    /* 断面の位置 */
+    var secPos = $("sectionPos");
+    secPos.addEventListener("input", function () {
+      S.sectionPct = parseInt(secPos.value, 10);
+      if (S.state) { renderSection(S.state); S.viewer.setSectionRow(sectionRow()); }
+    });
 
     /* レイヤ */
     var list = $("layerList");
@@ -427,22 +625,9 @@
 
     /* タイムライン */
     var range = $("yearRange");
-    range.min = CONST.YEAR_MIN; range.max = CONST.YEAR_MAX; range.value = CONST.YEAR_NOW;
-    var ticks = $("ticks"), marks = [2013, 2019, 2026, 2036];
-    for (i = 0; i < marks.length; i++) {
-      var sp = document.createElement("span");
-      var t = (marks[i] - CONST.YEAR_MIN) / (CONST.YEAR_MAX - CONST.YEAR_MIN);
-      sp.style.left = (t * 100) + "%";
-      sp.textContent = marks[i] + (marks[i] === 2036 ? " 参考" : "");
-      var cls = [];
-      if (marks[i] > CONST.YEAR_NOW) cls.push("ex");
-      if (i === 0) cls.push("first");
-      if (i === marks.length - 1) cls.push("last");
-      sp.className = cls.join(" ");
-      ticks.appendChild(sp);
-    }
+    range.min = CONST.WEEK_MIN; range.max = CONST.WEEK_MAX; range.value = 0;
     range.addEventListener("input", function () {
-      S.year = parseInt(range.value, 10);
+      S.week = parseInt(range.value, 10);
       S.scrubbing = true;
       schedule();
     });
@@ -494,7 +679,7 @@
       renderMs: function () { return S.lastRenderMs; },
       setLayer: function (id, on) { S.layers[id] = !!on; syncLayerButtons(); rebuild(); },
       toggleLayer: toggleLayer,
-      setYear: function (y) { S.year = y; $("yearRange").value = y; rebuild(); },
+      setWeek: function (w) { S.week = w; $("yearRange").value = w; rebuild(); },
       setSubject: function (id) {
         for (var q = 0; q < FT.SUBJECTS.length; q++) {
           if (FT.SUBJECTS[q].subject_id === id) S.subject = FT.SUBJECTS[q];

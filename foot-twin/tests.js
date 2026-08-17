@@ -49,20 +49,60 @@
       bad.length ? bad.join(",") : "20/20 単一連結・穴なし");
   })();
 
-  /* ---------------- B-2：法線 ---------------- */
+  /* ---------------- B-2：立体の法線 ---------------- */
   (function () {
-    var g = FT.buildGrid(FT.SUBJECTS[0].scans[2].params, "R");
-    var fm = new FT.FieldMesh(g.nx, g.nz, new THREE.MeshBasicMaterial());
-    fm.update(g, function (k, i, j, o) { o[0] = o[1] = o[2] = 0.5; return o; });
-    var n = fm.nrm, bad = 0, minY = 1;
-    for (var v = 0; v < fm.vertexCount; v++) {
-      var x = n[v * 3], y = n[v * 3 + 1], z = n[v * 3 + 2];
-      var len = Math.sqrt(x * x + y * y + z * z);
-      if (Math.abs(len - 1) > 1e-3) bad++;
-      if (y < minY) minY = y;
+    var vw = window.FOOT_TWIN.state().viewer;
+    var S = vw.footMesh.solid, n = S.nrm;
+    var bad = 0, soleUp = 0, dorsalDown = 0;
+    // 端の 3 行は断面がほぼ潰れていて向きが定まらないので除く
+    for (var j = 3; j < S.nz - 3; j++) {
+      for (var c = 0; c < S.NC; c++) {
+        var k = j * S.NC + c, o = k * 3;
+        var x = n[o], y = n[o + 1], z = n[o + 2];
+        var len = Math.sqrt(x * x + y * y + z * z);
+        if (Math.abs(len - 1) > 1e-3) bad++;
+        // 断面の真下／真上にあたる点だけ向きを見る（側面は水平を向く）
+        if (c === Math.floor(S.NB / 2) && y > 0) soleUp++;
+        if (c === S.NB + Math.floor((S.NC - S.NB) / 2) && y < 0) dorsalDown++;
+      }
     }
-    T("B-2 法線が単位長で全て上向き", bad === 0 && minY > 0,
-      "非単位 " + bad + " 件 / 最小 Y 成分 " + minY.toFixed(3));
+    T("B-2 立体の法線が単位長で外向き", bad === 0 && soleUp === 0 && dorsalDown === 0,
+      "非単位 " + bad + " / 足底が上向き " + soleUp + " / 甲が下向き " + dorsalDown
+      + " / 頂点 " + S.nV);
+  })();
+
+  /* ---------------- B-2b：立体が閉じていて、面が粗くない ---------------- */
+  (function () {
+    var S = window.FOOT_TWIN.state().viewer.footMesh.solid;
+    var L = S.params.length;
+    /* リングは「足底側 内→外」→「甲側 外→内」で一周する。
+       tt=±1 の 2 点は上下で共有されるので、縁は構造上開かない。
+       ここで見るのは (a) 縁の点が床に接していること、
+       (b) 周方向の隣り合う標本の間隔が粗すぎないこと。 */
+    var edgeMaxY = 0, stepMax = 0, j, c;
+    for (j = 4; j < S.nz - 4; j++) {
+      var med = j * S.NC, lat = j * S.NC + S.NB - 1;
+      edgeMaxY = Math.max(edgeMaxY, S.pos[med * 3 + 1], S.pos[lat * 3 + 1]);
+      for (c = 0; c < S.NC; c++) {
+        var a = j * S.NC + c, b = j * S.NC + ((c + 1) % S.NC);
+        var d = Math.hypot(S.pos[a * 3] - S.pos[b * 3],
+                           S.pos[a * 3 + 1] - S.pos[b * 3 + 1],
+                           S.pos[a * 3 + 2] - S.pos[b * 3 + 2]);
+        if (d > stepMax) stepMax = d;
+      }
+    }
+    var maxY = 0, minY = 1e9;
+    for (j = 0; j < S.nV; j++) {
+      if (S.pos[j * 3 + 1] > maxY) maxY = S.pos[j * 3 + 1];
+      if (S.pos[j * 3 + 1] < minY) minY = S.pos[j * 3 + 1];
+    }
+    var ratio = maxY / L, stepRatio = stepMax / L;
+    T("B-2b 立体が縁で閉じ、面が粗くない",
+      edgeMaxY < 0.5 && minY >= -1e-6 && ratio > 0.18 && ratio < 0.32
+      && stepRatio < 0.045,
+      "縁の最大高さ " + edgeMaxY.toFixed(3) + "mm / 周方向の最大間隔 "
+      + stepMax.toFixed(1) + "mm（足長比 " + stepRatio.toFixed(4) + "）/ 最高 "
+      + maxY.toFixed(1) + "mm（足長比 " + ratio.toFixed(3) + "）");
   })();
 
   /* ---------------- B-3：カメラ（ジンバルロックなし） ---------------- */
@@ -83,7 +123,7 @@
 
   /* ---------------- B-4：等高線 ---------------- */
   (function () {
-    var g = FT.buildGrid(FT.SUBJECTS[0].scans[2].params, "R");
+    var g = FT.buildGrid(FT.SUBJECTS[2].scans[0].params, "R");
     var cs = FT.contours(g);
     var open = 0, minPts = 1e9;
     for (var i = 0; i < cs.length; i++) {
@@ -158,67 +198,114 @@
     // 直前のテストや検証手順がカメラをどこへ動かしていても成立するよう、
     // 既知の視点に戻してから撃つ。
     window.FOOT_TWIN.setView("R");
-    var grid = vw.state.grid, fm = vw.footMesh;
-    var bad = 0, worstH = 0, worstCell = 0, tried = 0;
+    var grid = vw.state.grid, fm = vw.footMesh, S = fm.solid;
+    var bad = 0, worstH = 0, worstCell = 0, tried = 0, soleHits = 0;
     var rc = new THREE.Raycaster(), rnd = FT.rng.mulberry32(1234);
-    for (var n = 0; n < 300 && tried < 100; n++) {
+    for (var n = 0; n < 400 && tried < 100; n++) {
+      // 立体になったので、上からだけ撃つと甲にしか当たらない。
+      // 半分は底面ビューへ回して足底側の読み出しも確かめる。
+      if (n === 200) window.FOOT_TWIN.setView("B");
       var mx = (rnd() - 0.5) * 1.2, my = (rnd() - 0.5) * 1.2;
       rc.setFromCamera(new THREE.Vector2(mx, my), vw.camera);
       var hits = rc.intersectObject(fm.mesh, false);
       if (!hits.length || !hits[0].face) continue;
       tried++;
-      var cell = fm.vertexToCell[hits[0].face.a];
+      var vi = hits[0].face.a;
+      // 読み出した高さが、その (u,v) の解析値と一致すること。
+      // 立体は標本点で持っているので、セル中心への丸めが入らない。
+      if (S.isSole[vi]) {
+        soleHits++;
+        var truth = FT.heightAt(S.params, S.uu[vi], S.vv[vi]);
+        if (truth < 0) truth = 0;
+        var dh = Math.abs(S.hgt[vi] - truth);
+        if (dh > worstH) worstH = dh;
+        if (dh > 0.05) bad++;
+      }
+      // 構築時に決めたセルが、その点の近傍にあること（インデックスずれの検出）
+      var cell = S.cell[vi];
       var i = cell % grid.nx, j = (cell / grid.nx) | 0;
-      // 読み出した高さが、そのセルの真値と一致すること
-      var dh = Math.abs(grid.height[cell] - FT.heightAt(grid.params,
-        (grid.side === "L" ? -1 : 1) * ((i / (grid.nx - 1) - 0.5) * C.FW), j / (grid.nz - 1)));
-      if (dh > worstH) worstH = dh;
-      // 逆算したセルが交点の近傍にあること（インデックスずれの検出）
       var dc = Math.max(
-        Math.abs(FT.cellX(grid, i) - hits[0].point.x) / grid.pitch_x,
-        Math.abs(FT.cellZ(grid, j) - hits[0].point.z) / grid.pitch_z);
+        Math.abs(FT.cellX(grid, i) - S.pos[vi * 3]) / grid.pitch_x,
+        Math.abs(FT.cellZ(grid, j) - S.pos[vi * 3 + 2]) / grid.pitch_z);
       if (dc > worstCell) worstCell = dc;
-      if (dh > 0.05 || dc > 1.5) bad++;
+      if (dc > 0.51) bad++;
     }
-    T("B-8 ピッキングの高さが真値と ±0.05mm", tried >= 60 && bad === 0,
-      tried + " 点 / 高さ誤差最大 " + worstH.toFixed(5) + "mm / セルずれ最大 "
-      + worstCell.toFixed(2) + " セル / 不合格 " + bad
-      + " [頂点 " + fm.vertexCount + " 可視 " + fm.mesh.visible
-      + " カメラ " + vw.camera.position.toArray().map(function (x) {
-          return x.toFixed(0); }).join(",") + "]");
+    window.FOOT_TWIN.setView("R");
+    T("B-8 ピッキングの高さが真値と ±0.05mm", tried >= 60 && soleHits >= 20 && bad === 0,
+      tried + " 点（うち足底 " + soleHits + "）/ 高さ誤差最大 " + worstH.toFixed(5)
+      + "mm / セルずれ最大 " + worstCell.toFixed(2) + " セル / 不合格 " + bad);
   })();
 
-  /* ---------------- B-9：タイムライン補間の単調性 ---------------- */
+  /* ---------------- B-9：タイムライン（週）の補間と外挿 ---------------- */
   (function () {
-    var sub = FT.SUBJECTS[0], prev = null, bad = 0, jumps = [];
-    for (var y = 2026; y <= 2036; y++) {
-      var p = FT.paramsAtYear(sub, y);
+    var sub = FT.SUBJECTS[0], prev = null, bad = 0, w;
+    for (w = sub.lastScanWeek; w <= C.WEEK_MAX; w++) {
+      var p = FT.paramsAtWeek(sub, w);
       if (prev) {
-        // 2026 以降は加齢外挿。アーチは単調に下がり HVA は単調に上がる。
+        // 最終計測より先は外挿。アーチは単調に下がり HVA は単調に上がる。
         if (p.archAmp > prev.archAmp + 1e-9) bad++;
         if (p.hvaDeg < prev.hvaDeg - 1e-9) bad++;
-        jumps.push(Math.abs(p.length - prev.length));
       }
       prev = p;
     }
-    var maxJump = Math.max.apply(null, jumps);
-    // 記録 scan 間の補間が連続であること
-    var cont = 0;
-    for (var q = 2013; q < 2026; q++) {
-      var a = FT.paramsAtYear(sub, q), b2 = FT.paramsAtYear(sub, q + 1);
-      if (Math.abs(b2.archAmp - a.archAmp) > 0.08) cont++;
+    // 記録した計測の間の補間が連続であること
+    var cont = 0, maxStep = 0;
+    for (w = 0; w < C.WEEK_MAX; w++) {
+      var a = FT.paramsAtWeek(sub, w), b2 = FT.paramsAtWeek(sub, w + 1);
+      var d = Math.abs(b2.archAmp - a.archAmp);
+      if (d > maxStep) maxStep = d;
+      if (d > 0.02) cont++;
     }
-    T("B-9 外挿が単調・補間が連続", bad === 0 && cont === 0,
-      "非単調 " + bad + " / 不連続 " + cont + " / 足長の年あたり最大変化 "
-      + maxJump.toFixed(3) + "mm");
+    T("B-9 週の補間が連続・外挿が単調", bad === 0 && cont === 0,
+      "非単調 " + bad + " / 不連続 " + cont + " / 1週あたりの archAmp 最大変化 "
+      + maxStep.toFixed(5));
+  })();
+
+  /* ---------------- B-9b：沈み込みモデル ---------------- */
+  (function () {
+    var bad = 0, prev = -1, w, v;
+    for (w = 0; w <= 200; w++) {
+      v = FT.settleMm(w);
+      if (v < prev - 1e-12) bad++;                    // 単調増加
+      if (v > C.SETTLE_MM + 1e-9) bad++;              // 漸近値を超えない
+      prev = v;
+    }
+    var half = FT.settleMm(C.SETTLE_TAU_W);
+    var sub = FT.SUBJECTS[0];
+    // 調整の週で沈み込みが 0 に戻ること（材を足すので基準が変わる）
+    var atAdj = FT.settleMm(6 - FT.lastAdjustWeek(sub, 6));
+    T("B-9b 沈み込みが単調で漸近し、調整で基準が戻る",
+      bad === 0 && FT.settleMm(0) === 0 && atAdj === 0 && half > 0.5 && half < 0.7,
+      "0週 " + FT.settleMm(0).toFixed(3) + "mm / τ(" + C.SETTLE_TAU_W + "週) "
+      + half.toFixed(3) + "mm / 200週 " + FT.settleMm(200).toFixed(3)
+      + "mm / 調整直後 " + atAdj.toFixed(3) + "mm");
+  })();
+
+  /* ---------------- B-9c：主訴は最新の記録で置き換わる ---------------- */
+  (function () {
+    var sub = FT.SUBJECTS[0];
+    var at0 = FT.complaintsAtWeek(sub, 0);
+    var at26 = FT.complaintsAtWeek(sub, 26);
+    function sev(list, region) {
+      for (var i = 0; i < list.length; i++) if (list[i].region === region) return list[i].severity;
+      return null;
+    }
+    var dup = 0, seen = {};
+    for (var i = 0; i < at26.length; i++) {
+      if (seen[at26[i].region]) dup++;
+      seen[at26[i].region] = 1;
+    }
+    T("B-9c 主訴が最新の強さで置き換わる（重複なし）",
+      dup === 0 && sev(at0, "LOWBACK") === 3 && sev(at26, "LOWBACK") === 1,
+      "重複 " + dup + " / 腰 0週 " + sev(at0, "LOWBACK") + " → 26週 " + sev(at26, "LOWBACK"));
   })();
 
   /* ---------------- B-11：インソール ---------------- */
   (function () {
     var sub = FT.SUBJECTS[0];
-    var g = FT.buildGrid(sub.scans[2].params, "R");
-    var rx = FT.prescriptionsAtYear(sub, 2026);
-    var ins = FT.buildInsole(g, rx);
+    var g = FT.buildGrid(sub.scans[0].params, "R");
+    var rx = FT.prescriptionsAtWeek(sub, sub.lastScanWeek);
+    var ins = FT.buildInsole(g, rx, 0);
 
     var thin = 0, minT = 1e9, i;
     for (i = 0; i < ins.top.length; i++) {
@@ -289,7 +376,7 @@
 
   /* ---------------- 左右の扱い（SPEC §2-2） ---------------- */
   (function () {
-    var p = FT.SUBJECTS[0].scans[2].params;
+    var p = FT.SUBJECTS[0].scans[0].params;
     var R = FT.buildGrid(p, "R"), L = FT.buildGrid(p, "L");
     var axR = FT.medialAxis("R"), axL = FT.medialAxis("L");
     var bad = 0, i, j;

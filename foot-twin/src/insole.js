@@ -185,8 +185,11 @@
    * 長さ方向は足グリッドの行ピッチに揃え、前後にだけ整数行ぶんはみ出させる。
    * こうすると足底面との差分に z 方向の補間誤差が入らない。
    * ------------------------------------------------------------------ */
-  function buildInsole(footGrid, prescriptions) {
+  /* settle は経過による沈み込み量（mm、SPEC §4-3）。上面から一様に引く。
+     肉厚の下限は保つので、薄い前足部では見かけ上ほとんど沈まない。 */
+  function buildInsole(footGrid, prescriptions, settle) {
     prescriptions = prescriptions || [];
+    settle = settle || 0;
     var p = footGrid.params;
     var nzF = footGrid.nz;
     var zPad = Math.round((INS.LAST_SCALE - 1) * nzF / 2);
@@ -241,7 +244,7 @@
         // 差分は「実際の足底面」との差。こちらは拡張していない元の面を使う。
         var fh = sampleFootRow(footGrid, footGrid.height, footGrid.mask, jF, xWorld);
 
-        var h = Math.max(bh + lf + cup, INS.BASE_THICK);
+        var h = Math.max(bh + lf + cup - settle, INS.BASE_THICK);
         top[k] = h;
         lift[k] = lf;
         diff[k] = h - fh;
@@ -253,7 +256,7 @@
       halfW: halfW, center: center, zRow: zRow,
       top: top, diff: diff, lift: lift, x: xs,
       uToMm: K, side: footGrid.side, params: p,
-      prescriptions: prescriptions
+      prescriptions: prescriptions, settle: settle
     };
   }
   FT.buildInsole = buildInsole;

@@ -84,12 +84,14 @@ def main():
         check(0.05 < ink < 0.75, "足の描画面積: %.3f" % ink)
 
         # ---- レイヤトグルで描画が変わること ----
-        # 足が画面いっぱいに写る真上ビューで比べる。既定の引きの画では
-        # 足が画面の 17% しか占めず、細い線の増減が平均差分に埋もれる。
+        # 足が画面いっぱいに写る底面ビューで比べる。立体化したので、
+        # 真上からでは甲しか見えず足底のレイヤが一つも判定できない。
+        # 引きの既定視点では足が画面の 17% しか占めず、細い線の増減が
+        # 平均差分に埋もれるため、寄せて撮る。
         # subject は全レイヤに中身がある S004310（アーチが高く等高線が多い、
         # 主訴・処方の記録あり）を使う。
         pg.evaluate("FOOT_TWIN.setSubject('S004310')")
-        pg.evaluate("FOOT_TWIN.setView('T'); FOOT_TWIN.zoom(400);")
+        pg.evaluate("FOOT_TWIN.setView('B'); FOOT_TWIN.zoom(400);")
         pg.wait_for_timeout(200)
         # 差分は 3D ビューポートの範囲だけで取る。右の固定パネル 340px を
         # 含めると、レイヤの増減が平均差分の中で薄まってしまう。
@@ -114,7 +116,7 @@ def main():
             frac = (np.abs(sub.astype(int) - bg).sum(axis=2) > 24).mean()
             check(0.02 < frac < 0.85, "ビュー %s に足が描かれている: %.3f" % (v, frac))
 
-        # ---- subject / 左右 / 年 ----
+        # ---- subject / 左右 / 経過週 ----
         pg.evaluate("FOOT_TWIN.setView('R')")
         for sid in ["S000142", "S001987", "S004310", "S005806"]:
             pg.evaluate("FOOT_TWIN.setSubject(%s)" % json.dumps(sid))
@@ -127,15 +129,16 @@ def main():
             shot(pg, "side_" + sd)
 
         prev = None
-        for y in [2013, 2019, 2026, 2031, 2036]:
-            pg.evaluate("FOOT_TWIN.setYear(%d)" % y)
-            pg.wait_for_timeout(200)
-            im = shot(pg, "year_%d" % y)
+        pg.evaluate("FOOT_TWIN.setLayer('L9_insole', true)")
+        for w in [0, 6, 26, 78, 156]:
+            pg.evaluate("FOOT_TWIN.setWeek(%d)" % w)
+            pg.wait_for_timeout(230)
+            im = shot(pg, "week_%03d" % w)
             if prev is not None:
                 d = np.abs(prev.astype(int) - im.astype(int)).mean()
-                check(d > 0.2, "タイムライン %d で描画が変化: diff=%.3f" % (y, d))
+                check(d > 0.2, "タイムライン %d週 で描画が変化: diff=%.3f" % (w, d))
             prev = im
-        pg.evaluate("FOOT_TWIN.setYear(2026)")
+        pg.evaluate("FOOT_TWIN.setLayer('L9_insole', false); FOOT_TWIN.setWeek(0);")
 
         # ---- 全レイヤ ON の合成表示 ----
         for ly in LAYERS:
@@ -209,10 +212,10 @@ def main():
                 var t = [];
                 for (var pass = 0; pass < 2; pass++) {      // 1周目は JIT の暖機
                   t = [];
-                  for (var y = 2013; y <= 2036; y++) {
+                  for (var y = 0; y <= 156; y += 7) {
                     S.scrubbing = throttled;
                     if (!throttled) S.lastHeavyAt = 0;      // 常に完全再構築
-                    FOOT_TWIN.setYear(y);
+                    FOOT_TWIN.setWeek(y);
                     t.push(FOOT_TWIN.rebuildMs());
                   }
                 }

@@ -231,140 +231,205 @@
 
   /* ------------------------------------------------------------------ *
    * デモ用 subject（SPEC §11 受け入れ基準2：3名以上）
-   * 2026 年時点のパラメータを持ち、過去 scan は加齢モデルの逆算＋個体差で作る。
+   *
+   * 時間軸は「インソール作製からの経過週」。年単位ではフォローの実務と
+   * 目盛りが合わない（微調整は数週間ごとに来る）。
+   * 0週＝作製時。scanWeeks が実際に計測した週で、その間は補間する。
    * ------------------------------------------------------------------ */
   var SUBJECTS = [
     {
-      subject_id: "S000142", label: "S000142", sex: "M", birth_year: 1978,
-      note: "腰部の不調を主訴に来店。内側縦アーチの低下が進行。",
+      subject_id: "S000142", label: "S000142", sex: "M", age: 48,
+      note: "腰部の不調を主訴に来店。内側縦アーチの低下。",
       params: { length: 265, widthScale: 1.06, archAmp: 0.42, archPos: 0.435,
                 archSkew: -0.06, transAmp: 0.14, hvaDeg: 13, toeSpring: 0.22, age: 48 },
+      scanWeeks: [0, 6, 26],
       complaints: [
-        { region: "MLA", severity: 4, recorded_at: "2013-04-12" },
-        { region: "LOWBACK", severity: 3, recorded_at: "2019-08-03" },
-        { region: "MTH", severity: 2, recorded_at: "2026-08-17" }
+        { region: "MLA", severity: 4, week: 0 },
+        { region: "LOWBACK", severity: 3, week: 0 },
+        { region: "MLA", severity: 2, week: 6 },
+        { region: "LOWBACK", severity: 2, week: 6 },
+        { region: "MTH", severity: 2, week: 26 },
+        { region: "LOWBACK", severity: 1, week: 26 }
       ],
       prescriptions: [
-        { landmark: "navicular", lift_mm: 6.5, tilt_deg: 1.2, applied_at: "2013-04-12", grade: "full" },
-        { landmark: "cuboid", lift_mm: 3.0, tilt_deg: 0, applied_at: "2013-04-12", grade: "full" },
-        { landmark: "transverse", lift_mm: 2.4, tilt_deg: 0, applied_at: "2019-08-03", grade: "full" }
+        { landmark: "navicular", lift_mm: 6.5, tilt_deg: 1.2, week: 0, grade: "full" },
+        { landmark: "cuboid", lift_mm: 3.0, tilt_deg: 0, week: 0, grade: "full" },
+        { landmark: "transverse", lift_mm: 2.4, tilt_deg: 0, week: 6, grade: "full" }
+      ],
+      log: [
+        { week: 0, kind: "作製", note: "フルオーダー。土踏まずと外側を支持" },
+        { week: 6, kind: "調整", note: "指の付け根の当たりを訴え、横アーチを追加" },
+        { week: 26, kind: "フォロー", note: "腰の訴えは軽快。沈み込みを確認" }
       ]
     },
     {
-      subject_id: "S001987", label: "S001987", sex: "F", birth_year: 1991,
+      subject_id: "S001987", label: "S001987", sex: "F", age: 35,
       note: "立ち仕事。前足部の荷重痛と母趾の傾き。",
       params: { length: 236, widthScale: 1.11, archAmp: 0.78, archPos: 0.450,
                 archSkew: 0.04, transAmp: 0.07, hvaDeg: 22, toeSpring: 0.28, age: 35 },
+      scanWeeks: [0, 4, 12],
       complaints: [
-        { region: "MTH", severity: 4, recorded_at: "2019-02-20" },
-        { region: "KNEE", severity: 2, recorded_at: "2026-08-17" }
+        { region: "MTH", severity: 4, week: 0 },
+        { region: "KNEE", severity: 2, week: 0 },
+        { region: "MTH", severity: 3, week: 4 },
+        { region: "MTH", severity: 1, week: 12 },
+        { region: "KNEE", severity: 1, week: 12 }
       ],
       prescriptions: [
-        { landmark: "transverse", lift_mm: 4.2, tilt_deg: 0, applied_at: "2019-02-20", grade: "semi" },
-        { landmark: "metatarsale_tib", lift_mm: 2.0, tilt_deg: 0, applied_at: "2019-02-20", grade: "semi" },
-        { landmark: "navicular", lift_mm: 3.4, tilt_deg: 0.8, applied_at: "2026-08-17", grade: "semi" }
+        { landmark: "transverse", lift_mm: 4.2, tilt_deg: 0, week: 0, grade: "semi" },
+        { landmark: "metatarsale_tib", lift_mm: 2.0, tilt_deg: 0, week: 0, grade: "semi" },
+        { landmark: "navicular", lift_mm: 3.4, tilt_deg: 0.8, week: 4, grade: "semi" }
+      ],
+      log: [
+        { week: 0, kind: "作製", note: "セミオーダー。中足骨パッドを主体に" },
+        { week: 4, kind: "調整", note: "内側の支持を追加" },
+        { week: 12, kind: "フォロー", note: "前足部の訴えは軽快" }
       ]
     },
     {
-      subject_id: "S004310", label: "S004310", sex: "M", birth_year: 2001,
+      subject_id: "S004310", label: "S004310", sex: "M", age: 25,
       note: "競技者。アーチは高く、踵の圧痛を訴える。",
       params: { length: 274, widthScale: 0.92, archAmp: 1.22, archPos: 0.430,
                 archSkew: -0.10, transAmp: 0.46, hvaDeg: 4, toeSpring: 0.40, age: 25 },
+      scanWeeks: [0, 2, 10, 32],
       complaints: [
-        { region: "HEEL", severity: 3, recorded_at: "2019-11-09" }
+        { region: "HEEL", severity: 3, week: 0 },
+        { region: "HEEL", severity: 2, week: 2 },
+        { region: "HEEL", severity: 1, week: 10 }
       ],
       prescriptions: [
-        { landmark: "heel", lift_mm: 3.6, tilt_deg: 0, applied_at: "2019-11-09", grade: "athlete" },
-        { landmark: "cuboid", lift_mm: 2.2, tilt_deg: 0, applied_at: "2019-11-09", grade: "athlete" }
+        { landmark: "heel", lift_mm: 3.6, tilt_deg: 0, week: 0, grade: "athlete" },
+        { landmark: "cuboid", lift_mm: 2.2, tilt_deg: 0, week: 0, grade: "athlete" },
+        { landmark: "heel", lift_mm: 1.4, tilt_deg: 0, week: 32, grade: "athlete" }
+      ],
+      log: [
+        { week: 0, kind: "作製", note: "アスリート仕様。踵の支持を厚めに" },
+        { week: 2, kind: "フォロー", note: "練習量が多く、初期の沈みが速い" },
+        { week: 10, kind: "フォロー", note: "圧痛は軽快" },
+        { week: 32, kind: "調整", note: "沈み込みぶんを踵で戻す" }
       ]
     },
     {
-      subject_id: "S005806", label: "S005806", sex: "F", birth_year: 1953,
-      note: "アーチ低下と前足部の開張が進行。既製パターンでは合わず。",
+      subject_id: "S005806", label: "S005806", sex: "F", age: 73,
+      note: "アーチ低下と前足部の開張。既製パターンでは合わず。",
       params: { length: 228, widthScale: 1.17, archAmp: 0.26, archPos: 0.455,
                 archSkew: 0.10, transAmp: 0.05, hvaDeg: 28, toeSpring: 0.16, age: 73 },
+      scanWeeks: [0, 8, 24, 52],
       complaints: [
-        { region: "MLA", severity: 3, recorded_at: "2013-06-01" },
-        { region: "MTH", severity: 5, recorded_at: "2019-05-15" },
-        { region: "KNEE", severity: 3, recorded_at: "2026-08-17" }
+        { region: "MLA", severity: 3, week: 0 },
+        { region: "MTH", severity: 5, week: 0 },
+        { region: "KNEE", severity: 3, week: 0 },
+        { region: "MTH", severity: 3, week: 8 },
+        { region: "KNEE", severity: 2, week: 24 },
+        { region: "MTH", severity: 2, week: 52 }
       ],
       prescriptions: [
-        { landmark: "navicular", lift_mm: 5.2, tilt_deg: 1.6, applied_at: "2013-06-01", grade: "full" },
-        { landmark: "transverse", lift_mm: 5.0, tilt_deg: 0, applied_at: "2019-05-15", grade: "full" },
-        { landmark: "metatarsale_fib", lift_mm: 2.2, tilt_deg: 0, applied_at: "2019-05-15", grade: "full" },
-        { landmark: "heel", lift_mm: 2.0, tilt_deg: 0, applied_at: "2026-08-17", grade: "full" }
+        { landmark: "navicular", lift_mm: 5.2, tilt_deg: 1.6, week: 0, grade: "full" },
+        { landmark: "transverse", lift_mm: 5.0, tilt_deg: 0, week: 0, grade: "full" },
+        { landmark: "metatarsale_fib", lift_mm: 2.2, tilt_deg: 0, week: 8, grade: "full" },
+        { landmark: "heel", lift_mm: 2.0, tilt_deg: 0, week: 24, grade: "full" }
+      ],
+      log: [
+        { week: 0, kind: "作製", note: "フルオーダー。土踏まずと横アーチを同時に" },
+        { week: 8, kind: "調整", note: "小趾側の支持を追加" },
+        { week: 24, kind: "調整", note: "かかとの支持を追加" },
+        { week: 52, kind: "フォロー", note: "1年経過。全体の沈み込みを確認" }
       ]
     }
   ];
 
-  /* 各 subject の scan 年ごとのパラメータ。
-     2026 を基準に加齢モデルで逆算し、個体差の揺らぎを固定シードで足す。 */
-  var SCAN_YEARS = [2013, 2019, 2026];
-
+  /* 各 subject の計測週ごとのパラメータ。
+     0週を基準に加齢モデルを週へ換算して進め、実計測の揺らぎを固定シードで足す。 */
   function buildSubjects() {
     for (var s = 0; s < SUBJECTS.length; s++) {
       var sub = SUBJECTS[s];
       sub.params = FT.clampParams(sub.params);
       var rnd = FT.rng.mulberry32(parseInt(sub.subject_id.slice(1), 10));
       sub.scans = [];
-      for (var y = 0; y < SCAN_YEARS.length; y++) {
-        var year = SCAN_YEARS[y];
-        var d = year - CONST.YEAR_NOW;
-        var p = FT.ageParams(sub.params, d);
-        if (d !== 0) {
-          // 実計測は加齢直線に乗らない。過去 scan にだけ小さな揺らぎを入れる。
+      for (var y = 0; y < sub.scanWeeks.length; y++) {
+        var wk = sub.scanWeeks[y];
+        var p = FT.ageParamsWeeks(sub.params, wk);
+        if (wk !== 0) {
+          // 実計測は加齢直線には乗らない。計測ごとの揺らぎを入れる。
           var g = FT.rng.gaussPair(rnd);
           p = FT.clampParams({
-            length: p.length, widthScale: p.widthScale * (1 + g[0] * 0.006),
-            archAmp: p.archAmp * (1 + g[1] * 0.035), archPos: p.archPos,
+            length: p.length, widthScale: p.widthScale * (1 + g[0] * 0.004),
+            archAmp: p.archAmp * (1 + g[1] * 0.022), archPos: p.archPos,
             archSkew: p.archSkew, transAmp: p.transAmp,
             hvaDeg: p.hvaDeg, toeSpring: p.toeSpring, age: p.age
           });
         }
-        sub.scans.push({ year: year, params: p });
+        sub.scans.push({ week: wk, params: p });
       }
+      sub.lastScanWeek = sub.scanWeeks[sub.scanWeeks.length - 1];
     }
     return SUBJECTS;
   }
   FT.SUBJECTS = buildSubjects();
-  FT.SCAN_YEARS = SCAN_YEARS;
 
-  /* 年 → パラメータ。記録 scan 間は線形補間、2026 より先は加齢外挿。
+  /* 週 → パラメータ。記録した計測の間は線形補間、最後の計測より先は外挿。
      SPEC §7 のタイムラインスクラブの実体。 */
-  function paramsAtYear(subject, year) {
+  function paramsAtWeek(subject, week) {
     var sc = subject.scans;
-    if (year <= sc[0].year) return sc[0].params;
+    if (week <= sc[0].week) return sc[0].params;
     for (var i = 0; i < sc.length - 1; i++) {
-      if (year <= sc[i + 1].year) {
-        var t = (year - sc[i].year) / (sc[i + 1].year - sc[i].year);
+      if (week <= sc[i + 1].week) {
+        var t = (week - sc[i].week) / (sc[i + 1].week - sc[i].week);
         return FT.lerpParams(sc[i].params, sc[i + 1].params, t);
       }
     }
     var last = sc[sc.length - 1];
-    return FT.ageParams(last.params, year - last.year);
+    return FT.ageParamsWeeks(last.params, week - last.week);
   }
-  FT.paramsAtYear = paramsAtYear;
+  FT.paramsAtWeek = paramsAtWeek;
 
-  /* その年までに適用済みの処方（L6 / L9 に渡す） */
-  function prescriptionsAtYear(subject, year) {
+  /* その週までに適用済みの処方（L6 / L9 に渡す） */
+  function prescriptionsAtWeek(subject, week) {
     var out = [];
     for (var i = 0; i < subject.prescriptions.length; i++) {
-      var rx = subject.prescriptions[i];
-      if (parseInt(rx.applied_at.slice(0, 4), 10) <= year) out.push(rx);
+      if (subject.prescriptions[i].week <= week) out.push(subject.prescriptions[i]);
     }
     return out;
   }
-  FT.prescriptionsAtYear = prescriptionsAtYear;
+  FT.prescriptionsAtWeek = prescriptionsAtWeek;
 
-  function complaintsAtYear(subject, year) {
-    var out = [];
-    for (var i = 0; i < subject.complaints.length; i++) {
-      var c = subject.complaints[i];
-      if (parseInt(c.recorded_at.slice(0, 4), 10) <= year) out.push(c);
+  /* その週に有効な主訴。同じ部位は最新の記録で置き換える
+     （軽快した訴えを古い強さのまま出さないため）。 */
+  function complaintsAtWeek(subject, week) {
+    var byRegion = {}, i, c;
+    for (i = 0; i < subject.complaints.length; i++) {
+      c = subject.complaints[i];
+      if (c.week > week) continue;
+      if (!byRegion[c.region] || c.week >= byRegion[c.region].week) byRegion[c.region] = c;
+    }
+    var out = [], k;
+    for (k in byRegion) {
+      if (byRegion.hasOwnProperty(k) && byRegion[k].severity > 0) out.push(byRegion[k]);
     }
     return out;
   }
-  FT.complaintsAtYear = complaintsAtYear;
+  FT.complaintsAtWeek = complaintsAtWeek;
+
+  /* 直近に材を足した週。ここを起点に沈み込みが進む。 */
+  function lastAdjustWeek(subject, week) {
+    var w = 0;
+    for (var i = 0; i < subject.prescriptions.length; i++) {
+      var rx = subject.prescriptions[i];
+      if (rx.week <= week && rx.week > w) w = rx.week;
+    }
+    return w;
+  }
+  FT.lastAdjustWeek = lastAdjustWeek;
+
+  /* その週の記録（作製・調整・フォロー） */
+  function logAtWeek(subject, week) {
+    var out = [];
+    for (var i = 0; i < subject.log.length; i++) {
+      if (subject.log[i].week <= week) out.push(subject.log[i]);
+    }
+    return out;
+  }
+  FT.logAtWeek = logAtWeek;
 
   /* 主訴の部位 → 足上の位置（u, v）。KNEE / LOWBACK は足の部位ではないので
      踵の外側にまとめて置き、ラベルで区別する。 */

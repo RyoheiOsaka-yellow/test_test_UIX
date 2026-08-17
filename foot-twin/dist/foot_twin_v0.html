@@ -117,6 +117,16 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
 .layer[aria-pressed="true"] .sw i{left:calc(100% - 12px);background:var(--teal)}
 .layer[aria-pressed="true"] .lt{color:var(--teal)}
 
+/* 断面 */
+#sectionWrap svg{width:100%;height:auto;display:block}
+#sectionPos{width:100%;margin:8px 0 0;accent-color:var(--teal)}
+
+/* 主訴の推移 */
+.trend{display:grid;grid-template-columns:92px 1fr;gap:9px;align-items:center;
+  font-size:11.5px;padding:4px 0}
+.trend .tn{color:var(--ink2);white-space:nowrap}
+.trend svg{width:100%;height:26px;display:block}
+
 /* コホート */
 #histWrap svg{width:100%;height:auto;display:block}
 .hnote{font-size:11px;color:var(--ink2);margin:6px 0 0}
@@ -133,6 +143,15 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
   padding:5px 0;border-bottom:1px solid var(--rule2)}
 .rxrow .mm{font-family:ui-monospace,monospace;font-weight:800;color:var(--brass)}
 .rxrow .yr{font-size:10.5px;color:var(--ink3)}
+
+/* 経過の記録 */
+.logrow{display:grid;grid-template-columns:44px 1fr;gap:10px;font-size:12px;
+  padding:7px 0;border-bottom:1px solid var(--rule2);align-items:baseline}
+.logrow .lw{font-family:ui-monospace,monospace;font-size:11px;color:var(--ink3);
+  font-variant-numeric:tabular-nums;text-align:right}
+.logrow b{font-size:12px;display:inline-block;margin-right:7px}
+.logrow span{font-size:11.5px;color:var(--ink2);line-height:1.5}
+.logrow.future{opacity:.42}
 
 /* ---------- timeline ---------- */
 #time{
@@ -181,6 +200,7 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
       <button type="button" data-side="L" aria-pressed="false">左足</button>
     </div>
     <button type="button" class="btn" id="resetBtn">視点リセット</button>
+    <button type="button" class="btn" id="pngBtn">画像を保存</button>
     <div class="spacer"></div>
     <div class="who mono">PHASE 0 — 合成データによるデモ</div>
   </header>
@@ -208,6 +228,16 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
       </section>
 
       <section class="sec">
+        <h2>断面</h2>
+        <div class="body">
+          <div id="sectionWrap"></div>
+          <input type="range" id="sectionPos" min="4" max="96" step="1" value="44"
+                 aria-label="断面の位置（かかとからの割合）">
+          <p class="hnote" id="sectionNote"></p>
+        </div>
+      </section>
+
+      <section class="sec">
         <h2>表示レイヤ</h2>
         <div class="body"><div id="layerList"></div></div>
       </section>
@@ -225,13 +255,27 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
         <h2>インソールの補正</h2>
         <div class="body"><div id="rxList"></div></div>
       </section>
+
+      <section class="sec">
+        <h2>不調の申告の推移</h2>
+        <div class="body">
+          <div id="trendList"></div>
+          <p class="hnote">縦軸は申告の強さ 1–5。縦の金線が現在の週。</p>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h2>経過の記録</h2>
+        <div class="body"><div id="logList"></div></div>
+      </section>
     </aside>
   </div>
 
   <div id="time">
-    <div class="yr"><span id="yearLabel">2026</span><small id="yearKind">計測</small></div>
+    <div class="yr"><span id="yearLabel">0週</span><small id="yearKind">計測</small></div>
     <div id="track">
-      <input type="range" id="yearRange" min="2013" max="2036" step="1" value="2026">
+      <input type="range" id="yearRange" min="0" max="156" step="1" value="0"
+             aria-label="インソール作製からの経過週">
       <div id="ticks"></div>
     </div>
     <div id="disc"></div>
@@ -292,6 +336,23 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
     CAP_HEEL: 0.085,          // sqrt キャップの範囲（踵）
     CAP_TOE: 0.075,           // 同（趾先）
 
+    /* 立体化（SPEC §4-6）。断面の高さ ÷ 足長。
+       足首の少し下で丸く閉じた、靴のラストに近い立体になる高さにしてある。 */
+    DORSAL_P: 0.42,           // 断面のふくらみ。0.5 が楕円、小さいほど甲が平らになる
+    DORSAL_SKEW: 0.13,        // 内側（母趾側）を高くする量
+    SOLID_NB: 40,             // 断面の足底側サンプル数
+    SOLID_NT: 40,             // 断面の甲側サンプル数
+    SOLID_MIN_W: 0.004,       // 半幅の下限（u 単位）。両端の縮退を防ぐ
+    /* 立体の両端の閉じ方。
+       接地シルエットの sqrt キャップ（CAP_HEEL/CAP_TOE）をそのまま使うと、
+       踵では幅が 0 に潰れているのに断面の高さが 0.09·足長 残るため、
+       立てた板のような楔になる。平面外形は指数を下げて鈍く、
+       厚みには別のキャップを掛けて、端が丸く閉じるようにする。 */
+    SOLID_PLAN_POW: 0.35,
+    SOLID_CAP_HEEL: 0.055,
+    SOLID_CAP_TOE: 0.045,
+    SOLID_MIN_GAP: 3.0,       // mm。足底面と甲の最小の隔たり
+
     /* 外反母趾：v=HVA_V0 より前方（母趾の領域）を外側へ振る。
        内側縁だけをずらすと趾先で幅が潰れて足長が短くなるため、
        中心線ごとずらす（幅と足長が保存され、傾きから角度が厳密に戻る）。 */
@@ -349,8 +410,16 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
       bg3d: "#F4F5F2", leather: "#B99A6B"
     },
 
-    /* タイムライン（SPEC §11 受け入れ基準4） */
-    YEAR_MIN: 2013, YEAR_NOW: 2026, YEAR_MAX: 2036,
+    /* タイムライン（SPEC §4-3 / §11 受け入れ基準4）。
+       単位は「インソール作製からの経過週」。年単位ではフォローの実務と
+       目盛りが合わない（微調整は数週間ごとに来る）。 */
+    WEEK_MIN: 0, WEEK_MAX: 156,
+    WEEKS_PER_YEAR: 52.18,
+
+    /* インソールの沈み込み（compression set）。
+       素材は初期に速く沈み、その後漸近する。調整で材を足すと基準が戻る。
+       Phase 0 の暫定値。Phase 2 で実物の経時計測から再推定する。 */
+    SETTLE_MM: 0.95, SETTLE_TAU_W: 6.0,
 
     COHORT_N: 60000,          // 母集団サイズ（表示用）
     COHORT_SAMPLES: 12000     // パーセンタイル推定に使うサンプル数
@@ -385,17 +454,50 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
   FT.clamp01 = clamp01;
 
   /* ------------------------------------------------------------------ *
-   * 制御点の smoothstep 補間（SPEC §4-2）
+   * 制御点の単調キュービック補間（Fritsch–Carlson / SPEC §4-2）
+   *
+   * かつては smoothstep で繋いでいたが、smoothstep は各制御点で傾きが 0 になる。
+   * 単調に増減するプロファイルを繋ぐと制御点ごとに平坦部ができ、
+   * 立体化したときに面へ横縞として出た。単調性を保ったまま C1 で繋ぐ。
+   * 接線は制御点配列にぶら下げて一度だけ計算する。
    * ------------------------------------------------------------------ */
+  function tangentsOf(pts) {
+    if (pts.__m) return pts.__m;
+    var n = pts.length, d = new Array(n - 1), m = new Array(n), i;
+    for (i = 0; i < n - 1; i++) {
+      d[i] = (pts[i + 1][1] - pts[i][1]) / (pts[i + 1][0] - pts[i][0]);
+    }
+    m[0] = d[0]; m[n - 1] = d[n - 2];
+    for (i = 1; i < n - 1; i++) {
+      m[i] = (d[i - 1] * d[i] <= 0) ? 0 : (d[i - 1] + d[i]) / 2;
+    }
+    // オーバーシュートを抑える（単調性の保証）
+    for (i = 0; i < n - 1; i++) {
+      if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+      var a = m[i] / d[i], b = m[i + 1] / d[i], s = a * a + b * b;
+      if (s > 9) {
+        var t = 3 / Math.sqrt(s);
+        m[i] = t * a * d[i]; m[i + 1] = t * b * d[i];
+      }
+    }
+    pts.__m = m;
+    return m;
+  }
+
   function lerpSmooth(pts, v) {
     var n = pts.length;
     if (v <= pts[0][0]) return pts[0][1];
     if (v >= pts[n - 1][0]) return pts[n - 1][1];
+    var m = tangentsOf(pts);
     for (var i = 0; i < n - 1; i++) {
       if (v >= pts[i][0] && v <= pts[i + 1][0]) {
-        var t = (v - pts[i][0]) / (pts[i + 1][0] - pts[i][0]);
-        t = t * t * (3 - 2 * t);
-        return pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t;
+        var h = pts[i + 1][0] - pts[i][0];
+        var t = (v - pts[i][0]) / h;
+        var t2 = t * t, t3 = t2 * t;
+        return (2 * t3 - 3 * t2 + 1) * pts[i][1]
+             + (t3 - 2 * t2 + t) * h * m[i]
+             + (-2 * t3 + 3 * t2) * pts[i + 1][1]
+             + (t3 - t2) * h * m[i + 1];
       }
     }
     return pts[n - 1][1];
@@ -417,6 +519,14 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
   var CLINE = [[0.00, 0.000], [0.30, -0.010], [0.62, -0.024], [1.00, -0.090]];
   FT.HALFW = HALFW;
   FT.CLINE = CLINE;
+
+  /* 断面の高さ（足底面から甲までの厚み）÷ 足長。
+     v=0.18 付近が最大。足首より下で丸く閉じる形にしてある。
+     実寸の目安（足長 265mm）：最大 67mm ／ 甲 50mm ／ 足囲部 40mm ／ 趾先 5mm。 */
+  var THICK = [[0.00, 0.060], [0.05, 0.195], [0.11, 0.243], [0.18, 0.255],
+               [0.28, 0.243], [0.40, 0.222], [0.52, 0.190], [0.64, 0.152],
+               [0.76, 0.108], [0.86, 0.072], [0.94, 0.042], [1.00, 0.014]];
+  FT.THICK = THICK;
 
   /* ------------------------------------------------------------------ *
    * パラメータ（SPEC §4-1）
@@ -584,6 +694,146 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
   FT.medialSign = medialSign;
 
   /* ------------------------------------------------------------------ *
+   * 立体化（SPEC §4-6）
+   *
+   * 足底面はグリッドで持つ（それが実データの受け皿だから）が、閉じた立体は
+   * 断面リングのパラメトリック表現で作る。グリッドのマスク境界で上下面を
+   * 突き合わせようとすると、境界セルではまだ厚みが残っていて縁が数 mm 開く。
+   *
+   * リングは 足底側（内→外）→ 甲側（外→内）の順に一周する。
+   * tt=±1 では厚みが 0 になるので、上下面が縁で厳密に一致して閉じる。
+   * ------------------------------------------------------------------ */
+
+  /* 断面のふくらみ。tt は中心線からの正規化距離 -1..1（右足空間）。 */
+  function dorsalShape(tt) {
+    var q = 1 - tt * tt;
+    if (q <= 0) return 0;
+    // 内側（tt<0＝母趾側）をわずかに高くする。甲は内側が高い。
+    return Math.pow(q, CONST.DORSAL_P) * (1 + CONST.DORSAL_SKEW * (-tt));
+  }
+
+  /* 立体の平面外形。接地シルエットより端の落ち方を鈍くする。 */
+  function solidHalfWidth(p, v) {
+    if (v < 0 || v > 1) return 0;
+    var capH = Math.pow(clamp01(v / CONST.SOLID_CAP_HEEL), CONST.SOLID_PLAN_POW);
+    var capT = Math.pow(clamp01((1 - v) / CONST.SOLID_CAP_TOE), CONST.SOLID_PLAN_POW);
+    return lerpSmooth(HALFW, v) * p.widthScale * capH * capT;
+  }
+
+  /* 断面の高さ。両端は sqrt キャップで 0 に落として丸く閉じる。 */
+  function solidThickness(p, v) {
+    var capH = Math.sqrt(clamp01(v / CONST.SOLID_CAP_HEEL));
+    var capT = Math.sqrt(clamp01((1 - v) / CONST.SOLID_CAP_TOE));
+    return lerpSmooth(THICK, v) * p.length * capH * capT;
+  }
+
+  function buildSolid(grid, reuse) {
+    var p = grid.params, nz = grid.nz;
+    var NB = CONST.SOLID_NB, NT = CONST.SOLID_NT;
+    var NC = NB + NT - 2;                 // 一周の点数（縁の2点は共有）
+    var K = CONST.U_TO_LEN * p.length;
+    var msign = (grid.side === "L") ? -1 : 1;
+    var nV = nz * NC;
+
+    var ok = reuse && reuse.nV === nV;
+    var S = ok ? reuse : {
+      nz: nz, NC: NC, NB: NB, nV: nV,
+      pos: new Float32Array(nV * 3),
+      nrm: new Float32Array(nV * 3),
+      cell: new Int32Array(nV),
+      isSole: new Uint8Array(nV),
+      hgt: new Float32Array(nV),
+      uu: new Float32Array(nV),
+      vv: new Float32Array(nV)
+    };
+    var pos = S.pos, cell = S.cell, isSole = S.isSole;
+    var hgt = S.hgt, uu = S.uu, vv = S.vv;
+
+    var R = {}, j, a, b, k, tt, u, y, th;
+
+    for (j = 0; j < nz; j++) {
+      var v = j / (nz - 1);
+      rowCoef(p, v, R);
+      var w = Math.max(solidHalfWidth(p, v), CONST.SOLID_MIN_W);
+      var z = j * grid.pitch_z;
+      var thRow = solidThickness(p, v);
+      var rowBase = j * NC;
+
+      for (a = 0; a < NB; a++) {
+        tt = -1 + 2 * a / (NB - 1);
+        u = R.c + tt * w;
+        y = heightInRow(R, u);
+        if (y < 0) y = 0;
+        k = rowBase + a;
+        writeVert(k, u, y, z);
+        isSole[k] = 1;
+      }
+      for (b = 1; b <= NT - 2; b++) {
+        /* 甲側は cos で刻む（両端が密になる）。
+           断面 (1-tt²)^p は縁で接線が立つので、等間隔だと縁の隣の点が
+           一気に数 cm 上がり、側面が粗いファセットになる。 */
+        tt = Math.cos(Math.PI * b / (NT - 1));
+        u = R.c + tt * w;
+        y = heightInRow(R, u);
+        if (y < 0) y = 0;
+        /* 甲側は床からの絶対高さで決める。足底面からのオフセットにすると、
+           トウスプリングや横アーチの膨らみがそのまま甲の凹凸として出てしまう。
+           足底面が高い（＝土踏まず）ところでは最低限の肉厚だけ確保する。 */
+        th = thRow * dorsalShape(tt);
+        if (th < y + CONST.SOLID_MIN_GAP) th = y + CONST.SOLID_MIN_GAP;
+        k = rowBase + NB + b - 1;
+        writeVert(k, u, th, z);
+        isSole[k] = 0;
+      }
+    }
+
+    function writeVert(k, uRight, yMm, zMm) {
+      var o = k * 3;
+      var xw = msign * uRight * K;
+      pos[o] = xw; pos[o + 1] = yMm; pos[o + 2] = zMm;
+      hgt[k] = yMm; uu[k] = uRight; vv[k] = zMm / p.length;
+      // グリッドセルは構築時に決めておく（SPEC §7-1：実行時の座標逆算はしない）
+      var gi = Math.round((xw - grid.origin[0]) / grid.pitch_x);
+      var gj = Math.round(zMm / grid.pitch_z);
+      gi = clamp(gi, 0, grid.nx - 1); gj = clamp(gj, 0, grid.nz - 1);
+      cell[k] = gj * grid.nx + gi;
+    }
+
+    S.side = grid.side; S.params = p;
+    return S;
+  }
+  FT.buildSolid = buildSolid;
+  FT.dorsalShape = dorsalShape;
+
+  /* 指定した行の断面（ワールド x, y の閉じた輪郭）。
+     立体にした以上、土踏まずの隙間は断面で見せるのがいちばん早い。 */
+  function sectionOf(S, j) {
+    j = clamp(Math.round(j), 0, S.nz - 1);
+    var out = new Array(S.NC), k;
+    for (var c = 0; c < S.NC; c++) {
+      k = (j * S.NC + c) * 3;
+      out[c] = [S.pos[k], S.pos[k + 1]];
+    }
+    out.z = S.pos[(j * S.NC) * 3 + 2];
+    out.row = j;
+    return out;
+  }
+  FT.sectionOf = sectionOf;
+
+  /* インソールの同じ z における断面（上面の折れ線と、床までの厚み） */
+  function insoleSectionOf(ins, footRow) {
+    var j = clamp(footRow + ins.zPad, 0, ins.nS - 1);
+    var out = new Array(ins.nW);
+    for (var t = 0; t < ins.nW; t++) {
+      var k = j * ins.nW + t;
+      out[t] = [ins.x[k], ins.top[k]];
+    }
+    out.z = ins.zRow[j];
+    return out;
+  }
+  FT.insoleSectionOf = insoleSectionOf;
+
+  /* ------------------------------------------------------------------ *
    * 等高線（marching squares）
    * CLAUDE.md §6 の2つの落とし穴に対処している：
    *   - 鞍点 case 5 / 10 は2線分に分解する
@@ -739,6 +989,20 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
     return clampParams(q);
   }
   FT.ageParams = ageParams;
+
+  /* 週 → 加齢の適用。週単位でも足の形は動く（ごくわずか）ので、
+     年単位の係数を週に換算して同じモデルを使う。 */
+  function ageParamsWeeks(p, dWeeks) {
+    return ageParams(p, dWeeks / CONST.WEEKS_PER_YEAR);
+  }
+  FT.ageParamsWeeks = ageParamsWeeks;
+
+  /* 作製（または直近の調整）から dWeeks 経ったときの沈み込み量（mm） */
+  function settleMm(dWeeks) {
+    if (dWeeks <= 0) return 0;
+    return CONST.SETTLE_MM * (1 - Math.exp(-dWeeks / CONST.SETTLE_TAU_W));
+  }
+  FT.settleMm = settleMm;
 
   function lerpParams(a, b, t) {
     var out = {}, k;
@@ -1301,140 +1565,205 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
 
   /* ------------------------------------------------------------------ *
    * デモ用 subject（SPEC §11 受け入れ基準2：3名以上）
-   * 2026 年時点のパラメータを持ち、過去 scan は加齢モデルの逆算＋個体差で作る。
+   *
+   * 時間軸は「インソール作製からの経過週」。年単位ではフォローの実務と
+   * 目盛りが合わない（微調整は数週間ごとに来る）。
+   * 0週＝作製時。scanWeeks が実際に計測した週で、その間は補間する。
    * ------------------------------------------------------------------ */
   var SUBJECTS = [
     {
-      subject_id: "S000142", label: "S000142", sex: "M", birth_year: 1978,
-      note: "腰部の不調を主訴に来店。内側縦アーチの低下が進行。",
+      subject_id: "S000142", label: "S000142", sex: "M", age: 48,
+      note: "腰部の不調を主訴に来店。内側縦アーチの低下。",
       params: { length: 265, widthScale: 1.06, archAmp: 0.42, archPos: 0.435,
                 archSkew: -0.06, transAmp: 0.14, hvaDeg: 13, toeSpring: 0.22, age: 48 },
+      scanWeeks: [0, 6, 26],
       complaints: [
-        { region: "MLA", severity: 4, recorded_at: "2013-04-12" },
-        { region: "LOWBACK", severity: 3, recorded_at: "2019-08-03" },
-        { region: "MTH", severity: 2, recorded_at: "2026-08-17" }
+        { region: "MLA", severity: 4, week: 0 },
+        { region: "LOWBACK", severity: 3, week: 0 },
+        { region: "MLA", severity: 2, week: 6 },
+        { region: "LOWBACK", severity: 2, week: 6 },
+        { region: "MTH", severity: 2, week: 26 },
+        { region: "LOWBACK", severity: 1, week: 26 }
       ],
       prescriptions: [
-        { landmark: "navicular", lift_mm: 6.5, tilt_deg: 1.2, applied_at: "2013-04-12", grade: "full" },
-        { landmark: "cuboid", lift_mm: 3.0, tilt_deg: 0, applied_at: "2013-04-12", grade: "full" },
-        { landmark: "transverse", lift_mm: 2.4, tilt_deg: 0, applied_at: "2019-08-03", grade: "full" }
+        { landmark: "navicular", lift_mm: 6.5, tilt_deg: 1.2, week: 0, grade: "full" },
+        { landmark: "cuboid", lift_mm: 3.0, tilt_deg: 0, week: 0, grade: "full" },
+        { landmark: "transverse", lift_mm: 2.4, tilt_deg: 0, week: 6, grade: "full" }
+      ],
+      log: [
+        { week: 0, kind: "作製", note: "フルオーダー。土踏まずと外側を支持" },
+        { week: 6, kind: "調整", note: "指の付け根の当たりを訴え、横アーチを追加" },
+        { week: 26, kind: "フォロー", note: "腰の訴えは軽快。沈み込みを確認" }
       ]
     },
     {
-      subject_id: "S001987", label: "S001987", sex: "F", birth_year: 1991,
+      subject_id: "S001987", label: "S001987", sex: "F", age: 35,
       note: "立ち仕事。前足部の荷重痛と母趾の傾き。",
       params: { length: 236, widthScale: 1.11, archAmp: 0.78, archPos: 0.450,
                 archSkew: 0.04, transAmp: 0.07, hvaDeg: 22, toeSpring: 0.28, age: 35 },
+      scanWeeks: [0, 4, 12],
       complaints: [
-        { region: "MTH", severity: 4, recorded_at: "2019-02-20" },
-        { region: "KNEE", severity: 2, recorded_at: "2026-08-17" }
+        { region: "MTH", severity: 4, week: 0 },
+        { region: "KNEE", severity: 2, week: 0 },
+        { region: "MTH", severity: 3, week: 4 },
+        { region: "MTH", severity: 1, week: 12 },
+        { region: "KNEE", severity: 1, week: 12 }
       ],
       prescriptions: [
-        { landmark: "transverse", lift_mm: 4.2, tilt_deg: 0, applied_at: "2019-02-20", grade: "semi" },
-        { landmark: "metatarsale_tib", lift_mm: 2.0, tilt_deg: 0, applied_at: "2019-02-20", grade: "semi" },
-        { landmark: "navicular", lift_mm: 3.4, tilt_deg: 0.8, applied_at: "2026-08-17", grade: "semi" }
+        { landmark: "transverse", lift_mm: 4.2, tilt_deg: 0, week: 0, grade: "semi" },
+        { landmark: "metatarsale_tib", lift_mm: 2.0, tilt_deg: 0, week: 0, grade: "semi" },
+        { landmark: "navicular", lift_mm: 3.4, tilt_deg: 0.8, week: 4, grade: "semi" }
+      ],
+      log: [
+        { week: 0, kind: "作製", note: "セミオーダー。中足骨パッドを主体に" },
+        { week: 4, kind: "調整", note: "内側の支持を追加" },
+        { week: 12, kind: "フォロー", note: "前足部の訴えは軽快" }
       ]
     },
     {
-      subject_id: "S004310", label: "S004310", sex: "M", birth_year: 2001,
+      subject_id: "S004310", label: "S004310", sex: "M", age: 25,
       note: "競技者。アーチは高く、踵の圧痛を訴える。",
       params: { length: 274, widthScale: 0.92, archAmp: 1.22, archPos: 0.430,
                 archSkew: -0.10, transAmp: 0.46, hvaDeg: 4, toeSpring: 0.40, age: 25 },
+      scanWeeks: [0, 2, 10, 32],
       complaints: [
-        { region: "HEEL", severity: 3, recorded_at: "2019-11-09" }
+        { region: "HEEL", severity: 3, week: 0 },
+        { region: "HEEL", severity: 2, week: 2 },
+        { region: "HEEL", severity: 1, week: 10 }
       ],
       prescriptions: [
-        { landmark: "heel", lift_mm: 3.6, tilt_deg: 0, applied_at: "2019-11-09", grade: "athlete" },
-        { landmark: "cuboid", lift_mm: 2.2, tilt_deg: 0, applied_at: "2019-11-09", grade: "athlete" }
+        { landmark: "heel", lift_mm: 3.6, tilt_deg: 0, week: 0, grade: "athlete" },
+        { landmark: "cuboid", lift_mm: 2.2, tilt_deg: 0, week: 0, grade: "athlete" },
+        { landmark: "heel", lift_mm: 1.4, tilt_deg: 0, week: 32, grade: "athlete" }
+      ],
+      log: [
+        { week: 0, kind: "作製", note: "アスリート仕様。踵の支持を厚めに" },
+        { week: 2, kind: "フォロー", note: "練習量が多く、初期の沈みが速い" },
+        { week: 10, kind: "フォロー", note: "圧痛は軽快" },
+        { week: 32, kind: "調整", note: "沈み込みぶんを踵で戻す" }
       ]
     },
     {
-      subject_id: "S005806", label: "S005806", sex: "F", birth_year: 1953,
-      note: "アーチ低下と前足部の開張が進行。既製パターンでは合わず。",
+      subject_id: "S005806", label: "S005806", sex: "F", age: 73,
+      note: "アーチ低下と前足部の開張。既製パターンでは合わず。",
       params: { length: 228, widthScale: 1.17, archAmp: 0.26, archPos: 0.455,
                 archSkew: 0.10, transAmp: 0.05, hvaDeg: 28, toeSpring: 0.16, age: 73 },
+      scanWeeks: [0, 8, 24, 52],
       complaints: [
-        { region: "MLA", severity: 3, recorded_at: "2013-06-01" },
-        { region: "MTH", severity: 5, recorded_at: "2019-05-15" },
-        { region: "KNEE", severity: 3, recorded_at: "2026-08-17" }
+        { region: "MLA", severity: 3, week: 0 },
+        { region: "MTH", severity: 5, week: 0 },
+        { region: "KNEE", severity: 3, week: 0 },
+        { region: "MTH", severity: 3, week: 8 },
+        { region: "KNEE", severity: 2, week: 24 },
+        { region: "MTH", severity: 2, week: 52 }
       ],
       prescriptions: [
-        { landmark: "navicular", lift_mm: 5.2, tilt_deg: 1.6, applied_at: "2013-06-01", grade: "full" },
-        { landmark: "transverse", lift_mm: 5.0, tilt_deg: 0, applied_at: "2019-05-15", grade: "full" },
-        { landmark: "metatarsale_fib", lift_mm: 2.2, tilt_deg: 0, applied_at: "2019-05-15", grade: "full" },
-        { landmark: "heel", lift_mm: 2.0, tilt_deg: 0, applied_at: "2026-08-17", grade: "full" }
+        { landmark: "navicular", lift_mm: 5.2, tilt_deg: 1.6, week: 0, grade: "full" },
+        { landmark: "transverse", lift_mm: 5.0, tilt_deg: 0, week: 0, grade: "full" },
+        { landmark: "metatarsale_fib", lift_mm: 2.2, tilt_deg: 0, week: 8, grade: "full" },
+        { landmark: "heel", lift_mm: 2.0, tilt_deg: 0, week: 24, grade: "full" }
+      ],
+      log: [
+        { week: 0, kind: "作製", note: "フルオーダー。土踏まずと横アーチを同時に" },
+        { week: 8, kind: "調整", note: "小趾側の支持を追加" },
+        { week: 24, kind: "調整", note: "かかとの支持を追加" },
+        { week: 52, kind: "フォロー", note: "1年経過。全体の沈み込みを確認" }
       ]
     }
   ];
 
-  /* 各 subject の scan 年ごとのパラメータ。
-     2026 を基準に加齢モデルで逆算し、個体差の揺らぎを固定シードで足す。 */
-  var SCAN_YEARS = [2013, 2019, 2026];
-
+  /* 各 subject の計測週ごとのパラメータ。
+     0週を基準に加齢モデルを週へ換算して進め、実計測の揺らぎを固定シードで足す。 */
   function buildSubjects() {
     for (var s = 0; s < SUBJECTS.length; s++) {
       var sub = SUBJECTS[s];
       sub.params = FT.clampParams(sub.params);
       var rnd = FT.rng.mulberry32(parseInt(sub.subject_id.slice(1), 10));
       sub.scans = [];
-      for (var y = 0; y < SCAN_YEARS.length; y++) {
-        var year = SCAN_YEARS[y];
-        var d = year - CONST.YEAR_NOW;
-        var p = FT.ageParams(sub.params, d);
-        if (d !== 0) {
-          // 実計測は加齢直線に乗らない。過去 scan にだけ小さな揺らぎを入れる。
+      for (var y = 0; y < sub.scanWeeks.length; y++) {
+        var wk = sub.scanWeeks[y];
+        var p = FT.ageParamsWeeks(sub.params, wk);
+        if (wk !== 0) {
+          // 実計測は加齢直線には乗らない。計測ごとの揺らぎを入れる。
           var g = FT.rng.gaussPair(rnd);
           p = FT.clampParams({
-            length: p.length, widthScale: p.widthScale * (1 + g[0] * 0.006),
-            archAmp: p.archAmp * (1 + g[1] * 0.035), archPos: p.archPos,
+            length: p.length, widthScale: p.widthScale * (1 + g[0] * 0.004),
+            archAmp: p.archAmp * (1 + g[1] * 0.022), archPos: p.archPos,
             archSkew: p.archSkew, transAmp: p.transAmp,
             hvaDeg: p.hvaDeg, toeSpring: p.toeSpring, age: p.age
           });
         }
-        sub.scans.push({ year: year, params: p });
+        sub.scans.push({ week: wk, params: p });
       }
+      sub.lastScanWeek = sub.scanWeeks[sub.scanWeeks.length - 1];
     }
     return SUBJECTS;
   }
   FT.SUBJECTS = buildSubjects();
-  FT.SCAN_YEARS = SCAN_YEARS;
 
-  /* 年 → パラメータ。記録 scan 間は線形補間、2026 より先は加齢外挿。
+  /* 週 → パラメータ。記録した計測の間は線形補間、最後の計測より先は外挿。
      SPEC §7 のタイムラインスクラブの実体。 */
-  function paramsAtYear(subject, year) {
+  function paramsAtWeek(subject, week) {
     var sc = subject.scans;
-    if (year <= sc[0].year) return sc[0].params;
+    if (week <= sc[0].week) return sc[0].params;
     for (var i = 0; i < sc.length - 1; i++) {
-      if (year <= sc[i + 1].year) {
-        var t = (year - sc[i].year) / (sc[i + 1].year - sc[i].year);
+      if (week <= sc[i + 1].week) {
+        var t = (week - sc[i].week) / (sc[i + 1].week - sc[i].week);
         return FT.lerpParams(sc[i].params, sc[i + 1].params, t);
       }
     }
     var last = sc[sc.length - 1];
-    return FT.ageParams(last.params, year - last.year);
+    return FT.ageParamsWeeks(last.params, week - last.week);
   }
-  FT.paramsAtYear = paramsAtYear;
+  FT.paramsAtWeek = paramsAtWeek;
 
-  /* その年までに適用済みの処方（L6 / L9 に渡す） */
-  function prescriptionsAtYear(subject, year) {
+  /* その週までに適用済みの処方（L6 / L9 に渡す） */
+  function prescriptionsAtWeek(subject, week) {
     var out = [];
     for (var i = 0; i < subject.prescriptions.length; i++) {
-      var rx = subject.prescriptions[i];
-      if (parseInt(rx.applied_at.slice(0, 4), 10) <= year) out.push(rx);
+      if (subject.prescriptions[i].week <= week) out.push(subject.prescriptions[i]);
     }
     return out;
   }
-  FT.prescriptionsAtYear = prescriptionsAtYear;
+  FT.prescriptionsAtWeek = prescriptionsAtWeek;
 
-  function complaintsAtYear(subject, year) {
-    var out = [];
-    for (var i = 0; i < subject.complaints.length; i++) {
-      var c = subject.complaints[i];
-      if (parseInt(c.recorded_at.slice(0, 4), 10) <= year) out.push(c);
+  /* その週に有効な主訴。同じ部位は最新の記録で置き換える
+     （軽快した訴えを古い強さのまま出さないため）。 */
+  function complaintsAtWeek(subject, week) {
+    var byRegion = {}, i, c;
+    for (i = 0; i < subject.complaints.length; i++) {
+      c = subject.complaints[i];
+      if (c.week > week) continue;
+      if (!byRegion[c.region] || c.week >= byRegion[c.region].week) byRegion[c.region] = c;
+    }
+    var out = [], k;
+    for (k in byRegion) {
+      if (byRegion.hasOwnProperty(k) && byRegion[k].severity > 0) out.push(byRegion[k]);
     }
     return out;
   }
-  FT.complaintsAtYear = complaintsAtYear;
+  FT.complaintsAtWeek = complaintsAtWeek;
+
+  /* 直近に材を足した週。ここを起点に沈み込みが進む。 */
+  function lastAdjustWeek(subject, week) {
+    var w = 0;
+    for (var i = 0; i < subject.prescriptions.length; i++) {
+      var rx = subject.prescriptions[i];
+      if (rx.week <= week && rx.week > w) w = rx.week;
+    }
+    return w;
+  }
+  FT.lastAdjustWeek = lastAdjustWeek;
+
+  /* その週の記録（作製・調整・フォロー） */
+  function logAtWeek(subject, week) {
+    var out = [];
+    for (var i = 0; i < subject.log.length; i++) {
+      if (subject.log[i].week <= week) out.push(subject.log[i]);
+    }
+    return out;
+  }
+  FT.logAtWeek = logAtWeek;
 
   /* 主訴の部位 → 足上の位置（u, v）。KNEE / LOWBACK は足の部位ではないので
      踵の外側にまとめて置き、ラベルで区別する。 */
@@ -1638,8 +1967,11 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
    * 長さ方向は足グリッドの行ピッチに揃え、前後にだけ整数行ぶんはみ出させる。
    * こうすると足底面との差分に z 方向の補間誤差が入らない。
    * ------------------------------------------------------------------ */
-  function buildInsole(footGrid, prescriptions) {
+  /* settle は経過による沈み込み量（mm、SPEC §4-3）。上面から一様に引く。
+     肉厚の下限は保つので、薄い前足部では見かけ上ほとんど沈まない。 */
+  function buildInsole(footGrid, prescriptions, settle) {
     prescriptions = prescriptions || [];
+    settle = settle || 0;
     var p = footGrid.params;
     var nzF = footGrid.nz;
     var zPad = Math.round((INS.LAST_SCALE - 1) * nzF / 2);
@@ -1694,7 +2026,7 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
         // 差分は「実際の足底面」との差。こちらは拡張していない元の面を使う。
         var fh = sampleFootRow(footGrid, footGrid.height, footGrid.mask, jF, xWorld);
 
-        var h = Math.max(bh + lf + cup, INS.BASE_THICK);
+        var h = Math.max(bh + lf + cup - settle, INS.BASE_THICK);
         top[k] = h;
         lift[k] = lf;
         diff[k] = h - fh;
@@ -1706,7 +2038,7 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
       halfW: halfW, center: center, zRow: zRow,
       top: top, diff: diff, lift: lift, x: xs,
       uToMm: K, side: footGrid.side, params: p,
-      prescriptions: prescriptions
+      prescriptions: prescriptions, settle: settle
     };
   }
   FT.buildInsole = buildInsole;
@@ -1802,6 +2134,12 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
 
   /* 等高線の帯の半幅（mm）。主曲線を太くする（SPEC §6 L1） */
   var CONTOUR_W = { major: 0.45, minor: 0.22 };
+
+  /* 甲側の色。医療的な意味を持たせないよう、無彩色に近い紙色にする。
+     白に寄せすぎると陰影が飛んで立体に見えないので、中明度に落とす。 */
+  var SKIN_RGB = hexToRgb("#B9BFB4");
+  /* 色レイヤが全部 OFF のときの足底の色 */
+  var SOLE_NEUTRAL = "#C9D2CE";
 
   /* ------------------------------------------------------------------ *
    * 高さ場 → BufferGeometry（SPEC §5-2）
@@ -1903,6 +2241,88 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
     this.indexCount = ni;
   };
   FT.FieldMesh = FieldMesh;
+
+  /* ------------------------------------------------------------------ *
+   * 閉じた立体の足 → BufferGeometry（SPEC §4-6）
+   * 断面リングを z 方向につないだ筒。両端はリングが 1 点近くまで縮んで閉じる。
+   * 巻き順と法線をそろえてあるので FrontSide で描け、内側が透けない。
+   * ------------------------------------------------------------------ */
+  function SolidMesh(maxRows, NC, material) {
+    var maxV = maxRows * NC;
+    this.NC = NC;
+    this.col = new Float32Array(maxV * 3);
+    this.idx = new Uint32Array((maxRows - 1) * NC * 6);
+    var g = new THREE.BufferGeometry();
+    g.setAttribute("color", new THREE.BufferAttribute(this.col, 3));
+    g.setIndex(new THREE.BufferAttribute(this.idx, 1));
+    this.geom = g;
+    this.mesh = new THREE.Mesh(g, material);
+    this.mesh.frustumCulled = false;
+    this.built = null;
+  }
+
+  /* soleColor(cellIndex, out) が足底側の色を返す。甲側は skin 一色。 */
+  SolidMesh.prototype.update = function (S, soleColor, skin, yLift) {
+    var nz = S.nz, NC = S.NC, nV = S.nV;
+    var pos = S.pos, nrm = S.nrm, col = this.col, idx = this.idx;
+    var j, c, k, o, rgb = [0, 0, 0];
+
+    /* 位置属性は buildSolid の配列をそのまま参照する。
+       毎回コピーすると 16k 頂点ぶんの転記が無駄になる。 */
+    if (this.built !== S.pos) {
+      this.geom.setAttribute("position", new THREE.BufferAttribute(S.pos, 3));
+      this.geom.setAttribute("normal", new THREE.BufferAttribute(S.nrm, 3));
+      this.built = S.pos;
+    }
+    this.geom.attributes.position.needsUpdate = true;
+    this.geom.attributes.normal.needsUpdate = true;
+
+    /* 法線：周方向と長さ方向の接ベクトルの外積。
+       外向きになる順（t_c × t_j）に取ってある。 */
+    for (j = 0; j < nz; j++) {
+      var jm = (j > 0 ? j - 1 : j) * NC, jp = (j < nz - 1 ? j + 1 : j) * NC;
+      var base = j * NC;
+      for (c = 0; c < NC; c++) {
+        k = base + c; o = k * 3;
+        var cm = base + (c === 0 ? NC - 1 : c - 1), cp = base + (c + 1) % NC;
+        var ax = pos[cp * 3] - pos[cm * 3];
+        var ay = pos[cp * 3 + 1] - pos[cm * 3 + 1];
+        var az = pos[cp * 3 + 2] - pos[cm * 3 + 2];
+        var bx = pos[(jp + c) * 3] - pos[(jm + c) * 3];
+        var by = pos[(jp + c) * 3 + 1] - pos[(jm + c) * 3 + 1];
+        var bz = pos[(jp + c) * 3 + 2] - pos[(jm + c) * 3 + 2];
+        var nx2 = ay * bz - az * by;
+        var ny2 = az * bx - ax * bz;
+        var nz2 = ax * by - ay * bx;
+        var ln = Math.sqrt(nx2 * nx2 + ny2 * ny2 + nz2 * nz2);
+        if (ln < 1e-9) { nrm[o] = 0; nrm[o + 1] = S.isSole[k] ? -1 : 1; nrm[o + 2] = 0; }
+        else { nrm[o] = nx2 / ln; nrm[o + 1] = ny2 / ln; nrm[o + 2] = nz2 / ln; }
+
+        if (S.isSole[k]) soleColor(S.cell[k], k, rgb);
+        else { rgb[0] = skin[0]; rgb[1] = skin[1]; rgb[2] = skin[2]; }
+        col[o] = rgb[0]; col[o + 1] = rgb[1]; col[o + 2] = rgb[2];
+      }
+    }
+
+    var ni = 0;
+    for (j = 0; j < nz - 1; j++) {
+      for (c = 0; c < NC; c++) {
+        var c2 = (c + 1) % NC;
+        var a = j * NC + c, b = j * NC + c2;
+        var d = (j + 1) * NC + c, e = (j + 1) * NC + c2;
+        idx[ni++] = a; idx[ni++] = b; idx[ni++] = d;
+        idx[ni++] = b; idx[ni++] = e; idx[ni++] = d;
+      }
+    }
+
+    this.mesh.position.y = yLift || 0;
+    this.geom.attributes.color.needsUpdate = true;
+    this.geom.index.needsUpdate = true;
+    this.geom.setDrawRange(0, ni);
+    this.geom.computeBoundingSphere();
+    this.solid = S;
+    this.vertexCount = nV;
+  };
 
   /* ------------------------------------------------------------------ *
    * パラメトリック曲面 → BufferGeometry（インソール用 / SPEC §4-5）
@@ -2124,7 +2544,10 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
     var cam = new THREE.PerspectiveCamera(38, 1, 1, 4000);
     this.camera = cam;
 
-    var rend = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    // preserveDrawingBuffer は画像の書き出し（SPEC §10-2）に要る。
+    // 常時 true は描画コストが上がるが、店頭端末の解像度では実測で誤差の範囲。
+    var rend = new THREE.WebGLRenderer({
+      antialias: true, alpha: false, preserveDrawingBuffer: true });
     rend.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     rend.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(rend.domElement);
@@ -2137,10 +2560,15 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
     scene.add(this.ctxRoot);
 
     // ライト（ctxRoot 配下）
-    this.ctxRoot.add(new THREE.AmbientLight(0xffffff, 0.62));
-    var d1 = new THREE.DirectionalLight(0xffffff, 0.62); d1.position.set(-180, 330, 160);
-    var d2 = new THREE.DirectionalLight(0xffffff, 0.30); d2.position.set(220, 160, -220);
-    this.ctxRoot.add(d1); this.ctxRoot.add(d2);
+    /* 立体になったので、面の向きが読めるだけの陰影が要る。
+       環境光を落として主光源を立て、床からの照り返しを半球光で足す。 */
+    this.ctxRoot.add(new THREE.AmbientLight(0xffffff, 0.22));
+    this.ctxRoot.add(new THREE.HemisphereLight(0xF2F4F0, 0xA9B0A6, 0.34));
+    var d1 = new THREE.DirectionalLight(0xffffff, 0.62); d1.position.set(-210, 360, 190);
+    var d2 = new THREE.DirectionalLight(0xffffff, 0.26); d2.position.set(260, 130, -240);
+    // 底面ビューで足裏を読ませるための下からの光。立体化して初めて必要になった。
+    var d3 = new THREE.DirectionalLight(0xffffff, 0.52); d3.position.set(70, -240, 60);
+    this.ctxRoot.add(d1); this.ctxRoot.add(d2); this.ctxRoot.add(d3);
 
     // 床グリッドとスケールバー
     this.floorGrid = new THREE.GridHelper(600, 30, 0xC6CCC4, 0xDCE0DA);
@@ -2149,13 +2577,13 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
     this.scaleBar = this._makeScaleBar();
     this.ctxRoot.add(this.scaleBar);
 
-    // 足底サーフェス（L0）
+    // 足の立体（L0）。閉じた面なので FrontSide で描く
     var matFoot = new THREE.MeshPhongMaterial({
-      vertexColors: true, side: THREE.DoubleSide, shininess: 6,
-      specular: 0x1a1a1a, transparent: true, opacity: 1
+      vertexColors: true, side: THREE.FrontSide, shininess: 22,
+      specular: 0x3a3d38, transparent: true, opacity: 1
     });
     this.matFoot = matFoot;
-    this.footMesh = new FieldMesh(CONST.NX, CONST.NZ, matFoot);
+    this.footMesh = new SolidMesh(CONST.NZ, CONST.SOLID_NB + CONST.SOLID_NT - 2, matFoot);
     this.footRoot.add(this.footMesh.mesh);
 
     // 等高線（L1）。主曲線 72% / 副曲線 36%（SPEC §8）
@@ -2195,6 +2623,14 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
     this.insoleGroup.add(this.insoleBottom.mesh);
     this.insoleGroup.add(this.insoleSkirt.mesh);
     this.footRoot.add(this.insoleGroup);
+
+    // 断面の位置を示すリング
+    this.sectionRing = new THREE.Line(new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({ color: new THREE.Color(CONST.COL.brass),
+        transparent: true, opacity: 0.95, depthTest: false }));
+    this.sectionRing.renderOrder = 24;
+    this.sectionRing.frustumCulled = false;
+    this.footRoot.add(this.sectionRing);
 
     // ピン（クリックで留めた点）
     this.pinGroup = new THREE.Group(); this.footRoot.add(this.pinGroup);
@@ -2331,9 +2767,13 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
     var mode = this.activeColorLayer();
     var pressure = st.pressure;
     var past = st.pastGrid, mean = st.meanGrid;
-    var flat = hexToRgb("#C9D2CE");
+    var flat = hexToRgb(SOLE_NEUTRAL);
 
-    this.footMesh.update(grid, function (k, i, j, out) {
+    // L9 が ON のときは足をインソールの厚みぶん持ち上げて、上に載せて見せる
+    var lift = L.L9_insole ? CONST.INSOLE.BASE_THICK : 0;
+    this.footLift = lift;
+
+    this.footMesh.update(st.solid, function (k, vi, out) {
       if (mode === "L2_height") return RAMP.height(grid.height[k] / HEIGHT_RANGE, out);
       if (mode === "L4_pressure") return RAMP.pressure(pressure[k], out);
       if (mode === "L7_drift") {
@@ -2346,12 +2786,17 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
       }
       out[0] = flat[0]; out[1] = flat[1]; out[2] = flat[2];
       return out;
-    });
+    }, SKIN_RGB, lift);
 
     this.footMesh.mesh.visible = !!L.L0_surface;
     // L9 が ON のとき L0 は半透明にする。消さずに関係を見せる（SPEC §6）
-    this.matFoot.opacity = L.L9_insole ? 0.28 : 1.0;
+    this.matFoot.opacity = L.L9_insole ? 0.30 : 1.0;
     this.matFoot.depthWrite = !L.L9_insole;
+    // 等高線・ランドマーク等は足底面に載っているので、足と一緒に持ち上げる
+    this.contourGroup.position.y = lift;
+    this.landmarkGroup.position.y = lift;
+    this.complaintGroup.position.y = lift;
+    this.driftGroup.position.y = lift;
 
     /* --- L1 等高線 --- */
     this.contourGroup.visible = !!L.L1_contour;
@@ -2361,8 +2806,10 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
       if (cs !== this._lastContours) {
         var maj = [], min = [], c;
         for (c = 0; c < cs.length; c++) (cs[c].major ? maj : min).push(cs[c]);
-        this.contourMajor.fill(maj, CONTOUR_W.major, 0.35);
-        this.contourMinor.fill(min, CONTOUR_W.minor, 0.35);
+        // 足底面は立体の「外側が下向き」の面なので、等高線は面の下に置く。
+        // 上に置くと足の内部に入ってしまい、底面ビューで隠れる。
+        this.contourMajor.fill(maj, CONTOUR_W.major, -0.35);
+        this.contourMinor.fill(min, CONTOUR_W.minor, -0.35);
         this._lastContours = cs;
       }
     }
@@ -2502,7 +2949,7 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
       // 比較対象のグリッドは変わらないので、外形線の抽出結果を持たせておく
       if (!past.__outline) past.__outline = FT.outline(past);
       if (this._lastDrift !== past) {
-        this._fillLines(this.driftLines, past.__outline, function () { return 0.6; });
+        this._fillLines(this.driftLines, past.__outline, function () { return -0.6; });
         this._lastDrift = past;
       }
     }
@@ -2638,15 +3085,19 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
     this.raycaster.setFromCamera(m, this.camera);
     var hits = this.raycaster.intersectObject(this.footMesh.mesh, false);
     if (!hits.length || !hits[0].face) return null;
-    var cell = this.footMesh.vertexToCell[hits[0].face.a];
+    var S = this.footMesh.solid;
+    var vi = hits[0].face.a;
     var grid = this.state.grid;
+    var cell = S.cell[vi];
     var i = cell % grid.nx, j = Math.floor(cell / grid.nx);
     return {
-      cell: cell, i: i, j: j,
-      u: (i / (grid.nx - 1) - 0.5) * CONST.FW,
-      v: j / (grid.nz - 1),
-      height: grid.height[cell],
-      world: [FT.cellX(grid, i), grid.height[cell], FT.cellZ(grid, j)]
+      vertex: vi, cell: cell, i: i, j: j,
+      sole: !!S.isSole[vi],
+      u: S.uu[vi], v: S.vv[vi],
+      // 立体の標本点そのものの高さを返す。セル中心の値ではないので、
+      // 断面リング上のどこを指したかが 0.05mm 未満の誤差で読み出せる。
+      height: S.hgt[vi],
+      world: [S.pos[vi * 3], S.pos[vi * 3 + 1] + this.footLift, S.pos[vi * 3 + 2]]
     };
   };
 
@@ -2682,7 +3133,28 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
     this.render();
   };
 
+  /* パネルの断面と同じ位置を 3D 側にも示す。
+     どこを切っているかが分からないと、断面図だけでは伝わらない。 */
+  Viewer.prototype.setSectionRow = function (row) {
+    var S = this.footMesh.solid;
+    if (!S) return;
+    this._sectionRow = row;
+    row = FT.clamp(Math.round(row), 0, S.nz - 1);
+    var pts = [], c;
+    for (c = 0; c <= S.NC; c++) {
+      var k = (row * S.NC + (c % S.NC)) * 3;
+      pts.push(new THREE.Vector3(S.pos[k], S.pos[k + 1] + (this.footLift || 0), S.pos[k + 2]));
+    }
+    this.sectionRing.geometry.dispose();
+    this.sectionRing.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+    this.render();
+  };
+
   Viewer.prototype.render = function () {
+    // 床より下から見ているときは床グリッドを消す。
+    // 残すと足裏の手前に線が重なって、等高線と見分けがつかなくなる。
+    this.floorGrid.visible = this.camera.position.y > 0.5;
+    this.scaleBar.visible = this.floorGrid.visible;
     this.renderer.render(this.scene, this.camera);
   };
 
@@ -2707,14 +3179,14 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
 
   /* レイヤ定義（SPEC §6）。ラベルは顧客提示の言い方にする。 */
   var LAYERS = [
-    { id: "L0_surface",   n: "0", t: "足底面",           h: "計測した足の裏の形",            on: true },
+    { id: "L0_surface",   n: "0", t: "足の立体",          h: "計測した足。裏面が計測結果",     on: true },
     { id: "L1_contour",   n: "1", t: "等高線",           h: "2mm 間隔／6mm ごとに太線",      on: true },
-    { id: "L2_height",    n: "2", t: "高さの色分け",      h: "床からの高さ 0–30mm",           on: true },
+    { id: "L2_height",    n: "2", t: "高さの色分け",      h: "床からの高さ 0–28mm",           on: true },
     { id: "L3_landmark",  n: "3", t: "基準点",           h: "計測の基準になる6点",           on: false },
     { id: "L4_pressure",  n: "4", t: "荷重の分布（推定）", h: "形状からの推定。実測ではない",  on: false },
     { id: "L5_complaint", n: "5", t: "不調の申告部位",    h: "来店時に伺った箇所",            on: false },
     { id: "L6_rx",        n: "6", t: "インソールの補正",  h: "どこを何mm持ち上げたか",        on: false },
-    { id: "L7_drift",     n: "7", t: "経年の変化",        h: "2013年の計測との差 ±5mm",       on: false },
+    { id: "L7_drift",     n: "7", t: "作製時からの変化",   h: "0週の計測との差 ±2mm",          on: false },
     { id: "L8_cohort",    n: "8", t: "6万人平均との差",   h: "同年代・同性の平均形状との差",  on: false },
     { id: "L9_insole",    n: "9", t: "インソール形状",    h: "補正を反映した上面（参考表示）", on: false }
   ];
@@ -2725,7 +3197,7 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
                    css: "linear-gradient(90deg,#F2F4F0,#7FB2AA,#1D6B66,#0E3D3A)" },
     L4_pressure: { title: "荷重の分布（推定）", lo: "低", hi: "高",
                    css: "linear-gradient(90deg,#F5F2EA,#D8A64A,#A8851C)" },
-    L7_drift:    { title: "2013年の計測との差", lo: "−2 mm", hi: "+2 mm", css: DIVERGE },
+    L7_drift:    { title: "作製時（0週）の計測との差", lo: "−2 mm", hi: "+2 mm", css: DIVERGE },
     L8_cohort:   { title: "6万人平均との差", lo: "−5 mm", hi: "+5 mm", css: DIVERGE },
     L9_insole:   { title: "インソールが足を持ち上げている量", lo: "0 mm", hi: "+8 mm",
                    css: DIVERGE }
@@ -2749,8 +3221,8 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
    * 状態
    * ------------------------------------------------------------------ */
   var S = {
-    subject: null, side: "R", year: CONST.YEAR_NOW,
-    layers: {}, histMetric: "asi", viewer: null,
+    subject: null, side: "R", week: 0,
+    layers: {}, histMetric: "asi", viewer: null, sectionPct: 44,
     lastHeavyAt: 0, contours: null, insole: null, scrubbing: false, raf: 0,
     bootMs: 0, lastRebuildMs: 0
   };
@@ -2765,22 +3237,26 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
   function rebuild() {
     var t0 = performance.now();
     var sub = S.subject;
-    var params = FT.paramsAtYear(sub, S.year);
+    var params = FT.paramsAtWeek(sub, S.week);
     // 表示中のグリッドは毎フレーム作り直すので配列を使い回す。
     // 保持する過去 scan / 母集団平均には reuse を渡さない。
     var grid = FT.buildGrid(params, S.side, S.gridBuf);
     S.gridBuf = grid;
+    S.solidBuf = FT.buildSolid(grid, S.solidBuf);
     var lm = FT.landmarks(grid);
     var mt = FT.metrics(grid, lm);
 
-    // 処方は「その年までに適用済み」のもの。将来外挿の年でも現在の処方までしか出さない。
-    var rxYear = Math.min(S.year, CONST.YEAR_NOW);
-    var rx = FT.prescriptionsAtYear(sub, rxYear);
-    var cp = FT.complaintsAtYear(sub, rxYear);
+    // 記録があるのは最終計測週まで。その先は外挿なので処方は増やさない。
+    var recW = Math.min(S.week, sub.lastScanWeek);
+    var rx = FT.prescriptionsAtWeek(sub, recW);
+    var cp = FT.complaintsAtWeek(sub, recW);
+    // 直近に材を足してからの経過ぶんだけ沈む
+    var settle = FT.settleMm(S.week - FT.lastAdjustWeek(sub, recW));
 
     var st = {
-      grid: grid, landmarks: lm, metrics: mt,
-      prescriptions: rx, complaints: cp, params: params
+      grid: grid, solid: S.solidBuf, landmarks: lm, metrics: mt,
+      prescriptions: rx, complaints: cp, params: params,
+      settle: settle, recordedWeek: recW
     };
     st.fast = false;   // heavy 判定のあとで確定させる
 
@@ -2789,7 +3265,7 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
       S.pressureBuf = st.pressure;
     }
     if (S.layers.L7_drift) {
-      // 比較対象は最初の計測。スクラブ中も変わらないので作り直さない。
+      // 比較対象は作製時（0週）の計測。スクラブ中も変わらないので作り直さない。
       var pk = sub.subject_id + S.side;
       if (S.pastKey !== pk) { S.pastGrid = FT.buildGrid(sub.scans[0].params, S.side); S.pastKey = pk; }
       st.pastGrid = S.pastGrid;
@@ -2808,7 +3284,7 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
     st.fast = !heavy;
 
     if (S.layers.L9_insole) {
-      if (heavy || !S.insole) S.insole = FT.buildInsole(grid, rx);
+      if (heavy || !S.insole) S.insole = FT.buildInsole(grid, rx, settle);
       st.insole = S.insole;
     }
     if (S.layers.L1_contour) {
@@ -2881,6 +3357,7 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
     }
     $("metricBody").innerHTML = html;
     renderTime();
+    renderSection(st);
     if (!full) return;
 
     /* --- 類型 --- */
@@ -2912,15 +3389,160 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
       for (i = 0; i < st.prescriptions.length; i++) {
         var rx = st.prescriptions[i];
         rxHtml += '<div class="rxrow"><div>' + (RX_JP[rx.landmark] || rx.landmark)
-          + '<span class="yr"> ／ ' + rx.applied_at.slice(0, 4) + ' ／ '
+          + '<span class="yr"> ／ ' + rx.week + '週 ／ '
           + (GRADE_JP[rx.grade] || rx.grade) + '</span></div>'
           + '<div class="mm">+' + rx.lift_mm.toFixed(1) + ' mm</div></div>';
       }
+      var dAdj = Math.max(0, S.week - FT.lastAdjustWeek(S.subject, st.recordedWeek));
+      rxHtml += '<div class="rxrow"><div>沈み込み<span class="yr"> ／ 前回の調整から '
+        + Math.round(dAdj) + '週</span></div>'
+        + '<div class="mm" style="color:var(--alert)">−' + st.settle.toFixed(2)
+        + ' mm</div></div>';
       rxHtml += '<p class="hnote">レイヤ 9 で、この補正を反映したインソール形状を表示します。'
         + '画面上の形状は説明用の参考表示です。</p>';
     }
     $("rxList").innerHTML = rxHtml;
+    renderLog();
+    renderTrend();
     renderHist(g, m);
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 断面。立体にした以上、土踏まずの隙間とインソールの関係は
+   * 断面で見せるのがいちばん早い。
+   * ------------------------------------------------------------------ */
+  function sectionRow() {
+    return Math.round(S.sectionPct / 100 * (CONST.NZ - 1));
+  }
+
+  function renderSection(st) {
+    var sec = FT.sectionOf(st.solid, sectionRow());
+    S.viewer.setSectionRow(sec.row);
+    var ins = st.insole ? FT.insoleSectionOf(st.insole, sec.row) : null;
+    var L = st.params.length;
+
+    // 表示範囲は足長比で固定する。断面ごとにスケールが変わると比較できない。
+    var halfX = L * 0.24, topY = L * 0.30;
+    var W = 300, H = 158, PAD = 14;
+    var sx = (W - PAD * 2) / (halfX * 2), sy = (H - PAD * 2) / topY;
+    var sc = Math.min(sx, sy);
+    var cx = W / 2, base = H - PAD;
+    function X(x) { return cx + x * sc; }
+    function Y(y) { return base - y * sc; }
+
+    var d = "", i;
+    for (i = 0; i < sec.length; i++) {
+      d += (i ? "L" : "M") + X(sec[i][0]).toFixed(1) + " " + Y(sec[i][1]).toFixed(1);
+    }
+    d += "Z";
+
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="断面">';
+    svg += '<line x1="0" y1="' + base + '" x2="' + W + '" y2="' + base
+         + '" stroke="#C6CCC4" stroke-width="1"/>';
+    if (ins) {
+      var di = "";
+      for (i = 0; i < ins.length; i++) {
+        di += (i ? "L" : "M") + X(ins[i][0]).toFixed(1) + " " + Y(ins[i][1]).toFixed(1);
+      }
+      di += "L" + X(ins[ins.length - 1][0]).toFixed(1) + " " + base
+          + "L" + X(ins[0][0]).toFixed(1) + " " + base + "Z";
+      svg += '<path d="' + di + '" fill="#B99A6B" fill-opacity="0.45" stroke="#8C7346"'
+           + ' stroke-width="1"/>';
+    }
+    svg += '<path d="' + d + '" fill="#1D6B66" fill-opacity="0.13" stroke="#14202A"'
+         + ' stroke-width="1.4" stroke-linejoin="round"/>';
+    // 断面の最大高さ（＝この位置での足の高さ）
+    var maxY = 0, maxX = 0;
+    for (i = 0; i < sec.length; i++) { if (sec[i][1] > maxY) { maxY = sec[i][1]; maxX = sec[i][0]; } }
+    svg += '<line x1="' + X(maxX).toFixed(1) + '" y1="' + Y(maxY).toFixed(1)
+         + '" x2="' + X(maxX).toFixed(1) + '" y2="' + base
+         + '" stroke="#A8851C" stroke-width="1" stroke-dasharray="3 3"/>';
+    svg += '<text x="' + (X(maxX) + 5).toFixed(1) + '" y="' + (Y(maxY) + 12).toFixed(1)
+         + '" font-size="10.5" fill="#A8851C" font-family="ui-monospace,monospace">'
+         + maxY.toFixed(0) + ' mm</text>';
+    // 内外がわからないと断面は読めない。左右のラベルは side で入れ替える。
+    var medialLeft = (FT.medialSign(S.side) < 0);
+    svg += '<text x="3" y="' + (H - 3) + '" font-size="10" fill="#8A959C">'
+         + (medialLeft ? "内側" : "外側") + '</text>';
+    svg += '<text x="' + (W - 3) + '" y="' + (H - 3) + '" text-anchor="end"'
+         + ' font-size="10" fill="#8A959C">' + (medialLeft ? "外側" : "内側") + '</text>';
+    svg += '</svg>';
+    $("sectionWrap").innerHTML = svg;
+
+    // 足底とインソールの隙間（＝支えている量）を数値でも出す
+    var gapTxt = "";
+    if (ins) {
+      var gap = 0;
+      for (i = 0; i < ins.length; i++) {
+        var g2 = ins[i][1] - soleYAt(sec, ins[i][0]);
+        if (g2 > gap) gap = g2;
+      }
+      gapTxt = " ／ インソールとの最大の隙間 <b>" + gap.toFixed(1) + " mm</b>";
+    }
+    $("sectionNote").innerHTML = "かかとから <b>" + S.sectionPct + "%</b>（"
+      + (L * S.sectionPct / 100).toFixed(0) + " mm）の断面" + gapTxt;
+  }
+
+  /* 断面の輪郭上で、指定 x にいちばん近い点の高さ */
+  function soleYAt(sec, x) {
+    var best = 0, bd = 1e9;
+    for (var i = 0; i < sec.length; i++) {
+      var dx = Math.abs(sec[i][0] - x);
+      if (dx < bd) { bd = dx; best = sec[i][1]; }
+    }
+    return best;
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 主訴の推移。週単位にした意味がいちばん出るところ。
+   * ------------------------------------------------------------------ */
+  function renderTrend() {
+    var sub = S.subject, byRegion = {}, i, c;
+    for (i = 0; i < sub.complaints.length; i++) {
+      c = sub.complaints[i];
+      if (!byRegion[c.region]) byRegion[c.region] = [];
+      byRegion[c.region].push(c);
+    }
+    var html = "", k;
+    var W = 160, H = 26;
+    for (k in byRegion) {
+      if (!byRegion.hasOwnProperty(k)) continue;
+      var pts = byRegion[k].slice().sort(function (a, b) { return a.week - b.week; });
+      var P = FT.COMPLAINT_POS[k];
+      var d = "", dots = "";
+      for (i = 0; i < pts.length; i++) {
+        var x = pts[i].week / CONST.WEEK_MAX * W;
+        var y = H - 3 - (pts[i].severity / 5) * (H - 8);
+        d += (i ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
+        dots += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1)
+              + '" r="2.6" fill="#A63A2B"/>';
+      }
+      var nowX = S.week / CONST.WEEK_MAX * W;
+      html += '<div class="trend"><div class="tn">' + (P ? P.label : k) + '</div>'
+        + '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">'
+        + '<line x1="0" y1="' + (H - 3) + '" x2="' + W + '" y2="' + (H - 3)
+        + '" stroke="#D9DED7" stroke-width="1"/>'
+        + '<line x1="' + nowX.toFixed(1) + '" y1="0" x2="' + nowX.toFixed(1)
+        + '" y2="' + H + '" stroke="#A8851C" stroke-width="1"/>'
+        + '<path d="' + d + '" fill="none" stroke="#A63A2B" stroke-width="1.6"/>'
+        + dots + '</svg></div>';
+    }
+    $("trendList").innerHTML = html
+      || '<p class="hnote">不調の申告の記録はありません。</p>';
+  }
+
+  /* --- 経過の記録（作製・調整・フォロー） --- */
+  var KIND_COL = { "作製": "var(--ink)", "調整": "var(--brass)", "フォロー": "var(--teal)" };
+  function renderLog() {
+    var log = S.subject.log, html = "", i;
+    for (i = 0; i < log.length; i++) {
+      var e = log[i], done = e.week <= S.week;
+      html += '<div class="logrow' + (done ? "" : " future") + '">'
+        + '<div class="lw">' + e.week + '週</div>'
+        + '<div><b style="color:' + (done ? (KIND_COL[e.kind] || "var(--ink)") : "var(--ink3)")
+        + '">' + e.kind + '</b><span>' + e.note + '</span></div></div>';
+    }
+    $("logList").innerHTML = html;
   }
 
   function rank(g, key, v) {
@@ -2967,20 +3589,46 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
       + FT.rankText(pct) + '</b>';
   }
 
-  /* --- タイムライン --- */
+  /* --- タイムライン（インソール作製からの経過週） --- */
+  function weekText(w) {
+    if (w < 52) return w + "週";
+    var y = Math.floor(w / 52), r = w - y * 52;
+    return w + "週（" + y + "年" + (r ? r + "週" : "") + "）";
+  }
   function renderTime() {
-    var future = S.year > CONST.YEAR_NOW;
-    var isScan = false;
-    for (var i = 0; i < FT.SCAN_YEARS.length; i++) {
-      if (FT.SCAN_YEARS[i] === S.year) isScan = true;
+    var sub = S.subject;
+    var future = S.week > sub.lastScanWeek;
+    var isScan = false, i;
+    for (i = 0; i < sub.scanWeeks.length; i++) {
+      if (sub.scanWeeks[i] === S.week) isScan = true;
     }
-    $("yearLabel").textContent = S.year;
+    $("yearLabel").textContent = S.week + "週";
     $("yearKind").textContent = future ? "参考表示" : (isScan ? "計測" : "計測間の補間");
     var d = $("disc");
     d.textContent = future
-      ? "※ 現在の計測値を年齢変化の一般的傾向で延長した参考表示です。個別の予後を示すものではありません。"
-      : "2013 / 2019 / 2026 が計測、その間は補間です。2026 より先は参考表示に切り替わります。";
+      ? "※ 直近の計測値を、経過の一般的な傾向で延長した参考表示です。個別の予後を示すものではありません。"
+      : "0週＝インソール作製時。" + sub.scanWeeks.join(" / ") + "週 が計測、その間は補間です。"
+        + sub.lastScanWeek + "週より先は参考表示に切り替わります。";
     d.className = future ? "on" : "";
+    renderTicks();
+  }
+
+  /* 目盛りは subject ごとの計測週に合わせて置き直す */
+  function renderTicks() {
+    var sub = S.subject, ticks = $("ticks"), html = "", i;
+    var marks = sub.scanWeeks.slice();
+    if (marks.indexOf(CONST.WEEK_MAX) < 0) marks.push(CONST.WEEK_MAX);
+    for (i = 0; i < marks.length; i++) {
+      var w = marks[i];
+      var t = (w - CONST.WEEK_MIN) / (CONST.WEEK_MAX - CONST.WEEK_MIN);
+      var cls = [];
+      if (w > sub.lastScanWeek) cls.push("ex");
+      if (i === 0) cls.push("first");
+      if (i === marks.length - 1) cls.push("last");
+      html += '<span class="' + cls.join(" ") + '" style="left:' + (t * 100) + '%">'
+        + w + (w > sub.lastScanWeek ? "週 参考" : "週") + '</span>';
+    }
+    ticks.innerHTML = html;
   }
 
   /* ------------------------------------------------------------------ *
@@ -2991,7 +3639,7 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
     if (!st) return;
     $("hud").innerHTML =
       '<b>' + S.subject.label + '</b> ／ ' + (S.side === "R" ? "右足" : "左足")
-      + ' ／ ' + S.year + '<br>'
+      + ' ／ ' + weekText(S.week) + '<br>'
       + '<span class="k">足長</span>' + st.metrics.foot_length.toFixed(1) + ' mm<br>'
       + '<span class="k">土踏まず</span>' + st.metrics.asi.toFixed(1) + ' %<br>'
       + '<span class="k">操作</span>ドラッグで回転／ホイールで拡大';
@@ -3049,7 +3697,7 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
       var o = document.createElement("option");
       o.value = s.subject_id;
       o.textContent = s.label + "　" + (s.sex === "M" ? "男性" : "女性")
-        + " " + (CONST.YEAR_NOW - s.birth_year) + "歳";
+        + " " + s.age + "歳";
       sel.appendChild(o);
     }
     sel.addEventListener("change", function () {
@@ -3082,6 +3730,28 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
       if (b) S.viewer.setView(b.getAttribute("data-view"), S.side);
     });
     $("resetBtn").addEventListener("click", function () { S.viewer.setView("R", S.side); });
+
+    /* 画像の書き出し（SPEC §10-2）。接客時の印刷・お渡し用。
+       preserveDrawingBuffer を常時 true にすると描画が重くなるので、
+       押された瞬間に一度描き直してから読み出す。 */
+    $("pngBtn").addEventListener("click", function () {
+      S.viewer.render();
+      var url = S.viewer.renderer.domElement.toDataURL("image/png");
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "foot_twin_" + S.subject.subject_id + "_" + S.side + "_"
+        + S.week + "w.png";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+
+    /* 断面の位置 */
+    var secPos = $("sectionPos");
+    secPos.addEventListener("input", function () {
+      S.sectionPct = parseInt(secPos.value, 10);
+      if (S.state) { renderSection(S.state); S.viewer.setSectionRow(sectionRow()); }
+    });
 
     /* レイヤ */
     var list = $("layerList");
@@ -3123,22 +3793,9 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
 
     /* タイムライン */
     var range = $("yearRange");
-    range.min = CONST.YEAR_MIN; range.max = CONST.YEAR_MAX; range.value = CONST.YEAR_NOW;
-    var ticks = $("ticks"), marks = [2013, 2019, 2026, 2036];
-    for (i = 0; i < marks.length; i++) {
-      var sp = document.createElement("span");
-      var t = (marks[i] - CONST.YEAR_MIN) / (CONST.YEAR_MAX - CONST.YEAR_MIN);
-      sp.style.left = (t * 100) + "%";
-      sp.textContent = marks[i] + (marks[i] === 2036 ? " 参考" : "");
-      var cls = [];
-      if (marks[i] > CONST.YEAR_NOW) cls.push("ex");
-      if (i === 0) cls.push("first");
-      if (i === marks.length - 1) cls.push("last");
-      sp.className = cls.join(" ");
-      ticks.appendChild(sp);
-    }
+    range.min = CONST.WEEK_MIN; range.max = CONST.WEEK_MAX; range.value = 0;
     range.addEventListener("input", function () {
-      S.year = parseInt(range.value, 10);
+      S.week = parseInt(range.value, 10);
       S.scrubbing = true;
       schedule();
     });
@@ -3190,7 +3847,7 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
       renderMs: function () { return S.lastRenderMs; },
       setLayer: function (id, on) { S.layers[id] = !!on; syncLayerButtons(); rebuild(); },
       toggleLayer: toggleLayer,
-      setYear: function (y) { S.year = y; $("yearRange").value = y; rebuild(); },
+      setWeek: function (w) { S.week = w; $("yearRange").value = w; rebuild(); },
       setSubject: function (id) {
         for (var q = 0; q < FT.SUBJECTS.length; q++) {
           if (FT.SUBJECTS[q].subject_id === id) S.subject = FT.SUBJECTS[q];

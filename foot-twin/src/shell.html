@@ -117,6 +117,16 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
 .layer[aria-pressed="true"] .sw i{left:calc(100% - 12px);background:var(--teal)}
 .layer[aria-pressed="true"] .lt{color:var(--teal)}
 
+/* 断面 */
+#sectionWrap svg{width:100%;height:auto;display:block}
+#sectionPos{width:100%;margin:8px 0 0;accent-color:var(--teal)}
+
+/* 主訴の推移 */
+.trend{display:grid;grid-template-columns:92px 1fr;gap:9px;align-items:center;
+  font-size:11.5px;padding:4px 0}
+.trend .tn{color:var(--ink2);white-space:nowrap}
+.trend svg{width:100%;height:26px;display:block}
+
 /* コホート */
 #histWrap svg{width:100%;height:auto;display:block}
 .hnote{font-size:11px;color:var(--ink2);margin:6px 0 0}
@@ -133,6 +143,15 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
   padding:5px 0;border-bottom:1px solid var(--rule2)}
 .rxrow .mm{font-family:ui-monospace,monospace;font-weight:800;color:var(--brass)}
 .rxrow .yr{font-size:10.5px;color:var(--ink3)}
+
+/* 経過の記録 */
+.logrow{display:grid;grid-template-columns:44px 1fr;gap:10px;font-size:12px;
+  padding:7px 0;border-bottom:1px solid var(--rule2);align-items:baseline}
+.logrow .lw{font-family:ui-monospace,monospace;font-size:11px;color:var(--ink3);
+  font-variant-numeric:tabular-nums;text-align:right}
+.logrow b{font-size:12px;display:inline-block;margin-right:7px}
+.logrow span{font-size:11.5px;color:var(--ink2);line-height:1.5}
+.logrow.future{opacity:.42}
 
 /* ---------- timeline ---------- */
 #time{
@@ -181,6 +200,7 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
       <button type="button" data-side="L" aria-pressed="false">左足</button>
     </div>
     <button type="button" class="btn" id="resetBtn">視点リセット</button>
+    <button type="button" class="btn" id="pngBtn">画像を保存</button>
     <div class="spacer"></div>
     <div class="who mono">PHASE 0 — 合成データによるデモ</div>
   </header>
@@ -208,6 +228,16 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
       </section>
 
       <section class="sec">
+        <h2>断面</h2>
+        <div class="body">
+          <div id="sectionWrap"></div>
+          <input type="range" id="sectionPos" min="4" max="96" step="1" value="44"
+                 aria-label="断面の位置（かかとからの割合）">
+          <p class="hnote" id="sectionNote"></p>
+        </div>
+      </section>
+
+      <section class="sec">
         <h2>表示レイヤ</h2>
         <div class="body"><div id="layerList"></div></div>
       </section>
@@ -225,13 +255,27 @@ table.m td.rank{text-align:right;color:var(--teal);font-size:11px;white-space:no
         <h2>インソールの補正</h2>
         <div class="body"><div id="rxList"></div></div>
       </section>
+
+      <section class="sec">
+        <h2>不調の申告の推移</h2>
+        <div class="body">
+          <div id="trendList"></div>
+          <p class="hnote">縦軸は申告の強さ 1–5。縦の金線が現在の週。</p>
+        </div>
+      </section>
+
+      <section class="sec">
+        <h2>経過の記録</h2>
+        <div class="body"><div id="logList"></div></div>
+      </section>
     </aside>
   </div>
 
   <div id="time">
-    <div class="yr"><span id="yearLabel">2026</span><small id="yearKind">計測</small></div>
+    <div class="yr"><span id="yearLabel">0週</span><small id="yearKind">計測</small></div>
     <div id="track">
-      <input type="range" id="yearRange" min="2013" max="2036" step="1" value="2026">
+      <input type="range" id="yearRange" min="0" max="156" step="1" value="0"
+             aria-label="インソール作製からの経過週">
       <div id="ticks"></div>
     </div>
     <div id="disc"></div>

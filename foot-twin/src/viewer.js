@@ -68,6 +68,12 @@
   /* 等高線の帯の半幅（mm）。主曲線を太くする（SPEC §6 L1） */
   var CONTOUR_W = { major: 0.45, minor: 0.22 };
 
+  /* 甲側の色。医療的な意味を持たせないよう、無彩色に近い紙色にする。
+     白に寄せすぎると陰影が飛んで立体に見えないので、中明度に落とす。 */
+  var SKIN_RGB = hexToRgb("#B9BFB4");
+  /* 色レイヤが全部 OFF のときの足底の色 */
+  var SOLE_NEUTRAL = "#C9D2CE";
+
   /* ------------------------------------------------------------------ *
    * 高さ場 → BufferGeometry（SPEC §5-2）
    * 事前に最大サイズで確保し、更新時は詰め直すだけにする。
@@ -168,6 +174,88 @@
     this.indexCount = ni;
   };
   FT.FieldMesh = FieldMesh;
+
+  /* ------------------------------------------------------------------ *
+   * 閉じた立体の足 → BufferGeometry（SPEC §4-6）
+   * 断面リングを z 方向につないだ筒。両端はリングが 1 点近くまで縮んで閉じる。
+   * 巻き順と法線をそろえてあるので FrontSide で描け、内側が透けない。
+   * ------------------------------------------------------------------ */
+  function SolidMesh(maxRows, NC, material) {
+    var maxV = maxRows * NC;
+    this.NC = NC;
+    this.col = new Float32Array(maxV * 3);
+    this.idx = new Uint32Array((maxRows - 1) * NC * 6);
+    var g = new THREE.BufferGeometry();
+    g.setAttribute("color", new THREE.BufferAttribute(this.col, 3));
+    g.setIndex(new THREE.BufferAttribute(this.idx, 1));
+    this.geom = g;
+    this.mesh = new THREE.Mesh(g, material);
+    this.mesh.frustumCulled = false;
+    this.built = null;
+  }
+
+  /* soleColor(cellIndex, out) が足底側の色を返す。甲側は skin 一色。 */
+  SolidMesh.prototype.update = function (S, soleColor, skin, yLift) {
+    var nz = S.nz, NC = S.NC, nV = S.nV;
+    var pos = S.pos, nrm = S.nrm, col = this.col, idx = this.idx;
+    var j, c, k, o, rgb = [0, 0, 0];
+
+    /* 位置属性は buildSolid の配列をそのまま参照する。
+       毎回コピーすると 16k 頂点ぶんの転記が無駄になる。 */
+    if (this.built !== S.pos) {
+      this.geom.setAttribute("position", new THREE.BufferAttribute(S.pos, 3));
+      this.geom.setAttribute("normal", new THREE.BufferAttribute(S.nrm, 3));
+      this.built = S.pos;
+    }
+    this.geom.attributes.position.needsUpdate = true;
+    this.geom.attributes.normal.needsUpdate = true;
+
+    /* 法線：周方向と長さ方向の接ベクトルの外積。
+       外向きになる順（t_c × t_j）に取ってある。 */
+    for (j = 0; j < nz; j++) {
+      var jm = (j > 0 ? j - 1 : j) * NC, jp = (j < nz - 1 ? j + 1 : j) * NC;
+      var base = j * NC;
+      for (c = 0; c < NC; c++) {
+        k = base + c; o = k * 3;
+        var cm = base + (c === 0 ? NC - 1 : c - 1), cp = base + (c + 1) % NC;
+        var ax = pos[cp * 3] - pos[cm * 3];
+        var ay = pos[cp * 3 + 1] - pos[cm * 3 + 1];
+        var az = pos[cp * 3 + 2] - pos[cm * 3 + 2];
+        var bx = pos[(jp + c) * 3] - pos[(jm + c) * 3];
+        var by = pos[(jp + c) * 3 + 1] - pos[(jm + c) * 3 + 1];
+        var bz = pos[(jp + c) * 3 + 2] - pos[(jm + c) * 3 + 2];
+        var nx2 = ay * bz - az * by;
+        var ny2 = az * bx - ax * bz;
+        var nz2 = ax * by - ay * bx;
+        var ln = Math.sqrt(nx2 * nx2 + ny2 * ny2 + nz2 * nz2);
+        if (ln < 1e-9) { nrm[o] = 0; nrm[o + 1] = S.isSole[k] ? -1 : 1; nrm[o + 2] = 0; }
+        else { nrm[o] = nx2 / ln; nrm[o + 1] = ny2 / ln; nrm[o + 2] = nz2 / ln; }
+
+        if (S.isSole[k]) soleColor(S.cell[k], k, rgb);
+        else { rgb[0] = skin[0]; rgb[1] = skin[1]; rgb[2] = skin[2]; }
+        col[o] = rgb[0]; col[o + 1] = rgb[1]; col[o + 2] = rgb[2];
+      }
+    }
+
+    var ni = 0;
+    for (j = 0; j < nz - 1; j++) {
+      for (c = 0; c < NC; c++) {
+        var c2 = (c + 1) % NC;
+        var a = j * NC + c, b = j * NC + c2;
+        var d = (j + 1) * NC + c, e = (j + 1) * NC + c2;
+        idx[ni++] = a; idx[ni++] = b; idx[ni++] = d;
+        idx[ni++] = b; idx[ni++] = e; idx[ni++] = d;
+      }
+    }
+
+    this.mesh.position.y = yLift || 0;
+    this.geom.attributes.color.needsUpdate = true;
+    this.geom.index.needsUpdate = true;
+    this.geom.setDrawRange(0, ni);
+    this.geom.computeBoundingSphere();
+    this.solid = S;
+    this.vertexCount = nV;
+  };
 
   /* ------------------------------------------------------------------ *
    * パラメトリック曲面 → BufferGeometry（インソール用 / SPEC §4-5）
@@ -389,7 +477,10 @@
     var cam = new THREE.PerspectiveCamera(38, 1, 1, 4000);
     this.camera = cam;
 
-    var rend = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    // preserveDrawingBuffer は画像の書き出し（SPEC §10-2）に要る。
+    // 常時 true は描画コストが上がるが、店頭端末の解像度では実測で誤差の範囲。
+    var rend = new THREE.WebGLRenderer({
+      antialias: true, alpha: false, preserveDrawingBuffer: true });
     rend.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     rend.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(rend.domElement);
@@ -402,10 +493,15 @@
     scene.add(this.ctxRoot);
 
     // ライト（ctxRoot 配下）
-    this.ctxRoot.add(new THREE.AmbientLight(0xffffff, 0.62));
-    var d1 = new THREE.DirectionalLight(0xffffff, 0.62); d1.position.set(-180, 330, 160);
-    var d2 = new THREE.DirectionalLight(0xffffff, 0.30); d2.position.set(220, 160, -220);
-    this.ctxRoot.add(d1); this.ctxRoot.add(d2);
+    /* 立体になったので、面の向きが読めるだけの陰影が要る。
+       環境光を落として主光源を立て、床からの照り返しを半球光で足す。 */
+    this.ctxRoot.add(new THREE.AmbientLight(0xffffff, 0.22));
+    this.ctxRoot.add(new THREE.HemisphereLight(0xF2F4F0, 0xA9B0A6, 0.34));
+    var d1 = new THREE.DirectionalLight(0xffffff, 0.62); d1.position.set(-210, 360, 190);
+    var d2 = new THREE.DirectionalLight(0xffffff, 0.26); d2.position.set(260, 130, -240);
+    // 底面ビューで足裏を読ませるための下からの光。立体化して初めて必要になった。
+    var d3 = new THREE.DirectionalLight(0xffffff, 0.52); d3.position.set(70, -240, 60);
+    this.ctxRoot.add(d1); this.ctxRoot.add(d2); this.ctxRoot.add(d3);
 
     // 床グリッドとスケールバー
     this.floorGrid = new THREE.GridHelper(600, 30, 0xC6CCC4, 0xDCE0DA);
@@ -414,13 +510,13 @@
     this.scaleBar = this._makeScaleBar();
     this.ctxRoot.add(this.scaleBar);
 
-    // 足底サーフェス（L0）
+    // 足の立体（L0）。閉じた面なので FrontSide で描く
     var matFoot = new THREE.MeshPhongMaterial({
-      vertexColors: true, side: THREE.DoubleSide, shininess: 6,
-      specular: 0x1a1a1a, transparent: true, opacity: 1
+      vertexColors: true, side: THREE.FrontSide, shininess: 22,
+      specular: 0x3a3d38, transparent: true, opacity: 1
     });
     this.matFoot = matFoot;
-    this.footMesh = new FieldMesh(CONST.NX, CONST.NZ, matFoot);
+    this.footMesh = new SolidMesh(CONST.NZ, CONST.SOLID_NB + CONST.SOLID_NT - 2, matFoot);
     this.footRoot.add(this.footMesh.mesh);
 
     // 等高線（L1）。主曲線 72% / 副曲線 36%（SPEC §8）
@@ -460,6 +556,14 @@
     this.insoleGroup.add(this.insoleBottom.mesh);
     this.insoleGroup.add(this.insoleSkirt.mesh);
     this.footRoot.add(this.insoleGroup);
+
+    // 断面の位置を示すリング
+    this.sectionRing = new THREE.Line(new THREE.BufferGeometry(),
+      new THREE.LineBasicMaterial({ color: new THREE.Color(CONST.COL.brass),
+        transparent: true, opacity: 0.95, depthTest: false }));
+    this.sectionRing.renderOrder = 24;
+    this.sectionRing.frustumCulled = false;
+    this.footRoot.add(this.sectionRing);
 
     // ピン（クリックで留めた点）
     this.pinGroup = new THREE.Group(); this.footRoot.add(this.pinGroup);
@@ -596,9 +700,13 @@
     var mode = this.activeColorLayer();
     var pressure = st.pressure;
     var past = st.pastGrid, mean = st.meanGrid;
-    var flat = hexToRgb("#C9D2CE");
+    var flat = hexToRgb(SOLE_NEUTRAL);
 
-    this.footMesh.update(grid, function (k, i, j, out) {
+    // L9 が ON のときは足をインソールの厚みぶん持ち上げて、上に載せて見せる
+    var lift = L.L9_insole ? CONST.INSOLE.BASE_THICK : 0;
+    this.footLift = lift;
+
+    this.footMesh.update(st.solid, function (k, vi, out) {
       if (mode === "L2_height") return RAMP.height(grid.height[k] / HEIGHT_RANGE, out);
       if (mode === "L4_pressure") return RAMP.pressure(pressure[k], out);
       if (mode === "L7_drift") {
@@ -611,12 +719,17 @@
       }
       out[0] = flat[0]; out[1] = flat[1]; out[2] = flat[2];
       return out;
-    });
+    }, SKIN_RGB, lift);
 
     this.footMesh.mesh.visible = !!L.L0_surface;
     // L9 が ON のとき L0 は半透明にする。消さずに関係を見せる（SPEC §6）
-    this.matFoot.opacity = L.L9_insole ? 0.28 : 1.0;
+    this.matFoot.opacity = L.L9_insole ? 0.30 : 1.0;
     this.matFoot.depthWrite = !L.L9_insole;
+    // 等高線・ランドマーク等は足底面に載っているので、足と一緒に持ち上げる
+    this.contourGroup.position.y = lift;
+    this.landmarkGroup.position.y = lift;
+    this.complaintGroup.position.y = lift;
+    this.driftGroup.position.y = lift;
 
     /* --- L1 等高線 --- */
     this.contourGroup.visible = !!L.L1_contour;
@@ -626,8 +739,10 @@
       if (cs !== this._lastContours) {
         var maj = [], min = [], c;
         for (c = 0; c < cs.length; c++) (cs[c].major ? maj : min).push(cs[c]);
-        this.contourMajor.fill(maj, CONTOUR_W.major, 0.35);
-        this.contourMinor.fill(min, CONTOUR_W.minor, 0.35);
+        // 足底面は立体の「外側が下向き」の面なので、等高線は面の下に置く。
+        // 上に置くと足の内部に入ってしまい、底面ビューで隠れる。
+        this.contourMajor.fill(maj, CONTOUR_W.major, -0.35);
+        this.contourMinor.fill(min, CONTOUR_W.minor, -0.35);
         this._lastContours = cs;
       }
     }
@@ -767,7 +882,7 @@
       // 比較対象のグリッドは変わらないので、外形線の抽出結果を持たせておく
       if (!past.__outline) past.__outline = FT.outline(past);
       if (this._lastDrift !== past) {
-        this._fillLines(this.driftLines, past.__outline, function () { return 0.6; });
+        this._fillLines(this.driftLines, past.__outline, function () { return -0.6; });
         this._lastDrift = past;
       }
     }
@@ -903,15 +1018,19 @@
     this.raycaster.setFromCamera(m, this.camera);
     var hits = this.raycaster.intersectObject(this.footMesh.mesh, false);
     if (!hits.length || !hits[0].face) return null;
-    var cell = this.footMesh.vertexToCell[hits[0].face.a];
+    var S = this.footMesh.solid;
+    var vi = hits[0].face.a;
     var grid = this.state.grid;
+    var cell = S.cell[vi];
     var i = cell % grid.nx, j = Math.floor(cell / grid.nx);
     return {
-      cell: cell, i: i, j: j,
-      u: (i / (grid.nx - 1) - 0.5) * CONST.FW,
-      v: j / (grid.nz - 1),
-      height: grid.height[cell],
-      world: [FT.cellX(grid, i), grid.height[cell], FT.cellZ(grid, j)]
+      vertex: vi, cell: cell, i: i, j: j,
+      sole: !!S.isSole[vi],
+      u: S.uu[vi], v: S.vv[vi],
+      // 立体の標本点そのものの高さを返す。セル中心の値ではないので、
+      // 断面リング上のどこを指したかが 0.05mm 未満の誤差で読み出せる。
+      height: S.hgt[vi],
+      world: [S.pos[vi * 3], S.pos[vi * 3 + 1] + this.footLift, S.pos[vi * 3 + 2]]
     };
   };
 
@@ -947,7 +1066,28 @@
     this.render();
   };
 
+  /* パネルの断面と同じ位置を 3D 側にも示す。
+     どこを切っているかが分からないと、断面図だけでは伝わらない。 */
+  Viewer.prototype.setSectionRow = function (row) {
+    var S = this.footMesh.solid;
+    if (!S) return;
+    this._sectionRow = row;
+    row = FT.clamp(Math.round(row), 0, S.nz - 1);
+    var pts = [], c;
+    for (c = 0; c <= S.NC; c++) {
+      var k = (row * S.NC + (c % S.NC)) * 3;
+      pts.push(new THREE.Vector3(S.pos[k], S.pos[k + 1] + (this.footLift || 0), S.pos[k + 2]));
+    }
+    this.sectionRing.geometry.dispose();
+    this.sectionRing.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+    this.render();
+  };
+
   Viewer.prototype.render = function () {
+    // 床より下から見ているときは床グリッドを消す。
+    // 残すと足裏の手前に線が重なって、等高線と見分けがつかなくなる。
+    this.floorGrid.visible = this.camera.position.y > 0.5;
+    this.scaleBar.visible = this.floorGrid.visible;
     this.renderer.render(this.scene, this.camera);
   };
 

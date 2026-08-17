@@ -40,6 +40,23 @@
     CAP_HEEL: 0.085,          // sqrt キャップの範囲（踵）
     CAP_TOE: 0.075,           // 同（趾先）
 
+    /* 立体化（SPEC §4-6）。断面の高さ ÷ 足長。
+       足首の少し下で丸く閉じた、靴のラストに近い立体になる高さにしてある。 */
+    DORSAL_P: 0.42,           // 断面のふくらみ。0.5 が楕円、小さいほど甲が平らになる
+    DORSAL_SKEW: 0.13,        // 内側（母趾側）を高くする量
+    SOLID_NB: 40,             // 断面の足底側サンプル数
+    SOLID_NT: 40,             // 断面の甲側サンプル数
+    SOLID_MIN_W: 0.004,       // 半幅の下限（u 単位）。両端の縮退を防ぐ
+    /* 立体の両端の閉じ方。
+       接地シルエットの sqrt キャップ（CAP_HEEL/CAP_TOE）をそのまま使うと、
+       踵では幅が 0 に潰れているのに断面の高さが 0.09·足長 残るため、
+       立てた板のような楔になる。平面外形は指数を下げて鈍く、
+       厚みには別のキャップを掛けて、端が丸く閉じるようにする。 */
+    SOLID_PLAN_POW: 0.35,
+    SOLID_CAP_HEEL: 0.055,
+    SOLID_CAP_TOE: 0.045,
+    SOLID_MIN_GAP: 3.0,       // mm。足底面と甲の最小の隔たり
+
     /* 外反母趾：v=HVA_V0 より前方（母趾の領域）を外側へ振る。
        内側縁だけをずらすと趾先で幅が潰れて足長が短くなるため、
        中心線ごとずらす（幅と足長が保存され、傾きから角度が厳密に戻る）。 */
@@ -97,8 +114,16 @@
       bg3d: "#F4F5F2", leather: "#B99A6B"
     },
 
-    /* タイムライン（SPEC §11 受け入れ基準4） */
-    YEAR_MIN: 2013, YEAR_NOW: 2026, YEAR_MAX: 2036,
+    /* タイムライン（SPEC §4-3 / §11 受け入れ基準4）。
+       単位は「インソール作製からの経過週」。年単位ではフォローの実務と
+       目盛りが合わない（微調整は数週間ごとに来る）。 */
+    WEEK_MIN: 0, WEEK_MAX: 156,
+    WEEKS_PER_YEAR: 52.18,
+
+    /* インソールの沈み込み（compression set）。
+       素材は初期に速く沈み、その後漸近する。調整で材を足すと基準が戻る。
+       Phase 0 の暫定値。Phase 2 で実物の経時計測から再推定する。 */
+    SETTLE_MM: 0.95, SETTLE_TAU_W: 6.0,
 
     COHORT_N: 60000,          // 母集団サイズ（表示用）
     COHORT_SAMPLES: 12000     // パーセンタイル推定に使うサンプル数
@@ -133,17 +158,50 @@
   FT.clamp01 = clamp01;
 
   /* ------------------------------------------------------------------ *
-   * 制御点の smoothstep 補間（SPEC §4-2）
+   * 制御点の単調キュービック補間（Fritsch–Carlson / SPEC §4-2）
+   *
+   * かつては smoothstep で繋いでいたが、smoothstep は各制御点で傾きが 0 になる。
+   * 単調に増減するプロファイルを繋ぐと制御点ごとに平坦部ができ、
+   * 立体化したときに面へ横縞として出た。単調性を保ったまま C1 で繋ぐ。
+   * 接線は制御点配列にぶら下げて一度だけ計算する。
    * ------------------------------------------------------------------ */
+  function tangentsOf(pts) {
+    if (pts.__m) return pts.__m;
+    var n = pts.length, d = new Array(n - 1), m = new Array(n), i;
+    for (i = 0; i < n - 1; i++) {
+      d[i] = (pts[i + 1][1] - pts[i][1]) / (pts[i + 1][0] - pts[i][0]);
+    }
+    m[0] = d[0]; m[n - 1] = d[n - 2];
+    for (i = 1; i < n - 1; i++) {
+      m[i] = (d[i - 1] * d[i] <= 0) ? 0 : (d[i - 1] + d[i]) / 2;
+    }
+    // オーバーシュートを抑える（単調性の保証）
+    for (i = 0; i < n - 1; i++) {
+      if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+      var a = m[i] / d[i], b = m[i + 1] / d[i], s = a * a + b * b;
+      if (s > 9) {
+        var t = 3 / Math.sqrt(s);
+        m[i] = t * a * d[i]; m[i + 1] = t * b * d[i];
+      }
+    }
+    pts.__m = m;
+    return m;
+  }
+
   function lerpSmooth(pts, v) {
     var n = pts.length;
     if (v <= pts[0][0]) return pts[0][1];
     if (v >= pts[n - 1][0]) return pts[n - 1][1];
+    var m = tangentsOf(pts);
     for (var i = 0; i < n - 1; i++) {
       if (v >= pts[i][0] && v <= pts[i + 1][0]) {
-        var t = (v - pts[i][0]) / (pts[i + 1][0] - pts[i][0]);
-        t = t * t * (3 - 2 * t);
-        return pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t;
+        var h = pts[i + 1][0] - pts[i][0];
+        var t = (v - pts[i][0]) / h;
+        var t2 = t * t, t3 = t2 * t;
+        return (2 * t3 - 3 * t2 + 1) * pts[i][1]
+             + (t3 - 2 * t2 + t) * h * m[i]
+             + (-2 * t3 + 3 * t2) * pts[i + 1][1]
+             + (t3 - t2) * h * m[i + 1];
       }
     }
     return pts[n - 1][1];
@@ -165,6 +223,14 @@
   var CLINE = [[0.00, 0.000], [0.30, -0.010], [0.62, -0.024], [1.00, -0.090]];
   FT.HALFW = HALFW;
   FT.CLINE = CLINE;
+
+  /* 断面の高さ（足底面から甲までの厚み）÷ 足長。
+     v=0.18 付近が最大。足首より下で丸く閉じる形にしてある。
+     実寸の目安（足長 265mm）：最大 67mm ／ 甲 50mm ／ 足囲部 40mm ／ 趾先 5mm。 */
+  var THICK = [[0.00, 0.060], [0.05, 0.195], [0.11, 0.243], [0.18, 0.255],
+               [0.28, 0.243], [0.40, 0.222], [0.52, 0.190], [0.64, 0.152],
+               [0.76, 0.108], [0.86, 0.072], [0.94, 0.042], [1.00, 0.014]];
+  FT.THICK = THICK;
 
   /* ------------------------------------------------------------------ *
    * パラメータ（SPEC §4-1）
@@ -332,6 +398,146 @@
   FT.medialSign = medialSign;
 
   /* ------------------------------------------------------------------ *
+   * 立体化（SPEC §4-6）
+   *
+   * 足底面はグリッドで持つ（それが実データの受け皿だから）が、閉じた立体は
+   * 断面リングのパラメトリック表現で作る。グリッドのマスク境界で上下面を
+   * 突き合わせようとすると、境界セルではまだ厚みが残っていて縁が数 mm 開く。
+   *
+   * リングは 足底側（内→外）→ 甲側（外→内）の順に一周する。
+   * tt=±1 では厚みが 0 になるので、上下面が縁で厳密に一致して閉じる。
+   * ------------------------------------------------------------------ */
+
+  /* 断面のふくらみ。tt は中心線からの正規化距離 -1..1（右足空間）。 */
+  function dorsalShape(tt) {
+    var q = 1 - tt * tt;
+    if (q <= 0) return 0;
+    // 内側（tt<0＝母趾側）をわずかに高くする。甲は内側が高い。
+    return Math.pow(q, CONST.DORSAL_P) * (1 + CONST.DORSAL_SKEW * (-tt));
+  }
+
+  /* 立体の平面外形。接地シルエットより端の落ち方を鈍くする。 */
+  function solidHalfWidth(p, v) {
+    if (v < 0 || v > 1) return 0;
+    var capH = Math.pow(clamp01(v / CONST.SOLID_CAP_HEEL), CONST.SOLID_PLAN_POW);
+    var capT = Math.pow(clamp01((1 - v) / CONST.SOLID_CAP_TOE), CONST.SOLID_PLAN_POW);
+    return lerpSmooth(HALFW, v) * p.widthScale * capH * capT;
+  }
+
+  /* 断面の高さ。両端は sqrt キャップで 0 に落として丸く閉じる。 */
+  function solidThickness(p, v) {
+    var capH = Math.sqrt(clamp01(v / CONST.SOLID_CAP_HEEL));
+    var capT = Math.sqrt(clamp01((1 - v) / CONST.SOLID_CAP_TOE));
+    return lerpSmooth(THICK, v) * p.length * capH * capT;
+  }
+
+  function buildSolid(grid, reuse) {
+    var p = grid.params, nz = grid.nz;
+    var NB = CONST.SOLID_NB, NT = CONST.SOLID_NT;
+    var NC = NB + NT - 2;                 // 一周の点数（縁の2点は共有）
+    var K = CONST.U_TO_LEN * p.length;
+    var msign = (grid.side === "L") ? -1 : 1;
+    var nV = nz * NC;
+
+    var ok = reuse && reuse.nV === nV;
+    var S = ok ? reuse : {
+      nz: nz, NC: NC, NB: NB, nV: nV,
+      pos: new Float32Array(nV * 3),
+      nrm: new Float32Array(nV * 3),
+      cell: new Int32Array(nV),
+      isSole: new Uint8Array(nV),
+      hgt: new Float32Array(nV),
+      uu: new Float32Array(nV),
+      vv: new Float32Array(nV)
+    };
+    var pos = S.pos, cell = S.cell, isSole = S.isSole;
+    var hgt = S.hgt, uu = S.uu, vv = S.vv;
+
+    var R = {}, j, a, b, k, tt, u, y, th;
+
+    for (j = 0; j < nz; j++) {
+      var v = j / (nz - 1);
+      rowCoef(p, v, R);
+      var w = Math.max(solidHalfWidth(p, v), CONST.SOLID_MIN_W);
+      var z = j * grid.pitch_z;
+      var thRow = solidThickness(p, v);
+      var rowBase = j * NC;
+
+      for (a = 0; a < NB; a++) {
+        tt = -1 + 2 * a / (NB - 1);
+        u = R.c + tt * w;
+        y = heightInRow(R, u);
+        if (y < 0) y = 0;
+        k = rowBase + a;
+        writeVert(k, u, y, z);
+        isSole[k] = 1;
+      }
+      for (b = 1; b <= NT - 2; b++) {
+        /* 甲側は cos で刻む（両端が密になる）。
+           断面 (1-tt²)^p は縁で接線が立つので、等間隔だと縁の隣の点が
+           一気に数 cm 上がり、側面が粗いファセットになる。 */
+        tt = Math.cos(Math.PI * b / (NT - 1));
+        u = R.c + tt * w;
+        y = heightInRow(R, u);
+        if (y < 0) y = 0;
+        /* 甲側は床からの絶対高さで決める。足底面からのオフセットにすると、
+           トウスプリングや横アーチの膨らみがそのまま甲の凹凸として出てしまう。
+           足底面が高い（＝土踏まず）ところでは最低限の肉厚だけ確保する。 */
+        th = thRow * dorsalShape(tt);
+        if (th < y + CONST.SOLID_MIN_GAP) th = y + CONST.SOLID_MIN_GAP;
+        k = rowBase + NB + b - 1;
+        writeVert(k, u, th, z);
+        isSole[k] = 0;
+      }
+    }
+
+    function writeVert(k, uRight, yMm, zMm) {
+      var o = k * 3;
+      var xw = msign * uRight * K;
+      pos[o] = xw; pos[o + 1] = yMm; pos[o + 2] = zMm;
+      hgt[k] = yMm; uu[k] = uRight; vv[k] = zMm / p.length;
+      // グリッドセルは構築時に決めておく（SPEC §7-1：実行時の座標逆算はしない）
+      var gi = Math.round((xw - grid.origin[0]) / grid.pitch_x);
+      var gj = Math.round(zMm / grid.pitch_z);
+      gi = clamp(gi, 0, grid.nx - 1); gj = clamp(gj, 0, grid.nz - 1);
+      cell[k] = gj * grid.nx + gi;
+    }
+
+    S.side = grid.side; S.params = p;
+    return S;
+  }
+  FT.buildSolid = buildSolid;
+  FT.dorsalShape = dorsalShape;
+
+  /* 指定した行の断面（ワールド x, y の閉じた輪郭）。
+     立体にした以上、土踏まずの隙間は断面で見せるのがいちばん早い。 */
+  function sectionOf(S, j) {
+    j = clamp(Math.round(j), 0, S.nz - 1);
+    var out = new Array(S.NC), k;
+    for (var c = 0; c < S.NC; c++) {
+      k = (j * S.NC + c) * 3;
+      out[c] = [S.pos[k], S.pos[k + 1]];
+    }
+    out.z = S.pos[(j * S.NC) * 3 + 2];
+    out.row = j;
+    return out;
+  }
+  FT.sectionOf = sectionOf;
+
+  /* インソールの同じ z における断面（上面の折れ線と、床までの厚み） */
+  function insoleSectionOf(ins, footRow) {
+    var j = clamp(footRow + ins.zPad, 0, ins.nS - 1);
+    var out = new Array(ins.nW);
+    for (var t = 0; t < ins.nW; t++) {
+      var k = j * ins.nW + t;
+      out[t] = [ins.x[k], ins.top[k]];
+    }
+    out.z = ins.zRow[j];
+    return out;
+  }
+  FT.insoleSectionOf = insoleSectionOf;
+
+  /* ------------------------------------------------------------------ *
    * 等高線（marching squares）
    * CLAUDE.md §6 の2つの落とし穴に対処している：
    *   - 鞍点 case 5 / 10 は2線分に分解する
@@ -487,6 +693,20 @@
     return clampParams(q);
   }
   FT.ageParams = ageParams;
+
+  /* 週 → 加齢の適用。週単位でも足の形は動く（ごくわずか）ので、
+     年単位の係数を週に換算して同じモデルを使う。 */
+  function ageParamsWeeks(p, dWeeks) {
+    return ageParams(p, dWeeks / CONST.WEEKS_PER_YEAR);
+  }
+  FT.ageParamsWeeks = ageParamsWeeks;
+
+  /* 作製（または直近の調整）から dWeeks 経ったときの沈み込み量（mm） */
+  function settleMm(dWeeks) {
+    if (dWeeks <= 0) return 0;
+    return CONST.SETTLE_MM * (1 - Math.exp(-dWeeks / CONST.SETTLE_TAU_W));
+  }
+  FT.settleMm = settleMm;
 
   function lerpParams(a, b, t) {
     var out = {}, k;
