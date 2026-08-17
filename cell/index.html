@@ -317,6 +317,13 @@ table.leg i{ display:inline-block; width:10px; height:10px; border:1.2px solid v
   box-shadow:0 3px 12px rgba(50,42,40,.2);
 }
 #prog[hidden]{ display:none; }
+#toast{
+  position:absolute; left:50%; top:52px; transform:translateX(-50%);
+  background:rgba(59,55,66,.9); color:#f6f2ea; padding:6px 15px 7px; border-radius:16px;
+  font-size:11px; letter-spacing:.06em; z-index:6; pointer-events:none;
+  box-shadow:0 4px 14px rgba(40,34,32,.3);
+}
+#toast[hidden]{ display:none; }
 #prog .bar{ width:96px; height:4px; background:rgba(59,55,66,.15); border-radius:3px; overflow:hidden; }
 #prog .bar i{ display:block; height:100%; width:0; background:var(--accent); transition:width .1s linear; }
 .pencil{ animation:scratch .45s infinite alternate ease-in-out; display:inline-block; }
@@ -394,6 +401,7 @@ table.leg i{ display:inline-block; width:10px; height:10px; border:1.2px solid v
       <button class="tbtn" id="btnPng">PNG保存</button>
       <button class="tbtn" id="btnPng2">高解像度</button>
     </div>
+    <div id="toast" hidden></div>
     <div class="hint">DRAG: 標本を動かす<br>WHEEL: ズーム / R: 再抽選<br>SPACE: 生きた視野</div>
   </div>
 
@@ -609,6 +617,7 @@ let TWAVE  = 0;           /* 鞭毛のうねりの位相 */
 let RM = mulberry32(7717);            /* 動きだけに使う乱数(絵柄には影響しない) */
 const rmr = (a,b) => a + (b-a)*RM();
 function actorNew(ox,oy,o){
+  if(TR){ const t=TX(ox,oy); ox=t[0]; oy=t[1]; }
   const a = Object.assign({ ox:ox, oy:oy, dx:0, dy:0, a:0, vx:0, vy:0,
     kind:'drift', head:0, head0:0, sp:0, spin:0, acc:40, r:10, tumble:rmr(.4,2.2),
     t0:0, tn:0, ops:[] }, o||{});
@@ -811,7 +820,8 @@ let LINEART=false;              /* 線画モード(自動彩色を止める) */
 let PAINT={};                   /* 部位番号 -> 色 */
 let REGIONS=[];                 /* 当たり判定用 {p:部位番号, pts:画面座標} */
 let CURPART=-1;                 /* いま描いている部位 */
-function regPush(pts){ if(!MEASURE && CURPART>=0) REGIONS.push({p:CURPART,pts:pts}); }
+let NOREG=false;                /* 動かしている間は当たり判定をためこまない */
+function regPush(pts){ if(!MEASURE && !NOREG && CURPART>=0) REGIONS.push({p:CURPART,pts:pts}); }
 function inPoly(pts,x,y){
   let c=false;
   for(let i=0,j=pts.length-1;i<pts.length;j=i++){
@@ -850,6 +860,7 @@ function leg(name,n){
 }
 /* 引き出し線つきの書き込み */
 let NOTES = [];
+let NOTEHIDE = false;          /* 動かしている間は引き出し線を伏せる */
 function note(x,y,txt,dir){
   if(TR) return;
   if(NOTES.length>7) return;
@@ -1210,7 +1221,7 @@ function debrisField(){
     const x=FIELD.cx+d[0], y=FIELD.cy+d[1];
     const r=Math.max(1.6, cr*rr(.7,1.5));
     const rod = chance(.22);
-    if(LIVEMODES[S.mode]) ACTOR = actorNew(x,y,{kind:'drift', r:r, acc:clamp(220/r,14,150), spin:rmr(-.9,.9)});
+    ACTOR = actorNew(x,y,{kind:'drift', r:r, acc:clamp(220/r,14,150), spin:rmr(-.9,.9)});
     op(-8000+i, function(){
       if(rod){
         const ang=R()*TAU;
@@ -1380,6 +1391,8 @@ filament(){
         }
       }
       for(const path of paths){
+        const cen = path[Math.floor(path.length/2)];
+        ACTOR = actorNew(cen[0],cen[1],{kind:'drift', r:w*6, acc:rmr(24,40), spin:rmr(-.09,.09)});
         const cells = filamentCells(path, w, w*rr(1.5,2.1));
         total += cells.length;
         cells.forEach(function(cp,i){
@@ -1401,6 +1414,7 @@ filament(){
             if(DETN()>1) granulesW(c[0],c[1],w*.7,3,{color:col(2),a:.3});
           });
         });
+        ACTOR=null;
       }
     }
     leg('CELLS',total); leg('FILAMENT',roots);
@@ -1419,6 +1433,7 @@ colony(){
     const cx = attach? FRAD*.24 : 0, cy = attach? -FRAD*.10 : 0;
     const rad = FRAD*(attach? .40 : .48);
     const outline = wobRing(cx,cy,rad,{n:72, lobes:ri(8,13), amp:.075});
+    ACTOR = actorNew(cx,cy,{kind:'drift', r:rad, acc:rmr(20,34), spin:rmr(-.05,.05)});
     const sp = CELLR()*.95;
     const cells = tissue(outline, sp, {gap:.87, smooth:2, relax:2});
     const big = cells.length? ri(0,cells.length-1) : 0;
@@ -1463,6 +1478,7 @@ colony(){
         }
       }
     }
+    ACTOR=null;
   });
   note(FRAD*.24, -FRAD*.10, 'NUCLEUS', 1);
   note(-FRAD*.30, FRAD*.05, 'FILAMENT', -1);
@@ -1481,6 +1497,7 @@ diatom(){
     const kind = (S.shape==='STRAIGHT')? 'pennate' : (S.shape==='CLUSTER')? (chance(.5)?'centric':'pennate')
                : (S.shape==='SPIRAL')? 'pennate' : 'centric';
     const rot=R()*TAU;
+    ACTOR = actorNew(cx,cy,{kind:'drift', r:r, acc:rmr(26,46), spin:rmr(-.22,.22)});
     if(kind==='centric'){
       centric++;
       const poly = wobRing(cx,cy,r,{n:48,lobes:ri(14,22),amp:.035});
@@ -1524,6 +1541,7 @@ diatom(){
         }
       });
     }
+    ACTOR=null;
   }
   if(centric) leg('CENTRIC FRUSTULE',centric);
   if(pennate) leg('PENNATE FRUSTULE',pennate);
@@ -1548,7 +1566,7 @@ flagellate(){
       pts.push([Math.cos(t)*rr2*.72, Math.sin(t)*rr2*1.15]);
     }
     const poly = movePoly(rotPoly(chaikin(pts,1),rot),cx,cy);
-    if(LIVEMODES[S.mode]) ACTOR = actorNew(cx,cy,{kind:'swim', head:rot-Math.PI/2,
+    ACTOR = actorNew(cx,cy,{kind:'swim', head:rot-Math.PI/2,
       sp:r*rmr(1.4,2.6), r:r, spin:rmr(-.5,.5), tumble:rmr(1.0,3.4)});
     putCell(poly,{ color:col(0), a:.15, sp:3.4, ang:rot, inner:.84, lw:1.2 });
     op(cy+.5, function(){
@@ -1859,6 +1877,7 @@ blood(){
   }
   pos.forEach(function(p,i){
     const rc=r*rr(.9,1.1);
+    ACTOR = actorNew(p[0],p[1],{kind:'drift', r:rc, acc:rmr(12,24), spin:rmr(-.3,.3)});
     const poly=wobRing(p[0],p[1],rc,{n:24,lobes:ri(3,5),amp:.05});
     putCell(poly,{color:col(1),a:.20,sp:3.0,ang:-.7,lw:1.05,ea:.7});
     op(p[1]+.4, function(){
@@ -1866,6 +1885,7 @@ blood(){
       fillPoly(SCR(wobRing(p[0],p[1],rc*.45,{n:16,lobes:3,amp:.06})), PAPERC, .38);
       curve2(SCR(wobRing(p[0],p[1],rc*.45,{n:16,lobes:3,amp:.06})),{w:.6,a:.22,color:WALL,passes:1},true);
     });
+    ACTOR=null;
   });
   leg('ERYTHROCYTES',pos.length);
   /* 白血球 */
@@ -1873,6 +1893,7 @@ blood(){
   for(let i=0;i<nw;i++){
     const fp=FPOS(.72);
     const cx=fp[0], cy=fp[1], rc=r*rr(1.4,1.9);
+    ACTOR = actorNew(cx,cy,{kind:'drift', r:rc, acc:rmr(10,20), spin:rmr(-.24,.24)});
     const poly=wobRing(cx,cy,rc,{n:28,lobes:ri(4,7),amp:.07});
     putCell(poly,{color:col(0),a:.14,sp:3.4,ang:-.6,lw:1.15});
     const lobed = chance(.6);
@@ -1888,6 +1909,7 @@ blood(){
       }
       granulesW(cx,cy,rc*.85,Math.round(9*ORGN()),{color:col(2),a:.4});
     });
+    ACTOR=null;
     leg(lobed?'NEUTROPHIL':'LYMPHOCYTE',1);
   }
   /* 血小板 */
@@ -2506,6 +2528,7 @@ function chrome(){
 
   /* --- 引き出し線の書き込み --- */
   q.push(function(){
+    if(NOTEHIDE) return;
     NOTES.forEach(function(n,i){
       const p=P(n.x,n.y);
       if(p[0]<FR.x0||p[0]>FR.x1||p[1]<FR.y0||p[1]>FR.y1) return;
@@ -2667,7 +2690,6 @@ function generate(keepPaint){
   LINEART = S.lineart;
   if(LINEART) INKW *= 1.12;
   OPS=[]; LEG=[]; NOTES=[]; ACTORS=[]; strokes=0;
-  if(LIVE && !LIVEMODES[S.mode]){ LIVE=false; syncLiveBtn(); }
   SCENE.name = genName();
   SCENE.layers = [];
   SCENE.cellUm = 30;
@@ -2747,6 +2769,7 @@ function repaint(){
    生きた視野(微生物を動かす)
    ========================================================================= */
 let LIVE=false, liveRaf=0, liveLast=0, GROWPH=1, growHold=0, bgCv=null;
+let liveCost=16, liveNext=0, FLOW=[0,0];
 
 /* 動かないものだけを描いた背景を一度だけ焼く */
 function buildBG(){
@@ -2754,8 +2777,10 @@ function buildBG(){
   bgCv.width=SW*EX; bgCv.height=SH*EX;
   const save=ctx;
   ctx=bgCv.getContext('2d');
+  NOTEHIDE=true;
   R = mulberry32((((S.seed>>>0)||1) ^ 0x5f356495)>>>0);
   for(let i=0;i<queue.length;i++) if(!QACT[i]) queue[i]();
+  NOTEHIDE=false;
   ctx=save;
   CURPART=-1;
 }
@@ -2779,7 +2804,7 @@ function stepActors(dt){
       const k=Math.max(0,1-2.6*dt);
       a.vx = a.vx*k + rmr(-1,1)*a.acc*dt;
       a.vy = a.vy*k + rmr(-1,1)*a.acc*dt;
-      a.dx += a.vx*dt; a.dy += a.vy*dt;
+      a.dx += (a.vx+FLOW[0])*dt; a.dy += (a.vy+FLOW[1])*dt;
       a.a  += a.spin*dt;
     }
     /* 視野からはみ出したら引き戻す */
@@ -2793,8 +2818,11 @@ function stepActors(dt){
 }
 function liveFrame(ts){
   if(!LIVE){ liveRaf=0; return; }
-  const dt = liveLast? clamp((ts-liveLast)/1000, 0, .05) : .016;
+  liveRaf=requestAnimationFrame(liveFrame);
+  if(ts < liveNext) return;              /* 描画が重い標本はコマ数を落とす */
+  const dt = liveLast? clamp((ts-liveLast)/1000, 0, .08) : .016;
   liveLast=ts;
+  const tf=performance.now();
   TWAVE += dt;
   stepActors(dt);
   ctx.setTransform(EX,0,0,EX,0,0);
@@ -2806,25 +2834,37 @@ function liveFrame(ts){
   else ctx.rect(FR.x0+1.5,FR.y0+1.5,FR.x1-FR.x0-3,FR.y1-FR.y0-3);
   ctx.clip();
   R = mulberry32(0x9e3779b9);           /* 毎フレーム同じ線を引く(絵がぶれない) */
+  NOREG=true;
   for(const a of ACTORS){
     if(a.kind==='grow' && a.tn>GROWPH) continue;
     MOV=a;
     for(const o of a.ops){ CURPART=o.i; o.f(); }
   }
-  MOV=null; CURPART=-1;
+  MOV=null; CURPART=-1; NOREG=false;
   ctx.restore();
-  liveRaf=requestAnimationFrame(liveFrame);
+  liveCost = liveCost*.8 + (performance.now()-tf)*.2;
+  liveNext = ts + clamp(liveCost*1.5, 16, 48);
 }
 function startLive(){
   if(raf) return;                        /* まだ描いている途中 */
-  if(!ACTORS.length){ LIVE=false; sync(); return; }
+  if(!ACTORS.length){ LIVE=false; sync(); toast('この標本には動くものがありません', 2200); return; }
   buildBG();
   RM = mulberry32((((S.seed>>>0)||1) ^ 0x1a2b3c4d)>>>0);
   ACTORS.forEach(function(a){ a.dx=0; a.dy=0; a.a=0; a.vx=0; a.vy=0; });
   GROWPH = (S.mode==='mycelium')? 0 : 1;
-  growHold=0; liveLast=0;
+  growHold=0; liveLast=0; liveNext=0; liveCost=16;
+  const fa=rmr(0,TAU), fv=FIELD.rx*rmr(.006,.016);      /* 視野ぜんたいのゆるい流れ */
+  FLOW=[Math.cos(fa)*fv, Math.sin(fa)*fv];
   if(liveRaf) cancelAnimationFrame(liveRaf);
   liveRaf=requestAnimationFrame(liveFrame);
+}
+let toastT=0;
+function toast(msg,ms){
+  const el=document.getElementById('toast');
+  if(!el) return;
+  el.textContent=msg; el.hidden=false;
+  clearTimeout(toastT);
+  toastT=setTimeout(function(){ el.hidden=true; }, ms||2200);
 }
 function stopLive(){
   if(liveRaf){ cancelAnimationFrame(liveRaf); liveRaf=0; }
@@ -2982,14 +3022,24 @@ function sync(){
   document.getElementById('btnAnim').classList.toggle('on',S.animate);
   syncLiveBtn();
 }
+const LIVEHINT = {
+  swim: '微生物が泳ぎまわります',
+  grow: '菌糸が先端から伸びていきます',
+  float:'標本が水中をゆっくり漂います',
+  dust: '固定標本なので、浮遊物だけが漂います',
+};
+function liveKind(){
+  if(S.mode==='mycelium') return 'grow';
+  if(LIVEMODES[S.mode]) return 'swim';
+  if(S.genre==='algae' || S.mode==='blood') return 'float';
+  return 'dust';
+}
 function syncLiveBtn(){
   const bv=document.getElementById('btnLive');
   if(!bv) return;
-  bv.disabled = !LIVEMODES[S.mode];
   bv.classList.toggle('on', LIVE);
   bv.textContent = LIVE? '■ 停止' : '▶ 生きた視野';
-  bv.title = LIVEMODES[S.mode]? '微生物が視野の中で動きます(塗り絵は停止中のみ)'
-                              : 'この標本は動きません(微生物ジャンルで使えます)';
+  bv.title = LIVEHINT[liveKind()] + '(塗り絵は停止中のみ)';
 }
 
 /* =========================================================================
@@ -3044,10 +3094,9 @@ function newSeed(){
 document.getElementById('btnRedraw').addEventListener('click',function(){ generate(); });
 document.getElementById('btnAnim').addEventListener('click',function(){ S.animate=!S.animate; sync(); });
 document.getElementById('btnLive').addEventListener('click',function(){
-  if(!LIVEMODES[S.mode]) return;
   LIVE=!LIVE;
   sync();
-  if(LIVE) startLive();
+  if(LIVE){ startLive(); toast('LIVE — '+LIVEHINT[liveKind()], 2600); }
   else { stopLive(); generate(true); }
 });
 document.getElementById('btnLineart').addEventListener('click',function(){
@@ -3106,7 +3155,7 @@ vp.addEventListener('pointercancel',function(){ drag=null; });
 window.addEventListener('resize',fitView);
 window.addEventListener('keydown',function(e){
   if(e.target.tagName==='INPUT') return;
-  if(e.key===' '){ e.preventDefault(); const bl=document.getElementById('btnLive'); if(!bl.disabled) bl.click(); return; }
+  if(e.key===' '){ e.preventDefault(); document.getElementById('btnLive').click(); return; }
   if(e.key==='r'||e.key==='R') newSeed();
   if(e.key==='ArrowLeft'){ S.rot=(S.rot+11)%12; generate(); }
   if(e.key==='ArrowRight'){ S.rot=(S.rot+1)%12; generate(); }
