@@ -9,11 +9,14 @@ const ACCENT = '1C5CAB';
 const RED = 'C62828';
 const GRAY = '5A6472';
 const TABLE_W = 9360;   // 6.5in in DXA
+// 日本語字形を確実に選ばせるため、フォント名と言語(ja-JP)を全ランに指定する
+const JP_FONT = { name: 'Yu Gothic', eastAsia: 'Yu Gothic', hint: 'eastAsia' };
+const JP_LANG = { value: 'ja-JP', eastAsia: 'ja-JP' };
 
 const P = (text, opts = {}) => new Paragraph({
   spacing: { after: opts.after ?? 120, line: 300 },
   alignment: opts.align,
-  children: [new TextRun({ text, size: opts.size ?? 21, color: opts.color, bold: opts.bold, italics: opts.italics })],
+  children: [new TextRun({ text, size: opts.size ?? 21, color: opts.color, bold: opts.bold, italics: opts.italics, language: JP_LANG })],
 });
 
 const H1 = t => new Paragraph({ text: t, heading: HeadingLevel.HEADING_1, spacing: { before: 320, after: 160 } });
@@ -23,7 +26,7 @@ const H3 = t => new Paragraph({ text: t, heading: HeadingLevel.HEADING_3, spacin
 const BULLET = (text, level = 0) => new Paragraph({
   numbering: { reference: 'bullets', level },
   spacing: { after: 60, line: 290 },
-  children: [new TextRun({ text, size: 21 })],
+  children: [new TextRun({ text, size: 21, language: JP_LANG })],
 });
 
 const NOTE = (title, body) => new Table({
@@ -43,8 +46,8 @@ const NOTE = (title, body) => new Table({
       shading: { type: ShadingType.CLEAR, fill: 'FDF3F3' },
       margins: { top: 140, bottom: 140, left: 180, right: 180 },
       children: [
-        new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text: title, bold: true, size: 21, color: RED })] }),
-        ...body.map(t => new Paragraph({ spacing: { after: 60, line: 290 }, children: [new TextRun({ text: t, size: 20 })] })),
+        new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text: title, bold: true, size: 21, color: RED, language: JP_LANG })] }),
+        ...body.map(t => new Paragraph({ spacing: { after: 60, line: 290 }, children: [new TextRun({ text: t, size: 20, language: JP_LANG })] })),
       ],
     })],
   })],
@@ -68,7 +71,7 @@ const TBL = (headers, rows, widths) => new Table({
         width: { size: widths[i], type: WidthType.DXA },
         shading: { type: ShadingType.CLEAR, fill: 'EEF3FA' },
         margins: { top: 80, bottom: 80, left: 120, right: 120 },
-        children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, size: 19, color: ACCENT })] })],
+        children: [new Paragraph({ children: [new TextRun({ text: h, bold: true, size: 19, color: ACCENT, language: JP_LANG })] })],
       })),
     }),
     ...rows.map(r => new TableRow({
@@ -77,7 +80,7 @@ const TBL = (headers, rows, widths) => new Table({
         margins: { top: 80, bottom: 80, left: 120, right: 120 },
         children: String(c).split('|').map(line => new Paragraph({
           spacing: { after: 20, line: 280 },
-          children: [new TextRun({ text: line, size: 19 })],
+          children: [new TextRun({ text: line, size: 19, language: JP_LANG })],
         })),
       })),
     })),
@@ -100,10 +103,10 @@ const doc = new Document({
   },
   styles: {
     default: {
-      document: { run: { font: 'Yu Gothic', size: 21 } },
-      heading1: { run: { font: 'Yu Gothic', size: 30, bold: true, color: ACCENT } },
-      heading2: { run: { font: 'Yu Gothic', size: 25, bold: true, color: '1A1F26' } },
-      heading3: { run: { font: 'Yu Gothic', size: 22, bold: true, color: '39424F' } },
+      document: { run: { font: JP_FONT, size: 21, language: JP_LANG } },
+      heading1: { run: { font: JP_FONT, size: 30, bold: true, color: ACCENT, language: JP_LANG } },
+      heading2: { run: { font: JP_FONT, size: 25, bold: true, color: '1A1F26', language: JP_LANG } },
+      heading3: { run: { font: JP_FONT, size: 22, bold: true, color: '39424F', language: JP_LANG } },
     },
   },
   sections: [{
@@ -111,17 +114,17 @@ const doc = new Document({
     children: [
       /* ===== 表紙 ===== */
       new Paragraph({ spacing: { before: 1400, after: 60 }, children: [
-        new TextRun({ text: 'HANEDA INNOVATION CITY', size: 20, color: ACCENT, bold: true, characterSpacing: 60 })] }),
+        new TextRun({ text: 'HANEDA INNOVATION CITY', size: 20, color: ACCENT, bold: true, characterSpacing: 60, language: JP_LANG })] }),
       new Paragraph({ spacing: { after: 100 }, children: [
-        new TextRun({ text: '羽田イノベーションシティ', size: 44, bold: true })] }),
+        new TextRun({ text: '羽田イノベーションシティ', size: 44, bold: true, language: JP_LANG })] }),
       new Paragraph({ spacing: { after: 300 }, children: [
-        new TextRun({ text: '3Dダッシュボード 使用マニュアル', size: 36, bold: true })] }),
+        new TextRun({ text: '3Dダッシュボード 使用マニュアル', size: 36, bold: true, language: JP_LANG })] }),
       new Paragraph({
         border: { top: { style: BorderStyle.SINGLE, size: 12, color: ACCENT } },
-        spacing: { after: 240 }, children: [new TextRun({ text: '' })] }),
+        spacing: { after: 240 }, children: [new TextRun({ text: '', language: JP_LANG })] }),
       P('人流データ・IFC図面・PLATEAU 3D都市モデルを統合した、周辺エリアを含むインタラクティブな都市デジタルツインです。単一のHTMLファイルで動作します。', { size: 22 }),
       new Paragraph({ spacing: { before: 240, after: 400 }, children: [
-        new TextRun({ text: '版数: 1.0 ／ 作成: 2026年8月 ／ 対象ファイル: HICity_3Dダッシュボード.html', size: 19, color: GRAY })] }),
+        new TextRun({ text: '版数: 1.0 ／ 作成: 2026年8月 ／ 対象ファイル: HICity_3Dダッシュボード.html', size: 19, color: GRAY, language: JP_LANG })] }),
 
       NOTE('本資料および本プロダクトの位置づけ（必ずお読みください）', [
         '本プロダクトは技術検証・提案用の「デモ」です。表現力と操作性の確認を目的としており、実運用を前提とした精度・網羅性・保守性は担保していません。',
@@ -137,7 +140,7 @@ const doc = new Document({
       H1('目次'),
       new TableOfContents('目次', { hyperlink: true, headingStyleRange: '1-3' }),
       new Paragraph({ spacing: { after: 100 }, children: [
-        new TextRun({ text: '※ Wordで開いた際、目次上で右クリック→「フィールド更新」を実行するとページ番号が反映されます。', size: 18, color: GRAY })] }),
+        new TextRun({ text: '※ Wordで開いた際、目次上で右クリック→「フィールド更新」を実行するとページ番号が反映されます。', size: 18, color: GRAY, language: JP_LANG })] }),
 
       new Paragraph({ children: [new PageBreak()] }),
 
@@ -323,7 +326,7 @@ const doc = new Document({
 
       new Paragraph({
         border: { top: { style: BorderStyle.SINGLE, size: 6, color: 'C8CDD6' } },
-        spacing: { before: 400, after: 100 }, children: [new TextRun({ text: '' })] }),
+        spacing: { before: 400, after: 100 }, children: [new TextRun({ text: '', language: JP_LANG })] }),
       P('本プロダクトはデモンストレーション用途で作成されたものであり、掲載されている推計値・想定モデルを業務判断の根拠として利用することは想定していません。', { size: 18, color: GRAY }),
       P('地図データ © OpenStreetMap contributors（ODbL） ／ 3D都市モデル: Project PLATEAU（国土交通省） ／ 航空写真: 地理院タイル', { size: 18, color: GRAY }),
     ],
