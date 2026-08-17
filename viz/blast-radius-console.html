@@ -357,6 +357,9 @@
     <span class="field drop"><span class="k">shared login</span><span class="v v-amber">google</span></span>
     <span class="field drop"><span class="k">spend cap</span><span class="v v-pink">none</span></span>
     <span class="field drop"><span class="k">audit</span><span class="v v-pink">pending</span></span>
+    <span class="field"><span class="k">spin</span><span class="v v-cyan" id="f-spin">0°</span></span>
+    <span class="field"><span class="k">tilt</span><span class="v v-cyan" id="f-tilt">+0°</span></span>
+    <span class="field"><span class="k">strands</span><span class="v" id="f-strands">×1.00</span></span>
     <span class="field"><span class="k">t</span><span class="v" id="f-t">0.00</span></span>
     <span class="field"><span class="k">frame</span><span class="v" id="f-frame">0000</span></span>
     <span class="spacer"></span>
@@ -485,10 +488,28 @@
 
   /* ---------------- graph layout (normalized 0..1 space) ---------------- */
 
+  // GW / GH. Only used at build time to place the layout coordinates that decide
+  // which nodes count as neighbours; drawing derives everything from GW/GH live.
+  const ASPECT = 1.35;
+
+  // Cluster radii are in GW units so rotation stays circular rather than skewing
+  // with the stage aspect. The upper cluster is a 3-D disc — thin in y, wide in x
+  // and z — so a yaw spins its grain and a pitch tips it from an edge-on band
+  // into a fully open face. The lower cluster is flat and still.
   const CLUSTERS = [
-    { cx: 0.385, cy: 0.252, rx: 0.205, ry: 0.126, n: 186 },
-    { cx: 0.470, cy: 0.722, rx: 0.222, ry: 0.140, n: 208 },
+    {
+      cx: 0.385, cy: 0.252, rx: 0.205, ry: 0.088, rz: 0.145, n: 186,
+      wy: 0.0045,             // yaw: a full 360° every ~1400 steps
+      wp: 0.0026, ap: 1.05,   // pitch: tumbles ±60°, short of reaching the lower mass
+      wr: 0.0017, ar: 0.20,   // roll: a slight lean either way
+    },
+    {
+      cx: 0.470, cy: 0.722, rx: 0.222, ry: 0.104, rz: 0, n: 208,
+      wy: 0, wp: 0, ap: 0, wr: 0, ar: 0,
+    },
   ];
+
+  const FOCAL = 1.5; // perspective focal length, in GW units
 
   const HUBS = [
     { x: 0.320, y: 0.180, c: 0, name: "calendar sync", rate: 3.1, state: "running" },
@@ -516,37 +537,50 @@
     { x: 0.560, y: 0.470, t: "cookie jar reused" },
   ];
 
+  // A node either belongs to a cluster (cl >= 0, carrying a local 3-D offset that
+  // gets rotated and projected every step) or is pinned to the stage (cl === -1).
   const nodes = [];
+  const clMembers = [[], []];
+  const pinned = [];
+
   CLUSTERS.forEach((cl, ci) => {
     for (let i = 0; i < cl.n; i++) {
       // tight core plus a minority of strays — a flat gaussian reads as haze
-      const s = build() < 0.80 ? 0.30 : 0.62;
-      const g1 = gauss(build) * s, g2 = gauss(build) * s;
-      nodes.push({
-        x: clamp(cl.cx + g1 * cl.rx, 0.03, 0.97),
-        y: clamp(cl.cy + g2 * cl.ry, 0.03, 0.97),
-        c: ci,
-        hub: -1,
-        ph: build() * 6.283,
-      });
+      const s = build() < 0.80 ? 0.30 : 0.52;
+      const lx = gauss(build) * s * cl.rx;
+      const ly = gauss(build) * s * cl.ry;
+      const lz = gauss(build) * s * cl.rz;
+      const n = {
+        cl: ci, lx, ly, lz, c: ci, hub: -1, ph: build() * 6.283,
+        qx: cl.cx + lx, qy: cl.cy + ly * ASPECT, // build-time layout coords
+        sx: 0, sy: 0, k: 1,
+      };
+      nodes.push(n);
+      clMembers[ci].push(n);
     }
   });
+
+  const addPinned = (fx, fy, c, hub) => {
+    const n = { cl: -1, fx, fy, c, hub, ph: build() * 6.283, qx: fx, qy: fy, sx: 0, sy: 0, k: 1 };
+    nodes.push(n);
+    pinned.push(n);
+    return nodes.length - 1;
+  };
+
   // sparse halo — the strays that make the boundary legible
   for (let i = 0; i < 46; i++) {
     const a = build() * 6.283, r = 0.55 + build() * 0.45;
-    nodes.push({
-      x: clamp(0.44 + Math.cos(a) * r * 0.40, 0.02, 0.98),
-      y: clamp(0.49 + Math.sin(a) * r * 0.44, 0.03, 0.97),
-      c: build() < 0.5 ? 0 : 1,
-      hub: -1,
-      ph: build() * 6.283,
-    });
+    addPinned(
+      clamp(0.44 + Math.cos(a) * r * 0.40, 0.02, 0.98),
+      clamp(0.49 + Math.sin(a) * r * 0.44, 0.03, 0.97),
+      build() < 0.5 ? 0 : 1,
+      -1,
+    );
   }
-  // hubs join the graph so edges actually terminate on them
-  const hubNodeIndex = HUBS.map((h, hi) => {
-    nodes.push({ x: h.x, y: h.y, c: h.c, hub: hi, ph: build() * 6.283 });
-    return nodes.length - 1;
-  });
+  // Hubs join the graph so edges terminate on them, but stay pinned: they are
+  // named jobs, not cloud points, and their labels have to stay readable while
+  // the cloud tumbles around them.
+  const hubNodeIndex = HUBS.map((h, hi) => addPinned(h.x, h.y, h.c, hi));
   const hubsByCluster = [[], []];
   hubNodeIndex.forEach((ni, hi) => hubsByCluster[HUBS[hi].c].push(ni));
 
@@ -564,7 +598,7 @@
       const cand = pick(build, pool);
       if (cand === ai) continue;
       const B = nodes[cand];
-      const d = (A.x - B.x) ** 2 + (A.y - B.y) ** 2;
+      const d = (A.qx - B.qx) ** 2 + (A.qy - B.qy) ** 2;
       if (d < bd) { bd = d; best = cand; }
     }
     return best === -1 ? pick(build, pool) : best;
@@ -660,6 +694,51 @@
     ctx.textBaseline = "alphabetic";
   }
 
+  /* ---------------- rotation + projection ---------------- */
+
+  // Rotate each cluster's local offsets by yaw → pitch → roll, project through a
+  // simple perspective divide, and cache the screen position on the node. Every
+  // consumer (strands, packets, dots) reads sx/sy, so the whole web follows.
+  function project() {
+    for (const n of pinned) { n.sx = MX(n.fx); n.sy = MY(n.fy); n.k = 1; }
+
+    for (let ci = 0; ci < CLUSTERS.length; ci++) {
+      const cl = CLUSTERS[ci];
+      const yaw = tick * cl.wy;
+      const pitch = Math.sin(tick * cl.wp) * cl.ap;
+      const roll = Math.sin(tick * cl.wr) * cl.ar;
+      const cyw = Math.cos(yaw), syw = Math.sin(yaw);
+      const cp = Math.cos(pitch), sp = Math.sin(pitch);
+      const crl = Math.cos(roll), srl = Math.sin(roll);
+      const ox = MX(cl.cx), oy = MY(cl.cy);
+
+      // 0 when the disc is edge-on (a thin band), 1 when its face is open
+      cl.openness = Math.abs(Math.sin(pitch));
+      cl.spinDeg = ((yaw * 57.2958) % 360 + 360) % 360;
+      cl.tiltDeg = pitch * 57.2958;
+
+      for (const n of clMembers[ci]) {
+        const x1 = n.lx * cyw + n.lz * syw;
+        const z1 = n.lz * cyw - n.lx * syw;
+        const y2 = n.ly * cp - z1 * sp;
+        const z2 = n.ly * sp + z1 * cp;
+        const k = FOCAL / (FOCAL + z2);
+        n.k = k;
+        n.sx = ox + (x1 * crl - y2 * srl) * k * GW;
+        n.sy = oy + (x1 * srl + y2 * crl) * k * GW;
+      }
+    }
+  }
+
+  // How many fresh strands this step gets. An open face spreads the cloud out and
+  // needs more ink to read; an edge-on band concentrates it and needs less. The
+  // slower swell on top makes the growing and thinning legible as its own action.
+  function strandMultiplier() {
+    const open = CLUSTERS[0].openness || 0;
+    const swell = 0.5 + 0.5 * Math.sin(tick * 0.0094);
+    return clamp((0.55 + 0.85 * open) * (0.74 + 0.52 * swell), 0.34, 1.52);
+  }
+
   // step() leaves the buffer in "lighter" mode; painting the ground over it in
   // that mode adds instead of erases, so always restore source-over first.
   function clearAcc() {
@@ -693,6 +772,7 @@
   const HEAT_COLS = 42;
 
   let tick, cursor, actions, spend, aps, apsPeak, logClock, logLines, sparks, heat, exposure, packets;
+  let strandMul = 1;
 
   function reset() {
     rnd = mulberry32(SEED);
@@ -717,6 +797,8 @@
         col: rnd() < 0.55 ? C.bone : rnd() < 0.78 ? C.pink : C.cyan,
       });
     }
+    strandMul = 1;
+    project();
     clearAcc();
     renderStatic();
   }
@@ -761,6 +843,9 @@
 
   function step() {
     tick++;
+    project();
+    strandMul = strandMultiplier();
+    const budget = Math.round(EDGES_PER_STEP * strandMul);
 
     // Fade the accumulation buffer, then lay down fresh traffic. The fade is
     // slow relative to the spawn rate, so ~30 steps of strands are visible at
@@ -777,11 +862,11 @@
       actx.strokeStyle = rgba(bu.col, bu.a);
       actx.lineWidth = bu.w * S;
       actx.beginPath();
-      for (let i = 0; i < EDGES_PER_STEP; i++) {
+      for (let i = 0; i < budget; i++) {
         const e = edges[(cursor + i * 37) % EDGE_COUNT];
         if (e.bk !== bk) continue;
         const A = nodes[e.a], B = nodes[e.b];
-        const x0 = MX(A.x), y0 = MY(A.y), x1 = MX(B.x), y1 = MY(B.y);
+        const x0 = A.sx, y0 = A.sy, x1 = B.sx, y1 = B.sy;
         const dx = x1 - x0, dy = y1 - y0;
         const bow = e.bow * (1 + Math.sin(tick * 0.021 + e.ph) * e.breathe);
         actx.moveTo(x0, y0);
@@ -880,17 +965,20 @@
     // nodes
     for (const n of nodes) {
       if (n.hub >= 0) continue;
-      const x = MX(n.x), y = MY(n.y);
       const tw = 0.45 + 0.55 * Math.abs(Math.sin(tick * 0.05 + n.ph));
-      ctx.fillStyle = n.c === 0 ? rgba(C.bone, 0.30 + tw * 0.45) : rgba(C.pink, 0.24 + tw * 0.40);
-      ctx.fillRect(x, y, 1.3 * S, 1.3 * S);
+      // depth cue: points at the front of the disc sit brighter and larger
+      const d = clamp(n.k, 0.75, 1.35);
+      ctx.fillStyle = n.c === 0
+        ? rgba(C.bone, (0.30 + tw * 0.45) * d)
+        : rgba(C.pink, (0.24 + tw * 0.40) * d);
+      ctx.fillRect(n.sx, n.sy, 1.3 * S * d, 1.3 * S * d);
     }
 
     // packets — two passes so they read as lit, not just bright
     ctx.globalCompositeOperation = "lighter";
     for (const p of packets) {
       const e = edges[p.e], A = nodes[e.a], B = nodes[e.b];
-      const x0 = MX(A.x), y0 = MY(A.y), x1 = MX(B.x), y1 = MY(B.y);
+      const x0 = A.sx, y0 = A.sy, x1 = B.sx, y1 = B.sy;
       const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
       const dx = x1 - x0, dy = y1 - y0;
       const bow = e.bow * (1 + Math.sin(tick * 0.021 + e.ph) * e.breathe);
@@ -963,6 +1051,11 @@
     $("f-actions").textContent = fmt(actions);
     $("f-t").textContent = (tick / 60).toFixed(2);
     $("f-frame").textContent = pad(tick, 4);
+
+    const up = CLUSTERS[0];
+    $("f-spin").textContent = `${(up.spinDeg || 0).toFixed(0)}°`;
+    $("f-tilt").textContent = `${(up.tiltDeg || 0) >= 0 ? "+" : ""}${(up.tiltDeg || 0).toFixed(0)}°`;
+    $("f-strands").textContent = `×${strandMul.toFixed(2)}`;
 
     elLog.innerHTML = logLines.map((l) =>
       `<div class="log-line lv-${l.cls}"><span>${l.ts.slice(0, 5)}</span><b>${l.lv}</b><i>${l.msg}</i></div>`

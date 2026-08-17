@@ -16,6 +16,32 @@ dependencies, and no network access.
 Speed multiplies simulation steps per animation frame, so the whole console —
 web churn, packets, run log, heat, throughput — accelerates together.
 
+## The upper cluster's choreography
+
+The upper cluster is a 3-D disc — thin in y, wide in x and z — carried through
+three simultaneous rotations, all read straight off the tick counter:
+
+| Motion  | Range              | Period at ×4 |
+| ------- | ------------------ | ------------ |
+| yaw     | full 360°          | ~5.8 s       |
+| pitch   | ±60°               | ~10 s        |
+| roll    | ±11°               | ~15 s        |
+
+Pitch is the one that changes the silhouette: at 0° the disc is edge-on and reads
+as the flat band, and near its extremes it opens into a full volume. Radii are
+kept in `GW` units so rotation stays circular instead of skewing with the stage
+aspect, and a perspective divide (`FOCAL / (FOCAL + z)`) makes the front of the
+disc larger and brighter.
+
+Strand count rides on that: an open face spreads the cloud and takes more ink to
+read, an edge-on band concentrates it and takes less, and a slower independent
+swell on top makes the growing and thinning legible in its own right. The
+multiplier runs roughly ×0.7 – ×1.5 and is shown live in the top rail next to
+`SPIN` and `TILT`.
+
+Hubs, tags, and the halo stay pinned while the cloud tumbles around them — they
+are named jobs and stage furniture, and their labels have to stay readable.
+
 ## How the picture is built
 
 The graph is two canvases. An offscreen accumulation buffer receives ~330 fresh
