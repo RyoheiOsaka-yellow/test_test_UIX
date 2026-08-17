@@ -13,8 +13,11 @@ than sliding underneath it.
 
 ## Running it
 
-The shaders are loaded with `fetch`, so the page needs a server — opening
-`index.html` from the filesystem will fail on CORS.
+**Just open `sound-reactive-shapes.html`.** It is a single self-contained file
+with every shader, style and script inlined — double-click it, no server needed.
+
+To work on the sources instead, serve the directory. `index.html` loads the
+shaders with `fetch`, so it does need a server:
 
 ```bash
 cd sound-reactive-shapes
@@ -22,8 +25,20 @@ python3 -m http.server 8000
 # then open http://localhost:8000/
 ```
 
-Requires WebGL2 and a network connection on first load (three.js r169 comes from
-jsDelivr via an import map).
+After editing anything under `js/`, `css/` or `shaders/`, regenerate the
+single-file build:
+
+```bash
+node build.mjs          # → sound-reactive-shapes.html
+```
+
+`build.mjs` takes the page shell from `index.html` and swaps the external
+references for inlined equivalents, so the two versions cannot drift apart. It
+has no dependencies.
+
+Requires WebGL2 and a network connection on first load — three.js r169 comes from
+jsDelivr via an import map, which works over `file://` too because jsDelivr sends
+`Access-Control-Allow-Origin: *`.
 
 ## Audio
 
@@ -134,6 +149,8 @@ All three are gamma-encoded in the shader and then passed through an
 ## Layout
 
 ```
+sound-reactive-shapes.html   single-file build — open this one
+build.mjs                    generates it from the sources below
 index.html            page and overlay controls
 css/ui.css            overlay chrome
 js/main.js            scene setup, shader assembly, UI

@@ -93,7 +93,12 @@ const PARAM_UNIFORM = {
 
 const SHADER_DIR = './shaders/';
 
+// The single-file build (build.mjs) inlines every shader into this global, so the
+// page can run straight off the filesystem. Served from a directory, the global
+// is absent and the shaders are fetched as normal.
 async function loadText(name) {
+  const inlined = globalThis.__SHADER_SOURCES?.[name];
+  if (inlined !== undefined) return inlined;
   const res = await fetch(SHADER_DIR + name);
   if (!res.ok) throw new Error(`could not load ${name}: ${res.status}`);
   return res.text();
