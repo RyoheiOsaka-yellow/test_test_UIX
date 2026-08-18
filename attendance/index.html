@@ -303,6 +303,39 @@ h1{
 .bands-note b{color:var(--cyan);font-family:"Outfit",sans-serif;font-weight:800;font-size:17px}
 .caveat{font-size:11.5px;color:var(--muted);margin-top:12px;line-height:1.7}
 
+/* 凡例の線サンプル */
+.lg-line{
+  width:16px!important;height:3px!important;border-radius:2px!important;
+  background:var(--navy)!important;vertical-align:2px!important;
+}
+.cb-hit{fill:transparent;cursor:pointer}
+.cb-hit:focus-visible{outline:3px solid var(--cyan);outline-offset:-3px}
+.cb-dot{transition:opacity .2s}
+
+/* 帯別の比較は補足あつかいにして小さく */
+.bands-mini{margin-top:6px;gap:11px}
+.bands-mini .band-h b{font-size:13.5px}
+.bands-mini .band-bar{height:30px}
+.bands-mini .band-bar em{font-size:15px;left:12px}
+
+/* ---------- 順位表 ---------- */
+.standings-card{margin-top:14px}
+.std-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.std-head h3{font-size:17px;font-weight:900;color:var(--navy)}
+.std-note{font-size:12.5px;color:var(--muted)}
+table.std{width:100%;border-collapse:collapse;font-size:14px}
+table.std td{padding:10px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.std .r{width:44px;text-align:center;font-family:"Outfit",sans-serif;font-weight:800;color:var(--muted-2)}
+table.std .p{text-align:right;font-family:"Outfit",sans-serif;font-weight:800;color:var(--navy)}
+table.std .d{width:66px;text-align:right;font-size:12px;color:var(--muted)}
+table.std tr.self td{background:var(--sky);font-weight:900;color:var(--navy)}
+table.std tr.self .r{color:var(--cyan);font-size:17px}
+table.std tr.self td:first-child{border-radius:12px 0 0 12px}
+table.std tr.self td:last-child{border-radius:0 12px 12px 0}
+table.std tr.top1 .r::after{content:"👑";margin-left:3px}
+.up{color:#0E9F6E;font-weight:700}
+.down{color:#B4232A;font-weight:700}
+
 /* ---------- 優勝シミュレーター ---------- */
 .sim{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:center}
 .sim-l label{display:block;font-size:13px;font-weight:700;color:var(--muted-2);margin-bottom:6px}
@@ -352,7 +385,15 @@ h1{
   content:attr(data-l);position:absolute;top:-21px;left:50%;transform:translateX(-50%);
   font-family:"Outfit",sans-serif;font-size:10.5px;font-weight:700;color:var(--gold);white-space:nowrap;
 }
-.sim-msg{font-size:14px;line-height:1.7;margin-top:14px;color:#DDEFFA}
+.sim-rank{
+  margin-top:14px;font-size:15px;color:#DDEFFA;
+  border-top:1px solid rgba(127,214,247,.25);padding-top:13px;
+}
+.sim-rank b{font-family:"Outfit",sans-serif;font-weight:800;font-size:26px;color:#fff;margin:0 2px}
+.sim-rank .d{font-size:12.5px;color:#9FC9E4}
+.sim-rank .up{color:#8FE9B0}
+.sim-rank .down{color:#FFB1B1}
+.sim-msg{font-size:14px;line-height:1.7;margin-top:10px;color:#DDEFFA}
 .sim-msg b{color:var(--gold);font-weight:900}
 .sim-msg.reach b{color:#8FE9B0}
 .sim-done{font-size:14.5px;line-height:1.8;color:#DDEFFA}
@@ -709,12 +750,23 @@ footer{
 
   <section>
     <div class="sec-head">
-      <h2>来場が、勝ち点を動かす</h2>
-      <span class="sec-note">ホームゲームを来場者数で2つに分けた、1試合あたりの平均勝ち点</span>
+      <h2>みんなが来れば、勝ち点は積み上がる</h2>
+      <span class="sec-note">棒＝その試合の来場者数、線＝ホームで積み上げた勝ち点</span>
     </div>
     <div class="card">
-      <div class="bands" id="bands"></div>
+      <div class="grid-legend">
+        <span><i style="background:#00A0E9"></i>勝ち</span>
+        <span><i style="background:#93A9BC"></i>引き分け</span>
+        <span><i style="background:#C6D3DE"></i>負け</span>
+        <span><i class="lg-line"></i>ホーム累計勝ち点</span>
+      </div>
+      <div class="chartwrap">
+        <svg class="chart" id="combo" viewBox="0 0 860 352" role="group"
+             aria-label="試合ごとの来場者数と、ホームで積み上げた勝ち点"></svg>
+        <div class="tip" id="comboTip" aria-hidden="true"></div>
+      </div>
       <p class="bands-note" id="bandsNote"></p>
+      <div class="bands bands-mini" id="bands"></div>
       <p class="caveat" id="bandsCaveat"></p>
     </div>
   </section>
@@ -725,6 +777,14 @@ footer{
       <span class="sec-note">残りのホームゲームに、平均で何人来てくれるか動かしてみてください</span>
     </div>
     <div class="card sim" id="sim"></div>
+    <div class="card standings-card">
+      <div class="std-head">
+        <h3>この来場なら、順位表はこうなる</h3>
+        <span class="std-note" id="stdNote"></span>
+      </div>
+      <div class="scroller"><table class="std"><tbody id="stdBody"></tbody></table></div>
+      <p class="caveat">※ 他チームは今のペースを保った場合として計算しています。</p>
+    </div>
   </section>
 
   <section>
@@ -1058,7 +1118,19 @@ const SEASON = {
     goalPoints:    48,       /* 優勝ラインの想定勝ち点 */
     awayPlayed:    10,       /* 消化したアウェイ戦数 */
     awayPoints:    13,       /* アウェイで積んだ勝ち点 */
-    awayRemaining: 5         /* 残りのアウェイ戦数 */
+    awayRemaining: 5,        /* 残りのアウェイ戦数 */
+    totalMatches:  30,       /* 年間の総試合数（ホーム＋アウェイ）*/
+
+    /* 順位表に並べる他チーム。自チームは matches と awayPoints から
+       自動で計算されるので、ここには書かない。
+       見込み順位は、各チームが今のペースを保った場合として計算します。 */
+    rivals: [
+      { name: "A FC", played: 20, points: 32 },
+      { name: "B FC", played: 20, points: 30 },
+      { name: "C FC", played: 20, points: 28 },
+      { name: "D FC", played: 20, points: 24 },
+      { name: "E FC", played: 20, points: 21 }
+    ]
   },
 
   /* ---- 来場者数の目標 ---- */
@@ -1776,6 +1848,36 @@ function bindShare(){
   });
 }
 
+/* 順位表。projAtt を渡すと「残りホームの平均来場者数がその数だったら
+   最終的に何位か」を返す。渡さなければ現時点の順位。
+   他チームは今のペースを保つ前提（それ以上の根拠が無いため）。 */
+function standings(projAtt){
+  const L = SEASON.league, st = state();
+  const ours = {
+    name: "アスルクラロ沼津", self: true,
+    played: PLAYED + L.awayPlayed,
+    points: st.points
+  };
+  const rows = [ours, ...L.rivals.map(r => ({ ...r }))];
+  if(projAtt != null){
+    rows.forEach(r=>{
+      if(r.self){ r.points = projectPoints(projAtt); }
+      else {
+        const ppg = r.played ? r.points / r.played : 0;
+        r.points = Math.round(r.points + (L.totalMatches - r.played) * ppg);
+      }
+      r.played = L.totalMatches;
+    });
+  }
+  /* 同点のときは自チームを下に置く（甘く見積もらないため） */
+  rows.sort((a,b)=> b.points - a.points || (a.self ? 1 : b.self ? -1 : 0));
+  rows.forEach((r,i)=> r.rank = i + 1);
+  return rows;
+}
+function ourRank(projAtt){
+  return standings(projAtt).find(r=>r.self).rank;
+}
+
 /* 優勝ラインに届く「残りホームの平均来場者数」。
    届かない場合は null（＝いまの傾向のままでは、来場だけでは届かない）。 */
 const SIM_LO = 1500, SIM_HI = 5000;
@@ -1800,6 +1902,155 @@ function renderChain(){
     + `<div class="chain-i"><span>ホームの勝ち点</span><b>${st.homePoints}<small>点</small></b></div>`
     + `<div class="chain-a"></div>`
     + `<div class="chain-i is-goal"><span>${L.goalName}まで</span>${goalCell}</div>`;
+}
+
+/* ---------- 来場者数と勝ち点を1枚に重ねたグラフ ----------
+   棒 = その試合の来場者数（左の目盛り）
+   線 = ホームで積み上げた勝ち点の累計（右の目盛り）
+   人が入った試合で線が急に立ち上がるので、2つの数字が同時に動いているのが見える。 */
+const comboEl = document.getElementById("combo");
+const CB = { W: 860, H: 352, L: 54, R: 56, T: 30, B: 282 };
+let comboBars = [], comboLine = null;
+
+function niceMax(v, step, min){
+  return Math.max(min, Math.ceil(v / step) * step);
+}
+function buildCombo(){
+  const s = state(), n = SEASON.matches.length;
+  const played = s.played;
+  if(!played.length){ comboEl.innerHTML = ""; return; }
+
+  const band = (CB.W - CB.L - CB.R) / n;
+  const bw = Math.min(30, band * 0.56);
+  const attMax = niceMax(Math.max(...played.map(m=>m.attendance)), 1000, 4000);
+
+  /* ホーム累計勝ち点 */
+  const cumPts = [];
+  let t = 0;
+  played.forEach(m=>{ t += pt(m); cumPts.push(t); });
+  const ptsMax = niceMax(t, 5, 10);
+
+  const yA = v => CB.B - (v / attMax) * (CB.B - CB.T);
+  const yP = v => CB.B - (v / ptsMax) * (CB.B - CB.T);
+  const cx = i => CB.L + band * (i + 0.5);
+
+  let g = "";
+
+  /* 横の目盛り線 */
+  for(let k = 1; k <= 4; k++){
+    const v = attMax * k / 4, y = yA(v);
+    g += `<line x1="${CB.L}" x2="${CB.W - CB.R}" y1="${y}" y2="${y}" stroke="#E2EDF5" stroke-width="1"/>`;
+    g += `<text x="${CB.L - 9}" y="${y + 4}" font-size="11" fill="#61768A" text-anchor="end">${(v/1000)}k</text>`;
+  }
+  /* 右の目盛り（勝ち点） */
+  for(let k = 0; k <= 4; k++){
+    const v = ptsMax * k / 4;
+    g += `<text x="${CB.W - CB.R + 10}" y="${yP(v) + 4}" font-size="11" fill="#0F4C81" text-anchor="start">${Math.round(v)}</text>`;
+  }
+
+  /* 棒＝来場者数 */
+  comboBars = [];
+  played.forEach((m,i)=>{
+    const h = Math.max(0, CB.B - yA(m.attendance));
+    g += `<rect class="cb-bar" data-i="${i}" x="${cx(i) - bw/2}" y="${CB.B}" width="${bw}" height="0"`
+       + ` rx="4" fill="${RES_COLOR[m.result] || '#00A0E9'}" data-h="${h}" data-y="${yA(m.attendance)}"/>`;
+  });
+
+  /* 線＝累計勝ち点 */
+  const pts = cumPts.map((v,i)=> `${cx(i)},${yP(v)}`).join(" ");
+  g += `<polyline class="cb-line" points="${pts}" fill="none" stroke="#002F6C" stroke-width="3"`
+     + ` stroke-linejoin="round" stroke-linecap="round"/>`;
+  cumPts.forEach((v,i)=>{
+    g += `<circle class="cb-dot" cx="${cx(i)}" cy="${yP(v)}" r="4.5" fill="#fff" stroke="#002F6C" stroke-width="2.5"/>`;
+  });
+
+  /* 軸ラベル */
+  g += `<text x="${CB.L - 9}" y="${CB.T - 11}" font-size="11" font-weight="700" fill="#61768A" text-anchor="end">来場者数</text>`;
+  g += `<text x="${CB.W}" y="${CB.T - 11}" font-size="11" font-weight="700" fill="#002F6C" text-anchor="end">累計勝ち点</text>`;
+  g += `<line x1="${CB.L}" x2="${CB.W - CB.R}" y1="${CB.B}" y2="${CB.B}" stroke="#C3D8E8" stroke-width="1.5"/>`;
+
+  /* 日付 */
+  SEASON.matches.forEach((m,i)=>{
+    if(i % 2 !== 0 && n > 10) return;
+    g += `<text x="${cx(i)}" y="${CB.B + 20}" font-size="11" fill="#61768A" text-anchor="middle">${m.date}</text>`;
+  });
+
+  /* 当たり判定 */
+  played.forEach((m,i)=>{
+    g += `<rect class="cb-hit" data-i="${i}" x="${CB.L + band*i}" y="${CB.T}" width="${band}"`
+       + ` height="${CB.B - CB.T}" tabindex="0" role="img"`
+       + ` aria-label="第${m.round}節 ${m.date} vs ${m.vs} 来場者数${yen(m.attendance)}人 この試合の勝ち点${pt(m)} 累計${cumPts[i]}点"/>`;
+  });
+
+  comboEl.innerHTML = g;
+  comboBars = Array.from(comboEl.querySelectorAll(".cb-bar"));
+  comboLine = comboEl.querySelector(".cb-line");
+  bindComboTips(cumPts);
+}
+
+/* 棒が伸び、線が引かれる */
+function playCombo(){
+  const dots = Array.from(comboEl.querySelectorAll(".cb-dot"));
+  if(reduceMotion){
+    comboBars.forEach(b=>{ b.setAttribute("y", b.dataset.y); b.setAttribute("height", b.dataset.h); });
+    if(comboLine) comboLine.style.strokeDasharray = "none";
+    dots.forEach(d=> d.style.opacity = 1);
+    return;
+  }
+  comboBars.forEach(b=>{ b.setAttribute("y", CB.B); b.setAttribute("height", 0); });
+  dots.forEach(d=> d.style.opacity = 0);
+  let len = 0;
+  if(comboLine){
+    len = comboLine.getTotalLength();
+    comboLine.style.strokeDasharray = len;
+    comboLine.style.strokeDashoffset = len;
+  }
+  cancels.push(tween(1700, e=>{
+    comboBars.forEach((b,i)=>{
+      /* 左から順に立ち上がる */
+      const p = Math.max(0, Math.min(1, e * comboBars.length - i * 0.55));
+      const h = (+b.dataset.h) * p;
+      b.setAttribute("height", h);
+      b.setAttribute("y", CB.B - h);
+    });
+    if(comboLine) comboLine.style.strokeDashoffset = len * (1 - e);
+    dots.forEach((d,i)=>{
+      d.style.opacity = (e * dots.length > i + 0.4) ? 1 : 0;
+    });
+  }, ()=>{
+    comboBars.forEach(b=>{ b.setAttribute("y", b.dataset.y); b.setAttribute("height", b.dataset.h); });
+    if(comboLine) comboLine.style.strokeDashoffset = 0;
+    dots.forEach(d=> d.style.opacity = 1);
+  }));
+}
+function snapCombo(){
+  comboBars.forEach(b=>{ b.setAttribute("y", b.dataset.y); b.setAttribute("height", b.dataset.h); });
+  if(comboLine){ comboLine.style.strokeDasharray = "none"; comboLine.style.strokeDashoffset = 0; }
+  comboEl.querySelectorAll(".cb-dot").forEach(d=> d.style.opacity = 1);
+}
+
+const comboTip = document.getElementById("comboTip");
+function bindComboTips(cumPts){
+  comboEl.querySelectorAll(".cb-hit").forEach(h=>{
+    const i = +h.dataset.i, m = state().played[i];
+    const show = ()=>{
+      const RES = { W:"勝ち", D:"引き分け", L:"負け" };
+      comboTip.innerHTML = `第${m.round}節 ${m.date}　${oppMark(m, true)}vs ${m.vs}<br>`
+        + `来場 <b>${yen(m.attendance)}</b>人／${RES[m.result] || "—"} <b>+${pt(m)}</b>点<br>`
+        + `<i>ホーム累計 ${cumPts[i]}点</i>`;
+      const wrap = comboTip.parentElement.getBoundingClientRect();
+      const r = comboBars[i].getBoundingClientRect();
+      comboTip.style.left = (r.left - wrap.left + r.width/2) + "px";
+      comboTip.style.top  = (r.top - wrap.top - 10) + "px";
+      comboTip.classList.add("on");
+    };
+    const hide = ()=> comboTip.classList.remove("on");
+    h.addEventListener("pointerenter", show);
+    h.addEventListener("pointermove", show);
+    h.addEventListener("pointerleave", hide);
+    h.addEventListener("focus", show);
+    h.addEventListener("blur", hide);
+  });
 }
 
 /* ---------- 来場者数帯ごとの平均勝ち点 ---------- */
@@ -1848,6 +2099,7 @@ function renderSim(){
   if(st.homeLeft <= 0){
     el.innerHTML = `<p class="sim-done">今シーズンのホームゲームは全日程が終了しました。<br>`
       + `ホームで積んだ勝ち点は ${st.homePoints} 点、通算 ${st.points} 点です。</p>`;
+    renderStandings();
     return;
   }
   const lo = SIM_LO, hi = SIM_HI;
@@ -1869,6 +2121,7 @@ function renderSim(){
         <i id="simBar"></i>
         <span class="goal" id="simGoal" data-l="${L.goalName}ライン ${L.goalPoints}"></span>
       </div>
+      <p class="sim-rank" id="simRank"></p>
       <p class="sim-msg" id="simMsg"></p>
       <p class="sr-only" id="simPtsLive" role="status" aria-live="polite"></p>
     </div>`;
@@ -1877,6 +2130,36 @@ function renderSim(){
   range.addEventListener("input", ()=>{ SIM_ATT = +range.value; updateSim(); });
   updateSim();
 }
+/* 順位表。スライダーの値でそのまま並びが変わる */
+function renderStandings(){
+  const st = state();
+  const now  = ourRank();
+  const proj = (st.homeLeft > 0 && SIM_ATT != null) ? SIM_ATT : null;
+  const rows = standings(proj);
+  const me   = rows.find(r=>r.self);
+  const diff = now - me.rank;
+
+  document.getElementById("stdNote").innerHTML = proj == null
+    ? `現在の順位です`
+    : `残りホームが平均 <b>${yen(proj)}人</b> だったときの、シーズン最終の並び`;
+
+  document.getElementById("stdBody").innerHTML = rows.map(r=>`
+    <tr class="${r.self ? "self" : ""}${r.rank === 1 ? " top1" : ""}">
+      <td class="r">${r.rank}</td>
+      <td>${r.name}</td>
+      <td class="d">${r.played}試合</td>
+      <td class="p">${r.points}<span class="d"> 点</span></td>
+    </tr>`).join("");
+
+  const badge = document.getElementById("simRank");
+  if(badge){
+    if(proj == null){ badge.innerHTML = `現在 <b>${now}</b>位`; return; }
+    const move = diff > 0 ? `<span class="up">▲${diff}</span>`
+               : diff < 0 ? `<span class="down">▼${-diff}</span>` : `<span>±0</span>`;
+    badge.innerHTML = `最終 <b>${me.rank}</b>位　<span class="d">（現在${now}位 ${move}）</span>`;
+  }
+}
+
 function updateSim(){
   const st = state(), L = SEASON.league;
   const proj = projectPoints(SIM_ATT);
@@ -1901,8 +2184,11 @@ function updateSim(){
     msg.innerHTML = `${L.goalName}ラインまで <b>あと${-diff}点</b>。`
       + `来場だけでは届かないところまで来ています。アウェイでの上積みも必要です。`;
   }
+  renderStandings();
   const live = document.getElementById("simPtsLive");
-  if(live) live.textContent = `平均${yen(SIM_ATT)}人のとき、最終勝ち点の目安は${proj}点`;
+  if(live){
+    live.textContent = `平均${yen(SIM_ATT)}人のとき、最終勝ち点の目安は${proj}点、順位は${ourRank(SIM_ATT)}位`;
+  }
 }
 
 /* ---------- pace cards ---------- */
@@ -2018,6 +2304,7 @@ function play(){
   observers.forEach(o => o.disconnect()); observers = [];
   hideTip();
   playBoard();
+  whenVisible(document.getElementById("combo"), playCombo, snapCombo);
   whenVisible(document.getElementById("dots"),  playDots,  snapDots);
   whenVisible(document.getElementById("chart"), playChart, snapChart);
 }
@@ -2026,7 +2313,7 @@ function play(){
 function renderAll(){
   buildCounter(); buildChart(); buildChips();
   renderSub(); renderPace(); renderCheer(); renderTable();
-  renderNextGame(); renderChain(); renderBands(); renderSim();
+  renderNextGame(); renderChain(); buildCombo(); renderBands(); renderSim();
   renderMinePick(); renderMine();
   play();
 }
