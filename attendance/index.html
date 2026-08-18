@@ -70,6 +70,12 @@
   --muted-2:#597692;
   --muted-3:#61768A;
   --muted-4:#67747F;
+  /* SNSアイコン。currentColor で塗るので mask として使う */
+  --i-x:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 1227'%3E%3Cpath d='M714.16 519.28 1160.89 0H1055.03L667.14 450.89 357.33 0H0l468.49 681.82L0 1226.37h105.87l409.62-476.15 327.18 476.15H1200L714.14 519.28ZM569.17 687.83l-47.47-67.89L144.01 79.69h162.6l304.8 435.99 47.47 67.89 396.2 566.72H892.48L569.17 687.83Z'/%3E%3C/svg%3E");
+  --i-line:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 5.64 2 10.13c0 4.02 3.55 7.39 8.35 8.03.33.07.77.22.88.5.1.26.07.66.03.92l-.14.85c-.04.25-.2.99.87.54s5.76-3.39 7.86-5.81C21.29 13.5 22 11.9 22 10.13 22 5.64 17.52 2 12 2Z'/%3E%3C/svg%3E");
+  --i-fb:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M15.12 5.32H17V2.14A26.11 26.11 0 0 0 14.26 2C11.54 2 9.68 3.66 9.68 6.7v2.62H6.61v3.56h3.07V22h3.68v-9.12h3.06l.46-3.56h-3.52V7.05c0-1.03.28-1.73 1.76-1.73Z'/%3E%3C/svg%3E");
+  --i-copy:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8 2h10a2 2 0 0 1 2 2v12h-2V4H8V2Zm-4 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z'/%3E%3C/svg%3E");
+  --i-more:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2l4 4h-3v9h-2V6H8l4-4ZM5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7h-2v7H7v-7H5Z'/%3E%3C/svg%3E");
   --dh:88px;
   --dw:64px;
 }
@@ -111,13 +117,6 @@ body{
   font-family:"Outfit",sans-serif;font-weight:700;font-size:10px;letter-spacing:.2em;
   color:var(--navy-2);opacity:.72;
 }
-.official{
-  margin-left:auto;display:inline-flex;align-items:center;gap:7px;
-  padding:6px 13px;border-radius:999px;background:var(--navy);color:#fff;
-  font-family:"Outfit",sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.16em;
-}
-.official::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--cyan-lt)}
-.official span{font-family:"Zen Maru Gothic",sans-serif;letter-spacing:.04em;font-size:11px}
 
 /* ---------- header ---------- */
 .masthead{padding:34px 0 10px}
@@ -303,9 +302,7 @@ h2{font-weight:900;font-size:22px;color:var(--navy)}
   border:1px solid var(--cyan-pale);font-size:14px;color:var(--navy);line-height:1.7;
 }
 .mine-sum b{font-family:"Outfit",sans-serif;font-weight:800;color:var(--cyan);font-size:17px}
-.mine-act{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;align-items:center}
 .mine-note{font-size:11.5px;color:var(--muted);margin-top:12px}
-.copied{font-size:12.5px;font-weight:700;color:var(--cyan)}
 
 /* ---------- chart ---------- */
 .chartwrap{position:relative}
@@ -372,8 +369,8 @@ h2{font-weight:900;font-size:22px;color:var(--navy)}
 }
 .balloon::after{left:-8px;border-right-color:#fff}
 .balloon .who{
-  font-family:"Outfit",sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.18em;
-  color:var(--cyan);display:block;margin-bottom:4px;
+  font-weight:700;font-size:12px;letter-spacing:.08em;
+  color:var(--cyan);display:block;margin-bottom:5px;
 }
 .balloon p{font-size:15px;font-weight:700;color:var(--navy);line-height:1.7}
 .balloon p b{color:var(--cyan);font-weight:900}
@@ -410,8 +407,37 @@ tr.best td.n{color:var(--cyan)}
 }
 .replay:hover{background:var(--sky)}
 .replay:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
-.board-act{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.board-act .btn{margin-top:22px}
+/* ---------- SNSへの投稿 ---------- */
+.sharebox{margin-top:26px}
+.sharebox-t{
+  font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px;
+}
+.sharebar{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+.sns{
+  display:inline-flex;align-items:center;gap:8px;padding:11px 18px;border-radius:999px;
+  font-family:inherit;font-weight:700;font-size:13.5px;cursor:pointer;
+  border:1px solid transparent;color:#fff;transition:.18s;
+}
+.sns::before{
+  content:"";width:16px;height:16px;flex:none;
+  background:currentColor;-webkit-mask:center/contain no-repeat;mask:center/contain no-repeat;
+}
+.sns:hover{filter:brightness(1.12)}
+.sns:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+.sns-x{background:#000}
+.sns-x::before{-webkit-mask-image:var(--i-x);mask-image:var(--i-x)}
+.sns-line{background:#06C755}
+.sns-line::before{-webkit-mask-image:var(--i-line);mask-image:var(--i-line)}
+.sns-fb{background:#1877F2}
+.sns-fb::before{-webkit-mask-image:var(--i-fb);mask-image:var(--i-fb)}
+.sns-copy,.sns-more{background:#fff;color:var(--navy);border-color:var(--line)}
+.sns-copy:hover,.sns-more:hover{background:var(--sky);filter:none}
+.sns-copy::before{-webkit-mask-image:var(--i-copy);mask-image:var(--i-copy)}
+.sns-more::before{-webkit-mask-image:var(--i-more);mask-image:var(--i-more)}
+/* 公開URL未設定で成立しない投稿先 */
+.sns.off{background:#E7EDF2;color:#7C8A96;border-color:#D5E5F2;cursor:not-allowed}
+.sns.off:hover{filter:none}
+.copied{font-size:12.5px;font-weight:700;color:var(--cyan)}
 .demo{margin-top:44px;padding:20px;border:1px dashed #B9CFE0;border-radius:20px;background:#fff}
 .demo p{font-size:12.5px;color:var(--muted);margin-bottom:12px}
 .demo-btns{display:flex;gap:9px;flex-wrap:wrap}
@@ -464,14 +490,12 @@ footer{
   .balloon::after{bottom:-8px;border-top-color:#fff}
   .foot-note{margin-left:0;text-align:left}
   .foot-mascot{height:150%;right:-14%;bottom:-10%;opacity:.1}
-  /* ロゴ＋公式バッジを1行に収める */
+  /* ロゴを1行に収める */
   .clubbar-in{padding:11px 16px;gap:10px}
   .lockup{gap:10px}
   .lockup .emblem{height:44px}
   .lockup .wordmark{height:15px}
   .lockup-sub{font-size:8.5px;letter-spacing:.14em}
-  .official{padding:5px 10px;font-size:9px;letter-spacing:.1em;gap:5px}
-  .official span{font-size:9.5px}
 }
 @media(prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important}
@@ -492,7 +516,6 @@ footer{
         <span class="lockup-sub">NUMAZU ／ 沼津</span>
       </span>
     </a>
-    <span class="official">OFFICIAL <span>クラブ公式</span></span>
   </div>
 </div>
 
@@ -516,9 +539,11 @@ footer{
     <div class="chips" id="chips"></div>
   </div>
 
-  <div class="board-act">
-    <button class="replay" id="replay" type="button">↻ もう一度、1人から積み上げる</button>
-    <button class="btn btn-sub" id="shareNow" type="button">いまの数字をシェアする</button>
+  <button class="replay" id="replay" type="button">↻ もう一度、1人から積み上げる</button>
+
+  <div class="sharebox">
+    <p class="sharebox-t">いまの数字をシェアする</p>
+    <div class="sharebar" data-share="now"></div>
   </div>
 
   <!-- 次のホームゲームへの導線。シェアで人が来ても、行き先がないと止まってしまう。 -->
@@ -551,11 +576,8 @@ footer{
       <p class="mine-lead">スタジアムに行った試合を選んでください。その試合で埋まったマスが、上のグリッドで光ります。</p>
       <div class="mine-pick" id="minePick"></div>
       <div class="mine-sum" id="mineSum"></div>
-      <div class="mine-act">
-        <button class="btn btn-main" id="shareMine" type="button">私も行った、をシェアする</button>
-        <button class="btn btn-sub" id="copyMine" type="button">文章をコピー</button>
-        <span class="copied sr-only" id="copied" role="status" aria-live="polite"></span>
-      </div>
+      <p class="sharebox-t">「私も行った」をシェアする</p>
+      <div class="sharebar" data-share="mine"></div>
       <p class="mine-note">選んだ試合はこのブラウザにだけ保存されます（サーバーには送信されません）。</p>
     </div>
   </section>
@@ -587,7 +609,7 @@ footer{
       </div>
       <div class="cheer-body">
         <div class="balloon">
-          <span class="who">AZUL-KUN／アスルくん</span>
+          <span class="who">アスルくん</span>
           <p id="balloonMsg">集計中…</p>
         </div>
         <div class="cheer-meta" id="cheerMeta"></div>
@@ -1327,31 +1349,97 @@ function textMine(){
     + `今シーズンの積み上げは ${yen(s.total)}人になりました。\n`
     + `1マス＝100人。次はあなたの1マスを。\n${tagText()}`;
 }
-async function doShare(text){
+/* 投稿先ごとのURLを組み立てる。
+   X        … 本文を渡せる（画像はURL展開時のOGPカードが担当）
+   LINE     … URL必須。本文も一緒に送れる
+   Facebook … URLのみ受け取り、文言は共有先のOGPから拾われる
+   そのため公開URLが未設定のうちは LINE / Facebook は成立しない。 */
+function netUrl(net, text){
   const url = shareUrl();
-  if(navigator.share){
-    try{ await navigator.share({ text, url: url || undefined }); return; }
-    catch(err){ if(err && err.name === "AbortError") return; }
+  if(net === "x"){
+    const q = new URLSearchParams({ text });
+    if(url) q.set("url", url);
+    return "https://x.com/intent/post?" + q.toString();
   }
-  /* Web Share が無い環境（主にPC）は X の投稿画面を開く。
-     X は URL パラメータで画像を添付できないので、画像はOGPカードが担当する。 */
-  const q = new URLSearchParams({ text });
-  if(url) q.set("url", url);
-  window.open("https://x.com/intent/post?" + q.toString(), "_blank", "noopener,width=600,height=540");
+  if(net === "line"){
+    return url ? "https://social-plugins.line.me/lineit/share?url=" + encodeURIComponent(url)
+                 + "&text=" + encodeURIComponent(text) : "";
+  }
+  if(net === "facebook"){
+    return url ? "https://www.facebook.com/sharer/sharer.php?u=" + encodeURIComponent(url) : "";
+  }
+  return "";
 }
-function flash(msg){
-  const el = document.getElementById("copied");
+function flash(bar, msg){
+  const el = bar && bar.querySelector(".copied");
+  if(!el) return;
   el.textContent = msg;
   el.classList.remove("sr-only");
-  setTimeout(()=>el.classList.add("sr-only"), 2600);
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>el.classList.add("sr-only"), 2800);
+}
+function openShare(bar, net, text){
+  const href = netUrl(net, text);
+  if(!href){ flash(bar, "公開URLを設定すると使えます"); return; }
+  /* noopener を feature に入れると window.open は必ず null を返す仕様のため、
+     ここでは付けずに開いてから opener を切る。
+     戻り値が null のときは本当にポップアップが塞がれているので、同じタブで開く。 */
+  const w = window.open(href, "_blank", "width=600,height=620");
+  if(w){ try{ w.opener = null; }catch(e){} w.focus(); }
+  else location.href = href;
+}
+/* OSの共有シート。スマホでは使えるが、PCのブラウザには無いことが多い */
+async function osShare(bar, text){
+  try{ await navigator.share({ text, url: shareUrl() || undefined }); }
+  catch(err){ if(!(err && err.name === "AbortError")) flash(bar, "共有できませんでした"); }
+}
+async function copyText(bar, text){
+  try{
+    await navigator.clipboard.writeText(text);
+    flash(bar, "コピーしました"); return;
+  }catch(e){ /* 非セキュアな環境では下の方法へ退避 */ }
+  try{
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.setAttribute("readonly","");
+    ta.style.cssText = "position:fixed;top:-1000px;opacity:0";
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    flash(bar, ok ? "コピーしました" : "コピーできませんでした");
+  }catch(e){ flash(bar, "コピーできませんでした"); }
+}
+
+const NETS = [
+  { id:"x",        label:"Xに投稿",    cls:"sns-x"    },
+  { id:"line",     label:"LINEで送る", cls:"sns-line" },
+  { id:"facebook", label:"Facebook",   cls:"sns-fb"   }
+];
+function buildShareBar(bar){
+  const hasUrl = !!shareUrl();
+  let html = NETS.map(n=>{
+    const off = (n.id !== "x") && !hasUrl;
+    return `<button type="button" class="sns ${n.cls}${off ? " off" : ""}" data-net="${n.id}"`
+         + (off ? ` title="公開URLを設定すると使えます"` : "")
+         + `>${n.label}</button>`;
+  }).join("");
+  html += `<button type="button" class="sns sns-copy" data-net="copy">文章をコピー</button>`;
+  if(navigator.share){
+    html += `<button type="button" class="sns sns-more" data-net="os">他のアプリで共有</button>`;
+  }
+  html += `<span class="copied sr-only" role="status" aria-live="polite"></span>`;
+  bar.innerHTML = html;
 }
 function bindShare(){
-  document.getElementById("shareNow").addEventListener("click", ()=>doShare(textNow()));
-  document.getElementById("shareMine").addEventListener("click", ()=>doShare(textMine()));
-  document.getElementById("copyMine").addEventListener("click", async ()=>{
-    const text = textMine() + (shareUrl() ? "\n" + shareUrl() : "");
-    try{ await navigator.clipboard.writeText(text); flash("コピーしました"); }
-    catch(e){ flash("コピーできませんでした"); }
+  document.querySelectorAll("[data-share]").forEach(bar=>{
+    buildShareBar(bar);
+    bar.addEventListener("click", e=>{
+      const b = e.target.closest("button.sns"); if(!b) return;
+      const text = bar.dataset.share === "mine" ? textMine() : textNow();
+      const net = b.dataset.net;
+      if(net === "copy")    copyText(bar, text + (shareUrl() ? "\n" + shareUrl() : ""));
+      else if(net === "os") osShare(bar, text);
+      else                  openShare(bar, net, text);
+    });
   });
 }
 
