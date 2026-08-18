@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>その1人が、勝ち点を動かす。｜アスルクラロ沼津 2026 SEASON</title>
+<title>GO！ALL！GOAL！プロジェクト｜アスルクラロ沼津 2026 SEASON</title>
 <meta name="description" content="アスルクラロ沼津 2026シーズン。ホームゲームの来場者数と勝ち点、そして優勝までの距離をつないで見られる公式ページ。">
 
 <!-- ▼ SNS シェア時のカード（OGP）
@@ -14,8 +14,8 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="アスルクラロ沼津">
 <meta property="og:locale" content="ja_JP">
-<meta property="og:title" content="その1人が、勝ち点を動かす。｜アスルクラロ沼津 2026 SEASON">
-<meta property="og:description" content="来場者数と、ホームで積んだ勝ち点と、優勝までの距離。あと何人来てくれたら届くのかが分かります。">
+<meta property="og:title" content="GO！ALL！GOAL！プロジェクト｜アスルクラロ沼津 2026 SEASON">
+<meta property="og:description" content="その1人が、勝ち点を動かす。来場者数とホームの勝ち点、優勝までの距離。あと何人来てくれたら届くのかが分かります。">
 <meta property="og:url" content="https://REPLACE-WITH-YOUR-DOMAIN/attendance/">
 <meta property="og:image" content="https://REPLACE-WITH-YOUR-DOMAIN/attendance/assets/og.png">
 <meta property="og:image:width" content="1200">
@@ -111,25 +111,35 @@ body{
   display:flex;align-items:center;gap:16px;flex-wrap:wrap;
 }
 .lockup{display:flex;align-items:center;gap:13px;text-decoration:none;color:inherit}
-.lockup-txt{display:flex;flex-direction:column;gap:5px}
-.lockup .wordmark{height:19px}
-.lockup-sub{
-  font-family:"Outfit",sans-serif;font-weight:700;font-size:10px;letter-spacing:.2em;
-  color:var(--navy-2);opacity:.72;
-}
+.lockup .wordmark{height:20px}
 
 /* ---------- header ---------- */
 .masthead{padding:34px 0 10px}
-.eyebrow{
-  font-family:"Outfit",sans-serif;font-weight:700;font-size:12px;letter-spacing:.22em;
-  color:var(--cyan);text-transform:uppercase;
+/* プロジェクト名。合言葉として目立たせる */
+.projbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.projmark{
+  display:inline-block;padding:8px 18px;border-radius:999px;
+  background:linear-gradient(100deg,var(--cyan) 0%,var(--navy-2) 55%,var(--navy) 100%);
+  color:#fff;font-weight:900;font-size:clamp(14px,2.3vw,19px);letter-spacing:.02em;
+  box-shadow:0 10px 24px -14px rgba(0,47,108,.85);
 }
-.eyebrow span{color:var(--navy-2);opacity:.65}
+.projseason{
+  font-family:"Outfit",sans-serif;font-weight:700;font-size:12px;letter-spacing:.22em;
+  color:var(--navy-2);opacity:.7;
+}
 h1{
   font-weight:900;font-size:clamp(30px,5.6vw,52px);line-height:1.28;
   color:var(--navy);margin-top:10px;letter-spacing:.01em;
 }
-.lead{margin-top:14px;max-width:44em;font-size:15px;color:#3A5876}
+/* コール＆レスポンスのように、1行ずつ読ませる */
+.lead{margin-top:18px;max-width:46em;font-size:15.5px;color:#3A5876}
+.lead span{display:block;line-height:1.8}
+.lead b{color:var(--navy);font-weight:900}
+.lead .lead-hit{
+  margin-top:14px;font-size:clamp(17px,2.4vw,21px);font-weight:900;color:var(--navy);
+  line-height:1.6;border-left:4px solid var(--cyan);padding-left:14px;
+}
+.lead .lead-hit + span{margin-top:12px}
 
 /* ---------- hero board ---------- */
 .board{
@@ -162,6 +172,7 @@ h1{
 .counter{
   display:flex;justify-content:center;align-items:flex-end;gap:6px;
   margin:20px 0 6px;position:relative;z-index:2;
+  perspective:760px;perspective-origin:50% 50%;
 }
 .digit{
   width:var(--dw);height:var(--dh);border-radius:12px;overflow:hidden;position:relative;
@@ -187,12 +198,12 @@ h1{
 .unit{
   font-weight:900;font-size:26px;color:#fff;align-self:flex-end;padding-bottom:12px;margin-left:6px;
 }
-@keyframes flap{
-  0%{transform:rotateX(0deg)}
-  45%{transform:rotateX(-16deg)}
-  100%{transform:rotateX(0deg)}
+/* めくれの影。パタッと落ちる瞬間だけ上半分が暗くなる */
+.digit .shade{
+  position:absolute;left:0;right:0;top:0;height:50%;z-index:2;
+  background:linear-gradient(180deg,rgba(0,0,0,.6) 0%,rgba(0,0,0,.05) 100%);
+  opacity:0;pointer-events:none;
 }
-.digit.flip{animation:flap .26s ease-out}
 
 .board-sub{text-align:center;position:relative;z-index:2;font-size:14px;color:#BFE3F7}
 .board-sub b{color:#fff;font-weight:900}
@@ -443,6 +454,20 @@ h2{font-weight:900;font-size:22px;color:var(--navy)}
 .tip b{font-family:"Outfit",sans-serif;font-weight:800;font-size:14px}
 .tip i{font-style:normal;color:var(--cyan-lt)}
 
+/* 対戦相手のロゴ／頭文字バッジ */
+.opp{
+  width:28px;height:28px;border-radius:50%;display:inline-block;
+  object-fit:contain;background:#fff;border:1px solid var(--line);
+  vertical-align:-9px;margin-right:9px;flex:none;
+}
+.opp-fb{
+  display:inline-flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:13px;color:var(--navy-2);background:var(--sky);
+}
+.opp-s{width:22px;height:22px;font-size:11px;vertical-align:-6px;margin-right:7px}
+.tip .opp{background:#fff;border-color:rgba(255,255,255,.4)}
+.tip .opp-fb{color:var(--navy);background:#DCEEFA}
+
 /* 表：最多来場のしるし */
 .badge{
   display:inline-block;margin-left:7px;padding:2px 8px;border-radius:999px;
@@ -619,7 +644,6 @@ footer{
   .lockup{gap:10px}
   .lockup .emblem{height:44px}
   .lockup .wordmark{height:15px}
-  .lockup-sub{font-size:8.5px;letter-spacing:.14em}
 }
 @media(prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important}
@@ -635,10 +659,7 @@ footer{
   <div class="clubbar-in">
     <a class="lockup" href="#" aria-label="アスルクラロ沼津 オフィシャルサイト">
       <svg class="emblem" role="img" aria-label="アスルクラロ沼津 エンブレム"><use href="#ac-emblem"/></svg>
-      <span class="lockup-txt">
-        <svg class="wordmark" role="img" aria-label="azul claro"><use href="#ac-wordmark"/></svg>
-        <span class="lockup-sub">NUMAZU ／ 沼津</span>
-      </span>
+      <svg class="wordmark" role="img" aria-label="azul claro"><use href="#ac-wordmark"/></svg>
     </a>
   </div>
 </div>
@@ -646,9 +667,20 @@ footer{
 <div class="wrap">
 
   <header class="masthead">
-    <div class="eyebrow">AZUL CLARO NUMAZU <span>／ 2026 SEASON</span></div>
+    <div class="projbar">
+      <span class="projmark" id="projMark"></span>
+      <span class="projseason" id="projSeason"></span>
+    </div>
     <h1>その1人が、<br>勝ち点を動かす。</h1>
-    <p class="lead">ホームゲームに来てくれた人の数、そこで積んだ勝ち点、そして優勝までの距離。3つの数字はつながっています。あと何人来てくれたら届くのか、このページで確かめられます。</p>
+    <p class="lead">
+      <span>スタンドの1人は、ただの1人じゃない。</span>
+      <span>声が届けば、足が伸びる。</span>
+      <span>足が伸びれば、ゴールが生まれる。</span>
+      <span>ゴールが生まれれば、勝ち点が増える。</span>
+      <span>その勝ち点の先に、<b>優勝</b>がある。</span>
+      <span class="lead-hit">だから、あなたが座るその席が、順位表を動かす。</span>
+      <span>ここから先は、ピッチの11人だけの戦いじゃない。<b>全員で、獲りにいく。</b></span>
+    </p>
   </header>
 
   <div class="board">
@@ -798,7 +830,7 @@ footer{
   <div class="foot-in">
     <div class="foot-lockup">
       <svg class="emblem" aria-hidden="true"><use href="#ac-emblem"/></svg>
-      <span class="foot-name">アスルクラロ沼津<small>AZUL CLARO NUMAZU ／ SINCE 1990</small></span>
+      <span class="foot-name">アスルクラロ沼津<small id="footProject">AZUL CLARO NUMAZU ／ SINCE 1990</small></span>
     </div>
     <div class="foot-note">
       数値はすべてダミーデータです。<br>
@@ -1036,7 +1068,12 @@ const SEASON = {
     { value: 50000, name: "夢の大台" }
   ],
 
-  /* ---- ホームゲーム。result は "W"=勝ち(3) / "D"=分け(1) / "L"=負け(0) ---- */
+  /* ---- ホームゲーム ----
+     result … "W"=勝ち(3点) / "D"=分け(1点) / "L"=負け(0点)
+     logo   … 対戦相手のロゴ。省略可。書くと表と次節カードにロゴが出る
+              例: logo: "assets/opponents/a-fc.svg"
+              書かない試合はチーム名の頭文字バッジで表示されます
+     これから開催する試合は attendance: null, result: null にしておくと未開催扱い ---- */
   matches: [
     { round: 1,  date: "3/8",   vs: "A FC", attendance: 3412, result: "W" },
     { round: 3,  date: "3/22",  vs: "B FC", attendance: 2688, result: "D" },
@@ -1063,6 +1100,13 @@ const LINKS = {
   official: ""    /* ← クラブ公式サイト（左上ロゴのリンク先） */
 };
 
+/* ---- プロジェクト ---- */
+const PROJECT = {
+  name:   "GO！ALL！GOAL！プロジェクト",
+  short:  "GO！ALL！GOAL！",
+  season: "2026 SEASON"
+};
+
 /* ---- シェア設定 ---- */
 const SHARE = {
   /* 公開URL。空ならページ自身のURLを使います（file:// では空扱い） */
@@ -1079,7 +1123,22 @@ const DEMO_PRESETS = [
   { label: "12試合終了（昇格ライン突破）", played: 12 },
   { label: "15試合終了（4.5万達成）",     played: 15 }
 ];
-let PLAYED = DEMO_PRESETS[0].played;
+
+/* 消化した試合数は attendance が入っているかで判断する。
+   これから開催する試合を  attendance: null, result: null  のままにしておけば、
+   数字を書き込んだぶんだけ自動で「消化済み」に切り替わる。
+   （いまは全部埋まっているのでデモ表示。1つでも null があれば実データ運用に切り替わる） */
+function playedCount(){
+  let n = 0;
+  for(const m of SEASON.matches){
+    if(m.attendance === null || m.attendance === undefined) break;
+    n++;
+  }
+  return n;
+}
+let PLAYED = SEASON.matches.some(m => m.attendance === null || m.attendance === undefined)
+  ? playedCount()
+  : DEMO_PRESETS[0].played;
 
 const PER_DOT = 100;
 const DOT_COUNT = 500;
@@ -1090,6 +1149,18 @@ const yen = n => n.toLocaleString("ja-JP");
 /* ---------- derived ---------- */
 const PT = { W: 3, D: 1, L: 0 };
 const RES_COLOR = { W: "#00A0E9", D: "#93A9BC", L: "#C6D3DE" };
+
+/* 対戦相手のマーク。matches に logo（画像パス）を書けばロゴを出し、
+   無ければ頭文字のバッジで代用する。全チーム分そろっていなくても崩れない。 */
+function oppMark(m, small){
+  const cls = "opp" + (small ? " opp-s" : "");
+  if(m.logo){
+    return `<img class="${cls}" src="${m.logo}" alt=""`
+         + ` onerror="this.replaceWith(Object.assign(document.createElement('span'),`
+         + `{className:'${cls} opp-fb',textContent:'${(m.vs||'?').trim().charAt(0)}'}))">`;
+  }
+  return `<span class="${cls} opp-fb" aria-hidden="true">${(m.vs||"?").trim().charAt(0)}</span>`;
+}
 const pt = m => PT[m.result] ?? 0;
 
 function state(){
@@ -1176,11 +1247,11 @@ function projectPoints(att){
 /* ---------- flap counter ---------- */
 const counterEl = document.getElementById("counter");
 const DIGITS = 5;
-let reels = [], digitCards = [], itemH = 0;
+let reels = [], digitCards = [];
 
 function buildCounter(){
   counterEl.innerHTML = "";
-  reels = []; digitCards = [];
+  reels = []; digitCards = []; shownDigits = [];
   for(let i=0;i<DIGITS;i++){
     const card = document.createElement("div");
     card.className = "digit";
@@ -1193,7 +1264,10 @@ function buildCounter(){
     }
     const seam = document.createElement("span");
     seam.className = "seam";
-    card.appendChild(reel); card.appendChild(seam);
+    const shade = document.createElement("span");
+    shade.className = "shade";
+    card.appendChild(reel); card.appendChild(seam); card.appendChild(shade);
+    card.__shade = shade;
     counterEl.appendChild(card);
     reels.push(reel); digitCards.push(card);
     if(i === 1){
@@ -1205,42 +1279,52 @@ function buildCounter(){
   const u = document.createElement("span");
   u.className = "unit"; u.textContent = "人";
   counterEl.appendChild(u);
-  itemH = digitCards[0].getBoundingClientRect().height || 88;
 }
 
-/* 数字を「保持してからパタッと落ちる」動きにする */
-function snap(x){
-  const i = Math.floor(x);
-  let f = x - i;
-  const hold = 0.74;
-  f = f < hold ? 0 : (f - hold) / (1 - hold);
-  return i + f;
+/* 1枚めくる。上半分に影を落としながら、板が起き上がってくる。
+   桁が変わるたびに呼ばれるので、連続すると「パタパタパタ」と鳴っているように見える。 */
+function flapCard(card, delay){
+  if(reduceMotion) return;
+  if(card.__a) card.__a.cancel();
+  const opt = { duration: 190, delay: delay || 0, easing: "cubic-bezier(.22,.95,.3,1)" };
+  card.__a = card.animate([
+    { transform: "rotateX(-62deg)" },
+    { transform: "rotateX(9deg)", offset: .68 },
+    { transform: "rotateX(-2deg)", offset: .86 },
+    { transform: "rotateX(0deg)" }
+  ], opt);
+  if(card.__s) card.__s.cancel();
+  card.__s = card.__shade.animate([
+    { opacity: 1 }, { opacity: .5, offset: .4 }, { opacity: 0 }
+  ], opt);
 }
-/* exact = true のときは各桁をぴったり整数位置に止める。
-   snap() は「保持してからパタッと落ちる」演出用なので、動かし終わったあとに
-   そのまま使うと上位桁が次の数字へ寄って見えてしまう（29,400 が 39,400 に見える）。
-   止め絵は必ず exact で描画すること。 */
-function renderCounter(v, exact){
+
+/* 桁は常に整数位置に置く。動いている途中でも中途半端な位置で止まらないので、
+   表示された数字は必ず実数と一致する。動きはめくれ（flapCard）が受け持つ。 */
+let shownDigits = [];
+function renderCounter(v, announce){
   const n = Math.round(v);
   for(let i=0;i<DIGITS;i++){
     const exp = Math.pow(10, DIGITS - 1 - i);
-    const pos = exact ? (Math.floor(n / exp) % 10) : snap((v / exp) % 10);
-    reels[i].style.transform = `translateY(${-pos * itemH}px)`;
+    const d = Math.floor(n / exp) % 10;
+    if(shownDigits[i] !== d){
+      shownDigits[i] = d;
+      reels[i].style.transform = `translateY(calc(${-d} * var(--dh)))`;
+      flapCard(digitCards[i]);
+    }
     digitCards[i].classList.toggle("lead0", n < exp && i < DIGITS - 1);
   }
   /* 読み上げは止まったときだけ。毎フレーム更新すると読み上げが渋滞する。 */
-  if(exact){
+  if(announce){
     const txt = `累計来場者数 ${yen(n)}人`;
     counterEl.setAttribute("aria-label", txt);
     const live = document.getElementById("counterLive");
     if(live) live.textContent = txt;
   }
 }
+/* 止まったあと、左から順にもう一度パタッとやって着地を見せる */
 function flipSettle(){
-  digitCards.forEach((c,i)=>{
-    c.classList.remove("flip");
-    setTimeout(()=>c.classList.add("flip"), i*45);
-  });
+  digitCards.forEach((c,i)=> flapCard(c, i * 55));
 }
 
 /* ---------- dot grid ---------- */
@@ -1351,7 +1435,7 @@ function showTip(i){
   if(i >= PLAYED){
     tipEl.innerHTML = `第${m.round}節 ${m.date}<br><i>vs ${m.vs}／未開催</i>`;
   } else {
-    tipEl.innerHTML = `第${m.round}節 ${m.date}　vs ${m.vs}<br>`
+    tipEl.innerHTML = `第${m.round}節 ${m.date}　${oppMark(m, true)}vs ${m.vs}<br>`
       + `この試合 <b>${yen(m.attendance)}</b>人<br><i>累計 ${yen(s.cum[i])}人</i>`;
   }
   const wrap = tipEl.parentElement.getBoundingClientRect();
@@ -1501,7 +1585,7 @@ function renderNextGame(){
       : `<span class="btn btn-todo" aria-disabled="true">${label}（URL未設定）</span>`;
   }).join("");
   el.innerHTML = `<div class="ng-when"><em>NEXT HOME GAME</em>
-      <b>第${next.round}節 ${next.date}　vs ${next.vs}</b>
+      <b>${oppMark(next)}第${next.round}節 ${next.date}　vs ${next.vs}</b>
       <span>あなたが行くと、このマスがもう1つ埋まります</span></div>
     <div class="ng-act">${act}</div>`;
 }
@@ -1579,7 +1663,7 @@ function textNow(){
   else if(s.homeLeft <= 0)          body = `${L.goalName}まであと${s.toGoal}点。`;
   else if(need)                     body = `${L.goalName}まであと${s.toGoal}点。残りホーム${s.homeLeft}試合に平均${yen(need)}人入れば、届く計算です。`;
   else                              body = `${L.goalName}まであと${s.toGoal}点。ここから全部とりにいきます。`;
-  return `${head}\n${body}\nあなたの1人が、勝ち点を動かす。\n${tagText()}`;
+  return `${head}\n${body}\nその1人が、勝ち点を動かす。#${PROJECT.short}\n${tagText()}`;
 }
 function textMine(){
   const s = state();
@@ -1596,7 +1680,7 @@ function textMine(){
   return `私も、アスルクラロ沼津のホームゲームに行きました。\n${names}${more}。\n`
     + `その日スタジアムにいたのは合計 ${yen(people)}人。${wonTxt}\n`
     + `ホーム累計 ${yen(s.total)}人、勝ち点 ${s.points}点。\n`
-    + `あなたの1人が、勝ち点を動かす。\n${tagText()}`;
+    + `その1人が、勝ち点を動かす。#${PROJECT.short}\n${tagText()}`;
 }
 /* 投稿先ごとのURLを組み立てる。
    X        … 本文を渡せる（画像はURL展開時のOGPカードが担当）
@@ -1855,7 +1939,7 @@ function renderTable(){
     const RES = { W:["勝","w"], D:["分","d"], L:["敗","l"] };
     const r = RES[m.result] || ["—",""];
     return `<tr class="${cls}">
-      <td>第${m.round}節</td><td>${m.date}</td><td>vs ${m.vs}</td>
+      <td>第${m.round}節</td><td>${m.date}</td><td>${oppMark(m, true)}vs ${m.vs}</td>
       <td>${done ? `<span class="res ${r[1]}">${r[0]}</span>` : "—"}</td>
       <td class="n">${done ? yen(m.attendance) : "—"}${
         done && m.attendance === best ? '<span class="badge">最多</span>' : ""}</td>
@@ -1895,11 +1979,19 @@ function whenVisible(el, play, snap){
   observers.push(io);
 }
 
+let lastFlapAt = 0;
 function playBoard(){
   const target = state().total;
   lastHitCount = -1;
+  lastFlapAt = 0;
   cancels.push(tween(3200,
-    e => { const v = 1 + (target - 1) * e; renderCounter(v, false); renderChips(v); },
+    e => {
+      const v = 1 + (target - 1) * e;
+      /* めくれが1枚ずつ見えるよう、カウンターだけ更新間隔を落とす */
+      const now = performance.now();
+      if(now - lastFlapAt >= 55){ renderCounter(v); lastFlapAt = now; }
+      renderChips(v);
+    },
     () => { renderCounter(target, true); renderChips(target); flipSettle(); }));
 }
 function resetDots(){
@@ -1943,6 +2035,14 @@ renderAll();
 bindMine();
 bindShare();
 
+/* プロジェクト名を各所へ */
+(function(){
+  document.getElementById("projMark").textContent   = PROJECT.name;
+  document.getElementById("projSeason").textContent = `AZUL CLARO NUMAZU ／ ${PROJECT.season}`;
+  const fp = document.getElementById("footProject");
+  if(fp) fp.textContent = PROJECT.name;
+})();
+
 /* 左上ロゴのリンク先 */
 (function(){
   const a = document.querySelector(".lockup");
@@ -1951,10 +2051,8 @@ bindShare();
 })();
 
 document.getElementById("replay").addEventListener("click", play);
-window.addEventListener("resize", ()=>{
-  itemH = digitCards[0].getBoundingClientRect().height || itemH;
-  renderCounter(state().total, true);
-});
+/* 桁の位置は CSS 変数 --dh を基準にしているので、
+   画面幅が変わって --dh が変わっても自動で追従する。付け直しは不要。 */
 
 /* demo switcher */
 const demoBtns = document.getElementById("demoBtns");
