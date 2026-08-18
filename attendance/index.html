@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>みんなで積み上げる、来場者数。｜アスルクラロ沼津 2026 SEASON</title>
-<meta name="description" content="アスルクラロ沼津 2026シーズン、ホームゲーム累計来場者数を積み上げていく公式カウンター。1マス＝100人。">
+<title>その1人が、勝ち点を動かす。｜アスルクラロ沼津 2026 SEASON</title>
+<meta name="description" content="アスルクラロ沼津 2026シーズン。ホームゲームの来場者数と勝ち点、そして優勝までの距離をつないで見られる公式ページ。">
 
 <!-- ▼ SNS シェア時のカード（OGP）
      og:image と og:url は「絶対URL」でないと X／Facebook が画像を取得できません。
@@ -14,13 +14,13 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="アスルクラロ沼津">
 <meta property="og:locale" content="ja_JP">
-<meta property="og:title" content="みんなで積み上げる、来場者数。｜アスルクラロ沼津 2026 SEASON">
-<meta property="og:description" content="ホームゲームに来てくれた一人ひとりが、1マス＝100人のマスを埋めていきます。3万人はJリーグ昇格の目安ライン。">
+<meta property="og:title" content="その1人が、勝ち点を動かす。｜アスルクラロ沼津 2026 SEASON">
+<meta property="og:description" content="来場者数と、ホームで積んだ勝ち点と、優勝までの距離。あと何人来てくれたら届くのかが分かります。">
 <meta property="og:url" content="https://REPLACE-WITH-YOUR-DOMAIN/attendance/">
 <meta property="og:image" content="https://REPLACE-WITH-YOUR-DOMAIN/attendance/assets/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="アスルクラロ沼津 みんなで積み上げる、来場者数。">
+<meta property="og:image:alt" content="アスルクラロ沼津 その1人が、勝ち点を動かす。">
 <meta name="twitter:card" content="summary_large_image">
 
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
@@ -238,6 +238,123 @@ h1{
 .btn-todo{background:#F1F5F8;color:#7C8A96;border:1px dashed #B9CFE0;cursor:not-allowed}
 .btn:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
 
+/* ---------- 来場 → 勝ち点 → 優勝 の連動ストリップ（盤面の中）---------- */
+.chain{
+  display:flex;align-items:stretch;justify-content:center;gap:0;flex-wrap:wrap;
+  margin-top:22px;position:relative;z-index:2;
+}
+.chain-i{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:11px 20px;border-radius:16px;background:rgba(255,255,255,.07);
+  border:1px solid rgba(127,214,247,.26);min-width:126px;
+}
+.chain-i span{font-size:11.5px;color:#BFE3F7;letter-spacing:.04em}
+.chain-i b{
+  font-family:"Outfit",sans-serif;font-weight:800;font-size:26px;color:#fff;line-height:1.2;
+  white-space:nowrap;
+}
+.chain-i b small{font-size:13px;font-weight:700;margin-left:2px}
+.chain-i.is-goal{background:rgba(255,176,58,.16);border-color:var(--gold)}
+.chain-i.is-goal span{color:#FFE7BE}
+.chain-i.is-goal b{color:var(--gold)}
+.chain-a{
+  align-self:center;width:26px;height:2px;background:rgba(127,214,247,.45);position:relative;flex:none;
+}
+.chain-a::after{
+  content:"";position:absolute;right:0;top:50%;transform:translateY(-50%);
+  border:5px solid transparent;border-left-color:rgba(127,214,247,.7);
+}
+
+/* ---------- 来場者数帯ごとの平均勝ち点 ---------- */
+.bands{display:flex;flex-direction:column;gap:16px}
+.band-h{display:flex;align-items:baseline;gap:10px;margin-bottom:7px}
+.band-h b{font-size:15px;font-weight:900;color:var(--navy)}
+.band-h span{font-size:12px;color:var(--muted)}
+.band-bar{
+  position:relative;height:38px;border-radius:10px;background:var(--sky);overflow:hidden;
+}
+.band-bar > i{
+  display:block;height:100%;border-radius:10px;
+  background:linear-gradient(90deg,#7FD6F7 0%,var(--cyan) 100%);
+  transition:width .8s cubic-bezier(.22,1,.36,1);
+}
+.band.hi .band-bar > i{background:linear-gradient(90deg,var(--cyan) 0%,var(--navy-2) 100%)}
+.band-bar em{
+  position:absolute;left:14px;top:50%;transform:translateY(-50%);
+  font-style:normal;font-family:"Outfit",sans-serif;font-weight:800;font-size:17px;color:#fff;
+  text-shadow:0 1px 4px rgba(0,20,50,.5);white-space:nowrap;
+}
+.band-bar em i{display:inline;font-family:"Zen Maru Gothic",sans-serif;font-size:11.5px;font-weight:700;margin-left:4px;background:none;height:auto}
+.bands-note{
+  margin-top:18px;padding:15px 18px;border-radius:16px;background:var(--sky);
+  border:1px solid var(--cyan-pale);font-size:14px;color:var(--navy);line-height:1.75;
+}
+.bands-note b{color:var(--cyan);font-family:"Outfit",sans-serif;font-weight:800;font-size:17px}
+.caveat{font-size:11.5px;color:var(--muted);margin-top:12px;line-height:1.7}
+
+/* ---------- 優勝シミュレーター ---------- */
+.sim{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:center}
+.sim-l label{display:block;font-size:13px;font-weight:700;color:var(--muted-2);margin-bottom:6px}
+.sim-out{
+  font-family:"Outfit",sans-serif;font-weight:800;font-size:40px;color:var(--navy);line-height:1.1;
+}
+.sim-out small{font-family:"Zen Maru Gothic",sans-serif;font-size:15px;margin-left:3px}
+.sim-range{width:100%;margin:16px 0 4px;-webkit-appearance:none;appearance:none;background:transparent}
+.sim-range::-webkit-slider-runnable-track{
+  height:10px;border-radius:999px;
+  background:linear-gradient(90deg,var(--cyan-pale),var(--cyan));
+}
+.sim-range::-moz-range-track{
+  height:10px;border-radius:999px;
+  background:linear-gradient(90deg,var(--cyan-pale),var(--cyan));
+}
+.sim-range::-webkit-slider-thumb{
+  -webkit-appearance:none;appearance:none;width:28px;height:28px;border-radius:50%;
+  background:#fff;border:4px solid var(--navy);margin-top:-9px;cursor:pointer;
+  box-shadow:0 3px 10px -3px rgba(0,47,108,.6);
+}
+.sim-range::-moz-range-thumb{
+  width:28px;height:28px;border-radius:50%;background:#fff;border:4px solid var(--navy);
+  cursor:pointer;box-shadow:0 3px 10px -3px rgba(0,47,108,.6);
+}
+.sim-range:focus-visible{outline:3px solid var(--cyan);outline-offset:6px;border-radius:999px}
+.sim-scale{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted)}
+.sim-r{
+  background:linear-gradient(158deg,#0F4C81 0%,#002F6C 100%);border-radius:22px;
+  padding:22px 22px 20px;color:#fff;
+}
+.sim-r h4{font-size:12.5px;font-weight:700;color:#BFE3F7;letter-spacing:.04em}
+.sim-pts{font-family:"Outfit",sans-serif;font-weight:800;font-size:46px;line-height:1.1;margin-top:4px}
+.sim-pts small{font-family:"Zen Maru Gothic",sans-serif;font-size:15px;margin-left:4px;font-weight:700}
+.sim-track{
+  position:relative;height:12px;border-radius:999px;background:rgba(255,255,255,.14);
+  margin:18px 0 10px;overflow:visible;
+}
+.sim-track i{
+  display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--cyan-lt),var(--cyan));
+  transition:width .45s cubic-bezier(.22,1,.36,1);
+}
+.sim-track .goal{
+  position:absolute;top:-5px;bottom:-5px;width:3px;background:var(--gold);border-radius:2px;
+}
+.sim-track .goal::after{
+  content:attr(data-l);position:absolute;top:-21px;left:50%;transform:translateX(-50%);
+  font-family:"Outfit",sans-serif;font-size:10.5px;font-weight:700;color:var(--gold);white-space:nowrap;
+}
+.sim-msg{font-size:14px;line-height:1.7;margin-top:14px;color:#DDEFFA}
+.sim-msg b{color:var(--gold);font-weight:900}
+.sim-msg.reach b{color:#8FE9B0}
+.sim-done{font-size:14.5px;line-height:1.8;color:#DDEFFA}
+
+@media(max-width:860px){
+  .sim{grid-template-columns:1fr;gap:20px}
+  .chain{gap:8px}
+  .chain-a{display:none}
+  .chain-i{flex:1;min-width:0;padding:10px 12px}
+  .chain-i b{font-size:17px}
+  .chain-i span{font-size:9.5px;line-height:1.45}
+}
+
 /* ---------- sections ---------- */
 section{padding:56px 0 0}
 .sec-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
@@ -394,7 +511,14 @@ h2{font-weight:900;font-size:22px;color:var(--navy)}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{padding:11px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
 th{font-size:11.5px;color:var(--muted-3);font-weight:700;letter-spacing:.06em}
-th:nth-child(-n+3),td:nth-child(-n+3){text-align:left}
+th:nth-child(-n+4),td:nth-child(-n+4){text-align:left}
+.res{
+  display:inline-block;min-width:24px;text-align:center;padding:2px 7px;border-radius:7px;
+  font-size:11.5px;font-weight:700;color:#fff;
+}
+.res.w{background:var(--cyan)}
+.res.d{background:#93A9BC}
+.res.l{background:#C6D3DE;color:#43596E}
 td.n{font-family:"Outfit",sans-serif;font-weight:700}
 tr.future td{color:var(--muted-4)}
 tr.best td.n{color:var(--cyan)}
@@ -523,8 +647,8 @@ footer{
 
   <header class="masthead">
     <div class="eyebrow">AZUL CLARO NUMAZU <span>／ 2026 SEASON</span></div>
-    <h1>みんなで積み上げる、<br>来場者数。</h1>
-    <p class="lead">ホームゲームに足を運んでくれた人の数を、シーズンを通して積み上げています。3万人はJリーグ昇格の目安ライン。ここをみんなで越えて、その先へ。</p>
+    <h1>その1人が、<br>勝ち点を動かす。</h1>
+    <p class="lead">ホームゲームに来てくれた人の数、そこで積んだ勝ち点、そして優勝までの距離。3つの数字はつながっています。あと何人来てくれたら届くのか、このページで確かめられます。</p>
   </header>
 
   <div class="board">
@@ -537,6 +661,8 @@ footer{
     <p class="sr-only" id="counterLive" role="status" aria-live="polite"></p>
     <div class="board-sub" id="boardSub">集計中…</div>
     <div class="chips" id="chips"></div>
+    <!-- 来場が勝ち点に、勝ち点が優勝につながることを1本の線で示す -->
+    <div class="chain" id="chain"></div>
   </div>
 
   <button class="replay" id="replay" type="button">↻ もう一度、1人から積み上げる</button>
@@ -548,6 +674,26 @@ footer{
 
   <!-- 次のホームゲームへの導線。シェアで人が来ても、行き先がないと止まってしまう。 -->
   <div class="nextgame" id="nextGame"></div>
+
+  <section>
+    <div class="sec-head">
+      <h2>来場が、勝ち点を動かす</h2>
+      <span class="sec-note">ホームゲームを来場者数で2つに分けた、1試合あたりの平均勝ち点</span>
+    </div>
+    <div class="card">
+      <div class="bands" id="bands"></div>
+      <p class="bands-note" id="bandsNote"></p>
+      <p class="caveat" id="bandsCaveat"></p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2 id="simTitle">優勝までのシミュレーション</h2>
+      <span class="sec-note">残りのホームゲームに、平均で何人来てくれるか動かしてみてください</span>
+    </div>
+    <div class="card sim" id="sim"></div>
+  </section>
 
   <section>
     <div class="sec-head">
@@ -585,9 +731,15 @@ footer{
   <section>
     <div class="sec-head">
       <h2>試合ごとの積み上がり</h2>
-      <span class="sec-note">濃い部分がその試合で増えた分です</span>
+      <span class="sec-note">濃い部分がその試合で増えた分。色は試合結果です</span>
     </div>
     <div class="card">
+      <div class="grid-legend">
+        <span><i style="background:#00A0E9"></i>勝ち</span>
+        <span><i style="background:#93A9BC"></i>引き分け</span>
+        <span><i style="background:#C6D3DE"></i>負け</span>
+        <span><i style="background:rgba(0,160,233,.26)"></i>前の試合までの累計</span>
+      </div>
       <div class="chartwrap">
         <svg class="chart" id="chart" viewBox="0 0 840 330" role="group" aria-label="試合ごとの累計来場者数グラフ"></svg>
         <div class="tip" id="tip" aria-hidden="true"></div>
@@ -626,7 +778,7 @@ footer{
       <div class="scroller">
         <table>
           <thead>
-            <tr><th>節</th><th>開催日</th><th>対戦相手</th><th>入場者数</th><th>累計</th></tr>
+            <tr><th>節</th><th>開催日</th><th>対戦相手</th><th>結果</th><th>入場者数</th><th>勝ち点</th><th>累計</th></tr>
           </thead>
           <tbody id="tbody"></tbody>
         </table>
@@ -868,27 +1020,39 @@ footer{
 <script>
 /* ===================== ここだけ書き換えれば OK ===================== */
 const SEASON = {
+  /* ---- 優勝までの状況。ホーム戦以外の分をここに入れる ---- */
+  league: {
+    goalName:      "優勝",   /* 目指すもの。「昇格」などに変えるとページ全体の表記が変わります */
+    goalPoints:    48,       /* 優勝ラインの想定勝ち点 */
+    awayPlayed:    10,       /* 消化したアウェイ戦数 */
+    awayPoints:    13,       /* アウェイで積んだ勝ち点 */
+    awayRemaining: 5         /* 残りのアウェイ戦数 */
+  },
+
+  /* ---- 来場者数の目標 ---- */
   goals: [
     { value: 30000, name: "昇格ライン" },
     { value: 45000, name: "みんなの目標" },
     { value: 50000, name: "夢の大台" }
   ],
+
+  /* ---- ホームゲーム。result は "W"=勝ち(3) / "D"=分け(1) / "L"=負け(0) ---- */
   matches: [
-    { round: 1,  date: "3/8",   vs: "A FC", attendance: 3412 },
-    { round: 3,  date: "3/22",  vs: "B FC", attendance: 2688 },
-    { round: 5,  date: "4/5",   vs: "C FC", attendance: 2955 },
-    { round: 7,  date: "4/19",  vs: "D FC", attendance: 3104 },
-    { round: 9,  date: "5/3",   vs: "E FC", attendance: 4022 },
-    { round: 11, date: "5/17",  vs: "F FC", attendance: 2571 },
-    { round: 13, date: "6/7",   vs: "G FC", attendance: 2834 },
-    { round: 15, date: "6/21",  vs: "H FC", attendance: 3266 },
-    { round: 17, date: "7/12",  vs: "I FC", attendance: 2489 },
-    { round: 19, date: "7/26",  vs: "J FC", attendance: 2059 },
-    { round: 21, date: "8/9",   vs: "K FC", attendance: 3180 },
-    { round: 23, date: "8/23",  vs: "L FC", attendance: 3051 },
-    { round: 25, date: "9/13",  vs: "M FC", attendance: 3402 },
-    { round: 27, date: "10/11", vs: "N FC", attendance: 3015 },
-    { round: 29, date: "11/15", vs: "O FC", attendance: 4180 }
+    { round: 1,  date: "3/8",   vs: "A FC", attendance: 3412, result: "W" },
+    { round: 3,  date: "3/22",  vs: "B FC", attendance: 2688, result: "D" },
+    { round: 5,  date: "4/5",   vs: "C FC", attendance: 2955, result: "D" },
+    { round: 7,  date: "4/19",  vs: "D FC", attendance: 3104, result: "D" },
+    { round: 9,  date: "5/3",   vs: "E FC", attendance: 4022, result: "W" },
+    { round: 11, date: "5/17",  vs: "F FC", attendance: 2571, result: "L" },
+    { round: 13, date: "6/7",   vs: "G FC", attendance: 2834, result: "D" },
+    { round: 15, date: "6/21",  vs: "H FC", attendance: 3266, result: "W" },
+    { round: 17, date: "7/12",  vs: "I FC", attendance: 2489, result: "D" },
+    { round: 19, date: "7/26",  vs: "J FC", attendance: 2059, result: "L" },
+    { round: 21, date: "8/9",   vs: "K FC", attendance: 3180, result: "W" },
+    { round: 23, date: "8/23",  vs: "L FC", attendance: 3051, result: "W" },
+    { round: 25, date: "9/13",  vs: "M FC", attendance: 3402, result: "W" },
+    { round: 27, date: "10/11", vs: "N FC", attendance: 3015, result: "D" },
+    { round: 29, date: "11/15", vs: "O FC", attendance: 4180, result: "W" }
   ]
 };
 
@@ -924,6 +1088,10 @@ const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").match
 const yen = n => n.toLocaleString("ja-JP");
 
 /* ---------- derived ---------- */
+const PT = { W: 3, D: 1, L: 0 };
+const RES_COLOR = { W: "#00A0E9", D: "#93A9BC", L: "#C6D3DE" };
+const pt = m => PT[m.result] ?? 0;
+
 function state(){
   const played = SEASON.matches.slice(0, PLAYED);
   const cum = [];
@@ -931,7 +1099,78 @@ function state(){
   SEASON.matches.forEach((m,i)=>{ if(i<PLAYED) t += m.attendance; cum.push(t); });
   const total = played.reduce((s,m)=>s+m.attendance,0);
   const avg = played.length ? Math.round(total/played.length) : 0;
-  return { played, total, avg, cum, remaining: SEASON.matches.length - PLAYED };
+
+  /* ---- 勝ち点 ---- */
+  const L = SEASON.league;
+  const homePoints = played.reduce((s,m)=>s+pt(m),0);
+  const points     = homePoints + L.awayPoints;
+  const homeLeft   = SEASON.matches.length - PLAYED;
+  const matchesLeft= homeLeft + L.awayRemaining;
+  const toGoal     = Math.max(0, L.goalPoints - points);
+  /* 残り全部勝っても届くか */
+  const maxPoints  = points + matchesLeft * 3;
+
+  return {
+    played, total, avg, cum,
+    remaining: homeLeft,
+    homePoints, points, homeLeft, matchesLeft, toGoal, maxPoints,
+    awayPpg: L.awayPlayed ? L.awayPoints / L.awayPlayed : 0,
+    homePpg: played.length ? homePoints / played.length : 0
+  };
+}
+
+/* ---------- 来場者数と勝ち点の関係 ----------
+   ここが「来場 → 勝ち点 → 優勝」をつなぐ計算。
+   ・split()  … 来場者数の中央値で2つに分け、それぞれの平均勝ち点を出す
+   ・fit()    … 来場者数から勝ち点を見積もる直線を最小二乗法で引く
+   実データで関係が見られない（傾きが0以下）場合もあるので、
+   そのときは平均値で代替し、断定的な文言は出さないようにしている。 */
+function split(){
+  const played = state().played;
+  if(played.length < 4) return null;
+  const atts = played.map(m=>m.attendance).slice().sort((a,b)=>a-b);
+  const mid  = atts.length % 2
+    ? atts[(atts.length-1)/2]
+    : Math.round((atts[atts.length/2 - 1] + atts[atts.length/2]) / 2);
+  const lo = played.filter(m=>m.attendance <  mid);
+  const hi = played.filter(m=>m.attendance >= mid);
+  if(!lo.length || !hi.length) return null;
+  const ppg = a => a.reduce((s,m)=>s+pt(m),0) / a.length;
+  return {
+    mid,
+    lo: { n: lo.length, ppg: ppg(lo) },
+    hi: { n: hi.length, ppg: ppg(hi) },
+    gap: ppg(hi) - ppg(lo)
+  };
+}
+function fit(){
+  const played = state().played;
+  if(played.length < 4) return null;
+  const n = played.length;
+  const xs = played.map(m=>m.attendance), ys = played.map(pt);
+  const mx = xs.reduce((a,b)=>a+b,0)/n, my = ys.reduce((a,b)=>a+b,0)/n;
+  let sxy = 0, sxx = 0;
+  for(let i=0;i<n;i++){ sxy += (xs[i]-mx)*(ys[i]-my); sxx += (xs[i]-mx)**2; }
+  if(sxx === 0) return null;
+  const a = sxy / sxx;
+  return { a, b: my - a*mx, positive: a > 0 };
+}
+/* 来場者数 att のときに見込める1試合あたりの勝ち点。
+   これまで実際にあった来場者数の範囲より外へは伸ばさない。
+   伸ばすと「◯人入れば全勝できる」に近い言い方になってしまい、根拠が無い。 */
+function ppgAt(att){
+  const f = fit(), s = state();
+  if(!f || !f.positive) return s.homePpg;           /* 関係が見えないときは平均で */
+  const atts = s.played.map(m=>m.attendance);
+  const x = Math.max(Math.min(...atts), Math.min(Math.max(...atts), att));
+  return Math.max(0, Math.min(3, f.a * x + f.b));
+}
+/* 残りホームの平均来場者数を att としたときの、シーズン最終勝ち点の目安 */
+function projectPoints(att){
+  const s = state();
+  const home = s.homeLeft * ppgAt(att);                       /* 残りホームの見込み */
+  const away = SEASON.league.awayRemaining * s.awayPpg;       /* アウェイは今のペース据え置き */
+  return Math.round(s.points + home + away);
 }
 
 /* ---------- flap counter ---------- */
@@ -1159,7 +1398,7 @@ function renderChart(v){
     const topH = Math.max(0, y(topStart) - y(shown));
     t.setAttribute("y", y(shown));
     t.setAttribute("height", topH);
-    t.setAttribute("fill", cur > 45000 ? "#FFB03A" : (cur > 30000 ? "#0F4C81" : "#00A0E9"));
+    t.setAttribute("fill", RES_COLOR[m.result] || "#00A0E9");
   });
 }
 
@@ -1215,22 +1454,29 @@ function renderCheer(){
   const next = SEASON.goals.find(g => s.total < g.value);
   const msgEl = document.getElementById("balloonMsg");
   const hit = SEASON.goals.filter(g => s.total >= g.value);
+  const L = SEASON.league;
+  const need = neededAtt();
   let msg;
-  if(!next){
-    msg = `やったーーー！ 目標ぜんぶ達成だよ！<br>スタジアムに来てくれた <b>${yen(s.total)}人</b> のみんな、ほんとうにありがとう！`;
-  } else if(s.remaining <= 0){
-    msg = `今シーズンは <b>${yen(s.total)}人</b>。${next.name}まであと ${yen(next.value - s.total)}人だったね。<br>来季こそ、みんなでいっしょに越えよう！`;
+  if(s.points >= L.goalPoints){
+    msg = `やったーーー！ 勝ち点 <b>${s.points}点</b>、${L.goalName}ラインに到達だよ！<br>`
+        + `スタジアムに来てくれた <b>${yen(s.total)}人</b> のみんな、ほんとうにありがとう！`;
+  } else if(s.homeLeft <= 0){
+    msg = `今シーズンのホームは終了。勝ち点 <b>${s.points}点</b>、${yen(s.total)}人が来てくれたよ。<br>`
+        + `${L.goalName}まではあと${s.toGoal}点。来季、また一緒に戦おう！`;
+  } else if(need){
+    msg = `いま勝ち点 <b>${s.points}点</b>。${L.goalName}まであと <b>${s.toGoal}点</b>だよ。<br>`
+        + `残りホーム${s.homeLeft}試合に <b>平均${yen(need)}人</b> 来てくれたら、届く計算！ 待ってるね⚽️`;
   } else {
-    const need = Math.ceil((next.value - s.total) / s.remaining);
-    msg = `いま <b>${yen(s.total)}人</b>！ ${next.name}まであと <b>${yen(next.value - s.total)}人</b>だよ。<br>
-           残り${s.remaining}試合、1試合あたり ${yen(need)}人 来てくれたら届く！ 待ってるね⚽️`;
+    msg = `いま勝ち点 <b>${s.points}点</b>。${L.goalName}まであと <b>${s.toGoal}点</b>。<br>`
+        + `ホームもアウェイも、ここから全部とりにいくよ。後押しお願い！`;
   }
   msgEl.innerHTML = msg;
 
   document.getElementById("cheerMeta").innerHTML = [
-    `${PLAYED} / ${SEASON.matches.length} 試合終了`,
+    `ホーム ${PLAYED} / ${SEASON.matches.length} 試合終了`,
     `平均 ${yen(s.avg)}人`,
-    hit.length ? `達成した目標 ${hit.length}／${SEASON.goals.length}` : `最初の目標まで あと ${yen(SEASON.goals[0].value - s.total)}人`
+    `ホームの勝ち点 ${s.homePoints}点`,
+    hit.length ? `達成した来場目標 ${hit.length}／${SEASON.goals.length}` : `最初の来場目標まで あと ${yen(SEASON.goals[0].value - s.total)}人`
   ].map(t=>`<span>${t}</span>`).join("");
 }
 
@@ -1325,14 +1571,15 @@ function shareUrl(){
   return location.protocol.startsWith("http") ? location.href.split("#")[0] : "";
 }
 function textNow(){
-  const s = state();
-  const next = SEASON.goals.find(g => s.total < g.value);
-  const head = `アスルクラロ沼津 2026、ホームゲーム累計来場者数は ${yen(s.total)}人。`;
-  const body = !next ? `目標はすべて達成しました。`
-    : (s.remaining > 0
-        ? `${next.name}まであと ${yen(next.value - s.total)}人、残り${s.remaining}試合。`
-        : `${next.name}まであと ${yen(next.value - s.total)}人でした。`);
-  return `${head}\n${body}\n1マス＝100人、みんなで積み上げよう。\n${tagText()}`;
+  const s = state(), L = SEASON.league;
+  const need = neededAtt();
+  const head = `アスルクラロ沼津 2026｜ホーム累計 ${yen(s.total)}人、勝ち点 ${s.points}点。`;
+  let body;
+  if(s.points >= L.goalPoints)      body = `${L.goalName}ラインに到達しました。`;
+  else if(s.homeLeft <= 0)          body = `${L.goalName}まであと${s.toGoal}点。`;
+  else if(need)                     body = `${L.goalName}まであと${s.toGoal}点。残りホーム${s.homeLeft}試合に平均${yen(need)}人入れば、届く計算です。`;
+  else                              body = `${L.goalName}まであと${s.toGoal}点。ここから全部とりにいきます。`;
+  return `${head}\n${body}\nあなたの1人が、勝ち点を動かす。\n${tagText()}`;
 }
 function textMine(){
   const s = state();
@@ -1344,10 +1591,12 @@ function textMine(){
     return `第${m.round}節 vs ${m.vs}`;
   }).join("、");
   const more = picked.length > 2 ? ` ほか計${picked.length}試合` : "";
+  const won = picked.filter(i=>SEASON.matches[i].result === "W").length;
+  const wonTxt = won ? `そのうち ${won}勝を、この目で見ました。` : ``;
   return `私も、アスルクラロ沼津のホームゲームに行きました。\n${names}${more}。\n`
-    + `その日スタジアムにいたのは合計 ${yen(people)}人。`
-    + `今シーズンの積み上げは ${yen(s.total)}人になりました。\n`
-    + `1マス＝100人。次はあなたの1マスを。\n${tagText()}`;
+    + `その日スタジアムにいたのは合計 ${yen(people)}人。${wonTxt}\n`
+    + `ホーム累計 ${yen(s.total)}人、勝ち点 ${s.points}点。\n`
+    + `あなたの1人が、勝ち点を動かす。\n${tagText()}`;
 }
 /* 投稿先ごとのURLを組み立てる。
    X        … 本文を渡せる（画像はURL展開時のOGPカードが担当）
@@ -1443,6 +1692,135 @@ function bindShare(){
   });
 }
 
+/* 優勝ラインに届く「残りホームの平均来場者数」。
+   届かない場合は null（＝いまの傾向のままでは、来場だけでは届かない）。 */
+const SIM_LO = 1500, SIM_HI = 5000;
+function neededAtt(){
+  const goal = SEASON.league.goalPoints, st = state();
+  if(st.homeLeft <= 0 || st.points >= goal) return null;
+  for(let a = SIM_LO; a <= SIM_HI; a += 50){
+    if(projectPoints(a) >= goal) return a;
+  }
+  return null;
+}
+
+/* ---------- 来場 → 勝ち点 → 優勝 の連動ストリップ ---------- */
+function renderChain(){
+  const st = state(), L = SEASON.league;
+  const reach = st.maxPoints >= L.goalPoints;
+  const goalCell = st.toGoal <= 0 ? `<b>達成</b>`
+    : (reach ? `<b>あと${st.toGoal}<small>点</small></b>` : `<b>—</b>`);
+  document.getElementById("chain").innerHTML =
+      `<div class="chain-i"><span>来場者数</span><b>${yen(st.total)}<small>人</small></b></div>`
+    + `<div class="chain-a"></div>`
+    + `<div class="chain-i"><span>ホームの勝ち点</span><b>${st.homePoints}<small>点</small></b></div>`
+    + `<div class="chain-a"></div>`
+    + `<div class="chain-i is-goal"><span>${L.goalName}まで</span>${goalCell}</div>`;
+}
+
+/* ---------- 来場者数帯ごとの平均勝ち点 ---------- */
+function renderBands(){
+  const el = document.getElementById("bands");
+  const note = document.getElementById("bandsNote");
+  const cav = document.getElementById("bandsCaveat");
+  const sp = split();
+  if(!sp){
+    el.innerHTML = "";
+    note.textContent = "ホームゲームが4試合を超えたところから、来場者数と勝ち点の関係を表示します。";
+    cav.textContent = "";
+    return;
+  }
+  const bar = (label, n, ppg, cls) => `
+    <div class="band ${cls}">
+      <div class="band-h"><b>${label}</b><span>${n}試合</span></div>
+      <div class="band-bar">
+        <i style="width:${Math.max(8, ppg / 3 * 100).toFixed(1)}%"></i>
+        <em>${ppg.toFixed(2)}<i>点／試合</i></em>
+      </div>
+    </div>`;
+  el.innerHTML = bar(`${yen(sp.mid)}人 未満`, sp.lo.n, sp.lo.ppg, "lo")
+               + bar(`${yen(sp.mid)}人 以上`, sp.hi.n, sp.hi.ppg, "hi");
+
+  if(sp.gap > 0.15){
+    note.innerHTML = `お客さんが多かった試合のほうが、1試合あたり <b>+${sp.gap.toFixed(2)}</b> 点。`
+      + `<br>満員に近いホームは、勝ち点をもう1つ運んでくる計算になります。`;
+  } else if(sp.gap < -0.15){
+    note.innerHTML = `いまのところ、来場者数が多い試合の勝ち点は <b>${sp.gap.toFixed(2)}</b> 点。`
+      + `<br>数字の上では、まだ来場と結果の結びつきは見えていません。`;
+  } else {
+    note.innerHTML = `いまのところ、来場者数による勝ち点の差は <b>${Math.abs(sp.gap).toFixed(2)}</b> 点。`
+      + `<br>ほとんど差がついていません。`;
+  }
+  cav.textContent = "※ 同じ時期に起きたことを並べたものです。来場者数だけで結果が決まるわけではありません。";
+}
+
+/* ---------- 優勝シミュレーター ---------- */
+let SIM_ATT = null;
+function renderSim(){
+  const el = document.getElementById("sim");
+  const st = state(), L = SEASON.league;
+  document.getElementById("simTitle").textContent = `${L.goalName}までのシミュレーション`;
+
+  if(st.homeLeft <= 0){
+    el.innerHTML = `<p class="sim-done">今シーズンのホームゲームは全日程が終了しました。<br>`
+      + `ホームで積んだ勝ち点は ${st.homePoints} 点、通算 ${st.points} 点です。</p>`;
+    return;
+  }
+  const lo = SIM_LO, hi = SIM_HI;
+  if(SIM_ATT === null) SIM_ATT = Math.min(hi, Math.max(lo, st.avg));
+
+  el.innerHTML = `
+    <div class="sim-l">
+      <label for="simRange">残りホーム${st.homeLeft}試合の、1試合あたりの来場者数</label>
+      <div class="sim-out" id="simOut"></div>
+      <input class="sim-range" type="range" id="simRange"
+             min="${lo}" max="${hi}" step="100" value="${SIM_ATT}"
+             aria-describedby="simPtsLive">
+      <div class="sim-scale"><span>${yen(lo)}人</span><span>${yen(hi)}人</span></div>
+    </div>
+    <div class="sim-r">
+      <h4>シーズン最終の勝ち点（目安）</h4>
+      <div class="sim-pts" id="simPts"></div>
+      <div class="sim-track">
+        <i id="simBar"></i>
+        <span class="goal" id="simGoal" data-l="${L.goalName}ライン ${L.goalPoints}"></span>
+      </div>
+      <p class="sim-msg" id="simMsg"></p>
+      <p class="sr-only" id="simPtsLive" role="status" aria-live="polite"></p>
+    </div>`;
+
+  const range = document.getElementById("simRange");
+  range.addEventListener("input", ()=>{ SIM_ATT = +range.value; updateSim(); });
+  updateSim();
+}
+function updateSim(){
+  const st = state(), L = SEASON.league;
+  const proj = projectPoints(SIM_ATT);
+  const max = Math.max(L.goalPoints, st.maxPoints, proj) * 1.05;
+  document.getElementById("simOut").innerHTML = `${yen(SIM_ATT)}<small>人</small>`;
+  document.getElementById("simPts").innerHTML = `${proj}<small>点</small>`;
+  document.getElementById("simBar").style.width = (proj / max * 100).toFixed(1) + "%";
+  document.getElementById("simGoal").style.left = (L.goalPoints / max * 100).toFixed(1) + "%";
+
+  const msg = document.getElementById("simMsg");
+  const diff = proj - L.goalPoints;
+  const need = neededAtt();
+  if(diff >= 0){
+    msg.className = "sim-msg reach";
+    msg.innerHTML = `この来場が続けば、${L.goalName}ラインを <b>${diff}点</b> 上回ります。届きます。`;
+  } else if(need){
+    msg.className = "sim-msg";
+    msg.innerHTML = `${L.goalName}ラインまで <b>あと${-diff}点</b>。`
+      + `残りホーム${st.homeLeft}試合が <b>平均${yen(need)}人</b> になれば、届く計算です。`;
+  } else {
+    msg.className = "sim-msg";
+    msg.innerHTML = `${L.goalName}ラインまで <b>あと${-diff}点</b>。`
+      + `来場だけでは届かないところまで来ています。アウェイでの上積みも必要です。`;
+  }
+  const live = document.getElementById("simPtsLive");
+  if(live) live.textContent = `平均${yen(SIM_ATT)}人のとき、最終勝ち点の目安は${proj}点`;
+}
+
 /* ---------- pace cards ---------- */
 function renderPace(){
   const s = state();
@@ -1474,10 +1852,14 @@ function renderTable(){
   document.getElementById("tbody").innerHTML = SEASON.matches.map((m,i)=>{
     const done = i < PLAYED;
     const cls = !done ? "future" : (m.attendance === best ? "best" : "");
+    const RES = { W:["勝","w"], D:["分","d"], L:["敗","l"] };
+    const r = RES[m.result] || ["—",""];
     return `<tr class="${cls}">
       <td>第${m.round}節</td><td>${m.date}</td><td>vs ${m.vs}</td>
+      <td>${done ? `<span class="res ${r[1]}">${r[0]}</span>` : "—"}</td>
       <td class="n">${done ? yen(m.attendance) : "—"}${
         done && m.attendance === best ? '<span class="badge">最多</span>' : ""}</td>
+      <td class="n">${done ? pt(m) : "—"}</td>
       <td class="n">${done ? yen(s.cum[i]) : "—"}</td></tr>`;
   }).join("");
 }
@@ -1552,7 +1934,8 @@ function play(){
 function renderAll(){
   buildCounter(); buildChart(); buildChips();
   renderSub(); renderPace(); renderCheer(); renderTable();
-  renderNextGame(); renderMinePick(); renderMine();
+  renderNextGame(); renderChain(); renderBands(); renderSim();
+  renderMinePick(); renderMine();
   play();
 }
 buildDots();
