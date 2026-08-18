@@ -9,7 +9,7 @@
 const PROJECT = {
   name:   "GO！ALL！GOAL！プロジェクト",
   short:  "GO！ALL！GOAL！",   // シェア本文のハッシュタグに使われます
-  season: "2026 SEASON"
+  season: "26-27 SEASON"
 };
 ```
 

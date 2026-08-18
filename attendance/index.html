@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GO！ALL！GOAL！プロジェクト｜アスルクラロ沼津 2026 SEASON</title>
-<meta name="description" content="アスルクラロ沼津 2026シーズン。ホームゲームの来場者数と勝ち点、そして優勝までの距離をつないで見られる公式ページ。">
+<title>GO！ALL！GOAL！プロジェクト｜アスルクラロ沼津 26-27 SEASON</title>
+<meta name="description" content="アスルクラロ沼津 26-27シーズン。ホームゲームの来場者数と勝ち点、そして優勝までの距離をつないで見られる公式ページ。">
 
 <!-- ▼ SNS シェア時のカード（OGP）
      og:image と og:url は「絶対URL」でないと X／Facebook が画像を取得できません。
@@ -14,7 +14,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="アスルクラロ沼津">
 <meta property="og:locale" content="ja_JP">
-<meta property="og:title" content="GO！ALL！GOAL！プロジェクト｜アスルクラロ沼津 2026 SEASON">
+<meta property="og:title" content="GO！ALL！GOAL！プロジェクト｜アスルクラロ沼津 26-27 SEASON">
 <meta property="og:description" content="その1人が、勝ち点を動かす。来場者数とホームの勝ち点、優勝までの距離。あと何人来てくれたら届くのかが分かります。">
 <meta property="og:url" content="https://REPLACE-WITH-YOUR-DOMAIN/attendance/">
 <meta property="og:image" content="https://REPLACE-WITH-YOUR-DOMAIN/attendance/assets/og.png">
@@ -1104,7 +1104,7 @@ const LINKS = {
 const PROJECT = {
   name:   "GO！ALL！GOAL！プロジェクト",
   short:  "GO！ALL！GOAL！",
-  season: "2026 SEASON"
+  season: "26-27 SEASON"
 };
 
 /* ---- シェア設定 ---- */
@@ -1657,7 +1657,7 @@ function shareUrl(){
 function textNow(){
   const s = state(), L = SEASON.league;
   const need = neededAtt();
-  const head = `アスルクラロ沼津 2026｜ホーム累計 ${yen(s.total)}人、勝ち点 ${s.points}点。`;
+  const head = `アスルクラロ沼津 ${PROJECT.season}｜ホーム累計 ${yen(s.total)}人、勝ち点 ${s.points}点。`;
   let body;
   if(s.points >= L.goalPoints)      body = `${L.goalName}ラインに到達しました。`;
   else if(s.homeLeft <= 0)          body = `${L.goalName}まであと${s.toGoal}点。`;
