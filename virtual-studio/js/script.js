@@ -135,6 +135,11 @@ function scriptCutHtml(cut, ci) {
           <input type="date" data-scdate="${ci}" value="${esc(cut.location.date || "")}" title="撮影日">
           <input type="time" data-sctime="${ci}" value="${esc(cut.location.time || "")}" title="撮影時刻 (現地の太陽時)">
           <label title="カメラが向いている方位 (北=0°)">カメラ方位 <input type="number" data-scbearing="${ci}" value="${+cut.location.camBearing || 0}" min="0" max="359" step="5">°</label>
+          <select data-sctiming="${ci}" title="香盤表 (撮影スケジュール) でこのカットをいつに割り付けるか">
+            <option value="any" ${cut.location.timing === "fixed" || cut.location.timing === "golden" ? "" : "selected"}>香盤: いつでも</option>
+            <option value="fixed" ${cut.location.timing === "fixed" ? "selected" : ""}>香盤: 上の時刻に固定</option>
+            <option value="golden" ${cut.location.timing === "golden" ? "selected" : ""}>香盤: 夕GHに撮る</option>
+          </select>
           ${(() => {
             const sn = locSunRelative(cut);
             if (!sn) return `<span class="insp-hint">日付と時刻を入れると太陽の方位・高度を計算します</span>`;
@@ -414,6 +419,7 @@ function setupScriptPage() {
     }
     else if (d.scdate != null) cut.location.date = t.value;
     else if (d.sctime != null) cut.location.time = t.value;
+    else if (d.sctiming != null) cut.location.timing = t.value;
     else if (d.scbearing != null) cut.location.camBearing = ((+t.value || 0) % 360 + 360) % 360;
     else if (d.scphotopick != null) {
       if (!t.value) return;

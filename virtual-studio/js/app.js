@@ -106,6 +106,7 @@ function ensureCameraDefaults(cut) {
   if (lc.name == null) lc.name = "";
   if (lc.note == null) lc.note = "";
   if (lc.camBearing == null) lc.camBearing = 0;
+  if (!lc.timing) lc.timing = "any";   // 香盤表での割り付け: any(いつでも)/fixed(時刻固定)/golden(夕GH)
   /* 人の動き (演技演出) — 使わなければ空のまま。既存の出力には影響しない */
   if (!cut.perf || typeof cut.perf !== "object") cut.perf = {};
   const pf = cut.perf;
@@ -2553,6 +2554,7 @@ function cutToCanonicalShot(cut, i, projectId) {
         region: p ? p.region : null, descriptor_en: p ? p.en : "",
         coordinates: L.coords || null, map_url: L.coords ? mapsLink(L.coords.lat, L.coords.lng) : null,
         shoot_date: L.date || null, shoot_time_solar: L.time || null,
+        schedule_timing: L.timing && L.timing !== "any" ? L.timing : null,   // fixed=時刻固定 / golden=夕GH
         camera_bearing_deg: +L.camBearing || 0,
         sun: s2 ? { azimuth_deg: +s2.azimuth.toFixed(1), elevation_deg: +s2.elevation.toFixed(1) } : null,
         keep_aspects: L.keep,
@@ -3724,6 +3726,7 @@ function cutFromCanonicalShot(shot) {
     if (L.coordinates) cut.location.coords = L.coordinates;
     if (L.shoot_date) cut.location.date = L.shoot_date;
     if (L.shoot_time_solar) cut.location.time = L.shoot_time_solar;
+    if (L.schedule_timing) cut.location.timing = L.schedule_timing;
     if (L.camera_bearing_deg != null) cut.location.camBearing = L.camera_bearing_deg;
     if (Array.isArray(L.keep_aspects)) cut.location.keep = L.keep_aspects;
     if (L.photo_traits && Array.isArray(L.photo_traits.descriptors_en)) {

@@ -680,6 +680,10 @@ function buildScheduleDoc() {
   let clock = 9 * 60; // 9:00 開始
   let lunchDone = false;
   const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const toMin = hm => {
+    const m2 = /^(\d{1,2}):(\d{2})$/.exec(hm || "");
+    return m2 ? +m2[1] * 60 + +m2[2] : null;
+  };
   /* ロケ地が変わったら移動時間を挟む — 香盤はロケ地単位で読むもの。
    * 座標が入っていれば距離から見積もり、なければ一律30分の目安を置く */
   let prevLocKey = null, prevCoords = null;
@@ -688,7 +692,28 @@ function buildScheduleDoc() {
     const L = c.location || {};
     return [L.presetId || "", L.name || ""].join("|") || "—";
   };
+  /* 撮影日が複数あれば Day で分ける — 東京→京都375分のような移動は
+   * 同じ1日に押し込まず、日付の変わり目で時計を9:00に戻す */
+  const dates = [...new Set(state.cuts.map(c => (c.location || {}).date || "").filter(Boolean))];
+  const multiDay = dates.length > 1;
+  let dayNo = 1, dayDate = null, dayStarted = false, dayCutDone = false;
+  let ghUsed = 0;                 // その日の夕GH枠をどれだけ使ったか (分)
+  let anchorUsed = false, lateWarns = 0, ghOver = 0;
+  const dayEnds = [];             // Day毎の終了見込み
   const rows = state.cuts.map((cut, i) => {
+    let dayRow = "";
+    const Ld = (cut.location || {}).date || "";
+    if (multiDay && Ld && dayDate && Ld !== dayDate) {
+      // 日付が変わった: 前日を締めて翌日9:00から
+      dayEnds.push({ no: dayNo, date: dayDate, end: clock });
+      dayNo++; clock = 9 * 60; lunchDone = false; dayCutDone = false;
+      prevLocKey = null; prevCoords = null; ghUsed = 0;
+      dayRow = `<tr class="day-row"><td colspan="8">📅 Day ${dayNo} — ${esc(Ld)} (前日中またはこの日の朝に移動しておく)</td></tr>`;
+    } else if (multiDay && !dayStarted) {
+      dayRow = `<tr class="day-row"><td colspan="8">📅 Day 1${Ld ? ` — ${esc(Ld)}` : ""}</td></tr>`;
+    }
+    dayStarted = true;
+    if (Ld) dayDate = Ld;
     // ロケ地の切り替わり: 見出し行 + 移動時間
     let locRow = "";
     const key = locKeyOf(cut);
@@ -720,14 +745,49 @@ function buildScheduleDoc() {
     }
     const setup = cut.setupMin || 30;
     const shootMin = Math.max(10, Math.ceil((cut.takes || 3) * Math.max(cut.kind === "still" ? 2 : (cut.duration || 5) / 60, 0.5) * 2 + 5));
+    /* 台本側の時刻指定/GH指定に香盤を合わせる (時刻は現地太陽時の目安) */
+    const L2 = cut.location || {};
+    const ev2 = L2.coords && L2.date ? sunEvents(L2.coords.lat, L2.coords.lng, L2.date) : null;
+    let waitRow = "", anchorChip = "", lateNote = "";
+    let target = null;
+    if (L2.timing === "fixed" && toMin(L2.time) != null) {
+      target = toMin(L2.time);
+      anchorChip = `<br><small>🕐 ${esc(L2.time)} 指定 (現地太陽時)</small>`;
+    } else if (L2.timing === "golden" && ev2 && !ev2.polar && ev2.goldenStart) {
+      target = toMin(ev2.goldenStart) + ghUsed;   // 先行するGHカットの分だけ後ろへ
+      anchorChip = `<br><small>☀️ 夕GH指定 (${esc(ev2.goldenStart)}〜${esc(ev2.set || "—")})</small>`;
+    }
+    if (target != null) {
+      anchorUsed = true;
+      const waitUntil = target - setup;           // 段取りは指定時刻の前に済ませる
+      if (clock < waitUntil) {
+        waitRow = `<tr class="wait-row"><td colspan="8">⏳ 待機/予備 (${fmt(clock)}–${fmt(waitUntil)}) — C${i + 1} の${L2.timing === "golden" ? "夕GH" : "時刻"}指定に合わせる。前倒しできる段取り・押さえカットに充当</td></tr>`;
+        clock = waitUntil;
+      } else if (clock > waitUntil) {
+        if (!dayCutDone && waitUntil >= 4 * 60) {
+          // その日の最初のカットが早い時刻を指定している → 開始を前倒しする (朝GH等)
+          clock = waitUntil;
+          lateNote = `<br><small>🌅 早朝スタート (${fmt(clock)} 集合・段取り開始)</small>`;
+        } else {
+          lateWarns++;
+          lateNote = `<br><small class="warn">⚠️ 指定に${clock - waitUntil}分間に合いません — 前のカットを削るか別日に</small>`;
+        }
+      }
+    }
+    if (L2.timing === "golden" && ev2 && ev2.goldenStart && ev2.set) {
+      const win = toMin(ev2.set) - toMin(ev2.goldenStart);
+      ghUsed += shootMin;
+      if (ghUsed > win) { ghOver++; lateNote += `<br><small class="warn">⚠️ 夕GH枠 (約${win}分) を超過 — GH指定カットを減らすか別日に分ける</small>`; }
+    }
     const start = clock;
     clock += setup + shootMin;
+    dayCutDone = true;
     const preset = allPresets().find(p => p.id === cut.presetId);
     const sfx = cut.items.filter(it => SFX_SAFETY_CLASS[it.type]).map(it => `${EQUIP_TYPES[it.type].label}(${SFX_SAFETY_CLASS[it.type]})`);
     const lights = cut.items.filter(it => LIGHT_TYPES.includes(it.type) && it.type !== "sun").length;
-    return locRow + lunch + `<tr>
+    return dayRow + locRow + lunch + waitRow + `<tr>
       <td>C${i + 1}</td>
-      <td>${fmt(start)}–${fmt(clock)}</td>
+      <td>${fmt(start)}–${fmt(clock)}${anchorChip}${lateNote}</td>
       <td><b>${esc(cut.name)}</b><br><small>${esc((cut.aim || "").slice(0, 42))}</small></td>
       <td>${esc(preset ? preset.name : "-")}</td>
       <td>灯体${lights} ｜ ${esc((CAMERA_SUPPORTS.find(x => x.id === cut.camera.support) || {}).label || "")}${state.kit.body ? `<br><small>${esc(state.kit.body)}</small>` : ""}</td>
@@ -750,13 +810,18 @@ function buildScheduleDoc() {
     th { background: #eef4ff; font-size: 11px; }
     tr.loc-row td { background: #eef4ff; font-size: 11.5px; padding: 6px 8px; }
     .loc-row small { color: #667; }
+    tr.day-row td { background: #1a1d24; color: #fff; font-weight: 800; font-size: 12.5px; padding: 7px 10px; }
+    tr.wait-row td { background: #f4f1fb; color: #5a4d86; font-size: 11.5px; }
+    small.warn { color: #b02a20; font-weight: 700; }
     .lunch td { background: #fff7e8; text-align: center; font-weight: 700; }
     small { color: #667; }
     ul { padding-left: 20px; font-size: 12px; line-height: 1.7; margin-top: 10px; }
     @media print { .toolbar { display: none; } body { padding: 0; } }
   </style></head><body>
     <h1>香盤表 — ${esc(state.projectTitle)}</h1>
-    <div class="meta">9:00 開始想定 ｜ 終了見込み ${fmt(clock)} ｜ カット数 ${state.cuts.length} ｜ 出力日 ${esc(today)} ｜ Generated by Virtual Studio</div>
+    <div class="meta">9:00 開始想定 ｜ ${multiDay
+      ? `${dayNo}日行程 ｜ 終了見込み ${[...dayEnds, { no: dayNo, date: dayDate, end: clock }].map(d => `Day${d.no} ${fmt(d.end)}`).join(" / ")}`
+      : `終了見込み ${fmt(clock)}`} ｜ カット数 ${state.cuts.length} ｜ 出力日 ${esc(today)} ｜ Generated by Virtual Studio</div>
     <div class="toolbar"><button onclick="window.print()">🖨 印刷 / PDFに保存</button></div>
     <table>
       <thead><tr><th>#</th><th>予定時刻</th><th>カット / 狙い</th><th>技法</th><th>主要機材</th><th>段取り</th><th>撮影 (テイク)</th><th>特効 / 安全</th></tr></thead>
@@ -767,6 +832,8 @@ function buildScheduleDoc() {
       <li>段取り時間は各カットの「準備時間(分)」設定から。並行仕込みができる場合は前倒し可</li>
       <li>Class B/C 特効のあるカットは安全ブリーフィングの時間を別途確保する</li>
       ${moveTotal ? `<li>移動は合計 ${moveTotal}分。座標のあるロケ地は距離 (直線×1.3) と距離帯ごとの平均速度 + 積み降ろし${MOVE_LOAD_MIN}分から見積もった目安${moveGuessed ? `。うち${moveGuessed}区間は座標未設定のため一律30分` : ""}。実際の交通事情・駐車位置で前後する</li>` : ""}
+      ${anchorUsed ? `<li>🕐/☀️ の時刻指定・夕GH指定は台本ページの設定から。時刻は経度から求めた<b>現地太陽時</b>で、時計時刻とは時差分ずれる。段取りは指定時刻の前に済ませる前提で組んであり、日の最初のカットに早い指定があるときは開始を前倒しする${lateWarns ? `。<b>間に合わない指定が${lateWarns}件</b>` : ""}${ghOver ? `。<b>夕GH枠の超過が${ghOver}件</b>` : ""}</li>` : ""}
+      ${multiDay ? `<li>撮影日 (台本ページの日付) が複数あるため Day で分割。日をまたぐ移動は前日中または当日朝に済ませる前提で、Day の頭では移動時間を積んでいない</li>` : ""}
     </ul>
   </body></html>`;
 }

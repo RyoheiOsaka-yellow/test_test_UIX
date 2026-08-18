@@ -3886,6 +3886,28 @@ const LOCATION_PRESETS = [
     sky: "open above the slope, city visible below",
     lightNote: "斜面のため夕方の横光が長く入る。俯瞰の抜けが作りやすい",
     permit: "住宅地。早朝夜間の騒音に注意" },
+  { id: "asia-india", region: "asia", label: "インドの旧市街 (バラナシ/ジャイプル風)",
+    en: "an old Indian city quarter", tags: ["色彩", "雑踏", "朝霧"],
+    arch: "dense sandstone and painted facades, carved balconies, temple spires between houses",
+    material: "pink and ochre painted plaster, carved stone, marigold garlands",
+    signage: "hand-painted Hindi and English shop boards stacked over doorways",
+    vegetation: "sacred fig trees at corners, marigolds and vines on shrines",
+    ground: "worn stone steps and lanes shared by people, carts and cattle",
+    life: "rickshaws, spice sacks, saris drying, temple bells and smoke",
+    sky: "hazy warm sky, dust and incense softening the light",
+    lightNote: "朝は霧とほこりで光が拡散し逆光が神々しく出る。日中は硬い直射",
+    permit: "州ごとの撮影許可と現地フィクサーが実質必須。宗教施設は別許可" },
+  { id: "asia-shanghai", region: "asia", label: "上海の摩天楼と外灘 (夜景)",
+    en: "the Shanghai skyline and Bund waterfront", tags: ["夜", "超高層", "ネオン"],
+    arch: "futuristic supertall towers across the river from colonial stone banks",
+    material: "glass curtain walls, LED media facades, polished granite promenade",
+    signage: "huge animated LED signage in Chinese characters on tower crowns",
+    vegetation: "clipped street trees along the promenade, planters",
+    ground: "wide polished stone riverside walkway, metal railings",
+    life: "dense crowds taking photos, river barges and lit ferries passing",
+    sky: "night sky washed out by city glow, haze catching the neon",
+    lightNote: "夜はビル群のLEDが面光源になる。日没直後が空とネオンの両立点",
+    permit: "外灘は人流規制が厳しい。三脚は時間帯規制あり。ドローンほぼ不可" },
   /* ---------- ヨーロッパ ---------- */
   { id: "eu-paris", region: "eu", label: "パリのオスマン様式街路",
     en: "a Haussmannian Paris boulevard", tags: ["曇", "石", "均質"],
@@ -3931,6 +3953,28 @@ const LOCATION_PRESETS = [
     sky: "flat grey overcast",
     lightNote: "曇天が基本。ソフトで低コントラスト、雨後は路面が光る",
     permit: "住宅街。駐車と機材の路上展開に許可が要る" },
+  { id: "eu-aegean", region: "eu", label: "エーゲ海の白い島 (サントリーニ風)",
+    en: "a whitewashed Aegean island village", tags: ["白壁", "海", "強光"],
+    arch: "cubic whitewashed houses with blue domes stacked on a cliff",
+    material: "thick lime-washed plaster, blue painted wood, rounded steps",
+    signage: "tiny hand-painted Greek signs, almost none",
+    vegetation: "bougainvillea spilling over white walls, potted geraniums",
+    ground: "painted stone paths outlined in white, steep stairs",
+    life: "donkeys on steps, cafe tables, church bells, ferries below",
+    sky: "deep saturated blue sky over a bright sea horizon",
+    lightNote: "白壁が巨大なレフになり影が浮く。真昼は飛びやすく朝夕が別世界",
+    permit: "観光地の混雑回避で早朝撮影が基本。教会・私有テラスは個別許可" },
+  { id: "eu-alps", region: "eu", label: "アルプスの高原と山小屋",
+    en: "an Alpine meadow with wooden chalets", tags: ["山岳", "草原", "清澄"],
+    arch: "dark timber chalets with stone bases and deep eaves, church steeple in the valley",
+    material: "weathered larch wood, granite, cowbells and split firewood",
+    signage: "carved wooden trail signs, yellow hiking route markers",
+    vegetation: "wildflower meadows, dark spruce forest edges, snow patches above",
+    ground: "grassy slopes with dirt trails, streams with pale stones",
+    life: "grazing cows with bells, hikers, cable car lines in the distance",
+    sky: "crisp clear high-altitude sky, fast afternoon clouds on peaks",
+    lightNote: "空気が澄み遠景までコントラストが残る。午後は山影が急に落ちる",
+    permit: "牧草地は牧畜家の許可。ドローンは自然保護区とリフト周辺が不可" },
   /* ---------- 北米 ---------- */
   { id: "na-ny", region: "na", label: "ニューヨークのブラウンストーン街",
     en: "a New York brownstone block", tags: ["秋", "階段", "都市"],
@@ -3965,6 +4009,17 @@ const LOCATION_PRESETS = [
     sky: "night visible through large windows",
     lightNote: "蛍光灯とネオンの混色。窓の外を持ち上げるか捨てるかを決める",
     permit: "営業時間外の借り切りが基本" },
+  { id: "na-forest", region: "na", label: "北米の針葉樹林と湖 (パシフィック・ノースウェスト風)",
+    en: "a Pacific Northwest conifer forest and lake", tags: ["霧", "湖面", "苔"],
+    arch: "a lone wooden dock and distant cabins, no urban structures",
+    material: "wet dark bark, moss, driftwood, still water",
+    signage: "small trailhead boards, bear warning signs",
+    vegetation: "towering firs and cedars, ferns, moss on every surface",
+    ground: "soft needle-covered soil, rocky shoreline, mirror-like lake",
+    life: "loons calling, a canoe, campfire smoke far away",
+    sky: "low clouds and fog threading through the treetops",
+    lightNote: "霧の日は完璧な巨大ディフューザー。晴天は林内が3〜4段暗く落ちる",
+    permit: "国立・州立公園の商用撮影許可。焚き火・ドローンは規制が厳しい" },
   /* ---------- 中南米 ---------- */
   { id: "latam-havana", region: "latam", label: "ハバナの旧市街",
     en: "the old town of Havana", tags: ["昼", "退色", "パステル"],
@@ -3988,6 +4043,28 @@ const LOCATION_PRESETS = [
     sky: "deep blue high-altitude sky, thin air",
     lightNote: "紫外線が強く空が濃い。影が極端に暗くなるので起こしが要る",
     permit: "コミュニティの許可。高地順応と機材のバッテリー消耗に注意" },
+  { id: "latam-rio", region: "latam", label: "リオのビーチ (コパカバーナ風)",
+    en: "a Rio de Janeiro beachfront", tags: ["海岸", "活気", "夕景"],
+    arch: "curved white apartment blocks along the bay, granite peaks behind",
+    material: "the black-and-white wave mosaic promenade, sand, beach kiosks",
+    signage: "kiosk menus in Portuguese, football flags",
+    vegetation: "palms along the promenade, forested mountains behind the city",
+    ground: "wide golden sand, mosaic sidewalk, bike lane",
+    life: "beach volleyball and futevôlei, vendors calling, joggers at dawn",
+    sky: "humid bright sky, dramatic clouds catching sunset behind the peaks",
+    lightNote: "午後は海からの照り返しが強い。夕方は山のシルエットと残照が主役",
+    permit: "市のビーチ撮影許可。機材の盗難対策と現地スタッフが現実的" },
+  { id: "latam-mexico", region: "latam", label: "メキシコのカラフルな街区 (オアハカ風)",
+    en: "a colorful Mexican colonial town", tags: ["原色", "祭", "石畳"],
+    arch: "single-storey colonial houses painted in saturated pink, blue and ochre",
+    material: "rough painted stucco, carved wooden doors, papel picado bunting",
+    signage: "hand-painted Spanish shop lettering, mural walls",
+    vegetation: "cacti in pots, jacaranda and bougainvillea over walls",
+    ground: "green stone cobbles, high sidewalks",
+    life: "street food smoke, marimba, markets spilling onto the street",
+    sky: "clear high-plateau sky, sharp shadows",
+    lightNote: "原色の壁同士が色を照り返し合う。白壁の街より1段彩度が乗る",
+    permit: "自治体の許可。祭事期間は交渉が必要だが画は最高になる" },
   /* ---------- 中東・アフリカ ---------- */
   { id: "mena-medina", region: "mena", label: "モロッコのメディナ",
     en: "a Moroccan medina", tags: ["昼", "土色", "迷路"],
@@ -4011,6 +4088,39 @@ const LOCATION_PRESETS = [
     sky: "huge sky with dramatic cloud build-up",
     lightNote: "朝夕に赤土が発色する。日中は白く飛びやすい",
     permit: "国立公園の撮影許可とレンジャー同行が必要" },
+  { id: "mena-istanbul", region: "mena", label: "イスタンブールの旧市街",
+    en: "the old city of Istanbul", tags: ["モスク", "海峡", "夕光"],
+    arch: "domes and minarets on the skyline, Ottoman timber houses on steep lanes",
+    material: "worn stone, painted timber, brass shopfronts, carpets hung out",
+    signage: "Turkish shop signs, hand-lettered tea house boards",
+    vegetation: "fig trees in courtyards, vines over narrow lanes",
+    ground: "steep cobbled lanes, tram rails on the main street",
+    life: "call to prayer overlapping from minarets, ferries, tea sellers, cats",
+    sky: "soft marine haze over the Bosphorus, gulls circling",
+    lightNote: "海峡の湿気で夕光が滲む。モスクのシルエットは日没後20分が勝負",
+    permit: "モスク内は宗教上の配慮と許可。観光地区の三脚は規制あり" },
+  { id: "mena-dubai", region: "mena", label: "ドバイの超高層とハイウェイ",
+    en: "the Dubai skyline and highway", tags: ["未来", "砂漠", "夜"],
+    arch: "a wall of supertall glass towers rising straight from the desert",
+    material: "mirrored glass, white concrete, 12-lane asphalt",
+    signage: "monumental English and Arabic corporate logos on tower crowns",
+    vegetation: "irrigated palms in medians, none beyond the city edge",
+    ground: "immaculate highway, sand drifting at the fringes",
+    life: "streams of headlights, metro trains on elevated tracks",
+    sky: "dusty haze that turns gold at dusk, towers vanishing into it",
+    lightNote: "砂塵の霞で高層の上部が消える。ブルーアワーの街灯りが最も密度が出る",
+    permit: "公共空間の商用撮影は事前許可制。ドローンは免許と申請が必須" },
+  { id: "mena-sahara", region: "mena", label: "サハラの大砂丘",
+    en: "Saharan sand dunes", tags: ["砂丘", "無音", "斜光"],
+    arch: "no structures, a berber tent camp at most",
+    material: "fine ripple-textured orange sand, nothing else",
+    signage: "none",
+    vegetation: "a rare tamarisk bush between dunes",
+    ground: "knife-edged dune crests, untouched slip faces",
+    life: "camel caravan silhouettes, absolute silence, stars at night",
+    sky: "cloudless gradient sky, heat shimmer at noon",
+    lightNote: "斜光で風紋が立ち上がる朝夕がすべて。正午は起伏が消える",
+    permit: "ガイドと4WDが必須。砂対策 (機材の密閉) が最大の課題" },
   /* ---------- オセアニア・極地 ---------- */
   { id: "oce-iceland", region: "oce", label: "アイスランドの溶岩台地",
     en: "an Icelandic lava field", tags: ["曇", "苔", "無彩"],
@@ -4034,6 +4144,17 @@ const LOCATION_PRESETS = [
     sky: "intense clear blue with hard sun",
     lightNote: "反射が強くコントラストが跳ねる。NDと偏光が前提",
     permit: "自治体のビーチ撮影許可。潮汐に注意" },
+  { id: "oce-nz", region: "oce", label: "ニュージーランドのフィヨルドと草原",
+    en: "a New Zealand fiord and sheep country", tags: ["山水", "牧草", "変わりやすい天気"],
+    arch: "isolated farm sheds and fence lines, no towns in frame",
+    material: "wet dark rock walls, tussock grass, weathered fence posts",
+    signage: "yellow road warning signs with sheep silhouettes",
+    vegetation: "beech forest to the waterline, moss, tree ferns in gullies",
+    ground: "gravel roads, sheep-cropped green hills, mirror fiord water",
+    life: "sheep flocks, a lone campervan, waterfalls after rain",
+    sky: "weather changing hourly, shafts of light through broken cloud",
+    lightNote: "雲間の光芒が数分単位で動く。待てば必ず一度は劇的な光が来る",
+    permit: "DOC(自然保護局)の撮影許可。牧場は所有者の同意が必要" },
   /* ---------- スタジオ・屋内 ---------- */
   { id: "studio-white", region: "studio", label: "白ホリスタジオ",
     en: "a white cyclorama studio", tags: ["無地", "制御"],
@@ -8182,6 +8303,10 @@ function buildScheduleDoc() {
   let clock = 9 * 60; // 9:00 開始
   let lunchDone = false;
   const fmt = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const toMin = hm => {
+    const m2 = /^(\d{1,2}):(\d{2})$/.exec(hm || "");
+    return m2 ? +m2[1] * 60 + +m2[2] : null;
+  };
   /* ロケ地が変わったら移動時間を挟む — 香盤はロケ地単位で読むもの。
    * 座標が入っていれば距離から見積もり、なければ一律30分の目安を置く */
   let prevLocKey = null, prevCoords = null;
@@ -8190,7 +8315,28 @@ function buildScheduleDoc() {
     const L = c.location || {};
     return [L.presetId || "", L.name || ""].join("|") || "—";
   };
+  /* 撮影日が複数あれば Day で分ける — 東京→京都375分のような移動は
+   * 同じ1日に押し込まず、日付の変わり目で時計を9:00に戻す */
+  const dates = [...new Set(state.cuts.map(c => (c.location || {}).date || "").filter(Boolean))];
+  const multiDay = dates.length > 1;
+  let dayNo = 1, dayDate = null, dayStarted = false, dayCutDone = false;
+  let ghUsed = 0;                 // その日の夕GH枠をどれだけ使ったか (分)
+  let anchorUsed = false, lateWarns = 0, ghOver = 0;
+  const dayEnds = [];             // Day毎の終了見込み
   const rows = state.cuts.map((cut, i) => {
+    let dayRow = "";
+    const Ld = (cut.location || {}).date || "";
+    if (multiDay && Ld && dayDate && Ld !== dayDate) {
+      // 日付が変わった: 前日を締めて翌日9:00から
+      dayEnds.push({ no: dayNo, date: dayDate, end: clock });
+      dayNo++; clock = 9 * 60; lunchDone = false; dayCutDone = false;
+      prevLocKey = null; prevCoords = null; ghUsed = 0;
+      dayRow = `<tr class="day-row"><td colspan="8">📅 Day ${dayNo} — ${esc(Ld)} (前日中またはこの日の朝に移動しておく)</td></tr>`;
+    } else if (multiDay && !dayStarted) {
+      dayRow = `<tr class="day-row"><td colspan="8">📅 Day 1${Ld ? ` — ${esc(Ld)}` : ""}</td></tr>`;
+    }
+    dayStarted = true;
+    if (Ld) dayDate = Ld;
     // ロケ地の切り替わり: 見出し行 + 移動時間
     let locRow = "";
     const key = locKeyOf(cut);
@@ -8222,14 +8368,49 @@ function buildScheduleDoc() {
     }
     const setup = cut.setupMin || 30;
     const shootMin = Math.max(10, Math.ceil((cut.takes || 3) * Math.max(cut.kind === "still" ? 2 : (cut.duration || 5) / 60, 0.5) * 2 + 5));
+    /* 台本側の時刻指定/GH指定に香盤を合わせる (時刻は現地太陽時の目安) */
+    const L2 = cut.location || {};
+    const ev2 = L2.coords && L2.date ? sunEvents(L2.coords.lat, L2.coords.lng, L2.date) : null;
+    let waitRow = "", anchorChip = "", lateNote = "";
+    let target = null;
+    if (L2.timing === "fixed" && toMin(L2.time) != null) {
+      target = toMin(L2.time);
+      anchorChip = `<br><small>🕐 ${esc(L2.time)} 指定 (現地太陽時)</small>`;
+    } else if (L2.timing === "golden" && ev2 && !ev2.polar && ev2.goldenStart) {
+      target = toMin(ev2.goldenStart) + ghUsed;   // 先行するGHカットの分だけ後ろへ
+      anchorChip = `<br><small>☀️ 夕GH指定 (${esc(ev2.goldenStart)}〜${esc(ev2.set || "—")})</small>`;
+    }
+    if (target != null) {
+      anchorUsed = true;
+      const waitUntil = target - setup;           // 段取りは指定時刻の前に済ませる
+      if (clock < waitUntil) {
+        waitRow = `<tr class="wait-row"><td colspan="8">⏳ 待機/予備 (${fmt(clock)}–${fmt(waitUntil)}) — C${i + 1} の${L2.timing === "golden" ? "夕GH" : "時刻"}指定に合わせる。前倒しできる段取り・押さえカットに充当</td></tr>`;
+        clock = waitUntil;
+      } else if (clock > waitUntil) {
+        if (!dayCutDone && waitUntil >= 4 * 60) {
+          // その日の最初のカットが早い時刻を指定している → 開始を前倒しする (朝GH等)
+          clock = waitUntil;
+          lateNote = `<br><small>🌅 早朝スタート (${fmt(clock)} 集合・段取り開始)</small>`;
+        } else {
+          lateWarns++;
+          lateNote = `<br><small class="warn">⚠️ 指定に${clock - waitUntil}分間に合いません — 前のカットを削るか別日に</small>`;
+        }
+      }
+    }
+    if (L2.timing === "golden" && ev2 && ev2.goldenStart && ev2.set) {
+      const win = toMin(ev2.set) - toMin(ev2.goldenStart);
+      ghUsed += shootMin;
+      if (ghUsed > win) { ghOver++; lateNote += `<br><small class="warn">⚠️ 夕GH枠 (約${win}分) を超過 — GH指定カットを減らすか別日に分ける</small>`; }
+    }
     const start = clock;
     clock += setup + shootMin;
+    dayCutDone = true;
     const preset = allPresets().find(p => p.id === cut.presetId);
     const sfx = cut.items.filter(it => SFX_SAFETY_CLASS[it.type]).map(it => `${EQUIP_TYPES[it.type].label}(${SFX_SAFETY_CLASS[it.type]})`);
     const lights = cut.items.filter(it => LIGHT_TYPES.includes(it.type) && it.type !== "sun").length;
-    return locRow + lunch + `<tr>
+    return dayRow + locRow + lunch + waitRow + `<tr>
       <td>C${i + 1}</td>
-      <td>${fmt(start)}–${fmt(clock)}</td>
+      <td>${fmt(start)}–${fmt(clock)}${anchorChip}${lateNote}</td>
       <td><b>${esc(cut.name)}</b><br><small>${esc((cut.aim || "").slice(0, 42))}</small></td>
       <td>${esc(preset ? preset.name : "-")}</td>
       <td>灯体${lights} ｜ ${esc((CAMERA_SUPPORTS.find(x => x.id === cut.camera.support) || {}).label || "")}${state.kit.body ? `<br><small>${esc(state.kit.body)}</small>` : ""}</td>
@@ -8252,13 +8433,18 @@ function buildScheduleDoc() {
     th { background: #eef4ff; font-size: 11px; }
     tr.loc-row td { background: #eef4ff; font-size: 11.5px; padding: 6px 8px; }
     .loc-row small { color: #667; }
+    tr.day-row td { background: #1a1d24; color: #fff; font-weight: 800; font-size: 12.5px; padding: 7px 10px; }
+    tr.wait-row td { background: #f4f1fb; color: #5a4d86; font-size: 11.5px; }
+    small.warn { color: #b02a20; font-weight: 700; }
     .lunch td { background: #fff7e8; text-align: center; font-weight: 700; }
     small { color: #667; }
     ul { padding-left: 20px; font-size: 12px; line-height: 1.7; margin-top: 10px; }
     @media print { .toolbar { display: none; } body { padding: 0; } }
   </style></head><body>
     <h1>香盤表 — ${esc(state.projectTitle)}</h1>
-    <div class="meta">9:00 開始想定 ｜ 終了見込み ${fmt(clock)} ｜ カット数 ${state.cuts.length} ｜ 出力日 ${esc(today)} ｜ Generated by Virtual Studio</div>
+    <div class="meta">9:00 開始想定 ｜ ${multiDay
+      ? `${dayNo}日行程 ｜ 終了見込み ${[...dayEnds, { no: dayNo, date: dayDate, end: clock }].map(d => `Day${d.no} ${fmt(d.end)}`).join(" / ")}`
+      : `終了見込み ${fmt(clock)}`} ｜ カット数 ${state.cuts.length} ｜ 出力日 ${esc(today)} ｜ Generated by Virtual Studio</div>
     <div class="toolbar"><button onclick="window.print()">🖨 印刷 / PDFに保存</button></div>
     <table>
       <thead><tr><th>#</th><th>予定時刻</th><th>カット / 狙い</th><th>技法</th><th>主要機材</th><th>段取り</th><th>撮影 (テイク)</th><th>特効 / 安全</th></tr></thead>
@@ -8269,6 +8455,8 @@ function buildScheduleDoc() {
       <li>段取り時間は各カットの「準備時間(分)」設定から。並行仕込みができる場合は前倒し可</li>
       <li>Class B/C 特効のあるカットは安全ブリーフィングの時間を別途確保する</li>
       ${moveTotal ? `<li>移動は合計 ${moveTotal}分。座標のあるロケ地は距離 (直線×1.3) と距離帯ごとの平均速度 + 積み降ろし${MOVE_LOAD_MIN}分から見積もった目安${moveGuessed ? `。うち${moveGuessed}区間は座標未設定のため一律30分` : ""}。実際の交通事情・駐車位置で前後する</li>` : ""}
+      ${anchorUsed ? `<li>🕐/☀️ の時刻指定・夕GH指定は台本ページの設定から。時刻は経度から求めた<b>現地太陽時</b>で、時計時刻とは時差分ずれる。段取りは指定時刻の前に済ませる前提で組んであり、日の最初のカットに早い指定があるときは開始を前倒しする${lateWarns ? `。<b>間に合わない指定が${lateWarns}件</b>` : ""}${ghOver ? `。<b>夕GH枠の超過が${ghOver}件</b>` : ""}</li>` : ""}
+      ${multiDay ? `<li>撮影日 (台本ページの日付) が複数あるため Day で分割。日をまたぐ移動は前日中または当日朝に済ませる前提で、Day の頭では移動時間を積んでいない</li>` : ""}
     </ul>
   </body></html>`;
 }
@@ -9185,10 +9373,9 @@ function parseZip(buf) { // Uint8Array → [{name, data}]
   return files;
 }
 
-async function exportBackupZip(msgEl) {
+/* ZIPの組み立て本体 — 保存UIと分離して往復テストできるようにする */
+async function buildBackupBlob() {
   const enc = new TextEncoder();
-  const title = state.projectTitle.replace(/[\\/:*?"<>|]/g, "_");
-  if (msgEl) msgEl.textContent = "バックアップ作成中…";
   const files = [{
     name: "project.json",
     data: enc.encode(JSON.stringify({ kind: "vs-backup", version: 2, data: snapshotState() }, null, 1)),
@@ -9208,7 +9395,13 @@ async function exportBackupZip(msgEl) {
     }
   } catch { /* IDB不可でも設定だけは保存する */ }
   files.push({ name: "media-manifest.json", data: enc.encode(JSON.stringify(manifest)) });
-  const blob = buildZip(files);
+  return { blob: buildZip(files), manifest };
+}
+
+async function exportBackupZip(msgEl) {
+  const title = state.projectTitle.replace(/[\\/:*?"<>|]/g, "_");
+  if (msgEl) msgEl.textContent = "バックアップ作成中…";
+  const { blob, manifest } = await buildBackupBlob();
   const ok = await saveFileAs(`${title}-backup.zip`, blob);
   if (msgEl) {
     msgEl.textContent = ok
@@ -10418,6 +10611,11 @@ function scriptCutHtml(cut, ci) {
           <input type="date" data-scdate="${ci}" value="${esc(cut.location.date || "")}" title="撮影日">
           <input type="time" data-sctime="${ci}" value="${esc(cut.location.time || "")}" title="撮影時刻 (現地の太陽時)">
           <label title="カメラが向いている方位 (北=0°)">カメラ方位 <input type="number" data-scbearing="${ci}" value="${+cut.location.camBearing || 0}" min="0" max="359" step="5">°</label>
+          <select data-sctiming="${ci}" title="香盤表 (撮影スケジュール) でこのカットをいつに割り付けるか">
+            <option value="any" ${cut.location.timing === "fixed" || cut.location.timing === "golden" ? "" : "selected"}>香盤: いつでも</option>
+            <option value="fixed" ${cut.location.timing === "fixed" ? "selected" : ""}>香盤: 上の時刻に固定</option>
+            <option value="golden" ${cut.location.timing === "golden" ? "selected" : ""}>香盤: 夕GHに撮る</option>
+          </select>
           ${(() => {
             const sn = locSunRelative(cut);
             if (!sn) return `<span class="insp-hint">日付と時刻を入れると太陽の方位・高度を計算します</span>`;
@@ -10697,6 +10895,7 @@ function setupScriptPage() {
     }
     else if (d.scdate != null) cut.location.date = t.value;
     else if (d.sctime != null) cut.location.time = t.value;
+    else if (d.sctiming != null) cut.location.timing = t.value;
     else if (d.scbearing != null) cut.location.camBearing = ((+t.value || 0) % 360 + 360) % 360;
     else if (d.scphotopick != null) {
       if (!t.value) return;
@@ -10844,6 +11043,7 @@ function ensureCameraDefaults(cut) {
   if (lc.name == null) lc.name = "";
   if (lc.note == null) lc.note = "";
   if (lc.camBearing == null) lc.camBearing = 0;
+  if (!lc.timing) lc.timing = "any";   // 香盤表での割り付け: any(いつでも)/fixed(時刻固定)/golden(夕GH)
   /* 人の動き (演技演出) — 使わなければ空のまま。既存の出力には影響しない */
   if (!cut.perf || typeof cut.perf !== "object") cut.perf = {};
   const pf = cut.perf;
@@ -13291,6 +13491,7 @@ function cutToCanonicalShot(cut, i, projectId) {
         region: p ? p.region : null, descriptor_en: p ? p.en : "",
         coordinates: L.coords || null, map_url: L.coords ? mapsLink(L.coords.lat, L.coords.lng) : null,
         shoot_date: L.date || null, shoot_time_solar: L.time || null,
+        schedule_timing: L.timing && L.timing !== "any" ? L.timing : null,   // fixed=時刻固定 / golden=夕GH
         camera_bearing_deg: +L.camBearing || 0,
         sun: s2 ? { azimuth_deg: +s2.azimuth.toFixed(1), elevation_deg: +s2.elevation.toFixed(1) } : null,
         keep_aspects: L.keep,
@@ -14462,6 +14663,7 @@ function cutFromCanonicalShot(shot) {
     if (L.coordinates) cut.location.coords = L.coordinates;
     if (L.shoot_date) cut.location.date = L.shoot_date;
     if (L.shoot_time_solar) cut.location.time = L.shoot_time_solar;
+    if (L.schedule_timing) cut.location.timing = L.schedule_timing;
     if (L.camera_bearing_deg != null) cut.location.camBearing = L.camera_bearing_deg;
     if (Array.isArray(L.keep_aspects)) cut.location.keep = L.keep_aspects;
     if (L.photo_traits && Array.isArray(L.photo_traits.descriptors_en)) {

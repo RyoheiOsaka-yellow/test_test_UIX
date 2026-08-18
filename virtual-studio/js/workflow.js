@@ -791,10 +791,9 @@ function parseZip(buf) { // Uint8Array → [{name, data}]
   return files;
 }
 
-async function exportBackupZip(msgEl) {
+/* ZIPの組み立て本体 — 保存UIと分離して往復テストできるようにする */
+async function buildBackupBlob() {
   const enc = new TextEncoder();
-  const title = state.projectTitle.replace(/[\\/:*?"<>|]/g, "_");
-  if (msgEl) msgEl.textContent = "バックアップ作成中…";
   const files = [{
     name: "project.json",
     data: enc.encode(JSON.stringify({ kind: "vs-backup", version: 2, data: snapshotState() }, null, 1)),
@@ -814,7 +813,13 @@ async function exportBackupZip(msgEl) {
     }
   } catch { /* IDB不可でも設定だけは保存する */ }
   files.push({ name: "media-manifest.json", data: enc.encode(JSON.stringify(manifest)) });
-  const blob = buildZip(files);
+  return { blob: buildZip(files), manifest };
+}
+
+async function exportBackupZip(msgEl) {
+  const title = state.projectTitle.replace(/[\\/:*?"<>|]/g, "_");
+  if (msgEl) msgEl.textContent = "バックアップ作成中…";
+  const { blob, manifest } = await buildBackupBlob();
   const ok = await saveFileAs(`${title}-backup.zip`, blob);
   if (msgEl) {
     msgEl.textContent = ok
