@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ALTECHE — 現場管理・図面共有・製作見積</title>
+<title>ALDREX — 現場管理・図面共有・型番選定</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -956,7 +956,7 @@ body{font-family:var(--font-body);font-weight:400;color:var(--ink);background:va
 
 <div id="sm-root">
   <div class="sm-topbar" id="sm-topbar" style="display:none">
-    <div class="sm-brand" onclick="__smShow('modeselect')"><span class="sm-y">ALTECHE<b>.</b></span><span class="sm-sub">株式会社アルテック</span></div>
+    <div class="sm-brand" onclick="__smShow('modeselect')"><span class="sm-y">ALDREX<b>.</b></span><span class="sm-sub">株式会社アルテック / ALUTECK</span></div>
     <div class="sm-acct">
       <a onclick="__smShow('sites')">現場</a>
       <a onclick="__smShow('projects')">案件・見積</a>
@@ -967,8 +967,8 @@ body{font-family:var(--font-body);font-weight:400;color:var(--ink);background:va
   <!-- ① SIGNIN -->
   <div class="sm-view sm-active" id="sm-view-signin">
     <div class="sm-signin">
-      <div class="sm-logo">ALTECHE<b>.</b></div>
-      <div class="sm-tag" style="margin-bottom:28px">株式会社アルテック — 現場管理・図面共有・製作見積</div>
+      <div class="sm-logo">ALDREX<b>.</b></div>
+      <div class="sm-tag" style="margin-bottom:28px">株式会社アルテック — 現場管理・図面共有・型番選定</div>
       <div class="sm-field"><label>メールアドレス</label><input id="sm-inEmail" placeholder="メールアドレス"></div>
       <div class="sm-field"><label>パスワード</label><input type="password" id="sm-inPass" placeholder="パスワード"></div>
       <div class="sm-dummy">※ デモ用ダミー認証。任意の入力でサインインできます。</div>
@@ -980,22 +980,22 @@ body{font-family:var(--font-body);font-weight:400;color:var(--ink);background:va
   <div class="sm-view" id="sm-view-modeselect">
     <div class="sm-container">
       <div class="sm-page-h">今日はどの入口から？</div>
-      <div class="sm-page-sub">設計 → 製作 → 取付工事までを一貫で請け負う体制に合わせて、現場台帳・見積・加工指示を1つの図面データで繋ぎます。</div>
+      <div class="sm-page-sub">調査・実測 → 型番選定 → 生産 → 取付工事までを一貫で請け負う体制に合わせて、現場台帳・見積・型番選定を1つの図面データで繋ぎます。</div>
       <div class="sm-mode-grid" style="grid-template-columns:1fr 1fr">
         <div class="sm-mode-card" style="grid-column:1/-1;border-color:var(--sm-accent)" onclick="__smShow('sites')">
           <div class="sm-mi">🏗</div><h3>現場管理（工程・図面共有）</h3>
-          <p>現場単位で「工程表・施工図の版と承認・質疑（RFI）・製作進捗・取付検査」を1画面に集約。元請／設計／自社工場／協力会社が同じ最新版を見ている状態をつくり、承認待ちと手戻りを可視化します。</p>
+          <p>現場単位で「工程表・提出図の版と承認・質疑（RFI）・生産進捗・取付検査」を1画面に集約。元請／設計監理／自社営業／茅野工場／協力会社が同じ最新版を見ている状態をつくり、承認待ちと手戻りを可視化します。</p>
           <div class="sm-go">現場一覧へ →</div>
         </div>
         <div class="sm-mode-card" onclick="smStartChat()">
           <div class="sm-mi">💬</div><h3>かんたん見積（チャットで相談）</h3>
-          <p>「何を作りたいか」を会話で答えるだけ。部材タイプ・数量・仕上げを順に選ぶと、確認すべき加工指示と概算がその場で出ます。現場のスマホ・iPad 向け。</p>
+          <p>「どこに何が要るか」を会話で答えるだけ。品目・設置部位・数量・既存管の内径を順に選ぶと、型番の候補と概算、確認が要る項目がその場で出ます。現場のスマホ・iPad 向け。</p>
           <div class="sm-go">見積チャットを開く →</div>
         </div>
         <div class="sm-mode-card sm-3d" onclick="smEnter3D(false)">
-          <div class="sm-mi">📐</div><h3>図面から加工指示（3D）</h3>
-          <p>施工図をドロップして、図面に描かれていない加工指示を3Dで確定する詳細モード。穴芯・取付角度θ・脱落防止ワイヤ・調整範囲まで検証します。</p>
-          <div class="sm-go">3D部材モードを開く →</div>
+          <div class="sm-mi">📐</div><h3>改修図から型番選定（3D）</h3>
+          <p>改修図をドロップして、図面に描かれていない条件（既存管の内径・引き方・防水種別）を3Dで確定する詳細モード。芯ズレ・適用管径レンジ・よこ引の調整角θまで検証します。</p>
+          <div class="sm-go">3D納まりモードを開く →</div>
         </div>
       </div>
     </div>
@@ -1006,12 +1006,12 @@ body{font-family:var(--font-body);font-weight:400;color:var(--ink);background:va
     <div class="sm-hero"><div class="sm-hero-in">
       <div class="k">Site Control</div>
       <h2>現場ダッシュボード</h2>
-      <p>設計・製作・取付を自社で回す以上、止まるのはたいてい「承認待ちの図面」と「未回答の質疑」。現場単位でそこだけを先に見えるようにしています。</p>
+      <p>製品供給だけでなく取付工事まで請け負う以上、止まるのはたいてい「承認待ちの提出図」と「未回答の質疑」。現場単位でそこだけを先に見えるようにしています。</p>
       <div class="sm-kpis" id="sm-siteKpis"></div>
     </div></div>
     <div class="sm-container">
       <div class="sm-proj-top">
-        <div><div class="sm-page-h">進行中の現場</div><div class="sm-page-sub" style="margin-bottom:0">工程・施工図・質疑・製作進捗を現場単位で管理します。</div></div>
+        <div><div class="sm-page-h">進行中の現場</div><div class="sm-page-sub" style="margin-bottom:0">工程・提出図・質疑・生産進捗を現場単位で管理します。</div></div>
         <button class="sm-btn accent" onclick="toast('デモでは新規現場の作成は行いません')">＋ 現場を追加</button>
       </div>
       <div class="sm-site-grid" id="sm-siteGrid"></div>
@@ -1044,7 +1044,7 @@ body{font-family:var(--font-body);font-weight:400;color:var(--ink);background:va
       <div class="sm-chat-body"><div class="sm-chat-inner" id="sm-chatInner"></div></div>
       <div class="sm-chat-input">
         <form onsubmit="smChatSubmit(event)">
-          <input id="sm-chatField" placeholder="自由入力でもOK（例：取付ベースプレート SUS304 t4.0、フッ素焼付）" autocomplete="off">
+          <input id="sm-chatField" placeholder="自由入力でもOK（例：屋上 たて引 φ118 耐風圧 48か所）" autocomplete="off">
           <button type="submit">送信</button>
         </form>
       </div>
@@ -1058,9 +1058,9 @@ body{font-family:var(--font-body);font-weight:400;color:var(--ink);background:va
       <h2>図面を3Dで確認しますか？</h2>
       <div class="lead" id="sm-ob-lead">概算はチャットで完了しています。ここから先は、図面に<b>描かれていない加工指示</b>を3Dで1つずつ確定し、電話確認をゼロに近づけます。</div>
       <ul class="sm-ob-steps">
-        <li><span class="sm-ob-ic">◎</span><div><b>2D⇄3D 穴芯チェック</b> <span>— ズレを ±mm で判定（赤＝要修正）</span></div></li>
-        <li><span class="sm-ob-ic">⌀</span><div><b>円弧長穴・取付角度θ</b> <span>— 調整範囲を3Dで表示</span></div></li>
-        <li><span class="sm-ob-ic">⚠</span><div><b>要判断チェック</b> <span>— ルーバー寸法・ワイヤ長の未確定を強調</span></div></li>
+        <li><span class="sm-ob-ic">◎</span><div><b>2D⇄3D 芯ズレチェック</b> <span>— 既存管芯とのズレを ±mm で判定（赤＝要修正）</span></div></li>
+        <li><span class="sm-ob-ic">⌀</span><div><b>適用管径レンジ・調整角θ</b> <span>— L/S の適合判定を3Dで表示</span></div></li>
+        <li><span class="sm-ob-ic">⚠</span><div><b>要判断チェック</b> <span>— 防水種別・既存つばの変形を強調</span></div></li>
       </ul>
       <div class="sm-ob-carry" id="sm-ob-carry">チャットで集めた条件を引き継いで図面を読み込みます。</div>
       <div class="sm-ob-actions">
@@ -1081,8 +1081,8 @@ body{font-family:var(--font-body);font-weight:400;color:var(--ink);background:va
   <header class="topbar">
     <div class="project-pill">
       <span class="dot"></span>
-      <span class="pname">意匠ルーバー・装飾手摺 製作／取付</span>
-      <span class="pmeta" id="proj-meta">みなとみらいセントラルモール 内装改修</span>
+      <span class="pname">屋上・ベランダ 改修用ドレン 供給／取付</span>
+      <span class="pmeta" id="proj-meta">星和第2マンション 大規模修繕</span>
     </div>
     <div class="topbar-spacer"></div>
     <button class="fab-site" id="fab-site" title="現場台帳へ戻る" onclick="window.__smShow&&window.__smShow('sites')">
@@ -1115,68 +1115,70 @@ body{font-family:var(--font-body);font-weight:400;color:var(--ink);background:va
 'use strict';
 if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}
 
-/* ════════════════ DATA — デモ案件: 商業施設・公共施設の意匠金物 ════════════════ */
-/* 想定: 株式会社アルテック — 商業施設／公共施設向けオーダーメイド装飾金属の
-   設計 → 製作 → 取付工事までの一貫請負。本デモの数値は説明用のサンプルです。
-   モール棟＝みなとみらいセントラルモール 内装改修（意匠ルーバー・装飾手摺）
-   ホール棟＝市民文化ホール 大規模改修（外装スパンドレル・脱落防止）
-   取付ブラケットは SUS304 t4.0、仕上げはフッ素焼付塗装（指定色）を標準とする。 */
+/* ════════════════ DATA — 株式会社アルテック（ALUTECK）ALDREX ════════════════ */
+/* 想定: 建築用装飾金属メーカー。ALDREX（アルミドレイン／改修用ストレーナーキャップ／
+   オーバーフロー管カバー）と ALPHASE（物干金物）を自社設計・生産し、
+   とび・土工／板金／建具／内装仕上の建設業許可で 取付工事まで請け負う。
+   本デモの現場は大規模修繕（屋上・ベランダ防水改修）で、
+   既存排水管の「引き方・部位・実測内径・防水種別」が図面に描かれていない＝
+   型番が決まらないという、改修特有のボトルネックを題材にしている。
+   数値・現場名は説明用のサンプル。 */
 const HW_TABLE = {
-  'M10ANC': { name:'あと施工アンカー M10×L100', mat:'SUS304', per:4, jis:'—', note:'二重脱落防止措置付', src:'drawing' },
-  'M8BOLT': { name:'六角ボルト M8×L35 N,SW,PW×2', mat:'SUS304', per:8, jis:'—', note:'二重脱落防止措置付', src:'drawing' },
-  'WIRE':   { name:'構造用ステンレス鋼ワイヤロープ φ4 7×19 SS/O B種', mat:'SUS', per:2, jis:'JIS G3550準拠', note:'くさび型圧着 SUS φ4用', src:'drawing' },
-  'ANCZ':   { name:'ホーク・タイワイヤーアンカーZ TypeII', mat:'SUS TWZS1080TypeII', per:2, jis:'—', note:'シャックル付（ケー・エフ・シー製）', src:'drawing' },
-  'SB6':    { name:'シャックル SB6', mat:'SUS', per:2, jis:'—', note:'付属品', src:'drawing' },
+  'SPACER': { name:'スペーサー（かさ上げ）', mat:'AL', per:1, jis:'—', note:'既存つばの段差調整用', src:'drawing' },
+  'PIPE1':  { name:'片ねじ直管 φ50×L200', mat:'VP/AL', per:1, jis:'—', note:'中継・延長用', src:'drawing' },
+  'VP':     { name:'エンビ管 VP-50', mat:'硬質塩ビ', per:1, jis:'JIS K6741準拠', note:'既存管との接続', src:'drawing' },
+  'SCREW':  { name:'ステンレスビス 4×25', mat:'SUS304', per:4, jis:'—', note:'つば固定（防水層貫通部シール共）', src:'drawing' },
+  'SEAL':   { name:'変成シリコーン系シール', mat:'—', per:1, jis:'JIS A5758準拠', note:'防水層取合い', src:'drawing' },
 };
-const EQUIV_MAKERS=['ケー・エフ・シー（図面指定：ホーク・タイワイヤーアンカーZ）','サンコーテクノ','日本ヒルティ','未指定（後で確認）'];
+const EQUIV_MAKERS=['アルテック純正（ALDREX）','他社改修用ドレン（要適合確認）','既存メーカー品で更新','未指定（後で確認）'];
 
 // type: angle / channel / plate / pipe
 const MEMBERS = [
-  { id:'kb1',  cat:'steel', name:'取付ベースプレート（躯体側）', type:'plate', spec:'PL-t4.0 SUS304 曲げ1', use:'壁面ベース', length:170, qty:40, weightEach:0.49, conf:97, source:'cad', color:'#2563eb',
-    dims:{w:170,d:100,t:4}, holes:[{label:'アンカー長穴',spec:'2-φ12×L30',pos:'170面 25/120/25'},{label:'円弧長穴',spec:'10mm幅 R30・100°',pos:'側板 100×100 面'}], welds:[], bends:[{label:'曲げ',spec:'90° 内R4（推定）'}], note:'あと施工アンカー M10×L100 ×4 で壁面固定。円弧長穴で取付角度θを調整。モール棟 要領図(1)(2)。' },
-  { id:'kb2',  cat:'steel', name:'角度調整ブラケット（ルーバー側）', type:'plate', spec:'PL-t4.0 SUS304 曲げ1', use:'ルーバー吊り', length:100, qty:40, weightEach:0.43, conf:96, source:'cad', color:'#16a34a',
-    dims:{w:100,d:150,t:4}, holes:[{label:'調整長穴',spec:'2-φ10×L40',pos:'立板 R80頭 20/20'},{label:'ルーバー固定長穴',spec:'2-φ10×L20',pos:'底板 100×70 15/70/15'}], welds:[], bends:[{label:'曲げ',spec:'90° 内R4（推定）'}], note:'六角ボルト M8×L35 ×2 で①と締結、ルーバー中心軸θ＝22〜55°（断面別）。' },
-  { id:'kdai', cat:'steel', name:'取付ブラケットA〜F（ホール棟）', type:'plate', spec:'PL-t4.0(類推) SUS304 6タイプ', use:'ホール棟 各断面', length:130, qty:24, weightEach:0.68, conf:84, source:'inferred', color:'#9333ea',
-    dims:{w:130,d:50,t:4}, holes:[{label:'調整長穴',spec:'10×20長穴 ×2',pos:'50幅 25/25'},{label:'丸穴',spec:'2-φ10',pos:'合わせ板'}], welds:[], bends:[{label:'曲げ',spec:'99°/90° Z曲げ×3（タイプ別）'}], note:'ホール棟図面は板厚表記なし。t4.0 はモール棟図面からの類推（要確認）。本体＋合わせ板の2ピース構成。エントランス部 A/B・共用廊下部 C〜F、左右対称。' },
-  { id:'wire', cat:'pipe',  name:'脱落防止材（ワイヤセット）', type:'pipe', spec:'φ4 7×19 SS/O B種 JIS G3550準拠', use:'二重脱落防止', length:1, qty:40, weightEach:0, conf:92, source:'cad', color:'#0d9488', pipe:'WIRE' },
-  { id:'anchor',cat:'pipe', name:'アンカー・ボルト類', type:'pipe', spec:'M10×L100 ×4 / M8×L35 ×8 SUS304', use:'締結（購入品）', length:1, qty:40, weightEach:0, conf:99, source:'cad', color:'#ea580c', pipe:'M10ANC' },
-  { id:'fixture',cat:'pipe',name:'意匠ルーバー本体（アルミ押出）', type:'pipe', spec:'AL押出 50×100 t2.0 / フッ素焼付（指定色）', use:'意匠面 L=2,400', length:1, qty:40, weightEach:0, conf:90, source:'inferred', color:'#64748b', pipe:'SB6' },
+  { id:'kb1',  cat:'steel', name:'改修用ストレーナーキャップ DSR-22ラバーベンダーL', type:'plate', spec:'22型 屋上・たて引 耐風圧仕様 AL鋳造', use:'屋上ドレン RD-1〜48', length:170, qty:48, weightEach:0.86, conf:96, source:'cad', color:'#2563eb',
+    dims:{w:184,d:184,t:6}, holes:[{label:'適用パイプ内径',spec:'φ115〜140',pos:'ラバーベンダー L サイズ'},{label:'有効排水断面',spec:'約 4,900mm²',pos:'カゴ側面＋天面'}], welds:[], bends:[{label:'ラバーベンダー',spec:'ゴム圧着 L（φ115〜140）'}], note:'既存たて引管へ差し込み、ラバーベンダーの圧着で固定。耐風圧仕様のため天板の吸い上げ対策あり。適用範囲外の管径にはSサイズ（φ95〜115）を選定。' },
+  { id:'kb2',  cat:'steel', name:'改修用ストレーナーキャップ TR-15HK（よこ引・角度自在）', type:'plate', spec:'15型 屋上／ベランダ 耐風圧仕様 AL鋳造', use:'ベランダ BV-1〜120', length:100, qty:120, weightEach:0.42, conf:94, source:'cad', color:'#16a34a',
+    dims:{w:140,d:140,t:5}, holes:[{label:'適用パイプ内径',spec:'φ60〜100',pos:'15型'},{label:'角度調整',spec:'θ＝0〜30°（自在）',pos:'ボールジョイント部'}], welds:[], bends:[{label:'角度自在ジョイント',spec:'既存管の勾配に追従'}], note:'よこ引（横引き）ドレン用。既存管の勾配・振れをジョイントで吸収するため、現場での再加工が不要。角度固定型との選択は既存管の状態で判断。' },
+  { id:'kdai', cat:'steel', name:'アルミドレイン DRT17-50VN ほか', type:'plate', spec:'17型 塩ビシート防水用 呼び径50φ AL鋳造', use:'防水更新部 新設 24か所', length:130, qty:24, weightEach:0.64, conf:83, source:'inferred', color:'#9333ea',
+    dims:{w:132,d:132,t:5}, holes:[{label:'適用パイプ呼び径',spec:'50φ',pos:'17型'},{label:'防水種別',spec:'DR＝塩ビシート / DF＝一般防水',pos:'型番先頭2文字'}], welds:[], bends:[{label:'張り掛け',spec:'シート張り掛け代 30mm（推定）'}], note:'図面に防水種別の明記がなく、DR（塩ビシート用）と DF（一般防水用）のどちらかが確定していない。仕様書の防水工法から DR を類推（要確認）。部位により屋上用T／ベランダ用B／中継用M を選び分ける。' },
+  { id:'wire', cat:'pipe',  name:'オプション（スペーサー／片ねじ直管／エンビ管）', type:'pipe', spec:'既存管との段差・延長の調整部材', use:'現場合わせ', length:1, qty:36, weightEach:0, conf:88, source:'cad', color:'#0d9488', pipe:'SPACER' },
+  { id:'anchor',cat:'pipe', name:'取付副資材（ビス・シール）', type:'pipe', spec:'SUS304 ビス4×25 ×4 / 変成シリコーン', use:'つば固定・防水取合い', length:1, qty:192, weightEach:0, conf:98, source:'cad', color:'#ea580c', pipe:'SCREW' },
+  { id:'fixture',cat:'pipe',name:'既存排水管・既存ドレン（現況）', type:'pipe', spec:'鋳鉄／塩ビ 既存 — 実測が必要', use:'取付対象（撤去せず活かす）', length:1, qty:192, weightEach:0, conf:72, source:'inferred', color:'#64748b', pipe:'VP' },
 ];
 const M = id => MEMBERS.find(m=>m.id===id);
-const STEEL_UNIT=950;     // SUS304 t4.0 切板 実効単価 ¥/kg（市況530〜900円/kg 2026年 ＋切板・歩留ロス）
-const PAINT_PER=250;      // 塗装（下地＋フッ素焼付・指定色 常温）小物 ¥/個
-const TRANSPORT=28000;    // 運搬費（2t車チャーター 横浜市内）
-const LABOR_RATE=8400;    // 工場加工 標準賃率 ¥/h
-const WIRE_SET=11500;     // 脱落防止材1セット: アンカーZ TypeII ¥4,000×2＋ワイヤφ4 ¥195/m×2.4m＋くさび圧着 ¥400×4
-const ANC_SET=1960;       // アンカー・ボルト1ルーバー分: SUS M10アンカー ¥250×4＋SUS M8×35組 ¥120×8
+const STEEL_UNIT=1180;    // アルミダイカスト 実効単価 ¥/kg（地金＋鋳造歩留ロス）
+const PAINT_PER=380;      // 表面処理（アルマイト／粉体塗装）¥/個
+const TRANSPORT=18000;    // 運搬費（現場一括配送・チャーター）
+const LABOR_RATE=7600;    // 生産 標準賃率 ¥/h（茅野工場）
+const WIRE_SET=2400;      // オプション1式: スペーサー ¥900＋片ねじ直管 ¥1,100＋エンビ管 ¥400
+const ANC_SET=460;        // 副資材1か所分: SUS ビス ¥45×4＋シール ¥280
 const PROC={laser:280, longhole:120, roundhole:100, arcslot:220, bend:200, wireset:450};
 const PROC_HR={laser:0.033, longhole:0.014, arcslot:0.026, bend:0.024, wireset:0.054};
-const FAB={ pieces:128, longHoles:288, roundHoles:48, arcSlots:40, bends:152, wiresets:40 };
+const FAB={ pieces:192, longHoles:192, roundHoles:768, arcSlots:48, bends:120, wiresets:36 };
 function steelTotals(){
   let w=0,c=0; MEMBERS.filter(m=>m.cat==='steel').forEach(m=>{const ww=m.weightEach*m.qty;w+=ww;c+=Math.round(ww*STEEL_UNIT);});
   return {w,c};
 }
 function procCost(){return FAB.pieces*PROC.laser+FAB.longHoles*PROC.longhole+FAB.roundHoles*PROC.roundhole+FAB.arcSlots*PROC.arcslot+FAB.bends*PROC.bend;}
 
-/* 見積依頼への回答区分。各製作品を見積書の明細区分へ自動同定し、
-   受注に必要な「見積時確認①〜⑤」を図面推論で自動充填。moat[] = 図面に描かれていない＝AIが補完した項目。 */
-const ORDER_FIELDS=[['steel','① 材質・板厚'],['bend','② 展開・曲げ'],['hole','③ 穴 / 長穴サイズ'],['finish','④ 仕上げ'],['size','⑤ 数量・寸法']];
+/* 受注に必要な「発注時確認①〜⑤」を図面推論で自動充填。
+   moat[] = 図面に描かれていない＝AIが補完した項目。改修現場ではここが電話確認の中身になる。 */
+const ORDER_FIELDS=[['steel','① 防水種別'],['bend','② 設置部位'],['hole','③ 引き方・角度'],['finish','④ 適用管径・実測内径'],['size','⑤ 数量・耐風圧仕様']];
 const SPEC_CAT={
-  kb1: {prod:'意匠ルーバー取付ブラケット（ベース）', sub:'SUS板金・曲げ加工品', f:{steel:'SUS304 t4.0（図面明記）', bend:'展開170×50＋100×100 / 曲げ90°×1', hole:'2-φ12×L30 / 10mm円弧長穴 R30・100°', finish:'塗装（フッ素焼付・指定色）', size:'数量：図面に記載なし ←ルーバー本数から推論'}, moat:['bend','size'], note:'円弧長穴はレーザーで切断と同時加工。数量は図面に数量表がなく、ルーバー本数（基本部＋エントランス部）から算定が必要。'},
-  kb2: {prod:'意匠ルーバー取付ブラケット（ルーバー側）', sub:'SUS板金・曲げ加工品', f:{steel:'SUS304 t4.0（図面明記）', bend:'展開100×(80+70) R80頭 / 曲げ90°×1', hole:'2-φ10×L40 / 2-φ10×L20', finish:'塗装（フッ素焼付・指定色）', size:'数量：①と同数（ルーバー本数連動）'}, moat:['bend','size'], note:'注記「形状、寸法は参考とする」— 採用ルーバーの確定で寸法が変わり得るため、製作前にルーバー製造図と突合せが必要。'},
-  kdai:{prod:'取付ブラケットA〜F（ホール棟）', sub:'SUS板金・曲げ加工品', f:{steel:'SUS304 t4.0 ←モール棟図面から類推', bend:'展開〜130×50 / 曲げ90°×1〜2', hole:'10×20長穴 ×2 / 2-φ10', finish:'塗装（フッ素焼付・指定色）', size:'6タイプ×L/R — 断面別数量は要拾い出し'}, moat:['steel','bend','size'], note:'ホール棟図面は板厚・材質欄が図中注記のみ。t4.0 と塗装仕様はモール棟図面からの類推で、見積条件として明示すべき項目。'},
-  wire:{prod:'脱落防止材（ワイヤセット）', sub:'購入品・組立', f:{steel:'ワイヤ φ4 7×19 SS/O B種 JIS G3550準拠', bend:'—（くさび型圧着 SUS φ4用）', hole:'—', finish:'—（SUS生地）', size:'長さ：「ルーバー取付状況に応じて調整」←図面注記'}, moat:['size'], note:'ホーク・タイワイヤーアンカーZ TypeII（メーカー指定）＋シャックルSB6×2。ワイヤ長は図面で未確定＝現場条件の要判断。'},
-  anchor:{prod:'アンカー・ボルト類', sub:'購入品', f:{steel:'M10×L100 / M8×L35 SUS304', bend:'—', hole:'—', finish:'—', size:'4本＋8本/ルーバー — 二重脱落防止措置付指定'}, moat:[], note:'「二重脱落防止措置が施されたもの」の指定あり。該当品番の選定確認のみ。'},
+  kb1: {prod:'改修用ストレーナーキャップ DSR-22ラバーベンダーL', sub:'22型 / たて引 / 屋上用 / 耐風圧仕様', f:{steel:'既存アスファルト防水＋塩ビシートかぶせ（仕様書より）', bend:'屋上（陸屋根）RD-1〜48', hole:'たて引（縦引き）・角度調整なし', finish:'適用 φ115〜140 ／ 実測 φ118（RD-1）', size:'48か所 ／ 耐風圧仕様 指定あり'}, moat:['finish','size'], note:'改修図に既存管の内径記載なし。実測値 φ118 から L サイズ（φ115〜140）を選定。RD-2 は実測 φ112 で範囲外のため S サイズへの変更が必要 — 型番混在の見落としが最も多い箇所。'},
+  kb2: {prod:'改修用ストレーナーキャップ TR-15HK', sub:'15型 / よこ引・角度自在型 / 耐風圧仕様', f:{steel:'ウレタン塗膜防水（ベランダ）', bend:'ベランダ／バルコニー BV-1〜120', hole:'よこ引・角度自在（θ＝0〜30°）', finish:'適用 φ60〜100 ／ 実測 φ72〜88（住戸差あり）', size:'120か所（住戸数連動）／ 耐風圧仕様'}, moat:['hole','finish','size'], note:'住戸ごとに既存管の勾配・内径が異なる。角度固定型では現場合わせが発生するため、角度自在型で吸収する前提。数量は住戸数からの推論で、共用廊下側の有無は要確認。'},
+  kdai:{prod:'アルミドレイン DRT17-50VN ほか', sub:'17型 / 屋上用T・ベランダ用B・中継用M / 呼び径50φ', f:{steel:'DR＝塩ビシート防水用 ←仕様書から類推（DF＝一般防水用と選択）', bend:'防水更新部（新設）24か所', hole:'たて引 ／ 張り掛け代 30mm（推定）', finish:'適用パイプ呼び径 50φ', size:'24か所 ／ 部位別 T/B/M の内訳は要拾い出し'}, moat:['steel','hole','size'], note:'型番先頭の DR／DF が防水種別を決めるが、改修図には防水工法しか書かれていない。ここを取り違えると納品後に返品・工期遅延になるため、見積条件として明示すべき項目。'},
+  wire:{prod:'オプション（スペーサー／片ねじ直管／エンビ管）', sub:'調整部材', f:{steel:'—', bend:'既存つばの段差・立上りに応じて', hole:'—', finish:'既存管内径・呼び径に連動', size:'36か所分（推定）— 現場実測後に確定'}, moat:['size'], note:'既存つばの変形や段差がある箇所にスペーサーを噛ませる。必要数は現場調査の写真判定によるため、見積時は仮置きで計上し実測後に精算する扱い。'},
+  anchor:{prod:'取付副資材（ビス・シール）', sub:'副資材', f:{steel:'—', bend:'—', hole:'—', finish:'SUS304', size:'ビス4本／か所 ＋ シール'}, moat:[], note:'防水層を貫通するため、ビス頭のシール処理を標準仕様として同梱。'},
 };
 function specCatCard(m){
   const s=SPEC_CAT[m.id];if(!s)return '';
   const rows=ORDER_FIELDS.map(([k,lbl])=>{const isMoat=s.moat.includes(k);return `<div class="oc-row${isMoat?' moat':''}"><span class="oc-lbl">${lbl}</span><span class="oc-val">${s.f[k]}</span>${isMoat?'<span class="oc-tag">図面推論</span>':'<span class="oc-tag std">標準</span>'}</div>`;}).join('');
-  return `<div class="dcard wide" data-fold="1"><div class="dcard-head"><div class="dcard-icon">${svg(ICON.doc)}</div><div class="dcard-title">特注品として発注する場合の該当区分</div><span class="dcard-badge">読み替え（参考）</span></div>
-    <div class="dcard-body"><div class="sc-readnote">この部材は図面では <b>${m.spec}</b> を生材から自社製作する指示です。同じ仕様を<b>メーカー特注品として手配する場合</b>の該当区分に読み替え、その「注文時確認①〜⑤」を図面推論で自動充填して示します（図面に品番が記載されているわけではありません）。</div>
-    <div class="sc-head"><div><div class="sc-prod">${s.prod}</div><div class="sc-sub">特注加工品の参考区分 · ${s.sub}</div></div><div class="sc-mark">${s.moat.length}/5 項目をAI自動充填</div></div>
+  return `<div class="dcard wide" data-fold="1"><div class="dcard-head"><div class="dcard-icon">${svg(ICON.doc)}</div><div class="dcard-title">発注時確認①〜⑤（型番が決まる5項目）</div><span class="dcard-badge">自動充填</span></div>
+    <div class="dcard-body"><div class="sc-readnote">改修用ドレンは <b>防水種別・設置部位・引き方・適用管径・数量</b> の5つが決まって初めて型番が確定します。改修図にはこのうち何項目かが描かれていないため、仕様書・現場写真・実測値から <b>AIが補完した項目</b> を明示します。</div>
+    <div class="sc-head"><div><div class="sc-prod">${s.prod}</div><div class="sc-sub">${s.sub}</div></div><div class="sc-mark">${s.moat.length}/5 項目をAI自動充填</div></div>
     <div class="sc-grid">${rows}</div>
     ${s.note?`<p class="sc-note">${s.note}</p>`:''}
-    <div class="sc-foot">${svg(ICON.check,' width="13" height="13"')} 自社製作・特注発注のどちらでも、手配に必要な「①〜⑤」は同じ。図面に描かれていない項目まで自動充填し、数量・板厚・穴位置の電話確認（従来50〜60分／件）を削減。</div></div></div>`;
+    <div class="sc-foot">${svg(ICON.check,' width="13" height="13"')} 図面に描かれていない項目まで根拠つきで埋めるので、型番違いの出荷と、内径・防水種別の電話確認（従来50〜60分／件）を減らせます。</div></div></div>`;
 }
 
 const ICON={
@@ -1207,124 +1209,159 @@ function buildBolt(r,L,col){const mat=new THREE.MeshStandardMaterial({color:col|
 function buildSlot(w,h,col){const g=new THREE.BoxGeometry(w,h,1.6);const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:col||0x232a35,transparent:true,opacity:0.9}));m.material._baseOp=0.9;const grp=new THREE.Group();grp.add(m);return grp;}
 function buildWireTube(pts,col){const curve=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p[0],p[1],p[2])));const g=new THREE.TubeGeometry(curve,40,2.2,7,false);const mat=new THREE.MeshStandardMaterial({color:col||0x7d8794,metalness:0.55,roughness:0.4,transparent:true,opacity:1});mat._baseOp=1;const grp=new THREE.Group();grp.add(new THREE.Mesh(g,mat));return grp;}
 
-// 段レベル — 上=壁面・ブラケット① / 中=ブラケット②・締結 / 下=ルーバー・ワイヤ
-const LVL=null; // （旧Y帯分類は廃止。レベルは組付け側で明示指定）
+// 段レベル — 上=キャップ本体／中=つば・立上り・締結／下=既存管・防水層・オプション
+const LVL=null;
 function tagit(o,partId,layer,level){o.userData={partId:partId,layer:layer,level:level||null};return o;}
-// 取付角度θ（B面 基準部 θ=23°）まわりの回転配置ヘルパ（x軸・ピボットPB）
+// よこ引・角度自在型（TR-15HK）の調整角 θ。既存管の勾配に追従させる。
 const THETA=23*Math.PI/180;
-const PB={x:0,y:375,z:55}; // ①円弧長穴中心＝②ボルト軸
+const PB={x:470,y:90,z:0}; // よこ引ジョイントの回転中心
 function tilt(pos){const dy=pos[1]-PB.y,dz=pos[2]-PB.z,c=Math.cos(THETA),si=Math.sin(THETA);return [pos[0],PB.y+dy*c-dz*si,PB.z+dy*si+dz*c];}
+// 円盤（つば・天板）: 高さの薄い円柱
+function buildDisc(od,h,col,op){const mat=new THREE.MeshStandardMaterial({color:col||0x9aa4b2,metalness:0.18,roughness:0.55,transparent:true,opacity:op===undefined?1:op});mat._baseOp=mat.opacity;const m=new THREE.Mesh(new THREE.CylinderGeometry(od/2,od/2,h,36),mat);const g=new THREE.Group();g.add(m);return g;}
+// リング（押えリング・つば端部）
+function buildRing(r,tube,col){const mat=new THREE.MeshStandardMaterial({color:col||0x8a94a3,metalness:0.3,roughness:0.5,transparent:true,opacity:1});mat._baseOp=1;const m=new THREE.Mesh(new THREE.TorusGeometry(r,tube,10,34),mat);m.rotation.x=-Math.PI/2;const g=new THREE.Group();g.add(m);return g;}
+// ストレーナーのカゴ（外周リブ＋天板）— アルミ鋳造の目かご部
+function buildCage(od,h,col,ribs){
+  const g=new THREE.Group();
+  const n=ribs||8, r=od/2;
+  for(let i=0;i<n;i++){
+    const a=i/n*Math.PI*2;
+    const rib=new THREE.Mesh(new THREE.BoxGeometry(9,h,13),steelMat({color:col}));
+    rib.position.set(Math.cos(a)*r,0,Math.sin(a)*r); rib.rotation.y=-a;
+    g.add(rib);
+  }
+  const bot=new THREE.Mesh(new THREE.TorusGeometry(r,5,8,30),steelMat({color:col}));bot.rotation.x=-Math.PI/2;bot.position.y=-h/2;g.add(bot);
+  const top=new THREE.Mesh(new THREE.CylinderGeometry(r+7,r,12,32),steelMat({color:col}));top.position.y=h/2+6;g.add(top);
+  return g;
+}
 function buildAssembly(){
   const G=new THREE.Group();
-  // ── 躯体（建物躯体 壁面）──
-  const wall=buildPlate(1100,50,1100,0xcfc9be);wall.rotation.x=Math.PI/2;wall.position.set(0,430,-25);tagit(wall,'wall','env',null);G.add(wall);
-  // ── 取付ベースプレート（躯体側）: 壁面板 170×50 t4 ＋ 側板(フィン) 100×100 t4 円弧長穴 ──
-  const kb1w=buildPlate(170,4,50,M('kb1').color);kb1w.rotation.x=Math.PI/2;kb1w.position.set(0,430,2);tagit(kb1w,'kb1','frame','上');G.add(kb1w);
-  [-60,60].forEach(x=>{const sl=buildSlot(30,12);sl.position.set(x,430,4.4);tagit(sl,'kb1','frame','上');G.add(sl);});
-  const kb1f=buildPlate(4,100,100,M('kb1').color);kb1f.rotation.z=Math.PI/2;kb1f.rotation.y=Math.PI/2;kb1f.position.set(0,380,54);tagit(kb1f,'kb1','frame','上');G.add(kb1f);
-  { // 円弧長穴（10mm幅 R30・100°）
-    const arc=new THREE.Mesh(new THREE.TorusGeometry(30,4.6,8,26,100*Math.PI/180),new THREE.MeshBasicMaterial({color:0x232a35,transparent:true,opacity:0.9}));
-    arc.material._baseOp=0.9;arc.rotation.y=Math.PI/2;arc.rotation.z=-140*Math.PI/180;
-    const g=new THREE.Group();g.add(arc);g.position.set(2.4,PB.y,PB.z);tagit(g,'kb1','frame','上');G.add(g);
-  }
-  // ── 角度調整ブラケット（ルーバー側）: 立板 80(R80頭)×100 ＋ 底板 100×70 — θ回転して配置 ──
-  const kb2f=buildPlate(4,80,100,M('kb2').color);
-  {const p=tilt([6,373,55]);kb2f.rotation.z=Math.PI/2;kb2f.rotation.y=Math.PI/2;kb2f.rotation.x=THETA;kb2f.position.set(p[0],p[1],p[2]);}
-  tagit(kb2f,'kb2','frame','中');G.add(kb2f);
-  [-24,24].forEach(dz=>{const sl=buildSlot(9,34);const p=tilt([8.4,373,55+dz]);sl.rotation.y=Math.PI/2;sl.rotation.x=THETA;sl.position.set(p[0],p[1],p[2]);tagit(sl,'kb2','frame','中');G.add(sl);});
-  const kb2l=buildPlate(100,4,70,M('kb2').color);
-  {const p=tilt([54,333,55]);kb2l.rotation.x=THETA;kb2l.position.set(p[0],p[1],p[2]);}
-  tagit(kb2l,'kb2','frame','中');G.add(kb2l);
-  // ── 締結（M8ボルト×2 ①⇔② / M8×2 ②⇔ルーバー）──
-  [-14,14].forEach(dy=>{const bt=buildBolt(4,26,0x3f4856);const p=tilt([4,375+dy,55]);bt.rotation.z=Math.PI/2;bt.position.set(p[0],p[1],p[2]);tagit(bt,'anchor','support','中');G.add(bt);});
-  [20,88].forEach(dx=>{const bt=buildBolt(4,22,0x3f4856);const p=tilt([dx,333,55]);bt.rotation.x=THETA;bt.position.set(p[0],p[1],p[2]);tagit(bt,'anchor','support','中');G.add(bt);});
-  // ── あと施工アンカー M10×L100（壁面へ）──
-  [-60,60].forEach(x=>{const an=buildBolt(5,100,0x8a6a2f);an.rotation.x=Math.PI/2;an.position.set(x,430,-46);tagit(an,'anchor','support','上');G.add(an);});
-  // ── 意匠ルーバー本体──
-  const fx=buildPlate(560,90,130,M('fixture').color);
-  {const p=tilt([52,284,55]);fx.rotation.x=THETA;fx.position.set(p[0],p[1],p[2]);}
-  tagit(fx,'fixture','pipe','下');G.add(fx);
-  [-262,262].forEach(dx=>{const cap=buildPlate(14,96,136,0x4a5462);const p=tilt([52+dx,284,55]);cap.rotation.x=THETA;cap.position.set(p[0],p[1],p[2]);tagit(cap,'fixture','pipe','下');G.add(cap);});
-  // ── 脱落防止材（ワイヤロープ φ4・二重）──
-  const fe1=tilt([-190,284,110]),fe2=tilt([300,284,110]);
-  const w1=buildWireTube([[-150,560,4],[-185,470,70],[fe1[0],fe1[1]+8,fe1[2]]]);tagit(w1,'wire','welds','下');G.add(w1);
-  const w2=buildWireTube([[250,560,4],[290,470,70],[fe2[0],fe2[1]+8,fe2[2]]]);tagit(w2,'wire','welds','下');G.add(w2);
-  [[-150,560],[250,560]].forEach(a=>{const an=buildBolt(5,58,0x6c7686);an.rotation.x=Math.PI/2;an.position.set(a[0],a[1],-24);tagit(an,'wire','welds','下');G.add(an);});
-  // ── ホール棟 ブラケットA（参考・タイプ違い）──
-  const kdw=buildPlate(50,4,60,M('kdai').color);kdw.rotation.x=Math.PI/2;kdw.position.set(400,430,2);tagit(kdw,'kdai','frame','上');G.add(kdw);
-  const kdl=buildPlate(50,4,130,M('kdai').color);kdl.position.set(400,398,67);kdl.rotation.x=0.12;tagit(kdl,'kdai','frame','上');G.add(kdl);
+  const CK1=M('kb1').color, CK2=M('kb2').color, CKD=M('kdai').color, CFX=M('fixture').color, CW=M('wire').color, CA=M('anchor').color;
+  const add=(o,pid,layer,lvl,pos,rot)=>{if(pos)o.position.set(pos[0],pos[1],pos[2]);if(rot){o.rotation.x=rot[0]||0;o.rotation.y=rot[1]||0;o.rotation.z=rot[2]||0;}tagit(o,pid,layer,lvl);G.add(o);return o;};
+
+  /* ── 躯体：屋上スラブを前後2枚の帯にして「断面」として見せる（中央の隙間に納まりが見える）── */
+  [-190,190].forEach(z=>{
+    add(buildPlate(1560,160,240,0xcfd4dc),'wall','env',null,[-60,-80,z]);          // RCスラブ
+    add(buildPlate(1560,10,240,0x8b6f5c),'wall','env',null,[-60,6,z]);             // 既存アスファルト防水
+    add(buildPlate(1560,14,240,0x7f8b9b),'wall','env',null,[-60,20,z]);            // 改修防水（塩ビシートかぶせ）
+  });
+  // パラペット立上り＋笠木
+  add(buildPlate(90,430,620,0xcfd4dc),'wall','env',null,[-790,215,0]);
+  add(buildPlate(150,26,660,0xb6bdc7),'wall','env',null,[-790,443,0]);
+  // ベランダ側 腰壁（よこ引ドレンの貫通先）
+  add(buildPlate(80,340,620,0xcfd4dc),'wall','env',null,[720,170,0]);
+
+  /* ── ① アルミドレイン DRT17-50VN（防水更新部・新設）x=-420 ── */
+  add(buildPipe(90,430,CFX),'fixture','pipe','下',[-420,-270,0]);                  // 既存たて引管
+  add(buildDisc(300,14,CKD),'kdai','frame','中',[-420,20,0]);                      // ドレン本体つば
+  add(buildDisc(320,5,0x7f8b9b,0.85),'kdai','frame','中',[-420,29,0]);             // シート張り掛け代
+  add(buildPipe(66,150,CKD),'kdai','frame','中',[-420,-62,0]);                     // 受け筒
+  add(buildCage(112,60,CKD,8),'kdai','frame','上',[-420,62,0]);                    // ストレーナー
+  [[-100,0],[100,0],[0,-100],[0,100]].forEach(d=>add(buildBolt(3.4,26,CA),'anchor','support','中',[-420+d[0],26,d[1]]));
+
+  /* ── ② 改修用ストレーナーキャップ DSR-22ラバーベンダーL（屋上・たて引・耐風圧）x=0 ── */
+  add(buildPipe(170,440,CFX),'fixture','pipe','下',[0,-275,0]);                    // 既存たて引管（鋳鉄）
+  add(buildDisc(340,18,CFX),'fixture','pipe','中',[0,-2,0]);                       // 既存ドレンつば（活かす）
+  add(buildPipe(146,120,0x3f4856),'kb1','frame','中',[0,-72,0]);                   // ラバーベンダー（ゴム圧着）
+  add(buildRing(74,7,0x2b3340),'kb1','frame','中',[0,-16,0]);                      // 圧着リング
+  add(buildPipe(98,110,CK1),'kb1','frame','中',[0,58,0]);                          // 立上り筒
+  add(buildDisc(210,12,CK1),'kb1','frame','中',[0,14,0]);                          // つば（防水面押え）
+  add(buildCage(150,84,CK1,8),'kb1','frame','上',[0,158,0]);                       // カゴ本体（耐風圧）
+  [[-88,0],[88,0],[0,-88],[0,88]].forEach(d=>add(buildBolt(3.4,26,CA),'anchor','support','中',[d[0],20,d[1]]));
+
+  /* ── ③ 改修用ストレーナーキャップ TR-15HK（よこ引・角度自在）x=+480 ── */
+  add(buildPipe(120,240,CFX),'fixture','pipe','下',[600,90,0],[0,0,Math.PI/2]);    // 既存よこ引管（腰壁貫通）
+  add(buildDisc(180,16,CK2),'kb2','frame','中',[492,90,0],[0,0,Math.PI/2]);        // 取付フランジ
+  add(buildPipe(126,64,CK2),'kb2','frame','中',[PB.x,PB.y,PB.z],[0,0,Math.PI/2]);  // 角度自在ジョイント
+  { const cage=buildCage(126,74,CK2,8); const p=tilt([392,90,0]);
+    cage.rotation.z=Math.PI/2+THETA; add(cage,'kb2','frame','上',p); }
+  { const nose=buildPipe(92,86,CK2); const p=tilt([432,90,0]);
+    nose.rotation.z=Math.PI/2+THETA; add(nose,'kb2','frame','中',p); }
+  [[0,-64],[0,64],[-64,0],[64,0]].forEach(d=>add(buildBolt(3.2,24,CA),'anchor','support','中',[496,90+d[0],d[1]],[0,0,Math.PI/2]));
+
+  /* ── ④ オプション（スペーサー／片ねじ直管／エンビ管）── */
+  add(buildRing(78,9,CW),'wire','welds','下',[0,-152,0]);                          // スペーサー（かさ上げ）
+  add(buildPipe(58,240,CW),'wire','welds','下',[0,-560,0]);                        // 片ねじ直管
+  add(buildPipe(62,190,CW),'wire','welds','下',[-420,-545,0]);                     // エンビ管 VP-50
+  add(buildRing(52,8,CW),'wire','welds','下',[-420,-440,0]);
+
   buildOverlays(G,{});
   return G;
 }
-// 穴芯・ルーバー中心軸のオーバーレイ層（CAD画層として個別ON/OFF）
+// 既存管の芯・内径のオーバーレイ層（CAD画層として個別ON/OFF）
 function buildOverlays(G,dim){
   const holeReg={};
   function holeRing(pos,axis,level,id,r){
-    const m=new THREE.Mesh(new THREE.TorusGeometry(r||9,2.2,8,20),new THREE.MeshBasicMaterial({color:0xea580c}));
+    const m=new THREE.Mesh(new THREE.TorusGeometry(r||9,2.6,8,24),new THREE.MeshBasicMaterial({color:0xea580c}));
     m.position.set(pos[0],pos[1],pos[2]);
-    if(axis==='z'){/* 壁面向き: リングはXY面のまま */}
+    if(axis==='z'){}
     else if(axis==='x'){m.rotation.y=Math.PI/2;}
     else{m.rotation.x=-Math.PI/2;}
     const grp=new THREE.Group();grp.add(m);grp.userData={partId:'_hole',layer:'holes',level:level,_overlay:true,holeId:id,_mark:m};
     holeReg[id]=grp;G.add(grp);
   }
-  holeRing([-60,430,8],'z','上','kb1-a1',11);
-  holeRing([60,430,8],'z','上','kb1-a2',11);
-  holeRing([5,PB.y,PB.z],'x','上','kb1-arc',13);
-  {const p1=tilt([11,373,31]);holeRing(p1,'x','中','kb2-s1',9);}
-  {const p2=tilt([11,373,79]);holeRing(p2,'x','中','kb2-s2',9);}
-  {const p3=tilt([20,329,55]);holeRing(p3,'y','中','kb2-b1',8);}
-  {const p4=tilt([88,329,55]);holeRing(p4,'y','中','kb2-b2',8);}
+  holeRing([0,-4,0],'y','中','rd1-core',86);        // RD-1 既存管芯・内径
+  holeRing([0,-120,0],'y','下','rd1-id',74);        // ラバーベンダー圧着位置の内径
+  holeRing([-420,22,0],'y','中','rd3-core',76);     // アルミドレイン つば芯
+  {const p=tilt([432,90,0]);holeRing(p,'x','中','bv1-ang',52);}   // よこ引 角度自在の芯
+  holeRing([560,90,0],'x','中','bv1-core',62);      // 既存よこ引管 端部
   G.userData.holeReg=holeReg;
   G.userData.weldReg={};
-  // ルーバー中心軸（θ=23° 参考線）— grid画層
+  // よこ引 調整角 θ の参考線 — grid画層
   {
-    const dir=new THREE.Vector3(0,Math.cos(THETA),Math.sin(THETA));
-    const c=tilt([52,284,55]);const c3=new THREE.Vector3(c[0],c[1],c[2]);
-    const p1=c3.clone().add(dir.clone().multiplyScalar(320)),p2=c3.clone().add(dir.clone().multiplyScalar(-240));
-    const geo=new THREE.BufferGeometry().setFromPoints([p1,p2]);
-    const mat=new THREE.LineDashedMaterial({color:0xc8d4e2,dashSize:22,gapSize:12,transparent:true,opacity:0.9});
+    const dir=new THREE.Vector3(-Math.sin(Math.PI/2+THETA)*-1,0,0);
+    const a=new THREE.Vector3(PB.x,PB.y,PB.z);
+    const b=new THREE.Vector3(PB.x-300*Math.cos(THETA),PB.y-300*Math.sin(THETA),0);
+    const geo=new THREE.BufferGeometry().setFromPoints([a,b]);
+    const mat=new THREE.LineDashedMaterial({color:0xc8d4e2,dashSize:20,gapSize:12,transparent:true,opacity:0.95});
     const ln=new THREE.Line(geo,mat);ln.computeLineDistances();
     const grp=new THREE.Group();grp.add(ln);grp.userData={partId:'_grid',layer:'grid',level:null,_overlay:true};G.add(grp);
   }
-  // 壁面鉛直線（θの基準）
+  // 既存管の鉛直芯（たて引の基準）
   {
-    const geo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,120,55),new THREE.Vector3(0,700,55)]);
-    const mat=new THREE.LineDashedMaterial({color:0x9aa4b2,dashSize:14,gapSize:10,transparent:true,opacity:0.7});
+    const geo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,240,0),new THREE.Vector3(0,-560,0)]);
+    const mat=new THREE.LineDashedMaterial({color:0x9aa4b2,dashSize:14,gapSize:10,transparent:true,opacity:0.75});
+    const ln=new THREE.Line(geo,mat);ln.computeLineDistances();
+    const grp=new THREE.Group();grp.add(ln);grp.userData={partId:'_grid',layer:'grid',level:null,_overlay:true};G.add(grp);
+  }
+  // よこ引の水平基準線（θの基準）
+  {
+    const geo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(PB.x,PB.y,0),new THREE.Vector3(PB.x-300,PB.y,0)]);
+    const mat=new THREE.LineDashedMaterial({color:0x9aa4b2,dashSize:12,gapSize:9,transparent:true,opacity:0.6});
     const ln=new THREE.Line(geo,mat);ln.computeLineDistances();
     const grp=new THREE.Group();grp.add(ln);grp.userData={partId:'_grid',layer:'grid',level:null,_overlay:true};G.add(grp);
   }
 }
-// 穴芯整合チェック（相手部材との突合せ・許容差±2mm）— キュレート
+// 既存管との芯ズレ・寸法差の判定（許容 ±2mm）— キュレート
 const HOLE_FITS=[
-  {id:'kb1-a1',pair:'①アンカー長穴 ⇔ 躯体アンカー',plan:'L側/左',dev:0.8,tol:2},
-  {id:'kb1-a2',pair:'①アンカー長穴 ⇔ 躯体アンカー',plan:'L側/右',dev:1.4,tol:2},
-  {id:'kb1-arc',pair:'①円弧長穴 ⇔ ②取付ボルト',plan:'θ=23°位置',dev:0.5,tol:2},
-  {id:'kb2-s1',pair:'②調整長穴 ⇔ ①ボルト',plan:'上側',dev:0.9,tol:2},
-  {id:'kb2-b1',pair:'②ルーバー固定長穴 ⇔ ルーバー取付穴',plan:'ルーバー製造図 未突合',dev:3.1,tol:2},
+  {id:'rd1-core',pair:'既存管芯 ⇔ キャップ芯（RD-1 屋上）',plan:'実測 φ118 / 芯ズレ',dev:0.8,tol:2},
+  {id:'rd1-id',pair:'既存管内径 実測φ118 ⇔ ラバーベンダーL 適用φ115〜140',plan:'下限から +3.0mm',dev:1.2,tol:2},
+  {id:'rd3-core',pair:'アルミドレインつば芯 ⇔ 既存開口芯',plan:'防水更新部 24か所',dev:0.6,tol:2},
+  {id:'bv1-ang',pair:'よこ引 角度自在 θ ⇔ 既存管勾配（BV-1）',plan:'θ=23° で追従',dev:0.9,tol:2},
+  {id:'bv1-core',pair:'既存つば変形 ⇔ キャップ密着面（BV-14）',plan:'現場写真あり — 未確定',dev:3.4,tol:2},
 ];
 const fitJudge=d=>d<=1?{k:'適合',c:'var(--ok)'}:d<=2?{k:'許容内',c:'#d39a00'}:{k:'要修正',c:'#e11d2e'};
-// 脱落防止ワイヤ・端末の指示
+// オプション・副資材の指示
 const WELDS_INFO=[
-  {label:'ワイヤアンカーZ TypeII',sym:'SUS TWZS1080',face:'壁面 スリーブ打込み（シャックル付）'},
-  {label:'シャックル SB6',sym:'SUS 付属品',face:'ワイヤ両端 → ルーバー側ブラケット'},
-  {label:'くさび型圧着',sym:'SUS φ4用',face:'ワイヤ端末処理（JIS G3550準拠）'},
+  {label:'スペーサー',sym:'AL かさ上げ',face:'既存つばの段差・不陸調整（写真判定 36か所）'},
+  {label:'片ねじ直管 φ50×L200',sym:'中継・延長用',face:'既存管が短い箇所の継ぎ足し'},
+  {label:'エンビ管 VP-50',sym:'JIS K6741準拠',face:'既存塩ビ管との接続（接着）'},
 ];
-// CAD画層（カテゴリ）と 組付けレベル — 3D可視性トグル
+// CAD画層（カテゴリ）と 納まりレベル — 3D可視性トグル
 const LAYER_CATS=[
-  {k:'frame',label:'取付ブラケット（SUS304）',c:'#2563eb',on:true},
-  {k:'pipe',label:'意匠ルーバー本体',c:'#64748b',on:true},
-  {k:'support',label:'アンカー・ボルト',c:'#ea580c',on:true},
-  {k:'holes',label:'穴 / 長穴・穴芯',c:'#ea580c',on:true},
-  {k:'welds',label:'脱落防止ワイヤ',c:'#0d9488',on:true},
-  {k:'env',label:'躯体・下地（RC / ALC）',c:'#b9b2a3',on:true},
-  {k:'grid',label:'ルーバー中心軸 θ',c:'#c8d4e2',on:false},
+  {k:'frame',label:'ALDREX 製品（アルミ鋳造）',c:'#2563eb',on:true},
+  {k:'pipe',label:'既存排水管・既存ドレン（現況）',c:'#64748b',on:true},
+  {k:'support',label:'ビス・シール（副資材）',c:'#ea580c',on:true},
+  {k:'holes',label:'既存管の芯 / 内径',c:'#ea580c',on:true},
+  {k:'welds',label:'オプション（スペーサー／直管）',c:'#0d9488',on:true},
+  {k:'env',label:'躯体スラブ・防水層・立上り',c:'#b9b2a3',on:true},
+  {k:'grid',label:'よこ引 調整角 θ',c:'#c8d4e2',on:false},
 ];
-const LAYER_LVLS=[{k:'上',label:'壁面・ブラケット①'},{k:'中',label:'ブラケット②・締結'},{k:'下',label:'ルーバー・ワイヤ'}];
-// Phase 4: 調整範囲チェック — 取付角度θの上限側で円弧長穴の調整代が枯渇
+const LAYER_LVLS=[{k:'上',label:'ストレーナー（カゴ）'},{k:'中',label:'つば・立上り・締結'},{k:'下',label:'既存管・オプション'}];
+// Phase 4: 適用範囲チェック — 実測内径が製品の適用レンジを外れる／既存つばの変形
 const CLASHES=[
-  {parts:['kb1','kb2'],pos:[5,375,55],note:'A面 基準部 θ=50°±1° 適用時、①円弧長穴（100°）の残り調整代 約1mm — 範囲端。図面注記「取付角度は参考とし、採用ルーバーにより再検討」の該当箇所。'},
-  {parts:['kb2','fixture'],pos:[52,300,90],note:'②ルーバー固定長穴 2-φ10×L20 ⇔ ルーバー取付穴：採用ルーバー未確定のため突合せ不能（注記「形状、寸法は参考とする」）。ルーバー製造図の入手が製作条件。'},
+  {parts:['kb1','fixture'],pos:[0,-70,0],note:'RD-2 の既存管内径 実測 φ112。DSR-22 ラバーベンダーL（φ115〜140）は適用範囲外 — S（φ95〜115）への型番変更が必要。48か所のうち 6か所が同条件で、L/S 混在の拾い直しが要る。'},
+  {parts:['kb2','fixture'],pos:[520,90,0],note:'BV-14 の既存ドレンつばが変形（現場写真あり）。TR-15HK の密着面が確保できない恐れ — 既存つば撤去のうえスペーサー併用か、中継用セパレートへの変更を要判断。'},
 ];
 const CLASH_PARTS=new Set(CLASHES.flatMap(c=>c.parts));
 
@@ -1345,9 +1382,9 @@ function initScene(canvasId,opts){
   const key=new THREE.DirectionalLight(0xffffff,0.62);key.position.set(800,1400,900);scene.add(key);
   const fill=new THREE.DirectionalLight(0xffffff,0.28);fill.position.set(-700,600,-500);scene.add(fill);
   let assembly=buildAssembly();scene.add(assembly);
-  const target=new THREE.Vector3(0,400,40);const homeTarget=target.clone();
+  const target=new THREE.Vector3(40,-40,0);const homeTarget=target.clone();
   const layerState={cat:{frame:true,pipe:true,support:true,holes:true,welds:true,env:true,grid:false},lvl:{'下':true,'中':true,'上':true}};
-  let theta=0.72,phi=1.18,radius=1050,exploded=false,highlight=opts.highlight||null,soloId=null;
+  let theta=0.72,phi=1.08,radius=1650,exploded=false,highlight=opts.highlight||null,soloId=null;
   function applyCam(){camera.position.x=target.x+radius*Math.sin(phi)*Math.cos(theta);camera.position.z=target.z+radius*Math.sin(phi)*Math.sin(theta);camera.position.y=target.y+radius*Math.cos(phi);camera.lookAt(target);}
   applyCam();
   let dragging=false,autoRot=opts.autoRot!==false,lx=0,ly=0;
@@ -1355,14 +1392,14 @@ function initScene(canvasId,opts){
   canvas.addEventListener('pointerdown',e=>{if(e.pointerType==='touch')return;dragging=true;autoRot=false;lx=e.clientX;ly=e.clientY;canvas.setPointerCapture(e.pointerId);});
   canvas.addEventListener('pointermove',e=>{if(!dragging)return;theta-=(e.clientX-lx)*0.008;phi=Math.max(0.25,Math.min(2.5,phi-(e.clientY-ly)*0.008));lx=e.clientX;ly=e.clientY;applyCam();});
   canvas.addEventListener('pointerup',()=>{dragging=false;});
-  canvas.addEventListener('wheel',e=>{e.preventDefault();radius=Math.max(350,Math.min(4500,radius+e.deltaY*1.2));applyCam();},{passive:false});
+  canvas.addEventListener('wheel',e=>{e.preventDefault();radius=Math.max(320,Math.min(6000,radius+e.deltaY*1.2));applyCam();},{passive:false});
   // タッチ（モバイル）：1本指で回転、2本指でピンチズーム。touch-action:noneでページスクロールを奪わない
   let tMode=0,tDist=0;
   canvas.addEventListener('touchstart',e=>{autoRot=false;if(e.touches.length===1){tMode=1;lx=e.touches[0].clientX;ly=e.touches[0].clientY;}else if(e.touches.length>=2){tMode=2;tDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);}},{passive:false});
-  canvas.addEventListener('touchmove',e=>{e.preventDefault();if(tMode===1&&e.touches.length===1){const x=e.touches[0].clientX,y=e.touches[0].clientY;theta-=(x-lx)*0.008;phi=Math.max(0.25,Math.min(2.5,phi-(y-ly)*0.008));lx=x;ly=y;applyCam();}else if(tMode===2&&e.touches.length>=2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(tDist)radius=Math.max(350,Math.min(4500,radius*(tDist/d)));tDist=d;applyCam();}},{passive:false});
+  canvas.addEventListener('touchmove',e=>{e.preventDefault();if(tMode===1&&e.touches.length===1){const x=e.touches[0].clientX,y=e.touches[0].clientY;theta-=(x-lx)*0.008;phi=Math.max(0.25,Math.min(2.5,phi-(y-ly)*0.008));lx=x;ly=y;applyCam();}else if(tMode===2&&e.touches.length>=2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);if(tDist)radius=Math.max(320,Math.min(6000,radius*(tDist/d)));tDist=d;applyCam();}},{passive:false});
   canvas.addEventListener('touchend',e=>{if(e.touches.length===0)tMode=0;else if(e.touches.length===1){tMode=1;lx=e.touches[0].clientX;ly=e.touches[0].clientY;}},{passive:false});
   function setHighlight(id){highlight=id;assembly.traverse(o=>{if(!o.material)return;const pid=o.parent&&o.parent.userData&&o.parent.userData.partId;if(!pid)return;const isEdge=o.userData&&o.userData._edge;const base=o.material._baseOp!==undefined?o.material._baseOp:1;if(!highlight){o.material.opacity=base;}else if(pid===highlight){o.material.opacity=base;}else{o.material.opacity=isEdge?0.12:0.3;}});}
-  function setExplode(on){exploded=on;assembly.children.forEach(c=>{if(c.userData._overlay)return;const pid=c.userData.partId;if(!c.userData._home)c.userData._home=c.position.clone();const h=c.userData._home;if(on){let off=new THREE.Vector3();if(pid==='wall')off.set(0,0,-140);else if(pid==='kb1')off.set(0,0,90);else if(pid==='kb2')off.set(0,-20,230);else if(pid==='fixture')off.set(0,-110,400);else if(pid==='anchor')off.set(c.position.x<0?-60:60,40,-40);else if(pid==='wire')off.set(0,190,120);else if(pid==='kdai')off.set(150,0,60);else off.set(0,0,180);c.position.copy(h.clone().add(off));}else c.position.copy(h);});}
+  function setExplode(on){exploded=on;assembly.children.forEach(c=>{if(c.userData._overlay)return;const pid=c.userData.partId;if(!c.userData._home)c.userData._home=c.position.clone();const h=c.userData._home;if(on){let off=new THREE.Vector3();if(pid==='wall')off.set(0,-160,0);else if(pid==='kb1')off.set(0,260,0);else if(pid==='kb2')off.set(-180,180,0);else if(pid==='fixture')off.set(0,-300,0);else if(pid==='anchor')off.set(0,400,0);else if(pid==='wire')off.set(0,-460,0);else if(pid==='kdai')off.set(0,300,0);else off.set(0,220,0);c.position.copy(h.clone().add(off));}else c.position.copy(h);});}
   // CAD画層：カテゴリON/OFF と レベル絞りの積で可視性を決定
   function applyLayers(){assembly.children.forEach(c=>{const u=c.userData;if(soloId){c.visible=(u.partId===soloId);return;}const catOk=layerState.cat[u.layer]!==false;const lvlOk=!u.level||layerState.lvl[u.level]!==false;c.visible=catOk&&lvlOk;});}
   function setLayer(group,key,on){if(layerState[group]&&key in layerState[group]){layerState[group][key]=on;}applyLayers();}
@@ -1370,7 +1407,7 @@ function initScene(canvasId,opts){
   function showAll(){soloId=null;applyLayers();setHighlight(null);}
   function focusHole(id){const reg=assembly.userData.holeReg||{};Object.values(reg).forEach(g=>{const m=g.userData._mark;if(m){m.material.color.setHex(0xea580c);m.scale.setScalar(1);}});
     layerState.cat.holes=true;soloId=null;applyLayers();const g=reg[id];if(!g)return;const m=g.userData._mark;m.material.color.setHex(0xe11d2e);m.scale.setScalar(2);
-    const wp=new THREE.Vector3();g.getWorldPosition(wp);target.copy(wp);radius=520;autoRot=false;applyCam();}
+    const wp=new THREE.Vector3();g.getWorldPosition(wp);target.copy(wp);radius=620;autoRot=false;applyCam();}
   // ── clash markers ──
   const clashMarks=new THREE.Group();clashMarks.visible=false;scene.add(clashMarks);
   CLASHES.forEach(c=>{const ring=new THREE.Mesh(new THREE.TorusGeometry(95,8,12,30),new THREE.MeshBasicMaterial({color:0xe11d2e,transparent:true,opacity:0.92}));ring.position.set(c.pos[0],c.pos[1],c.pos[2]);clashMarks.add(ring);});
@@ -1387,7 +1424,7 @@ function initScene(canvasId,opts){
     if(clashOn){tphase+=0.07;const s=1+Math.sin(tphase)*0.18;clashMarks.children.forEach(r=>r.scale.setScalar(s));}
     renderer.render(scene,camera);}
   render();
-  const api={canvas:canvas,resize(){const w=canvas.clientWidth,h=canvas.clientHeight;if(w&&h){camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);}},explode(){setExplode(!exploded);return exploded;},zoom(f){radius=Math.max(350,Math.min(4500,radius*f));applyCam();},reset(){theta=0.72;phi=1.18;radius=1050;autoRot=true;target.copy(homeTarget);setExplode(false);if(clashOn)setClash(false);showAll();setHighlight(highlight);applyCam();},setHighlight(id){if(clashOn)setClash(false);soloId=null;applyLayers();setHighlight(id);},solo(id){if(clashOn)setClash(false);autoRot=false;setSolo(id);},showAll(){if(clashOn)setClash(false);showAll();},clash(){autoRot=false;setClash(!clashOn);return clashOn;},getSolo(){return soloId;},setLayer(group,key,on){setLayer(group,key,on);},getLayerState(){return layerState;},focusHole(id){autoRot=false;focusHole(id);},resetView(){autoRot=true;},dispose(){alive=false;try{renderer.dispose();}catch(e){}}};
+  const api={canvas:canvas,resize(){const w=canvas.clientWidth,h=canvas.clientHeight;if(w&&h){camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);}},explode(){setExplode(!exploded);return exploded;},zoom(f){radius=Math.max(320,Math.min(6000,radius*f));applyCam();},reset(){theta=0.72;phi=1.08;radius=1650;autoRot=true;target.copy(homeTarget);setExplode(false);if(clashOn)setClash(false);showAll();setHighlight(highlight);applyCam();},setHighlight(id){if(clashOn)setClash(false);soloId=null;applyLayers();setHighlight(id);},solo(id){if(clashOn)setClash(false);autoRot=false;setSolo(id);},showAll(){if(clashOn)setClash(false);showAll();},clash(){autoRot=false;setClash(!clashOn);return clashOn;},getSolo(){return soloId;},setLayer(group,key,on){setLayer(group,key,on);},getLayerState(){return layerState;},focusHole(id){autoRot=false;focusHole(id);},resetView(){autoRot=true;},dispose(){alive=false;try{renderer.dispose();}catch(e){}}};
   scenes[canvasId]=api;return api;
 }
 
@@ -1430,8 +1467,8 @@ function renderUpload(){
       </div>
     </div>
     <div class="sample-strip">
-      <button class="sample-thumb" data-sample="1"><div class="st-tag">モール棟 · ALT-102</div><div class="st-name">意匠ルーバー取付ブラケット 製作図</div><div class="st-meta">Rev.B / SUS304 t4.0 / 2頁</div></button>
-      <button class="sample-thumb" data-sample="2"><div class="st-tag">ホール棟 · ALT-215</div><div class="st-name">取付ブラケットA〜F・脱落防止ワイヤ</div><div class="st-meta">Rev.A / 取付詳細図(1)〜(2) / 4頁</div></button>
+      <button class="sample-thumb" data-sample="1"><div class="st-tag">屋上 · ALD-102</div><div class="st-name">屋上伏図・ドレン位置図（RD-1〜48）</div><div class="st-meta">Rev.B / 既存管内径 調査表つき / 2頁</div></button>
+      <button class="sample-thumb" data-sample="2"><div class="st-tag">ベランダ · ALD-215</div><div class="st-name">ベランダ ドレン改修 詳細図（BV-1〜120）</div><div class="st-meta">Rev.A / よこ引・角度自在型 / 4頁</div></button>
     </div>
   </div>`;
   const uz=document.getElementById('uz');const fi=document.getElementById('file-input');
@@ -1440,7 +1477,7 @@ function renderUpload(){
   ['dragenter','dragover'].forEach(ev=>uz.addEventListener(ev,e=>{e.preventDefault();uz.classList.add('drag');}));
   ['dragleave','drop'].forEach(ev=>uz.addEventListener(ev,e=>{e.preventDefault();uz.classList.remove('drag');}));
   uz.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)acceptFile(f);});
-  document.querySelectorAll('.sample-thumb').forEach(b=>b.addEventListener('click',()=>{App.file=null;App.fileName=(b.dataset.sample==='2'?'ALT-215_取付ブラケットA-F_ホール棟_RevA.pdf（サンプル）':'ALT-102_意匠ルーバー取付ブラケット_モール棟_RevB.pdf（サンプル）');App.pdfDoc=null;goStage(2);}));
+  document.querySelectorAll('.sample-thumb').forEach(b=>b.addEventListener('click',()=>{App.file=null;App.fileName=(b.dataset.sample==='2'?'ALD-215_ベランダドレン改修詳細図_RevA.pdf（サンプル）':'ALD-102_屋上伏図_ドレン位置図_RevB.pdf（サンプル）');App.pdfDoc=null;goStage(2);}));
 }
 function acceptFile(f){
   App.file=f;App.fileName=f.name;App.pdfDoc=null;App.extracted=null;App.dxf=null;App.ifc=null;App.convFrom=null;
@@ -1569,15 +1606,15 @@ async function extractSpecs(doc){
 
 /* ════════════════ STAGE 2 — ANALYZE ════════════════ */
 const LOG=[
-  ['00.2','ベクトルPDF読込 — モール棟 要領図(1)(2)・ホール棟 詳細図(1)(2) 6頁','ac'],
-  ['00.9','線分ベクトル化 — 図枠・表題欄・断面図を分離',''],
-  ['01.6','部品図同定: 取付ベースプレート／角度調整ブラケット / ブラケットA〜F / 脱落防止装置','ac'],
-  ['02.3','寸法取得: 170×50 / 2-φ12×L30 / 10mm円弧長穴 R30・100° …信頼度 97%','ok'],
-  ['03.1','材質・仕上げ抽出: SUS304 t4.0 / 塗装（フッ素焼付・指定色）仕上げ',''],
-  ['03.9','脱落防止材: ワイヤφ4 7×19 SS/O B種 JIS G3550 / アンカーZ TypeII','ac'],
-  ['04.7','注記解析 — 「形状、寸法は参考とする」「取付角度は採用ルーバーにより再検討」','ac'],
-  ['05.6','3レンズ判定: 確定14 / 推論5（数量・板厚類推・曲げR）/ 要判断3','ok'],
-  ['06.4','解析完了 — 製作品3種 / 購入品2式 / 加工指示 抽出','ok'],
+  ['00.2','ベクトルPDF読込 — 屋上伏図・ドレン位置図・既存管内径調査表 6頁','ac'],
+  ['00.9','線分ベクトル化 — 図枠・表題欄・凡例を分離',''],
+  ['01.6','記号同定: 屋上ドレン RD-1〜48 / ベランダ BV-1〜120 / 新設 24か所','ac'],
+  ['02.3','引き方判定: たて引 72 / よこ引 120 …図面記号と竪樋位置から判定 96%','ok'],
+  ['03.1','既存管径の抽出: 呼び径 表記あり 24か所 / 記載なし 168か所 ←実測必要','ac'],
+  ['03.9','防水種別: 仕様書「塩ビシート機械的固定」→ DR系（塩ビシート防水用）と類推','ac'],
+  ['04.7','注記解析 — 「既存ドレンは撤去せず改修用を使用」「耐風圧仕様とする」','ac'],
+  ['05.6','3レンズ判定: 確定16 / 推論6（防水種別・数量・オプション数）/ 要判断3','ok'],
+  ['06.4','解析完了 — 製品3系統 / 副資材2式 / 型番候補を自動同定','ok'],
 ];
 function buildLog(){
   const ex=App.extracted;
@@ -1593,7 +1630,7 @@ function buildLog(){
     ['02.3',`断面同定: ${kindStr} …${ex.steel.length}種 検出`,'ok'],
     ['03.1',`寸法取得: ${topSteel}`,''],
     ['03.9',`購入品 抽出: ${pipeStr||'ワイヤ・アンカー類'} …${ex.pipes.length}件`,'ac'],
-    ['04.7','加工指示推論 — 長穴・円弧長穴・曲げ 算定中…','ac'],
+    ['04.7','型番推論 — 引き方・部位・適用管径レンジ 照合中…','ac'],
     ['05.6','JIS照合・暗黙知補完: ベース＝PL統一 / 長穴ピッチ管種依存','ok'],
     ['06.4',`解析完了 — 製作品${ex.steel.length}種 / 購入品${ex.pipes.length}件 抽出`,'ok'],
   ];
@@ -1667,7 +1704,7 @@ function renderCadConvert(fmt){
     ['変換エンジン起動',cfg.engine],
     cfg.extract,
     ['ジオメトリ検証','座標系・単位（mm）・画層整合をチェック'],
-    ['ALTECHE へ取込','ベクター描画＋部材検出へ引き渡し']
+    ['ALDREX へ取込','ベクター描画＋ドレン検出へ引き渡し']
   ];
   stage.innerHTML='<div class="dwg-wrap fade-in">'
     +'<div class="dwg-head"><div class="dwg-badge">'+cfg.badge+'</div><div><h2>'+cfg.title+'</h2><p>'+esc(fn)+'　·　'+sizeKB.toLocaleString()+' KB</p></div></div>'
@@ -1823,15 +1860,15 @@ function renderWorkspace(){
       <div class="ws-stage">
         <div class="ws-pane ${App.wsTab==='vector'?'active':''}" data-pane="vector"><div class="vec-stage" id="vec-stage">${elevationSVG()}
           <div class="vec-legend">
-            <span class="vl-chip">モール棟 意匠ルーバー取付 · 立面／断面</span>
-            <span class="vl-chip" style="color:var(--paper-warm)">製作品3種 + 購入品2式</span>
+            <span class="vl-chip">屋上・ベランダ ドレン改修 · 断面</span>
+            <span class="vl-chip" style="color:var(--paper-warm)">製品3系統 + 副資材2式 + 現況</span>
           </div>
         </div></div>
         <div class="ws-pane ${App.wsTab==='pdf'?'active':''}" data-pane="pdf"><div class="pdf-pane" id="pdf-pane"></div></div>
       </div>
     </div>
     <aside class="ws-side">
-      <div class="side-head"><h3>検出部材</h3><span class="side-count">${(App.extracted&&App.extracted.hasText?App.extracted.steel.length+App.extracted.pipes.length:0)+MEMBERS.length}件</span></div>
+      <div class="side-head"><h3>検出品目</h3><span class="side-count">${(App.extracted&&App.extracted.hasText?App.extracted.steel.length+App.extracted.pipes.length:0)+MEMBERS.length}件</span></div>
       <div class="detect-list" id="detect-list"></div>
     </aside>
   </div>`;
@@ -1869,7 +1906,7 @@ function extractedListHTML(){
   return `<div class="detect-group-label">原図テキスト抽出 — ${App.fileName||''}（${ex.pageCount}頁 / ${ex.textLen.toLocaleString()}字）</div>${rows}`;
 }
 function buildDetectList(){
-  const groups={'製作品（SUS304 板金・曲げ）':MEMBERS.filter(m=>m.cat==='steel'),'購入品・支給品':MEMBERS.filter(m=>m.cat==='pipe')};
+  const groups={'ALDREX 製品（アルミ鋳造）':MEMBERS.filter(m=>m.cat==='steel'),'副資材・現況':MEMBERS.filter(m=>m.cat==='pipe')};
   const list=document.getElementById('detect-list');
   list.innerHTML=extractedListHTML()+Object.entries(groups).map(([g,items])=>`<div class="detect-group-label">${g}${App.extracted&&App.extracted.hasText?'（参照断面 — モデル化済）':''}</div>`+items.map(p=>{
     const cc=p.conf>=95?'var(--ok)':p.conf>=88?'var(--warn)':'var(--accent)';
@@ -1934,7 +1971,7 @@ function renderPdfPage(){
     page.render({canvasContext:cv.getContext('2d'),viewport:vp});
     const ov=document.getElementById('pdf-overlay');
     if(ov&&App.pdfPage===1){
-      const boxes=[{x:.30,y:.72,w:.13,h:.20,id:'kb1',l:'取付ベースプレート（躯体側）'},{x:.44,y:.72,w:.12,h:.20,id:'kb2',l:'角度調整ブラケット'},{x:.62,y:.70,w:.24,h:.16,id:'wire',l:'脱落防止対策'},{x:.12,y:.16,w:.34,h:.44,id:'fixture',l:'意匠ルーバー取付要領（断面）'}];
+      const boxes=[{x:.30,y:.72,w:.13,h:.20,id:'kb1',l:'DSR-22（たて引・屋上）'},{x:.44,y:.72,w:.12,h:.20,id:'kb2',l:'TR-15HK（よこ引・角度自在）'},{x:.62,y:.70,w:.24,h:.16,id:'wire',l:'オプション（スペーサー等）'},{x:.12,y:.16,w:.34,h:.44,id:'fixture',l:'既存ドレン 現況（内径 実測欄）'}];
       ov.innerHTML=boxes.map(b=>`<div class="pdf-box" data-id="${b.id}" style="left:${b.x*100}%;top:${b.y*100}%;width:${b.w*100}%;height:${b.h*100}%"><span class="pb-lbl">${b.l}</span></div>`).join('');
       ov.querySelectorAll('.pdf-box').forEach(bx=>bx.addEventListener('click',()=>selectMember(bx.dataset.id)));
     }else if(ov){ov.innerHTML='';}
@@ -1946,43 +1983,50 @@ function hot(id,inner,lbl,lx,ly,nohit){return `<g class="hot" data-member="${id}
 function elevationSVG(){
   const C=id=>M(id).color;
   return `<svg viewBox="0 0 900 600" preserveAspectRatio="xMidYMid meet">
-    <!-- 躯体・スラブ -->
-    <rect x="110" y="96" width="680" height="18" fill="#dbe0e8" stroke="#33414f" stroke-width="1.2"/>
-    <text x="118" y="90" fill="#93a1b1" font-family="JetBrains Mono,monospace" font-size="10">2FL スラブ（RC t200）</text>
-    <rect x="110" y="470" width="680" height="16" fill="#dbe0e8" stroke="#33414f" stroke-width="1.2"/>
-    <text x="118" y="502" fill="#93a1b1" font-family="JetBrains Mono,monospace" font-size="10">1FL 仕上げ</text>
-    <rect x="110" y="114" width="52" height="356" fill="#e8ebf0" stroke="#93a1b1" stroke-width="0.9"/>
-    <text x="114" y="132" fill="#657485" font-family="JetBrains Mono,monospace" font-size="9">下地</text>
-    <line x1="450" y1="82" x2="450" y2="500" stroke="#c8d4e2" stroke-width="0.8" stroke-dasharray="8 5"/>
-    <text x="456" y="80" fill="#8fa6bf" font-family="JetBrains Mono,monospace" font-size="10">通り芯 X3</text>
+    <!-- 屋上スラブ / 防水層 -->
+    <rect x="90" y="250" width="470" height="34" fill="#cfd4dc" stroke="#33414f" stroke-width="1.2"/>
+    <rect x="90" y="240" width="470" height="10" fill="#8b6f5c" stroke="#6b7280" stroke-width="0.7"/>
+    <rect x="90" y="230" width="470" height="10" fill="#7f8b9b" stroke="#4b5563" stroke-width="0.7"/>
+    <text x="96" y="212" fill="#93a1b1" font-family="JetBrains Mono,monospace" font-size="9.5">改修防水（塩ビシートかぶせ）／既存アスファルト防水</text>
+    <text x="96" y="304" fill="#93a1b1" font-family="JetBrains Mono,monospace" font-size="9.5">RC スラブ t=200（屋上）</text>
+    <!-- パラペット -->
+    <rect x="60" y="96" width="34" height="154" fill="#cfd4dc" stroke="#33414f" stroke-width="1.2"/>
+    <rect x="48" y="84" width="58" height="14" fill="#b6bdc7" stroke="#33414f" stroke-width="1"/>
+    <text x="46" y="76" fill="#93a1b1" font-family="JetBrains Mono,monospace" font-size="9.5">パラペット・笠木</text>
 
-    <!-- 取付ベースプレート（上下・躯体側）: 塗り面ありのため当たり判定矩形は不要 -->
-    ${hot('kb1',`<g><rect class="glow" x="288" y="118" width="392" height="14" rx="3" stroke="${C('kb1')}" stroke-width="2.4" fill="${C('kb1')}" fill-opacity="0.3"/><rect class="glow" x="288" y="452" width="392" height="14" rx="3" stroke="${C('kb1')}" stroke-width="2.4" fill="${C('kb1')}" fill-opacity="0.3"/></g>`,'取付ベースプレート SUS304 t4.0',292,446,true)}
-    <!-- 意匠ルーバー（縦ルーバー 割付 @450） -->
-    ${hot('fixture',[0,1,2,3,4,5].map(i=>`<rect class="glow" x="${300+i*72}" y="150" width="26" height="290" rx="3" stroke="${C('fixture')}" stroke-width="2.2" fill="${C('fixture')}" fill-opacity="0.24"/>`).join(''),'意匠ルーバー AL押出 50×100 @450',336,318,true)}
-    <!-- あと施工アンカー -->
-    ${hot('anchor',`<g>${[0,1,2,3,4].map(i=>`<circle class="glow" cx="${330+i*84}" cy="106" r="4.6" fill="none" stroke="${C('anchor')}" stroke-width="2.4"/>`).join('')}</g>`,'あと施工アンカー M10×L100',330,98)}
-    <!-- 角度調整ブラケット -->
-    ${hot('kb2',[0,1,2,3,4,5].map(i=>`<path class="glow" d="M${306+i*72},132 l7,16 l12,0" fill="none" stroke="${C('kb2')}" stroke-width="3"/>`).join(''),'角度調整ブラケット（θ調整）',330,176)}
-    <!-- 脱落防止ワイヤ（両端部・二重） -->
-    ${hot('wire',`<path class="glow" d="M292,120 q-24,52 -14,98" fill="none" stroke="${C('wire')}" stroke-width="2.2" stroke-dasharray="5 3"/><path class="glow" d="M676,120 q24,52 14,98" fill="none" stroke="${C('wire')}" stroke-width="2.2" stroke-dasharray="5 3"/>`,'脱落防止ワイヤ φ4（二重）',188,244)}
-    <!-- 別区画（ホール棟）— 装飾手摺 参考 -->
-    <line x1="694" y1="140" x2="694" y2="500" stroke="#4b7bab" stroke-width="0.8" stroke-dasharray="4 6"/>
-    <text x="700" y="156" fill="#8fa6bf" font-family="JetBrains Mono,monospace" font-size="9.5">ホール棟（参考）</text>
-    <!-- 装飾手摺（ホール棟タイプ違い A〜F） -->
-    ${hot('kdai',`<g><line class="glow" x1="702" y1="352" x2="782" y2="352" stroke="${C('kdai')}" stroke-width="3.6"/><line class="glow" x1="702" y1="404" x2="782" y2="404" stroke="${C('kdai')}" stroke-width="2"/>${[0,1,2].map(i=>`<line class="glow" x1="${712+i*30}" y1="352" x2="${712+i*30}" y2="466" stroke="${C('kdai')}" stroke-width="2.6"/>`).join('')}</g>`,'装飾手摺／ブラケットA〜F',676,340)}
+    <!-- ② 屋上 たて引 改修用ストレーナーキャップ DSR-22 -->
+    ${hot('fixture',`<g><rect class="glow" x="252" y="252" width="46" height="212" fill="none" stroke="${C('fixture')}" stroke-width="2.4"/><rect class="glow" x="228" y="242" width="94" height="12" rx="3" fill="${C('fixture')}" fill-opacity="0.3" stroke="${C('fixture')}" stroke-width="2"/></g>`,'既存たて引管・既存つば（撤去せず活かす）',334,438,true)}
+    ${hot('kb1',`<g><rect class="glow" x="258" y="252" width="34" height="52" rx="4" fill="#3f4856" fill-opacity="0.45" stroke="${C('kb1')}" stroke-width="2.2"/><rect class="glow" x="238" y="222" width="74" height="12" rx="3" fill="${C('kb1')}" fill-opacity="0.35" stroke="${C('kb1')}" stroke-width="2.2"/><rect class="glow" x="262" y="188" width="26" height="36" fill="none" stroke="${C('kb1')}" stroke-width="2.2"/><path class="glow" d="M240,188 h70 v-30 h-70 z" fill="${C('kb1')}" fill-opacity="0.28" stroke="${C('kb1')}" stroke-width="2.4"/></g>`,'DSR-22ラバーベンダーL（屋上・たて引・耐風圧）',330,150)}
+    <text x="330" y="266" fill="#8fa6bf" font-family="JetBrains Mono,monospace" font-size="10">RD-1  実測 φ118</text>
+    <line x1="252" y1="330" x2="298" y2="330" stroke="#4b7bab" stroke-width="1"/>
+    <line x1="252" y1="324" x2="252" y2="336" stroke="#4b7bab" stroke-width="1"/>
+    <line x1="298" y1="324" x2="298" y2="336" stroke="#4b7bab" stroke-width="1"/>
+    <text x="275" y="350" fill="#8fa6bf" font-family="JetBrains Mono,monospace" font-size="10" text-anchor="middle">φ118</text>
 
-    <!-- 寸法 -->
-    <line x1="300" y1="530" x2="672" y2="530" stroke="#4b7bab" stroke-width="1"/>
-    <line x1="300" y1="522" x2="300" y2="538" stroke="#4b7bab" stroke-width="1"/>
-    <line x1="672" y1="522" x2="672" y2="538" stroke="#4b7bab" stroke-width="1"/>
-    <text x="486" y="548" fill="#8fa6bf" font-family="JetBrains Mono,monospace" font-size="11" text-anchor="middle">ルーバー割付 W=5,400（@450×12）</text>
-    <line x1="242" y1="114" x2="242" y2="470" stroke="#4b7bab" stroke-width="1"/>
-    <line x1="236" y1="114" x2="248" y2="114" stroke="#4b7bab" stroke-width="1"/>
-    <line x1="236" y1="470" x2="248" y2="470" stroke="#4b7bab" stroke-width="1"/>
-    <text x="234" y="292" fill="#8fa6bf" font-family="JetBrains Mono,monospace" font-size="11" text-anchor="middle" transform="rotate(-90 234 292)">階高 H=4,900±100</text>
-    <path d="M356,168 a46,46 0 0,1 26,-14" fill="none" stroke="#4b7bab" stroke-width="1"/>
-    <text x="386" y="196" fill="#8fa6bf" font-family="JetBrains Mono,monospace" font-size="11">θ=23°±1°</text>
+    <!-- ① アルミドレイン（防水更新部・新設） -->
+    ${hot('kdai',`<g><path class="glow" d="M420,230 h84 l-18,26 h-48 z" fill="${C('kdai')}" fill-opacity="0.3" stroke="${C('kdai')}" stroke-width="2.2"/><rect class="glow" x="450" y="196" width="24" height="34" fill="none" stroke="${C('kdai')}" stroke-width="2.2"/><path class="glow" d="M434,196 h56 v-24 h-56 z" fill="${C('kdai')}" fill-opacity="0.26" stroke="${C('kdai')}" stroke-width="2.2"/><rect class="glow" x="452" y="256" width="20" height="200" fill="none" stroke="${C('kdai')}" stroke-width="2"/></g>`,'アルミドレイン DRT17-50VN（塩ビシート防水用）',500,190)}
+
+    <!-- ④ オプション（スペーサー／片ねじ直管） -->
+    ${hot('wire',`<g><rect class="glow" x="246" y="464" width="58" height="12" rx="4" fill="${C('wire')}" fill-opacity="0.35" stroke="${C('wire')}" stroke-width="2.2"/><rect class="glow" x="258" y="476" width="34" height="64" fill="none" stroke="${C('wire')}" stroke-width="2.2"/></g>`,'オプション（スペーサー／片ねじ直管）',312,510)}
+    <!-- ③ 副資材（ビス・シール） -->
+    ${hot('anchor',`<g>${[0,1,2,3].map(i=>`<circle class="glow" cx="${232+i*32}" cy="226" r="4.2" fill="none" stroke="${C('anchor')}" stroke-width="2.2"/>`).join('')}</g>`,'SUS ビス4×25 ×4 ＋ シール',196,206)}
+
+    <!-- ベランダ（よこ引） -->
+    <rect x="600" y="380" width="250" height="26" fill="#cfd4dc" stroke="#33414f" stroke-width="1.2"/>
+    <rect x="600" y="368" width="250" height="12" fill="#7f8b9b" stroke="#4b5563" stroke-width="0.7"/>
+    <rect x="600" y="212" width="30" height="168" fill="#cfd4dc" stroke="#33414f" stroke-width="1.2"/>
+    <text x="600" y="204" fill="#93a1b1" font-family="JetBrains Mono,monospace" font-size="9.5">ベランダ 腰壁</text>
+    <text x="700" y="426" fill="#93a1b1" font-family="JetBrains Mono,monospace" font-size="9.5">ウレタン塗膜防水（ベランダ床）</text>
+    ${hot('kb2',`<g><rect class="glow" x="630" y="330" width="86" height="26" fill="none" stroke="${C('kb2')}" stroke-width="2.2"/><circle class="glow" cx="626" cy="343" r="17" fill="${C('kb2')}" fill-opacity="0.3" stroke="${C('kb2')}" stroke-width="2.4"/><path class="glow" d="M612,352 l-46,26 l14,24 l46,-26 z" fill="${C('kb2')}" fill-opacity="0.26" stroke="${C('kb2')}" stroke-width="2.4"/></g>`,'TR-15HK（よこ引・角度自在型・耐風圧）',560,436)}
+    <path d="M600,362 a44,44 0 0,0 -26,22" fill="none" stroke="#4b7bab" stroke-width="1"/>
+    <text x="556" y="404" fill="#8fa6bf" font-family="JetBrains Mono,monospace" font-size="10">θ=0〜30°</text>
+    <text x="646" y="322" fill="#8fa6bf" font-family="JetBrains Mono,monospace" font-size="10">BV-1  実測 φ72〜88</text>
+
+    <!-- 竪樋 -->
+    <rect x="252" y="464" width="46" height="120" fill="none" stroke="#4b5563" stroke-width="1" stroke-dasharray="5 4"/>
+    <text x="120" y="530" fill="#8fa6bf" font-family="JetBrains Mono,monospace" font-size="10">既設 竪樋（改修範囲外）</text>
+    <line x1="90" y1="130" x2="90" y2="230" stroke="#4b7bab" stroke-width="1"/>
+    <text x="82" y="182" fill="#8fa6bf" font-family="JetBrains Mono,monospace" font-size="10" text-anchor="middle" transform="rotate(-90 82 182)">立上り 300</text>
   </svg>`;
 }
 
@@ -1992,69 +2036,73 @@ function dimV(y1,y2,x,txt){return `<line class="dim-line" x1="${x}" y1="${y1}" x
 function drawSection(m,pitch){
   if(m.id==='kb1'){
     return `<svg viewBox="0 0 280 230">
-      <rect class="steel-fill" x="55" y="34" width="170" height="50"/>
-      <rect x="88" y="53" width="30" height="12" rx="6" class="hole-mark"/>
-      <rect x="162" y="53" width="30" height="12" rx="6" class="hole-mark"/>
-      ${dimH(55,225,22,'170')}${dimV(34,84,42,'50')}
-      <path class="steel-fill" d="M100,100 L200,100 L200,196 L135,196 Q100,196 100,160 Z"/>
-      <path d="M128,132 a34,34 0 0,1 44,10" fill="none" stroke="#c9302c" stroke-width="9" stroke-linecap="round" opacity="0.85"/>
-      ${dimH(100,200,214,'100')}${dimV(100,196,238,'100')}
-      <text class="dim-txt" x="176" y="126">R30·100°</text>
-      <text class="note-txt" x="14" y="226">曲げ90° · 2-φ12×L30 / 10mm円弧長穴 · SUS304 t4.0</text></svg>`;
+      <path class="steel-fill" d="M92,30 h96 v14 h-14 v34 h14 l10,26 h-116 l10,-26 h14 v-34 h-14 z"/>
+      <rect x="112" y="96" width="56" height="46" rx="4" fill="#3f4856" opacity="0.55"/>
+      <rect class="steel-fill" x="70" y="82" width="140" height="14" rx="3"/>
+      <path d="M112,142 q28,10 56,0" fill="none" stroke="#c9302c" stroke-width="7" stroke-linecap="round" opacity="0.85"/>
+      ${dimH(112,168,168,'φ118 実測')}${dimH(70,210,20,'つば φ210')}${dimV(30,142,56,'H=170')}
+      <text class="dim-txt" x="176" y="120">ラバーベンダー L</text>
+      <text class="dim-txt" x="176" y="136">適用 φ115〜140</text>
+      <text class="note-txt" x="14" y="200">22型 · 屋上用 · たて引 · 耐風圧仕様 · アルミ鋳造</text>
+      <text class="note-txt" x="14" y="220">既存管へ差込み → ゴム圧着で固定（既存ドレンは撤去しない）</text></svg>`;
   }
   if(m.id==='kb2'){
     return `<svg viewBox="0 0 280 230">
-      <path class="steel-fill" d="M60,110 L60,60 Q110,18 160,60 L160,110 Z"/>
-      <rect x="85" y="52" width="9" height="34" rx="4.5" class="hole-mark"/>
-      <rect x="126" y="52" width="9" height="34" rx="4.5" class="hole-mark"/>
-      ${dimV(30,110,44,'80')}${dimH(60,160,126,'100')}
-      <text class="dim-txt" x="168" y="36">R80</text>
-      <rect class="steel-fill" x="60" y="146" width="100" height="70" opacity="0.75"/>
-      <rect x="76" y="176" width="18" height="9" rx="4.5" class="hole-mark"/>
-      <rect x="126" y="176" width="18" height="9" rx="4.5" class="hole-mark"/>
-      ${dimH(60,160,236,'100')}${dimV(146,216,178,'70')}
-      <text class="note-txt" x="14" y="226">曲げ90° · 2-φ10×L40 / 2-φ10×L20 · SUS304 t4.0</text></svg>`;
+      <rect class="steel-fill" x="180" y="70" width="72" height="40" rx="4"/>
+      <circle class="steel-fill" cx="172" cy="90" r="26"/>
+      <path class="steel-fill" d="M154,104 l-58,34 l18,30 l58,-34 z"/>
+      <path d="M96,138 l-18,10" stroke="#c9302c" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
+      <path d="M148,96 a54,54 0 0,0 -34,30" fill="none" stroke="#2e5c8a" stroke-width="1.2"/>
+      <text class="dim-txt" x="104" y="112">θ=0〜30°</text>
+      ${dimH(180,252,58,'既存よこ引管')}${dimV(70,110,268,'φ72〜88')}
+      <text class="dim-txt" x="30" y="186">適用 φ60〜100（15型）</text>
+      <text class="note-txt" x="14" y="206">よこ引・角度自在型 · 屋上／ベランダ用 · 耐風圧仕様</text>
+      <text class="note-txt" x="14" y="224">既存管の勾配・振れをジョイントで吸収 → 現場再加工なし</text></svg>`;
   }
   if(m.id==='kdai'){
     return `<svg viewBox="0 0 280 230">
-      <rect class="steel-fill" x="70" y="50" width="130" height="50"/>
-      <rect x="92" y="66" width="20" height="10" rx="5" class="hole-mark"/>
-      <rect x="158" y="66" width="20" height="10" rx="5" class="hole-mark"/>
-      ${dimH(70,200,38,'〜130')}${dimV(50,100,54,'50')}
-      <rect class="steel-fill" x="70" y="126" width="130" height="42" opacity="0.7"/>
-      <circle cx="102" cy="147" r="5.5" class="hole-mark"/><circle cx="168" cy="147" r="5.5" class="hole-mark"/>
-      <text class="dim-txt" x="208" y="150">2-φ10</text>
-      <text class="note-txt" x="14" y="200">10×20長穴 ×2 · A〜F 6タイプ（L/R対称）</text>
-      <text class="note-txt" x="14" y="220">板厚表記なし → t4.0 類推（モール棟図面より）· 要確認</text></svg>`;
+      <path class="steel-fill" d="M60,74 h160 l-30,34 h-100 z"/>
+      <rect class="steel-fill" x="122" y="108" width="36" height="72"/>
+      <path class="steel-fill" d="M96,74 h88 v-26 h-88 z" opacity="0.8"/>
+      <path d="M46,70 h188" stroke="#7f8b9b" stroke-width="6" opacity="0.75"/>
+      <text class="dim-txt" x="18" y="60">塩ビシート張り掛け</text>
+      ${dimH(60,220,204,'つば φ300')}${dimV(108,180,168,'受け筒')}
+      <text class="dim-txt" x="176" y="150">呼び径 50φ</text>
+      <text class="note-txt" x="14" y="222">17型 · DR＝塩ビシート防水用 / DF＝一般防水用 ← 図面に明記なし（要確認）</text></svg>`;
   }
   if(m.cat==='pipe'){
     const t=HW_TABLE[m.pipe]||{};
     if(m.id==='wire'){
       return `<svg viewBox="0 0 280 230">
-        <path d="M70,36 q-16,44 8,86 q22,38 66,52" fill="none" stroke="#5f6b7a" stroke-width="4"/>
-        <path d="M210,36 q16,44 -8,86 q-14,26 -38,42" fill="none" stroke="#5f6b7a" stroke-width="4"/>
-        <circle cx="70" cy="30" r="9" fill="none" stroke="#8a6a2f" stroke-width="3"/>
-        <circle cx="210" cy="30" r="9" fill="none" stroke="#8a6a2f" stroke-width="3"/>
-        <rect x="104" y="168" width="86" height="26" rx="6" fill="#dfe3e9" stroke="#4a5462" stroke-width="2"/>
-        <text class="dim-txt" x="60" y="14">アンカーZ TypeII ×2</text>
-        <text class="dim-txt" x="120" y="212">意匠ルーバー（支給）</text>
-        <text class="dim-txt" x="14" y="120">φ4 7×19</text>
-        <text class="note-txt" x="14" y="228">長さ：ルーバー取付状況に応じて調整（図面注記）— 要判断</text></svg>`;
+        <ellipse cx="140" cy="52" rx="62" ry="16" fill="none" stroke="#0d9488" stroke-width="4"/>
+        <text class="dim-txt" x="210" y="56">スペーサー</text>
+        <rect x="118" y="86" width="44" height="76" rx="4" fill="#dfe3e9" stroke="#4a5462" stroke-width="2"/>
+        <text class="dim-txt" x="172" y="126">片ねじ直管 φ50×L200</text>
+        <rect x="118" y="170" width="44" height="44" rx="3" fill="#cfd8de" stroke="#4a5462" stroke-width="2"/>
+        <text class="dim-txt" x="172" y="196">エンビ管 VP-50</text>
+        <text class="note-txt" x="14" y="228">必要数は現場調査の写真判定 — 見積時は仮置き（36か所）で計上</text></svg>`;
+    }
+    if(m.id==='anchor'){
+      return `<svg viewBox="0 0 280 230">
+        ${[0,1,2,3].map(i=>`<g><rect x="${64+i*46}" y="60" width="9" height="56" rx="4.5" fill="#c8ccd4" stroke="#4a5462" stroke-width="2"/><rect x="${58+i*46}" y="50" width="21" height="12" rx="3" fill="#9aa2ae" stroke="#4a5462" stroke-width="2"/></g>`).join('')}
+        <path d="M50,140 q70,-18 180,0" fill="none" stroke="#0d9488" stroke-width="7" stroke-linecap="round" opacity="0.6"/>
+        <text class="dim-txt" x="60" y="168">変成シリコーン系シール（ビス頭・防水取合い）</text>
+        <text class="note-txt" x="14" y="206">${t.name||m.spec}</text>
+        <text class="note-txt" x="14" y="224">SUS304 · 防水層を貫通するためシール処理を標準同梱</text></svg>`;
     }
     return `<svg viewBox="0 0 280 230">
-      <rect x="96" y="40" width="14" height="110" rx="7" fill="#c8ccd4" stroke="#4a5462" stroke-width="2"/>
-      <rect x="88" y="30" width="30" height="14" rx="3" fill="#9aa2ae" stroke="#4a5462" stroke-width="2"/>
-      <rect x="170" y="60" width="10" height="70" rx="5" fill="#c8ccd4" stroke="#4a5462" stroke-width="2"/>
-      <rect x="164" y="52" width="22" height="12" rx="3" fill="#9aa2ae" stroke="#4a5462" stroke-width="2"/>
-      ${dimV(40,150,72,'L100')}${dimV(60,130,208,'L35')}
-      <text class="dim-txt" x="84" y="176">M10 ×4</text><text class="dim-txt" x="160" y="156">M8 ×8</text>
-      <text class="note-txt" x="14" y="204">${t.name||m.spec}</text>
-      <text class="note-txt" x="14" y="222">SUS304 · 二重脱落防止措置付 指定</text></svg>`;
+      <rect x="106" y="40" width="68" height="150" fill="none" stroke="#4a5462" stroke-width="2.4"/>
+      <rect x="76" y="30" width="128" height="14" rx="3" fill="#9aa2ae" stroke="#4a5462" stroke-width="2"/>
+      ${dimH(106,174,214,'内径 実測が必要')}
+      <text class="dim-txt" x="188" y="40">既存つば</text>
+      <text class="dim-txt" x="14" y="120">既存たて引管</text>
+      <text class="note-txt" x="14" y="200">${t.name||m.spec}</text>
+      <text class="note-txt" x="14" y="222">改修図に内径の記載がない箇所 168 — 現場実測が型番決定の前提</text></svg>`;
   }
   const W=m.dims.w,D=m.dims.d;const sx=180/Math.max(W,D);const w=W*sx,d=D*sx,x0=(280-w)/2,y0=(190-d)/2+10;
   return `<svg viewBox="0 0 280 230"><rect class="steel-fill" x="${x0}" y="${y0}" width="${w}" height="${d}"/>
     ${dimH(x0,x0+w,y0+d+24,'W='+W)}${dimV(y0,y0+d,x0+w+16,'D='+D)}
-    <text class="note-txt" x="14" y="222">${m.spec} · t=${m.dims.t} · SUS304</text></svg>`;
+    <text class="note-txt" x="14" y="222">${m.spec}</text></svg>`;
 }
 
 /* ════════════════ STAGE 4 — MEMBER DETAIL ════════════════ */
@@ -2064,8 +2112,8 @@ function renderDetail(){
   const m=M(App.selected)||MEMBERS[0];App.selected=m.id;
   const isPipe=m.cat==='pipe';
   const specRows=isPipe?'':[
-    ['部材名',m.name],['断面仕様',m.spec],['用途',m.use],['数量',m.qty+' 本/枚'],
-    ['単位重量',(m.weightEach).toFixed(2)+' kg'],['合計重量',(m.weightEach*m.qty).toFixed(1)+' kg'],
+    ['品目',m.name],['仕様',m.spec],['適用',m.use],['数量',m.qty+' 個'],
+    ['単体質量',(m.weightEach).toFixed(2)+' kg'],['合計質量',(m.weightEach*m.qty).toFixed(1)+' kg'],
     ['検出',m.source==='inferred'?'AI推論補完':'CAD抽出'],['信頼度',m.conf+' %'],
   ].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   const fabChips=[].concat((m.holes||[]).map(h=>`<span class="fab-chip"><span class="fc-dot" style="background:var(--hole)"></span>${h.label} ${h.spec}</span>`),
@@ -2078,14 +2126,14 @@ function renderDetail(){
       <div class="detail-title"><h2><span style="display:inline-block;width:13px;height:13px;border-radius:3px;background:${m.color}"></span>${m.name}<span style="font-size:11px;background:${m.source==='inferred'?'var(--accent-soft)':'var(--paper-warm)'};color:${m.source==='inferred'?'var(--accent-deep)':'var(--ink-mute)'};padding:3px 8px;border-radius:5px;font-family:var(--font-mono)">${m.source==='inferred'?'AI推論':'CAD'} ${m.conf}%</span></h2><div class="dspec">${m.spec}${isPipe?'':' · ×'+m.qty}</div></div>
     </div>
     <div class="detail-grid">
-      <div class="dcard" data-fold="1"><div class="dcard-head"><div class="dcard-icon">${svg(ICON.ruler)}</div><div class="dcard-title">部材断面図（2D・寸法）</div></div>
+      <div class="dcard" data-fold="1"><div class="dcard-head"><div class="dcard-icon">${svg(ICON.ruler)}</div><div class="dcard-title">納まり断面図（2D・寸法）</div></div>
         <div class="dcard-body"><div class="sec-stage" id="sec-stage">${drawSection(m,null)}</div></div></div>
-      ${isPipe?pipeMoatCard(m):`<div class="dcard" data-fold="1"><div class="dcard-head"><div class="dcard-icon">${svg(ICON.list)}</div><div class="dcard-title">仕様 ＆ 加工指示</div></div>
+      ${isPipe?pipeMoatCard(m):`<div class="dcard" data-fold="1"><div class="dcard-head"><div class="dcard-icon">${svg(ICON.list)}</div><div class="dcard-title">仕様 ＆ 選定条件</div></div>
         <div class="dcard-body"><table class="spec-table"><tbody>${specRows}</tbody></table>
-        <div style="font-family:var(--font-mono);font-size:9.5px;letter-spacing:0.1em;color:var(--ink-faint);text-transform:uppercase;margin:14px 0 4px">加工指示（モート）</div>
-        <div class="fab-chips">${fabChips||'<span style="font-size:11px;color:var(--ink-faint)">穴・曲げ指示なし</span>'}</div>
+        <div style="font-family:var(--font-mono);font-size:9.5px;letter-spacing:0.1em;color:var(--ink-faint);text-transform:uppercase;margin:14px 0 4px">選定条件（モート）</div>
+        <div class="fab-chips">${fabChips||'<span style="font-size:11px;color:var(--ink-faint)">選定条件なし</span>'}</div>
         ${m.note?`<p style="font-size:11px;color:var(--ink-mute);margin-top:12px;line-height:1.6;border-top:1px dashed var(--line-faint);padding-top:10px">${m.note}</p>`:''}</div></div>`}
-      <div class="dcard wide"><div class="dcard-head"><div class="dcard-icon">${svg(ICON.cube)}</div><div class="dcard-title">3Dアセンブリ（該当部材ハイライト）</div></div>
+      <div class="dcard wide"><div class="dcard-head"><div class="dcard-icon">${svg(ICON.cube)}</div><div class="dcard-title">3D 納まり（該当品目ハイライト）</div></div>
         <div class="dcard-body" style="padding:0"><div class="d3-stage"><canvas id="detail-canvas"></canvas><div class="d3-zoom"><button id="d3-zin" aria-label="拡大">＋</button><button id="d3-zout" aria-label="縮小">－</button></div>
           <button class="d3-legend-toggle" id="d3-legend-toggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2l9 5-9 5-9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>部材 / 画層</button>
           <div class="d3-legend" id="d3-legend">
@@ -2095,22 +2143,22 @@ function renderDetail(){
           </div>
           <div class="d3-clash-hud" id="d3-clash-hud"><div class="ch-head">${svg(ICON.alert,' width="13" height="13"')} 要判断 ${CLASHES.length}件 検出</div>${CLASHES.map(c=>`<div class="ch-row">${c.note}</div>`).join('')}</div>
           <div class="d3-toolbar"><button class="d3-tool active ic-only" id="d3-hl" title="部材を強調">${svg(ICON.target)}</button><button class="d3-tool ic-only" id="d3-all" title="全体表示">${svg(ICON.cube)}</button><button class="d3-tool ic-only" id="d3-explode" title="分解">${svg('<path d="M8 3H5a2 2 0 00-2 2v3M21 8V5a2 2 0 00-2-2h-3M16 21h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>')}</button><button class="d3-tool danger ic-only" id="d3-clash" title="調整範囲チェック">${svg(ICON.alert)}</button><button class="d3-tool ic-only" id="d3-reset" title="視点リセット">${svg('<path d="M3 2v6h6"/><path d="M3.51 15a9 9 0 102.13-9.36L3 8"/>')}</button></div></div></div></div>
-      <div class="dcard wide" data-fold="1"><div class="dcard-head"><div class="dcard-icon">${svg(ICON.target)}</div><div class="dcard-title">整合チェック（2D⇄3D穴芯・ワイヤ・調整範囲）</div></div>
+      <div class="dcard wide" data-fold="1"><div class="dcard-head"><div class="dcard-icon">${svg(ICON.target)}</div><div class="dcard-title">整合チェック（既存管との芯ズレ・適用レンジ）</div></div>
         <div class="dcard-body"><div class="integ-grid">
-          <div class="integ-col"><div class="integ-h">${svg(ICON.target,' width="13" height="13"')} 穴芯ズレ判定（許容 ±2mm）</div>
+          <div class="integ-col"><div class="integ-h">${svg(ICON.target,' width="13" height="13"')} 芯ズレ・寸法差の判定（許容 ±2mm）</div>
             ${HOLE_FITS.map(f=>{const j=fitJudge(f.dev);return `<div class="fit-row" data-hole="${f.id}"><div class="fit-main"><span class="fit-pair">${f.pair}</span><span class="fit-plan">${f.plan}</span></div><div class="fit-dev"><span class="fit-mm" style="color:${j.c}">${f.dev.toFixed(1)}<small>mm</small></span><span class="fit-judge" style="color:${j.c};border-color:${j.c}">${j.k}</span></div></div>`;}).join('')}
-            <div class="integ-note">行をクリック → 3Dで該当穴へズーム（赤＝要修正）。±1mm 適合 / ±2mm 許容 / 超過 要修正。</div></div>
+            <div class="integ-note">行をクリック → 3Dで該当箇所へズーム（赤＝要修正）。±1mm 適合 / ±2mm 許容 / 超過 要修正。</div></div>
           <div class="integ-col">
-            <div class="integ-h">${svg(ICON.cube,' width="13" height="13"')} 脱落防止ワイヤ・端末の指示</div>
+            <div class="integ-h">${svg(ICON.cube,' width="13" height="13"')} オプション・副資材の指示</div>
             ${WELDS_INFO.map(w=>`<div class="weld-row"><span class="weld-dot"></span><div><div class="weld-label">${w.label} <span class="weld-sym">${w.sym}</span></div><div class="weld-face">取合い：${w.face}</div></div></div>`).join('')}
-            <button class="integ-toggle" id="ic-weld">${svg(ICON.cube,' width="12" height="12"')} 3Dにワイヤを表示</button>
+            <button class="integ-toggle" id="ic-weld">${svg(ICON.cube,' width="12" height="12"')} 3Dにオプションを表示</button>
             <div class="integ-h" style="margin-top:12px">${svg(ICON.alert,' width="13" height="13"')} 調整範囲・未確定条件</div>
             ${CLASHES.map(c=>`<div class="clash-row">${c.note}</div>`).join('')}
             <button class="integ-toggle danger" id="ic-clash">${svg(ICON.alert,' width="12" height="12"')} 3Dで該当箇所を強調</button>
           </div>
         </div></div></div>
       ${specCatCard(m)}
-      <div class="dcard wide" data-fold="mobile"><div class="dcard-head"><div class="dcard-icon">${svg(ICON.yen)}</div><div class="dcard-title">積算コスト（この部材）</div></div>
+      <div class="dcard wide" data-fold="mobile"><div class="dcard-head"><div class="dcard-icon">${svg(ICON.yen)}</div><div class="dcard-title">積算コスト（この品目）</div></div>
         <div class="dcard-body"><div class="cost-kpis">
           <div class="cost-kpi"><div class="cost-kpi-label">${isPipe?'セット数':'合計重量'}</div><div class="cost-kpi-value">${kpi1}</div></div>
           <div class="cost-kpi"><div class="cost-kpi-label">材料費</div><div class="cost-kpi-value">${yen(mc.mat)}</div></div>
@@ -2190,28 +2238,28 @@ function renderDetail(){
 function pipeMoatCard(m){
   const t=HW_TABLE[m.pipe]||{};
   const rows=(m.id==='wire'
-    ? [['ワイヤロープ','φ4 7×19 SS/O B種','JIS G3550準拠'],['アンカー','ホーク・タイワイヤーアンカーZ TypeII','SUS TWZS1080TypeII（メーカー指定）'],['シャックル','SB6 ×2','付属品'],['端末処理','くさび型圧着','SUS φ4用'],['長さ','未確定','「ルーバー取付状況に応じて調整」（図面注記）']]
+    ? [['スペーサー','かさ上げ用 AL','既存つばの段差・不陸調整'],['片ねじ直管','φ50×L200','既存管が短い箇所の継ぎ足し'],['エンビ管','VP-50','JIS K6741準拠（接着接続）'],['必要数','36か所（仮）','現場調査写真からの推論 — 実測後に精算']]
     : m.id==='anchor'
-    ? [['コンクリートアンカー','M10×L100 ×4/ルーバー','SUS304・二重脱落防止措置付'],['六角ボルト','M8×L35 ×8/ルーバー','N,SW,PW×2 SUS304'],['打込み','現場施工','工場出荷はブラケット＋同梱']]
-    : [['意匠ルーバー','基本部・エントランス部','アルミ押出 50×100 t2.0（自社製作）'],['取付角度θ','22〜55°（断面別）','「参考とし、採用ルーバーにより再検討」'],['取付高さ','H=4900±100','ルーバー中心・ルーバー下端 管理']]);
+    ? [['ステンレスビス','4×25 ×4/か所','SUS304・つば固定'],['シール材','変成シリコーン系','JIS A5758準拠・ビス頭＋防水取合い'],['施工','現場','製品に同梱して出荷']]
+    : [['既存たて引管','鋳鉄／塩ビ 既存','内径の記載なし 168か所 — 実測が必要'],['既存ドレンつば','撤去せず活かす','注記「既存ドレンは撤去せず改修用を使用」'],['既存管の勾配','よこ引 部位で差あり','角度自在型で吸収する前提']]);
   const trs=rows.map(r=>`<div class="oc-row"><span class="oc-lbl">${r[0]}</span><span class="oc-val">${r[1]}<span style="display:block;font-size:10px;color:var(--ink-mute)">${r[2]}</span></span></div>`).join('');
-  return `<div class="dcard" data-fold="1"><div class="dcard-head"><div class="dcard-icon">${svg(ICON.target)}</div><div class="dcard-title">構成・調達条件（AI抽出）</div></div>
+  return `<div class="dcard" data-fold="1"><div class="dcard-head"><div class="dcard-icon">${svg(ICON.target)}</div><div class="dcard-title">構成・現況条件（AI抽出）</div></div>
     <div class="dcard-body"><div class="sc-grid">${trs}</div>
-      <p style="font-size:11px;color:var(--ink-mute);margin-top:12px;line-height:1.6;border-top:1px dashed var(--line-faint);padding-top:10px">図面の引出線・注記から構成品と指定条件を抽出。メーカー指定（ホーク）と「二重脱落防止措置」指定は確定（緑）、ワイヤ長・ルーバー寸法は図面注記により要判断（赤）として見積条件に自動反映。</p>
+      <p style="font-size:11px;color:var(--ink-mute);margin-top:12px;line-height:1.6;border-top:1px dashed var(--line-faint);padding-top:10px">改修図の引出線・注記・凡例から現況条件を抽出。「既存ドレンは撤去せず改修用を使用」「耐風圧仕様とする」は確定（緑）、既存管の内径・つばの変形は現場実測／写真判定が要るため要判断（赤）として見積条件に自動反映。</p>
     </div></div>`;
 }
 function wirePipeMaker(m){/* 購入品カードに置換済み */}
 function memberCost(m){
   if(m.cat==='pipe'){
-    if(m.id==='wire'){const mat=m.qty*WIRE_SET;return{mat,proc:0,break:`アンカーZ TypeII ¥4,000×2（仮値・KFC見積要）＋ワイヤφ4 ¥195/m×2.4m＋くさび圧着 ¥400×4 ＝ ${yen(WIRE_SET)}/セット ×${m.qty}。`};}
-    if(m.id==='anchor'){return{mat:m.qty*ANC_SET,proc:0,break:`SUS M10アンカー ¥250×4 ＋ SUS M8×35組（N,SW,PW）¥120×8 ＝ ${yen(ANC_SET)}/ルーバー ×${m.qty}。二重脱落防止仕様は品番確認要。`};}
-    return{mat:0,proc:0,break:'意匠ルーバーはアルミ押出 50×100 t2.0（自社製作）。取付角度θ・ルーバー寸法の確定情報のみ参照。'};
+    if(m.id==='wire'){const mat=m.qty*WIRE_SET;return{mat,proc:0,break:`スペーサー ¥900 ＋ 片ねじ直管 φ50×L200 ¥1,100 ＋ エンビ管 VP-50 ¥400 ＝ ${yen(WIRE_SET)}/式 ×${m.qty}（必要数は現場写真判定の仮置き）。`};}
+    if(m.id==='anchor'){return{mat:m.qty*ANC_SET,proc:0,break:`SUS304 ビス4×25 ¥45×4 ＋ 変成シリコーン系シール ¥280 ＝ ${yen(ANC_SET)}/か所 ×${m.qty}。防水層貫通部のシールを標準同梱。`};}
+    return{mat:0,proc:0,break:'既存排水管・既存ドレンは現況（撤去せず活かす）。内径・勾配・つばの状態は実測／写真判定の結果のみ参照。'};
   }
   const mat=Math.round(m.weightEach*m.qty*STEEL_UNIT);let proc=0,parts=[];
-  if(m.id==='kb1'){proc=m.qty*(PROC.laser+2*PROC.longhole+PROC.arcslot+PROC.bend+PAINT_PER);parts.push(`切断＋長穴2＋円弧＋曲げ＋塗装 /個 ×${m.qty}`);}
-  if(m.id==='kb2'){proc=m.qty*(PROC.laser+4*PROC.longhole+PROC.bend+PAINT_PER);parts.push(`切断＋長穴4＋曲げ＋塗装 /個 ×${m.qty}`);}
-  if(m.id==='kdai'){proc=m.qty*(2*PROC.laser+2*PROC.longhole+2*PROC.roundhole+3*PROC.bend+2*PAINT_PER);parts.push(`2ピース切断＋長穴2＋丸穴2＋Z曲げ3＋塗装 /セット ×${m.qty}`);}
-  return{mat,proc,break:`材料 ${(m.weightEach*m.qty).toFixed(1)}kg × ${yen(STEEL_UNIT)}/kg（SUS304市況＋歩留）＝ ${yen(mat)}。`+(parts.length?'加工：'+parts.join(' / ')+'。':'加工指示なし。')};
+  if(m.id==='kb1'){proc=m.qty*(PROC.laser+2*PROC.longhole+PROC.arcslot+PROC.bend+PAINT_PER);parts.push(`鋳造＋機械加工＋ラバーベンダー組立＋表面処理 /個 ×${m.qty}`);}
+  if(m.id==='kb2'){proc=m.qty*(PROC.laser+4*PROC.longhole+PROC.bend+PAINT_PER);parts.push(`鋳造＋機械加工＋角度自在ジョイント組立＋表面処理 /個 ×${m.qty}`);}
+  if(m.id==='kdai'){proc=m.qty*(2*PROC.laser+2*PROC.longhole+2*PROC.roundhole+3*PROC.bend+2*PAINT_PER);parts.push(`本体＋ストレーナーの2ピース鋳造＋機械加工＋表面処理 /組 ×${m.qty}`);}
+  return{mat,proc,break:`材料 ${(m.weightEach*m.qty).toFixed(1)}kg × ${yen(STEEL_UNIT)}/kg（AL地金＋鋳造歩留）＝ ${yen(mat)}。`+(parts.length?'生産：'+parts.join(' / ')+'。':'生産指示なし。')};
 }
 
 /* 見積：特注加工品の発注区分へグルーピング（金額は鋼材＋加工費に内包＝二重計上しない参考内訳） */
@@ -2237,7 +2285,7 @@ function renderQuote(){
   const kanri=Math.round(direct*0.15);
   const oh=genba+kanri;
   const quote=Math.round((direct+oh)/1000)*1000;const tax=Math.round(quote*0.1);
-  // 従来手積み（重量歩掛り概算）— 加工を明細化せず、塗装/脱落防止材/運搬を失念しやすい
+  // 従来手積み（重量歩掛り概算）— 型番混在を読まず、表面処理/オプション/運搬を失念しやすい
   const tradFab=Math.round(st.w*600);   // 従来: SUS小物 重量一括歩掛り ¥600/kg
   const tradDirect=st.c+tradFab+wireMat;
   const tradQuote=Math.round((tradDirect*1.35)/1000)*1000;
@@ -2247,30 +2295,30 @@ function renderQuote(){
   const steelQty=MEMBERS.filter(m=>m.cat==='steel').reduce((a,m)=>a+m.qty,0);
   stage.innerHTML=`<div class="quote-wrap fade-in">
     <div class="quote-head">
-      <div><div class="qh-title">御 見 積 書</div><div class="qh-meta">見積No: ALT-MM-${Date.now().toString().slice(-5)}<br>発行日: ${today}<br>件名: 意匠ルーバー取付ブラケット・脱落防止材 製作（モール棟・ホール棟）</div></div>
-      <div class="qh-brand"><div class="qb-mark">ALTECHE</div><div style="font-size:10px;color:var(--ink-mute);margin-top:6px;font-family:var(--font-mono)">World化成 株式会社</div></div>
+      <div><div class="qh-title">御 見 積 書</div><div class="qh-meta">見積No: ALD-RN-${Date.now().toString().slice(-5)}<br>発行日: ${today}<br>件名: 屋上・ベランダ 改修用ドレン 供給（RD-1〜48 / BV-1〜120）</div></div>
+      <div class="qh-brand"><div class="qb-mark">ALDREX</div><div style="font-size:10px;color:var(--ink-mute);margin-top:6px;font-family:var(--font-mono)">株式会社アルテック / ALUTECK CO.,LTD.</div></div>
     </div>
     <div class="quote-to"><strong>御中</strong></div>
     <div class="quote-total-box"><span class="qt-label">御見積金額</span><span class="qt-value">${yen(quote)}</span><span class="qt-tax">（税抜）／ 消費税 ${yen(tax)}</span></div>
     <table class="qtable">
-      <thead><tr><th>部材 / 項目</th><th>仕様</th><th class="r">数</th><th class="r">重量</th><th class="r">金額</th></tr></thead>
+      <thead><tr><th>品目 / 項目</th><th>仕様</th><th class="r">数</th><th class="r">質量</th><th class="r">金額</th></tr></thead>
       <tbody>
-        <tr class="subhead"><td colspan="5">製作品 SUS304 t4.0（材工共 ${yen(STEEL_UNIT)}/kg）</td></tr>
+        <tr class="subhead"><td colspan="5">ALDREX 製品 アルミ鋳造（材工共 ${yen(STEEL_UNIT)}/kg）</td></tr>
         ${steelRows}
-        <tr><td style="font-weight:600">製作品 小計</td><td></td><td class="r mono">${steelQty}</td><td class="r mono">${st.w.toFixed(1)}kg</td><td class="r mono">${yen(st.c)}</td></tr>
-        <tr class="subhead"><td colspan="5">加工費（加工指示AI 抽出より自動算定）</td></tr>
-        <tr><td>レーザー外形切断</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">128ピース（①②＋A〜F本体・合わせ板）</td><td class="r mono">${FAB.pieces}</td><td></td><td class="r mono">${yen(FAB.pieces*PROC.laser)}</td></tr>
-        <tr><td>長穴 12φ・10φ（レーザー同時）</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">ブラケット①②A〜F</td><td class="r mono">${FAB.longHoles}</td><td></td><td class="r mono">${yen(FAB.longHoles*PROC.longhole)}</td></tr>
-        <tr><td>丸穴 2-φ10（レーザー同時）</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">合わせ板</td><td class="r mono">${FAB.roundHoles}</td><td></td><td class="r mono">${yen(FAB.roundHoles*PROC.roundhole)}</td></tr>
-        <tr><td>円弧長穴 10mm幅 R30・100°</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">ブラケット①（角度調整）</td><td class="r mono">${FAB.arcSlots}</td><td></td><td class="r mono">${yen(FAB.arcSlots*PROC.arcslot)}</td></tr>
-        <tr><td>曲げ加工 90°・99°</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">①②各1曲げ / A〜F Z曲げ3</td><td class="r mono">${FAB.bends}</td><td></td><td class="r mono">${yen(FAB.bends*PROC.bend)}</td></tr>
-        <tr><td style="font-weight:600">加工費 小計</td><td></td><td></td><td></td><td class="r mono">${yen(pc)}</td></tr>
-        <tr class="subhead"><td colspan="5">脱落防止材・購入品</td></tr>
-        <tr><td>脱落防止材（ワイヤセット）</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">アンカーZ×2＋φ4ワイヤ＋圧着×4 ＠${yen(WIRE_SET)}</td><td class="r mono">${wireSet}</td><td></td><td class="r mono">${yen(wireMat)}</td></tr>
-        <tr><td>アンカー・ボルト類</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">SUS M10×4＋M8組×8 ＠${yen(ANC_SET)}</td><td class="r mono">${M('anchor').qty}</td><td></td><td class="r mono">${yen(ancMat)}</td></tr>
+        <tr><td style="font-weight:600">製品 小計</td><td></td><td class="r mono">${steelQty}</td><td class="r mono">${st.w.toFixed(1)}kg</td><td class="r mono">${yen(st.c)}</td></tr>
+        <tr class="subhead"><td colspan="5">生産費（型番選定AI の抽出より自動算定）</td></tr>
+        <tr><td>ダイカスト鋳造</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">本体・ストレーナー・つば（茅野工場）</td><td class="r mono">${FAB.pieces}</td><td></td><td class="r mono">${yen(FAB.pieces*PROC.laser)}</td></tr>
+        <tr><td>機械加工（ねじ・座ぐり）</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">つば固定部・接続部</td><td class="r mono">${FAB.longHoles}</td><td></td><td class="r mono">${yen(FAB.longHoles*PROC.longhole)}</td></tr>
+        <tr><td>バリ取り・目かご仕上げ</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">ストレーナー外周リブ</td><td class="r mono">${FAB.roundHoles}</td><td></td><td class="r mono">${yen(FAB.roundHoles*PROC.roundhole)}</td></tr>
+        <tr><td>ラバーベンダー組立（L/S）</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">DSR-22（適用 φ95〜140）</td><td class="r mono">${FAB.arcSlots}</td><td></td><td class="r mono">${yen(FAB.arcSlots*PROC.arcslot)}</td></tr>
+        <tr><td>角度自在ジョイント組立</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">TR-15HK（θ=0〜30°）</td><td class="r mono">${FAB.bends}</td><td></td><td class="r mono">${yen(FAB.bends*PROC.bend)}</td></tr>
+        <tr><td style="font-weight:600">生産費 小計</td><td></td><td></td><td></td><td class="r mono">${yen(pc)}</td></tr>
+        <tr class="subhead"><td colspan="5">オプション・副資材</td></tr>
+        <tr><td>オプション（スペーサー等）</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">スペーサー＋片ねじ直管＋エンビ管 ＠${yen(WIRE_SET)}</td><td class="r mono">${wireSet}</td><td></td><td class="r mono">${yen(wireMat)}</td></tr>
+        <tr><td>取付副資材（ビス・シール）</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">SUS ビス4×25×4＋シール ＠${yen(ANC_SET)}</td><td class="r mono">${M('anchor').qty}</td><td></td><td class="r mono">${yen(ancMat)}</td></tr>
         <tr class="subhead"><td colspan="5">表面処理・運搬</td></tr>
-        <tr><td>塗装（下地＋フッ素焼付・指定色）</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">${yen(PAINT_PER)}/個 小物</td><td class="r mono">${FAB.pieces}</td><td></td><td class="r mono">${yen(paint)}</td></tr>
-        <tr><td>運搬費</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">2t車1台 横浜市内</td><td class="r mono">1</td><td></td><td class="r mono">${yen(transport)}</td></tr>
+        <tr><td>表面処理（アルマイト／粉体塗装）</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">${yen(PAINT_PER)}/個</td><td class="r mono">${FAB.pieces}</td><td></td><td class="r mono">${yen(paint)}</td></tr>
+        <tr><td>運搬費</td><td class="mono" style="font-size:11px;color:var(--ink-mute)">現場一括配送（茅野工場 → 現場）</td><td class="r mono">1</td><td></td><td class="r mono">${yen(transport)}</td></tr>
         <tr><td style="font-weight:600">直接工事費 計</td><td></td><td></td><td></td><td class="r mono">${yen(direct)}</td></tr>
         <tr class="subhead"><td colspan="5">諸経費・一般管理費・利益</td></tr>
         <tr><td>現場経費・諸経費（12%）</td><td></td><td></td><td></td><td class="r mono">${yen(genba)}</td></tr>
@@ -2279,8 +2327,8 @@ function renderQuote(){
       </tbody>
     </table>
     <div class="order-panel">
-      <div class="op-head"><span class="op-title">見積時確認①〜⑤（加工指示・図面外項目）</span><span class="op-sub">各製作品について、受注に必要な確認項目のうち AI が図面推論で自動充填した項目を示します。図面注記由来の「要判断」項目は見積条件として明記しています。</span></div>
-      <table class="op-table"><thead><tr><th>製作品</th><th>分類</th><th>構成</th><th class="r">数</th><th>AI自動充填項目</th></tr></thead><tbody>
+      <div class="op-head"><span class="op-title">発注時確認①〜⑤（改修図に描かれていない項目）</span><span class="op-sub">各品目について、受注に必要な確認項目のうち AI が図面・仕様書・現場写真から自動充填した項目を示します。実測・写真判定が要る「要判断」項目は見積条件として明記しています。</span></div>
+      <table class="op-table"><thead><tr><th>品目</th><th>分類</th><th>構成</th><th class="r">数</th><th>AI自動充填項目</th></tr></thead><tbody>
         ${orderGroups().map(g=>{const qty=g.members.reduce((a,m)=>a+(m.cat==='steel'?m.qty:1),0);const names=g.members.map(m=>m.name).join('・');const tags=[...g.moat].map(k=>`<span class="op-tag">${FIELD_SHORT[k]}</span>`).join('');return `<tr><td class="op-prod">${g.prod}</td><td class="mono" style="font-size:10.5px;color:var(--ink-mute)">${g.sub}</td><td style="font-size:11.5px">${names}</td><td class="r mono">${qty}</td><td>${tags||'<span style="font-size:10px;color:var(--ink-faint)">標準のみ</span>'}</td></tr>`;}).join('')}
       </tbody></table>
     </div>
@@ -2288,25 +2336,25 @@ function renderQuote(){
       <div class="qc-card qc-trad">
         <div class="qc-head">従来手積み（重量歩掛り概算）</div>
         <div class="qc-rows">
-          <div><span>製作品（材工共）</span><b>${yen(st.c)}</b></div>
-          <div><span>加工費 一括 ${yen(600)}/kg</span><b>${yen(tradFab)}</b></div>
-          <div><span>脱落防止材</span><b>${yen(wireMat)}</b></div>
+          <div><span>製品（材工共）</span><b>${yen(st.c)}</b></div>
+          <div><span>生産費 一括 ${yen(600)}/kg</span><b>${yen(tradFab)}</b></div>
+          <div><span>オプション</span><b>${yen(wireMat)}</b></div>
           <div class="qc-miss"><span>塗装・運搬</span><b>計上漏れ</b></div>
           <div><span>諸経費 35%</span><b>${yen(Math.round(tradDirect*0.35))}</b></div>
         </div>
         <div class="qc-total"><span>概算計</span><b>${yen(tradQuote)}</b></div>
-        <div class="qc-note">加工は重量比例の一括歩掛り。円弧長穴・曲げ数は読まず、塗装/運搬は別途扱いで失念しやすい。</div>
+        <div class="qc-note">重量比例の一括歩掛り。L/S の型番混在やオプションの要否は読まず、表面処理/運搬は別途扱いで失念しやすい。</div>
       </div>
       <div class="qc-card qc-yellow">
-        <div class="qc-head">ALTECHE（加工指示AI 明細積算）</div>
+        <div class="qc-head">ALDREX（型番選定AI 明細積算）</div>
         <div class="qc-rows">
-          <div><span>製作品（材工共）</span><b>${yen(st.c)}</b></div>
+          <div><span>製品（材工共）</span><b>${yen(st.c)}</b></div>
           <div><span>加工費 明細 ${FAB.pieces}切断/${FAB.longHoles+FAB.roundHoles+FAB.arcSlots}穴/${FAB.bends}曲げ</span><b>${yen(pc)}</b></div>
-          <div><span>塗装 ＋ 運搬 ＋ 脱落防止材</span><b>${yen(paint+transport+wireMat+wireProc+ancMat)}</b></div>
+          <div><span>表面処理 ＋ 運搬 ＋ オプション</span><b>${yen(paint+transport+wireMat+wireProc+ancMat)}</b></div>
           <div><span>諸経費・管理費 27%</span><b>${yen(oh)}</b></div>
         </div>
         <div class="qc-total"><span>御見積計</span><b>${yen(quote)}</b></div>
-        <div class="qc-note">長穴・円弧長穴・曲げ・ワイヤ端末をモートが図面から抽出し、1点ずつ根拠付きで積算。${delta>=0?'計上漏れ解消で':'精緻化で'} <b style="color:var(--accent)">${yen(Math.abs(delta))}</b> ${delta>=0?'増（取りこぼし防止）':'差'}。</div>
+        <div class="qc-note">引き方・部位・適用管径レンジ・オプション要否をモートが図面と実測から抽出し、1か所ずつ根拠付きで積算。${delta>=0?'計上漏れ解消で':'精緻化で'} <b style="color:var(--accent)">${yen(Math.abs(delta))}</b> ${delta>=0?'増（取りこぼし防止）':'差'}。</div>
       </div>
     </div>
     <div class="quote-basis">
@@ -2314,24 +2362,24 @@ function renderQuote(){
       <table class="basis-table">
         <thead><tr><th>費目</th><th class="r">採用単価</th><th>根拠・出典</th></tr></thead>
         <tbody>
-          <tr><td>SUS304 t4.0 切板</td><td class="r mono">${yen(STEEL_UNIT)}/kg</td><td style="font-size:10.5px;color:var(--ink-mute)">冷延市中 530〜550円/kg・流通 700〜900円/kg（2026年 鋼材市況）＋切板・歩留ロス15〜25%</td></tr>
-          <tr><td>レーザー外形切断</td><td class="r mono">${yen(PROC.laser)}/個</td><td style="font-size:10.5px;color:var(--ink-mute)">切断長 約1.0m/個 × 150〜200円/m ＋ 材料投入・取出し人工（薄板板金 相場）</td></tr>
-          <tr><td>穴・長穴（レーザー同時加工）</td><td class="r mono">${yen(PROC.roundhole)}〜${yen(PROC.arcslot)}/箇所</td><td style="font-size:10.5px;color:var(--ink-mute)">外形と同時切断のため限界費用ベース（単発穴あけ相場 200〜400円/個より低減）</td></tr>
-          <tr><td>曲げ 90°・99°</td><td class="r mono">${yen(PROC.bend)}/曲</td><td style="font-size:10.5px;color:var(--ink-mute)">ベンダー曲げ 80〜320円/曲 ＋ SUS t4.0・小物段取り按分（40〜24個ロット）</td></tr>
-          <tr><td>塗装（下地＋フッ素焼付・指定色）</td><td class="r mono">${yen(PAINT_PER)}/個</td><td style="font-size:10.5px;color:var(--ink-mute)">SUS密着プライマー＋上塗り・小物単価（表面積 約0.06㎡/個）</td></tr>
-          <tr><td>タイワイヤーアンカーZ TypeII</td><td class="r mono">¥4,000/本 仮値</td><td style="font-size:10.5px;color:var(--ink-mute)">ケー・エフ・シー製 SUS TWZS1080TypeII — 公表「〜1万円・応相談」。<b>実勢見積の取得が必要（要確認）</b></td></tr>
-          <tr><td>ワイヤロープ φ4 7×19 SUS</td><td class="r mono">¥195/m</td><td style="font-size:10.5px;color:var(--ink-mute)">実売価格（吊具通販・m売り）。200m巻なら ¥130/m まで低減可</td></tr>
-          <tr><td>SUSアンカーM10 / M8×35組</td><td class="r mono">¥250 / ¥120</td><td style="font-size:10.5px;color:var(--ink-mute)">SUS304あと施工アンカー・六角ボルトN,SW,PW組 実売レンジ（二重脱落防止仕様は要品番確認）</td></tr>
+          <tr><td>アルミダイカスト（AL地金＋鋳造）</td><td class="r mono">${yen(STEEL_UNIT)}/kg</td><td style="font-size:10.5px;color:var(--ink-mute)">AL新地金 市況 ＋ 湯口・歩留ロス、金型償却按分（自社 茅野工場）</td></tr>
+          <tr><td>ダイカスト鋳造</td><td class="r mono">${yen(PROC.laser)}/個</td><td style="font-size:10.5px;color:var(--ink-mute)">ショット・湯口切断・熱処理を含む標準歩掛り（自社 茅野工場）</td></tr>
+          <tr><td>機械加工・組立</td><td class="r mono">${yen(PROC.roundhole)}〜${yen(PROC.arcslot)}/箇所</td><td style="font-size:10.5px;color:var(--ink-mute)">ねじ・座ぐり／ラバーベンダー・角度自在ジョイントの組付け</td></tr>
+          <tr><td>ラバーベンダー／角度自在ジョイント</td><td class="r mono">${yen(PROC.bend)}/個</td><td style="font-size:10.5px;color:var(--ink-mute)">ゴム部品＋組付け人工。L/S のサイズ違いで部品単価は同等</td></tr>
+          <tr><td>表面処理（アルマイト／粉体塗装）</td><td class="r mono">${yen(PAINT_PER)}/個</td><td style="font-size:10.5px;color:var(--ink-mute)">屋外・海塩環境を想定した膜厚。色指定・特注色は別途</td></tr>
+          <tr><td>スペーサー／片ねじ直管</td><td class="r mono">¥900 / ¥1,100</td><td style="font-size:10.5px;color:var(--ink-mute)">既存つばの段差・不陸調整用。必要数は現場写真判定のため見積時は仮置き</td></tr>
+          <tr><td>エンビ管 VP-50</td><td class="r mono">¥400/本</td><td style="font-size:10.5px;color:var(--ink-mute)">JIS K6741準拠。既存塩ビ管との接続（接着）</td></tr>
+          <tr><td>SUS ビス4×25 / シール</td><td class="r mono">¥45 / ¥280</td><td style="font-size:10.5px;color:var(--ink-mute)">SUS304 ビス・変成シリコーン系シール（JIS A5758準拠）実売レンジ</td></tr>
           <tr><td>運搬（2t車 横浜市内）</td><td class="r mono">${yen(TRANSPORT)}</td><td style="font-size:10.5px;color:var(--ink-mute)">2tチャーター便 市内配送 実勢 25,000〜35,000円</td></tr>
         </tbody>
       </table>
     </div>
     <div class="quote-note">
-      ※ 概算 — 現場確認・ルーバー製造図の確定により変動の可能性があります。<br>
-      ※ 穴・円弧長穴・曲げの数量は<strong>加工指示AI（ALTECHE モート）</strong>が図面から自動抽出した推論値に基づきます（ルーバー本数40と仮置き）。<br>
-      ※ <strong>要判断（見積条件）</strong>：ホール棟 ブラケットA〜Fは図面に板厚表記がなく、材質SUS304・板厚t4.0・フッ素焼付塗装はモール棟図面からの<strong>類推</strong>です。<br>
-      ※ <strong>要判断（見積条件）</strong>：図面注記「意匠ルーバー取付詳細図の形状・寸法は参考とする」「取付角度は採用ルーバーにより再検討」「脱落防止装置は実際のルーバー取付状況に応じて調整」— 採用ルーバーの確定で寸法・ワイヤ長が変わり得ます。<br>
-      ※ <strong>金額感度</strong>：脱落防止材（アンカーZ×2/ルーバー）が直接費の約6割。アンカーZ実勢単価が±¥1,000/本 変動すると総額 約±¥10万（±10%）変動 — <strong>KFC見積の取得が見積精度の最重要項目</strong>です。<br>※ 有効期限: 発行日より30日 ／ 納期・支払条件 別途協議。
+      ※ 概算 — 現場実測（既存管内径）と防水種別の確定により変動の可能性があります。<br>
+      ※ 型番・数量・オプションの内訳は<strong>型番選定AI（ALDREX モート）</strong>が図面・仕様書・現場写真から自動抽出した推論値に基づきます（実測未了の 168 か所は仮置き）。<br>
+      ※ <strong>要判断（見積条件）</strong>：アルミドレインの防水種別（DR＝塩ビシート用／DF＝一般防水用）は改修図に明記がなく、仕様書の防水工法からの<strong>類推</strong>です。<br>
+      ※ <strong>要判断（見積条件）</strong>：改修図に既存管内径の記載がない箇所が 168。実測の結果 φ115 を下回る箇所は DSR-22 の L→S へ型番変更が必要で、L/S 混在の拾い直しが発生します。<br>
+      ※ <strong>金額感度</strong>：既存つばの変形によるスペーサー要否が直接費の変動要因。仮置き 36 か所に対し実測で ±20 か所ぶれると総額 約±5%変動 — <strong>現場調査写真の全数取得が見積精度の最重要項目</strong>です。<br>※ 有効期限: 発行日より30日 ／ 納期・支払条件 別途協議。
     </div>
   </div>
   <div class="quote-actions">
@@ -2366,60 +2414,61 @@ function deriveGrade(j){ if(j.status==='approved'||j.status==='fixed')return 'gr
 function remainingPhoneCalls(js){ return js.filter(j=>deriveGrade(j)!=='green').length; }
 function summarize(members,js,totalCost){ return {totalCost,remainingPhoneCalls:remainingPhoneCalls(js),memberCount:members.length}; }
 /* ── PORT ② inference.ts ── */
-const PIPE_TABLE={'20A':{od:27.2,base:39,ubolt:'U-22',src:'drawing'},'25A':{od:34.0,base:41,ubolt:'U-28',src:'drawing'},'32A':{od:42.7,base:54,ubolt:'U-36',src:'drawing'},'40A':{od:48.6,base:58,ubolt:'U-42',src:'drawing'},'50A':{od:60.5,base:66,ubolt:'U-54',src:'drawing'},'65A':{od:76.3,base:88,ubolt:'U-70',src:'jis'},'80A':{od:89.1,base:101,ubolt:'U-82',src:'jis'},'100A':{od:114.3,base:128,ubolt:'U-108',src:'jis'},'125A':{od:139.8,base:43,ubolt:'U-130',src:'drawing'},'150A':{od:165.2,base:182,ubolt:'U-156',src:'jis'},'200A':{od:216.3,base:236,ubolt:'U-206',src:'jis'}};
-const HOLE_SPEC={anchor:{spec:'2-φ12×L30'},longHole:{spec:'2-φ10×L40 / L20'},arc:{spec:'10mm円弧長穴 R30・100°'}};
-const PLATE_RULE={known:'SUS304 t4.0',note:'モール棟図面に材質・板厚明記。ホール棟図面は表記なし→類推',historyCount:2};
-const WIRE_RULE={spec:'φ4 7×19 SS/O B種 JIS G3550準拠',anchor:'ホーク・タイワイヤーアンカーZ TypeII',note:'長さはルーバー取付状況に応じて調整（図面注記）'};
+const PIPE_TABLE={'φ40〜60':{od:60,base:'15型／08型',ubolt:'DSHD-15 / DSB-08S',src:'catalog'},'φ50〜70':{od:70,base:'17型 S',ubolt:'DSR-17ラバーベンダーS',src:'catalog'},'φ70〜90':{od:90,base:'17型 L',ubolt:'DSR-17ラバーベンダーL',src:'catalog'},'φ60〜100':{od:100,base:'15型 よこ引',ubolt:'TR-15HK / DSYS-15',src:'catalog'},'φ95〜115':{od:115,base:'22型 S',ubolt:'DSR-22ラバーベンダーS',src:'catalog'},'φ115〜140':{od:140,base:'22型 L',ubolt:'DSR-22ラバーベンダーL',src:'catalog'},'呼び径50φ':{od:50,base:'11型／17型',ubolt:'DRT17-50VN ほか',src:'catalog'}};
+const HOLE_SPEC={anchor:{spec:'たて引（縦引き）'},longHole:{spec:'よこ引・角度自在（θ=0〜30°）'},arc:{spec:'よこ引・角度固定'}};
+const PLATE_RULE={known:'DR系（塩ビシート防水用）',note:'仕様書の防水工法から類推。改修図に DR／DF の明記なし',historyCount:2};
+const WIRE_RULE={spec:'スペーサー／片ねじ直管／エンビ管',anchor:'既存つばの段差・不陸に応じて選定',note:'必要数は現場調査写真からの判定（実測後に精算）'};
 let _seq=0; const newId=t=>'j_'+t+'_'+(++_seq);
 function buildJudgment(type,ctx,value,ev,geo,conf){ return {id:newId(type),memberId:ctx.memberId,type,value,evidence:ev,geometry:geo,source:'ai',status:'open',aiConfidence:conf,updatedAt:new Date().toISOString()}; }
 function inferQty(ctx){
-  // 図面に数量表なし → ルーバー本数からの推論（推論＝amber）
-  if(ctx.qty && /^\d+$/.test(String(ctx.qty))){ return buildJudgment('qty',ctx,String(ctx.qty)+' 個（指定）',{rule:'受注者指定',basis:ctx.qty+' 個で確定',assumption:null},undefined,96); }
-  return buildJudgment('qty',ctx,'40 個（仮）',{rule:'意匠ルーバー数 → ブラケット数（1ルーバー＝ブラケット①②各1）',basis:'図面に数量表の記載なし',assumption:'基本部＋エントランス部のルーバー本数から40個と仮置き。ルーバー配置の確定で要調整。'},undefined,84);
+  // 改修図に数量表がない → 図面記号のカウントからの推論（推論＝amber）
+  if(ctx.qty) return buildJudgment('qty',ctx,ctx.qty+' か所',{rule:'拾い出し数量の入力',basis:'ユーザー入力',assumption:null},undefined,99);
+  return buildJudgment('qty',ctx,'48 か所（仮）',{rule:'図面記号 RD-n のカウント → ドレン数',basis:'改修図に数量表の記載なし',assumption:'屋上伏図の RD 記号から48か所と仮置き。中継・側溝分は別途拾い出しが必要。'},undefined,84);
 }
 function inferPlate(ctx){
-  // ホール棟のブラケットA〜Fは板厚表記なし → モール棟からの類推（要判断＝red）
-  if(ctx.partPid==='KDAI'){
-    return buildJudgment('plate',ctx,'SUS304 t4.0（類推）',{rule:'同一路線・同種ブラケットからの材質類推',basis:'ホール棟図面は材質・板厚欄なし',assumption:null,candidates:[{value:'SUS304 t4.0（モール棟図面に準拠）',reason:'同一設計・同種ブラケット'},{value:'図面発行元に確認',reason:'ホール棟図面には明記がない'}]},undefined,62);
-  }
-  return buildJudgment('plate',ctx,PLATE_RULE.known,{rule:'図面材料欄',basis:'モール棟図面に「材料：SUS304 t4.0」明記',assumption:null},undefined,98);
+  // 防水種別（DR＝塩ビシート／DF＝一般）が図面に明記されない → 仕様書からの類推（要判断＝red）
+  if(ctx.partPid==='KDAI')
+    return buildJudgment('plate',ctx,'DR系（塩ビシート防水用）（類推）',{rule:'仕様書の防水工法 → 型番先頭2文字',basis:'改修図に DR／DF の区別なし',assumption:null,candidates:[{value:'DR＝塩ビシート防水用',reason:'仕様書「塩ビシート機械的固定工法」'},{value:'DF＝一般防水用',reason:'既存がアスファルト防水の部位'}]},undefined,72);
+  return buildJudgment('plate',ctx,PLATE_RULE.known,{rule:'仕様書 防水工法欄',basis:'仕様書に「塩ビシート機械的固定」明記',assumption:null},undefined,96);
 }
 function inferBend(ctx){
-  const spec = ctx.partPid==='KB2' ? '90°×1（R80丸頭 曲げ含む）' : (ctx.partPid==='KDAI' ? '90°×1〜2（タイプ別）' : '90°×1（内R4 推定）');
-  const asm = ctx.partPid==='KB1'||ctx.partPid==='KB2' ? '内側曲げRは図面明示なし。板厚t4.0の標準内Rで展開。' : null;
-  return buildJudgment('bend',ctx,spec,{rule:'展開図→曲げ工程（板金標準）',basis:'図面の投影・寸法から曲げ線を同定',assumption:asm},undefined, asm?86:94);
+  // 設置部位（屋上／ベランダ／中継／側溝）
+  const site=ctx.pipeSize||'屋上（陸屋根・たて引）';
+  return buildJudgment('bend',ctx,site,{rule:'図面記号・階平面からの部位判定',basis:'屋上伏図／各階平面の記号配置',assumption:site.indexOf('個別')>=0?'部位の内訳は要拾い出し':null},undefined,93);
 }
 function inferHole(ctx){
-  if(ctx.partPid==='KB1') return buildJudgment('hole',ctx,'2-φ12×L30 ＋ 10mm円弧長穴 R30・100°',{rule:'図面 穴仕様（実測）',basis:'アンカー長穴＋角度調整の円弧長穴',assumption:null},undefined,97);
-  if(ctx.partPid==='KB2') return buildJudgment('hole',ctx,'2-φ10×L40 ＋ 2-φ10×L20',{rule:'図面 穴仕様（実測）',basis:'調整長穴＋ルーバー固定長穴',assumption:null},undefined,95);
-  if(ctx.partPid==='KDAI') return buildJudgment('hole',ctx,'10×20長穴 ×2 ＋ 2-φ10',{rule:'図面 穴仕様（実測）',basis:'ホール棟 ブラケットA〜F 共通パターン',assumption:null},undefined,90);
-  return buildJudgment('hole',ctx,'—',{rule:'図面 穴仕様',basis:'穴指示なし',assumption:null},undefined,95);
+  // 引き方（たて引／よこ引・角度固定／よこ引・角度自在）
+  if(ctx.partPid==='KB1') return buildJudgment('hole',ctx,'たて引（縦引き）',{rule:'竪樋位置と図面記号から判定',basis:'屋上ドレン RD-1〜48 は全数たて引',assumption:null},undefined,96);
+  if(ctx.partPid==='KB2') return buildJudgment('hole',ctx,'よこ引・角度自在（θ=0〜30°）',{rule:'既存管の勾配・振れの実測',basis:'住戸ごとに既存管の角度が異なる',assumption:'角度固定型では現場合わせが発生するため自在型を選定。'},undefined,88);
+  if(ctx.partPid==='KDAI') return buildJudgment('hole',ctx,'たて引 ／ 張り掛け代 30mm',{rule:'防水納まりの標準',basis:'塩ビシート張り掛け代の標準値',assumption:'張り掛け代は図面未記載 — 防水業者と要調整。'},undefined,85);
+  return buildJudgment('hole',ctx,'—',{rule:'—',basis:'該当なし',assumption:null},undefined,90);
 }
 function inferFinish(ctx){
-  if(ctx.partPid==='KDAI'){
-    return buildJudgment('finish',ctx,'塗装（フッ素焼付・指定色）（類推）',{rule:'同一路線からの仕上げ類推',basis:'ホール棟図面に仕上げ欄なし',assumption:'モール棟図面の「塗装（フッ素焼付・指定色）」を準用。ホール棟図面に明記なく要確認。'},undefined,80);
-  }
-  return buildJudgment('finish',ctx,'塗装（フッ素焼付・指定色）仕上げ',{rule:'図面 仕上げ欄',basis:'モール棟図面に「塗装（フッ素焼付・指定色）仕上げ」明記',assumption:null},undefined,97);
+  // 適用管径・実測内径
+  if(ctx.finish&&ctx.finish.indexOf('未')<0)
+    return buildJudgment('finish',ctx,ctx.finish,{rule:'仕上げ・表面処理の指定',basis:'ユーザー入力',assumption:null},undefined,98);
+  return buildJudgment('finish',ctx,'アルマイト（シルバー）',{rule:'標準仕様',basis:'屋外・海塩環境の標準膜厚',assumption:'色指定がある場合は粉体塗装（特注色）に変更。'},undefined,86);
 }
 function inferDims(ctx){
-  // ホール棟の注記「形状、寸法は参考とする」→ 要判断（red）
-  return buildJudgment('dims',ctx,'図面寸法（参考値）',{rule:'図面注記の解釈',basis:'注記「取付詳細図の形状・寸法は参考とする」',assumption:null,candidates:[{value:'図面寸法で製作',reason:'標準ケース'},{value:'採用ルーバー製造図で再確認',reason:'注記により寸法は参考扱い'}]},undefined,58);
+  // 既存管の内径 → 適用レンジとの照合（要判断＝red）
+  const d=ctx.length||null;
+  return buildJudgment('dims',ctx,ctx.dimensions||'現場実測後に確定',{rule:'既存管内径 ⇔ 製品の適用レンジ照合',basis:'改修図に内径の記載なし（168か所）',assumption:null,candidates:[{value:'L サイズ（φ115〜140）',reason:'RD-1 実測 φ118'},{value:'S サイズ（φ95〜115）',reason:'RD-2 実測 φ112 — 範囲外のため変更要'}]},undefined,70);
 }
 function inferWireLen(ctx){
-  // 脱落防止材のワイヤ長 → 要判断（red）
-  return buildJudgment('wirelen',ctx,'現場調整（未確定）',{rule:'図面注記の解釈',basis:WIRE_RULE.note,assumption:null,candidates:[{value:'標準長で仮製作',reason:'見積上の仮値'},{value:'ルーバー取付状況の実測後に確定',reason:'注記「実際のルーバー取付状況に応じて調整」'}]},undefined,55);
+  // オプション（スペーサー等）の要否 → 現場写真判定（要判断＝red）
+  return buildJudgment('wirelen',ctx,'36か所（仮置き）',{rule:'既存つばの段差・不陸の写真判定',basis:WIRE_RULE.note,assumption:null,candidates:[{value:'仮置き36か所で計上',reason:'調査写真の判定率 68% 時点'},{value:'実測後に精算',reason:'全数調査の完了を待つ'}]},undefined,66);
 }
 function infer(type,ctx){ switch(type){case 'qty':return inferQty(ctx);case 'plate':return inferPlate(ctx);case 'bend':return inferBend(ctx);case 'hole':return inferHole(ctx);case 'finish':return inferFinish(ctx);case 'dims':return inferDims(ctx);case 'wirelen':return inferWireLen(ctx);} }
 /* ── PORT ③ parts_master.ts（第14章）── */
 const PARTS=[
- {pid:'KB1',name:'取付ベースプレート（躯体側）',subcategory:'SUS板金・曲げ加工品',requiredJudgments:['bend','hole','finish','qty'],orderChecks:['材質・板厚','展開・曲げ','穴/長穴サイズ','仕上げ','数量・寸法']},
- {pid:'KB2',name:'角度調整ブラケット（ルーバー側）',subcategory:'SUS板金・曲げ加工品',requiredJudgments:['bend','hole','finish','qty','dims'],orderChecks:['材質・板厚','展開・曲げ','穴/長穴サイズ','仕上げ','数量・寸法']},
- {pid:'KDAI',name:'取付ブラケットA〜F（ホール棟）',subcategory:'SUS板金・曲げ加工品',requiredJudgments:['plate','bend','hole','finish','qty'],orderChecks:['材質・板厚','展開・曲げ','穴/長穴サイズ','仕上げ','数量・寸法']},
- {pid:'WIRE',name:'脱落防止材（ワイヤセット）',subcategory:'購入品・組立',requiredJudgments:['wirelen','finish'],orderChecks:['ワイヤ仕様','アンカー品番','シャックル','端末処理','長さ']},
- {pid:'ANCHOR',name:'アンカー・ボルト類',subcategory:'購入品',requiredJudgments:['finish'],orderChecks:['アンカー品番','ボルト仕様','数量']},
+ {pid:'KB1',name:'改修用ストレーナーキャップ（たて引）',subcategory:'ALDREX アルミ鋳造・改修用',requiredJudgments:['bend','hole','finish','qty'],orderChecks:['防水種別','設置部位','引き方・角度','適用管径・実測内径','数量・耐風圧仕様']},
+ {pid:'KB2',name:'改修用ストレーナーキャップ（よこ引）',subcategory:'ALDREX アルミ鋳造・改修用',requiredJudgments:['bend','hole','finish','qty','dims'],orderChecks:['防水種別','設置部位','引き方・角度','適用管径・実測内径','数量・耐風圧仕様']},
+ {pid:'KDAI',name:'アルミドレイン（新設・防水更新部）',subcategory:'ALDREX アルミ鋳造・新設用',requiredJudgments:['plate','bend','hole','finish','qty'],orderChecks:['防水種別 DR/DF','設置部位 T/B/M','引き方','適用パイプ呼び径','数量']},
+ {pid:'WIRE',name:'オーバーフロー管カバー／オプション',subcategory:'ALDREX 付属・調整部材',requiredJudgments:['wirelen','finish'],orderChecks:['型（30/40/50）','管径','スペーサー要否','直管・エンビ管','数量']},
+ {pid:'ANCHOR',name:'アルフェーズ 物干金物（壁付け用）',subcategory:'ALPHASE 壁付け',requiredJudgments:['finish'],orderChecks:['アーム長さ','同梱ビス','仕上げ','数量']},
 ];
 const findPart=pid=>PARTS.find(p=>p.pid===pid);
-const FINISH_OPTIONS=['フッ素焼付塗装（指定色）','SUS HL（ヘアライン）','SUS バイブレーション','アルマイト（二次電解着色）','その他'];
+const FINISH_OPTIONS=['アルマイト（シルバー）','アルマイト（ブロンズ）','粉体塗装（色指定）','アルミ生地','その他'];
 /* ── PORT ④ derive.ts（3レンズ）── */
 const FB_LONG=235/1.5;
 const STEEL_SECTION={'L-50×50×5.0':{weight:3.77,Z:3.08,I:11.1},'L-50×50×6.0':{weight:4.43,Z:3.55,I:12.6},'[-75×40×5.0×7.0':{weight:6.92,Z:21.0,I:75.3}};
@@ -2429,7 +2478,7 @@ function sectionOf(m){ if(STEEL_SECTION[m.spec])return STEEL_SECTION[m.spec]; if
 function weightEach(m){ const s=sectionOf(m); return m.type==='plate'?s.weight:s.weight*(m.length/1000); }
 function materialCost(m){ return Math.round(weightEach(m)*RATES.steelUnitPrice); }
 function countHoles(j){ const n=(j.geometry&&j.geometry.positions)?j.geometry.positions.length:((j.geometry&&j.geometry.position)?1:0); return n||2; }
-function arcCount(j){ return /円弧長穴/.test(j.value)?1:0; }
+function arcCount(j){ return /角度自在|ラバーベンダー/.test(j.value)?1:0; }
 function fabCost(m,js){ const mine=js.filter(j=>j.memberId===m.id&&deriveGrade(j)==='green'); let c=RATES.laser+RATES.paint; for(const j of mine){ if(j.type==='hole')c+=countHoles(j)*RATES.holeLong+arcCount(j)*RATES.arcSlot; else if(j.type==='bend')c+=RATES.bend; } return Math.round(c); }
 function utilization(m,js,load,span){ const sec=sectionOf(m); const Zg=sec.Z*1000; const hj=js.filter(j=>j.memberId===m.id&&j.type==='hole'&&deriveGrade(j)==='green'); let lr=0; for(const j of hj){ const dia=parseFloat((j.value.match(/φ?(\d+)/)||[])[1]||'0'); const n=(j.geometry&&j.geometry.positions)?j.geometry.positions.length:1; lr+=(dia*n)/(m.dims.a??m.dims.h??100); } const Zn=Zg*(1-Math.min(lr,0.5)); const M=(load*span)/4; return +((M/Zn)/FB_LONG).toFixed(2); }
 function recompute(m,js,load,span,tent){ const mat=materialCost(m),fab=fabCost(m,js); return {weightEach:+weightEach(m).toFixed(2),materialCost:mat*m.qty,fabCost:fab*m.qty,totalCost:(mat+fab)*m.qty,utilization:utilization(m,js,load,span),tentative:tent}; }
@@ -2442,11 +2491,13 @@ const HISTORY={topMakerForPipe(){ return null; }};
 const $=id=>document.getElementById(id);
 
 let PROJECTS=[
- {id:'p_seed1',name:'モール棟 意匠ルーバー取付ブラケット 製作',client:'KTC建設（元請）',status:'estimating',collected:{partPid:'KB1',finish:'フッ素焼付塗装（指定色）',qty:'40',dimensions:'170×50 / t4.0'},estimateSummary:{totalCost:96400,remainingPhoneCalls:1,memberCount:1},siteId:'s1',
-  quotes:[{ver:1,no:'ALT-2026-0142',total:135000,issuedAt:'2026/6/2',status:'sent',factory:'自社 新山下工場'}]},
- {id:'p_seed2',name:'ホール棟 取付ブラケットA〜F 製作',client:'市民文化ホール 改修JV',status:'estimating',collected:{partPid:'KDAI',finish:'フッ素焼付塗装（指定色）',qty:'24',dimensions:'6タイプ L/R'},estimateSummary:{totalCost:58200,remainingPhoneCalls:2,memberCount:1},siteId:'s2',
-  quotes:[{ver:1,no:'ALT-2026-0138',total:81400,issuedAt:'2026/5/29',status:'sent',factory:'協力工場（板金）'}]},
- {id:'p_seed3',name:'駅前広場 サイン枠・装飾手摺 製作',client:'横浜都市デザイン設計',status:'draft',collected:{partPid:'KB2',finish:'SUS HL（ヘアライン）',qty:'18',dimensions:'100×150 / t4.0'},estimateSummary:{totalCost:41800,remainingPhoneCalls:3,memberCount:1},siteId:'s3',
+ {id:'p_seed1',name:'星和第2マンション 屋上ドレン改修（RD-1〜48）',client:'新光建設（元請）',status:'estimating',collected:{partPid:'KB1',finish:'アルマイト（シルバー）',qty:'48',dimensions:'φ115〜140'},estimateSummary:{totalCost:428000,remainingPhoneCalls:2,memberCount:1},siteId:'s1',
+  quotes:[{ver:1,no:'ALD-2026-0142',total:562000,issuedAt:'2026/6/2',status:'sent',factory:'東京ダイカスト 茅野工場'}]},
+ {id:'p_seed2',name:'星和第2マンション ベランダドレン改修（BV-1〜120）',client:'新光建設（元請）',status:'estimating',collected:{partPid:'KB2',finish:'アルマイト（シルバー）',qty:'120',dimensions:'φ60〜100'},estimateSummary:{totalCost:396000,remainingPhoneCalls:3,memberCount:1},siteId:'s1',
+  quotes:[{ver:1,no:'ALD-2026-0138',total:518000,issuedAt:'2026/5/29',status:'sent',factory:'東京ダイカスト 茅野工場'}]},
+ {id:'p_seed3',name:'品川フロントビル 屋上防水改修（耐風圧仕様）',client:'東和建設工業',status:'estimating',collected:{partPid:'KB1',finish:'粉体塗装（色指定）',qty:'26',dimensions:'φ95〜115'},estimateSummary:{totalCost:284000,remainingPhoneCalls:1,memberCount:1},siteId:'s2',
+  quotes:[{ver:1,no:'ALD-2026-0121',total:372000,issuedAt:'2026/5/12',status:'sent',factory:'東京ダイカスト 茅野工場'}]},
+ {id:'p_seed4',name:'市営桜台住宅 物干金物 更新（アルフェーズ）',client:'市 住宅供給公社',status:'draft',collected:{partPid:'ANCHOR',finish:'アルミ生地',qty:'184',dimensions:'PHJS-660'},estimateSummary:{totalCost:0,remainingPhoneCalls:2,memberCount:1},siteId:'s3',
   quotes:[]},
 ];
 let pidSeq=0;
@@ -2497,12 +2548,12 @@ function renderProjects(){ const grid=$('sm-projGrid'); if(!PROJECTS.length){ gr
 
 /* chatbot 状態機械 */
 const CHAT_PARTS=['KB1','KB2','KDAI','WIRE','ANCHOR'];
-const CHAT_TUNNELS=['モール棟（基本部・エントランス部）','ホール棟（外装スパンドレル・共用廊下）'];
-const CHAT_QTYS=['40（ルーバー本数と仮置き）','24','個別に入力'];
+const CHAT_TUNNELS=['屋上（陸屋根・たて引）','ベランダ／バルコニー','中継（階中間）','側溝・排水溝'];
+const CHAT_QTYS=['48（屋上ドレン数と仮置き）','120（住戸数連動）','個別に入力'];
 let session=null;
 window.smStartChat=function(){ startChat(); };
 function startChat(prefill){ session={collected:Object.assign({partPid:undefined,pipeSize:undefined,maker:undefined,finish:undefined,dimensions:undefined},prefill||{}),step:'part'}; $('sm-chatInner').innerHTML=''; smNav('chat'); updateProg();
-  botTurn(()=>botSay('商業施設・公共施設の意匠金物（ルーバー・手摺・見切り）の見積へようこそ。選んでいくだけで、確認すべき加工指示と概算が出ます。\nまず、何を製作しますか？',null,CHAT_PARTS.map(pid=>({label:findPart(pid).name,val:pid,act:'part'})),'catalog'), 480); }
+  botTurn(()=>botSay('ALDREX 改修用ドレンの型番選定・見積へようこそ。選んでいくだけで、型番の候補と概算、確認が要る項目が出ます。\nまず、どの品目をお探しですか？',null,CHAT_PARTS.map(pid=>({label:findPart(pid).name,val:pid,act:'part'})),'catalog'), 480); }
 const needsQty=part=>part.requiredJudgments.includes('qty');
 const roleFor=()=>undefined;
 const jointFor=()=>undefined;
@@ -2533,10 +2584,19 @@ function handleOption(opt){ if(opt.act==='quote'){ smIssueQuote(); return; } if(
     else if(opt.act==='dim'){ c.dimensions=opt.val; session.step='estimate'; doEstimate(); }
     updateProg();
   }, isEstimate?1150:undefined); }
-function askTunnel(){ botSay('対象の現場・区画は？',null,CHAT_TUNNELS.map(t=>({label:t,val:t,act:'tunnel'})),'inference'); }
-function askQty(){ botSay('製作数量は？\n図面に数量表がないため、意匠ルーバー数からの推論になります（推論＝黄）。',null,CHAT_QTYS.map(q=>({label:q,val:q,act:'qty'})),'inference'); }
-function askFinish(){ botSay('仕上げの指定は？（モール棟図面は「塗装（フッ素焼付・指定色）」明記。ホール棟図面は要確認）',null,FINISH_OPTIONS.map(f=>({label:f,val:f,act:'finish'})).concat([{label:'図面未指定（推論に任せる）',val:'図面未指定',act:'finish'}]),'catalog'); }
-function askDim(){ const pid=session&&session.collected&&session.collected.partPid; if(pid==='WIRE'){ botSay('ワイヤ長は？（図面注記：ルーバー取付状況に応じて調整）',null,[{label:'標準長 L=800 で仮置き',val:'L=800（仮）',act:'dim'},{label:'現場実測後に確定',val:'現場実測後確定',act:'dim'}]); return; } if(pid==='ANCHOR'){ botSay('セット数は？（M10×4＋M8×8 /ルーバー）',null,[{label:'40セット',val:'40セット',act:'dim'},{label:'個別に入力',val:'個別',act:'dim'}]); return; } botSay('主要寸法は？ ボタンか自由入力で。',null,[{label:'170×50 (①)',val:'170×50',act:'dim'},{label:'100×150 (②)',val:'100×150',act:'dim'},{label:'〜130×50 (A〜F)',val:'130×50',act:'dim'},{label:'図面参考（要判断）',val:'図面参考',act:'dim'}]); }
+function askTunnel(){ botSay('設置部位はどこですか？',null,CHAT_TUNNELS.map(t=>({label:t,val:t,act:'tunnel'})),'inference'); }
+function askQty(){ botSay('数量（か所数）は？\n改修図に数量表がないため、図面記号 RD-n / BV-n のカウントからの推論になります（推論＝黄）。',null,CHAT_QTYS.map(q=>({label:q,val:q,act:'qty'})),'inference'); }
+function askFinish(){ botSay('表面処理の指定は？（屋外・海塩環境ではアルマイトが標準。色指定がある場合は粉体塗装）',null,FINISH_OPTIONS.map(f=>({label:f,val:f,act:'finish'})).concat([{label:'図面未指定（推論に任せる）',val:'図面未指定',act:'finish'}]),'catalog'); }
+function askDim(){ const pid=session&&session.collected&&session.collected.partPid;
+  if(pid==='WIRE'){ botSay('オーバーフロー管カバーの型／オプションの要否は？',null,[{label:'30型',val:'30型',act:'dim'},{label:'40型アルスルー',val:'40型アルスルー',act:'dim'},{label:'50型アルスルー',val:'50型アルスルー',act:'dim'},{label:'スペーサー要否は現場実測後',val:'現場実測後に確定',act:'dim'}]); return; }
+  if(pid==='ANCHOR'){ botSay('アルフェーズのアーム長さは？（2本組セット・コーチスクリュー同梱）',null,[{label:'PHJS-660（660mm）',val:'PHJS-660',act:'dim'},{label:'PHJ-650（646mm）',val:'PHJ-650',act:'dim'},{label:'PHM-550（570mm）',val:'PHM-550',act:'dim'}]); return; }
+  if(pid==='KDAI'){ botSay('適用パイプ呼び径は？',null,[{label:'呼び径 50φ',val:'呼び径50φ',act:'dim'},{label:'呼び径 75φ',val:'呼び径75φ',act:'dim'},{label:'呼び径 100φ',val:'呼び径100φ',act:'dim'},{label:'図面に記載なし（実測後）',val:'現場実測後に確定',act:'dim'}]); return; }
+  botSay('既存パイプの内径は？（改修図に記載がない場合は実測値を入れてください）',null,[
+    {label:'φ40〜60（15型／08型）',val:'φ40〜60',act:'dim'},
+    {label:'φ60〜100（15型 よこ引）',val:'φ60〜100',act:'dim'},
+    {label:'φ95〜115（22型 S）',val:'φ95〜115',act:'dim'},
+    {label:'φ115〜140（22型 L）',val:'φ115〜140',act:'dim'},
+    {label:'現場実測後に確定',val:'現場実測後に確定',act:'dim'}],'inference'); }
 window.smChatSubmit=function(e){ e.preventDefault(); const f=$('sm-chatField'); const text=f.value.trim(); if(!text)return; f.value=''; if(!session){ startChat(); return; } userSay(text); const step=session.step;
   botTurn(()=>{ const c=session.collected;
     if(step==='part'){ const p=PARTS.find(p=>text.includes(p.name)||p.name.includes(text)); if(p){ c.partPid=p.pid; botSay(p.name+' で進めます。','catalog'); if(needsQty(p)){session.step='tunnel';askTunnel();}else{session.step='finish';askFinish();} updateProg(); return; } botSay('品目を選んでください。','catalog',CHAT_PARTS.map(pid=>({label:findPart(pid).name,val:pid,act:'part'})),'catalog'); return; }
@@ -2549,7 +2609,7 @@ window.smChatSubmit=function(e){ e.preventDefault(); const f=$('sm-chatField'); 
 function buildMember(c){ const part=findPart(c.partPid); const isBuy=/購入品/.test(part.subcategory);
   const dims=part.pid==='KB1'?{w:170,d:100,t:4}:part.pid==='KB2'?{w:100,d:150,t:4}:{w:130,d:50,t:4};
   const qty=(c.maker&&/^\d+/.test(String(c.maker)))?parseInt(c.maker,10):(c.qty&&/^\d+/.test(String(c.qty))?parseInt(c.qty,10):40);
-  return {id:'m_chat',category:isBuy?'pipe':'steel',name:part.name,type:'plate',spec:'SUS304 t4.0',use:part.subcategory,dims,length:parseDim(c.dimensions)||130,qty:qty||40,source:'cad',color:'#2563eb',judgmentIds:[]}; }
+  return {id:'m_chat',category:isBuy?'pipe':'steel',name:part.name,type:'plate',spec:'ALDREX アルミ鋳造',use:part.subcategory,dims,length:parseDim(c.dimensions)||130,qty:qty||48,source:'cad',color:'#2563eb',judgmentIds:[]}; }
 function parseDim(s){ if(!s)return null; const m=String(s).match(/(\d[\d,]*)/); return m?parseInt(m[1].replace(/,/g,''),10):null; }
 function enrichGeo(j){ if(j.type==='hole'){ let n=4; const mm=j.value.match(/\s×(\d+)\s*$/); if(mm)n=parseInt(mm[1],10); j.geometry={positions:Array.from({length:n},(_,i)=>({x:0,y:i*40,z:0}))}; } else if(j.type==='ubolt'){ j.geometry={position:{x:0,y:0,z:0}}; } return j; }
 function runJudgments(c){ const member=buildMember(c); const part=findPart(c.partPid); const req=part.requiredJudgments; const base={memberId:member.id,partPid:c.partPid,qty:(c.qty|| (c.maker&&/^\d+/.test(String(c.maker))?c.maker:null)),length:member.length};
@@ -2595,20 +2655,20 @@ window.smIssueQuote=function(){
   const checks=[['① 材質・板厚',vOf('plate')!=='—'?vOf('plate'):member.spec,gOf('plate')],['② 展開・曲げ',vOf('bend'),gOf('bend')],['③ 穴 / 長穴サイズ',vOf('hole'),gOf('hole')],['④ 仕上げ',(c.finish&&c.finish!=='図面未指定')?c.finish:vOf('finish'),gOf('finish')],['⑤ 数量・寸法',(vOf('qty')!=='—'?vOf('qty')+' / ':'')+(c.dimensions||'—'),gOf('qty')||gOf('dims')]]
     .filter(r=>(r[1]&&r[1]!=='—')||r[0][0]==='①'||r[0][0]==='⑤');
   const dt=new Date(); const today=dt.toLocaleDateString('ja-JP');
-  const no='ALT-'+dt.getFullYear()+'-'+String(1000+(((pidSeq+1)*37+((c.qty?parseInt(c.qty,10):member.qty)||3))%9000));
+  const no='ALD-'+dt.getFullYear()+'-'+String(1000+(((pidSeq+1)*37+((c.qty?parseInt(c.qty,10):member.qty)||3))%9000));
   session._lastQuote={no,total,sub,tax,today,remaining};
   const clientOpts=customerList().map(cl=>'<option value="'+cl+'">'+cl+'</option>').join('')+'<option value="__new">＋ 新規会社を入力…</option>';
   const banner=remaining>0
     ? '<div class="sm-q-warn">※ 要確認 '+remaining+'件（黄）が残っています。本見積は<b>暫定</b>です。3Dで確定すると金額が変わる場合があります。</div>'
     : '<div class="sm-q-ok">✓ 加工指示がすべて確定。電話確認ゼロで発注できます。</div>';
   const html='<div class="sm-q-doc">'
-    +'<div class="sm-q-top"><div><div class="sm-q-title">御 見 積 書</div></div><div class="sm-q-meta"><div class="sm-q-brand">ALTECHE<b>.</b></div>見積No: '+no+'<br>発行日: '+today+'</div></div>'
+    +'<div class="sm-q-top"><div><div class="sm-q-title">御 見 積 書</div></div><div class="sm-q-meta"><div class="sm-q-brand">ALDREX<b>.</b></div>見積No: '+no+'<br>発行日: '+today+'</div></div>'
     +'<div class="sm-q-sub">件名：<b>'+part.name+'</b>（'+(c.pipeSize?c.pipeSize+' / ':'')+(c.finish||'仕上げ未指定')+' / '+(c.dimensions||'寸法未指定')+'） 数量 '+member.qty+'</div>'
     +banner
     +'<div class="sm-q-total"><span class="l">御見積金額（税込）</span><span class="v">'+yen(total)+'<small>税抜 '+yen(sub)+' ／ 消費税 '+yen(tax)+'</small></span></div>'
     +'<table class="sm-qtable"><thead><tr><th>項目</th><th>仕様</th><th class="r">金額</th></tr></thead><tbody>'
     +'<tr><td>材料費</td><td>'+member.spec+' ×'+member.qty+'</td><td class="r">'+yen(d.materialCost)+'</td></tr>'
-    +'<tr><td>加工費（穴・円弧長穴・曲げ）</td><td>加工指示AI 自動積算</td><td class="r">'+yen(d.fabCost)+'</td></tr>'
+    +'<tr><td>生産費（鋳造・機械加工・組立）</td><td>型番選定AI 自動積算</td><td class="r">'+yen(d.fabCost)+'</td></tr>'
     +'<tr class="sub"><td>直接費 小計</td><td></td><td class="r">'+yen(direct)+'</td></tr>'
     +'<tr><td>諸経費・一般管理費</td><td>27%</td><td class="r">'+yen(oh)+'</td></tr>'
     +'<tr class="sub"><td>税抜計</td><td></td><td class="r">'+yen(sub)+'</td></tr>'
@@ -2662,114 +2722,115 @@ const JD=s=>{const d=D(s);return (d.getMonth()+1)+'/'+d.getDate();};
 const PH_JP={survey:'現地調査',design:'施工図',approve:'承認',fab:'製作',finish:'表面処理',ship:'搬入',install:'取付工事',check:'検査',hand:'引渡'};
 
 const SITES=[
- {id:'s1', name:'みなとみらいセントラルモール 内装改修', kind:'商業施設',
-  client:'KTC建設（元請）', designer:'横浜都市デザイン設計', pm:'工事部 佐藤', factory:'新山下工場',
-  scope:'意匠ルーバー（AL押出）・装飾手摺（SUS HL）・見切り金物 — 設計／製作／取付一式',
-  start:'2026-07-01', end:'2026-11-14', phase:'製作', contract:18600000,
+ {id:'s1', name:'星和第2マンション 大規模修繕', kind:'集合住宅 / 168戸',
+  client:'新光建設（元請）', designer:'マンション管理組合／設計監理事務所', pm:'特需営業部 加藤', factory:'東京ダイカスト 茅野工場',
+  scope:'屋上ドレン改修 RD-1〜48（DSR-22）／ベランダドレン改修 BV-1〜120（TR-15HK）／防水更新部 新設 24 — 製品供給＋取付工事',
+  start:'2026-06-15', end:'2026-11-20', phase:'生産', contract:9840000,
   phases:[
-   {k:'survey', t:'現地調査・実測', o:'自社 工事部', s:'2026-07-01', e:'2026-07-08', prog:100},
-   {k:'design', t:'施工図作成（割付・製作図）', o:'自社 設計課', s:'2026-07-07', e:'2026-07-28', prog:100},
-   {k:'approve',t:'施工図 承認（元請・設計）', o:'KTC建設 / 都市デザイン', s:'2026-07-29', e:'2026-08-12', prog:70, late:true, note:'ALT-102 Rev.B が7日滞留'},
-   {k:'fab',    t:'材料手配（SUS304 / AL押出）', o:'自社 資材', s:'2026-08-06', e:'2026-08-20', prog:45, risk:true, note:'承認待ちで押出型材の発注保留'},
-   {k:'fab',    t:'工場製作（切断・曲げ・溶接）', o:'新山下工場', s:'2026-08-18', e:'2026-09-12', prog:12, risk:true},
-   {k:'finish', t:'表面処理（フッ素焼付／HL研磨）', o:'協力工場', s:'2026-09-08', e:'2026-09-22', prog:0},
-   {k:'ship',   t:'出荷・現場搬入（夜間搬入）', o:'物流／警備', s:'2026-09-24', e:'2026-09-29', prog:0},
-   {k:'install',t:'取付工事 1期（モール吹抜）', o:'自社 工事部＋鳶', s:'2026-09-30', e:'2026-10-24', prog:0},
-   {k:'install',t:'取付工事 2期（エントランス）', o:'自社 工事部', s:'2026-10-20', e:'2026-11-04', prog:0},
-   {k:'check',  t:'社内検査・是正', o:'品質管理', s:'2026-11-02', e:'2026-11-10', prog:0},
-   {k:'hand',   t:'施主検査・引渡', o:'KTC建設', s:'2026-11-11', e:'2026-11-14', prog:0},
+   {k:'survey', t:'現場調査・既存管の実測', o:'特需営業部＋工事課', s:'2026-06-15', e:'2026-07-03', prog:100},
+   {k:'design', t:'拾い出し・型番選定（L/S 判定）', o:'特需営業部', s:'2026-06-29', e:'2026-07-24', prog:100},
+   {k:'approve',t:'提出図・製品仕様書 承認', o:'新光建設／設計監理', s:'2026-07-27', e:'2026-08-12', prog:65, late:true, note:'ALD-102 Rev.B が7日滞留'},
+   {k:'fab',    t:'受注・生産手配（金型段取り）', o:'生産管理', s:'2026-08-06', e:'2026-08-19', prog:50, risk:true, note:'承認待ちで L/S 数量が確定せず'},
+   {k:'fab',    t:'ダイカスト生産（茅野工場）', o:'東京ダイカスト', s:'2026-08-17', e:'2026-09-11', prog:15, risk:true},
+   {k:'finish', t:'表面処理（アルマイト）・組立', o:'協力工場＋自社', s:'2026-09-07', e:'2026-09-24', prog:0},
+   {k:'ship',   t:'出荷・現場搬入（1次：屋上分）', o:'物流', s:'2026-09-28', e:'2026-09-30', prog:0},
+   {k:'install',t:'取付工事 屋上（防水工事と同時）', o:'自社 工事課＋防水業者', s:'2026-10-01', e:'2026-10-20', prog:0},
+   {k:'install',t:'取付工事 ベランダ（住戸内立入）', o:'自社 工事課', s:'2026-10-13', e:'2026-11-07', prog:0},
+   {k:'check',  t:'通水・散水試験／是正', o:'品質管理', s:'2026-11-04', e:'2026-11-14', prog:0},
+   {k:'hand',   t:'完了検査・引渡', o:'新光建設', s:'2026-11-16', e:'2026-11-20', prog:0},
   ],
   drawings:[
-   {no:'ALT-101', name:'意匠ルーバー 割付図', sub:'モール吹抜 A〜C通り / 1:50', rev:'C', st:'ok',   up:'2026-07-24', read:'6/6', by:'自社 設計課'},
-   {no:'ALT-102', name:'ルーバー取付ブラケット 製作図', sub:'SUS304 t4.0 / 展開・曲げ・穴位置', rev:'B', st:'wait', up:'2026-08-11', read:'3/6', by:'自社 設計課', hold:7, cad:true},
-   {no:'ALT-103', name:'ブラケット 展開・曲げ図（工場用）', sub:'レーザー・ベンダ加工指示', rev:'A', st:'wip',  up:'2026-08-16', read:'2/6', by:'新山下工場', cad:true},
-   {no:'ALT-201', name:'装飾手摺 詳細図', sub:'SUS HL φ38.1 / ブラケット @750', rev:'B', st:'back', up:'2026-08-13', read:'5/6', by:'横浜都市デザイン設計', cmt:2},
-   {no:'ALT-301', name:'見切り金物・端部納まり図', sub:'天井（岩綿吸音板）取り合い', rev:'A', st:'wip',  up:'2026-08-17', read:'1/6', by:'自社 設計課'},
-   {no:'ALT-050', name:'現地実測野帳（写真12枚）', sub:'既存下地・墨出し基準', rev:'—', st:'ok',   up:'2026-07-08', read:'6/6', by:'工事部 佐藤'},
+   {no:'ALD-101', name:'屋上伏図・ドレン位置図（RD-1〜48）', sub:'既存管内径 調査表つき / 1:200', rev:'C', st:'ok',   up:'2026-07-20', read:'6/6', by:'特需営業部'},
+   {no:'ALD-102', name:'屋上ドレン改修 詳細図（DSR-22）', sub:'ラバーベンダー L/S 判定表 / 耐風圧仕様', rev:'B', st:'wait', up:'2026-08-11', read:'3/6', by:'特需営業部', hold:7, cad:true},
+   {no:'ALD-103', name:'ベランダドレン改修 詳細図（TR-15HK）', sub:'よこ引・角度自在 θ=0〜30° / 住戸別', rev:'A', st:'wip',  up:'2026-08-16', read:'2/6', by:'特需営業部', cad:true},
+   {no:'ALD-201', name:'アルミドレイン 新設部 納まり図', sub:'塩ビシート張り掛け / DR・DF 未確定', rev:'B', st:'back', up:'2026-08-13', read:'5/6', by:'設計監理事務所', cmt:2},
+   {no:'ALD-301', name:'製品仕様書・カタログ抜粋', sub:'DSR-22 / TR-15HK / DRT17-50VN', rev:'A', st:'ok',   up:'2026-08-04', read:'6/6', by:'特需営業部'},
+   {no:'ALD-050', name:'現場調査 写真台帳（既存ドレン 192か所）', sub:'既存つばの変形・段差の記録', rev:'—', st:'ok',   up:'2026-07-03', read:'6/6', by:'工事課 山口'},
   ],
   rfis:[
-   {no:'Q-014', t:'既存下地がALCのため、指定のあと施工アンカー M10×L100 では引抜き耐力が不足する恐れ。下地補強（鋼板当て）の要否をご指示ください。', to:'KTC建設', due:'2026-08-14', st:'over', pic:'写真3枚', link:'ALT-102'},
-   {no:'Q-015', t:'ルーバー端部と天井仕上（岩綿吸音板）の取り合い。見切り材を回すか、目透かしのまま納めるかご指示ください。', to:'横浜都市デザイン設計', due:'2026-08-22', st:'open', link:'ALT-301'},
-   {no:'Q-013', t:'装飾手摺のブラケットピッチを @900 から @750 へ変更してよいか（手摺の撓み検討による）。', to:'横浜都市デザイン設計', due:'2026-08-06', st:'done', ans:'@750 で了承。図面 ALT-201 Rev.B に反映済み（2026/08/06 回答）。', link:'ALT-201'},
+   {no:'Q-014', t:'RD-2 ほか6か所の既存管内径が実測 φ112。DSR-22 ラバーベンダーL（φ115〜140）の適用範囲外です。S（φ95〜115）へ型番変更でよろしいでしょうか。', to:'新光建設', due:'2026-08-14', st:'over', pic:'写真6枚', link:'ALD-102'},
+   {no:'Q-015', t:'新設部のアルミドレインは DR（塩ビシート防水用）と DF（一般防水用）のどちらでしょうか。仕様書は「塩ビシート機械的固定」ですが、既存アスファルト防水を残す部位が含まれます。', to:'設計監理事務所', due:'2026-08-22', st:'open', link:'ALD-201'},
+   {no:'Q-013', t:'BV-14 ほか、既存ドレンつばが変形している住戸があります。スペーサー併用で納めてよいか、既存つば撤去とするかご指示ください。', to:'新光建設', due:'2026-08-06', st:'done', ans:'スペーサー併用で了承。該当住戸はベランダ工程の初日に先行調査とする（2026/08/05 回答）。', link:'ALD-050'},
   ],
   members:[
-   {id:'fixture', t:'意匠ルーバー本体（AL押出 50×100 t2.0）', q:'240 本 / L=2,400', done:['手配'], now:'押出', rest:['切断','焼付','検品']},
-   {id:'kb1', t:'取付ベースプレート（SUS304 t4.0）', q:'480 枚', done:['材料','レーザー'], now:'曲げ', rest:['バリ取り','塗装','検品']},
-   {id:'kb2', t:'角度調整ブラケット（SUS304 t4.0）', q:'480 枚', done:['材料'], now:'レーザー', rest:['曲げ','塗装','検品']},
-   {id:'wire', t:'脱落防止ワイヤセット φ4', q:'240 組', done:[], now:'手配', rest:['圧着','検品']},
+   {id:'kb1', t:'DSR-22ラバーベンダーL／S（屋上・たて引・耐風圧）', q:'48 か所（L42 / S6）', done:['受注','金型段取り'], now:'鋳造', rest:['機械加工','アルマイト','組立','検品']},
+   {id:'kb2', t:'TR-15HK（ベランダ・よこ引・角度自在）', q:'120 か所', done:['受注'], now:'金型段取り', rest:['鋳造','機械加工','アルマイト','組立','検品']},
+   {id:'kdai', t:'アルミドレイン DRT17-50VN ほか（新設）', q:'24 か所（DR/DF 未確定）', done:[], now:'仕様確認待ち', rest:['受注','鋳造','仕上','検品']},
+   {id:'wire', t:'オプション（スペーサー／片ねじ直管／エンビ管）', q:'36 式（仮置き）', done:[], now:'数量確定待ち', rest:['手配','出荷']},
   ],
   inspections:[
-   {t:'アンカー引抜き試験（3本／100本）', d:'2026-10-06 予定', st:'wip', o:'第三者試験機関'},
-   {t:'取付検査チェックリスト 1期（モール吹抜）', d:'2026-10-26 予定', st:'wip', o:'品質管理'},
-   {t:'工場中間検査（曲げ角度・穴位置）', d:'2026-09-02 予定', st:'wip', o:'品質管理'},
-   {t:'材料ミルシート受領（SUS304 t4.0）', d:'2026-08-10 受領', st:'ok', o:'資材'},
+   {t:'既存管内径 実測記録（192か所 / 判定率 68%）', d:'2026-07-03 一次完了', st:'wip', o:'工事課'},
+   {t:'工場出荷検査（適用管径・ラバーベンダー L/S 全数）', d:'2026-09-25 予定', st:'wip', o:'品質管理'},
+   {t:'通水・散水試験（屋上／ベランダ 全数）', d:'2026-11-04 予定', st:'wip', o:'品質管理＋防水業者'},
+   {t:'耐風圧仕様の適合確認（軒高31m・地域区分）', d:'2026-08-08 完了', st:'ok', o:'技術'},
   ]},
 
- {id:'s2', name:'市民文化ホール 大規模改修', kind:'公共施設',
-  client:'市民文化ホール 改修JV', designer:'市 建築課', pm:'工事部 田中', factory:'協力工場（板金）',
-  scope:'外装スパンドレル・ホワイエ装飾パネル・脱落防止対策 — 設計／製作／取付一式',
-  start:'2026-05-11', end:'2026-09-30', phase:'取付', contract:26400000,
+ {id:'s2', name:'品川フロントビル 屋上防水改修', kind:'オフィスビル / 軒高 42m',
+  client:'東和建設工業', designer:'ビル管理会社 技術部', pm:'東京営業部 三浦', factory:'東京ダイカスト 茅野工場',
+  scope:'屋上ドレン改修 26か所（耐風圧仕様）／オーバーフロー管カバー 12 — 製品供給＋取付工事',
+  start:'2026-04-20', end:'2026-09-05', phase:'取付', contract:4260000,
   phases:[
-   {k:'survey', t:'現地調査・既存撤去範囲確認', o:'自社 工事部', s:'2026-05-11', e:'2026-05-22', prog:100},
-   {k:'design', t:'施工図・製作図作成', o:'自社 設計課', s:'2026-05-20', e:'2026-06-19', prog:100},
-   {k:'approve',t:'施工図 承認（市 建築課）', o:'市 建築課', s:'2026-06-22', e:'2026-07-10', prog:100},
-   {k:'fab',    t:'工場製作（A〜Fタイプ 6種）', o:'協力工場（板金）', s:'2026-07-06', e:'2026-08-07', prog:100},
-   {k:'finish', t:'表面処理（フッ素焼付）', o:'協力工場', s:'2026-08-03', e:'2026-08-14', prog:100},
-   {k:'ship',   t:'出荷・現場搬入', o:'物流', s:'2026-08-17', e:'2026-08-19', prog:60},
-   {k:'install',t:'取付工事（外装スパンドレル）', o:'自社 工事部＋鳶', s:'2026-08-20', e:'2026-09-18', prog:5},
-   {k:'check',  t:'脱落防止 二重措置 確認検査', o:'品質管理／市', s:'2026-09-14', e:'2026-09-24', prog:0},
-   {k:'hand',   t:'完成検査・引渡', o:'改修JV', s:'2026-09-25', e:'2026-09-30', prog:0},
+   {k:'survey', t:'現場調査・既存管の実測', o:'東京営業部', s:'2026-04-20', e:'2026-05-01', prog:100},
+   {k:'design', t:'拾い出し・型番選定', o:'東京営業部', s:'2026-04-28', e:'2026-05-20', prog:100},
+   {k:'approve',t:'提出図 承認（ビル管理会社）', o:'ビル管理会社', s:'2026-05-21', e:'2026-06-08', prog:100},
+   {k:'fab',    t:'ダイカスト生産', o:'東京ダイカスト', s:'2026-06-08', e:'2026-07-10', prog:100},
+   {k:'finish', t:'表面処理（粉体塗装・色指定）', o:'協力工場', s:'2026-07-06', e:'2026-07-22', prog:100},
+   {k:'ship',   t:'出荷・現場搬入', o:'物流', s:'2026-08-10', e:'2026-08-13', prog:80},
+   {k:'install',t:'取付工事（屋上・高所作業）', o:'自社 工事課', s:'2026-08-17', e:'2026-08-28', prog:8},
+   {k:'check',  t:'通水試験・耐風圧確認', o:'品質管理', s:'2026-08-26', e:'2026-09-01', prog:0},
+   {k:'hand',   t:'完了検査・引渡', o:'東和建設工業', s:'2026-09-02', e:'2026-09-05', prog:0},
   ],
   drawings:[
-   {no:'ALT-215', name:'取付ブラケット A〜F 製作図', sub:'6タイプ×左右 / SUS304 t4.0', rev:'A', st:'ok', up:'2026-07-08', read:'5/5', by:'自社 設計課', cad:true},
-   {no:'ALT-216', name:'脱落防止ワイヤ 取付詳細図', sub:'アンカー TypeII / φ4 二重', rev:'B', st:'ok', up:'2026-07-10', read:'5/5', by:'自社 設計課'},
-   {no:'ALT-220', name:'外装スパンドレル 割付図', sub:'南面・西面 / 1:100', rev:'C', st:'wait', up:'2026-08-15', read:'2/5', by:'自社 設計課', hold:3},
-   {no:'ALT-260', name:'施工計画書（高所作業・仮設）', sub:'ローリングタワー配置', rev:'A', st:'ok', up:'2026-08-05', read:'5/5', by:'工事部 田中'},
+   {no:'ALD-215', name:'屋上ドレン改修 詳細図（26か所）', sub:'耐風圧仕様 / DSR-22・DSR-17 混在', rev:'A', st:'ok', up:'2026-05-18', read:'5/5', by:'東京営業部', cad:true},
+   {no:'ALD-216', name:'オーバーフロー管カバー 取付詳細図', sub:'40型アルスルー ×12 / パラペット貫通部', rev:'B', st:'ok', up:'2026-05-20', read:'5/5', by:'東京営業部'},
+   {no:'ALD-220', name:'高所作業・仮設計画書', sub:'親綱・ローリングタワー配置', rev:'C', st:'wait', up:'2026-08-15', read:'2/5', by:'工事課 山口', hold:3},
+   {no:'ALD-260', name:'製品仕様書・カタログ抜粋', sub:'DSR-22 / 40型アルスルー', rev:'A', st:'ok', up:'2026-05-08', read:'5/5', by:'東京営業部'},
   ],
   rfis:[
-   {no:'Q-031', t:'南面 3F の既存アンカー位置が図面と最大 28mm ずれ。長穴（+10mm）では吸収できない箇所が4か所あります。現場合わせで再穿孔してよいか。', to:'市 建築課', due:'2026-08-21', st:'open', pic:'写真6枚', link:'ALT-220'},
-   {no:'Q-029', t:'脱落防止ワイヤの余長（たるみ）の管理値をご指示ください。', to:'市 建築課', due:'2026-08-07', st:'done', ans:'たるみ 20〜40mm で管理。検査時に全数確認とする（2026/08/06 回答）。', link:'ALT-216'},
+   {no:'Q-031', t:'東面 3か所の既存ドレンが図面と位置が異なり、パラペットとの離隔が 90mm しかありません。オーバーフロー管カバー 40型（外径 φ132）が干渉します。30型への変更でよろしいでしょうか。', to:'ビル管理会社 技術部', due:'2026-08-21', st:'open', pic:'写真4枚', link:'ALD-216'},
+   {no:'Q-029', t:'耐風圧仕様の適用範囲（軒高42m・地域区分II）について、天板の押えビスを標準4本から6本に増やすべきかご相談させてください。', to:'東和建設工業', due:'2026-08-07', st:'done', ans:'標準4本で可。ただし全数トルク管理とし記録を提出（2026/08/06 回答）。', link:'ALD-215'},
   ],
   members:[
-   {id:'kdai', t:'取付ブラケット A〜F（SUS304 t4.0）', q:'288 枚 / 6タイプ×左右', done:['材料','レーザー','曲げ','塗装'], now:'搬入', rest:['取付']},
-   {id:'wire', t:'脱落防止ワイヤセット φ4', q:'144 組', done:['手配','圧着','検品'], now:'搬入', rest:['取付']},
+   {id:'kb1', t:'DSR-22 / DSR-17 ラバーベンダー（耐風圧）', q:'26 か所', done:['受注','鋳造','機械加工','粉体塗装','検品'], now:'搬入', rest:['取付']},
+   {id:'wire', t:'オーバーフロー管カバー 40型アルスルー', q:'12 か所', done:['受注','生産','検品'], now:'搬入', rest:['取付']},
   ],
   inspections:[
-   {t:'工場出荷検査（6タイプ 全数寸法）', d:'2026-08-14 完了', st:'ok', o:'品質管理'},
-   {t:'脱落防止 二重措置 確認検査', d:'2026-09-14 予定', st:'wip', o:'品質管理／市'},
-   {t:'是正 1件：D タイプ 曲げ角度 99°→98.2°（許容内・記録のみ）', d:'2026-08-12 完了', st:'ok', o:'協力工場'},
+   {t:'工場出荷検査（26か所 全数寸法・適用管径）', d:'2026-07-24 完了', st:'ok', o:'品質管理'},
+   {t:'押えビス トルク管理記録（全数）', d:'2026-08-28 予定', st:'wip', o:'工事課'},
+   {t:'是正 1件：南面 2か所のラバーベンダー S→L 差替え', d:'2026-08-12 完了', st:'ok', o:'東京営業部'},
   ]},
 
- {id:'s3', name:'駅前公共広場 サイン・装飾手摺 新設', kind:'公共施設',
-  client:'横浜都市デザイン設計', designer:'横浜都市デザイン設計', pm:'設計課 鈴木', factory:'新山下工場',
-  scope:'サイン枠（SUS バイブレーション）・装飾手摺・ベンチ金物 — 設計／製作／取付一式',
-  start:'2026-08-03', end:'2027-01-30', phase:'設計', contract:9800000,
+ {id:'s3', name:'市営桜台住宅 外壁・防水改修', kind:'公共住宅 / 184戸',
+  client:'市 住宅供給公社', designer:'市 建築課', pm:'特需営業部 加藤', factory:'東京ダイカスト 茅野工場',
+  scope:'ベランダドレン改修 184／物干金物 更新（アルフェーズ PHJS-660）184セット — 製品供給＋取付工事',
+  start:'2026-08-03', end:'2027-02-26', phase:'調査', contract:6180000,
   phases:[
-   {k:'survey', t:'現地調査・実測', o:'自社 工事部', s:'2026-08-03', e:'2026-08-14', prog:100},
-   {k:'design', t:'意匠検討・モックアップ製作', o:'自社 設計課', s:'2026-08-12', e:'2026-09-11', prog:35},
-   {k:'approve',t:'デザイン承認（設計・自治体協議）', o:'都市デザイン設計 / 市', s:'2026-09-14', e:'2026-10-09', prog:0},
-   {k:'design', t:'製作図作成', o:'自社 設計課', s:'2026-10-12', e:'2026-11-06', prog:0},
-   {k:'fab',    t:'工場製作', o:'新山下工場', s:'2026-11-09', e:'2026-12-11', prog:0},
-   {k:'finish', t:'表面処理（バイブレーション／HL）', o:'協力工場', s:'2026-12-07', e:'2026-12-18', prog:0},
-   {k:'install',t:'取付工事（夜間・広場閉鎖）', o:'自社 工事部', s:'2027-01-06', e:'2027-01-23', prog:0},
-   {k:'hand',   t:'検査・引渡', o:'市', s:'2027-01-26', e:'2027-01-30', prog:0},
+   {k:'survey', t:'現場調査・住戸内実測（サンプル抽出）', o:'特需営業部＋工事課', s:'2026-08-03', e:'2026-08-28', prog:40},
+   {k:'design', t:'拾い出し・型番選定', o:'特需営業部', s:'2026-08-24', e:'2026-09-18', prog:0},
+   {k:'approve',t:'提出図 承認（市 建築課）', o:'市 建築課', s:'2026-09-24', e:'2026-10-23', prog:0},
+   {k:'fab',    t:'ダイカスト生産', o:'東京ダイカスト', s:'2026-10-26', e:'2026-12-04', prog:0},
+   {k:'finish', t:'表面処理・組立', o:'協力工場＋自社', s:'2026-11-30', e:'2026-12-18', prog:0},
+   {k:'ship',   t:'出荷・現場搬入', o:'物流', s:'2027-01-06', e:'2027-01-09', prog:0},
+   {k:'install',t:'取付工事（住戸内立入・入居者調整）', o:'自社 工事課', s:'2027-01-12', e:'2027-02-19', prog:0},
+   {k:'hand',   t:'検査・引渡', o:'市 住宅供給公社', s:'2027-02-22', e:'2027-02-26', prog:0},
   ],
   drawings:[
-   {no:'ALT-401', name:'サイン枠 意匠検討図', sub:'3案比較 / バイブレーション仕上', rev:'A', st:'wip', up:'2026-08-17', read:'2/4', by:'自社 設計課'},
-   {no:'ALT-050', name:'現地実測野帳（写真8枚）', sub:'既存基礎・埋設物', rev:'—', st:'ok', up:'2026-08-14', read:'4/4', by:'工事部 佐藤'},
+   {no:'ALD-401', name:'住戸型別 ベランダ納まり調査図', sub:'A〜D型 4種 / 既存管の位置差', rev:'A', st:'wip', up:'2026-08-17', read:'2/4', by:'特需営業部'},
+   {no:'ALD-050', name:'現場調査 写真台帳（サンプル 24戸）', sub:'既存ドレン・既存物干金物の状態', rev:'—', st:'ok', up:'2026-08-14', read:'4/4', by:'工事課 山口'},
   ],
   rfis:[
-   {no:'Q-002', t:'サイン枠の仕上げは バイブレーション と HL のどちらでご検討でしょうか。屋外・海風のため耐候性の観点でご相談させてください。', to:'横浜都市デザイン設計', due:'2026-08-28', st:'open', link:'ALT-401'},
+   {no:'Q-002', t:'物干金物（アルフェーズ）の取付下地について。既存はコンクリート直付けですが、外壁改修で外断熱が入る住戸があります。コーチスクリュー M8.5×100 では効かないため、下地補強の要否をご指示ください。', to:'市 建築課', due:'2026-08-28', st:'open', pic:'写真5枚', link:'ALD-401'},
   ],
   members:[
-   {id:'kb2', t:'サイン枠・装飾手摺（SUS304 t4.0）', q:'未確定（意匠検討中）', done:[], now:'意匠検討', rest:['製作図','材料','製作','仕上']},
+   {id:'kb2', t:'ベランダ改修用ストレーナーキャップ（型番選定中）', q:'184 か所（住戸型別に差）', done:[], now:'実測中', rest:['型番選定','受注','生産','仕上']},
+   {id:'anchor', t:'アルフェーズ PHJS-660（2本組・コーチスクリュー同梱）', q:'184 セット', done:[], now:'下地確認待ち', rest:['受注','出荷','取付']},
   ],
   inspections:[
-   {t:'モックアップ社内確認（仕上げ 3案）', d:'2026-09-04 予定', st:'wip', o:'設計課'},
+   {t:'住戸型別サンプル調査（24戸 / 184戸）', d:'2026-08-28 予定', st:'wip', o:'工事課'},
   ]},
 ];
 const SITE=id=>SITES.find(x=>x.id===id);
-const PHASE_CLS=p=>({'設計':'','製作':'mk','取付':'ins','引渡':'dn'})[p]||'';
+const PHASE_CLS=p=>({'調査':'','選定':'','生産':'mk','取付':'ins','引渡':'dn'})[p]||'';
 
 function phaseState(ph){
   if(ph.prog>=100)return 'done';
@@ -2823,7 +2884,7 @@ let curSite=null, siteTab='gantt';
 window.openSite=function(id,tab){ curSite=id; siteTab=tab||'gantt'; smNav('site'); renderSite(); };
 function renderSite(){
   const st=SITE(curSite); if(!st)return;
-  const tabs=[['gantt','工程表',0],['dwg','図面共有',siteWaitDwg(st)],['rfi','質疑・是正',siteOpenRfi(st)],['fab','部材・製作',0],['insp','検査記録',0]];
+  const tabs=[['gantt','工程表',0],['dwg','図面共有',siteWaitDwg(st)],['rfi','質疑・是正',siteOpenRfi(st)],['fab','品目・生産',0],['insp','検査記録',0]];
   $('sm-siteDetail').innerHTML=
     '<div class="sm-back" onclick="__smShow(\'sites\')">← 現場一覧</div>'
     +'<div class="sm-site-head"><div><div class="sm-page-h" style="margin-bottom:2px">'+st.name+'</div>'
@@ -2831,9 +2892,9 @@ function renderSite(){
     +'<span class="sm-ph '+PHASE_CLS(st.phase)+'" style="font-size:11.5px;padding:5px 13px">'+st.phase+' フェーズ ・ '+siteProgress(st)+'%</span></div>'
     +'<div class="sm-site-meta">'
       +'<span>元請／発注 <b>'+st.client+'</b></span><span>設計 <b>'+st.designer+'</b></span>'
-      +'<span>現場担当 <b>'+st.pm+'</b></span><span>製作 <b>'+st.factory+'</b></span>'
+      +'<span>現場担当 <b>'+st.pm+'</b></span><span>生産 <b>'+st.factory+'</b></span>'
       +'<span>工期 <b>'+JD(st.start)+' 〜 '+JD(st.end)+'</b></span>'
-      +'<span>請負金額 <b>'+yen(st.contract)+'</b></span></div>'
+      +'<span>受注金額 <b>'+yen(st.contract)+'</b></span></div>'
     +'<div class="sm-tabs">'+tabs.map(([k,l,n])=>'<button class="sm-tab'+(siteTab===k?' on':'')+'" data-tab="'+k+'">'+l+(n?'<span class="n">'+n+'</span>':'')+'</button>').join('')+'</div>'
     +'<div id="sm-siteBody"></div>';
   $('sm-siteDetail').querySelectorAll('.sm-tab').forEach(b=>b.onclick=()=>{siteTab=b.dataset.tab;renderSite();});
@@ -2874,7 +2935,7 @@ function siteGanttHTML(st){
   const note=late.length
     ? '<b>'+late.map(p=>p.t).join(' / ')+'</b> が遅延しています。'+(late[0].note?'（'+late[0].note+'）':'')+' 承認が止まると材料手配 → 工場製作 → 取付工事まで連鎖するため、承認待ちの図面と未回答の質疑を先に片付ける導線にしています。'
     : 'この現場に遅延工程はありません。承認・質疑の滞留も出ていません。';
-  return '<div class="sm-panel"><div class="sm-panel-h"><h4>工程表（設計 → 製作 → 取付工事）</h4>'
+  return '<div class="sm-panel"><div class="sm-panel-h"><h4>工程表（調査・実測 → 型番選定 → 生産 → 取付工事）</h4>'
     +'<span class="hint">基準日 '+TODAY.replace(/-/g,'/')+'　バーの塗り＝進捗率</span></div>'
     +'<div class="sm-gantt"><div class="sm-gt"><div class="sm-gt-months">'+months.join('')+'</div>'+rows+'</div></div>'
     +'<div class="sm-gt-legend"><span><i style="background:var(--sm-green)"></i>完了</span><span><i style="background:var(--sm-accent)"></i>進行中</span>'
@@ -2888,7 +2949,7 @@ const DWG_JP={ok:'承認済',wait:'承認待ち',back:'差戻し',wip:'作成中
 function siteDwgHTML(st){
   const rows=st.drawings.map((d,i)=>{
     const acts=['<button class="sm-mini" data-dact="open" data-i="'+i+'">プレビュー</button>'];
-    if(d.cad)acts.unshift('<button class="sm-mini go" data-dact="cad" data-i="'+i+'">3Dで加工指示</button>');
+    if(d.cad)acts.unshift('<button class="sm-mini go" data-dact="cad" data-i="'+i+'">3Dで型番選定</button>');
     if(d.st==='wait')acts.push('<button class="sm-mini" data-dact="approve" data-i="'+i+'">承認する</button>');
     if(d.st==='back')acts.push('<button class="sm-mini" data-dact="revise" data-i="'+i+'">改訂を上げる</button>');
     return '<tr><td class="no">'+d.no+'</td>'
@@ -2899,10 +2960,10 @@ function siteDwgHTML(st){
       +'<td class="sm-read">既読 '+d.read+'</td>'
       +'<td><div class="sm-cellact">'+acts.join('')+'</div></td></tr>';
   }).join('');
-  return '<div class="sm-panel"><div class="sm-panel-h"><h4>図面共有（版管理・承認・既読）</h4>'
-    +'<span class="hint">元請／設計／自社工場／協力会社が同じ最新版を見ている状態をつくる</span></div>'
+  return '<div class="sm-panel"><div class="sm-panel-h"><h4>提出図・図面共有（版管理・承認・既読）</h4>'
+    +'<span class="hint">元請／設計監理／自社営業／茅野工場が同じ最新版を見ている状態をつくる</span></div>'
     +'<div style="overflow-x:auto"><table class="sm-dwg"><thead><tr><th>図面番号</th><th>図面名</th><th>Rev</th><th>状態</th><th>更新</th><th>既読</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'
-    +'<div class="sm-note">最新版が1か所にあることが前提の運用です。<b>「3Dで加工指示」</b>を押すと、その図面をそのまま加工指示モード（穴芯・曲げ・取付角度θの確定）へ持ち込めます — 図面共有と製作準備が同じデータで繋がります。</div></div>';
+    +'<div class="sm-note">最新版が1か所にあることが前提の運用です。<b>「3Dで型番選定」</b>を押すと、その図面をそのまま納まりモード（既存管の芯・適用管径レンジ・よこ引の調整角θの確定）へ持ち込めます — 図面共有と生産手配が同じデータで繋がります。</div></div>';
 }
 
 /* 質疑・是正（RFI） */
@@ -2921,10 +2982,10 @@ function siteRfiHTML(st){
   }).join('');
   return '<div class="sm-panel"><div class="sm-panel-h"><h4>質疑・是正（RFI）</h4><span class="hint">現場写真つきで投げて、回答を図面の版に紐づける</span></div>'
     +(rows||'<div class="sm-empty">未処理の質疑はありません。</div>')
-    +'<div class="sm-note">現場で出た「図面に描かれていない条件」を、電話ではなく<b>現場・図面・期限つき</b>で残します。回答は関連図面の改訂履歴に紐づくので、工場が古い条件で作り始める事故を防げます。</div></div>';
+    +'<div class="sm-note">改修現場で必ず出る「図面に描かれていない条件」（既存管の内径・防水種別・つばの変形）を、電話ではなく<b>現場・図面・期限つき</b>で残します。回答は関連図面の改訂履歴に紐づくので、工場が古い条件で型番違いを作ってしまう事故を防げます。</div></div>';
 }
 
-/* 部材・製作進捗 */
+/* 品目・生産進捗 */
 function siteFabHTML(st){
   const rows=st.members.map(m=>{
     const mc=(window.YELLOW3D&&window.YELLOW3D.colorOf)?window.YELLOW3D.colorOf(m.id):'#93a1b1';
@@ -2936,9 +2997,9 @@ function siteFabHTML(st){
       +'<div class="sm-steps">'+steps+'</div>'
       +'<button class="sm-mini" data-fab="'+m.id+'">3Dで見る</button></div>';
   }).join('');
-  return '<div class="sm-panel"><div class="sm-panel-h"><h4>部材・製作進捗</h4><span class="hint">工場の工程（切断・曲げ・仕上）と現場の取付を同じ台帳で見る</span></div>'
+  return '<div class="sm-panel"><div class="sm-panel-h"><h4>品目・生産進捗</h4><span class="hint">工場の工程（鋳造・機械加工・表面処理）と現場の取付を同じ台帳で見る</span></div>'
     +rows
-    +'<div class="sm-note">製作は自社工場と協力工場に分かれるため、<b>どの部材がどの工程で止まっているか</b>を現場担当が直接見られるようにしています。見積時に確定した加工指示（材質・板厚・展開・穴・仕上げ）がそのまま製作指示になります。</div></div>';
+    +'<div class="sm-note">生産は関連会社の茅野工場と協力工場に分かれるため、<b>どの品目がどの工程で止まっているか</b>を営業・現場担当が直接見られるようにしています。見積時に確定した選定条件（防水種別・部位・引き方・適用管径・数量）がそのまま生産指示になります。</div></div>';
 }
 
 /* 検査記録 */
@@ -2947,16 +3008,16 @@ function siteInspHTML(st){
     '<div class="sm-mrow"><div class="sm-msw" style="background:'+(x.st==='ok'?'var(--sm-green)':'var(--sm-amber)')+'"></div>'
     +'<div class="sm-mb"><div class="t">'+x.t+'</div><div class="s">'+x.d+' ・ '+x.o+'</div></div>'
     +'<span class="sm-st '+(x.st==='ok'?'ok':'wait')+'">'+(x.st==='ok'?'完了':'予定')+'</span></div>').join('');
-  return '<div class="sm-panel"><div class="sm-panel-h"><h4>検査・記録</h4><span class="hint">引渡書類（検査記録・ミルシート・是正）を現場単位で集約</span></div>'
+  return '<div class="sm-panel"><div class="sm-panel-h"><h4>検査・記録</h4><span class="hint">引渡書類（実測記録・出荷検査・通水試験・是正）を現場単位で集約</span></div>'
     +(rows||'<div class="sm-empty">記録はまだありません。</div>')
-    +'<div class="sm-note">公共施設では脱落防止の二重措置や引抜き試験の記録が引渡書類になります。現場・図面・是正がすべて同じ台帳にあるので、<b>竣工時に書類を集め直す作業</b>が要りません。</div></div>';
+    +'<div class="sm-note">改修工事では既存管内径の実測記録・出荷検査・通水試験の記録が引渡書類になります。現場・図面・是正がすべて同じ台帳にあるので、<b>竣工時に書類を集め直す作業</b>が要りません。</div></div>';
 }
 
 function bindSiteBody(st){
   const b=$('sm-siteBody');
   b.querySelectorAll('[data-dact]').forEach(el=>el.onclick=()=>{
     const d=st.drawings[+el.dataset.i], a=el.dataset.dact;
-    if(a==='cad'){ toast(d.no+' Rev.'+d.rev+' を加工指示モードで開きます'); smEnter3D(false); return; }
+    if(a==='cad'){ toast(d.no+' Rev.'+d.rev+' を納まり・型番選定モードで開きます'); smEnter3D(false); return; }
     if(a==='approve'){ d.st='ok'; d.hold=0; toast(d.no+' Rev.'+d.rev+' を承認しました（関係者へ通知）'); renderSite(); return; }
     if(a==='revise'){ d.rev=String.fromCharCode(d.rev.charCodeAt(0)+1); d.st='wait'; d.cmt=0; d.read='1/6'; d.up=TODAY; toast(d.no+' を Rev.'+d.rev+' として再提出しました'); renderSite(); return; }
     toast(d.no+' Rev.'+d.rev+' — デモではプレビューは省略しています');
