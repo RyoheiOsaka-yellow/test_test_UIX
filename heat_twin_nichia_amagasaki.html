@@ -273,8 +273,9 @@ button { font-family: inherit; }
     <div class="gamma-flip" id="flipbox">γ_fan &lt; 0 — ファンは冷却側で作用中</div>
 
     <div class="sec">局所環境・運用の対策（併用可）</div>
-    <label class="opt"><input type="checkbox" id="opt-spot"><span class="swatch" style="background:#3d6fc0"></span>スポット空調（炉前 6 箇所）</label>
-    <label class="opt"><input type="checkbox" id="opt-precool"><span class="swatch" style="background:#c98500"></span>プレクーリング（作業前身体冷却）</label>
+    <label class="opt"><input type="checkbox" id="opt-spot"><span class="swatch" style="background:#3d6fc0"></span>スポット空調（炉前 8 箇所）</label>
+    <label class="opt"><input type="checkbox" id="opt-precool"><span class="swatch" style="background:#c98500"></span>プレクーリング（開始時 深部体温 −0.5℃）</label>
+    <div class="note">プレクーリングは<b>深部体温モデル</b>に作用（環境×着衣のドーズには作用しない）。効果は右パネルの時系列で確認。</div>
 
     <div class="sec">環境条件</div>
     <div class="sld"><div class="lab"><span>外気温 Ta</span><b id="v-ta">33.0 ℃</b></div>
@@ -296,7 +297,7 @@ button { font-family: inherit; }
     <label class="opt"><input type="checkbox" id="ly-wlabel" checked>作業者ドーズ表示</label>
     <label class="opt"><input type="checkbox" id="ly-blabel" checked>建屋・熱源ラベル</label>
 
-    <div class="note">敷地 370 m × 224 m（約 8.3 万㎡）／ 12 棟 ／ 熱源 6 基 ／ 作業者は代表 20 名を表示（実際は約 250 名規模）。建屋クリックで詳細。</div>
+    <div class="note">敷地 540 m × 320 m（約 17.3 万㎡・拡張想定）／ 16 棟 ／ 熱源 8 基 ／ 作業者は代表 28 名を表示（実際は約 250 名規模）。建屋クリックで詳細。</div>
   </div>
 </div>
 
@@ -309,6 +310,8 @@ button { font-family: inherit; }
       <div class="kpi"><div class="k">最大ドーズ作業者</div><div class="v" id="k-max">—</div><div class="s" id="k-max-s">—</div></div>
       <div class="kpi"><div class="k">基準値超過 延べ人時</div><div class="v" id="k-over">0<span class="u">人·h</span></div><div class="s">WBGT_eff &gt; 基準値</div></div>
       <div class="kpi"><div class="k">WBGT 28℃以上 面積</div><div class="v" id="k-area">0<span class="u">㎡</span></div><div class="s" id="k-area31">31℃以上 0 ㎡</div></div>
+      <div class="kpi"><div class="k">最大 深部体温（推定）</div><div class="v" id="k-tcore">37.0<span class="u">℃</span></div><div class="s" id="k-tcore-s">—</div></div>
+      <div class="kpi"><div class="k">深部体温 38℃ 超</div><div class="v" id="k-tc38">0<span class="u">名</span></div><div class="s">重篤化リスク帯</div></div>
     </div>
 
     <div class="law">
@@ -318,6 +321,10 @@ button { font-family: inherit; }
       <div class="row"><span>WBGT実測必須エリア（炉等の近く）</span><b id="law-must">— ㎡</b></div>
       <div class="row"><span>体制整備・手順・周知</span><span id="law-status" class="st-bad">要確認（第9章）</span></div>
     </div>
+
+    <div class="sec" style="margin-top:12px">時系列 — 累積ドーズ ／ 最大深部体温</div>
+    <canvas id="tschart" width="492" height="340" style="width:246px;height:170px;margin-top:4px"></canvas>
+    <div id="tslegend" style="display:flex;flex-wrap:wrap;gap:4px 10px;font-size:9px;color:var(--text-muted);margin-top:2px"></div>
 
     <div class="sec" style="margin-top:12px">ばく露ドーズ ランキング（表示シナリオ）</div>
     <div id="ranklist"></div>
@@ -372,93 +379,99 @@ button { font-family: inherit; }
 </script>
 <script>
 /* =========================================================================
-   HEAT·TWIN — 工場暑熱ばく露デジタルツイン プロトタイプ
-   単一ファイル / Three.js r128 UMD インライン / 想定モデル
+   HEAT·TWIN — 工場暑熱ばく露デジタルツイン プロトタイプ v2
+   単一ファイル / Three.js r128 UMD インライン / 拡張想定モデル
    ========================================================================= */
 (function () {
 'use strict';
 
-/* ---------------- サイト定義（尼崎本社工場 想定モデル） ---------------- */
-var SITE_W = 370, SITE_D = 224;           // m
-var GRID = 1;                              // 1m グリッド
-var GW = SITE_W, GH = SITE_D;              // 370 x 224
+/* ---------------- サイト定義（拡張想定モデル） ---------------- */
+var SITE_W = 540, SITE_D = 320;            // m
+var GW = SITE_W, GH = SITE_D;              // 1m グリッド
 
-// mx: 0..370 (西→東), mz: 0..224 (北→南)
+// type: plant / hot / warehouse / office / util
 var BUILDINGS = [
-  { id:'B01', name:'伸線第一工場',   use:'伸線・酸洗',      x:10,  z:12,  w:100, d:76, h:12, hot:false },
-  { id:'B02', name:'鍍線第一工場',   use:'溶融亜鉛めっき',  x:120, z:12,  w:85,  d:76, h:13, hot:true  },
-  { id:'B03', name:'鍍線第二工場',   use:'めっき・熱処理',  x:213, z:12,  w:60,  d:76, h:13, hot:true  },
-  { id:'B04', name:'動力棟',         use:'受電・コンプレッサ', x:281, z:12, w:30, d:34, h:8,  hot:false },
-  { id:'B05', name:'品質管理棟',     use:'試験・検査',      x:281, z:54,  w:30,  d:34, h:7,  hot:false },
-  { id:'B06', name:'事務所棟',       use:'事務・休憩（冷房）', x:319, z:12, w:41, d:52, h:10, hot:false, cool:true },
-  { id:'B07', name:'熱処理・調質棟', use:'調質炉',          x:10,  z:110, w:80,  d:60, h:12, hot:true  },
-  { id:'B08', name:'焼付塗装棟',     use:'焼付塗装・乾燥炉', x:100, z:110, w:60, d:60, h:11, hot:true  },
-  { id:'B09', name:'鋲螺工場',       use:'ボルト・ナット',   x:170, z:110, w:70, d:60, h:11, hot:false },
-  { id:'B10', name:'製品倉庫',       use:'製品保管',        x:250, z:110, w:80,  d:60, h:10, hot:false },
-  { id:'B11', name:'出荷センター',   use:'出荷・積込',      x:250, z:180, w:90,  d:32, h:9,  hot:false },
-  { id:'B12', name:'線材倉庫',       use:'原料線材保管',    x:10,  z:180, w:150, d:32, h:9,  hot:false }
+  { id:'B01', name:'伸線第一工場',   use:'伸線・酸洗',        x:15,  z:15,  w:118, d:90, h:13, type:'plant' },
+  { id:'B02', name:'伸線第二工場',   use:'伸線・熱処理前処理', x:155, z:15,  w:100, d:90, h:13, type:'plant' },
+  { id:'B03', name:'鍍線第一工場',   use:'溶融亜鉛めっき',    x:265, z:15,  w:100, d:90, h:14, type:'hot'  },
+  { id:'B04', name:'鍍線第二工場',   use:'めっき・熱処理',    x:375, z:15,  w:80,  d:90, h:14, type:'hot'  },
+  { id:'B05', name:'動力棟',         use:'受電・コンプレッサ', x:480, z:15,  w:50,  d:40, h:8,  type:'util' },
+  { id:'B06', name:'品質管理棟',     use:'試験・検査',        x:480, z:65,  w:50,  d:40, h:7,  type:'plant' },
+  { id:'B07', name:'熱処理・調質棟', use:'調質炉',            x:15,  z:125, w:100, d:90, h:13, type:'hot'  },
+  { id:'B08', name:'焼付塗装棟',     use:'焼付塗装・乾燥炉',   x:125, z:125, w:70,  d:90, h:12, type:'hot'  },
+  { id:'B09', name:'鋲螺第一工場',   use:'ボルト・ナット',    x:205, z:125, w:90,  d:90, h:12, type:'plant' },
+  { id:'B10', name:'鋲螺第二工場',   use:'特殊ねじ・二次加工', x:305, z:125, w:60,  d:90, h:11, type:'plant' },
+  { id:'B11', name:'製品倉庫',       use:'製品保管',          x:375, z:125, w:80,  d:90, h:10, type:'warehouse' },
+  { id:'B12', name:'事務所棟',       use:'事務・休憩（冷房）', x:480, z:125, w:50,  d:60, h:12, type:'office', cool:true },
+  { id:'B13', name:'線材倉庫',       use:'原料線材保管',      x:15,  z:235, w:150, d:70, h:10, type:'warehouse' },
+  { id:'B14', name:'出荷センター',   use:'出荷・積込',        x:175, z:235, w:130, d:70, h:10, type:'warehouse' },
+  { id:'B15', name:'メンテナンス棟', use:'設備保全・工作',    x:315, z:235, w:70,  d:70, h:9,  type:'plant' },
+  { id:'B16', name:'研修・厚生棟',   use:'研修・食堂（冷房）', x:395, z:235, w:80,  d:70, h:9,  type:'office', cool:true }
 ];
 
 // 熱源（peak: 近傍での ΔTg ピーク[℃], sigma: 減衰スケール[m], wet: 湿度供給源）
 // 本来は Tg(x)=Ta+ΣQᵢ/(4π·rᵢ²)·k（仕様 5-2a）。1/r² は減衰が急峻すぎ勾配が
 // 視認できないため、係数目視調整の範囲でガウス型に置換（説得力優先の仕様準拠）
 var SOURCES = [
-  { id:'HS1', name:'めっき浴 #1',        x:150, z:40,  peak:11, sigma:16, wet:true  },
-  { id:'HS2', name:'めっき浴 #2',        x:236, z:38,  peak:10, sigma:15, wet:true  },
-  { id:'HS3', name:'パテンティング炉 #1', x:178, z:64,  peak:13, sigma:17, wet:false },
-  { id:'HS4', name:'パテンティング炉 #2', x:243, z:64,  peak:12, sigma:16, wet:false },
-  { id:'HS5', name:'調質炉',             x:44,  z:140, peak:14, sigma:19, wet:false },
-  { id:'HS6', name:'焼付乾燥炉',         x:128, z:140, peak:11, sigma:15, wet:false }
+  { id:'HS1', name:'めっき浴 #1',        x:300, z:45,  peak:11, sigma:16, wet:true  },
+  { id:'HS2', name:'めっき浴 #2',        x:400, z:40,  peak:10, sigma:15, wet:true  },
+  { id:'HS3', name:'パテンティング炉 #1', x:330, z:82,  peak:13, sigma:17, wet:false },
+  { id:'HS4', name:'パテンティング炉 #2', x:428, z:80,  peak:12, sigma:16, wet:false },
+  { id:'HS5', name:'調質炉 #1',          x:48,  z:160, peak:14, sigma:19, wet:false },
+  { id:'HS6', name:'調質炉 #2',          x:85,  z:190, peak:12, sigma:16, wet:false },
+  { id:'HS7', name:'焼付乾燥炉',         x:160, z:170, peak:11, sigma:15, wet:false },
+  { id:'HS8', name:'亜鉛溶解炉',         x:285, z:70,  peak:12, sigma:14, wet:false }
 ];
 
-var REST_POINT = { x:339, z:38 };  // 事務所棟（冷房休憩）
-
-// スポット空調位置（炉前定位置）
+var REST_POINT = { x:505, z:155 };  // 事務所棟（冷房休憩）
 var SPOT_COOLERS = SOURCES.map(function (s) { return { x: s.x + 5, z: s.z + 5 }; });
 
 /* ---------------- 作業者定義 ---------------- */
-// 区分: 代謝率区分 → WBGT基準値（順化済）
 var LIMITS = { 1: 30, 2: 28, 3: 25.5 };
 function loop(pts, dwell) { return { pts: pts, dwell: dwell || 40 }; }
 
 var WORKER_DEFS = [
-  { name:'炉前A-1', met:3, route: loop([[146,36],[155,44],[150,52],[142,44]], 90) },
-  { name:'炉前A-2', met:3, route: loop([[174,60],[183,68],[176,74],[168,66]], 90) },
-  { name:'炉前A-3', met:3, route: loop([[150,40],[178,64],[160,78],[136,60]], 50) },
-  { name:'炉前A-4', met:3, route: loop([[130,20],[150,40],[170,30],[190,50],[160,70]], 40) },
-  { name:'炉前B-1', met:3, route: loop([[232,34],[240,42],[234,50],[226,42]], 90) },
-  { name:'炉前B-2', met:3, route: loop([[239,60],[248,68],[241,74],[233,66]], 90) },
-  { name:'炉前B-3', met:3, route: loop([[220,24],[236,38],[243,64],[252,80],[224,70]], 45) },
-  { name:'調質C-1', met:3, route: loop([[40,136],[48,144],[42,152],[34,144]], 100) },
-  { name:'調質C-2', met:3, route: loop([[20,120],[44,140],[70,158],[50,164],[24,150]], 45) },
-  { name:'塗装D-1', met:2, route: loop([[124,136],[132,144],[126,152],[118,144]], 90) },
-  { name:'塗装D-2', met:2, route: loop([[106,118],[128,140],[152,160],[130,164],[108,150]], 45) },
-  { name:'伸線E-1', met:2, route: loop([[20,20],[95,25],[95,80],[20,75]], 45) },
-  { name:'伸線E-2', met:2, route: loop([[30,45],[100,50],[60,80],[25,65]], 55) },
-  { name:'鋲螺F-1', met:2, route: loop([[176,116],[232,120],[232,164],[176,160]], 50) },
-  { name:'鋲螺F-2', met:2, route: loop([[190,130],[225,135],[210,155],[185,150]], 60) },
-  { name:'検査G-1', met:2, route: loop([[290,70],[150,40],[44,140],[128,140],[236,38],[290,70]], 35) },
-  { name:'検査G-2', met:1, route: loop([[296,20],[240,64],[178,64],[100,50],[40,140],[200,140],[296,60]], 30) },
-  { name:'物流H-1', met:2, route: loop([[280,140],[290,196],[180,196],[60,196],[160,100],[280,120]], 30) },
-  { name:'物流H-2', met:2, route: loop([[40,190],[140,196],[260,190],[300,196],[200,100],[80,100]], 30) },
-  { name:'安全パト', met:1, route: loop([[339,30],[300,70],[200,96],[100,96],[180,64],[339,40]], 60) }
+  { name:'炉前A-1', met:3, route: loop([[296,40],[306,48],[300,56],[290,48]], 90) },
+  { name:'炉前A-2', met:3, route: loop([[326,78],[334,86],[328,94],[320,86]], 90) },
+  { name:'炉前A-3', met:3, route: loop([[282,64],[292,72],[286,80],[276,72]], 90) },
+  { name:'炉前A-4', met:3, route: loop([[270,20],[300,44],[330,82],[350,60],[300,25]], 45) },
+  { name:'炉前A-5', met:3, route: loop([[350,50],[380,55],[420,60],[360,90]], 50) },
+  { name:'炉前B-1', met:3, route: loop([[396,36],[404,44],[398,52],[390,44]], 90) },
+  { name:'炉前B-2', met:3, route: loop([[424,76],[432,84],[426,92],[418,84]], 90) },
+  { name:'炉前B-3', met:3, route: loop([[380,20],[400,40],[428,80],[445,95],[410,60]], 45) },
+  { name:'調質C-1', met:3, route: loop([[44,156],[52,164],[46,172],[38,164]], 100) },
+  { name:'調質C-2', met:3, route: loop([[81,186],[89,194],[83,202],[75,194]], 90) },
+  { name:'調質C-3', met:3, route: loop([[20,130],[48,160],[85,190],[100,205],[60,170]], 45) },
+  { name:'塗装D-1', met:2, route: loop([[156,166],[164,174],[158,182],[150,174]], 90) },
+  { name:'塗装D-2', met:2, route: loop([[130,130],[160,170],[185,205],[140,190]], 45) },
+  { name:'伸線E-1', met:2, route: loop([[25,25],[125,30],[125,95],[25,90]], 45) },
+  { name:'伸線E-2', met:2, route: loop([[40,50],[120,55],[80,95],[30,70]], 55) },
+  { name:'伸線E-3', met:2, route: loop([[160,25],[245,30],[245,95],[160,90]], 45) },
+  { name:'鋲螺F-1', met:2, route: loop([[212,132],[288,136],[288,205],[212,200]], 50) },
+  { name:'鋲螺F-2', met:2, route: loop([[312,140],[358,145],[340,205],[315,195]], 60) },
+  { name:'検査G-1', met:2, route: loop([[490,85],[300,45],[48,160],[160,170],[400,40],[490,85]], 35) },
+  { name:'検査G-2', met:1, route: loop([[500,20],[428,80],[330,82],[160,90],[48,160],[280,200],[500,110]], 30) },
+  { name:'物流H-1', met:2, route: loop([[400,150],[420,225],[240,270],[90,270],[240,150]], 30) },
+  { name:'物流H-2', met:2, route: loop([[40,270],[160,270],[300,270],[240,310],[100,225]], 30) },
+  { name:'物流H-3', met:2, route: loop([[300,270],[420,160],[440,225],[200,225],[240,290]], 30) },
+  { name:'出荷M-1', met:2, route: loop([[180,240],[300,245],[300,300],[180,295]], 45) },
+  { name:'メンテJ-1', met:2, route: loop([[320,240],[380,245],[380,300],[320,295]], 60) },
+  { name:'安全パト', met:1, route: loop([[505,150],[480,100],[300,115],[100,115],[200,225],[400,225],[505,180]], 60) },
+  { name:'研修K-1', met:1, route: loop([[400,240],[470,250],[460,300],[405,295]], 70) },
+  { name:'事務L-1', met:1, route: loop([[485,130],[525,135],[525,180],[485,175]], 80) }
 ];
 
 /* ---------------- 状態 ---------------- */
 var state = {
   ta: 33, rh: 65, A: 2.0, Awet: 3.0,
-  scen: 0,               // 表示シナリオ 0..3
-  spot: false, precool: false,
-  speed: 4,              // sim-min / real-sec
-  simMin: 8 * 60,        // 08:00 開始
-  day: 1,
+  scen: 0, spot: false, precool: false,
+  speed: 4, simMin: 8 * 60, day: 1,
   layers: { heat:true, iso:true, trail:true, wlabel:true, blabel:true }
 };
 var SCEN_NAMES = ['通常作業服', 'ファン付きベスト', 'ファン＋打ち水', 'ペルチェ（頸部）'];
 var SCEN_COLORS = ['#64748b', '#0f9fba', '#147a55', '#9085e9'];
 
 /* ---------------- 物理モデル ---------------- */
-// Stull近似による自然湿球温度
 function wetBulb(ta, rh) {
   return ta * Math.atan(0.151977 * Math.sqrt(rh + 8.313659))
     + Math.atan(ta + rh) - Math.atan(rh - 1.676331)
@@ -467,7 +480,6 @@ function wetBulb(ta, rh) {
 }
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-// 熱源による黒球温度上昇分 ΔTg(x)
 function srcDelta(s, r2) { return s.peak * Math.exp(-r2 / (s.sigma * s.sigma)); }
 function deltaTg(mx, mz) {
   var d = 0;
@@ -478,7 +490,7 @@ function deltaTg(mx, mz) {
   }
   return d;
 }
-function deltaWetFrac(mx, mz) { // めっき浴近傍の湿度寄与（湿球側に加算）
+function deltaWetFrac(mx, mz) {
   var d = 0;
   for (var i = 0; i < SOURCES.length; i++) {
     var s = SOURCES[i]; if (!s.wet) continue;
@@ -488,30 +500,29 @@ function deltaWetFrac(mx, mz) { // めっき浴近傍の湿度寄与（湿球側
   return d;
 }
 
-// γ: ファン付きベスト（局所気温 tLoc で評価）
 var T_SKIN = 35.0, T_REF = 30.0, RH_MAX = 90, RH_REF = 50;
 function gammaFan(tLoc, rh, A) {
   var f = clamp((T_SKIN - tLoc) / (T_SKIN - T_REF), -1, 1);
   var g = clamp((RH_MAX - rh) / (RH_MAX - RH_REF), 0, 1);
   return -A * f * g;
 }
-// γ: 打ち水インナー（時間減衰 350mL/約2h, 休憩毎に再湿潤）
-var T_DEPLETION = 120; // sim-min
+var T_DEPLETION = 120; // sim-min（350mL / 約2時間）
 function gammaWet(minSinceWet, Awet) {
   return -Awet * Math.max(0, 1 - minSinceWet / T_DEPLETION);
 }
 var GAMMA_PELTIER = -0.3;
-// プレクーリング: シフト開始/昼休憩後 60 分の線形減衰
-function gammaPrecool(minSinceStart) {
-  return -1.5 * Math.max(0, 1 - minSinceStart / 60);
-}
+
+// 深部体温モデル: dTc/dt = k1·max(0, WBGT_eff − 基準値) − k2·(Tc − 37.0)
+// τ=1/k2≒50min。プレクーリングは開始時・休憩時に Tc を −0.5℃（下限36.5）
+var TC_K1 = 0.0027, TC_K2 = 0.015, TC_K2_PELTIER = 0.019;
+var TC_BASE = 37.0, TC_PRECOOL = 0.5, TC_FLOOR = 36.5, TC_DANGER = 38.0;
 
 /* ---------------- WBGT 場グリッド ---------------- */
-var tgGrid = new Float32Array(GW * GH);      // ΔTg
-var wetGrid = new Float32Array(GW * GH);     // 湿度寄与
-var wbgtGrid = new Float32Array(GW * GH);    // 実効 WBGT（対策なし環境値）
-var insideGrid = new Uint8Array(GW * GH);    // 建屋index+1 / 0=屋外
-var mustGrid = new Uint8Array(GW * GH);      // WBGT実測必須（炉近傍）
+var tgGrid = new Float32Array(GW * GH);
+var wetGrid = new Float32Array(GW * GH);
+var wbgtGrid = new Float32Array(GW * GH);
+var insideGrid = new Uint8Array(GW * GH);
+var mustGrid = new Uint8Array(GW * GH);
 
 (function initStatic() {
   for (var j = 0; j < GH; j++) for (var i = 0; i < GW; i++) {
@@ -533,12 +544,11 @@ function recomputeField() {
   areaOver28 = 0; areaOver31 = 0; areaMust = 0;
   for (var idx = 0; idx < GW * GH; idx++) {
     var bIdx = insideGrid[idx];
-    var ta = state.ta, tgD = tgGrid[idx];
+    var tgD = tgGrid[idx];
     var indoorBump = bIdx ? (BUILDINGS[bIdx - 1].cool ? -Math.max(0, state.ta - 26) : 1.0) : 0;
-    var tg = ta + indoorBump + tgD;
+    var tg = state.ta + indoorBump + tgD;
     var twLoc = tw + indoorBump * 0.5 + Math.min(2.5, wetGrid[idx] * 0.5) + tgD * 0.10;
     var w = 0.7 * twLoc + 0.3 * tg;
-    // スポット空調による局所低減
     if (state.spot) {
       var i = idx % GW, j = (idx / GW) | 0;
       for (var c = 0; c < SPOT_COOLERS.length; c++) {
@@ -571,21 +581,21 @@ container.appendChild(renderer.domElement);
 
 var scene = new THREE.Scene();
 scene.background = new THREE.Color(0xeef2f7);
-scene.fog = new THREE.Fog(0xeef2f7, 700, 1600);
+scene.fog = new THREE.Fog(0xeef2f7, 950, 2400);
 
-var camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 1, 4000);
+var camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 1, 6000);
 
 scene.add(new THREE.HemisphereLight(0xffffff, 0xd8e1ec, 0.95));
 var dl = new THREE.DirectionalLight(0xffffff, 0.55);
-dl.position.set(-220, 320, -160);
+dl.position.set(-300, 420, -220);
 scene.add(dl);
 
 function W2S(mx, mz) { return { x: mx - SITE_W / 2, z: mz - SITE_D / 2 }; }
 
 /* ---- カメラ制御（簡易オービット） ---- */
 var camCtl = {
-  target: new THREE.Vector3(0, 0, 10),
-  theta: -0.55, phi: 0.92, radius: 430,
+  target: new THREE.Vector3(0, 0, 15),
+  theta: -0.55, phi: 0.92, radius: 620,
   update: function () {
     var t = this.target;
     camera.position.set(
@@ -621,16 +631,16 @@ var camCtl = {
   el.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   el.addEventListener('wheel', function (e) {
     e.preventDefault();
-    camCtl.radius = clamp(camCtl.radius * (1 + e.deltaY * 0.001), 60, 1200);
+    camCtl.radius = clamp(camCtl.radius * (1 + e.deltaY * 0.001), 60, 1700);
     camCtl.update();
   }, { passive: false });
 })();
 camCtl.update();
 
 var VIEWS = {
-  iso: { theta: -0.55, phi: 0.92, radius: 430, target: [0, 0, 10] },
-  top: { theta: 0, phi: 0.14, radius: 460, target: [0, 0, 0] },
-  furnace: { theta: -0.9, phi: 1.1, radius: 90, target: [SOURCES[0].x - SITE_W/2, 4, SOURCES[0].z - SITE_D/2] }
+  iso: { theta: -0.55, phi: 0.92, radius: 620, target: [0, 0, 15] },
+  top: { theta: 0, phi: 0.14, radius: 660, target: [0, 0, 0] },
+  furnace: { theta: -0.9, phi: 1.1, radius: 110, target: [SOURCES[0].x - SITE_W/2, 4, SOURCES[0].z - SITE_D/2] }
 };
 function setView(v) {
   var d = VIEWS[v];
@@ -652,16 +662,14 @@ var groundMesh = new THREE.Mesh(
 groundMesh.rotation.x = -Math.PI / 2;
 scene.add(groundMesh);
 
-// 周辺地面（敷地外）
 var outerGround = new THREE.Mesh(
-  new THREE.PlaneGeometry(3000, 3000),
+  new THREE.PlaneGeometry(4000, 4000),
   new THREE.MeshBasicMaterial({ color: 0xe3e9f1 })
 );
 outerGround.rotation.x = -Math.PI / 2;
 outerGround.position.y = -0.3;
 scene.add(outerGround);
 
-// WBGT カラースケール 24..38
 var RAMP = [
   [24, 0x4a7bc4], [26, 0x63b0a8], [28, 0xb8cf6e], [30, 0xead15e],
   [32, 0xe5a13c], [34, 0xdd6a2e], [38, 0xc9302c]
@@ -682,21 +690,59 @@ function heatColor(w) {
 }
 function toRGB(c) { return Array.isArray(c) ? c : [(c >> 16) & 255, (c >> 8) & 255, c & 255]; }
 
-function redrawGround() {
+function drawGroundDetail() {
   var W = groundCanvas.width, H = groundCanvas.height;
-  // ベース: 敷地舗装
   gctx.fillStyle = '#dde4ed'; gctx.fillRect(0, 0, W, H);
+  // 外周緑地
+  gctx.fillStyle = '#cfe0cd';
+  gctx.fillRect(0, 0, W, 15 * 2);                       // 北
+  gctx.fillRect(0, 305 * 2, W, H - 305 * 2);            // 南
+  gctx.fillRect(0, 0, 12 * 2, H);                       // 西
+  gctx.fillRect(532 * 2, 0, W - 532 * 2, H);            // 東
+  gctx.fillRect(475 * 2, 235 * 2, (532 - 475) * 2, 70 * 2); // 南東緑地
+  // 調整池
+  gctx.fillStyle = '#b5cfe4';
+  gctx.beginPath();
+  gctx.ellipse(505 * 2, 270 * 2, 22 * 2, 17 * 2, 0, 0, Math.PI * 2);
+  gctx.fill();
   // 道路
   gctx.fillStyle = '#c9d3e0';
-  gctx.fillRect(0, 92 * 2, W, 16 * 2);                 // 東西メイン道路 z92..108
-  gctx.fillRect(0, 172 * 2, W, 7 * 2);                 // 南側道路 z172..179
-  gctx.fillRect(275 * 2, 0, 5 * 2, H);                 // 南北道路 x275..280
-  gctx.fillRect(313 * 2, 0, 5 * 2, 92 * 2);
+  gctx.fillRect(0, 105 * 2, W, 20 * 2);                 // 東西 A
+  gctx.fillRect(0, 215 * 2, W, 20 * 2);                 // 東西 B
+  gctx.fillRect(135 * 2, 15 * 2, 20 * 2, (305 - 15) * 2);  // 南北 1
+  gctx.fillRect(455 * 2, 15 * 2, 20 * 2, (305 - 15) * 2);  // 南北 2
   // センターライン
   gctx.strokeStyle = '#f4f7fa'; gctx.lineWidth = 2; gctx.setLineDash([14, 10]);
-  gctx.beginPath(); gctx.moveTo(0, 100 * 2); gctx.lineTo(W, 100 * 2); gctx.stroke();
+  [[0, 115, W / 2, 115], [0, 225, W / 2, 225]].forEach(function (l) {
+    gctx.beginPath(); gctx.moveTo(l[0], l[1] * 2); gctx.lineTo(W, l[1] * 2); gctx.stroke();
+  });
+  [[145, 15, 145, 305], [465, 15, 465, 305]].forEach(function (l) {
+    gctx.beginPath(); gctx.moveTo(l[0] * 2, l[1] * 2); gctx.lineTo(l[2] * 2, l[3] * 2); gctx.stroke();
+  });
   gctx.setLineDash([]);
-  // ヒートマップ
+  // 駐車場（事務所南）
+  gctx.fillStyle = '#d5dce6';
+  gctx.fillRect(478 * 2, 190 * 2, (535 - 478) * 2, (213 - 190) * 2);
+  gctx.strokeStyle = '#ffffff'; gctx.lineWidth = 1.5;
+  for (var px = 480; px <= 533; px += 3.5) {
+    gctx.beginPath(); gctx.moveTo(px * 2, 191 * 2); gctx.lineTo(px * 2, 200 * 2); gctx.stroke();
+    gctx.beginPath(); gctx.moveTo(px * 2, 203 * 2); gctx.lineTo(px * 2, 212 * 2); gctx.stroke();
+  }
+  // トラックヤード（出荷センター南）
+  gctx.fillStyle = '#cdd6e2';
+  gctx.fillRect(175 * 2, 305 * 2, 130 * 2, 13 * 2);
+  gctx.strokeStyle = 'rgba(255,255,255,0.55)'; gctx.lineWidth = 2;
+  for (var hx = 175; hx < 305; hx += 8) {
+    gctx.beginPath(); gctx.moveTo(hx * 2, 305 * 2); gctx.lineTo((hx + 6) * 2, 318 * 2); gctx.stroke();
+  }
+  // 門前横断歩道（東門）
+  gctx.fillStyle = '#f4f7fa';
+  for (var cw = 107; cw < 124; cw += 4) gctx.fillRect(526 * 2, cw * 2, 8 * 2, 2 * 2);
+}
+
+function redrawGround() {
+  var W = groundCanvas.width, H = groundCanvas.height;
+  drawGroundDetail();
   if (state.layers.heat) {
     var img = gctx.getImageData(0, 0, W, H);
     var data = img.data;
@@ -704,7 +750,7 @@ function redrawGround() {
       for (var i = 0; i < GW; i++) {
         var idx = j * GW + i;
         var col = toRGB(heatColor(wbgtGrid[idx]));
-        var alpha = insideGrid[idx] ? 0.82 : 0.30;
+        var alpha = insideGrid[idx] ? 0.82 : 0.28;
         for (var sy = 0; sy < 2; sy++) for (var sx = 0; sx < 2; sx++) {
           var p = ((j * 2 + sy) * W + (i * 2 + sx)) * 4;
           data[p]   = data[p]   * (1 - alpha) + col[0] * alpha;
@@ -715,7 +761,6 @@ function redrawGround() {
     }
     gctx.putImageData(img, 0, 0);
   }
-  // 20m グリッド線（スケール感）
   gctx.strokeStyle = 'rgba(120,140,165,0.18)'; gctx.lineWidth = 1;
   for (var gx = 0; gx <= SITE_W; gx += 20) {
     gctx.beginPath(); gctx.moveTo(gx * 2, 0); gctx.lineTo(gx * 2, H); gctx.stroke();
@@ -723,10 +768,59 @@ function redrawGround() {
   for (var gz = 0; gz <= SITE_D; gz += 20) {
     gctx.beginPath(); gctx.moveTo(0, gz * 2); gctx.lineTo(W, gz * 2); gctx.stroke();
   }
-  // 敷地境界
   gctx.strokeStyle = 'rgba(70,90,115,0.55)'; gctx.lineWidth = 3;
   gctx.strokeRect(1, 1, W - 2, H - 2);
   groundTex.needsUpdate = true;
+}
+// スライダ連打対策: 再描画は rAF に集約
+var groundDirty = false;
+function requestGroundRedraw() { groundDirty = true; }
+
+/* ---- 建屋壁テクスチャ ---- */
+var WALL_STYLE = {
+  plant:     { base:'#f2f5f8', trim:'#b9c7d8', win:'#cfe0ec', bandTop:0.18, bandH:0.24 },
+  hot:       { base:'#f7efe8', trim:'#d99b78', win:'#e8d7c8', bandTop:0.14, bandH:0.20 },
+  warehouse: { base:'#eef1f4', trim:'#aab8c8', win:null,      bandTop:0,    bandH:0 },
+  office:    { base:'#eef4f9', trim:'#8fb8cf', win:'#bcd8ea', bandTop:0.16, bandH:0.46 },
+  util:      { base:'#e9edf2', trim:'#9aa9bc', win:null,      bandTop:0,    bandH:0 }
+};
+var wallTexCache = {};
+function makeWallTex(type) {
+  if (wallTexCache[type]) return wallTexCache[type];
+  var st = WALL_STYLE[type];
+  var cv = document.createElement('canvas');
+  cv.width = 256; cv.height = 128;   // 1 モジュール = 20 m
+  var c = cv.getContext('2d');
+  c.fillStyle = st.base; c.fillRect(0, 0, 256, 128);
+  // 折板（コルゲート）の縦筋
+  c.strokeStyle = 'rgba(70,90,115,0.07)'; c.lineWidth = 1;
+  for (var x = 0; x < 256; x += 5) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 128); c.stroke(); }
+  // 上部トリム
+  c.fillStyle = st.trim; c.fillRect(0, 0, 256, 7);
+  // 窓帯
+  if (st.win) {
+    var wy = 128 * st.bandTop, wh = 128 * st.bandH;
+    if (type === 'office') {
+      // 事務所はフロア毎の連窓
+      for (var fy = wy; fy + 16 < wy + wh + 18; fy += 26) {
+        c.fillStyle = st.win; c.fillRect(6, fy, 244, 16);
+        c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 2;
+        for (var fx = 6; fx <= 250; fx += 24) { c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx, fy + 16); c.stroke(); }
+      }
+    } else {
+      c.fillStyle = st.win; c.fillRect(0, wy, 256, wh);
+      c.strokeStyle = 'rgba(255,255,255,0.85)'; c.lineWidth = 2;
+      for (var vx = 0; vx <= 256; vx += 32) { c.beginPath(); c.moveTo(vx, wy); c.lineTo(vx, wy + wh); c.stroke(); }
+      c.strokeStyle = 'rgba(70,90,115,0.18)';
+      c.strokeRect(0, wy, 256, wh);
+    }
+  }
+  // 腰壁（下部の濃色帯）
+  c.fillStyle = 'rgba(70,90,115,0.16)'; c.fillRect(0, 110, 256, 18);
+  var tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = THREE.RepeatWrapping;
+  wallTexCache[type] = tex;
+  return tex;
 }
 
 /* ---- 建屋 ---- */
@@ -764,25 +858,31 @@ function makeLabel(text, opts) {
   return sp;
 }
 
+var invisibleMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.04, depthWrite: false });
 BUILDINGS.forEach(function (b, bi) {
   var p = W2S(b.x + b.w / 2, b.z + b.d / 2);
   var geo = new THREE.BoxGeometry(b.w, b.h, b.d);
-  var mat = new THREE.MeshLambertMaterial({
-    color: b.hot ? 0xfdf6f0 : (b.cool ? 0xf0f7fb : 0xffffff),
-    transparent: true, opacity: 0.32, depthWrite: false
-  });
-  var m = new THREE.Mesh(geo, mat);
+  // ±x 面（奥行き d 方向）と ±z 面（幅 w 方向）でリピート数を分ける
+  var texZ = makeWallTex(b.type);
+  var texX = texZ.clone(); texX.needsUpdate = true; texX.wrapS = THREE.RepeatWrapping;
+  texZ.repeat.set(Math.max(1, Math.round(b.w / 20)), 1);
+  texX.repeat.set(Math.max(1, Math.round(b.d / 20)), 1);
+  function wallMat(t) {
+    return new THREE.MeshLambertMaterial({ map: t, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false });
+  }
+  var mats = [wallMat(texX), wallMat(texX), invisibleMat, invisibleMat, wallMat(texZ), wallMat(texZ)];
+  var m = new THREE.Mesh(geo, mats);
   m.position.set(p.x, b.h / 2, p.z);
   m.userData.bIdx = bi;
   scene.add(m); bldMeshes.push(m);
   var edges = new THREE.LineSegments(
     new THREE.EdgesGeometry(geo),
-    new THREE.LineBasicMaterial({ color: b.hot ? 0xd08a6a : 0x9fb2c8 })
+    new THREE.LineBasicMaterial({ color: b.type === 'hot' ? 0xd08a6a : 0x9fb2c8 })
   );
   edges.position.copy(m.position);
   scene.add(edges);
-  // のこぎり屋根風のライン（工場らしさ・スケール感）
-  if (b.w >= 60) {
+  // のこぎり屋根ライン＋モニター換気塔
+  if (b.w >= 60 && b.type !== 'office') {
     var roofMat = new THREE.LineBasicMaterial({ color: 0xb9c7d8 });
     var roofPts = [];
     var bays = Math.round(b.w / 20);
@@ -793,12 +893,133 @@ BUILDINGS.forEach(function (b, bi) {
     }
     var rg = new THREE.BufferGeometry().setFromPoints(roofPts);
     scene.add(new THREE.LineSegments(rg, roofMat));
+    // モニター屋根（換気塔）を中心線に
+    var nVents = Math.max(2, Math.round(b.w / 30));
+    for (var v = 0; v < nVents; v++) {
+      var vent = new THREE.Mesh(
+        new THREE.BoxGeometry(9, 1.8, 4),
+        new THREE.MeshLambertMaterial({ color: 0xd4dde7 })
+      );
+      vent.position.set(p.x - b.w / 2 + (v + 0.5) * (b.w / nVents), b.h + 0.9, p.z);
+      scene.add(vent);
+    }
   }
-  var lb = makeLabel(b.name, { scale: 0.135 });
-  lb.position.set(p.x, b.h + 9, p.z);
+  // 大型シャッター扉（南面）
+  if (b.type !== 'office' && b.type !== 'util' && b.w >= 50) {
+    var nd = b.w >= 100 ? 3 : 2;
+    for (var di = 0; di < nd; di++) {
+      var door = new THREE.Mesh(
+        new THREE.PlaneGeometry(8, Math.min(6, b.h - 2)),
+        new THREE.MeshLambertMaterial({ color: 0x9fb0c2, side: THREE.DoubleSide })
+      );
+      door.position.set(p.x - b.w / 2 + (di + 0.5) * (b.w / nd), Math.min(6, b.h - 2) / 2, p.z + b.d / 2 + 0.15);
+      scene.add(door);
+    }
+  }
+  var lb = makeLabel(b.name, { scale: 0.17 });
+  lb.position.set(p.x, b.h + 11, p.z);
   lb.userData.isBld = true;
   labelGroup.add(lb);
 });
+
+/* ---- 敷地ディテール（煙突・冷却塔・車両・樹木・門） ---- */
+(function addSiteDetail() {
+  // 煙突（熱源上）
+  SOURCES.forEach(function (s, i) {
+    if (!s.wet) {
+      var p = W2S(s.x + 3, s.z - 3);
+      var stack = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.1, 1.5, 26, 12),
+        new THREE.MeshLambertMaterial({ color: 0xc4ccd6 })
+      );
+      stack.position.set(p.x, 13, p.z);
+      scene.add(stack);
+      var band = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.15, 1.15, 2.4, 12),
+        new THREE.MeshLambertMaterial({ color: 0xd7402a })
+      );
+      band.position.set(p.x, 24.5, p.z);
+      scene.add(band);
+    }
+  });
+  // 冷却塔（動力棟横）
+  for (var ct = 0; ct < 2; ct++) {
+    var p = W2S(490 + ct * 14, 58);
+    var tower = new THREE.Mesh(
+      new THREE.CylinderGeometry(4, 4.6, 7, 14),
+      new THREE.MeshLambertMaterial({ color: 0xcdd6e0 })
+    );
+    tower.position.set(p.x, 3.5, p.z);
+    scene.add(tower);
+    var fan = new THREE.Mesh(
+      new THREE.CylinderGeometry(3.2, 3.2, 0.6, 14),
+      new THREE.MeshLambertMaterial({ color: 0x8fa3b8 })
+    );
+    fan.position.set(p.x, 7.2, p.z);
+    scene.add(fan);
+  }
+  // 乗用車（駐車場）
+  var carGeo = new THREE.BoxGeometry(2.0, 1.5, 4.4);
+  var carMesh = new THREE.InstancedMesh(carGeo, new THREE.MeshLambertMaterial({ color: 0xaab6c4 }), 20);
+  var m4 = new THREE.Matrix4();
+  var ci = 0;
+  for (var row = 0; row < 2; row++) {
+    for (var col = 0; col < 10; col++) {
+      if ((row * 7 + col) % 3 === 2) continue; // 歯抜けで自然に
+      var cp = W2S(482 + col * 5.2, row === 0 ? 195.5 : 207.5);
+      m4.makeTranslation(cp.x, 0.75, cp.z);
+      carMesh.setMatrixAt(ci++, m4);
+    }
+  }
+  carMesh.count = ci;
+  scene.add(carMesh);
+  // トラック（出荷ヤード）
+  for (var t = 0; t < 3; t++) {
+    var tp = W2S(200 + t * 35, 311);
+    var trailer = new THREE.Mesh(new THREE.BoxGeometry(2.5, 3.4, 11), new THREE.MeshLambertMaterial({ color: 0xe8edf3 }));
+    trailer.position.set(tp.x, 1.9, tp.z);
+    scene.add(trailer);
+    var cab = new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.6, 2.6), new THREE.MeshLambertMaterial({ color: 0x0f9fba }));
+    cab.position.set(tp.x, 1.5, tp.z - 6.6);
+    scene.add(cab);
+  }
+  // 樹木（外周緑地）
+  var treePos = [];
+  for (var z1 = 22; z1 <= 300; z1 += 14) treePos.push([7, z1]);
+  for (var x1 = 20; x1 <= 170; x1 += 15) treePos.push([x1, 312]);
+  for (var x2 = 200; x2 <= 520; x2 += 16) treePos.push([x2, 8]);
+  for (var z2 = 240; z2 <= 300; z2 += 12) treePos.push([536, z2]);
+  treePos.push([480, 245], [530, 240], [478, 298]);
+  var canopyMesh = new THREE.InstancedMesh(
+    new THREE.ConeGeometry(2.6, 6.5, 8),
+    new THREE.MeshLambertMaterial({ color: 0x7fae8b }), treePos.length);
+  var trunkMesh = new THREE.InstancedMesh(
+    new THREE.CylinderGeometry(0.35, 0.45, 2.2, 6),
+    new THREE.MeshLambertMaterial({ color: 0x9a7b5d }), treePos.length);
+  treePos.forEach(function (tp2, i) {
+    var pp = W2S(tp2[0], tp2[1]);
+    var s = 0.85 + 0.35 * Math.abs(Math.sin(i * 2.7));
+    m4.makeScale(s, s, s); m4.setPosition(pp.x, 5.2 * s, pp.z);
+    canopyMesh.setMatrixAt(i, m4);
+    m4.makeScale(s, s, s); m4.setPosition(pp.x, 1.1 * s, pp.z);
+    trunkMesh.setMatrixAt(i, m4);
+  });
+  scene.add(canopyMesh); scene.add(trunkMesh);
+  // 東門（正門）＋守衛所
+  [103, 127].forEach(function (gz) {
+    var gp = W2S(536, gz);
+    var pillar = new THREE.Mesh(new THREE.BoxGeometry(1.6, 5, 1.6), new THREE.MeshLambertMaterial({ color: 0x8fa3b8 }));
+    pillar.position.set(gp.x, 2.5, gp.z);
+    scene.add(pillar);
+  });
+  var guard = new THREE.Mesh(new THREE.BoxGeometry(6, 3.4, 5), new THREE.MeshLambertMaterial({ color: 0xf4f7fa }));
+  var gpp = W2S(531, 99);
+  guard.position.set(gpp.x, 1.7, gpp.z);
+  scene.add(guard);
+  var gateLb = makeLabel('正門（守衛所）', { scale: 0.11, fontSize: 22, color: '#45586e' });
+  gateLb.position.set(gpp.x, 9, gpp.z);
+  labelGroup.add(gateLb);
+})();
 
 /* ---- 熱源 ---- */
 var isoGroup = new THREE.Group(); scene.add(isoGroup);
@@ -817,12 +1038,11 @@ SOURCES.forEach(function (s) {
   glow.position.set(p.x, 7, p.z);
   scene.add(glow);
   var lb = makeLabel('🔥 ' + s.name, { scale: 0.10, bg: 'rgba(255,241,235,0.95)', border: '#e0a184', color: '#a33818', fontSize: 24 });
-  lb.position.set(p.x, 16, p.z);
+  lb.position.set(p.x, 18, p.z);
   lb.userData.isBld = true;
   labelGroup.add(lb);
 });
 
-// 等値面（28℃ / 31℃ リング）
 function isoRadius(src, thr) {
   var tw = wetBulb(state.ta, state.rh);
   for (var r = 44; r >= 1; r -= 0.5) {
@@ -856,7 +1076,6 @@ function rebuildIso() {
       isoGroup.add(ring);
     });
   });
-  // スポット空調表示
   if (state.spot) {
     SPOT_COOLERS.forEach(function (sc) {
       var p = W2S(sc.x, sc.z);
@@ -870,7 +1089,7 @@ function rebuildIso() {
   }
 }
 
-/* ---- スケール表現：寸法注記 + スケールバー ---- */
+/* ---- スケール表現 ---- */
 (function addScaleAnno() {
   var mat = new THREE.LineBasicMaterial({ color: 0x5b7089 });
   function dimLine(a, b) {
@@ -880,36 +1099,36 @@ function rebuildIso() {
     scene.add(new THREE.Line(g, mat));
     [[a, b], [b, a]].forEach(function (pair) {
       var tip = pair[0];
-      var t = new THREE.Mesh(new THREE.ConeGeometry(1.6, 5, 8), new THREE.MeshBasicMaterial({ color: 0x5b7089 }));
+      var t = new THREE.Mesh(new THREE.ConeGeometry(1.8, 5.5, 8), new THREE.MeshBasicMaterial({ color: 0x5b7089 }));
       t.position.set(tip[0], 0.4, tip[1]);
       var dx = pair[1][0] - tip[0], dz = pair[1][1] - tip[1];
       t.rotation.y = Math.atan2(dx, dz);
       t.rotation.x = Math.PI / 2;
       var L = Math.sqrt(dx * dx + dz * dz);
-      t.position.x += dx / L * 2.5; t.position.z += dz / L * 2.5;
+      t.position.x += dx / L * 2.7; t.position.z += dz / L * 2.7;
       scene.add(t);
     });
   }
   var hw = SITE_W / 2, hd = SITE_D / 2;
-  dimLine([-hw, hd + 14], [hw, hd + 14]);
-  var l1 = makeLabel('370 m', { scale: 0.16, fontSize: 30 });
-  l1.position.set(0, 3, hd + 22); labelGroup.add(l1);
-  dimLine([hw + 14, -hd], [hw + 14, hd]);
-  var l2 = makeLabel('224 m', { scale: 0.16, fontSize: 30 });
-  l2.position.set(hw + 26, 3, 0); labelGroup.add(l2);
-  var l3 = makeLabel('敷地 約 8.3 万㎡（グリッド 20 m）', { scale: 0.13, fontSize: 24, color: '#45586e' });
-  l3.position.set(-hw + 210, 3, -hd - 14); labelGroup.add(l3);
-  // 100m スケールバー
+  dimLine([-hw, hd + 16], [hw, hd + 16]);
+  var l1 = makeLabel('540 m', { scale: 0.18, fontSize: 30 });
+  l1.position.set(0, 3, hd + 26); labelGroup.add(l1);
+  dimLine([hw + 16, -hd], [hw + 16, hd]);
+  var l2 = makeLabel('320 m', { scale: 0.18, fontSize: 30 });
+  l2.position.set(hw + 30, 3, 0); labelGroup.add(l2);
+  var l3 = makeLabel('敷地 約 17.3 万㎡・拡張想定（グリッド 20 m）', { scale: 0.14, fontSize: 24, color: '#45586e' });
+  l3.position.set(-hw + 265, 3, -hd - 16); labelGroup.add(l3);
   var bar = new THREE.Mesh(new THREE.BoxGeometry(100, 1, 3), new THREE.MeshBasicMaterial({ color: 0x16283c }));
-  bar.position.set(-hw + 50, 0.6, -hd - 14);
+  bar.position.set(-hw + 50, 0.6, -hd - 16);
   scene.add(bar);
-  for (var k = 0; k <= 4; k++) {
-    var seg = new THREE.Mesh(new THREE.BoxGeometry(25, 1.2, 3.2), new THREE.MeshBasicMaterial({ color: k % 2 ? 0x16283c : 0xffffff }));
-    seg.position.set(-hw + 12.5 + k * 25, 0.65, -hd - 14);
-    if (k < 4) scene.add(seg);
+  for (var k = 0; k < 4; k++) {
+    if (k % 2 === 0) continue;
+    var seg = new THREE.Mesh(new THREE.BoxGeometry(25, 1.2, 3.2), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    seg.position.set(-hw + 12.5 + k * 25, 0.65, -hd - 16);
+    scene.add(seg);
   }
-  var l4 = makeLabel('0        50       100 m', { scale: 0.11, fontSize: 22, color: '#45586e' });
-  l4.position.set(-hw + 50, 4, -hd - 22); labelGroup.add(l4);
+  var l4 = makeLabel('0        50       100 m', { scale: 0.12, fontSize: 22, color: '#45586e' });
+  l4.position.set(-hw + 50, 4, -hd - 24); labelGroup.add(l4);
 })();
 
 /* ---- 作業者 ---- */
@@ -918,7 +1137,7 @@ var trailGroup = new THREE.Group(); scene.add(trailGroup);
 
 function stateColor(st) { return st === 2 ? 0xc9302c : st === 1 ? 0xe5a13c : 0x1d9a6c; }
 
-WORKER_DEFS.forEach(function (def, wi) {
+WORKER_DEFS.forEach(function (def) {
   var g = new THREE.Group();
   var bodyMat = new THREE.MeshLambertMaterial({ color: 0x1d9a6c });
   var body = new THREE.Mesh(new THREE.CylinderGeometry(0.85, 1.0, 3.0, 10), bodyMat);
@@ -944,7 +1163,9 @@ WORKER_DEFS.forEach(function (def, wi) {
     def: def, grp: g, bodyMat: bodyMat,
     mx: def.route.pts[0][0], mz: def.route.pts[0][1],
     seg: 0, segT: 0, dwellLeft: 0,
-    doses: [0, 0, 0, 0],           // シナリオ別 ℃·min
+    doses: [0, 0, 0, 0],
+    tc: [TC_BASE, TC_BASE, TC_BASE, TC_BASE],   // シナリオ別 深部体温
+    tc38logged: false,
     over28min: 0, over28cont: 0, over28contMax: 0,
     overLimitMin: [0, 0, 0, 0],
     st: 0, label: null, lastLabelKey: '',
@@ -965,8 +1186,8 @@ function updateWorkerLabel(w, dose) {
 }
 
 /* ---------------- シミュレーション ---------------- */
-var WALK_SPEED = 80; // m / sim-min（≒1.33 m/s）
-var lastWetMin = 8 * 60, lastShiftStart = 8 * 60;
+var WALK_SPEED = 80; // m / sim-min
+var lastWetMin = 8 * 60;
 var logEl = document.getElementById('loglist');
 function fmtTime(m) {
   var h = Math.floor(m / 60) % 24, mm = Math.floor(m % 60);
@@ -982,16 +1203,21 @@ function addLog(msg, cls) {
 
 function isLunch() { var m = state.simMin; return m >= 12 * 60 && m < 12 * 60 + 45; }
 
-function moveWorker(w, dtMin) {
+function applyPrecool() {
+  workers.forEach(function (w) {
+    for (var s = 0; s < 4; s++) w.tc[s] = Math.max(TC_FLOOR, w.tc[s] - TC_PRECOOL);
+  });
+}
+
+function moveWorker(w, dtMin, wi) {
   var route = w.def.route;
   if (isLunch()) {
-    // 昼休憩: 事務所棟へ
     var dx = REST_POINT.x - w.mx, dz = REST_POINT.z - w.mz;
     var d = Math.sqrt(dx * dx + dz * dz);
     var step = WALK_SPEED * dtMin;
     if (d > step) { w.mx += dx / d * step; w.mz += dz / d * step; }
-    else { w.mx = REST_POINT.x + (Math.sin(w.def.name.length * 7 + workers.indexOf(w)) * 6); w.mz = REST_POINT.z + (Math.cos(workers.indexOf(w) * 3) * 6); }
-    if (!w.lunch) { w.lunch = true; }
+    else { w.mx = REST_POINT.x + Math.sin(wi * 2.4) * 9; w.mz = REST_POINT.z + Math.cos(wi * 3.1) * 12; }
+    w.lunch = true;
     return;
   }
   w.lunch = false;
@@ -1002,7 +1228,7 @@ function moveWorker(w, dtMin) {
   w.segT += (WALK_SPEED * dtMin) / len;
   if (w.segT >= 1) {
     w.segT = 0; w.seg = (w.seg + 1) % route.pts.length;
-    w.dwellLeft = route.dwell * (0.7 + 0.6 * Math.abs(Math.sin(w.seg * 3.7 + workers.indexOf(w))));
+    w.dwellLeft = route.dwell * (0.7 + 0.6 * Math.abs(Math.sin(w.seg * 3.7 + wi)));
     w.mx = b[0]; w.mz = b[1];
   } else {
     w.mx = a[0] + dx2 * w.segT;
@@ -1010,81 +1236,171 @@ function moveWorker(w, dtMin) {
   }
 }
 
-// シナリオ別 γ を返す
+// シナリオ別 γ（着衣・装備のみ。プレクーリングは深部体温側で扱う）
 function gammas(w) {
   var tLoc = sampleAirT(w.mx, w.mz);
   var minSinceWet = state.simMin - lastWetMin;
-  var pc = state.precool ? gammaPrecool(state.simMin - lastShiftStart) : 0;
   return [
-    0 + pc,
-    gammaFan(tLoc, state.rh, state.A) + pc,
-    gammaWet(minSinceWet, state.Awet) + pc,
-    GAMMA_PELTIER + pc
+    0,
+    gammaFan(tLoc, state.rh, state.A),
+    gammaWet(minSinceWet, state.Awet),
+    GAMMA_PELTIER
   ];
+}
+
+/* ---- 時系列記録 ---- */
+var tsData = [];       // { m, dose:[4], tc:[4] } 5分毎
+var lastSampleMin = -1;
+function sampleTS() {
+  var m5 = Math.floor(state.simMin / 5) * 5;
+  if (m5 === lastSampleMin) return;
+  lastSampleMin = m5;
+  var dose = [0, 0, 0, 0], tc = [0, 0, 0, 0];
+  for (var s = 0; s < 4; s++) {
+    var sum = 0, mx = 0;
+    workers.forEach(function (w) { sum += w.doses[s]; if (w.tc[s] > mx) mx = w.tc[s]; });
+    dose[s] = sum / workers.length; tc[s] = mx;
+  }
+  tsData.push({ m: m5, dose: dose, tc: tc });
+  drawTS();
 }
 
 function stepSim(dtMin) {
   var prevMin = state.simMin;
   state.simMin += dtMin;
-  // 再湿潤（休憩タイミング）
   [10 * 60, 12 * 60 + 45, 15 * 60].forEach(function (t) {
     if (prevMin < t && state.simMin >= t) {
       lastWetMin = t;
-      if (t === 12 * 60 + 45) { lastShiftStart = t; addLog('昼休憩明け — 打ち水インナー再湿潤 / プレクーリング実施', ''); }
-      else addLog('休憩 — 打ち水インナー再湿潤（350 mL）', '');
+      var msg = '休憩 — 打ち水インナー再湿潤（350 mL）';
+      if (t === 12 * 60 + 45) msg = '昼休憩明け — 打ち水インナー再湿潤';
+      if (state.precool) { applyPrecool(); msg += ' / プレクーリング実施（深部体温 −0.5℃）'; }
+      addLog(msg, '');
     }
   });
-  // 終業
   if (state.simMin >= 17 * 60) {
-    state.day++; state.simMin = 8 * 60; lastWetMin = 8 * 60; lastShiftStart = 8 * 60;
+    state.day++; state.simMin = 8 * 60; lastWetMin = 8 * 60;
     workers.forEach(function (w) {
       w.doses = [0, 0, 0, 0]; w.over28min = 0; w.over28cont = 0; w.over28contMax = 0;
       w.overLimitMin = [0, 0, 0, 0]; w.trailLen = 0; w.trailGeo.setDrawRange(0, 0);
+      var t0 = state.precool ? TC_BASE - TC_PRECOOL : TC_BASE;
+      w.tc = [t0, t0, t0, t0]; w.tc38logged = false;
     });
-    addLog('DAY ' + state.day + ' 操業開始 — ドーズをリセット', '');
+    tsData = []; lastSampleMin = -1; drawTS();
+    addLog('DAY ' + state.day + ' 操業開始 — ドーズ・深部体温をリセット' + (state.precool ? '（プレクーリング適用）' : ''), '');
     document.getElementById('clock-day').textContent = 'DAY ' + state.day + ' — 操業シフト';
     return;
   }
   var lunch = isLunch();
-  workers.forEach(function (w) {
-    moveWorker(w, dtMin);
+  workers.forEach(function (w, wi) {
+    moveWorker(w, dtMin, wi);
     var envW = lunch ? Math.min(26, state.ta) : sampleWBGT(w.mx, w.mz);
     var gs = gammas(w);
     var lim = LIMITS[w.def.met];
     for (var s = 0; s < 4; s++) {
       var weff = envW + gs[s];
       var ex = Math.max(0, weff - lim);
-      if (ex > 0) { w.doses[s] += ex * dtMin; w.overLimitMin[s] += dtMin; }
+      if (ex > 0 && !lunch) { w.doses[s] += ex * dtMin; w.overLimitMin[s] += dtMin; }
+      // 深部体温（一次遅れ系）
+      var k2 = s === 3 ? TC_K2_PELTIER : TC_K2;
+      w.tc[s] += (TC_K1 * ex - k2 * (w.tc[s] - TC_BASE)) * dtMin;
+      if (w.tc[s] < TC_FLOOR) w.tc[s] = TC_FLOOR;
     }
-    // 法令判定は環境WBGT（対策なし）で
     if (!lunch && envW >= 28) {
       w.over28min += dtMin; w.over28cont += dtMin;
       if (w.over28cont > w.over28contMax) w.over28contMax = w.over28cont;
     } else { w.over28cont = 0; }
-    // 状態
-    var weffCur = envW + gs[state.scen];
+    var sc = state.scen;
+    var weffCur = envW + gs[sc];
     var prevSt = w.st;
-    w.st = weffCur > lim + 3 ? 2 : weffCur > lim ? 1 : 0;
-    if (w.st === 2 && prevSt < 2) addLog('<b>' + w.def.name + '</b> 危険域（WBGT_eff ' + weffCur.toFixed(1) + '℃ &gt; 基準+3）に侵入', 'bad');
-    else if (w.st === 1 && prevSt === 0) addLog(w.def.name + ' 基準値超過域に入りました', 'warn');
+    w.st = (weffCur > lim + 3 || w.tc[sc] >= TC_DANGER) ? 2
+         : (weffCur > lim || w.tc[sc] >= TC_DANGER - 0.3) ? 1 : 0;
+    if (w.tc[sc] >= TC_DANGER && !w.tc38logged) {
+      w.tc38logged = true;
+      addLog('<b>' + w.def.name + '</b> 深部体温 38.0℃ 到達（推定）— 重篤化リスク', 'bad');
+    } else if (w.st === 2 && prevSt < 2 && w.tc[sc] < TC_DANGER) {
+      addLog('<b>' + w.def.name + '</b> 危険域（WBGT_eff ' + weffCur.toFixed(1) + '℃ &gt; 基準+3）に侵入', 'bad');
+    } else if (w.st === 1 && prevSt === 0) {
+      addLog(w.def.name + ' 基準値超過域に入りました', 'warn');
+    }
   });
+  sampleTS();
+}
+
+/* ---------------- 時系列チャート ---------------- */
+var tsCanvas = document.getElementById('tschart');
+var tsCtx = tsCanvas.getContext('2d');
+(function initLegend() {
+  var lg = document.getElementById('tslegend');
+  lg.innerHTML = SCEN_NAMES.map(function (n, i) {
+    return '<span style="display:inline-flex;align-items:center;gap:3px"><span style="width:10px;height:3px;background:' + SCEN_COLORS[i] + ';display:inline-block"></span>' + n + '</span>';
+  }).join('') + '<span style="color:var(--text-faint)">上:平均累積ドーズ ℃·min ／ 下:最大深部体温 ℃（破線 38.0）</span>';
+})();
+function drawTS() {
+  var W = tsCanvas.width, H = tsCanvas.height;
+  tsCtx.clearRect(0, 0, W, H);
+  tsCtx.font = '18px "Hiragino Kaku Gothic ProN", sans-serif';
+  var padL = 52, padR = 8;
+  var plotW = W - padL - padR;
+  var M0 = 8 * 60, M1 = 17 * 60;
+  function X(m) { return padL + (m - M0) / (M1 - M0) * plotW; }
+  // 昼休憩帯・軸目盛（両チャート共通）
+  function frame(y0, h, yMin, yMax, fmt, grid) {
+    tsCtx.fillStyle = 'rgba(120,140,165,0.10)';
+    tsCtx.fillRect(X(720), y0, X(765) - X(720), h);
+    tsCtx.strokeStyle = '#d8e1ec'; tsCtx.lineWidth = 1;
+    tsCtx.strokeRect(padL, y0, plotW, h);
+    tsCtx.fillStyle = '#7a8ba0';
+    grid.forEach(function (gv) {
+      var y = y0 + h - (gv - yMin) / (yMax - yMin) * h;
+      tsCtx.strokeStyle = 'rgba(120,140,165,0.15)';
+      tsCtx.beginPath(); tsCtx.moveTo(padL, y); tsCtx.lineTo(padL + plotW, y); tsCtx.stroke();
+      tsCtx.textAlign = 'right'; tsCtx.textBaseline = 'middle';
+      tsCtx.fillText(fmt(gv), padL - 5, y);
+    });
+    for (var hh = 8; hh <= 17; hh += 3) {
+      tsCtx.textAlign = 'center'; tsCtx.textBaseline = 'top';
+      tsCtx.fillText(hh + ':00', X(hh * 60), y0 + h + 3);
+    }
+  }
+  function series(y0, h, yMin, yMax, key, si) {
+    tsCtx.strokeStyle = SCEN_COLORS[si]; tsCtx.lineWidth = 2.5;
+    tsCtx.beginPath();
+    var started = false;
+    tsData.forEach(function (d) {
+      var v = clamp(d[key][si], yMin, yMax);
+      var x = X(d.m), y = y0 + h - (v - yMin) / (yMax - yMin) * h;
+      if (!started) { tsCtx.moveTo(x, y); started = true; } else tsCtx.lineTo(x, y);
+    });
+    tsCtx.stroke();
+  }
+  // 上段: 平均累積ドーズ
+  var doseMax = 50;
+  tsData.forEach(function (d) { for (var s = 0; s < 4; s++) if (d.dose[s] > doseMax) doseMax = d.dose[s]; });
+  doseMax = Math.ceil(doseMax / 100) * 100 || 100;
+  var h1 = 130, y1 = 8;
+  frame(y1, h1, 0, doseMax, function (v) { return String(v); }, [0, doseMax / 2, doseMax]);
+  for (var s1 = 0; s1 < 4; s1++) series(y1, h1, 0, doseMax, 'dose', s1);
+  // 下段: 最大深部体温
+  var h2 = 130, y2 = y1 + h1 + 34;
+  frame(y2, h2, 36.4, 39.0, function (v) { return v.toFixed(1); }, [36.5, 37.5, 38.5]);
+  // 38.0 破線
+  var y38 = y2 + h2 - (38.0 - 36.4) / (39.0 - 36.4) * h2;
+  tsCtx.strokeStyle = '#c53030'; tsCtx.lineWidth = 1.6; tsCtx.setLineDash([7, 5]);
+  tsCtx.beginPath(); tsCtx.moveTo(padL, y38); tsCtx.lineTo(padL + plotW, y38); tsCtx.stroke();
+  tsCtx.setLineDash([]);
+  for (var s2 = 0; s2 < 4; s2++) series(y2, h2, 36.4, 39.0, 'tc', s2);
 }
 
 /* ---------------- UI 更新 ---------------- */
-function gammaAt(tLoc) {
-  return {
-    fan: gammaFan(tLoc, state.rh, state.A),
-    wet: gammaWet(state.simMin - lastWetMin, state.Awet)
-  };
-}
 function updateGammaUI() {
-  var g = gammaAt(state.ta);
+  var gFan = gammaFan(state.ta, state.rh, state.A);
+  var gWet = gammaWet(state.simMin - lastWetMin, state.Awet);
   var el1 = document.getElementById('gam1');
-  el1.textContent = 'γ ' + (g.fan >= 0 ? '+' : '') + g.fan.toFixed(1);
-  el1.className = 'gam ' + (g.fan > 0.05 ? 'pos' : g.fan < -0.05 ? 'neg' : '');
+  el1.textContent = 'γ ' + (gFan >= 0 ? '+' : '') + gFan.toFixed(1);
+  el1.className = 'gam ' + (gFan > 0.05 ? 'pos' : gFan < -0.05 ? 'neg' : '');
   var el2 = document.getElementById('gam2');
-  el2.textContent = 'γ ' + (g.wet >= 0 ? '+' : '') + g.wet.toFixed(1);
-  el2.className = 'gam ' + (g.wet < -0.05 ? 'neg' : '');
+  el2.textContent = 'γ ' + (gWet >= 0 ? '+' : '') + gWet.toFixed(1);
+  el2.className = 'gam ' + (gWet < -0.05 ? 'neg' : '');
   var el3 = document.getElementById('gam3');
   el3.textContent = 'γ −0.3';
   el3.className = 'gam neg';
@@ -1107,17 +1423,18 @@ function updateGammaUI() {
     }
   }
   document.getElementById('cav-note').textContent =
-    '現在の実測換算: ファン付き γ = ' + (g.fan >= 0 ? '+' : '') + g.fan.toFixed(1) + '℃ 相当（Ta ' + state.ta.toFixed(0) + '℃ / RH ' + state.rh + '%）';
+    '現在の実測換算: ファン付き γ = ' + (gFan >= 0 ? '+' : '') + gFan.toFixed(1) + '℃ 相当（Ta ' + state.ta.toFixed(0) + '℃ / RH ' + state.rh + '%）';
 }
 
-var kpiTimer = 0;
 function updateKPI() {
   var s = state.scen;
-  var sum = 0, maxW = null, overH = 0;
+  var sum = 0, maxW = null, overH = 0, maxTc = 0, maxTcW = null, n38 = 0;
   workers.forEach(function (w) {
     sum += w.doses[s];
     overH += w.overLimitMin[s] / 60;
     if (!maxW || w.doses[s] > maxW.doses[s]) maxW = w;
+    if (w.tc[s] > maxTc) { maxTc = w.tc[s]; maxTcW = w; }
+    if (w.tc[s] >= TC_DANGER) n38++;
   });
   document.getElementById('k-avg').innerHTML = (sum / workers.length).toFixed(0) + '<span class="u">℃·min</span>';
   document.getElementById('k-avg-s').textContent = SCEN_NAMES[s];
@@ -1126,14 +1443,19 @@ function updateKPI() {
   document.getElementById('k-over').innerHTML = overH.toFixed(1) + '<span class="u">人·h</span>';
   document.getElementById('k-area').innerHTML = areaOver28.toLocaleString() + '<span class="u">㎡</span>';
   document.getElementById('k-area31').textContent = '31℃以上 ' + areaOver31.toLocaleString() + ' ㎡';
-  // 法令
+  var tcEl = document.getElementById('k-tcore');
+  tcEl.innerHTML = maxTc.toFixed(1) + '<span class="u">℃</span>';
+  tcEl.style.color = maxTc >= TC_DANGER ? 'var(--status-bad)' : maxTc >= TC_DANGER - 0.3 ? 'var(--status-warn)' : 'var(--text-primary)';
+  document.getElementById('k-tcore-s').textContent = maxTcW ? maxTcW.def.name + (state.precool ? '／PC適用中' : '') : '—';
+  var t38El = document.getElementById('k-tc38');
+  t38El.innerHTML = n38 + '<span class="u">名</span>';
+  t38El.style.color = n38 > 0 ? 'var(--status-bad)' : 'var(--text-primary)';
   var lawWorkers = workers.filter(function (w) { return w.over28contMax >= 60 || w.over28min > 240; }).length;
   document.getElementById('law-area').textContent = areaOver28.toLocaleString() + ' ㎡';
   var lw = document.getElementById('law-workers');
   lw.textContent = lawWorkers + ' / ' + workers.length + ' 名';
   lw.className = lawWorkers > 0 ? 'st-bad' : 'st-good';
   document.getElementById('law-must').textContent = areaMust.toLocaleString() + ' ㎡';
-  // ランキング
   var sorted = workers.slice().sort(function (a, b) { return b.doses[s] - a.doses[s]; }).slice(0, 5);
   var maxD = Math.max(1, sorted[0] ? sorted[0].doses[s] : 1);
   var html = '';
@@ -1143,7 +1465,6 @@ function updateKPI() {
       + '<span class="dv">' + w.doses[s].toFixed(0) + ' ℃·min</span></div>';
   });
   document.getElementById('ranklist').innerHTML = html || '<div class="note">—</div>';
-  // 比較
   var avgs = [0, 1, 2, 3].map(function (i) {
     var t = 0; workers.forEach(function (w) { t += w.doses[i]; }); return t / workers.length;
   });
@@ -1199,7 +1520,7 @@ document.getElementById('bp-close').addEventListener('click', function () { bldP
 /* ---------------- イベント ---------------- */
 function refreshAll() {
   recomputeField();
-  redrawGround();
+  requestGroundRedraw();
   rebuildIso();
   updateGammaUI();
   updateKPI();
@@ -1233,17 +1554,22 @@ Array.prototype.forEach.call(document.querySelectorAll('input[name=scen]'), func
 });
 document.getElementById('opt-spot').addEventListener('change', function () {
   state.spot = this.checked;
-  addLog('スポット空調 ' + (state.spot ? 'ON（炉前6箇所 −3.5℃）' : 'OFF'), '');
+  addLog('スポット空調 ' + (state.spot ? 'ON（炉前8箇所 −3.5℃）' : 'OFF'), '');
   refreshAll();
 });
 document.getElementById('opt-precool').addEventListener('change', function () {
   state.precool = this.checked;
-  addLog('プレクーリング ' + (state.precool ? 'ON（開始後60分 −1.5℃→0）' : 'OFF'), '');
+  if (state.precool) {
+    applyPrecool();
+    addLog('プレクーリング ON — 全員に即時適用（深部体温 −0.5℃、以降は休憩毎）', '');
+  } else {
+    addLog('プレクーリング OFF', '');
+  }
 });
 [['ly-heat', 'heat'], ['ly-iso', 'iso'], ['ly-trail', 'trail'], ['ly-wlabel', 'wlabel'], ['ly-blabel', 'blabel']].forEach(function (pair) {
   document.getElementById(pair[0]).addEventListener('change', function () {
     state.layers[pair[1]] = this.checked;
-    if (pair[1] === 'heat') redrawGround();
+    if (pair[1] === 'heat') requestGroundRedraw();
     if (pair[1] === 'iso') rebuildIso();
     if (pair[1] === 'trail') trailGroup.visible = state.layers.trail;
   });
@@ -1299,7 +1625,7 @@ function animate(now) {
     stepSim(dt * state.speed);
     document.getElementById('clock-time').textContent = fmtTime(state.simMin);
   }
-  // 作業者表示更新
+  if (groundDirty) { groundDirty = false; redrawGround(); }
   workers.forEach(function (w) {
     var p = W2S(w.mx, w.mz);
     w.grp.position.set(p.x, 0, p.z);
@@ -1308,13 +1634,12 @@ function animate(now) {
       updateWorkerLabel(w, w.doses[state.scen]);
       if (w.label) { w.label.visible = true; w.label.position.set(p.x, 7.5, p.z); }
     } else if (w.label) { w.label.visible = false; }
-    // トレイル
     if (state.speed > 0) {
       w.trailTick += dt;
       if (w.trailTick > 0.25) {
         w.trailTick = 0;
-        var tp = w.trailPos, n = 120;
-        if (w.trailLen < n) w.trailLen++;
+        var tp = w.trailPos;
+        if (w.trailLen < 120) w.trailLen++;
         for (var i2 = w.trailLen - 1; i2 > 0; i2--) {
           tp[i2 * 3] = tp[(i2 - 1) * 3]; tp[i2 * 3 + 1] = tp[(i2 - 1) * 3 + 1]; tp[i2 * 3 + 2] = tp[(i2 - 1) * 3 + 2];
         }
@@ -1324,7 +1649,6 @@ function animate(now) {
       }
     }
   });
-  labelGroup.visible = true;
   labelGroup.children.forEach(function (c) { if (c.userData.isBld) c.visible = state.layers.blabel; });
   uiTick += dt;
   if (uiTick > 0.5) { uiTick = 0; updateKPI(); updateGammaUI(); }
@@ -1333,9 +1657,14 @@ function animate(now) {
 }
 
 /* ---------------- 起動 ---------------- */
-refreshAll();
-addLog('HEAT·TWIN 起動 — 尼崎本社工場 想定モデル（370 m × 224 m / 12棟 / 熱源6基 / 代表20名）', '');
-addLog('プリセット「盛夏・炉前」で γ_fan の符号反転（ファン逆効果）を確認できます', 'warn');
+recomputeField();
+redrawGround();
+rebuildIso();
+updateGammaUI();
+updateKPI();
+drawTS();
+addLog('HEAT·TWIN v2 起動 — 拡張想定モデル（540 m × 320 m / 16棟 / 熱源8基 / 代表28名）', '');
+addLog('プリセット「盛夏・炉前」で γ_fan の符号反転、プレクーリングONで深部体温カーブの変化を確認できます', 'warn');
 setTimeout(function () { document.getElementById('loading').classList.add('hide'); }, 400);
 requestAnimationFrame(animate);
 })();
