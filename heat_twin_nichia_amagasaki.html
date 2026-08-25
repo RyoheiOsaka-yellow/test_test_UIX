@@ -259,6 +259,7 @@ button { font-family: inherit; }
   <div>WBGT 場（床面 / 屋内実効値）</div>
   <div class="bar"></div>
   <div class="ticks"><span>24</span><span>28</span><span>31</span><span>34</span><span>38℃</span></div>
+  <div style="margin-top:4px;font-size:9px;color:var(--text-faint)">機械列・開口部気流・局所ムラは<b>仮説モデル</b>（実測で較正）</div>
 </div>
 
 <div class="panel" id="leftpanel">
@@ -292,7 +293,7 @@ button { font-family: inherit; }
 
     <div class="sec">レイヤ表示</div>
     <label class="opt"><input type="checkbox" id="ly-heat" checked>床面 WBGT ヒートマップ</label>
-    <label class="opt"><input type="checkbox" id="ly-iso" checked>危険域 等値面（28 / 31℃）</label>
+    <label class="opt"><input type="checkbox" id="ly-iso" checked>危険域 等値線（28 / 31℃）</label>
     <label class="opt"><input type="checkbox" id="ly-trail" checked>動線トレイル</label>
     <label class="opt"><input type="checkbox" id="ly-wlabel" checked>作業者ドーズ表示</label>
     <label class="opt"><input type="checkbox" id="ly-blabel" checked>建屋・熱源ラベル</label>
@@ -410,21 +411,56 @@ var BUILDINGS = [
 ];
 
 // 熱源（peak: 近傍での ΔTg ピーク[℃], sigma: 減衰スケール[m], wet: 湿度供給源）
+// x2/z2 があれば線源（浴槽・炉体の長手方向）として扱う。
 // 本来は Tg(x)=Ta+ΣQᵢ/(4π·rᵢ²)·k（仕様 5-2a）。1/r² は減衰が急峻すぎ勾配が
 // 視認できないため、係数目視調整の範囲でガウス型に置換（説得力優先の仕様準拠）
 var SOURCES = [
-  { id:'HS1', name:'めっき浴 #1',        x:300, z:45,  peak:11, sigma:16, wet:true  },
-  { id:'HS2', name:'めっき浴 #2',        x:400, z:40,  peak:10, sigma:15, wet:true  },
-  { id:'HS3', name:'パテンティング炉 #1', x:330, z:82,  peak:13, sigma:17, wet:false },
-  { id:'HS4', name:'パテンティング炉 #2', x:428, z:80,  peak:12, sigma:16, wet:false },
-  { id:'HS5', name:'調質炉 #1',          x:48,  z:160, peak:14, sigma:19, wet:false },
-  { id:'HS6', name:'調質炉 #2',          x:85,  z:190, peak:12, sigma:16, wet:false },
-  { id:'HS7', name:'焼付乾燥炉',         x:160, z:170, peak:11, sigma:15, wet:false },
-  { id:'HS8', name:'亜鉛溶解炉',         x:285, z:70,  peak:12, sigma:14, wet:false }
+  { id:'HS1', name:'めっき浴 #1',        x:288, z:45,  x2:315, z2:45,  peak:11, sigma:12, wet:true  },
+  { id:'HS2', name:'めっき浴 #2',        x:390, z:40,  x2:412, z2:40,  peak:10, sigma:11, wet:true  },
+  { id:'HS3', name:'パテンティング炉 #1', x:318, z:82,  x2:342, z2:82,  peak:13, sigma:13, wet:false },
+  { id:'HS4', name:'パテンティング炉 #2', x:416, z:80,  x2:440, z2:80,  peak:12, sigma:12, wet:false },
+  { id:'HS5', name:'調質炉 #1',          x:38,  z:160, x2:58,  z2:160, peak:14, sigma:14, wet:false },
+  { id:'HS6', name:'調質炉 #2',          x:85,  z:190, peak:12, sigma:13, wet:false },
+  { id:'HS7', name:'焼付乾燥炉',         x:152, z:170, x2:168, z2:170, peak:11, sigma:12, wet:false },
+  { id:'HS8', name:'亜鉛溶解炉',         x:285, z:70,  peak:12, sigma:11, wet:false }
+];
+function srcCenter(s) {
+  return { x: s.x2 !== undefined ? (s.x + s.x2) / 2 : s.x, z: s.z2 !== undefined ? (s.z + s.z2) / 2 : s.z };
+}
+
+// 副次熱源（機械列・槽・コンプレッサ等）— 配置は仮説。実測で較正する
+var MINOR_SOURCES = [
+  // 伸線第一: 伸線機列 3 列
+  { x:25,  z:32,  x2:120, z2:32,  peak:2.0, sigma:6 },
+  { x:25,  z:52,  x2:120, z2:52,  peak:2.2, sigma:6 },
+  { x:25,  z:72,  x2:120, z2:72,  peak:1.8, sigma:6 },
+  // 伸線第二: 伸線機列 3 列
+  { x:162, z:35,  x2:245, z2:35,  peak:1.8, sigma:5 },
+  { x:162, z:60,  x2:245, z2:60,  peak:2.0, sigma:5 },
+  { x:162, z:85,  x2:245, z2:85,  peak:1.6, sigma:5 },
+  // 鍍線第一: 酸洗・フラックス槽（湿潤）
+  { x:272, z:28,  x2:295, z2:28,  peak:4.0, sigma:8, wet:true },
+  // 鍍線第二: 前処理槽（湿潤）
+  { x:380, z:58,  peak:3.5, sigma:7, wet:true },
+  // 熱処理・調質: 焼入（クエンチ）槽（湿潤・蒸気）
+  { x:62,  z:176, peak:5.0, sigma:9, wet:true },
+  // 焼付塗装: 前処理槽（湿潤）
+  { x:143, z:145, peak:4.0, sigma:8, wet:true },
+  // 鋲螺第一: ヘッダー（圧造）機列 3 列
+  { x:215, z:145, x2:285, z2:145, peak:2.4, sigma:5 },
+  { x:215, z:170, x2:285, z2:170, peak:2.6, sigma:5 },
+  { x:215, z:195, x2:285, z2:195, peak:2.0, sigma:5 },
+  // 鋲螺第二: 転造機列 2 列
+  { x:312, z:150, x2:355, z2:150, peak:1.9, sigma:5 },
+  { x:312, z:182, x2:355, z2:182, peak:1.7, sigma:5 },
+  // メンテナンス棟: 溶接ベイ
+  { x:350, z:268, peak:2.6, sigma:5 },
+  // 動力棟: コンプレッサ室
+  { x:505, z:35,  peak:3.0, sigma:7 }
 ];
 
 var REST_POINT = { x:505, z:155 };  // 事務所棟（冷房休憩）
-var SPOT_COOLERS = SOURCES.map(function (s) { return { x: s.x + 5, z: s.z + 5 }; });
+var SPOT_COOLERS = SOURCES.map(function (s) { var c = srcCenter(s); return { x: c.x + 5, z: c.z + 5 }; });
 
 /* ---------------- 作業者定義 ---------------- */
 var LIMITS = { 1: 30, 2: 28, 3: 25.5 };
@@ -480,22 +516,79 @@ function wetBulb(ta, rh) {
 }
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
-function srcDelta(s, r2) { return s.peak * Math.exp(-r2 / (s.sigma * s.sigma)); }
-function deltaTg(mx, mz) {
-  var d = 0;
-  for (var i = 0; i < SOURCES.length; i++) {
-    var s = SOURCES[i];
+// 点源／線源（線源は線分までの距離でガウス減衰）
+function srcDist2(s, mx, mz) {
+  if (s.x2 === undefined) {
     var dx = mx - s.x, dz = mz - s.z;
-    d += srcDelta(s, dx * dx + dz * dz);
+    return dx * dx + dz * dz;
   }
+  var ax = s.x2 - s.x, az = s.z2 - s.z;
+  var t = ((mx - s.x) * ax + (mz - s.z) * az) / (ax * ax + az * az);
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  var qx = mx - (s.x + ax * t), qz = mz - (s.z + az * t);
+  return qx * qx + qz * qz;
+}
+function srcDelta(s, r2) { return s.peak * Math.exp(-r2 / (s.sigma * s.sigma)); }
+
+// 開口部（シャッター扉）からの外気ドラフトで扉付近が涼しくなる（仮説）
+// 建屋南面の扉配置（建屋メッシュ生成と同じ規則）から自動生成
+var DOOR_DRAFTS = [];
+BUILDINGS.forEach(function (b) {
+  if (b.type === 'office' || b.type === 'util' || b.w < 50) return;
+  var nd = b.w >= 100 ? 3 : 2;
+  for (var di = 0; di < nd; di++) {
+    DOOR_DRAFTS.push({ x: b.x + (di + 0.5) * (b.w / nd), z: b.z + b.d - 6, peak: 1.8, sigma: 9 });
+  }
+});
+
+// 微細乱れ（バリューノイズ 2 オクターブ）— 実測データに現れる局所ムラの仮説表現
+function hash2(a, b) {
+  var v = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
+  return (v - Math.floor(v)) * 2 - 1;
+}
+function vnoise(mx, mz, cell) {
+  var gx = mx / cell, gz = mz / cell;
+  var ix = Math.floor(gx), iz = Math.floor(gz);
+  var fx = gx - ix, fz = gz - iz;
+  fx = fx * fx * (3 - 2 * fx); fz = fz * fz * (3 - 2 * fz);
+  var v00 = hash2(ix, iz), v10 = hash2(ix + 1, iz), v01 = hash2(ix, iz + 1), v11 = hash2(ix + 1, iz + 1);
+  return (v00 * (1 - fx) + v10 * fx) * (1 - fz) + (v01 * (1 - fx) + v11 * fx) * fz;
+}
+function microNoise(mx, mz, indoor) {
+  var amp = indoor ? 1 : 0.55;
+  return (vnoise(mx, mz, 12) * 0.7 + vnoise(mx + 57, mz + 91, 5) * 0.3) * amp;
+}
+
+function deltaTgMajor(mx, mz) {
+  var d = 0;
+  for (var i = 0; i < SOURCES.length; i++) d += srcDelta(SOURCES[i], srcDist2(SOURCES[i], mx, mz));
   return d;
 }
+function deltaTg(mx, mz, indoor) {
+  var d = deltaTgMajor(mx, mz);
+  for (var i = 0; i < MINOR_SOURCES.length; i++) {
+    var s = MINOR_SOURCES[i];
+    d += srcDelta(s, srcDist2(s, mx, mz));
+  }
+  if (indoor) {
+    for (var k = 0; k < DOOR_DRAFTS.length; k++) {
+      var dr = DOOR_DRAFTS[k];
+      var dx = mx - dr.x, dz = mz - dr.z;
+      d -= dr.peak * Math.exp(-(dx * dx + dz * dz) / (dr.sigma * dr.sigma));
+    }
+  }
+  d += microNoise(mx, mz, indoor);
+  return d < -1.2 ? -1.2 : d;
+}
 function deltaWetFrac(mx, mz) {
-  var d = 0;
-  for (var i = 0; i < SOURCES.length; i++) {
-    var s = SOURCES[i]; if (!s.wet) continue;
-    var dx = mx - s.x, dz = mz - s.z;
-    d += srcDelta(s, dx * dx + dz * dz);
+  var d = 0, i, s;
+  for (i = 0; i < SOURCES.length; i++) {
+    s = SOURCES[i]; if (!s.wet) continue;
+    d += srcDelta(s, srcDist2(s, mx, mz));
+  }
+  for (i = 0; i < MINOR_SOURCES.length; i++) {
+    s = MINOR_SOURCES[i]; if (!s.wet) continue;
+    d += srcDelta(s, srcDist2(s, mx, mz));
   }
   return d;
 }
@@ -531,10 +624,9 @@ var mustGrid = new Uint8Array(GW * GH);
       var bd = BUILDINGS[b];
       if (i >= bd.x && i < bd.x + bd.w && j >= bd.z && j < bd.z + bd.d) { insideGrid[idx] = b + 1; break; }
     }
-    var dtg = deltaTg(i, j);
-    tgGrid[idx] = dtg;
+    tgGrid[idx] = deltaTg(i, j, !!insideGrid[idx]);
     wetGrid[idx] = deltaWetFrac(i, j);
-    if (dtg > 1.5) mustGrid[idx] = 1;
+    if (deltaTgMajor(i, j) > 1.5) mustGrid[idx] = 1;  // 「炉等の近く」判定は主要熱源のみ
   }
 })();
 
@@ -563,9 +655,12 @@ function recomputeField() {
     if (mustGrid[idx]) areaMust++;
   }
 }
-function sampleWBGT(mx, mz) {
-  var i = clamp(Math.round(mx), 0, GW - 1), j = clamp(Math.round(mz), 0, GH - 1);
-  return wbgtGrid[j * GW + i];
+function sampleWBGT(mx, mz) { // バイリニア補間
+  var x = clamp(mx, 0, GW - 1.001), z = clamp(mz, 0, GH - 1.001);
+  var i = Math.floor(x), j = Math.floor(z), fx = x - i, fz = z - j;
+  var a = wbgtGrid[j * GW + i], b = wbgtGrid[j * GW + i + 1];
+  var c = wbgtGrid[(j + 1) * GW + i], d = wbgtGrid[(j + 1) * GW + i + 1];
+  return (a * (1 - fx) + b * fx) * (1 - fz) + (c * (1 - fx) + d * fx) * fz;
 }
 function sampleAirT(mx, mz) { // 服に入る空気の温度 ≒ Ta + 0.5·ΔTg（ΔTgの半分を対流成分とみなす）
   var i = clamp(Math.round(mx), 0, GW - 1), j = clamp(Math.round(mz), 0, GH - 1);
@@ -640,7 +735,7 @@ camCtl.update();
 var VIEWS = {
   iso: { theta: -0.55, phi: 0.92, radius: 620, target: [0, 0, 15] },
   top: { theta: 0, phi: 0.14, radius: 660, target: [0, 0, 0] },
-  furnace: { theta: -0.9, phi: 1.1, radius: 110, target: [SOURCES[0].x - SITE_W/2, 4, SOURCES[0].z - SITE_D/2] }
+  furnace: { theta: -0.9, phi: 1.1, radius: 110, target: [srcCenter(SOURCES[0]).x - SITE_W/2, 4, srcCenter(SOURCES[0]).z - SITE_D/2] }
 };
 function setView(v) {
   var d = VIEWS[v];
@@ -925,9 +1020,10 @@ BUILDINGS.forEach(function (b, bi) {
 /* ---- 敷地ディテール（煙突・冷却塔・車両・樹木・門） ---- */
 (function addSiteDetail() {
   // 煙突（熱源上）
-  SOURCES.forEach(function (s, i) {
+  SOURCES.forEach(function (s) {
     if (!s.wet) {
-      var p = W2S(s.x + 3, s.z - 3);
+      var c0 = srcCenter(s);
+      var p = W2S(c0.x + 3, c0.z - 3);
       var stack = new THREE.Mesh(
         new THREE.CylinderGeometry(1.1, 1.5, 26, 12),
         new THREE.MeshLambertMaterial({ color: 0xc4ccd6 })
@@ -1024,9 +1120,11 @@ BUILDINGS.forEach(function (b, bi) {
 /* ---- 熱源 ---- */
 var isoGroup = new THREE.Group(); scene.add(isoGroup);
 SOURCES.forEach(function (s) {
-  var p = W2S(s.x, s.z);
+  var c0 = srcCenter(s);
+  var p = W2S(c0.x, c0.z);
+  var len = s.x2 !== undefined ? Math.abs(s.x2 - s.x) + 6 : 7;
   var core = new THREE.Mesh(
-    new THREE.BoxGeometry(7, 3.2, 5),
+    new THREE.BoxGeometry(len, 3.2, 5),
     new THREE.MeshLambertMaterial({ color: 0xd7402a, emissive: 0x922015 })
   );
   core.position.set(p.x, 1.6, p.z);
@@ -1042,39 +1140,67 @@ SOURCES.forEach(function (s) {
   lb.userData.isBld = true;
   labelGroup.add(lb);
 });
+// 副次熱源の設備マス（小さめの機械筐体）
+MINOR_SOURCES.forEach(function (s) {
+  var c0 = srcCenter(s);
+  var p = W2S(c0.x, c0.z);
+  var len = s.x2 !== undefined ? Math.abs(s.x2 - s.x) : 5;
+  var box = new THREE.Mesh(
+    new THREE.BoxGeometry(Math.max(4, len), 1.8, 3),
+    new THREE.MeshLambertMaterial({ color: s.wet ? 0x7d98b8 : 0xa9b6c6 })
+  );
+  box.position.set(p.x, 0.9, p.z);
+  scene.add(box);
+});
 
-function isoRadius(src, thr) {
-  var tw = wetBulb(state.ta, state.rh);
-  for (var r = 44; r >= 1; r -= 0.5) {
-    var dtg = srcDelta(src, r * r);
-    var tg = state.ta + 1.0 + dtg;
-    var twL = tw + 0.5 + (src.wet ? Math.min(2.5, dtg * 0.5) : 0) + dtg * 0.10;
-    if (0.7 * twL + 0.3 * tg >= thr) return r;
+// マーチングスクエア法で WBGT 場の実等値線（28 / 31℃）を抽出
+function buildContour(thr, step) {
+  var segs = [];
+  function interp(pA, pB, vA, vB) {
+    var t = (thr - vA) / (vB - vA);
+    return [pA[0] + (pB[0] - pA[0]) * t, pA[1] + (pB[1] - pA[1]) * t];
   }
-  return 0;
+  for (var j = 0; j < GH - step; j += step) {
+    for (var i = 0; i < GW - step; i += step) {
+      var v0 = wbgtGrid[j * GW + i], v1 = wbgtGrid[j * GW + i + step];
+      var v2 = wbgtGrid[(j + step) * GW + i + step], v3 = wbgtGrid[(j + step) * GW + i];
+      var idx = (v0 >= thr ? 1 : 0) | (v1 >= thr ? 2 : 0) | (v2 >= thr ? 4 : 0) | (v3 >= thr ? 8 : 0);
+      if (idx === 0 || idx === 15) continue;
+      var p0 = [i, j], p1 = [i + step, j], p2 = [i + step, j + step], p3 = [i, j + step];
+      var eT = interp(p0, p1, v0, v1), eR = interp(p1, p2, v1, v2);
+      var eB = interp(p3, p2, v3, v2), eL = interp(p0, p3, v0, v3);
+      var lines = {
+        1:[[eL,eT]], 2:[[eT,eR]], 3:[[eL,eR]], 4:[[eR,eB]], 5:[[eL,eT],[eR,eB]],
+        6:[[eT,eB]], 7:[[eL,eB]], 8:[[eB,eL]], 9:[[eB,eT]], 10:[[eT,eR],[eB,eL]],
+        11:[[eB,eR]], 12:[[eR,eL]], 13:[[eR,eT]], 14:[[eT,eL]]
+      }[idx];
+      if (lines) lines.forEach(function (l) { segs.push(l[0][0], l[0][1], l[1][0], l[1][1]); });
+    }
+  }
+  return segs;
 }
 function rebuildIso() {
-  while (isoGroup.children.length) isoGroup.remove(isoGroup.children[0]);
+  while (isoGroup.children.length) {
+    var c = isoGroup.children[0];
+    isoGroup.remove(c);
+    if (c.geometry) c.geometry.dispose();
+    if (c.material) c.material.dispose();
+  }
   if (!state.layers.iso) return;
-  SOURCES.forEach(function (s) {
-    var p = W2S(s.x, s.z);
-    [[28, 0xe5a13c, 0.13, 3.2], [31, 0xc9302c, 0.16, 4.5]].forEach(function (spec) {
-      var r = isoRadius(s, spec[0]);
-      if (r < 1.5 || r >= 43) return; // 全域到達時は場の色で十分
-      var cyl = new THREE.Mesh(
-        new THREE.CylinderGeometry(r, r, spec[3], 40, 1, true),
-        new THREE.MeshBasicMaterial({ color: spec[1], transparent: true, opacity: spec[2], side: THREE.DoubleSide, depthWrite: false })
-      );
-      cyl.position.set(p.x, spec[3] / 2, p.z);
-      isoGroup.add(cyl);
-      var ring = new THREE.Mesh(
-        new THREE.RingGeometry(r - 0.35, r, 48),
-        new THREE.MeshBasicMaterial({ color: spec[1], transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
-      );
-      ring.rotation.x = -Math.PI / 2;
-      ring.position.set(p.x, 0.25, p.z);
-      isoGroup.add(ring);
-    });
+  [[28, 0xc9862c, 0.85, 0.4], [31, 0xc9302c, 0.9, 0.7]].forEach(function (spec) {
+    var segs = buildContour(spec[0], 2);
+    if (!segs.length) return;
+    var pos = new Float32Array((segs.length / 4) * 6);
+    for (var k = 0, n = segs.length / 4; k < n; k++) {
+      var a = W2S(segs[k * 4], segs[k * 4 + 1]), b = W2S(segs[k * 4 + 2], segs[k * 4 + 3]);
+      pos[k * 6] = a.x;     pos[k * 6 + 1] = spec[3]; pos[k * 6 + 2] = a.z;
+      pos[k * 6 + 3] = b.x; pos[k * 6 + 4] = spec[3]; pos[k * 6 + 5] = b.z;
+    }
+    var g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    isoGroup.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({
+      color: spec[1], transparent: true, opacity: spec[2]
+    })));
   });
   if (state.spot) {
     SPOT_COOLERS.forEach(function (sc) {
