@@ -5,9 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>YELLOW Urban Twin</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%23f5c400'/%3E%3C/svg%3E" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -17,7 +14,7 @@ html, body {
     overflow: hidden;
     background: radial-gradient(120% 100% at 50% 0%, #f8f9fa 0%, #eceef1 55%, #e2e5e9 100%);
     color: #16181b;
-    font-family: 'Inter', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+    font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
     -webkit-font-smoothing: antialiased;
 }
 
@@ -43,20 +40,6 @@ html, body {
 }
 #loading.hide { opacity: 0; pointer-events: none; }
 .loading-inner { text-align: center; }
-.loading-mark {
-    font-size: 30px;
-    font-weight: 900;
-    letter-spacing: 0.26em;
-    margin-bottom: 26px;
-}
-.loading-mark::before {
-    content: "";
-    display: inline-block;
-    width: 13px;
-    height: 13px;
-    background: #f5c400;
-    margin-right: 14px;
-}
 .loading-bar {
     width: 240px;
     height: 2px;
@@ -76,7 +59,7 @@ html, body {
     color: #8b9098;
 }
 
-/* ---------- overlay (brand, hud, credit) ---------- */
+/* ---------- overlay (credit only) ---------- */
 #overlay {
     position: fixed;
     inset: 0;
@@ -86,90 +69,6 @@ html, body {
     transition: opacity 1.2s ease 0.3s;
 }
 #overlay.show { opacity: 1; }
-
-#brand {
-    position: absolute;
-    top: clamp(22px, 5vh, 48px);
-    left: clamp(22px, 4.5vw, 60px);
-}
-#brand .mark {
-    display: flex;
-    align-items: baseline;
-    gap: 16px;
-    font-size: clamp(40px, 6.2vw, 84px);
-    font-weight: 900;
-    letter-spacing: 0.06em;
-    line-height: 1;
-}
-#brand .mark::before {
-    content: "";
-    align-self: center;
-    width: 0.22em;
-    height: 0.22em;
-    background: #f5c400;
-    flex: none;
-}
-#brand .tagline {
-    margin: 18px 0 0 4px;
-    font-size: clamp(11px, 1.3vw, 14px);
-    font-weight: 600;
-    letter-spacing: 0.3em;
-    color: #5a616a;
-}
-#brand .tagline-ja {
-    margin: 8px 0 0 4px;
-    font-size: clamp(11px, 1.2vw, 13px);
-    letter-spacing: 0.18em;
-    color: #8b9098;
-}
-
-#hud {
-    position: absolute;
-    left: clamp(22px, 4.5vw, 60px);
-    bottom: clamp(24px, 6vh, 56px);
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
-    opacity: 0;
-    transition: opacity 0.8s ease;
-}
-#hud.show { opacity: 1; }
-#hud .scan-label {
-    font-size: 10px;
-    letter-spacing: 0.34em;
-    color: #8b9098;
-    margin-bottom: 6px;
-}
-#hud .scan-label::before {
-    content: "";
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    background: #f5c400;
-    margin-right: 9px;
-    animation: blink 1.7s ease-in-out infinite;
-}
-@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
-#hud-level {
-    font-size: clamp(30px, 4vw, 46px);
-    font-weight: 700;
-    line-height: 1.05;
-}
-#hud-name {
-    font-size: 10px;
-    letter-spacing: 0.3em;
-    color: #8b9098;
-    margin-top: 5px;
-}
-
-#hint {
-    position: absolute;
-    right: clamp(22px, 4.5vw, 60px);
-    bottom: clamp(52px, 9vh, 84px);
-    font-size: 10px;
-    letter-spacing: 0.22em;
-    color: #9aa0a8;
-    text-align: right;
-    line-height: 2;
-}
 
 #credit {
     position: absolute;
@@ -181,17 +80,12 @@ html, body {
 }
 #credit a { color: #8b9098; }
 
-@media (max-width: 768px) {
-    #hint { display: none; }
-    #brand .tagline { letter-spacing: 0.2em; }
-}
 </style>
 
 </head>
 <body>
 <div id="loading">
     <div class="loading-inner">
-        <div class="loading-mark">YELLOW</div>
         <div class="loading-bar"><div id="progress"></div></div>
         <div id="load-text">データ読み込み中…</div>
     </div>
@@ -200,17 +94,6 @@ html, body {
 <canvas id="scene"></canvas>
 
 <div id="overlay">
-    <div id="brand">
-        <div class="mark">YELLOW</div>
-        <div class="tagline">URBAN DIGITAL TWIN — SHIBUYA</div>
-        <div class="tagline-ja">都市を、データから設計する。</div>
-    </div>
-    <div id="hud">
-        <div class="scan-label">LEVEL SCAN</div>
-        <div id="hud-level">1F</div>
-        <div id="hud-name">ABOVE GROUND</div>
-    </div>
-    <div id="hint">DRAG — ORBIT<br />WHEEL / PINCH — ZOOM<br />DOUBLE CLICK — RESET</div>
     <div id="credit">
         出典:「歩行空間ネットワークデータ（東京都 渋谷南部）」(<a href="https://www.geospatial.jp/ckan/dataset/0401" target="_blank" rel="noopener">国土交通省</a>) を加工して作成 ／
         © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors
@@ -565,10 +448,8 @@ addEventListener("resize", () => {
   renderer.setSize(innerWidth, innerHeight);
 });
 
-/* ---------- floor scan (HUD + yellow highlight sweep) ---------- */
-const hudLevelEl = document.getElementById("hud-level");
-const hudNameEl = document.getElementById("hud-name");
-let scanIdx = LEVELS.indexOf(0), scanTimer = 0, hudShown = false;
+/* ---------- floor scan (yellow highlight sweep) ---------- */
+let scanIdx = LEVELS.indexOf(0), scanTimer = 0;
 const SCAN_PERIOD = 3.4;
 
 const cSpace = new THREE.Color(COL.space), cSpaceHi = new THREE.Color(COL.spaceHi);
@@ -581,13 +462,6 @@ function updateScan(dt) {
   if (scanTimer >= SCAN_PERIOD) {
     scanTimer = 0;
     scanIdx = (scanIdx + 1) % LEVELS.length;
-    hudLevelEl.textContent = levelLabel(LEVELS[scanIdx]);
-    hudNameEl.textContent = LEVELS[scanIdx] < 0 ? "UNDERGROUND" : "ABOVE GROUND";
-  }
-  if (!hudShown) {
-    hudShown = true;
-    document.getElementById("hud").classList.add("show");
-    hudLevelEl.textContent = levelLabel(LEVELS[scanIdx]);
   }
   const active = LEVELS[scanIdx];
   levelEntries.forEach(en => {
