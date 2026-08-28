@@ -186,8 +186,10 @@ for (const [slot, ids] of Object.entries(conf.slots || {})) {
   if (!vm) throw new Error(slot + ': このパネルに差し替え対象の動画がありません');
 
   const theme = (conf.theme || {})[slot];
+  const keepAll = list.every(id => (conf.keep || []).indexOf(id) !== -1);
   const host = '<div class="panel__embed" data-slot="' + slot + '"'
              + (theme ? ' data-theme="' + theme + '"' : '')
+             + (keepAll ? ' data-keep="1"' : '')
              + ' data-demo="' + list.join(',') + '"'
              + ' data-video="' + vm[1] + '"></div>';
   edits.push({ at: sa + body.indexOf(vm[0]), len: vm[0].length, html: host, slot, n: list.length });
@@ -235,7 +237,9 @@ if (used.length) {
     '/* パネル背景で 1枚HTML のデモを動かす。',
     '   iframe で隔離しているのでデモ側の CSS / JS はサイトに影響しない。',
     '   pointer-events:none によりスクロールとクリックはそのままサイトへ通る。 */',
-    '.panel__embed{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;}',
+    '/* 動画と同じ視差: 縦118%で敷いてスクロール量の18%だけ逆送りする（JS側で transform） */',
+    '.panel__embed{position:absolute;left:0;top:-9%;width:100%;height:118%;z-index:0;overflow:hidden;pointer-events:none;will-change:transform;}',
+    '@media (max-width:900px){ .panel__embed{top:0;height:100%;transform:none;} }',
     '/* デモが実際に動く環境では、ポスター静止画を最初から見せない。',
     '   ホストがデモと同じ背景を持ち、そこへデモの立ち上がり演出が描かれる */',
     '.panel__embed.is-live{background:#000;}',
@@ -316,6 +320,7 @@ if (used.length) {
   '    }',
   '    // 訪問ごとに最初に見えるデモを変える',
   '    slots.push({ el: hosts[i], ids: list, at: (Math.random() * list.length) | 0,',
+  '                 keep: hosts[i].getAttribute(\'data-keep\') === \'1\',',
   '                 ratio: 0, on: false, timer: 0 });',
   '  }',
   '  if (!slots.length) return;',
@@ -362,6 +367,9 @@ if (used.length) {
   '  }',
   '  function stop(slot) {',
   '    if (!slot.on) return;',
+  '    /* keep 指定のデモは破棄しない。画面外の iframe はブラウザが描画を止めるので',
+  '       負荷は増えず、育った状態（インクの模様など）が保たれ、戻ったとき続きから動く */',
+  '    if (slot.keep) return;',
   '    slot.on = false;',
   '    if (slot.timer) { clearInterval(slot.timer); slot.timer = 0; }',
   '    while (slot.el.firstChild) slot.el.removeChild(slot.el.firstChild);',
@@ -394,6 +402,29 @@ if (used.length) {
   '    arbitrate();',
   '  }, { threshold: [0, 0.05, 0.25, 0.5, 0.75, 1] });',
   '  for (var r = 0; r < slots.length; r++) io.observe(slots[r].el);',
+  '',
+  '  /* 視差: 背景動画と同じく、スクロール量の18%だけ逆送りして写真の固定背景と見え方を揃える */',
+  '  function embedParallax() {',
+  '    var vh = window.innerHeight;',
+  '    for (var i2 = 0; i2 < slots.length; i2++) {',
+  '      var el2 = slots[i2].el;',
+  '      var pn2 = el2.closest ? el2.closest(\'.panel\') : null;',
+  '      if (!pn2) continue;',
+  '      var r2 = pn2.getBoundingClientRect();',
+  '      var prog = (vh - r2.top) / (vh + r2.height);',
+  '      if (prog < 0) prog = 0; else if (prog > 1) prog = 1;',
+  '      el2.style.transform = \'translate3d(0,\' + ((prog - 0.5) * 0.18 * r2.height).toFixed(1) + \'px,0)\';',
+  '    }',
+  '  }',
+  '  var ticking2 = false;',
+  '  function onScroll2() {',
+  '    if (ticking2) return;',
+  '    ticking2 = true;',
+  '    requestAnimationFrame(function () { embedParallax(); ticking2 = false; });',
+  '  }',
+  '  window.addEventListener(\'scroll\', onScroll2, { passive: true });',
+  '  window.addEventListener(\'resize\', onScroll2, { passive: true });',
+  '  embedParallax();',
   '  }',                                                    // boot() ここまで',
   '',
   '  /* WebGPU は「navigator.gpu がある」だけでは動かない環境がある（アダプタ無効など）。',
