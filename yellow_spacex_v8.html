@@ -183,6 +183,10 @@ html[lang="en"] .lede{line-height:1.85;}
   animation:none;
 }
 .intro.is-gone{display:none;}
+/* WebGL演出用のキャンバス。演出が動くときは DOM のロゴを隠し、描画側のロゴを使う */
+.intro__fx{position:absolute;inset:0;width:100%;height:100%;display:none;}
+.intro--fx .intro__fx{display:block;}
+.intro--fx .intro__logo{display:none;}
 body.intro-lock{overflow:hidden;}
 
 @media (prefers-reduced-motion:reduce){
@@ -738,6 +742,7 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
 
 <!-- ═══════════════════ INTRO ═══════════════════ -->
 <div class="intro" id="intro" aria-hidden="true">
+  <canvas class="intro__fx" id="introFx"></canvas>
   <div class="intro__logo">YELLO<span>W</span></div>
 </div>
 <noscript><style>.intro{display:none !important}</style></noscript>
@@ -4154,9 +4159,10 @@ routeFromHash(location.hash);
 })();
 
 /* ═══════════════════ INTRO ═══════════════════
-   黒背景に中央ロゴ → ロゴが立ち上がったらオーバーレイを溶かしてサイトを見せる。
-   溶け始めと同時にヒーローの出現アニメーションを再生し直すので、
-   幕が引かれた瞬間にテキストが立ち上がる。 */
+   初回訪問: 黒背景の中央ロゴの背後から光が立ち上がる WebGL 演出。
+   三角形LEDが灯る → 光の帯が成長 → 文字のすき間から光条が放射（分光の虹）
+   → 光が収まりロゴが白く残る → 幕が引かれてサイトが現れる。
+   2回目以降 / WebGL2なし / prefers-reduced-motion / 失敗時は従来の表示。 */
 (function () {
   var intro = document.getElementById('intro');
   if (!intro) return;
@@ -4164,13 +4170,9 @@ routeFromHash(location.hash);
 
   document.body.classList.add('intro-lock');
 
-  // 同一セッションの2回目以降は間を短くする（初回だけフル尺）
   var seen = false;
   try { seen = sessionStorage.getItem('yellow_intro') === '1'; } catch (e) {}
   try { sessionStorage.setItem('yellow_intro', '1'); } catch (e) {}
-  var HOLD = seen ? 500 : 1650;
-  var GONE = seen ? 1300 : 2600;
-  if (seen) intro.classList.add('intro--quick');
 
   function replayReveal() {
     var page = document.querySelector('.page.active');
@@ -4181,14 +4183,250 @@ routeFromHash(location.hash);
       window.__rvObserve(rvs[i]);
     }
   }
+  var ended = false;
+  function finish(hold, gone) {
+    setTimeout(function () {
+      if (ended) return; ended = true;
+      intro.classList.add('is-out');
+      replayReveal();
+      document.body.classList.remove('intro-lock');
+    }, hold);
+    setTimeout(function () { intro.classList.add('is-gone'); }, gone);
+  }
 
-  setTimeout(function () {
-    intro.classList.add('is-out');
-    replayReveal();
-    document.body.classList.remove('intro-lock');
-  }, HOLD);
+  /* 2回目以降は間を短くした従来のロゴ表示（毎回フル演出は見せない） */
+  if (seen) { intro.classList.add('intro--quick'); finish(500, 1300); return; }
 
-  setTimeout(function () { intro.classList.add('is-gone'); }, GONE);
+  /* ── ロゴのアウトライン（brand/ と同一のパスデータ） ── */
+var LOGO_PATHS=[[0.00,"M75.12297833384193 710 323.0888007323772 316.53280439426305 572.4958803783949 710H628.5901739395789L348.53280439426305 267.93988404028073V0H297.6447970704913V269.93988404028073L18.587427525175464 710Z"],
+[1067.00,"M565.8825144949649 46.47543484894721V0H92.82239853524565V710H556.8825144949649V663.5245651510528H143.71040585901738V384.9139456820262H504.6475434848947V340.6447970704913H143.71040585901738V46.47543484894721Z"],
+[2099.00,"M92.82239853524565 0V710H143.71040585901738V46.47543484894721H567.6475434848948V0Z"],
+[3100.00,"M92.82239853524565 0V710H143.71040585901738V46.47543484894721H567.6475434848948V0Z"],
+[4101.00,"M376.3524565151053 -5Q302.46994202014037 -5 241.46994202014037 25.279371376258773Q180.46994202014037 55.558742752517546 136.24931339639915 106.77937137625878Q92.02868477265793 158 68.02868477265793 222.5Q44.02868477265792 287 44.02868477265792 355Q44.02868477265792 426 69.24931339639915 490.5Q94.46994202014037 555 139.69057064388159 605.5Q184.91119926762283 656 245.63182789136408 685.5Q306.3524565151053 715 377.2349710100702 715Q451.6762282575526 715 512.3968568812938 684.0Q573.1174855050351 653 616.8381141287764 601.0Q660.5587427525176 549 684.5587427525176 485.0Q708.5587427525176 421 708.5587427525176 354.55874275251756Q708.5587427525176 283 683.5587427525176 218.5Q658.5587427525176 154 613.3381141287764 103.5Q568.1174855050351 53 507.6762282575527 24.0Q447.2349710100702 -5 376.3524565151053 -5ZM95.35794934391211 355Q95.35794934391211 294.29508696978945 115.93103448275862 237.92828806835522Q136.50411962160513 181.56148916692098 174.0915471467806 137.53280439426305Q211.67897467195607 93.50411962160513 263.38388770216665 67.7104058590174Q315.0888007323772 41.916692096429664 376.79371376258774 41.916692096429664Q440.4986267927983 41.916692096429664 492.20353982300884 68.7104058590174Q543.9084528532194 95.50411962160513 580.716509002136 140.53280439426305Q617.5245651510528 185.56148916692098 637.377021666158 241.42828806835522Q657.2294781812634 297.29508696978945 657.2294781812634 355Q657.2294781812634 415.70491303021055 636.377021666158 471.85108330790354Q615.5245651510528 527.9972535855966 577.716509002136 572.2465669819958Q539.9084528532194 616.4958803783949 488.70353982300884 642.0689655172414Q437.4986267927983 667.6420506560879 376.79371376258774 667.6420506560879Q313.0888007323772 667.6420506560879 261.10451632590787 641.0689655172414Q209.1202319194385 614.4958803783949 172.31217577052183 569.467195605737Q135.50411962160513 524.438510833079 115.43103448275862 468.792340555386Q95.35794934391211 413.146170277693 95.35794934391211 355Z"],
+[5274.00,"M365.1147390906317 704.8825144949649H414.9139456820262L520.6475434848948 447.2664021971315L627.3811412877632 704.8825144949649H677.1803478791578L551.9453768690876 406.4986267927983L700.7650289899298 59.85932255111383L973.1721086359476 710H1028.707659444614L725.0027464144034 0H678.292340555386L521.6475434848948 365.1721086359475L364.561489166921 0H317.8510833079036L14.587427525175464 710H69.68172108635947L342.53005797985963 59.85932255111383L490.3497101007019 406.4986267927983Z"]];
+var LOGO_BBOX=[18.59,-5.00,6302.71,715.00];
+
+  var fxOk = false;
+  try {
+    var cv = document.getElementById('introFx');
+    var gl = cv.getContext('webgl2', { antialias: false, alpha: false, powerPreference: 'high-performance' });
+    if (!gl) throw new Error('no webgl2');
+    var coarse = window.matchMedia('(pointer: coarse)').matches;
+    var DPR = Math.min(coarse ? 1.4 : 1.75, window.devicePixelRatio || 1);
+
+    /* ロゴのマスクテクスチャ（白文字・黒地）を Path2D で描く */
+    var MW = 2048, PAD = 64;
+    var bw = LOGO_BBOX[2] - LOGO_BBOX[0], bh = LOGO_BBOX[3] - LOGO_BBOX[1];
+    var MH = Math.round((MW - PAD * 2) * bh / bw) + PAD * 2;
+    var mc = document.createElement('canvas');
+    mc.width = MW; mc.height = MH;
+    var mx2 = mc.getContext('2d');
+    var sc2 = (MW - PAD * 2) / bw;
+    mx2.setTransform(sc2, 0, 0, -sc2, PAD - LOGO_BBOX[0] * sc2, MH - PAD + LOGO_BBOX[1] * sc2);
+    mx2.fillStyle = '#fff';
+    for (var pi = 0; pi < LOGO_PATHS.length; pi++) {
+      mx2.save();
+      mx2.translate(LOGO_PATHS[pi][0], 0);
+      mx2.fill(new Path2D(LOGO_PATHS[pi][1]));
+      mx2.restore();
+    }
+
+    var VS = [
+      '#version 300 es',
+      'const vec2 P[3]=vec2[3](vec2(-1.,-1.),vec2(3.,-1.),vec2(-1.,3.));',
+      'void main(){gl_Position=vec4(P[gl_VertexID],0.,1.);}'
+    ].join('\n');
+
+    var FS = [
+      '#version 300 es',
+      'precision highp float;',
+      'out vec4 o;',
+      'uniform vec2 uRes;',
+      'uniform float uT;',
+      'uniform float uQ;',            // 1=デスクトップ 0=モバイル
+      'uniform sampler2D uMask;',
+      'uniform vec4 uLogo;',          // x,y,w,h（テクスチャ全体が画面に占める矩形, px）
+      '',
+      'float hash(vec2 p){p=fract(p*vec2(234.34,435.345));p+=dot(p,p+34.23);return fract(p.x*p.y);}',
+      'float ign(vec2 p){return fract(52.9829189*fract(.06711056*p.x+.00583715*p.y));}',
+      '',
+      '/* 7色。虹の順（赤→橙→黄→緑→青→藍→紫）を滑らかに */',
+      'vec3 spectral(float x){',
+      '  x=clamp(x,0.,1.);',
+      '  vec3 c=vec3(0.);',
+      '  c.r=smoothstep(.55,.35,x)*.9+smoothstep(.85,1.,x)*.6;',
+      '  c.g=smoothstep(.05,.35,x)*smoothstep(.75,.5,x);',
+      '  c.b=smoothstep(.4,.65,x);',
+      '  return clamp(c*1.15,0.,1.);}',
+      '',
+      'float maskAt(vec2 p){',
+      '  vec2 uv=(p-uLogo.xy)/uLogo.zw;',
+      '  if(uv.x<0.||uv.x>1.||uv.y<0.||uv.y>1.)return 0.;',
+      '  return texture(uMask,vec2(uv.x,1.-uv.y)).r;}',
+      '',
+      '/* 遮蔽判定用: ぼかした level を読む（影がやわらかい光条になる） */',
+      'float maskSoft(vec2 p){',
+      '  vec2 uv=(p-uLogo.xy)/uLogo.zw;',
+      '  if(uv.x<0.||uv.x>1.||uv.y<0.||uv.y>1.)return 0.;',
+      '  return textureLod(uMask,vec2(uv.x,1.-uv.y),3.6).r;}',
+      '',
+      'void main(){',
+      '  vec2 p=gl_FragCoord.xy;',
+      '  vec2 c=vec2(uRes.x*.5,uRes.y*.5);',
+      '  float t=uT;',
+      '  float H=uLogo.w;',                                      // ロゴ帯の高さ ≒ スケール基準
+      '  float W=uLogo.z;',
+      '',
+      '  /* ── 時間エンベロープ ── */',
+      '  float led_e=smoothstep(0.,.5,t)*(1.-smoothstep(1.35,2.1,t));',   // LED点灯期
+      '  float grow=smoothstep(.55,1.9,t);',                              // 光の帯の成長
+      '  float burst=smoothstep(1.15,2.05,t)*(1.-smoothstep(2.7,3.5,t));',// 放射・虹の最盛期
+      '  float settle=smoothstep(2.5,3.3,t);',                            // 収束
+      '  float fill=smoothstep(2.45,3.15,t);',                            // 文字が白へ',
+      '  float S=grow*(.3+.7*burst)*(1.-.93*settle);',                    // 光源の強さ',
+      '',
+      '  vec2 d=p-c;',
+      '  vec3 col=vec3(0.);',
+      '',
+      '  /* ── 三角形LED（横帯の中で中央から順に点灯） ── */',
+      '  if(led_e>0.001){',
+      '    float cell=H*.21;',
+      '    vec2 q=vec2(p.x/cell,p.y/(cell*.866));',
+      '    float row=floor(q.y),fy=q.y-row;',
+      '    float sh=mod(row,2.)*.5;',
+      '    float colm=floor(q.x-sh),fx=q.x-sh-colm;',
+      '    float up=step(fy,1.-abs(fx*2.-1.));',
+      '    vec2 id=vec2(colm*2.+up,row);',
+      '    float edge=up>.5?min(fy,(1.-abs(fx*2.-1.)-fy)*.7):min(1.-fy,(fy-(1.-abs(fx*2.-1.)))*.7);',
+      '    float h1=hash(id);',
+      '    float band=exp(-pow(abs(d.y)/(H*.62),2.))*exp(-pow(abs(d.x)/(W*.42),2.));',
+      '    float ccx=(colm+sh+.5)*cell;',                                   // セル中心（px）',
+      '    float t0=abs(ccx-c.x)/(W*1.05)+h1*.5;',                          // 中央→外へ',
+      '    float lt=t*1.35-t0-.25;',
+      '    float fl=smoothstep(0.,.08,lt)*(.55+.45*sin(lt*47.+h1*40.));',  // ちらつき点灯',
+      '    fl=max(fl,smoothstep(.25,.5,lt));',
+      '    vec3 lc=spectral(fract(h1*7.)/1.);',
+      '    col+=lc*fl*led_e*band*smoothstep(.05,.18,edge)*.5;',
+      '  }',
+      '',
+      '  /* ── アナモルフィックな光の帯（フレア核） ── */',
+      '  float ax=abs(d.x)/(W*(.12+.75*grow));',
+      '  float ay=abs(d.y)/(H*(.10+.42*grow));',
+      '  float core=exp(-ay*3.2)*exp(-ax*ax*1.6)*S*2.6;',
+      '  float bloom=exp(-length(vec2(d.x*.5,d.y))/(H*1.35))*S*.4;',
+      '  col+=vec3(1.,.98,.94)*(core+bloom);',
+      '',
+      '  /* ── 分光（虹）。帯の左右に回折のようにスペクトルが伸びる ── */',
+      '  float wing=smoothstep(W*.14,W*.5,abs(d.x))*(1.-smoothstep(W*.5,W*1.2,abs(d.x)));',
+      '  float hue=clamp((abs(d.x)-W*.14)/(W*1.1),0.,1.);',
+      '  col+=spectral(hue)*wing*exp(-abs(d.y)/(H*.46))*S*(.3+.7*burst);',
+      '',
+      '  /* ── ゴッドレイ：文字に遮られた光条が後ろから放射する ── */',
+      '  float seg=W*.30;',                                       // 線光源の半長',
+      '  vec2 q2=vec2(clamp(d.x,-seg,seg),0.);',                  // 線分上の最近点',
+      '  vec2 rd=d-q2;',
+      '  float L=length(rd)+1e-4;',
+      '  vec2 dir=rd/L;',
+      '  float steps=uQ>0.5?12.:8.;',
+      '  float jit=ign(p);',                                             // 縞の除去（規則ノイズ）',
+      '  float tr=1.;',
+      '  vec2 sp=c+q2;',
+      '  for(float s0=0.;s0<12.;s0+=1.){',
+      '    if(s0>=steps)break;',
+      '    vec2 smp=sp+dir*(L*(s0+jit)/steps);',
+      '    tr*=1.-maskSoft(smp)*.44;',
+      '  }',
+      '  float ray=exp(-L/(H*1.75))*tr*S;',
+      '  float ang=atan(rd.y,rd.x);',
+      '  float shim=.85+.15*sin(ang*22.-t*2.6);',                        // 光条のゆらぎ',
+      '  col+=vec3(1.,.97,.9)*ray*shim*(.11+.34*burst);',
+      '  col+=spectral(fract(ang/6.2832+.5))*ray*burst*.16;',              // 光条にも虹を薄く',
+      '',
+      '  /* ── ロゴ合成：シルエット → 白抜き。エッジにリムライト ── */',
+      '  float m=maskAt(p);',
+      '  float dil=0.;',
+      '  float r1=H*.045;',
+      '  dil+=maskAt(p+vec2(r1,0.));dil+=maskAt(p-vec2(r1,0.));',
+      '  dil+=maskAt(p+vec2(0.,r1));dil+=maskAt(p-vec2(0.,r1));',
+      '  dil+=maskAt(p+vec2(r1,r1)*.7);dil+=maskAt(p-vec2(r1,r1)*.7);',
+      '  float rim=clamp(dil/6.-m,0.,1.);',
+      '  vec3 letter=mix(vec3(.02),vec3(1.),fill);',
+      '  float lVis=smoothstep(.25,.9,t);',                        // 文字の出現',
+      '  col=mix(col,letter,m*lVis);',
+      '  col+=vec3(1.,.98,.95)*rim*(S*1.6+burst*.6)*lVis;',
+      '',
+      '  /* ── 仕上げ：トーンマップ + 粒子ノイズ + ビネット ── */',
+      '  col=1.-exp(-col*1.12);',
+      '  float vg=1.-.75*pow(length(d)/length(uRes*.55),2.);',
+      '  col*=max(vg,0.);',
+      '  col+=(hash(p+fract(t))-.5)*.012;',
+      '  o=vec4(col,1.);',
+      '}'
+    ].join('\n');
+
+    var mkShader = function (type, src) {
+      var s = gl.createShader(type);
+      gl.shaderSource(s, src); gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    };
+    var prog = gl.createProgram();
+    gl.attachShader(prog, mkShader(gl.VERTEX_SHADER, VS));
+    gl.attachShader(prog, mkShader(gl.FRAGMENT_SHADER, FS));
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+    gl.useProgram(prog);
+
+    var tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, gl.RED, gl.UNSIGNED_BYTE, mc);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+    var uRes = gl.getUniformLocation(prog, 'uRes');
+    var uT = gl.getUniformLocation(prog, 'uT');
+    var uLogo = gl.getUniformLocation(prog, 'uLogo');
+    gl.uniform1i(gl.getUniformLocation(prog, 'uMask'), 0);
+    gl.uniform1f(gl.getUniformLocation(prog, 'uQ'), coarse ? 0 : 1);
+
+    var texInkW = MW - PAD * 2;
+    var drawFx = function (t) {
+      var w = Math.floor(cv.clientWidth * DPR), h = Math.floor(cv.clientHeight * DPR);
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; gl.viewport(0, 0, w, h); }
+      /* DOMロゴ（clamp(34px,6vw,76px)）と同じ見た目サイズに合わせる */
+      var F = Math.min(76, Math.max(34, cv.clientWidth * 0.06)) * DPR;
+      var inkW = 6.2841 * F;
+      var s = inkW / texInkW;
+      gl.uniform4f(uLogo, (w - MW * s) / 2, (h - MH * s) / 2, MW * s, MH * s);
+      gl.uniform2f(uRes, w, h);
+      gl.uniform1f(uT, t);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+    };
+    drawFx(0);
+    fxOk = true;
+
+    intro.classList.add('intro--fx');
+    var t0 = performance.now();
+    var raf = 0;
+    (function loop() {
+      var t = (performance.now() - t0) / 1000;
+      drawFx(t);
+      if (t < 4.4 && !intro.classList.contains('is-gone')) raf = requestAnimationFrame(loop);
+    })();
+    /* GPUが途中で落ちたら即座に幕を上げる（真っ黒のまま待たせない） */
+    cv.addEventListener('webglcontextlost', function (ev) {
+      ev.preventDefault();
+      cancelAnimationFrame(raf);
+      intro.classList.remove('intro--fx');
+      finish(0, 900);
+    });
+    finish(3450, 4450);
+  } catch (e) { fxOk = false; }
+
+  /* WebGL2が使えない環境: 従来の黒背景+ロゴのフェード */
+  if (!fxOk) finish(1650, 2600);
 })();
 </script>
 </body>
