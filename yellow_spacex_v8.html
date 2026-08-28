@@ -4185,7 +4185,7 @@ var I18N = {
   }
 };
 
-var currentLang = 'ja';
+var currentLang = 'en';   // 既定は英語。選択があればそれを優先
 try {
   var saved = localStorage.getItem('yellow_lang');
   if (saved && I18N[saved]) currentLang = saved;

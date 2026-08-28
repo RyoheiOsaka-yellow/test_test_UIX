@@ -71,14 +71,14 @@ function ldFor(r) {
   const graph = [ORG_LD, {
     '@type': 'WebSite', '@id': ORIGIN + '/#website',
     url: ORIGIN + '/', name: '株式会社YELLOW',
-    publisher: { '@id': ORIGIN + '/#organization' }, inLanguage: 'ja',
+    publisher: { '@id': ORIGIN + '/#organization' }, inLanguage: ['en', 'ja'],
   }];
   const url = ORIGIN + (r.dir ? '/' + r.dir + '/' : '/');
   graph.push({
     '@type': 'WebPage', '@id': url + '#webpage', url: url,
-    name: r.title, description: r.desc,
+    name: r.en.title, description: r.en.desc,
     isPartOf: { '@id': ORIGIN + '/#website' },
-    about: { '@id': ORIGIN + '/#organization' }, inLanguage: 'ja',
+    about: { '@id': ORIGIN + '/#organization' }, inLanguage: ['en', 'ja'],
   });
   if (r.service) {
     graph.push({
@@ -302,11 +302,14 @@ for (const r of ROUTES) {
   }
 
   // 2c. head：title / description / canonical / OGP / hreflang / JSON-LD
-  h = h.replace(/<title>[^<]*<\/title>/, '<title>' + esc(r.title) + '</title>');
-  h = h.replace(/(<meta name="description" id="metaDesc" content=")[^"]*(")/, '$1' + esc(r.desc) + '$2');
+  //      サイトの既定言語は英語。head も英語で焼き、日本語は JA 切り替えで出す
+  h = h.replace(/<html lang="ja">/, '<html lang="en">');
+  h = h.replace(/<title>[^<]*<\/title>/, '<title>' + esc(r.en.title) + '</title>');
+  h = h.replace(/(<meta name="description" id="metaDesc" content=")[^"]*(")/, '$1' + esc(r.en.desc) + '$2');
   h = h.replace(/<link rel="canonical" href="[^"]*">/, '<link rel="canonical" href="' + url + '">');
-  h = h.replace(/<meta property="og:title" content="[^"]*">/, '<meta property="og:title" content="' + esc(r.title) + '">');
-  h = h.replace(/<meta property="og:description" content="[^"]*">/, '<meta property="og:description" content="' + esc(r.desc) + '">');
+  h = h.replace(/<meta property="og:title" content="[^"]*">/, '<meta property="og:title" content="' + esc(r.en.title) + '">');
+  h = h.replace(/<meta property="og:description" content="[^"]*">/, '<meta property="og:description" content="' + esc(r.en.desc) + '">');
+  h = h.replace(/<meta property="og:site_name" content="[^"]*">/, '<meta property="og:site_name" content="YELLOW Inc.">');
   h = h.replace(/<meta property="og:url" content="[^"]*">/, '<meta property="og:url" content="' + url + '">');
   h = h.replace(/<meta property="og:image" content="[^"]*">/, '<meta property="og:image" content="' + ORIGIN + '/og.png">');
   h = h.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, '<script type="application/ld+json">\n' + ldFor(r) + '\n</script>');
