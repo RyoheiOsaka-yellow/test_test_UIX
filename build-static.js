@@ -209,6 +209,20 @@ base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
     base = base.slice(0, a) + base.slice(b + B.length);
     // 外部ファイルを読ませる
     base = base.replace(/<div class="panel__embed" /g, '<div class="panel__embed" data-demo-base="/assets/demo/" ');
+    // three.js はサイト内に同梱し、CDN 待ちを無くす（単一ファイル版は CDN のまま）
+    {
+      const LIB_SRC = REPO + 'demos/lib/three/';
+      const LIB_DST = DEMO_DIR + 'lib/';
+      fs.mkdirSync(LIB_DST, { recursive: true });
+      for (const f of fs.readdirSync(LIB_SRC)) fs.copyFileSync(LIB_SRC + f, LIB_DST + f);
+      const CDN = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.180.0/three.module.min.js';
+      for (const f of fs.readdirSync(DEMO_DIR)) {
+        if (!f.endsWith('.html')) continue;
+        const p = DEMO_DIR + f;
+        const t = fs.readFileSync(p, 'utf8');
+        if (t.includes(CDN)) fs.writeFileSync(p, t.split(CDN).join('./lib/three.module.min.js'));
+      }
+    }
     console.log('デモを外部化:', n, '件 →', '/assets/demo/');
   }
 }
@@ -433,8 +447,17 @@ fs.writeFileSync(DIST + '.htaccess', `ErrorDocument 404 /404.html
 // Netlify 用
 fs.writeFileSync(DIST + '_headers', `/assets/*
   Cache-Control: public, max-age=31536000, immutable
+/assets/demo/*
+  Access-Control-Allow-Origin: *
 /*.html
   Cache-Control: public, max-age=0, must-revalidate
+`);
+
+// デモは sandbox iframe（不透明オリジン）から ES モジュールとして読まれるため CORS 許可が要る。
+// Netlify は上の _headers、XServer(Apache) はこの .htaccess が効く
+fs.writeFileSync(DIST + 'assets/demo/.htaccess', `<IfModule mod_headers.c>
+Header set Access-Control-Allow-Origin "*"
+</IfModule>
 `);
 
 console.log('\nrobots.txt / sitemap.xml / llms.txt / 404.html / og.png / .htaccess / _headers / assets を出力');
