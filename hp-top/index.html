@@ -295,6 +295,7 @@ function buildNetwork() {
     for (let i = 0; i < pts.length - 1; i++)
       if (nearStation(pts[i][0], pts[i][2]) && nearStation(pts[i + 1][0], pts[i + 1][2]))
         seg.push(...pts[i], ...pts[i + 1]);
+    if (pts.length >= 2 && pts.every(p => nearStation(p[0], p[2]))) registerFlowLink(netFlowLinks, pts.flat());
   });
 
   const lineGeo = new THREE.BufferGeometry();
@@ -366,10 +367,11 @@ async function buildCity() {
 /* ---------- rail lines ---------- */
 function buildRails() {
   const seg = [];
-  D["./data/urban/rails.json"].forEach(({ lv, p }) => {
+  D["./data/urban/rails.json"].forEach(({ c, lv, p }) => {
     const y = lv === "t" ? -22 : lv === "b" ? 6 : 0.8;
     for (let i = 0; i < p.length - 1; i++)
       seg.push(p[i][0], y, -p[i][1], p[i + 1][0], y, -p[i + 1][1]);
+    if (p.length >= 2) registerFlowLink(railFlowLinks, p.flatMap(v => [v[0], y, -v[1]]), c);
   });
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(seg), 3));
@@ -377,6 +379,125 @@ function buildRails() {
     geo,
     new THREE.LineBasicMaterial({ color: COL.rail, transparent: true, opacity: 0.5 })
   ));
+}
+
+/* ---------- animated data flows (multi-color particles) ---------- */
+const netFlowLinks = [];   // pedestrian network near the station
+const railFlowLinks = [];  // rail polylines, each with its real line color
+const FLOW_COLORS = ["#f5c400", "#00a8c9", "#ff7a3d", "#22b573", "#8a63d2", "#e8488a", "#f5c400"];
+
+function registerFlowLink(list, flat, color = null) {
+  const cum = [0];
+  for (let i = 3; i < flat.length; i += 3) {
+    const dx = flat[i] - flat[i - 3], dy = flat[i + 1] - flat[i - 2], dz = flat[i + 2] - flat[i - 1];
+    cum.push(cum[cum.length - 1] + Math.hypot(dx, dy, dz));
+  }
+  const len = cum[cum.length - 1];
+  if (len > 2) list.push({ pts: flat, cum, len, color });
+}
+
+const dotTexture = (() => {
+  const c = document.createElement("canvas");
+  c.width = c.height = 64;
+  const g = c.getContext("2d");
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 30);
+  grad.addColorStop(0, "rgba(255,255,255,1)");
+  grad.addColorStop(0.5, "rgba(255,255,255,0.9)");
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = grad;
+  g.beginPath();
+  g.arc(32, 32, 30, 0, Math.PI * 2);
+  g.fill();
+  return new THREE.CanvasTexture(c);
+})();
+
+class FlowSystem {
+  // loop=false: respawn on a random link when the end is reached (multi-color swarm)
+  // loop=true:  wrap around on the same link, keeping its per-link color (rail comets)
+  constructor(links, { count, size, opacity, speedMin, speedMax, colors = null, loop = false }) {
+    this.links = links;
+    this.speedMin = speedMin;
+    this.speedMax = speedMax;
+    this.loop = loop;
+    this.count = count;
+    const cdf = [];
+    let acc = 0;
+    links.forEach(l => { acc += l.len; cdf.push(acc); });
+    this.cdf = cdf;
+    this.total = acc;
+    this.pos = new Float32Array(count * 3);
+    const col = new Float32Array(count * 3);
+    const c = new THREE.Color();
+    this.parts = new Array(count);
+    for (let i = 0; i < count; i++) {
+      const p = this.spawn();
+      this.parts[i] = p;
+      c.set(colors ? colors[(Math.random() * colors.length) | 0] : links[p.li].color || "#888");
+      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
+    }
+    const geo = new THREE.BufferGeometry();
+    this.attr = new THREE.BufferAttribute(this.pos, 3);
+    this.attr.setUsage(THREE.DynamicDrawUsage);
+    geo.setAttribute("position", this.attr);
+    geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
+    this.obj = new THREE.Points(geo, new THREE.PointsMaterial({
+      size, map: dotTexture, vertexColors: true, transparent: true,
+      opacity, depthWrite: false, alphaTest: 0.05,
+    }));
+    model.add(this.obj);
+  }
+  pickLink() {
+    const r = Math.random() * this.total;
+    let lo = 0, hi = this.cdf.length - 1;
+    while (lo < hi) { const m = (lo + hi) >> 1; this.cdf[m] < r ? (lo = m + 1) : (hi = m); }
+    return lo;
+  }
+  spawn() {
+    const li = this.pickLink();
+    return {
+      li, d: Math.random() * this.links[li].len,
+      dir: Math.random() < 0.5 ? -1 : 1,
+      speed: this.speedMin + Math.random() * (this.speedMax - this.speedMin),
+    };
+  }
+  update(dt) {
+    for (let i = 0; i < this.count; i++) {
+      let p = this.parts[i];
+      let l = this.links[p.li];
+      p.d += p.dir * p.speed * dt;
+      if (p.d < 0 || p.d > l.len) {
+        if (this.loop) {
+          p.d = p.d < 0 ? l.len : 0;
+        } else {
+          const np = this.spawn();
+          np.speed = p.speed;
+          this.parts[i] = p = np;
+          l = this.links[p.li];
+        }
+      }
+      const { pts, cum } = l;
+      let s = 0;
+      while (s < cum.length - 2 && cum[s + 1] < p.d) s++;
+      const t = (p.d - cum[s]) / (cum[s + 1] - cum[s] || 1);
+      const a = s * 3, b = a + 3;
+      this.pos[i * 3] = pts[a] + (pts[b] - pts[a]) * t;
+      this.pos[i * 3 + 1] = pts[a + 1] + (pts[b + 1] - pts[a + 1]) * t;
+      this.pos[i * 3 + 2] = pts[a + 2] + (pts[b + 2] - pts[a + 2]) * t;
+    }
+    this.attr.needsUpdate = true;
+  }
+}
+
+const flowSystems = [];
+function buildFlows() {
+  if (netFlowLinks.length)
+    flowSystems.push(new FlowSystem(netFlowLinks, {
+      count: 850, size: 4.4, opacity: 0.95, speedMin: 9, speedMax: 24, colors: FLOW_COLORS,
+    }));
+  if (railFlowLinks.length)
+    flowSystems.push(new FlowSystem(railFlowLinks, {
+      count: 300, size: 7, opacity: 0.9, speedMin: 60, speedMax: 140, loop: true,
+    }));
 }
 
 /* ---------- orbit + zoom controls (custom, damped) ---------- */
@@ -509,6 +630,7 @@ function frame(now) {
   }
   applyCamera();
   updateScan(dt);
+  flowSystems.forEach(f => f.update(dt));
   renderer.render(scene, camera);
 }
 
@@ -523,6 +645,7 @@ function frame(now) {
     buildOutline(); await tick("駅外形を生成中…");
     buildRails(); await tick("鉄道路線を生成中…");
     await buildCity();
+    buildFlows();
     progressEl.style.width = "100%";
 
     model.scale.y = 0.012;
