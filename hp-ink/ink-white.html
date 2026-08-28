@@ -51,6 +51,7 @@ struct Input {
   idle_a: vec4f,
   idle_b: vec4f,
   idle_c: vec4f,
+  idle_d: vec4f,
 }
 
 fn index_of(p: vec2i, size: vec2u) -> u32 {
@@ -113,13 +114,16 @@ fn main(@builtin(global_invocation_id) id: vec3u) {
   let weight_a = emitter_weight(p, input.idle_a, aspect);
   let weight_b = emitter_weight(p, input.idle_b, aspect);
   let weight_c = emitter_weight(p, input.idle_c, aspect);
+  let weight_d = emitter_weight(p, input.idle_d, aspect);
   let time = f32(input.step) / 60.0;
   let tangent_a = vec2f(0.28 * 0.73 * cos(0.73 * time), 0.22 * 1.09 * cos(1.09 * time + 0.4));
   let tangent_b = vec2f(0.26 * 0.61 * cos(0.61 * time + 3.14159265), 0.24 * 0.97 * cos(0.97 * time + 2.1));
   let tangent_c = vec2f(0.24 * 0.53 * cos(0.53 * time + 1.3), 0.26 * 0.83 * cos(0.83 * time + 4.0));
+  let tangent_d = vec2f(0.27 * 0.43 * cos(0.43 * time + 2.6), 0.21 * 1.19 * cos(1.19 * time + 5.1));
   velocity += dt * (weight_a * (2.6 * tangent_a + 2.0 * vec2f(-tangent_a.y, tangent_a.x))
                   + weight_b * (2.6 * tangent_b - 2.0 * vec2f(-tangent_b.y, tangent_b.x))
-                  + weight_c * (2.6 * tangent_c + 2.0 * vec2f(-tangent_c.y, tangent_c.x)));
+                  + weight_c * (2.6 * tangent_c + 2.0 * vec2f(-tangent_c.y, tangent_c.x))
+                  + weight_d * (2.6 * tangent_d - 2.0 * vec2f(-tangent_d.y, tangent_d.x)));
 
   if (input.pointer_active > 0.0) {
     let weight = segment_weight(p, input.pointer_from, input.pointer_to, 0.002, aspect);
@@ -300,6 +304,7 @@ fn main(@builtin(global_invocation_id) id: vec3u) {
   color += vec4f(1.0, 0.0, 0.0, 0.0) * emitter_weight(p, input.idle_a, aspect) * 0.085;
   color += vec4f(0.0, 1.0, 0.0, 0.0) * emitter_weight(p, input.idle_b, aspect) * 0.08;
   color += vec4f(0.0, 0.0, 1.0, 0.0) * emitter_weight(p, input.idle_c, aspect) * 0.08;
+  color += vec4f(0.0, 0.0, 0.0, 1.0) * emitter_weight(p, input.idle_d, aspect) * 0.075;
   if (input.pointer_active > 0.0) {
     let weight = segment_weight(p, input.pointer_from, input.pointer_to, 0.002, aspect);
     color += input.pointer_color * weight * 0.26;
@@ -322,12 +327,12 @@ fn index_of(p: vec2i, size: vec2u) -> u32 {
   return u32(q.y) * size.x + u32(q.x);
 }
 
-fn sample_dye(p: vec2f) -> vec3f {
+fn sample_dye(p: vec2f) -> vec4f {
   let grid = clamp(p * vec2f(DYE_SIZE) - 0.5, vec2f(0), vec2f(DYE_SIZE) - 1.0);
   let cell = vec2i(floor(grid));
   let f = fract(grid);
-  let bottom = mix(dye[index_of(cell, DYE_SIZE)].rgb, dye[index_of(cell + vec2i(1, 0), DYE_SIZE)].rgb, f.x);
-  let top = mix(dye[index_of(cell + vec2i(0, 1), DYE_SIZE)].rgb, dye[index_of(cell + vec2i(1, 1), DYE_SIZE)].rgb, f.x);
+  let bottom = mix(dye[index_of(cell, DYE_SIZE)], dye[index_of(cell + vec2i(1, 0), DYE_SIZE)], f.x);
+  let top = mix(dye[index_of(cell + vec2i(0, 1), DYE_SIZE)], dye[index_of(cell + vec2i(1, 1), DYE_SIZE)], f.x);
   return mix(bottom, top, f.y);
 }
 
@@ -343,13 +348,15 @@ fn fragment_main(@builtin(position) position: vec4f) -> @location(0) vec4f {
 
   // Beer-Lambert absorption per ink against paper white, so overlapping inks
   // darken subtractively. Coefficients are -ln(ink color):
-  // yellow #F6C90E, blue #2563EB, green #21A85C.
+  // yellow #F6C90E, blue #2563EB, green #21A85C, red #D7263D.
   let absorb_yellow = vec3f(0.036, 0.238, 2.90);
   let absorb_blue   = vec3f(1.93, 0.947, 0.081);
   let absorb_green  = vec3f(2.05, 0.417, 1.02);
+  let absorb_red    = vec3f(0.171, 1.90, 1.43);
   let optical_depth = absorb_yellow * pigment.r
                     + absorb_blue   * pigment.g
-                    + absorb_green  * pigment.b;
+                    + absorb_green  * pigment.b
+                    + absorb_red    * pigment.a;
   let paper = vec3f(1.0, 1.0, 1.0);
   var color = paper * exp(-optical_depth);
 
@@ -469,7 +476,7 @@ function renderInk(ink, output) {
 
 function inputUniforms(ink, input) {
   const time = ink.step / 60;
-  const [a, b, c] = idleEmitters(ink.step);
+  const [a, b, c, d] = idleEmitters(ink.step);
   const sinceInput = ink.step - ink.lastInputStep;
   const idle =
     sinceInput < 90 ? 0.15 : 0.15 + 0.85 * Math.min(1, (sinceInput - 90) / 60);
@@ -484,12 +491,13 @@ function inputUniforms(ink, input) {
     pointer_from: input?.from ?? [0.5, 0.5],
     pointer_to: input?.to ?? [0.5, 0.5],
     pointer_velocity: pointerVelocity,
-    // The brush always carries sumi ink (b channel); the faster the stroke,
+    // The brush carries red ink (a channel); the faster the stroke,
     // the more pigment it sheds.
-    pointer_color: [0, 0, 0.4 + Math.min(1, Math.hypot(...pointerVelocity)) * 0.55, 1],
+    pointer_color: [0, 0, 0, 0.4 + Math.min(1, Math.hypot(...pointerVelocity)) * 0.55],
     idle_a: [...a, ramp * idle, 0.006],
     idle_b: [...b, ramp * idle, 0.0055],
     idle_c: [...c, ramp * idle, 0.0058],
+    idle_d: [...d, ramp * idle, 0.0056],
   };
 }
 
@@ -502,6 +510,7 @@ function idleEmitters(step) {
       0.5 + 0.24 * Math.sin(0.97 * t + 2.1),
     ],
     [0.5 + 0.24 * Math.sin(0.53 * t + 1.3), 0.5 + 0.26 * Math.sin(0.83 * t + 4.0)],
+    [0.5 + 0.27 * Math.sin(0.43 * t + 2.6), 0.5 + 0.21 * Math.sin(1.19 * t + 5.1)],
   ];
 }
 
