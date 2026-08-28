@@ -156,40 +156,6 @@ html[lang="en"] .lede{line-height:1.85;}
 .skiplink:focus-visible{transform:none;outline-offset:0;}
 
 /* ═══════════════════════════════════════════════════════════
-   INTRO（黒背景に中央ロゴ → サイトが現れる）
-   ═══════════════════════════════════════════════════════════ */
-.intro{
-  position:fixed;inset:0;z-index:200;background:#000;
-  display:flex;align-items:center;justify-content:center;
-}
-.intro__logo{
-  font-family:var(--font-logo);font-weight:300;color:var(--white);
-  font-size:clamp(34px,6vw,76px);letter-spacing:.42em;line-height:1;
-  padding-left:.42em;              /* 字間ぶんの右寄りを打ち消して光学中央に */
-  opacity:0;transform:scale(.94);
-  animation:introLogo 1.15s var(--ease) .18s forwards;
-}
-@keyframes introLogo{
-  to{opacity:1;transform:none;}
-}
-.intro--quick .intro__logo{animation-duration:.5s;animation-delay:0s;}
-.intro.is-out{
-  opacity:0;visibility:hidden;
-  transition:opacity .85s var(--ease),visibility .85s;
-}
-.intro.is-out .intro__logo{
-  opacity:0;transform:scale(1.04);
-  transition:opacity .6s var(--ease),transform .85s var(--ease);
-  animation:none;
-}
-.intro.is-gone{display:none;}
-body.intro-lock{overflow:hidden;}
-
-@media (prefers-reduced-motion:reduce){
-  .intro{display:none;}
-}
-
-/* ═══════════════════════════════════════════════════════════
    HEADER
    ═══════════════════════════════════════════════════════════ */
 .hdr{
@@ -736,22 +702,7 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
 <body>
 <a class="skiplink" href="#top" data-i18n="skip_link">本文へスキップ</a>
 
-<!-- ═══════════════════ INTRO ═══════════════════ -->
-<div class="intro" id="intro" aria-hidden="true">
-  <div class="intro__logo">YELLO<span>W</span></div>
-</div>
-<noscript><style>.intro{display:none !important}</style></noscript>
-<script>
-/* イントロの保険: 後続のスクリプトが何かで落ちても5秒で必ず幕を上げる */
-setTimeout(function () {
-  var i = document.getElementById('intro');
-  if (i && !i.classList.contains('is-out')) {
-    i.classList.add('is-out');
-    document.body.classList.remove('intro-lock');
-    setTimeout(function () { i.classList.add('is-gone'); }, 900);
-  }
-}, 5000);
-</script>
+
 
 
 <!-- ═══════════════════ HEADER ═══════════════════ -->
@@ -4153,43 +4104,7 @@ routeFromHash(location.hash);
   });
 })();
 
-/* ═══════════════════ INTRO ═══════════════════
-   黒背景に中央ロゴ → ロゴが立ち上がったらオーバーレイを溶かしてサイトを見せる。
-   溶け始めと同時にヒーローの出現アニメーションを再生し直すので、
-   幕が引かれた瞬間にテキストが立ち上がる。 */
-(function () {
-  var intro = document.getElementById('intro');
-  if (!intro) return;
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-  document.body.classList.add('intro-lock');
-
-  // 同一セッションの2回目以降は間を短くする（初回だけフル尺）
-  var seen = false;
-  try { seen = sessionStorage.getItem('yellow_intro') === '1'; } catch (e) {}
-  try { sessionStorage.setItem('yellow_intro', '1'); } catch (e) {}
-  var HOLD = seen ? 500 : 1650;
-  var GONE = seen ? 1300 : 2600;
-  if (seen) intro.classList.add('intro--quick');
-
-  function replayReveal() {
-    var page = document.querySelector('.page.active');
-    if (!page || !window.__rvObserve) return;
-    var rvs = page.querySelectorAll('.rv');
-    for (var i = 0; i < rvs.length; i++) {
-      rvs[i].classList.remove('in');
-      window.__rvObserve(rvs[i]);
-    }
-  }
-
-  setTimeout(function () {
-    intro.classList.add('is-out');
-    replayReveal();
-    document.body.classList.remove('intro-lock');
-  }, HOLD);
-
-  setTimeout(function () { intro.classList.add('is-gone'); }, GONE);
-})();
 </script>
 </body>
 </html>
