@@ -57,6 +57,7 @@ const MK = {
 };
 
 const warn = [];
+const demoNeeds = {};   // id → 'webgpu' など
 
 /* ───────── デモ HTML を <template> に入れられる形へ整える ───────── */
 function prepare(id) {
@@ -101,6 +102,9 @@ function prepare(id) {
   if (ext) warn.push(id + ': 外部読み込みがあります → ' + ext.slice(0, 3).join(' , '));
   if (!/<canvas|<svg|requestAnimationFrame|setInterval/.test(s))
     warn.push(id + ': 自動で動く要素が見当たりません（静止したままかもしれません）');
+
+  // WebGPU 依存のデモは対応ブラウザでだけ動かす（未対応ではポスターのまま）
+  if (/navigator\.gpu/.test(s)) demoNeeds[id] = 'webgpu';
 
   return s;
 }
@@ -180,7 +184,9 @@ for (const [slot, ids] of Object.entries(conf.slots || {})) {
   const vm = body.match(/<video class="panel__vid"[^>]*data-src="([^"]+)"[^>]*><\/video>/);
   if (!vm) throw new Error(slot + ': このパネルに差し替え対象の動画がありません');
 
+  const theme = (conf.theme || {})[slot];
   const host = '<div class="panel__embed" data-slot="' + slot + '"'
+             + (theme ? ' data-theme="' + theme + '"' : '')
              + ' data-demo="' + list.join(',') + '"'
              + ' data-video="' + vm[1] + '"></div>';
   edits.push({ at: sa + body.indexOf(vm[0]), len: vm[0].length, html: host, slot, n: list.length });
@@ -224,6 +230,17 @@ if (used.length) {
     '   ホストがデモと同じ背景を持ち、そこへデモの立ち上がり演出が描かれる */',
     '.panel__embed.is-live{background:#000;}',
     ...placeholderRules,
+    '/* 白背景デモ用: デモが動くときだけ、そのパネルの文字を黒系に反転する',
+    '   （デモが動かない環境ではポスター写真のまま白文字が維持される） */',
+    '.panel--light .panel__scrim{background:',
+    '  linear-gradient(to top,rgba(255,255,255,.9) 0%,rgba(255,255,255,.45) 34%,rgba(255,255,255,.03) 66%),',
+    '  linear-gradient(to right,rgba(255,255,255,.5) 0%,rgba(255,255,255,0) 55%);}',
+    '.panel--light .title,.panel--light .lede{color:#0b0d10;}',
+    '.panel--light .eyebrow{color:rgba(10,12,16,.72);}',
+    '.panel--light .eyebrow .nt,.panel--light .title .nt{color:#0b0d10;}',
+    '.panel--light .panel__idx{color:rgba(10,12,16,.55);}',
+    '.panel--light .btn{border-color:#0b0d10;color:#0b0d10;}',
+    '.panel--light .btn:hover,.panel--light .btn:focus-visible{background:#0b0d10;color:#fff;}',
     '.panel__embed iframe{',
     '  position:absolute;inset:0;width:100%;height:100%;border:0;display:block;',
     '  pointer-events:none;opacity:0;transition:opacity .25s ease;',
@@ -261,15 +278,32 @@ if (used.length) {
   '           + \'</head><body>\';',
   '  var TAIL = \'</body></html>\';',
   '',
-  '  // この環境ではデモが動く: ポスターを隠す下地を1フレーム目から出す',
-  '  for (var g = 0; g < hosts.length; g++) hosts[g].classList.add(\'is-live\');',
+  '  var NEEDS = ' + JSON.stringify(demoNeeds) + ';',
+  '  var needProbe = false;',
+  '  for (var n0 = 0; n0 < hosts.length; n0++) {',
+  '    var l0 = hosts[n0].getAttribute(\'data-demo\').split(\',\');',
+  '    for (var n1 = 0; n1 < l0.length; n1++) if (NEEDS[l0[n1].trim()] === \'webgpu\') needProbe = true;',
+  '  }',
+  '',
+  '  function boot(gpuOk) {',
+  '  function needsOk(id) {',
+  '    if (NEEDS[id] === \'webgpu\') return gpuOk;',
+  '    return true;',
+  '  }',
   '',
   '  var slots = [];',
   '  for (var i = 0; i < hosts.length; i++) {',
   '    var raw = hosts[i].getAttribute(\'data-demo\').split(\',\');',
   '    var list = [];',
-  '    for (var j = 0; j < raw.length; j++) { var s = raw[j].trim(); if (s) list.push(s); }',
-  '    if (!list.length) continue;',
+  '    for (var j = 0; j < raw.length; j++) { var s = raw[j].trim(); if (s && needsOk(s)) list.push(s); }',
+  '    if (!list.length) continue;',                       // 動かせるデモが無ければポスターのまま',
+  '    // この環境ではデモが動く: ポスターを隠す下地を1フレーム目から出す',
+  '    hosts[i].classList.add(\'is-live\');',
+  '    // 白背景デモのパネルは文字を黒系に反転',
+  '    if (hosts[i].getAttribute(\'data-theme\') === \'light\') {',
+  '      var pn = hosts[i].closest ? hosts[i].closest(\'.panel\') : null;',
+  '      if (pn) pn.classList.add(\'panel--light\');',
+  '    }',
   '    // 訪問ごとに最初に見えるデモを変える',
   '    slots.push({ el: hosts[i], ids: list, at: (Math.random() * list.length) | 0,',
   '                 ratio: 0, on: false, timer: 0 });',
@@ -350,6 +384,20 @@ if (used.length) {
   '    arbitrate();',
   '  }, { threshold: [0, 0.05, 0.25, 0.5, 0.75, 1] });',
   '  for (var r = 0; r < slots.length; r++) io.observe(slots[r].el);',
+  '  }',                                                    // boot() ここまで',
+  '',
+  '  /* WebGPU は「navigator.gpu がある」だけでは動かない環境がある（アダプタ無効など）。',
+  '     実際にアダプタが取れるかを確かめてから始める */',
+  '  if (!needProbe) { boot(false); }',
+  '  else if (!navigator.gpu || !navigator.gpu.requestAdapter) { boot(false); }',
+  '  else {',
+  '    var settled = false;',
+  '    var go = function (ok) { if (!settled) { settled = true; boot(ok); } };',
+  '    try {',
+  '      navigator.gpu.requestAdapter().then(function (a) { go(!!a); }, function () { go(false); });',
+  '      setTimeout(function () { go(false); }, 1500);',     // 応答が無い環境の保険',
+  '    } catch (e) { go(false); }',
+  '  }',
   '})();',
   MK.jsB].join('\n') + '\n';
 

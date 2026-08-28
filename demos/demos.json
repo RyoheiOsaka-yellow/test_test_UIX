@@ -5,7 +5,9 @@
     "home-hero": [
       "yellow-top"
     ],
-    "home-xbuild": [],
+    "home-xbuild": [
+      "inkwhite"
+    ],
     "home-xad": [],
     "home-xinteractive": [],
     "home-careers": [],
@@ -23,6 +25,10 @@
     "xinteractive-cap02": []
   },
   "placeholder": {
-    "home-hero": "radial-gradient(120% 100% at 50% 0%, #0a101d 0%, #04060c 55%, #020409 100%)"
+    "home-hero": "radial-gradient(120% 100% at 50% 0%, #0a101d 0%, #04060c 55%, #020409 100%)",
+    "home-xbuild": "#ffffff"
+  },
+  "theme": {
+    "home-xbuild": "light"
   }
 }

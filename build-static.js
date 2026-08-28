@@ -209,18 +209,27 @@ base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
     base = base.slice(0, a) + base.slice(b + B.length);
     // 外部ファイルを読ませる
     base = base.replace(/<div class="panel__embed" /g, '<div class="panel__embed" data-demo-base="/assets/demo/" ');
-    // three.js はサイト内に同梱し、CDN 待ちを無くす（単一ファイル版は CDN のまま）
+    // 外部ライブラリはサイト内に同梱し、CDN 待ちを無くす（単一ファイル版は CDN のまま）
     {
-      const LIB_SRC = REPO + 'demos/lib/three/';
+      const LIB_SRC = REPO + 'demos/lib/';
       const LIB_DST = DEMO_DIR + 'lib/';
-      fs.mkdirSync(LIB_DST, { recursive: true });
-      for (const f of fs.readdirSync(LIB_SRC)) fs.copyFileSync(LIB_SRC + f, LIB_DST + f);
-      const CDN = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.180.0/three.module.min.js';
+      (function copyTree(a, b) {
+        fs.mkdirSync(b, { recursive: true });
+        for (const e of fs.readdirSync(a, { withFileTypes: true })) {
+          if (e.isDirectory()) copyTree(a + e.name + '/', b + e.name + '/');
+          else fs.copyFileSync(a + e.name, b + e.name);
+        }
+      })(LIB_SRC, LIB_DST);
+      const LIB_MAP = {
+        'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.180.0/three.module.min.js': './lib/three/three.module.min.js',
+        'https://cdn.jsdelivr.net/npm/vgpu@0.3.1/+esm': './lib/vgpu/vgpu.esm.js',
+      };
       for (const f of fs.readdirSync(DEMO_DIR)) {
         if (!f.endsWith('.html')) continue;
         const p = DEMO_DIR + f;
-        const t = fs.readFileSync(p, 'utf8');
-        if (t.includes(CDN)) fs.writeFileSync(p, t.split(CDN).join('./lib/three.module.min.js'));
+        let t = fs.readFileSync(p, 'utf8');
+        for (const [cdn, local] of Object.entries(LIB_MAP)) t = t.split(cdn).join(local);
+        fs.writeFileSync(p, t);
       }
     }
     console.log('デモを外部化:', n, '件 →', '/assets/demo/');

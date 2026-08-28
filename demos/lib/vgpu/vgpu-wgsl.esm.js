@@ -1,0 +1,8 @@
+/**
+ * Bundled by jsDelivr using Rollup v4.62.2 and esbuild v0.28.1.
+ * Original file: /npm/@vgpu/wgsl@0.3.1/dist/index.js
+ *
+ * Do NOT use SRI with dynamically generated files! More information: https://www.jsdelivr.com/using-sri-with-dynamic-files
+ */
+function o(t){if(c(t))throw a();const e={version:1,mappings:[]},r={version:1,modules:[{path:"<runtime>",text:t}],diagnostics:[],sourceMap:e,cacheKey:i(t)};return{kind:"wgsl",wgsl:t,source:{text:t,path:"<runtime>",imports:[]},ast:r,sourceMap:e,diagnostics:[],cacheKey:r.cacheKey,entryPoints:s(t),stats:{lines:t.split(/\r?\n/).length,bytes:new TextEncoder().encode(t).byteLength,bindGroups:0}}}function i(t){let e=2166136261;for(let r=0;r<t.length;r++)e=Math.imul(e^t.charCodeAt(r),16777619);return{default:`vgpu-wgsl-1:${(e>>>0).toString(16).padStart(8,"0")}`}}function s(t){const e=[],r=/@(vertex|fragment|compute)\s+fn\s+([A-Za-z_][A-Za-z0-9_]*)/g;for(const n of t.matchAll(r))e.push(n[2]);return e}function c(t){const e=t.replace(/\/\*[\s\S]*?\*\//g,"").replace(/\/\/.*$/gm,"").trimStart();return e.startsWith("import ")||e.startsWith("import{")}function a(){const t=new Error("Runtime WGSL strings cannot contain import statements. Use a build-time loader or @vgpu/wgsl/runtime.");return t.name="VGPUWGSLRuntimeImportError",t.code="VGPU-WGSL-RUNTIME-IMPORT",t.severity="error",t.source="wgsl",t}export{o as compile};
+//# sourceMappingURL=/sm/923c46b38aab14628789246a075f8475e3e1355382462ae580e4e4c55918c46d.map
