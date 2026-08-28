@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>バイシクルフィールドサービス株式会社｜東京都内の出張自転車・車いす修理</title>
-<meta name="description" content="「走る」を、止めない。東京都内対応の出張自転車修理・車いす修理サービス。出張費・税込みの明朗会計、法人請求書払い対応。お電話一本でプロの整備士がお伺いします。">
+<meta name="description" content="駆けつける整備の力で、毎日の「走る」を支えていく。東京都内対応の出張自転車修理・車いす修理サービス。出張費・税込みの明朗会計、法人請求書払い対応。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -17,12 +17,12 @@
   <div class="header-inner">
     <a href="index.html" class="brand" aria-label="バイシクルフィールドサービス株式会社 トップページ">
       <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true">
-        <circle cx="24" cy="24" r="22" fill="#f0821e"/>
+        <circle cx="24" cy="24" r="22" fill="#0d0d0d"/>
         <g stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round">
           <circle cx="16" cy="29" r="7"/><circle cx="33" cy="29" r="7"/>
           <path d="M16 29 L23 17 L30 17 L33 29 M23 17 L25 29 L16 29 M25 29 L33 29"/>
         </g>
-        <circle cx="25" cy="29" r="2.2" fill="#fff"/>
+        <circle cx="25" cy="29" r="2.2" fill="#f0821e"/>
       </svg>
       <span class="brand-text">
         <span class="en">BFSERV</span><br>
@@ -32,11 +32,11 @@
 
     <nav class="global-nav" id="globalNav" aria-label="メインナビゲーション">
       <ul>
-        <li><a href="#news">ニュース</a></li>
-        <li><a href="#segment">事業領域</a></li>
-        <li><a href="#numbers">数字で見るBFSERV</a></li>
-        <li><a href="#price">料金</a></li>
-        <li><a href="#about">会社情報</a></li>
+        <li><a href="#bfserv-news">ニュース</a></li>
+        <li><a href="#business-segment">事業領域</a></li>
+        <li><a href="#service-quality">サービス品質</a></li>
+        <li><a href="#about-us">会社情報</a></li>
+        <li><a href="price-bicycle.html">料金表</a></li>
       </ul>
     </nav>
 
@@ -53,147 +53,253 @@
   </div>
 </header>
 
-<!-- ============ Hero ============ -->
-<section class="hero">
-  <div class="hero-bg" aria-hidden="true"></div>
+<main>
+<!-- ============ Hero(フルスクリーンメディア) ============ -->
+<section class="hero" id="hero">
+  <div class="hero-media" aria-hidden="true"><div class="scene"></div></div>
   <div class="hero-inner">
-    <p class="hero-label">On-site Repair Service / Tokyo</p>
-    <h1>
-      <span class="line"><span>「走る」を、</span></span>
-      <span class="line"><span><span class="accent">止めない。</span></span></span>
+    <h1 class="copy">
+      <span class="line"><span>駆けつける</span></span>
+      <span class="line"><span>整備の力で、毎日の</span></span>
+      <span class="line"><span>「走る」を支えていく。</span></span>
     </h1>
-    <p class="hero-lead">自転車も、車いすも、あなたの毎日の機動力。パンクや故障のその日に、プロの整備士が現場へ駆けつけ、その場で直す。東京都内の出張修理サービスです。</p>
-    <div class="hero-cta">
-      <a href="tel:0363219997" class="btn btn-primary">📞 03-6321-9997に電話する</a>
-      <a href="price-bicycle.html" class="btn btn-ghost">料金表を見る</a>
-    </div>
   </div>
-  <div class="scroll-cue" aria-hidden="true">
-    <span>Scroll</span>
-    <span class="bar"></span>
+  <div class="hero-actions">
+    <button type="button" class="button-scroll" id="scrollExplore">
+      <span>Scroll to explore</span>
+      <span class="s-arrow" aria-hidden="true">↓</span>
+    </button>
+    <button type="button" class="button-player" id="heroPlayer" aria-label="背景アニメーションを一時停止" aria-pressed="false">❚❚</button>
   </div>
 </section>
-
-<!-- ============ Marquee ============ -->
-<div class="marquee" aria-hidden="true">
-  <div class="marquee-track">
-    <span>On-site Bicycle Repair <i>/</i> Wheelchair Repair <i>/</i> Air Station <i>/</i> Tokyo <i>/</i></span>
-    <span>On-site Bicycle Repair <i>/</i> Wheelchair Repair <i>/</i> Air Station <i>/</i> Tokyo <i>/</i></span>
-  </div>
-</div>
 
 <!-- ============ News ============ -->
-<section class="section" id="news">
-  <div class="container">
-    <div class="section-head reveal">
-      <span class="en">News<span class="dot">.</span></span>
-      <span class="ja">お知らせ</span>
-    </div>
-    <div class="news-grid">
-      <a href="#" class="news-card reveal">
-        <div class="thumb"><img src="assets/img/news-1.svg" alt="" loading="lazy"></div>
-        <div class="body">
-          <time datetime="2026-08-01">2026.08.01</time>
-          <span class="cat">お知らせ</span>
-          <h3>コーポレートサイトをリニューアルしました</h3>
-        </div>
-      </a>
-      <a href="#" class="news-card reveal reveal-d1">
-        <div class="thumb"><img src="assets/img/news-2.svg" alt="" loading="lazy"></div>
-        <div class="body">
-          <time datetime="2026-07-15">2026.07.15</time>
-          <span class="cat">導入事例</span>
-          <h3>品川区の商業施設に電動空気入れ「エアステーション」を設置しました</h3>
-        </div>
-      </a>
-      <a href="#" class="news-card reveal reveal-d2">
-        <div class="thumb"><img src="assets/img/news-3.svg" alt="" loading="lazy"></div>
-        <div class="body">
-          <time datetime="2026-07-16">2026.07.16</time>
-          <span class="cat">サービス</span>
-          <h3>車いす出張修理の料金表を更新しました(横浜市・川崎市にも対応)</h3>
-        </div>
-      </a>
-      <a href="#" class="news-card reveal reveal-d3">
-        <div class="thumb"><img src="assets/img/news-4.svg" alt="" loading="lazy"></div>
-        <div class="body">
-          <time datetime="2026-06-03">2026.06.03</time>
-          <span class="cat">法人向け</span>
-          <h3>法人様向け 出張自転車修理・定期メンテナンスのご案内</h3>
-        </div>
-      </a>
+<section id="bfserv-news" class="section">
+  <div class="t-container news-layout">
+    <hgroup class="heading-hgroup reveal">
+      <p class="text-shoulder"><span class="deco-dot" aria-hidden="true"></span><span>BFSERV's News</span></p>
+      <h2 class="heading-hgroup__title">BFSERVの<br>新着ニュース</h2>
+    </hgroup>
+    <div>
+      <ul class="list-news-thumbnail reveal">
+        <li>
+          <a href="#">
+            <span class="thumb"><img src="assets/img/news-1.svg" alt="" loading="lazy"></span>
+            <span>
+              <span class="n-title">コーポレートサイトをリニューアルしました</span>
+              <span class="n-meta"><span class="n-cat">お知らせ</span><time class="n-date" datetime="2026-08-01">2026.08.01</time></span>
+            </span>
+          </a>
+        </li>
+        <li>
+          <a href="#">
+            <span class="thumb"><img src="assets/img/news-2.svg" alt="" loading="lazy"></span>
+            <span>
+              <span class="n-title">品川区の商業施設に電動空気入れ「エアステーション」を設置しました</span>
+              <span class="n-meta"><span class="n-cat">導入事例</span><time class="n-date" datetime="2026-07-15">2026.07.15</time></span>
+            </span>
+          </a>
+        </li>
+        <li>
+          <a href="#">
+            <span class="thumb"><img src="assets/img/news-3.svg" alt="" loading="lazy"></span>
+            <span>
+              <span class="n-title">車いす出張修理の料金表を更新しました(横浜市・川崎市にも対応)</span>
+              <span class="n-meta"><span class="n-cat">サービス</span><time class="n-date" datetime="2026-07-16">2026.07.16</time></span>
+            </span>
+          </a>
+        </li>
+        <li>
+          <a href="#">
+            <span class="thumb"><img src="assets/img/news-4.svg" alt="" loading="lazy"></span>
+            <span>
+              <span class="n-title">法人様向け 出張自転車修理・定期メンテナンスのご案内</span>
+              <span class="n-meta"><span class="n-cat">法人向け</span><time class="n-date" datetime="2026-06-03">2026.06.03</time></span>
+            </span>
+          </a>
+        </li>
+      </ul>
+      <div class="news-more reveal">
+        <a href="#" class="button-pill"><span>すべてのニュース</span><span class="p-arrow" aria-hidden="true">→</span></a>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- ============ Business Segment ============ -->
-<section class="section alt segment-section" id="segment">
-  <div class="container">
-    <div class="segment-head-row">
-      <div class="section-head reveal" style="margin-bottom:0">
-        <span class="en">Business<br>Segment<span class="dot">.</span></span>
-        <span class="ja">事業領域</span>
-        <p class="desc">「移動」を支える4つの事業。個人のお客様から法人・施設のお客様まで、現場に駆けつけるフィールドサービスで応えます。</p>
+<!-- ============ Business Segment(01-04切替) ============ -->
+<section id="business-segment" class="section -tight">
+  <div class="t-container">
+    <hgroup class="heading-hgroup reveal">
+      <p class="text-shoulder"><span class="deco-dot" aria-hidden="true"></span><span>Business Segment</span></p>
+      <h2 class="heading-hgroup__title">「移動」を支える<br>4つの事業領域</h2>
+    </hgroup>
+    <div class="segment-layout">
+      <div class="segment-list reveal" id="segmentList">
+        <div class="segment-item active" data-img="0">
+          <button type="button" aria-expanded="true">
+            <span class="seg-no">01</span>
+            <span class="seg-title">出張自転車修理<br>サービス</span>
+          </button>
+          <div class="segment-desc">
+            <div class="inner">
+              <div class="m-img"><img src="assets/img/service-bicycle.svg" alt="" loading="lazy"></div>
+              <p>パンク・タイヤ・ブレーキ・変速・チェーン・カギまで、ご指定の場所でその場で修理。電動アシストやe-バイクにも対応し、法人様の定期メンテナンスも承ります。</p>
+              <a href="price-bicycle.html" class="button-pill"><span>料金表を見る</span><span class="p-arrow" aria-hidden="true">→</span></a>
+            </div>
+          </div>
+        </div>
+        <div class="segment-item" data-img="1">
+          <button type="button" aria-expanded="false">
+            <span class="seg-no">02</span>
+            <span class="seg-title">出張車いす修理<br>サービス</span>
+          </button>
+          <div class="segment-desc">
+            <div class="inner">
+              <div class="m-img"><img src="assets/img/service-wheelchair.svg" alt="" loading="lazy"></div>
+              <p>各メーカーの車いすの修理・部品交換・メンテナンスに対応。パンク修理からノーパンクタイヤ化まで、大切な移動手段を守ります。東京都内のほか川崎市・横浜市にも対応。</p>
+              <a href="price-wheelchair.html" class="button-pill"><span>料金表を見る</span><span class="p-arrow" aria-hidden="true">→</span></a>
+            </div>
+          </div>
+        </div>
+        <div class="segment-item" data-img="2">
+          <button type="button" aria-expanded="false">
+            <span class="seg-no">03</span>
+            <span class="seg-title">電動空気入れ<br>エアステーション</span>
+          </button>
+          <div class="segment-desc">
+            <div class="inner">
+              <div class="m-img"><img src="assets/img/service-airstation.svg" alt="" loading="lazy"></div>
+              <p>マンション・商業施設・駐輪場向けの電動空気入れの販売・設置工事・アフターサポート。国産製品を取り扱い、設置後の保守まで一貫対応します。</p>
+              <a href="#contact" class="button-pill"><span>導入のご相談</span><span class="p-arrow" aria-hidden="true">→</span></a>
+            </div>
+          </div>
+        </div>
+        <div class="segment-item" data-img="3">
+          <button type="button" aria-expanded="false">
+            <span class="seg-no">04</span>
+            <span class="seg-title">法人向け<br>サービス</span>
+          </button>
+          <div class="segment-desc">
+            <div class="inner">
+              <div class="m-img"><img src="assets/img/service-corporate.svg" alt="" loading="lazy"></div>
+              <p>ノーパンクタイヤ仕様の電動アシスト自転車販売、2段式・スライドラック等の駐輪場ラック修理・メンテナンスなど、法人様の設備・車両管理をトータルで支援します。</p>
+              <a href="#contact" class="button-pill"><span>法人のご相談</span><span class="p-arrow" aria-hidden="true">→</span></a>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="carousel-ctrl reveal">
-        <button type="button" id="segPrev" aria-label="前のカードへ">←</button>
-        <button type="button" id="segNext" aria-label="次のカードへ">→</button>
+      <div class="segment-visual reveal" aria-hidden="true">
+        <div class="image-rounded" id="segmentVisual">
+          <img src="assets/img/service-bicycle.svg" alt="" class="active">
+          <img src="assets/img/service-wheelchair.svg" alt="" loading="lazy">
+          <img src="assets/img/service-airstation.svg" alt="" loading="lazy">
+          <img src="assets/img/service-corporate.svg" alt="" loading="lazy">
+        </div>
       </div>
-    </div>
-
-    <div class="segment-track" id="segTrack">
-      <article class="segment-card">
-        <span class="no">01</span>
-        <div class="thumb"><img src="assets/img/service-bicycle.svg" alt="出張自転車修理サービス" loading="lazy"></div>
-        <div class="body">
-          <span class="en-label">Bicycle Repair</span>
-          <h3>出張自転車修理サービス</h3>
-          <p>パンク・タイヤ・ブレーキ・変速・チェーン・カギまで、ご指定の場所でその場で修理。電動アシストやe-バイクにも対応し、法人様の定期メンテナンスも承ります。</p>
-          <a href="price-bicycle.html" class="link">料金表を見る <span class="arrow">→</span></a>
-        </div>
-      </article>
-      <article class="segment-card">
-        <span class="no">02</span>
-        <div class="thumb"><img src="assets/img/service-wheelchair.svg" alt="出張車いす修理サービス" loading="lazy"></div>
-        <div class="body">
-          <span class="en-label">Wheelchair Repair</span>
-          <h3>出張車いす修理サービス</h3>
-          <p>各メーカーの車いすの修理・部品交換・メンテナンスに対応。パンク修理からノーパンクタイヤ化まで、大切な移動手段を守ります。東京都内のほか川崎市・横浜市にも対応。</p>
-          <a href="price-wheelchair.html" class="link">料金表を見る <span class="arrow">→</span></a>
-        </div>
-      </article>
-      <article class="segment-card">
-        <span class="no">03</span>
-        <div class="thumb"><img src="assets/img/service-airstation.svg" alt="電動空気入れエアステーション" loading="lazy"></div>
-        <div class="body">
-          <span class="en-label">Air Station</span>
-          <h3>電動空気入れ「エアステーション」</h3>
-          <p>マンション・商業施設・駐輪場向けの電動空気入れの販売・設置工事・アフターサポート。国産製品を取り扱い、設置後の保守まで一貫対応します。</p>
-          <a href="#contact" class="link">導入のご相談 <span class="arrow">→</span></a>
-        </div>
-      </article>
-      <article class="segment-card">
-        <span class="no">04</span>
-        <div class="thumb"><img src="assets/img/service-corporate.svg" alt="法人向けサービス" loading="lazy"></div>
-        <div class="body">
-          <span class="en-label">For Business</span>
-          <h3>法人向けサービス</h3>
-          <p>ノーパンクタイヤ仕様の電動アシスト自転車販売、2段式・スライドラック等の駐輪場ラック修理・メンテナンスなど、法人様の設備・車両管理をトータルで支援します。</p>
-          <a href="#contact" class="link">法人のご相談 <span class="arrow">→</span></a>
-        </div>
-      </article>
     </div>
   </div>
 </section>
 
-<!-- ============ In Numbers ============ -->
-<section class="section numbers-section" id="numbers">
-  <div class="container">
-    <div class="section-head center reveal">
-      <span class="en">BFSERV in Numbers<span class="dot">.</span></span>
-      <span class="ja">数字で見るBFSERV</span>
+<!-- ============ Service & Quality(T&I風 2項目) ============ -->
+<section id="service-quality" class="section">
+  <div class="t-container">
+    <hgroup class="heading-hgroup reveal">
+      <p class="text-shoulder"><span class="deco-dot" aria-hidden="true"></span><span>Service &amp; Quality</span></p>
+      <h2 class="heading-hgroup__title">現場で応える、<br>整備の技術と品質</h2>
+    </hgroup>
+    <div class="ti-list">
+      <div class="ti-item reveal">
+        <div>
+          <h3 class="ti-title">その場で完結する出張整備</h3>
+          <p>作業時間はパンク修理で20〜30分。工具・部品を積んだサービスカーで現場に駆けつけ、ご自宅・職場・施設の駐輪場所で作業を完結させます。お店への持ち込みは必要ありません。</p>
+          <a href="price-bicycle.html" class="button-pill"><span>修理メニューを見る</span><span class="p-arrow" aria-hidden="true">→</span></a>
+        </div>
+        <div class="image-rounded"><img src="assets/img/service-bicycle.svg" alt="出張整備のイメージ" loading="lazy"></div>
+      </div>
+      <div class="ti-item reveal">
+        <div>
+          <h3 class="ti-title">明朗会計へのこだわり</h3>
+          <p>表示料金はすべて出張費・消費税込み。作業前に必ず料金をご説明し、ご了承をいただいてから修理に入ります。国産メーカーの交換部品を中心に、品質にもこだわっています。</p>
+          <a href="price-wheelchair.html" class="button-pill"><span>料金の考え方を見る</span><span class="p-arrow" aria-hidden="true">→</span></a>
+        </div>
+        <div class="image-rounded"><img src="assets/img/news-2.svg" alt="明朗会計のイメージ" loading="lazy"></div>
+      </div>
     </div>
-    <div class="numbers-grid">
+  </div>
+</section>
+
+<!-- ============ About Us(スクロール連動エレベーター) ============ -->
+<section id="about-us" class="section -tight">
+  <div class="t-container about-layout">
+    <div class="about-sticky">
+      <hgroup class="heading-hgroup reveal">
+        <p class="text-shoulder"><span class="deco-dot" aria-hidden="true"></span><span>About Us</span></p>
+        <h2 class="heading-hgroup__title">会社情報と<br>ご利用のご案内</h2>
+      </hgroup>
+      <div class="about-pagination" aria-hidden="true">
+        <span class="cur" id="aboutCur">01</span>
+        <span class="total">/ 03</span>
+        <span class="dots" id="aboutDots"><i class="on"></i><i></i><i></i></span>
+      </div>
+    </div>
+    <div class="about-panels" id="aboutPanels">
+      <div class="about-panel reveal" data-idx="1">
+        <p class="p-no">01</p>
+        <h3 class="p-title">会社概要</h3>
+        <p>2012年の設立以来、東京都内を中心に「移動を止めない」フィールドサービスを提供してきました。</p>
+        <div class="panel-embed">
+          <table class="company-table">
+            <tr><th>会社名</th><td>バイシクルフィールドサービス株式会社<br><span style="font-size:12px;color:var(--c-gray)">Bicycle Field Service Co., Ltd.</span></td></tr>
+            <tr><th>設立</th><td>2012年3月30日</td></tr>
+            <tr><th>資本金</th><td>9,900,000円</td></tr>
+            <tr><th>所在地</th><td>〒141-0032 東京都品川区大崎2-6-13</td></tr>
+            <tr><th>電話番号</th><td><a href="tel:0363219997" style="font-weight:700">03-6321-9997</a></td></tr>
+            <tr><th>事業内容</th><td>出張自転車修理サービス/出張車いす修理サービス/電動空気入れエアステーションの販売・設置・保守/電動アシスト自転車販売(法人向け)/駐輪場ラック修理・メンテナンス</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="about-panel reveal" data-idx="2">
+        <p class="p-no">02</p>
+        <h3 class="p-title">ご依頼の流れ</h3>
+        <p>お電話一本、最短4ステップ。作業前に料金を確定するので、追加費用の心配はありません。</p>
+        <div class="panel-embed">
+          <div class="flow-list">
+            <div class="flow-item"><span class="no">01</span><div><h4>お電話・フォームでご相談</h4><p>症状・車種・ご住所をお知らせください。概算料金をその場でご案内します。</p></div></div>
+            <div class="flow-item"><span class="no">02</span><div><h4>訪問日時を決定</h4><p>ご都合のよい日時を調整します。天候により作業が難しい場合は、ご相談のうえ日程を変更させていただくことがあります。</p></div></div>
+            <div class="flow-item"><span class="no">03</span><div><h4>お伺いして修理</h4><p>プロの整備士がご指定の場所で作業。作業前に料金を確定し、ご了承をいただいてから修理します。</p></div></div>
+            <div class="flow-item"><span class="no">04</span><div><h4>お支払い</h4><p>現金・カード・電子マネーでその場で決済。法人様は請求書払いにも対応します。</p></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="about-panel reveal" data-idx="3">
+        <p class="p-no">03</p>
+        <h3 class="p-title">お支払い方法</h3>
+        <p>個人のお客様から法人・施設のお客様まで、柔軟なお支払い方法をご用意しています。</p>
+        <div class="panel-embed">
+          <div class="pay-list">
+            <div class="pay-item">
+              <h4>現金・カード・電子マネー <span class="who">個人・法人</span></h4>
+              <p>各種クレジットカードブランド・電子マネーに対応しています。その場でスムーズにお支払いいただけます。</p>
+            </div>
+            <div class="pay-item">
+              <h4>請求書・電子請求書 <span class="who">法人</span></h4>
+              <p>法人様・個人事業主様には請求書・電子請求書でのお支払いをご用意。定期メンテナンス契約もご相談ください。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BFSERV in Numbers ============ -->
+<section id="bfserv-numbers" class="section">
+  <div class="t-container numbers-layout">
+    <hgroup class="heading-hgroup reveal" style="margin-bottom:0">
+      <p class="text-shoulder"><span class="deco-dot" aria-hidden="true"></span><span>BFSERV in Numbers</span></p>
+      <h2 class="heading-hgroup__title">数字でみる<br>BFSERVの<br>いま</h2>
+    </hgroup>
+    <div class="numbers-list">
       <div class="number-item reveal">
         <div class="label">設立</div>
         <div class="value"><span class="count" data-count="2012" data-plain>0</span><span class="unit">年</span></div>
@@ -202,199 +308,113 @@
       <div class="number-item reveal reveal-d1">
         <div class="label">出張対応エリア</div>
         <div class="value"><span class="count" data-count="9">0</span><span class="unit">区+</span></div>
-        <div class="note">東京都内・近隣地域にも対応</div>
+        <div class="note">品川・港・渋谷・目黒・大田・世田谷・千代田・中央・江東ほか</div>
       </div>
       <div class="number-item reveal reveal-d2">
         <div class="label">修理メニュー</div>
         <div class="value"><span class="count" data-count="60">0</span><span class="unit">種類+</span></div>
-        <div class="note">パンクからカギ・部品交換まで</div>
-      </div>
-      <div class="number-item reveal reveal-d3">
-        <div class="label">パンク修理</div>
-        <div class="value"><span class="count" data-count="3000">0</span><span class="unit">円〜</span></div>
-        <div class="note">出張費・消費税込み</div>
+        <div class="note">パンク修理3,000円〜(出張費・税込み)</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============ Price digest ============ -->
-<section class="section price-band" id="price">
-  <div class="container">
-    <div class="section-head center reveal">
-      <span class="en">Price<span class="dot">.</span></span>
-      <span class="ja">料金</span>
-      <p class="desc"><span class="tax-badge">表示料金はすべて 出張費・消費税込み</span></p>
-    </div>
-    <div class="price-cards">
-      <div class="price-card reveal">
-        <h3>自転車パンク修理</h3>
-        <div class="cat">タイヤ1本分・チェック込み</div>
-        <div class="price">3,000<span class="unit">円</span></div>
-        <div class="note">虫ゴム交換(前後分)含む/作業時間 20〜30分</div>
-      </div>
-      <div class="price-card orange reveal reveal-d1">
-        <h3>チューブ交換(前輪)</h3>
-        <div class="cat">シティサイクル・小径車</div>
-        <div class="price">6,400<span class="unit">円〜</span></div>
-        <div class="note">英式バルブ用/部品代・作業費込み</div>
-      </div>
-      <div class="price-card green reveal reveal-d2">
-        <h3>車いすパンク修理</h3>
-        <div class="cat">タイヤ片側1本分</div>
-        <div class="price">5,900<span class="unit">円</span></div>
-        <div class="note">2カ所目以降 +300円</div>
-      </div>
-    </div>
-    <div class="price-more reveal">
-      <a href="price-bicycle.html" class="btn btn-dark">自転車修理の料金表</a>
-      <a href="price-wheelchair.html" class="btn btn-primary">車いす修理の料金表</a>
-    </div>
+<!-- ============ Our Business(横スクロール) ============ -->
+<section id="our-business" class="section -tight" style="padding-bottom:60px">
+  <div class="t-container ob-head-row" style="margin-bottom:40px">
+    <hgroup class="heading-hgroup reveal" style="margin-bottom:0">
+      <p class="text-shoulder"><span class="deco-dot" aria-hidden="true"></span><span>Our Business</span></p>
+      <h2 class="heading-hgroup__title">BFSERVの<br>商品やサービス</h2>
+    </hgroup>
+    <p class="scroll-hint reveal">Scrollable</p>
   </div>
-</section>
-
-<!-- ============ 対応エリア ============ -->
-<section class="section area-band" id="area">
-  <div class="container">
-    <div class="section-head reveal">
-      <span class="en">Service Area<span class="dot">.</span></span>
-      <span class="ja">出張対応エリア</span>
-    </div>
-    <div class="reveal">
-      <p class="area-sub">出張自転車修理(東京都内)</p>
-      <div class="area-chips">
-        <span class="area-chip">品川区</span><span class="area-chip">港区</span><span class="area-chip">渋谷区</span>
-        <span class="area-chip">目黒区</span><span class="area-chip">大田区</span><span class="area-chip">世田谷区</span>
-        <span class="area-chip">千代田区</span><span class="area-chip">中央区</span><span class="area-chip">江東区</span>
-        <span class="area-chip">その他地域</span>
-      </div>
-      <p class="area-note">※ どのエリアも料金は共通です(出張費・税込み)。</p>
-      <p class="area-sub">出張車いす修理</p>
-      <div class="area-chips">
-        <span class="area-chip">東京都内</span><span class="area-chip">神奈川県 川崎市内</span>
-        <span class="area-chip">神奈川県 横浜市内</span><span class="area-chip">上記の近隣地域</span>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ============ About(01/02/03) ============ -->
-<section class="section alt" id="about">
-  <div class="container">
-    <div class="section-head reveal">
-      <span class="en">About Us<span class="dot">.</span></span>
-      <span class="ja">会社情報・ご利用案内</span>
-    </div>
-    <div class="about-wrap reveal">
-      <div class="about-tabs" role="tablist" aria-label="会社情報の切り替え">
-        <button class="about-tab" role="tab" aria-selected="true" aria-controls="panel1" id="tab1">
-          <span class="idx">01</span><span class="t">会社概要</span>
-        </button>
-        <button class="about-tab" role="tab" aria-selected="false" aria-controls="panel2" id="tab2">
-          <span class="idx">02</span><span class="t">ご依頼の流れ</span>
-        </button>
-        <button class="about-tab" role="tab" aria-selected="false" aria-controls="panel3" id="tab3">
-          <span class="idx">03</span><span class="t">お支払い方法</span>
-        </button>
-      </div>
-      <div class="about-panels">
-        <div class="about-panel active" role="tabpanel" id="panel1" aria-labelledby="tab1">
-          <div class="panel-card">
-            <table class="company-table">
-              <tr><th>会社名</th><td>バイシクルフィールドサービス株式会社<br><span style="font-size:12.5px;color:var(--c-text-sub)">Bicycle Field Service Co., Ltd.</span></td></tr>
-              <tr><th>設立</th><td>2012年3月30日</td></tr>
-              <tr><th>資本金</th><td>9,900,000円</td></tr>
-              <tr><th>所在地</th><td>〒141-0032 東京都品川区大崎2-6-13</td></tr>
-              <tr><th>電話番号</th><td><a href="tel:0363219997" style="color:var(--c-blue);font-weight:700">03-6321-9997</a></td></tr>
-              <tr><th>事業内容</th><td>出張自転車修理サービス/出張車いす修理サービス/電動空気入れエアステーションの販売・設置・保守/電動アシスト自転車販売(法人向け)/駐輪場ラック修理・メンテナンス</td></tr>
-            </table>
-          </div>
-        </div>
-        <div class="about-panel" role="tabpanel" id="panel2" aria-labelledby="tab2">
-          <div class="panel-card">
-            <div class="flow-list">
-              <div class="flow-item">
-                <span class="no">01</span>
-                <div><h4>お電話・フォームでご相談</h4><p>症状・車種・ご住所をお知らせください。概算料金をその場でご案内します。</p></div>
-              </div>
-              <div class="flow-item">
-                <span class="no">02</span>
-                <div><h4>訪問日時を決定</h4><p>ご都合のよい日時を調整します。天候により作業が難しい場合は、ご相談のうえ日程を変更させていただくことがあります。</p></div>
-              </div>
-              <div class="flow-item">
-                <span class="no">03</span>
-                <div><h4>お伺いして修理</h4><p>プロの整備士がご指定の場所で作業。作業前に料金を確定し、ご了承をいただいてから修理します。</p></div>
-              </div>
-              <div class="flow-item">
-                <span class="no">04</span>
-                <div><h4>お支払い</h4><p>現金・カード・電子マネーでその場で決済。法人様は請求書払いにも対応します。</p></div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="about-panel" role="tabpanel" id="panel3" aria-labelledby="tab3">
-          <div class="panel-card">
-            <div class="pay-list">
-              <div class="pay-item">
-                <h4>現金・カード・電子マネー <span class="who">個人・法人</span></h4>
-                <p>各種クレジットカードブランド・電子マネーに対応しています。その場でスムーズにお支払いいただけます。</p>
-              </div>
-              <div class="pay-item">
-                <h4>請求書・電子請求書 <span class="who">法人</span></h4>
-                <p>法人様・個人事業主様には請求書・電子請求書でのお支払いをご用意。定期メンテナンス契約もご相談ください。</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+  <div class="ob-track" id="obTrack">
+    <a href="price-bicycle.html" class="ob-card hover-scale reveal">
+      <span class="image-rounded"><img src="assets/img/service-bicycle.svg" alt="" loading="lazy"></span>
+      <span class="ob-title">出張自転車修理 <span class="p-arrow" aria-hidden="true">→</span></span>
+      <p>パンク修理からカギ・部品交換まで60種類以上</p>
+    </a>
+    <a href="price-wheelchair.html" class="ob-card hover-scale reveal">
+      <span class="image-rounded"><img src="assets/img/service-wheelchair.svg" alt="" loading="lazy"></span>
+      <span class="ob-title">出張車いす修理 <span class="p-arrow" aria-hidden="true">→</span></span>
+      <p>東京都内・川崎市・横浜市に対応</p>
+    </a>
+    <a href="#contact" class="ob-card hover-scale reveal">
+      <span class="image-rounded"><img src="assets/img/service-airstation.svg" alt="" loading="lazy"></span>
+      <span class="ob-title">エアステーション <span class="p-arrow" aria-hidden="true">→</span></span>
+      <p>電動空気入れの販売・設置・保守</p>
+    </a>
+    <a href="#contact" class="ob-card hover-scale reveal">
+      <span class="image-rounded"><img src="assets/img/service-corporate.svg" alt="" loading="lazy"></span>
+      <span class="ob-title">法人向けサービス <span class="p-arrow" aria-hidden="true">→</span></span>
+      <p>電動アシスト自転車販売・駐輪ラック保守</p>
+    </a>
+    <a href="index.html#bfserv-news" class="ob-card hover-scale reveal">
+      <span class="image-rounded"><img src="assets/img/news-4.svg" alt="" loading="lazy"></span>
+      <span class="ob-title">導入事例・ニュース <span class="p-arrow" aria-hidden="true">→</span></span>
+      <p>施設・法人様の導入事例をご紹介</p>
+    </a>
   </div>
 </section>
 
 <!-- ============ Contact ============ -->
-<section class="cta-section" id="contact">
-  <div class="inner">
-    <div class="en">Contact<span class="dot">.</span></div>
-    <p>お見積り・ご相談は無料です。「これって直る？」「いくらかかる？」——まずはお気軽に。</p>
-    <div class="cta-buttons">
-      <a href="tel:0363219997" class="cta-tel">
-        <span class="small">お電話でのご相談</span>
-        <span class="num">03-6321-9997</span>
-      </a>
-      <a href="price-bicycle.html" class="btn btn-primary" style="align-self:center">料金表を見る</a>
+<section class="cta-contact" id="contact">
+  <div class="media" aria-hidden="true"></div>
+  <div class="t-container">
+    <p class="text-shoulder reveal"><span class="deco-dot" aria-hidden="true"></span><span>Contact</span></p>
+    <h2 class="title reveal">私たちへ<br>ご相談ください。</h2>
+    <p class="sub reveal">お見積り・ご相談は無料です。「これって直る？」「いくらかかる？」——どんなことでもお気軽にどうぞ。</p>
+    <div class="cta-row reveal">
+      <div class="cta-tel-inline">
+        <div class="small">お電話でのご相談</div>
+        <a href="tel:0363219997" class="num">03-6321-9997</a>
+      </div>
+      <a href="price-bicycle.html" class="button-pill -invert"><span>料金表を見る</span><span class="p-arrow" aria-hidden="true">→</span></a>
     </div>
   </div>
 </section>
+</main>
 
 <!-- ============ Footer ============ -->
 <footer class="site-footer">
-  <div class="container">
-    <div class="footer-grid">
+  <div class="t-container">
+    <div class="footer-top">
       <div class="footer-brand">
         <div class="en">BFSERV</div>
         <div class="ja">バイシクルフィールドサービス株式会社</div>
         <p>〒141-0032 東京都品川区大崎2-6-13<br>TEL: 03-6321-9997<br>東京都内の出張自転車修理・車いす修理サービス</p>
       </div>
       <div>
-        <h4>SERVICE</h4>
+        <h4>Service</h4>
         <ul>
           <li><a href="price-bicycle.html">出張自転車修理・料金表</a></li>
           <li><a href="price-wheelchair.html">出張車いす修理・料金表</a></li>
-          <li><a href="index.html#segment">エアステーション</a></li>
-          <li><a href="index.html#segment">法人向けサービス</a></li>
+          <li><a href="index.html#business-segment">エアステーション</a></li>
+          <li><a href="index.html#business-segment">法人向けサービス</a></li>
         </ul>
       </div>
       <div>
-        <h4>COMPANY</h4>
+        <h4>Company</h4>
         <ul>
-          <li><a href="index.html#about">会社概要</a></li>
-          <li><a href="index.html#area">対応エリア</a></li>
-          <li><a href="index.html#news">お知らせ</a></li>
+          <li><a href="index.html#about-us">会社概要</a></li>
+          <li><a href="index.html#about-us">ご依頼の流れ</a></li>
+          <li><a href="index.html#bfserv-news">ニュース</a></li>
           <li><a href="index.html#contact">お問い合わせ</a></li>
         </ul>
       </div>
+      <div>
+        <h4>Support</h4>
+        <ul>
+          <li><a href="index.html#about-us">お支払い方法</a></li>
+          <li><a href="index.html#bfserv-numbers">対応エリア</a></li>
+          <li><a href="tel:0363219997">お電話でのご相談</a></li>
+        </ul>
+      </div>
     </div>
-    <div class="footer-bottom">© Bicycle Field Service Co., Ltd. All Rights Reserved.</div>
+    <div class="footer-bottom">
+      <span>© Bicycle Field Service Co., Ltd. All Rights Reserved.</span>
+      <span>On-site Repair Service, Tokyo</span>
+    </div>
   </div>
 </footer>
 

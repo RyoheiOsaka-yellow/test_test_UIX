@@ -1,10 +1,8 @@
-// ヘッダー: スクロールで透過→白へ
+// ヘッダー: スクロールで下線を表示
 (function () {
   var header = document.getElementById('siteHeader');
   if (!header) return;
-  var update = function () {
-    header.classList.toggle('scrolled', window.scrollY > 40);
-  };
+  var update = function () { header.classList.toggle('scrolled', window.scrollY > 10); };
   update();
   window.addEventListener('scroll', update, { passive: true });
 })();
@@ -27,7 +25,30 @@
   });
 })();
 
-// スクロール連動のリビール
+// Scroll to explore
+(function () {
+  var btn = document.getElementById('scrollExplore');
+  if (!btn) return;
+  btn.addEventListener('click', function () {
+    var target = document.getElementById('bfserv-news');
+    if (target) target.scrollIntoView({ behavior: 'smooth' });
+  });
+})();
+
+// ヒーロー背景の再生/一時停止
+(function () {
+  var btn = document.getElementById('heroPlayer');
+  var hero = document.getElementById('hero');
+  if (!btn || !hero) return;
+  btn.addEventListener('click', function () {
+    var paused = hero.classList.toggle('paused');
+    btn.textContent = paused ? '▶' : '❚❚';
+    btn.setAttribute('aria-pressed', paused ? 'true' : 'false');
+    btn.setAttribute('aria-label', paused ? '背景アニメーションを再生' : '背景アニメーションを一時停止');
+  });
+})();
+
+// スクロール連動リビール
 (function () {
   var targets = document.querySelectorAll('.reveal');
   if (!targets.length) return;
@@ -42,11 +63,59 @@
         observer.unobserve(entry.target);
       }
     });
-  }, { threshold: 0.15 });
+  }, { threshold: 0.12 });
   targets.forEach(function (el) { observer.observe(el); });
 })();
 
-// カウントアップ(In Numbers)
+// Business Segment: 01-04 の切替(クリック/ホバーで画像と説明を切替)
+(function () {
+  var list = document.getElementById('segmentList');
+  var visual = document.getElementById('segmentVisual');
+  if (!list) return;
+  var items = list.querySelectorAll('.segment-item');
+  var imgs = visual ? visual.querySelectorAll('img') : [];
+  var activate = function (item) {
+    if (item.classList.contains('active')) return;
+    items.forEach(function (it) {
+      it.classList.remove('active');
+      var b = it.querySelector('button');
+      if (b) b.setAttribute('aria-expanded', 'false');
+    });
+    item.classList.add('active');
+    var btn = item.querySelector('button');
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+    var idx = parseInt(item.getAttribute('data-img'), 10) || 0;
+    imgs.forEach(function (img, i) { img.classList.toggle('active', i === idx); });
+  };
+  items.forEach(function (item) {
+    var btn = item.querySelector('button');
+    if (btn) btn.addEventListener('click', function () { activate(item); });
+    item.addEventListener('mouseenter', function () {
+      if (window.matchMedia('(hover: hover)').matches) activate(item);
+    });
+  });
+})();
+
+// About Us: スクロール連動ページネーション(01 / 03)
+(function () {
+  var panels = document.querySelectorAll('.about-panel');
+  var cur = document.getElementById('aboutCur');
+  var dotsWrap = document.getElementById('aboutDots');
+  if (!panels.length || !cur || !('IntersectionObserver' in window)) return;
+  var dots = dotsWrap ? dotsWrap.querySelectorAll('i') : [];
+  var observer = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (entry.isIntersecting) {
+        var idx = parseInt(entry.target.getAttribute('data-idx'), 10) || 1;
+        cur.textContent = (idx < 10 ? '0' : '') + idx;
+        dots.forEach(function (d, i) { d.classList.toggle('on', i === idx - 1); });
+      }
+    });
+  }, { rootMargin: '-40% 0px -50% 0px' });
+  panels.forEach(function (p) { observer.observe(p); });
+})();
+
+// カウントアップ
 (function () {
   var counters = document.querySelectorAll('.count');
   if (!counters.length) return;
@@ -82,20 +151,10 @@
   counters.forEach(function (el) { observer.observe(el); });
 })();
 
-// 事業領域カルーセル(ボタン+ドラッグスクロール)
+// Our Business: ドラッグスクロール
 (function () {
-  var track = document.getElementById('segTrack');
+  var track = document.getElementById('obTrack');
   if (!track) return;
-  var prev = document.getElementById('segPrev');
-  var next = document.getElementById('segNext');
-  var cardWidth = function () {
-    var card = track.querySelector('.segment-card');
-    return card ? card.getBoundingClientRect().width + 28 : 420;
-  };
-  if (prev) prev.addEventListener('click', function () { track.scrollBy({ left: -cardWidth(), behavior: 'smooth' }); });
-  if (next) next.addEventListener('click', function () { track.scrollBy({ left: cardWidth(), behavior: 'smooth' }); });
-
-  // ドラッグでスクロール
   var isDown = false, startX = 0, startScroll = 0, moved = false;
   track.addEventListener('pointerdown', function (e) {
     if (e.pointerType !== 'mouse') return;
@@ -113,24 +172,7 @@
     isDown = false;
     track.classList.remove('dragging');
   });
-  // ドラッグ直後のリンク誤クリックを防ぐ
   track.addEventListener('click', function (e) {
     if (moved) { e.preventDefault(); moved = false; }
   }, true);
-})();
-
-// About タブ(01/02/03)
-(function () {
-  var tabs = document.querySelectorAll('.about-tab');
-  var panels = document.querySelectorAll('.about-panel');
-  if (!tabs.length) return;
-  tabs.forEach(function (tab) {
-    tab.addEventListener('click', function () {
-      tabs.forEach(function (t) { t.setAttribute('aria-selected', 'false'); });
-      panels.forEach(function (p) { p.classList.remove('active'); });
-      tab.setAttribute('aria-selected', 'true');
-      var panel = document.getElementById(tab.getAttribute('aria-controls'));
-      if (panel) panel.classList.add('active');
-    });
-  });
 })();
