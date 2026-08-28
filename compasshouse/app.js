@@ -81,6 +81,23 @@ const TOURS_GREEN = [
     note:'レンタルバイク込み／ゴンドラ料金別',
     noteEn:'Rental bike included / Gondola fee not included',
     url:'https://compass-onlinestore.com/reserve/compassonline/1473679#pageContent'
+  },
+  {
+    id:'g4',
+    img:IMG.heroWinter,
+    tags:['バックカントリー','2026シーズン'],
+    tagsEn:['BACKCOUNTRY','2026 SEASON'],
+    title:'野沢温泉コンパスハウス主催バックカントリーツアー2026',
+    titleEn:'Nozawa Onsen Compass House Backcountry Tour 2026',
+    lead:'非日常の大冒険！おひとり様大歓迎のバックカントリーツアーへようこそ！',
+    leadEn:'An extraordinary adventure — solo participants very welcome!',
+    price:'5,000',
+    priceNote:'〜18,900',
+    cap:'おひとり様',
+    capEn:'per person',
+    note:'販売期間 2026.01.07〜2026.05.30',
+    noteEn:'On sale 2026.01.07-2026.05.30',
+    url:'https://fd-system.tours/plan/?plan=plan000778'
   }
 ];
 
