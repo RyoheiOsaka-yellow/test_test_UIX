@@ -155,6 +155,7 @@ h = h.replace(
   /<div class="panel__embed"[^>]*data-video="([^"]*)"[^>]*><\/div>/g,
   (_, v) => '<video class="panel__vid" muted loop playsinline preload="none" data-src="' + v + '"></video>'
 );
+h = h.replace(/class="panel panel--light/g, 'class="panel');
 for (const [A, B] of [[MK.cssA, MK.cssB], [MK.jsA, MK.jsB], [MK.tplA, MK.tplB]]) {
   let a = h.indexOf(A);
   if (a === -1) continue;
@@ -190,6 +191,15 @@ for (const [slot, ids] of Object.entries(conf.slots || {})) {
              + ' data-demo="' + list.join(',') + '"'
              + ' data-video="' + vm[1] + '"></div>';
   edits.push({ at: sa + body.indexOf(vm[0]), len: vm[0].length, html: host, slot, n: list.length });
+  // 明るいテーマはビルド時にパネルへ静的に付ける（ポスターも明るい画に差し替える前提。
+  // これでスマホ等デモが動かない環境でも文字色が正しく黒になる）
+  if (theme === 'light') {
+    const openTag = h.slice(sa, h.indexOf('>', sa) + 1);
+    if (openTag.indexOf('panel--light') === -1) {
+      const patched = openTag.replace('class="panel', 'class="panel panel--light');
+      edits.push({ at: sa, len: openTag.length, html: patched, slot: slot + ' (light)', n: 0 });
+    }
+  }
 }
 
 edits.sort((x, y) => y.at - x.at);

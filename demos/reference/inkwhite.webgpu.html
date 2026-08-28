@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ink on White</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:#ffffff;overflow:hidden}
+#ink{
+  position:fixed;inset:0;
+  width:100%;height:100%;
+  display:block;
+  touch-action:none;
+  pointer-events:none;
+  cursor:none;
+}
+html,body{cursor:none}
+</style>
+</head>
+<body>
+<canvas id="ink"></canvas>
+
+<script type="module">
+// Ink stirring simulation built on vgpu (https://vgpu.sh) — adapted from the
+// verified "fluid" example (pressure-projected Navier-Stokes solver with dye
+// advection), re-shaded as ink pigments settling into washi paper.
+//
+// Dye channels carry pigment amounts, not RGB: r = orange ink, g = coral ink,
+// b = sumi (dark brown-black) ink. Display converts pigment density to color
+// with Beer-Lambert absorption against a paper white, so overlapping inks mix
+// subtractively the way real ink does.
+
+const GRID_SIZE = [128, 72];
+const DYE_SIZE = [GRID_SIZE[0] * 4, GRID_SIZE[1] * 4];
+const CELLS = GRID_SIZE[0] * GRID_SIZE[1];
+const DYE_CELLS = DYE_SIZE[0] * DYE_SIZE[1];
+
+const COMMON = /* wgsl */ `
+struct Grid {
+  size: vec2u,
+  dye_size: vec2u,
+}
+
+struct Input {
+  step: u32,
+  pointer_active: f32,
+  pointer_from: vec2f,
+  pointer_to: vec2f,
+  pointer_velocity: vec2f,
+  pointer_color: vec4f,
+  idle_a: vec4f,
+  idle_b: vec4f,
+  idle_c: vec4f,
+  idle_d: vec4f,
+}
+
+fn index_of(p: vec2i, size: vec2u) -> u32 {
+  let q = clamp(p, vec2i(0), vec2i(size) - 1);
+  return u32(q.y) * size.x + u32(q.x);
+}
+
+fn cell_uv(p: vec2i, size: vec2u) -> vec2f {
+  return (vec2f(p) + 0.5) / vec2f(size);
+}
+
+fn segment_weight(
+  p: vec2f,
+  a: vec2f,
+  b: vec2f,
+  radius_squared: f32,
+  aspect: f32,
+) -> f32 {
+  let scale = vec2f(aspect, 1.0);
+  let point = p * scale;
+  let origin = a * scale;
+  let delta = (b - a) * scale;
+  let t = clamp(dot(point - origin, delta) / max(dot(delta, delta), 1e-7), 0.0, 1.0);
+  let d = point - (origin + t * delta);
+  return exp(-dot(d, d) / radius_squared);
+}
+
+fn emitter_weight(p: vec2f, emitter: vec4f, aspect: f32) -> f32 {
+  let d = (p - emitter.xy) * vec2f(aspect, 1.0);
+  return exp(-dot(d, d) / emitter.w) * emitter.z;
+}
+`;
+
+const ADVECT_VELOCITY = /* wgsl */ `${COMMON}
+@group(0) @binding(0) var<uniform> grid: Grid;
+@group(0) @binding(1) var<uniform> input: Input;
+@group(0) @binding(2) var<storage, read> src: array<vec2f>;
+@group(0) @binding(3) var<storage, read_write> dst: array<vec2f>;
+
+fn sample_velocity(p: vec2f) -> vec2f {
+  let coord = clamp(p * vec2f(grid.size) - 0.5, vec2f(0), vec2f(grid.size) - 1.0);
+  let cell = vec2i(floor(coord));
+  let f = fract(coord);
+  let bottom = mix(src[index_of(cell, grid.size)], src[index_of(cell + vec2i(1, 0), grid.size)], f.x);
+  let top = mix(src[index_of(cell + vec2i(0, 1), grid.size)], src[index_of(cell + vec2i(1, 1), grid.size)], f.x);
+  return mix(bottom, top, f.y);
+}
+
+@compute @workgroup_size(8, 8)
+fn main(@builtin(global_invocation_id) id: vec3u) {
+  if (any(id.xy >= grid.size)) { return; }
+  let cell = vec2i(id.xy);
+  let p = cell_uv(cell, grid.size);
+  let aspect = f32(grid.size.x) / f32(grid.size.y);
+  let dt = 1.0 / 60.0;
+  let source_velocity = src[index_of(cell, grid.size)];
+  let backtrace = clamp(p - dt * source_velocity, 0.5 / vec2f(grid.size), 1.0 - 0.5 / vec2f(grid.size));
+  var velocity = 0.98 * sample_velocity(backtrace);
+
+  let weight_a = emitter_weight(p, input.idle_a, aspect);
+  let weight_b = emitter_weight(p, input.idle_b, aspect);
+  let weight_c = emitter_weight(p, input.idle_c, aspect);
+  let weight_d = emitter_weight(p, input.idle_d, aspect);
+  let time = f32(input.step) / 60.0;
+  let tangent_a = vec2f(0.28 * 0.73 * cos(0.73 * time), 0.22 * 1.09 * cos(1.09 * time + 0.4));
+  let tangent_b = vec2f(0.26 * 0.61 * cos(0.61 * time + 3.14159265), 0.24 * 0.97 * cos(0.97 * time + 2.1));
+  let tangent_c = vec2f(0.24 * 0.53 * cos(0.53 * time + 1.3), 0.26 * 0.83 * cos(0.83 * time + 4.0));
+  let tangent_d = vec2f(0.27 * 0.43 * cos(0.43 * time + 2.6), 0.21 * 1.19 * cos(1.19 * time + 5.1));
+  velocity += dt * (weight_a * (2.6 * tangent_a + 2.0 * vec2f(-tangent_a.y, tangent_a.x))
+                  + weight_b * (2.6 * tangent_b - 2.0 * vec2f(-tangent_b.y, tangent_b.x))
+                  + weight_c * (2.6 * tangent_c + 2.0 * vec2f(-tangent_c.y, tangent_c.x))
+                  + weight_d * (2.6 * tangent_d - 2.0 * vec2f(-tangent_d.y, tangent_d.x)));
+
+  if (input.pointer_active > 0.0) {
+    let weight = segment_weight(p, input.pointer_from, input.pointer_to, 0.0035, aspect);
+    velocity += weight * input.pointer_velocity * 1.15;
+  }
+
+  let speed = length(velocity);
+  if (speed > 2.5) { velocity *= 2.5 / speed; }
+  dst[index_of(cell, grid.size)] = velocity;
+}
+`;
+
+const CURL = /* wgsl */ `${COMMON}
+@group(0) @binding(0) var<uniform> grid: Grid;
+@group(0) @binding(1) var<storage, read> velocity: array<vec2f>;
+@group(0) @binding(2) var<storage, read_write> curl: array<f32>;
+
+@compute @workgroup_size(8, 8)
+fn main(@builtin(global_invocation_id) id: vec3u) {
+  if (any(id.xy >= grid.size)) { return; }
+  let p = vec2i(id.xy);
+  let left = velocity[index_of(p - vec2i(1, 0), grid.size)].y;
+  let right = velocity[index_of(p + vec2i(1, 0), grid.size)].y;
+  let top = velocity[index_of(p + vec2i(0, 1), grid.size)].x;
+  let bottom = velocity[index_of(p - vec2i(0, 1), grid.size)].x;
+  curl[index_of(p, grid.size)] = 0.5 * (right - left - top + bottom);
+}
+`;
+
+const VORTICITY = /* wgsl */ `${COMMON}
+@group(0) @binding(0) var<uniform> grid: Grid;
+@group(0) @binding(1) var<storage, read> src: array<vec2f>;
+@group(0) @binding(2) var<storage, read> curl: array<f32>;
+@group(0) @binding(3) var<storage, read_write> dst: array<vec2f>;
+
+@compute @workgroup_size(8, 8)
+fn main(@builtin(global_invocation_id) id: vec3u) {
+  if (any(id.xy >= grid.size)) { return; }
+  let p = vec2i(id.xy);
+  let left = abs(curl[index_of(p - vec2i(1, 0), grid.size)]);
+  let right = abs(curl[index_of(p + vec2i(1, 0), grid.size)]);
+  let top = abs(curl[index_of(p + vec2i(0, 1), grid.size)]);
+  let bottom = abs(curl[index_of(p - vec2i(0, 1), grid.size)]);
+  let center = curl[index_of(p, grid.size)];
+
+  var force = 0.5 * vec2f(top - bottom, right - left);
+  force /= length(force) + 0.0001;
+  force *= 20.0 * center;
+  force.y *= -1.0;
+
+  var velocity = src[index_of(p, grid.size)] + force / 60.0;
+  let speed = length(velocity);
+  if (speed > 2.5) { velocity *= 2.5 / speed; }
+  dst[index_of(p, grid.size)] = velocity;
+}
+`;
+
+const DIVERGENCE = /* wgsl */ `${COMMON}
+@group(0) @binding(0) var<uniform> grid: Grid;
+@group(0) @binding(1) var<storage, read> velocity: array<vec2f>;
+@group(0) @binding(2) var<storage, read_write> divergence: array<f32>;
+
+@compute @workgroup_size(8, 8)
+fn main(@builtin(global_invocation_id) id: vec3u) {
+  if (any(id.xy >= grid.size)) { return; }
+  let p = vec2i(id.xy);
+  let last = vec2i(grid.size) - 1;
+  let l = select(velocity[index_of(p - vec2i(1, 0), grid.size)].x, 0.0, p.x == 0);
+  let r = select(velocity[index_of(p + vec2i(1, 0), grid.size)].x, 0.0, p.x == last.x);
+  let b = select(velocity[index_of(p - vec2i(0, 1), grid.size)].y, 0.0, p.y == 0);
+  let t = select(velocity[index_of(p + vec2i(0, 1), grid.size)].y, 0.0, p.y == last.y);
+  divergence[index_of(p, grid.size)] =
+    (r - l)*.5*f32(grid.size.x) + (t - b)*.5*f32(grid.size.y);
+}
+`;
+
+const PRESSURE = /* wgsl */ `${COMMON}
+struct PressureParams {
+  decay: f32,
+}
+@group(0) @binding(0) var<uniform> grid: Grid;
+@group(0) @binding(1) var<uniform> params: PressureParams;
+@group(0) @binding(2) var<storage, read> src: array<f32>;
+@group(0) @binding(3) var<storage, read> divergence: array<f32>;
+@group(0) @binding(4) var<storage, read_write> dst: array<f32>;
+
+@compute @workgroup_size(8, 8)
+fn main(@builtin(global_invocation_id) id: vec3u) {
+  if (any(id.xy >= grid.size)) { return; }
+  let p = vec2i(id.xy);
+  let i = index_of(p, grid.size);
+  let center = src[i];
+  let last = vec2i(grid.size) - 1;
+  let left = select(src[index_of(p - vec2i(1, 0), grid.size)], center, p.x == 0) * params.decay;
+  let right = select(src[index_of(p + vec2i(1, 0), grid.size)], center, p.x == last.x) * params.decay;
+  let bottom = select(src[index_of(p - vec2i(0, 1), grid.size)], center, p.y == 0) * params.decay;
+  let top = select(src[index_of(p + vec2i(0, 1), grid.size)], center, p.y == last.y) * params.decay;
+  let wx = f32(grid.size.x * grid.size.x);
+  let wy = f32(grid.size.y * grid.size.y);
+  dst[i] = ((left + right) * wx + (bottom + top) * wy - divergence[i]) / (2.0 * wx + 2.0 * wy);
+}
+`;
+
+const PROJECT = /* wgsl */ `${COMMON}
+@group(0) @binding(0) var<uniform> grid: Grid;
+@group(0) @binding(1) var<storage, read> src: array<vec2f>;
+@group(0) @binding(2) var<storage, read> pressure: array<f32>;
+@group(0) @binding(3) var<storage, read_write> dst: array<vec2f>;
+
+@compute @workgroup_size(8, 8)
+fn main(@builtin(global_invocation_id) id: vec3u) {
+  if (any(id.xy >= grid.size)) { return; }
+  let p = vec2i(id.xy);
+  let last = vec2i(grid.size) - 1;
+  let c = pressure[index_of(p, grid.size)];
+  let l = select(pressure[index_of(p - vec2i(1, 0), grid.size)], c, p.x == 0);
+  let r = select(pressure[index_of(p + vec2i(1, 0), grid.size)], c, p.x == last.x);
+  let b = select(pressure[index_of(p - vec2i(0, 1), grid.size)], c, p.y == 0);
+  let t = select(pressure[index_of(p + vec2i(0, 1), grid.size)], c, p.y == last.y);
+  var u = src[index_of(p, grid.size)] - vec2f(
+    (r - l)*.5*f32(grid.size.x),
+    (t - b)*.5*f32(grid.size.y),
+  );
+  if (p.x == 0 && u.x < 0.0) { u.x = 0.0; }
+  if (p.x == last.x && u.x > 0.0) { u.x = 0.0; }
+  if (p.y == 0 && u.y < 0.0) { u.y = 0.0; }
+  if (p.y == last.y && u.y > 0.0) { u.y = 0.0; }
+  let s = length(u);
+  if (s > 2.5) { u *= 2.5 / s; }
+  dst[index_of(p, grid.size)] = u;
+}
+`;
+
+const ADVECT_DYE = /* wgsl */ `${COMMON}
+@group(0) @binding(0) var<uniform> grid: Grid;
+@group(0) @binding(1) var<uniform> input: Input;
+@group(0) @binding(2) var<storage, read> src: array<vec4f>;
+@group(0) @binding(3) var<storage, read> velocity: array<vec2f>;
+@group(0) @binding(4) var<storage, read_write> dst: array<vec4f>;
+
+fn sample_dye(p: vec2f) -> vec4f {
+  let coord = clamp(p * vec2f(grid.dye_size) - 0.5, vec2f(0), vec2f(grid.dye_size) - 1.0);
+  let cell = vec2i(floor(coord));
+  let f = fract(coord);
+  let bottom = mix(src[index_of(cell, grid.dye_size)], src[index_of(cell + vec2i(1, 0), grid.dye_size)], f.x);
+  let top = mix(
+    src[index_of(cell + vec2i(0, 1), grid.dye_size)],
+    src[index_of(cell + vec2i(1, 1), grid.dye_size)],
+    f.x,
+  );
+  return mix(bottom, top, f.y);
+}
+
+fn sample_velocity(p: vec2f) -> vec2f {
+  let coord = clamp(p * vec2f(grid.size) - 0.5, vec2f(0), vec2f(grid.size) - 1.0);
+  let cell = vec2i(floor(coord));
+  let f = fract(coord);
+  let bottom = mix(velocity[index_of(cell, grid.size)], velocity[index_of(cell + vec2i(1, 0), grid.size)], f.x);
+  let top = mix(
+    velocity[index_of(cell + vec2i(0, 1), grid.size)],
+    velocity[index_of(cell + vec2i(1, 1), grid.size)],
+    f.x,
+  );
+  return mix(bottom, top, f.y);
+}
+
+@compute @workgroup_size(8, 8)
+fn main(@builtin(global_invocation_id) id: vec3u) {
+  if (any(id.xy >= grid.dye_size)) { return; }
+  let cell = vec2i(id.xy);
+  let p = cell_uv(cell, grid.dye_size);
+  let aspect = f32(grid.size.x) / f32(grid.size.y);
+  let backtrace = clamp(p - sample_velocity(p) / 60.0, 0.5 / vec2f(grid.dye_size), 1.0 - 0.5 / vec2f(grid.dye_size));
+  // Slower fade than the reference: ink stains the paper and lingers.
+  var color = 0.978 * sample_dye(backtrace);
+
+  // Idle droppers feed the brand inks: r = orange pigment, g = coral pigment.
+  color += vec4f(1.0, 0.0, 0.0, 0.0) * emitter_weight(p, input.idle_a, aspect) * 0.085;
+  color += vec4f(0.0, 1.0, 0.0, 0.0) * emitter_weight(p, input.idle_b, aspect) * 0.08;
+  color += vec4f(0.0, 0.0, 1.0, 0.0) * emitter_weight(p, input.idle_c, aspect) * 0.08;
+  color += vec4f(0.0, 0.0, 0.0, 1.0) * emitter_weight(p, input.idle_d, aspect) * 0.075;
+  if (input.pointer_active > 0.0) {
+    let weight = segment_weight(p, input.pointer_from, input.pointer_to, 0.002, aspect);
+    color += input.pointer_color * weight * 0.26;
+  }
+
+  dst[index_of(cell, grid.dye_size)] = clamp(color, vec4f(0), vec4f(4));
+}
+`;
+
+const DISPLAY = /* wgsl */ `
+struct DisplayConfig {
+  output_size: vec2f,
+}
+const DYE_SIZE = vec2u(${DYE_SIZE[0]}, ${DYE_SIZE[1]});
+@group(0) @binding(0) var<uniform> config: DisplayConfig;
+@group(0) @binding(1) var<storage, read> dye: array<vec4f>;
+
+fn index_of(p: vec2i, size: vec2u) -> u32 {
+  let q = clamp(p, vec2i(0), vec2i(size) - 1);
+  return u32(q.y) * size.x + u32(q.x);
+}
+
+fn sample_dye(p: vec2f) -> vec4f {
+  let grid = clamp(p * vec2f(DYE_SIZE) - 0.5, vec2f(0), vec2f(DYE_SIZE) - 1.0);
+  let cell = vec2i(floor(grid));
+  let f = fract(grid);
+  let bottom = mix(dye[index_of(cell, DYE_SIZE)], dye[index_of(cell + vec2i(1, 0), DYE_SIZE)], f.x);
+  let top = mix(dye[index_of(cell + vec2i(0, 1), DYE_SIZE)], dye[index_of(cell + vec2i(1, 1), DYE_SIZE)], f.x);
+  return mix(bottom, top, f.y);
+}
+
+fn hash(p: vec2f) -> f32 {
+  return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453);
+}
+
+@fragment
+fn fragment_main(@builtin(position) position: vec4f) -> @location(0) vec4f {
+  var uv = position.xy / config.output_size;
+  uv.y = 1.0 - uv.y; // WebGPU fragment coordinates start at the top; the solver's +Y points up.
+  let pigment = sample_dye(uv);
+
+  // Beer-Lambert absorption per ink against paper white, so overlapping inks
+  // darken subtractively. Coefficients are -ln(ink color):
+  // yellow #F6C90E, blue #2563EB, green #21A85C, red #D7263D.
+  let absorb_yellow = vec3f(0.036, 0.238, 2.90);
+  let absorb_blue   = vec3f(1.93, 0.947, 0.081);
+  let absorb_green  = vec3f(2.05, 0.417, 1.02);
+  let absorb_red    = vec3f(0.171, 1.90, 1.43);
+  let optical_depth = absorb_yellow * pigment.r
+                    + absorb_blue   * pigment.g
+                    + absorb_green  * pigment.b
+                    + absorb_red    * pigment.a;
+  let paper = vec3f(1.0, 1.0, 1.0);
+  var color = paper * exp(-optical_depth);
+
+  // Faint per-pixel grain and a soft warm vignette keep the paper feeling
+  // physical instead of flat.
+  let grain = 0.985 + 0.03 * hash(floor(position.xy));
+  let vignette = 0.94 + 0.06 * pow(max(0.0, 1.0 - dot(uv - 0.5, uv - 0.5) * 1.6), 1.5);
+  return vec4f(color * grain * vignette, 1.0);
+}
+`;
+
+function createInk(v, gpu) {
+  const velocity = v.pingPongStorage(gpu, CELLS * 8);
+  const dye = v.pingPongStorage(gpu, DYE_CELLS * 16);
+  const pressure = v.pingPongStorage(gpu, CELLS * 4);
+  const divergence = v.storage(gpu, CELLS * 4, "read-write");
+  const curl = v.storage(gpu, CELLS * 4, "read-write");
+  const withGrid = (shader) =>
+    v.compute(gpu, shader, {
+      set: { grid: { size: GRID_SIZE, dye_size: DYE_SIZE } },
+    });
+  const passes = {
+    advectVelocity: withGrid(ADVECT_VELOCITY),
+    curl: withGrid(CURL),
+    vorticity: withGrid(VORTICITY),
+    divergence: withGrid(DIVERGENCE),
+    pressure: withGrid(PRESSURE),
+    project: withGrid(PROJECT),
+    advectDye: withGrid(ADVECT_DYE),
+    display: v.effect(gpu, DISPLAY),
+  };
+  return {
+    v,
+    gpu,
+    velocity,
+    dye,
+    pressure,
+    divergence,
+    curl,
+    passes,
+    step: 0,
+    lastInputStep: -1000,
+  };
+}
+
+async function prepareInk(ink, output) {
+  resizeInk(ink, output);
+  await ink.passes.display.compile({ colors: [output.format] });
+}
+
+function resizeInk(ink, output) {
+  ink.passes.display.set({ config: { output_size: output.size } });
+}
+
+function stepInk(ink, input) {
+  if (input?.active) ink.lastInputStep = ink.step;
+  const dynamic = inputUniforms(ink, input);
+  const p = ink.passes;
+
+  p.advectVelocity
+    .set({ input: dynamic, src: ink.velocity.read, dst: ink.velocity.write })
+    .dispatch(GRID_SIZE[0] / 8, GRID_SIZE[1] / 8);
+  ink.velocity.swap();
+
+  // Confinement restores the small rotating details lost by semi-Lagrangian advection.
+  p.curl
+    .set({ velocity: ink.velocity.read, curl: ink.curl })
+    .dispatch(GRID_SIZE[0] / 8, GRID_SIZE[1] / 8);
+  p.vorticity
+    .set({ src: ink.velocity.read, curl: ink.curl, dst: ink.velocity.write })
+    .dispatch(GRID_SIZE[0] / 8, GRID_SIZE[1] / 8);
+  ink.velocity.swap();
+
+  p.divergence
+    .set({ velocity: ink.velocity.read, divergence: ink.divergence })
+    .dispatch(GRID_SIZE[0] / 8, GRID_SIZE[1] / 8);
+  for (let i = 0; i < 3; i++) {
+    p.pressure
+      .set({
+        params: { decay: i === 0 ? 0.8 : 1 },
+        src: ink.pressure.read,
+        divergence: ink.divergence,
+        dst: ink.pressure.write,
+      })
+      .dispatch(GRID_SIZE[0] / 8, GRID_SIZE[1] / 8);
+    ink.pressure.swap();
+  }
+
+  p.project
+    .set({
+      src: ink.velocity.read,
+      pressure: ink.pressure.read,
+      dst: ink.velocity.write,
+    })
+    .dispatch(GRID_SIZE[0] / 8, GRID_SIZE[1] / 8);
+  ink.velocity.swap();
+
+  p.advectDye
+    .set({
+      input: dynamic,
+      src: ink.dye.read,
+      velocity: ink.velocity.read,
+      dst: ink.dye.write,
+    })
+    .dispatch(DYE_SIZE[0] / 8, DYE_SIZE[1] / 8);
+  ink.dye.swap();
+  ink.step++;
+  input?.consumeStep();
+}
+
+function renderInk(ink, output) {
+  ink.passes.display.set({ dye: ink.dye.read });
+  ink.v.frame(ink.gpu, (currentFrame) => {
+    currentFrame.pass(output, ink.passes.display);
+  });
+}
+
+function inputUniforms(ink, input) {
+  const time = ink.step / 60;
+  const [a, b, c, d] = idleEmitters(ink.step);
+  const idle = 1.0;
+  const ramp = Math.min(1, (ink.step + 1) / 24);
+  let pointerVelocity = input?.velocity ?? [0, 0];
+  if (input?.active && Math.hypot(...pointerVelocity) < 0.02) {
+    pointerVelocity = [0.16 * Math.cos(time * 5), 0.16 * Math.sin(time * 5)];
+  }
+  return {
+    step: ink.step,
+    pointer_active: input?.active ? 1 : 0,
+    pointer_from: input?.from ?? [0.5, 0.5],
+    pointer_to: input?.to ?? [0.5, 0.5],
+    pointer_velocity: pointerVelocity,
+    // The automatic stirrer is invisible and carries no pigment.
+    // It only pushes the fluid so the four ink colors mix naturally.
+    pointer_color: [0, 0, 0, 0],
+    idle_a: [...a, ramp * idle, 0.006],
+    idle_b: [...b, ramp * idle, 0.0055],
+    idle_c: [...c, ramp * idle, 0.0058],
+    idle_d: [...d, ramp * idle, 0.0056],
+  };
+}
+
+function idleEmitters(step) {
+  const t = step / 60;
+  return [
+    [0.5 + 0.28 * Math.sin(0.73 * t), 0.5 + 0.22 * Math.sin(1.09 * t + 0.4)],
+    [
+      0.5 + 0.26 * Math.sin(0.61 * t + Math.PI),
+      0.5 + 0.24 * Math.sin(0.97 * t + 2.1),
+    ],
+    [0.5 + 0.24 * Math.sin(0.53 * t + 1.3), 0.5 + 0.26 * Math.sin(0.83 * t + 4.0)],
+    [0.5 + 0.27 * Math.sin(0.43 * t + 2.6), 0.5 + 0.21 * Math.sin(1.19 * t + 5.1)],
+  ];
+}
+
+// ---- Autonomous stirring ----------------------------------------------------
+// An invisible stirrer follows a slowly wandering elliptical orbit.
+// The center, radius and angular speed drift slightly so the motion feels
+// hand-stirred instead of mechanically repetitive. No pointer input is used.
+function createAutoStir() {
+  let step = 0;
+  const dt = 1 / 60;
+
+  const pointAt = (time) => {
+    const centerX = 0.50 + 0.035 * Math.sin(time * 0.17) + 0.012 * Math.sin(time * 0.41);
+    const centerY = 0.50 + 0.030 * Math.cos(time * 0.21) + 0.010 * Math.sin(time * 0.37);
+    const radiusX = 0.205 + 0.030 * Math.sin(time * 0.13);
+    const radiusY = 0.165 + 0.024 * Math.cos(time * 0.11);
+    const angle = 0.72 * time + 0.16 * Math.sin(time * 0.23);
+
+    return [
+      centerX + radiusX * Math.cos(angle),
+      centerY + radiusY * Math.sin(angle),
+    ];
+  };
+
+  const state = () => {
+    const time = step * dt;
+    const from = pointAt(Math.max(0, time - dt));
+    const to = pointAt(time);
+    const velocity = [
+      Math.max(-2.5, Math.min(2.5, (to[0] - from[0]) / dt * 1.35)),
+      Math.max(-2.5, Math.min(2.5, (to[1] - from[1]) / dt * 1.35)),
+    ];
+    return { from, to, velocity };
+  };
+
+  return {
+    get active() { return true; },
+    get from() { return state().from; },
+    get to() { return state().to; },
+    get velocity() { return state().velocity; },
+    consumeStep() { step++; },
+  };
+}
+
+// ---- Bootstrap -------------------------------------------------------------
+const FIXED_STEP = 1 / 60;
+
+async function main() {
+  if (!navigator.gpu) throw new Error("WebGPU unavailable");
+  const v = await import("https://cdn.jsdelivr.net/npm/vgpu@0.3.1/+esm");
+  const gpu = await v.init();
+  const canvas = document.getElementById("ink");
+  const canvasSurface = v.surface(gpu, canvas, { dpr: [1, 2] });
+  const ink = createInk(v, gpu);
+  const input = createAutoStir();
+  await prepareInk(ink, canvasSurface);
+  canvasSurface.onResize(() => resizeInk(ink, canvasSurface));
+
+  let accumulator = 0;
+  let previous = performance.now();
+  const tick = (now) => {
+    if (!document.hidden) {
+      accumulator = Math.min(accumulator + Math.min((now - previous) / 1000, 1 / 30), 3 * FIXED_STEP);
+      let steps = 0;
+      while (accumulator >= FIXED_STEP && steps < 2) {
+        stepInk(ink, input);
+        accumulator -= FIXED_STEP;
+        steps++;
+      }
+      if (steps === 2) accumulator = 0;
+      renderInk(ink, canvasSurface);
+    }
+    previous = now;
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
+main().catch((error) => {
+  console.error(error);
+});
+</script>
+</body>
+</html>

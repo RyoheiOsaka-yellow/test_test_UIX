@@ -222,7 +222,6 @@ base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
       })(LIB_SRC, LIB_DST);
       const LIB_MAP = {
         'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.180.0/three.module.min.js': './lib/three/three.module.min.js',
-        'https://cdn.jsdelivr.net/npm/vgpu@0.3.1/+esm': './lib/vgpu/vgpu.esm.js',
       };
       for (const f of fs.readdirSync(DEMO_DIR)) {
         if (!f.endsWith('.html')) continue;
@@ -238,17 +237,17 @@ base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
 
 // 1g. ナビに「事例」を追加（実績の隣）
 {
-  const o = '<a class="hdr__link" href="#record"  data-i18n="nav_record">実績</a>';
+  const o = '<a class="hdr__link" href="#record"  data-i18n="nav_record">Record</a>';
   if (!base.includes(o)) throw new Error('nav anchor');
-  base = base.replace(o, '<a class="hdr__link" href="/cases/" data-i18n="nav_cases">事例</a>\n    ' + o);
-  base = base.replace(/(    nav_work: "事業",)/, '    nav_cases: "事例",\n$1');
-  base = base.replace(/(    nav_work: "Work",)/, '    nav_cases: "Cases",\n$1');
+  base = base.replace(o, '<a class="hdr__link" href="/cases/" data-i18n="nav_cases">Cases</a>\n    ' + o);
+  base = base.replace(/(    nav_work: "事業",)/, '    nav_cases: "事例", nav_cases_view: "事例を見る →",\n$1');
+  base = base.replace(/(    nav_work: "Work",)/, '    nav_cases: "Cases", nav_cases_view: "View cases →",\n$1');
   // 全画面メニューにも
   const m = '<a class="menu__item" href="#record"';
-  if (base.includes(m)) base = base.replace(m, '<a class="menu__item" href="/cases/" data-i18n="nav_cases" style="--dl:.10s">事例</a>\n    ' + m);
+  if (base.includes(m)) base = base.replace(m, '<a class="menu__item" href="/cases/" data-i18n="nav_cases" style="--dl:.10s">Cases</a>\n    ' + m);
   // ドロップダウンの「事業の一覧へ」の隣に事例導線
   base = base.replace('<a class="drop__all" href="#xbuild" data-i18n="drop_all">',
-    '<a class="drop__all" href="/cases/" style="display:block;margin-bottom:10px">事例を見る →</a>\n            <a class="drop__all" href="#xbuild" data-i18n="drop_all">');
+    '<a class="drop__all" href="/cases/" style="display:block;margin-bottom:10px" data-i18n="nav_cases_view">View cases →</a>\n            <a class="drop__all" href="#xbuild" data-i18n="drop_all">');
 }
 
 // 1h. 旧サイトのアンカー(#case-01 等)で来た人を新URLへ送る
@@ -270,6 +269,32 @@ base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
 }
 
 // ── 2. ルートごとに出力
+// 1e3. 既定言語（英語）を HTML に静的に焼き込む。
+//      JSを待たずに最初から英語で描画され、クローラも英語本文を読める。
+//      日本語は setLang('ja') が辞書から差し戻す（辞書はそのまま残る）。
+{
+  const dm = base.match(/var I18N = \{[\s\S]*?\n\};/);
+  if (!dm) throw new Error('I18N 辞書が見つかりません');
+  const I18N = new Function(dm[0] + ' return I18N;')();
+  const en = I18N.en;
+  if (!en) throw new Error('英語辞書が見つかりません');
+  const escText = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  let replaced = 0, missing = [];
+  base = base.replace(/(<([a-z0-9]+)([^>]*?)data-i18n="([^"]+)"([^>]*)>)([\s\S]*?)(<\/\2>)/g,
+    (m, open, tag, pre, key, post, inner, close) => {
+      if (!(key in en)) { missing.push(key); return m; }
+      const v = en[key];
+      const html = /data-i18n-html="true"/.test(open) || v.indexOf('<') !== -1;
+      replaced++;
+      return open + (html ? v : escText(v)) + close;
+    });
+  if (missing.length) console.log('  ⚠ 英語辞書に無いキー:', missing.slice(0, 5).join(', '));
+  console.log('英語を静的に焼き込み:', replaced, '箇所');
+  // この文書の焼き込み言語を宣言（言語ゲートが参照する）
+  base = base.replace("window.__BAKED='ja';", "window.__BAKED='en';");
+}
+
+
 for (const r of ROUTES) {
   let h = base;
   const url = ORIGIN + (r.dir ? '/' + r.dir + '/' : '/');
