@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>株式会社エコプロジェクト | 省エネの、その先へ。</title>
+<meta name="description" content="株式会社エコプロジェクトは、LED改修・共聴設備改修・電力削減コンサルティングなど、建物の省エネ・省コストをワンストップで支えるプロフェッショナル集団です。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700;900&family=Shippori+Mincho:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%230c6b45'/><text x='50' y='66' font-size='52' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>e</text></svg>">
+</head>
+<body>
+
+<!-- ===== Loader ===== -->
+<div class="loader" id="loader" aria-hidden="true">
+  <div class="loader__mark">
+    <span class="loader__logo">e</span>
+    <span class="loader__text">ECO PROJECT</span>
+  </div>
+</div>
+
+<!-- ===== Header ===== -->
+<header class="header" id="header">
+  <div class="header__inner">
+    <a href="#top" class="header__logo" aria-label="株式会社エコプロジェクト">
+      <span class="header__logo-mark">e</span>
+      <span class="header__logo-text">
+        <span class="header__logo-en">ECO PROJECT</span>
+        <span class="header__logo-ja">株式会社エコプロジェクト</span>
+      </span>
+    </a>
+    <nav class="gnav" id="gnav" aria-label="メインナビゲーション">
+      <ul class="gnav__list">
+        <li><a href="#about"><span class="gnav__en">About</span><span class="gnav__ja">私たちについて</span></a></li>
+        <li><a href="#service"><span class="gnav__en">Service</span><span class="gnav__ja">事業内容</span></a></li>
+        <li><a href="#strength"><span class="gnav__en">Strength</span><span class="gnav__ja">選ばれる理由</span></a></li>
+        <li><a href="#news"><span class="gnav__en">Journal</span><span class="gnav__ja">お知らせ</span></a></li>
+        <li><a href="#company"><span class="gnav__en">Company</span><span class="gnav__ja">会社概要</span></a></li>
+      </ul>
+      <a href="#contact" class="gnav__cta">お問い合わせ<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+    </nav>
+    <button class="menu-btn" id="menuBtn" aria-label="メニューを開く" aria-expanded="false">
+      <span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ===== Hero ===== -->
+  <section class="hero">
+    <div class="hero__bg" aria-hidden="true">
+      <svg class="hero__scene" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#eef4f0"/>
+            <stop offset=".55" stop-color="#dfeae3"/>
+            <stop offset="1" stop-color="#cfdfd4"/>
+          </linearGradient>
+          <linearGradient id="beam" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#0c6b45" stop-opacity=".14"/>
+            <stop offset="1" stop-color="#0c6b45" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="bldgA" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#b9c9bf"/>
+            <stop offset="1" stop-color="#9db3a6"/>
+          </linearGradient>
+          <linearGradient id="bldgB" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#cdd9d1"/>
+            <stop offset="1" stop-color="#b0c2b7"/>
+          </linearGradient>
+          <linearGradient id="bldgC" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#a3b8ab"/>
+            <stop offset="1" stop-color="#8ba394"/>
+          </linearGradient>
+        </defs>
+        <rect width="1440" height="900" fill="url(#sky)"/>
+        <g opacity=".5" stroke="#0c6b45" stroke-opacity=".08">
+          <path d="M0 150H1440M0 300H1440M0 450H1440M0 600H1440M0 750H1440"/>
+          <path d="M180 0V900M360 0V900M540 0V900M720 0V900M900 0V900M1080 0V900M1260 0V900"/>
+        </g>
+        <polygon points="1440,0 700,900 1440,900" fill="url(#beam)"/>
+        <polygon points="0,120 520,900 0,900" fill="url(#beam)"/>
+        <!-- skyline -->
+        <g class="hero__skyline">
+          <rect x="90"  y="430" width="150" height="470" fill="url(#bldgB)"/>
+          <rect x="270" y="330" width="120" height="570" fill="url(#bldgA)"/>
+          <rect x="420" y="500" width="180" height="400" fill="url(#bldgB)"/>
+          <rect x="640" y="260" width="140" height="640" fill="url(#bldgC)"/>
+          <rect x="810" y="420" width="110" height="480" fill="url(#bldgA)"/>
+          <rect x="950" y="330" width="170" height="570" fill="url(#bldgB)"/>
+          <rect x="1160" y="470" width="130" height="430" fill="url(#bldgC)"/>
+          <rect x="1320" y="380" width="120" height="520" fill="url(#bldgA)"/>
+          <!-- windows -->
+          <g fill="#f4f8f5" opacity=".85">
+            <g class="tw tw1"><rect x="300" y="360" width="16" height="10"/><rect x="330" y="360" width="16" height="10"/><rect x="300" y="390" width="16" height="10"/><rect x="330" y="420" width="16" height="10"/><rect x="300" y="480" width="16" height="10"/><rect x="330" y="510" width="16" height="10"/></g>
+            <g class="tw tw2"><rect x="670" y="300" width="16" height="10"/><rect x="700" y="300" width="16" height="10"/><rect x="730" y="330" width="16" height="10"/><rect x="670" y="390" width="16" height="10"/><rect x="700" y="450" width="16" height="10"/><rect x="730" y="480" width="16" height="10"/><rect x="670" y="540" width="16" height="10"/></g>
+            <g class="tw tw3"><rect x="980" y="370" width="16" height="10"/><rect x="1010" y="370" width="16" height="10"/><rect x="1040" y="400" width="16" height="10"/><rect x="980" y="460" width="16" height="10"/><rect x="1040" y="520" width="16" height="10"/><rect x="1010" y="580" width="16" height="10"/></g>
+            <g class="tw tw1"><rect x="120" y="470" width="16" height="10"/><rect x="160" y="470" width="16" height="10"/><rect x="120" y="530" width="16" height="10"/><rect x="190" y="560" width="16" height="10"/></g>
+            <g class="tw tw2"><rect x="1350" y="420" width="16" height="10"/><rect x="1380" y="450" width="16" height="10"/><rect x="1350" y="510" width="16" height="10"/></g>
+          </g>
+          <!-- antenna lines -->
+          <g stroke="#5c7466" stroke-width="3" fill="none">
+            <path d="M710 260V210"/><path d="M690 225h40"/><path d="M696 212h28"/>
+            <path d="M1035 330v-42"/><path d="M1018 302h34"/>
+          </g>
+        </g>
+        <!-- floating leaves -->
+        <g class="hero__leaf hero__leaf--1"><path d="M0 22C0 8 12 0 26 0c0 14-12 22-26 22Z" fill="#0c6b45" opacity=".55" transform="translate(1120 180)"/></g>
+        <g class="hero__leaf hero__leaf--2"><path d="M0 18C0 7 10 0 21 0c0 11-10 18-21 18Z" fill="#2f8f63" opacity=".45" transform="translate(320 150)"/></g>
+        <g class="hero__leaf hero__leaf--3"><path d="M0 14C0 5 8 0 17 0c0 9-8 14-17 14Z" fill="#0c6b45" opacity=".35" transform="translate(760 120)"/></g>
+      </svg>
+      <div class="hero__vignette"></div>
+    </div>
+
+    <div class="hero__content">
+      <p class="hero__eyebrow"><span class="hero__eyebrow-line"></span>ENERGY SAVING &amp; COST SOLUTION</p>
+      <h1 class="hero__title">
+        <span class="hero__title-line"><span>省エネの、</span></span>
+        <span class="hero__title-line"><span>その先へ。</span></span>
+      </h1>
+      <p class="hero__lead">
+        LED改修から通信インフラ、電力削減コンサルティングまで。<br>
+        エコプロジェクトは、建物の省エネ・省コストを<br class="sp-only">ワンストップで支えます。
+      </p>
+      <div class="hero__actions">
+        <a href="#service" class="btn btn--primary">事業内容を見る<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <a href="#about" class="btn btn--ghost">私たちについて</a>
+      </div>
+    </div>
+
+    <div class="hero__scroll" aria-hidden="true">
+      <span>SCROLL</span>
+      <div class="hero__scroll-bar"></div>
+    </div>
+    <div class="hero__copy-vert" aria-hidden="true">Made in Tokyo — Since Eco Project</div>
+  </section>
+
+  <!-- ===== Marquee ===== -->
+  <div class="marquee" aria-hidden="true">
+    <div class="marquee__track">
+      <span>ECO PROJECT&nbsp;—&nbsp;ENERGY SAVING SOLUTIONS&nbsp;—&nbsp;</span>
+      <span>ECO PROJECT&nbsp;—&nbsp;ENERGY SAVING SOLUTIONS&nbsp;—&nbsp;</span>
+      <span>ECO PROJECT&nbsp;—&nbsp;ENERGY SAVING SOLUTIONS&nbsp;—&nbsp;</span>
+    </div>
+  </div>
+
+  <!-- ===== About ===== -->
+  <section class="section about" id="about">
+    <div class="container about__grid">
+      <div class="about__text reveal">
+        <p class="section__label"><span class="section__label-en">About Us</span><span class="section__label-ja">私たちについて</span></p>
+        <h2 class="section__title">小さな改修が、<br>建物の未来を変える。</h2>
+        <p class="about__lead">
+          株式会社エコプロジェクトは、省エネ・省コストに特化した設備ソリューションカンパニーです。
+          電波障害施設の撤去やLED改修、共聴設備の更新、インターネット回線・VODの導入から
+          電力削減コンサルティングまで──建物のライフサイクルコストを見つめ、
+          「調査・提案・施工・アフターサポート」をワンストップでお届けします。
+        </p>
+        <dl class="about__points">
+          <div class="about__point"><dt>ワンストップ</dt><dd>調査から施工・保守まで自社一貫体制</dd></div>
+          <div class="about__point"><dt>省エネ設計</dt><dd>電力消費とコストを可視化して最適化</dd></div>
+          <div class="about__point"><dt>東京駅 徒歩3分</dt><dd>日本橋本社から首都圏を中心に全国対応</dd></div>
+        </dl>
+        <a href="#company" class="textlink">会社概要を見る<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <div class="about__visual reveal reveal--delay">
+        <figure class="about__figure">
+          <svg viewBox="0 0 560 640" role="img" aria-label="省エネビルのイメージ">
+            <defs>
+              <linearGradient id="abg" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#0c6b45"/><stop offset="1" stop-color="#0a3d2a"/>
+              </linearGradient>
+              <linearGradient id="aglass" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#e8f2ec"/><stop offset="1" stop-color="#c2d6ca"/>
+              </linearGradient>
+            </defs>
+            <rect width="560" height="640" rx="6" fill="url(#abg)"/>
+            <g opacity=".22" stroke="#fff"><path d="M0 128H560M0 256H560M0 384H560M0 512H560"/><path d="M112 0V640M224 0V640M336 0V640M448 0V640"/></g>
+            <g>
+              <rect x="150" y="150" width="120" height="420" fill="url(#aglass)" rx="4"/>
+              <rect x="300" y="230" width="150" height="340" fill="#dfeae3" rx="4" opacity=".92"/>
+              <g fill="#0c6b45" opacity=".8">
+                <rect x="170" y="180" width="20" height="12" rx="2"/><rect x="205" y="180" width="20" height="12" rx="2"/><rect x="240" y="180" width="20" height="12" rx="2"/>
+                <rect x="170" y="230" width="20" height="12" rx="2"/><rect x="240" y="230" width="20" height="12" rx="2"/>
+                <rect x="170" y="280" width="20" height="12" rx="2"/><rect x="205" y="280" width="20" height="12" rx="2"/>
+                <rect x="205" y="330" width="20" height="12" rx="2"/><rect x="240" y="330" width="20" height="12" rx="2"/>
+                <rect x="170" y="380" width="20" height="12" rx="2"/><rect x="240" y="430" width="20" height="12" rx="2"/>
+                <rect x="325" y="260" width="22" height="12" rx="2"/><rect x="365" y="260" width="22" height="12" rx="2"/><rect x="405" y="260" width="22" height="12" rx="2"/>
+                <rect x="325" y="315" width="22" height="12" rx="2"/><rect x="405" y="315" width="22" height="12" rx="2"/>
+                <rect x="365" y="370" width="22" height="12" rx="2"/><rect x="405" y="425" width="22" height="12" rx="2"/>
+                <rect x="325" y="425" width="22" height="12" rx="2"/><rect x="365" y="480" width="22" height="12" rx="2"/>
+              </g>
+            </g>
+            <g stroke="#9fd8bd" stroke-width="3" fill="none" opacity=".9">
+              <path d="M210 150v-50"/><path d="M188 118h44"/><path d="M195 103h30"/>
+            </g>
+            <circle cx="470" cy="120" r="46" fill="none" stroke="#9fd8bd" stroke-width="2" opacity=".7"/>
+            <path d="M470 96c-16 0-28 10-28 26 16 0 28-10 28-26Z" fill="#9fd8bd"/>
+            <path d="M470 96c16 0 28 10 28 26-16 0-28-10-28-26Z" fill="#5cb98c"/>
+          </svg>
+          <figcaption class="about__caption">DUMMY IMAGE — 省エネ改修イメージ</figcaption>
+        </figure>
+        <div class="about__badge">
+          <span class="about__badge-num">100<small>%</small></span>
+          <span class="about__badge-label">調査からサポートまで自社一貫</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Service ===== -->
+  <section class="section service" id="service">
+    <div class="container">
+      <div class="service__head reveal">
+        <p class="section__label section__label--light"><span class="section__label-en">Our Service</span><span class="section__label-ja">事業内容</span></p>
+        <h2 class="section__title section__title--light">建物の省エネ・省コストを、<br>7つの事業で支える。</h2>
+        <p class="service__lead">調査・提案から施工、アフターサポートまで。建物にかかわるコストと通信環境の課題を、専門チームがワンストップで解決します。</p>
+      </div>
+      <div class="service__grid">
+        <article class="service-card reveal" style="--i:0">
+          <div class="service-card__visual sv-1">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v4M12 7l-6 5M12 7l6 5M6 12v9M18 12v9M4 21h16"/><path d="M9 21v-4h6v4"/></svg>
+          </div>
+          <div class="service-card__body">
+            <span class="service-card__num">01</span>
+            <h3 class="service-card__title">電波障害施設撤去</h3>
+            <p class="service-card__text">役割を終えた電波障害対策施設を調査し、安全かつ確実に撤去。維持管理コストの削減と景観改善を実現します。</p>
+          </div>
+        </article>
+        <article class="service-card reveal" style="--i:1">
+          <div class="service-card__visual sv-2">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.7 1 1.6 1 2.5h6c0-.9.2-1.8 1-2.5A6 6 0 0 0 12 3Z"/></svg>
+          </div>
+          <div class="service-card__body">
+            <span class="service-card__num">02</span>
+            <h3 class="service-card__title">LED改修工事</h3>
+            <p class="service-card__text">共用部・専有部の照明をLEDへ更新。電気料金と保守コストを大幅に削減し、快適な光環境をつくります。</p>
+          </div>
+        </article>
+        <article class="service-card reveal" style="--i:2">
+          <div class="service-card__visual sv-3">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 9l3 2.5L7 14M13 14h4"/></svg>
+          </div>
+          <div class="service-card__body">
+            <span class="service-card__num">03</span>
+            <h3 class="service-card__title">共聴設備改修工事</h3>
+            <p class="service-card__text">老朽化したテレビ共聴設備を診断・更新。4K・8K時代に対応した安定した受信環境を整備します。</p>
+          </div>
+        </article>
+        <article class="service-card reveal" style="--i:3">
+          <div class="service-card__visual sv-4">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 9a15 15 0 0 1 20 0"/><path d="M5.5 12.5a10 10 0 0 1 13 0"/><path d="M9 16a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1.2" fill="currentColor"/></svg>
+          </div>
+          <div class="service-card__body">
+            <span class="service-card__num">04</span>
+            <h3 class="service-card__title">インターネット回線工事</h3>
+            <p class="service-card__text">マンション・施設への高速インターネット／Wi-Fi環境を設計・施工。資産価値を高める通信インフラを提供します。</p>
+          </div>
+        </article>
+        <article class="service-card reveal" style="--i:4">
+          <div class="service-card__visual sv-5">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M10 8.5l4.5 2.5L10 13.5Z" fill="currentColor" stroke="none"/><path d="M7 21h10"/></svg>
+          </div>
+          <div class="service-card__body">
+            <span class="service-card__num">05</span>
+            <h3 class="service-card__title">VOD設置</h3>
+            <p class="service-card__text">ホテル・施設向けビデオ・オン・デマンドの導入をサポート。客室満足度を高める映像サービスを構築します。</p>
+          </div>
+        </article>
+        <article class="service-card reveal" style="--i:5">
+          <div class="service-card__visual sv-6">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/><path d="M13 7l3-3 3 3" /></svg>
+          </div>
+          <div class="service-card__body">
+            <span class="service-card__num">06</span>
+            <h3 class="service-card__title">電力削減コンサルティング</h3>
+            <p class="service-card__text">電力使用状況を分析し、契約・設備の両面から削減プランをご提案。継続的なコストダウンを実現します。</p>
+          </div>
+        </article>
+        <article class="service-card service-card--wide reveal" style="--i:6">
+          <div class="service-card__visual sv-7">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7Z"/><path d="M9 12l2 2 4-4"/></svg>
+          </div>
+          <div class="service-card__body">
+            <span class="service-card__num">07</span>
+            <h3 class="service-card__title">サポート体制の構築</h3>
+            <p class="service-card__text">導入後も定期点検・障害対応・運用改善まで伴走。お客様ごとの専任チームが、設備の安定稼働を長期にわたって支えます。</p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Strength ===== -->
+  <section class="section strength" id="strength">
+    <div class="container">
+      <div class="strength__head reveal">
+        <p class="section__label"><span class="section__label-en">Strength</span><span class="section__label-ja">選ばれる理由</span></p>
+        <h2 class="section__title">数字で見る、<br class="sp-only">エコプロジェクト。</h2>
+      </div>
+      <div class="strength__grid">
+        <div class="strength-item reveal" style="--i:0">
+          <p class="strength-item__num"><span class="count" data-count="1200">0</span><small>件+</small></p>
+          <p class="strength-item__label">累計施工実績<span>※ダミー数値</span></p>
+        </div>
+        <div class="strength-item reveal" style="--i:1">
+          <p class="strength-item__num"><span class="count" data-count="30">0</span><small>%</small></p>
+          <p class="strength-item__label">平均電力コスト削減率<span>※ダミー数値</span></p>
+        </div>
+        <div class="strength-item reveal" style="--i:2">
+          <p class="strength-item__num">24<small>時間</small>365<small>日</small></p>
+          <p class="strength-item__label">サポート受付体制</p>
+        </div>
+        <div class="strength-item reveal" style="--i:3">
+          <p class="strength-item__num"><span class="count" data-count="98">0</span><small>%</small></p>
+          <p class="strength-item__label">顧客継続率<span>※ダミー数値</span></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== News ===== -->
+  <section class="section news" id="news">
+    <div class="container news__grid">
+      <div class="news__head reveal">
+        <p class="section__label"><span class="section__label-en">Journal</span><span class="section__label-ja">お知らせ</span></p>
+        <h2 class="section__title">最新情報</h2>
+        <a href="#" class="textlink" onclick="return false;">一覧を見る<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+      <ul class="news__list reveal reveal--delay">
+        <li class="news-item"><a href="#" onclick="return false;">
+          <time datetime="2026-08-01">2026.08.01</time><span class="news-item__cat">お知らせ</span>
+          <p>コーポレートサイトをリニューアルしました。</p>
+        </a></li>
+        <li class="news-item"><a href="#" onclick="return false;">
+          <time datetime="2026-07-15">2026.07.15</time><span class="news-item__cat">実績</span>
+          <p>【ダミー】都内大型マンションのLED改修工事が完了しました。</p>
+        </a></li>
+        <li class="news-item"><a href="#" onclick="return false;">
+          <time datetime="2026-06-30">2026.06.30</time><span class="news-item__cat">サービス</span>
+          <p>【ダミー】ホテル向けVODサービスの取り扱いを拡充しました。</p>
+        </a></li>
+        <li class="news-item"><a href="#" onclick="return false;">
+          <time datetime="2026-06-02">2026.06.02</time><span class="news-item__cat">お知らせ</span>
+          <p>【ダミー】夏季の省エネ診断キャンペーンを開始しました。</p>
+        </a></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===== Company ===== -->
+  <section class="section company" id="company">
+    <div class="container">
+      <div class="company__head reveal">
+        <p class="section__label"><span class="section__label-en">Company</span><span class="section__label-ja">会社概要</span></p>
+        <h2 class="section__title">会社情報</h2>
+      </div>
+      <div class="company__grid">
+        <table class="company__table reveal">
+          <tbody>
+            <tr><th>会社名</th><td>株式会社エコプロジェクト</td></tr>
+            <tr><th>代表者</th><td>味澤 幸弘</td></tr>
+            <tr><th>事業内容</th><td>電波障害施設撤去／LED改修工事／共聴設備改修工事／インターネット回線工事（Wi-Fi）／VOD設置／電力削減コンサルティング／サポート体制の構築</td></tr>
+            <tr><th>本社</th><td>〒103-0027 東京都中央区日本橋3-2-14 新槇町ビル2F<br><span class="company__access">JR「東京駅」八重洲北口より徒歩3分</span></td></tr>
+            <tr><th>第二オフィス</th><td>〒104-0045 東京都中央区築地4-1-1 東劇ビル8F<br><span class="company__access">日比谷線・都営浅草線「東銀座駅」より徒歩1分</span></td></tr>
+            <tr><th>TEL / FAX</th><td>TEL 03-4455-4906　FAX 03-4330-1848</td></tr>
+            <tr><th>取引銀行</th><td>三井住友銀行 東京中央支店</td></tr>
+          </tbody>
+        </table>
+        <div class="company__map reveal reveal--delay">
+          <figure class="map-figure">
+            <svg viewBox="0 0 520 420" role="img" aria-label="所在地マップ（イメージ）">
+              <rect width="520" height="420" fill="#eef2ef"/>
+              <g stroke="#d5ded7" stroke-width="10" fill="none">
+                <path d="M-20 90H540"/><path d="M-20 210H540"/><path d="M-20 330H540"/>
+                <path d="M110 -20V440"/><path d="M270 -20V440"/><path d="M430 -20V440"/>
+              </g>
+              <g stroke="#c3cfc6" stroke-width="4" fill="none">
+                <path d="M-20 150H540"/><path d="M190 -20V440"/><path d="M350 -20V440"/>
+              </g>
+              <path d="M-20 40 C160 80 320 20 540 70" stroke="#aecbba" stroke-width="14" fill="none" opacity=".8"/>
+              <g>
+                <circle cx="270" cy="210" r="14" fill="#0c6b45"/>
+                <circle cx="270" cy="210" r="26" fill="none" stroke="#0c6b45" stroke-width="2" opacity=".4" class="map-pulse"/>
+                <path d="M270 168c-16 0-28 12-28 27 0 20 28 45 28 45s28-25 28-45c0-15-12-27-28-27Z" fill="#0c6b45"/>
+                <circle cx="270" cy="196" r="10" fill="#fff"/>
+              </g>
+              <g font-family="'Inter',sans-serif" font-size="13" fill="#7d8a80">
+                <text x="120" y="82">NIHONBASHI</text>
+                <text x="330" y="345">GINZA</text>
+                <text x="30" y="380">TOKYO STATION ▶</text>
+              </g>
+            </svg>
+            <figcaption class="about__caption">DUMMY MAP — 日本橋本社周辺イメージ</figcaption>
+          </figure>
+          <div class="office-cards">
+            <div class="office-card">
+              <span class="office-card__tag">HEAD OFFICE</span>
+              <h3>日本橋本社</h3>
+              <p>東京都中央区日本橋3-2-14 新槇町ビル2F<br>JR「東京駅」八重洲北口 徒歩3分</p>
+            </div>
+            <div class="office-card">
+              <span class="office-card__tag">2ND OFFICE</span>
+              <h3>築地オフィス</h3>
+              <p>東京都中央区築地4-1-1 東劇ビル8F<br>「東銀座駅」徒歩1分</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Contact ===== -->
+  <section class="contact" id="contact">
+    <div class="contact__bg" aria-hidden="true"></div>
+    <div class="container contact__inner reveal">
+      <p class="section__label section__label--light"><span class="section__label-en">Contact</span><span class="section__label-ja">お問い合わせ</span></p>
+      <h2 class="contact__title">省エネ・省コストのご相談は、<br>お気軽にどうぞ。</h2>
+      <p class="contact__text">現地調査・お見積りは無料です。建物の課題、まずはお聞かせください。</p>
+      <div class="contact__actions">
+        <a href="tel:0344554906" class="contact-tel">
+          <span class="contact-tel__label">お電話でのお問い合わせ</span>
+          <span class="contact-tel__num"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h4l2 5-3 2a13 13 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A17 17 0 0 1 3 6a2 2 0 0 1 2-2Z"/></svg>03-4455-4906</span>
+          <span class="contact-tel__note">受付時間 9:00–18:00（平日）／ FAX 03-4330-1848</span>
+        </a>
+        <a href="mailto:info@example.com" class="btn btn--white">メールフォームへ<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ===== Footer ===== -->
+<footer class="footer">
+  <div class="container footer__inner">
+    <div class="footer__brand">
+      <a href="#top" class="header__logo footer__logo">
+        <span class="header__logo-mark">e</span>
+        <span class="header__logo-text">
+          <span class="header__logo-en">ECO PROJECT</span>
+          <span class="header__logo-ja">株式会社エコプロジェクト</span>
+        </span>
+      </a>
+      <p class="footer__addr">
+        〒103-0027 東京都中央区日本橋3-2-14 新槇町ビル2F<br>
+        TEL 03-4455-4906 ／ FAX 03-4330-1848
+      </p>
+    </div>
+    <nav class="footer__nav" aria-label="フッターナビゲーション">
+      <ul>
+        <li><a href="#about">私たちについて</a></li>
+        <li><a href="#service">事業内容</a></li>
+        <li><a href="#strength">選ばれる理由</a></li>
+        <li><a href="#news">お知らせ</a></li>
+        <li><a href="#company">会社概要</a></li>
+        <li><a href="#contact">お問い合わせ</a></li>
+      </ul>
+    </nav>
+  </div>
+  <div class="container footer__bottom">
+    <p class="footer__note">本ページはリニューアル提案用のデザインモックです。画像・一部数値はダミーです。</p>
+    <p class="footer__copy">&copy; ECO PROJECT Inc. All Rights Reserved.</p>
+  </div>
+</footer>
+
+<a href="#top" class="totop" id="totop" aria-label="ページ上部へ戻る">
+  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+</a>
+
+<script src="js/main.js"></script>
+</body>
+</html>
