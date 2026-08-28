@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" role="img" aria-label="夕暮れの東京の街を走る自転車">
+  <defs>
+    <linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a1d3a"/>
+      <stop offset="0.45" stop-color="#123a6b"/>
+      <stop offset="0.75" stop-color="#b2552a"/>
+      <stop offset="1" stop-color="#f0821e"/>
+    </linearGradient>
+    <linearGradient id="bldg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1a30"/>
+      <stop offset="1" stop-color="#071120"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffd98a"/>
+      <stop offset="0.6" stop-color="#ffb14e" stop-opacity="0.8"/>
+      <stop offset="1" stop-color="#ffb14e" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#dusk)"/>
+  <circle cx="1310" cy="640" r="260" fill="url(#sun)"/>
+  <circle cx="1310" cy="640" r="90" fill="#ffe1a6"/>
+
+  <!-- far skyline -->
+  <g fill="#12294a" opacity="0.85">
+    <rect x="0" y="560" width="120" height="260"/>
+    <rect x="140" y="500" width="90" height="320"/>
+    <rect x="250" y="590" width="140" height="230"/>
+    <rect x="410" y="470" width="80" height="350"/>
+    <rect x="510" y="545" width="120" height="275"/>
+    <rect x="650" y="505" width="70" height="315"/>
+    <rect x="740" y="575" width="130" height="245"/>
+    <rect x="890" y="520" width="90" height="300"/>
+    <rect x="1000" y="585" width="120" height="235"/>
+    <rect x="1480" y="520" width="110" height="300"/>
+    <rect x="1610" y="470" width="80" height="350"/>
+    <rect x="1710" y="555" width="130" height="265"/>
+    <rect x="1850" y="500" width="70" height="320"/>
+    <polygon points="470,470 450,430 490,430"/>
+  </g>
+
+  <!-- near skyline -->
+  <g fill="url(#bldg)">
+    <rect x="60" y="640" width="200" height="260"/>
+    <rect x="300" y="600" width="150" height="300"/>
+    <rect x="490" y="660" width="220" height="240"/>
+    <rect x="760" y="620" width="140" height="280"/>
+    <rect x="1120" y="650" width="180" height="250"/>
+    <rect x="1560" y="630" width="200" height="270"/>
+    <rect x="1790" y="670" width="130" height="230"/>
+  </g>
+  <!-- lit windows -->
+  <g fill="#ffcf7d" opacity="0.9">
+    <rect x="84" y="664" width="18" height="14"/><rect x="120" y="664" width="18" height="14"/><rect x="192" y="692" width="18" height="14"/>
+    <rect x="84" y="720" width="18" height="14"/><rect x="156" y="748" width="18" height="14"/><rect x="120" y="776" width="18" height="14"/>
+    <rect x="322" y="628" width="16" height="12"/><rect x="380" y="656" width="16" height="12"/><rect x="352" y="712" width="16" height="12"/>
+    <rect x="516" y="688" width="18" height="14"/><rect x="588" y="716" width="18" height="14"/><rect x="654" y="688" width="18" height="14"/>
+    <rect x="782" y="648" width="16" height="12"/><rect x="840" y="704" width="16" height="12"/>
+    <rect x="1146" y="678" width="18" height="14"/><rect x="1218" y="706" width="18" height="14"/><rect x="1250" y="762" width="18" height="14"/>
+    <rect x="1586" y="658" width="18" height="14"/><rect x="1658" y="686" width="18" height="14"/><rect x="1614" y="742" width="18" height="14"/>
+    <rect x="1812" y="698" width="16" height="12"/><rect x="1866" y="754" width="16" height="12"/>
+  </g>
+
+  <!-- road -->
+  <rect x="0" y="900" width="1920" height="180" fill="#0a1526"/>
+  <g stroke="#f6c66b" stroke-width="8" stroke-dasharray="60 50" opacity="0.7">
+    <line x1="0" y1="990" x2="1920" y2="990"/>
+  </g>
+
+  <!-- cyclist silhouette -->
+  <g transform="translate(880,760) scale(1.35)" fill="none" stroke="#061020" stroke-linecap="round">
+    <circle cx="40" cy="120" r="42" stroke-width="10"/>
+    <circle cx="185" cy="120" r="42" stroke-width="10"/>
+    <path d="M40 120 L92 44 L158 44 L185 120 M92 44 L112 120 L40 120 M112 120 L185 120" stroke-width="10"/>
+    <path d="M158 44 L150 22 L172 16" stroke-width="10"/>
+    <path d="M92 44 L84 20 M66 20 L102 20" stroke-width="10"/>
+    <!-- rider -->
+    <path d="M84 20 C 100 -20 140 -28 158 8" stroke-width="14"/>
+    <circle cx="166" cy="-14" r="16" fill="#061020" stroke="none"/>
+    <path d="M120 -6 L112 44 M120 -6 L150 22" stroke-width="12"/>
+  </g>
+  <ellipse cx="1035" cy="925" rx="150" ry="14" fill="#050d18" opacity="0.7"/>
+</svg>
