@@ -1,0 +1,3 @@
+/* 埋め込み用: ダッシュボードUI・注記・ツールチップを隠し、3Dシーンだけを背景に出す */
+#panel,#stats,#tooltip,#credit,#loading{display:none !important;}
+html,body{cursor:default !important;}
