@@ -12,7 +12,7 @@ html, body {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: radial-gradient(120% 100% at 50% 0%, #141821 0%, #0a0d13 55%, #05070b 100%);
+    background: radial-gradient(120% 100% at 50% 0%, #0a101d 0%, #04060c 55%, #020409 100%);
     color: #dfe4ec;
     font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -63,21 +63,19 @@ const KEY_LEVEL = { B5: -5, B4: -4, B3: -3, B2: -2, B1: -1, 0: 0, 1: 1, 2: 2, 3:
 const LEVELS = FLOOR_KEYS.map(k => KEY_LEVEL[k]);
 const levelLabel = l => (l >= 0 ? `${l + 1}F` : `B${-l}`);
 
-/* ---------- palette (dark BIM / night-model look) ---------- */
+/* ---------- palette (neon point-cloud night look, from the first prototype) ---------- */
 const COL = {
-  fog: 0x0a0d13,
-  slab: 0x333a45,
-  space: 0x2a3039,
-  edge: 0xa8bdd6,
-  slabHi: 0x8a7420,
-  spaceHi: 0xffce1f,
-  edgeHi: 0xffe27a,
-  building: 0x525d6e,
-  rail: 0x5b6575,
-  outline: 0x434c5a,
-  network: 0xf0b400,
-  gridFine: 0x1a1f27,
-  gridCoarse: 0x252b35,
+  fog: 0x04060c,
+  fill: 0x0a1018,
+  highlight: 0xffd21c,
+  building: 0x46597a,
+  outline: 0xd166ff,
+  network: 0x00e5ff,
+  networkNode: 0x9ff3ff,
+};
+const LEVEL_COLORS = {
+  3: 0xff9db1, 2: 0xffc36e, 1: 0xffe66e, 0: 0x7ef0ff,
+  "-1": 0x7fb2ff, "-2": 0xb48dff, "-3": 0xff8df0, "-4": 0x9dffb0, "-5": 0xffa26e,
 };
 
 /* ---------- renderer / scene / camera ---------- */
@@ -103,19 +101,6 @@ scene.add(fill);
 /* model root — scale.y animates the "2D plan -> 3D model" extrusion intro */
 const model = new THREE.Group();
 scene.add(model);
-
-/* ---------- grid (drawing-table reference plane) ---------- */
-const GRID_Y = -5.5 * SP - 14;
-const gridFine = new THREE.GridHelper(4600, 230, COL.gridFine, COL.gridFine);
-gridFine.position.y = GRID_Y;
-gridFine.material.transparent = true;
-gridFine.material.opacity = 0.4;
-scene.add(gridFine);
-const gridCoarse = new THREE.GridHelper(4600, 46, COL.gridCoarse, COL.gridCoarse);
-gridCoarse.position.y = GRID_Y + 0.2;
-gridCoarse.material.transparent = true;
-gridCoarse.material.opacity = 0.5;
-scene.add(gridCoarse);
 
 /* ---------- geometry helpers ---------- */
 const rotX = new THREE.Matrix4().makeRotationX(-Math.PI / 2);
@@ -170,6 +155,36 @@ function featurePolygons(fc) {
 /* ---------- build-time frame yield (keeps the tab responsive) ---------- */
 const tick = () => new Promise(r => requestAnimationFrame(r));
 
+/* ---------- area-weighted surface sampling (LiDAR-like point cloud) ---------- */
+function sampleSurface(geo, density, cap) {
+  const pos = geo.attributes.position.array;
+  const triCount = pos.length / 9;
+  const cum = new Float32Array(triCount);
+  let total = 0;
+  for (let i = 0; i < triCount; i++) {
+    const o = i * 9;
+    const abx = pos[o + 3] - pos[o], aby = pos[o + 4] - pos[o + 1], abz = pos[o + 5] - pos[o + 2];
+    const acx = pos[o + 6] - pos[o], acy = pos[o + 7] - pos[o + 1], acz = pos[o + 8] - pos[o + 2];
+    const cx = aby * acz - abz * acy, cy = abz * acx - abx * acz, cz = abx * acy - aby * acx;
+    total += 0.5 * Math.sqrt(cx * cx + cy * cy + cz * cz);
+    cum[i] = total;
+  }
+  const count = Math.max(200, Math.min(cap, Math.round(total * density)));
+  const out = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    const r = Math.random() * total;
+    let lo = 0, hi = triCount - 1;
+    while (lo < hi) { const m = (lo + hi) >> 1; cum[m] < r ? (lo = m + 1) : (hi = m); }
+    const o = lo * 9;
+    let u = Math.random(), v = Math.random();
+    if (u + v > 1) { u = 1 - u; v = 1 - v; }
+    out[i * 3]     = pos[o]     + (pos[o + 3] - pos[o])     * u + (pos[o + 6] - pos[o])     * v;
+    out[i * 3 + 1] = pos[o + 1] + (pos[o + 4] - pos[o + 1]) * u + (pos[o + 7] - pos[o + 1]) * v;
+    out[i * 3 + 2] = pos[o + 2] + (pos[o + 5] - pos[o + 2]) * u + (pos[o + 8] - pos[o + 2]) * v;
+  }
+  return out;
+}
+
 /* ---------- station floors ---------- */
 const levelEntries = []; // { level, group, baseY, mats:[], edgeMat, mix }
 
@@ -180,28 +195,45 @@ function buildLevel(key) {
   group.position.y = baseY;
   model.add(group);
 
-  const spaceMat = new THREE.MeshLambertMaterial({ color: COL.space });
-  const slabMat = new THREE.MeshLambertMaterial({ color: COL.slab });
-  const edgeMat = new THREE.LineBasicMaterial({ color: COL.edge, transparent: true, opacity: 0.55 });
+  const baseColor = new THREE.Color(LEVEL_COLORS[level] ?? 0x7fb2ff);
+  const fillMat = new THREE.MeshBasicMaterial({ color: COL.fill, transparent: true, opacity: 0.38, depthWrite: false });
+  const edgeMat = new THREE.LineBasicMaterial({
+    color: baseColor.clone(), transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false,
+  });
+  const pointMat = new THREE.PointsMaterial({
+    color: baseColor.clone(), size: 1.2, map: dotTexture, sizeAttenuation: true,
+    transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false,
+  });
 
+  const clouds = [];
   const kinds = [
-    { fc: D[`./data/ShibuyaTerminal/ShibuyaTerminal_${key}_Space.geojson`], depth: 5, mat: spaceMat },
-    { fc: D[`./data/ShibuyaTerminal/ShibuyaTerminal_${key}_Floor.geojson`], depth: 0.5, mat: slabMat },
+    { fc: D[`./data/ShibuyaTerminal/ShibuyaTerminal_${key}_Space.geojson`], depth: 5, density: 0.16, cap: 11000 },
+    { fc: D[`./data/ShibuyaTerminal/ShibuyaTerminal_${key}_Floor.geojson`], depth: 0.5, density: 0.1, cap: 6000 },
   ];
-  kinds.forEach(({ fc, depth, mat }) => {
+  kinds.forEach(({ fc, depth, density, cap }) => {
     if (!fc) return;
     const geos = featurePolygons(fc).map(r => polygonGeometry(r, depth)).filter(Boolean);
     if (!geos.length) return;
     const merged = mergeGeometries(geos);
-    group.add(new THREE.Mesh(merged, mat));
+    group.add(new THREE.Mesh(merged, fillMat));
     group.add(new THREE.LineSegments(new THREE.EdgesGeometry(merged, 25), edgeMat));
+    clouds.push(sampleSurface(merged, density, cap));
   });
+  if (clouds.length) {
+    const n = clouds.reduce((t, c) => t + c.length, 0);
+    const all = new Float32Array(n);
+    let off = 0;
+    clouds.forEach(c => { all.set(c, off); off += c.length; });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(all, 3));
+    group.add(new THREE.Points(geo, pointMat));
+  }
 
-  levelEntries.push({ level, group, baseY, spaceMat, slabMat, edgeMat, mix: 0 });
+  levelEntries.push({ level, group, baseY, baseColor, pointMat, edgeMat, mix: 0 });
 }
 
-/* ---------- pedestrian network (brand-yellow layer, station-focused) ---------- */
-const NET_R2 = 480 * 480; // keep the yellow layer focused on the station
+/* ---------- pedestrian network (cyan neon layer; flow particles stay station-focused) ---------- */
+const NET_R2 = 480 * 480;
 const nearStation = (x, z) => x * x + z * z < NET_R2;
 
 function buildNetwork() {
@@ -212,7 +244,7 @@ function buildNetwork() {
     ords.set(f.properties.node_id, o);
     const [x, y] = f.geometry.coordinates;
     const px = x - CX, pz = -(y - CY);
-    if (nearStation(px, pz)) nodePos.push(px, o * SP + 1.6, pz);
+    nodePos.push(px, o * SP + 1.6, pz);
   });
 
   const seg = [];
@@ -230,9 +262,7 @@ function buildNetwork() {
       else o = (a + b) / 2;
       return [c[0] - CX, o * SP + 1.6, -(c[1] - CY)];
     });
-    for (let i = 0; i < pts.length - 1; i++)
-      if (nearStation(pts[i][0], pts[i][2]) && nearStation(pts[i + 1][0], pts[i + 1][2]))
-        seg.push(...pts[i], ...pts[i + 1]);
+    for (let i = 0; i < pts.length - 1; i++) seg.push(...pts[i], ...pts[i + 1]);
     if (pts.length >= 2 && pts.every(p => nearStation(p[0], p[2]))) registerFlowLink(netFlowLinks, pts.flat());
   });
 
@@ -240,14 +270,20 @@ function buildNetwork() {
   lineGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(seg), 3));
   model.add(new THREE.LineSegments(
     lineGeo,
-    new THREE.LineBasicMaterial({ color: COL.network, transparent: true, opacity: 0.42 })
+    new THREE.LineBasicMaterial({
+      color: COL.network, transparent: true, opacity: 0.26,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })
   ));
 
   const ptGeo = new THREE.BufferGeometry();
   ptGeo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(nodePos), 3));
   model.add(new THREE.Points(
     ptGeo,
-    new THREE.PointsMaterial({ color: COL.network, size: 0.9, transparent: true, opacity: 0.3, depthWrite: false })
+    new THREE.PointsMaterial({
+      color: COL.networkNode, size: 0.8, map: dotTexture, transparent: true, opacity: 0.4,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })
   ));
 }
 
@@ -269,7 +305,7 @@ function buildOutline() {
   geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(seg), 3));
   model.add(new THREE.LineSegments(
     geo,
-    new THREE.LineBasicMaterial({ color: COL.outline, transparent: true, opacity: 0.5 })
+    new THREE.LineBasicMaterial({ color: COL.outline, transparent: true, opacity: 0.2, depthWrite: false })
   ));
 }
 
@@ -296,27 +332,31 @@ async function buildCity() {
   const merged = mergeGeometries(geos);
   const mesh = new THREE.Mesh(
     merged,
-    new THREE.MeshLambertMaterial({ color: COL.building, transparent: true, opacity: 0.62, depthWrite: false })
+    new THREE.MeshLambertMaterial({ color: COL.building, transparent: true, opacity: 0.3, depthWrite: false })
   );
   mesh.renderOrder = -1;
   model.add(mesh);
 }
 
-/* ---------- rail lines ---------- */
+/* ---------- rail lines (per-operator colors, like the first prototype) ---------- */
 function buildRails() {
-  const seg = [];
+  const byColor = new Map();
   D["./data/urban/rails.json"].forEach(({ c, lv, p }) => {
     const y = lv === "t" ? -22 : lv === "b" ? 6 : 0.8;
+    if (!byColor.has(c)) byColor.set(c, []);
+    const seg = byColor.get(c);
     for (let i = 0; i < p.length - 1; i++)
       seg.push(p[i][0], y, -p[i][1], p[i + 1][0], y, -p[i + 1][1]);
     if (p.length >= 2) registerFlowLink(railFlowLinks, p.flatMap(v => [v[0], y, -v[1]]), c);
   });
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(seg), 3));
-  model.add(new THREE.LineSegments(
-    geo,
-    new THREE.LineBasicMaterial({ color: COL.rail, transparent: true, opacity: 0.5 })
-  ));
+  byColor.forEach((seg, color) => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.BufferAttribute(new Float32Array(seg), 3));
+    model.add(new THREE.LineSegments(
+      geo,
+      new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.5 })
+    ));
+  });
 }
 
 /* ---------- animated data flows (multi-color particles) ---------- */
@@ -511,9 +551,7 @@ addEventListener("resize", () => {
 let scanIdx = LEVELS.indexOf(0), scanTimer = 0;
 const SCAN_PERIOD = 3.4;
 
-const cSpace = new THREE.Color(COL.space), cSpaceHi = new THREE.Color(COL.spaceHi);
-const cSlab = new THREE.Color(COL.slab), cSlabHi = new THREE.Color(COL.slabHi);
-const cEdge = new THREE.Color(COL.edge), cEdgeHi = new THREE.Color(COL.edgeHi);
+const cHighlight = new THREE.Color(COL.highlight);
 
 function updateScan(dt) {
   if (!introDone) return;
@@ -527,9 +565,10 @@ function updateScan(dt) {
     const t = active === en.level ? 1 : 0;
     en.mix += (t - en.mix) * Math.min(1, dt * 5);
     if (en.mix < 0.004 && t === 0) return;
-    en.spaceMat.color.lerpColors(cSpace, cSpaceHi, en.mix);
-    en.slabMat.color.lerpColors(cSlab, cSlabHi, en.mix);
-    en.edgeMat.color.lerpColors(cEdge, cEdgeHi, en.mix);
+    en.pointMat.color.lerpColors(en.baseColor, cHighlight, en.mix);
+    en.edgeMat.color.lerpColors(en.baseColor, cHighlight, en.mix);
+    en.pointMat.opacity = 0.55 + en.mix * 0.35;
+    en.edgeMat.opacity = 0.3 + en.mix * 0.4;
     en.group.position.y = en.baseY + en.mix * 4;
   });
 }
