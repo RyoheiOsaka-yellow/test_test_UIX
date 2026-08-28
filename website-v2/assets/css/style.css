@@ -115,7 +115,7 @@ a:hover .image-rounded img, .hover-scale:hover .image-rounded img { transform: s
 /* ---------- Hero(フルスクリーン動画風メディア) ---------- */
 .hero { position: relative; height: 100svh; min-height: 640px; overflow: hidden; }
 .hero-media { position: absolute; inset: 0; }
-.hero-media .scene { position: absolute; inset: -6%; background: url("../img/hero-city.svg") center / cover no-repeat; animation: heroPan 28s ease-in-out infinite alternate; }
+.hero-media .scene { position: absolute; inset: -6%; background: url("../img/photos/night.jpg") center / cover no-repeat; animation: heroPan 28s ease-in-out infinite alternate; }
 .hero.paused .hero-media .scene { animation-play-state: paused; }
 @keyframes heroPan {
   from { transform: scale(1.02) translateX(0); }
@@ -290,7 +290,7 @@ a:hover .image-rounded img, .hover-scale:hover .image-rounded img { transform: s
 
 /* ---------- Contact(メディア背景) ---------- */
 .cta-contact { position: relative; overflow: hidden; padding: 170px 0; color: #fff; }
-.cta-contact .media { position: absolute; inset: -6%; background: url("../img/hero-city.svg") center / cover no-repeat; animation: heroPan 30s ease-in-out infinite alternate; }
+.cta-contact .media { position: absolute; inset: -6%; background: url("../img/photos/tokyo1.jpg") center / cover no-repeat; animation: heroPan 30s ease-in-out infinite alternate; }
 .cta-contact::after { content: ""; position: absolute; inset: 0; background: rgba(6, 10, 18, 0.58); }
 .cta-contact .t-container { position: relative; z-index: 2; }
 .cta-contact .text-shoulder { color: #fff; }
@@ -403,7 +403,7 @@ a:hover .image-rounded img, .hover-scale:hover .image-rounded img { transform: s
 
 /* 料金ページ用CTA(cta-contactを継承) */
 .cta-section { position: relative; overflow: hidden; padding: 130px 0; color: #fff; text-align: left; background: var(--c-ink); }
-.cta-section::before { content: ""; position: absolute; inset: -6%; background: url("../img/hero-city.svg") center / cover no-repeat; opacity: 0.35; }
+.cta-section::before { content: ""; position: absolute; inset: -6%; background: url("../img/photos/tokyo1.jpg") center / cover no-repeat; opacity: 0.45; }
 .cta-section::after { content: ""; position: absolute; inset: 0; background: rgba(6,10,18,0.35); }
 .cta-section .inner { position: relative; z-index: 2; max-width: 1240px; margin: 0 auto; padding: 0 32px; }
 .cta-section .en { display: flex; align-items: center; gap: 10px; font-family: var(--font-en); font-size: 14px; font-weight: 700; margin-bottom: 18px; }
