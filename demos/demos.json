@@ -34,7 +34,9 @@
     "home-xinteractive": "light"
   },
   "keep": [
-    "inkwhite"
+    "inkwhite",
+    "yellow-top",
+    "morphosis"
   ],
   "reveal": {
     "home-xbuild": "fade"
