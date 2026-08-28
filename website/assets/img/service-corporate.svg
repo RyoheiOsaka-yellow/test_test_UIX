@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="法人向けサービス">
+  <rect width="640" height="360" fill="#e8f1fa"/>
+  <rect x="0" y="285" width="640" height="75" fill="#cfe2f0"/>
+  <rect x="90" y="90" width="180" height="195" rx="8" fill="#0e4e8e"/>
+  <g fill="#e8f1fa">
+    <rect x="112" y="112" width="30" height="24"/><rect x="164" y="112" width="30" height="24"/><rect x="216" y="112" width="30" height="24"/>
+    <rect x="112" y="152" width="30" height="24"/><rect x="164" y="152" width="30" height="24"/><rect x="216" y="152" width="30" height="24"/>
+    <rect x="112" y="192" width="30" height="24"/><rect x="164" y="192" width="30" height="24"/><rect x="216" y="192" width="30" height="24"/>
+  </g>
+  <rect x="158" y="240" width="44" height="45" fill="#f0821e"/>
+  <!-- bike rack -->
+  <g stroke="#22303e" stroke-width="7" fill="none" stroke-linecap="round">
+    <path d="M340 285 L340 220 M400 285 L400 220 M460 285 L460 220 M520 285 L520 220"/>
+    <path d="M325 220 L535 220"/>
+  </g>
+  <g stroke="#2e9e6b" stroke-width="6" fill="none" stroke-linecap="round">
+    <circle cx="358" cy="262" r="22"/><circle cx="418" cy="262" r="22"/>
+    <path d="M358 262 L382 226 L418 262"/>
+  </g>
+  <g stroke="#f0821e" stroke-width="6" fill="none" stroke-linecap="round">
+    <circle cx="478" cy="262" r="22"/><circle cx="538" cy="262" r="22"/>
+    <path d="M478 262 L502 226 L538 262"/>
+  </g>
+</svg>

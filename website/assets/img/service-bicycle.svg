@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" role="img" aria-label="出張自転車修理">
+  <rect width="640" height="360" fill="#e8f1fa"/>
+  <rect x="0" y="280" width="640" height="80" fill="#cfe2f0"/>
+  <g stroke="#0e4e8e" stroke-width="9" fill="none" stroke-linecap="round">
+    <circle cx="215" cy="255" r="62"/>
+    <circle cx="425" cy="255" r="62"/>
+    <path d="M215 255 L282 148 L382 148 L425 255"/>
+    <path d="M282 148 L310 255 L215 255"/>
+    <path d="M310 255 L425 255"/>
+    <path d="M382 148 L368 116 L396 108"/>
+    <path d="M282 148 L272 114 M252 114 L292 114"/>
+  </g>
+  <circle cx="310" cy="255" r="13" fill="#f0821e"/>
+  <g transform="translate(470,90) rotate(35)">
+    <rect x="-10" y="-46" width="20" height="70" rx="8" fill="#f0821e"/>
+    <circle cx="0" cy="-58" r="16" fill="none" stroke="#f0821e" stroke-width="10"/>
+  </g>
+</svg>
