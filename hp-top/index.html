@@ -12,8 +12,8 @@ html, body {
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: radial-gradient(120% 100% at 50% 0%, #f8f9fa 0%, #eceef1 55%, #e2e5e9 100%);
-    color: #16181b;
+    background: radial-gradient(120% 100% at 50% 0%, #141821 0%, #0a0d13 55%, #05070b 100%);
+    color: #dfe4ec;
     font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
     -webkit-font-smoothing: antialiased;
 }
@@ -32,7 +32,7 @@ html, body {
     position: fixed;
     inset: 0;
     z-index: 100;
-    background: #f4f5f7;
+    background: #0a0d13;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -43,7 +43,7 @@ html, body {
 .loading-bar {
     width: 240px;
     height: 2px;
-    background: rgba(22, 24, 27, 0.1);
+    background: rgba(255, 255, 255, 0.12);
     margin: 0 auto 12px;
     overflow: hidden;
 }
@@ -56,7 +56,7 @@ html, body {
 #load-text {
     font-size: 11px;
     letter-spacing: 0.14em;
-    color: #8b9098;
+    color: #6b7382;
 }
 
 /* ---------- overlay (credit only) ---------- */
@@ -75,10 +75,10 @@ html, body {
     right: 12px;
     bottom: 8px;
     font-size: 9px;
-    color: #a7adb5;
+    color: #59616e;
     pointer-events: auto;
 }
-#credit a { color: #8b9098; }
+#credit a { color: #8892a0; }
 
 </style>
 
@@ -117,21 +117,21 @@ const KEY_LEVEL = { B5: -5, B4: -4, B3: -3, B2: -2, B1: -1, 0: 0, 1: 1, 2: 2, 3:
 const LEVELS = FLOOR_KEYS.map(k => KEY_LEVEL[k]);
 const levelLabel = l => (l >= 0 ? `${l + 1}F` : `B${-l}`);
 
-/* ---------- palette (light "clay + drawing" BIM look) ---------- */
+/* ---------- palette (dark BIM / night-model look) ---------- */
 const COL = {
-  fog: 0xedeff1,
-  slab: 0xffffff,
-  space: 0xf1f3f5,
-  edge: 0x454b54,
-  slabHi: 0xfff1bd,
-  spaceHi: 0xffd21c,
-  edgeHi: 0x6e5a00,
-  building: 0xdde1e6,
-  rail: 0x9aa1ab,
-  outline: 0xb6bcc4,
+  fog: 0x0a0d13,
+  slab: 0x333a45,
+  space: 0x2a3039,
+  edge: 0xa8bdd6,
+  slabHi: 0x8a7420,
+  spaceHi: 0xffce1f,
+  edgeHi: 0xffe27a,
+  building: 0x3b434f,
+  rail: 0x5b6575,
+  outline: 0x434c5a,
   network: 0xf0b400,
-  gridFine: 0xdcdfe3,
-  gridCoarse: 0xc7cbd1,
+  gridFine: 0x1a1f27,
+  gridCoarse: 0x252b35,
 };
 
 /* ---------- renderer / scene / camera ---------- */
@@ -146,11 +146,11 @@ scene.fog = new THREE.Fog(COL.fog, 1900, 5200);
 const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 2, 24000);
 scene.add(camera);
 
-scene.add(new THREE.HemisphereLight(0xffffff, 0xb9bec7, 1.05));
-const sun = new THREE.DirectionalLight(0xffffff, 1.35);
+scene.add(new THREE.HemisphereLight(0xcfdcf0, 0x141821, 0.85));
+const sun = new THREE.DirectionalLight(0xeef3fb, 1.1);
 sun.position.set(600, 1100, -400);
 scene.add(sun);
-const fill = new THREE.DirectionalLight(0xffffff, 0.35);
+const fill = new THREE.DirectionalLight(0x8fa8cc, 0.3);
 fill.position.set(-500, 300, 700);
 scene.add(fill);
 
@@ -244,7 +244,7 @@ function buildLevel(key) {
 
   const spaceMat = new THREE.MeshLambertMaterial({ color: COL.space });
   const slabMat = new THREE.MeshLambertMaterial({ color: COL.slab });
-  const edgeMat = new THREE.LineBasicMaterial({ color: COL.edge, transparent: true, opacity: 0.5 });
+  const edgeMat = new THREE.LineBasicMaterial({ color: COL.edge, transparent: true, opacity: 0.55 });
 
   const kinds = [
     { fc: D[`./data/ShibuyaTerminal/ShibuyaTerminal_${key}_Space.geojson`], depth: 5, mat: spaceMat },
@@ -442,7 +442,7 @@ class FlowSystem {
     geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
     this.obj = new THREE.Points(geo, new THREE.PointsMaterial({
       size, map: dotTexture, vertexColors: true, transparent: true,
-      opacity, depthWrite: false, alphaTest: 0.05,
+      opacity, depthWrite: false, blending: THREE.AdditiveBlending,
     }));
     model.add(this.obj);
   }
