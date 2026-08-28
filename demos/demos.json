@@ -21,5 +21,8 @@
     ],
     "xinteractive-cap01": [],
     "xinteractive-cap02": []
+  },
+  "placeholder": {
+    "home-hero": "radial-gradient(120% 100% at 50% 0%, #0a101d 0%, #04060c 55%, #020409 100%)"
   }
 }

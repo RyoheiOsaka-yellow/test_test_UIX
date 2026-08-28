@@ -209,12 +209,21 @@ if (used.length) {
 }
 
 /* ───────── 5. CSS ───────── */
+// スロットごとの下地（demos.json の placeholder）。デモの背景色と揃えるとつなぎ目が消える
+const placeholderRules = Object.entries(conf.placeholder || {}).map(([slot, bg]) => {
+  if (!SLOTS[slot]) throw new Error('demos.json placeholder: 知らないスロット名です → ' + slot);
+  return '.panel__embed.is-live[data-slot="' + slot + '"]{background:' + bg + ';}';
+});
 if (used.length) {
   const CSS = [MK.cssA,
     '/* パネル背景で 1枚HTML のデモを動かす。',
     '   iframe で隔離しているのでデモ側の CSS / JS はサイトに影響しない。',
     '   pointer-events:none によりスクロールとクリックはそのままサイトへ通る。 */',
     '.panel__embed{position:absolute;inset:0;z-index:0;overflow:hidden;pointer-events:none;}',
+    '/* デモが実際に動く環境では、ポスター静止画を最初から見せない。',
+    '   ホストがデモと同じ背景を持ち、そこへデモの立ち上がり演出が描かれる */',
+    '.panel__embed.is-live{background:#000;}',
+    ...placeholderRules,
     '.panel__embed iframe{',
     '  position:absolute;inset:0;width:100%;height:100%;border:0;display:block;',
     '  pointer-events:none;opacity:0;transition:opacity .25s ease;',
@@ -251,6 +260,9 @@ if (used.length) {
   '           + \'<meta name="viewport" content="width=device-width,initial-scale=1">\'',
   '           + \'</head><body>\';',
   '  var TAIL = \'</body></html>\';',
+  '',
+  '  // この環境ではデモが動く: ポスターを隠す下地を1フレーム目から出す',
+  '  for (var g = 0; g < hosts.length; g++) hosts[g].classList.add(\'is-live\');',
   '',
   '  var slots = [];',
   '  for (var i = 0; i < hosts.length; i++) {',
@@ -320,7 +332,16 @@ if (used.length) {
   '    if (best) start(best);',
   '  }',
   '',
-  '  if (!(\'IntersectionObserver\' in window)) { start(slots[0]); return; }',
+  '  // 最初から画面に入っているスロットは IntersectionObserver を待たずに開始する',
+  '  for (var e0 = 0; e0 < slots.length; e0++) {',
+  '    var r0 = slots[e0].el.getBoundingClientRect();',
+  '    var vh0 = window.innerHeight || 1;',
+  '    var vis = Math.max(0, Math.min(r0.bottom, vh0) - Math.max(r0.top, 0));',
+  '    slots[e0].ratio = r0.height > 0 ? vis / r0.height : 0;',
+  '  }',
+  '  arbitrate();',
+  '',
+  '  if (!(\'IntersectionObserver\' in window)) { if (slots[0] && !slots[0].on) start(slots[0]); return; }',
   '  var io = new IntersectionObserver(function (es) {',
   '    for (var n = 0; n < es.length; n++)',
   '      for (var q = 0; q < slots.length; q++)',
