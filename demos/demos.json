@@ -5,11 +5,11 @@
     "home-hero": [
       "yellow-top"
     ],
-    "home-xbuild": [
+    "home-xbuild": [],
+    "home-xad": [],
+    "home-xinteractive": [
       "inkwhite"
     ],
-    "home-xad": [],
-    "home-xinteractive": [],
     "home-careers": [],
     "home-contact": [],
     "xbuild-hero": [],
@@ -26,9 +26,9 @@
   },
   "placeholder": {
     "home-hero": "radial-gradient(120% 100% at 50% 0%, #0a101d 0%, #04060c 55%, #020409 100%)",
-    "home-xbuild": "#ffffff"
+    "home-xinteractive": "#ffffff"
   },
   "theme": {
-    "home-xbuild": "light"
+    "home-xinteractive": "light"
   }
 }
