@@ -106,6 +106,17 @@ function prepare(id) {
   // WebGPU 依存のデモは対応ブラウザでだけ動かす（未対応ではポスターのまま）
   if (/navigator\.gpu/.test(s)) demoNeeds[id] = 'webgpu';
 
+  /* 「もう普通に描けている」ことを親に知らせる合図を仕込む。
+     読み込み完了(load)だけを合図にすると、まだ何も描いていない板を先に出してしまい、
+     あとから絵が飛び込む＝ちらつきになる。
+     組み立て中のデモも1コマずつ譲りながら進む（重い処理→コマ間隔がバラバラ）ので、
+     コマ数だけでは足りない。ここでは「短い間隔のコマが続けて出ている」=描画ループに
+     入った状態を待つ。遅い端末ほど自然に長く待つことになる */
+  s += '\n<script>(function(){var last=0,run=0,n=0;function t(ts){n++;'
+     + 'var dt=last?ts-last:9999;last=ts;if(dt<120)run++;else run=0;'
+     + 'if((run>=10&&n>=15)||n>=240){try{parent.postMessage("ydemo-ready","*")}catch(e){}return}'
+     + 'requestAnimationFrame(t)}requestAnimationFrame(t)})();<\/script>\n';
+
   return s;
 }
 
@@ -188,10 +199,12 @@ for (const [slot, ids] of Object.entries(conf.slots || {})) {
   const theme = (conf.theme || {})[slot];
   const keepAll = list.every(id => (conf.keep || []).indexOf(id) !== -1);
   const reveal = (conf.reveal || {})[slot];   // "fade": ポスターの上に読み込み完了後フェードで重ねる
+  const settle = (conf.settle || {})[slot];   // 描画が育つのを待つ時間(ms)。既定 900
   const host = '<div class="panel__embed" data-slot="' + slot + '"'
              + (theme ? ' data-theme="' + theme + '"' : '')
              + (keepAll ? ' data-keep="1"' : '')
              + (reveal ? ' data-reveal="' + reveal + '"' : '')
+             + (settle ? ' data-settle="' + settle + '"' : '')
              + ' data-demo="' + list.join(',') + '"'
              + ' data-video="' + vm[1] + '"></div>';
   edits.push({ at: sa + body.indexOf(vm[0]), len: vm[0].length, html: host, slot, n: list.length });
@@ -259,7 +272,7 @@ if (used.length) {
     '.panel--light .btn:hover,.panel--light .btn:focus-visible{background:#0b0d10;color:#fff;}',
     '.panel__embed iframe{',
     '  position:absolute;inset:0;width:100%;height:100%;border:0;display:block;',
-    '  pointer-events:none;opacity:0;transition:opacity .25s ease;',
+    '  pointer-events:none;opacity:0;transition:opacity .9s ease;',
     '}',
     '.panel__embed iframe.is-on{opacity:1;}',
     '/* reveal:fade はポスターを見せたまま、準備できた実描画を1.4秒かけて重ねる */',
@@ -304,6 +317,11 @@ if (used.length) {
   '  }',
   '',
   '  function boot(gpuOk) {',
+  '  /* iframe の load は「文書が読み終わった」だけの合図で、WebGL の1枚目はまだ描けていない。',
+  '     そこで load からさらに settle だけ待ってから見せる。これをしないと、まだ何も描いて',
+  '     いない白/黒の板が先に出てきて、あとから絵が飛び込む＝ちらつきに見える。',
+  '     インクのように「育つ」デモは、育つまでの時間を demos.json の settle で長めに取る */',
+  '  var SETTLE_MS = 900;',
   '  function needsOk(id) {',
   '    if (NEEDS[id] === \'webgpu\') return gpuOk;',
   '    return true;',
@@ -324,9 +342,11 @@ if (used.length) {
   '      if (pn) pn.classList.add(\'panel--light\');',
   '    }',
   '    // 訪問ごとに最初に見えるデモを変える',
+  '    var st = parseInt(hosts[i].getAttribute(\'data-settle\'), 10);',
   '    slots.push({ el: hosts[i], ids: list, at: (Math.random() * list.length) | 0,',
   '                 keep: hosts[i].getAttribute(\'data-keep\') === \'1\' || fade,',
   '                 fade: fade,',
+  '                 settle: st > 0 ? st : SETTLE_MS,',
   '                 ratio: 0, on: false, timer: 0 });',
   '  }',
   '  if (!slots.length) return;',
@@ -348,31 +368,39 @@ if (used.length) {
   '    return f;',
   '  }',
   '',
+  '  /* 出す条件は2つ。どちらも満たすまでポスター/下地のままにする。',
+  '     ・デモが実際に描き始めている（デモ側から "ydemo-ready" が届く）',
+  '     ・最低待ち時間 settle を過ぎている（インクのように「育つ」絵のため） */',
   '  function show(slot, id) {',
   '    var f = build(slot, id);',
   '    if (!f) return;',
   '    var old = slot.el.lastChild;',
-  '    if (slot.fade) {',
-  '      // 準備が整ってからポスターの上にゆっくり重ねる（急に出さない）',
-  '      f.addEventListener(\'load\', function () {',
-  '        requestAnimationFrame(function () { f.classList.add(\'is-on\'); });',
-  '        if (old) setTimeout(function () {',
-  '          if (old.parentNode) old.parentNode.removeChild(old);',
-  '        }, 1600);',
-  '      });',
-  '    } else {',
-  '      // 中身の背景が描ける状態（load）になってから見せる。',
-  '      // 差し込み直後の白/透明フレームによるちらつきを確実に防ぐ。',
-  '      // 下地(placeholder)がデモの背景と同色なので、切り替わり自体は見えない',
-  '      f.addEventListener(\'load\', function () {',
-  '        requestAnimationFrame(function () { f.classList.add(\'is-on\'); });',
-  '        if (old) setTimeout(function () {',
-  '          if (old.parentNode) old.parentNode.removeChild(old);',
-  '        }, 700);',
-  '      });',
+  '    var hold = slot.fade ? 1600 : 1100;',   // 重ね終わってから前の1枚を外す',
+  '    var painted = false, waited = false, shown = false;',
+  '    function tryShow() {',
+  '      if (shown || !painted || !waited) return;',
+  '      shown = true;',
+  '      requestAnimationFrame(function () { f.classList.add(\'is-on\'); });',
+  '      if (old) setTimeout(function () {',
+  '        if (old.parentNode) old.parentNode.removeChild(old);',
+  '      }, hold);',
   '    }',
+  '    f.__painted = function () { painted = true; tryShow(); };',
+  '    f.addEventListener(\'load\', function () {',
+  '      setTimeout(function () { waited = true; tryShow(); }, slot.settle);',
+  '      // 合図が来ないデモ（描画を持たない等）でも取り残さないための保険',
+  '      setTimeout(function () { painted = true; tryShow(); }, slot.settle + 4000);',
+  '    });',
   '    slot.el.appendChild(f);',
   '  }',
+  '',
+  '  // デモ側から届く「描き始めた」合図を、その iframe に結びつける',
+  '  window.addEventListener(\'message\', function (ev) {',
+  '    if (ev.data !== \'ydemo-ready\') return;',
+  '    var fs2 = document.querySelectorAll(\'.panel__embed iframe\');',
+  '    for (var mi = 0; mi < fs2.length; mi++)',
+  '      if (fs2[mi].contentWindow === ev.source && fs2[mi].__painted) fs2[mi].__painted();',
+  '  });',
   '',
   '  function start(slot) {',
   '    if (slot.on) return;',
@@ -412,18 +440,19 @@ if (used.length) {
   '  arbitrate();',
   '',
   '  if (!(\'IntersectionObserver\' in window)) { if (slots[0] && !slots[0].on) start(slots[0]); return; }',
-  '  // fade スロットは画面に来る前から裏で読み込み始める（表示時には準備済み）',
+  '  // 破棄しない(keep)スロットは、画面に来るずっと手前から裏で読み込んで動かし始める。',
+  '  // 到達したときには既に描画が育っているので、白い空白や「後から急に出る」が起きない',
   '  if (\'IntersectionObserver\' in window) {',
   '    var pre = new IntersectionObserver(function (es) {',
   '      for (var pi2 = 0; pi2 < es.length; pi2++) {',
   '        if (!es[pi2].isIntersecting) continue;',
   '        for (var pj2 = 0; pj2 < slots.length; pj2++) {',
-  '          if (slots[pj2].el === es[pi2].target && slots[pj2].fade && !slots[pj2].on) start(slots[pj2]);',
+  '          if (slots[pj2].el === es[pi2].target && slots[pj2].keep && !slots[pj2].on) start(slots[pj2]);',
   '        }',
   '        pre.unobserve(es[pi2].target);',
   '      }',
-  '    }, { rootMargin: \'120% 0px 120% 0px\', threshold: 0 });',
-  '    for (var pk2 = 0; pk2 < slots.length; pk2++) if (slots[pk2].fade) pre.observe(slots[pk2].el);',
+  '    }, { rootMargin: \'200% 0px 200% 0px\', threshold: 0 });',
+  '    for (var pk2 = 0; pk2 < slots.length; pk2++) if (slots[pk2].keep) pre.observe(slots[pk2].el);',
   '  }',
   '',
   '  var io = new IntersectionObserver(function (es) {',

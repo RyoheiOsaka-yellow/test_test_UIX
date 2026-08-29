@@ -32,6 +32,12 @@
     "home-hero": "radial-gradient(120% 100% at 50% 0%, #0a101d 0%, #04060c 55%, #020409 100%)",
     "home-xinteractive": "#ffffff"
   },
+  "settle": {
+    "home-hero": 2500,
+    "home-xbuild": 1500,
+    "home-xad": 1500,
+    "home-xinteractive": 4200
+  },
   "theme": {
     "home-xinteractive": "light",
     "home-xad": "light"
@@ -44,6 +50,7 @@
   ],
   "reveal": {
     "home-xbuild": "fade",
-    "home-xad": "fade"
+    "home-xad": "fade",
+    "home-xinteractive": "fade"
   }
 }
