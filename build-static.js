@@ -292,6 +292,9 @@ base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
   console.log('英語を静的に焼き込み:', replaced, '箇所');
   // この文書の焼き込み言語を宣言（言語ゲートが参照する）
   base = base.replace("window.__BAKED='ja';", "window.__BAKED='en';");
+  // 公開版は初期化が速いので、ゲートの保険タイマーは短くてよい（JS障害時の空白を最小化）
+  base = base.replace("document.documentElement.style.visibility='';},4000)",
+                      "document.documentElement.style.visibility='';},1500)");
 }
 
 
