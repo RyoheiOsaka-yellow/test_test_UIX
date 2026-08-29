@@ -17,15 +17,19 @@
     background:radial-gradient(circle, rgba(255,56,92,.18) 0%, transparent 65%);
     top:50%; left:50%; transform:translate(-50%,-55%);
     pointer-events:none;
+    will-change:transform,opacity;
     animation:glowPulse 4s ease-in-out infinite;
   }
   @keyframes glowPulse{
     0%,100%{ opacity:.7; transform:translate(-50%,-55%) scale(1); }
     50%    { opacity:1;  transform:translate(-50%,-55%) scale(1.12); }
   }
-  /* xAD のロゴ。登場したあと、ゆっくり光が横切る */
+  /* xAD のロゴ。登場したあと、ゆっくり光が横切る。
+     マイナスの字間は最後の D の右側にもかかって文字箱を狭め、
+     background-clip:text の塗りから D の右端がはみ出て欠けるので、
+     左右に padding を足して塗り領域を文字より広く取る */
   .mark{
-    position:relative; z-index:1; margin:0;
+    position:relative; z-index:1; margin:0; padding:.05em .14em;
     font-family:'Inter', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
     font-size:clamp(120px,26vw,320px); font-weight:900; letter-spacing:-.06em;
     line-height:.9; color:#fff;
@@ -33,16 +37,21 @@
     background-size:300% 100%;
     -webkit-background-clip:text; background-clip:text;
     -webkit-text-fill-color:transparent;
+    will-change:transform,opacity,filter,background-position;
     animation:xadIn 1s cubic-bezier(.2,.8,.2,1) both,
-              xadShine 5s ease-in-out 1s infinite;
+              xadShine 6s linear 1s infinite;
   }
+  /* 登場: transform / opacity / blur だけを動かす（字間はレイアウトが毎フレーム走りカクつく） */
   @keyframes xadIn{
-    0%  { opacity:0; transform:translateY(40px) scale(.85); letter-spacing:.05em; filter:blur(8px); }
-    100%{ opacity:1; transform:translateY(0) scale(1);      letter-spacing:-.06em; filter:blur(0); }
+    0%  { opacity:0; transform:translateY(40px) scale(.9); filter:blur(8px); }
+    100%{ opacity:1; transform:translateY(0)    scale(1);  filter:blur(0); }
   }
+  /* シャイン: 左→右へ一方向に流し、文字の外に出てから見えないまま先頭へ戻る
+     （往復させると光が行って帰ってくる不自然な動きになる） */
   @keyframes xadShine{
-    0%,100%{ background-position:150% 0; }
-    50%    { background-position:-50% 0; }
+    0%   { background-position:150% 0; }
+    55%  { background-position:-50% 0; }
+    100% { background-position:-50% 0; }
   }
   @media (prefers-reduced-motion:reduce){
     .mark,.glow{animation:none;}
