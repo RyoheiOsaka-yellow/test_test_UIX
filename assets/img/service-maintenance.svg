@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="560" viewBox="0 0 800 560">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#25324a"/>
+      <stop offset="1" stop-color="#1290a8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="560" fill="url(#bg)"/>
+  <rect width="800" height="560" fill="url(#glow)"/>
+  <g fill="none" stroke="#ffffff" opacity="0.08" stroke-width="2">
+  <circle cx="8%" cy="110%" r="420"/>
+  <circle cx="8%" cy="110%" r="300"/>
+  <circle cx="96%" cy="-8%" r="380"/>
+  <circle cx="96%" cy="-8%" r="260"/>
+</g>
+  <g transform="translate(190.0,102.5) scale(1.05)">
+    <g fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.92">
+  <path d="M120 100 a30 30 0 1 0 18 54 L 250 220 a16 16 0 0 0 24 -24 L 158 132 a30 30 0 0 0 -38 -32 l 22 22 -10 26 -26 10 z"/>
+  <circle cx="262" cy="208" r="4"/>
+</g>
+  </g>
+  <g text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif">
+    <text x="400.0" y="468" fill="#ffffff" opacity="0.9" font-size="30" letter-spacing="10" font-weight="600">MAINTENANCE</text>
+    <text x="400.0" y="508" fill="#ffffff" opacity="0.65" font-size="20" letter-spacing="4">定期メンテナンス</text>
+  </g>
+</svg>

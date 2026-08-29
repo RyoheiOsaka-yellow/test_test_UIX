@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b2a4a"/>
+      <stop offset="1" stop-color="#1290a8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <rect width="1920" height="1080" fill="url(#glow)"/>
+  <g fill="none" stroke="#ffffff" opacity="0.08" stroke-width="2">
+  <circle cx="8%" cy="110%" r="420"/>
+  <circle cx="8%" cy="110%" r="300"/>
+  <circle cx="96%" cy="-8%" r="380"/>
+  <circle cx="96%" cy="-8%" r="260"/>
+</g>
+  <g transform="translate(440.0,180.0) scale(2.6)">
+    <g fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.92">
+  <circle cx="90" cy="190" r="62"/>
+  <circle cx="90" cy="190" r="8"/>
+  <circle cx="310" cy="190" r="62"/>
+  <circle cx="310" cy="190" r="8"/>
+  <circle cx="195" cy="190" r="16"/>
+  <path d="M90 190 L160 84 L282 84 L310 190"/>
+  <path d="M90 190 L195 190 L160 84"/>
+  <path d="M195 190 L282 84"/>
+  <path d="M282 84 L292 62 M272 58 L312 58"/>
+  <path d="M160 84 L152 66 M132 64 L172 64"/>
+  <path d="M195 174 L215 152 M195 206 L175 228"/>
+</g>
+  </g>
+</svg>

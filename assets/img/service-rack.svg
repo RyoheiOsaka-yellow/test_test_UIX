@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="560" viewBox="0 0 800 560">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e2f45"/>
+      <stop offset="1" stop-color="#5b6f8a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="560" fill="url(#bg)"/>
+  <rect width="800" height="560" fill="url(#glow)"/>
+  <g fill="none" stroke="#ffffff" opacity="0.08" stroke-width="2">
+  <circle cx="8%" cy="110%" r="420"/>
+  <circle cx="8%" cy="110%" r="300"/>
+  <circle cx="96%" cy="-8%" r="380"/>
+  <circle cx="96%" cy="-8%" r="260"/>
+</g>
+  <g transform="translate(190.0,102.5) scale(1.05)">
+    <g fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" opacity="0.92">
+  <circle cx="200" cy="150" r="100"/>
+  <circle cx="200" cy="150" r="86"/>
+  <circle cx="200" cy="150" r="14"/>
+  <path d="M200 150 L292.0 150.0"/><path d="M200 150 L279.674357492349 195.99996476282752"/><path d="M200 150 L246.00007047431797 229.67429645976034"/><path d="M200 150 L200.0001220651305 241.99999999991903"/><path d="M200 150 L154.00014094874388 229.67441852479735"/><path d="M200 150 L120.32576457296851 196.00017618572738"/><path d="M200 150 L108.00000000032391 150.00024413026102"/><path d="M200 150 L120.32552044289454 104.00024666039627"/><path d="M200 150 L153.9997181029441 70.32582560583768"/><path d="M200 150 L199.99963380460855 58.000000000728804"/><path d="M200 150 L245.9996476278704 70.32545941072671"/><path d="M200 150 L279.67411336115293 103.99961239169664"/>
+</g>
+  </g>
+  <g text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif">
+    <text x="400.0" y="468" fill="#ffffff" opacity="0.9" font-size="30" letter-spacing="10" font-weight="600">RACK REPAIR</text>
+    <text x="400.0" y="508" fill="#ffffff" opacity="0.65" font-size="20" letter-spacing="4">駐輪場ラック修理</text>
+  </g>
+</svg>

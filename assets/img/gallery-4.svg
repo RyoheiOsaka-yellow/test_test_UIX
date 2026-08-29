@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d3050"/>
+      <stop offset="1" stop-color="#1290a8"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.42" r="0.75">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bg)"/>
+  <rect width="800" height="600" fill="url(#glow)"/>
+  <g fill="none" stroke="#ffffff" opacity="0.08" stroke-width="2">
+  <circle cx="8%" cy="110%" r="420"/>
+  <circle cx="8%" cy="110%" r="300"/>
+  <circle cx="96%" cy="-8%" r="380"/>
+  <circle cx="96%" cy="-8%" r="260"/>
+</g>
+  <g transform="translate(179.99999999999997,110.0) scale(1.1)">
+    <g fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" opacity="0.92">
+  <rect x="150" y="50" width="80" height="180" rx="10"/>
+  <circle cx="190" cy="95" r="24"/>
+  <path d="M190 95 L202 83"/>
+  <rect x="170" y="140" width="40" height="16" rx="4"/>
+  <path d="M230 170 C 290 175, 300 120, 268 108"/>
+  <circle cx="264" cy="102" r="9"/>
+  <path d="M120 230 L260 230"/>
+  <path d="M160 176 L220 176 M160 196 L220 196"/>
+</g>
+  </g>
+  <g text-anchor="middle" font-family="'Helvetica Neue', Arial, sans-serif">
+    <text x="400.0" y="508" fill="#ffffff" opacity="0.9" font-size="30" letter-spacing="10" font-weight="600">AIR STATION</text>
+    <text x="400.0" y="548" fill="#ffffff" opacity="0.65" font-size="20" letter-spacing="4">エアステーション設置</text>
+  </g>
+</svg>
