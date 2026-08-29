@@ -1,5 +1,5 @@
 // v8（1URL・ハッシュルーター）から、実URLを持つ静的サイトを生成する。
-//   dist/index.html  /xbuild/  /xad/  /xinteractive/  /privacy/  /terms/
+//   dist/index.html  /xinteractive/  /xad/  /xbuild/  /privacy/  /terms/
 // 各ファイルは自分のページのマークアップだけを持ち、独自の title / description /
 // canonical / OGP / JSON-LD を備える。ページ間は通常のページ遷移。
 const fs = require('fs');
@@ -14,20 +14,6 @@ const ROUTES = [
     desc: '株式会社YELLOWは、大学・研究機関・企業の技術シーズを社会へ橋渡しする会社です。人流分析、スポーツDX、そして研究と現場のあいだの運用レイヤーを担います。群馬県高崎市。',
     en: { title: 'YELLOW Inc. — Research as material.',
           desc: 'YELLOW bridges technology seeds from universities, research institutions, and companies into society — mobility analytics, sports DX, and the operational layer between research and real-world use.' } },
-  { id: 'xbuild', dir: 'xbuild', title: 'xBUILD｜技術シーズを製品・設備・システムとして立ち上げる — 株式会社YELLOW',
-    desc: '大学・研究機関・企業の技術シーズを発掘し、試作から検証、現場で稼働する形まで一貫して設計・実装します。TOLIC加盟、一般社団法人BtoR参画。株式会社YELLOWのプロダクト xBUILD。',
-    en: { title: 'xBUILD — Turning technology seeds into products, facilities and systems | YELLOW Inc.',
-          desc: 'Sourcing technology seeds from universities and research institutions, then designing and implementing them through prototyping and validation into systems that run in the field.' },
-    service: { name: 'xBUILD', alt: '技術シーズの社会実装（研究開発・技術移転）',
-               desc: '技術シーズを、製品・設備・システムとして立ち上げるプロダクト。',
-               offers: ['技術シーズの発掘', '研究開発の支援'] } },
-  { id: 'xad', dir: 'xad', title: 'xAD｜人流・行動データから届け方を設計する — 株式会社YELLOW',
-    desc: '交通手段別・時間別・経路別の来訪動態をデータとして捕捉し、混雑緩和や導線設計に落とし込みます。公的プログラムへの採択支援まで。SOIP×いわきFC。株式会社YELLOWのプロダクト xAD。',
-    en: { title: 'xAD — Designing how a message lands, from mobility and behaviour data | YELLOW Inc.',
-          desc: 'Capturing visitor dynamics by mode, time and route, then turning them into congestion relief and circulation design.' },
-    service: { name: 'xAD', alt: '人流・行動データ分析、公的プログラム採択支援',
-               desc: '人流と行動のデータから、伝えるべき相手と場所と時間を割り出すプロダクト。',
-               offers: ['人流・行動データ分析', '公的プログラムへの採択'] } },
   { id: 'xinteractive', dir: 'xinteractive', title: 'xINTERACTIVE｜研究を現場で動く体験として実装する — 株式会社YELLOW',
     desc: 'スタジアム、商業施設、街区。研究の成果を来場者が触れて動く体験として実装し、運用まで伴走します。スポーツ庁SOIP採択事業。株式会社YELLOWのプロダクト xINTERACTIVE。',
     en: { title: 'xINTERACTIVE — Implementing research as experiences that run on site | YELLOW Inc.',
@@ -35,6 +21,20 @@ const ROUTES = [
     service: { name: 'xINTERACTIVE', alt: 'スポーツDX、体験設計・実装・運用支援',
                desc: '研究の成果を、来場者が触れて動く体験として実装するプロダクト。',
                offers: ['スポーツDX', '市場への展開'] } },
+  { id: 'xad', dir: 'xad', title: 'xAD｜人流・行動データから届け方を設計する — 株式会社YELLOW',
+    desc: '交通手段別・時間別・経路別の来訪動態をデータとして捕捉し、混雑緩和や導線設計に落とし込みます。公的プログラムへの採択支援まで。SOIP×いわきFC。株式会社YELLOWのプロダクト xAD。',
+    en: { title: 'xAD — Designing how a message lands, from mobility and behaviour data | YELLOW Inc.',
+          desc: 'Capturing visitor dynamics by mode, time and route, then turning them into congestion relief and circulation design.' },
+    service: { name: 'xAD', alt: '人流・行動データ分析、公的プログラム採択支援',
+               desc: '人流と行動のデータから、伝えるべき相手と場所と時間を割り出すプロダクト。',
+               offers: ['人流・行動データ分析', '公的プログラムへの採択'] } },
+  { id: 'xbuild', dir: 'xbuild', title: 'xBUILD｜技術シーズを製品・設備・システムとして立ち上げる — 株式会社YELLOW',
+    desc: '大学・研究機関・企業の技術シーズを発掘し、試作から検証、現場で稼働する形まで一貫して設計・実装します。TOLIC加盟、一般社団法人BtoR参画。株式会社YELLOWのプロダクト xBUILD。',
+    en: { title: 'xBUILD — Turning technology seeds into products, facilities and systems | YELLOW Inc.',
+          desc: 'Sourcing technology seeds from universities and research institutions, then designing and implementing them through prototyping and validation into systems that run in the field.' },
+    service: { name: 'xBUILD', alt: '技術シーズの社会実装（研究開発・技術移転）',
+               desc: '技術シーズを、製品・設備・システムとして立ち上げるプロダクト。',
+               offers: ['技術シーズの発掘', '研究開発の支援'] } },
   { id: 'privacy', dir: 'privacy', title: 'プライバシーポリシー — 株式会社YELLOW',
     desc: '株式会社YELLOWのウェブサイトにおける個人情報の取り扱いについて定めています。',
     en: { title: 'Privacy Policy — YELLOW Inc.', desc: 'How YELLOW Inc. handles personal information on this website.' },
@@ -246,8 +246,11 @@ base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
   const m = '<a class="menu__item" href="#record"';
   if (base.includes(m)) base = base.replace(m, '<a class="menu__item" href="/cases/" data-i18n="nav_cases" style="--dl:.10s">Cases</a>\n    ' + m);
   // ドロップダウンの「事業の一覧へ」の隣に事例導線
-  base = base.replace('<a class="drop__all" href="#xbuild" data-i18n="drop_all">',
-    '<a class="drop__all" href="/cases/" style="display:block;margin-bottom:10px" data-i18n="nav_cases_view">View cases →</a>\n            <a class="drop__all" href="#xbuild" data-i18n="drop_all">');
+  // （飛び先は先頭の事業セクション。並び替えで変わりうるので id は決め打ちしない）
+  const d = base.match(/<a class="drop__all" href="#[a-z]+" data-i18n="drop_all">/);
+  if (!d) throw new Error('drop__all anchor');
+  base = base.replace(d[0],
+    '<a class="drop__all" href="/cases/" style="display:block;margin-bottom:10px" data-i18n="nav_cases_view">View cases →</a>\n            ' + d[0]);
 }
 
 // 1h. 旧サイトのアンカー(#case-01 等)で来た人を新URLへ送る
@@ -423,21 +426,21 @@ fs.writeFileSync(DIST + 'llms.txt', `# 株式会社YELLOW（YELLOW Inc.）
 株式会社YELLOWは、研究水準の手法と、その現場での実装をつなぐレイヤーを担う。
 事業は3つのプロダクトに整理されている。
 
-- **xBUILD（つくる）**: 技術シーズを、製品・設備・システムとして立ち上げる。
-  内訳は「技術シーズの発掘」と「研究開発の支援」。ライフサイエンス機器の集積拠点
-  TOLIC への加盟を通じ、国内有数の開発パイプラインに接続している。
+- **xINTERACTIVE（動かす）**: 研究の成果を、来場者が触れて動く体験として実装する。
+  内訳は「スポーツDX」と「市場への展開」。スタジアム、商業施設、街区が対象。
 - **xAD（届ける）**: 人流と行動のデータから、伝えるべき相手と場所と時間を割り出す。
   内訳は「人流・行動データ分析」と「公的プログラムへの採択」。交通手段別・時間別・
   経路別の来訪動態を捕捉し、混雑緩和や導線設計に落とし込む。
-- **xINTERACTIVE（動かす）**: 研究の成果を、来場者が触れて動く体験として実装する。
-  内訳は「スポーツDX」と「市場への展開」。スタジアム、商業施設、街区が対象。
+- **xBUILD（つくる）**: 技術シーズを、製品・設備・システムとして立ち上げる。
+  内訳は「技術シーズの発掘」と「研究開発の支援」。ライフサイエンス機器の集積拠点
+  TOLIC への加盟を通じ、国内有数の開発パイプラインに接続している。
 
 ## 主なページ
 
 - [ホーム](${ORIGIN}/): 会社概要、3プロダクト、実績、採用、お問い合わせ
-- [xBUILD](${ORIGIN}/xbuild/): 技術シーズの社会実装
-- [xAD](${ORIGIN}/xad/): 人流・行動データ分析
 - [xINTERACTIVE](${ORIGIN}/xinteractive/): スポーツDXと体験実装
+- [xAD](${ORIGIN}/xad/): 人流・行動データ分析
+- [xBUILD](${ORIGIN}/xbuild/): 技術シーズの社会実装
 - [プライバシーポリシー](${ORIGIN}/privacy/)
 - [利用規約](${ORIGIN}/terms/)
 
