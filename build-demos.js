@@ -106,6 +106,15 @@ function prepare(id) {
   // WebGPU 依存のデモは対応ブラウザでだけ動かす（未対応ではポスターのまま）
   if (/navigator\.gpu/.test(s)) demoNeeds[id] = 'webgpu';
 
+  /* スマホでの負荷を落とす。多くのデモは devicePixelRatio をそのまま描画解像度に
+     使うため、3倍の端末では9倍の画素を描くことになる。ここで上限を被せておくと、
+     デモ側に手を入れなくても描画量が数分の一になる。
+     デモ本体より先に効かせる必要があるので先頭に置く */
+  s = '<script>(function(){try{if(!window.matchMedia("(max-width:900px)").matches)return;'
+    + 'var cap=Math.min(window.devicePixelRatio||1,' + JSON.stringify(mobileDpr) + ');'
+    + 'Object.defineProperty(window,"devicePixelRatio",{configurable:true,get:function(){return cap;}});'
+    + '}catch(e){}})();<\/script>\n' + s;
+
   /* 「もう普通に描けている」ことを親に知らせる合図を仕込む。
      読み込み完了(load)だけを合図にすると、まだ何も描いていない板を先に出してしまい、
      あとから絵が飛び込む＝ちらつきになる。
@@ -156,6 +165,13 @@ function panelSpan(h, [a, b], n) {
 /* ───────── 1. 読み込み ───────── */
 const conf = JSON.parse(fs.readFileSync(CONF, 'utf8'));
 const cycleSec = Number(conf.cycleSec) > 0 ? Number(conf.cycleSec) : 45;
+
+/* スマホ向けの手加減。demos.json の "mobile" で指定する
+     dpr  … 描画解像度の上限（既定 1.25）
+     skip … スマホでは動かさないデモ（重いものを外す。ポスターのまま） */
+const mobileConf = conf.mobile || {};
+const mobileDpr = Number(mobileConf.dpr) > 0 ? Number(mobileConf.dpr) : 1.25;
+const mobileSkip = Array.isArray(mobileConf.skip) ? mobileConf.skip : [];
 for (const k of Object.keys(conf.slots || {}))
   if (!SLOTS[k]) throw new Error('demos.json: 知らないスロット名です → ' + k);
 
@@ -310,6 +326,10 @@ if (used.length) {
   '  var TAIL = \'</body></html>\';',
   '',
   '  var NEEDS = ' + JSON.stringify(demoNeeds) + ';',
+  '  /* スマホでの手加減: 重いデモは動かさず（ポスターのまま）、画面外に出たものは破棄する。',
+  '     描画解像度の上限はデモ側に仕込んである */',
+  '  var SMALL = window.matchMedia(\'(max-width: 900px)\').matches;',
+  '  var MOBILE_SKIP = ' + JSON.stringify(mobileSkip) + ';',
   '  var needProbe = false;',
   '  for (var n0 = 0; n0 < hosts.length; n0++) {',
   '    var l0 = hosts[n0].getAttribute(\'data-demo\').split(\',\');',
@@ -324,6 +344,7 @@ if (used.length) {
   '  var SETTLE_MS = 900;',
   '  function needsOk(id) {',
   '    if (NEEDS[id] === \'webgpu\') return gpuOk;',
+  '    if (SMALL && MOBILE_SKIP.indexOf(id) !== -1) return false;',
   '    return true;',
   '  }',
   '',
@@ -344,7 +365,8 @@ if (used.length) {
   '    // 訪問ごとに最初に見えるデモを変える',
   '    var st = parseInt(hosts[i].getAttribute(\'data-settle\'), 10);',
   '    slots.push({ el: hosts[i], ids: list, at: (Math.random() * list.length) | 0,',
-  '                 keep: hosts[i].getAttribute(\'data-keep\') === \'1\' || fade,',
+  '                 // スマホでは抱え込まない。画面外に出たら破棄してメモリと電池を返す',
+  '                 keep: !SMALL && (hosts[i].getAttribute(\'data-keep\') === \'1\' || fade),',
   '                 fade: fade,',
   '                 settle: st > 0 ? st : SETTLE_MS,',
   '                 ratio: 0, on: false, timer: 0 });',

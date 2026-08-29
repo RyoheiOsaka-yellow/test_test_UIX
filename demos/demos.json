@@ -34,7 +34,7 @@
     "home-xad": "#0d0d10"
   },
   "settle": {
-    "home-hero": 500,
+    "home-hero": 900,
     "home-xbuild": 1500,
     "home-xad": 1200,
     "home-xinteractive": 4200
@@ -52,5 +52,12 @@
     "home-xbuild": "fade",
     "home-xad": "fade",
     "home-xinteractive": "fade"
+  },
+  "mobile": {
+    "_": "スマホでの手加減。dpr=描画解像度の上限 / skip=スマホでは動かさないデモ（ポスターのまま）",
+    "dpr": 1.25,
+    "skip": [
+      "hicity"
+    ]
   }
 }
