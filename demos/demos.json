@@ -8,7 +8,9 @@
     "home-xbuild": [
       "hicity"
     ],
-    "home-xad": [],
+    "home-xad": [
+      "xad-retail"
+    ],
     "home-xinteractive": [
       "inkwhite"
     ],
@@ -31,14 +33,17 @@
     "home-xinteractive": "#ffffff"
   },
   "theme": {
-    "home-xinteractive": "light"
+    "home-xinteractive": "light",
+    "home-xad": "light"
   },
   "keep": [
     "inkwhite",
     "yellow-top",
-    "morphosis"
+    "morphosis",
+    "xad-retail"
   ],
   "reveal": {
-    "home-xbuild": "fade"
+    "home-xbuild": "fade",
+    "home-xad": "fade"
   }
 }

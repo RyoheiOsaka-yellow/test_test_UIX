@@ -1,0 +1,4 @@
+[
+  ["  if (!S.paused) simStep(realDt * S.speed);",
+   "  if (!S.paused) simStep(realDt * S.speed);\n  camState.theta += realDt * 0.05; applyCam();"]
+]

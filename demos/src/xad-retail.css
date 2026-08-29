@@ -1,0 +1,4 @@
+/* 埋め込み用: ダッシュボードUIを隠し、3Dシミュレーションだけを背景に出す */
+#topbar,.ovl,#loading,#tooltip,.toast,#actions{display:none !important;}
+#page-3d{top:0 !important;}
+html,body{cursor:default !important;}
