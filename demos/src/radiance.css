@@ -1,0 +1,6 @@
+/* 埋め込み用: デモ名のキャプション（下中央の "radiance cascade loading field"）を隠す。
+   パネルには「WORK WITH US.」の見出しが載るため、文字が二重になるのを避ける */
+#root > div > div.absolute { display: none !important; }
+
+/* iframe の高さいっぱいに敷く（h-full は親の高さを必要とするため） */
+html, body, #root { height: 100%; background: #000; }

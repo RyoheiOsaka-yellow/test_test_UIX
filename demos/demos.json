@@ -14,7 +14,9 @@
     "home-xinteractive": [
       "inkwhite"
     ],
-    "home-careers": [],
+    "home-careers": [
+      "radiance"
+    ],
     "home-contact": [],
     "xbuild-hero": [],
     "xbuild-cap01": [],
@@ -31,13 +33,15 @@
   "placeholder": {
     "home-hero": "radial-gradient(120% 100% at 50% 0%, #0a101d 0%, #04060c 55%, #020409 100%)",
     "home-xinteractive": "#ffffff",
-    "home-xad": "#0d0d10"
+    "home-xad": "#0d0d10",
+    "home-careers": "#000000"
   },
   "settle": {
     "home-hero": 900,
     "home-xbuild": 1500,
     "home-xad": 1200,
-    "home-xinteractive": 4200
+    "home-xinteractive": 4200,
+    "home-careers": 900
   },
   "theme": {
     "home-xinteractive": "light"
@@ -46,7 +50,8 @@
     "inkwhite",
     "yellow-top",
     "morphosis",
-    "xad-logo"
+    "xad-logo",
+    "radiance"
   ],
   "reveal": {
     "home-xbuild": "fade",
