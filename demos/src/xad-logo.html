@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>xAD</title>
+<style>
+  html,body{height:100%;margin:0;background:#0d0d10;overflow:hidden;}
+  .hero{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  /* 中央の赤い光。ゆっくり脈打つ */
+  .glow{
+    position:absolute; width:min(700px,62vw); height:min(700px,62vw); border-radius:50%;
+    background:radial-gradient(circle, rgba(255,56,92,.18) 0%, transparent 65%);
+    top:50%; left:50%; transform:translate(-50%,-55%);
+    pointer-events:none;
+    animation:glowPulse 4s ease-in-out infinite;
+  }
+  @keyframes glowPulse{
+    0%,100%{ opacity:.7; transform:translate(-50%,-55%) scale(1); }
+    50%    { opacity:1;  transform:translate(-50%,-55%) scale(1.12); }
+  }
+  /* xAD のロゴ。登場したあと、ゆっくり光が横切る */
+  .mark{
+    position:relative; z-index:1; margin:0;
+    font-family:'Inter', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    font-size:clamp(120px,26vw,320px); font-weight:900; letter-spacing:-.06em;
+    line-height:.9; color:#fff;
+    background:linear-gradient(120deg,#fff 0%,#fff 40%,#ff385c 50%,#fff 60%,#fff 100%);
+    background-size:300% 100%;
+    -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent;
+    animation:xadIn 1s cubic-bezier(.2,.8,.2,1) both,
+              xadShine 5s ease-in-out 1s infinite;
+  }
+  @keyframes xadIn{
+    0%  { opacity:0; transform:translateY(40px) scale(.85); letter-spacing:.05em; filter:blur(8px); }
+    100%{ opacity:1; transform:translateY(0) scale(1);      letter-spacing:-.06em; filter:blur(0); }
+  }
+  @keyframes xadShine{
+    0%,100%{ background-position:150% 0; }
+    50%    { background-position:-50% 0; }
+  }
+  @media (prefers-reduced-motion:reduce){
+    .mark,.glow{animation:none;}
+  }
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="glow"></div>
+  <h1 class="mark">xAD</h1>
+</div>
+</body>
+</html>

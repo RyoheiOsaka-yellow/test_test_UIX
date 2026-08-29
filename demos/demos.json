@@ -9,7 +9,7 @@
       "hicity"
     ],
     "home-xad": [
-      "xad-retail"
+      "xad-logo"
     ],
     "home-xinteractive": [
       "inkwhite"
@@ -30,23 +30,23 @@
   },
   "placeholder": {
     "home-hero": "radial-gradient(120% 100% at 50% 0%, #0a101d 0%, #04060c 55%, #020409 100%)",
-    "home-xinteractive": "#ffffff"
+    "home-xinteractive": "#ffffff",
+    "home-xad": "#0d0d10"
   },
   "settle": {
     "home-hero": 2500,
     "home-xbuild": 1500,
-    "home-xad": 1500,
+    "home-xad": 1200,
     "home-xinteractive": 4200
   },
   "theme": {
-    "home-xinteractive": "light",
-    "home-xad": "light"
+    "home-xinteractive": "light"
   },
   "keep": [
     "inkwhite",
     "yellow-top",
     "morphosis",
-    "xad-retail"
+    "xad-logo"
   ],
   "reveal": {
     "home-xbuild": "fade",

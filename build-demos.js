@@ -31,9 +31,9 @@ const CONF   = REPO + 'demos' + path.sep + 'demos.json';
 // スロット名 → どのページの何番目のパネルか（0始まり）
 const SLOTS = {
   'home-hero':          { page: 'page-home',         panel: 0 },
-  'home-xbuild':        { page: 'page-home',         panel: 1 },
+  'home-xinteractive':  { page: 'page-home',         panel: 1 },
   'home-xad':           { page: 'page-home',         panel: 2 },
-  'home-xinteractive':  { page: 'page-home',         panel: 3 },
+  'home-xbuild':        { page: 'page-home',         panel: 3 },
   'home-careers':       { page: 'page-home',         panel: 4 },
   'home-contact':       { page: 'page-home',         panel: 5 },
   'xbuild-hero':        { page: 'page-xbuild',       panel: 0 },
@@ -100,7 +100,7 @@ function prepare(id) {
   // 外部読み込みがあると、公開時に読めない/遅くなる可能性があるので知らせる
   const ext = s.match(/(?:src|href)=["']https?:\/\/[^"']+/gi);
   if (ext) warn.push(id + ': 外部読み込みがあります → ' + ext.slice(0, 3).join(' , '));
-  if (!/<canvas|<svg|requestAnimationFrame|setInterval/.test(s))
+  if (!/<canvas|<svg|requestAnimationFrame|setInterval|@keyframes/.test(s))
     warn.push(id + ': 自動で動く要素が見当たりません（静止したままかもしれません）');
 
   // WebGPU 依存のデモは対応ブラウザでだけ動かす（未対応ではポスターのまま）
