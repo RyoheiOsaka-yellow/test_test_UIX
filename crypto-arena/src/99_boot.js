@@ -1,7 +1,12 @@
 /* ================= 起動 & メインループ ================= */
-setLoad(96, 'シーンを初期化中');
+setLoad(94, '1to1 データを生成中');
+buildSnapshot();
+repaintSeats();
+setLoad(97, 'シーンを初期化中');
 setViewMode('solid');
-setCam(ARENA_C.x, 20, ARENA_C.z, 620, -0.55, 0.48);
+setFloorFormat(GAMES[curGame].fmt);
+setLevel('site', false);
+onTick();
 
 let last = performance.now();
 function loop(now) {
@@ -22,5 +27,7 @@ function loop(now) {
 applyCam(0);
 requestAnimationFrame(loop);
 setLoad(100, '準備完了');
+toast('<b>Crypto.com Arena デジタルツイン</b> — L0で表示モードを切替、アリーナをクリックで L2 内部へ。' +
+      '座席をクリックすると <b>個客プロファイル</b>が開きます', 6000);
 setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 260);
 window.__ready = true;

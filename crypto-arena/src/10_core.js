@@ -37,6 +37,11 @@ function pick(list, r) {            // [[value, weight], ...] から重み付き
   return list[list.length - 1][0];
 }
 
+/* IFC風属性を持つ部材のレジストリ（L1/L2 で共有） */
+const BIM_ELEMS = [];
+/* 表示トグル（L2 内部の見通し確保） */
+const SHOW = { roof: false, truss: true, structure: true, suites: true, media: true };
+
 /* ---- THREE 基本セットアップ ---- */
 const wrap = document.getElementById('canvas-wrap');
 const scene = new THREE.Scene();
@@ -49,7 +54,8 @@ renderer.setClearColor(0x080b12, 1);
 wrap.appendChild(renderer.domElement);
 const el = renderer.domElement;
 
-scene.add(new THREE.HemisphereLight(0xa8cbff, 0x101828, 0.95));
+const hemi = new THREE.HemisphereLight(0xa8cbff, 0x101828, 0.95);
+scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff1dc, 1.05);
 sun.position.set(-700, 1100, 520);
 scene.add(sun);

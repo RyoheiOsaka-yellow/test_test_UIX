@@ -9,6 +9,8 @@ const gSolid = new THREE.Group(); site.add(gSolid);   // 実体
 const gPoint = new THREE.Group(); site.add(gPoint);   // 点描
 const gWire  = new THREE.Group(); site.add(gWire);    // 線画 / 青焼き
 const gInfra = new THREE.Group(); site.add(gInfra);   // 交通インフラ（全モード共通で表示）
+const gMark  = new THREE.Group(); site.add(gMark);    // POI/駅マーカー（L0のみ）
+const gClose = new THREE.Group(); site.add(gClose);   // 200m圏の建物（L1では詳細モデルに譲る）
 
 /* ---- ジオメトリ組み立てヘルパ（マージ済みBufferGeometryを直接構築） ---- */
 function Builder() { this.p = []; this.n = []; this.c = []; }
@@ -76,14 +78,16 @@ function addRibbon(B, pts, w, y, col) {
 /* ================= 建物 ================= */
 setLoad(12, '建物を生成中 (near ' + SCENE_DATA.buildings.length + ' / mid ' + SCENE_DATA.mid.length + ')');
 (function buildings() {
-  const B = new Builder();
+  const B = new Builder(), C = new Builder();
   for (const b of SCENE_DATA.buildings) {
     const h = b.h || (6 + hrand(b.p.length * 977 + Math.round(b.p[0][0]), 11) * 14);
-    addBuilding(B, b.p, h, bldColor(h));
+    /* アリーナ200m圏は L1 で詳細モデル（広場・ファサード）に置き換えるため別メッシュに分ける */
+    const near = Math.hypot(b.p[0][0], b.p[0][1]) < 200;
+    addBuilding(near ? C : B, b.p, h, bldColor(h));
   }
-  const g = B.geom();
   const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0.05 });
-  gSolid.add(new THREE.Mesh(g, m));
+  gSolid.add(new THREE.Mesh(B.geom(), m));
+  gClose.add(new THREE.Mesh(C.geom(), m));
 
   const M = new Builder();
   for (const b of SCENE_DATA.mid) {
@@ -243,10 +247,10 @@ const stationMarks = [];
     m.userData = { kind: 'station', name: s.n,
       desc: (s.k === 'subway' ? '地下鉄駅' : 'ライトレール駅') +
             '<br>アリーナ中心から ' + fmt(Math.hypot(s.p[0], s.p[1])) + ' m' };
-    site.add(m); stationMarks.push(m);
+    gMark.add(m); stationMarks.push(m);
     const rr = new THREE.Mesh(ring, new THREE.MeshBasicMaterial({
       color: col, transparent: true, opacity: near ? 0.55 : 0.25, side: THREE.DoubleSide }));
-    rr.rotation.x = -Math.PI / 2; rr.position.set(s.p[0], 0.7, -s.p[1]); site.add(rr);
+    rr.rotation.x = -Math.PI / 2; rr.position.set(s.p[0], 0.7, -s.p[1]); gMark.add(rr);
   }
 })();
 
@@ -300,7 +304,7 @@ const POI_COL = { ent: 0xff5fa2, tour: 0x3ddc84, shop: 0xfdb927, biz: 0x4da3ff,
     m.position.set(p.p[0], 26, -p.p[1]);
     m.rotation.x = Math.PI;
     m.userData = { kind: 'poi', name: p.n, desc: p.d };
-    site.add(m);
+    gMark.add(m);
   }
 })();
 
@@ -406,7 +410,7 @@ function setViewMode(m) {
   gSolid.visible = (m === 'solid');
   gPoint.visible = (m === 'point');
   gWire.visible = (m === 'wire' || m === 'blueprint');
-  arenaShell.visible = (m === 'solid');
+  arenaShell.visible = (m === 'solid' && level !== 'plaza');
   wrap.classList.toggle('pc-grad', m === 'point');
   wrap.classList.toggle('bp-grad', m === 'blueprint');
   const wm = gWire.userData.mat;
