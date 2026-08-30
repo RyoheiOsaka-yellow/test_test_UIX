@@ -285,6 +285,8 @@ function pick(list, r) {            // [[value, weight], ...] から重み付き
 
 /* IFC風属性を持つ部材のレジストリ（L1/L2 で共有） */
 const BIM_ELEMS = [];
+/* 毎フレーム走らせるフック（各モジュールが push する）と時刻更新フック */
+const FRAME_HOOKS = [], TICK_HOOKS = [];
 /* 表示トグル（L2 内部の見通し確保） */
 const SHOW = { roof: false, truss: true, structure: true, suites: true, media: true };
 
@@ -308,6 +310,17 @@ scene.add(sun);
 const fillLight = new THREE.DirectionalLight(0x5b8ce0, 0.45);
 fillLight.position.set(600, 420, -700);
 scene.add(fillLight);
+
+/* InstancedMesh の instanceColor を明示的に確保する。
+   r128 の setColorAt は mesh.count を見て配列を確保するため、count=0 の状態で呼ぶと
+   長さ0の配列ができて以後どれだけ setColorAt しても色が出ない。ここで直接張る。 */
+function primeInstanceColor(mesh, n) {
+  const arr = new Float32Array(n * 3).fill(1);
+  mesh.instanceColor = new THREE.InstancedBufferAttribute(arr, 3);
+  mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+  mesh.material.needsUpdate = true;
+  return mesh;
+}
 
 /* ---- 軌道カメラ（ターゲット注視 / 慣性なし・確定的） ---- */
 const cam = { tx: 0, ty: 0, tz: 0, dist: 1500, yaw: -0.62, pitch: 0.72,
@@ -694,12 +707,18 @@ const POI_COL = { ent: 0xff5fa2, tour: 0x3ddc84, shop: 0xfdb927, biz: 0x4da3ff,
    線画/青焼き: 稜線のみ。図面表現に切り替えて構造と街区の関係を読む
 ================================================================ */
 setLoad(70, '点群 / 線画レイヤーを生成中');
+/* 点群の分類（LAS classification 相当）: 0=地表/道路 1=建物 2=高層建物 3=鉄道 4=アリーナ */
+const PC_CLASS_COL = [0x4a6f96, 0x63d9ff, 0xbfe9ff, 0xa05da5, 0x00e5ff];
+const PC_CLASS_NAME = ['地表・道路', '建物 (低〜中層)', '建物 (高層)', '鉄道', 'アリーナ'];
+let pcColorMode = 'class';                               // class | height | intensity
+const PCD = { cls: null, y: null, maxY: 1 };
+
 (function altViews() {
-  const P = [], PC = [];                                 // 点群 position / color
+  const P = [], PC = [], PK = [], PH = [];               // position / color / class / height
   const W = [], WC = [];                                 // 線分 position / color
   const cB = new THREE.Color(0x63d9ff), cR = new THREE.Color(0x3a6a9e), cM = new THREE.Color(0x2f5f8c);
 
-  const sampleRing = (poly, y, step, col) => {
+  const sampleRing = (poly, y, step, col, cls) => {
     for (let i = 0; i < poly.length; i++) {
       const a = poly[i], b = poly[(i + 1) % poly.length];
       const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -708,6 +727,7 @@ setLoad(70, '点群 / 線画レイヤーを生成中');
         const t = k / n;
         P.push(a[0] + (b[0] - a[0]) * t, y, -(a[1] + (b[1] - a[1]) * t));
         PC.push(col.r, col.g, col.b);
+        PK.push(cls); PH.push(y);
       }
     }
   };
@@ -725,7 +745,8 @@ setLoad(70, '点群 / 線画レイヤーを生成中');
     if (p.length < 3) continue;
     const h = bl.h || 11;
     const lv = clamp(Math.round(h / 9), 2, 7);           // 高さ方向のサンプル段数
-    for (let i = 0; i <= lv; i++) sampleRing(p, h * i / lv, 2.6, cB);
+    const cls = h > 60 ? 2 : 1;
+    for (let i = 0; i <= lv; i++) sampleRing(p, h * i / lv, 2.6, cB, i === 0 ? 0 : cls);
     edgeRing(p, 0, cB); edgeRing(p, h, cB);
     for (const q of p) {                                  // 垂直稜線
       W.push(q[0], 0, -q[1], q[0], h, -q[1]);
@@ -737,7 +758,7 @@ setLoad(70, '点群 / 線画レイヤーを生成中');
     if (p.length > 3 && p[0][0] === p[p.length - 1][0] && p[0][1] === p[p.length - 1][1]) p.pop();
     if (p.length < 3) continue;
     const h = 7 + hrand(Math.round(p[0][0] * 7 + p[0][1]), 23) * 22;
-    sampleRing(p, h, 3.4, cM); sampleRing(p, 0, 5.0, cM);
+    sampleRing(p, h, 3.4, cM, h > 60 ? 2 : 1); sampleRing(p, 0, 5.0, cM, 0);
     edgeRing(p, h, cM);
   }
   for (const r of SCENE_DATA.roads) {                     // 道路は中心線をサンプル
@@ -751,6 +772,7 @@ setLoad(70, '点群 / 線画レイヤーを生成中');
         const t = k / n;
         P.push(a[0] + (b[0] - a[0]) * t, y, -(a[1] + (b[1] - a[1]) * t));
         PC.push(col.r, col.g, col.b);
+        PK.push(0); PH.push(y);
       }
       W.push(a[0], y, -a[1], b[0], y, -b[1]);
       WC.push(col.r, col.g, col.b, col.r, col.g, col.b);
@@ -760,17 +782,39 @@ setLoad(70, '点群 / 線画レイヤーを生成中');
   const ap = SCENE_DATA.arena.outer.slice();
   if (ap.length > 3) {
     const cA = new THREE.Color(0x00e5ff);
-    for (let i = 0; i <= 8; i++) sampleRing(ap, 26 * i / 8, 1.6, cA);
+    for (let i = 0; i <= 8; i++) sampleRing(ap, 26 * i / 8, 1.6, cA, 4);
     edgeRing(ap, 0, cA); edgeRing(ap, 26, cA);
     for (const q of ap) { W.push(q[0], 0, -q[1], q[0], 26, -q[1]);
       WC.push(cA.r, cA.g, cA.b, cA.r, cA.g, cA.b); }
   }
 
+  /* Metro / 貨物線も点群に含める（分類=3） */
+  const cR2 = new THREE.Color(0xa05da5);
+  for (const list of [SCENE_DATA.railMetro, SCENE_DATA.railHeavy]) {
+    for (const r of list) {
+      const y = r.b === 1 ? 9.5 : (r.b === -1 ? -7.5 : 0.6);
+      for (let i = 0; i < r.p.length - 1; i++) {
+        const a = r.p[i], b = r.p[i + 1];
+        const n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / 3));
+        for (let k = 0; k < n; k++) {
+          const t = k / n;
+          P.push(a[0] + (b[0] - a[0]) * t, y, -(a[1] + (b[1] - a[1]) * t));
+          PC.push(cR2.r, cR2.g, cR2.b); PK.push(3); PH.push(y);
+        }
+      }
+    }
+  }
+  PCD.cls = Uint8Array.from(PK);
+  PCD.y = Float32Array.from(PH);
+  /* 100万点超のスプレッドは呼び出しスタックを溢れさせるのでループで求める */
+  let my = 1; for (const v of PH) if (v > my) my = v;
+  PCD.maxY = my;
   const pg = new THREE.BufferGeometry();
   pg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
   pg.setAttribute('color', new THREE.Float32BufferAttribute(PC, 3));
   gPoint.add(new THREE.Points(pg, new THREE.PointsMaterial({
     size: 1.9, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.92 })));
+  gPoint.userData.geo = pg;
 
   const wg = new THREE.BufferGeometry();
   wg.setAttribute('position', new THREE.Float32BufferAttribute(W, 3));
@@ -782,6 +826,31 @@ setLoad(70, '点群 / 線画レイヤーを生成中');
   siteStats.points = P.length / 3;
   siteStats.segs = W.length / 6;
 })();
+
+/* ---- 点群の着色モード（分類 / 高さ / 疑似反射強度） ---- */
+function setPointColorMode(mode) {
+  pcColorMode = mode;
+  const g = gPoint.userData.geo;
+  if (!g) return;
+  const col = g.attributes.color, n = col.count;
+  const c = new THREE.Color();
+  for (let i = 0; i < n; i++) {
+    if (mode === 'class') c.setHex(PC_CLASS_COL[PCD.cls[i]]);
+    else if (mode === 'height') {
+      const u = clamp(PCD.y[i] / Math.min(PCD.maxY, 180), 0, 1);
+      c.setHSL(0.62 - u * 0.62, 0.85, 0.32 + u * 0.34);
+    } else {
+      /* 疑似反射強度: 面の向き（水平ほど高反射）＋クラス別の材質差 */
+      const k = PCD.cls[i];
+      const base = k === 0 ? 0.72 : k === 3 ? 0.86 : k === 4 ? 0.94 : 0.40;
+      const v = clamp(base + ((i * 2654435761) % 97) / 97 * 0.22 - 0.11, 0, 1);
+      c.setRGB(v * 0.85, v * 0.95, v);
+    }
+    col.setXYZ(i, c.r, c.g, c.b);
+  }
+  col.needsUpdate = true;
+  if (typeof renderPanel === 'function') renderPanel();
+}
 
 /* ---- モード適用 ---- */
 let viewMode = 'solid';                                   // solid | point | wire | blueprint
@@ -810,6 +879,145 @@ function setViewMode(m) {
   }
   wm.needsUpdate = true;
   if (typeof renderPanel === 'function') renderPanel();
+}
+/* ---- src/22_graph.js ---- */
+
+/* ================================================================
+   道路グラフ & 経路探索
+   OSM の道路 11,856 セグメントから連結グラフを構築し A* で経路探索する。
+   ノード数が大きい（DTLA全域）ため最近傍探索は空間ハッシュで O(1) 近傍に落とす。
+   歩行者は歩道相当（class 0-3）、車両は全クラスを使う。
+================================================================ */
+const roadGraph = (function () {
+  const CELL = 5;                                   // ノード量子化格子(m)
+  const nodes = [];                                 // {x,z,adj:[idx], cls}
+  const idx = new Map();                            // 量子化キー -> ノード番号
+  const key = (x, z) => Math.round(x / CELL) + '_' + Math.round(z / CELL);
+
+  function node(x, z, cls) {
+    const k = key(x, z);
+    let i = idx.get(k);
+    if (i === undefined) { i = nodes.length; nodes.push({ x, z, adj: [], cls }); idx.set(k, i); }
+    else if (cls > nodes[i].cls) nodes[i].cls = cls;
+    return i;
+  }
+  const link = (a, b) => {
+    if (a === b) return;
+    if (nodes[a].adj.indexOf(b) < 0) nodes[a].adj.push(b);
+    if (nodes[b].adj.indexOf(a) < 0) nodes[b].adj.push(a);
+  };
+  for (const r of SCENE_DATA.roads) {
+    if (r.b === -1) continue;                       // トンネルは地表動線に含めない
+    for (let i = 0; i < r.p.length - 1; i++) {
+      const a = node(r.p[i][0], -r.p[i][1], r.c);
+      const b = node(r.p[i + 1][0], -r.p[i + 1][1], r.c);
+      link(a, b);
+    }
+  }
+
+  /* --- 空間ハッシュ（最近傍ノード探索用・粗い格子） --- */
+  const GCELL = 60, grid = new Map();
+  const gkey = (x, z) => Math.floor(x / GCELL) + '_' + Math.floor(z / GCELL);
+  nodes.forEach((n, i) => {
+    const k = gkey(n.x, n.z);
+    let a = grid.get(k); if (!a) { a = []; grid.set(k, a); }
+    a.push(i);
+  });
+  function nearest(x, z, maxCls) {
+    let best = -1, bd = Infinity;
+    for (let ring = 0; ring <= 6 && best < 0; ring++) {
+      const cx = Math.floor(x / GCELL), cz = Math.floor(z / GCELL);
+      for (let i = -ring; i <= ring; i++) for (let j = -ring; j <= ring; j++) {
+        if (ring > 0 && Math.max(Math.abs(i), Math.abs(j)) !== ring) continue;
+        const a = grid.get((cx + i) + '_' + (cz + j)); if (!a) continue;
+        for (const n of a) {
+          if (maxCls != null && nodes[n].cls > maxCls) continue;
+          const d = (nodes[n].x - x) ** 2 + (nodes[n].z - z) ** 2;
+          if (d < bd) { bd = d; best = n; }
+        }
+      }
+    }
+    return best;
+  }
+
+  /* --- A*（バイナリヒープ / 幹線ほど低コスト = 車両は幹線を選ぶ） --- */
+  function Heap() { this.a = []; }
+  Heap.prototype.push = function (f, v) {
+    const a = this.a; a.push([f, v]);
+    let i = a.length - 1;
+    while (i > 0) { const p = (i - 1) >> 1; if (a[p][0] <= a[i][0]) break; [a[p], a[i]] = [a[i], a[p]]; i = p; }
+  };
+  Heap.prototype.pop = function () {
+    const a = this.a, top = a[0], last = a.pop();
+    if (a.length) {
+      a[0] = last;
+      let i = 0;
+      for (;;) {
+        const l = i * 2 + 1, r = l + 1; let m = i;
+        if (l < a.length && a[l][0] < a[m][0]) m = l;
+        if (r < a.length && a[r][0] < a[m][0]) m = r;
+        if (m === i) break;
+        [a[m], a[i]] = [a[i], a[m]]; i = m;
+      }
+    }
+    return top;
+  };
+
+  function path(x0, z0, x1, z1, mode) {
+    const walk = mode === 'walk';
+    const s = nearest(x0, z0, walk ? 3 : null), g = nearest(x1, z1, walk ? 3 : null);
+    if (s < 0 || g < 0) return null;
+    const gp = nodes[g];
+    const came = new Int32Array(nodes.length).fill(-1);
+    const cost = new Float64Array(nodes.length).fill(Infinity);
+    const done = new Uint8Array(nodes.length);
+    cost[s] = 0;
+    const open = new Heap(); open.push(0, s);
+    let guard = 0, found = false;
+    while (open.a.length && guard++ < 220000) {
+      const cur = open.pop()[1];
+      if (cur === g) { found = true; break; }
+      if (done[cur]) continue;
+      done[cur] = 1;
+      const cn = nodes[cur];
+      for (const nb of cn.adj) {
+        const nn = nodes[nb];
+        if (walk && nn.cls === 4) continue;          // 歩行者はフリーウェイを歩けない
+        /* 車両は幹線が速い / 歩行者は生活道路を好む */
+        const w = walk ? (nn.cls >= 3 ? 1.25 : 1.0) : (1.35 - nn.cls * 0.08);
+        const nc = cost[cur] + Math.hypot(nn.x - cn.x, nn.z - cn.z) * w;
+        if (nc < cost[nb]) {
+          cost[nb] = nc; came[nb] = cur;
+          open.push(nc + Math.hypot(nn.x - gp.x, nn.z - gp.z), nb);
+        }
+      }
+    }
+    if (!found) return null;
+    const out = [];
+    for (let cur = g; cur >= 0; cur = came[cur]) out.push([nodes[cur].x, nodes[cur].z]);
+    out.reverse();
+    return out;
+  }
+  return { path, nearest, nodes, size: nodes.length };
+})();
+
+/* 折れ線に距離テーブルを付ける（エージェントの距離→座標変換用） */
+function measure(pts) {
+  const seg = [0];
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    total += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+    seg.push(total);
+  }
+  return { path: pts, seg, total };
+}
+function atDist(route, d) {
+  const { path: p, seg } = route;
+  const t = clamp(d, 0, seg[seg.length - 1]);
+  let lo = 0, hi = seg.length - 1;
+  while (lo < hi - 1) { const m = (lo + hi) >> 1; if (seg[m] <= t) lo = m; else hi = m; }
+  const k = (t - seg[lo]) / Math.max(1e-6, seg[lo + 1] - seg[lo]);
+  return [p[lo][0] + (p[lo + 1][0] - p[lo][0]) * k, p[lo][1] + (p[lo + 1][1] - p[lo][1]) * k];
 }
 /* ---- src/30_entrance.js ---- */
 
@@ -1016,6 +1224,540 @@ setLoad(80, 'エントランス広場を生成中');
   big.userData = { kind: 'poi', name: '屋外ビジョン', desc: '広場滞留者向けの媒体。滞留人数×時間で露出量を算定' };
   plaza.add(big);
 })();
+/* ---- src/32_flow.js ---- */
+
+/* ================================================================
+   移動経路モデル — 来場OD × 交通手段 × 実道路ネットワーク
+   出発地からアリーナのゲートまで A* で実経路を引き、タイムラインに沿って
+   人流エージェントを走らせる。退場後は「直帰」と「周辺回遊」に分岐する。
+   出発地の構成比は 1to1 レイヤーの商圏分布（AGG.reg）に追従する。
+================================================================ */
+const plazaToWorld = (lx, lz) => ({
+  x: ARENA_C.x + lx * Math.cos(ARENA_ROT) + lz * Math.sin(ARENA_ROT),
+  z: ARENA_C.z - lx * Math.sin(ARENA_ROT) + lz * Math.cos(ARENA_ROT),
+});
+const MODE_COL = { METRO: 0x00a8ff, CAR: 0xfdb927, WALK: 0x3ddc84, RIDESHARE: 0xff5fa2, RAIL: 0x8a5cc4 };
+
+/* 指定方向にある最寄のフリーウェイ点（オフランプ相当）を実データから拾う */
+function freewayPoint(dirX, dirZ) {
+  let best = null, bs = -Infinity;
+  for (const r of SCENE_DATA.roads) {
+    if (r.c !== 4 || r.b === -1) continue;
+    for (const p of r.p) {
+      const x = p[0], z = -p[1];
+      const d = Math.hypot(x - ARENA_C.x, z - ARENA_C.z);
+      if (d < 260 || d > 2100) continue;
+      const s = ((x - ARENA_C.x) * dirX + (z - ARENA_C.z) * dirZ) / d - d / 5200;
+      if (s > bs) { bs = s; best = [x, z]; }
+    }
+  }
+  return best;
+}
+/* 面積上位の駐車場重心 */
+function bigParking(n) {
+  return SCENE_DATA.parking.map(p => {
+    const xs = p.map(q => q[0]), ys = p.map(q => q[1]);
+    const w = Math.max(...xs) - Math.min(...xs), h = Math.max(...ys) - Math.min(...ys);
+    return { x: (Math.max(...xs) + Math.min(...xs)) / 2, z: -(Math.max(...ys) + Math.min(...ys)) / 2,
+             area: w * h, d: 0 };
+  }).map(o => (o.d = Math.hypot(o.x - ARENA_C.x, o.z - ARENA_C.z), o))
+    .filter(o => o.d < 900)
+    .sort((a, b) => b.area - a.area).slice(0, n);
+}
+
+setLoad(60, '道路ネットワークの経路を探索中');
+const ORIGINS = [];
+const flowGroup = new THREE.Group(); site.add(flowGroup);      // 経路ラインのレイヤー
+const routeLines = new THREE.Group(); flowGroup.add(routeLines);
+
+(function buildOrigins() {
+  const stn = n => (SCENE_DATA.stations.find(s => s.n === n) || { p: [0, 0] }).p;
+  const pico = stn('Pico'), seventh = stn('7th Street/Metro Center');
+  const parks = bigParking(3);
+  const fwN = freewayPoint(0, -1), fwS = freewayPoint(0, 1), fwE = freewayPoint(1, 0);
+  const hotel = SCENE_DATA.pois.find(p => p.c === 'hotel');
+
+  const defs = [
+    { name: 'Pico 駅 (Metro A/E)', x: pico[0], z: -pico[1], mode: 'METRO', w: 0.14,
+      regions: ['DTLA / Central LA', 'South Bay'] },
+    { name: '7th St/Metro Center (A/B/D/E)', x: seventh[0], z: -seventh[1], mode: 'METRO', w: 0.09,
+      regions: ['Westside', 'San Fernando Valley'] },
+    { name: 'I-110 北からのオフランプ', p: fwN, mode: 'CAR', w: 0.16,
+      regions: ['San Fernando Valley'] },
+    { name: 'I-110 南からのオフランプ', p: fwS, mode: 'CAR', w: 0.15,
+      regions: ['South Bay', 'Orange County'] },
+    { name: 'I-10 東からのオフランプ', p: fwE, mode: 'CAR', w: 0.11,
+      regions: ['Inland Empire'] },
+    { name: 'L.A. LIVE 駐車場', x: parks[0] && parks[0].x, z: parks[0] && parks[0].z, mode: 'CAR', w: 0.12,
+      regions: ['Orange County'] },
+    { name: 'ライドシェア降車ゾーン', x: ARENA_C.x - 150, z: ARENA_C.z + 190, mode: 'RIDESHARE', w: 0.11,
+      regions: ['Westside', 'Out of State'] },
+    { name: '隣接ホテル徒歩 (JW/Ritz)', x: hotel ? hotel.p[0] : 0, z: hotel ? -hotel.p[1] : 0, mode: 'WALK', w: 0.07,
+      regions: ['Out of State', 'International'] },
+    { name: 'DTLA 徒歩', x: ARENA_C.x + 420, z: ARENA_C.z - 430, mode: 'WALK', w: 0.05,
+      regions: ['DTLA / Central LA'] },
+  ];
+
+  /* 到達点: L1 の入場ゲート（ワールド座標） */
+  const gateW = GATES.map(g => plazaToWorld(g.x, g.z));
+  for (const d of defs) {
+    const sx = d.p ? d.p[0] : d.x, sz = d.p ? d.p[1] : d.z;
+    if (!isFinite(sx) || !isFinite(sz)) continue;
+    const gate = gateW[ORIGINS.length % gateW.length];
+    const walking = (d.mode === 'WALK' || d.mode === 'METRO');
+    let pth = roadGraph.path(sx, sz, gate.x, gate.z, walking ? 'walk' : 'drive');
+    if (!pth || pth.length < 2) pth = [[sx, sz], [gate.x, gate.z]];
+    pth.unshift([sx, sz]);
+    pth.push([gate.x, gate.z]);
+    const col = MODE_COL[d.mode];
+    ORIGINS.push({ ...d, x: sx, z: sz, col, route: measure(pth),
+                   gateName: GATES[ORIGINS.length % GATES.length].name });
+  }
+
+  /* 経路の可視化（進行方向シェブロン付き） */
+  for (const o of ORIGINS) {
+    const pts = o.route.path.map(p => new THREE.Vector3(p[0], 1.6, p[1]));
+    routeLines.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({ color: o.col, transparent: true, opacity: 0.55 })));
+    const step = Math.max(60, o.route.total / 26);
+    for (let d = step; d < o.route.total - step; d += step) {
+      const a = atDist(o.route, d), b = atDist(o.route, d + 12);
+      const m = new THREE.Mesh(new THREE.ConeGeometry(4.5, 11, 3),
+        new THREE.MeshBasicMaterial({ color: o.col, transparent: true, opacity: 0.75 }));
+      m.position.set(a[0], 3, a[1]);
+      m.rotation.set(Math.PI / 2, 0, -Math.atan2(b[1] - a[1], b[0] - a[0]) - Math.PI / 2);
+      routeLines.add(m);
+    }
+    const pin = new THREE.Mesh(new THREE.CylinderGeometry(9, 9, 3, 12),
+      new THREE.MeshStandardMaterial({ color: o.col, emissive: o.col, emissiveIntensity: 0.7 }));
+    pin.position.set(o.x, 2, o.z);
+    pin.userData = { kind: 'origin', name: o.name,
+      desc: '交通手段 <b>' + o.mode + '</b><br>アリーナまで ' + fmt(o.route.total) + ' m<br>' +
+            '接続ゲート: ' + o.gateName };
+    routeLines.add(pin);
+  }
+})();
+
+/* ================= 退場後の回遊フロー（直帰 / 周辺回遊） ================= */
+const DISPERSAL = [];
+(function buildDispersal() {
+  const poi = n => SCENE_DATA.pois.find(p => p.n.indexOf(n) === 0);
+  const defs = [
+    { name: 'Metro で直帰', to: null, share: 0.23, spend: 0, col: 0x00a8ff, mode: 'METRO' },
+    { name: '車で直帰（駐車場・フリーウェイ）', to: null, share: 0.38, spend: 0, col: 0xfdb927, mode: 'CAR' },
+    { name: 'ライドシェアで直帰', to: null, share: 0.12, spend: 0, col: 0xff5fa2, mode: 'RIDESHARE' },
+    { name: 'L.A. LIVE で飲食回遊', to: 'L.A. LIVE', share: 0.13, spend: 46, col: 0x3ddc84, mode: 'WALK' },
+    { name: 'Fashion District 方面', to: 'Fashion District', share: 0.05, spend: 38, col: 0x00e0a4, mode: 'WALK' },
+    { name: 'Grand Central Market 方面', to: 'Grand Central Market', share: 0.05, spend: 34, col: 0x8a5cc4, mode: 'WALK' },
+    { name: 'Little Tokyo 方面', to: 'Little Tokyo', share: 0.04, spend: 52, col: 0xff8a3d, mode: 'WALK' },
+  ];
+  for (const d of defs) {
+    let dest;
+    if (d.to) { const p = poi(d.to); dest = p ? [p.p[0], -p.p[1]] : null; }
+    if (!dest) {                                    // 直帰は出発地群へ戻す
+      const o = ORIGINS.find(o => o.mode === d.mode) || ORIGINS[0];
+      dest = [o.x, o.z];
+    }
+    const gate = plazaToWorld(GATES[0].x, GATES[0].z);
+    let pth = roadGraph.path(gate.x, gate.z, dest[0], dest[1], d.mode === 'CAR' ? 'drive' : 'walk');
+    if (!pth || pth.length < 2) pth = [[gate.x, gate.z], dest];
+    DISPERSAL.push({ ...d, route: measure(pth) });
+  }
+})();
+
+/* ================= 人流エージェント ================= */
+const MAX_AGENTS = 1400;
+const agents = [];
+const agentMesh = (function () {
+  const m = new THREE.InstancedMesh(new THREE.SphereGeometry(3.2, 6, 5),
+    new THREE.MeshBasicMaterial(), MAX_AGENTS);
+  primeInstanceColor(m, MAX_AGENTS);
+  m.count = 0; m.frustumCulled = false;
+  flowGroup.add(m);
+  return m;
+})();
+const flowState = { on: true, arrived: 0, inArena: 0, left: 0, spendTotal: 0, byDisp: {} };
+let spawnAcc = 0;
+
+/* 商圏実績（AGG.reg）に追従した出発地シェア */
+function originWeights() {
+  const total = AGG.kpi && AGG.kpi.sold ? AGG.kpi.sold : 0;
+  return ORIGINS.map(o => {
+    if (!total || !o.regions) return o.w;
+    let s = 0;
+    for (const rn of o.regions) s += (AGG.reg[rn] || 0) / total;
+    return Math.max(0.01, s / o.regions.length + o.w * 0.4);
+  });
+}
+function pickIdx(ws) {
+  let t = 0; for (const w of ws) t += w;
+  let x = Math.random() * t;
+  for (let i = 0; i < ws.length; i++) { x -= ws[i]; if (x <= 0) return i; }
+  return 0;
+}
+/* 到着カーブ: 開場17:00 → ピーク19:10 → ティップオフ19:30でほぼ収束 */
+function arrivalRate(m) {
+  if (m < 17 * 60 || m > 19 * 60 + 45) return 0;
+  const u = (m - 17 * 60) / 165;
+  return Math.exp(-Math.pow((u - 0.78) / 0.30, 2));
+}
+function egressRate(m) {
+  if (m < 21 * 60 + 50 || m > 22 * 60 + 50) return 0;
+  return Math.exp(-Math.pow((m - (22 * 60 + 6)) / 15, 2));
+}
+/* 正規化CDF（人数カウンタは曲線の積分から出す。エージェントは可視化のサンプル） */
+const CDF = (function () {
+  const A = [], E = [];
+  let sa = 0, se = 0;
+  for (let m = T0; m <= T1; m++) { sa += arrivalRate(m); se += egressRate(m); A.push(sa); E.push(se); }
+  const ta = sa || 1, te = se || 1;
+  return {
+    arr: m => A[clamp(Math.round(m - T0), 0, A.length - 1)] / ta,
+    dep: m => E[clamp(Math.round(m - T0), 0, E.length - 1)] / te,
+  };
+})();
+
+/* 1エージェントが代表する人数（表示密度から逆算して掲示する） */
+flowState.perAgent = 1;
+
+FRAME_HOOKS.push(function agentTick(dt) {
+  if (!flowState.on || level === 'arena') { agentMesh.count = 0; return; }
+  const dtMin = timeState.play ? dt * timeState.speed : 0;
+  const m = timeState.min;
+  const sold = AGG.kpi.sold || 16000;
+
+  /* --- 人数カウンタは到着/退場カーブの積分（エージェント数に依存しない） --- */
+  const ap = CDF.arr(m), dp = CDF.dep(m);
+  flowState.arrived = Math.round(sold * ap);
+  flowState.left = Math.round(sold * dp);
+  flowState.inArena = Math.max(0, flowState.arrived - flowState.left);
+  flowState.spendTotal = Math.round(
+    DISPERSAL.reduce((a, D) => a + sold * D.share * D.spend, 0) * dp);
+
+  /* --- 表示population は瞬間流量に比例させ、不足分だけ補充する --- */
+  const aR = arrivalRate(m), eR = egressRate(m);
+  const target = Math.round(MAX_AGENTS * clamp(aR * 0.85 + eR * 0.95, 0, 1));
+  const ws = originWeights();
+  let guard = 0;
+  while (agents.length < target && guard++ < 90) {
+    const leaving = eR > aR;
+    if (leaving) {
+      const D = DISPERSAL[pickIdx(DISPERSAL.map(x => x.share))];
+      agents.push({ r: D.route, d: Math.random() * D.route.total * 0.2,
+        v: (D.mode === 'CAR' ? 300 : 74) * (0.75 + Math.random() * 0.5),
+        col: D.col, out: true, jit: Math.random() * 6.28 });
+    } else {
+      const o = ORIGINS[pickIdx(ws)];
+      agents.push({ r: o.route, d: Math.random() * o.route.total * 0.85,
+        v: (o.mode === 'CAR' || o.mode === 'RIDESHARE' ? 340 : 78) * (0.75 + Math.random() * 0.5),
+        col: o.col, out: false, jit: Math.random() * 6.28 });
+    }
+  }
+  /* 1エージェント = 何人か（瞬間の道路上人数 ÷ 表示体数） */
+  const onRoad = Math.max(1, sold * (aR * 0.10 + eR * 0.12));
+  flowState.perAgent = Math.max(1, Math.round(onRoad / Math.max(1, agents.length)));
+
+  /* --- 移動（完走したら消さずに再投入して密度を保つ） --- */
+  const M = new THREE.Matrix4(), C = new THREE.Color();
+  const scale = clamp(cam.dist / 620, 0.5, 3.4);
+  const V = new THREE.Vector3(scale, scale, scale);
+  let n = 0;
+  for (let i = agents.length - 1; i >= 0; i--) {
+    const a = agents[i];
+    a.d += a.v * dtMin;
+    if (a.d >= a.r.total) {
+      if (agents.length > target) { agents.splice(i, 1); continue; }
+      a.d = 0;                                   // リサイクル
+    }
+    const p = atDist(a.r, a.d);
+    M.makeTranslation(p[0] + Math.sin(a.jit) * 4.5, 3.4, p[1] + Math.cos(a.jit) * 4.5);
+    M.scale(V);
+    agentMesh.setMatrixAt(n, M);
+    agentMesh.setColorAt(n, C.setHex(a.col));
+    n++;
+  }
+  agentMesh.count = n;
+  agentMesh.instanceMatrix.needsUpdate = true;
+  if (agentMesh.instanceColor) agentMesh.instanceColor.needsUpdate = true;
+});
+
+/* タイムラインを戻したときは人流をリセット */
+TICK_HOOKS.push(function () {
+  if (timeState.min < 17 * 60 && (flowState.arrived || agents.length)) {
+    agents.length = 0;
+    flowState.arrived = flowState.inArena = flowState.left = flowState.spendTotal = 0;
+    flowState.byDisp = {};
+  }
+});
+/* ---- src/34_heat.js ---- */
+
+/* ================================================================
+   賑わいヒートマップ（通り単位）と OD分析（ガウスKDE + グラデーションアーク）
+   ・賑わい: 通常日の街の素の賑わい（POI/ホテル/駅/商業地）に対し、
+     試合日はアリーナ発の人流が経路沿いに上乗せされる。差分＝アリーナ寄与。
+   ・OD: 出発地/回遊先を正規カーネル N(μ,σ²) の重ね合わせで面表示し、
+     タイムライン再生で「出発地の山 → アリーナへ質量移動 → 回遊先へ分散」を見せる。
+================================================================ */
+
+/* ---------------- 通り単位 賑わいヒートマップ ---------------- */
+const HEAT = { obj: null, meta: [], base: null, game: null, mode: 'game', built: false, stats: {} };
+const heatGroup = new THREE.Group(); heatGroup.visible = false; site.add(heatGroup);
+
+(function buildHeat() {
+  const pos = [], meta = [];
+  for (const r of SCENE_DATA.roads) {
+    if (r.c > 3 || r.b === -1) continue;                 // 幹線〜生活道路のみ
+    for (let i = 0; i < r.p.length - 1; i++) {
+      pos.push(r.p[i][0], 1.1, -r.p[i][1], r.p[i + 1][0], 1.1, -r.p[i + 1][1]);
+      meta.push([r.p[i][0], -r.p[i][1], r.c], [r.p[i + 1][0], -r.p[i + 1][1], r.c]);
+    }
+  }
+  HEAT.meta = meta;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(meta.length * 3), 3));
+  HEAT.obj = new THREE.LineSegments(g, new THREE.LineBasicMaterial({
+    vertexColors: true, transparent: true, opacity: 0.95,
+    blending: THREE.AdditiveBlending, depthWrite: false }));
+  heatGroup.add(HEAT.obj);
+
+  /* --- 通常日のベース賑わい: POI / ホテル / 駅 / 商業地 --- */
+  const src = [];
+  for (const p of SCENE_DATA.pois) {
+    const w = { shop: 1.0, ent: 0.9, tour: 0.72, biz: 0.55, hotel: 0.45, rail: 0.85 }[p.c] || 0.4;
+    src.push([p.p[0], -p.p[1], w, 260]);
+  }
+  for (const s of SCENE_DATA.stations) {
+    const d = Math.hypot(s.p[0], s.p[1]);
+    if (d < 3000) src.push([s.p[0], -s.p[1], 0.7, 200]);
+  }
+  for (const poly of SCENE_DATA.lu.retail) {
+    const cx = poly.reduce((a, q) => a + q[0], 0) / poly.length;
+    const cy = poly.reduce((a, q) => a + q[1], 0) / poly.length;
+    src.push([cx, -cy, 0.22, 150]);
+  }
+  const n = meta.length;
+  HEAT.base = new Float32Array(n);
+  HEAT.game = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    const v = meta[i];
+    let e = v[2] === 3 ? 0.42 : v[2] === 2 ? 0.18 : v[2] === 1 ? 0.08 : 0.03;
+    for (const s of src) {
+      const dx = v[0] - s[0], dy = v[1] - s[1];
+      e += s[2] * Math.exp(-(dx * dx + dy * dy) / (2 * s[3] * s[3]));
+    }
+    HEAT.base[i] = e;
+  }
+  HEAT.built = true;
+})();
+
+/* 試合日 = ベース + 来場経路沿いの上乗せ。経路の通過人数で重み付けする */
+function computeGameHeat() {
+  const n = HEAT.meta.length;
+  const att = AGG.kpi.sold || 16000;
+  const ws = ORIGINS.map(o => o.w);
+  const wsum = ws.reduce((a, b) => a + b, 0);
+  /* 経路を 30m 刻みでサンプルし、通過人数を線源として置く */
+  const lines = [];
+  ORIGINS.forEach((o, i) => {
+    const share = ws[i] / wsum, people = att * share;
+    for (let d = 0; d < o.route.total; d += 30) {
+      const p = atDist(o.route, d);
+      lines.push([p[0], p[1], people / 4200, 95]);
+    }
+  });
+  DISPERSAL.forEach(D => {
+    const people = att * D.share;
+    for (let d = 0; d < D.route.total; d += 30) {
+      const p = atDist(D.route, d);
+      lines.push([p[0], p[1], people / 5200, 85]);
+    }
+  });
+  /* アリーナ本体の集客そのもの */
+  lines.push([ARENA_C.x, ARENA_C.z, att / 2300, 330]);
+  let mx = 0;
+  for (let i = 0; i < n; i++) {
+    const v = HEAT.meta[i];
+    let add = 0;
+    for (const s of lines) {
+      const dx = v[0] - s[0], dy = v[1] - s[1];
+      const d2 = dx * dx + dy * dy;
+      if (d2 > s[3] * s[3] * 9) continue;
+      add += s[2] * Math.exp(-d2 / (2 * s[3] * s[3]));
+    }
+    HEAT.game[i] = HEAT.base[i] + add;
+    if (HEAT.game[i] > mx) mx = HEAT.game[i];
+  }
+  HEAT.max = mx || 1;
+  /* 差分（アリーナ寄与）は自前の最大値で正規化する。
+     game の最大はアリーナ直近が支配するため、それで割ると街区側が潰れてしまう。 */
+  let dmx = 0, up = 0;
+  for (let i = 0; i < n; i++) {
+    const d = HEAT.game[i] - HEAT.base[i];
+    if (d > dmx) dmx = d;
+    up += HEAT.game[i] / Math.max(0.02, HEAT.base[i]);
+  }
+  HEAT.deltaMax = dmx || 1;
+  HEAT.stats = { avgUp: up / n, max: mx, deltaMax: dmx };
+  paintHeat();
+}
+function paintHeat() {
+  if (!HEAT.built) return;
+  const col = HEAT.obj.geometry.attributes.color;
+  const n = HEAT.meta.length;
+  let baseMax = 1; for (const v of HEAT.base) if (v > baseMax) baseMax = v;
+  const c = new THREE.Color();
+  for (let i = 0; i < n; i++) {
+    let v;
+    if (HEAT.mode === 'base') v = HEAT.base[i] / baseMax;
+    else if (HEAT.mode === 'game') v = HEAT.game[i] / HEAT.max;
+    else v = clamp((HEAT.game[i] - HEAT.base[i]) / HEAT.deltaMax, 0, 1);       // アリーナ寄与
+    const k = clamp(Math.pow(v, 0.62), 0, 1);
+    c.copy(heatC(k));
+    /* 寄与ゼロの通りは黒へ落として、加算合成でも「効いていない」ことが読めるようにする */
+    const f = HEAT.mode === 'delta' ? clamp(k * 2.6, 0, 1) : clamp(0.30 + k * 0.9, 0, 1);
+    col.setXYZ(i, c.r * f, c.g * f, c.b * f);
+  }
+  col.needsUpdate = true;
+}
+
+/* ---------------- OD分析: ガウスKDE サーフェス + アーク ---------------- */
+const odGroup = new THREE.Group(); odGroup.visible = false; site.add(odGroup);
+const KDE = { N: 128, span: 4400, mesh: null, bw: 1.0, mode: 'auto' };
+
+(function buildKDE() {
+  const N = KDE.N, S = KDE.span;
+  const g = new THREE.PlaneGeometry(S, S, N - 1, N - 1);
+  g.rotateX(-Math.PI / 2);
+  g.translate(ARENA_C.x, 0, ARENA_C.z);
+  g.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(N * N * 3), 3));
+  KDE.mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({
+    vertexColors: true, transparent: true, opacity: 0.72, side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending, depthWrite: false }));
+  odGroup.add(KDE.mesh);
+})();
+
+/* 時刻に応じて「出発地 → アリーナ → 回遊先」へ質量を移す */
+function kdeSources(m) {
+  const att = AGG.kpi.sold || 16000;
+  const arr = clamp(smooth(17 * 60, 19 * 60 + 20, m), 0, 1);          // 到着の進捗
+  const dep = clamp(smooth(21 * 60 + 55, 22 * 60 + 45, m), 0, 1);     // 退場の進捗
+  const src = [];
+  const ws = ORIGINS.map(o => o.w), wsum = ws.reduce((a, b) => a + b, 0);
+  const showArr = KDE.mode === 'arr' || KDE.mode === 'both' ||
+                  (KDE.mode === 'auto' && m < 21 * 60 + 55);
+  const showDep = KDE.mode === 'dep' || KDE.mode === 'both' ||
+                  (KDE.mode === 'auto' && m >= 21 * 60 + 55);
+  if (showArr) ORIGINS.forEach((o, i) => {
+    const p = att * ws[i] / wsum * (KDE.mode === 'auto' ? (1 - arr) : 1);
+    if (p > 1) src.push([o.x, o.z, p, 165 * KDE.bw]);
+  });
+  if (showDep) DISPERSAL.forEach(D => {
+    const end = atDist(D.route, D.route.total);
+    const p = att * D.share * (KDE.mode === 'auto' ? dep : 1);
+    if (p > 1) src.push([end[0], end[1], p, 175 * KDE.bw]);
+  });
+  const inArena = att * (KDE.mode === 'auto' ? arr * (1 - dep) : 0.5);
+  if (inArena > 1) src.push([ARENA_C.x, ARENA_C.z, inArena, 195 * KDE.bw]);
+  return src;
+}
+function updateKDE() {
+  if (!odGroup.visible) return;
+  const N = KDE.N, S = KDE.span, half = S / 2;
+  const pos = KDE.mesh.geometry.attributes.position;
+  const col = KDE.mesh.geometry.attributes.color;
+  const src = kdeSources(timeState.min);
+  const c = new THREE.Color();
+  let mx = 0;
+  const vals = new Float32Array(N * N);
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const x = ARENA_C.x - half + S * i / (N - 1);
+    const z = ARENA_C.z - half + S * j / (N - 1);
+    let v = 0;
+    for (const s of src) {
+      const dx = x - s[0], dz = z - s[1], sg = s[3];
+      const d2 = dx * dx + dz * dz;
+      if (d2 > sg * sg * 9) continue;
+      v += s[2] * Math.exp(-d2 / (2 * sg * sg));
+    }
+    const k = j * N + i; vals[k] = v; if (v > mx) mx = v;
+  }
+  mx = mx || 1;
+  for (let k = 0; k < N * N; k++) {
+    const u = vals[k] / mx;
+    pos.setY(k, Math.pow(u, 0.75) * 230);
+    c.copy(heatC(clamp(Math.pow(u, 0.6), 0, 1)));
+    col.setXYZ(k, c.r * u * 1.4, c.g * u * 1.4, c.b * u * 1.4);
+  }
+  pos.needsUpdate = true; col.needsUpdate = true;
+  KDE.mesh.geometry.computeVertexNormals();
+}
+
+/* --- ODアーク（帯・進行方向へ流れる） --- */
+const arcs = [];
+(function buildArcs() {
+  const mk = (from, to, share, colA, colB, up) => {
+    const SEG = 46, W = clamp(share * 130, 3, 26);
+    const P = [], C = [], UV = [];
+    const mid = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
+    const len = Math.hypot(to[0] - from[0], to[1] - from[1]);
+    const h = clamp(len * 0.30, 40, 320) * (up ? 1 : 0.8);
+    const pt = t => {
+      const a = (1 - t) * (1 - t), b = 2 * (1 - t) * t, c2 = t * t;
+      return [a * from[0] + b * mid[0] + c2 * to[0],
+              b * h + Math.sin(Math.PI * t) * h * 0.35,
+              a * from[1] + b * mid[1] + c2 * to[1]];
+    };
+    const ca = new THREE.Color(colA), cb = new THREE.Color(colB), cc = new THREE.Color();
+    for (let i = 0; i < SEG; i++) {
+      const t0 = i / SEG, t1 = (i + 1) / SEG;
+      const p0 = pt(t0), p1 = pt(t1);
+      const dx = p1[0] - p0[0], dz = p1[2] - p0[2];
+      const L = Math.hypot(dx, dz) || 1;
+      const nx = -dz / L * W / 2, nz = dx / L * W / 2;
+      const A = [p0[0] + nx, p0[1], p0[2] + nz], B = [p0[0] - nx, p0[1], p0[2] - nz];
+      const Cq = [p1[0] - nx, p1[1], p1[2] - nz], D = [p1[0] + nx, p1[1], p1[2] + nz];
+      P.push(...A, ...B, ...Cq, ...A, ...Cq, ...D);
+      for (const [t, k] of [[t0, 0], [t0, 1], [t1, 2], [t0, 3], [t1, 4], [t1, 5]]) {
+        cc.copy(ca).lerp(cb, t);
+        C.push(cc.r, cc.g, cc.b);
+      }
+      UV.push(t0, 0, t0, 1, t1, 1, t0, 0, t1, 1, t1, 0);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
+    const mat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true,
+      opacity: 0.62, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+    const m = new THREE.Mesh(g, mat);
+    odGroup.add(m);
+    arcs.push({ mesh: m, up });
+  };
+  for (const o of ORIGINS) mk([o.x, o.z], [ARENA_C.x, ARENA_C.z], o.w, o.col, 0x00c2ff, true);
+  for (const D of DISPERSAL) {
+    const e = atDist(D.route, D.route.total);
+    mk([ARENA_C.x, ARENA_C.z], [e[0], e[1]], D.share, 0x00c2ff, D.col, false);
+  }
+})();
+
+let odAcc = 0;
+FRAME_HOOKS.push(function (dt) {
+  if (!odGroup.visible) return;
+  odAcc += dt;
+  if (odAcc > 0.22) { odAcc = 0; updateKDE(); }
+  const m = timeState.min;
+  const arr = clamp(smooth(17 * 60, 19 * 60 + 20, m), 0, 1);
+  const dep = clamp(smooth(21 * 60 + 55, 22 * 60 + 45, m), 0, 1);
+  for (const a of arcs) {
+    const on = KDE.mode === 'both' ? 1
+      : KDE.mode === 'arr' ? (a.up ? 1 : 0)
+      : KDE.mode === 'dep' ? (a.up ? 0 : 1)
+      : (a.up ? 1 - arr * 0.75 : dep);
+    a.mesh.visible = on > 0.04;
+    a.mesh.material.opacity = 0.22 + on * 0.5;
+  }
+});
 /* ---- src/35_layout.js ---- */
 
 /* ================================================================
@@ -1842,9 +2584,549 @@ setLoad(90, 'スポンサー露出を計算中');
   C.quad([-0.10, 0.92, -0.04], [0.10, 0.92, -0.04], [0.10, 1.14, 0.0], [-0.10, 1.14, 0.0], c);
   const cm = new THREE.InstancedMesh(C.geom(),
     new THREE.MeshStandardMaterial({ roughness: 0.9 }), SEAT.list.length);
-  cm.frustumCulled = false; cm.count = 0;
+  cm.frustumCulled = false; primeInstanceColor(cm, SEAT.list.length); cm.count = 0;
   interior.add(cm); SEAT.crowd = cm;
 })();
+/* ---- src/52_cloud.js ---- */
+
+/* ================================================================
+   点群ビュー（L2 内部）— ボウルと構造体を点描で表現
+   座席点群は席レイヤー（セグメント/LTV/離反/露出/視認等級…）と同期して
+   色が変わるため、実体表示と同じ分析をそのまま点描で見せられる。
+================================================================ */
+const cloudGroup = new THREE.Group(); cloudGroup.visible = false; interior.add(cloudGroup);
+let pcMode = false;
+
+setLoad(92, '場内点群を生成中');
+(function buildArenaCloud() {
+  /* --- 座席点群（1席=1点。席レイヤーと同期） --- */
+  const N = SEAT.list.length;
+  const P = new Float32Array(N * 3), C = new Float32Array(N * 3);
+  SEAT.list.forEach((s, i) => { P[i * 3] = s.x; P[i * 3 + 1] = s.y + 0.18; P[i * 3 + 2] = s.z; });
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
+  SEAT.cloud = new THREE.Points(g, new THREE.PointsMaterial({
+    size: 0.34, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.95 }));
+  SEAT.cloud.frustumCulled = false;
+  cloudGroup.add(SEAT.cloud);
+
+  /* --- 構造体点群（段床・コンコース・柱・トラス・媒体面） --- */
+  const S = [], SC = [];
+  const cStruct = new THREE.Color(0x2f6f9e), cSteel = new THREE.Color(0x7fb6dd),
+        cMedia = new THREE.Color(0x00e0ff), cFloor = new THREE.Color(0x9a7a4a);
+  const push = (x, y, z, c) => { S.push(x, y, z); SC.push(c.r, c.g, c.b); };
+
+  /* 段床のノージング（各列の踏面先端）を等間隔サンプル */
+  for (const key of ['L100', 'PRM', 'L300']) {
+    const T = TIER[key];
+    for (let r = 0; r <= T.rows; r++) {
+      const a = T.a + r * T.tread, b = T.b + r * T.tread, y = T.y0 + r * T.rise;
+      const lut = ringLUT(a, b, 600);
+      const n = Math.round(lut.tot / 1.1);
+      for (let i = 0; i < n; i++) {
+        const p = ringPt(a, b, fracToT(lut, i / n));
+        push(p[0], y, p[1], cStruct);
+      }
+    }
+  }
+  /* コンコース面・外周柱 */
+  const backA = TIER.L300.a + TIER.L300.rows * TIER.L300.tread;
+  const backB = TIER.L300.b + TIER.L300.rows * TIER.L300.tread;
+  for (const [aa, bb, yy] of [[TIER.L100.a + TIER.L100.rows * TIER.L100.tread + 2,
+                               TIER.L100.b + TIER.L100.rows * TIER.L100.tread + 2, 12.0],
+                              [backA + 2, backB + 2, 28.0]]) {
+    for (let k = 0; k < 6; k++) {
+      const lut = ringLUT(aa + k * 1.8, bb + k * 1.8, 480);
+      const n = Math.round(lut.tot / 1.6);
+      for (let i = 0; i < n; i++) {
+        const p = ringPt(aa + k * 1.8, bb + k * 1.8, fracToT(lut, i / n));
+        push(p[0], yy, p[1], cStruct);
+      }
+    }
+  }
+  for (let i = 0; i < 24; i++) {
+    const p = ringPt(backA + 12, backB + 12, 2 * Math.PI * i / 24);
+    for (let y = 0; y < 34; y += 0.9) push(p[0], y, p[1], cSteel);
+  }
+  /* 屋根トラス（放射 + リング） */
+  const aR = backA + 14, bR = backB + 14;
+  for (let i = 0; i < 10; i++) {
+    const t = 2 * Math.PI * i / 20;
+    const o = ringPt(aR, bR, t), o2 = ringPt(aR, bR, t + Math.PI);
+    for (let k = 0; k <= 90; k++) {
+      const u = k / 90;
+      push(lerp(o[0], o2[0], u), 34 + Math.sin(Math.PI * u) * 6.5, lerp(o[1], o2[1], u), cSteel);
+    }
+  }
+  for (const k of [0.42, 0.62, 0.82, 1.0]) {
+    const lut = ringLUT(aR * k, bR * k, 400);
+    const n = Math.round(lut.tot / 1.6);
+    for (let i = 0; i < n; i++) {
+      const p = ringPt(aR * k, bR * k, fracToT(lut, i / n));
+      push(p[0], 34 + Math.sin(Math.PI * (1 - k) * 0.5) * 6.2, p[1], cSteel);
+    }
+  }
+  /* コートと媒体面 */
+  for (let i = 0; i < 4200; i++) {
+    const u = hrand(i, 71), v = hrand(i, 137);
+    push((u - 0.5) * COURT.w, 0.06, (v - 0.5) * COURT.h, cFloor);
+  }
+  for (const b of ledBoards) {
+    const n = Math.max(12, Math.round(b.w / 0.6));
+    const tx = -b.nz, tz = b.nx;
+    for (let i = 0; i < n; i++) {
+      const u = (i / (n - 1) - 0.5) * b.w;
+      for (let h = 0; h < 3; h++)
+        push(b.x + tx * u, (b.y || 1) + (h - 1) * b.h * 0.34, b.z + tz * u, cMedia);
+    }
+  }
+  const sg = new THREE.BufferGeometry();
+  sg.setAttribute('position', new THREE.Float32BufferAttribute(S, 3));
+  sg.setAttribute('color', new THREE.Float32BufferAttribute(SC, 3));
+  cloudGroup.add(new THREE.Points(sg, new THREE.PointsMaterial({
+    size: 0.30, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.72 })));
+  cloudGroup.userData.structPts = S.length / 3;
+})();
+
+/* 席レイヤーと同じ配色で点群を塗り替える */
+function repaintSeatCloud() {
+  if (!SEAT.cloud) return;
+  const col = SEAT.cloud.geometry.attributes.color;
+  const N = SEAT.list.length;
+  const occNow = occAt(timeState.min);
+  const DIM = new THREE.Color(0x123048), LIT = new THREE.Color(0x66e0ff);
+  const C = new THREE.Color();
+  for (let i = 0; i < N; i++) {
+    const s = SEAT.list[i];
+    if (!SNAP.sold[i] && seatMode !== 'cat') C.setHex(0x14202f);
+    else if (seatMode === 'cat') C.setHex(CAT[s.cat].color);
+    else if (seatMode === 'occ') C.copy(heatC(SNAP.occ[i]));
+    else if (seatMode === 'seg') C.setHex(SEGMENTS[fanAt(i).seg].color);
+    else if (seatMode === 'ltv') C.copy(heatC(clamp(fanAt(i).ltv / 90000, 0, 1)));
+    else if (seatMode === 'churn') C.copy(heatC(fanAt(i).churn));
+    else if (seatMode === 'exp') C.copy(heatC(expBoard < 0 ? s.exp
+      : clamp(SEAT.expB[expBoard * N + i] / SEAT.maxB[expBoard], 0, 1)));
+    else if (seatMode === 'grade') C.setHex(GRADE_C[SEAT.grade[Math.max(0, expBoard) * N + i]]);
+    else if (seatMode === 'price') C.copy(divC(s.pf || 1));
+    else C.copy((i % 101) / 101 < occNow ? LIT : DIM);
+    col.setXYZ(i, C.r, C.g, C.b);
+  }
+  col.needsUpdate = true;
+}
+
+function setPointCloud(on) {
+  pcMode = on;
+  cloudGroup.visible = on;
+  SEAT.mesh.visible = !on;
+  SEAT.crowd.visible = !on;
+  bimGroup.visible = !on && SHOW.structure;
+  trussGrp.visible = !on && SHOW.truss;
+  roofSlab.visible = !on && SHOW.roof;
+  interior.children.forEach(o => {
+    if (o.userData && (o.userData.kind === 'led' || o.userData.kind === 'suite')) o.visible = !on;
+  });
+  court.visible = !on; hallFloor.visible = !on; hoops.visible = !on && GAMES[curGame].fmt === 'NBA';
+  indoorSolid.visible = !on;
+  if (on) repaintSeatCloud();
+}
+/* ---- src/56_indoor.js ---- */
+
+/* ================================================================
+   場内動線（L2）— コンコース回遊 → ボミトリー → 着席
+   ゲート入場 → コンコース環状動線を歩行 → 売店に立ち寄り → 担当ボミトリーから
+   ブロックへ降下、というシーケンスを実寸のリング上で再現する。
+   混雑度はコンコースを72分割したビンの滞留人数で色分けする。
+================================================================ */
+const indoorGroup = new THREE.Group(); interior.add(indoorGroup);
+/* 実体（売店・昇降設備）は点群ビューで伏せられるよう別グループに分ける */
+const indoorSolid = new THREE.Group(); indoorGroup.add(indoorSolid);
+const CONC = [
+  { key: 'L100', a: TIER.L100.a + TIER.L100.rows * TIER.L100.tread + 6.5,
+    b: TIER.L100.b + TIER.L100.rows * TIER.L100.tread + 6.5, y: 12.4, tier: 'L100' },
+  { key: 'L300', a: TIER.L300.a + TIER.L300.rows * TIER.L300.tread + 6.0,
+    b: TIER.L300.b + TIER.L300.rows * TIER.L300.tread + 6.0, y: 28.4, tier: 'L300' },
+];
+CONC.forEach(c => { c.lut = ringLUT(c.a, c.b, 720); });
+const cPt = (c, f) => ringPt(c.a, c.b, fracToT(c.lut, f));
+
+/* ---- 売店（F&B / グッズ）= POS地点。BIM部材としても属性を持つ ---- */
+const STANDS = [];
+setLoad(93, '売店・コンコース動線を生成中');
+(function stands() {
+  const NAMES_FB = ['Bibigo Kitchen', 'Shake Shack', 'Cauldron Ice Cream', 'Tacos 1850',
+                    'Modelo Cantina', 'Chick-fil-A', 'Pink\'s Hot Dogs', 'Blaze Pizza',
+                    'Coors Light Bar', 'Sushi Roku'];
+  const NAMES_MR = ['Team Store', 'Lakers Locker Room', 'Kings Fan Shop', 'Hat Bar'];
+  let n = 0;
+  CONC.forEach((c, ci) => {
+    const count = ci === 0 ? 14 : 10;
+    for (let i = 0; i < count; i++) {
+      const f = (i + 0.35) / count;
+      const p = cPt(c, f);
+      const isMerch = (i % 5 === 4);
+      const name = isMerch ? NAMES_MR[n % NAMES_MR.length] : NAMES_FB[n % NAMES_FB.length];
+      const w = isMerch ? 7 : 9;
+      const box = new THREE.Mesh(new THREE.BoxGeometry(w, 3.0, 3.4),
+        new THREE.MeshStandardMaterial({ color: isMerch ? 0x3a2550 : 0x1e2836, roughness: 0.82 }));
+      const ang = Math.atan2(p[0], p[1]);
+      box.position.set(p[0] * 1.055, c.y + 1.5, p[1] * 1.055);
+      box.rotation.y = ang + Math.PI / 2;
+      const sign = new THREE.Mesh(new THREE.BoxGeometry(w, 0.5, 0.2),
+        new THREE.MeshStandardMaterial({ color: isMerch ? 0xfdb927 : 0x00c2ff,
+          emissive: isMerch ? 0x6a4c00 : 0x00485f, emissiveIntensity: 1.0 }));
+      sign.position.copy(box.position); sign.position.y = c.y + 3.2;
+      sign.rotation.y = box.rotation.y;
+      const st = { id: (isMerch ? 'MR-' : 'FB-') + c.key.slice(1) + String(i + 1).padStart(2, '0'),
+                   name, type: isMerch ? 'MERCH' : 'FB', c: ci, f, x: p[0], z: p[1], y: c.y,
+                   lanes: isMerch ? 3 : 5, queue: 0, served: 0, revenue: 0 };
+      box.userData = { kind: 'stand', st,
+        name: st.name + '（' + st.id + '）',
+        desc: '種別 ' + st.type + ' / レジ ' + st.lanes + '通り<br>' +
+              CONC[ci].key + ' コンコース<br><b>POSログが fan_id に紐づく地点</b>' };
+      indoorSolid.add(box, sign);
+      STANDS.push(st); n++;
+    }
+  });
+})();
+
+/* ---- エスカレーター / エレベーター / 階段（レベル間動線・BIM部材） ---- */
+(function verticalCirculation() {
+  const esc = [], mat = new THREE.MeshStandardMaterial({ color: 0x39445c, metalness: 0.55, roughness: 0.42 });
+  const glass = new THREE.MeshStandardMaterial({ color: 0x2a4a6e, transparent: true,
+    opacity: 0.32, side: THREE.DoubleSide });
+  const c0 = CONC[0], c1 = CONC[1];
+  for (let i = 0; i < 6; i++) {
+    const f = (i + 0.5) / 6;
+    const p0 = cPt(c0, f), p1 = cPt(c1, f);
+    const dx = p1[0] - p0[0], dz = p1[1] - p0[1];
+    const run = Math.hypot(dx, dz) + 14, rise = c1.y - c0.y;
+    const len = Math.hypot(run, rise);
+    const g = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.5, len), mat);
+    const mx = (p0[0] * 1.10 + p1[0] * 1.02) / 2, mz = (p0[1] * 1.10 + p1[1] * 1.02) / 2;
+    g.position.set(mx, (c0.y + c1.y) / 2 + 0.6, mz);
+    g.rotation.y = Math.atan2(p1[0] - p0[0], p1[1] - p0[1]);
+    g.rotateX(-Math.atan2(rise, run));
+    g.userData = { kind: 'bim', type: 'IfcTransportElement', tag: 'ESC-' + (i + 1),
+      attrs: { '部材種別': 'エスカレーター（公共交通仕様 1200形）',
+               '揚程': (c1.y - c0.y).toFixed(1) + ' m',
+               '定格速度': '0.5 m/s', '公称輸送能力': '6,750 人/時',
+               '接続': '100 Level コンコース ⇄ 300 Level コンコース' } };
+    indoorSolid.add(g); BIM_ELEMS.push(g);
+    /* 併設エレベーター（バリアフリー動線） */
+    if (i % 3 === 0) {
+      const el2 = new THREE.Mesh(new THREE.BoxGeometry(3.2, c1.y - c0.y + 3.2, 3.2), glass);
+      el2.position.set(p0[0] * 1.16, (c0.y + c1.y) / 2 + 1.2, p0[1] * 1.16);
+      el2.userData = { kind: 'bim', type: 'IfcTransportElement', tag: 'ELV-' + (i / 3 + 1),
+        attrs: { '部材種別': '乗用エレベーター（車椅子仕様・展望型）',
+                 '積載': '1,150 kg / 17人', '速度': '90 m/min',
+                 'サービス階': 'Floor / 100L / Premier / 300L',
+                 '準拠': 'ADA 2010 Standards §407' } };
+      indoorSolid.add(el2); BIM_ELEMS.push(el2);
+    }
+  }
+})();
+
+/* ---- コンコース混雑ヒート（72ビン） ---- */
+const CBIN = 72;
+const congestion = { L100: new Float32Array(CBIN), L300: new Float32Array(CBIN), band: [] };
+(function bands() {
+  CONC.forEach((c, ci) => {
+    const P = [], C = [];
+    for (let i = 0; i < CBIN; i++) {
+      const f0 = i / CBIN, f1 = (i + 1) / CBIN;
+      const i0 = ringPt(c.a - 3.2, c.b - 3.2, fracToT(c.lut, f0));
+      const i1 = ringPt(c.a - 3.2, c.b - 3.2, fracToT(c.lut, f1));
+      const o0 = ringPt(c.a + 3.2, c.b + 3.2, fracToT(c.lut, f0));
+      const o1 = ringPt(c.a + 3.2, c.b + 3.2, fracToT(c.lut, f1));
+      const y = c.y + 0.06;
+      P.push(i0[0], y, i0[1], i1[0], y, i1[1], o1[0], y, o1[1],
+             i0[0], y, i0[1], o1[0], y, o1[1], o0[0], y, o0[1]);
+      for (let k = 0; k < 6; k++) C.push(0, 0, 0);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
+    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ vertexColors: true,
+      transparent: true, opacity: 0.75, side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending, depthWrite: false }));
+    m.visible = false;
+    indoorGroup.add(m);
+    congestion.band.push(m);
+  });
+})();
+
+/* ---- 場内エージェント ---- */
+const MAX_IN = 1100;
+const inAgents = [];
+const inMesh = (function () {
+  const m = new THREE.InstancedMesh(new THREE.SphereGeometry(0.34, 6, 5),
+    new THREE.MeshBasicMaterial(), MAX_IN);
+  primeInstanceColor(m, MAX_IN);
+  m.count = 0; m.frustumCulled = false; indoorGroup.add(m);
+  return m;
+})();
+const indoorState = { on: true, showCong: false, seated: 0, posRev: 0, perAgent: 1 };
+
+/* 席 → 担当ボミトリーの周長比 */
+function seatFrac(s) {
+  const t = Math.atan2(s.z, s.x);
+  const c = s.tier === 'L300' ? CONC[1] : CONC[0];
+  /* 角度 → 周長比は等分近似で十分（表示用） */
+  let f = t / (2 * Math.PI); if (f < 0) f += 1;
+  return f;
+}
+function spawnIndoor(out) {
+  const N = SEAT.list.length;
+  let i = -1;
+  for (let g = 0; g < 60; g++) {
+    const k = (Math.random() * N) | 0;
+    const t = SEAT.list[k].tier;
+    if (SNAP.sold[k] && t !== 'FLOOR' && t !== 'SUITE') { i = k; break; }
+  }
+  if (i < 0) return null;
+  const s = SEAT.list[i];
+  const ci = s.tier === 'L300' ? 1 : 0;
+  const target = seatFrac(s);
+  const entry = (Math.floor(Math.random() * 5) + 0.5) / 5;      // 5ゲートに対応する進入点
+  let d = target - entry;                                       // 環状の近い回り方向
+  if (d > 0.5) d -= 1; if (d < -0.5) d += 1;
+  const span = Math.abs(d) || 0.02;
+  /* 42%が売店に立ち寄る。立ち寄り位置は動線上の進捗で持つ */
+  const pool = STANDS.filter(t => t.c === ci);
+  const stand = (Math.random() < 0.42 && pool.length)
+    ? pool[Math.floor(Math.random() * pool.length)] : null;
+  return { ci, from: out ? target : entry, dir: out ? -(Math.sign(d) || 1) : (Math.sign(d) || 1),
+    f: out ? target : entry, span, prog: 0, phase: out ? 1 : 0, s, seat: i,
+    stand, standAt: stand ? 0.25 + Math.random() * 0.5 : -1, stopped: false,
+    wait: 0, out: !!out, col: out ? 0xff8a3d : (stand ? 0x00e0a4 : 0x00c2ff) };
+}
+
+FRAME_HOOKS.push(function indoorTick(dt) {
+  if (level !== 'arena' || !indoorState.on) { inMesh.count = 0; return; }
+  const dtMin = timeState.play ? dt * timeState.speed : dt * 0.6;
+  const m = timeState.min;
+  const arr = arrivalRate(m), eg = egressRate(m);
+
+  /* 表示population は瞬間流量に比例（屋外と同じ考え方）。不足分を補充する */
+  const target = Math.round(MAX_IN * clamp(arr * 0.9 + eg * 1.0, 0, 1));
+  let guard = 0;
+  while (inAgents.length < target && guard++ < 70) {
+    const a = spawnIndoor(eg > arr);
+    if (!a) break;
+    a.prog = Math.random() * a.span * 0.7;                      // 初期分散
+    inAgents.push(a);
+  }
+  const scaleP = (AGG.kpi.sold || 16000) * (arr * 0.12 + eg * 0.16);
+  indoorState.perAgent = Math.max(1, Math.round(scaleP / Math.max(1, inAgents.length)));
+
+  const M = new THREE.Matrix4(), C = new THREE.Color();
+  congestion.L100.fill(0); congestion.L300.fill(0);
+  let n = 0;
+  for (let i = inAgents.length - 1; i >= 0; i--) {
+    const a = inAgents[i], c = CONC[a.ci];
+    if (a.wait > 0) { a.wait -= dtMin; }
+    else if (a.phase === 0) {
+      a.prog += (75 * dtMin) / c.lut.tot;                       // 歩行 75 m/分
+      if (!a.stopped && a.stand && a.prog >= a.span * a.standAt) {
+        a.stopped = true;
+        a.wait = 2.2 + Math.random() * 3.2;                     // 売店滞留（分）
+        a.stand.served++;
+        const rev = a.stand.type === 'MERCH' ? 48 : 22;
+        a.stand.revenue += rev; indoorState.posRev += rev;
+      }
+      a.f = ((a.from + a.dir * a.prog) % 1 + 1) % 1;
+      if (a.prog >= a.span) { a.phase = 1; a.prog = 0; }
+    } else {
+      a.prog += dtMin * (a.out ? 0.7 : 0.9);
+      if (a.prog >= 1) {
+        if (!a.out) indoorState.seated++;
+        if (inAgents.length > target) { inAgents.splice(i, 1); continue; }
+        const nx = spawnIndoor(eg > arr);                        // リサイクル
+        if (nx) inAgents[i] = nx; else { inAgents.splice(i, 1); }
+        continue;
+      }
+    }
+    let x, y, z;
+    const p = ringPt(c.a, c.b, fracToT(c.lut, a.f));
+    if (a.phase === 0) {
+      const j = ((i % 7) - 3) * 0.006;
+      x = p[0] * (1 + j); y = c.y + 0.9; z = p[1] * (1 + j);
+      const bin = Math.floor(a.f * CBIN) % CBIN;
+      (a.ci === 0 ? congestion.L100 : congestion.L300)[bin] += 1;
+    } else {
+      const u = a.out ? 1 - a.prog : a.prog;
+      x = lerp(p[0], a.s.x, u); z = lerp(p[1], a.s.z, u);
+      y = lerp(c.y + 0.9, a.s.y + 0.85, u);
+    }
+    M.makeTranslation(x, y, z);
+    inMesh.setMatrixAt(n, M);
+    inMesh.setColorAt(n, C.setHex(a.wait > 0 ? 0xfdb927 : a.col));
+    n++;
+  }
+  inMesh.count = n;
+  inMesh.instanceMatrix.needsUpdate = true;
+  if (inMesh.instanceColor) inMesh.instanceColor.needsUpdate = true;
+  if (indoorState.showCong) paintCongestion();
+});
+
+function paintCongestion() {
+  CONC.forEach((c, ci) => {
+    const band = congestion.band[ci];
+    const bins = ci === 0 ? congestion.L100 : congestion.L300;
+    const col = band.geometry.attributes.color;
+    const C = new THREE.Color();
+    /* 1エージェント ≒ 実人数 sold/表示数 のスケールで密度[人/m²]に換算 */
+    const scale = (AGG.kpi.sold || 16000) / Math.max(60, inMesh.count);
+    for (let i = 0; i < CBIN; i++) {
+      const area = (c.lut.tot / CBIN) * 6.4;
+      const dens = bins[i] * scale / area;
+      C.copy(heatC(clamp(dens / 1.8, 0, 1)));               // LOS E 相当 1.8人/m² で上限
+      for (let k = 0; k < 6; k++) col.setXYZ(i * 6 + k, C.r, C.g, C.b);
+    }
+    col.needsUpdate = true;
+  });
+}
+function setCongestion(on) {
+  indoorState.showCong = on;
+  congestion.band.forEach(b => b.visible = on);
+}
+/* ---- src/58_bimx.js ---- */
+
+/* ================================================================
+   BIM 拡張 — 扉/ポータル・トイレ・照明バトン・スピーカー・通路手すり
+   および BIM要素ブラウザ（種別で絞り込み、要素へ視点移動）
+================================================================ */
+setLoad(94, 'BIM部材を追加生成中');
+(function extraBim() {
+  const doorMat = new THREE.MeshStandardMaterial({ color: 0x2a3346, metalness: 0.4, roughness: 0.5 });
+  const spaceMat = new THREE.MeshStandardMaterial({ color: 0x1c3550, transparent: true,
+    opacity: 0.34, side: THREE.DoubleSide });
+  const rigMat = new THREE.MeshStandardMaterial({ color: 0x22262f, roughness: 0.7 });
+
+  /* --- ボミトリー扉（客席ポータル） --- */
+  VOMS.forEach((v, i) => {
+    const ang = Math.atan2(v.x, v.z);
+    const d = new THREE.Mesh(new THREE.BoxGeometry(2.6, 2.3, 0.22), doorMat);
+    d.position.set(v.x * 1.03, v.y - 1.2, v.z * 1.03);
+    d.rotation.y = ang + Math.PI / 2;
+    d.userData = { kind: 'bim', type: 'IfcDoor', tag: 'DR-' + v.label,
+      attrs: { '部材種別': '客席ポータル扉（両開き・防音仕様）',
+               '有効寸法': 'W 2,400 × H 2,300 mm', '遮音性能': 'Rw 42 dB',
+               '接続': v.label + ' → 客席ブロック',
+               '避難': '避難方向に開く（IBC 1010.1.2）' } };
+    indoorSolid.add(d); BIM_ELEMS.push(d);
+  });
+
+  /* --- トイレ（IfcSpace として面積・器具数を持つ） --- */
+  const c0 = CONC[0], c1 = CONC[1];
+  [[c0, 8, '100'], [c1, 6, '300']].forEach(([c, n, lv]) => {
+    for (let i = 0; i < n; i++) {
+      const f = (i + 0.82) / n;
+      const p = ringPt(c.a + 5.5, c.b + 5.5, fracToT(c.lut, f));
+      const box = new THREE.Mesh(new THREE.BoxGeometry(9, 3.2, 6), spaceMat);
+      box.position.set(p[0], c.y + 1.6, p[1]);
+      box.rotation.y = Math.atan2(p[0], p[1]) + Math.PI / 2;
+      const male = i % 2 === 0;
+      box.userData = { kind: 'bim', type: 'IfcSpace', tag: 'WC-' + lv + String(i + 1).padStart(2, '0'),
+        attrs: { '用途': male ? '便所（男子）' : '便所（女子）',
+                 '床面積': '54 m²', '器具数': male ? '大便器6 / 小便器12 / 洗面6' : '大便器16 / 洗面8',
+                 'レベル': lv + ' Level コンコース',
+                 '算定根拠': 'IBC 2902 Table（観客席 19,079 に対する所要器具数）' } };
+      indoorSolid.add(box); BIM_ELEMS.push(box);
+    }
+  });
+
+  /* --- 照明バトン / スピーカーアレイ（キャットウォーク吊り） --- */
+  const aR = TIER.L300.a + TIER.L300.rows * TIER.L300.tread + 14;
+  const bR = TIER.L300.b + TIER.L300.rows * TIER.L300.tread + 14;
+  for (let i = 0; i < 12; i++) {
+    const t = 2 * Math.PI * i / 12;
+    const p = ringPt(aR * 0.62, bR * 0.62, t);
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(9, 0.42, 0.42), rigMat);
+    bar.position.set(p[0], 32.2, p[1]);
+    bar.rotation.y = Math.atan2(p[0], p[1]);
+    bar.userData = { kind: 'bim', type: 'IfcFlowTerminal', tag: 'LX-' + (i + 1),
+      attrs: { '部材種別': '照明バトン（ムービングライト 12台 / パーライト 8台）',
+               '吊点': 'キャットウォーク R=' + Math.round(aR * 0.62) + ' m',
+               '積載': '480 kg', '電源': '3φ200V 63A × 2回路',
+               '用途': '興行演出・スポンサー演出（コンサート時は増設）' } };
+    trussGrp.add(bar); BIM_ELEMS.push(bar);
+    if (i % 2 === 0) {
+      const sp = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.2, 1.4), rigMat);
+      sp.position.set(p[0] * 1.12, 30.4, p[1] * 1.12);
+      sp.rotation.y = Math.atan2(p[0], p[1]) + Math.PI / 2;
+      sp.rotateX(0.42);
+      sp.userData = { kind: 'bim', type: 'IfcAudioVisualAppliance', tag: 'SP-' + (i / 2 + 1),
+        attrs: { '部材種別': 'ラインアレイスピーカー（8素子）',
+                 '最大音圧': '138 dB SPL @1m', '指向角': '水平90° × 垂直10°',
+                 'カバー範囲': '100/300 Level 客席', '吊り': 'キャットウォーク直吊り' } };
+      trussGrp.add(sp); BIM_ELEMS.push(sp);
+    }
+  }
+
+  /* --- 客席通路の手すり（ボミトリーごと） --- */
+  const G = new Builder(), rc = [0.46, 0.50, 0.60];
+  for (const v of VOMS) {
+    const T = v.label[4] === '1' ? TIER.L100 : TIER.L300;
+    const ang = Math.atan2(v.x, v.z);
+    for (let r = 0; r < T.rows; r += 2) {
+      const a = T.a + r * T.tread, b = T.b + r * T.tread;
+      const y = T.y0 + r * T.rise;
+      const p0 = ringPt(a, b, Math.atan2(v.z, v.x));
+      const p1 = ringPt(a + T.tread * 2, b + T.tread * 2, Math.atan2(v.z, v.x));
+      for (const s of [-0.62, 0.62]) {
+        const nx = -Math.sin(ang) * s, nz = Math.cos(ang) * s;
+        G.quad([p0[0] + nx, y + 0.1, p0[1] + nz], [p1[0] + nx, y + 2 * T.rise + 0.1, p1[1] + nz],
+               [p1[0] + nx, y + 2 * T.rise + 1.0, p1[1] + nz], [p0[0] + nx, y + 1.0, p0[1] + nz], rc);
+      }
+    }
+  }
+  const rails = new THREE.Mesh(G.geom(), new THREE.MeshStandardMaterial({
+    vertexColors: true, metalness: 0.7, roughness: 0.35, side: THREE.DoubleSide }));
+  rails.userData = { kind: 'bim', type: 'IfcRailing', tag: 'RAIL-AISLE',
+    attrs: { '部材種別': '通路中間手すり（SUS304 φ38.1）', '高さ': 'H=900 mm',
+             '設置': '全ボミトリー通路の両側', '準拠': 'IBC 1030.16 Handrails' } };
+  bimGroup.add(rails); BIM_ELEMS.push(rails);
+})();
+
+/* ---- BIM要素ブラウザ ---- */
+const bimBrowse = { type: null, hl: null, savedMat: null };
+function bimTypes() {
+  const t = {};
+  for (const e of BIM_ELEMS) {
+    const k = e.userData.type;
+    (t[k] = t[k] || []).push(e);
+  }
+  return t;
+}
+function bimIsolate(type) {
+  bimBrowse.type = (bimBrowse.type === type) ? null : type;
+  const T = bimTypes();
+  for (const k in T) for (const e of T[k]) {
+    e.userData.__dim = !!(bimBrowse.type && k !== bimBrowse.type);
+    if (e.material && e.material.opacity !== undefined) {
+      if (e.userData.__dim) {
+        if (!e.userData.__o) e.userData.__o = [e.material.transparent, e.material.opacity];
+        e.material.transparent = true; e.material.opacity = 0.08;
+      } else if (e.userData.__o) {
+        e.material.transparent = e.userData.__o[0];
+        e.material.opacity = e.userData.__o[1];
+        delete e.userData.__o;
+      }
+    }
+  }
+  renderPanel();
+}
+function bimFocus(e) {
+  const b = new THREE.Box3().setFromObject(e);
+  const c = b.getCenter(new THREE.Vector3());
+  const w = interior.localToWorld(interior.worldToLocal(c.clone()));
+  flyTo(w.x, w.y, w.z, Math.max(22, b.getSize(new THREE.Vector3()).length() * 3.2), cam.yaw, 0.42);
+  showInfo(e.userData.type + ' — ' + e.userData.tag,
+    Object.entries(e.userData.attrs).map(([k, v]) =>
+      '<b style="color:var(--txt)">' + k + '</b>: ' + v).join('<br>'));
+}
 /* ---- src/60_data.js ---- */
 
 /* ================================================================
@@ -2204,6 +3486,10 @@ function setLevel(lv, fly) {
   site.visible = !inArena;
   plaza.visible = (lv === 'plaza');
   gMark.visible = (lv === 'site');
+  flowGroup.visible = (lv !== 'arena');
+  heatGroup.visible = (siteLayer === 'heat' && lv !== 'arena');
+  odGroup.visible = (siteLayer === 'od' && lv !== 'arena');
+  indoorGroup.visible = inArena;
   arenaShell.visible = (lv === 'site' && viewMode === 'solid');   // L1では詳細ファサードに差し替え
   gClose.visible = (lv !== 'plaza' && viewMode === 'solid');
   bowlLight.intensity = inArena ? 2.1 : 0;
@@ -2221,6 +3507,22 @@ function setLevel(lv, fly) {
   else go(ARENA_C.x, 12, ARENA_C.z, 168, -0.7, 0.80);
   renderPanel();
 }
+/* L0 の解析レイヤー（賑わい / OD）— 排他切替 */
+let siteLayer = 'none';
+function setSiteLayer(kind, opt) {
+  if (kind === 'heat') {
+    if (opt === 'none') siteLayer = 'none';
+    else { siteLayer = 'heat'; HEAT.mode = opt; if (!HEAT.max) computeGameHeat(); else paintHeat(); }
+  } else if (kind === 'od') {
+    if (opt === 'off') siteLayer = 'none';
+    else { siteLayer = 'od'; KDE.mode = opt; }
+  }
+  heatGroup.visible = (siteLayer === 'heat' && level !== 'arena');
+  odGroup.visible = (siteLayer === 'od' && level !== 'arena');
+  if (odGroup.visible) updateKDE();
+  renderPanel();
+}
+
 function applyShow() {
   roofSlab.visible = SHOW.roof;
   trussGrp.visible = SHOW.truss;
@@ -2348,6 +3650,17 @@ function renderSitePanel() {
     '<div class="row-btns" id="vm">' + VIEW_MODES.map(m =>
       '<button class="chip' + (viewMode === m[0] ? ' active' : '') + '" data-vm="' + m[0] + '">' +
       m[1] + '</button>').join('') + '</div>' +
+    (viewMode === 'point' ?
+      '<div class="row-btns" style="margin-top:7px" id="pcm">' +
+      [['class', '分類'], ['height', '高さ'], ['intensity', '疑似反射強度']].map(m =>
+        '<button class="chip sm' + (pcColorMode === m[0] ? ' active' : '') + '" data-pcm="' + m[0] + '">' +
+        m[1] + '</button>').join('') + '</div>' +
+      (pcColorMode === 'class' ? '<div class="legend" style="margin-top:7px">' +
+        PC_CLASS_NAME.map((n, i) => '<div class="li"><div class="sw" style="background:' +
+          hex(PC_CLASS_COL[i]) + '"></div>' + n + '</div>').join('') + '</div>' : '') +
+      '<div class="hint" style="margin-top:6px">点群は <b>' + fmt(siteStats.points) +
+      ' 点</b>。LASの classification 相当で地表/建物（低中層・高層）/鉄道/アリーナに分類し、' +
+      '高さ・疑似反射強度でも着色できます。</div>' : '') +
     '<div class="hint" style="margin-top:7px">実体 / <b>点描</b>（外形を等間隔サンプリングした擬似点群） / ' +
     '線画 / <b>青焼き</b>（図面表現）を切り替え。街区とアリーナの関係を、' +
     '見せたい相手に応じた表現で提示できます。</div></div>' +
@@ -2378,9 +3691,81 @@ function renderSitePanel() {
       '<div class="li"><div class="sw" style="background:' + hex(POI_COL[p.c] || 0x8590a8) +
       '"></div>' + p.n + '</div>').join('') + '</div></div>' +
 
+    '<div class="sec"><div class="sec-t"><b>移動経路</b> — 実道路ネットワーク上の来場OD</div>' +
+    '<div class="row-btns" style="margin-bottom:7px">' +
+      '<button class="chip' + (flowState.on ? ' active' : '') + '" id="tg-flow">人流エージェント</button>' +
+      '<button class="chip' + (routeLines.visible ? ' active' : '') + '" id="tg-route">経路ライン</button>' +
+    '</div>' +
+    '<div class="legend">' + ORIGINS.map((o, i) =>
+      '<div class="li" data-org="' + i + '" style="cursor:pointer">' +
+      '<div class="sw" style="background:' + hex(o.col) + '"></div>' + o.name +
+      '　<b style="color:var(--txt)">' + fmt(o.route.total) + 'm</b></div>').join('') + '</div>' +
+    '<div class="hint" style="margin-top:7px">道路グラフ <b>' + fmt(roadGraph.size) +
+    ' ノード</b>に A*（歩行者は幹線を避け、車両は幹線を優先）で経路を引いています。' +
+    '出発地の構成比は <b>1to1レイヤーの商圏分布に追従</b>。クリックで視点移動。</div>' +
+    '<div class="kpi-grid" style="margin-top:8px">' +
+      kpiCard(fmt(flowState.arrived), '到着済み', 'k') +
+      kpiCard(fmt(flowState.inArena), '在館', 'g') +
+      kpiCard(fmt(flowState.left), '退場済み') +
+      kpiCard(usd(flowState.spendTotal), '場外消費 累計', 'p') +
+    '</div>' +
+    '<div class="hint" style="margin-top:6px">人数は到着/退場カーブの積分値。' +
+    '表示中の球は<b>1体 ≒ ' + fmt(flowState.perAgent) + ' 人</b>のサンプルです。</div></div>' +
+
+    '<div class="sec"><div class="sec-t"><b>賑わいヒートマップ</b> — 通り単位</div>' +
+    '<div class="row-btns" id="hm">' +
+      '<button class="chip sm' + (siteLayer === 'none' ? ' active' : '') + '" data-hm="none">OFF</button>' +
+      '<button class="chip sm' + (siteLayer === 'heat' && HEAT.mode === 'base' ? ' active' : '') + '" data-hm="base">通常日</button>' +
+      '<button class="chip sm' + (siteLayer === 'heat' && HEAT.mode === 'game' ? ' active' : '') + '" data-hm="game">試合日</button>' +
+      '<button class="chip sm' + (siteLayer === 'heat' && HEAT.mode === 'delta' ? ' active' : '') + '" data-hm="delta">アリーナ寄与</button>' +
+    '</div>' +
+    (siteLayer === 'heat' ? '<div class="grad-bar" style="margin-top:7px"></div>' +
+      '<div class="grad-lbl"><span>低</span><span>高</span></div>' +
+      '<div class="hint" style="margin-top:6px">通常日の街の素の賑わい（POI・商業地・駅）に、' +
+      '来場/回遊の経路沿い上乗せを重ねたもの。<b>アリーナ寄与＝差分</b>で、' +
+      '興行が周辺のどの通りにどれだけ人を落としているかを見ます。</div>' : '') + '</div>' +
+
+    '<div class="sec"><div class="sec-t"><b>OD分析</b> — ガウスKDE + ODアーク</div>' +
+    '<div class="row-btns" id="odm">' +
+      '<button class="chip sm' + (siteLayer !== 'od' ? ' active' : '') + '" data-od="off">OFF</button>' +
+      '<button class="chip sm' + (siteLayer === 'od' && KDE.mode === 'auto' ? ' active' : '') + '" data-od="auto">時間連動</button>' +
+      '<button class="chip sm' + (siteLayer === 'od' && KDE.mode === 'arr' ? ' active' : '') + '" data-od="arr">到着OD</button>' +
+      '<button class="chip sm' + (siteLayer === 'od' && KDE.mode === 'dep' ? ' active' : '') + '" data-od="dep">退場OD</button>' +
+      '<button class="chip sm' + (siteLayer === 'od' && KDE.mode === 'both' ? ' active' : '') + '" data-od="both">両方</button>' +
+    '</div>' +
+    (siteLayer === 'od' ? '<div class="row-btns" id="odbw" style="margin-top:6px">' +
+      [0.7, 1.0, 1.4].map(b => '<button class="chip sm' + (KDE.bw === b ? ' active' : '') +
+        '" data-bw="' + b + '">σ×' + b.toFixed(1) + '</button>').join('') + '</div>' +
+      '<div class="hint" style="margin-top:6px">山の高さ＝<b>人数 × 正規カーネル N(μ,σ²) の重ね合わせ</b>。' +
+      'タイムライン ▶ で「出発地の山 → アリーナへ質量移動 → 回遊先へ分散」。' +
+      'アークの太さ＝シェア、色の変化＝流れの向き。</div>' +
+      '<div class="sec-t" style="margin-top:8px">退場後の回遊</div>' +
+      DISPERSAL.map(d => bar(d.name, Math.round((AGG.kpi.sold || 0) * d.share), AGG.kpi.sold || 1,
+        hex(d.col))).join('') +
+      '<div class="hint" style="margin-top:6px">回遊組の場外消費 推計 <b>' +
+      usd(DISPERSAL.reduce((a, d) => a + (AGG.kpi.sold || 0) * d.share * d.spend, 0)) +
+      '</b> / 1興行。これは<b>アリーナが街に落とす金額</b>で、自治体・周辺事業者向けの数字になります。</div>'
+      : '') + '</div>' +
+
     '<div class="sec"><button class="tool-btn" id="go-arena">▶ L2 ボウル内部へ（19,079席の1to1分析）</button></div>';
 
   pb.querySelectorAll('[data-vm]').forEach(b => b.onclick = () => setViewMode(b.dataset.vm));
+  pb.querySelectorAll('[data-pcm]').forEach(b => b.onclick = () => setPointColorMode(b.dataset.pcm));
+  const tf = document.getElementById('tg-flow');
+  if (tf) tf.onclick = () => { flowState.on = !flowState.on; renderPanel(); };
+  const tr = document.getElementById('tg-route');
+  if (tr) tr.onclick = () => { routeLines.visible = !routeLines.visible; renderPanel(); };
+  pb.querySelectorAll('[data-org]').forEach(d => d.onclick = () => {
+    const o = ORIGINS[+d.dataset.org];
+    flyTo(o.x, 6, o.z, 420, cam.yaw, 0.5);
+    showInfo(o.name, '交通手段 <b>' + o.mode + '</b><br>アリーナまで ' + fmt(o.route.total) +
+      ' m<br>接続ゲート: ' + o.gateName + '<br>想定シェア ' + (o.w * 100).toFixed(0) + '%');
+  });
+  pb.querySelectorAll('[data-hm]').forEach(b => b.onclick = () => setSiteLayer('heat', b.dataset.hm));
+  pb.querySelectorAll('[data-od]').forEach(b => b.onclick = () => setSiteLayer('od', b.dataset.od));
+  pb.querySelectorAll('[data-bw]').forEach(b => b.onclick = () => {
+    KDE.bw = +b.dataset.bw; updateKDE(); renderPanel();
+  });
   const ga = document.getElementById('go-arena');
   if (ga) ga.onclick = () => setLevel('arena', true);
 }
@@ -2474,6 +3859,24 @@ function renderArenaPanel() {
     '（0.82〜1.32）。差分 <b>' + usd(AGG.price.opt - AGG.price.cur) + '</b>（' +
     ((AGG.price.opt / Math.max(1, AGG.price.cur) - 1) * 100).toFixed(1) + '%）</div></div>' +
 
+    '<div class="sec"><div class="sec-t"><b>場内動線</b> — コンコース回遊 → ボミトリー → 着席</div>' +
+    '<div class="row-btns" style="margin-bottom:6px">' +
+      '<button class="chip' + (indoorState.on ? ' active' : '') + '" id="tg-in">人流</button>' +
+      '<button class="chip' + (indoorState.showCong ? ' active' : '') + '" id="tg-cong">混雑度</button>' +
+      '<button class="chip' + (pcMode ? ' active' : '') + '" id="tg-pc">点群ビュー</button>' +
+    '</div>' +
+    '<div class="kpi-grid">' +
+      kpiCard(fmt(inMesh.count * indoorState.perAgent), 'コンコース滞留', 'k') +
+      kpiCard(fmt(STANDS.length), '売店 / POS地点') +
+      kpiCard(fmt(STANDS.reduce((a, s) => a + s.served, 0)), '売店 レジ通過') +
+      kpiCard(usd(indoorState.posRev), '場内POS 売上', 'g') +
+    '</div>' +
+    (indoorState.showCong ? '<div class="grad-bar" style="margin-top:7px"></div>' +
+      '<div class="grad-lbl"><span>閑散</span><span>LOS E 1.8人/m²</span></div>' : '') +
+    '<div class="hint" style="margin-top:6px">歩行速度 75 m/分でコンコース環状動線を歩き、' +
+    '42%が売店に立ち寄り（滞留2-5分）、担当ボミトリーからブロックへ降下します。' +
+    '<b>点群ビュー</b>は席レイヤーの配色と同期するので、点描のまま同じ分析が読めます。</div></div>' +
+
     '<div class="sec"><div class="sec-t"><b>BIM 表示</b> — 見通しの確保</div>' +
     ['roof:屋根スラブ', 'truss:屋根トラス/キャットウォーク', 'structure:段床・柱・手すり・ボミトリー',
      'suites:Premier Box', 'media:スポンサー媒体'].map(x => {
@@ -2483,6 +3886,26 @@ function renderArenaPanel() {
     }).join('') +
     '<div class="hint" style="margin-top:6px">部材をクリックすると <b>IFC風の属性カード</b>が開きます。' +
     'BIM/IFC 連携で実部材属性へ置換可能です。</div></div>' +
+
+    (function bimBrowserHTML() {
+      const T = bimTypes();
+      const rows = Object.keys(T).sort().map(k =>
+        '<button class="mode-btn' + (bimBrowse.type === k ? ' active' : '') + '" data-bt2="' + k + '"' +
+        ' style="padding:6px 9px">' +
+        '<div class="dot" style="background:' + (bimBrowse.type === k ? '#00c2ff' : '#3d4a6b') + '"></div>' +
+        '<div style="flex:1"><span style="font-family:var(--mono);font-size:11px">' + k + '</span>' +
+        '<span class="desc">' + T[k].length + ' 部材 — ' +
+        (T[k][0].userData.attrs['部材種別'] || T[k][0].userData.attrs['用途'] || '') + '</span></div>' +
+        '</button>').join('');
+      const list = bimBrowse.type ? T[bimBrowse.type].slice(0, 24).map((e, i) =>
+        '<button class="chip sm" data-bel="' + BIM_ELEMS.indexOf(e) + '">' + e.userData.tag + '</button>').join('') : '';
+      return '<div class="sec"><div class="sec-t"><b>BIM 要素ブラウザ</b> — ' +
+        fmt(BIM_ELEMS.length) + ' 部材 / ' + Object.keys(T).length + ' 種別</div>' +
+        '<div class="mode-list">' + rows + '</div>' +
+        (bimBrowse.type ? '<div class="row-btns" style="margin-top:7px">' + list + '</div>' : '') +
+        '<div class="hint" style="margin-top:6px">種別をクリックすると<b>その種別だけを残して他を透過</b>します。' +
+        'タグをクリックで該当部材へ視点移動し、IFC属性を表示。</div></div>';
+    })() +
 
     '<div class="sec"><div class="sec-t"><b>ツール</b></div>' +
     '<button class="tool-btn" id="open-2d" style="margin-bottom:6px">🗺 2D 席図を開く</button>' +
@@ -2502,11 +3925,21 @@ function renderArenaPanel() {
       (AGG.kpi.occ * 100).toFixed(1) + '%', 3000);
   });
   pb.querySelectorAll('[data-sm]').forEach(b => b.onclick = () => {
-    seatMode = b.dataset.sm; repaintSeats(); renderPanel();
+    seatMode = b.dataset.sm; repaintSeats();
+    if (pcMode) repaintSeatCloud();
+    renderPanel();
   });
   pb.querySelectorAll('[data-bd]').forEach(b => b.onclick = () => {
-    expBoard = +b.dataset.bd; repaintSeats(); renderPanel();
+    expBoard = +b.dataset.bd; repaintSeats();
+    if (pcMode) repaintSeatCloud();
+    renderPanel();
   });
+  pb.querySelectorAll('[data-bt2]').forEach(b => b.onclick = () => bimIsolate(b.dataset.bt2));
+  pb.querySelectorAll('[data-bel]').forEach(b => b.onclick = () => bimFocus(BIM_ELEMS[+b.dataset.bel]));
+  const qq = id => document.getElementById(id);
+  if (qq('tg-in')) qq('tg-in').onclick = () => { indoorState.on = !indoorState.on; renderPanel(); };
+  if (qq('tg-cong')) qq('tg-cong').onclick = () => { setCongestion(!indoorState.showCong); renderPanel(); };
+  if (qq('tg-pc')) qq('tg-pc').onclick = () => { setPointCloud(!pcMode); renderPanel(); };
   pb.querySelectorAll('[data-show]').forEach(c => c.onchange = () => {
     SHOW[c.dataset.show] = c.checked;
     applyShow();
@@ -2623,6 +4056,7 @@ function showFanCard(i) {
     ph.textContent = phaseAt(timeState.min);
     if (level === 'arena' && seatMode === 'crowd') repaintSeats();
     paintScore(gameState());
+    for (const h of TICK_HOOKS) h();
   };
   play.onclick = () => { timeState.play = !timeState.play; play.textContent = timeState.play ? '❚❚' : '▶'; };
   const seek = e => {
@@ -2964,10 +4398,10 @@ function journeyTick(dt) {
   const a = P[k], b = P[k + 1];
   journey.marker.position.set(lerp(a[0], b[0], w), lerp(a[1], b[1], w) + 0.9, lerp(a[2], b[2], w));
 }
-window.frameHook = function (dt) {
+FRAME_HOOKS.push(function (dt) {
   journeyTick(dt);
   if (journey.marker.visible) journey.marker.children[1].rotation.z += dt * 1.6;
-};
+});
 /* ---- src/99_boot.js ---- */
 /* ================= 起動 & メインループ ================= */
 setLoad(94, '1to1 データを生成中');
@@ -2992,7 +4426,7 @@ function loop(now) {
     if (timeState.min > T1) timeState.min = T0;
     if (typeof onTick === 'function') onTick();
   }
-  if (typeof frameHook === 'function') frameHook(dt, now);
+  for (const h of FRAME_HOOKS) h(dt, now);
   renderer.render(scene, camera);
 }
 applyCam(0);

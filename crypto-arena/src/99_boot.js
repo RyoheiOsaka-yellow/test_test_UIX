@@ -21,7 +21,7 @@ function loop(now) {
     if (timeState.min > T1) timeState.min = T0;
     if (typeof onTick === 'function') onTick();
   }
-  if (typeof frameHook === 'function') frameHook(dt, now);
+  for (const h of FRAME_HOOKS) h(dt, now);
   renderer.render(scene, camera);
 }
 applyCam(0);

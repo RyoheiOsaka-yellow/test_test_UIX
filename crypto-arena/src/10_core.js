@@ -39,6 +39,8 @@ function pick(list, r) {            // [[value, weight], ...] から重み付き
 
 /* IFC風属性を持つ部材のレジストリ（L1/L2 で共有） */
 const BIM_ELEMS = [];
+/* 毎フレーム走らせるフック（各モジュールが push する）と時刻更新フック */
+const FRAME_HOOKS = [], TICK_HOOKS = [];
 /* 表示トグル（L2 内部の見通し確保） */
 const SHOW = { roof: false, truss: true, structure: true, suites: true, media: true };
 
@@ -62,6 +64,17 @@ scene.add(sun);
 const fillLight = new THREE.DirectionalLight(0x5b8ce0, 0.45);
 fillLight.position.set(600, 420, -700);
 scene.add(fillLight);
+
+/* InstancedMesh の instanceColor を明示的に確保する。
+   r128 の setColorAt は mesh.count を見て配列を確保するため、count=0 の状態で呼ぶと
+   長さ0の配列ができて以後どれだけ setColorAt しても色が出ない。ここで直接張る。 */
+function primeInstanceColor(mesh, n) {
+  const arr = new Float32Array(n * 3).fill(1);
+  mesh.instanceColor = new THREE.InstancedBufferAttribute(arr, 3);
+  mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+  mesh.material.needsUpdate = true;
+  return mesh;
+}
 
 /* ---- 軌道カメラ（ターゲット注視 / 慣性なし・確定的） ---- */
 const cam = { tx: 0, ty: 0, tz: 0, dist: 1500, yaw: -0.62, pitch: 0.72,

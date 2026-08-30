@@ -185,6 +185,6 @@ setLoad(90, 'スポンサー露出を計算中');
   C.quad([-0.10, 0.92, -0.04], [0.10, 0.92, -0.04], [0.10, 1.14, 0.0], [-0.10, 1.14, 0.0], c);
   const cm = new THREE.InstancedMesh(C.geom(),
     new THREE.MeshStandardMaterial({ roughness: 0.9 }), SEAT.list.length);
-  cm.frustumCulled = false; cm.count = 0;
+  cm.frustumCulled = false; primeInstanceColor(cm, SEAT.list.length); cm.count = 0;
   interior.add(cm); SEAT.crowd = cm;
 })();

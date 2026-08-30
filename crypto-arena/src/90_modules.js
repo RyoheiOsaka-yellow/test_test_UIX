@@ -317,7 +317,7 @@ function journeyTick(dt) {
   const a = P[k], b = P[k + 1];
   journey.marker.position.set(lerp(a[0], b[0], w), lerp(a[1], b[1], w) + 0.9, lerp(a[2], b[2], w));
 }
-window.frameHook = function (dt) {
+FRAME_HOOKS.push(function (dt) {
   journeyTick(dt);
   if (journey.marker.visible) journey.marker.children[1].rotation.z += dt * 1.6;
-};
+});

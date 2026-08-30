@@ -41,6 +41,17 @@ function renderSitePanel() {
     '<div class="row-btns" id="vm">' + VIEW_MODES.map(m =>
       '<button class="chip' + (viewMode === m[0] ? ' active' : '') + '" data-vm="' + m[0] + '">' +
       m[1] + '</button>').join('') + '</div>' +
+    (viewMode === 'point' ?
+      '<div class="row-btns" style="margin-top:7px" id="pcm">' +
+      [['class', '分類'], ['height', '高さ'], ['intensity', '疑似反射強度']].map(m =>
+        '<button class="chip sm' + (pcColorMode === m[0] ? ' active' : '') + '" data-pcm="' + m[0] + '">' +
+        m[1] + '</button>').join('') + '</div>' +
+      (pcColorMode === 'class' ? '<div class="legend" style="margin-top:7px">' +
+        PC_CLASS_NAME.map((n, i) => '<div class="li"><div class="sw" style="background:' +
+          hex(PC_CLASS_COL[i]) + '"></div>' + n + '</div>').join('') + '</div>' : '') +
+      '<div class="hint" style="margin-top:6px">点群は <b>' + fmt(siteStats.points) +
+      ' 点</b>。LASの classification 相当で地表/建物（低中層・高層）/鉄道/アリーナに分類し、' +
+      '高さ・疑似反射強度でも着色できます。</div>' : '') +
     '<div class="hint" style="margin-top:7px">実体 / <b>点描</b>（外形を等間隔サンプリングした擬似点群） / ' +
     '線画 / <b>青焼き</b>（図面表現）を切り替え。街区とアリーナの関係を、' +
     '見せたい相手に応じた表現で提示できます。</div></div>' +
@@ -71,9 +82,81 @@ function renderSitePanel() {
       '<div class="li"><div class="sw" style="background:' + hex(POI_COL[p.c] || 0x8590a8) +
       '"></div>' + p.n + '</div>').join('') + '</div></div>' +
 
+    '<div class="sec"><div class="sec-t"><b>移動経路</b> — 実道路ネットワーク上の来場OD</div>' +
+    '<div class="row-btns" style="margin-bottom:7px">' +
+      '<button class="chip' + (flowState.on ? ' active' : '') + '" id="tg-flow">人流エージェント</button>' +
+      '<button class="chip' + (routeLines.visible ? ' active' : '') + '" id="tg-route">経路ライン</button>' +
+    '</div>' +
+    '<div class="legend">' + ORIGINS.map((o, i) =>
+      '<div class="li" data-org="' + i + '" style="cursor:pointer">' +
+      '<div class="sw" style="background:' + hex(o.col) + '"></div>' + o.name +
+      '　<b style="color:var(--txt)">' + fmt(o.route.total) + 'm</b></div>').join('') + '</div>' +
+    '<div class="hint" style="margin-top:7px">道路グラフ <b>' + fmt(roadGraph.size) +
+    ' ノード</b>に A*（歩行者は幹線を避け、車両は幹線を優先）で経路を引いています。' +
+    '出発地の構成比は <b>1to1レイヤーの商圏分布に追従</b>。クリックで視点移動。</div>' +
+    '<div class="kpi-grid" style="margin-top:8px">' +
+      kpiCard(fmt(flowState.arrived), '到着済み', 'k') +
+      kpiCard(fmt(flowState.inArena), '在館', 'g') +
+      kpiCard(fmt(flowState.left), '退場済み') +
+      kpiCard(usd(flowState.spendTotal), '場外消費 累計', 'p') +
+    '</div>' +
+    '<div class="hint" style="margin-top:6px">人数は到着/退場カーブの積分値。' +
+    '表示中の球は<b>1体 ≒ ' + fmt(flowState.perAgent) + ' 人</b>のサンプルです。</div></div>' +
+
+    '<div class="sec"><div class="sec-t"><b>賑わいヒートマップ</b> — 通り単位</div>' +
+    '<div class="row-btns" id="hm">' +
+      '<button class="chip sm' + (siteLayer === 'none' ? ' active' : '') + '" data-hm="none">OFF</button>' +
+      '<button class="chip sm' + (siteLayer === 'heat' && HEAT.mode === 'base' ? ' active' : '') + '" data-hm="base">通常日</button>' +
+      '<button class="chip sm' + (siteLayer === 'heat' && HEAT.mode === 'game' ? ' active' : '') + '" data-hm="game">試合日</button>' +
+      '<button class="chip sm' + (siteLayer === 'heat' && HEAT.mode === 'delta' ? ' active' : '') + '" data-hm="delta">アリーナ寄与</button>' +
+    '</div>' +
+    (siteLayer === 'heat' ? '<div class="grad-bar" style="margin-top:7px"></div>' +
+      '<div class="grad-lbl"><span>低</span><span>高</span></div>' +
+      '<div class="hint" style="margin-top:6px">通常日の街の素の賑わい（POI・商業地・駅）に、' +
+      '来場/回遊の経路沿い上乗せを重ねたもの。<b>アリーナ寄与＝差分</b>で、' +
+      '興行が周辺のどの通りにどれだけ人を落としているかを見ます。</div>' : '') + '</div>' +
+
+    '<div class="sec"><div class="sec-t"><b>OD分析</b> — ガウスKDE + ODアーク</div>' +
+    '<div class="row-btns" id="odm">' +
+      '<button class="chip sm' + (siteLayer !== 'od' ? ' active' : '') + '" data-od="off">OFF</button>' +
+      '<button class="chip sm' + (siteLayer === 'od' && KDE.mode === 'auto' ? ' active' : '') + '" data-od="auto">時間連動</button>' +
+      '<button class="chip sm' + (siteLayer === 'od' && KDE.mode === 'arr' ? ' active' : '') + '" data-od="arr">到着OD</button>' +
+      '<button class="chip sm' + (siteLayer === 'od' && KDE.mode === 'dep' ? ' active' : '') + '" data-od="dep">退場OD</button>' +
+      '<button class="chip sm' + (siteLayer === 'od' && KDE.mode === 'both' ? ' active' : '') + '" data-od="both">両方</button>' +
+    '</div>' +
+    (siteLayer === 'od' ? '<div class="row-btns" id="odbw" style="margin-top:6px">' +
+      [0.7, 1.0, 1.4].map(b => '<button class="chip sm' + (KDE.bw === b ? ' active' : '') +
+        '" data-bw="' + b + '">σ×' + b.toFixed(1) + '</button>').join('') + '</div>' +
+      '<div class="hint" style="margin-top:6px">山の高さ＝<b>人数 × 正規カーネル N(μ,σ²) の重ね合わせ</b>。' +
+      'タイムライン ▶ で「出発地の山 → アリーナへ質量移動 → 回遊先へ分散」。' +
+      'アークの太さ＝シェア、色の変化＝流れの向き。</div>' +
+      '<div class="sec-t" style="margin-top:8px">退場後の回遊</div>' +
+      DISPERSAL.map(d => bar(d.name, Math.round((AGG.kpi.sold || 0) * d.share), AGG.kpi.sold || 1,
+        hex(d.col))).join('') +
+      '<div class="hint" style="margin-top:6px">回遊組の場外消費 推計 <b>' +
+      usd(DISPERSAL.reduce((a, d) => a + (AGG.kpi.sold || 0) * d.share * d.spend, 0)) +
+      '</b> / 1興行。これは<b>アリーナが街に落とす金額</b>で、自治体・周辺事業者向けの数字になります。</div>'
+      : '') + '</div>' +
+
     '<div class="sec"><button class="tool-btn" id="go-arena">▶ L2 ボウル内部へ（19,079席の1to1分析）</button></div>';
 
   pb.querySelectorAll('[data-vm]').forEach(b => b.onclick = () => setViewMode(b.dataset.vm));
+  pb.querySelectorAll('[data-pcm]').forEach(b => b.onclick = () => setPointColorMode(b.dataset.pcm));
+  const tf = document.getElementById('tg-flow');
+  if (tf) tf.onclick = () => { flowState.on = !flowState.on; renderPanel(); };
+  const tr = document.getElementById('tg-route');
+  if (tr) tr.onclick = () => { routeLines.visible = !routeLines.visible; renderPanel(); };
+  pb.querySelectorAll('[data-org]').forEach(d => d.onclick = () => {
+    const o = ORIGINS[+d.dataset.org];
+    flyTo(o.x, 6, o.z, 420, cam.yaw, 0.5);
+    showInfo(o.name, '交通手段 <b>' + o.mode + '</b><br>アリーナまで ' + fmt(o.route.total) +
+      ' m<br>接続ゲート: ' + o.gateName + '<br>想定シェア ' + (o.w * 100).toFixed(0) + '%');
+  });
+  pb.querySelectorAll('[data-hm]').forEach(b => b.onclick = () => setSiteLayer('heat', b.dataset.hm));
+  pb.querySelectorAll('[data-od]').forEach(b => b.onclick = () => setSiteLayer('od', b.dataset.od));
+  pb.querySelectorAll('[data-bw]').forEach(b => b.onclick = () => {
+    KDE.bw = +b.dataset.bw; updateKDE(); renderPanel();
+  });
   const ga = document.getElementById('go-arena');
   if (ga) ga.onclick = () => setLevel('arena', true);
 }
@@ -167,6 +250,24 @@ function renderArenaPanel() {
     '（0.82〜1.32）。差分 <b>' + usd(AGG.price.opt - AGG.price.cur) + '</b>（' +
     ((AGG.price.opt / Math.max(1, AGG.price.cur) - 1) * 100).toFixed(1) + '%）</div></div>' +
 
+    '<div class="sec"><div class="sec-t"><b>場内動線</b> — コンコース回遊 → ボミトリー → 着席</div>' +
+    '<div class="row-btns" style="margin-bottom:6px">' +
+      '<button class="chip' + (indoorState.on ? ' active' : '') + '" id="tg-in">人流</button>' +
+      '<button class="chip' + (indoorState.showCong ? ' active' : '') + '" id="tg-cong">混雑度</button>' +
+      '<button class="chip' + (pcMode ? ' active' : '') + '" id="tg-pc">点群ビュー</button>' +
+    '</div>' +
+    '<div class="kpi-grid">' +
+      kpiCard(fmt(inMesh.count * indoorState.perAgent), 'コンコース滞留', 'k') +
+      kpiCard(fmt(STANDS.length), '売店 / POS地点') +
+      kpiCard(fmt(STANDS.reduce((a, s) => a + s.served, 0)), '売店 レジ通過') +
+      kpiCard(usd(indoorState.posRev), '場内POS 売上', 'g') +
+    '</div>' +
+    (indoorState.showCong ? '<div class="grad-bar" style="margin-top:7px"></div>' +
+      '<div class="grad-lbl"><span>閑散</span><span>LOS E 1.8人/m²</span></div>' : '') +
+    '<div class="hint" style="margin-top:6px">歩行速度 75 m/分でコンコース環状動線を歩き、' +
+    '42%が売店に立ち寄り（滞留2-5分）、担当ボミトリーからブロックへ降下します。' +
+    '<b>点群ビュー</b>は席レイヤーの配色と同期するので、点描のまま同じ分析が読めます。</div></div>' +
+
     '<div class="sec"><div class="sec-t"><b>BIM 表示</b> — 見通しの確保</div>' +
     ['roof:屋根スラブ', 'truss:屋根トラス/キャットウォーク', 'structure:段床・柱・手すり・ボミトリー',
      'suites:Premier Box', 'media:スポンサー媒体'].map(x => {
@@ -176,6 +277,26 @@ function renderArenaPanel() {
     }).join('') +
     '<div class="hint" style="margin-top:6px">部材をクリックすると <b>IFC風の属性カード</b>が開きます。' +
     'BIM/IFC 連携で実部材属性へ置換可能です。</div></div>' +
+
+    (function bimBrowserHTML() {
+      const T = bimTypes();
+      const rows = Object.keys(T).sort().map(k =>
+        '<button class="mode-btn' + (bimBrowse.type === k ? ' active' : '') + '" data-bt2="' + k + '"' +
+        ' style="padding:6px 9px">' +
+        '<div class="dot" style="background:' + (bimBrowse.type === k ? '#00c2ff' : '#3d4a6b') + '"></div>' +
+        '<div style="flex:1"><span style="font-family:var(--mono);font-size:11px">' + k + '</span>' +
+        '<span class="desc">' + T[k].length + ' 部材 — ' +
+        (T[k][0].userData.attrs['部材種別'] || T[k][0].userData.attrs['用途'] || '') + '</span></div>' +
+        '</button>').join('');
+      const list = bimBrowse.type ? T[bimBrowse.type].slice(0, 24).map((e, i) =>
+        '<button class="chip sm" data-bel="' + BIM_ELEMS.indexOf(e) + '">' + e.userData.tag + '</button>').join('') : '';
+      return '<div class="sec"><div class="sec-t"><b>BIM 要素ブラウザ</b> — ' +
+        fmt(BIM_ELEMS.length) + ' 部材 / ' + Object.keys(T).length + ' 種別</div>' +
+        '<div class="mode-list">' + rows + '</div>' +
+        (bimBrowse.type ? '<div class="row-btns" style="margin-top:7px">' + list + '</div>' : '') +
+        '<div class="hint" style="margin-top:6px">種別をクリックすると<b>その種別だけを残して他を透過</b>します。' +
+        'タグをクリックで該当部材へ視点移動し、IFC属性を表示。</div></div>';
+    })() +
 
     '<div class="sec"><div class="sec-t"><b>ツール</b></div>' +
     '<button class="tool-btn" id="open-2d" style="margin-bottom:6px">🗺 2D 席図を開く</button>' +
@@ -195,11 +316,21 @@ function renderArenaPanel() {
       (AGG.kpi.occ * 100).toFixed(1) + '%', 3000);
   });
   pb.querySelectorAll('[data-sm]').forEach(b => b.onclick = () => {
-    seatMode = b.dataset.sm; repaintSeats(); renderPanel();
+    seatMode = b.dataset.sm; repaintSeats();
+    if (pcMode) repaintSeatCloud();
+    renderPanel();
   });
   pb.querySelectorAll('[data-bd]').forEach(b => b.onclick = () => {
-    expBoard = +b.dataset.bd; repaintSeats(); renderPanel();
+    expBoard = +b.dataset.bd; repaintSeats();
+    if (pcMode) repaintSeatCloud();
+    renderPanel();
   });
+  pb.querySelectorAll('[data-bt2]').forEach(b => b.onclick = () => bimIsolate(b.dataset.bt2));
+  pb.querySelectorAll('[data-bel]').forEach(b => b.onclick = () => bimFocus(BIM_ELEMS[+b.dataset.bel]));
+  const qq = id => document.getElementById(id);
+  if (qq('tg-in')) qq('tg-in').onclick = () => { indoorState.on = !indoorState.on; renderPanel(); };
+  if (qq('tg-cong')) qq('tg-cong').onclick = () => { setCongestion(!indoorState.showCong); renderPanel(); };
+  if (qq('tg-pc')) qq('tg-pc').onclick = () => { setPointCloud(!pcMode); renderPanel(); };
   pb.querySelectorAll('[data-show]').forEach(c => c.onchange = () => {
     SHOW[c.dataset.show] = c.checked;
     applyShow();
@@ -316,6 +447,7 @@ function showFanCard(i) {
     ph.textContent = phaseAt(timeState.min);
     if (level === 'arena' && seatMode === 'crowd') repaintSeats();
     paintScore(gameState());
+    for (const h of TICK_HOOKS) h();
   };
   play.onclick = () => { timeState.play = !timeState.play; play.textContent = timeState.play ? '❚❚' : '▶'; };
   const seek = e => {

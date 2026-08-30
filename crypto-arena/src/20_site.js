@@ -316,12 +316,18 @@ const POI_COL = { ent: 0xff5fa2, tour: 0x3ddc84, shop: 0xfdb927, biz: 0x4da3ff,
    線画/青焼き: 稜線のみ。図面表現に切り替えて構造と街区の関係を読む
 ================================================================ */
 setLoad(70, '点群 / 線画レイヤーを生成中');
+/* 点群の分類（LAS classification 相当）: 0=地表/道路 1=建物 2=高層建物 3=鉄道 4=アリーナ */
+const PC_CLASS_COL = [0x4a6f96, 0x63d9ff, 0xbfe9ff, 0xa05da5, 0x00e5ff];
+const PC_CLASS_NAME = ['地表・道路', '建物 (低〜中層)', '建物 (高層)', '鉄道', 'アリーナ'];
+let pcColorMode = 'class';                               // class | height | intensity
+const PCD = { cls: null, y: null, maxY: 1 };
+
 (function altViews() {
-  const P = [], PC = [];                                 // 点群 position / color
+  const P = [], PC = [], PK = [], PH = [];               // position / color / class / height
   const W = [], WC = [];                                 // 線分 position / color
   const cB = new THREE.Color(0x63d9ff), cR = new THREE.Color(0x3a6a9e), cM = new THREE.Color(0x2f5f8c);
 
-  const sampleRing = (poly, y, step, col) => {
+  const sampleRing = (poly, y, step, col, cls) => {
     for (let i = 0; i < poly.length; i++) {
       const a = poly[i], b = poly[(i + 1) % poly.length];
       const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -330,6 +336,7 @@ setLoad(70, '点群 / 線画レイヤーを生成中');
         const t = k / n;
         P.push(a[0] + (b[0] - a[0]) * t, y, -(a[1] + (b[1] - a[1]) * t));
         PC.push(col.r, col.g, col.b);
+        PK.push(cls); PH.push(y);
       }
     }
   };
@@ -347,7 +354,8 @@ setLoad(70, '点群 / 線画レイヤーを生成中');
     if (p.length < 3) continue;
     const h = bl.h || 11;
     const lv = clamp(Math.round(h / 9), 2, 7);           // 高さ方向のサンプル段数
-    for (let i = 0; i <= lv; i++) sampleRing(p, h * i / lv, 2.6, cB);
+    const cls = h > 60 ? 2 : 1;
+    for (let i = 0; i <= lv; i++) sampleRing(p, h * i / lv, 2.6, cB, i === 0 ? 0 : cls);
     edgeRing(p, 0, cB); edgeRing(p, h, cB);
     for (const q of p) {                                  // 垂直稜線
       W.push(q[0], 0, -q[1], q[0], h, -q[1]);
@@ -359,7 +367,7 @@ setLoad(70, '点群 / 線画レイヤーを生成中');
     if (p.length > 3 && p[0][0] === p[p.length - 1][0] && p[0][1] === p[p.length - 1][1]) p.pop();
     if (p.length < 3) continue;
     const h = 7 + hrand(Math.round(p[0][0] * 7 + p[0][1]), 23) * 22;
-    sampleRing(p, h, 3.4, cM); sampleRing(p, 0, 5.0, cM);
+    sampleRing(p, h, 3.4, cM, h > 60 ? 2 : 1); sampleRing(p, 0, 5.0, cM, 0);
     edgeRing(p, h, cM);
   }
   for (const r of SCENE_DATA.roads) {                     // 道路は中心線をサンプル
@@ -373,6 +381,7 @@ setLoad(70, '点群 / 線画レイヤーを生成中');
         const t = k / n;
         P.push(a[0] + (b[0] - a[0]) * t, y, -(a[1] + (b[1] - a[1]) * t));
         PC.push(col.r, col.g, col.b);
+        PK.push(0); PH.push(y);
       }
       W.push(a[0], y, -a[1], b[0], y, -b[1]);
       WC.push(col.r, col.g, col.b, col.r, col.g, col.b);
@@ -382,17 +391,39 @@ setLoad(70, '点群 / 線画レイヤーを生成中');
   const ap = SCENE_DATA.arena.outer.slice();
   if (ap.length > 3) {
     const cA = new THREE.Color(0x00e5ff);
-    for (let i = 0; i <= 8; i++) sampleRing(ap, 26 * i / 8, 1.6, cA);
+    for (let i = 0; i <= 8; i++) sampleRing(ap, 26 * i / 8, 1.6, cA, 4);
     edgeRing(ap, 0, cA); edgeRing(ap, 26, cA);
     for (const q of ap) { W.push(q[0], 0, -q[1], q[0], 26, -q[1]);
       WC.push(cA.r, cA.g, cA.b, cA.r, cA.g, cA.b); }
   }
 
+  /* Metro / 貨物線も点群に含める（分類=3） */
+  const cR2 = new THREE.Color(0xa05da5);
+  for (const list of [SCENE_DATA.railMetro, SCENE_DATA.railHeavy]) {
+    for (const r of list) {
+      const y = r.b === 1 ? 9.5 : (r.b === -1 ? -7.5 : 0.6);
+      for (let i = 0; i < r.p.length - 1; i++) {
+        const a = r.p[i], b = r.p[i + 1];
+        const n = Math.max(1, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / 3));
+        for (let k = 0; k < n; k++) {
+          const t = k / n;
+          P.push(a[0] + (b[0] - a[0]) * t, y, -(a[1] + (b[1] - a[1]) * t));
+          PC.push(cR2.r, cR2.g, cR2.b); PK.push(3); PH.push(y);
+        }
+      }
+    }
+  }
+  PCD.cls = Uint8Array.from(PK);
+  PCD.y = Float32Array.from(PH);
+  /* 100万点超のスプレッドは呼び出しスタックを溢れさせるのでループで求める */
+  let my = 1; for (const v of PH) if (v > my) my = v;
+  PCD.maxY = my;
   const pg = new THREE.BufferGeometry();
   pg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
   pg.setAttribute('color', new THREE.Float32BufferAttribute(PC, 3));
   gPoint.add(new THREE.Points(pg, new THREE.PointsMaterial({
     size: 1.9, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.92 })));
+  gPoint.userData.geo = pg;
 
   const wg = new THREE.BufferGeometry();
   wg.setAttribute('position', new THREE.Float32BufferAttribute(W, 3));
@@ -404,6 +435,31 @@ setLoad(70, '点群 / 線画レイヤーを生成中');
   siteStats.points = P.length / 3;
   siteStats.segs = W.length / 6;
 })();
+
+/* ---- 点群の着色モード（分類 / 高さ / 疑似反射強度） ---- */
+function setPointColorMode(mode) {
+  pcColorMode = mode;
+  const g = gPoint.userData.geo;
+  if (!g) return;
+  const col = g.attributes.color, n = col.count;
+  const c = new THREE.Color();
+  for (let i = 0; i < n; i++) {
+    if (mode === 'class') c.setHex(PC_CLASS_COL[PCD.cls[i]]);
+    else if (mode === 'height') {
+      const u = clamp(PCD.y[i] / Math.min(PCD.maxY, 180), 0, 1);
+      c.setHSL(0.62 - u * 0.62, 0.85, 0.32 + u * 0.34);
+    } else {
+      /* 疑似反射強度: 面の向き（水平ほど高反射）＋クラス別の材質差 */
+      const k = PCD.cls[i];
+      const base = k === 0 ? 0.72 : k === 3 ? 0.86 : k === 4 ? 0.94 : 0.40;
+      const v = clamp(base + ((i * 2654435761) % 97) / 97 * 0.22 - 0.11, 0, 1);
+      c.setRGB(v * 0.85, v * 0.95, v);
+    }
+    col.setXYZ(i, c.r, c.g, c.b);
+  }
+  col.needsUpdate = true;
+  if (typeof renderPanel === 'function') renderPanel();
+}
 
 /* ---- モード適用 ---- */
 let viewMode = 'solid';                                   // solid | point | wire | blueprint

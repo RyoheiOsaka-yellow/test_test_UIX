@@ -14,6 +14,10 @@ function setLevel(lv, fly) {
   site.visible = !inArena;
   plaza.visible = (lv === 'plaza');
   gMark.visible = (lv === 'site');
+  flowGroup.visible = (lv !== 'arena');
+  heatGroup.visible = (siteLayer === 'heat' && lv !== 'arena');
+  odGroup.visible = (siteLayer === 'od' && lv !== 'arena');
+  indoorGroup.visible = inArena;
   arenaShell.visible = (lv === 'site' && viewMode === 'solid');   // L1では詳細ファサードに差し替え
   gClose.visible = (lv !== 'plaza' && viewMode === 'solid');
   bowlLight.intensity = inArena ? 2.1 : 0;
@@ -31,6 +35,22 @@ function setLevel(lv, fly) {
   else go(ARENA_C.x, 12, ARENA_C.z, 168, -0.7, 0.80);
   renderPanel();
 }
+/* L0 の解析レイヤー（賑わい / OD）— 排他切替 */
+let siteLayer = 'none';
+function setSiteLayer(kind, opt) {
+  if (kind === 'heat') {
+    if (opt === 'none') siteLayer = 'none';
+    else { siteLayer = 'heat'; HEAT.mode = opt; if (!HEAT.max) computeGameHeat(); else paintHeat(); }
+  } else if (kind === 'od') {
+    if (opt === 'off') siteLayer = 'none';
+    else { siteLayer = 'od'; KDE.mode = opt; }
+  }
+  heatGroup.visible = (siteLayer === 'heat' && level !== 'arena');
+  odGroup.visible = (siteLayer === 'od' && level !== 'arena');
+  if (odGroup.visible) updateKDE();
+  renderPanel();
+}
+
 function applyShow() {
   roofSlab.visible = SHOW.roof;
   trussGrp.visible = SHOW.truss;
