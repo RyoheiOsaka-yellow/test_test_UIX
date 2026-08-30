@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>羽田イノベーションシティ デジタルツイン (Navara + PLATEAU)</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#04050c;
+  font-family:'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP',system-ui,sans-serif;color:#dfe8f5}
+canvas{display:block}
+#app{position:fixed;inset:0}
+#panel{position:fixed;top:14px;left:14px;z-index:10;width:250px;max-height:calc(100vh - 28px);
+  overflow-y:auto;scrollbar-width:thin;padding:14px 16px 12px;background:rgba(8,12,24,.86);
+  border:1px solid rgba(120,180,255,.22);border-radius:10px;backdrop-filter:blur(8px);user-select:none}
+.panel-title{font-size:15px;font-weight:600;letter-spacing:.08em;color:#eaf4ff}
+.panel-sub{font-size:9px;letter-spacing:.18em;color:#5f7ba0;margin:2px 0 10px}
+.panel-sep{height:1px;background:rgba(120,180,255,.16);margin:9px 0}
+.sec-title{font-size:10px;letter-spacing:.12em;color:#7d93b5;margin:4px 0 5px}
+.row{display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0;cursor:pointer;color:#c6d4e8}
+.row:hover{color:#fff}
+.row input[type=checkbox]{accent-color:#00b7d9;cursor:pointer}
+.chip{display:inline-block;width:10px;height:10px;border-radius:3px;flex:none;box-shadow:0 0 6px currentColor}
+.seg-row{display:flex;gap:4px;flex-wrap:wrap}
+.seg-row button{flex:1;min-width:52px;padding:5px 0;font-size:11px;color:#9fb0c8;background:rgba(60,90,140,.18);
+  border:1px solid rgba(120,180,255,.22);border-radius:5px;cursor:pointer;font-family:inherit}
+.seg-row button:hover{color:#fff}
+.seg-row button.active{background:rgba(0,183,217,.35);border-color:rgba(0,229,255,.6);color:#fff}
+input[type=range]{width:100%;accent-color:#00b7d9;cursor:pointer}
+.hint{font-size:9px;color:#55667e;line-height:1.6;margin-top:6px}
+#clock{font-size:20px;font-weight:600;color:#00e5ff;letter-spacing:.06em;font-variant-numeric:tabular-nums}
+#status{position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:20;padding:8px 16px;
+  background:rgba(8,12,24,.9);border:1px solid rgba(0,229,255,.4);border-radius:20px;font-size:12px;color:#9fd8ff}
+#credit{position:fixed;right:10px;bottom:8px;z-index:10;font-size:9.5px;color:#5f7095;text-align:right;line-height:1.6}
+#credit a{color:#7fb2ff}
+#tip{position:fixed;z-index:30;pointer-events:none;padding:6px 10px;font-size:12px;background:rgba(8,12,24,.92);
+  border:1px solid rgba(0,229,255,.45);border-radius:6px;color:#eaf4ff;display:none;max-width:280px;line-height:1.5}
+#tip b{color:#00e5ff}
+@media(max-width:768px){#panel{width:206px;padding:10px 12px}}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="status">Navaraエンジンを初期化中…</div>
+
+<div id="panel">
+  <div class="panel-title">羽田イノベーションシティ</div>
+  <div class="panel-sub">DIGITAL TWIN — Navara × PLATEAU</div>
+
+  <div class="sec-title">視点(飛行)</div>
+  <div class="seg-row" id="fly-row"></div>
+  <div class="panel-sep"></div>
+
+  <div class="sec-title">PLATEAU 3D都市モデル(2025年度)</div>
+  <label class="row"><input type="checkbox" id="l-bldg" checked><span class="chip" style="background:#8fb8e8"></span>建築物 LOD2(テクスチャ)</label>
+  <label class="row"><input type="checkbox" id="l-tran"><span class="chip" style="background:#b0a0d0"></span>道路 LOD3</label>
+  <label class="row"><input type="checkbox" id="l-brid"><span class="chip" style="background:#c8b090"></span>橋梁 LOD2</label>
+  <div class="sec-title" style="margin-top:7px">ベースマップ</div>
+  <label class="row"><input type="checkbox" id="l-terrain" checked><span class="chip" style="background:#6a8a5a"></span>地形(標高)</label>
+  <div class="seg-row" id="base-row" style="margin-top:4px">
+    <button data-b="photo" class="active">航空写真</button>
+    <button data-b="std">地図</button>
+    <button data-b="none">なし</button>
+  </div>
+  <div class="panel-sep"></div>
+
+  <div class="sec-title">オーバーレイ</div>
+  <label class="row"><input type="checkbox" id="l-hic" checked><span class="chip" style="background:#00e5ff"></span>HICity 図面(IFC)</label>
+  <label class="row"><input type="checkbox" id="l-heat" checked><span class="chip" style="background:#ffc94d"></span>施設内 滞留ヒート</label>
+  <label class="row"><input type="checkbox" id="l-sta" checked><span class="chip" style="background:#35e0a1"></span>駅構造・路線</label>
+  <label class="row"><input type="checkbox" id="l-future" checked><span class="chip" style="background:#ff2d44"></span>新空港線(構想)</label>
+  <label class="row"><input type="checkbox" id="l-train" checked><span class="chip" style="background:#d8e4ff"></span>列車運行</label>
+  <label class="row"><input type="checkbox" id="l-people" checked><span class="chip" style="background:#ff9a4d"></span>人流リプレイ</label>
+  <div class="panel-sep"></div>
+
+  <div class="sec-title">時刻</div>
+  <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:3px">
+    <span id="clock">09:30</span><span style="font-size:10px;color:#7d93b5">2020/9/18 実測</span>
+  </div>
+  <input type="range" id="time" min="0" max="86400" step="60" value="34200">
+  <div class="seg-row" style="margin-top:5px">
+    <button id="play">⏸ 停止</button>
+    <button id="sp60" data-v="60">×60</button>
+    <button id="sp240" data-v="240" class="active">×240</button>
+    <button id="sp900" data-v="900">×900</button>
+  </div>
+  <div class="sec-title" style="margin-top:8px">太陽(時刻連動)</div>
+  <label class="row"><input type="checkbox" id="l-sun" checked><span class="chip" style="background:#ffd166"></span>日照をシミュレーション時刻に同期</label>
+  <div class="hint">左ドラッグ:回転 ／ 右ドラッグ:移動 ／ ホイール:ズーム<br>建物クリックでPLATEAU属性を表示</div>
+</div>
+
+<div id="tip"></div>
+<div id="credit">
+  3D都市モデル: <a href="https://www.mlit.go.jp/plateau/" target="_blank">Project PLATEAU</a>（大田区 2025年度・国土交通省）／
+  地形・航空写真: 地理院タイル ／ 描画エンジン: <a href="https://github.com/reearth/navara" target="_blank">Navara</a>（Re:Earth, MIT/Apache-2.0）<br>
+  HICity図面: IFCモデル ／ 人流: K-field位置ログ 2020/9/18–22 ／
+  <span style="color:#ff6b7a">新空港線(蒲蒲線)は構想・未開業の想定線形</span> ／ 駅構内配置は想定を含む模式モデル
+</div>
+
+<script src="/hic-data.js"></script>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

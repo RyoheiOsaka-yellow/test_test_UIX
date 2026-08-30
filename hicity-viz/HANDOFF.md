@@ -143,6 +143,46 @@ EOF
 - OSM帰属表示(© OpenStreetMap contributors)とGSI出典表記を維持
 - K-fieldはタグ装着者のみの計測(施設全体の来訪者数ではない)
 
+
+## 10. Navara版（Re:Earth Navara × PLATEAU ストリーミング）
+
+`hicity-viz/navara/` は、Re:Earth のオープンソース3D地図エンジン
+[Navara](https://github.com/reearth/navara)（Rust/WASM + Three.js, MIT OR Apache-2.0）を
+使った別実装です。単一HTML版がローカル埋め込みデータで完結するのに対し、
+こちらは地球儀ベースで PLATEAU 3D Tiles / 地形 / 航空写真をネットワークから
+ストリーミングします。
+
+### 使用しているPLATEAU 3D Tiles（大田区 2025年度・CORS `*`）
+| 種別 | URL |
+|---|---|
+| 建築物 LOD2(テクスチャ) | `https://assets.cms.plateau.reearth.io/assets/a9/ea2016-3ecc-4dc4-84f8-488b13f2816b/13111_ota-ku_pref_2025_citygml_1_op_bldg_3dtiles_13111_ota-ku_lod2/tileset.json` |
+| 道路 LOD3 | `.../assets/5a/52915f-2535-4e6b-8889-95c28dd1a4dd/13111_ota-ku_pref_2025_citygml_1_op_tran_3dtiles_lod3/tileset.json` |
+| 橋梁 LOD2 | `.../assets/b1/7b541e-8776-43ec-99ab-832332d7977e/13111_ota-ku_pref_2025_citygml_1_op_brid_3dtiles_lod2/tileset.json` |
+
+URLは PLATEAU データカタログのGraphQLから取得できる（更新時はこれで引き直す）:
+```bash
+curl -X POST https://api.plateau.reearth.io/datacatalog/graphql -H 'Content-Type: application/json' \
+  -d '{"query":"{ area(code:\"13111\"){ ... on City { datasets { typeCode items { format url ... on PlateauDatasetItem { lod texture } } } } } }"}'
+```
+
+### ビルドと起動
+```bash
+cd hicity-viz/navara
+npm i                       # three は 0.185 系（@navaramap/three のpeer要件 >=0.183）
+# public/hic-data.js を生成（plans/heat3d/traj/fit を window.__HIC に入れる）
+npx vite build              # -> dist/
+python3 server.py 4173 dist # WASM/Worker のため file:// では動かない
+```
+
+### 実装の要点
+- 任意のthree.jsジオメトリは **`MeshDesc` を継承したカスタム記述子**（`OverlayDesc`）で追加する。
+  `view.addMesh({ overlay:{group}, geodetic:{lng,lat,height,heading} })` で
+  West-Up-North接地フレームに載る。ローカル系(x=東,y=上,z=-北)に合わせるため
+  グループを `rotation.y = π` で反転している。
+  ※ `addMesh` の `ref.raw` に直接addする方法はレンダーパス管理外になるため使わないこと。
+- `depthTest:false` は Navara の MRT パスと相性が悪いので使わない。
+- 太陽は `view.atmosphere.date` をシミュレーション時刻に同期している。
+
 ## 9. 成果物の場所
 
 - Artifact(オンライン閲覧): https://claude.ai/code/artifact/3eb19676-6b5b-42ac-aa20-264a4f848208
