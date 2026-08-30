@@ -1,0 +1,2 @@
+event_id,event_datetime,format,home_team,opponent_or_artist,capacity,attendance,tickets_sold,gross_revenue_usd,day_of_week,is_national_tv,promotion
+LAL-2025-11-14,2025-11-14T19:30:00-08:00,NBA,Lakers,Golden State Warriors,19079,18997,19012,2841500,Fri,1,

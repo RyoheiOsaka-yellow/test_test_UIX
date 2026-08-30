@@ -1,0 +1,2 @@
+ticket_id,event_id,fan_id,section,row,seat,channel,face_price_usd,paid_price_usd,purchased_at,is_resale,resale_price_usd,scanned,scanned_at,gate
+T-88231904,LAL-2025-11-14,f_9a3e1c,111,A,7,SEASON,728,655,2025-09-02T10:14:00-07:00,0,,1,2025-11-14T18:52:00-08:00,Gate A

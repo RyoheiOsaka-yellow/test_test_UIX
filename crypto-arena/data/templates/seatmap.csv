@@ -1,0 +1,3 @@
+section,row,seat,tier,price_category,x_m,y_m,z_m,facing_deg,is_ada,is_obstructed
+111,A,7,100,LOWER_ENDLINE,-2.40,1.85,18.20,0,0,0
+PR7,1,3,premier,PREMIER_SUITE,-24.10,9.40,-6.00,90,0,0

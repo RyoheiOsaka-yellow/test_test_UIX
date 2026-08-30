@@ -1,0 +1,2 @@
+board_id,sponsor_name,type,x_m,y_m,z_m,width_m,height_m,normal_deg,share_of_time_pct,annual_contract_usd,guaranteed_impressions
+LED-CS-W,Delta,COURTSIDE_LED,-8.60,0.85,0.00,22,0.95,90,12.5,1800000,2400000
