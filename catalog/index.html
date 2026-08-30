@@ -740,8 +740,9 @@ footer .fl{display:flex;flex-wrap:wrap;gap:8px 28px}
       <span>ART · LEARNING · ARCHITECTURE · ENTERTAINMENT · PUBLIC DESIGN</span>
     </div>
     <div class="fl" style="margin-top:14px;opacity:.6">
-      <span>各作品は catalog/works/ 以下にオリジナルのまま収録しています。</span>
-      <span>デモは「RUN LIVE」を押したときだけ読み込まれます。</span>
+      <span>各作品はオリジナルのまま収録。デモは「RUN LIVE」を押したときだけ読み込まれます。</span>
+      <span>W—01 は WebGPU 対応ブラウザが必要です。</span>
+      <span>W—02 の AIR（カメラ入力）は https か localhost 経由でのみ動作します。</span>
     </div>
   </div>
 </footer>
@@ -751,6 +752,20 @@ footer .fl{display:flex;flex-wrap:wrap;gap:8px 28px}
 <script>
 'use strict';
 
+/* ---------- 作品の解決（1ファイル版は内蔵ペイロード、分割版は相対パス） ---------- */
+const blobCache = Object.create(null);
+const resolveSrc = (path) => {
+  if (blobCache[path]) return blobCache[path];
+  const el = document.querySelector('script[type="text/plain"][data-work="' + path + '"]');
+  if (!el) return path;                       // works/ が隣にある通常版
+  const ESCAPED = '<' + '\\' + '/script';
+  const CLOSE = '<' + '/script';
+  const html = el.textContent.split(ESCAPED).join(CLOSE);
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  blobCache[path] = url;
+  return url;
+};
+
 /* ---------- デモの遅延ロード ---------- */
 document.querySelectorAll('.stage').forEach((stage) => {
   const src = stage.dataset.src;
@@ -759,12 +774,13 @@ document.querySelectorAll('.stage').forEach((stage) => {
   const bar = stage.querySelector('.stage-bar');
   const tab = bar.querySelector('[data-act="tab"]');
   tab.href = src;
+  tab.addEventListener('click', (e) => { e.preventDefault(); window.open(resolveSrc(src), '_blank', 'noopener'); });
   let frame = null;
 
   const load = () => {
     if (frame) return;
     frame = document.createElement('iframe');
-    frame.src = src;
+    frame.src = resolveSrc(src);
     frame.title = title;
     frame.loading = 'lazy';
     frame.allow = 'camera; fullscreen; xr-spatial-tracking';

@@ -2,9 +2,21 @@
 
 8つのインタラクティブ作品を1枚のカタログにまとめたものです。
 
+## 2つの形
+
+| ファイル | 用途 |
+|---|---|
+| `catalog-standalone.html` | **1ファイル完結版（28.6MB）。** 8作品を内蔵しているので、これ1枚を配ればそのまま動く。 |
+| `index.html` + `works/` | 分割版。作品を差し替え・追記したいときはこちら。編集後 `python3 build-standalone.py` で1ファイル版を再生成。 |
+
+内蔵版は各作品を `<script type="text/plain">` に生のまま持ち、「RUN LIVE」を押した時点で
+Blob URL に変換して iframe に渡します。開いた瞬間に28MB分が走ることはありません。
+
 ```
 catalog/
-├── index.html          カタログ本体（これをブラウザで開く）
+├── catalog-standalone.html   1ファイル完結版（配布用）
+├── build-standalone.py       上を生成するスクリプト
+├── index.html          カタログ本体（分割版・これをブラウザで開く）
 └── works/              各作品のオリジナルHTML（無改変）
     ├── 01-tonbo-ink.html          tonbo ink — WebGPU 流体インク
     ├── 02-tessera.html            TESSERA — quadtree field
@@ -34,8 +46,9 @@ catalog/
   W—06（4MB）／W—07（11MB）／W—08（13.6MB）は重いため、必要なときだけ開いてください。
 - 「停止」でアンロードしてメモリを解放できます。
 - W—01（tonbo ink）は **WebGPU 対応ブラウザ**（最新の Chrome / Edge / Safari）が必要です。
-- W—02（TESSERA）の AIR モードはカメラ権限を使います。file:// では許可されない場合があるため、
-  「別タブ」で開くか、ローカルサーバー経由でご利用ください。
+- W—02（TESSERA）の AIR モード（カメラ入力）はブラウザが「安全なコンテキスト」を要求するため、
+  `file://` から開いた場合は動作しません。下記のローカルサーバー経由か https で開いてください。
+  それ以外の機能はすべて `file://` で動作します。
 
 ローカルサーバーで開く場合:
 
