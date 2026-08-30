@@ -1,0 +1,57 @@
+/* ===== 拡張v11: BIM場内ディテール / 2D席図 / 視認測定 ===== */
+#bim-toggle{border-color:#3d5c3a;color:#8fd88a}
+#bim-toggle.active{border-color:#3ddc84;color:#3ddc84;background:rgba(61,220,132,.1)}
+#map2d-toggle{border-color:#5c4a2a;color:#e8c88a}
+#map2d-toggle.active{border-color:#f5c400;color:#f5c400;background:rgba(245,196,0,.1)}
+#vis-toggle{border-color:#5c2a4a;color:#e88ac0}
+#vis-toggle.active{border-color:#ff7cc0;color:#ff7cc0;background:rgba(255,124,192,.12)}
+
+#map2d-panel{position:fixed;right:12px;bottom:14px;width:392px;max-height:calc(100vh - 84px);z-index:27;display:none;
+  background:rgba(21,24,33,.96);border:1px solid var(--line);border-radius:12px;padding:10px;backdrop-filter:blur(8px);
+  overflow-y:auto}
+#map2d-panel::-webkit-scrollbar{width:6px}
+#map2d-panel::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+#m2-head{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+#m2-head .t{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--brex)}
+#m2-head .g{font-size:10px;color:var(--sub);flex:1}
+#m2-close{border:1px solid var(--line);background:var(--panel2);color:var(--sub);border-radius:6px;width:22px;height:22px;cursor:pointer;flex-shrink:0}
+#m2-close:hover{color:var(--brex);border-color:var(--brex)}
+#map2d-cv{width:100%;border-radius:8px;background:#0a0c12;cursor:crosshair;display:block;border:1px solid var(--line)}
+#m2-chips{display:flex;flex-wrap:wrap;gap:5px;margin:7px 0}
+#m2-legend{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:10px;color:var(--sub);margin:4px 0 6px}
+#m2-legend .li{display:flex;align-items:center;gap:5px}
+#m2-legend .sw{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+#m2-detail{display:none;background:var(--panel2);border:1px solid var(--brexdim);border-radius:8px;padding:8px 10px;font-size:11px;line-height:1.65;margin-bottom:6px}
+#m2-tbl{max-height:132px;overflow-y:auto;border:1px solid var(--line);border-radius:8px}
+#m2-tbl::-webkit-scrollbar{width:6px}
+#m2-tbl::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+#m2-tbl table{width:100%;border-collapse:collapse;font-size:10px}
+#m2-tbl th{position:sticky;top:0;background:var(--panel2);color:var(--sub);font-weight:500;padding:4px 6px;text-align:right;letter-spacing:.04em}
+#m2-tbl th:first-child,#m2-tbl td:first-child{text-align:left}
+#m2-tbl td{padding:3px 6px;border-top:1px solid var(--line);color:var(--txt);text-align:right;font-family:var(--mono);font-weight:400}
+#m2-tbl td:first-child{font-family:var(--jp)}
+#m2-tbl tr.hl td{background:rgba(245,196,0,.08)}
+
+#bim-card,#vis-card{position:fixed;top:62px;width:272px;z-index:26;display:none;
+  background:rgba(21,24,33,.96);border-radius:12px;padding:12px;backdrop-filter:blur(8px)}
+#bim-card{right:12px;border:1px solid #3ddc84}
+#vis-card{right:282px;border:1px solid #ff7cc0;max-height:calc(100vh - 150px);overflow-y:auto}
+#vis-card::-webkit-scrollbar{width:6px}
+#vis-card::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.bim-row{display:flex;justify-content:space-between;gap:8px;font-size:11px;padding:3px 0;border-bottom:1px dashed var(--line)}
+.bim-row span{color:var(--sub);flex-shrink:0}
+.bim-row b{color:var(--txt);font-weight:500;text-align:right}
+.vis-row{display:flex;align-items:center;gap:6px;font-size:10px;padding:3px 0;border-bottom:1px dashed var(--line)}
+.vis-row .nm{flex:1;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vis-row .d{color:var(--sub);font-family:var(--mono);flex-shrink:0}
+.gr-chip{display:inline-block;min-width:34px;text-align:center;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:700;color:#10131c;flex-shrink:0}
+.vis-mini{display:flex;height:7px;border-radius:3px;overflow:hidden;background:var(--line);margin-top:3px}
+.vis-mini i{display:block;height:100%}
+#sv-exit{position:fixed;top:62px;left:50%;transform:translateX(-50%);z-index:45;display:none;
+  background:rgba(21,24,33,.96);border:1px solid var(--brex);border-radius:20px;padding:8px 16px;font-size:12px;color:var(--txt);
+  box-shadow:0 4px 18px rgba(245,196,0,.25)}
+#sv-exit button{margin-left:10px;border:1px solid var(--line);background:var(--panel2);color:var(--brex);border-radius:12px;padding:3px 12px;cursor:pointer;font-size:11px;font-family:var(--jp)}
+#sv-exit button:hover{border-color:var(--brex)}
+.tk-actrow{display:flex;gap:6px;margin-top:8px}
+.tk-actrow button{flex:1;border:1px solid var(--line);background:var(--panel2);color:var(--txt);border-radius:8px;padding:6px 4px;cursor:pointer;font-size:10px;font-family:var(--jp)}
+.tk-actrow button:hover{border-color:var(--brex);color:var(--brex)}
