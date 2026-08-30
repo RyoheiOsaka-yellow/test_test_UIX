@@ -15,12 +15,12 @@ function setLevel(lv, fly) {
   plaza.visible = (lv === 'plaza');
   gMark.visible = (lv === 'site');
   arenaShell.visible = (lv === 'site' && viewMode === 'solid');   // L1では詳細ファサードに差し替え
-  gClose.visible = (lv !== 'plaza');
-  bowlLight.intensity = inArena ? 1.15 : 0;
-  hemi.intensity = inArena ? 0.34 : 0.95;
+  gClose.visible = (lv !== 'plaza' && viewMode === 'solid');
+  bowlLight.intensity = inArena ? 2.1 : 0;
+  hemi.intensity = inArena ? 0.46 : 0.95;
   sun.intensity = inArena ? 0.25 : 1.05;
   applyShow();
-  bowlAmb.intensity = inArena ? 0.5 : 0;
+  bowlAmb.intensity = inArena ? 0.62 : 0;
   scene.fog.near = inArena ? 400 : (lv === 'plaza' ? 260 : 900);
   scene.fog.far = inArena ? 2600 : (lv === 'plaza' ? 1800 : 5200);
   hideInfo();

@@ -10,6 +10,15 @@ function computeKPIs() {
   const seg = {}, reg = {}, cat = {}, sec = {};
   let sold = 0, rev = 0, ltv = 0, fb = 0, merch = 0, churnSum = 0, optin = 0, expSum = 0;
   const boardViewers = new Float64Array(NB), boardScore = new Float64Array(NB);
+  /* 満席時の露出（媒体デリバリー率の分母）— 初回のみ算出してキャッシュ */
+  if (!AGG.boardFull) {
+    AGG.boardFull = new Float64Array(NB);
+    for (let bi = 0; bi < NB; bi++) {
+      let t = 0;
+      for (let i = 0; i < N; i++) t += SEAT.expB[bi * N + i] / SEAT.maxB[bi];
+      AGG.boardFull[bi] = t || 1;
+    }
+  }
   const gradeCnt = new Uint32Array(NB * 5);
 
   for (let i = 0; i < N; i++) {
@@ -66,7 +75,10 @@ function computeKPIs() {
     exp: sold ? expSum / sold : 0,
     season: ((seg.SEASON || 0) + (seg.PARTIAL || 0)) / Math.max(1, sold),
     outState: ((reg['Out of State'] || 0) + (reg['International'] || 0)) / Math.max(1, sold),
-    mediaValue: AGG.board.reduce((a, b) => a + b.score, 0) * 46,
+    /* 当該興行の媒体デリバリー額 = Σ (年間契約 ÷ 年44興行) × (今回の実効露出 ÷ 満席時の実効露出)。
+       シーズンを通して積むと契約総額に一致する設計 */
+    mediaValue: AGG.board.reduce((a, b, i) =>
+      a + (b.contract / 44) * (b.score / AGG.boardFull[i]), 0),
   };
 }
 

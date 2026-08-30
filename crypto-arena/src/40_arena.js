@@ -67,12 +67,12 @@ function courtTexture(kind) {
     c.fillStyle = '#101820'; c.font = '700 44px Oswald'; c.textAlign = 'center';
     c.fillText('LA KINGS', 512, 250);
   } else if (kind === 'CONCERT') {
-    c.fillStyle = '#15171f'; c.fillRect(0, 0, 1024, 545);
+    c.fillStyle = '#2a2f3d'; c.fillRect(0, 0, 1024, 545);
     for (let i = 0; i < 900; i++) {           // フロアGA（スタンディング）
-      c.fillStyle = 'rgba(120,150,210,' + (0.06 + Math.random() * 0.1) + ')';
+      c.fillStyle = 'rgba(150,180,235,' + (0.12 + Math.random() * 0.2) + ')';
       c.fillRect(Math.random() * 1024, Math.random() * 545, 3, 3);
     }
-    c.fillStyle = '#0a0c12'; c.fillRect(0, 0, 250, 545);   // ステージ
+    c.fillStyle = '#12151f'; c.fillRect(0, 0, 250, 545);   // ステージ
     c.fillStyle = '#00c2ff'; c.font = '700 40px Oswald'; c.textAlign = 'center';
     c.save(); c.translate(125, 272); c.rotate(-Math.PI / 2); c.fillText('STAGE', 0, 14); c.restore();
   } else {                                     // NBA（Lakers ホーム）

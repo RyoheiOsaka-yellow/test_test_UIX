@@ -199,8 +199,10 @@ ROAD_COL[4] = 0xa08a56;   // motorway (I-110 Harbor Fwy / I-10 Santa Monica Fwy)
                [q[0] + d[0] * s, y - 1.6, -(q[1] + d[1] * s)], [q[0] - d[0] * s, y - 1.6, -(q[1] - d[1] * s)], pierC);
     }
   }
-  gInfra.add(new THREE.Mesh(D.geom(), new THREE.MeshStandardMaterial({
-    vertexColors: true, roughness: 0.9, side: THREE.DoubleSide })));
+  const deckMesh = new THREE.Mesh(D.geom(), new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.9, side: THREE.DoubleSide }));
+  deckMesh.name = 'bridgeDeck';
+  gInfra.add(deckMesh);
 })();
 
 /* ================= 鉄道 — Metro A/B/D/E Line & 貨物線 ================= */
@@ -407,9 +409,13 @@ setLoad(70, '点群 / 線画レイヤーを生成中');
 let viewMode = 'solid';                                   // solid | point | wire | blueprint
 function setViewMode(m) {
   viewMode = m;
+  const lineish = (m === 'wire' || m === 'blueprint');
   gSolid.visible = (m === 'solid');
   gPoint.visible = (m === 'point');
-  gWire.visible = (m === 'wire' || m === 'blueprint');
+  gWire.visible = lineish;
+  gClose.visible = (m === 'solid' && level !== 'plaza');
+  const deck = gInfra.getObjectByName('bridgeDeck');
+  if (deck) deck.visible = !lineish;          // 線画では稜線が高架を表現するので実体は伏せる
   arenaShell.visible = (m === 'solid' && level !== 'plaza');
   wrap.classList.toggle('pc-grad', m === 'point');
   wrap.classList.toggle('bp-grad', m === 'blueprint');

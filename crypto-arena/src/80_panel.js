@@ -127,7 +127,7 @@ function renderArenaPanel() {
       kpiCard(usd(k.rev), 'チケット収益', 'g') +
       kpiCard(usd(k.avg), '平均単価', 'g') +
       kpiCard(usd(k.fbTotal), '場内購買 推計') +
-      kpiCard(usd(k.mediaValue), '媒体価値 推計', 'p') +
+      kpiCard(usd(k.mediaValue), '媒体デリバリー額', 'p') +
       kpiCard((k.season * 100).toFixed(0) + '<small>%</small>', 'シーズン券比率') +
       kpiCard((k.outState * 100).toFixed(0) + '<small>%</small>', '州外・海外比率') +
     '</div></div>' +
