@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>触れて、わかる。— 先端技術による表現開発から、社会実装まで</title>
+<meta name="description" content="AIなど先端技術によるアート・表現・インタラクティブデザインの開発から、学び・建築・エンターテイメント・行政デザインへ。8つの実装カタログ。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0c10;
+  --bg-2:#101219;
+  --panel:#14161f;
+  --panel-2:#191c26;
+  --line:rgba(255,255,255,.10);
+  --line-strong:rgba(255,255,255,.20);
+  --ink:#ece9e3;
+  --mute:#9a968f;
+  --mute-2:#6f6c67;
+  --a:#F39423;               /* 章ごとに上書きされるアクセント */
+  --c-expr:#F39423;
+  --c-learn:#54C08A;
+  --c-arch:#8FA9C4;
+  --c-ent:#FF6B5B;
+  --c-civic:#00C2E0;
+  --sans:'Zen Kaku Gothic New',-apple-system,'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;
+  --mono:'JetBrains Mono','SF Mono',Menlo,Consolas,monospace;
+  --rail:236px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--sans);
+  background:var(--bg);
+  color:var(--ink);
+  line-height:1.85;
+  font-size:15px;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+/* 紙の粒子 */
+body::after{
+  content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;opacity:.035;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+a{color:inherit}
+.mono{font-family:var(--mono)}
+
+/* ============ 左レール ============ */
+#rail{
+  position:fixed;left:0;top:0;bottom:0;width:var(--rail);z-index:60;
+  padding:34px 22px;display:flex;flex-direction:column;gap:2px;
+  border-right:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(11,12,16,.96),rgba(11,12,16,.88));
+  backdrop-filter:blur(10px);
+}
+#rail .brand{font-size:12px;letter-spacing:.16em;font-weight:700;line-height:1.6;margin-bottom:22px}
+#rail .brand em{font-style:normal;color:var(--c-expr)}
+#rail .brand small{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.18em;color:var(--mute-2);margin-top:5px}
+#rail a.r{
+  display:flex;align-items:baseline;gap:9px;padding:6px 0;
+  font-size:11.5px;letter-spacing:.05em;color:var(--mute-2);text-decoration:none;
+  border-left:1px solid transparent;padding-left:11px;margin-left:-11px;
+  transition:color .22s,border-color .22s;
+}
+#rail a.r span.n{font-family:var(--mono);font-size:9.5px;opacity:.7}
+#rail a.r:hover{color:var(--ink)}
+#rail a.r.on{color:var(--ink);border-left-color:var(--rc,var(--c-expr))}
+#rail .foot{margin-top:auto;font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--mute-2);line-height:1.9}
+#railToggle{display:none}
+
+main{margin-left:var(--rail)}
+.wrap{max-width:1080px;margin:0 auto;padding:0 40px}
+
+/* ============ HERO ============ */
+header.hero{position:relative;min-height:100svh;display:flex;align-items:center;overflow:hidden}
+#field{position:absolute;inset:0;width:100%;height:100%;opacity:.5}
+header.hero::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(120% 90% at 18% 40%,transparent 20%,rgba(11,12,16,.55) 62%,var(--bg) 92%);
+}
+.hero-inner{position:relative;z-index:2;padding:120px 0 90px}
+.eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.3em;color:var(--c-expr);margin-bottom:26px}
+h1.big{
+  font-size:clamp(38px,6.4vw,76px);font-weight:900;line-height:1.24;letter-spacing:.005em;
+  text-wrap:balance;margin-bottom:8px;
+}
+h1.big .dim{color:var(--mute);font-weight:500}
+.hero-en{font-family:var(--mono);font-size:clamp(10px,1.5vw,13px);letter-spacing:.22em;color:var(--mute-2);margin:18px 0 34px}
+.lede{max-width:44em;color:#cdc9c2;font-size:16px;line-height:2.1}
+.lede strong{color:var(--ink);font-weight:700}
+.hero-stats{display:flex;flex-wrap:wrap;gap:0;margin-top:52px;border-top:1px solid var(--line)}
+.hero-stats div{padding:18px 34px 0 0;margin-right:34px;border-right:1px solid var(--line)}
+.hero-stats div:last-child{border-right:0}
+.hero-stats b{display:block;font-family:var(--mono);font-size:26px;font-weight:500;letter-spacing:-.02em}
+.hero-stats span{font-size:10.5px;letter-spacing:.14em;color:var(--mute-2)}
+
+/* ============ ストーリー帯 ============ */
+section.arc{padding:96px 0 30px;border-top:1px solid var(--line);background:var(--bg-2)}
+.sec-label{font-family:var(--mono);font-size:10px;letter-spacing:.28em;color:var(--mute-2);margin-bottom:14px}
+h2.sec{font-size:clamp(23px,3vw,32px);font-weight:900;line-height:1.5;margin-bottom:16px;letter-spacing:.01em}
+.sec-lede{max-width:46em;color:var(--mute);line-height:2.05;margin-bottom:46px}
+.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.steps .st{padding:24px 20px 26px;border-right:1px solid var(--line);position:relative;background:var(--panel)}
+.steps .st:last-child{border-right:0}
+.steps .st::before{content:'';position:absolute;left:0;right:0;top:0;height:2px;background:var(--sc)}
+.steps .st .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;color:var(--sc);margin-bottom:9px}
+.steps .st h4{font-size:15px;font-weight:700;margin-bottom:8px}
+.steps .st p{font-size:12px;line-height:1.85;color:var(--mute)}
+
+/* ============ 章 ============ */
+section.chapter{padding:104px 0 0;border-top:1px solid var(--line)}
+.ch-head{display:grid;grid-template-columns:118px 1fr;gap:0 30px;margin-bottom:56px;align-items:start}
+.ch-num{font-family:var(--mono);font-size:64px;font-weight:400;line-height:.85;color:var(--a);opacity:.9;letter-spacing:-.04em}
+.ch-en{font-family:var(--mono);font-size:10px;letter-spacing:.26em;color:var(--mute-2);margin-top:12px}
+.ch-title{font-size:clamp(24px,3.2vw,34px);font-weight:900;line-height:1.45;margin-bottom:4px}
+.ch-title small{display:block;font-family:var(--mono);font-size:11px;font-weight:400;letter-spacing:.2em;color:var(--a);margin-bottom:12px}
+.ch-lede{max-width:44em;color:var(--mute);line-height:2.05;margin-top:14px}
+
+/* ============ 作品カード ============ */
+article.work{
+  border:1px solid var(--line);border-radius:4px;background:var(--panel);
+  margin-bottom:34px;overflow:hidden;position:relative;
+}
+article.work::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--a);opacity:.85}
+.w-head{display:flex;align-items:flex-start;gap:18px;padding:28px 32px 0}
+.w-num{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--a);padding-top:7px;flex:none}
+.w-titles{flex:1;min-width:0}
+.w-titles h3{font-size:clamp(20px,2.6vw,26px);font-weight:900;line-height:1.4;letter-spacing:.01em}
+.w-titles .w-en{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;color:var(--mute-2);margin-top:5px}
+.w-tags{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;flex:none;max-width:44%}
+.w-tags span{
+  font-size:10px;letter-spacing:.08em;padding:3px 9px;border-radius:2px;
+  border:1px solid var(--line-strong);color:var(--mute);white-space:nowrap;
+}
+.w-tags span.pri{border-color:var(--a);color:var(--a)}
+.w-hook{padding:16px 32px 24px;font-size:17px;line-height:1.9;font-weight:500;color:#ded9d1;max-width:42em}
+
+/* ステージ（デモ） */
+.stage{position:relative;margin:0 32px 26px;border:1px solid var(--line);border-radius:3px;overflow:hidden;background:var(--bg)}
+.poster{
+  aspect-ratio:16/9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  cursor:pointer;position:relative;overflow:hidden;
+  background:
+    radial-gradient(60% 80% at 22% 20%,color-mix(in srgb,var(--a) 26%,transparent),transparent 70%),
+    radial-gradient(50% 70% at 82% 78%,color-mix(in srgb,var(--a) 14%,transparent),transparent 70%),
+    linear-gradient(150deg,var(--panel-2),var(--bg));
+  transition:filter .3s;
+}
+.poster:hover{filter:brightness(1.16)}
+.poster .ghost{
+  position:absolute;left:22px;bottom:-16px;font-family:var(--mono);font-size:150px;font-weight:500;
+  line-height:1;color:#fff;opacity:.045;letter-spacing:-.05em;pointer-events:none;
+}
+.poster .play{
+  width:58px;height:58px;border-radius:50%;border:1px solid var(--a);
+  display:grid;place-items:center;color:var(--a);font-size:15px;
+  background:rgba(11,12,16,.55);backdrop-filter:blur(3px);
+}
+.poster .cap{font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;color:var(--ink)}
+.poster .cap2{font-size:10.5px;letter-spacing:.1em;color:var(--mute-2);margin-top:-10px}
+.stage iframe{display:block;width:100%;aspect-ratio:16/9;border:0;background:#fff}
+.stage.doc .poster,.stage.doc iframe{aspect-ratio:4/3}
+.stage.live .poster{display:none}
+.stage-bar{
+  display:none;align-items:center;gap:14px;padding:9px 14px;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--mute-2);background:var(--panel-2);
+}
+.stage.live .stage-bar{display:flex}
+.stage-bar button,.stage-bar a{
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--mute);
+  background:none;border:1px solid var(--line-strong);border-radius:2px;padding:4px 10px;
+  cursor:pointer;text-decoration:none;transition:color .2s,border-color .2s;
+}
+.stage-bar button:hover,.stage-bar a:hover{color:var(--a);border-color:var(--a)}
+.stage-bar .sp{margin-left:auto}
+
+/* 説明3カラム */
+.w-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--line)}
+.w-cols>div{padding:26px 30px 30px;border-right:1px solid var(--line)}
+.w-cols>div:last-child{border-right:0}
+.w-cols h4{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.22em;color:var(--a);
+  margin-bottom:12px;font-weight:500;
+}
+.w-cols p{font-size:13.5px;line-height:2.05;color:var(--mute)}
+.w-cols p+p{margin-top:10px}
+.w-cols b{color:#d6d2cb;font-weight:500}
+.w-meta{display:flex;flex-wrap:wrap;gap:6px;padding:18px 32px 26px;border-top:1px solid var(--line);background:var(--panel-2)}
+.w-meta span{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;color:var(--mute-2);
+  border:1px solid var(--line);border-radius:2px;padding:3px 8px;
+}
+.w-meta span.w-size{margin-left:auto;border-color:transparent}
+
+/* ============ エピローグ ============ */
+section.outro{padding:110px 0 40px;border-top:1px solid var(--line);background:var(--bg-2)}
+.lineage{display:grid;gap:0;border:1px solid var(--line);border-radius:3px;overflow:hidden;margin:44px 0 56px}
+.lineage .ln{display:grid;grid-template-columns:150px 1fr;gap:0;border-bottom:1px solid var(--line);background:var(--panel)}
+.lineage .ln:last-child{border-bottom:0}
+.lineage .ln .lk{
+  padding:20px 22px;border-right:1px solid var(--line);
+  font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--lc);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--lc) 9%,transparent),transparent);
+}
+.lineage .ln .lv{padding:20px 26px;font-size:13.5px;line-height:2;color:var(--mute)}
+.lineage .ln .lv b{color:var(--ink);font-weight:700}
+.threes{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:20px}
+.threes div{border-top:2px solid var(--c-expr);padding-top:18px}
+.threes div:nth-child(2){border-color:var(--c-arch)}
+.threes div:nth-child(3){border-color:var(--c-civic)}
+.threes h4{font-size:15px;font-weight:700;margin-bottom:10px}
+.threes p{font-size:12.5px;line-height:2;color:var(--mute)}
+
+footer{padding:64px 0 80px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--mute-2);line-height:2.4}
+footer .fl{display:flex;flex-wrap:wrap;gap:8px 28px}
+
+/* ============ レスポンシブ ============ */
+@media(max-width:1100px){
+  :root{--rail:0px}
+  main{margin-left:0}
+  #rail{
+    left:0;right:0;bottom:auto;top:0;width:auto;height:auto;flex-direction:row;align-items:center;
+    gap:0;padding:10px 16px;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);
+    scrollbar-width:none;
+  }
+  #rail::-webkit-scrollbar{display:none}
+  #rail .brand{margin:0 20px 0 0;flex:none;font-size:11px}
+  #rail .brand small{display:none}
+  #rail a.r{border-left:0;border-bottom:1px solid transparent;padding:4px 12px;margin:0;white-space:nowrap}
+  #rail a.r.on{border-bottom-color:var(--rc)}
+  #rail a.r span.n{display:none}
+  #rail .foot{display:none}
+  header.hero{min-height:auto;padding-top:52px}
+  .hero-inner{padding:80px 0 70px}
+}
+@media(max-width:860px){
+  .wrap{padding:0 22px}
+  .steps{grid-template-columns:1fr 1fr}
+  .steps .st{border-bottom:1px solid var(--line)}
+  .w-cols{grid-template-columns:1fr}
+  .w-cols>div{border-right:0;border-bottom:1px solid var(--line)}
+  .w-cols>div:last-child{border-bottom:0}
+  .ch-head{grid-template-columns:1fr;gap:14px}
+  .ch-num{font-size:44px}
+  .threes{grid-template-columns:1fr}
+  .lineage .ln{grid-template-columns:1fr}
+  .lineage .ln .lk{border-right:0;border-bottom:1px solid var(--line)}
+  .w-head{flex-wrap:wrap;padding:24px 22px 0}
+  .w-tags{max-width:100%;justify-content:flex-start}
+  .w-hook{padding:14px 22px 20px;font-size:15.5px}
+  .stage{margin:0 22px 22px}
+  .hero-stats div{padding-right:20px;margin-right:20px}
+}
+@media(max-width:560px){
+  .steps{grid-template-columns:1fr}
+  .steps .st{border-right:0}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  #field{display:none}
+}
+</style>
+</head>
+<body>
+
+<nav id="rail">
+  <div class="brand">触れて、<em>わかる</em>。<small>WORKS CATALOG 2026</small></div>
+  <a class="r" href="#arc" style="--rc:var(--mute)"><span class="n">00</span>読み方</a>
+  <a class="r" href="#ch1" style="--rc:var(--c-expr)"><span class="n">01</span>表現をつくる</a>
+  <a class="r" href="#ch2" style="--rc:var(--c-learn)"><span class="n">02</span>学びに変える</a>
+  <a class="r" href="#ch3" style="--rc:var(--c-arch)"><span class="n">03</span>建築に落とす</a>
+  <a class="r" href="#ch4" style="--rc:var(--c-ent)"><span class="n">04</span>体験にひらく</a>
+  <a class="r" href="#ch5" style="--rc:var(--c-civic)"><span class="n">05</span>行政をデザインする</a>
+  <a class="r" href="#outro" style="--rc:var(--mute)"><span class="n">06</span>技術の系譜</a>
+  <div class="foot">8 WORKS<br>SINGLE-FILE HTML<br>REALTIME / INTERACTIVE</div>
+</nav>
+
+<main>
+
+<!-- ================= HERO ================= -->
+<header class="hero">
+  <canvas id="field"></canvas>
+  <div class="wrap hero-inner">
+    <p class="eyebrow">INTERACTIVE DESIGN — WORKS CATALOG</p>
+    <h1 class="big">触れて、わかる。<br><span class="dim">そして、社会に置く。</span></h1>
+    <p class="hero-en">FROM EXPRESSION TO PUBLIC IMPLEMENTATION — 8 WORKS</p>
+    <p class="lede">
+      AIをはじめとする先端技術を使って、まず<strong>アート・表現・インタラクティブデザイン</strong>をつくります。
+      流体を混ぜ、群れを泳がせ、空間を分割する——手を動かした瞬間に応答が返る「触れる表現」です。
+      そこで育った技術を、そのまま<strong>学び</strong>の教材へ、<strong>建築</strong>の設計道具へ、
+      <strong>エンターテイメント</strong>の展示体験へ、そして<strong>行政デザイン</strong>の意思決定ダッシュボードへ落とし込む。
+      このカタログは、その一本の線を8つの実装でたどるものです。
+    </p>
+    <div class="hero-stats">
+      <div><b>8</b><span>WORKS</span></div>
+      <div><b>5</b><span>DOMAINS</span></div>
+      <div><b>100%</b><span>SINGLE-FILE HTML</span></div>
+      <div><b>0</b><span>INSTALL REQUIRED</span></div>
+    </div>
+  </div>
+</header>
+
+<!-- ================= 読み方 ================= -->
+<section class="arc" id="arc">
+  <div class="wrap">
+    <p class="sec-label">00 — HOW TO READ</p>
+    <h2 class="sec">表現でつくり、社会で使う。<br>ひとつの技術が5つの領域を通り抜ける。</h2>
+    <p class="sec-lede">
+      作品はばらばらの実験に見えて、順番があります。左から右へ、<b>「おもしろい」を「役に立つ」に翻訳していく</b>過程です。
+      各カードの下部にある3つの欄——<span class="mono">WHAT / HOW / WHERE</span>——を読めば、
+      その作品が系譜のどこに位置し、次のどの領域へ渡されたかが分かります。
+    </p>
+    <div class="steps">
+      <div class="st" style="--sc:var(--c-expr)">
+        <p class="k">01 EXPRESSION</p><h4>表現をつくる</h4>
+        <p>触れた瞬間に返ってくる応答をつくる。流体・群れ・分割——「場の計算」をリアルタイムで走らせる基礎体力をここで得る。</p>
+      </div>
+      <div class="st" style="--sc:var(--c-learn)">
+        <p class="k">02 LEARNING</p><h4>学びに変える</h4>
+        <p>美しいだけで終わらせず、パラメータとモデル式を露出させる。遊びが仮説検証になり、体験が理解になる。</p>
+      </div>
+      <div class="st" style="--sc:var(--c-arch)">
+        <p class="k">03 ARCHITECTURE</p><h4>建築に落とす</h4>
+        <p>理解した仕組みで案を生成し、評価する。かたちと空間の設計に、生成と採点のループを持ち込む。</p>
+      </div>
+      <div class="st" style="--sc:var(--c-ent)">
+        <p class="k">04 ENTERTAINMENT</p><h4>体験にひらく</h4>
+        <p>設計したものを、来場者が身体で分かる展示にする。企画書の中でプロトタイプがそのまま動く。</p>
+      </div>
+      <div class="st" style="--sc:var(--c-civic)">
+        <p class="k">05 PUBLIC DESIGN</p><h4>行政をデザインする</h4>
+        <p>最後は街と制度へ。実在都市の3Dモデル上で、時間とレイヤーを操作しながら関係者が合意形成する道具になる。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CH.1 表現 ================= -->
+<section class="chapter" id="ch1" style="--a:var(--c-expr)">
+  <div class="wrap">
+    <div class="ch-head">
+      <div><div class="ch-num">01</div><p class="ch-en">EXPRESSION</p></div>
+      <div>
+        <h3 class="ch-title"><small>ART / INTERACTIVE DESIGN</small>先端技術で、触れる表現をつくる。</h3>
+        <p class="ch-lede">
+          すべての出発点。GPU上で流体を解き、四分木で空間を刻み、96匹の群れを1フレームのメモリ確保もなしに泳がせる。
+          目的は絵をつくることですが、同時にここで<b>「毎フレーム更新される場を、手の動きに応答させる」</b>という技術の芯が鍛えられます。
+          後続の学び・建築・行政のすべてが、この芯の上に乗ります。
+        </p>
+      </div>
+    </div>
+
+    <!-- 01 -->
+    <article class="work" id="w01">
+      <div class="w-head">
+        <div class="w-num">W—01</div>
+        <div class="w-titles">
+          <h3>tonbo ink</h3>
+          <p class="w-en">WEBGPU FLUID INK / 墨と朱のインタラクティブ絵画</p>
+        </div>
+        <div class="w-tags"><span class="pri">表現</span><span>WebGPU</span><span>リアルタイム</span></div>
+      </div>
+      <p class="w-hook">なぞると、墨と朱が水の中でほどけていく。手を離すと、絵は勝手に描かれ続ける。</p>
+      <div class="stage" data-src="works/01-tonbo-ink.html" data-title="tonbo ink">
+        <div class="poster" role="button" tabindex="0" aria-label="このデモを読み込んで実行する"><div class="ghost">01</div><div class="play">▶</div><p class="cap">RUN LIVE</p><p class="cap2">画面をなぞってインクをかき混ぜる</p></div>
+        <div class="stage-bar"><span class="lbl">LIVE</span><button data-act="reload">再読込</button><a data-act="tab" target="_blank" rel="noopener">別タブ</a><button data-act="full">全画面</button><button data-act="close" class="sp">停止</button></div>
+      </div>
+      <div class="w-cols">
+        <div><h4>WHAT / 何をするもの</h4>
+          <p>画面をなぞると、その軌跡に沿って顔料が水中へ流れ出し、渦を巻きながら混ざり合います。<b>速く動かすほど濃い墨が落ちる</b>ので、筆圧のかわりに速度が濃度になります。</p>
+          <p>手を止めると2つの「点滴」が静かに巡り、橙と朱を垂らし続ける。放置していても絵が完成しない——終わりのない一枚です。</p>
+        </div>
+        <div><h4>HOW / 技術のしくみ</h4>
+          <p>WebGPUのコンピュートシェーダで<b>ナビエ–ストークス方程式</b>を解いています。128×72の速度場に対し、移流 → 渦度閉じ込め → 発散 → 圧力ヤコビ反復 → 射影を毎フレーム実行し、その速度場で512×288の顔料場を運びます。</p>
+          <p>肝は表示です。染料をRGBではなく<b>「顔料の量」</b>として保持し、Beer–Lambert則(吸収係数=−ln(インク色))で和紙の白から引き算する。だから橙と墨が重なると、加算合成の白飛びではなく現実のインクと同じ<b>減法混色で暗く沈む</b>。粒状ノイズとヴィネットが紙の質感を補います。</p>
+        </div>
+        <div><h4>WHERE / どこへ効くか</h4>
+          <p>ブランドの世界観を「見る」から「触れる」へ変える装置として、常設サイネージ、展示ブースの壁面、企業サイトのヒーローに。</p>
+          <p>同時にこれは<b>GPU汎用計算の実地訓練</b>でもあります。ここで確立した「場を解いて可視化する」パイプラインが、のちの現象シミュレーション(W—04)や都市データの可視化(W—08)にそのまま転用されます。</p>
+        </div>
+      </div>
+      <div class="w-meta"><span>WebGPU</span><span>vgpu 0.3.1</span><span>WGSL COMPUTE</span><span>NAVIER–STOKES</span><span>VORTICITY CONFINEMENT</span><span>BEER–LAMBERT</span><span class="w-size">23 KB</span></div>
+    </article>
+
+    <!-- 02 -->
+    <article class="work" id="w02">
+      <div class="w-head">
+        <div class="w-num">W—02</div>
+        <div class="w-titles">
+          <h3>TESSERA</h3>
+          <p class="w-en">QUADTREE FIELD / 季節が移ろう再帰分割の場</p>
+        </div>
+        <div class="w-tags"><span class="pri">表現</span><span>非接触UI</span><span>ジェネラティブ</span></div>
+      </div>
+      <p class="w-hook">空間は、注意が集まるところで細かくなる。画面に触れずに、手の動きだけで場を乱せる。</p>
+      <div class="stage" data-src="works/02-tessera.html" data-title="TESSERA">
+        <div class="poster" role="button" tabindex="0" aria-label="このデモを読み込んで実行する"><div class="ghost">02</div><div class="play">▶</div><p class="cap">RUN LIVE</p><p class="cap2">ドラッグで場に触れる / AIRボタンでカメラ入力</p></div>
+        <div class="stage-bar"><span class="lbl">LIVE</span><button data-act="reload">再読込</button><a data-act="tab" target="_blank" rel="noopener">別タブ</a><button data-act="full">全画面</button><button data-act="close" class="sp">停止</button></div>
+      </div>
+      <div class="w-cols">
+        <div><h4>WHAT / 何をするもの</h4>
+          <p>画面全体をひとつの正方形として、<b>四分木(quadtree)で再帰的に分割し続ける</b>フィールドです。動きのある場所ほど細かく刻まれ、静かな場所は大きな面のまま残る。</p>
+          <p>季節が移ろい、詩のようなキャプションが下部に現れては消えます。右下の<b>AIRボタン</b>を押すとカメラが起動し、画面に触れずに手の動きだけで場を乱せます。</p>
+        </div>
+        <div><h4>HOW / 技術のしくみ</h4>
+          <p>適応的四分木分割 + 季節ステートマシン。分割の深さは局所的な「エネルギー」で決まり、ポインタや手の動きがそこへ注入されます。<b>情報量に応じて解像度を変える</b>という、可視化設計そのものの発想です。</p>
+          <p>非接触入力は <span class="mono">getUserMedia</span> のフレーム差分によるモーション検出。専用センサーなしで、ブラウザだけでハンドトラッキングが成立します。HUDは <span class="mono">env(safe-area-inset)</span> 対応で、スマホでもフルスクリーン表示が崩れません。</p>
+        </div>
+        <div><h4>WHERE / どこへ効くか</h4>
+          <p>触れずに操作できるので、<b>不特定多数が通る展示空間</b>——ミュージアム、商業施設、イベントブース——の常設インタラクションに向きます。センサー導入コストがゼロなのも現場では効きます。</p>
+          <p>「注目度に応じて細かくする」という適応分割の考え方は、大規模データの可視化やLOD制御へ直接持ち込めます。</p>
+        </div>
+      </div>
+      <div class="w-meta"><span>CANVAS 2D</span><span>ADAPTIVE QUADTREE</span><span>getUserMedia</span><span>MOTION TRACKING</span><span>SAFE-AREA UI</span><span class="w-size">47 KB</span></div>
+    </article>
+
+    <!-- 03 -->
+    <article class="work" id="w03">
+      <div class="w-head">
+        <div class="w-num">W—03</div>
+        <div class="w-titles">
+          <h3>fish — 群れを泳がせる</h3>
+          <p class="w-en">MATHCAT KERNEL DEMO / BOIDS &amp; ZERO-ALLOCATION</p>
+        </div>
+        <div class="w-tags"><span class="pri">表現</span><span>基盤技術</span><span>数理エンジン</span></div>
+      </div>
+      <p class="w-hook">96匹の群れが、1フレームもメモリを確保せずに泳ぐ。クリックで餌を落とすと、いっせいに殺到する。</p>
+      <div class="stage doc" data-src="works/03-fish-boids.html" data-title="fish — boids">
+        <div class="poster" role="button" tabindex="0" aria-label="このデモを読み込んで実行する"><div class="ghost">03</div><div class="play">▶</div><p class="cap">RUN LIVE</p><p class="cap2">ドラッグで回転 / クリックで餌 / スライダーで群れの性格を変える</p></div>
+        <div class="stage-bar"><span class="lbl">LIVE</span><button data-act="reload">再読込</button><a data-act="tab" target="_blank" rel="noopener">別タブ</a><button data-act="full">全画面</button><button data-act="close" class="sp">停止</button></div>
+      </div>
+      <div class="w-cols">
+        <div><h4>WHAT / 何をするもの</h4>
+          <p><b>結束・整列・分離</b>の3つの操舵力だけで魚の群れを成立させるBoidsシミュレーション。スライダーでその配分を変えると、群れの性格——密集するか、散開するか——が即座に変わります。</p>
+          <p>体は8節の距離拘束で頭を追い、尾びれは<b>泳ぐ速さに比例して強く振れる</b>。ときどき緋色の一匹が混ざります。</p>
+        </div>
+        <div><h4>HOW / 技術のしくみ</h4>
+          <p>使っているのは <span class="mono">mathcat</span> カーネル(vec3 / mat4 / random / easing / color)だけ。全バッファを起動時に <span class="mono">Float32Array</span> で確保し、以降は <span class="mono">subarray</span> ビュー越しに <span class="mono">op(out, a, b)</span> 規約で演算する——<b>フレーム中のアロケーションはゼロ</b>、つまりGCによるカクつきが原理的に起きません。</p>
+          <p>クリック位置は <span class="mono">invert(viewProj)</span> でレイを飛ばし、水槽内の一点へ逆射影して餌に。乱数はシード付きなので、リロードしても<b>必ず同じ群れが生まれます</b>(再現性のあるシミュレーション)。</p>
+        </div>
+        <div><h4>WHERE / どこへ効くか</h4>
+          <p>群衆流動、交通、生態系——<b>「個の単純なルールから全体の挙動が立ち上がる」</b>系のシミュレーション基盤です。工場の人・モノの動線解析(W—06)や、来場者の回遊予測へ直結します。</p>
+          <p>ゼロアロケーション設計と再現性は、そのまま<b>組込み機器・サイネージでの長時間安定動作</b>という実務要件を満たします。表現作品でありながら、性能設計の実証でもある一本です。</p>
+        </div>
+      </div>
+      <div class="w-meta"><span>CANVAS 2D</span><span>BOIDS</span><span>ZERO-ALLOCATION</span><span>SEEDED RNG</span><span>mat4 UNPROJECT</span><span>DARK MODE 対応</span><span class="w-size">29 KB</span></div>
+    </article>
+  </div>
+</section>
+
+<!-- ================= CH.2 学び ================= -->
+<section class="chapter" id="ch2" style="--a:var(--c-learn)">
+  <div class="wrap">
+    <div class="ch-head">
+      <div><div class="ch-num">02</div><p class="ch-en">LEARNING</p></div>
+      <div>
+        <h3 class="ch-title"><small>EDUCATION / SCIENCE COMMUNICATION</small>表現を、「わかる」に変える。</h3>
+        <p class="ch-lede">
+          きれいなだけの絵は、記憶に残っても理解には届きません。そこで<b>パラメータとモデル式を表に出す</b>。
+          つまみを回して結果が変わり、その裏側の数式が同じ画面に見えているとき、遊びははじめて仮説検証になります。
+          表現でつくったリアルタイム性を、教育のフォーマットへ翻訳した章です。
+        </p>
+      </div>
+    </div>
+
+    <!-- 04 -->
+    <article class="work" id="w04">
+      <div class="w-head">
+        <div class="w-num">W—04</div>
+        <div class="w-titles">
+          <h3>PHENOMENA</h3>
+          <p class="w-en">世界のしくみを、触って理解する。 / 22 UNIVERSES · 332 PHENOMENA</p>
+        </div>
+        <div class="w-tags"><span class="pri">学び</span><span>教材</span><span>大規模</span></div>
+      </div>
+      <p class="w-hook">「もし、こうしたら？」——ひとつの問いが、ひとつの実験室につながっている。332の現象が、すべて遊べる。</p>
+      <div class="stage doc" data-src="works/04-phenomena.html" data-title="PHENOMENA">
+        <div class="poster" role="button" tabindex="0" aria-label="このデモを読み込んで実行する"><div class="ghost">04</div><div class="play">▶</div><p class="cap">RUN LIVE</p><p class="cap2">実験室を選び、パラメータを動かす（読み込みに数秒）</p></div>
+        <div class="stage-bar"><span class="lbl">LIVE</span><button data-act="reload">再読込</button><a data-act="tab" target="_blank" rel="noopener">別タブ</a><button data-act="full">全画面</button><button data-act="close" class="sp">停止</button></div>
+      </div>
+      <div class="w-cols">
+        <div><h4>WHAT / 何をするもの</h4>
+          <p><b>22の宇宙・332の現象</b>を収めた実験室のコレクションです。入口は展示ではなく問い——「もし、こうしたら？」。その問いをたどると、対応する実験室が開きます。</p>
+          <p>各ラボには<b>プリセット / パラメータ / 初期条件 / 世界の数 / メトリクス / モデル</b>が並び、<span class="mono">あそぶ → 見る → しくみ</span> の3モードで段階的に深く潜れる。迷ったら「おまかせで開く」。気に入った状態は<b>URLで共有</b>できます。</p>
+        </div>
+        <div><h4>HOW / 技術のしくみ</h4>
+          <p>332の現象すべてを<b>単一のHTMLファイルに内包</b>し、インストールもサーバーも不要で配布できる構成。状態はURLへシリアライズされるので、先生が設定した初期条件をそのままリンクで生徒に渡せます。</p>
+          <p>特筆すべきは<b>「全ラボ動作検査」</b>——各ラボが既知解と一致するかを自己診断するテストを内蔵しています。教材が壊れていないことを、教材自身が証明する。「科学的テスト」ボタンから誰でも実行できます。</p>
+        </div>
+        <div><h4>WHERE / どこへ効くか</h4>
+          <p>科学館の常設展示、学校のICT教材、企業のR&amp;D説明資料。<b>1ファイル配るだけで成立する</b>ため、ネットワーク制限の厳しい学校・自治体の環境でも運用できます。</p>
+          <p>この章の成果は「触れる表現に、モデルと検証を足す」という型そのもの。次章の建築(W—05/06)は、この型を<b>設計案の生成と評価</b>へ持ち込んだものです。</p>
+        </div>
+      </div>
+      <div class="w-meta"><span>SINGLE-FILE</span><span>22 LABS / 332 PHENOMENA</span><span>URL STATE SHARING</span><span>SELF-TEST 内蔵</span><span>3-MODE UI</span><span class="w-size">639 KB</span></div>
+    </article>
+  </div>
+</section>
+
+<!-- ================= CH.3 建築 ================= -->
+<section class="chapter" id="ch3" style="--a:var(--c-arch)">
+  <div class="wrap">
+    <div class="ch-head">
+      <div><div class="ch-num">03</div><p class="ch-en">ARCHITECTURE</p></div>
+      <div>
+        <h3 class="ch-title"><small>DESIGN / ENGINEERING</small>かたちと空間の設計に、落とす。</h3>
+        <p class="ch-lede">
+          理解した仕組みは、設計の道具になります。ここでの主題は<b>「案を大量に出す」と「案を採点する」</b>の two-loop。
+          手描きの温度を保ったまま図面を無限に生成する側と、工場レイアウトを数値で評価し干渉まで検出する側——
+          発散と収束の両方を、同じブラウザの上で回します。
+        </p>
+      </div>
+    </div>
+
+    <!-- 05 -->
+    <article class="work" id="w05">
+      <div class="w-head">
+        <div class="w-num">W—05</div>
+        <div class="w-titles">
+          <h3>SF建築 手描きドラフター</h3>
+          <p class="w-en">HAND-DRAWN SPECULATIVE ARCHITECTURE</p>
+        </div>
+        <div class="w-tags"><span class="pri">建築</span><span>生成</span><span>ワークショップ</span></div>
+      </div>
+      <p class="w-hook">つまみを動かすたび、鉛筆が引き直される。線が引かれていく過程まで、見える。</p>
+      <div class="stage doc" data-src="works/05-sf-drafter.html" data-title="SF建築 手描きドラフター">
+        <div class="poster" role="button" tabindex="0" aria-label="このデモを読み込んで実行する"><div class="ghost">05</div><div class="play">▶</div><p class="cap">RUN LIVE</p><p class="cap2">左のつまみを動かす / 🎲で新しい図面 / PNG保存</p></div>
+        <div class="stage-bar"><span class="lbl">LIVE</span><button data-act="reload">再読込</button><a data-act="tab" target="_blank" rel="noopener">別タブ</a><button data-act="full">全画面</button><button data-act="close" class="sp">停止</button></div>
+      </div>
+      <div class="w-cols">
+        <div><h4>WHAT / 何をするもの</h4>
+          <p><b>FORM / STRUCTURE / SITE / MEDIA</b> のつまみを回すと、SF建築の図面が手描きの線で自動生成されます。🎲を押せば別案、「引き直す」で同じ条件の別ドローイング。</p>
+          <p>描画アニメで<b>線が引かれていく過程</b>が見え、線画モードにすれば塗り絵として配れる。凡例、方位、SHEET LOG(ストローク数・パーツ数・作図時間・用紙・画材)まで、図面の作法をきちんと踏んでいます。PNG／高解像度で書き出し可能。</p>
+        </div>
+        <div><h4>HOW / 技術のしくみ</h4>
+          <p>SVGフィルタ(<span class="mono">feTurbulence</span> + displacement)でペン先の揺らぎと紙の滲みを再現。定規で引いた直線ではなく、<b>手が震えた線</b>になっているのが本質です。CADの冷たさを避けるための意匠であり、初期案に「まだ決まっていない」という余白を残す装置でもあります。</p>
+          <p>形状はseedベースの手続き生成。同じseedなら同じ図面が再現され、つまみを1つ変えれば差分だけが変わる——<b>案の比較検討ができる乱数設計</b>です。Canvasへストロークを逐次描画し、高解像度ラスタライズで印刷にも耐えます。</p>
+        </div>
+        <div><h4>WHERE / どこへ効くか</h4>
+          <p>建築の初期スタディ、コンペのイメージ出し、クライアントとの発散フェーズ。<b>「10案見せてください」に数分で応える</b>ための道具です。</p>
+          <p>子ども向けワークショップでは塗り絵として配れる。生成AIの前段にある<b>「大量に出して選ぶ」という設計行為そのもの</b>を、絵の温度を落とさずに自動化しています。</p>
+        </div>
+      </div>
+      <div class="w-meta"><span>SVG FILTER (feTurbulence)</span><span>PROCEDURAL / SEEDED</span><span>CANVAS STROKE ANIM</span><span>PNG / 高解像度書出</span><span>塗り絵モード</span><span class="w-size">139 KB</span></div>
+    </article>
+
+    <!-- 06 -->
+    <article class="work" id="w06">
+      <div class="w-head">
+        <div class="w-num">W—06</div>
+        <div class="w-titles">
+          <h3>FLOW·LAB 3D — 加須工場</h3>
+          <p class="w-en">FACTORY SIMULATION + BIM / MEP</p>
+        </div>
+        <div class="w-tags"><span class="pri">建築</span><span>BIM</span><span>意思決定</span></div>
+      </div>
+      <p class="w-hook">工場のレイアウトを、動かして、測って、干渉まで見る。案の良し悪しが、その場で数字になる。</p>
+      <div class="stage" data-src="works/06-flowlab-3d.html" data-title="FLOW·LAB 3D">
+        <div class="poster" role="button" tabindex="0" aria-label="このデモを読み込んで実行する"><div class="ghost">06</div><div class="play">▶</div><p class="cap">RUN LIVE</p><p class="cap2">設備をドラッグして動かす / 混雑表示 / BIM表示（4MB・読込に時間がかかります）</p></div>
+        <div class="stage-bar"><span class="lbl">LIVE</span><button data-act="reload">再読込</button><a data-act="tab" target="_blank" rel="noopener">別タブ</a><button data-act="full">全画面</button><button data-act="close" class="sp">停止</button></div>
+      </div>
+      <div class="w-cols">
+        <div><h4>WHAT / 何をするもの</h4>
+          <p>敷地全体からライン単位まで踏み込める<b>3D工場シミュレータ</b>。設備をドラッグで移動・回転・複製し、稼働を再生すると人とモノが流れ出します。混雑表示でボトルネックが赤く浮かび、<b>SLP評価指標</b>がレイアウト案を採点します。</p>
+          <p>「基準を記録」して<b>ゴーストで重ねれば</b>改善前後を直接比較できる。生産性分析から改善提案の自動計算、搬入出口の最適化まで。BIM表示に切り替えるとMEP(電気・空調・給排水)の系統が現れ、<b>干渉チェック</b>と系統図を確認できます。図面モードで2D化、配置はJSONで書出・読込。</p>
+        </div>
+        <div><h4>HOW / 技術のしくみ</h4>
+          <p>WebGLの3Dシーン上に、<b>SLP(Systematic Layout Planning)</b>の評価関数を実装。搬送距離／日・動線交差・最長動線・全社の物流工数／日を、<b>設備を動かした瞬間に再計算</b>します(フォークリフト7km/h＋徒歩4km/hで敷地と建屋内を合算)。W—03のBoids的な流動計算が、ここでは<b>人とフォークリフトの動線</b>として働きます。</p>
+          <p>MEPレイヤーはダクト・配管・電路をジオメトリとして持ち、<b>クラッシュ判定</b>で物理的な衝突を列挙。現地写真も同梱され、実測とモデルを突き合わせながら検討できます。</p>
+        </div>
+        <div><h4>WHERE / どこへ効くか</h4>
+          <p>製造業の<b>設備投資判断と施工前の合意形成</b>。生産技術・建築設計・情シス・経営が、同じ画面を見ながら議論するための共通言語になります。</p>
+          <p>従来は専用CAEと専門オペレーターが要った検討を、<b>ブラウザで誰でも触れる</b>形にしたことが要点。決裁者が自分の手で動かして納得できるかどうかが、プロジェクトの速度を決めます。</p>
+        </div>
+      </div>
+      <div class="w-meta"><span>WebGL 3D</span><span>SLP 評価指標（搬送距離・動線交差・物流工数）</span><span>混雑ヒートマップ</span><span>BIM / MEP レイヤー</span><span>干渉チェック</span><span>JSON 入出力</span><span class="w-size">4.0 MB</span></div>
+    </article>
+  </div>
+</section>
+
+<!-- ================= CH.4 体験 ================= -->
+<section class="chapter" id="ch4" style="--a:var(--c-ent)">
+  <div class="wrap">
+    <div class="ch-head">
+      <div><div class="ch-num">04</div><p class="ch-en">ENTERTAINMENT</p></div>
+      <div>
+        <h3 class="ch-title"><small>EXHIBITION / PUBLIC ENGAGEMENT</small>体験にひらき、届ける。</h3>
+        <p class="ch-lede">
+          設計したものは、伝わってはじめて意味を持ちます。政策や技術のメッセージを、来場者が<b>身体で分かる展示</b>に翻訳する章。
+          ここでの発明はコンテンツだけではありません——<b>企画書そのものがインタラクティブになる</b>という提案の形式です。
+          決裁者は「読んで」ではなく「体験して」判断できます。
+        </p>
+      </div>
+    </div>
+
+    <!-- 07 -->
+    <article class="work" id="w07">
+      <div class="w-head">
+        <div class="w-num">W—07</div>
+        <div class="w-titles">
+          <h3>GREEN×EXPO 2027 展示企画</h3>
+          <p class="w-en">実績資料 / 2027 国際園芸博覧会 · 横浜</p>
+        </div>
+        <div class="w-tags"><span class="pri">体験</span><span>行政案件</span><span>実績</span></div>
+      </div>
+      <p class="w-hook">「知られていない」を、触って驚く展示に変える。資料の中で、来場者体験のプロトタイプがそのまま動く。</p>
+      <div class="stage doc" data-src="works/07-green-expo-2027.html" data-title="GREEN×EXPO 2027 展示企画">
+        <div class="poster" role="button" tabindex="0" aria-label="このデモを読み込んで実行する"><div class="ghost">07</div><div class="play">▶</div><p class="cap">RUN LIVE</p><p class="cap2">ハンドルを回す / ◯×クイズ / 蛇口をひねる（11MB・読込に時間がかかります）</p></div>
+        <div class="stage-bar"><span class="lbl">LIVE</span><button data-act="reload">再読込</button><a data-act="tab" target="_blank" rel="noopener">別タブ</a><button data-act="full">全画面</button><button data-act="close" class="sp">停止</button></div>
+      </div>
+      <div class="w-cols">
+        <div><h4>WHAT / 何をするもの</h4>
+          <p>2027年国際園芸博覧会(GREEN×EXPO)へ向けた企画資料です。横浜市の3つの行政区・部局が取り組む脱炭素・資源循環施策を題材に、<b>代理店側の企画立案として体験型の展示什器を設計</b>し、3案件を提案しました。</p>
+          <p><b>① カーボンリサイクル体験ゾーン</b>(鶴見区／CO₂循環の可視化)：ハンドルを回すとCO₂が資源へ変わる循環が動き出す。<br>
+          <b>② クイズ！みなとみらいのリサイクル</b>(みなとみらい21区／脱炭素の取り組み可視化)：◯×クイズで街の取り組みを知る。<br>
+          <b>③ 楽にたくさん水を運んじゃお！</b>(横浜市水道局／水源林保全と省エネ水道システム)：蛇口をひねって、水がどう届くかを体感する。</p>
+        </div>
+        <div><h4>HOW / 技術のしくみ</h4>
+          <p>各ケースに<b>企画コンセプト</b>と<b>素材・仕様</b>を記した通常の提案パートがあり、その隣で<b>実際に触れるデモが動きます</b>。ハンドルは長押しで回り、クイズは採点され、蛇口はひねれば水が出る。</p>
+          <p>資料はHTML1枚。模型写真や図版を内包し、メールで送ってブラウザで開けば、その場で体験が始まります。<b>「こういう展示になります」を説明する代わりに、その展示のミニチュアを渡す</b>——これが提案の速度と精度を変えます。</p>
+        </div>
+        <div><h4>WHERE / どこへ効くか</h4>
+          <p>行政・自治体の広報展示、博覧会、企業パビリオン。エンターテイメントとして成立させながら、<b>脱炭素・水源林保全といった政策メッセージ</b>を確実に届ける形です。</p>
+          <p>行政デザインの入口でもあります。ここで培った「市民に伝わる翻訳」が、次章の都市データダッシュボード(W—08)で<b>行政の内側の意思決定</b>へ折り返していきます。</p>
+        </div>
+      </div>
+      <div class="w-meta"><span>インタラクティブ企画書</span><span>3 CASES</span><span>鶴見区 / MM21 / 横浜市水道局</span><span>体験プロトタイプ同梱</span><span class="w-size">11.4 MB</span></div>
+    </article>
+  </div>
+</section>
+
+<!-- ================= CH.5 行政 ================= -->
+<section class="chapter" id="ch5" style="--a:var(--c-civic)">
+  <div class="wrap">
+    <div class="ch-head">
+      <div><div class="ch-num">05</div><p class="ch-en">PUBLIC DESIGN</p></div>
+      <div>
+        <h3 class="ch-title"><small>URBAN / CIVIC</small>街と制度を、デザインする。</h3>
+        <p class="ch-lede">
+          最終地点は、実在の街です。表現でつくったリアルタイム性、学びで足したモデルの可視化、建築で鍛えた評価と比較——
+          そのすべてが、<b>関係者が同じ画面を見て意思決定するための道具</b>に集約されます。
+          きれいなCGを見せることが目的ではありません。時間とレイヤーを自分の手で操作して、はじめて街は理解できます。
+        </p>
+      </div>
+    </div>
+
+    <!-- 08 -->
+    <article class="work" id="w08">
+      <div class="w-head">
+        <div class="w-num">W—08</div>
+        <div class="w-titles">
+          <h3>羽田イノベーションシティ 3Dダッシュボード</h3>
+          <p class="w-en">HANEDA INNOVATION CITY — 3D URBAN DASHBOARD</p>
+        </div>
+        <div class="w-tags"><span class="pri">行政</span><span>都市データ</span><span>実在エリア</span></div>
+      </div>
+      <p class="w-hook">実在の街を、時間とレイヤーで読む。フロアを剥がし、実測の人流を再生し、2026年のシナリオを重ねる。</p>
+      <div class="stage" data-src="works/08-haneda-dashboard.html" data-title="羽田イノベーションシティ 3Dダッシュボード">
+        <div class="poster" role="button" tabindex="0" aria-label="このデモを読み込んで実行する"><div class="ghost">08</div><div class="play">▶</div><p class="cap">RUN LIVE</p><p class="cap2">レイヤー切替 / 人流リプレイ / 経路検索 / シナリオ比較（13.6MB・読込に時間がかかります）</p></div>
+        <div class="stage-bar"><span class="lbl">LIVE</span><button data-act="reload">再読込</button><a data-act="tab" target="_blank" rel="noopener">別タブ</a><button data-act="full">全画面</button><button data-act="close" class="sp">停止</button></div>
+      </div>
+      <div class="w-cols">
+        <div><h4>WHAT / 何をするもの</h4>
+          <p>羽田イノベーションシティを中心に据えた<b>人流・図面ダッシュボード</b>です。建物はIFC図面から起こしたフロア(B1F〜RF)を持ち、スライダーで<b>フロアを展開して中身を露出</b>できます。壁・ガラスの図面ライン、滞留ヒートマップ(5日間)、バス経路——見たいレイヤーだけを重ねる。</p>
+          <p>時刻を進めると<b>K-fieldの実測位置ログ(2020/9/18–22)による人流がリプレイ</b>されます。周辺は建物点群・LOD1ボリューム・道路網・鉄道の実線形・多摩川と東京湾・空港の滑走路まで含み、<b>新空港線(蒲蒲線)構想</b>を有無で切り替えた経路検索、2026年シナリオ(低・中・高)の指標比較まで行えます。</p>
+        </div>
+        <div><h4>HOW / 技術のしくみ</h4>
+          <p>都市ジオメトリと実測人流データを<b>単一HTML(13.6MB)に内包</b>。外部サーバー・APIキー・タイル配信に依存しないので、閉じたネットワークの庁内環境でもそのまま開けます。行政案件では、この「持ち運べること」が採用可否を左右します。</p>
+          <p>WebGLで描画し、駅構造の階層モデル・路線の高さプロファイル・駅勢圏ヒート(乗降×時間帯)を同一空間に重ねる。<b>W—01で鍛えたGPUパイプライン</b>と<b>W—04の「パラメータを触ると状態が変わる」UI</b>が、そのまま都市スケールへ拡張された構成です。出典(IFC図面／OpenStreetMap／地理院タイル)と、<b>推計値である箇所</b>を画面上に明示しているのも実務資料としての要件。</p>
+        </div>
+        <div><h4>WHERE / どこへ効くか</h4>
+          <p>エリアマネジメント、テナント誘致、交通インフラの投資判断、行政オープンデータの可視化。来訪指数・平均滞在・年間来訪・経済波及といった<b>指標つきで議論できる</b>ため、そのまま合意形成の場に出せます。</p>
+          <p>表現から始まった一連の技術が、最後に<b>街の意思決定の道具</b>になる——このカタログの物語は、ここで一周します。</p>
+        </div>
+      </div>
+      <div class="w-meta"><span>WebGL 3D CITY</span><span>IFC フロアモデル</span><span>人流リプレイ (実測ログ)</span><span>滞留ヒートマップ</span><span>経路検索 / 新空港線構想</span><span>2026 シナリオ比較</span><span>OFFLINE 動作</span><span class="w-size">13.6 MB</span></div>
+    </article>
+  </div>
+</section>
+
+<!-- ================= OUTRO ================= -->
+<section class="outro" id="outro">
+  <div class="wrap">
+    <p class="sec-label">06 — LINEAGE</p>
+    <h2 class="sec">技術の系譜 —— 8作品は、1本の線でつながっている。</h2>
+    <p class="sec-lede">
+      それぞれ独立した作品に見えますが、実際には同じ技術が領域をまたいで受け渡されています。
+      下の表は、その受け渡しの記録です。
+    </p>
+
+    <div class="lineage">
+      <div class="ln" style="--lc:var(--c-expr)">
+        <div class="lk">01 EXPRESSION</div>
+        <div class="lv"><b>場の計算</b>を手に入れる。流体(W—01)・分割(W—02)・群れ(W—03)。毎フレーム更新される状態を、手の動きに応答させる技術の芯。ゼロアロケーションと再現性のある乱数という、実務の性能要件もここで確立。</div>
+      </div>
+      <div class="ln" style="--lc:var(--c-learn)">
+        <div class="lk">02 LEARNING</div>
+        <div class="lv">その場に<b>モデルと検証</b>を足す(W—04)。パラメータを露出させ、メトリクスを並べ、自己診断テストまで内蔵する。「触れる」が「わかる」になった瞬間、作品は教材になる。</div>
+      </div>
+      <div class="ln" style="--lc:var(--c-arch)">
+        <div class="lk">03 ARCHITECTURE</div>
+        <div class="lv"><b>生成と評価</b>のループを設計へ(W—05 / W—06)。案を大量に出す側(手続き生成＋手描きの温度)と、案を数値で採点する側(SLP評価・干渉チェック)。発散と収束が同じブラウザに乗る。</div>
+      </div>
+      <div class="ln" style="--lc:var(--c-ent)">
+        <div class="lk">04 ENTERTAINMENT</div>
+        <div class="lv">設計を<b>身体で分かる体験</b>に翻訳(W—07)。同時に、企画書そのものがインタラクティブになるという提案形式の発明。決裁者は読むのではなく、体験して判断する。</div>
+      </div>
+      <div class="ln" style="--lc:var(--c-civic)">
+        <div class="lk">05 PUBLIC DESIGN</div>
+        <div class="lv">すべてが<b>街の意思決定の道具</b>へ収束(W—08)。GPUパイプライン、パラメータUI、レイヤー比較、そして単一ファイルで持ち運べること。行政の現場で使えるかどうかは、最後にこの「配れること」が決める。</div>
+      </div>
+    </div>
+
+    <h2 class="sec" style="font-size:21px">通底する3つの原則</h2>
+    <div class="threes">
+      <div>
+        <h4>リアルタイムに触れること</h4>
+        <p>説明の前に、手が先に動く。応答が返るまでの時間がゼロに近いほど、人はモデルを信じ、自分で仮説を立て始めます。8作品すべてが、この一点を守っています。</p>
+      </div>
+      <div>
+        <h4>しくみを隠さないこと</h4>
+        <p>数式・パラメータ・評価指標を表に出す。ブラックボックスは感心されますが、信頼はされません。触りながら理由が読めることが、教育でも行政でも採用の条件になります。</p>
+      </div>
+      <div>
+        <h4>1ファイルで配れること</h4>
+        <p>インストール不要、サーバー不要、外部API不要。HTMLを1枚送れば相手のブラウザで動く。この制約を守り抜くことが、学校・自治体・工場という「導入が難しい現場」への最短経路でした。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="fl">
+      <span>WORKS CATALOG — 触れて、わかる。そして、社会に置く。</span>
+      <span>8 WORKS / 5 DOMAINS</span>
+      <span>ART · LEARNING · ARCHITECTURE · ENTERTAINMENT · PUBLIC DESIGN</span>
+    </div>
+    <div class="fl" style="margin-top:14px;opacity:.6">
+      <span>各作品は catalog/works/ 以下にオリジナルのまま収録しています。</span>
+      <span>デモは「RUN LIVE」を押したときだけ読み込まれます。</span>
+    </div>
+  </div>
+</footer>
+
+</main>
+
+<script>
+'use strict';
+
+/* ---------- デモの遅延ロード ---------- */
+document.querySelectorAll('.stage').forEach((stage) => {
+  const src = stage.dataset.src;
+  const title = stage.dataset.title || 'demo';
+  const poster = stage.querySelector('.poster');
+  const bar = stage.querySelector('.stage-bar');
+  const tab = bar.querySelector('[data-act="tab"]');
+  tab.href = src;
+  let frame = null;
+
+  const load = () => {
+    if (frame) return;
+    frame = document.createElement('iframe');
+    frame.src = src;
+    frame.title = title;
+    frame.loading = 'lazy';
+    frame.allow = 'camera; fullscreen; xr-spatial-tracking';
+    frame.setAttribute('allowfullscreen', '');
+    stage.insertBefore(frame, bar);
+    stage.classList.add('live');
+    bar.querySelector('.lbl').textContent = 'LIVE — ' + title.toUpperCase();
+  };
+
+  const unload = () => {
+    if (!frame) return;
+    frame.remove();
+    frame = null;
+    stage.classList.remove('live');
+  };
+
+  poster.addEventListener('click', load);
+  poster.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); load(); }
+  });
+  bar.addEventListener('click', (e) => {
+    const act = e.target.dataset && e.target.dataset.act;
+    if (!act || act === 'tab') return;
+    if (act === 'close') unload();
+    if (act === 'reload' && frame) frame.src = frame.src;
+    if (act === 'full' && frame && frame.requestFullscreen) frame.requestFullscreen();
+  });
+});
+
+/* ---------- 章のスクロール追従 ---------- */
+const links = [...document.querySelectorAll('#rail a.r')];
+const targets = links.map((a) => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const spy = () => {
+  const y = window.scrollY + window.innerHeight * 0.32;
+  let active = -1;
+  targets.forEach((t, i) => { if (t.offsetTop <= y) active = i; });
+  links.forEach((a, i) => a.classList.toggle('on', i === active));
+};
+window.addEventListener('scroll', spy, { passive: true });
+window.addEventListener('resize', spy);
+spy();
+
+/* ---------- HERO: 四分木のフィールド（W—02 への目配せ） ---------- */
+(() => {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const cv = document.getElementById('field');
+  const ctx = cv.getContext('2d');
+  let w = 0, h = 0, dpr = 1;
+
+  const fit = () => {
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    w = cv.clientWidth; h = cv.clientHeight;
+    cv.width = Math.max(1, w * dpr);
+    cv.height = Math.max(1, h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+  fit();
+  addEventListener('resize', fit);
+
+  // 2つのアトラクタ。近いほど深く分割される。
+  const at = [{ x: .34, y: .46, sx: .00023, sy: .00017 }, { x: .72, y: .58, sx: -.00016, sy: .00021 }];
+  let mx = -1, my = -1;
+  cv.addEventListener('pointermove', (e) => {
+    const r = cv.getBoundingClientRect();
+    mx = (e.clientX - r.left) / r.width;
+    my = (e.clientY - r.top) / r.height;
+  });
+  cv.addEventListener('pointerleave', () => { mx = my = -1; });
+
+  const subdivide = (x, y, s, depth, t) => {
+    let energy = 0;
+    const cx = x + s / 2, cy = y + s / 2;
+    for (const a of at) {
+      const dx = (cx - a.x) * 1.7, dy = cy - a.y;
+      energy += 0.055 / (dx * dx + dy * dy + 0.012);
+    }
+    if (mx >= 0) {
+      const dx = (cx - mx) * 1.7, dy = cy - my;
+      energy += 0.09 / (dx * dx + dy * dy + 0.006);
+    }
+    const wobble = 0.5 + 0.5 * Math.sin(t * 0.0004 + cx * 7 + cy * 5);
+    // depth 2 までは無条件に割る。画面全体が「場」として読めるように。
+    const split = depth < 2 || (depth < 6 && s > 0.02 && energy * (0.8 + wobble * 0.5) > 1);
+
+    if (split) {
+      const half = s / 2;
+      subdivide(x, y, half, depth + 1, t);
+      subdivide(x + half, y, half, depth + 1, t);
+      subdivide(x, y + half, half, depth + 1, t);
+      subdivide(x + half, y + half, half, depth + 1, t);
+      return;
+    }
+    const px = x * w, py = y * h, pw = s * w, ph = s * h;
+    const a = Math.min(0.42, 0.07 + depth * 0.05);
+    ctx.strokeStyle = depth >= 4
+      ? 'rgba(243,148,35,' + (a * 0.8).toFixed(3) + ')'
+      : 'rgba(236,233,227,' + (a * 0.3).toFixed(3) + ')';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px + .5, py + .5, pw, ph);
+    if (depth >= 5) {
+      ctx.fillStyle = 'rgba(243,148,35,.035)';
+      ctx.fillRect(px, py, pw, ph);
+    }
+  };
+
+  let raf = 0, last = 0;
+  const draw = (t) => {
+    raf = requestAnimationFrame(draw);
+    if (t - last < 55) return;           // ~18fps。背景に負荷をかけない。
+    last = t;
+    for (const a of at) {
+      a.x += a.sx * 16; a.y += a.sy * 16;
+      if (a.x < .12 || a.x > .88) a.sx *= -1;
+      if (a.y < .16 || a.y > .84) a.sy *= -1;
+    }
+    ctx.clearRect(0, 0, w, h);
+    subdivide(0, 0, 1, 0, t);
+  };
+  raf = requestAnimationFrame(draw);
+
+  // ヒーローが画面外に出たら止める。
+  new IntersectionObserver((es) => {
+    es.forEach((e) => {
+      if (e.isIntersecting && !raf) raf = requestAnimationFrame(draw);
+      else if (!e.isIntersecting && raf) { cancelAnimationFrame(raf); raf = 0; }
+    });
+  }, { threshold: 0 }).observe(cv);
+})();
+</script>
+</body>
+</html>
