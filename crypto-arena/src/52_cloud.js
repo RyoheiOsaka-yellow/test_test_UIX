@@ -122,6 +122,8 @@ function repaintSeatCloud() {
       const f = fanAt(i);
       C.setHex(odFocus < 0 || f.oi === odFocus ? f.org.col : 0x121822);
     }
+    else if (seatMode === 'segment')
+      C.setHex(SEG_STATE.matched && SEG_STATE.matched[i] ? 0x00e5ff : 0x111722);
     else if (seatMode === 'price') C.copy(divC(s.pf || 1));
     else C.copy((i % 101) / 101 < occNow ? LIT : DIM);
     col.setXYZ(i, C.r, C.g, C.b);

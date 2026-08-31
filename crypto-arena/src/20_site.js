@@ -421,9 +421,53 @@ const PCD = { cls: null, y: null, maxY: 1 };
   const pg = new THREE.BufferGeometry();
   pg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
   pg.setAttribute('color', new THREE.Float32BufferAttribute(PC, 3));
-  gPoint.add(new THREE.Points(pg, new THREE.PointsMaterial({
-    size: 1.9, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.92 })));
+  pg.setAttribute('cls', new THREE.Float32BufferAttribute(Float32Array.from(PK), 1));
+  /* 点群専用シェーダ:
+     - クラス別の表示ON/OFF（uMask）
+     - 点サイズ（uSize）と距離減衰
+     - 断面（uClipN・uClipD で半空間をカット）
+     PointsMaterial では per-point のサイズ・可視制御ができないため自前で持つ。 */
+  const pMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uSize: { value: 2.0 }, uAtten: { value: 320.0 },
+      uMask: { value: [1, 1, 1, 1, 1] },
+      uClipN: { value: new THREE.Vector3(0, 0, 0) }, uClipD: { value: 0 },
+      uOpacity: { value: 0.92 },
+    },
+    vertexShader: [
+      'attribute float cls;', 'varying vec3 vCol;', 'varying float vDrop;',
+      'uniform float uSize; uniform float uAtten;',
+      'uniform float uMask[5];',
+      'uniform vec3 uClipN; uniform float uClipD;',
+      'void main() {',
+      '  vCol = color;',
+      '  int ci = int(cls + 0.5);',
+      '  float m = uMask[0];',
+      '  if (ci == 1) m = uMask[1]; else if (ci == 2) m = uMask[2];',
+      '  else if (ci == 3) m = uMask[3]; else if (ci == 4) m = uMask[4];',
+      '  vDrop = m;',
+      '  if (dot(uClipN, position) > uClipD) vDrop = 0.0;',
+      '  vec4 mv = modelViewMatrix * vec4(position, 1.0);',
+      '  gl_PointSize = max(1.0, uSize * (uAtten / max(1.0, -mv.z)));',
+      '  gl_Position = projectionMatrix * mv;',
+      '  if (vDrop < 0.5) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);',
+      '}'].join('\n'),
+    fragmentShader: [
+      'varying vec3 vCol; varying float vDrop; uniform float uOpacity;',
+      'void main() {',
+      '  if (vDrop < 0.5) discard;',
+      '  vec2 d = gl_PointCoord - vec2(0.5);',
+      '  if (dot(d, d) > 0.25) discard;',
+      '  gl_FragColor = vec4(vCol, uOpacity);',
+      '}'].join('\n'),
+    vertexColors: true, transparent: true, depthWrite: true,
+  });
+  const pts = new THREE.Points(pg, pMat);
+  pts.frustumCulled = false;
+  gPoint.add(pts);
   gPoint.userData.geo = pg;
+  gPoint.userData.mat = pMat;
+  gPoint.userData.count = P.length / 3;
 
   const wg = new THREE.BufferGeometry();
   wg.setAttribute('position', new THREE.Float32BufferAttribute(W, 3));
@@ -435,6 +479,24 @@ const PCD = { cls: null, y: null, maxY: 1 };
   siteStats.points = P.length / 3;
   siteStats.segs = W.length / 6;
 })();
+
+/* ---- 点群ツール: クラス表示 / 点サイズ / 断面 / 開示アニメーション ---- */
+const PCTOOL = { mask: [1, 1, 1, 1, 1], size: 2.0, clipAxis: 'off', clipPos: 0, reveal: 1 };
+function pcApply() {
+  const m = gPoint.userData.mat;
+  if (!m) return;
+  m.uniforms.uMask.value = PCTOOL.mask.slice();
+  m.uniforms.uSize.value = PCTOOL.size;
+  const N = new THREE.Vector3(0, 0, 0);
+  let d = 0;
+  if (PCTOOL.clipAxis === 'x') { N.set(1, 0, 0); d = ARENA_C.x + PCTOOL.clipPos; }
+  else if (PCTOOL.clipAxis === 'z') { N.set(0, 0, 1); d = ARENA_C.z + PCTOOL.clipPos; }
+  else if (PCTOOL.clipAxis === 'y') { N.set(0, 1, 0); d = PCTOOL.clipPos; }
+  m.uniforms.uClipN.value.copy(N);
+  m.uniforms.uClipD.value = d;
+  const g = gPoint.userData.geo;
+  if (g) g.setDrawRange(0, Math.round(gPoint.userData.count * PCTOOL.reveal));
+}
 
 /* ---- 点群の着色モード（分類 / 高さ / 疑似反射強度） ---- */
 function setPointColorMode(mode) {

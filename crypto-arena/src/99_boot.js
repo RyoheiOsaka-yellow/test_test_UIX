@@ -3,9 +3,15 @@ setLoad(94, '1to1 データを生成中');
 buildSnapshot();
 repaintSeats();
 setLoad(97, 'シーンを初期化中');
-setViewMode('solid');
+/* 起動は点群から。スキャンが読み込まれるように点が立ち上がり、
+   カメラが引きからアリーナへ寄っていく。 */
+setViewMode('point');
+setPointColorMode('class');
 setFloorFormat(GAMES[curGame].fmt);
 setLevel('site', false);
+setCam(ARENA_C.x, 60, ARENA_C.z, 2600, -1.35, 0.62);
+flyTo(ARENA_C.x, 20, ARENA_C.z, 780, -0.62, 0.40);
+startReveal();
 onTick();
 
 let last = performance.now();
@@ -27,7 +33,8 @@ function loop(now) {
 applyCam(0);
 requestAnimationFrame(loop);
 setLoad(100, '準備完了');
-toast('<b>Crypto.com Arena デジタルツイン</b> — L0で表示モードを切替、アリーナをクリックで L2 内部へ。' +
-      '座席をクリックすると <b>個客プロファイル</b>が開きます', 6000);
+toast('<b>Crypto.com Arena デジタルツイン</b> — 起動時は <b>点群</b>（' +
+      fmt(siteStats.points) + '点・LAS分類）。左パネルで実体/線画/青焼きに切替、' +
+      'アリーナをクリックで内部へ。座席クリックで<b>個客プロファイル</b>が開きます', 7000);
 setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 260);
 window.__ready = true;

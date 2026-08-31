@@ -7,6 +7,7 @@ const SEAT_MODES = [
   ['crowd', '観客', '在館率カーブに連動した実人数表示', 0x9aa6bd],
   ['seg',   'セグメント', 'シーズン券/単券/二次流通/州外 …', 0xfdb927],
   ['od',    '来場OD', 'どの出発地・交通手段から来た席か', 0x00a8ff],
+  ['segment', '抽出セグメント', 'セグメントビルダーの条件に合う席', 0x00e5ff],
   ['ltv',   'LTV', '個客生涯価値のヒートマップ', 0x3ddc84],
   ['churn', '離反リスク', '更新確率が低い層を席上で特定', 0xff5b4d],
   ['occ',   '販売率', '区画×列の販売率', 0x4da3ff],
@@ -52,7 +53,35 @@ function renderSitePanel() {
           hex(PC_CLASS_COL[i]) + '"></div>' + n + '</div>').join('') + '</div>' : '') +
       '<div class="hint" style="margin-top:6px">点群は <b>' + fmt(siteStats.points) +
       ' 点</b>。LASの classification 相当で地表/建物（低中層・高層）/鉄道/アリーナに分類し、' +
-      '高さ・疑似反射強度でも着色できます。</div>' : '') +
+      '高さ・疑似反射強度でも着色できます。</div>' +
+
+      '<div class="sec-t" style="margin-top:10px">クラス表示</div>' +
+      PC_CLASS_NAME.map((n, i) =>
+        '<label class="ck-row"><input type="checkbox" data-pck="' + i + '"' +
+        (PCTOOL.mask[i] ? ' checked' : '') + '>' +
+        '<span style="width:9px;height:9px;border-radius:2px;display:inline-block;background:' +
+        hex(PC_CLASS_COL[i]) + '"></span>' + n + '</label>').join('') +
+
+      '<div class="sec-t" style="margin-top:9px">点サイズ <b style="color:var(--acc)">' +
+      PCTOOL.size.toFixed(1) + '</b></div>' +
+      '<input type="range" id="pcsize" min="0.6" max="6" step="0.2" value="' + PCTOOL.size +
+      '" style="width:100%;accent-color:var(--acc)">' +
+
+      '<div class="sec-t" style="margin-top:9px">断面（クリッピング）</div>' +
+      '<div class="row-btns" id="pcclip">' +
+      [['off', 'OFF'], ['x', 'X 断面'], ['z', 'Z 断面'], ['y', '水平断面']].map(a =>
+        '<button class="chip sm' + (PCTOOL.clipAxis === a[0] ? ' active' : '') +
+        '" data-pcc="' + a[0] + '">' + a[1] + '</button>').join('') + '</div>' +
+      (PCTOOL.clipAxis !== 'off' ?
+        '<input type="range" id="pcclippos" min="' + (PCTOOL.clipAxis === 'y' ? 0 : -2000) +
+        '" max="' + (PCTOOL.clipAxis === 'y' ? 340 : 2000) + '" step="10" value="' + PCTOOL.clipPos +
+        '" style="width:100%;margin-top:6px;accent-color:var(--acc)">' +
+        '<div class="hint" style="margin-top:5px">切断位置 <b>' + fmt(PCTOOL.clipPos) +
+        ' m</b>（アリーナ中心基準）。街区の断面や、建物の階層構造を見るのに使います。</div>' : '') +
+
+      '<div class="row-btns" style="margin-top:9px">' +
+      '<button class="chip' + (pcTools.measure ? ' active' : '') + '" id="pcmeasure">📏 計測</button>' +
+      '<button class="chip" id="pcreveal">▶ 開示アニメ</button></div>' : '') +
     '<div class="hint" style="margin-top:7px">実体 / <b>点描</b>（外形を等間隔サンプリングした擬似点群） / ' +
     '線画 / <b>青焼き</b>（図面表現）を切り替え。街区とアリーナの関係を、' +
     '見せたい相手に応じた表現で提示できます。</div></div>' +
@@ -160,6 +189,26 @@ function renderSitePanel() {
 
   pb.querySelectorAll('[data-vm]').forEach(b => b.onclick = () => setViewMode(b.dataset.vm));
   pb.querySelectorAll('[data-pcm]').forEach(b => b.onclick = () => setPointColorMode(b.dataset.pcm));
+  pb.querySelectorAll('[data-pck]').forEach(c => c.onchange = () => {
+    PCTOOL.mask[+c.dataset.pck] = c.checked ? 1 : 0; pcApply();
+  });
+  pb.querySelectorAll('[data-pcc]').forEach(b => b.onclick = () => {
+    PCTOOL.clipAxis = b.dataset.pcc;
+    if (PCTOOL.clipAxis === 'y') PCTOOL.clipPos = 120;
+    else PCTOOL.clipPos = 0;
+    pcApply(); renderPanel();
+  });
+  const sz = document.getElementById('pcsize');
+  if (sz) sz.oninput = () => {
+    PCTOOL.size = +sz.value; pcApply();
+    sz.previousElementSibling.querySelector('b').textContent = PCTOOL.size.toFixed(1);
+  };
+  const cp = document.getElementById('pcclippos');
+  if (cp) cp.oninput = () => { PCTOOL.clipPos = +cp.value; pcApply(); };
+  const mb = document.getElementById('pcmeasure');
+  if (mb) mb.onclick = () => { setMeasure(!pcTools.measure); renderPanel(); };
+  const rv = document.getElementById('pcreveal');
+  if (rv) rv.onclick = () => startReveal();
   const tf = document.getElementById('tg-flow');
   if (tf) tf.onclick = () => { flowState.on = !flowState.on; renderPanel(); };
   const tr = document.getElementById('tg-route');
@@ -348,6 +397,7 @@ function renderArenaPanel() {
     '<div class="sec"><div class="sec-t"><b>ツール</b></div>' +
     '<button class="tool-btn" id="open-2d" style="margin-bottom:6px">🗺 2D 席図を開く</button>' +
     '<button class="tool-btn" id="open-board" style="margin-bottom:6px">📊 分析ボード（媒体・セグメント・価格）</button>' +
+    '<button class="tool-btn" id="open-seg" style="margin-bottom:6px">🎯 セグメントビルダー & キャンペーン試算</button>' +
     '<button class="tool-btn" id="open-journey" style="margin-bottom:6px">🚶 個客ジャーニー再生</button>' +
     '<label class="tool-btn" style="display:block;text-align:center">📥 tickets.csv を読み込む' +
     '<input type="file" id="csv" accept=".csv" style="display:none"></label></div>' +
@@ -394,6 +444,7 @@ function renderArenaPanel() {
   const q = id => document.getElementById(id);
   if (q('open-2d')) q('open-2d').onclick = open2D;
   if (q('open-board')) q('open-board').onclick = () => openBoard('media');
+  if (q('open-seg')) q('open-seg').onclick = openSeg;
   if (q('open-journey')) q('open-journey').onclick = startJourney;
   if (q('csv')) q('csv').onchange = e => {
     const f = e.target.files[0]; if (!f) return;

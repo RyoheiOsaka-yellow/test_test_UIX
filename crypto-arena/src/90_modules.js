@@ -6,7 +6,7 @@
 /* ================= 2D 席図（3Dと双方向連動） ================= */
 const m2 = document.getElementById('m2'), m2cv = document.getElementById('m2-cv');
 let m2ctx = null, m2geo = null;
-const M2_MODES = [['seg', 'セグメント'], ['od', '来場OD'], ['ltv', 'LTV'], ['churn', '離反リスク'],
+const M2_MODES = [['seg', 'セグメント'], ['segment', '抽出セグメント'], ['od', '来場OD'], ['ltv', 'LTV'], ['churn', '離反リスク'],
                   ['occ', '販売率'], ['cat', '席種'], ['exp', '露出'], ['grade', '視認等級']];
 
 function open2D() {
@@ -37,6 +37,8 @@ function seatColor2D(i) {
   if (seatMode === 'exp') return '#' + heatC(expBoard < 0 ? s.exp
     : clamp(SEAT.expB[expBoard * SEAT.list.length + i] / SEAT.maxB[expBoard], 0, 1)).getHexString();
   if (seatMode === 'grade') return hex(GRADE_C[SEAT.grade[Math.max(0, expBoard) * SEAT.list.length + i]]);
+  if (seatMode === 'segment')
+    return SEG_STATE.matched && SEG_STATE.matched[i] ? '#00e5ff' : '#151b26';
   if (seatMode === 'od') {
     const f = fanAt(i);
     return odFocus < 0 || f.oi === odFocus ? hex(f.org.col) : '#1a2030';

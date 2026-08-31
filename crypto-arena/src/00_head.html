@@ -161,6 +161,17 @@ canvas{display:block}
 #m2-cv{flex:1;border-radius:10px;background:#0b0f19;border:1px solid var(--line);cursor:crosshair}
 #m2-ft{display:flex;gap:10px;align-items:center;font-size:10.5px;color:var(--sub);flex-wrap:wrap}
 
+/* ===== セグメントビルダー ===== */
+#segb{position:fixed;inset:0;background:rgba(4,6,11,.9);z-index:46;display:none;
+  align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+#segb-box{background:var(--panel);border:1px solid var(--acc);border-radius:14px;padding:16px;
+  width:min(1240px,96vw);height:min(860px,94vh);display:flex;flex-direction:column;gap:10px;overflow:hidden}
+#segb-hd{display:flex;align-items:center;gap:12px}
+#segb-hd .t{font-size:14px;font-weight:700;color:var(--acc)}
+#segb-body{flex:1;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
+#segb-body::-webkit-scrollbar{width:6px}
+#segb-body::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+
 /* ===== 分析ボード ===== */
 #board{position:fixed;inset:0;background:rgba(4,6,11,.9);z-index:45;display:none;
   align-items:center;justify-content:center;backdrop-filter:blur(4px)}

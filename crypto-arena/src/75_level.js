@@ -109,6 +109,11 @@ addEventListener('keydown', e => {
 /* ---- クリック: サイトでは施設、ボウルでは座席 → 個客カード ---- */
 el.addEventListener('click', e => {
   if (moved > 6) return;
+  if (pcTools.measure && level !== 'arena') {          // 計測モードは他の選択に優先する
+    const p = measurePick(e);
+    if (p) measureAdd(p);
+    return;
+  }
   if (level === 'arena') {
     if (SEAT.mesh) {
       const h = hit(e, [SEAT.mesh]);

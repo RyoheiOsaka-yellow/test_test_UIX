@@ -146,6 +146,9 @@ function repaintSeats() {
       const f = fanAt(i);
       C.setHex(odFocus < 0 || f.oi === odFocus ? f.org.col : 0x1a2030);
     }
+    else if (seatMode === 'segment') {
+      C.setHex(SEG_STATE.matched && SEG_STATE.matched[i] ? 0x00e5ff : 0x151b26);
+    }
     else if (seatMode === 'price') C.copy(divC(s.pf || 1));
     else C.setHex(0x232a3a);
     SEAT.mesh.setColorAt(i, C);
