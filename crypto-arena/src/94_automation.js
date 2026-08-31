@@ -113,6 +113,16 @@ const JOURNEYS = [
     why: '良席の空きを、既に価値を感じている層へ先出しする' },
 ];
 
+/* 既定シナリオにも対照群を必ず置く。ホールドアウトが無いと
+   「配信したから起きた分」を切り出せず、効果の数字が根拠を失う。 */
+for (const J of JOURNEYS) {
+  if (J.holdout === undefined) J.holdout = 0.10;
+  if (J.ab === undefined) J.ab = false;
+  if (J.abShare === undefined) J.abShare = 0.5;
+  if (J.chB === undefined) J.chB = 'EMAIL';
+  if (J.offerB === undefined) J.offerB = J.offer;
+}
+
 /* --- 発火時刻モデル（分・当日タイムライン） --- */
 function fireTime(trig, f, s, i) {
   const j = (hrand(i, 0x77 + trig.length) - 0.5);
@@ -139,7 +149,7 @@ function buildAutomation() {
   AUTO.sched = []; AUTO.cursor = 0; AUTO.log = []; AUTO.byJ = {}; AUTO.batch = {};
   AUTO.flash = new Float32Array(N);
   AUTO.seatCount = new Uint8Array(N);
-  for (const J of JOURNEYS) AUTO.byJ[J.id] = { sent: 0, cv: 0, rev: 0, cost: 0, aud: 0 };
+  for (const J of JOURNEYS) AUTO.byJ[J.id] = { sent: 0, cv: 0, rev: 0, cost: 0, aud: 0, hold: 0 };
 
   for (let i = 0; i < N; i++) {
     if (!SNAP.sold[i]) continue;
@@ -148,10 +158,18 @@ function buildAutomation() {
     for (const J of JOURNEYS) {
       if (!J.on) continue;
       let ok = false;
-      try { ok = J.cond(fx, s); } catch (e) { ok = false; }
+      try {
+        ok = J.cond ? J.cond(fx, s)
+           : (J.f && typeof filterMatch === 'function' ? filterMatch(J.f, f, s) : false);
+      } catch (e) { ok = false; }
       if (!ok) continue;
       AUTO.byJ[J.id].aud++;
       AUTO.seatCount[i]++;
+      /* ホールドアウト（対照群）は配信しない。効果測定のために母数だけ数える */
+      if (J.holdout > 0 && hrand(i, 0x9e3d + J.id.length * 31) < J.holdout) {
+        AUTO.byJ[J.id].hold = (AUTO.byJ[J.id].hold || 0) + 1;
+        continue;
+      }
       const t = fireTime(J.trig, f, s, i);
       if (t == null) { AUTO.batch[J.id] = (AUTO.batch[J.id] || 0) + 1; continue; }
       AUTO.sched.push({ t, i, j: J.id });
@@ -172,7 +190,7 @@ function computeAutoKpi() {
     const act = NBA_ACTIONS.find(a => a.id === J.offer) || NBA_ACTIONS[0];
     const respC = clamp((OFFER_RESP[J.offer] || 0.08) * C.mult, 0, 0.85);
     const respT = clamp(respC * (1 + act.up), 0, 0.9);
-    const reach = B.aud * C.deliver;
+    const reach = Math.max(0, B.aud - (B.hold || 0)) * C.deliver;
     /* 増分（施策 − コントロール）だけを成果に計上する */
     B.inc = reach * (respT - respC);
     B.value = OFFER_VALUE[J.offer] ? OFFER_VALUE[J.offer](AGG.kpi.sold

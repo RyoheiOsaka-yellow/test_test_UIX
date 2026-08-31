@@ -150,6 +150,10 @@ canvas{display:block}
 .fc-nba .h{font-size:9.5px;letter-spacing:.12em;color:var(--acc);font-weight:700}
 .fc-nba .b{font-size:11.5px;margin-top:3px;line-height:1.5}
 .fc-nba .u{font-size:10px;color:var(--gold);margin-top:4px;font-family:var(--mono)}
+.fc-tl{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 3px 0;
+  margin-top:2px}
+.fc-lg{display:flex;gap:9px;flex-wrap:wrap;font-size:9px;color:var(--sub);margin-top:5px}
+.fc-lg i{width:7px;height:7px;border-radius:2px;display:inline-block;margin-right:3px}
 
 /* ===== 2D席図モーダル ===== */
 #m2{position:fixed;inset:0;background:rgba(4,6,11,.9);z-index:45;display:none;
@@ -160,6 +164,53 @@ canvas{display:block}
 #m2-hd .t{font-size:13px;font-weight:700;color:var(--acc)}
 #m2-cv{flex:1;border-radius:10px;background:#0b0f19;border:1px solid var(--line);cursor:crosshair}
 #m2-ft{display:flex;gap:10px;align-items:center;font-size:10.5px;color:var(--sub);flex-wrap:wrap}
+
+/* ===== ジャーニービルダー ===== */
+#jb{position:fixed;inset:0;background:rgba(4,6,11,.92);z-index:47;display:none;
+  align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+#jb-box{background:var(--panel);border:1px solid var(--purple);border-radius:14px;padding:16px;
+  width:min(1180px,96vw);height:min(840px,94vh);display:flex;flex-direction:column;gap:10px;overflow:hidden}
+#jb-hd{display:flex;align-items:center;gap:12px}
+#jb-hd .t{font-size:14px;font-weight:700;color:var(--purple)}
+#jb-body{flex:1;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
+#jb-body::-webkit-scrollbar{width:6px}
+#jb-body::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.jb-in{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+  border-radius:7px;padding:7px 9px;font-size:11.5px;font-family:var(--jp);resize:vertical}
+.jb-in:focus{outline:none;border-color:var(--acc)}
+.ap-new{float:right;background:var(--panel2);border:1px solid var(--purple);color:var(--purple);
+  border-radius:14px;padding:2px 10px;font-size:10px;cursor:pointer;font-family:var(--jp)}
+.ap-new:hover{background:rgba(138,92,196,.16)}
+.ap-edit{margin-top:5px;background:transparent;border:1px solid var(--line);color:var(--sub);
+  border-radius:6px;padding:2px 9px;font-size:9.5px;cursor:pointer;font-family:var(--jp)}
+.ap-edit:hover{border-color:var(--acc);color:var(--acc)}
+
+/* ===== 席視点 HUD ===== */
+#pov-hud{position:fixed;inset:0;z-index:29;pointer-events:none;display:none}
+#pov-hud::before{content:'';position:absolute;inset:0;pointer-events:none;
+  box-shadow:inset 0 0 180px rgba(0,0,0,.55)}
+.pv-x{position:absolute;top:64px;left:50%;transform:translateX(-50%);pointer-events:auto;
+  background:rgba(17,22,34,.94);border:1px solid var(--acc);color:var(--acc);border-radius:20px;
+  padding:7px 18px;font-size:11.5px;cursor:pointer;letter-spacing:.04em}
+.pv-x:hover{background:rgba(0,194,255,.14)}
+.pv-card{position:absolute;right:14px;top:64px;width:302px;pointer-events:auto;
+  background:rgba(17,22,34,.95);border:1px solid var(--line);border-radius:12px;padding:12px;
+  backdrop-filter:blur(8px)}
+.pv-t{font-family:var(--mono);font-size:16px;color:var(--acc);letter-spacing:.03em}
+.pv-s{font-size:10.5px;color:var(--sub);margin-top:3px}
+.pv-s b{color:var(--gold)}
+.pv-g{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}
+.pv-g div{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:6px 8px}
+.pv-g b{font-family:var(--mono);font-size:16px;color:var(--txt);display:block}
+.pv-g span{font-size:9px;color:var(--sub)}
+.pv-h{font-size:9.5px;letter-spacing:.12em;color:var(--sub);font-weight:700;margin:9px 0 5px}
+.pv-b{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--sub);margin-bottom:3px}
+.pv-b span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-b i{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.pv-b em{font-style:normal;font-family:var(--mono);color:var(--txt);width:14px;text-align:right}
+.pv-f{font-size:10.5px;color:var(--sub);line-height:1.7}
+.pv-n{font-size:9.5px;color:#5f6b83;line-height:1.6;margin-top:9px;border-top:1px solid var(--line);
+  padding-top:7px}
 
 /* ===== オートメーション・コンソール ===== */
 #autopage{position:fixed;top:52px;left:0;right:0;bottom:62px;background:rgba(8,11,18,.97);
@@ -377,7 +428,15 @@ function primeInstanceColor(mesh, n) {
 /* ---- 軌道カメラ（ターゲット注視 / 慣性なし・確定的） ---- */
 const cam = { tx: 0, ty: 0, tz: 0, dist: 1500, yaw: -0.62, pitch: 0.72,
               ttx: 0, tty: 0, ttz: 0, tdist: 1500, tyaw: -0.62, tpitch: 0.72, fly: 0 };
+/* 席視点（POV）: 軌道カメラを一時的にバイパスして、座席の目線に置く */
+cam.pov = null;
 function applyCam(k) {
+  if (cam.pov) {
+    const P = cam.pov;
+    camera.position.set(P.x, P.y, P.z);
+    camera.lookAt(P.tx, P.ty, P.tz);
+    return;
+  }
   if (k) {
     cam.tx = lerp(cam.tx, cam.ttx, k); cam.ty = lerp(cam.ty, cam.tty, k);
     cam.tz = lerp(cam.tz, cam.ttz, k); cam.dist = lerp(cam.dist, cam.tdist, k);
@@ -4136,7 +4195,7 @@ addEventListener('keydown', e => {
 
 /* ---- クリック: サイトでは施設、ボウルでは座席 → 個客カード ---- */
 el.addEventListener('click', e => {
-  if (moved > 6) return;
+  if (moved > 6 || POV.on) return;
   if (pcTools.measure && level !== 'arena') {          // 計測モードは他の選択に優先する
     const p = measurePick(e);
     if (p) measureAdd(p);
@@ -4644,6 +4703,61 @@ function renderArenaPanel() {
   };
 }
 
+
+/* ---- 個客の直近12ヶ月ジャーニー（来場・接触・CV・更新見込の推移） ---- */
+const MON = ['9', '10', '11', '12', '1', '2', '3', '4', '5', '6', '7', '8'];
+function fanTimelineSVG(i, f) {
+  const W = 292, H = 92, PADL = 4, PADR = 4, top = 12, base = H - 22;
+  const cw = (W - PADL - PADR) / 12;
+  /* NBAシーズン（10〜4月）に来場が集中するよう配分する */
+  const season = [0.02, 0.13, 0.15, 0.14, 0.14, 0.13, 0.13, 0.10, 0.03, 0.01, 0.01, 0.01];
+  const visits = new Array(12).fill(0);
+  let left = f.gamesLtm;
+  for (let m = 0; m < 12 && left > 0; m++) {
+    const want = Math.round(f.gamesLtm * season[m] + (hrand(i, 900 + m) - 0.5) * 1.2);
+    const v = clamp(want, 0, left);
+    visits[m] = v; left -= v;
+  }
+  if (left > 0) visits[11] += left;
+  const mx = Math.max(1, ...visits);
+  /* 接触本数はオートメーションの実績、CVは反応率から決定的にロール */
+  const touches = AUTO.seatCount ? AUTO.seatCount[i] : 0;
+  const parts = [];
+  parts.push('<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">');
+  /* 来場バー */
+  for (let m = 0; m < 12; m++) {
+    const x = PADL + m * cw, h = visits[m] / mx * (base - top);
+    parts.push('<rect x="' + (x + 2).toFixed(1) + '" y="' + (base - h).toFixed(1) +
+      '" width="' + (cw - 4).toFixed(1) + '" height="' + h.toFixed(1) +
+      '" rx="1.5" fill="' + (visits[m] ? '#fdb927' : '#1c2130') + '" opacity="' +
+      (visits[m] ? 0.85 : 1) + '"/>');
+    parts.push('<text x="' + (x + cw / 2).toFixed(1) + '" y="' + (H - 9) +
+      '" fill="#5f6b83" font-size="8" text-anchor="middle">' + MON[m] + '</text>');
+    if (visits[m]) parts.push('<text x="' + (x + cw / 2).toFixed(1) + '" y="' +
+      (base - h - 2.5).toFixed(1) + '" fill="#fdb927" font-size="7.5" text-anchor="middle">' +
+      visits[m] + '</text>');
+  }
+  /* 更新見込の推移（体験と接触で少しずつ変わる想定） */
+  const pts = [];
+  for (let m = 0; m < 12; m++) {
+    const drift = (visits[m] ? 0.035 : -0.018) + (m < 6 ? 0.004 : -0.004);
+    const v = clamp((1 - f.churn) + drift * (11 - m) - 0.02 * (hrand(i, 800 + m) - 0.5), 0.03, 0.99);
+    pts.push((PADL + m * cw + cw / 2).toFixed(1) + ',' + (top + (1 - v) * (base - top)).toFixed(1));
+  }
+  parts.push('<polyline points="' + pts.join(' ') + '" fill="none" stroke="#3ddc84" ' +
+    'stroke-width="1.4" opacity="0.9"/>');
+  /* 接触マーカー（直近3ヶ月に集中） */
+  for (let k = 0; k < Math.min(touches, 8); k++) {
+    const m = 9 + (k % 3);
+    const x = PADL + m * cw + cw / 2 + ((k / 3 | 0) - 1) * 3.4;
+    parts.push('<circle cx="' + x.toFixed(1) + '" cy="' + (top - 5) + '" r="2.1" fill="#00c2ff"/>');
+  }
+  parts.push('<line x1="0" y1="' + base + '" x2="' + W + '" y2="' + base +
+    '" stroke="#28324a" stroke-width="1"/>');
+  parts.push('</svg>');
+  return parts.join('');
+}
+
 /* ================= 個客カード ================= */
 const fanCard = document.getElementById('fan-card');
 const hideFanCard = () => { fanCard.style.display = 'none'; selSeat = -1; };
@@ -4705,13 +4819,25 @@ function showFanCard(i) {
         '<div class="bar"><i style="width:' + (x.w * 100).toFixed(0) + '%;background:' +
         hex(GRADE_C[x.g]) + '"></i></div><b>' + gradeName[x.g] + '</b></div>').join('')
         : '<div style="font-size:10px;color:var(--sub)">有効な視認媒体なし</div>') +
+      '<div class="sec-t" style="margin-top:10px">直近12ヶ月のジャーニー</div>' +
+      '<div class="fc-tl">' + fanTimelineSVG(i, f) + '</div>' +
+      '<div class="fc-lg">' +
+        '<span><i style="background:#fdb927"></i>来場（計 ' + f.gamesLtm + '）</span>' +
+        '<span><i style="background:#3ddc84"></i>更新見込の推移</span>' +
+        '<span><i style="background:#00c2ff"></i>接触 ' +
+          (AUTO.seatCount ? AUTO.seatCount[i] : 0) + '本</span>' +
+      '</div>' +
       '<div class="fc-nba"><div class="h">NEXT BEST ACTION</div>' +
       '<div class="b">' + f.nba.t + '<br><span style="color:var(--sub);font-size:10.5px">' +
       f.nba.d(f.seg) + '</span></div>' +
       '<div class="u">期待CVR上振れ +' + (f.nba.up * 100).toFixed(0) + '%　' +
       '想定増分 ' + usd(Math.round(f.ltv * f.nba.up * 0.16)) + ' / 人</div></div>';
   }
+  fanCard.innerHTML += '<button class="tool-btn" id="fc-pov" style="margin-top:9px">' +
+    '👁 この席から見る（席視点カメラ）</button>';
   fanCard.style.display = 'block';
+  const pv = document.getElementById('fc-pov');
+  if (pv) pv.onclick = () => enterPOV(i);
   const x = document.getElementById('fc-x');
   if (x) x.onclick = hideFanCard;
   if (typeof draw2D === 'function') draw2D();
@@ -5450,7 +5576,9 @@ function renderSeg() {
       (c.respC * 100).toFixed(1) + '%</b><br>' +
       '施策反応率 = コントロール × (1 + NBA上振れ <b>+' + (c.act.up * 100).toFixed(0) + '%</b>) = <b>' +
       (c.respT * 100).toFixed(1) + '%</b><br>' +
-      '評価は<b>増分（施策 − コントロール）</b>のみ。売上を丸ごと施策の成果にしません。</div>' +
+      '評価は<b>増分（施策 − コントロール）</b>のみ。売上を丸ごと施策の成果にしません。<br>' +
+      '<span style="color:var(--sub)">※ここでのコントロールは「同じチャネルで最適化なしのオファーを送った場合」。' +
+      'ジャーニービルダーの<b>ホールドアウトは一切配信しない群</b>で、比較の基準が異なります。</span></div>' +
       '</div>' +
     '<div>' + tbl(['ファネル', '人数 / 金額'], [
       ['対象人数', fmt(k.n)],
@@ -5661,6 +5789,16 @@ const JOURNEYS = [
     why: '良席の空きを、既に価値を感じている層へ先出しする' },
 ];
 
+/* 既定シナリオにも対照群を必ず置く。ホールドアウトが無いと
+   「配信したから起きた分」を切り出せず、効果の数字が根拠を失う。 */
+for (const J of JOURNEYS) {
+  if (J.holdout === undefined) J.holdout = 0.10;
+  if (J.ab === undefined) J.ab = false;
+  if (J.abShare === undefined) J.abShare = 0.5;
+  if (J.chB === undefined) J.chB = 'EMAIL';
+  if (J.offerB === undefined) J.offerB = J.offer;
+}
+
 /* --- 発火時刻モデル（分・当日タイムライン） --- */
 function fireTime(trig, f, s, i) {
   const j = (hrand(i, 0x77 + trig.length) - 0.5);
@@ -5687,7 +5825,7 @@ function buildAutomation() {
   AUTO.sched = []; AUTO.cursor = 0; AUTO.log = []; AUTO.byJ = {}; AUTO.batch = {};
   AUTO.flash = new Float32Array(N);
   AUTO.seatCount = new Uint8Array(N);
-  for (const J of JOURNEYS) AUTO.byJ[J.id] = { sent: 0, cv: 0, rev: 0, cost: 0, aud: 0 };
+  for (const J of JOURNEYS) AUTO.byJ[J.id] = { sent: 0, cv: 0, rev: 0, cost: 0, aud: 0, hold: 0 };
 
   for (let i = 0; i < N; i++) {
     if (!SNAP.sold[i]) continue;
@@ -5696,10 +5834,18 @@ function buildAutomation() {
     for (const J of JOURNEYS) {
       if (!J.on) continue;
       let ok = false;
-      try { ok = J.cond(fx, s); } catch (e) { ok = false; }
+      try {
+        ok = J.cond ? J.cond(fx, s)
+           : (J.f && typeof filterMatch === 'function' ? filterMatch(J.f, f, s) : false);
+      } catch (e) { ok = false; }
       if (!ok) continue;
       AUTO.byJ[J.id].aud++;
       AUTO.seatCount[i]++;
+      /* ホールドアウト（対照群）は配信しない。効果測定のために母数だけ数える */
+      if (J.holdout > 0 && hrand(i, 0x9e3d + J.id.length * 31) < J.holdout) {
+        AUTO.byJ[J.id].hold = (AUTO.byJ[J.id].hold || 0) + 1;
+        continue;
+      }
       const t = fireTime(J.trig, f, s, i);
       if (t == null) { AUTO.batch[J.id] = (AUTO.batch[J.id] || 0) + 1; continue; }
       AUTO.sched.push({ t, i, j: J.id });
@@ -5720,7 +5866,7 @@ function computeAutoKpi() {
     const act = NBA_ACTIONS.find(a => a.id === J.offer) || NBA_ACTIONS[0];
     const respC = clamp((OFFER_RESP[J.offer] || 0.08) * C.mult, 0, 0.85);
     const respT = clamp(respC * (1 + act.up), 0, 0.9);
-    const reach = B.aud * C.deliver;
+    const reach = Math.max(0, B.aud - (B.hold || 0)) * C.deliver;
     /* 増分（施策 − コントロール）だけを成果に計上する */
     B.inc = reach * (respT - respC);
     B.value = OFFER_VALUE[J.offer] ? OFFER_VALUE[J.offer](AGG.kpi.sold
@@ -5786,6 +5932,325 @@ TICK_HOOKS.push(function () {
   autoStep(timeState.min);
   if (AUTO.page) renderAutoConsole();
 });
+/* ---- src/95_jbuilder.js ---- */
+
+/* ================================================================
+   ジャーニー ビルダー（編集可能 / A・Bテスト / ホールドアウト）
+   ハードコードされたシナリオを、条件・チャネル・オファー・文面まで
+   画面から作り替えられるようにする。
+   効果は「ホールドアウト（配信しない対照群）に対する差」を実測し、
+   二標本の比率差検定で有意かどうかまで出す。
+================================================================ */
+const JB = { open: false, edit: null, draft: null };
+
+function blankJourney() {
+  return { id: 'J-' + (Date.now() % 100000), on: true, trig: 'GATE_SCAN',
+    ch: 'PUSH', offer: 'FB_OFFER', name: '新しいジャーニー',
+    why: '', text: '{sec} から徒歩40秒の売店で使えるクーポンです',
+    f: { seg: [], reg: [], mode: [], tier: [], ltvMin: 0, churnMax: 1, gamesMin: 0,
+         optin: false, app: false },
+    holdout: 0.10, ab: false, chB: 'EMAIL', offerB: 'MERCH', abShare: 0.5, custom: true };
+}
+/* 条件オブジェクト → 判定 */
+function filterMatch(F, f, s) {
+  if (F.seg.length && F.seg.indexOf(f.seg) < 0) return false;
+  if (F.reg.length && F.reg.indexOf(f.reg.n) < 0) return false;
+  if (F.mode.length && F.mode.indexOf(f.org.mode) < 0) return false;
+  if (F.tier.length && F.tier.indexOf(s.tier) < 0) return false;
+  if (f.ltv < F.ltvMin) return false;
+  if ((1 - f.churn) > F.churnMax) return false;
+  if (f.gamesLtm < F.gamesMin) return false;
+  if (F.optin && !f.optin) return false;
+  if (F.app && !f.app) return false;
+  return true;
+}
+/* 文面テンプレートの差し込み */
+function renderText(tpl, f, s) {
+  return String(tpl)
+    .replace(/\{sec\}/g, 'Sec ' + s.sec)
+    .replace(/\{row\}/g, String(s.row + 1))
+    .replace(/\{seat\}/g, String(s.num))
+    .replace(/\{gate\}/g, f.gate)
+    .replace(/\{tenure\}/g, String(f.tenure))
+    .replace(/\{games\}/g, String(f.gamesLtm))
+    .replace(/\{ltv\}/g, usd(f.ltv))
+    .replace(/\{name\}/g, f.fid);
+}
+
+/* 何も配信しなくても自然に起きる割合（対 施策時反応率）。
+   ホールドアウトの期待値はここから出す。 */
+const ORGANIC_RATIO = 0.45;
+
+/* ---- 正規分布と二標本比率差の検定 ---- */
+function erf(x) {
+  const s = x < 0 ? -1 : 1; x = Math.abs(x);
+  const t = 1 / (1 + 0.3275911 * x);
+  const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t
+    + 0.254829592) * t * Math.exp(-x * x);
+  return s * y;
+}
+const normCdf = z => 0.5 * (1 + erf(z / Math.SQRT2));
+function propTest(cv1, n1, cv0, n0) {
+  if (n1 < 2 || n0 < 2) return { z: 0, p: 1, ok: false };
+  const p1 = cv1 / n1, p0 = cv0 / n0;
+  const pp = (cv1 + cv0) / (n1 + n0);
+  const se = Math.sqrt(pp * (1 - pp) * (1 / n1 + 1 / n0));
+  if (!se) return { z: 0, p: 1, ok: false };
+  const z = (p1 - p0) / se;
+  const p = 2 * (1 - normCdf(Math.abs(z)));
+  return { z, p, ok: p < 0.05, p1, p0, lift: p0 > 0 ? p1 / p0 - 1 : 0 };
+}
+
+/* ================= UI ================= */
+const jbModal = document.createElement('div');
+jbModal.id = 'jb';
+jbModal.innerHTML = '<div id="jb-box"><div id="jb-hd"><div class="t">✎ ジャーニー ビルダー</div>' +
+  '<button class="close-x" id="jb-x">✕</button></div><div id="jb-body"></div></div>';
+document.body.appendChild(jbModal);
+document.getElementById('jb-x').onclick = () => closeJB();
+
+function openJB(id) {
+  const src = id ? JOURNEYS.find(j => j.id === id) : null;
+  JB.edit = id || null;
+  /* 既定シナリオには holdout / ab / abShare などのフィールドが無いものがあるので、
+     雛形を土台に敷いてから上書きする（欠落したまま描画すると undefined.toFixed で落ちる）。 */
+  const base = blankJourney();
+  JB.draft = src
+    ? Object.assign(base, JSON.parse(JSON.stringify(
+        Object.assign({}, src, { cond: undefined, msg: undefined, f: src.f || base.f }))))
+    : base;
+  if (src && !src.f) {                      // 既定シナリオは条件式を持つので、雛形条件で開く
+    JB.draft.f = blankJourney().f;
+    JB.draft.locked = true;
+  }
+  if (src) JB.draft.text = src.text || (typeof src.msg === 'function' ? '' : String(src.msg || ''));
+  JB.open = true;
+  jbModal.style.display = 'flex';
+  renderJB();
+}
+function closeJB() { JB.open = false; jbModal.style.display = 'none'; }
+
+/* 対象人数のライブ計算 */
+function jbAudience(D) {
+  let n = 0;
+  for (let i = 0; i < SEAT.list.length; i++) {
+    if (!SNAP.sold[i]) continue;
+    const s = SEAT.list[i], f = fanAt(i);
+    if (filterMatch(D.f, f, s)) n++;
+  }
+  return n;
+}
+const jbChips = (key, list, sel) => '<div class="row-btns" data-jbm="' + key + '">' +
+  list.map(x => '<button class="chip sm' + (sel.indexOf(x[0]) >= 0 ? ' active' : '') +
+    '" data-v="' + x[0] + '">' + x[1] + '</button>').join('') + '</div>';
+
+function renderJB() {
+  const D = JB.draft;
+  const aud = D.locked ? (AUTO.byJ[JB.edit] ? AUTO.byJ[JB.edit].aud : 0) : jbAudience(D);
+  const hold = Math.round(aud * D.holdout);
+  const send = aud - hold;
+  const bN = D.ab ? Math.round(send * D.abShare) : 0;
+  const rng = (id, min, max, step, val, label) =>
+    '<div class="sec-t" style="margin-top:8px">' + label + ' <b style="color:var(--acc)">' +
+    val + '</b></div><input type="range" id="' + id + '" min="' + min + '" max="' + max +
+    '" step="' + step + '" value="' + val + '" style="width:100%;accent-color:var(--acc)">';
+
+  document.getElementById('jb-body').innerHTML =
+    '<div class="bcard"><h4>① トリガーとアクション</h4>' +
+    '<div class="sec-t">ジャーニー名</div>' +
+    '<input id="jb-name" value="' + D.name.replace(/"/g, '&quot;') + '" class="jb-in">' +
+    '<div class="sec-t" style="margin-top:8px">トリガー</div>' +
+    '<div class="row-btns" data-jbs="trig">' + Object.keys(TRIG).map(t =>
+      '<button class="chip sm' + (D.trig === t ? ' active' : '') + '" data-v="' + t + '">' +
+      TRIG[t].icon + ' ' + TRIG[t].n + '</button>').join('') + '</div>' +
+    '<div class="sec-t" style="margin-top:8px">チャネル</div>' +
+    '<div class="row-btns" data-jbs="ch">' + Object.keys(CHANNELS).map(c =>
+      '<button class="chip sm' + (D.ch === c ? ' active' : '') + '" data-v="' + c + '">' +
+      CHANNELS[c].name + '</button>').join('') + '</div>' +
+    '<div class="sec-t" style="margin-top:8px">オファー</div>' +
+    '<div class="row-btns" data-jbs="offer">' + NBA_ACTIONS.map(a =>
+      '<button class="chip sm' + (D.offer === a.id ? ' active' : '') + '" data-v="' + a.id + '">' +
+      a.t + '</button>').join('') + '</div>' +
+    '<div class="sec-t" style="margin-top:8px">配信文面</div>' +
+    '<textarea id="jb-text" class="jb-in" rows="3">' + (D.text || '') + '</textarea>' +
+    '<div class="hint" style="margin-top:6px">差し込み: <b>{sec}</b> 区画 / <b>{row}</b> 列 / ' +
+    '<b>{seat}</b> 席番 / <b>{gate}</b> ゲート / <b>{tenure}</b> 継続年数 / ' +
+    '<b>{games}</b> 来場回数 / <b>{ltv}</b> LTV</div></div>' +
+
+    '<div class="bcard"><h4>② オーディエンス' +
+      (D.locked ? '（既定シナリオは条件式で定義されています）' : '') + '</h4>' +
+    (D.locked ? '<div class="hint">このジャーニーの条件はコード側の判定式です。' +
+      '条件を変えたい場合は「複製して編集」で新規ジャーニーとして作り直してください。</div>' :
+      '<div class="sec-t">セグメント</div>' +
+      jbChips('seg', Object.keys(SEGMENTS).map(x => [x, SEGMENTS[x].name]), D.f.seg) +
+      '<div class="sec-t" style="margin-top:8px">商圏</div>' +
+      jbChips('reg', REGIONS.map(r => [r.n, r.n]), D.f.reg) +
+      '<div class="sec-t" style="margin-top:8px">交通手段</div>' +
+      jbChips('mode', [['CAR', '車'], ['METRO', 'Metro'], ['RIDESHARE', 'ライドシェア'],
+                       ['WALK', '徒歩']], D.f.mode) +
+      '<div class="sec-t" style="margin-top:8px">席ティア</div>' +
+      jbChips('tier', [['FLOOR', 'フロア'], ['L100', '100L'], ['PRM', 'Premier'],
+                       ['SUITE', 'Box'], ['L300', '300L']], D.f.tier) +
+      rng('jb-ltv', 0, 120000, 2000, D.f.ltvMin, 'LTV 下限 $') +
+      rng('jb-renew', 0, 1, 0.05, D.f.churnMax.toFixed(2), '更新見込 上限') +
+      rng('jb-games', 0, 41, 1, D.f.gamesMin, '来場回数 下限') +
+      '<div style="margin-top:8px">' +
+      '<label class="ck-row"><input type="checkbox" id="jb-optin"' + (D.f.optin ? ' checked' : '') +
+      '>メール配信可</label><label class="ck-row"><input type="checkbox" id="jb-app"' +
+      (D.f.app ? ' checked' : '') + '>アプリ保有</label></div>') +
+    '<div class="kpi-grid" style="margin-top:10px">' +
+      '<div class="kpi"><div class="v">' + fmt(aud) + '</div><div class="l">対象人数</div></div>' +
+      '<div class="kpi"><div class="v k">' + fmt(send) + '</div><div class="l">配信</div></div>' +
+      '<div class="kpi"><div class="v p">' + fmt(hold) + '</div><div class="l">ホールドアウト</div></div>' +
+      '<div class="kpi"><div class="v g">' + fmt(bN) + '</div><div class="l">B案</div></div>' +
+    '</div></div>' +
+
+    '<div class="bcard wide"><h4>③ 実験設計（ホールドアウト / A・Bテスト）</h4>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">' +
+    '<div>' + rng('jb-hold', 0, 0.3, 0.01, D.holdout.toFixed(2), 'ホールドアウト率（配信しない対照群）') +
+    '<div class="hint" style="margin-top:7px">対照群には<b>一切配信しません</b>。' +
+    '何もしなくても自然に起きる分（施策時の ' + (ORGANIC_RATIO * 100).toFixed(0) +
+    '% 相当）と比べることで、「配信したから起きた分」だけを測れます。' +
+    '0にすると効果測定ができません。</div>' +
+    '<label class="ck-row" style="margin-top:10px"><input type="checkbox" id="jb-ab"' +
+    (D.ab ? ' checked' : '') + '>A/Bテストを行う</label>' +
+    (D.ab ? '<div class="sec-t" style="margin-top:6px">B案 チャネル</div>' +
+      '<div class="row-btns" data-jbs="chB">' + Object.keys(CHANNELS).map(c =>
+        '<button class="chip sm' + (D.chB === c ? ' active' : '') + '" data-v="' + c + '">' +
+        CHANNELS[c].name + '</button>').join('') + '</div>' +
+      '<div class="sec-t" style="margin-top:6px">B案 オファー</div>' +
+      '<div class="row-btns" data-jbs="offerB">' + NBA_ACTIONS.map(a =>
+        '<button class="chip sm' + (D.offerB === a.id ? ' active' : '') + '" data-v="' + a.id + '">' +
+        a.t + '</button>').join('') + '</div>' +
+      rng('jb-abshare', 0.1, 0.9, 0.05, D.abShare.toFixed(2), 'B案への配分') : '') +
+    '</div>' +
+    '<div id="jb-result"></div></div>' +
+    '<div class="row-btns" style="margin-top:12px">' +
+    '<button class="tool-btn" id="jb-save" style="width:auto;padding:8px 16px">💾 保存して実行</button>' +
+    (JB.edit ? '<button class="tool-btn" id="jb-dup" style="width:auto;padding:8px 16px">⧉ 複製して編集</button>' +
+      (JOURNEYS.find(j => j.id === JB.edit) && JOURNEYS.find(j => j.id === JB.edit).custom ?
+        '<button class="tool-btn" id="jb-del" style="width:auto;padding:8px 16px;border-color:var(--warn);color:var(--warn)">🗑 削除</button>' : '')
+      : '') +
+    '<button class="tool-btn" id="jb-cancel" style="width:auto;padding:8px 16px">キャンセル</button>' +
+    '</div></div>';
+
+  renderJBResult(aud, send, hold, bN);
+
+  /* --- バインド --- */
+  const body = document.getElementById('jb-body');
+  body.querySelectorAll('[data-jbs]').forEach(g => g.querySelectorAll('[data-v]').forEach(b =>
+    b.onclick = () => { D[g.dataset.jbs] = b.dataset.v; renderJB(); }));
+  body.querySelectorAll('[data-jbm]').forEach(g => {
+    const key = g.dataset.jbm;
+    g.querySelectorAll('[data-v]').forEach(b => b.onclick = () => {
+      const arr = D.f[key], v = b.dataset.v, k = arr.indexOf(v);
+      if (k >= 0) arr.splice(k, 1); else arr.push(v);
+      renderJB();
+    });
+  });
+  const on = (id, fn) => { const e = document.getElementById(id); if (e) e.oninput = fn; };
+  on('jb-ltv', e => { D.f.ltvMin = +e.target.value; renderJB(); });
+  on('jb-renew', e => { D.f.churnMax = +e.target.value; renderJB(); });
+  on('jb-games', e => { D.f.gamesMin = +e.target.value; renderJB(); });
+  on('jb-hold', e => { D.holdout = +e.target.value; renderJB(); });
+  on('jb-abshare', e => { D.abShare = +e.target.value; renderJB(); });
+  on('jb-name', e => { D.name = e.target.value; });
+  on('jb-text', e => { D.text = e.target.value; });
+  const ck = (id, fn) => { const e = document.getElementById(id); if (e) e.onchange = () => fn(e.checked); };
+  ck('jb-optin', v => { D.f.optin = v; renderJB(); });
+  ck('jb-app', v => { D.f.app = v; renderJB(); });
+  ck('jb-ab', v => { D.ab = v; renderJB(); });
+  const btn = (id, fn) => { const e = document.getElementById(id); if (e) e.onclick = fn; };
+  btn('jb-cancel', closeJB);
+  btn('jb-dup', () => { JB.edit = null; D.locked = false; D.custom = true;
+    D.id = 'J-' + (Date.now() % 100000); D.name = D.name + '（複製）'; renderJB(); });
+  btn('jb-del', () => {
+    const k = JOURNEYS.findIndex(j => j.id === JB.edit);
+    if (k >= 0) JOURNEYS.splice(k, 1);
+    closeJB(); buildAutomation(); renderAutoConsole();
+  });
+  btn('jb-save', () => {
+    const J = Object.assign({}, D);
+    delete J.locked;
+    if (!J.locked && !D.locked) {
+      J.cond = null;                       // 条件は f から評価する
+      J.msg = (f, s) => renderText(J.text, f, s);
+    }
+    const k = JOURNEYS.findIndex(x => x.id === JB.edit);
+    if (k >= 0) {
+      /* 既定シナリオを編集した場合は判定式・文面を保持する */
+      const old = JOURNEYS[k];
+      JOURNEYS[k] = Object.assign({}, old, J,
+        D.locked ? { cond: old.cond, msg: old.msg, f: undefined } : {});
+    } else JOURNEYS.push(J);
+    closeJB(); buildAutomation(); renderAutoConsole();
+    toast('ジャーニー「<b>' + J.name + '</b>」を保存しました', 3000);
+  });
+}
+
+/* --- 実験結果（ホールドアウトとの比較・有意性） --- */
+function renderJBResult(aud, send, hold, bN) {
+  const D = JB.draft;
+  const el2 = document.getElementById('jb-result');
+  if (!el2) return;
+  const R = simulateExperiment(D, aud);
+  const t = propTest(R.cvA, R.nA, R.cvH, R.nH);
+  const tb = propTest(R.cvB, R.nB, R.cvH, R.nH);
+  const row = (nm, n, cv, tt, col) => '<tr><td>' + nm + '</td><td class="n">' + fmt(n) +
+    '</td><td class="n">' + fmt(cv) + '</td><td class="n">' + (n ? (cv / n * 100).toFixed(2) : '—') +
+    '%</td><td class="n" style="color:' + col + '">' +
+    (tt ? (tt.lift > 0 ? '+' : '') + (tt.lift * 100).toFixed(1) + '%' : '—') + '</td></tr>';
+  el2.innerHTML =
+    '<div class="sec-t">ホールドアウト比較 — 対照群は<b>一切配信しない</b></div>' +
+    '<table class="dt"><tr><th>群</th><th>人数</th><th>CV</th><th>反応率</th><th>ホールドアウト比</th></tr>' +
+    row('ホールドアウト', R.nH, R.cvH, null, 'var(--sub)') +
+    row('A案', R.nA, R.cvA, t, t.ok ? 'var(--ok)' : 'var(--sub)') +
+    (D.ab ? row('B案', R.nB, R.cvB, tb, tb.ok ? 'var(--ok)' : 'var(--sub)') : '') +
+    '</table>' +
+    '<div class="hint" style="margin-top:9px;border-left-color:' +
+      (t.ok ? 'var(--ok)' : 'var(--warn)') + '">' +
+    '<b style="color:' + (t.ok ? 'var(--ok)' : 'var(--warn)') + '">' +
+    (t.ok ? '✔ 有意差あり' : '△ 有意差なし') + '</b>　A案 vs ホールドアウト: ' +
+    'z = ' + t.z.toFixed(2) + ' / p = ' + (t.p < 0.001 ? '<0.001' : t.p.toFixed(3)) + '<br>' +
+    (t.ok ? '効果は偶然では説明できない水準です。この設計のまま配信できます。'
+      : (R.nH < 200 ? 'ホールドアウトが小さすぎます。対象人数を増やすか、ホールドアウト率を上げてください。'
+        : '差が小さいか母数が不足しています。オファーを強めるか、対象をLTV上位に絞ってください。')) +
+    '</div>' +
+    (D.ab ? '<div class="hint" style="margin-top:7px">B案 vs ホールドアウト: z = ' + tb.z.toFixed(2) +
+      ' / p = ' + (tb.p < 0.001 ? '<0.001' : tb.p.toFixed(3)) + '。' +
+      (R.cvA / Math.max(1, R.nA) > R.cvB / Math.max(1, R.nB) ? '現時点では <b>A案</b>' : '現時点では <b>B案</b>') +
+      ' が優勢です。</div>' : '');
+}
+
+/* 個客ごとに群を割り当て、反応を決定的にロールする（同じ設計なら毎回同じ結果） */
+function simulateExperiment(D, audCount) {
+  const salt = 0x9e3d + (D.id ? D.id.length * 31 : 0);
+  let nH = 0, nA = 0, nB = 0, cvH = 0, cvA = 0, cvB = 0;
+  const actA = NBA_ACTIONS.find(a => a.id === D.offer) || NBA_ACTIONS[0];
+  const actB = NBA_ACTIONS.find(a => a.id === D.offerB) || actA;
+  const CA = CHANNELS[D.ch], CB = CHANNELS[D.chB] || CA;
+  const base = OFFER_RESP[D.offer] || 0.08, baseB = OFFER_RESP[D.offerB] || base;
+  /* ホールドアウトは「一切接触しない」群なので、放っておいても起きる自然発生分だけ。
+     接触群はチャネル係数 × NBA最適化の上振れ × 到達率が乗る。 */
+  const rH = clamp(base * ORGANIC_RATIO, 0, 0.85);
+  const rA = clamp(base * CA.mult * (1 + actA.up) * CA.deliver, 0, 0.9);
+  const rB = clamp(baseB * CB.mult * (1 + actB.up) * CB.deliver, 0, 0.9);
+  const locked = D.locked && JB.edit;
+  const J = locked ? JOURNEYS.find(x => x.id === JB.edit) : null;
+  for (let i = 0; i < SEAT.list.length; i++) {
+    if (!SNAP.sold[i]) continue;
+    const s = SEAT.list[i], f = fanAt(i);
+    let ok;
+    if (locked && J && J.cond) { try { ok = J.cond(Object.assign({ tier: s.tier }, f), s); } catch (e) { ok = false; } }
+    else ok = filterMatch(D.f, f, s);
+    if (!ok) continue;
+    const u = hrand(i, salt), v = hrand(i, salt + 7);
+    if (u < D.holdout) { nH++; if (v < rH) cvH++; }
+    else if (D.ab && u < D.holdout + (1 - D.holdout) * D.abShare) { nB++; if (v < rB) cvB++; }
+    else { nA++; if (v < rA) cvA++; }
+  }
+  return { nH, nA, nB, cvH, cvA, cvB };
+}
 /* ---- src/96_console.js ---- */
 
 /* ================================================================
@@ -5798,7 +6263,8 @@ autoPage.id = 'autopage';
 autoPage.innerHTML =
   '<div id="ap-kpi"></div>' +
   '<div id="ap-grid">' +
-    '<div id="ap-left"><div class="ap-h">ジャーニー</div><div id="ap-jlist"></div></div>' +
+    '<div id="ap-left"><div class="ap-h">ジャーニー' +
+    '<button class="ap-new" id="ap-new">＋ 新規</button></div><div id="ap-jlist"></div></div>' +
     '<div id="ap-mid">' +
       '<div class="ap-h">リアルタイム配信ストリーム <span id="ap-clock"></span></div>' +
       '<canvas id="ap-chart" height="130"></canvas>' +
@@ -5860,15 +6326,24 @@ function renderAutoConsole() {
             (live ? ' <span class="ap-live">LIVE</span>' : '') + '</div>' +
           '<div class="ap-j-w">' + J.why + '</div>' +
           '<div class="ap-j-m">増分 <b style="color:var(--gold)">' + usd(B.rev || 0) + '</b>' +
-            ' ／ コスト ' + usd(B.cost || 0) + '</div>' +
+            ' ／ コスト ' + usd(B.cost || 0) +
+            (J.holdout ? ' ／ 対照 ' + fmt(B.hold || 0) : '') +
+            (J.ab ? ' ／ <b style="color:var(--purple)">A/B</b>' : '') + '</div>' +
+          '<button class="ap-edit" data-jedit="' + J.id + '">✎ 編集</button>' +
         '</div>';
       }).join('');
   }).join('');
-  autoPage.querySelectorAll('[data-j]').forEach(d => d.onclick = () => {
+  autoPage.querySelectorAll('[data-j]').forEach(d => d.onclick = e => {
+    if (e.target.dataset && e.target.dataset.jedit) return;
     const J = JOURNEYS.find(x => x.id === d.dataset.j);
     J.on = !J.on;
     buildAutomation(); autoStep(timeState.min); renderAutoConsole();
   });
+  autoPage.querySelectorAll('[data-jedit]').forEach(b => b.onclick = e => {
+    e.stopPropagation(); openJB(b.dataset.jedit);
+  });
+  const nb = document.getElementById('ap-new');
+  if (nb) nb.onclick = () => openJB(null);
 
   /* --- ストリーム --- */
   document.getElementById('ap-clock').textContent =
@@ -5916,7 +6391,8 @@ function renderAutoConsole() {
       r.j.name.replace(/^[^｜]*｜/, '') + '</span><div class="bar"><i style="width:' +
       (r.B.rev / Math.max(1, rank[0].B.rev) * 100).toFixed(1) + '%;background:' +
       hex(PHASE_COL[TRIG[r.j.trig].ph]) + '"></i></div><b>' + usd(r.B.rev) + '</b></div>').join('') +
-    '<div class="hint" style="margin-top:10px">効果は<b>コントロール群との差分（増分）</b>のみ。' +
+    '<div class="hint" style="margin-top:10px">全ジャーニーに<b>ホールドアウト（既定10%・配信しない対照群）</b>' +
+    'を置いています。効果は<b>対照群との差分（増分）</b>のみ。' +
     'バッチ配信（来場前・帰宅後）は当日タイムラインに乗らないため、' +
     '対象人数と効果に含めた上でストリームには流していません。</div>' +
     '<div class="row-btns" style="margin-top:10px">' +
@@ -5994,6 +6470,116 @@ function autoExportCSV() {
   setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   toast('配信ログを書き出しました — <b>' + fmt(rows.length - 1) + ' 行</b>', 4000);
 }
+/* ---- src/98_pov.js ---- */
+
+/* ================================================================
+   席視点カメラ（View from seat）
+   その席の目線に立ち、コートの見え方・視距離・俯角・
+   どの看板がどの等級で読めるかを実測して提示する。
+   チケット商品の価値と、スポンサー媒体の価値を同じ画面で説明できる。
+================================================================ */
+const POV = { i: -1, on: false, fov: 0, hud: null };
+
+(function povHud() {
+  const d = document.createElement('div');
+  d.id = 'pov-hud';
+  d.style.display = 'none';
+  document.body.appendChild(d);
+  POV.hud = d;
+})();
+
+function seatEye(i) {
+  const s = SEAT.list[i];
+  /* 目線は座面から 1.12m。わずかにコート側へ寄せて前列の背もたれを避ける */
+  const dir = new THREE.Vector3(-s.x, 0, -s.z).normalize();
+  return { x: s.x + dir.x * 0.18, y: s.y + 1.12, z: s.z + dir.z * 0.18 };
+}
+function enterPOV(i) {
+  if (level !== 'arena') setLevel('arena', false);
+  POV.i = i; POV.on = true;
+  const s = SEAT.list[i], e = seatEye(i);
+  /* interior はワールドに対して回転・移動しているので、ローカル→ワールド変換する */
+  const w = interior.localToWorld(new THREE.Vector3(e.x, e.y, e.z));
+  const t = interior.localToWorld(new THREE.Vector3(0, 1.1, 0));
+  cam.pov = { x: w.x, y: w.y, z: w.z, tx: t.x, ty: t.y, tz: t.z };
+  if (!POV.fov) POV.fov = camera.fov;
+  camera.fov = 58;                       // 人の有効視野に近づける
+  camera.updateProjectionMatrix();
+  applyCam(0);
+  SEAT.mesh.visible = false;             // 自席の背もたれで視界を塞がない
+  hideFanCard();
+  renderPovHud(i);
+  POV.hud.style.display = 'block';
+  document.getElementById('panel').style.display = 'none';
+}
+function exitPOV() {
+  POV.on = false; cam.pov = null;
+  if (POV.fov) { camera.fov = POV.fov; camera.updateProjectionMatrix(); }
+  SEAT.mesh.visible = !pcMode;
+  POV.hud.style.display = 'none';
+  document.getElementById('panel').style.display = 'flex';
+  flyTo(ARENA_C.x, 12, ARENA_C.z, 168, cam.yaw, 0.78);
+  applyCam(0);
+}
+function renderPovHud(i) {
+  const s = SEAT.list[i], e = seatEye(i);
+  const f = SNAP.sold[i] ? fanAt(i) : null;
+  /* コート中心までの視距離と俯角 */
+  const hor = Math.hypot(e.x, e.z);
+  const dist = Math.hypot(hor, e.y - 1.1);
+  const dep = Math.atan2(e.y - 1.1, hor) * 180 / Math.PI;
+  /* 一番近いバスケットまでの距離（NBA構成のとき） */
+  const hoop = Math.min(Math.hypot(e.x - 14.33, e.z), Math.hypot(e.x + 14.33, e.z));
+  const grades = ['圏外', 'D 視認困難', 'C 判読可', 'B 良好', 'A 最良'];
+  const N = SEAT.list.length;
+  const boards = ledBoards.map((b, bi) => ({ b, g: SEAT.grade[bi * N + i],
+      w: SEAT.expB[bi * N + i] / SEAT.maxB[bi] }))
+    .filter(x => x.g > 0).sort((a, b) => b.w - a.w).slice(0, 6);
+  const aCnt = boards.filter(x => x.g === 4).length;
+
+  POV.hud.innerHTML =
+    '<div class="pv-x" id="pv-x">✕ 視点を戻す</div>' +
+    '<div class="pv-card">' +
+      '<div class="pv-t">Sec ' + s.sec + ' · Row ' +
+        (s.tier === 'FLOOR' ? ('ABCDEFGHJ'[s.row] || s.row + 1) : s.row + 1) +
+        ' · Seat ' + s.num + '</div>' +
+      '<div class="pv-s">' + CAT[s.cat].name + '　定価 ' + usd(CAT[s.cat].price) +
+        '　推奨 <b>' + usd(s.rec || CAT[s.cat].price) + '</b></div>' +
+      '<div class="pv-g">' +
+        '<div><b>' + dist.toFixed(1) + '</b><span>m コート中心まで</span></div>' +
+        '<div><b>' + hoop.toFixed(1) + '</b><span>m 最寄リングまで</span></div>' +
+        '<div><b>' + dep.toFixed(1) + '°</b><span>俯角</span></div>' +
+        '<div><b>' + (s.exp * 100).toFixed(0) + '</b><span>露出スコア</span></div>' +
+      '</div>' +
+      '<div class="pv-h">この席から読めるスポンサー媒体（' + aCnt + ' 面が A 等級）</div>' +
+      boards.map(x =>
+        '<div class="pv-b"><span>' + x.b.name + '</span>' +
+        '<i style="background:' + hex(GRADE_C[x.g]) + '"></i>' +
+        '<em>' + grades[x.g].split(' ')[0] + '</em></div>').join('') +
+      (f ? '<div class="pv-h">この席の個客</div>' +
+        '<div class="pv-f">' + f.fid + '　' + SEGMENTS[f.seg].name + '　' + f.reg.n +
+        '<br>LTV ' + usd(f.ltv) + '　更新見込 ' + ((1 - f.churn) * 100).toFixed(0) + '%</div>'
+        : '<div class="pv-h">空席</div>') +
+      '<div class="pv-n">目線高 座面 +1.12m ／ 画角 58°。' +
+      '視認等級は文字視角（文字高 ÷ 視距離 × 3437.75 arcmin）で判定しています。</div>' +
+    '</div>';
+  document.getElementById('pv-x').onclick = exitPOV;
+}
+/* POV中はマウスで見回せる（軌道カメラではなく視線方向を回す） */
+addEventListener('pointermove', e => {
+  if (!POV.on || !drag || !cam.pov) return;
+  const P = cam.pov;
+  const dx = e.movementX || 0, dy = e.movementY || 0;
+  const v = new THREE.Vector3(P.tx - P.x, P.ty - P.y, P.tz - P.z);
+  const r = v.length();
+  let yaw = Math.atan2(v.x, v.z) - dx * 0.004;
+  let pit = clamp(Math.asin(v.y / r) - dy * 0.003, -0.9, 0.7);
+  P.tx = P.x + Math.sin(yaw) * Math.cos(pit) * r;
+  P.ty = P.y + Math.sin(pit) * r;
+  P.tz = P.z + Math.cos(yaw) * Math.cos(pit) * r;
+  applyCam(0);
+});
+addEventListener('keydown', e => { if (e.key === 'Escape' && POV.on) exitPOV(); });
 /* ---- src/99_boot.js ---- */
 /* ================= 起動 & メインループ ================= */
 setLoad(94, '1to1 データを生成中');

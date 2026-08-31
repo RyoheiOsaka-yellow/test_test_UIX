@@ -9,7 +9,8 @@ autoPage.id = 'autopage';
 autoPage.innerHTML =
   '<div id="ap-kpi"></div>' +
   '<div id="ap-grid">' +
-    '<div id="ap-left"><div class="ap-h">ジャーニー</div><div id="ap-jlist"></div></div>' +
+    '<div id="ap-left"><div class="ap-h">ジャーニー' +
+    '<button class="ap-new" id="ap-new">＋ 新規</button></div><div id="ap-jlist"></div></div>' +
     '<div id="ap-mid">' +
       '<div class="ap-h">リアルタイム配信ストリーム <span id="ap-clock"></span></div>' +
       '<canvas id="ap-chart" height="130"></canvas>' +
@@ -71,15 +72,24 @@ function renderAutoConsole() {
             (live ? ' <span class="ap-live">LIVE</span>' : '') + '</div>' +
           '<div class="ap-j-w">' + J.why + '</div>' +
           '<div class="ap-j-m">増分 <b style="color:var(--gold)">' + usd(B.rev || 0) + '</b>' +
-            ' ／ コスト ' + usd(B.cost || 0) + '</div>' +
+            ' ／ コスト ' + usd(B.cost || 0) +
+            (J.holdout ? ' ／ 対照 ' + fmt(B.hold || 0) : '') +
+            (J.ab ? ' ／ <b style="color:var(--purple)">A/B</b>' : '') + '</div>' +
+          '<button class="ap-edit" data-jedit="' + J.id + '">✎ 編集</button>' +
         '</div>';
       }).join('');
   }).join('');
-  autoPage.querySelectorAll('[data-j]').forEach(d => d.onclick = () => {
+  autoPage.querySelectorAll('[data-j]').forEach(d => d.onclick = e => {
+    if (e.target.dataset && e.target.dataset.jedit) return;
     const J = JOURNEYS.find(x => x.id === d.dataset.j);
     J.on = !J.on;
     buildAutomation(); autoStep(timeState.min); renderAutoConsole();
   });
+  autoPage.querySelectorAll('[data-jedit]').forEach(b => b.onclick = e => {
+    e.stopPropagation(); openJB(b.dataset.jedit);
+  });
+  const nb = document.getElementById('ap-new');
+  if (nb) nb.onclick = () => openJB(null);
 
   /* --- ストリーム --- */
   document.getElementById('ap-clock').textContent =
@@ -127,7 +137,8 @@ function renderAutoConsole() {
       r.j.name.replace(/^[^｜]*｜/, '') + '</span><div class="bar"><i style="width:' +
       (r.B.rev / Math.max(1, rank[0].B.rev) * 100).toFixed(1) + '%;background:' +
       hex(PHASE_COL[TRIG[r.j.trig].ph]) + '"></i></div><b>' + usd(r.B.rev) + '</b></div>').join('') +
-    '<div class="hint" style="margin-top:10px">効果は<b>コントロール群との差分（増分）</b>のみ。' +
+    '<div class="hint" style="margin-top:10px">全ジャーニーに<b>ホールドアウト（既定10%・配信しない対照群）</b>' +
+    'を置いています。効果は<b>対照群との差分（増分）</b>のみ。' +
     'バッチ配信（来場前・帰宅後）は当日タイムラインに乗らないため、' +
     '対象人数と効果に含めた上でストリームには流していません。</div>' +
     '<div class="row-btns" style="margin-top:10px">' +

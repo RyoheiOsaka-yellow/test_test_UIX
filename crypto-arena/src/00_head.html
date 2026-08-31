@@ -150,6 +150,10 @@ canvas{display:block}
 .fc-nba .h{font-size:9.5px;letter-spacing:.12em;color:var(--acc);font-weight:700}
 .fc-nba .b{font-size:11.5px;margin-top:3px;line-height:1.5}
 .fc-nba .u{font-size:10px;color:var(--gold);margin-top:4px;font-family:var(--mono)}
+.fc-tl{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 3px 0;
+  margin-top:2px}
+.fc-lg{display:flex;gap:9px;flex-wrap:wrap;font-size:9px;color:var(--sub);margin-top:5px}
+.fc-lg i{width:7px;height:7px;border-radius:2px;display:inline-block;margin-right:3px}
 
 /* ===== 2D席図モーダル ===== */
 #m2{position:fixed;inset:0;background:rgba(4,6,11,.9);z-index:45;display:none;
@@ -160,6 +164,53 @@ canvas{display:block}
 #m2-hd .t{font-size:13px;font-weight:700;color:var(--acc)}
 #m2-cv{flex:1;border-radius:10px;background:#0b0f19;border:1px solid var(--line);cursor:crosshair}
 #m2-ft{display:flex;gap:10px;align-items:center;font-size:10.5px;color:var(--sub);flex-wrap:wrap}
+
+/* ===== ジャーニービルダー ===== */
+#jb{position:fixed;inset:0;background:rgba(4,6,11,.92);z-index:47;display:none;
+  align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+#jb-box{background:var(--panel);border:1px solid var(--purple);border-radius:14px;padding:16px;
+  width:min(1180px,96vw);height:min(840px,94vh);display:flex;flex-direction:column;gap:10px;overflow:hidden}
+#jb-hd{display:flex;align-items:center;gap:12px}
+#jb-hd .t{font-size:14px;font-weight:700;color:var(--purple)}
+#jb-body{flex:1;overflow-y:auto;display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
+#jb-body::-webkit-scrollbar{width:6px}
+#jb-body::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.jb-in{width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);
+  border-radius:7px;padding:7px 9px;font-size:11.5px;font-family:var(--jp);resize:vertical}
+.jb-in:focus{outline:none;border-color:var(--acc)}
+.ap-new{float:right;background:var(--panel2);border:1px solid var(--purple);color:var(--purple);
+  border-radius:14px;padding:2px 10px;font-size:10px;cursor:pointer;font-family:var(--jp)}
+.ap-new:hover{background:rgba(138,92,196,.16)}
+.ap-edit{margin-top:5px;background:transparent;border:1px solid var(--line);color:var(--sub);
+  border-radius:6px;padding:2px 9px;font-size:9.5px;cursor:pointer;font-family:var(--jp)}
+.ap-edit:hover{border-color:var(--acc);color:var(--acc)}
+
+/* ===== 席視点 HUD ===== */
+#pov-hud{position:fixed;inset:0;z-index:29;pointer-events:none;display:none}
+#pov-hud::before{content:'';position:absolute;inset:0;pointer-events:none;
+  box-shadow:inset 0 0 180px rgba(0,0,0,.55)}
+.pv-x{position:absolute;top:64px;left:50%;transform:translateX(-50%);pointer-events:auto;
+  background:rgba(17,22,34,.94);border:1px solid var(--acc);color:var(--acc);border-radius:20px;
+  padding:7px 18px;font-size:11.5px;cursor:pointer;letter-spacing:.04em}
+.pv-x:hover{background:rgba(0,194,255,.14)}
+.pv-card{position:absolute;right:14px;top:64px;width:302px;pointer-events:auto;
+  background:rgba(17,22,34,.95);border:1px solid var(--line);border-radius:12px;padding:12px;
+  backdrop-filter:blur(8px)}
+.pv-t{font-family:var(--mono);font-size:16px;color:var(--acc);letter-spacing:.03em}
+.pv-s{font-size:10.5px;color:var(--sub);margin-top:3px}
+.pv-s b{color:var(--gold)}
+.pv-g{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}
+.pv-g div{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:6px 8px}
+.pv-g b{font-family:var(--mono);font-size:16px;color:var(--txt);display:block}
+.pv-g span{font-size:9px;color:var(--sub)}
+.pv-h{font-size:9.5px;letter-spacing:.12em;color:var(--sub);font-weight:700;margin:9px 0 5px}
+.pv-b{display:flex;align-items:center;gap:7px;font-size:10.5px;color:var(--sub);margin-bottom:3px}
+.pv-b span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pv-b i{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.pv-b em{font-style:normal;font-family:var(--mono);color:var(--txt);width:14px;text-align:right}
+.pv-f{font-size:10.5px;color:var(--sub);line-height:1.7}
+.pv-n{font-size:9.5px;color:#5f6b83;line-height:1.6;margin-top:9px;border-top:1px solid var(--line);
+  padding-top:7px}
 
 /* ===== オートメーション・コンソール ===== */
 #autopage{position:fixed;top:52px;left:0;right:0;bottom:62px;background:rgba(8,11,18,.97);

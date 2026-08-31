@@ -469,6 +469,61 @@ function renderArenaPanel() {
   };
 }
 
+
+/* ---- 個客の直近12ヶ月ジャーニー（来場・接触・CV・更新見込の推移） ---- */
+const MON = ['9', '10', '11', '12', '1', '2', '3', '4', '5', '6', '7', '8'];
+function fanTimelineSVG(i, f) {
+  const W = 292, H = 92, PADL = 4, PADR = 4, top = 12, base = H - 22;
+  const cw = (W - PADL - PADR) / 12;
+  /* NBAシーズン（10〜4月）に来場が集中するよう配分する */
+  const season = [0.02, 0.13, 0.15, 0.14, 0.14, 0.13, 0.13, 0.10, 0.03, 0.01, 0.01, 0.01];
+  const visits = new Array(12).fill(0);
+  let left = f.gamesLtm;
+  for (let m = 0; m < 12 && left > 0; m++) {
+    const want = Math.round(f.gamesLtm * season[m] + (hrand(i, 900 + m) - 0.5) * 1.2);
+    const v = clamp(want, 0, left);
+    visits[m] = v; left -= v;
+  }
+  if (left > 0) visits[11] += left;
+  const mx = Math.max(1, ...visits);
+  /* 接触本数はオートメーションの実績、CVは反応率から決定的にロール */
+  const touches = AUTO.seatCount ? AUTO.seatCount[i] : 0;
+  const parts = [];
+  parts.push('<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">');
+  /* 来場バー */
+  for (let m = 0; m < 12; m++) {
+    const x = PADL + m * cw, h = visits[m] / mx * (base - top);
+    parts.push('<rect x="' + (x + 2).toFixed(1) + '" y="' + (base - h).toFixed(1) +
+      '" width="' + (cw - 4).toFixed(1) + '" height="' + h.toFixed(1) +
+      '" rx="1.5" fill="' + (visits[m] ? '#fdb927' : '#1c2130') + '" opacity="' +
+      (visits[m] ? 0.85 : 1) + '"/>');
+    parts.push('<text x="' + (x + cw / 2).toFixed(1) + '" y="' + (H - 9) +
+      '" fill="#5f6b83" font-size="8" text-anchor="middle">' + MON[m] + '</text>');
+    if (visits[m]) parts.push('<text x="' + (x + cw / 2).toFixed(1) + '" y="' +
+      (base - h - 2.5).toFixed(1) + '" fill="#fdb927" font-size="7.5" text-anchor="middle">' +
+      visits[m] + '</text>');
+  }
+  /* 更新見込の推移（体験と接触で少しずつ変わる想定） */
+  const pts = [];
+  for (let m = 0; m < 12; m++) {
+    const drift = (visits[m] ? 0.035 : -0.018) + (m < 6 ? 0.004 : -0.004);
+    const v = clamp((1 - f.churn) + drift * (11 - m) - 0.02 * (hrand(i, 800 + m) - 0.5), 0.03, 0.99);
+    pts.push((PADL + m * cw + cw / 2).toFixed(1) + ',' + (top + (1 - v) * (base - top)).toFixed(1));
+  }
+  parts.push('<polyline points="' + pts.join(' ') + '" fill="none" stroke="#3ddc84" ' +
+    'stroke-width="1.4" opacity="0.9"/>');
+  /* 接触マーカー（直近3ヶ月に集中） */
+  for (let k = 0; k < Math.min(touches, 8); k++) {
+    const m = 9 + (k % 3);
+    const x = PADL + m * cw + cw / 2 + ((k / 3 | 0) - 1) * 3.4;
+    parts.push('<circle cx="' + x.toFixed(1) + '" cy="' + (top - 5) + '" r="2.1" fill="#00c2ff"/>');
+  }
+  parts.push('<line x1="0" y1="' + base + '" x2="' + W + '" y2="' + base +
+    '" stroke="#28324a" stroke-width="1"/>');
+  parts.push('</svg>');
+  return parts.join('');
+}
+
 /* ================= 個客カード ================= */
 const fanCard = document.getElementById('fan-card');
 const hideFanCard = () => { fanCard.style.display = 'none'; selSeat = -1; };
@@ -530,13 +585,25 @@ function showFanCard(i) {
         '<div class="bar"><i style="width:' + (x.w * 100).toFixed(0) + '%;background:' +
         hex(GRADE_C[x.g]) + '"></i></div><b>' + gradeName[x.g] + '</b></div>').join('')
         : '<div style="font-size:10px;color:var(--sub)">有効な視認媒体なし</div>') +
+      '<div class="sec-t" style="margin-top:10px">直近12ヶ月のジャーニー</div>' +
+      '<div class="fc-tl">' + fanTimelineSVG(i, f) + '</div>' +
+      '<div class="fc-lg">' +
+        '<span><i style="background:#fdb927"></i>来場（計 ' + f.gamesLtm + '）</span>' +
+        '<span><i style="background:#3ddc84"></i>更新見込の推移</span>' +
+        '<span><i style="background:#00c2ff"></i>接触 ' +
+          (AUTO.seatCount ? AUTO.seatCount[i] : 0) + '本</span>' +
+      '</div>' +
       '<div class="fc-nba"><div class="h">NEXT BEST ACTION</div>' +
       '<div class="b">' + f.nba.t + '<br><span style="color:var(--sub);font-size:10.5px">' +
       f.nba.d(f.seg) + '</span></div>' +
       '<div class="u">期待CVR上振れ +' + (f.nba.up * 100).toFixed(0) + '%　' +
       '想定増分 ' + usd(Math.round(f.ltv * f.nba.up * 0.16)) + ' / 人</div></div>';
   }
+  fanCard.innerHTML += '<button class="tool-btn" id="fc-pov" style="margin-top:9px">' +
+    '👁 この席から見る（席視点カメラ）</button>';
   fanCard.style.display = 'block';
+  const pv = document.getElementById('fc-pov');
+  if (pv) pv.onclick = () => enterPOV(i);
   const x = document.getElementById('fc-x');
   if (x) x.onclick = hideFanCard;
   if (typeof draw2D === 'function') draw2D();

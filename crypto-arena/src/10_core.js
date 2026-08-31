@@ -79,7 +79,15 @@ function primeInstanceColor(mesh, n) {
 /* ---- 軌道カメラ（ターゲット注視 / 慣性なし・確定的） ---- */
 const cam = { tx: 0, ty: 0, tz: 0, dist: 1500, yaw: -0.62, pitch: 0.72,
               ttx: 0, tty: 0, ttz: 0, tdist: 1500, tyaw: -0.62, tpitch: 0.72, fly: 0 };
+/* 席視点（POV）: 軌道カメラを一時的にバイパスして、座席の目線に置く */
+cam.pov = null;
 function applyCam(k) {
+  if (cam.pov) {
+    const P = cam.pov;
+    camera.position.set(P.x, P.y, P.z);
+    camera.lookAt(P.tx, P.ty, P.tz);
+    return;
+  }
   if (k) {
     cam.tx = lerp(cam.tx, cam.ttx, k); cam.ty = lerp(cam.ty, cam.tty, k);
     cam.tz = lerp(cam.tz, cam.ttz, k); cam.dist = lerp(cam.dist, cam.tdist, k);
