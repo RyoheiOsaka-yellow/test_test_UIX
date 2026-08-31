@@ -5,19 +5,31 @@
    ダークサーフェス用パレット。系列色は固定順で割り当て、循環させない。
    全チャートにホバー（クロスヘア + ツールチップ）を標準装備する。
 ================================================================ */
-const VIZ = {
-  /* 質的（アイデンティティ）— 固定順。9系列目は色を作らず「その他」に畳む */
+/* ダーク面（3Dビュー上のパネル）と ライト面（分析画面）で別々に検証したパレットを持つ。
+   どちらも dataviz の検証器を通した値で、明度帯・彩度・CVD ΔE・コントラストを満たす。
+   ライト面の一部色は 3:1 未満のため「相補（直接ラベル・凡例・表）」を必ず添える。 */
+const VIZ_DARK = {
   ser: ['#1e8fd0', '#c98500', '#199e70', '#d95926', '#9085e9', '#d55181', '#008300', '#e66767'],
-  /* 量的（マグニチュード）— 単一色相 暗→明 */
   seq: ['#0b2f47', '#12496b', '#1a6693', '#2585bd', '#4aa8dd', '#86cdf0'],
-  /* 極性（乖離）— 寒色 / 中立グレー / 暖色 */
   div: ['#1e8fd0', '#6b7280', '#d95926'],
-  /* 状態 — 系列色として流用しない */
   st: { good: '#199e70', warn: '#c98500', serious: '#d95926', critical: '#e66767' },
   ink: '#e9edf6', ink2: '#9aa5bb', ink3: '#66718a',
-  grid: 'rgba(154,165,187,.16)', axis: 'rgba(154,165,187,.34)',
-  surf: '#151b28',
+  grid: 'rgba(154,165,187,.16)', axis: 'rgba(154,165,187,.34)', surf: '#151b28',
 };
+const VIZ_LIGHT = {
+  ser: ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'],
+  seq: ['#dbeafd', '#a9d0f5', '#6fb0ea', '#3a8ad9', '#1f63ad', '#123f73'],
+  div: ['#2a78d6', '#9aa0a8', '#eb6834'],
+  st: { good: '#1a7f56', warn: '#b07800', serious: '#c9501f', critical: '#c62d2c' },
+  ink: '#14181f', ink2: '#4c5563', ink3: '#78818f',
+  grid: 'rgba(20,24,31,.10)', axis: 'rgba(20,24,31,.22)', surf: '#ffffff',
+};
+let VIZ = VIZ_DARK;
+/* キャンバスがライト面の中にあるかで自動的にパレットを切り替える */
+function vizTheme(cv) {
+  VIZ = (cv && cv.closest && cv.closest('.lightsurf')) ? VIZ_LIGHT : VIZ_DARK;
+  return VIZ;
+}
 const vizSeq = t => {
   const a = VIZ.seq, u = clamp(t, 0, 1) * (a.length - 1);
   const i = Math.min(a.length - 2, Math.floor(u)), k = u - i;
@@ -56,6 +68,7 @@ function fitText(c, t, maxW) {
   return s2 + '…';
 }
 function vizSetup(cv, h) {
+  vizTheme(cv);
   const dpr = Math.min(devicePixelRatio, 2);
   const w = cv.clientWidth || cv.parentElement.clientWidth || 300;
   cv.width = Math.round(w * dpr);

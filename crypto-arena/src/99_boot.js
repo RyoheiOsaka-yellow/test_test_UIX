@@ -49,6 +49,9 @@ setTimeout(() => { document.getElementById('loading').style.display = 'none'; },
   const a = document.getElementById('crumb-auto');
   a.innerHTML = ic('bolt', 15) + '<span>AUTOMATION</span>';
   a.dataset.tip = 'マーケティング・オートメーション コンソール';
+  const ac = document.getElementById('crumb-act');
+  ac.innerHTML = ic('ticket', 15) + '<span>ACTION</span>';
+  ac.dataset.tip = 'アクション・スタジオ — クーポン/チケット/サンプル/広告を作って配信';
   const p = document.getElementById('tl-play');
   p.innerHTML = ic('play', 15);
   p.dataset.tip = '再生 / 一時停止';
@@ -59,7 +62,10 @@ setTimeout(() => { document.getElementById('loading').style.display = 'none'; },
 })();
 
 document.getElementById('crumb-auto').onclick = () => {
-  if (AUTO.page) closeAuto(); else openAuto();
+  if (AUTO.page) closeAuto(); else { closeAction(); openAuto(); }
+};
+document.getElementById('crumb-act').onclick = () => {
+  if (actOpen) closeAction(); else { closeAuto(); openAction(); }
 };
 buildAutomation();
 window.__ready = true;

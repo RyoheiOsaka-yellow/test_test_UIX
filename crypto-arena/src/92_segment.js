@@ -143,6 +143,7 @@ document.getElementById('segb-name').oninput = e => { SEG_STATE.name = e.target.
 
 function openSeg() {
   segModal.style.display = 'flex';
+  document.getElementById('segb-box').classList.add('lightsurf');
   if (seatMode !== 'segment') { seatMode = 'segment'; }
   segCompute(); repaintSeats();
   if (pcMode) repaintSeatCloud();

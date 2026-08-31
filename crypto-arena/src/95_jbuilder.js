@@ -91,6 +91,7 @@ function openJB(id) {
   if (src) JB.draft.text = src.text || (typeof src.msg === 'function' ? '' : String(src.msg || ''));
   JB.open = true;
   jbModal.style.display = 'flex';
+  document.getElementById('jb-box').classList.add('lightsurf');
   renderJB();
 }
 function closeJB() { JB.open = false; jbModal.style.display = 'none'; }

@@ -11,6 +11,8 @@ const M2_MODES = [['seg', 'セグメント'], ['segment', '抽出セグメント
 
 function open2D() {
   m2.style.display = 'flex';
+  document.getElementById('m2-box').classList.add('lightsurf');
+  m2cv.classList.add('lightcv');
   const box = m2cv.getBoundingClientRect();
   m2cv.width = Math.round(box.width * devicePixelRatio);
   m2cv.height = Math.round(box.height * devicePixelRatio);
@@ -39,13 +41,13 @@ function seatColor2D(i) {
   if (seatMode === 'grade') return hex(GRADE_C[SEAT.grade[Math.max(0, expBoard) * SEAT.list.length + i]]);
   if (seatMode === 'journey') {
     const n = AUTO.seatCount ? AUTO.seatCount[i] : 0;
-    return n ? '#' + heatC(clamp(n / 5, 0, 1)).getHexString() : '#151b26';
+    return n ? '#' + heatC(clamp(n / 5, 0, 1)).getHexString() : '#e6eaf1';
   }
   if (seatMode === 'segment')
-    return SEG_STATE.matched && SEG_STATE.matched[i] ? '#00e5ff' : '#151b26';
+    return SEG_STATE.matched && SEG_STATE.matched[i] ? '#1668c4' : '#e6eaf1';
   if (seatMode === 'od') {
     const f = fanAt(i);
-    return odFocus < 0 || f.oi === odFocus ? hex(f.org.col) : '#1a2030';
+    return odFocus < 0 || f.oi === odFocus ? hex(f.org.col) : '#e6eaf1';
   }
   return '#3a465e';
 }
@@ -53,7 +55,7 @@ function seatColor2D(i) {
 function draw2D() {
   if (!m2ctx || m2.style.display === 'none') return;
   const W = m2cv.width, H = m2cv.height, c = m2ctx;
-  c.fillStyle = '#0b0f19'; c.fillRect(0, 0, W, H);
+  c.fillStyle = '#ffffff'; c.fillRect(0, 0, W, H);
   let mnx = 1e9, mxx = -1e9, mnz = 1e9, mxz = -1e9;
   for (const s of SEAT.list) {
     if (s.x < mnx) mnx = s.x; if (s.x > mxx) mxx = s.x;
@@ -68,7 +70,7 @@ function draw2D() {
   /* コート */
   c.fillStyle = '#c8a06a';
   c.fillRect(X(-COURT.w / 2), Z(-COURT.h / 2), COURT.w * k, COURT.h * k);
-  c.strokeStyle = '#1b1b1b'; c.lineWidth = 1.4 * devicePixelRatio;
+  c.strokeStyle = '#3b342b'; c.lineWidth = 1.4 * devicePixelRatio;
   c.strokeRect(X(-COURT.w / 2), Z(-COURT.h / 2), COURT.w * k, COURT.h * k);
   c.beginPath(); c.moveTo(X(0), Z(-COURT.h / 2)); c.lineTo(X(0), Z(COURT.h / 2)); c.stroke();
   c.fillStyle = '#552583'; c.font = '600 ' + (11 * devicePixelRatio) + 'px Oswald';
@@ -91,13 +93,13 @@ function draw2D() {
   for (const sec in cen) {
     const m = cen[sec];
     if (m.tier === 'SUITE' && m.n < 40) continue;
-    c.fillStyle = 'rgba(233,237,246,.82)';
+    c.fillStyle = 'rgba(20,24,31,.72)';
     c.fillText(sec, X(m.x / m.n), Z(m.z / m.n) + 3 * devicePixelRatio);
   }
   /* 選択席 */
   if (selSeat >= 0) {
     const s = SEAT.list[selSeat];
-    c.strokeStyle = '#00c2ff'; c.lineWidth = 2 * devicePixelRatio;
+    c.strokeStyle = '#1668c4'; c.lineWidth = 2.4 * devicePixelRatio;
     c.beginPath(); c.arc(X(s.x), Z(s.z), 7 * devicePixelRatio, 0, 7); c.stroke();
   }
   const k2 = AGG.kpi;
@@ -131,6 +133,7 @@ let boardTab = 'media';
 function openBoard(tab) {
   boardTab = tab || boardTab;
   board.style.display = 'flex';
+  document.getElementById('board-box').classList.add('lightsurf');
   document.getElementById('board-hd').querySelector('.t').textContent = '📊 分析ボード — ' + GAMES[curGame].name;
   document.getElementById('board-tabs').innerHTML = BOARD_TABS.map(t =>
     '<button class="ib wide' + (boardTab === t[0] ? ' active' : '') + '" data-bt="' + t[0] + '">' +

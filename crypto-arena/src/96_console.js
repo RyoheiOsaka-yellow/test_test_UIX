@@ -24,6 +24,7 @@ function openAuto() {
   if (!AUTO.built) buildAutomation();
   AUTO.page = true;
   autoPage.style.display = 'flex';
+  autoPage.classList.add('lightsurf');
   document.getElementById('panel').style.display = 'none';
   autoStep(timeState.min);
   renderAutoConsole();
@@ -74,6 +75,7 @@ function renderAutoConsole() {
           '<div class="ap-j-m">増分 <b style="color:var(--gold)">' + usd(B.rev || 0) + '</b>' +
             ' ／ コスト ' + usd(B.cost || 0) +
             (J.holdout ? ' ／ 対照 ' + fmt(B.hold || 0) : '') +
+            (B.capped ? ' ／ <b style="color:var(--gold)">上限 ' + fmt(J.cap) + '</b>' : '') +
             (J.ab ? ' ／ <b style="color:var(--purple)">A/B</b>' : '') + '</div>' +
           '<button class="ap-edit" data-jedit="' + J.id + '" data-tip="条件・文面・A/Bを編集">' +
             ic('pencil', 12) + '編集</button>' +

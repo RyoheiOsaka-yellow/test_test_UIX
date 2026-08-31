@@ -162,6 +162,155 @@ canvas{display:block}
 
 canvas[data-viz]{width:100%;display:block;border-radius:6px}
 
+
+/* ===== 分析画面のライトサーフェス =====
+   3Dビューはダークのまま、分析パネル（ボード / セグメント / ジャーニー /
+   オートメーション / 2D席図）だけを白基調に切り替える。 */
+.lightsurf{
+  --panel:#ffffff; --panel2:#f4f6fa; --line:#dfe4ec;
+  --txt:#14181f; --sub:#4c5563;
+  --acc:#1668c4; --accdim:#9cc4ee;
+  --gold:#a97800; --purple:#5b3fa8; --ok:#1a7f56; --warn:#c62d2c;
+  --blue:#2a78d6; --pink:#c14b7f;
+  color:var(--txt);
+}
+.lightsurf .bcard,.lightsurf .kpi{background:#f7f9fc;border-color:#e2e7ef}
+.lightsurf .kpi .v{color:#1668c4}
+.lightsurf .kpi .v.g{color:#a97800}
+.lightsurf .kpi .v.p{color:#5b3fa8}
+.lightsurf .kpi .v.k{color:#1a7f56}
+.lightsurf .hint{background:#eef4fb;border-left-color:#9cc4ee;color:#3d4654}
+.lightsurf .hint b{color:#1668c4}
+.lightsurf .sec-t{color:#5a6373}
+.lightsurf .sec-t b{color:#1668c4}
+.lightsurf table.dt th{color:#5a6373;border-bottom-color:#dfe4ec}
+.lightsurf table.dt td{border-bottom-color:#eef1f6}
+.lightsurf .chip{background:#fff;border-color:#d8dee8;color:#4c5563}
+.lightsurf .chip:hover{color:#14181f;border-color:#a9b6c8}
+.lightsurf .chip.active{background:#e7f1fd;border-color:#1668c4;color:#1668c4}
+.lightsurf .ib{background:#fff;border-color:#d8dee8;color:#4c5563}
+.lightsurf .ib:hover{color:#14181f;border-color:#a9b6c8}
+.lightsurf .ib.active{background:#e7f1fd;border-color:#1668c4;color:#1668c4}
+.lightsurf .tool-btn{border-color:#c8d2e0;color:#4c5563;background:#fff}
+.lightsurf .tool-btn:hover{border-color:#1668c4;color:#1668c4;background:#f2f7fe}
+.lightsurf .close-x{background:#f4f6fa;border-color:#dfe4ec;color:#5a6373}
+.lightsurf .bar-row .bar{background:#e8ecf3}
+.lightsurf .bar-row b{color:#14181f}
+.lightsurf .bar-row span{color:#5a6373}
+.lightsurf .ck-row{color:#4c5563}
+.lightsurf .jb-in{background:#fff;border-color:#d8dee8;color:#14181f}
+.lightsurf .fc-kpi div{background:#f4f6fa;border-color:#e2e7ef}
+.lightsurf .fc-kpi .v{color:#a97800}
+.lightsurf .fc-kpi .l{color:#78818f}
+.lightsurf canvas[data-viz]{background:#fff}
+.lightsurf .grad-bar{background:linear-gradient(90deg,#dbeafd,#6fb0ea,#1baf7a,#eda100,#e34948)}
+.lightsurf .grad-lbl{color:#78818f}
+
+/* 分析モーダルの外枠を白に */
+#board-box.lightsurf,#segb-box.lightsurf,#jb-box.lightsurf,#m2-box.lightsurf{
+  background:#ffffff;border-color:#dfe4ec;box-shadow:0 24px 70px rgba(10,16,28,.55)}
+#autopage.lightsurf{background:#f2f5f9}
+#autopage.lightsurf #ap-left,#autopage.lightsurf #ap-mid,#autopage.lightsurf #ap-right{
+  background:#ffffff;border-color:#e2e7ef;box-shadow:0 1px 3px rgba(16,24,40,.06)}
+#autopage.lightsurf .ap-j{background:#f7f9fc;border-color:#e2e7ef}
+#autopage.lightsurf .ap-j:hover{border-color:#a9b6c8}
+#autopage.lightsurf .ap-ev{background:#f7f9fc}
+#autopage.lightsurf .ap-ev:hover{background:#eef2f8}
+#autopage.lightsurf .ap-ev-m{color:#3d4654}
+#autopage.lightsurf .ap-ev-b,#autopage.lightsurf .ap-j-m{color:#5a6373}
+#autopage.lightsurf .ap-j-w{color:#78818f}
+#autopage.lightsurf .ap-h{color:#5a6373}
+#autopage.lightsurf .ap-new{background:#fff}
+#autopage.lightsurf .ap-edit{background:#fff;border-color:#d8dee8}
+#m2-cv.lightcv{background:#ffffff;border-color:#dfe4ec}
+.lightsurf #viz-tip,.lightsurf #ui-tip{background:#fff;color:#14181f;border-color:#dfe4ec}
+
+
+/* ===== アクション・スタジオ ===== */
+#actpage{position:fixed;top:52px;left:0;right:0;bottom:62px;z-index:36;display:none;
+  flex-direction:column;gap:10px;padding:12px 14px}
+#ac-kpi{display:flex;gap:8px;align-items:center;flex-shrink:0}
+#ac-kpi .kpi{flex:0 0 auto;min-width:112px}
+#ac-grid{flex:1;display:grid;grid-template-columns:330px 1fr 380px;gap:10px;overflow:hidden}
+#ac-left,#ac-mid,#ac-right{background:#fff;border:1px solid #e2e7ef;border-radius:12px;padding:11px;
+  display:flex;flex-direction:column;overflow:hidden;box-shadow:0 1px 3px rgba(16,24,40,.06)}
+#ac-l,#ac-m,#ac-r{overflow-y:auto;flex:1}
+#ac-l::-webkit-scrollbar,#ac-m::-webkit-scrollbar,#ac-r::-webkit-scrollbar{width:5px}
+#ac-l::-webkit-scrollbar-thumb,#ac-m::-webkit-scrollbar-thumb,
+#ac-r::-webkit-scrollbar-thumb{background:#d8dee8;border-radius:3px}
+.ac-f{margin-bottom:7px}
+.ac-f label{display:block;font-size:9.5px;color:#5a6373;margin-bottom:3px;letter-spacing:.04em}
+.ac-f input[type=text],.ac-f input[type=number],.ac-f textarea{width:100%;background:#fff;
+  border:1px solid #d8dee8;border-radius:7px;padding:6px 9px;font-size:11.5px;color:#14181f;
+  font-family:var(--jp);resize:vertical}
+.ac-f input:focus,.ac-f textarea:focus{outline:none;border-color:#1668c4}
+.ac-f input[type=range]{width:100%;accent-color:#1668c4}
+.ac-form{display:grid;grid-template-columns:1fr 1fr;gap:0 10px;margin-top:10px}
+.ac-form .ac-f:nth-child(1),.ac-form .ac-f:nth-child(2){grid-column:1/-1}
+.ac-prev{display:flex;justify-content:center;padding:12px 4px;background:
+  repeating-linear-gradient(45deg,#f4f6fa,#f4f6fa 10px,#eef2f8 10px,#eef2f8 20px);
+  border-radius:10px;border:1px solid #e2e7ef}
+
+/* クリエイティブ */
+.cr{width:290px;border-radius:12px;overflow:hidden;box-shadow:0 6px 22px rgba(16,24,40,.18);
+  font-family:var(--jp)}
+.cr-hd{display:flex;align-items:center;gap:8px;padding:9px 12px 0}
+.cr-br{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;opacity:.85}
+.cr-tag{margin-left:auto;font-size:8.5px;letter-spacing:.14em;border:1px solid currentColor;
+  border-radius:9px;padding:1px 7px;opacity:.8}
+.cr-big{font-family:var(--mono);font-size:44px;font-weight:600;line-height:1;padding:6px 12px 0}
+.cr-big small{font-size:16px;margin-left:3px}
+.cr-pr{font-size:12.5px;font-weight:700;padding:4px 12px 0}
+.cr-bd{font-size:10.5px;line-height:1.6;padding:6px 12px;opacity:.9}
+.cr-ft{display:flex;gap:12px;font-size:9px;padding:0 12px 8px;opacity:.85;flex-wrap:wrap}
+.cr-ft b{font-weight:700}
+.cr-bar{display:flex;gap:1.5px;align-items:flex-end;height:26px;padding:0 12px;margin-top:2px}
+.cr-bar i{background:currentColor;height:100%;display:block;opacity:.85}
+.cr-code{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;padding:3px 12px 10px;opacity:.7}
+.cr-coupon{background:linear-gradient(135deg,#0f2f52,#123f73);color:#fff;
+  border:2px dashed rgba(255,255,255,.35)}
+.cr-coupon .cr-big{color:#ffd166}
+.cr-perf{height:1px;border-top:1px dashed rgba(255,255,255,.3);margin:6px 12px}
+.cr-ticket{display:flex;background:#fff;color:#14181f;border:1px solid #dfe4ec}
+.cr-stub{width:62px;background:linear-gradient(180deg,#552583,#3b1a5e);color:#fdb927;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  border-right:2px dashed rgba(255,255,255,.4)}
+.cr-st1{font-family:var(--mono);font-size:17px;font-weight:600}
+.cr-st2{font-size:8px;text-align:center;letter-spacing:.1em;color:#fff;opacity:.8}
+.cr-main{flex:1;min-width:0}
+.cr-ticket .cr-big{color:#552583;font-size:36px}
+.cr-ticket .cr-br,.cr-ticket .cr-tag{color:#5a6373}
+.cr-sample{background:linear-gradient(135deg,#0d3b2e,#12563f);color:#fff}
+.cr-sample .cr-gift{display:flex;justify-content:center;color:#6ee7b7;padding:6px 0 2px}
+.cr-ad{background:#fff;color:#14181f;border:1px solid #dfe4ec;width:300px}
+.cr-adimg{height:104px;background:linear-gradient(120deg,#123f73,#2a78d6);color:#fff;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+.cr-adimg span{font-family:var(--mono);font-size:15px;letter-spacing:.1em}
+.cr-adbody{padding:10px 12px 12px}
+.cr-tag2{font-size:8.5px;letter-spacing:.14em;color:#78818f}
+.cr-adh{font-size:13px;font-weight:700;margin-top:3px}
+.cr-ad .cr-bd{padding:6px 0}
+.cr-cta{display:inline-block;background:#1668c4;color:#fff;border-radius:7px;padding:6px 14px;
+  font-size:11px;font-weight:700;margin-top:4px}
+
+.ac-go{width:100%;margin-top:12px;padding:11px;border-radius:9px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#1668c4,#0f4f9a);color:#fff;font-size:12.5px;font-weight:700;
+  font-family:var(--jp);display:flex;align-items:center;justify-content:center;gap:7px;
+  box-shadow:0 3px 12px rgba(22,104,196,.32)}
+.ac-go:hover{filter:brightness(1.08)}
+.ac-go.off{background:#c8d2e0;color:#7d8798;box-shadow:none;cursor:not-allowed}
+.ac-live{background:#f7f9fc;border:1px solid #e2e7ef;border-radius:9px;padding:8px 10px;
+  margin-bottom:6px}
+.ac-live-h{display:flex;align-items:center;gap:6px;font-size:11px;color:#14181f}
+.ac-live-h b{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac-stop{background:transparent;border:1px solid #d8dee8;color:#8a93a3;border-radius:5px;
+  width:20px;height:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.ac-stop:hover{border-color:#c62d2c;color:#c62d2c}
+.ac-live-b{font-size:9.5px;color:#5a6373;margin-top:2px}
+.ac-live-b b{color:#14181f}
+.ac-live-bar{height:4px;background:#e8ecf3;border-radius:2px;margin-top:5px;overflow:hidden}
+.ac-live-bar i{display:block;height:100%;background:#1668c4;border-radius:2px}
+
 /* ===== Timeline ===== */
 #tl{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);width:min(760px,calc(100vw - 40px));
   background:rgba(17,22,34,.94);border:1px solid var(--line);border-radius:12px;padding:9px 14px;z-index:25;

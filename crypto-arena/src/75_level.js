@@ -8,6 +8,7 @@ const crumbs = [...document.querySelectorAll('.crumb')];
 
 function setLevel(lv, fly) {
   if (typeof AUTO !== 'undefined' && AUTO.page) closeAuto();
+  if (typeof actOpen !== 'undefined' && actOpen) closeAction();
   level = lv;
   crumbs.forEach(c => c.classList.toggle('active', c.dataset.lv === lv));
   const inArena = lv === 'arena';

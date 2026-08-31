@@ -175,6 +175,27 @@ function buildAutomation() {
       AUTO.sched.push({ t, i, j: J.id });
     }
   }
+  /* 発行上限（アクション・スタジオで設定した cap）を守る。
+     先頭から切ると下層の席に偏るので、個客ごとのハッシュで一様に間引く。 */
+  const capped = JOURNEYS.filter(J => J.on && J.cap > 0);
+  if (capped.length) {
+    const cnt = {};
+    for (const e of AUTO.sched) cnt[e.j] = (cnt[e.j] || 0) + 1;
+    const keepRate = {};
+    for (const J of capped)
+      if (cnt[J.id] > J.cap) keepRate[J.id] = J.cap / cnt[J.id];
+    if (Object.keys(keepRate).length) {
+      AUTO.sched = AUTO.sched.filter(e => {
+        const r = keepRate[e.j];
+        return r === undefined || hrand(e.i, 0x5eed + e.j.length) < r;
+      });
+      for (const J of capped) if (keepRate[J.id]) {
+        AUTO.byJ[J.id].aud = Math.min(AUTO.byJ[J.id].aud, J.cap +
+          Math.round((AUTO.byJ[J.id].hold || 0)));
+        AUTO.byJ[J.id].capped = true;
+      }
+    }
+  }
   AUTO.sched.sort((a, b) => a.t - b.t);
   AUTO.built = true;
   computeAutoKpi();
@@ -255,4 +276,5 @@ FRAME_HOOKS.push(function (dt) {
 TICK_HOOKS.push(function () {
   autoStep(timeState.min);
   if (AUTO.page) renderAutoConsole();
+  if (typeof actOpen !== 'undefined' && actOpen && ACT.live.length) renderAction();
 });
