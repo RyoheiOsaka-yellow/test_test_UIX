@@ -186,6 +186,37 @@ svg text{font-family:var(--jp)}
 
 #toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(21,24,33,.97);
   border:1px solid var(--acc);color:var(--acc);border-radius:10px;padding:9px 18px;font-size:12px;z-index:70;display:none}
+
+/* catchment (L6) */
+.chips-inline{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.ctable td:first-child{font-family:var(--jp)}
+.origin-lbl{font-size:10px;fill:#8b93a8}
+.origin-lbl.big{font-size:11px;fill:#e8eaf2}
+
+/* economy (L7) */
+.econ-big{display:flex;gap:12px;flex-wrap:wrap}
+.econ-big .eb{flex:1;min-width:220px;background:linear-gradient(135deg,rgba(245,196,0,.10),var(--panel2));
+  border:1px solid var(--line);border-radius:12px;padding:14px}
+.econ-big .eb.hi{border-color:var(--acc)}
+.econ-big .eb .et{font-size:10px;color:var(--sub);letter-spacing:.1em;margin-bottom:4px}
+.econ-big .eb .ev{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--acc);font-variant-numeric:tabular-nums;line-height:1.1}
+.econ-big .eb .ev small{font-size:12px;color:var(--sub);font-family:var(--jp);font-weight:400}
+.econ-big .eb .es{font-size:10px;color:var(--sub);margin-top:5px;line-height:1.6}
+
+/* seamless viewer (L8) */
+.seam-wrap{position:relative;background:#060a12;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+#seam-cv{display:block;width:100%;height:calc(100vh - 300px);min-height:420px;cursor:grab;touch-action:none}
+#seam-cv.dragging{cursor:grabbing}
+.seam-ui{position:absolute;top:10px;left:10px;display:flex;gap:6px;flex-wrap:wrap;max-width:75%}
+.seam-ui .chip{backdrop-filter:blur(6px)}
+.seam-zoom{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:4px}
+.seam-zoom button{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:rgba(21,24,33,.85);
+  color:var(--txt);cursor:pointer;font-size:16px;font-family:var(--mono)}
+.seam-zoom button:hover{border-color:var(--acc);color:var(--acc)}
+.seam-attr{position:absolute;right:8px;bottom:6px;font-size:9px;color:rgba(139,147,168,.9);
+  background:rgba(6,10,18,.55);padding:2px 7px;border-radius:6px}
+.seam-status{position:absolute;left:10px;bottom:8px;font-size:10px;color:var(--sub);
+  background:rgba(6,10,18,.65);padding:3px 9px;border-radius:6px}
 </style>
 </head>
 <body>
@@ -195,11 +226,14 @@ svg text{font-family:var(--jp)}
   <div class="hdr-title">栃木県 観光インテリジェンス — 入込・宿泊・導線・戦略の統合分析</div>
   <div id="lvl-crumb">
     <button class="crumb active" data-view="overview">L0 概況</button>
-    <button class="crumb" data-view="map">L1 観光マップ</button>
-    <button class="crumb" data-view="area">L2 エリア分析</button>
-    <button class="crumb" data-view="flow">L3 導線設計</button>
-    <button class="crumb" data-view="policy">L4 行政計画</button>
+    <button class="crumb" data-view="map">L1 マップ</button>
+    <button class="crumb" data-view="area">L2 エリア</button>
+    <button class="crumb" data-view="flow">L3 導線</button>
+    <button class="crumb" data-view="policy">L4 計画</button>
     <button class="crumb" data-view="ai">L5 AI分析</button>
+    <button class="crumb" data-view="catch">L6 来訪圏</button>
+    <button class="crumb" data-view="econ">L7 経済効果</button>
+    <button class="crumb" data-view="seamless">L8 シームレス</button>
   </div>
 </div>
 
@@ -420,6 +454,70 @@ svg text{font-family:var(--jp)}
     </div>
   </div>
 
+  <!-- ================= L6 CATCHMENT ================= -->
+  <div class="view" id="view-catch">
+    <div class="grid2" style="grid-template-columns:1.25fr 1fr">
+      <div class="card" style="padding:10px">
+        <div class="map-wrap">
+          <svg id="catch-svg" viewBox="0 0 720 640" role="img" aria-label="栃木県への来訪圏推計マップ"></svg>
+          <div class="map-note">※ アーク=発地→エリアの推計来訪流(帯の流れ=向き、太さ=規模) ／ 県内ヒート=地点集積(KDE風) ／ グラビティ仮説モデル</div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <h3>来訪圏 推計モデル</h3>
+          <div class="sub">来訪流(発地o→エリアa) ∝ 人口<sub>o</sub> × 利便係数<sub>o</sub> × e<sup>−距離/60km</sup> をエリア入込実績に整合按分</div>
+          <div class="chips-inline" id="catch-chips"></div>
+          <div id="catch-table"></div>
+        </div>
+        <div class="card">
+          <h3>読み取れる構造</h3>
+          <div id="catch-notes"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= L7 ECONOMY ================= -->
+  <div class="view" id="view-econ">
+    <div class="card">
+      <h3>観光経済効果 推計 <span style="color:var(--sub);font-weight:400">2024年基準</span></h3>
+      <div class="sub">県公表の観光消費額(KGI基準値)を、入込+宿泊×単価比で市町に按分した推計 ／ チップで指標切替</div>
+      <div class="econ-big" id="econ-cards"></div>
+    </div>
+    <div class="card">
+      <h3 id="econ-rank-title">市町別 推計観光消費額</h3>
+      <div class="sub" id="econ-rank-sub"></div>
+      <div class="chips-inline" id="econ-chips"></div>
+      <div id="econ-rank"></div>
+    </div>
+    <div class="card">
+      <h3>推計の前提</h3>
+      <div id="econ-notes"></div>
+    </div>
+  </div>
+
+  <!-- ================= L8 SEAMLESS ================= -->
+  <div class="view" id="view-seamless">
+    <div class="card" style="padding:10px">
+      <div class="seam-wrap">
+        <canvas id="seam-cv"></canvas>
+        <div class="seam-ui" id="seam-fly"></div>
+        <div class="seam-zoom">
+          <button id="seam-zin" title="ズームイン">＋</button>
+          <button id="seam-zout" title="ズームアウト">－</button>
+          <button id="seam-home" title="県全域" style="font-size:12px">◎</button>
+        </div>
+        <div class="seam-status" id="seam-status">ドラッグ移動 ／ ホイールでズーム ／ 地点クリックで詳細</div>
+        <div class="seam-attr">地図タイル: 国土地理院 全国最新写真(シームレス) ／ 取得不可の環境ではベクター表示</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>シームレス県域ビューア</h3>
+      <div class="sub">県全域⇄各エリアを実座標の1枚の連続マップでフライト移動。ズームに応じて航空写真がz8→z16へ高精細化し、観光地点・ラベルの表示密度も段階的に変化します。</div>
+    </div>
+  </div>
+
 </div>
 
 <div id="timeline">
@@ -597,6 +695,26 @@ routes:[
   {id:"r6", name:"益子・もてぎ里山ドライブ", area:"kentou", stops:[55,52,53,54], tag:"工芸×モビリティ", desc:"真岡IC→SLキューロク館→益子城内坂→道の駅ましこ→もてぎ。体験型コンテンツの連結。"},
   {id:"r7", name:"宇都宮アーバンデイ", area:"kenou", stops:[31,32,33,34,35], tag:"食×LRT", desc:"宇都宮駅→餃子→大谷資料館→ろまんちっく村→LRT乗車→ブレックスアリーナ。日帰り都市観光+ナイトタイム消費。"}
 ],
+origins:[ // 来訪圏グラビティモデルの発地(人口:万人, k:利便係数=近接・習慣補正)
+  {id:"tochigi", name:"栃木県内", lat:36.55,lng:139.82, pop:190, k:3.0},
+  {id:"tokyo", name:"東京都", lat:35.69,lng:139.69, pop:1410, k:1.0},
+  {id:"saitama", name:"埼玉県", lat:35.86,lng:139.65, pop:734, k:1.2},
+  {id:"chiba", name:"千葉県", lat:35.61,lng:140.12, pop:628, k:0.9},
+  {id:"kanagawa", name:"神奈川県", lat:35.45,lng:139.64, pop:924, k:0.9},
+  {id:"gunma", name:"群馬県", lat:36.39,lng:139.06, pop:191, k:1.4},
+  {id:"ibaraki", name:"茨城県", lat:36.34,lng:140.45, pop:285, k:1.4},
+  {id:"fukushima", name:"福島県", lat:37.35,lng:140.38, pop:178, k:1.3},
+  {id:"tohoku", name:"東北・北海道方面", lat:38.10,lng:140.85, pop:900, k:0.5},
+  {id:"west", name:"中部・関西以西", lat:35.15,lng:138.65, pop:3300, k:0.25}
+],
+econ:{ // 経済効果按分モデルのパラメータ
+  totalOku:9656,           // 2024 観光消費額(億円) = 戦略KGI基準値
+  targetOku:11562,         // 2030 目標
+  stayWeight:2.8,          // 宿泊1人泊の消費を日帰り1人の約2.8倍と仮定(観光庁単価調査の宿泊/日帰り比を参考)
+  inboundUnitMan:3.1,      // 外国人消費単価 万円/人泊 (R6実績, 戦略記載)
+  inboundTargetUnitMan:4.7,// 2030 目標単価
+  domesticUnitMan:3.2      // 日本人消費単価 万円 (R6実績, 戦略記載)
+},
 strategy:{
   name:"とちぎ観光立県戦略2026-2030", adopted:"2026-03-27", period:"2026-2030",
   vision:"「訪れてよし、稼いでよし、住んでよし」三方よしの観光立県とちぎ",
@@ -995,6 +1113,268 @@ ${JSON.stringify(TOCHIGI_DB)}`;
     copyText(prompt,'AI分析プロンプトをコピーしました')};
 }
 
+/* ---------- L6 CATCHMENT (来訪圏) ---------- */
+const CW=720,CH=640,CLON0=138.55,CLON1=141.35,CLAT0=34.95,CLAT1=38.35;
+const cpx=lng=>20+(lng-CLON0)/(CLON1-CLON0)*(CW-40);
+const cpy=lat=>20+(CLAT1-lat)/(CLAT1-CLAT0)*(CH-40);
+const AREA_HUBS={nikko:[139.60,36.76],nasu:[139.95,36.98],kenou:[139.87,36.58],kennan:[139.65,36.34],kentou:[140.10,36.49]};
+const haversine=(a,b)=>{const R=6371,dLa=(b[1]-a[1])*Math.PI/180,dLo=(b[0]-a[0])*Math.PI/180;
+  const s=Math.sin(dLa/2)**2+Math.cos(a[1]*Math.PI/180)*Math.cos(b[1]*Math.PI/180)*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(s))};
+let catchArea=null; // null=全エリア
+function computeCatchment(){
+  // flow[o][a] ∝ pop_o * k_o * exp(-d/60), 各エリアの入込実績(万人)に整合するよう按分
+  const areaIri={};Object.keys(DB.areas).forEach(k=>{
+    areaIri[k]=DB.munis.filter(m=>m.area===k).reduce((s,m)=>s+m.iri[5],0)/10000}); // 万人
+  const flows=[];
+  Object.keys(DB.areas).forEach(a=>{
+    const hub=AREA_HUBS[a];
+    const raw=DB.origins.map(o=>({o,w:o.pop*o.k*Math.exp(-haversine([o.lng,o.lat],hub)/60)}));
+    const tot=raw.reduce((s,r)=>s+r.w,0);
+    raw.forEach(r=>flows.push({area:a,origin:r.o,v:areaIri[a]*r.w/tot})); // 万人
+  });
+  return flows;
+}
+function catchArc(x1,y1,x2,y2,wpx,c1,c2){
+  // 帯の流れ=向き: 発地(グレー・細め)→エリア(エリア色・太め)へ24分割のグラデーション帯
+  const mx=(x1+x2)/2,my=(y1+y2)/2;
+  const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1;
+  const cx=mx-dy/len*len*.18,cy=my+dx/len*len*.18;
+  const N=24;let g='',prev=[x1,y1];
+  for(let i=1;i<=N;i++){
+    const t=i/N,it=1-t;
+    const bx=it*it*x1+2*it*t*cx+t*t*x2, by=it*it*y1+2*it*t*cy+t*t*y2;
+    const op=(.12+.75*t).toFixed(2), sw=(wpx*(0.45+0.55*t)).toFixed(1);
+    const col=t<.45?c1:c2;
+    g+=`<line x1="${prev[0].toFixed(1)}" y1="${prev[1].toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" opacity="${op}"/>`;
+    prev=[bx,by];
+  }
+  return g;
+}
+function renderCatch(){
+  const svg=$('#catch-svg');
+  const flows=computeCatchment().filter(f=>!catchArea||f.area===catchArea);
+  let g='<defs><filter id="kde" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="7"/></filter></defs>';
+  // 県境(広域投影)
+  g+=`<path d="${'M'+BOUNDARY.map(p=>cpx(p[0]).toFixed(1)+','+cpy(p[1]).toFixed(1)).join('L')+'Z'}" fill="rgba(28,32,48,.85)" stroke="rgba(245,196,0,.55)" stroke-width="1.4"/>`;
+  // KDE風ヒート: 観光地点の集積を規模指数^2で重み付け
+  let heat='';
+  DB.spots.forEach(s=>{if(catchArea&&s.area!==catchArea)return;
+    heat+=`<circle cx="${cpx(s.lng)}" cy="${cpy(s.lat)}" r="${3+s.scale*2.6}" fill="${DB.areas[s.area].hex}" opacity="${.06+s.scale*.05}"/>`});
+  g+=`<g filter="url(#kde)" style="mix-blend-mode:screen">${heat}</g>`;
+  // アーク(発地→エリアハブ)
+  const vmax=Math.max(...flows.map(f=>f.v));
+  flows.sort((a,b)=>a.v-b.v).forEach(f=>{
+    if(f.origin.id==='tochigi'&&!catchArea)return; // 全域表示では県内アークは省略(自明で他を覆うため)
+    if(f.v<vmax*.02)return;
+    const hub=AREA_HUBS[f.area];
+    const w=1+Math.sqrt(f.v)*1.15;
+    g+=catchArc(cpx(f.origin.lng),cpy(f.origin.lat),cpx(hub[0]),cpy(hub[1]),w,'#8b93a8',DB.areas[f.area].hex);
+  });
+  // エリアハブ
+  Object.entries(AREA_HUBS).forEach(([a,h])=>{if(catchArea&&a!==catchArea)return;
+    g+=`<circle cx="${cpx(h[0])}" cy="${cpy(h[1])}" r="5" fill="${DB.areas[a].hex}" stroke="#0d0f14" stroke-width="1.4"/>`});
+  // 発地
+  const byOrigin={};flows.forEach(f=>byOrigin[f.origin.id]=(byOrigin[f.origin.id]||0)+f.v);
+  DB.origins.forEach(o=>{
+    const v=byOrigin[o.id]||0;if(o.id==='tochigi'&&!catchArea)return;
+    const r=Math.min(18,2.5+Math.sqrt(v)*.42);
+    g+=`<circle cx="${cpx(o.lng)}" cy="${cpy(o.lat)}" r="${r.toFixed(1)}" fill="#e8eaf2" opacity=".55" stroke="#8b93a8" stroke-width="1"/>`+
+       `<text class="origin-lbl${v>vmax*.8?' big':''}" x="${cpx(o.lng)+r+4}" y="${cpy(o.lat)+3}">${o.name} ${v>=1?Math.round(v).toLocaleString()+'万人':''}</text>`;
+  });
+  svg.innerHTML=g;
+  // 表
+  const rows=DB.origins.map(o=>({name:o.name,v:byOrigin[o.id]||0})).sort((a,b)=>b.v-a.v);
+  const tot=rows.reduce((s,r)=>s+r.v,0);
+  $('#catch-table').innerHTML=`<table class="dtable ctable"><tr><th>発地</th><th>推計来訪(万人)</th><th>シェア</th></tr>`+
+    rows.map(r=>`<tr><td>${r.name}</td><td>${Math.round(r.v).toLocaleString()}</td><td>${(r.v/tot*100).toFixed(1)}%</td></tr>`).join('')+`</table>`;
+  $('#catch-notes').innerHTML=[
+    ["info","首都圏一都三県が最大の来訪圏","東京・埼玉・神奈川・千葉の推計シェアが過半。新幹線48分・東武特急・東北道の3導線が支える構造で、戦略の「継続的な首都圏誘客」と整合。"],
+    ["good","エリアごとに異なる後背圏","県南は埼玉・群馬比率が高く(北関東道・東北道)、那須は福島・東北方面の比率が上がる。エリア別のプロモーション出稿先を変える根拠になる。"],
+    ["risk","中部・関西以西はほぼ空白","距離減衰で西日本シェアは僅少。北陸新幹線経由や空路(羽田・成田経由)の広域商品造成、大阪・関西圏への認知施策が伸びしろ。"]
+  ].map(([t,h,b])=>`<div class="ins-card ${t}"><div class="it">${h}</div><div class="ib">${b}</div></div>`).join('');
+  // chips
+  $('#catch-chips').innerHTML=`<button class="chip${!catchArea?' active':''}" data-ca="">全エリア</button>`+
+    Object.entries(DB.areas).map(([k,a])=>`<button class="chip${catchArea===k?' active':''}" data-ca="${k}">${a.name.replace('エリア','')}</button>`).join('');
+  $$('#catch-chips .chip').forEach(c=>c.onclick=()=>{catchArea=c.dataset.ca||null;renderCatch()});
+}
+
+/* ---------- L7 ECONOMY (経済効果) ---------- */
+let econMode='total';
+function computeEcon(){
+  const E=DB.econ;
+  // score = 入込(万人) + 宿泊(万人泊)×宿泊重み ／ 宿泊は公表概要の上位4市町のみ実数、他は0扱い
+  const rows=DB.munis.map(m=>({m,iriMan:m.iri[5]/10000,stayMan:(m.stay||0)/10}));
+  const totScore=rows.reduce((s,r)=>s+r.iriMan+r.stayMan*E.stayWeight,0);
+  rows.forEach(r=>{
+    r.oku=(r.iriMan+r.stayMan*E.stayWeight)/totScore*E.totalOku;          // 推計消費額(億円)
+    r.stayOku=r.stayMan*E.stayWeight/totScore*E.totalOku;                 // うち宿泊寄与
+    r.inbOku=r.m.foreign*E.inboundUnitMan/10000;                          // インバウンド消費(億円)=人泊×3.1万円
+  });
+  return rows;
+}
+function renderEcon(){
+  const E=DB.econ,rows=computeEcon();
+  const inbNow=(DB.pref.foreign[5]*E.inboundUnitMan/10000);
+  const inb2030=(65.2*E.inboundTargetUnitMan*10000/10000); // 万人泊×万円=億円
+  $('#econ-cards').innerHTML=
+    `<div class="eb hi"><div class="et">観光消費額 2024(KGI基準値)</div><div class="ev">${fmt(E.totalOku)}<small> 億円</small></div><div class="es">共通基準による全国観光入込客統計。過去最高。</div></div>`+
+    `<div class="eb"><div class="et">2030 目標(KGI)</div><div class="ev">${fmt(E.targetOku)}<small> 億円</small></div><div class="es">+${fmt(E.targetOku-E.totalOku)}億円(+${((E.targetOku/E.totalOku-1)*100).toFixed(1)}%)。単価向上×宿泊増×インバウンドで達成する設計。</div></div>`+
+    `<div class="eb"><div class="et">インバウンド消費 推計</div><div class="ev">${inbNow.toFixed(0)}<small> 億円 → ${inb2030.toFixed(0)}億円</small></div><div class="es">27.9万人泊×3.1万円 → 65.2万人泊×4.7万円。約3.5倍化がKGIの最重要ドライバー。</div></div>`+
+    `<div class="eb"><div class="et">一人当たり単価 目標</div><div class="ev">3.2<small>→3.5万円(日本人)</small></div><div class="es">外国人は3.1→4.7万円。高付加価値化(施策⑪)・ナイトタイム(施策⑩)が単価を押し上げる。</div></div>`;
+  const modes={total:["市町別 推計観光消費額","入込+宿泊×2.8(単価比)でKGI基準値9,656億円を按分",r=>r.oku,v=>v.toFixed(0)+' 億円'],
+    stay:["市町別 宿泊寄与額(推計)","宿泊(万人泊)×単価重みの寄与分のみ。宿泊数は公表概要の上位4市町ベース",r=>r.stayOku,v=>v.toFixed(0)+' 億円'],
+    inbound:["市町別 インバウンド消費(推計)","外国人宿泊(人泊)×単価3.1万円",r=>r.inbOku,v=>v.toFixed(1)+' 億円']};
+  const[mtitle,msub,mval,mfmt]=modes[econMode];
+  $('#econ-rank-title').textContent=mtitle;$('#econ-rank-sub').textContent=msub;
+  $('#econ-chips').innerHTML=Object.entries({total:"総消費額",stay:"宿泊寄与",inbound:"インバウンド"}).map(([k,l])=>
+    `<button class="chip${econMode===k?' active':''}" data-em="${k}">${l}</button>`).join('');
+  $$('#econ-chips .chip').forEach(c=>c.onclick=()=>{econMode=c.dataset.em;renderEcon()});
+  const sorted=rows.map(r=>({name:r.m.name,area:r.m.area,v:mval(r)})).sort((a,b)=>b.v-a.v).filter(r=>r.v>0).slice(0,15);
+  const max=sorted[0]?.v||1;
+  $('#econ-rank').innerHTML=sorted.map(r=>
+    `<div class="brow"><div class="bl">${r.name}</div><div class="btrack" style="height:16px"><div class="bfill" style="width:${r.v/max*100}%;background:${DB.areas[r.area].hex}"></div></div><div class="bv" style="width:96px">${mfmt(r.v)}</div></div>`).join('');
+  $('#econ-notes').innerHTML=[
+    ["info","按分モデルの構造","市町別消費額の公式統計は存在しないため、消費額(県計9,656億円)を「入込数+宿泊数×2.8」のスコアで按分。重み2.8は観光庁 旅行・観光消費動向調査の宿泊/日帰り単価比を参考にした仮定値。"],
+    ["risk","宿泊データの制約","市町別宿泊数は公表概要に記載の上位4市町(日光・那須・宇都宮・那須塩原)のみ実数。その他市町は宿泊寄与0として扱うため、鬼怒川等を除く温泉地の消費はやや過小評価になる。"],
+    ["good","含意 — 宿泊が消費を決める","推計では日光市が入込2位でも消費額で首位級。宿泊1人泊は日帰り1人の約2.8倍の消費であり、「泊まる理由づくり」への投資が消費額に最も効く。"]
+  ].map(([t,h,b])=>`<div class="ins-card ${t}"><div class="it">${h}</div><div class="ib">${b}</div></div>`).join('');
+}
+
+/* ---------- L8 SEAMLESS VIEWER ---------- */
+const seam={cx:139.82,cy:36.68,z:9.05,drag:null,tiles:new Map(),fails:0,raf:0,inited:false};
+const TILE_URL=(z,x,y)=>`https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/${z}/${x}/${y}.jpg`;
+const lon2wx=(lon,z)=> (lon+180)/360*256*Math.pow(2,z);
+const lat2wy=(lat,z)=>{const s=Math.sin(lat*Math.PI/180);
+  return (0.5-Math.log((1+s)/(1-s))/(4*Math.PI))*256*Math.pow(2,z)};
+const wx2lon=(wx,z)=>wx/(256*Math.pow(2,z))*360-180;
+const wy2lat=(wy,z)=>{const n=Math.PI-2*Math.PI*wy/(256*Math.pow(2,z));
+  return 180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n)))};
+function seamCanvas(){const cv=$('#seam-cv');const r=cv.getBoundingClientRect();
+  const dpr=Math.min(2,devicePixelRatio||1);
+  if(cv.width!==Math.round(r.width*dpr)){cv.width=Math.round(r.width*dpr);cv.height=Math.round(r.height*dpr)}
+  return {cv,ctx:cv.getContext('2d'),w:cv.width,h:cv.height,dpr}}
+function seamProject(lng,lat,S){ // → canvas px
+  const z=seam.z;
+  return [(lon2wx(lng,z)-lon2wx(seam.cx,z))*S.dpr+S.w/2,(lat2wy(lat,z)-lat2wy(seam.cy,z))*S.dpr+S.h/2]}
+function getTile(z,x,y){
+  const max=Math.pow(2,z);if(y<0||y>=max)return null;x=((x%max)+max)%max;
+  const key=z+'/'+x+'/'+y;
+  if(seam.tiles.has(key))return seam.tiles.get(key);
+  const img=new Image();img.crossOrigin='anonymous';
+  const rec={img,ok:false,err:false};
+  img.onload=()=>{rec.ok=true;seamDraw()};
+  img.onerror=()=>{rec.err=true;seam.fails++;if(seam.fails===8)$('#seam-status').textContent='航空写真タイルを取得できないため、ベクター表示で動作中';seamDraw()};
+  img.src=TILE_URL(z,x,y);
+  seam.tiles.set(key,rec);return rec;
+}
+function seamDraw(){
+  if(!$('#view-seamless').classList.contains('active'))return;
+  const S=seamCanvas(),{ctx,w,h,dpr}=S;
+  ctx.fillStyle='#060a12';ctx.fillRect(0,0,w,h);
+  const zi=Math.max(5,Math.min(16,Math.floor(seam.z)));
+  const scale=Math.pow(2,seam.z-zi)*dpr;
+  const wcx=lon2wx(seam.cx,zi),wcy=lat2wy(seam.cy,zi);
+  const tl_x=wcx-(w/2)/scale,tl_y=wcy-(h/2)/scale;
+  const x0=Math.floor(tl_x/256),y0=Math.floor(tl_y/256);
+  const nx=Math.ceil(w/scale/256)+1,ny=Math.ceil(h/scale/256)+1;
+  let drew=false;
+  for(let tx=x0;tx<=x0+nx;tx++)for(let ty=y0;ty<=y0+ny;ty++){
+    const t=getTile(zi,tx,ty);if(!t||!t.ok)continue;
+    const sx=(tx*256-tl_x)*scale,sy=(ty*256-tl_y)*scale;
+    ctx.drawImage(t.img,sx,sy,256*scale+1,256*scale+1);drew=true;
+  }
+  if(drew){ctx.fillStyle='rgba(6,10,18,.34)';ctx.fillRect(0,0,w,h)} // ダークトーン統一
+  // 県境
+  ctx.beginPath();
+  BOUNDARY.forEach((p,i)=>{const[X,Y]=seamProject(p[0],p[1],S);i?ctx.lineTo(X,Y):ctx.moveTo(X,Y)});
+  ctx.closePath();
+  if(!drew){ctx.fillStyle='rgba(28,32,48,.9)';ctx.fill()}
+  ctx.strokeStyle='#f5c400';ctx.lineWidth=1.5*dpr;ctx.globalAlpha=.85;ctx.stroke();ctx.globalAlpha=1;
+  // エリアラベル(低ズームのみ)
+  if(seam.z<10.6){ctx.font=600+' '+13*dpr+'px Oswald, sans-serif';ctx.textAlign='center';
+    Object.entries(AREA_HUBS).forEach(([a,hub])=>{const[X,Y]=seamProject(hub[0],hub[1],S);
+      ctx.fillStyle=DB.areas[a].hex;ctx.globalAlpha=.9;ctx.fillText(DB.areas[a].name.replace('エリア',''),X,Y-14*dpr);ctx.globalAlpha=1})}
+  // 観光地点(ズームで密度変化)
+  const minScale=seam.z>=12?1:seam.z>=10.5?2:seam.z>=9.5?3:4;
+  ctx.textAlign='left';
+  DB.spots.forEach(s=>{
+    if(s.scale<minScale)return;
+    const[X,Y]=seamProject(s.lng,s.lat,S);
+    if(X<-30||Y<-30||X>w+30||Y>h+30)return;
+    const r=(2.5+s.scale*1.2)*dpr;
+    ctx.beginPath();ctx.arc(X,Y,r,0,7);ctx.fillStyle=DB.areas[s.area].hex;ctx.fill();
+    ctx.strokeStyle='rgba(6,10,18,.7)';ctx.lineWidth=dpr;ctx.stroke();
+    if(seam.z>=10.5||s.scale>=5){ctx.font=10*dpr+'px "Noto Sans JP", sans-serif';
+      ctx.fillStyle='rgba(232,234,242,.95)';ctx.strokeStyle='rgba(6,10,18,.8)';ctx.lineWidth=3*dpr;
+      const t=shortName(s);ctx.strokeText(t,X+r+3*dpr,Y+3*dpr);ctx.fillText(t,X+r+3*dpr,Y+3*dpr)}
+  });
+  // ズーム表示
+  ctx.font=600+' '+11*dpr+'px Oswald, sans-serif';ctx.fillStyle='rgba(139,147,168,.9)';ctx.textAlign='right';
+  ctx.fillText('Z '+seam.z.toFixed(1),w-12*dpr,h-26*dpr);
+}
+function seamFly(lng,lat,z){
+  const s0={cx:seam.cx,cy:seam.cy,z:seam.z},t0=performance.now(),dur=1300;
+  const dipZ=Math.min(s0.z,z)-0.9; // 一旦引いてから寄る"フライト"
+  cancelAnimationFrame(seam.raf);
+  const step=t=>{
+    let p=Math.min(1,(t-t0)/dur);p=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+    seam.cx=s0.cx+(lng-s0.cx)*p;seam.cy=s0.cy+(lat-s0.cy)*p;
+    const zl=s0.z+(z-s0.z)*p, dip=Math.sin(p*Math.PI)*Math.max(0,Math.min(s0.z,z)-dipZ);
+    seam.z=zl-dip*0.9;
+    seamDraw();
+    if(p<1)seam.raf=requestAnimationFrame(step);
+  };
+  seam.raf=requestAnimationFrame(step);
+}
+const SEAM_DEST=[["県全域",139.82,36.68,9.05],["日光・奥日光",139.55,36.76,11.2],["鬼怒川・湯西川",139.68,36.86,10.8],
+  ["那須高原",140.01,37.07,11.6],["塩原",139.82,36.965,11.6],["宇都宮",139.885,36.575,11.6],
+  ["県南(足利・佐野)",139.55,36.33,11.0],["益子・もてぎ",140.14,36.49,10.8]];
+function seamInit(){
+  if(seam.inited)return;seam.inited=true;
+  const cv=$('#seam-cv');
+  $('#seam-fly').innerHTML=SEAM_DEST.map((d,i)=>`<button class="chip" data-d="${i}">${d[0]}</button>`).join('');
+  $$('#seam-fly .chip').forEach(b=>b.onclick=()=>{const d=SEAM_DEST[+b.dataset.d];seamFly(d[1],d[2],d[3])});
+  $('#seam-zin').onclick=()=>{seam.z=Math.min(16,seam.z+0.8);seamDraw()};
+  $('#seam-zout').onclick=()=>{seam.z=Math.max(7.5,seam.z-0.8);seamDraw()};
+  $('#seam-home').onclick=()=>seamFly(139.82,36.68,9.05);
+  cv.addEventListener('wheel',e=>{e.preventDefault();
+    const S=seamCanvas(),r=cv.getBoundingClientRect();
+    const mx=(e.clientX-r.left)*S.dpr,my=(e.clientY-r.top)*S.dpr;
+    const lonM=wx2lon(lon2wx(seam.cx,seam.z)+(mx-S.w/2)/S.dpr,seam.z);
+    const latM=wy2lat(lat2wy(seam.cy,seam.z)+(my-S.h/2)/S.dpr,seam.z);
+    const nz=Math.max(7.5,Math.min(16,seam.z-Math.sign(e.deltaY)*0.4));
+    // カーソル位置を保ったままズーム
+    const k=Math.pow(2,seam.z-nz);
+    seam.z=nz;
+    seam.cx=lonM+(seam.cx-lonM)*k;seam.cy=latM+(seam.cy-latM)*k;
+    // 簡易near-enough: 中心補正(メルカトルの緯度非線形は小域で近似)
+    seamDraw();
+  },{passive:false});
+  cv.addEventListener('pointerdown',e=>{seam.drag={x:e.clientX,y:e.clientY,cx:seam.cx,cy:seam.cy};
+    cv.classList.add('dragging');cv.setPointerCapture(e.pointerId)});
+  cv.addEventListener('pointermove',e=>{if(!seam.drag)return;
+    const S=seamCanvas();
+    const dwx=(e.clientX-seam.drag.x)*S.dpr/S.dpr,dwy=(e.clientY-seam.drag.y)*S.dpr/S.dpr;
+    seam.cx=wx2lon(lon2wx(seam.drag.cx,seam.z)-dwx,seam.z);
+    seam.cy=wy2lat(lat2wy(seam.drag.cy,seam.z)-dwy,seam.z);
+    seamDraw()});
+  const endDrag=e=>{
+    if(seam.drag&&Math.hypot(e.clientX-seam.drag.x,e.clientY-seam.drag.y)<5)seamClick(e);
+    seam.drag=null;cv.classList.remove('dragging')};
+  cv.addEventListener('pointerup',endDrag);
+  cv.addEventListener('pointercancel',()=>{seam.drag=null;cv.classList.remove('dragging')});
+  addEventListener('resize',()=>seamDraw());
+}
+function seamClick(e){
+  const cv=$('#seam-cv'),S=seamCanvas(),r=cv.getBoundingClientRect();
+  const mx=(e.clientX-r.left)*S.dpr,my=(e.clientY-r.top)*S.dpr;
+  let best=null,bd=20*S.dpr;
+  DB.spots.forEach(s=>{const[X,Y]=seamProject(s.lng,s.lat,S);
+    const d=Math.hypot(X-mx,Y-my);if(d<bd){bd=d;best=s}});
+  if(best){selectSpot(best);seamFly(best.lng,best.lat,Math.max(seam.z,12.2))}
+}
+
 /* ---------- view switching ---------- */
 const PHASES={0:"アフターDC — 入込9,228万人(近年ピーク)",1:"コロナ禍 — 入込6,117万人へ急減",2:"底ばい — 行動制限続く",3:"回復開始 — とちぎ国体開催",4:"回復本格化 — LRT開業・スペーシアX",5:"回復加速 — 入込8,997万人・外国人宿泊 過去最高"};
 function setYear(i){
@@ -1021,6 +1401,9 @@ $$('.crumb').forEach(c=>c.onclick=()=>{
   if(c.dataset.view==='flow'){renderFlow();renderFlowMap()}
   if(c.dataset.view==='policy')renderPolicy();
   if(c.dataset.view==='ai')renderAI();
+  if(c.dataset.view==='catch')renderCatch();
+  if(c.dataset.view==='econ')renderEcon();
+  if(c.dataset.view==='seamless'){seamInit();seamDraw()}
 });
 
 /* ---------- init ---------- */
