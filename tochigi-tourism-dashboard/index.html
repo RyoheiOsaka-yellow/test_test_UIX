@@ -244,6 +244,7 @@ body.tl-folded #tl-body{display:none}
     <button class="crumb" data-view="catch">L6 来訪圏</button>
     <button class="crumb" data-view="econ">L7 経済効果</button>
     <button class="crumb" data-view="seamless">L8 衛星写真</button>
+    <button class="crumb" id="pc-toggle" title="点群/ワイヤーフレーム表示">◆ 点群ビュー</button>
   </div>
 </div>
 
@@ -263,6 +264,17 @@ body.tl-folded #tl-body{display:none}
     <div class="sec">
       <div class="sec-t">カメラフライト</div>
       <div class="row-btns" id="fly-chips"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">地物レイヤー</div>
+      <div class="row-btns" id="geo-chips">
+        <button class="chip active" data-g="photo">航空写真地形</button>
+        <button class="chip active" data-g="contour">等高線</button>
+        <button class="chip active" data-g="urban">市街地</button>
+        <button class="chip active" data-g="net">道路・鉄道</button>
+        <button class="chip active" data-g="water">河川・湖</button>
+      </div>
+      <div class="hint" id="pc-note" style="margin-top:6px">航空写真=国土地理院シームレス写真を標高で変位。市街地は人口(概数)に基づく手続き生成の建物クラスタです。</div>
     </div>
     <div class="sec" id="sec-layers" style="display:none">
       <div class="sec-t">マップレイヤー</div>
@@ -293,6 +305,17 @@ body.tl-folded #tl-body{display:none}
     <div class="sec">
       <div class="sec-t">エリア凡例</div>
       <div class="legend" id="area-legend"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">交通・水系</div>
+      <div class="legend">
+        <div class="li"><span class="sw" style="background:#e6ecff"></span>東北新幹線</div>
+        <div class="li"><span class="sw" style="background:#a8b6d8"></span>JR在来線</div>
+        <div class="li"><span class="sw" style="background:#3ddc84"></span>東武線</div>
+        <div class="li"><span class="sw" style="background:#ff9a3d"></span>宇都宮LRT</div>
+        <div class="li"><span class="sw" style="background:#d8dcea"></span>高速道路</div>
+        <div class="li"><span class="sw" style="background:#2f7fd0"></span>河川・湖沼</div>
+      </div>
     </div>
     <div class="sec">
       <div class="sec-t">操作</div>
@@ -756,7 +779,7 @@ function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block
   clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2200)}
 
 /* ---------- geo ---------- */
-const CLNG=139.82,CLAT=36.68,KX=89,KZ=111,VEX=7; // 1unit=1km, 標高強調×7
+const CLNG=139.82,CLAT=36.68,KX=89,KZ=111,VEX=4; // 1unit=1km, 標高強調×4
 const toX=lng=>(lng-CLNG)*KX, toZ=lat=>(CLAT-lat)*KZ*-1; // north = -z? → z=(CLAT-lat)*KZ: lat>CLAT → z negative(north away)
 const G2W=(lng,lat)=>[ (lng-CLNG)*KX, (CLAT-lat)*KZ ];
 const BOUNDARY=[[139.45,36.28],[139.42,36.36],[139.48,36.45],[139.46,36.55],[139.43,36.63],
@@ -774,6 +797,17 @@ const PEAKS=[[139.375,36.80,2.58,7],[139.49,36.765,2.48,6],[139.56,36.80,2.46,6]
   [139.42,37.03,2.06,9],[139.62,37.05,1.78,9],[139.965,37.125,1.92,6],[139.77,36.90,1.80,8],
   [139.50,36.90,1.90,10],[140.28,36.93,1.02,8],[139.75,36.62,0.55,5],[139.68,36.35,0.34,3.5],
   [140.18,36.55,0.42,7],[139.42,36.38,0.55,6],[139.60,36.55,0.9,8],[139.55,36.65,1.2,9]];
+function hash2(i,j){let h=Math.imul(i,374761393)+Math.imul(j,668265263);
+  h=Math.imul(h^(h>>>13),1274126177);return ((h^(h>>>16))>>>0)/4294967296}
+function vnoise(x,y){
+  const i=Math.floor(x),j=Math.floor(y),fx=x-i,fy=y-j;
+  const u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy);
+  return hash2(i,j)*(1-u)*(1-v)+hash2(i+1,j)*u*(1-v)+hash2(i,j+1)*(1-u)*v+hash2(i+1,j+1)*u*v;
+}
+function fbm(x,y){let n=0,amp=1,f=1,tot=0;
+  for(let o=0;o<4;o++){n+=vnoise(x*f+o*13.7,y*f+o*7.3)*amp;tot+=amp;amp*=.5;f*=2.15}
+  return n/tot-0.5;
+}
 function elevKm(lng,lat){
   const px=(lng-CLNG)*KX,pz=(CLAT-lat)*KZ;
   let h=0.03+Math.max(0,((139.95-lng)*0.45+(lat-36.35)*0.5))*0.16;
@@ -782,6 +816,7 @@ function elevKm(lng,lat){
     h+=p[2]*0.82*Math.exp(-d2/(2*p[3]*p[3]));
   });
   h+=0.03*Math.sin(px*0.55)*Math.cos(pz*0.42);
+  h+=fbm(px/5.5,pz/5.5)*(0.11+h*0.42); // 尾根・谷の起伏
   return Math.max(0.02,h);
 }
 const elevY=(lng,lat)=>elevKm(lng,lat)*VEX;
@@ -802,8 +837,14 @@ function initScene(){
   renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
   renderer.setClearColor(0x0a0d14,1);
   $('#canvas-wrap').appendChild(renderer.domElement);
-  ['terrain','boundary','net','spots','muni','flows','route','catch'].forEach(k=>{groups[k]=new THREE.Group();scene.add(groups[k])});
-  buildTerrain();buildBoundary();buildNetworks();buildSpots();buildMuni();
+  ['photo','mesh','terrain','contour','water','urban','net','boundary','spots','muni','flows','route','catch']
+    .forEach(k=>{groups[k]=new THREE.Group();scene.add(groups[k])});
+  scene.add(new THREE.AmbientLight(0x6c7895,1.05));
+  const sun=new THREE.DirectionalLight(0xffeccb,1.15);sun.position.set(-70,150,60);scene.add(sun);
+  const rim=new THREE.DirectionalLight(0x4da3ff,.4);rim.position.set(80,40,-70);scene.add(rim);
+  buildPhotoTerrain();buildMeshTerrain();buildTerrainPoints();buildContours();
+  buildWater();buildRoads();buildUrban();buildBoundary();buildSpots();buildMuni();
+  groups.terrain.visible=false;groups.mesh.visible=false; // 既定=航空写真地形
   const grid=new THREE.GridHelper(560,46,0x232a3e,0x161b2a);
   grid.position.y=-0.6;grid.material.transparent=true;grid.material.opacity=.4;scene.add(grid);
   addEvents();
@@ -824,33 +865,323 @@ function rampColor(t){
   t=Math.max(0,Math.min(1,t));const seg=t*(RAMP.length-1),i=Math.min(RAMP.length-2,Math.floor(seg)),f=seg-i;
   return [ (RAMP[i][0]+(RAMP[i+1][0]-RAMP[i][0])*f)/255,(RAMP[i][1]+(RAMP[i+1][1]-RAMP[i][1])*f)/255,(RAMP[i][2]+(RAMP[i+1][2]-RAMP[i][2])*f)/255 ];
 }
-function buildTerrain(){
-  const pos=[],col=[],step=0.0062;
+/* ===== 地物データ(概略形状。表示用に簡略化した近似ジオメトリ) ===== */
+const GEO={
+rivers:[ // 主要河川の概略流路
+  {n:"鬼怒川",w:2.0,p:[[139.44,36.99],[139.52,36.95],[139.58,36.90],[139.66,36.86],[139.70,36.82],[139.71,36.74],[139.73,36.68],[139.79,36.60],[139.86,36.52],[139.93,36.44],[139.98,36.36],[140.02,36.28],[140.05,36.20]]},
+  {n:"男鹿川",w:1.1,p:[[139.62,37.04],[139.65,36.96],[139.68,36.90],[139.70,36.84]]},
+  {n:"大谷川",w:1.1,p:[[139.47,36.75],[139.55,36.75],[139.62,36.74],[139.70,36.72]]},
+  {n:"那珂川",w:1.8,p:[[139.99,37.06],[140.02,36.98],[140.03,36.90],[140.06,36.82],[140.12,36.76],[140.16,36.70],[140.17,36.62],[140.21,36.55],[140.27,36.50]]},
+  {n:"箒川",w:1.2,p:[[139.78,36.94],[139.86,36.92],[139.94,36.88],[140.02,36.84]]},
+  {n:"荒川",w:1.0,p:[[139.88,36.86],[139.92,36.78],[139.98,36.72],[140.05,36.68],[140.10,36.72]]},
+  {n:"渡良瀬川",w:1.6,p:[[139.44,36.63],[139.42,36.55],[139.38,36.47],[139.35,36.40],[139.42,36.34],[139.52,36.31],[139.62,36.28],[139.68,36.25]]},
+  {n:"思川",w:1.3,p:[[139.58,36.62],[139.62,36.54],[139.68,36.46],[139.73,36.38],[139.77,36.30],[139.72,36.24]]},
+  {n:"巴波川",w:0.9,p:[[139.70,36.44],[139.73,36.38],[139.75,36.31],[139.74,36.25]]},
+  {n:"田川",w:0.9,p:[[139.86,36.66],[139.88,36.58],[139.90,36.48],[139.92,36.38],[139.95,36.30]]},
+  {n:"小貝川",w:1.0,p:[[139.98,36.72],[140.01,36.64],[140.02,36.54],[140.03,36.44],[140.05,36.36]]}
+],
+lakes:[ // 湖沼(概略輪郭)
+  {n:"中禅寺湖",c:[139.478,36.732],rx:.043,ry:.020},
+  {n:"湯ノ湖",c:[139.415,36.795],rx:.009,ry:.008},
+  {n:"五十里湖",c:[139.685,36.900],rx:.016,ry:.010},
+  {n:"川治ダム湖",c:[139.660,36.878],rx:.010,ry:.007},
+  {n:"川俣湖",c:[139.470,36.905],rx:.018,ry:.007},
+  {n:"渡良瀬遊水地",c:[139.672,36.235],rx:.030,ry:.026},
+  {n:"塩原ダム湖",c:[139.845,36.958],rx:.014,ry:.006},
+  {n:"井頭・鬼怒沼",c:[139.995,36.482],rx:.008,ry:.007}
+],
+roads:[ // c:2=高速 1=主要国道 0=一般
+  {n:"東北自動車道",c:2,p:[[139.60,36.16],[139.62,36.28],[139.68,36.36],[139.74,36.44],[139.80,36.52],[139.85,36.62],[139.88,36.70],[139.90,36.78],[139.92,36.88],[139.97,36.98],[140.02,37.06],[140.06,37.14]]},
+  {n:"北関東自動車道",c:2,p:[[139.34,36.33],[139.46,36.31],[139.58,36.32],[139.69,36.37],[139.79,36.42],[139.88,36.45],[139.99,36.46],[140.12,36.44],[140.26,36.44]]},
+  {n:"日光宇都宮道路",c:2,p:[[139.83,36.63],[139.76,36.66],[139.68,36.71],[139.61,36.74],[139.56,36.75]]},
+  {n:"国道4号",c:1,p:[[139.78,36.20],[139.80,36.28],[139.83,36.36],[139.86,36.44],[139.88,36.52],[139.89,36.60],[139.90,36.68],[139.94,36.78],[139.98,36.88],[140.02,36.98],[140.06,37.08]]},
+  {n:"国道119号(日光街道)",c:1,p:[[139.885,36.56],[139.83,36.62],[139.76,36.67],[139.69,36.71],[139.62,36.74],[139.55,36.75],[139.48,36.74],[139.42,36.78]]},
+  {n:"国道121号",c:1,p:[[139.70,36.70],[139.70,36.78],[139.69,36.86],[139.67,36.94],[139.63,37.02],[139.60,37.10]]},
+  {n:"国道123号",c:1,p:[[139.90,36.56],[139.98,36.53],[140.08,36.51],[140.18,36.53],[140.28,36.53]]},
+  {n:"国道293号",c:1,p:[[139.42,36.40],[139.54,36.40],[139.66,36.46],[139.78,36.52],[139.88,36.58],[139.98,36.62],[140.08,36.66],[140.18,36.70]]},
+  {n:"国道400号",c:1,p:[[139.72,36.40],[139.78,36.50],[139.84,36.62],[139.88,36.74],[139.86,36.86],[139.82,36.96]]},
+  {n:"国道461号",c:1,p:[[139.62,36.74],[139.72,36.76],[139.82,36.80],[139.92,36.84],[140.02,36.86],[140.12,36.82],[140.20,36.78]]},
+  {n:"国道294号",c:1,p:[[139.95,36.22],[139.99,36.32],[140.02,36.44],[140.04,36.56],[140.06,36.68],[140.08,36.80]]}
+],
+rails:[ // k: shin=新幹線 jr=JR在来 tobu=東武 local=third-sector lrt=宇都宮LRT
+  {n:"東北新幹線",k:"shin",p:[[139.72,36.16],[139.80,36.31],[139.86,36.44],[139.885,36.56],[139.92,36.70],[139.95,36.82],[139.99,36.94],[140.03,37.04],[140.06,37.13]]},
+  {n:"JR宇都宮線",k:"jr",p:[[139.78,36.20],[139.80,36.31],[139.83,36.39],[139.86,36.47],[139.885,36.56],[139.90,36.64],[139.94,36.74],[139.97,36.86],[140.01,36.96],[140.05,37.06]]},
+  {n:"JR日光線",k:"jr",p:[[139.885,36.56],[139.82,36.60],[139.76,36.64],[139.70,36.70],[139.64,36.72],[139.60,36.74]]},
+  {n:"JR両毛線",k:"jr",p:[[139.35,36.33],[139.45,36.34],[139.55,36.33],[139.65,36.35],[139.73,36.38],[139.78,36.32],[139.80,36.31]]},
+  {n:"JR水戸線",k:"jr",p:[[139.80,36.31],[139.90,36.30],[140.00,36.30],[140.10,36.31]]},
+  {n:"JR烏山線",k:"jr",p:[[139.94,36.62],[140.02,36.64],[140.10,36.66],[140.15,36.66]]},
+  {n:"東武日光線",k:"tobu",p:[[139.72,36.16],[139.73,36.26],[139.74,36.36],[139.72,36.46],[139.71,36.56],[139.70,36.66],[139.66,36.72],[139.61,36.75]]},
+  {n:"東武鬼怒川線",k:"tobu",p:[[139.70,36.70],[139.71,36.78],[139.71,36.84],[139.69,36.89]]},
+  {n:"東武宇都宮線",k:"tobu",p:[[139.74,36.36],[139.78,36.42],[139.82,36.48],[139.86,36.54]]},
+  {n:"野岩鉄道",k:"local",p:[[139.69,36.89],[139.66,36.95],[139.62,37.02],[139.60,37.10]]},
+  {n:"真岡鐵道",k:"local",p:[[140.06,36.30],[140.03,36.38],[140.01,36.46],[140.01,36.54],[140.08,36.58],[140.16,36.60],[140.21,36.53]]},
+  {n:"わたらせ渓谷鐵道",k:"local",p:[[139.42,36.36],[139.40,36.44],[139.42,36.52],[139.44,36.60],[139.45,36.65]]},
+  {n:"宇都宮LRT",k:"lrt",p:[[139.898,36.559],[139.93,36.556],[139.97,36.552],[140.01,36.548],[140.05,36.552]]}
+],
+pop:{"宇都宮市":51.8,"足利市":14.2,"栃木市":15.4,"佐野市":11.4,"鹿沼市":9.4,"日光市":7.7,"小山市":16.7,
+  "真岡市":7.8,"大田原市":7.2,"矢板市":3.1,"那須塩原市":11.5,"さくら市":4.4,"那須烏山市":2.4,"下野市":5.9,
+  "上三川町":3.1,"益子町":2.2,"茂木町":1.2,"市貝町":1.1,"芳賀町":1.5,"壬生町":3.9,"野木町":2.5,"塩谷町":1.0,
+  "高根沢町":2.9,"那須町":2.4,"那珂川町":1.5}, // 万人(概数)
+subCenters:[ // 市街地が中心部から離れて分布する主な副次拠点
+  {city:"日光市",lng:139.617,lat:36.752,w:.30},{city:"日光市",lng:139.700,lat:36.755,w:.42},
+  {city:"日光市",lng:139.710,lat:36.820,w:.24},
+  {city:"那須塩原市",lng:139.965,lat:36.938,w:.34},{city:"那須塩原市",lng:139.833,lat:36.968,w:.18},
+  {city:"那須町",lng:140.045,lat:37.020,w:.34},{city:"那須町",lng:140.010,lat:37.100,w:.16},
+  {city:"栃木市",lng:139.706,lat:36.267,w:.22},{city:"佐野市",lng:139.578,lat:36.360,w:.20},
+  {city:"大田原市",lng:139.965,lat:36.920,w:.16},{city:"日光市",lng:139.450,lat:36.640,w:.10}
+]
+};
+
+/* ===== 地形 ===== */
+const lon2tx=(lon,z)=>(lon+180)/360*Math.pow(2,z);
+const lat2ty=(lat,z)=>{const s=Math.sin(lat*Math.PI/180);
+  return (0.5-Math.log((1+s)/(1-s))/(4*Math.PI))*Math.pow(2,z)};
+const tx2lon=(x,z)=>x/Math.pow(2,z)*360-180;
+const ty2lat=(y,z)=>{const n=Math.PI-2*Math.PI*y/Math.pow(2,z);
+  return 180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n)))};
+/* 県境からの距離(km) — 県外の標高を減衰させ、県域を立ち上がらせる */
+function distToPrefKm(lng,lat){
+  const px=(lng-CLNG)*KX,pz=(CLAT-lat)*KZ;let best=1e9;
+  for(let i=0,j=BOUNDARY.length-1;i<BOUNDARY.length;j=i++){
+    const ax=(BOUNDARY[j][0]-CLNG)*KX,az=(CLAT-BOUNDARY[j][1])*KZ;
+    const bx=(BOUNDARY[i][0]-CLNG)*KX,bz=(CLAT-BOUNDARY[i][1])*KZ;
+    const dx=bx-ax,dz=bz-az,L=dx*dx+dz*dz;
+    let t=L?((px-ax)*dx+(pz-az)*dz)/L:0;t=Math.max(0,Math.min(1,t));
+    const qx=ax+dx*t-px,qz=az+dz*t-pz;
+    best=Math.min(best,Math.sqrt(qx*qx+qz*qz));
+  }
+  return best;
+}
+function elevCtxKm(lng,lat){ // 県外は緩やかに減衰
+  const e=elevKm(lng,lat);
+  if(inPref(lng,lat))return e;
+  const d=distToPrefKm(lng,lat);
+  return Math.max(0.015,e*Math.exp(-d/9));
+}
+const elevCtxY=(lng,lat)=>elevCtxKm(lng,lat)*VEX;
+
+/* --- 航空写真タイルを標高で変位させた地形メッシュ --- */
+const PHOTO={ok:0,fail:0,mats:[]};
+function buildPhotoTerrain(){
+  const Z=11,SEG=20;
+  const loader=new THREE.TextureLoader();loader.crossOrigin='anonymous';
+  const x0=Math.floor(lon2tx(139.24,Z)),x1=Math.floor(lon2tx(140.42,Z));
+  const y0=Math.floor(lat2ty(37.28,Z)),y1=Math.floor(lat2ty(36.08,Z));
+  for(let tx=x0;tx<=x1;tx++)for(let ty=y0;ty<=y1;ty++){
+    const lo0=tx2lon(tx,Z),lo1=tx2lon(tx+1,Z),la0=ty2lat(ty,Z),la1=ty2lat(ty+1,Z);
+    const pos=[],uv=[],ix=[],col=[];
+    for(let j=0;j<=SEG;j++)for(let i=0;i<=SEG;i++){
+      const u=i/SEG,v=j/SEG;
+      const lng=lo0+(lo1-lo0)*u,lat=la0+(la1-la0)*v;
+      pos.push((lng-CLNG)*KX,elevCtxY(lng,lat),(CLAT-lat)*KZ);
+      uv.push(u,1-v);
+      const f=inPref(lng,lat)?1:Math.max(0.05,Math.exp(-distToPrefKm(lng,lat)/13));
+      col.push(0.50*f,0.55*f,0.67*f); // 県外ほど暗く落とし県域を際立たせる
+    }
+    for(let j=0;j<SEG;j++)for(let i=0;i<SEG;i++){
+      const a=j*(SEG+1)+i,b=a+1,c=a+SEG+1,d=c+1;ix.push(a,c,b,b,c,d);
+    }
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+    g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+    g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+    g.setIndex(ix);g.computeVertexNormals();
+    const mat=new THREE.MeshBasicMaterial({color:0xffffff,vertexColors:true,side:THREE.DoubleSide});
+    PHOTO.mats.push(mat);
+    const tex=loader.load(`https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/${Z}/${tx}/${ty}.jpg`,
+      ()=>{PHOTO.ok++;},undefined,()=>{PHOTO.fail++;photoFallback()});
+    tex.minFilter=THREE.LinearFilter;mat.map=tex;
+    groups.photo.add(new THREE.Mesh(g,mat));
+  }
+}
+function photoFallback(){ // タイル取得不可の環境ではワイヤー地形+点群に自動切替
+  if(PHOTO.ok>0||PHOTO.fail<6||PHOTO.fell)return;
+  PHOTO.fell=true;
+  groups.photo.visible=false;groups.terrain.visible=true;groups.mesh.visible=true;
+  const s=$('#pc-note');if(s)s.textContent='航空写真タイルを取得できないため、点群・ワイヤー地形で表示中';
+}
+/* --- ワイヤーフレーム地形(点群ビュー用) --- */
+function buildMeshTerrain(){
+  const N=74,lo0=139.30,lo1=140.34,la0=36.16,la1=37.20;
+  const seg=[],col=[];
+  const push=(l1,a1,l2,a2)=>{
+    if(!inPref(l1,a1)||!inPref(l2,a2))return;
+    const e1=elevKm(l1,a1),e2=elevKm(l2,a2);
+    seg.push((l1-CLNG)*KX,e1*VEX,(CLAT-a1)*KZ,(l2-CLNG)*KX,e2*VEX,(CLAT-a2)*KZ);
+    const c1=rampColor(Math.sqrt(e1/2.4)),c2=rampColor(Math.sqrt(e2/2.4));
+    col.push(c1[0],c1[1],c1[2],c2[0],c2[1],c2[2]);
+  };
+  for(let i=0;i<=N;i++)for(let j=0;j<=N;j++){
+    const l=lo0+(lo1-lo0)*i/N,a=la0+(la1-la0)*j/N;
+    const l2=lo0+(lo1-lo0)*(i+1)/N,a2=la0+(la1-la0)*(j+1)/N;
+    if(i<N)push(l,a,l2,a);
+    if(j<N)push(l,a,l,a2);
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(seg,3));
+  g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  groups.mesh.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:.32})));
+}
+/* --- 標高点群 --- */
+function buildTerrainPoints(){
+  const pos=[],col=[],step=0.0068;
   for(let lng=139.30;lng<=140.34;lng+=step)for(let lat=36.16;lat<=37.20;lat+=step){
-    const jl=lng+(Math.random()-.5)*step*.9, ja=lat+(Math.random()-.5)*step*.9;
+    const jl=lng+(Math.random()-.5)*step*.9,ja=lat+(Math.random()-.5)*step*.9;
     if(!inPref(jl,ja))continue;
     const e=elevKm(jl,ja);
     pos.push((jl-CLNG)*KX,e*VEX,(CLAT-ja)*KZ);
-    const c=rampColor(Math.sqrt(e/2.4));
-    col.push(c[0],c[1],c[2]);
+    const c=rampColor(Math.sqrt(e/2.4));col.push(c[0],c[1],c[2]);
   }
   const geo=new THREE.BufferGeometry();
   geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
   geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
-  const mat=new THREE.PointsMaterial({size:1.5,map:DOT,vertexColors:true,transparent:true,opacity:.85,
+  const mat=new THREE.PointsMaterial({size:1.4,map:DOT,vertexColors:true,transparent:true,opacity:.9,
     blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true});
   regPtMat(mat);
   groups.terrain.add(new THREE.Points(geo,mat));
-  // 低密度の明るい第2層(点描の粒立ち)
-  const pos2=[],col2=[];
-  for(let i=0;i<pos.length;i+=27){pos2.push(pos[i],pos[i+1]+.25,pos[i+2]);col2.push(col[i]*1.4,col[i+1]*1.4,col[i+2]*1.4)}
-  const g2=new THREE.BufferGeometry();
-  g2.setAttribute('position',new THREE.Float32BufferAttribute(pos2,3));
-  g2.setAttribute('color',new THREE.Float32BufferAttribute(col2,3));
-  const mat2=new THREE.PointsMaterial({size:2.6,map:DOT,vertexColors:true,transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false});
-  regPtMat(mat2);
-  groups.terrain.add(new THREE.Points(g2,mat2));
 }
+/* --- 等高線(marching squares) — 山岳の構造を描く --- */
+const MS_TABLE={1:[[3,0]],2:[[0,1]],3:[[3,1]],4:[[1,2]],5:[[3,0],[1,2]],6:[[0,2]],7:[[3,2]],
+  8:[[2,3]],9:[[2,0]],10:[[0,1],[2,3]],11:[[2,1]],12:[[1,3]],13:[[1,0]],14:[[0,3]]};
+function buildContours(){
+  const NX=190,NY=190,lo0=139.30,lo1=140.34,la0=36.16,la1=37.20;
+  const H=new Float32Array((NX+1)*(NY+1));
+  const at=(i,j)=>H[j*(NX+1)+i];
+  for(let j=0;j<=NY;j++)for(let i=0;i<=NX;i++){
+    const lng=lo0+(lo1-lo0)*i/NX,lat=la0+(la1-la0)*j/NY;
+    H[j*(NX+1)+i]=inPref(lng,lat)?elevKm(lng,lat):-1;
+  }
+  const G2=(gi,gj)=>{const lng=lo0+(lo1-lo0)*gi/NX,lat=la0+(la1-la0)*gj/NY;
+    return [(lng-CLNG)*KX,(CLAT-lat)*KZ]};
+  [0.25,0.5,0.75,1.0,1.25,1.5,1.75,2.0,2.25].forEach(lv=>{
+    const p=[];
+    for(let j=0;j<NY;j++)for(let i=0;i<NX;i++){
+      const a=at(i,j),b=at(i+1,j),c=at(i+1,j+1),d=at(i,j+1);
+      if(a<0||b<0||c<0||d<0)continue;
+      const cs=(a>lv?1:0)|(b>lv?2:0)|(c>lv?4:0)|(d>lv?8:0);
+      const segs=MS_TABLE[cs];if(!segs)continue;
+      const ep=e=>{
+        if(e===0){const t=(lv-a)/(b-a||1e-6);return G2(i+t,j)}
+        if(e===1){const t=(lv-b)/(c-b||1e-6);return G2(i+1,j+t)}
+        if(e===2){const t=(lv-c)/(d-c||1e-6);return G2(i+1-t,j+1)}
+        const t=(lv-d)/(a-d||1e-6);return G2(i,j+1-t);
+      };
+      segs.forEach(s=>{const A=ep(s[0]),B=ep(s[1]);
+        p.push(A[0],lv*VEX+.05,A[1],B[0],lv*VEX+.05,B[1])});
+    }
+    if(!p.length)return;
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));
+    const c=rampColor(Math.sqrt(lv/2.4));
+    const ln=new THREE.LineSegments(g,new THREE.LineBasicMaterial({
+      color:new THREE.Color(c[0],c[1],c[2]),transparent:true,opacity:lv>=1?.30:.16}));
+    ln.material.userData.base=ln.material.opacity;groups.contour.add(ln);
+  });
+}
+/* ===== 水系 ===== */
+function polyLineSegs(pts,dy){
+  const p=[];for(let i=0;i<pts.length-1;i++){
+    const A=pts[i],B=pts[i+1],N=6;
+    for(let k=0;k<N;k++){
+      const t1=k/N,t2=(k+1)/N;
+      const l1=A[0]+(B[0]-A[0])*t1,a1=A[1]+(B[1]-A[1])*t1;
+      const l2=A[0]+(B[0]-A[0])*t2,a2=A[1]+(B[1]-A[1])*t2;
+      p.push((l1-CLNG)*KX,elevCtxY(l1,a1)+dy,(CLAT-a1)*KZ,
+             (l2-CLNG)*KX,elevCtxY(l2,a2)+dy,(CLAT-a2)*KZ);
+    }}
+  return p;
+}
+function buildWater(){
+  const p=[];GEO.rivers.forEach(r=>p.push(...polyLineSegs(r.p,.30)));
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));
+  groups.water.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0x2f7fd0,transparent:true,opacity:.85})));
+  GEO.lakes.forEach(lk=>{
+    const pos=[],ix=[],N=26;
+    // 湖面標高=輪郭上の最低標高に合わせ、地形に沈める
+    let wy=1e9;
+    for(let i=0;i<N;i++){const th=i/N*Math.PI*2;
+      wy=Math.min(wy,elevCtxY(lk.c[0]+Math.cos(th)*lk.rx,lk.c[1]+Math.sin(th)*lk.ry))}
+    const cy=Math.min(wy,elevCtxY(lk.c[0],lk.c[1]))+.06;
+    pos.push((lk.c[0]-CLNG)*KX,cy,(CLAT-lk.c[1])*KZ);
+    for(let i=0;i<=N;i++){const th=i/N*Math.PI*2;
+      const lng=lk.c[0]+Math.cos(th)*lk.rx,lat=lk.c[1]+Math.sin(th)*lk.ry;
+      pos.push((lng-CLNG)*KX,cy,(CLAT-lat)*KZ);
+      if(i<N)ix.push(0,i+1,i+2);
+    }
+    const gg=new THREE.BufferGeometry();
+    gg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));gg.setIndex(ix);
+    groups.water.add(new THREE.Mesh(gg,new THREE.MeshBasicMaterial({color:0x1d5fa8,transparent:true,opacity:.72,side:THREE.DoubleSide})));
+  });
+}
+/* ===== 道路・鉄道 ===== */
+const RAIL_STYLE={shin:{c:0xe6ecff,o:.95,dy:.46},jr:{c:0xa8b6d8,o:.7,dy:.42},
+  tobu:{c:0x3ddc84,o:.62,dy:.42},local:{c:0x2f9f7a,o:.5,dy:.4},lrt:{c:0xff9a3d,o:1,dy:.5}};
+const ROAD_STYLE={2:{c:0xd8dcea,o:.62,dy:.38},1:{c:0x7f8aa8,o:.42,dy:.34},0:{c:0x505b76,o:.3,dy:.32}};
+function buildRoads(){
+  const bucket={};
+  GEO.roads.forEach(r=>{const s=ROAD_STYLE[r.c];(bucket['r'+r.c]=bucket['r'+r.c]||{s,p:[]}).p.push(...polyLineSegs(r.p,s.dy))});
+  GEO.rails.forEach(r=>{const s=RAIL_STYLE[r.k];(bucket['k'+r.k]=bucket['k'+r.k]||{s,p:[]}).p.push(...polyLineSegs(r.p,s.dy))});
+  Object.values(bucket).forEach(b=>{
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute(b.p,3));
+    groups.net.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:b.s.c,transparent:true,opacity:b.s.o})));
+  });
+}
+/* ===== 市街地(人口密度に基づく手続き的な建物クラスタ) ===== */
+const URBAN_VEX=5.6;
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296}}
+function buildUrban(){
+  const box=new THREE.BoxGeometry(1,1,1).toNonIndexed();
+  const bp=box.attributes.position.array,bn=box.attributes.normal.array,BV=bp.length/3;
+  const pos=[],nor=[],col=[],edg=[];
+  const EDGE=[[-.5,-.5,-.5],[.5,-.5,-.5],[.5,-.5,.5],[-.5,-.5,.5],[-.5,.5,-.5],[.5,.5,-.5],[.5,.5,.5],[-.5,.5,.5]];
+  const EI=[[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+  let total=0;
+  DB.munis.forEach((m,mi)=>{
+    const pop=GEO.pop[m.name]||1;
+    const rnd=mulberry(9137+mi*761);
+    const subs=GEO.subCenters.filter(s=>s.city===m.name);
+    const wMain=1-subs.reduce((s,x)=>s+x.w,0);
+    const n=Math.min(430,Math.round(pop*10));
+    const R=0.7+Math.sqrt(pop)*1.15;
+    for(let k=0;k<n;k++){
+      let cx=m.lng,cy=m.lat,rr=R;
+      const u=rnd();let acc=Math.max(0,wMain);
+      if(u>acc){for(const s of subs){acc+=s.w;if(u<=acc){cx=s.lng;cy=s.lat;rr=R*0.42;break}}}
+      const th=rnd()*Math.PI*2,rad=rr*Math.pow(rnd(),.62);
+      const lng=cx+Math.cos(th)*rad/KX,lat=cy-Math.sin(th)*rad/KZ;
+      if(!inPref(lng,lat))continue;
+      const rel=Math.min(1,rad/rr);
+      const hm=12+50*Math.pow(1-rel,1.7)*(0.42+pop/62)+rnd()*26*(1-rel*.6);
+      const h=hm/1000*VEX*URBAN_VEX; // 県域スケールで市街地が読めるよう更に強調
+      const w=(0.16+rnd()*0.26)*(1+(1-rel)*0.55), d=(0.16+rnd()*0.26)*(1+(1-rel)*0.55);
+      const baseY=elevY(lng,lat);
+      const X=(lng-CLNG)*KX,Z=(CLAT-lat)*KZ,Y=baseY+h/2;
+      const shade=0.70+0.30*Math.min(1,hm/70);
+      const c=[0.40*shade,0.45*shade,0.62*shade];
+      for(let v=0;v<BV;v++){
+        pos.push(bp[v*3]*w+X,bp[v*3+1]*h+Y,bp[v*3+2]*d+Z);
+        nor.push(bn[v*3],bn[v*3+1],bn[v*3+2]);
+        col.push(c[0],c[1],c[2]);
+      }
+      EI.forEach(e=>{const A=EDGE[e[0]],B=EDGE[e[1]];
+        edg.push(A[0]*w+X,A[1]*h+Y,A[2]*d+Z,B[0]*w+X,B[1]*h+Y,B[2]*d+Z)});
+      total++;
+    }
+  });
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3));
+  g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  groups.urban.add(new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true})));
+  const ge=new THREE.BufferGeometry();
+  ge.setAttribute('position',new THREE.Float32BufferAttribute(edg,3));
+  groups.urban.add(new THREE.LineSegments(ge,new THREE.LineBasicMaterial({color:0x9fb0dc,transparent:true,opacity:.34})));
+  URBAN_COUNT=total;
+}
+let URBAN_COUNT=0;
 function densify(pts,n){const out=[];
   for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];
     for(let k=0;k<n;k++){const t=k/n;out.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t])}}
@@ -862,30 +1193,33 @@ function lineFrom(pts,color,opacity,dy=0.15,closed=false){
   return new THREE.Line(g,new THREE.LineBasicMaterial({color,transparent:true,opacity}));
 }
 function buildBoundary(){
-  groups.boundary.add(lineFrom(densify(BOUNDARY,6),0xf5c400,.75,.3,true));
+  const pts=densify(BOUNDARY,8);
+  groups.boundary.add(lineFrom(pts,0xf5c400,.9,.55,true));
+  // 県境の垂直フェンス(県域を立ち上がらせる)
+  const p=[],arr=[...pts,pts[0]];
+  arr.forEach(q=>{const b=elevCtxY(q[0],q[1]);
+    p.push((q[0]-CLNG)*KX,b-.4,(CLAT-q[1])*KZ,(q[0]-CLNG)*KX,b+2.6,(CLAT-q[1])*KZ)});
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));
+  groups.boundary.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0xf5c400,transparent:true,opacity:.22})));
 }
-const RAILS=[
-  {c:0x4da3ff,o:.5,pts:[[139.72,36.16],[139.80,36.31],[139.885,36.56],[139.93,36.75],[139.99,36.90],[140.03,37.00],[140.06,37.12]]}, // 東北新幹線
-  {c:0x3ddc84,o:.4,pts:[[139.73,36.16],[139.73,36.40],[139.72,36.55],[139.70,36.70],[139.62,36.75]]}, // 東武日光線
-  {c:0x3ddc84,o:.4,pts:[[139.70,36.70],[139.71,36.82],[139.68,36.90],[139.62,36.97]]}, // 鬼怒川・野岩
-  {c:0x8b93a8,o:.4,pts:[[139.60,36.16],[139.62,36.32],[139.70,36.42],[139.80,36.52],[139.85,36.62],[139.90,36.76],[139.92,36.90],[140.00,37.02],[140.06,37.13]]}, // 東北道
-  {c:0x8b93a8,o:.35,pts:[[139.36,36.33],[139.50,36.31],[139.63,36.33],[139.74,36.40],[139.84,36.46],[139.98,36.46],[140.12,36.44]]} // 北関東道
-];
-function buildNetworks(){RAILS.forEach(r=>groups.net.add(lineFrom(r.pts,r.c,r.o,.22)))}
 function buildSpots(){
   groups.spots.clear();spotWorld.length=0;
-  const tipPos=[],tipCol=[];
+  const tipPos=[],tipCol=[],beamPos=[],beamCol=[];
   DB.spots.forEach(s=>{
     const on=(!areaFilter||s.area===areaFilter)&&(!catFilter||s.cat===catFilter);
     if(!on)return;
     const col=new THREE.Color(DB.areas[s.area].hex);
     const base=W3(s.lng,s.lat,0),h=2.2+s.scale*1.5,top=base.clone();top.y+=h;
-    const g=new THREE.BufferGeometry();
-    g.setAttribute('position',new THREE.Float32BufferAttribute([base.x,base.y,base.z,top.x,top.y,top.z],3));
-    groups.spots.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:col,transparent:true,opacity:.75})));
+    beamPos.push(base.x,base.y,base.z,top.x,top.y,top.z);
+    beamCol.push(col.r*.35,col.g*.35,col.b*.35,col.r,col.g,col.b);
     tipPos.push(top.x,top.y,top.z);tipCol.push(col.r,col.g,col.b);
     spotWorld.push({v:top,spot:s});
   });
+  const bg=new THREE.BufferGeometry();
+  bg.setAttribute('position',new THREE.Float32BufferAttribute(beamPos,3));
+  bg.setAttribute('color',new THREE.Float32BufferAttribute(beamCol,3));
+  groups.spots.add(new THREE.LineSegments(bg,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:.8})));
   const tg=new THREE.BufferGeometry();
   tg.setAttribute('position',new THREE.Float32BufferAttribute(tipPos,3));
   tg.setAttribute('color',new THREE.Float32BufferAttribute(tipCol,3));
@@ -1067,7 +1401,10 @@ const lblPool=[];
 function labelDefs(){
   const L=[];
   const zoomedOut=cam.dist>78;
+  const onRoute=new Set(activeRoute&&groups.route.visible
+    ?DB.routes.find(x=>x.id===activeRoute).stops:[]); // 経路ラベルと二重に出さない
   if(groups.spots.visible)spotWorld.forEach(o=>{
+    if(onRoute.has(o.spot.id))return;
     if(o.spot.scale>=5||cam.dist<46)L.push({v:o.v,text:shortName(o.spot),cls:'l3d'})});
   if(zoomedOut&&curView!=='catch')Object.entries(AREA_HUBS).forEach(([a,h])=>
     L.push({v:W3(h[0],h[1],14),text:DB.areas[a].name.replace('エリア',''),cls:'l3d area',color:DB.areas[a].hex}));
@@ -1100,11 +1437,12 @@ function updateLabels(){
   });
 }
 /* ---- animate ---- */
-const clock=new THREE.Clock();
+const clock=new THREE.Clock();let frameNo=0;
 function animate(){
   requestAnimationFrame(animate);
   const t=clock.getElapsedTime();
   if(!REDUCED)particleSys.forEach(ps=>{
+    if(!ps.group.visible)return;
     ps.curves.forEach(c=>{
       for(let i=0;i<c.count;i++){
         const u=(t*c.speed+i/c.count)%1;
@@ -1117,7 +1455,7 @@ function animate(){
   PT_MATS.forEach(m=>{if(m.userData.base)m.size=m.userData.base*kSize});
   applyCam();
   renderer.render(scene,camera);
-  updateLabels();
+  if((frameNo++&1)===0)updateLabels();
 }
 /* ---- scene per view ---- */
 function sceneForView(v){
@@ -1160,6 +1498,14 @@ function renderChips(){
   $$('#layer-chips .chip').forEach(c=>c.onclick=()=>{
     $$('#layer-chips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');
     mapLayer=c.dataset.layer;sceneForView(curView);});
+  $$('#geo-chips .chip').forEach(c=>c.onclick=()=>{
+    const on=!c.classList.contains('active');c.classList.toggle('active',on);
+    const g=c.dataset.g;
+    if(g==='photo'){groups.photo.visible=on&&!pcMode&&!PHOTO.fell;
+      groups.mesh.visible=pcMode||!groups.photo.visible;}
+    else groups[g].visible=on;
+  });
+  $('#pc-toggle').onclick=()=>setPcMode(!pcMode);
   $('#area-legend').innerHTML=Object.values(DB.areas).map(a=>
     `<div class="li"><span class="sw" style="background:${a.hex}"></span>${a.name}</div>`).join('');
   $('#fly-chips').innerHTML=FLY.map((f,i)=>`<button class="chip" data-f="${i}">${f[0]}</button>`).join('');
@@ -1168,6 +1514,24 @@ function renderChips(){
     if(Array.isArray(f[1]))flyCam(new THREE.Vector3(f[1][0],f[1][1],f[1][2]),f[2],f[3],f[4]);
     else flyCam(W3(f[1],f[2],0),cam.theta,1.02,f[3]);
   });
+}
+let pcMode=false;
+function setPcMode(on){
+  pcMode=on;
+  $('#pc-toggle').classList.toggle('active',on);
+  const photoOn=document.querySelector('#geo-chips .chip[data-g="photo"]').classList.contains('active');
+  groups.photo.visible=!on&&photoOn&&!PHOTO.fell;
+  groups.terrain.visible=on;
+  groups.mesh.visible=on||!groups.photo.visible;
+  groups.contour.children.forEach(o=>{const b=o.material.userData.base||o.material.opacity;
+    o.material.opacity=on?Math.min(1,b*2.6):b});
+  groups.urban.children.forEach(o=>{
+    if(o.isMesh)o.visible=!on;
+    if(o.isLineSegments)o.material.opacity=on?.8:.34;
+  });
+  $('#pc-note').textContent=on
+    ?'点群ビュー: 標高点群+ワイヤーフレーム地形。建物はエッジのみを表示します。'
+    :'航空写真=国土地理院シームレス写真を標高で変位。市街地は人口(概数)に基づく手続き生成の建物クラスタです。';
 }
 function selectSpot(s){
   $('#sel-card').style.display='block';
