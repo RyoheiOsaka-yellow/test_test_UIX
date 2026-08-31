@@ -107,8 +107,14 @@ function repaintSeatCloud() {
   const occNow = occAt(timeState.min);
   const DIM = new THREE.Color(0x123048), LIT = new THREE.Color(0x66e0ff);
   const C = new THREE.Color();
+  const rev = seatReveal.prog < 1;
   for (let i = 0; i < N; i++) {
     const s = SEAT.list[i];
+    if (rev) {
+      const d = seatReveal.prog - SEAT.rank[i];
+      if (d < 0) { col.setXYZ(i, 0.03, 0.04, 0.06); continue; }
+      if (d < 0.035) { col.setXYZ(i, 0.0, 0.9, 1.0); continue; }
+    }
     if (!SNAP.sold[i] && seatMode !== 'cat') C.setHex(0x14202f);
     else if (seatMode === 'cat') C.setHex(CAT[s.cat].color);
     else if (seatMode === 'occ') C.copy(heatC(SNAP.occ[i]));
@@ -130,6 +136,28 @@ function repaintSeatCloud() {
   }
   col.needsUpdate = true;
 }
+
+/* ---- 席マッピング演出の駆動 ---- */
+function startSeatReveal() {
+  seatReveal.on = true; seatReveal.t = 0; seatReveal.prog = 0;
+  seatReveal.done = true;
+  toast('🎯 <b>19,079席</b> を個客レコードに紐づけています…', 3200);
+}
+FRAME_HOOKS.push(function (dt) {
+  if (!seatReveal.on) return;
+  seatReveal.t += dt;
+  seatReveal.prog = clamp(seatReveal.t / seatReveal.dur, 0, 1.04);
+  repaintSeats();
+  if (pcMode) repaintSeatCloud();
+  if (seatReveal.prog >= 1.04) {
+    seatReveal.on = false; seatReveal.prog = 1;
+    repaintSeats(); if (pcMode) repaintSeatCloud();
+    toast('紐付け完了 — <b>' + fmt(SEAT.list.length) + '席</b> / 販売 ' +
+      fmt(AGG.kpi.sold) + '件。座席クリックで<b>個客プロファイル</b>が開きます', 5000);
+  }
+  const lbl = document.getElementById('rv-count');
+  if (lbl) lbl.textContent = fmt(Math.round(clamp(seatReveal.prog, 0, 1) * SEAT.list.length));
+});
 
 function setPointCloud(on) {
   pcMode = on;

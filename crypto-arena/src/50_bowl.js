@@ -112,6 +112,22 @@ setLoad(86, '座席 19,079 を生成中');
   for (const s of SEAT.list) SEAT.byCat[s.cat] = (SEAT.byCat[s.cat] || 0) + 1;
 })();
 
+/* ---- 席マッピング演出用のスイープ順（コート中心からの距離順） ----
+   19,079席が1席ずつ個客レコードに紐づいていく様子を見せるために、
+   各席へ 0..1 の「掃引位置」を与える。 */
+const seatReveal = { on: false, t: 0, dur: 3.6, prog: 1, mode: 'radial', done: false };
+(function sweepOrder() {
+  const N = SEAT.list.length;
+  const key = new Float64Array(N);
+  for (let i = 0; i < N; i++) {
+    const s = SEAT.list[i];
+    key[i] = Math.hypot(s.x, s.z) + s.y * 1.6;      // 近い席から外周・上層へ
+  }
+  const idx = Array.from({ length: N }, (_, i) => i).sort((a, b) => key[a] - key[b]);
+  SEAT.rank = new Float32Array(N);
+  idx.forEach((v, r) => { SEAT.rank[v] = r / (N - 1); });
+})();
+
 /* ================================================================
    スポンサー媒体 露出モデル
    w = 正対度^0.8 × 観客視線一致^0.5 × 距離減衰

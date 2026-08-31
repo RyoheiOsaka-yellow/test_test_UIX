@@ -285,6 +285,13 @@ function renderArenaPanel() {
       kpiCard((k.outState * 100).toFixed(0) + '<small>%</small>', '州外・海外比率') +
     '</div></div>' +
 
+    '<div class="sec"><div class="sec-t"><b>席マッピング</b> — 19,079席 ⇄ 個客レコード</div>' +
+    '<button class="tool-btn" id="rv-play">▶ 席マッピングを再生</button>' +
+    '<div class="hint" style="margin-top:6px">コート中心から外周・上層へ掃引しながら、' +
+    '1席ずつ個客レコード（属性・取引・行動・露出）に紐づけていきます。' +
+    '紐付け済み <b id="rv-count">' + fmt(Math.round(clamp(seatReveal.prog, 0, 1) * SEAT.list.length)) +
+    '</b> / ' + fmt(SEAT.list.length) + ' 席</div></div>' +
+
     '<div class="sec"><div class="sec-t"><b>座席レイヤー</b> — 1to1 の切り口</div>' +
     '<div class="mode-list" id="sm">' + SEAT_MODES.map(m =>
       '<button class="mode-btn' + (seatMode === m[0] ? ' active' : '') + '" data-sm="' + m[0] + '">' +
@@ -431,6 +438,7 @@ function renderArenaPanel() {
   pb.querySelectorAll('[data-bt2]').forEach(b => b.onclick = () => bimIsolate(b.dataset.bt2));
   pb.querySelectorAll('[data-bel]').forEach(b => b.onclick = () => bimFocus(BIM_ELEMS[+b.dataset.bel]));
   const qq = id => document.getElementById(id);
+  if (qq('rv-play')) qq('rv-play').onclick = () => startSeatReveal();
   if (qq('tg-in')) qq('tg-in').onclick = () => { indoorState.on = !indoorState.on; renderPanel(); };
   if (qq('tg-cong')) qq('tg-cong').onclick = () => { setCongestion(!indoorState.showCong); renderPanel(); };
   if (qq('tg-pc')) qq('tg-pc').onclick = () => { setPointCloud(!pcMode); renderPanel(); };

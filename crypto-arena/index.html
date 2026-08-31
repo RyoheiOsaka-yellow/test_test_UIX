@@ -2585,8 +2585,9 @@ const SUITES = [];
     const sill = new THREE.Mesh(new THREE.BoxGeometry(w, 0.34, 5.6), frame);
     sill.position.copy(box.position); sill.position.y = TIER.PRM.y0 + 0.15;
     sill.rotation.y = box.rotation.y;
+    sill.userData = { kind: 'suite', name: s.sec };   // 腰壁もボックス扱い（点群時に一緒に伏せる）
     interior.add(box, sill);
-    SUITES.push(box);
+    SUITES.push(box, sill);
   }
 })();
 
@@ -2855,6 +2856,22 @@ setLoad(86, '座席 19,079 を生成中');
   for (const s of SEAT.list) SEAT.byCat[s.cat] = (SEAT.byCat[s.cat] || 0) + 1;
 })();
 
+/* ---- 席マッピング演出用のスイープ順（コート中心からの距離順） ----
+   19,079席が1席ずつ個客レコードに紐づいていく様子を見せるために、
+   各席へ 0..1 の「掃引位置」を与える。 */
+const seatReveal = { on: false, t: 0, dur: 3.6, prog: 1, mode: 'radial', done: false };
+(function sweepOrder() {
+  const N = SEAT.list.length;
+  const key = new Float64Array(N);
+  for (let i = 0; i < N; i++) {
+    const s = SEAT.list[i];
+    key[i] = Math.hypot(s.x, s.z) + s.y * 1.6;      // 近い席から外周・上層へ
+  }
+  const idx = Array.from({ length: N }, (_, i) => i).sort((a, b) => key[a] - key[b]);
+  SEAT.rank = new Float32Array(N);
+  idx.forEach((v, r) => { SEAT.rank[v] = r / (N - 1); });
+})();
+
 /* ================================================================
    スポンサー媒体 露出モデル
    w = 正対度^0.8 × 観客視線一致^0.5 × 距離減衰
@@ -3041,8 +3058,14 @@ function repaintSeatCloud() {
   const occNow = occAt(timeState.min);
   const DIM = new THREE.Color(0x123048), LIT = new THREE.Color(0x66e0ff);
   const C = new THREE.Color();
+  const rev = seatReveal.prog < 1;
   for (let i = 0; i < N; i++) {
     const s = SEAT.list[i];
+    if (rev) {
+      const d = seatReveal.prog - SEAT.rank[i];
+      if (d < 0) { col.setXYZ(i, 0.03, 0.04, 0.06); continue; }
+      if (d < 0.035) { col.setXYZ(i, 0.0, 0.9, 1.0); continue; }
+    }
     if (!SNAP.sold[i] && seatMode !== 'cat') C.setHex(0x14202f);
     else if (seatMode === 'cat') C.setHex(CAT[s.cat].color);
     else if (seatMode === 'occ') C.copy(heatC(SNAP.occ[i]));
@@ -3064,6 +3087,28 @@ function repaintSeatCloud() {
   }
   col.needsUpdate = true;
 }
+
+/* ---- 席マッピング演出の駆動 ---- */
+function startSeatReveal() {
+  seatReveal.on = true; seatReveal.t = 0; seatReveal.prog = 0;
+  seatReveal.done = true;
+  toast('🎯 <b>19,079席</b> を個客レコードに紐づけています…', 3200);
+}
+FRAME_HOOKS.push(function (dt) {
+  if (!seatReveal.on) return;
+  seatReveal.t += dt;
+  seatReveal.prog = clamp(seatReveal.t / seatReveal.dur, 0, 1.04);
+  repaintSeats();
+  if (pcMode) repaintSeatCloud();
+  if (seatReveal.prog >= 1.04) {
+    seatReveal.on = false; seatReveal.prog = 1;
+    repaintSeats(); if (pcMode) repaintSeatCloud();
+    toast('紐付け完了 — <b>' + fmt(SEAT.list.length) + '席</b> / 販売 ' +
+      fmt(AGG.kpi.sold) + '件。座席クリックで<b>個客プロファイル</b>が開きます', 5000);
+  }
+  const lbl = document.getElementById('rv-count');
+  if (lbl) lbl.textContent = fmt(Math.round(clamp(seatReveal.prog, 0, 1) * SEAT.list.length));
+});
 
 function setPointCloud(on) {
   pcMode = on;
@@ -3848,8 +3893,18 @@ function repaintSeats() {
         E = new THREE.Euler(), S1 = new THREE.Vector3(1, 1, 1);
   let ci = 0;
   const crowdOn = (seatMode === 'crowd');
+  const rev = seatReveal.prog < 1;
+  const EDGE = new THREE.Color(0x00e5ff), DARK = new THREE.Color(0x0d1018);
   for (let i = 0; i < N; i++) {
     const s = SEAT.list[i];
+    if (rev) {
+      const r = SEAT.rank[i], d = seatReveal.prog - r;
+      if (d < 0) { SEAT.mesh.setColorAt(i, DARK); continue; }   // まだ紐づいていない席
+      if (d < 0.035) {                                          // 掃引の先端をハイライト
+        SEAT.mesh.setColorAt(i, EDGE);
+        continue;
+      }
+    }
     const sold = SNAP.sold[i];
     if (!sold && seatMode !== 'cat') C.copy(EMPTY_C);
     else if (seatMode === 'cat') C.setHex(CAT[s.cat].color);
@@ -3934,7 +3989,10 @@ function setLevel(lv, fly) {
   const go = fly ? flyTo : setCam;
   if (lv === 'site') go(ARENA_C.x, 20, ARENA_C.z, 620, -0.55, 0.48);
   else if (lv === 'plaza') go(plazaTarget.x, 9, plazaTarget.z, 96, Math.PI + ARENA_ROT, 0.22);
-  else go(ARENA_C.x, 12, ARENA_C.z, 168, -0.7, 0.80);
+  else {
+    go(ARENA_C.x, 12, ARENA_C.z, 168, -0.7, 0.80);
+    if (!seatReveal.done) setTimeout(startSeatReveal, 420);   // 初回入場時に自動再生
+  }
   renderPanel();
 }
 /* L0 の解析レイヤー（賑わい / OD）— 排他切替 */
@@ -4333,6 +4391,13 @@ function renderArenaPanel() {
       kpiCard((k.outState * 100).toFixed(0) + '<small>%</small>', '州外・海外比率') +
     '</div></div>' +
 
+    '<div class="sec"><div class="sec-t"><b>席マッピング</b> — 19,079席 ⇄ 個客レコード</div>' +
+    '<button class="tool-btn" id="rv-play">▶ 席マッピングを再生</button>' +
+    '<div class="hint" style="margin-top:6px">コート中心から外周・上層へ掃引しながら、' +
+    '1席ずつ個客レコード（属性・取引・行動・露出）に紐づけていきます。' +
+    '紐付け済み <b id="rv-count">' + fmt(Math.round(clamp(seatReveal.prog, 0, 1) * SEAT.list.length)) +
+    '</b> / ' + fmt(SEAT.list.length) + ' 席</div></div>' +
+
     '<div class="sec"><div class="sec-t"><b>座席レイヤー</b> — 1to1 の切り口</div>' +
     '<div class="mode-list" id="sm">' + SEAT_MODES.map(m =>
       '<button class="mode-btn' + (seatMode === m[0] ? ' active' : '') + '" data-sm="' + m[0] + '">' +
@@ -4479,6 +4544,7 @@ function renderArenaPanel() {
   pb.querySelectorAll('[data-bt2]').forEach(b => b.onclick = () => bimIsolate(b.dataset.bt2));
   pb.querySelectorAll('[data-bel]').forEach(b => b.onclick = () => bimFocus(BIM_ELEMS[+b.dataset.bel]));
   const qq = id => document.getElementById(id);
+  if (qq('rv-play')) qq('rv-play').onclick = () => startSeatReveal();
   if (qq('tg-in')) qq('tg-in').onclick = () => { indoorState.on = !indoorState.on; renderPanel(); };
   if (qq('tg-cong')) qq('tg-cong').onclick = () => { setCongestion(!indoorState.showCong); renderPanel(); };
   if (qq('tg-pc')) qq('tg-pc').onclick = () => { setPointCloud(!pcMode); renderPanel(); };

@@ -33,7 +33,10 @@ function setLevel(lv, fly) {
   const go = fly ? flyTo : setCam;
   if (lv === 'site') go(ARENA_C.x, 20, ARENA_C.z, 620, -0.55, 0.48);
   else if (lv === 'plaza') go(plazaTarget.x, 9, plazaTarget.z, 96, Math.PI + ARENA_ROT, 0.22);
-  else go(ARENA_C.x, 12, ARENA_C.z, 168, -0.7, 0.80);
+  else {
+    go(ARENA_C.x, 12, ARENA_C.z, 168, -0.7, 0.80);
+    if (!seatReveal.done) setTimeout(startSeatReveal, 420);   // 初回入場時に自動再生
+  }
   renderPanel();
 }
 /* L0 の解析レイヤー（賑わい / OD）— 排他切替 */

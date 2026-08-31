@@ -130,8 +130,18 @@ function repaintSeats() {
         E = new THREE.Euler(), S1 = new THREE.Vector3(1, 1, 1);
   let ci = 0;
   const crowdOn = (seatMode === 'crowd');
+  const rev = seatReveal.prog < 1;
+  const EDGE = new THREE.Color(0x00e5ff), DARK = new THREE.Color(0x0d1018);
   for (let i = 0; i < N; i++) {
     const s = SEAT.list[i];
+    if (rev) {
+      const r = SEAT.rank[i], d = seatReveal.prog - r;
+      if (d < 0) { SEAT.mesh.setColorAt(i, DARK); continue; }   // まだ紐づいていない席
+      if (d < 0.035) {                                          // 掃引の先端をハイライト
+        SEAT.mesh.setColorAt(i, EDGE);
+        continue;
+      }
+    }
     const sold = SNAP.sold[i];
     if (!sold && seatMode !== 'cat') C.copy(EMPTY_C);
     else if (seatMode === 'cat') C.setHex(CAT[s.cat].color);

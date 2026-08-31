@@ -410,8 +410,9 @@ const SUITES = [];
     const sill = new THREE.Mesh(new THREE.BoxGeometry(w, 0.34, 5.6), frame);
     sill.position.copy(box.position); sill.position.y = TIER.PRM.y0 + 0.15;
     sill.rotation.y = box.rotation.y;
+    sill.userData = { kind: 'suite', name: s.sec };   // 腰壁もボックス扱い（点群時に一緒に伏せる）
     interior.add(box, sill);
-    SUITES.push(box);
+    SUITES.push(box, sill);
   }
 })();
 
