@@ -37,4 +37,8 @@ toast('<b>Crypto.com Arena デジタルツイン</b> — 起動時は <b>点群<
       fmt(siteStats.points) + '点・LAS分類）。左パネルで実体/線画/青焼きに切替、' +
       'アリーナをクリックで内部へ。座席クリックで<b>個客プロファイル</b>が開きます', 7000);
 setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 260);
+document.getElementById('crumb-auto').onclick = () => {
+  if (AUTO.page) closeAuto(); else openAuto();
+};
+buildAutomation();
 window.__ready = true;

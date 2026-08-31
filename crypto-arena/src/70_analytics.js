@@ -131,15 +131,25 @@ function repaintSeats() {
   let ci = 0;
   const crowdOn = (seatMode === 'crowd');
   const rev = seatReveal.prog < 1;
-  const EDGE = new THREE.Color(0x00e5ff), DARK = new THREE.Color(0x0d1018);
+  const EDGE = new THREE.Color(0x00e5ff);
+  const RM = new THREE.Matrix4(), RQ = new THREE.Quaternion(), RP = new THREE.Vector3(),
+        RE = new THREE.Euler(), RS = new THREE.Vector3();
   for (let i = 0; i < N; i++) {
     const s = SEAT.list[i];
-    if (rev) {
-      const r = SEAT.rank[i], d = seatReveal.prog - r;
-      if (d < 0) { SEAT.mesh.setColorAt(i, DARK); continue; }   // まだ紐づいていない席
-      if (d < 0.035) {                                          // 掃引の先端をハイライト
-        SEAT.mesh.setColorAt(i, EDGE);
-        continue;
+    if (rev || seatReveal.needReset) {
+      /* 掃引が通過するまで座席そのものを出さない。通過時に少しオーバーシュートして着地する。 */
+      const d = seatReveal.prog - SEAT.rank[i];
+      let sc;
+      if (!rev) sc = 1;
+      else if (d < 0) sc = 0;
+      else if (d < 0.05) { const u = d / 0.05; sc = 0.15 + u * (1.55 - u * 0.55); }
+      else sc = 1;
+      RE.set(0, s.ry, 0); RQ.setFromEuler(RE); RP.set(s.x, s.y, s.z); RS.set(sc, sc, sc);
+      RM.compose(RP, RQ, RS);
+      SEAT.mesh.setMatrixAt(i, RM);
+      if (rev) {
+        if (d < 0) continue;                                    // 未生成の席は着色不要
+        if (d < 0.05) { SEAT.mesh.setColorAt(i, EDGE); continue; }
       }
     }
     const sold = SNAP.sold[i];
@@ -155,6 +165,14 @@ function repaintSeats() {
     else if (seatMode === 'od') {
       const f = fanAt(i);
       C.setHex(odFocus < 0 || f.oi === odFocus ? f.org.col : 0x1a2030);
+    }
+    else if (seatMode === 'journey') {
+      const fl = AUTO.flash ? AUTO.flash[i] : 0;
+      if (fl > 0.01) C.setRGB(1, 0.95 * fl + 0.05, 0.4 + 0.6 * fl);      // 発火の残光
+      else {
+        const n = AUTO.seatCount ? AUTO.seatCount[i] : 0;
+        C.copy(n ? heatC(clamp(n / 5, 0, 1)) : EMPTY_C);
+      }
     }
     else if (seatMode === 'segment') {
       C.setHex(SEG_STATE.matched && SEG_STATE.matched[i] ? 0x00e5ff : 0x151b26);
@@ -172,6 +190,10 @@ function repaintSeats() {
     }
   }
   SEAT.crowd.count = crowdOn ? ci : 0;
+  if (rev || seatReveal.needReset) {
+    SEAT.mesh.instanceMatrix.needsUpdate = true;
+    seatReveal.needReset = rev;         // 完了フレームで一度だけ等倍に戻す
+  }
   SEAT.mesh.instanceColor.needsUpdate = true;
   SEAT.crowd.instanceMatrix.needsUpdate = true;
   if (SEAT.crowd.instanceColor) SEAT.crowd.instanceColor.needsUpdate = true;

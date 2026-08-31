@@ -128,6 +128,10 @@ function repaintSeatCloud() {
       const f = fanAt(i);
       C.setHex(odFocus < 0 || f.oi === odFocus ? f.org.col : 0x121822);
     }
+    else if (seatMode === 'journey') {
+      const n = AUTO.seatCount ? AUTO.seatCount[i] : 0;
+      C.copy(n ? heatC(clamp(n / 5, 0, 1)) : new THREE.Color(0x14202f));
+    }
     else if (seatMode === 'segment')
       C.setHex(SEG_STATE.matched && SEG_STATE.matched[i] ? 0x00e5ff : 0x111722);
     else if (seatMode === 'price') C.copy(divC(s.pf || 1));
@@ -140,7 +144,7 @@ function repaintSeatCloud() {
 /* ---- 席マッピング演出の駆動 ---- */
 function startSeatReveal() {
   seatReveal.on = true; seatReveal.t = 0; seatReveal.prog = 0;
-  seatReveal.done = true;
+  seatReveal.done = true; seatReveal.needReset = true;
   toast('🎯 <b>19,079席</b> を個客レコードに紐づけています…', 3200);
 }
 FRAME_HOOKS.push(function (dt) {

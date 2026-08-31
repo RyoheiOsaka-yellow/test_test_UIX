@@ -161,6 +161,46 @@ canvas{display:block}
 #m2-cv{flex:1;border-radius:10px;background:#0b0f19;border:1px solid var(--line);cursor:crosshair}
 #m2-ft{display:flex;gap:10px;align-items:center;font-size:10.5px;color:var(--sub);flex-wrap:wrap}
 
+/* ===== オートメーション・コンソール ===== */
+#autopage{position:fixed;top:52px;left:0;right:0;bottom:62px;background:rgba(8,11,18,.97);
+  z-index:35;display:none;flex-direction:column;gap:10px;padding:12px 14px;backdrop-filter:blur(6px)}
+#ap-kpi{display:flex;gap:8px;align-items:center;flex-shrink:0}
+#ap-kpi .kpi{flex:0 0 auto;min-width:118px}
+.ap-title{font-size:14px;font-weight:700;color:var(--acc);margin-right:10px;line-height:1.3}
+.ap-title small{display:block;font-size:9.5px;color:var(--sub);font-weight:400;margin-top:2px}
+#ap-grid{flex:1;display:grid;grid-template-columns:330px 1fr 340px;gap:10px;overflow:hidden}
+#ap-left,#ap-mid,#ap-right{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:10px;display:flex;flex-direction:column;overflow:hidden}
+.ap-h{font-size:10.5px;letter-spacing:.13em;color:var(--sub);font-weight:700;margin-bottom:8px;flex-shrink:0}
+.ap-h span{color:var(--acc);float:right;font-family:var(--mono);letter-spacing:.04em}
+#ap-jlist,#ap-stream,#ap-sum{overflow-y:auto;flex:1}
+#ap-jlist::-webkit-scrollbar,#ap-stream::-webkit-scrollbar,#ap-sum::-webkit-scrollbar{width:5px}
+#ap-jlist::-webkit-scrollbar-thumb,#ap-stream::-webkit-scrollbar-thumb,
+#ap-sum::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.ap-ph{font-size:9.5px;letter-spacing:.12em;font-weight:700;margin:9px 0 5px;
+  border-left:2px solid;padding-left:7px}
+.ap-j{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;
+  margin-bottom:6px;cursor:pointer;transition:.15s}
+.ap-j:hover{border-color:#3d4a6b}
+.ap-j.off{opacity:.38}
+.ap-j-t{font-size:11.5px;font-weight:700;line-height:1.4;display:flex;align-items:flex-start;gap:6px}
+.ap-sw{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-left:auto;margin-top:3px}
+.ap-j-m{font-size:10px;color:var(--sub);margin-top:3px}
+.ap-j-w{font-size:9.5px;color:#6d7a94;margin-top:3px;line-height:1.5;font-style:italic}
+.ap-live{background:var(--ok);color:#04140b;border-radius:4px;padding:0 5px;font-size:8.5px;
+  font-weight:700;letter-spacing:.08em;margin-left:4px}
+#ap-chart{width:100%;flex-shrink:0;margin-bottom:8px}
+.ap-ev{background:var(--panel2);border-left:3px solid var(--acc);border-radius:0 8px 8px 0;
+  padding:7px 10px;margin-bottom:5px;cursor:pointer;transition:.12s}
+.ap-ev:hover{background:#1f2836}
+.ap-ev-h{font-size:10.5px;color:var(--txt);display:flex;align-items:center;gap:6px}
+.ap-ev-h b{font-family:var(--mono);color:var(--acc)}
+.ap-ev-ch{margin-left:auto;font-size:9.5px;color:var(--sub);border:1px solid var(--line);
+  border-radius:10px;padding:1px 7px}
+.ap-ev-b{font-size:10px;color:var(--sub);margin-top:2px}
+.ap-ev-m{font-size:10.5px;color:#c3cde0;margin-top:3px;line-height:1.5}
+.ap-empty{font-size:11px;color:var(--sub);text-align:center;padding:40px 20px;line-height:1.8}
+
 /* ===== セグメントビルダー ===== */
 #segb{position:fixed;inset:0;background:rgba(4,6,11,.9);z-index:46;display:none;
   align-items:center;justify-content:center;backdrop-filter:blur(4px)}
@@ -208,6 +248,7 @@ table.dt td.n{font-family:var(--mono);text-align:right}
     <div class="crumb active" data-lv="site">L0 SITE</div>
     <div class="crumb" data-lv="plaza">L1 PLAZA</div>
     <div class="crumb" data-lv="arena">L2 BOWL</div>
+    <div class="crumb" id="crumb-auto" style="border-color:var(--purple);color:var(--purple)">⚡ AUTOMATION</div>
   </div>
 </div>
 
@@ -2859,7 +2900,8 @@ setLoad(86, '座席 19,079 を生成中');
 /* ---- 席マッピング演出用のスイープ順（コート中心からの距離順） ----
    19,079席が1席ずつ個客レコードに紐づいていく様子を見せるために、
    各席へ 0..1 の「掃引位置」を与える。 */
-const seatReveal = { on: false, t: 0, dur: 3.6, prog: 1, mode: 'radial', done: false };
+const seatReveal = { on: false, t: 0, dur: 3.6, prog: 1, mode: 'radial',
+                     done: false, needReset: false };
 (function sweepOrder() {
   const N = SEAT.list.length;
   const key = new Float64Array(N);
@@ -3079,6 +3121,10 @@ function repaintSeatCloud() {
       const f = fanAt(i);
       C.setHex(odFocus < 0 || f.oi === odFocus ? f.org.col : 0x121822);
     }
+    else if (seatMode === 'journey') {
+      const n = AUTO.seatCount ? AUTO.seatCount[i] : 0;
+      C.copy(n ? heatC(clamp(n / 5, 0, 1)) : new THREE.Color(0x14202f));
+    }
     else if (seatMode === 'segment')
       C.setHex(SEG_STATE.matched && SEG_STATE.matched[i] ? 0x00e5ff : 0x111722);
     else if (seatMode === 'price') C.copy(divC(s.pf || 1));
@@ -3091,7 +3137,7 @@ function repaintSeatCloud() {
 /* ---- 席マッピング演出の駆動 ---- */
 function startSeatReveal() {
   seatReveal.on = true; seatReveal.t = 0; seatReveal.prog = 0;
-  seatReveal.done = true;
+  seatReveal.done = true; seatReveal.needReset = true;
   toast('🎯 <b>19,079席</b> を個客レコードに紐づけています…', 3200);
 }
 FRAME_HOOKS.push(function (dt) {
@@ -3894,15 +3940,25 @@ function repaintSeats() {
   let ci = 0;
   const crowdOn = (seatMode === 'crowd');
   const rev = seatReveal.prog < 1;
-  const EDGE = new THREE.Color(0x00e5ff), DARK = new THREE.Color(0x0d1018);
+  const EDGE = new THREE.Color(0x00e5ff);
+  const RM = new THREE.Matrix4(), RQ = new THREE.Quaternion(), RP = new THREE.Vector3(),
+        RE = new THREE.Euler(), RS = new THREE.Vector3();
   for (let i = 0; i < N; i++) {
     const s = SEAT.list[i];
-    if (rev) {
-      const r = SEAT.rank[i], d = seatReveal.prog - r;
-      if (d < 0) { SEAT.mesh.setColorAt(i, DARK); continue; }   // まだ紐づいていない席
-      if (d < 0.035) {                                          // 掃引の先端をハイライト
-        SEAT.mesh.setColorAt(i, EDGE);
-        continue;
+    if (rev || seatReveal.needReset) {
+      /* 掃引が通過するまで座席そのものを出さない。通過時に少しオーバーシュートして着地する。 */
+      const d = seatReveal.prog - SEAT.rank[i];
+      let sc;
+      if (!rev) sc = 1;
+      else if (d < 0) sc = 0;
+      else if (d < 0.05) { const u = d / 0.05; sc = 0.15 + u * (1.55 - u * 0.55); }
+      else sc = 1;
+      RE.set(0, s.ry, 0); RQ.setFromEuler(RE); RP.set(s.x, s.y, s.z); RS.set(sc, sc, sc);
+      RM.compose(RP, RQ, RS);
+      SEAT.mesh.setMatrixAt(i, RM);
+      if (rev) {
+        if (d < 0) continue;                                    // 未生成の席は着色不要
+        if (d < 0.05) { SEAT.mesh.setColorAt(i, EDGE); continue; }
       }
     }
     const sold = SNAP.sold[i];
@@ -3918,6 +3974,14 @@ function repaintSeats() {
     else if (seatMode === 'od') {
       const f = fanAt(i);
       C.setHex(odFocus < 0 || f.oi === odFocus ? f.org.col : 0x1a2030);
+    }
+    else if (seatMode === 'journey') {
+      const fl = AUTO.flash ? AUTO.flash[i] : 0;
+      if (fl > 0.01) C.setRGB(1, 0.95 * fl + 0.05, 0.4 + 0.6 * fl);      // 発火の残光
+      else {
+        const n = AUTO.seatCount ? AUTO.seatCount[i] : 0;
+        C.copy(n ? heatC(clamp(n / 5, 0, 1)) : EMPTY_C);
+      }
     }
     else if (seatMode === 'segment') {
       C.setHex(SEG_STATE.matched && SEG_STATE.matched[i] ? 0x00e5ff : 0x151b26);
@@ -3935,6 +3999,10 @@ function repaintSeats() {
     }
   }
   SEAT.crowd.count = crowdOn ? ci : 0;
+  if (rev || seatReveal.needReset) {
+    SEAT.mesh.instanceMatrix.needsUpdate = true;
+    seatReveal.needReset = rev;         // 完了フレームで一度だけ等倍に戻す
+  }
   SEAT.mesh.instanceColor.needsUpdate = true;
   SEAT.crowd.instanceMatrix.needsUpdate = true;
   if (SEAT.crowd.instanceColor) SEAT.crowd.instanceColor.needsUpdate = true;
@@ -3963,6 +4031,7 @@ let level = 'site';
 const crumbs = [...document.querySelectorAll('.crumb')];
 
 function setLevel(lv, fly) {
+  if (typeof AUTO !== 'undefined' && AUTO.page) closeAuto();
   level = lv;
   crumbs.forEach(c => c.classList.toggle('active', c.dataset.lv === lv));
   const inArena = lv === 'arena';
@@ -4114,6 +4183,7 @@ const SEAT_MODES = [
   ['seg',   'セグメント', 'シーズン券/単券/二次流通/州外 …', 0xfdb927],
   ['od',    '来場OD', 'どの出発地・交通手段から来た席か', 0x00a8ff],
   ['segment', '抽出セグメント', 'セグメントビルダーの条件に合う席', 0x00e5ff],
+  ['journey', '接触本数', 'その席の個客に当たるジャーニー本数と発火', 0x8a5cc4],
   ['ltv',   'LTV', '個客生涯価値のヒートマップ', 0x3ddc84],
   ['churn', '離反リスク', '更新確率が低い層を席上で特定', 0xff5b4d],
   ['occ',   '販売率', '区画×列の販売率', 0x4da3ff],
@@ -4510,6 +4580,7 @@ function renderArenaPanel() {
     '<div class="sec"><div class="sec-t"><b>ツール</b></div>' +
     '<button class="tool-btn" id="open-2d" style="margin-bottom:6px">🗺 2D 席図を開く</button>' +
     '<button class="tool-btn" id="open-board" style="margin-bottom:6px">📊 分析ボード（媒体・セグメント・価格）</button>' +
+    '<button class="tool-btn" id="open-auto" style="margin-bottom:6px">⚡ オートメーション・コンソール</button>' +
     '<button class="tool-btn" id="open-seg" style="margin-bottom:6px">🎯 セグメントビルダー & キャンペーン試算</button>' +
     '<button class="tool-btn" id="open-journey" style="margin-bottom:6px">🚶 個客ジャーニー再生</button>' +
     '<label class="tool-btn" style="display:block;text-align:center">📥 tickets.csv を読み込む' +
@@ -4558,6 +4629,7 @@ function renderArenaPanel() {
   const q = id => document.getElementById(id);
   if (q('open-2d')) q('open-2d').onclick = open2D;
   if (q('open-board')) q('open-board').onclick = () => openBoard('media');
+  if (q('open-auto')) q('open-auto').onclick = openAuto;
   if (q('open-seg')) q('open-seg').onclick = openSeg;
   if (q('open-journey')) q('open-journey').onclick = startJourney;
   if (q('csv')) q('csv').onchange = e => {
@@ -4696,7 +4768,7 @@ function gameState() {
 /* ================= 2D 席図（3Dと双方向連動） ================= */
 const m2 = document.getElementById('m2'), m2cv = document.getElementById('m2-cv');
 let m2ctx = null, m2geo = null;
-const M2_MODES = [['seg', 'セグメント'], ['segment', '抽出セグメント'], ['od', '来場OD'], ['ltv', 'LTV'], ['churn', '離反リスク'],
+const M2_MODES = [['seg', 'セグメント'], ['segment', '抽出セグメント'], ['journey', '接触本数'], ['od', '来場OD'], ['ltv', 'LTV'], ['churn', '離反リスク'],
                   ['occ', '販売率'], ['cat', '席種'], ['exp', '露出'], ['grade', '視認等級']];
 
 function open2D() {
@@ -4727,6 +4799,10 @@ function seatColor2D(i) {
   if (seatMode === 'exp') return '#' + heatC(expBoard < 0 ? s.exp
     : clamp(SEAT.expB[expBoard * SEAT.list.length + i] / SEAT.maxB[expBoard], 0, 1)).getHexString();
   if (seatMode === 'grade') return hex(GRADE_C[SEAT.grade[Math.max(0, expBoard) * SEAT.list.length + i]]);
+  if (seatMode === 'journey') {
+    const n = AUTO.seatCount ? AUTO.seatCount[i] : 0;
+    return n ? '#' + heatC(clamp(n / 5, 0, 1)).getHexString() : '#151b26';
+  }
   if (seatMode === 'segment')
     return SEG_STATE.matched && SEG_STATE.matched[i] ? '#00e5ff' : '#151b26';
   if (seatMode === 'od') {
@@ -5469,6 +5545,455 @@ function renderSeg() {
     toast('セグメントを保存しました', 2200);
   });
 }
+/* ---- src/94_automation.js ---- */
+
+/* ================================================================
+   マーケティング・オートメーション エンジン
+   トリガー（来場前 / 接近 / 入場 / 着席 / 場内 / 退場 / 帰宅後）×
+   オーディエンス条件 × アクション（チャネル + オファー）を
+   ジャーニーとして定義し、タイムライン再生に同期して実際に発火させる。
+   発火は座席単位まで降りるので、3Dの該当席が光る。
+================================================================ */
+const TRIG = {
+  PRE_7D:      { n: '7日前',          ph: 'pre',    icon: '📧' },
+  PRE_1D:      { n: '前日',           ph: 'pre',    icon: '📧' },
+  GEOFENCE:    { n: '500m圏 接近',    ph: 'arrive', icon: '📍' },
+  GATE_SCAN:   { n: 'ゲート入場',      ph: 'arrive', icon: '🎫' },
+  SEATED:      { n: '着席',           ph: 'arrive', icon: '💺' },
+  HALFTIME:    { n: 'ハーフタイム',    ph: 'in',     icon: '⏸' },
+  NO_PURCHASE: { n: 'Q3 未購買',      ph: 'in',     icon: '🛒' },
+  GAME_END:    { n: '試合終了',        ph: 'exit',   icon: '🏁' },
+  EXIT_GATE:   { n: '退場ゲート通過',   ph: 'exit',   icon: '🚪' },
+  LEFT_500M:   { n: '500m圏 離脱',    ph: 'exit',   icon: '🚶' },
+  NEXT_DAY:    { n: '翌朝',           ph: 'post',   icon: '☀' },
+};
+const PHASE_NAME = { pre: '来場前', arrive: '来場時', in: '場内', exit: '退場時', post: '帰宅後' };
+const PHASE_COL  = { pre: 0x8a5cc4, arrive: 0x00c2ff, in: 0x3ddc84, exit: 0xff8a3d, post: 0xfdb927 };
+
+/* --- ジャーニー定義 --- */
+const JOURNEYS = [
+  { id: 'PRE-1', on: true, trig: 'PRE_7D', ch: 'EMAIL', offer: 'CONVERT',
+    name: '来場前｜単券購入者を部分シーズン券へ',
+    cond: f => f.seg === 'SINGLE' && f.gamesLtm >= 3 && f.optin,
+    msg: f => '今季すでに' + f.gamesLtm + '試合ご観戦。6試合パックなら1試合あたり ' +
+              usd(Math.round(f.paid * 0.78)) + ' になります',
+    why: '来場実績のある単券客を、来場前の落ち着いたタイミングでシーズン化に寄せる' },
+
+  { id: 'PRE-2', on: true, trig: 'PRE_1D', ch: 'PUSH', offer: 'FB_OFFER',
+    name: '来場前｜前日リマインド + 事前注文',
+    cond: f => f.app,
+    msg: f => '明日 19:30 TIP-OFF。' + f.gate + 'が最短です。' +
+              'アプリで事前注文すると売店の列を通過できます',
+    why: '来場体験の設計。事前注文は場内購買を平均 +38% 押し上げる' },
+
+  { id: 'ARV-1', on: true, trig: 'GEOFENCE', ch: 'PUSH', offer: 'TOUR_BUNDLE',
+    name: '来場時｜州外・観光客を開場前の回遊へ',
+    cond: f => f.localStay && f.app,
+    msg: f => 'L.A. LIVE まで徒歩3分。開場前のグルメと GRAMMY Museum が' +
+              '観戦チケットで10%オフです',
+    why: '遠方客は早着しがち。空き時間を周辺消費に変え、滞在価値を上げる' },
+
+  { id: 'ARV-2', on: true, trig: 'GEOFENCE', ch: 'PUSH', offer: 'UPGRADE',
+    name: '来場時｜車来場者に駐車の事前決済',
+    cond: f => f.org.mode === 'CAR' && f.app,
+    msg: f => '駐車場 Lot W 残りわずか。事前決済で入庫列を回避できます（' +
+              fmt(Math.round(f.minutes * 0.12)) + '分短縮の想定）',
+    why: '入庫列は最大の不満要因。事前決済で待ちを削り、駐車売上を先に確定させる' },
+
+  { id: 'ARV-3', on: true, trig: 'GATE_SCAN', ch: 'PUSH', offer: 'HOSPITALITY',
+    name: '来場時｜高LTV層をPremier Loungeへ',
+    cond: f => f.ltv > 45000 && f.app && f.tier !== 'SUITE',
+    msg: f => '本日はPremier Loungeを開放しています。' +
+              'ご継続 ' + f.tenure + '年のお礼にドリンク1杯をご用意しました',
+    why: '高LTV層に「認識されている」体験を渡す。更新率とアップグレードの布石' },
+
+  { id: 'IN-1', on: true, trig: 'SEATED', ch: 'PUSH', offer: 'FB_OFFER',
+    name: '場内｜着席直後に最寄り売店クーポン',
+    cond: f => f.app && f.fb < 20,
+    msg: (f, s) => 'Sec ' + s.sec + ' から徒歩40秒の Bibigo Kitchen。' +
+                   '今から20分間だけ20%オフです',
+    why: '着席直後は購買意欲が最も高い。席位置から最寄りスタンドを出し分ける' },
+
+  { id: 'IN-2', on: true, trig: 'NO_PURCHASE', ch: 'PUSH', offer: 'MERCH',
+    name: '場内｜未購買層にグッズ・クロスセル',
+    cond: f => f.app && f.merch === 0,
+    msg: f => 'Team Store は 100L コンコース。' +
+              (f.gamesLtm <= 2 ? '初回来場の方に限定ピンバッジを進呈します' : '本日限定アイテムが入荷しています'),
+    why: '第3クォーターは退屈が生まれる時間帯。物販に流して単価を上げる' },
+
+  { id: 'EXT-1', on: true, trig: 'GAME_END', ch: 'PUSH', offer: 'TOUR_BUNDLE',
+    name: '退場時｜州外・観光客を周辺回遊へ',
+    cond: f => f.localStay && f.app,
+    msg: () => 'L.A. LIVE の提携店は 22:30 まで営業。' +
+               '本日の観戦チケット提示で10%オフになります',
+    why: '「帰る際のPR」の本命。退場動線をそのまま周辺消費に接続する' },
+
+  { id: 'EXT-2', on: true, trig: 'EXIT_GATE', ch: 'PUSH', offer: 'FB_OFFER',
+    name: '退場時｜出庫ピーク回避の動線分散',
+    cond: f => f.org.mode === 'CAR' && f.app,
+    msg: () => '駐車場の出庫がピークです。あと15分 L.A. LIVE でお過ごしいただくと' +
+               '平均12分早く出られます（提携店ドリンク1杯無料）',
+    why: '不満の最大要因である出庫渋滞を、消費に変えながら平準化する' },
+
+  { id: 'EXT-3', on: true, trig: 'LEFT_500M', ch: 'PUSH', offer: 'WINBACK',
+    name: '退場時｜初回・単券客を次戦へ',
+    cond: f => (f.seg === 'SINGLE' || f.seg === 'RESALE') && f.gamesLtm <= 2 && f.app,
+    msg: () => '本日はありがとうございました。今夜だけ、次戦のチケットが20%オフです',
+    why: '体験直後の熱量が最も高い瞬間に次回接点を作る。初回→2回目の転換が最重要' },
+
+  { id: 'EXT-4', on: true, trig: 'GAME_END', ch: 'SMS', offer: 'RENEW',
+    name: '退場時｜離反リスクの高いシーズン券保有者',
+    cond: f => (f.seg === 'SEASON' || f.seg === 'PARTIAL') && f.churn > 0.5,
+    msg: f => 'ご継続 ' + f.tenure + '年のお客様へ。来季の先行更新特典（Premier Box 1試合ご招待）' +
+              'のご案内をお送りしました',
+    why: '更新見込が低い層を、良い体験の直後に捕まえる。反応率が平時の1.6倍' },
+
+  { id: 'PST-1', on: true, trig: 'NEXT_DAY', ch: 'EMAIL', offer: 'MERCH',
+    name: '帰宅後｜ハイライト + あなたの席からの1枚',
+    cond: f => f.optin,
+    msg: (f, s) => '昨夜の Sec ' + s.sec + ' からの眺めとハイライトをお届けします',
+    why: '体験の記憶を固定し、次回の想起を作る。開封率が最も高い定番' },
+
+  { id: 'PST-2', on: true, trig: 'NEXT_DAY', ch: 'EMAIL', offer: 'UPGRADE',
+    name: '帰宅後｜高LTV層に席種アップグレード',
+    cond: f => f.ltv > 30000 && f.optin && (f.tier === 'L300' || f.tier === 'L100'),
+    msg: (f, s) => 'Sec ' + s.sec + ' から2列前方への差額アップグレード枠が空いています',
+    why: '良席の空きを、既に価値を感じている層へ先出しする' },
+];
+
+/* --- 発火時刻モデル（分・当日タイムライン） --- */
+function fireTime(trig, f, s, i) {
+  const j = (hrand(i, 0x77 + trig.length) - 0.5);
+  switch (trig) {
+    case 'GEOFENCE':    return f.arrival - 12 + j * 6;
+    case 'GATE_SCAN':   return f.arrival;
+    case 'SEATED':      return f.arrival + 6 + j * 4;
+    case 'HALFTIME':    return 20 * 60 + 15 + hrand(i, 3) * 4;
+    case 'NO_PURCHASE': return 20 * 60 + 40 + hrand(i, 5) * 6;
+    case 'GAME_END':    return 22 * 60 + hrand(i, 7) * 3;
+    /* 退場は上層ほど遅い（ボミトリー〜コンコースの捌け） */
+    case 'EXIT_GATE':   return 22 * 60 + 2 + (s.tier === 'L300' ? 6 : s.tier === 'PRM' ? 3 : 0)
+                               + hrand(i, 11) * 12;
+    case 'LEFT_500M':   return 22 * 60 + 12 + hrand(i, 13) * 26;
+    default:            return null;                 // pre / post はバッチ扱い
+  }
+}
+
+const AUTO = { sched: [], cursor: 0, log: [], byJ: {}, batch: {}, flash: null,
+               kpi: {}, built: false, page: false, filter: 'all' };
+
+function buildAutomation() {
+  const N = SEAT.list.length;
+  AUTO.sched = []; AUTO.cursor = 0; AUTO.log = []; AUTO.byJ = {}; AUTO.batch = {};
+  AUTO.flash = new Float32Array(N);
+  AUTO.seatCount = new Uint8Array(N);
+  for (const J of JOURNEYS) AUTO.byJ[J.id] = { sent: 0, cv: 0, rev: 0, cost: 0, aud: 0 };
+
+  for (let i = 0; i < N; i++) {
+    if (!SNAP.sold[i]) continue;
+    const s = SEAT.list[i], f = fanAt(i);
+    const fx = Object.assign({ tier: s.tier }, f);
+    for (const J of JOURNEYS) {
+      if (!J.on) continue;
+      let ok = false;
+      try { ok = J.cond(fx, s); } catch (e) { ok = false; }
+      if (!ok) continue;
+      AUTO.byJ[J.id].aud++;
+      AUTO.seatCount[i]++;
+      const t = fireTime(J.trig, f, s, i);
+      if (t == null) { AUTO.batch[J.id] = (AUTO.batch[J.id] || 0) + 1; continue; }
+      AUTO.sched.push({ t, i, j: J.id });
+    }
+  }
+  AUTO.sched.sort((a, b) => a.t - b.t);
+  AUTO.built = true;
+  computeAutoKpi();
+}
+
+/* --- 配信結果の見積り（セグメントビルダーと同じアップリフト評価） --- */
+function computeAutoKpi() {
+  let sent = 0, cv = 0, rev = 0, cost = 0, aud = 0;
+  const byPhase = {};
+  for (const J of JOURNEYS) {
+    const B = AUTO.byJ[J.id]; if (!B) continue;
+    const C = CHANNELS[J.ch];
+    const act = NBA_ACTIONS.find(a => a.id === J.offer) || NBA_ACTIONS[0];
+    const respC = clamp((OFFER_RESP[J.offer] || 0.08) * C.mult, 0, 0.85);
+    const respT = clamp(respC * (1 + act.up), 0, 0.9);
+    const reach = B.aud * C.deliver;
+    /* 増分（施策 − コントロール）だけを成果に計上する */
+    B.inc = reach * (respT - respC);
+    B.value = OFFER_VALUE[J.offer] ? OFFER_VALUE[J.offer](AGG.kpi.sold
+      ? { avgPaid: AGG.kpi.avg, avgLtv: AGG.kpi.ltv / AGG.kpi.sold } : { avgPaid: 400, avgLtv: 20000 })
+      : 100;
+    B.rev = B.inc * B.value;
+    B.cost = B.aud * C.cost + (B.aud ? C.fixed / 6 : 0);   // 固定費は年間施策で按分
+    B.reach = Math.round(reach);
+    aud += B.aud; sent += B.reach; cv += B.inc; rev += B.rev; cost += B.cost;
+    const p = TRIG[J.trig].ph;
+    const e = byPhase[p] || (byPhase[p] = { aud: 0, inc: 0, rev: 0 });
+    e.aud += B.aud; e.inc += B.inc; e.rev += B.rev;
+  }
+  AUTO.kpi = { aud, sent, cv, rev, cost, roas: cost > 0 ? rev / cost : 0,
+               profit: rev - cost, byPhase,
+               active: JOURNEYS.filter(j => j.on).length };
+}
+
+/* --- タイムライン同期の実行 --- */
+let lastAutoMin = -1;
+function autoStep(min) {
+  if (!AUTO.built) return;
+  if (min < lastAutoMin) {                                  // 巻き戻したらリセット
+    AUTO.cursor = 0; AUTO.log.length = 0;
+    for (const k in AUTO.byJ) AUTO.byJ[k].sent = 0;
+    if (AUTO.flash) AUTO.flash.fill(0);
+  }
+  lastAutoMin = min;
+  /* このステップで発火した分をいったん集め、ログには均等サンプルを載せる。
+     時刻を大きく飛ばしたときに、先頭の同一トリガーだけでログが埋まるのを避ける。 */
+  const batch = [];
+  while (AUTO.cursor < AUTO.sched.length && AUTO.sched[AUTO.cursor].t <= min) {
+    const e = AUTO.sched[AUTO.cursor++];
+    const J = JOURNEYS.find(x => x.id === e.j);
+    if (!J || !J.on) continue;
+    AUTO.byJ[J.id].sent++;
+    if (AUTO.flash) AUTO.flash[e.i] = 1;
+    batch.push([e, J]);
+  }
+  const LOGN = 30;
+  const step = Math.max(1, Math.ceil(batch.length / LOGN));
+  for (let k = batch.length - 1; k >= 0; k -= step) {
+    const [e, J] = batch[k];
+    const s = SEAT.list[e.i], f = fanAt(e.i);
+    let msg = '';
+    try { msg = typeof J.msg === 'function' ? J.msg(f, s) : String(J.msg); } catch (x) { msg = ''; }
+    AUTO.log.unshift({ t: e.t, fid: f.fid, sec: s.sec, row: s.row + 1, num: s.num,
+                       j: J, msg, seg: f.seg, i: e.i });
+  }
+  if (AUTO.log.length > 90) AUTO.log.length = 90;
+  return batch.length;
+}
+
+/* 発火した席の残光を減衰させる */
+FRAME_HOOKS.push(function (dt) {
+  if (!AUTO.flash) return;
+  const f = AUTO.flash;
+  let any = false;
+  for (let i = 0; i < f.length; i++) if (f[i] > 0) { f[i] = Math.max(0, f[i] - dt * 0.55); any = true; }
+  if (any && level === 'arena' && seatMode === 'journey') repaintSeats();
+});
+TICK_HOOKS.push(function () {
+  autoStep(timeState.min);
+  if (AUTO.page) renderAutoConsole();
+});
+/* ---- src/96_console.js ---- */
+
+/* ================================================================
+   オートメーション・コンソール（別ページ）
+   稼働中のジャーニー / リアルタイム配信ストリーム / フェーズ別の
+   時間分布 / 効果サマリ を1画面に置き、タイムライン再生に同期させる。
+================================================================ */
+const autoPage = document.createElement('div');
+autoPage.id = 'autopage';
+autoPage.innerHTML =
+  '<div id="ap-kpi"></div>' +
+  '<div id="ap-grid">' +
+    '<div id="ap-left"><div class="ap-h">ジャーニー</div><div id="ap-jlist"></div></div>' +
+    '<div id="ap-mid">' +
+      '<div class="ap-h">リアルタイム配信ストリーム <span id="ap-clock"></span></div>' +
+      '<canvas id="ap-chart" height="130"></canvas>' +
+      '<div id="ap-stream"></div>' +
+    '</div>' +
+    '<div id="ap-right"><div class="ap-h">効果サマリ</div><div id="ap-sum"></div></div>' +
+  '</div>';
+document.body.appendChild(autoPage);
+
+function openAuto() {
+  if (!AUTO.built) buildAutomation();
+  AUTO.page = true;
+  autoPage.style.display = 'flex';
+  document.getElementById('panel').style.display = 'none';
+  autoStep(timeState.min);
+  renderAutoConsole();
+}
+function closeAuto() {
+  AUTO.page = false;
+  autoPage.style.display = 'none';
+  document.getElementById('panel').style.display = 'flex';
+}
+
+function renderAutoConsole() {
+  if (!AUTO.page) return;
+  computeAutoKpi();
+  const k = AUTO.kpi;
+
+  document.getElementById('ap-kpi').innerHTML =
+    '<div class="ap-title">⚡ MARKETING AUTOMATION' +
+    '<small>トリガー × セグメント × アクションを、試合当日のタイムラインに同期して実行</small></div>' +
+    [[fmt(k.active) + '<small> / ' + JOURNEYS.length + '</small>', '稼働ジャーニー', ''],
+     [fmt(k.aud), 'のべ対象人数', 'k'],
+     [fmt(Object.values(AUTO.byJ).reduce((a, b) => a + b.sent, 0)), '本日 配信済み', ''],
+     [fmt(Math.round(k.cv)), '増分CV', 'g'],
+     [usd(k.rev), '増分売上', 'g'],
+     [k.roas.toFixed(1) + '<small>×</small>', '増分ROAS', 'p']]
+      .map(x => '<div class="kpi"><div class="v ' + x[2] + '">' + x[0] + '</div>' +
+                '<div class="l">' + x[1] + '</div></div>').join('') +
+    '<button class="close-x" id="ap-x" style="margin-left:auto">✕</button>';
+  document.getElementById('ap-x').onclick = closeAuto;
+
+  /* --- ジャーニー一覧（フェーズ別） --- */
+  const phases = ['pre', 'arrive', 'in', 'exit', 'post'];
+  document.getElementById('ap-jlist').innerHTML = phases.map(p => {
+    const list = JOURNEYS.filter(j => TRIG[j.trig].ph === p);
+    if (!list.length) return '';
+    return '<div class="ap-ph" style="border-color:' + hex(PHASE_COL[p]) + '">' +
+      '<span style="color:' + hex(PHASE_COL[p]) + '">' + PHASE_NAME[p] + '</span></div>' +
+      list.map(J => {
+        const B = AUTO.byJ[J.id] || { aud: 0, sent: 0, rev: 0 };
+        const live = B.sent > 0 && B.sent < B.aud;
+        return '<div class="ap-j' + (J.on ? '' : ' off') + '" data-j="' + J.id + '">' +
+          '<div class="ap-j-t">' + TRIG[J.trig].icon + ' ' + J.name +
+            '<span class="ap-sw" style="background:' + (J.on ? hex(PHASE_COL[p]) : '#39445c') + '"></span></div>' +
+          '<div class="ap-j-m">' + TRIG[J.trig].n + ' → ' + CHANNELS[J.ch].name +
+            ' ／ 対象 <b>' + fmt(B.aud) + '</b>' +
+            (B.sent ? ' ／ 配信 <b style="color:var(--acc)">' + fmt(B.sent) + '</b>' : '') +
+            (live ? ' <span class="ap-live">LIVE</span>' : '') + '</div>' +
+          '<div class="ap-j-w">' + J.why + '</div>' +
+          '<div class="ap-j-m">増分 <b style="color:var(--gold)">' + usd(B.rev || 0) + '</b>' +
+            ' ／ コスト ' + usd(B.cost || 0) + '</div>' +
+        '</div>';
+      }).join('');
+  }).join('');
+  autoPage.querySelectorAll('[data-j]').forEach(d => d.onclick = () => {
+    const J = JOURNEYS.find(x => x.id === d.dataset.j);
+    J.on = !J.on;
+    buildAutomation(); autoStep(timeState.min); renderAutoConsole();
+  });
+
+  /* --- ストリーム --- */
+  document.getElementById('ap-clock').textContent =
+    clockStr(timeState.min) + '　' + phaseAt(timeState.min);
+  const st = document.getElementById('ap-stream');
+  st.innerHTML = AUTO.log.length ? AUTO.log.map(e =>
+    '<div class="ap-ev" style="border-left-color:' + hex(PHASE_COL[TRIG[e.j.trig].ph]) + '">' +
+    '<div class="ap-ev-h"><b>' + clockStr(e.t) + '</b> ' + TRIG[e.j.trig].icon + ' ' +
+      TRIG[e.j.trig].n + '<span class="ap-ev-ch">' + CHANNELS[e.j.ch].name + '</span></div>' +
+    '<div class="ap-ev-b">' + e.fid + ' ／ Sec ' + e.sec + ' Row ' + e.row + ' Seat ' + e.num +
+      ' ／ <span style="color:' + hex(SEGMENTS[e.seg].color) + '">' + SEGMENTS[e.seg].name + '</span></div>' +
+    '<div class="ap-ev-m">「' + e.msg + '」</div></div>').join('')
+    : '<div class="ap-empty">▶ タイムラインを再生すると、条件に合致した個客へ' +
+      '実際に配信が飛びます。<br>17:00 ゲート開場から発火が始まります。</div>';
+  st.querySelectorAll('.ap-ev').forEach((d, n) => {
+    d.onclick = () => {
+      const e = AUTO.log[n];
+      closeAuto(); setLevel('arena', true);
+      setTimeout(() => showFanCard(e.i), 500);
+    };
+  });
+
+  /* --- 右: サマリ --- */
+  const byCh = {};
+  for (const J of JOURNEYS) {
+    if (!J.on) continue;
+    const B = AUTO.byJ[J.id];
+    const e = byCh[J.ch] || (byCh[J.ch] = { n: 0, rev: 0 });
+    e.n += B.aud; e.rev += B.rev;
+  }
+  const rank = JOURNEYS.filter(j => j.on).map(j => ({ j, B: AUTO.byJ[j.id] }))
+    .sort((a, b) => b.B.rev - a.B.rev);
+  document.getElementById('ap-sum').innerHTML =
+    '<div class="sec-t">フェーズ別 増分売上（USD）</div>' +
+    phases.map(p => {
+      const e = k.byPhase[p]; if (!e) return '';
+      return '<div class="bar-row"><span>' + PHASE_NAME[p] + '</span>' +
+        '<div class="bar"><i style="width:' + (e.rev / Math.max(1, k.rev) * 100).toFixed(1) +
+        '%;background:' + hex(PHASE_COL[p]) + '"></i></div><b>' + usd(e.rev) + '</b></div>';
+    }).join('') +
+    '<div class="sec-t" style="margin-top:10px">チャネル別 対象人数</div>' +
+    Object.keys(byCh).map(c => bar(CHANNELS[c].name, byCh[c].n, k.aud || 1, '#00c2ff')).join('') +
+    '<div class="sec-t" style="margin-top:10px">増分売上 ランキング</div>' +
+    rank.slice(0, 8).map(r => '<div class="bar-row"><span title="' + r.j.name + '">' +
+      r.j.name.replace(/^[^｜]*｜/, '') + '</span><div class="bar"><i style="width:' +
+      (r.B.rev / Math.max(1, rank[0].B.rev) * 100).toFixed(1) + '%;background:' +
+      hex(PHASE_COL[TRIG[r.j.trig].ph]) + '"></i></div><b>' + usd(r.B.rev) + '</b></div>').join('') +
+    '<div class="hint" style="margin-top:10px">効果は<b>コントロール群との差分（増分）</b>のみ。' +
+    'バッチ配信（来場前・帰宅後）は当日タイムラインに乗らないため、' +
+    '対象人数と効果に含めた上でストリームには流していません。</div>' +
+    '<div class="row-btns" style="margin-top:10px">' +
+    '<button class="tool-btn" id="ap-seat" style="width:auto;padding:7px 12px">💺 座席で見る（接触本数）</button>' +
+    '<button class="tool-btn" id="ap-csv" style="width:auto;padding:7px 12px">📤 配信ログCSV</button></div>';
+  const q = id => document.getElementById(id);
+  if (q('ap-seat')) q('ap-seat').onclick = () => {
+    closeAuto(); seatMode = 'journey'; setLevel('arena', true);
+    setTimeout(() => { repaintSeats(); renderPanel(); }, 400);
+  };
+  if (q('ap-csv')) q('ap-csv').onclick = autoExportCSV;
+
+  drawAutoChart();
+}
+
+/* --- フェーズ別の配信時間分布 --- */
+function drawAutoChart() {
+  const cv = document.getElementById('ap-chart');
+  if (!cv) return;
+  const dpr = devicePixelRatio;
+  cv.width = cv.clientWidth * dpr; cv.height = 130 * dpr;
+  const c = cv.getContext('2d'), W = cv.width, H = cv.height;
+  c.clearRect(0, 0, W, H);
+  const BINS = 108, bin = {};                       // 15:00-24:00 を5分刻み
+  for (const e of AUTO.sched) {
+    const b = Math.floor((e.t - T0) / 5);
+    if (b < 0 || b >= BINS) continue;
+    const p = TRIG[JOURNEYS.find(x => x.id === e.j).trig].ph;
+    (bin[p] = bin[p] || new Float64Array(BINS))[b]++;
+  }
+  let mx = 1;
+  const tot = new Float64Array(BINS);
+  for (const p in bin) for (let i = 0; i < BINS; i++) { tot[i] += bin[p][i]; if (tot[i] > mx) mx = tot[i]; }
+  const bw = W / BINS;
+  const order = ['pre', 'arrive', 'in', 'exit', 'post'];
+  const stack = new Float64Array(BINS);
+  for (const p of order) {
+    if (!bin[p]) continue;
+    c.fillStyle = hex(PHASE_COL[p]);
+    for (let i = 0; i < BINS; i++) {
+      const h = bin[p][i] / mx * (H - 22 * dpr);
+      c.fillRect(i * bw, H - 16 * dpr - stack[i] - h, Math.max(1, bw - 1), h);
+      stack[i] += h;
+    }
+  }
+  /* 現在時刻のカーソル */
+  const cx = (timeState.min - T0) / (T1 - T0) * W;
+  c.strokeStyle = '#ffffff'; c.lineWidth = 1.5 * dpr;
+  c.beginPath(); c.moveTo(cx, 0); c.lineTo(cx, H - 16 * dpr); c.stroke();
+  c.fillStyle = '#8590a8'; c.font = (9 * dpr) + 'px sans-serif'; c.textAlign = 'center';
+  for (let h = 15; h <= 24; h += 1) {
+    const x = (h * 60 - T0) / (T1 - T0) * W;
+    c.fillText(h + ':00', x, H - 3 * dpr);
+  }
+}
+
+/* --- 配信ログの書き出し --- */
+function autoExportCSV() {
+  const rows = ['fire_time,journey_id,journey,trigger,phase,channel,offer,fan_id,' +
+                'section,row,seat,segment,region,ltv_usd,renew_prob,message'];
+  for (const e of AUTO.sched) {
+    const J = JOURNEYS.find(x => x.id === e.j);
+    if (!J || !J.on) continue;
+    const s = SEAT.list[e.i], f = fanAt(e.i);
+    let msg = ''; try { msg = typeof J.msg === 'function' ? J.msg(f, s) : String(J.msg); } catch (x) { }
+    rows.push([clockStr(e.t), J.id, '"' + J.name + '"', TRIG[J.trig].n, PHASE_NAME[TRIG[J.trig].ph],
+      J.ch, J.offer, f.fid, s.sec, s.row + 1, s.num, f.seg, '"' + f.reg.n + '"',
+      f.ltv, (1 - f.churn).toFixed(3), '"' + msg.replace(/"/g, '""') + '"'].join(','));
+  }
+  const blob = new Blob(['﻿' + rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'automation_log_' + curGame + '_' + (rows.length - 1) + 'rows.csv';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast('配信ログを書き出しました — <b>' + fmt(rows.length - 1) + ' 行</b>', 4000);
+}
 /* ---- src/99_boot.js ---- */
 /* ================= 起動 & メインループ ================= */
 setLoad(94, '1to1 データを生成中');
@@ -5509,6 +6034,10 @@ toast('<b>Crypto.com Arena デジタルツイン</b> — 起動時は <b>点群<
       fmt(siteStats.points) + '点・LAS分類）。左パネルで実体/線画/青焼きに切替、' +
       'アリーナをクリックで内部へ。座席クリックで<b>個客プロファイル</b>が開きます', 7000);
 setTimeout(() => { document.getElementById('loading').style.display = 'none'; }, 260);
+document.getElementById('crumb-auto').onclick = () => {
+  if (AUTO.page) closeAuto(); else openAuto();
+};
+buildAutomation();
 window.__ready = true;
 </script>
 </body></html>

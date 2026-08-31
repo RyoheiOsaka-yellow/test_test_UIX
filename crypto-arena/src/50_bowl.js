@@ -115,7 +115,8 @@ setLoad(86, '座席 19,079 を生成中');
 /* ---- 席マッピング演出用のスイープ順（コート中心からの距離順） ----
    19,079席が1席ずつ個客レコードに紐づいていく様子を見せるために、
    各席へ 0..1 の「掃引位置」を与える。 */
-const seatReveal = { on: false, t: 0, dur: 3.6, prog: 1, mode: 'radial', done: false };
+const seatReveal = { on: false, t: 0, dur: 3.6, prog: 1, mode: 'radial',
+                     done: false, needReset: false };
 (function sweepOrder() {
   const N = SEAT.list.length;
   const key = new Float64Array(N);

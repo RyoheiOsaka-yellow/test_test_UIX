@@ -8,6 +8,7 @@ const SEAT_MODES = [
   ['seg',   'セグメント', 'シーズン券/単券/二次流通/州外 …', 0xfdb927],
   ['od',    '来場OD', 'どの出発地・交通手段から来た席か', 0x00a8ff],
   ['segment', '抽出セグメント', 'セグメントビルダーの条件に合う席', 0x00e5ff],
+  ['journey', '接触本数', 'その席の個客に当たるジャーニー本数と発火', 0x8a5cc4],
   ['ltv',   'LTV', '個客生涯価値のヒートマップ', 0x3ddc84],
   ['churn', '離反リスク', '更新確率が低い層を席上で特定', 0xff5b4d],
   ['occ',   '販売率', '区画×列の販売率', 0x4da3ff],
@@ -404,6 +405,7 @@ function renderArenaPanel() {
     '<div class="sec"><div class="sec-t"><b>ツール</b></div>' +
     '<button class="tool-btn" id="open-2d" style="margin-bottom:6px">🗺 2D 席図を開く</button>' +
     '<button class="tool-btn" id="open-board" style="margin-bottom:6px">📊 分析ボード（媒体・セグメント・価格）</button>' +
+    '<button class="tool-btn" id="open-auto" style="margin-bottom:6px">⚡ オートメーション・コンソール</button>' +
     '<button class="tool-btn" id="open-seg" style="margin-bottom:6px">🎯 セグメントビルダー & キャンペーン試算</button>' +
     '<button class="tool-btn" id="open-journey" style="margin-bottom:6px">🚶 個客ジャーニー再生</button>' +
     '<label class="tool-btn" style="display:block;text-align:center">📥 tickets.csv を読み込む' +
@@ -452,6 +454,7 @@ function renderArenaPanel() {
   const q = id => document.getElementById(id);
   if (q('open-2d')) q('open-2d').onclick = open2D;
   if (q('open-board')) q('open-board').onclick = () => openBoard('media');
+  if (q('open-auto')) q('open-auto').onclick = openAuto;
   if (q('open-seg')) q('open-seg').onclick = openSeg;
   if (q('open-journey')) q('open-journey').onclick = startJourney;
   if (q('csv')) q('csv').onchange = e => {

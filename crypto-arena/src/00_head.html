@@ -161,6 +161,46 @@ canvas{display:block}
 #m2-cv{flex:1;border-radius:10px;background:#0b0f19;border:1px solid var(--line);cursor:crosshair}
 #m2-ft{display:flex;gap:10px;align-items:center;font-size:10.5px;color:var(--sub);flex-wrap:wrap}
 
+/* ===== オートメーション・コンソール ===== */
+#autopage{position:fixed;top:52px;left:0;right:0;bottom:62px;background:rgba(8,11,18,.97);
+  z-index:35;display:none;flex-direction:column;gap:10px;padding:12px 14px;backdrop-filter:blur(6px)}
+#ap-kpi{display:flex;gap:8px;align-items:center;flex-shrink:0}
+#ap-kpi .kpi{flex:0 0 auto;min-width:118px}
+.ap-title{font-size:14px;font-weight:700;color:var(--acc);margin-right:10px;line-height:1.3}
+.ap-title small{display:block;font-size:9.5px;color:var(--sub);font-weight:400;margin-top:2px}
+#ap-grid{flex:1;display:grid;grid-template-columns:330px 1fr 340px;gap:10px;overflow:hidden}
+#ap-left,#ap-mid,#ap-right{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:10px;display:flex;flex-direction:column;overflow:hidden}
+.ap-h{font-size:10.5px;letter-spacing:.13em;color:var(--sub);font-weight:700;margin-bottom:8px;flex-shrink:0}
+.ap-h span{color:var(--acc);float:right;font-family:var(--mono);letter-spacing:.04em}
+#ap-jlist,#ap-stream,#ap-sum{overflow-y:auto;flex:1}
+#ap-jlist::-webkit-scrollbar,#ap-stream::-webkit-scrollbar,#ap-sum::-webkit-scrollbar{width:5px}
+#ap-jlist::-webkit-scrollbar-thumb,#ap-stream::-webkit-scrollbar-thumb,
+#ap-sum::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.ap-ph{font-size:9.5px;letter-spacing:.12em;font-weight:700;margin:9px 0 5px;
+  border-left:2px solid;padding-left:7px}
+.ap-j{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;
+  margin-bottom:6px;cursor:pointer;transition:.15s}
+.ap-j:hover{border-color:#3d4a6b}
+.ap-j.off{opacity:.38}
+.ap-j-t{font-size:11.5px;font-weight:700;line-height:1.4;display:flex;align-items:flex-start;gap:6px}
+.ap-sw{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-left:auto;margin-top:3px}
+.ap-j-m{font-size:10px;color:var(--sub);margin-top:3px}
+.ap-j-w{font-size:9.5px;color:#6d7a94;margin-top:3px;line-height:1.5;font-style:italic}
+.ap-live{background:var(--ok);color:#04140b;border-radius:4px;padding:0 5px;font-size:8.5px;
+  font-weight:700;letter-spacing:.08em;margin-left:4px}
+#ap-chart{width:100%;flex-shrink:0;margin-bottom:8px}
+.ap-ev{background:var(--panel2);border-left:3px solid var(--acc);border-radius:0 8px 8px 0;
+  padding:7px 10px;margin-bottom:5px;cursor:pointer;transition:.12s}
+.ap-ev:hover{background:#1f2836}
+.ap-ev-h{font-size:10.5px;color:var(--txt);display:flex;align-items:center;gap:6px}
+.ap-ev-h b{font-family:var(--mono);color:var(--acc)}
+.ap-ev-ch{margin-left:auto;font-size:9.5px;color:var(--sub);border:1px solid var(--line);
+  border-radius:10px;padding:1px 7px}
+.ap-ev-b{font-size:10px;color:var(--sub);margin-top:2px}
+.ap-ev-m{font-size:10.5px;color:#c3cde0;margin-top:3px;line-height:1.5}
+.ap-empty{font-size:11px;color:var(--sub);text-align:center;padding:40px 20px;line-height:1.8}
+
 /* ===== セグメントビルダー ===== */
 #segb{position:fixed;inset:0;background:rgba(4,6,11,.9);z-index:46;display:none;
   align-items:center;justify-content:center;backdrop-filter:blur(4px)}
