@@ -205,13 +205,14 @@ function renderSeg() {
         '<div class="l">アプリ保有</div></div>' +
     '</div>' +
     '<div class="sec-t" style="margin-top:10px">構成（セグメント）</div>' +
-    Object.keys(k.bySeg).sort((a, b) => k.bySeg[b] - k.bySeg[a]).slice(0, 6).map(x =>
-      bar(SEGMENTS[x].name, k.bySeg[x], k.n || 1, hex(SEGMENTS[x].color))).join('') +
+    vizCanvas({ type: 'donut', h: 156, legendRight: true, vFmt: v => fmt(v) + ' 人',
+      slices: Object.keys(k.bySeg).sort((a, b) => k.bySeg[b] - k.bySeg[a])
+        .map((x, i) => ({ label: SEGMENTS[x].name, value: k.bySeg[x], color: VIZ.ser[i % 8] })),
+      center: { v: fmt(k.n), l: '対象人数' } }, 156) +
     '<div class="sec-t" style="margin-top:8px">構成（商圏）</div>' +
-    Object.keys(k.byReg).sort((a, b) => k.byReg[b] - k.byReg[a]).slice(0, 6).map(x => {
-      const R = REGIONS.find(r => r.n === x) || { col: 0x8590a8 };
-      return bar(x, k.byReg[x], k.n || 1, hex(R.col));
-    }).join('') +
+    vizCanvas({ type: 'hbars', rowH: 20, labW: 128, valW: 60, vFmt: v => fmt(v) + '人',
+      rows: Object.keys(k.byReg).sort((a, b) => k.byReg[b] - k.byReg[a])
+        .map((x, i) => ({ label: x, value: k.byReg[x], color: VIZ.ser[i % 8] })) }) +
     '<div class="hint" style="margin-top:9px">条件を変えると<b>3Dの座席が即時に光ります</b>。' +
     'どのブロックに固まっているかが分かると、席を軸にした打ち手（隣接席の押さえ、' +
     'ブロック単位の体験改善）に落とせます。</div></div>' +
@@ -236,7 +237,16 @@ function renderSeg() {
       '<span style="color:var(--sub)">※ここでのコントロールは「同じチャネルで最適化なしのオファーを送った場合」。' +
       'ジャーニービルダーの<b>ホールドアウトは一切配信しない群</b>で、比較の基準が異なります。</span></div>' +
       '</div>' +
-    '<div>' + tbl(['ファネル', '人数 / 金額'], [
+    '<div>' +
+    vizCanvas({ type: 'funnel', vFmt: v => fmt(v) + ' 人', steps: [
+      { label: '対象人数', value: k.n },
+      { label: c.C.req === 'optin' ? '配信可（オプトイン）' : c.C.req === 'app' ? '配信可（アプリ）' : '配信可',
+        value: c.eligible },
+      { label: '到達', value: c.reach },
+      { label: '開封・視認', value: Math.round(c.engaged) },
+      { label: 'CV（施策）', value: Math.round(c.cvT) },
+    ] }) +
+    tbl(['ファネル', '人数 / 金額'], [
       ['対象人数', fmt(k.n)],
       [c.C.req === 'optin' ? '配信可（オプトイン）' : c.C.req === 'app' ? '配信可（アプリ保有）' : '配信可',
         fmt(c.eligible)],
@@ -280,6 +290,7 @@ function renderSeg() {
     '試算がそのまま実績ベースの予測になります。</div></div>';
 
   /* --- バインド --- */
+  flushViz();
   body.querySelectorAll('[data-mset]').forEach(g => {
     const key = g.dataset.mset;
     g.querySelectorAll('[data-v]').forEach(b => b.onclick = () => {

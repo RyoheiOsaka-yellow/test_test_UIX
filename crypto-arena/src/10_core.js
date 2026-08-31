@@ -125,6 +125,10 @@ function showInfo(title, desc) {
   infoEl.style.display = 'block';
 }
 const hideInfo = () => infoEl.style.display = 'none';
+(function bindInfoClose() {
+  const x = document.getElementById('info-x');
+  if (x) { x.dataset.tip = '閉じる'; x.onclick = hideInfo; }
+})();
 
 /* ---- リサイズ ---- */
 addEventListener('resize', () => {

@@ -123,8 +123,9 @@ m2cv.addEventListener('click', e => {
 const board = document.getElementById('board');
 document.getElementById('board-x').onclick = () => board.style.display = 'none';
 board.onclick = e => { if (e.target === board) board.style.display = 'none'; };
-const BOARD_TABS = [['od', 'OD・移動'], ['media', '媒体・スポンサー'], ['seg', 'セグメント'],
-                    ['price', '価格'], ['churn', 'リテンション']];
+const BOARD_TABS = [['od', 'route', 'OD・移動'], ['media', 'eye', '媒体・スポンサー'],
+                    ['seg', 'tag', 'セグメント'], ['price', 'dollar', '価格'],
+                    ['churn', 'alert', 'リテンション']];
 let boardTab = 'media';
 
 function openBoard(tab) {
@@ -132,8 +133,8 @@ function openBoard(tab) {
   board.style.display = 'flex';
   document.getElementById('board-hd').querySelector('.t').textContent = '📊 分析ボード — ' + GAMES[curGame].name;
   document.getElementById('board-tabs').innerHTML = BOARD_TABS.map(t =>
-    '<button class="chip sm' + (boardTab === t[0] ? ' active' : '') + '" data-bt="' + t[0] + '">' +
-    t[1] + '</button>').join('');
+    '<button class="ib wide' + (boardTab === t[0] ? ' active' : '') + '" data-bt="' + t[0] + '">' +
+    ic(t[1], 14) + t[2] + '</button>').join('');
   document.getElementById('board-tabs').querySelectorAll('[data-bt]').forEach(b =>
     b.onclick = () => openBoard(b.dataset.bt));
   const body = document.getElementById('board-body');
@@ -141,7 +142,8 @@ function openBoard(tab) {
     : boardTab === 'media' ? boardMedia()
     : boardTab === 'seg' ? boardSeg()
     : boardTab === 'price' ? boardPrice() : boardChurn();
-  body.querySelectorAll('canvas[data-chart]').forEach(cv => drawChart(cv));
+  flushViz();
+  bindSections(body);
 }
 
 function tbl(head, rows) {
@@ -161,9 +163,32 @@ function boardMedia() {
     '単価が突出して高い媒体は価格是正、低い媒体は値上げ余地。契約額はダミー — ' +
     'sponsor_inventory.csv 投入で実額に置換されます。</div></div>' +
     '<div class="bcard"><h4>媒体タイプ別 契約額構成（総額 ' + usd(tot) + '）</h4>' +
-    '<canvas data-chart="mediaBar" height="200"></canvas></div>' +
+    (function () {
+      const t = {};
+      for (const b of AGG.board) t[b.type] = (t[b.type] || 0) + b.contract;
+      return vizCanvas({ type: 'donut', h: 190, legendRight: true, vFmt: usd,
+        slices: Object.keys(t).map((k, i) => ({ label: k, value: t[k], color: VIZ.ser[i] })),
+        center: { v: usd(tot), l: '年間契約 総額' } }, 190);
+    })() + '</div>' +
     '<div class="bcard"><h4>視認等級の分布（全媒体合計）</h4>' +
-    '<canvas data-chart="gradePie" height="200"></canvas></div>';
+    (function () {
+      const g = [0, 0, 0, 0, 0];
+      for (const b of AGG.board) { g[4] += b.gradeA; g[3] += b.gradeB; g[2] += b.gradeC;
+        g[1] += b.gradeD; g[0] += b.out; }
+      return vizCanvas({ type: 'bars', h: 190, padL: 46, legend: false,
+        x: ['圏外', 'D', 'C', 'B', 'A'], tipFmt: v => fmt(v) + ' 席',
+        series: [{ name: '席数', data: g, color: VIZ.ser[0] }] }, 190);
+    })() + '</div>' +
+    '<div class="bcard wide"><h4>実効露出 × 実効露出単価 — 媒体の割安・割高</h4>' +
+    vizCanvas({ type: 'scatter', h: 250, padL: 56, xLab: '実効露出（人）', yLab: '実効露出単価 $',
+      xFmt: v => fmt(v), yFmt: v => '$' + v.toFixed(1),
+      points: AGG.board.map((b, i) => ({ x: b.score, y: b.cpe, r: 4 + Math.sqrt(b.contract) / 260,
+        color: VIZ.ser[['COURTSIDE_LED', 'RIBBON', 'SCOREBOARD', 'WALL'].indexOf(b.type) + 1] ||
+               VIZ.ser[0], label: b.name,
+        sub: b.type + ' ／ 年間契約 ' + usd(b.contract) })) }, 250) +
+    '<div class="hint" style="margin-top:8px">円の大きさ＝年間契約額。' +
+    '<b>右下ほど割安（露出が多いのに単価が低い）</b>＝値上げ余地、' +
+    '左上ほど割高＝価格是正の対象です。</div></div>';
 }
 function boardSeg() {
   const k = AGG.kpi;
@@ -171,17 +196,33 @@ function boardSeg() {
     const n = AGG.seg[s] || 0;
     return [SEGMENTS[s].name, fmt(n), (n / Math.max(1, k.sold) * 100).toFixed(1) + '%'];
   });
+  const segSlices = Object.keys(SEGMENTS).filter(x => AGG.seg[x])
+    .sort((a, b) => AGG.seg[b] - AGG.seg[a])
+    .map((x, i) => ({ label: SEGMENTS[x].name, value: AGG.seg[x], color: VIZ.ser[i % 8] }));
+  const secs = Object.entries(AGG.sec).filter(x => x[1].n > 60);
   return '<div class="bcard"><h4>セグメント別 構成</h4>' +
+    vizCanvas({ type: 'donut', h: 190, legendRight: true, vFmt: v => fmt(v) + ' 人',
+      slices: segSlices, center: { v: fmt(k.sold), l: '販売席' } }, 190) +
     tbl(['セグメント', '人数', '構成比'], rows) + '</div>' +
     '<div class="bcard"><h4>商圏別 構成</h4>' +
-    tbl(['エリア', '人数', '構成比'], REGIONS.map(r => {
-      const n = AGG.reg[r.n] || 0;
-      return [r.n, fmt(n), (n / Math.max(1, k.sold) * 100).toFixed(1) + '%'];
-    })) + '</div>' +
-    '<div class="bcard wide"><h4>区画別 サマリ（販売率 / 収益）</h4>' +
-    '<canvas data-chart="secBar" height="220"></canvas>' +
-    '<div class="hint" style="margin-top:8px">区画ごとの販売率と収益。' +
-    '低販売率かつ高露出の区画は<b>値付けが需要に追いついていない</b>候補です。</div></div>';
+    vizCanvas({ type: 'hbars', rowH: 22, labW: 132, valW: 76, vFmt: v => fmt(v) + ' 人',
+      rows: REGIONS.map((r, i) => ({ label: r.n, value: AGG.reg[r.n] || 0, color: VIZ.ser[i % 8],
+        sub: ((AGG.reg[r.n] || 0) / Math.max(1, k.sold) * 100).toFixed(1) + '%' }))
+        .sort((a, b) => b.value - a.value) }) + '</div>' +
+    '<div class="bcard wide"><h4>区画別 販売率 × 露出 — 値付けが需要に追いついていない区画</h4>' +
+    vizCanvas({ type: 'scatter', h: 270, padL: 52, xLab: '露出スコア', yLab: '販売率 %',
+      xMin: 0, xMax: 1, yMax: 105, xFmt: v => (v * 100).toFixed(0), yFmt: v => v.toFixed(0) + '%',
+      points: secs.map(([nm, m]) => {
+        const seats = SEAT.list.filter(s => s.sec === nm);
+        const ex = seats.reduce((a, s) => a + s.exp, 0) / Math.max(1, seats.length);
+        const so = m.sold / m.n * 100;
+        return { x: ex, y: so, r: 3 + Math.sqrt(m.n) / 3.2, label: 'Sec ' + nm,
+          color: so < 75 && ex > 0.5 ? VIZ.st.serious : VIZ.ser[0],
+          sub: fmt(m.sold) + ' / ' + fmt(m.n) + ' 席 ・ ' + usd(m.rev) };
+      }) }, 270) +
+    '<div class="hint" style="margin-top:8px">円の大きさ＝区画の席数。' +
+    '<b style="color:' + VIZ.st.serious + '">右下（高露出なのに低販売率）</b>の区画は、' +
+    '媒体価値の高い席が売り切れていないということ。値付けか売り方の見直し対象です。</div></div>';
 }
 function boardPrice() {
   const rows = Object.keys(CAT).map(c => {
@@ -196,7 +237,28 @@ function boardPrice() {
     '<div class="hint" style="margin-top:9px">推奨価格 = 定価 × f、' +
     '<b>f = 0.74 + 0.40×区画販売率 + 0.12×露出 + 0.08×需要弾性</b>（0.82〜1.32でクリップ）。' +
     '全席適用時の増分は <b>' + usd(AGG.price.opt - AGG.price.cur) + '</b>。</div></div>' +
-    '<div class="bcard wide"><h4>価格乖離の分布</h4><canvas data-chart="priceHist" height="200"></canvas></div>';
+    '<div class="bcard"><h4>価格係数の分布</h4>' +
+    (function () {
+      const b = new Array(12).fill(0);
+      for (const s2 of SEAT.list) b[clamp(Math.floor(((s2.pf || 1) - 0.82) / 0.5 * 12), 0, 11)]++;
+      return vizCanvas({ type: 'bars', h: 210, padL: 46, legend: false,
+        x: b.map((_, i) => (0.82 + i * 0.0417).toFixed(2)), tipFmt: v => fmt(v) + ' 席',
+        series: [{ name: '席数', data: b, color: VIZ.ser[0] }] }, 210);
+    })() + '</div>' +
+    '<div class="bcard"><h4>席種別 現行 vs 推奨</h4>' +
+    (function () {
+      const cats = Object.keys(CAT).filter(c => SEAT.list.some(s2 => s2.cat === c));
+      const cur = [], rec = [];
+      for (const c of cats) {
+        const seats = SEAT.list.filter(s2 => s2.cat === c);
+        cur.push(CAT[c].price);
+        rec.push(Math.round(seats.reduce((a, s2) => a + s2.rec, 0) / seats.length));
+      }
+      return vizCanvas({ type: 'bars', h: 210, padL: 52, yFmt: v => '$' + fmt(v),
+        x: cats, tipFmt: usd,
+        series: [{ name: '現行定価', data: cur, color: VIZ.ser[0] },
+                 { name: '推奨価格', data: rec, color: VIZ.ser[1] }] }, 210);
+    })() + '</div>';
 }
 function boardChurn() {
   const buckets = [0, 0, 0, 0, 0];
@@ -215,7 +277,11 @@ function boardChurn() {
     m.n++; m.val += f.ltv * f.nba.up * 0.16;
   }
   return '<div class="bcard"><h4>離反リスク分布</h4>' +
-    '<canvas data-chart="churnBar" height="200"></canvas></div>' +
+    vizCanvas({ type: 'bars', h: 200, padL: 50, legend: false,
+      x: ['0-20%', '20-40%', '40-60%', '60-80%', '80-100%'], tipFmt: v => fmt(v) + ' 人',
+      series: [{ name: '人数', data: buckets, color: VIZ.ser[0] }] }, 200) +
+    '<div class="hint" style="margin-top:8px">横軸は<b>離反リスク</b>。' +
+    '右に寄るほど更新見込が低い層です。</div></div>' +
     '<div class="bcard"><h4>要対応：シーズン券 高リスク層</h4>' +
     '<div class="fc-kpi" style="grid-template-columns:1fr 1fr">' +
     '<div><div class="v">' + fmt(atRisk) + '</div><div class="l">高リスク保有者</div></div>' +
@@ -224,9 +290,12 @@ function boardChurn() {
     '3Dの<b>離反リスク</b>レイヤーで座席上の分布を確認できます — ' +
     '特定区画に固まる場合は<b>席の体験そのもの</b>（視認・動線・設備）が原因の可能性。</div></div>' +
     '<div class="bcard wide"><h4>Next Best Action 別 想定インパクト</h4>' +
-    tbl(['アクション', '対象人数', '期待CVR上振れ', '想定増分'],
-      Object.entries(nba).sort((a, b) => b[1].val - a[1].val).map(([t, m]) =>
-        [t, fmt(m.n), '+' + (m.up * 100).toFixed(0) + '%', usd(m.val)])) + '</div>';
+    vizCanvas({ type: 'hbars', rowH: 24, labW: 190, valW: 96, vFmt: usd,
+      rows: Object.entries(nba).sort((a, b) => b[1].val - a[1].val).map(([t, m], i) =>
+        ({ label: t, value: Math.round(m.val), color: VIZ.ser[i % 8],
+           sub: '対象 ' + fmt(m.n) + ' 人 ／ 期待CVR上振れ +' + (m.up * 100).toFixed(0) + '%' })) }) +
+    '<div class="hint" style="margin-top:8px">想定増分 = 対象人数 × LTV × 期待上振れ × 0.16。' +
+    'バーにカーソルを合わせると対象人数と上振れ率が出ます。</div></div>';
 }
 
 
@@ -299,8 +368,12 @@ function boardOD() {
     '経路長は実道路グラフ上の A* 解です。</div></div>' +
 
     '<div class="bcard"><h4>交通手段別</h4>' +
+    vizCanvas({ type: 'donut', h: 176, legendRight: true, vFmt: v => fmt(v) + ' 人',
+      slices: Object.entries(byMode).sort((a, b) => b[1].n - a[1].n).map(([mo, e], i) =>
+        ({ label: mo, value: e.n, color: VIZ.ser[i % 8] })),
+      center: { v: fmt(sold), l: '来場者' } }, 176) +
     tbl(['手段', '人数', 'シェア', '平均距離', '平均所要', '平均単価', '場内購買/人'], modeRows) +
-    '<canvas data-chart="modeBar" height="170"></canvas></div>' +
+    '</div>' +
 
     '<div class="bcard"><h4>駐車需要 vs 徒歩圏の供給</h4>' +
     '<div class="fc-kpi" style="grid-template-columns:1fr 1fr 1fr">' +
@@ -315,7 +388,11 @@ function boardOD() {
     '</div></div>' +
 
     '<div class="bcard wide"><h4>OD行列 — 商圏 × 出発地（人数）</h4>' +
-    '<div style="overflow-x:auto">' + tbl(mtxHead, mtxRows) + '</div>' +
+    vizCanvas({ type: 'heat', labW: 128, vFmt: v => fmt(v) + ' 人',
+      rows: REGIONS.map(r => r.n),
+      cols: AGG.od.map(m => m.o.name.replace(/（.*/, '').slice(0, 10)),
+      values: REGIONS.map(r => AGG.od.map(m => (AGG.odMatrix[r.n] || {})[m.o.name] || 0)) }) +
+    '<div style="overflow-x:auto;margin-top:10px">' + tbl(mtxHead, mtxRows) + '</div>' +
     '<div class="hint" style="margin-top:8px">個客レコードの商圏に整合する出発地を割り当てた結果。' +
     '<b>実データでは fans.zip5 と tickets.scanned_at / gate から実測OD行列に置換</b>できます。</div></div>' +
 
@@ -325,6 +402,10 @@ function boardOD() {
     '<b>遠方かつ高単価</b>のセルは、宿泊・交通を束ねたパッケージ販売の対象です。</div></div>' +
 
     '<div class="bcard"><h4>ゲート別 負荷</h4>' +
+    vizCanvas({ type: 'hbars', rowH: 23, labW: 128, valW: 74, vFmt: v => fmt(v) + ' 人',
+      rows: Object.entries(AGG.gate).sort((a, b) => b[1] - a[1]).map(([g, n], i) =>
+        ({ label: g.replace(/ \(.*/, ''), value: n, color: VIZ.ser[i % 8],
+           sub: g + ' ／ 想定所要 ' + fmt(Math.round(n / 25 / 2.2)) + ' 分' })) }) +
     tbl(['ゲート', '入場者', 'シェア', '想定所要', 'ピーク時/10分'], gateRows) +
     '<div class="hint" style="margin-top:8px">所要はターンスタイル25通り・1通り2.2人/分での捌き時間。' +
     'ピーク時は開場後60分に32%が集中する想定。</div></div>' +
@@ -337,65 +418,16 @@ function boardOD() {
       : '<div class="hint">L0 パネルの「到達圏」から計算してください。</div>') + '</div>' +
 
     '<div class="bcard wide"><h4>退場OD — 直帰と周辺回遊</h4>' +
+    vizCanvas({ type: 'hbars', rowH: 24, labW: 196, valW: 96, vFmt: usd,
+      rows: DISPERSAL.map((d, i) => ({ label: d.name, value: Math.round(sold * d.share * d.spend),
+        color: VIZ.ser[i % 8],
+        sub: fmt(Math.round(sold * d.share)) + ' 人 ／ 客単価 ' +
+             (d.spend ? usd(d.spend) : '—') + ' ／ ' + fmt(d.route.total) + 'm' })) }) +
     tbl(['行き先', '手段', '人数', 'シェア', '客単価', '場外消費', '経路長'], dispRows) +
     '<div class="hint" style="margin-top:9px">1興行あたりの<b>場外消費 ' + usd(outSpend) +
     '</b>。年44興行で <b>' + usd(outSpend * 44) + '</b>。' +
     'これはアリーナが周辺の街に落とす金額で、自治体・周辺事業者・スポンサーに対する' +
     '「地域経済インパクト」の根拠になります。</div></div>';
-}
-
-/* ---- 簡易チャート ---- */
-function drawChart(cv) {
-  const dpr = devicePixelRatio;
-  cv.width = cv.clientWidth * dpr; cv.height = cv.height * dpr / (cv.height / cv.height);
-  cv.height = (cv.getAttribute('height') | 0) * dpr;
-  const c = cv.getContext('2d'), W = cv.width, H = cv.height;
-  c.clearRect(0, 0, W, H);
-  const kind = cv.dataset.chart;
-  const pad = 30 * dpr;
-  const barsOf = (labels, vals, cols) => {
-    const mx = Math.max(...vals, 1), n = vals.length;
-    const bw = (W - pad * 2) / n * 0.68;
-    vals.forEach((v, i) => {
-      const x = pad + (W - pad * 2) / n * (i + 0.5) - bw / 2;
-      const h = (H - pad * 1.7) * (v / mx);
-      c.fillStyle = cols[i % cols.length];
-      c.fillRect(x, H - pad - h, bw, h);
-      c.fillStyle = '#8590a8'; c.font = (9 * dpr) + 'px sans-serif'; c.textAlign = 'center';
-      c.save(); c.translate(x + bw / 2, H - pad + 11 * dpr);
-      if (n > 8) c.rotate(-0.9);
-      c.fillText(labels[i], 0, 0); c.restore();
-    });
-  };
-  if (kind === 'modeBar') {
-    const b = {};
-    for (const m of AGG.od) b[m.o.mode] = (b[m.o.mode] || 0) + m.n;
-    const keys = Object.keys(b).sort((x, y) => b[y] - b[x]);
-    barsOf(keys, keys.map(x => b[x]),
-      keys.map(x => '#' + (MODE_COL[x] || 0x8590a8).toString(16).padStart(6, '0')));
-  } else if (kind === 'mediaBar') {
-    const t = {};
-    for (const b of AGG.board) t[b.type] = (t[b.type] || 0) + b.contract;
-    barsOf(Object.keys(t), Object.values(t), ['#00c2ff', '#fdb927', '#3ddc84', '#8a5cc4', '#ff5fa2']);
-  } else if (kind === 'gradePie') {
-    const g = [0, 0, 0, 0, 0];
-    for (const b of AGG.board) { g[4] += b.gradeA; g[3] += b.gradeB; g[2] += b.gradeC; g[1] += b.gradeD; g[0] += b.out; }
-    barsOf(['圏外', 'D', 'C', 'B', 'A'], g, ['#20242f', '#54607c', '#4da3ff', '#3ddc84', '#fdb927']);
-  } else if (kind === 'secBar') {
-    const e = Object.entries(AGG.sec).filter(x => x[1].n > 60)
-      .sort((a, b) => b[1].sold / b[1].n - a[1].sold / a[1].n).slice(0, 26);
-    barsOf(e.map(x => x[0]), e.map(x => x[1].sold / x[1].n * 100),
-      ['#00c2ff', '#4da3ff']);
-  } else if (kind === 'priceHist') {
-    const b = new Array(12).fill(0);
-    for (const s of SEAT.list) b[clamp(Math.floor(((s.pf || 1) - 0.82) / 0.5 * 12), 0, 11)]++;
-    barsOf(b.map((_, i) => (0.82 + i * 0.0417).toFixed(2)), b, ['#2e7fb8', '#3ddc84', '#fdb927', '#ff5b4d']);
-  } else if (kind === 'churnBar') {
-    const b = [0, 0, 0, 0, 0];
-    for (let i = 0; i < SEAT.list.length; i++) if (SNAP.sold[i]) b[Math.min(4, Math.floor(fanAt(i).churn * 5))]++;
-    barsOf(['0-20%', '20-40%', '40-60%', '60-80%', '80-100%'], b,
-      ['#3ddc84', '#00e0a4', '#fdb927', '#ff8a3d', '#ff5b4d']);
-  }
 }
 
 /* ================= 個客ジャーニー再生 ================= */

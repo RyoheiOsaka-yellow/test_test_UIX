@@ -10,7 +10,7 @@ autoPage.innerHTML =
   '<div id="ap-kpi"></div>' +
   '<div id="ap-grid">' +
     '<div id="ap-left"><div class="ap-h">ジャーニー' +
-    '<button class="ap-new" id="ap-new">＋ 新規</button></div><div id="ap-jlist"></div></div>' +
+    '<button class="ap-new" id="ap-new" data-tip="ジャーニーを新規作成">' + ic('plus', 13) + '</button></div><div id="ap-jlist"></div></div>' +
     '<div id="ap-mid">' +
       '<div class="ap-h">リアルタイム配信ストリーム <span id="ap-clock"></span></div>' +
       '<canvas id="ap-chart" height="130"></canvas>' +
@@ -75,7 +75,8 @@ function renderAutoConsole() {
             ' ／ コスト ' + usd(B.cost || 0) +
             (J.holdout ? ' ／ 対照 ' + fmt(B.hold || 0) : '') +
             (J.ab ? ' ／ <b style="color:var(--purple)">A/B</b>' : '') + '</div>' +
-          '<button class="ap-edit" data-jedit="' + J.id + '">✎ 編集</button>' +
+          '<button class="ap-edit" data-jedit="' + J.id + '" data-tip="条件・文面・A/Bを編集">' +
+            ic('pencil', 12) + '編集</button>' +
         '</div>';
       }).join('');
   }).join('');
@@ -123,27 +124,31 @@ function renderAutoConsole() {
   const rank = JOURNEYS.filter(j => j.on).map(j => ({ j, B: AUTO.byJ[j.id] }))
     .sort((a, b) => b.B.rev - a.B.rev);
   document.getElementById('ap-sum').innerHTML =
-    '<div class="sec-t">フェーズ別 増分売上（USD）</div>' +
-    phases.map(p => {
-      const e = k.byPhase[p]; if (!e) return '';
-      return '<div class="bar-row"><span>' + PHASE_NAME[p] + '</span>' +
-        '<div class="bar"><i style="width:' + (e.rev / Math.max(1, k.rev) * 100).toFixed(1) +
-        '%;background:' + hex(PHASE_COL[p]) + '"></i></div><b>' + usd(e.rev) + '</b></div>';
-    }).join('') +
+    '<div class="sec-t">フェーズ別 増分売上</div>' +
+    vizCanvas({ type: 'hbars', rowH: 22, labW: 76, valW: 88, vFmt: usd,
+      rows: phases.filter(p => k.byPhase[p]).map((p, i) =>
+        ({ label: PHASE_NAME[p], value: Math.round(k.byPhase[p].rev), color: hex(PHASE_COL[p]),
+           sub: '対象 ' + fmt(k.byPhase[p].aud) + ' 人 ／ 増分CV ' +
+                fmt(Math.round(k.byPhase[p].inc)) })) }) +
     '<div class="sec-t" style="margin-top:10px">チャネル別 対象人数</div>' +
-    Object.keys(byCh).map(c => bar(CHANNELS[c].name, byCh[c].n, k.aud || 1, '#00c2ff')).join('') +
+    vizCanvas({ type: 'donut', h: 156, legendRight: true, vFmt: v => fmt(v) + ' 人',
+      slices: Object.keys(byCh).map((c2, i) => ({ label: CHANNELS[c2].name, value: byCh[c2].n,
+        color: VIZ.ser[i % 8] })),
+      center: { v: fmt(k.aud), l: 'のべ対象' } }, 156) +
     '<div class="sec-t" style="margin-top:10px">増分売上 ランキング</div>' +
-    rank.slice(0, 8).map(r => '<div class="bar-row"><span title="' + r.j.name + '">' +
-      r.j.name.replace(/^[^｜]*｜/, '') + '</span><div class="bar"><i style="width:' +
-      (r.B.rev / Math.max(1, rank[0].B.rev) * 100).toFixed(1) + '%;background:' +
-      hex(PHASE_COL[TRIG[r.j.trig].ph]) + '"></i></div><b>' + usd(r.B.rev) + '</b></div>').join('') +
+    vizCanvas({ type: 'hbars', rowH: 22, labW: 128, valW: 88, vFmt: usd, limit: 9,
+      rows: rank.map(r => ({ label: r.j.name.replace(/^[^｜]*｜/, ''),
+        value: Math.round(r.B.rev), color: hex(PHASE_COL[TRIG[r.j.trig].ph]),
+        sub: r.j.name + ' ／ 対象 ' + fmt(r.B.aud) + ' 人 ／ 対照 ' + fmt(r.B.hold || 0) })) }) +
     '<div class="hint" style="margin-top:10px">全ジャーニーに<b>ホールドアウト（既定10%・配信しない対照群）</b>' +
     'を置いています。効果は<b>対照群との差分（増分）</b>のみ。' +
     'バッチ配信（来場前・帰宅後）は当日タイムラインに乗らないため、' +
     '対象人数と効果に含めた上でストリームには流していません。</div>' +
-    '<div class="row-btns" style="margin-top:10px">' +
-    '<button class="tool-btn" id="ap-seat" style="width:auto;padding:7px 12px">💺 座席で見る（接触本数）</button>' +
-    '<button class="tool-btn" id="ap-csv" style="width:auto;padding:7px 12px">📤 配信ログCSV</button></div>';
+    '<div class="ibar" style="margin-top:10px">' +
+    '<button class="ib wide" id="ap-seat" data-tip="接触本数レイヤーで3D座席に反映">' +
+      ic('bowl', 14) + '座席で見る</button>' +
+    '<button class="ib wide" id="ap-csv" data-tip="発火時刻・チャネル・文面まで含めて出力">' +
+      ic('csv', 14) + '配信ログCSV</button></div>';
   const q = id => document.getElementById(id);
   if (q('ap-seat')) q('ap-seat').onclick = () => {
     closeAuto(); seatMode = 'journey'; setLevel('arena', true);
@@ -152,47 +157,41 @@ function renderAutoConsole() {
   if (q('ap-csv')) q('ap-csv').onclick = autoExportCSV;
 
   drawAutoChart();
+  flushViz();
 }
 
-/* --- フェーズ別の配信時間分布 --- */
+/* --- フェーズ別の配信時間分布（積み上げ面 + 現在時刻カーソル） --- */
 function drawAutoChart() {
   const cv = document.getElementById('ap-chart');
   if (!cv) return;
-  const dpr = devicePixelRatio;
-  cv.width = cv.clientWidth * dpr; cv.height = 130 * dpr;
-  const c = cv.getContext('2d'), W = cv.width, H = cv.height;
-  c.clearRect(0, 0, W, H);
-  const BINS = 108, bin = {};                       // 15:00-24:00 を5分刻み
+  const BINS = 54, step = (T1 - T0) / BINS;
+  const bin = {};
   for (const e of AUTO.sched) {
-    const b = Math.floor((e.t - T0) / 5);
+    const b = Math.floor((e.t - T0) / step);
     if (b < 0 || b >= BINS) continue;
-    const p = TRIG[JOURNEYS.find(x => x.id === e.j).trig].ph;
-    (bin[p] = bin[p] || new Float64Array(BINS))[b]++;
+    const J = JOURNEYS.find(x => x.id === e.j);
+    if (!J) continue;
+    const ph = TRIG[J.trig].ph;
+    (bin[ph] = bin[ph] || new Array(BINS).fill(0))[b]++;
   }
-  let mx = 1;
-  const tot = new Float64Array(BINS);
-  for (const p in bin) for (let i = 0; i < BINS; i++) { tot[i] += bin[p][i]; if (tot[i] > mx) mx = tot[i]; }
-  const bw = W / BINS;
-  const order = ['pre', 'arrive', 'in', 'exit', 'post'];
-  const stack = new Float64Array(BINS);
-  for (const p of order) {
-    if (!bin[p]) continue;
-    c.fillStyle = hex(PHASE_COL[p]);
-    for (let i = 0; i < BINS; i++) {
-      const h = bin[p][i] / mx * (H - 22 * dpr);
-      c.fillRect(i * bw, H - 16 * dpr - stack[i] - h, Math.max(1, bw - 1), h);
-      stack[i] += h;
-    }
-  }
-  /* 現在時刻のカーソル */
-  const cx = (timeState.min - T0) / (T1 - T0) * W;
-  c.strokeStyle = '#ffffff'; c.lineWidth = 1.5 * dpr;
-  c.beginPath(); c.moveTo(cx, 0); c.lineTo(cx, H - 16 * dpr); c.stroke();
-  c.fillStyle = '#8590a8'; c.font = (9 * dpr) + 'px sans-serif'; c.textAlign = 'center';
-  for (let h = 15; h <= 24; h += 1) {
-    const x = (h * 60 - T0) / (T1 - T0) * W;
-    c.fillText(h + ':00', x, H - 3 * dpr);
-  }
+  const order = ['arrive', 'in', 'exit'].filter(p => bin[p]);
+  const x = [];
+  for (let i = 0; i < BINS; i++) x.push(clockStr(T0 + i * step));
+  cv.__spec = { type: 'bars', stacked: true, h: 132, padL: 44, xTicks: 7, x,
+    tipFmt: v => fmt(v) + ' 件',
+    series: order.map(p => ({ name: PHASE_NAME[p], data: bin[p], color: hex(PHASE_COL[p]) })) };
+  vizBars(cv, cv.__spec);
+  /* 現在時刻カーソル */
+  const c = cv.getContext('2d');
+  const dpr = Math.min(devicePixelRatio, 2);
+  const W = cv.width / dpr, H = cv.height / dpr;
+  const P = { l: 44, r: 10, t: 10, b: 36 };
+  const u = clamp((timeState.min - T0) / (T1 - T0), 0, 1);
+  const cx = P.l + (W - P.l - P.r) * u;
+  c.strokeStyle = 'rgba(255,255,255,.75)'; c.lineWidth = 1.5;
+  c.beginPath(); c.moveTo(cx, P.t - 4); c.lineTo(cx, H - P.b); c.stroke();
+  c.fillStyle = '#e9edf6'; c.font = '600 9.5px Oswald, sans-serif'; c.textAlign = 'center';
+  c.fillText(clockStr(timeState.min), cx, P.t - 6);
 }
 
 /* --- 配信ログの書き出し --- */
