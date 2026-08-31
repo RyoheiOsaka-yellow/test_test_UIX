@@ -18,197 +18,187 @@
 html,body{height:100%}
 body{font-family:var(--jp);background:var(--bg);color:var(--txt);overflow:hidden;font-size:13px}
 
+/* ===== 3D canvas ===== */
+#canvas-wrap{position:fixed;inset:0;background:radial-gradient(120% 90% at 50% 0%,#101627 0%,#0a0d14 55%,#07090f 100%)}
+#canvas-wrap canvas{display:block}
+#lbl3d{position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:8}
+.l3d{position:absolute;transform:translate(-50%,-110%);white-space:nowrap;font-size:10px;color:rgba(232,234,242,.92);
+  text-shadow:0 1px 4px rgba(5,8,14,.95),0 0 8px rgba(5,8,14,.8)}
+.l3d.area{font-family:var(--mono);font-size:14px;font-weight:600;letter-spacing:.18em;opacity:.85}
+.l3d.origin{color:var(--sub);font-size:10px}
+.l3d.origin b{color:var(--txt);font-weight:500}
+.l3d.num{transform:translate(-50%,-50%);font-family:var(--mono);font-size:10px;font-weight:600;
+  background:rgba(13,15,20,.85);border:1px solid var(--acc);color:var(--acc);border-radius:50%;
+  width:18px;height:18px;line-height:16px;text-align:center}
+.l3d.sel{font-size:12px;font-weight:700;color:var(--acc)}
+
 /* ===== Header ===== */
 #hdr{position:fixed;top:0;left:0;right:0;height:52px;display:flex;align-items:center;gap:14px;
-  padding:0 16px;background:linear-gradient(180deg,rgba(13,15,20,.97),rgba(13,15,20,.88));
-  border-bottom:1px solid var(--line);z-index:30}
+  padding:0 16px;background:linear-gradient(180deg,rgba(13,15,20,.95),rgba(13,15,20,.72) 75%,transparent);
+  z-index:30;pointer-events:none}
+#hdr>*{pointer-events:auto}
 .brand{display:flex;align-items:baseline;gap:8px}
 .brand .x{font-family:var(--mono);font-size:19px;font-weight:600;color:#fff;letter-spacing:.5px}
 .hdr-title{font-size:13px;font-weight:700;letter-spacing:.06em;color:var(--txt);border-left:2px solid var(--acc);padding-left:10px}
-#lvl-crumb{display:flex;gap:6px;margin-left:auto;font-family:var(--mono);font-size:11px;flex-wrap:wrap}
-.crumb{padding:5px 12px;border-radius:20px;border:1px solid var(--line);color:var(--sub);cursor:pointer;
-  letter-spacing:.06em;transition:.2s;background:rgba(21,24,33,.8);font-family:var(--jp)}
+#lvl-crumb{display:flex;gap:5px;margin-left:auto;font-family:var(--mono);font-size:11px;flex-wrap:wrap}
+.crumb{padding:5px 11px;border-radius:20px;border:1px solid var(--line);color:var(--sub);cursor:pointer;
+  letter-spacing:.04em;transition:.2s;background:rgba(21,24,33,.85);font-family:var(--jp)}
 .crumb.active{border-color:var(--acc);color:var(--acc);background:rgba(245,196,0,.1)}
 .crumb:hover{color:var(--txt)}
 .crumb:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 
-/* ===== Left panel ===== */
-#panel{position:fixed;top:62px;left:12px;width:300px;bottom:88px;
-  background:rgba(21,24,33,.94);border:1px solid var(--line);border-radius:12px;z-index:25;
-  display:flex;flex-direction:column;backdrop-filter:blur(8px);overflow:hidden}
-#panel-body{overflow-y:auto;padding:12px}
+/* ===== Left panel (collapsible) ===== */
+#panel{position:fixed;top:62px;left:12px;width:300px;max-height:calc(100vh - 165px);
+  background:rgba(21,24,33,.93);border:1px solid var(--line);border-radius:12px;z-index:25;
+  display:flex;flex-direction:column;backdrop-filter:blur(8px);overflow:hidden;transition:transform .28s,opacity .28s}
+body.panel-closed #panel{transform:translateX(-115%);opacity:0;pointer-events:none}
+#panel-head{display:flex;align-items:center;justify-content:space-between;padding:8px 12px 0}
+#panel-head .t{font-size:10px;letter-spacing:.14em;color:var(--sub);font-weight:700}
+.fold-btn{border:1px solid var(--line);background:var(--panel2);color:var(--sub);border-radius:6px;
+  width:24px;height:24px;cursor:pointer;font-size:11px;line-height:1}
+.fold-btn:hover{color:var(--acc);border-color:var(--acc)}
+#panel-body{overflow-y:auto;padding:10px 12px 12px}
 #panel-body::-webkit-scrollbar{width:6px}
 #panel-body::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
-.sec{margin-bottom:14px}
-.sec-t{font-size:10px;letter-spacing:.14em;color:var(--sub);margin-bottom:7px;font-weight:700}
+#panel-tab{position:fixed;top:62px;left:12px;z-index:24;display:none;padding:8px 12px;border-radius:10px;
+  border:1px solid var(--line);background:rgba(21,24,33,.92);color:var(--acc);cursor:pointer;font-size:11px;font-family:var(--jp)}
+body.panel-closed #panel-tab{display:block}
+#panel-tab:hover{border-color:var(--acc)}
+
+.sec{margin-bottom:13px}
+.sec-t{font-size:10px;letter-spacing:.14em;color:var(--sub);margin-bottom:6px;font-weight:700}
 .sec-t b{color:var(--acc)}
-
 .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.kpi{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
-.kpi .v{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--acc);line-height:1.15;font-variant-numeric:tabular-nums}
-.kpi .v small{font-size:11px;color:var(--sub);font-family:var(--jp);font-weight:400}
-.kpi .l{font-size:10px;color:var(--sub);margin-top:2px}
-.kpi .d{font-size:10px;margin-top:1px;font-family:var(--mono)}
+.kpi{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+.kpi .v{font-family:var(--mono);font-size:18px;font-weight:600;color:var(--acc);line-height:1.15;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:10px;color:var(--sub);font-family:var(--jp);font-weight:400}
+.kpi .l{font-size:9.5px;color:var(--sub);margin-top:2px}
+.kpi .d{font-size:9.5px;margin-top:1px;font-family:var(--mono)}
 .kpi .d.up{color:var(--ok)} .kpi .d.dn{color:var(--warn)}
-
-.row-btns{display:flex;gap:6px;flex-wrap:wrap}
-.chip{padding:6px 11px;border-radius:16px;border:1px solid var(--line);background:var(--panel2);color:var(--sub);
+.row-btns{display:flex;gap:5px;flex-wrap:wrap}
+.chip{padding:5px 10px;border-radius:16px;border:1px solid var(--line);background:var(--panel2);color:var(--sub);
   cursor:pointer;font-size:11px;transition:.15s;font-family:var(--jp)}
 .chip.active{border-color:var(--acc);color:var(--acc);background:rgba(245,196,0,.08)}
 .chip:hover{color:var(--txt)}
 .chip:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
-
 .legend{display:flex;flex-direction:column;gap:4px;font-size:10px;color:var(--sub)}
 .legend .li{display:flex;align-items:center;gap:7px}
 .legend .sw{width:14px;height:9px;border-radius:2px;flex-shrink:0}
+.grad-bar{height:9px;border-radius:4px;background:linear-gradient(90deg,#20315e,#2e7fb8,#3ddc84,#f5c400,#ff6b5e)}
+.grad-lbl{display:flex;justify-content:space-between;font-size:9px;color:var(--sub);margin-top:2px}
 .hint{font-size:10px;color:var(--sub);line-height:1.6;background:var(--panel2);border-radius:8px;padding:8px 10px;border:1px solid var(--line)}
 .hint a{color:var(--blue);text-decoration:none}
 .hint a:hover{text-decoration:underline}
-
+.hint kbd{background:#2a3044;border-radius:3px;padding:0 4px;font-family:var(--mono);font-size:10px;color:var(--txt)}
 #sel-card{display:none;background:linear-gradient(135deg,rgba(245,196,0,.12),var(--panel2));
   border:1px solid var(--acc);border-radius:10px;padding:10px}
 #sel-card .nm{font-weight:700;font-size:13px;color:var(--acc)}
 #sel-card .meta{font-size:10px;color:var(--sub);margin:4px 0 0;line-height:1.7}
 #sel-card .meta b{color:var(--txt);font-weight:500}
-
 .tool-btn{width:100%;padding:8px;border-radius:8px;border:1px dashed var(--accdim);background:transparent;
   color:var(--acc);cursor:pointer;font-size:12px;font-family:var(--jp);transition:.15s;margin-bottom:6px}
 .tool-btn:hover{background:rgba(245,196,0,.08)}
-.tool-btn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 
-/* ===== Main ===== */
-#main{position:fixed;top:62px;left:324px;right:12px;bottom:88px;overflow-y:auto;overflow-x:hidden}
-#main::-webkit-scrollbar{width:8px}
-#main::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
-.view{display:none;padding-bottom:20px}
+/* ===== Right analysis drawer (collapsible) ===== */
+#drawer{position:fixed;top:62px;right:12px;width:440px;bottom:96px;z-index:25;
+  background:rgba(21,24,33,.93);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(8px);
+  display:flex;flex-direction:column;overflow:hidden;transition:transform .28s,opacity .28s}
+body.drawer-closed #drawer{transform:translateX(115%);opacity:0;pointer-events:none}
+#drawer-head{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:1px solid var(--line)}
+#drawer-head .t{font-size:11px;letter-spacing:.12em;font-weight:700}
+#drawer-head .t b{color:var(--acc)}
+#drawer-body{overflow-y:auto;padding:10px}
+#drawer-body::-webkit-scrollbar{width:6px}
+#drawer-body::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+#drawer-tab{position:fixed;top:62px;right:12px;z-index:24;display:none;padding:8px 12px;border-radius:10px;
+  border:1px solid var(--line);background:rgba(21,24,33,.92);color:var(--acc);cursor:pointer;font-size:11px;font-family:var(--jp)}
+body.drawer-closed #drawer-tab{display:block}
+#drawer-tab:hover{border-color:var(--acc)}
+
+.view{display:none}
 .view.active{display:block}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-@media(max-width:1100px){.grid2,.grid3{grid-template-columns:1fr}}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
-.card h3{font-size:12px;letter-spacing:.1em;color:var(--txt);font-weight:700;margin-bottom:2px}
-.card .sub{font-size:10px;color:var(--sub);margin-bottom:10px}
-.big-num{font-family:var(--mono);font-size:34px;font-weight:600;color:var(--acc);line-height:1.1;font-variant-numeric:tabular-nums}
-.big-num small{font-size:14px;color:var(--sub);font-family:var(--jp);font-weight:400}
+.card{background:rgba(28,32,48,.55);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.card h3{font-size:12px;letter-spacing:.08em;color:var(--txt);font-weight:700;margin-bottom:2px}
+.card .sub{font-size:10px;color:var(--sub);margin-bottom:9px;line-height:1.6}
+.big-num{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--acc);line-height:1.1;font-variant-numeric:tabular-nums}
+.big-num small{font-size:12px;color:var(--sub);font-family:var(--jp);font-weight:400}
+.stat3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.stat3 .card{margin-bottom:0;padding:10px}
+.stat3 .big-num{font-size:20px}
 
-/* HTML bar rows */
-.brow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-.brow .bl{width:130px;font-size:11px;color:var(--txt);text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.brow .btrack{flex:1;height:14px;position:relative}
+.brow{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.brow .bl{width:96px;font-size:10.5px;color:var(--txt);text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brow .btrack{flex:1;height:13px;position:relative}
 .brow .bfill{height:100%;border-radius:0 4px 4px 0;min-width:2px;transition:width .4s}
-.brow .bv{font-family:var(--mono);font-size:11px;color:var(--sub);width:86px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.brow .bv{font-family:var(--mono);font-size:10px;color:var(--sub);width:74px;flex-shrink:0;font-variant-numeric:tabular-nums}
 .brow:hover .bl{color:var(--acc)}
-
-/* monthly columns */
-.mcols{display:flex;align-items:flex-end;gap:6px;height:150px;padding-top:16px}
-.mcol{flex:1;display:flex;align-items:flex-end;gap:2px;position:relative;height:100%}
-.mcol .c{flex:1;border-radius:4px 4px 0 0;min-height:2px;position:relative}
-.mcol .mv{position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-family:var(--mono);
-  font-size:9px;color:var(--sub);opacity:0;white-space:nowrap;font-variant-numeric:tabular-nums}
+.mcols{display:flex;align-items:flex-end;gap:4px;height:120px;padding-top:16px}
+.mcol{flex:1;display:flex;align-items:flex-end;gap:1px;position:relative;height:100%}
+.mcol .c{flex:1;border-radius:3px 3px 0 0;min-height:2px;position:relative}
+.mcol .mv{position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-family:var(--mono);
+  font-size:8.5px;color:var(--sub);opacity:0;white-space:nowrap;font-variant-numeric:tabular-nums}
 .mcol:hover .mv{opacity:1}
-.mlabels{display:flex;gap:6px;margin-top:4px}
-.mlabels span{flex:1;text-align:center;font-size:9px;color:var(--sub);font-family:var(--mono)}
-
+.mlabels{display:flex;gap:4px;margin-top:4px}
+.mlabels span{flex:1;text-align:center;font-size:8.5px;color:var(--sub);font-family:var(--mono)}
 svg text{font-family:var(--jp)}
 .chart-tip{position:fixed;background:rgba(13,15,20,.95);border:1px solid var(--acc);border-radius:8px;
   padding:7px 10px;font-size:11px;pointer-events:none;z-index:60;display:none;line-height:1.6;max-width:240px}
 .chart-tip b{color:var(--acc)}
 
-/* map */
-.map-wrap{background:linear-gradient(180deg,#0b1220,#0e1626);border:1px solid var(--line);border-radius:12px;overflow:hidden;position:relative}
-.map-wrap svg{display:block;width:100%;height:auto}
-.spot-dot{cursor:pointer;transition:r .15s}
-.spot-dot:hover{stroke:#fff;stroke-width:1.5}
-.muni-bub{cursor:pointer;opacity:.75}
-.muni-bub:hover{opacity:1;stroke:#fff;stroke-width:1.2}
-.area-lbl{font-family:var(--mono);font-size:13px;letter-spacing:.15em;fill:rgba(232,234,242,.5);font-weight:600}
-.map-note{position:absolute;left:10px;bottom:8px;font-size:9px;color:var(--sub)}
-
-/* flow */
-.flow-line{fill:none;stroke-dasharray:6 6;animation:dashmove 1.2s linear infinite}
-@keyframes dashmove{to{stroke-dashoffset:-12}}
-@media (prefers-reduced-motion: reduce){.flow-line{animation:none}}
-.gw-lbl{font-size:10px;fill:var(--sub)}
-.route-card{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;background:var(--panel2);transition:.15s}
+.route-card{border:1px solid var(--line);border-radius:10px;padding:9px 11px;margin-bottom:7px;cursor:pointer;background:var(--panel2);transition:.15s}
 .route-card:hover{border-color:#3d465f}
 .route-card.active{border-color:var(--acc);background:rgba(245,196,0,.07)}
 .route-card .rn{font-weight:700;font-size:12px}
 .route-card .rt{font-size:10px;color:var(--sub);margin-top:3px;line-height:1.6}
 .route-card .rtag{display:inline-block;font-size:9px;padding:1px 7px;border-radius:10px;border:1px solid var(--line);color:var(--sub);margin-left:6px;font-weight:400}
-
-/* strategy */
-.kgi-card{background:linear-gradient(135deg,rgba(245,196,0,.13),var(--panel2));border:1px solid var(--acc);border-radius:12px;padding:16px}
+.kgi-card{background:linear-gradient(135deg,rgba(245,196,0,.13),rgba(28,32,48,.6));border:1px solid var(--acc);border-radius:12px;padding:13px;margin-bottom:10px}
 .prog{height:8px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-top:8px}
 .prog .pf{height:100%;background:var(--acc);border-radius:4px}
-.kpi-row{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;color:var(--sub);margin-top:4px}
+.kpi-row{display:flex;justify-content:space-between;align-items:baseline;font-size:10.5px;color:var(--sub);margin-top:4px}
 .kpi-row .tgt{font-family:var(--mono);color:var(--txt);font-variant-numeric:tabular-nums}
-.st-box{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--panel2)}
-.st-box .st-n{font-family:var(--mono);color:var(--acc);font-size:11px;letter-spacing:.1em}
-.st-box .st-t{font-weight:700;font-size:13px;margin:3px 0 8px}
+.st-box{border:1px solid var(--line);border-radius:10px;padding:11px;background:var(--panel2);margin-bottom:8px}
+.st-box .st-n{font-family:var(--mono);color:var(--acc);font-size:10px;letter-spacing:.1em}
+.st-box .st-t{font-weight:700;font-size:12px;margin:3px 0 7px}
 .st-box ul{list-style:none}
-.st-box li{font-size:11px;color:var(--sub);padding:3px 0 3px 14px;position:relative;line-height:1.5}
-.st-box li::before{content:"";position:absolute;left:0;top:9px;width:6px;height:6px;border-radius:2px;background:var(--accdim)}
-.tl-ev{display:flex;gap:12px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:11px}
+.st-box li{font-size:10.5px;color:var(--sub);padding:3px 0 3px 13px;position:relative;line-height:1.5}
+.st-box li::before{content:"";position:absolute;left:0;top:8px;width:6px;height:6px;border-radius:2px;background:var(--accdim)}
+.tl-ev{display:flex;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:10.5px}
 .tl-ev:last-child{border-bottom:none}
-.tl-ev .y{font-family:var(--mono);color:var(--acc);width:46px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.tl-ev .y{font-family:var(--mono);color:var(--acc);width:44px;flex-shrink:0;font-variant-numeric:tabular-nums}
 .tl-ev .e{color:var(--txt);line-height:1.5}
 .tl-ev .e small{color:var(--sub)}
-
-/* AI view */
-.ins-card{border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:var(--panel2)}
-.ins-card .it{font-weight:700;font-size:12px;margin-bottom:4px}
-.ins-card .ib{font-size:11px;color:var(--sub);line-height:1.7}
+.ins-card{border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--panel2)}
+.ins-card .it{font-weight:700;font-size:11.5px;margin-bottom:4px}
+.ins-card .ib{font-size:10.5px;color:var(--sub);line-height:1.7}
 .ins-card .ib b{color:var(--txt);font-weight:500}
 .ins-card.good{border-left-color:var(--ok)} .ins-card.risk{border-left-color:var(--warn)} .ins-card.info{border-left-color:var(--blue)}
-.itag{display:inline-block;font-size:9px;padding:1px 8px;border-radius:10px;margin-left:8px;font-weight:400;vertical-align:1px}
-.itag.good{color:var(--ok);border:1px solid var(--ok)} .itag.risk{color:var(--warn);border:1px solid var(--warn)} .itag.info{color:var(--blue);border:1px solid var(--blue)} .itag.acc{color:var(--acc);border:1px solid var(--acc)}
-
-/* table */
-.dtable{width:100%;border-collapse:collapse;font-size:11px}
-.dtable th{color:var(--sub);font-weight:500;text-align:right;padding:5px 8px;border-bottom:1px solid var(--line);font-size:10px;white-space:nowrap}
+.itag{display:inline-block;font-size:9px;padding:1px 8px;border-radius:10px;margin-left:7px;font-weight:400;vertical-align:1px}
+.itag.good{color:var(--ok);border:1px solid var(--ok)} .itag.risk{color:var(--warn);border:1px solid var(--warn)} .itag.info{color:var(--blue);border:1px solid var(--blue)}
+.dtable{width:100%;border-collapse:collapse;font-size:10.5px}
+.dtable th{color:var(--sub);font-weight:500;text-align:right;padding:4px 7px;border-bottom:1px solid var(--line);font-size:9.5px;white-space:nowrap}
 .dtable th:first-child,.dtable td:first-child{text-align:left}
-.dtable td{padding:5px 8px;border-bottom:1px solid rgba(42,48,68,.5);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--txt)}
+.dtable td{padding:4px 7px;border-bottom:1px solid rgba(42,48,68,.5);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--txt)}
 .dtable td:first-child{font-family:var(--jp)}
 .dtable tr:hover td{background:rgba(245,196,0,.04)}
 .tbl-wrap{overflow-x:auto}
 .a-dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:0}
-
-/* ===== Timeline (year slider) ===== */
-#timeline{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;width:min(680px,92vw);
-  background:rgba(21,24,33,.94);border:1px solid var(--line);border-radius:12px;padding:10px 16px;z-index:25;backdrop-filter:blur(8px)}
-#tl-top{display:flex;align-items:center;gap:12px;margin-bottom:6px}
-#tl-year{font-family:var(--mono);font-size:21px;font-weight:600;color:var(--acc);min-width:64px}
-#tl-phase{font-size:11px;color:var(--txt);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:3px 10px;flex:1}
-#tl-play{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--acc);cursor:pointer;font-size:12px}
-#tl-play:hover{border-color:var(--acc)}
-#tl-slider{width:100%;accent-color:var(--acc)}
-#tl-marks{display:flex;justify-content:space-between;font-size:9px;color:var(--sub);margin-top:3px;font-family:var(--mono)}
-
-#toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(21,24,33,.97);
-  border:1px solid var(--acc);color:var(--acc);border-radius:10px;padding:9px 18px;font-size:12px;z-index:70;display:none}
-
-/* catchment (L6) */
-.chips-inline{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
-.ctable td:first-child{font-family:var(--jp)}
-.origin-lbl{font-size:10px;fill:#8b93a8}
-.origin-lbl.big{font-size:11px;fill:#e8eaf2}
-
-/* economy (L7) */
-.econ-big{display:flex;gap:12px;flex-wrap:wrap}
-.econ-big .eb{flex:1;min-width:220px;background:linear-gradient(135deg,rgba(245,196,0,.10),var(--panel2));
-  border:1px solid var(--line);border-radius:12px;padding:14px}
+.chips-inline{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px}
+.econ-big .eb{background:linear-gradient(135deg,rgba(245,196,0,.10),var(--panel2));
+  border:1px solid var(--line);border-radius:12px;padding:11px;margin-bottom:8px}
 .econ-big .eb.hi{border-color:var(--acc)}
-.econ-big .eb .et{font-size:10px;color:var(--sub);letter-spacing:.1em;margin-bottom:4px}
-.econ-big .eb .ev{font-family:var(--mono);font-size:26px;font-weight:600;color:var(--acc);font-variant-numeric:tabular-nums;line-height:1.1}
-.econ-big .eb .ev small{font-size:12px;color:var(--sub);font-family:var(--jp);font-weight:400}
-.econ-big .eb .es{font-size:10px;color:var(--sub);margin-top:5px;line-height:1.6}
+.econ-big .eb .et{font-size:9.5px;color:var(--sub);letter-spacing:.1em;margin-bottom:3px}
+.econ-big .eb .ev{font-family:var(--mono);font-size:21px;font-weight:600;color:var(--acc);font-variant-numeric:tabular-nums;line-height:1.1}
+.econ-big .eb .ev small{font-size:11px;color:var(--sub);font-family:var(--jp);font-weight:400}
+.econ-big .eb .es{font-size:9.5px;color:var(--sub);margin-top:4px;line-height:1.6}
 
-/* seamless viewer (L8) */
-.seam-wrap{position:relative;background:#060a12;border:1px solid var(--line);border-radius:12px;overflow:hidden}
-#seam-cv{display:block;width:100%;height:calc(100vh - 300px);min-height:420px;cursor:grab;touch-action:none}
+/* ===== Seamless overlay view ===== */
+#view-seamless{position:fixed;top:62px;left:324px;right:464px;bottom:96px;z-index:20}
+body.panel-closed #view-seamless{left:12px}
+body.drawer-closed #view-seamless{right:12px}
+.seam-wrap{position:relative;background:#060a12;border:1px solid var(--line);border-radius:12px;overflow:hidden;height:100%}
+#seam-cv{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
 #seam-cv.dragging{cursor:grabbing}
 .seam-ui{position:absolute;top:10px;left:10px;display:flex;gap:6px;flex-wrap:wrap;max-width:75%}
-.seam-ui .chip{backdrop-filter:blur(6px)}
 .seam-zoom{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:4px}
 .seam-zoom button{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:rgba(21,24,33,.85);
   color:var(--txt);cursor:pointer;font-size:16px;font-family:var(--mono)}
@@ -217,13 +207,33 @@ svg text{font-family:var(--jp)}
   background:rgba(6,10,18,.55);padding:2px 7px;border-radius:6px}
 .seam-status{position:absolute;left:10px;bottom:8px;font-size:10px;color:var(--sub);
   background:rgba(6,10,18,.65);padding:3px 9px;border-radius:6px}
+
+/* ===== Timeline (foldable) ===== */
+#timeline{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;width:min(640px,60vw);
+  background:rgba(21,24,33,.93);border:1px solid var(--line);border-radius:12px;padding:9px 16px;z-index:25;backdrop-filter:blur(8px)}
+#tl-top{display:flex;align-items:center;gap:12px}
+#tl-year{font-family:var(--mono);font-size:20px;font-weight:600;color:var(--acc);min-width:58px}
+#tl-phase{font-size:10.5px;color:var(--txt);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:3px 10px;flex:1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tl-play{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--acc);cursor:pointer;font-size:11px}
+#tl-play:hover{border-color:var(--acc)}
+#tl-body{margin-top:6px}
+body.tl-folded #tl-body{display:none}
+#tl-slider{width:100%;accent-color:var(--acc)}
+#tl-marks{display:flex;justify-content:space-between;font-size:9px;color:var(--sub);margin-top:3px;font-family:var(--mono)}
+#toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:rgba(21,24,33,.97);
+  border:1px solid var(--acc);color:var(--acc);border-radius:10px;padding:9px 18px;font-size:12px;z-index:70;display:none}
+@media (prefers-reduced-motion: reduce){#panel,#drawer{transition:none}}
 </style>
 </head>
 <body>
 
+<div id="canvas-wrap"></div>
+<div id="lbl3d"></div>
+
 <div id="hdr">
   <div class="brand"><span class="x">XBUILD</span></div>
-  <div class="hdr-title">栃木県 観光インテリジェンス — 入込・宿泊・導線・戦略の統合分析</div>
+  <div class="hdr-title">栃木県 観光インテリジェンス — 県域デジタルツイン</div>
   <div id="lvl-crumb">
     <button class="crumb active" data-view="overview">L0 概況</button>
     <button class="crumb" data-view="map">L1 マップ</button>
@@ -233,291 +243,244 @@ svg text{font-family:var(--jp)}
     <button class="crumb" data-view="ai">L5 AI分析</button>
     <button class="crumb" data-view="catch">L6 来訪圏</button>
     <button class="crumb" data-view="econ">L7 経済効果</button>
-    <button class="crumb" data-view="seamless">L8 シームレス</button>
+    <button class="crumb" data-view="seamless">L8 衛星写真</button>
   </div>
 </div>
 
-<div id="panel"><div id="panel-body">
-  <div class="sec">
-    <div class="sec-t">県全体 KPI <b id="kpi-year">2024</b></div>
-    <div class="kpi-grid">
-      <div class="kpi"><div class="v" id="kpi-iri">—</div><div class="l">観光客入込数</div><div class="d" id="kpi-iri-d"></div></div>
-      <div class="kpi"><div class="v" id="kpi-stay">—</div><div class="l">延べ宿泊数</div><div class="d" id="kpi-stay-d"></div></div>
-      <div class="kpi"><div class="v" id="kpi-fgn">—</div><div class="l">外国人宿泊数</div><div class="d" id="kpi-fgn-d"></div></div>
-      <div class="kpi"><div class="v" id="kpi-stayrate">—</div><div class="l">宿泊率(宿泊÷入込)</div><div class="d" id="kpi-rate-d"></div></div>
+<!-- ===== Left panel ===== -->
+<div id="panel">
+  <div id="panel-head"><span class="t">コントロール</span><button class="fold-btn" id="panel-toggle" title="パネルをしまう">◀</button></div>
+  <div id="panel-body">
+    <div class="sec">
+      <div class="sec-t">県全体 KPI <b id="kpi-year">2024</b></div>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="v" id="kpi-iri">—</div><div class="l">観光客入込数</div><div class="d" id="kpi-iri-d"></div></div>
+        <div class="kpi"><div class="v" id="kpi-stay">—</div><div class="l">延べ宿泊数</div><div class="d" id="kpi-stay-d"></div></div>
+        <div class="kpi"><div class="v" id="kpi-fgn">—</div><div class="l">外国人宿泊数</div><div class="d" id="kpi-fgn-d"></div></div>
+        <div class="kpi"><div class="v" id="kpi-stayrate">—</div><div class="l">宿泊率(宿泊÷入込)</div><div class="d" id="kpi-rate-d"></div></div>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">カメラフライト</div>
+      <div class="row-btns" id="fly-chips"></div>
+    </div>
+    <div class="sec" id="sec-layers" style="display:none">
+      <div class="sec-t">マップレイヤー</div>
+      <div class="row-btns" id="layer-chips">
+        <button class="chip active" data-layer="spots">観光地点</button>
+        <button class="chip" data-layer="muni">市町バブル</button>
+      </div>
+    </div>
+    <div class="sec" id="sec-cat" style="display:none">
+      <div class="sec-t">カテゴリ絞り込み</div>
+      <div class="row-btns" id="cat-chips"></div>
+    </div>
+    <div class="sec" id="sec-area">
+      <div class="sec-t">エリア絞り込み</div>
+      <div class="row-btns" id="area-chips"></div>
+    </div>
+    <div class="sec" id="sel-wrap">
+      <div id="sel-card">
+        <div class="nm" id="sel-nm"></div>
+        <div class="meta" id="sel-meta"></div>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">地形点群 — 標高</div>
+      <div class="grad-bar"></div>
+      <div class="grad-lbl"><span>平野 30m</span><span>高原</span><span>2,500m 奥日光・那須岳</span></div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">エリア凡例</div>
+      <div class="legend" id="area-legend"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">操作</div>
+      <div class="hint">ドラッグ=回転 ／ <kbd>Shift</kbd>+ドラッグ=移動 ／ ホイール=ズーム<br>地点・市町をクリックで詳細表示</div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">データソース</div>
+      <div class="hint">
+        栃木県「<a href="https://www.pref.tochigi.lg.jp/f05/irikomishukuhaku.html" target="_blank" rel="noopener">令和6(2024)年 観光客入込数・宿泊数推定調査</a>」、
+        「<a href="https://www.pref.tochigi.lg.jp/f05/senryaku/senryaku2026-2030.html" target="_blank" rel="noopener">とちぎ観光立県戦略2026-2030</a>」ほか公表資料。
+        地形は主要峰を基にした簡略モデル、集客規模は推定指数。
+      </div>
     </div>
   </div>
+</div>
+<button id="panel-tab">◀ コントロール ▶</button>
 
-  <div class="sec" id="sec-layers" style="display:none">
-    <div class="sec-t">マップレイヤー</div>
-    <div class="row-btns" id="layer-chips">
-      <button class="chip active" data-layer="spots">観光地点</button>
-      <button class="chip" data-layer="muni">市町バブル</button>
-    </div>
-  </div>
+<!-- ===== Right analysis drawer ===== -->
+<div id="drawer">
+  <div id="drawer-head"><span class="t" id="drawer-title">分析 <b>L0 概況</b></span><button class="fold-btn" id="drawer-toggle" title="分析パネルをしまう">▶</button></div>
+  <div id="drawer-body">
 
-  <div class="sec" id="sec-cat" style="display:none">
-    <div class="sec-t">カテゴリ絞り込み</div>
-    <div class="row-btns" id="cat-chips"></div>
-  </div>
-
-  <div class="sec" id="sec-area">
-    <div class="sec-t">エリア絞り込み</div>
-    <div class="row-btns" id="area-chips"></div>
-  </div>
-
-  <div class="sec" id="sel-wrap">
-    <div id="sel-card">
-      <div class="nm" id="sel-nm"></div>
-      <div class="meta" id="sel-meta"></div>
-    </div>
-  </div>
-
-  <div class="sec">
-    <div class="sec-t">エリア凡例</div>
-    <div class="legend" id="area-legend"></div>
-  </div>
-
-  <div class="sec">
-    <div class="sec-t">データソース</div>
-    <div class="hint">
-      栃木県「<a href="https://www.pref.tochigi.lg.jp/f05/irikomishukuhaku.html" target="_blank" rel="noopener">令和6(2024)年 観光客入込数・宿泊数推定調査</a>」、
-      「<a href="https://www.pref.tochigi.lg.jp/f05/senryaku/senryaku2026-2030.html" target="_blank" rel="noopener">とちぎ観光立県戦略2026-2030</a>」ほか公表資料に基づく。
-      地点の集客規模は公表統計・報道等からの推定指数(1〜5)。
-    </div>
-  </div>
-</div></div>
-
-<div id="main">
-
-  <!-- ================= L0 OVERVIEW ================= -->
-  <div class="view active" id="view-overview">
-    <div class="grid3">
-      <div class="card"><h3>観光客入込数 <span style="color:var(--sub);font-weight:400">2024年</span></h3>
-        <div class="sub">前年比 107.3% ／ コロナ前(2019)比 97.5%</div>
-        <div class="big-num">8,997<small> 万人</small></div></div>
-      <div class="card"><h3>延べ宿泊数 <span style="color:var(--sub);font-weight:400">2024年</span></h3>
-        <div class="sub">前年比 105.8% ／ 2019年比 100.6% — コロナ前超え</div>
-        <div class="big-num">830<small> 万人泊</small></div></div>
-      <div class="card"><h3>外国人宿泊数 <span style="color:var(--sub);font-weight:400">2024年</span></h3>
-        <div class="sub">前年比 118.7% ／ 過去最高を更新</div>
-        <div class="big-num">27.9<small> 万人泊</small></div></div>
-    </div>
-    <div class="grid2">
-      <div class="card">
+    <div class="view active" id="view-overview">
+      <div class="stat3">
+        <div class="card"><h3 style="font-size:10px">入込数 2024</h3><div class="big-num">8,997<small>万人</small></div><div class="sub" style="margin:3px 0 0">前年比107.3%</div></div>
+        <div class="card"><h3 style="font-size:10px">宿泊数 2024</h3><div class="big-num">830<small>万人泊</small></div><div class="sub" style="margin:3px 0 0">コロナ前超え</div></div>
+        <div class="card"><h3 style="font-size:10px">外国人宿泊</h3><div class="big-num">27.9<small>万人泊</small></div><div class="sub" style="margin:3px 0 0">過去最高</div></div>
+      </div>
+      <div class="card" style="margin-top:10px">
         <h3>コロナ禍からの回復トレンド</h3>
-        <div class="sub">2019年=100 とした指数 ／ 出典: 県入込数・宿泊数推定調査</div>
+        <div class="sub">2019年=100 とした指数</div>
         <div id="chart-recovery"></div>
       </div>
       <div class="card">
         <h3>月別入込数 2024 vs 2023</h3>
-        <div class="sub">単位: 万人 ／ 8月ピーク(構成比12.1%)・12月ボトム(6.6%)</div>
+        <div class="sub">8月ピーク(12.1%)・12月ボトム(6.6%)</div>
         <div id="chart-monthly"></div>
       </div>
-    </div>
-    <div class="grid2">
       <div class="card">
         <h3>分類別入込数 2024</h3>
-        <div class="sub">道の駅が単独で2,062万人(全体の22.9%) — 車移動が支配的</div>
+        <div class="sub">道の駅が単独で2,062万人(22.9%)</div>
         <div id="chart-category"></div>
       </div>
       <div class="card">
         <h3>外国人宿泊数 国・地域別 2024</h3>
-        <div class="sub">総数 279,217人泊 ／ 台湾が最多(構成比19.2%)</div>
+        <div class="sub">総数279,217人泊 ／ 台湾19.2%</div>
         <div id="chart-country"></div>
       </div>
     </div>
-  </div>
 
-  <!-- ================= L1 MAP ================= -->
-  <div class="view" id="view-map">
-    <div class="card" style="padding:10px">
-      <div class="map-wrap">
-        <svg id="map-svg" viewBox="0 0 720 700" role="img" aria-label="栃木県観光マップ"></svg>
-        <div class="map-note">※ 県境形状は簡略化。地点をクリックすると左パネルに詳細を表示</div>
+    <div class="view" id="view-map">
+      <div class="card">
+        <h3>表示中の観光地点</h3>
+        <div class="sub" id="spot-count"></div>
+        <div class="tbl-wrap"><table class="dtable" id="spot-table"></table></div>
       </div>
     </div>
-    <div class="card">
-      <h3>表示中の観光地点</h3>
-      <div class="sub" id="spot-count"></div>
-      <div class="tbl-wrap"><table class="dtable" id="spot-table"></table></div>
-    </div>
-  </div>
 
-  <!-- ================= L2 AREA ================= -->
-  <div class="view" id="view-area">
-    <div class="card">
-      <h3>市町別 観光客入込数ランキング <span id="rank-year" style="color:var(--sub);font-weight:400"></span></h3>
-      <div class="sub">下部の年スライダーで2019〜2024年を切替 ／ バー色=所属エリア</div>
-      <div id="chart-muni-rank"></div>
-    </div>
-    <div class="grid2">
+    <div class="view" id="view-area">
+      <div class="card">
+        <h3>市町別ランキング <span id="rank-year" style="color:var(--sub);font-weight:400"></span></h3>
+        <div class="sub">年スライダーで切替 ／ バー色=エリア ／ 3Dバブルと連動</div>
+        <div id="chart-muni-rank"></div>
+      </div>
       <div class="card">
         <h3>エリア別シェア <span id="share-year" style="color:var(--sub);font-weight:400"></span></h3>
-        <div class="sub">観光客入込数に占める割合</div>
         <div id="chart-area-share"></div>
       </div>
       <div class="card">
         <h3>宿泊拠点の構造 2024</h3>
-        <div class="sub">宿泊数上位4市町で県全体の約87%を占める</div>
+        <div class="sub">上位4市町で約87%</div>
         <div id="chart-stay"></div>
       </div>
-    </div>
-    <div class="card">
-      <h3>市町別データテーブル 2024</h3>
-      <div class="sub">入込数(千人)・前年比・外国人宿泊数(人泊)</div>
-      <div class="tbl-wrap"><table class="dtable" id="muni-table"></table></div>
-    </div>
-  </div>
-
-  <!-- ================= L3 FLOW ================= -->
-  <div class="view" id="view-flow">
-    <div class="grid2" style="grid-template-columns:1.2fr 1fr">
-      <div class="card" style="padding:10px">
-        <div class="map-wrap">
-          <svg id="flow-svg" viewBox="0 0 720 700" role="img" aria-label="栃木県への主要導線マップ"></svg>
-          <div class="map-note">※ 破線=広域アクセス導線 ／ 実線=選択中モデルコース</div>
-        </div>
-      </div>
-      <div>
-        <div class="card">
-          <h3>広域アクセス・ゲートウェイ</h3>
-          <div class="sub">首都圏からの近接性が最大の強み(東京→宇都宮 新幹線最速48分)</div>
-          <div id="gw-list"></div>
-        </div>
-        <div class="card">
-          <h3>周遊モデルコース(導線設計)</h3>
-          <div class="sub">クリックでマップに経路を表示 ／「組み合わせ旅」の設計例</div>
-          <div id="route-list"></div>
-        </div>
+      <div class="card">
+        <h3>市町別データ 2024</h3>
+        <div class="tbl-wrap"><table class="dtable" id="muni-table"></table></div>
       </div>
     </div>
-    <div class="card">
-      <h3>導線設計の論点</h3>
-      <div class="sub">データと戦略から導かれる県内周遊の課題</div>
-      <div id="flow-issues"></div>
-    </div>
-  </div>
 
-  <!-- ================= L4 POLICY ================= -->
-  <div class="view" id="view-policy">
-    <div class="card kgi-card">
-      <h3>とちぎ観光立県戦略 2026-2030（2026年3月策定）</h3>
-      <div class="sub" style="color:var(--sub)">ビジョン:「訪れてよし、稼いでよし、住んでよし」三方よしの観光立県とちぎ ～観光産業が築く豊かなとちぎ～</div>
-      <div style="display:flex;gap:24px;align-items:baseline;flex-wrap:wrap;margin-top:6px">
+    <div class="view" id="view-flow">
+      <div class="card">
+        <h3>広域アクセス・ゲートウェイ</h3>
+        <div class="sub">3Dマップのパーティクル=流入導線(東京→宇都宮 新幹線最速48分)</div>
+        <div id="gw-list"></div>
+      </div>
+      <div class="card">
+        <h3>周遊モデルコース(導線設計)</h3>
+        <div class="sub">クリックで3Dマップに経路を表示</div>
+        <div id="route-list"></div>
+      </div>
+      <div class="card">
+        <h3>導線設計の論点</h3>
+        <div id="flow-issues"></div>
+      </div>
+    </div>
+
+    <div class="view" id="view-policy">
+      <div class="kgi-card">
+        <h3>とちぎ観光立県戦略 2026-2030</h3>
+        <div class="sub" style="color:var(--sub)">「訪れてよし、稼いでよし、住んでよし」三方よしの観光立県とちぎ(2026年3月策定)</div>
         <div><div style="font-size:10px;color:var(--sub);letter-spacing:.1em">KGI 観光消費額</div>
-          <div class="big-num">9,656<small> 億円</small> <span style="font-family:var(--mono);color:var(--sub);font-size:18px">→</span> 11,562<small> 億円 (2030)</small></div></div>
+          <div class="big-num">9,656<small> 億円</small> <span style="font-family:var(--mono);color:var(--sub);font-size:15px">→</span> 11,562<small> 億円 (2030)</small></div></div>
+        <div class="prog"><div class="pf" style="width:83.5%"></div></div>
+        <div class="kpi-row"><span>基準値→目標 達成率 83.5%</span><span class="tgt">+1,906億円</span></div>
       </div>
-      <div class="prog"><div class="pf" style="width:83.5%"></div></div>
-      <div class="kpi-row"><span>2024年実績(基準値) → 2030年目標 達成率 83.5%</span><span class="tgt">+1,906億円</span></div>
-    </div>
-    <div class="card">
-      <h3>KPI 進捗ボード</h3>
-      <div class="sub">基準値=2024(R6)実績 ／ 目標値=2030(R12) ／ 出典: 戦略本編 成果指標</div>
-      <div id="kpi-board" class="grid2" style="margin-bottom:0"></div>
-    </div>
-    <div class="grid3" id="strategy-boxes"></div>
-    <div class="grid2">
+      <div class="card">
+        <h3>KPI 進捗ボード</h3>
+        <div class="sub">基準値=2024(R6) ／ 目標値=2030(R12)</div>
+        <div id="kpi-board"></div>
+      </div>
+      <div id="strategy-boxes"></div>
       <div class="card">
         <h3>観光をめぐる主な出来事</h3>
-        <div class="sub">統計変動の背景となるイベント年表</div>
         <div id="event-timeline"></div>
       </div>
       <div class="card">
         <h3>関連する計画・体制</h3>
-        <div class="sub">県戦略と接続する国・市町・DMOの動き</div>
         <div id="related-plans"></div>
       </div>
     </div>
-  </div>
 
-  <!-- ================= L5 AI ================= -->
-  <div class="view" id="view-ai">
-    <div class="card">
-      <h3>データドリブン・インサイト</h3>
-      <div class="sub">格納データからスクリプトが自動算出した分析所見(閲覧のたびに実データから再計算)</div>
-      <div id="ai-insights"></div>
-    </div>
-    <div class="grid2">
+    <div class="view" id="view-ai">
+      <div class="card">
+        <h3>データドリブン・インサイト</h3>
+        <div class="sub">格納データから自動算出した分析所見</div>
+        <div id="ai-insights"></div>
+      </div>
       <div class="card">
         <h3>2030年目標へのギャップ分析</h3>
-        <div class="sub">必要成長率(年平均)を実績基準で自動計算</div>
+        <div class="sub">必要成長率(年平均)を自動計算</div>
         <div id="ai-gap"></div>
       </div>
       <div class="card">
         <h3>AI・外部分析用エクスポート</h3>
-        <div class="sub">本ダッシュボードの全格納データを構造化JSONとして持ち出し、生成AI等での追加分析に利用できます</div>
+        <div class="sub">全格納データを構造化JSONとして持ち出し、生成AIで追加分析</div>
         <button class="tool-btn" id="btn-json">📋 全データをJSONでコピー</button>
         <button class="tool-btn" id="btn-prompt">🤖 AI分析プロンプト(データ同梱)をコピー</button>
-        <div class="hint">JSONには県計の年次/月次系列、市町別6年分、国籍別、分類別、観光地点56件、導線・モデルコース、戦略KPIが含まれます。生成AIに貼り付ければ相関分析・需要予測・施策提案などに展開できます。</div>
       </div>
     </div>
-  </div>
 
-  <!-- ================= L6 CATCHMENT ================= -->
-  <div class="view" id="view-catch">
-    <div class="grid2" style="grid-template-columns:1.25fr 1fr">
-      <div class="card" style="padding:10px">
-        <div class="map-wrap">
-          <svg id="catch-svg" viewBox="0 0 720 640" role="img" aria-label="栃木県への来訪圏推計マップ"></svg>
-          <div class="map-note">※ アーク=発地→エリアの推計来訪流(帯の流れ=向き、太さ=規模) ／ 県内ヒート=地点集積(KDE風) ／ グラビティ仮説モデル</div>
-        </div>
+    <div class="view" id="view-catch">
+      <div class="card">
+        <h3>来訪圏 推計モデル</h3>
+        <div class="sub">来訪流(発地o→エリアa) ∝ 人口×利便係数×e<sup>−距離/60km</sup> をエリア入込実績に整合按分 ／ 3Dアーク=推計来訪流(太さ・粒子密度=規模)</div>
+        <div class="chips-inline" id="catch-chips"></div>
+        <div id="catch-table"></div>
       </div>
-      <div>
-        <div class="card">
-          <h3>来訪圏 推計モデル</h3>
-          <div class="sub">来訪流(発地o→エリアa) ∝ 人口<sub>o</sub> × 利便係数<sub>o</sub> × e<sup>−距離/60km</sup> をエリア入込実績に整合按分</div>
-          <div class="chips-inline" id="catch-chips"></div>
-          <div id="catch-table"></div>
-        </div>
-        <div class="card">
-          <h3>読み取れる構造</h3>
-          <div id="catch-notes"></div>
-        </div>
+      <div class="card">
+        <h3>読み取れる構造</h3>
+        <div id="catch-notes"></div>
       </div>
     </div>
-  </div>
 
-  <!-- ================= L7 ECONOMY ================= -->
-  <div class="view" id="view-econ">
-    <div class="card">
-      <h3>観光経済効果 推計 <span style="color:var(--sub);font-weight:400">2024年基準</span></h3>
-      <div class="sub">県公表の観光消費額(KGI基準値)を、入込+宿泊×単価比で市町に按分した推計 ／ チップで指標切替</div>
-      <div class="econ-big" id="econ-cards"></div>
-    </div>
-    <div class="card">
-      <h3 id="econ-rank-title">市町別 推計観光消費額</h3>
-      <div class="sub" id="econ-rank-sub"></div>
-      <div class="chips-inline" id="econ-chips"></div>
-      <div id="econ-rank"></div>
-    </div>
-    <div class="card">
-      <h3>推計の前提</h3>
-      <div id="econ-notes"></div>
-    </div>
-  </div>
-
-  <!-- ================= L8 SEAMLESS ================= -->
-  <div class="view" id="view-seamless">
-    <div class="card" style="padding:10px">
-      <div class="seam-wrap">
-        <canvas id="seam-cv"></canvas>
-        <div class="seam-ui" id="seam-fly"></div>
-        <div class="seam-zoom">
-          <button id="seam-zin" title="ズームイン">＋</button>
-          <button id="seam-zout" title="ズームアウト">－</button>
-          <button id="seam-home" title="県全域" style="font-size:12px">◎</button>
-        </div>
-        <div class="seam-status" id="seam-status">ドラッグ移動 ／ ホイールでズーム ／ 地点クリックで詳細</div>
-        <div class="seam-attr">地図タイル: 国土地理院 全国最新写真(シームレス) ／ 取得不可の環境ではベクター表示</div>
+    <div class="view" id="view-econ">
+      <div class="card">
+        <h3>観光経済効果 推計 <span style="color:var(--sub);font-weight:400">2024年基準</span></h3>
+        <div class="sub">観光消費額(KGI基準値)を入込+宿泊×単価比で市町按分 ／ 3Dバブル=推計消費額</div>
+        <div class="econ-big" id="econ-cards"></div>
+      </div>
+      <div class="card">
+        <h3 id="econ-rank-title">市町別 推計観光消費額</h3>
+        <div class="sub" id="econ-rank-sub"></div>
+        <div class="chips-inline" id="econ-chips"></div>
+        <div id="econ-rank"></div>
+      </div>
+      <div class="card">
+        <h3>推計の前提</h3>
+        <div id="econ-notes"></div>
       </div>
     </div>
-    <div class="card">
-      <h3>シームレス県域ビューア</h3>
-      <div class="sub">県全域⇄各エリアを実座標の1枚の連続マップでフライト移動。ズームに応じて航空写真がz8→z16へ高精細化し、観光地点・ラベルの表示密度も段階的に変化します。</div>
-    </div>
-  </div>
 
+  </div>
+</div>
+<button id="drawer-tab">◀ 分析パネル</button>
+
+<!-- ===== Seamless overlay ===== -->
+<div id="view-seamless" class="view">
+  <div class="seam-wrap">
+    <canvas id="seam-cv"></canvas>
+    <div class="seam-ui" id="seam-fly"></div>
+    <div class="seam-zoom">
+      <button id="seam-zin" title="ズームイン">＋</button>
+      <button id="seam-zout" title="ズームアウト">－</button>
+      <button id="seam-home" title="県全域" style="font-size:12px">◎</button>
+    </div>
+    <div class="seam-status" id="seam-status">ドラッグ移動 ／ ホイールでズーム ／ 地点クリックで詳細</div>
+    <div class="seam-attr">地図タイル: 国土地理院 全国最新写真(シームレス) ／ 取得不可の環境ではベクター表示</div>
+  </div>
 </div>
 
 <div id="timeline">
@@ -525,14 +488,18 @@ svg text{font-family:var(--jp)}
     <div id="tl-year">2024</div>
     <div id="tl-phase">回復加速 — 入込8,997万人・外国人宿泊 過去最高</div>
     <button id="tl-play" title="年次を自動再生">▶</button>
+    <button class="fold-btn" id="tl-fold" title="タイムラインを折りたたむ">▾</button>
   </div>
-  <input type="range" id="tl-slider" min="0" max="5" value="5" aria-label="対象年の選択">
-  <div id="tl-marks"><span>2019<br>アフターDC</span><span>2020<br>コロナ禍</span><span>2021</span><span>2022<br>とちぎ国体</span><span>2023<br>LRT開業</span><span>2024<br>過去最高</span></div>
+  <div id="tl-body">
+    <input type="range" id="tl-slider" min="0" max="5" value="5" aria-label="対象年の選択">
+    <div id="tl-marks"><span>2019<br>アフターDC</span><span>2020<br>コロナ禍</span><span>2021</span><span>2022<br>とちぎ国体</span><span>2023<br>LRT開業</span><span>2024<br>過去最高</span></div>
+  </div>
 </div>
 
 <div class="chart-tip" id="tip"></div>
 <div id="toast"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 /* =====================================================================
    TOCHIGI_DB — 栃木県観光分析データベース
@@ -768,14 +735,17 @@ strategy:{
 };
 
 /* ===================================================================== */
+/* ===================================================================== */
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const DB=TOCHIGI_DB;
 const fmt=n=>n.toLocaleString('ja-JP');
-const man=n=>(n/10000).toLocaleString('ja-JP',{maximumFractionDigits:0}); // 人→万人
-let curYear=5; // index into years
-let mapLayer='spots', catFilter=null, areaFilter=null, activeRoute=null;
-
+const man=n=>(n/10000).toLocaleString('ja-JP',{maximumFractionDigits:0});
+let curYear=5, curView='overview';
+let mapLayer='spots', catFilter=null, areaFilter=null, activeRoute=null, catchArea=null, econMode='total';
+const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const CATS=["自然","文化・歴史","温泉","レジャー","買い物・食","産業観光"];
+const SHORT={1:"日光東照宮",8:"鬼怒川温泉",31:"宇都宮餃子",33:"ろまんちっく村",39:"あしかがFP",42:"佐野アウトレット",49:"わんぱく公園",54:"もてぎ",2:"中禅寺湖",3:"華厳滝",4:"いろは坂",5:"戦場ヶ原",6:"湯元温泉"};
+const shortName=s=>SHORT[s.id]||s.name.split('(')[0].split('・')[0];
 const tip=$('#tip');
 function showTip(html,x,y){tip.innerHTML=html;tip.style.display='block';
   const r=tip.getBoundingClientRect();
@@ -785,25 +755,385 @@ function hideTip(){tip.style.display='none'}
 function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block';
   clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2200)}
 
-const SHORT={1:"日光東照宮",8:"鬼怒川温泉",31:"宇都宮餃子",33:"ろまんちっく村",39:"あしかがFP",42:"佐野アウトレット",49:"わんぱく公園",54:"もてぎ",2:"中禅寺湖",3:"華厳滝",4:"いろは坂",5:"戦場ヶ原",6:"湯元温泉"};
-const shortName=s=>SHORT[s.id]||s.name.split('(')[0].split('・')[0];
-
-/* ---------- projection ---------- */
-const LON0=139.30,LON1=140.34,LAT0=36.16,LAT1=37.20;
-const W=720,H=700,PAD=30;
-const px=lng=>PAD+(lng-LON0)/(LON1-LON0)*(W-2*PAD);
-const py=lat=>PAD+(LAT1-lat)/(LAT1-LAT0)*(H-2*PAD);
-
-/* simplified prefecture boundary (clockwise from SW) */
+/* ---------- geo ---------- */
+const CLNG=139.82,CLAT=36.68,KX=89,KZ=111,VEX=7; // 1unit=1km, 標高強調×7
+const toX=lng=>(lng-CLNG)*KX, toZ=lat=>(CLAT-lat)*KZ*-1; // north = -z? → z=(CLAT-lat)*KZ: lat>CLAT → z negative(north away)
+const G2W=(lng,lat)=>[ (lng-CLNG)*KX, (CLAT-lat)*KZ ];
 const BOUNDARY=[[139.45,36.28],[139.42,36.36],[139.48,36.45],[139.46,36.55],[139.43,36.63],
 [139.35,36.70],[139.33,36.77],[139.40,36.83],[139.42,36.92],[139.47,37.00],[139.55,37.05],
 [139.65,37.03],[139.75,37.07],[139.85,37.10],[139.93,37.14],[140.00,37.15],[140.08,37.12],
 [140.18,37.05],[140.27,36.97],[140.29,36.88],[140.22,36.80],[140.26,36.70],[140.20,36.60],
 [140.28,36.53],[140.23,36.44],[140.14,36.36],[140.05,36.30],[139.95,36.26],[139.85,36.22],
 [139.75,36.20],[139.66,36.23],[139.70,36.30],[139.60,36.27],[139.52,36.24]];
-function boundaryPath(){return 'M'+BOUNDARY.map(p=>px(p[0]).toFixed(1)+','+py(p[1]).toFixed(1)).join('L')+'Z'}
+function inPref(lng,lat){let c=false;const P=BOUNDARY;
+  for(let i=0,j=P.length-1;i<P.length;j=i++){
+    if((P[i][1]>lat)!==(P[j][1]>lat)&&lng<(P[j][0]-P[i][0])*(lat-P[i][1])/(P[j][1]-P[i][1])+P[i][0])c=!c}
+  return c}
+/* 主要峰によるプロシージャル標高 (km) */
+const PEAKS=[[139.375,36.80,2.58,7],[139.49,36.765,2.48,6],[139.56,36.80,2.46,6],[139.33,36.69,2.14,7],
+  [139.42,37.03,2.06,9],[139.62,37.05,1.78,9],[139.965,37.125,1.92,6],[139.77,36.90,1.80,8],
+  [139.50,36.90,1.90,10],[140.28,36.93,1.02,8],[139.75,36.62,0.55,5],[139.68,36.35,0.34,3.5],
+  [140.18,36.55,0.42,7],[139.42,36.38,0.55,6],[139.60,36.55,0.9,8],[139.55,36.65,1.2,9]];
+function elevKm(lng,lat){
+  const px=(lng-CLNG)*KX,pz=(CLAT-lat)*KZ;
+  let h=0.03+Math.max(0,((139.95-lng)*0.45+(lat-36.35)*0.5))*0.16;
+  PEAKS.forEach(p=>{
+    const dx=(lng-p[0])*KX,dz=(lat-p[1])*KZ,d2=dx*dx+dz*dz;
+    h+=p[2]*0.82*Math.exp(-d2/(2*p[3]*p[3]));
+  });
+  h+=0.03*Math.sin(px*0.55)*Math.cos(pz*0.42);
+  return Math.max(0.02,h);
+}
+const elevY=(lng,lat)=>elevKm(lng,lat)*VEX;
+const W3=(lng,lat,dy=0)=>new THREE.Vector3((lng-CLNG)*KX,elevY(lng,lat)+dy,(CLAT-lat)*KZ);
 
-/* ---------- panel: KPI + chips + legend ---------- */
+/* ---------- THREE scene ---------- */
+let scene,camera,renderer;
+const groups={};
+const cam={target:new THREE.Vector3(0,2,4),theta:0,phi:1.02,dist:150,anim:null};
+const spotWorld=[],muniWorld=[];
+const particleSys=[]; // {pts, curves:[{curve,n0,count,speed,col}], positions}
+function initScene(){
+  scene=new THREE.Scene();
+  scene.fog=new THREE.FogExp2(0x0a0d14,0.0013);
+  camera=new THREE.PerspectiveCamera(52,innerWidth/innerHeight,0.5,3000);
+  renderer=new THREE.WebGLRenderer({antialias:true});
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  renderer.setClearColor(0x0a0d14,1);
+  $('#canvas-wrap').appendChild(renderer.domElement);
+  ['terrain','boundary','net','spots','muni','flows','route','catch'].forEach(k=>{groups[k]=new THREE.Group();scene.add(groups[k])});
+  buildTerrain();buildBoundary();buildNetworks();buildSpots();buildMuni();
+  const grid=new THREE.GridHelper(560,46,0x232a3e,0x161b2a);
+  grid.position.y=-0.6;grid.material.transparent=true;grid.material.opacity=.4;scene.add(grid);
+  addEvents();
+  animate();
+}
+function dotTexture(){
+  const c=document.createElement('canvas');c.width=c.height=64;
+  const g=c.getContext('2d'),r=g.createRadialGradient(32,32,0,32,32,32);
+  r.addColorStop(0,'rgba(255,255,255,1)');r.addColorStop(.4,'rgba(255,255,255,.8)');r.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=r;g.fillRect(0,0,64,64);
+  return new THREE.CanvasTexture(c);
+}
+const DOT=dotTexture();
+const PT_MATS=[];
+function regPtMat(m){m.userData.base=m.size;PT_MATS.push(m);return m}
+const RAMP=[[0x20,0x31,0x5e],[0x2e,0x7f,0xb8],[0x3d,0xdc,0x84],[0xf5,0xc4,0x00],[0xff,0x6b,0x5e]];
+function rampColor(t){
+  t=Math.max(0,Math.min(1,t));const seg=t*(RAMP.length-1),i=Math.min(RAMP.length-2,Math.floor(seg)),f=seg-i;
+  return [ (RAMP[i][0]+(RAMP[i+1][0]-RAMP[i][0])*f)/255,(RAMP[i][1]+(RAMP[i+1][1]-RAMP[i][1])*f)/255,(RAMP[i][2]+(RAMP[i+1][2]-RAMP[i][2])*f)/255 ];
+}
+function buildTerrain(){
+  const pos=[],col=[],step=0.0062;
+  for(let lng=139.30;lng<=140.34;lng+=step)for(let lat=36.16;lat<=37.20;lat+=step){
+    const jl=lng+(Math.random()-.5)*step*.9, ja=lat+(Math.random()-.5)*step*.9;
+    if(!inPref(jl,ja))continue;
+    const e=elevKm(jl,ja);
+    pos.push((jl-CLNG)*KX,e*VEX,(CLAT-ja)*KZ);
+    const c=rampColor(Math.sqrt(e/2.4));
+    col.push(c[0],c[1],c[2]);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  const mat=new THREE.PointsMaterial({size:1.5,map:DOT,vertexColors:true,transparent:true,opacity:.85,
+    blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true});
+  regPtMat(mat);
+  groups.terrain.add(new THREE.Points(geo,mat));
+  // 低密度の明るい第2層(点描の粒立ち)
+  const pos2=[],col2=[];
+  for(let i=0;i<pos.length;i+=27){pos2.push(pos[i],pos[i+1]+.25,pos[i+2]);col2.push(col[i]*1.4,col[i+1]*1.4,col[i+2]*1.4)}
+  const g2=new THREE.BufferGeometry();
+  g2.setAttribute('position',new THREE.Float32BufferAttribute(pos2,3));
+  g2.setAttribute('color',new THREE.Float32BufferAttribute(col2,3));
+  const mat2=new THREE.PointsMaterial({size:2.6,map:DOT,vertexColors:true,transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false});
+  regPtMat(mat2);
+  groups.terrain.add(new THREE.Points(g2,mat2));
+}
+function densify(pts,n){const out=[];
+  for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];
+    for(let k=0;k<n;k++){const t=k/n;out.push([a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t])}}
+  return out}
+function lineFrom(pts,color,opacity,dy=0.15,closed=false){
+  const arr=closed?[...pts,pts[0]]:pts;
+  const p=[];arr.forEach(q=>{const v=W3(q[0],q[1],dy);p.push(v.x,v.y,v.z)});
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));
+  return new THREE.Line(g,new THREE.LineBasicMaterial({color,transparent:true,opacity}));
+}
+function buildBoundary(){
+  groups.boundary.add(lineFrom(densify(BOUNDARY,6),0xf5c400,.75,.3,true));
+}
+const RAILS=[
+  {c:0x4da3ff,o:.5,pts:[[139.72,36.16],[139.80,36.31],[139.885,36.56],[139.93,36.75],[139.99,36.90],[140.03,37.00],[140.06,37.12]]}, // 東北新幹線
+  {c:0x3ddc84,o:.4,pts:[[139.73,36.16],[139.73,36.40],[139.72,36.55],[139.70,36.70],[139.62,36.75]]}, // 東武日光線
+  {c:0x3ddc84,o:.4,pts:[[139.70,36.70],[139.71,36.82],[139.68,36.90],[139.62,36.97]]}, // 鬼怒川・野岩
+  {c:0x8b93a8,o:.4,pts:[[139.60,36.16],[139.62,36.32],[139.70,36.42],[139.80,36.52],[139.85,36.62],[139.90,36.76],[139.92,36.90],[140.00,37.02],[140.06,37.13]]}, // 東北道
+  {c:0x8b93a8,o:.35,pts:[[139.36,36.33],[139.50,36.31],[139.63,36.33],[139.74,36.40],[139.84,36.46],[139.98,36.46],[140.12,36.44]]} // 北関東道
+];
+function buildNetworks(){RAILS.forEach(r=>groups.net.add(lineFrom(r.pts,r.c,r.o,.22)))}
+function buildSpots(){
+  groups.spots.clear();spotWorld.length=0;
+  const tipPos=[],tipCol=[];
+  DB.spots.forEach(s=>{
+    const on=(!areaFilter||s.area===areaFilter)&&(!catFilter||s.cat===catFilter);
+    if(!on)return;
+    const col=new THREE.Color(DB.areas[s.area].hex);
+    const base=W3(s.lng,s.lat,0),h=2.2+s.scale*1.5,top=base.clone();top.y+=h;
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.Float32BufferAttribute([base.x,base.y,base.z,top.x,top.y,top.z],3));
+    groups.spots.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:col,transparent:true,opacity:.75})));
+    tipPos.push(top.x,top.y,top.z);tipCol.push(col.r,col.g,col.b);
+    spotWorld.push({v:top,spot:s});
+  });
+  const tg=new THREE.BufferGeometry();
+  tg.setAttribute('position',new THREE.Float32BufferAttribute(tipPos,3));
+  tg.setAttribute('color',new THREE.Float32BufferAttribute(tipCol,3));
+  const tm=new THREE.PointsMaterial({size:5.5,map:DOT,vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false});
+  tm.userData.base=tm.size;PT_MATS.push(tm);
+  groups.spots.add(new THREE.Points(tg,tm));
+}
+function muniValue(m){
+  if(curView==='econ'){const r=computeEcon().find(x=>x.m===m);
+    return econMode==='stay'?r.stayOku:econMode==='inbound'?r.inbOku*8:r.oku}
+  return m.iri[curYear];
+}
+function muniMax(){return Math.max(...DB.munis.map(m=>muniValue(m)||0),1)}
+function buildMuni(){
+  groups.muni.clear();muniWorld.length=0;
+  const sph=new THREE.SphereGeometry(1,18,14);
+  DB.munis.forEach(m=>{
+    if(areaFilter&&m.area!==areaFilter)return;
+    const col=new THREE.Color(DB.areas[m.area].hex);
+    const mesh=new THREE.Mesh(sph,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.34,depthWrite:false}));
+    const rim=new THREE.Mesh(sph,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.85,wireframe:true,depthWrite:false}));
+    rim.scale.setScalar(1.001);mesh.add(rim);
+    const v=muniScale(m,muniMax());
+    const p=W3(m.lng,m.lat,0);mesh.position.set(p.x,p.y+v,p.z);mesh.scale.setScalar(v);
+    groups.muni.add(mesh);
+    muniWorld.push({mesh,m});
+  });
+}
+function muniScale(m,max){return 1+Math.sqrt(Math.max(0,muniValue(m))/max)*6.2}
+function updateMuniScales(){const max=muniMax();muniWorld.forEach(o=>{const v=muniScale(o.m,max);
+  const p=W3(o.m.lng,o.m.lat,0);o.mesh.scale.setScalar(v);o.mesh.position.set(p.x,p.y+v,p.z)})}
+/* ---- flow particles ---- */
+function clearParticles(g){particleSys.forEach((p,i)=>{if(p.group===g)particleSys.splice(i,1)});
+  // remove all belonging (filter approach)
+  for(let i=particleSys.length-1;i>=0;i--)if(particleSys[i].group===g)particleSys.splice(i,1);
+  g.clear();}
+function addFlowSet(g,defs,psize=2.6){
+  // defs: [{from:[lng,lat], to:[lng,lat], color, weight(0-1), lift}]
+  const curves=[],cols=[];let total=0;
+  defs.forEach(d=>{
+    const a=W3(d.from[0],d.from[1],1.2),b=W3(d.to[0],d.to[1],1.2);
+    const mid=a.clone().add(b).multiplyScalar(.5);
+    mid.y+=(d.lift??a.distanceTo(b)*.28)+2;
+    const curve=new THREE.QuadraticBezierCurve3(a,mid,b);
+    // faint guide line
+    const lp=curve.getPoints(40),arr=[];lp.forEach(v=>arr.push(v.x,v.y,v.z));
+    const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.Float32BufferAttribute(arr,3));
+    g.add(new THREE.Line(lg,new THREE.LineBasicMaterial({color:d.color,transparent:true,opacity:.16})));
+    const count=Math.max(3,Math.round(4+d.weight*26));
+    curves.push({curve,count,speed:.06+d.weight*.05,color:new THREE.Color(d.color)});
+    total+=count;
+  });
+  const pos=new Float32Array(total*3),col=new Float32Array(total*3);
+  let k=0;curves.forEach(c=>{c.n0=k;for(let i=0;i<c.count;i++){col[(k+i)*3]=c.color.r;col[(k+i)*3+1]=c.color.g;col[(k+i)*3+2]=c.color.b}k+=c.count});
+  const pg=new THREE.BufferGeometry();
+  pg.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  pg.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const pts=new THREE.Points(pg,new THREE.PointsMaterial({size:psize,map:DOT,vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));
+  g.add(pts);
+  particleSys.push({group:g,pts,curves,attr:pg.attributes.position});
+}
+function buildGatewayFlows(){
+  clearParticles(groups.flows);
+  const defs=[];
+  DB.gateways.forEach(gw=>gw.to.forEach(t=>defs.push({from:gw.edge,to:t,color:0xf5c400,weight:.5,lift:8})));
+  addFlowSet(groups.flows,defs,2.4);
+}
+function buildCatchArcs(){
+  clearParticles(groups.catch);
+  const flows=computeCatchment().filter(f=>!catchArea||f.area===catchArea);
+  const vmax=Math.max(...flows.map(f=>f.v));
+  flows.forEach(f=>{
+    if(f.origin.id==='tochigi'&&!catchArea)return;
+    if(f.v<vmax*.03)return;
+    const hub=AREA_HUBS[f.area];
+    addFlowSet(groups.catch,[{from:[f.origin.lng,f.origin.lat],to:hub,color:DB.areas[f.area].hex,weight:f.v/vmax,lift:12+f.v/vmax*22}],3.0);
+  });
+}
+function buildRoute(){
+  clearParticles(groups.route);
+  if(!activeRoute)return;
+  const r=DB.routes.find(x=>x.id===activeRoute);
+  const pts=r.stops.map(id=>DB.spots.find(s=>s.id===id));
+  const path=[];pts.forEach(s=>path.push(W3(s.lng,s.lat,2.0)));
+  const curve=new THREE.CatmullRomCurve3(path);
+  const lp=curve.getPoints(120),arr=[];lp.forEach(v=>arr.push(v.x,v.y,v.z));
+  const lg=new THREE.BufferGeometry();lg.setAttribute('position',new THREE.Float32BufferAttribute(arr,3));
+  groups.route.add(new THREE.Line(lg,new THREE.LineBasicMaterial({color:DB.areas[r.area].hex,transparent:true,opacity:.9})));
+  addFlowSet(groups.route,[{from:[pts[0].lng,pts[0].lat],to:[pts[pts.length-1].lng,pts[pts.length-1].lat],color:DB.areas[r.area].hex,weight:.7,lift:6}],3.2);
+}
+/* ---- camera ---- */
+function camPos(){
+  const t=cam.target;
+  return new THREE.Vector3(
+    t.x+cam.dist*Math.sin(cam.phi)*Math.sin(cam.theta),
+    t.y+cam.dist*Math.cos(cam.phi),
+    t.z+cam.dist*Math.sin(cam.phi)*Math.cos(cam.theta));
+}
+function applyCam(){camera.position.copy(camPos());camera.lookAt(cam.target)}
+function flyCam(target,theta,phi,dist,dur=1400){
+  const s={t:cam.target.clone(),th:cam.theta,ph:cam.phi,d:cam.dist},t0=performance.now();
+  if(REDUCED)dur=1;
+  cancelAnimationFrame(cam.anim);
+  const step=now=>{
+    const raw=Math.max(0,Math.min(1,(now-t0)/dur));
+    const p=raw<.5?2*raw*raw:1-Math.pow(-2*raw+2,2)/2;
+    cam.target.lerpVectors(s.t,target,p);
+    cam.theta=s.th+(theta-s.th)*p;cam.phi=s.ph+(phi-s.ph)*p;
+    cam.dist=s.d+(dist-s.d)*p+Math.sin(p*Math.PI)*Math.abs(dist-s.d)*.25;
+    applyCam();
+    if(raw<1)cam.anim=requestAnimationFrame(step);
+  };
+  cam.anim=requestAnimationFrame(step);
+}
+const VIEW_CAM={
+  overview:[[6,2,0],0,.82,185], map:[[6,2,0],0,.85,170], area:[[6,2,0],.12,.8,185],
+  flow:[[6,2,6],.06,.95,200], policy:[[0,2,0],-.25,.85,210], ai:[[12,2,0],.25,.85,210],
+  catch:[[6,2,58],0,.78,420], econ:[[6,2,0],.12,.8,185]
+};
+const FLY=[["県全域",[0,2,6],0,1.0,168],["日光・奥日光",139.53,36.77,42],["鬼怒川",139.71,36.83,34],
+  ["那須",140.00,37.06,40],["塩原",139.81,36.96,34],["宇都宮",139.885,36.57,36],["県南",139.58,36.33,46],["益子・もてぎ",140.14,36.49,42]];
+/* ---- events ---- */
+let dragging=null;
+function addEvents(){
+  const el=renderer.domElement;
+  el.addEventListener('pointerdown',e=>{dragging={x:e.clientX,y:e.clientY,th:cam.theta,ph:cam.phi,t:cam.target.clone(),pan:e.shiftKey||e.button===2,moved:false};el.setPointerCapture(e.pointerId)});
+  el.addEventListener('pointermove',e=>{
+    if(dragging){
+      const dx=e.clientX-dragging.x,dy=e.clientY-dragging.y;
+      if(Math.abs(dx)+Math.abs(dy)>4)dragging.moved=true;
+      if(dragging.pan){
+        const k=cam.dist/700;
+        const fx=new THREE.Vector3(Math.sin(cam.theta+Math.PI/2),0,Math.cos(cam.theta+Math.PI/2));
+        const fz=new THREE.Vector3(Math.sin(cam.theta),0,Math.cos(cam.theta));
+        cam.target.copy(dragging.t.clone().addScaledVector(fx,-dx*k).addScaledVector(fz,-dy*k*1.4));
+      }else{
+        cam.theta=dragging.th-dx*.0045;
+        cam.phi=Math.max(.18,Math.min(1.35,dragging.ph-dy*.0035));
+      }
+      applyCam();
+    }else hover(e);
+  });
+  el.addEventListener('pointerup',e=>{
+    if(dragging&&!dragging.moved)pick(e);
+    dragging=null;
+  });
+  el.addEventListener('contextmenu',e=>e.preventDefault());
+  el.addEventListener('wheel',e=>{e.preventDefault();
+    cam.dist=Math.max(26,Math.min(520,cam.dist*(1+Math.sign(e.deltaY)*.09)));applyCam()},{passive:false});
+  addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth,innerHeight)});
+}
+function screenPos(v){const p=v.clone().project(camera);
+  return {x:(p.x*.5+.5)*innerWidth,y:(-p.y*.5+.5)*innerHeight,z:p.z}}
+function nearestHit(e){
+  let best=null,bd=22;
+  const test=(v,obj,kind)=>{const s=screenPos(v);if(s.z>1)return;
+    const d=Math.hypot(s.x-e.clientX,s.y-e.clientY);if(d<bd){bd=d;best={obj,kind}}};
+  if(groups.spots.visible)spotWorld.forEach(o=>test(o.v,o.spot,'spot'));
+  if(groups.muni.visible)muniWorld.forEach(o=>test(o.mesh.position,o.m,'muni'));
+  return best;
+}
+function hover(e){
+  const h=nearestHit(e);
+  if(!h){hideTip();renderer.domElement.style.cursor='';return}
+  renderer.domElement.style.cursor='pointer';
+  if(h.kind==='spot'){const s=h.obj;showTip(`<b>${s.name}</b><br>${s.city} ／ ${s.cat}<br>規模指数 ${s.scale}/5`,e.clientX,e.clientY)}
+  else{const m=h.obj;showTip(`<b>${m.name}</b><br>入込 ${man(m.iri[curYear])}万人 (${DB.years[curYear]})`,e.clientX,e.clientY)}
+}
+function pick(e){
+  const h=nearestHit(e);if(!h)return;
+  if(h.kind==='spot'){selectSpot(h.obj);
+    flyCam(W3(h.obj.lng,h.obj.lat,0),cam.theta,Math.min(cam.phi,1.05),Math.min(cam.dist,40))}
+  else{selectMuni(h.obj);
+    flyCam(W3(h.obj.lng,h.obj.lat,0),cam.theta,cam.phi,Math.min(cam.dist,60))}
+}
+/* ---- labels ---- */
+const lblPool=[];
+function labelDefs(){
+  const L=[];
+  const zoomedOut=cam.dist>78;
+  if(groups.spots.visible)spotWorld.forEach(o=>{
+    if(o.spot.scale>=5||cam.dist<46)L.push({v:o.v,text:shortName(o.spot),cls:'l3d'})});
+  if(zoomedOut&&curView!=='catch')Object.entries(AREA_HUBS).forEach(([a,h])=>
+    L.push({v:W3(h[0],h[1],14),text:DB.areas[a].name.replace('エリア',''),cls:'l3d area',color:DB.areas[a].hex}));
+  if(groups.muni.visible&&cam.dist<130)muniWorld.forEach(o=>
+    L.push({v:o.mesh.position.clone().add(new THREE.Vector3(0,o.mesh.scale.x+1,0)),text:o.m.name.replace(/市|町/,''),cls:'l3d'}));
+  if(curView==='catch'){
+    const byO={};computeCatchment().filter(f=>!catchArea||f.area===catchArea).forEach(f=>byO[f.origin.id]=(byO[f.origin.id]||0)+f.v);
+    DB.origins.forEach(o=>{if(o.id==='tochigi'&&!catchArea)return;const v=byO[o.id]||0;if(v<5)return;
+      L.push({v:W3(o.lng,o.lat,3),text:`${o.name} `,btext:Math.round(v).toLocaleString()+'万人',cls:'l3d origin'})});
+  }
+  if(activeRoute&&groups.route.visible){
+    const r=DB.routes.find(x=>x.id===activeRoute);
+    r.stops.forEach((id,i)=>{const s=DB.spots.find(x=>x.id===id);
+      L.push({v:W3(s.lng,s.lat,4),text:String(i+1),cls:'l3d num'});
+      L.push({v:W3(s.lng,s.lat,7.5),text:shortName(s),cls:'l3d'})});
+  }
+  return L;
+}
+function updateLabels(){
+  const defs=labelDefs(),wrap=$('#lbl3d');
+  while(lblPool.length<defs.length){const d=document.createElement('div');wrap.appendChild(d);lblPool.push(d)}
+  lblPool.forEach((el,i)=>{
+    if(i>=defs.length){el.style.display='none';return}
+    const d=defs[i],s=screenPos(d.v);
+    if(s.z>1||s.x<-60||s.x>innerWidth+60||s.y<-40||s.y>innerHeight+40){el.style.display='none';return}
+    el.style.display='block';el.className=d.cls;
+    el.innerHTML=d.btext?d.text+'<b>'+d.btext+'</b>':d.text;
+    if(d.color)el.style.color=d.color;else el.style.color='';
+    el.style.left=s.x+'px';el.style.top=s.y+'px';
+  });
+}
+/* ---- animate ---- */
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const t=clock.getElapsedTime();
+  if(!REDUCED)particleSys.forEach(ps=>{
+    ps.curves.forEach(c=>{
+      for(let i=0;i<c.count;i++){
+        const u=(t*c.speed+i/c.count)%1;
+        const v=c.curve.getPoint(u);
+        ps.attr.setXYZ(c.n0+i,v.x,v.y,v.z);
+      }});
+    ps.attr.needsUpdate=true;
+  });
+  const kSize=Math.min(1,Math.max(.28,cam.dist/140));
+  PT_MATS.forEach(m=>{if(m.userData.base)m.size=m.userData.base*kSize});
+  applyCam();
+  renderer.render(scene,camera);
+  updateLabels();
+}
+/* ---- scene per view ---- */
+function sceneForView(v){
+  groups.spots.visible=['overview','map','flow','policy','ai','catch'].includes(v)&&!(v==='map'&&mapLayer==='muni');
+  groups.muni.visible=(v==='map'&&mapLayer==='muni')||v==='area'||v==='econ';
+  groups.flows.visible=v==='flow';
+  groups.route.visible=v==='flow';
+  groups.catch.visible=v==='catch';
+  if(v==='flow')buildGatewayFlows();
+  if(v==='catch')buildCatchArcs();
+  if(groups.muni.visible){buildMuni()}
+  const c=VIEW_CAM[v];
+  if(c)flyCam(new THREE.Vector3(c[0][0],c[0][1],c[0][2]),c[1],c[2],c[3]);
+}
+
+/* ---------- panel ---------- */
 function renderKPI(){
   const i=curYear,y=DB.years[i],p=DB.pref;
   $('#kpi-year').textContent=y;
@@ -821,20 +1151,24 @@ function renderChips(){
     Object.entries(DB.areas).map(([k,a])=>`<button class="chip" data-a="${k}">${a.name.replace('エリア','')}</button>`).join('');
   $$('#area-chips .chip').forEach(c=>c.onclick=()=>{
     $$('#area-chips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');
-    areaFilter=c.dataset.a||null;renderMap();renderFlowMap();renderSpotTable();});
+    areaFilter=c.dataset.a||null;buildSpots();buildMuni();renderSpotTable();});
   $('#cat-chips').innerHTML='<button class="chip active" data-c="">すべて</button>'+
     CATS.map(c=>`<button class="chip" data-c="${c}">${c}</button>`).join('');
   $$('#cat-chips .chip').forEach(c=>c.onclick=()=>{
     $$('#cat-chips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');
-    catFilter=c.dataset.c||null;renderMap();renderSpotTable();});
+    catFilter=c.dataset.c||null;buildSpots();renderSpotTable();});
   $$('#layer-chips .chip').forEach(c=>c.onclick=()=>{
     $$('#layer-chips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');
-    mapLayer=c.dataset.layer;renderMap();});
+    mapLayer=c.dataset.layer;sceneForView(curView);});
   $('#area-legend').innerHTML=Object.values(DB.areas).map(a=>
     `<div class="li"><span class="sw" style="background:${a.hex}"></span>${a.name}</div>`).join('');
+  $('#fly-chips').innerHTML=FLY.map((f,i)=>`<button class="chip" data-f="${i}">${f[0]}</button>`).join('');
+  $$('#fly-chips .chip').forEach(b=>b.onclick=()=>{
+    const f=FLY[+b.dataset.f];
+    if(Array.isArray(f[1]))flyCam(new THREE.Vector3(f[1][0],f[1][1],f[1][2]),f[2],f[3],f[4]);
+    else flyCam(W3(f[1],f[2],0),cam.theta,1.02,f[3]);
+  });
 }
-
-/* ---------- selected card ---------- */
 function selectSpot(s){
   $('#sel-card').style.display='block';
   $('#sel-nm').textContent=s.name;
@@ -852,55 +1186,18 @@ function selectMuni(m){
     `外国人宿泊(2024): <b>${fmt(m.foreign)}人泊</b>`+
     (m.stay?`<br>宿泊数(2024): <b>${m.stay/10}万人泊</b>`:'');
 }
-
-/* ---------- MAP ---------- */
-function renderMap(){
-  const svg=$('#map-svg');let g='';
-  g+=`<path d="${boundaryPath()}" fill="rgba(28,32,48,.75)" stroke="#3d465f" stroke-width="1.6"/>`;
-  // area labels
-  const albl=[["NIKKO",139.55,36.86,"nikko"],["NASU / 県北",139.95,36.90,"nasu"],
-    ["県央",139.86,36.60,"kenou"],["県南",139.63,36.40,"kennan"],["県東",140.10,36.58,"kentou"]];
-  albl.forEach(([t,lg,lt,k])=>{g+=`<text class="area-lbl" x="${px(lg)}" y="${py(lt)}" fill="${DB.areas[k].hex}" opacity=".55" text-anchor="middle">${t}</text>`});
-  if(mapLayer==='muni'){
-    const i=curYear,max=Math.max(...DB.munis.map(m=>m.iri[i]));
-    DB.munis.forEach((m,idx)=>{
-      if(areaFilter&&m.area!==areaFilter)return;
-      const r=5+Math.sqrt(m.iri[i]/max)*30;
-      g+=`<circle class="muni-bub" data-muni="${idx}" cx="${px(m.lng)}" cy="${py(m.lat)}" r="${r.toFixed(1)}" fill="${DB.areas[m.area].hex}" stroke="rgba(13,15,20,.6)" stroke-width="1"/>`;
-      if(m.iri[i]/max>0.28)g+=`<text x="${px(m.lng)}" y="${py(m.lat)+3}" text-anchor="middle" font-size="10" fill="#0d0f14" font-weight="700" pointer-events="none">${m.name.replace(/市|町/,'')}</text>`;
-    });
-  }else{
-    DB.spots.forEach(s=>{
-      if(areaFilter&&s.area!==areaFilter)return;
-      if(catFilter&&s.cat!==catFilter)return;
-      const r=3.5+s.scale*1.6;
-      g+=`<circle class="spot-dot" data-spot="${s.id}" cx="${px(s.lng)}" cy="${py(s.lat)}" r="${r}" fill="${DB.areas[s.area].hex}" stroke="rgba(13,15,20,.55)" stroke-width="1"/>`;
-      if(s.scale>=5)g+=`<text x="${px(s.lng)+r+3}" y="${py(s.lat)+3}" font-size="9.5" fill="rgba(232,234,242,.85)" pointer-events="none">${shortName(s)}</text>`;
-    });
-  }
-  svg.innerHTML=g;
-  svg.querySelectorAll('.spot-dot').forEach(el=>{
-    const s=DB.spots.find(x=>x.id==el.dataset.spot);
-    el.addEventListener('mousemove',e=>showTip(`<b>${s.name}</b><br>${s.city} ／ ${s.cat}<br>規模指数 ${s.scale}/5`,e.clientX,e.clientY));
-    el.addEventListener('mouseleave',hideTip);
-    el.addEventListener('click',()=>selectSpot(s));
-  });
-  svg.querySelectorAll('.muni-bub').forEach(el=>{
-    const m=DB.munis[el.dataset.muni];
-    el.addEventListener('mousemove',e=>showTip(`<b>${m.name}</b><br>入込 ${man(m.iri[curYear])}万人 (${DB.years[curYear]})`,e.clientX,e.clientY));
-    el.addEventListener('mouseleave',hideTip);
-    el.addEventListener('click',()=>selectMuni(m));
-  });
-}
 function renderSpotTable(){
   const rows=DB.spots.filter(s=>(!areaFilter||s.area===areaFilter)&&(!catFilter||s.cat===catFilter));
-  $('#spot-count').textContent=`${rows.length}件 ／ 全${DB.spots.length}地点(主要観光地点を編集部で調査・格納)`;
-  $('#spot-table').innerHTML='<tr><th>観光地点</th><th>市町</th><th>エリア</th><th>カテゴリ</th><th>規模指数</th></tr>'+
+  $('#spot-count').textContent=`${rows.length}件 ／ 全${DB.spots.length}地点。行クリックで3Dフライト`;
+  $('#spot-table').innerHTML='<tr><th>観光地点</th><th>市町</th><th>分類</th><th>規模</th></tr>'+
     rows.sort((a,b)=>b.scale-a.scale).map(s=>
-      `<tr><td><span class="a-dot" style="background:${DB.areas[s.area].hex}"></span>${s.name}</td><td>${s.city}</td><td style="font-family:var(--jp)">${DB.areas[s.area].name.replace('エリア','')}</td><td style="font-family:var(--jp)">${s.cat}</td><td>${s.scale} / 5</td></tr>`).join('');
+      `<tr data-sid="${s.id}" style="cursor:pointer"><td><span class="a-dot" style="background:${DB.areas[s.area].hex}"></span>${s.name}</td><td>${s.city}</td><td style="font-family:var(--jp)">${s.cat}</td><td>${s.scale}/5</td></tr>`).join('');
+  $$('#spot-table tr[data-sid]').forEach(tr=>tr.onclick=()=>{
+    const s=DB.spots.find(x=>x.id==tr.dataset.sid);
+    selectSpot(s);flyCam(W3(s.lng,s.lat,0),cam.theta,1.02,36)});
 }
 
-/* ---------- OVERVIEW charts ---------- */
+/* ---------- charts (drawer) ---------- */
 function lineChart(el,labels,series,opt={}){
   const w=560,h=200,pl=40,pr=14,pt=14,pb=26;
   let min=opt.min??Math.min(...series.flatMap(s=>s.values)),
@@ -917,11 +1214,10 @@ function lineChart(el,labels,series,opt={}){
     g+=`<polyline fill="none" stroke="${s.color}" stroke-width="2" points="${s.values.map((v,i)=>X(i)+','+Y(v)).join(' ')}"/>`;
     s.values.forEach((v,i)=>{g+=`<circle cx="${X(i)}" cy="${Y(v)}" r="${i===s.values.length-1?4:2.5}" fill="${s.color}"/>`});
   });
-  // end labels, de-overlapped (min 12px apart)
   const ends=series.map(s=>({name:s.name,y:Y(s.values[s.values.length-1])})).sort((a,b)=>a.y-b.y);
   for(let i=1;i<ends.length;i++)if(ends[i].y-ends[i-1].y<12)ends[i].y=ends[i-1].y+12;
   ends.forEach(e=>{g+=`<text x="${w-pr+6}" y="${e.y+3}" font-size="9" fill="#e8eaf2">${e.name}</text>`});
-  el.innerHTML=`<div style="overflow-x:auto"><svg viewBox="0 0 ${w+50} ${h}" style="width:100%;min-width:420px">${g}</svg></div>`+
+  el.innerHTML=`<div style="overflow-x:auto"><svg viewBox="0 0 ${w+50} ${h}" style="width:100%;min-width:320px">${g}</svg></div>`+
     `<div class="legend" style="flex-direction:row;gap:14px;margin-top:6px">`+
     series.map(s=>`<div class="li"><span class="sw" style="background:${s.color}"></span>${s.name}</div>`).join('')+`</div>`;
   const svg=el.querySelector('svg');
@@ -942,33 +1238,26 @@ function renderOverview(){
     {name:"宿泊数",color:"#d95926",values:idx(p.stay)},
     {name:"外国人宿泊",color:"#199e70",values:idx(p.foreign)}
   ],{unit:"",min:0});
-  // monthly grouped columns
   const m24=DB.monthlyIri.y2024,m23=DB.monthlyIri.y2023,max=Math.max(...m24,...m23);
   $('#chart-monthly').innerHTML=`<div class="mcols">`+m24.map((v,i)=>
     `<div class="mcol"><div class="mv">${man(v)}万</div>`+
     `<div class="c" data-m="${i}" data-y="2023" style="height:${m23[i]/max*100}%;background:#4a5470"></div>`+
     `<div class="c" data-m="${i}" data-y="2024" style="height:${v/max*100}%;background:#3987e5"></div></div>`).join('')+
-    `</div><div class="mlabels">`+[...Array(12)].map((_,i)=>`<span>${i+1}月</span>`).join('')+`</div>`+
+    `</div><div class="mlabels">`+[...Array(12)].map((_,i)=>`<span>${i+1}</span>`).join('')+`</div>`+
     `<div class="legend" style="flex-direction:row;gap:14px;margin-top:8px"><div class="li"><span class="sw" style="background:#3987e5"></span>2024年</div><div class="li"><span class="sw" style="background:#4a5470"></span>2023年</div></div>`;
   $('#chart-monthly').querySelectorAll('.c').forEach(c=>{
     c.addEventListener('mousemove',e=>{const i=+c.dataset.m,y=c.dataset.y,v=y==='2024'?m24[i]:m23[i];
       showTip(`<b>${i+1}月 ${y}</b><br>${man(v)}万人`,e.clientX,e.clientY)});
     c.addEventListener('mouseleave',hideTip);
   });
-  // category bars
   const cmax=Math.max(...DB.categories.map(c=>c.v));
   $('#chart-category').innerHTML=DB.categories.map(c=>
-    `<div class="brow"><div class="bl">${c.name}</div><div class="btrack"><div class="bfill" style="width:${c.v/cmax*100}%;background:#3987e5;opacity:${c.name==='その他'?.45:.95}"></div></div><div class="bv">${man(c.v)}万人</div></div>`).join('')+
-    `<div class="hint" style="margin-top:8px">構成比: 買い物・食25.1%(道の駅22.9%) ＞ その他 ＞ スポレク15.5% ＞ 文化・歴史14.2%。単一色の濃淡=量のみを表現。</div>`;
-  // country bars
+    `<div class="brow"><div class="bl">${c.name}</div><div class="btrack"><div class="bfill" style="width:${c.v/cmax*100}%;background:#3987e5;opacity:${c.name==='その他'?.45:.95}"></div></div><div class="bv">${man(c.v)}万人</div></div>`).join('');
   const named=DB.countries.filter(c=>!c.name.startsWith('その他')&&c.name!=='不明');
   const nmax=Math.max(...named.map(c=>c.v));
   $('#chart-country').innerHTML=named.map(c=>
-    `<div class="brow"><div class="bl">${c.name}</div><div class="btrack"><div class="bfill" style="width:${c.v/nmax*100}%;background:#199e70"></div></div><div class="bv">${fmt(c.v)}人泊</div></div>`).join('')+
-    `<div class="hint" style="margin-top:8px">アジア・中東56.5% ／ 欧州12.4% ／ 北米10.8%。台湾・中国・韓国・タイが増加、米国は前年比減。</div>`;
+    `<div class="brow"><div class="bl">${c.name}</div><div class="btrack"><div class="bfill" style="width:${c.v/nmax*100}%;background:#199e70"></div></div><div class="bv">${fmt(c.v)}</div></div>`).join('');
 }
-
-/* ---------- AREA view ---------- */
 function renderArea(){
   const i=curYear,y=DB.years[i];
   $('#rank-year').textContent=y+'年';$('#share-year').textContent=y+'年';
@@ -976,87 +1265,51 @@ function renderArea(){
   const max=rows[0].iri[i];
   $('#chart-muni-rank').innerHTML=rows.slice(0,15).map(m=>
     `<div class="brow"><div class="bl">${m.name}</div><div class="btrack"><div class="bfill" style="width:${m.iri[i]/max*100}%;background:${DB.areas[m.area].hex}"></div></div><div class="bv">${man(m.iri[i])}万人</div></div>`).join('');
-  // area share
   const tot=DB.munis.reduce((s,m)=>s+m.iri[i],0);
   const byArea=Object.keys(DB.areas).map(k=>({k,v:DB.munis.filter(m=>m.area===k).reduce((s,m)=>s+m.iri[i],0)}));
   const amax=Math.max(...byArea.map(a=>a.v));
   $('#chart-area-share').innerHTML=byArea.sort((a,b)=>b.v-a.v).map(a=>
-    `<div class="brow"><div class="bl">${DB.areas[a.k].name.replace('エリア','')}</div><div class="btrack"><div class="bfill" style="width:${a.v/amax*100}%;background:${DB.areas[a.k].hex}"></div></div><div class="bv">${(a.v/tot*100).toFixed(1)}%</div></div>`).join('')+
-    `<div class="hint" style="margin-top:8px">${Object.values(DB.areas).map(a=>`<b style="color:var(--txt)">${a.name.replace('エリア','')}</b>: ${a.desc}`).join('<br>')}</div>`;
-  // stay structure
+    `<div class="brow"><div class="bl">${DB.areas[a.k].name.replace('エリア','')}</div><div class="btrack"><div class="bfill" style="width:${a.v/amax*100}%;background:${DB.areas[a.k].hex}"></div></div><div class="bv">${(a.v/tot*100).toFixed(1)}%</div></div>`).join('');
   const smax=Math.max(...DB.staySummary.map(s=>s.v));
   $('#chart-stay').innerHTML=DB.staySummary.map(s=>
-    `<div class="brow"><div class="bl">${s.name}</div><div class="btrack"><div class="bfill" style="width:${s.v/smax*100}%;background:#d95926;opacity:${s.name.startsWith('その他')?.45:.95}"></div></div><div class="bv">${(s.v/10).toFixed(0)}万人泊</div></div>`).join('')+
-    `<div class="hint" style="margin-top:8px">日光市が県全体の35.4%。宿泊分類は旅館・ホテルが66.0%(547.8万人泊)。日光国立公園だけで宿泊505.9万人泊。</div>`;
-  // muni table
-  $('#muni-table').innerHTML='<tr><th>市町</th><th>入込2024(千人)</th><th>前年比</th><th>2019年比</th><th>外国人宿泊(人泊)</th></tr>'+
+    `<div class="brow"><div class="bl">${s.name}</div><div class="btrack"><div class="bfill" style="width:${s.v/smax*100}%;background:#d95926;opacity:${s.name.startsWith('その他')?.45:.95}"></div></div><div class="bv">${(s.v/10).toFixed(0)}万人泊</div></div>`).join('');
+  $('#muni-table').innerHTML='<tr><th>市町</th><th>入込(千人)</th><th>前年比</th><th>2019比</th><th>外国人宿泊</th></tr>'+
     rows.map(m=>{const yy=(m.iri[5]/m.iri[4]*100),r19=(m.iri[5]/m.iri[0]*100);
       return `<tr><td><span class="a-dot" style="background:${DB.areas[m.area].hex}"></span>${m.name}</td><td>${fmt(Math.round(m.iri[5]/1000))}</td>`+
       `<td style="color:${yy>=100?'var(--ok)':'var(--warn)'}">${yy.toFixed(1)}%</td>`+
       `<td style="color:${r19>=100?'var(--ok)':'var(--warn)'}">${r19.toFixed(1)}%</td><td>${fmt(m.foreign)}</td></tr>`}).join('');
 }
-
-/* ---------- FLOW view ---------- */
-function renderFlowMap(){
-  const svg=$('#flow-svg');let g='';
-  g+=`<path d="${boundaryPath()}" fill="rgba(28,32,48,.75)" stroke="#3d465f" stroke-width="1.6"/>`;
-  const albl=[["日光",139.55,36.80,"nikko"],["那須",139.98,36.95,"nasu"],["県央",139.86,36.58,"kenou"],["県南",139.62,36.40,"kennan"],["県東",140.10,36.50,"kentou"]];
-  albl.forEach(([t,lg,lt,k])=>{g+=`<text class="area-lbl" x="${px(lg)}" y="${py(lt)}" fill="${DB.areas[k].hex}" opacity=".4" text-anchor="middle">${t}</text>`});
-  // gateway flows
-  DB.gateways.forEach(gw=>{
-    const [ex,ey]=[px(gw.edge[0]),py(gw.edge[1])];
-    gw.to.forEach(t=>{
-      const [tx,ty]=[px(t[0]),py(t[1])];
-      const mx=(ex+tx)/2+(ey>ty?18:-18),my=(ey+ty)/2;
-      g+=`<path class="flow-line" d="M${ex},${ey} Q${mx},${my} ${tx},${ty}" stroke="rgba(245,196,0,.5)" stroke-width="1.6"/>`;
-    });
-    g+=`<circle cx="${ex}" cy="${ey}" r="5" fill="#f5c400"/>`;
-    const anchor=gw.edge[1]>37?'middle':(gw.edge[0]<139.5?'start':'middle');
-    const dy=gw.edge[1]>37?-10:(gw.edge[1]<36.3?16:-8);
-    g+=`<text class="gw-lbl" x="${ex}" y="${ey+dy}" text-anchor="${anchor==='middle'?'middle':'start'}">${gw.name.split(' / ')[0]}</text>`;
-  });
-  // active route
-  if(activeRoute){
-    const r=DB.routes.find(x=>x.id===activeRoute);
-    const pts=r.stops.map(id=>DB.spots.find(s=>s.id===id));
-    g+=`<polyline fill="none" stroke="${DB.areas[r.area].hex}" stroke-width="3" stroke-linejoin="round" points="${pts.map(s=>px(s.lng)+','+py(s.lat)).join(' ')}" opacity=".9"/>`;
-    pts.forEach((s,i)=>{
-      const ldy=i%2?16:-8; // alternate labels above/below to avoid collisions in clustered stops
-      g+=`<circle cx="${px(s.lng)}" cy="${py(s.lat)}" r="8" fill="${DB.areas[r.area].hex}" stroke="#0d0f14" stroke-width="1.5"/>`+
-         `<text x="${px(s.lng)}" y="${py(s.lat)+3.5}" text-anchor="middle" font-size="9" font-weight="700" fill="#0d0f14">${i+1}</text>`+
-         `<text x="${px(s.lng)+10}" y="${py(s.lat)+ldy}" font-size="9" fill="rgba(232,234,242,.9)">${shortName(s)}</text>`;
-    });
-  }
-  svg.innerHTML=g;
-}
 function renderFlow(){
   $('#gw-list').innerHTML=DB.gateways.map(g=>
-    `<div class="tl-ev"><div class="y" style="width:64px">${g.mode}</div><div class="e"><b>${g.name}</b><br><small>${g.desc}</small></div></div>`).join('');
+    `<div class="tl-ev"><div class="y" style="width:58px">${g.mode}</div><div class="e"><b>${g.name}</b><br><small>${g.desc}</small></div></div>`).join('');
   $('#route-list').innerHTML=DB.routes.map(r=>
     `<div class="route-card${activeRoute===r.id?' active':''}" data-r="${r.id}">
       <div class="rn"><span class="a-dot" style="background:${DB.areas[r.area].hex}"></span>${r.name}<span class="rtag">${r.tag}</span></div>
       <div class="rt">${r.desc}</div></div>`).join('');
   $$('#route-list .route-card').forEach(c=>c.onclick=()=>{
-    activeRoute=activeRoute===c.dataset.r?null:c.dataset.r;renderFlow();renderFlowMap();});
+    activeRoute=activeRoute===c.dataset.r?null:c.dataset.r;renderFlow();buildRoute();
+    if(activeRoute){const r=DB.routes.find(x=>x.id===activeRoute);
+      const s0=DB.spots.find(s=>s.id===r.stops[0]),s1=DB.spots.find(s=>s.id===r.stops[r.stops.length-1]);
+      const mid=W3((s0.lng+s1.lng)/2,(s0.lat+s1.lat)/2,0);
+      flyCam(mid,cam.theta,1.0,Math.max(40,W3(s0.lng,s0.lat,0).distanceTo(W3(s1.lng,s1.lat,0))*1.9));}
+  });
   $('#flow-issues').innerHTML=[
     ["risk","車依存とラストワンマイル","入込の22.9%が道の駅で車移動が支配的。鉄道駅から観光地への二次交通(路線バス・LRT延伸・シェアモビリティ)が戦略の主要施策④に位置付けられている。"],
     ["risk","いろは坂・那須街道の季節渋滞","紅葉期・連休の渋滞が満足度を毀損。パークアンドライドと分散化(平日・閑散期誘導=施策⑨)が論点。"],
     ["info","浅草-日光軸の高付加価値化","スペーシアX投入で座席単価を引き上げ。東京滞在型インバウンドの「日帰り→1泊」転換が外国人宿泊倍増目標の鍵。"],
     ["good","LRTと都市観光の接続","宇都宮LRTは開業後も利用好調。餃子・大谷・スポーツ観戦を束ねる都市型周遊導線が新たに成立。"],
-    ["info","広域周遊(北関東道・会津)","フラワーパークライン(足利-佐野-館林)、会津-日光ルートなど県境をまたぐ「組み合わせ旅」(施策⑦)で滞在日数を伸ばす設計。"]
+    ["info","広域周遊(北関東道・会津)","フラワーパークライン、会津-日光ルートなど県境をまたぐ「組み合わせ旅」(施策⑦)で滞在日数を伸ばす設計。"]
   ].map(([t,h,b])=>`<div class="ins-card ${t}"><div class="it">${h}</div><div class="ib">${b}</div></div>`).join('');
 }
-
-/* ---------- POLICY view ---------- */
 function renderPolicy(){
   const s=DB.strategy;
   $('#kpi-board').innerHTML=s.kpis.map(k=>{
     const pct=Math.min(100,k.base/k.target*100);
-    return `<div class="card" style="margin-bottom:0"><h3 style="font-size:11px">${k.name}</h3>
-      <div style="font-family:var(--mono);font-size:20px;color:var(--acc);font-variant-numeric:tabular-nums">${k.base.toLocaleString()}<small style="font-size:11px;color:var(--sub);font-family:var(--jp)"> ${k.unit}</small>
-      <span style="color:var(--sub);font-size:13px"> → ${k.target.toLocaleString()}${k.unit} <small>(2030)</small></span></div>
+    return `<div class="card" style="margin-bottom:8px"><h3 style="font-size:11px">${k.name}</h3>
+      <div style="font-family:var(--mono);font-size:18px;color:var(--acc);font-variant-numeric:tabular-nums">${k.base.toLocaleString()}<small style="font-size:10px;color:var(--sub);font-family:var(--jp)"> ${k.unit}</small>
+      <span style="color:var(--sub);font-size:12px"> → ${k.target.toLocaleString()}${k.unit} (2030)</span></div>
       <div class="prog"><div class="pf" style="width:${pct}%"></div></div>
-      <div class="kpi-row"><span>基準比 必要成長 +${((k.target/k.base-1)*100).toFixed(1)}%</span><span class="tgt">${pct.toFixed(0)}%</span></div></div>`}).join('');
+      <div class="kpi-row"><span>必要成長 +${((k.target/k.base-1)*100).toFixed(1)}%</span><span class="tgt">${pct.toFixed(0)}%</span></div></div>`}).join('');
   $('#strategy-boxes').innerHTML=s.pillars.map(p=>
     `<div class="st-box"><div class="st-n">${p.no}</div><div class="st-t">${p.title}</div><ul>${p.items.map(i=>`<li>${i}</li>`).join('')}</ul></div>`).join('');
   $('#event-timeline').innerHTML=s.events.map(e=>
@@ -1064,43 +1317,38 @@ function renderPolicy(){
   $('#related-plans').innerHTML=s.related.map(r=>
     `<div class="ins-card info"><div class="it">${r.t}</div><div class="ib">${r.d}</div></div>`).join('');
 }
-
-/* ---------- AI view ---------- */
 function computeInsights(){
   const p=DB.pref,ins=[];
   const rec=(p.iri[5]/p.iri[0]*100).toFixed(1),recS=(p.stay[5]/p.stay[0]*100).toFixed(1),recF=(p.foreign[5]/p.foreign[0]*100).toFixed(1);
-  ins.push(["good","回復の質は「宿泊型」へシフト",`2019年比で入込 <b>${rec}%</b> に対し宿泊 <b>${recS}%</b>・外国人宿泊 <b>${recF}%</b>。人数はコロナ前未達でも、滞在を伴う消費型観光が先に回復しており、KGI(観光消費額)には追い風。`]);
+  ins.push(["good","回復の質は「宿泊型」へシフト",`2019年比で入込 <b>${rec}%</b> に対し宿泊 <b>${recS}%</b>・外国人宿泊 <b>${recF}%</b>。滞在を伴う消費型観光が先に回復しており、KGI(観光消費額)には追い風。`]);
   const g=[...DB.munis].map(m=>({n:m.name,r:m.iri[5]/m.iri[4]*100})).sort((a,b)=>b.r-a.r).slice(0,5);
-  ins.push(["info","2024年 成長率上位市町",g.map(x=>`<b>${x.n}</b> ${x.r.toFixed(1)}%`).join(' ／ ')+"。塩谷(尚仁沢)・高根沢など県央周縁の伸びは道の駅・日帰り立寄り型で、LRT開業後の宇都宮(123.8%)は都市観光の構造変化を示す。"]);
+  ins.push(["info","2024年 成長率上位市町",g.map(x=>`<b>${x.n}</b> ${x.r.toFixed(1)}%`).join(' ／ ')+"。LRT開業後の宇都宮(123.8%)は都市観光の構造変化を示す。"]);
   const f=DB.munis.reduce((s,m)=>s+m.foreign,0);
   const top3=[...DB.munis].sort((a,b)=>b.foreign-a.foreign).slice(0,3);
   const c3=(top3.reduce((s,m)=>s+m.foreign,0)/f*100).toFixed(1);
-  ins.push(["risk","インバウンドの一極集中",top3.map(m=>`<b>${m.name}</b> ${(m.foreign/f*100).toFixed(1)}%`).join(' ／ ')+`。上位3市町で <b>${c3}%</b> を占有。65.2万人泊目標(2.3倍)の達成には日光の受入容量拡大と同時に、那須・県南への分散導線が必須。`]);
+  ins.push(["risk","インバウンドの一極集中",top3.map(m=>`<b>${m.name}</b> ${(m.foreign/f*100).toFixed(1)}%`).join(' ／ ')+`。上位3市町で <b>${c3}%</b>。65.2万人泊目標には分散導線が必須。`]);
   const stayRate=(p.stay[5]/p.iri[5]*100).toFixed(1);
-  const nikkoRate=(2941/10192*100).toFixed(1);
-  ins.push(["risk","日帰り型構造からの脱却",`県全体の宿泊率は <b>${stayRate}%</b>(宿泊830万÷入込8,997万)。日光市でも <b>${nikkoRate}%</b>。首都圏近接の裏返しであり、ナイトタイム・体験型コンテンツ(施策⑩)による「泊まる理由」づくりが消費額を左右する。`]);
+  ins.push(["risk","日帰り型構造からの脱却",`県全体の宿泊率は <b>${stayRate}%</b>。首都圏近接の裏返しで、ナイトタイム・体験型コンテンツ(施策⑩)による「泊まる理由」づくりが消費額を左右。`]);
   const m=DB.monthlyIri.y2024,tot=m.reduce((a,b)=>a+b,0);
-  const peak=(Math.max(...m)/tot*100).toFixed(1),low=(Math.min(...m)/tot*100).toFixed(1);
-  ins.push(["info","季節変動 — 冬期が最大の伸びしろ",`8月 <b>${peak}%</b> vs 12月 <b>${low}%</b> と約1.8倍の格差。戦略も「冬期の入込・宿泊数割合」を参考指標化。スキー(ハンタマ)・かまくら祭・イルミネーション(あしかが)の冬コンテンツを導線で束ねる余地。`]);
-  ins.push(["info","車導線が需要の背骨",`分類別で道の駅が単独 <b>2,062万人(22.9%)</b>。東北道・北関東道のIC至近に集客装置(佐野アウトレット・わんぱく公園・友愛の森)が並ぶ。EV充電・渋滞予測などモビリティDXが満足度に直結。`]);
-  ins.push(["good","台湾・東アジアが成長ドライバー",`外国人宿泊は台湾 <b>19.2%</b> で最大。台湾+中国+韓国+タイ+香港でアジアが過半(56.5%)。一方米国は前年比減であり、欧米豪の高単価層(目標単価4.7万円)開拓が第2の柱。`]);
+  ins.push(["info","季節変動 — 冬期が最大の伸びしろ",`8月 <b>${(Math.max(...m)/tot*100).toFixed(1)}%</b> vs 12月 <b>${(Math.min(...m)/tot*100).toFixed(1)}%</b> と約1.8倍の格差。冬コンテンツを導線で束ねる余地。`]);
+  ins.push(["info","車導線が需要の背骨",`道の駅が単独 <b>2,062万人(22.9%)</b>。IC至近に集客装置が並ぶ。モビリティDXが満足度に直結。`]);
+  ins.push(["good","台湾・東アジアが成長ドライバー",`外国人宿泊は台湾 <b>19.2%</b> で最大。アジアが過半(56.5%)。欧米豪の高単価層(目標単価4.7万円)開拓が第2の柱。`]);
   return ins;
 }
 function renderAI(){
   $('#ai-insights').innerHTML=computeInsights().map(([t,h,b])=>
     `<div class="ins-card ${t}"><div class="it">${h}<span class="itag ${t}">${t==='good'?'強み':t==='risk'?'課題':'構造'}</span></div><div class="ib">${b}</div></div>`).join('');
-  const s=DB.strategy,yrs=6;
+  const yrs=6;
   const rows=[["観光客入込数",8997,9699,"万人"],["延べ宿泊数",830,899,"万人泊"],["延べ外国人宿泊数",27.9,65.2,"万人泊"],["観光消費額(KGI)",9656,11562,"億円"]];
   $('#ai-gap').innerHTML=rows.map(([n,b,t,u])=>{
     const cagr=((Math.pow(t/b,1/yrs)-1)*100).toFixed(1);
     const need=((t/b-1)*100).toFixed(1);
-    return `<div class="brow"><div class="bl" style="width:150px">${n}</div><div class="btrack" style="height:18px"><div class="bfill" style="width:${Math.min(100,b/t*100)}%;background:${+need>50?'#d55181':'#199e70'}"></div></div><div class="bv" style="width:150px">+${need}% (年率${cagr}%)</div></div>`}).join('')+
-    `<div class="hint" style="margin-top:8px">2024実績→2030目標に必要な成長。外国人宿泊の年率 <b style="color:var(--warn)">15.3%</b> が最難関KPIで、伸び率では全国平均超えが要求される。入込・宿泊は年率1%台で射程圏。</div>`;
+    return `<div class="brow"><div class="bl" style="width:118px">${n}</div><div class="btrack" style="height:16px"><div class="bfill" style="width:${Math.min(100,b/t*100)}%;background:${+need>50?'#d55181':'#199e70'}"></div></div><div class="bv" style="width:112px">+${need}% (年率${cagr}%)</div></div>`}).join('');
   const copyText=async(txt,msg)=>{try{await navigator.clipboard.writeText(txt);toast(msg)}
     catch(e){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);
       ta.select();try{document.execCommand('copy');toast(msg)}catch(_){toast('コピーできませんでした')}ta.remove()}};
-  $('#btn-json').onclick=()=>copyText(JSON.stringify(TOCHIGI_DB,null,1),'TOCHIGI_DB(JSON)をコピーしました — AIツールに貼り付けて分析できます');
-  $('#btn-prompt').onclick=async()=>{
+  $('#btn-json').onclick=()=>copyText(JSON.stringify(TOCHIGI_DB,null,1),'TOCHIGI_DB(JSON)をコピーしました');
+  $('#btn-prompt').onclick=()=>{
     const prompt=`あなたは観光政策アナリストです。以下は栃木県の観光統計・観光地・導線・行政計画を格納したJSONデータベースです。
 このデータを用いて次を分析してください:
 1. 2030年KPI(特に外国人宿泊65.2万人泊)達成のための優先施策トップ3
@@ -1112,136 +1360,78 @@ DATA:
 ${JSON.stringify(TOCHIGI_DB)}`;
     copyText(prompt,'AI分析プロンプトをコピーしました')};
 }
-
-/* ---------- L6 CATCHMENT (来訪圏) ---------- */
-const CW=720,CH=640,CLON0=138.55,CLON1=141.35,CLAT0=34.95,CLAT1=38.35;
-const cpx=lng=>20+(lng-CLON0)/(CLON1-CLON0)*(CW-40);
-const cpy=lat=>20+(CLAT1-lat)/(CLAT1-CLAT0)*(CH-40);
+/* ---------- catchment ---------- */
 const AREA_HUBS={nikko:[139.60,36.76],nasu:[139.95,36.98],kenou:[139.87,36.58],kennan:[139.65,36.34],kentou:[140.10,36.49]};
 const haversine=(a,b)=>{const R=6371,dLa=(b[1]-a[1])*Math.PI/180,dLo=(b[0]-a[0])*Math.PI/180;
   const s=Math.sin(dLa/2)**2+Math.cos(a[1]*Math.PI/180)*Math.cos(b[1]*Math.PI/180)*Math.sin(dLo/2)**2;
   return 2*R*Math.asin(Math.sqrt(s))};
-let catchArea=null; // null=全エリア
 function computeCatchment(){
-  // flow[o][a] ∝ pop_o * k_o * exp(-d/60), 各エリアの入込実績(万人)に整合するよう按分
   const areaIri={};Object.keys(DB.areas).forEach(k=>{
-    areaIri[k]=DB.munis.filter(m=>m.area===k).reduce((s,m)=>s+m.iri[5],0)/10000}); // 万人
+    areaIri[k]=DB.munis.filter(m=>m.area===k).reduce((s,m)=>s+m.iri[5],0)/10000});
   const flows=[];
   Object.keys(DB.areas).forEach(a=>{
     const hub=AREA_HUBS[a];
     const raw=DB.origins.map(o=>({o,w:o.pop*o.k*Math.exp(-haversine([o.lng,o.lat],hub)/60)}));
     const tot=raw.reduce((s,r)=>s+r.w,0);
-    raw.forEach(r=>flows.push({area:a,origin:r.o,v:areaIri[a]*r.w/tot})); // 万人
+    raw.forEach(r=>flows.push({area:a,origin:r.o,v:areaIri[a]*r.w/tot}));
   });
   return flows;
 }
-function catchArc(x1,y1,x2,y2,wpx,c1,c2){
-  // 帯の流れ=向き: 発地(グレー・細め)→エリア(エリア色・太め)へ24分割のグラデーション帯
-  const mx=(x1+x2)/2,my=(y1+y2)/2;
-  const dx=x2-x1,dy=y2-y1,len=Math.hypot(dx,dy)||1;
-  const cx=mx-dy/len*len*.18,cy=my+dx/len*len*.18;
-  const N=24;let g='',prev=[x1,y1];
-  for(let i=1;i<=N;i++){
-    const t=i/N,it=1-t;
-    const bx=it*it*x1+2*it*t*cx+t*t*x2, by=it*it*y1+2*it*t*cy+t*t*y2;
-    const op=(.12+.75*t).toFixed(2), sw=(wpx*(0.45+0.55*t)).toFixed(1);
-    const col=t<.45?c1:c2;
-    g+=`<line x1="${prev[0].toFixed(1)}" y1="${prev[1].toFixed(1)}" x2="${bx.toFixed(1)}" y2="${by.toFixed(1)}" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" opacity="${op}"/>`;
-    prev=[bx,by];
-  }
-  return g;
-}
-function renderCatch(){
-  const svg=$('#catch-svg');
+function renderCatchPanel(){
   const flows=computeCatchment().filter(f=>!catchArea||f.area===catchArea);
-  let g='<defs><filter id="kde" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="7"/></filter></defs>';
-  // 県境(広域投影)
-  g+=`<path d="${'M'+BOUNDARY.map(p=>cpx(p[0]).toFixed(1)+','+cpy(p[1]).toFixed(1)).join('L')+'Z'}" fill="rgba(28,32,48,.85)" stroke="rgba(245,196,0,.55)" stroke-width="1.4"/>`;
-  // KDE風ヒート: 観光地点の集積を規模指数^2で重み付け
-  let heat='';
-  DB.spots.forEach(s=>{if(catchArea&&s.area!==catchArea)return;
-    heat+=`<circle cx="${cpx(s.lng)}" cy="${cpy(s.lat)}" r="${3+s.scale*2.6}" fill="${DB.areas[s.area].hex}" opacity="${.06+s.scale*.05}"/>`});
-  g+=`<g filter="url(#kde)" style="mix-blend-mode:screen">${heat}</g>`;
-  // アーク(発地→エリアハブ)
-  const vmax=Math.max(...flows.map(f=>f.v));
-  flows.sort((a,b)=>a.v-b.v).forEach(f=>{
-    if(f.origin.id==='tochigi'&&!catchArea)return; // 全域表示では県内アークは省略(自明で他を覆うため)
-    if(f.v<vmax*.02)return;
-    const hub=AREA_HUBS[f.area];
-    const w=1+Math.sqrt(f.v)*1.15;
-    g+=catchArc(cpx(f.origin.lng),cpy(f.origin.lat),cpx(hub[0]),cpy(hub[1]),w,'#8b93a8',DB.areas[f.area].hex);
-  });
-  // エリアハブ
-  Object.entries(AREA_HUBS).forEach(([a,h])=>{if(catchArea&&a!==catchArea)return;
-    g+=`<circle cx="${cpx(h[0])}" cy="${cpy(h[1])}" r="5" fill="${DB.areas[a].hex}" stroke="#0d0f14" stroke-width="1.4"/>`});
-  // 発地
   const byOrigin={};flows.forEach(f=>byOrigin[f.origin.id]=(byOrigin[f.origin.id]||0)+f.v);
-  DB.origins.forEach(o=>{
-    const v=byOrigin[o.id]||0;if(o.id==='tochigi'&&!catchArea)return;
-    const r=Math.min(18,2.5+Math.sqrt(v)*.42);
-    g+=`<circle cx="${cpx(o.lng)}" cy="${cpy(o.lat)}" r="${r.toFixed(1)}" fill="#e8eaf2" opacity=".55" stroke="#8b93a8" stroke-width="1"/>`+
-       `<text class="origin-lbl${v>vmax*.8?' big':''}" x="${cpx(o.lng)+r+4}" y="${cpy(o.lat)+3}">${o.name} ${v>=1?Math.round(v).toLocaleString()+'万人':''}</text>`;
-  });
-  svg.innerHTML=g;
-  // 表
   const rows=DB.origins.map(o=>({name:o.name,v:byOrigin[o.id]||0})).sort((a,b)=>b.v-a.v);
   const tot=rows.reduce((s,r)=>s+r.v,0);
-  $('#catch-table').innerHTML=`<table class="dtable ctable"><tr><th>発地</th><th>推計来訪(万人)</th><th>シェア</th></tr>`+
+  $('#catch-table').innerHTML=`<table class="dtable"><tr><th>発地</th><th>推計来訪(万人)</th><th>シェア</th></tr>`+
     rows.map(r=>`<tr><td>${r.name}</td><td>${Math.round(r.v).toLocaleString()}</td><td>${(r.v/tot*100).toFixed(1)}%</td></tr>`).join('')+`</table>`;
   $('#catch-notes').innerHTML=[
     ["info","首都圏一都三県が最大の来訪圏","東京・埼玉・神奈川・千葉の推計シェアが過半。新幹線48分・東武特急・東北道の3導線が支える構造で、戦略の「継続的な首都圏誘客」と整合。"],
     ["good","エリアごとに異なる後背圏","県南は埼玉・群馬比率が高く(北関東道・東北道)、那須は福島・東北方面の比率が上がる。エリア別のプロモーション出稿先を変える根拠になる。"],
-    ["risk","中部・関西以西はほぼ空白","距離減衰で西日本シェアは僅少。北陸新幹線経由や空路(羽田・成田経由)の広域商品造成、大阪・関西圏への認知施策が伸びしろ。"]
+    ["risk","中部・関西以西はほぼ空白","距離減衰で西日本シェアは僅少。北陸新幹線経由や空路の広域商品造成、大阪・関西圏への認知施策が伸びしろ。"]
   ].map(([t,h,b])=>`<div class="ins-card ${t}"><div class="it">${h}</div><div class="ib">${b}</div></div>`).join('');
-  // chips
   $('#catch-chips').innerHTML=`<button class="chip${!catchArea?' active':''}" data-ca="">全エリア</button>`+
     Object.entries(DB.areas).map(([k,a])=>`<button class="chip${catchArea===k?' active':''}" data-ca="${k}">${a.name.replace('エリア','')}</button>`).join('');
-  $$('#catch-chips .chip').forEach(c=>c.onclick=()=>{catchArea=c.dataset.ca||null;renderCatch()});
+  $$('#catch-chips .chip').forEach(c=>c.onclick=()=>{catchArea=c.dataset.ca||null;renderCatchPanel();buildCatchArcs()});
 }
-
-/* ---------- L7 ECONOMY (経済効果) ---------- */
-let econMode='total';
+/* ---------- economy ---------- */
 function computeEcon(){
   const E=DB.econ;
-  // score = 入込(万人) + 宿泊(万人泊)×宿泊重み ／ 宿泊は公表概要の上位4市町のみ実数、他は0扱い
   const rows=DB.munis.map(m=>({m,iriMan:m.iri[5]/10000,stayMan:(m.stay||0)/10}));
   const totScore=rows.reduce((s,r)=>s+r.iriMan+r.stayMan*E.stayWeight,0);
   rows.forEach(r=>{
-    r.oku=(r.iriMan+r.stayMan*E.stayWeight)/totScore*E.totalOku;          // 推計消費額(億円)
-    r.stayOku=r.stayMan*E.stayWeight/totScore*E.totalOku;                 // うち宿泊寄与
-    r.inbOku=r.m.foreign*E.inboundUnitMan/10000;                          // インバウンド消費(億円)=人泊×3.1万円
+    r.oku=(r.iriMan+r.stayMan*E.stayWeight)/totScore*E.totalOku;
+    r.stayOku=r.stayMan*E.stayWeight/totScore*E.totalOku;
+    r.inbOku=r.m.foreign*E.inboundUnitMan/10000;
   });
   return rows;
 }
 function renderEcon(){
   const E=DB.econ,rows=computeEcon();
   const inbNow=(DB.pref.foreign[5]*E.inboundUnitMan/10000);
-  const inb2030=(65.2*E.inboundTargetUnitMan*10000/10000); // 万人泊×万円=億円
+  const inb2030=65.2*E.inboundTargetUnitMan;
   $('#econ-cards').innerHTML=
     `<div class="eb hi"><div class="et">観光消費額 2024(KGI基準値)</div><div class="ev">${fmt(E.totalOku)}<small> 億円</small></div><div class="es">共通基準による全国観光入込客統計。過去最高。</div></div>`+
     `<div class="eb"><div class="et">2030 目標(KGI)</div><div class="ev">${fmt(E.targetOku)}<small> 億円</small></div><div class="es">+${fmt(E.targetOku-E.totalOku)}億円(+${((E.targetOku/E.totalOku-1)*100).toFixed(1)}%)。単価向上×宿泊増×インバウンドで達成する設計。</div></div>`+
-    `<div class="eb"><div class="et">インバウンド消費 推計</div><div class="ev">${inbNow.toFixed(0)}<small> 億円 → ${inb2030.toFixed(0)}億円</small></div><div class="es">27.9万人泊×3.1万円 → 65.2万人泊×4.7万円。約3.5倍化がKGIの最重要ドライバー。</div></div>`+
-    `<div class="eb"><div class="et">一人当たり単価 目標</div><div class="ev">3.2<small>→3.5万円(日本人)</small></div><div class="es">外国人は3.1→4.7万円。高付加価値化(施策⑪)・ナイトタイム(施策⑩)が単価を押し上げる。</div></div>`;
+    `<div class="eb"><div class="et">インバウンド消費 推計</div><div class="ev">${inbNow.toFixed(0)}<small> 億円 → ${inb2030.toFixed(0)}億円</small></div><div class="es">27.9万人泊×3.1万円 → 65.2万人泊×4.7万円。約3.5倍化がKGIの最重要ドライバー。</div></div>`;
   const modes={total:["市町別 推計観光消費額","入込+宿泊×2.8(単価比)でKGI基準値9,656億円を按分",r=>r.oku,v=>v.toFixed(0)+' 億円'],
-    stay:["市町別 宿泊寄与額(推計)","宿泊(万人泊)×単価重みの寄与分のみ。宿泊数は公表概要の上位4市町ベース",r=>r.stayOku,v=>v.toFixed(0)+' 億円'],
+    stay:["市町別 宿泊寄与額(推計)","宿泊×単価重みの寄与分のみ(公表上位4市町ベース)",r=>r.stayOku,v=>v.toFixed(0)+' 億円'],
     inbound:["市町別 インバウンド消費(推計)","外国人宿泊(人泊)×単価3.1万円",r=>r.inbOku,v=>v.toFixed(1)+' 億円']};
   const[mtitle,msub,mval,mfmt]=modes[econMode];
   $('#econ-rank-title').textContent=mtitle;$('#econ-rank-sub').textContent=msub;
   $('#econ-chips').innerHTML=Object.entries({total:"総消費額",stay:"宿泊寄与",inbound:"インバウンド"}).map(([k,l])=>
     `<button class="chip${econMode===k?' active':''}" data-em="${k}">${l}</button>`).join('');
-  $$('#econ-chips .chip').forEach(c=>c.onclick=()=>{econMode=c.dataset.em;renderEcon()});
+  $$('#econ-chips .chip').forEach(c=>c.onclick=()=>{econMode=c.dataset.em;renderEcon();updateMuniScales()});
   const sorted=rows.map(r=>({name:r.m.name,area:r.m.area,v:mval(r)})).sort((a,b)=>b.v-a.v).filter(r=>r.v>0).slice(0,15);
   const max=sorted[0]?.v||1;
   $('#econ-rank').innerHTML=sorted.map(r=>
-    `<div class="brow"><div class="bl">${r.name}</div><div class="btrack" style="height:16px"><div class="bfill" style="width:${r.v/max*100}%;background:${DB.areas[r.area].hex}"></div></div><div class="bv" style="width:96px">${mfmt(r.v)}</div></div>`).join('');
+    `<div class="brow"><div class="bl">${r.name}</div><div class="btrack" style="height:14px"><div class="bfill" style="width:${r.v/max*100}%;background:${DB.areas[r.area].hex}"></div></div><div class="bv" style="width:80px">${mfmt(r.v)}</div></div>`).join('');
   $('#econ-notes').innerHTML=[
     ["info","按分モデルの構造","市町別消費額の公式統計は存在しないため、消費額(県計9,656億円)を「入込数+宿泊数×2.8」のスコアで按分。重み2.8は観光庁 旅行・観光消費動向調査の宿泊/日帰り単価比を参考にした仮定値。"],
-    ["risk","宿泊データの制約","市町別宿泊数は公表概要に記載の上位4市町(日光・那須・宇都宮・那須塩原)のみ実数。その他市町は宿泊寄与0として扱うため、鬼怒川等を除く温泉地の消費はやや過小評価になる。"],
-    ["good","含意 — 宿泊が消費を決める","推計では日光市が入込2位でも消費額で首位級。宿泊1人泊は日帰り1人の約2.8倍の消費であり、「泊まる理由づくり」への投資が消費額に最も効く。"]
+    ["risk","宿泊データの制約","市町別宿泊数は公表概要の上位4市町のみ実数。その他市町は宿泊寄与0扱いのため、温泉地の消費はやや過小評価。"],
+    ["good","含意 — 宿泊が消費を決める","宿泊1人泊は日帰り1人の約2.8倍の消費。「泊まる理由づくり」への投資が消費額に最も効く。"]
   ].map(([t,h,b])=>`<div class="ins-card ${t}"><div class="it">${h}</div><div class="ib">${b}</div></div>`).join('');
 }
-
-/* ---------- L8 SEAMLESS VIEWER ---------- */
+/* ---------- L8 SEAMLESS VIEWER (2Dタイル) ---------- */
 const seam={cx:139.82,cy:36.68,z:9.05,drag:null,tiles:new Map(),fails:0,raf:0,inited:false};
 const TILE_URL=(z,x,y)=>`https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/${z}/${x}/${y}.jpg`;
 const lon2wx=(lon,z)=> (lon+180)/360*256*Math.pow(2,z);
@@ -1252,9 +1442,9 @@ const wy2lat=(wy,z)=>{const n=Math.PI-2*Math.PI*wy/(256*Math.pow(2,z));
   return 180/Math.PI*Math.atan(0.5*(Math.exp(n)-Math.exp(-n)))};
 function seamCanvas(){const cv=$('#seam-cv');const r=cv.getBoundingClientRect();
   const dpr=Math.min(2,devicePixelRatio||1);
-  if(cv.width!==Math.round(r.width*dpr)){cv.width=Math.round(r.width*dpr);cv.height=Math.round(r.height*dpr)}
+  if(cv.width!==Math.round(r.width*dpr)||cv.height!==Math.round(r.height*dpr)){cv.width=Math.round(r.width*dpr);cv.height=Math.round(r.height*dpr)}
   return {cv,ctx:cv.getContext('2d'),w:cv.width,h:cv.height,dpr}}
-function seamProject(lng,lat,S){ // → canvas px
+function seamProject(lng,lat,S){
   const z=seam.z;
   return [(lon2wx(lng,z)-lon2wx(seam.cx,z))*S.dpr+S.w/2,(lat2wy(lat,z)-lat2wy(seam.cy,z))*S.dpr+S.h/2]}
 function getTile(z,x,y){
@@ -1284,18 +1474,15 @@ function seamDraw(){
     const sx=(tx*256-tl_x)*scale,sy=(ty*256-tl_y)*scale;
     ctx.drawImage(t.img,sx,sy,256*scale+1,256*scale+1);drew=true;
   }
-  if(drew){ctx.fillStyle='rgba(6,10,18,.34)';ctx.fillRect(0,0,w,h)} // ダークトーン統一
-  // 県境
+  if(drew){ctx.fillStyle='rgba(6,10,18,.34)';ctx.fillRect(0,0,w,h)}
   ctx.beginPath();
   BOUNDARY.forEach((p,i)=>{const[X,Y]=seamProject(p[0],p[1],S);i?ctx.lineTo(X,Y):ctx.moveTo(X,Y)});
   ctx.closePath();
   if(!drew){ctx.fillStyle='rgba(28,32,48,.9)';ctx.fill()}
   ctx.strokeStyle='#f5c400';ctx.lineWidth=1.5*dpr;ctx.globalAlpha=.85;ctx.stroke();ctx.globalAlpha=1;
-  // エリアラベル(低ズームのみ)
-  if(seam.z<10.6){ctx.font=600+' '+13*dpr+'px Oswald, sans-serif';ctx.textAlign='center';
+  if(seam.z<10.6){ctx.font='600 '+13*dpr+'px Oswald, sans-serif';ctx.textAlign='center';
     Object.entries(AREA_HUBS).forEach(([a,hub])=>{const[X,Y]=seamProject(hub[0],hub[1],S);
       ctx.fillStyle=DB.areas[a].hex;ctx.globalAlpha=.9;ctx.fillText(DB.areas[a].name.replace('エリア',''),X,Y-14*dpr);ctx.globalAlpha=1})}
-  // 観光地点(ズームで密度変化)
   const minScale=seam.z>=12?1:seam.z>=10.5?2:seam.z>=9.5?3:4;
   ctx.textAlign='left';
   DB.spots.forEach(s=>{
@@ -1309,21 +1496,21 @@ function seamDraw(){
       ctx.fillStyle='rgba(232,234,242,.95)';ctx.strokeStyle='rgba(6,10,18,.8)';ctx.lineWidth=3*dpr;
       const t=shortName(s);ctx.strokeText(t,X+r+3*dpr,Y+3*dpr);ctx.fillText(t,X+r+3*dpr,Y+3*dpr)}
   });
-  // ズーム表示
-  ctx.font=600+' '+11*dpr+'px Oswald, sans-serif';ctx.fillStyle='rgba(139,147,168,.9)';ctx.textAlign='right';
+  ctx.font='600 '+11*dpr+'px Oswald, sans-serif';ctx.fillStyle='rgba(139,147,168,.9)';ctx.textAlign='right';
   ctx.fillText('Z '+seam.z.toFixed(1),w-12*dpr,h-26*dpr);
 }
 function seamFly(lng,lat,z){
-  const s0={cx:seam.cx,cy:seam.cy,z:seam.z},t0=performance.now(),dur=1300;
-  const dipZ=Math.min(s0.z,z)-0.9; // 一旦引いてから寄る"フライト"
+  const s0={cx:seam.cx,cy:seam.cy,z:seam.z},t0=performance.now(),dur=REDUCED?1:1300;
+  const dipZ=Math.min(s0.z,z)-0.9;
   cancelAnimationFrame(seam.raf);
   const step=t=>{
-    let p=Math.min(1,(t-t0)/dur);p=p<.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+    const raw=Math.max(0,Math.min(1,(t-t0)/dur));
+    const p=raw<.5?2*raw*raw:1-Math.pow(-2*raw+2,2)/2;
     seam.cx=s0.cx+(lng-s0.cx)*p;seam.cy=s0.cy+(lat-s0.cy)*p;
     const zl=s0.z+(z-s0.z)*p, dip=Math.sin(p*Math.PI)*Math.max(0,Math.min(s0.z,z)-dipZ);
     seam.z=zl-dip*0.9;
     seamDraw();
-    if(p<1)seam.raf=requestAnimationFrame(step);
+    if(raw<1)seam.raf=requestAnimationFrame(step);
   };
   seam.raf=requestAnimationFrame(step);
 }
@@ -1331,7 +1518,8 @@ const SEAM_DEST=[["県全域",139.82,36.68,9.05],["日光・奥日光",139.55,36
   ["那須高原",140.01,37.07,11.6],["塩原",139.82,36.965,11.6],["宇都宮",139.885,36.575,11.6],
   ["県南(足利・佐野)",139.55,36.33,11.0],["益子・もてぎ",140.14,36.49,10.8]];
 function seamInit(){
-  if(seam.inited)return;seam.inited=true;
+  if(seam.inited){seamDraw();return}
+  seam.inited=true;
   const cv=$('#seam-cv');
   $('#seam-fly').innerHTML=SEAM_DEST.map((d,i)=>`<button class="chip" data-d="${i}">${d[0]}</button>`).join('');
   $$('#seam-fly .chip').forEach(b=>b.onclick=()=>{const d=SEAM_DEST[+b.dataset.d];seamFly(d[1],d[2],d[3])});
@@ -1344,18 +1532,15 @@ function seamInit(){
     const lonM=wx2lon(lon2wx(seam.cx,seam.z)+(mx-S.w/2)/S.dpr,seam.z);
     const latM=wy2lat(lat2wy(seam.cy,seam.z)+(my-S.h/2)/S.dpr,seam.z);
     const nz=Math.max(7.5,Math.min(16,seam.z-Math.sign(e.deltaY)*0.4));
-    // カーソル位置を保ったままズーム
     const k=Math.pow(2,seam.z-nz);
     seam.z=nz;
     seam.cx=lonM+(seam.cx-lonM)*k;seam.cy=latM+(seam.cy-latM)*k;
-    // 簡易near-enough: 中心補正(メルカトルの緯度非線形は小域で近似)
     seamDraw();
   },{passive:false});
   cv.addEventListener('pointerdown',e=>{seam.drag={x:e.clientX,y:e.clientY,cx:seam.cx,cy:seam.cy};
     cv.classList.add('dragging');cv.setPointerCapture(e.pointerId)});
   cv.addEventListener('pointermove',e=>{if(!seam.drag)return;
-    const S=seamCanvas();
-    const dwx=(e.clientX-seam.drag.x)*S.dpr/S.dpr,dwy=(e.clientY-seam.drag.y)*S.dpr/S.dpr;
+    const dwx=e.clientX-seam.drag.x,dwy=e.clientY-seam.drag.y;
     seam.cx=wx2lon(lon2wx(seam.drag.cx,seam.z)-dwx,seam.z);
     seam.cy=wy2lat(lat2wy(seam.drag.cy,seam.z)-dwy,seam.z);
     seamDraw()});
@@ -1365,6 +1550,7 @@ function seamInit(){
   cv.addEventListener('pointerup',endDrag);
   cv.addEventListener('pointercancel',()=>{seam.drag=null;cv.classList.remove('dragging')});
   addEventListener('resize',()=>seamDraw());
+  seamDraw();
 }
 function seamClick(e){
   const cv=$('#seam-cv'),S=seamCanvas(),r=cv.getBoundingClientRect();
@@ -1376,12 +1562,44 @@ function seamClick(e){
 }
 
 /* ---------- view switching ---------- */
+const VIEW_TITLES={overview:"L0 概況",map:"L1 マップ",area:"L2 エリア",flow:"L3 導線",policy:"L4 行政計画",
+  ai:"L5 AI分析",catch:"L6 来訪圏",econ:"L7 経済効果",seamless:"L8 衛星写真"};
 const PHASES={0:"アフターDC — 入込9,228万人(近年ピーク)",1:"コロナ禍 — 入込6,117万人へ急減",2:"底ばい — 行動制限続く",3:"回復開始 — とちぎ国体開催",4:"回復本格化 — LRT開業・スペーシアX",5:"回復加速 — 入込8,997万人・外国人宿泊 過去最高"};
+function setView(v){
+  curView=v;
+  $$('.crumb').forEach(x=>x.classList.toggle('active',x.dataset.view===v));
+  $$('.view').forEach(x=>x.classList.remove('active'));
+  const el=document.getElementById('view-'+v);if(el)el.classList.add('active');
+  $('#drawer-title').innerHTML='分析 <b>'+VIEW_TITLES[v]+'</b>';
+  const isMap=v==='map';
+  $('#sec-layers').style.display=isMap?'block':'none';
+  $('#sec-cat').style.display=isMap?'block':'none';
+  if(v==='map')renderSpotTable();
+  if(v==='area')renderArea();
+  if(v==='flow')renderFlow();
+  if(v==='policy')renderPolicy();
+  if(v==='ai')renderAI();
+  if(v==='catch')renderCatchPanel();
+  if(v==='econ')renderEcon();
+  if(v==='seamless'){document.body.classList.remove('drawer-closed');seamInit()}
+  sceneForView(v);
+}
+$$('.crumb').forEach(c=>c.onclick=()=>setView(c.dataset.view));
+
+/* ---------- collapsibles ---------- */
+$('#panel-toggle').onclick=()=>document.body.classList.add('panel-closed');
+$('#panel-tab').onclick=()=>document.body.classList.remove('panel-closed');
+$('#drawer-toggle').onclick=()=>document.body.classList.add('drawer-closed');
+$('#drawer-tab').onclick=()=>document.body.classList.remove('drawer-closed');
+$('#tl-fold').onclick=()=>{document.body.classList.toggle('tl-folded');
+  $('#tl-fold').textContent=document.body.classList.contains('tl-folded')?'▴':'▾'};
+
+/* ---------- timeline ---------- */
 function setYear(i){
   curYear=i;$('#tl-year').textContent=DB.years[i];$('#tl-phase').textContent=PHASES[i];
   $('#tl-slider').value=i;renderKPI();
-  if($('#view-map').classList.contains('active'))renderMap();
-  if($('#view-area').classList.contains('active'))renderArea();
+  updateMuniScales();
+  if(curView==='area')renderArea();
 }
 $('#tl-slider').addEventListener('input',e=>setYear(+e.target.value));
 let playing=false,playT=null;
@@ -1389,25 +1607,10 @@ $('#tl-play').onclick=()=>{
   playing=!playing;$('#tl-play').textContent=playing?'⏸':'▶';
   if(playing){playT=setInterval(()=>{setYear((curYear+1)%6)},1400)}else clearInterval(playT)};
 
-$$('.crumb').forEach(c=>c.onclick=()=>{
-  $$('.crumb').forEach(x=>x.classList.remove('active'));c.classList.add('active');
-  $$('.view').forEach(v=>v.classList.remove('active'));
-  $('#view-'+c.dataset.view).classList.add('active');
-  const isMap=c.dataset.view==='map';
-  $('#sec-layers').style.display=isMap?'block':'none';
-  $('#sec-cat').style.display=isMap?'block':'none';
-  if(c.dataset.view==='map'){renderMap();renderSpotTable()}
-  if(c.dataset.view==='area')renderArea();
-  if(c.dataset.view==='flow'){renderFlow();renderFlowMap()}
-  if(c.dataset.view==='policy')renderPolicy();
-  if(c.dataset.view==='ai')renderAI();
-  if(c.dataset.view==='catch')renderCatch();
-  if(c.dataset.view==='econ')renderEcon();
-  if(c.dataset.view==='seamless'){seamInit();seamDraw()}
-});
-
 /* ---------- init ---------- */
+initScene();
 renderChips();renderKPI();renderOverview();
+sceneForView('overview');
 </script>
 </body>
 </html>
