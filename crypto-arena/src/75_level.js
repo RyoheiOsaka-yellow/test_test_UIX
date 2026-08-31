@@ -17,6 +17,7 @@ function setLevel(lv, fly) {
   flowGroup.visible = (lv !== 'arena');
   heatGroup.visible = (siteLayer === 'heat' && lv !== 'arena');
   odGroup.visible = (siteLayer === 'od' && lv !== 'arena');
+  isoGroup.visible = (siteLayer === 'iso' && lv !== 'arena');
   indoorGroup.visible = inArena;
   arenaShell.visible = (lv === 'site' && viewMode === 'solid');   // L1では詳細ファサードに差し替え
   gClose.visible = (lv !== 'plaza' && viewMode === 'solid');
@@ -44,9 +45,13 @@ function setSiteLayer(kind, opt) {
   } else if (kind === 'od') {
     if (opt === 'off') siteLayer = 'none';
     else { siteLayer = 'od'; KDE.mode = opt; }
+  } else if (kind === 'iso') {
+    if (opt === 'off') siteLayer = 'none';
+    else { siteLayer = 'iso'; if (!ISO.built || ISO.mode !== opt) buildIso(opt); }
   }
   heatGroup.visible = (siteLayer === 'heat' && level !== 'arena');
   odGroup.visible = (siteLayer === 'od' && level !== 'arena');
+  isoGroup.visible = (siteLayer === 'iso' && level !== 'arena');
   if (odGroup.visible) updateKDE();
   renderPanel();
 }

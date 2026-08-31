@@ -6,6 +6,7 @@ const pb = document.getElementById('panel-body');
 const SEAT_MODES = [
   ['crowd', '観客', '在館率カーブに連動した実人数表示', 0x9aa6bd],
   ['seg',   'セグメント', 'シーズン券/単券/二次流通/州外 …', 0xfdb927],
+  ['od',    '来場OD', 'どの出発地・交通手段から来た席か', 0x00a8ff],
   ['ltv',   'LTV', '個客生涯価値のヒートマップ', 0x3ddc84],
   ['churn', '離反リスク', '更新確率が低い層を席上で特定', 0xff5b4d],
   ['occ',   '販売率', '区画×列の販売率', 0x4da3ff],
@@ -138,6 +139,23 @@ function renderSitePanel() {
       '</b> / 1興行。これは<b>アリーナが街に落とす金額</b>で、自治体・周辺事業者向けの数字になります。</div>'
       : '') + '</div>' +
 
+    '<div class="sec"><div class="sec-t"><b>到達圏</b> — 道路グラフ上の等時線</div>' +
+    '<div class="row-btns" id="isom">' +
+      '<button class="chip sm' + (siteLayer !== 'iso' ? ' active' : '') + '" data-iso="off">OFF</button>' +
+      '<button class="chip sm' + (siteLayer === 'iso' && ISO.mode === 'drive' ? ' active' : '') + '" data-iso="drive">車</button>' +
+      '<button class="chip sm' + (siteLayer === 'iso' && ISO.mode === 'walk' ? ' active' : '') + '" data-iso="walk">徒歩</button>' +
+    '</div>' +
+    (siteLayer === 'iso' && ISO.built ?
+      '<div class="legend" style="margin-top:7px">' +
+      ISO.bands.map((b, i) => '<div class="li"><div class="sw" style="background:' + hex(ISO_COL[i]) +
+        '"></div>〜' + b + ' 分　<b style="color:var(--txt)">' + ISO.stats.km[i].toFixed(1) + ' km / ' +
+        fmt(ISO.stats.bld[i]) + ' 棟</b></div>').join('') + '</div>' +
+      '<div class="hint" style="margin-top:6px">アリーナから Dijkstra。リンク速度は' +
+      '<b>車 12〜54 km/h</b>（道路クラス別・試合日実勢）/ <b>徒歩 4.8 km/h</b>。' +
+      '建物棟数は圏内の宿泊・飲食・駐車の<b>受け皿規模</b>の代理指標です。</div>' : '') +
+    '</div>' +
+
+    '<div class="sec"><button class="tool-btn" id="open-od">📊 OD分析ボードを開く</button></div>' +
     '<div class="sec"><button class="tool-btn" id="go-arena">▶ L2 ボウル内部へ（19,079席の1to1分析）</button></div>';
 
   pb.querySelectorAll('[data-vm]').forEach(b => b.onclick = () => setViewMode(b.dataset.vm));
@@ -154,6 +172,9 @@ function renderSitePanel() {
   });
   pb.querySelectorAll('[data-hm]').forEach(b => b.onclick = () => setSiteLayer('heat', b.dataset.hm));
   pb.querySelectorAll('[data-od]').forEach(b => b.onclick = () => setSiteLayer('od', b.dataset.od));
+  pb.querySelectorAll('[data-iso]').forEach(b => b.onclick = () => setSiteLayer('iso', b.dataset.iso));
+  const oo = document.getElementById('open-od');
+  if (oo) oo.onclick = () => openBoard('od');
   pb.querySelectorAll('[data-bw]').forEach(b => b.onclick = () => {
     KDE.bw = +b.dataset.bw; updateKDE(); renderPanel();
   });
@@ -233,6 +254,32 @@ function renderArenaPanel() {
         '<div class="grad-lbl"><span>低露出</span><span>高露出</span></div>') +
       '<div class="hint" style="margin-top:6px">視認等級は <b>文字高 ÷ 視距離 × 3437.75 = 文字視角(arcmin)</b> で判定。' +
       'A≥60′ / B≥35′ / C≥18′ / D≥8′。</div></div>' : '') +
+
+    (seatMode === 'od' ?
+      '<div class="sec"><div class="sec-t"><b>出発地で絞り込む</b> — OD × 席の交差分析</div>' +
+      '<div class="row-btns" id="odf">' +
+      '<button class="chip sm' + (odFocus < 0 ? ' active' : '') + '" data-odf="-1">全出発地</button>' +
+      AGG.od.map((m, i) => '<button class="chip sm' + (odFocus === i ? ' active' : '') +
+        '" data-odf="' + i + '" style="border-color:' + hex(m.o.col) + '44">' +
+        m.o.name.replace(/（.*/, '').slice(0, 14) + ' ' + fmt(m.n) + '</button>').join('') +
+      '</div>' +
+      (odFocus >= 0 ? (function () {
+        const m = AGG.od[odFocus];
+        const T = ['FLOOR', 'L100', 'PRM', 'SUITE', 'L300'];
+        return '<div class="kpi-grid" style="margin-top:8px">' +
+          kpiCard(fmt(m.n), '人数', 'k') +
+          kpiCard(Math.round(m.avgMin) + '<small>分</small>', '平均所要') +
+          kpiCard(usd(m.avgLtv), '平均LTV', 'g') +
+          kpiCard(usd(m.rev), 'チケット収益', 'g') +
+        '</div><div class="sec-t" style="margin-top:8px">席ティア内訳</div>' +
+        T.map(t => bar(t, m.tier[t] || 0, m.n || 1, '#00c2ff')).join('') +
+        '<div class="sec-t" style="margin-top:7px">セグメント内訳</div>' +
+        Object.keys(SEGMENTS).filter(k => m.seg[k]).map(k =>
+          bar(SEGMENTS[k].name, m.seg[k], m.n || 1, hex(SEGMENTS[k].color))).join('');
+      })() : '') +
+      '<div class="hint" style="margin-top:7px">出発地を選ぶと<b>その出発地から来た席だけが着色</b>されます。' +
+      '「遠方 × 上層」なのか「遠方 × プレミア」なのかが座席上で読めるので、' +
+      '交通・宿泊を束ねたパッケージの設計対象が特定できます。</div></div>' : '') +
 
     ((seatMode === 'ltv' || seatMode === 'churn' || seatMode === 'occ') ?
       '<div class="sec"><div class="grad-bar"></div><div class="grad-lbl"><span>' +
@@ -318,6 +365,12 @@ function renderArenaPanel() {
   pb.querySelectorAll('[data-sm]').forEach(b => b.onclick = () => {
     seatMode = b.dataset.sm; repaintSeats();
     if (pcMode) repaintSeatCloud();
+    renderPanel();
+  });
+  pb.querySelectorAll('[data-odf]').forEach(b => b.onclick = () => {
+    odFocus = +b.dataset.odf; repaintSeats();
+    if (pcMode) repaintSeatCloud();
+    if (typeof draw2D === 'function') draw2D();
     renderPanel();
   });
   pb.querySelectorAll('[data-bd]').forEach(b => b.onclick = () => {

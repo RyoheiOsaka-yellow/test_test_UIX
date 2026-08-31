@@ -146,6 +146,26 @@ def build():
             if math.hypot(x,y) < 3000:
                 stations.append({'n': t['name'], 'p': [x,y],
                                  'k': t.get('station') or t.get('railway')})
+    # 交差点ノードを数える。Douglas-Peucker は直線上の点を落とすため、
+    # 何もしないと T字路の分岐点が消えて道路網が分断される（連結成分が壊れる）。
+    junction = {}
+    for w in ways.values():
+        if w['tags'].get('highway') in ROAD_CLASS or w['tags'].get('railway'):
+            for n in w['nd']:
+                junction[n] = junction.get(n, 0) + 1
+
+    def simplify_chain(refs, xy, tol):
+        """交差点で分割してから各区間を間引き、連結性を保ったまま点数を減らす"""
+        cuts = [0] + [i for i in range(1, len(refs) - 1)
+                      if junction.get(refs[i], 0) >= 2] + [len(refs) - 1]
+        out = []
+        for a, b in zip(cuts, cuts[1:]):
+            piece = simplify(xy[a:b + 1], tol)
+            out += piece[:-1] if out or True else piece
+            if (a, b) == (cuts[-2], cuts[-1]):
+                out.append(piece[-1])
+        return out or xy
+
     buildings, mid, dots = [], [], []
     roads, rail_heavy, rail_metro, parking = [], [], [], []
     lu = {'park': [], 'retail': [], 'edu': [], 'water': []}
@@ -200,7 +220,7 @@ def build():
 
         hw = t.get('highway')
         if hw in ROAD_CLASS:
-            o = {'p': simplify(xy, 3.0), 'c': ROAD_CLASS[hw]}
+            o = {'p': simplify_chain(w['nd'], xy, 3.0), 'c': ROAD_CLASS[hw]}
             try:
                 if t.get('lanes'): o['ln'] = int(float(t['lanes']))
             except ValueError:
@@ -211,7 +231,7 @@ def build():
 
         rw = t.get('railway')
         if rw in ('rail', 'light_rail', 'subway', 'tram'):
-            o = struct({'p': simplify(xy, 5.0)})
+            o = struct({'p': simplify_chain(w['nd'], xy, 5.0)})
             if t.get('name'): o['n'] = t['name']
             if rw == 'subway': o['b'] = -1
             (rail_heavy if rw == 'rail' else rail_metro).append(o)

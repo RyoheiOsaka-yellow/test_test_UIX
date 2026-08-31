@@ -6,7 +6,7 @@
 /* ================= 2D 席図（3Dと双方向連動） ================= */
 const m2 = document.getElementById('m2'), m2cv = document.getElementById('m2-cv');
 let m2ctx = null, m2geo = null;
-const M2_MODES = [['seg', 'セグメント'], ['ltv', 'LTV'], ['churn', '離反リスク'],
+const M2_MODES = [['seg', 'セグメント'], ['od', '来場OD'], ['ltv', 'LTV'], ['churn', '離反リスク'],
                   ['occ', '販売率'], ['cat', '席種'], ['exp', '露出'], ['grade', '視認等級']];
 
 function open2D() {
@@ -37,6 +37,10 @@ function seatColor2D(i) {
   if (seatMode === 'exp') return '#' + heatC(expBoard < 0 ? s.exp
     : clamp(SEAT.expB[expBoard * SEAT.list.length + i] / SEAT.maxB[expBoard], 0, 1)).getHexString();
   if (seatMode === 'grade') return hex(GRADE_C[SEAT.grade[Math.max(0, expBoard) * SEAT.list.length + i]]);
+  if (seatMode === 'od') {
+    const f = fanAt(i);
+    return odFocus < 0 || f.oi === odFocus ? hex(f.org.col) : '#1a2030';
+  }
   return '#3a465e';
 }
 
@@ -113,7 +117,7 @@ m2cv.addEventListener('click', e => {
 const board = document.getElementById('board');
 document.getElementById('board-x').onclick = () => board.style.display = 'none';
 board.onclick = e => { if (e.target === board) board.style.display = 'none'; };
-const BOARD_TABS = [['media', '媒体・スポンサー'], ['seg', 'セグメント'],
+const BOARD_TABS = [['od', 'OD・移動'], ['media', '媒体・スポンサー'], ['seg', 'セグメント'],
                     ['price', '価格'], ['churn', 'リテンション']];
 let boardTab = 'media';
 
@@ -127,7 +131,8 @@ function openBoard(tab) {
   document.getElementById('board-tabs').querySelectorAll('[data-bt]').forEach(b =>
     b.onclick = () => openBoard(b.dataset.bt));
   const body = document.getElementById('board-body');
-  body.innerHTML = boardTab === 'media' ? boardMedia()
+  body.innerHTML = boardTab === 'od' ? boardOD()
+    : boardTab === 'media' ? boardMedia()
     : boardTab === 'seg' ? boardSeg()
     : boardTab === 'price' ? boardPrice() : boardChurn();
   body.querySelectorAll('canvas[data-chart]').forEach(cv => drawChart(cv));
@@ -218,6 +223,121 @@ function boardChurn() {
         [t, fmt(m.n), '+' + (m.up * 100).toFixed(0) + '%', usd(m.val)])) + '</div>';
 }
 
+
+/* ================= OD・移動 ボード ================= */
+function boardOD() {
+  const k = AGG.kpi, sold = k.sold || 1;
+  const od = AGG.od.slice().sort((a, b) => b.n - a.n);
+
+  /* --- 交通手段別 --- */
+  const byMode = {};
+  for (const m of AGG.od) {
+    const e = byMode[m.o.mode] || (byMode[m.o.mode] = { n: 0, min: 0, km: 0, rev: 0, fb: 0 });
+    e.n += m.n; e.min += m.min; e.km += m.km; e.rev += m.rev; e.fb += m.fb;
+  }
+  const modeRows = Object.entries(byMode).sort((a, b) => b[1].n - a[1].n).map(([mo, e]) =>
+    [mo, fmt(e.n), (e.n / sold * 100).toFixed(1) + '%',
+     (e.km / Math.max(1, e.n)).toFixed(1) + ' km',
+     Math.round(e.min / Math.max(1, e.n)) + ' 分',
+     usd(e.rev / Math.max(1, e.n)), usd(e.fb / Math.max(1, e.n))]);
+
+  /* --- 駐車需要 --- */
+  const carN = (byMode.CAR ? byMode.CAR.n : 0);
+  const OCC = 2.6;                                   // 1台あたり乗車人数
+  const need = Math.round(carN / OCC);
+  const ratio = need / Math.max(1, PARK_CAP.stalls);
+
+  /* --- OD行列（商圏 × 出発地） --- */
+  const origins = AGG.od.map(m => m.o.name);
+  const mtxHead = ['商圏 \\ 出発地'].concat(origins.map(n => n.replace(/（.*/, '').slice(0, 12)));
+  const mtxRows = REGIONS.map(r => {
+    const row = AGG.odMatrix[r.n] || {};
+    return [r.n].concat(origins.map(o => row[o] ? fmt(row[o]) : '·'));
+  });
+  mtxRows.push(['<b>計</b>'].concat(AGG.od.map(m => '<b>' + fmt(m.n) + '</b>')));
+
+  /* --- 出発地 × 席ティア --- */
+  const TIERS = ['FLOOR', 'L100', 'PRM', 'SUITE', 'L300'];
+  const tierRows = od.map(m => [m.o.name.replace(/（.*/, '')].concat(
+    TIERS.map(t => m.tier[t] ? fmt(m.tier[t]) : '·')));
+
+  /* --- 退場OD（回遊） --- */
+  const dispRows = DISPERSAL.map(d => {
+    const n = Math.round(sold * d.share);
+    return [d.name, d.mode, fmt(n), (d.share * 100).toFixed(1) + '%',
+            d.spend ? usd(d.spend) : '—', d.spend ? usd(n * d.spend) : '—',
+            fmt(d.route.total) + ' m'];
+  });
+  const outSpend = DISPERSAL.reduce((a, d) => a + sold * d.share * d.spend, 0);
+
+  /* --- ゲート負荷 --- */
+  const gateRows = Object.entries(AGG.gate).sort((a, b) => b[1] - a[1]).map(([g, n]) =>
+    [g, fmt(n), (n / sold * 100).toFixed(1) + '%',
+     fmt(Math.round(n / 25 / 2.2)) + ' 分', fmt(Math.round(n * 0.32))]);
+
+  /* --- 等時線 --- */
+  const isoRows = ISO.built ? ISO.bands.map((b, i) =>
+    ['〜' + b + ' 分', ISO.stats.km[i].toFixed(1) + ' km',
+     fmt(ISO.stats.bld[i]) + ' 棟']).concat([['圏外',
+       ISO.stats.km[ISO.bands.length].toFixed(1) + ' km',
+       fmt(ISO.stats.bld[ISO.bands.length]) + ' 棟']]) : null;
+
+  return '<div class="bcard wide"><h4>出発地別 OD サマリ — ' + GAMES[curGame].name + '</h4>' +
+    tbl(['出発地', '手段', '人数', 'シェア', '平均距離', '平均所要', '平均LTV', 'チケット収益', '場内購買'],
+      od.map(m => [m.o.name, m.o.mode, fmt(m.n), (m.n / sold * 100).toFixed(1) + '%',
+        m.avgKm.toFixed(1) + ' km', Math.round(m.avgMin) + ' 分',
+        usd(m.avgLtv), usd(m.rev), usd(m.fb)])) +
+    '<div class="hint" style="margin-top:9px">所要は<b>ドアツードア</b>推計＝当日移動距離÷手段別速度 ' +
+    '＋ 端末アクセス徒歩（経路長÷80m/分）＋ 待ち時間（Metro 7分 / 配車 6分 / 駐車 9分）。' +
+    '州外・海外客は市内に宿泊している前提で、<b>居住地距離ではなく宿泊拠点からの距離</b>を使っています。' +
+    '経路長は実道路グラフ上の A* 解です。</div></div>' +
+
+    '<div class="bcard"><h4>交通手段別</h4>' +
+    tbl(['手段', '人数', 'シェア', '平均距離', '平均所要', '平均単価', '場内購買/人'], modeRows) +
+    '<canvas data-chart="modeBar" height="170"></canvas></div>' +
+
+    '<div class="bcard"><h4>駐車需要 vs 徒歩圏の供給</h4>' +
+    '<div class="fc-kpi" style="grid-template-columns:1fr 1fr 1fr">' +
+    '<div><div class="v">' + fmt(need) + '</div><div class="l">必要台数（' + OCC + '人/台）</div></div>' +
+    '<div><div class="v">' + fmt(PARK_CAP.stalls) + '</div><div class="l">800m圏 供給 (' + PARK_CAP.lots + '区画)</div></div>' +
+    '<div><div class="v" style="color:' + (ratio > 1 ? 'var(--warn)' : 'var(--ok)') + '">' +
+      (ratio * 100).toFixed(0) + '%</div><div class="l">充足率</div></div></div>' +
+    '<div class="hint" style="margin-top:8px">供給は OSM の駐車場ポリゴン実面積（' +
+    fmt(PARK_CAP.m2) + ' m²）を <b>1台=28m²</b>（通路込み）で換算した推計。' +
+    (ratio > 1 ? '<b style="color:var(--warn)">需要超過</b>のため、路上・遠方駐車と' +
+      'ライドシェア/Metroへの転換が発生している想定です。' : '圏内で概ね吸収できる水準です。') +
+    '</div></div>' +
+
+    '<div class="bcard wide"><h4>OD行列 — 商圏 × 出発地（人数）</h4>' +
+    '<div style="overflow-x:auto">' + tbl(mtxHead, mtxRows) + '</div>' +
+    '<div class="hint" style="margin-top:8px">個客レコードの商圏に整合する出発地を割り当てた結果。' +
+    '<b>実データでは fans.zip5 と tickets.scanned_at / gate から実測OD行列に置換</b>できます。</div></div>' +
+
+    '<div class="bcard wide"><h4>出発地 × 席ティア</h4>' +
+    tbl(['出発地'].concat(TIERS), tierRows) +
+    '<div class="hint" style="margin-top:8px">遠方ほど上層に寄るのか、プレミアに寄るのか。' +
+    '<b>遠方かつ高単価</b>のセルは、宿泊・交通を束ねたパッケージ販売の対象です。</div></div>' +
+
+    '<div class="bcard"><h4>ゲート別 負荷</h4>' +
+    tbl(['ゲート', '入場者', 'シェア', '想定所要', 'ピーク時/10分'], gateRows) +
+    '<div class="hint" style="margin-top:8px">所要はターンスタイル25通り・1通り2.2人/分での捌き時間。' +
+    'ピーク時は開場後60分に32%が集中する想定。</div></div>' +
+
+    '<div class="bcard"><h4>到達圏（等時線・' + (ISO.mode === 'walk' ? '徒歩' : '車') + '）</h4>' +
+    (isoRows ? tbl(['到達時間', '道路延長', '建物'], isoRows) +
+      '<div class="hint" style="margin-top:8px">道路グラフ上の Dijkstra。' +
+      'リンク速度は車 12〜54km/h（道路クラス別・試合日実勢）、徒歩 4.8km/h。' +
+      '建物棟数は<b>圏内の受け皿（宿泊・飲食・駐車）の規模</b>の代理指標です。</div>'
+      : '<div class="hint">L0 パネルの「到達圏」から計算してください。</div>') + '</div>' +
+
+    '<div class="bcard wide"><h4>退場OD — 直帰と周辺回遊</h4>' +
+    tbl(['行き先', '手段', '人数', 'シェア', '客単価', '場外消費', '経路長'], dispRows) +
+    '<div class="hint" style="margin-top:9px">1興行あたりの<b>場外消費 ' + usd(outSpend) +
+    '</b>。年44興行で <b>' + usd(outSpend * 44) + '</b>。' +
+    'これはアリーナが周辺の街に落とす金額で、自治体・周辺事業者・スポンサーに対する' +
+    '「地域経済インパクト」の根拠になります。</div></div>';
+}
+
 /* ---- 簡易チャート ---- */
 function drawChart(cv) {
   const dpr = devicePixelRatio;
@@ -241,7 +361,13 @@ function drawChart(cv) {
       c.fillText(labels[i], 0, 0); c.restore();
     });
   };
-  if (kind === 'mediaBar') {
+  if (kind === 'modeBar') {
+    const b = {};
+    for (const m of AGG.od) b[m.o.mode] = (b[m.o.mode] || 0) + m.n;
+    const keys = Object.keys(b).sort((x, y) => b[y] - b[x]);
+    barsOf(keys, keys.map(x => b[x]),
+      keys.map(x => '#' + (MODE_COL[x] || 0x8590a8).toString(16).padStart(6, '0')));
+  } else if (kind === 'mediaBar') {
     const t = {};
     for (const b of AGG.board) t[b.type] = (t[b.type] || 0) + b.contract;
     barsOf(Object.keys(t), Object.values(t), ['#00c2ff', '#fdb927', '#3ddc84', '#8a5cc4', '#ff5fa2']);

@@ -118,6 +118,10 @@ function repaintSeatCloud() {
     else if (seatMode === 'exp') C.copy(heatC(expBoard < 0 ? s.exp
       : clamp(SEAT.expB[expBoard * N + i] / SEAT.maxB[expBoard], 0, 1)));
     else if (seatMode === 'grade') C.setHex(GRADE_C[SEAT.grade[Math.max(0, expBoard) * N + i]]);
+    else if (seatMode === 'od') {
+      const f = fanAt(i);
+      C.setHex(odFocus < 0 || f.oi === odFocus ? f.org.col : 0x121822);
+    }
     else if (seatMode === 'price') C.copy(divC(s.pf || 1));
     else C.copy((i % 101) / 101 < occNow ? LIT : DIM);
     col.setXYZ(i, C.r, C.g, C.b);

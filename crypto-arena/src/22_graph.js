@@ -32,6 +32,24 @@ const roadGraph = (function () {
     }
   }
 
+  /* --- 連結成分ラベリング ---
+     OSM には本線につながらない私有地内通路や独立スタブが混ざる。
+     最大成分を「本線ネットワーク」として扱い、経路探索の起終点はそこへ吸着させる。 */
+  const comp = new Int32Array(nodes.length).fill(-1);
+  let nc = 0, best = -1, bestSize = 0;
+  for (let i = 0; i < nodes.length; i++) {
+    if (comp[i] >= 0) continue;
+    const stack = [i]; comp[i] = nc;
+    let size = 0;
+    while (stack.length) {
+      const cur = stack.pop(); size++;
+      for (const nb of nodes[cur].adj) if (comp[nb] < 0) { comp[nb] = nc; stack.push(nb); }
+    }
+    if (size > bestSize) { bestSize = size; best = nc; }
+    nc++;
+  }
+  const mainComp = best;
+
   /* --- 空間ハッシュ（最近傍ノード探索用・粗い格子） --- */
   const GCELL = 60, grid = new Map();
   const gkey = (x, z) => Math.floor(x / GCELL) + '_' + Math.floor(z / GCELL);
@@ -40,15 +58,16 @@ const roadGraph = (function () {
     let a = grid.get(k); if (!a) { a = []; grid.set(k, a); }
     a.push(i);
   });
-  function nearest(x, z, maxCls) {
+  function nearest(x, z, maxCls, anyComp) {
     let best = -1, bd = Infinity;
-    for (let ring = 0; ring <= 6 && best < 0; ring++) {
+    for (let ring = 0; ring <= 9 && best < 0; ring++) {
       const cx = Math.floor(x / GCELL), cz = Math.floor(z / GCELL);
       for (let i = -ring; i <= ring; i++) for (let j = -ring; j <= ring; j++) {
         if (ring > 0 && Math.max(Math.abs(i), Math.abs(j)) !== ring) continue;
         const a = grid.get((cx + i) + '_' + (cz + j)); if (!a) continue;
         for (const n of a) {
           if (maxCls != null && nodes[n].cls > maxCls) continue;
+          if (!anyComp && comp[n] !== mainComp) continue;     // 孤立スタブへの吸着を防ぐ
           const d = (nodes[n].x - x) ** 2 + (nodes[n].z - z) ** 2;
           if (d < bd) { bd = d; best = n; }
         }
@@ -100,8 +119,9 @@ const roadGraph = (function () {
       for (const nb of cn.adj) {
         const nn = nodes[nb];
         if (walk && nn.cls === 4) continue;          // 歩行者はフリーウェイを歩けない
-        /* 車両は幹線が速い / 歩行者は生活道路を好む */
-        const w = walk ? (nn.cls >= 3 ? 1.25 : 1.0) : (1.35 - nn.cls * 0.08);
+        /* 車両は幹線が速い。歩行者は幹線にも歩道があるので等価に扱い、
+           フリーウェイだけを除外する（先の cls===4 判定）。 */
+        const w = walk ? 1.0 : (1.35 - nn.cls * 0.08);
         const nc = cost[cur] + Math.hypot(nn.x - cn.x, nn.z - cn.z) * w;
         if (nc < cost[nb]) {
           cost[nb] = nc; came[nb] = cur;
@@ -115,7 +135,8 @@ const roadGraph = (function () {
     out.reverse();
     return out;
   }
-  return { path, nearest, nodes, size: nodes.length };
+  return { path, nearest, nodes, comp, mainComp, size: nodes.length,
+           mainSize: bestSize, comps: nc };
 })();
 
 /* 折れ線に距離テーブルを付ける（エージェントの距離→座標変換用） */

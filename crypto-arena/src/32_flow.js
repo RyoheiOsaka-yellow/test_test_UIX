@@ -76,7 +76,13 @@ const routeLines = new THREE.Group(); flowGroup.add(routeLines);
   for (const d of defs) {
     const sx = d.p ? d.p[0] : d.x, sz = d.p ? d.p[1] : d.z;
     if (!isFinite(sx) || !isFinite(sz)) continue;
-    const gate = gateW[ORIGINS.length % gateW.length];
+    /* 到達ゲートは最寄りを選ぶ（総当たりで直線距離最小） */
+    let gi = 0, gd = Infinity;
+    gateW.forEach((g, k) => {
+      const dd = Math.hypot(g.x - sx, g.z - sz);
+      if (dd < gd) { gd = dd; gi = k; }
+    });
+    const gate = gateW[gi];
     const walking = (d.mode === 'WALK' || d.mode === 'METRO');
     let pth = roadGraph.path(sx, sz, gate.x, gate.z, walking ? 'walk' : 'drive');
     if (!pth || pth.length < 2) pth = [[sx, sz], [gate.x, gate.z]];
@@ -84,7 +90,7 @@ const routeLines = new THREE.Group(); flowGroup.add(routeLines);
     pth.push([gate.x, gate.z]);
     const col = MODE_COL[d.mode];
     ORIGINS.push({ ...d, x: sx, z: sz, col, route: measure(pth),
-                   gateName: GATES[ORIGINS.length % GATES.length].name });
+                   gateName: GATES[gi].name });
   }
 
   /* 経路の可視化（進行方向シェブロン付き） */
@@ -109,6 +115,22 @@ const routeLines = new THREE.Group(); flowGroup.add(routeLines);
             '接続ゲート: ' + o.gateName };
     routeLines.add(pin);
   }
+})();
+
+/* アリーナ徒歩圏（800m）の駐車容量。ポリゴン実面積から 1台=28m²（通路込み）で換算 */
+const PARK_CAP = (function () {
+  let stalls = 0, lots = 0, m2 = 0;
+  for (const poly of SCENE_DATA.parking) {
+    let a = 0;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++)
+      a += poly[j][0] * poly[i][1] - poly[i][0] * poly[j][1];
+    a = Math.abs(a / 2);
+    const cx = poly.reduce((s, q) => s + q[0], 0) / poly.length;
+    const cy = poly.reduce((s, q) => s + q[1], 0) / poly.length;
+    if (Math.hypot(cx - ARENA_C.x, -cy - ARENA_C.z) > 800) continue;
+    lots++; m2 += a; stalls += Math.round(a / 28);
+  }
+  return { stalls, lots, m2: Math.round(m2) };
 })();
 
 /* ================= 退場後の回遊フロー（直帰 / 周辺回遊） ================= */

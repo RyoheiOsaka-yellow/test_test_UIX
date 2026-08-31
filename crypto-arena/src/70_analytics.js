@@ -3,11 +3,15 @@
    分析エンジン — KPI / セグメント / 媒体価値 / 価格最適化 / 視認等級
 ================================================================ */
 const AGG = { seg: {}, reg: {}, cat: {}, board: [], price: { cur: 0, opt: 0 },
-              kpi: {}, sec: {} };
+              kpi: {}, sec: {}, od: [], odMatrix: {}, gate: {} };
 
 function computeKPIs() {
   const N = SEAT.list.length, NB = ledBoards.length;
-  const seg = {}, reg = {}, cat = {}, sec = {};
+  const seg = {}, reg = {}, cat = {}, sec = {}, gate = {};
+  /* OD集計: 出発地ごとの人数・所要・収益・席ティア/セグメント内訳 */
+  const od = ORIGINS.map(o => ({ o, n: 0, min: 0, km: 0, ltv: 0, rev: 0, fb: 0,
+                                 tier: {}, seg: {}, reg: {} }));
+  const odMatrix = {};
   let sold = 0, rev = 0, ltv = 0, fb = 0, merch = 0, churnSum = 0, optin = 0, expSum = 0;
   const boardViewers = new Float64Array(NB), boardScore = new Float64Array(NB);
   /* 満席時の露出（媒体デリバリー率の分母）— 初回のみ算出してキャッシュ */
@@ -34,13 +38,28 @@ function computeKPIs() {
     if (f.optin) optin++;
     seg[f.seg] = (seg[f.seg] || 0) + 1;
     reg[f.reg.n] = (reg[f.reg.n] || 0) + 1;
+    gate[f.gate] = (gate[f.gate] || 0) + 1;
+    const M = od[f.oi];
+    M.n++; M.min += f.minutes; M.km += f.tripKm;
+    M.ltv += f.ltv; M.rev += f.paid; M.fb += f.fb + f.merch;
+    M.tier[s.tier] = (M.tier[s.tier] || 0) + 1;
+    M.seg[f.seg] = (M.seg[f.seg] || 0) + 1;
+    M.reg[f.reg.n] = (M.reg[f.reg.n] || 0) + 1;
+    const row = odMatrix[f.reg.n] || (odMatrix[f.reg.n] = {});
+    row[f.org.name] = (row[f.org.name] || 0) + 1;
     for (let bi = 0; bi < NB; bi++) {
       const w = SEAT.expB[bi * N + i];
       if (w > 0.02) { boardViewers[bi]++; boardScore[bi] += w / SEAT.maxB[bi]; }
       gradeCnt[bi * 5 + SEAT.grade[bi * N + i]]++;
     }
   }
-  AGG.seg = seg; AGG.reg = reg; AGG.cat = cat; AGG.sec = sec;
+  AGG.seg = seg; AGG.reg = reg; AGG.cat = cat; AGG.sec = sec; AGG.gate = gate;
+  for (const m of od) {
+    m.avgMin = m.n ? m.min / m.n : 0;
+    m.avgKm = m.n ? m.km / m.n : 0;
+    m.avgLtv = m.n ? m.ltv / m.n : 0;
+  }
+  AGG.od = od; AGG.odMatrix = odMatrix;
   AGG.board = ledBoards.map((b, bi) => {
     const gr = [0, 1, 2, 3, 4].map(k => gradeCnt[bi * 5 + k]);
     const eff = boardScore[bi];
@@ -85,6 +104,7 @@ function computeKPIs() {
 /* ================= 座席の塗り分け ================= */
 let seatMode = 'crowd';      // crowd | cat | occ | seg | ltv | churn | exp | grade | price
 let expBoard = -1;           // 露出/視認モードで対象とする看板 index
+let odFocus = -1;            // ODモードで絞り込む出発地 index（-1 = 全出発地）
 const heatC = v => {
   const stops = [[0, 0x16224a], [0.28, 0x2e7fb8], [0.55, 0x3ddc84], [0.78, 0xfdb927], [1, 0xff5b4d]];
   for (let i = 0; i < stops.length - 1; i++)
@@ -122,6 +142,10 @@ function repaintSeats() {
     else if (seatMode === 'exp') C.copy(heatC(expBoard < 0 ? s.exp
       : clamp(SEAT.expB[expBoard * N + i] / SEAT.maxB[expBoard], 0, 1)));
     else if (seatMode === 'grade') C.setHex(GRADE_C[SEAT.grade[Math.max(0, expBoard) * N + i]]);
+    else if (seatMode === 'od') {
+      const f = fanAt(i);
+      C.setHex(odFocus < 0 || f.oi === odFocus ? f.org.col : 0x1a2030);
+    }
     else if (seatMode === 'price') C.copy(divC(s.pf || 1));
     else C.setHex(0x232a3a);
     SEAT.mesh.setColorAt(i, C);

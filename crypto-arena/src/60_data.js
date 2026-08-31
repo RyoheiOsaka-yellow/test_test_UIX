@@ -67,6 +67,44 @@ function parseTicketsCSV(text) {
   return n;
 }
 
+/* ---- 商圏別の交通手段分担率（LA の実勢を反映） ----
+   DTLAは徒歩とMetroが効くが、郊外は圧倒的に車。州外・海外客は市内に宿泊しているため
+   ライドシェアと徒歩が主体になる。この表がODの骨格を決める。 */
+const REGION_MODE = {
+  'DTLA / Central LA':   { CAR: .35, METRO: .28, WALK: .25, RIDESHARE: .12 },
+  'Westside':            { CAR: .62, METRO: .14, RIDESHARE: .24 },
+  'San Fernando Valley': { CAR: .78, METRO: .16, RIDESHARE: .06 },
+  'South Bay':           { CAR: .70, METRO: .24, RIDESHARE: .06 },
+  'Orange County':       { CAR: .88, METRO: .05, RIDESHARE: .07 },
+  'Inland Empire':       { CAR: .92, METRO: .04, RIDESHARE: .04 },
+  'Out of State':        { RIDESHARE: .48, WALK: .34, CAR: .12, METRO: .06 },
+  'International':       { RIDESHARE: .44, WALK: .40, METRO: .10, CAR: .06 },
+};
+/* 手段が決まったあと、その商圏に紐づく出発地を優先して選ぶ */
+const ORIGIN_BY_MODE = (function () {
+  const m = {};
+  ORIGINS.forEach((o, i) => (m[o.mode] = m[o.mode] || []).push(i));
+  return m;
+})();
+function pickOrigin(regionName, r1, r2) {
+  const mix = REGION_MODE[regionName] || { CAR: 1 };
+  const mode = pick(Object.entries(mix), r1);
+  const pool = ORIGIN_BY_MODE[mode] || ORIGIN_BY_MODE.CAR || [0];
+  const pref = pool.filter(i => (ORIGINS[i].regions || []).indexOf(regionName) >= 0);
+  const use = pref.length ? pref : pool;
+  return use[Math.floor(r2 * use.length) % use.length];
+}
+/* ドアツードア平均速度 (km/h)。近距離ほど遅く、長距離はフリーウェイ/急行区間で速くなる */
+function doorSpeed(mode, km) {
+  if (mode === 'WALK') return 4.8;
+  if (mode === 'METRO') return km < 8 ? 18 : 26 + Math.min(km, 40) * 0.25;
+  if (mode === 'CAR') return 22 + Math.min(km, 90) * 0.30;
+  if (mode === 'RIDESHARE') return 20 + Math.min(km, 60) * 0.28;
+  return 30;
+}
+/* 端末での待ち時間（分）: 乗換待ち / 配車待ち / 駐車と徒歩 */
+const MODE_WAIT = { METRO: 7, RIDESHARE: 6, CAR: 9, WALK: 0, RAIL: 10 };
+
 /* ================= 個客レコード生成（決定的） ================= */
 const secSeed = {};
 function sectionFactor(sec, g) {
@@ -157,8 +195,22 @@ function fanFor(i, g) {
   else if (s.exp > 0.55 && s.row > 6) nba = NBA_ACTIONS[0];
   else nba = NBA_ACTIONS[r(15) < 0.5 ? 3 : 4];
 
+  /* --- OD: 商圏に整合する出発地を割り当て、ドアツードア所要時間を出す --- */
+  const oi = pickOrigin(reg.n, r(18), r(20));
+  const org = ORIGINS[oi];
+  /* 当日移動距離 ≠ 居住地距離。州外・海外客は市内に宿泊しているので、
+     ゲームデイの移動は「宿泊拠点 → アリーナ」の市内距離になる。 */
+  const localStay = (reg.n === 'Out of State' || reg.n === 'International');
+  const tripKm = org.mode === 'WALK' ? org.route.total / 1000
+    : localStay ? 2.5 + r(19) * 12
+    : reg.km;
+  const minutes = Math.round(
+    tripKm / doorSpeed(org.mode, tripKm) * 60
+    + (org.mode === 'WALK' ? 0 : org.route.total / 80)     // 端末アクセス徒歩 80m/分
+    + MODE_WAIT[org.mode]);
+
   return { fid, seg, reg, age, tenure, gamesLtm, face, paid, ltv, fb, merch,
-           rfmR, rfmF, rfmM, churn, arrival, gate, nba,
+           rfmR, rfmF, rfmM, churn, arrival, gate, nba, oi, org, minutes, tripKm, localStay,
            optin: r(16) < (seg === 'SEASON' ? 0.93 : 0.61),
            app: r(17) < (seg === 'SEASON' ? 0.88 : 0.44) };
 }
