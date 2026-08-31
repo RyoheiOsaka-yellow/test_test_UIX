@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>とちぎ観光インテリジェンス</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0f14; --panel:#151821; --panel2:#1c2030; --line:#2a3044;
+  --txt:#e8eaf2; --sub:#8b93a8; --acc:#f5c400; --accdim:#8a7000;
+  --ok:#3ddc84; --warn:#ff6b5e; --blue:#4da3ff;
+  --a-nikko:#3987e5; --a-nasu:#d95926; --a-kenou:#199e70; --a-kennan:#c98500; --a-kentou:#d55181;
+  --mono:'Oswald','Noto Sans JP',sans-serif; --jp:'Noto Sans JP',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:var(--jp);background:var(--bg);color:var(--txt);overflow:hidden;font-size:13px}
+
+/* ===== Header ===== */
+#hdr{position:fixed;top:0;left:0;right:0;height:52px;display:flex;align-items:center;gap:14px;
+  padding:0 16px;background:linear-gradient(180deg,rgba(13,15,20,.97),rgba(13,15,20,.88));
+  border-bottom:1px solid var(--line);z-index:30}
+.brand{display:flex;align-items:baseline;gap:8px}
+.brand .x{font-family:var(--mono);font-size:19px;font-weight:600;color:#fff;letter-spacing:.5px}
+.hdr-title{font-size:13px;font-weight:700;letter-spacing:.06em;color:var(--txt);border-left:2px solid var(--acc);padding-left:10px}
+#lvl-crumb{display:flex;gap:6px;margin-left:auto;font-family:var(--mono);font-size:11px;flex-wrap:wrap}
+.crumb{padding:5px 12px;border-radius:20px;border:1px solid var(--line);color:var(--sub);cursor:pointer;
+  letter-spacing:.06em;transition:.2s;background:rgba(21,24,33,.8);font-family:var(--jp)}
+.crumb.active{border-color:var(--acc);color:var(--acc);background:rgba(245,196,0,.1)}
+.crumb:hover{color:var(--txt)}
+.crumb:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+/* ===== Left panel ===== */
+#panel{position:fixed;top:62px;left:12px;width:300px;bottom:88px;
+  background:rgba(21,24,33,.94);border:1px solid var(--line);border-radius:12px;z-index:25;
+  display:flex;flex-direction:column;backdrop-filter:blur(8px);overflow:hidden}
+#panel-body{overflow-y:auto;padding:12px}
+#panel-body::-webkit-scrollbar{width:6px}
+#panel-body::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.sec{margin-bottom:14px}
+.sec-t{font-size:10px;letter-spacing:.14em;color:var(--sub);margin-bottom:7px;font-weight:700}
+.sec-t b{color:var(--acc)}
+
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.kpi{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.kpi .v{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--acc);line-height:1.15;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:11px;color:var(--sub);font-family:var(--jp);font-weight:400}
+.kpi .l{font-size:10px;color:var(--sub);margin-top:2px}
+.kpi .d{font-size:10px;margin-top:1px;font-family:var(--mono)}
+.kpi .d.up{color:var(--ok)} .kpi .d.dn{color:var(--warn)}
+
+.row-btns{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:6px 11px;border-radius:16px;border:1px solid var(--line);background:var(--panel2);color:var(--sub);
+  cursor:pointer;font-size:11px;transition:.15s;font-family:var(--jp)}
+.chip.active{border-color:var(--acc);color:var(--acc);background:rgba(245,196,0,.08)}
+.chip:hover{color:var(--txt)}
+.chip:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+.legend{display:flex;flex-direction:column;gap:4px;font-size:10px;color:var(--sub)}
+.legend .li{display:flex;align-items:center;gap:7px}
+.legend .sw{width:14px;height:9px;border-radius:2px;flex-shrink:0}
+.hint{font-size:10px;color:var(--sub);line-height:1.6;background:var(--panel2);border-radius:8px;padding:8px 10px;border:1px solid var(--line)}
+.hint a{color:var(--blue);text-decoration:none}
+.hint a:hover{text-decoration:underline}
+
+#sel-card{display:none;background:linear-gradient(135deg,rgba(245,196,0,.12),var(--panel2));
+  border:1px solid var(--acc);border-radius:10px;padding:10px}
+#sel-card .nm{font-weight:700;font-size:13px;color:var(--acc)}
+#sel-card .meta{font-size:10px;color:var(--sub);margin:4px 0 0;line-height:1.7}
+#sel-card .meta b{color:var(--txt);font-weight:500}
+
+.tool-btn{width:100%;padding:8px;border-radius:8px;border:1px dashed var(--accdim);background:transparent;
+  color:var(--acc);cursor:pointer;font-size:12px;font-family:var(--jp);transition:.15s;margin-bottom:6px}
+.tool-btn:hover{background:rgba(245,196,0,.08)}
+.tool-btn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+
+/* ===== Main ===== */
+#main{position:fixed;top:62px;left:324px;right:12px;bottom:88px;overflow-y:auto;overflow-x:hidden}
+#main::-webkit-scrollbar{width:8px}
+#main::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+.view{display:none;padding-bottom:20px}
+.view.active{display:block}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+@media(max-width:1100px){.grid2,.grid3{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+.card h3{font-size:12px;letter-spacing:.1em;color:var(--txt);font-weight:700;margin-bottom:2px}
+.card .sub{font-size:10px;color:var(--sub);margin-bottom:10px}
+.big-num{font-family:var(--mono);font-size:34px;font-weight:600;color:var(--acc);line-height:1.1;font-variant-numeric:tabular-nums}
+.big-num small{font-size:14px;color:var(--sub);font-family:var(--jp);font-weight:400}
+
+/* HTML bar rows */
+.brow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.brow .bl{width:130px;font-size:11px;color:var(--txt);text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brow .btrack{flex:1;height:14px;position:relative}
+.brow .bfill{height:100%;border-radius:0 4px 4px 0;min-width:2px;transition:width .4s}
+.brow .bv{font-family:var(--mono);font-size:11px;color:var(--sub);width:86px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.brow:hover .bl{color:var(--acc)}
+
+/* monthly columns */
+.mcols{display:flex;align-items:flex-end;gap:6px;height:150px;padding-top:16px}
+.mcol{flex:1;display:flex;align-items:flex-end;gap:2px;position:relative;height:100%}
+.mcol .c{flex:1;border-radius:4px 4px 0 0;min-height:2px;position:relative}
+.mcol .mv{position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-family:var(--mono);
+  font-size:9px;color:var(--sub);opacity:0;white-space:nowrap;font-variant-numeric:tabular-nums}
+.mcol:hover .mv{opacity:1}
+.mlabels{display:flex;gap:6px;margin-top:4px}
+.mlabels span{flex:1;text-align:center;font-size:9px;color:var(--sub);font-family:var(--mono)}
+
+svg text{font-family:var(--jp)}
+.chart-tip{position:fixed;background:rgba(13,15,20,.95);border:1px solid var(--acc);border-radius:8px;
+  padding:7px 10px;font-size:11px;pointer-events:none;z-index:60;display:none;line-height:1.6;max-width:240px}
+.chart-tip b{color:var(--acc)}
+
+/* map */
+.map-wrap{background:linear-gradient(180deg,#0b1220,#0e1626);border:1px solid var(--line);border-radius:12px;overflow:hidden;position:relative}
+.map-wrap svg{display:block;width:100%;height:auto}
+.spot-dot{cursor:pointer;transition:r .15s}
+.spot-dot:hover{stroke:#fff;stroke-width:1.5}
+.muni-bub{cursor:pointer;opacity:.75}
+.muni-bub:hover{opacity:1;stroke:#fff;stroke-width:1.2}
+.area-lbl{font-family:var(--mono);font-size:13px;letter-spacing:.15em;fill:rgba(232,234,242,.5);font-weight:600}
+.map-note{position:absolute;left:10px;bottom:8px;font-size:9px;color:var(--sub)}
+
+/* flow */
+.flow-line{fill:none;stroke-dasharray:6 6;animation:dashmove 1.2s linear infinite}
+@keyframes dashmove{to{stroke-dashoffset:-12}}
+@media (prefers-reduced-motion: reduce){.flow-line{animation:none}}
+.gw-lbl{font-size:10px;fill:var(--sub)}
+.route-card{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;background:var(--panel2);transition:.15s}
+.route-card:hover{border-color:#3d465f}
+.route-card.active{border-color:var(--acc);background:rgba(245,196,0,.07)}
+.route-card .rn{font-weight:700;font-size:12px}
+.route-card .rt{font-size:10px;color:var(--sub);margin-top:3px;line-height:1.6}
+.route-card .rtag{display:inline-block;font-size:9px;padding:1px 7px;border-radius:10px;border:1px solid var(--line);color:var(--sub);margin-left:6px;font-weight:400}
+
+/* strategy */
+.kgi-card{background:linear-gradient(135deg,rgba(245,196,0,.13),var(--panel2));border:1px solid var(--acc);border-radius:12px;padding:16px}
+.prog{height:8px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin-top:8px}
+.prog .pf{height:100%;background:var(--acc);border-radius:4px}
+.kpi-row{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;color:var(--sub);margin-top:4px}
+.kpi-row .tgt{font-family:var(--mono);color:var(--txt);font-variant-numeric:tabular-nums}
+.st-box{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--panel2)}
+.st-box .st-n{font-family:var(--mono);color:var(--acc);font-size:11px;letter-spacing:.1em}
+.st-box .st-t{font-weight:700;font-size:13px;margin:3px 0 8px}
+.st-box ul{list-style:none}
+.st-box li{font-size:11px;color:var(--sub);padding:3px 0 3px 14px;position:relative;line-height:1.5}
+.st-box li::before{content:"";position:absolute;left:0;top:9px;width:6px;height:6px;border-radius:2px;background:var(--accdim)}
+.tl-ev{display:flex;gap:12px;padding:7px 0;border-bottom:1px dashed var(--line);font-size:11px}
+.tl-ev:last-child{border-bottom:none}
+.tl-ev .y{font-family:var(--mono);color:var(--acc);width:46px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.tl-ev .e{color:var(--txt);line-height:1.5}
+.tl-ev .e small{color:var(--sub)}
+
+/* AI view */
+.ins-card{border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:var(--panel2)}
+.ins-card .it{font-weight:700;font-size:12px;margin-bottom:4px}
+.ins-card .ib{font-size:11px;color:var(--sub);line-height:1.7}
+.ins-card .ib b{color:var(--txt);font-weight:500}
+.ins-card.good{border-left-color:var(--ok)} .ins-card.risk{border-left-color:var(--warn)} .ins-card.info{border-left-color:var(--blue)}
+.itag{display:inline-block;font-size:9px;padding:1px 8px;border-radius:10px;margin-left:8px;font-weight:400;vertical-align:1px}
+.itag.good{color:var(--ok);border:1px solid var(--ok)} .itag.risk{color:var(--warn);border:1px solid var(--warn)} .itag.info{color:var(--blue);border:1px solid var(--blue)} .itag.acc{color:var(--acc);border:1px solid var(--acc)}
+
+/* table */
+.dtable{width:100%;border-collapse:collapse;font-size:11px}
+.dtable th{color:var(--sub);font-weight:500;text-align:right;padding:5px 8px;border-bottom:1px solid var(--line);font-size:10px;white-space:nowrap}
+.dtable th:first-child,.dtable td:first-child{text-align:left}
+.dtable td{padding:5px 8px;border-bottom:1px solid rgba(42,48,68,.5);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--txt)}
+.dtable td:first-child{font-family:var(--jp)}
+.dtable tr:hover td{background:rgba(245,196,0,.04)}
+.tbl-wrap{overflow-x:auto}
+.a-dot{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:0}
+
+/* ===== Timeline (year slider) ===== */
+#timeline{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;width:min(680px,92vw);
+  background:rgba(21,24,33,.94);border:1px solid var(--line);border-radius:12px;padding:10px 16px;z-index:25;backdrop-filter:blur(8px)}
+#tl-top{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+#tl-year{font-family:var(--mono);font-size:21px;font-weight:600;color:var(--acc);min-width:64px}
+#tl-phase{font-size:11px;color:var(--txt);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:3px 10px;flex:1}
+#tl-play{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--acc);cursor:pointer;font-size:12px}
+#tl-play:hover{border-color:var(--acc)}
+#tl-slider{width:100%;accent-color:var(--acc)}
+#tl-marks{display:flex;justify-content:space-between;font-size:9px;color:var(--sub);margin-top:3px;font-family:var(--mono)}
+
+#toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(21,24,33,.97);
+  border:1px solid var(--acc);color:var(--acc);border-radius:10px;padding:9px 18px;font-size:12px;z-index:70;display:none}
+</style>
+</head>
+<body>
+
+<div id="hdr">
+  <div class="brand"><span class="x">XBUILD</span></div>
+  <div class="hdr-title">栃木県 観光インテリジェンス — 入込・宿泊・導線・戦略の統合分析</div>
+  <div id="lvl-crumb">
+    <button class="crumb active" data-view="overview">L0 概況</button>
+    <button class="crumb" data-view="map">L1 観光マップ</button>
+    <button class="crumb" data-view="area">L2 エリア分析</button>
+    <button class="crumb" data-view="flow">L3 導線設計</button>
+    <button class="crumb" data-view="policy">L4 行政計画</button>
+    <button class="crumb" data-view="ai">L5 AI分析</button>
+  </div>
+</div>
+
+<div id="panel"><div id="panel-body">
+  <div class="sec">
+    <div class="sec-t">県全体 KPI <b id="kpi-year">2024</b></div>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="v" id="kpi-iri">—</div><div class="l">観光客入込数</div><div class="d" id="kpi-iri-d"></div></div>
+      <div class="kpi"><div class="v" id="kpi-stay">—</div><div class="l">延べ宿泊数</div><div class="d" id="kpi-stay-d"></div></div>
+      <div class="kpi"><div class="v" id="kpi-fgn">—</div><div class="l">外国人宿泊数</div><div class="d" id="kpi-fgn-d"></div></div>
+      <div class="kpi"><div class="v" id="kpi-stayrate">—</div><div class="l">宿泊率(宿泊÷入込)</div><div class="d" id="kpi-rate-d"></div></div>
+    </div>
+  </div>
+
+  <div class="sec" id="sec-layers" style="display:none">
+    <div class="sec-t">マップレイヤー</div>
+    <div class="row-btns" id="layer-chips">
+      <button class="chip active" data-layer="spots">観光地点</button>
+      <button class="chip" data-layer="muni">市町バブル</button>
+    </div>
+  </div>
+
+  <div class="sec" id="sec-cat" style="display:none">
+    <div class="sec-t">カテゴリ絞り込み</div>
+    <div class="row-btns" id="cat-chips"></div>
+  </div>
+
+  <div class="sec" id="sec-area">
+    <div class="sec-t">エリア絞り込み</div>
+    <div class="row-btns" id="area-chips"></div>
+  </div>
+
+  <div class="sec" id="sel-wrap">
+    <div id="sel-card">
+      <div class="nm" id="sel-nm"></div>
+      <div class="meta" id="sel-meta"></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">エリア凡例</div>
+    <div class="legend" id="area-legend"></div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-t">データソース</div>
+    <div class="hint">
+      栃木県「<a href="https://www.pref.tochigi.lg.jp/f05/irikomishukuhaku.html" target="_blank" rel="noopener">令和6(2024)年 観光客入込数・宿泊数推定調査</a>」、
+      「<a href="https://www.pref.tochigi.lg.jp/f05/senryaku/senryaku2026-2030.html" target="_blank" rel="noopener">とちぎ観光立県戦略2026-2030</a>」ほか公表資料に基づく。
+      地点の集客規模は公表統計・報道等からの推定指数(1〜5)。
+    </div>
+  </div>
+</div></div>
+
+<div id="main">
+
+  <!-- ================= L0 OVERVIEW ================= -->
+  <div class="view active" id="view-overview">
+    <div class="grid3">
+      <div class="card"><h3>観光客入込数 <span style="color:var(--sub);font-weight:400">2024年</span></h3>
+        <div class="sub">前年比 107.3% ／ コロナ前(2019)比 97.5%</div>
+        <div class="big-num">8,997<small> 万人</small></div></div>
+      <div class="card"><h3>延べ宿泊数 <span style="color:var(--sub);font-weight:400">2024年</span></h3>
+        <div class="sub">前年比 105.8% ／ 2019年比 100.6% — コロナ前超え</div>
+        <div class="big-num">830<small> 万人泊</small></div></div>
+      <div class="card"><h3>外国人宿泊数 <span style="color:var(--sub);font-weight:400">2024年</span></h3>
+        <div class="sub">前年比 118.7% ／ 過去最高を更新</div>
+        <div class="big-num">27.9<small> 万人泊</small></div></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3>コロナ禍からの回復トレンド</h3>
+        <div class="sub">2019年=100 とした指数 ／ 出典: 県入込数・宿泊数推定調査</div>
+        <div id="chart-recovery"></div>
+      </div>
+      <div class="card">
+        <h3>月別入込数 2024 vs 2023</h3>
+        <div class="sub">単位: 万人 ／ 8月ピーク(構成比12.1%)・12月ボトム(6.6%)</div>
+        <div id="chart-monthly"></div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3>分類別入込数 2024</h3>
+        <div class="sub">道の駅が単独で2,062万人(全体の22.9%) — 車移動が支配的</div>
+        <div id="chart-category"></div>
+      </div>
+      <div class="card">
+        <h3>外国人宿泊数 国・地域別 2024</h3>
+        <div class="sub">総数 279,217人泊 ／ 台湾が最多(構成比19.2%)</div>
+        <div id="chart-country"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= L1 MAP ================= -->
+  <div class="view" id="view-map">
+    <div class="card" style="padding:10px">
+      <div class="map-wrap">
+        <svg id="map-svg" viewBox="0 0 720 700" role="img" aria-label="栃木県観光マップ"></svg>
+        <div class="map-note">※ 県境形状は簡略化。地点をクリックすると左パネルに詳細を表示</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>表示中の観光地点</h3>
+      <div class="sub" id="spot-count"></div>
+      <div class="tbl-wrap"><table class="dtable" id="spot-table"></table></div>
+    </div>
+  </div>
+
+  <!-- ================= L2 AREA ================= -->
+  <div class="view" id="view-area">
+    <div class="card">
+      <h3>市町別 観光客入込数ランキング <span id="rank-year" style="color:var(--sub);font-weight:400"></span></h3>
+      <div class="sub">下部の年スライダーで2019〜2024年を切替 ／ バー色=所属エリア</div>
+      <div id="chart-muni-rank"></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3>エリア別シェア <span id="share-year" style="color:var(--sub);font-weight:400"></span></h3>
+        <div class="sub">観光客入込数に占める割合</div>
+        <div id="chart-area-share"></div>
+      </div>
+      <div class="card">
+        <h3>宿泊拠点の構造 2024</h3>
+        <div class="sub">宿泊数上位4市町で県全体の約87%を占める</div>
+        <div id="chart-stay"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>市町別データテーブル 2024</h3>
+      <div class="sub">入込数(千人)・前年比・外国人宿泊数(人泊)</div>
+      <div class="tbl-wrap"><table class="dtable" id="muni-table"></table></div>
+    </div>
+  </div>
+
+  <!-- ================= L3 FLOW ================= -->
+  <div class="view" id="view-flow">
+    <div class="grid2" style="grid-template-columns:1.2fr 1fr">
+      <div class="card" style="padding:10px">
+        <div class="map-wrap">
+          <svg id="flow-svg" viewBox="0 0 720 700" role="img" aria-label="栃木県への主要導線マップ"></svg>
+          <div class="map-note">※ 破線=広域アクセス導線 ／ 実線=選択中モデルコース</div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <h3>広域アクセス・ゲートウェイ</h3>
+          <div class="sub">首都圏からの近接性が最大の強み(東京→宇都宮 新幹線最速48分)</div>
+          <div id="gw-list"></div>
+        </div>
+        <div class="card">
+          <h3>周遊モデルコース(導線設計)</h3>
+          <div class="sub">クリックでマップに経路を表示 ／「組み合わせ旅」の設計例</div>
+          <div id="route-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>導線設計の論点</h3>
+      <div class="sub">データと戦略から導かれる県内周遊の課題</div>
+      <div id="flow-issues"></div>
+    </div>
+  </div>
+
+  <!-- ================= L4 POLICY ================= -->
+  <div class="view" id="view-policy">
+    <div class="card kgi-card">
+      <h3>とちぎ観光立県戦略 2026-2030（2026年3月策定）</h3>
+      <div class="sub" style="color:var(--sub)">ビジョン:「訪れてよし、稼いでよし、住んでよし」三方よしの観光立県とちぎ ～観光産業が築く豊かなとちぎ～</div>
+      <div style="display:flex;gap:24px;align-items:baseline;flex-wrap:wrap;margin-top:6px">
+        <div><div style="font-size:10px;color:var(--sub);letter-spacing:.1em">KGI 観光消費額</div>
+          <div class="big-num">9,656<small> 億円</small> <span style="font-family:var(--mono);color:var(--sub);font-size:18px">→</span> 11,562<small> 億円 (2030)</small></div></div>
+      </div>
+      <div class="prog"><div class="pf" style="width:83.5%"></div></div>
+      <div class="kpi-row"><span>2024年実績(基準値) → 2030年目標 達成率 83.5%</span><span class="tgt">+1,906億円</span></div>
+    </div>
+    <div class="card">
+      <h3>KPI 進捗ボード</h3>
+      <div class="sub">基準値=2024(R6)実績 ／ 目標値=2030(R12) ／ 出典: 戦略本編 成果指標</div>
+      <div id="kpi-board" class="grid2" style="margin-bottom:0"></div>
+    </div>
+    <div class="grid3" id="strategy-boxes"></div>
+    <div class="grid2">
+      <div class="card">
+        <h3>観光をめぐる主な出来事</h3>
+        <div class="sub">統計変動の背景となるイベント年表</div>
+        <div id="event-timeline"></div>
+      </div>
+      <div class="card">
+        <h3>関連する計画・体制</h3>
+        <div class="sub">県戦略と接続する国・市町・DMOの動き</div>
+        <div id="related-plans"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= L5 AI ================= -->
+  <div class="view" id="view-ai">
+    <div class="card">
+      <h3>データドリブン・インサイト</h3>
+      <div class="sub">格納データからスクリプトが自動算出した分析所見(閲覧のたびに実データから再計算)</div>
+      <div id="ai-insights"></div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3>2030年目標へのギャップ分析</h3>
+        <div class="sub">必要成長率(年平均)を実績基準で自動計算</div>
+        <div id="ai-gap"></div>
+      </div>
+      <div class="card">
+        <h3>AI・外部分析用エクスポート</h3>
+        <div class="sub">本ダッシュボードの全格納データを構造化JSONとして持ち出し、生成AI等での追加分析に利用できます</div>
+        <button class="tool-btn" id="btn-json">📋 全データをJSONでコピー</button>
+        <button class="tool-btn" id="btn-prompt">🤖 AI分析プロンプト(データ同梱)をコピー</button>
+        <div class="hint">JSONには県計の年次/月次系列、市町別6年分、国籍別、分類別、観光地点56件、導線・モデルコース、戦略KPIが含まれます。生成AIに貼り付ければ相関分析・需要予測・施策提案などに展開できます。</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="timeline">
+  <div id="tl-top">
+    <div id="tl-year">2024</div>
+    <div id="tl-phase">回復加速 — 入込8,997万人・外国人宿泊 過去最高</div>
+    <button id="tl-play" title="年次を自動再生">▶</button>
+  </div>
+  <input type="range" id="tl-slider" min="0" max="5" value="5" aria-label="対象年の選択">
+  <div id="tl-marks"><span>2019<br>アフターDC</span><span>2020<br>コロナ禍</span><span>2021</span><span>2022<br>とちぎ国体</span><span>2023<br>LRT開業</span><span>2024<br>過去最高</span></div>
+</div>
+
+<div class="chart-tip" id="tip"></div>
+<div id="toast"></div>
+
+<script>
+/* =====================================================================
+   TOCHIGI_DB — 栃木県観光分析データベース
+   出典: 栃木県「令和6(2024)年栃木県観光客入込数・宿泊数推定調査結果」
+         「とちぎ観光立県戦略2026-2030」ほか県公表資料。
+   spots[].scale は公表統計・報道等に基づく集客規模の推定指数(1-5)。
+===================================================================== */
+const TOCHIGI_DB = {
+meta:{
+  title:"栃木県観光分析データベース", updated:"2026-08-30",
+  sources:[
+    "栃木県 令和6(2024)年観光客入込数・宿泊数推定調査結果 https://www.pref.tochigi.lg.jp/f05/irikomishukuhaku.html",
+    "とちぎ観光立県戦略2026-2030 https://www.pref.tochigi.lg.jp/f05/senryaku/senryaku2026-2030.html",
+    "栃木県観光動態調査 https://www.pref.tochigi.lg.jp/f05/doutaichousa.html"
+  ],
+  notes:"spots.scaleは推定指数(5=年間100万人級以上,4=50万人級,3=20万人級,2=10万人級,1=それ未満)。県境形状・座標は簡略化。"
+},
+years:[2019,2020,2021,2022,2023,2024],
+pref:{
+  iri:[92282,61168,64138,72604,83876,89973],       // 千人
+  stay:[8257,5069,5072,7244,7847,8304],            // 千人泊
+  foreign:[247178,40480,16810,45796,235283,279217] // 人泊
+},
+monthlyIri:{ // 人
+  y2024:[7129945,5689180,6549153,8007507,8632991,6516248,7251828,10877165,6700231,7920276,8766962,5931857],
+  y2023:[6352688,5253504,6219907,7277176,8056713,5775578,7380503,9377614,6339190,7814132,8108223,5920687]
+},
+areas:{
+  nikko:{name:"日光エリア", color:"var(--a-nikko)", hex:"#3987e5", desc:"世界遺産・奥日光・鬼怒川川治・湯西川。宿泊とインバウンドの最重要拠点。"},
+  nasu:{name:"那須・県北エリア", color:"var(--a-nasu)", hex:"#d95926", desc:"御用邸のある高原リゾート那須、塩原・板室温泉、大田原・那珂川の里山。"},
+  kenou:{name:"県央エリア", color:"var(--a-kenou)", hex:"#199e70", desc:"餃子とLRTの宇都宮、大谷、鹿沼。都市型観光・MICEの中心。"},
+  kennan:{name:"県南エリア", color:"var(--a-kennan)", hex:"#c98500", desc:"あしかがフラワーパーク、佐野、蔵の街栃木、小山。北関東道・東北道の玄関口。"},
+  kentou:{name:"県東エリア", color:"var(--a-kentou)", hex:"#d55181", desc:"益子焼、モビリティリゾートもてぎ、SLの真岡。ものづくり・体験型観光。"}
+},
+munis:[ // iri: 2019-2024 (人), foreign: 2024外国人宿泊(人泊), stay: 2024宿泊(千人泊, 上位のみ公表概要より)
+  {name:"宇都宮市", area:"kenou", lat:36.555,lng:139.883, iri:[14768400,7472800,8944902,10787502,12706400,15736300], foreign:62218, stay:1892},
+  {name:"足利市", area:"kennan", lat:36.34,lng:139.45, iri:[4862660,3004337,3469447,4191518,4418974,4403629], foreign:3635},
+  {name:"栃木市", area:"kennan", lat:36.38,lng:139.73, iri:[5514544,3909590,4069470,4624190,6105676,6257860], foreign:720},
+  {name:"佐野市", area:"kennan", lat:36.314,lng:139.578, iri:[8574819,6473582,6503440,6429545,7133563,7401710], foreign:1782},
+  {name:"鹿沼市", area:"kenou", lat:36.567,lng:139.745, iri:[3118676,1892807,2451845,2603315,3096794,2997495], foreign:131},
+  {name:"日光市", area:"nikko", lat:36.75,lng:139.61, iri:[11813538,8344072,7890583,8723858,9925039,10191861], foreign:161338, stay:2941},
+  {name:"小山市", area:"kennan", lat:36.315,lng:139.80, iri:[3518268,2073299,2076947,2272038,3100169,3286242], foreign:6187},
+  {name:"真岡市", area:"kentou", lat:36.44,lng:140.01, iri:[3177751,1784577,1579223,1952912,2562828,2371322], foreign:1605},
+  {name:"大田原市", area:"nasu", lat:36.87,lng:140.02, iri:[3429419,2325921,2165557,2558930,3344852,3113559], foreign:747},
+  {name:"矢板市", area:"nasu", lat:36.81,lng:139.92, iri:[1879864,1742335,1872706,2056055,2272669,2397067], foreign:1472},
+  {name:"那須塩原市", area:"nasu", lat:36.96,lng:139.91, iri:[8811708,6758270,6772087,7512671,7519662,7712457], foreign:10434, stay:759},
+  {name:"さくら市", area:"nasu", lat:36.685,lng:139.97, iri:[1954537,1315739,1352953,1433176,1774651,1775392], foreign:232},
+  {name:"那須烏山市", area:"nasu", lat:36.66,lng:140.15, iri:[457681,204081,252131,300048,576371,554111], foreign:36},
+  {name:"下野市", area:"kennan", lat:36.39,lng:139.86, iri:[2235692,1797291,1939975,2185926,2391999,2886470], foreign:35},
+  {name:"上三川町", area:"kenou", lat:36.44,lng:139.91, iri:[83215,7936,120634,156846,228285,243964], foreign:20},
+  {name:"益子町", area:"kentou", lat:36.47,lng:140.09, iri:[2909690,1788886,1862788,2486592,2559039,2618411], foreign:811},
+  {name:"茂木町", area:"kentou", lat:36.53,lng:140.19, iri:[3055914,2223039,1838165,2149403,2480483,2493586], foreign:145},
+  {name:"市貝町", area:"kentou", lat:36.54,lng:140.10, iri:[644569,345077,363630,383799,408736,388295], foreign:0},
+  {name:"芳賀町", area:"kentou", lat:36.55,lng:140.06, iri:[628058,438195,406037,482953,535223,598511], foreign:0},
+  {name:"壬生町", area:"kennan", lat:36.43,lng:139.80, iri:[3584481,2096029,2227746,2663882,3203356,3519599], foreign:1559},
+  {name:"野木町", area:"kennan", lat:36.23,lng:139.74, iri:[202944,38965,33167,83949,88371,82438], foreign:0},
+  {name:"塩谷町", area:"nasu", lat:36.78,lng:139.85, iri:[610479,412424,465310,595852,418660,783644], foreign:10},
+  {name:"高根沢町", area:"kenou", lat:36.63,lng:140.02, iri:[479332,510302,569274,687420,686720,1150384], foreign:25},
+  {name:"那須町", area:"nasu", lat:37.02,lng:140.05, iri:[4799209,3480872,4108071,4425168,5127138,5619269], foreign:15462, stay:2022},
+  {name:"那珂川町", area:"nasu", lat:36.75,lng:140.17, iri:[1166553,727213,801660,856172,1210257,1389767], foreign:10613}
+],
+countries:[ // 2024 外国人宿泊 人泊
+  {name:"台湾", v:53596},{name:"中国(大陸)", v:26380},{name:"米国", v:26332},{name:"韓国", v:21037},
+  {name:"タイ", v:18111},{name:"香港", v:13103},{name:"フランス", v:9544},{name:"ドイツ", v:6073},
+  {name:"英国", v:4677},{name:"カナダ", v:3693},{name:"その他アジア・中東", v:25646},{name:"その他欧州", v:14215},
+  {name:"その他", v:13127},{name:"不明", v:43683}
+],
+categories:[ // 2024 分類別入込数 人
+  {name:"買い物・食", v:22588838, note:"うち道の駅 20,623,091"},
+  {name:"その他", v:19204930, note:"上記分類外"},
+  {name:"スポーツ・レク施設", v:13928491, note:"うちゴルフ場 3,746,562"},
+  {name:"文化・歴史", v:12799852, note:"うち神社仏閣 6,442,959"},
+  {name:"行祭事・イベント", v:6463924, note:"花火・祭事等"},
+  {name:"産業観光", v:5685744, note:"観光農園・牧場等"},
+  {name:"自然", v:5609149, note:"景勝地・ハイキング"},
+  {name:"温泉", v:3692415, note:"公営+一般"}
+],
+nikkoPark:{iri:12069, stay:5059}, // 日光国立公園 千人
+staySummary:[ // 2024 宿泊 千人泊
+  {name:"日光市", v:2941},{name:"那須町", v:2022},{name:"宇都宮市", v:1892},{name:"那須塩原市", v:759},{name:"その他21市町", v:690}
+],
+spots:[
+  // ---- 日光 ----
+  {id:1, name:"日光東照宮(二社一寺)", area:"nikko", city:"日光市", cat:"文化・歴史", lat:36.758,lng:139.599, scale:5, note:"世界遺産「日光の社寺」。県内文化観光の核でインバウンドの最大目的地。"},
+  {id:2, name:"中禅寺湖", area:"nikko", city:"日光市", cat:"自然", lat:36.732,lng:139.475, scale:4, note:"男体山麓の湖。遊覧船・紅葉・英国大使館別荘記念公園。"},
+  {id:3, name:"華厳滝", area:"nikko", city:"日光市", cat:"自然", lat:36.738,lng:139.503, scale:4, note:"日本三名瀑。エレベーターで観瀑台へ。"},
+  {id:4, name:"いろは坂・明智平", area:"nikko", city:"日光市", cat:"自然", lat:36.735,lng:139.53, scale:4, note:"48カーブの紅葉名所。秋期は渋滞対策が最大の課題。"},
+  {id:5, name:"戦場ヶ原", area:"nikko", city:"日光市", cat:"自然", lat:36.79,lng:139.465, scale:3, note:"標高1,400mの高層湿原。ハイキング・星空観察。"},
+  {id:6, name:"奥日光湯元温泉", area:"nikko", city:"日光市", cat:"温泉", lat:36.80,lng:139.425, scale:2, note:"硫黄泉の古湯。冬期は雪上アクティビティ。"},
+  {id:7, name:"霧降高原", area:"nikko", city:"日光市", cat:"自然", lat:36.80,lng:139.63, scale:2, note:"ニッコウキスゲ群落と天空回廊1,445段。"},
+  {id:8, name:"鬼怒川温泉", area:"nikko", city:"日光市", cat:"温泉", lat:36.82,lng:139.71, scale:5, note:"関東有数の温泉街。特急スペーシアXで浅草直結。廃屋景観の改善が戦略課題。"},
+  {id:9, name:"東武ワールドスクウェア", area:"nikko", city:"日光市", cat:"レジャー", lat:36.79,lng:139.72, scale:4, note:"世界の建築物1/25ミニチュア102点。"},
+  {id:10, name:"江戸ワンダーランド日光江戸村", area:"nikko", city:"日光市", cat:"レジャー", lat:36.77,lng:139.735, scale:4, note:"江戸文化テーマパーク。訪日客に人気。"},
+  {id:11, name:"湯西川温泉", area:"nikko", city:"日光市", cat:"温泉", lat:36.94,lng:139.55, scale:2, note:"平家落人伝説の山峡秘湯。冬のかまくら祭。"},
+  {id:12, name:"川治温泉", area:"nikko", city:"日光市", cat:"温泉", lat:36.875,lng:139.70, scale:1, note:"鬼怒川上流の渓谷温泉。野岩鉄道沿線。"},
+  {id:13, name:"足尾銅山観光", area:"nikko", city:"日光市", cat:"産業観光", lat:36.63,lng:139.45, scale:1, note:"トロッコで坑道へ。日本の近代化産業遺産。"},
+  {id:14, name:"道の駅日光(ニコニコ本陣)", area:"nikko", city:"日光市", cat:"買い物・食", lat:36.72,lng:139.685, scale:3, note:"今市宿。日光街道の休憩・物販拠点。"},
+  // ---- 那須・県北 ----
+  {id:15, name:"那須ハイランドパーク", area:"nasu", city:"那須町", cat:"レジャー", lat:37.058,lng:139.99, scale:4, note:"北関東最大級の遊園地。"},
+  {id:16, name:"那須どうぶつ王国", area:"nasu", city:"那須町", cat:"レジャー", lat:37.117,lng:140.045, scale:4, note:"体験型動物園。SNS発信力が高い。"},
+  {id:17, name:"那須ロープウェイ・茶臼岳", area:"nasu", city:"那須町", cat:"自然", lat:37.115,lng:139.984, scale:3, note:"活火山茶臼岳9合目へ。紅葉期の姥ヶ平。"},
+  {id:18, name:"那須湯本温泉・殺生石", area:"nasu", city:"那須町", cat:"温泉", lat:37.088,lng:140.005, scale:3, note:"開湯1,390年の鹿の湯と九尾の狐伝説。"},
+  {id:19, name:"りんどう湖ファミリー牧場", area:"nasu", city:"那須町", cat:"レジャー", lat:37.03,lng:140.02, scale:3, note:"湖畔のレジャー牧場。ジップライン。"},
+  {id:20, name:"那須ガーデンアウトレット", area:"nasu", city:"那須塩原市", cat:"買い物・食", lat:36.925,lng:140.06, scale:4, note:"黒磯板室IC直結のアウトレットモール。"},
+  {id:21, name:"塩原温泉郷", area:"nasu", city:"那須塩原市", cat:"温泉", lat:36.97,lng:139.80, scale:4, note:"11の泉質を持つ渓谷の温泉郷。"},
+  {id:22, name:"もみじ谷大吊橋", area:"nasu", city:"那須塩原市", cat:"自然", lat:36.96,lng:139.86, scale:3, note:"全長320mの吊橋。塩原ダム湖。"},
+  {id:23, name:"ハンターマウンテン塩原", area:"nasu", city:"那須塩原市", cat:"レジャー", lat:36.94,lng:139.735, scale:3, note:"首都圏最大級スキー場。夏はゆりパーク。冬期閑散対策の主力。"},
+  {id:24, name:"板室温泉", area:"nasu", city:"那須塩原市", cat:"温泉", lat:37.02,lng:139.90, scale:1, note:"「下野の薬湯」。保養滞在型。"},
+  {id:25, name:"千本松牧場", area:"nasu", city:"那須塩原市", cat:"産業観光", lat:36.92,lng:139.945, scale:4, note:"西那須野塩原IC至近の観光牧場。"},
+  {id:26, name:"なかがわ水遊園", area:"nasu", city:"大田原市", cat:"レジャー", lat:36.80,lng:140.135, scale:3, note:"淡水魚専門の県営水族館。"},
+  {id:27, name:"道の駅那須高原友愛の森", area:"nasu", city:"那須町", cat:"買い物・食", lat:37.019,lng:140.054, scale:4, note:"那須観光の情報拠点。二次交通ハブ。"},
+  {id:28, name:"馬頭温泉郷", area:"nasu", city:"那珂川町", cat:"温泉", lat:36.76,lng:140.17, scale:1, note:"那珂川を望む美人の湯。アートと里山。"},
+  {id:29, name:"龍門の滝", area:"nasu", city:"那須烏山市", cat:"自然", lat:36.655,lng:140.145, scale:2, note:"幅65mの大滝。烏山線龍門の滝駅すぐ。山あげ祭とセット。"},
+  {id:30, name:"喜連川温泉・道の駅きつれがわ", area:"nasu", city:"さくら市", cat:"温泉", lat:36.685,lng:139.98, scale:4, note:"日本三大美肌の湯。市入込の中核。"},
+  // ---- 県央 ----
+  {id:31, name:"宇都宮餃子・中心市街地", area:"kenou", city:"宇都宮市", cat:"買い物・食", lat:36.559,lng:139.883, scale:5, note:"餃子購入額日本一を競う食文化。来らっせ・二荒山神社門前。"},
+  {id:32, name:"大谷資料館・大谷景観公園", area:"kenou", city:"宇都宮市", cat:"産業観光", lat:36.632,lng:139.822, scale:4, note:"地下採石場跡の巨大空間。ロケ地観光の代表格。"},
+  {id:33, name:"道の駅うつのみや ろまんちっく村", area:"kenou", city:"宇都宮市", cat:"買い物・食", lat:36.66,lng:139.83, scale:5, note:"温泉・農園を備えた滞在型道の駅。"},
+  {id:34, name:"宇都宮ライトレール(LRT)", area:"kenou", city:"宇都宮市", cat:"産業観光", lat:36.565,lng:139.935, scale:4, note:"2023年開業の国内初新設LRT。それ自体が観光資源+二次交通。"},
+  {id:35, name:"ブレックスアリーナ宇都宮", area:"kenou", city:"宇都宮市", cat:"レジャー", lat:36.545,lng:139.885, scale:3, note:"B.LEAGUE宇都宮ブレックス本拠地。スポーツツーリズム拠点。"},
+  {id:36, name:"八幡山公園", area:"kenou", city:"宇都宮市", cat:"自然", lat:36.578,lng:139.878, scale:2, note:"宇都宮タワーと桜800本。"},
+  {id:37, name:"古峯神社", area:"kenou", city:"鹿沼市", cat:"文化・歴史", lat:36.63,lng:139.60, scale:2, note:"天狗の社。御朱印人気。前日光の自然。"},
+  {id:38, name:"鬼怒グリーンパーク", area:"kenou", city:"高根沢町", cat:"自然", lat:36.66,lng:139.985, scale:2, note:"鬼怒川河川敷の水と緑の公園。コスモス。"},
+  // ---- 県南 ----
+  {id:39, name:"あしかがフラワーパーク", area:"kennan", city:"足利市", cat:"レジャー", lat:36.314,lng:139.52, scale:5, note:"大藤とイルミネーション。JR両毛線に専用駅。県南最大の集客装置。"},
+  {id:40, name:"史跡足利学校", area:"kennan", city:"足利市", cat:"文化・歴史", lat:36.338,lng:139.453, scale:3, note:"日本最古の学校。日本遺産。"},
+  {id:41, name:"足利織姫神社", area:"kennan", city:"足利市", cat:"文化・歴史", lat:36.345,lng:139.442, scale:2, note:"縁結びと229段の石段。関東平野の眺望。"},
+  {id:42, name:"佐野プレミアム・アウトレット", area:"kennan", city:"佐野市", cat:"買い物・食", lat:36.317,lng:139.607, scale:5, note:"佐野藤岡IC至近。佐野市入込の中核。"},
+  {id:43, name:"佐野厄よけ大師", area:"kennan", city:"佐野市", cat:"文化・歴史", lat:36.308,lng:139.578, scale:4, note:"正月三が日は関東屈指の初詣客。佐野らーめんと回遊。"},
+  {id:44, name:"唐沢山神社", area:"kennan", city:"佐野市", cat:"文化・歴史", lat:36.37,lng:139.60, scale:2, note:"続日本100名城の山城跡。猫の社。"},
+  {id:45, name:"蔵の街とちぎ", area:"kennan", city:"栃木市", cat:"文化・歴史", lat:36.383,lng:139.73, scale:4, note:"巴波川の舟行と蔵並み。映画ロケ地。"},
+  {id:46, name:"岩下の新生姜ミュージアム", area:"kennan", city:"栃木市", cat:"産業観光", lat:36.371,lng:139.738, scale:2, note:"企業ミュージアムの人気事例。"},
+  {id:47, name:"太平山県立自然公園", area:"kennan", city:"栃木市", cat:"自然", lat:36.35,lng:139.70, scale:3, note:"あじさい坂と関東平野の絶景。太平山神社。"},
+  {id:48, name:"渡良瀬遊水地", area:"kennan", city:"栃木市", cat:"自然", lat:36.25,lng:139.68, scale:4, note:"ラムサール条約湿地。熱気球・サイクリング。"},
+  {id:49, name:"とちぎわんぱく公園・道の駅みぶ", area:"kennan", city:"壬生町", cat:"レジャー", lat:36.44,lng:139.80, scale:5, note:"北関東道みぶハイウェーパーク一体。壬生町入込の中核。"},
+  {id:50, name:"バンダイミュージアム", area:"kennan", city:"壬生町", cat:"レジャー", lat:36.42,lng:139.77, scale:2, note:"おもちゃのまち壬生。ガンダム等の企業博物館。"},
+  {id:51, name:"天平の丘公園", area:"kennan", city:"下野市", cat:"自然", lat:36.39,lng:139.84, scale:2, note:"淡墨桜と下野国分寺跡。"},
+  // ---- 県東 ----
+  {id:52, name:"益子焼 城内坂・共販センター", area:"kentou", city:"益子町", cat:"産業観光", lat:36.46,lng:140.09, scale:4, note:"春秋の益子陶器市は2回で計約60万人規模。"},
+  {id:53, name:"道の駅ましこ", area:"kentou", city:"益子町", cat:"買い物・食", lat:36.44,lng:140.06, scale:3, note:"里山の食と工芸のセレクト。建築も見どころ。"},
+  {id:54, name:"モビリティリゾートもてぎ", area:"kentou", city:"茂木町", cat:"レジャー", lat:36.533,lng:140.227, scale:5, note:"MotoGP開催サーキット+森のテーマパーク。茂木町入込の中核。"},
+  {id:55, name:"SLキューロク館・真岡鐵道", area:"kentou", city:"真岡市", cat:"産業観光", lat:36.44,lng:140.01, scale:2, note:"SLもおか号。鉄道ファンの聖地。"},
+  {id:56, name:"井頭公園", area:"kentou", city:"真岡市", cat:"自然", lat:36.48,lng:139.995, scale:4, note:"日本の都市公園100選。一万人プール。"}
+],
+gateways:[
+  {id:"g1", name:"東京方面 / JR東北新幹線", edge:[139.85,36.185], to:[[139.80,36.315],[139.883,36.555],[139.91,36.96]], mode:"鉄道", desc:"東京→小山42分・宇都宮48分・那須塩原70分。ビジネス+観光の大動脈。"},
+  {id:"g2", name:"浅草 / 東武日光線・鬼怒川線", edge:[139.72,36.185], to:[[139.73,36.38],[139.61,36.75],[139.71,36.82]], mode:"鉄道", desc:"特急スペーシアX(2023-)で浅草→東武日光 最速1時間46分。日光・鬼怒川導線の背骨。"},
+  {id:"g3", name:"埼玉方面 / 東北自動車道", edge:[139.62,36.185], to:[[139.607,36.317],[139.883,36.555],[140.05,37.02]], mode:"車", desc:"佐野藤岡IC→宇都宮IC→那須IC→白河。入込の22.9%を占める道の駅網を貫く基幹導線。"},
+  {id:"g4", name:"群馬方面 / 北関東自動車道", edge:[139.345,36.32], to:[[139.45,36.34],[139.52,36.314]], mode:"車", desc:"高崎・前橋→足利IC・太田桐生IC。あしかがフラワーパーク・佐野への西の玄関。"},
+  {id:"g5", name:"茨城方面 / 北関東自動車道", edge:[140.30,36.45], to:[[140.09,36.46],[140.227,36.533]], mode:"車", desc:"水戸→真岡IC・茂木。益子・もてぎへの東の玄関。"},
+  {id:"g6", name:"会津方面 / 野岩鉄道・国道121号", edge:[139.62,37.155], to:[[139.55,36.94],[139.71,36.82]], mode:"鉄道・車", desc:"会津田島→湯西川・川治・鬼怒川。南会津との広域周遊軸。"},
+  {id:"g7", name:"福島方面 / 東北自動車道", edge:[140.05,37.155], to:[[140.05,37.02]], mode:"車", desc:"白河IC→那須IC。東北からの流入導線。"}
+],
+routes:[
+  {id:"r1", name:"日光王道 1泊2日", area:"nikko", stops:[1,4,3,2,5,6], tag:"世界遺産×自然", desc:"東武日光駅→東照宮→いろは坂→華厳滝→中禅寺湖→戦場ヶ原→湯元温泉泊。インバウンドのゴールデンルート。"},
+  {id:"r2", name:"鬼怒川ファミリー", area:"nikko", stops:[8,9,10,14], tag:"温泉×テーマパーク", desc:"鬼怒川温泉泊→東武ワールドスクウェア→江戸村→道の駅日光。SL大樹と組み合わせて鉄道体験も。"},
+  {id:"r3", name:"那須ロイヤルリゾート", area:"nasu", stops:[19,16,17,18,27], tag:"高原×動物", desc:"那須IC→りんどう湖→どうぶつ王国→ロープウェイ→湯本温泉泊→友愛の森。二次交通の整備が鍵。"},
+  {id:"r4", name:"塩原渓谷リトリート", area:"nasu", stops:[25,22,21,23], tag:"温泉×渓谷", desc:"西那須野塩原IC→千本松牧場→もみじ谷大吊橋→塩原温泉泊→(冬)ハンターマウンテン。冬期閑散対策の主力導線。"},
+  {id:"r5", name:"県南 花と歴史", area:"kennan", stops:[42,43,40,39,45], tag:"花×まち歩き", desc:"佐野藤岡IC→アウトレット→厄よけ大師→足利学校→フラワーパーク→蔵の街。北関東フラワーパークラインの中核。"},
+  {id:"r6", name:"益子・もてぎ里山ドライブ", area:"kentou", stops:[55,52,53,54], tag:"工芸×モビリティ", desc:"真岡IC→SLキューロク館→益子城内坂→道の駅ましこ→もてぎ。体験型コンテンツの連結。"},
+  {id:"r7", name:"宇都宮アーバンデイ", area:"kenou", stops:[31,32,33,34,35], tag:"食×LRT", desc:"宇都宮駅→餃子→大谷資料館→ろまんちっく村→LRT乗車→ブレックスアリーナ。日帰り都市観光+ナイトタイム消費。"}
+],
+strategy:{
+  name:"とちぎ観光立県戦略2026-2030", adopted:"2026-03-27", period:"2026-2030",
+  vision:"「訪れてよし、稼いでよし、住んでよし」三方よしの観光立県とちぎ",
+  kgi:{name:"観光消費額", base:9656, target:11562, unit:"億円", baseYear:2024, targetYear:2030},
+  kpis:[
+    {name:"観光客入込数", base:8997, target:9699, unit:"万人"},
+    {name:"延べ観光客宿泊数", base:830, target:899, unit:"万人泊"},
+    {name:"延べ外国人宿泊数", base:27.9, target:65.2, unit:"万人泊"},
+    {name:"消費単価(日本人)", base:3.2, target:3.5, unit:"万円"},
+    {name:"消費単価(外国人)", base:3.1, target:4.7, unit:"万円"}
+  ],
+  pillars:[
+    {no:"基本戦略 1", title:"持続可能な観光地づくり", items:[
+      "① 観光DX推進等による人材不足対策・観光人材育成",
+      "② 観光地経営の司令塔となるDMOの機能強化",
+      "③ 多様なニーズ・新たな旅のスタイルに対応する受入環境整備・景観改善",
+      "④ 観光地へのアクセス向上(二次交通・渋滞対策)",
+      "⑤ 観光危機管理とオーバーツーリズム未然防止",
+      "⑥ 観光客の満足度を高める「おもてなし」向上"]},
+    {no:"基本戦略 2", title:"観光コンテンツの掘り起こしと魅力向上", items:[
+      "⑦ 「組み合わせ旅」等の周遊・MICE促進のための連携強化",
+      "⑧ テーマ別観光・ロケ地・学びのコンテンツ活用",
+      "⑨ 閑散期の需要喚起と「帰る旅」の推進",
+      "⑩ ナイトタイムエコノミー・体験型コンテンツによる滞在長期化",
+      "⑪ インバウンド向け観光コンテンツの高付加価値化"]},
+    {no:"基本戦略 3", title:"データに基づく効果的・効率的なプロモーション", items:[
+      "⑫ 人流データ等を用いたマーケティングの強化",
+      "⑬ AIを活用したプロモーションの推進",
+      "⑭ SNS等ターゲット別デジタルプロモーション",
+      "⑮ イベント出展・旅行会社訪問等のリアルプロモーション",
+      "⑯ 海外拠点・外国人材による外国人目線の情報発信"]}
+  ],
+  events:[
+    {y:"2018", e:"栃木デスティネーションキャンペーン「本物の出会い栃木」", s:"JRグループとの大型共同キャンペーン"},
+    {y:"2019", e:"アフターDC ／ 入込9,228万人(近年ピーク)", s:""},
+    {y:"2020", e:"新型コロナで入込6,117万人に急減(前年比66%)", s:"宿泊は507万人泊まで落込み"},
+    {y:"2022", e:"いちご一会とちぎ国体・とちぎ大会", s:"全国からの来訪回復の契機"},
+    {y:"2023", e:"宇都宮LRT開業 ／ 東武スペーシアX運行開始", s:"新たな二次交通と日光導線の高付加価値化"},
+    {y:"2024", e:"外国人宿泊27.9万人泊・観光消費額とも過去最高", s:"宿泊数がコロナ前を超過"},
+    {y:"2026", e:"とちぎ観光立県戦略2026-2030 始動", s:"KGI=観光消費額1兆1,562億円へ"},
+    {y:"2027", e:"GREEN×EXPO 2027(国際園芸博)からの誘客", s:"戦略の重点機会と位置付け"},
+    {y:"2030", e:"戦略目標年 ／ 入込9,699万人・外国人65.2万人泊", s:""}
+  ],
+  related:[
+    {t:"観光立国推進基本計画(国・第5次)", d:"2030年 訪日6,000万人・消費15兆円の国家目標。県のインバウンド倍増目標の上位計画。"},
+    {t:"都道府県DMOと地域DMO", d:"戦略は県DMOを観光地経営の司令塔と位置付け、地域DMO(日光・那須等)との連携を強化。"},
+    {t:"市町の観光振興計画", d:"日光市・那須町・宇都宮市などが個別計画を策定。県戦略の「組み合わせ旅」は市町間連携が前提。"},
+    {t:"北関東三県連携", d:"北関東道を軸に群馬・茨城と広域周遊(フラワーパークライン、ガーデンツーリズム)を推進。"}
+  ]
+}
+};
+
+/* ===================================================================== */
+const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
+const DB=TOCHIGI_DB;
+const fmt=n=>n.toLocaleString('ja-JP');
+const man=n=>(n/10000).toLocaleString('ja-JP',{maximumFractionDigits:0}); // 人→万人
+let curYear=5; // index into years
+let mapLayer='spots', catFilter=null, areaFilter=null, activeRoute=null;
+
+const CATS=["自然","文化・歴史","温泉","レジャー","買い物・食","産業観光"];
+const tip=$('#tip');
+function showTip(html,x,y){tip.innerHTML=html;tip.style.display='block';
+  const r=tip.getBoundingClientRect();
+  tip.style.left=Math.min(x+14,innerWidth-r.width-10)+'px';
+  tip.style.top=Math.min(y+14,innerHeight-r.height-10)+'px';}
+function hideTip(){tip.style.display='none'}
+function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block';
+  clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',2200)}
+
+const SHORT={1:"日光東照宮",8:"鬼怒川温泉",31:"宇都宮餃子",33:"ろまんちっく村",39:"あしかがFP",42:"佐野アウトレット",49:"わんぱく公園",54:"もてぎ",2:"中禅寺湖",3:"華厳滝",4:"いろは坂",5:"戦場ヶ原",6:"湯元温泉"};
+const shortName=s=>SHORT[s.id]||s.name.split('(')[0].split('・')[0];
+
+/* ---------- projection ---------- */
+const LON0=139.30,LON1=140.34,LAT0=36.16,LAT1=37.20;
+const W=720,H=700,PAD=30;
+const px=lng=>PAD+(lng-LON0)/(LON1-LON0)*(W-2*PAD);
+const py=lat=>PAD+(LAT1-lat)/(LAT1-LAT0)*(H-2*PAD);
+
+/* simplified prefecture boundary (clockwise from SW) */
+const BOUNDARY=[[139.45,36.28],[139.42,36.36],[139.48,36.45],[139.46,36.55],[139.43,36.63],
+[139.35,36.70],[139.33,36.77],[139.40,36.83],[139.42,36.92],[139.47,37.00],[139.55,37.05],
+[139.65,37.03],[139.75,37.07],[139.85,37.10],[139.93,37.14],[140.00,37.15],[140.08,37.12],
+[140.18,37.05],[140.27,36.97],[140.29,36.88],[140.22,36.80],[140.26,36.70],[140.20,36.60],
+[140.28,36.53],[140.23,36.44],[140.14,36.36],[140.05,36.30],[139.95,36.26],[139.85,36.22],
+[139.75,36.20],[139.66,36.23],[139.70,36.30],[139.60,36.27],[139.52,36.24]];
+function boundaryPath(){return 'M'+BOUNDARY.map(p=>px(p[0]).toFixed(1)+','+py(p[1]).toFixed(1)).join('L')+'Z'}
+
+/* ---------- panel: KPI + chips + legend ---------- */
+function renderKPI(){
+  const i=curYear,y=DB.years[i],p=DB.pref;
+  $('#kpi-year').textContent=y;
+  $('#kpi-iri').innerHTML=(p.iri[i]/10).toLocaleString('ja-JP',{maximumFractionDigits:0})+'<small> 万人</small>';
+  $('#kpi-stay').innerHTML=(p.stay[i]/10).toLocaleString('ja-JP',{maximumFractionDigits:0})+'<small> 万人泊</small>';
+  $('#kpi-fgn').innerHTML=(p.foreign[i]/10000).toLocaleString('ja-JP',{maximumFractionDigits:1})+'<small> 万人泊</small>';
+  $('#kpi-stayrate').innerHTML=(p.stay[i]/p.iri[i]*100).toFixed(1)+'<small> %</small>';
+  const dif=(a,b,el)=>{const e=$(el);if(i===0){e.textContent='—';e.className='d';return}
+    const r=(a/b-1)*100;e.textContent=(r>=0?'▲ +':'▼ ')+r.toFixed(1)+'% 前年比';e.className='d '+(r>=0?'up':'dn')};
+  dif(p.iri[i],p.iri[i-1],'#kpi-iri-d');dif(p.stay[i],p.stay[i-1],'#kpi-stay-d');dif(p.foreign[i],p.foreign[i-1],'#kpi-fgn-d');
+  $('#kpi-rate-d').textContent='全国有数の日帰り型構造';$('#kpi-rate-d').className='d';
+}
+function renderChips(){
+  $('#area-chips').innerHTML='<button class="chip active" data-a="">全域</button>'+
+    Object.entries(DB.areas).map(([k,a])=>`<button class="chip" data-a="${k}">${a.name.replace('エリア','')}</button>`).join('');
+  $$('#area-chips .chip').forEach(c=>c.onclick=()=>{
+    $$('#area-chips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');
+    areaFilter=c.dataset.a||null;renderMap();renderFlowMap();renderSpotTable();});
+  $('#cat-chips').innerHTML='<button class="chip active" data-c="">すべて</button>'+
+    CATS.map(c=>`<button class="chip" data-c="${c}">${c}</button>`).join('');
+  $$('#cat-chips .chip').forEach(c=>c.onclick=()=>{
+    $$('#cat-chips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');
+    catFilter=c.dataset.c||null;renderMap();renderSpotTable();});
+  $$('#layer-chips .chip').forEach(c=>c.onclick=()=>{
+    $$('#layer-chips .chip').forEach(x=>x.classList.remove('active'));c.classList.add('active');
+    mapLayer=c.dataset.layer;renderMap();});
+  $('#area-legend').innerHTML=Object.values(DB.areas).map(a=>
+    `<div class="li"><span class="sw" style="background:${a.hex}"></span>${a.name}</div>`).join('');
+}
+
+/* ---------- selected card ---------- */
+function selectSpot(s){
+  $('#sel-card').style.display='block';
+  $('#sel-nm').textContent=s.name;
+  const a=DB.areas[s.area];
+  $('#sel-meta').innerHTML=
+    `<b>${s.city}</b> ／ ${a.name} ／ ${s.cat}<br>集客規模指数: <b>${'●'.repeat(s.scale)}${'○'.repeat(5-s.scale)}</b> (推定)<br>${s.note}`;
+}
+function selectMuni(m){
+  const i=curYear,a=DB.areas[m.area];
+  $('#sel-card').style.display='block';
+  $('#sel-nm').textContent=m.name;
+  $('#sel-meta').innerHTML=
+    `${a.name}<br>入込数(${DB.years[i]}): <b>${man(m.iri[i])}万人</b><br>`+
+    (i>0?`前年比: <b>${(m.iri[i]/m.iri[i-1]*100).toFixed(1)}%</b><br>`:'')+
+    `外国人宿泊(2024): <b>${fmt(m.foreign)}人泊</b>`+
+    (m.stay?`<br>宿泊数(2024): <b>${m.stay/10}万人泊</b>`:'');
+}
+
+/* ---------- MAP ---------- */
+function renderMap(){
+  const svg=$('#map-svg');let g='';
+  g+=`<path d="${boundaryPath()}" fill="rgba(28,32,48,.75)" stroke="#3d465f" stroke-width="1.6"/>`;
+  // area labels
+  const albl=[["NIKKO",139.55,36.86,"nikko"],["NASU / 県北",139.95,36.90,"nasu"],
+    ["県央",139.86,36.60,"kenou"],["県南",139.63,36.40,"kennan"],["県東",140.10,36.58,"kentou"]];
+  albl.forEach(([t,lg,lt,k])=>{g+=`<text class="area-lbl" x="${px(lg)}" y="${py(lt)}" fill="${DB.areas[k].hex}" opacity=".55" text-anchor="middle">${t}</text>`});
+  if(mapLayer==='muni'){
+    const i=curYear,max=Math.max(...DB.munis.map(m=>m.iri[i]));
+    DB.munis.forEach((m,idx)=>{
+      if(areaFilter&&m.area!==areaFilter)return;
+      const r=5+Math.sqrt(m.iri[i]/max)*30;
+      g+=`<circle class="muni-bub" data-muni="${idx}" cx="${px(m.lng)}" cy="${py(m.lat)}" r="${r.toFixed(1)}" fill="${DB.areas[m.area].hex}" stroke="rgba(13,15,20,.6)" stroke-width="1"/>`;
+      if(m.iri[i]/max>0.28)g+=`<text x="${px(m.lng)}" y="${py(m.lat)+3}" text-anchor="middle" font-size="10" fill="#0d0f14" font-weight="700" pointer-events="none">${m.name.replace(/市|町/,'')}</text>`;
+    });
+  }else{
+    DB.spots.forEach(s=>{
+      if(areaFilter&&s.area!==areaFilter)return;
+      if(catFilter&&s.cat!==catFilter)return;
+      const r=3.5+s.scale*1.6;
+      g+=`<circle class="spot-dot" data-spot="${s.id}" cx="${px(s.lng)}" cy="${py(s.lat)}" r="${r}" fill="${DB.areas[s.area].hex}" stroke="rgba(13,15,20,.55)" stroke-width="1"/>`;
+      if(s.scale>=5)g+=`<text x="${px(s.lng)+r+3}" y="${py(s.lat)+3}" font-size="9.5" fill="rgba(232,234,242,.85)" pointer-events="none">${shortName(s)}</text>`;
+    });
+  }
+  svg.innerHTML=g;
+  svg.querySelectorAll('.spot-dot').forEach(el=>{
+    const s=DB.spots.find(x=>x.id==el.dataset.spot);
+    el.addEventListener('mousemove',e=>showTip(`<b>${s.name}</b><br>${s.city} ／ ${s.cat}<br>規模指数 ${s.scale}/5`,e.clientX,e.clientY));
+    el.addEventListener('mouseleave',hideTip);
+    el.addEventListener('click',()=>selectSpot(s));
+  });
+  svg.querySelectorAll('.muni-bub').forEach(el=>{
+    const m=DB.munis[el.dataset.muni];
+    el.addEventListener('mousemove',e=>showTip(`<b>${m.name}</b><br>入込 ${man(m.iri[curYear])}万人 (${DB.years[curYear]})`,e.clientX,e.clientY));
+    el.addEventListener('mouseleave',hideTip);
+    el.addEventListener('click',()=>selectMuni(m));
+  });
+}
+function renderSpotTable(){
+  const rows=DB.spots.filter(s=>(!areaFilter||s.area===areaFilter)&&(!catFilter||s.cat===catFilter));
+  $('#spot-count').textContent=`${rows.length}件 ／ 全${DB.spots.length}地点(主要観光地点を編集部で調査・格納)`;
+  $('#spot-table').innerHTML='<tr><th>観光地点</th><th>市町</th><th>エリア</th><th>カテゴリ</th><th>規模指数</th></tr>'+
+    rows.sort((a,b)=>b.scale-a.scale).map(s=>
+      `<tr><td><span class="a-dot" style="background:${DB.areas[s.area].hex}"></span>${s.name}</td><td>${s.city}</td><td style="font-family:var(--jp)">${DB.areas[s.area].name.replace('エリア','')}</td><td style="font-family:var(--jp)">${s.cat}</td><td>${s.scale} / 5</td></tr>`).join('');
+}
+
+/* ---------- OVERVIEW charts ---------- */
+function lineChart(el,labels,series,opt={}){
+  const w=560,h=200,pl=40,pr=14,pt=14,pb=26;
+  let min=opt.min??Math.min(...series.flatMap(s=>s.values)),
+      max=Math.max(...series.flatMap(s=>s.values));
+  const span=max-min||1;min-=span*.08;max+=span*.08;
+  const X=i=>pl+i/(labels.length-1)*(w-pl-pr);
+  const Y=v=>pt+(1-(v-min)/(max-min))*(h-pt-pb);
+  let g='';
+  for(let t=0;t<4;t++){const v=min+(max-min)*t/3,y=Y(v);
+    g+=`<line x1="${pl}" y1="${y}" x2="${w-pr}" y2="${y}" stroke="rgba(42,48,68,.6)"/>`+
+       `<text x="${pl-6}" y="${y+3}" text-anchor="end" font-size="9" fill="#8b93a8" font-family="Oswald">${Math.round(v)}</text>`}
+  labels.forEach((l,i)=>g+=`<text x="${X(i)}" y="${h-8}" text-anchor="middle" font-size="9" fill="#8b93a8" font-family="Oswald">${l}</text>`);
+  series.forEach(s=>{
+    g+=`<polyline fill="none" stroke="${s.color}" stroke-width="2" points="${s.values.map((v,i)=>X(i)+','+Y(v)).join(' ')}"/>`;
+    s.values.forEach((v,i)=>{g+=`<circle cx="${X(i)}" cy="${Y(v)}" r="${i===s.values.length-1?4:2.5}" fill="${s.color}"/>`});
+  });
+  // end labels, de-overlapped (min 12px apart)
+  const ends=series.map(s=>({name:s.name,y:Y(s.values[s.values.length-1])})).sort((a,b)=>a.y-b.y);
+  for(let i=1;i<ends.length;i++)if(ends[i].y-ends[i-1].y<12)ends[i].y=ends[i-1].y+12;
+  ends.forEach(e=>{g+=`<text x="${w-pr+6}" y="${e.y+3}" font-size="9" fill="#e8eaf2">${e.name}</text>`});
+  el.innerHTML=`<div style="overflow-x:auto"><svg viewBox="0 0 ${w+50} ${h}" style="width:100%;min-width:420px">${g}</svg></div>`+
+    `<div class="legend" style="flex-direction:row;gap:14px;margin-top:6px">`+
+    series.map(s=>`<div class="li"><span class="sw" style="background:${s.color}"></span>${s.name}</div>`).join('')+`</div>`;
+  const svg=el.querySelector('svg');
+  svg.addEventListener('mousemove',e=>{
+    const r=svg.getBoundingClientRect();
+    const fx=(e.clientX-r.left)/r.width*(w+50);
+    let i=Math.round((fx-pl)/((w-pl-pr)/(labels.length-1)));
+    i=Math.max(0,Math.min(labels.length-1,i));
+    showTip(`<b>${labels[i]}</b><br>`+series.map(s=>`${s.name}: <b>${s.values[i].toLocaleString('ja-JP',{maximumFractionDigits:1})}${opt.unit||''}</b>`).join('<br>'),e.clientX,e.clientY);
+  });
+  svg.addEventListener('mouseleave',hideTip);
+}
+function renderOverview(){
+  const p=DB.pref;
+  const idx=arr=>arr.map(v=>+(v/arr[0]*100).toFixed(1));
+  lineChart($('#chart-recovery'),DB.years,[
+    {name:"入込数",color:"#3987e5",values:idx(p.iri)},
+    {name:"宿泊数",color:"#d95926",values:idx(p.stay)},
+    {name:"外国人宿泊",color:"#199e70",values:idx(p.foreign)}
+  ],{unit:"",min:0});
+  // monthly grouped columns
+  const m24=DB.monthlyIri.y2024,m23=DB.monthlyIri.y2023,max=Math.max(...m24,...m23);
+  $('#chart-monthly').innerHTML=`<div class="mcols">`+m24.map((v,i)=>
+    `<div class="mcol"><div class="mv">${man(v)}万</div>`+
+    `<div class="c" data-m="${i}" data-y="2023" style="height:${m23[i]/max*100}%;background:#4a5470"></div>`+
+    `<div class="c" data-m="${i}" data-y="2024" style="height:${v/max*100}%;background:#3987e5"></div></div>`).join('')+
+    `</div><div class="mlabels">`+[...Array(12)].map((_,i)=>`<span>${i+1}月</span>`).join('')+`</div>`+
+    `<div class="legend" style="flex-direction:row;gap:14px;margin-top:8px"><div class="li"><span class="sw" style="background:#3987e5"></span>2024年</div><div class="li"><span class="sw" style="background:#4a5470"></span>2023年</div></div>`;
+  $('#chart-monthly').querySelectorAll('.c').forEach(c=>{
+    c.addEventListener('mousemove',e=>{const i=+c.dataset.m,y=c.dataset.y,v=y==='2024'?m24[i]:m23[i];
+      showTip(`<b>${i+1}月 ${y}</b><br>${man(v)}万人`,e.clientX,e.clientY)});
+    c.addEventListener('mouseleave',hideTip);
+  });
+  // category bars
+  const cmax=Math.max(...DB.categories.map(c=>c.v));
+  $('#chart-category').innerHTML=DB.categories.map(c=>
+    `<div class="brow"><div class="bl">${c.name}</div><div class="btrack"><div class="bfill" style="width:${c.v/cmax*100}%;background:#3987e5;opacity:${c.name==='その他'?.45:.95}"></div></div><div class="bv">${man(c.v)}万人</div></div>`).join('')+
+    `<div class="hint" style="margin-top:8px">構成比: 買い物・食25.1%(道の駅22.9%) ＞ その他 ＞ スポレク15.5% ＞ 文化・歴史14.2%。単一色の濃淡=量のみを表現。</div>`;
+  // country bars
+  const named=DB.countries.filter(c=>!c.name.startsWith('その他')&&c.name!=='不明');
+  const nmax=Math.max(...named.map(c=>c.v));
+  $('#chart-country').innerHTML=named.map(c=>
+    `<div class="brow"><div class="bl">${c.name}</div><div class="btrack"><div class="bfill" style="width:${c.v/nmax*100}%;background:#199e70"></div></div><div class="bv">${fmt(c.v)}人泊</div></div>`).join('')+
+    `<div class="hint" style="margin-top:8px">アジア・中東56.5% ／ 欧州12.4% ／ 北米10.8%。台湾・中国・韓国・タイが増加、米国は前年比減。</div>`;
+}
+
+/* ---------- AREA view ---------- */
+function renderArea(){
+  const i=curYear,y=DB.years[i];
+  $('#rank-year').textContent=y+'年';$('#share-year').textContent=y+'年';
+  const rows=[...DB.munis].sort((a,b)=>b.iri[i]-a.iri[i]);
+  const max=rows[0].iri[i];
+  $('#chart-muni-rank').innerHTML=rows.slice(0,15).map(m=>
+    `<div class="brow"><div class="bl">${m.name}</div><div class="btrack"><div class="bfill" style="width:${m.iri[i]/max*100}%;background:${DB.areas[m.area].hex}"></div></div><div class="bv">${man(m.iri[i])}万人</div></div>`).join('');
+  // area share
+  const tot=DB.munis.reduce((s,m)=>s+m.iri[i],0);
+  const byArea=Object.keys(DB.areas).map(k=>({k,v:DB.munis.filter(m=>m.area===k).reduce((s,m)=>s+m.iri[i],0)}));
+  const amax=Math.max(...byArea.map(a=>a.v));
+  $('#chart-area-share').innerHTML=byArea.sort((a,b)=>b.v-a.v).map(a=>
+    `<div class="brow"><div class="bl">${DB.areas[a.k].name.replace('エリア','')}</div><div class="btrack"><div class="bfill" style="width:${a.v/amax*100}%;background:${DB.areas[a.k].hex}"></div></div><div class="bv">${(a.v/tot*100).toFixed(1)}%</div></div>`).join('')+
+    `<div class="hint" style="margin-top:8px">${Object.values(DB.areas).map(a=>`<b style="color:var(--txt)">${a.name.replace('エリア','')}</b>: ${a.desc}`).join('<br>')}</div>`;
+  // stay structure
+  const smax=Math.max(...DB.staySummary.map(s=>s.v));
+  $('#chart-stay').innerHTML=DB.staySummary.map(s=>
+    `<div class="brow"><div class="bl">${s.name}</div><div class="btrack"><div class="bfill" style="width:${s.v/smax*100}%;background:#d95926;opacity:${s.name.startsWith('その他')?.45:.95}"></div></div><div class="bv">${(s.v/10).toFixed(0)}万人泊</div></div>`).join('')+
+    `<div class="hint" style="margin-top:8px">日光市が県全体の35.4%。宿泊分類は旅館・ホテルが66.0%(547.8万人泊)。日光国立公園だけで宿泊505.9万人泊。</div>`;
+  // muni table
+  $('#muni-table').innerHTML='<tr><th>市町</th><th>入込2024(千人)</th><th>前年比</th><th>2019年比</th><th>外国人宿泊(人泊)</th></tr>'+
+    rows.map(m=>{const yy=(m.iri[5]/m.iri[4]*100),r19=(m.iri[5]/m.iri[0]*100);
+      return `<tr><td><span class="a-dot" style="background:${DB.areas[m.area].hex}"></span>${m.name}</td><td>${fmt(Math.round(m.iri[5]/1000))}</td>`+
+      `<td style="color:${yy>=100?'var(--ok)':'var(--warn)'}">${yy.toFixed(1)}%</td>`+
+      `<td style="color:${r19>=100?'var(--ok)':'var(--warn)'}">${r19.toFixed(1)}%</td><td>${fmt(m.foreign)}</td></tr>`}).join('');
+}
+
+/* ---------- FLOW view ---------- */
+function renderFlowMap(){
+  const svg=$('#flow-svg');let g='';
+  g+=`<path d="${boundaryPath()}" fill="rgba(28,32,48,.75)" stroke="#3d465f" stroke-width="1.6"/>`;
+  const albl=[["日光",139.55,36.80,"nikko"],["那須",139.98,36.95,"nasu"],["県央",139.86,36.58,"kenou"],["県南",139.62,36.40,"kennan"],["県東",140.10,36.50,"kentou"]];
+  albl.forEach(([t,lg,lt,k])=>{g+=`<text class="area-lbl" x="${px(lg)}" y="${py(lt)}" fill="${DB.areas[k].hex}" opacity=".4" text-anchor="middle">${t}</text>`});
+  // gateway flows
+  DB.gateways.forEach(gw=>{
+    const [ex,ey]=[px(gw.edge[0]),py(gw.edge[1])];
+    gw.to.forEach(t=>{
+      const [tx,ty]=[px(t[0]),py(t[1])];
+      const mx=(ex+tx)/2+(ey>ty?18:-18),my=(ey+ty)/2;
+      g+=`<path class="flow-line" d="M${ex},${ey} Q${mx},${my} ${tx},${ty}" stroke="rgba(245,196,0,.5)" stroke-width="1.6"/>`;
+    });
+    g+=`<circle cx="${ex}" cy="${ey}" r="5" fill="#f5c400"/>`;
+    const anchor=gw.edge[1]>37?'middle':(gw.edge[0]<139.5?'start':'middle');
+    const dy=gw.edge[1]>37?-10:(gw.edge[1]<36.3?16:-8);
+    g+=`<text class="gw-lbl" x="${ex}" y="${ey+dy}" text-anchor="${anchor==='middle'?'middle':'start'}">${gw.name.split(' / ')[0]}</text>`;
+  });
+  // active route
+  if(activeRoute){
+    const r=DB.routes.find(x=>x.id===activeRoute);
+    const pts=r.stops.map(id=>DB.spots.find(s=>s.id===id));
+    g+=`<polyline fill="none" stroke="${DB.areas[r.area].hex}" stroke-width="3" stroke-linejoin="round" points="${pts.map(s=>px(s.lng)+','+py(s.lat)).join(' ')}" opacity=".9"/>`;
+    pts.forEach((s,i)=>{
+      const ldy=i%2?16:-8; // alternate labels above/below to avoid collisions in clustered stops
+      g+=`<circle cx="${px(s.lng)}" cy="${py(s.lat)}" r="8" fill="${DB.areas[r.area].hex}" stroke="#0d0f14" stroke-width="1.5"/>`+
+         `<text x="${px(s.lng)}" y="${py(s.lat)+3.5}" text-anchor="middle" font-size="9" font-weight="700" fill="#0d0f14">${i+1}</text>`+
+         `<text x="${px(s.lng)+10}" y="${py(s.lat)+ldy}" font-size="9" fill="rgba(232,234,242,.9)">${shortName(s)}</text>`;
+    });
+  }
+  svg.innerHTML=g;
+}
+function renderFlow(){
+  $('#gw-list').innerHTML=DB.gateways.map(g=>
+    `<div class="tl-ev"><div class="y" style="width:64px">${g.mode}</div><div class="e"><b>${g.name}</b><br><small>${g.desc}</small></div></div>`).join('');
+  $('#route-list').innerHTML=DB.routes.map(r=>
+    `<div class="route-card${activeRoute===r.id?' active':''}" data-r="${r.id}">
+      <div class="rn"><span class="a-dot" style="background:${DB.areas[r.area].hex}"></span>${r.name}<span class="rtag">${r.tag}</span></div>
+      <div class="rt">${r.desc}</div></div>`).join('');
+  $$('#route-list .route-card').forEach(c=>c.onclick=()=>{
+    activeRoute=activeRoute===c.dataset.r?null:c.dataset.r;renderFlow();renderFlowMap();});
+  $('#flow-issues').innerHTML=[
+    ["risk","車依存とラストワンマイル","入込の22.9%が道の駅で車移動が支配的。鉄道駅から観光地への二次交通(路線バス・LRT延伸・シェアモビリティ)が戦略の主要施策④に位置付けられている。"],
+    ["risk","いろは坂・那須街道の季節渋滞","紅葉期・連休の渋滞が満足度を毀損。パークアンドライドと分散化(平日・閑散期誘導=施策⑨)が論点。"],
+    ["info","浅草-日光軸の高付加価値化","スペーシアX投入で座席単価を引き上げ。東京滞在型インバウンドの「日帰り→1泊」転換が外国人宿泊倍増目標の鍵。"],
+    ["good","LRTと都市観光の接続","宇都宮LRTは開業後も利用好調。餃子・大谷・スポーツ観戦を束ねる都市型周遊導線が新たに成立。"],
+    ["info","広域周遊(北関東道・会津)","フラワーパークライン(足利-佐野-館林)、会津-日光ルートなど県境をまたぐ「組み合わせ旅」(施策⑦)で滞在日数を伸ばす設計。"]
+  ].map(([t,h,b])=>`<div class="ins-card ${t}"><div class="it">${h}</div><div class="ib">${b}</div></div>`).join('');
+}
+
+/* ---------- POLICY view ---------- */
+function renderPolicy(){
+  const s=DB.strategy;
+  $('#kpi-board').innerHTML=s.kpis.map(k=>{
+    const pct=Math.min(100,k.base/k.target*100);
+    return `<div class="card" style="margin-bottom:0"><h3 style="font-size:11px">${k.name}</h3>
+      <div style="font-family:var(--mono);font-size:20px;color:var(--acc);font-variant-numeric:tabular-nums">${k.base.toLocaleString()}<small style="font-size:11px;color:var(--sub);font-family:var(--jp)"> ${k.unit}</small>
+      <span style="color:var(--sub);font-size:13px"> → ${k.target.toLocaleString()}${k.unit} <small>(2030)</small></span></div>
+      <div class="prog"><div class="pf" style="width:${pct}%"></div></div>
+      <div class="kpi-row"><span>基準比 必要成長 +${((k.target/k.base-1)*100).toFixed(1)}%</span><span class="tgt">${pct.toFixed(0)}%</span></div></div>`}).join('');
+  $('#strategy-boxes').innerHTML=s.pillars.map(p=>
+    `<div class="st-box"><div class="st-n">${p.no}</div><div class="st-t">${p.title}</div><ul>${p.items.map(i=>`<li>${i}</li>`).join('')}</ul></div>`).join('');
+  $('#event-timeline').innerHTML=s.events.map(e=>
+    `<div class="tl-ev"><div class="y">${e.y}</div><div class="e">${e.e}${e.s?`<br><small>${e.s}</small>`:''}</div></div>`).join('');
+  $('#related-plans').innerHTML=s.related.map(r=>
+    `<div class="ins-card info"><div class="it">${r.t}</div><div class="ib">${r.d}</div></div>`).join('');
+}
+
+/* ---------- AI view ---------- */
+function computeInsights(){
+  const p=DB.pref,ins=[];
+  const rec=(p.iri[5]/p.iri[0]*100).toFixed(1),recS=(p.stay[5]/p.stay[0]*100).toFixed(1),recF=(p.foreign[5]/p.foreign[0]*100).toFixed(1);
+  ins.push(["good","回復の質は「宿泊型」へシフト",`2019年比で入込 <b>${rec}%</b> に対し宿泊 <b>${recS}%</b>・外国人宿泊 <b>${recF}%</b>。人数はコロナ前未達でも、滞在を伴う消費型観光が先に回復しており、KGI(観光消費額)には追い風。`]);
+  const g=[...DB.munis].map(m=>({n:m.name,r:m.iri[5]/m.iri[4]*100})).sort((a,b)=>b.r-a.r).slice(0,5);
+  ins.push(["info","2024年 成長率上位市町",g.map(x=>`<b>${x.n}</b> ${x.r.toFixed(1)}%`).join(' ／ ')+"。塩谷(尚仁沢)・高根沢など県央周縁の伸びは道の駅・日帰り立寄り型で、LRT開業後の宇都宮(123.8%)は都市観光の構造変化を示す。"]);
+  const f=DB.munis.reduce((s,m)=>s+m.foreign,0);
+  const top3=[...DB.munis].sort((a,b)=>b.foreign-a.foreign).slice(0,3);
+  const c3=(top3.reduce((s,m)=>s+m.foreign,0)/f*100).toFixed(1);
+  ins.push(["risk","インバウンドの一極集中",top3.map(m=>`<b>${m.name}</b> ${(m.foreign/f*100).toFixed(1)}%`).join(' ／ ')+`。上位3市町で <b>${c3}%</b> を占有。65.2万人泊目標(2.3倍)の達成には日光の受入容量拡大と同時に、那須・県南への分散導線が必須。`]);
+  const stayRate=(p.stay[5]/p.iri[5]*100).toFixed(1);
+  const nikkoRate=(2941/10192*100).toFixed(1);
+  ins.push(["risk","日帰り型構造からの脱却",`県全体の宿泊率は <b>${stayRate}%</b>(宿泊830万÷入込8,997万)。日光市でも <b>${nikkoRate}%</b>。首都圏近接の裏返しであり、ナイトタイム・体験型コンテンツ(施策⑩)による「泊まる理由」づくりが消費額を左右する。`]);
+  const m=DB.monthlyIri.y2024,tot=m.reduce((a,b)=>a+b,0);
+  const peak=(Math.max(...m)/tot*100).toFixed(1),low=(Math.min(...m)/tot*100).toFixed(1);
+  ins.push(["info","季節変動 — 冬期が最大の伸びしろ",`8月 <b>${peak}%</b> vs 12月 <b>${low}%</b> と約1.8倍の格差。戦略も「冬期の入込・宿泊数割合」を参考指標化。スキー(ハンタマ)・かまくら祭・イルミネーション(あしかが)の冬コンテンツを導線で束ねる余地。`]);
+  ins.push(["info","車導線が需要の背骨",`分類別で道の駅が単独 <b>2,062万人(22.9%)</b>。東北道・北関東道のIC至近に集客装置(佐野アウトレット・わんぱく公園・友愛の森)が並ぶ。EV充電・渋滞予測などモビリティDXが満足度に直結。`]);
+  ins.push(["good","台湾・東アジアが成長ドライバー",`外国人宿泊は台湾 <b>19.2%</b> で最大。台湾+中国+韓国+タイ+香港でアジアが過半(56.5%)。一方米国は前年比減であり、欧米豪の高単価層(目標単価4.7万円)開拓が第2の柱。`]);
+  return ins;
+}
+function renderAI(){
+  $('#ai-insights').innerHTML=computeInsights().map(([t,h,b])=>
+    `<div class="ins-card ${t}"><div class="it">${h}<span class="itag ${t}">${t==='good'?'強み':t==='risk'?'課題':'構造'}</span></div><div class="ib">${b}</div></div>`).join('');
+  const s=DB.strategy,yrs=6;
+  const rows=[["観光客入込数",8997,9699,"万人"],["延べ宿泊数",830,899,"万人泊"],["延べ外国人宿泊数",27.9,65.2,"万人泊"],["観光消費額(KGI)",9656,11562,"億円"]];
+  $('#ai-gap').innerHTML=rows.map(([n,b,t,u])=>{
+    const cagr=((Math.pow(t/b,1/yrs)-1)*100).toFixed(1);
+    const need=((t/b-1)*100).toFixed(1);
+    return `<div class="brow"><div class="bl" style="width:150px">${n}</div><div class="btrack" style="height:18px"><div class="bfill" style="width:${Math.min(100,b/t*100)}%;background:${+need>50?'#d55181':'#199e70'}"></div></div><div class="bv" style="width:150px">+${need}% (年率${cagr}%)</div></div>`}).join('')+
+    `<div class="hint" style="margin-top:8px">2024実績→2030目標に必要な成長。外国人宿泊の年率 <b style="color:var(--warn)">15.3%</b> が最難関KPIで、伸び率では全国平均超えが要求される。入込・宿泊は年率1%台で射程圏。</div>`;
+  const copyText=async(txt,msg)=>{try{await navigator.clipboard.writeText(txt);toast(msg)}
+    catch(e){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);
+      ta.select();try{document.execCommand('copy');toast(msg)}catch(_){toast('コピーできませんでした')}ta.remove()}};
+  $('#btn-json').onclick=()=>copyText(JSON.stringify(TOCHIGI_DB,null,1),'TOCHIGI_DB(JSON)をコピーしました — AIツールに貼り付けて分析できます');
+  $('#btn-prompt').onclick=async()=>{
+    const prompt=`あなたは観光政策アナリストです。以下は栃木県の観光統計・観光地・導線・行政計画を格納したJSONデータベースです。
+このデータを用いて次を分析してください:
+1. 2030年KPI(特に外国人宿泊65.2万人泊)達成のための優先施策トップ3
+2. エリア間の周遊導線で最も投資対効果が高い区間
+3. 季節変動を平準化する具体策
+4. データから読み取れるリスクと追加で収集すべきデータ
+
+DATA:
+${JSON.stringify(TOCHIGI_DB)}`;
+    copyText(prompt,'AI分析プロンプトをコピーしました')};
+}
+
+/* ---------- view switching ---------- */
+const PHASES={0:"アフターDC — 入込9,228万人(近年ピーク)",1:"コロナ禍 — 入込6,117万人へ急減",2:"底ばい — 行動制限続く",3:"回復開始 — とちぎ国体開催",4:"回復本格化 — LRT開業・スペーシアX",5:"回復加速 — 入込8,997万人・外国人宿泊 過去最高"};
+function setYear(i){
+  curYear=i;$('#tl-year').textContent=DB.years[i];$('#tl-phase').textContent=PHASES[i];
+  $('#tl-slider').value=i;renderKPI();
+  if($('#view-map').classList.contains('active'))renderMap();
+  if($('#view-area').classList.contains('active'))renderArea();
+}
+$('#tl-slider').addEventListener('input',e=>setYear(+e.target.value));
+let playing=false,playT=null;
+$('#tl-play').onclick=()=>{
+  playing=!playing;$('#tl-play').textContent=playing?'⏸':'▶';
+  if(playing){playT=setInterval(()=>{setYear((curYear+1)%6)},1400)}else clearInterval(playT)};
+
+$$('.crumb').forEach(c=>c.onclick=()=>{
+  $$('.crumb').forEach(x=>x.classList.remove('active'));c.classList.add('active');
+  $$('.view').forEach(v=>v.classList.remove('active'));
+  $('#view-'+c.dataset.view).classList.add('active');
+  const isMap=c.dataset.view==='map';
+  $('#sec-layers').style.display=isMap?'block':'none';
+  $('#sec-cat').style.display=isMap?'block':'none';
+  if(c.dataset.view==='map'){renderMap();renderSpotTable()}
+  if(c.dataset.view==='area')renderArea();
+  if(c.dataset.view==='flow'){renderFlow();renderFlowMap()}
+  if(c.dataset.view==='policy')renderPolicy();
+  if(c.dataset.view==='ai')renderAI();
+});
+
+/* ---------- init ---------- */
+renderChips();renderKPI();renderOverview();
+</script>
+</body>
+</html>
