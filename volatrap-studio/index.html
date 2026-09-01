@@ -1,0 +1,1010 @@
+<title>VolaTrap Assembly Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#e4e8ee; --chrome:#eef1f5; --panel:#f8f9fb; --panel2:#eceff4; --panel3:#e2e6ed;
+  --line:#c6cdd8; --line2:#dde2ea; --text:#1b2230; --muted:#5d6675; --faint:#8b94a3;
+  --accent:#1f5fa8; --accent-soft:#d9e7f8; --accent-ink:#ffffff; --sel:#2f7de1; --sel-soft:#e4efff;
+  --vp1:#eaeef5; --vp2:#b4c0d1; --edge:#1b2230;
+  --make:#35a04f; --buy:#3b7dd8; --ok:#2f9e5b; --warn:#d9861c; --bad:#d3453f;
+  --led:#d7e63f; --shadow:0 1px 2px rgba(20,30,50,.12);
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:"IBM Plex Sans","Noto Sans JP",system-ui,-apple-system,"Segoe UI","Hiragino Sans","Yu Gothic UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#171a20; --chrome:#242931; --panel:#1d2128; --panel2:#2a3039; --panel3:#323945;
+    --line:#3b4350; --line2:#2f3641; --text:#e4e8ef; --muted:#9aa3b1; --faint:#6b7382;
+    --accent:#6aa9ff; --accent-soft:#213550; --accent-ink:#0b1626; --sel:#5aa0ff; --sel-soft:#1f3350;
+    --vp1:#3a4353; --vp2:#13161c; --edge:#dfe5ee; --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#171a20; --chrome:#242931; --panel:#1d2128; --panel2:#2a3039; --panel3:#323945;
+  --line:#3b4350; --line2:#2f3641; --text:#e4e8ef; --muted:#9aa3b1; --faint:#6b7382;
+  --accent:#6aa9ff; --accent-soft:#213550; --accent-ink:#0b1626; --sel:#5aa0ff; --sel-soft:#1f3350;
+  --vp1:#3a4353; --vp2:#13161c; --edge:#dfe5ee; --shadow:0 1px 2px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:13px/1.45 var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--sel);outline-offset:1px}
+.app{display:flex;flex-direction:column;height:100vh;min-height:0}
+
+/* ── app bar ─────────────────────────────── */
+.appbar{display:flex;align-items:center;gap:14px;height:40px;padding:0 12px;background:var(--accent);color:var(--accent-ink);flex:none}
+.appbar .mark{width:24px;height:24px;border-radius:50%;border:2.5px solid currentColor;display:grid;place-items:center;font-weight:600;font-size:10px;letter-spacing:.02em}
+.appbar .name{font-weight:600;letter-spacing:.01em;white-space:nowrap}
+.appbar .name span{font-weight:400;opacity:.8}
+.crumb{display:flex;gap:6px;color:inherit;opacity:.85;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.crumb b{font-weight:500;opacity:1}
+.appbar .search{margin-left:auto;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);border-radius:3px;padding:2px 8px;height:26px}
+.appbar .search input{background:none;border:0;color:inherit;width:180px;outline:0}
+.appbar .search input::placeholder{color:inherit;opacity:.6}
+.appbar .tag{font:11px var(--mono);padding:2px 7px;border:1px solid rgba(255,255,255,.35);border-radius:3px;white-space:nowrap}
+
+/* ── ribbon ──────────────────────────────── */
+.ribbon{background:var(--chrome);border-bottom:1px solid var(--line);flex:none}
+.rtabs{display:flex;gap:2px;padding:4px 8px 0;border-bottom:1px solid var(--line2)}
+.rtabs button{background:none;border:1px solid transparent;border-bottom:0;padding:4px 14px;border-radius:3px 3px 0 0;color:var(--muted)}
+.rtabs button[aria-selected="true"]{background:var(--panel);border-color:var(--line);color:var(--text);font-weight:500;margin-bottom:-1px}
+.rpanel{display:flex;gap:0;padding:6px 8px;background:var(--panel);overflow-x:auto}
+.rpanel[hidden]{display:none}
+.rgroup{display:flex;flex-direction:column;gap:4px;padding:0 10px;border-right:1px solid var(--line2)}
+.rgroup:last-child{border-right:0}
+.rgroup .row{display:flex;gap:4px;align-items:center;flex-wrap:nowrap}
+.rgroup .cap{font-size:10.5px;color:var(--faint);text-align:center;letter-spacing:.04em;text-transform:uppercase;margin-top:auto}
+.tb{display:flex;align-items:center;gap:5px;background:none;border:1px solid transparent;border-radius:3px;padding:4px 7px;white-space:nowrap;color:var(--text)}
+.tb svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.tb:hover{background:var(--panel2);border-color:var(--line2)}
+.tb[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--text)}
+.tb.big{flex-direction:column;padding:4px 8px;gap:2px;min-width:52px;font-size:11.5px}
+.tb.big svg{width:22px;height:22px}
+.chk{display:flex;align-items:center;gap:6px;padding:2px 4px;white-space:nowrap;cursor:pointer}
+.chk input{accent-color:var(--accent);margin:0}
+.slider{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.slider input[type=range]{width:180px;accent-color:var(--accent)}
+.slider output{font:12px var(--mono);min-width:44px;text-align:right;font-variant-numeric:tabular-nums}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.seg button{background:var(--panel);border:0;padding:3px 9px;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+select.sel,input.num{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:3px 6px;height:26px}
+input.num{font-family:var(--mono);font-variant-numeric:tabular-nums;width:76px;text-align:right}
+
+/* ── workspace ───────────────────────────── */
+.work{display:flex;flex:1;min-height:0}
+.dock{background:var(--panel);display:flex;flex-direction:column;min-height:0;min-width:0}
+.dock.left{width:272px;border-right:1px solid var(--line);flex:none}
+.dock.right{width:312px;border-left:1px solid var(--line);flex:none}
+.dock[hidden]{display:none}
+.center{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0}
+.dock.bottom{height:236px;border-top:1px solid var(--line);flex:none}
+.dtabs{display:flex;gap:0;background:var(--panel2);border-bottom:1px solid var(--line);flex:none;overflow-x:auto}
+.dtabs button{background:none;border:0;border-right:1px solid var(--line2);padding:5px 12px;color:var(--muted);white-space:nowrap;display:flex;align-items:center;gap:6px}
+.dtabs button svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:1.6}
+.dtabs button[aria-selected="true"]{background:var(--panel);color:var(--text);font-weight:500;box-shadow:inset 0 -2px 0 var(--accent)}
+.dbody{flex:1;min-height:0;overflow:auto;position:relative}
+.dbody[hidden]{display:none}
+.dhead{display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid var(--line2);font-size:11.5px;color:var(--muted);flex:none}
+.dhead .sp{flex:1}
+.mini{background:none;border:1px solid var(--line);border-radius:3px;padding:2px 7px;font-size:11.5px;color:var(--text)}
+.mini:hover{background:var(--panel2)}
+
+/* tree */
+.tree{padding:4px 0;font-size:12.5px;user-select:none}
+.tnode{display:flex;align-items:center;gap:4px;height:24px;padding-right:6px;cursor:default;white-space:nowrap}
+.tnode:hover{background:var(--panel2)}
+.tnode.selected{background:var(--sel-soft);box-shadow:inset 3px 0 0 var(--sel)}
+.tnode.hidden-part{color:var(--faint)}
+.tnode .tw{width:16px;height:16px;display:grid;place-items:center;color:var(--muted);flex:none;cursor:pointer}
+.tnode .tw svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2}
+.tnode .ic{width:12px;height:12px;border-radius:2px;flex:none;border:1px solid rgba(0,0,0,.25)}
+.tnode .ic.grp{border-radius:50%;width:10px;height:10px;margin:0 1px}
+.tnode .lbl{overflow:hidden;text-overflow:ellipsis}
+.tnode .lbl small{color:var(--faint);font-family:var(--mono);font-size:10.5px;margin-left:4px}
+.tnode .eye{margin-left:auto;background:none;border:0;padding:2px;color:var(--muted);display:grid;place-items:center;opacity:.5}
+.tnode:hover .eye,.tnode.hidden-part .eye{opacity:1}
+.tnode .eye svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.6}
+.tchildren{display:block}
+.tchildren.collapsed{display:none}
+.tnode.match{font-weight:600}
+
+/* views */
+.views{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px}
+.vcard{background:var(--panel2);border:1px solid var(--line2);border-radius:3px;padding:4px;cursor:pointer;text-align:center;font-size:11.5px;color:var(--muted)}
+.vcard:hover{border-color:var(--accent)}
+.vcard.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.vcard img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;background:var(--vp2);border-radius:2px;margin-bottom:3px}
+.vcard .del{float:right;background:none;border:0;color:var(--faint);padding:0 2px;font-size:11px}
+
+/* selections sets */
+.sets{padding:6px}
+.set{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line2);border-radius:3px;margin-bottom:6px;background:var(--panel2);cursor:pointer}
+.set:hover{border-color:var(--accent)}
+.set .sw{width:10px;height:10px;border-radius:2px;flex:none}
+.set .n{margin-left:auto;font:11px var(--mono);color:var(--muted)}
+
+/* viewport */
+.viewport{flex:1;min-height:0;position:relative;background:radial-gradient(ellipse at 50% 35%,var(--vp1),var(--vp2));overflow:hidden}
+.viewport canvas.gl{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+.triad{position:absolute;left:10px;bottom:10px;width:96px;height:96px;pointer-events:none}
+.vp-hud{position:absolute;top:8px;left:10px;display:flex;gap:6px;pointer-events:none}
+.pill{font:11px var(--mono);background:color-mix(in srgb,var(--panel) 78%,transparent);border:1px solid var(--line);border-radius:3px;padding:2px 7px;color:var(--muted);backdrop-filter:blur(4px)}
+.pill b{color:var(--text);font-weight:500}
+.vp-tools{position:absolute;right:10px;top:8px;display:flex;flex-direction:column;gap:4px}
+.vp-tools .tb{background:color-mix(in srgb,var(--panel) 85%,transparent);border-color:var(--line);padding:4px}
+.tip{position:absolute;pointer-events:none;background:var(--text);color:var(--panel);font-size:11.5px;padding:3px 7px;border-radius:2px;transform:translate(12px,14px);white-space:nowrap;display:none}
+.tip small{opacity:.7;font-family:var(--mono);margin-left:6px}
+.legend{position:absolute;left:10px;bottom:116px;display:none;flex-direction:column;gap:3px;font-size:11px;color:var(--muted);background:color-mix(in srgb,var(--panel) 80%,transparent);padding:6px 8px;border:1px solid var(--line);border-radius:3px}
+.legend.show{display:flex}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+
+/* properties */
+.props{padding:0}
+.psec{border-bottom:1px solid var(--line2)}
+.psec h4{margin:0;padding:6px 10px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--panel2);display:flex;align-items:center;gap:6px}
+.psec h4 .sw{width:10px;height:10px;border-radius:2px;border:1px solid rgba(0,0,0,.2)}
+.prow{display:grid;grid-template-columns:104px 1fr;align-items:center;gap:6px;padding:3px 10px;min-height:28px;font-size:12.5px}
+.prow label,.prow .k{color:var(--muted)}
+.prow .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow input[type=text],.prow select,.prow input[type=number]{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:3px 6px;height:26px;min-width:0}
+.prow input[type=number]{font-family:var(--mono);text-align:right}
+.prow input[type=range]{width:100%;accent-color:var(--accent)}
+.prow input[type=color]{width:34px;height:24px;padding:0;border:1px solid var(--line);border-radius:3px;background:none}
+.prow .inl{display:flex;align-items:center;gap:8px}
+.prow .inl output{font:12px var(--mono);min-width:40px;text-align:right}
+.pempty{padding:14px 10px;color:var(--muted);font-size:12px;line-height:1.6}
+.mb{display:inline-block;padding:1px 7px;border-radius:2px;font-size:10.5px;font-weight:600;letter-spacing:.04em;color:#fff}
+.mb.make{background:var(--make)}.mb.buy{background:var(--buy)}
+.stat{display:inline-flex;align-items:center;gap:5px;font-size:12px}
+.stat i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.ok i{background:var(--ok)}.bad i{background:var(--bad)}.warn i{background:var(--warn)}
+
+/* parametric */
+.param{padding:4px 10px 6px;border-bottom:1px solid var(--line2)}
+.param .t{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px}
+.param .t output{font:12px var(--mono);color:var(--text)}
+.param .t small{color:var(--faint);font-family:var(--mono);font-size:10.5px;margin-left:6px}
+.param input[type=range]{width:100%;accent-color:var(--accent);margin:2px 0 0}
+.targets{width:100%;border-collapse:collapse;font-size:12px}
+.targets th{font-weight:500;color:var(--muted);text-align:left;padding:5px 10px;border-bottom:1px solid var(--line2);font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+.targets td{padding:5px 10px;border-bottom:1px solid var(--line2);font-family:var(--mono);font-variant-numeric:tabular-nums}
+.targets td:first-child{font-family:var(--sans)}
+
+/* BOM */
+table.bom{width:100%;border-collapse:collapse;font-size:12px}
+.bom th{position:sticky;top:0;background:var(--panel2);text-align:left;font-weight:500;color:var(--muted);padding:5px 8px;border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.03em;white-space:nowrap;z-index:1}
+.bom td{padding:4px 8px;border-bottom:1px solid var(--line2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.bom td.n,.bom th.n{text-align:right;font-family:var(--mono)}
+.bom tr.sel td{background:var(--sel-soft)}
+.bom tbody tr:hover td{background:var(--panel2)}
+.bom tr.sel:hover td{background:var(--sel-soft)}
+.bom tfoot td{font-weight:600;background:var(--panel2);border-top:1px solid var(--line)}
+.bom .sw{display:inline-block;width:10px;height:10px;border-radius:2px;border:1px solid rgba(0,0,0,.2);vertical-align:-1px;margin-right:6px}
+.bom td.dim{color:var(--faint)}
+.bom .pn{font-family:var(--mono)}
+
+/* measure */
+.measure{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0}
+.mcard{padding:8px 12px;border-right:1px solid var(--line2);border-bottom:1px solid var(--line2)}
+.mcard h5{margin:0 0 4px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.mcard .big{font:500 22px/1.1 var(--mono);font-variant-numeric:tabular-nums}
+.mcard .big small{font-size:12px;color:var(--muted);margin-left:4px;font-family:var(--sans)}
+.mcard .kv{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:12px;margin-top:4px}
+.mcard .kv span{color:var(--muted)}
+.mcard .kv b{font:12px var(--mono);font-weight:500;font-variant-numeric:tabular-nums;text-align:right}
+.bar{height:6px;background:var(--panel3);border-radius:3px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent)}
+
+/* output */
+.out{font:11.5px/1.6 var(--mono);padding:6px 10px;white-space:pre-wrap;color:var(--text)}
+.out .t{color:var(--faint)}
+.out .w{color:var(--warn)}.out .e{color:var(--bad)}.out .g{color:var(--ok)}
+
+/* status */
+.status{display:flex;align-items:center;gap:18px;height:24px;padding:0 10px;background:var(--chrome);border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);flex:none;white-space:nowrap;overflow:hidden}
+.status .sp{flex:1}
+.status b{color:var(--text);font-weight:500;font-family:var(--mono)}
+kbd{font:10.5px var(--mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:0 4px;background:var(--panel)}
+
+@media (max-width:900px){
+  .work{flex-direction:column;overflow:auto}
+  .dock.left,.dock.right{width:auto;height:240px;border:0;border-top:1px solid var(--line)}
+  .center{flex:none;height:70vh}
+}
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+
+<div class="app">
+  <header class="appbar">
+    <div class="mark">VT</div>
+    <div class="name">VolaTrap Assembly Studio <span>· 3D 分解 / 設計ダッシュボード</span></div>
+    <div class="crumb"><span>VolaTrap_Product.1</span><span>›</span><b>VolaTrap Assy.1</b></div>
+    <label class="search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="search" type="search" placeholder="部品を検索 (名称 / 部品番号)" aria-label="部品を検索"></label>
+    <span class="tag">VT-2026-A · rev 03</span>
+  </header>
+
+  <nav class="ribbon" aria-label="リボン">
+    <div class="rtabs" role="tablist">
+      <button role="tab" aria-selected="true" data-rt="view">表示</button>
+      <button role="tab" aria-selected="false" data-rt="explode">分解</button>
+      <button role="tab" aria-selected="false" data-rt="analyze">解析</button>
+      <button role="tab" aria-selected="false" data-rt="design">設計</button>
+    </div>
+
+    <div class="rpanel" data-rp="view">
+      <div class="rgroup">
+        <div class="row">
+          <button class="tb big" data-view="iso" title="等角 (I)"><svg viewBox="0 0 24 24"><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9z"/><path d="M12 12 20 7.5M12 12v9M12 12 4 7.5"/></svg>等角</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px">
+            <button class="tb" data-view="front">正面</button><button class="tb" data-view="back">背面</button>
+            <button class="tb" data-view="top">上面</button><button class="tb" data-view="bottom">下面</button>
+            <button class="tb" data-view="left">左側</button><button class="tb" data-view="right">右側</button>
+          </div>
+        </div>
+        <div class="cap">Alignment</div>
+      </div>
+      <div class="rgroup">
+        <div class="row">
+          <button class="tb" id="fit" title="全体表示 (F)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><rect x="9" y="9" width="6" height="6"/></svg>全体表示</button>
+          <button class="tb" data-zoom="1.25"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8 11h6M11 8v6"/></svg>拡大</button>
+          <button class="tb" data-zoom="0.8"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5M8 11h6"/></svg>縮小</button>
+          <button class="tb" id="focusSel" title="選択部品にフォーカス"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>フォーカス</button>
+        </div>
+        <div class="cap">Zoom</div>
+      </div>
+      <div class="rgroup">
+        <div class="row seg" id="renderMode">
+          <button aria-pressed="true" data-rm="solid">ソリッド</button>
+          <button aria-pressed="false" data-rm="wire">ワイヤ</button>
+          <button aria-pressed="false" data-rm="ghost">透過</button>
+          <button aria-pressed="false" data-rm="illust">イラスト</button>
+        </div>
+        <div class="row">
+          <label class="chk"><input type="checkbox" id="optPersp" checked>透視投影</label>
+          <label class="chk"><input type="checkbox" id="optEdges">輪郭線</label>
+          <label class="chk"><input type="checkbox" id="optShadow" checked>影</label>
+        </div>
+        <div class="cap">Render mode</div>
+      </div>
+      <div class="rgroup">
+        <div class="row">
+          <label class="chk"><input type="checkbox" id="optGrid" checked>グリッド</label>
+          <label class="chk"><input type="checkbox" id="optAxes" checked>座標系</label>
+          <label class="chk"><input type="checkbox" id="optTurn">ターンテーブル</label>
+        </div>
+        <div class="row">
+          <label class="chk"><input type="checkbox" id="optLed" checked>LED 点灯</label>
+          <span class="slider" style="margin-left:6px"><span style="color:var(--muted)">明るさ</span><input type="range" id="ledPower" min="0" max="2" step="0.05" value="1.1" style="width:90px"><output id="ledPowerOut">1.10</output></span>
+        </div>
+        <div class="cap">Scene</div>
+      </div>
+      <div class="rgroup">
+        <div class="row">
+          <label class="chk"><input type="checkbox" id="paneLeft" checked>構造ツリー</label>
+          <label class="chk"><input type="checkbox" id="paneRight" checked>プロパティ</label>
+          <label class="chk"><input type="checkbox" id="paneBottom" checked>部品表 / 出力</label>
+        </div>
+        <div class="row">
+          <button class="tb" id="resetUi"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>UI をリセット</button>
+        </div>
+        <div class="cap">Show panes</div>
+      </div>
+    </div>
+
+    <div class="rpanel" data-rp="explode" hidden>
+      <div class="rgroup">
+        <div class="row slider"><span style="color:var(--muted)">分解率</span><input type="range" id="explode" min="0" max="100" value="0"><output id="explodeOut">0 %</output></div>
+        <div class="row">
+          <button class="tb" data-explode="0">組立</button>
+          <button class="tb" data-explode="50">50 %</button>
+          <button class="tb" data-explode="100">全分解</button>
+          <button class="tb" id="animExplode" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m10 8 5 4-5 4z"/></svg>分解アニメーション</button>
+        </div>
+        <div class="cap">Explode</div>
+      </div>
+      <div class="rgroup">
+        <div class="row">
+          <button class="tb" id="isolate" title="選択部品のみ表示"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2"/><rect x="9" y="9" width="6" height="6"/></svg>分離表示</button>
+          <button class="tb" id="hideSel"><svg viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.1A10 10 0 0 1 21 12a10 10 0 0 1-2 3M6.6 6.6A10 10 0 0 0 3 12a10 10 0 0 0 11 6.9"/></svg>選択を非表示</button>
+          <button class="tb" id="showAll"><svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>すべて表示</button>
+        </div>
+        <div class="row">
+          <button class="tb" id="selShell">外装のみ選択</button>
+          <button class="tb" id="selInner">内部ユニットを選択</button>
+          <button class="tb" id="clearSel">選択解除 <kbd>Esc</kbd></button>
+        </div>
+        <div class="cap">Visibility</div>
+      </div>
+      <div class="rgroup">
+        <div class="row">
+          <span style="color:var(--muted)">分解方向</span>
+          <div class="seg" id="explodeStyle"><button aria-pressed="true" data-es="axis">軸方向</button><button aria-pressed="false" data-es="radial">放射状</button></div>
+        </div>
+        <div class="row slider"><span style="color:var(--muted)">分解距離</span><input type="range" id="explodeScale" min="0.5" max="2" step="0.05" value="1" style="width:110px"><output id="explodeScaleOut">1.00×</output></div>
+        <div class="cap">Style</div>
+      </div>
+    </div>
+
+    <div class="rpanel" data-rp="analyze" hidden>
+      <div class="rgroup">
+        <div class="row">
+          <label class="chk"><input type="checkbox" id="secOn">断面表示</label>
+          <div class="seg" id="secAxis"><button aria-pressed="true" data-ax="x">X</button><button aria-pressed="false" data-ax="y">Y</button><button aria-pressed="false" data-ax="z">Z</button></div>
+          <button class="tb" id="secFlip" title="切断側を反転"><svg viewBox="0 0 24 24"><path d="M7 7l-4 5 4 5M17 7l4 5-4 5M3 12h18"/></svg>反転</button>
+        </div>
+        <div class="row slider"><span style="color:var(--muted)">切断位置</span><input type="range" id="secPos" min="-100" max="100" value="0"><output id="secPosOut">0 mm</output></div>
+        <div class="cap">Section</div>
+      </div>
+      <div class="rgroup">
+        <div class="row seg" id="colorMode">
+          <button aria-pressed="true" data-cm="material">実材質</button>
+          <button aria-pressed="false" data-cm="makebuy">Make / Buy</button>
+          <button aria-pressed="false" data-cm="group">サブAssy</button>
+          <button aria-pressed="false" data-cm="matclass">材質分類</button>
+          <button aria-pressed="false" data-cm="mass">質量ヒート</button>
+        </div>
+        <div class="cap">Color code</div>
+      </div>
+      <div class="rgroup">
+        <div class="row">
+          <button class="tb" id="measureSel"><svg viewBox="0 0 24 24"><path d="M3 17 17 3l4 4L7 21z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg>選択を計測</button>
+          <button class="tb" id="measureAll">全体を計測</button>
+          <span style="color:var(--muted);font-size:12px;margin-left:6px">2 部品を選択すると重心間距離を表示</span>
+        </div>
+        <div class="cap">Measurement</div>
+      </div>
+    </div>
+
+    <div class="rpanel" data-rp="design" hidden>
+      <div class="rgroup">
+        <div class="row">
+          <button class="tb" id="openParam"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2" fill="currentColor"/><circle cx="15" cy="12" r="2" fill="currentColor"/><circle cx="7" cy="18" r="2" fill="currentColor"/></svg>パラメータを開く</button>
+          <button class="tb" id="paramReset">初期値に戻す</button>
+          <button class="tb" id="paramOpt">質量最適化を実行</button>
+        </div>
+        <div class="cap">Parametric</div>
+      </div>
+      <div class="rgroup">
+        <div class="row">
+          <button class="tb" id="exportJson"><svg viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg>設計データを書き出し (JSON)</button>
+          <button class="tb" id="copyBom">BOM をコピー (TSV)</button>
+        </div>
+        <div class="cap">Export</div>
+      </div>
+      <div class="rgroup">
+        <div class="row" style="color:var(--muted);font-size:12px;max-width:360px;white-space:normal">パラメータ変更はモデルを即時再生成します。質量・全長・重心はメッシュ体積から算出（単位: mm / g / cm³）。</div>
+        <div class="cap">Note</div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="work">
+    <aside class="dock left" id="dockLeft">
+      <div class="dtabs" role="tablist">
+        <button role="tab" aria-selected="true" data-lt="tree"><svg viewBox="0 0 24 24"><path d="M5 4v16M5 8h6M5 14h6M5 20h6"/></svg>構造</button>
+        <button role="tab" aria-selected="false" data-lt="views"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="m3 15 5-4 4 3 4-5 5 6"/></svg>ビュー</button>
+        <button role="tab" aria-selected="false" data-lt="sets"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="13" width="8" height="8"/><rect x="13" y="3" width="8" height="8" stroke-dasharray="2 2"/></svg>選択セット</button>
+      </div>
+      <div class="dhead"><span id="treeCount">—</span><span class="sp"></span><button class="mini" id="expandAll">すべて展開</button><button class="mini" id="collapseAll">折りたたむ</button></div>
+      <div class="dbody" data-lp="tree"><div class="tree" id="tree"></div></div>
+      <div class="dbody" data-lp="views" hidden>
+        <div class="dhead"><span>保存済みビュー</span><span class="sp"></span><button class="mini" id="saveView">現在のビューを保存</button></div>
+        <div class="views" id="views"></div>
+      </div>
+      <div class="dbody" data-lp="sets" hidden><div class="sets" id="sets"></div></div>
+    </aside>
+
+    <div class="center">
+      <div class="viewport" id="viewport">
+        <canvas class="gl" id="gl" aria-label="3D ビューポート"></canvas>
+        <canvas class="triad" id="triad" width="192" height="192"></canvas>
+        <div class="vp-hud"><span class="pill" id="hudMode">ソリッド · 透視</span><span class="pill" id="hudExplode">分解 <b>0 %</b></span><span class="pill" id="hudSec" hidden>断面 X</span></div>
+        <div class="vp-tools">
+          <button class="tb" data-view="iso" title="等角"><svg viewBox="0 0 24 24"><path d="M12 3 20 7.5v9L12 21l-8-4.5v-9z"/><path d="M12 12 20 7.5M12 12v9M12 12 4 7.5"/></svg></button>
+          <button class="tb" id="fit2" title="全体表示"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
+          <button class="tb" id="snap" title="スナップショットをビューに保存"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+        </div>
+        <div class="legend" id="legend"></div>
+        <div class="tip" id="tip"></div>
+      </div>
+      <section class="dock bottom" id="dockBottom">
+        <div class="dtabs" role="tablist">
+          <button role="tab" aria-selected="true" data-bt="bom"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>部品表 (BOM)</button>
+          <button role="tab" aria-selected="false" data-bt="measure"><svg viewBox="0 0 24 24"><path d="M3 17 17 3l4 4L7 21z"/></svg>計測</button>
+          <button role="tab" aria-selected="false" data-bt="out"><svg viewBox="0 0 24 24"><path d="m4 6 6 6-6 6M12 18h8"/></svg>出力</button>
+        </div>
+        <div class="dbody" data-bp="bom"><table class="bom" id="bom"></table></div>
+        <div class="dbody" data-bp="measure" hidden><div class="measure" id="measure"></div></div>
+        <div class="dbody" data-bp="out" hidden><div class="out" id="out"></div></div>
+      </section>
+    </div>
+
+    <aside class="dock right" id="dockRight">
+      <div class="dtabs" role="tablist">
+        <button role="tab" aria-selected="true" data-rtab="props"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="1"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>プロパティ</button>
+        <button role="tab" aria-selected="false" data-rtab="param"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2" fill="currentColor"/><circle cx="15" cy="12" r="2" fill="currentColor"/><circle cx="8" cy="17" r="2" fill="currentColor"/></svg>パラメータ</button>
+      </div>
+      <div class="dbody" data-rp2="props"><div class="props" id="props"></div></div>
+      <div class="dbody" data-rp2="param" hidden><div id="param"></div></div>
+    </aside>
+  </div>
+
+  <footer class="status">
+    <span id="stSel">0/0 部品を選択</span>
+    <span id="stTri">— 三角形</span>
+    <span id="stMass">総質量 —</span>
+    <span class="sp"></span>
+    <span><kbd>左ドラッグ</kbd> 回転 · <kbd>右/中ドラッグ</kbd> 平行移動 · <kbd>ホイール</kbd> ズーム · <kbd>F</kbd> 全体 · <kbd>E</kbd> 分解 · <kbd>Ctrl+クリック</kbd> 追加選択</span>
+    <span id="stFps">— fps</span>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
+const fmt=(n,d=1)=>Number(n).toLocaleString('ja-JP',{minimumFractionDigits:d,maximumFractionDigits:d});
+
+/* ───────── design data ───────── */
+const MATERIALS={
+  'ABS':{d:1.05,cls:'plastic'},'PC':{d:1.20,cls:'plastic'},'PP':{d:0.91,cls:'plastic'},'PET':{d:1.38,cls:'plastic'},
+  'シリコーン':{d:1.15,cls:'elastomer'},'NBR':{d:1.20,cls:'elastomer'},'FR-4':{d:1.85,cls:'electronic'},
+  'アルミ A5052':{d:2.68,cls:'metal'},'SUS304':{d:7.93,cls:'metal'},'ホウケイ酸ガラス':{d:2.23,cls:'glass'},
+  'Tenax TA':{d:0.25,cls:'sorbent'},'Li-ion セル':{d:2.55,cls:'electronic'}
+};
+const CLASS_COLORS={plastic:'#d8dde5',elastomer:'#6b6f7a',electronic:'#c4913a',metal:'#8fa3b8',glass:'#9fd3e8',sorbent:'#d9b56b'};
+const CLASS_JP={plastic:'樹脂',elastomer:'エラストマー',electronic:'電子部品',metal:'金属',glass:'ガラス',sorbent:'吸着剤'};
+const GROUPS=[
+  {id:'A1',name:'サンプリングヘッド Assy',color:'#3aa0d8'},
+  {id:'A2',name:'ハウジング Assy',color:'#e39b2c'},
+  {id:'A3',name:'内部ユニット Assy',color:'#8b5cd6'},
+  {id:'A4',name:'ベース Assy',color:'#3fae6a'}
+];
+const DEFAULT_PARAMS={nozzleAngle:40,mouthLen:60,bodyR:60,bodyDepth:70,ringW:40,ledHue:68,ledPower:1.1,baseH:12};
+const PARAM_DEFS=[
+  {k:'nozzleAngle',label:'ノズル角度',unit:'°',min:15,max:65,step:1},
+  {k:'mouthLen',label:'マウスピース長',unit:'mm',min:40,max:95,step:1},
+  {k:'bodyR',label:'ボディ半径',unit:'mm',min:48,max:72,step:0.5},
+  {k:'bodyDepth',label:'ボディ奥行',unit:'mm',min:50,max:90,step:1},
+  {k:'ringW',label:'カップリング幅',unit:'mm',min:28,max:56,step:1},
+  {k:'baseH',label:'ベース厚',unit:'mm',min:8,max:20,step:0.5},
+  {k:'ledHue',label:'LED 色相',unit:'°',min:0,max:360,step:1}
+];
+const TARGETS=[
+  {k:'mass',label:'総質量',unit:'g',op:'≤',target:600},
+  {k:'length',label:'全長 (X)',unit:'mm',op:'≤',target:250},
+  {k:'height',label:'全高 (Y)',unit:'mm',op:'≤',target:200},
+  {k:'headMass',label:'ヘッド Assy 質量',unit:'g',op:'≤',target:150}
+];
+
+// part definitions: geometry builders get ctx {p, cy, R, D, P0, d, n, qN}
+const PART_DEFS=[
+  {id:'P-101',name:'マウスピース',en:'Mouthpiece',group:'A1',mat:'PP',mb:'buy',color:'#f4f5f7',qty:1,shell:true,
+    build:c=>{const L=c.p.mouthLen;const pts=[[10,-L/2],[16,-L/2],[16.5,-L/2+6],[12,L/2-8],[14.5,L/2-6],[14.5,L/2],[10,L/2],[10,-L/2]].map(a=>new THREE.Vector2(a[0],a[1]));
+      return {pos:c.along(78+L/2),quat:c.qN,explode:c.d.clone().multiplyScalar(95),meshes:[{g:new THREE.LatheGeometry(pts,48)}]};}},
+  {id:'P-102',name:'カップリングリング',en:'Knurled Coupling',group:'A1',mat:'ABS',mb:'make',color:'#eef0f3',qty:1,shell:true,
+    build:c=>{const W=c.p.ringW;const pts=[[21,-W/2],[26,-W/2],[26,W/2],[21,W/2],[21,-W/2]].map(a=>new THREE.Vector2(a[0],a[1]));const m=[{g:new THREE.LatheGeometry(pts,64)}];
+      for(let i=0;i<22;i++){const a=i/22*Math.PI*2;m.push({g:new THREE.BoxGeometry(4,W-8,3.2),pos:[Math.cos(a)*26.4,0,Math.sin(a)*26.4],rot:[0,-a,0]});}
+      return {pos:c.along(38+W/2),quat:c.qN,explode:c.d.clone().multiplyScalar(48),meshes:m};}},
+  {id:'P-103',name:'トラップカートリッジ',en:'Adsorbent Cartridge (glass tube)',group:'A1',mat:'ホウケイ酸ガラス',mb:'buy',color:'#bfe0ee',qty:1,opacity:0.55,
+    build:c=>({pos:c.along(58),quat:c.qN,explode:c.d.clone().multiplyScalar(70).add(c.n.clone().multiplyScalar(30)),
+      meshes:[{g:new THREE.CylinderGeometry(11,11,72,40)}]})},
+  {id:'P-104',name:'吸着剤ベッド',en:'Sorbent Bed (Tenax TA 200 mg)',group:'A1',mat:'Tenax TA',mb:'buy',color:'#d9b56b',qty:1,
+    build:c=>({pos:c.along(58),quat:c.qN,explode:c.d.clone().multiplyScalar(70).add(c.n.clone().multiplyScalar(62)),
+      meshes:[{g:new THREE.CylinderGeometry(8.5,8.5,42,32)}]})},
+  {id:'P-105',name:'Oリング',en:'O-ring',group:'A1',mat:'シリコーン',mb:'buy',color:'#2e3138',qty:2,
+    build:c=>({pos:c.along(42),quat:c.qN,explode:c.d.clone().multiplyScalar(36).add(c.n.clone().multiplyScalar(-34)),
+      meshes:[{g:new THREE.TorusGeometry(20,2.2,12,48),rot:[Math.PI/2,0,0]}]})},
+  {id:'P-106',name:'ネックボス',en:'Neck Boss',group:'A1',mat:'ABS',mb:'make',color:'#eef0f3',qty:1,shell:true,
+    build:c=>{const tube=[[17,-24],[21,-24],[21,24],[17,24],[17,-24]].map(a=>new THREE.Vector2(a[0],a[1]));const fl=[[21,17],[24,17],[24,23],[21,23],[21,17]].map(a=>new THREE.Vector2(a[0],a[1]));
+      return {pos:c.along(24),quat:c.qN,explode:c.d.clone().multiplyScalar(14),meshes:[{g:new THREE.LatheGeometry(tube,48)},{g:new THREE.LatheGeometry(fl,48)}]};}},
+  {id:'P-201',name:'フロントシェル',en:'Front Shell',group:'A2',mat:'ABS',mb:'make',color:'#f2f3f5',qty:1,shell:true,
+    build:c=>{const h=c.D/2,R=c.R;const pts=[[0,h],[R-6,h],[R,h-6],[R,0],[R-3,0],[R-3,h-3],[0,h-3]].map(a=>new THREE.Vector2(a[0],a[1]));
+      return {pos:V3(0,c.cy,0),explode:V3(0,0,48),meshes:[{g:new THREE.LatheGeometry(pts,72),rot:[Math.PI/2,0,0]}]};}},
+  {id:'P-202',name:'リアカバー',en:'Rear Cover',group:'A2',mat:'ABS',mb:'make',color:'#eceef1',qty:1,shell:true,
+    build:c=>{const h=c.D/2,R=c.R;const pts=[[0,-h],[R-6,-h],[R,-h+6],[R,0],[R-3,0],[R-3,-h+3],[0,-h+3]].map(a=>new THREE.Vector2(a[0],a[1]));
+      return {pos:V3(0,c.cy,0),explode:V3(0,0,-78),meshes:[{g:new THREE.LatheGeometry(pts,72),rot:[Math.PI/2,0,0]}]};}},
+  {id:'P-203',name:'フェイスパネル',en:'Face Panel',group:'A2',mat:'PC',mb:'make',color:'#fafbfc',qty:1,
+    build:c=>({pos:V3(0,c.cy,c.D/2+1),explode:V3(0,0,72),meshes:[{g:new THREE.CylinderGeometry(c.R-12,c.R-12,2,72),rot:[Math.PI/2,0,0]}]})},
+  {id:'P-204',name:'LED リング',en:'LED Ring (diffuser)',group:'A2',mat:'PC',mb:'buy',color:'#e8ef9a',qty:1,led:true,
+    build:c=>({pos:V3(0,c.cy,c.D/2+1.5),explode:V3(0,0,98),meshes:[{g:new THREE.TorusGeometry(c.R-6,3.4,14,96)}]})},
+  {id:'P-205',name:'ロゴデカール',en:'Logo Decal',group:'A2',mat:'PET',mb:'buy',color:'#ffffff',qty:1,decal:true,
+    build:c=>({pos:V3(0,c.cy,c.D/2+2.05),explode:V3(0,0,118),meshes:[{g:new THREE.CircleGeometry(c.R-14,72)}]})},
+  {id:'P-206',name:'電源ボタン',en:'Power Button',group:'A2',mat:'シリコーン',mb:'buy',color:'#36b24a',qty:1,
+    build:c=>({pos:V3(c.R+1,c.cy,c.D/2-14),explode:V3(52,0,0),meshes:[{g:new THREE.CylinderGeometry(6,6,8,32),rot:[0,0,Math.PI/2]}]})},
+  {id:'P-301',name:'マイクロポンプ',en:'Micro Diaphragm Pump',group:'A3',mat:'アルミ A5052',mb:'buy',color:'#8f98a4',qty:1,
+    build:c=>({pos:V3(-22,c.cy-2,-4),explode:V3(-48,22,0),meshes:[{g:new THREE.BoxGeometry(30,28,24)},{g:new THREE.CylinderGeometry(4,4,14,20),pos:[0,21,0]}]})},
+  {id:'P-302',name:'メイン基板',en:'Main PCB',group:'A3',mat:'FR-4',mb:'make',color:'#1f6b3d',qty:1,
+    build:c=>({pos:V3(0,c.cy+4,-16),explode:V3(0,0,-42),meshes:[{g:new THREE.BoxGeometry(Math.min(80,c.R*1.3),Math.min(56,c.R*0.9),1.6)},{g:new THREE.BoxGeometry(14,14,3),pos:[10,-8,2.3]},{g:new THREE.BoxGeometry(8,6,2.5),pos:[-16,10,2]}]})},
+  {id:'P-303',name:'バッテリーパック',en:'Li-ion Cell 18650',group:'A3',mat:'Li-ion セル',mb:'buy',color:'#3d4c8f',qty:1,
+    build:c=>({pos:V3(4,c.cy-(c.R-22),6),explode:V3(0,-44,0),meshes:[{g:new THREE.CylinderGeometry(9,9,65,32),rot:[0,0,Math.PI/2]}]})},
+  {id:'P-304',name:'フローセンサ',en:'Flow Sensor',group:'A3',mat:'PC',mb:'buy',color:'#5a606b',qty:1,
+    build:c=>({pos:c.along(-22),quat:c.qN,explode:c.n.clone().multiplyScalar(44),meshes:[{g:new THREE.BoxGeometry(16,10,8)}]})},
+  {id:'P-401',name:'ベーススタンド',en:'Base Stand',group:'A4',mat:'ABS',mb:'make',color:'#e9ebef',qty:1,shell:true,
+    build:c=>({pos:V3(0,-c.p.baseH/2,0),explode:V3(0,-64,0),meshes:[{g:new THREE.BoxGeometry(c.R*2+24,c.p.baseH,c.D+18)},{g:new THREE.BoxGeometry(c.R*1.2,10,c.D+6),pos:[0,c.p.baseH/2+4,0]}]})},
+  {id:'P-402',name:'ラバーフット',en:'Rubber Foot',group:'A4',mat:'NBR',mb:'buy',color:'#2a2b2f',qty:4,
+    build:c=>{const w=c.R+4,z=c.D/2+2;return {pos:V3(0,-c.p.baseH-1.5,0),explode:V3(0,-92,0),
+      meshes:[[w,z],[-w,z],[w,-z],[-w,-z]].map(o=>({g:new THREE.CylinderGeometry(5,5,3,24),pos:[o[0],0,o[1]]}))};}}
+];
+
+/* ───────── state ───────── */
+const state={
+  params:{...DEFAULT_PARAMS}, explode:0, explodeScale:1, explodeStyle:'axis', renderMode:'solid', colorMode:'material',
+  section:{on:false,axis:'x',pos:0,flip:false}, selection:new Set(), hidden:new Set(), grid:true, axes:true, shadow:true,
+  edges:false, persp:true, turntable:false, led:true, hover:null, views:[], collapsed:new Set(), animExplode:false, filter:''
+};
+const parts=new Map();   // id -> runtime {def, mat, group, meshes, state:{name,mat,mb,color,opacity,qty}, vol, mass, centroid, box}
+const log=(msg,cls='')=>{const o=$('#out');const t=new Date().toLocaleTimeString('ja-JP',{hour12:false});o.insertAdjacentHTML('beforeend',`<div><span class="t">${t}</span> <span class="${cls}">${msg}</span></div>`);o.scrollTop=o.scrollHeight;};
+
+/* ───────── renderer / scene ───────── */
+const vp=$('#viewport'), canvas=$('#gl');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.localClippingEnabled=true;
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(35,1,1,4000);
+const hemi=new THREE.HemisphereLight(0xffffff,0x8a9099,0.85); scene.add(hemi);
+const key=new THREE.DirectionalLight(0xffffff,0.9); key.position.set(180,320,240); key.castShadow=true;
+key.shadow.mapSize.set(2048,2048); Object.assign(key.shadow.camera,{left:-260,right:260,top:260,bottom:-260,near:10,far:1200}); key.shadow.bias=-0.0008; scene.add(key);
+const fill=new THREE.DirectionalLight(0xdfe8ff,0.35); fill.position.set(-260,120,-160); scene.add(fill);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(1400,1400),new THREE.ShadowMaterial({opacity:0.16}));
+ground.rotation.x=-Math.PI/2; ground.position.y=-16.2; ground.receiveShadow=true; scene.add(ground);
+const grid=new THREE.GridHelper(600,30,0x7f8ea3,0x9aa8ba); grid.position.y=-16.4; grid.material.transparent=true; grid.material.opacity=0.35; scene.add(grid);
+const model=new THREE.Group(); scene.add(model);
+const clipPlane=new THREE.Plane(V3(-1,0,0),0);
+const edgeMat=new THREE.LineBasicMaterial({color:0x1b2230,transparent:true,opacity:0.9});
+const illuMat=new THREE.MeshLambertMaterial({color:0xf7f8fa,polygonOffset:true,polygonOffsetFactor:1,polygonOffsetUnits:1,side:THREE.DoubleSide});
+let glowMat=null;
+
+// orbit
+const orbit={theta:0.78,phi:1.12,radius:520,target:V3(0,60,0)};
+let tween=null;
+function applyCamera(){camera.position.setFromSpherical(new THREE.Spherical(orbit.radius,orbit.phi,orbit.theta)).add(orbit.target);camera.lookAt(orbit.target);}
+function goTo(to,ms=450){
+  if(reduced||ms===0){Object.assign(orbit,{theta:to.theta??orbit.theta,phi:to.phi??orbit.phi,radius:to.radius??orbit.radius});if(to.target)orbit.target.copy(to.target);tween=null;return;}
+  const from={theta:orbit.theta,phi:orbit.phi,radius:orbit.radius,target:orbit.target.clone()};
+  let dt=(to.theta??from.theta)-from.theta; dt=Math.atan2(Math.sin(dt),Math.cos(dt));
+  tween={t0:performance.now(),ms,from,to:{theta:from.theta+dt,phi:to.phi??from.phi,radius:to.radius??from.radius,target:to.target?to.target.clone():from.target.clone()}};
+}
+const VIEWS={iso:{theta:0.78,phi:1.12},front:{theta:0,phi:Math.PI/2},back:{theta:Math.PI,phi:Math.PI/2},top:{theta:0,phi:0.0001},bottom:{theta:0,phi:Math.PI-0.0001},left:{theta:-Math.PI/2,phi:Math.PI/2},right:{theta:Math.PI/2,phi:Math.PI/2}};
+
+function resize(){const w=vp.clientWidth,h=vp.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}
+new ResizeObserver(resize).observe(vp);
+
+/* ───────── geometry helpers ───────── */
+function volumeCentroid(geom){
+  const pos=geom.attributes.position,idx=geom.index;const a=V3(),b=V3(),c=V3(),cr=V3();let vol=0,cx=0,cy=0,cz=0;
+  const n=idx?idx.count:pos.count;
+  for(let i=0;i<n;i+=3){const ia=idx?idx.getX(i):i,ib=idx?idx.getX(i+1):i+1,ic=idx?idx.getX(i+2):i+2;
+    a.fromBufferAttribute(pos,ia);b.fromBufferAttribute(pos,ib);c.fromBufferAttribute(pos,ic);
+    const v=a.dot(cr.copy(b).cross(c))/6;vol+=v;cx+=v*(a.x+b.x+c.x)/4;cy+=v*(a.y+b.y+c.y)/4;cz+=v*(a.z+b.z+c.z)/4;}
+  if(Math.abs(vol)<1e-3){geom.computeBoundingBox();return {vol:0,centroid:geom.boundingBox.getCenter(V3())};}
+  return {vol:Math.abs(vol),centroid:V3(cx/vol,cy/vol,cz/vol)};
+}
+function makeLogoTexture(){
+  const cv=document.createElement('canvas');cv.width=cv.height=512;const g=cv.getContext('2d');
+  g.clearRect(0,0,512,512);g.textAlign='center';g.textBaseline='middle';
+  g.font='italic 700 92px "IBM Plex Sans","Segoe UI",Arial,sans-serif';
+  g.fillStyle='#1c4f9c';g.fillText('VolaTrap',246,256);
+  const w=g.measureText('VolaTrap').width;
+  g.fillStyle='#43b04a';g.beginPath();g.arc(246+w/2+30,236,11,0,Math.PI*2);g.fill();g.beginPath();g.arc(246+w/2+30,278,11,0,Math.PI*2);g.fill();
+  g.fillStyle='#43b04a';g.fillRect(246-w/2,300,w*0.55,6);
+  const t=new THREE.CanvasTexture(cv);t.encoding=THREE.sRGBEncoding;t.anisotropy=8;return t;
+}
+const logoTex=makeLogoTexture();
+
+/* ───────── build model ───────── */
+function buildModel(){
+  const t0=performance.now();
+  while(model.children.length){const ch=model.children.pop();ch.traverse(o=>{if(o.geometry)o.geometry.dispose();});}
+  const p=state.params,R=p.bodyR,D=p.bodyDepth,cy=R-6,a=THREE.MathUtils.degToRad(p.nozzleAngle);
+  const d=V3(Math.cos(a),Math.sin(a),0),n=V3(-Math.sin(a),Math.cos(a),0);
+  const P0=V3(0,cy,0).add(d.clone().multiplyScalar(R-10));
+  const qN=new THREE.Quaternion().setFromUnitVectors(V3(0,1,0),d);
+  const ctx={p,R,D,cy,d,n,P0,qN,along:s=>P0.clone().add(d.clone().multiplyScalar(s))};
+  let tris=0;
+  for(const def of PART_DEFS){
+    let rt=parts.get(def.id);
+    if(!rt){
+      const st={name:def.name,mat:def.mat,mb:def.mb,color:def.color,opacity:def.opacity??1,qty:def.qty};
+      const mat=new THREE.MeshStandardMaterial({color:def.color,roughness:def.led?0.6:0.42,metalness:0,side:THREE.DoubleSide});
+      if(def.decal){mat.map=logoTex;mat.transparent=true;mat.alphaTest=0.05;mat.roughness=0.5;}
+      rt={def,mat,state:st,group:null,meshes:[]};parts.set(def.id,rt);
+    }
+    const b=def.build(ctx);
+    const g=new THREE.Group();g.position.copy(b.pos);if(b.quat)g.quaternion.copy(b.quat);
+    g.userData={partId:def.id,base:b.pos.clone(),explode:b.explode.clone()};
+    rt.meshes=[];
+    for(const ms of b.meshes){
+      const m=new THREE.Mesh(ms.g,rt.mat);if(ms.pos)m.position.fromArray(ms.pos);if(ms.rot)m.rotation.fromArray(ms.rot);
+      m.castShadow=!def.decal;m.receiveShadow=true;m.userData.partId=def.id;
+      const e=new THREE.LineSegments(new THREE.EdgesGeometry(ms.g,28),edgeMat);e.userData.edge=true;m.add(e);
+      g.add(m);rt.meshes.push(m);tris+=(ms.g.index?ms.g.index.count:ms.g.attributes.position.count)/3;
+    }
+    if(def.led){ // soft glow halo
+      if(!glowMat)glowMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.22,blending:THREE.AdditiveBlending,depthWrite:false});
+      const halo=new THREE.Mesh(new THREE.TorusGeometry(R-6,7,10,96),glowMat);halo.userData.glow=true;g.add(halo);rt.halo=halo;
+    }
+    rt.group=g;model.add(g);
+    // mass properties (assembled position)
+    g.updateMatrixWorld(true);let vol=0;const c=V3();
+    for(const m of rt.meshes){const vc=volumeCentroid(m.geometry);const w=vc.centroid.applyMatrix4(m.matrixWorld);vol+=vc.vol;c.add(w.multiplyScalar(vc.vol));}
+    rt.vol=vol;rt.centroid=vol>0?c.divideScalar(vol):g.position.clone();
+    rt.box=new THREE.Box3().setFromObject(g);
+  }
+  state.tris=Math.round(tris);
+  updateMass();applyExplode();applyMaterials();applyClip();
+  log(`モデル生成完了: ${PART_DEFS.length} 部品 / ${state.tris.toLocaleString()} 三角形 / ${(performance.now()-t0).toFixed(0)} ms`,'g');
+}
+function updateMass(){
+  let total=0;for(const rt of parts.values()){const dens=(MATERIALS[rt.state.mat]||{d:1}).d;rt.mass=rt.vol/1000*dens*rt.state.qty;total+=rt.mass;}
+  state.totalMass=total;
+  const box=new THREE.Box3();for(const rt of parts.values())box.union(rt.box);state.assyBox=box;
+  $('#stMass').innerHTML=`総質量 <b>${fmt(total,0)} g</b>`;$('#stTri').innerHTML=`<b>${state.tris.toLocaleString()}</b> 三角形`;
+}
+
+/* ───────── explode / materials / clipping ───────── */
+function explodeVec(rt){
+  const g=rt.group;const ex=g.userData.explode.clone();
+  if(state.explodeStyle==='radial'){const c=V3(0,state.params.bodyR-6,0);const r=g.userData.base.clone().sub(c);if(r.length()<1)r.set(0,0,1);return r.normalize().multiplyScalar(ex.length()*0.9).add(ex.multiplyScalar(0.35));}
+  return ex;
+}
+function applyExplode(){
+  const f=state.explode/100*state.explodeScale;
+  for(const rt of parts.values()){rt.group.position.copy(rt.group.userData.base).add(explodeVec(rt).multiplyScalar(f));}
+  $('#hudExplode').innerHTML=`分解 <b>${Math.round(state.explode)} %</b>`;
+  $('#explode').value=Math.round(state.explode);$('#explodeOut').textContent=`${Math.round(state.explode)} %`;
+}
+function displayColor(rt){
+  const d=rt.def,s=rt.state;
+  switch(state.colorMode){
+    case 'makebuy':return s.mb==='make'?'#3fae5c':'#3b7dd8';
+    case 'group':return GROUPS.find(g=>g.id===d.group).color;
+    case 'matclass':return CLASS_COLORS[(MATERIALS[s.mat]||{}).cls]||'#999';
+    case 'mass':{const mx=Math.max(...[...parts.values()].map(r=>r.mass));const t=Math.sqrt(rt.mass/mx);return `hsl(${Math.round(210-210*t)},72%,${Math.round(58-14*t)}%)`;}
+    default:return s.color;
+  }
+}
+function applyMaterials(){
+  const rm=state.renderMode;const ledC=new THREE.Color().setHSL(state.params.ledHue/360,0.82,0.6);
+  for(const rt of parts.values()){
+    const m=rt.mat,d=rt.def,vis=!state.hidden.has(d.id);
+    rt.group.visible=vis;
+    const sel=state.selection.has(d.id),hov=state.hover===d.id;
+    m.color.set(displayColor(rt));
+    if(d.decal&&state.colorMode==='material')m.color.set('#ffffff');
+    m.wireframe=rm==='wire';
+    let op=rt.state.opacity;if(rm==='ghost'&&d.shell)op=Math.min(op,0.16);
+    m.opacity=op;m.transparent=op<1||d.decal;m.depthWrite=op>=0.5;
+    m.emissive.set(0x000000);m.emissiveIntensity=1;
+    if(d.led&&state.led&&state.colorMode==='material'){m.emissive.copy(ledC);m.emissiveIntensity=state.params.ledPower;m.color.copy(ledC).lerp(new THREE.Color(0xffffff),0.3);}
+    if(sel){m.emissive.lerp(new THREE.Color(0x2f7de1),d.led?0.5:1);m.emissiveIntensity=d.led?m.emissiveIntensity:0.45;}
+    else if(hov){m.emissive.lerp(new THREE.Color(0x2f7de1),d.led?0.25:1);m.emissiveIntensity=d.led?m.emissiveIntensity:0.18;}
+    if(rt.halo){rt.halo.visible=d.led&&state.led&&state.colorMode==='material'&&rm!=='wire';glowMat.color.copy(ledC);glowMat.opacity=0.12*state.params.ledPower;}
+    const illus=rm==='illust';
+    for(const mesh of rt.meshes){mesh.material=illus?illuMat:m;mesh.castShadow=state.shadow&&!d.decal&&op>0.5;mesh.children[0].visible=illus||state.edges;}
+    m.needsUpdate=true;
+  }
+  const cls=getComputedStyle(document.documentElement);edgeMat.color.set(cls.getPropertyValue('--edge').trim()||'#1b2230');
+  $('#hudMode').textContent=`${{solid:'ソリッド',wire:'ワイヤフレーム',ghost:'透過',illust:'イラスト'}[rm]} · ${state.persp?'透視':'平行'}`;
+  key.castShadow=state.shadow;ground.visible=state.shadow;grid.visible=state.grid;$('#triad').style.display=state.axes?'':'none';
+  renderLegend();
+}
+function applyClip(){
+  const s=state.section;const planes=s.on?[clipPlane]:[];
+  const ax={x:V3(1,0,0),y:V3(0,1,0),z:V3(0,0,1)}[s.axis];
+  const box=state.assyBox||new THREE.Box3(V3(-100,-20,-60),V3(200,180,60));const c=box.getCenter(V3()),sz=box.getSize(V3());
+  const ext=({x:sz.x,y:sz.y,z:sz.z})[s.axis]/2;const pos=({x:c.x,y:c.y,z:c.z})[s.axis]+s.pos/100*ext;
+  const sign=s.flip?1:-1;clipPlane.normal.copy(ax).multiplyScalar(sign);clipPlane.constant=-sign*pos;
+  for(const rt of parts.values()){rt.mat.clippingPlanes=planes;rt.mat.clipShadows=true;rt.mat.needsUpdate=true;}
+  illuMat.clippingPlanes=planes;edgeMat.clippingPlanes=planes;if(glowMat)glowMat.clippingPlanes=planes;
+  $('#hudSec').hidden=!s.on;$('#hudSec').textContent=`断面 ${s.axis.toUpperCase()} ${s.pos>=0?'+':''}${fmt(s.pos/100*ext,0)} mm`;
+  $('#secPosOut').textContent=`${s.pos>=0?'+':''}${fmt(s.pos/100*ext,0)} mm`;
+}
+function renderLegend(){
+  const el=$('#legend');const cm=state.colorMode;let items=[];
+  if(cm==='makebuy')items=[['#3fae5c','Make · 自製'],['#3b7dd8','Buy · 購入']];
+  else if(cm==='group')items=GROUPS.map(g=>[g.color,`${g.id} ${g.name}`]);
+  else if(cm==='matclass')items=Object.keys(CLASS_COLORS).map(k=>[CLASS_COLORS[k],CLASS_JP[k]]);
+  else if(cm==='mass')items=[['hsl(210,72%,58%)','軽い'],['hsl(105,72%,51%)','中'],['hsl(0,72%,44%)','重い']];
+  el.classList.toggle('show',items.length>0);el.innerHTML=items.map(i=>`<span><i style="background:${i[0]}"></i>${i[1]}</span>`).join('');
+}
+
+/* ───────── fit / focus ───────── */
+function fitBox(box,ms=450){
+  if(box.isEmpty())return;const c=box.getCenter(V3()),r=box.getSize(V3()).length()/2;
+  const rad=r/Math.sin(THREE.MathUtils.degToRad(camera.fov/2))*1.05;goTo({radius:rad,target:c},ms);
+}
+function visibleBox(ids){const b=new THREE.Box3();for(const rt of parts.values()){if(state.hidden.has(rt.def.id))continue;if(ids&&!ids.has(rt.def.id))continue;b.union(new THREE.Box3().setFromObject(rt.group));}return b;}
+function fitAll(ms){fitBox(visibleBox(),ms);}
+function setPersp(on){const nf=on?35:6;const k=Math.tan(THREE.MathUtils.degToRad(camera.fov/2))/Math.tan(THREE.MathUtils.degToRad(nf/2));camera.fov=nf;camera.updateProjectionMatrix();orbit.radius*=k;state.persp=on;applyMaterials();}
+
+/* ───────── selection ───────── */
+function select(ids,add=false){
+  if(!add)state.selection.clear();for(const id of ids)if(state.selection.has(id)&&add)state.selection.delete(id);else state.selection.add(id);
+  onSelectionChange();
+}
+function onSelectionChange(){applyMaterials();renderTree();renderProps();renderBom();renderMeasure();$('#stSel').textContent=`${state.selection.size}/${PART_DEFS.length} 部品を選択`;}
+function partsIn(pred){return PART_DEFS.filter(pred).map(d=>d.id);}
+
+/* ───────── tree ───────── */
+const ICONS={eye:'<svg viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',eyeOff:'<svg viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.1A10 10 0 0 1 21 12a10 10 0 0 1-2 3M6.6 6.6A10 10 0 0 0 3 12a10 10 0 0 0 11 6.9"/></svg>',chev:'<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>',chevD:'<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>'};
+function renderTree(){
+  const el=$('#tree');const f=state.filter.toLowerCase();let html='';
+  const rootCol=state.collapsed.has('root');
+  html+=`<div class="tnode" data-node="root" style="padding-left:4px"><span class="tw" data-toggle="root">${rootCol?ICONS.chev:ICONS.chevD}</span><span class="ic grp" style="background:var(--accent)"></span><span class="lbl"><b>VolaTrap Assy</b><small>(VolaTrap Assy.1)</small></span></div>`;
+  html+=`<div class="tchildren ${rootCol?'collapsed':''}">`;
+  for(const g of GROUPS){
+    const col=state.collapsed.has(g.id);const members=PART_DEFS.filter(d=>d.group===g.id);
+    const allHidden=members.every(d=>state.hidden.has(d.id));const gm=members.reduce((s,d)=>s+parts.get(d.id).mass,0);
+    html+=`<div class="tnode ${allHidden?'hidden-part':''}" data-node="${g.id}" style="padding-left:20px"><span class="tw" data-toggle="${g.id}">${col?ICONS.chev:ICONS.chevD}</span><span class="ic grp" style="background:${g.color}"></span><span class="lbl">${g.name}<small>(${g.id}.1 · ${fmt(gm,0)} g)</small></span><button class="eye" data-eyeg="${g.id}" title="サブAssyの表示切替">${allHidden?ICONS.eyeOff:ICONS.eye}</button></div>`;
+    html+=`<div class="tchildren ${col?'collapsed':''}">`;
+    for(const d of members){const rt=parts.get(d.id);const hid=state.hidden.has(d.id),sel=state.selection.has(d.id);
+      const match=f&&(rt.state.name.toLowerCase().includes(f)||d.en.toLowerCase().includes(f)||d.id.toLowerCase().includes(f));
+      if(f&&!match)continue;
+      html+=`<div class="tnode ${sel?'selected':''} ${hid?'hidden-part':''} ${match?'match':''}" data-part="${d.id}" style="padding-left:40px" title="${d.en}"><span class="tw"></span><span class="ic" style="background:${displayColor(rt)}"></span><span class="lbl">${rt.state.name}<small>${d.id}${rt.state.qty>1?' ×'+rt.state.qty:''}</small></span><button class="eye" data-eye="${d.id}" title="表示/非表示">${hid?ICONS.eyeOff:ICONS.eye}</button></div>`;}
+    html+='</div>';
+  }
+  html+='</div>';el.innerHTML=html;
+  $('#treeCount').textContent=`${PART_DEFS.length} 部品 / ${GROUPS.length} Assy${state.hidden.size?` · 非表示 ${state.hidden.size}`:''}`;
+}
+$('#tree').addEventListener('click',e=>{
+  const tg=e.target.closest('[data-toggle]');if(tg){const k=tg.dataset.toggle;state.collapsed.has(k)?state.collapsed.delete(k):state.collapsed.add(k);renderTree();return;}
+  const eye=e.target.closest('[data-eye]');if(eye){const id=eye.dataset.eye;state.hidden.has(id)?state.hidden.delete(id):state.hidden.add(id);applyMaterials();renderTree();renderBom();return;}
+  const eyeg=e.target.closest('[data-eyeg]');if(eyeg){const ids=partsIn(d=>d.group===eyeg.dataset.eyeg);const all=ids.every(i=>state.hidden.has(i));ids.forEach(i=>all?state.hidden.delete(i):state.hidden.add(i));applyMaterials();renderTree();renderBom();return;}
+  const pn=e.target.closest('[data-part]');if(pn){select([pn.dataset.part],e.ctrlKey||e.metaKey);return;}
+  const gn=e.target.closest('[data-node]');if(gn&&gn.dataset.node!=='root'){select(partsIn(d=>d.group===gn.dataset.node),e.ctrlKey||e.metaKey);return;}
+  if(gn)select(PART_DEFS.map(d=>d.id));
+});
+$('#tree').addEventListener('dblclick',e=>{const pn=e.target.closest('[data-part]');if(pn){select([pn.dataset.part]);isolateSelection();}});
+$('#expandAll').onclick=()=>{state.collapsed.clear();renderTree();};
+$('#collapseAll').onclick=()=>{GROUPS.forEach(g=>state.collapsed.add(g.id));renderTree();};
+$('#search').addEventListener('input',e=>{state.filter=e.target.value.trim();if(state.filter)state.collapsed.clear();renderTree();});
+
+/* ───────── properties ───────── */
+function renderProps(){
+  const el=$('#props');const sel=[...state.selection];
+  if(sel.length===0){
+    const deg=r=>fmt(THREE.MathUtils.radToDeg(r),0);
+    el.innerHTML=`<div class="psec"><h4>シーンプロパティ</h4>
+      <div class="prow"><span class="k">アップベクトル</span><span class="v">Y</span></div>
+      <div class="prow"><span class="k">垂直角度</span><span class="v">${deg(Math.PI/2-orbit.phi)}°</span></div>
+      <div class="prow"><span class="k">水平角度</span><span class="v">${deg(orbit.theta)}°</span></div>
+      <div class="prow"><span class="k">視距離</span><span class="v">${fmt(orbit.radius,0)} mm</span></div>
+      <div class="prow"><span class="k">投影</span><span class="v">${state.persp?'透視 (35°)':'平行 (6°)'}</span></div></div>
+      <div class="psec"><h4>アセンブリ</h4>
+      <div class="prow"><span class="k">部品点数</span><span class="v">${PART_DEFS.reduce((s,d)=>s+parts.get(d.id).state.qty,0)} 個 / ${PART_DEFS.length} 品番</span></div>
+      <div class="prow"><span class="k">総質量</span><span class="v">${fmt(state.totalMass,1)} g</span></div>
+      <div class="prow"><span class="k">外形 X×Y×Z</span><span class="v">${dimStr(state.assyBox)}</span></div>
+      <div class="prow"><span class="k">自製 / 購入</span><span class="v">${PART_DEFS.filter(d=>parts.get(d.id).state.mb==='make').length} / ${PART_DEFS.filter(d=>parts.get(d.id).state.mb==='buy').length}</span></div></div>
+      <div class="pempty">ビューポートまたは構造ツリーで部品を選択すると、材質・色・Make/Buy を編集できます。<br><kbd>Ctrl</kbd>+クリックで複数選択。</div>`;
+    return;
+  }
+  if(sel.length>1){
+    const rts=sel.map(id=>parts.get(id));const mass=rts.reduce((s,r)=>s+r.mass,0);
+    el.innerHTML=`<div class="psec"><h4>複数選択 · ${sel.length} 部品</h4>
+      <div class="prow"><span class="k">合計質量</span><span class="v">${fmt(mass,1)} g (${fmt(mass/state.totalMass*100,0)} %)</span></div>
+      <div class="prow"><span class="k">外形</span><span class="v">${dimStr(visibleBox(state.selection))}</span></div></div>
+      <div class="psec"><h4>一括編集</h4>
+      <div class="prow"><label for="mMb">Make / Buy</label><select id="mMb"><option value="">— 変更なし —</option><option value="make">Make (自製)</option><option value="buy">Buy (購入)</option></select></div>
+      <div class="prow"><label for="mOp">不透明度</label><span class="inl"><input type="range" id="mOp" min="0.05" max="1" step="0.05" value="1"><output>100%</output></span></div></div>
+      <div class="psec"><h4>内訳</h4>${rts.map(r=>`<div class="prow"><span class="k">${r.def.id}</span><span class="v">${r.state.name} · ${fmt(r.mass,1)} g</span></div>`).join('')}</div>`;
+    $('#mMb').onchange=e=>{if(!e.target.value)return;rts.forEach(r=>r.state.mb=e.target.value);applyMaterials();renderBom();renderTree();log(`${sel.length} 部品の Make/Buy を ${e.target.value} に変更`);};
+    $('#mOp').oninput=e=>{rts.forEach(r=>r.state.opacity=+e.target.value);e.target.nextElementSibling.textContent=Math.round(e.target.value*100)+'%';applyMaterials();};
+    return;
+  }
+  const rt=parts.get(sel[0]),d=rt.def,s=rt.state,g=GROUPS.find(x=>x.id===d.group),bx=rt.box.getSize(V3());
+  el.innerHTML=`<div class="psec"><h4><span class="sw" style="background:${displayColor(rt)}"></span>${d.id} · ${d.en}</h4>
+    <div class="prow"><label for="pName">名称</label><input type="text" id="pName" value="${s.name}"></div>
+    <div class="prow"><span class="k">サブAssy</span><span class="v" style="font-family:var(--sans)"><span class="ic" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${g.color};margin-right:6px"></span>${g.name}</span></div>
+    <div class="prow"><label for="pMat">材質</label><select id="pMat">${Object.keys(MATERIALS).map(m=>`<option ${m===s.mat?'selected':''}>${m}</option>`).join('')}</select></div>
+    <div class="prow"><span class="k">密度</span><span class="v">${fmt(MATERIALS[s.mat].d,2)} g/cm³ · ${CLASS_JP[MATERIALS[s.mat].cls]}</span></div>
+    <div class="prow"><label for="pMb">Make / Buy</label><select id="pMb"><option value="make" ${s.mb==='make'?'selected':''}>Make (自製)</option><option value="buy" ${s.mb==='buy'?'selected':''}>Buy (購入)</option></select></div>
+    <div class="prow"><label for="pQty">数量</label><input type="number" id="pQty" min="1" max="99" value="${s.qty}"></div></div>
+    <div class="psec"><h4>表示</h4>
+    <div class="prow"><label for="pColor">色</label><span class="inl"><input type="color" id="pColor" value="${s.color}"><span class="v">${s.color}</span>${state.colorMode!=='material'?'<span style="color:var(--faint);font-size:11px">カラーコード表示中</span>':''}</span></div>
+    <div class="prow"><label for="pOp">不透明度</label><span class="inl"><input type="range" id="pOp" min="0.05" max="1" step="0.05" value="${s.opacity}"><output>${Math.round(s.opacity*100)}%</output></span></div>
+    <div class="prow"><label for="pVis">表示</label><input type="checkbox" id="pVis" ${state.hidden.has(d.id)?'':'checked'} style="justify-self:start;accent-color:var(--accent)"></div></div>
+    <div class="psec"><h4>質量特性 (計算値)</h4>
+    <div class="prow"><span class="k">体積</span><span class="v">${fmt(rt.vol/1000,2)} cm³</span></div>
+    <div class="prow"><span class="k">質量</span><span class="v">${fmt(rt.mass,1)} g${s.qty>1?` (${fmt(rt.mass/s.qty,1)} g × ${s.qty})`:''}</span></div>
+    <div class="prow"><span class="k">外形 X×Y×Z</span><span class="v">${fmt(bx.x,1)} × ${fmt(bx.y,1)} × ${fmt(bx.z,1)}</span></div>
+    <div class="prow"><span class="k">重心 (組立時)</span><span class="v">${fmt(rt.centroid.x,1)}, ${fmt(rt.centroid.y,1)}, ${fmt(rt.centroid.z,1)}</span></div>
+    <div class="prow"><span class="k">分解ベクトル</span><span class="v">${vecStr(explodeVec(rt))}</span></div></div>`;
+  $('#pName').onchange=e=>{s.name=e.target.value||d.name;renderTree();renderBom();};
+  $('#pMat').onchange=e=>{s.mat=e.target.value;updateMass();applyMaterials();renderProps();renderBom();renderTree();renderMeasure();renderParam();log(`${d.id} 材質 → ${s.mat}`);};
+  $('#pMb').onchange=e=>{s.mb=e.target.value;applyMaterials();renderBom();renderTree();};
+  $('#pQty').onchange=e=>{s.qty=Math.max(1,+e.target.value|0);updateMass();renderProps();renderBom();renderTree();renderMeasure();renderParam();};
+  $('#pColor').oninput=e=>{s.color=e.target.value;e.target.nextElementSibling.textContent=s.color;applyMaterials();renderTree();renderBom();};
+  $('#pOp').oninput=e=>{s.opacity=+e.target.value;e.target.nextElementSibling.textContent=Math.round(s.opacity*100)+'%';applyMaterials();};
+  $('#pVis').onchange=e=>{e.target.checked?state.hidden.delete(d.id):state.hidden.add(d.id);applyMaterials();renderTree();renderBom();};
+}
+const dimStr=b=>{if(!b||b.isEmpty())return '—';const s=b.getSize(V3());return `${fmt(s.x,1)} × ${fmt(s.y,1)} × ${fmt(s.z,1)} mm`;};
+const vecStr=v=>`(${fmt(v.x,0)}, ${fmt(v.y,0)}, ${fmt(v.z,0)})`;
+
+/* ───────── parametric ───────── */
+let rebuildTimer=null;
+function renderParam(){
+  const el=$('#param');const p=state.params;
+  const res=computeResults();
+  el.innerHTML=`<div class="psec"><h4>設計パラメータ</h4>${PARAM_DEFS.map(pd=>`<div class="param"><div class="t"><span>${pd.label}<small>${pd.k}</small></span><output>${fmt(p[pd.k],pd.step<1?1:0)} ${pd.unit}</output></div><input type="range" data-param="${pd.k}" min="${pd.min}" max="${pd.max}" step="${pd.step}" value="${p[pd.k]}" aria-label="${pd.label}"></div>`).join('')}</div>
+    <div class="psec"><h4>目標と計算結果</h4><table class="targets"><thead><tr><th>項目</th><th>計算値</th><th>目標</th><th></th></tr></thead><tbody>
+    ${TARGETS.map(t=>{const v=res[t.k];const ok=v<=t.target;return `<tr><td>${t.label}</td><td>${fmt(v,t.unit==='g'?0:1)} ${t.unit}</td><td>${t.op} ${t.target} ${t.unit}</td><td><span class="stat ${ok?'ok':'bad'}"><i></i>${ok?'OK':'NG'}</span></td></tr>`;}).join('')}
+    </tbody></table></div>
+    <div class="psec"><h4>質量内訳 (サブAssy)</h4>${GROUPS.map(g=>{const m=PART_DEFS.filter(d=>d.group===g.id).reduce((s,d)=>s+parts.get(d.id).mass,0);return `<div class="prow"><span class="k"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${g.color};margin-right:6px"></span>${g.id}</span><span class="v">${fmt(m,0)} g<div class="bar"><i style="width:${m/state.totalMass*100}%;background:${g.color}"></i></div></span></div>`;}).join('')}</div>`;
+  el.querySelectorAll('[data-param]').forEach(inp=>{inp.oninput=e=>{const k=e.target.dataset.param;p[k]=+e.target.value;e.target.previousElementSibling.querySelector('output').textContent=`${fmt(p[k],PARAM_DEFS.find(x=>x.k===k).step<1?1:0)} ${PARAM_DEFS.find(x=>x.k===k).unit}`;
+    if(k==='ledHue'){applyMaterials();return;}clearTimeout(rebuildTimer);rebuildTimer=setTimeout(()=>{buildModel();renderAll();log(`パラメータ ${k} = ${p[k]} → モデル再生成`);},60);};});
+}
+function computeResults(){
+  const b=state.assyBox||new THREE.Box3();const s=b.getSize(V3());
+  return {mass:state.totalMass,length:s.x,height:s.y,headMass:PART_DEFS.filter(d=>d.group==='A1').reduce((t,d)=>t+parts.get(d.id).mass,0)};
+}
+
+/* ───────── BOM ───────── */
+function renderBom(){
+  const rows=PART_DEFS.map((d,i)=>{const rt=parts.get(d.id),s=rt.state;const g=GROUPS.find(x=>x.id===d.group);
+    return `<tr class="${state.selection.has(d.id)?'sel':''} ${state.hidden.has(d.id)?'dim':''}" data-bom="${d.id}"><td class="n">${i+1}</td><td class="pn">${d.id}</td><td><span class="sw" style="background:${displayColor(rt)}"></span>${s.name}</td><td class="dim">${d.en}</td><td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${g.color};margin-right:5px"></span>${g.id}</td><td>${s.mat}</td><td class="n">${s.qty}</td><td class="n">${fmt(rt.vol/1000,2)}</td><td class="n">${fmt(rt.mass,1)}</td><td><span class="mb ${s.mb}">${s.mb.toUpperCase()}</span></td><td>${state.hidden.has(d.id)?'<span style="color:var(--faint)">非表示</span>':'表示'}</td></tr>`;}).join('');
+  $('#bom').innerHTML=`<thead><tr><th class="n">#</th><th>部品番号</th><th>名称</th><th>English</th><th>Assy</th><th>材質</th><th class="n">数量</th><th class="n">体積 cm³</th><th class="n">質量 g</th><th>Make/Buy</th><th>状態</th></tr></thead><tbody>${rows}</tbody>
+    <tfoot><tr><td colspan="6">合計 · ${PART_DEFS.length} 品番</td><td class="n">${PART_DEFS.reduce((s,d)=>s+parts.get(d.id).state.qty,0)}</td><td class="n">${fmt([...parts.values()].reduce((s,r)=>s+r.vol*r.state.qty,0)/1000,1)}</td><td class="n">${fmt(state.totalMass,1)}</td><td colspan="2"></td></tr></tfoot>`;
+}
+$('#bom').addEventListener('click',e=>{const tr=e.target.closest('[data-bom]');if(tr)select([tr.dataset.bom],e.ctrlKey||e.metaKey);});
+$('#bom').addEventListener('dblclick',e=>{const tr=e.target.closest('[data-bom]');if(tr){select([tr.dataset.bom]);fitBox(new THREE.Box3().setFromObject(parts.get(tr.dataset.bom).group));}});
+
+/* ───────── measurement ───────── */
+function renderMeasure(){
+  const el=$('#measure');const ids=state.selection.size?state.selection:new Set(PART_DEFS.map(d=>d.id));const rts=[...ids].map(i=>parts.get(i));
+  const mass=rts.reduce((s,r)=>s+r.mass,0),vol=rts.reduce((s,r)=>s+r.vol*r.state.qty,0);
+  const cg=V3();rts.forEach(r=>cg.add(r.centroid.clone().multiplyScalar(r.mass)));if(mass>0)cg.divideScalar(mass);
+  const box=new THREE.Box3();rts.forEach(r=>box.union(r.box));const sz=box.getSize(V3()),mn=box.min,mx=box.max;
+  const title=state.selection.size?`選択 ${rts.length} 部品`:'アセンブリ全体';
+  let dist='';
+  if(rts.length===2){const dv=rts[1].centroid.clone().sub(rts[0].centroid);dist=`<div class="mcard"><h5>重心間距離 · ${rts[0].def.id} ↔ ${rts[1].def.id}</h5><div class="big">${fmt(dv.length(),2)}<small>mm</small></div><div class="kv"><span>ΔX</span><b>${fmt(dv.x,2)}</b><span>ΔY</span><b>${fmt(dv.y,2)}</b><span>ΔZ</span><b>${fmt(dv.z,2)}</b></div></div>`;}
+  el.innerHTML=`<div class="mcard"><h5>${title} · 質量</h5><div class="big">${fmt(mass,1)}<small>g</small></div><div class="kv"><span>体積</span><b>${fmt(vol/1000,2)} cm³</b><span>平均密度</span><b>${vol?fmt(mass/(vol/1000),2):'—'} g/cm³</b><span>総質量比</span><b>${fmt(mass/state.totalMass*100,1)} %</b></div></div>
+    <div class="mcard"><h5>バウンディングボックス</h5><div class="big">${fmt(sz.x,1)} × ${fmt(sz.y,1)} × ${fmt(sz.z,1)}<small>mm</small></div><div class="kv"><span>min</span><b>${fmt(mn.x,1)}, ${fmt(mn.y,1)}, ${fmt(mn.z,1)}</b><span>max</span><b>${fmt(mx.x,1)}, ${fmt(mx.y,1)}, ${fmt(mx.z,1)}</b><span>対角</span><b>${fmt(sz.length(),1)} mm</b></div></div>
+    <div class="mcard"><h5>重心 (組立状態)</h5><div class="big">${fmt(cg.x,1)}, ${fmt(cg.y,1)}, ${fmt(cg.z,1)}<small>mm</small></div><div class="kv"><span>ベース面からの高さ</span><b>${fmt(cg.y+state.params.baseH+3,1)} mm</b><span>ベース中心からの偏心</span><b>${fmt(Math.hypot(cg.x,cg.z),1)} mm</b></div></div>${dist}`;
+}
+
+/* ───────── views ───────── */
+function captureThumb(){renderer.render(scene,camera);const c=document.createElement('canvas');c.width=192;c.height=120;const g=c.getContext('2d');const s=renderer.domElement;const sw=s.width,sh=s.height;const r=Math.max(192/sw,120/sh);const w=sw*r,h=sh*r;g.drawImage(s,(192-w)/2,(120-h)/2,w,h);return c.toDataURL('image/jpeg',0.8);}
+function snapshotView(name){const v={name,theta:orbit.theta,phi:orbit.phi,radius:orbit.radius,target:orbit.target.clone(),explode:state.explode,renderMode:state.renderMode,colorMode:state.colorMode,section:{...state.section},thumb:captureThumb()};state.views.push(v);state.activeView=state.views.length-1;renderViews();return v;}
+function applyView(v,ms){state.explode=v.explode;state.renderMode=v.renderMode;state.colorMode=v.colorMode;Object.assign(state.section,v.section);syncControls();applyExplode();applyMaterials();applyClip();goTo(v,ms);}
+function renderViews(){$('#views').innerHTML=state.views.map((v,i)=>`<div class="vcard ${state.activeView===i?'active':''}" data-view-i="${i}"><img src="${v.thumb}" alt=""><div>${v.name}<button class="del" data-del="${i}" title="削除">✕</button></div></div>`).join('');}
+$('#views').addEventListener('click',e=>{const del=e.target.closest('[data-del]');if(del){state.views.splice(+del.dataset.del,1);state.activeView=-1;renderViews();return;}const c=e.target.closest('[data-view-i]');if(c){state.activeView=+c.dataset.viewI;applyView(state.views[state.activeView]);renderViews();}});
+$('#saveView').onclick=$('#snap').onclick=()=>{snapshotView(`ビュー ${state.views.length+1}`);log('現在のビューを保存しました');showLeft('views');};
+
+/* ───────── selection sets ───────── */
+const SETS=[
+  {name:'外装部品 (Shell)',color:'#d8dde5',pred:d=>d.shell},
+  {name:'内部ユニット',color:'#8b5cd6',pred:d=>d.group==='A3'},
+  {name:'購入品 (Buy)',color:'#3b7dd8',pred:d=>parts.get(d.id).state.mb==='buy'},
+  {name:'自製品 (Make)',color:'#3fae5c',pred:d=>parts.get(d.id).state.mb==='make'},
+  {name:'エラストマー / シール',color:'#6b6f7a',pred:d=>MATERIALS[parts.get(d.id).state.mat].cls==='elastomer'},
+  {name:'気流経路 (Flow Path)',color:'#3aa0d8',pred:d=>['P-101','P-103','P-104','P-106','P-304','P-301'].includes(d.id)}
+];
+function renderSets(){$('#sets').innerHTML=SETS.map((s,i)=>`<div class="set" data-set="${i}"><span class="sw" style="background:${s.color}"></span>${s.name}<span class="n">${PART_DEFS.filter(s.pred).length}</span></div>`).join('');}
+$('#sets').addEventListener('click',e=>{const s=e.target.closest('[data-set]');if(s){const st=SETS[+s.dataset.set];select(partsIn(st.pred),e.ctrlKey||e.metaKey);log(`選択セット「${st.name}」を適用`);}});
+
+/* ───────── pointer / picking ───────── */
+const ray=new THREE.Raycaster();const ptr={down:false,btn:0,x:0,y:0,sx:0,sy:0,moved:false,lastX:0,lastY:0,has:false};const tipEl=$('#tip');
+canvas.addEventListener('pointerdown',e=>{ptr.down=true;ptr.btn=e.button;ptr.sx=ptr.x=e.clientX;ptr.sy=ptr.y=e.clientY;ptr.moved=false;canvas.setPointerCapture(e.pointerId);tween=null;});
+canvas.addEventListener('pointermove',e=>{
+  const r=canvas.getBoundingClientRect();ptr.lastX=(e.clientX-r.left)/r.width*2-1;ptr.lastY=-((e.clientY-r.top)/r.height)*2+1;ptr.has=true;
+  tipEl.style.left=(e.clientX-r.left)+'px';tipEl.style.top=(e.clientY-r.top)+'px';
+  if(!ptr.down)return;const dx=e.clientX-ptr.x,dy=e.clientY-ptr.y;ptr.x=e.clientX;ptr.y=e.clientY;
+  if(Math.hypot(e.clientX-ptr.sx,e.clientY-ptr.sy)>4)ptr.moved=true;
+  if(ptr.btn===0&&!e.shiftKey){orbit.theta-=dx*0.006;orbit.phi=THREE.MathUtils.clamp(orbit.phi-dy*0.006,0.0001,Math.PI-0.0001);}
+  else{const k=orbit.radius*0.0016;const right=V3().setFromMatrixColumn(camera.matrix,0),up=V3().setFromMatrixColumn(camera.matrix,1);orbit.target.add(right.multiplyScalar(-dx*k)).add(up.multiplyScalar(dy*k));}
+});
+canvas.addEventListener('pointerup',e=>{ptr.down=false;if(!ptr.moved&&e.button===0){const hit=pick();if(hit)select([hit],e.ctrlKey||e.metaKey);else if(!(e.ctrlKey||e.metaKey))select([]);}});
+canvas.addEventListener('dblclick',()=>{const hit=pick();if(hit){select([hit]);fitBox(new THREE.Box3().setFromObject(parts.get(hit).group));}});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+canvas.addEventListener('wheel',e=>{e.preventDefault();orbit.radius=THREE.MathUtils.clamp(orbit.radius*(e.deltaY>0?1.1:0.9),40,3000);tween=null;},{passive:false});
+canvas.addEventListener('pointerleave',()=>{ptr.has=false;state.hover=null;tipEl.style.display='none';applyMaterials();});
+function pick(){if(!ptr.has)return null;ray.setFromCamera({x:ptr.lastX,y:ptr.lastY},camera);const list=[];for(const rt of parts.values())if(!state.hidden.has(rt.def.id))list.push(...rt.meshes);
+  const hits=ray.intersectObjects(list,false);for(const h of hits){if(state.section.on&&clipPlane.distanceToPoint(h.point)<0)continue;return h.object.userData.partId;}return null;}
+function updateHover(){if(ptr.down||!ptr.has)return;const id=pick();if(id!==state.hover){state.hover=id;applyMaterials();if(id){const rt=parts.get(id);tipEl.innerHTML=`${rt.state.name}<small>${id} · ${fmt(rt.mass,1)} g</small>`;tipEl.style.display='block';}else tipEl.style.display='none';}}
+// touch pinch
+let pinch=null;canvas.addEventListener('touchstart',e=>{if(e.touches.length===2)pinch=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);},{passive:true});
+canvas.addEventListener('touchmove',e=>{if(e.touches.length===2&&pinch){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);orbit.radius=THREE.MathUtils.clamp(orbit.radius*pinch/d,40,3000);pinch=d;}},{passive:true});
+
+/* ───────── triad ───────── */
+const tri=$('#triad'),tg=tri.getContext('2d');
+function drawTriad(){
+  tg.clearRect(0,0,192,192);const q=camera.quaternion.clone().invert();const cx=96,cy=96,L=64;
+  const axes=[['X',V3(1,0,0),'#d9453f'],['Y',V3(0,1,0),'#3aa655'],['Z',V3(0,0,1),'#2f7de1']].map(a=>({n:a[0],p:a[1].applyQuaternion(q),c:a[2]})).sort((a,b)=>a.p.z-b.p.z);
+  tg.lineWidth=3;tg.font='600 22px IBM Plex Mono, monospace';tg.textAlign='center';tg.textBaseline='middle';
+  for(const a of axes){const x=cx+a.p.x*L,y=cy-a.p.y*L;tg.strokeStyle=a.c;tg.globalAlpha=0.55+0.45*(a.p.z+1)/2;tg.beginPath();tg.moveTo(cx,cy);tg.lineTo(x,y);tg.stroke();tg.fillStyle=a.c;tg.beginPath();tg.arc(x,y,13,0,Math.PI*2);tg.fill();tg.fillStyle='#fff';tg.fillText(a.n,x,y+1);}
+  tg.globalAlpha=1;
+}
+
+/* ───────── animation loop ───────── */
+let frames=0,fpsT=performance.now(),animT=0;
+function loop(now){
+  requestAnimationFrame(loop);
+  if(tween){const k=Math.min(1,(now-tween.t0)/tween.ms);const e=1-Math.pow(1-k,3);orbit.theta=tween.from.theta+(tween.to.theta-tween.from.theta)*e;orbit.phi=tween.from.phi+(tween.to.phi-tween.from.phi)*e;orbit.radius=tween.from.radius+(tween.to.radius-tween.from.radius)*e;orbit.target.lerpVectors(tween.from.target,tween.to.target,e);if(k>=1)tween=null;}
+  if(state.turntable&&!ptr.down)orbit.theta+=0.004;
+  if(state.animExplode){animT+=1/60;const c=(1-Math.cos(animT*Math.PI/2.4))/2;state.explode=Math.round(c*100);applyExplode();}
+  applyCamera();updateHover();renderer.render(scene,camera);if(state.axes)drawTriad();
+  frames++;if(now-fpsT>500){$('#stFps').textContent=`${Math.round(frames*1000/(now-fpsT))} fps`;frames=0;fpsT=now;if(!state.selection.size&&$('#dockRight').querySelector('[data-rp2="props"]:not([hidden])'))renderProps();}
+}
+
+/* ───────── UI wiring ───────── */
+function showLeft(k){$$('[data-lt]').forEach(b=>b.setAttribute('aria-selected',b.dataset.lt===k));$$('[data-lp]').forEach(p=>p.hidden=p.dataset.lp!==k);}
+$$('[data-lt]').forEach(b=>b.onclick=()=>showLeft(b.dataset.lt));
+$$('[data-bt]').forEach(b=>b.onclick=()=>{$$('[data-bt]').forEach(x=>x.setAttribute('aria-selected',x===b));$$('[data-bp]').forEach(p=>p.hidden=p.dataset.bp!==b.dataset.bt);});
+function showRight(k){$$('[data-rtab]').forEach(b=>b.setAttribute('aria-selected',b.dataset.rtab===k));$$('[data-rp2]').forEach(p=>p.hidden=p.dataset.rp2!==k);}
+$$('[data-rtab]').forEach(b=>b.onclick=()=>showRight(b.dataset.rtab));
+$$('[data-rt]').forEach(b=>b.onclick=()=>{$$('[data-rt]').forEach(x=>x.setAttribute('aria-selected',x===b));$$('[data-rp]').forEach(p=>p.hidden=p.dataset.rp!==b.dataset.rt);if(b.dataset.rt==='design'){showRight('param');$('#paneRight').checked=true;$('#dockRight').hidden=false;}});
+$$('[data-view]').forEach(b=>b.onclick=()=>{goTo(VIEWS[b.dataset.view]);log(`ビュー: ${b.textContent.trim()||b.dataset.view}`);});
+$('#fit').onclick=$('#fit2').onclick=()=>fitAll();
+$$('[data-zoom]').forEach(b=>b.onclick=()=>{orbit.radius=THREE.MathUtils.clamp(orbit.radius/+b.dataset.zoom,40,3000);});
+$('#focusSel').onclick=()=>{if(state.selection.size)fitBox(visibleBox(state.selection));else fitAll();};
+$('#renderMode').onclick=e=>{const b=e.target.closest('[data-rm]');if(!b)return;state.renderMode=b.dataset.rm;syncControls();applyMaterials();log(`レンダーモード: ${b.textContent}`);};
+$('#colorMode').onclick=e=>{const b=e.target.closest('[data-cm]');if(!b)return;state.colorMode=b.dataset.cm;syncControls();applyMaterials();renderTree();renderBom();renderProps();log(`カラーコード: ${b.textContent}`);};
+$('#explodeStyle').onclick=e=>{const b=e.target.closest('[data-es]');if(!b)return;state.explodeStyle=b.dataset.es;syncControls();applyExplode();renderProps();};
+$('#secAxis').onclick=e=>{const b=e.target.closest('[data-ax]');if(!b)return;state.section.axis=b.dataset.ax;syncControls();applyClip();};
+$('#secFlip').onclick=()=>{state.section.flip=!state.section.flip;applyClip();};
+$('#secOn').onchange=e=>{state.section.on=e.target.checked;applyClip();log(`断面表示 ${state.section.on?'ON':'OFF'} (${state.section.axis.toUpperCase()} 軸)`);};
+$('#secPos').oninput=e=>{state.section.pos=+e.target.value;applyClip();};
+$('#explode').oninput=e=>{state.explode=+e.target.value;state.animExplode=false;$('#animExplode').setAttribute('aria-pressed','false');applyExplode();};
+$$('[data-explode]').forEach(b=>b.onclick=()=>{state.animExplode=false;$('#animExplode').setAttribute('aria-pressed','false');animateExplode(+b.dataset.explode);});
+function animateExplode(to){const from=state.explode;if(reduced){state.explode=to;applyExplode();return;}const t0=performance.now();(function step(n){const k=Math.min(1,(n-t0)/700);const e=1-Math.pow(1-k,3);state.explode=from+(to-from)*e;applyExplode();if(k<1)requestAnimationFrame(step);})(t0);}
+$('#animExplode').onclick=e=>{state.animExplode=!state.animExplode;animT=0;e.currentTarget.setAttribute('aria-pressed',state.animExplode);};
+$('#explodeScale').oninput=e=>{state.explodeScale=+e.target.value;$('#explodeScaleOut').textContent=fmt(state.explodeScale,2)+'×';applyExplode();};
+$('#ledPower').oninput=e=>{state.params.ledPower=+e.target.value;$('#ledPowerOut').textContent=fmt(state.params.ledPower,2);applyMaterials();};
+$('#optLed').onchange=e=>{state.led=e.target.checked;applyMaterials();};
+$('#optGrid').onchange=e=>{state.grid=e.target.checked;applyMaterials();};
+$('#optAxes').onchange=e=>{state.axes=e.target.checked;applyMaterials();};
+$('#optShadow').onchange=e=>{state.shadow=e.target.checked;applyMaterials();};
+$('#optEdges').onchange=e=>{state.edges=e.target.checked;applyMaterials();};
+$('#optTurn').onchange=e=>{state.turntable=e.target.checked;};
+$('#optPersp').onchange=e=>setPersp(e.target.checked);
+$('#paneLeft').onchange=e=>$('#dockLeft').hidden=!e.target.checked;
+$('#paneRight').onchange=e=>$('#dockRight').hidden=!e.target.checked;
+$('#paneBottom').onchange=e=>$('#dockBottom').hidden=!e.target.checked;
+$('#resetUi').onclick=()=>{['paneLeft','paneRight','paneBottom'].forEach(i=>{$('#'+i).checked=true;});$('#dockLeft').hidden=$('#dockRight').hidden=$('#dockBottom').hidden=false;showLeft('tree');showRight('props');log('UI レイアウトをリセット');};
+function isolateSelection(){if(!state.selection.size)return;PART_DEFS.forEach(d=>{if(!state.selection.has(d.id))state.hidden.add(d.id);else state.hidden.delete(d.id);});applyMaterials();renderTree();renderBom();fitBox(visibleBox(state.selection));log(`分離表示: ${state.selection.size} 部品`);}
+$('#isolate').onclick=isolateSelection;
+$('#hideSel').onclick=()=>{state.selection.forEach(i=>state.hidden.add(i));applyMaterials();renderTree();renderBom();};
+$('#showAll').onclick=()=>{state.hidden.clear();applyMaterials();renderTree();renderBom();log('すべて表示');};
+$('#selShell').onclick=()=>select(partsIn(d=>d.shell));
+$('#selInner').onclick=()=>select(partsIn(d=>d.group==='A3'));
+$('#clearSel').onclick=()=>select([]);
+$('#measureSel').onclick=()=>{showBottom('measure');renderMeasure();};
+$('#measureAll').onclick=()=>{select([]);showBottom('measure');};
+function showBottom(k){$$('[data-bt]').forEach(x=>x.setAttribute('aria-selected',x.dataset.bt===k));$$('[data-bp]').forEach(p=>p.hidden=p.dataset.bp!==k);$('#dockBottom').hidden=false;$('#paneBottom').checked=true;}
+$('#openParam').onclick=()=>{showRight('param');$('#dockRight').hidden=false;$('#paneRight').checked=true;};
+$('#paramReset').onclick=()=>{state.params={...DEFAULT_PARAMS};$('#ledPower').value=DEFAULT_PARAMS.ledPower;buildModel();renderAll();log('パラメータを初期値に戻しました');};
+$('#paramOpt').onclick=()=>{ // simple greedy: shrink body depth/base until mass target or bounds
+  const t=TARGETS[0].target;let it=0;while(state.totalMass>t&&it<40){const p=state.params;if(p.baseH>8)p.baseH=Math.max(8,p.baseH-0.5);else if(p.bodyDepth>50)p.bodyDepth-=1;else if(p.bodyR>48)p.bodyR-=0.5;else break;buildModel();it++;}
+  renderAll();log(`質量最適化: ${it} 反復 → 総質量 ${fmt(state.totalMass,0)} g (目標 ≤ ${t} g)`,state.totalMass<=t?'g':'w');};
+$('#exportJson').onclick=async()=>{const data={product:'VolaTrap Assy.1',params:state.params,results:computeResults(),parts:PART_DEFS.map(d=>({id:d.id,...parts.get(d.id).state,volume_cm3:+(parts.get(d.id).vol/1000).toFixed(3),mass_g:+parts.get(d.id).mass.toFixed(2),group:d.group}))};
+  const s=JSON.stringify(data,null,2);try{await navigator.clipboard.writeText(s);log('設計データ (JSON) をクリップボードにコピーしました','g');}catch{log('クリップボードに書き込めませんでした。出力タブに表示します','w');}$('#out').insertAdjacentHTML('beforeend',`<pre style="margin:4px 0;color:var(--muted)">${s.slice(0,1500)}${s.length>1500?'\n…':''}</pre>`);showBottom('out');};
+$('#copyBom').onclick=async()=>{const tsv=['部品番号\t名称\tEnglish\tAssy\t材質\t数量\t体積cm3\t質量g\tMakeBuy',...PART_DEFS.map(d=>{const r=parts.get(d.id);return [d.id,r.state.name,d.en,d.group,r.state.mat,r.state.qty,(r.vol/1000).toFixed(2),r.mass.toFixed(1),r.state.mb].join('\t');})].join('\n');try{await navigator.clipboard.writeText(tsv);log('BOM (TSV) をコピーしました','g');}catch{log('クリップボードに書き込めませんでした','w');}};
+function syncControls(){$$('[data-rm]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.rm===state.renderMode));$$('[data-cm]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.cm===state.colorMode));$$('[data-es]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.es===state.explodeStyle));$$('[data-ax]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.ax===state.section.axis));$('#secOn').checked=state.section.on;$('#secPos').value=state.section.pos;}
+document.addEventListener('keydown',e=>{if(e.target.matches('input,select,textarea'))return;const k=e.key.toLowerCase();
+  if(k==='f')fitAll();else if(k==='e')animateExplode(state.explode>50?0:100);else if(k==='escape')select([]);else if(k==='i')goTo(VIEWS.iso);else if(k==='h'&&state.selection.size)$('#hideSel').click();else if(k==='a'&&e.ctrlKey){e.preventDefault();select(PART_DEFS.map(d=>d.id));}});
+function renderAll(){renderTree();renderProps();renderBom();renderMeasure();renderParam();renderSets();}
+
+/* ───────── init ───────── */
+resize();buildModel();renderAll();
+applyCamera();fitAll(0);applyCamera();
+// preset views (rendered once each for thumbnails)
+const presets=[['初期ビュー (等角)',{...VIEWS.iso}],['正面',{...VIEWS.front}],['分解 100 %',{...VIEWS.iso,explode:100}],['断面 X · 透過',{theta:0.35,phi:1.25,section:{on:true,axis:'x',pos:0,flip:false},renderMode:'ghost'}]];
+for(const [name,v] of presets){state.explode=v.explode||0;state.renderMode=v.renderMode||'solid';Object.assign(state.section,v.section||{on:false});applyExplode();applyMaterials();applyClip();Object.assign(orbit,{theta:v.theta,phi:v.phi});applyCamera();fitAll(0);applyCamera();snapshotView(name);}
+state.explode=0;state.renderMode='solid';state.section.on=false;state.activeView=0;syncControls();applyExplode();applyMaterials();applyClip();Object.assign(orbit,VIEWS.iso);applyCamera();fitAll(0);applyCamera();renderViews();
+log('VolaTrap Assembly Studio 起動 · Three.js r128 · 単位 mm / g');
+log('ヒント: 部品をクリックで選択、ダブルクリックでフォーカス。「分解」タブのスライダーで分解率を変更できます。');
+requestAnimationFrame(loop);
+})();
+</script>
