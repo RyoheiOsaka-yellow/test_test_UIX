@@ -1265,6 +1265,7 @@ function setViewMode(m) {
   gPoint.visible = (m === 'point');
   gWire.visible = lineish;
   gClose.visible = (m === 'solid' && level !== 'plaza');
+  if (typeof gDetail !== 'undefined') gDetail.visible = (m === 'solid');
   const deck = gInfra.getObjectByName('bridgeDeck');
   if (deck) deck.visible = !lineish;          // 線画では稜線が高架を表現するので実体は伏せる
   arenaShell.visible = (m === 'solid' && level !== 'plaza');
@@ -1284,6 +1285,550 @@ function setViewMode(m) {
   wm.needsUpdate = true;
   if (typeof renderPanel === 'function') renderPanel();
 }
+/* ---- src/21_sitex.js ---- */
+/* ================================================================
+   L0 サイト詳細 — 実体(SOLID)モードで街の粒度を上げるレイヤー
+   車線標示 / 横断歩道 / 歩道 / 街路灯（光溜まり付き）/ 街路樹 /
+   建物の窓灯・航空障害灯 / フリーウェイ門型標識 / Metro 駅プラットフォーム /
+   駐車区画 / アリーナ屋根（ドーム・屋上設備・屋上サイン）
+   点描・線画は測量表現なので付加しない（gDetail は SOLID のみ表示）。
+================================================================ */
+const gDetail = new THREE.Group(); site.add(gDetail);
+Object.assign(siteStats, { lights: 0, trees: 0, windows: 0, crosswalks: 0, stalls: 0 });
+
+setLoad(72, '街路詳細（車線・街路灯・街路樹・窓灯）を生成中');
+(function siteDetail() {
+  const ARENA_D = [ARENA_C.x, -ARENA_C.z];                // データ座標系でのアリーナ中心
+  const nearArena = (x, y, r) => Math.hypot(x - ARENA_D[0], y - ARENA_D[1]) < r;
+  const inRange = (pts, r) => Math.hypot(pts[0][0], pts[0][1]) < r;
+  const roadY = r => (r.b === 1 ? 7.5 + (r.ly || 1) * 1.6 : 0.18 + r.c * 0.05);
+  const roadW = r => ROAD_W[r.c] * (r.ln ? clamp(r.ln / (r.c >= 3 ? 4 : 2), 0.7, 2.2) : 1);
+  const lanesOf = r => r.ln || (r.c >= 4 ? 4 : 2);
+  /* 折れ線を等間隔に歩く: cb(x, y, dx, dy) 。dx,dy は単位方向 */
+  const walk = (pts, step, cb, offset) => {
+    let carry = offset || 0;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      const L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < 0.01) continue;
+      const dx = (b[0] - a[0]) / L, dy = (b[1] - a[1]) / L;
+      let s = carry;
+      while (s <= L) { cb(a[0] + dx * s, a[1] + dy * s, dx, dy); s += step; }
+      carry = s - L;
+    }
+  };
+  const inPoly = (x, y, p) => {
+    let c = false;
+    for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
+      if (((p[i][1] > y) !== (p[j][1] > y)) &&
+          (x < (p[j][0] - p[i][0]) * (y - p[i][1]) / (p[j][1] - p[i][1]) + p[i][0])) c = !c;
+    }
+    return c;
+  };
+  const openRing = poly => {
+    const p = poly.slice();
+    if (p.length > 3 && p[0][0] === p[p.length - 1][0] && p[0][1] === p[p.length - 1][1]) p.pop();
+    return p;
+  };
+  const lineMesh = (W, WC, opacity) => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(W, 3));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(WC, 3));
+    return new THREE.LineSegments(g, new THREE.LineBasicMaterial({
+      vertexColors: true, transparent: opacity < 1, opacity }));
+  };
+
+  /* ---------- 車線標示（センターライン・レーン破線・外側線） ---------- */
+  (function laneMarks() {
+    const W = [], WC = [];
+    const white = [0.70, 0.73, 0.80], yellow = [0.86, 0.70, 0.22];
+    const seg = (ax, ay, bx, by, y, col) => {
+      W.push(ax, y, -ay, bx, y, -by); WC.push(col[0], col[1], col[2], col[0], col[1], col[2]);
+    };
+    for (const r of SCENE_DATA.roads) {
+      if (r.c < 1 || r.b === -1 || !inRange(r.p, 1500)) continue;
+      const w = roadW(r), n = lanesOf(r), y = roadY(r) + 0.025;
+      const fw = r.c >= 4;
+      /* レーン区分線: n-1 本。都市道路は中央を黄実線、他は白破線。フリーウェイは全て白破線 */
+      for (let k = 1; k < n; k++) {
+        const off = -w / 2 + w * k / n;
+        const center = !fw && n % 2 === 0 && k === n / 2;
+        if (center) {
+          for (let i = 0; i < r.p.length - 1; i++) {
+            const a = r.p[i], b = r.p[i + 1];
+            const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+            const nx = -(b[1] - a[1]) / L * off, ny = (b[0] - a[0]) / L * off;
+            seg(a[0] + nx, a[1] + ny, b[0] + nx, b[1] + ny, y, yellow);
+          }
+        } else {
+          walk(r.p, 9, (x, yy, dx, dy) => {
+            const nx = -dy * off, ny = dx * off;
+            seg(x + nx, yy + ny, x + nx + dx * 3, yy + ny + dy * 3, y, white);
+          }, 2);
+        }
+      }
+      /* 外側線（幹線以上） */
+      if (r.c >= 2) for (const s of [-1, 1]) {
+        const off = s * (w / 2 - 0.35);
+        const col = (fw && s < 0) ? yellow : white;
+        for (let i = 0; i < r.p.length - 1; i++) {
+          const a = r.p[i], b = r.p[i + 1];
+          const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+          const nx = -(b[1] - a[1]) / L * off, ny = (b[0] - a[0]) / L * off;
+          seg(a[0] + nx, a[1] + ny, b[0] + nx, b[1] + ny, y, col);
+        }
+      }
+    }
+    const m = lineMesh(W, WC, 0.62); m.name = 'laneMarks'; gDetail.add(m);
+  })();
+
+  /* ---------- 歩道（車道の両脇に一段暗い帯。縁石の存在を読ませる） ---------- */
+  (function sidewalks() {
+    const B = new Builder(), col = [0.13, 0.15, 0.20];
+    for (const r of SCENE_DATA.roads) {
+      if (r.c < 1 || r.c > 3 || r.b || !inRange(r.p, 1500)) continue;
+      addRibbon(B, r.p, roadW(r) + 6.5, 0.14, col);
+    }
+    gDetail.add(new THREE.Mesh(B.geom(), new THREE.MeshBasicMaterial({ vertexColors: true })));
+  })();
+
+  /* ---------- 横断歩道（交差点の各流入路にゼブラ） ---------- */
+  (function crosswalks() {
+    const key = p => Math.round(p[0]) + ',' + Math.round(p[1]);
+    const deg = {};
+    const cand = SCENE_DATA.roads.filter(r => r.c >= 1 && !r.b && inRange(r.p, 1200) && r.p.length > 1);
+    for (const r of cand) for (const e of [r.p[0], r.p[r.p.length - 1]]) deg[key(e)] = (deg[key(e)] || 0) + 1;
+    const B = new Builder(), zc = [0.80, 0.83, 0.90];
+    let n = 0;
+    const zebra = (px, py, dx, dy, w, y) => {
+      /* 進入方向 (dx,dy) に沿って交差点から 4m 手前に、道路幅いっぱいの縞を敷く */
+      const nx = -dy, ny = dx;
+      const stripes = Math.max(3, Math.floor(w / 1.1));
+      for (let k = 0; k < stripes; k++) {
+        const o = -w / 2 + (k + 0.5) * (w / stripes);
+        const cx = px + nx * o, cy = py + ny * o;
+        const a = [cx - nx * 0.28, cy - ny * 0.28], b = [cx + nx * 0.28, cy + ny * 0.28];
+        B.quad([a[0], y, -a[1]], [b[0], y, -b[1]],
+               [b[0] + dx * 2.6, y, -(b[1] + dy * 2.6)], [a[0] + dx * 2.6, y, -(a[1] + dy * 2.6)], zc);
+      }
+      n++;
+    };
+    for (const r of cand) {
+      const w = roadW(r), y = roadY(r) + 0.03;
+      for (const end of [0, 1]) {
+        const e = end ? r.p[r.p.length - 1] : r.p[0];
+        if ((deg[key(e)] || 0) < 3) continue;
+        const q = end ? r.p[r.p.length - 2] : r.p[1];
+        const L = Math.hypot(q[0] - e[0], q[1] - e[1]); if (L < 14) continue;
+        const dx = (q[0] - e[0]) / L, dy = (q[1] - e[1]) / L;   // 交差点から離れる向き
+        const d0 = (r.c >= 3 ? 11 : 8);
+        zebra(e[0] + dx * d0, e[1] + dy * d0, dx, dy, w, y);
+      }
+    }
+    siteStats.crosswalks = n;
+    gDetail.add(new THREE.Mesh(B.geom(), new THREE.MeshBasicMaterial({ vertexColors: true,
+      transparent: true, opacity: 0.85 })));
+  })();
+
+  /* ---------- 街路灯（ポール + 灯具 + 路面の光溜まり） ---------- */
+  (function streetLights() {
+    const spots = [];
+    let side = 1;
+    for (const r of SCENE_DATA.roads) {
+      if (r.c < 1 || r.b === -1) continue;
+      const fw = r.c >= 4;
+      if (!inRange(r.p, fw ? 1600 : 1100)) continue;
+      const w = roadW(r), y = roadY(r);
+      walk(r.p, fw ? 55 : 36, (x, yy, dx, dy) => {
+        if (nearArena(x, yy, 185)) return;
+        side = -side;
+        const off = side * (w / 2 + (fw ? 1.2 : 2.2));
+        spots.push({ x: x - dy * off, y: yy + dx * off, h: fw ? 13 : 9.5, base: y, fw,
+                     ang: Math.atan2(dx, -dy) });
+      }, 12);
+    }
+    const N = spots.length; siteStats.lights = N;
+    const poleG = new THREE.CylinderGeometry(0.11, 0.17, 1, 6);
+    poleG.translate(0, 0.5, 0);
+    const pole = new THREE.InstancedMesh(poleG, new THREE.MeshStandardMaterial({
+      color: 0x8b93a3, metalness: 0.6, roughness: 0.5 }), N);
+    const headG = new THREE.BoxGeometry(1.2, 0.22, 0.4);
+    const head = new THREE.InstancedMesh(headG, new THREE.MeshBasicMaterial({ color: 0xfff1c9 }), N);
+    /* 光溜まり: 放射グラデーションの加算平面 */
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+    const c = cv.getContext('2d');
+    const gr = c.createRadialGradient(32, 32, 2, 32, 32, 32);
+    gr.addColorStop(0, 'rgba(255,225,170,0.55)'); gr.addColorStop(0.5, 'rgba(255,215,150,0.16)');
+    gr.addColorStop(1, 'rgba(255,205,130,0)');
+    c.fillStyle = gr; c.fillRect(0, 0, 64, 64);
+    const poolG = new THREE.PlaneGeometry(1, 1); poolG.rotateX(-Math.PI / 2);
+    const pool = new THREE.InstancedMesh(poolG, new THREE.MeshBasicMaterial({
+      map: new THREE.CanvasTexture(cv), transparent: true, depthWrite: false,
+      blending: THREE.AdditiveBlending }), N);
+    const M = new THREE.Matrix4(), P = new THREE.Vector3(), Q = new THREE.Quaternion(),
+          S = new THREE.Vector3(), E = new THREE.Euler();
+    spots.forEach((s, i) => {
+      E.set(0, s.ang, 0); Q.setFromEuler(E);
+      P.set(s.x, s.base, -s.y); S.set(1, s.h, 1); M.compose(P, Q, S); pole.setMatrixAt(i, M);
+      /* 灯具は車道側へ 0.9m 張り出す */
+      const ox = Math.cos(s.ang) * 0.6, oz = -Math.sin(s.ang) * 0.6;
+      P.set(s.x + ox, s.base + s.h, -s.y + oz); S.set(1, 1, 1); M.compose(P, Q, S); head.setMatrixAt(i, M);
+      const d = s.fw ? 26 : 16;
+      P.set(s.x + ox * 2, s.base + 0.06, -s.y + oz * 2); S.set(d, 1, d); M.compose(P, Q, S); pool.setMatrixAt(i, M);
+    });
+    pole.instanceMatrix.needsUpdate = head.instanceMatrix.needsUpdate = pool.instanceMatrix.needsUpdate = true;
+    gDetail.add(pole, head, pool);
+  })();
+
+  /* ---------- 街路樹・公園樹 ---------- */
+  (function trees() {
+    const spots = [];
+    let side = 1;
+    for (const r of SCENE_DATA.roads) {
+      if (r.c > 1 || r.b || !inRange(r.p, 900)) continue;
+      const w = roadW(r);
+      walk(r.p, 24, (x, yy, dx, dy) => {
+        if (nearArena(x, yy, 185)) return;
+        side = -side;
+        const off = side * (w / 2 + 3.0);
+        const k = spots.length;
+        spots.push({ x: x - dy * off + (hrand(k, 3) - 0.5) * 1.5, y: yy + dx * off + (hrand(k, 4) - 0.5) * 1.5,
+                     s: 0.8 + hrand(k, 5) * 0.6 });
+      }, 6);
+    }
+    for (const poly of SCENE_DATA.lu.park || []) {
+      const p = openRing(poly);
+      if (p.length < 3 || !inRange(p, 1600)) continue;
+      let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+      for (const q of p) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }
+      if ((x1 - x0) * (y1 - y0) > 400000) continue;      // 巨大な公園ポリゴンは除外（点数抑制）
+      for (let x = x0 + 6; x < x1; x += 13) for (let y = y0 + 6; y < y1; y += 13) {
+        const k = spots.length;
+        const jx = x + (hrand(k, 7) - 0.5) * 8, jy = y + (hrand(k, 8) - 0.5) * 8;
+        if (!inPoly(jx, jy, p) || nearArena(jx, jy, 185)) continue;
+        spots.push({ x: jx, y: jy, s: 1.0 + hrand(k, 9) * 0.9 });
+        if (spots.length > 5000) break;
+      }
+    }
+    const N = spots.length; siteStats.trees = N;
+    const trunkG = new THREE.CylinderGeometry(0.16, 0.24, 1, 5); trunkG.translate(0, 0.5, 0);
+    const trunk = new THREE.InstancedMesh(trunkG, new THREE.MeshStandardMaterial({ color: 0x4a3a2c, roughness: 1 }), N);
+    const crownG = new THREE.IcosahedronGeometry(1, 1);
+    const crown = new THREE.InstancedMesh(crownG, new THREE.MeshStandardMaterial({ roughness: 0.95, flatShading: true }), N);
+    primeInstanceColor(crown, N);
+    const M = new THREE.Matrix4(), P = new THREE.Vector3(), Q = new THREE.Quaternion(), S = new THREE.Vector3();
+    const C = new THREE.Color();
+    spots.forEach((t, i) => {
+      const h = 4.2 * t.s;
+      P.set(t.x, 0.1, -t.y); S.set(1, h, 1); M.compose(P, Q, S); trunk.setMatrixAt(i, M);
+      const r = 2.3 * t.s;
+      P.set(t.x, 0.1 + h + r * 0.55, -t.y); S.set(r, r * 1.15, r); M.compose(P, Q, S); crown.setMatrixAt(i, M);
+      C.setHSL(0.30 + hrand(i, 11) * 0.08, 0.45, 0.20 + hrand(i, 12) * 0.10);
+      crown.setColorAt(i, C);
+    });
+    trunk.instanceMatrix.needsUpdate = crown.instanceMatrix.needsUpdate = true;
+    crown.instanceColor.needsUpdate = true;
+    gDetail.add(trunk, crown);
+  })();
+
+  /* ---------- 窓灯（夜景）と高層建物の航空障害灯 ----------
+     200m 圏の建物は L1 で gClose ごと伏せるので、その窓灯も gClose 側に置く。 */
+  (function windows() {
+    const sets = { near: { P: [], C: [] }, far: { P: [], C: [] } };
+    const R = [];
+    const warm = [1.0, 0.86, 0.58], cool = [0.72, 0.84, 1.0];
+    let k = 0;
+    const facade = (poly, h, step, lit, radius) => {
+      const p = openRing(poly);
+      if (p.length < 3 || h < 10 || !inRange(p, radius)) return;
+      const set = inRange(p, 200) ? sets.near : sets.far;
+      if (area2(p) < 0) p.reverse();                        // 反時計回りに揃える（外向き法線 = (dy, -dx)）
+      for (let i = 0; i < p.length; i++) {
+        const a = p[i], b = p[(i + 1) % p.length];
+        const L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < step) continue;
+        const nx = (b[1] - a[1]) / L, ny = -(b[0] - a[0]) / L;
+        const n = Math.floor(L / step);
+        for (let j = 0; j < n; j++) {
+          const t = (j + 0.5) / n;
+          const x = a[0] + (b[0] - a[0]) * t + nx * 0.3, y = a[1] + (b[1] - a[1]) * t + ny * 0.3;
+          for (let z = 2.4; z < h - 1.2; z += 3.6) {
+            k++;
+            if (hrand(k, 21) > lit) continue;
+            const col = hrand(k, 22) < 0.62 ? warm : cool;
+            const v = 0.55 + hrand(k, 23) * 0.45;
+            set.P.push(x, z, -y); set.C.push(col[0] * v, col[1] * v, col[2] * v);
+          }
+        }
+      }
+      if (h > 60) {                                          // 航空障害灯（屋上の四隅相当）
+        for (let i = 0; i < p.length; i += Math.max(1, Math.floor(p.length / 4))) R.push(p[i][0], h + 1.2, -p[i][1]);
+      }
+    };
+    for (const b of SCENE_DATA.buildings) facade(b.p, b.h || 0, 4.2, 0.42, 1700);
+    for (const b of SCENE_DATA.mid) {
+      const h = 7 + hrand(Math.round(b.p[0][0] * 7 + b.p[0][1]), 23) * 22;   // 20_site.js と同じ高さ
+      facade(b.p, h, 7.5, 0.3, 2300);
+    }
+    /* 丸い柔らかなスプライト（正方形点にならないように） */
+    const cv = document.createElement('canvas'); cv.width = cv.height = 32;
+    const c = cv.getContext('2d');
+    const gr = c.createRadialGradient(16, 16, 2, 16, 16, 16);
+    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.45, 'rgba(255,255,255,0.7)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    c.fillStyle = gr; c.fillRect(0, 0, 32, 32);
+    const sprite = new THREE.CanvasTexture(cv);
+    const mkPts = set => {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(set.P, 3));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(set.C, 3));
+      return new THREE.Points(g, new THREE.PointsMaterial({ size: 1.1, sizeAttenuation: true, map: sprite,
+        vertexColors: true, transparent: true, opacity: 0.9, alphaTest: 0.05, depthWrite: false }));
+    };
+    siteStats.windows = (sets.near.P.length + sets.far.P.length) / 3;
+    gDetail.add(mkPts(sets.far));
+    const nearPts = mkPts(sets.near); nearPts.name = 'winNear'; gClose.add(nearPts);
+    const rg = new THREE.BufferGeometry();
+    rg.setAttribute('position', new THREE.Float32BufferAttribute(R, 3));
+    const beacon = new THREE.Points(rg, new THREE.PointsMaterial({ color: 0xff2a3c, size: 3.5, map: sprite,
+      sizeAttenuation: true, transparent: true, opacity: 1, alphaTest: 0.05, depthWrite: false }));
+    gDetail.add(beacon);
+    FRAME_HOOKS.push((dt, now) => { beacon.material.opacity = (Math.sin(now / 420) > 0.2) ? 1 : 0.12; });
+  })();
+
+  /* ---------- フリーウェイ門型標識（I-110 / I-10） ---------- */
+  (function gantries() {
+    const cand = [];
+    for (const r of SCENE_DATA.roads) {
+      if (r.c < 4 || r.b === -1 || !inRange(r.p, 1500)) continue;
+      walk(r.p, 260, (x, y, dx, dy) => { cand.push({ x, y, dx, dy, w: roadW(r), base: roadY(r) }); }, 90);
+    }
+    const picked = [];
+    for (const c of cand) {
+      if (nearArena(c.x, c.y, 220)) continue;
+      if (picked.some(p => Math.hypot(p.x - c.x, p.y - c.y) < 330)) continue;
+      picked.push(c); if (picked.length >= 10) break;
+    }
+    const exits = ['EXIT 20B  Olympic Blvd', 'EXIT 9A  Pico Blvd  ·  L.A. LIVE', 'EXIT 21  Figueroa St',
+                   'EXIT 9  Grand Ave', 'EXIT 20A  9th St', 'EXIT 8  Adams Blvd'];
+    const post = new THREE.MeshStandardMaterial({ color: 0x8b93a3, metalness: 0.6, roughness: 0.45 });
+    picked.forEach((c, i) => {
+      const ns = Math.abs(c.dy) > Math.abs(c.dx);
+      const title = ns ? 'I-110  Harbor Fwy  ' + (c.dy > 0 ? 'NORTH' : 'SOUTH')
+                       : 'I-10  Santa Monica Fwy  ' + (c.dx > 0 ? 'EAST' : 'WEST');
+      const cv = document.createElement('canvas'); cv.width = 768; cv.height = 192;
+      const g = cv.getContext('2d');
+      g.fillStyle = '#0f6a3a'; g.fillRect(0, 0, 768, 192);
+      g.strokeStyle = '#e9edf6'; g.lineWidth = 6; g.strokeRect(8, 8, 752, 176);
+      g.fillStyle = '#ffffff'; g.font = '600 46px Oswald'; g.textAlign = 'left';
+      g.fillText(title, 32, 78);
+      g.font = '500 40px Oswald'; g.fillText(exits[i % exits.length], 32, 150);
+      g.fillStyle = '#fdb927'; g.fillRect(650, 120, 90, 8);
+      const tex = new THREE.CanvasTexture(cv);
+      const grp = new THREE.Group();
+      const ang = Math.atan2(c.dx, -c.dy);                   // 進行方向（world）に法線を向ける
+      grp.position.set(c.x, c.base, -c.y); grp.rotation.y = ang;
+      const hw = c.w / 2 + 1.5;
+      for (const s of [-1, 1]) {
+        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 7.5, 8), post);
+        p.position.set(s * hw, 3.75, 0); grp.add(p);
+      }
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(hw * 2 + 0.6, 0.7, 0.7), post);
+      beam.position.set(0, 7.4, 0); grp.add(beam);
+      /* 表裏それぞれ正像で読めるよう 2 枚を背中合わせに置く */
+      const signM = new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex,
+        emissiveIntensity: 0.55, color: 0x0f6a3a });
+      for (const f of [1, -1]) {
+        const sign = new THREE.Mesh(new THREE.PlaneGeometry(12, 3), signM);
+        sign.position.set(hw * 0.25, 9.3, f * 0.12); sign.rotation.y = f > 0 ? 0 : Math.PI; grp.add(sign);
+      }
+      grp.userData = { kind: 'poi', name: '門型標識: ' + title,
+        desc: exits[i % exits.length] + '<br>フリーウェイ経由の来場者が最初に接触する屋外媒体候補' };
+      gDetail.add(grp);
+    });
+  })();
+
+  /* ---------- Metro 駅（地上駅=プラットフォーム / 地下駅=出入口ヘッドハウス） ---------- */
+  (function stations() {
+    const steel = new THREE.MeshStandardMaterial({ color: 0x9aa4b6, metalness: 0.6, roughness: 0.4 });
+    const conc = new THREE.MeshStandardMaterial({ color: 0x5c6270, roughness: 0.9 });
+    const glass = new THREE.MeshStandardMaterial({ color: 0x2a4a6e, transparent: true, opacity: 0.4,
+      metalness: 0.5, roughness: 0.2, side: THREE.DoubleSide });
+    const label = (txt, sub, w) => {
+      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128;
+      const g = cv.getContext('2d');
+      g.fillStyle = '#111318'; g.fillRect(0, 0, 512, 128);
+      g.fillStyle = '#ffffff'; g.beginPath(); g.arc(56, 64, 40, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#111318'; g.font = '700 58px Oswald'; g.textAlign = 'center'; g.fillText('M', 56, 85);
+      g.fillStyle = '#ffffff'; g.font = '600 40px Oswald'; g.textAlign = 'left'; g.fillText(txt, 112, 60);
+      g.fillStyle = '#fdb913'; g.font = '500 26px Oswald'; g.fillText(sub, 112, 104);
+      const tex = new THREE.CanvasTexture(cv);
+      return new THREE.Mesh(new THREE.PlaneGeometry(w, w / 4),
+        new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex,
+          emissiveIntensity: 0.7, color: 0x111318, side: THREE.DoubleSide }));
+    };
+    for (const s of SCENE_DATA.stations) {
+      const d = Math.hypot(s.p[0], s.p[1]);
+      if (d > 1300) continue;
+      /* 最寄り線路セグメントの向きと地上/地下を拾う */
+      let best = null, bd = Infinity;
+      for (const r of SCENE_DATA.railMetro) for (let i = 0; i < r.p.length - 1; i++) {
+        const a = r.p[i], b = r.p[i + 1];
+        const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+        const dd = Math.hypot(mx - s.p[0], my - s.p[1]);
+        if (dd < bd) { bd = dd; best = { a, b, r }; }
+      }
+      if (!best) continue;
+      const dx = best.b[0] - best.a[0], dy = best.b[1] - best.a[1], L = Math.hypot(dx, dy) || 1;
+      const ux = dx / L, uy = dy / L;                        // 線路方向（データ座標）
+      const ang = Math.atan2(ux, -uy);
+      const grp = new THREE.Group();
+      grp.position.set(s.p[0], 0, -s.p[1]); grp.rotation.y = ang;
+      const underground = best.r.b === -1 || s.k === 'subway';
+      const lines = best.r.n || 'Metro';
+      if (underground) {
+        /* 出入口ヘッドハウス（ガラス箱 + 階段）と駅名サイン */
+        for (const sx of [-14, 14]) {
+          const hh = new THREE.Mesh(new THREE.BoxGeometry(9, 3.6, 5), glass); hh.position.set(sx, 1.8, 7); grp.add(hh);
+          const fr = new THREE.Mesh(new THREE.BoxGeometry(9.3, 0.3, 5.3), steel); fr.position.set(sx, 3.7, 7); grp.add(fr);
+          const stair = new THREE.Mesh(new THREE.BoxGeometry(3, 0.2, 6), conc); stair.position.set(sx, 0.2, 12); grp.add(stair);
+          const totem = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4.5, 0.5), steel); totem.position.set(sx + 5.5, 2.25, 4); grp.add(totem);
+          const lb = label(s.n, lines, 8); lb.position.set(sx + 5.5, 5.4, 4); grp.add(lb);
+        }
+        grp.userData = { kind: 'station', name: s.n + '（出入口）',
+          desc: '地下駅 / ' + lines + '<br>ヘッドハウス2箇所。改札通過 ≒ 来場 22 分前の接点' };
+      } else {
+        /* 地上駅: 相対式ホーム + 上屋 + 点字ブロック */
+        for (const sz of [-5.2, 5.2]) {
+          const pf = new THREE.Mesh(new THREE.BoxGeometry(72, 0.9, 3.6), conc); pf.position.set(0, 0.45, sz); grp.add(pf);
+          const edge = new THREE.Mesh(new THREE.BoxGeometry(72, 0.02, 0.5),
+            new THREE.MeshBasicMaterial({ color: 0xfdb913 }));
+          edge.position.set(0, 0.92, sz - Math.sign(sz) * 1.5); grp.add(edge);
+          const roof = new THREE.Mesh(new THREE.BoxGeometry(40, 0.25, 3.8),
+            new THREE.MeshStandardMaterial({ color: 0x2a2f3b, roughness: 0.7 }));
+          roof.position.set(0, 4.3, sz); grp.add(roof);
+          for (let x = -18; x <= 18; x += 12) {
+            const c = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 3.4, 8), steel);
+            c.position.set(x, 2.6, sz + Math.sign(sz) * 1.2); grp.add(c);
+          }
+          const lb = label(s.n, lines, 9); lb.position.set(0, 3.2, sz + Math.sign(sz) * 1.85);
+          lb.rotation.y = sz > 0 ? 0 : Math.PI; grp.add(lb);
+          const bench = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.45, 0.5), steel);
+          bench.position.set(8, 1.15, sz + Math.sign(sz) * 1.0); grp.add(bench);
+        }
+        grp.userData = { kind: 'station', name: s.n + '（ホーム）',
+          desc: '地上駅 / ' + lines + '<br>相対式ホーム 72m・上屋 40m<br>アリーナ中心から ' + fmt(d) + ' m' };
+      }
+      gDetail.add(grp);
+    }
+  })();
+
+  /* ---------- 駐車区画（白線） ---------- */
+  (function stalls() {
+    const W = [], WC = [], col = [0.34, 0.35, 0.42];
+    let n = 0;
+    for (const poly of SCENE_DATA.parking) {
+      const p = openRing(poly);
+      if (p.length < 3 || !inRange(p, 900)) continue;
+      let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+      for (const q of p) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }
+      const alongX = (x1 - x0) >= (y1 - y0);                // 長辺方向に通路、短辺方向に区画
+      for (let u = (alongX ? x0 : y0) + 1.5; u < (alongX ? x1 : y1); u += 2.7) {
+        for (let v = (alongX ? y0 : x0) + 1; v < (alongX ? y1 : x1); v += 16) {
+          for (const s of [0, 8]) {
+            const vv = v + s + 1.5;
+            const cx = alongX ? u : vv, cy = alongX ? vv : u;
+            if (!inPoly(cx, cy, p)) continue;
+            const ax = alongX ? u : vv - 2.5, ay = alongX ? vv - 2.5 : u;
+            const bx = alongX ? u : vv + 2.5, by = alongX ? vv + 2.5 : u;
+            W.push(ax, 0.16, -ay, bx, 0.16, -by); WC.push(col[0], col[1], col[2], col[0], col[1], col[2]);
+            n++;
+          }
+        }
+      }
+      if (n > 9000) break;
+    }
+    siteStats.stalls = n;
+    gDetail.add(lineMesh(W, WC, 0.8));
+  })();
+})();
+
+/* ================= アリーナ外殻の作り込み（L0 SOLID） =================
+   平屋根の押し出しだったものに、ドーム状の屋根・屋上設備・屋上サイン・
+   上層ガラス帯・パネル目地を追加する。 */
+(function arenaRoof() {
+  const poly = SCENE_DATA.arena.outer;
+  if (!poly || poly.length < 4) return;
+  let p = poly.slice();
+  if (p[0][0] === p[p.length - 1][0] && p[0][1] === p[p.length - 1][1]) p.pop();
+  if (area2(p) < 0) p.reverse();
+  let cx = 0, cy = 0; for (const q of p) { cx += q[0]; cy += q[1]; } cx /= p.length; cy /= p.length;
+  const scaled = k => p.map(q => [cx + (q[0] - cx) * k, cy + (q[1] - cy) * k]);
+  const B = new Builder();
+  const band = (r0, y0, r1, y1, col) => {
+    for (let i = 0; i < p.length; i++) {
+      const a = r0[i], b = r0[(i + 1) % p.length], c = r1[(i + 1) % p.length], d = r1[i];
+      B.quad([a[0], y0, -a[1]], [b[0], y0, -b[1]], [c[0], y1, -c[1]], [d[0], y1, -d[1]], col);
+    }
+  };
+  const r1 = scaled(0.80), r2 = scaled(0.42);
+  band(p, 26.0, r1, 30.5, [0.36, 0.41, 0.50]);
+  band(r1, 30.5, r2, 33.5, [0.42, 0.47, 0.56]);
+  try {
+    const f = THREE.ShapeUtils.triangulateShape(r2.map(q => new THREE.Vector2(q[0], q[1])), []);
+    for (const t of f) B.tri([r2[t[0]][0], 33.5, -r2[t[0]][1]], [r2[t[2]][0], 33.5, -r2[t[2]][1]],
+                             [r2[t[1]][0], 33.5, -r2[t[1]][1]], [0.44, 0.49, 0.58]);
+  } catch (e) { }
+  /* 上層ガラス帯（FL+19〜24）: 外壁からわずかに外へ出す */
+  const g0 = scaled(1.004);
+  const G = new Builder();
+  for (let i = 0; i < p.length; i++) {
+    const a = g0[i], b = g0[(i + 1) % p.length];
+    G.quad([a[0], 19.0, -a[1]], [b[0], 19.0, -b[1]], [b[0], 24.2, -b[1]], [a[0], 24.2, -a[1]], [0.14, 0.30, 0.48]);
+  }
+  arenaShell.add(new THREE.Mesh(B.geom(), new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.65, metalness: 0.2 })));
+  arenaShell.add(new THREE.Mesh(G.geom(), new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.15, metalness: 0.6, transparent: true, opacity: 0.85 })));
+  /* パネル目地（水平） */
+  const W = [];
+  for (const y of [6.5, 13.0]) for (let i = 0; i < p.length; i++) {
+    const a = g0[i], b = g0[(i + 1) % p.length]; W.push(a[0], y, -a[1], b[0], y, -b[1]);
+  }
+  const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.Float32BufferAttribute(W, 3));
+  arenaShell.add(new THREE.LineSegments(wg, new THREE.LineBasicMaterial({ color: 0x9aa6b8, transparent: true, opacity: 0.45 })));
+  /* 屋上設備（空調機・冷却塔）と点検歩廊 */
+  const mech = new THREE.MeshStandardMaterial({ color: 0x6d7683, roughness: 0.8 });
+  [[0.15, 0.15, 12, 4, 6], [-0.18, 0.1, 9, 3.2, 5], [0.05, -0.2, 14, 3.4, 5], [-0.12, -0.14, 6, 2.6, 6]].forEach(([kx, ky, w, h, dpt]) => {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, dpt), mech);
+    m.position.set(cx + kx * 120, 33.5 + h / 2, -(cy + ky * 100)); arenaShell.add(m);
+  });
+  for (let i = 0; i < 3; i++) {
+    const t = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 3.0, 12), mech);
+    t.position.set(cx + 28 + i * 6, 35, -(cy - 22)); arenaShell.add(t);
+  }
+  /* 屋上サイン "crypto.com ARENA"（広場側=北東を向く） */
+  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 160;
+  const c = cv.getContext('2d');
+  c.fillStyle = '#ffffff'; c.font = '600 92px Oswald'; c.textAlign = 'center';
+  c.fillText('crypto.com', 380, 112);
+  c.fillStyle = '#00c2ff'; c.fillRect(612, 30, 6, 100);
+  c.fillStyle = '#ffffff'; c.fillText('ARENA', 800, 112);
+  const tex = new THREE.CanvasTexture(cv);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(44, 6.9),
+    new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex,
+      emissiveIntensity: 1.1, color: 0x000000, transparent: true, side: THREE.DoubleSide }));
+  const R = -27.3 * Math.PI / 180;                          // 30_entrance.js の ARENA_ROT と同値
+  const toW = (lx, lz) => ({ x: ARENA_C.x + lx * Math.cos(R) + lz * Math.sin(R),
+                             z: ARENA_C.z - lx * Math.sin(R) + lz * Math.cos(R) });
+  const sp = toW(0, -62);
+  sign.position.set(sp.x, 30.5, sp.z);
+  sign.rotation.y = R + Math.PI;
+  sign.userData = { kind: 'poi', name: '屋上サイン', desc: 'Figueroa / I-110 側から視認される屋上ネーミングライツ表示' };
+  arenaShell.add(sign);
+  for (const sx of [-16, 0, 16]) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.5, 5, 0.5), mech);
+    const pp = toW(sx, -60);
+    post.position.set(pp.x, 28, pp.z); arenaShell.add(post);
+  }
+})();
 /* ---- src/22_graph.js ---- */
 
 /* ================================================================
@@ -1751,6 +2296,384 @@ setLoad(80, 'エントランス広場を生成中');
   big.position.set(-46, 12, -74); big.rotation.y = 0.55;
   big.userData = { kind: 'poi', name: '屋外ビジョン', desc: '広場滞留者向けの媒体。滞留人数×時間で露出量を算定' };
   plaza.add(big);
+})();
+/* ---- src/31_facade.js ---- */
+/* ================================================================
+   L1 外観の作り込み — アリーナ本体（ロビー背後の楕円ボリューム）と広場の什器
+   ・本体: プレキャストパネル外壁 + 目地 + 上層ガラス帯 + 低ドーム屋根 + 屋上設備
+           + 屋上サイン + LEDリング + ウォールウォッシャー（チームカラー演出）
+   ・広場: 照明ポール(旗付き) / Star Plaza 銅像 / 入場列スタンション / 保安検査ゲート
+           / 案内トーテム / ベンチ / プランター / ボラード / ゴミ箱 / バス停 /
+           ライドシェア乗降ゾーン / 自転車ラック / 舗装インレイ
+   すべて plaza ローカル座標（-z が広場側=北東）。
+================================================================ */
+setLoad(81, 'アリーナ外観・広場什器を生成中');
+(function facade() {
+  const BA = 80, BB = 52, BZ = 20;                          // 本体楕円 半径と中心（z）
+  const bodyPt = t => [Math.cos(t) * BA, BZ + Math.sin(t) * BB];
+  const bodyN = t => { const n = [Math.cos(t) / BA, Math.sin(t) / BB]; const L = Math.hypot(n[0], n[1]); return [n[0] / L, n[1] / L]; };
+  const NSEG = 96;
+  const steel = new THREE.MeshStandardMaterial({ color: 0x9aa4b6, metalness: 0.65, roughness: 0.4 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x1a1e28, roughness: 0.8 });
+
+  /* ---- 本体外壁: 基壇 / パネル / ガラス帯 / パラペット ---- */
+  const B = new Builder();
+  const band = (y0, y1, col, k) => {
+    for (let i = 0; i < NSEG; i++) {
+      const p0 = bodyPt(2 * Math.PI * i / NSEG), p1 = bodyPt(2 * Math.PI * (i + 1) / NSEG);
+      const c = (k && i % 2) ? [col[0] * 0.93, col[1] * 0.93, col[2] * 0.93] : col;
+      B.quad([p0[0], y0, p0[1]], [p1[0], y0, p1[1]], [p1[0], y1, p1[1]], [p0[0], y1, p0[1]], c);
+    }
+  };
+  band(0, 1.4, [0.16, 0.17, 0.21]);
+  band(1.4, 8.0, [0.50, 0.53, 0.60], true);
+  band(8.0, 15.0, [0.54, 0.57, 0.64], true);
+  band(20.0, 24.0, [0.46, 0.49, 0.56]);
+  const wall = new THREE.Mesh(B.geom(), new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.7, metalness: 0.15, side: THREE.DoubleSide }));
+  wall.userData = { kind: 'bim', type: 'IfcWall', tag: 'EXT-PANEL',
+    attrs: { '部材種別': 'プレキャストコンクリート外壁パネル (t=150, 骨材露出仕上)',
+             'モジュール': 'W 5,200 × H 6,600 mm', '目地': '水平 5m ピッチ / 縦 パイラスター @ 10.5m',
+             '断熱': '裏打ち硬質ウレタン 50mm', '外装照明': 'ウォールウォッシャー（RGBW）' } };
+  plaza.add(wall); BIM_ELEMS.push(wall);
+  const G = new Builder();
+  for (let i = 0; i < NSEG; i++) {
+    const p0 = bodyPt(2 * Math.PI * i / NSEG), p1 = bodyPt(2 * Math.PI * (i + 1) / NSEG);
+    G.quad([p0[0] * 1.002, 15.0, p0[1]], [p1[0] * 1.002, 15.0, p1[1]], [p1[0] * 1.002, 20.0, p1[1]], [p0[0] * 1.002, 20.0, p0[1]], [0.12, 0.28, 0.46]);
+  }
+  const glz = new THREE.Mesh(G.geom(), new THREE.MeshStandardMaterial({
+    vertexColors: true, roughness: 0.12, metalness: 0.6, transparent: true, opacity: 0.82, side: THREE.DoubleSide }));
+  glz.userData = { kind: 'bim', type: 'IfcCurtainWall', tag: 'FAC-GLASS-UPPER',
+    attrs: { '部材種別': '上層コンコース ガラス帯（Low-E 複層）', '高さ': 'FL+15.0 〜 +20.0 m',
+             '用途': '300 Level コンコースの外光採り・夜間は内照で外観に発光帯を作る' } };
+  plaza.add(glz); BIM_ELEMS.push(glz);
+  /* 目地・パイラスター・LED リング */
+  (function joints() {
+    const pts = y => { const a = []; for (let i = 0; i <= NSEG; i++) { const p = bodyPt(2 * Math.PI * i / NSEG); a.push(new THREE.Vector3(p[0] * 1.003, y, p[1])); } return a; };
+    for (const y of [5, 10, 15, 20]) plaza.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts(y)),
+      new THREE.LineBasicMaterial({ color: 0x2b3140 })));
+    for (const y of [24.3, 20.4]) plaza.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts(y)),
+      new THREE.LineBasicMaterial({ color: 0x00c2ff, transparent: true, opacity: y > 24 ? 0.95 : 0.5 })));
+    for (let i = 0; i < NSEG; i += 4) {
+      const t = 2 * Math.PI * i / NSEG, p = bodyPt(t), n = bodyN(t);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.9, 22.6, 0.6), dark);
+      m.position.set(p[0] + n[0] * 0.3, 12.7, p[1] + n[1] * 0.3);
+      m.rotation.y = Math.atan2(n[0], n[1]); plaza.add(m);
+    }
+  })();
+
+  /* ---- 屋根（低ドーム 2段 + 天端プレート）と放射リブ ---- */
+  (function roof() {
+    const R = new Builder();
+    const ring = (k, y0, k2, y1, col) => {
+      for (let i = 0; i < NSEG; i++) {
+        const t0 = 2 * Math.PI * i / NSEG, t1 = 2 * Math.PI * (i + 1) / NSEG;
+        const p0 = bodyPt(t0), p1 = bodyPt(t1);
+        const q0 = [p0[0] * k2, BZ + (p0[1] - BZ) * k2], q1 = [p1[0] * k2, BZ + (p1[1] - BZ) * k2];
+        R.quad([p0[0] * k, y0, BZ + (p0[1] - BZ) * k], [p1[0] * k, y0, BZ + (p1[1] - BZ) * k],
+               [q1[0], y1, q1[1]], [q0[0], y1, q0[1]], col);
+      }
+    };
+    ring(1.0, 24.0, 0.78, 29.0, [0.30, 0.34, 0.42]);
+    ring(0.78, 29.0, 0.42, 32.5, [0.34, 0.38, 0.46]);
+    for (let i = 0; i < NSEG; i++) {
+      const p0 = bodyPt(2 * Math.PI * i / NSEG), p1 = bodyPt(2 * Math.PI * (i + 1) / NSEG);
+      R.tri([p0[0] * 0.42, 32.5, BZ + (p0[1] - BZ) * 0.42], [p1[0] * 0.42, 32.5, BZ + (p1[1] - BZ) * 0.42], [0, 32.5, BZ], [0.36, 0.40, 0.48]);
+    }
+    const m = new THREE.Mesh(R.geom(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, side: THREE.DoubleSide }));
+    m.userData = { kind: 'bim', type: 'IfcRoof', tag: 'ROOF-MAIN',
+      attrs: { '部材種別': '鋼製トラス屋根 + 金属折板（断熱・遮音）', '天端': 'FL+32.5 m',
+               '勾配': '外周 1/4 → 中央 1/12', '排水': '外周樋 → 竪樋 24 本' } };
+    plaza.add(m); BIM_ELEMS.push(m);
+    const W = [];
+    for (let i = 0; i < 24; i++) {
+      const t = 2 * Math.PI * i / 24, p = bodyPt(t);
+      W.push(p[0], 24.1, p[1], p[0] * 0.78, 29.1, BZ + (p[1] - BZ) * 0.78, p[0] * 0.78, 29.1, BZ + (p[1] - BZ) * 0.78, p[0] * 0.42, 32.6, BZ + (p[1] - BZ) * 0.42);
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(W, 3));
+    plaza.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x1f2430 })));
+    /* 屋上設備（機械室ペントハウス・冷却塔・点検歩廊） */
+    const mech = new THREE.MeshStandardMaterial({ color: 0x6d7683, roughness: 0.8 });
+    const ph = new THREE.Mesh(new THREE.BoxGeometry(28, 4, 12), mech); ph.position.set(4, 34.5, BZ + 22); plaza.add(ph);
+    for (let i = 0; i < 3; i++) { const t = new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.0, 3, 12), mech); t.position.set(-22 + i * 6, 34, BZ + 18); plaza.add(t); }
+    for (let i = 0; i < 4; i++) { const u = new THREE.Mesh(new THREE.BoxGeometry(5, 2.2, 3), mech); u.position.set(16 + i * 7, 33.6, BZ - 6); plaza.add(u); }
+  })();
+
+  /* ---- 屋上サイン（広場を向く大型文字） ---- */
+  (function roofSign() {
+    const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 160;
+    const c = cv.getContext('2d');
+    c.fillStyle = '#ffffff'; c.font = '600 92px Oswald'; c.textAlign = 'center';
+    c.fillText('crypto.com', 380, 112);
+    c.fillStyle = '#00c2ff'; c.fillRect(612, 30, 6, 100);
+    c.fillStyle = '#ffffff'; c.fillText('ARENA', 800, 112);
+    const tex = new THREE.CanvasTexture(cv);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(46, 7.2),
+      new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex,
+        emissiveIntensity: 1.1, color: 0x000000, transparent: true, side: THREE.DoubleSide }));
+    m.position.set(0, 28.2, BZ - BB + 2.5); m.rotation.y = Math.PI;
+    m.userData = { kind: 'poi', name: '屋上サイン', desc: 'Figueroa St / I-110 から視認されるネーミングライツ表示。<br>屋外露出量は交通量 × 視認時間で算定' };
+    plaza.add(m);
+    for (const x of [-18, 0, 18]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.5, 4.5, 0.5), steel); p.position.set(x, 26.2, BZ - BB + 2.2); plaza.add(p); }
+  })();
+
+  /* ---- ウォールウォッシャー（外壁のチームカラー演出）と足元 LED ---- */
+  (function wash() {
+    const cols = [0x552583, 0xfdb927, 0x552583, 0x00c2ff];
+    for (let i = 0; i < NSEG; i += 3) {
+      const t = 2 * Math.PI * i / NSEG, p = bodyPt(t), n = bodyN(t);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(6.5, 13),
+        new THREE.MeshBasicMaterial({ color: cols[(i / 3 | 0) % cols.length], transparent: true, opacity: 0.16,
+          blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+      m.position.set(p[0] + n[0] * 0.6, 8.2, p[1] + n[1] * 0.6); m.rotation.y = Math.atan2(n[0], n[1]);
+      plaza.add(m);
+      const led = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.12, 0.3), new THREE.MeshBasicMaterial({ color: cols[(i / 3 | 0) % cols.length] }));
+      led.position.set(p[0] + n[0] * 0.9, 0.12, p[1] + n[1] * 0.9); led.rotation.y = m.rotation.y; plaza.add(led);
+    }
+  })();
+
+  /* ---- 側面のサブエントランス / 背面の搬入ドック ---- */
+  (function sideDoors() {
+    const glassD = new THREE.MeshStandardMaterial({ color: 0x1d4a72, metalness: 0.6, roughness: 0.15, transparent: true, opacity: 0.6 });
+    [[-0.06 * Math.PI, 'Premier Entrance (East)'], [-0.94 * Math.PI, 'Premier Entrance (West)']].forEach(([t, nm]) => {
+      const p = bodyPt(t), n = bodyN(t), ang = Math.atan2(n[0], n[1]);
+      const g = new THREE.Group(); g.position.set(p[0] + n[0] * 0.2, 0, p[1] + n[1] * 0.2); g.rotation.y = ang;
+      const door = new THREE.Mesh(new THREE.BoxGeometry(9, 3.6, 0.3), glassD); door.position.y = 1.8; g.add(door);
+      const can = new THREE.Mesh(new THREE.BoxGeometry(11, 0.4, 3.2), dark); can.position.set(0, 4.1, 1.5); g.add(can);
+      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 96; const c = cv.getContext('2d');
+      c.fillStyle = '#0a1420'; c.fillRect(0, 0, 512, 96); c.fillStyle = '#00e0a4'; c.font = '600 44px Oswald'; c.textAlign = 'center'; c.fillText(nm.toUpperCase(), 256, 64);
+      const tex = new THREE.CanvasTexture(cv);
+      const s = new THREE.Mesh(new THREE.PlaneGeometry(8, 1.5), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 1, color: 0x0a1420 }));
+      s.position.set(0, 5.1, 1.6); g.add(s);
+      g.userData = { kind: 'gate', name: nm, desc: 'Premier / Suite 会員専用入口。<br>会員証スキャンで <b>fan_id × 入場時刻</b> を取得' };
+      plaza.add(g);
+    });
+    /* 搬入ドック（背面）: ロールアップドア 3連 + トレーラー */
+    const dockT = 0.5 * Math.PI, p = bodyPt(dockT), n = bodyN(dockT);
+    const g = new THREE.Group(); g.position.set(p[0], 0, p[1]); g.rotation.y = Math.atan2(n[0], n[1]);
+    for (let i = -1; i <= 1; i++) {
+      const d = new THREE.Mesh(new THREE.BoxGeometry(4.5, 4.4, 0.3), new THREE.MeshStandardMaterial({ color: 0x2f3542, roughness: 0.6 }));
+      d.position.set(i * 6, 2.2, 0.2); g.add(d);
+    }
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(24, 1.2, 10), new THREE.MeshStandardMaterial({ color: 0x2a2e38 })); slab.position.set(0, 0.6, 5.5); g.add(slab);
+    for (const x of [-6, 6]) {
+      const tr = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3.8, 14), new THREE.MeshStandardMaterial({ color: 0xd8dde6, roughness: 0.6 }));
+      tr.position.set(x, 3.1, 14); g.add(tr);
+      const cab = new THREE.Mesh(new THREE.BoxGeometry(2.6, 3.0, 2.6), new THREE.MeshStandardMaterial({ color: 0x1b2a44 })); cab.position.set(x, 2.5, 22.4); g.add(cab);
+    }
+    g.userData = { kind: 'poi', name: '搬入ドック（Chick Hearn Ct 側）', desc: '興行搬入・F&B 納品。イベント日は 05:00〜 の入庫ピークが渋滞要因' };
+    plaza.add(g);
+  })();
+
+  /* ================= 広場の什器 ================= */
+  /* ---- 照明ポール（既存 PointLight の位置に実体を置く）+ 旗 ---- */
+  (function poles() {
+    const flags = [['LAKERS', '#552583', '#fdb927'], ['KINGS', '#111111', '#a2aaad'], ['SPARKS', '#702f8a', '#ffc72c'], ['crypto.com', '#0a1420', '#00c2ff']];
+    [[-46, -96], [46, -96], [0, -118], [-64, -58], [64, -58]].forEach((p, i) => {
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.22, 13, 8), steel); pole.position.set(p[0], 6.5, p[1]); plaza.add(pole);
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.16, 0.16), steel); arm.position.set(p[0], 12.8, p[1]); plaza.add(arm);
+      for (const s of [-1.4, 1.4]) { const h = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.22, 0.5), new THREE.MeshBasicMaterial({ color: 0xfff1c9 })); h.position.set(p[0] + s, 12.7, p[1]); plaza.add(h); }
+      const f = flags[i % flags.length];
+      const cv = document.createElement('canvas'); cv.width = 128; cv.height = 384; const c = cv.getContext('2d');
+      c.fillStyle = f[1]; c.fillRect(0, 0, 128, 384); c.fillStyle = f[2]; c.fillRect(0, 0, 128, 14); c.fillRect(0, 370, 128, 14);
+      c.save(); c.translate(64, 192); c.rotate(-Math.PI / 2); c.font = '600 34px Oswald'; c.textAlign = 'center'; c.fillText(f[0], 0, 12); c.restore();
+      const tex = new THREE.CanvasTexture(cv);
+      const fl = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 2.7), new THREE.MeshStandardMaterial({ map: tex, side: THREE.DoubleSide, roughness: 0.9 }));
+      fl.position.set(p[0] + 0.62, 9.6, p[1]); plaza.add(fl);
+    });
+  })();
+
+  /* ---- Star Plaza 銅像（実在のレジェンド像）---- */
+  (function statues() {
+    const S = [['Magic Johnson', 2004, 'Lakers'], ['Wayne Gretzky', 2002, 'Kings'], ['Kareem Abdul-Jabbar', 2012, 'Lakers'],
+               ['Oscar De La Hoya', 2008, 'Boxing'], ['Jerry West', 2011, 'Lakers'], ['Luc Robitaille', 2015, 'Kings'],
+               ['Shaquille O\'Neal', 2017, 'Lakers'], ['Chick Hearn', 2010, 'Lakers 実況'], ['Elgin Baylor', 2018, 'Lakers'],
+               ['Kobe Bryant', 2024, 'Lakers'], ['Bob Miller', 2018, 'Kings 実況']];
+    const bronze = new THREE.MeshStandardMaterial({ color: 0x7a5a33, metalness: 0.75, roughness: 0.45 });
+    const granite = new THREE.MeshStandardMaterial({ color: 0x2c2f38, roughness: 0.5, metalness: 0.2 });
+    S.forEach((s, i) => {
+      const side = i % 2 ? 1 : -1, k = Math.floor(i / 2);
+      const x = side * (16 + k * 11), z = -104 + (k % 2) * 4;
+      const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = Math.PI + side * 0.25;
+      const ped = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.4, 1.8), granite); ped.position.y = 0.7; g.add(ped);
+      const legs = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.34, 1.0, 8), bronze); legs.position.y = 1.9; g.add(legs);
+      const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.3, 1.1, 8), bronze); torso.position.y = 2.95; g.add(torso);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.26, 8, 8), bronze); head.position.y = 3.85; g.add(head);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.2, 6), bronze); arm.position.set(0.55, 3.2, 0.2); arm.rotation.z = 0.9; g.add(arm);
+      const plq = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.35), new THREE.MeshBasicMaterial({ color: 0xc9a44a })); plq.position.set(0, 1.0, 0.92); g.add(plq);
+      const up = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.04, 12), new THREE.MeshBasicMaterial({ color: 0xffe2a8, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
+      up.position.set(0, 1.42, 0); g.add(up);
+      g.userData = { kind: 'poi', name: 'Star Plaza 銅像: ' + s[0], desc: s[2] + ' / 除幕 ' + s[1] + '年<br>撮影スポット = 滞留ポイント。周辺媒体の露出量が高い' };
+      plaza.add(g);
+    });
+  })();
+
+  /* ---- ゲート前: 保安検査ゲート + 入場列スタンション（ベルト式・蛇行 4 列）---- */
+  (function gateKits() {
+    const post = new THREE.MeshStandardMaterial({ color: 0x9aa4b6, metalness: 0.7, roughness: 0.3 });
+    const beltC = new THREE.LineBasicMaterial({ color: 0x552583 });
+    const magM = new THREE.MeshStandardMaterial({ color: 0xe6e9f0, roughness: 0.5 });
+    for (const gt of GATES) {
+      const g = new THREE.Group(); g.position.set(gt.x, 0, gt.z); g.rotation.y = gt.ang;
+      /* 金属探知ゲート 5 基（ターンスタイル各レーン前）*/
+      for (let k = -2; k <= 2; k++) {
+        for (const s of [-0.32, 0.32]) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.1, 0.5), magM); p.position.set(k * 0.92 + s, 1.05, 2.0); g.add(p); }
+        const top = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.12, 0.5), magM); top.position.set(k * 0.92, 2.15, 2.0); g.add(top);
+        const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.06, 0.2), new THREE.MeshBasicMaterial({ color: 0x3ddc84 })); lamp.position.set(k * 0.92, 2.24, 2.0); g.add(lamp);
+      }
+      const tbl = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.9, 0.6), post); tbl.position.set(3.2, 0.45, 2.0); g.add(tbl);
+      /* スタンション: x 4 本 × z 5 列、ベルトは列ごとに横一直線、端で交互に折り返す */
+      const xs = [-3.0, -1.0, 1.0, 3.0], zs = [3.6, 5.4, 7.2, 9.0, 10.8];
+      const W = [];
+      zs.forEach((z, zi) => {
+        for (const x of xs) {
+          const p = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.95, 5), post); p.position.set(x, 0.48, z); g.add(p);
+          const base = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.03, 8), post); base.position.set(x, 0.015, z); g.add(base);
+        }
+        const open = zi % 2 ? 0 : 3;                          // 開いている端
+        for (let i = 0; i < 3; i++) {
+          if (zi < zs.length - 1 && i === (open === 0 ? 0 : 2)) continue;   // 折り返し口
+          W.push(xs[i], 0.9, z, xs[i + 1], 0.9, z);
+        }
+        if (zi < zs.length - 1) { const x = open === 0 ? xs[3] : xs[0]; W.push(x, 0.9, z, x, 0.9, zs[zi + 1]); }
+      });
+      const bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute(W, 3));
+      g.add(new THREE.LineSegments(bg, beltC));
+      /* ゲート名サイン（自立式）*/
+      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128; const c = cv.getContext('2d');
+      c.fillStyle = '#0a1420'; c.fillRect(0, 0, 512, 128); c.fillStyle = '#00c2ff'; c.fillRect(0, 0, 14, 128);
+      c.fillStyle = '#ffffff'; c.font = '600 52px Oswald'; c.textAlign = 'left'; c.fillText(gt.name.split(' (')[0].toUpperCase(), 34, 62);
+      c.fillStyle = '#8590a8'; c.font = '500 26px Oswald'; c.fillText('MOBILE TICKETS · BAG CHECK', 34, 104);
+      const tex = new THREE.CanvasTexture(cv);
+      const sg = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 1, color: 0x0a1420, side: THREE.DoubleSide }));
+      sg.position.set(-4.4, 2.6, 6.5); g.add(sg);
+      const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.2, 6), post); sp.position.set(-4.4, 1.1, 6.5); g.add(sp);
+      plaza.add(g);
+    }
+  })();
+
+  /* ---- 案内トーテム（デジタルサイネージ）---- */
+  (function totems() {
+    [[-60, -92, 'GATES A · B ▶', 'TEAM STORE  ·  RESTROOMS'], [60, -92, '◀ GATES D · E', 'PREMIER ENTRANCE  ·  ATM'],
+     [0, -112, '▲ MAIN ENTRANCE', 'METRO PICO  ▼  6 min'], [-24, -60, 'DELTA SKY360° ▶', 'WILL CALL  ◀'], [30, -60, 'BOX OFFICE ▶', 'LOST & FOUND']].forEach(([x, z, a, b]) => {
+      const cv = document.createElement('canvas'); cv.width = 256; cv.height = 768; const c = cv.getContext('2d');
+      c.fillStyle = '#0a1420'; c.fillRect(0, 0, 256, 768); c.fillStyle = '#00c2ff'; c.fillRect(0, 0, 256, 10);
+      c.fillStyle = '#ffffff'; c.font = '600 34px Oswald'; c.textAlign = 'center'; c.fillText(a, 128, 120);
+      c.fillStyle = '#8590a8'; c.font = '500 22px Oswald'; c.fillText(b, 128, 170);
+      c.fillStyle = '#fdb927'; c.font = '600 28px Oswald'; c.fillText('TONIGHT 7:30 PM', 128, 420); c.fillStyle = '#e9edf6'; c.fillText('LAKERS vs WARRIORS', 128, 460);
+      c.fillStyle = '#3ddc84'; c.font = '500 22px Oswald'; c.fillText('DOORS OPEN 6:00 PM', 128, 520);
+      const tex = new THREE.CanvasTexture(cv);
+      const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = Math.PI;
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 3.4, 0.36), dark); body.position.y = 1.7; g.add(body);
+      const scr = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 3.0), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.9, color: 0x0a1420 }));
+      scr.position.set(0, 1.75, 0.19); g.add(scr);
+      g.userData = { kind: 'poi', name: 'デジタル案内トーテム', desc: '案内 + 当日興行の告知面。<br>滞留者へのプッシュ配信（クーポン/座席アップグレード）の起点' };
+      plaza.add(g);
+    });
+  })();
+
+  /* ---- ベンチ / プランター / ゴミ箱 / 自転車ラック / ボラード ---- */
+  (function furniture() {
+    const wood = new THREE.MeshStandardMaterial({ color: 0x8a6a48, roughness: 0.85 });
+    const conc = new THREE.MeshStandardMaterial({ color: 0x3a3f4b, roughness: 0.9 });
+    const shrub = new THREE.MeshStandardMaterial({ color: 0x2f6b3a, roughness: 0.95, flatShading: true });
+    const benchAt = (x, z, ry) => {
+      const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry;
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.08, 0.55), wood); seat.position.y = 0.46; g.add(seat);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.42, 0.06), wood); back.position.set(0, 0.72, -0.26); g.add(back);
+      for (const s of [-1, 1]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.46, 0.5), steel); l.position.set(s * 1.05, 0.23, 0); g.add(l); }
+      plaza.add(g);
+    };
+    const planterAt = (x, z, ry) => {
+      const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry;
+      const b = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.8, 1.2), conc); b.position.y = 0.4; g.add(b);
+      for (let i = -1; i <= 1; i++) { const s = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1), shrub); s.position.set(i * 1.0, 1.1, 0); s.scale.y = 0.8; g.add(s); }
+      plaza.add(g);
+    };
+    for (let i = 0; i < 8; i++) {
+      const u = i / 7, ang = lerp(-Math.PI * 0.84, -Math.PI * 0.16, u);
+      const x = Math.cos(ang) * 66, z = Math.sin(ang) * 54;
+      benchAt(x, z, Math.atan2(-x, -z) + Math.PI);
+      planterAt(x * 1.06 + 2.5, z * 1.06, Math.atan2(-x, -z));
+    }
+    [[-72, -100], [-48, -112], [48, -112], [72, -100], [-20, -118], [20, -118], [-38, -84], [38, -84]].forEach(p => {
+      const bin = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.3, 1.0, 10), dark); bin.position.set(p[0], 0.5, p[1]); plaza.add(bin);
+      const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.08, 10), steel); lid.position.set(p[0], 1.02, p[1]); plaza.add(lid);
+    });
+    for (let i = 0; i < 8; i++) {
+      const r = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.03, 6, 12, Math.PI), steel);
+      r.position.set(-78 + i * 1.1, 0.02, -104); r.rotation.y = Math.PI / 2; plaza.add(r);
+    }
+    /* 街路側ボラード（反射帯付き） */
+    const bolG = new THREE.CylinderGeometry(0.16, 0.16, 0.95, 8); bolG.translate(0, 0.475, 0);
+    const N = 62;
+    const bol = new THREE.InstancedMesh(bolG, new THREE.MeshStandardMaterial({ color: 0x3a4152, metalness: 0.4, roughness: 0.5 }), N);
+    const bandG = new THREE.CylinderGeometry(0.17, 0.17, 0.08, 8); bandG.translate(0, 0.85, 0);
+    const bnd = new THREE.InstancedMesh(bandG, new THREE.MeshBasicMaterial({ color: 0xfdb927 }), N);
+    const M = new THREE.Matrix4();
+    for (let i = 0; i < N; i++) { M.makeTranslation(-80 + i * 2.62, 0, -125.2); bol.setMatrixAt(i, M); bnd.setMatrixAt(i, M); }
+    bol.instanceMatrix.needsUpdate = bnd.instanceMatrix.needsUpdate = true;
+    plaza.add(bol, bnd);
+    /* 縁石と歩道帯（Figueroa St 側） */
+    const curb = new THREE.Mesh(new THREE.BoxGeometry(166, 0.16, 0.6), conc); curb.position.set(1, 0.08, -126.3); plaza.add(curb);
+    const walkB = new THREE.Mesh(new THREE.BoxGeometry(166, 0.04, 8), new THREE.MeshStandardMaterial({ color: 0x2a2e38, roughness: 0.95 })); walkB.position.set(1, 0.03, -130); plaza.add(walkB);
+    /* ヤシの根元アップライト */
+    for (let i = 0; i < 22; i++) {
+      const u = i / 21, t = lerp(-Math.PI * 0.78, -Math.PI * 0.22, u * 1.14 - 0.07);
+      const x = Math.cos(t) * 52 * 1.42, z = Math.sin(t) * 40 * 1.42;
+      const l = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.04, 10), new THREE.MeshBasicMaterial({ color: 0xffd08a, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false }));
+      l.position.set(x, 0.05, z); plaza.add(l);
+    }
+  })();
+
+  /* ---- バス停 / ライドシェア乗降ゾーン ---- */
+  (function transit() {
+    const g = new THREE.Group(); g.position.set(-62, 0, -129);
+    const glass = new THREE.MeshStandardMaterial({ color: 0x2a4a6e, transparent: true, opacity: 0.35, side: THREE.DoubleSide });
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(5.5, 0.18, 2.2), dark); roof.position.y = 2.7; g.add(roof);
+    for (const x of [-2.5, 2.5]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.7, 6), steel); p.position.set(x, 1.35, 0.9); g.add(p); }
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(5.4, 2.4), glass); back.position.set(0, 1.4, 1.0); g.add(back);
+    const bench = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.08, 0.45), steel); bench.position.set(0, 0.48, 0.6); g.add(bench);
+    const cv = document.createElement('canvas'); cv.width = 384; cv.height = 128; const c = cv.getContext('2d');
+    c.fillStyle = '#111318'; c.fillRect(0, 0, 384, 128); c.fillStyle = '#ffffff'; c.beginPath(); c.arc(48, 64, 34, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#111318'; c.font = '700 50px Oswald'; c.textAlign = 'center'; c.fillText('M', 48, 82);
+    c.fillStyle = '#ffffff'; c.font = '600 34px Oswald'; c.textAlign = 'left'; c.fillText('Figueroa / 11th', 100, 58);
+    c.fillStyle = '#fdb913'; c.font = '500 24px Oswald'; c.fillText('Lines 81 · 460 · J Line', 100, 100);
+    const tex = new THREE.CanvasTexture(cv);
+    const sg = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.8), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.8, color: 0x111318, side: THREE.DoubleSide }));
+    sg.position.set(3.6, 2.4, 0.9); g.add(sg);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.8, 6), steel); pole.position.set(3.6, 1.4, 0.9); g.add(pole);
+    g.userData = { kind: 'poi', name: 'バス停 Figueroa / 11th', desc: 'Metro Bus 81 / 460 / J Line (Silver)。<br>降車 → Gate A まで徒歩 2 分' };
+    plaza.add(g);
+    /* ライドシェア乗降ゾーン（ピンクの路面標示 + サイン） */
+    const cv2 = document.createElement('canvas'); cv2.width = 1024; cv2.height = 256; const c2 = cv2.getContext('2d');
+    c2.fillStyle = 'rgba(255,95,162,0.55)'; c2.fillRect(0, 0, 1024, 256); c2.strokeStyle = '#ffffff'; c2.lineWidth = 10; c2.strokeRect(10, 10, 1004, 236);
+    c2.fillStyle = '#ffffff'; c2.font = '700 110px Oswald'; c2.textAlign = 'center'; c2.fillText('RIDESHARE PICKUP', 512, 168);
+    const t2 = new THREE.CanvasTexture(cv2);
+    const zone = new THREE.Mesh(new THREE.PlaneGeometry(30, 7.5), new THREE.MeshBasicMaterial({ map: t2, transparent: true, depthWrite: false }));
+    zone.rotation.x = -Math.PI / 2; zone.rotation.z = Math.PI; zone.position.set(50, 0.05, -131.5);
+    zone.userData = { kind: 'poi', name: 'ライドシェア乗降ゾーン', desc: 'Uber / Lyft 指定乗降。退場ピーク時の待機列 = 帰路PRの接点' };
+    plaza.add(zone);
+    for (const x of [36, 64]) {
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3, 6), steel); p.position.set(x, 1.5, -128); plaza.add(p);
+      const s = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 0.06), new THREE.MeshBasicMaterial({ color: 0xff5fa2 })); s.position.set(x, 2.9, -128); plaza.add(s);
+    }
+  })();
+
+  /* ---- 舗装インレイ（同心リング + ロゴ円）---- */
+  (function paving() {
+    const cz = -40 - 8;
+    for (const r of [14, 22, 30, 38]) {
+      const pts = []; for (let i = 0; i <= 72; i++) { const t = Math.PI + Math.PI * i / 72; pts.push(new THREE.Vector3(Math.cos(t) * r, 0.045, cz + Math.sin(t) * r * 0.8)); }
+      plaza.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0x4a5266 })));
+    }
+    const cv = document.createElement('canvas'); cv.width = cv.height = 256; const c = cv.getContext('2d');
+    c.fillStyle = '#0a1420'; c.beginPath(); c.arc(128, 128, 124, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#00c2ff'; c.lineWidth = 8; c.beginPath(); c.arc(128, 128, 110, 0, Math.PI * 2); c.stroke();
+    c.fillStyle = '#ffffff'; c.font = '600 40px Oswald'; c.textAlign = 'center'; c.fillText('crypto.com', 128, 122); c.font = '600 30px Oswald'; c.fillText('ARENA', 128, 160);
+    const logo = new THREE.Mesh(new THREE.CircleGeometry(6, 40), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true }));
+    logo.rotation.x = -Math.PI / 2; logo.rotation.z = Math.PI; logo.position.set(0, 0.05, -66); plaza.add(logo);
+  })();
 })();
 /* ---- src/32_flow.js ---- */
 
@@ -3254,11 +4177,21 @@ setLoad(90, 'スポンサー露出を計算中');
 /* ================= 座席 / 観客 インスタンス描画 ================= */
 (function meshes() {
   /* 座席（座面 + 背もたれ） */
-  const B = new Builder(), c = [1, 1, 1];
-  B.quad([-0.21, 0, -0.19], [0.21, 0, -0.19], [0.21, 0, 0.21], [-0.21, 0, 0.21], c);       // 座面
-  B.quad([-0.21, 0, 0.19], [0.21, 0, 0.19], [0.21, 0.42, 0.23], [-0.21, 0.42, 0.23], c);   // 背
+  /* ローカル +z がコート方向。座面・座面前縁・背もたれ(2段・後傾)・肘掛け・脚 = 12 面 */
+  const B = new Builder(), c = [1, 1, 1], cd = [0.72, 0.72, 0.76];
+  B.quad([-0.21, 0, -0.17], [0.21, 0, -0.17], [0.21, 0, 0.22], [-0.21, 0, 0.22], c);            // 座面
+  B.quad([-0.21, -0.05, 0.22], [0.21, -0.05, 0.22], [0.21, 0, 0.22], [-0.21, 0, 0.22], cd);      // 座面前縁
+  B.quad([-0.21, 0.02, -0.17], [0.21, 0.02, -0.17], [0.21, 0.26, -0.20], [-0.21, 0.26, -0.20], c); // 背 下段
+  B.quad([-0.21, 0.26, -0.20], [0.21, 0.26, -0.20], [0.21, 0.50, -0.25], [-0.21, 0.50, -0.25], c); // 背 上段
+  B.quad([0.21, 0.02, -0.21], [-0.21, 0.02, -0.21], [-0.21, 0.50, -0.29], [0.21, 0.50, -0.29], cd); // 背 裏面
+  for (const s of [-1, 1]) {                                                                   // 肘掛け
+    B.quad([s * 0.235 - 0.02, 0.24, -0.17], [s * 0.235 + 0.02, 0.24, -0.17], [s * 0.235 + 0.02, 0.24, 0.14], [s * 0.235 - 0.02, 0.24, 0.14], cd);
+    B.quad([s * 0.255, 0.0, -0.17], [s * 0.255, 0.0, 0.14], [s * 0.255, 0.24, 0.14], [s * 0.255, 0.24, -0.17], cd);
+  }
+  B.quad([-0.05, -0.42, -0.12], [0.05, -0.42, -0.12], [0.05, -0.05, -0.12], [-0.05, -0.05, -0.12], cd); // 脚（前）
+  B.quad([0.05, -0.42, -0.18], [-0.05, -0.42, -0.18], [-0.05, -0.05, -0.18], [0.05, -0.05, -0.18], cd); // 脚（後）
   const g = B.geom();
-  const mat = new THREE.MeshStandardMaterial({ roughness: 0.78, metalness: 0.02 });
+  const mat = new THREE.MeshStandardMaterial({ roughness: 0.78, metalness: 0.02, side: THREE.DoubleSide });
   const mesh = new THREE.InstancedMesh(g, mat, SEAT.list.length);
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), P = new THREE.Vector3(),
         E = new THREE.Euler(), S1 = new THREE.Vector3(1, 1, 1);
@@ -3459,6 +4392,7 @@ function setPointCloud(on) {
   });
   court.visible = !on; hallFloor.visible = !on; hoops.visible = !on && GAMES[curGame].fmt === 'NBA';
   indoorSolid.visible = !on;
+  if (typeof detailGroup !== 'undefined') detailGroup.visible = !on;
   if (on) repaintSeatCloud();
 }
 /* ---- src/56_indoor.js ---- */
@@ -3722,6 +4656,323 @@ function setCongestion(on) {
   indoorState.showCong = on;
   congestion.band.forEach(b => b.visible = on);
 }
+/* ---- src/57_detail.js ---- */
+/* ================================================================
+   L2 内部の作り込み — BIM の粒度を一段上げる
+   ・外周エンベロープ壁（クリアストーリー帯・案内サインバンド）
+   ・コンコース天井 + ダウンライト / ボミトリー ポータル + 区画サイン
+   ・区画番号プレート（全区画・アトラス1枚）/ 通路段鼻ライト
+   ・チャンピオンシップバナー / 永久欠番（Lakers・Kings・Sparks）
+   ・センターハング増強（アンダーベリー LED・上部ハロー・吊りケーブル）
+   ・スポーツ照明（キャットウォーク投光器）/ 選手入場トンネル / スイート内装
+   点群ビューでは detailGroup ごと伏せる（52_cloud.js setPointCloud）。
+================================================================ */
+const detailGroup = new THREE.Group(); interior.add(detailGroup);
+
+setLoad(93, '場内ディテール（壁・天井・サイン・バナー）を生成中');
+(function interiorDetail() {
+  const back100a = TIER.L100.a + TIER.L100.rows * TIER.L100.tread;
+  const back100b = TIER.L100.b + TIER.L100.rows * TIER.L100.tread;
+  const back300a = TIER.L300.a + TIER.L300.rows * TIER.L300.tread;
+  const back300b = TIER.L300.b + TIER.L300.rows * TIER.L300.tread;
+  const aOut = back300a + 12, bOut = back300b + 12;         // 外周柱リング
+  const ringQuads = (B, a, b, y0, y1, col, S, k) => {
+    for (let i = 0; i < S; i++) {
+      const p0 = ringPt(a, b, 2 * Math.PI * i / S), p1 = ringPt(a, b, 2 * Math.PI * (i + 1) / S);
+      const c = (k && (i % k === 0)) ? null : col;
+      if (!c) continue;
+      B.quad([p0[0], y0, p0[1]], [p1[0], y0, p1[1]], [p1[0], y1, p1[1]], [p0[0], y1, p0[1]], c);
+    }
+  };
+  const ringSlab = (B, a, b, w, y, col, S) => {
+    for (let i = 0; i < S; i++) {
+      const t0 = 2 * Math.PI * i / S, t1 = 2 * Math.PI * (i + 1) / S;
+      const p0 = ringPt(a, b, t0), p1 = ringPt(a, b, t1), q0 = ringPt(a + w, b + w, t0), q1 = ringPt(a + w, b + w, t1);
+      B.quad([p0[0], y, p0[1]], [p1[0], y, p1[1]], [q1[0], y, q1[1]], [q0[0], y, q0[1]], col);
+    }
+  };
+  const bandTex = (items, w, h, bg, fg) => {
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const c = cv.getContext('2d');
+    c.fillStyle = bg; c.fillRect(0, 0, w, h);
+    const seg = w / items.length;
+    items.forEach((s, i) => {
+      c.fillStyle = i % 2 ? fg : '#ffffff'; c.font = '600 ' + Math.round(h * 0.5) + 'px Oswald';
+      c.textAlign = 'center'; c.fillText(s, i * seg + seg / 2, h * 0.68);
+    });
+    const t = new THREE.CanvasTexture(cv); t.wrapS = THREE.RepeatWrapping; return t;
+  };
+
+  /* ---------- 外周エンベロープ壁（柱間パネル + クリアストーリー + サインバンド） ---------- */
+  (function envelope() {
+    const B = new Builder();
+    const S = 96, aw = aOut + 0.6, bw = bOut + 0.6;
+    ringQuads(B, aw, bw, 0, 12.4, [0.085, 0.09, 0.115], S);
+    ringQuads(B, aw, bw, 13.6, 28.4, [0.09, 0.095, 0.12], S);
+    ringQuads(B, aw, bw, 29.6, 29.8, [0.12, 0.13, 0.16], S);
+    ringQuads(B, aw, bw, 33.4, 34.2, [0.10, 0.105, 0.13], S);
+    const wall = new THREE.Mesh(B.geom(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, side: THREE.DoubleSide }));
+    wall.userData = { kind: 'bim', type: 'IfcWall', tag: 'ENV-WALL',
+      attrs: { '部材種別': '外周エンベロープ壁（PCa パネル + 内装 GL ボード）', '高さ': 'FL±0 〜 +34.2 m',
+               '開口': 'クリアストーリー FL+29.8〜33.4 / コンコース サインバンド', '遮音': 'Rw 55 dB（屋外騒音対策）' } };
+    detailGroup.add(wall); BIM_ELEMS.push(wall);
+    /* クリアストーリー（上層のガラス帯。外光/夜間は外観の発光帯） */
+    const G = new Builder();
+    ringQuads(G, aw, bw, 29.8, 33.4, [0.16, 0.34, 0.55], S);
+    const cl = new THREE.Mesh(G.geom(), new THREE.MeshStandardMaterial({ vertexColors: true, emissive: 0x1f4d78, emissiveIntensity: 0.35,
+      roughness: 0.15, metalness: 0.4, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
+    detailGroup.add(cl);
+    /* コンコース案内サインバンド（内側に向けたリボン状の連続サイン） */
+    const mk = (a, b, y0, y1, items, bg, fg) => {
+      const P = [], N = [], UV = [];
+      const SS = 160;
+      for (let i = 0; i < SS; i++) {
+        const t0 = 2 * Math.PI * i / SS, t1 = 2 * Math.PI * (i + 1) / SS;
+        const p0 = ringPt(a, b, t0), p1 = ringPt(a, b, t1);
+        const u0 = i / SS * 12, u1 = (i + 1) / SS * 12;
+        P.push(p0[0], y0, p0[1], p0[0], y1, p0[1], p1[0], y1, p1[1], p0[0], y0, p0[1], p1[0], y1, p1[1], p1[0], y0, p1[1]);
+        const L = Math.hypot(p0[0], p0[1]) || 1;
+        for (let k = 0; k < 6; k++) N.push(-p0[0] / L, 0, -p0[1] / L);
+        UV.push(u0, 0, u0, 1, u1, 1, u0, 0, u1, 1, u1, 0);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+      g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+      g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
+      const tex = bandTex(items, 2048, 64, bg, fg);
+      const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.55, color: bg, side: THREE.DoubleSide }));
+      m.userData = { kind: 'led', name: '案内サインバンド ' + items[0] };
+      detailGroup.add(m);
+    };
+    mk(aw - 0.05, bw - 0.05, 12.4, 13.6, ['◀ SECTIONS 101–110', 'RESTROOMS', 'TEAM STORE ▶', 'SECTIONS 111–119 ▶', 'FIRST AID', '◀ PREMIER LEVEL', 'CONCESSIONS', 'GATE A ▶'], '#101826', '#00c2ff');
+    mk(aw - 0.05, bw - 0.05, 28.4, 29.6, ['◀ SECTIONS 301–317', 'RESTROOMS', 'ELEVATORS ▶', 'SECTIONS 318–334 ▶', 'GUEST SERVICES', '◀ ESCALATORS', 'CONCESSIONS', 'EXIT ▶'], '#1a1026', '#fdb927');
+  })();
+
+  /* ---------- コンコース天井（スラブ下端）+ ダウンライト、100L 背後の床延長 ---------- */
+  (function ceilings() {
+    const B = new Builder(), cc = [0.11, 0.115, 0.14], fc = [0.075, 0.08, 0.10];
+    ringSlab(B, back100a + 2.0, back100b + 2.0, aOut - back100a - 1.6, 14.6, cc, 220);   // 100L 天井（Premier 床下）
+    ringSlab(B, back100a + 13.0, back100b + 13.0, aOut - back100a - 12.6, 12.0, fc, 220); // 100L 床の延長（クラブ/BOH 側）
+    ringSlab(B, back300a + 2.0, back300b + 2.0, aOut - back300a - 1.6, 32.0, cc, 220);   // 300L 天井
+    const m = new THREE.Mesh(B.geom(), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, side: THREE.DoubleSide }));
+    m.userData = { kind: 'bim', type: 'IfcCovering', tag: 'CLG-CONC',
+      attrs: { '部材種別': 'コンコース天井（岩綿吸音板 + 設備点検口）', '天井高': '100L 2.6 m / 300L 4.0 m',
+               '照明': 'LED ダウンライト φ150 @4.0 m 千鳥', '設備': 'スプリンクラー・スピーカー・サイネージ電源' } };
+    detailGroup.add(m); BIM_ELEMS.push(m);
+    const P = [];
+    [[back100a + 4.5, back100b + 4.5, 14.5], [back100a + 9.5, back100b + 9.5, 14.5], [back300a + 4.0, back300b + 4.0, 31.9], [back300a + 8.0, back300b + 8.0, 31.9]].forEach(([a, b, y]) => {
+      const lut = ringLUT(a, b, 400), n = Math.round(lut.tot / 4.0);
+      for (let i = 0; i < n; i++) { const p = ringPt(a, b, fracToT(lut, i / n)); P.push(p[0], y, p[1]); }
+    });
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    detailGroup.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xfff1d6, size: 0.55, sizeAttenuation: true })));
+  })();
+
+  /* ---------- ボミトリー ポータル（枠 + 区画サイン） ---------- */
+  const secAt = (list, f) => { const ff = ((f % 1) + 1) % 1; for (const s of list) { if (ff >= s.f0 && ff < s.f1) return s.sec; if (ff + 1 >= s.f0 && ff + 1 < s.f1) return s.sec; } return list[0].sec; };
+  const lut100 = ringLUT(TIER.L100.a, TIER.L100.b, 720), lut300 = ringLUT(TIER.L300.a, TIER.L300.b, 720);
+  (function portals() {
+    const frame = new THREE.MeshStandardMaterial({ color: 0x252b3a, roughness: 0.6, metalness: 0.3 });
+    VOMS.forEach((v, i) => {
+      const is100 = v.label[4] === '1';
+      const idx = +v.label.slice(5) - 1, cnt = is100 ? 19 : 17;
+      const f = (idx + 0.5) / cnt;
+      const sec = secAt(is100 ? SECTION_100 : SECTION_300, f);
+      const ang = Math.atan2(v.x, v.z);
+      const g = new THREE.Group(); g.position.set(v.x * 1.045, v.y - 2.6, v.z * 1.045); g.rotation.y = ang;
+      for (const s of [-1.6, 1.6]) { const j = new THREE.Mesh(new THREE.BoxGeometry(0.4, 3.2, 0.5), frame); j.position.set(s, 1.6, 0); g.add(j); }
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.5, 0.5), frame); lintel.position.set(0, 3.45, 0); g.add(lintel);
+      const cv = document.createElement('canvas'); cv.width = 256; cv.height = 96; const c = cv.getContext('2d');
+      c.fillStyle = '#0a1420'; c.fillRect(0, 0, 256, 96); c.fillStyle = is100 ? '#00c2ff' : '#fdb927'; c.fillRect(0, 0, 256, 8);
+      c.fillStyle = '#ffffff'; c.font = '700 54px Oswald'; c.textAlign = 'center'; c.fillText(sec, 128, 70);
+      const tex = new THREE.CanvasTexture(cv);
+      const sg = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.82), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 1, color: 0x0a1420, side: THREE.DoubleSide }));
+      sg.position.set(0, 4.2, 0); g.add(sg);
+      g.userData = { kind: 'poi', name: 'ポータル ' + v.label + ' → Section ' + sec, desc: (is100 ? '100' : '300') + ' Level コンコースから客席への進入口。<br>Wi-Fi AP / ビーコンで着席検知' };
+      detailGroup.add(g);
+      v.sec = sec;
+    });
+  })();
+
+  /* ---------- 区画番号プレート（全区画 / 1枚のアトラス） ---------- */
+  (function plates() {
+    const items = [];
+    const add = (list, tier, lut, off, y) => {
+      for (const s of list) {
+        const t = fracToT(lut, (s.f0 + s.f1) / 2);
+        const p = ringPt(tier.a + off, tier.b + off, t);
+        items.push({ txt: s.sec, x: p[0], z: p[1], y, ang: Math.atan2(-p[0], -p[1]) });
+      }
+    };
+    add(SECTION_100, TIER.L100, lut100, -0.9, TIER.L100.y0 + 1.25);
+    add(SECTION_300, TIER.L300, lut300, -0.9, TIER.L300.y0 + 1.35);
+    const lutP = ringLUT(TIER.PRM.a, TIER.PRM.b, 720);
+    add(SECTION_PRM, TIER.PRM, lutP, -0.9, TIER.PRM.y0 + 1.2);
+    const cols = 16, rows = Math.ceil(items.length / cols);
+    const cv = document.createElement('canvas'); cv.width = cols * 128; cv.height = rows * 64;
+    const c = cv.getContext('2d');
+    c.fillStyle = '#0d1420'; c.fillRect(0, 0, cv.width, cv.height);
+    items.forEach((it, i) => {
+      const cx = (i % cols) * 128, cy = Math.floor(i / cols) * 64;
+      c.fillStyle = it.txt[0] === 'P' ? '#00e0a4' : it.txt[0] === '3' ? '#fdb927' : '#00c2ff'; c.fillRect(cx + 6, cy + 6, 116, 4);
+      c.fillStyle = '#ffffff'; c.font = '700 40px Oswald'; c.textAlign = 'center'; c.fillText(it.txt, cx + 64, cy + 50);
+    });
+    const tex = new THREE.CanvasTexture(cv);
+    const P = [], UV = [];
+    items.forEach((it, i) => {
+      const u0 = (i % cols) / cols, u1 = u0 + 1 / cols, v1 = 1 - Math.floor(i / cols) / rows, v0 = v1 - 1 / rows;
+      const w = 1.5, h = 0.75, tx = Math.cos(it.ang) * w / 2, tz = -Math.sin(it.ang) * w / 2;
+      const a = [it.x - tx, it.y - h / 2, it.z - tz], b = [it.x + tx, it.y - h / 2, it.z + tz];
+      const cc = [it.x + tx, it.y + h / 2, it.z + tz], d = [it.x - tx, it.y + h / 2, it.z - tz];
+      P.push(...a, ...b, ...cc, ...a, ...cc, ...d);
+      UV.push(u0, v0, u1, v0, u1, v1, u0, v0, u1, v1, u0, v1);
+    });
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2));
+    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+    m.userData = { kind: 'poi', name: '区画番号プレート', desc: '各区画最前列の手すりに設置（' + items.length + ' 枚）' };
+    detailGroup.add(m);
+  })();
+
+  /* ---------- 通路段鼻ライト（ボミトリー階段の両端） ---------- */
+  (function stepLights() {
+    const P = [];
+    for (const v of VOMS) {
+      const is100 = v.label[4] === '1', T = is100 ? TIER.L100 : TIER.L300;
+      const t = Math.atan2(v.z, v.x), w = is100 ? 0.036 : 0.030;
+      for (let r = 0; r < T.rows; r++) {
+        const a = T.a + r * T.tread + 0.1, b = T.b + r * T.tread + 0.1, y = T.y0 + r * T.rise + 0.06;
+        for (const s of [-0.6, 0.6]) { const p = ringPt(a, b, t + s * w); P.push(p[0], y, p[1]); }
+      }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+    detailGroup.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffd28a, size: 0.22, sizeAttenuation: true })));
+  })();
+
+  /* ---------- バナー（優勝旗・永久欠番）: 屋根から吊る ---------- */
+  (function banners() {
+    const mkTex = (top, big, sub, bg, fg, fg2) => {
+      const cv = document.createElement('canvas'); cv.width = 128; cv.height = 208; const c = cv.getContext('2d');
+      c.fillStyle = bg; c.fillRect(0, 0, 128, 208);
+      c.fillStyle = fg; c.fillRect(0, 0, 128, 6); c.fillRect(0, 202, 128, 6);
+      c.textAlign = 'center';
+      c.fillStyle = fg2; c.font = '600 15px Oswald'; c.fillText(top, 64, 46);
+      c.fillStyle = fg; c.font = '700 ' + (big.length > 4 ? 30 : 56) + 'px Oswald'; c.fillText(big, 64, 122);
+      c.fillStyle = fg2; c.font = '600 14px Oswald'; c.fillText(sub, 64, 170);
+      return new THREE.CanvasTexture(cv);
+    };
+    const hang = (tex, x, y, z, ry) => {
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 2.75), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
+      m.position.set(x, y, z); m.rotation.y = ry; detailGroup.add(m);
+      const g = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, y + 1.4, z), new THREE.Vector3(x, 39.5, z)]);
+      detailGroup.add(new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0x3a4152 })));
+    };
+    /* Lakers 優勝旗 17（+x エンド、2段） */
+    const champs = [1949, 1950, 1952, 1953, 1954, 1972, 1980, 1982, 1985, 1987, 1988, 2000, 2001, 2002, 2009, 2010, 2020];
+    champs.forEach((yr, i) => {
+      const row = i < 9 ? 0 : 1, k = row ? i - 9 : i, n = row ? 8 : 9;
+      const z = (k - (n - 1) / 2) * 2.4;
+      hang(mkTex('LOS ANGELES LAKERS', String(yr), 'WORLD CHAMPIONS', '#552583', '#fdb927', '#e9edf6'), 57.5 - row * 2.2, 33.6 - row * 3.0, z, Math.PI / 2);
+    });
+    /* 永久欠番（-x エンド） */
+    const ret = [['8', 'KOBE BRYANT'], ['13', 'WILT CHAMBERLAIN'], ['22', 'ELGIN BAYLOR'], ['24', 'KOBE BRYANT'], ['25', 'GAIL GOODRICH'],
+                 ['32', 'MAGIC JOHNSON'], ['33', 'KAREEM ABDUL-JABBAR'], ['34', 'SHAQUILLE O\'NEAL'], ['42', 'JAMES WORTHY'],
+                 ['44', 'JERRY WEST'], ['52', 'JAMAAL WILKES'], ['MIC', 'CHICK HEARN']];
+    ret.forEach(([num, name], i) => {
+      const row = i < 6 ? 0 : 1, k = row ? i - 6 : i;
+      const z = (k - 2.5) * 2.4;
+      hang(mkTex('LAKERS', num, name, '#fdb927', '#552583', '#2a1340'), -57.5 + row * 2.2, 33.6 - row * 3.0, z, Math.PI / 2);
+    });
+    /* Kings（+z サイド）と Sparks（-z サイド） */
+    const kings = [['2012', 'STANLEY CUP CHAMPIONS'], ['2014', 'STANLEY CUP CHAMPIONS'], ['4', 'ROB BLAKE'], ['16', 'MARCEL DIONNE'], ['18', 'DAVE TAYLOR'],
+                   ['20', 'LUC ROBITAILLE'], ['23', 'DUSTIN BROWN'], ['30', 'ROGIE VACHON'], ['99', 'WAYNE GRETZKY']];
+    kings.forEach(([big, sub], i) => hang(mkTex('LOS ANGELES KINGS', big, sub, '#111111', '#a2aaad', '#e9edf6'), (i - 4) * 2.4, 32.5, 50.5, 0));
+    [['2001', 'WNBA CHAMPIONS'], ['2002', 'WNBA CHAMPIONS'], ['2016', 'WNBA CHAMPIONS']].forEach(([big, sub], i) =>
+      hang(mkTex('LOS ANGELES SPARKS', big, sub, '#702f8a', '#ffc72c', '#e9edf6'), (i - 1) * 2.4, 32.5, -50.5, 0));
+  })();
+
+  /* ---------- センターハング増強: アンダーベリー LED / 上部ハロー / 吊りケーブル ---------- */
+  (function centerhung() {
+    const under = new THREE.Mesh(new THREE.CylinderGeometry(4.9, 4.9, 0.9, 32, 1, true),
+      (() => { const t = ledTex(['crypto.com', 'Delta', 'Kia', 'AMEX', 'BODYARMOR', 'Verizon'], ['#00d4ff', '#fdb927', '#e9edf6'], 2048, 64);
+               t.wrapS = THREE.RepeatWrapping; return new THREE.MeshStandardMaterial({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.9, color: 0x0a0d16, side: THREE.DoubleSide }); })());
+    under.position.y = 21.5 - 3.0; under.userData = { kind: 'led', name: 'センターハング アンダーベリー LED' }; interior.add(under);
+    const halo = new THREE.Mesh(new THREE.CylinderGeometry(6.6, 6.6, 1.2, 40, 1, true),
+      (() => { const t = ledTex(['LAKERS', 'KINGS', 'SPARKS', 'crypto.com ARENA'], ['#fdb927', '#a2aaad', '#ffc72c', '#00d4ff'], 2048, 72);
+               t.wrapS = THREE.RepeatWrapping; return new THREE.MeshStandardMaterial({ map: t, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.8, color: 0x0a0d16, side: THREE.DoubleSide }); })());
+    halo.position.y = 21.5 + 4.4; halo.userData = { kind: 'led', name: 'センターハング 上部ハロー LED' }; interior.add(halo);
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(6.6, 6.6, 0.3, 40), new THREE.MeshStandardMaterial({ color: 0x1a1f2b, roughness: 0.6 }));
+    disc.position.y = 21.5 + 5.1; detailGroup.add(disc);
+    const W = [];
+    for (let i = 0; i < 8; i++) { const t = 2 * Math.PI * i / 8; W.push(Math.cos(t) * 5.5, 26.8, Math.sin(t) * 5.5, Math.cos(t) * 5.5, 40.0, Math.sin(t) * 5.5); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(W, 3));
+    detailGroup.add(new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x556070 })));
+  })();
+
+  /* ---------- スポーツ照明（キャットウォークの投光器アレイ） ---------- */
+  (function sportsLights() {
+    const aR = back300a + 14, bR = back300b + 14;
+    const pos = [];
+    for (const [k, n] of [[0.5, 56], [0.75, 72]]) for (let i = 0; i < n; i++) {
+      const p = ringPt(aR * k, bR * k, 2 * Math.PI * i / n); pos.push([p[0], 32.7, p[1]]);
+    }
+    const N = pos.length;
+    const body = new THREE.InstancedMesh(new THREE.BoxGeometry(0.9, 0.5, 0.45), new THREE.MeshStandardMaterial({ color: 0x22262f, roughness: 0.6 }), N);
+    const lens = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.8, 0.4), new THREE.MeshBasicMaterial({ color: 0xfff6e0 }), N);
+    const M = new THREE.Matrix4(), P = new THREE.Vector3(), Q = new THREE.Quaternion(), E = new THREE.Euler(), S = new THREE.Vector3(1, 1, 1);
+    pos.forEach((p, i) => {
+      const yaw = Math.atan2(-p[0], -p[2]);
+      E.set(0.55, yaw, 0, 'YXZ'); Q.setFromEuler(E);
+      P.set(p[0], p[1], p[2]); M.compose(P, Q, S); body.setMatrixAt(i, M);
+      const fx = Math.sin(yaw) * 0.25, fz = Math.cos(yaw) * 0.25;
+      P.set(p[0] + fx, p[1] - 0.14, p[2] + fz); M.compose(P, Q, S); lens.setMatrixAt(i, M);
+    });
+    body.instanceMatrix.needsUpdate = lens.instanceMatrix.needsUpdate = true;
+    body.userData = { kind: 'bim', type: 'IfcLightFixture', tag: 'SPL-RIG',
+      attrs: { '部材種別': 'LED スポーツ投光器 1,200W（' + N + ' 台）', '照度': 'コート面 2,000 lx（4K 中継対応・フリッカーフリー）',
+               '取付': 'キャットウォーク R=0.5 / 0.75', '制御': 'DMX 演出連動（入場演出・ハーフタイム）' } };
+    trussGrp.add(body, lens); BIM_ELEMS.push(body);
+  })();
+
+  /* ---------- 選手入場トンネル（コーナー 2 箇所） ---------- */
+  (function tunnels() {
+    const darkM = new THREE.MeshStandardMaterial({ color: 0x05070c, roughness: 1 });
+    [[0.30 * Math.PI, 'LAKERS'], [1.30 * Math.PI, 'VISITORS']].forEach(([t, nm]) => {
+      const p = ringPt(TIER.L100.a + 2.6, TIER.L100.b + 2.6, t);
+      const ang = Math.atan2(-p[0], -p[1]);
+      const g = new THREE.Group(); g.position.set(p[0], 0, p[1]); g.rotation.y = ang;
+      const box = new THREE.Mesh(new THREE.BoxGeometry(4.2, 3.0, 7.0), darkM); box.position.y = 1.5; g.add(box);
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(4.0, 0.04, 6.8), new THREE.MeshBasicMaterial({ color: nm === 'LAKERS' ? 0x552583 : 0x2a3346 })); strip.position.y = 0.03; g.add(strip);
+      const cv = document.createElement('canvas'); cv.width = 512; cv.height = 96; const c = cv.getContext('2d');
+      c.fillStyle = nm === 'LAKERS' ? '#552583' : '#0a1420'; c.fillRect(0, 0, 512, 96); c.fillStyle = '#fdb927'; c.font = '700 60px Oswald'; c.textAlign = 'center'; c.fillText(nm, 256, 70);
+      const tex = new THREE.CanvasTexture(cv);
+      const s = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 0.8), new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 1, color: 0x0a1420, side: THREE.DoubleSide }));
+      s.position.set(0, 3.45, 3.4); g.add(s);
+      for (const sx of [-2.0, 2.0]) { const l = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.6, 0.1), new THREE.MeshBasicMaterial({ color: 0x00c2ff })); l.position.set(sx, 1.4, 3.45); g.add(l); }
+      g.userData = { kind: 'poi', name: '選手入場トンネル（' + nm + '）', desc: 'ロッカールーム ⇄ コート。入場演出時はスポーツ照明を DMX で減光' };
+      detailGroup.add(g);
+    });
+  })();
+
+  /* ---------- スイート内装（バーカウンター・TV）---------- */
+  (function suiteInteriors() {
+    const lut = ringLUT(TIER.PRM.a - 0.5, TIER.PRM.b - 0.5, 720);
+    const bar = new THREE.MeshStandardMaterial({ color: 0x3a2a1e, roughness: 0.5, metalness: 0.2 });
+    const tvT = ledTex(['LAL 102', 'GSW 98'], ['#fdb927', '#e9edf6'], 512, 128, '#05070c');
+    const tvM = new THREE.MeshStandardMaterial({ map: tvT, emissive: 0xffffff, emissiveMap: tvT, emissiveIntensity: 0.9, color: 0x05070c });
+    for (const s of SUITE_LAYOUT) {
+      const t = fracToT(lut, (s.f0 + s.f1) / 2);
+      const p = ringPt(TIER.PRM.a - 0.5, TIER.PRM.b - 0.5, t);
+      const w = Math.abs(s.f1 - s.f0) * lut.tot * 0.86, ang = Math.atan2(p[0], p[1]);
+      const cx = p[0] * 1.07, cz = p[1] * 1.07;
+      const b = new THREE.Mesh(new THREE.BoxGeometry(w * 0.7, 1.05, 0.6), bar); b.position.set(cx, TIER.PRM.y0 + 0.85, cz); b.rotation.y = ang + Math.PI / 2;
+      const tv = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.9), tvM); tv.position.set(cx * 1.008, TIER.PRM.y0 + 2.3, cz * 1.008); tv.rotation.y = Math.atan2(-p[0], -p[1]);
+      b.userData = { kind: 'suite', name: s.sec }; tv.userData = { kind: 'suite', name: s.sec };
+      interior.add(b, tv); SUITES.push(b, tv);
+    }
+  })();
+})();
 /* ---- src/58_bimx.js ---- */
 
 /* ================================================================
@@ -4456,7 +5707,8 @@ el.addEventListener('click', e => {
   }
   const objs = [];
   site.traverse(o => { if (o.userData && o.userData.kind) objs.push(o); });
-  const h = hit(e, objs);
+  if (level === 'plaza') plaza.traverse(o => { if (o.userData && o.userData.kind) objs.push(o); });
+  const h = hit(e, objs, true);
   if (h.length) {
     const u = h[0].object.userData;
     if (u.kind === 'arena') { setLevel('arena', true); toast('L2 ボウル内部へ — 座席をクリックすると<b>個客プロファイル</b>が開きます', 4200); return; }
@@ -4737,6 +5989,9 @@ function renderSitePanel() {
         kpiCard(fmt(st.roads.length), '道路セグメント') +
         kpiCard(fmt(siteStats.points), '点描ポイント') +
       '</div>' +
+      (viewMode === 'solid' ? '<div class="hint" style="margin-top:6px">街路詳細: 街路灯 ' + fmt(siteStats.lights) +
+        ' / 街路樹 ' + fmt(siteStats.trees) + ' / 窓灯 ' + fmt(siteStats.windows) + ' / 横断歩道 ' + fmt(siteStats.crosswalks) +
+        ' / 駐車区画線 ' + fmt(siteStats.stalls) + '</div>' : '') +
       '<div class="sec-t" style="margin-top:9px">道路クラス別 本数</div>' +
       vizCanvas({ type: 'hbars', rows: roadByClass, rowH: 20, labW: 96, valW: 52 })) +
 

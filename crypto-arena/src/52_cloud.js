@@ -176,5 +176,6 @@ function setPointCloud(on) {
   });
   court.visible = !on; hallFloor.visible = !on; hoops.visible = !on && GAMES[curGame].fmt === 'NBA';
   indoorSolid.visible = !on;
+  if (typeof detailGroup !== 'undefined') detailGroup.visible = !on;
   if (on) repaintSeatCloud();
 }

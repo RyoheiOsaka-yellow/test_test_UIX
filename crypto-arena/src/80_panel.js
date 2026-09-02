@@ -118,6 +118,9 @@ function renderSitePanel() {
         kpiCard(fmt(st.roads.length), '道路セグメント') +
         kpiCard(fmt(siteStats.points), '点描ポイント') +
       '</div>' +
+      (viewMode === 'solid' ? '<div class="hint" style="margin-top:6px">街路詳細: 街路灯 ' + fmt(siteStats.lights) +
+        ' / 街路樹 ' + fmt(siteStats.trees) + ' / 窓灯 ' + fmt(siteStats.windows) + ' / 横断歩道 ' + fmt(siteStats.crosswalks) +
+        ' / 駐車区画線 ' + fmt(siteStats.stalls) + '</div>' : '') +
       '<div class="sec-t" style="margin-top:9px">道路クラス別 本数</div>' +
       vizCanvas({ type: 'hbars', rows: roadByClass, rowH: 20, labW: 96, valW: 52 })) +
 

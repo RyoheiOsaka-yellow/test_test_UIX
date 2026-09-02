@@ -142,7 +142,8 @@ el.addEventListener('click', e => {
   }
   const objs = [];
   site.traverse(o => { if (o.userData && o.userData.kind) objs.push(o); });
-  const h = hit(e, objs);
+  if (level === 'plaza') plaza.traverse(o => { if (o.userData && o.userData.kind) objs.push(o); });
+  const h = hit(e, objs, true);
   if (h.length) {
     const u = h[0].object.userData;
     if (u.kind === 'arena') { setLevel('arena', true); toast('L2 ボウル内部へ — 座席をクリックすると<b>個客プロファイル</b>が開きます', 4200); return; }

@@ -532,6 +532,7 @@ function setViewMode(m) {
   gPoint.visible = (m === 'point');
   gWire.visible = lineish;
   gClose.visible = (m === 'solid' && level !== 'plaza');
+  if (typeof gDetail !== 'undefined') gDetail.visible = (m === 'solid');
   const deck = gInfra.getObjectByName('bridgeDeck');
   if (deck) deck.visible = !lineish;          // 線画では稜線が高架を表現するので実体は伏せる
   arenaShell.visible = (m === 'solid' && level !== 'plaza');
