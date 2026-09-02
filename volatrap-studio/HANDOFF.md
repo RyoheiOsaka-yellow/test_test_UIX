@@ -61,7 +61,8 @@ volatrap-studio/
 ### 部品定義の書式（`PART_DEFS` の 1 要素）
 
 ```js
-{ id:'P-102', name:'カップリングリング', en:'Knurled Coupling', group:'A1',
+{ id:'P-102', seq:2, tool:'手作業 (ローレット回し)',   // seq: 分解手順の順番, tool: 工具
+  name:'カップリングリング', en:'Knurled Coupling', group:'A1',
   mat:'ABS', mb:'make', color:'#eef0f3', qty:1, shell:true,   // shell: 透過モードで半透明になる外装
   build: c => ({
     pos: c.along(38 + c.p.ringW/2),     // 組立位置（ワールド座標）
@@ -83,7 +84,11 @@ volatrap-studio/
 
 | 機能 | 実装 | 注意点 |
 |---|---|---|
-| 分解 | `group.position = base + explodeVec × (explode/100 × scale)` | `radial` モードはボディ中心からの放射 + 元ベクトル 35% |
+| 分解 | `group.position = base + explodeVec × partT(rt,t) × scale`。`partT` は順次モードで工程番号 (`state.seq`) ごとに時間窓をずらす | `radial` モードはボディ中心からの放射 + 元ベクトル 35%。`stepTarget(k)` が工程 k 完了時の分解率を返す |
+| トレース線 / ゴースト | `trails` (LineDashedMaterial) を `applyExplode()` で更新、`ghostGroup` は組立位置の半透明コピー | 非表示部品は除外 |
+| 部品ラベル | `updateLabels()` が毎フレーム重心を `project()` して DOM を配置 | 選択 / ホバーは常時、全表示は `state.labels` |
+| 干渉チェック | `runClash()`: 組立状態の AABB 重なり (>50 mm³) を列挙、意図的な入れ子ペアは `nested` で除外 | 本格的なメッシュ干渉ではない |
+| レイアウト | `setDock / setRibbon / setPresent`、`localStorage['vt-studio-layout']` | ドック切替後 `refit()` で全体表示 |
 | 断面 | `renderer.localClippingEnabled`, 全マテリアルに `clippingPlanes=[plane]` | キャップ面は未実装（内部が見える簡易断面）。`flip` で切断側反転 |
 | レンダーモード | solid / wire(`wireframe`) / ghost(`shell` 部品を opacity 0.16) / illust(`MeshLambert` 白 + `EdgesGeometry`) | 輪郭線チェックで solid でもエッジ表示 |
 | カラーコード | `displayColor()` が 5 モードを返す。LED は material モード時のみ発光 | 凡例は `renderLegend()` |
@@ -114,7 +119,7 @@ volatrap-studio/
 - **形状はプリミティブ近似**。ボディ背面の丸み、ベースの傾斜クレードル、ノズル根元フィレットは未再現。
 - 内部ユニット（ポンプ・基板・電池・フローセンサ）の配置は **推定**。実機構成が分かれば `PART_DEFS` を差し替える。
 - 断面のキャップ（切断面の塗りつぶし）なし。
-- 干渉チェック、寸法注記（3D アノテーション）、Undo/Redo、状態の永続化（localStorage）なし。
+- 干渉チェックは AABB 近似。寸法注記（3D 寸法線）、Undo/Redo、部品編集値の永続化なし（レイアウトのみ保存）。
 - 書き出しはクリップボード経由（JSON / TSV）。ファイル保存は未実装。
 
 ---
