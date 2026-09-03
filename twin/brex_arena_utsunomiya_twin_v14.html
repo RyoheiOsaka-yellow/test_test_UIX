@@ -5934,7 +5934,7 @@ const RULES=[
  [/^販売率 (\(合成\)|✓実測)｜(.*)$/, (m,a,b)=>'Sales rate '+(a==='✓実測'?'✓ measured':'(synthetic)')+' | '+(DICT[b]||b)],
  [/^(\d[\d,.]*) ?席$/, (m,a)=>a+' seats'],[/^(\d[\d,.]*) ?人$/, (m,a)=>a+' people'],
  [/^席$/, ()=>'seats'],[/^人$/, ()=>'people'],[/^万$/, ()=>'×10k'],[/^億$/, ()=>'×100M'],[/^泊$/, ()=>'nights'],[/^基$/, ()=>'units'],[/^本$/, ()=>'pcs'],[/^箇所$/, ()=>'places'],[/^m$/, ()=>'m'],
- [/^(.+)（(.+)）$/, (m,a,b)=> (DICT[a]&&DICT[b]) ? DICT[a]+' ('+DICT[b]+')' : m[0]],
+ [/^(.+)（(.+)）$/, (m,a,b)=> (DICT[a]&&DICT[b]) ? DICT[a]+' ('+DICT[b]+')' : m],   /* mは一致文字列そのもの */
 ];
 let lang='ja';
 try{ lang=localStorage.getItem('brex_lang')||'ja'; }catch(e){}
