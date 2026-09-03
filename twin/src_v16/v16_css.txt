@@ -1,0 +1,64 @@
+
+/* ===== v14: 外観調整・内観素材・モバイル・日英 ===== */
+.pr{display:flex;justify-content:space-between;font-size:10px;color:var(--sub);margin-top:5px}
+.pr b{color:var(--txt);font-family:var(--mono);font-weight:500}
+.rg{width:100%;accent-color:var(--brex);height:18px;margin:0}
+.pal-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.pal{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--txt);background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px 6px}
+.pal input[type=color]{width:22px;height:22px;border:none;background:transparent;padding:0;cursor:pointer;flex-shrink:0}
+#lang-toggle{border-color:#2a4a5c;color:#8ad0e8}
+#sheet-handle{display:none}
+#canvas-wrap{touch-action:none}
+
+/* --- モバイル/タブレット（〜900px）: ボトムシート化 --- */
+@media (max-width:900px){
+  #hdr{height:44px;padding:0 10px;gap:8px}
+  .brand .x{font-size:16px}
+  .hdr-title{font-size:11px;padding-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:38vw}
+  #lvl-crumb{gap:4px;flex-shrink:0}
+  .crumb{padding:4px 8px;font-size:10px;white-space:nowrap}
+  .hdr-title{flex:1;min-width:0;max-width:none}
+  #panel.sheet-open ~ #enter-hint{display:none !important}
+  #toolbar{top:44px;height:auto;justify-content:flex-start;overflow-x:auto;padding:4px 8px;gap:6px;-webkit-overflow-scrolling:touch}
+  #toolbar::-webkit-scrollbar{display:none}
+  .tb-grp{flex-shrink:0;padding:3px 6px}
+  .tb-grp .tb-l{display:none}
+  .tb-grp .crumb{padding:6px 9px;font-size:10.5px;min-height:32px;display:flex;align-items:center}
+  #panel{top:auto;left:0;right:0;bottom:0;width:auto;max-height:46vh;border-radius:14px 14px 0 0;transform:translateY(calc(100% - 0px));transition:transform .28s ease}
+  #panel.sheet-open{transform:translateY(0)}
+  #panel.collapsed{transform:translateY(100%)}
+  #panel-toggle{display:none}
+  #panel-tab{display:none !important}
+  #sheet-handle{display:block;position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:31;border:1px solid var(--brex);background:rgba(21,24,33,.96);color:var(--brex);
+    border-radius:20px;padding:8px 18px;font-size:12px;font-family:var(--jp);cursor:pointer}
+  #panel.sheet-open ~ #sheet-handle{bottom:calc(46vh + 8px)}
+  #timeline{left:8px;right:8px;bottom:auto;top:calc(44px + 44px + 6px);transform:none;width:auto;padding:6px 10px}
+  #tl-clock{font-size:16px}
+  #tl-marks span:nth-child(even){display:none}
+  #statusbar{display:none}
+  #enter-hint{bottom:64px;font-size:11px;padding:7px 14px}
+  #ticket-card,#bim-card,#vis-card,#map2d-panel{left:8px;right:8px;width:auto;top:auto;bottom:56px;max-height:44vh;overflow-y:auto}
+  #vis-card{bottom:56px}
+  #map2d-panel{max-height:60vh}
+  #sv-hud{left:8px;right:8px;width:auto;top:auto;bottom:56px}
+  #sv-exit{top:calc(44px + 44px + 60px);left:8px;right:8px;transform:none;flex-wrap:wrap;font-size:11px;padding:6px 10px}
+  #sv-exit .ops{display:none}
+  #view-menu{top:auto;bottom:56px;right:8px;left:8px}
+  #toast{top:calc(44px + 44px + 60px);max-width:92vw;text-align:center}
+  #help .box{padding:16px}
+  .kpi .v{font-size:16px}
+  .mode-btn,.chip,.tool-btn{min-height:34px}
+}
+@media (max-width:900px) and (orientation:landscape){
+  #panel{max-height:60vh}
+  #timeline{top:calc(44px + 44px + 4px)}
+}
+
+/* ===== v16: フロー高精細化 ===== */
+.odf-row{cursor:pointer;border-radius:6px;padding:2px 4px;margin:0 -4px}
+.odf-row:hover{background:rgba(245,196,0,.08)}
+.tf-tbl table{width:100%;border-collapse:collapse;font-size:10px;margin-top:4px}
+.tf-tbl th{color:var(--sub);font-weight:500;text-align:right;padding:3px 6px}
+.tf-tbl th:first-child,.tf-tbl td:first-child{text-align:left}
+.tf-tbl td{padding:3px 6px;border-top:1px solid var(--line);color:var(--txt);text-align:right;font-family:var(--mono)}
+.tf-tbl td:first-child{font-family:var(--jp)}
