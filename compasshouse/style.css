@@ -1211,3 +1211,46 @@ body.is-contact .fab{display:none}
   .hero-sub{margin-top:8px;font-size:12px;line-height:1.7;max-width:460px}
   .hero-acts .btn{padding:11px 16px;font-size:11px}
 }
+
+/* ---- 小さな英字ラベル類をタブレット以下で 11px 以上に ---- */
+@media(max-width:768px){
+  .eyebrow,.tag,.gear-cat,.acc-dl dt,.lead-card-no,.mk-l,.svc-no,.shop-tag,.shop-go,.route-n,
+  .req,.opt-l,.opt-grp,.opt-s,.sim-r-h,.custom-ex b,.ftr-cr,.ftr-demo,.ftr-col h4,.job-tag,
+  .ig-ov span,.svc-go,.crumb,.quick-f label,.season-tabs button em,.tabs button em,.chip em,
+  .hero-kicker,.hero-scroll,.brand-txt small{font-size:11px}
+  .sim-note{font-size:11.5px}
+}
+
+/* ---- TOP の縦の長さ対策（スマホ） ---- */
+@media(max-width:600px){
+  /* レンタルギア／イベントは横スクロール（スナップ付き） */
+  .hscroll-m{
+    display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:10px;background:transparent;
+    scrollbar-width:none;margin:0 -18px;padding:2px 18px 6px;
+  }
+  .hscroll-m::-webkit-scrollbar{display:none}
+  .hscroll-m>*{flex:0 0 78%;scroll-snap-align:start;border:1px solid var(--line)}
+  /* サービス案内は 2 カラム */
+  .svc-grid{grid-template-columns:repeat(2,1fr)}
+  .svc{aspect-ratio:auto;min-height:196px}
+  .svc-in{padding:14px}
+  .svc-t{font-size:19px}
+  .svc-jp{font-size:11px;margin-top:6px;line-height:1.55}
+  .svc-go{margin-top:10px;gap:6px}
+  .svc-go i{width:24px;height:24px;font-size:11px}
+}
+@media(max-width:420px){
+  .hscroll-m{margin:0 -16px;padding-left:16px;padding-right:16px}
+}
+
+/* ---- 残りの小さな文字（言語切替・シーズン切替・補足）も 11px 以上に ---- */
+@media(max-width:768px){
+  .lang button,.quick-h em,.opt-p span{font-size:11px}
+}
+@media(max-width:420px){
+  .season-sw button{font-size:11px;letter-spacing:.1em;padding:9px 10px}
+}
+@media(max-width:360px){
+  .season-sw button{font-size:11px;letter-spacing:.06em;padding:9px 8px}
+  .lang button{font-size:11px}
+}

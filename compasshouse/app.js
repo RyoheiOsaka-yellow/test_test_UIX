@@ -385,13 +385,13 @@ const REAL_STORES = [
    addrEn:'6463-15 Toyosato, Nozawa Onsen, Shimotakai, Nagano',
    hours:'13:00〜18:00（夏季：火・水 定休／冬季：無休）',
    hoursEn:'13:00-18:00 (Summer: closed Tue & Wed / Winter: open daily)',
-   imgFile:null, imgLabel:'COMPASS HOUSE エントランス写真', img:null},
+   imgFile:null, imgLabel:'COMPASS HOUSE エントランス写真', img:'images/guide-shop.jpg'},
   {name:'COMPASS VILLAGE', jp:'コンパス ビレッジ',
    addr:'長野県下高井郡野沢温泉村豊郷9526',
    addrEn:'9526 Toyosato, Nozawa Onsen, Shimotakai, Nagano',
    hours:'9:30〜17:30（火 定休／冬季：10:00〜20:00 無休）',
    hoursEn:'9:30-17:30 (Closed Tue / Winter: 10:00-20:00, open daily)',
-   imgFile:null, imgLabel:'COMPASS VILLAGE エントランス写真', img:null}
+   imgFile:null, imgLabel:'COMPASS VILLAGE エントランス写真', img:'images/store-front.jpg'}
 ];
 
 /* ---------- EVENTS ---------- */
@@ -1224,7 +1224,7 @@ function buildSim(){
       <button type="button" class="opt${g.k===SIM.gear?' on':''}" data-k="${g.k}">
         <div class="opt-n">${t(g.n,g.nEn)}</div>
         <div class="opt-s">${t(g.s,g.sEn)}</div>
-        <div class="opt-p">&yen;${base.toLocaleString()}<span style="font-size:9px;color:var(--ink-3);margin-left:4px">${unitLbl}</span></div>
+        <div class="opt-p">&yen;${base.toLocaleString()}<span style="font-size:11px;color:var(--ink-3);margin-left:4px">${unitLbl}</span></div>
       </button>`;
     }).join('');
     ge.querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => {
