@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VolaTrap Assembly Studio</title>
+<title>Wheelchair Assembly Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&display=swap">
 <style>
@@ -510,130 +510,113 @@ function tube(a,b,ro,ri=0,seg=28){const d=b.clone().sub(a),L=d.length();const g=
 const joint=(p,r)=>({g:sphere(r,16),pos:p.toArray()});
 
 
-/* ───────── design data ───────── */
+/* ───────── design data: アクティブ車椅子 (リジッドフレーム) ───────── */
 const MATERIALS={
-  'ABS':{d:1.05,cls:'plastic'},'PC':{d:1.20,cls:'plastic'},'PP':{d:0.91,cls:'plastic'},'PET':{d:1.38,cls:'plastic'},'PTFE':{d:2.20,cls:'plastic'},
-  'シリコーン':{d:1.15,cls:'elastomer'},'NBR':{d:1.20,cls:'elastomer'},'FR-4':{d:1.85,cls:'electronic'},
-  'アルミ A5052':{d:2.68,cls:'metal'},'SUS304':{d:7.93,cls:'metal'},'ホウケイ酸ガラス':{d:2.23,cls:'glass'},
-  'Tenax TA':{d:0.25,cls:'sorbent'},'Li-ion セル':{d:2.55,cls:'electronic'}
+  'アルミ 7005':{d:2.78,cls:'metal'},'アルミ 6061':{d:2.70,cls:'metal'},'チタン Ti-6Al-4V':{d:4.43,cls:'metal'},'SUS304':{d:7.93,cls:'metal'},
+  'CFRP':{d:1.55,cls:'composite'},'ナイロン 66':{d:1.14,cls:'plastic'},'ABS':{d:1.05,cls:'plastic'},'ポリウレタン (ソリッド)':{d:1.20,cls:'elastomer'},
+  'タイヤ (空気入り 相当)':{d:0.45,cls:'elastomer'},'ゴム (グリップ)':{d:1.10,cls:'elastomer'},'ポリエステル布':{d:0.60,cls:'textile'},'ウレタンフォーム':{d:0.06,cls:'foam'}
 };
 const GROUPS=[
-  {id:'A1',name:'サンプリングヘッド Assy',color:'#3aa0d8'},
-  {id:'A2',name:'ハウジング Assy',color:'#e39b2c'},
-  {id:'A3',name:'内部ユニット Assy',color:'#8b5cd6'},
-  {id:'A4',name:'ベース Assy',color:'#3fae6a'}
+  {id:'A1',name:'駆動輪 Assy',color:'#3aa0d8'},
+  {id:'A2',name:'フレーム Assy',color:'#e39b2c'},
+  {id:'A3',name:'シート Assy',color:'#8b5cd6'},
+  {id:'A4',name:'走行安全部品',color:'#3fae6a'}
 ];
-const DEFAULT_PARAMS={nozzleAngle:40,mouthLen:60,bodyR:60,bodyDepth:70,ringW:40,ledHue:68,ledPower:1.1,baseH:12};
+const DEFAULT_PARAMS={seatWidth:400,seatDepth:420,seatHeightF:480,seatHeightR:440,wheelInch:24,camber:3,backH:380,casterInch:5,axleOffset:0};
 const PARAM_DEFS=[
-  {k:'nozzleAngle',label:'ノズル角度',unit:'°',min:15,max:65,step:1},
-  {k:'mouthLen',label:'マウスピース長',unit:'mm',min:40,max:95,step:1},
-  {k:'bodyR',label:'ボディ半径',unit:'mm',min:48,max:72,step:0.5},
-  {k:'bodyDepth',label:'ボディ奥行',unit:'mm',min:50,max:90,step:1},
-  {k:'ringW',label:'カップリング幅',unit:'mm',min:28,max:56,step:1},
-  {k:'baseH',label:'ベース厚',unit:'mm',min:8,max:20,step:0.5},
-  {k:'ledHue',label:'LED 色相',unit:'°',min:0,max:360,step:1}
+  {k:'seatWidth',label:'座幅',unit:'mm',min:340,max:480,step:10},
+  {k:'seatDepth',label:'座奥行',unit:'mm',min:360,max:480,step:10},
+  {k:'seatHeightF',label:'前座高',unit:'mm',min:430,max:530,step:5},
+  {k:'seatHeightR',label:'後座高',unit:'mm',min:380,max:500,step:5},
+  {k:'wheelInch',label:'駆動輪径',unit:'inch',min:20,max:26,step:1},
+  {k:'camber',label:'キャンバー角',unit:'°',min:0,max:12,step:0.5},
+  {k:'backH',label:'バックレスト高',unit:'mm',min:280,max:460,step:10},
+  {k:'casterInch',label:'キャスター径',unit:'inch',min:3,max:6,step:1},
+  {k:'axleOffset',label:'アクスル前後位置',unit:'mm',min:-60,max:60,step:5}
 ];
 const TARGETS=[
-  {k:'mass',label:'総質量',unit:'g',op:'≤',target:600},
-  {k:'length',label:'全長 (X)',unit:'mm',op:'≤',target:250},
-  {k:'height',label:'全高 (Y)',unit:'mm',op:'≤',target:200},
-  {k:'headMass',label:'ヘッド Assy 質量',unit:'g',op:'≤',target:150}
+  {k:'mass',label:'総質量',unit:'g',op:'≤',target:12000},
+  {k:'width',label:'全幅 (JIS T 9201)',unit:'mm',op:'≤',target:700},
+  {k:'length',label:'全長 (JIS T 9201)',unit:'mm',op:'≤',target:1200},
+  {k:'height',label:'全高 (JIS T 9201)',unit:'mm',op:'≤',target:1200},
+  {k:'turn',label:'回転円直径',unit:'mm',op:'≤',target:1500},
+  {k:'dump',label:'シートダンプ (前後差)',unit:'mm',op:'≤',target:80}
 ];
-
-/* part definitions — seq: 分解手順の順番, tool: 工具 */
+const RO=16,RI=14.2; // frame tube φ32 t1.8
+const S=[1,-1];
+function frameMeshes(c){
+  const m=[];const {zr,xf,xr,shf,shr,ax,Rw,cx,cz,cr,sw}=c;
+  for(const s of S){
+    const railF=V3(xf,shf,s*zr),railR=V3(xr,shr,s*zr),cTop=V3(cx,200,s*cz),cBot=V3(cx,cr+55,s*cz),hang=V3(xf+150,135,s*(sw/2-45)),rearB=V3(ax,Rw+25,s*(zr+10));
+    m.push(tube(railF,railR,RO,RI),tube(railF,cTop,RO,RI),tube(cTop,cBot,19,RO),tube(railF,hang,RO,RI),tube(railR,rearB,RO,RI),joint(railF,RO),joint(railR,RO),joint(cTop,RO),joint(hang,RO),joint(rearB,RO));
+  }
+  m.push(tube(V3(ax,Rw+25,-(zr+10)),V3(ax,Rw+25,zr+10),RO,RI)); // camber tube
+  const yAt=x=>shr+(shf-shr)*(x-xr)/(xf-xr);
+  for(const x of [xr+50,xf-70])m.push(tube(V3(x,yAt(x)-2,-zr),V3(x,yAt(x)-2,zr),13,11)); // cross bars
+  m.push(tube(V3(xf+160,120,-(sw/2-45)),V3(xf+160,120,sw/2-45),13,11)); // footrest cross bar
+  return m;
+}
 const PART_DEFS=[
-  {id:'P-101',seq:1,tool:'手作業',name:'マウスピース',en:'Mouthpiece',group:'A1',mat:'PP',mb:'buy',color:'#f4f5f7',qty:1,shell:true,
-    build:c=>{const L=c.p.mouthLen;const pts=[V2(10,-L/2),V2(16,-L/2),V2(16.5,-L/2+6),V2(12,L/2-9),...arc(12,L/2-5,2.5,-90,0,3),V2(14.5,L/2-1.5),...arc(13,L/2-1.5,1.5,0,90,3),V2(10,L/2),V2(10,-L/2)];
-      return {pos:c.along(78+L/2),quat:c.qN,explode:c.d.clone().multiplyScalar(100),meshes:[{g:lathe(pts,56)}]};}},
-  {id:'P-102',seq:2,tool:'手作業 (ローレット回し)',name:'カップリングリング',en:'Knurled Coupling',group:'A1',mat:'ABS',mb:'make',color:'#eef0f3',qty:1,shell:true,
-    build:c=>{const W=c.p.ringW;const pts=[V2(21,-W/2),V2(25,-W/2),...arc(25,-W/2+1.5,1.5,-90,0,2),V2(26.5,W/2-1.5),...arc(25,W/2-1.5,1.5,0,90,2),V2(21,W/2),V2(21,-W/2)];const m=[{g:lathe(pts,72)}];
-      for(let i=0;i<24;i++){const a=i/24*Math.PI*2;m.push({g:box(3.2,W-9,3),pos:[Math.cos(a)*26.8,0,Math.sin(a)*26.8],rot:[0,-a,0]});}
-      return {pos:c.along(38+W/2),quat:c.qN,explode:c.d.clone().multiplyScalar(52),meshes:m};}},
-  {id:'P-107',seq:3,tool:'手作業',name:'カートリッジ端キャップ',en:'Cartridge End Cap',group:'A1',mat:'PP',mb:'buy',color:'#dfe3e8',qty:2,qtyInGeom:true,
-    build:c=>({pos:c.along(58),quat:c.qN,explode:c.d.clone().multiplyScalar(72).add(c.n.clone().multiplyScalar(30)),
-      meshes:[{g:cyl(12.5,12.5,6,40),pos:[0,-36,0]},{g:cyl(12.5,12.5,6,40),pos:[0,36,0]},{g:cyl(4,4,8,20),pos:[0,42,0]},{g:cyl(4,4,8,20),pos:[0,-42,0]}]})},
-  {id:'P-103',seq:4,tool:'手作業',name:'トラップカートリッジ',en:'Adsorbent Cartridge (glass tube)',group:'A1',mat:'ホウケイ酸ガラス',mb:'buy',color:'#bfe0ee',qty:1,opacity:0.5,
-    build:c=>({pos:c.along(58),quat:c.qN,explode:c.d.clone().multiplyScalar(72).add(c.n.clone().multiplyScalar(30)),
-      meshes:[{g:lathe([V2(9.5,-36),V2(11,-36),V2(11,36),V2(9.5,36),V2(9.5,-36)],48)}]})},
-  {id:'P-104',seq:5,tool:'ピンセット',name:'吸着剤ベッド',en:'Sorbent Bed (Tenax TA 200 mg)',group:'A1',mat:'Tenax TA',mb:'buy',color:'#d9b56b',qty:1,
-    build:c=>({pos:c.along(58),quat:c.qN,explode:c.d.clone().multiplyScalar(72).add(c.n.clone().multiplyScalar(64)),
-      meshes:[{g:cyl(8.5,8.5,42,32)},{g:cyl(9,9,1.5,32),pos:[0,21.5,0]},{g:cyl(9,9,1.5,32),pos:[0,-21.5,0]}]})},
-  {id:'P-105',seq:6,tool:'Oリングピック',name:'Oリング',en:'O-ring (P-40)',group:'A1',mat:'シリコーン',mb:'buy',color:'#2e3138',qty:2,qtyInGeom:true,
-    build:c=>({pos:c.along(42),quat:c.qN,explode:c.d.clone().multiplyScalar(38).add(c.n.clone().multiplyScalar(-36)),
-      meshes:[{g:new THREE.TorusGeometry(19.5,2.2,14,56),rot:[Math.PI/2,0,0]},{g:new THREE.TorusGeometry(19.5,2.2,14,56),rot:[Math.PI/2,0,0],pos:[0,-10,0]}]})},
-  {id:'P-108',seq:7,tool:'ピンセット',name:'インレットフィルタ',en:'Inlet Filter Disc (PTFE 5 µm)',group:'A1',mat:'PTFE',mb:'buy',color:'#f3f4f6',qty:1,
-    build:c=>({pos:c.along(12),quat:c.qN,explode:c.d.clone().multiplyScalar(30).add(c.n.clone().multiplyScalar(-62)),meshes:[{g:cyl(10,10,2,40)}]})},
-  {id:'P-106',seq:8,tool:'手作業',name:'ネックボス',en:'Neck Boss',group:'A1',mat:'ABS',mb:'make',color:'#eef0f3',qty:1,shell:true,
-    build:c=>{const tube=[V2(17,-24),V2(21,-24),V2(21,24),V2(17,24),V2(17,-24)];const fl=[V2(21,15),V2(24.5,15),...arc(24.5,21,2,0,90,3),V2(21,23),V2(21,15)];
-      return {pos:c.along(24),quat:c.qN,explode:c.d.clone().multiplyScalar(16),meshes:[{g:lathe(tube,56)},{g:lathe(fl,56)}]};}},
-  {id:'P-205',seq:9,tool:'手作業',name:'ロゴデカール',en:'Logo Decal',group:'A2',mat:'PET',mb:'buy',color:'#ffffff',qty:1,decal:true,
-    build:c=>({pos:V3(0,c.cy,c.D/2+3.06),explode:V3(0,0,124),meshes:[{g:new THREE.CircleGeometry(c.R-15,72)}]})},
-  {id:'P-203',seq:10,tool:'手作業 (両面テープ)',name:'フェイスパネル',en:'Face Panel',group:'A2',mat:'PC',mb:'make',color:'#fafbfc',qty:1,
-    build:c=>({pos:V3(0,c.cy,c.D/2+2),explode:V3(0,0,104),meshes:[{g:lathe([V2(0,-1),V2(c.R-13.5,-1),V2(c.R-12,0.3),V2(c.R-13,1),V2(0,1),V2(0,-1)],72),rot:[Math.PI/2,0,0]}]})},
-  {id:'P-204',seq:11,tool:'手作業',name:'LED リング',en:'LED Ring (diffuser)',group:'A2',mat:'PC',mb:'buy',color:'#e8ef9a',qty:1,led:true,
-    build:c=>({pos:V3(0,c.cy,c.D/2+1.2),explode:V3(0,0,86),meshes:[{g:new THREE.TorusGeometry(c.R-6.5,3.2,16,112)}]})},
-  {id:'P-207',seq:12,tool:'ピンセット',name:'フェイスガスケット',en:'Face Gasket',group:'A2',mat:'シリコーン',mb:'buy',color:'#7a7f8a',qty:1,
-    build:c=>({pos:V3(0,c.cy,c.D/2+0.2),explode:V3(0,0,70),meshes:[{g:new THREE.TorusGeometry(c.R-12.5,1.2,10,96)}]})},
-  {id:'P-208',seq:13,tool:'+ドライバー #0',name:'LED 基板',en:'LED Driver PCB (annular)',group:'A2',mat:'FR-4',mb:'make',color:'#2a7a4a',qty:1,
-    build:c=>{const R=c.R;const m=[{g:lathe([V2(R-11,-0.6),V2(R-2,-0.6),V2(R-2,0.6),V2(R-11,0.6),V2(R-11,-0.6)],72),rot:[Math.PI/2,0,0]}];
-      for(let i=0;i<24;i++){const a=i/24*Math.PI*2;m.push({g:box(2.6,2.6,1.2),pos:[Math.cos(a)*(R-6.5),Math.sin(a)*(R-6.5),1.2]});}
-      return {pos:V3(0,c.cy,c.D/2-2.6),explode:V3(0,0,56),meshes:m};}},
-  {id:'P-201',seq:14,tool:'手作業 (スナップ)',name:'フロントシェル',en:'Front Shell',group:'A2',mat:'ABS',mb:'make',color:'#f2f3f5',qty:1,shell:true,
-    build:c=>{const h=c.D/2,R=c.R;const pts=[V2(0,h),V2(R-9,h),...arc(R-9,h-9,9,90,0,7),V2(R,0),V2(R-3,0),V2(R-3,h-3),V2(0,h-3)];
-      return {pos:V3(0,c.cy,0),explode:V3(0,0,40),meshes:[{g:lathe(pts,96),rot:[Math.PI/2,0,0]}]};}},
-  {id:'P-206',seq:15,tool:'手作業',name:'電源ボタン',en:'Power Button',group:'A2',mat:'シリコーン',mb:'buy',color:'#36b24a',qty:1,
-    build:c=>({pos:V3(c.R+0.5,c.cy,c.D/2-16),explode:V3(54,0,0),meshes:[{g:cyl(6,6,7,32),rot:[0,0,Math.PI/2]},{g:cyl(4.5,4.5,2,32),rot:[0,0,Math.PI/2],pos:[4,0,0]}]})},
-  {id:'P-209',seq:16,tool:'+ドライバー #1',name:'背面ネジ M2.5×8',en:'Rear Screw M2.5×8',group:'A2',mat:'SUS304',mb:'buy',color:'#b9c1cc',qty:4,qtyInGeom:true,
-    build:c=>{const m=[];const r=c.R-16;for(let i=0;i<4;i++){const a=Math.PI/4+i*Math.PI/2,x=Math.cos(a)*r,y=Math.sin(a)*r;
-      m.push({g:cyl(1.25,1.25,8,12),pos:[x,y,3],rot:[Math.PI/2,0,0]},{g:cyl(2.4,2.4,2,20),pos:[x,y,-1.2],rot:[Math.PI/2,0,0]},{g:box(3,0.6,0.8),pos:[x,y,-2.2],rot:[0,0,a]});}
-      return {pos:V3(0,c.cy,-c.D/2),explode:V3(0,0,-112),meshes:m};}},
-  {id:'P-210',seq:17,tool:'手作業',name:'ベントグリル',en:'Vent Grille',group:'A2',mat:'ABS',mb:'make',color:'#2b2f36',qty:1,
-    build:c=>{const m=[];for(let i=0;i<6;i++)m.push({g:box(18,1.8,1.4),pos:[24,-10+i*4,0]});m.push({g:box(22,26,0.6),pos:[24,0,0.5]});
-      return {pos:V3(0,c.cy,-c.D/2-0.4),explode:V3(0,0,-96),meshes:m};}},
-  {id:'P-202',seq:18,tool:'手作業',name:'リアカバー',en:'Rear Cover',group:'A2',mat:'ABS',mb:'make',color:'#eceef1',qty:1,shell:true,
-    build:c=>{const h=c.D/2,R=c.R;const pts=[V2(0,-h),V2(R-14,-h),...arc(R-14,-h+14,14,-90,0,8),V2(R,0),V2(R-3,0),V2(R-3,-h+3),V2(0,-h+3)];
-      return {pos:V3(0,c.cy,0),explode:V3(0,0,-80),meshes:[{g:lathe(pts,96),rot:[Math.PI/2,0,0]}]};}},
-  {id:'P-305',seq:19,tool:'手作業',name:'ポンプチューブ',en:'Pump Tubing φ4',group:'A3',mat:'シリコーン',mb:'buy',color:'#e6e9ee',qty:1,opacity:0.85,
-    build:c=>{const a=c.along(-30),curve=new THREE.CatmullRomCurve3([V3(-22,c.cy+18,-4),V3(-14,c.cy+34,-2),V3(a.x-6,a.y+2,a.z),a]);
-      return {pos:V3(0,0,0),explode:V3(-24,46,0),meshes:[{g:new THREE.TubeGeometry(curve,28,2,12,false),vol:Math.PI*4*curve.getLength()}]};}},
-  {id:'P-304',seq:20,tool:'手作業',name:'フローセンサ',en:'Flow Sensor',group:'A3',mat:'PC',mb:'buy',color:'#5a606b',qty:1,
-    build:c=>({pos:c.along(-22),quat:c.qN,explode:c.n.clone().multiplyScalar(46),meshes:[{g:box(16,10,8)},{g:cyl(1.5,1.5,6,10),pos:[0,7,0]}]})},
-  {id:'P-301',seq:21,tool:'+ドライバー #1',name:'マイクロポンプ',en:'Micro Diaphragm Pump',group:'A3',mat:'アルミ A5052',mb:'buy',color:'#8f98a4',qty:1,
-    build:c=>({pos:V3(-22,c.cy-2,-4),explode:V3(-50,22,0),meshes:[{g:box(30,28,24)},{g:cyl(4,4,14,20),pos:[0,21,0]},{g:cyl(9,9,4,32),pos:[0,0,13],rot:[Math.PI/2,0,0]}]})},
-  {id:'P-302',seq:22,tool:'+ドライバー #1',name:'メイン基板',en:'Main PCB',group:'A3',mat:'FR-4',mb:'make',color:'#1f6b3d',qty:1,
-    build:c=>({pos:V3(0,c.cy+4,-16),explode:V3(0,0,-44),meshes:[{g:box(Math.min(80,c.R*1.3),Math.min(56,c.R*0.9),1.6)},{g:box(14,14,3),pos:[10,-8,2.3]},{g:box(8,6,2.5),pos:[-16,10,2]},{g:box(6,3,1.5),pos:[22,14,1.6]},{g:box(6,3,1.5),pos:[22,8,1.6]}]})},
-  {id:'P-303',seq:23,tool:'手作業',name:'バッテリーパック',en:'Li-ion Cell 18650',group:'A3',mat:'Li-ion セル',mb:'buy',color:'#3d4c8f',qty:1,
-    build:c=>({pos:V3(4,c.cy-(c.R-22),6),explode:V3(0,-46,0),meshes:[{g:cyl(9,9,65,36),rot:[0,0,Math.PI/2]},{g:cyl(4,4,1.5,20),rot:[0,0,Math.PI/2],pos:[33,0,0]}]})},
-  {id:'P-403',seq:24,tool:'手作業',name:'USB-C ポート',en:'USB-C Charging Port',group:'A4',mat:'SUS304',mb:'buy',color:'#5b6470',qty:1,
-    build:c=>({pos:V3(30,6,-(c.D+18)/2-1),explode:V3(0,-20,-70),meshes:[{g:box(9,3.2,7)}]})},
-  {id:'P-404',seq:25,tool:'手作業',name:'充電インジケータレンズ',en:'Charge Indicator Lens',group:'A4',mat:'PC',mb:'buy',color:'#cfe6ff',qty:1,opacity:0.8,
-    build:c=>({pos:V3(c.R+2,6,(c.D+18)/2+0.4),explode:V3(0,-22,44),meshes:[{g:cyl(2.2,2.2,1.6,20),rot:[Math.PI/2,0,0]}]})},
-  {id:'P-401',seq:26,tool:'手作業',name:'ベーススタンド',en:'Base Stand (tilt cradle)',group:'A4',mat:'ABS',mb:'make',color:'#e9ebef',qty:1,shell:true,
-    build:c=>{const W=c.R*2+24,H=c.p.baseH,Z=c.D+18;const sh=new THREE.Shape();sh.moveTo(-W/2,-H);sh.lineTo(W/2,-H);sh.lineTo(W/2,-H+9);sh.quadraticCurveTo(W/2,-H+13,W/2-8,-H+13);sh.lineTo(-W/2+38,-H+13);sh.lineTo(-W/2+16,-H+31);sh.quadraticCurveTo(-W/2+12,-H+34,-W/2+6,-H+34);sh.lineTo(-W/2,-H+34);sh.closePath();
-      const g=new THREE.ExtrudeGeometry(sh,{depth:Z,bevelEnabled:false});g.translate(0,0,-Z/2);
-      const saddle=lathe([V2(0,0),V2(c.R*0.55,0),V2(c.R*0.55,6),V2(0,6),V2(0,0)],48);
-      return {pos:V3(0,0,0),explode:V3(0,-66,0),meshes:[{g},{g:saddle,pos:[0,-H+13,0]}]};}},
-  {id:'P-402',seq:27,tool:'手作業',name:'ラバーフット',en:'Rubber Foot',group:'A4',mat:'NBR',mb:'buy',color:'#2a2b2f',qty:4,qtyInGeom:true,
-    build:c=>{const w=c.R+2,z=c.D/2+3;return {pos:V3(0,-c.p.baseH-1.5,0),explode:V3(0,-94,0),meshes:[[w,z],[-w,z],[w,-z],[-w,-z]].map(o=>({g:cyl(5,5,3,24),pos:[o[0],0,o[1]]}))};}}
+  {id:'P-301',seq:1,tool:'手作業 (面ファスナー)',name:'シートクッション',en:'Seat Cushion (contoured foam)',group:'A3',mat:'ウレタンフォーム',mb:'buy',color:'#26282c',qty:1,
+    build:c=>({pos:c.seatMid.clone().add(V3(0,34,0)),quat:rotZ(c.slope),explode:V3(0,300,0),meshes:[{g:box(c.p.seatDepth-30,50,c.sw-10)},{g:box(c.p.seatDepth-60,14,c.sw-40),pos:[0,32,0]}]})},
+  {id:'P-103',seq:2,tool:'QR ボタン押下',name:'クイックリリースアクスル',en:'Quick-release Axle 1/2"',group:'A1',mat:'チタン Ti-6Al-4V',mb:'buy',color:'#c7cdd6',qty:2,qtyInGeom:true,
+    build:c=>({pos:V3(c.ax,c.Rw,0),explode:V3(0,0,0),meshes:S.flatMap(s=>[{g:cyl(5.5,5.5,150,16),quat:rotX(Math.PI/2),pos:[0,0,s*(c.zw-12)],ex:[0,0,s*760]},{g:sphere(7.5,16),pos:[0,0,s*(c.zw+63)],ex:[0,0,s*760]}])})},
+  {id:'P-101',seq:3,tool:'手作業',name:'駆動輪 リム/スポーク/ハブ',en:`Drive Wheel (rim, 24 spokes, hub)`,group:'A1',mat:'アルミ 6061',mb:'buy',color:'#1f2226',qty:2,qtyInGeom:true,
+    build:c=>{const m=[];const Rr=c.Rw-24;for(const s of S){const qc=rotX(-s*c.cam);const z=s*c.zw;const ex=[0,0,s*380];
+      m.push({g:new THREE.TorusGeometry(Rr,6,10,96),quat:qc,pos:[0,0,z],ex});
+      m.push({g:lathe([V2(22,-30),V2(30,-30),V2(30,30),V2(22,30),V2(22,-30)],32),quat:qc.clone().multiply(rotX(Math.PI/2)),pos:[0,0,z],ex});
+      const cm=(30+Rr)/2,L=Rr-32;for(let i=0;i<24;i++){const a=i/24*Math.PI*2;const off=V3(Math.cos(a)*cm,Math.sin(a)*cm,(i%2?7:-7)).applyQuaternion(qc);m.push({g:cyl(1.2,1.2,L,6),quat:qc.clone().multiply(rotZ(a-Math.PI/2)),pos:[off.x,off.y,z+off.z],ex});}}
+      return {pos:V3(c.ax,c.Rw,0),explode:V3(0,0,0),meshes:m};}},
+  {id:'P-104',seq:4,tool:'タイヤレバー',name:'タイヤ 24×1',en:'Tire 24×1" (pneumatic)',group:'A1',mat:'タイヤ (空気入り 相当)',mb:'buy',color:'#34373d',qty:2,qtyInGeom:true,
+    build:c=>({pos:V3(c.ax,c.Rw,0),explode:V3(0,0,0),meshes:S.map(s=>({g:new THREE.TorusGeometry(c.Rw-14,14,18,128),quat:rotX(-s*c.cam),pos:[0,0,s*c.zw],ex:[0,0,s*520]}))})},
+  {id:'P-102',seq:5,tool:'六角レンチ 4 mm',name:'ハンドリム',en:'Handrim (anodized)',group:'A1',mat:'アルミ 6061',mb:'buy',color:'#2e3238',qty:2,qtyInGeom:true,
+    build:c=>({pos:V3(c.ax,c.Rw,0),explode:V3(0,0,0),meshes:S.map(s=>{const r=c.Rw-52;return {g:new THREE.TorusGeometry(r,8,14,96),quat:rotX(-s*c.cam),pos:[0,0,s*(c.zw+36)],ex:[0,0,s*640],vol:2*Math.PI*r*Math.PI*(64-42)};})})},
+  {id:'P-402',seq:6,tool:'六角レンチ 5 mm',name:'転倒防止バー',en:'Anti-tip Bar',group:'A4',mat:'アルミ 6061',mb:'make',color:'#3a3e45',qty:2,qtyInGeom:true,
+    build:c=>({pos:V3(0,0,0),explode:V3(0,0,0),meshes:S.flatMap(s=>{const z=s*(c.zr+10);const a=V3(c.ax-8,c.Rw-30,z),b=V3(c.ax-185,70,z);return [Object.assign(tube(a,b,10,8.4),{ex:[-320,0,s*40]}),{g:cyl(24,24,18,28),quat:rotX(Math.PI/2),pos:[c.ax-200,24,z],ex:[-320,0,s*40]}];})})},
+  {id:'P-401',seq:7,tool:'六角レンチ 5 mm',name:'ホイールロック',en:'Wheel Lock (push-to-lock)',group:'A4',mat:'アルミ 6061',mb:'buy',color:'#2b2e34',qty:2,qtyInGeom:true,
+    build:c=>({pos:V3(0,0,0),explode:V3(0,0,0),meshes:S.flatMap(s=>{const z=s*(c.zr+40);const mnt=V3(c.ax+175,c.Rw+55,z);return [{g:box(40,26,28),pos:mnt.toArray(),ex:[130,120,s*60]},Object.assign(tube(mnt,V3(c.ax+235,c.Rw+180,z),5),{ex:[130,120,s*60]}),{g:cyl(9,9,30,16),quat:yTo(V3(60,125,0)),pos:[c.ax+240,c.Rw+190,z],ex:[130,120,s*60]}];})})},
+  {id:'P-207',seq:8,tool:'手作業 (QR レバー)',name:'プッシュハンドル',en:'Push Handle (removable)',group:'A2',mat:'アルミ 6061',mb:'make',color:'#33363c',qty:2,qtyInGeom:true,
+    build:c=>({pos:V3(0,0,0),explode:V3(0,0,0),meshes:S.flatMap(s=>{const z=s*c.zr;const top=V3(c.xr-40,c.shr+c.p.backH,z);return [Object.assign(tube(top,V3(c.xr-135,c.shr+c.p.backH+8,z),14,12),{ex:[-420,220,0]}),{g:cyl(16,16,90,20),quat:yTo(V3(-1,0.08,0)),pos:[c.xr-112,c.shr+c.p.backH+6,z],ex:[-420,220,0]}];})})},
+  {id:'P-302',seq:9,tool:'手作業 (面ファスナー)',name:'バックレスト張地',en:'Backrest Upholstery (tension adjustable)',group:'A3',mat:'ポリエステル布',mb:'buy',color:'#2b2e33',qty:1,
+    build:c=>({pos:V3(c.xr-28,c.shr+c.p.backH*0.52,0),quat:rotZ(0.1),explode:V3(-170,120,0),meshes:[{g:box(4,c.p.backH-90,c.sw+16)},{g:box(3,c.p.backH-130,c.sw-30),pos:[3.5,0,0]}]})},
+  {id:'P-203',seq:10,tool:'手作業 (折りたたみヒンジ)',name:'バックレストフレーム',en:'Folding Backrest Frame',group:'A2',mat:'アルミ 7005',mb:'make',color:'#2a2d33',qty:1,
+    build:c=>{const m=[];const bh=c.p.backH;for(const s of S){const z=s*c.zr;const b0=V3(c.xr-12,c.shr,z),b1=V3(c.xr-40,c.shr+bh,z);m.push(tube(b0,b1,14,12.2),joint(b1,14),{g:cyl(18,18,28,24),quat:rotX(Math.PI/2),pos:[c.xr-12,c.shr+8,z]});}
+      m.push(tube(V3(c.xr-40,c.shr+bh,-c.zr),V3(c.xr-40,c.shr+bh,c.zr),12,10.2));return {pos:V3(0,0,0),explode:V3(-270,170,0),meshes:m};}},
+  {id:'P-208',seq:11,tool:'六角レンチ 4 mm',name:'サイドガード',en:'Side Guard (clothing guard)',group:'A2',mat:'CFRP',mb:'buy',color:'#1c1e22',qty:2,qtyInGeom:true,
+    build:c=>({pos:V3(0,0,0),explode:V3(0,0,0),meshes:S.map(s=>({g:box(250,175,3),pos:[c.ax+40,c.shr+65,s*(c.zr+32)],ex:[0,230,s*70]}))})},
+  {id:'P-303',seq:12,tool:'六角レンチ 3 mm',name:'シートスリング',en:'Seat Sling (tension adjustable)',group:'A3',mat:'ポリエステル布',mb:'buy',color:'#232529',qty:1,
+    build:c=>({pos:c.seatMid.clone().add(V3(0,4,0)),quat:rotZ(c.slope),explode:V3(0,180,0),meshes:[{g:box(c.p.seatDepth-40,3,c.sw+24)}]})},
+  {id:'P-206',seq:13,tool:'六角レンチ 5 mm',name:'フットプレート',en:'Footplate (one-piece, angle adjustable)',group:'A2',mat:'アルミ 6061',mb:'make',color:'#2f3237',qty:1,
+    build:c=>({pos:V3(c.xf+178,102,0),quat:rotZ(-0.17),explode:V3(230,-40,0),meshes:[{g:box(150,4,c.sw-70)},{g:box(150,10,4),pos:[0,7,(c.sw-70)/2-2]},{g:box(150,10,4),pos:[0,7,-(c.sw-70)/2+2]}]})},
+  {id:'P-205',seq:14,tool:'六角レンチ 5 mm',name:'キャスター 5"',en:'Caster 5" (PU solid)',group:'A2',mat:'ポリウレタン (ソリッド)',mb:'buy',color:'#1a1c20',qty:2,qtyInGeom:true,
+    build:c=>({pos:V3(0,0,0),explode:V3(0,0,0),meshes:S.flatMap(s=>{const z=s*c.cz;return [{g:cyl(c.cr,c.cr,22,40),quat:rotX(Math.PI/2),pos:[c.cx+24,c.cr,z],ex:[200,-110,s*150]},{g:cyl(11,11,28,20),quat:rotX(Math.PI/2),pos:[c.cx+24,c.cr,z],ex:[200,-110,s*150]}];})})},
+  {id:'P-204',seq:15,tool:'スパナ 13 mm',name:'キャスターフォーク',en:'Caster Fork (aluminium)',group:'A2',mat:'アルミ 6061',mb:'buy',color:'#2b2e34',qty:2,qtyInGeom:true,
+    build:c=>({pos:V3(0,0,0),explode:V3(0,0,0),meshes:S.flatMap(s=>{const z=s*c.cz;const ex=[150,-30,s*90];return [{g:cyl(8,8,80,14),pos:[c.cx,c.cr+92,z],ex},{g:box(36,12,50),pos:[c.cx+6,c.cr+44,z],ex},{g:box(12,c.cr+30,6),pos:[c.cx+14,c.cr+18,z+17],quat:rotZ(0.32),ex},{g:box(12,c.cr+30,6),pos:[c.cx+14,c.cr+18,z-17],quat:rotZ(0.32),ex}];})})},
+  {id:'P-202',seq:16,tool:'六角レンチ 6 mm',name:'アクスルプレート',en:'Axle Plate (camber adjust)',group:'A2',mat:'アルミ 7005',mb:'make',color:'#33363c',qty:2,qtyInGeom:true,
+    build:c=>({pos:V3(0,0,0),explode:V3(0,0,0),meshes:S.flatMap(s=>{const z=s*(c.zr+24);return [{g:box(64,112,8),pos:[c.ax,c.Rw+8,z],ex:[0,-160,s*90]},{g:cyl(12,12,44,20),quat:rotX(Math.PI/2),pos:[c.ax,c.Rw,z+s*10],ex:[0,-160,s*90]}];})})},
+  {id:'P-201',seq:17,tool:'—',name:'メインフレーム (リジッド)',en:'Rigid Main Frame φ32 t1.8',group:'A2',mat:'アルミ 7005',mb:'make',color:'#25282d',qty:1,shell:true,
+    build:c=>({pos:V3(0,0,0),explode:V3(0,0,0),meshes:frameMeshes(c)})}
 ];
 const N_STEPS=PART_DEFS.length;
 const PRODUCT={
-  mark:'VT',name:'VolaTrap Assembly Studio',tag:'· 3D 分解 / 設計ダッシュボード',crumbA:'VolaTrap_Product.1',crumbB:'VolaTrap Assy.1',rev:'VT-2026-A · rev 05',assy:'VolaTrap Assy',assyInst:'VolaTrap Assy.1',
-  hasLed:true,groundY:-16,logo:true,
-  makeCtx(p){const R=p.bodyR,D=p.bodyDepth,cy=R-6,a=THREE.MathUtils.degToRad(p.nozzleAngle);const d=V3(Math.cos(a),Math.sin(a),0),n=V3(-Math.sin(a),Math.cos(a),0);const P0=V3(0,cy,0).add(d.clone().multiplyScalar(R-10));return {p,R,D,cy,d,n,P0,qN:yTo(d),along:s=>P0.clone().add(d.clone().multiplyScalar(s)),center:V3(0,cy,0)};},
-  results(ctx,box,groupMass,total){const s=box.getSize(V3());return {mass:total,length:s.x,height:s.y,headMass:groupMass.A1};},
-  optimizeStep(p){if(p.baseH>8){p.baseH=Math.max(8,p.baseH-0.5);return true;}if(p.bodyDepth>50){p.bodyDepth-=1;return true;}if(p.bodyR>48){p.bodyR-=0.5;return true;}return false;},
-  nested:['P-103|P-104','P-103|P-107','P-102|P-103','P-102|P-105','P-106|P-103','P-106|P-105','P-106|P-108','P-106|P-107','P-201|P-204','P-201|P-207','P-201|P-208','P-201|P-203','P-203|P-205','P-204|P-207','P-204|P-208','P-201|P-206','P-202|P-209','P-202|P-210','P-401|P-402','P-401|P-403','P-401|P-404','P-201|P-106','P-101|P-103','P-101|P-107','P-102|P-107','P-101|P-102','P-204|P-203','P-207|P-208','P-203|P-207','P-201|P-202','P-105|P-103','P-105|P-107','P-104|P-107','P-201|P-303','P-201|P-302','P-201|P-301','P-202|P-302','P-202|P-301','P-202|P-303','P-401|P-303','P-201|P-305','P-202|P-305','P-305|P-301','P-305|P-304','P-201|P-304','P-106|P-304','P-201|P-401','P-202|P-401','P-208|P-206'],
+  mark:'WC',name:'Wheelchair Assembly Studio',tag:'· アクティブ車椅子 3D 分解 / 設計ダッシュボード',crumbA:'Wheelchair_Product.1',crumbB:'ActiveChair Assy.1',rev:'WC-2026-A · rev 01',assy:'ActiveChair Assy',assyInst:'ActiveChair Assy.1',
+  hasLed:false,groundY:0,logo:false,ambient:0.55,keyLight:1.25,
+  makeCtx(p){const sw=p.seatWidth,sd=p.seatDepth,shf=p.seatHeightF,shr=p.seatHeightR;const Rw=p.wheelInch*25.4/2,cr=p.casterInch*25.4/2;
+    const zr=sw/2+12,xf=sd/2,xr=-sd/2,ax=-sd/2+45+p.axleOffset,zw=sw/2+76,cx=xf+70,cz=sw/2-32,cam=THREE.MathUtils.degToRad(p.camber);
+    return {p,sw,sd,shf,shr,Rw,cr,zr,xf,xr,ax,zw,cx,cz,cam,seatMid:V3(0,(shf+shr)/2,0),slope:Math.atan2(shf-shr,sd),center:V3(0,(shf+shr)/2,0)};},
+  results(ctx,box,groupMass,total){const s=box.getSize(V3());const front=box.max.x-ctx.ax;return {mass:total,width:s.z,length:s.x,height:s.y,turn:2*Math.hypot(front,s.z/2),dump:ctx.shf-ctx.shr};},
+  optimizeStep(p){if(p.backH>300){p.backH-=10;return true;}if(p.seatDepth>380){p.seatDepth-=10;return true;}if(p.casterInch>4){p.casterInch-=1;return true;}return false;},
+  nested:['P-101|P-103','P-101|P-104','P-101|P-102','P-103|P-104','P-102|P-104','P-101|P-202','P-103|P-202','P-201|P-202','P-201|P-203','P-201|P-204','P-201|P-206','P-201|P-303','P-201|P-301','P-201|P-402','P-201|P-401','P-203|P-207','P-203|P-302','P-204|P-205','P-301|P-303','P-201|P-208','P-202|P-208','P-201|P-302','P-203|P-303','P-203|P-301','P-101|P-208','P-104|P-208','P-402|P-202','P-101|P-402','P-104|P-402','P-101|P-401','P-104|P-401','P-102|P-401','P-303|P-302','P-301|P-302'],
   sets:[
-    {name:'外装部品 (Shell)',color:'#d8dde5',pred:d=>d.shell},
-    {name:'内部ユニット',color:'#8b5cd6',pred:d=>d.group==='A3'},
+    {name:'駆動系 (Drive)',color:'#3aa0d8',pred:d=>d.group==='A1'},
+    {name:'フレーム構造材',color:'#e39b2c',pred:d=>['P-201','P-202','P-203','P-207'].includes(d.id)},
+    {name:'シート / 張地',color:'#8b5cd6',pred:d=>d.group==='A3'},
+    {name:'走行安全部品',color:'#3fae6a',pred:d=>d.group==='A4'},
     {name:'購入品 (Buy)',color:'#3b7dd8',pred:(d,st)=>st.mb==='buy'},
     {name:'自製品 (Make)',color:'#3fae5c',pred:(d,st)=>st.mb==='make'},
-    {name:'締結部品・シール',color:'#6b6f7a',pred:d=>['P-209','P-105','P-207'].includes(d.id)},
-    {name:'気流経路 (Flow Path)',color:'#3aa0d8',pred:d=>['P-101','P-107','P-103','P-104','P-108','P-106','P-304','P-305','P-301'].includes(d.id)},
-    {name:'電気系統',color:'#c4913a',pred:d=>['P-302','P-303','P-208','P-204','P-206','P-403','P-404','P-304'].includes(d.id)}
+    {name:'工具不要で外せる部品',color:'#6b6f7a',pred:(d,st)=>/手作業|QR/.test(st.tool)}
   ],
-  hints:'ヒント: 下部の分解バー ▶ で順次分解を再生。← → で工程送り、P でプレゼンモード。'
+  hints:'ヒント: ▶ で分解再生（クッション → QR アクスル → 駆動輪 …）。JIS T 9201 の寸法目標は「パラメータ」タブで確認できます。'
 };
 
 /* ───────── state ───────── */

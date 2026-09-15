@@ -4,11 +4,21 @@
 このフォルダを開いて `index.html` をブラウザで表示すれば、そのまま動きます。
 
 ```
-volatrap-studio/
-├── index.html   # 本体（単一ファイル・約 1,000 行・依存は Three.js r128 のみ）
-├── README.md    # 機能一覧と操作方法
-└── HANDOFF.md   # このファイル
+studio-core/            # 共通コア（ここを編集して build.sh で各製品の index.html を生成）
+├── 1_head.html         # <head> と CSS
+├── 2_body.html         # UI マークアップ
+├── 3_common.js         # ユーティリティ・ジオメトリヘルパー（tube / lathe / arc …）
+├── 3_volatrap.js       # 製品データ: VolaTrap（MATERIALS / GROUPS / PARAMS / TARGETS / PART_DEFS / PRODUCT）
+├── 3_wheelchair.js     # 製品データ: アクティブ車椅子
+├── 4a_core.js          # シーン・モデル生成・分解・材質・断面
+├── 4b_panels.js        # ツリー / プロパティ / パラメータ / BOM / 手順 / 計測 / ビュー
+├── 4c_ui.js            # 入力・ラベル・ループ・レイアウト・初期化
+└── build.sh            # cat で結合して ../volatrap-studio, ../wheelchair-studio に出力
+volatrap-studio/index.html    # 生成物（単体で開ける）
+wheelchair-studio/index.html  # 生成物（単体で開ける）
 ```
+
+**編集は `studio-core/` で行い、`./build.sh` で index.html を再生成してください**（生成物を直接編集すると次のビルドで消えます）。
 
 ---
 
@@ -41,6 +51,20 @@ volatrap-studio/
 - 900px 以下では縦積みになる（デスクトップ前提の UI）。
 
 ---
+
+## 2.5 製品フック `PRODUCT`（製品データファイルの末尾）
+
+| フィールド | 役割 |
+|---|---|
+| `mark / name / tag / crumbA / crumbB / rev / assy / assyInst` | アプリバー・ツリー root・書き出しに使う表示名 |
+| `hasLed / logo / groundY / ambient / keyLight` | LED 行の表示、ロゴテクスチャ、床面 Y、ライト強度 |
+| `makeCtx(p)` | パラメータから各 `build(ctx)` に渡す寸法コンテキストを作る。`center` は放射状分解の中心 |
+| `results(ctx, box, groupMass, total)` | `TARGETS` の `k` に対応する計算値を返す |
+| `optimizeStep(p)` | 「質量最適化」1 反復分のパラメータ変更。変更なしなら `false` |
+| `nested` | 干渉チェックで除外する意図的な入れ子ペア `'P-a|P-b'` |
+| `sets` | 選択セット `{name, color, pred(def, state)}` |
+
+部品定義の追加項目: `qtyInGeom:true` はジオメトリに全数量を含む（質量に数量を掛けない）。メッシュ仕様の `ex:[x,y,z]` はメッシュ単位の分解ベクトル（左右対称部品を 1 品番で ±Z に分解する用途）、`quat` は回転、`vol` は体積の上書き。
 
 ## 3. コード構造（`index.html` 内 `<script>`）
 
