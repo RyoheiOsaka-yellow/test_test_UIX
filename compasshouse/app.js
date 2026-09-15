@@ -1411,6 +1411,7 @@ function route(){
   document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
   const target = document.getElementById('p-' + key);
   if(target) target.classList.add('on');
+  document.body.classList.toggle('is-contact', key === 'contact');
 
   document.querySelectorAll('.gnav-list a').forEach(a =>
     a.classList.toggle('on', a.dataset.nav === key));

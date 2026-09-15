@@ -692,7 +692,7 @@ textarea.fin{min-height:150px;resize:vertical;line-height:1.9}
   .gnav-list,.hdr-cta{display:none}
   .burger{display:flex}
   .hero{min-height:560px}
-  .season-sw{top:auto;bottom:96px;right:20px;transform:none;flex-direction:row}
+  .season-sw{top:auto;bottom:96px;left:20px;right:auto;transform:none;flex-direction:row}
   .season-sw button{writing-mode:horizontal-tb;padding:11px 15px}
   .hero-scroll{display:none}
   .concept{grid-template-columns:1fr;gap:34px}
@@ -977,7 +977,7 @@ textarea.fin{min-height:150px;resize:vertical;line-height:1.9}
   .quick-body{grid-template-columns:1fr;gap:14px}
   .quick-seg button{font-size:12.5px}
   .hero-in{padding-bottom:64px}
-  .season-sw{bottom:auto;top:calc(var(--hdr) + 12px);right:16px}
+  .season-sw{bottom:auto;top:calc(var(--hdr) + 12px);left:auto;right:16px}
   .season-sw button{padding:9px 12px;font-size:10px;letter-spacing:.16em}
   .fab{padding:12px 16px}
   .embed-frame{height:360px}
@@ -1181,3 +1181,33 @@ textarea.fin{min-height:150px;resize:vertical;line-height:1.9}
 
 /* 料金カードの2料金併記を折り返し可能に */
 .gear-p small{display:inline-block;white-space:normal}
+
+/* ============================================================
+   レスポンシブ修正（2026-09 レビュー対応）
+   ============================================================ */
+
+/* 固定CTA：問い合わせページでは非表示 */
+body.is-contact .fab{display:none}
+.fab-ic{display:none;width:14px;height:14px;flex:0 0 auto}
+
+@media(max-width:600px){
+  /* 固定CTA：アイコン＋短いラベルの小型ピルに */
+  .fab{right:14px;bottom:14px;padding:10px 14px;font-size:10.5px;letter-spacing:.12em;gap:7px;border-radius:999px}
+  .fab-ic{display:block}
+  .fab-ar{display:none}
+  /* ページ末尾の操作要素が固定CTAに隠れないよう余白を確保 */
+  .ftr{padding-bottom:72px}
+  /* iOS Safari のフォーカス時自動ズーム防止 */
+  .fin,input,select,textarea{font-size:16px}
+}
+
+/* 横向きスマホ：ヒーローの見出しと余白を絞り、主要CTAを初期表示に収める */
+@media(max-height:520px) and (orientation:landscape){
+  .hero{padding-top:calc(var(--hdr) + 16px);padding-bottom:22px}
+  .hero-copy{margin-bottom:14px}
+  .hero-kicker{margin-bottom:10px;font-size:10.5px}
+  .hero-h{font-size:clamp(18px,3vw,24px);line-height:1.4}
+  .hero-en{font-size:clamp(26px,5vw,40px);margin-top:4px}
+  .hero-sub{margin-top:8px;font-size:12px;line-height:1.7;max-width:460px}
+  .hero-acts .btn{padding:11px 16px;font-size:11px}
+}
