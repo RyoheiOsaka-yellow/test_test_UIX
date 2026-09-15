@@ -24,7 +24,7 @@ const IMG = {
 const TOURS_GREEN = [
   {
     id:'g0',
-    img:IMG.heroSummer,
+    fit:true, img:'images/tour-surf.jpg',
     tags:['SURF','レッスン'],
     tagsEn:['SURF','LESSON'],
     title:'旅するサーフレッスン',
@@ -196,7 +196,7 @@ const GEAR = {
      d:'BIKEレンタルの全ラインナップと料金表はPDFにてご確認いただけます。',
      dEn:'The full BIKE rental lineup and price list are available as a PDF.',
      p:null, unit:'', unitEn:'',
-     img:IMG.bikes, isPdf:true,
+     img:'images/rental-bikes-pdf.jpg', isPdf:true,
      pdf:'docs/bike_price_2025.pdf'}
   ],
   winter:[
