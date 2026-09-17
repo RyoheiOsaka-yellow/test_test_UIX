@@ -77,7 +77,7 @@ const SEGS=191;
 const terrGeo=new THREE.PlaneGeometry(MOS.size, MOS.size, SEGS, SEGS);
 const coreGeo=new THREE.PlaneGeometry(CORE.w, CORE.h, 48, 88);
 function shapeTerrain(){
-  const p=terrGeo.attributes.position; for(let i=0;i<p.count;i++){ const x=p.getX(i)+MOS.cx, z=-p.getY(i)+MOS.cz; p.setZ(i, hAt(x,z)); } p.needsUpdate=true; terrGeo.computeVertexNormals();
+  const p=terrGeo.attributes.position; for(let i=0;i<p.count;i++){ const x=p.getX(i)+MOS.cx, z=-p.getY(i)+MOS.cz; const inCore=Math.abs(x-CORE.cx)<CORE.w/2-20 && Math.abs(z-CORE.cz)<CORE.h/2-20; p.setZ(i, hAt(x,z)-(inCore?4:0)); } p.needsUpdate=true; terrGeo.computeVertexNormals();
   const q=coreGeo.attributes.position; for(let i=0;i<q.count;i++){ const x=q.getX(i)+CORE.cx, z=-q.getY(i)+CORE.cz; q.setZ(i, hAt(x,z)+0.8); } q.needsUpdate=true; coreGeo.computeVertexNormals();
 }
 shapeTerrain();
