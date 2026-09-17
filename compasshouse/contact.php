@@ -1,6 +1,6 @@
 <?php
 /**
- * お問い合わせフォーム送信（Xserver / PHP mail）
+ * お問い合わせフォーム送信（KAGOYA 共用サーバー / PHP mail）
  * - フロント（app.js）から JSON で POST される
  * - 管理者宛て通知 + 送信者への自動返信
  */
@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 // ===== 設定 =====
 const CONTACT_TO        = 'info@compasshouse.jp';        // 受信先
-const CONTACT_FROM      = 'info@compasshouse.jp';        // 送信元（Xserver上に存在するメールアドレスにすること）
+const CONTACT_FROM      = 'info@compasshouse.jp';        // 送信元（KAGOYA のコントロールパネルで作成済みのメールアドレスにすること）
 const CONTACT_FROM_NAME = 'COMPASS HOUSE';
 const SITE_NAME         = 'COMPASS HOUSE';
 const SITE_TEL          = '0269-67-0224';

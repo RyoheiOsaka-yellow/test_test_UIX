@@ -238,7 +238,7 @@ const GEAR = {
      dEn:'Ski & snowboard rental lineup and price list available as PDF.',
      p:null, unit:'', unitEn:'',
      img:IMG.heroWinter, isPdf:true,
-     pdf:'https://compasshouse.jp/assets/docs/winter_2024.pdf'}
+     pdf:'/docs/winter_2024.pdf'}
   ]
 };
 
@@ -1169,7 +1169,7 @@ function renderPdfBand(season){
   const green = season === 'green';
   const url = green
     ? '/docs/bike_price_2025.pdf'
-    : 'https://compasshouse.jp/assets/docs/winter_2024.pdf';
+    : '/docs/winter_2024.pdf';
   const ttl = green
     ? t('自転車 レンタルラインナップ / 料金表','Bicycle Rental Lineup / Price List')
     : t('スキー・スノーボード レンタルラインナップ / 料金表','Ski & Snowboard Rental Lineup / Price List');
@@ -1441,6 +1441,13 @@ function route(){
 
   if(key === 'company' && q.get('tab')) switchTab(q.get('tab'));
   if(key === 'contact' && q.get('type')) pickContactType(q.get('type'));
+  // 旧サイト /summer/ /winter/ からのリダイレクト等で ?season=green|winter を受け取る
+  const season = q.get('season');
+  if(season === 'green' || season === 'winter'){
+    const sel = {season:'[data-ss="'+season+'"]', tour:'#tourTabs button[data-ts="'+season+'"]', rental:'#rentalTabs button[data-rs="'+season+'"]'}[key];
+    const btn = sel ? document.querySelector(sel) : null;
+    if(btn && !btn.classList.contains('on')) btn.click();
+  }
 
   CURRENT_PAGE = key;
   applyPageMeta(key);

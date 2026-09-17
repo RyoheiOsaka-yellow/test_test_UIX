@@ -1,5 +1,7 @@
 # ============================================================
-# COMPASS HOUSE — Xserver (Apache) 設定
+# COMPASS HOUSE — KAGOYA 共用サーバー (Apache) 設定
+# ※ 現行サイトの以下ディレクトリは削除せず残すこと（新サイトからリンクしているため）
+#    /rental-form/  /rental-form_e-bike/  /rental-form_mtb/  /assets/  /bower_components/
 # ============================================================
 Options -Indexes
 AddDefaultCharset UTF-8
@@ -7,7 +9,6 @@ AddDefaultCharset UTF-8
 <IfModule mod_mime.c>
   AddType image/webp .webp
   AddType video/mp4 .mp4
-  AddType application/manifest+json .webmanifest
 </IfModule>
 
 <IfModule mod_rewrite.c>
@@ -17,7 +18,12 @@ AddDefaultCharset UTF-8
   RewriteCond %{HTTPS} !on
   RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
 
-  # 末尾スラッシュを除去（/tour/ → /tour）
+  # 旧サイトURL → 新サイトURL（検索評価の引き継ぎ）
+  RewriteRule ^summer/?$  /season?season=green  [R=301,L,QSD]
+  RewriteRule ^winter/?$  /season?season=winter [R=301,L,QSD]
+  RewriteRule ^policy/?$  /policy               [R=301,L]
+
+  # 末尾スラッシュを除去（/tour/ → /tour）※実在ディレクトリ（旧フォーム等）は対象外
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^(.+)/$ /$1 [R=301,L]
 
