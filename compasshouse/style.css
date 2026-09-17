@@ -1254,3 +1254,6 @@ body.is-contact .fab{display:none}
   .season-sw button{font-size:11px;letter-spacing:.06em;padding:9px 8px}
   .lang button{font-size:11px}
 }
+
+/* お問い合わせフォーム：スパム対策用の不可視フィールド */
+.hp-field{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}

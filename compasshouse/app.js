@@ -13,18 +13,18 @@ function ph(file){
 }
 
 const IMG = {
-  heroSummer:'images/hero-summer.webp',
-  heroWinter:'images/hero-winter.webp',
-  bikes:'images/rental-bikes.webp',
-  ski:'images/rental-ski.webp',
-  guide:'images/tour-guide.webp'
+  heroSummer:'/images/hero-summer.webp',
+  heroWinter:'/images/hero-winter.webp',
+  bikes:'/images/rental-bikes.webp',
+  ski:'/images/rental-ski.webp',
+  guide:'/images/tour-guide.webp'
 };
 
 /* ---------- TOURS（文言修正シート準拠） ---------- */
 const TOURS_GREEN = [
   {
     id:'g0',
-    fit:true, img:'images/tour-surf.webp',
+    fit:true, img:'/images/tour-surf.webp',
     tags:['SURF','レッスン'],
     tagsEn:['SURF','LESSON'],
     title:'旅するサーフレッスン',
@@ -35,11 +35,11 @@ const TOURS_GREEN = [
     capEn:'per person',
     note:'BIKE / SURF',
     noteEn:'BIKE / SURF',
-    url:'#/contact?type=tour'
+    url:'/contact?type=tour'
   },
   {
     id:'t1',
-    fit:true, img:'images/tour-g1.webp',
+    fit:true, img:'/images/tour-g1.webp',
     tags:['E-BIKE','半日','初心者歓迎'],
     tagsEn:['E-BIKE','HALF DAY','BEGINNER OK'],
     title:'【長野・野沢温泉・MTB】里山トレイルを走るE-BIKEツアー（半日）初心者歓迎・ガイド付き',
@@ -54,7 +54,7 @@ const TOURS_GREEN = [
   },
   {
     id:'t2',
-    fit:true, img:'images/tour-g2.webp',
+    fit:true, img:'/images/tour-g2.webp',
     tags:['E-BIKE','半日','ファミリー'],
     tagsEn:['E-BIKE','HALF DAY','FAMILY'],
     title:'【長野・野沢温泉・E-BIKE】小学校高学年から参加OK！里山と田園風景を巡るサイクリング＆ランチツアー（35km・半日）初心者歓迎・ガイド付き',
@@ -69,7 +69,7 @@ const TOURS_GREEN = [
   },
   {
     id:'t3',
-    fit:true, img:'images/tour-g3.webp',
+    fit:true, img:'/images/tour-g3.webp',
     tags:['MTB','半日','ダウンヒル'],
     tagsEn:['MTB','HALF DAY','DOWNHILL'],
     title:'【長野・野沢温泉・MTB】ゴンドラで楽しむダウンヒルMTBツアー（半日）本格マウンテンバイク体験',
@@ -112,7 +112,7 @@ const TOURS_WINTER = [
    price:'5,000', priceNote:'〜18,900', cap:'おひとり様', capEn:'per person',
    note:'販売期間 2026.01.07〜2026.05.30', noteEn:'On sale 2026.01.07-2026.05.30',
    url:'https://fd-system.tours/plan/?plan=plan000778'},
-  {id:'w2', img:'images/ski-group.webp',
+  {id:'w2', img:'/images/ski-group.webp',
    tags:['日本語ガイド限定','バックカントリー','プライベート'], tagsEn:['JAPANESE ONLY','BACKCOUNTRY','PRIVATE'],
    title:'プライベートバックカントリーツアー【日本語ガイド／日本語対応のお客様限定】',
    titleEn:'Private Backcountry Tour [Japanese-speaking guests only]',
@@ -153,51 +153,51 @@ const GEAR = {
      d:'軽量フルサスペンションE-MTB。野沢の坂道もトレイルも快適に。',
      dEn:'Lightweight full-suspension E-MTB. Comfortable on Nozawa\'s hills and trails.',
      p:'8,800', unit:'半日 ／ 1日 ¥11,000', unitEn:'/ half day / 1 day ¥11,000',
-     fit:true, img:'images/gear-levo.webp'},
+     fit:true, img:'/images/gear-levo.webp'},
     {cat:'E-BIKE ROAD', name:'Specialized Creo SL',
      catch:'ロード×E-Bikeの新感覚。軽くて速いロングライド向け',
      catchEn:'Road meets E-Bike. Light and fast, for long rides.',
      d:'軽くて速いロングライド向け。坂道やロングライドも快適に楽しめます。',
      dEn:'Light and fast for long rides. Enjoy hills and long distances comfortably.',
      p:'7,040', unit:'半日 ／ 1日 ¥8,800', unitEn:'/ half day / 1 day ¥8,800',
-     fit:true, img:'images/gear-creo.webp'},
+     fit:true, img:'/images/gear-creo.webp'},
     {cat:'E-BIKE CROSS', name:'Specialized Vado SL',
      catch:'街も観光も快適に。街乗り・観光・移動に最適',
      catchEn:'Comfortable in town and sightseeing. Ideal for town riding and getting around.',
      d:'野沢温泉の坂道も楽々。街乗りから軽めのサイクリングまで楽しめます。（2時間 ¥3,300 もございます）',
      dEn:'Nozawa\'s slopes made easy. From town riding to light cycling. (2-hour rental ¥3,300 also available)',
      p:'5,280', unit:'半日 ／ 1日 ¥6,600', unitEn:'/ half day / 1 day ¥6,600',
-     fit:true, img:'images/gear-vado.webp'},
+     fit:true, img:'/images/gear-vado.webp'},
     {cat:'MTB', name:'Specialized FSR',
      d:'本格フルサスペンションMTB。野沢のトレイルやダウンヒルをしっかり楽しめます。',
      dEn:'Authentic full-suspension MTB. Fully enjoy Nozawa\'s trails and downhill.',
      p:'9,000', unit:'半日 ／ 1日 ¥11,000', unitEn:'/ half day / 1 day ¥11,000',
-     fit:true, img:'images/gear-fsr.webp'},
+     fit:true, img:'/images/gear-fsr.webp'},
     {cat:'MTB', name:'Specialized HT',
      nameEn:'Specialized HT',
      d:'気軽に楽しめるスタンダードMTB（ハードテール）。街乗りから軽めのオフロードまで対応。',
      dEn:'Easy-going standard MTB (hardtail). From town riding to light off-road.',
      p:'5,600', unit:'半日 ／ 1日 ¥7,000', unitEn:'/ half day / 1 day ¥7,000',
-     fit:true, img:'images/gear-ht.webp'},
+     fit:true, img:'/images/gear-ht.webp'},
   {cat:'MTB KIDS', name:'Specialized Kids MTB',
      nameEn:'Specialized Kids MTB',
      d:'身長130cm〜対応。小さな車体でも太いタイヤで安定感があり、安心して楽しめるキッズマウンテンバイクです。',
      dEn:'For riders 130cm and up. A compact frame with wide tires for great stability — a kids mountain bike everyone can enjoy with confidence.',
      p:'3,600', unit:'半日 ／ 1日 ¥4,500', unitEn:'/ half day / 1 day ¥4,500',
-     fit:true, img:'images/gear-kids.webp'},
+     fit:true, img:'/images/gear-kids.webp'},
   {cat:'ROAD BIKE', name:'ロードバイク｜Specialized Aethos',
      nameEn:'Road Bike｜Specialized Aethos',
      d:'舗装路を軽快に走るロードバイク。千曲川サイクリングロードなどのロングライドに。',
      dEn:'A road bike for smooth riding on paved roads. Ideal for long rides such as the Chikuma River cycling road.',
      p:'13,200', unit:'半日 ／ 1日 ¥16,500', unitEn:'/ half day / 1 day ¥16,500',
-     fit:true, img:'images/gear-road.webp'},
+     fit:true, img:'/images/gear-road.webp'},
     {cat:'RENTAL BASE', name:'BIKE 一覧・料金 PDF',
      nameEn:'BIKE List & Price PDF',
      d:'BIKEレンタルの全ラインナップと料金表はPDFにてご確認いただけます。',
      dEn:'The full BIKE rental lineup and price list are available as a PDF.',
      p:null, unit:'', unitEn:'',
-     img:'images/rental-bikes-pdf.webp', isPdf:true,
-     pdf:'docs/bike_price_2025.pdf'}
+     img:'/images/rental-bikes-pdf.webp', isPdf:true,
+     pdf:'/docs/bike_price_2025.pdf'}
   ],
   winter:[
     {cat:'STANDARD RENTAL', name:'Ski & Snowboard Set',
@@ -209,24 +209,24 @@ const GEAR = {
      d:'ARMADAの高性能スキーで、野沢の雪をしっかり楽しめます。パウダーやフリーライドを楽しみたい方におすすめ。中・上級者向けの高性能モデルをご用意。',
      dEn:'Enjoy Nozawa\'s snow with ARMADA\'s high-performance skis. Recommended for powder and freeride. High-performance models for intermediate and advanced skiers.',
      p:'7,200', unit:'日〜（板＋ブーツ）', unitEn:'/ day~ (skis + boots)',
-     img:'images/armada-madsteez.webp'},
+     img:'/images/armada-madsteez.webp'},
     {cat:'PREMIUM SNOWBOARD', name:'CAPiTA / KORUA',
      catch:'ARMADA / BURTON / CAPiTA / KORUA SHAPES',
      catchEn:'ARMADA / BURTON / CAPiTA / KORUA SHAPES',
      d:'ハイエンドブランドをラインナップ。通常は購入しなければ体験できない高性能モデルをレンタルでお試しいただけます。カービングやパウダーなど、より質の高い滑りを求める方に。',
      dEn:'High-end brand lineup. Try high-performance models normally only available for purchase. For those seeking higher-quality riding such as carving and powder.',
      p:'7,200', unit:'日〜（板＋ブーツ）', unitEn:'/ day~ (board + boots)',
-     img:'images/armada-black.webp'},
+     img:'/images/armada-black.webp'},
     {cat:'STANDARD SNOWBOARD', name:'Burton Set',
      d:'初めてスノーボードに挑戦する方や、気軽に楽しみたい方におすすめ。扱いやすく乗りやすいBurtonのボードを中心に、安心してゲレンデデビューをお楽しみいただけます。',
      dEn:'Recommended for first-time snowboarders. Centered on easy-to-handle Burton boards for a confident slope debut.',
      p:'5,700', unit:'日〜（板＋ブーツ）', unitEn:'/ day~ (board + boots)',
-     img:'images/snowboard-powder.webp'},
+     img:'/images/snowboard-powder.webp'},
     {cat:'STANDARD SKI', name:'ARMADA Standard',
      d:'初めてスキーを楽しむ方や、久しぶりに雪山へ来た方に最適なセット。扱いやすく安定感のあるARMADAのスキーを採用し、安心してゲレンデを楽しめます。',
      dEn:'Ideal for first-time skiers or those returning to the mountains. Easy-to-handle, stable ARMADA skis for confident slope enjoyment.',
      p:'5,700', unit:'日〜（板＋ブーツ）', unitEn:'/ day~ (skis + boots)',
-     img:'images/ski-group.webp'},
+     img:'/images/ski-group.webp'},
     {cat:'STEP ON', name:'BURTON Step On',
      d:'着脱がワンステップで完了するBURTONのStep Onシステム。リフト降り場での手間を大幅に軽減します。',
      dEn:'BURTON\'s Step On system completes entry in one step, greatly reducing hassle at lift exits.',
@@ -356,13 +356,13 @@ const ROUTES = [
 /* ---------- SHOP ---------- */
 const SHOPS = [
   {
-    tag:'BRAND 01', name:'COMPASS ONLINE STORE', img:'images/store-front.webp',
+    tag:'BRAND 01', name:'COMPASS ONLINE STORE', img:'/images/store-front.webp',
     d:'スキー・スノーボード・自転車を中心に、プロショップが厳選したギアやアパレルを販売するオンラインショップです。野沢温泉から、アウトドアライフをより豊かにするアイテムをお届けします。',
     dEn:'An online shop selling gear and apparel carefully selected by a pro shop, centered on skis, snowboards and bicycles. From Nozawa Onsen, we deliver items that enrich your outdoor life.',
     url:'https://compass-onlinestore.com/'
   },
   {
-    tag:'BRAND 02', name:'ARMADA ONLINE', img:'images/armada-madsteez.webp',
+    tag:'BRAND 02', name:'ARMADA ONLINE', img:'/images/armada-madsteez.webp',
     d:'ARMADAのスキー、アパレル、アクセサリーを販売するオンラインショップです。ライダー目線で開発された機能性とデザイン性を兼ね備えたアイテムを取り揃えています。初心者から上級者まで、それぞれのスタイルに合ったギア選びをサポートします。',
     dEn:'An online shop selling ARMADA skis, apparel and accessories. We stock items combining functionality and design developed from a rider\'s perspective, supporting gear selection for every style from beginner to advanced.',
     url:'https://armadaonline.stores.jp/'
@@ -385,19 +385,19 @@ const REAL_STORES = [
    addrEn:'6463-15 Toyosato, Nozawa Onsen, Shimotakai, Nagano',
    hours:'13:00〜18:00（夏季：火・水 定休／冬季：無休）',
    hoursEn:'13:00-18:00 (Summer: closed Tue & Wed / Winter: open daily)',
-   imgFile:null, imgLabel:'COMPASS HOUSE エントランス写真', img:'images/guide-shop.webp'},
+   imgFile:null, imgLabel:'COMPASS HOUSE エントランス写真', img:'/images/guide-shop.webp'},
   {name:'COMPASS VILLAGE', jp:'コンパス ビレッジ',
    addr:'長野県下高井郡野沢温泉村豊郷9526',
    addrEn:'9526 Toyosato, Nozawa Onsen, Shimotakai, Nagano',
    hours:'9:30〜17:30（火 定休／冬季：10:00〜20:00 無休）',
    hoursEn:'9:30-17:30 (Closed Tue / Winter: 10:00-20:00, open daily)',
-   imgFile:null, imgLabel:'COMPASS VILLAGE エントランス写真', img:'images/store-front.webp'},
+   imgFile:null, imgLabel:'COMPASS VILLAGE エントランス写真', img:'/images/store-front.webp'},
   {name:'COMPASS RENTAL BASE', jp:'コンパス レンタルベース',
    addr:'長野県下高井郡野沢温泉村豊郷7809',
    addrEn:'7809 Toyosato, Nozawa Onsen, Shimotakai, Nagano',
    hours:'8:00〜17:00（休み：野沢温泉スキー場ゴンドラ営業期間に準ずる）',
    hoursEn:'8:00-17:00 (Closures follow the Nozawa Onsen ski resort gondola operating period)',
-   imgFile:null, imgLabel:'COMPASS RENTAL BASE 写真', img:'images/store-rentalbase.webp'}
+   imgFile:null, imgLabel:'COMPASS RENTAL BASE 写真', img:'/images/store-rentalbase.webp'}
 ];
 
 /* ---------- EVENTS ---------- */
@@ -736,7 +736,6 @@ const I18N = {
     'cf.email':'メールアドレス','cf.tel':'電話番号','cf.body':'お問い合わせ内容',
     'cf.terms':'利用規約・プライバシーポリシー','cf.agree':'利用規約およびプライバシーポリシーに同意します',
     'cf.submit':'この内容で送信する',
-    'cf.demo':'※ 本サイトはデモです。実際の送信は行われません。（送信先想定: info@compasshouse.jp）',
     'md.sub':'ご予約前に利用規約をご確認ください','md.agree':'上記の利用規約に同意します',
     'md.go':'同意して予約ページへ進む','md.cancel':'キャンセル',
     'ft.tag':'〒389-2502<br>長野県下高井郡野沢温泉村豊郷6463-15<br>TEL 0269-67-0224',
@@ -932,7 +931,6 @@ const I18N = {
     'cf.email':'Email','cf.tel':'Phone','cf.body':'Message',
     'cf.terms':'Terms & Privacy Policy','cf.agree':'I agree to the Terms of Use and Privacy Policy',
     'cf.submit':'Submit',
-    'cf.demo':'* This is a demo site. No message is actually sent. (Intended recipient: info@compasshouse.jp)',
     'md.sub':'Please review the terms before booking','md.agree':'I agree to the terms above',
     'md.go':'Agree and proceed to booking','md.cancel':'Cancel',
     'ft.tag':'6463-15 Toyosato, Nozawa Onsen<br>Shimotakai, Nagano 389-2502, Japan<br>TEL +81-269-67-0224',
@@ -945,7 +943,7 @@ const I18N = {
 (function(){
   const hv = document.querySelector('.hero-fig video');
   if(!hv) return;
-  const load = () => { if(hv.src) return; hv.src = 'images/hero-pv.mp4'; const p = hv.play(); if(p && p.catch) p.catch(function(){}); };
+  const load = () => { if(hv.src) return; hv.src = '/images/hero-pv.mp4'; const p = hv.play(); if(p && p.catch) p.catch(function(){}); };
   if(document.readyState === 'complete') load();
   else window.addEventListener('load', load);
 })();
@@ -1064,7 +1062,7 @@ function renderRealStores(el){
         <div class="gear-cat">REAL STORE</div>
         <h3 class="gear-n">${s.name}${isEn()?'':`<span style="display:block;font-size:11px;letter-spacing:.2em;color:var(--ink-3);margin-top:4px">${s.jp}</span>`}</h3>
         <p class="gear-d">${t(s.addr,s.addrEn)}<br>${t(s.hours,s.hoursEn)}</p>
-        <a href="#/access" class="btn btn-sm" style="margin-top:16px">${t('アクセスを見る','See Access')}<span class="ar">&rarr;</span></a>
+        <a href="/access" class="btn btn-sm" style="margin-top:16px">${t('アクセスを見る','See Access')}<span class="ar">&rarr;</span></a>
       </div>
     </article>`).join('');
 }
@@ -1153,7 +1151,7 @@ function renderTokusho(){
   if(!el) return;
   el.innerHTML = '<tbody>' + TOKUSHO.map(r =>
     `<tr><th>${isEn()?r[2]:r[0]}</th><td>${isEn()?r[3]:r[1]}</td></tr>`).join('') +
-    `<tr><td colspan="2" style="font-size:11px;color:#8a807b;border-bottom:0">${t('※ 本表記はデモ用のサンプルです。正式内容は確定後に差し替えます。','* This notice is a demo sample and will be replaced once finalised.')}</td></tr></tbody>`;
+    '</tbody>';
 }
 
 function renderStatic(){
@@ -1170,7 +1168,7 @@ function renderPdfBand(season){
   if(!el) return;
   const green = season === 'green';
   const url = green
-    ? 'docs/bike_price_2025.pdf'
+    ? '/docs/bike_price_2025.pdf'
     : 'https://compasshouse.jp/assets/docs/winter_2024.pdf';
   const ttl = green
     ? t('自転車 レンタルラインナップ / 料金表','Bicycle Rental Lineup / Price List')
@@ -1314,7 +1312,7 @@ function calcSim(){
       'この組み合わせの料金は公開料金表に掲載がありません。店頭またはお問い合わせにてご確認ください。',
       'This combination is not on the published price list. Please check in store or contact us.');
     if(bk){
-      bk.setAttribute('href', '#/contact?type=other');
+      bk.setAttribute('href', '/contact?type=other');
       bk.removeAttribute('target');
       const lb1=bk.querySelector('[data-i]')||bk.querySelector('span'); if(lb1) lb1.textContent = t('料金を問い合わせる','Inquire about price');
     }
@@ -1405,13 +1403,32 @@ function applyPageMeta(key){
   document.title = v[0];
   const d = document.querySelector('meta[name="description"]');
   if(d) d.setAttribute('content', v[1]);
+  const url = SITE_ORIGIN + (key === 'home' ? '/' : '/' + key);
+  const c = document.querySelector('link[rel="canonical"]');
+  if(c) c.setAttribute('href', url);
+  const og = document.querySelector('meta[property="og:url"]');
+  if(og) og.setAttribute('content', url);
+}
+
+const SITE_ORIGIN = 'https://compasshouse.jp';
+
+/* 旧ハッシュURL（#/tour 等）を新パスURLへ置き換える */
+function migrateHashUrl(){
+  const h = location.hash || '';
+  if(!/^#\//.test(h)) return;
+  history.replaceState(null, '', h.replace(/^#\/?/, '/'));
+}
+
+function currentPath(){
+  let path = decodeURIComponent(location.pathname || '/');
+  path = path.replace(/\/index\.html$/, '/').replace(/^\/+|\/+$/g, '');
+  return path || 'home';
 }
 
 function route(){
-  const raw = (location.hash || '#/').replace(/^#\/?/, '');
-  const [pathRaw, queryRaw] = raw.split('?');
-  const path = (pathRaw || 'home').replace(/\/$/, '') || 'home';
-  const q = new URLSearchParams(queryRaw || '');
+  migrateHashUrl();
+  const path = currentPath();
+  const q = new URLSearchParams(location.search || '');
   const key = PAGES.includes(path) ? path : 'home';
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
@@ -1628,13 +1645,39 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   const sb = document.getElementById('cfSubmit');
   if(sb){
-    sb.addEventListener('click', () => {
+    const st = document.getElementById('cfStatus');
+    const say = (ja, en, ok) => { if(st){ st.textContent = t(ja, en); st.style.color = ok ? '' : 'var(--accent)'; } };
+    sb.addEventListener('click', async () => {
       const type = document.querySelector('#ctType .radio.on');
-      const label = type ? type.textContent.trim() : '';
-      alert(t(
-        '【デモ】送信内容を確認しました。\n\n種別: ' + label + '\n\n本番環境では info@compasshouse.jp 宛に送信されます。',
-        '[DEMO] Your submission has been received.\n\nType: ' + label + '\n\nIn production this is sent to info@compasshouse.jp.'
-      ));
+      const v = id => (document.getElementById(id) || {}).value || '';
+      const payload = {
+        type: type ? type.dataset.k : '', typeLabel: type ? type.textContent.trim() : '',
+        name: v('cfName').trim(), company: v('cfCompany').trim(), email: v('cfMail').trim(),
+        tel: v('cfTel').trim(), body: v('cfBody').trim(), website: v('cfWebsite'), lang: isEn() ? 'en' : 'ja'
+      };
+      if(!payload.name || !payload.email || !payload.body){
+        say('必須項目（お名前・メールアドレス・お問い合わせ内容）をご入力ください。', 'Please fill in the required fields (name, email, message).', false); return;
+      }
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)){
+        say('メールアドレスの形式をご確認ください。', 'Please check the email address format.', false); return;
+      }
+      sb.disabled = true; say('送信中です…', 'Sending…', true);
+      try{
+        const res = await fetch('/contact.php', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const data = await res.json().catch(() => ({}));
+        if(res.ok && data.ok){
+          say('送信しました。担当者より折り返しご連絡いたします。', 'Your message has been sent. We will get back to you shortly.', true);
+          ['cfName','cfCompany','cfMail','cfTel','cfBody'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+          const ag = document.getElementById('cfAgree'); if(ag) ag.classList.remove('on');
+        } else {
+          const msg = t('送信に失敗しました。時間をおいて再度お試しいただくか、お電話（0269-67-0224）にてご連絡ください。', 'Sending failed. Please try again later or call us at 0269-67-0224.');
+          if(st){ st.textContent = data.message || msg; st.style.color = 'var(--accent)'; }
+          sb.disabled = false;
+        }
+      }catch(err){
+        say('送信に失敗しました。時間をおいて再度お試しいただくか、お電話（0269-67-0224）にてご連絡ください。', 'Sending failed. Please try again later or call us at 0269-67-0224.', false);
+        sb.disabled = false;
+      }
     });
   }
 
@@ -1644,14 +1687,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const go = document.getElementById('qkGo');
     if(!go) return;
     if(qkState.service === 'tour'){
-      go.setAttribute('href', '#/tour');
+      go.setAttribute('href', '/tour');
       TOUR_SEASON = qkState.season;
       const tt = document.getElementById('tourTabs');
       if(tt) tt.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.ts === qkState.season));
       renderTours(document.getElementById('tourList'), TOURS[qkState.season]);
       bindBookButtons();
     } else {
-      go.setAttribute('href', '#/rental');
+      go.setAttribute('href', '/rental');
       SIM.season = qkState.season;
       const rt = document.getElementById('rentalTabs');
       if(rt) rt.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.rs === qkState.season));
@@ -1723,7 +1766,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // scroll
   window.addEventListener('scroll', syncHeader, {passive:true});
-  window.addEventListener('hashchange', route);
+  window.addEventListener('popstate', route);
+  window.addEventListener('hashchange', route);   // 旧 #/xxx リンク互換
+  document.addEventListener('click', e => {
+    if(e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target.closest('a[href]');
+    if(!a || a.target === '_blank' || a.hasAttribute('download')) return;
+    const href = a.getAttribute('href');
+    if(!href || !href.startsWith('/') || href.startsWith('//')) return;
+    if(/\.[a-z0-9]+(\?|$)/i.test(href)) return;            // /docs/xxx.pdf 等はそのまま
+    e.preventDefault();
+    if(href !== location.pathname + location.search) history.pushState(null, '', href);
+    route();
+  });
 
   applyLang('ja');
   route();
