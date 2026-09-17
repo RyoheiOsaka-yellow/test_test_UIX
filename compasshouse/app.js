@@ -391,7 +391,13 @@ const REAL_STORES = [
    addrEn:'9526 Toyosato, Nozawa Onsen, Shimotakai, Nagano',
    hours:'9:30〜17:30（火 定休／冬季：10:00〜20:00 無休）',
    hoursEn:'9:30-17:30 (Closed Tue / Winter: 10:00-20:00, open daily)',
-   imgFile:null, imgLabel:'COMPASS VILLAGE エントランス写真', img:'images/store-front.jpg'}
+   imgFile:null, imgLabel:'COMPASS VILLAGE エントランス写真', img:'images/store-front.jpg'},
+  {name:'COMPASS RENTAL BASE', jp:'コンパス レンタルベース',
+   addr:'長野県下高井郡野沢温泉村豊郷7809',
+   addrEn:'7809 Toyosato, Nozawa Onsen, Shimotakai, Nagano',
+   hours:'8:00〜17:00（休み：野沢温泉スキー場ゴンドラ営業期間に準ずる）',
+   hoursEn:'8:00-17:00 (Closures follow the Nozawa Onsen ski resort gondola operating period)',
+   imgFile:null, imgLabel:'COMPASS RENTAL BASE 写真', img:'images/store-rentalbase.jpg'}
 ];
 
 /* ---------- EVENTS ---------- */
