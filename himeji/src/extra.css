@@ -1,0 +1,155 @@
+
+/* ===== 姫路版 追加スタイル ===== */
+.brand .x{font-size:20px;letter-spacing:.02em;font-weight:900}
+.brand .x i{transform:none;color:#7ee8fa}
+.brand .xb{font-size:9px}
+#day-sel .crumb{font-size:10.5px}
+.seg-map{margin-right:4px}
+.db-layer{border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:6px;background:#fff}
+.db-layer .dl-t{font-size:9px;letter-spacing:.08em;color:var(--sub);font-weight:800;text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.db-layer .dl-t i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.db-items{display:flex;flex-wrap:wrap;gap:4px}
+.db-item{font-size:9.5px;padding:3px 8px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);color:var(--navy);font-weight:600;cursor:default}
+.db-item.mlit{border-color:#9dbaf0;background:var(--blue-soft);color:var(--blue)}
+.db-item.gov{border-color:#b7e4c7;background:#eafaf0;color:#15803d}
+.db-item.priv{border-color:#f5d0a9;background:#fff5e8;color:#b45309}
+.db-item.own{border-color:#e9b8ff;background:#f8ecff;color:#7c3aed}
+.db-arrow{text-align:center;color:var(--faint);font-size:12px;line-height:1;margin:-2px 0 4px}
+.schema{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:9.5px;color:#c9d4ea;background:var(--navy);border-radius:12px;padding:8px 10px;line-height:1.6;white-space:pre;overflow-x:auto}
+.schema b{color:#7ee8fa;font-weight:600} .schema i{color:#ffd25e;font-style:normal}
+.od-cv{width:100%;height:150px;display:block;border-radius:12px;background:var(--ch-bg);border:1px solid var(--line)}
+.lab-row input[type=range]{accent-color:var(--blue)}
+.lab-btn{background:var(--blue)} .lab-btn:hover{background:var(--blue2)} .lab-btn.sec{color:var(--blue);border-color:var(--blue);background:#fff}
+.flag{display:inline-block;width:14px;text-align:center;margin-right:3px}
+.pill{display:inline-block;font-size:9px;font-weight:800;padding:1px 7px;border-radius:999px;margin-left:4px;vertical-align:middle}
+.pill.in{background:#d9f7f7;color:#0e7490} .pill.dom{background:var(--blue-soft);color:var(--blue)} .pill.stay{background:#fdf1d6;color:#b45309} .pill.day{background:#eef1f5;color:var(--sub)}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;font-size:10.5px;padding:5px 0;border-bottom:1px solid var(--line)}
+.stat-row span{color:var(--sub)} .stat-row b{font-family:var(--mono);color:var(--navy);font-weight:800;font-size:12px}
+.stat-row b small{font-size:9px;color:var(--sub);font-weight:500;margin-left:3px}
+#tour-cap .tc-step b{font-size:16px}
+#tour-txt{font-size:12px}
+#hdr .hdr-title{font-size:14px}
+</style>
+</head>
+<body>
+<div id="canvas-wrap"></div>
+
+<div id="hdr">
+  <div class="brand"><span class="x">HIMEJI <i>DX</i></span><span class="xb">世界遺産 観光DB<b>提案イメージ 2026.10</b></span></div>
+  <div class="hdr-title">姫路城・姫路市 観光人流デジタルツイン<small>世界遺産 姫路城 〜 姫路市全域 · 国土地理院(国交省)地図・航空写真・標高タイル基盤 · 来訪者OD(誰が・どこから・どこに滞留・どこへ帰ったか)の可視化イメージ · 合成データ</small></div>
+  <div id="day-sel">
+    <div class="crumb" data-day="0" title="11月の平日(想定 約6,400人/日)">平日</div>
+    <div class="crumb active" data-day="1" title="11月の休日(想定 約12,000人/日)">休日</div>
+    <div class="crumb" data-day="2" title="桜・GWのピーク日(想定 約18,000人/日)">ピーク日</div>
+  </div>
+  <div id="view-crumb">
+    <div class="crumb active" data-v="all">全体</div>
+    <div class="crumb" data-v="castle">姫路城</div>
+    <div class="crumb" data-v="otemae">大手前通り</div>
+    <div class="crumb" data-v="station">姫路駅</div>
+    <div class="crumb" data-v="kokoen">好古園</div>
+    <div class="crumb" data-v="shosha">書写山</div>
+    <div class="crumb" data-v="top">真上</div>
+    <div class="crumb" data-v="region">広域(関西)</div>
+    <div class="crumb" id="tour-btn" title="ガイドツアー(プレゼン用自動再生)">▶ ツアー</div>
+    <div class="crumb" id="shot-btn" title="3DビューをPNG保存">📷</div>
+    <div class="crumb" id="help-btn" title="ヘルプ・前提条件">?</div>
+    <div id="acct" title="ログイン: 提案チーム">HJ</div>
+  </div>
+</div>
+
+<div id="toolbar">
+  <div class="tb-grp"><span class="tb-l">分析</span>
+    <div class="crumb active" data-m="flow">👥 人流</div>
+    <div class="crumb" data-m="origin">🌏 来訪元</div>
+    <div class="crumb" data-m="access">🚉 アクセス</div>
+    <div class="crumb" data-m="dwell">⏱ 滞留</div>
+    <div class="crumb" data-m="stay">🏨 宿泊・帰路</div>
+    <div class="crumb" data-m="spend">💴 消費</div>
+  </div>
+  <div class="tb-div"></div>
+  <div class="tb-grp"><span class="tb-l">データ</span>
+    <div class="crumb" data-m="db">🗄 DB構成</div>
+    <div class="crumb" data-m="numbers">📊 統計</div>
+    <div class="crumb" data-m="lab">🧪 シナリオ</div>
+  </div>
+  <div class="tb-grp view"><span class="tb-l">表示</span>
+    <div class="seg seg-map" id="map-seg"><button class="active" data-map="pale" title="国土地理院 淡色地図">淡色地図</button><button data-map="photo" title="国土地理院 全国最新写真(シームレス)">航空写真</button><button data-map="none" title="無地">無地</button></div>
+    <div class="crumb active" id="tg-heat" title="滞留密度ヒートマップ (H)">🔥 密度</div>
+    <div class="crumb active" id="tg-label" title="ラベル表示">🏷 ラベル</div>
+    <div class="crumb" id="tg-arc" title="来訪元・帰路のOD弧線 (A)">🌐 OD弧</div>
+    <div class="crumb active" id="tg-bld" title="3D建物(簡易マッシング)">🏢 建物</div>
+    <div class="crumb active" id="tg-veh" title="新幹線・車両・ループバス">🚆 乗り物</div>
+    <div class="crumb" id="tg-terr" title="地形の高さ強調 ×2">⛰ 地形×2</div>
+  </div>
+</div>
+
+<div id="panel"><button id="panel-toggle" title="パネルを閉じる">✕</button><div id="panel-body"></div></div>
+<button id="panel-tab">パネルを開く ▶</button>
+<div id="detail"><button id="detail-x">✕</button><div id="detail-body"></div></div>
+
+<div id="timeline">
+  <div id="tl-top">
+    <div id="tl-clock">06:00<small>11月 休日</small></div>
+    <div id="tl-phase">早朝 · 到着前</div>
+    <div id="tl-speed">
+      <button class="chip" data-sp="3">×3</button>
+      <button class="chip active" data-sp="6">×6</button>
+      <button class="chip" data-sp="12">×12</button>
+      <button class="chip" data-sp="30">×30</button>
+    </div>
+    <button id="tl-reset" class="chip" title="06:00に戻す">⟲</button><button id="tl-play" title="再生 / 一時停止 (Space)">▶ 再生</button>
+  </div>
+  <input type="range" id="tl-slider" min="0" max="1080" value="0" step="1">
+  <div id="tl-marks"><span>06:00</span><span>09:00 開城</span><span>12:00</span><span>15:00</span><span>16:00 最終入城</span><span>18:00</span><span>21:00</span><span>24:00</span></div>
+  <div id="tl-sets"><div id="tl-now"></div></div>
+  <div id="tl-setlbl"></div>
+</div>
+
+<div id="statusbar">
+  <span class="sb">エージェント <b id="sb-ag">0</b> <span style="opacity:.7">(1体 ≈ <b id="sb-scale">4</b>人)</span></span>
+  <span class="sb">市内滞在 <b id="sb-in">0</b></span>
+  <span class="sb">城内 <b id="sb-castle">0</b></span>
+  <span class="sb">センサー <b id="sb-rx">0</b></span>
+  <span class="sb fps"><b id="sb-fps">--</b> fps</span>
+</div>
+<div id="ticker"><span class="tk-l">LIVE</span><div id="ticker-body"></div></div>
+<div id="minimap"><canvas id="mm-cv" width="220" height="220"></canvas><div id="mm-lbl">ミニマップ · クリックで移動</div></div>
+<div id="alerts"></div>
+<div id="tour"><div id="tour-cap"><div class="tc-step"><span id="tour-n">1 / 9</span><b id="tour-t">Title</b></div><div id="tour-txt"></div><div class="tc-bar"><i id="tour-prog"></i></div><div class="tc-btns"><button id="tour-prev">‹ 前へ</button><button id="tour-pause">❚❚ 一時停止</button><button id="tour-next">次へ ›</button><button id="tour-stop">✕ 終了</button></div></div></div>
+<div id="tip"></div>
+<div id="toast"></div>
+
+<div id="splash">
+  <div class="lg">HIMEJI <i>DX</i></div>
+  <div class="tt">世界遺産 姫路城 · 姫路市 観光人流デジタルツイン<br>来訪者データベース アウトプットイメージ — 提案用プロトタイプ</div>
+  <div class="bar"><i></i></div>
+</div>
+
+<div id="help"><div class="box"><button id="help-x">閉じる</button>
+<h3>操作方法とモデルの前提</h3>
+<div class="cols">
+<div>
+<h4>操作</h4>
+<div class="kr"><kbd>左ドラッグ</kbd><span>回転</span></div>
+<div class="kr"><kbd>右ドラッグ</kbd><span>移動(パン)</span></div>
+<div class="kr"><kbd>ホイール</kbd><span>ズーム</span></div>
+<div class="kr"><kbd>Space</kbd><span>再生 / 一時停止</span></div>
+<div class="kr"><kbd>1–9</kbd><span>モード切替: 人流 / 来訪元 / アクセス / 滞留 / 宿泊・帰路 / 消費 / DB構成 / 統計 / シナリオ</span></div>
+<div class="kr"><kbd>T</kbd><span>ガイドツアー · <kbd>S</kbd> PNG保存 · <kbd>H</kbd> 密度 · <kbd>A</kbd> OD弧 · <kbd>M</kbd> 地図切替</span></div>
+<div class="kr"><kbd>クリック</kbd><span>施設・駐車場・センサー → 詳細カード。人をクリック → 来訪者カード(来訪元・周遊ルート・帰路)</span></div>
+<h4>データについて</h4>
+<p>本プロトタイプは<b>実データ未接続</b>です。人の動きは、公表統計(姫路城入城者数・外国人比率・宿泊率など)に合わせて校正した<b>エージェントベースの合成シミュレーション</b>で、DB構築後に携帯位置情報・入城券販売・宿泊統計・決済データ等へ差し替える想定です。<b>統計</b>モードに出典付きの公表値をまとめています。</p>
+<p>地図・航空写真・標高は<b>国土地理院(国土交通省)の地理院タイル</b>(淡色地図 / 全国最新写真 / 標高タイル)を使用しています。将来的に<b>PLATEAU(国交省 3D都市モデル・姫路市)</b>の建物モデルに置換可能です。</p>
+</div>
+<div>
+<h4>主なパラメータ(想定値)</h4>
+<p>· 1エージェント ≈ 4人 · 休日 約12,000人/日(うち入城 約8,000人) · ピーク日 約18,000人<br>· インバウンド比率 約1/3(台湾・中国・韓国・香港・欧米豪)<br>· 日帰り率 約85% · 帰路は大阪・京都・神戸方面が中心<br>· 城内滞留 90〜150分 · 大天守待ち時間は入城口の処理能力(約40人/分)から算出<br>· 開城 09:00 · 最終入城 16:00 · 閉門 17:00</p>
+<h4>出典・素材</h4>
+<p class="src">国土地理院 地理院タイル(淡色地図・全国最新写真・標高タイル DEM10B) · 国土交通省 国土数値情報 · 観光庁 宿泊旅行統計調査 / 訪日外国人消費動向調査 · 姫路市 観光統計・姫路城入城者数 · 兵庫県 観光客動態調査 · JNTO 訪日外客統計 · PLATEAU(国交省)姫路市 3D都市モデル(将来接続)</p>
+</div>
+</div>
+</div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
