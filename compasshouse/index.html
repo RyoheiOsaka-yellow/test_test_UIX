@@ -17,39 +17,106 @@
 <meta property="og:locale" content="ja_JP">
 <meta property="og:locale:alternate" content="en_US">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preload" href="images/hero-summer.jpg" as="image">
+<link rel="preload" href="images/hero-summer.webp" as="image" fetchpriority="high">
 <!-- 構造化データ（確定情報のみ） -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "SportsActivityLocation",
-  "name": "COMPASS HOUSE",
-  "alternateName": "コンパスハウス（株式会社ドリームシップ）",
-  "description": "長野県野沢温泉村のアウトドア専門店。スキー・スノーボード・自転車の販売、レンタル、ガイドツアー。",
-  "url": "https://compasshouse.jp/",
-  "telephone": "+81-269-67-0224",
-  "email": "info@compasshouse.jp",
-  "foundingDate": "2009-08-07",
-  "address": {
-    "@type": "PostalAddress",
-    "postalCode": "389-2502",
-    "addressRegion": "長野県",
-    "addressLocality": "下高井郡野沢温泉村",
-    "streetAddress": "豊郷6463-15",
-    "addressCountry": "JP"
-  },
-  "geo": {"@type": "GeoCoordinates", "latitude": 36.9165287, "longitude": 138.4402871},
-  "openingHours": "Mo-Su 13:00-18:00",
-  "sameAs": [
-    "https://www.instagram.com/compasshouse/",
-    "https://www.facebook.com/CompassHouse.Nozawa",
-    "https://www.youtube.com/user/CompassHouseTV"
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://compasshouse.jp/#org",
+      "name": "株式会社ドリームシップ",
+      "alternateName": ["COMPASS HOUSE", "Dream Ship CO., Ltd."],
+      "url": "https://compasshouse.jp/",
+      "logo": "https://compasshouse.jp/images/logo-compass.png",
+      "telephone": "+81-269-67-0224",
+      "email": "info@compasshouse.jp",
+      "foundingDate": "2009-08-07",
+      "sameAs": [
+        "https://www.instagram.com/compasshouse/",
+        "https://www.facebook.com/CompassHouse.Nozawa",
+        "https://www.youtube.com/user/CompassHouseTV"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://compasshouse.jp/#website",
+      "url": "https://compasshouse.jp/",
+      "name": "COMPASS HOUSE",
+      "inLanguage": ["ja", "en"],
+      "publisher": {"@id": "https://compasshouse.jp/#org"}
+    },
+    {
+      "@type": "SportsActivityLocation",
+      "@id": "https://compasshouse.jp/#compass-house",
+      "name": "COMPASS HOUSE",
+      "alternateName": "コンパスハウス",
+      "description": "長野県野沢温泉村のアウトドア専門店。スキー・スノーボード・自転車の販売、レンタル、ガイドツアー。",
+      "url": "https://compasshouse.jp/",
+      "image": "https://compasshouse.jp/images/hero-summer.jpg",
+      "telephone": "+81-269-67-0224",
+      "email": "info@compasshouse.jp",
+      "parentOrganization": {"@id": "https://compasshouse.jp/#org"},
+      "address": {
+        "@type": "PostalAddress",
+        "postalCode": "389-2502",
+        "addressRegion": "長野県",
+        "addressLocality": "下高井郡野沢温泉村",
+        "streetAddress": "豊郷6463-15",
+        "addressCountry": "JP"
+      },
+      "geo": {"@type": "GeoCoordinates", "latitude": 36.9165287, "longitude": 138.4402871},
+      "hasMap": "https://maps.app.goo.gl/ogYNkVVbM7JaBv1j8",
+      "openingHours": "Mo-Su 13:00-18:00"
+    },
+    {
+      "@type": "SportsActivityLocation",
+      "@id": "https://compasshouse.jp/#compass-village",
+      "name": "COMPASS VILLAGE",
+      "alternateName": "コンパス ビレッジ",
+      "url": "https://compasshouse.jp/#/access",
+      "image": "https://compasshouse.jp/images/store-front.webp",
+      "telephone": "+81-269-67-0921",
+      "parentOrganization": {"@id": "https://compasshouse.jp/#org"},
+      "address": {
+        "@type": "PostalAddress",
+        "postalCode": "389-2502",
+        "addressRegion": "長野県",
+        "addressLocality": "下高井郡野沢温泉村",
+        "streetAddress": "豊郷9526",
+        "addressCountry": "JP"
+      },
+      "geo": {"@type": "GeoCoordinates", "latitude": 36.9226925, "longitude": 138.4472028},
+      "hasMap": "https://maps.app.goo.gl/4T8VbQTYJSP2pDSVA"
+    },
+    {
+      "@type": "SportsActivityLocation",
+      "@id": "https://compasshouse.jp/#compass-rental-base",
+      "name": "COMPASS RENTAL BASE",
+      "alternateName": "コンパス レンタルベース",
+      "url": "https://compasshouse.jp/#/access",
+      "image": "https://compasshouse.jp/images/store-rentalbase.webp",
+      "telephone": "+81-269-67-0644",
+      "parentOrganization": {"@id": "https://compasshouse.jp/#org"},
+      "address": {
+        "@type": "PostalAddress",
+        "postalCode": "389-2502",
+        "addressRegion": "長野県",
+        "addressLocality": "下高井郡野沢温泉村",
+        "streetAddress": "豊郷7809",
+        "addressCountry": "JP"
+      },
+      "geo": {"@type": "GeoCoordinates", "latitude": 36.9201479, "longitude": 138.4515299},
+      "hasMap": "https://maps.app.goo.gl/5F7ysVcs2H6Y6J8y6"
+    }
   ]
 }
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Zen+Kaku+Gothic+New:wght@300;400;500;700&family=Shippori+Mincho:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Zen+Kaku+Gothic+New:wght@300;400;500;700&family=Shippori+Mincho:wght@500;600;700&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Zen+Kaku+Gothic+New:wght@300;400;500;700&family=Shippori+Mincho:wght@500;600;700&display=swap"></noscript>
 <link rel="icon" type="image/png" href="data:image/png;base64,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">
 <link rel="apple-touch-icon" href="data:image/png;base64,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">
 <meta name="theme-color" content="#231815">
@@ -60,8 +127,8 @@
 <header class="hdr" id="hdr">
   <div class="hdr-in">
     <a href="#/" class="brand" aria-label="NOZAWA COMPASS">
-      <img class="brand-logo lg-white" src="images/logo-compass-w.png" alt="NOZAWA COMPASS">
-      <img class="brand-logo lg-blue" src="images/logo-compass.png" alt="NOZAWA COMPASS">
+      <img class="brand-logo lg-white" src="images/logo-compass-w.png" alt="NOZAWA COMPASS" width="560" height="152">
+      <img class="brand-logo lg-blue" src="images/logo-compass.png" alt="NOZAWA COMPASS" width="560" height="152">
     </a>
     <nav class="gnav">
       <ul class="gnav-list">
@@ -90,7 +157,7 @@
 <div class="drawer" id="drawer">
   <div class="drawer-top">
     <a href="#/" class="brand" aria-label="NOZAWA COMPASS">
-      <img class="brand-logo" src="images/logo-compass-w.png" alt="NOZAWA COMPASS">
+      <img class="brand-logo" src="images/logo-compass-w.png" alt="NOZAWA COMPASS" width="560" height="152">
     </a>
     <button class="drawer-close" id="drawerClose">&times;</button>
   </div>
@@ -122,7 +189,7 @@
 
   <section class="hero">
     <div class="hero-media">
-      <div class="hero-fig on"><video autoplay muted loop playsinline preload="none" poster="images/hero-summer.jpg" aria-label="COMPASS HOUSE PV"></video></div>
+      <div class="hero-fig on"><video autoplay muted loop playsinline preload="none" poster="images/hero-summer.webp" aria-label="COMPASS HOUSE PV"></video></div>
     </div>
     <div class="hero-veil"></div>
 
@@ -134,7 +201,7 @@
     <div class="hero-in">
       <div class="hero-copy">
         <div class="hero-kicker">NOZAWA ONSEN &mdash; NAGANO, JAPAN</div>
-        <h2 class="hero-h" data-i="hero.h">人生に生き甲斐の方位磁針<br><b>ようこそコンパスハウスへ</b></h2>
+        <h1 class="hero-h" data-i="hero.h">人生に生き甲斐の方位磁針<br><b>ようこそコンパスハウスへ</b></h1>
         <div class="hero-en">FEEL THE FIELD</div>
         <p class="hero-sub" data-i="hero.sub">スキー・スノーボード・自転車。<br>野沢温泉のフィールドを知り尽くした私たちが、遊びのすべてを提案します。</p>
       </div>
@@ -194,7 +261,7 @@
     <div class="wrap">
       <div class="lead-grid rv">
         <a href="#/season" class="lead-card">
-          <div class="lead-card-bg"><img src="images/season-winter.jpg" alt="" loading="lazy"></div>
+          <div class="lead-card-bg"><img src="images/season-winter.webp" srcset="images/season-winter-800.webp 800w, images/season-winter.webp 1600w" sizes="(max-width:900px) 100vw, 600px" alt="" loading="lazy"></div>
           <div class="lead-card-in">
             <span class="lead-card-no">SEASON</span>
             <div>
@@ -205,7 +272,7 @@
           </div>
         </a>
         <a href="#/guide" class="lead-card">
-          <div class="lead-card-bg"><img src="images/guide-shop.jpg" alt="" loading="lazy"></div>
+          <div class="lead-card-bg"><img src="images/guide-shop.webp" srcset="images/guide-shop-800.webp 800w, images/guide-shop.webp 1600w" sizes="(max-width:900px) 100vw, 600px" alt="" loading="lazy"></div>
           <div class="lead-card-in">
             <span class="lead-card-no">GUIDE</span>
             <div>
@@ -232,7 +299,7 @@
 
       <div class="svc-grid">
         <a href="#/tour" class="svc rv">
-          <div class="svc-bg"><img src="images/tour-winter-bc.jpg" alt="Tour"></div>
+          <div class="svc-bg"><img src="images/tour-winter-bc.webp" srcset="images/tour-winter-bc-800.webp 800w, images/tour-winter-bc.webp 1600w" sizes="(max-width:600px) 100vw, (max-width:1080px) 50vw, 400px" alt="Tour" loading="lazy" decoding="async"></div>
           <div class="svc-veil"></div>
           <div class="svc-in">
             <span class="svc-no">01</span>
@@ -244,7 +311,7 @@
           </div>
         </a>
         <a href="#/rental" class="svc rv">
-          <div class="svc-bg"><img src="images/store-front.jpg" alt="Rental"></div>
+          <div class="svc-bg"><img src="images/store-front.webp" srcset="images/store-front-800.webp 800w, images/store-front.webp 1600w" sizes="(max-width:600px) 100vw, (max-width:1080px) 50vw, 400px" alt="Rental" loading="lazy" decoding="async"></div>
           <div class="svc-veil"></div>
           <div class="svc-in">
             <span class="svc-no">02</span>
@@ -256,7 +323,7 @@
           </div>
         </a>
         <a href="#/shop" class="svc rv">
-          <div class="svc-bg"><img src="images/rental-ski.jpg" alt="Shop"></div>
+          <div class="svc-bg"><img src="images/rental-ski.webp" srcset="images/rental-ski-800.webp 800w, images/rental-ski.webp 1600w" sizes="(max-width:600px) 100vw, (max-width:1080px) 50vw, 400px" alt="Shop" loading="lazy" decoding="async"></div>
           <div class="svc-veil"></div>
           <div class="svc-in">
             <span class="svc-no">03</span>
@@ -268,7 +335,7 @@
           </div>
         </a>
         <a href="#/event" class="svc rv">
-          <div class="svc-bg"><img src="images/season-winter.jpg" alt="Event"></div>
+          <div class="svc-bg"><img src="images/season-winter.webp" srcset="images/season-winter-800.webp 800w, images/season-winter.webp 1600w" sizes="(max-width:600px) 100vw, (max-width:1080px) 50vw, 400px" alt="Event" loading="lazy" decoding="async"></div>
           <div class="svc-veil"></div>
           <div class="svc-in">
             <span class="svc-no">04</span>
@@ -280,7 +347,7 @@
           </div>
         </a>
         <a href="#/gallery" class="svc rv">
-          <div class="svc-bg"><img src="images/season-green.jpg" alt="Gallery"></div>
+          <div class="svc-bg"><img src="images/season-green.webp" srcset="images/season-green-800.webp 800w, images/season-green.webp 1600w" sizes="(max-width:600px) 100vw, (max-width:1080px) 50vw, 400px" alt="Gallery" loading="lazy" decoding="async"></div>
           <div class="svc-veil"></div>
           <div class="svc-in">
             <span class="svc-no">05</span>
@@ -292,7 +359,7 @@
           </div>
         </a>
         <a href="#/company" class="svc rv">
-          <div class="svc-bg"><img src="images/company.jpg" alt="Company"></div>
+          <div class="svc-bg"><img src="images/company.webp" srcset="images/company-800.webp 800w, images/company.webp 1600w" sizes="(max-width:600px) 100vw, (max-width:1080px) 50vw, 400px" alt="Company" loading="lazy" decoding="async"></div>
           <div class="svc-veil"></div>
           <div class="svc-in">
             <span class="svc-no">06</span>
@@ -1101,7 +1168,7 @@
 
       <!-- GREEN -->
       <div class="tabp on" id="ss-green">
-        <div class="ss-hero"><img src="images/season-green.jpg" alt="Green Season" loading="lazy"></div>
+        <div class="ss-hero"><img src="images/season-green.webp" srcset="images/season-green-800.webp 800w, images/season-green.webp 1600w" sizes="(max-width:900px) 100vw, 1100px" alt="Green Season" loading="lazy"></div>
         <div class="formal" style="margin-top:34px">
           <h3 data-i="ss.g.h">野沢のグリーンシーズンを自由に遊び尽くす</h3>
           <p data-i="ss.g.p1">夏の野沢温泉の魅力はまだまだ人々が知り尽くしてしない程、奥深く魅力的なポテンシャルを秘めています。野沢温泉へのスキー来伝から約100年。冬の野沢温泉の魅力は今や世界に配信され、世界中の人々を魅了しています。</p>
@@ -1126,7 +1193,7 @@
 
       <!-- WINTER -->
       <div class="tabp" id="ss-winter">
-        <div class="ss-hero"><img src="images/season-winter.jpg" alt="Winter Season" loading="lazy"></div>
+        <div class="ss-hero"><img src="images/season-winter.webp" srcset="images/season-winter-800.webp 800w, images/season-winter.webp 1600w" sizes="(max-width:900px) 100vw, 1100px" alt="Winter Season" loading="lazy"></div>
         <div class="formal" style="margin-top:34px">
           <h3 data-i="ss.w.h">スキーをもっと楽しく… もっと自由に…</h3>
           <p data-i="ss.w.p1">私たちは2010年、「スキーをもっと楽しく…もっと自由に…」を合い言葉に、フリースキーの魅力をたくさんの人に伝えていく事を目的とした活動「Compass Project」をスタートしました。そのProjectの情報発信基地として長野県の野沢温泉村に拠点を構えることとなりました。</p>
@@ -1296,13 +1363,13 @@
     <div class="ftr-top">
       <div>
         <a href="#/" class="ftr-brand" aria-label="NOZAWA COMPASS">
-          <img class="brand-logo" src="images/logo-compass-w.png" alt="NOZAWA COMPASS">
+          <img class="brand-logo" src="images/logo-compass-w.png" alt="NOZAWA COMPASS" width="560" height="152">
         </a>
         <p class="ftr-tag" data-i="ft.tag">〒389-2502<br>長野県下高井郡野沢温泉村豊郷6463-15<br>TEL 0269-67-0224</p>
         <div class="ftr-sns">
-          <a href="https://www.instagram.com/compasshouse/" target="_blank" rel="noopener" aria-label="Instagram">IG</a>
-          <a href="https://www.facebook.com/CompassHouse.Nozawa" target="_blank" rel="noopener" aria-label="Facebook">FB</a>
-          <a href="https://www.youtube.com/user/CompassHouseTV" target="_blank" rel="noopener" aria-label="YouTube">YT</a>
+          <a href="https://www.instagram.com/compasshouse/" target="_blank" rel="noopener" aria-label="IG（Instagram）">IG</a>
+          <a href="https://www.facebook.com/CompassHouse.Nozawa" target="_blank" rel="noopener" aria-label="FB（Facebook）">FB</a>
+          <a href="https://www.youtube.com/user/CompassHouseTV" target="_blank" rel="noopener" aria-label="YT（YouTube）">YT</a>
         </div>
       </div>
       <div class="ftr-col">
