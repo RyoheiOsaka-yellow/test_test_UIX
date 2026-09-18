@@ -280,7 +280,7 @@ function svgDonut(parts, label, R=30){
   return `<svg viewBox="0 0 ${R*2} ${R*2+14}" width="${R*2}" role="img" aria-label="${label}"><g transform="translate(${R},${R}) rotate(-90)">${parts.map(p=>{ const len=C*p[1]; const s=`<circle r="${R-7}" fill="none" stroke="${p[2]}" stroke-width="11" stroke-dasharray="${(len-1.5).toFixed(1)} ${(C-len+1.5).toFixed(1)}" stroke-dashoffset="${(-off).toFixed(1)}"/>`; off+=len; return s; }).join('')}</g><text x="${R}" y="${R+4}" text-anchor="middle" font-size="9" fill="#e8eaf2" font-family="Oswald">${(parts[0][1]*100).toFixed(0)}%</text><text x="${R}" y="${R*2+10}" text-anchor="middle" font-size="8" fill="#9eafb9">${label}</text></svg>`;
 }
 function meshSec(){
-  if(!MESH.on) return '';
+  if(!MESH.on || (typeof CONT!=='undefined' && CONT.on)) return '';
   const chip=(k,v,l,cls='')=>`<button class="chip ${cls} ${String(MESH[k])===String(v)?'active':''}" data-mesh="${k}:${v}">${l}</button>`;
   const rchip=(kind,res,l)=>`<button class="chip ${MESH.kind===kind&&MESH.res===res?'active':''}" data-meshres="${kind}:${res}">${l}</button>`;
   const donut=s=>{ const m=SCN[s].mix; return svgDonut([['海外',m.in,hx6(SEG.in.col)],['国内',m.dom,hx6(SEG.dom.col)],['近隣',m.loc,hx6(SEG.loc.col)]], s==='wkd'?'平日 海外比率':'土日祝 海外比率'); };

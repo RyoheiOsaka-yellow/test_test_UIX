@@ -1,0 +1,18 @@
+{
+ "note": "index.html は以下を順に結合して生成（tools/assemble.py）。data/real と data/synthetic を分離",
+ "head": "styles/index.html",
+ "config": "config.js",
+ "core": "core/scene.js",
+ "map_insert": {
+  "file": "map/plateau.js",
+  "after_anchor": "  for(let i=0;i<plain.length;i+=1500) LG.bldg.add(mergedExtrude(plain.slice(i,i+1500), MAT.bldg));\n})();\n"
+ },
+ "data_synthetic": "data/synthetic.js",
+ "sim": "people-flow/sim.js",
+ "ui": "analytics/ui.js",
+ "before_init": [
+  "people-flow/flow3d.js",
+  "people-flow/flowvis.js"
+ ],
+ "init_anchor": "/* 初期化 */"
+}

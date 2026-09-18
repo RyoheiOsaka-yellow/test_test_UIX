@@ -4,7 +4,7 @@
 import json, glob, math, os, random, sys
 
 OSM = sys.argv[1] if len(sys.argv) > 1 else 'osm'
-TPL = sys.argv[2] if len(sys.argv) > 2 else 'tpl'
+TPL = sys.argv[2] if len(sys.argv) > 2 else 'src'   # src/ の断片（build_order.json）
 OUT = sys.argv[3] if len(sys.argv) > 3 else 'index.html'
 CLAT, CLON = 34.8380, 134.6915
 MX = 111320 * math.cos(math.radians(CLAT))
@@ -357,62 +357,6 @@ if os.path.exists(REAL):
 js = json.dumps(SCENE, ensure_ascii=False, separators=(',', ':'))
 print('SCENE_DATA bytes', len(js.encode('utf-8')))
 
-parts = [open(os.path.join(TPL, f), encoding='utf-8').read() for f in ('part1_head.html', 'part2_scene.js', 'part3_sim.js', 'part4_ui.js')]
-_p5 = open(os.path.join(TPL, 'part5_flow3d.js'), encoding='utf-8').read()
-_p2b = open(os.path.join(TPL, 'part2b_plateau.js'), encoding='utf-8').read()
-_anchor = "  for(let i=0;i<plain.length;i+=1500) LG.bldg.add(mergedExtrude(plain.slice(i,i+1500), MAT.bldg));\n})();\n"
-assert parts[1].count(_anchor) == 1
-parts[1] = parts[1].replace(_anchor, _anchor + _p2b)
-assert parts[3].count('/* 初期化 */') == 1
-parts[3] = parts[3].replace('/* 初期化 */', _p5 + '\n/* 初期化 */')
-_p6 = open(os.path.join(TPL, 'part6_flowvis.js'), encoding='utf-8').read()
-parts[3] = parts[3].replace(_p5 + '\n/* 初期化 */', _p5 + '\n' + _p6 + '\n/* 初期化 */')
-assert _p6 in parts[3]
-# ---------- ライブラリ・フォントの埋め込み（EMBED_LIBS=1: three.js / Noto Sans JP をインライン化、オフラインで動作） ----------
-ASSETS = os.environ.get('ASSETS_DIR', os.path.join(TPL, 'assets'))
-def libs_head(embed):
-    h = parts[0]
-    if embed and os.path.isdir(ASSETS):
-        rd = lambda f: open(os.path.join(ASSETS, f), encoding='utf-8').read()
-        h = h.replace('<!--@FONTS-->', rd('fonts.css.html').rstrip('\n')).replace('<!--@LICENSES-->', rd('licenses.html').rstrip('\n'))
-        h = h.replace('<!--@THREE-->', '<script>/**\n * @license\n * Copyright 2010-2021 Three.js Authors\n * SPDX-License-Identifier: MIT\n */\n' + rd('three.min.js') + '</script>')
-    else:
-        h = h.replace('<!--@FONTS-->', '<link rel="preconnect" href="https://fonts.googleapis.com">\n<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">')
-        h = h.replace('<!--@LICENSES-->', '').replace('<!--@THREE-->', '<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>')
-    return h
-EMBED_LIBS = os.environ.get('EMBED_LIBS', '1') != '0'
-html = libs_head(EMBED_LIBS) + '\nconst SCENE_DATA = ' + js + ';\n' + parts[1] + '\n' + parts[2] + '\n' + parts[3]
-open(OUT, 'w', encoding='utf-8').write(html)
-print('wrote', OUT, len(html.encode('utf-8')), 'bytes')
-
-# ---------- 共有用（Artifact）変種: 地理院タイルを data URI で埋め込み、外側の html/head/body ラッパを除去 ----------
-TILES = os.environ.get('EMBED_TILES')
-if TILES and os.path.isdir(TILES):
-    import base64
-    td = {}
-    for f in sorted(os.listdir(TILES)):
-        if not f.endswith('.jpg') or os.path.getsize(os.path.join(TILES, f)) < 500: continue
-        z, x, y = f[:-4].split('_')
-        td[f'{z}/{x}/{y}'] = 'data:image/jpeg;base64,' + base64.b64encode(open(os.path.join(TILES, f), 'rb').read()).decode('ascii')
-    tjs = 'const TILE_DATA = ' + json.dumps(td) + ';\n'
-    head = libs_head(os.environ.get('EMBED_LIBS_ARTIFACT', '0') != '0')
-    for tag in ('<!DOCTYPE html>', '<html lang="ja">', '<head>', '<meta charset="UTF-8">',
-                '<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">', '</head>', '<body>'):
-        head = head.replace(tag + '\n', '').replace(tag, '')
-    emb = head + '\nconst SCENE_DATA = ' + js + ';\n' + tjs + parts[1] + '\n' + parts[2] + '\n' + parts[3]
-    emb = emb.replace('</body>\n</html>', '').rstrip() + '\n'
-    out2 = os.environ.get('EMBED_OUT', OUT.replace('.html', '.embedded.html'))
-    open(out2, 'w', encoding='utf-8').write(emb)
-    print('wrote', out2, len(emb.encode('utf-8')), 'bytes', 'tiles', len(td))
-    # ---- 多ファイル版（Artifact の files 機能向け: ページ本体 + data/scene.js + data/tiles.js。1ファイル16MB制限を回避） ----
-    ADIR = os.environ.get('ARTIFACT_DIR')
-    if ADIR:
-        os.makedirs(os.path.join(ADIR, 'data'), exist_ok=True)
-        open(os.path.join(ADIR, 'data', 'scene.js'), 'w', encoding='utf-8').write('window.SCENE_DATA_EXT = ' + js + ';\n')
-        open(os.path.join(ADIR, 'data', 'tiles.js'), 'w', encoding='utf-8').write('window.TILE_DATA_EXT = ' + json.dumps(td) + ';\n')
-        page = head.replace('<!--@THREE-->', '<script src="data/scene.js"></script>\n<script src="data/tiles.js"></script>\n<!--@THREE-->') if '<!--@THREE-->' in head else head
-        page = page.replace('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>', '<script src="data/scene.js"></script>\n<script src="data/tiles.js"></script>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>', 1)
-        page = page + '\nconst SCENE_DATA = window.SCENE_DATA_EXT;\nconst TILE_DATA = window.TILE_DATA_EXT;\n' + parts[1] + '\n' + parts[2] + '\n' + parts[3]
-        page = page.replace('</body>\n</html>', '').rstrip() + '\n'
-        open(os.path.join(ADIR, 'index.html'), 'w', encoding='utf-8').write(page)
-        print('wrote artifact dir', ADIR, 'page', len(page.encode('utf-8')), 'scene.js', len(js.encode('utf-8')) + 26, 'tiles.js', len(json.dumps(td)) + 25)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from assemble import assemble
+assemble(js, TPL, OUT)

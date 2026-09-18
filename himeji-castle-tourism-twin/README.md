@@ -3,13 +3,23 @@
 世界遺産案件（兵庫県姫路市）向けの提案書に入れ込む、**姫路城〜姫路市全体の来訪者DBのアウトプットイメージ**です。
 「インバウンド／国内観光客が、誰が・どこから来て・どこに滞留し・どこへ帰ったか」を1つの画面で可視化します。
 
-- `index.html` … 単一ファイルで動作するダッシュボード（Three.js r128 を CDN から読込。地図タイルは国土地理院 全国最新写真）
-- `tools/build_scene.py` … OpenStreetMap（Overpass API）の道路・鉄道・堀・宿泊施設・POI と、国土地理院ベクトルタイルの建物フットプリントを `SCENE_DATA` に変換し、`template/` の断片と結合して `index.html` を生成するビルドスクリプト
-- `tools/fetch_tiles.py` … Overpass API からタイル分割で OSM データを取得するスクリプト
-- `tools/fetch_gsi_buildings.py` … 国土地理院ベクトルタイル（experimental_bvmap z16）から建物ポリゴンを取得するスクリプト
-- `tools/prep_real.py` … 地理院DEM5A（5m標高）と兵庫県 全県土DSM（1m）から、地形グリッド・姫路城郭レリーフ・実測点群・建物高さを生成（`osm/real.json`）
-- `tools/prep_plateau.py` … 国土交通省 PLATEAU 姫路市 2023年度 CityGML（PLATEAU MCP で所在を特定）から、建物 LOD2（中心1.7km・屋根面/壁面の三角形）・LOD1（計測高さ・用途・階数付きフットプリント 約4.1万棟）・中間帯フラット（約3万棟）・土地利用（都市計画基礎調査・用途別統合）・橋梁を int16 量子化して `osm/plateau.json`（約5MB）に変換。道路面は OSM 中心線のバッファ（PLATEAU tran は未提供）
-- `template/` … `index.html` を構成するテンプレート断片（CSS/HTML、3Dシーン、シミュレーション、UI、3D人流表現）。`template/assets/` は同梱する Three.js r128 と Noto Sans JP（オフラインで動作させるため `index.html` にインライン化。`EMBED_LIBS=0` で CDN 読込に切替）
+- `index.html` … 単一ファイルで動作するダッシュボード（Three.js r128 と Noto Sans JP を同梱、オフラインで動作。MCP は不要）
+- `src/` … ソース断片（`tools/assemble.py` が `src/build_order.json` の順に結合して `index.html` を生成）
+  - `config.js` … Visualization / 建物 LOD / カメラの設定（`peopleFlow.pointSize / heatmapRadius / gridSize / heightScale`、`buildings.lodDistance`、`camera`）
+  - `styles/index.html` … CSS と HTML 骨格（左: 分析パネル、右: 表示のデザイン、下: タイムライン）
+  - `core/scene.js` … レンダラ・カメラ操作（地球儀グリップ）・地形・建物・道路・堀・POI・天守モデル・城郭レリーフ
+  - `map/plateau.js` … PLATEAU 建物 LOD2/LOD1・土地利用・道路面・橋梁・LOD 切替・建物クリック情報
+  - `data/synthetic.js` … **合成パラメータ**（セグメント・シナリオ・ゲート・動線・回遊先・消費額。実データではない）
+  - `people-flow/sim.js` … 来訪者シミュレーション（道路網 A*・軌跡・通り単位ヒート・城内ゾーン）
+  - `people-flow/flow3d.js` … メッシュ（地域メッシュ / 正方グリッド / ヘックス / 3Dカラム）・軌跡ライン・階層ビュー
+  - `people-flow/flowvis.js` … 人流 Visualization モード（熱・流線・動く軌跡・等高線）・Analytics KPI・メッシュ詳細・FPS 監視
+  - `analytics/ui.js` … パネル・分析ボード・提案骨子・DB構成・タイムライン・メインループ
+- `data/real/` … 実データ由来のシーン（`scene_data.json`: OSM・地理院ベクトルタイル、`plateau.json`: PLATEAU 姫路市、`real.json`: 地理院 DEM5A・兵庫県 DSM）
+- `data/synthetic/` … 合成データの説明と差し替え方針
+- `tools/assemble.py` … `python3 tools/assemble.py data/real src index.html` で `index.html` を再生成（`EMBED_TILES` / `ARTIFACT_DIR` で共有用変種）
+- `tools/build_scene.py` … OSM（Overpass）・地理院ベクトルタイルの生データから `scene_data.json` を作り直して組み立て
+- `tools/fetch_tiles.py` / `tools/fetch_gsi_buildings.py` / `tools/prep_real.py` … OSM・地理院・DSM の取得と前処理
+- `tools/prep_plateau.py` … PLATEAU CityGML（PLATEAU MCP で所在を特定）を LOD2/LOD1・土地利用・橋梁の軽量データに変換
 
 > **数値は公表統計に基づく換算値と仮置き値（ダミー）**です。入城者数・外国人比率・月別・入城料・入城制限は公表実績値、居住地・交通手段・宿泊形態・帰路・消費額は令和6年度 姫路市観光動向調査（姫路城地点）の構成比からの換算値、回遊先の立寄率・滞在時間・時間帯分布・混雑はシミュレーションによる仮置きです。出典は画面内「📊 分析ボード → 出典・前提」と「📝 提案骨子」に記載しています。
 
@@ -23,14 +33,15 @@
 | **◎ OD分析** | 流入→滞留→回遊→帰路 | KDE サーフェス＋市内ODアーク（ゲート→大手門→回遊先） |
 | **🗾 観光導線** | 城の「次」をどこに作るか | 姫路駅ハブ発 6方面（書写山・太陽公園・手柄山・姫路港/家島・灘のけんか祭り・セントラルパーク） |
 | **📊 分析ボード** | 提案書用チャート | 国・地域別／都道府県別／交通手段別／立寄率／滞在時間／宿泊・日帰り／出発地→滞留→帰路サンキー／月別・時間帯別 |
-| **▦ メッシュ** | どのメッシュに何人いるか | 総務省 地域メッシュ（JIS X 0410）準拠の 500m（4次）/250m（5次）/125m（6次）で滞在人数を集計し、**3D柱（高さ＝人数）** または **2D面（GIS風）** で表示。色＝密度（単一色相）または主セグメント。ホバーでメッシュコード・人数・構成比、パネルに上位メッシュと「平日 vs 土日祝」の居住地別来訪者数・海外比率 |
-| **〜 軌跡** | 一人ひとりがどう動いたか | 来訪者ごとの1日の移動軌跡を線で蓄積（点＝滞留した場所、建物は半透明の白）。「時空間」モードは高さ＝時刻の時空間キューブ |
+| **人流 Visualization（8モード）** | 時間・場所・密度・滞在・流動 | 粒子 / 熱（GPU ガウス密度） / グリッド（50・100・250m 正方＋地域メッシュ 125・250・500m） / ヘックス（≈H3 res9・res10） / 3Dカラム（対数段階） / 流線（OD アーク） / 動く軌跡（TripsLayer 相当・時間窓） / 等高線（marching squares）。混雑色は Blue→Cyan→Yellow→Orange→Red の5段。情報軸: 高さ＝人数、色＝密度、暗色＝サンプル少（信頼度）、六角の大きさ＝滞留割合、進む速さ＝歩行速度 |
+| **Analytics KPI** | 現在の状態を数値で | 現在滞在人口・流入/流出（直近1時間）・平均滞在時間・ピーク人数（時刻）・混雑メッシュ数・平均移動速度・前時間帯比・主要 Origin / Destination。メッシュをクリックで Mesh ID・People・Stay・Inflow/Outflow・Walking Speed・Peak・Origin・Destination、建物をクリックで PLATEAU 属性 |
+| **〜 軌跡** | 一人ひとりがどう動いたか | 来訪者ごとの1日の移動軌跡を線で蓄積（点＝滞留した場所、建物は半透明の白）または時間窓で動かして再生。「時空間」モードは高さ＝時刻の時空間キューブ |
 | **≡ 階層** | 高さ方向のどこに滞留したか | 大天守（地階〜6階）・JR姫路駅（地下〜ホーム階）・ピオレ姫路・山陽百貨店の「階ごとの滞留」を積層スラブで表示（高さ情報による階層分離のイメージ）。色＝容量比の混雑度、パネルに階別バー |
 | **◆ 点群ビュー** | 実測データの質感 | 兵庫県DSM 1mから3m間引きした約40万点の実測点群（地表／建物／樹木／水域で色分け） |
 | **📝 提案骨子** | 提案書の骨子 | 現状と課題（公表統計）→ 提案（来訪者DB＋3層ダッシュボード）→ 実測化ロードマップ（Phase 0〜3）→ 施策とKPI → 体制・留意点 → 出典 |
 | **🗄 DB構成** | どうやって実測化するか | データソース候補（携帯位置情報・ローミング・入城券・決済・宿泊・交通・Wi-Fi/カメラ・SNS）、論理スキーマ、パイプライン、各画面が読むテーブル |
 
-タイムライン（06:00→24:00）を ▶ で再生すると、到着ピーク → 城内滞留ピーク → 市内回遊 → 帰路ピーク → 夜間（宿泊者）の1日が流れます。
+タイムライン（00:00→24:00、時刻セレクト・目盛クリック・×0.5/×1/×2/×4）を ▶ で再生すると、到着ピーク → 城内滞留ピーク → 市内回遊 → 帰路ピーク → 夜間（宿泊者）の1日が流れます。
 セグメント（インバウンド／国内県外／県内・近隣）とシナリオ（平日・週末・桜・GW・紅葉）で切り替えできます。
 
 ## 都市モデルの LOD 設計（PLATEAU × OSM × 地理院）
@@ -56,18 +67,26 @@
 | タッチ | 1本指＝回転、2本指＝ピンチズーム＋平行移動＋ひねりで回転・上下で傾き |
 | キーボード | Space＝再生／停止、F＝集中表示、Esc＝閉じる／市内へ戻る |
 
-## 再生成（OSMデータを取り直す場合）
+## 再生成
 
 ```bash
-cd tools
-python3 fetch_tiles.py rail && python3 fetch_tiles.py poi        # → ./*.json（Overpass）
-python3 fetch_gsi_buildings.py ./gsi_buildings.json               # → 建物（地理院ベクトルタイル）
-python3 build_scene.py . ../template ../index.html
-# 共有用に航空写真タイルを埋め込む場合: EMBED_TILES=<tiles dir> EMBED_OUT=<out> を付けて実行（この変種は容量のためライブラリは CDN 読込）
-# EMBED_LIBS=0 python3 build_scene.py ... で Three.js / フォントを CDN 読込にした軽量版を生成
+# 1) データ差し替えなし: src/ の変更を index.html に反映
+python3 tools/assemble.py data/real src index.html
+#    共有用（地理院タイル埋め込み・多ファイル）: EMBED_TILES=<tiles dir> EMBED_OUT=<embedded.html> ARTIFACT_DIR=<dir> を付与
+#    軽量版（three.js・フォントを CDN 読込）: EMBED_LIBS=0
+# 2) OSM・地理院の生データから scene_data.json を作り直す
+cd tools && python3 fetch_tiles.py rail && python3 fetch_tiles.py poi && python3 fetch_gsi_buildings.py ../data/real/gsi_buildings.json
+python3 build_scene.py ../data/real ../src ../index.html
+# 3) PLATEAU CityGML を取り直す（PLATEAU MCP の plateau_get_citygml_files で URL を取得し bldg/luse/brid を保存）
+python3 tools/prep_plateau.py <citygml dir> data/real/plateau.json
 ```
 
-Overpass の公開サーバは混雑時に 504 を返すため、スクリプトはミラーを順に再試行します（`SHARD`/`NSHARD` 環境変数で並列分割可）。
+## 性能と設計方針
+
+- 描画は Three.js 単独（GPU インスタンシング・単一 WebGL コンテキスト）。deck.gl 相当のレイヤー（Heatmap / Grid / Hexagon / Column / Arc / Trips / Contour）は自前実装
+- 建物は距離 LOD（LOD2 → LOD1 → フラット → 点描）、人流は集計（メッシュ）と GPU スプラット（熱）で数十万点を DOM に出さない
+- 右下ステータスに FPS を表示し、30fps を下回り続けると補完点群を自動で 50% に落とす
+- 有償 API・API キーを要するサービスは不使用（PLATEAU・OSM・地理院・兵庫県 DSM・Three.js・cdnjs のみ）
 
 ## データ出典
 

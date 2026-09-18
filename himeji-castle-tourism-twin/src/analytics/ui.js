@@ -427,7 +427,7 @@ function renderPanel(){
       ${anaSec()}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ（入城者数/日・想定）</div>${scnChips()}</div>
-      ${odSec()}${tourSec()}${flowModeSec()}${flowSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${odSec()}${tourSec()}${flowModeSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">動線（路線・高速道路・航路・空港）— 流入シェア（クリックで視点）</div><div class="mode-list">${corridorRows()}</div></div>
       <div class="sec"><div class="sec-t">凡例 — 線種＝交通モード、帯の色＝セグメント</div>${modeLegend()}</div>
       <div class="sec"><div class="sec-t">到着ゲート（市内側）</div><div id="gate-rows"></div></div>
@@ -439,7 +439,7 @@ function renderPanel(){
       ${anaSec()}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
-      ${odSec()}${tourSec()}${flowModeSec()}${flowSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${odSec()}${tourSec()}${flowModeSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">滞留ヒートマップ — 通り単位・時間連動</div>
         <div class="row-btns" id="heat-chips">
           <button class="chip ${heatMode==='off'?'active':''}" data-h="off">OFF</button>
@@ -478,7 +478,7 @@ function renderPanel(){
       ${anaSec()}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
-      ${flowModeSec()}${flowSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${flowModeSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">ゾーン別 滞留・混雑（1ドット＝${AG_SCALE}人）</div><div id="zone-rows"></div></div>
       <div class="sec"><div class="sec-t">入城料（2026年3月〜 二段階料金・想定）</div><div class="legend">
         <div class="li"><div class="sw" style="background:var(--gold)"></div>市外・海外 ¥${FEE.out.toLocaleString()}　<div class="sw" style="background:#8f9cc0"></div>姫路市民 ¥${FEE.resident.toLocaleString()}</div></div></div>
