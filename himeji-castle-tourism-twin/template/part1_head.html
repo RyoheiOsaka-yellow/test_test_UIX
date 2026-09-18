@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>姫路城 観光動態ツイン</title>
+<meta name="description" content="世界遺産 姫路城〜姫路市全体の来訪者DB アウトプットイメージ。誰が・どこから来て・どこに滞留し・どこへ帰ったかを可視化するダッシュボード（提案用イメージ／ダミーデータ）">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0e14; --panel:#141821; --panel2:#1b2030; --line:#2a3145;
+  --txt:#e8eaf2; --sub:#8b93a8; --brex:#ff8a1e; --brexdim:#8f4d0e;
+  --gold:#ffd166; --ok:#3ddc84; --warn:#ff6b5e; --blue:#4da3ff;
+  --in:#3a90d6; --dom:#27b062; --loc:#d05f8a;
+  --mono:'Oswald','Noto Sans JP',sans-serif; --jp:'Noto Sans JP',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{font-family:var(--jp);background:var(--bg);color:var(--txt);overflow:hidden;font-size:13px;color-scheme:dark}
+#canvas-wrap{position:fixed;inset:0;background:var(--bg)}
+#canvas-wrap.pc-grad{background:linear-gradient(180deg,#020a16 0%,#062c4e 55%,#1272ac 125%)}
+canvas{display:block}
+
+/* ===== Header ===== */
+#hdr{position:fixed;top:0;left:0;right:0;min-height:52px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:6px 16px;padding-top:calc(6px + env(safe-area-inset-top,0px));
+  background:linear-gradient(180deg,rgba(11,14,20,.94),rgba(11,14,20,.78) 70%,transparent);
+  z-index:30;pointer-events:none}
+#hdr>*{pointer-events:auto}
+.brand{display:flex;align-items:baseline;gap:8px}
+.brand .x{font-family:var(--mono);font-size:19px;font-weight:600;color:#fff;letter-spacing:.5px}
+.hdr-title{font-size:13px;font-weight:700;letter-spacing:.06em;color:var(--txt);border-left:2px solid var(--gold);padding-left:10px}
+.hdr-title small{font-size:10px;color:var(--sub);font-weight:400;margin-left:6px}
+#lvl-crumb{display:flex;gap:6px;margin-left:auto;font-family:var(--mono);font-size:11px;flex-wrap:wrap}
+.crumb{padding:5px 12px;border-radius:20px;border:1px solid var(--line);color:var(--sub);cursor:pointer;
+  letter-spacing:.06em;transition:.2s;background:rgba(20,24,33,.85);white-space:nowrap}
+.crumb.active{border-color:var(--brex);color:var(--brex);background:rgba(255,138,30,.1)}
+.crumb:hover{color:var(--txt)}
+.crumb.gold.active{border-color:var(--gold);color:var(--gold);background:rgba(255,209,102,.1)}
+.crumb:focus-visible,button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+/* ===== Left panel ===== */
+#panel{position:fixed;top:64px;left:12px;width:304px;max-height:calc(100vh - 160px);
+  background:rgba(20,24,33,.94);border:1px solid var(--line);border-radius:12px;z-index:25;
+  display:flex;flex-direction:column;backdrop-filter:blur(8px);overflow:hidden}
+#panel-body{overflow-y:auto;padding:12px}
+#panel-body::-webkit-scrollbar{width:6px}
+#panel-body::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+.sec{margin-bottom:14px}
+.sec-t{font-size:10px;letter-spacing:.14em;color:var(--sub);margin-bottom:7px;font-weight:700}
+.sec-t b{color:var(--brex)}
+.sec-t b.g{color:var(--gold)}
+
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.kpi{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+.kpi .v{font-family:var(--mono);font-size:19px;font-weight:600;color:var(--brex);line-height:1.15;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kpi .v small{font-size:11px;color:var(--sub);font-family:var(--jp);font-weight:400}
+.kpi .l{font-size:10px;color:var(--sub);margin-top:2px;line-height:1.4}
+.kpi.g .v{color:var(--gold)}
+
+.mode-list{display:flex;flex-direction:column;gap:5px}
+.mode-btn{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);
+  background:var(--panel2);cursor:pointer;transition:.15s;color:var(--txt);font-size:12px;text-align:left;font-family:var(--jp);width:100%}
+.mode-btn:hover{border-color:#3d465f}
+.mode-btn.active{border-color:var(--brex);background:rgba(255,138,30,.09)}
+.mode-btn .dot{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+.mode-btn .desc{font-size:10px;color:var(--sub);display:block;margin-top:1px}
+
+.row-btns{display:flex;gap:6px;flex-wrap:wrap}
+.chip{padding:6px 11px;border-radius:16px;border:1px solid var(--line);background:var(--panel2);color:var(--sub);
+  cursor:pointer;font-size:11px;transition:.15s;font-family:var(--jp)}
+.chip.active{border-color:var(--brex);color:var(--brex);background:rgba(255,138,30,.08)}
+.chip:hover{color:var(--txt)}
+.chip.in.active{border-color:var(--in);color:var(--in);background:rgba(58,144,214,.12)}
+.chip.dom.active{border-color:var(--dom);color:var(--dom);background:rgba(39,176,98,.12)}
+.chip.loc.active{border-color:var(--loc);color:var(--loc);background:rgba(208,95,138,.12)}
+
+.tool-btn{width:100%;padding:8px;border-radius:8px;border:1px dashed var(--brexdim);background:transparent;
+  color:var(--brex);cursor:pointer;font-size:12px;font-family:var(--jp);transition:.15s}
+.tool-btn:hover{background:rgba(255,138,30,.08)}
+.hint{font-size:10px;color:var(--sub);line-height:1.6;background:var(--panel2);border-radius:8px;padding:8px 10px;border:1px solid var(--line)}
+.hint b{color:var(--txt)}
+.hint kbd{background:#2a3145;border-radius:3px;padding:0 4px;font-family:var(--mono);font-size:10px;color:var(--txt)}
+
+.legend{display:flex;flex-direction:column;gap:4px;font-size:10px;color:var(--sub)}
+.legend .li{display:flex;align-items:center;gap:7px}
+.legend .sw{width:14px;height:9px;border-radius:2px;flex-shrink:0}
+.legend .li b{color:var(--txt);font-family:var(--mono);font-weight:500}
+.grad-bar{height:9px;border-radius:4px;background:linear-gradient(90deg,#1c2540,#6b3a12,#ff8a1e,#ffe1b3)}
+.grad-lbl{display:flex;justify-content:space-between;font-size:9px;color:var(--sub);margin-top:2px}
+
+/* 横棒（パネル内ミニチャート） */
+.bar-row{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--sub);margin:2px 0}
+.bar-row span{flex-shrink:0;width:82px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-row .bar{flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar-row .bar i{display:block;height:100%;border-radius:3px}
+.bar-row b{width:34px;text-align:right;color:var(--txt);font-family:var(--mono);font-size:10px;font-weight:500}
+
+/* ===== Timeline ===== */
+#timeline{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;width:min(720px,92vw);
+  background:rgba(20,24,33,.94);border:1px solid var(--line);border-radius:12px;padding:10px 16px;z-index:25;backdrop-filter:blur(8px);
+  padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+#tl-top{display:flex;align-items:center;gap:12px;margin-bottom:6px;flex-wrap:wrap}
+#tl-clock{font-family:var(--mono);font-size:21px;font-weight:600;color:var(--brex);min-width:64px;font-variant-numeric:tabular-nums}
+#tl-phase{font-size:11px;color:var(--txt);background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:3px 10px}
+#tl-scn{font-size:10px;color:var(--gold);border:1px solid rgba(255,209,102,.35);border-radius:14px;padding:3px 10px}
+#tl-play{margin-left:auto;width:36px;height:36px;border-radius:50%;border:1px solid var(--brex);background:rgba(255,138,30,.15);
+  color:var(--brex);cursor:pointer;font-size:14px}
+#tl-play:hover{background:rgba(255,138,30,.3)}
+#tl-slider{width:100%;-webkit-appearance:none;appearance:none;height:4px;border-radius:2px;background:var(--line);outline:none}
+#tl-slider::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--brex);cursor:pointer;
+  border:2px solid #0b0e14;box-shadow:0 0 8px rgba(255,138,30,.5)}
+#tl-marks{display:flex;justify-content:space-between;font-size:9px;color:var(--sub);margin-top:4px;font-family:var(--mono)}
+
+#pc-toggle{border-color:#274a66;color:#6fc6e8}
+#pc-toggle.active{border-color:#5fd8ff;color:#5fd8ff;background:rgba(95,216,255,.12);box-shadow:0 0 12px rgba(95,216,255,.25)}
+
+/* 折りたたみ */
+#panel{transition:transform .28s ease}
+#panel.collapsed{transform:translateX(calc(-100% - 20px))}
+#panel-toggle{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:6px;border:1px solid var(--line);
+  background:var(--panel2);color:var(--sub);cursor:pointer;font-size:11px;z-index:2}
+#panel-toggle:hover{color:var(--brex);border-color:var(--brex)}
+#panel-tab{position:fixed;top:64px;left:0;z-index:26;display:none;padding:12px 7px;border-radius:0 10px 10px 0;
+  border:1px solid var(--line);border-left:none;background:rgba(20,24,33,.94);color:var(--brex);cursor:pointer;
+  font-size:11px;writing-mode:vertical-rl;letter-spacing:.18em;font-family:var(--jp)}
+#panel-tab:hover{background:rgba(255,138,30,.1)}
+#timeline.collapsed #tl-slider,#timeline.collapsed #tl-marks{display:none}
+#timeline.collapsed{width:auto;padding:8px 16px}
+#timeline.collapsed #tl-top{margin-bottom:0}
+#tl-fold{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:var(--panel2);
+  color:var(--sub);cursor:pointer;font-size:11px;flex-shrink:0}
+#tl-fold:hover{color:var(--brex);border-color:var(--brex)}
+
+/* tooltip + toast */
+#tip{position:fixed;pointer-events:none;background:rgba(11,14,20,.95);border:1px solid var(--brex);border-radius:8px;
+  padding:7px 11px;font-size:11px;z-index:40;display:none;max-width:250px;line-height:1.5}
+#tip .t-nm{color:var(--brex);font-weight:700}
+#toast{position:fixed;top:66px;left:50%;transform:translateX(-50%);background:rgba(20,24,33,.96);border:1px solid var(--brex);
+  border-radius:10px;padding:9px 18px;font-size:12px;z-index:50;display:none;color:var(--txt);max-width:92vw}
+#enter-hint{position:fixed;bottom:118px;left:50%;transform:translateX(-50%);z-index:24;display:none;
+  background:rgba(255,209,102,.95);color:#141414;font-weight:700;font-size:12px;padding:8px 18px;border-radius:20px;
+  box-shadow:0 4px 20px rgba(255,209,102,.35);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.04)}}
+@media (prefers-reduced-motion:reduce){#enter-hint{animation:none}}
+
+/* ===== 右ドロワー（分析ボード） / モーダル（DB構成） ===== */
+#board{display:none;position:fixed;top:60px;right:12px;bottom:12px;width:min(560px,calc(100vw - 24px));z-index:55;
+  background:rgba(14,17,25,.97);border:1px solid var(--line);border-radius:14px;overflow-y:auto;
+  padding:16px 18px 22px;color:var(--txt);box-shadow:0 10px 40px rgba(0,0,0,.5);backdrop-filter:blur(6px)}
+#board::-webkit-scrollbar{width:8px}
+#board::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+.bd-head{display:flex;align-items:center;gap:10px;position:sticky;top:-16px;background:rgba(14,17,25,.97);padding:4px 0 8px;z-index:2}
+.bd-head h2{font-size:15px;font-weight:700;letter-spacing:.06em;border-left:3px solid var(--gold);padding-left:10px;text-wrap:balance}
+.bd-head h2 small{display:block;font-size:10px;color:var(--sub);font-weight:400;letter-spacing:0;margin-top:2px}
+.bd-x{margin-left:auto;border:1px solid var(--line);background:var(--panel2);color:var(--sub);border-radius:8px;padding:5px 12px;cursor:pointer;font-size:11px;font-family:var(--jp)}
+.bd-x:hover{border-color:var(--brex);color:var(--brex)}
+.bd-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px}
+.mcard{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;position:relative;margin-bottom:12px}
+.mcard h4{font-size:11px;letter-spacing:.1em;color:var(--brex);margin-bottom:8px}
+.mcard h4 span{color:var(--sub);font-weight:400;letter-spacing:0;margin-left:6px}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:700px){.mgrid{grid-template-columns:1fr}}
+.insight{background:rgba(255,209,102,.06);border:1px solid rgba(255,209,102,.3);border-radius:10px;padding:10px 12px;font-size:11px;line-height:1.7;margin-top:10px;color:var(--txt)}
+.insight b{color:var(--gold)}
+svg.ch{width:100%;height:auto;display:block}
+svg.ch text{font-family:var(--jp)}
+.tbl-wrap{overflow-x:auto}
+table.db{width:100%;border-collapse:collapse;font-size:10.5px;min-width:480px}
+table.db th{color:var(--sub);font-weight:700;letter-spacing:.06em;text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.db td{padding:5px 6px;border-bottom:1px solid rgba(42,49,69,.6);vertical-align:top;line-height:1.5}
+table.db td:first-child{color:var(--gold);font-family:var(--mono);font-weight:500;white-space:nowrap}
+.tag{display:inline-block;border:1px solid var(--line);color:#aab2c8;border-radius:20px;padding:1px 8px;margin:1px 3px 1px 0;font-size:10px}
+.tag.in{border-color:var(--in);color:var(--in)}.tag.dom{border-color:var(--dom);color:var(--dom)}.tag.loc{border-color:var(--loc);color:var(--loc)}
+.tag.gold{border-color:var(--gold);color:var(--gold)}
+.schema{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.schema .tb{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 9px;font-size:10px}
+.schema .tb b{display:block;color:var(--gold);font-family:var(--mono);font-size:11px;letter-spacing:.04em;margin-bottom:4px}
+.schema .tb i{display:block;font-style:normal;color:var(--sub);line-height:1.5}
+.schema .tb i.k{color:var(--txt)}
+.flowmap{display:flex;gap:6px;align-items:stretch;flex-wrap:wrap}
+.flowmap .st{flex:1;min-width:120px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 9px;font-size:10px;color:var(--sub);line-height:1.5}
+.flowmap .st b{display:block;color:var(--txt);font-size:11px;margin-bottom:2px}
+.flowmap .ar{display:flex;align-items:center;color:var(--brex);font-size:14px}
+
+/* 城内ゾーンカード */
+.zone-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);margin-bottom:5px;font-size:11px}
+.zone-row .zn{flex:1}
+.zone-row .zn small{display:block;color:var(--sub);font-size:9.5px}
+.zone-row .zv{font-family:var(--mono);font-weight:600;font-size:14px;min-width:54px;text-align:right;font-variant-numeric:tabular-nums}
+.pill{font-size:9px;border-radius:10px;padding:1px 7px;font-weight:700}
+.pill.ok{background:rgba(61,220,132,.15);color:var(--ok)}.pill.mid{background:rgba(255,209,102,.15);color:var(--gold)}.pill.hi{background:rgba(255,107,94,.18);color:var(--warn)}
+
+@media (max-width:760px){#panel{width:min(270px,calc(100vw - 24px))}#hdr .hdr-title{font-size:11px}}
+</style>
+</head>
+<body>
+<div id="canvas-wrap"></div>
+
+<div id="hdr">
+  <div class="brand"><span class="x">XBUILD</span></div>
+  <div class="hdr-title">世界遺産 姫路城 × 姫路市 観光動態デジタルツイン<small>来訪者DB アウトプットイメージ ※提案用・ダミーデータ</small></div>
+  <div id="lvl-crumb">
+    <div class="crumb active" data-lvl="wide">L0 広域流入</div>
+    <div class="crumb" data-lvl="city">L1 市内回遊・滞留</div>
+    <div class="crumb gold" data-lvl="castle">L2 姫路城</div>
+    <div class="crumb" id="od-toggle" title="OD分析: ガウスKDE + ODアーク">◎ OD分析</div>
+    <div class="crumb" id="tour-toggle" title="姫路駅ハブから周辺観光地への導線">🗾 観光導線</div>
+    <div class="crumb" id="board-toggle" title="来訪者構成・滞在・帰路の分析チャート">📊 分析ボード</div>
+    <div class="crumb" id="db-toggle" title="DB構成・データソース">🗄 DB構成</div>
+    <div class="crumb" id="pc-toggle" title="点群/デジタルレイヤー表示">◆ 点群ビュー</div>
+  </div>
+</div>
+
+<div id="panel"><button id="panel-toggle" title="パネルを折りたたむ">◀</button><div id="panel-body"></div></div>
+<button id="panel-tab">パネルを開く ▶</button>
+
+<div id="timeline">
+  <div id="tl-top">
+    <div id="tl-clock">06:00</div>
+    <div id="tl-phase">早朝</div>
+    <div id="tl-scn">通常の週末</div>
+    <button id="tl-play" title="再生/停止">▶</button>
+    <button id="tl-fold" title="タイムラインを折りたたむ">▾</button>
+  </div>
+  <input type="range" id="tl-slider" min="0" max="1080" value="0" aria-label="時刻">
+  <div id="tl-marks"><span>06:00</span><span>09:00 到着ピーク</span><span>12:00 城内滞留</span><span>15:00 市内回遊</span><span>18:00 帰路ピーク</span><span>21:00 夜間</span><span>24:00</span></div>
+</div>
+
+<div id="tip"></div>
+<div id="toast"></div>
+<div id="enter-hint">🏯 姫路城をクリックして城内へ</div>
+<div id="board" role="dialog" aria-label="分析ボード"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
