@@ -1,4 +1,3 @@
-
 /* ================= OD分析 — 広域アーク（どこから来たか）＋ ガウスKDE（どこに滞留したか） ================= */
 let odMode = false;
 const odGroup = new THREE.Group(); odGroup.visible=false; scene.add(odGroup);
@@ -206,7 +205,7 @@ function updateKDE(force){
   pos.needsUpdate=true; col.needsUpdate=true;
 }
 
-/* ================= 🗾 観光導線（姫路駅ハブ発・周辺観光地） ================= */
+/* ================= 観光導線（姫路駅ハブ発・周辺観光地） ================= */
 let tourMode=false;
 const tourGroup=new THREE.Group(); tourGroup.visible=false; scene.add(tourGroup);
 const TOURS=[
@@ -277,7 +276,7 @@ function buildPC(){
     const geo=new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(pos.subarray(0,k*3),3));
     geo.setAttribute('color', new THREE.BufferAttribute(col.subarray(0,k*3),3));
-    pcGroup.add(new THREE.Points(geo, new THREE.PointsMaterial({size:2.6, vertexColors:true, transparent:true, opacity:0.9, blending:THREE.AdditiveBlending, depthWrite:false})));
+    pcGroup.add(new THREE.Points(geo, new THREE.PointsMaterial({size:1.6, vertexColors:true, transparent:true, opacity:0.9, blending:THREE.AdditiveBlending, depthWrite:false})));
     /* 点群範囲外は従来の建物輪郭点で補完 */
   }
   const pts=[], cols=[];
@@ -302,7 +301,7 @@ function buildPC(){
   const geo=new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts),3));
   geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(cols),3));
-  pcGroup.add(new THREE.Points(geo, new THREE.PointsMaterial({size:1.9, vertexColors:true, transparent:true, opacity:0.85, blending:THREE.AdditiveBlending, depthWrite:false})));
+  pcGroup.add(new THREE.Points(geo, new THREE.PointsMaterial({size:1.25, vertexColors:true, transparent:true, opacity:0.85, blending:THREE.AdditiveBlending, depthWrite:false})));
 }
 function applyPCVisibility(){
   groundGroup.visible = !pcMode;
@@ -318,7 +317,7 @@ function setPCMode(on){
   pcMode=on; if(on && !pcBuilt) buildPC();
   document.getElementById('pc-toggle').classList.toggle('active', on);
   applyPCVisibility();
-  toast(on ? (REAL&&REAL.pc ? '点群ビュー: 兵庫県 1m DSM の実測点群（3m間引き・地表/建物/樹木/水域）' : '点群ビュー: ON（建物・道路をデジタルレイヤー表示）') : '通常ビューに戻しました', 3600);
+  toast(on ? (REAL&&REAL.pc ? '点群ビュー: 既存DSMの点群＋建物形状による表示補完（追加点は実測ではありません）' : '点群ビュー: ON（建物・道路をデジタルレイヤー表示）') : '通常ビューに戻しました', 3600);
 }
 
 /* ================= レベル管理 ================= */
@@ -335,7 +334,7 @@ function setLevel(lv, fly=true){
   tourGroup.visible = tourMode && lv!=='castle';
   enterHint.style.display = lv==='city' ? 'block' : 'none';
   if(lv==='wide'){ scene.fog.near=22000; scene.fog.far=70000; if(fly) flyTo(new THREE.Vector3(1800, 0, 900), 33000, 0.5, -0.3, 1600); }
-  if(lv==='city'){ scene.fog.near=6000; scene.fog.far=20000; if(fly) flyTo(new THREE.Vector3(CASTLE.x-100, TH(CASTLE.x-100, CASTLE.z+700), CASTLE.z+700), 3200, 0.88, -0.55, 1500); }
+  if(lv==='city'){ scene.fog.near=6000; scene.fog.far=20000; if(fly) flyTo(new THREE.Vector3(CASTLE.x, TH(CASTLE.x, CASTLE.z), CASTLE.z), 2450, 0.88, -0.55, 1500); }
   if(lv==='castle'){ scene.fog.near=2500; scene.fog.far=9000; if(fly) flyTo(new THREE.Vector3(CASTLE.x-40, TH(CASTLE.x-40, CASTLE.z+190)+10, CASTLE.z+190), 640, 0.95, -0.35, 1500); }
   renderPanel();
 }
@@ -410,7 +409,7 @@ function destRows(){
 }
 function tourSec(){
   if(!tourMode || level==='castle') return '';
-  return `<div class="sec"><div class="sec-t"><b>🗾 観光導線</b> — 姫路駅ハブ発 6方面（回遊拡張の仮ルート）</div>
+  return `<div class="sec"><div class="sec-t"><b>観光導線</b> — 姫路駅ハブ発 6方面（回遊拡張の仮ルート）</div>
     <div class="mode-list">${TOURS.map((t,i)=>`<button class="mode-btn" data-tr="${i}" style="padding:6px 9px"><div class="dot" style="background:${hx6(t.col)}"></div><div style="flex:1;min-width:0">${t.name}　<b style="color:var(--txt);font-family:var(--mono);font-weight:500">${t.time}</b><span class="desc">${t.via} ｜ ${t.spots}</span></div></button>`).join('')}</div>
     <div class="hint" style="margin-top:7px">矢羽が進行方向。姫路城「だけ」で帰る来訪者（回遊率の残り）を周辺へ送客する導線候補。実測では<b>方面別の遷移率・滞在時間</b>に置換します。</div></div>`;
 }
@@ -427,18 +426,18 @@ function renderPanel(){
       <div class="sec"><div class="sec-t"><b>L0</b> 広域流入 — 誰が・どこから来たか</div><div class="kpi-grid" id="kpi-main"></div></div>
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ（入城者数/日・想定）</div>${scnChips()}</div>
-      ${odSec()}${tourSec()}
+      ${odSec()}${tourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">動線（路線・高速道路・航路・空港）— 流入シェア（クリックで視点）</div><div class="mode-list">${corridorRows()}</div></div>
       <div class="sec"><div class="sec-t">凡例 — 線種＝交通モード、帯の色＝セグメント</div>${modeLegend()}</div>
       <div class="sec"><div class="sec-t">到着ゲート（市内側）</div><div id="gate-rows"></div></div>
-      <div class="sec"><div class="sec-t">操作</div><div class="hint"><b>左ドラッグ＝掴んだ地点を軸に視点を回す</b>（真上の平面〜低い角度まで）／<b>少し押してからドラッグ・右ドラッグ＝移動</b>／スクロール＝カーソル位置へズーム。各動線は<b>経由都市と所要時間</b>付き。帯の流れは<b>朝は姫路へ、夕方は帰路方向へ</b>反転し、太さ＝流入量。ポールの高さ＝出発地シェア（観光動向調査の居住地構成から換算）。<b style="color:var(--gold)">L1</b>で市内の滞留、<b style="color:var(--gold)">L2</b>で城内の混雑へ。</div></div>`;
+      <div class="sec"><div class="sec-t">操作</div><div class="hint"><b>左ドラッグ＝360度回転・上下で視点の高さを変更</b>／<b>右ドラッグ・Shift＋ドラッグ＝中心を移動。「回転中」ボタンで左ドラッグも移動に切替</b>／スクロール＝カーソル位置へズーム。各動線は<b>経由都市と所要時間</b>付き。帯の流れは<b>朝は姫路へ、夕方は帰路方向へ</b>反転し、太さ＝流入量。ポールの高さ＝出発地シェア（観光動向調査の居住地構成から換算）。<b style="color:var(--gold)">L1</b>で市内の滞留、<b style="color:var(--gold)">L2</b>で城内の混雑へ。</div></div>`;
   }
   if(level==='city'){
     pb.innerHTML = `
       <div class="sec"><div class="sec-t"><b>L1</b> 市内回遊・滞留 — どこに・どれだけ滞留したか</div><div class="kpi-grid" id="kpi-main"></div></div>
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
-      ${odSec()}${tourSec()}
+      ${odSec()}${tourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">滞留ヒートマップ — 通り単位・時間連動</div>
         <div class="row-btns" id="heat-chips">
           <button class="chip ${heatMode==='off'?'active':''}" data-h="off">OFF</button>
@@ -467,20 +466,21 @@ function renderPanel(){
       <div class="sec"><div class="sec-t">実データ接続（プレースホルダ）</div>
         <input type="file" id="csv-in" accept=".csv,text/csv" style="display:none"><button class="tool-btn" id="csv-btn">CSVを読み込んで滞留データを上書き</button>
         <div class="hint" style="margin-top:6px">列: date, hour, mesh_id, segment, count（携帯位置情報の500mメッシュ集計を想定）。本番はDB直結で自動更新。</div></div>
-      <div class="sec"><div class="sec-t">操作</div><div class="hint"><b>左ドラッグ＝掴んだ地点を軸に視点を回す</b>（真上の平面〜低い角度まで）／<b>少し押してからドラッグ・右ドラッグ＝移動</b>／スクロール＝カーソル位置へズーム。POI・宿泊ピンにホバーで解説。<b style="color:var(--gold)">姫路城をクリック</b>で城内（L2）へ。</div></div>`;
+      <div class="sec"><div class="sec-t">操作</div><div class="hint"><b>左ドラッグ＝360度回転・上下で視点の高さを変更</b>／<b>右ドラッグ・Shift＋ドラッグ＝中心を移動。「回転中」ボタンで左ドラッグも移動に切替</b>／スクロール＝カーソル位置へズーム。POI・宿泊ピンにホバーで解説。<b style="color:var(--gold)">姫路城をクリック</b>で城内（L2）へ。</div></div>`;
   }
   if(level==='castle'){
     pb.innerHTML = `
       <div class="sec"><div class="sec-t"><b class="g">L2</b> 姫路城 — 城内滞留・待ち行列・入城制限</div><div class="kpi-grid" id="kpi-main"></div></div>
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
+      ${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">ゾーン別 滞留・混雑（1ドット＝${AG_SCALE}人）</div><div id="zone-rows"></div></div>
       <div class="sec"><div class="sec-t">入城料（2026年3月〜 二段階料金・想定）</div><div class="legend">
         <div class="li"><div class="sw" style="background:var(--gold)"></div>市外・海外 ¥${FEE.out.toLocaleString()}　<div class="sw" style="background:#8f9cc0"></div>姫路市民 ¥${FEE.resident.toLocaleString()}</div></div></div>
-      <div class="sec"><div class="sec-t">インサイト</div><div class="hint">律速点は<b>大天守（入場制限 15,000人/日）</b>と<b>菱の門の券売</b>。桜・GWは12時前後に待ち60分超が発生。入城券の<b>時間指定枠・事前販売</b>と、待ち時間を<b>好古園・西の丸へ振り替える案内</b>が滞留分散の打ち手になります。左ドラッグで視点を回す・少し押してからドラッグで移動。<kbd>Esc</kbd>で市内へ戻る。</div></div>`;
+      <div class="sec"><div class="sec-t">インサイト</div><div class="hint">律速点は<b>大天守（入場制限 15,000人/日）</b>と<b>菱の門の券売</b>。桜・GWは12時前後に待ち60分超が発生。入城券の<b>時間指定枠・事前販売</b>と、待ち時間を<b>好古園・西の丸へ振り替える案内</b>が滞留分散の打ち手になります。左ドラッグで360度回転・上下で俯瞰／横視点、右ドラッグで中心を移動。<kbd>Esc</kbd>で市内へ戻る。</div></div>`;
   }
-  bindCommon();
-  updateKPIs();
+  bindCommon(); bindFlow3D();
+  updateKPIs(); updateFlowPanels();
 }
 function updateKPIs(){
   const k = document.getElementById('kpi-main'); if(!k) return;
@@ -527,7 +527,7 @@ function updateKPIs(){
   }
 }
 
-/* ================= 📊 分析ボード（SVGチャート・サンキー） ================= */
+/* ================= 分析ボード（SVGチャート・サンキー） ================= */
 const board = document.getElementById('board');
 let boardOn=false, boardTab='who';
 const CC = { in:'#3a90d6', dom:'#27b062', loc:'#d05f8a', gold:'#ffd166', sub:'#8b93a8', line:'#2a3145', txt:'#e8eaf2', brex:'#ff8a1e' };
@@ -666,7 +666,7 @@ function boardHTML(){
         ・回遊先の立寄率・滞在時間・時間帯分布・ゾーン別混雑・待ち時間は<b>仮置き（シミュレーション）</b>で、来訪者DB（券売データ＋携帯位置情報）の接続で実測値に置換する対象。<br>
         ・1ドット＝8人。県内・近隣は周辺市町の日帰りを加味して国内の15%で仮置き（調査値は14%）。</div></div>`;
   }
-  return `<div class="bd-head"><h2>📊 分析ボード<small>来訪者DB アウトプットイメージ — 公表統計ベースの換算値＋仮置き（出典タブ参照）</small></h2><button class="bd-x" id="bd-close">✕ 閉じる</button></div>
+  return `<div class="bd-head"><h2>分析ボード<small>来訪者DB アウトプットイメージ — 公表統計ベースの換算値＋仮置き（出典タブ参照）</small></h2><button class="bd-x" id="bd-close">✕ 閉じる</button></div>
     <div class="bd-tabs">${tabs.map(t=>`<button class="chip ${boardTab===t[0]?'active':''}" data-bt="${t[0]}">${t[1]}</button>`).join('')}</div>${body}`;
 }
 function renderBoard(){
@@ -682,7 +682,7 @@ function setBoard(on){
 }
 document.getElementById('board-toggle').onclick = ()=> setBoard(!boardOn);
 
-/* ================= 🗄 DB構成（データソース・スキーマ・パイプライン） ================= */
+/* ================= DB構成（データソース・スキーマ・パイプライン） ================= */
 let dbOn=false;
 function dbHTML(){
   const src = [
@@ -698,6 +698,9 @@ function dbHTML(){
   const tables = [
     ['visitor_od','出発地→到着ゲート→帰路の1日OD','date, seg, origin, gate, dest, count'],
     ['dwell_mesh','500mメッシュ×時間帯の滞在人数','date, hour, mesh_id, seg, count'],
+    ['dwell_mesh_fine','250m/125mメッシュの滞在人数（Wi-Fi・カメラ・入城券で補完）','date, hour, mesh_id, mesh_level, seg, count'],
+    ['trip_trace','トリップ復元した移動軌跡（GPS-OD相当）','trip_id, seq, ts, lat, lon, mesh_id, stop_flag'],
+    ['stay_floor','施設×階×時間帯の滞在人数（気圧センサ・BLE・階別カメラ）','date, hour, facility_id, floor, count'],
     ['poi_visit','スポット別 立寄り・滞在時間','date, poi_id, seg, visits, avg_dwell'],
     ['castle_entry','入城ログ・ゾーン混雑・待ち','ts, ticket_type, zone, occupancy, wait'],
     ['lodging','宿泊数・宿泊地・国籍','date, facility, seg, nights, adr'],
@@ -705,7 +708,7 @@ function dbHTML(){
     ['transit_gate','ゲート別 流入・流出','date, hour, gate, in, out'],
     ['dim_poi / dim_origin','マスタ（POI・出発地・セグメント）','id, name, lat, lon, category'],
   ];
-  return `<div class="bd-head"><h2>🗄 来訪者DB 構成<small>姫路城〜姫路市全体を1つの「来訪者データ基盤」に統合するイメージ</small></h2><button class="bd-x" id="bd-close">✕ 閉じる</button></div>
+  return `<div class="bd-head"><h2>来訪者DB 構成<small>姫路城〜姫路市全体を1つの「来訪者データ基盤」に統合するイメージ</small></h2><button class="bd-x" id="bd-close">✕ 閉じる</button></div>
     <div class="mcard"><h4>パイプライン</h4><div class="flowmap">
       <div class="st"><b>① 収集</b>位置情報・決済・入城券・宿泊・交通・SNS をAPI/バッチで取得</div><div class="ar">→</div>
       <div class="st"><b>② 統合</b>500mメッシュ／POI／ゲート／セグメントの共通キーで名寄せ・匿名加工</div><div class="ar">→</div>
@@ -729,11 +732,11 @@ function setDB(on){
   else board.style.display='none';
 }
 document.getElementById('db-toggle').onclick = ()=> setDB(!dbOn);
-/* ================= 📝 提案骨子（世界遺産 姫路城 × 姫路市 来訪者DB） ================= */
+/* ================= 提案骨子（世界遺産 姫路城 × 姫路市 来訪者DB） ================= */
 let propOn=false;
 function propHTML(){
   const step = (n, t, body)=> `<div class="step"><div class="sn">${n}</div><div><b>${t}</b><div>${body}</div></div></div>`;
-  return `<div class="bd-head"><h2>📝 提案骨子<small>世界遺産 姫路城 × 姫路市 来訪者DB — 「誰が・どこから・どこに滞留し・どこへ帰ったか」を日次で見える化する</small></h2><button class="bd-x" id="bd-close">✕ 閉じる</button></div>
+  return `<div class="bd-head"><h2>提案骨子<small>世界遺産 姫路城 × 姫路市 来訪者DB — 「誰が・どこから・どこに滞留し・どこへ帰ったか」を日次で見える化する</small></h2><button class="bd-x" id="bd-close">✕ 閉じる</button></div>
   <div class="mcard"><h4>① 現状と課題<span>公表統計から読み取れること</span></h4>
     <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr))">${kpi('157<small> 万人</small>','2025年度 入城者（過去最多圏）',true)}${kpi('35<small> %</small>','外国人比率（54.7万人）')}${kpi('30% / 14%','市内宿泊率（日本人 / 外国人）')}${kpi('大阪45%・岡山20%','日本人の「次の訪問先」')}${kpi('15,000<small> 人/日</small>','大天守 入城上限（桜・GWに到達）')}${kpi('年4回','現状の実測（対面アンケート 約850人）')}</div>
     <div class="insight" style="margin-top:10px">来訪者は増え、構成は季節で大きく変わる（4月は外国人42%、11月は28%）。しかし「姫路城→大阪／岡山へ抜ける通過型」で、<b>まちなかの滞在は30分程度、宿泊は2〜3割</b>。判断材料は年4回のアンケートと年次集計に留まり、<b>日次・時間帯・回遊・帰路を継続的に測る仕組みがない</b>。2026年3月に入城料が¥2,500（市民¥1,000）へ改定され、日時指定デジタルチケットも始まった今が、データ基盤を作る好機。</div></div>
@@ -790,9 +793,11 @@ const NAMED = [];
 function collectNamed(){ NAMED.length=0; [siteGroup, wideGroup, tourGroup, zoneGroup].forEach(g=> g.traverse(o=>{ if(o.userData && o.userData.name && o.visible !== false) NAMED.push(o); })); }
 collectNamed();
 let downXY=null, hoverT=0;
-el.addEventListener('pointerdown', e=>{ downXY=[e.clientX, e.clientY]; });
+el.addEventListener('pointerdown', e=>{ downXY=e.button===0?[e.clientX, e.clientY]:null; });
 el.addEventListener('pointermove', e=>{
+  if(grab.on || ctrl.rotating){tip.style.display='none';el.style.cursor='grabbing';return;}
   const now = performance.now(); if(now-hoverT < 40) return; hoverT=now;
+  if(meshTip(e)){ el.style.cursor='grab'; return; }
   const targets = NAMED.filter(o=> o.visible && o.parent && o.parent.visible);
   const hits = pick(e, targets, false);
   if(hits.length){
@@ -804,10 +809,10 @@ el.addEventListener('pointermove', e=>{
     else if(u.origin) tip.innerHTML = `<span class="t-nm">${u.name}</span><span style="color:var(--sub)">｜出発地</span><br>${u.desc}`;
     else if(u.zone){ const s=zoneStats().find(z=>z.z.n===u.name); tip.innerHTML = `<span class="t-nm" style="color:var(--gold)">${u.name}</span><br>${u.desc}<br>現在 約${fmt(s.occ)}人${s.wait>0?`　待ち 約${Math.round(s.wait)}分`:''}`; }
     else tip.innerHTML = `<span class="t-nm">${u.name}</span>${u.desc?'<br>'+u.desc:''}`;
-    el.style.cursor = u.castle ? 'pointer' : 'default';
+    el.style.cursor = u.castle ? 'pointer' : 'grab';
     return;
   }
-  tip.style.display='none'; el.style.cursor='default';
+  tip.style.display='none'; el.style.cursor='grab';
 });
 addEventListener('pointerup', e=>{
   if(!downXY) return;
@@ -820,7 +825,7 @@ addEventListener('pointerup', e=>{
 });
 addEventListener('keydown', e=>{
   if(e.key==='Escape'){ if(boardOn) setBoard(false); else if(dbOn) setDB(false); else if(propOn) setProp(false); else if(level==='castle') setLevel('city'); }
-  if(e.key===' ' && e.target===document.body){ e.preventDefault(); playBtn.click(); }
+
 });
 
 
@@ -848,7 +853,9 @@ function loop(now){
     syncClock();
   }
   const dtMin = timeState.playing ? dt*timeState.speed : 0;
-  if(dtMin>0){ updateAgents(dtMin); if(heatMode!=='off') repaintHeat(); }
+  const visualKey=segFilter+'|'+LAYER_STATE.agents+'|'+level; if(dtMin>0 || loop.visualKey!==visualKey){updateAgents(dtMin);loop.visualKey=visualKey;}
+  if(dtMin>0){ if(heatMode!=='off') repaintHeat(); }
+  updateFlow3D(dtMin, now);
   if(level==='castle') updateCastleZones(dtMin);
   updateArcs(dt);
   if(odMode && level!=='castle') updateKDE(false);
@@ -856,20 +863,129 @@ function loop(now){
   beam.material.opacity = 0.07 + 0.05*Math.sin(now/900);
   castleGlow.material.opacity = 0.10 + 0.05*Math.sin(now/700);
   if(level!=='wide'){ ROUTES.forEach(r=>{ if(!r.rib) return; const u=r.rib.uni; u.uTime.value += dt*0.9; const k=Math.min(1, (r.uses||0)/80); u.uAct.value = 0.10 + 0.55*k; u.uFlowW.value = 0.16 + 0.55*k; }); }
-  if(now-lastKpi>500){ lastKpi=now; updateKPIs(); }
-  renderer.render(scene, camera);
+  if(now-lastKpi>500){ lastKpi=now; updateKPIs(); updateFlowPanels(); }
+  updateFlowHeads(); renderer.render(scene, camera);
+}
+
+/* V9 visual refinement. Supplemental geometry is schematic, not a new survey. */
+const urbanDetail=new THREE.Group(); scene.add(urbanDetail);
+const fineCloud=new THREE.Group(); scene.add(fineCloud);
+const flowGeometry=new THREE.BufferGeometry();flowGeometry.setAttribute('position',new THREE.BufferAttribute(new Float32Array(MAX_AG*3),3));flowGeometry.setAttribute('color',new THREE.BufferAttribute(new Float32Array(MAX_AG*3),3));
+const flowHeads=new THREE.Points(flowGeometry,new THREE.ShaderMaterial({transparent:true,depthWrite:false,vertexColors:true,vertexShader:'varying vec3 vColor;void main(){vColor=color;vec4 mv=modelViewMatrix*vec4(position,1.0);gl_Position=projectionMatrix*mv;gl_PointSize=clamp(3500.0 / max(1.0,-mv.z),2.8,6.0);}',fragmentShader:'varying vec3 vColor;void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;gl_FragColor=vec4(mix(vColor,vec3(1.),.22),1.-smoothstep(.25,.5,d));}'}));flowHeads.frustumCulled=false;scene.add(flowHeads);
+let urbanStyle='hybrid', flowStyle='trail', supplementalCount=0;
+const roundTexture=(()=>{const c=document.createElement('canvas');c.width=c.height=32;const ctx=c.getContext('2d');const g=ctx.createRadialGradient(16,16,1,16,16,15);g.addColorStop(0,'#fff');g.addColorStop(.4,'#fffe');g.addColorStop(1,'#fff0');ctx.fillStyle=g;ctx.fillRect(0,0,32,32);return new THREE.CanvasTexture(c)})();
+function addFinePoints(positions,colors,size,group){
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+ const m=new THREE.PointsMaterial({size,vertexColors:true,map:roundTexture,transparent:true,opacity:.78,alphaTest:.03,depthWrite:false});
+ const p=new THREE.Points(g,m);p.userData.fullCount=positions.length/3;group.add(p);return p;
+}
+function buildUrbanDetail(){
+ const pos=[],cols=[],edge=[],win=[],wc=[],road=[];
+ let pointSeen=0, sampleSeed=417;
+ const blue=new THREE.Color('#7aacbf'),roof=new THREE.Color('#adc9c9'),warm=new THREE.Color('#d5c7a4');
+ function point(x,y,z,c){pointSeen++;if(pos.length<1800000){pos.push(x,y,z);cols.push(c.r,c.g,c.b);return}sampleSeed=(Math.imul(sampleSeed,1664525)+1013904223)>>>0;const k=Math.floor(sampleSeed/4294967296*pointSeen);if(k>=600000)return;pos[k*3]=x;pos[k*3+1]=y;pos[k*3+2]=z;cols[k*3]=c.r;cols[k*3+1]=c.g;cols[k*3+2]=c.b}
+ function line(a,b){edge.push(...a,...b)}
+ SCENE_DATA.buildings.forEach((b,bi)=>{
+  const poly=b.p;let cx=0,cz=0;poly.forEach(p=>{cx+=p[0];cz-=p[1]});cx/=poly.length;cz/=poly.length;
+  if(Math.hypot(cx-CASTLE.x,cz-(CASTLE.z+600))>2550)return;
+  const base=TH(cx,cz),h=b.h||8,step=Math.hypot(cx-CASTLE.x,cz-CASTLE.z)<950?1.5:2.8;
+  for(let k=0;k<poly.length;k++){
+   const a=poly[k],b2=poly[(k+1)%poly.length],len=Math.hypot(b2[0]-a[0],b2[1]-a[1]);if(len<.1)continue;
+   const nx=(b2[1]-a[1])/len,nz=(b2[0]-a[0])/len,n=Math.ceil(len/step);
+   line([a[0],base+h,-a[1]],[b2[0],base+h,-b2[1]]);
+   if(k%2===0)line([a[0],base,-a[1]],[a[0],base+h,-a[1]]);
+   for(let j=0;j<n;j++){
+    const x=a[0]+(b2[0]-a[0])*j/n,z=-a[1]-(b2[1]-a[1])*j/n;
+    for(let y=.4;y<=h;y+=step)point(x,base+y,z,blue);
+    if(j%2===0 && h>7)for(let y=4;y<h-1;y+=3.4){win.push(x+nx*.12,base+y,z+nz*.12);const c=(bi+j)%6===0?warm:blue;wc.push(c.r*.75,c.g*.75,c.b*.75)}
+   }
+  }
+  // Triangulate footprints, so roof samples stay within concave building boundaries.
+  const contour=poly.map(p=>new THREE.Vector2(p[0],-p[1]));
+  const triangles=THREE.ShapeUtils.triangulateShape(contour,[]);
+  for(const t of triangles){const a=contour[t[0]],b2=contour[t[1]],c=contour[t[2]];const n=Math.min(70,Math.max(1,Math.ceil(Math.max(a.distanceTo(b2),a.distanceTo(c))/ (step*1.7))));
+   for(let u=0;u<=n;u++)for(let v=0;v<=n-u;v++)point(a.x+(b2.x-a.x)*u/n+(c.x-a.x)*v/n,base+h+.12,a.y+(b2.y-a.y)*u/n+(c.y-a.y)*v/n,roof);
+  }
+ });
+ // Deterministically shuffle once: density reduction retains all neighbourhoods.
+ let seed=93;for(let i=pos.length/3-1;i>0;i--){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const j=seed%(i+1);for(let d=0;d<3;d++){let q=pos[i*3+d];pos[i*3+d]=pos[j*3+d];pos[j*3+d]=q;q=cols[i*3+d];cols[i*3+d]=cols[j*3+d];cols[j*3+d]=q}}
+ supplementalCount=pos.length/3;
+ addFinePoints(pos,cols,1.15,fineCloud);
+ addFinePoints(win,wc,1.5,urbanDetail);
+ const eg=new THREE.BufferGeometry();eg.setAttribute('position',new THREE.Float32BufferAttribute(edge,3));urbanDetail.add(new THREE.LineSegments(eg,new THREE.LineBasicMaterial({color:0x87b2bc,transparent:true,opacity:.22,depthWrite:false})));
+ SCENE_DATA.roads.forEach(r=>{
+  if(r.c>3)return;const width=r.c===0?5:r.c===1?4:2;
+  for(let i=0;i<r.p.length-1;i++){
+   const a=r.p[i],b=r.p[i+1];if(Math.hypot(a[0]-CASTLE.x,-a[1]-CASTLE.z)>2600)continue;
+   const dx=b[0]-a[0],dz=-b[1]+a[1],L=Math.hypot(dx,dz);if(L<2)continue;
+   for(const sign of [-1,1]){const ox=-dz/L*width*sign,oz=dx/L*width*sign;road.push(a[0]+ox,TH(a[0]+ox,-a[1]+oz)+.55,-a[1]+oz,b[0]+ox,TH(b[0]+ox,-b[1]+oz)+.55,-b[1]+oz)}
+  }
+ });
+ const rg=new THREE.BufferGeometry();rg.setAttribute('position',new THREE.Float32BufferAttribute(road,3));urbanDetail.add(new THREE.LineSegments(rg,new THREE.LineBasicMaterial({color:0x65aaa3,transparent:true,opacity:.3,depthWrite:false})));
+ MAT.bldg.color.setHex(0x253e4b);MAT.bldgNamed.color.setHex(0x3e5863);MAT.bldg.roughness=1;
+}
+function syncRefinement(){
+ const local=level!=='wide';
+ pcGroup.children.forEach(p=>{if(!p.isPoints||p.userData.refined)return;p.userData.refined=true;p.material.blending=THREE.NormalBlending;p.material.opacity=.7;p.material.map=roundTexture;p.material.alphaTest=.025;p.material.needsUpdate=true});
+ fineCloud.visible=local&&urbanStyle!=='solid'&&!TRAJ.on;urbanDetail.visible=local;
+ if(urbanStyle==='hybrid')fineCloud.children.forEach(p=>p.material.opacity=.42);
+ else fineCloud.children.forEach(p=>p.material.opacity=.88);
+ trailMesh.visible=local&&LAYER_STATE.agents&&flowStyle==='trail'&&!TRAJ.on;
+ routeGroup.visible=local&&LAYER_STATE.agents&&flowStyle==='route';
+ agentMesh.visible=false;flowHeads.visible=local&&LAYER_STATE.agents;
+ updateFlowHeads();
+ document.getElementById('north-arrow').style.transform=`rotate(${-ctrl.sph.theta*180/Math.PI}deg)`;
+ document.getElementById('render-status').textContent=`${pcMode?'点群':urbanStyle==='hybrid'?'複合':'立体'}表示 · 人流シミュレーション · 補完点 ${Math.round(supplementalCount*(+document.getElementById('cloud-density').value)/100).toLocaleString()}`;
+}
+function updateFlowHeads(){
+ const fp=flowGeometry.attributes.position.array,fc=flowGeometry.attributes.color.array,mat=agentMesh.instanceMatrix.array,colors=agentMesh.instanceColor.array;
+ for(let i=0;i<agentMesh.count;i++){fp[i*3]=mat[i*16+12];fp[i*3+1]=mat[i*16+13]+.5;fp[i*3+2]=mat[i*16+14];fc[i*3]=colors[i*3];fc[i*3+1]=colors[i*3+1];fc[i*3+2]=colors[i*3+2]}
+ flowGeometry.setDrawRange(0,agentMesh.count);flowGeometry.attributes.position.needsUpdate=true;flowGeometry.attributes.color.needsUpdate=true;
+}
+function chooseUrbanStyle(style){
+ urbanStyle=style;setPCMode(style==='cloud');
+ document.querySelectorAll('[data-style]').forEach(b=>{const active=b.dataset.style===style;b.classList.toggle('active',active);b.setAttribute('aria-pressed',active)});
+ syncRefinement();
+}
+function initRefinement(){
+ buildUrbanDetail();timeState.speed=3;
+ document.querySelectorAll('[data-style]').forEach(b=>b.onclick=()=>chooseUrbanStyle(b.dataset.style));
+ document.querySelectorAll('[data-flow]').forEach(b=>b.onclick=()=>{flowStyle=b.dataset.flow;document.querySelectorAll('[data-flow]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',x===b)});syncRefinement()});
+ document.getElementById('cloud-density').oninput=e=>{const ratio=+e.target.value/100;fineCloud.children.forEach(p=>p.geometry.setDrawRange(0,Math.floor(p.userData.fullCount*ratio)));document.getElementById('density-value').value=e.target.value+'%';syncRefinement()};
+ document.getElementById('flow-weight').oninput=e=>{trailMesh.material.opacity=+e.target.value/100;document.getElementById('flow-value').value=e.target.value+'%'};
+ document.querySelectorAll('[data-speed]').forEach(b=>b.onclick=()=>{timeState.speed=+b.dataset.speed;document.querySelectorAll('[data-speed]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',x===b)})});
+ document.getElementById('drag-mode').onclick=()=>{endGrab();primaryDragMode=primaryDragMode==='rotate'?'pan':'rotate';const b=document.getElementById('drag-mode');b.textContent=primaryDragMode==='rotate'?'回転中':'移動中';b.setAttribute('aria-pressed',primaryDragMode==='pan');b.setAttribute('aria-label',primaryDragMode==='rotate'?'左ドラッグは回転。押すと中心移動に切替':'左ドラッグは中心移動。押すと回転に切替');toast(primaryDragMode==='rotate'?'回転モード：左右にドラッグで360度回転、上下で横から真上まで。':'移動モード：地図を掴んで中心を移動。',2600)};
+ document.getElementById('view-side').onclick=()=>flyTo(ctrl.target.clone(),ctrl.sph.radius,ctrl.maxPhi,ctrl.sph.theta,700);
+ document.getElementById('view-home').onclick=()=>setLevel('city');
+ document.getElementById('view-top').onclick=()=>flyTo(ctrl.target.clone(),ctrl.sph.radius,ctrl.minPhi,ctrl.sph.theta,700);
+ document.getElementById('view-near').onclick=()=>{setLevel('city',false);flyTo(new THREE.Vector3(CASTLE.x,TH(CASTLE.x,CASTLE.z+650),CASTLE.z+650),1250,1.06,-.14,1000)};
+ document.getElementById('view-plus').onclick=()=>flyTo(ctrl.target.clone(),ctrl.sph.radius*.72,ctrl.sph.phi,ctrl.sph.theta,350);
+ document.getElementById('view-minus').onclick=()=>flyTo(ctrl.target.clone(),ctrl.sph.radius*1.38,ctrl.sph.phi,ctrl.sph.theta,350);
+ document.getElementById('view-focus').onclick=()=>{document.body.classList.toggle('focus-map');document.getElementById('view-focus').setAttribute('aria-pressed',document.body.classList.contains('focus-map'))};
+ const studio=document.getElementById('studio');
+ document.getElementById('studio-hide').onclick=()=>{studio.style.display='none'};
+ document.getElementById('view-settings').onclick=()=>{document.body.classList.remove('focus-map');studio.style.display=getComputedStyle(studio).display==='none'?'block':'none';if(innerWidth<=760 && studio.style.display==='block'){panelEl.classList.add('collapsed');panelTab.style.display='block'}};
+ addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA|BUTTON/.test(e.target.tagName)||e.target.isContentEditable||e.target.closest('[role=button]'))return;if(e.code==='Space'){e.preventDefault();playBtn.click()}if(e.key.toLowerCase()==='f')document.getElementById('view-focus').click()});
+ document.querySelectorAll('.crumb').forEach(b=>{b.tabIndex=0;b.setAttribute('role','button');b.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();b.click()}})});
+ document.querySelectorAll('.studio-seg button').forEach(b=>b.setAttribute('aria-pressed',b.classList.contains('active')));
+ if(innerWidth<=760){panelEl.classList.add('collapsed');panelTab.style.display='block'}
+ document.getElementById('pc-toggle').addEventListener('click',()=>{urbanStyle=pcMode?'cloud':'hybrid';document.querySelectorAll('[data-style]').forEach(b=>{b.classList.toggle('active',b.dataset.style===urbanStyle);b.setAttribute('aria-pressed',b.dataset.style===urbanStyle)});syncRefinement()});
+ syncRefinement();setInterval(syncRefinement,150);
 }
 
 /* 初期化 */
 applyLayers();
-setLevel('wide', false);
-ctrl.target.set(1800,0,900); ctrl.sph.set(38000, 0.5, -0.3); ctrl.apply();
-flyTo(new THREE.Vector3(1800, 0, 900), 33000, 0.5, -0.3, 2200);
+setLevel('city', false);
+ctrl.target.set(CASTLE.x, TH(CASTLE.x,CASTLE.z), CASTLE.z); ctrl.sph.set(2450, 0.88, -0.35); ctrl.apply();
 /* 初期状態: 10:30まで進めて「到着ピーク」の姿で開く */
 (function warmup(){ let g=0; while(timeState.min < 270 && g++<400){ timeState.min += 2; updateAgents(2); } syncClock(); })();
 renderPanel();
-toast('操作: ドラッグ＝掴んだ地点を軸に視点を回す ／ 少し押してからドラッグ（または右ドラッグ）＝移動 ／ スクロール＝ズーム。▶ で1日を再生', 5600);
+initRefinement();
+toast('左右ドラッグで360度回転、上下で横から真上まで。「回転中」で中心移動に切替。', 4500);
 requestAnimationFrame(loop);
+window.__twin={ctrl,camera,MESH,TRAJ,FLOORS,setMesh,setTraj,setFloors,setLevel,timeState,agents,STATS,get level(){return level}};
+window.twinDiagnostics=()=>({mesh:MESH.on,meshCells:MESH.cells.length,traj:TRAJ.on,trajSegs:TRAJ.n,floors:FLOORS.on,points:supplementalCount,agents:agents.length,trailVisible:trailMesh.visible,routeVisible:routeGroup.visible,level,phi:ctrl.sph.phi,time:timeState.min,style:urbanStyle,primaryDragMode,target:ctrl.target.toArray(),theta:ctrl.sph.theta,castle:[CASTLE.x,CASTLE.z],cloudVisible:fineCloud.visible,heads:flowGeometry.drawRange.count});
+})();
 </script>
 </body>
 </html>

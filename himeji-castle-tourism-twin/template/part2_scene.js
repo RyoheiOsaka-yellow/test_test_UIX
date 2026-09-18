@@ -12,7 +12,7 @@ renderer.setSize(innerWidth, innerHeight);
 wrap.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-const BG_HEX = 0x0b0e14;
+const BG_HEX = 0x071017;
 scene.background = new THREE.Color(BG_HEX);
 scene.fog = new THREE.Fog(BG_HEX, 9000, 26000);
 
@@ -47,13 +47,15 @@ const ctrl = {
 };
 ctrl.apply();
 const el = renderer.domElement;
-el.style.cursor = 'grab';
+el.style.cursor = 'grab';el.style.touchAction='none';
 /* --- 操作（カーソルのみで完結）---
    左ドラッグ ＝ 掴んだ地点を軸に視点を回す（横: 方位 / 縦: 見下ろし角。真上の平面ビュー〜ほぼ水平まで）
    少し押してからドラッグ・右ドラッグ・中ドラッグ ＝ 地図を掴んで移動
    縦スクロール ＝ カーソル位置へズーム / 横スクロール ＝ 横に移動
-   タッチ: 1本指 回転（長押しで移動）、2本指 ピンチズーム＋移動 */
-ctrl.minPhi = 0.04; ctrl.maxPhi = 1.52;
+   タッチ: 1本指 移動、2本指 ピンチズーム＋移動 */
+ctrl.minPhi = 0.008; ctrl.maxPhi = Math.PI/2 - 0.008;
+let primaryDragMode="rotate";
+function startPrimaryDrag(x,y){if(primaryDragMode==="rotate")beginRotate(x,y);else startGrab(x,y);}
 const _ray = new THREE.Raycaster(), _ndc = new THREE.Vector2(), _plane = new THREE.Plane(new THREE.Vector3(0,1,0), 0), _hit = new THREE.Vector3();
 function groundAt(clientX, clientY, y){
   const r = el.getBoundingClientRect();
@@ -80,7 +82,7 @@ function pivotTo(clientX, clientY){
 }
 /* 移動（掴んだ地面がカーソルに追従） */
 const grab = { on:false, pt:null, y:0 };
-let dragMode = 'orbit';
+let legacyDragMode = 'orbit';
 function startGrab(x, y){ grab.y = ctrl.target.y; grab.pt = groundAt(x, y, grab.y); grab.on = true; ctrl.panning = true; ctrl.rotating = false; ctrl.px = x; ctrl.py = y; el.style.cursor = 'grabbing'; }
 function moveGrab(x, y){
   const p = grab.pt ? groundAt(x, y, grab.y) : null;
@@ -121,8 +123,10 @@ el.addEventListener('contextmenu', e=>e.preventDefault());
 el.addEventListener('mousedown', e=>{
   if(!ctrl.enabled) return;
   if(tween) tween = null;
+  disarmHold();
   if(e.button===2 || e.button===1 || (e.button===0 && (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey))){ e.preventDefault(); startGrab(e.clientX, e.clientY); }
-  else if(e.button===0){ armHold(e.clientX, e.clientY, e.timeStamp); el.style.cursor = 'grabbing'; }
+  else if(e.button===0){ e.preventDefault(); startPrimaryDrag(e.clientX, e.clientY); }
+
 });
 addEventListener('mouseup', ()=>{ disarmHold(); hideCue(); endGrab(); });
 addEventListener('mousemove', e=>{
@@ -158,7 +162,8 @@ el.addEventListener('wheel', e=>{
 let touchD = 0, touchMid = null;
 el.addEventListener('touchstart', e=>{
   if(tween) tween = null;
-  if(e.touches.length===1){ armHold(e.touches[0].clientX, e.touches[0].clientY, e.timeStamp); }
+  if(!ctrl.enabled) return;
+  if(e.touches.length===1){ disarmHold(); startPrimaryDrag(e.touches[0].clientX, e.touches[0].clientY); }
   if(e.touches.length===2){
     disarmHold(); hideCue(); endGrab();
     const t0=e.touches[0], t1=e.touches[1];
@@ -168,6 +173,7 @@ el.addEventListener('touchstart', e=>{
   }
 }, {passive:true});
 el.addEventListener('touchmove', e=>{
+  if(!ctrl.enabled) return;
   if(e.touches.length===1){
     const t0=e.touches[0];
     if(!hold.decided) decideHold(t0.clientX, t0.clientY, e.timeStamp);
@@ -182,7 +188,9 @@ el.addEventListener('touchmove', e=>{
     touchD = d; touchMid = mid;
   }
 }, {passive:true});
-el.addEventListener('touchend', ()=>{ disarmHold(); hideCue(); endGrab(); touchD=0; touchMid=null; }, {passive:true});
+el.addEventListener('touchend', e=>{ disarmHold(); hideCue(); endGrab(); touchD=0; touchMid=null; if(ctrl.enabled && e.touches.length===1) startPrimaryDrag(e.touches[0].clientX,e.touches[0].clientY); }, {passive:true});
+el.addEventListener('touchcancel', ()=>{disarmHold();hideCue();endGrab();touchD=0;touchMid=null;},{passive:true});
+addEventListener('blur',()=>{disarmHold();hideCue();endGrab()});
 
 /* カメラ遷移トゥイーン */
 let tween = null;
@@ -673,3 +681,4 @@ let castleRelief = null;
   /* レリーフ範囲内の押し出し（城郭の櫓・門など）は二重描画になるため非表示。大天守・小天守の立体モデルは残す */
   LG.bldg.children.forEach(m=>{ if(m.userData && m.userData.castle && m!==castleRelief && !(m.parent && m.parent!==LG.bldg) && m.geometry && m.geometry.type==='ExtrudeGeometry') m.visible=false; });
 })();
+

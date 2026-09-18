@@ -349,7 +349,23 @@ js = json.dumps(SCENE, ensure_ascii=False, separators=(',', ':'))
 print('SCENE_DATA bytes', len(js.encode('utf-8')))
 
 parts = [open(os.path.join(TPL, f), encoding='utf-8').read() for f in ('part1_head.html', 'part2_scene.js', 'part3_sim.js', 'part4_ui.js')]
-html = parts[0] + '\nconst SCENE_DATA = ' + js + ';\n' + parts[1] + '\n' + parts[2] + '\n' + parts[3]
+_p5 = open(os.path.join(TPL, 'part5_flow3d.js'), encoding='utf-8').read()
+assert parts[3].count('/* 初期化 */') == 1
+parts[3] = parts[3].replace('/* 初期化 */', _p5 + '\n/* 初期化 */')
+# ---------- ライブラリ・フォントの埋め込み（EMBED_LIBS=1: three.js / Noto Sans JP をインライン化、オフラインで動作） ----------
+ASSETS = os.environ.get('ASSETS_DIR', os.path.join(TPL, 'assets'))
+def libs_head(embed):
+    h = parts[0]
+    if embed and os.path.isdir(ASSETS):
+        rd = lambda f: open(os.path.join(ASSETS, f), encoding='utf-8').read()
+        h = h.replace('<!--@FONTS-->', rd('fonts.css.html').rstrip('\n')).replace('<!--@LICENSES-->', rd('licenses.html').rstrip('\n'))
+        h = h.replace('<!--@THREE-->', '<script>/**\n * @license\n * Copyright 2010-2021 Three.js Authors\n * SPDX-License-Identifier: MIT\n */\n' + rd('three.min.js') + '</script>')
+    else:
+        h = h.replace('<!--@FONTS-->', '<link rel="preconnect" href="https://fonts.googleapis.com">\n<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">')
+        h = h.replace('<!--@LICENSES-->', '').replace('<!--@THREE-->', '<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>')
+    return h
+EMBED_LIBS = os.environ.get('EMBED_LIBS', '1') != '0'
+html = libs_head(EMBED_LIBS) + '\nconst SCENE_DATA = ' + js + ';\n' + parts[1] + '\n' + parts[2] + '\n' + parts[3]
 open(OUT, 'w', encoding='utf-8').write(html)
 print('wrote', OUT, len(html.encode('utf-8')), 'bytes')
 
@@ -363,7 +379,7 @@ if TILES and os.path.isdir(TILES):
         z, x, y = f[:-4].split('_')
         td[f'{z}/{x}/{y}'] = 'data:image/jpeg;base64,' + base64.b64encode(open(os.path.join(TILES, f), 'rb').read()).decode('ascii')
     tjs = 'const TILE_DATA = ' + json.dumps(td) + ';\n'
-    head = parts[0]
+    head = libs_head(os.environ.get('EMBED_LIBS_ARTIFACT', '0') != '0')
     for tag in ('<!DOCTYPE html>', '<html lang="ja">', '<head>', '<meta charset="UTF-8">',
                 '<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">', '</head>', '<body>'):
         head = head.replace(tag + '\n', '').replace(tag, '')

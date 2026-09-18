@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>姫路城 観光動態ツイン</title>
 <meta name="description" content="世界遺産 姫路城〜姫路市全体の来訪者DB アウトプットイメージ。誰が・どこから来て・どこに滞留し・どこへ帰ったかを可視化するダッシュボード（提案用イメージ／ダミーデータ）">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+
+
 <style>
 :root{
   --bg:#0b0e14; --panel:#141821; --panel2:#1b2030; --line:#2a3145;
@@ -88,6 +88,11 @@ canvas{display:block}
 .legend .sw{width:14px;height:9px;border-radius:2px;flex-shrink:0}
 .legend .li b{color:var(--txt);font-family:var(--mono);font-weight:500}
 .grad-bar{height:9px;border-radius:4px;background:linear-gradient(90deg,#1c2540,#6b3a12,#ff8a1e,#ffe1b3)}
+.grad-bar.mesh{background:linear-gradient(90deg,#0d2a30,#176c66,#3bb3a0,#9dead9,#eafffa)}
+.floor-b{border:1px solid var(--line);border-radius:8px;padding:7px 8px;margin-bottom:6px;background:var(--panel2)}
+.floor-t{display:flex;justify-content:space-between;font-size:10.5px;color:var(--txt);margin-bottom:4px}.floor-t b{font-family:var(--mono);font-weight:500;color:var(--gold)}
+.floor-r{display:flex;align-items:center;gap:6px;font-size:9.5px;color:var(--sub);margin:2px 0}.floor-r span{width:96px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.floor-r .bar{flex:1;height:5px;background:var(--line);border-radius:3px;overflow:hidden}.floor-r .bar i{display:block;height:100%;border-radius:3px}.floor-r b{width:40px;text-align:right;color:var(--txt);font-family:var(--mono);font-weight:500}
+.floor-b small{display:block;color:var(--sub);font-size:9px;margin-top:3px}
 .grad-lbl{display:flex;justify-content:space-between;font-size:9px;color:var(--sub);margin-top:2px}
 
 /* 横棒（パネル内ミニチャート） */
@@ -206,24 +211,45 @@ table.db a{color:inherit}
 
 
 @media (max-width:760px){#panel{width:min(270px,calc(100vw - 24px))}#hdr .hdr-title{font-size:11px}}
+
+/* V9 • HIMEJI URBAN OBSERVATORY */
+:root{--bg:#071017;--panel:#0c1922;--panel2:#11232d;--line:#253d49;--sub:#9eafb9;--brex:#68ded0;--brexdim:#326c68;--gold:#efd3a0;--mono:'Oswald','Noto Sans JP',sans-serif}
+#hdr{min-height:100px;padding:14px 22px 10px;background:rgba(7,16,23,.95);border-bottom:1px solid #253d49;gap:10px 22px;backdrop-filter:blur(18px)}
+.brand .x{font-size:19px;letter-spacing:3px;color:#80e7dc}.hdr-title{font-size:13px;border:0;padding:0}.hdr-title small{display:block;margin:5px 0 0;font-size:10px}
+#lvl-crumb{width:100%;margin:0;gap:7px;flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px}.crumb{border-radius:6px;font-family:var(--jp);font-size:10px;padding:6px 10px;flex-shrink:0}.crumb.active{background:#183b40;border-color:#4eaaa4;color:#a6fff1}
+#panel{top:120px;left:20px;width:280px;max-height:calc(100dvh - 248px);border-radius:12px;background:rgba(11,25,34,.92);box-shadow:0 16px 50px #0003;backdrop-filter:blur(20px)}
+#panel-body{padding:16px}.sec{margin-bottom:20px}.sec-t{font-size:10px;letter-spacing:.08em;margin-bottom:10px}.kpi{padding:12px 9px;background:linear-gradient(135deg,#18313c,#10222c);border-color:#284653}.kpi .v{font-size:25px;color:#a0ecdd}.kpi .l{font-size:10px}.chip{border-radius:6px;font-size:10px;padding:7px 9px}.hint{line-height:1.9;background:#0b1a24}.mode-btn{background:#10232d;padding:10px}.mode-btn:hover,.chip:hover{background:#1b3540}
+#panel-tab{top:128px}#timeline{left:calc(50% + 85px);width:min(720px,calc(100vw - 360px));bottom:25px;background:rgba(11,25,34,.95);border:1px solid #34505b;border-radius:12px;padding:14px 18px;backdrop-filter:blur(18px);box-shadow:0 10px 40px #0005}#tl-clock{color:#d4f8ed;font-size:28px}#tl-play{border-radius:8px;background:#76dfcb;color:#0b252a;width:36px;height:32px}#tl-slider{accent-color:#76dfcb}#tl-marks{font-size:9px}#enter-hint{color:#efd3a0;bottom:151px;font-size:10px;background:#102a34}#toast{top:113px;max-width:calc(100vw - 44px);font-size:11px;z-index:80}
+#studio{position:fixed;right:20px;top:120px;width:220px;background:rgba(11,25,34,.94);border:1px solid var(--line);border-radius:12px;padding:16px;z-index:24;backdrop-filter:blur(18px)}
+.studio-head{display:flex;justify-content:space-between;align-items:center;color:#e2f1f0;font-size:12px;font-weight:700}.studio-sub{font-size:9px;letter-spacing:1.8px;color:#7c9ba8;margin:6px 0 16px}.studio-label{display:flex;justify-content:space-between;margin:14px 0 9px;font-size:10px;color:#a5bcc6}.studio-label output{color:#8aead6;font-variant-numeric:tabular-nums}.studio-seg{display:flex;gap:4px}.studio-seg button{flex:1;border:1px solid var(--line);border-radius:6px;padding:8px 2px;background:#112630;color:#9db5c0;cursor:pointer;font-size:10px}.studio-seg button.active{color:#bcfff1;border-color:#57978e;background:#21433f}#studio input[type=range]{width:100%;accent-color:#82dfcf}.studio-note{font-size:9px;color:#90a6b2;line-height:1.8;border-top:1px solid #263d48;margin-top:15px;padding-top:12px}.flow-key{font-size:10px;line-height:2;color:#aec0c8}.flow-key i{display:inline-block;width:6px;height:6px;margin-right:7px;border-radius:100%}.studio-close{background:none;border:0;color:#a4b9c2;cursor:pointer;font-size:16px}
+#view-tools{position:fixed;right:20px;bottom:148px;display:flex;flex-direction:row;gap:6px;z-index:26}#view-tools button{width:42px;height:38px;background:#102631ed;color:#d1ebe7;border:1px solid #35515c;border-radius:8px;cursor:pointer;font-size:12px}#view-tools button:hover{background:#28494f}#map-status{position:fixed;bottom:7px;left:22px;right:22px;display:flex;justify-content:space-between;color:#8caaa9;font-size:9px;pointer-events:none;z-index:22}#north-arrow{display:inline-block;color:#bde4db;transform-origin:center;margin-right:6px}.focus-map #panel,.focus-map #studio,.focus-map #enter-hint{display:none}.focus-map #timeline{left:50%;width:min(720px,90vw)}
+button,input{touch-action:manipulation;font-family:var(--jp)}button:focus-visible,.crumb:focus-visible,input:focus-visible{outline:2px solid #91efdb;outline-offset:3px}#board{top:115px;max-height:calc(100dvh - 140px)}
+@media(max-width:1100px){#studio{width:192px;right:12px;padding:12px}#panel{left:12px;width:255px}#timeline{left:calc(50% + 90px);width:calc(100vw - 320px)}}
+@media(max-width:760px){#hdr{padding:10px 12px;min-height:108px;gap:7px}.brand .x{font-size:15px}.hdr-title{font-size:10px}.hdr-title small{font-size:8px}.crumb{font-size:9px}#panel{top:122px;max-height:calc(100dvh - 265px);width:245px}#studio{top:122px;right:10px;width:188px;display:none}#studio.mobile-open{display:block}#timeline{left:50%;bottom:24px;width:calc(100vw - 24px);padding:10px}#tl-marks span:nth-child(even){display:none}#view-tools{right:12px;bottom:185px;flex-direction:column}#studio{right:64px;max-height:calc(100dvh - 270px);overflow-y:auto}#map-status{left:12px;right:12px;font-size:8px}#map-status span:last-child{display:none}#enter-hint{display:none!important}}
+
 </style>
+<!--@FONTS-->
+<!--@LICENSES-->
 </head>
 <body>
 <div id="canvas-wrap"></div>
 
 <div id="hdr">
-  <div class="brand"><span class="x">XBUILD</span></div>
+  <div class="brand"><span class="x">XBUILD<span style="color:#718b98;font-weight:400"> / HIMEJI</span></span></div>
   <div class="hdr-title">世界遺産 姫路城 × 姫路市 観光動態デジタルツイン<small>来訪者DB アウトプットイメージ ※提案用・ダミーデータ</small></div>
   <div id="lvl-crumb">
     <div class="crumb active" data-lvl="wide">L0 広域流入</div>
     <div class="crumb" data-lvl="city">L1 市内回遊・滞留</div>
     <div class="crumb gold" data-lvl="castle">L2 姫路城</div>
     <div class="crumb" id="od-toggle" title="OD分析: ガウスKDE + ODアーク">◎ OD分析</div>
-    <div class="crumb" id="tour-toggle" title="姫路駅ハブから周辺観光地への導線">🗾 観光導線</div>
-    <div class="crumb" id="board-toggle" title="来訪者構成・滞在・帰路の分析チャート">📊 分析ボード</div>
-    <div class="crumb" id="prop-toggle" title="提案骨子・ロードマップ・KPI">📝 提案骨子</div>
-    <div class="crumb" id="db-toggle" title="DB構成・データソース">🗄 DB構成</div>
+    <div class="crumb" id="tour-toggle" title="姫路駅ハブから周辺観光地への導線">観光導線</div>
+    <div class="crumb" id="board-toggle" title="来訪者構成・滞在・帰路の分析チャート">分析ボード</div>
+    <div class="crumb" id="prop-toggle" title="提案骨子・ロードマップ・KPI">提案骨子</div>
+    <div class="crumb" id="db-toggle" title="DB構成・データソース">DB構成</div>
     <div class="crumb" id="pc-toggle" title="点群/デジタルレイヤー表示">◆ 点群ビュー</div>
+    <div class="crumb" id="mesh-toggle" title="地域メッシュ（500m/250m/125m）の滞在人数を柱・面で表示">▦ メッシュ</div>
+    <div class="crumb" id="traj-toggle" title="来訪者ごとの移動軌跡を線で蓄積（時空間モードあり）">〜 軌跡</div>
+    <div class="crumb" id="floor-toggle" title="大天守・駅・商業施設の階ごとの滞留（高さ方向）">≡ 階層</div>
   </div>
 </div>
 
@@ -242,11 +268,28 @@ table.db a{color:inherit}
   <div id="tl-marks"><span>06:00</span><span>09:00 到着ピーク</span><span>12:00 城内滞留</span><span>15:00 市内回遊</span><span>18:00 帰路ピーク</span><span>21:00 夜間</span><span>24:00</span></div>
 </div>
 
+
+<aside id="studio" aria-label="ビジュアル設定">
+ <div class="studio-head">表示のデザイン <button class="studio-close" id="studio-hide" aria-label="表示設定を閉じる">×</button></div><div class="studio-sub">VISUAL CONTROL / 01</div>
+ <div class="studio-label">街の表現</div><div class="studio-seg" id="style-picks"><button data-style="solid">立体</button><button data-style="hybrid" class="active">複合</button><button data-style="cloud">点群</button></div>
+ <label class="studio-label" for="cloud-density">補完点群の密度 <output id="density-value">100%</output></label><input id="cloud-density" type="range" min="25" max="100" value="100" step="25">
+ <div class="studio-label">人流の表現</div><div class="studio-seg" id="flow-picks"><button data-flow="particle">粒子</button><button data-flow="trail" class="active">軌跡</button><button data-flow="route">動線</button></div>
+ <label class="studio-label" for="flow-weight">軌跡の強さ <output id="flow-value">65%</output></label><input id="flow-weight" type="range" min="15" max="100" value="65">
+ <div class="studio-label">再生速度 <span>分 / 秒</span></div><div class="studio-seg" id="speed-picks"><button data-speed="1">1</button><button data-speed="3" class="active">3</button><button data-speed="6">6</button><button data-speed="12">12</button></div>
+ <div class="studio-label">人流の凡例</div><div class="flow-key"><i style="background:#65beff"></i>海外　<i style="background:#62e4ab;margin-left:8px"></i>国内　<i style="background:#ef91bb;margin-left:8px"></i>近隣</div>
+ <div class="studio-note">粒子1つ＝8人（想定）<br>細い尾で進行方向、点の集まりで滞留を表示。<br>街：既存地形・建物データ＋形状補完。追加点・窓表現は実測ではありません。</div>
+</aside>
+<nav id="view-tools" aria-label="視点操作"><button id="drag-mode" title="左ドラッグを回転／中心移動に切替" aria-label="左ドラッグは回転。押すと中心移動に切替" aria-pressed="false" style="border-color:#78dbce;color:#b9fff1">回転中</button><button id="view-home" title="姫路城を中心に戻す" aria-label="姫路城を中心に戻す">戻る</button><button id="view-top" title="真上から見る" aria-label="真上から見る">2D</button><button id="view-side" title="現在の中心を横から見る" aria-label="現在の中心を横から見る">横</button><button id="view-near" title="大手前通りに接近" aria-label="大手前通りに接近">接近</button><button id="view-plus" title="拡大" aria-label="拡大">＋</button><button id="view-minus" title="縮小" aria-label="縮小">−</button><button id="view-focus" title="地図に集中 (F)" aria-label="地図に集中">集中</button><button id="view-settings" title="表示設定" aria-label="表示設定">設定</button></nav>
+<div id="map-status"><span><b id="north-arrow">↑ N</b> HIMEJI / URBAN OBSERVATORY　 ·　 <span id="render-status">準備中</span></span><span>左ドラッグ：360度回転／俯瞰　 右ドラッグ：中心移動　 ホイール：ズーム　 Space：再生</span></div>
+
 <div id="rotcue"></div>
 <div id="tip"></div>
 <div id="toast"></div>
-<div id="enter-hint">🏯 姫路城をクリックして城内へ</div>
+<div id="enter-hint">姫路城をクリックして城内へ</div>
 <div id="board" role="dialog" aria-label="分析ボード"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<!--@THREE-->
 <script>
+(async function(){
+await document.fonts.load('400 13px "Noto Sans JP"','　、。「」〜あいうえおかがきぎくぐけげこごさしじすずせぜそぞただちっつづてでとどなにねのはばひびふぶへべほぼまみむめもゃやゆよらりるれろわをんァアィイゥウェエォオカガキギクグケゲコゴサザシジスズセゼソゾタダチッツテデトドナニネノハバパヒビピフブプベペホボポマミムメモャヤュユョラリルレロワヱンヴ・ー一万三上下不世並中丸丹主乗九乱亀予事二井亜交京亭人仁今介仕他付代令以仮件伊伏休会伸似但位低住佐体何余作使例供価便係促保信修倉個倍倒候値停健側傍備働像億元先光児入全八公共兵具典内円再写凡出分切列初判別利到制刷券刻削前割力功加助効動務勢包化北区医匿十千午半協南単博印厚原厳去参反収取受叡口古可台史右号各合吉同名向含吹呂呉告周味命和品員商問喜喰器四回団囲図国國圏園圓土在地均坊坦坪型垣城域基堀堂報場塔塚塩塾増壁士売変夏夕外多夜夢大天太央奈好妙妻始姫姿子存季学宅宇守安完宗官定宝実客室宮家容宿寄密富察寸寺対専将導小少尼尾局居屋展層山岡岸峯峰島崎崩嶋川州工左差巽市布希帯帰常幡平年幸幹広序店府度座庫庭廊廣延建式引弧弱張強形影待律後徒従得御徳心応忠快急性恵情想意感態憩成戸戻房所手打払扱技抑投折抜押拝拠拡括持指振掛探接推掴描提換損携摩播撮操擬支改教散数整敷文料斜断新方施旅族既日旧早旬明映春時景暗暴更書替最月有服望朝期木未末本札朱材村束来東杵松板析枕林果枠柄染柱査校株核根格案桜梅棒棟森検楕業極楽構標模横樹橋橙機櫓次欧歌止正武歩歯歳歴残段殿比民水永池決沖河治沿泉泊法注洋津活流浜海消淡混清済減渡温測港湾満源準滋滑滞漆潮瀬灘灸点無然焼照熊熱爬物特状狸猛獅獣率現理琴生産用田由男町画界畑留番畿病療発登白百的皿盟盤目直相省県真眺眼着矢石砂研砥破確磨示社祓祖神祭福禽秀私科秒称移程種稲稼稿穂積究空窓立竜端竹第等答策算管箱節範籍米粒粟粧糸系約紅納素索累細終組経結絡統継続綿総線緩練縁縄縣縦縮績置署美群義羽翌者聞肉育能腐自致興舎舗航般船良色花苑若英荘荷菊菱葉蔵薄藤虫衆行術街衛衝表袋装補製複西要覆見規視覧観角解言計記訪設訳証試認語誤説読誰課調論諸警護谷豆豊象豪財貨販貸費貼賀資質購赤起超足距跡路車軌軍軒転軸較輝輪輿辺込近追退送途通速造連週進遊運過道達遠適遷遺部郭郵都配酒里重野量金針鉄銀録鍼長門閉開間関閣阪降限院除陰陶陸陽階際隠隣雄集雑離雨雲電霊静非面韓項順題額類風飛食飲飾餅館首香駅駐骨高鬼魚鯱鳥鷺鹿麓黒龍');
+

@@ -1,9 +1,8 @@
-
 /* ================= 来訪者セグメント / シナリオ / 流入ゲート（ダミー定義） ================= */
 const SEG = {
-  in: {name:'インバウンド',  col:0x3a90d6, css:'var(--in)'},
-  dom:{name:'国内（県外）',  col:0x27b062, css:'var(--dom)'},
-  loc:{name:'県内・近隣',    col:0xd05f8a, css:'var(--loc)'},
+  in: {name:'インバウンド',  col:0x65beff, css:'var(--in)'},
+  dom:{name:'国内（県外）',  col:0x62e4ab, css:'var(--dom)'},
+  loc:{name:'県内・近隣',    col:0xef91bb, css:'var(--loc)'},
 };
 const SEG_KEYS = ['in','dom','loc'];
 /* ---------------------------------------------------------------
@@ -276,7 +275,7 @@ function route(a, b, draw){
   ROUTES.set(k, r);
   if(draw && total < 6000){
     /* 経路リボン: 利用者数に応じて帯が太く・明るくなり、帯は進行方向へ流れる */
-    r.rib = buildRibbon(pth.map(p=>({x:p[0], z:p[1]})), {col:0xffd166, w:22, kind:3}, routeGroup, 1.6);
+    r.rib = buildRibbon(pth.map(p=>({x:p[0], z:p[1]})), {col:0xffd166, w:5, kind:3}, routeGroup, 1.6);
     r.rib.uni.uDim.value = 0.8; r.rib.uni.uFlowCol.value.setHex(0xffe08a);
     r.uses = 0;
   }
@@ -292,10 +291,10 @@ function sampleRoute(r, d){
 
 /* ================= 来訪者エージェント（1ドット = 8人） ================= */
 const MAX_AG = 2400;
-const agentMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(2.2, 6, 5), new THREE.MeshBasicMaterial(), MAX_AG);
+const agentMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(1.35, 6, 5), new THREE.MeshBasicMaterial(), MAX_AG);
 /* 軌跡（移動中の来訪者が残す尾）: 細長い板を進行方向に並べ、線として見せる */
-const TRAIL_K = 16, TRAIL_STEP = 6;
-const trailMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({transparent:true, opacity:0.95, blending:THREE.AdditiveBlending, depthWrite:false}), MAX_AG*TRAIL_K);
+const TRAIL_K = 24, TRAIL_STEP = 2.8;
+const trailMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({transparent:true, opacity:0.65, blending:THREE.AdditiveBlending, depthWrite:false}), MAX_AG*TRAIL_K);
 trailMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_AG*TRAIL_K*3), 3);
 trailMesh.count = 0; trailMesh.frustumCulled = false; scene.add(trailMesh);
 const _Q = new THREE.Quaternion(), _E = new THREE.Euler(), _S = new THREE.Vector3(), _PV = new THREE.Vector3();
@@ -326,7 +325,9 @@ function spawnAgent(){
   else { const o=ORIGIN_BY_ID[dest[0]]; const g=GATES[o ? o.gate : gk]; endNode={x:g.x,z:g.z}; endKind='gate'; }
   const jr = 40+rnd()*130, ja = rnd()*6.283;
   const a = { seg, gk, dest, plan, pi:0, state:'move', endNode, endKind, r:null, d:0, sp:70+rnd()*30, dwellLeft:0, cur:{x:gate.x,z:gate.z}, t0:timeState.min, visited:0, jx:Math.cos(ja)*jr, jz:Math.sin(ja)*jr*0.8 };
+  a.lane = (rnd()-0.5)*5;
   a.tr = [];
+  trajPush(a, gate.x, gate.z);
   a.r = route(a.cur, plan.length ? plan[0].node : endNode, true); a.r.uses = (a.r.uses||0)+1;
   agents.push(a);
   STATS.arrived[seg]++; STATS.byGate[gk]=(STATS.byGate[gk]||0)+1; dayTotal++;
@@ -335,6 +336,7 @@ function resetSim(){
   agents.length = 0; spawnAcc = 0; dayTotal = 0;
   STATS.arrived={in:0,dom:0,loc:0}; STATS.departed={}; STATS.byGate={}; STATS.atSpot={}; STATS.staying=0; STATS.castleEntered=0; STATS.dwellSum=0; STATS.dwellN=0; STATS.kaiyu=0;
   agentMesh.count = 0; trailMesh.count = 0;
+  trajReset();
   calcArrNorm();
 }
 function updateAgents(dtMin){
@@ -354,21 +356,27 @@ function updateAgents(dtMin){
           const st = a.plan[a.pi];
           a.cur = {x:st.node.x, z:st.node.z};
           a.state = st.kind; a.dwellLeft = st.dwell;
+          trajStop(a, st.node.x, st.node.z);
           if(st.kind==='castle') STATS.castleEntered++;
           else { a.visited++; }
         } else {
           /* 退出: 帰路ゲート or 宿泊 */
-          if(a.endKind==='stay'){ a.state='stay'; a.cur={x:a.endNode.x, z:a.endNode.z}; STATS.staying++; }
+          if(a.endKind==='stay'){ a.state='stay'; a.cur={x:a.endNode.x, z:a.endNode.z}; STATS.staying++; trajStop(a, a.cur.x, a.cur.z); }
           else {
             STATS.departed[a.dest[0]] = (STATS.departed[a.dest[0]]||0)+1;
             STATS.dwellSum += timeState.min - a.t0; STATS.dwellN++;
             if(a.visited>0) STATS.kaiyu++;
+            trajStop(a, a.cur.x, a.cur.z);
             agents.splice(i,1); continue;
           }
         }
       } else {
         const p = sampleRoute(a.r, a.d);
+        const ahead=sampleRoute(a.r,Math.min(a.r.total,a.d+3));
+        const dx=ahead[0]-p[0], dz=ahead[1]-p[1], dl=Math.hypot(dx,dz)||1;
+        p[0]-=dz/dl*(a.lane||0);p[1]+=dx/dl*(a.lane||0);
         a.cur = {x:p[0], z:p[1]};
+        trajPush(a, p[0], p[1]);
         const lt = a.tr[a.tr.length-1];
         if(!lt || Math.hypot(lt[0]-p[0], lt[1]-p[1]) >= TRAIL_STEP){ a.tr.push([p[0], p[1]]); if(a.tr.length > TRAIL_K+1) a.tr.shift(); }
       }
@@ -398,9 +406,9 @@ function updateAgents(dtMin){
         const dx=p1[0]-p0[0], dz=p1[1]-p0[1], L=Math.hypot(dx,dz); if(L<0.5) continue;
         const f=(j+1)/n;
         _E.set(0, Math.atan2(-dz, dx), 0); _Q.setFromEuler(_E);
-        const mx=(p0[0]+p1[0])/2, mz=(p0[1]+p1[1])/2; _PV.set(mx, TH(mx,mz)+2.4, mz); _S.set(L+1.2, 0.6, 0.8+2.2*f);
+        const mx=(p0[0]+p1[0])/2, mz=(p0[1]+p1[1])/2; _PV.set(mx, TH(mx,mz)+2.4, mz); _S.set(L+0.3, 0.18, (0.2+0.65*f*f)*Math.min(3.4,Math.max(.7,ctrl.sph.radius/900)));
         M.compose(_PV, _Q, _S); trailMesh.setMatrixAt(ti, M);
-        C.setHex(SEG[a.seg].col).multiplyScalar(0.2+1.0*f); trailMesh.setColorAt(ti, C);
+        C.setHex(SEG[a.seg].col).multiplyScalar(0.08+0.85*f*f); trailMesh.setColorAt(ti, C);
         ti++;
       }
     }
@@ -561,3 +569,4 @@ function updateCastleZones(dtMin){
   castleAg.instanceMatrix.needsUpdate = true;
   if(castleAg.instanceColor) castleAg.instanceColor.needsUpdate = true;
 }
+
