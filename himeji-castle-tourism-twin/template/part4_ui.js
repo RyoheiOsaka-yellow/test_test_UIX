@@ -40,13 +40,14 @@ SPOTS.forEach(s=>{
   CITY_ARCS.push({...buildArc(GATE_OTEMON, p, 0xffd166, sh*0.5, cityArcG, 0.22), dir:'tour'});
 });
 /* ---- 動線リボン: モード別の線種（鉄道=中心線＋枕木 / 高速=二重線 / 航路・空港=破線）＋ 流れの帯（方向・量） ---- */
-function ribbonGeom(pts, w){
+function ribbonGeom(pts, w, hf){
   const pos=[], uv=[], idx=[]; let total=0; const seg=[0];
   for(let i=1;i<pts.length;i++){ total+=Math.hypot(pts[i].x-pts[i-1].x, pts[i].z-pts[i-1].z); seg.push(total); }
   for(let i=0;i<pts.length;i++){
     const p0=pts[Math.max(0,i-1)], p1=pts[Math.min(pts.length-1,i+1)];
     const dx=p1.x-p0.x, dz=p1.z-p0.z, L=Math.hypot(dx,dz)||1, nx=-dz/L, nz=dx/L;
-    pos.push(pts[i].x+nx*w/2, 0, pts[i].z+nz*w/2, pts[i].x-nx*w/2, 0, pts[i].z-nz*w/2);
+    const ya = hf ? hf(pts[i].x+nx*w/2, pts[i].z+nz*w/2) : 0, yb = hf ? hf(pts[i].x-nx*w/2, pts[i].z-nz*w/2) : 0;
+    pos.push(pts[i].x+nx*w/2, ya, pts[i].z+nz*w/2, pts[i].x-nx*w/2, yb, pts[i].z-nz*w/2);
     const u=seg[i]/total; uv.push(u,0,u,1);
     if(i<pts.length-1){ const k=i*2; idx.push(k,k+2,k+1, k+1,k+2,k+3); }
   }
@@ -70,8 +71,8 @@ const RIBBON_FS = [
  '  vec3 col = uCol*base*uDim*1.15 + uFlowCol*band*fw*uAct*1.5;',
  '  float a = base*0.62*uDim + band*fw*uAct*0.9;',
  '  if(a < 0.02) discard; gl_FragColor = vec4(col, a); }'].join('\n');
-function buildRibbon(pts, style, group, y){
-  const {geo,total} = ribbonGeom(pts, style.w);
+function buildRibbon(pts, style, group, y, hf){
+  const {geo,total} = ribbonGeom(pts, style.w, hf || ((x,z)=>TH(x,z)));
   const uni = {uCol:{value:new THREE.Color(style.col)}, uFlowCol:{value:new THREE.Color(0xffffff)}, uTime:{value:Math.random()*4},
     uAct:{value:0}, uKind:{value:style.kind}, uDir:{value:1}, uLen:{value:total}, uFlowW:{value:0.3}, uDim:{value:1}};
   const mat = new THREE.ShaderMaterial({uniforms:uni, vertexShader:RIBBON_VS, fragmentShader:RIBBON_FS, transparent:true, depthWrite:false, side:THREE.DoubleSide, blending:THREE.AdditiveBlending});
@@ -82,14 +83,15 @@ function buildRibbon(pts, style, group, y){
 const corrGroup = new THREE.Group(); wideGroup.add(corrGroup);
 CORRIDORS.forEach((c, ci)=>{
   const st = MODE_STYLE[c.mode];
-  const pts = [{x:c.gx, z:c.gz}].concat(c.pts.map(p=>({x:p.x, z:p.z})));
+  const raw = [{x:c.gx, z:c.gz}].concat(c.pts.map(p=>({x:p.x, z:p.z})));
+  const pts = []; for(let i=0;i<raw.length-1;i++){ const a=raw[i], b=raw[i+1]; const n=Math.max(1, Math.round(Math.hypot(b.x-a.x,b.z-a.z)/250)); for(let k=0;k<n;k++) pts.push({x:a.x+(b.x-a.x)*k/n, z:a.z+(b.z-a.z)*k/n}); } pts.push(raw[raw.length-1]);
   const rib = buildRibbon(pts, st, corrGroup, 3 + (ci%5)*0.4);
   c.rib = rib;
   c.pts.forEach((p, i)=>{
     const last = i===c.pts.length-1;
     const disc = new THREE.Mesh(new THREE.CylinderGeometry(last?300:200, last?300:200, 24, 14),
       new THREE.MeshStandardMaterial({color:st.col, emissive:st.col, emissiveIntensity:0.35, roughness:0.6}));
-    disc.position.set(p.x, 8, p.z);
+    disc.position.set(p.x, TY(p.x, p.z, 8), p.z);
     disc.userData = {name:`${p.n}（${c.name}）`, desc:`姫路から ${p.t}`};
     corrGroup.add(disc);
     const lb = makeLabel(p.n, last?640:460, st.css, 700); lb.position.set(p.x, last?900:640, p.z); corrGroup.add(lb);
@@ -111,7 +113,7 @@ ORIGINS.forEach((o, i)=>{
   o.px = px; o.pz = pz;
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(150, 190, 100, 8),
     new THREE.MeshStandardMaterial({color:col, emissive:col, emissiveIntensity:0.4, roughness:0.6, transparent:true}));
-  pole.position.set(px, 50, pz);
+  pole.position.set(px, TY(px,pz,50), pz); o.py = TH(px,pz);
   pole.userData = {name:o.name, origin:true, desc:`${SEG[o.seg].name} ｜ ${o.via} ｜ 到着: ${GATES[o.gate].name}`};
   o.pole = pole; wideGroup.add(pole);
   const lb = makeLabel('', 300, hx6(col), 700); lb.position.set(px, 120, pz); o.lb = lb; wideGroup.add(lb);
@@ -144,8 +146,8 @@ function updateArcs(dt){
     ORIGINS.forEach(o=>{
       const on = segByFilter(o.seg); const w = o.share*(segFilter==='all'?mix[o.seg]:1);
       const h = 60 + w*9000;
-      o.pole.scale.y = h/100; o.pole.position.y = h/2; o.pole.material.opacity = on?1:0.2;
-      o.lb.position.y = h + 240; o.lb.material.opacity = on?1:0.25;
+      o.pole.scale.y = h/100; o.pole.position.y = o.py + h/2; o.pole.material.opacity = on?1:0.2;
+      o.lb.position.y = o.py + h + 240; o.lb.material.opacity = on?1:0.25;
       const txt = `${o.name} ${(w*100).toFixed(0)}%`;
       if(o.lb.userData.txt !== txt){ o.lb.userData.txt = txt; const nl = makeLabel(txt, 300, hx6(SEG[o.seg].col), 700); o.lb.material.map.dispose(); o.lb.material.map = nl.material.map; o.lb.material.needsUpdate = true; }
     });
@@ -197,7 +199,7 @@ function updateKDE(force){
   const c=new THREE.Color();
   for(let i=0;i<n;i++){
     const k=H[i]/mx;
-    pos.setY(i, k*KDE.maxH);
+    pos.setY(i, TH(pos.getX(i)+ox, pos.getZ(i)+oz) + k*KDE.maxH);
     c.copy(heatC(Math.min(1, k*1.1))).multiplyScalar(Math.min(1, 0.08+k*1.4));
     col.setXYZ(i, c.r, c.g, c.b);
   }
@@ -231,14 +233,15 @@ TOURS.forEach(t=>{
   const nCh=Math.max(4, Math.round(t.total/380));
   for(let i=0;i<nCh;i++){ const m=new THREE.Mesh(cgeo, cmat); tourGroup.add(m); chevrons.push({t, m, u:i/nCh}); }
   const pole=new THREE.Mesh(new THREE.CylinderGeometry(6,6,34,6), new THREE.MeshStandardMaterial({color:t.col, emissive:t.col, emissiveIntensity:0.35, roughness:0.6}));
-  pole.position.set(e.x, 17, e.z); pole.userData.name = t.name+'（'+t.via+'）';
+  const ey = TH(e.x, e.z);
+  pole.position.set(e.x, ey+17, e.z); pole.userData.name = t.name+'（'+t.via+'）';
   tourGroup.add(pole);
-  const lb=makeLabel(t.name+'  '+t.time, 13, hx6(t.col)); lb.position.set(e.x, 74, e.z); tourGroup.add(lb);
-  const lb2=makeLabel(t.spots, 9, '#c8cede', 500); lb2.position.set(e.x, 56, e.z); tourGroup.add(lb2);
+  const lb=makeLabel(t.name+'  '+t.time, 13, hx6(t.col)); lb.position.set(e.x, ey+74, e.z); tourGroup.add(lb);
+  const lb2=makeLabel(t.spots, 9, '#c8cede', 500); lb2.position.set(e.x, ey+56, e.z); tourGroup.add(lb2);
 });
 const hub=new THREE.Mesh(new THREE.CylinderGeometry(18,18,3,24), new THREE.MeshBasicMaterial({color:0xff8a1e, transparent:true, opacity:0.55}));
-hub.position.set(STN.x, 1.5, STN.z); tourGroup.add(hub);
-const hubLb=makeLabel('観光ハブ: JR姫路駅・バスターミナル', 11, '#ff8a1e'); hubLb.position.set(STN.x, 60, STN.z+70); tourGroup.add(hubLb);
+hub.position.set(STN.x, TY(STN.x, STN.z, 1.5), STN.z); tourGroup.add(hub);
+const hubLb=makeLabel('観光ハブ: JR姫路駅・バスターミナル', 11, '#ff8a1e'); hubLb.position.set(STN.x, TY(STN.x, STN.z, 60), STN.z+70); tourGroup.add(hubLb);
 const UP=new THREE.Vector3(0,1,0);
 function updateChevrons(dt){
   if(!tourGroup.visible) return;
@@ -247,7 +250,7 @@ function updateChevrons(dt){
     c.u += dt*46/c.t.total; if(c.u>=1) c.u-=1;
     const d=c.u*c.t.total;
     const s=sampleRoute(c.t, d), s2=sampleRoute(c.t, Math.min(c.t.total, d+8));
-    c.m.position.set(s[0], 6, s[1]);
+    c.m.position.set(s[0], TY(s[0], s[1], 6), s[1]);
     const dir=new THREE.Vector3(s2[0]-s[0],0,s2[1]-s[1]); if(dir.lengthSq()>0){ dir.normalize(); c.m.quaternion.setFromUnitVectors(UP, dir); }
   });
 }
@@ -257,22 +260,44 @@ let pcMode=false, pcBuilt=false;
 const pcGroup = new THREE.Group(); pcGroup.visible=false; scene.add(pcGroup);
 function buildPC(){
   pcBuilt = true;
+  if(REAL && REAL.pc){
+    /* 兵庫県 DSM（1m計測 → 3m間引き）の実測点群。色: 地表 / 建物 / 樹木 / 水域、明度 = 地物高さ */
+    const g = REAL.pc, H = decI16(g.h), ND = decI16(g.nd), C = decU8(g.c);
+    const pos = new Float32Array(g.valid*3), col = new Float32Array(g.valid*3);
+    const cG=new THREE.Color(0x2a3f66), cB=new THREE.Color(0x7de8ff), cV=new THREE.Color(0x3fc27a), cW=new THREE.Color(0x2f6fd0), cBh=new THREE.Color(0xffffff);
+    const c = new THREE.Color(); let k=0;
+    for(let j=0;j<g.ny;j++) for(let i=0;i<g.nx;i++){
+      const idx=j*g.nx+i, hv=H[idx]; if(hv <= -9000) continue;
+      const x=g.x0+i*g.step, y=g.y0+j*g.step, h=hv*0.1, nd=ND[idx]*0.1, cl=C[idx];
+      pos[k*3]=x; pos[k*3+1]=h+0.3; pos[k*3+2]=-y;
+      if(cl===3) c.copy(cW); else if(cl===1) c.copy(cB).lerp(cBh, Math.min(0.6, nd/60)); else if(cl===2) c.copy(cV).multiplyScalar(0.6+Math.min(0.5, nd/25)); else c.copy(cG);
+      col[k*3]=c.r; col[k*3+1]=c.g; col[k*3+2]=c.b; k++;
+      if(k>=g.valid) break;
+    }
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos.subarray(0,k*3),3));
+    geo.setAttribute('color', new THREE.BufferAttribute(col.subarray(0,k*3),3));
+    pcGroup.add(new THREE.Points(geo, new THREE.PointsMaterial({size:2.6, vertexColors:true, transparent:true, opacity:0.9, blending:THREE.AdditiveBlending, depthWrite:false})));
+    /* 点群範囲外は従来の建物輪郭点で補完 */
+  }
   const pts=[], cols=[];
   const cw=new THREE.Color(0x66e0ff), cc=new THREE.Color(0xffd166), cr=new THREE.Color(0x3d8fd0);
+  const inPC = (b)=>{ if(!(REAL&&REAL.pc)) return false; const g=REAL.pc; const q=b.p[0]; return q[0]>=g.x0 && q[0]<=g.x0+g.nx*g.step && q[1]>=g.y0 && q[1]<=g.y0+g.ny*g.step; };
   SCENE_DATA.buildings.forEach(b=>{
     const h=b.h||8, col = b.k==='castle' ? cc : cw;
+    if(inPC(b)) return;
     if(b.k!=='castle' && pts.length > 1500000) return;
     const step = b.k==='castle' ? 2.2 : 4.5;
     for(let i=0;i<b.p.length-1;i++){
       const a=b.p[i], q=b.p[i+1]; const L=Math.hypot(q[0]-a[0], q[1]-a[1]); const n=Math.max(1, Math.round(L/step));
       for(let j=0;j<=n;j++){ const x=a[0]+(q[0]-a[0])*j/n, y=a[1]+(q[1]-a[1])*j/n;
-        for(let z=0;z<=h;z+=step){ pts.push(x, z, -y); cols.push(col.r, col.g, col.b); } }
+        const bz=TH(x,-y); for(let z=0;z<=h;z+=step){ pts.push(x, bz+z, -y); cols.push(col.r, col.g, col.b); } }
     }
   });
   SCENE_DATA.roads.forEach(r=>{
     if(r.c>2) return;
     for(let i=0;i<r.p.length-1;i++){ const a=r.p[i], q=r.p[i+1]; const L=Math.hypot(q[0]-a[0], q[1]-a[1]); const n=Math.max(1, Math.round(L/9));
-      for(let j=0;j<n;j++){ pts.push(a[0]+(q[0]-a[0])*j/n, 0.8, -(a[1]+(q[1]-a[1])*j/n)); cols.push(cr.r, cr.g, cr.b); } }
+      for(let j=0;j<n;j++){ const px=a[0]+(q[0]-a[0])*j/n, py=a[1]+(q[1]-a[1])*j/n; pts.push(px, TY(px,-py,0.8), -py); cols.push(cr.r, cr.g, cr.b); } }
   });
   const geo=new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts),3));
@@ -293,7 +318,7 @@ function setPCMode(on){
   pcMode=on; if(on && !pcBuilt) buildPC();
   document.getElementById('pc-toggle').classList.toggle('active', on);
   applyPCVisibility();
-  toast(on ? '点群ビュー: ON（建物・道路をデジタルレイヤー表示）' : '通常ビューに戻しました');
+  toast(on ? (REAL&&REAL.pc ? '点群ビュー: 兵庫県 1m DSM の実測点群（3m間引き・地表/建物/樹木/水域）' : '点群ビュー: ON（建物・道路をデジタルレイヤー表示）') : '通常ビューに戻しました', 3600);
 }
 
 /* ================= レベル管理 ================= */
@@ -310,8 +335,8 @@ function setLevel(lv, fly=true){
   tourGroup.visible = tourMode && lv!=='castle';
   enterHint.style.display = lv==='city' ? 'block' : 'none';
   if(lv==='wide'){ scene.fog.near=22000; scene.fog.far=70000; if(fly) flyTo(new THREE.Vector3(1800, 0, 900), 33000, 0.5, -0.3, 1600); }
-  if(lv==='city'){ scene.fog.near=6000; scene.fog.far=20000; if(fly) flyTo(new THREE.Vector3(CASTLE.x-100, 0, CASTLE.z+700), 3200, 0.88, -0.55, 1500); }
-  if(lv==='castle'){ scene.fog.near=2500; scene.fog.far=9000; if(fly) flyTo(new THREE.Vector3(CASTLE.x-40, 10, CASTLE.z+190), 640, 0.95, -0.35, 1500); }
+  if(lv==='city'){ scene.fog.near=6000; scene.fog.far=20000; if(fly) flyTo(new THREE.Vector3(CASTLE.x-100, TH(CASTLE.x-100, CASTLE.z+700), CASTLE.z+700), 3200, 0.88, -0.55, 1500); }
+  if(lv==='castle'){ scene.fog.near=2500; scene.fog.far=9000; if(fly) flyTo(new THREE.Vector3(CASTLE.x-40, TH(CASTLE.x-40, CASTLE.z+190)+10, CASTLE.z+190), 640, 0.95, -0.35, 1500); }
   renderPanel();
 }
 document.querySelectorAll('.crumb[data-lvl]').forEach(c=> c.addEventListener('click', ()=> setLevel(c.dataset.lvl)));

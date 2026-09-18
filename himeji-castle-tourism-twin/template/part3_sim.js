@@ -384,10 +384,11 @@ function updateAgents(dtMin){
     /* 描画（城内滞留中は城内ではなく周辺に薄く散らす / L2は別表現） */
     if(!segByFilter(a.seg) || !LAYER_STATE.agents) continue;
     if(a.state==='castle' && level==='castle') continue;
-    let x=a.cur.x, z=a.cur.z, y=3.2;
-    if(a.state==='castle'){ x = CASTLE.x - 60 + a.jx; z = CASTLE.z + 130 + a.jz; y=2.4; }
+    let x=a.cur.x, z=a.cur.z, y=3.2, yoff=3.2;
+    if(a.state==='castle'){ x = CASTLE.x - 60 + a.jx; z = CASTLE.z + 130 + a.jz; yoff=2.4; }
     else if(a.state==='spot'){ x += a.jx*0.35; z += a.jz*0.35; }
-    else if(a.state==='stay'){ x += a.jx*0.15; z += a.jz*0.15; y=32; }
+    else if(a.state==='stay'){ x += a.jx*0.15; z += a.jz*0.15; yoff=32; }
+    y = TH(x, z) + yoff;
     if(a.state==='move'){
       moving++;
       /* 尾: 古いほど細く暗く */
@@ -397,7 +398,7 @@ function updateAgents(dtMin){
         const dx=p1[0]-p0[0], dz=p1[1]-p0[1], L=Math.hypot(dx,dz); if(L<0.5) continue;
         const f=(j+1)/n;
         _E.set(0, Math.atan2(-dz, dx), 0); _Q.setFromEuler(_E);
-        _PV.set((p0[0]+p1[0])/2, 2.4, (p0[1]+p1[1])/2); _S.set(L+1.2, 0.6, 0.8+2.2*f);
+        const mx=(p0[0]+p1[0])/2, mz=(p0[1]+p1[1])/2; _PV.set(mx, TH(mx,mz)+2.4, mz); _S.set(L+1.2, 0.6, 0.8+2.2*f);
         M.compose(_PV, _Q, _S); trailMesh.setMatrixAt(ti, M);
         C.setHex(SEG[a.seg].col).multiplyScalar(0.2+1.0*f); trailMesh.setColorAt(ti, C);
         ti++;
@@ -424,7 +425,7 @@ const HEAT = { verts:[], obj:null, base:null, lastT:-99, max:1 };
     if(r.c > 3) return;
     for(let i=0;i<r.p.length-1;i++){
       if(Math.abs(r.p[i][0])>3600 || Math.abs(r.p[i][1])>3600) continue;
-      pts.push(r.p[i][0], 1.0, -r.p[i][1], r.p[i+1][0], 1.0, -r.p[i+1][1]);
+      pts.push(r.p[i][0], TY(r.p[i][0], -r.p[i][1], 1.0), -r.p[i][1], r.p[i+1][0], TY(r.p[i+1][0], -r.p[i+1][1], 1.0), -r.p[i+1][1]);
       meta.push([r.p[i][0], -r.p[i][1], r.c], [r.p[i+1][0], -r.p[i+1][1], r.c]);
     }
   });
@@ -500,11 +501,11 @@ const ZONES = [
 const zoneGroup = new THREE.Group(); zoneGroup.visible=false; scene.add(zoneGroup);
 ZONES.forEach(z=>{
   const disc = new THREE.Mesh(new THREE.CircleGeometry(38, 32), new THREE.MeshBasicMaterial({color:0xffd166, transparent:true, opacity:0.18, depthWrite:false, side:THREE.DoubleSide}));
-  disc.rotation.x=-Math.PI/2; disc.position.set(z.node.x, 1.2, z.node.z);
+  disc.rotation.x=-Math.PI/2; disc.position.set(z.node.x, TY(z.node.x, z.node.z, 1.2), z.node.z);
   const ring = new THREE.Mesh(new THREE.RingGeometry(36, 39, 40), new THREE.MeshBasicMaterial({color:0xffd166, transparent:true, opacity:0.7, depthWrite:false, side:THREE.DoubleSide}));
-  ring.rotation.x=-Math.PI/2; ring.position.set(z.node.x, 1.4, z.node.z);
+  ring.rotation.x=-Math.PI/2; ring.position.set(z.node.x, TY(z.node.x, z.node.z, 1.4), z.node.z);
   disc.userData = {name:z.n, zone:true, desc:z.desc}; z.disc=disc; z.ring=ring;
-  const lb = makeLabel(z.n, 9, '#ffd166'); lb.position.set(z.node.x, 46, z.node.z); z.lb=lb;
+  const lb = makeLabel(z.n, 9, '#ffd166'); lb.position.set(z.node.x, TY(z.node.x, z.node.z, 46), z.node.z); z.lb=lb;
   zoneGroup.add(disc, ring, lb);
 });
 /* 城内ルート（大手門→三の丸→菱の門→いの門〜はの門→大天守→備前丸→出口） */
@@ -514,7 +515,7 @@ const CROUTE = (function(){
   for(let i=1;i<pts.length;i++){ total+=Math.hypot(pts[i].x-pts[i-1].x, pts[i].z-pts[i-1].z); seg.push(total); }
   return {path:pts.map(p=>[p.x,p.z]), seg, total};
 })();
-const CROUTE_LINE = new THREE.Line(new THREE.BufferGeometry().setFromPoints(CROUTE.path.map(p=>new THREE.Vector3(p[0], 2.2, p[1]))),
+const CROUTE_LINE = new THREE.Line(new THREE.BufferGeometry().setFromPoints(CROUTE.path.map(p=>new THREE.Vector3(p[0], TY(p[0], p[1], 2.2), p[1]))),
   new THREE.LineBasicMaterial({color:0xffd166, transparent:true, opacity:0.5}));
 zoneGroup.add(CROUTE_LINE);
 const castleAg = new THREE.InstancedMesh(new THREE.SphereGeometry(1.1, 6, 5), new THREE.MeshBasicMaterial(), 1200);
@@ -552,7 +553,8 @@ function updateCastleZones(dtMin){
     w.u += dtMin * w.sp / CROUTE.total; if(w.u>=1) w.u-=1;
     const p = sampleRoute(CROUTE, w.u*CROUTE.total);
     const h=(i*2654435761)>>>0;
-    M.makeTranslation(p[0]+((h%20)-10)*0.9, 2.0, p[1]+(((h>>8)%20)-10)*0.9);
+    const wx=p[0]+((h%20)-10)*0.9, wz=p[1]+(((h>>8)%20)-10)*0.9;
+    M.makeTranslation(wx, TH(wx,wz)+2.0, wz);
     castleAg.setMatrixAt(i,M); C.setHex(SEG[w.seg].col); castleAg.setColorAt(i,C);
   });
   castleAg.count = castleWalkers.length;

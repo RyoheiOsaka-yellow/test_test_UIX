@@ -142,11 +142,13 @@ function extrudePoly(pts, h, mat, y0=0){
   const geo = new THREE.ExtrudeGeometry(polyShape(pts), {depth:h, bevelEnabled:false});
   const m = new THREE.Mesh(geo, mat);
   m.rotation.x = -Math.PI/2;
-  m.position.y = y0;
+  let cx=0, cy=0; pts.forEach(q=>{cx+=q[0]; cy+=q[1];}); cx/=pts.length; cy/=pts.length;
+  m.position.y = y0 + TH(cx, -cy);
   return m;
 }
 function flatPoly(pts, mat, y0=0.1){
   const geo = new THREE.ShapeGeometry(polyShape(pts));
+  if(TERRAIN_ON){ const ps=geo.attributes.position; for(let i=0;i<ps.count;i++) ps.setZ(i, TH(ps.getX(i), -ps.getY(i))); }
   const m = new THREE.Mesh(geo, mat);
   m.rotation.x = -Math.PI/2; m.position.y = y0;
   return m;
@@ -165,7 +167,39 @@ function makeLabel(text, size=18, color='#ff8a1e', weight=700){
   return sp;
 }
 
-/* ---------- GSI 航空写真タイル地面（広域 z15 + 中心部 z17 高解像） ---------- */
+/* ---------- 実地形（地理院DEM5A）と 兵庫県DSM（1m）: base64 Int16 グリッド ---------- */
+const REAL = SCENE_DATA.real || null;
+function decI16(b64){ const bin=atob(b64); const n=bin.length>>1; const a=new Int16Array(n); for(let i=0;i<n;i++){ a[i] = ((bin.charCodeAt(2*i) | (bin.charCodeAt(2*i+1)<<8)) << 16) >> 16; } return a; }
+function decU8(b64){ const bin=atob(b64); const a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) a[i]=bin.charCodeAt(i); return a; }
+function makeGrid(g){
+  if(!g) return null;
+  const G = {x0:g.x0, y0:g.y0, step:g.step, nx:g.nx, ny:g.ny, h:decI16(g.h), s:0.1};
+  G.at = function(i,j){ return this.h[j*this.nx+i]*this.s; };
+  G.sample = function(x, y){   // x=東, y=北（データ座標）
+    const fx=(x-this.x0)/this.step, fy=(y-this.y0)/this.step;
+    if(fx<0||fy<0||fx>this.nx-1||fy>this.ny-1) return null;
+    const i=Math.min(this.nx-2, Math.floor(fx)), j=Math.min(this.ny-2, Math.floor(fy)); const tx=fx-i, ty=fy-j;
+    return (this.at(i,j)*(1-tx)*(1-ty) + this.at(i+1,j)*tx*(1-ty) + this.at(i,j+1)*(1-tx)*ty + this.at(i+1,j+1)*tx*ty);
+  };
+  return G;
+}
+const TER_W = REAL ? makeGrid(REAL.terrain_wide) : null, TER_I = REAL ? makeGrid(REAL.terrain_inner) : null;
+const TERRAIN_ON = !!TER_W;
+/* world(x,z) → 地表標高 m（z=-北）。地図外は最寄りの端の値 */
+function TH(x, z){
+  if(!TERRAIN_ON) return 0;
+  const y=-z;
+  let v = TER_I ? TER_I.sample(x, y) : null;
+  if(v===null) v = TER_W.sample(x, y);
+  if(v===null){
+    const cx = Math.max(TER_W.x0, Math.min(TER_W.x0+(TER_W.nx-1)*TER_W.step, x)), cy = Math.max(TER_W.y0, Math.min(TER_W.y0+(TER_W.ny-1)*TER_W.step, y));
+    v = TER_W.sample(cx, cy);
+  }
+  return v===null ? 0 : v;
+}
+const TY = (x, z, off=0)=> TH(x, z) + off;
+
+/* ---------- GSI 航空写真タイル地面（広域 z15 + 中心部 z17 高解像）: 地形に沿って起伏 ---------- */
 const CLAT = SCENE_DATA.c.lat, CLON = SCENE_DATA.c.lon;
 function lon2tx(lon,z){ return (lon+180)/360*Math.pow(2,z); }
 function lat2ty(lat,z){ return (1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*Math.pow(2,z); }
@@ -182,9 +216,13 @@ function buildTiles(ZOOM, N, y, tone){
     const tex = loader.load(url);
     tex.minFilter = THREE.LinearFilter;
     const mat = new THREE.MeshBasicMaterial({map:tex, color:tone});
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(metersPerTile, metersPerTile), mat);
+    const SEGS = TERRAIN_ON ? (ZOOM===15 ? 20 : 10) : 1;
+    const geo = new THREE.PlaneGeometry(metersPerTile, metersPerTile, SEGS, SEGS);
+    const px=(tx+0.5-ctx)*metersPerTile, pz=(ty+0.5-cty)*metersPerTile;
+    if(TERRAIN_ON){ const ps=geo.attributes.position; for(let i=0;i<ps.count;i++){ ps.setZ(i, TH(px+ps.getX(i), pz-ps.getY(i)) + y); } }
+    const plane = new THREE.Mesh(geo, mat);
     plane.rotation.x = -Math.PI/2;
-    plane.position.set((tx+0.5-ctx)*metersPerTile, y, (ty+0.5-cty)*metersPerTile);
+    plane.position.set(px, TERRAIN_ON ? 0 : y, pz);
     groundGroup.add(plane);
   }
   return (2*N+1)*metersPerTile;
@@ -237,6 +275,7 @@ function mergedExtrude(list, mat){
   list.forEach(b=>{
     try{
       const g0 = new THREE.ExtrudeGeometry(polyShape(b.p), {depth:b.h, bevelEnabled:false}); const g = g0.index ? g0.toNonIndexed() : g0;
+      if(TERRAIN_ON){ let cx=0, cy=0; b.p.forEach(q=>{cx+=q[0]; cy+=q[1];}); cx/=b.p.length; cy/=b.p.length; const hh=TH(cx,-cy); const ar=g.attributes.position.array; for(let k=2;k<ar.length;k+=3) ar[k]+=hh; }
       arrs.push(g.attributes.position.array); total += g.attributes.position.array.length;
     }catch(e){}
   });
@@ -299,7 +338,7 @@ function buildKeep(cx, cz, w, d, ang, tiers, name){
     roof.position.y = y0 + th*0.7; g.add(roof);
     if(last){ [-1,1].forEach(sx=>{ const sh = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.7, w*0.035), 8, 6), KEEP_MAT.gold); sh.position.set(sx*w*k*0.09, y0+th*1.62, 0); g.add(sh); }); }
   }
-  g.position.set(cx, 0, cz); g.rotation.y = ang;
+  g.position.set(cx, TH(cx, cz) + (tiers>=5 ? 2 : 0), cz); g.rotation.y = ang;
   g.traverse(o=>{ if(o.isMesh){ o.userData = {name, castle:true}; CASTLE_MESHES.push(o); } });
   return g;
 }
@@ -325,6 +364,7 @@ function mergedFlat(polys, mat, y){
     try{
       if(p.length < 3) return;
       const g0 = new THREE.ShapeGeometry(polyShape(p)); const g = g0.index ? g0.toNonIndexed() : g0;
+      if(TERRAIN_ON){ const ar=g.attributes.position.array; for(let k=0;k<ar.length;k+=3) ar[k+2]=TH(ar[k], -ar[k+1]); }
       arrs.push(g.attributes.position.array); total += g.attributes.position.array.length;
     }catch(e){}
   });
@@ -347,7 +387,7 @@ LG.bldg.add(midMesh);
 LG.lu.add(mergedFlat(SCENE_DATA.parking, MAT.park, 0.45));
 /* 内堀・中堀の縁を発光ラインでなぞり、城郭の輪郭を強調 */
 (SCENE_DATA.lu.moat||[]).forEach(poly=>{
-  const pts = poly.map(p=>new THREE.Vector3(p[0], 1.0, -p[1]));
+  const pts = poly.map(p=>new THREE.Vector3(p[0], TY(p[0], -p[1], 1.0), -p[1]));
   LG.lu.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x6fc3ff, transparent:true, opacity:0.75, blending:THREE.AdditiveBlending, depthWrite:false})));
 });
 
@@ -356,7 +396,7 @@ function mergedSegs(polylines, mat, y){
   const pts=[];
   polylines.forEach(pl=>{
     for(let i=0;i<pl.length-1;i++){
-      pts.push(new THREE.Vector3(pl[i][0], y, -pl[i][1]), new THREE.Vector3(pl[i+1][0], y, -pl[i+1][1]));
+      pts.push(new THREE.Vector3(pl[i][0], TY(pl[i][0], -pl[i][1], y), -pl[i][1]), new THREE.Vector3(pl[i+1][0], TY(pl[i+1][0], -pl[i+1][1], y), -pl[i+1][1]));
     }
   });
   return new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), mat);
@@ -380,7 +420,7 @@ const dotMat = new THREE.PointsMaterial({color:0x556080, size:2.6, transparent:t
 (function buildDots(){
   const d = SCENE_DATA.dots, n = d.length/2;
   const pos = new Float32Array(n*3);
-  for(let i=0;i<n;i++){ pos[i*3]=d[i*2]; pos[i*3+1]=1.6; pos[i*3+2]=-d[i*2+1]; }
+  for(let i=0;i<n;i++){ pos[i*3]=d[i*2]; pos[i*3+1]=TY(d[i*2], -d[i*2+1], 1.6); pos[i*3+2]=-d[i*2+1]; }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
   LG.dots.add(new THREE.Points(geo, dotMat));
@@ -405,9 +445,9 @@ SCENE_DATA.pois.forEach(p=>{
   cone.userData = ud; orb.userData = ud;
   const pin = new THREE.Group();
   pin.add(cone, orb);
-  pin.position.set(p.p[0], 0, -p.p[1]);
+  pin.position.set(p.p[0], TH(p.p[0], -p.p[1]), -p.p[1]);
   const lb = makeLabel(p.n, p.big ? 16 : 11, hx6(cat.c));
-  lb.position.set(p.p[0], 44*sz, -p.p[1]);
+  lb.position.set(p.p[0], TY(p.p[0], -p.p[1], 44*sz), -p.p[1]);
   LG.poi.add(pin, lb);
 });
 
@@ -417,15 +457,16 @@ SCENE_DATA.pois.forEach(p=>{
   SCENE_DATA.hotels.forEach(ht=>{
     const d = Math.hypot(ht.p[0], ht.p[1]-1200);
     const tower = new THREE.Mesh(new THREE.CylinderGeometry(5.5, 5.5, 26, 6), hMat);
-    tower.position.set(ht.p[0], 13, -ht.p[1]);
+    const hy = TH(ht.p[0], -ht.p[1]);
+    tower.position.set(ht.p[0], hy+13, -ht.p[1]);
     const roof = new THREE.Mesh(new THREE.ConeGeometry(6.5, 7, 6), hMat);
-    roof.position.set(ht.p[0], 29.5, -ht.p[1]);
+    roof.position.set(ht.p[0], hy+29.5, -ht.p[1]);
     tower.userData = roof.userData = { name:ht.n, hotel:true,
       desc:`宿泊施設（姫路駅から約${d>=1000?(d/1000).toFixed(1)+'km':Math.round(d)+'m'}）。宿泊者は夜間の市内回遊・翌日の周遊起点になります` };
     LG.hotel.add(tower, roof);
     if(d < 900){
       const lb = makeLabel(ht.n, 8.5, '#35d0c0', 500);
-      lb.position.set(ht.p[0], 42, -ht.p[1]);
+      lb.position.set(ht.p[0], hy+42, -ht.p[1]);
       LG.hotel.add(lb);
     }
   });
@@ -434,17 +475,17 @@ SCENE_DATA.pois.forEach(p=>{
     const big = s.n==='姫路' || s.n==='山陽姫路';
     const disc = new THREE.Mesh(new THREE.CylinderGeometry(big?14:8, big?14:8, 3, 10),
       new THREE.MeshStandardMaterial({color:col, emissive:col, emissiveIntensity:0.25, roughness:0.6}));
-    disc.position.set(s.p[0], 1.8, -s.p[1]);
+    disc.position.set(s.p[0], TY(s.p[0], -s.p[1], 1.8), -s.p[1]);
     disc.userData = { name:(s.k==='sanyo'?'山陽電鉄 ':'JR ') + s.n + '駅' };
     LG.rail.add(disc);
-    if(!big){ const lb = makeLabel(s.n, 8, hx6(col), 500); lb.position.set(s.p[0], 26, -s.p[1]); LG.rail.add(lb); }
+    if(!big){ const lb = makeLabel(s.n, 8, hx6(col), 500); lb.position.set(s.p[0], TY(s.p[0], -s.p[1], 26), -s.p[1]); LG.rail.add(lb); }
   });
   SCENE_DATA.ic.forEach(ic=>{
     const m = new THREE.Mesh(new THREE.OctahedronGeometry(9, 0), new THREE.MeshStandardMaterial({color:0x8fd0ff, emissive:0x1a3a66, roughness:0.5}));
-    m.position.set(ic.p[0], 10, -ic.p[1]);
+    m.position.set(ic.p[0], TY(ic.p[0], -ic.p[1], 10), -ic.p[1]);
     m.userData = { name:ic.n, desc:'高速道路・自動車専用道の出入口。自家用車・観光バスの流入ゲート' };
     siteGroup.add(m);
-    const lb = makeLabel(ic.n, 9, '#8fd0ff', 500); lb.position.set(ic.p[0], 30, -ic.p[1]); siteGroup.add(lb);
+    const lb = makeLabel(ic.n, 9, '#8fd0ff', 500); lb.position.set(ic.p[0], TY(ic.p[0], -ic.p[1], 30), -ic.p[1]); siteGroup.add(lb);
   });
 })();
 
@@ -469,17 +510,75 @@ const PORT = P('姫路港');
 
 /* 姫路城ラベル（大） */
 const castleLabel = makeLabel('世界遺産 姫路城（白鷺城）', 40, '#ffd166');
-castleLabel.position.set(CASTLE.x, 150, CASTLE.z);
+const CASTLE_Y = TH(CASTLE.x, CASTLE.z);
+castleLabel.position.set(CASTLE.x, CASTLE_Y+150, CASTLE.z);
 siteGroup.add(castleLabel);
 const castleLabel2 = makeLabel('国宝・1993年 世界遺産登録 ｜ 2025年度 入城 156.8万人', 16, '#f0e6c8', 500);
-castleLabel2.position.set(CASTLE.x, 112, CASTLE.z);
+castleLabel2.position.set(CASTLE.x, CASTLE_Y+112, CASTLE.z);
 siteGroup.add(castleLabel2);
 /* 城郭の足元に金色の淡い発光ディスク（目印） */
 const castleGlow = new THREE.Mesh(new THREE.CircleGeometry(230, 48), new THREE.MeshBasicMaterial({color:0xffd166, transparent:true, opacity:0.12, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
-castleGlow.rotation.x = -Math.PI/2; castleGlow.position.set(CASTLE.x-30, 0.8, CASTLE.z+110);
+castleGlow.rotation.x = -Math.PI/2; castleGlow.position.set(CASTLE.x-30, TY(CASTLE.x-30, CASTLE.z+110, 0.8), CASTLE.z+110);
 siteGroup.add(castleGlow);
 /* 大天守の存在感: 光柱 */
 const beam = new THREE.Mesh(new THREE.CylinderGeometry(3, 10, 260, 12, 1, true),
   new THREE.MeshBasicMaterial({color:0xffd166, transparent:true, opacity:0.10, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
-beam.position.set(CASTLE.x, 150, CASTLE.z);
+beam.position.set(CASTLE.x, CASTLE_Y+150, CASTLE.z);
 siteGroup.add(beam);
+
+/* ---------- 姫路城郭 実測レリーフ（兵庫県 DSM 1m → 2m グリッド）: 石垣・櫓・樹木・堀を実形状で ---------- */
+let castleRelief = null;
+(function buildCastleRelief(){
+  if(!REAL || !REAL.castle) return;
+  const g = REAL.castle, H = decI16(g.h), ND = decI16(g.nd), C = decU8(g.c);
+  const nx=g.nx, ny=g.ny, st=g.step;
+  const geo = new THREE.PlaneGeometry((nx-1)*st, (ny-1)*st, nx-1, ny-1);
+  const pos = geo.attributes.position, col = new Float32Array(pos.count*3);
+  const cx0 = g.x0 + (nx-1)*st/2, cy0 = g.y0 + (ny-1)*st/2;   // データ座標の中心
+  const KX = CASTLE.x, KZ = CASTLE.z;
+  const EX = 150, EY = -10, ERX = 470, ERY = 410;   // 城郭（内堀〜中堀・好古園・動物園）を覆う楕円（データ座標）
+  const inside = new Uint8Array(pos.count);
+  const c = new THREE.Color();
+  const ivory=new THREE.Color(0xf3efe4), gray=new THREE.Color(0x8a8578), stone=new THREE.Color(0x6a665c), green=new THREE.Color(0x2f6b3c), grass=new THREE.Color(0x4d6a3a), water=new THREE.Color(0x2a5f95), ground=new THREE.Color(0x5b5a52);
+  for(let j=0;j<ny;j++) for(let i=0;i<nx;i++){
+    const k = j*nx+i;               // PlaneGeometry: 行 j は上(+y)から
+    const vx = g.x0 + i*st, vy = g.y0 + (ny-1-j)*st;   // データ座標（y=北）
+    const gi = (ny-1-j)*nx + i;                          // グリッド配列は y0（南）から北へ
+    let h = H[gi]*0.1, nd = ND[gi]*0.1; const cl = C[gi];
+    /* 大天守は素屋根期の計測（平坦な箱）になり得るため、天守台の高さに均して立体モデルに置換 */
+    const dk = Math.hypot(vx-KX, vy+KZ);
+    if(dk < 40){ h = Math.min(h, TH(KX,KZ)+18); nd = Math.min(nd, 18); }
+    /* 城郭の楕円範囲でクリップし、縁は地形（DEM）へ滑らかに接続 */
+    const e = Math.pow((vx-EX)/ERX, 2) + Math.pow((vy-EY)/ERY, 2);
+    inside[k] = e <= 1;
+    if(e > 0.82){ const t = Math.min(1, (e-0.82)/0.18); h = h*(1-t) + (TH(vx,-vy)+0.4)*t; }
+    pos.setZ(k, h);
+    /* 斜度（石垣判定） */
+    const hl = H[(ny-1-j)*nx + Math.max(0,i-1)]*0.1, hr = H[(ny-1-j)*nx + Math.min(nx-1,i+1)]*0.1;
+    const hu = H[Math.min(ny-1, ny-j)*nx + i]*0.1, hd = H[Math.max(0, ny-2-j)*nx + i]*0.1;
+    const slope = Math.max(Math.abs(hr-hl), Math.abs(hu-hd))/(2*st);
+    if(cl===3) c.copy(water);
+    else if(cl===1 && nd > 9) c.copy(ivory);
+    else if(cl===1) c.copy(gray);
+    else if(slope > 0.9) c.copy(stone);
+    else if(cl===2 && nd > 3) c.copy(green).lerp(grass, Math.min(1, (nd-3)/12));
+    else c.copy(ground).lerp(grass, 0.35);
+    const sh = 0.75 + 0.25*Math.min(1, Math.max(0, (hr-hl)*0.5+0.5));
+    col[k*3]=c.r*sh; col[k*3+1]=c.g*sh; col[k*3+2]=c.b*sh;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  /* 楕円外の三角形を除去 */
+  const idx = geo.index.array, keep = [];
+  for(let t=0;t<idx.length;t+=3){ if(inside[idx[t]] && inside[idx[t+1]] && inside[idx[t+2]]) keep.push(idx[t], idx[t+1], idx[t+2]); }
+  geo.setIndex(keep);
+  geo.computeVertexNormals();
+  const mat = new THREE.MeshStandardMaterial({vertexColors:true, roughness:0.85, metalness:0.05});
+  castleRelief = new THREE.Mesh(geo, mat);
+  castleRelief.rotation.x = -Math.PI/2;
+  castleRelief.position.set(cx0, 0.3, -cy0);
+  castleRelief.userData = {name:'姫路城（世界遺産・国宝）— 実測DSMレリーフ', castle:true};
+  CASTLE_MESHES.push(castleRelief);
+  LG.bldg.add(castleRelief);
+  /* レリーフ範囲内の押し出し（城郭の櫓・門など）は二重描画になるため非表示。大天守・小天守の立体モデルは残す */
+  LG.bldg.children.forEach(m=>{ if(m.userData && m.userData.castle && m!==castleRelief && !(m.parent && m.parent!==LG.bldg) && m.geometry && m.geometry.type==='ExtrudeGeometry') m.visible=false; });
+})();

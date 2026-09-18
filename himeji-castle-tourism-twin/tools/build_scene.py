@@ -332,6 +332,19 @@ for n, ll, c, d, dw, big, keys in POIS:
 SCENE = {'c': {'lat': CLAT, 'lon': CLON}, 'buildings': buildings, 'mid': mid, 'dots': flat_dots, 'roads': roads,
          'rail': rail, 'stations': stations, 'ropeway': ropeway, 'lu': lu, 'parking': parking,
          'hotels': hotels, 'ic': ic, 'pois': pois}
+json.dump(SCENE, open(os.path.join(OSM, 'scene_data.json'), 'w'))   # 実データ前処理（prep_real.py）の入力
+# ---- 実データ（地形・DSM）: prep_real.py の出力があれば取り込む ----
+REAL = os.path.join(OSM, 'real.json')
+if os.path.exists(REAL):
+    real = json.load(open(REAL))
+    bh = real.pop('bldg_h', {})
+    n_h = 0
+    for i, h in bh.items():
+        i = int(i)
+        if i < len(buildings) and buildings[i].get('k') != 'castle':
+            buildings[i]['h'] = h; n_h += 1
+    SCENE['real'] = real
+    print('real data attached: heights', n_h, 'keys', list(real.keys()))
 js = json.dumps(SCENE, ensure_ascii=False, separators=(',', ':'))
 print('SCENE_DATA bytes', len(js.encode('utf-8')))
 
