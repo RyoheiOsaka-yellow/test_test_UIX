@@ -456,7 +456,9 @@ function renderPanel(){
           <button class="chip ${LAYER_STATE.poi?'active':''}" data-l="poi">POI</button>
           <button class="chip ${LAYER_STATE.hotel?'active':''}" data-l="hotel">宿泊</button>
           <button class="chip ${LAYER_STATE.rail?'active':''}" data-l="rail">鉄道</button>
-          <button class="chip ${LAYER_STATE.dots?'active':''}" data-l="dots">点描（広域）</button></div></div>
+          <button class="chip ${LAYER_STATE.dots?'active':''}" data-l="dots">点描（広域）</button>
+          <button class="chip ${LAYER_STATE.plu?'active':''}" data-l="plu">土地利用（PLATEAU）</button>
+          <button class="chip ${LAYER_STATE.proad?'active':''}" data-l="proad">道路面</button></div></div>
       <div class="sec"><div class="sec-t">凡例</div><div class="legend">
           <div class="li"><div class="sw" style="background:var(--in)"></div>インバウンド　<div class="sw" style="background:var(--dom)"></div>国内（県外）　<div class="sw" style="background:var(--loc)"></div>県内・近隣</div>
           <div class="li"><div class="sw" style="background:#ffd166"></div>世界遺産・史跡　<div class="sw" style="background:#b56ce8"></div>文化施設　<div class="sw" style="background:#e87ca0"></div>商業・食</div>
@@ -820,9 +822,22 @@ addEventListener('pointerup', e=>{
   if(moved>5) return;
   if(level!=='castle'){
     const hits = pick(e, CASTLE_MESHES, false);
-    if(hits.length){ toast('姫路城 城内（L2）へ移動します'); setLevel('castle'); }
+    if(hits.length){ toast('姫路城 城内（L2）へ移動します'); setLevel('castle'); return; }
   }
+  const hb = pickBuilding(e); if(hb) showBuildingCard(hb, e); else hideBuildingCard();
 });
+/* 建物情報カード（PLATEAU 属性） */
+const bcard = document.getElementById('bcard');
+function hideBuildingCard(){ if(bcard) bcard.style.display='none'; }
+function showBuildingCard(hb, e){
+  const b = hb.b, inf = plateauInfo(b); if(!bcard) return;
+  const code = (typeof meshCode==='function') ? meshCode(inf.lat, inf.lon, 250) : '';
+  bcard.innerHTML = `<div class="bc-h"><b>${inf.name || (inf.castle ? '姫路城 城郭内の建造物' : USAGE_NAME[b.u] || '建物')}</b><button class="bd-x" id="bc-close">✕</button></div>
+    <div class="bc-g"><span>建物ID</span><b>${inf.id}</b><span>用途</span><b>${inf.usage}</b><span>高さ（計測）</span><b>${inf.h.toFixed(1)} m</b><span>階数</span><b>${inf.storeys ? inf.storeys+' 階' : '—'}</b><span>建築面積</span><b>${fmt(inf.area)} m²</b><span>地盤高</span><b>T.P. ${inf.ground.toFixed(1)} m</b><span>LOD</span><b>${inf.lod}</b><span>250mメッシュ</span><b>${code}</b></div>
+    <div class="bc-src">出典: 国土交通省 PLATEAU 姫路市 2023年度（CityGML 仕様4.1）。人流との結合は建物ID × 250mメッシュで行う想定</div>`;
+  bcard.style.display='block'; bcard.style.left=Math.min(innerWidth-330, e.clientX+16)+'px'; bcard.style.top=Math.min(innerHeight-260, e.clientY+12)+'px';
+  document.getElementById('bc-close').onclick = hideBuildingCard;
+}
 addEventListener('keydown', e=>{
   if(e.key==='Escape'){ if(boardOn) setBoard(false); else if(dbOn) setDB(false); else if(propOn) setProp(false); else if(level==='castle') setLevel('city'); }
 
@@ -855,7 +870,7 @@ function loop(now){
   const dtMin = timeState.playing ? dt*timeState.speed : 0;
   const visualKey=segFilter+'|'+LAYER_STATE.agents+'|'+level; if(dtMin>0 || loop.visualKey!==visualKey){updateAgents(dtMin);loop.visualKey=visualKey;}
   if(dtMin>0){ if(heatMode!=='off') repaintHeat(); }
-  updateFlow3D(dtMin, now);
+  updateFlow3D(dtMin, now); updatePlateauLOD();
   if(level==='castle') updateCastleZones(dtMin);
   updateArcs(dt);
   if(odMode && level!=='castle') updateKDE(false);
@@ -885,7 +900,7 @@ function buildUrbanDetail(){
  const blue=new THREE.Color('#7aacbf'),roof=new THREE.Color('#adc9c9'),warm=new THREE.Color('#d5c7a4');
  function point(x,y,z,c){pointSeen++;if(pos.length<1800000){pos.push(x,y,z);cols.push(c.r,c.g,c.b);return}sampleSeed=(Math.imul(sampleSeed,1664525)+1013904223)>>>0;const k=Math.floor(sampleSeed/4294967296*pointSeen);if(k>=600000)return;pos[k*3]=x;pos[k*3+1]=y;pos[k*3+2]=z;cols[k*3]=c.r;cols[k*3+1]=c.g;cols[k*3+2]=c.b}
  function line(a,b){edge.push(...a,...b)}
- SCENE_DATA.buildings.forEach((b,bi)=>{
+ ((typeof PL!=='undefined' && PL.ext.length) ? PL.ext : SCENE_DATA.buildings).forEach((b,bi)=>{
   const poly=b.p;let cx=0,cz=0;poly.forEach(p=>{cx+=p[0];cz-=p[1]});cx/=poly.length;cz/=poly.length;
   if(Math.hypot(cx-CASTLE.x,cz-(CASTLE.z+600))>2550)return;
   const base=TH(cx,cz),h=b.h||8,step=Math.hypot(cx-CASTLE.x,cz-CASTLE.z)<950?1.5:2.8;
@@ -986,7 +1001,7 @@ renderPanel();
 initRefinement();
 toast('操作: 左ドラッグ＝地球儀のように回す（横＝360度・縦＝真上〜真横） ／ 右ドラッグ＝平行移動 ／ ホイール＝ズーム ／ ダブルクリック＝フォーカス。▶ で1日を再生', 5200);
 requestAnimationFrame(loop);
-window.__twin={ctrl,camera,groundAt,MESH,TRAJ,FLOORS,setMesh,setTraj,setFloors,setLevel,timeState,agents,STATS,get level(){return level}};
+window.__twin={ctrl,camera,groundAt,PL,MESH,TRAJ,FLOORS,setMesh,setTraj,setFloors,setLevel,timeState,agents,STATS,get level(){return level}};
 window.twinDiagnostics=()=>({mesh:MESH.on,meshCells:MESH.cells.length,traj:TRAJ.on,trajSegs:TRAJ.n,floors:FLOORS.on,points:supplementalCount,agents:agents.length,trailVisible:trailMesh.visible,routeVisible:routeGroup.visible,level,phi:ctrl.sph.phi,time:timeState.min,style:urbanStyle,primaryDragMode,target:ctrl.target.toArray(),theta:ctrl.sph.theta,castle:[CASTLE.x,CASTLE.z],cloudVisible:fineCloud.visible,heads:flowGeometry.drawRange.count});
 })();
 </script>

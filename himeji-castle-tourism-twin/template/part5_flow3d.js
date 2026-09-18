@@ -146,7 +146,7 @@ function trajRelayout(){
 }
 function trajReset(){ TRAJ.n=0; TRAJ.up=0; TRAJ.sn=0; TRAJ.sup=0; TRAJ.full=false; TRAJ.trips=0; TRAJ.geo.setDrawRange(0,0); TRAJ.sgeo.setDrawRange(0,0); agents.forEach(a=>{ a.tjl=null; }); }
 /* 建物のゴースト表示（半透明の白） */
-const GHOST = { on:false, saved:null, mats:()=>[MAT.bldg, MAT.bldgNamed] };
+const GHOST = { on:false, saved:null, mats:()=>[MAT.bldg, MAT.bldgNamed].concat((typeof PL!=='undefined' && PL.matL2) ? [PL.matL2] : []) };
 function setGhost(on){
   if(GHOST.on===on) return; GHOST.on=on; const mats=GHOST.mats();
   if(on){ GHOST.saved=mats.map(m=>({color:m.color.getHex(), opacity:m.opacity, transparent:m.transparent, depthWrite:m.depthWrite, emissive:m.emissive.getHex(), ei:m.emissiveIntensity}));

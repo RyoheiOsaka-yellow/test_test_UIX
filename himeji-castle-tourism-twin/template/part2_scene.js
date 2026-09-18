@@ -376,7 +376,7 @@ scene.add(siteGroup);
 const LG = { bldg:new THREE.Group(), lu:new THREE.Group(), ped:new THREE.Group(),
              poi:new THREE.Group(), dots:new THREE.Group(), hotel:new THREE.Group(), heat:new THREE.Group(), rail:new THREE.Group() };
 Object.values(LG).forEach(g=>siteGroup.add(g));
-const LAYER_STATE = { lu:true, ped:true, poi:true, dots:true, hotel:true, rail:true, agents:true };
+const LAYER_STATE = { lu:true, ped:true, poi:true, dots:true, hotel:true, rail:true, agents:true, plu:true, proad:true };
 let heatMode = 'off';  // off | all | in | dom
 
 const MAT = {
@@ -632,6 +632,7 @@ function applyLayers(){
   LG.hotel.visible = LAYER_STATE.hotel;
   LG.rail.visible = LAYER_STATE.rail;
   LG.heat.visible = (heatMode !== 'off');
+  if(typeof PL !== 'undefined'){ PL.lu.visible = LAYER_STATE.plu; PL.road.visible = LAYER_STATE.proad; }
 }
 
 /* ---------- 主要ノード座標（three座標: x, z） ---------- */

@@ -334,6 +334,15 @@ SCENE = {'c': {'lat': CLAT, 'lon': CLON}, 'buildings': buildings, 'mid': mid, 'd
          'hotels': hotels, 'ic': ic, 'pois': pois}
 json.dump(SCENE, open(os.path.join(OSM, 'scene_data.json'), 'w'))   # 実データ前処理（prep_real.py）の入力
 # ---- 実データ（地形・DSM）: prep_real.py の出力があれば取り込む ----
+# ---- PLATEAU（prep_plateau.py の出力）: あれば建物・土地利用・道路面を実データに置換 ----
+PLAT = os.path.join(OSM, 'plateau.json')
+if os.path.exists(PLAT):
+    plateau = json.load(open(PLAT, encoding='utf-8'))
+    SCENE['plateau'] = plateau
+    SCENE['buildings'] = [b for b in buildings if b.get('k') == 'castle']   # 天守モデル配置用に城郭のみ残す（描画は PLATEAU）
+    buildings = SCENE['buildings']
+    SCENE['mid'] = []
+    print('PLATEAU attached:', plateau.get('meta'))
 REAL = os.path.join(OSM, 'real.json')
 if os.path.exists(REAL):
     real = json.load(open(REAL))
@@ -350,6 +359,10 @@ print('SCENE_DATA bytes', len(js.encode('utf-8')))
 
 parts = [open(os.path.join(TPL, f), encoding='utf-8').read() for f in ('part1_head.html', 'part2_scene.js', 'part3_sim.js', 'part4_ui.js')]
 _p5 = open(os.path.join(TPL, 'part5_flow3d.js'), encoding='utf-8').read()
+_p2b = open(os.path.join(TPL, 'part2b_plateau.js'), encoding='utf-8').read()
+_anchor = "  for(let i=0;i<plain.length;i+=1500) LG.bldg.add(mergedExtrude(plain.slice(i,i+1500), MAT.bldg));\n})();\n"
+assert parts[1].count(_anchor) == 1
+parts[1] = parts[1].replace(_anchor, _anchor + _p2b)
 assert parts[3].count('/* 初期化 */') == 1
 parts[3] = parts[3].replace('/* 初期化 */', _p5 + '\n/* 初期化 */')
 # ---------- ライブラリ・フォントの埋め込み（EMBED_LIBS=1: three.js / Noto Sans JP をインライン化、オフラインで動作） ----------
@@ -388,3 +401,15 @@ if TILES and os.path.isdir(TILES):
     out2 = os.environ.get('EMBED_OUT', OUT.replace('.html', '.embedded.html'))
     open(out2, 'w', encoding='utf-8').write(emb)
     print('wrote', out2, len(emb.encode('utf-8')), 'bytes', 'tiles', len(td))
+    # ---- 多ファイル版（Artifact の files 機能向け: ページ本体 + data/scene.js + data/tiles.js。1ファイル16MB制限を回避） ----
+    ADIR = os.environ.get('ARTIFACT_DIR')
+    if ADIR:
+        os.makedirs(os.path.join(ADIR, 'data'), exist_ok=True)
+        open(os.path.join(ADIR, 'data', 'scene.js'), 'w', encoding='utf-8').write('window.SCENE_DATA_EXT = ' + js + ';\n')
+        open(os.path.join(ADIR, 'data', 'tiles.js'), 'w', encoding='utf-8').write('window.TILE_DATA_EXT = ' + json.dumps(td) + ';\n')
+        page = head.replace('<!--@THREE-->', '<script src="data/scene.js"></script>\n<script src="data/tiles.js"></script>\n<!--@THREE-->') if '<!--@THREE-->' in head else head
+        page = page.replace('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>', '<script src="data/scene.js"></script>\n<script src="data/tiles.js"></script>\n<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>', 1)
+        page = page + '\nconst SCENE_DATA = window.SCENE_DATA_EXT;\nconst TILE_DATA = window.TILE_DATA_EXT;\n' + parts[1] + '\n' + parts[2] + '\n' + parts[3]
+        page = page.replace('</body>\n</html>', '').rstrip() + '\n'
+        open(os.path.join(ADIR, 'index.html'), 'w', encoding='utf-8').write(page)
+        print('wrote artifact dir', ADIR, 'page', len(page.encode('utf-8')), 'scene.js', len(js.encode('utf-8')) + 26, 'tiles.js', len(json.dumps(td)) + 25)
