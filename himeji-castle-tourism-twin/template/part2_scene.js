@@ -47,51 +47,90 @@ const ctrl = {
 };
 ctrl.apply();
 const el = renderer.domElement;
-el.addEventListener('contextmenu', e=>e.preventDefault());
-el.addEventListener('mousedown', e=>{
-  if(!ctrl.enabled) return;
-  if(e.button===0) ctrl.rotating = true;
-  if(e.button===2) ctrl.panning = true;
-  ctrl.px = e.clientX; ctrl.py = e.clientY;
-});
-addEventListener('mouseup', ()=>{ ctrl.rotating=false; ctrl.panning=false; });
-addEventListener('mousemove', e=>{
-  const dx = e.clientX-ctrl.px, dy = e.clientY-ctrl.py;
-  if(ctrl.rotating && ctrl.enabled){
-    ctrl.sph.theta -= dx*0.0048; ctrl.sph.phi -= dy*0.0042; ctrl.apply();
-  } else if(ctrl.panning && ctrl.enabled){
-    const s = ctrl.sph.radius*0.0013;
+el.style.cursor = 'grab';
+/* --- 操作: 左ドラッグ＝地図を掴んで移動（カーソル直下の地面を追従） / 右ドラッグ・Shift+ドラッグ＝回転 / ホイール＝ズーム --- */
+const _ray = new THREE.Raycaster(), _ndc = new THREE.Vector2(), _plane = new THREE.Plane(new THREE.Vector3(0,1,0), 0), _hit = new THREE.Vector3();
+function groundAt(clientX, clientY, y){
+  const r = el.getBoundingClientRect();
+  _ndc.set(((clientX-r.left)/r.width)*2-1, -((clientY-r.top)/r.height)*2+1);
+  _ray.setFromCamera(_ndc, camera);
+  _plane.constant = -y;
+  const ok = _ray.ray.intersectPlane(_plane, _hit);
+  if(!ok) return null;
+  const d = _hit.distanceTo(camera.position);
+  if(d > ctrl.sph.radius*6) return null;   // 地平線付近は不安定なので画面差分パンにフォールバック
+  return _hit.clone();
+}
+const grab = { on:false, pt:null, y:0 };
+const PAN_LIMIT = 24000;
+function clampTarget(){ ctrl.target.x = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, ctrl.target.x)); ctrl.target.z = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, ctrl.target.z)); }
+function startGrab(x, y){ grab.y = ctrl.target.y; grab.pt = groundAt(x, y, grab.y); grab.on = true; ctrl.panning = true; ctrl.px = x; ctrl.py = y; el.style.cursor = 'grabbing'; }
+function moveGrab(x, y){
+  const p = grab.pt ? groundAt(x, y, grab.y) : null;
+  if(p && grab.pt){ ctrl.target.x += grab.pt.x - p.x; ctrl.target.z += grab.pt.z - p.z; }
+  else { /* 画面差分パン */
+    const dx = x-ctrl.px, dy = y-ctrl.py, s = ctrl.sph.radius*0.0013;
     const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd); fwd.y=0; fwd.normalize();
     const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0,1,0)).negate();
     ctrl.target.addScaledVector(right, -dx*s).addScaledVector(fwd, dy*s);
-    ctrl.apply();
   }
-  ctrl.px=e.clientX; ctrl.py=e.clientY;
+  clampTarget(); ctrl.apply();
+  if(grab.pt){ const q = groundAt(x, y, grab.y); if(q) grab.pt = q; }
+  ctrl.px = x; ctrl.py = y;
+}
+function endGrab(){ grab.on = false; grab.pt = null; ctrl.panning = false; ctrl.rotating = false; el.style.cursor = 'grab'; }
+el.addEventListener('contextmenu', e=>e.preventDefault());
+el.addEventListener('mousedown', e=>{
+  if(!ctrl.enabled) return;
+  if(tween) tween = null;   // 掴んだらカメラ遷移を中断
+  if(e.button===2 || (e.button===0 && (e.shiftKey || e.ctrlKey || e.metaKey))){ ctrl.rotating = true; ctrl.px = e.clientX; ctrl.py = e.clientY; el.style.cursor = 'move'; }
+  else if(e.button===0){ startGrab(e.clientX, e.clientY); }
+});
+addEventListener('mouseup', ()=>{ endGrab(); });
+addEventListener('mousemove', e=>{
+  if(!ctrl.enabled) return;
+  if(ctrl.rotating){
+    const dx = e.clientX-ctrl.px, dy = e.clientY-ctrl.py;
+    ctrl.sph.theta -= dx*0.0048; ctrl.sph.phi -= dy*0.0042; ctrl.apply();
+    ctrl.px=e.clientX; ctrl.py=e.clientY;
+  } else if(grab.on){ moveGrab(e.clientX, e.clientY); }
 });
 el.addEventListener('wheel', e=>{
   if(!ctrl.enabled) return;
   e.preventDefault();
+  /* カーソル位置を中心にズーム（地面上の点が動かないよう補正） */
+  const before = groundAt(e.clientX, e.clientY, ctrl.target.y);
   ctrl.sph.radius *= (1 + Math.sign(e.deltaY)*0.09);
   ctrl.apply();
+  const after = groundAt(e.clientX, e.clientY, ctrl.target.y);
+  if(before && after){ ctrl.target.x += before.x - after.x; ctrl.target.z += before.z - after.z; clampTarget(); ctrl.apply(); }
 }, {passive:false});
-/* タッチ（1本指: 回転 / 2本指: ピンチズーム） */
-let touchD = 0;
+/* タッチ（1本指: 掴んで移動 / 2本指: ピンチズーム＋回転） */
+let touchD = 0, touchA = 0, touchMid = null;
 el.addEventListener('touchstart', e=>{
-  if(e.touches.length===1){ ctrl.rotating=true; ctrl.px=e.touches[0].clientX; ctrl.py=e.touches[0].clientY; }
-  if(e.touches.length===2){ ctrl.rotating=false; touchD = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY); }
-}, {passive:true});
-el.addEventListener('touchmove', e=>{
-  if(e.touches.length===1 && ctrl.rotating){
-    const dx=e.touches[0].clientX-ctrl.px, dy=e.touches[0].clientY-ctrl.py;
-    ctrl.sph.theta -= dx*0.0048; ctrl.sph.phi -= dy*0.0042; ctrl.apply();
-    ctrl.px=e.touches[0].clientX; ctrl.py=e.touches[0].clientY;
-  } else if(e.touches.length===2){
-    const d = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY);
-    if(touchD>0){ ctrl.sph.radius *= touchD/d; ctrl.apply(); }
-    touchD = d;
+  if(tween) tween = null;
+  if(e.touches.length===1){ startGrab(e.touches[0].clientX, e.touches[0].clientY); }
+  if(e.touches.length===2){
+    endGrab();
+    const t0=e.touches[0], t1=e.touches[1];
+    touchD = Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY); touchA = Math.atan2(t1.clientY-t0.clientY, t1.clientX-t0.clientX);
+    touchMid = {x:(t0.clientX+t1.clientX)/2, y:(t0.clientY+t1.clientY)/2};
   }
 }, {passive:true});
-el.addEventListener('touchend', ()=>{ ctrl.rotating=false; touchD=0; }, {passive:true});
+el.addEventListener('touchmove', e=>{
+  if(e.touches.length===1 && grab.on){ moveGrab(e.touches[0].clientX, e.touches[0].clientY); }
+  else if(e.touches.length===2){
+    const t0=e.touches[0], t1=e.touches[1];
+    const d = Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY), a = Math.atan2(t1.clientY-t0.clientY, t1.clientX-t0.clientX);
+    const mid = {x:(t0.clientX+t1.clientX)/2, y:(t0.clientY+t1.clientY)/2};
+    if(touchD>0){ ctrl.sph.radius *= touchD/d; }
+    ctrl.sph.theta -= (a-touchA);                       // 2本指のひねりで回転
+    if(touchMid){ ctrl.sph.phi -= (mid.y-touchMid.y)*0.004; }   // 2本指の上下で見下ろし角
+    ctrl.apply();
+    touchD = d; touchA = a; touchMid = mid;
+  }
+}, {passive:true});
+el.addEventListener('touchend', ()=>{ endGrab(); touchD=0; touchMid=null; }, {passive:true});
 
 /* カメラ遷移トゥイーン */
 let tween = null;
