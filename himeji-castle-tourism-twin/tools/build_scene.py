@@ -365,6 +365,9 @@ assert parts[1].count(_anchor) == 1
 parts[1] = parts[1].replace(_anchor, _anchor + _p2b)
 assert parts[3].count('/* 初期化 */') == 1
 parts[3] = parts[3].replace('/* 初期化 */', _p5 + '\n/* 初期化 */')
+_p6 = open(os.path.join(TPL, 'part6_flowvis.js'), encoding='utf-8').read()
+parts[3] = parts[3].replace(_p5 + '\n/* 初期化 */', _p5 + '\n' + _p6 + '\n/* 初期化 */')
+assert _p6 in parts[3]
 # ---------- ライブラリ・フォントの埋め込み（EMBED_LIBS=1: three.js / Noto Sans JP をインライン化、オフラインで動作） ----------
 ASSETS = os.environ.get('ASSETS_DIR', os.path.join(TPL, 'assets'))
 def libs_head(embed):

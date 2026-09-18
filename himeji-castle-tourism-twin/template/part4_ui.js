@@ -426,7 +426,7 @@ function renderPanel(){
       <div class="sec"><div class="sec-t"><b>L0</b> 広域流入 — 誰が・どこから来たか</div><div class="kpi-grid" id="kpi-main"></div></div>
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ（入城者数/日・想定）</div>${scnChips()}</div>
-      ${odSec()}${tourSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${odSec()}${tourSec()}${flowModeSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">動線（路線・高速道路・航路・空港）— 流入シェア（クリックで視点）</div><div class="mode-list">${corridorRows()}</div></div>
       <div class="sec"><div class="sec-t">凡例 — 線種＝交通モード、帯の色＝セグメント</div>${modeLegend()}</div>
       <div class="sec"><div class="sec-t">到着ゲート（市内側）</div><div id="gate-rows"></div></div>
@@ -437,7 +437,7 @@ function renderPanel(){
       <div class="sec"><div class="sec-t"><b>L1</b> 市内回遊・滞留 — どこに・どれだけ滞留したか</div><div class="kpi-grid" id="kpi-main"></div></div>
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
-      ${odSec()}${tourSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${odSec()}${tourSec()}${flowModeSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">滞留ヒートマップ — 通り単位・時間連動</div>
         <div class="row-btns" id="heat-chips">
           <button class="chip ${heatMode==='off'?'active':''}" data-h="off">OFF</button>
@@ -475,13 +475,13 @@ function renderPanel(){
       <div class="sec"><div class="sec-t"><b class="g">L2</b> 姫路城 — 城内滞留・待ち行列・入城制限</div><div class="kpi-grid" id="kpi-main"></div></div>
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
-      ${meshSec()}${trajSec()}${floorSec()}
+      ${flowModeSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">ゾーン別 滞留・混雑（1ドット＝${AG_SCALE}人）</div><div id="zone-rows"></div></div>
       <div class="sec"><div class="sec-t">入城料（2026年3月〜 二段階料金・想定）</div><div class="legend">
         <div class="li"><div class="sw" style="background:var(--gold)"></div>市外・海外 ¥${FEE.out.toLocaleString()}　<div class="sw" style="background:#8f9cc0"></div>姫路市民 ¥${FEE.resident.toLocaleString()}</div></div></div>
       <div class="sec"><div class="sec-t">インサイト</div><div class="hint">律速点は<b>大天守（入場制限 15,000人/日）</b>と<b>菱の門の券売</b>。桜・GWは12時前後に待ち60分超が発生。入城券の<b>時間指定枠・事前販売</b>と、待ち時間を<b>好古園・西の丸へ振り替える案内</b>が滞留分散の打ち手になります。左ドラッグで天守を軸に回す・右ドラッグで平行移動。<kbd>Esc</kbd>で市内へ戻る。</div></div>`;
   }
-  bindCommon(); bindFlow3D();
+  bindCommon(); bindFlow3D(); bindFlowVis();
   updateKPIs(); updateFlowPanels();
 }
 function updateKPIs(){
@@ -870,7 +870,7 @@ function loop(now){
   const dtMin = timeState.playing ? dt*timeState.speed : 0;
   const visualKey=segFilter+'|'+LAYER_STATE.agents+'|'+level; if(dtMin>0 || loop.visualKey!==visualKey){updateAgents(dtMin);loop.visualKey=visualKey;}
   if(dtMin>0){ if(heatMode!=='off') repaintHeat(); }
-  updateFlow3D(dtMin, now); updatePlateauLOD();
+  updateFlow3D(dtMin, now); updatePlateauLOD(); updateFlowVis(dtMin, now);
   if(level==='castle') updateCastleZones(dtMin);
   updateArcs(dt);
   if(odMode && level!=='castle') updateKDE(false);
@@ -1001,7 +1001,7 @@ renderPanel();
 initRefinement();
 toast('操作: 左ドラッグ＝地球儀のように回す（横＝360度・縦＝真上〜真横） ／ 右ドラッグ＝平行移動 ／ ホイール＝ズーム ／ ダブルクリック＝フォーカス。▶ で1日を再生', 5200);
 requestAnimationFrame(loop);
-window.__twin={ctrl,camera,groundAt,PL,MESH,TRAJ,FLOORS,setMesh,setTraj,setFloors,setLevel,timeState,agents,STATS,get level(){return level}};
+window.__twin={ctrl,camera,groundAt,PL,MESH,TRAJ,FLOORS,FLOWVIS,HEATV,setFlowMode,setMesh,setTraj,setFloors,setLevel,timeState,agents,STATS,get level(){return level}};
 window.twinDiagnostics=()=>({mesh:MESH.on,meshCells:MESH.cells.length,traj:TRAJ.on,trajSegs:TRAJ.n,floors:FLOORS.on,points:supplementalCount,agents:agents.length,trailVisible:trailMesh.visible,routeVisible:routeGroup.visible,level,phi:ctrl.sph.phi,time:timeState.min,style:urbanStyle,primaryDragMode,target:ctrl.target.toArray(),theta:ctrl.sph.theta,castle:[CASTLE.x,CASTLE.z],cloudVisible:fineCloud.visible,heads:flowGeometry.drawRange.count});
 })();
 </script>
