@@ -327,6 +327,7 @@ function spawnAgent(){
   const a = { seg, gk, dest, plan, pi:0, state:'move', endNode, endKind, r:null, d:0, sp:70+rnd()*30, dwellLeft:0, cur:{x:gate.x,z:gate.z}, t0:timeState.min, visited:0, jx:Math.cos(ja)*jr, jz:Math.sin(ja)*jr*0.8 };
   a.lane = (rnd()-0.5)*5;
   a.tr = [];
+  a.legFrom = 'gate:'+gk;
   trajPush(a, gate.x, gate.z);
   a.r = route(a.cur, plan.length ? plan[0].node : endNode, true); a.r.uses = (a.r.uses||0)+1;
   agents.push(a);
@@ -356,17 +357,17 @@ function updateAgents(dtMin){
           const st = a.plan[a.pi];
           a.cur = {x:st.node.x, z:st.node.z};
           a.state = st.kind; a.dwellLeft = st.dwell;
-          trajStop(a, st.node.x, st.node.z);
+          trajStop(a, st.node.x, st.node.z); odRecord(a, st.kind==='castle' ? 'castle' : st.name);
           if(st.kind==='castle') STATS.castleEntered++;
           else { a.visited++; }
         } else {
           /* 退出: 帰路ゲート or 宿泊 */
-          if(a.endKind==='stay'){ a.state='stay'; a.cur={x:a.endNode.x, z:a.endNode.z}; STATS.staying++; trajStop(a, a.cur.x, a.cur.z); }
+          if(a.endKind==='stay'){ a.state='stay'; a.cur={x:a.endNode.x, z:a.endNode.z}; STATS.staying++; trajStop(a, a.cur.x, a.cur.z); odRecord(a, 'stay'); }
           else {
             STATS.departed[a.dest[0]] = (STATS.departed[a.dest[0]]||0)+1;
             STATS.dwellSum += timeState.min - a.t0; STATS.dwellN++;
             if(a.visited>0) STATS.kaiyu++;
-            trajStop(a, a.cur.x, a.cur.z);
+            trajStop(a, a.cur.x, a.cur.z); odRecord(a, 'exit:'+(ORIGIN_BY_ID[a.dest[0]] ? ORIGIN_BY_ID[a.dest[0]].gate : a.gk));
             agents.splice(i,1); continue;
           }
         }

@@ -59,6 +59,59 @@ function heatUpdate(now){
 }
 function setHeatV(on){ HEATV.on=on; if(on) heatInit(); if(HEATV.mesh) HEATV.mesh.visible=on && level!=='wide'; }
 
+
+/* ---------- 流線（Origin → Destination のアーク）: 来訪者のレグ（ゲート→城→回遊先→帰路/宿泊）を集計 ---------- */
+const OD = new Map();
+const FLOWA = { on:false, group:new THREE.Group(), meshes:[], dirty:true, last:0, rows:[] };
+FLOWA.group.visible=false; scene.add(FLOWA.group);
+function odRecord(a, to){
+  const from = a.legFrom || ('gate:'+a.gk); a.legFrom = to; if(from===to) return;
+  const k=from+'>'+to; let r=OD.get(k); if(!r){ r={from,to,n:0,seg:[0,0,0]}; OD.set(k,r); }
+  r.n++; r.seg[SEG_KEYS.indexOf(a.seg)]++; FLOWA.dirty=true;
+}
+function odNodePos(key){
+  if(key.startsWith('gate:')||key.startsWith('exit:')){ const g=GATES[key.slice(5)]; return g ? {x:g.x, z:g.z} : null; }
+  if(key==='castle') return GATE_OTEMON; if(key==='stay') return {x:STN.x+80, z:STN.z-120};
+  const p=P(key); return (p.x||p.z) ? p : null;
+}
+function odLabel(key){
+  if(key.startsWith('gate:')){ const g=GATES[key.slice(5)]; return g ? g.name : key; }
+  if(key.startsWith('exit:')){ const g=GATES[key.slice(5)]; return (g ? g.name : key)+'（帰路）'; }
+  if(key==='castle') return '姫路城（大手門）'; if(key==='stay') return '市内宿泊'; return key;
+}
+function buildArcT(a, b, colv, share, group, lift=0.2){
+  const ya=TH(a.x,a.z)+4, yb=TH(b.x,b.z)+4, d=Math.hypot(a.x-b.x, a.z-b.z);
+  const mid=new THREE.Vector3((a.x+b.x)/2, Math.max(ya,yb)+40+d*lift, (a.z+b.z)/2);
+  const curve=new THREE.QuadraticBezierCurve3(new THREE.Vector3(a.x,ya,a.z), mid, new THREE.Vector3(b.x,yb,b.z));
+  const geo=new THREE.TubeGeometry(curve, 48, 2.5+share*22, 6, false);
+  const uni={uCol:{value:new THREE.Color(colv)}, uTime:{value:Math.random()*4}, uAct:{value:0.3+0.9*share}};
+  const mat=new THREE.ShaderMaterial({ uniforms:uni, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide,
+    vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader:'varying vec2 vUv; uniform vec3 uCol; uniform float uTime,uAct; void main(){ float band=pow(0.5+0.5*sin((vUv.x*4.0-uTime)*6.28318),3.0); float head=smoothstep(0.0,0.05,vUv.x)*smoothstep(1.0,0.95,vUv.x); gl_FragColor=vec4(uCol*(0.5+0.8*band), uAct*(0.12+0.6*band)*head); }' });
+  const m=new THREE.Mesh(geo, mat); group.add(m); arcUnis.push(uni); return {uni, mesh:m};
+}
+function rebuildFlowArcs(now){
+  if(!FLOWA.on || !FLOWA.dirty || now-FLOWA.last<2500) return; FLOWA.dirty=false; FLOWA.last=now;
+  FLOWA.meshes.forEach(m=>{ FLOWA.group.remove(m.mesh); m.mesh.geometry.dispose(); m.mesh.material.dispose(); const i=arcUnis.indexOf(m.uni); if(i>=0) arcUnis.splice(i,1); }); FLOWA.meshes=[];
+  const rows=[...OD.values()].filter(r=> r.n>=2 && (segFilter==='all' || r.seg[SEG_KEYS.indexOf(segFilter)]>0)).sort((a,b)=>b.n-a.n).slice(0,48); FLOWA.rows=rows;
+  const mx=rows.length?rows[0].n:1;
+  rows.forEach(r=>{ const a=odNodePos(r.from), b=odNodePos(r.to); if(!a||!b) return; const share=r.n/mx; const col=densC(Math.pow(share,0.55)); FLOWA.meshes.push(buildArcT(a, b, col.getHex(), share, FLOWA.group, 0.18)); });
+}
+function setFlowArcs(on){ FLOWA.on=on; FLOWA.group.visible=on && level!=='wide'; if(on){ FLOWA.dirty=true; FLOWA.last=0; } }
+function flowRowsHTML(){
+  const rows=FLOWA.rows.slice(0,8); const mx=rows.length?rows[0].n:1;
+  return rows.length ? rows.map(r=>`<div class="bar-row"><span title="${odLabel(r.from)} → ${odLabel(r.to)}" style="width:118px">${odLabel(r.from).replace(/（.*?）/g,'')} → ${odLabel(r.to).replace(/（.*?）/g,'')}</span><div class="bar"><i style="width:${(r.n/mx*100).toFixed(0)}%;background:${hx6(densC(Math.pow(r.n/mx,0.55)).getHex())}"></i></div><b>${fmt(r.n*AG_SCALE)}</b></div>`).join('') : '<div class="hint">▶ で再生するとレグ（ゲート→城→回遊先→帰路）が集計されます</div>';
+}
+function flowSec(){
+  if(!FLOWA.on) return '';
+  return `<div class="sec"><div class="sec-t"><b>流線（Origin → Destination）</b> — 本日のレグ集計</div>
+    <div id="flow-rows">${flowRowsHTML()}</div>
+    <div class="grad-bar dens" style="margin-top:6px"></div><div class="grad-lbl"><span>少</span><span>多（本日累計）</span></div>
+    <div class="hint" style="margin-top:6px">アークの太さ・色＝OD ペアの人数（本日累計、1ドット＝${AG_SCALE}人）、帯の流れ＝方向。実データでは携帯位置情報の滞在→滞在の遷移（トリップ）から作ります。</div></div>`;
+}
+/* ---------- 動く軌跡（TripsLayer 相当） ---------- */
+function setTripsAnim(on){ TRAJ.anim=!!on; if(TRAJ.mat){ TRAJ.mat.uniforms.uAnim.value=on?1:0; } if(TRAJ.stops) TRAJ.stops.visible=!on; }
+
 /* ---------- モード切替 ---------- */
 function setFlowMode(mode){
   FLOWVIS.mode = mode;
@@ -71,9 +124,9 @@ function setFlowMode(mode){
     meshRebuildShape(); MESH.dirty=true; }
   const wantTraj = (mode==='trips');
   if(TRAJ.on!==wantTraj){ TRAJ.on=wantTraj; TRAJ.group.visible=wantTraj && level!=='wide'; setGhost(wantTraj); document.getElementById('traj-toggle').classList.toggle('active', wantTraj); if(wantTraj) trajUpload(); }
-  if(typeof setTripsAnim==='function') setTripsAnim(wantTraj);
+  if(wantTraj && TRAJ.anim===undefined) setTripsAnim(true);
   setHeatV(mode==='heat');
-  if(typeof setFlowArcs==='function') setFlowArcs(mode==='flow');
+  setFlowArcs(mode==='flow');
   document.querySelectorAll('[data-fm]').forEach(b=>b.classList.toggle('active', b.dataset.fm===mode));
   if(level==='wide' && mode!=='point') setLevel('city');
   renderPanel();
@@ -95,6 +148,8 @@ function bindFlowVis(){
 }
 function updateFlowVis(dtMin, now){
   if(HEATV.on){ HEATV.mesh.visible = level!=='wide'; heatUpdate(now); }
+  if(FLOWA.on){ FLOWA.group.visible = level!=='wide'; rebuildFlowArcs(now); const fr=document.getElementById('flow-rows'); if(fr && now-(FLOWA.lastUI||0)>600){ FLOWA.lastUI=now; fr.innerHTML=flowRowsHTML(); } }
+  if(TRAJ.mat) TRAJ.mat.uniforms.uNow.value = timeState.min;
 }
 /* ヘッダーのトグルもモード切替に統一 */
 document.getElementById('mesh-toggle').onclick = ()=> setFlowMode(MESH.on ? 'point' : 'grid');

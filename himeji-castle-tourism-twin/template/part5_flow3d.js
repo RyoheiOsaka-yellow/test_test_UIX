@@ -135,9 +135,14 @@ const TRAJ = { on:false, mode:'ground', MAXSEG:400000, MAXSTOP:30000, n:0, up:0,
 TRAJ.group.visible=false; scene.add(TRAJ.group);
 (function trajInit(){
   TRAJ.pos=new Float32Array(TRAJ.MAXSEG*6); TRAJ.col=new Float32Array(TRAJ.MAXSEG*6); TRAJ.gy=new Float32Array(TRAJ.MAXSEG*2); TRAJ.tt=new Float32Array(TRAJ.MAXSEG*2);
-  const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(TRAJ.pos,3)); g.setAttribute('color', new THREE.BufferAttribute(TRAJ.col,3)); g.setDrawRange(0,0);
-  g.attributes.position.setUsage(THREE.DynamicDrawUsage); g.attributes.color.setUsage(THREE.DynamicDrawUsage);
-  TRAJ.geo=g; TRAJ.line=new THREE.LineSegments(g, new THREE.LineBasicMaterial({vertexColors:true, transparent:true, opacity:0.5, blending:THREE.AdditiveBlending, depthWrite:false}));
+  const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(TRAJ.pos,3)); g.setAttribute('color', new THREE.BufferAttribute(TRAJ.col,3)); g.setAttribute('t', new THREE.BufferAttribute(TRAJ.tt,1)); g.setDrawRange(0,0);
+  g.attributes.position.setUsage(THREE.DynamicDrawUsage); g.attributes.color.setUsage(THREE.DynamicDrawUsage); g.attributes.t.setUsage(THREE.DynamicDrawUsage);
+  /* 累積（uAnim=0）と動く軌跡（uAnim=1: 現在時刻から uTrail 分の窓だけを、頭が明るく尾が消える TripsLayer 相当）を1つのシェーダで */
+  TRAJ.mat = new THREE.ShaderMaterial({ transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, vertexColors:true,
+    uniforms:{ uNow:{value:0}, uTrail:{value:40}, uAnim:{value:0}, uOpacity:{value:0.5} },
+    vertexShader:'attribute float t; varying float vT; varying vec3 vC; void main(){ vT=t; vC=color; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader:'uniform float uNow,uTrail,uAnim,uOpacity; varying float vT; varying vec3 vC; void main(){ if(uAnim>0.5){ float age=uNow-vT; if(age<0.0||age>uTrail) discard; float f=1.0-age/uTrail; gl_FragColor=vec4(mix(vC,vec3(1.0),0.4*f*f)*(0.5+0.9*f), 0.12+0.88*f); } else { gl_FragColor=vec4(vC, uOpacity); } }' });
+  TRAJ.geo=g; TRAJ.line=new THREE.LineSegments(g, TRAJ.mat);
   TRAJ.line.frustumCulled=false; TRAJ.group.add(TRAJ.line);
   TRAJ.spos=new Float32Array(TRAJ.MAXSTOP*3); TRAJ.scol=new Float32Array(TRAJ.MAXSTOP*3); TRAJ.sgy=new Float32Array(TRAJ.MAXSTOP); TRAJ.stt=new Float32Array(TRAJ.MAXSTOP);
   const sg=new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(TRAJ.spos,3)); sg.setAttribute('color', new THREE.BufferAttribute(TRAJ.scol,3)); sg.setDrawRange(0,0);
@@ -166,7 +171,7 @@ function trajStop(a, x, z){
 }
 function trajUpload(){
   const g=TRAJ.geo;
-  if(TRAJ.n>TRAJ.up){ const pa=g.attributes.position, ca=g.attributes.color; pa.updateRange={offset:TRAJ.up*6, count:(TRAJ.n-TRAJ.up)*6}; ca.updateRange={offset:TRAJ.up*6, count:(TRAJ.n-TRAJ.up)*6}; pa.needsUpdate=true; ca.needsUpdate=true; g.setDrawRange(0, TRAJ.n*2); TRAJ.up=TRAJ.n; }
+  if(TRAJ.n>TRAJ.up){ const pa=g.attributes.position, ca=g.attributes.color, ta=g.attributes.t; pa.updateRange={offset:TRAJ.up*6, count:(TRAJ.n-TRAJ.up)*6}; ca.updateRange={offset:TRAJ.up*6, count:(TRAJ.n-TRAJ.up)*6}; ta.updateRange={offset:TRAJ.up*2, count:(TRAJ.n-TRAJ.up)*2}; pa.needsUpdate=true; ca.needsUpdate=true; ta.needsUpdate=true; g.setDrawRange(0, TRAJ.n*2); TRAJ.up=TRAJ.n; }
   if(TRAJ.sn>TRAJ.sup){ const pa=TRAJ.sgeo.attributes.position, ca=TRAJ.sgeo.attributes.color; pa.updateRange={offset:TRAJ.sup*3, count:(TRAJ.sn-TRAJ.sup)*3}; ca.updateRange={offset:TRAJ.sup*3, count:(TRAJ.sn-TRAJ.sup)*3}; pa.needsUpdate=true; ca.needsUpdate=true; TRAJ.sgeo.setDrawRange(0, TRAJ.sn); TRAJ.sup=TRAJ.sn; }
 }
 function trajRelayout(){
@@ -292,10 +297,11 @@ function meshSec(){
 function trajSec(){
   if(!TRAJ.on) return '';
   return `<div class="sec"><div class="sec-t"><b>〜 軌跡ライン</b> — 来訪者ごとの1日の動き</div>
-      <div class="row-btns" style="margin-bottom:6px"><button class="chip ${TRAJ.mode==='ground'?'active':''}" data-traj="ground">地表に沿う</button><button class="chip ${TRAJ.mode==='time'?'active':''}" data-traj="time">時空間（高さ＝時刻）</button><button class="chip" data-traj="clear">軌跡をクリア</button></div>
+      <div class="row-btns" style="margin-bottom:6px"><button class="chip ${!TRAJ.anim?'active':''}" data-traj="static">累積（1日分）</button><button class="chip ${TRAJ.anim?'active':''}" data-traj="anim">動く軌跡（時間窓）</button><button class="chip ${TRAJ.mode==='ground'?'active':''}" data-traj="ground">地表</button><button class="chip ${TRAJ.mode==='time'?'active':''}" data-traj="time">時空間</button><button class="chip" data-traj="clear">クリア</button></div>
+      ${TRAJ.anim ? `<div class="studio-label" style="margin:6px 0 4px">時間窓 <output id="trail-v">${TRAJ.mat.uniforms.uTrail.value} 分</output></div><input id="trail-r" type="range" min="10" max="120" step="5" value="${TRAJ.mat.uniforms.uTrail.value}" style="width:100%">` : ''}
       <div class="kpi-grid"><div class="kpi"><div class="v" id="traj-trips">${fmt(TRAJ.trips)}</div><div class="l">記録トリップ（1ドット＝${AG_SCALE}人）</div></div><div class="kpi"><div class="v" id="traj-segs">${fmt(TRAJ.n)}</div><div class="l">線分数${TRAJ.full?'（上限）':''}</div></div></div>
       <div class="legend" style="margin-top:6px"><div class="li"><div class="sw" style="background:#65beff"></div>海外　<div class="sw" style="background:#62e4ab"></div>国内　<div class="sw" style="background:#ef91bb"></div>近隣　<b>●</b> 滞留した場所</div></div>
-      <div class="hint" style="margin-top:6px">線＝道路網上の移動軌跡（同じ色相の明暗で個人を区別）、点＝城・回遊先・宿泊での滞留。「時空間」では高さが時刻（06:00＝地表 → 24:00＝${Math.round(1080*TRAJ.tScale)}m）で、上に行くほど遅い時間。実データでは携帯位置情報のトリップ復元（総務省 GPS-ODと同様）で作成。</div></div>`;
+      <div class="hint" style="margin-top:6px">線＝道路網上の移動軌跡（同じ色相の明暗で個人を区別）、点＝城・回遊先・宿泊での滞留。「動く軌跡」は現在時刻から時間窓分だけを頭が明るく尾が消える形で再生（進む速さ＝歩行速度）。「時空間」では高さが時刻（06:00＝地表 → 24:00＝${Math.round(1080*TRAJ.tScale)}m）で、上に行くほど遅い時間。実データでは携帯位置情報のトリップ復元（総務省 GPS-ODと同様）で作成。</div></div>`;
 }
 function floorSec(){
   if(!FLOORS.on) return '';
@@ -313,7 +319,8 @@ function updateFlowPanels(){
 function bindFlow3D(){
   document.querySelectorAll('[data-mesh]').forEach(b=> b.onclick=()=>{ const [k,v]=b.dataset.mesh.split(':'); MESH[k]=v; meshRebuildShape(); MESH.dirty=true; renderPanel(); });
   document.querySelectorAll('[data-meshres]').forEach(b=> b.onclick=()=>{ const [kind,res]=b.dataset.meshres.split(':'); buildMesh(+res, kind); renderPanel(); });
-  document.querySelectorAll('[data-traj]').forEach(b=> b.onclick=()=>{ const v=b.dataset.traj; if(v==='clear') trajReset(); else { TRAJ.mode=v; trajRelayout(); } renderPanel(); });
+  document.querySelectorAll('[data-traj]').forEach(b=> b.onclick=()=>{ const v=b.dataset.traj; if(v==='clear') trajReset(); else if(v==='static'||v==='anim') setTripsAnim(v==='anim'); else { TRAJ.mode=v; trajRelayout(); } renderPanel(); });
+  const tr=document.getElementById('trail-r'); if(tr) tr.oninput=e=>{ TRAJ.mat.uniforms.uTrail.value=+e.target.value; document.getElementById('trail-v').value=e.target.value+' 分'; };
 }
 function updateFlow3D(dtMin, now){
   if(MESH.on){ MESH.group.visible = level!=='wide'; if(dtMin>0 || MESH.dirty){ if(dtMin>0) meshAccumulate(dtMin); if(now-MESH.lastPaint>90){ MESH.lastPaint=now; paintMesh(); } } }

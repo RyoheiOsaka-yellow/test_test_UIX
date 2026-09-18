@@ -2065,6 +2065,7 @@ function spawnAgent(){
   const a = { seg, gk, dest, plan, pi:0, state:'move', endNode, endKind, r:null, d:0, sp:70+rnd()*30, dwellLeft:0, cur:{x:gate.x,z:gate.z}, t0:timeState.min, visited:0, jx:Math.cos(ja)*jr, jz:Math.sin(ja)*jr*0.8 };
   a.lane = (rnd()-0.5)*5;
   a.tr = [];
+  a.legFrom = 'gate:'+gk;
   trajPush(a, gate.x, gate.z);
   a.r = route(a.cur, plan.length ? plan[0].node : endNode, true); a.r.uses = (a.r.uses||0)+1;
   agents.push(a);
@@ -2094,17 +2095,17 @@ function updateAgents(dtMin){
           const st = a.plan[a.pi];
           a.cur = {x:st.node.x, z:st.node.z};
           a.state = st.kind; a.dwellLeft = st.dwell;
-          trajStop(a, st.node.x, st.node.z);
+          trajStop(a, st.node.x, st.node.z); odRecord(a, st.kind==='castle' ? 'castle' : st.name);
           if(st.kind==='castle') STATS.castleEntered++;
           else { a.visited++; }
         } else {
           /* 退出: 帰路ゲート or 宿泊 */
-          if(a.endKind==='stay'){ a.state='stay'; a.cur={x:a.endNode.x, z:a.endNode.z}; STATS.staying++; trajStop(a, a.cur.x, a.cur.z); }
+          if(a.endKind==='stay'){ a.state='stay'; a.cur={x:a.endNode.x, z:a.endNode.z}; STATS.staying++; trajStop(a, a.cur.x, a.cur.z); odRecord(a, 'stay'); }
           else {
             STATS.departed[a.dest[0]] = (STATS.departed[a.dest[0]]||0)+1;
             STATS.dwellSum += timeState.min - a.t0; STATS.dwellN++;
             if(a.visited>0) STATS.kaiyu++;
-            trajStop(a, a.cur.x, a.cur.z);
+            trajStop(a, a.cur.x, a.cur.z); odRecord(a, 'exit:'+(ORIGIN_BY_ID[a.dest[0]] ? ORIGIN_BY_ID[a.dest[0]].gate : a.gk));
             agents.splice(i,1); continue;
           }
         }
@@ -2737,7 +2738,7 @@ function renderPanel(){
       <div class="sec"><div class="sec-t"><b>L0</b> 広域流入 — 誰が・どこから来たか</div><div class="kpi-grid" id="kpi-main"></div></div>
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ（入城者数/日・想定）</div>${scnChips()}</div>
-      ${odSec()}${tourSec()}${flowModeSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${odSec()}${tourSec()}${flowModeSec()}${flowSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">動線（路線・高速道路・航路・空港）— 流入シェア（クリックで視点）</div><div class="mode-list">${corridorRows()}</div></div>
       <div class="sec"><div class="sec-t">凡例 — 線種＝交通モード、帯の色＝セグメント</div>${modeLegend()}</div>
       <div class="sec"><div class="sec-t">到着ゲート（市内側）</div><div id="gate-rows"></div></div>
@@ -2748,7 +2749,7 @@ function renderPanel(){
       <div class="sec"><div class="sec-t"><b>L1</b> 市内回遊・滞留 — どこに・どれだけ滞留したか</div><div class="kpi-grid" id="kpi-main"></div></div>
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
-      ${odSec()}${tourSec()}${flowModeSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${odSec()}${tourSec()}${flowModeSec()}${flowSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">滞留ヒートマップ — 通り単位・時間連動</div>
         <div class="row-btns" id="heat-chips">
           <button class="chip ${heatMode==='off'?'active':''}" data-h="off">OFF</button>
@@ -2786,7 +2787,7 @@ function renderPanel(){
       <div class="sec"><div class="sec-t"><b class="g">L2</b> 姫路城 — 城内滞留・待ち行列・入城制限</div><div class="kpi-grid" id="kpi-main"></div></div>
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
-      ${flowModeSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${flowModeSec()}${flowSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">ゾーン別 滞留・混雑（1ドット＝${AG_SCALE}人）</div><div id="zone-rows"></div></div>
       <div class="sec"><div class="sec-t">入城料（2026年3月〜 二段階料金・想定）</div><div class="legend">
         <div class="li"><div class="sw" style="background:var(--gold)"></div>市外・海外 ¥${FEE.out.toLocaleString()}　<div class="sw" style="background:#8f9cc0"></div>姫路市民 ¥${FEE.resident.toLocaleString()}</div></div></div>
@@ -3439,9 +3440,14 @@ const TRAJ = { on:false, mode:'ground', MAXSEG:400000, MAXSTOP:30000, n:0, up:0,
 TRAJ.group.visible=false; scene.add(TRAJ.group);
 (function trajInit(){
   TRAJ.pos=new Float32Array(TRAJ.MAXSEG*6); TRAJ.col=new Float32Array(TRAJ.MAXSEG*6); TRAJ.gy=new Float32Array(TRAJ.MAXSEG*2); TRAJ.tt=new Float32Array(TRAJ.MAXSEG*2);
-  const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(TRAJ.pos,3)); g.setAttribute('color', new THREE.BufferAttribute(TRAJ.col,3)); g.setDrawRange(0,0);
-  g.attributes.position.setUsage(THREE.DynamicDrawUsage); g.attributes.color.setUsage(THREE.DynamicDrawUsage);
-  TRAJ.geo=g; TRAJ.line=new THREE.LineSegments(g, new THREE.LineBasicMaterial({vertexColors:true, transparent:true, opacity:0.5, blending:THREE.AdditiveBlending, depthWrite:false}));
+  const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(TRAJ.pos,3)); g.setAttribute('color', new THREE.BufferAttribute(TRAJ.col,3)); g.setAttribute('t', new THREE.BufferAttribute(TRAJ.tt,1)); g.setDrawRange(0,0);
+  g.attributes.position.setUsage(THREE.DynamicDrawUsage); g.attributes.color.setUsage(THREE.DynamicDrawUsage); g.attributes.t.setUsage(THREE.DynamicDrawUsage);
+  /* 累積（uAnim=0）と動く軌跡（uAnim=1: 現在時刻から uTrail 分の窓だけを、頭が明るく尾が消える TripsLayer 相当）を1つのシェーダで */
+  TRAJ.mat = new THREE.ShaderMaterial({ transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, vertexColors:true,
+    uniforms:{ uNow:{value:0}, uTrail:{value:40}, uAnim:{value:0}, uOpacity:{value:0.5} },
+    vertexShader:'attribute float t; varying float vT; varying vec3 vC; void main(){ vT=t; vC=color; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader:'uniform float uNow,uTrail,uAnim,uOpacity; varying float vT; varying vec3 vC; void main(){ if(uAnim>0.5){ float age=uNow-vT; if(age<0.0||age>uTrail) discard; float f=1.0-age/uTrail; gl_FragColor=vec4(mix(vC,vec3(1.0),0.4*f*f)*(0.5+0.9*f), 0.12+0.88*f); } else { gl_FragColor=vec4(vC, uOpacity); } }' });
+  TRAJ.geo=g; TRAJ.line=new THREE.LineSegments(g, TRAJ.mat);
   TRAJ.line.frustumCulled=false; TRAJ.group.add(TRAJ.line);
   TRAJ.spos=new Float32Array(TRAJ.MAXSTOP*3); TRAJ.scol=new Float32Array(TRAJ.MAXSTOP*3); TRAJ.sgy=new Float32Array(TRAJ.MAXSTOP); TRAJ.stt=new Float32Array(TRAJ.MAXSTOP);
   const sg=new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.BufferAttribute(TRAJ.spos,3)); sg.setAttribute('color', new THREE.BufferAttribute(TRAJ.scol,3)); sg.setDrawRange(0,0);
@@ -3470,7 +3476,7 @@ function trajStop(a, x, z){
 }
 function trajUpload(){
   const g=TRAJ.geo;
-  if(TRAJ.n>TRAJ.up){ const pa=g.attributes.position, ca=g.attributes.color; pa.updateRange={offset:TRAJ.up*6, count:(TRAJ.n-TRAJ.up)*6}; ca.updateRange={offset:TRAJ.up*6, count:(TRAJ.n-TRAJ.up)*6}; pa.needsUpdate=true; ca.needsUpdate=true; g.setDrawRange(0, TRAJ.n*2); TRAJ.up=TRAJ.n; }
+  if(TRAJ.n>TRAJ.up){ const pa=g.attributes.position, ca=g.attributes.color, ta=g.attributes.t; pa.updateRange={offset:TRAJ.up*6, count:(TRAJ.n-TRAJ.up)*6}; ca.updateRange={offset:TRAJ.up*6, count:(TRAJ.n-TRAJ.up)*6}; ta.updateRange={offset:TRAJ.up*2, count:(TRAJ.n-TRAJ.up)*2}; pa.needsUpdate=true; ca.needsUpdate=true; ta.needsUpdate=true; g.setDrawRange(0, TRAJ.n*2); TRAJ.up=TRAJ.n; }
   if(TRAJ.sn>TRAJ.sup){ const pa=TRAJ.sgeo.attributes.position, ca=TRAJ.sgeo.attributes.color; pa.updateRange={offset:TRAJ.sup*3, count:(TRAJ.sn-TRAJ.sup)*3}; ca.updateRange={offset:TRAJ.sup*3, count:(TRAJ.sn-TRAJ.sup)*3}; pa.needsUpdate=true; ca.needsUpdate=true; TRAJ.sgeo.setDrawRange(0, TRAJ.sn); TRAJ.sup=TRAJ.sn; }
 }
 function trajRelayout(){
@@ -3596,10 +3602,11 @@ function meshSec(){
 function trajSec(){
   if(!TRAJ.on) return '';
   return `<div class="sec"><div class="sec-t"><b>〜 軌跡ライン</b> — 来訪者ごとの1日の動き</div>
-      <div class="row-btns" style="margin-bottom:6px"><button class="chip ${TRAJ.mode==='ground'?'active':''}" data-traj="ground">地表に沿う</button><button class="chip ${TRAJ.mode==='time'?'active':''}" data-traj="time">時空間（高さ＝時刻）</button><button class="chip" data-traj="clear">軌跡をクリア</button></div>
+      <div class="row-btns" style="margin-bottom:6px"><button class="chip ${!TRAJ.anim?'active':''}" data-traj="static">累積（1日分）</button><button class="chip ${TRAJ.anim?'active':''}" data-traj="anim">動く軌跡（時間窓）</button><button class="chip ${TRAJ.mode==='ground'?'active':''}" data-traj="ground">地表</button><button class="chip ${TRAJ.mode==='time'?'active':''}" data-traj="time">時空間</button><button class="chip" data-traj="clear">クリア</button></div>
+      ${TRAJ.anim ? `<div class="studio-label" style="margin:6px 0 4px">時間窓 <output id="trail-v">${TRAJ.mat.uniforms.uTrail.value} 分</output></div><input id="trail-r" type="range" min="10" max="120" step="5" value="${TRAJ.mat.uniforms.uTrail.value}" style="width:100%">` : ''}
       <div class="kpi-grid"><div class="kpi"><div class="v" id="traj-trips">${fmt(TRAJ.trips)}</div><div class="l">記録トリップ（1ドット＝${AG_SCALE}人）</div></div><div class="kpi"><div class="v" id="traj-segs">${fmt(TRAJ.n)}</div><div class="l">線分数${TRAJ.full?'（上限）':''}</div></div></div>
       <div class="legend" style="margin-top:6px"><div class="li"><div class="sw" style="background:#65beff"></div>海外　<div class="sw" style="background:#62e4ab"></div>国内　<div class="sw" style="background:#ef91bb"></div>近隣　<b>●</b> 滞留した場所</div></div>
-      <div class="hint" style="margin-top:6px">線＝道路網上の移動軌跡（同じ色相の明暗で個人を区別）、点＝城・回遊先・宿泊での滞留。「時空間」では高さが時刻（06:00＝地表 → 24:00＝${Math.round(1080*TRAJ.tScale)}m）で、上に行くほど遅い時間。実データでは携帯位置情報のトリップ復元（総務省 GPS-ODと同様）で作成。</div></div>`;
+      <div class="hint" style="margin-top:6px">線＝道路網上の移動軌跡（同じ色相の明暗で個人を区別）、点＝城・回遊先・宿泊での滞留。「動く軌跡」は現在時刻から時間窓分だけを頭が明るく尾が消える形で再生（進む速さ＝歩行速度）。「時空間」では高さが時刻（06:00＝地表 → 24:00＝${Math.round(1080*TRAJ.tScale)}m）で、上に行くほど遅い時間。実データでは携帯位置情報のトリップ復元（総務省 GPS-ODと同様）で作成。</div></div>`;
 }
 function floorSec(){
   if(!FLOORS.on) return '';
@@ -3617,7 +3624,8 @@ function updateFlowPanels(){
 function bindFlow3D(){
   document.querySelectorAll('[data-mesh]').forEach(b=> b.onclick=()=>{ const [k,v]=b.dataset.mesh.split(':'); MESH[k]=v; meshRebuildShape(); MESH.dirty=true; renderPanel(); });
   document.querySelectorAll('[data-meshres]').forEach(b=> b.onclick=()=>{ const [kind,res]=b.dataset.meshres.split(':'); buildMesh(+res, kind); renderPanel(); });
-  document.querySelectorAll('[data-traj]').forEach(b=> b.onclick=()=>{ const v=b.dataset.traj; if(v==='clear') trajReset(); else { TRAJ.mode=v; trajRelayout(); } renderPanel(); });
+  document.querySelectorAll('[data-traj]').forEach(b=> b.onclick=()=>{ const v=b.dataset.traj; if(v==='clear') trajReset(); else if(v==='static'||v==='anim') setTripsAnim(v==='anim'); else { TRAJ.mode=v; trajRelayout(); } renderPanel(); });
+  const tr=document.getElementById('trail-r'); if(tr) tr.oninput=e=>{ TRAJ.mat.uniforms.uTrail.value=+e.target.value; document.getElementById('trail-v').value=e.target.value+' 分'; };
 }
 function updateFlow3D(dtMin, now){
   if(MESH.on){ MESH.group.visible = level!=='wide'; if(dtMin>0 || MESH.dirty){ if(dtMin>0) meshAccumulate(dtMin); if(now-MESH.lastPaint>90){ MESH.lastPaint=now; paintMesh(); } } }
@@ -3699,6 +3707,59 @@ function heatUpdate(now){
 }
 function setHeatV(on){ HEATV.on=on; if(on) heatInit(); if(HEATV.mesh) HEATV.mesh.visible=on && level!=='wide'; }
 
+
+/* ---------- 流線（Origin → Destination のアーク）: 来訪者のレグ（ゲート→城→回遊先→帰路/宿泊）を集計 ---------- */
+const OD = new Map();
+const FLOWA = { on:false, group:new THREE.Group(), meshes:[], dirty:true, last:0, rows:[] };
+FLOWA.group.visible=false; scene.add(FLOWA.group);
+function odRecord(a, to){
+  const from = a.legFrom || ('gate:'+a.gk); a.legFrom = to; if(from===to) return;
+  const k=from+'>'+to; let r=OD.get(k); if(!r){ r={from,to,n:0,seg:[0,0,0]}; OD.set(k,r); }
+  r.n++; r.seg[SEG_KEYS.indexOf(a.seg)]++; FLOWA.dirty=true;
+}
+function odNodePos(key){
+  if(key.startsWith('gate:')||key.startsWith('exit:')){ const g=GATES[key.slice(5)]; return g ? {x:g.x, z:g.z} : null; }
+  if(key==='castle') return GATE_OTEMON; if(key==='stay') return {x:STN.x+80, z:STN.z-120};
+  const p=P(key); return (p.x||p.z) ? p : null;
+}
+function odLabel(key){
+  if(key.startsWith('gate:')){ const g=GATES[key.slice(5)]; return g ? g.name : key; }
+  if(key.startsWith('exit:')){ const g=GATES[key.slice(5)]; return (g ? g.name : key)+'（帰路）'; }
+  if(key==='castle') return '姫路城（大手門）'; if(key==='stay') return '市内宿泊'; return key;
+}
+function buildArcT(a, b, colv, share, group, lift=0.2){
+  const ya=TH(a.x,a.z)+4, yb=TH(b.x,b.z)+4, d=Math.hypot(a.x-b.x, a.z-b.z);
+  const mid=new THREE.Vector3((a.x+b.x)/2, Math.max(ya,yb)+40+d*lift, (a.z+b.z)/2);
+  const curve=new THREE.QuadraticBezierCurve3(new THREE.Vector3(a.x,ya,a.z), mid, new THREE.Vector3(b.x,yb,b.z));
+  const geo=new THREE.TubeGeometry(curve, 48, 2.5+share*22, 6, false);
+  const uni={uCol:{value:new THREE.Color(colv)}, uTime:{value:Math.random()*4}, uAct:{value:0.3+0.9*share}};
+  const mat=new THREE.ShaderMaterial({ uniforms:uni, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending, side:THREE.DoubleSide,
+    vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader:'varying vec2 vUv; uniform vec3 uCol; uniform float uTime,uAct; void main(){ float band=pow(0.5+0.5*sin((vUv.x*4.0-uTime)*6.28318),3.0); float head=smoothstep(0.0,0.05,vUv.x)*smoothstep(1.0,0.95,vUv.x); gl_FragColor=vec4(uCol*(0.5+0.8*band), uAct*(0.12+0.6*band)*head); }' });
+  const m=new THREE.Mesh(geo, mat); group.add(m); arcUnis.push(uni); return {uni, mesh:m};
+}
+function rebuildFlowArcs(now){
+  if(!FLOWA.on || !FLOWA.dirty || now-FLOWA.last<2500) return; FLOWA.dirty=false; FLOWA.last=now;
+  FLOWA.meshes.forEach(m=>{ FLOWA.group.remove(m.mesh); m.mesh.geometry.dispose(); m.mesh.material.dispose(); const i=arcUnis.indexOf(m.uni); if(i>=0) arcUnis.splice(i,1); }); FLOWA.meshes=[];
+  const rows=[...OD.values()].filter(r=> r.n>=2 && (segFilter==='all' || r.seg[SEG_KEYS.indexOf(segFilter)]>0)).sort((a,b)=>b.n-a.n).slice(0,48); FLOWA.rows=rows;
+  const mx=rows.length?rows[0].n:1;
+  rows.forEach(r=>{ const a=odNodePos(r.from), b=odNodePos(r.to); if(!a||!b) return; const share=r.n/mx; const col=densC(Math.pow(share,0.55)); FLOWA.meshes.push(buildArcT(a, b, col.getHex(), share, FLOWA.group, 0.18)); });
+}
+function setFlowArcs(on){ FLOWA.on=on; FLOWA.group.visible=on && level!=='wide'; if(on){ FLOWA.dirty=true; FLOWA.last=0; } }
+function flowRowsHTML(){
+  const rows=FLOWA.rows.slice(0,8); const mx=rows.length?rows[0].n:1;
+  return rows.length ? rows.map(r=>`<div class="bar-row"><span title="${odLabel(r.from)} → ${odLabel(r.to)}" style="width:118px">${odLabel(r.from).replace(/（.*?）/g,'')} → ${odLabel(r.to).replace(/（.*?）/g,'')}</span><div class="bar"><i style="width:${(r.n/mx*100).toFixed(0)}%;background:${hx6(densC(Math.pow(r.n/mx,0.55)).getHex())}"></i></div><b>${fmt(r.n*AG_SCALE)}</b></div>`).join('') : '<div class="hint">▶ で再生するとレグ（ゲート→城→回遊先→帰路）が集計されます</div>';
+}
+function flowSec(){
+  if(!FLOWA.on) return '';
+  return `<div class="sec"><div class="sec-t"><b>流線（Origin → Destination）</b> — 本日のレグ集計</div>
+    <div id="flow-rows">${flowRowsHTML()}</div>
+    <div class="grad-bar dens" style="margin-top:6px"></div><div class="grad-lbl"><span>少</span><span>多（本日累計）</span></div>
+    <div class="hint" style="margin-top:6px">アークの太さ・色＝OD ペアの人数（本日累計、1ドット＝${AG_SCALE}人）、帯の流れ＝方向。実データでは携帯位置情報の滞在→滞在の遷移（トリップ）から作ります。</div></div>`;
+}
+/* ---------- 動く軌跡（TripsLayer 相当） ---------- */
+function setTripsAnim(on){ TRAJ.anim=!!on; if(TRAJ.mat){ TRAJ.mat.uniforms.uAnim.value=on?1:0; } if(TRAJ.stops) TRAJ.stops.visible=!on; }
+
 /* ---------- モード切替 ---------- */
 function setFlowMode(mode){
   FLOWVIS.mode = mode;
@@ -3711,9 +3772,9 @@ function setFlowMode(mode){
     meshRebuildShape(); MESH.dirty=true; }
   const wantTraj = (mode==='trips');
   if(TRAJ.on!==wantTraj){ TRAJ.on=wantTraj; TRAJ.group.visible=wantTraj && level!=='wide'; setGhost(wantTraj); document.getElementById('traj-toggle').classList.toggle('active', wantTraj); if(wantTraj) trajUpload(); }
-  if(typeof setTripsAnim==='function') setTripsAnim(wantTraj);
+  if(wantTraj && TRAJ.anim===undefined) setTripsAnim(true);
   setHeatV(mode==='heat');
-  if(typeof setFlowArcs==='function') setFlowArcs(mode==='flow');
+  setFlowArcs(mode==='flow');
   document.querySelectorAll('[data-fm]').forEach(b=>b.classList.toggle('active', b.dataset.fm===mode));
   if(level==='wide' && mode!=='point') setLevel('city');
   renderPanel();
@@ -3735,6 +3796,8 @@ function bindFlowVis(){
 }
 function updateFlowVis(dtMin, now){
   if(HEATV.on){ HEATV.mesh.visible = level!=='wide'; heatUpdate(now); }
+  if(FLOWA.on){ FLOWA.group.visible = level!=='wide'; rebuildFlowArcs(now); const fr=document.getElementById('flow-rows'); if(fr && now-(FLOWA.lastUI||0)>600){ FLOWA.lastUI=now; fr.innerHTML=flowRowsHTML(); } }
+  if(TRAJ.mat) TRAJ.mat.uniforms.uNow.value = timeState.min;
 }
 /* ヘッダーのトグルもモード切替に統一 */
 document.getElementById('mesh-toggle').onclick = ()=> setFlowMode(MESH.on ? 'point' : 'grid');
@@ -3750,7 +3813,7 @@ renderPanel();
 initRefinement();
 toast('操作: 左ドラッグ＝地球儀のように回す（横＝360度・縦＝真上〜真横） ／ 右ドラッグ＝平行移動 ／ ホイール＝ズーム ／ ダブルクリック＝フォーカス。▶ で1日を再生', 5200);
 requestAnimationFrame(loop);
-window.__twin={ctrl,camera,groundAt,PL,MESH,TRAJ,FLOORS,FLOWVIS,HEATV,setFlowMode,setMesh,setTraj,setFloors,setLevel,timeState,agents,STATS,get level(){return level}};
+window.__twin={ctrl,camera,groundAt,PL,MESH,TRAJ,FLOORS,FLOWVIS,HEATV,FLOWA,OD,setFlowMode,setMesh,setTraj,setFloors,setLevel,timeState,agents,STATS,get level(){return level}};
 window.twinDiagnostics=()=>({mesh:MESH.on,meshCells:MESH.cells.length,traj:TRAJ.on,trajSegs:TRAJ.n,floors:FLOORS.on,points:supplementalCount,agents:agents.length,trailVisible:trailMesh.visible,routeVisible:routeGroup.visible,level,phi:ctrl.sph.phi,time:timeState.min,style:urbanStyle,primaryDragMode,target:ctrl.target.toArray(),theta:ctrl.sph.theta,castle:[CASTLE.x,CASTLE.z],cloudVisible:fineCloud.visible,heads:flowGeometry.drawRange.count});
 })();
 </script>
