@@ -48,7 +48,12 @@ const ctrl = {
 ctrl.apply();
 const el = renderer.domElement;
 el.style.cursor = 'grab';
-/* --- 操作: 左ドラッグ＝地図を掴んで移動（カーソル直下の地面を追従） / 右ドラッグ・Shift+ドラッグ＝回転 / ホイール＝ズーム --- */
+/* --- 操作（カーソルのみで完結）---
+   左ドラッグ ＝ 掴んだ地点を軸に視点を回す（横: 方位 / 縦: 見下ろし角。真上の平面ビュー〜ほぼ水平まで）
+   少し押してからドラッグ・右ドラッグ・中ドラッグ ＝ 地図を掴んで移動
+   縦スクロール ＝ カーソル位置へズーム / 横スクロール ＝ 横に移動
+   タッチ: 1本指 回転（長押しで移動）、2本指 ピンチズーム＋移動 */
+ctrl.minPhi = 0.04; ctrl.maxPhi = 1.52;
 const _ray = new THREE.Raycaster(), _ndc = new THREE.Vector2(), _plane = new THREE.Plane(new THREE.Vector3(0,1,0), 0), _hit = new THREE.Vector3();
 function groundAt(clientX, clientY, y){
   const r = el.getBoundingClientRect();
@@ -58,18 +63,29 @@ function groundAt(clientX, clientY, y){
   const ok = _ray.ray.intersectPlane(_plane, _hit);
   if(!ok) return null;
   const d = _hit.distanceTo(camera.position);
-  if(d > ctrl.sph.radius*6) return null;   // 地平線付近は不安定なので画面差分パンにフォールバック
+  if(d > ctrl.sph.radius*6) return null;   // 地平線付近は不安定
   return _hit.clone();
 }
-const grab = { on:false, pt:null, y:0 };
-let dragMode = 'pan';   // pan | rotate（左ドラッグの役割）
 const PAN_LIMIT = 24000;
 function clampTarget(){ ctrl.target.x = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, ctrl.target.x)); ctrl.target.z = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, ctrl.target.z)); }
-function startGrab(x, y){ grab.y = ctrl.target.y; grab.pt = groundAt(x, y, grab.y); grab.on = true; ctrl.panning = true; ctrl.px = x; ctrl.py = y; el.style.cursor = 'grabbing'; }
+/* 掴んだ地点を回転の軸にする（カメラ位置はそのまま＝画面は飛ばない） */
+function pivotTo(clientX, clientY){
+  const p = groundAt(clientX, clientY, ctrl.target.y);
+  if(!p) return;
+  const v = camera.position.clone().sub(p);
+  const sph = new THREE.Spherical().setFromVector3(v);
+  if(sph.radius < ctrl.minR || sph.radius > ctrl.maxR) return;
+  ctrl.target.copy(p); ctrl.sph.radius = sph.radius; ctrl.sph.phi = Math.max(ctrl.minPhi, Math.min(ctrl.maxPhi, sph.phi)); ctrl.sph.theta = sph.theta;
+  clampTarget(); ctrl.apply();
+}
+/* 移動（掴んだ地面がカーソルに追従） */
+const grab = { on:false, pt:null, y:0 };
+let dragMode = 'orbit';
+function startGrab(x, y){ grab.y = ctrl.target.y; grab.pt = groundAt(x, y, grab.y); grab.on = true; ctrl.panning = true; ctrl.rotating = false; ctrl.px = x; ctrl.py = y; el.style.cursor = 'grabbing'; }
 function moveGrab(x, y){
   const p = grab.pt ? groundAt(x, y, grab.y) : null;
   if(p && grab.pt){ ctrl.target.x += grab.pt.x - p.x; ctrl.target.z += grab.pt.z - p.z; }
-  else { /* 画面差分パン */
+  else {
     const dx = x-ctrl.px, dy = y-ctrl.py, s = ctrl.sph.radius*0.0013;
     const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd); fwd.y=0; fwd.normalize();
     const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0,1,0)).negate();
@@ -79,84 +95,91 @@ function moveGrab(x, y){
   if(grab.pt){ const q = groundAt(x, y, grab.y); if(q) grab.pt = q; }
   ctrl.px = x; ctrl.py = y;
 }
-function endGrab(){ grab.on = false; grab.pt = null; ctrl.panning = false; ctrl.rotating = false; el.style.cursor = dragMode==='rotate' ? 'move' : 'grab'; }
-el.addEventListener('contextmenu', e=>e.preventDefault());
-/* 左ボタン: すぐ動かせば「掴んで移動」、動かさず長押し（0.38秒）してからドラッグすると「回転」。
-   判定は入力イベントの timeStamp（OSの発生時刻）で行うため、描画が重くイベントが遅れても誤判定しない */
-const HOLD_MS = 380, HOLD_MOVE = 5;
+function endGrab(){ grab.on = false; grab.pt = null; ctrl.panning = false; ctrl.rotating = false; el.style.cursor = 'grab'; }
+/* 回転（掴んだ地点を軸に） */
+function beginRotate(x, y){ grab.on = false; grab.pt = null; ctrl.panning = false; pivotTo(x, y); ctrl.rotating = true; ctrl.px = x; ctrl.py = y; el.style.cursor = 'grabbing'; }
+function rotateBy(dx, dy){ ctrl.sph.theta -= dx*0.0052; ctrl.sph.phi -= dy*0.0045; ctrl.apply(); }
+/* 長押し判定（入力イベントの timeStamp で判定＝描画が重くても誤判定しない）: 押してすぐ動かす＝回転、少し待ってから動かす＝移動 */
+const HOLD_MS = 320, HOLD_MOVE = 5;
 const hold = { timer:null, x:0, y:0, downT:0, decided:true };
 const rotcue = document.getElementById('rotcue');
 function showCue(x, y){ if(!rotcue) return; rotcue.style.left = x+'px'; rotcue.style.top = y+'px'; rotcue.classList.add('on'); }
 function hideCue(){ if(rotcue) rotcue.classList.remove('on'); }
-function beginRotate(x, y){ endGrab(); ctrl.rotating = true; ctrl.px = x; ctrl.py = y; el.style.cursor = 'move'; }
 function armHold(x, y, t){
   clearTimeout(hold.timer); hold.x = x; hold.y = y; hold.downT = t; hold.decided = false;
-  hold.timer = setTimeout(()=>{ if(!hold.decided) showCue(hold.x, hold.y); }, HOLD_MS);   // 手掛かり表示のみ（確定はドラッグ開始時）
+  hold.timer = setTimeout(()=>{ if(!hold.decided) showCue(hold.x, hold.y); }, HOLD_MS);
 }
 function disarmHold(){ hold.decided = true; clearTimeout(hold.timer); }
-/* ドラッグ開始時に「移動 / 回転」を確定 */
 function decideHold(x, y, t){
   if(hold.decided) return;
   if(Math.hypot(x-hold.x, y-hold.y) <= HOLD_MOVE) return;
   hold.decided = true; clearTimeout(hold.timer);
-  if(t - hold.downT >= HOLD_MS){ beginRotate(hold.x, hold.y); showCue(x, y); }
-  else hideCue();
+  if(t - hold.downT >= HOLD_MS){ startGrab(hold.x, hold.y); showCue(x, y); }   // 長押し → 移動
+  else { hideCue(); beginRotate(hold.x, hold.y); }                              // すぐ動かした → 回転
 }
+el.addEventListener('contextmenu', e=>e.preventDefault());
 el.addEventListener('mousedown', e=>{
   if(!ctrl.enabled) return;
-  if(tween) tween = null;   // 掴んだらカメラ遷移を中断
-  if(e.button===2 || e.button===1 || (e.button===0 && (dragMode==='rotate' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey))){ e.preventDefault(); beginRotate(e.clientX, e.clientY); }
-  else if(e.button===0){ startGrab(e.clientX, e.clientY); armHold(e.clientX, e.clientY, e.timeStamp); }
+  if(tween) tween = null;
+  if(e.button===2 || e.button===1 || (e.button===0 && (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey))){ e.preventDefault(); startGrab(e.clientX, e.clientY); }
+  else if(e.button===0){ armHold(e.clientX, e.clientY, e.timeStamp); el.style.cursor = 'grabbing'; }
 });
 addEventListener('mouseup', ()=>{ disarmHold(); hideCue(); endGrab(); });
 addEventListener('mousemove', e=>{
   if(!ctrl.enabled) return;
   if(!hold.decided) decideHold(e.clientX, e.clientY, e.timeStamp);
   if(ctrl.rotating){
-    const dx = e.clientX-ctrl.px, dy = e.clientY-ctrl.py;
-    ctrl.sph.theta -= dx*0.0048; ctrl.sph.phi -= dy*0.0042; ctrl.apply();
+    rotateBy(e.clientX-ctrl.px, e.clientY-ctrl.py);
     ctrl.px=e.clientX; ctrl.py=e.clientY;
+  } else if(grab.on){
+    moveGrab(e.clientX, e.clientY);
     if(rotcue && rotcue.classList.contains('on')){ rotcue.style.left = e.clientX+'px'; rotcue.style.top = e.clientY+'px'; }
-  } else if(grab.on){ moveGrab(e.clientX, e.clientY); }
+  }
 });
 el.addEventListener('wheel', e=>{
   if(!ctrl.enabled) return;
   e.preventDefault();
   if(tween) tween = null;
-  /* 横スクロール（トラックパッドの2本指 横）＝ 回転 */
-  if(Math.abs(e.deltaX) > Math.abs(e.deltaY)*1.2){ ctrl.sph.theta -= e.deltaX*0.0035; ctrl.apply(); return; }
-  /* カーソル位置を中心にズーム（地面上の点が動かないよう補正） */
+  /* 横スクロール（トラックパッド2本指 横）＝ 横に移動 */
+  if(Math.abs(e.deltaX) > Math.abs(e.deltaY)*1.2){
+    const s = ctrl.sph.radius*0.0012;
+    const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd); fwd.y=0; fwd.normalize();
+    const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0,1,0)).negate();
+    ctrl.target.addScaledVector(right, e.deltaX*s); clampTarget(); ctrl.apply(); return;
+  }
+  /* カーソル位置を中心にズーム */
   const before = groundAt(e.clientX, e.clientY, ctrl.target.y);
   ctrl.sph.radius *= (1 + Math.sign(e.deltaY)*0.09);
   ctrl.apply();
   const after = groundAt(e.clientX, e.clientY, ctrl.target.y);
   if(before && after){ ctrl.target.x += before.x - after.x; ctrl.target.z += before.z - after.z; clampTarget(); ctrl.apply(); }
 }, {passive:false});
-/* タッチ（1本指: 掴んで移動 / 2本指: ピンチズーム＋回転） */
-let touchD = 0, touchA = 0, touchMid = null;
+/* タッチ */
+let touchD = 0, touchMid = null;
 el.addEventListener('touchstart', e=>{
   if(tween) tween = null;
-  if(e.touches.length===1){ if(dragMode==='rotate'){ beginRotate(e.touches[0].clientX, e.touches[0].clientY); } else { startGrab(e.touches[0].clientX, e.touches[0].clientY); armHold(e.touches[0].clientX, e.touches[0].clientY, e.timeStamp); } }
+  if(e.touches.length===1){ armHold(e.touches[0].clientX, e.touches[0].clientY, e.timeStamp); }
   if(e.touches.length===2){
     disarmHold(); hideCue(); endGrab();
     const t0=e.touches[0], t1=e.touches[1];
-    touchD = Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY); touchA = Math.atan2(t1.clientY-t0.clientY, t1.clientX-t0.clientX);
+    touchD = Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
     touchMid = {x:(t0.clientX+t1.clientX)/2, y:(t0.clientY+t1.clientY)/2};
+    startGrab(touchMid.x, touchMid.y);
   }
 }, {passive:true});
 el.addEventListener('touchmove', e=>{
-  if(e.touches.length===1 && !hold.decided) decideHold(e.touches[0].clientX, e.touches[0].clientY, e.timeStamp);
-  if(e.touches.length===1 && ctrl.rotating){ const dx=e.touches[0].clientX-ctrl.px, dy=e.touches[0].clientY-ctrl.py; ctrl.sph.theta -= dx*0.0048; ctrl.sph.phi -= dy*0.0042; ctrl.apply(); ctrl.px=e.touches[0].clientX; ctrl.py=e.touches[0].clientY; }
-  else if(e.touches.length===1 && grab.on){ moveGrab(e.touches[0].clientX, e.touches[0].clientY); }
-  else if(e.touches.length===2){
+  if(e.touches.length===1){
+    const t0=e.touches[0];
+    if(!hold.decided) decideHold(t0.clientX, t0.clientY, e.timeStamp);
+    if(ctrl.rotating){ rotateBy(t0.clientX-ctrl.px, t0.clientY-ctrl.py); ctrl.px=t0.clientX; ctrl.py=t0.clientY; }
+    else if(grab.on) moveGrab(t0.clientX, t0.clientY);
+  } else if(e.touches.length===2){
     const t0=e.touches[0], t1=e.touches[1];
-    const d = Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY), a = Math.atan2(t1.clientY-t0.clientY, t1.clientX-t0.clientX);
+    const d = Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
     const mid = {x:(t0.clientX+t1.clientX)/2, y:(t0.clientY+t1.clientY)/2};
-    if(touchD>0){ ctrl.sph.radius *= touchD/d; }
-    ctrl.sph.theta -= (a-touchA);                       // 2本指のひねりで回転
-    if(touchMid){ ctrl.sph.phi -= (mid.y-touchMid.y)*0.004; }   // 2本指の上下で見下ろし角
-    ctrl.apply();
-    touchD = d; touchA = a; touchMid = mid;
+    if(touchD>0){ ctrl.sph.radius *= touchD/d; ctrl.apply(); }
+    if(grab.on) moveGrab(mid.x, mid.y);
+    touchD = d; touchMid = mid;
   }
 }, {passive:true});
 el.addEventListener('touchend', ()=>{ disarmHold(); hideCue(); endGrab(); touchD=0; touchMid=null; }, {passive:true});

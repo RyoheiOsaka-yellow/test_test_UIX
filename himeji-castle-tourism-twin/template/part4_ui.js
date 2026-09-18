@@ -431,7 +431,7 @@ function renderPanel(){
       <div class="sec"><div class="sec-t">動線（路線・高速道路・航路・空港）— 流入シェア（クリックで視点）</div><div class="mode-list">${corridorRows()}</div></div>
       <div class="sec"><div class="sec-t">凡例 — 線種＝交通モード、帯の色＝セグメント</div>${modeLegend()}</div>
       <div class="sec"><div class="sec-t">到着ゲート（市内側）</div><div id="gate-rows"></div></div>
-      <div class="sec"><div class="sec-t">操作</div><div class="hint"><b>左ドラッグ＝地図を掴んで移動</b>／<b>長押ししてドラッグ＝回転</b>（右ドラッグでも可）／縦スクロール＝ズーム、横スクロール＝回転。各動線は<b>経由都市と所要時間</b>付き。帯の流れは<b>朝は姫路へ、夕方は帰路方向へ</b>反転し、太さ＝流入量。ポールの高さ＝出発地シェア（観光動向調査の居住地構成から換算）。<b style="color:var(--gold)">L1</b>で市内の滞留、<b style="color:var(--gold)">L2</b>で城内の混雑へ。</div></div>`;
+      <div class="sec"><div class="sec-t">操作</div><div class="hint"><b>左ドラッグ＝掴んだ地点を軸に視点を回す</b>（真上の平面〜低い角度まで）／<b>少し押してからドラッグ・右ドラッグ＝移動</b>／スクロール＝カーソル位置へズーム。各動線は<b>経由都市と所要時間</b>付き。帯の流れは<b>朝は姫路へ、夕方は帰路方向へ</b>反転し、太さ＝流入量。ポールの高さ＝出発地シェア（観光動向調査の居住地構成から換算）。<b style="color:var(--gold)">L1</b>で市内の滞留、<b style="color:var(--gold)">L2</b>で城内の混雑へ。</div></div>`;
   }
   if(level==='city'){
     pb.innerHTML = `
@@ -467,7 +467,7 @@ function renderPanel(){
       <div class="sec"><div class="sec-t">実データ接続（プレースホルダ）</div>
         <input type="file" id="csv-in" accept=".csv,text/csv" style="display:none"><button class="tool-btn" id="csv-btn">CSVを読み込んで滞留データを上書き</button>
         <div class="hint" style="margin-top:6px">列: date, hour, mesh_id, segment, count（携帯位置情報の500mメッシュ集計を想定）。本番はDB直結で自動更新。</div></div>
-      <div class="sec"><div class="sec-t">操作</div><div class="hint"><b>左ドラッグ＝地図を掴んで移動</b>／<b>長押ししてドラッグ＝回転</b>（右ドラッグでも可）／縦スクロール＝ズーム、横スクロール＝回転。POI・宿泊ピンにホバーで解説。<b style="color:var(--gold)">姫路城をクリック</b>で城内（L2）へ。</div></div>`;
+      <div class="sec"><div class="sec-t">操作</div><div class="hint"><b>左ドラッグ＝掴んだ地点を軸に視点を回す</b>（真上の平面〜低い角度まで）／<b>少し押してからドラッグ・右ドラッグ＝移動</b>／スクロール＝カーソル位置へズーム。POI・宿泊ピンにホバーで解説。<b style="color:var(--gold)">姫路城をクリック</b>で城内（L2）へ。</div></div>`;
   }
   if(level==='castle'){
     pb.innerHTML = `
@@ -477,7 +477,7 @@ function renderPanel(){
       <div class="sec"><div class="sec-t">ゾーン別 滞留・混雑（1ドット＝${AG_SCALE}人）</div><div id="zone-rows"></div></div>
       <div class="sec"><div class="sec-t">入城料（2026年3月〜 二段階料金・想定）</div><div class="legend">
         <div class="li"><div class="sw" style="background:var(--gold)"></div>市外・海外 ¥${FEE.out.toLocaleString()}　<div class="sw" style="background:#8f9cc0"></div>姫路市民 ¥${FEE.resident.toLocaleString()}</div></div></div>
-      <div class="sec"><div class="sec-t">インサイト</div><div class="hint">律速点は<b>大天守（入場制限 15,000人/日）</b>と<b>菱の門の券売</b>。桜・GWは12時前後に待ち60分超が発生。入城券の<b>時間指定枠・事前販売</b>と、待ち時間を<b>好古園・西の丸へ振り替える案内</b>が滞留分散の打ち手になります。左ドラッグで移動・長押しドラッグで回転。<kbd>Esc</kbd>で市内へ戻る。</div></div>`;
+      <div class="sec"><div class="sec-t">インサイト</div><div class="hint">律速点は<b>大天守（入場制限 15,000人/日）</b>と<b>菱の門の券売</b>。桜・GWは12時前後に待ち60分超が発生。入城券の<b>時間指定枠・事前販売</b>と、待ち時間を<b>好古園・西の丸へ振り替える案内</b>が滞留分散の打ち手になります。左ドラッグで視点を回す・少し押してからドラッグで移動。<kbd>Esc</kbd>で市内へ戻る。</div></div>`;
   }
   bindCommon();
   updateKPIs();
@@ -868,7 +868,7 @@ flyTo(new THREE.Vector3(1800, 0, 900), 33000, 0.5, -0.3, 2200);
 /* 初期状態: 10:30まで進めて「到着ピーク」の姿で開く */
 (function warmup(){ let g=0; while(timeState.min < 270 && g++<400){ timeState.min += 2; updateAgents(2); } syncClock(); })();
 renderPanel();
-toast('操作: 左ドラッグ＝地図を掴んで移動 ／ 長押ししてドラッグ＝回転 ／ スクロール＝ズーム。▶ で1日を再生', 5200);
+toast('操作: ドラッグ＝掴んだ地点を軸に視点を回す ／ 少し押してからドラッグ（または右ドラッグ）＝移動 ／ スクロール＝ズーム。▶ で1日を再生', 5600);
 requestAnimationFrame(loop);
 </script>
 </body>
