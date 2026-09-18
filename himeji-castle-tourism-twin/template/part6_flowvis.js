@@ -7,7 +7,6 @@ const CONFIG = window.TWIN_CONFIG = {
   camera:     { minZoom:30, maxZoom:30000, defaultPitch:0.88 },
 };
 const FLOWVIS = { mode:'point', modes:[['point','粒子'],['heat','熱'],['grid','グリッド'],['hex','ヘックス'],['column','柱'],['flow','流線'],['trips','軌跡'],['contour','等高線']] };
-const DENS_RAMP = [[0,0x2959d9],[0.25,0x33d9f2],[0.5,0xffd84d],[0.75,0xff8c26],[1,0xf23333]];   // 低 Blue → Cyan → Yellow → Orange → Red 高（虹色ではなく5段）
 function densC(t){ return rampC(DENS_RAMP, t); }
 
 /* ---------- 熱（ガウス密度ヒートマップ・GPU スプラット） ---------- */
@@ -66,7 +65,10 @@ function setFlowMode(mode){
   /* 既存機能とのマッピング: grid=地域メッシュ（MESH 3D柱）、trips=軌跡ライン（TRAJ）、flow=ODアーク（KDE無し）、column=MESH column スタイル */
   const wantMesh = (mode==='grid' || mode==='column' || mode==='hex' || mode==='contour');
   if(MESH.on!==wantMesh){ MESH.on=wantMesh; if(wantMesh && !MESH.inst) buildMesh(MESH.res); MESH.group.visible=wantMesh && level!=='wide'; document.getElementById('mesh-toggle').classList.toggle('active', wantMesh); }
-  if(wantMesh){ MESH.style = mode==='column' ? 'column' : (mode==='contour' ? 'contour' : (mode==='hex' ? 'hex' : (MESH.style==='2d'?'2d':'3d'))); MESH.dirty=true; if(typeof meshRebuildShape==='function') meshRebuildShape(); }
+  if(wantMesh){
+    if(mode==='hex'){ if(MESH.kind!=='hex') buildMesh(174, 'hex'); MESH.style='3d'; }
+    else { if(MESH.kind==='hex') buildMesh(100, 'sq'); MESH.style = mode==='column' ? 'column' : (MESH.style==='column' ? '3d' : MESH.style); }
+    meshRebuildShape(); MESH.dirty=true; }
   const wantTraj = (mode==='trips');
   if(TRAJ.on!==wantTraj){ TRAJ.on=wantTraj; TRAJ.group.visible=wantTraj && level!=='wide'; setGhost(wantTraj); document.getElementById('traj-toggle').classList.toggle('active', wantTraj); if(wantTraj) trajUpload(); }
   if(typeof setTripsAnim==='function') setTripsAnim(wantTraj);
