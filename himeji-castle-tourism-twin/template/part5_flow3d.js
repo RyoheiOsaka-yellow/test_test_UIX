@@ -149,7 +149,7 @@ TRAJ.group.visible=false; scene.add(TRAJ.group);
   TRAJ.sgeo=sg; TRAJ.stops=new THREE.Points(sg, new THREE.PointsMaterial({size:13, vertexColors:true, transparent:true, opacity:0.95, depthWrite:false, sizeAttenuation:true}));
   TRAJ.stops.frustumCulled=false; TRAJ.group.add(TRAJ.stops);
 })();
-function trajY(gy, t){ return TRAJ.mode==='time' ? gy + t*TRAJ.tScale : gy; }
+function trajY(gy, t){ return TRAJ.mode==='time' ? gy + (t+360)*TRAJ.tScale*0.75 : gy; }
 function trajColor(a){ if(!a.tjc){ const c=new THREE.Color(SEG[a.seg].col); c.offsetHSL(0, 0, (rnd()-0.5)*0.22); a.tjc=c; } return a.tjc; }
 function trajPush(a, x, z){
   if(!a.tjl){ a.tjl=[x,z,timeState.min]; TRAJ.trips++; return; }
@@ -301,7 +301,7 @@ function trajSec(){
       ${TRAJ.anim ? `<div class="studio-label" style="margin:6px 0 4px">時間窓 <output id="trail-v">${TRAJ.mat.uniforms.uTrail.value} 分</output></div><input id="trail-r" type="range" min="10" max="120" step="5" value="${TRAJ.mat.uniforms.uTrail.value}" style="width:100%">` : ''}
       <div class="kpi-grid"><div class="kpi"><div class="v" id="traj-trips">${fmt(TRAJ.trips)}</div><div class="l">記録トリップ（1ドット＝${AG_SCALE}人）</div></div><div class="kpi"><div class="v" id="traj-segs">${fmt(TRAJ.n)}</div><div class="l">線分数${TRAJ.full?'（上限）':''}</div></div></div>
       <div class="legend" style="margin-top:6px"><div class="li"><div class="sw" style="background:#65beff"></div>海外　<div class="sw" style="background:#62e4ab"></div>国内　<div class="sw" style="background:#ef91bb"></div>近隣　<b>●</b> 滞留した場所</div></div>
-      <div class="hint" style="margin-top:6px">線＝道路網上の移動軌跡（同じ色相の明暗で個人を区別）、点＝城・回遊先・宿泊での滞留。「動く軌跡」は現在時刻から時間窓分だけを頭が明るく尾が消える形で再生（進む速さ＝歩行速度）。「時空間」では高さが時刻（06:00＝地表 → 24:00＝${Math.round(1080*TRAJ.tScale)}m）で、上に行くほど遅い時間。実データでは携帯位置情報のトリップ復元（総務省 GPS-ODと同様）で作成。</div></div>`;
+      <div class="hint" style="margin-top:6px">線＝道路網上の移動軌跡（同じ色相の明暗で個人を区別）、点＝城・回遊先・宿泊での滞留。「動く軌跡」は現在時刻から時間窓分だけを頭が明るく尾が消える形で再生（進む速さ＝歩行速度）。「時空間」では高さが時刻（00:00＝地表 → 24:00＝${Math.round(1440*TRAJ.tScale*0.75)}m）で、上に行くほど遅い時間。実データでは携帯位置情報のトリップ復元（総務省 GPS-ODと同様）で作成。</div></div>`;
 }
 function floorSec(){
   if(!FLOORS.on) return '';

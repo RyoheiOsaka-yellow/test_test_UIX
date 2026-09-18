@@ -179,7 +179,9 @@ const SOURCES = [
 
 /* ================= タイムライン（06:00〜24:00） ================= */
 const timeState = { min:0, playing:false, speed:6 };   // 実1秒 = 6分（フル再生 3分）
+const DAY0 = -360;   // タイムライン起点 00:00（内部の分は 06:00 起点なので -360）
 const PHASES = [
+  {t:-360, name:'深夜（宿泊者のみ・静穏）'},
   {t:0,   name:'早朝・到着開始'},
   {t:150, name:'到着ピーク（新幹線・新快速）'},
   {t:300, name:'城内滞留ピーク'},
@@ -188,16 +190,17 @@ const PHASES = [
   {t:780, name:'夜間（宿泊者の回遊・ライトアップ）'},
 ];
 function phaseAt(min){ let p=PHASES[0]; for(const ph of PHASES){ if(min>=ph.t) p=ph; } return p; }
-function clockStr(min){ const h=6+Math.floor(min/60), m=Math.floor(min%60); return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }
+function clockStr(min){ const tot=Math.max(0, Math.round(360+min)); const h=Math.floor(tot/60), m=tot%60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`; }
 /* 到着プロファイル（時刻→相対到着率） */
 function arrProfile(min){
   const h = 6 + min/60;
+  if(h < 5.5) return 0;
   const pk = Math.exp(-Math.pow((h-9.8)/1.6, 2)) + 0.55*Math.exp(-Math.pow((h-13.2)/1.5, 2)) + 0.08*Math.exp(-Math.pow((h-16.5)/1.2, 2));
   const night = SCN[curScn].night * 0.5 * Math.exp(-Math.pow((h-19.0)/1.1, 2));
   return pk + night;
 }
 let ARR_NORM = 1;
-function calcArrNorm(){ let s=0; for(let m=0;m<1080;m+=2) s += arrProfile(m)*2; ARR_NORM = s || 1; }
+function calcArrNorm(){ let s=0; for(let m=-360;m<1080;m+=2) s += arrProfile(m)*2; ARR_NORM = s || 1; }
 calcArrNorm();
 
 /* ================= 道路グラフ & 経路探索（A* / 二分ヒープ） ================= */

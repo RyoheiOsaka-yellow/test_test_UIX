@@ -846,15 +846,21 @@ addEventListener('keydown', e=>{
 
 /* ================= タイムライン ================= */
 const slider=document.getElementById('tl-slider'), clockEl=document.getElementById('tl-clock'), phaseEl=document.getElementById('tl-phase'), scnEl=document.getElementById('tl-scn'), playBtn=document.getElementById('tl-play');
-playBtn.onclick = ()=>{ timeState.playing=!timeState.playing; playBtn.textContent = timeState.playing ? '❚❚' : '▶'; if(timeState.playing && timeState.min>=1080){ timeState.min=0; resetSim(); } };
+playBtn.onclick = ()=>{ timeState.playing=!timeState.playing; playBtn.textContent = timeState.playing ? '❚❚' : '▶'; if(timeState.playing && timeState.min>=1080){ timeState.min=DAY0; resetSim(); } };
+/* 時刻選択（00:00〜23:00）・目盛クリック・速度 ×0.5/×1/×2/×4 */
+const hourSel=document.getElementById('tl-hour');
+for(let h=0;h<24;h++){ const o=document.createElement('option'); o.value=String(h*60-360); o.textContent=String(h).padStart(2,'0')+':00'; hourSel.appendChild(o); }
+hourSel.onchange=()=>{ slider.value=hourSel.value; slider.oninput(); };
+document.querySelectorAll('#tl-marks span[data-min]').forEach(sp=> sp.onclick=()=>{ slider.value=sp.dataset.min; slider.oninput(); });
+document.querySelectorAll('[data-tspeed]').forEach(b=> b.onclick=()=>{ timeState.speed=+b.dataset.tspeed; document.querySelectorAll('[data-tspeed]').forEach(x=>x.classList.toggle('active', x===b)); document.querySelectorAll('[data-speed]').forEach(x=>x.classList.toggle('active', +x.dataset.speed===timeState.speed)); });
 slider.oninput = ()=>{
   const target=+slider.value;
-  if(target < timeState.min){ resetSim(); timeState.min=0; }
+  if(target < timeState.min){ resetSim(); timeState.min=DAY0; }
   /* 早送り: エージェント状態を目標時刻まで進める */
   let guard=0; while(timeState.min < target && guard++<2000){ const st=Math.min(2, target-timeState.min); timeState.min+=st; updateAgents(st); }
   timeState.min=target; syncClock(); HEAT.lastT=-99; repaintHeat(); KDE.lastT=-99; updateKDE(true); updateKPIs();
 };
-function syncClock(){ clockEl.textContent=clockStr(timeState.min); phaseEl.textContent=phaseAt(timeState.min).name; scnEl.textContent=SCN[curScn].name; slider.value=timeState.min; }
+function syncClock(){ clockEl.textContent=clockStr(timeState.min); phaseEl.textContent=phaseAt(timeState.min).name; scnEl.textContent=SCN[curScn].name; slider.value=timeState.min; const hv=String(Math.floor((timeState.min+360)/60)*60-360); if(hourSel.value!==hv) hourSel.value=hv; }
 
 /* ================= メインループ ================= */
 let lastT=performance.now(), lastKpi=0;
@@ -968,7 +974,7 @@ function initRefinement(){
  document.querySelectorAll('[data-flow]').forEach(b=>b.onclick=()=>{flowStyle=b.dataset.flow;document.querySelectorAll('[data-flow]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',x===b)});syncRefinement()});
  document.getElementById('cloud-density').oninput=e=>{const ratio=+e.target.value/100;fineCloud.children.forEach(p=>p.geometry.setDrawRange(0,Math.floor(p.userData.fullCount*ratio)));document.getElementById('density-value').value=e.target.value+'%';syncRefinement()};
  document.getElementById('flow-weight').oninput=e=>{trailMesh.material.opacity=+e.target.value/100;document.getElementById('flow-value').value=e.target.value+'%'};
- document.querySelectorAll('[data-speed]').forEach(b=>b.onclick=()=>{timeState.speed=+b.dataset.speed;document.querySelectorAll('[data-speed]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',x===b)})});
+ document.querySelectorAll('[data-speed]').forEach(b=>b.onclick=()=>{timeState.speed=+b.dataset.speed;document.querySelectorAll('[data-speed]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',x===b)});document.querySelectorAll('[data-tspeed]').forEach(x=>x.classList.toggle('active', +x.dataset.tspeed===timeState.speed))});
  document.getElementById('drag-mode').onclick=()=>{endGrab();primaryDragMode=primaryDragMode==='rotate'?'pan':'rotate';const b=document.getElementById('drag-mode');b.textContent=primaryDragMode==='rotate'?'回転中':'移動中';b.setAttribute('aria-pressed',primaryDragMode==='rotate');b.setAttribute('aria-label',primaryDragMode==='rotate'?'左ドラッグは回転。押すと移動に切替':'左ドラッグは地図を掴んで移動。押すと回転に切替');toast(primaryDragMode==='rotate'?'回転モード：左ドラッグで地球儀のように回す（横＝360度・縦＝真上〜真横）。右ドラッグ＝平行移動':'移動モード：左ドラッグで地図を掴んで引っ張る。右ドラッグ＝回転',3000)};
  document.getElementById('view-side').onclick=()=>flyTo(ctrl.target.clone(),ctrl.sph.radius,ctrl.maxPhi,ctrl.sph.theta,700);
  document.getElementById('view-bird').onclick=()=>flyTo(ctrl.target.clone(),ctrl.sph.radius,0.85,ctrl.sph.theta,700);
@@ -996,7 +1002,8 @@ applyLayers();
 setLevel('city', false);
 ctrl.target.set(CASTLE.x, TH(CASTLE.x,CASTLE.z), CASTLE.z); ctrl.sph.set(2450, 0.88, -0.35); ctrl.apply();
 /* 初期状態: 10:30まで進めて「到着ピーク」の姿で開く */
-(function warmup(){ let g=0; while(timeState.min < 270 && g++<400){ timeState.min += 2; updateAgents(2); } syncClock(); })();
+timeState.min = DAY0;
+(function warmup(){ let g=0; while(timeState.min < 270 && g++<800){ timeState.min += 2; updateAgents(2); } syncClock(); })();
 renderPanel();
 initRefinement();
 toast('操作: 左ドラッグ＝地球儀のように回す（横＝360度・縦＝真上〜真横） ／ 右ドラッグ＝平行移動 ／ ホイール＝ズーム ／ ダブルクリック＝フォーカス。▶ で1日を再生', 5200);
