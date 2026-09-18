@@ -54,7 +54,7 @@ el.style.cursor = 'grab';el.style.touchAction='none';
    縦スクロール ＝ カーソル位置へズーム / 横スクロール ＝ 横に移動
    タッチ: 1本指 移動、2本指 ピンチズーム＋移動 */
 ctrl.minPhi = 0.008; ctrl.maxPhi = Math.PI/2 - 0.008;
-let primaryDragMode="rotate";   // 既定: 左ドラッグ＝姫路城（画面中心）を軸に地球儀のように回す。右ドラッグ／修飾キー＝平行移動。「回転中」ボタンで入替
+let primaryDragMode="pan";   // 既定: 左ドラッグ＝地図を掴んで引っ張る（移動）。握って少し待つ（⟳）→ドラッグ／握ったままホイール／右ドラッグ＝回転・傾き。「移動中」ボタンで入替
 function startPrimaryDrag(x,y){if(primaryDragMode==="rotate")beginRotate(x,y);else startGrab(x,y);}
 function startSecondaryDrag(x,y){if(primaryDragMode==="rotate")startGrab(x,y);else beginRotate(x,y);}
 const _ray = new THREE.Raycaster(), _ndc = new THREE.Vector2(), _plane = new THREE.Plane(new THREE.Vector3(0,1,0), 0), _hit = new THREE.Vector3();
@@ -154,7 +154,7 @@ el.addEventListener('mousedown', e=>{
   if(tween) tween = null;
   disarmHold();
   if(e.button===2 || e.button===1 || (e.button===0 && (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey))){ e.preventDefault(); startSecondaryDrag(e.clientX, e.clientY); }
-  else if(e.button===0){ e.preventDefault(); startPrimaryDrag(e.clientX, e.clientY); }
+  else if(e.button===0){ e.preventDefault(); startPrimaryDrag(e.clientX, e.clientY); if(primaryDragMode==='pan') armHold(e.clientX, e.clientY, e.timeStamp); }
 
 });
 addEventListener('mouseup', ()=>{ disarmHold(); hideCue(); endRotateInertia(); endGrab(); });
@@ -195,7 +195,7 @@ let touchD = 0, touchMid = null, touchAng = 0;
 el.addEventListener('touchstart', e=>{
   if(tween) tween = null;
   if(!ctrl.enabled) return;
-  if(e.touches.length===1){ disarmHold(); startPrimaryDrag(e.touches[0].clientX, e.touches[0].clientY); }
+  if(e.touches.length===1){ disarmHold(); startPrimaryDrag(e.touches[0].clientX, e.touches[0].clientY); if(primaryDragMode==='pan') armHold(e.touches[0].clientX, e.touches[0].clientY, e.timeStamp); }
   if(e.touches.length===2){
     disarmHold(); hideCue(); endGrab();
     const t0=e.touches[0], t1=e.touches[1];
