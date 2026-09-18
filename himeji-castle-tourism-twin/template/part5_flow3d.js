@@ -47,14 +47,14 @@ function buildMesh(res, kind){
       const lat0=j*dl, lon0=i*dn; const a=toXZ(lat0,lon0), b=toXZ(lat0+dl,lon0+dn);
       const cx=(a.x+b.x)/2, cz=(a.z+b.z)/2, w=b.x-a.x, d=a.z-b.z;
       if(Math.abs(cx)>MESH_RANGE.x || Math.abs(cz)>MESH_RANGE.z) continue;
-      cells.push({i,j,cx,cz,w,d,y:TH(cx,cz),code:meshCode(lat0+dl/2,lon0+dn/2,res),v:0,stay:0,seg:[0,0,0],near:nearPOI(cx,cz,w)});
+      cells.push({i,j,cx,cz,w,d,y:TH(cx,cz),code:meshCode(lat0+dl/2,lon0+dn/2,res),v:0,stay:0,seg:[0,0,0],near:nearPOI(cx,cz,w),in:{},out:{},ag:[]});
     }
   } else if(MESH.kind==='sq'){
     const n1=Math.ceil(MESH_RANGE.x/res), n2=Math.ceil(MESH_RANGE.z/res);
-    for(let j=-n2;j<n2;j++) for(let i=-n1;i<n1;i++){ const cx=(i+0.5)*res, cz=(j+0.5)*res; cells.push({i,j,cx,cz,w:res,d:res,y:TH(cx,cz),code:`G${res}-${i}:${j}`,v:0,stay:0,seg:[0,0,0],near:nearPOI(cx,cz,res)}); }
+    for(let j=-n2;j<n2;j++) for(let i=-n1;i<n1;i++){ const cx=(i+0.5)*res, cz=(j+0.5)*res; cells.push({i,j,cx,cz,w:res,d:res,y:TH(cx,cz),code:`G${res}-${i}:${j}`,v:0,stay:0,seg:[0,0,0],near:nearPOI(cx,cz,res),in:{},out:{},ag:[]}); }
   } else { /* hex: pointy-top, 外接半径 R */
     const R=HEX_R[res]||res, W=Math.sqrt(3)*R, Hh=1.5*R; const qn=Math.ceil(MESH_RANGE.x/W)+4, rn=Math.ceil(MESH_RANGE.z/Hh)+2;
-    for(let r=-rn;r<=rn;r++) for(let q=-qn-Math.ceil(r/2);q<=qn-Math.floor(r/2);q++){ const cx=W*(q+r/2), cz=Hh*r; if(Math.abs(cx)>MESH_RANGE.x || Math.abs(cz)>MESH_RANGE.z) continue; cells.push({i:q,j:r,cx,cz,w:W,d:2*R,y:TH(cx,cz),code:`H${res}-${q}:${r}`,v:0,stay:0,seg:[0,0,0],near:nearPOI(cx,cz,R)}); }
+    for(let r=-rn;r<=rn;r++) for(let q=-qn-Math.ceil(r/2);q<=qn-Math.floor(r/2);q++){ const cx=W*(q+r/2), cz=Hh*r; if(Math.abs(cx)>MESH_RANGE.x || Math.abs(cz)>MESH_RANGE.z) continue; cells.push({i:q,j:r,cx,cz,w:W,d:2*R,y:TH(cx,cz),code:`H${res}-${q}:${r}`,v:0,stay:0,seg:[0,0,0],near:nearPOI(cx,cz,R),in:{},out:{},ag:[]}); }
   }
   MESH.cells=cells; MESH.byKey=new Map(cells.map((c,k)=>[c.i+','+c.j,k]));
   MESH.max = MESH_MINMAX[res]||200; MESH.shapeKey=''; meshRebuildShape();
@@ -82,19 +82,24 @@ function meshCell(x, z){
 }
 function meshAccumulate(dtMin){
   if(!MESH.inst) return;
-  const cells=MESH.cells, cnt=new Float32Array(cells.length*5);
+  const cells=MESH.cells, cnt=new Float32Array(cells.length*5); const tnow=timeState.min, bkt=Math.floor((tnow+360)/10);
+  cells.forEach(c=>{ c.ag=[]; });
   for(const a of agents){
     if(!segByFilter(a.seg)) continue;
     let x=a.cur.x, z=a.cur.z;
     if(a.state==='castle'){ /* 城内は城内ゾーン構成比（大手門〜大天守）で分散させて集計 */
       if(a.zr===undefined) a.zr=rnd(); let acc=0, zn=ZONES[ZONES.length-1]; for(const zz of ZONES){ acc+=zz.frac; if(a.zr<=acc){ zn=zz; break; } }
       x=zn.node.x+a.jx*0.35; z=zn.node.z+a.jz*0.35; }
-    const k=meshCell(x,z); if(k<0) continue;
+    const k=meshCell(x,z);
+    if(a.cellKey!==MESH.shapeKey+MESH.res){ a.cellKey=MESH.shapeKey+MESH.res; a.cellK=-1; }
+    if(k!==a.cellK){ if(a.cellK>=0){ const o=cells[a.cellK]; o.out[bkt]=(o.out[bkt]||0)+1; } if(k>=0){ const c=cells[k]; c.in[bkt]=(c.in[bkt]||0)+1; } a.cellK=k; }
+    if(k<0) continue;
+    cells[k].ag.push(a);
     cnt[k*5]+=AG_SCALE; cnt[k*5+1+SEG_KEYS.indexOf(a.seg)]+=AG_SCALE; if(a.state!=='move') cnt[k*5+4]+=AG_SCALE;
   }
   const kf = dtMin>0 ? Math.min(1, dtMin*0.10) : 1;
   let mx=0;
-  cells.forEach((c,k)=>{ c.v += (cnt[k*5]-c.v)*kf; for(let s=0;s<3;s++) c.seg[s] += (cnt[k*5+1+s]-c.seg[s])*kf; c.stay += (cnt[k*5+4]-c.stay)*kf; if(c.v>mx) mx=c.v; });
+  cells.forEach((c,k)=>{ c.v += (cnt[k*5]-c.v)*kf; for(let s=0;s<3;s++) c.seg[s] += (cnt[k*5+1+s]-c.seg[s])*kf; c.stay += (cnt[k*5+4]-c.stay)*kf; if(c.v>mx) mx=c.v; if(c.v>(c.peak||0)){ c.peak=c.v; c.peakT=tnow; } });
   MESH.max += (Math.max(mx, MESH_MINMAX[MESH.res]||200) - MESH.max)*(dtMin>0?0.08:1);
   MESH.dirty=true;
 }

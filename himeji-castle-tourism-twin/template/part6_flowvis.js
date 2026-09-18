@@ -112,6 +112,67 @@ function flowSec(){
 /* ---------- 動く軌跡（TripsLayer 相当） ---------- */
 function setTripsAnim(on){ TRAJ.anim=!!on; if(TRAJ.mat){ TRAJ.mat.uniforms.uAnim.value=on?1:0; } if(TRAJ.stops) TRAJ.stops.visible=!on; }
 
+
+/* ---------- Analytics（KPI）: 現在滞在・流入・流出・平均滞在・ピーク・混雑メッシュ数・平均速度・前時間帯比・主要 Origin/Destination ---------- */
+const ANA = { hist:[], peak:0, peakT:0, lastRec:-1e9, busy:0, busyCells:0, speed:0, lastBusy:0, origin:'—', dest:'—' };
+function anaRecord(){
+  const t=timeState.min; if(t-ANA.lastRec < 5 && ANA.hist.length) return;   // 5分ごと
+  ANA.lastRec=t; const arr=STATS.arrived.in+STATS.arrived.dom+STATS.arrived.loc, dep=Object.values(STATS.departed).reduce((a,b)=>a+b,0);
+  ANA.hist.push({t, inCity:agents.length, arr, dep}); if(ANA.hist.length>400) ANA.hist.shift();
+  if(agents.length>ANA.peak){ ANA.peak=agents.length; ANA.peakT=t; }
+}
+function anaAt(minAgo){ const t=timeState.min-minAgo; let best=null; for(const h of ANA.hist){ if(h.t<=t) best=h; } return best; }
+function anaBusy(now){
+  if(now-ANA.lastBusy<700) return; ANA.lastBusy=now;
+  const G=100, bins=new Map(); let spd=0, nm=0;
+  for(const a of agents){ if(!segByFilter(a.seg)) continue; const k=Math.floor(a.cur.x/G)+','+Math.floor(a.cur.z/G); bins.set(k,(bins.get(k)||0)+AG_SCALE); if(a.state==='move'){ spd+=a.sp; nm++; } }
+  let busy=0; bins.forEach(v=>{ if(v>=160) busy++; }); ANA.busyCells=busy; ANA.speed = nm? spd/nm/60 : 0;   // 100m メッシュで 160人以上（0.016人/m²）を混雑
+  const gates=Object.entries(STATS.byGate).sort((a,b)=>b[1]-a[1]); ANA.origin = gates.length ? GATES[gates[0][0]].name : '—';
+  const spots=Object.entries(STATS.atSpot||{}).sort((a,b)=>b[1]-a[1]); ANA.dest = spots.length && spots[0][1]>0 ? spots[0][0] : (STATS.inCastle>0 ? '姫路城' : '—');
+}
+function anaSec(){ return `<div class="sec"><div class="sec-t">Analytics — 現在時刻の指標（1ドット＝${AG_SCALE}人）</div><div class="kpi-grid" id="kpi-ana"></div></div>`; }
+function updateAna(){
+  const k=document.getElementById('kpi-ana'); if(!k) return;
+  const people=n=>fmt(n*AG_SCALE); const h60=anaAt(60), cur=ANA.hist[ANA.hist.length-1];
+  const inflow = (cur&&h60) ? cur.arr-h60.arr : 0, outflow = (cur&&h60) ? cur.dep-h60.dep : 0;
+  const ratio = (h60 && h60.inCity>0) ? agents.length/h60.inCity : null;
+  let staySum=0, stayN=0; for(const a of agents){ if(a.tStop!=null){ staySum += timeState.min-a.tStop; stayN++; } }
+  const stay = stayN ? staySum/stayN : 0;
+  k.innerHTML =
+    kpi(people(agents.length), '現在 滞在人口（市内）') +
+    kpi(people(inflow), '流入（直近1時間）') +
+    kpi(people(outflow), '流出（直近1時間）') +
+    kpi(stay ? Math.round(stay)+'<small> 分</small>' : '—', '平均滞在時間（滞留中の平均）') +
+    kpi(people(ANA.peak)+`<small> ${clockStr(ANA.peakT)}</small>`, 'ピーク人数（本日）') +
+    kpi(String(ANA.busyCells), '混雑メッシュ数（100m・160人以上）') +
+    kpi(ANA.speed ? ANA.speed.toFixed(2)+'<small> m/s</small>' : '—', '平均移動速度（移動中）') +
+    kpi(ratio!=null ? (ratio>=1?'+':'')+((ratio-1)*100).toFixed(0)+'<small> %</small>' : '—', '前時間帯比（滞在人口）') +
+    kpi(`<span style="font-size:13px">${ANA.origin.replace(/（.*?）/g,'')}</span>`, '主要 Origin（到着ゲート）') +
+    kpi(`<span style="font-size:13px">${ANA.dest}</span>`, '主要 Destination（滞留先）');
+}
+/* ---------- メッシュクリック → 詳細パネル ---------- */
+const mcard = document.getElementById('mcard');
+function meshClick(e){
+  if(!MESH.on || !MESH.inst || !MESH.group.visible) return false;
+  const hits = pick(e, [MESH.inst], false); if(!hits.length) return false;
+  const c = MESH.cells[hits[0].instanceId]; showMeshCard(c, e); return true;
+}
+function showMeshCard(c, e){
+  if(!mcard) return;
+  const bkt=Math.floor((timeState.min+360)/10); let inflow=0, outflow=0; for(let b=bkt-5;b<=bkt;b++){ inflow+=(c.in[b]||0); outflow+=(c.out[b]||0); }
+  let staySum=0, stayN=0, spd=0, nm=0; const org={}, dst={};
+  (c.ag||[]).forEach(a=>{ if(a.tStop!=null){ staySum+=timeState.min-a.tStop; stayN++; } if(a.state==='move'){ spd+=a.sp; nm++; }
+    const g=GATES[a.gk]; if(g) org[g.name]=(org[g.name]||0)+1;
+    const nx = a.pi<a.plan.length ? (a.plan[a.pi].kind==='castle' ? '姫路城' : a.plan[a.pi].name) : (a.endKind==='stay' ? '市内宿泊' : '帰路（'+(ORIGIN_BY_ID[a.dest[0]]?ORIGIN_BY_ID[a.dest[0]].name:'市外')+'）'); dst[nx]=(dst[nx]||0)+1; });
+  const top=o=>{ const e=Object.entries(o).sort((a,b)=>b[1]-a[1]); return e.length? e[0][0] : '—'; };
+  const tot=Math.max(1,c.v);
+  mcard.innerHTML = `<div class="bc-h"><b>${c.near||'メッシュ'}　<span style="color:var(--sub);font-weight:400">${c.code}</span></b><button class="bd-x" id="mc-close">✕</button></div>
+    <div class="bc-g"><span>Mesh ID</span><b>${c.code}</b><span>People</span><b>${fmt(c.v)} 人</b><span>Stay</span><b>${stayN? Math.round(staySum/stayN)+' min' : '—'}</b><span>Inflow（1h）</span><b>${fmt(inflow*AG_SCALE)}</b><span>Outflow（1h）</span><b>${fmt(outflow*AG_SCALE)}</b><span>Walking Speed</span><b>${nm? (spd/nm/60).toFixed(2)+' m/s' : '—'}</b><span>Peak</span><b>${c.peak? fmt(c.peak)+' 人 @ '+clockStr(c.peakT) : '—'}</b><span>Origin</span><b>${top(org).replace(/（.*?）/g,'')}</b><span>Destination</span><b>${top(dst)}</b><span>構成</span><b>海外 ${(c.seg[0]/tot*100).toFixed(0)}%・国内 ${(c.seg[1]/tot*100).toFixed(0)}%・近隣 ${(c.seg[2]/tot*100).toFixed(0)}%</b></div>
+    <div class="bc-src">セル内の来訪者ドットから算出（synthetic）。実データでは dwell_mesh / trip_trace テーブルの集計値に置き換わります</div>`;
+  mcard.style.display='block'; mcard.style.left=Math.min(innerWidth-330, e.clientX+16)+'px'; mcard.style.top=Math.min(innerHeight-300, e.clientY+12)+'px';
+  document.getElementById('mc-close').onclick=()=>{ mcard.style.display='none'; };
+}
+
 /* ---------- モード切替 ---------- */
 function setFlowMode(mode){
   FLOWVIS.mode = mode;
@@ -147,6 +208,7 @@ function bindFlowVis(){
   const i=document.getElementById('heat-i'); if(i) i.oninput=e=>{ CONFIG.peopleFlow.heatmapIntensity=+e.target.value; document.getElementById('heat-i-v').value='×'+(+e.target.value).toFixed(1); };
 }
 function updateFlowVis(dtMin, now){
+  if(dtMin>0) anaRecord(); anaBusy(now);
   if(HEATV.on){ HEATV.mesh.visible = level!=='wide'; heatUpdate(now); }
   if(FLOWA.on){ FLOWA.group.visible = level!=='wide'; rebuildFlowArcs(now); const fr=document.getElementById('flow-rows'); if(fr && now-(FLOWA.lastUI||0)>600){ FLOWA.lastUI=now; fr.innerHTML=flowRowsHTML(); } }
   if(TRAJ.mat) TRAJ.mat.uniforms.uNow.value = timeState.min;

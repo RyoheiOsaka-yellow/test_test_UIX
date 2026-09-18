@@ -424,6 +424,7 @@ function renderPanel(){
   if(level==='wide'){
     pb.innerHTML = `
       <div class="sec"><div class="sec-t"><b>L0</b> 広域流入 — 誰が・どこから来たか</div><div class="kpi-grid" id="kpi-main"></div></div>
+      ${anaSec()}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ（入城者数/日・想定）</div>${scnChips()}</div>
       ${odSec()}${tourSec()}${flowModeSec()}${flowSec()}${meshSec()}${trajSec()}${floorSec()}
@@ -435,6 +436,7 @@ function renderPanel(){
   if(level==='city'){
     pb.innerHTML = `
       <div class="sec"><div class="sec-t"><b>L1</b> 市内回遊・滞留 — どこに・どれだけ滞留したか</div><div class="kpi-grid" id="kpi-main"></div></div>
+      ${anaSec()}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
       ${odSec()}${tourSec()}${flowModeSec()}${flowSec()}${meshSec()}${trajSec()}${floorSec()}
@@ -473,6 +475,7 @@ function renderPanel(){
   if(level==='castle'){
     pb.innerHTML = `
       <div class="sec"><div class="sec-t"><b class="g">L2</b> 姫路城 — 城内滞留・待ち行列・入城制限</div><div class="kpi-grid" id="kpi-main"></div></div>
+      ${anaSec()}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
       ${flowModeSec()}${flowSec()}${meshSec()}${trajSec()}${floorSec()}
@@ -485,6 +488,7 @@ function renderPanel(){
   updateKPIs(); updateFlowPanels();
 }
 function updateKPIs(){
+  if(typeof updateAna==='function') updateAna();
   const k = document.getElementById('kpi-main'); if(!k) return;
   const sc = SCN[curScn];
   const arrTot = STATS.arrived.in+STATS.arrived.dom+STATS.arrived.loc;
@@ -820,6 +824,7 @@ addEventListener('pointerup', e=>{
   if(!downXY) return;
   const moved = Math.hypot(e.clientX-downXY[0], e.clientY-downXY[1]); downXY=null;
   if(moved>5) return;
+  if(typeof meshClick==='function' && meshClick(e)) return;   // メッシュ表示中はセルの詳細を優先
   if(level!=='castle'){
     const hits = pick(e, CASTLE_MESHES, false);
     if(hits.length){ toast('姫路城 城内（L2）へ移動します'); setLevel('castle'); return; }
@@ -857,7 +862,7 @@ slider.oninput = ()=>{
   const target=+slider.value;
   if(target < timeState.min){ resetSim(); timeState.min=DAY0; }
   /* 早送り: エージェント状態を目標時刻まで進める */
-  let guard=0; while(timeState.min < target && guard++<2000){ const st=Math.min(2, target-timeState.min); timeState.min+=st; updateAgents(st); }
+  let guard=0; while(timeState.min < target && guard++<2000){ const st=Math.min(2, target-timeState.min); timeState.min+=st; updateAgents(st); if(typeof anaRecord==='function') anaRecord(); }
   timeState.min=target; syncClock(); HEAT.lastT=-99; repaintHeat(); KDE.lastT=-99; updateKDE(true); updateKPIs();
 };
 function syncClock(){ clockEl.textContent=clockStr(timeState.min); phaseEl.textContent=phaseAt(timeState.min).name; scnEl.textContent=SCN[curScn].name; slider.value=timeState.min; const hv=String(Math.floor((timeState.min+360)/60)*60-360); if(hourSel.value!==hv) hourSel.value=hv; }
@@ -1008,7 +1013,7 @@ renderPanel();
 initRefinement();
 toast('操作: 左ドラッグ＝地球儀のように回す（横＝360度・縦＝真上〜真横） ／ 右ドラッグ＝平行移動 ／ ホイール＝ズーム ／ ダブルクリック＝フォーカス。▶ で1日を再生', 5200);
 requestAnimationFrame(loop);
-window.__twin={ctrl,camera,groundAt,PL,MESH,TRAJ,FLOORS,FLOWVIS,HEATV,FLOWA,OD,setFlowMode,setMesh,setTraj,setFloors,setLevel,timeState,agents,STATS,get level(){return level}};
+window.__twin={ctrl,camera,groundAt,PL,MESH,TRAJ,FLOORS,FLOWVIS,HEATV,FLOWA,OD,ANA,setFlowMode,setMesh,setTraj,setFloors,setLevel,timeState,agents,STATS,get level(){return level}};
 window.twinDiagnostics=()=>({mesh:MESH.on,meshCells:MESH.cells.length,traj:TRAJ.on,trajSegs:TRAJ.n,floors:FLOORS.on,points:supplementalCount,agents:agents.length,trailVisible:trailMesh.visible,routeVisible:routeGroup.visible,level,phi:ctrl.sph.phi,time:timeState.min,style:urbanStyle,primaryDragMode,target:ctrl.target.toArray(),theta:ctrl.sph.theta,castle:[CASTLE.x,CASTLE.z],cloudVisible:fineCloud.visible,heads:flowGeometry.drawRange.count});
 })();
 </script>

@@ -147,7 +147,7 @@ canvas{display:block}
   box-shadow:0 0 0 4px rgba(255,138,30,.15);pointer-events:none;z-index:45;display:none;transform:scale(.6);opacity:0;
   transition:transform .18s ease,opacity .18s ease}
 #rotcue.on{display:block;transform:scale(1);opacity:1}
-#bcard{display:none;position:fixed;z-index:60;width:320px;background:rgba(11,25,34,.96);border:1px solid var(--line);border-radius:10px;padding:10px 12px;box-shadow:0 12px 40px #0006;backdrop-filter:blur(14px);font-size:11px}
+#bcard,#mcard{display:none;position:fixed;z-index:60;width:320px;background:rgba(11,25,34,.96);border:1px solid var(--line);border-radius:10px;padding:10px 12px;box-shadow:0 12px 40px #0006;backdrop-filter:blur(14px);font-size:11px}
 .bc-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}.bc-h b{color:var(--gold);font-size:12px}
 .bc-g{display:grid;grid-template-columns:auto 1fr;gap:3px 10px}.bc-g span{color:var(--sub)}.bc-g b{color:var(--txt);font-family:var(--mono);font-weight:500}
 .bc-src{margin-top:7px;color:var(--sub);font-size:9.5px;line-height:1.5}
@@ -295,6 +295,7 @@ button,input{touch-action:manipulation;font-family:var(--jp)}button:focus-visibl
 
 <div id="rotcue"></div>
 <div id="bcard" role="dialog" aria-label="建物情報"></div>
+<div id="mcard" role="dialog" aria-label="メッシュ詳細"></div>
 <div id="tip"></div>
 <div id="toast"></div>
 <div id="enter-hint">姫路城をクリックして城内へ</div>

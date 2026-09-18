@@ -359,13 +359,13 @@ function updateAgents(dtMin){
         if(a.pi < a.plan.length){
           const st = a.plan[a.pi];
           a.cur = {x:st.node.x, z:st.node.z};
-          a.state = st.kind; a.dwellLeft = st.dwell;
+          a.state = st.kind; a.dwellLeft = st.dwell; a.tStop = timeState.min;
           trajStop(a, st.node.x, st.node.z); odRecord(a, st.kind==='castle' ? 'castle' : st.name);
           if(st.kind==='castle') STATS.castleEntered++;
           else { a.visited++; }
         } else {
           /* 退出: 帰路ゲート or 宿泊 */
-          if(a.endKind==='stay'){ a.state='stay'; a.cur={x:a.endNode.x, z:a.endNode.z}; STATS.staying++; trajStop(a, a.cur.x, a.cur.z); odRecord(a, 'stay'); }
+          if(a.endKind==='stay'){ a.state='stay'; a.cur={x:a.endNode.x, z:a.endNode.z}; STATS.staying++; a.tStop = timeState.min; trajStop(a, a.cur.x, a.cur.z); odRecord(a, 'stay'); }
           else {
             STATS.departed[a.dest[0]] = (STATS.departed[a.dest[0]]||0)+1;
             STATS.dwellSum += timeState.min - a.t0; STATS.dwellN++;
@@ -390,7 +390,7 @@ function updateAgents(dtMin){
       if(a.dwellLeft <= 0){
         a.pi++;
         const next = a.pi < a.plan.length ? a.plan[a.pi].node : a.endNode;
-        a.r = route(a.cur, next, true); a.r.uses = (a.r.uses||0)+1; a.d = 0; a.state='move'; a.tr = [];
+        a.r = route(a.cur, next, true); a.r.uses = (a.r.uses||0)+1; a.d = 0; a.state='move'; a.tr = []; a.tStop = null;
       }
     }
     /* 描画（城内滞留中は城内ではなく周辺に薄く散らす / L2は別表現） */
