@@ -54,7 +54,7 @@ el.style.cursor = 'grab';el.style.touchAction='none';
    縦スクロール ＝ カーソル位置へズーム / 横スクロール ＝ 横に移動
    タッチ: 1本指 移動、2本指 ピンチズーム＋移動 */
 ctrl.minPhi = 0.008; ctrl.maxPhi = Math.PI/2 - 0.008;
-let primaryDragMode="pan";   // 既定: 左ドラッグ＝地図を掴んで引っ張る（移動）。右ドラッグ／修飾キー＝回転。「移動中」ボタンで入替
+let primaryDragMode="rotate";   // 既定: 左ドラッグ＝姫路城（画面中心）を軸に地球儀のように回す。右ドラッグ／修飾キー＝平行移動。「回転中」ボタンで入替
 function startPrimaryDrag(x,y){if(primaryDragMode==="rotate")beginRotate(x,y);else startGrab(x,y);}
 function startSecondaryDrag(x,y){if(primaryDragMode==="rotate")startGrab(x,y);else beginRotate(x,y);}
 const _ray = new THREE.Raycaster(), _ndc = new THREE.Vector2(), _plane = new THREE.Plane(new THREE.Vector3(0,1,0), 0), _hit = new THREE.Vector3();
@@ -66,7 +66,7 @@ function groundAt(clientX, clientY, y){
   const ok = _ray.ray.intersectPlane(_plane, _hit);
   if(!ok) return null;
   const d = _hit.distanceTo(camera.position);
-  if(d > ctrl.sph.radius*6) return null;   // 地平線付近は不安定
+  if(d > ctrl.sph.radius*2.5) return null;   // 地平線付近は不安定（画面差分の移動にフォールバック）
   return _hit.clone();
 }
 const PAN_LIMIT = 24000;
@@ -87,7 +87,8 @@ let legacyDragMode = 'orbit';
 function startGrab(x, y){ grab.y = ctrl.target.y; grab.pt = groundAt(x, y, grab.y); grab.on = true; ctrl.panning = true; ctrl.rotating = false; ctrl.px = x; ctrl.py = y; el.style.cursor = 'grabbing'; }
 function moveGrab(x, y){
   const p = grab.pt ? groundAt(x, y, grab.y) : null;
-  if(p && grab.pt){ ctrl.target.x += grab.pt.x - p.x; ctrl.target.z += grab.pt.z - p.z; }
+  if(p && grab.pt){ let dx=grab.pt.x - p.x, dz=grab.pt.z - p.z; const lim=ctrl.sph.radius*0.35, L=Math.hypot(dx,dz); if(L>lim){ dx*=lim/L; dz*=lim/L; }   // 地平線付近の暴走を抑える
+    ctrl.target.x += dx; ctrl.target.z += dz; }
   else {
     const dx = x-ctrl.px, dy = y-ctrl.py, s = ctrl.sph.radius*0.0013;
     const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd); fwd.y=0; fwd.normalize();
@@ -100,25 +101,52 @@ function moveGrab(x, y){
 }
 function endGrab(){ grab.on = false; grab.pt = null; ctrl.panning = false; ctrl.rotating = false; el.style.cursor = 'grab'; }
 /* 回転（掴んだ地点を軸に） */
-function beginRotate(x, y){ grab.on = false; grab.pt = null; ctrl.panning = false; ctrl.rotating = true; ctrl.px = x; ctrl.py = y; el.style.cursor = 'grabbing'; }
+/* 地球儀を掴んで回す: 掴んだ地表の点が中心のまわりの円周上でカーソルに追従するように水平回転、縦ドラッグは傾き（真上〜真横）。離すと慣性で少し回り続ける */
+const ROT_SIGN = 1;
+const rot = { g0:null, a0:0, r0:0, vel:0, lastT:0, lastTh:0 };
+let inertia = null;
+function beginRotate(x, y){
+  grab.on = false; grab.pt = null; ctrl.panning = false; ctrl.rotating = true; ctrl.px = x; ctrl.py = y; el.style.cursor = 'grabbing'; inertia = null;
+  rot.g0 = null; const g = groundAt(x, y, ctrl.target.y);
+  if(g){ const r = Math.hypot(g.x-ctrl.target.x, g.z-ctrl.target.z); if(r > ctrl.sph.radius*0.06){ rot.g0 = g; rot.a0 = Math.atan2(g.z-ctrl.target.z, g.x-ctrl.target.x); rot.r0 = r; } }
+  rot.vel = 0; rot.lastT = performance.now(); rot.lastTh = ctrl.sph.theta;
+}
+function rotateMove(x, y){
+  const dx = x-ctrl.px, dy = y-ctrl.py; ctrl.px = x; ctrl.py = y;
+  ctrl.sph.phi -= dy*0.0045; ctrl.apply();
+  let done = false;
+  if(rot.g0){
+    const g = groundAt(x, y, ctrl.target.y);
+    if(g){ const r = Math.hypot(g.x-ctrl.target.x, g.z-ctrl.target.z);
+      if(r > ctrl.sph.radius*0.05){ const a = Math.atan2(g.z-ctrl.target.z, g.x-ctrl.target.x);
+        if(Math.abs(dy) > Math.abs(dx)*1.6){ rot.a0 = a; done = true; }   // 縦優勢の動き＝傾きだけ（掴み角は現在位置に取り直す）
+        else { let da = a-rot.a0; while(da>Math.PI) da-=2*Math.PI; while(da<-Math.PI) da+=2*Math.PI; ctrl.sph.theta += ROT_SIGN*da; done = true; } } }
+  }
+  if(!done) ctrl.sph.theta -= dx*0.0052;
+  ctrl.apply();
+  const now = performance.now(), dt = now-rot.lastT;
+  if(dt > 0){ const v = (ctrl.sph.theta-rot.lastTh)/dt; rot.vel = rot.vel*0.5 + v*0.5; rot.lastT = now; rot.lastTh = ctrl.sph.theta; }
+}
 function rotateBy(dx, dy){ ctrl.sph.theta -= dx*0.0052; ctrl.sph.phi -= dy*0.0045; ctrl.apply(); }
+function endRotateInertia(){ if(ctrl.rotating && Math.abs(rot.vel) > 0.0002 && performance.now()-rot.lastT < 90) inertia = {v:rot.vel, t:performance.now()}; }
 /* 長押し判定（入力イベントの timeStamp で判定＝描画が重くても誤判定しない）: 押してすぐ動かす＝回転、少し待ってから動かす＝移動 */
 const HOLD_MS = 320, HOLD_MOVE = 5;
 const hold = { timer:null, x:0, y:0, downT:0, decided:true };
 const rotcue = document.getElementById('rotcue');
-function showCue(x, y){ if(!rotcue) return; rotcue.style.left = x+'px'; rotcue.style.top = y+'px'; rotcue.classList.add('on'); }
+function showCue(x, y, kind){ if(!rotcue) return; rotcue.style.left = x+'px'; rotcue.style.top = y+'px'; rotcue.classList.toggle('rot', kind==='rot'); rotcue.classList.add('on'); }
 function hideCue(){ if(rotcue) rotcue.classList.remove('on'); }
+/* 握ったまま少し待つ（HOLD_MS）と ⟳ が出て、そのままドラッグすると回転・傾き（真上〜真横）。すぐ動かせば地図を引っ張る移動 */
 function armHold(x, y, t){
   clearTimeout(hold.timer); hold.x = x; hold.y = y; hold.downT = t; hold.decided = false;
-  hold.timer = setTimeout(()=>{ if(!hold.decided) showCue(hold.x, hold.y); }, HOLD_MS);
+  hold.timer = setTimeout(()=>{ if(!hold.decided) showCue(hold.x, hold.y, 'rot'); }, HOLD_MS);
 }
 function disarmHold(){ hold.decided = true; clearTimeout(hold.timer); }
 function decideHold(x, y, t){
   if(hold.decided) return;
   if(Math.hypot(x-hold.x, y-hold.y) <= HOLD_MOVE) return;
   hold.decided = true; clearTimeout(hold.timer);
-  if(t - hold.downT >= HOLD_MS){ startGrab(hold.x, hold.y); showCue(x, y); }   // 長押し → 移動
-  else { hideCue(); beginRotate(hold.x, hold.y); }                              // すぐ動かした → 回転
+  if(t - hold.downT >= HOLD_MS){ endGrab(); beginRotate(x, y); showCue(x, y, 'rot'); }   // 握って待ってから動かした → 回転・傾き
+  else { hideCue(); }                                                                   // すぐ動かした → そのまま引っ張る（移動）
 }
 el.addEventListener('contextmenu', e=>e.preventDefault());
 el.addEventListener('mousedown', e=>{
@@ -129,13 +157,15 @@ el.addEventListener('mousedown', e=>{
   else if(e.button===0){ e.preventDefault(); startPrimaryDrag(e.clientX, e.clientY); }
 
 });
-addEventListener('mouseup', ()=>{ disarmHold(); hideCue(); endGrab(); });
+addEventListener('mouseup', ()=>{ disarmHold(); hideCue(); endRotateInertia(); endGrab(); });
+/* ダブルクリック＝その地点にフォーカス（寄る） */
+el.addEventListener('dblclick', e=>{ if(!ctrl.enabled) return; const g = groundAt(e.clientX, e.clientY, ctrl.target.y); if(!g) return; inertia=null; flyTo(new THREE.Vector3(g.x, TH(g.x, g.z), g.z), Math.max(ctrl.minR*4, ctrl.sph.radius*0.5), ctrl.sph.phi, ctrl.sph.theta, 750); });
 addEventListener('mousemove', e=>{
   if(!ctrl.enabled) return;
   if(!hold.decided) decideHold(e.clientX, e.clientY, e.timeStamp);
   if(ctrl.rotating){
-    rotateBy(e.clientX-ctrl.px, e.clientY-ctrl.py);
-    ctrl.px=e.clientX; ctrl.py=e.clientY;
+    rotateMove(e.clientX, e.clientY);
+    if(rotcue && rotcue.classList.contains('on')){ rotcue.style.left = e.clientX+'px'; rotcue.style.top = e.clientY+'px'; }
   } else if(grab.on){
     moveGrab(e.clientX, e.clientY);
     if(rotcue && rotcue.classList.contains('on')){ rotcue.style.left = e.clientX+'px'; rotcue.style.top = e.clientY+'px'; }
@@ -145,13 +175,14 @@ el.addEventListener('wheel', e=>{
   if(!ctrl.enabled) return;
   e.preventDefault();
   if(tween) tween = null;
-  /* 横スクロール（トラックパッド2本指 横）＝ 横に移動 */
-  if(Math.abs(e.deltaX) > Math.abs(e.deltaY)*1.2){
-    const s = ctrl.sph.radius*0.0012;
-    const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd); fwd.y=0; fwd.normalize();
-    const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0,1,0)).negate();
-    ctrl.target.addScaledVector(right, e.deltaX*s); clampTarget(); ctrl.apply(); return;
+  /* 握ったままホイール ＝ 傾き（縦: 真上〜真横）・回転（横） */
+  if(grab.on || ctrl.rotating){
+    ctrl.sph.phi += e.deltaY*0.0022; ctrl.sph.theta -= e.deltaX*0.003; ctrl.apply();   // 前に回す＝真上へ、手前に回す＝真横へ
+    if(grab.on) grab.pt = groundAt(e.clientX, e.clientY, grab.y);   // 傾けた後も掴んだ地点がカーソルに追従するよう取り直す
+    return;
   }
+  /* 横スクロール（トラックパッド2本指 横）＝ 360度回転 */
+  if(Math.abs(e.deltaX) > Math.abs(e.deltaY)*1.2){ ctrl.sph.theta -= e.deltaX*0.003; ctrl.apply(); return; }
   /* カーソル位置を中心にズーム */
   const before = groundAt(e.clientX, e.clientY, ctrl.target.y);
   ctrl.sph.radius *= (1 + Math.sign(e.deltaY)*0.09);
@@ -160,7 +191,7 @@ el.addEventListener('wheel', e=>{
   if(before && after){ ctrl.target.x += before.x - after.x; ctrl.target.z += before.z - after.z; clampTarget(); ctrl.apply(); }
 }, {passive:false});
 /* タッチ */
-let touchD = 0, touchMid = null;
+let touchD = 0, touchMid = null, touchAng = 0;
 el.addEventListener('touchstart', e=>{
   if(tween) tween = null;
   if(!ctrl.enabled) return;
@@ -170,6 +201,7 @@ el.addEventListener('touchstart', e=>{
     const t0=e.touches[0], t1=e.touches[1];
     touchD = Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
     touchMid = {x:(t0.clientX+t1.clientX)/2, y:(t0.clientY+t1.clientY)/2};
+    touchAng = Math.atan2(t1.clientY-t0.clientY, t1.clientX-t0.clientX);
     startGrab(touchMid.x, touchMid.y);
   }
 }, {passive:true});
@@ -178,18 +210,20 @@ el.addEventListener('touchmove', e=>{
   if(e.touches.length===1){
     const t0=e.touches[0];
     if(!hold.decided) decideHold(t0.clientX, t0.clientY, e.timeStamp);
-    if(ctrl.rotating){ rotateBy(t0.clientX-ctrl.px, t0.clientY-ctrl.py); ctrl.px=t0.clientX; ctrl.py=t0.clientY; }
+    if(ctrl.rotating){ rotateMove(t0.clientX, t0.clientY); }
     else if(grab.on) moveGrab(t0.clientX, t0.clientY);
   } else if(e.touches.length===2){
     const t0=e.touches[0], t1=e.touches[1];
     const d = Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY);
     const mid = {x:(t0.clientX+t1.clientX)/2, y:(t0.clientY+t1.clientY)/2};
-    if(touchD>0){ ctrl.sph.radius *= touchD/d; ctrl.apply(); }
-    if(grab.on) moveGrab(mid.x, mid.y);
-    touchD = d; touchMid = mid;
+    const ang = Math.atan2(t1.clientY-t0.clientY, t1.clientX-t0.clientX);
+    if(touchD>0){ ctrl.sph.radius *= touchD/d; let da=ang-touchAng; if(da>Math.PI) da-=2*Math.PI; if(da<-Math.PI) da+=2*Math.PI; ctrl.sph.theta += da; /* 2本指のひねり＝回転 */
+      if(touchMid) ctrl.sph.phi -= (mid.y-touchMid.y)*0.004; /* 2本指を上下＝傾き */ ctrl.apply(); }
+    if(grab.on){ grab.pt = groundAt(mid.x, mid.y, grab.y); }
+    touchD = d; touchMid = mid; touchAng = ang;
   }
 }, {passive:true});
-el.addEventListener('touchend', e=>{ disarmHold(); hideCue(); endGrab(); touchD=0; touchMid=null; if(ctrl.enabled && e.touches.length===1) startPrimaryDrag(e.touches[0].clientX,e.touches[0].clientY); }, {passive:true});
+el.addEventListener('touchend', e=>{ disarmHold(); hideCue(); endRotateInertia(); endGrab(); touchD=0; touchMid=null; if(ctrl.enabled && e.touches.length===1) startPrimaryDrag(e.touches[0].clientX,e.touches[0].clientY); }, {passive:true});
 el.addEventListener('touchcancel', ()=>{disarmHold();hideCue();endGrab();touchD=0;touchMid=null;},{passive:true});
 addEventListener('blur',()=>{disarmHold();hideCue();endGrab()});
 
@@ -204,6 +238,7 @@ function flyTo(target, radius, phi, theta, dur=1300, done){
   };
 }
 function updateTween(now){
+  if(inertia && !tween && !ctrl.rotating){ const dt = Math.min(50, now-inertia.t); inertia.t = now; ctrl.sph.theta += inertia.v*dt; inertia.v *= Math.exp(-dt/240); if(Math.abs(inertia.v) < 0.00002) inertia = null; ctrl.apply(); }
   if(!tween) return;
   let k = (now - tween.t0)/tween.dur;
   if(k>=1){ k=1; }
