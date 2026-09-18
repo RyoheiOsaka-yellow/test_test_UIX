@@ -823,6 +823,41 @@ addEventListener('keydown', e=>{
   if(e.key===' ' && e.target===document.body){ e.preventDefault(); playBtn.click(); }
 });
 
+
+/* ================= 3Dナビゲーション（右下ウィジェット・キーボード） ================= */
+const NAV = { orbit:false };
+(function initNav(){
+  const rot = document.getElementById('compass-rot'), comp = document.getElementById('compass'), tilt = document.getElementById('tilt');
+  const bPan = document.getElementById('nv-mode-pan'), bRot = document.getElementById('nv-mode-rot'), bOrb = document.getElementById('nv-orbit');
+  function setMode(m){ dragMode = m; bPan.classList.toggle('active', m==='pan'); bRot.classList.toggle('active', m==='rotate'); el.style.cursor = m==='pan' ? 'grab' : 'move'; toast(m==='pan' ? '左ドラッグ: 地図を掴んで移動（右ドラッグで回転）' : '左ドラッグ: 回転（視点をぐるりと確認）'); }
+  bPan.onclick = ()=> setMode('pan'); bRot.onclick = ()=> setMode('rotate'); setMode('pan');
+  bOrb.onclick = ()=>{ NAV.orbit = !NAV.orbit; bOrb.classList.toggle('active', NAV.orbit); bOrb.textContent = NAV.orbit ? '❚❚' : '▶'; if(NAV.orbit) toast('自動周回: ON（ドラッグやボタン操作で停止）'); };
+  /* コンパス: ドラッグで方位角、クリックで北を上に */
+  let cd = null;
+  comp.addEventListener('pointerdown', e=>{ comp.setPointerCapture(e.pointerId); const r=comp.getBoundingClientRect(); cd={a0:Math.atan2(e.clientY-(r.top+r.height/2), e.clientX-(r.left+r.width/2)), th0:ctrl.sph.theta, moved:false}; NAV.orbit=false; bOrb.classList.remove('active'); bOrb.textContent='▶'; });
+  comp.addEventListener('pointermove', e=>{ if(!cd) return; const r=comp.getBoundingClientRect(); const a=Math.atan2(e.clientY-(r.top+r.height/2), e.clientX-(r.left+r.width/2)); const d=a-cd.a0; if(Math.abs(d)>0.02) cd.moved=true; ctrl.sph.theta = cd.th0 - d; ctrl.apply(); });
+  comp.addEventListener('pointerup', e=>{ if(cd && !cd.moved){ flyTo(ctrl.target.clone(), ctrl.sph.radius, ctrl.sph.phi, 0, 700); } cd=null; });
+  tilt.addEventListener('input', ()=>{ NAV.orbit=false; ctrl.sph.phi = (+tilt.value)*Math.PI/180; ctrl.apply(); });
+  document.getElementById('nv-zin').onclick = ()=>{ tween=null; ctrl.sph.radius *= 0.72; ctrl.apply(); };
+  document.getElementById('nv-zout').onclick = ()=>{ tween=null; ctrl.sph.radius /= 0.72; ctrl.apply(); };
+  document.getElementById('nv-top').onclick = ()=> flyTo(ctrl.target.clone(), ctrl.sph.radius, 0.12, ctrl.sph.theta, 700);
+  document.getElementById('nv-home').onclick = ()=>{ NAV.orbit=false; setLevel(level, true); };
+  /* コンパス表示の同期 */
+  NAV.sync = ()=>{ rot.setAttribute('transform', `rotate(${(-ctrl.sph.theta*180/Math.PI).toFixed(1)} 37 37)`); const deg=Math.round(ctrl.sph.phi*180/Math.PI); if(document.activeElement!==tilt && +tilt.value!==deg) tilt.value = Math.max(6, Math.min(83, deg)); };
+  /* キーボード: ←→ 回転 / ↑↓ 傾き / +− ズーム / N 北を上 */
+  addEventListener('keydown', e=>{
+    if(e.target && (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA')) return;
+    let used = true;
+    if(e.key==='ArrowLeft') ctrl.sph.theta += 0.08; else if(e.key==='ArrowRight') ctrl.sph.theta -= 0.08;
+    else if(e.key==='ArrowUp') ctrl.sph.phi -= 0.05; else if(e.key==='ArrowDown') ctrl.sph.phi += 0.05;
+    else if(e.key==='+' || e.key==='=') ctrl.sph.radius *= 0.85; else if(e.key==='-' || e.key==='_') ctrl.sph.radius /= 0.85;
+    else if(e.key==='n' || e.key==='N') flyTo(ctrl.target.clone(), ctrl.sph.radius, ctrl.sph.phi, 0, 700);
+    else if(e.key==='r' || e.key==='R') setMode(dragMode==='pan' ? 'rotate' : 'pan');
+    else used = false;
+    if(used){ e.preventDefault(); tween=null; NAV.orbit=false; ctrl.apply(); }
+  });
+  el.addEventListener('mousedown', ()=>{ if(NAV.orbit){ NAV.orbit=false; bOrb.classList.remove('active'); bOrb.textContent='▶'; } });
+})();
 /* ================= タイムライン ================= */
 const slider=document.getElementById('tl-slider'), clockEl=document.getElementById('tl-clock'), phaseEl=document.getElementById('tl-phase'), scnEl=document.getElementById('tl-scn'), playBtn=document.getElementById('tl-play');
 playBtn.onclick = ()=>{ timeState.playing=!timeState.playing; playBtn.textContent = timeState.playing ? '❚❚' : '▶'; if(timeState.playing && timeState.min>=1080){ timeState.min=0; resetSim(); } };
@@ -841,6 +876,8 @@ function loop(now){
   requestAnimationFrame(loop);
   const dt=Math.min(0.1,(now-lastT)/1000); lastT=now;
   updateTween(now);
+  if(NAV.orbit && !tween){ ctrl.sph.theta += dt*0.12; ctrl.apply(); }
+  if(NAV.sync && (now|0)%3===0) NAV.sync();
   if(timeState.playing){
     timeState.min += dt*timeState.speed;
     if(timeState.min>=1080){ timeState.min=1080; timeState.playing=false; playBtn.textContent='▶'; }

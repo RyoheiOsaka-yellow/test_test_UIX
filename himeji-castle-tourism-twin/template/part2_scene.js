@@ -62,6 +62,7 @@ function groundAt(clientX, clientY, y){
   return _hit.clone();
 }
 const grab = { on:false, pt:null, y:0 };
+let dragMode = 'pan';   // pan | rotate（左ドラッグの役割）
 const PAN_LIMIT = 24000;
 function clampTarget(){ ctrl.target.x = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, ctrl.target.x)); ctrl.target.z = Math.max(-PAN_LIMIT, Math.min(PAN_LIMIT, ctrl.target.z)); }
 function startGrab(x, y){ grab.y = ctrl.target.y; grab.pt = groundAt(x, y, grab.y); grab.on = true; ctrl.panning = true; ctrl.px = x; ctrl.py = y; el.style.cursor = 'grabbing'; }
@@ -83,7 +84,7 @@ el.addEventListener('contextmenu', e=>e.preventDefault());
 el.addEventListener('mousedown', e=>{
   if(!ctrl.enabled) return;
   if(tween) tween = null;   // 掴んだらカメラ遷移を中断
-  if(e.button===2 || (e.button===0 && (e.shiftKey || e.ctrlKey || e.metaKey))){ ctrl.rotating = true; ctrl.px = e.clientX; ctrl.py = e.clientY; el.style.cursor = 'move'; }
+  if(e.button===2 || (e.button===0 && (dragMode==='rotate' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey))){ ctrl.rotating = true; ctrl.px = e.clientX; ctrl.py = e.clientY; el.style.cursor = 'move'; }
   else if(e.button===0){ startGrab(e.clientX, e.clientY); }
 });
 addEventListener('mouseup', ()=>{ endGrab(); });
@@ -109,7 +110,7 @@ el.addEventListener('wheel', e=>{
 let touchD = 0, touchA = 0, touchMid = null;
 el.addEventListener('touchstart', e=>{
   if(tween) tween = null;
-  if(e.touches.length===1){ startGrab(e.touches[0].clientX, e.touches[0].clientY); }
+  if(e.touches.length===1){ if(dragMode==='rotate'){ ctrl.rotating = true; ctrl.px=e.touches[0].clientX; ctrl.py=e.touches[0].clientY; } else startGrab(e.touches[0].clientX, e.touches[0].clientY); }
   if(e.touches.length===2){
     endGrab();
     const t0=e.touches[0], t1=e.touches[1];
@@ -118,7 +119,8 @@ el.addEventListener('touchstart', e=>{
   }
 }, {passive:true});
 el.addEventListener('touchmove', e=>{
-  if(e.touches.length===1 && grab.on){ moveGrab(e.touches[0].clientX, e.touches[0].clientY); }
+  if(e.touches.length===1 && ctrl.rotating){ const dx=e.touches[0].clientX-ctrl.px, dy=e.touches[0].clientY-ctrl.py; ctrl.sph.theta -= dx*0.0048; ctrl.sph.phi -= dy*0.0042; ctrl.apply(); ctrl.px=e.touches[0].clientX; ctrl.py=e.touches[0].clientY; }
+  else if(e.touches.length===1 && grab.on){ moveGrab(e.touches[0].clientX, e.touches[0].clientY); }
   else if(e.touches.length===2){
     const t0=e.touches[0], t1=e.touches[1];
     const d = Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY), a = Math.atan2(t1.clientY-t0.clientY, t1.clientX-t0.clientX);
