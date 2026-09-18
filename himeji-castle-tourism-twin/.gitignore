@@ -1,0 +1,3 @@
+infra/docker/.env
+infra/api/app/__pycache__/
+*.pyc

@@ -34,7 +34,8 @@ function heatInit(){
 function heatUpdate(now){
   if(!HEATV.on) return;
   const g=HEATV.pts.geometry, P=g.attributes.position.array, W=g.attributes.w.array; let n=0;
-  for(const a of agents){
+  if(window.twinDb && twinDb.on){ const H=twinDb.heat, N=P.length/3; for(let i=0;i+2<H.length && n<N;i+=3){ const x=H[i], z=H[i+1]; if(Math.abs(x)>HEATV.ext||Math.abs(z)>HEATV.ext) continue; P[n*3]=x; P[n*3+1]=z; P[n*3+2]=0; W[n]=H[i+2]; n++; } }
+  else for(const a of agents){
     if(!segByFilter(a.seg)) continue;
     let x=a.cur.x, z=a.cur.z;
     if(a.state==='castle'){ if(a.zr===undefined) a.zr=rnd(); let acc=0, zn=ZONES[ZONES.length-1]; for(const zz of ZONES){ acc+=zz.frac; if(a.zr<=acc){ zn=zz; break; } } x=zn.node.x+a.jx*0.35; z=zn.node.z+a.jz*0.35; }
@@ -86,6 +87,7 @@ function buildArcT(a, b, colv, share, group, lift=0.2){
   const m=new THREE.Mesh(geo, mat); group.add(m); arcUnis.push(uni); return {uni, mesh:m};
 }
 function rebuildFlowArcs(now){
+  if(window.twinDb && twinDb.on) return;   // DB モードは api_client が /api/od からアークを作る
   if(!FLOWA.on || !FLOWA.dirty || now-FLOWA.last<2500) return; FLOWA.dirty=false; FLOWA.last=now;
   FLOWA.meshes.forEach(m=>{ FLOWA.group.remove(m.mesh); m.mesh.geometry.dispose(); m.mesh.material.dispose(); const i=arcUnis.indexOf(m.uni); if(i>=0) arcUnis.splice(i,1); }); FLOWA.meshes=[];
   const rows=[...OD.values()].filter(r=> r.n>=2 && (segFilter==='all' || r.seg[SEG_KEYS.indexOf(segFilter)]>0)).sort((a,b)=>b.n-a.n).slice(0,48); FLOWA.rows=rows;
@@ -95,7 +97,7 @@ function rebuildFlowArcs(now){
 function setFlowArcs(on){ FLOWA.on=on; FLOWA.group.visible=on && level!=='wide'; if(on){ FLOWA.dirty=true; FLOWA.last=0; } }
 function flowRowsHTML(){
   const rows=FLOWA.rows.slice(0,8); const mx=rows.length?rows[0].n:1;
-  return rows.length ? rows.map(r=>`<div class="bar-row"><span title="${odLabel(r.from)} → ${odLabel(r.to)}" style="width:118px">${odLabel(r.from).replace(/（.*?）/g,'')} → ${odLabel(r.to).replace(/（.*?）/g,'')}</span><div class="bar"><i style="width:${(r.n/mx*100).toFixed(0)}%;background:${hx6(densC(Math.pow(r.n/mx,0.55)).getHex())}"></i></div><b>${fmt(r.n*AG_SCALE)}</b></div>`).join('') : '<div class="hint">▶ で再生するとレグ（ゲート→城→回遊先→帰路）が集計されます</div>';
+  return rows.length ? rows.map(r=>`<div class="bar-row"><span title="${odLabel(r.from)} → ${odLabel(r.to)}" style="width:118px">${odLabel(r.from).replace(/（.*?）/g,'')} → ${odLabel(r.to).replace(/（.*?）/g,'')}</span><div class="bar"><i style="width:${(r.n/mx*100).toFixed(0)}%;background:${hx6(densC(Math.pow(r.n/mx,0.55)).getHex())}"></i></div><b>${fmt(r.real ? r.n : r.n*AG_SCALE)}</b></div>`).join('') : (window.twinDb && twinDb.on ? '<div class="hint">この時間帯の OD（mobility.od・直近3時間）はありません</div>' : '<div class="hint">▶ で再生するとレグ（ゲート→城→回遊先→帰路）が集計されます</div>');
 }
 function flowSec(){
   if(!FLOWA.on) return '';
@@ -125,9 +127,10 @@ function anaBusy(now){
   const gates=Object.entries(STATS.byGate).sort((a,b)=>b[1]-a[1]); ANA.origin = gates.length ? GATES[gates[0][0]].name : '—';
   const spots=Object.entries(STATS.atSpot||{}).sort((a,b)=>b[1]-a[1]); ANA.dest = spots.length && spots[0][1]>0 ? spots[0][0] : (STATS.inCastle>0 ? '姫路城' : '—');
 }
-function anaSec(){ return `<div class="sec"><div class="sec-t">Analytics — 現在時刻の指標（1ドット＝${AG_SCALE}人）</div><div class="kpi-grid" id="kpi-ana"></div></div>`; }
+function anaSec(){ return `<div class="sec"><div class="sec-t">Analytics — 現在時刻の指標（${(window.twinDb && twinDb.on) ? 'DB 集計・実人数' : '1ドット＝'+AG_SCALE+'人'}）</div><div class="kpi-grid" id="kpi-ana"></div></div>`; }
 function updateAna(){
   const k=document.getElementById('kpi-ana'); if(!k) return;
+  if(window.twinDb && twinDb.on){ dbUpdateAna(k); return; }
   const people=n=>fmt(n*AG_SCALE); const h60=anaAt(60), cur=ANA.hist[ANA.hist.length-1];
   const inflow = (cur&&h60) ? cur.arr-h60.arr : 0, outflow = (cur&&h60) ? cur.dep-h60.dep : 0;
   const ratio = (h60 && h60.inCity>0) ? agents.length/h60.inCity : null;
@@ -153,7 +156,7 @@ function meshClick(e){
   const c = MESH.cells[hits[0].instanceId]; showMeshCard(c, e); return true;
 }
 function showMeshCard(c, e){
-  if(!mcard) return;
+  if(!mcard) return; if(c.db){ dbMeshCard(c, e); return; }
   const bkt=Math.floor((timeState.min+360)/10); let inflow=0, outflow=0; for(let b=bkt-5;b<=bkt;b++){ inflow+=(c.in[b]||0); outflow+=(c.out[b]||0); }
   let staySum=0, stayN=0, spd=0, nm=0; const org={}, dst={};
   (c.ag||[]).forEach(a=>{ if(a.tStop!=null){ staySum+=timeState.min-a.tStop; stayN++; } if(a.state==='move'){ spd+=a.sp; nm++; }
@@ -249,6 +252,7 @@ function updateFlowVis(dtMin, now){
   if(CONT.on){ CONT.group.visible = level!=='wide'; contourBuild(now); }
   if(FLOWA.on){ FLOWA.group.visible = level!=='wide'; rebuildFlowArcs(now); const fr=document.getElementById('flow-rows'); if(fr && now-(FLOWA.lastUI||0)>600){ FLOWA.lastUI=now; fr.innerHTML=flowRowsHTML(); } }
   if(TRAJ.mat) TRAJ.mat.uniforms.uNow.value = timeState.min;
+  if(typeof dbTick==='function') dbTick(now);
 }
 /* ヘッダーのトグルもモード切替に統一 */
 document.getElementById('mesh-toggle').onclick = ()=> setFlowMode(MESH.on ? 'point' : 'grid');

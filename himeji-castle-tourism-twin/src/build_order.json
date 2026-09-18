@@ -12,7 +12,8 @@
  "ui": "analytics/ui.js",
  "before_init": [
   "people-flow/flow3d.js",
-  "people-flow/flowvis.js"
+  "people-flow/flowvis.js",
+  "data/api_client.js"
  ],
  "init_anchor": "/* 初期化 */"
 }

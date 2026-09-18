@@ -1,0 +1,96 @@
+# 姫路 人流 Digital Twin — データ基盤（ローカル・OSS のみ）
+#   citydb : PostgreSQL 16 + PostGIS 3.5 + SFCGAL + 3DCityDB v5.1（公式イメージ。別途 PostgreSQL は立てない）
+#            初回起動で /docker-entrypoint-initdb.d の 3dcitydb-initdb.sh が citydb スキーマを、
+#            ./sql-init/*.sql が mobility スキーマ（人流）を作成する
+#   mcp    : TUM 3DCityDB MCP Server（SSE, read-only）。Claude Code からは stdio 版 `3dcitydb-mcp` の登録を推奨
+#   api    : Human Flow API（FastAPI）。ブラウザは DB に直結せず必ずここを通す
+#   tool   : citydb-tool（PLATEAU CityGML / CityJSON の import）— `--profile import` で使う
+#
+# 起動:  cp .env.example .env && docker compose up -d
+# 確認:  docker compose exec citydb psql -U $POSTGRES_USER -d $POSTGRES_DB -c "select * from citydb.database_srs;"
+services:
+  citydb:
+    image: 3dcitydb/3dcitydb-pg:${CITYDB_IMAGE_TAG:-16-3.5-5.1}
+    container_name: himeji-citydb
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-citydb}
+      POSTGRES_USER: ${POSTGRES_USER:-citydb}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-citydb}
+      SRID: ${SRID:-6697}              # JGD2011 + 標高（PLATEAU 姫路市 CityGML と同じ）
+      SRS_NAME: ${SRS_NAME:-urn:ogc:def:crs:EPSG::6697}
+      CHANGELOG: ${CHANGELOG:-no}
+      POSTGIS_SFCGAL: "true"
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+      MCP_DB_PASSWORD: ${MCP_DB_PASSWORD:-citydb_reader}
+      MOBILITY_WRITER_PASSWORD: ${MOBILITY_WRITER_PASSWORD:-mobility_writer}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"   # ローカル開発のみ公開。本番では閉じる
+    volumes:
+      - citydb-data:/var/lib/postgresql/data
+      - ../sql/init/zz-mobility.sh:/docker-entrypoint-initdb.d/zz-mobility.sh:ro   # 3dcitydb-initdb.sh の後に mobility スキーマ
+      - ../sql/migrations:/migrations:ro
+      - ../sql/queries:/queries:ro
+      - ../../data:/data:ro                                              # synthetic CSV / PLATEAU の読込用
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-citydb} -d ${POSTGRES_DB:-citydb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    shm_size: 1g
+    command: >
+      postgres -c shared_buffers=512MB -c work_mem=64MB -c maintenance_work_mem=512MB
+               -c max_parallel_workers_per_gather=4 -c random_page_cost=1.1
+
+  mcp:
+    build: ./3dcitydb-mcp
+    container_name: himeji-3dcitydb-mcp
+    environment:
+      CITYDB_HOST: citydb
+      CITYDB_PORT: 5432
+      CITYDB_NAME: ${POSTGRES_DB:-citydb}
+      CITYDB_USER: ${MCP_DB_USER:-citydb_reader}
+      CITYDB_PASSWORD: ${MCP_DB_PASSWORD:-citydb_reader}
+      CITYDB_SCHEMA: citydb
+    ports:
+      - "${MCP_PORT:-8080}:8080"
+    depends_on:
+      citydb:
+        condition: service_healthy
+    command: ["3dcitydb-mcp-sse", "--host", "0.0.0.0", "--port", "8080"]
+
+  api:
+    build: ../api
+    container_name: himeji-flow-api
+    environment:
+      DATABASE_URL: postgresql://${API_DB_USER:-citydb_reader}:${API_DB_PASSWORD:-citydb_reader}@citydb:5432/${POSTGRES_DB:-citydb}
+      API_CORS_ORIGINS: ${API_CORS_ORIGINS:-*}
+      API_MAX_POINTS: ${API_MAX_POINTS:-20000}
+      API_DEFAULT_SOURCE: ${API_DEFAULT_SOURCE:-synthetic}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      citydb:
+        condition: service_healthy
+    volumes:
+      - ../../index.html:/app/static/index.html:ro      # 同一オリジンで Digital Twin を配信（任意）
+
+  tool:
+    image: 3dcitydb/citydb-tool:${CITYDB_TOOL_TAG:-1.4}
+    profiles: ["import"]
+    environment:
+      CITYDB_HOST: citydb
+      CITYDB_PORT: 5432
+      CITYDB_NAME: ${POSTGRES_DB:-citydb}
+      CITYDB_SCHEMA: citydb
+      CITYDB_USERNAME: ${POSTGRES_USER:-citydb}
+      CITYDB_PASSWORD: ${POSTGRES_PASSWORD:-citydb}
+    volumes:
+      - ${PLATEAU_CITYGML_DIR:-../../data/real/citygml}:/data:ro
+    depends_on:
+      citydb:
+        condition: service_healthy
+    # 例: docker compose --profile import run --rm tool import citygml /data/bldg/52342505_bldg_6697_op.gml
+    entrypoint: ["citydb"]
+
+volumes:
+  citydb-data:

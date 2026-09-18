@@ -14,6 +14,7 @@
   - `people-flow/flow3d.js` … メッシュ（地域メッシュ / 正方グリッド / ヘックス / 3Dカラム）・軌跡ライン・階層ビュー
   - `people-flow/flowvis.js` … 人流 Visualization モード（熱・流線・動く軌跡・等高線）・Analytics KPI・メッシュ詳細・FPS 監視
   - `analytics/ui.js` … パネル・分析ボード・提案骨子・DB構成・タイムライン・メインループ
+  - `data/api_client.js` … データソース切替（シミュレーション ⇄ DB / API）・ズーム連動 LOD・各レイヤーの API 接続・3DCityDB 建物（`infra/README_DB.md`）
 - `data/real/` … 実データ由来のシーン（`scene_data.json`: OSM・地理院ベクトルタイル、`plateau.json`: PLATEAU 姫路市、`real.json`: 地理院 DEM5A・兵庫県 DSM）
 - `data/synthetic/` … 合成データの説明と差し替え方針
 - `tools/assemble.py` … `python3 tools/assemble.py data/real src index.html` で `index.html` を再生成（`EMBED_TILES` / `ARTIFACT_DIR` で共有用変種）
@@ -68,6 +69,15 @@
 | 右下ツール | 回転中／移動中の入替、戻る（姫路城）、2D（真上）、俯瞰、横、地表、目線（人の高さ）、＋－、集中（UIを隠す）、設定 |
 | タッチ | 1本指＝回転、2本指＝ピンチズーム＋平行移動＋ひねりで回転・上下で傾き |
 | キーボード | Space＝再生／停止、F＝集中表示、Esc＝閉じる／市内へ戻る |
+
+## データ基盤（3DCityDB v5 + PostgreSQL/PostGIS）
+
+`infra/` にローカル・OSS のみのデータ基盤を追加（設計 `ARCHITECTURE_DB.md`、手順 `infra/README_DB.md`）。
+
+- `docker compose up -d`（`infra/docker`）で PostgreSQL 16 + PostGIS + 3DCityDB v5.1（`citydb` スキーマ）と人流スキーマ `mobility`、Human Flow API（FastAPI :8000）、3DCityDB MCP（任意）が立ち上がる。
+- 画面左パネル「データソース」で **ブラウザ内シミュレーション（synthetic）／ DB / API** を切替。DB モードでは点＝`raw_points`、グリッド/カラム/等高線＝`mesh_stats`（50/100/250m、ズーム連動 LOD）、ヒート＝`stays`、流線＝`od`、軌跡＝`trajectories`、建物＝3DCityDB（LOD1 押し出し／近傍 LOD2）を同じ画面に表示。ブラウザは DB に直結せず API だけを見る。
+- 人流データは現在 synthetic（合成）のみ。実 GPS / ビーコン / センサーは同じ列で `source_type` を変えて投入する。
+- Claude Code からは `claude mcp add 3dcitydb -- 3dcitydb-mcp`（読み取り専用ロール）で 3DCityDB に SQL を発行できる。
 
 ## 再生成
 

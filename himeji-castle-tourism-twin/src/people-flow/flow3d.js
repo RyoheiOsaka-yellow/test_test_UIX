@@ -36,7 +36,7 @@ const MESH_POI = SCENE_DATA.pois.filter(p=>p.n).map(p=>({n:p.n, x:p.p[0], z:-p.p
 const HEX_R = {174:174, 66:66};    // 六角形の外接半径 m（H3 res9 ≒ 174m、res10 ≒ 66m 相当）
 function nearPOI(cx, cz, lim){ let near='', nd=1e9; for(const p of MESH_POI){ const q=(p.x-cx)**2+(p.z-cz)**2; if(q<nd){ nd=q; near=p.n; } } return nd<lim*lim ? near : ''; }
 function buildMesh(res, kind){
-  MESH.res = res; if(kind) MESH.kind = kind;
+  MESH.res = res; if(kind) MESH.kind = kind; if(window.twinDb){ twinDb.meshKey=''; }
   MESH.group.children.slice().forEach(o=>{ MESH.group.remove(o); if(o.geometry) o.geometry.dispose(); });
   const cells=[];
   if(MESH.kind==='jis'){
@@ -80,8 +80,9 @@ function meshCell(x, z){
   else { const R=HEX_R[MESH.res]||MESH.res; const qf=(Math.sqrt(3)/3*x - z/3)/R, rf=(2/3*z)/R; let q=Math.round(qf), r=Math.round(rf), sI=Math.round(-qf-rf); const dq=Math.abs(q-qf), dr=Math.abs(r-rf), ds=Math.abs(sI-(-qf-rf)); if(dq>dr && dq>ds) q=-r-sI; else if(dr>ds) r=-q-sI; key=q+','+r; }
   const k=MESH.byKey.get(key); return k===undefined ? -1 : k;
 }
+function agTh(){ return (window.twinDb && twinDb.on) ? 1 : AG_SCALE; }   // DB モードは実人数（1人単位）
 function meshAccumulate(dtMin){
-  if(!MESH.inst) return;
+  if(!MESH.inst) return; if(window.twinDb && twinDb.on) return;   // DB モードは api_client がセルを埋める
   const cells=MESH.cells, cnt=new Float32Array(cells.length*5); const tnow=timeState.min, bkt=Math.floor((tnow+360)/10);
   cells.forEach(c=>{ c.ag=[]; });
   for(const a of agents){
@@ -104,14 +105,15 @@ function meshAccumulate(dtMin){
   MESH.dirty=true;
 }
 const _MM=new THREE.Matrix4(), _MQ=new THREE.Quaternion(), _MS=new THREE.Vector3(), _MP=new THREE.Vector3(), _MC=new THREE.Color();
-function columnH(people){ return people<AG_SCALE ? 0 : 60*Math.pow(Math.log2(1+people/25), 1.15); }   // 100人≈150m・1,000人≈400m・5,000人≈600m
+function columnH(people){ return people<agTh() ? 0 : 60*Math.pow(Math.log2(1+people/25), 1.15); }   // 100人≈150m・1,000人≈400m・5,000人≈600m
 function paintMesh(){
   if(!MESH.inst || !MESH.dirty) return; MESH.dirty=false;
   const hs=(MESH_HSCALE[MESH.res]||1.2)*((window.TWIN_CONFIG&&TWIN_CONFIG.peopleFlow.heightScale)||1), flat=MESH.style==='2d', col=MESH.style==='column', hex=MESH.kind==='hex';
   const R=hex?(HEX_R[MESH.res]||MESH.res):0;
   MESH.cells.forEach((c,k)=>{
     const r=Math.pow(Math.min(1, c.v/MESH.max), 0.45);
-    let h = flat ? 2.2 : col ? Math.max(0.9, columnH(c.v)*hs/1.2) : Math.max(0.9, Math.min(700, Math.pow(c.v, 0.75)*hs));
+    const vh = c.db ? c.v*8 : c.v;   // DB（実人数）はシミュレーション（1ドット＝8人）と同じ高さスケールに揃える（相対値）
+    let h = flat ? 2.2 : col ? Math.max(0.9, columnH(vh)*hs/1.2) : Math.max(0.9, Math.min(700, Math.pow(vh, 0.75)*hs));
     const stayShare = c.v>0 ? c.stay/c.v : 0;
     let sx, sz;
     if(col){ const rad = Math.min(c.w, c.d)*0.30; sx=sz=rad; }
@@ -119,14 +121,14 @@ function paintMesh(){
     else { sx=c.w*0.9; sz=c.d*0.9; }
     _MP.set(c.cx, c.y+0.3, c.cz); _MS.set(sx, h, sz); _MM.compose(_MP,_MQ,_MS); MESH.inst.setMatrixAt(k,_MM);
     if(MESH.color==='seg' && c.v>=AG_SCALE){ let si=0; for(let s=1;s<3;s++) if(c.seg[s]>c.seg[si]) si=s; _MC.setHex(SEG[SEG_KEYS[si]].col).multiplyScalar(0.3+0.7*Math.pow(r,0.6)); }
-    else { _MC.copy(rampC(DENS_RAMP, r)); if(c.v<AG_SCALE) _MC.setHex(0x1a2536); else if(c.v<AG_SCALE*3) _MC.multiplyScalar(0.55); }   // 不透明度相当（信頼度）: サンプル少は暗く
+    else { _MC.copy(rampC(DENS_RAMP, r)); if(c.v<agTh()) _MC.setHex(0x1a2536); else if(c.v<agTh()*3) _MC.multiplyScalar(0.55); }   // 不透明度相当（信頼度）: サンプル少は暗く
     if(k===MESH.hover) _MC.lerp(_WHITE, 0.45);
     MESH.inst.setColorAt(k,_MC);
   });
   MESH.inst.instanceMatrix.needsUpdate=true; MESH.inst.instanceColor.needsUpdate=true;
   MESH.inst.material.opacity = flat ? 0.86 : 0.78;
 }
-function meshTop(n=5){ return MESH.cells.filter(c=>c.v>=AG_SCALE).sort((a,b)=>b.v-a.v).slice(0,n); }
+function meshTop(n=5){ return MESH.cells.filter(c=>c.v>=agTh()).sort((a,b)=>b.v-a.v).slice(0,n); }
 function setMesh(on){
   MESH.on=on; if(on && !MESH.inst) buildMesh(MESH.res, MESH.kind);
   MESH.group.visible = on && level!=='wide';
@@ -316,7 +318,7 @@ function floorSec(){
 }
 function updateFlowPanels(){
   const mt=document.getElementById('mesh-top');
-  if(mt){ mt.innerHTML = meshTop(5).map(c=>{ let si=0; for(let s=1;s<3;s++) if(c.seg[s]>c.seg[si]) si=s; return `<div class="zone-row"><div class="zn">${c.near||'—'}<small>${MESH.kind==='hex'?'ヘックス':'メッシュ'} ${c.code}</small></div><span class="pill" style="border-color:${hx6(SEG[SEG_KEYS[si]].col)};color:${hx6(SEG[SEG_KEYS[si]].col)}">${SEG[SEG_KEYS[si]].name.replace('（県外）','')}</span><div class="zv">${fmt(c.v)}<small style="font-size:9px;color:var(--sub)"> 人</small></div></div>`; }).join('') || '<div class="hint">滞在中の来訪者がありません（▶ で再生）</div>'; }
+  if(mt){ mt.innerHTML = meshTop(5).map(c=>{ let si=0; for(let s=1;s<3;s++) if(c.seg[s]>c.seg[si]) si=s; return `<div class="zone-row"><div class="zn">${c.near||'—'}<small>${MESH.kind==='hex'?'ヘックス':'メッシュ'} ${c.code}</small></div>${c.db ? `<span class="pill" style="border-color:#33d9f2;color:#33d9f2">${c.meta&&c.meta.congestion_index!=null?'混雑 '+(+c.meta.congestion_index*100).toFixed(0)+'%':'DB'}</span>` : `<span class="pill" style="border-color:${hx6(SEG[SEG_KEYS[si]].col)};color:${hx6(SEG[SEG_KEYS[si]].col)}">${SEG[SEG_KEYS[si]].name.replace('（県外）','')}</span>`}<div class="zv">${fmt(c.v)}<small style="font-size:9px;color:var(--sub)"> 人</small></div></div>`; }).join('') || '<div class="hint">滞在中の来訪者がありません（▶ で再生）</div>'; }
   const tt=document.getElementById('traj-trips'); if(tt){ tt.textContent=fmt(TRAJ.trips); document.getElementById('traj-segs').textContent=fmt(TRAJ.n); }
   const fr=document.getElementById('floor-rows');
   if(fr){ fr.innerHTML = floorStats().map(s=>`<div class="floor-b"><div class="floor-t">${s.d.n}<b>${fmt(s.tot)}人</b></div>${s.rows.slice().reverse().map(r=>`<div class="floor-r"><span>${r.fn}</span><div class="bar"><i style="width:${Math.min(100,r.load*100).toFixed(0)}%;background:${hx6(LVL_COL[r.lvl])}"></i></div><b>${fmt(r.n)}</b></div>`).join('')}<small>${s.d.note}</small></div>`).join(''); }
@@ -339,6 +341,7 @@ function meshTip(e){
   const k=hits[0].instanceId, c=MESH.cells[k]; if(k!==MESH.hover){ MESH.hover=k; MESH.dirty=true; }
   const tot=Math.max(1,c.v);
   tip.style.display='block'; tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY+10)+'px';
+  if(c.db){ const m=c.meta||{}; tip.innerHTML = `<span class="t-nm">${c.near||'メッシュ'}</span><span style="color:var(--sub)">｜${c.code}</span><br>人数 <b>${fmt(c.v)}人</b>${m.density!=null?`・密度 ${(+m.density).toFixed(0)}人/ha・混雑 ${(+m.congestion_index*100).toFixed(0)}%`:''}<br><span style="color:var(--sub)">${m.inflow!=null?`流入 ${fmt(m.inflow)}・流出 ${fmt(m.outflow)}・`:''}DB（${twinDb.source}）・クリックで詳細</span>`; return true; }
   tip.innerHTML = `<span class="t-nm">${c.near||'メッシュ'}</span><span style="color:var(--sub)">｜${c.code}</span><br>現在 滞在 <b>${fmt(c.v)}人</b>（海外 ${(c.seg[0]/tot*100).toFixed(0)}%・国内 ${(c.seg[1]/tot*100).toFixed(0)}%・近隣 ${(c.seg[2]/tot*100).toFixed(0)}%）<br><span style="color:var(--sub)">滞留中 ${(c.stay/tot*100).toFixed(0)}%・クリックで詳細</span>`;
   return true;
 }

@@ -427,7 +427,7 @@ function renderPanel(){
       ${anaSec()}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ（入城者数/日・想定）</div>${scnChips()}</div>
-      ${odSec()}${tourSec()}${flowModeSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${odSec()}${tourSec()}${dbSrcSec()}${flowModeSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">動線（路線・高速道路・航路・空港）— 流入シェア（クリックで視点）</div><div class="mode-list">${corridorRows()}</div></div>
       <div class="sec"><div class="sec-t">凡例 — 線種＝交通モード、帯の色＝セグメント</div>${modeLegend()}</div>
       <div class="sec"><div class="sec-t">到着ゲート（市内側）</div><div id="gate-rows"></div></div>
@@ -439,7 +439,7 @@ function renderPanel(){
       ${anaSec()}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
-      ${odSec()}${tourSec()}${flowModeSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${odSec()}${tourSec()}${dbSrcSec()}${flowModeSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">滞留ヒートマップ — 通り単位・時間連動</div>
         <div class="row-btns" id="heat-chips">
           <button class="chip ${heatMode==='off'?'active':''}" data-h="off">OFF</button>
@@ -478,18 +478,19 @@ function renderPanel(){
       ${anaSec()}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
-      ${flowModeSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${dbSrcSec()}${flowModeSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">ゾーン別 滞留・混雑（1ドット＝${AG_SCALE}人）</div><div id="zone-rows"></div></div>
       <div class="sec"><div class="sec-t">入城料（2026年3月〜 二段階料金・想定）</div><div class="legend">
         <div class="li"><div class="sw" style="background:var(--gold)"></div>市外・海外 ¥${FEE.out.toLocaleString()}　<div class="sw" style="background:#8f9cc0"></div>姫路市民 ¥${FEE.resident.toLocaleString()}</div></div></div>
       <div class="sec"><div class="sec-t">インサイト</div><div class="hint">律速点は<b>大天守（入場制限 15,000人/日）</b>と<b>菱の門の券売</b>。桜・GWは12時前後に待ち60分超が発生。入城券の<b>時間指定枠・事前販売</b>と、待ち時間を<b>好古園・西の丸へ振り替える案内</b>が滞留分散の打ち手になります。ドラッグで地図を引っ張る・握って待ってから（⟳）ドラッグで回転。<kbd>Esc</kbd>で市内へ戻る。</div></div>`;
   }
-  bindCommon(); bindFlow3D(); bindFlowVis();
+  bindCommon(); bindFlow3D(); bindFlowVis(); if(typeof bindDbSrc==='function') bindDbSrc();
   updateKPIs(); updateFlowPanels();
 }
 function updateKPIs(){
   if(typeof updateAna==='function') updateAna();
   const k = document.getElementById('kpi-main'); if(!k) return;
+  const dbNote = (window.twinDb && twinDb.on) ? '<div class="hint" style="grid-column:1/-1;color:#ffd166">▼ ブラウザ内シミュレーション値（DB モードの実人数は下の Analytics）</div>' : '';
   const sc = SCN[curScn];
   const arrTot = STATS.arrived.in+STATS.arrived.dom+STATS.arrived.loc;
   const seg = segFilter;
@@ -497,7 +498,7 @@ function updateKPIs(){
   const people = n=> fmt(n*AG_SCALE);
   if(level==='wide'){
     const inShare = arrTot ? STATS.arrived.in/arrTot : sc.mix.in;
-    k.innerHTML =
+    k.innerHTML = dbNote +
       kpi(people(arrSeg)+'<small> 人</small>', `本日累計 来訪（${seg==='all'?'全体':SEG[seg].name}）`) +
       kpi((inShare*100).toFixed(0)+'<small> %</small>', 'インバウンド比率') +
       kpi(people(STATS.inCity), '現在 市内滞在') +
@@ -508,7 +509,7 @@ function updateKPIs(){
   if(level==='city'){
     const avgDwell = STATS.dwellN ? STATS.dwellSum/STATS.dwellN : 0;
     const kaiyu = STATS.dwellN ? STATS.kaiyu/STATS.dwellN : 0;
-    k.innerHTML =
+    k.innerHTML = dbNote +
       kpi(people(STATS.inCastle), '現在 城内滞留') +
       kpi(people(STATS.atSpotN||0), '現在 市内回遊先に滞留') +
       kpi(avgDwell ? (avgDwell/60).toFixed(1)+'<small> h</small>' : '—', '平均 市内滞在時間（退出者）') +
@@ -521,7 +522,7 @@ function updateKPIs(){
   if(level==='castle'){
     const zs = zoneStats(); const tenshu = zs.find(s=>s.z.n==='大天守'); const gate = zs.find(s=>s.z.n==='入城口（菱の門）');
     const entered = STATS.castleEntered*AG_SCALE;
-    k.innerHTML =
+    k.innerHTML = dbNote +
       kpi(people(STATS.inCastle), '現在 城内滞留', true) +
       kpi(Math.round(tenshu.wait)+'<small> 分</small>', '大天守 待ち時間（推定）') +
       kpi(fmt(entered)+'<small> / '+fmt(TENSHU_CAP)+'</small>', '本日入城 / 大天守上限') +
@@ -1014,7 +1015,7 @@ initRefinement();
 toast('操作: ドラッグ＝地図を掴んで引っ張る ／ 握って少し待つ（⟳）→ドラッグ、または握ったままホイール＝回転・真上〜真横 ／ スクロール＝ズーム ／ ダブルクリック＝フォーカス。▶ で1日を再生', 5200);
 requestAnimationFrame(loop);
 window.__twin={ctrl,camera,groundAt,PL,MESH,TRAJ,FLOORS,FLOWVIS,HEATV,FLOWA,OD,ANA,setFlowMode,setMesh,setTraj,setFloors,setLevel,timeState,agents,STATS,get level(){return level}};
-window.twinDiagnostics=()=>({mesh:MESH.on,meshCells:MESH.cells.length,traj:TRAJ.on,trajSegs:TRAJ.n,floors:FLOORS.on,points:supplementalCount,agents:agents.length,trailVisible:trailMesh.visible,routeVisible:routeGroup.visible,level,phi:ctrl.sph.phi,time:timeState.min,style:urbanStyle,primaryDragMode,target:ctrl.target.toArray(),theta:ctrl.sph.theta,castle:[CASTLE.x,CASTLE.z],cloudVisible:fineCloud.visible,heads:flowGeometry.drawRange.count});
+window.twinDiagnostics=()=>({db:(window.twinDb?{on:twinDb.on,ok:twinDb.ok,err:twinDb.err,lod:twinDb.lod,pts:twinDb.ptsN,stat:twinDb.stat,bld:twinDb.bld,bldN:twinDb.bldN,bldL2N:twinDb.bldL2N,kpi:twinDb.kpi,heat:twinDb.heat.length/3,flows:FLOWA.rows.length}:null),mesh:MESH.on,meshCells:MESH.cells.length,traj:TRAJ.on,trajSegs:TRAJ.n,floors:FLOORS.on,points:supplementalCount,agents:agents.length,trailVisible:trailMesh.visible,routeVisible:routeGroup.visible,level,phi:ctrl.sph.phi,time:timeState.min,style:urbanStyle,primaryDragMode,target:ctrl.target.toArray(),theta:ctrl.sph.theta,castle:[CASTLE.x,CASTLE.z],cloudVisible:fineCloud.visible,heads:flowGeometry.drawRange.count});
 })();
 </script>
 </body>
