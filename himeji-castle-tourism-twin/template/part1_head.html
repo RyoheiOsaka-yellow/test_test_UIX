@@ -183,6 +183,12 @@ table.db td:first-child{color:var(--gold);font-family:var(--mono);font-weight:50
 .flowmap .st{flex:1;min-width:120px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 9px;font-size:10px;color:var(--sub);line-height:1.5}
 .flowmap .st b{display:block;color:var(--txt);font-size:11px;margin-bottom:2px}
 .flowmap .ar{display:flex;align-items:center;color:var(--brex);font-size:14px}
+.lsw{display:inline-block;width:22px;height:7px;flex-shrink:0;margin-right:2px;box-sizing:border-box}
+.roadmap{display:flex;flex-direction:column;gap:8px}
+.step{display:flex;gap:10px;align-items:flex-start;font-size:11px;line-height:1.6;color:var(--sub)}
+.step b{color:var(--txt);display:block;margin-bottom:1px}
+.step .sn{flex-shrink:0;min-width:64px;font-family:var(--mono);font-weight:600;color:var(--gold);border:1px solid rgba(255,209,102,.4);border-radius:14px;padding:2px 9px;text-align:center;font-size:11px}
+table.db a{color:inherit}
 
 /* 城内ゾーンカード */
 .zone-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);margin-bottom:5px;font-size:11px}
@@ -208,6 +214,7 @@ table.db td:first-child{color:var(--gold);font-family:var(--mono);font-weight:50
     <div class="crumb" id="od-toggle" title="OD分析: ガウスKDE + ODアーク">◎ OD分析</div>
     <div class="crumb" id="tour-toggle" title="姫路駅ハブから周辺観光地への導線">🗾 観光導線</div>
     <div class="crumb" id="board-toggle" title="来訪者構成・滞在・帰路の分析チャート">📊 分析ボード</div>
+    <div class="crumb" id="prop-toggle" title="提案骨子・ロードマップ・KPI">📝 提案骨子</div>
     <div class="crumb" id="db-toggle" title="DB構成・データソース">🗄 DB構成</div>
     <div class="crumb" id="pc-toggle" title="点群/デジタルレイヤー表示">◆ 点群ビュー</div>
   </div>

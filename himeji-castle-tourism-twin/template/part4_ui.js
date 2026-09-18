@@ -4,19 +4,6 @@ let odMode = false;
 const odGroup = new THREE.Group(); odGroup.visible=false; scene.add(odGroup);
 const wideGroup = new THREE.Group(); scene.add(wideGroup);   // L0 常時: 出発地ノード＋アーク
 
-/* 地図外 出発地ノード */
-ORIGINS.forEach(o=>{
-  const col = SEG[o.seg].col;
-  const ph = 80 + o.share*1400;
-  const pole = new THREE.Mesh(new THREE.CylinderGeometry(55, 70, ph, 8),
-    new THREE.MeshStandardMaterial({color:col, emissive:col, emissiveIntensity:0.35, roughness:0.6}));
-  pole.position.set(o.x, ph/2, o.z);
-  pole.userData = {name:o.name, origin:true, desc:`${SEG[o.seg].name} ｜ ${o.via} ｜ 到着ゲート: ${GATES[o.gate].name}`};
-  o.pole = pole;
-  wideGroup.add(pole);
-  const lb = makeLabel(`${o.name}`, 230, hx6(col)); lb.position.set(o.x, ph+260, o.z); o.lb=lb; wideGroup.add(lb);
-  const lb2 = makeLabel(`${SEG[o.seg].name} ${Math.round(o.share*100)}%`, 150, '#c8cede', 500); lb2.position.set(o.x, ph+90, o.z); o.lb2=lb2; wideGroup.add(lb2);
-});
 const arcUnis=[];
 function buildArc(a, b, colv, share, group, lift=0.16){
   const mid=new THREE.Vector3((a.x+b.x)/2, 0, (a.z+b.z)/2);
@@ -41,16 +28,6 @@ function buildArc(a, b, colv, share, group, lift=0.16){
   arcUnis.push(uni);
   return {uni, mesh:m};
 }
-/* 流入アーク: 出発地 → ゲート（L0） / 帰路アーク: ゲート → 出発地（退場時間帯） */
-const ARR_ARCS = ORIGINS.map(o=>{ const g=GATES[o.gate]; const a=buildArc(o, g, SEG[o.seg].col, o.share*0.5, wideGroup, 0.12); a.o=o; a.dir='arr'; return a; });
-const DEP_ARCS = [];
-SEG_KEYS.forEach(seg=>{
-  DEST[seg].forEach(d=>{
-    const o = ORIGIN_BY_ID[d[0]]; if(!o) return;
-    const g = GATES[o.gate];
-    const a = buildArc(g, o, SEG[seg].col, d[2]*0.35, wideGroup, 0.20); a.o=o; a.seg=seg; a.dir='dep'; a.share=d[2]; DEP_ARCS.push(a);
-  });
-});
 /* 市内アーク（ODモード）: ゲート → 大手門 → 回遊先 */
 const cityArcG = new THREE.Group(); odGroup.add(cityArcG);
 const CITY_ARCS = [];
@@ -62,19 +39,120 @@ SPOTS.forEach(s=>{
   const p=P(s.n); const sh = SEG_KEYS.reduce((a,seg)=> a + s.p[seg]*SCN[curScn].mix[seg], 0);
   CITY_ARCS.push({...buildArc(GATE_OTEMON, p, 0xffd166, sh*0.5, cityArcG, 0.22), dir:'tour'});
 });
+/* ---- 動線リボン: モード別の線種（鉄道=中心線＋枕木 / 高速=二重線 / 航路・空港=破線）＋ 流れの帯（方向・量） ---- */
+function ribbonGeom(pts, w){
+  const pos=[], uv=[], idx=[]; let total=0; const seg=[0];
+  for(let i=1;i<pts.length;i++){ total+=Math.hypot(pts[i].x-pts[i-1].x, pts[i].z-pts[i-1].z); seg.push(total); }
+  for(let i=0;i<pts.length;i++){
+    const p0=pts[Math.max(0,i-1)], p1=pts[Math.min(pts.length-1,i+1)];
+    const dx=p1.x-p0.x, dz=p1.z-p0.z, L=Math.hypot(dx,dz)||1, nx=-dz/L, nz=dx/L;
+    pos.push(pts[i].x+nx*w/2, 0, pts[i].z+nz*w/2, pts[i].x-nx*w/2, 0, pts[i].z-nz*w/2);
+    const u=seg[i]/total; uv.push(u,0,u,1);
+    if(i<pts.length-1){ const k=i*2; idx.push(k,k+2,k+1, k+1,k+2,k+3); }
+  }
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv,2));
+  g.setIndex(idx);
+  return {geo:g, total};
+}
+const RIBBON_VS = 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }';
+const RIBBON_FS = [
+ 'varying vec2 vUv; uniform vec3 uCol, uFlowCol; uniform float uTime, uAct, uKind, uDir, uLen, uFlowW, uDim;',
+ 'void main(){',
+ '  float y = abs(vUv.y-0.5)*2.0; float d = vUv.x*uLen; float base = 0.0;',
+ '  if(uKind < 0.5){ base = smoothstep(0.30,0.18,y); float tie = step(0.55, fract(d/320.0)); base = max(base, (1.0-smoothstep(0.62,0.80,y))*tie*0.45); }',
+ '  else if(uKind < 1.5){ base = smoothstep(0.92,0.80,y) - smoothstep(0.50,0.36,y); float dash = step(0.5, fract(d/420.0)); base = max(base*0.9, smoothstep(0.10,0.0,y)*dash*0.7); }',
+ '  else { float dash = step(0.42, fract(d/360.0)); base = smoothstep(0.28,0.16,y)*dash; }',
+ '  float band = pow(0.5+0.5*sin((d/1100.0 - uTime*uDir)*6.28318), 3.0);',
+ '  float fw = smoothstep(uFlowW, uFlowW*0.45, y);',
+ '  vec3 col = uCol*base*uDim*1.15 + uFlowCol*band*fw*uAct*1.5;',
+ '  float a = base*0.62*uDim + band*fw*uAct*0.9;',
+ '  if(a < 0.02) discard; gl_FragColor = vec4(col, a); }'].join('\n');
+function buildRibbon(pts, style, group, y){
+  const {geo,total} = ribbonGeom(pts, style.w);
+  const uni = {uCol:{value:new THREE.Color(style.col)}, uFlowCol:{value:new THREE.Color(0xffffff)}, uTime:{value:Math.random()*4},
+    uAct:{value:0}, uKind:{value:style.kind}, uDir:{value:1}, uLen:{value:total}, uFlowW:{value:0.3}, uDim:{value:1}};
+  const mat = new THREE.ShaderMaterial({uniforms:uni, vertexShader:RIBBON_VS, fragmentShader:RIBBON_FS, transparent:true, depthWrite:false, side:THREE.DoubleSide, blending:THREE.AdditiveBlending});
+  const m = new THREE.Mesh(geo, mat); m.position.y = y; m.renderOrder = 2; group.add(m);
+  return {uni, mesh:m, total};
+}
+/* コリドー（路線・高速道路）ごとに: ゲート → 経由都市 → 終点 のリボン、経由地マーカー・ラベル */
+const corrGroup = new THREE.Group(); wideGroup.add(corrGroup);
+CORRIDORS.forEach((c, ci)=>{
+  const st = MODE_STYLE[c.mode];
+  const pts = [{x:c.gx, z:c.gz}].concat(c.pts.map(p=>({x:p.x, z:p.z})));
+  const rib = buildRibbon(pts, st, corrGroup, 3 + (ci%5)*0.4);
+  c.rib = rib;
+  c.pts.forEach((p, i)=>{
+    const last = i===c.pts.length-1;
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(last?300:200, last?300:200, 24, 14),
+      new THREE.MeshStandardMaterial({color:st.col, emissive:st.col, emissiveIntensity:0.35, roughness:0.6}));
+    disc.position.set(p.x, 8, p.z);
+    disc.userData = {name:`${p.n}（${c.name}）`, desc:`姫路から ${p.t}`};
+    corrGroup.add(disc);
+    const lb = makeLabel(p.n, last?640:460, st.css, 700); lb.position.set(p.x, last?900:640, p.z); corrGroup.add(lb);
+    const lb2 = makeLabel(p.t, 320, '#c8cede', 500); lb2.position.set(p.x, last?500:340, p.z); corrGroup.add(lb2);
+  });
+  const mid = c.pts[Math.floor(c.pts.length/2)];
+  const nl = makeLabel(c.name, 380, st.css, 500);
+  const a = c.bear*Math.PI/180; const off = 1100;
+  nl.position.set(mid.x + Math.cos(a)*off, 60, mid.z + Math.sin(a)*off);
+  corrGroup.add(nl);
+});
+/* 出発地ポール（コリドーの経由地に乗せる。高さ＝流入シェア×セグメント構成） */
+ORIGINS.forEach((o, i)=>{
+  const col = SEG[o.seg].col;
+  const same = ORIGINS.filter(q=> q.corr===o.corr && q.at===o.at);
+  const k = same.indexOf(o), a = CORR_BY_ID[o.corr].bear*Math.PI/180;
+  const off = (k - (same.length-1)/2) * 700;
+  const px = o.x + Math.cos(a)*off, pz = o.z + Math.sin(a)*off;
+  o.px = px; o.pz = pz;
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(150, 190, 100, 8),
+    new THREE.MeshStandardMaterial({color:col, emissive:col, emissiveIntensity:0.4, roughness:0.6, transparent:true}));
+  pole.position.set(px, 50, pz);
+  pole.userData = {name:o.name, origin:true, desc:`${SEG[o.seg].name} ｜ ${o.via} ｜ 到着: ${GATES[o.gate].name}`};
+  o.pole = pole; wideGroup.add(pole);
+  const lb = makeLabel('', 300, hx6(col), 700); lb.position.set(px, 120, pz); o.lb = lb; wideGroup.add(lb);
+});
+function corrShares(){
+  const mix = SCN[curScn].mix, out = {};
+  CORRIDORS.forEach(c=> out[c.id] = {arr:0, dep:0, segs:{in:0,dom:0,loc:0}});
+  ORIGINS.forEach(o=>{ if(!segByFilter(o.seg)) return; const w = o.share*(segFilter==='all'?mix[o.seg]:1); out[o.corr].arr += w; out[o.corr].segs[o.seg] += w; });
+  SEG_KEYS.forEach(seg=>{ if(!segByFilter(seg)) return; DEST[seg].forEach(d=>{ const o=ORIGIN_BY_ID[d[0]]; if(!o) return; out[o.corr].dep += d[2]*(segFilter==='all'?mix[seg]:1); }); });
+  return out;
+}
+const _WHITE = new THREE.Color(0xffffff);
 function updateArcs(dt){
   const t = timeState.min;
   const aw = 0.25 + sstep(30,120,t)*(1-sstep(420,560,t));
   const dw = sstep(500,600,t)*(1-sstep(880,1000,t));
   const tw = sstep(240,360,t)*(1-sstep(640,760,t));
-  const wideOn = level==='wide' ? 1 : 0;
-  ARR_ARCS.forEach(a=> a.uni.uAct.value = (segByFilter(a.o.seg) ? 1 : 0.08) * aw * wideOn);
-  DEP_ARCS.forEach(a=> a.uni.uAct.value = (segByFilter(a.seg) ? 1 : 0.08) * dw * wideOn);
+  if(level==='wide'){
+    const sh = corrShares(), mix = SCN[curScn].mix;
+    CORRIDORS.forEach(c=>{
+      const s = sh[c.id]; const u = c.rib.uni;
+      const vol = Math.max(s.arr*aw, s.dep*dw);
+      u.uAct.value = Math.min(1.2, 0.2 + vol*4.5);
+      u.uFlowW.value = 0.18 + Math.min(0.75, vol*2.2);
+      u.uDir.value = (s.dep*dw > s.arr*aw) ? -1 : 1;
+      u.uDim.value = (s.arr+s.dep) > 0.002 ? 1 : 0.35;
+      const top = SEG_KEYS.reduce((m,k)=> s.segs[k]>s.segs[m]?k:m, 'dom');
+      u.uFlowCol.value.setHex(segFilter==='all' ? SEG[top].col : SEG[segFilter].col).lerp(_WHITE, segFilter==='all'?0.35:0.15);
+    });
+    ORIGINS.forEach(o=>{
+      const on = segByFilter(o.seg); const w = o.share*(segFilter==='all'?mix[o.seg]:1);
+      const h = 60 + w*9000;
+      o.pole.scale.y = h/100; o.pole.position.y = h/2; o.pole.material.opacity = on?1:0.2;
+      o.lb.position.y = h + 240; o.lb.material.opacity = on?1:0.25;
+      const txt = `${o.name} ${(w*100).toFixed(0)}%`;
+      if(o.lb.userData.txt !== txt){ o.lb.userData.txt = txt; const nl = makeLabel(txt, 300, hx6(SEG[o.seg].col), 700); o.lb.material.map.dispose(); o.lb.material.map = nl.material.map; o.lb.material.needsUpdate = true; }
+    });
+  }
   CITY_ARCS.forEach(a=> a.uni.uAct.value = odMode ? (a.dir==='arr' ? aw : tw) : 0);
   arcUnis.forEach(u=> u.uTime.value += dt*0.55);
-  ORIGINS.forEach(o=>{ const on = segByFilter(o.seg); o.pole.material.opacity = on?1:0.25; o.pole.material.transparent = !on; o.lb.material.opacity = on?1:0.3; o.lb2.material.opacity = on?1:0.3; });
+  CORRIDORS.forEach(c=> c.rib.uni.uTime.value += dt*0.35);
 }
-
 /* --- ガウスKDEサーフェス（市内滞留密度） --- */
 const KDE={bw:1.0, maxH:220, lastT:-99};
 const kdeGeo=new THREE.PlaneGeometry(7600, 6400, 95, 80);
@@ -223,11 +301,11 @@ function setLevel(lv, fly=true){
   document.querySelectorAll('.crumb[data-lvl]').forEach(c=>c.classList.toggle('active', c.dataset.lvl===lv));
   zoneGroup.visible = (lv==='castle');
   castleLabel.visible = (lv!=='castle');
-  wideGroup.visible = (lv!=='castle');
+  wideGroup.visible = (lv==='wide');
   odGroup.visible = odMode && lv!=='castle';
   tourGroup.visible = tourMode && lv!=='castle';
   enterHint.style.display = lv==='city' ? 'block' : 'none';
-  if(lv==='wide'){ scene.fog.near=12000; scene.fog.far=40000; if(fly) flyTo(new THREE.Vector3(0, 0, 600), 17500, 0.72, -0.35, 1600); }
+  if(lv==='wide'){ scene.fog.near=22000; scene.fog.far=70000; if(fly) flyTo(new THREE.Vector3(1800, 0, 900), 33000, 0.5, -0.3, 1600); }
   if(lv==='city'){ scene.fog.near=6000; scene.fog.far=20000; if(fly) flyTo(new THREE.Vector3(CASTLE.x-100, 0, CASTLE.z+700), 3200, 0.88, -0.55, 1500); }
   if(lv==='castle'){ scene.fog.near=2500; scene.fog.far=9000; if(fly) flyTo(new THREE.Vector3(CASTLE.x-40, 10, CASTLE.z+190), 640, 0.95, -0.35, 1500); }
   renderPanel();
@@ -270,17 +348,29 @@ function scnChips(){
 }
 function bindCommon(){
   document.querySelectorAll('#seg-chips .chip').forEach(c=> c.onclick=()=>{ segFilter=c.dataset.s; HEAT.lastT=-99; repaintHeat(); KDE.lastT=-99; updateKDE(true); renderPanel(); });
-  document.querySelectorAll('#scn-chips .chip').forEach(c=> c.onclick=()=>{ curScn=c.dataset.scn; resetSim(); timeState.min=0; syncClock(); HEAT.lastT=-99; repaintHeat(); renderPanel(); toast(`シナリオ: ${SCN[curScn].name}（入城 想定 ${fmt(SCN[curScn].castle)}人/日）`); });
+  document.querySelectorAll('#scn-chips .chip').forEach(c=> c.onclick=()=>{ curScn=c.dataset.scn; resetSim(); timeState.min=0; syncClock(); HEAT.lastT=-99; repaintHeat(); renderPanel(); toast(`シナリオ: ${SCN[curScn].name}（入城 想定 ${fmt(SCN[curScn].castle)}人/日 ｜ ${SCN[curScn].note}）`, 4200); });
   document.querySelectorAll('#layer-chips .chip').forEach(c=> c.onclick=()=>{ LAYER_STATE[c.dataset.l]=!LAYER_STATE[c.dataset.l]; c.classList.toggle('active'); applyLayers(); });
   document.querySelectorAll('#heat-chips .chip').forEach(c=> c.onclick=()=>{ heatMode=c.dataset.h; HEAT.lastT=-99; applyLayers(); repaintHeat(); renderPanel(); });
   document.querySelectorAll('[data-tr]').forEach(b=> b.onclick=()=>{ const t=TOURS[+b.dataset.tr]; const e=t.end; flyTo(new THREE.Vector3((e.x+STN.x)/2, 0, (e.z+STN.z)/2), Math.max(1400, t.total*0.9), 0.8, Math.atan2(e.x-STN.x, e.z-STN.z)+Math.PI, 1300); });
-  document.querySelectorAll('[data-org]').forEach(b=> b.onclick=()=>{ const o=ORIGIN_BY_ID[b.dataset.org]; flyTo(new THREE.Vector3(o.x*0.55, 0, o.z*0.55), 9000, 0.78, Math.atan2(o.x, o.z)+Math.PI, 1300); });
+  document.querySelectorAll('[data-corr]').forEach(b=> b.onclick=()=>{ const c=CORR_BY_ID[b.dataset.corr]; const e=c.pts[c.pts.length-1]; const a=c.bear*Math.PI/180; flyTo(new THREE.Vector3(e.x*0.5, 0, e.z*0.5), Math.max(9000, e.r*1.05), 0.72, a+Math.PI, 1300); });
   const cin=document.getElementById('csv-in'), cbtn=document.getElementById('csv-btn');
   if(cbtn){ cbtn.onclick=()=>cin.click(); cin.onchange=()=>{ const f=cin.files[0]; if(!f) return; const rd=new FileReader(); rd.onload=()=>{ const n=rd.result.split(/\r?\n/).filter(l=>l.trim()).length-1; toast(`${Math.max(0,n)}行を読み込みました（実データ接続のプレースホルダ：本番はDB直結）`, 3200); }; rd.readAsText(f); }; }
 }
-function originRows(){
-  const rows = ORIGINS.filter(o=> segByFilter(o.seg)).map(o=>{ const mixW = segFilter==='all' ? SCN[curScn].mix[o.seg] : 1; return [o, o.share*mixW]; }).sort((a,b)=>b[1]-a[1]).slice(0, segFilter==='all'?9:8);
-  return rows.map(r=>`<button class="mode-btn" data-org="${r[0].id}" style="padding:5px 9px"><div class="dot" style="background:${hx6(SEG[r[0].seg].col)}"></div><div style="flex:1;min-width:0">${r[0].name} <b style="color:var(--txt);font-family:var(--mono);font-weight:500">${(r[1]*100).toFixed(0)}%</b><span class="desc">${r[0].via}</span></div></button>`).join('');
+function lineSwatch(mode){
+  const st=MODE_STYLE[mode];
+  if(st.kind===1) return `<span class="lsw" style="border-top:2px solid ${st.css};border-bottom:2px solid ${st.css}"></span>`;
+  if(st.kind===2) return `<span class="lsw" style="background:repeating-linear-gradient(90deg,${st.css} 0 5px,transparent 5px 9px);height:3px"></span>`;
+  return `<span class="lsw" style="background:${st.css};height:3px;box-shadow:0 -3px 0 -1px ${st.css}55,0 3px 0 -1px ${st.css}55"></span>`;
+}
+function modeLegend(){
+  return `<div class="legend">${Object.entries(MODE_STYLE).map(([k,st])=>`<div class="li">${lineSwatch(k)}${st.name}</div>`).join('')}
+    <div class="li" style="margin-top:3px"><div class="sw" style="background:var(--in)"></div>インバウンド　<div class="sw" style="background:var(--dom)"></div>国内（県外）　<div class="sw" style="background:var(--loc)"></div>県内・近隣　＝ 帯の色・ポールの高さ</div></div>`;
+}
+function corridorRows(){
+  const sh = corrShares();
+  const rows = CORRIDORS.map(c=>({c, s:sh[c.id]})).filter(r=> r.s.arr+r.s.dep > 0.001).sort((a,b)=> (b.s.arr+b.s.dep)-(a.s.arr+a.s.dep));
+  return rows.map(r=>{ const st=MODE_STYLE[r.c.mode]; const origins = ORIGINS.filter(o=> o.corr===r.c.id && segByFilter(o.seg)).map(o=>o.name).join('・');
+    return `<button class="mode-btn" data-corr="${r.c.id}" style="padding:6px 9px"><div class="dot" style="background:${st.css}"></div><div style="flex:1;min-width:0">${r.c.name}　<b style="color:var(--txt);font-family:var(--mono);font-weight:500">${(r.s.arr*100).toFixed(0)}%</b> <span style="color:var(--sub);font-size:10px">→ 帰路 ${(r.s.dep*100).toFixed(0)}%</span><span class="desc">${r.c.pts.map(p=>`${p.n} ${p.t}`).join(' → ')}</span><span class="desc" style="color:#c8cede">${origins}</span></div></button>`; }).join('');
 }
 function destRows(){
   const segs = segFilter==='all' ? SEG_KEYS : [segFilter];
@@ -309,9 +399,10 @@ function renderPanel(){
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ（入城者数/日・想定）</div>${scnChips()}</div>
       ${odSec()}${tourSec()}
-      <div class="sec"><div class="sec-t">出発地 × 到着ゲート（クリックで視点）</div><div class="mode-list">${originRows()}</div></div>
+      <div class="sec"><div class="sec-t">動線（路線・高速道路・航路・空港）— 流入シェア（クリックで視点）</div><div class="mode-list">${corridorRows()}</div></div>
+      <div class="sec"><div class="sec-t">凡例 — 線種＝交通モード、帯の色＝セグメント</div>${modeLegend()}</div>
       <div class="sec"><div class="sec-t">到着ゲート（市内側）</div><div id="gate-rows"></div></div>
-      <div class="sec"><div class="sec-t">操作</div><div class="hint">出発地ポールの高さ＝流入シェア。弧は<b>到着（朝）→ 帰路（夕方）</b>で向きが反転します。<b style="color:var(--gold)">L1</b>で市内の滞留、<b style="color:var(--gold)">L2</b>で城内の混雑・待ち時間へ。</div></div>`;
+      <div class="sec"><div class="sec-t">操作</div><div class="hint">各動線は<b>経由都市と所要時間</b>付き。帯の流れは<b>朝は姫路へ、夕方は帰路方向へ</b>反転し、太さ＝流入量。ポールの高さ＝出発地シェア（観光動向調査の居住地構成から換算）。<b style="color:var(--gold)">L1</b>で市内の滞留、<b style="color:var(--gold)">L2</b>で城内の混雑へ。</div></div>`;
   }
   if(level==='city'){
     pb.innerHTML = `
@@ -375,7 +466,7 @@ function updateKPIs(){
       kpi(people(arrSeg)+'<small> 人</small>', `本日累計 来訪（${seg==='all'?'全体':SEG[seg].name}）`) +
       kpi((inShare*100).toFixed(0)+'<small> %</small>', 'インバウンド比率') +
       kpi(people(STATS.inCity), '現在 市内滞在') +
-      kpi(phaseAt(timeState.min).name, 'フェーズ');
+      kpi('1,567,674<small> 人/年</small>', '2025年度 入城者（実績）・外国人34.9%', true);
     const gr = document.getElementById('gate-rows');
     if(gr){ const tot=Math.max(1, Object.values(STATS.byGate).reduce((a,b)=>a+b,0)); gr.innerHTML = barRows(Object.entries(GATES).map(([g,v])=>[v.name.replace('（','<br>（'), (STATS.byGate[g]||0)/tot, hx6(v.col)]).sort((a,b)=>b[1]-a[1])); }
   }
@@ -388,7 +479,7 @@ function updateKPIs(){
       kpi(avgDwell ? (avgDwell/60).toFixed(1)+'<small> h</small>' : '—', '平均 市内滞在時間（退出者）') +
       kpi(STATS.dwellN ? (kaiyu*100).toFixed(0)+'<small> %</small>' : '—', '回遊率（城以外にも立寄り）') +
       kpi(people(STATS.staying), '本日 市内宿泊（転換）') +
-      kpi(`¥${fmt(STATS.castleEntered*AG_SCALE*FEE.out*0.85/10000)}<small> 万</small>`, '入城料 収入（市外¥2,500 想定）', true);
+      kpi(`¥${fmt(SEG_KEYS.reduce((a,k)=>a+STATS.arrived[k]*AG_SCALE*spendPer(k),0)/10000)}<small> 万</small>`, '本日 市内消費 推定（宿泊・飲食・土産・入場料）', true);
     const sr = document.getElementById('spot-rows');
     if(sr){ const mx=Math.max(1, ...SPOTS.map(s=>STATS.atSpot[s.n]||0)); sr.innerHTML = barRows(SPOTS.map(s=>[s.n, (STATS.atSpot[s.n]||0)/mx, '#ffd166']).sort((a,b)=>b[1]-a[1]).slice(0,6)).replace(/<b>(\d+)%<\/b>/g, (m,v)=>`<b>${fmt(v/100*mx*AG_SCALE)}</b>`); }
   }
@@ -464,46 +555,89 @@ function svgSankey(W=520, H=300){
   out+=`<text x="${xs[0]}" y="11" font-size="9.5" fill="${CC.sub}">出発地（どこから）</text><text x="${xs[1]}" y="11" font-size="9.5" fill="${CC.sub}">滞留（どこに）</text><text x="${xs[2]}" y="11" font-size="9.5" fill="${CC.sub}">帰路（どこへ）</text>`;
   return `<svg class="ch" viewBox="0 0 ${W} ${H}" role="img">${out}</svg>`;
 }
+function svgStackedH(rows, W=520, cols){
+  /* 複数行の100%積み上げ横棒（各行: [ラベル, [[name,val],...]]） */
+  const rh=26, L=110, H=rows.length*rh+6, iw=W-L-6;
+  return `<svg class="ch" viewBox="0 0 ${W} ${H}" role="img">${rows.map((r,i)=>{ const y=3+i*rh; let x=L; const tot=r[1].reduce((a,b)=>a+b[1],0)||1;
+    return `<text x="${L-8}" y="${y+16}" font-size="10" fill="${CC.sub}" text-anchor="end">${r[0]}</text>` + r[1].map((p,k)=>{ const w=iw*p[1]/tot; const s=`<rect x="${x.toFixed(1)}" y="${y+4}" width="${Math.max(0,w-2).toFixed(1)}" height="16" rx="3" fill="${cols[k]}"/>${w>52?`<text x="${(x+w/2).toFixed(1)}" y="${y+16}" font-size="9.5" fill="#0b0e14" text-anchor="middle" font-weight="700">${p[0]} ${(p[1]/tot*100).toFixed(0)}%</text>`:''}`; x+=w; return s; }).join(''); }).join('')}</svg>`;
+}
+function svgPairBars(rows, W=520){
+  /* 2系列（日本人 / 外国人）の横棒比較 */
+  const rh=22, L=120, R=40, H=rows.length*rh+18, mx=Math.max(...rows.flatMap(r=>[r[1],r[2]]));
+  return `<svg class="ch" viewBox="0 0 ${W} ${H}" role="img"><text x="${L}" y="10" font-size="9.5" fill="${CC.dom}">■ 日本人</text><text x="${L+60}" y="10" font-size="9.5" fill="${CC.in}">■ 外国人</text>
+    ${rows.map((r,i)=>{ const y=16+i*rh; const w1=(W-L-R)*r[1]/mx, w2=(W-L-R)*r[2]/mx;
+      return `<text x="${L-8}" y="${y+12}" font-size="10" fill="${CC.sub}" text-anchor="end">${r[0]}</text><rect x="${L}" y="${y+2}" width="${w1.toFixed(1)}" height="7" rx="2" fill="${CC.dom}"/><text x="${L+w1+4}" y="${y+9}" font-size="8.5" fill="${CC.txt}" font-family="Oswald">${r[1]}%</text><rect x="${L}" y="${y+11}" width="${w2.toFixed(1)}" height="7" rx="2" fill="${CC.in}"/><text x="${L+w2+4}" y="${y+18}" font-size="8.5" fill="${CC.txt}" font-family="Oswald">${r[2]}%</text>`; }).join('')}</svg>`;
+}
 function boardHTML(){
   const sc=SCN[curScn];
-  const tabs=[['who','誰が・どこから'],['where','どこに滞留'],['back','どこへ帰った'],['when','時間帯・季節']];
+  const tabs=[['who','誰が・どこから'],['where','どこに滞留'],['back','どこへ帰った'],['spend','消費・料金改定'],['when','季節・時間帯'],['src','出典・前提']];
   let body='';
+  const src = n=>`<span style="color:var(--sub);font-weight:400;letter-spacing:0;margin-left:6px">${n}</span>`;
   if(boardTab==='who'){
-    const pref = [['兵庫県内（姫路市除く）',0.25],['大阪府',0.19],['東京都・首都圏',0.11],['岡山県',0.07],['京都府・奈良県',0.06],['広島県',0.05],['愛知県・中部',0.04],['九州',0.03],['その他',0.20]];
-    const trans = [['JR新幹線',0.30],['JR在来線（新快速）',0.32],['自家用車・レンタカー',0.22],['山陽電鉄',0.07],['高速バス・ツアーバス',0.07],['船（姫路港）',0.02]];
-    body = `<div class="mcard"><h4>来訪者セグメント構成<span>${sc.name}・入城 ${fmt(sc.castle)}人/日 想定</span></h4>${svgStacked('構成比', [['インバウンド',sc.mix.in,CC.in],['国内（県外）',sc.mix.dom,CC.dom],['県内・近隣',sc.mix.loc,CC.loc]])}
-      <div class="insight">季節で構成が変わる：<b>桜・紅葉はインバウンド比率が上がり</b>、GWは国内（県外）に振れる。セグメント別に「滞留先」「帰路」が違うため、構成比が変わるとまちの滞留パターンも変わる。</div></div>
-      <div class="mgrid"><div class="mcard"><h4>インバウンド 国・地域別<span>ローミング/入国データ想定</span></h4>${svgHBars(COUNTRIES, 250, ()=>CC.in)}</div>
-      <div class="mcard"><h4>国内 都道府県別<span>携帯位置情報 居住地推定</span></h4>${svgHBars(pref, 250, ()=>CC.dom)}</div></div>
-      <div class="mcard"><h4>交通手段別 流入<span>駅改札・IC・駐車場・港</span></h4>${svgHBars(trans, 520, (r,i)=>[ '#9ec5ff','#d0d6ea','#8fd0ff','#ff9a3d','#ffd166','#35d0c0'][i])}
-      <div class="insight">新幹線＋新快速で<b>6割超が姫路駅に集中</b>。駅北口〜大手前通りが「まちの玄関」であり、ここでの案内・回遊誘導が最も効率的な介入点。</div></div>`;
+    const region = [['近畿（大阪41%・兵庫41%・京都5%・滋賀5%）',34.4],['関東',22.8],['東海',15.2],['九州・沖縄',9.0],['中国',8.7],['北海道・東北',5.1],['四国',4.3],['北陸',1.6]];
+    const trans = [['JR在来線',40.6,71.9],['JR新幹線',32.0,56.0],['自家用車・レンタカー',36.5,10.0],['飛行機',9.8,68.8],['山陽電鉄など私鉄',11.5,5.0],['市内バス',10.9,15.9],['高速バス・貸切バス',6.6,7.2]];
+    const before = [['大阪府',22.4,39.3],['岡山県',20.4,5.5],['京都府',11.2,18.4],['広島県',8.2,6.7],['東京都',6.1,5.5],['香川県',7.1,0.5]];
+    body = `<div class="mcard"><h4>来訪者セグメント構成${src(`${sc.name}・入城 ${fmt(sc.castle)}人/日（${sc.note}）`)}</h4>${svgStacked('構成比', [['インバウンド',sc.mix.in,CC.in],['国内（県外）',sc.mix.dom,CC.dom],['県内・近隣',sc.mix.loc,CC.loc]])}
+      <div class="insight">2025年度の入城者は<b>1,567,674人</b>、うち外国人 <b>547,426人（34.9%）</b>。4月は42%・7月は46%が外国人で、季節により構成が大きく変わる。姫路城地点の日本人来訪者は<b>兵庫県内が14%</b>に留まり、8割以上が県外から（遠来型の世界遺産）。</div></div>
+      <div class="mgrid"><div class="mcard"><h4>インバウンド 国・地域別${src('観光動向調査 姫路城地点 359人')}</h4>${svgHBars(COUNTRIES, 250, ()=>CC.in)}
+      <div class="insight">台湾・米国・豪州・中国・フランスが上位。<b>欧米豪で4割超</b>＝長期滞在・高消費型で、初来訪が89%。</div></div>
+      <div class="mcard"><h4>国内 居住地（地方別）${src('観光動向調査 姫路城地点 488人')}</h4>${svgHBars(region.map(r=>[r[0],r[1],r[1]+'%']), 250, ()=>CC.dom)}
+      <div class="insight">関東23%・東海15%・九州9%と<b>新幹線圏からの来訪が厚い</b>。近畿の内訳は大阪と兵庫がほぼ同数。</div></div></div>
+      <div class="mcard"><h4>交通手段（全行程・複数回答）${src('観光動向調査 姫路城地点')}</h4>${svgPairBars(trans)}
+      <div class="insight">外国人は<b>JR在来線72%・飛行機69%・新幹線56%</b>＝空港→大阪・京都拠点→新快速/新幹線で姫路へ。日本人は在来線41%・新幹線32%・車37%。<b>JR姫路駅（乗降 9.2万人/日）が最大ゲート</b>で、駅北口〜大手前通りが介入点。</div></div>
+      <div class="mcard"><h4>姫路の「前」に訪れた都道府県${src('観光動向調査・複数回答')}</h4>${svgPairBars(before)}
+      <div class="insight">日本人は大阪22%・岡山20%、外国人は<b>大阪39%・京都18%</b>から。岡山側（西）からの流入が日本人で2割あるのは瀬戸内周遊の途中下車。</div></div>`;
   } else if(boardTab==='where'){
-    const dwell = [['姫路城（城内）',150,'2h30m'],['書写山圓教寺',150,'2h30m'],['アクリエひめじ',90,'1h30m'],['手柄山中央公園',60,'1h00m'],['姫路市立美術館',50,'50m'],['好古園',45,'45m'],['みゆき通り商店街',40,'40m']];
+    const fac = [['姫路城',1532],['好古園',580],['姫路セントラルパーク',525],['アクリエひめじ',456],['動物園',379],['手柄山周辺（水族館等）',318],['書写山周辺',210]];
     const visit = SPOTS.map(s=>[s.n, SEG_KEYS.reduce((a,k)=>a+s.p[k]*sc.mix[k],0)]).sort((a,b)=>b[1]-a[1]);
-    body = `<div class="mcard"><h4>回遊先 立寄率<span>姫路城以外への立寄り（ダミー）</span></h4>${svgHBars(visit, 520)}</div>
-      <div class="mgrid"><div class="mcard"><h4>スポット別 平均滞在時間</h4>${svgHBars(dwell.map(d=>[d[0],d[1],d[2]]), 250)}</div>
-      <div class="mcard"><h4>セグメント別 市内滞在時間</h4>${svgHBars([['インバウンド',3.6,'3.6h'],['国内（県外）',4.4,'4.4h'],['県内・近隣',3.1,'3.1h']], 250, (r,i)=>[CC.in,CC.dom,CC.loc][i])}
-      <div class="insight">インバウンドは滞在が短く「城のみ」比率が高い。<b>好古園・西の丸・商店街への+1スポット</b>で平均滞在+45分、飲食消費の獲得余地。</div></div></div>
-      <div class="mcard"><h4>時間帯別 滞留分布<span>城内 / 市内回遊先 / 移動中</span></h4>${svgDayCurve()}</div>`;
+    const dwell = [['姫路城（城内）',150,'2h30m'],['書写山圓教寺',150,'2h30m'],['アクリエひめじ',90,'1h30m'],['手柄山中央公園',60,'1h00m'],['姫路市立美術館',50,'50m'],['好古園',45,'45m'],['みゆき通り商店街',40,'40m'],['中心市街地（GPS実測の典型値）',30,'30m']];
+    body = `<div class="mcard"><h4>市内観光施設 入込客数（千人・令和6年度）${src('姫路市入込客数調査')}</h4>${svgHBars(fac.map(f=>[f[0],f[1],fmt(f[1])+'千人']), 520)}
+      <div class="insight">総入込 923.2万人のうち<b>姫路城周辺ゾーンが271万人（観光施設の56%）</b>。好古園58万は城の38%＝共通券効果。書写山周辺21万・手柄山32万は城の1〜2割で、<b>城以外へ広がる余地が大きい</b>。</div></div>
+      <div class="mgrid"><div class="mcard"><h4>回遊先 立寄率（仮置き）${src('外国人「姫路城以外の観光施設」42%・飲食9%・物販7%')}</h4>${svgHBars(visit, 250)}</div>
+      <div class="mcard"><h4>スポット別 平均滞在時間（仮置き）</h4>${svgHBars(dwell.map(d=>[d[0],d[1],d[2]]), 250)}
+      <div class="insight">総務省の姫路市中心市街地GPS分析（約27万ID）では<b>来街1回の滞在が30分程度</b>の層が厚い。城で2.5時間過ごした後、まちなかは「通過」になりがち。</div></div></div>
+      <div class="mcard"><h4>時間帯別 滞留分布（シミュレーション）${src('城内 / 市内回遊先 / 移動中')}</h4>${svgDayCurve()}</div>`;
   } else if(boardTab==='back'){
-    const lodging = [['日帰り（宿泊なし）',1-sc.stay-0.08],['姫路市内 宿泊',sc.stay],['神戸・大阪・京都 宿泊',0.08]];
-    body = `<div class="mcard"><h4>出発地 → 滞留 → 帰路（サンキー）<span>${segFilter==='all'?'全体':SEG[segFilter].name}</span></h4>${svgSankey()}
-      <div class="insight">インバウンドは<b>大阪・京都の宿泊拠点へ戻る</b>か<b>広島へ西進</b>する「通過型」が主流。国内（県外）は大阪・神戸への帰路が3割、首都圏帰りが1.5割。<b>姫路市内宿泊は約1割</b>で、ここが観光消費の最大の伸びしろ。</div></div>
-      <div class="mgrid"><div class="mcard"><h4>宿泊 / 日帰り</h4>${svgStacked('宿泊形態', [['日帰り',lodging[0][1],CC.sub],['姫路泊',lodging[1][1],'#35d0c0'],['周辺泊',lodging[2][1],CC.dom]], 250)}
-      <div class="insight">宿泊転換率 ${(sc.stay*100).toFixed(0)}% → 1pt改善で <b>年間 約${fmt(sc.castle*365*0.01*0.6/1000)}千泊</b>（入城者×稼働日換算・ダミー）。</div></div>
-      <div class="mcard"><h4>帰路 上位（全体）</h4>${svgHBars(Object.entries(SEG_KEYS.reduce((acc,seg)=>{ DEST[seg].forEach(d=>{ const k=d[1].replace(/へ.*$/,''); acc[k]=(acc[k]||0)+d[2]*sc.mix[seg]; }); return acc; },{})).sort((a,b)=>b[1]-a[1]).slice(0,7), 250, ()=>CC.sub)}</div></div>`;
+    const lodge = [['日本人', [['日帰り',37.1],['市内宿泊',30.5],['市外宿泊',32.4]]],['外国人', [['日帰り（拠点へ戻る）',0],['市内宿泊',13.9],['市外宿泊',86.1]]]];
+    const after = [['大阪府',44.6,53.9],['岡山県',20.3,9.5],['京都府',11.7,24.7],['東京都',8.2,23.0],['広島県',7.1,17.1],['香川県',6.4,0.5],['福岡県',2.0,3.3]];
+    body = `<div class="mcard"><h4>出発地 → 滞留 → 帰路（サンキー）${src(segFilter==='all'?'全体':SEG[segFilter].name)}</h4>${svgSankey()}
+      <div class="insight">インバウンドは<b>大阪・京都の宿泊拠点へ戻る</b>か東京・広島へ抜ける「通過型」。日本人も帰路は<b>大阪45%・岡山20%</b>。姫路で夜を過ごすのは日本人3割・外国人14%。</div></div>
+      <div class="mgrid"><div class="mcard"><h4>宿泊形態${src('観光動向調査 姫路城地点')}</h4>${svgStackedH(lodge, 250, [CC.sub,'#35d0c0',CC.dom])}
+      <div class="insight">市内宿泊率 日本人30.5%（宿泊62.9%×市内48.5%）・外国人13.9%。<b>外国人の市内宿泊+5pt</b>＝年間約2.7万泊、宿泊費 ¥3,920→上振れ余地。</div></div>
+      <div class="mcard"><h4>姫路の「後」に訪れる都道府県${src('観光動向調査・複数回答')}</h4>${svgPairBars(after, 250)}
+      <div class="insight">大阪→姫路→岡山/広島の<b>東西通過軸</b>が主流。帰路先（大阪・岡山）と組む周遊券・時間指定枠が、滞在時間を延ばす打ち手。</div></div></div>`;
+  } else if(boardTab==='spend'){
+    const rows = SEG_KEYS.map(k=>[SEG[k].name, [['宿泊',SPEND[k].stay],['飲食',SPEND[k].food],['土産',SPEND[k].gift],['入場料',SPEND[k].fee]]]);
+    const annualVisitors = ANNUAL_2025.total*CITY_FACTOR;
+    const mixY = {in:ANNUAL_2025.foreign/ANNUAL_2025.total, dom:(1-ANNUAL_2025.foreign/ANNUAL_2025.total)*0.85, loc:(1-ANNUAL_2025.foreign/ANNUAL_2025.total)*0.15};
+    const annualSpend = SEG_KEYS.reduce((a,k)=> a + annualVisitors*mixY[k]*spendPer(k), 0);
+    const feeOld = ANNUAL_2025.total*0.92*1000, feeNew = ANNUAL_2025.total*(0.85*FEE.out+0.07*FEE.resident);
+    body = `<div class="mcard"><h4>1人あたり 市内消費（円・平均）${src('観光動向調査 姫路城地点：宿泊費・飲食費・土産代・入場料')}</h4>${svgStackedH(rows, 520, ['#35d0c0',CC.gold,CC.loc,CC.sub])}
+      <div class="insight">市内消費は日本人 約¥13,600・外国人 約¥13,900で<b>ほぼ同額</b>。一方、全行程の消費は日本人 ¥36,562 に対し外国人 <b>¥203,965</b>（交通費 ¥190,000）。財布はあるのに<b>姫路で使う場面が無い</b>＝滞在・宿泊の設計課題。</div></div>
+      <div class="mgrid"><div class="mcard"><h4>年間 市内消費 試算</h4><div class="kpi-grid">${kpi('約'+fmt(annualSpend/1e8)+'<small> 億円</small>','入城者157万人×1.35×市内消費単価',true)}${kpi('¥'+fmt(spendPer('in'))+'<small> /人</small>','外国人 市内消費（現状）')}${kpi('+'+(0.05*ANNUAL_2025.foreign*15000/1e8).toFixed(1)+'<small> 億円/年</small>','外国人 市内宿泊+5pt の宿泊消費増（¥15,000/泊）')}${kpi('+'+(ANNUAL_2025.total*0.4*2500/1e8).toFixed(1)+'<small> 億円/年</small>','回遊+1スポット（40%が¥2,500追加消費）')}</div></div>
+      <div class="mcard"><h4>入城料改定（2026年3月1日〜）</h4><div class="legend">
+        <div class="li"><div class="sw" style="background:var(--gold)"></div>一般 ¥2,500（団体 ¥2,000）　<div class="sw" style="background:#8f9cc0"></div>市民 ¥1,000（団体 ¥800）</div>
+        <div class="li"><div class="sw" style="background:#35d0c0"></div>18歳未満 無料　<div class="sw" style="background:#b56ce8"></div>好古園共通券 ¥2,600・年間券 ¥5,000</div></div>
+        <div class="kpi-grid" style="margin-top:8px">${kpi('約'+fmt(feeOld/1e8)+'<small> 億円</small>','改定前 入城料収入（¥1,000×157万人 試算）')}${kpi('約'+fmt(feeNew/1e8)+'<small> 億円</small>','改定後 試算（市外85%・市民7%・無料8%）',true)}</div>
+        <div class="insight">デジタルチケット（日時指定）が同時に始まり、<b>入城者の「いつ・誰が（市民/市外）」が券売データとして取れる</b>。来訪者DBのPhase 1はこの券売データが軸。</div></div></div>`;
+  } else if(boardTab==='when'){
+    const W=520,H=190,L=34,R=10,T=16,B=26,iw=W-L-R,ih=H-T-B; const bw=iw/12-6; const mx=Math.max(...MONTHLY_2025.map(m=>m[1]));
+    const bars=MONTHLY_2025.map((m,i)=>{ const h=m[1]/mx*ih, hin=m[2]/mx*ih; const x=L+i*(iw/12)+3;
+      return `<rect x="${x.toFixed(1)}" y="${(T+ih-h).toFixed(1)}" width="${bw.toFixed(1)}" height="${(h-hin).toFixed(1)}" rx="2" fill="${CC.dom}" opacity=".85"/><rect x="${x.toFixed(1)}" y="${(T+ih-hin).toFixed(1)}" width="${bw.toFixed(1)}" height="${hin.toFixed(1)}" rx="2" fill="${CC.in}"/><text x="${(x+bw/2).toFixed(1)}" y="${T+ih-h-3}" font-size="8" fill="${CC.txt}" text-anchor="middle" font-family="Oswald">${(m[1]/1000).toFixed(0)}k</text><text x="${(x+bw/2).toFixed(1)}" y="${H-10}" font-size="9" fill="${CC.sub}" text-anchor="middle">${m[0]}</text>`; }).join('');
+    body = `<div class="mcard"><h4>月別 入城者数（2025年度 実績）× 外国人${src('姫路市')}</h4><svg class="ch" viewBox="0 0 ${W} ${H}" role="img"><line x1="${L}" y1="${T+ih}" x2="${W-R}" y2="${T+ih}" stroke="${CC.line}"/>${bars}<text x="${L}" y="${T-5}" font-size="9.5" fill="${CC.dom}">■ 日本人</text><text x="${L+50}" y="${T-5}" font-size="9.5" fill="${CC.in}">■ 外国人</text></svg>
+      <div class="insight"><b>4月（桜）20.0万人・11月（紅葉）17.9万人の二山</b>、最少は1月8.7万人（2.3倍差）。外国人比率は7月46%・4月42%が高く、11月28%・2月30%が低い＝<b>紅葉は国内、夏は海外</b>。桜・GWは大天守上限15,000人/日に到達し待ち2〜3時間。</div></div>
+      <div class="mcard"><h4>1日の流れ（シミュレーション）${src(sc.name)}</h4>${svgDayCurve()}
+      <div class="insight">到着ピーク（9〜11時）と帰路ピーク（16〜18時）の間に正午前後の城内滞留ピーク。<b>大天守1,000人/時の律速</b>に同期して待ちが発生。日時指定チケットの枠配分で山を崩せる。</div></div>
+      <div class="mcard"><h4>年間ボリューム</h4><div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr))">${kpi('1,567,674<small> 人</small>','2025年度 入城者（実績）',true)}${kpi('34.9<small> %</small>','外国人比率（547,426人）')}${kpi('923<small> 万人</small>','姫路市 総入込客数（令和6年度）')}${kpi('271<small> 万人</small>','姫路城周辺ゾーン 入込（観光施設の56%）')}${kpi('125<small> 万人泊</small>','市内 延べ宿泊者数（令和5年度）')}${kpi('9.2<small> 万人/日</small>','JR姫路駅 乗降客数')}</div></div>`;
   } else {
-    const months=[['1月',0.55],['2月',0.6],['3月',0.9],['4月',1.0],['5月',0.95],['6月',0.55],['7月',0.5],['8月',0.7],['9月',0.6],['10月',0.8],['11月',0.95],['12月',0.55]];
-    const inMonths=[0.30,0.34,0.36,0.32,0.22,0.30,0.28,0.24,0.30,0.34,0.36,0.30];
-    const W=520,H=170,L=30,R=10,T=14,B=26,iw=W-L-R,ih=H-T-B; const bw=iw/12-6;
-    const bars=months.map((m,i)=>{ const h=m[1]*ih; const x=L+i*(iw/12)+3; const hin=h*inMonths[i]; return `<rect x="${x.toFixed(1)}" y="${(T+ih-h).toFixed(1)}" width="${bw.toFixed(1)}" height="${(h-hin).toFixed(1)}" rx="2" fill="${CC.dom}" opacity=".8"/><rect x="${x.toFixed(1)}" y="${(T+ih-hin).toFixed(1)}" width="${bw.toFixed(1)}" height="${hin.toFixed(1)}" rx="2" fill="${CC.in}"/><text x="${(x+bw/2).toFixed(1)}" y="${H-10}" font-size="9" fill="${CC.sub}" text-anchor="middle">${m[0]}</text>`; }).join('');
-    body = `<div class="mcard"><h4>月別 入城者数（相対）× インバウンド比率<span>姫路城 入城券データ想定</span></h4><svg class="ch" viewBox="0 0 ${W} ${H}" role="img"><line x1="${L}" y1="${T+ih}" x2="${W-R}" y2="${T+ih}" stroke="${CC.line}"/>${bars}<text x="${L}" y="${T-3}" font-size="9.5" fill="${CC.dom}">■ 国内</text><text x="${L+50}" y="${T-3}" font-size="9.5" fill="${CC.in}">■ インバウンド</text></svg>
-      <div class="insight"><b>4月（桜）・11月（紅葉）に二山</b>。夏はインバウンド比率が相対的に下がる（国内の家族連れ）。ライトアップ・夜間開城は「夜の滞留」を作り宿泊転換に効く。</div></div>
-      <div class="mcard"><h4>1日の流れ<span>${sc.name}</span></h4>${svgDayCurve()}
-      <div class="insight">到着ピーク（9〜11時）と帰路ピーク（16〜18時）の間に<b>正午前後の城内滞留ピーク</b>。大天守の待ち時間はこの山に同期して発生する。</div></div>
-      <div class="mcard"><h4>年間ボリューム感（ダミー）</h4><div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(110px,1fr))">${kpi('約160<small> 万人</small>','年間入城者（想定）',true)}${kpi('約30<small> %</small>','インバウンド比率')}${kpi('約215<small> 万人</small>','市内来訪者（×1.35）')}${kpi('¥'+fmt(1600000*0.85*FEE.out/1e8)+'<small> 億</small>','入城料 収入試算（市外¥2,500）')}</div></div>`;
+    body = `<div class="mcard"><h4>公表統計（本ダッシュボードの仮置き値の根拠）</h4><div class="legend" style="gap:7px">${SOURCES.map(s=>`<div class="li" style="align-items:flex-start"><div class="sw" style="background:var(--gold);margin-top:3px"></div><div><a href="${s[1]}" target="_blank" rel="noopener" style="color:var(--txt);text-decoration:underline dotted">${s[0]}</a></div></div>`).join('')}</div></div>
+      <div class="mcard"><h4>数値の扱い（提案書での注記案）</h4><div class="hint" style="font-size:11px">
+        ・入城者数・外国人比率・月別・入城料・入城制限は<b>公表実績値</b>。<br>
+        ・居住地・交通手段・宿泊形態・帰路・消費額は<b>令和6年度 観光動向調査（姫路城地点 日本人488人／外国人359人・年4回の対面アンケート）</b>の構成比を、シナリオ別の来訪者数に掛けた<b>換算値</b>。<br>
+        ・回遊先の立寄率・滞在時間・時間帯分布・ゾーン別混雑・待ち時間は<b>仮置き（シミュレーション）</b>で、来訪者DB（券売データ＋携帯位置情報）の接続で実測値に置換する対象。<br>
+        ・1ドット＝8人。県内・近隣は周辺市町の日帰りを加味して国内の15%で仮置き（調査値は14%）。</div></div>`;
   }
-  return `<div class="bd-head"><h2>📊 分析ボード<small>来訪者DB アウトプットイメージ — 数値はダミー（携帯位置情報・決済・入城券・宿泊データ接続で実測化）</small></h2><button class="bd-x" id="bd-close">✕ 閉じる</button></div>
+  return `<div class="bd-head"><h2>📊 分析ボード<small>来訪者DB アウトプットイメージ — 公表統計ベースの換算値＋仮置き（出典タブ参照）</small></h2><button class="bd-x" id="bd-close">✕ 閉じる</button></div>
     <div class="bd-tabs">${tabs.map(t=>`<button class="chip ${boardTab===t[0]?'active':''}" data-bt="${t[0]}">${t[1]}</button>`).join('')}</div>${body}`;
 }
 function renderBoard(){
@@ -515,7 +649,7 @@ function renderBoard(){
 function setBoard(on){
   boardOn = on; board.style.display = on ? 'block' : 'none';
   document.getElementById('board-toggle').classList.toggle('active', on);
-  if(on){ dbOn=false; document.getElementById('db-toggle').classList.remove('active'); renderBoard(); }
+  if(on){ dbOn=false; propOn=false; document.getElementById('db-toggle').classList.remove('active'); document.getElementById('prop-toggle').classList.remove('active'); renderBoard(); }
 }
 document.getElementById('board-toggle').onclick = ()=> setBoard(!boardOn);
 
@@ -562,10 +696,56 @@ function dbHTML(){
 function setDB(on){
   dbOn = on;
   document.getElementById('db-toggle').classList.toggle('active', on);
-  if(on){ boardOn=false; document.getElementById('board-toggle').classList.remove('active'); board.innerHTML = dbHTML(); board.style.display='block'; document.getElementById('bd-close').onclick=()=>setDB(false); }
+  if(on){ boardOn=false; propOn=false; document.getElementById('board-toggle').classList.remove('active'); document.getElementById('prop-toggle').classList.remove('active'); board.innerHTML = dbHTML(); board.style.display='block'; document.getElementById('bd-close').onclick=()=>setDB(false); }
   else board.style.display='none';
 }
 document.getElementById('db-toggle').onclick = ()=> setDB(!dbOn);
+/* ================= 📝 提案骨子（世界遺産 姫路城 × 姫路市 来訪者DB） ================= */
+let propOn=false;
+function propHTML(){
+  const step = (n, t, body)=> `<div class="step"><div class="sn">${n}</div><div><b>${t}</b><div>${body}</div></div></div>`;
+  return `<div class="bd-head"><h2>📝 提案骨子<small>世界遺産 姫路城 × 姫路市 来訪者DB — 「誰が・どこから・どこに滞留し・どこへ帰ったか」を日次で見える化する</small></h2><button class="bd-x" id="bd-close">✕ 閉じる</button></div>
+  <div class="mcard"><h4>① 現状と課題<span>公表統計から読み取れること</span></h4>
+    <div class="kpi-grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr))">${kpi('157<small> 万人</small>','2025年度 入城者（過去最多圏）',true)}${kpi('35<small> %</small>','外国人比率（54.7万人）')}${kpi('30% / 14%','市内宿泊率（日本人 / 外国人）')}${kpi('大阪45%・岡山20%','日本人の「次の訪問先」')}${kpi('15,000<small> 人/日</small>','大天守 入城上限（桜・GWに到達）')}${kpi('年4回','現状の実測（対面アンケート 約850人）')}</div>
+    <div class="insight" style="margin-top:10px">来訪者は増え、構成は季節で大きく変わる（4月は外国人42%、11月は28%）。しかし「姫路城→大阪／岡山へ抜ける通過型」で、<b>まちなかの滞在は30分程度、宿泊は2〜3割</b>。判断材料は年4回のアンケートと年次集計に留まり、<b>日次・時間帯・回遊・帰路を継続的に測る仕組みがない</b>。2026年3月に入城料が¥2,500（市民¥1,000）へ改定され、日時指定デジタルチケットも始まった今が、データ基盤を作る好機。</div></div>
+  <div class="mcard"><h4>② 提案<span>姫路城〜姫路市全体の「来訪者DB」と 3層ダッシュボード</span></h4>
+    <div class="flowmap">
+      <div class="st"><b>L0 広域流入</b>路線・高速道路・航路・空港ごとの流入量と経由都市。誰が・どこから・どのルートで</div><div class="ar">→</div>
+      <div class="st"><b>L1 市内回遊・滞留</b>500mメッシュ×時間帯の滞留、回遊先の立寄率、滞在時間、帰路先</div><div class="ar">→</div>
+      <div class="st"><b>L2 姫路城</b>ゾーン別混雑、大天守の待ち時間、入城制限・時間指定枠の稼働</div><div class="ar">→</div>
+      <div class="st"><b>分析ボード</b>構成・消費・季節・帰路のチャートと、提案書へそのまま貼れる図表</div></div>
+    <div class="insight" style="margin-top:10px">核となるデータは2つ。<b>入城券（デジタルチケット）の券売・入場ログ</b>で「いつ・誰が（市民/市外・団体）・何人」を正確に、<b>携帯位置情報（GPS非集計OD）</b>で「どこから来て・どこに滞留し・どこへ帰ったか」を面的に。総務省の令和6年3月調査で姫路市中心市街地のGPSデータ（約27万ID）を購入・分析した先例があり、<b>技術的にも調達面でも実現性が確認されている</b>。</div></div>
+  <div class="mcard"><h4>③ 実測化ロードマップ<span>提案 2026年10月 → 2028年度 運用定着</span></h4>
+    <div class="roadmap">
+      ${step('Phase 0','提案・要件定義（2026年10月〜12月）','本ダッシュボードで完成イメージを合意。データ提供元（券売システム・位置情報事業者・宿泊統計）と粒度・匿名加工の方針を確定')}
+      ${step('Phase 1','骨格の実測化（2027年1月〜6月）','券売データ＋GPS位置情報で L0〜L2 を実測値に置換。桜（4月）・GW の混雑をリアルデータで可視化し、時間指定枠の配分に反映')}
+      ${step('Phase 2','消費・宿泊の接続（2027年7月〜2028年3月）','決済（国籍別）・宿泊（PMS/OTA）・Wi-Fi/カメラを追加。市内宿泊転換率・回遊+1スポット・消費額を KPI 化。周遊券・夜間観光の効果測定')}
+      ${step('Phase 3','予測・運用（2028年度〜）','混雑予測と現場アラート、券売枠の動的配分、帰路先（大阪・岡山）と連携した周遊施策の効果検証。市・DMO・事業者で共有する月次レポート')}
+    </div></div>
+  <div class="mcard"><h4>④ 施策への接続とKPI<span>現状値（公表統計）→ 目標（仮置き）</span></h4>
+    <div class="tbl-wrap"><table class="db"><thead><tr><th>施策</th><th>DBで測るもの</th><th>現状（出典）</th><th>目標（案）</th></tr></thead><tbody>
+      <tr><td>時間指定枠の配分・混雑分散</td><td>大天守 待ち時間、時間帯別入城、ゾーン混雑</td><td>桜・GW 待ち2〜3時間（公式FAQ）</td><td>最大待ち 60分以下</td></tr>
+      <tr><td>市内宿泊への転換（夜間開城・ライトアップ・周遊券）</td><td>宿泊地・宿泊日数・夜間滞留</td><td>日本人30.5%・外国人13.9%（観光動向調査）</td><td>外国人 +5pt（年 約2.7万泊）</td></tr>
+      <tr><td>回遊 +1スポット（好古園・西の丸・商店街・書写山）</td><td>立寄率・滞在時間・回遊経路</td><td>外国人「城以外の施設」42%、まちなか滞在30分（総務省）</td><td>55%・+45分</td></tr>
+      <tr><td>入城料改定の効果検証</td><td>市民/市外別 入城数・収入・満足度</td><td>¥2,500/¥1,000（2026年3月〜）</td><td>収入 約+20億円/年 の実測</td></tr>
+      <tr><td>帰路先との周遊連携（大阪・岡山・広島）</td><td>前後訪問地・交通手段・OD</td><td>帰路 大阪45%・岡山20%（日本人）</td><td>姫路発の周遊商品 送客数</td></tr>
+    </tbody></table></div></div>
+  <div class="mcard"><h4>⑤ 体制・留意点</h4><div class="hint" style="font-size:11px">
+    ・<b>個人情報</b>: 位置情報は事業者側で匿名加工済みの非集計OD／メッシュ集計を利用。券売データは統計目的の集計値に限定。<br>
+    ・<b>データ費用</b>: 位置情報データは対象期間・粒度で価格が決まる（総務省事例は約2年半分を一括購入）。Phase 1 は桜〜GW を含む半年分から開始。<br>
+    ・<b>推進体制</b>: 姫路市（観光・姫路城管理）× 姫路観光コンベンションビューロー（DMO）× 券売システム事業者 × 分析・可視化（XBUILD）。<br>
+    ・<b>横展開</b>: 同じスキーマで書写山・セントラルパーク・灘のけんか祭りなど市内全域へ拡張可能。</div></div>
+  <div class="mcard"><h4>出典</h4><div class="legend" style="gap:5px">${SOURCES.map(s=>`<div class="li" style="align-items:flex-start"><div class="sw" style="background:var(--gold);margin-top:3px"></div><a href="${s[1]}" target="_blank" rel="noopener" style="color:var(--sub);text-decoration:underline dotted">${s[0]}</a></div>`).join('')}</div></div>`;
+}
+function setProp(on){
+  propOn = on;
+  document.getElementById('prop-toggle').classList.toggle('active', on);
+  if(on){ boardOn=false; dbOn=false; document.getElementById('board-toggle').classList.remove('active'); document.getElementById('db-toggle').classList.remove('active');
+    board.innerHTML = propHTML(); board.style.display='block'; document.getElementById('bd-close').onclick=()=>setProp(false); }
+  else board.style.display='none';
+}
+document.getElementById('prop-toggle').onclick = ()=> setProp(!propOn);
+
 
 /* ================= インタラクション（ホバー / クリック / キー） ================= */
 const tip = document.getElementById('tip');
@@ -610,7 +790,7 @@ addEventListener('pointerup', e=>{
   }
 });
 addEventListener('keydown', e=>{
-  if(e.key==='Escape'){ if(boardOn) setBoard(false); else if(dbOn) setDB(false); else if(level==='castle') setLevel('city'); }
+  if(e.key==='Escape'){ if(boardOn) setBoard(false); else if(dbOn) setDB(false); else if(propOn) setProp(false); else if(level==='castle') setLevel('city'); }
   if(e.key===' ' && e.target===document.body){ e.preventDefault(); playBtn.click(); }
 });
 
@@ -651,8 +831,8 @@ function loop(now){
 /* 初期化 */
 applyLayers();
 setLevel('wide', false);
-ctrl.target.set(0,0,600); ctrl.sph.set(26000, 0.6, -0.35); ctrl.apply();
-flyTo(new THREE.Vector3(0, 0, 600), 17500, 0.72, -0.35, 2200);
+ctrl.target.set(1800,0,900); ctrl.sph.set(38000, 0.5, -0.3); ctrl.apply();
+flyTo(new THREE.Vector3(1800, 0, 900), 33000, 0.5, -0.3, 2200);
 /* 初期状態: 10:30まで進めて「到着ピーク」の姿で開く */
 (function warmup(){ let g=0; while(timeState.min < 270 && g++<400){ timeState.min += 2; updateAgents(2); } syncClock(); })();
 renderPanel();
