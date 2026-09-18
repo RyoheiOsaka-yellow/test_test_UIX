@@ -79,26 +79,52 @@ function moveGrab(x, y){
   if(grab.pt){ const q = groundAt(x, y, grab.y); if(q) grab.pt = q; }
   ctrl.px = x; ctrl.py = y;
 }
-function endGrab(){ grab.on = false; grab.pt = null; ctrl.panning = false; ctrl.rotating = false; el.style.cursor = 'grab'; }
+function endGrab(){ grab.on = false; grab.pt = null; ctrl.panning = false; ctrl.rotating = false; el.style.cursor = dragMode==='rotate' ? 'move' : 'grab'; }
 el.addEventListener('contextmenu', e=>e.preventDefault());
+/* 左ボタン: すぐ動かせば「掴んで移動」、動かさず長押し（0.38秒）してからドラッグすると「回転」。
+   判定は入力イベントの timeStamp（OSの発生時刻）で行うため、描画が重くイベントが遅れても誤判定しない */
+const HOLD_MS = 380, HOLD_MOVE = 5;
+const hold = { timer:null, x:0, y:0, downT:0, decided:true };
+const rotcue = document.getElementById('rotcue');
+function showCue(x, y){ if(!rotcue) return; rotcue.style.left = x+'px'; rotcue.style.top = y+'px'; rotcue.classList.add('on'); }
+function hideCue(){ if(rotcue) rotcue.classList.remove('on'); }
+function beginRotate(x, y){ endGrab(); ctrl.rotating = true; ctrl.px = x; ctrl.py = y; el.style.cursor = 'move'; }
+function armHold(x, y, t){
+  clearTimeout(hold.timer); hold.x = x; hold.y = y; hold.downT = t; hold.decided = false;
+  hold.timer = setTimeout(()=>{ if(!hold.decided) showCue(hold.x, hold.y); }, HOLD_MS);   // 手掛かり表示のみ（確定はドラッグ開始時）
+}
+function disarmHold(){ hold.decided = true; clearTimeout(hold.timer); }
+/* ドラッグ開始時に「移動 / 回転」を確定 */
+function decideHold(x, y, t){
+  if(hold.decided) return;
+  if(Math.hypot(x-hold.x, y-hold.y) <= HOLD_MOVE) return;
+  hold.decided = true; clearTimeout(hold.timer);
+  if(t - hold.downT >= HOLD_MS){ beginRotate(hold.x, hold.y); showCue(x, y); }
+  else hideCue();
+}
 el.addEventListener('mousedown', e=>{
   if(!ctrl.enabled) return;
   if(tween) tween = null;   // 掴んだらカメラ遷移を中断
-  if(e.button===2 || (e.button===0 && (dragMode==='rotate' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey))){ ctrl.rotating = true; ctrl.px = e.clientX; ctrl.py = e.clientY; el.style.cursor = 'move'; }
-  else if(e.button===0){ startGrab(e.clientX, e.clientY); }
+  if(e.button===2 || e.button===1 || (e.button===0 && (dragMode==='rotate' || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey))){ e.preventDefault(); beginRotate(e.clientX, e.clientY); }
+  else if(e.button===0){ startGrab(e.clientX, e.clientY); armHold(e.clientX, e.clientY, e.timeStamp); }
 });
-addEventListener('mouseup', ()=>{ endGrab(); });
+addEventListener('mouseup', ()=>{ disarmHold(); hideCue(); endGrab(); });
 addEventListener('mousemove', e=>{
   if(!ctrl.enabled) return;
+  if(!hold.decided) decideHold(e.clientX, e.clientY, e.timeStamp);
   if(ctrl.rotating){
     const dx = e.clientX-ctrl.px, dy = e.clientY-ctrl.py;
     ctrl.sph.theta -= dx*0.0048; ctrl.sph.phi -= dy*0.0042; ctrl.apply();
     ctrl.px=e.clientX; ctrl.py=e.clientY;
+    if(rotcue && rotcue.classList.contains('on')){ rotcue.style.left = e.clientX+'px'; rotcue.style.top = e.clientY+'px'; }
   } else if(grab.on){ moveGrab(e.clientX, e.clientY); }
 });
 el.addEventListener('wheel', e=>{
   if(!ctrl.enabled) return;
   e.preventDefault();
+  if(tween) tween = null;
+  /* 横スクロール（トラックパッドの2本指 横）＝ 回転 */
+  if(Math.abs(e.deltaX) > Math.abs(e.deltaY)*1.2){ ctrl.sph.theta -= e.deltaX*0.0035; ctrl.apply(); return; }
   /* カーソル位置を中心にズーム（地面上の点が動かないよう補正） */
   const before = groundAt(e.clientX, e.clientY, ctrl.target.y);
   ctrl.sph.radius *= (1 + Math.sign(e.deltaY)*0.09);
@@ -110,15 +136,16 @@ el.addEventListener('wheel', e=>{
 let touchD = 0, touchA = 0, touchMid = null;
 el.addEventListener('touchstart', e=>{
   if(tween) tween = null;
-  if(e.touches.length===1){ if(dragMode==='rotate'){ ctrl.rotating = true; ctrl.px=e.touches[0].clientX; ctrl.py=e.touches[0].clientY; } else startGrab(e.touches[0].clientX, e.touches[0].clientY); }
+  if(e.touches.length===1){ if(dragMode==='rotate'){ beginRotate(e.touches[0].clientX, e.touches[0].clientY); } else { startGrab(e.touches[0].clientX, e.touches[0].clientY); armHold(e.touches[0].clientX, e.touches[0].clientY, e.timeStamp); } }
   if(e.touches.length===2){
-    endGrab();
+    disarmHold(); hideCue(); endGrab();
     const t0=e.touches[0], t1=e.touches[1];
     touchD = Math.hypot(t0.clientX-t1.clientX, t0.clientY-t1.clientY); touchA = Math.atan2(t1.clientY-t0.clientY, t1.clientX-t0.clientX);
     touchMid = {x:(t0.clientX+t1.clientX)/2, y:(t0.clientY+t1.clientY)/2};
   }
 }, {passive:true});
 el.addEventListener('touchmove', e=>{
+  if(e.touches.length===1 && !hold.decided) decideHold(e.touches[0].clientX, e.touches[0].clientY, e.timeStamp);
   if(e.touches.length===1 && ctrl.rotating){ const dx=e.touches[0].clientX-ctrl.px, dy=e.touches[0].clientY-ctrl.py; ctrl.sph.theta -= dx*0.0048; ctrl.sph.phi -= dy*0.0042; ctrl.apply(); ctrl.px=e.touches[0].clientX; ctrl.py=e.touches[0].clientY; }
   else if(e.touches.length===1 && grab.on){ moveGrab(e.touches[0].clientX, e.touches[0].clientY); }
   else if(e.touches.length===2){
@@ -132,7 +159,7 @@ el.addEventListener('touchmove', e=>{
     touchD = d; touchA = a; touchMid = mid;
   }
 }, {passive:true});
-el.addEventListener('touchend', ()=>{ endGrab(); touchD=0; touchMid=null; }, {passive:true});
+el.addEventListener('touchend', ()=>{ disarmHold(); hideCue(); endGrab(); touchD=0; touchMid=null; }, {passive:true});
 
 /* カメラ遷移トゥイーン */
 let tween = null;

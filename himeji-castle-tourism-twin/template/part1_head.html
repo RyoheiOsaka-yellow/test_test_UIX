@@ -133,6 +133,12 @@ canvas{display:block}
   color:var(--sub);cursor:pointer;font-size:11px;flex-shrink:0}
 #tl-fold:hover{color:var(--brex);border-color:var(--brex)}
 
+/* 長押し回転のカーソル手掛かり */
+#rotcue{position:fixed;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;border:2px solid rgba(255,138,30,.9);
+  box-shadow:0 0 0 4px rgba(255,138,30,.15);pointer-events:none;z-index:45;display:none;transform:scale(.6);opacity:0;
+  transition:transform .18s ease,opacity .18s ease}
+#rotcue.on{display:block;transform:scale(1);opacity:1}
+#rotcue::after{content:'⟳';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#ff8a1e;font-size:20px;font-weight:700}
 /* tooltip + toast */
 #tip{position:fixed;pointer-events:none;background:rgba(11,14,20,.95);border:1px solid var(--brex);border-radius:8px;
   padding:7px 11px;font-size:11px;z-index:40;display:none;max-width:250px;line-height:1.5}
@@ -199,22 +205,6 @@ table.db a{color:inherit}
 .pill.ok{background:rgba(61,220,132,.15);color:var(--ok)}.pill.mid{background:rgba(255,209,102,.15);color:var(--gold)}.pill.hi{background:rgba(255,107,94,.18);color:var(--warn)}
 
 
-/* ===== 3Dナビゲーション（右下） ===== */
-#nav{position:fixed;right:12px;bottom:14px;z-index:26;display:flex;flex-direction:column;align-items:center;gap:6px;
-  background:rgba(20,24,33,.94);border:1px solid var(--line);border-radius:14px;padding:10px 8px;backdrop-filter:blur(8px);
-  padding-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
-#nav .nv-row{display:flex;gap:5px;align-items:center}
-#nav button{border:1px solid var(--line);background:var(--panel2);color:var(--txt);border-radius:8px;cursor:pointer;font-family:var(--jp);font-size:11px;padding:5px 8px;line-height:1}
-#nav button:hover{border-color:var(--brex);color:var(--brex)}
-#nav button.active{border-color:var(--brex);color:var(--brex);background:rgba(255,138,30,.12)}
-#nav .nv-sq{width:30px;height:30px;padding:0;font-size:15px;font-family:var(--mono)}
-#compass{width:74px;height:74px;cursor:grab;user-select:none;touch-action:none}
-#compass:active{cursor:grabbing}
-#tilt{writing-mode:vertical-lr;direction:rtl;height:74px;width:18px;-webkit-appearance:none;appearance:none;background:transparent;margin:0}
-#tilt::-webkit-slider-runnable-track{width:4px;background:var(--line);border-radius:2px}
-#tilt::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--brex);border:2px solid #0b0e14;margin-left:-5px}
-#nav .nv-lbl{font-size:9px;color:var(--sub);letter-spacing:.08em;text-align:center;line-height:1.3}
-@media (max-width:760px){#nav{right:8px;bottom:120px;transform:scale(.9);transform-origin:bottom right}}
 @media (max-width:760px){#panel{width:min(270px,calc(100vw - 24px))}#hdr .hdr-title{font-size:11px}}
 </style>
 </head>
@@ -252,32 +242,7 @@ table.db a{color:inherit}
   <div id="tl-marks"><span>06:00</span><span>09:00 到着ピーク</span><span>12:00 城内滞留</span><span>15:00 市内回遊</span><span>18:00 帰路ピーク</span><span>21:00 夜間</span><span>24:00</span></div>
 </div>
 
-<div id="nav" aria-label="3Dナビゲーション">
-  <div class="nv-row">
-    <button class="nv-sq" id="nv-mode-pan" class="active" title="左ドラッグ: 地図を掴んで移動">✋</button>
-    <button class="nv-sq" id="nv-mode-rot" title="左ドラッグ: 回転（右ドラッグ・Shift+ドラッグでも回転）">⟳</button>
-    <button class="nv-sq" id="nv-orbit" title="自動で周回（プレゼン用）">▶</button>
-  </div>
-  <div class="nv-row">
-    <svg id="compass" viewBox="0 0 74 74" title="ドラッグで回転 / クリックで北を上に">
-      <circle cx="37" cy="37" r="33" fill="#1b2030" stroke="#2a3145"/>
-      <g id="compass-rot">
-        <polygon points="37,8 43,37 37,33 31,37" fill="#ff8a1e"/>
-        <polygon points="37,66 43,37 37,41 31,37" fill="#5c6478"/>
-        <text x="37" y="21" font-size="9" fill="#e8eaf2" text-anchor="middle" font-family="Oswald" font-weight="600">N</text>
-      </g>
-      <circle cx="37" cy="37" r="3" fill="#8b93a8"/>
-    </svg>
-    <input type="range" id="tilt" min="6" max="83" value="30" orient="vertical" aria-label="見下ろし角" title="見下ろし角（上: 真上 / 下: 水平）">
-  </div>
-  <div class="nv-row">
-    <button class="nv-sq" id="nv-zin" title="ズームイン">＋</button>
-    <button class="nv-sq" id="nv-zout" title="ズームアウト">－</button>
-    <button class="nv-sq" id="nv-top" title="真上から（2D）">⊡</button>
-    <button class="nv-sq" id="nv-home" title="この階層の標準視点に戻す">⌂</button>
-  </div>
-  <div class="nv-lbl">回転: 右ドラッグ / Shift+ドラッグ / ←→<br>傾き: ↑↓　ズーム: ホイール・+−</div>
-</div>
+<div id="rotcue"></div>
 <div id="tip"></div>
 <div id="toast"></div>
 <div id="enter-hint">🏯 姫路城をクリックして城内へ</div>

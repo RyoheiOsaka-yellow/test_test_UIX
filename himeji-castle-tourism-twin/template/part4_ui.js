@@ -431,7 +431,7 @@ function renderPanel(){
       <div class="sec"><div class="sec-t">動線（路線・高速道路・航路・空港）— 流入シェア（クリックで視点）</div><div class="mode-list">${corridorRows()}</div></div>
       <div class="sec"><div class="sec-t">凡例 — 線種＝交通モード、帯の色＝セグメント</div>${modeLegend()}</div>
       <div class="sec"><div class="sec-t">到着ゲート（市内側）</div><div id="gate-rows"></div></div>
-      <div class="sec"><div class="sec-t">操作</div><div class="hint"><b>左ドラッグ＝地図を掴んで移動</b>／右ドラッグ・Shift+ドラッグ＝回転／ホイール＝カーソル位置へズーム。各動線は<b>経由都市と所要時間</b>付き。帯の流れは<b>朝は姫路へ、夕方は帰路方向へ</b>反転し、太さ＝流入量。ポールの高さ＝出発地シェア（観光動向調査の居住地構成から換算）。<b style="color:var(--gold)">L1</b>で市内の滞留、<b style="color:var(--gold)">L2</b>で城内の混雑へ。</div></div>`;
+      <div class="sec"><div class="sec-t">操作</div><div class="hint"><b>左ドラッグ＝地図を掴んで移動</b>／<b>長押ししてドラッグ＝回転</b>（右ドラッグでも可）／縦スクロール＝ズーム、横スクロール＝回転。各動線は<b>経由都市と所要時間</b>付き。帯の流れは<b>朝は姫路へ、夕方は帰路方向へ</b>反転し、太さ＝流入量。ポールの高さ＝出発地シェア（観光動向調査の居住地構成から換算）。<b style="color:var(--gold)">L1</b>で市内の滞留、<b style="color:var(--gold)">L2</b>で城内の混雑へ。</div></div>`;
   }
   if(level==='city'){
     pb.innerHTML = `
@@ -467,7 +467,7 @@ function renderPanel(){
       <div class="sec"><div class="sec-t">実データ接続（プレースホルダ）</div>
         <input type="file" id="csv-in" accept=".csv,text/csv" style="display:none"><button class="tool-btn" id="csv-btn">CSVを読み込んで滞留データを上書き</button>
         <div class="hint" style="margin-top:6px">列: date, hour, mesh_id, segment, count（携帯位置情報の500mメッシュ集計を想定）。本番はDB直結で自動更新。</div></div>
-      <div class="sec"><div class="sec-t">操作</div><div class="hint"><b>左ドラッグ＝地図を掴んで移動</b>／右ドラッグ・Shift+ドラッグ＝回転／ホイール＝ズーム。POI・宿泊ピンにホバーで解説。<b style="color:var(--gold)">姫路城をクリック</b>で城内（L2）へ。</div></div>`;
+      <div class="sec"><div class="sec-t">操作</div><div class="hint"><b>左ドラッグ＝地図を掴んで移動</b>／<b>長押ししてドラッグ＝回転</b>（右ドラッグでも可）／縦スクロール＝ズーム、横スクロール＝回転。POI・宿泊ピンにホバーで解説。<b style="color:var(--gold)">姫路城をクリック</b>で城内（L2）へ。</div></div>`;
   }
   if(level==='castle'){
     pb.innerHTML = `
@@ -477,7 +477,7 @@ function renderPanel(){
       <div class="sec"><div class="sec-t">ゾーン別 滞留・混雑（1ドット＝${AG_SCALE}人）</div><div id="zone-rows"></div></div>
       <div class="sec"><div class="sec-t">入城料（2026年3月〜 二段階料金・想定）</div><div class="legend">
         <div class="li"><div class="sw" style="background:var(--gold)"></div>市外・海外 ¥${FEE.out.toLocaleString()}　<div class="sw" style="background:#8f9cc0"></div>姫路市民 ¥${FEE.resident.toLocaleString()}</div></div></div>
-      <div class="sec"><div class="sec-t">インサイト</div><div class="hint">律速点は<b>大天守（入場制限 15,000人/日）</b>と<b>菱の門の券売</b>。桜・GWは12時前後に待ち60分超が発生。入城券の<b>時間指定枠・事前販売</b>と、待ち時間を<b>好古園・西の丸へ振り替える案内</b>が滞留分散の打ち手になります。左ドラッグで移動・右ドラッグで回転。<kbd>Esc</kbd>で市内へ戻る。</div></div>`;
+      <div class="sec"><div class="sec-t">インサイト</div><div class="hint">律速点は<b>大天守（入場制限 15,000人/日）</b>と<b>菱の門の券売</b>。桜・GWは12時前後に待ち60分超が発生。入城券の<b>時間指定枠・事前販売</b>と、待ち時間を<b>好古園・西の丸へ振り替える案内</b>が滞留分散の打ち手になります。左ドラッグで移動・長押しドラッグで回転。<kbd>Esc</kbd>で市内へ戻る。</div></div>`;
   }
   bindCommon();
   updateKPIs();
@@ -824,40 +824,6 @@ addEventListener('keydown', e=>{
 });
 
 
-/* ================= 3Dナビゲーション（右下ウィジェット・キーボード） ================= */
-const NAV = { orbit:false };
-(function initNav(){
-  const rot = document.getElementById('compass-rot'), comp = document.getElementById('compass'), tilt = document.getElementById('tilt');
-  const bPan = document.getElementById('nv-mode-pan'), bRot = document.getElementById('nv-mode-rot'), bOrb = document.getElementById('nv-orbit');
-  function setMode(m){ dragMode = m; bPan.classList.toggle('active', m==='pan'); bRot.classList.toggle('active', m==='rotate'); el.style.cursor = m==='pan' ? 'grab' : 'move'; toast(m==='pan' ? '左ドラッグ: 地図を掴んで移動（右ドラッグで回転）' : '左ドラッグ: 回転（視点をぐるりと確認）'); }
-  bPan.onclick = ()=> setMode('pan'); bRot.onclick = ()=> setMode('rotate'); setMode('pan');
-  bOrb.onclick = ()=>{ NAV.orbit = !NAV.orbit; bOrb.classList.toggle('active', NAV.orbit); bOrb.textContent = NAV.orbit ? '❚❚' : '▶'; if(NAV.orbit) toast('自動周回: ON（ドラッグやボタン操作で停止）'); };
-  /* コンパス: ドラッグで方位角、クリックで北を上に */
-  let cd = null;
-  comp.addEventListener('pointerdown', e=>{ comp.setPointerCapture(e.pointerId); const r=comp.getBoundingClientRect(); cd={a0:Math.atan2(e.clientY-(r.top+r.height/2), e.clientX-(r.left+r.width/2)), th0:ctrl.sph.theta, moved:false}; NAV.orbit=false; bOrb.classList.remove('active'); bOrb.textContent='▶'; });
-  comp.addEventListener('pointermove', e=>{ if(!cd) return; const r=comp.getBoundingClientRect(); const a=Math.atan2(e.clientY-(r.top+r.height/2), e.clientX-(r.left+r.width/2)); const d=a-cd.a0; if(Math.abs(d)>0.02) cd.moved=true; ctrl.sph.theta = cd.th0 - d; ctrl.apply(); });
-  comp.addEventListener('pointerup', e=>{ if(cd && !cd.moved){ flyTo(ctrl.target.clone(), ctrl.sph.radius, ctrl.sph.phi, 0, 700); } cd=null; });
-  tilt.addEventListener('input', ()=>{ NAV.orbit=false; ctrl.sph.phi = (+tilt.value)*Math.PI/180; ctrl.apply(); });
-  document.getElementById('nv-zin').onclick = ()=>{ tween=null; ctrl.sph.radius *= 0.72; ctrl.apply(); };
-  document.getElementById('nv-zout').onclick = ()=>{ tween=null; ctrl.sph.radius /= 0.72; ctrl.apply(); };
-  document.getElementById('nv-top').onclick = ()=> flyTo(ctrl.target.clone(), ctrl.sph.radius, 0.12, ctrl.sph.theta, 700);
-  document.getElementById('nv-home').onclick = ()=>{ NAV.orbit=false; setLevel(level, true); };
-  /* コンパス表示の同期 */
-  NAV.sync = ()=>{ rot.setAttribute('transform', `rotate(${(-ctrl.sph.theta*180/Math.PI).toFixed(1)} 37 37)`); const deg=Math.round(ctrl.sph.phi*180/Math.PI); if(document.activeElement!==tilt && +tilt.value!==deg) tilt.value = Math.max(6, Math.min(83, deg)); };
-  /* キーボード: ←→ 回転 / ↑↓ 傾き / +− ズーム / N 北を上 */
-  addEventListener('keydown', e=>{
-    if(e.target && (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA')) return;
-    let used = true;
-    if(e.key==='ArrowLeft') ctrl.sph.theta += 0.08; else if(e.key==='ArrowRight') ctrl.sph.theta -= 0.08;
-    else if(e.key==='ArrowUp') ctrl.sph.phi -= 0.05; else if(e.key==='ArrowDown') ctrl.sph.phi += 0.05;
-    else if(e.key==='+' || e.key==='=') ctrl.sph.radius *= 0.85; else if(e.key==='-' || e.key==='_') ctrl.sph.radius /= 0.85;
-    else if(e.key==='n' || e.key==='N') flyTo(ctrl.target.clone(), ctrl.sph.radius, ctrl.sph.phi, 0, 700);
-    else if(e.key==='r' || e.key==='R') setMode(dragMode==='pan' ? 'rotate' : 'pan');
-    else used = false;
-    if(used){ e.preventDefault(); tween=null; NAV.orbit=false; ctrl.apply(); }
-  });
-  el.addEventListener('mousedown', ()=>{ if(NAV.orbit){ NAV.orbit=false; bOrb.classList.remove('active'); bOrb.textContent='▶'; } });
-})();
 /* ================= タイムライン ================= */
 const slider=document.getElementById('tl-slider'), clockEl=document.getElementById('tl-clock'), phaseEl=document.getElementById('tl-phase'), scnEl=document.getElementById('tl-scn'), playBtn=document.getElementById('tl-play');
 playBtn.onclick = ()=>{ timeState.playing=!timeState.playing; playBtn.textContent = timeState.playing ? '❚❚' : '▶'; if(timeState.playing && timeState.min>=1080){ timeState.min=0; resetSim(); } };
@@ -876,8 +842,6 @@ function loop(now){
   requestAnimationFrame(loop);
   const dt=Math.min(0.1,(now-lastT)/1000); lastT=now;
   updateTween(now);
-  if(NAV.orbit && !tween){ ctrl.sph.theta += dt*0.12; ctrl.apply(); }
-  if(NAV.sync && (now|0)%3===0) NAV.sync();
   if(timeState.playing){
     timeState.min += dt*timeState.speed;
     if(timeState.min>=1080){ timeState.min=1080; timeState.playing=false; playBtn.textContent='▶'; }
@@ -904,7 +868,7 @@ flyTo(new THREE.Vector3(1800, 0, 900), 33000, 0.5, -0.3, 2200);
 /* 初期状態: 10:30まで進めて「到着ピーク」の姿で開く */
 (function warmup(){ let g=0; while(timeState.min < 270 && g++<400){ timeState.min += 2; updateAgents(2); } syncClock(); })();
 renderPanel();
-toast('▶ で1日（06:00→24:00）を再生：流入 → 城内滞留 → 市内回遊 → 帰路 → 夜間。ヘッダーで L0/L1/L2 を切替', 4200);
+toast('操作: 左ドラッグ＝地図を掴んで移動 ／ 長押ししてドラッグ＝回転 ／ スクロール＝ズーム。▶ で1日を再生', 5200);
 requestAnimationFrame(loop);
 </script>
 </body>
