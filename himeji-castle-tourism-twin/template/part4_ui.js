@@ -63,7 +63,8 @@ const RIBBON_FS = [
  '  float y = abs(vUv.y-0.5)*2.0; float d = vUv.x*uLen; float base = 0.0;',
  '  if(uKind < 0.5){ base = smoothstep(0.30,0.18,y); float tie = step(0.55, fract(d/320.0)); base = max(base, (1.0-smoothstep(0.62,0.80,y))*tie*0.45); }',
  '  else if(uKind < 1.5){ base = smoothstep(0.92,0.80,y) - smoothstep(0.50,0.36,y); float dash = step(0.5, fract(d/420.0)); base = max(base*0.9, smoothstep(0.10,0.0,y)*dash*0.7); }',
- '  else { float dash = step(0.42, fract(d/360.0)); base = smoothstep(0.28,0.16,y)*dash; }',
+ '  else if(uKind < 2.5){ float dash = step(0.42, fract(d/360.0)); base = smoothstep(0.28,0.16,y)*dash; }',
+ '  else { base = smoothstep(0.34,0.10,y)*0.55; }',
  '  float band = pow(0.5+0.5*sin((d/1100.0 - uTime*uDir)*6.28318), 3.0);',
  '  float fw = smoothstep(uFlowW, uFlowW*0.45, y);',
  '  vec3 col = uCol*base*uDim*1.15 + uFlowCol*band*fw*uAct*1.5;',
@@ -218,12 +219,13 @@ const chevrons=[];
 TOURS.forEach(t=>{
   const e = t.to(); t.end = e;
   const r = route({x:STN.x, z:STN.z}, e);
-  t.wp = r.path; t.seg = r.seg; t.total = r.total;
+  t.path = r.path; t.wp = r.path; t.seg = r.seg; t.total = r.total;
   const v3 = t.wp.map(p=>new THREE.Vector3(p[0], 2.6, p[1]));
+  /* 導線リボン（バス/鉄道の帯・流れ付き） */
+  t.rib = buildRibbon(t.wp.map(p=>({x:p[0], z:p[1]})), {col:t.col, w:46, kind:0}, tourGroup, 2.0);
+  t.rib.uni.uAct.value = 0.7; t.rib.uni.uFlowW.value = 0.5; t.rib.uni.uFlowCol.value.setHex(t.col).lerp(new THREE.Color(0xffffff), 0.5);
   const glow = new THREE.Line(new THREE.BufferGeometry().setFromPoints(v3), new THREE.LineBasicMaterial({color:t.col, transparent:true, opacity:0.9}));
   tourGroup.add(glow);
-  const glow2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(v3), new THREE.LineBasicMaterial({color:t.col, transparent:true, opacity:0.35, blending:THREE.AdditiveBlending, depthWrite:false}));
-  glow2.position.y = 1; tourGroup.add(glow2);
   const cgeo=new THREE.ConeGeometry(7, 20, 5);
   const cmat=new THREE.MeshBasicMaterial({color:t.col, transparent:true, opacity:0.9});
   const nCh=Math.max(4, Math.round(t.total/380));
@@ -240,6 +242,7 @@ const hubLb=makeLabel('観光ハブ: JR姫路駅・バスターミナル', 11, '
 const UP=new THREE.Vector3(0,1,0);
 function updateChevrons(dt){
   if(!tourGroup.visible) return;
+  TOURS.forEach(t=>{ if(t.rib) t.rib.uni.uTime.value += dt*0.6; });
   chevrons.forEach(c=>{
     c.u += dt*46/c.t.total; if(c.u>=1) c.u-=1;
     const d=c.u*c.t.total;
@@ -300,6 +303,7 @@ function setLevel(lv, fly=true){
   level = lv;
   document.querySelectorAll('.crumb[data-lvl]').forEach(c=>c.classList.toggle('active', c.dataset.lvl===lv));
   zoneGroup.visible = (lv==='castle');
+  routeGroup.visible = (lv!=='wide'); trailMesh.visible = (lv!=='wide');
   castleLabel.visible = (lv!=='castle');
   wideGroup.visible = (lv==='wide');
   odGroup.visible = odMode && lv!=='castle';
@@ -824,6 +828,8 @@ function loop(now){
   if(odMode && level!=='castle') updateKDE(false);
   updateChevrons(dt);
   beam.material.opacity = 0.07 + 0.05*Math.sin(now/900);
+  castleGlow.material.opacity = 0.10 + 0.05*Math.sin(now/700);
+  if(level!=='wide'){ ROUTES.forEach(r=>{ if(!r.rib) return; const u=r.rib.uni; u.uTime.value += dt*0.9; const k=Math.min(1, (r.uses||0)/80); u.uAct.value = 0.10 + 0.55*k; u.uFlowW.value = 0.16 + 0.55*k; }); }
   if(now-lastKpi>500){ lastKpi=now; updateKPIs(); }
   renderer.render(scene, camera);
 }

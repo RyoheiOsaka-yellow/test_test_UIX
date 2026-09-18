@@ -263,7 +263,10 @@ const roadGraph = (function(){
 })();
 /* 距離テーブル付き経路 */
 const ROUTES = new Map();
-function route(a, b){
+/* 来訪者が実際に歩く経路（駅→大手前通り→大手門、城→好古園・商店街 等）を淡い金色の線で常時表示 */
+const routeGroup = new THREE.Group(); scene.add(routeGroup);
+const ROUTE_LINE_MAT = new THREE.LineBasicMaterial({color:0xffd166, transparent:true, opacity:0.22, blending:THREE.AdditiveBlending, depthWrite:false});
+function route(a, b, draw){
   const k = `${Math.round(a.x)}_${Math.round(a.z)}>${Math.round(b.x)}_${Math.round(b.z)}`;
   if(ROUTES.has(k)) return ROUTES.get(k);
   const pth = roadGraph.path(a.x, a.z, b.x, b.z);
@@ -271,6 +274,12 @@ function route(a, b){
   for(let i=1;i<pth.length;i++){ total += Math.hypot(pth[i][0]-pth[i-1][0], pth[i][1]-pth[i-1][1]); seg.push(total); }
   const r = {path:pth, seg, total:Math.max(1,total)};
   ROUTES.set(k, r);
+  if(draw && total < 6000){
+    /* 経路リボン: 利用者数に応じて帯が太く・明るくなり、帯は進行方向へ流れる */
+    r.rib = buildRibbon(pth.map(p=>({x:p[0], z:p[1]})), {col:0xffd166, w:22, kind:3}, routeGroup, 1.6);
+    r.rib.uni.uDim.value = 0.8; r.rib.uni.uFlowCol.value.setHex(0xffe08a);
+    r.uses = 0;
+  }
   return r;
 }
 function sampleRoute(r, d){
@@ -283,7 +292,13 @@ function sampleRoute(r, d){
 
 /* ================= 来訪者エージェント（1ドット = 8人） ================= */
 const MAX_AG = 2400;
-const agentMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(2.4, 6, 5), new THREE.MeshBasicMaterial(), MAX_AG);
+const agentMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(2.2, 6, 5), new THREE.MeshBasicMaterial(), MAX_AG);
+/* 軌跡（移動中の来訪者が残す尾）: 細長い板を進行方向に並べ、線として見せる */
+const TRAIL_K = 16, TRAIL_STEP = 6;
+const trailMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({transparent:true, opacity:0.95, blending:THREE.AdditiveBlending, depthWrite:false}), MAX_AG*TRAIL_K);
+trailMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_AG*TRAIL_K*3), 3);
+trailMesh.count = 0; trailMesh.frustumCulled = false; scene.add(trailMesh);
+const _Q = new THREE.Quaternion(), _E = new THREE.Euler(), _S = new THREE.Vector3(), _PV = new THREE.Vector3();
 agentMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_AG*3), 3);
 agentMesh.count = 0; agentMesh.frustumCulled = false;
 scene.add(agentMesh);
@@ -311,14 +326,15 @@ function spawnAgent(){
   else { const o=ORIGIN_BY_ID[dest[0]]; const g=GATES[o ? o.gate : gk]; endNode={x:g.x,z:g.z}; endKind='gate'; }
   const jr = 40+rnd()*130, ja = rnd()*6.283;
   const a = { seg, gk, dest, plan, pi:0, state:'move', endNode, endKind, r:null, d:0, sp:70+rnd()*30, dwellLeft:0, cur:{x:gate.x,z:gate.z}, t0:timeState.min, visited:0, jx:Math.cos(ja)*jr, jz:Math.sin(ja)*jr*0.8 };
-  a.r = route(a.cur, plan.length ? plan[0].node : endNode);
+  a.tr = [];
+  a.r = route(a.cur, plan.length ? plan[0].node : endNode, true); a.r.uses = (a.r.uses||0)+1;
   agents.push(a);
   STATS.arrived[seg]++; STATS.byGate[gk]=(STATS.byGate[gk]||0)+1; dayTotal++;
 }
 function resetSim(){
   agents.length = 0; spawnAcc = 0; dayTotal = 0;
   STATS.arrived={in:0,dom:0,loc:0}; STATS.departed={}; STATS.byGate={}; STATS.atSpot={}; STATS.staying=0; STATS.castleEntered=0; STATS.dwellSum=0; STATS.dwellN=0; STATS.kaiyu=0;
-  agentMesh.count = 0;
+  agentMesh.count = 0; trailMesh.count = 0;
   calcArrNorm();
 }
 function updateAgents(dtMin){
@@ -327,7 +343,7 @@ function updateAgents(dtMin){
   spawnAcc += perDay * arrProfile(timeState.min)/ARR_NORM * dtMin;
   while(spawnAcc >= 1 && agents.length < MAX_AG){ spawnAcc -= 1; spawnAgent(); }
   const M = new THREE.Matrix4(), C = new THREE.Color();
-  let vi=0, inCastle=0, moving=0, atSpotN=0;
+  let vi=0, ti=0, inCastle=0, moving=0, atSpotN=0;
   const spotNow = {};
   for(let i=agents.length-1;i>=0;i--){
     const a = agents[i];
@@ -353,6 +369,8 @@ function updateAgents(dtMin){
       } else {
         const p = sampleRoute(a.r, a.d);
         a.cur = {x:p[0], z:p[1]};
+        const lt = a.tr[a.tr.length-1];
+        if(!lt || Math.hypot(lt[0]-p[0], lt[1]-p[1]) >= TRAIL_STEP){ a.tr.push([p[0], p[1]]); if(a.tr.length > TRAIL_K+1) a.tr.shift(); }
       }
     } else if(a.state==='castle' || a.state==='spot'){
       a.dwellLeft -= dtMin;
@@ -360,7 +378,7 @@ function updateAgents(dtMin){
       if(a.dwellLeft <= 0){
         a.pi++;
         const next = a.pi < a.plan.length ? a.plan[a.pi].node : a.endNode;
-        a.r = route(a.cur, next); a.d = 0; a.state='move';
+        a.r = route(a.cur, next, true); a.r.uses = (a.r.uses||0)+1; a.d = 0; a.state='move'; a.tr = [];
       }
     }
     /* 描画（城内滞留中は城内ではなく周辺に薄く散らす / L2は別表現） */
@@ -370,7 +388,21 @@ function updateAgents(dtMin){
     if(a.state==='castle'){ x = CASTLE.x - 60 + a.jx; z = CASTLE.z + 130 + a.jz; y=2.4; }
     else if(a.state==='spot'){ x += a.jx*0.35; z += a.jz*0.35; }
     else if(a.state==='stay'){ x += a.jx*0.15; z += a.jz*0.15; y=32; }
-    if(a.state==='move') moving++;
+    if(a.state==='move'){
+      moving++;
+      /* 尾: 古いほど細く暗く */
+      const n = a.tr.length;
+      for(let j=0; j<n-1 && ti<MAX_AG*TRAIL_K; j++){
+        const p0=a.tr[j], p1=a.tr[j+1];
+        const dx=p1[0]-p0[0], dz=p1[1]-p0[1], L=Math.hypot(dx,dz); if(L<0.5) continue;
+        const f=(j+1)/n;
+        _E.set(0, Math.atan2(-dz, dx), 0); _Q.setFromEuler(_E);
+        _PV.set((p0[0]+p1[0])/2, 2.4, (p0[1]+p1[1])/2); _S.set(L+1.2, 0.6, 0.8+2.2*f);
+        M.compose(_PV, _Q, _S); trailMesh.setMatrixAt(ti, M);
+        C.setHex(SEG[a.seg].col).multiplyScalar(0.2+1.0*f); trailMesh.setColorAt(ti, C);
+        ti++;
+      }
+    }
     M.makeTranslation(x, y, z);
     agentMesh.setMatrixAt(vi, M);
     C.setHex(SEG[a.seg].col);
@@ -378,6 +410,7 @@ function updateAgents(dtMin){
     vi++;
   }
   agentMesh.count = vi;
+  trailMesh.count = ti; trailMesh.instanceMatrix.needsUpdate = true; if(trailMesh.instanceColor) trailMesh.instanceColor.needsUpdate = true;
   agentMesh.instanceMatrix.needsUpdate = true;
   if(agentMesh.instanceColor) agentMesh.instanceColor.needsUpdate = true;
   STATS.inCastle = inCastle; STATS.moving = moving; STATS.inCity = agents.length; STATS.atSpot = spotNow; STATS.atSpotN = atSpotN;

@@ -264,6 +264,60 @@ function mergedExtrude(list, mat){
   for(let i=0;i<plain.length;i+=1500) LG.bldg.add(mergedExtrude(plain.slice(i,i+1500), MAT.bldg));
 })();
 
+/* ---------- 姫路城 天守群の立体モデル（白漆喰の層塔 × 石垣 × 鯱） — フットプリントの向き・大きさに合わせて生成 ---------- */
+const KEEP_MAT = {
+  stone: new THREE.MeshStandardMaterial({color:0x7c776a, roughness:0.95}),
+  wall:  new THREE.MeshStandardMaterial({color:0xf6f3ec, roughness:0.55, emissive:0x33291a, emissiveIntensity:0.32}),
+  roof:  new THREE.MeshStandardMaterial({color:0x2c3140, roughness:0.45, metalness:0.25}),
+  gold:  new THREE.MeshStandardMaterial({color:0xffd166, emissive:0xff9f00, emissiveIntensity:0.7}),
+};
+function frustumGeo(wb, db, wt, dt, h){
+  const v=[[-wb/2,0,-db/2],[wb/2,0,-db/2],[wb/2,0,db/2],[-wb/2,0,db/2],[-wt/2,h,-dt/2],[wt/2,h,-dt/2],[wt/2,h,dt/2],[-wt/2,h,dt/2]];
+  const f=[[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7],[4,5,6,7],[3,2,1,0]];
+  const pos=[]; f.forEach(q=>{ [q[0],q[1],q[2], q[0],q[2],q[3]].forEach(i=> pos.push(...v[i])); });
+  const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3)); g.computeVertexNormals(); return g;
+}
+function polyAxis(pts){
+  /* 最長辺の向き・寸法 */
+  let best=0, ang=0;
+  for(let i=0;i<pts.length;i++){ const a=pts[i], b=pts[(i+1)%pts.length]; const L=Math.hypot(b[0]-a[0], b[1]-a[1]); if(L>best){ best=L; ang=Math.atan2(b[1]-a[1], b[0]-a[0]); } }
+  let area=0; for(let i=0;i<pts.length;i++){ const a=pts[i], b=pts[(i+1)%pts.length]; area += a[0]*b[1]-b[0]*a[1]; } area=Math.abs(area)/2;
+  const cx=pts.reduce((s,p)=>s+p[0],0)/pts.length, cy=pts.reduce((s,p)=>s+p[1],0)/pts.length;
+  return {w:best, d:Math.max(8, area/best), ang, cx, cy};
+}
+function buildKeep(cx, cz, w, d, ang, tiers, name){
+  const g = new THREE.Group();
+  const stoneH = tiers>=5 ? 17 : 8;
+  const wallH = tiers>=5 ? 38 : 17;
+  const th = wallH/tiers;
+  const base = new THREE.Mesh(frustumGeo(w*1.35, d*1.35, w*1.02, d*1.02, stoneH), KEEP_MAT.stone); g.add(base);
+  for(let i=0;i<tiers;i++){
+    const k = 1 - 0.13*i, y0 = stoneH + i*th;
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(w*k, th*0.72, d*k), KEEP_MAT.wall); wall.position.y = y0 + th*0.36; g.add(wall);
+    const last = i===tiers-1;
+    const roof = new THREE.Mesh(frustumGeo(w*k*1.28, d*k*1.28, last ? w*k*0.18 : w*k*0.78, last ? d*k*0.18 : d*k*0.78, last ? th*0.9 : th*0.34), KEEP_MAT.roof);
+    roof.position.y = y0 + th*0.7; g.add(roof);
+    if(last){ [-1,1].forEach(sx=>{ const sh = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.7, w*0.035), 8, 6), KEEP_MAT.gold); sh.position.set(sx*w*k*0.09, y0+th*1.62, 0); g.add(sh); }); }
+  }
+  g.position.set(cx, 0, cz); g.rotation.y = ang;
+  g.traverse(o=>{ if(o.isMesh){ o.userData = {name, castle:true}; CASTLE_MESHES.push(o); } });
+  return g;
+}
+(function buildCastleKeeps(){
+  const keepB = SCENE_DATA.buildings.find(b=> b.k==='castle' && (b.n||'').includes('大天守'));
+  const smalls = SCENE_DATA.buildings.filter(b=> b.k==='castle' && (b.n||'').includes('小天守') && polyAxis(b.p).w*polyAxis(b.p).d > 300);
+  const hideExtrusion = b=>{ const m = CASTLE_MESHES.find(m=> m.userData.name===b.n && m.geometry && m.geometry.type==='ExtrudeGeometry' && Math.abs(m.geometry.boundingBox ? 0 : 0)===0); };
+  const targets = [];
+  if(keepB){ const ax = polyAxis(keepB.p); targets.push({b:keepB, ax, tiers:5, name:'姫路城 大天守（国宝・世界遺産）'}); }
+  smalls.slice(0,3).forEach(b=>{ const ax = polyAxis(b.p); targets.push({b, ax, tiers:3, name:'姫路城 小天守・渡櫓'}); });
+  targets.forEach(t=>{
+    /* 元の押し出しは石垣として低く残す（高さを抑える） */
+    LG.bldg.children.filter(m=> m.userData && m.userData.name===t.b.n).forEach(m=>{ m.scale.y = 0.001; m.visible = false; });
+    const w = Math.min(t.ax.w, t.tiers>=5 ? 36 : 22)*1.3, d = Math.min(t.ax.d, t.tiers>=5 ? 30 : 18)*1.3;
+    LG.bldg.add(buildKeep(t.ax.cx, -t.ax.cy, w, d, t.ax.ang, t.tiers, t.name));
+  });
+})();
+
 /* ポリゴン群の単一マージメッシュ化（ドローコール削減） */
 function mergedFlat(polys, mat, y){
   const arrs=[]; let total=0;
@@ -291,6 +345,11 @@ LG.bldg.add(midMesh);
   if(SCENE_DATA.lu[d[0]] && SCENE_DATA.lu[d[0]].length) LG.lu.add(mergedFlat(SCENE_DATA.lu[d[0]], d[1], d[2]));
 });
 LG.lu.add(mergedFlat(SCENE_DATA.parking, MAT.park, 0.45));
+/* 内堀・中堀の縁を発光ラインでなぞり、城郭の輪郭を強調 */
+(SCENE_DATA.lu.moat||[]).forEach(poly=>{
+  const pts = poly.map(p=>new THREE.Vector3(p[0], 1.0, -p[1]));
+  LG.lu.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x6fc3ff, transparent:true, opacity:0.75, blending:THREE.AdditiveBlending, depthWrite:false})));
+});
 
 /* 道路（クラス別マージLineSegments: 0生活/1補助幹線/2幹線/3歩行者・商店街/4歩道） */
 function mergedSegs(polylines, mat, y){
@@ -409,9 +468,16 @@ const BUS_TERM = P('姫路駅北 バスターミナル');
 const PORT = P('姫路港');
 
 /* 姫路城ラベル（大） */
-const castleLabel = makeLabel('世界遺産 姫路城', 22, '#ffd166');
-castleLabel.position.set(CASTLE.x, 120, CASTLE.z);
+const castleLabel = makeLabel('世界遺産 姫路城（白鷺城）', 40, '#ffd166');
+castleLabel.position.set(CASTLE.x, 150, CASTLE.z);
 siteGroup.add(castleLabel);
+const castleLabel2 = makeLabel('国宝・1993年 世界遺産登録 ｜ 2025年度 入城 156.8万人', 16, '#f0e6c8', 500);
+castleLabel2.position.set(CASTLE.x, 112, CASTLE.z);
+siteGroup.add(castleLabel2);
+/* 城郭の足元に金色の淡い発光ディスク（目印） */
+const castleGlow = new THREE.Mesh(new THREE.CircleGeometry(230, 48), new THREE.MeshBasicMaterial({color:0xffd166, transparent:true, opacity:0.12, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
+castleGlow.rotation.x = -Math.PI/2; castleGlow.position.set(CASTLE.x-30, 0.8, CASTLE.z+110);
+siteGroup.add(castleGlow);
 /* 大天守の存在感: 光柱 */
 const beam = new THREE.Mesh(new THREE.CylinderGeometry(3, 10, 260, 12, 1, true),
   new THREE.MeshBasicMaterial({color:0xffd166, transparent:true, opacity:0.10, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));

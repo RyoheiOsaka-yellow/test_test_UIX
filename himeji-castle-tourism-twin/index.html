@@ -510,6 +510,60 @@ function mergedExtrude(list, mat){
   for(let i=0;i<plain.length;i+=1500) LG.bldg.add(mergedExtrude(plain.slice(i,i+1500), MAT.bldg));
 })();
 
+/* ---------- 姫路城 天守群の立体モデル（白漆喰の層塔 × 石垣 × 鯱） — フットプリントの向き・大きさに合わせて生成 ---------- */
+const KEEP_MAT = {
+  stone: new THREE.MeshStandardMaterial({color:0x7c776a, roughness:0.95}),
+  wall:  new THREE.MeshStandardMaterial({color:0xf6f3ec, roughness:0.55, emissive:0x33291a, emissiveIntensity:0.32}),
+  roof:  new THREE.MeshStandardMaterial({color:0x2c3140, roughness:0.45, metalness:0.25}),
+  gold:  new THREE.MeshStandardMaterial({color:0xffd166, emissive:0xff9f00, emissiveIntensity:0.7}),
+};
+function frustumGeo(wb, db, wt, dt, h){
+  const v=[[-wb/2,0,-db/2],[wb/2,0,-db/2],[wb/2,0,db/2],[-wb/2,0,db/2],[-wt/2,h,-dt/2],[wt/2,h,-dt/2],[wt/2,h,dt/2],[-wt/2,h,dt/2]];
+  const f=[[0,1,5,4],[1,2,6,5],[2,3,7,6],[3,0,4,7],[4,5,6,7],[3,2,1,0]];
+  const pos=[]; f.forEach(q=>{ [q[0],q[1],q[2], q[0],q[2],q[3]].forEach(i=> pos.push(...v[i])); });
+  const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3)); g.computeVertexNormals(); return g;
+}
+function polyAxis(pts){
+  /* 最長辺の向き・寸法 */
+  let best=0, ang=0;
+  for(let i=0;i<pts.length;i++){ const a=pts[i], b=pts[(i+1)%pts.length]; const L=Math.hypot(b[0]-a[0], b[1]-a[1]); if(L>best){ best=L; ang=Math.atan2(b[1]-a[1], b[0]-a[0]); } }
+  let area=0; for(let i=0;i<pts.length;i++){ const a=pts[i], b=pts[(i+1)%pts.length]; area += a[0]*b[1]-b[0]*a[1]; } area=Math.abs(area)/2;
+  const cx=pts.reduce((s,p)=>s+p[0],0)/pts.length, cy=pts.reduce((s,p)=>s+p[1],0)/pts.length;
+  return {w:best, d:Math.max(8, area/best), ang, cx, cy};
+}
+function buildKeep(cx, cz, w, d, ang, tiers, name){
+  const g = new THREE.Group();
+  const stoneH = tiers>=5 ? 17 : 8;
+  const wallH = tiers>=5 ? 38 : 17;
+  const th = wallH/tiers;
+  const base = new THREE.Mesh(frustumGeo(w*1.35, d*1.35, w*1.02, d*1.02, stoneH), KEEP_MAT.stone); g.add(base);
+  for(let i=0;i<tiers;i++){
+    const k = 1 - 0.13*i, y0 = stoneH + i*th;
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(w*k, th*0.72, d*k), KEEP_MAT.wall); wall.position.y = y0 + th*0.36; g.add(wall);
+    const last = i===tiers-1;
+    const roof = new THREE.Mesh(frustumGeo(w*k*1.28, d*k*1.28, last ? w*k*0.18 : w*k*0.78, last ? d*k*0.18 : d*k*0.78, last ? th*0.9 : th*0.34), KEEP_MAT.roof);
+    roof.position.y = y0 + th*0.7; g.add(roof);
+    if(last){ [-1,1].forEach(sx=>{ const sh = new THREE.Mesh(new THREE.SphereGeometry(Math.max(0.7, w*0.035), 8, 6), KEEP_MAT.gold); sh.position.set(sx*w*k*0.09, y0+th*1.62, 0); g.add(sh); }); }
+  }
+  g.position.set(cx, 0, cz); g.rotation.y = ang;
+  g.traverse(o=>{ if(o.isMesh){ o.userData = {name, castle:true}; CASTLE_MESHES.push(o); } });
+  return g;
+}
+(function buildCastleKeeps(){
+  const keepB = SCENE_DATA.buildings.find(b=> b.k==='castle' && (b.n||'').includes('大天守'));
+  const smalls = SCENE_DATA.buildings.filter(b=> b.k==='castle' && (b.n||'').includes('小天守') && polyAxis(b.p).w*polyAxis(b.p).d > 300);
+  const hideExtrusion = b=>{ const m = CASTLE_MESHES.find(m=> m.userData.name===b.n && m.geometry && m.geometry.type==='ExtrudeGeometry' && Math.abs(m.geometry.boundingBox ? 0 : 0)===0); };
+  const targets = [];
+  if(keepB){ const ax = polyAxis(keepB.p); targets.push({b:keepB, ax, tiers:5, name:'姫路城 大天守（国宝・世界遺産）'}); }
+  smalls.slice(0,3).forEach(b=>{ const ax = polyAxis(b.p); targets.push({b, ax, tiers:3, name:'姫路城 小天守・渡櫓'}); });
+  targets.forEach(t=>{
+    /* 元の押し出しは石垣として低く残す（高さを抑える） */
+    LG.bldg.children.filter(m=> m.userData && m.userData.name===t.b.n).forEach(m=>{ m.scale.y = 0.001; m.visible = false; });
+    const w = Math.min(t.ax.w, t.tiers>=5 ? 36 : 22)*1.3, d = Math.min(t.ax.d, t.tiers>=5 ? 30 : 18)*1.3;
+    LG.bldg.add(buildKeep(t.ax.cx, -t.ax.cy, w, d, t.ax.ang, t.tiers, t.name));
+  });
+})();
+
 /* ポリゴン群の単一マージメッシュ化（ドローコール削減） */
 function mergedFlat(polys, mat, y){
   const arrs=[]; let total=0;
@@ -537,6 +591,11 @@ LG.bldg.add(midMesh);
   if(SCENE_DATA.lu[d[0]] && SCENE_DATA.lu[d[0]].length) LG.lu.add(mergedFlat(SCENE_DATA.lu[d[0]], d[1], d[2]));
 });
 LG.lu.add(mergedFlat(SCENE_DATA.parking, MAT.park, 0.45));
+/* 内堀・中堀の縁を発光ラインでなぞり、城郭の輪郭を強調 */
+(SCENE_DATA.lu.moat||[]).forEach(poly=>{
+  const pts = poly.map(p=>new THREE.Vector3(p[0], 1.0, -p[1]));
+  LG.lu.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:0x6fc3ff, transparent:true, opacity:0.75, blending:THREE.AdditiveBlending, depthWrite:false})));
+});
 
 /* 道路（クラス別マージLineSegments: 0生活/1補助幹線/2幹線/3歩行者・商店街/4歩道） */
 function mergedSegs(polylines, mat, y){
@@ -655,9 +714,16 @@ const BUS_TERM = P('姫路駅北 バスターミナル');
 const PORT = P('姫路港');
 
 /* 姫路城ラベル（大） */
-const castleLabel = makeLabel('世界遺産 姫路城', 22, '#ffd166');
-castleLabel.position.set(CASTLE.x, 120, CASTLE.z);
+const castleLabel = makeLabel('世界遺産 姫路城（白鷺城）', 40, '#ffd166');
+castleLabel.position.set(CASTLE.x, 150, CASTLE.z);
 siteGroup.add(castleLabel);
+const castleLabel2 = makeLabel('国宝・1993年 世界遺産登録 ｜ 2025年度 入城 156.8万人', 16, '#f0e6c8', 500);
+castleLabel2.position.set(CASTLE.x, 112, CASTLE.z);
+siteGroup.add(castleLabel2);
+/* 城郭の足元に金色の淡い発光ディスク（目印） */
+const castleGlow = new THREE.Mesh(new THREE.CircleGeometry(230, 48), new THREE.MeshBasicMaterial({color:0xffd166, transparent:true, opacity:0.12, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
+castleGlow.rotation.x = -Math.PI/2; castleGlow.position.set(CASTLE.x-30, 0.8, CASTLE.z+110);
+siteGroup.add(castleGlow);
 /* 大天守の存在感: 光柱 */
 const beam = new THREE.Mesh(new THREE.CylinderGeometry(3, 10, 260, 12, 1, true),
   new THREE.MeshBasicMaterial({color:0xffd166, transparent:true, opacity:0.10, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide}));
@@ -929,7 +995,10 @@ const roadGraph = (function(){
 })();
 /* 距離テーブル付き経路 */
 const ROUTES = new Map();
-function route(a, b){
+/* 来訪者が実際に歩く経路（駅→大手前通り→大手門、城→好古園・商店街 等）を淡い金色の線で常時表示 */
+const routeGroup = new THREE.Group(); scene.add(routeGroup);
+const ROUTE_LINE_MAT = new THREE.LineBasicMaterial({color:0xffd166, transparent:true, opacity:0.22, blending:THREE.AdditiveBlending, depthWrite:false});
+function route(a, b, draw){
   const k = `${Math.round(a.x)}_${Math.round(a.z)}>${Math.round(b.x)}_${Math.round(b.z)}`;
   if(ROUTES.has(k)) return ROUTES.get(k);
   const pth = roadGraph.path(a.x, a.z, b.x, b.z);
@@ -937,6 +1006,12 @@ function route(a, b){
   for(let i=1;i<pth.length;i++){ total += Math.hypot(pth[i][0]-pth[i-1][0], pth[i][1]-pth[i-1][1]); seg.push(total); }
   const r = {path:pth, seg, total:Math.max(1,total)};
   ROUTES.set(k, r);
+  if(draw && total < 6000){
+    /* 経路リボン: 利用者数に応じて帯が太く・明るくなり、帯は進行方向へ流れる */
+    r.rib = buildRibbon(pth.map(p=>({x:p[0], z:p[1]})), {col:0xffd166, w:22, kind:3}, routeGroup, 1.6);
+    r.rib.uni.uDim.value = 0.8; r.rib.uni.uFlowCol.value.setHex(0xffe08a);
+    r.uses = 0;
+  }
   return r;
 }
 function sampleRoute(r, d){
@@ -949,7 +1024,13 @@ function sampleRoute(r, d){
 
 /* ================= 来訪者エージェント（1ドット = 8人） ================= */
 const MAX_AG = 2400;
-const agentMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(2.4, 6, 5), new THREE.MeshBasicMaterial(), MAX_AG);
+const agentMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(2.2, 6, 5), new THREE.MeshBasicMaterial(), MAX_AG);
+/* 軌跡（移動中の来訪者が残す尾）: 細長い板を進行方向に並べ、線として見せる */
+const TRAIL_K = 16, TRAIL_STEP = 6;
+const trailMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({transparent:true, opacity:0.95, blending:THREE.AdditiveBlending, depthWrite:false}), MAX_AG*TRAIL_K);
+trailMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_AG*TRAIL_K*3), 3);
+trailMesh.count = 0; trailMesh.frustumCulled = false; scene.add(trailMesh);
+const _Q = new THREE.Quaternion(), _E = new THREE.Euler(), _S = new THREE.Vector3(), _PV = new THREE.Vector3();
 agentMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(MAX_AG*3), 3);
 agentMesh.count = 0; agentMesh.frustumCulled = false;
 scene.add(agentMesh);
@@ -977,14 +1058,15 @@ function spawnAgent(){
   else { const o=ORIGIN_BY_ID[dest[0]]; const g=GATES[o ? o.gate : gk]; endNode={x:g.x,z:g.z}; endKind='gate'; }
   const jr = 40+rnd()*130, ja = rnd()*6.283;
   const a = { seg, gk, dest, plan, pi:0, state:'move', endNode, endKind, r:null, d:0, sp:70+rnd()*30, dwellLeft:0, cur:{x:gate.x,z:gate.z}, t0:timeState.min, visited:0, jx:Math.cos(ja)*jr, jz:Math.sin(ja)*jr*0.8 };
-  a.r = route(a.cur, plan.length ? plan[0].node : endNode);
+  a.tr = [];
+  a.r = route(a.cur, plan.length ? plan[0].node : endNode, true); a.r.uses = (a.r.uses||0)+1;
   agents.push(a);
   STATS.arrived[seg]++; STATS.byGate[gk]=(STATS.byGate[gk]||0)+1; dayTotal++;
 }
 function resetSim(){
   agents.length = 0; spawnAcc = 0; dayTotal = 0;
   STATS.arrived={in:0,dom:0,loc:0}; STATS.departed={}; STATS.byGate={}; STATS.atSpot={}; STATS.staying=0; STATS.castleEntered=0; STATS.dwellSum=0; STATS.dwellN=0; STATS.kaiyu=0;
-  agentMesh.count = 0;
+  agentMesh.count = 0; trailMesh.count = 0;
   calcArrNorm();
 }
 function updateAgents(dtMin){
@@ -993,7 +1075,7 @@ function updateAgents(dtMin){
   spawnAcc += perDay * arrProfile(timeState.min)/ARR_NORM * dtMin;
   while(spawnAcc >= 1 && agents.length < MAX_AG){ spawnAcc -= 1; spawnAgent(); }
   const M = new THREE.Matrix4(), C = new THREE.Color();
-  let vi=0, inCastle=0, moving=0, atSpotN=0;
+  let vi=0, ti=0, inCastle=0, moving=0, atSpotN=0;
   const spotNow = {};
   for(let i=agents.length-1;i>=0;i--){
     const a = agents[i];
@@ -1019,6 +1101,8 @@ function updateAgents(dtMin){
       } else {
         const p = sampleRoute(a.r, a.d);
         a.cur = {x:p[0], z:p[1]};
+        const lt = a.tr[a.tr.length-1];
+        if(!lt || Math.hypot(lt[0]-p[0], lt[1]-p[1]) >= TRAIL_STEP){ a.tr.push([p[0], p[1]]); if(a.tr.length > TRAIL_K+1) a.tr.shift(); }
       }
     } else if(a.state==='castle' || a.state==='spot'){
       a.dwellLeft -= dtMin;
@@ -1026,7 +1110,7 @@ function updateAgents(dtMin){
       if(a.dwellLeft <= 0){
         a.pi++;
         const next = a.pi < a.plan.length ? a.plan[a.pi].node : a.endNode;
-        a.r = route(a.cur, next); a.d = 0; a.state='move';
+        a.r = route(a.cur, next, true); a.r.uses = (a.r.uses||0)+1; a.d = 0; a.state='move'; a.tr = [];
       }
     }
     /* 描画（城内滞留中は城内ではなく周辺に薄く散らす / L2は別表現） */
@@ -1036,7 +1120,21 @@ function updateAgents(dtMin){
     if(a.state==='castle'){ x = CASTLE.x - 60 + a.jx; z = CASTLE.z + 130 + a.jz; y=2.4; }
     else if(a.state==='spot'){ x += a.jx*0.35; z += a.jz*0.35; }
     else if(a.state==='stay'){ x += a.jx*0.15; z += a.jz*0.15; y=32; }
-    if(a.state==='move') moving++;
+    if(a.state==='move'){
+      moving++;
+      /* 尾: 古いほど細く暗く */
+      const n = a.tr.length;
+      for(let j=0; j<n-1 && ti<MAX_AG*TRAIL_K; j++){
+        const p0=a.tr[j], p1=a.tr[j+1];
+        const dx=p1[0]-p0[0], dz=p1[1]-p0[1], L=Math.hypot(dx,dz); if(L<0.5) continue;
+        const f=(j+1)/n;
+        _E.set(0, Math.atan2(-dz, dx), 0); _Q.setFromEuler(_E);
+        _PV.set((p0[0]+p1[0])/2, 2.4, (p0[1]+p1[1])/2); _S.set(L+1.2, 0.6, 0.8+2.2*f);
+        M.compose(_PV, _Q, _S); trailMesh.setMatrixAt(ti, M);
+        C.setHex(SEG[a.seg].col).multiplyScalar(0.2+1.0*f); trailMesh.setColorAt(ti, C);
+        ti++;
+      }
+    }
     M.makeTranslation(x, y, z);
     agentMesh.setMatrixAt(vi, M);
     C.setHex(SEG[a.seg].col);
@@ -1044,6 +1142,7 @@ function updateAgents(dtMin){
     vi++;
   }
   agentMesh.count = vi;
+  trailMesh.count = ti; trailMesh.instanceMatrix.needsUpdate = true; if(trailMesh.instanceColor) trailMesh.instanceColor.needsUpdate = true;
   agentMesh.instanceMatrix.needsUpdate = true;
   if(agentMesh.instanceColor) agentMesh.instanceColor.needsUpdate = true;
   STATS.inCastle = inCastle; STATS.moving = moving; STATS.inCity = agents.length; STATS.atSpot = spotNow; STATS.atSpotN = atSpotN;
@@ -1258,7 +1357,8 @@ const RIBBON_FS = [
  '  float y = abs(vUv.y-0.5)*2.0; float d = vUv.x*uLen; float base = 0.0;',
  '  if(uKind < 0.5){ base = smoothstep(0.30,0.18,y); float tie = step(0.55, fract(d/320.0)); base = max(base, (1.0-smoothstep(0.62,0.80,y))*tie*0.45); }',
  '  else if(uKind < 1.5){ base = smoothstep(0.92,0.80,y) - smoothstep(0.50,0.36,y); float dash = step(0.5, fract(d/420.0)); base = max(base*0.9, smoothstep(0.10,0.0,y)*dash*0.7); }',
- '  else { float dash = step(0.42, fract(d/360.0)); base = smoothstep(0.28,0.16,y)*dash; }',
+ '  else if(uKind < 2.5){ float dash = step(0.42, fract(d/360.0)); base = smoothstep(0.28,0.16,y)*dash; }',
+ '  else { base = smoothstep(0.34,0.10,y)*0.55; }',
  '  float band = pow(0.5+0.5*sin((d/1100.0 - uTime*uDir)*6.28318), 3.0);',
  '  float fw = smoothstep(uFlowW, uFlowW*0.45, y);',
  '  vec3 col = uCol*base*uDim*1.15 + uFlowCol*band*fw*uAct*1.5;',
@@ -1413,12 +1513,13 @@ const chevrons=[];
 TOURS.forEach(t=>{
   const e = t.to(); t.end = e;
   const r = route({x:STN.x, z:STN.z}, e);
-  t.wp = r.path; t.seg = r.seg; t.total = r.total;
+  t.path = r.path; t.wp = r.path; t.seg = r.seg; t.total = r.total;
   const v3 = t.wp.map(p=>new THREE.Vector3(p[0], 2.6, p[1]));
+  /* 導線リボン（バス/鉄道の帯・流れ付き） */
+  t.rib = buildRibbon(t.wp.map(p=>({x:p[0], z:p[1]})), {col:t.col, w:46, kind:0}, tourGroup, 2.0);
+  t.rib.uni.uAct.value = 0.7; t.rib.uni.uFlowW.value = 0.5; t.rib.uni.uFlowCol.value.setHex(t.col).lerp(new THREE.Color(0xffffff), 0.5);
   const glow = new THREE.Line(new THREE.BufferGeometry().setFromPoints(v3), new THREE.LineBasicMaterial({color:t.col, transparent:true, opacity:0.9}));
   tourGroup.add(glow);
-  const glow2 = new THREE.Line(new THREE.BufferGeometry().setFromPoints(v3), new THREE.LineBasicMaterial({color:t.col, transparent:true, opacity:0.35, blending:THREE.AdditiveBlending, depthWrite:false}));
-  glow2.position.y = 1; tourGroup.add(glow2);
   const cgeo=new THREE.ConeGeometry(7, 20, 5);
   const cmat=new THREE.MeshBasicMaterial({color:t.col, transparent:true, opacity:0.9});
   const nCh=Math.max(4, Math.round(t.total/380));
@@ -1435,6 +1536,7 @@ const hubLb=makeLabel('観光ハブ: JR姫路駅・バスターミナル', 11, '
 const UP=new THREE.Vector3(0,1,0);
 function updateChevrons(dt){
   if(!tourGroup.visible) return;
+  TOURS.forEach(t=>{ if(t.rib) t.rib.uni.uTime.value += dt*0.6; });
   chevrons.forEach(c=>{
     c.u += dt*46/c.t.total; if(c.u>=1) c.u-=1;
     const d=c.u*c.t.total;
@@ -1495,6 +1597,7 @@ function setLevel(lv, fly=true){
   level = lv;
   document.querySelectorAll('.crumb[data-lvl]').forEach(c=>c.classList.toggle('active', c.dataset.lvl===lv));
   zoneGroup.visible = (lv==='castle');
+  routeGroup.visible = (lv!=='wide'); trailMesh.visible = (lv!=='wide');
   castleLabel.visible = (lv!=='castle');
   wideGroup.visible = (lv==='wide');
   odGroup.visible = odMode && lv!=='castle';
@@ -2019,6 +2122,8 @@ function loop(now){
   if(odMode && level!=='castle') updateKDE(false);
   updateChevrons(dt);
   beam.material.opacity = 0.07 + 0.05*Math.sin(now/900);
+  castleGlow.material.opacity = 0.10 + 0.05*Math.sin(now/700);
+  if(level!=='wide'){ ROUTES.forEach(r=>{ if(!r.rib) return; const u=r.rib.uni; u.uTime.value += dt*0.9; const k=Math.min(1, (r.uses||0)/80); u.uAct.value = 0.10 + 0.55*k; u.uFlowW.value = 0.16 + 0.55*k; }); }
   if(now-lastKpi>500){ lastKpi=now; updateKPIs(); }
   renderer.render(scene, camera);
 }
