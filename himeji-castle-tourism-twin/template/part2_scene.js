@@ -54,8 +54,9 @@ el.style.cursor = 'grab';el.style.touchAction='none';
    縦スクロール ＝ カーソル位置へズーム / 横スクロール ＝ 横に移動
    タッチ: 1本指 移動、2本指 ピンチズーム＋移動 */
 ctrl.minPhi = 0.008; ctrl.maxPhi = Math.PI/2 - 0.008;
-let primaryDragMode="rotate";
+let primaryDragMode="pan";   // 既定: 左ドラッグ＝地図を掴んで引っ張る（移動）。右ドラッグ／修飾キー＝回転。「移動中」ボタンで入替
 function startPrimaryDrag(x,y){if(primaryDragMode==="rotate")beginRotate(x,y);else startGrab(x,y);}
+function startSecondaryDrag(x,y){if(primaryDragMode==="rotate")startGrab(x,y);else beginRotate(x,y);}
 const _ray = new THREE.Raycaster(), _ndc = new THREE.Vector2(), _plane = new THREE.Plane(new THREE.Vector3(0,1,0), 0), _hit = new THREE.Vector3();
 function groundAt(clientX, clientY, y){
   const r = el.getBoundingClientRect();
@@ -99,7 +100,7 @@ function moveGrab(x, y){
 }
 function endGrab(){ grab.on = false; grab.pt = null; ctrl.panning = false; ctrl.rotating = false; el.style.cursor = 'grab'; }
 /* 回転（掴んだ地点を軸に） */
-function beginRotate(x, y){ grab.on = false; grab.pt = null; ctrl.panning = false; pivotTo(x, y); ctrl.rotating = true; ctrl.px = x; ctrl.py = y; el.style.cursor = 'grabbing'; }
+function beginRotate(x, y){ grab.on = false; grab.pt = null; ctrl.panning = false; ctrl.rotating = true; ctrl.px = x; ctrl.py = y; el.style.cursor = 'grabbing'; }
 function rotateBy(dx, dy){ ctrl.sph.theta -= dx*0.0052; ctrl.sph.phi -= dy*0.0045; ctrl.apply(); }
 /* 長押し判定（入力イベントの timeStamp で判定＝描画が重くても誤判定しない）: 押してすぐ動かす＝回転、少し待ってから動かす＝移動 */
 const HOLD_MS = 320, HOLD_MOVE = 5;
@@ -124,7 +125,7 @@ el.addEventListener('mousedown', e=>{
   if(!ctrl.enabled) return;
   if(tween) tween = null;
   disarmHold();
-  if(e.button===2 || e.button===1 || (e.button===0 && (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey))){ e.preventDefault(); startGrab(e.clientX, e.clientY); }
+  if(e.button===2 || e.button===1 || (e.button===0 && (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey))){ e.preventDefault(); startSecondaryDrag(e.clientX, e.clientY); }
   else if(e.button===0){ e.preventDefault(); startPrimaryDrag(e.clientX, e.clientY); }
 
 });
