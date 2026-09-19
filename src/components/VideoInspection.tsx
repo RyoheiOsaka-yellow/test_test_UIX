@@ -183,7 +183,7 @@ export function VideoInspection() {
 
         <div className="pointer-events-none absolute top-[178px] left-3 flex max-w-[260px] flex-col gap-0.5 text-[9.5px] leading-tight tracking-[0.06em] text-ink-3">
           {isPlaceholder && '動画ファイルなし · public/demo/bottling-line.mp4 を置くと実映像に切り替わります'}
-          {isVideo && (credit ?? 'ボトル検出: 事前追跡（YOLO） · キャップ判定: 疑似注入')}
+          {isVideo && (credit ?? 'ボトル検出: 事前追跡 · キャップ判定: 疑似注入')}
           <span className="text-ink-3/70">シナリオ: {SCENARIOS[scenario].name}</span>
         </div>
       </div>

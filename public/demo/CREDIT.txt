@@ -1,2 +1,3 @@
-映像: Mixkit「Beer bottle production line in the factory」（https://mixkit.co/free-stock-video/beer-bottle-production-line-in-the-factory-33003/）Mixkit Stock Video Free License
+映像: Mixkit の無料素材（ビール瓶充填ライン）· ボトル検出: 事前追跡 · キャップ判定: 疑似注入
+出典: https://mixkit.co/free-stock-video/beer-bottle-production-line-in-the-factory-33003/ （Mixkit Stock Video Free License、商用可・クレジット不要）
 検出: YOLO11（COCO の bottle クラス）+ ByteTrack で事前計算。キャップ有無はシナリオによる疑似注入。
