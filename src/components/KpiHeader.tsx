@@ -14,16 +14,16 @@ function Kpi({ label, value, unit, tone = 'text-ink' }: { label: string; value: 
 
 export function KpiHeader() {
   const kpi = useInspectionStore((s) => s.kpi)
-  const fmt = (n: number) => n.toLocaleString('en-US')
+  const fmt = (n: number) => n.toLocaleString('ja-JP')
   return (
     <div className="panel flex items-stretch overflow-x-auto">
-      <Kpi label="Total inspected" value={fmt(kpi.totalInspected)} />
-      <Kpi label="Pass" value={fmt(kpi.pass)} tone="text-green" />
-      <Kpi label="Reject" value={fmt(kpi.reject)} tone="text-red" />
-      <Kpi label="Review" value={fmt(kpi.pendingReview)} tone="text-violet" />
-      <Kpi label="Yield" value={kpi.totalInspected ? (kpi.yieldRate * 100).toFixed(1) : '—'} unit="%" tone="text-cyan" />
-      <Kpi label="Throughput" value={kpi.throughputBpm ? kpi.throughputBpm.toFixed(0) : '—'} unit="BPM" />
-      <Kpi label="Decision latency" value={kpi.decisionLatencyMs ? kpi.decisionLatencyMs.toFixed(0) : '—'} unit="ms" />
+      <Kpi label="検査総数" value={fmt(kpi.totalInspected)} />
+      <Kpi label="合格" value={fmt(kpi.pass)} tone="text-green" />
+      <Kpi label="不良" value={fmt(kpi.reject)} tone="text-red" />
+      <Kpi label="確認待ち" value={fmt(kpi.pendingReview)} tone="text-violet" />
+      <Kpi label="良品率" value={kpi.totalInspected ? (kpi.yieldRate * 100).toFixed(1) : '—'} unit="%" tone="text-cyan" />
+      <Kpi label="処理速度" value={kpi.throughputBpm ? kpi.throughputBpm.toFixed(0) : '—'} unit="本/分" />
+      <Kpi label="判断遅延" value={kpi.decisionLatencyMs ? kpi.decisionLatencyMs.toFixed(0) : '—'} unit="ミリ秒" />
     </div>
   )
 }

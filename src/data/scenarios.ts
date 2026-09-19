@@ -3,8 +3,8 @@ import type { ScenarioDefinition, ScenarioId } from '@/types/inspection'
 export const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
   normal: {
     id: 'normal',
-    name: 'Normal Production',
-    description: 'CAPPED 95% / UNCAPPED 5%. Baseline line behaviour.',
+    name: '通常生産',
+    description: 'キャップ有 95% / キャップ無 5%。基準となるラインの挙動。',
     uncappedRate: 0.05,
     misalignedRate: 0.02,
     ambiguousRate: 0.01,
@@ -14,8 +14,8 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
   },
   high_reject: {
     id: 'high_reject',
-    name: 'High Reject Rate',
-    description: 'Quality incident: CAPPED 75% / UNCAPPED 25%. Anomaly alert raises after a short while.',
+    name: '不良率上昇',
+    description: '品質トラブル: キャップ有 75% / キャップ無 25%。しばらくすると異常警報が上がる。',
     uncappedRate: 0.25,
     misalignedRate: 0.03,
     ambiguousRate: 0.02,
@@ -25,8 +25,8 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
   },
   sensor_noise: {
     id: 'sensor_noise',
-    name: 'Sensor Noise',
-    description: 'Jittery boxes and confidence; many ambiguous reads escalate to HUMAN_REVIEW.',
+    name: 'センサーノイズ',
+    description: '枠と信頼度が揺れ、判定不能な読みが多く「要確認」へ回る。',
     uncappedRate: 0.06,
     misalignedRate: 0.05,
     ambiguousRate: 0.18,
@@ -36,8 +36,8 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
   },
   cap_misalignment: {
     id: 'cap_misalignment',
-    name: 'Cap Misalignment',
-    description: 'Capper drifting: many caps land in the RECHECK band and get re-sampled at the gate.',
+    name: 'キャップずれ',
+    description: '打栓機のずれ: 多くのキャップが「再検査」帯に入り、ゲートで再サンプリングされる。',
     uncappedRate: 0.05,
     misalignedRate: 0.28,
     ambiguousRate: 0.03,
@@ -47,8 +47,8 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
   },
   confidence_drop: {
     id: 'confidence_drop',
-    name: 'Camera Confidence Drop',
-    description: 'Camera exposure fault between 18s and 48s; vision confidence collapses and the line decision escalates.',
+    name: 'カメラ信頼度低下',
+    description: '18〜48秒にカメラ露出異常。認識の信頼度が崩れ、ライン判断が「要確認」へ上がる。',
     uncappedRate: 0.05,
     misalignedRate: 0.02,
     ambiguousRate: 0.02,
@@ -64,8 +64,8 @@ export const SCENARIOS: Record<ScenarioId, ScenarioDefinition> = {
   },
   line_congestion: {
     id: 'line_congestion',
-    name: 'Line Congestion',
-    description: 'Bottles bunch up on the belt; throughput spikes and boxes overlap.',
+    name: 'ライン渋滞',
+    description: 'ベルト上でボトルが詰まり、処理速度が跳ね上がって枠が重なる。',
     uncappedRate: 0.07,
     misalignedRate: 0.03,
     ambiguousRate: 0.02,

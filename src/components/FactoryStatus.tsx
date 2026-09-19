@@ -14,22 +14,36 @@ const tone: Record<string, string> = {
   STOPPED: 'text-red',
 }
 
+const label: Record<string, string> = {
+  ONLINE: '正常',
+  OFFLINE: '切断',
+  DEGRADED: '劣化',
+  ACTIVE: '稼働',
+  IDLE: '待機',
+  SIMULATED: '模擬',
+  LIVE: '接続',
+  FALLBACK: '退避',
+  RUNNING: '稼働',
+  PAUSED: '停止中',
+  STOPPED: '停止',
+}
+
 export function FactoryStatus() {
   const status = useInspectionStore((s) => s.status)
   const items: Array<[string, string]> = [
-    ['CAMERA', status.camera],
-    ['VISION', status.vision],
+    ['カメラ', status.camera],
+    ['認識', status.vision],
     ['JEV', status.jev],
-    ['LINE', status.line],
+    ['ライン', status.line],
   ]
   return (
     <div className="flex items-stretch divide-x divide-border-2 border border-border bg-panel">
       {items.map(([k, v]) => (
         <div key={k} className="flex flex-col justify-center gap-0.5 px-3 py-1">
           <span className="label">{k}</span>
-          <span className={`flex items-center gap-1.5 font-mono text-[10.5px] font-semibold ${tone[v] ?? 'text-ink'}`}>
+          <span className={`flex items-center gap-1.5 text-[10.5px] font-semibold ${tone[v] ?? 'text-ink'}`}>
             <span className={`dot ${v === 'RUNNING' || v === 'ACTIVE' ? 'pulse' : ''}`} />
-            {v}
+            {label[v] ?? v}
           </span>
         </div>
       ))}

@@ -41,7 +41,8 @@ export interface RawDetection {
   /** Stable track id. */
   id: number
   bbox: NormalizedBBox
-  class: 'capped' | 'uncapped' | Lowercase<DetectionClass>
+  /** 'bottle' = ボトルのみ検出（キャップ状態は未判定。シナリオ側で割り当て） */
+  class: 'bottle' | 'capped' | 'uncapped' | Lowercase<DetectionClass>
   /** Class confidence 0..1 (confidence of the reported class). */
   confidence: number
   /** Optional: explicit bottle-presence confidence. Defaults to ~0.95. */

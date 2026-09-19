@@ -26,7 +26,7 @@ export function drawOverlay(
   if (settings.inspectionGate) {
     ctx.save()
     ctx.fillStyle = 'rgba(255, 213, 42, 0.035)'
-    ctx.fillRect((0.5 - 0.09) * w, 0, 0.18 * w, h)
+    ctx.fillRect((0.5 - 0.06) * w, 0, 0.12 * w, h)
     ctx.restore()
   }
 

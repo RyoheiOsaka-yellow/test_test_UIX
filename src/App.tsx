@@ -36,33 +36,32 @@ export default function App() {
 
   return (
     <div className="app flex h-full min-h-0 flex-col gap-2 p-2">
-      {/* Top bar */}
       <header className="flex items-center gap-3">
         <div className="flex items-center gap-2 pr-2">
           <ScanLine size={16} className="text-cyan" />
           <div className="leading-tight">
-            <div className="font-mono text-[12px] font-semibold tracking-[0.18em] text-ink">JEV VISUAL INSPECTION</div>
-            <div className="label">Bottling Line A · Cap presence · Prototype v0.1</div>
+            <div className="text-[12px] font-semibold tracking-[0.12em] text-ink">JEV 外観検査</div>
+            <div className="label">充填ライン A · キャップ有無 · 試作版 v0.1</div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="border border-yellow/60 bg-yellow/10 px-2 py-[3px] font-mono text-[9.5px] font-semibold tracking-[0.18em] text-yellow">DEMO MODE</span>
+          <span className="border border-yellow/60 bg-yellow/10 px-2 py-[3px] text-[9.5px] font-semibold tracking-[0.12em] text-yellow">デモモード</span>
           <span
-            className={`border px-2 py-[3px] font-mono text-[9.5px] font-semibold tracking-[0.18em] ${
+            className={`border px-2 py-[3px] text-[9.5px] font-semibold tracking-[0.12em] ${
               mode === 'JEV_LIVE' ? 'border-green/60 bg-green/10 text-green' : 'border-cyan/60 bg-cyan/10 text-cyan'
             }`}
           >
-            {mode === 'JEV_LIVE' ? 'JEV LIVE' : 'SIMULATION'}
+            {mode === 'JEV_LIVE' ? 'JEV接続' : 'シミュレーション'}
           </span>
           {!playing && (
             <button className="btn btn-primary" onClick={() => controller.runDemo()}>
-              <Play size={11} /> {demoStarted ? 'Resume demo' : 'Run demo'}
+              <Play size={11} /> {demoStarted ? 'デモを再開' : 'デモ開始'}
             </button>
           )}
         </div>
         {alert.active && (
-          <div className="flex items-center gap-2 border border-red/60 bg-red/10 px-2 py-[3px] font-mono text-[10px] font-semibold tracking-[0.12em] text-red">
-            <span className="dot pulse" /> ANOMALY ALERT · {alert.message} · {(alert.rejectRate * 100).toFixed(1)}%
+          <div className="flex items-center gap-2 border border-red/60 bg-red/10 px-2 py-[3px] text-[10px] font-semibold tracking-[0.08em] text-red">
+            <span className="dot pulse" /> 異常警報 · {alert.message} · {(alert.rejectRate * 100).toFixed(1)}%
           </div>
         )}
         <div className="ml-auto">
@@ -72,7 +71,6 @@ export default function App() {
 
       <KpiHeader />
 
-      {/* Main grid */}
       <div className="grid min-h-0 flex-1 grid-cols-[212px_minmax(0,1fr)_300px] grid-rows-[minmax(0,1fr)_248px] gap-2">
         <aside className="row-span-2 flex min-h-0 flex-col gap-2 overflow-y-auto">
           <SystemStatus />
@@ -84,7 +82,7 @@ export default function App() {
           <VideoInspection />
         </main>
 
-        <aside className="flex min-h-0 flex-col gap-2 overflow-y-auto">
+        <aside className="flex min-h-0 flex-col gap-2 overflow-y-auto [&>section]:shrink-0">
           <DecisionPanel />
           <AnomalyPanel />
           <HumanReviewQueue />

@@ -17,13 +17,13 @@ function useNowSecond() {
 function TooltipBox({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string | number }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="border border-border bg-panel-2 px-2 py-1 font-mono text-[10px]">
+    <div className="border border-border bg-panel-2 px-2 py-1 text-[10px]">
       <div className="text-ink-3">{label}</div>
       {payload.map((p) => (
         <div key={p.name} className="flex justify-between gap-3">
           <span className="text-ink-2">{p.name}</span>
           <span className="num" style={{ color: p.color }}>
-            {typeof p.value === 'number' && p.value <= 1 && p.name === 'cap' ? `${Math.round(p.value * 100)}%` : p.value}
+            {p.name === 'キャップ' ? `${Math.round(p.value * 100)}%` : p.value}
           </span>
         </div>
       ))}
@@ -31,33 +31,33 @@ function TooltipBox({ active, payload, label }: { active?: boolean; payload?: Ar
   )
 }
 
-/** PASS / REJECT per second over the last 60 s. */
+/** 直近60秒の合格 / 不良（1秒刻み） */
 export function PassRejectChart() {
   const series = useInspectionStore((s) => s.series)
   const now = useNowSecond()
   const data = useMemo(() => {
     const map = new Map(series.map((p) => [p.t, p]))
-    const out: Array<{ t: number; label: string; PASS: number; REJECT: number }> = []
+    const out: Array<{ t: number; label: string; 合格: number; 不良: number }> = []
     for (let i = 59; i >= 0; i--) {
       const t = now - i * 1000
       const p = map.get(t)
-      out.push({ t, label: `-${i}s`, PASS: p?.pass ?? 0, REJECT: p?.reject ?? 0 })
+      out.push({ t, label: `-${i}秒`, 合格: p?.pass ?? 0, 不良: p?.reject ?? 0 })
     }
     return out
   }, [series, now])
-  const totals = data.reduce((a, p) => ({ pass: a.pass + p.PASS, reject: a.reject + p.REJECT }), { pass: 0, reject: 0 })
+  const totals = data.reduce((a, p) => ({ pass: a.pass + p.合格, reject: a.reject + p.不良 }), { pass: 0, reject: 0 })
 
   return (
     <Panel
-      title="Pass / Reject"
+      title="合格 / 不良 推移"
       right={
-        <span className="flex items-center gap-2 font-mono text-[9px]">
-          <span className="text-ink-3">60 s</span>
+        <span className="flex items-center gap-2 text-[9px]">
+          <span className="text-ink-3">直近60秒</span>
           <span className="flex items-center gap-1 text-green">
-            <span className="dot" /> PASS <span className="num text-ink-2">{totals.pass}</span>
+            <span className="dot" /> 合格 <span className="num text-ink-2">{totals.pass}</span>
           </span>
           <span className="flex items-center gap-1 text-red">
-            <span className="dot" /> REJECT <span className="num text-ink-2">{totals.reject}</span>
+            <span className="dot" /> 不良 <span className="num text-ink-2">{totals.reject}</span>
           </span>
         </span>
       }
@@ -69,27 +69,27 @@ export function PassRejectChart() {
           <XAxis dataKey="label" tick={axisStyle} tickLine={false} axisLine={{ stroke: '#25313d' }} interval={14} />
           <YAxis tick={axisStyle} tickLine={false} axisLine={false} allowDecimals={false} width={40} />
           <Tooltip content={<TooltipBox />} cursor={{ stroke: '#25313d' }} />
-          <Area type="stepAfter" dataKey="PASS" stroke="#39ff88" fill="#39ff88" fillOpacity={0.12} strokeWidth={1.5} isAnimationActive={false} dot={false} />
-          <Area type="stepAfter" dataKey="REJECT" stroke="#ff5151" fill="#ff5151" fillOpacity={0.18} strokeWidth={1.5} isAnimationActive={false} dot={false} />
+          <Area type="stepAfter" dataKey="合格" stroke="#39ff88" fill="#39ff88" fillOpacity={0.12} strokeWidth={1.5} isAnimationActive={false} dot={false} />
+          <Area type="stepAfter" dataKey="不良" stroke="#ff5151" fill="#ff5151" fillOpacity={0.18} strokeWidth={1.5} isAnimationActive={false} dot={false} />
         </AreaChart>
       </ResponsiveContainer>
     </Panel>
   )
 }
 
-/** Cap confidence at the gate, per inspected object. */
+/** ゲート通過時のキャップ信頼度（検査対象ごと） */
 export function CapConfidenceChart() {
   const capSeries = useInspectionStore((s) => s.capSeries)
-  const data = useMemo(() => capSeries.slice(-60).map((p) => ({ id: p.objectId, cap: p.cap, decision: p.decision })), [capSeries])
+  const data = useMemo(() => capSeries.slice(-60).map((p) => ({ id: p.objectId, キャップ: p.cap, decision: p.decision })), [capSeries])
   return (
     <Panel
-      title="Cap confidence"
+      title="キャップ信頼度"
       right={
-        <span className="flex items-center gap-2 font-mono text-[9px] text-ink-3">
+        <span className="flex items-center gap-2 text-[9px] text-ink-3">
           <span className="text-green">0.75</span>
           <span className="text-yellow">0.45</span>
           <span className="text-red">0.20</span>
-          <span>thresholds</span>
+          <span>しきい値</span>
         </span>
       }
       bodyClassName="px-1 py-1"
@@ -105,7 +105,7 @@ export function CapConfidenceChart() {
           <ReferenceLine y={0.2} stroke="#ff5151" strokeOpacity={0.5} strokeDasharray="3 3" />
           <Line
             type="monotone"
-            dataKey="cap"
+            dataKey="キャップ"
             stroke="#31c6ff"
             strokeWidth={1.5}
             isAnimationActive={false}

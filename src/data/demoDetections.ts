@@ -1,25 +1,32 @@
 import type { NormalizedBBox, RawDetection, ScenarioDefinition } from '@/types/inspection'
 
 /**
- * Deterministic mock detection data.
+ * 検知データ（モック / 実映像トラック）
  *
- * A scenario is expanded into a set of bottle tracks. Each track is a bottle
- * travelling left → right on the conveyor with a ground-truth condition and a
- * baseline vision reading. The simulator turns these into per-frame detections
- * with tracking jitter, so the overlay looks like a live tracker, not a slideshow.
+ * トラック（1本のボトルの軌跡）は2種類:
+ *  - synthetic: 等速でコンベア上を流れる合成トラック（動画ファイルが無いとき）
+ *  - real:      実映像に対して物体検出＋追跡（YOLO + ByteTrack）を事前実行した
+ *               キーフレーム列（/public/demo/detections.json）
  *
- * The same tracks can be serialised to the `/public/demo/detections.json`
- * keyframe format (see `tracksToTimeline`) and read back (`timelineToTracks`),
- * which is the contract a real detector + tracker would emit.
+ * どちらの場合も「キャップ有無」はフェーズ1では学習済みモデルが無いため、
+ * シナリオに従って決定的に割り当てる（= 疑似欠陥注入）。UI 上で明示する。
  */
 
 export type TruthCondition = 'CAPPED' | 'UNCAPPED' | 'MISALIGNED' | 'AMBIGUOUS'
 
+export interface TrackKeyframe {
+  t: number
+  bbox: NormalizedBBox
+  /** 検出器のボトル信頼度（実トラックのみ） */
+  confidence?: number
+}
+
 export interface BottleTrack {
   id: number
-  /** Video time at which the bottle centre is at CONVEYOR.entryX. */
+  source: 'synthetic' | 'real'
+  /** synthetic: 中心が CONVEYOR.entryX を通過する時刻 / real: 最初のキーフレーム時刻 */
   enterTime: number
-  /** Horizontal speed in normalized frame units per second. */
+  /** synthetic のみ: 正規化座標での横方向速度 [1/s] */
   speed: number
   y: number
   width: number
@@ -28,27 +35,26 @@ export interface BottleTrack {
   bottleConfidence: number
   capConfidence: number
   capPositionScore: number
-  /** Per-track noise seed for smooth jitter. */
+  /** トラック固有の乱数シード */
   seed: number
+  /** real のみ: 補間に使うキーフレーム列（時刻昇順） */
+  keyframes?: TrackKeyframe[]
 }
 
 export const CONVEYOR = {
-  /** Normalized x where a bottle centre starts (off-screen left). */
   entryX: -0.12,
-  /** Normalized x where a bottle is considered gone (off-screen right). */
   exitX: 1.12,
-  /** Inspection gate position (normalized x). */
+  /** 検査ゲート位置（正規化 x） */
   gateX: 0.5,
-  /** Half-width of the inspection zone around the gate. */
-  zoneHalfWidth: 0.09,
-  /** Default conveyor speed, normalized units per second. */
+  /** 検査ゾーンの半幅 */
+  zoneHalfWidth: 0.06,
   speed: 0.19,
   bottleWidth: 0.075,
   bottleHeight: 0.46,
   bottleY: 0.3,
 } as const
 
-/** Small deterministic PRNG (mulberry32). */
+/** 決定的な乱数（mulberry32） */
 export function createRng(seed: number): () => number {
   let a = seed >>> 0
   return () => {
@@ -91,57 +97,55 @@ function readingsFor(truth: TruthCondition, rng: () => number) {
   }
 }
 
+function drawTruth(scenario: ScenarioDefinition, rng: () => number): TruthCondition {
+  const r = rng()
+  if (r < scenario.uncappedRate) return 'UNCAPPED'
+  if (r < scenario.uncappedRate + scenario.misalignedRate) return 'MISALIGNED'
+  if (r < scenario.uncappedRate + scenario.misalignedRate + scenario.ambiguousRate) return 'AMBIGUOUS'
+  return 'CAPPED'
+}
+
 export interface GenerateOptions {
   durationSeconds?: number
   seed?: number
 }
 
 /**
- * Expand a scenario into bottle tracks.
- *
- * Demo guarantee: the belt is already populated at t=0 and one of the first
- * bottles to reach the gate is UNCAPPED, so a REJECT is visible within ~5s.
+ * 合成トラックを生成する（動画ファイルが無い場合）。
+ * デモ保証: t=0 で既にベルト上にボトルがあり、最初にゲートへ到達する数本のうち
+ * 1本は必ず UNCAPPED（約5秒以内に不良判定が見える）。
  */
 export function generateTracks(scenario: ScenarioDefinition, opts: GenerateOptions = {}): BottleTrack[] {
   const duration = opts.durationSeconds ?? 240
-  const rng = createRng(opts.seed ?? hashScenario(scenario.id))
+  const rng = createRng(opts.seed ?? hashString(scenario.id))
   const tracks: BottleTrack[] = []
 
-  // Start before t=0 so bottles are already on the belt when the demo starts.
   const travel = (CONVEYOR.exitX - CONVEYOR.entryX) / CONVEYOR.speed
   let t = -travel + 0.6
   let id = 1
   let clumpRemaining = 0
 
   while (t < duration) {
-    let truth: TruthCondition
-    const r = rng()
-    if (r < scenario.uncappedRate) truth = 'UNCAPPED'
-    else if (r < scenario.uncappedRate + scenario.misalignedRate) truth = 'MISALIGNED'
-    else if (r < scenario.uncappedRate + scenario.misalignedRate + scenario.ambiguousRate) truth = 'AMBIGUOUS'
-    else truth = 'CAPPED'
-
+    const truth = drawTruth(scenario, rng)
     const readings = readingsFor(truth, rng)
-    const width = CONVEYOR.bottleWidth * between(rng, 0.94, 1.06)
-    const height = CONVEYOR.bottleHeight * between(rng, 0.97, 1.03)
     tracks.push({
       id,
+      source: 'synthetic',
       enterTime: t,
       speed: CONVEYOR.speed,
       y: CONVEYOR.bottleY + between(rng, -0.012, 0.012),
-      width,
-      height,
+      width: CONVEYOR.bottleWidth * between(rng, 0.94, 1.06),
+      height: CONVEYOR.bottleHeight * between(rng, 0.97, 1.03),
       truth,
       ...readings,
       seed: Math.floor(rng() * 1e9),
     })
     id++
 
-    // Spacing: normal jitter, with occasional clumps for congestion scenarios.
     let gap = scenario.spacingSeconds * between(rng, 0.8, 1.25)
     if (scenario.spacingSeconds < 0.6) {
       if (clumpRemaining > 0) {
-        gap = CONVEYOR.bottleWidth / CONVEYOR.speed * between(rng, 1.05, 1.3)
+        gap = (CONVEYOR.bottleWidth / CONVEYOR.speed) * between(rng, 1.05, 1.3)
         clumpRemaining--
       } else if (rng() < 0.35) {
         clumpRemaining = 2 + Math.floor(rng() * 3)
@@ -150,24 +154,58 @@ export function generateTracks(scenario: ScenarioDefinition, opts: GenerateOptio
     t += Math.max(gap, (CONVEYOR.bottleWidth * 1.05) / CONVEYOR.speed)
   }
 
-  // Demo guarantee: the bottle that reaches the gate between ~3s and ~6s is UNCAPPED.
-  const gateOffset = (CONVEYOR.gateX - CONVEYOR.entryX) / CONVEYOR.speed
-  const target = tracks.find((tr) => tr.enterTime + gateOffset >= 3 && tr.enterTime + gateOffset <= 6.5)
-  if (target && target.truth !== 'UNCAPPED') {
-    const r2 = createRng(target.seed)
-    Object.assign(target, { truth: 'UNCAPPED' as const, ...readingsFor('UNCAPPED', r2) })
-  }
-  // And the very first bottle to reach the gate is CAPPED, so the first visible decision is a clean PASS.
-  const first = tracks.find((tr) => tr.enterTime + gateOffset >= 0.4)
-  if (first && first !== target && first.truth !== 'CAPPED') {
-    const r3 = createRng(first.seed)
-    Object.assign(first, { truth: 'CAPPED' as const, ...readingsFor('CAPPED', r3) })
-  }
-
+  applyDemoGuarantee(tracks)
   return tracks
 }
 
-function hashScenario(id: string): number {
+/**
+ * 実映像トラックにシナリオの状態（キャップ有無など）を割り当てる。
+ * 幾何（位置・大きさ・時刻）と検出器のボトル信頼度は実測値のまま。
+ */
+export function assignConditions(base: BottleTrack[], scenario: ScenarioDefinition, seed?: number): BottleTrack[] {
+  const rng = createRng(seed ?? hashString(scenario.id + ':real'))
+  const tracks = base.map((tr) => {
+    const truth = drawTruth(scenario, rng)
+    const r = readingsFor(truth, rng)
+    return {
+      ...tr,
+      truth,
+      capConfidence: r.capConfidence,
+      capPositionScore: r.capPositionScore,
+      // 検出器の信頼度があればそれを優先
+      bottleConfidence: tr.keyframes?.length ? meanConfidence(tr.keyframes, r.bottleConfidence) : r.bottleConfidence,
+      seed: Math.floor(rng() * 1e9),
+    }
+  })
+  applyDemoGuarantee(tracks)
+  return tracks
+}
+
+function meanConfidence(kfs: TrackKeyframe[], fallback: number) {
+  const vals = kfs.map((k) => k.confidence).filter((c): c is number => typeof c === 'number')
+  if (!vals.length) return fallback
+  const m = vals.reduce((a, b) => a + b, 0) / vals.length
+  // 検出器の生スコアはやや低めに出るので表示用に軽く持ち上げる（上限 0.99）
+  return Math.min(0.99, 0.55 + m * 0.5)
+}
+
+/** 最初にゲートへ到達するボトルは CAPPED、3〜7秒でゲートに到達する1本は UNCAPPED にする */
+function applyDemoGuarantee(tracks: BottleTrack[]) {
+  const withGate = tracks
+    .map((tr) => ({ tr, g: gateTimeOf(tr) }))
+    .filter((x) => Number.isFinite(x.g))
+    .sort((a, b) => a.g - b.g)
+  const target = withGate.find((x) => x.g >= 3 && x.g <= 7.5)
+  if (target && target.tr.truth !== 'UNCAPPED') {
+    Object.assign(target.tr, { truth: 'UNCAPPED' as const, ...readingsFor('UNCAPPED', createRng(target.tr.seed)) })
+  }
+  const first = withGate.find((x) => x.g >= 0.4)
+  if (first && first.tr !== target?.tr && first.tr.truth !== 'CAPPED') {
+    Object.assign(first.tr, { truth: 'CAPPED' as const, ...readingsFor('CAPPED', createRng(first.tr.seed)) })
+  }
+}
+
+export function hashString(id: string): number {
   let h = 2166136261
   for (let i = 0; i < id.length; i++) {
     h ^= id.charCodeAt(i)
@@ -176,29 +214,78 @@ function hashScenario(id: string): number {
   return h >>> 0
 }
 
+/** 時刻 time におけるバウンディングボックス（正規化座標） */
 export function bboxAt(track: BottleTrack, time: number): NormalizedBBox {
+  const kfs = track.keyframes
+  if (kfs && kfs.length) {
+    if (time <= kfs[0].t) return kfs[0].bbox
+    if (time >= kfs[kfs.length - 1].t) return kfs[kfs.length - 1].bbox
+    // 二分探索
+    let lo = 0
+    let hi = kfs.length - 1
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1
+      if (kfs[mid].t <= time) lo = mid
+      else hi = mid
+    }
+    const a = kfs[lo]
+    const b = kfs[hi]
+    const k = b.t === a.t ? 0 : (time - a.t) / (b.t - a.t)
+    return [
+      a.bbox[0] + (b.bbox[0] - a.bbox[0]) * k,
+      a.bbox[1] + (b.bbox[1] - a.bbox[1]) * k,
+      a.bbox[2] + (b.bbox[2] - a.bbox[2]) * k,
+      a.bbox[3] + (b.bbox[3] - a.bbox[3]) * k,
+    ]
+  }
   const cx = CONVEYOR.entryX + (time - track.enterTime) * track.speed
   return [cx - track.width / 2, track.y, track.width, track.height]
 }
 
+export function centerXAt(track: BottleTrack, time: number): number {
+  const b = bboxAt(track, time)
+  return b[0] + b[2] / 2
+}
+
+/** 中心がゲートを通過する時刻（通過しなければ Infinity） */
 export function gateTimeOf(track: BottleTrack): number {
+  const kfs = track.keyframes
+  if (kfs && kfs.length) {
+    for (let i = 1; i < kfs.length; i++) {
+      const c0 = kfs[i - 1].bbox[0] + kfs[i - 1].bbox[2] / 2
+      const c1 = kfs[i].bbox[0] + kfs[i].bbox[2] / 2
+      if (c0 < CONVEYOR.gateX && c1 >= CONVEYOR.gateX) {
+        const k = (CONVEYOR.gateX - c0) / (c1 - c0)
+        return kfs[i - 1].t + (kfs[i].t - kfs[i - 1].t) * k
+      }
+    }
+    return Infinity
+  }
   return track.enterTime + (CONVEYOR.gateX - CONVEYOR.entryX) / track.speed
 }
 
+/** トラックが消える時刻 */
 export function exitTimeOf(track: BottleTrack): number {
+  const kfs = track.keyframes
+  if (kfs && kfs.length) return kfs[kfs.length - 1].t
   return track.enterTime + (CONVEYOR.exitX - CONVEYOR.entryX) / track.speed
 }
 
 const round3 = (v: number) => Math.round(v * 1000) / 1000
 
-/** Serialise tracks to the `/public/demo/detections.json` keyframe format. */
+/** トラックを /public/demo/detections.json のキーフレーム形式へ変換 */
 export function tracksToTimeline(tracks: BottleTrack[]): RawDetection[] {
   const out: RawDetection[] = []
   for (const tr of tracks) {
+    if (tr.keyframes?.length) {
+      for (const k of tr.keyframes) {
+        out.push({ time: round3(k.t), id: tr.id, bbox: k.bbox.map(round3) as NormalizedBBox, class: 'bottle', confidence: round3(k.confidence ?? tr.bottleConfidence) })
+      }
+      continue
+    }
     const cls = tr.capConfidence >= 0.5 ? 'capped' : 'uncapped'
     const confidence = cls === 'capped' ? tr.capConfidence : 1 - tr.capConfidence
-    const times = [tr.enterTime, gateTimeOf(tr), exitTimeOf(tr)]
-    for (const time of times) {
+    for (const time of [tr.enterTime, gateTimeOf(tr), exitTimeOf(tr)]) {
       if (time < 0) continue
       out.push({
         time: round3(time),
@@ -215,12 +302,20 @@ export function tracksToTimeline(tracks: BottleTrack[]): RawDetection[] {
   return out.sort((a, b) => a.time - b.time || a.id - b.id)
 }
 
+export interface TimelineOptions {
+  /** これより短いトラックは捨てる [s] */
+  minDurationSeconds?: number
+}
+
 /**
- * Read a keyframe timeline back into tracks. A single keyframe per id is
- * extrapolated with the default conveyor speed; multiple keyframes derive speed
- * from the first and last.
+ * キーフレーム形式を読み込む。
+ *  - 同一 id の複数キーフレーム → 補間トラック（real）
+ *  - id につき1件だけ → 既定のコンベア速度で外挿（synthetic 相当）
+ * class が capped/uncapped の場合はその信頼度を初期値として使い、
+ * "bottle"（キャップ未判定）の場合はシナリオ側で割り当てる。
  */
-export function timelineToTracks(timeline: RawDetection[]): BottleTrack[] {
+export function timelineToTracks(timeline: RawDetection[], opts: TimelineOptions = {}): BottleTrack[] {
+  const minDur = opts.minDurationSeconds ?? 0.5
   const byId = new Map<number, RawDetection[]>()
   for (const d of timeline) {
     const list = byId.get(d.id) ?? []
@@ -232,18 +327,37 @@ export function timelineToTracks(timeline: RawDetection[]): BottleTrack[] {
     frames.sort((a, b) => a.time - b.time)
     const first = frames[0]
     const last = frames[frames.length - 1]
-    const cx0 = first.bbox[0] + first.bbox[2] / 2
-    const cx1 = last.bbox[0] + last.bbox[2] / 2
-    const speed = last.time > first.time && cx1 > cx0 ? (cx1 - cx0) / (last.time - first.time) : CONVEYOR.speed
-    const enterTime = first.time - (cx0 - CONVEYOR.entryX) / speed
     const isCapped = first.class === 'capped'
-    const capConfidence = first.cap_confidence ?? (isCapped ? first.confidence : 1 - first.confidence)
+    const knownCap = first.class === 'capped' || first.class === 'uncapped'
+    const capConfidence = first.cap_confidence ?? (knownCap ? (isCapped ? first.confidence : 1 - first.confidence) : 0.9)
     const truth: TruthCondition =
       capConfidence >= 0.75 ? 'CAPPED' : capConfidence >= 0.45 ? 'MISALIGNED' : capConfidence >= 0.2 ? 'AMBIGUOUS' : 'UNCAPPED'
+
+    if (frames.length >= 2) {
+      if (last.time - first.time < minDur) continue
+      tracks.push({
+        id,
+        source: 'real',
+        enterTime: first.time,
+        speed: 0,
+        y: first.bbox[1],
+        width: first.bbox[2],
+        height: first.bbox[3],
+        truth,
+        bottleConfidence: first.bottle_confidence ?? 0.95,
+        capConfidence,
+        capPositionScore: first.cap_position_score ?? (isCapped ? 0.9 : 0.2),
+        seed: id * 7919,
+        keyframes: frames.map((f) => ({ t: f.time, bbox: f.bbox, confidence: knownCap ? f.bottle_confidence : f.confidence })),
+      })
+      continue
+    }
+    const cx0 = first.bbox[0] + first.bbox[2] / 2
     tracks.push({
       id,
-      enterTime,
-      speed,
+      source: 'synthetic',
+      enterTime: first.time - (cx0 - CONVEYOR.entryX) / CONVEYOR.speed,
+      speed: CONVEYOR.speed,
       y: first.bbox[1],
       width: first.bbox[2],
       height: first.bbox[3],

@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "gen:detections": "node --experimental-strip-types scripts/generate-detections.mts",
+    "track:video": "python3 scripts/track_video.py public/demo/bottling-line.mp4 public/demo/detections.json",
     "build:single": "npm run build && node scripts/build-single-html.mjs"
   },
   "dependencies": {

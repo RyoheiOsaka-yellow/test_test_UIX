@@ -1,0 +1,2 @@
+映像: Mixkit「Beer bottle production line in the factory」（https://mixkit.co/free-stock-video/beer-bottle-production-line-in-the-factory-33003/）Mixkit Stock Video Free License
+検出: YOLO11（COCO の bottle クラス）+ ByteTrack で事前計算。キャップ有無はシナリオによる疑似注入。

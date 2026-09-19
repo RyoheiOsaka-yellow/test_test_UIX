@@ -1,52 +1,50 @@
-# JEV Visual Inspection Prototype
+# JEV 外観検査プロトタイプ
 
-Real-time AI visual inspection prototype for a bottling line: bottles travel on a
-conveyor, a computer-vision layer detects **CAPPED / UNCAPPED**, and a
-**Jev decision engine** decides what to do with each bottle (and with the line)
-from structured state. Everything is shown on an industrial operations dashboard.
+飲料充填ラインを想定したリアルタイム AI 外観検査の Web プロトタイプです。
+コンベア上のボトルを映像認識層が検出し、**Jev 判断エンジン** が構造化された状態から
+「合格 / 再検査 / 不良 / 要確認」を決め、さらにライン全体の判断（正常 / 注視 / 減速 / 停止）を行い、
+工場向けの監視ダッシュボードに表示します。
 
-Phase 1 is a complete, runnable prototype that works **without a trained model,
-without a video file and without any paid service** (Simulation Mode). The
-architecture is the production one; only the CV and decision adapters are stubs.
+フェーズ1は、**学習済みモデル・有料サービス・専用バックエンドなし** で動く完全なプロトタイプです。
+アーキテクチャは本番版を想定し、映像認識層と判断層だけがアダプタで差し替え可能になっています。
 
-> **Honesty note.** In Simulation Mode nothing is "really" detecting caps. The
-> detections come from a deterministic timeline replayed against the playback
-> clock. The UI labels this clearly (`SIMULATION`, `SYNTHETIC FEED`) and the
-> engine field on every decision says `simulation`.
+> **正直な表示について**
+> このプロトタイプは「本当に AI がキャップを検出している」ように偽装しません。
+> - ボトルの位置（枠）: 同梱の実映像に対して YOLO11 + ByteTrack を **事前に** 実行した追跡結果を再生
+> - キャップの有無: 専用モデルが無いため、シナリオに従って **疑似的に注入**（画面に「疑似注入」と明記）
+> - 判断エンジン: `TYPESAFE_API_KEY` が無い間はルールベースの模擬（画面に「シミュレーション」と明記）
 
 ---
 
-## Architecture
+## アーキテクチャ
 
 ```
-VIDEO  (HTML5 <video> or synthetic feed; RTSP in production)
+映像  (HTML5 <video> / 合成映像。本番は RTSP)
   ↓
-DETECTION  (videoDetectionSimulator.ts; YOLO / RT-DETR + ByteTrack in production)
+物体検出  (videoDetectionSimulator.ts。本番は YOLO / RT-DETR + ByteTrack)
   ↓
-STRUCTURED EVENTS  (eventBus.ts: OBJECT_ENTERED → INSPECTION_STARTED → … → OBJECT_EXITED)
+構造化イベント  (eventBus.ts: 進入 → 検査開始 → … → 退出)
   ↓
-JEV DECISION ENGINE  (decisionEngine.ts adapter → jevDecisionEngine.ts when a key is present)
+JEV 判断エンジン  (decisionEngine.ts のアダプタ → キーがあれば jevDecisionEngine.ts)
   ↓
-ACTION / ALERT / CLASSIFICATION  (PASS · RECHECK · REJECT · HUMAN_REVIEW; line: NORMAL · WATCH · SLOW_LINE · STOP_LINE)
+処置 / 警報 / 分類  (合格 · 再検査 · 不良 · 要確認 / ライン: 正常 · 注視 · 減速 · 停止)
   ↓
-DASHBOARD  (inspectionStore.ts → React panels; canvas overlay via requestAnimationFrame)
+ダッシュボード  (inspectionStore.ts → React パネル。枠の描画は requestAnimationFrame の Canvas)
 ```
 
-Three layers, three swappable boundaries:
-
-| Layer | Phase 1 implementation | Production replacement |
+| 層 | フェーズ1の実装 | 本番での置き換え |
 | --- | --- | --- |
-| Computer Vision | `services/videoDetectionSimulator.ts` replays `data/demoDetections.ts` tracks | ONNX Runtime / TensorRT / OpenVINO model + ByteTrack emitting the same `FrameDetection` |
-| Jev Decision | `services/decisionEngine.ts` (rule-based) | `services/jevDecisionEngine.ts` (already wired; enabled by `TYPESAFE_API_KEY`) |
-| Operations Dashboard | React + Tailwind + Recharts | unchanged |
+| 映像認識 | `services/videoDetectionSimulator.ts` が `public/demo/detections.json`（事前追跡）または合成トラックを再生 | ONNX Runtime / TensorRT / OpenVINO 上の検出モデル + ByteTrack が同じ `FrameDetection` を出力 |
+| Jev 判断 | `services/decisionEngine.ts`（ルールベース） | `services/jevDecisionEngine.ts`（実装済み。`TYPESAFE_API_KEY` で有効化） |
+| ダッシュボード | React + Tailwind + Recharts | そのまま |
 
-### Jev is a decision engine, not an image model and not a chatbot
+### Jev は画像認識モデルでもチャットボットでもない
 
-The CV layer produces a structured state. The decision engine is asked to choose
-among explicit options. It is never asked "what should the factory do?".
+映像認識層は構造化された状態を作り、判断エンジンには **明示した選択肢の中から選ばせる** だけです。
+「どうしたらいい？」とは絶対に聞きません。
 
 ```jsonc
-// Object level (services/jevDecisionEngine.ts → JevObjectRequest)
+// 物体レベル（services/jevDecisionEngine.ts の JevObjectRequest）
 {
   "task": "bottle_cap_inspection",
   "level": "object",
@@ -66,126 +64,116 @@ among explicit options. It is never asked "what should the factory do?".
 ```
 
 ```jsonc
-// Line level (second-level Jev, evaluated every 5 s over a 60 s window)
+// ラインレベル（第2階層の Jev。直近60秒の統計を5秒ごとに評価）
 {
   "task": "bottle_cap_inspection",
   "level": "line",
-  "state": {
-    "reject_rate": 0.12, "normal_rate": 0.05, "camera_confidence": 0.98,
-    "line_speed_bpm": 132, "previous_failures": 1, "window_seconds": 60
-  },
+  "state": { "reject_rate": 0.12, "normal_rate": 0.05, "camera_confidence": 0.98,
+             "line_speed_bpm": 132, "previous_failures": 1, "window_seconds": 60 },
   "options": ["NORMAL", "WATCH", "SLOW_LINE", "STOP_LINE", "HUMAN_REVIEW"]
 }
 ```
 
-Every decision carries a confidence. Below `0.65` the engine is treated as
-**JEV UNCERTAIN** and the object is routed to the Human Review Queue, where an
-operator picks PASS or REJECT (logged as `HUMAN_OVERRIDE`).
+判断には必ず確信度が付きます。0.65 未満は **JEV 判断不確実** として「人による確認待ち」に回り、
+担当者が 合格 / 不良 を選びます（`HUMAN_OVERRIDE` として記録）。
 
 ---
 
-## Quick start
+## 使い方
 
 ```bash
 npm install
 npm run dev        # http://localhost:5173
 ```
 
-Open the page, press **RUN DEMO**. Within ~5 seconds an UNCAPPED bottle reaches
-the inspection gate, Jev returns REJECT, the eject is simulated, and the KPIs,
-event log, charts and anomaly panel update.
+ページを開いて **デモ開始** を押してください。数秒でキャップ無しのボトルが検査ゲートに到達し、
+Jev が「不良」を返し、排出（模擬）→ KPI・イベントログ・チャート・異常パネルが更新されます。
 
-Other scripts:
+その他のコマンド:
 
 ```bash
-npm run build            # type-check + production bundle in dist/
+npm run build          # 型チェック + 本番ビルド（dist/）
+npm run build:single   # JS/CSS/動画/追跡結果を1つの HTML に埋め込む → dist/jev-visual-inspection.html
 npm run typecheck
-npm run gen:detections   # regenerate public/demo/detections.json from the Normal scenario
+npm run gen:detections # 合成シナリオから detections.json を再生成（実映像を使わない場合）
+npm run track:video    # 実映像に YOLO11 + ByteTrack を掛けて detections.json を再生成
 ```
 
-Keyboard: `Space` toggles play/pause.
+キーボード: `Space` で再生 / 一時停止。
 
 ---
 
-## Simulation Mode (MODE A, default)
+## シミュレーションモード（モード A・既定）
 
-* No external services. Works offline.
-* Detections are generated deterministically per scenario in
-  `src/data/demoDetections.ts` (seeded PRNG), replayed against the playback
-  clock, with smooth tracking jitter so boxes look tracked rather than static.
-* Object decisions follow these rules (`services/decisionEngine.ts`):
+* 外部サービス不要。オフラインで動作。
+* 物体の判断ルール（`services/decisionEngine.ts`）:
 
-  | cap confidence | decision |
+  | キャップ信頼度 | 判断 |
   | --- | --- |
-  | ≥ 0.75 | PASS |
-  | 0.45 – 0.75 | RECHECK (re-sampled once, then PASS / HUMAN_REVIEW) |
-  | 0.20 – 0.45 | HUMAN_REVIEW |
-  | < 0.20 | REJECT |
+  | 0.75 以上 | 合格 |
+  | 0.45 〜 0.75 | 再検査（1回だけ再サンプリングし、合格 / 要確認へ） |
+  | 0.20 〜 0.45 | 要確認 |
+  | 0.20 未満 | 不良 |
 
-* Line decisions: reject rate over the trailing 60 s (shrunk towards the nominal
-  5 % while the sample is small) → NORMAL / WATCH / SLOW_LINE / STOP_LINE;
-  camera confidence < 0.7 → HUMAN_REVIEW.
-* Simulated decision latency (40–110 ms) feeds the DECISION LATENCY KPI.
+* ライン判断: 直近60秒の不良率（標本が少ない間は基準値 5% へ縮約）→ 正常 / 注視 / 減速 / 停止。
+  カメラ信頼度 0.7 未満 → 要確認。
+* 判断遅延は 40〜110 ミリ秒を模擬し、KPI「判断遅延」に反映。
 
-### Demo video
+### デモ動画と追跡データ
 
-Place a clip at `public/demo/bottling-line.mp4` (fallback: `public/demo/sample.mp4`).
-The `<video>` element then becomes the clock and detections are drawn over it.
-If neither exists, a **SYNTHETIC FEED** is rendered on a canvas from the same
-track data, so the whole pipeline still runs end-to-end. The feed is labelled as
-synthetic on screen.
+同梱の `public/demo/bottling-line.mp4` は Mixkit の無料素材
+「Beer bottle production line in the factory」（Mixkit Stock Video Free License、商用可・クレジット不要）です。
+`public/demo/detections.json` は、この動画に YOLO11（COCO の bottle クラス）+ ByteTrack を掛けて
+事前計算したボトルの追跡結果です（`scripts/track_video.py`）。
 
-### Mock detection data
+* 動画を差し替える場合: `public/demo/bottling-line.mp4` を置き換え、`npm run track:video` で追跡結果を作り直す
+  （`pip install ultralytics opencv-python-headless` が必要）。
+* 動画が無い場合: `public/demo/sample.mp4` を探し、それも無ければ **合成映像** をキャンバスに描画して
+  同じパイプラインを最後まで動かします（画面に「合成映像」と表示）。
 
-`public/demo/detections.json` is the keyframe format a real tracker would emit
-(and what `npm run gen:detections` produces from the Normal scenario):
+`detections.json` の形式（実際の追跡器が出すものと同じ契約）:
 
 ```json
-{ "time": 0.8, "id": 1, "bbox": [0.12, 0.31, 0.16, 0.48], "class": "capped", "confidence": 0.94 }
+{ "time": 0.8, "id": 1, "bbox": [0.12, 0.31, 0.16, 0.48], "class": "bottle", "confidence": 0.94 }
 ```
 
-`bbox` is `[x, y, width, height]` normalized to 0–1, so overlays follow any
-video size. Multiple keyframes with the same `id` form a track and are
-interpolated; a single keyframe is extrapolated along the conveyor.
-`timelineToTracks()` in `src/data/demoDetections.ts` loads this format.
+`bbox` は `[x, y, 幅, 高さ]` を 0〜1 に正規化した値なので、動画サイズが変わっても枠は追従します。
+同じ `id` の複数キーフレームが1本のトラックになり、間は補間されます。
+`class` が `capped` / `uncapped` の場合はその信頼度を初期値に使い、`bottle` の場合はシナリオ側で
+キャップ状態を割り当てます。
 
-### Scenarios
+### デモシナリオ
 
-| Scenario | Uncapped | Notes |
+| シナリオ | キャップ無 | 内容 |
 | --- | --- | --- |
-| Normal Production | 5 % | baseline |
-| High Reject Rate | 25 % | ANOMALY ALERT raises once the 60 s reject rate exceeds 15 % |
-| Sensor Noise | 6 % | jittery boxes, many HUMAN_REVIEW escalations |
-| Cap Misalignment | 5 % | many RECHECK rounds |
-| Camera Confidence Drop | 5 % | exposure fault 18–48 s; CAMERA → DEGRADED, line → HUMAN_REVIEW |
-| Line Congestion | 7 % | bunched bottles, higher throughput |
+| 通常生産 | 5% | 基準 |
+| 不良率上昇 | 25% | 直近60秒の不良率が 15% を超えると異常警報 |
+| センサーノイズ | 6% | 枠と信頼度が揺れ、要確認が増える |
+| キャップずれ | 5% | 再検査が増える |
+| カメラ信頼度低下 | 5% | 18〜48秒に露出異常。カメラ状態が「劣化」になりライン判断が「要確認」へ |
+| ライン渋滞 | 7% | ボトルが詰まり処理速度が上がる |
 
 ---
 
-## Real Jev Mode (MODE B)
+## Jev 接続モード（モード B）
 
-Enabled automatically when `TYPESAFE_API_KEY` exists in the **server**
-environment (copy `.env.example` to `.env`). The browser bundle only receives a
-boolean (`__JEV_KEY_PRESENT__`); requests go to `/api/jev/decide` and the Vite dev
-server plugin in `vite.config.ts` forwards them to `JEV_API_URL` with the bearer
-key attached. For production, replace that plugin with an equivalent FastAPI or
-Express route.
+サーバー側の環境変数に `TYPESAFE_API_KEY` があると自動で有効になります（`.env.example` を `.env` にコピー）。
+ブラウザには真偽値（`__JEV_KEY_PRESENT__`）しか渡さず、リクエストは `/api/jev/decide` へ送られ、
+`vite.config.ts` の開発サーバープラグインが `JEV_API_URL` へキー付きで転送します。
+本番では同じ役割の FastAPI / Express のルートに置き換えてください。
 
-* UI shows **JEV LIVE** instead of **SIMULATION**; every decision is tagged
-  `engine: "jev"`.
-* Any API error or timeout (2.5 s) falls back to the simulation engine for that
-  decision, increments the fallback counter and sets JEV status to FALLBACK.
-* A response whose `decision` is not one of the offered options is rejected.
+* 画面表示が「シミュレーション」から「JEV接続」に変わり、判断には `engine: "jev"` が付きます。
+* API エラーやタイムアウト（2.5秒）はその判断だけ模擬エンジンへ退避し、退避回数を表示、JEV 状態が「退避」になります。
+* 提示していない選択肢が返ってきた場合は不正応答として扱います。
 
-The request/response contract is defined in `src/services/jevDecisionEngine.ts`
-(`JevObjectRequest`, `JevLineRequest`, `JevResponse`). Adjust the mapping there if
-the real endpoint shape differs; nothing else needs to change.
+リクエスト / レスポンスの契約は `src/services/jevDecisionEngine.ts`（`JevObjectRequest` / `JevLineRequest` / `JevResponse`）にあります。
+実際のエンドポイント仕様が異なる場合はこのファイルだけ直せば済みます。
 
 ---
 
-## Event engine
+## イベントエンジン
 
-All layers communicate through `services/eventBus.ts`. Events per object:
+すべての層は `services/eventBus.ts` を通じて通信します。物体ごとのイベント:
 
 ```
 OBJECT_ENTERED → OBJECT_TRACKED → INSPECTION_STARTED → CAP_CONFIDENCE
@@ -193,9 +181,8 @@ OBJECT_ENTERED → OBJECT_TRACKED → INSPECTION_STARTED → CAP_CONFIDENCE
   → INSPECTION_COMPLETED → [EJECT_TRIGGERED] → OBJECT_EXITED
 ```
 
-Plus `LINE_DECISION`, `ALERT`, `HUMAN_OVERRIDE`, `SYSTEM`. The Event Log shows
-wall-clock timestamps with milliseconds and can be exported as JSON or CSV
-(inspection records are exported too, in the persisted-record shape below).
+加えて `LINE_DECISION`、`ALERT`、`HUMAN_OVERRIDE`、`SYSTEM`。イベントログはミリ秒付きの時刻で表示され、
+JSON / CSV で書き出せます（検査記録は下記の保存形式で同梱）。
 
 ```json
 {
@@ -210,7 +197,7 @@ wall-clock timestamps with milliseconds and can be exported as JSON or CSV
 
 ---
 
-## Project layout
+## 構成
 
 ```
 src/
@@ -220,41 +207,39 @@ src/
                 ControlPanel, ScenarioSelector, Panel
   services/     videoDetectionSimulator, decisionEngine, jevDecisionEngine, decisionActions,
                 eventBus, inspectionStore, inspectionController, playbackClock, exportLog
-  types/        inspection.ts (all cross-layer contracts)
-  data/         demoDetections.ts (track generator + JSON codec), scenarios.ts
-public/demo/    detections.json (+ optional bottling-line.mp4 / sample.mp4)
-scripts/        generate-detections.mts
+  i18n/         ja.ts（表示ラベル。内部コードは英字のまま）
+  types/        inspection.ts（層をまたぐ契約）
+  data/         demoDetections.ts（トラック生成・補間・JSON 変換）, scenarios.ts
+public/demo/    bottling-line.mp4, detections.json, CREDIT.txt
+scripts/        build-single-html.mjs, track_video.py, generate-detections.mts
 ```
 
-Performance: the overlay is drawn on a canvas inside one `requestAnimationFrame`
-loop synced to media time; bounding boxes never pass through React state. The
-dashboard store (`useSyncExternalStore`) updates only on events.
+性能: 枠の描画は1本の `requestAnimationFrame` ループでメディア時刻に同期して Canvas に描き、
+React の状態は通しません。ダッシュボードのストア（`useSyncExternalStore`）はイベント時だけ更新されます。
 
 ---
 
-## Future CV integration
+## 今後の映像認識連携
 
-Replace `VideoDetectionSimulator` with a module that emits the same
-`FrameDetection[]` per frame and the same lifecycle events:
+`VideoDetectionSimulator` を、フレームごとに同じ `FrameDetection[]` と同じライフサイクルイベントを出す
+モジュールに置き換えます。
 
-* **Camera**: RTSP → frame grabber (GStreamer / FFmpeg) → frame timestamp becomes the `PlaybackClock`.
-* **Inference**: ONNX Runtime / TensorRT / OpenVINO running YOLO, RT-DETR or a custom cap model.
-* **Tracking**: ByteTrack / SORT / DeepSORT assigning the stable `trackId` (today `id` in the JSON).
-* **Classes**: `DetectionClass` already reserves LOW_CAP, MISALIGNED_CAP, DAMAGED_CAP, NO_LABEL,
-  LABEL_MISALIGNED, DEFORMED_BOTTLE, FOREIGN_OBJECT; enable them in `ENABLED_CLASSES`.
-* **Browser-side option**: OpenCV.js / ONNX Runtime Web can run a light model directly on the
-  `<video>` element and feed the same interface.
+* **カメラ**: RTSP → フレーム取得（GStreamer / FFmpeg）→ フレーム時刻を `PlaybackClock` に。
+* **推論**: ONNX Runtime / TensorRT / OpenVINO 上の YOLO、RT-DETR、または専用キャップモデル。
+* **追跡**: ByteTrack / SORT / DeepSORT が安定した `trackId` を付与（今は JSON の `id`）。
+* **クラス**: `DetectionClass` には LOW_CAP、MISALIGNED_CAP、DAMAGED_CAP、NO_LABEL、LABEL_MISALIGNED、
+  DEFORMED_BOTTLE、FOREIGN_OBJECT を予約済み。`ENABLED_CLASSES` で有効化。
+* **ブラウザ内推論**: OpenCV.js / ONNX Runtime Web で軽量モデルを `<video>` に直接掛け、同じ契約で流すことも可能。
 
-## Factory integration
+## 工場設備との連携
 
-* **Messaging**: publish the event bus to MQTT topics; the dashboard subscribes instead of running the simulator.
-* **Storage**: persist `InspectionRecord` to PostgreSQL / TimescaleDB (the export JSON is that schema).
-* **Machine control**: `REJECT` → PLC (OPC-UA / Modbus) → reject gate. **Not implemented in Phase 1**:
-  the prototype never addresses a PLC; `EJECT_TRIGGERED` events are explicitly marked `simulated`.
-* **Line control**: `SLOW_LINE` / `STOP_LINE` from the line-level Jev decision map to the same PLC
-  path, always behind a human-confirmable step.
+* **メッセージング**: イベントバスを MQTT トピックへ発行し、ダッシュボードは購読側に。
+* **保存**: `InspectionRecord` を PostgreSQL / TimescaleDB に保存（書き出し JSON がその形式）。
+* **設備制御**: 「不良」→ PLC（OPC-UA / Modbus）→ 排出ゲート。**フェーズ1では未実装**。
+  プロトタイプは PLC に一切触れず、`EJECT_TRIGGERED` には `simulated` を明示しています。
+* **ライン制御**: ライン判断の「減速」「停止」も同じ PLC 経路へ。必ず人の確認を挟む前提。
 
-## Non-goals in Phase 1
+## フェーズ1で扱わないもの
 
-* No real model inference, no PLC communication, no backend persistence.
-* The Jev API request shape is a proposed contract, to be confirmed against the actual endpoint.
+* 実モデルによる推論、PLC 通信、バックエンドでの永続化。
+* Jev API のリクエスト形式は提案契約であり、実エンドポイント仕様との照合が必要。

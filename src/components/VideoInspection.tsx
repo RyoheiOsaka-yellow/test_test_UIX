@@ -1,39 +1,45 @@
 import { useEffect, useRef, useState } from 'react'
 import { Video, VideoOff } from 'lucide-react'
 import type { VideoSource } from '@/types/inspection'
+import { SCENARIOS } from '@/data/scenarios'
 import { getController } from '@/services/inspectionController'
-import { inspectionStore, useInspectionStore } from '@/services/inspectionStore'
+import { useInspectionStore } from '@/services/inspectionStore'
 import { DetectionOverlay, drawOverlay } from './DetectionOverlay'
 import { InspectionGate } from './InspectionGate'
 import { InspectorPanel } from './InspectorPanel'
 import { SyntheticFeed, drawSyntheticFeed } from './SyntheticFeed'
 import { formatClock } from './Panel'
 
-const VIDEO_CANDIDATES = ['/demo/bottling-line.mp4', '/demo/sample.mp4']
+const VIDEO_CANDIDATES = ['demo/bottling-line.mp4', 'demo/bottling-line.webm', 'demo/sample.mp4', 'demo/sample.webm']
 
+/** 動画ソースの探索: 単一HTMLへの埋め込み → /demo/bottling-line.mp4 → /demo/sample.mp4 → 合成映像 */
 async function probeVideo(): Promise<VideoSource> {
-  for (const url of VIDEO_CANDIDATES) {
+  const embedded = window.__JEV_EMBEDDED__?.videoDataUrl
+  if (embedded) return { kind: 'video', url: embedded }
+  for (const rel of VIDEO_CANDIDATES) {
+    const url = `${import.meta.env.BASE_URL}${rel}`
     try {
       const res = await fetch(url, { method: 'HEAD' })
       const type = res.headers.get('content-type') ?? ''
       if (res.ok && type.startsWith('video/')) return { kind: 'video', url }
     } catch {
-      /* ignore and try next */
+      /* 次の候補へ */
     }
   }
   return { kind: 'placeholder' }
 }
 
 /**
- * Main video stage: video (or synthetic feed) + canvas overlay + gate + inspector panel.
- * Owns the requestAnimationFrame loop that advances the simulator and paints
- * detections in sync with media time.
+ * メインの映像ステージ: 動画（または合成映像）+ キャンバス重畳 + ゲート + 検査パネル。
+ * requestAnimationFrame のループを持ち、シミュレータを進めて検知結果を
+ * メディア時刻に同期して描画する。
  */
 export function VideoInspection() {
   const [source, setSource] = useState<VideoSource | 'probing'>('probing')
   const overlay = useInspectionStore((s) => s.overlay)
   const mode = useInspectionStore((s) => s.mode)
   const scenario = useInspectionStore((s) => s.scenario)
+  const trackSource = useInspectionStore((s) => s.trackSource)
   const overlayRef = useRef(overlay)
   overlayRef.current = overlay
 
@@ -54,14 +60,11 @@ export function VideoInspection() {
     }
   }, [])
 
-  // Attach the clock once the source is known (video element or internal clock).
   useEffect(() => {
     if (source === 'probing') return
-    const controller = getController()
-    controller.attachVideo(videoRef.current, source)
+    void getController().attachVideo(videoRef.current, source)
   }, [source])
 
-  // rAF loop: tick simulator → sample detections → draw.
   useEffect(() => {
     if (source === 'probing') return
     const controller = getController()
@@ -100,7 +103,7 @@ export function VideoInspection() {
         feedCtx.setTransform(dpr, 0, 0, dpr, 0, 0)
         drawSyntheticFeed(feedCtx, w, h, t, controller.simulator.groundTruth(t))
       }
-      if (timeRef.current) timeRef.current.textContent = `T+${t.toFixed(2).padStart(6, '0')}s`
+      if (timeRef.current) timeRef.current.textContent = `再生 ${t.toFixed(2)}秒`
       const now = performance.now()
       if (clockRef.current && now - lastClockPaint > 40) {
         lastClockPaint = now
@@ -117,14 +120,11 @@ export function VideoInspection() {
 
   const isVideo = source !== 'probing' && source.kind === 'video'
   const isPlaceholder = source !== 'probing' && source.kind === 'placeholder'
+  const credit = window.__JEV_EMBEDDED__?.videoCredit
 
   return (
     <div className="relative flex h-full min-h-0 w-full items-center justify-center">
-      <div
-        ref={stageRef}
-        className="scanline relative aspect-video max-h-full max-w-full overflow-hidden border border-border bg-black"
-        style={{ width: 'min(100%, calc(100% * 1))', height: 'auto' }}
-      >
+      <div ref={stageRef} className="scanline relative aspect-video max-h-full max-w-full overflow-hidden border border-border bg-black" style={{ width: '100%', height: 'auto' }}>
         {isVideo && (
           <video
             ref={videoRef}
@@ -133,58 +133,58 @@ export function VideoInspection() {
             muted
             playsInline
             preload="auto"
-            onEnded={() => inspectionStore.update(() => ({}))}
+            onError={() => {
+              // 再生できない（コーデック非対応など）場合は合成映像へ退避する
+              getController().bus.emit('SYSTEM', '動画を再生できないため合成映像へ切り替えました', { severity: 'warn' })
+              setSource({ kind: 'placeholder' })
+            }}
           />
         )}
         {isPlaceholder && <SyntheticFeed canvasRef={feedRef} />}
         {source === 'probing' && (
-          <div className="absolute inset-0 flex items-center justify-center font-mono text-[11px] tracking-[0.2em] text-ink-3">
-            PROBING VIDEO SOURCE…
-          </div>
+          <div className="absolute inset-0 flex items-center justify-center text-[11px] tracking-[0.2em] text-ink-3">映像ソースを確認中…</div>
         )}
 
         <DetectionOverlay canvasRef={canvasRef} />
         <InspectionGate visible={overlay.overlay && overlay.inspectionGate} />
         <InspectorPanel />
 
-        {/* Top-right: camera / feed metadata */}
-        <div className="pointer-events-none absolute top-3 right-3 flex flex-col items-end gap-1 font-mono text-[10px]">
+        <div className="pointer-events-none absolute top-3 right-3 flex flex-col items-end gap-1 text-[10px]">
           <div className="flex items-center gap-2 border border-border/80 bg-bg/80 px-2 py-1 text-ink-2 backdrop-blur-[2px]">
             {isVideo ? <Video size={11} className="text-green" /> : <VideoOff size={11} className="text-yellow" />}
-            <span>CAM-01</span>
+            <span>カメラ01</span>
             <span className="text-ink-3">·</span>
             <span ref={clockRef} className="num text-ink">
               {formatClock(Date.now())}
             </span>
             <span className="text-ink-3">·</span>
             <span ref={timeRef} className="num text-cyan">
-              T+000.00s
+              再生 0.00秒
             </span>
           </div>
           <div className="flex items-center gap-1.5">
             <span
-              className={`border px-1.5 py-[2px] text-[9px] font-semibold tracking-[0.18em] ${
+              className={`border px-1.5 py-[2px] text-[9.5px] font-semibold tracking-[0.12em] ${
                 mode === 'JEV_LIVE' ? 'border-green/60 bg-green/10 text-green' : 'border-cyan/60 bg-cyan/10 text-cyan'
               }`}
             >
-              {mode === 'JEV_LIVE' ? 'JEV LIVE' : 'SIMULATION'}
+              {mode === 'JEV_LIVE' ? 'JEV接続' : 'シミュレーション'}
             </span>
             {isPlaceholder && (
-              <span className="border border-yellow/60 bg-yellow/10 px-1.5 py-[2px] text-[9px] font-semibold tracking-[0.18em] text-yellow">
-                SYNTHETIC FEED
+              <span className="border border-yellow/60 bg-yellow/10 px-1.5 py-[2px] text-[9.5px] font-semibold tracking-[0.12em] text-yellow">合成映像</span>
+            )}
+            {isVideo && (
+              <span className="border border-cyan/60 bg-cyan/10 px-1.5 py-[2px] text-[9.5px] font-semibold tracking-[0.12em] text-cyan">
+                {trackSource === 'real' ? '実映像 · 事前追跡' : '実映像'}
               </span>
             )}
           </div>
         </div>
 
-        {/* Bottom-left: source hint */}
-        <div className="pointer-events-none absolute bottom-3 left-3 font-mono text-[9.5px] tracking-[0.12em] text-ink-3">
-          {isPlaceholder
-            ? 'NO VIDEO FILE · PLACE /public/demo/bottling-line.mp4 TO USE REAL FOOTAGE'
-            : isVideo
-              ? `SOURCE ${source.url}`
-              : ''}
-          <span className="ml-3 text-ink-3/70">SCENARIO {scenario.toUpperCase()}</span>
+        <div className="pointer-events-none absolute top-[178px] left-3 flex max-w-[260px] flex-col gap-0.5 text-[9.5px] leading-tight tracking-[0.06em] text-ink-3">
+          {isPlaceholder && '動画ファイルなし · public/demo/bottling-line.mp4 を置くと実映像に切り替わります'}
+          {isVideo && (credit ?? 'ボトル検出: 事前追跡（YOLO） · キャップ判定: 疑似注入')}
+          <span className="text-ink-3/70">シナリオ: {SCENARIOS[scenario].name}</span>
         </div>
       </div>
     </div>

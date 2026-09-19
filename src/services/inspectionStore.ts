@@ -95,6 +95,8 @@ export interface InspectionStoreState {
   engineFallbacks: number
   scenario: ScenarioId
   videoSource: VideoSource | null
+  /** 追跡データの由来: 実映像の事前追跡結果 or 合成 */
+  trackSource: 'real' | 'synthetic'
   playing: boolean
   playbackRate: PlaybackRate
   overlay: OverlaySettings
@@ -124,6 +126,7 @@ export function initialState(): InspectionStoreState {
     engineFallbacks: 0,
     scenario: 'normal',
     videoSource: null,
+    trackSource: 'synthetic',
     playing: false,
     playbackRate: 1,
     overlay: {
@@ -196,6 +199,7 @@ export class InspectionStore {
       mode: s.mode,
       scenario: s.scenario,
       videoSource: s.videoSource,
+      trackSource: s.trackSource,
       playing: s.playing,
       playbackRate: s.playbackRate,
       overlay: s.overlay,
@@ -284,7 +288,7 @@ export class InspectionStore {
         if (d.decision.decision === 'REJECT') {
           patch.anomaly = {
             objectId: event.objectId!,
-            issue: d.decision.reason.replace(/_/g, ' '),
+            issue: d.decision.reason,
             confidence: d.decision.confidence,
             action: 'REJECT',
             timestamp: event.timestamp,
@@ -323,7 +327,7 @@ export class InspectionStore {
     else kpi.reject++
     kpi.yieldRate = kpi.totalInspected ? kpi.pass / kpi.totalInspected : 0
     this.set({ reviewQueue: s.reviewQueue.filter((r) => r.objectId !== objectId), records, kpi })
-    bus.emit('HUMAN_OVERRIDE', `${objectId} HUMAN_OVERRIDE → ${decision}`, {
+    bus.emit('HUMAN_OVERRIDE', `${objectId} 人の判定 → ${decision === 'PASS' ? '合格' : '不良'}`, {
       objectId,
       data: { decision, capConfidence: item.capConfidence },
     })

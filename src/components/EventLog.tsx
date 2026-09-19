@@ -38,26 +38,26 @@ export function EventLog() {
 
   return (
     <Panel
-      title="Event log"
+      title="イベントログ"
       right={
         <div className="relative flex items-center gap-1.5">
-          <span className="num text-[9px] text-ink-3">{events.length} evt</span>
-          <button className={`btn !px-1.5 !py-[2px] ${follow ? 'btn-active' : ''}`} onClick={() => setFollow((f) => !f)} title="Auto-scroll">
+          <span className="num text-[9px] text-ink-3">{events.length} 件</span>
+          <button className={`btn !px-1.5 !py-[2px] ${follow ? 'btn-active' : ''}`} onClick={() => setFollow((f) => !f)} title="自動スクロール">
             {follow ? <Pause size={10} /> : <Play size={10} />}
           </button>
-          <button className="btn !px-1.5 !py-[2px]" onClick={() => setExportOpen((o) => !o)} title="Download">
-            <Download size={10} /> Export
+          <button className="btn !px-1.5 !py-[2px]" onClick={() => setExportOpen((o) => !o)} title="ダウンロード">
+            <Download size={10} /> 書き出し
           </button>
           {exportOpen && (
-            <div className="absolute top-full right-0 z-20 mt-1 flex w-44 flex-col border border-border bg-panel-2 py-1 shadow-xl">
+            <div className="absolute top-full right-0 z-20 mt-1 flex w-48 flex-col border border-border bg-panel-2 py-1 shadow-xl">
               {[
-                ['Event log · JSON', () => exportEventsJson(inspectionStore.getState().events, inspectionStore.getState().records)],
-                ['Event log · CSV', () => exportEventsCsv(inspectionStore.getState().events)],
-                ['Inspections · CSV', () => exportInspectionsCsv(inspectionStore.getState().records)],
+                ['イベントログ · JSON', () => exportEventsJson(inspectionStore.getState().events, inspectionStore.getState().records)],
+                ['イベントログ · CSV', () => exportEventsCsv(inspectionStore.getState().events)],
+                ['検査記録 · CSV', () => exportInspectionsCsv(inspectionStore.getState().records)],
               ].map(([label, fn]) => (
                 <button
                   key={label as string}
-                  className="px-3 py-1.5 text-left font-mono text-[10px] tracking-[0.08em] text-ink hover:bg-border-2"
+                  className="px-3 py-1.5 text-left text-[10.5px] tracking-[0.04em] text-ink hover:bg-border-2"
                   onClick={() => {
                     ;(fn as () => void)()
                     setExportOpen(false)

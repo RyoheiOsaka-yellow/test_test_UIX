@@ -1,4 +1,5 @@
 import { AlertTriangle } from 'lucide-react'
+import { DECISION_JA, reasonJa } from '@/i18n/ja'
 import { useInspectionStore } from '@/services/inspectionStore'
 import { Field, Panel, formatClock, pct } from './Panel'
 
@@ -6,8 +7,8 @@ export function AnomalyPanel() {
   const a = useInspectionStore((s) => s.anomaly)
   if (!a) {
     return (
-      <Panel title="Anomaly" bodyClassName="px-2.5 py-2">
-        <div className="font-mono text-[10.5px] text-ink-3">No anomaly detected</div>
+      <Panel title="異常検知" bodyClassName="px-2.5 py-2">
+        <div className="text-[10.5px] text-ink-3">異常は検知されていません</div>
       </Panel>
     )
   }
@@ -15,18 +16,18 @@ export function AnomalyPanel() {
     <Panel
       title={
         <span className="flex items-center gap-1.5 text-red">
-          <AlertTriangle size={11} /> Anomaly detected
+          <AlertTriangle size={11} /> 異常を検知
         </span>
       }
       className="border-red/50"
       bodyClassName="px-2.5 py-1.5"
     >
       <div key={a.timestamp} className="flash-red -mx-2.5 px-2.5">
-        <Field label="Bottle" value={<span className="text-[13px]">{a.objectId}</span>} />
-        <Field label="Issue" value={<span className="text-red">{a.issue}</span>} />
-        <Field label="Confidence" value={pct(a.confidence)} />
-        <Field label="Action" value={<span className="text-red">{a.action}</span>} />
-        <Field label="Timestamp" value={formatClock(a.timestamp)} />
+        <Field label="ボトル" value={<span className="text-[13px]">{a.objectId}</span>} />
+        <Field label="内容" value={<span className="text-red">{reasonJa(a.issue)}</span>} mono={false} />
+        <Field label="確信度" value={pct(a.confidence)} />
+        <Field label="処置" value={<span className="text-red">{DECISION_JA.REJECT}・排出</span>} mono={false} />
+        <Field label="時刻" value={formatClock(a.timestamp)} />
       </div>
     </Panel>
   )

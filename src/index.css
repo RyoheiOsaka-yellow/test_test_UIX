@@ -16,8 +16,8 @@
   --color-cyan: #31c6ff;
   --color-violet: #b38cff;
 
-  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-sans: 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic UI', 'Meiryo', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', 'Noto Sans JP', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 :root {
@@ -64,10 +64,9 @@ body {
 }
 
 .label {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 9.5px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.1em;
   color: var(--color-ink-3);
 }
 
@@ -88,10 +87,10 @@ body {
   gap: 8px;
   padding: 6px 10px;
   border-bottom: 1px solid var(--color-border-2);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   color: var(--color-ink-2);
 }
 
@@ -104,10 +103,9 @@ body {
   border-radius: 2px;
   background: var(--color-panel-2);
   color: var(--color-ink);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: 10.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.06em;
   cursor: pointer;
   transition: background 120ms, border-color 120ms, color 120ms;
   user-select: none;
