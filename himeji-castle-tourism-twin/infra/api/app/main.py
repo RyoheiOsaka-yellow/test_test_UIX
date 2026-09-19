@@ -4,7 +4,8 @@
    - 大量点はサンプリング（sample）と上限（API_MAX_POINTS）で抑える
    起動: DATABASE_URL=postgresql://citydb_reader:citydb_reader@localhost:5432/citydb uvicorn app.main:app --port 8000
 """
-import json, os, math
+import json, os, math, struct
+import numpy as np
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Query, Response
@@ -17,6 +18,7 @@ from psycopg.rows import dict_row
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://citydb_reader:citydb_reader@localhost:5432/citydb')
 MAX_POINTS = int(os.environ.get('API_MAX_POINTS', '20000'))
 DEFAULT_SRC = os.environ.get('API_DEFAULT_SOURCE', 'synthetic')
+DEFAULT_BBOX = [134.648, 34.800, 134.735, 34.872]
 JST = timezone(timedelta(hours=9))
 
 pool = ConnectionPool(DATABASE_URL, min_size=1, max_size=8, kwargs={'row_factory': dict_row, 'options': '-c default_transaction_read_only=on -c statement_timeout=30000'})
@@ -123,6 +125,70 @@ def people_series(t: Optional[str] = None, bucket: int = Query(60, ge=5, le=120)
                 FROM mobility.raw_points WHERE source_type = %(src)s AND "timestamp" >= %(d0)s AND "timestamp" < %(d1)s GROUP BY 1 ORDER BY 1""",
              {'b': bucket, 'src': source, 'd0': day0, 'd1': day0 + timedelta(days=1)})
     return {'t': tt.isoformat(), 'bucket': bucket, 'series': [{'t': r['tb'].isoformat(), 'people': r['people'], 'avg_speed': r['avg_speed']} for r in rows]}
+
+# ----------------------------------------------------------------------------
+# Point Cloud 用バイナリ（STEP: Spatial Streaming / Binary Format）
+#   /api/points?bbox=&timeFrom=&timeTo=&lod=0..3&maxPoints=&source=
+#   応答: "HPC1" + uint32 headerLen + JSON header + 配列（little endian）
+#     pos0 Float32×2 (lon,lat)  pos1 Float32×2  t0 Float32 (秒, header.tbase 起点)  t1 Float32
+#     attr Uint8×4 (density, stay, speed, confidence)  dir Uint8 (heading/360*255)  pid Uint32 (person index)
+#   1 レコード＝同一人物の連続 2 サンプル（線分）。クライアントは [t0,t1] で位置を補間し、線分に沿って粒子を分布させる。
+#   密度に応じたサンプリング: 50m セル内の人数 n に対して 採用率 = min(1, cap(lod)/n)（低密度は全採用、高密度は間引き）。
+#   間引いても density 属性でセルの実人数を持たせるので、表示側で密度感を維持できる。
+POINTS_CAP = {0: 3, 1: 8, 2: 24, 3: 100000}          # lod ごとの 50m セル当たり採用人数
+POINTS_MAX = {0: 30000, 1: 150000, 2: 500000, 3: 1000000}
+def parse_iso(v: Optional[str], default: datetime) -> datetime:
+    return parse_t(v) if v else default
+
+@app.get('/api/points')
+def points_binary(bbox: Optional[str] = None, timeFrom: Optional[str] = None, timeTo: Optional[str] = None, t: Optional[str] = None,
+                  lod: int = Query(1, ge=0, le=3), maxPoints: Optional[int] = None, source: str = DEFAULT_SRC, format: str = 'bin'):
+    tt = parse_t(t); t0 = parse_iso(timeFrom, tt - timedelta(minutes=1)); t1 = parse_iso(timeTo, tt + timedelta(minutes=4))
+    if t1 <= t0: raise HTTPException(400, 'timeTo must be after timeFrom')
+    if (t1 - t0) > timedelta(hours=25): raise HTTPException(400, 'time range too large (max 25h)')
+    a = parse_bbox(bbox) or DEFAULT_BBOX
+    maxp = min(POINTS_MAX[3], maxPoints or POINTS_MAX[lod])
+    sql = f"""
+      WITH w AS (SELECT %(t0)s::timestamptz AS t0, %(t1)s::timestamptz AS t1, {bbox_sql(a)} AS bb),
+      pts AS (
+        SELECT p.person_hash, p."timestamp" AS ts, p.geom, p.speed, p.heading, p.accuracy,
+               lead(p."timestamp") OVER w2 AS ts2, lead(p.geom) OVER w2 AS geom2
+        FROM mobility.raw_points p, w
+        WHERE p.source_type = %(src)s AND p."timestamp" >= w.t0 - interval '5 min' AND p."timestamp" <= w.t1 + interval '5 min'
+          AND p.geom && ST_Expand(w.bb, 0.002)
+        WINDOW w2 AS (PARTITION BY p.person_hash ORDER BY p."timestamp")),
+      seg AS (SELECT pts.*, mobility.mesh_id_for(geom, 50) AS cid FROM pts, w WHERE ts2 IS NOT NULL AND ts2 - ts <= interval '5 min' AND ts2 >= w.t0 AND ts <= w.t1 AND ST_Intersects(geom, w.bb)),
+      cell AS (SELECT cid, count(DISTINCT person_hash) AS n FROM seg GROUP BY 1),
+      sel AS (SELECT s.*, c.n AS dens, (hashtext(s.person_hash) & 1023) AS h
+              FROM seg s JOIN cell c ON c.cid = s.cid
+              WHERE (hashtext(s.person_hash) & 1023) < LEAST(1024, (1024.0 * %(cap)s / GREATEST(c.n, 1))::int))
+      SELECT ST_X(geom) AS x0, ST_Y(geom) AS y0, ST_X(geom2) AS x1, ST_Y(geom2) AS y1,
+             EXTRACT(EPOCH FROM ts) AS e0, EXTRACT(EPOCH FROM ts2) AS e1, dens, COALESCE(speed, 0) AS speed, COALESCE(heading, 0) AS heading, COALESCE(accuracy, 10) AS accuracy,
+             dense_rank() OVER (ORDER BY person_hash) AS pid,
+             COALESCE((SELECT EXTRACT(EPOCH FROM (s.ts - st.start_time)) FROM mobility.stays st WHERE st.person_hash = s.person_hash AND st.source_type = %(src)s
+                       AND st.start_time <= s.ts AND st.end_time >= s.ts ORDER BY st.start_time DESC LIMIT 1), 0) AS stay_sec,
+             (SELECT count(*) FROM seg) AS total_segments
+      FROM sel s ORDER BY h, person_hash, ts LIMIT %(max)s"""
+    rows = q(sql, {'t0': t0, 't1': t1, 'src': source, 'cap': POINTS_CAP[lod], 'max': maxp, **bbox_params(a)})
+    n = len(rows); tbase = t0.timestamp()
+    if format == 'json':
+        return {'count': n, 'lod': lod, 'tbase': tbase, 'segments': [{'p0': [r['x0'], r['y0']], 'p1': [r['x1'], r['y1']], 't0': r['e0'] - tbase, 't1': r['e1'] - tbase, 'density': r['dens'], 'speed': r['speed'], 'stay_sec': r['stay_sec'], 'heading': r['heading'], 'pid': r['pid']} for r in rows]}
+    pos0 = np.empty((n, 2), np.float32); pos1 = np.empty((n, 2), np.float32); ts0 = np.empty(n, np.float32); ts1 = np.empty(n, np.float32)
+    attr = np.empty((n, 4), np.uint8); dirn = np.empty(n, np.uint8); pid = np.empty(n, np.uint32)
+    if n:
+        arr = np.array([(r['x0'], r['y0'], r['x1'], r['y1'], r['e0'], r['e1'], r['dens'], r['speed'], r['heading'], r['accuracy'], r['pid'], r['stay_sec']) for r in rows], np.float64)
+        pos0[:] = arr[:, 0:2]; pos1[:] = arr[:, 2:4]; ts0[:] = arr[:, 4] - tbase; ts1[:] = arr[:, 5] - tbase
+        attr[:, 0] = np.clip(arr[:, 6] / 40.0 * 255, 0, 255)            # density: 50m セル内 40 人で飽和
+        attr[:, 1] = np.clip(arr[:, 11] / 3600.0 * 255, 0, 255)         # stay: 60 分で飽和
+        attr[:, 2] = np.clip(arr[:, 7] / 3.0 * 255, 0, 255)             # speed: 3 m/s で飽和
+        attr[:, 3] = np.clip((1.0 - arr[:, 9] / 30.0) * 255, 0, 255)    # confidence: accuracy 0m→255, 30m→0
+        dirn[:] = np.clip(np.mod(arr[:, 8], 360.0) / 360.0 * 255, 0, 255); pid[:] = arr[:, 10]
+    header = json.dumps({'count': n, 'lod': lod, 'tbase': tbase, 'timeFrom': t0.isoformat(), 'timeTo': t1.isoformat(), 'bbox': a, 'source': source,
+                         'total_segments': int(rows[0]['total_segments']) if n else 0, 'cap_per_cell': POINTS_CAP[lod],
+                         'fields': [['pos0', 'float32', 2], ['pos1', 'float32', 2], ['t0', 'float32', 1], ['t1', 'float32', 1], ['attr', 'uint8', 4], ['dir', 'uint8', 1], ['pid', 'uint32', 1]],
+                         'scales': {'density': '255=40 persons/50m cell', 'stay': '255=3600s', 'speed': '255=3 m/s', 'confidence': '255=accuracy 0m'}}).encode()
+    body = b'HPC1' + struct.pack('<I', len(header)) + header + pos0.tobytes() + pos1.tobytes() + ts0.tobytes() + ts1.tobytes() + attr.tobytes() + dirn.tobytes() + pid.tobytes()
+    return Response(content=body, media_type='application/octet-stream', headers={'X-Point-Count': str(n), 'Cache-Control': 'no-store'})
 
 @app.get('/api/mesh')
 def mesh(res: int = Query(100), t: Optional[str] = None, bucket: int = Query(5), bbox: Optional[str] = None, format: str = 'geojson', source: str = DEFAULT_SRC, min_people: int = 1):

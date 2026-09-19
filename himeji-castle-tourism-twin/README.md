@@ -14,6 +14,7 @@
   - `people-flow/flow3d.js` … メッシュ（地域メッシュ / 正方グリッド / ヘックス / 3Dカラム）・軌跡ライン・階層ビュー
   - `people-flow/flowvis.js` … 人流 Visualization モード（熱・流線・動く軌跡・等高線）・Analytics KPI・メッシュ詳細・FPS 監視
   - `analytics/ui.js` … パネル・分析ボード・提案骨子・DB構成・タイムライン・メインループ
+  - `people-flow/pointcloud.js` … 高品質 Point Cloud（人流粒子: 線分×サブ粒子の instancing、GPU 時間補間、Gaussian soft point、7 モード、LOD・Point Budget、選択、Debug Panel、LAS 読込。`POINT_CLOUD_PERFORMANCE.md`）
   - `data/api_client.js` … データソース切替（シミュレーション ⇄ DB / API）・ズーム連動 LOD・各レイヤーの API 接続・3DCityDB 建物（`infra/README_DB.md`）
 - `data/real/` … 実データ由来のシーン（`scene_data.json`: OSM・地理院ベクトルタイル、`plateau.json`: PLATEAU 姫路市、`real.json`: 地理院 DEM5A・兵庫県 DSM）
 - `data/synthetic/` … 合成データの説明と差し替え方針
@@ -59,16 +60,18 @@
 
 | 操作 | 動き |
 | --- | --- |
-| 左ドラッグ | 地図を掴んで引っ張る（移動） |
-| 握って少し待つ（⟳ が出る）→ドラッグ | 回転・傾き（横＝360度、縦＝真上〜真横）。掴んだ地表の点がカーソルに追従し、離すと慣性で少し回る |
-| 握ったままホイール | 傾き（前に回す＝真上へ、手前＝真横へ） |
-| 右／中ドラッグ、Shift／Ctrl＋ドラッグ | 回転・傾き。右下「移動中」ボタンで左右の役割を入替 |
-| ホイール（縦） | カーソル位置に向かってズーム |
-| ホイール（横・トラックパッド） | 360度回転 |
-| ダブルクリック | その地点にフォーカス（寄る） |
-| 右下ツール | 回転中／移動中の入替、戻る（姫路城）、2D（真上）、俯瞰、横、地表、目線（人の高さ）、＋－、集中（UIを隠す）、設定 |
-| タッチ | 1本指＝回転、2本指＝ピンチズーム＋平行移動＋ひねりで回転・上下で傾き |
-| キーボード | Space＝再生／停止、F＝集中表示、Esc＝閉じる／市内へ戻る |
+| 左ドラッグ | 地図を掴んで 3D 的に回す（横＝360 度、縦＝真上〜真横）。掴んだ地表の点がカーソルに追従し、離すと慣性で少し回る |
+| 右／中ドラッグ、Shift／Ctrl＋ドラッグ、2 本指 | 移動（地図を引っ張る） |
+| ホイール／ピンチ | ズーム（カーソル位置を固定） |
+| ダブルクリック | その地点にフォーカス |
+| V または右下 ⋯ | 視点ツール（戻る・2D・俯瞰・横・地表・目線・±・集中・設定、左右ボタンの役割入替）を表示。既定では隠す |
+
+## 人流 Point Cloud（`POINT_CLOUD_PERFORMANCE.md`）
+
+- 左パネル「Point Cloud」で PURE / SOFT / FLOW / DENSITY / VOLUME / TRAIL / LIDAR、色（Density / Speed / Stay / Direction）、Z（地表 / 密度 / 滞在）を切替。
+- 粒は道路・軌跡（同一人物の連続 2 サンプル＝線分）に沿って固定 seed で分布し、時刻は GPU で線形補間。FLOW/TRAIL は 100/300/500ms 前を 70/40/10% で残し、速度に応じた 3〜15m の尾を持つ。
+- LOD（都市 30k → 地区 150k → 街区 500k → 局所 1M）と Adaptive Point Budget（FPS で自動、移動中は 1/4）。DB モードは `/api/points`（バイナリ、bbox × 時刻 × LOD、PostGIS の密度サンプリング）。
+- 地図クリックで半径 60〜400m を高解像度化（範囲外 30%）。半径 400m 以下で 1 粒 hover。`?debug=1` / `` ` `` で Debug Panel、`?bench=1` で 100k〜1M のベンチ。
 
 ## データ基盤（3DCityDB v5 + PostgreSQL/PostGIS）
 

@@ -153,7 +153,7 @@ const mcard = document.getElementById('mcard');
 function meshClick(e){
   if(!MESH.on || !MESH.inst || !MESH.group.visible) return false;
   const hits = pick(e, [MESH.inst], false); if(!hits.length) return false;
-  const c = MESH.cells[hits[0].instanceId]; showMeshCard(c, e); return true;
+  const c = MESH.cells[hits[0].instanceId]; showMeshCard(c, e); if(typeof pclSelect==='function' && window.twinPcl && twinPcl.on) pclSelect(c.cx, c.cz, Math.max(c.w, c.d)*0.6); return true;
 }
 function showMeshCard(c, e){
   if(!mcard) return; if(c.db){ dbMeshCard(c, e); return; }

@@ -13,7 +13,8 @@
  "before_init": [
   "people-flow/flow3d.js",
   "people-flow/flowvis.js",
-  "data/api_client.js"
+  "data/api_client.js",
+  "people-flow/pointcloud.js"
  ],
  "init_anchor": "/* 初期化 */"
 }

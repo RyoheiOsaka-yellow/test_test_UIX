@@ -91,6 +91,7 @@ PGHOST=localhost PGPORT=5432 PGUSER=citydb PGPASSWORD=citydb PGDATABASE=citydb b
 ```
 
 - `source_type='synthetic'`, `source_id='synthetic-v1'` が必須。生成物は `data/synthetic/`（実データは `data/real/`）。
+- 大量データの検証用（Point Cloud, 3,000 人・30 秒間隔 ≈ 138 万点、CSV 150MB なのでリポジトリには入れない）: `python3 infra/synthetic/generate_synthetic.py --persons 3000 --step 30 --seed 11 --out /tmp/synth_large && bash infra/sql/load_synthetic.sh /tmp/synth_large/raw_points.csv`（派生処理 約 3 分）。
 - 実 GPS を入れるときは同じ CSV 列（source_id, person_hash, timestamp, longitude, latitude, accuracy, speed, heading, source_type）で `source_type='gps'` にし、`load_synthetic.sh` の派生関数を `'gps'` で呼ぶだけ。
 
 投入結果（この環境）: raw_points 69,615 / trajectories 295 / stays 2,889 / od 619 / meshes 38,846（sq50 25,921・sq100 6,561・sq250 1,089・jis 5,275）/ mesh_stats 144,670 / MV 5min 10,945・15min 5,929・hourly 2,423。
@@ -136,6 +137,7 @@ DATABASE_URL=postgresql://citydb_reader:citydb_reader@localhost:5432/citydb API_
 | `GET /api/trajectory` | `person_hash` or `t, window, limit` | GeoJSON LineString ＋ `timestamps`（epoch 秒） | trajectories |
 | `GET /api/stays` | `t, window, bbox, limit` | GeoJSON Point ＋ `duration_sec`（= weight） | stays |
 | `GET /api/buildings` | `bbox, lod(1/2), limit` | lod=1: フットプリント（lod1Solid 底面）＋ `height`（bldg:height の value）/ lod=2: 屋根・壁・地面の面（MultiPolygon Z） | citydb.feature / property / geometry_data |
+| `GET /api/points` | `bbox, timeFrom, timeTo, lod(0-3), maxPoints, source, format(bin/json)` | **バイナリ**（HPC1: pos0/pos1 Float32×2, t0/t1 Float32, attr Uint8×4 density/stay/speed/confidence, dir Uint8, pid Uint32）。50m セル密度に応じたサンプリング。Point Cloud 用 | raw_points, stays |
 | `GET /api/tiles/mesh/{z}/{x}/{y}.mvt` | `res, t, bucket` | Mapbox Vector Tile（大量セル向け） | mesh_stats, meshes |
 
 - 応答は GeoJSON / JSON。座標は 4326（経度, 緯度[, 高さ]）。時刻 `t` は ISO 8601（タイムゾーン無しは JST）。

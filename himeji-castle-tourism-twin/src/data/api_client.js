@@ -85,7 +85,9 @@ function dbApplyMesh(j){
   if(MESH.kind!=='sq' || MESH.res!==res){ MESH.kind='sq'; MESH.res=res; }
   MESH.cells=cells; MESH.byKey=new Map(cells.map((c,k)=>[c.i+','+c.j,k]));
   let mx=0; cells.forEach(c=>{ if(c.v>mx) mx=c.v; }); MESH.max = Math.max(mx, 10);   // 色スケール上限＝この時刻の最大人数（実人数）
-  MESH.shapeKey=''; meshRebuildShape(); MESH.dirty=true; paintMesh();
+  if(MESH.inst && MESH.res!==DBSRC.prevRes){ const old=MESH.inst; old.material=old.material.clone(); old.material.transparent=true; MESH.fade=(MESH.fade||[]); MESH.fade.push({inst:old}); MESH.inst=null; }   // 解像度が変わったら旧セルを残して cross fade
+  DBSRC.prevRes=res;
+  MESH.shapeKey=''; meshRebuildShape(); MESH.dirty=true; paintMesh(); if(MESH.fade && MESH.fade.length) MESH.inst.material.opacity=0.05;
   DBSRC.busyCells = cells.filter(c=> c.meta.density>=160).length;   // 100m 換算 160人/ha 以上を混雑（シミュレーション側と同じ閾値）
 }
 /* 地域メッシュ / ヘックスは mesh_stats に無いので 点を既存のセルに客側で集計（人数＝ユニーク person） */
@@ -249,7 +251,7 @@ function dbTick(now){
   /* 点 */
   if(wantPts){ const smp = ctrl.sph.radius>=3000 ? 0.2 : ctrl.sph.radius>=1500 ? 0.5 : 1; const key=`pts|${T}|${bb}|${smp}|${src}`;
     if(DBSRC.last.pts!==key){ DBSRC.last.pts=key; dbFetch('pts', `/api/people/current?t=${T}&window=5&limit=20000&sample=${smp}&bbox=${bb}&source=${src}`, dbApplyPoints); }
-    if(DBSRC.pts) DBSRC.pts.visible = level!=='wide'; }
+    if(DBSRC.pts) DBSRC.pts.visible = level!=='wide' && !(window.twinPcl && twinPcl.on); }
   else if(DBSRC.pts) DBSRC.pts.visible=false;
   /* 軌跡（動く軌跡は時間窓、累積は当日全体を上限 2000 本） */
   if(wantTraj){ const win = TRAJ.anim ? Math.max(30, (TRAJ.mat ? TRAJ.mat.uniforms.uTrail.value : 40)+10) : 1440; const tt = TRAJ.anim ? T : encodeURIComponent(dbIso(1080)); const key=`traj|${tt}|${win}|${src}|${TRAJ.mode}`;

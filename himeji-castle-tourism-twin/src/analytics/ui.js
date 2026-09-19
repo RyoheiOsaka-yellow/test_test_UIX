@@ -427,7 +427,7 @@ function renderPanel(){
       ${anaSec()}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ（入城者数/日・想定）</div>${scnChips()}</div>
-      ${odSec()}${tourSec()}${dbSrcSec()}${flowModeSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${odSec()}${tourSec()}${dbSrcSec()}${flowModeSec()}${pclSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">動線（路線・高速道路・航路・空港）— 流入シェア（クリックで視点）</div><div class="mode-list">${corridorRows()}</div></div>
       <div class="sec"><div class="sec-t">凡例 — 線種＝交通モード、帯の色＝セグメント</div>${modeLegend()}</div>
       <div class="sec"><div class="sec-t">到着ゲート（市内側）</div><div id="gate-rows"></div></div>
@@ -439,7 +439,7 @@ function renderPanel(){
       ${anaSec()}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
-      ${odSec()}${tourSec()}${dbSrcSec()}${flowModeSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${odSec()}${tourSec()}${dbSrcSec()}${flowModeSec()}${pclSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">滞留ヒートマップ — 通り単位・時間連動</div>
         <div class="row-btns" id="heat-chips">
           <button class="chip ${heatMode==='off'?'active':''}" data-h="off">OFF</button>
@@ -478,13 +478,13 @@ function renderPanel(){
       ${anaSec()}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
-      ${dbSrcSec()}${flowModeSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${dbSrcSec()}${flowModeSec()}${pclSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">ゾーン別 滞留・混雑（1ドット＝${AG_SCALE}人）</div><div id="zone-rows"></div></div>
       <div class="sec"><div class="sec-t">入城料（2026年3月〜 二段階料金・想定）</div><div class="legend">
         <div class="li"><div class="sw" style="background:var(--gold)"></div>市外・海外 ¥${FEE.out.toLocaleString()}　<div class="sw" style="background:#8f9cc0"></div>姫路市民 ¥${FEE.resident.toLocaleString()}</div></div></div>
       <div class="sec"><div class="sec-t">インサイト</div><div class="hint">律速点は<b>大天守（入場制限 15,000人/日）</b>と<b>菱の門の券売</b>。桜・GWは12時前後に待ち60分超が発生。入城券の<b>時間指定枠・事前販売</b>と、待ち時間を<b>好古園・西の丸へ振り替える案内</b>が滞留分散の打ち手になります。ドラッグで地図を引っ張る・握って待ってから（⟳）ドラッグで回転。<kbd>Esc</kbd>で市内へ戻る。</div></div>`;
   }
-  bindCommon(); bindFlow3D(); bindFlowVis(); if(typeof bindDbSrc==='function') bindDbSrc();
+  bindCommon(); bindFlow3D(); bindFlowVis(); if(typeof bindDbSrc==='function') bindDbSrc(); if(typeof bindPcl==='function') bindPcl();
   updateKPIs(); updateFlowPanels();
 }
 function updateKPIs(){
@@ -805,6 +805,7 @@ el.addEventListener('pointermove', e=>{
   if(grab.on || ctrl.rotating){tip.style.display='none';el.style.cursor='grabbing';return;}
   const now = performance.now(); if(now-hoverT < 40) return; hoverT=now;
   if(meshTip(e)){ el.style.cursor='grab'; return; }
+  if(typeof pclHover==='function' && pclHover(e)){ el.style.cursor='crosshair'; return; }
   const targets = NAMED.filter(o=> o.visible && o.parent && o.parent.visible);
   const hits = pick(e, targets, false);
   if(hits.length){
@@ -831,6 +832,8 @@ addEventListener('pointerup', e=>{
     if(hits.length){ toast('姫路城 城内（L2）へ移動します'); setLevel('castle'); return; }
   }
   const hb = pickBuilding(e); if(hb) showBuildingCard(hb, e); else hideBuildingCard();
+  /* 点群の範囲選択: 何も当たらなかった地面クリック → 半径 120m を高解像度化（同じ場所をもう一度で解除） */
+  if(!hb && typeof pclSelect==='function' && window.twinPcl && twinPcl.on && level!=='wide'){ const g=groundAt(e.clientX, e.clientY, ctrl.target.y); if(g){ const s=twinPcl.sel; if(s && Math.hypot(s.x-g.x, s.z-g.z)<s.r) pclSelect(null); else pclSelect(g.x, g.z, Math.max(60, Math.min(400, ctrl.sph.radius*0.08))); } }
 });
 /* 建物情報カード（PLATEAU 属性） */
 const bcard = document.getElementById('bcard');
@@ -891,7 +894,7 @@ function loop(now){
   castleGlow.material.opacity = 0.10 + 0.05*Math.sin(now/700);
   if(level!=='wide'){ ROUTES.forEach(r=>{ if(!r.rib) return; const u=r.rib.uni; u.uTime.value += dt*0.9; const k=Math.min(1, (r.uses||0)/80); u.uAct.value = 0.10 + 0.55*k; u.uFlowW.value = 0.16 + 0.55*k; }); }
   if(now-lastKpi>500){ lastKpi=now; updateKPIs(); updateFlowPanels(); }
-  updateFlowHeads(); renderer.render(scene, camera);
+  updateFlowHeads(); if(typeof pclUpdate==='function') pclUpdate(now, dt); if(typeof pclGpuBegin==='function') pclGpuBegin(); renderer.render(scene, camera); if(typeof pclGpuEnd==='function') pclGpuEnd();
 }
 
 /* V9 visual refinement. Supplemental geometry is schematic, not a new survey. */
@@ -981,6 +984,7 @@ function initRefinement(){
  document.getElementById('cloud-density').oninput=e=>{const ratio=+e.target.value/100;fineCloud.children.forEach(p=>p.geometry.setDrawRange(0,Math.floor(p.userData.fullCount*ratio)));document.getElementById('density-value').value=e.target.value+'%';syncRefinement()};
  document.getElementById('flow-weight').oninput=e=>{trailMesh.material.opacity=+e.target.value/100;document.getElementById('flow-value').value=e.target.value+'%'};
  document.querySelectorAll('[data-speed]').forEach(b=>b.onclick=()=>{timeState.speed=+b.dataset.speed;document.querySelectorAll('[data-speed]').forEach(x=>{x.classList.toggle('active',x===b);x.setAttribute('aria-pressed',x===b)});document.querySelectorAll('[data-tspeed]').forEach(x=>x.classList.toggle('active', +x.dataset.tspeed===timeState.speed))});
+ document.getElementById('view-handle').onclick=()=>document.body.classList.toggle('tools-open'); addEventListener('keydown',e=>{ if((e.key==='v'||e.key==='V') && !e.target.closest('input,textarea,select')) document.body.classList.toggle('tools-open'); });
  document.getElementById('drag-mode').onclick=()=>{endGrab();primaryDragMode=primaryDragMode==='rotate'?'pan':'rotate';const b=document.getElementById('drag-mode');b.textContent=primaryDragMode==='rotate'?'回転中':'移動中';b.setAttribute('aria-pressed',primaryDragMode==='rotate');b.setAttribute('aria-label',primaryDragMode==='rotate'?'左ドラッグは回転。押すと移動に切替':'左ドラッグは地図を掴んで移動。押すと回転に切替');toast(primaryDragMode==='rotate'?'回転モード：左ドラッグで地球儀のように回す（横＝360度・縦＝真上〜真横）。右ドラッグ＝移動':'移動モード：ドラッグで地図を引っ張る。握って待ってから（⟳）ドラッグ／握ったままホイール＝回転・傾き',3200)};
  document.getElementById('view-side').onclick=()=>flyTo(ctrl.target.clone(),ctrl.sph.radius,ctrl.maxPhi,ctrl.sph.theta,700);
  document.getElementById('view-bird').onclick=()=>flyTo(ctrl.target.clone(),ctrl.sph.radius,0.85,ctrl.sph.theta,700);
@@ -1014,7 +1018,7 @@ renderPanel();
 initRefinement();
 toast('操作: ドラッグ＝地図を掴んで引っ張る ／ 握って少し待つ（⟳）→ドラッグ、または握ったままホイール＝回転・真上〜真横 ／ スクロール＝ズーム ／ ダブルクリック＝フォーカス。▶ で1日を再生', 5200);
 requestAnimationFrame(loop);
-window.__twin={ctrl,camera,groundAt,PL,MESH,TRAJ,FLOORS,FLOWVIS,HEATV,FLOWA,OD,ANA,setFlowMode,setMesh,setTraj,setFloors,setLevel,timeState,agents,STATS,get level(){return level}};
+window.__twin={PCL,ctrl,camera,groundAt,PL,MESH,TRAJ,FLOORS,FLOWVIS,HEATV,FLOWA,OD,ANA,setFlowMode,setMesh,setTraj,setFloors,setLevel,timeState,agents,STATS,get level(){return level}};
 window.twinDiagnostics=()=>({db:(window.twinDb?{on:twinDb.on,ok:twinDb.ok,err:twinDb.err,lod:twinDb.lod,pts:twinDb.ptsN,stat:twinDb.stat,bld:twinDb.bld,bldN:twinDb.bldN,bldL2N:twinDb.bldL2N,kpi:twinDb.kpi,heat:twinDb.heat.length/3,flows:FLOWA.rows.length}:null),mesh:MESH.on,meshCells:MESH.cells.length,traj:TRAJ.on,trajSegs:TRAJ.n,floors:FLOORS.on,points:supplementalCount,agents:agents.length,trailVisible:trailMesh.visible,routeVisible:routeGroup.visible,level,phi:ctrl.sph.phi,time:timeState.min,style:urbanStyle,primaryDragMode,target:ctrl.target.toArray(),theta:ctrl.sph.theta,castle:[CASTLE.x,CASTLE.z],cloudVisible:fineCloud.visible,heads:flowGeometry.drawRange.count});
 })();
 </script>
