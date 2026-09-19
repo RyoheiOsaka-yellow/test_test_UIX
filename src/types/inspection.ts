@@ -12,10 +12,13 @@
 // Computer Vision layer
 // ---------------------------------------------------------------------------
 
-/** Detection classes. Only CAPPED / UNCAPPED are enabled in the Phase 1 UI. */
+/**
+ * 検知クラス。OK / NG は「検査属性（キャップ・ラベル・部品など）が有る / 無い」を表す汎用クラスで、
+ * 表示名は検査プロファイルが与える。以下の拡張クラスは将来用（フェーズ1では無効）。
+ */
 export type DetectionClass =
-  | 'CAPPED'
-  | 'UNCAPPED'
+  | 'OK'
+  | 'NG'
   | 'LOW_CAP'
   | 'MISALIGNED_CAP'
   | 'DAMAGED_CAP'
@@ -24,7 +27,7 @@ export type DetectionClass =
   | 'DEFORMED_BOTTLE'
   | 'FOREIGN_OBJECT'
 
-export const ENABLED_CLASSES: readonly DetectionClass[] = ['CAPPED', 'UNCAPPED']
+export const ENABLED_CLASSES: readonly DetectionClass[] = ['OK', 'NG']
 
 /** Normalized bounding box: [x, y, width, height], each in 0..1 of the frame. */
 export type NormalizedBBox = [x: number, y: number, width: number, height: number]
@@ -41,16 +44,16 @@ export interface RawDetection {
   /** Stable track id. */
   id: number
   bbox: NormalizedBBox
-  /** 'bottle' = ボトルのみ検出（キャップ状態は未判定。シナリオ側で割り当て） */
-  class: 'bottle' | 'capped' | 'uncapped' | Lowercase<DetectionClass>
+  /** 'object' = 物体のみ検出（検査属性は未判定。シナリオ側で割り当て）。'capped' / 'uncapped' は互換用。 */
+  class: 'object' | 'bottle' | 'ok' | 'ng' | 'capped' | 'uncapped' | Lowercase<DetectionClass>
   /** Class confidence 0..1 (confidence of the reported class). */
   confidence: number
   /** Optional: explicit bottle-presence confidence. Defaults to ~0.95. */
   bottle_confidence?: number
-  /** Optional: explicit cap-presence confidence. Derived from class + confidence if absent. */
-  cap_confidence?: number
-  /** Optional: cap alignment score 0..1. */
-  cap_position_score?: number
+  /** Optional: 検査属性の信頼度。無ければ class + confidence から導出。 */
+  attribute_confidence?: number
+  /** Optional: 位置ずれスコア 0..1 */
+  alignment_score?: number
 }
 
 /** A per-frame detection produced by the CV layer (real or simulated). */
@@ -62,10 +65,12 @@ export interface FrameDetection {
   detectionClass: DetectionClass
   /** Confidence of the reported class, 0..1. */
   classConfidence: number
-  bottleConfidence: number
-  capConfidence: number
-  capPositionScore: number
-  /** Center x in normalized coordinates (for gate logic). */
+  /** 物体そのものの検出信頼度 */
+  objectConfidence: number
+  /** 検査属性（キャップ / ラベル / 部品）の信頼度 */
+  attributeConfidence: number
+  alignmentScore: number
+  /** Center x in normalized coordinates. */
   centerX: number
   /** Lifecycle phase from the tracker's point of view. */
   phase: TrackPhase
@@ -87,8 +92,8 @@ export type TrackPhase = 'ENTERING' | 'TRACKED' | 'INSPECTING' | 'DECIDED' | 'EX
  */
 export interface InspectionState {
   objectId: string
-  bottleConfidence: number
-  capConfidence: number
+  objectConfidence: number
+  attributeConfidence: number
   alignmentScore?: number
   inspectionZone: boolean
   /** Number of prior RECHECK rounds on this object. */
@@ -163,7 +168,7 @@ export type InspectionEventType =
   | 'OBJECT_ENTERED'
   | 'OBJECT_TRACKED'
   | 'INSPECTION_STARTED'
-  | 'CAP_CONFIDENCE'
+  | 'ATTRIBUTE_CONFIDENCE'
   | 'INSPECTION_COMPLETED'
   | 'PASS'
   | 'RECHECK'
@@ -195,7 +200,7 @@ export interface InspectionEvent {
 export interface InspectionRecord {
   timestamp: string
   objectId: string
-  vision: { bottle: number; cap: number; alignment: number }
+  vision: { object: number; attribute: number; alignment: number }
   decision: { result: ObjectDecision; confidence: number; reason: string; engine: DecisionEngineKind }
   action: string
   latencyMs: number
@@ -219,11 +224,11 @@ export interface ScenarioDefinition {
   id: ScenarioId
   name: string
   description: string
-  /** Fraction of bottles that are uncapped. */
-  uncappedRate: number
-  /** Fraction of bottles with misaligned caps (cap confidence in the RECHECK band). */
+  /** 属性が欠けている（NG）物体の割合 */
+  ngRate: number
+  /** 位置ずれ（再検査帯）の割合 */
   misalignedRate: number
-  /** Fraction of bottles with ambiguous cap confidence (HUMAN_REVIEW band). */
+  /** 判定不能（要確認帯）の割合 */
   ambiguousRate: number
   /** Extra per-frame jitter in bbox and confidence, 0..1. */
   noise: number
@@ -253,3 +258,61 @@ export type PlaybackRate = 0.5 | 1 | 2
 export type VideoSource =
   | { kind: 'video'; url: string }
   | { kind: 'placeholder' }
+
+// ---------------------------------------------------------------------------
+// 検査プロファイル（物体・検査属性・トリガー・映像をひとまとめにした設定）
+// ---------------------------------------------------------------------------
+
+export type GateAxis = 'x' | 'y'
+
+export type InspectionTrigger =
+  | {
+      /** 流れる物体がゲート線を横切った瞬間に判定 */
+      kind: 'gate'
+      axis: GateAxis
+      /** 正規化座標でのゲート位置 */
+      position: number
+      /** +1: 座標が増える向きに流れる（左→右 / 上→下）、-1: 逆 */
+      direction: 1 | -1
+      /** 検査ゾーンの半幅 */
+      zoneHalfWidth: number
+    }
+  | {
+      /** 据え置きの作業ステーション: ゾーン内に一定時間とどまったら判定 */
+      kind: 'zone'
+      rect: NormalizedBBox
+      dwellSeconds: number
+    }
+
+export const DEFAULT_GATE: InspectionTrigger = { kind: 'gate', axis: 'x', position: 0.5, direction: 1, zoneHalfWidth: 0.06 }
+
+export interface InspectionProfile {
+  id: string
+  /** 表示名（例: ボトルキャップ検査） */
+  name: string
+  lineName: string
+  cameraName: string
+  /** 物体の表示名（ボトル / 小包 / 基板） */
+  objectLabel: string
+  /** 検査属性の表示名（キャップ / 配送ラベル / 部品実装） */
+  attributeLabel: string
+  alignmentLabel: string
+  okLabel: string
+  ngLabel: string
+  /** 理由コード → 表示文 */
+  reasons: Record<string, string>
+  /** 不良時の処置（表示） */
+  rejectAction: string
+  /** 「位置ずれ」シナリオの名前 */
+  misalignedScenarioName: string
+  /** Jev へ送る task 名と項目名 */
+  jevTask: string
+  objectKey: string
+  attributeKey: string
+  trigger: InspectionTrigger
+  /** public/demo/<dir>/ に video.mp4 / detections.json / CREDIT.txt を置く */
+  mediaDir: string
+  /** 検出器の説明（表示用） */
+  detectorNote: string
+  triggerLabel: string
+}

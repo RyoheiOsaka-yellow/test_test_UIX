@@ -26,14 +26,17 @@ export function isJevConfigured(): boolean {
 }
 
 export interface JevObjectRequest {
-  task: 'bottle_cap_inspection'
+  /** 検査プロファイルごとのタスク名（例: bottle_cap_inspection / parcel_label_inspection） */
+  task: string
   level: 'object'
   state: {
-    object_type: 'bottle'
+    object_type: string
     object_id: string
-    bottle_confidence: number
-    cap_confidence: number
-    cap_position_score: number
+    /** 検査属性のキー（cap / shipping_label / component） */
+    attribute: string
+    object_confidence: number
+    attribute_confidence: number
+    alignment_score: number
     inspection_zone: boolean
     previous_failures: number
     previous_state: string
@@ -42,7 +45,7 @@ export interface JevObjectRequest {
 }
 
 export interface JevLineRequest {
-  task: 'bottle_cap_inspection'
+  task: string
   level: 'line'
   state: {
     reject_rate: number
@@ -95,17 +98,28 @@ async function postDecision<T extends string>(
 
 export class JevDecisionEngine implements DecisionEngine {
   readonly kind = 'jev' as const
+  /** 現在の検査プロファイル（task 名と項目名に使う） */
+  task = 'bottle_cap_inspection'
+  objectKey = 'bottle'
+  attributeKey = 'cap'
+
+  setProfile(p: { jevTask: string; objectKey: string; attributeKey: string }) {
+    this.task = p.jevTask
+    this.objectKey = p.objectKey
+    this.attributeKey = p.attributeKey
+  }
 
   async decideObject(state: InspectionState, options: readonly ObjectDecision[]): Promise<DecisionResult> {
     const body: JevObjectRequest = {
-      task: 'bottle_cap_inspection',
+      task: this.task,
       level: 'object',
       state: {
-        object_type: 'bottle',
+        object_type: this.objectKey,
         object_id: state.objectId,
-        bottle_confidence: round(state.bottleConfidence),
-        cap_confidence: round(state.capConfidence),
-        cap_position_score: round(state.alignmentScore ?? 1),
+        attribute: this.attributeKey,
+        object_confidence: round(state.objectConfidence),
+        attribute_confidence: round(state.attributeConfidence),
+        alignment_score: round(state.alignmentScore ?? 1),
         inspection_zone: state.inspectionZone,
         previous_failures: state.previousFailures ?? 0,
         previous_state: state.previousState ?? 'normal',
@@ -124,7 +138,7 @@ export class JevDecisionEngine implements DecisionEngine {
 
   async decideLine(state: LineState, options: readonly LineDecision[]): Promise<LineDecisionResult> {
     const body: JevLineRequest = {
-      task: 'bottle_cap_inspection',
+      task: this.task,
       level: 'line',
       state: {
         reject_rate: round(state.rejectRate),

@@ -19,7 +19,7 @@ const DEFAULT_SEVERITY: Record<InspectionEventType, EventSeverity> = {
   OBJECT_ENTERED: 'info',
   OBJECT_TRACKED: 'info',
   INSPECTION_STARTED: 'info',
-  CAP_CONFIDENCE: 'info',
+  ATTRIBUTE_CONFIDENCE: 'info',
   INSPECTION_COMPLETED: 'info',
   PASS: 'ok',
   RECHECK: 'warn',

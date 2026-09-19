@@ -1,10 +1,10 @@
 /**
  * Vite のビルド結果を1つの HTML にまとめる（JS / CSS / デモ動画 / 追跡結果を埋め込み）。
  *   npm run build:single  →  dist/jev-visual-inspection.html
- * サーバー不要でそのまま開ける。動画は public/demo/bottling-line.mp4 があれば
- * data URI として埋め込む（無ければ合成映像で動く）。
+ * public/demo/<プロファイル>/ にある video.mp4（無ければ video.webm）、detections.json、
+ * CREDIT.txt をプロファイルごとに埋め込む。サーバー不要でそのまま開ける。
  */
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 const root = new URL('../', import.meta.url).pathname
@@ -23,23 +23,31 @@ for (const file of readdirSync(assets)) {
 }
 html = html.replace(/<link rel="icon"[^>]*>\s*/, '')
 
-// デモ資産の埋め込み
-const embedded = {}
-const videoCandidates = [
-  ['public/demo/bottling-line.mp4', 'video/mp4'],
-  ['public/demo/bottling-line.webm', 'video/webm'],
-]
-const video = videoCandidates.map(([p, mime]) => [join(root, p), mime]).find(([p]) => existsSync(p))
-if (video) {
-  const [videoPath, mime] = video
-  embedded.videoDataUrl = `data:${mime};base64,${readFileSync(videoPath).toString('base64')}`
-  const creditPath = join(root, 'public/demo/CREDIT.txt')
-  if (existsSync(creditPath)) embedded.videoCredit = readFileSync(creditPath, 'utf8').trim().split('\n')[0]
+// プロファイルごとのデモ資産
+const demoRoot = join(root, 'public/demo')
+const profiles = {}
+let embeddedBytes = 0
+if (existsSync(demoRoot)) {
+  for (const dir of readdirSync(demoRoot)) {
+    const p = join(demoRoot, dir)
+    if (!statSync(p).isDirectory()) continue
+    const entry = {}
+    const video = [
+      ['video.mp4', 'video/mp4'],
+      ['video.webm', 'video/webm'],
+    ].find(([f]) => existsSync(join(p, f)))
+    if (video) {
+      const buf = readFileSync(join(p, video[0]))
+      entry.videoDataUrl = `data:${video[1]};base64,${buf.toString('base64')}`
+      embeddedBytes += buf.length
+    }
+    if (existsSync(join(p, 'detections.json'))) entry.detections = JSON.parse(readFileSync(join(p, 'detections.json'), 'utf8'))
+    if (existsSync(join(p, 'CREDIT.txt'))) entry.videoCredit = readFileSync(join(p, 'CREDIT.txt'), 'utf8').trim().split('\n')[0]
+    if (Object.keys(entry).length) profiles[dir] = entry
+  }
 }
-const detPath = join(root, 'public/demo/detections.json')
-if (existsSync(detPath)) embedded.detections = JSON.parse(readFileSync(detPath, 'utf8'))
-if (Object.keys(embedded).length) {
-  const json = JSON.stringify(embedded).replace(/<\/script/gi, '<\\/script')
+if (Object.keys(profiles).length) {
+  const json = JSON.stringify({ profiles }).replace(/<\/script/gi, '<\\/script')
   html = html.replace('<script type="module">', () => `<script>window.__JEV_EMBEDDED__=${json}</script>\n<script type="module">`)
 }
 
@@ -52,4 +60,9 @@ const inner = html
   .replace(/<\/body>\s*<\/html>\s*$/, '')
   .replace(/<meta[^>]*>\s*/g, '')
 writeFileSync(join(dist, 'jev-visual-inspection.artifact.html'), inner)
-console.log('wrote dist/jev-visual-inspection.html (%d KB)%s', Math.round(html.length / 1024), embedded.videoDataUrl ? ' with embedded video' : '')
+console.log(
+  'wrote dist/jev-visual-inspection.html (%d KB) · profiles: %s · video bytes %d KB',
+  Math.round(html.length / 1024),
+  Object.keys(profiles).join(', ') || 'none',
+  Math.round(embeddedBytes / 1024),
+)

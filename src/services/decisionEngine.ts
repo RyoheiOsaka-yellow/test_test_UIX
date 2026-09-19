@@ -25,7 +25,7 @@ export { actionFor }
 /** Below this confidence the engine is considered uncertain and defers to a human. */
 export const UNCERTAINTY_THRESHOLD = 0.65
 
-export const CAP_THRESHOLDS = {
+export const ATTRIBUTE_THRESHOLDS = {
   pass: 0.75,
   recheck: 0.45,
   humanReview: 0.2,
@@ -41,7 +41,8 @@ function simulatedLatency(): number {
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
 
 /**
- * Rule-based object decision. Thresholds are on cap confidence:
+ * Rule-based object decision. Thresholds are on the inspected attribute's confidence
+ * (cap / label / component presence):
  *   >= 0.75         PASS
  *   0.45 .. 0.75    RECHECK
  *   0.20 .. 0.45    HUMAN_REVIEW
@@ -52,8 +53,8 @@ export function simulateObjectDecision(
   state: InspectionState,
   options: readonly ObjectDecision[],
 ): Omit<DecisionResult, 'latencyMs' | 'engine'> {
-  const cap = clamp01(state.capConfidence)
-  const bottle = clamp01(state.bottleConfidence)
+  const cap = clamp01(state.attributeConfidence)
+  const bottle = clamp01(state.objectConfidence)
   const align = state.alignmentScore ?? 1
   const recheckRound = state.previousFailures ?? 0
 
@@ -65,32 +66,32 @@ export function simulateObjectDecision(
     decision = 'RECHECK'
     confidence = 0.5
     reason = 'OUTSIDE_INSPECTION_ZONE'
-  } else if (cap >= CAP_THRESHOLDS.pass) {
+  } else if (cap >= ATTRIBUTE_THRESHOLDS.pass) {
     decision = 'PASS'
     // confidence grows with distance from the threshold, tempered by bottle confidence
-    confidence = 0.7 + 0.3 * ((cap - CAP_THRESHOLDS.pass) / (1 - CAP_THRESHOLDS.pass))
+    confidence = 0.7 + 0.3 * ((cap - ATTRIBUTE_THRESHOLDS.pass) / (1 - ATTRIBUTE_THRESHOLDS.pass))
     confidence *= 0.9 + 0.1 * bottle
-    reason = align < 0.6 ? 'CAP_OK_ALIGNMENT_LOW' : 'CAP_OK'
-  } else if (cap >= CAP_THRESHOLDS.recheck) {
+    reason = align < 0.6 ? 'ATTR_OK_ALIGNMENT_LOW' : 'ATTR_OK'
+  } else if (cap >= ATTRIBUTE_THRESHOLDS.recheck) {
     // Recheck band. After one recheck round, escalate instead of looping forever.
     if (recheckRound >= 1) {
       decision = cap >= 0.6 ? 'PASS' : 'HUMAN_REVIEW'
       confidence = decision === 'PASS' ? 0.68 : 0.62
-      reason = decision === 'PASS' ? 'CAP_OK_AFTER_RECHECK' : 'CAP_AMBIGUOUS_AFTER_RECHECK'
+      reason = decision === 'PASS' ? 'ATTR_OK_AFTER_RECHECK' : 'ATTR_AMBIGUOUS_AFTER_RECHECK'
     } else {
       decision = 'RECHECK'
-      confidence = 0.6 + 0.3 * ((cap - CAP_THRESHOLDS.recheck) / (CAP_THRESHOLDS.pass - CAP_THRESHOLDS.recheck))
-      reason = align < 0.6 ? 'CAP_MISALIGNED' : 'CAP_LOW_CONFIDENCE'
+      confidence = 0.6 + 0.3 * ((cap - ATTRIBUTE_THRESHOLDS.recheck) / (ATTRIBUTE_THRESHOLDS.pass - ATTRIBUTE_THRESHOLDS.recheck))
+      reason = align < 0.6 ? 'ATTR_MISALIGNED' : 'ATTR_LOW_CONFIDENCE'
     }
-  } else if (cap >= CAP_THRESHOLDS.humanReview) {
+  } else if (cap >= ATTRIBUTE_THRESHOLDS.humanReview) {
     decision = 'HUMAN_REVIEW'
-    confidence = 0.5 + 0.2 * (1 - (cap - CAP_THRESHOLDS.humanReview) / (CAP_THRESHOLDS.recheck - CAP_THRESHOLDS.humanReview))
-    reason = 'CAP_AMBIGUOUS'
+    confidence = 0.5 + 0.2 * (1 - (cap - ATTRIBUTE_THRESHOLDS.humanReview) / (ATTRIBUTE_THRESHOLDS.recheck - ATTRIBUTE_THRESHOLDS.humanReview))
+    reason = 'ATTR_AMBIGUOUS'
   } else {
     decision = 'REJECT'
-    confidence = 0.8 + 0.2 * (1 - cap / CAP_THRESHOLDS.humanReview)
+    confidence = 0.8 + 0.2 * (1 - cap / ATTRIBUTE_THRESHOLDS.humanReview)
     confidence *= 0.9 + 0.1 * bottle
-    reason = 'CAP_MISSING'
+    reason = 'ATTR_MISSING'
   }
 
   confidence = clamp01(confidence)

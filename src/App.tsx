@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Play, ScanLine } from 'lucide-react'
+import { PROFILES, PROFILE_ORDER } from './profiles'
 import { AnomalyPanel } from './components/AnomalyPanel'
 import { ControlPanel } from './components/ControlPanel'
 import { DecisionPanel } from './components/DecisionPanel'
@@ -21,6 +22,7 @@ export default function App() {
   const mode = useInspectionStore((s) => s.mode)
   const alert = useInspectionStore((s) => s.lineAlert)
   const demoStarted = useInspectionStore((s) => s.demoStartedAt)
+  const profile = useInspectionStore((s) => s.profile)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -41,8 +43,27 @@ export default function App() {
           <ScanLine size={16} className="text-cyan" />
           <div className="leading-tight">
             <div className="text-[12px] font-semibold tracking-[0.12em] text-ink">JEV 外観検査</div>
-            <div className="label">充填ライン A · キャップ有無 · 試作版 v0.1</div>
+            <div className="label">
+              {profile.lineName} · {profile.name} · 試作版 v0.1
+            </div>
           </div>
+        </div>
+        <div className="flex items-stretch border border-border bg-panel" title="検査プロファイル">
+          {PROFILE_ORDER.map((id) => {
+            const p = PROFILES[id]
+            const active = p.id === profile.id
+            return (
+              <button
+                key={id}
+                onClick={() => controller.selectProfile(id)}
+                className={`px-2.5 py-[3px] text-[10.5px] tracking-[0.04em] transition-colors ${
+                  active ? 'bg-cyan/12 text-cyan' : 'text-ink-2 hover:bg-panel-2 hover:text-ink'
+                } border-r border-border-2 last:border-r-0`}
+              >
+                {p.name}
+              </button>
+            )
+          })}
         </div>
         <div className="flex items-center gap-2">
           <span className="border border-yellow/60 bg-yellow/10 px-2 py-[3px] text-[9.5px] font-semibold tracking-[0.12em] text-yellow">デモモード</span>

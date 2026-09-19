@@ -13,6 +13,7 @@ function Bar({ value, color }: { value: number; color: string }) {
 export function DecisionPanel() {
   const cur = useInspectionStore((s) => s.currentObject)
   const mode = useInspectionStore((s) => s.mode)
+  const profile = useInspectionStore((s) => s.profile)
   const d = cur?.decision
   return (
     <Panel
@@ -30,23 +31,26 @@ export function DecisionPanel() {
       <div className="grid grid-cols-2 gap-x-3 gap-y-1">
         <div>
           <div className="flex items-baseline justify-between">
-            <span className="text-[10px] text-ink-2">ボトル</span>
-            <span className="num text-[13px]">{cur ? pct(cur.bottleConfidence) : '—'}</span>
+            <span className="text-[10px] text-ink-2">{profile.objectLabel}</span>
+            <span className="num text-[13px]">{cur ? pct(cur.objectConfidence) : '—'}</span>
           </div>
-          <Bar value={cur?.bottleConfidence ?? 0} color="#31c6ff" />
+          <Bar value={cur?.objectConfidence ?? 0} color="#31c6ff" />
         </div>
         <div>
           <div className="flex items-baseline justify-between">
-            <span className="text-[10px] text-ink-2">キャップ</span>
-            <span className={`num text-[13px] ${cur && cur.capConfidence < 0.45 ? 'text-red' : cur && cur.capConfidence < 0.75 ? 'text-yellow' : ''}`}>
-              {cur ? pct(cur.capConfidence) : '—'}
+            <span className="text-[10px] text-ink-2">{profile.attributeLabel}</span>
+            <span className={`num text-[13px] ${cur && cur.attributeConfidence < 0.45 ? 'text-red' : cur && cur.attributeConfidence < 0.75 ? 'text-yellow' : ''}`}>
+              {cur ? pct(cur.attributeConfidence) : '—'}
             </span>
           </div>
-          <Bar value={cur?.capConfidence ?? 0} color={cur && cur.capConfidence < 0.45 ? '#ff5151' : cur && cur.capConfidence < 0.75 ? '#ffd52a' : '#39ff88'} />
+          <Bar
+            value={cur?.attributeConfidence ?? 0}
+            color={cur && cur.attributeConfidence < 0.45 ? '#ff5151' : cur && cur.attributeConfidence < 0.75 ? '#ffd52a' : '#39ff88'}
+          />
         </div>
       </div>
       <div className="mt-1 flex items-baseline justify-between">
-        <span className="text-[10px] text-ink-2">キャップ位置</span>
+        <span className="text-[10px] text-ink-2">{profile.alignmentLabel}</span>
         <span className="num text-[11px] text-ink-2">{cur ? pct(cur.alignment) : '—'}</span>
       </div>
 
@@ -65,11 +69,11 @@ export function DecisionPanel() {
         </div>
         <div className="col-span-2">
           <div className="label">理由</div>
-          <div className="text-[11px] text-ink">{reasonJa(d?.reason)}</div>
+          <div className="text-[11px] text-ink">{reasonJa(d?.reason, profile)}</div>
         </div>
         <div className="col-span-2">
           <div className="label">処置</div>
-          <div className={`text-[11px] ${d?.decision === 'REJECT' ? 'text-red' : 'text-ink'}`}>{actionJa(d?.action)}</div>
+          <div className={`text-[11px] ${d?.decision === 'REJECT' ? 'text-red' : 'text-ink'}`}>{actionJa(d?.action, profile)}</div>
         </div>
       </div>
 

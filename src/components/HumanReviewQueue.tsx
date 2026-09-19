@@ -6,6 +6,7 @@ import { Panel, pct } from './Panel'
 
 export function HumanReviewQueue() {
   const queue = useInspectionStore((s) => s.reviewQueue)
+  const profile = useInspectionStore((s) => s.profile)
   const controller = getController()
   return (
     <Panel
@@ -22,10 +23,10 @@ export function HumanReviewQueue() {
             <div className="flex-1">
               <div className="flex items-baseline gap-2">
                 <span className="num text-[12px] text-ink">{item.objectId}</span>
-                <span className="text-[10px] text-violet">キャップ? {pct(item.capConfidence)}</span>
+                <span className="text-[10px] text-violet">{profile.attributeLabel}? {pct(item.attributeConfidence)}</span>
               </div>
               <div className="text-[9.5px] text-ink-3">
-                JEV {pct(item.jevConfidence)} · {reasonJa(item.reason)}
+                JEV {pct(item.jevConfidence)} · {reasonJa(item.reason, profile)}
               </div>
             </div>
             <button className="btn btn-primary !px-1.5 !py-1" onClick={() => controller.store.resolveReview(item.objectId, 'PASS', controller.bus)} title="合格にする">

@@ -1,5 +1,5 @@
-import type { FrameDetection, OverlaySettings } from '@/types/inspection'
-import { CLASS_JA, DECISION_JA } from '@/i18n/ja'
+import type { FrameDetection, InspectionProfile, OverlaySettings } from '@/types/inspection'
+import { DECISION_JA, classJa } from '@/i18n/ja'
 
 /**
  * 検知1件分の描画ヘルパー（バウンディングボックス + ラベル）。
@@ -7,8 +7,8 @@ import { CLASS_JA, DECISION_JA } from '@/i18n/ja'
  */
 
 export const CLASS_COLORS: Record<string, string> = {
-  CAPPED: '#39ff88',
-  UNCAPPED: '#ff5151',
+  OK: '#39ff88',
+  NG: '#ff5151',
   LOW_CAP: '#ffd52a',
   MISALIGNED_CAP: '#ffd52a',
   DAMAGED_CAP: '#ff5151',
@@ -29,10 +29,10 @@ const LABEL_FONT = '600 11px "JetBrains Mono", "Noto Sans JP", "Hiragino Sans", 
 const TAG_FONT = '600 10.5px "JetBrains Mono", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif'
 const STAMP_FONT = '700 13px "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif'
 
-export function labelText(d: FrameDetection, settings: OverlaySettings): string {
+export function labelText(d: FrameDetection, settings: OverlaySettings, profile: InspectionProfile): string {
   const parts: string[] = []
   if (settings.trackingId) parts.push(d.label)
-  parts.push(CLASS_JA[d.detectionClass])
+  parts.push(classJa(d.detectionClass, profile))
   if (settings.confidence) parts.push(`${Math.round(d.classConfidence * 100)}%`)
   return parts.join(' ')
 }
@@ -44,6 +44,7 @@ export function drawDetection(
   h: number,
   settings: OverlaySettings,
   now: number,
+  profile: InspectionProfile,
 ) {
   const [nx, ny, nw, nh] = d.bbox
   const x = nx * w
@@ -100,7 +101,7 @@ export function drawDetection(
       ctx.restore()
     }
   } else if (settings.trackingId || settings.confidence || settings.boundingBox) {
-    const text = labelText(d, settings)
+    const text = labelText(d, settings, profile)
     ctx.save()
     ctx.font = LABEL_FONT
     const tw = ctx.measureText(text).width + 10
@@ -154,7 +155,7 @@ export function drawDetection(
       ctx.fillStyle = '#ff5151'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText('不良 排出', x + bw / 2, y + bh / 2 - 22 - k * 10)
+      ctx.fillText(`不良 ${profile.rejectAction}`, x + bw / 2, y + bh / 2 - 22 - k * 10)
       ctx.restore()
     } else if (d.decision.decision === 'PASS' && age >= 0 && age < 0.7) {
       const k = age / 0.7

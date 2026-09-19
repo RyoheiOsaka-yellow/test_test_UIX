@@ -2,13 +2,15 @@ import type {
   DecisionResult,
   DetectionClass,
   FrameDetection,
+  InspectionProfile,
   InspectionState,
   NormalizedBBox,
   ScenarioDefinition,
   TrackPhase,
 } from '@/types/inspection'
 import { OBJECT_DECISION_OPTIONS } from '@/types/inspection'
-import { CONVEYOR, bboxAt, centerXAt, exitTimeOf, gateTimeOf, type BottleTrack } from '@/data/demoDetections'
+import { bboxAt, currentTrigger, exitTimeOf, gateProgress, gateTimeOf, inZone, type BottleTrack } from '@/data/demoDetections'
+import { PROFILES, DEFAULT_PROFILE_ID } from '@/profiles'
 import { DECISION_JA } from '@/i18n/ja'
 import type { EventBus } from './eventBus'
 
@@ -34,13 +36,15 @@ interface TrackRuntime {
   exitTime: number
   /** リセット時点で既にゲートを過ぎていた（検査対象外） */
   skipInspection: boolean
+  /** ゾーン型トリガー: ゾーンに入った時刻 */
+  zoneEnteredAt?: number
   trackedEmitted: boolean
   decisionRequested: boolean
   decision?: DecisionResult
   decisionTime?: number
   recheckRounds: number
-  sampledCap?: number
-  sampledBottle?: number
+  sampledAttribute?: number
+  sampledObject?: number
   sampledAlignment?: number
   /** 排出ボトルがベルトから外れ始める時刻（合成トラックのみ） */
   ejectTime?: number
@@ -70,6 +74,7 @@ export class VideoDetectionSimulator {
   private decide: DecideFn
   private runtimes: TrackRuntime[] = []
   private scenario: ScenarioDefinition | null = null
+  private profile: InspectionProfile = PROFILES[DEFAULT_PROFILE_ID]
   private lastTime = -Infinity
   private generation = 0
   /** ループ回数。周回ごとに追跡番号をずらして重複させない */
@@ -81,9 +86,10 @@ export class VideoDetectionSimulator {
     this.decide = opts.decide
   }
 
-  load(tracks: BottleTrack[], scenario: ScenarioDefinition, startTime = 0) {
+  load(tracks: BottleTrack[], scenario: ScenarioDefinition, profile: InspectionProfile, startTime = 0) {
     this.generation++
     this.scenario = scenario
+    this.profile = profile
     this.loopIndex = 0
     const maxId = tracks.reduce((m, t) => Math.max(m, t.id), 0)
     this.idStride = Math.max(100, Math.ceil((maxId + 1) / 100) * 100)
@@ -116,7 +122,8 @@ export class VideoDetectionSimulator {
       rt.decision = undefined
       rt.decisionTime = undefined
       rt.recheckRounds = 0
-      rt.sampledCap = undefined
+      rt.sampledAttribute = undefined
+      rt.zoneEnteredAt = undefined
       rt.ejectTime = undefined
       rt.skipInspection = !Number.isFinite(rt.gateTime) || rt.gateTime <= time
       rt.phase = this.isPast(rt, time) ? 'EXITED' : 'ENTERING'
@@ -146,10 +153,14 @@ export class VideoDetectionSimulator {
     this.lastTime = time
     const gen = this.generation
 
+    const trigger = currentTrigger()
+    const attrLabel = this.profile.attributeLabel
+
     for (const rt of this.runtimes) {
       if (rt.phase === 'EXITED') continue
       const { label } = rt
-      const cx = centerXAt(rt.track, time)
+      const bbox = bboxAt(rt.track, time)
+      const cx = bbox[0] + bbox[2] / 2
 
       if (rt.phase === 'ENTERING') {
         if (this.isPast(rt, time)) {
@@ -168,29 +179,53 @@ export class VideoDetectionSimulator {
       if (rt.phase === 'TRACKED') {
         if (!rt.trackedEmitted && time >= rt.track.enterTime + 0.3 && (rt.track.source === 'real' || cx > 0.12)) {
           rt.trackedEmitted = true
-          this.bus.emit('OBJECT_TRACKED', `${label} 追跡確定 ボトル ${pct(rt.track.bottleConfidence)}`, {
+          this.bus.emit('OBJECT_TRACKED', `${label} 追跡確定 ${this.profile.objectLabel} ${pct(rt.track.objectConfidence)}`, {
             objectId: label,
             videoTime: time,
           })
         }
-        if (!rt.skipInspection && cx >= CONVEYOR.gateX - CONVEYOR.zoneHalfWidth) {
+        let startInspection = false
+        if (!rt.skipInspection) {
+          if (trigger.kind === 'gate') {
+            const g = gateProgress(bbox)
+            startInspection = g.p >= g.gate - g.half
+          } else if (inZone(bbox)) {
+            startInspection = true
+            rt.zoneEnteredAt = time
+          }
+        }
+        if (startInspection) {
           rt.phase = 'INSPECTING'
           const s = this.sampleReadings(rt, time)
-          rt.sampledCap = s.cap
-          rt.sampledBottle = s.bottle
+          rt.sampledAttribute = s.attribute
+          rt.sampledObject = s.object
           rt.sampledAlignment = s.alignment
           this.bus.emit('INSPECTION_STARTED', `${label} 検査開始`, { objectId: label, videoTime: time })
-          this.bus.emit('CAP_CONFIDENCE', `${label} キャップ信頼度 ${s.cap.toFixed(2)}`, {
+          this.bus.emit('ATTRIBUTE_CONFIDENCE', `${label} ${attrLabel}信頼度 ${s.attribute.toFixed(2)}`, {
             objectId: label,
             videoTime: time,
-            data: { capConfidence: s.cap, bottleConfidence: s.bottle, alignment: s.alignment },
+            data: { attributeConfidence: s.attribute, objectConfidence: s.object, alignment: s.alignment },
           })
         }
       }
 
-      if (rt.phase === 'INSPECTING' && !rt.decisionRequested && cx >= CONVEYOR.gateX) {
-        rt.decisionRequested = true
-        void this.runDecision(rt, time, gen)
+      if (rt.phase === 'INSPECTING' && !rt.decisionRequested) {
+        let decideNow = false
+        if (trigger.kind === 'gate') {
+          const g = gateProgress(bbox)
+          decideNow = g.p >= g.gate
+        } else if (!inZone(bbox)) {
+          // ゾーンから出た: 滞留時間を満たす前なら検査をやり直す
+          rt.phase = 'TRACKED'
+          rt.zoneEnteredAt = undefined
+          this.bus.emit('OBJECT_TRACKED', `${label} ステーションから離脱（検査中断）`, { objectId: label, videoTime: time, severity: 'warn' })
+        } else if (rt.zoneEnteredAt !== undefined && time - rt.zoneEnteredAt >= trigger.dwellSeconds) {
+          decideNow = true
+        }
+        if (decideNow) {
+          rt.decisionRequested = true
+          void this.runDecision(rt, time, gen)
+        }
       }
 
       if (
@@ -220,30 +255,30 @@ export class VideoDetectionSimulator {
     const noise = this.scenario?.noise ?? 0.2
     const cam = this.cameraConfidence(time)
     const jitter = (k: number) => smoothNoise(rt.track.seed + round * 17, time, k)
-    let cap = rt.track.capConfidence + jitter(1) * 0.03 * (1 + noise * 2)
-    let bottle = rt.track.bottleConfidence + jitter(2) * 0.015 * (1 + noise)
+    let attribute = rt.track.attributeConfidence + jitter(1) * 0.03 * (1 + noise * 2)
+    let object = rt.track.objectConfidence + jitter(2) * 0.015 * (1 + noise)
     // カメラ信頼度が下がると全ての読みが 0.5（判定不能）へ寄る
-    cap = cap * cam + 0.5 * (1 - cam)
-    bottle = bottle * (0.6 + 0.4 * cam)
-    const alignment = clamp01(rt.track.capPositionScore + jitter(3) * 0.04)
-    return { cap: clamp01(cap), bottle: clamp01(bottle), alignment }
+    attribute = attribute * cam + 0.5 * (1 - cam)
+    object = object * (0.6 + 0.4 * cam)
+    const alignment = clamp01(rt.track.alignmentScore + jitter(3) * 0.04)
+    return { attribute: clamp01(attribute), object: clamp01(object), alignment }
   }
 
   private async runDecision(rt: TrackRuntime, time: number, gen: number) {
     const { label } = rt
     let previousFailures = 0
     let readings = {
-      cap: rt.sampledCap ?? rt.track.capConfidence,
-      bottle: rt.sampledBottle ?? rt.track.bottleConfidence,
-      alignment: rt.sampledAlignment ?? rt.track.capPositionScore,
+      attribute: rt.sampledAttribute ?? rt.track.attributeConfidence,
+      object: rt.sampledObject ?? rt.track.objectConfidence,
+      alignment: rt.sampledAlignment ?? rt.track.alignmentScore,
     }
 
     // 判断ループ: 再検査は1回だけ再サンプリングし、その後は最終判定
     for (let round = 0; round < 3; round++) {
       const state: InspectionState = {
         objectId: label,
-        bottleConfidence: readings.bottle,
-        capConfidence: readings.cap,
+        objectConfidence: readings.object,
+        attributeConfidence: readings.attribute,
         alignmentScore: readings.alignment,
         inspectionZone: true,
         previousFailures,
@@ -265,10 +300,10 @@ export class VideoDetectionSimulator {
         await new Promise((r) => setTimeout(r, 260))
         if (gen !== this.generation || this.isExited(rt)) return
         readings = this.sampleReadings(rt, this.lastTime, previousFailures)
-        this.bus.emit('CAP_CONFIDENCE', `${label} キャップ信頼度 ${readings.cap.toFixed(2)}（再検査 ${previousFailures}回目）`, {
+        this.bus.emit('ATTRIBUTE_CONFIDENCE', `${label} ${this.profile.attributeLabel}信頼度 ${readings.attribute.toFixed(2)}（再検査 ${previousFailures}回目）`, {
           objectId: label,
           videoTime: this.lastTime,
-          data: { capConfidence: readings.cap, bottleConfidence: readings.bottle, alignment: readings.alignment },
+          data: { attributeConfidence: readings.attribute, objectConfidence: readings.object, alignment: readings.alignment },
         })
         continue
       }
@@ -276,8 +311,8 @@ export class VideoDetectionSimulator {
       rt.decision = result
       rt.decisionTime = this.lastTime
       rt.phase = 'DECIDED'
-      rt.sampledCap = readings.cap
-      rt.sampledBottle = readings.bottle
+      rt.sampledAttribute = readings.attribute
+      rt.sampledObject = readings.object
       rt.sampledAlignment = readings.alignment
 
       this.bus.emit(
@@ -292,9 +327,9 @@ export class VideoDetectionSimulator {
             record: {
               timestamp: new Date().toISOString(),
               objectId: label,
-              vision: { bottle: readings.bottle, cap: readings.cap, alignment: readings.alignment },
+              vision: { object: readings.object, attribute: readings.attribute, alignment: readings.alignment },
               decision: { result: result.decision, confidence: result.confidence, reason: result.reason, engine: result.engine },
-              action: result.decision === 'REJECT' ? 'EJECT_SIMULATED' : result.action.replace(/ /g, '_'),
+              action: result.decision === 'REJECT' ? 'EJECT_SIMULATED' : result.action,
               latencyMs: result.latencyMs,
             },
           },
@@ -303,7 +338,7 @@ export class VideoDetectionSimulator {
 
       if (result.decision === 'REJECT') {
         if (rt.track.source === 'synthetic') rt.ejectTime = this.lastTime + 0.35
-        this.bus.emit('EJECT_TRIGGERED', `${label} 排出指令（模擬・ゲート02）`, {
+        this.bus.emit('EJECT_TRIGGERED', `${label} ${this.profile.rejectAction}（模擬）`, {
           objectId: label,
           videoTime: this.lastTime,
           data: { simulated: true },
@@ -342,22 +377,22 @@ export class VideoDetectionSimulator {
       }
 
       const live =
-        rt.phase === 'DECIDED' && rt.sampledCap !== undefined
+        rt.phase === 'DECIDED' && rt.sampledAttribute !== undefined
           ? {
-              cap: rt.sampledCap,
-              bottle: rt.sampledBottle ?? track.bottleConfidence,
-              alignment: rt.sampledAlignment ?? track.capPositionScore,
+              attribute: rt.sampledAttribute,
+              object: rt.sampledObject ?? track.objectConfidence,
+              alignment: rt.sampledAlignment ?? track.alignmentScore,
             }
           : (() => {
-              let cap = track.capConfidence + smoothNoise(track.seed, time, 5) * 0.025 * (1 + noise * 2)
-              let bottle = track.bottleConfidence + smoothNoise(track.seed, time, 6) * 0.012 * (1 + noise)
-              cap = cap * cam + 0.5 * (1 - cam)
-              bottle = bottle * (0.6 + 0.4 * cam)
-              return { cap: clamp01(cap), bottle: clamp01(bottle), alignment: track.capPositionScore }
+              let attribute = track.attributeConfidence + smoothNoise(track.seed, time, 5) * 0.025 * (1 + noise * 2)
+              let object = track.objectConfidence + smoothNoise(track.seed, time, 6) * 0.012 * (1 + noise)
+              attribute = attribute * cam + 0.5 * (1 - cam)
+              object = object * (0.6 + 0.4 * cam)
+              return { attribute: clamp01(attribute), object: clamp01(object), alignment: track.alignmentScore }
             })()
 
-      const detectionClass: DetectionClass = live.cap >= 0.5 ? 'CAPPED' : 'UNCAPPED'
-      const classConfidence = detectionClass === 'CAPPED' ? live.cap : 1 - live.cap
+      const detectionClass: DetectionClass = live.attribute >= 0.5 ? 'OK' : 'NG'
+      const classConfidence = detectionClass === 'OK' ? live.attribute : 1 - live.attribute
 
       detections.push({
         trackId: track.id,
@@ -365,9 +400,9 @@ export class VideoDetectionSimulator {
         bbox,
         detectionClass,
         classConfidence,
-        bottleConfidence: live.bottle,
-        capConfidence: live.cap,
-        capPositionScore: live.alignment,
+        objectConfidence: live.object,
+        attributeConfidence: live.attribute,
+        alignmentScore: live.alignment,
         centerX: cx,
         phase: rt.phase,
         decision: rt.decision,

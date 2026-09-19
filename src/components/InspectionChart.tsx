@@ -23,7 +23,7 @@ function TooltipBox({ active, payload, label }: { active?: boolean; payload?: Ar
         <div key={p.name} className="flex justify-between gap-3">
           <span className="text-ink-2">{p.name}</span>
           <span className="num" style={{ color: p.color }}>
-            {p.name === 'キャップ' ? `${Math.round(p.value * 100)}%` : p.value}
+            {p.name === '信頼度' ? `${Math.round(p.value * 100)}%` : p.value}
           </span>
         </div>
       ))}
@@ -80,10 +80,11 @@ export function PassRejectChart() {
 /** ゲート通過時のキャップ信頼度（検査対象ごと） */
 export function CapConfidenceChart() {
   const capSeries = useInspectionStore((s) => s.capSeries)
-  const data = useMemo(() => capSeries.slice(-60).map((p) => ({ id: p.objectId, キャップ: p.cap, decision: p.decision })), [capSeries])
+  const profile = useInspectionStore((s) => s.profile)
+  const data = useMemo(() => capSeries.slice(-60).map((p) => ({ id: p.objectId, 信頼度: p.attribute, decision: p.decision })), [capSeries])
   return (
     <Panel
-      title="キャップ信頼度"
+      title={`${profile.attributeLabel}信頼度`}
       right={
         <span className="flex items-center gap-2 text-[9px] text-ink-3">
           <span className="text-green">0.75</span>
@@ -105,7 +106,7 @@ export function CapConfidenceChart() {
           <ReferenceLine y={0.2} stroke="#ff5151" strokeOpacity={0.5} strokeDasharray="3 3" />
           <Line
             type="monotone"
-            dataKey="キャップ"
+            dataKey="信頼度"
             stroke="#31c6ff"
             strokeWidth={1.5}
             isAnimationActive={false}

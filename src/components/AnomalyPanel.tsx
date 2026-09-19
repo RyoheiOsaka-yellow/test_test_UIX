@@ -5,6 +5,7 @@ import { Field, Panel, formatClock, pct } from './Panel'
 
 export function AnomalyPanel() {
   const a = useInspectionStore((s) => s.anomaly)
+  const profile = useInspectionStore((s) => s.profile)
   if (!a) {
     return (
       <Panel title="異常検知" bodyClassName="px-2.5 py-2">
@@ -23,10 +24,10 @@ export function AnomalyPanel() {
       bodyClassName="px-2.5 py-1.5"
     >
       <div key={a.timestamp} className="flash-red -mx-2.5 px-2.5">
-        <Field label="ボトル" value={<span className="text-[13px]">{a.objectId}</span>} />
-        <Field label="内容" value={<span className="text-red">{reasonJa(a.issue)}</span>} mono={false} />
+        <Field label={profile.objectLabel} value={<span className="text-[13px]">{a.objectId}</span>} />
+        <Field label="内容" value={<span className="text-red">{reasonJa(a.issue, profile)}</span>} mono={false} />
         <Field label="確信度" value={pct(a.confidence)} />
-        <Field label="処置" value={<span className="text-red">{DECISION_JA.REJECT}・排出</span>} mono={false} />
+        <Field label="処置" value={<span className="text-red">{DECISION_JA.REJECT}・{profile.rejectAction}</span>} mono={false} />
         <Field label="時刻" value={formatClock(a.timestamp)} />
       </div>
     </Panel>

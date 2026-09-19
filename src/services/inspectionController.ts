@@ -1,11 +1,12 @@
-import type { DecisionEngine, LineState, PlaybackRate, RawDetection, ScenarioId, VideoSource } from '@/types/inspection'
-import { LINE_DECISION_OPTIONS, OBJECT_DECISION_OPTIONS } from '@/types/inspection'
-import { SCENARIOS } from '@/data/scenarios'
-import { assignConditions, generateTracks, timelineToTracks, type BottleTrack } from '@/data/demoDetections'
+import type { DecisionEngine, InspectionProfile, LineState, PlaybackRate, RawDetection, ScenarioId, VideoSource } from '@/types/inspection'
+import { DEFAULT_GATE, LINE_DECISION_OPTIONS, OBJECT_DECISION_OPTIONS } from '@/types/inspection'
+import { SCENARIOS, scenarioText } from '@/data/scenarios'
+import { assignConditions, configureTrigger, generateTracks, timelineToTracks, type BottleTrack } from '@/data/demoDetections'
+import { PROFILES } from '@/profiles'
 import { LINE_DECISION_JA, reasonJa } from '@/i18n/ja'
 import { eventBus } from './eventBus'
 import { createDecisionEngine } from './decisionEngine'
-import { isJevConfigured } from './jevDecisionEngine'
+import { isJevConfigured, jevDecisionEngine } from './jevDecisionEngine'
 import { inspectionStore } from './inspectionStore'
 import { InternalClock, VideoClock, type PlaybackClock } from './playbackClock'
 import { VideoDetectionSimulator } from './videoDetectionSimulator'
@@ -22,8 +23,8 @@ export class InspectionController {
   readonly engine: DecisionEngine
   readonly simulator: VideoDetectionSimulator
   clock: PlaybackClock = new InternalClock(240)
-  /** 実映像の追跡結果（detections.json）。動画が使えるときだけ使う。 */
-  private realTracks: BottleTrack[] | null = null
+  /** プロファイルごとの実映像追跡結果（detections.json）。動画が使えるときだけ使う。 */
+  private realTracksByProfile = new Map<string, BottleTrack[]>()
   private detach: () => void
   private detachClock: () => void = () => {}
   private lineTimer: number | null = null
@@ -40,6 +41,7 @@ export class InspectionController {
       decide: (state) => this.engine.decideObject(state, OBJECT_DECISION_OPTIONS),
     })
     this.detach = this.store.attach(this.bus)
+    jevDecisionEngine.setProfile(this.store.getState().profile)
     this.store.update((s) => ({
       mode: isJevConfigured() ? 'JEV_LIVE' : 'SIMULATION',
       status: { ...s.status, jev: isJevConfigured() ? 'LIVE' : 'SIMULATED' },
@@ -56,20 +58,32 @@ export class InspectionController {
     this.clock.setRate(this.store.getState().playbackRate)
     this.detachClock = this.clock.subscribe(() => this.syncClockState())
     this.store.update(() => ({ videoSource: source }))
-    if (source.kind === 'video') await this.loadRealDetections()
     this.loadScenario(this.store.getState().scenario)
     this.syncClockState()
   }
 
-  /** 実映像の追跡結果を読み込む（単一HTMLに埋め込まれたもの → /demo/detections.json の順） */
-  private async loadRealDetections() {
-    if (this.realTracks) return
+  /**
+   * プロファイルの映像を使ってよいか判定する。実映像には必ず事前追跡結果（detections.json）が
+   * 必要で、無い場合は合成映像に切り替える（実映像の上に合成の枠を出して「検出している」ように
+   * 見せることはしない）。
+   */
+  async resolveVideoSource(profile: InspectionProfile, probed: VideoSource): Promise<VideoSource> {
+    if (probed.kind !== 'video') return probed
+    await this.loadRealDetections(profile)
+    if (this.realTracksByProfile.has(profile.id)) return probed
+    this.bus.emit('SYSTEM', `${profile.name}: 追跡結果（detections.json）が無いため合成映像で動かします`, { severity: 'warn' })
+    return { kind: 'placeholder' }
+  }
+
+  /** 実映像の追跡結果を読み込む（単一HTMLに埋め込まれたもの → /demo/<dir>/detections.json の順） */
+  private async loadRealDetections(profile: InspectionProfile) {
+    if (this.realTracksByProfile.has(profile.id)) return
     let timeline: RawDetection[] | null = null
-    const embedded = window.__JEV_EMBEDDED__?.detections
+    const embedded = window.__JEV_EMBEDDED__?.profiles?.[profile.id]?.detections
     if (embedded && embedded.length) timeline = embedded
     else {
       try {
-        const res = await fetch(`${import.meta.env.BASE_URL}demo/detections.json`)
+        const res = await fetch(`${import.meta.env.BASE_URL}demo/${profile.mediaDir}/detections.json`)
         if (res.ok) timeline = (await res.json()) as RawDetection[]
       } catch {
         timeline = null
@@ -78,9 +92,26 @@ export class InspectionController {
     if (!timeline) return
     const tracks = timelineToTracks(timeline, { minDurationSeconds: 0.5 })
     if (tracks.some((t) => t.source === 'real')) {
-      this.realTracks = tracks
-      this.bus.emit('SYSTEM', `実映像の追跡結果を読込 · ${tracks.length} 本のトラック（ボトル検出: 事前計算 / キャップ判定: 疑似注入）`)
+      this.realTracksByProfile.set(profile.id, tracks)
+      this.bus.emit(
+        'SYSTEM',
+        `実映像の追跡結果を読込 · ${tracks.length} 個のトラック（${profile.objectLabel}検出: 事前計算 / ${profile.attributeLabel}判定: 疑似注入）`,
+      )
     }
+  }
+
+  /** 検査プロファイル（物体・属性・トリガー・映像）を切り替える */
+  selectProfile(id: string) {
+    const profile = PROFILES[id]
+    if (!profile || profile.id === this.store.getState().profile.id) return
+    this.pause()
+    this.lastLineDecision = null
+    this.lineFailures = 0
+    this.store.resetStatistics()
+    this.store.update(() => ({ profile, videoSource: null, trackSource: 'synthetic', anomaly: null }))
+    jevDecisionEngine.setProfile(profile)
+    this.bus.emit('SYSTEM', `検査プロファイル切替: ${profile.name}（${profile.lineName}）`)
+    // 映像の再探索は VideoInspection が profile の変化を見て attachVideo() を呼ぶ
   }
 
   private syncClockState() {
@@ -93,11 +124,20 @@ export class InspectionController {
 
   loadScenario(id: ScenarioId) {
     const scenario = SCENARIOS[id]
-    const useReal = this.realTracks && this.store.getState().videoSource?.kind === 'video'
-    const tracks = useReal ? assignConditions(this.realTracks!, scenario) : generateTracks(scenario)
-    this.simulator.load(tracks, scenario, this.clock.currentTime())
-    this.store.update(() => ({ scenario: id, trackSource: useReal ? 'real' : 'synthetic' }))
-    this.bus.emit('SYSTEM', `シナリオ読込: ${scenario.name}（追跡対象 ${tracks.length} 本 / ${useReal ? '実映像トラック' : '合成トラック'}）`)
+    const s = this.store.getState()
+    const profile = s.profile
+    const real = this.realTracksByProfile.get(profile.id)
+    const useReal = !!real && s.videoSource?.kind === 'video'
+    // 合成トラックは常に左→右に流れるので、動画が無いときは既定ゲートに固定する
+    const trigger = useReal ? profile.trigger : DEFAULT_GATE
+    configureTrigger(trigger)
+    const tracks = useReal ? assignConditions(real!, scenario) : generateTracks(scenario)
+    this.simulator.load(tracks, scenario, profile, this.clock.currentTime())
+    this.store.update(() => ({ scenario: id, trackSource: useReal ? 'real' : 'synthetic', trigger }))
+    this.bus.emit(
+      'SYSTEM',
+      `シナリオ読込: ${scenarioText(scenario.name, profile)}（追跡対象 ${tracks.length} 個 / ${useReal ? '実映像トラック' : '合成トラック'}）`,
+    )
   }
 
   selectScenario(id: ScenarioId) {
@@ -188,7 +228,7 @@ export class InspectionController {
       this.lastLineDecision = key
       this.bus.emit(
         'LINE_DECISION',
-        `ライン JEV → ${LINE_DECISION_JA[result.decision]} ${Math.round(result.confidence * 100)}%（${reasonJa(result.reason)}）`,
+        `ライン JEV → ${LINE_DECISION_JA[result.decision]} ${Math.round(result.confidence * 100)}%（${reasonJa(result.reason, s.profile)}）`,
         {
           severity: result.decision === 'NORMAL' ? 'ok' : result.decision === 'WATCH' ? 'warn' : 'error',
           data: { result, state },

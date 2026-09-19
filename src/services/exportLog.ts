@@ -48,8 +48,8 @@ export function exportInspectionsCsv(records: InspectionRecord[]) {
   const header = [
     'timestamp',
     'object_id',
-    'bottle_confidence',
-    'cap_confidence',
+    'object_confidence',
+    'attribute_confidence',
     'alignment',
     'decision',
     'decision_confidence',
@@ -62,8 +62,8 @@ export function exportInspectionsCsv(records: InspectionRecord[]) {
   const rows = records.map((r) => [
     r.timestamp,
     r.objectId,
-    r.vision.bottle.toFixed(3),
-    r.vision.cap.toFixed(3),
+    r.vision.object.toFixed(3),
+    r.vision.attribute.toFixed(3),
     r.vision.alignment.toFixed(3),
     r.decision.result,
     r.decision.confidence.toFixed(3),

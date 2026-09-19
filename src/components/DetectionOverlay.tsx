@@ -1,12 +1,11 @@
 import type { Ref } from 'react'
-import type { OverlaySettings } from '@/types/inspection'
+import type { InspectionProfile, InspectionTrigger, OverlaySettings } from '@/types/inspection'
 import type { FrameSample } from '@/services/videoDetectionSimulator'
 import { drawDetection } from './DetectionLabel'
 
 /**
- * Transparent canvas layered over the video. Drawing is driven by the parent's
- * requestAnimationFrame loop (see VideoInspection) so bounding boxes never go
- * through React state.
+ * 映像に重ねる透明キャンバス。描画は親（VideoInspection）の requestAnimationFrame
+ * ループから呼ばれ、枠の位置は React の状態を通らない。
  */
 export function DetectionOverlay({ canvasRef }: { canvasRef: Ref<HTMLCanvasElement> }) {
   return <canvas ref={canvasRef} className="pointer-events-none absolute inset-0 h-full w-full" />
@@ -18,26 +17,34 @@ export function drawOverlay(
   h: number,
   sample: FrameSample,
   settings: OverlaySettings,
+  profile: InspectionProfile,
+  trigger: InspectionTrigger,
 ) {
   ctx.clearRect(0, 0, w, h)
   if (!settings.overlay) return
 
-  // Inspection zone band (subtle).
+  // 検査ゾーン（うっすら）
   if (settings.inspectionGate) {
     ctx.save()
     ctx.fillStyle = 'rgba(255, 213, 42, 0.035)'
-    ctx.fillRect((0.5 - 0.06) * w, 0, 0.12 * w, h)
+    if (trigger.kind === 'gate') {
+      if (trigger.axis === 'x') ctx.fillRect((trigger.position - trigger.zoneHalfWidth) * w, 0, trigger.zoneHalfWidth * 2 * w, h)
+      else ctx.fillRect(0, (trigger.position - trigger.zoneHalfWidth) * h, w, trigger.zoneHalfWidth * 2 * h)
+    } else {
+      const [x, y, zw, zh] = trigger.rect
+      ctx.fillRect(x * w, y * h, zw * w, zh * h)
+    }
     ctx.restore()
   }
 
-  // Camera degradation veil.
+  // カメラ劣化の色かぶり
   if (sample.cameraConfidence < 0.98) {
     const k = 1 - sample.cameraConfidence
     ctx.save()
-    ctx.fillStyle = `rgba(255, 213, 42, ${k * 0.10})`
+    ctx.fillStyle = `rgba(255, 213, 42, ${k * 0.1})`
     ctx.fillRect(0, 0, w, h)
     ctx.restore()
   }
 
-  for (const d of sample.detections) drawDetection(ctx, d, w, h, settings, sample.time)
+  for (const d of sample.detections) drawDetection(ctx, d, w, h, settings, sample.time, profile)
 }

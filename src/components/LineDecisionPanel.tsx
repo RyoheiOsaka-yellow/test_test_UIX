@@ -6,6 +6,7 @@ import { Panel, decisionColor, pct } from './Panel'
 export function LineDecisionPanel() {
   const ld = useInspectionStore((s) => s.lineDecision)
   const alert = useInspectionStore((s) => s.lineAlert)
+  const profile = useInspectionStore((s) => s.profile)
   return (
     <Panel title="ライン判断" right={<span className="text-[9px] text-ink-3">直近60秒</span>} bodyClassName="px-2.5 py-2">
       <div className="flex items-baseline justify-between">
@@ -14,7 +15,7 @@ export function LineDecisionPanel() {
         </span>
         <span className="num text-[12px] text-ink-2">{ld ? pct(ld.confidence) : '—'}</span>
       </div>
-      <div className="mt-1 text-[10px] text-ink-3">{ld ? reasonJa(ld.reason) : '統計の蓄積待ち'}</div>
+      <div className="mt-1 text-[10px] text-ink-3">{ld ? reasonJa(ld.reason, profile) : '統計の蓄積待ち'}</div>
       <div className="mt-2 flex flex-wrap gap-1">
         {(['NORMAL', 'WATCH', 'SLOW_LINE', 'STOP_LINE'] as const).map((o) => (
           <span

@@ -2,6 +2,8 @@ import { useSyncExternalStore } from 'react'
 import type {
   DecisionResult,
   InspectionEvent,
+  InspectionProfile,
+  InspectionTrigger,
   InspectionRecord,
   InspectionState,
   LineDecisionResult,
@@ -11,6 +13,8 @@ import type {
   ScenarioId,
   VideoSource,
 } from '@/types/inspection'
+import { DEFAULT_GATE } from '@/types/inspection'
+import { DEFAULT_PROFILE_ID, PROFILES } from '@/profiles'
 import type { EventBus } from './eventBus'
 
 /**
@@ -36,8 +40,8 @@ export interface KpiState {
 
 export interface CurrentObject {
   objectId: string
-  bottleConfidence: number
-  capConfidence: number
+  objectConfidence: number
+  attributeConfidence: number
   alignment: number
   decision?: DecisionResult
   state?: InspectionState
@@ -54,8 +58,8 @@ export interface AnomalyInfo {
 
 export interface ReviewItem {
   objectId: string
-  capConfidence: number
-  bottleConfidence: number
+  attributeConfidence: number
+  objectConfidence: number
   jevConfidence: number
   reason: string
   timestamp: number
@@ -72,7 +76,7 @@ export interface SeriesPoint {
 export interface CapPoint {
   t: number
   objectId: string
-  cap: number
+  attribute: number
   decision: ObjectDecision
 }
 
@@ -91,6 +95,9 @@ export interface FactoryStatus {
 }
 
 export interface InspectionStoreState {
+  profile: InspectionProfile
+  /** 現在有効な検査トリガー（合成映像のときは既定ゲート） */
+  trigger: InspectionTrigger
   mode: 'SIMULATION' | 'JEV_LIVE'
   engineFallbacks: number
   scenario: ScenarioId
@@ -122,6 +129,8 @@ const CAP_SERIES_MAX = 80
 
 export function initialState(): InspectionStoreState {
   return {
+    profile: PROFILES[DEFAULT_PROFILE_ID],
+    trigger: DEFAULT_GATE,
     mode: 'SIMULATION',
     engineFallbacks: 0,
     scenario: 'normal',
@@ -196,6 +205,8 @@ export class InspectionStore {
     const s = this.state
     this.set({
       ...initialState(),
+      profile: s.profile,
+      trigger: s.trigger,
       mode: s.mode,
       scenario: s.scenario,
       videoSource: s.videoSource,
@@ -214,12 +225,12 @@ export class InspectionStore {
     const patch: Partial<InspectionStoreState> = { events }
 
     switch (event.type) {
-      case 'CAP_CONFIDENCE': {
-        const d = event.data as { capConfidence: number; bottleConfidence: number; alignment: number }
+      case 'ATTRIBUTE_CONFIDENCE': {
+        const d = event.data as { attributeConfidence: number; objectConfidence: number; alignment: number }
         patch.currentObject = {
           objectId: event.objectId!,
-          capConfidence: d.capConfidence,
-          bottleConfidence: d.bottleConfidence,
+          attributeConfidence: d.attributeConfidence,
+          objectConfidence: d.objectConfidence,
           alignment: d.alignment,
           decision: s.currentObject && s.currentObject.objectId === event.objectId ? s.currentObject.decision : undefined,
           updatedAt: event.timestamp,
@@ -233,8 +244,8 @@ export class InspectionStore {
         const d = event.data as { decision: DecisionResult; state: InspectionState }
         patch.currentObject = {
           objectId: event.objectId!,
-          capConfidence: d.state.capConfidence,
-          bottleConfidence: d.state.bottleConfidence,
+          attributeConfidence: d.state.attributeConfidence,
+          objectConfidence: d.state.objectConfidence,
           alignment: d.state.alignmentScore ?? 1,
           decision: d.decision,
           state: d.state,
@@ -269,7 +280,7 @@ export class InspectionStore {
         patch.records = records
 
         patch.series = bump(s.series, event.timestamp, d.decision.decision)
-        const capPoint: CapPoint = { t: event.timestamp, objectId: event.objectId!, cap: d.state.capConfidence, decision: d.decision.decision }
+        const capPoint: CapPoint = { t: event.timestamp, objectId: event.objectId!, attribute: d.state.attributeConfidence, decision: d.decision.decision }
         patch.capSeries = [...s.capSeries.slice(-CAP_SERIES_MAX + 1), capPoint]
 
         if (d.decision.decision === 'HUMAN_REVIEW') {
@@ -277,8 +288,8 @@ export class InspectionStore {
             ...s.reviewQueue,
             {
               objectId: event.objectId!,
-              capConfidence: d.state.capConfidence,
-              bottleConfidence: d.state.bottleConfidence,
+              attributeConfidence: d.state.attributeConfidence,
+              objectConfidence: d.state.objectConfidence,
               jevConfidence: d.decision.confidence,
               reason: d.decision.reason,
               timestamp: event.timestamp,
@@ -329,7 +340,7 @@ export class InspectionStore {
     this.set({ reviewQueue: s.reviewQueue.filter((r) => r.objectId !== objectId), records, kpi })
     bus.emit('HUMAN_OVERRIDE', `${objectId} 人の判定 → ${decision === 'PASS' ? '合格' : '不良'}`, {
       objectId,
-      data: { decision, capConfidence: item.capConfidence },
+      data: { decision, attributeConfidence: item.attributeConfidence },
     })
   }
 

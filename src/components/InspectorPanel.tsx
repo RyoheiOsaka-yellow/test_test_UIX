@@ -4,15 +4,16 @@ import { useInspectionStore } from '@/services/inspectionStore'
 export function InspectorPanel() {
   const kpi = useInspectionStore((s) => s.kpi)
   const playing = useInspectionStore((s) => s.playing)
+  const profile = useInspectionStore((s) => s.profile)
   const rows: Array<[string, string, string?]> = [
     ['処理数', String(kpi.totalInspected)],
-    ['キャップ有', String(kpi.pass), 'text-green'],
-    ['キャップ無', String(kpi.reject), 'text-red'],
+    [profile.okLabel, String(kpi.pass), 'text-green'],
+    [profile.ngLabel, String(kpi.reject), 'text-red'],
   ]
   return (
     <div className="pointer-events-none absolute top-3 left-3 w-[188px] border border-border/80 bg-bg/80 backdrop-blur-[2px]">
       <div className="border-b border-border/60 px-2.5 py-1.5 font-mono text-[10px] font-semibold tracking-[0.14em] text-ink-2">
-        ボトルキャップ検査
+        {profile.name}
       </div>
       <div className="px-2.5 py-1.5">
         {rows.map(([k, v, c]) => (

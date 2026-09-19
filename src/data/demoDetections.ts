@@ -1,58 +1,82 @@
-import type { NormalizedBBox, RawDetection, ScenarioDefinition } from '@/types/inspection'
+import type { InspectionTrigger, NormalizedBBox, RawDetection, ScenarioDefinition } from '@/types/inspection'
+import { DEFAULT_GATE } from '@/types/inspection'
 
 /**
- * 検知データ（モック / 実映像トラック）
+ * 検知データ（合成 / 実映像トラック）
  *
- * トラック（1本のボトルの軌跡）は2種類:
- *  - synthetic: 等速でコンベア上を流れる合成トラック（動画ファイルが無いとき）
- *  - real:      実映像に対して物体検出＋追跡（YOLO + ByteTrack）を事前実行した
- *               キーフレーム列（/public/demo/detections.json）
+ * トラック（1つの物体の軌跡）は2種類:
+ *  - synthetic: 等速でコンベア上を左→右に流れる合成トラック（動画ファイルが無いとき）
+ *  - real:      実映像に対して物体検出＋追跡を事前実行したキーフレーム列
+ *               （/public/demo/<プロファイル>/detections.json）
  *
- * どちらの場合も「キャップ有無」はフェーズ1では学習済みモデルが無いため、
- * シナリオに従って決定的に割り当てる（= 疑似欠陥注入）。UI 上で明示する。
+ * どちらの場合も検査属性（キャップ・ラベル・部品の有無）はフェーズ1では
+ * 学習済みモデルが無いため、シナリオに従って決定的に割り当てる（= 疑似欠陥注入）。
  */
 
-export type TruthCondition = 'CAPPED' | 'UNCAPPED' | 'MISALIGNED' | 'AMBIGUOUS'
+export type TruthCondition = 'OK' | 'NG' | 'MISALIGNED' | 'AMBIGUOUS'
 
 export interface TrackKeyframe {
   t: number
   bbox: NormalizedBBox
-  /** 検出器のボトル信頼度（実トラックのみ） */
   confidence?: number
 }
 
 export interface BottleTrack {
   id: number
   source: 'synthetic' | 'real'
-  /** synthetic: 中心が CONVEYOR.entryX を通過する時刻 / real: 最初のキーフレーム時刻 */
   enterTime: number
-  /** synthetic のみ: 正規化座標での横方向速度 [1/s] */
   speed: number
   y: number
   width: number
   height: number
   truth: TruthCondition
-  bottleConfidence: number
-  capConfidence: number
-  capPositionScore: number
-  /** トラック固有の乱数シード */
+  objectConfidence: number
+  attributeConfidence: number
+  alignmentScore: number
   seed: number
-  /** real のみ: 補間に使うキーフレーム列（時刻昇順） */
   keyframes?: TrackKeyframe[]
 }
 
 export const CONVEYOR = {
   entryX: -0.12,
   exitX: 1.12,
-  /** 検査ゲート位置（正規化 x） */
-  gateX: 0.5,
-  /** 検査ゾーンの半幅 */
-  zoneHalfWidth: 0.06,
   speed: 0.19,
   bottleWidth: 0.075,
   bottleHeight: 0.46,
   bottleY: 0.3,
 } as const
+
+// ---------------------------------------------------------------------------
+// 検査トリガー（ゲート / ゾーン）。プロファイル切替時に configureTrigger() で差し替える。
+// ---------------------------------------------------------------------------
+
+let activeTrigger: InspectionTrigger = DEFAULT_GATE
+
+export function configureTrigger(trigger: InspectionTrigger) {
+  activeTrigger = trigger
+}
+
+export function currentTrigger(): InspectionTrigger {
+  return activeTrigger
+}
+
+/** ゲート型: 流れ方向に沿った進行度（0→1 で増える向きに正規化）とゲート位置 */
+export function gateProgress(bbox: NormalizedBBox): { p: number; gate: number; half: number } {
+  const t = activeTrigger
+  if (t.kind !== 'gate') return { p: 0, gate: Infinity, half: 0 }
+  const c = t.axis === 'x' ? bbox[0] + bbox[2] / 2 : bbox[1] + bbox[3] / 2
+  return t.direction === 1 ? { p: c, gate: t.position, half: t.zoneHalfWidth } : { p: 1 - c, gate: 1 - t.position, half: t.zoneHalfWidth }
+}
+
+/** ゾーン型: 中心がゾーン内か */
+export function inZone(bbox: NormalizedBBox): boolean {
+  const t = activeTrigger
+  if (t.kind !== 'zone') return false
+  const cx = bbox[0] + bbox[2] / 2
+  const cy = bbox[1] + bbox[3] / 2
+  const [zx, zy, zw, zh] = t.rect
+  return cx >= zx && cx <= zx + zw && cy >= zy && cy <= zy + zh
+}
 
 /** 決定的な乱数（mulberry32） */
 export function createRng(seed: number): () => number {
@@ -70,39 +94,23 @@ const between = (rng: () => number, lo: number, hi: number) => lo + rng() * (hi 
 
 function readingsFor(truth: TruthCondition, rng: () => number) {
   switch (truth) {
-    case 'CAPPED':
-      return {
-        capConfidence: between(rng, 0.8, 0.99),
-        capPositionScore: between(rng, 0.82, 0.99),
-        bottleConfidence: between(rng, 0.93, 0.995),
-      }
-    case 'UNCAPPED':
-      return {
-        capConfidence: between(rng, 0.03, 0.18),
-        capPositionScore: between(rng, 0.05, 0.3),
-        bottleConfidence: between(rng, 0.9, 0.99),
-      }
+    case 'OK':
+      return { attributeConfidence: between(rng, 0.8, 0.99), alignmentScore: between(rng, 0.82, 0.99), objectConfidence: between(rng, 0.93, 0.995) }
+    case 'NG':
+      return { attributeConfidence: between(rng, 0.03, 0.18), alignmentScore: between(rng, 0.05, 0.3), objectConfidence: between(rng, 0.9, 0.99) }
     case 'MISALIGNED':
-      return {
-        capConfidence: between(rng, 0.47, 0.73),
-        capPositionScore: between(rng, 0.25, 0.55),
-        bottleConfidence: between(rng, 0.9, 0.99),
-      }
+      return { attributeConfidence: between(rng, 0.47, 0.73), alignmentScore: between(rng, 0.25, 0.55), objectConfidence: between(rng, 0.9, 0.99) }
     case 'AMBIGUOUS':
-      return {
-        capConfidence: between(rng, 0.22, 0.44),
-        capPositionScore: between(rng, 0.3, 0.7),
-        bottleConfidence: between(rng, 0.85, 0.97),
-      }
+      return { attributeConfidence: between(rng, 0.22, 0.44), alignmentScore: between(rng, 0.3, 0.7), objectConfidence: between(rng, 0.85, 0.97) }
   }
 }
 
 function drawTruth(scenario: ScenarioDefinition, rng: () => number): TruthCondition {
   const r = rng()
-  if (r < scenario.uncappedRate) return 'UNCAPPED'
-  if (r < scenario.uncappedRate + scenario.misalignedRate) return 'MISALIGNED'
-  if (r < scenario.uncappedRate + scenario.misalignedRate + scenario.ambiguousRate) return 'AMBIGUOUS'
-  return 'CAPPED'
+  if (r < scenario.ngRate) return 'NG'
+  if (r < scenario.ngRate + scenario.misalignedRate) return 'MISALIGNED'
+  if (r < scenario.ngRate + scenario.misalignedRate + scenario.ambiguousRate) return 'AMBIGUOUS'
+  return 'OK'
 }
 
 export interface GenerateOptions {
@@ -110,16 +118,11 @@ export interface GenerateOptions {
   seed?: number
 }
 
-/**
- * 合成トラックを生成する（動画ファイルが無い場合）。
- * デモ保証: t=0 で既にベルト上にボトルがあり、最初にゲートへ到達する数本のうち
- * 1本は必ず UNCAPPED（約5秒以内に不良判定が見える）。
- */
+/** 合成トラックを生成する（動画ファイルが無い場合）。 */
 export function generateTracks(scenario: ScenarioDefinition, opts: GenerateOptions = {}): BottleTrack[] {
   const duration = opts.durationSeconds ?? 240
   const rng = createRng(opts.seed ?? hashString(scenario.id))
   const tracks: BottleTrack[] = []
-
   const travel = (CONVEYOR.exitX - CONVEYOR.entryX) / CONVEYOR.speed
   let t = -travel + 0.6
   let id = 1
@@ -141,7 +144,6 @@ export function generateTracks(scenario: ScenarioDefinition, opts: GenerateOptio
       seed: Math.floor(rng() * 1e9),
     })
     id++
-
     let gap = scenario.spacingSeconds * between(rng, 0.8, 1.25)
     if (scenario.spacingSeconds < 0.6) {
       if (clumpRemaining > 0) {
@@ -153,15 +155,11 @@ export function generateTracks(scenario: ScenarioDefinition, opts: GenerateOptio
     }
     t += Math.max(gap, (CONVEYOR.bottleWidth * 1.05) / CONVEYOR.speed)
   }
-
   applyDemoGuarantee(tracks)
   return tracks
 }
 
-/**
- * 実映像トラックにシナリオの状態（キャップ有無など）を割り当てる。
- * 幾何（位置・大きさ・時刻）と検出器のボトル信頼度は実測値のまま。
- */
+/** 実映像トラックにシナリオの状態（属性の有無など）を割り当てる。幾何と検出信頼度は実測値のまま。 */
 export function assignConditions(base: BottleTrack[], scenario: ScenarioDefinition, seed?: number): BottleTrack[] {
   const rng = createRng(seed ?? hashString(scenario.id + ':real'))
   const tracks = base.map((tr) => {
@@ -170,10 +168,9 @@ export function assignConditions(base: BottleTrack[], scenario: ScenarioDefiniti
     return {
       ...tr,
       truth,
-      capConfidence: r.capConfidence,
-      capPositionScore: r.capPositionScore,
-      // 検出器の信頼度があればそれを優先
-      bottleConfidence: tr.keyframes?.length ? meanConfidence(tr.keyframes, r.bottleConfidence) : r.bottleConfidence,
+      attributeConfidence: r.attributeConfidence,
+      alignmentScore: r.alignmentScore,
+      objectConfidence: tr.keyframes?.length ? meanConfidence(tr.keyframes, r.objectConfidence) : r.objectConfidence,
       seed: Math.floor(rng() * 1e9),
     }
   })
@@ -185,23 +182,22 @@ function meanConfidence(kfs: TrackKeyframe[], fallback: number) {
   const vals = kfs.map((k) => k.confidence).filter((c): c is number => typeof c === 'number')
   if (!vals.length) return fallback
   const m = vals.reduce((a, b) => a + b, 0) / vals.length
-  // 検出器の生スコアはやや低めに出るので表示用に軽く持ち上げる（上限 0.99）
   return Math.min(0.99, 0.55 + m * 0.5)
 }
 
-/** 最初にゲートへ到達するボトルは CAPPED、3〜7秒でゲートに到達する1本は UNCAPPED にする */
+/** 最初に判定される物体は OK、3〜7.5秒で判定される1つは NG にする（デモ保証） */
 function applyDemoGuarantee(tracks: BottleTrack[]) {
   const withGate = tracks
     .map((tr) => ({ tr, g: gateTimeOf(tr) }))
     .filter((x) => Number.isFinite(x.g))
     .sort((a, b) => a.g - b.g)
   const target = withGate.find((x) => x.g >= 3 && x.g <= 7.5)
-  if (target && target.tr.truth !== 'UNCAPPED') {
-    Object.assign(target.tr, { truth: 'UNCAPPED' as const, ...readingsFor('UNCAPPED', createRng(target.tr.seed)) })
+  if (target && target.tr.truth !== 'NG') {
+    Object.assign(target.tr, { truth: 'NG' as const, ...readingsFor('NG', createRng(target.tr.seed)) })
   }
   const first = withGate.find((x) => x.g >= 0.4)
-  if (first && first.tr !== target?.tr && first.tr.truth !== 'CAPPED') {
-    Object.assign(first.tr, { truth: 'CAPPED' as const, ...readingsFor('CAPPED', createRng(first.tr.seed)) })
+  if (first && first.tr !== target?.tr && first.tr.truth !== 'OK') {
+    Object.assign(first.tr, { truth: 'OK' as const, ...readingsFor('OK', createRng(first.tr.seed)) })
   }
 }
 
@@ -214,13 +210,11 @@ export function hashString(id: string): number {
   return h >>> 0
 }
 
-/** 時刻 time におけるバウンディングボックス（正規化座標） */
 export function bboxAt(track: BottleTrack, time: number): NormalizedBBox {
   const kfs = track.keyframes
   if (kfs && kfs.length) {
     if (time <= kfs[0].t) return kfs[0].bbox
     if (time >= kfs[kfs.length - 1].t) return kfs[kfs.length - 1].bbox
-    // 二分探索
     let lo = 0
     let hi = kfs.length - 1
     while (hi - lo > 1) {
@@ -242,29 +236,41 @@ export function bboxAt(track: BottleTrack, time: number): NormalizedBBox {
   return [cx - track.width / 2, track.y, track.width, track.height]
 }
 
-export function centerXAt(track: BottleTrack, time: number): number {
-  const b = bboxAt(track, time)
-  return b[0] + b[2] / 2
-}
-
-/** 中心がゲートを通過する時刻（通過しなければ Infinity） */
+/**
+ * 判定が確定する時刻（ゲート型: 中心がゲートを横切る時刻 / ゾーン型: ゾーンに入ってから dwell 経過）。
+ * 到達しなければ Infinity。
+ */
 export function gateTimeOf(track: BottleTrack): number {
+  const t = activeTrigger
   const kfs = track.keyframes
-  if (kfs && kfs.length) {
-    for (let i = 1; i < kfs.length; i++) {
-      const c0 = kfs[i - 1].bbox[0] + kfs[i - 1].bbox[2] / 2
-      const c1 = kfs[i].bbox[0] + kfs[i].bbox[2] / 2
-      if (c0 < CONVEYOR.gateX && c1 >= CONVEYOR.gateX) {
-        const k = (CONVEYOR.gateX - c0) / (c1 - c0)
-        return kfs[i - 1].t + (kfs[i].t - kfs[i - 1].t) * k
+  if (t.kind === 'gate') {
+    if (kfs && kfs.length) {
+      for (let i = 1; i < kfs.length; i++) {
+        const a = gateProgress(kfs[i - 1].bbox)
+        const b = gateProgress(kfs[i].bbox)
+        if (a.p < a.gate && b.p >= b.gate) {
+          const k = (a.gate - a.p) / (b.p - a.p)
+          return kfs[i - 1].t + (kfs[i].t - kfs[i - 1].t) * k
+        }
       }
+      return Infinity
     }
-    return Infinity
+    // 合成トラックは常に x 方向 左→右
+    const gateX = t.axis === 'x' ? (t.direction === 1 ? t.position : 1 - t.position) : 0.5
+    return track.enterTime + (gateX - CONVEYOR.entryX) / track.speed
   }
-  return track.enterTime + (CONVEYOR.gateX - CONVEYOR.entryX) / track.speed
+  // ゾーン型: 連続してゾーン内にいる時間が dwell を超えた最初の時刻
+  if (!kfs || !kfs.length) return Infinity
+  let entered: number | null = null
+  for (const k of kfs) {
+    if (inZone(k.bbox)) {
+      if (entered === null) entered = k.t
+      if (k.t - entered >= t.dwellSeconds) return entered + t.dwellSeconds
+    } else entered = null
+  }
+  return Infinity
 }
 
-/** トラックが消える時刻 */
 export function exitTimeOf(track: BottleTrack): number {
   const kfs = track.keyframes
   if (kfs && kfs.length) return kfs[kfs.length - 1].t
@@ -273,29 +279,28 @@ export function exitTimeOf(track: BottleTrack): number {
 
 const round3 = (v: number) => Math.round(v * 1000) / 1000
 
-/** トラックを /public/demo/detections.json のキーフレーム形式へ変換 */
 export function tracksToTimeline(tracks: BottleTrack[]): RawDetection[] {
   const out: RawDetection[] = []
   for (const tr of tracks) {
     if (tr.keyframes?.length) {
       for (const k of tr.keyframes) {
-        out.push({ time: round3(k.t), id: tr.id, bbox: k.bbox.map(round3) as NormalizedBBox, class: 'bottle', confidence: round3(k.confidence ?? tr.bottleConfidence) })
+        out.push({ time: round3(k.t), id: tr.id, bbox: k.bbox.map(round3) as NormalizedBBox, class: 'object', confidence: round3(k.confidence ?? tr.objectConfidence) })
       }
       continue
     }
-    const cls = tr.capConfidence >= 0.5 ? 'capped' : 'uncapped'
-    const confidence = cls === 'capped' ? tr.capConfidence : 1 - tr.capConfidence
+    const cls = tr.attributeConfidence >= 0.5 ? 'ok' : 'ng'
+    const confidence = cls === 'ok' ? tr.attributeConfidence : 1 - tr.attributeConfidence
     for (const time of [tr.enterTime, gateTimeOf(tr), exitTimeOf(tr)]) {
-      if (time < 0) continue
+      if (!Number.isFinite(time) || time < 0) continue
       out.push({
         time: round3(time),
         id: tr.id,
         bbox: bboxAt(tr, time).map(round3) as NormalizedBBox,
         class: cls,
         confidence: round3(confidence),
-        bottle_confidence: round3(tr.bottleConfidence),
-        cap_confidence: round3(tr.capConfidence),
-        cap_position_score: round3(tr.capPositionScore),
+        bottle_confidence: round3(tr.objectConfidence),
+        attribute_confidence: round3(tr.attributeConfidence),
+        alignment_score: round3(tr.alignmentScore),
       })
     }
   }
@@ -303,17 +308,10 @@ export function tracksToTimeline(tracks: BottleTrack[]): RawDetection[] {
 }
 
 export interface TimelineOptions {
-  /** これより短いトラックは捨てる [s] */
   minDurationSeconds?: number
 }
 
-/**
- * キーフレーム形式を読み込む。
- *  - 同一 id の複数キーフレーム → 補間トラック（real）
- *  - id につき1件だけ → 既定のコンベア速度で外挿（synthetic 相当）
- * class が capped/uncapped の場合はその信頼度を初期値として使い、
- * "bottle"（キャップ未判定）の場合はシナリオ側で割り当てる。
- */
+/** キーフレーム形式を読み込む。 */
 export function timelineToTracks(timeline: RawDetection[], opts: TimelineOptions = {}): BottleTrack[] {
   const minDur = opts.minDurationSeconds ?? 0.5
   const byId = new Map<number, RawDetection[]>()
@@ -327,46 +325,35 @@ export function timelineToTracks(timeline: RawDetection[], opts: TimelineOptions
     frames.sort((a, b) => a.time - b.time)
     const first = frames[0]
     const last = frames[frames.length - 1]
-    const isCapped = first.class === 'capped'
-    const knownCap = first.class === 'capped' || first.class === 'uncapped'
-    const capConfidence = first.cap_confidence ?? (knownCap ? (isCapped ? first.confidence : 1 - first.confidence) : 0.9)
+    const isOk = first.class === 'ok' || first.class === 'capped'
+    const knownAttr = isOk || first.class === 'ng' || first.class === 'uncapped'
+    const attributeConfidence = first.attribute_confidence ?? (knownAttr ? (isOk ? first.confidence : 1 - first.confidence) : 0.9)
     const truth: TruthCondition =
-      capConfidence >= 0.75 ? 'CAPPED' : capConfidence >= 0.45 ? 'MISALIGNED' : capConfidence >= 0.2 ? 'AMBIGUOUS' : 'UNCAPPED'
-
-    if (frames.length >= 2) {
-      if (last.time - first.time < minDur) continue
-      tracks.push({
-        id,
-        source: 'real',
-        enterTime: first.time,
-        speed: 0,
-        y: first.bbox[1],
-        width: first.bbox[2],
-        height: first.bbox[3],
-        truth,
-        bottleConfidence: first.bottle_confidence ?? 0.95,
-        capConfidence,
-        capPositionScore: first.cap_position_score ?? (isCapped ? 0.9 : 0.2),
-        seed: id * 7919,
-        keyframes: frames.map((f) => ({ t: f.time, bbox: f.bbox, confidence: knownCap ? f.bottle_confidence : f.confidence })),
-      })
-      continue
-    }
-    const cx0 = first.bbox[0] + first.bbox[2] / 2
-    tracks.push({
+      attributeConfidence >= 0.75 ? 'OK' : attributeConfidence >= 0.45 ? 'MISALIGNED' : attributeConfidence >= 0.2 ? 'AMBIGUOUS' : 'NG'
+    const common = {
       id,
-      source: 'synthetic',
-      enterTime: first.time - (cx0 - CONVEYOR.entryX) / CONVEYOR.speed,
-      speed: CONVEYOR.speed,
       y: first.bbox[1],
       width: first.bbox[2],
       height: first.bbox[3],
       truth,
-      bottleConfidence: first.bottle_confidence ?? 0.95,
-      capConfidence,
-      capPositionScore: first.cap_position_score ?? (isCapped ? 0.9 : 0.2),
+      objectConfidence: first.bottle_confidence ?? 0.95,
+      attributeConfidence,
+      alignmentScore: first.alignment_score ?? (isOk ? 0.9 : 0.2),
       seed: id * 7919,
-    })
+    }
+    if (frames.length >= 2) {
+      if (last.time - first.time < minDur) continue
+      tracks.push({
+        ...common,
+        source: 'real',
+        enterTime: first.time,
+        speed: 0,
+        keyframes: frames.map((f) => ({ t: f.time, bbox: f.bbox, confidence: knownAttr ? f.bottle_confidence : f.confidence })),
+      })
+      continue
+    }
+    const cx0 = first.bbox[0] + first.bbox[2] / 2
+    tracks.push({ ...common, source: 'synthetic', enterTime: first.time - (cx0 - CONVEYOR.entryX) / CONVEYOR.speed, speed: CONVEYOR.speed })
   }
   return tracks.sort((a, b) => a.enterTime - b.enterTime)
 }

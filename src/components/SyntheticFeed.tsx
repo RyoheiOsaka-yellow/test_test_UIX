@@ -131,7 +131,7 @@ function drawBottle(ctx: CanvasRenderingContext2D, w: number, h: number, it: Tru
   // Cap (depending on ground truth)
   const truth = it.track.truth
   const capW = bw * 0.42
-  if (truth === 'CAPPED' || truth === 'MISALIGNED' || truth === 'AMBIGUOUS') {
+  if (truth === 'OK' || truth === 'MISALIGNED' || truth === 'AMBIGUOUS') {
     ctx.save()
     if (truth === 'MISALIGNED') {
       ctx.translate(cx, y + capH)

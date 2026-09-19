@@ -1,0 +1,3 @@
+映像: Mixkit の無料素材（小包のコンベア）· 小包検出: 事前追跡（文字指定）· ラベル判定: 疑似注入
+出典: https://mixkit.co/free-stock-video/parcels-on-a-conveyor-belt-20770/ （Mixkit Stock Video Free License、商用可・クレジット不要）
+検出: YOLO-World（文字プロンプト "cardboard box"）+ ByteTrack で事前計算。ラベル有無はシナリオによる疑似注入。

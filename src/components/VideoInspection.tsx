@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Video, VideoOff } from 'lucide-react'
-import type { VideoSource } from '@/types/inspection'
-import { SCENARIOS } from '@/data/scenarios'
+import type { InspectionProfile, VideoSource } from '@/types/inspection'
+import { SCENARIOS, scenarioText } from '@/data/scenarios'
 import { getController } from '@/services/inspectionController'
 import { useInspectionStore } from '@/services/inspectionStore'
 import { DetectionOverlay, drawOverlay } from './DetectionOverlay'
@@ -10,13 +10,11 @@ import { InspectorPanel } from './InspectorPanel'
 import { SyntheticFeed, drawSyntheticFeed } from './SyntheticFeed'
 import { formatClock } from './Panel'
 
-const VIDEO_CANDIDATES = ['demo/bottling-line.mp4', 'demo/bottling-line.webm', 'demo/sample.mp4', 'demo/sample.webm']
-
-/** 動画ソースの探索: 単一HTMLへの埋め込み → /demo/bottling-line.mp4 → /demo/sample.mp4 → 合成映像 */
-async function probeVideo(): Promise<VideoSource> {
-  const embedded = window.__JEV_EMBEDDED__?.videoDataUrl
+/** 動画ソースの探索: 単一HTMLへの埋め込み → /demo/<dir>/video.mp4 → .webm → 合成映像 */
+async function probeVideo(profile: InspectionProfile): Promise<VideoSource> {
+  const embedded = window.__JEV_EMBEDDED__?.profiles?.[profile.id]?.videoDataUrl
   if (embedded) return { kind: 'video', url: embedded }
-  for (const rel of VIDEO_CANDIDATES) {
+  for (const rel of [`demo/${profile.mediaDir}/video.mp4`, `demo/${profile.mediaDir}/video.webm`]) {
     const url = `${import.meta.env.BASE_URL}${rel}`
     try {
       const res = await fetch(url, { method: 'HEAD' })
@@ -40,8 +38,14 @@ export function VideoInspection() {
   const mode = useInspectionStore((s) => s.mode)
   const scenario = useInspectionStore((s) => s.scenario)
   const trackSource = useInspectionStore((s) => s.trackSource)
+  const profile = useInspectionStore((s) => s.profile)
+  const trigger = useInspectionStore((s) => s.trigger)
   const overlayRef = useRef(overlay)
   overlayRef.current = overlay
+  const profileRef = useRef(profile)
+  profileRef.current = profile
+  const triggerRef = useRef(trigger)
+  triggerRef.current = trigger
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const feedRef = useRef<HTMLCanvasElement>(null)
@@ -52,13 +56,16 @@ export function VideoInspection() {
 
   useEffect(() => {
     let cancelled = false
-    probeVideo().then((src) => {
-      if (!cancelled) setSource(src)
-    })
+    setSource('probing')
+    probeVideo(profile)
+      .then((src) => getController().resolveVideoSource(profile, src))
+      .then((src) => {
+        if (!cancelled) setSource(src)
+      })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [profile])
 
   useEffect(() => {
     if (source === 'probing') return
@@ -98,7 +105,7 @@ export function VideoInspection() {
       const t = controller.tick()
       const sample = controller.simulator.sample(t)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      drawOverlay(ctx, w, h, sample, overlayRef.current)
+      drawOverlay(ctx, w, h, sample, overlayRef.current, profileRef.current, triggerRef.current)
       if (feedCtx) {
         feedCtx.setTransform(dpr, 0, 0, dpr, 0, 0)
         drawSyntheticFeed(feedCtx, w, h, t, controller.simulator.groundTruth(t))
@@ -120,7 +127,7 @@ export function VideoInspection() {
 
   const isVideo = source !== 'probing' && source.kind === 'video'
   const isPlaceholder = source !== 'probing' && source.kind === 'placeholder'
-  const credit = window.__JEV_EMBEDDED__?.videoCredit
+  const credit = window.__JEV_EMBEDDED__?.profiles?.[profile.id]?.videoCredit
 
   return (
     <div className="relative flex h-full min-h-0 w-full items-center justify-center">
@@ -146,13 +153,13 @@ export function VideoInspection() {
         )}
 
         <DetectionOverlay canvasRef={canvasRef} />
-        <InspectionGate visible={overlay.overlay && overlay.inspectionGate} />
+        <InspectionGate visible={overlay.overlay && overlay.inspectionGate} trigger={trigger} label={trackSource === 'real' ? profile.triggerLabel : '検査ゲート'} />
         <InspectorPanel />
 
         <div className="pointer-events-none absolute top-3 right-3 flex flex-col items-end gap-1 text-[10px]">
           <div className="flex items-center gap-2 border border-border/80 bg-bg/80 px-2 py-1 text-ink-2 backdrop-blur-[2px]">
             {isVideo ? <Video size={11} className="text-green" /> : <VideoOff size={11} className="text-yellow" />}
-            <span>カメラ01</span>
+            <span>{profile.cameraName}</span>
             <span className="text-ink-3">·</span>
             <span ref={clockRef} className="num text-ink">
               {formatClock(Date.now())}
@@ -182,9 +189,9 @@ export function VideoInspection() {
         </div>
 
         <div className="pointer-events-none absolute top-[178px] left-3 flex max-w-[260px] flex-col gap-0.5 text-[9.5px] leading-tight tracking-[0.06em] text-ink-3">
-          {isPlaceholder && '動画ファイルなし · public/demo/bottling-line.mp4 を置くと実映像に切り替わります'}
-          {isVideo && (credit ?? 'ボトル検出: 事前追跡 · キャップ判定: 疑似注入')}
-          <span className="text-ink-3/70">シナリオ: {SCENARIOS[scenario].name}</span>
+          {isPlaceholder && `動画ファイルなし · public/demo/${profile.mediaDir}/video.mp4 を置くと実映像に切り替わります`}
+          {isVideo && (credit ?? `${profile.objectLabel}検出: 事前追跡 · ${profile.attributeLabel}判定: 疑似注入`)}
+          <span className="text-ink-3/70">シナリオ: {scenarioText(SCENARIOS[scenario].name, profile)}</span>
         </div>
       </div>
     </div>

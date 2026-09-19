@@ -1,17 +1,26 @@
 # JEV 外観検査プロトタイプ
 
-飲料充填ラインを想定したリアルタイム AI 外観検査の Web プロトタイプです。
-コンベア上のボトルを映像認識層が検出し、**Jev 判断エンジン** が構造化された状態から
+工場ラインを想定したリアルタイム AI 外観検査の Web プロトタイプです。
+映像認識層が物体（ボトル / 小包 / 基板）を検出し、**Jev 判断エンジン** が構造化された状態から
 「合格 / 再検査 / 不良 / 要確認」を決め、さらにライン全体の判断（正常 / 注視 / 減速 / 停止）を行い、
 工場向けの監視ダッシュボードに表示します。
+
+3つの **検査プロファイル** を同梱しています（画面上部のボタンで切替）:
+
+| プロファイル | 映像 | 物体検出 | 検査属性（疑似注入） | 判定トリガー |
+| --- | --- | --- | --- | --- |
+| ボトルキャップ検査 | ビール瓶の充填ライン | YOLO11（COCO の bottle） | キャップ有無 | 縦ゲート、左→右 |
+| 小包ラベル検査 | 小包のローラーコンベア | YOLO-World（文字指定 "cardboard box"） | 配送ラベル有無 | 縦ゲート、右→左 |
+| 基板実装検査 | 電子基板の組立ステーション | YOLO-World（文字指定 "circuit board"） | 部品実装の有無 | ゾーン滞留（作業ステーション） |
 
 フェーズ1は、**学習済みモデル・有料サービス・専用バックエンドなし** で動く完全なプロトタイプです。
 アーキテクチャは本番版を想定し、映像認識層と判断層だけがアダプタで差し替え可能になっています。
 
 > **正直な表示について**
 > このプロトタイプは「本当に AI がキャップを検出している」ように偽装しません。
-> - ボトルの位置（枠）: 同梱の実映像に対して YOLO11 + ByteTrack を **事前に** 実行した追跡結果を再生
-> - キャップの有無: 専用モデルが無いため、シナリオに従って **疑似的に注入**（画面に「疑似注入」と明記）
+> - 物体の位置（枠）: 同梱の実映像に対して検出器 + ByteTrack を **事前に** 実行した追跡結果を再生
+> - 検査属性（キャップ / ラベル / 部品の有無）: 専用モデルが無いため、シナリオに従って **疑似的に注入**（画面に「疑似注入」と明記）
+> - 追跡結果が無い映像は使わず、合成映像に切り替える（実映像の上に作り物の枠を出さない）
 > - 判断エンジン: `TYPESAFE_API_KEY` が無い間はルールベースの模擬（画面に「シミュレーション」と明記）
 
 ---
@@ -34,7 +43,7 @@ JEV 判断エンジン  (decisionEngine.ts のアダプタ → キーがあれ�
 
 | 層 | フェーズ1の実装 | 本番での置き換え |
 | --- | --- | --- |
-| 映像認識 | `services/videoDetectionSimulator.ts` が `public/demo/detections.json`（事前追跡）または合成トラックを再生 | ONNX Runtime / TensorRT / OpenVINO 上の検出モデル + ByteTrack が同じ `FrameDetection` を出力 |
+| 映像認識 | `services/videoDetectionSimulator.ts` が `public/demo/<プロファイル>/detections.json`（事前追跡）または合成トラックを再生 | ONNX Runtime / TensorRT / OpenVINO 上の検出モデル + ByteTrack が同じ `FrameDetection` を出力 |
 | Jev 判断 | `services/decisionEngine.ts`（ルールベース） | `services/jevDecisionEngine.ts`（実装済み。`TYPESAFE_API_KEY` で有効化） |
 | ダッシュボード | React + Tailwind + Recharts | そのまま |
 
@@ -44,16 +53,17 @@ JEV 判断エンジン  (decisionEngine.ts のアダプタ → キーがあれ�
 「どうしたらいい？」とは絶対に聞きません。
 
 ```jsonc
-// 物体レベル（services/jevDecisionEngine.ts の JevObjectRequest）
+// 物体レベル（services/jevDecisionEngine.ts の JevObjectRequest）。task と attribute はプロファイルが決める
 {
   "task": "bottle_cap_inspection",
   "level": "object",
   "state": {
     "object_type": "bottle",
     "object_id": "#014",
-    "bottle_confidence": 0.98,
-    "cap_confidence": 0.17,
-    "cap_position_score": 0.21,
+    "attribute": "cap",
+    "object_confidence": 0.98,
+    "attribute_confidence": 0.17,
+    "alignment_score": 0.21,
     "inspection_zone": true,
     "previous_failures": 0,
     "previous_state": "normal"
@@ -96,7 +106,9 @@ npm run build          # 型チェック + 本番ビルド（dist/）
 npm run build:single   # JS/CSS/動画/追跡結果を1つの HTML に埋め込む → dist/jev-visual-inspection.html
 npm run typecheck
 npm run gen:detections # 合成シナリオから detections.json を再生成（実映像を使わない場合）
-npm run track:video    # 実映像に YOLO11 + ByteTrack を掛けて detections.json を再生成
+npm run track:bottle   # ボトル映像に YOLO11 + ByteTrack を掛けて追跡結果を再生成
+npm run track:parcel   # 小包映像に YOLO-World（文字指定）を掛けて再生成
+npm run track:pcb      # 基板映像に YOLO-World（文字指定）を掛けて再生成
 ```
 
 キーボード: `Space` で再生 / 一時停止。
@@ -106,9 +118,9 @@ npm run track:video    # 実映像に YOLO11 + ByteTrack を掛けて detections
 ## シミュレーションモード（モード A・既定）
 
 * 外部サービス不要。オフラインで動作。
-* 物体の判断ルール（`services/decisionEngine.ts`）:
+* 物体の判断ルール（`services/decisionEngine.ts`）。しきい値は検査属性の信頼度に対して掛かる:
 
-  | キャップ信頼度 | 判断 |
+  | 属性の信頼度 | 判断 |
   | --- | --- |
   | 0.75 以上 | 合格 |
   | 0.45 〜 0.75 | 再検査（1回だけ再サンプリングし、合格 / 要確認へ） |
@@ -121,35 +133,42 @@ npm run track:video    # 実映像に YOLO11 + ByteTrack を掛けて detections
 
 ### デモ動画と追跡データ
 
-同梱の `public/demo/bottling-line.mp4` は Mixkit の無料素材
-「Beer bottle production line in the factory」（Mixkit Stock Video Free License、商用可・クレジット不要）です。
-`public/demo/detections.json` は、この動画に YOLO11（COCO の bottle クラス）+ ByteTrack を掛けて
-事前計算したボトルの追跡結果です（`scripts/track_video.py`）。
+`public/demo/<プロファイル>/` に `video.mp4`、`detections.json`、`CREDIT.txt` を置きます。
+同梱の3本はすべて Mixkit の無料素材（Mixkit Stock Video Free License、商用可・クレジット不要）で、
+追跡結果は `scripts/track_video.py` で事前計算したものです。
 
-* 動画を差し替える場合: `public/demo/bottling-line.mp4` を置き換え、`npm run track:video` で追跡結果を作り直す
-  （`pip install ultralytics opencv-python-headless` が必要）。
-* 動画が無い場合: `public/demo/sample.mp4` を探し、それも無ければ **合成映像** をキャンバスに描画して
-  同じパイプラインを最後まで動かします（画面に「合成映像」と表示）。
+* 動画を差し替える場合: `video.mp4` を置き換え、`npm run track:<プロファイル>` で追跡結果を作り直す
+  （`pip install ultralytics opencv-python-headless` が必要。文字指定の検出には YOLO-World の重みを使う）。
+* 追跡結果が無い動画は使いません（合成映像に切り替わり、イベントログに理由を出します）。
+* 動画が無い場合: **合成映像** をキャンバスに描画して同じパイプラインを最後まで動かします（画面に「合成映像」と表示）。
+
+### 別の映像・別の検査項目に対応する
+
+`src/profiles/index.ts` に検査プロファイルを1件追加します。持つ情報は
+物体名・検査属性名・合格 / 不良の表示名・理由コードの表示文・不良時の処置・Jev の task 名・
+判定トリガー（ゲート: 軸 / 位置 / 向き、またはゾーン: 矩形 / 滞留秒数）・映像ディレクトリです。
+あとは `public/demo/<dir>/video.mp4` を置いて追跡を実行するだけで、画面の語彙、判断、
+Jev への送信内容がすべて切り替わります。
 
 `detections.json` の形式（実際の追跡器が出すものと同じ契約）:
 
 ```json
-{ "time": 0.8, "id": 1, "bbox": [0.12, 0.31, 0.16, 0.48], "class": "bottle", "confidence": 0.94 }
+{ "time": 0.8, "id": 1, "bbox": [0.12, 0.31, 0.16, 0.48], "class": "object", "confidence": 0.94 }
 ```
 
 `bbox` は `[x, y, 幅, 高さ]` を 0〜1 に正規化した値なので、動画サイズが変わっても枠は追従します。
 同じ `id` の複数キーフレームが1本のトラックになり、間は補間されます。
-`class` が `capped` / `uncapped` の場合はその信頼度を初期値に使い、`bottle` の場合はシナリオ側で
-キャップ状態を割り当てます。
+`class` が `ok` / `ng` の場合はその信頼度を初期値に使い、`object` の場合はシナリオ側で
+検査属性の状態を割り当てます。
 
 ### デモシナリオ
 
-| シナリオ | キャップ無 | 内容 |
+| シナリオ | 不良率 | 内容 |
 | --- | --- | --- |
 | 通常生産 | 5% | 基準 |
 | 不良率上昇 | 25% | 直近60秒の不良率が 15% を超えると異常警報 |
 | センサーノイズ | 6% | 枠と信頼度が揺れ、要確認が増える |
-| キャップずれ | 5% | 再検査が増える |
+| 位置ずれ（名称はプロファイル依存） | 5% | 再検査が増える |
 | カメラ信頼度低下 | 5% | 18〜48秒に露出異常。カメラ状態が「劣化」になりライン判断が「要確認」へ |
 | ライン渋滞 | 7% | ボトルが詰まり処理速度が上がる |
 
@@ -188,7 +207,7 @@ JSON / CSV で書き出せます（検査記録は下記の保存形式で同梱
 {
   "timestamp": "2026-09-19T05:53:15.706Z",
   "objectId": "#010",
-  "vision": { "bottle": 0.96, "cap": 0.88, "alignment": 0.89 },
+  "vision": { "object": 0.96, "attribute": 0.88, "alignment": 0.89 },
   "decision": { "result": "PASS", "confidence": 0.85, "reason": "CAP_OK", "engine": "simulation" },
   "action": "RELEASE",
   "latencyMs": 45
@@ -208,9 +227,10 @@ src/
   services/     videoDetectionSimulator, decisionEngine, jevDecisionEngine, decisionActions,
                 eventBus, inspectionStore, inspectionController, playbackClock, exportLog
   i18n/         ja.ts（表示ラベル。内部コードは英字のまま）
+  profiles/     index.ts（検査プロファイル: ボトルキャップ / 小包ラベル / 基板実装）
   types/        inspection.ts（層をまたぐ契約）
-  data/         demoDetections.ts（トラック生成・補間・JSON 変換）, scenarios.ts
-public/demo/    bottling-line.mp4, detections.json, CREDIT.txt
+  data/         demoDetections.ts（トラック生成・補間・ゲート / ゾーン判定・JSON 変換）, scenarios.ts
+public/demo/    <プロファイル>/video.mp4, detections.json, CREDIT.txt
 scripts/        build-single-html.mjs, track_video.py, generate-detections.mts
 ```
 

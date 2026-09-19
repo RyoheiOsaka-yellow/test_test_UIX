@@ -9,8 +9,10 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "gen:detections": "node --experimental-strip-types scripts/generate-detections.mts",
-    "track:video": "python3 scripts/track_video.py public/demo/bottling-line.mp4 public/demo/detections.json",
-    "build:single": "npm run build && node scripts/build-single-html.mjs"
+    "build:single": "npm run build && node scripts/build-single-html.mjs",
+    "track:bottle": "python3 scripts/track_video.py public/demo/bottle-cap/video.mp4 public/demo/bottle-cap/detections.json --coco bottle --stride 2",
+    "track:parcel": "python3 scripts/track_video.py public/demo/parcel-label/video.mp4 public/demo/parcel-label/detections.json --world \"cardboard box,parcel\" --stride 2",
+    "track:pcb": "python3 scripts/track_video.py public/demo/pcb-assembly/video.mp4 public/demo/pcb-assembly/detections.json --world \"circuit board,printed circuit board\" --stride 2"
   },
   "dependencies": {
     "lucide-react": "^0.470.0",
