@@ -11,8 +11,8 @@
     "gen:detections": "node --experimental-strip-types scripts/generate-detections.mts",
     "build:single": "npm run build && node scripts/build-single-html.mjs",
     "track:bottle": "python3 scripts/track_video.py public/demo/bottle-cap/video.mp4 public/demo/bottle-cap/detections.json --coco bottle --stride 2",
-    "track:parcel": "python3 scripts/track_video.py public/demo/parcel-label/video.mp4 public/demo/parcel-label/detections.json --world \"cardboard box,parcel\" --stride 2",
-    "track:pcb": "python3 scripts/track_video.py public/demo/pcb-assembly/video.mp4 public/demo/pcb-assembly/detections.json --world \"circuit board,printed circuit board\" --stride 2"
+    "track:parcel": "python3 scripts/track_video_gdino.py public/demo/parcel-label/video.mp4 public/demo/parcel-label/detections.json --prompt \"cardboard box.\" --box-threshold 0.45 --stride 5",
+    "track:pcb": "python3 scripts/track_video_gdino.py public/demo/pcb-assembly/video.mp4 public/demo/pcb-assembly/detections.json --prompt \"circuit board.\" --box-threshold 0.26 --text-threshold 0.2 --stride 5"
   },
   "dependencies": {
     "lucide-react": "^0.470.0",

@@ -10,8 +10,8 @@
 | プロファイル | 映像 | 物体検出 | 検査属性（疑似注入） | 判定トリガー |
 | --- | --- | --- | --- | --- |
 | ボトルキャップ検査 | ビール瓶の充填ライン | YOLO11（COCO の bottle） | キャップ有無 | 縦ゲート、左→右 |
-| 小包ラベル検査 | 小包のローラーコンベア | YOLO-World（文字指定 "cardboard box"） | 配送ラベル有無 | 縦ゲート、右→左 |
-| 基板実装検査 | 電子基板の組立ステーション | YOLO-World（文字指定 "circuit board"） | 部品実装の有無 | ゾーン滞留（作業ステーション） |
+| 小包ラベル検査 | 小包のローラーコンベア | Grounding DINO（文字指定 "cardboard box"） | 配送ラベル有無 | 縦ゲート、右→左 |
+| 基板実装検査 | 電子基板の組立ステーション | Grounding DINO（文字指定 "circuit board"） | 部品実装の有無 | ゾーン滞留（作業ステーション） |
 
 フェーズ1は、**学習済みモデル・有料サービス・専用バックエンドなし** で動く完全なプロトタイプです。
 アーキテクチャは本番版を想定し、映像認識層と判断層だけがアダプタで差し替え可能になっています。
@@ -107,8 +107,8 @@ npm run build:single   # JS/CSS/動画/追跡結果を1つの HTML に埋め込�
 npm run typecheck
 npm run gen:detections # 合成シナリオから detections.json を再生成（実映像を使わない場合）
 npm run track:bottle   # ボトル映像に YOLO11 + ByteTrack を掛けて追跡結果を再生成
-npm run track:parcel   # 小包映像に YOLO-World（文字指定）を掛けて再生成
-npm run track:pcb      # 基板映像に YOLO-World（文字指定）を掛けて再生成
+npm run track:parcel   # 小包映像に Grounding DINO（文字指定）を掛けて再生成
+npm run track:pcb      # 基板映像に Grounding DINO（文字指定）を掛けて再生成
 ```
 
 キーボード: `Space` で再生 / 一時停止。
@@ -137,8 +137,11 @@ npm run track:pcb      # 基板映像に YOLO-World（文字指定）を掛け�
 同梱の3本はすべて Mixkit の無料素材（Mixkit Stock Video Free License、商用可・クレジット不要）で、
 追跡結果は `scripts/track_video.py` で事前計算したものです。
 
-* 動画を差し替える場合: `video.mp4` を置き換え、`npm run track:<プロファイル>` で追跡結果を作り直す
-  （`pip install ultralytics opencv-python-headless` が必要。文字指定の検出には YOLO-World の重みを使う）。
+* 動画を差し替える場合: `video.mp4` を置き換え、`npm run track:<プロファイル>` で追跡結果を作り直す。
+  * COCO の標準クラスにある物体（ボトル、缶、人など）: `scripts/track_video.py --coco <クラス名>`（YOLO11 + ByteTrack。`pip install ultralytics opencv-python-headless`）
+  * それ以外の物体: `scripts/track_video_gdino.py --prompt "<英語の物体名>."`（Grounding DINO + 簡易追跡。`pip install torch transformers pillow opencv-python-headless`。
+    CPU では 1 フレーム数秒かかるので `--stride` で間引き、間はアプリが補間する）
+  * `scripts/track_video.py --world "<英語の物体名>"` で YOLO-World も使えるが、小包・基板ではほとんど検出できなかった。
 * 追跡結果が無い動画は使いません（合成映像に切り替わり、イベントログに理由を出します）。
 * 動画が無い場合: **合成映像** をキャンバスに描画して同じパイプラインを最後まで動かします（画面に「合成映像」と表示）。
 
