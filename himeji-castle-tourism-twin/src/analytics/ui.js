@@ -424,10 +424,10 @@ function renderPanel(){
   if(level==='wide'){
     pb.innerHTML = `
       <div class="sec"><div class="sec-t"><b>L0</b> 広域流入 — 誰が・どこから来たか</div><div class="kpi-grid" id="kpi-main"></div></div>
-      ${anaSec()}
+      ${anaSec()}${(typeof aiSec==='function')?aiSec()+aiAttentionSec():''}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ（入城者数/日・想定）</div>${scnChips()}</div>
-      ${odSec()}${tourSec()}${dbSrcSec()}${flowModeSec()}${pclSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${odSec()}${tourSec()}${(typeof pcvSec==='function')?pcvSec():''}${dbSrcSec()}${flowModeSec()}${pclSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">動線（路線・高速道路・航路・空港）— 流入シェア（クリックで視点）</div><div class="mode-list">${corridorRows()}</div></div>
       <div class="sec"><div class="sec-t">凡例 — 線種＝交通モード、帯の色＝セグメント</div>${modeLegend()}</div>
       <div class="sec"><div class="sec-t">到着ゲート（市内側）</div><div id="gate-rows"></div></div>
@@ -436,10 +436,10 @@ function renderPanel(){
   if(level==='city'){
     pb.innerHTML = `
       <div class="sec"><div class="sec-t"><b>L1</b> 市内回遊・滞留 — どこに・どれだけ滞留したか</div><div class="kpi-grid" id="kpi-main"></div></div>
-      ${anaSec()}
+      ${anaSec()}${(typeof aiSec==='function')?aiSec()+aiAttentionSec():''}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
-      ${odSec()}${tourSec()}${dbSrcSec()}${flowModeSec()}${pclSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${odSec()}${tourSec()}${(typeof pcvSec==='function')?pcvSec():''}${dbSrcSec()}${flowModeSec()}${pclSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">滞留ヒートマップ — 通り単位・時間連動</div>
         <div class="row-btns" id="heat-chips">
           <button class="chip ${heatMode==='off'?'active':''}" data-h="off">OFF</button>
@@ -475,16 +475,16 @@ function renderPanel(){
   if(level==='castle'){
     pb.innerHTML = `
       <div class="sec"><div class="sec-t"><b class="g">L2</b> 姫路城 — 城内滞留・待ち行列・入城制限</div><div class="kpi-grid" id="kpi-main"></div></div>
-      ${anaSec()}
+      ${anaSec()}${(typeof aiSec==='function')?aiSec()+aiAttentionSec():''}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
-      ${dbSrcSec()}${flowModeSec()}${pclSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${(typeof pcvSec==='function')?pcvSec():''}${dbSrcSec()}${flowModeSec()}${pclSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">ゾーン別 滞留・混雑（1ドット＝${AG_SCALE}人）</div><div id="zone-rows"></div></div>
       <div class="sec"><div class="sec-t">入城料（2026年3月〜 二段階料金・想定）</div><div class="legend">
         <div class="li"><div class="sw" style="background:var(--gold)"></div>市外・海外 ¥${FEE.out.toLocaleString()}　<div class="sw" style="background:#8f9cc0"></div>姫路市民 ¥${FEE.resident.toLocaleString()}</div></div></div>
       <div class="sec"><div class="sec-t">インサイト</div><div class="hint">律速点は<b>大天守（入場制限 15,000人/日）</b>と<b>菱の門の券売</b>。桜・GWは12時前後に待ち60分超が発生。入城券の<b>時間指定枠・事前販売</b>と、待ち時間を<b>好古園・西の丸へ振り替える案内</b>が滞留分散の打ち手になります。ドラッグで地図を引っ張る・握って待ってから（⟳）ドラッグで回転。<kbd>Esc</kbd>で市内へ戻る。</div></div>`;
   }
-  bindCommon(); bindFlow3D(); bindFlowVis(); if(typeof bindDbSrc==='function') bindDbSrc(); if(typeof bindPcl==='function') bindPcl();
+  bindCommon(); bindFlow3D(); bindFlowVis(); if(typeof bindDbSrc==='function') bindDbSrc(); if(typeof bindPcl==='function') bindPcl(); if(typeof bindPcv==='function') bindPcv(); if(typeof bindAi==='function') bindAi();
   updateKPIs(); updateFlowPanels();
 }
 function updateKPIs(){
@@ -894,7 +894,7 @@ function loop(now){
   castleGlow.material.opacity = 0.10 + 0.05*Math.sin(now/700);
   if(level!=='wide'){ ROUTES.forEach(r=>{ if(!r.rib) return; const u=r.rib.uni; u.uTime.value += dt*0.9; const k=Math.min(1, (r.uses||0)/80); u.uAct.value = 0.10 + 0.55*k; u.uFlowW.value = 0.16 + 0.55*k; }); }
   if(now-lastKpi>500){ lastKpi=now; updateKPIs(); updateFlowPanels(); }
-  updateFlowHeads(); if(typeof pclUpdate==='function') pclUpdate(now, dt); if(typeof pclGpuBegin==='function') pclGpuBegin(); renderer.render(scene, camera); if(typeof pclGpuEnd==='function') pclGpuEnd();
+  updateFlowHeads(); if(typeof pcvTick==='function') pcvTick(now); if(typeof pclUpdate==='function') pclUpdate(now, dt); if(typeof aiTick==='function') aiTick(now); if(typeof pclGpuBegin==='function') pclGpuBegin(); renderer.render(scene, camera); if(typeof pclGpuEnd==='function') pclGpuEnd();
 }
 
 /* V9 visual refinement. Supplemental geometry is schematic, not a new survey. */

@@ -14,7 +14,9 @@
   "people-flow/flow3d.js",
   "people-flow/flowvis.js",
   "data/api_client.js",
-  "people-flow/pointcloud.js"
+  "people-flow/pointcloud.js",
+  "map/pcview.js",
+  "ai/ai_client.js"
  ],
  "init_anchor": "/* 初期化 */"
 }

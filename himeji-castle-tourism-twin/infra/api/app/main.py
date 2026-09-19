@@ -14,6 +14,9 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from psycopg_pool import ConnectionPool
 from psycopg.rows import dict_row
+from pydantic import BaseModel
+from app.ai.decision_engine import get_engine, QUESTIONS
+from app.ai import feature_engine
 
 DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://citydb_reader:citydb_reader@localhost:5432/citydb')
 MAX_POINTS = int(os.environ.get('API_MAX_POINTS', '20000'))
@@ -24,10 +27,10 @@ JST = timezone(timedelta(hours=9))
 pool = ConnectionPool(DATABASE_URL, min_size=1, max_size=8, kwargs={'row_factory': dict_row, 'options': '-c default_transaction_read_only=on -c statement_timeout=30000'})
 app = FastAPI(title='Himeji Human Flow API', version='0.1.0', description='人流（mobility）と 3DCityDB（citydb）の読み取り API。GeoJSON / MVT')
 origins = os.environ.get('API_CORS_ORIGINS', '*')
-app.add_middleware(CORSMiddleware, allow_origins=['*'] if origins == '*' else origins.split(','), allow_methods=['GET'], allow_headers=['*'])
+app.add_middleware(CORSMiddleware, allow_origins=['*'] if origins == '*' else origins.split(','), allow_methods=['GET', 'POST'], allow_headers=['*'])
 
-def q(sql: str, params: dict | None = None):
-    with pool.connection() as conn:
+def q(sql: str, params: dict | None = None, timeout: float | None = None):
+    with pool.connection(timeout=timeout) as conn:
         with conn.cursor() as cur:
             cur.execute(sql, params or {})
             return cur.fetchall()
@@ -326,6 +329,67 @@ def mesh_tile(z: int, x: int, y: int, res: int = 100, t: Optional[str] = None, b
                       ST_AsMVTGeom(ST_Transform(s.geom, 3857), (SELECT g FROM b), 4096, 64, true) AS geom FROM s) q"""
     r = q(sql, {'z': z, 'x': x, 'y': y, 'res': res, 'bucket': bucket, 't': tt, 'src': source})
     return Response(content=bytes(r[0]['mvt']) if r and r[0]['mvt'] else b'', media_type='application/vnd.mapbox-vector-tile')
+
+# ----------------------------------------------------------------------------
+# Jev AI Decision Layer（Frontend → Backend API → Jev Adapter → Jev。ブラウザは Jev を直接呼ばない。API Key はサーバ側のみ）
+#   POST /api/ai/evaluate  : Urban State（集約値のみ）＋ questions を 1 回で評価（Decision Bundle）。bbox/t を渡すと PostGIS から Feature を作る
+#   GET  /api/ai/status    : Jev 接続状態（CONNECTED / MOCK / FALLBACK / DISABLED）、cache、telemetry
+#   GET  /api/ai/attention : bbox × t の Attention Top 5
+#   GET  /api/ai/decisions : telemetry（A/B: Jev 判断 vs Local 判断）
+class AiEvaluateRequest(BaseModel):
+    state: dict = {}
+    questions: Optional[list] = None
+    candidates: Optional[list] = None
+    bbox: Optional[str] = None
+    t: Optional[str] = None
+    source: Optional[str] = None
+    mode: str = 'auto'                       # auto | both（both = cache を使わず Jev と Local を必ず両方評価: A/B 用）
+    res: int = 100
+    bucket: int = 5
+
+def _ai_fill_from_postgis(req: AiEvaluateRequest) -> tuple[dict, list | None]:
+    state = dict(req.state or {}); candidates = req.candidates
+    if req.bbox and (not state.get('area') or candidates is None):
+        try:
+            qf = lambda sql, params=None: q(sql, params, timeout=float(os.environ.get('JEV_FEATURE_DB_TIMEOUT_S', '2.5')))   # DB が落ちていても判断層は待たない
+            feats = feature_engine.urban_features(qf, parse_bbox(req.bbox), parse_t(req.t), req.source or DEFAULT_SRC, req.res, req.bucket)
+            for k, v in feats['state'].items():
+                if not state.get(k): state[k] = v
+            if candidates is None: candidates = feats['candidates']
+            state['bbox'] = req.bbox; state['source'] = req.source or DEFAULT_SRC; state.setdefault('timestamp', parse_t(req.t).isoformat())
+        except Exception as e:                      # PostGIS が無くても（sim モード）判断は続ける
+            state.setdefault('_featureError', str(e)[:200])
+    return state, candidates
+
+@app.post('/api/ai/evaluate')
+def ai_evaluate(req: AiEvaluateRequest):
+    state, candidates = _ai_fill_from_postgis(req)
+    # 個人情報の混入防止: 状態に person / raw 系のキーがあれば落とす
+    for k in list(state.keys()):
+        if any(x in k.lower() for x in ('person', 'hash', 'raw', 'device', 'trajector')): state.pop(k)
+    b = get_engine().evaluate_urban_state(state, req.questions, candidates, req.mode)
+    out = b.to_dict(); out['state'] = {k: state.get(k) for k in ('timestamp', 'camera', 'rendering', 'area', 'mobility', 'history', 'analysis', 'bbox', 'source', '_featureError') if state.get(k) is not None}
+    out['candidatesEvaluated'] = len(candidates or [])
+    return out
+
+@app.get('/api/ai/status')
+def ai_status():
+    st = get_engine().status(); j = st['jev']
+    label = 'DISABLED' if not j['enabled'] else 'MOCK' if j['provider'] == 'mock' else ('CONNECTED' if j['status'] == 'ready' and not j['lastError'] else 'FALLBACK')
+    return {'label': label, **st}
+
+@app.get('/api/ai/attention')
+def ai_attention(bbox: Optional[str] = None, t: Optional[str] = None, source: str = DEFAULT_SRC, res: int = 100, bucket: int = 5):
+    a = parse_bbox(bbox) or DEFAULT_BBOX
+    qf = lambda sql, params=None: q(sql, params, timeout=float(os.environ.get('JEV_FEATURE_DB_TIMEOUT_S', '2.5')))
+    feats = feature_engine.urban_features(qf, a, parse_t(t), source, res, bucket)
+    state = {**feats['state'], 'bbox': ','.join(str(v) for v in a), 'source': source, 'timestamp': parse_t(t).isoformat()}
+    b = get_engine().evaluate_urban_state(state, ['attention', 'congestion', 'anomaly'], feats['candidates'])
+    return {'attention': b.attention, 'congestion': b.decisions.get('congestion'), 'anomaly': b.decisions.get('anomaly'), 'candidates': len(feats['candidates']), 'meta': b.meta}
+
+@app.get('/api/ai/decisions')
+def ai_decisions(limit: int = Query(50, le=500)):
+    return {'recent': get_engine().telemetry.recent(limit), 'summary': get_engine().telemetry.summary()}
 
 # 同一オリジンで Digital Twin（index.html）を配信（任意）。
 # Docker では compose が ../../index.html を /app/static に読み取り専用でマウント。ローカルは API_STATIC_DIR=../.. などで指定

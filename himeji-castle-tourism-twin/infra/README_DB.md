@@ -137,6 +137,7 @@ DATABASE_URL=postgresql://citydb_reader:citydb_reader@localhost:5432/citydb API_
 | `GET /api/trajectory` | `person_hash` or `t, window, limit` | GeoJSON LineString ＋ `timestamps`（epoch 秒） | trajectories |
 | `GET /api/stays` | `t, window, bbox, limit` | GeoJSON Point ＋ `duration_sec`（= weight） | stays |
 | `GET /api/buildings` | `bbox, lod(1/2), limit` | lod=1: フットプリント（lod1Solid 底面）＋ `height`（bldg:height の value）/ lod=2: 屋根・壁・地面の面（MultiPolygon Z） | citydb.feature / property / geometry_data |
+| `POST /api/ai/evaluate`, `GET /api/ai/status`, `GET /api/ai/attention`, `GET /api/ai/decisions` | `state, questions, bbox, t, source, mode` | Jev AI Decision Layer（`../AI_DECISION_LAYER.md`）。bbox/t を渡すと PostGIS から集約 Feature（area / mobility / history / 上位 30 メッシュ）を作る | mesh_stats, stays |
 | `GET /api/points` | `bbox, timeFrom, timeTo, lod(0-3), maxPoints, source, format(bin/json)` | **バイナリ**（HPC1: pos0/pos1 Float32×2, t0/t1 Float32, attr Uint8×4 density/stay/speed/confidence, dir Uint8, pid Uint32）。50m セル密度に応じたサンプリング。Point Cloud 用 | raw_points, stays |
 | `GET /api/tiles/mesh/{z}/{x}/{y}.mvt` | `res, t, bucket` | Mapbox Vector Tile（大量セル向け） | mesh_stats, meshes |
 

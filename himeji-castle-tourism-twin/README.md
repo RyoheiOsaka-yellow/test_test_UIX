@@ -14,6 +14,8 @@
   - `people-flow/flow3d.js` … メッシュ（地域メッシュ / 正方グリッド / ヘックス / 3Dカラム）・軌跡ライン・階層ビュー
   - `people-flow/flowvis.js` … 人流 Visualization モード（熱・流線・動く軌跡・等高線）・Analytics KPI・メッシュ詳細・FPS 監視
   - `analytics/ui.js` … パネル・分析ボード・提案骨子・DB構成・タイムライン・メインループ
+  - `map/pcview.js` … ◆ 点群ビュー（PLATEAU ファサード点・地表グリッド・DSM をスイープ付き丸点シェーダで表示）
+  - `ai/ai_client.js` … Jev AI Decision Layer のフロント（Urban State 生成・イベント駆動評価・USER>AI>DEFAULT の状態管理・AI STATE / AI ATTENTION / AI FOLLOW）
   - `people-flow/pointcloud.js` … 高品質 Point Cloud（人流粒子: 線分×サブ粒子の instancing、GPU 時間補間、Gaussian soft point、7 モード、LOD・Point Budget、選択、Debug Panel、LAS 読込。`POINT_CLOUD_PERFORMANCE.md`）
   - `data/api_client.js` … データソース切替（シミュレーション ⇄ DB / API）・ズーム連動 LOD・各レイヤーの API 接続・3DCityDB 建物（`infra/README_DB.md`）
 - `data/real/` … 実データ由来のシーン（`scene_data.json`: OSM・地理院ベクトルタイル、`plateau.json`: PLATEAU 姫路市、`real.json`: 地理院 DEM5A・兵庫県 DSM）
@@ -72,6 +74,16 @@
 - 粒は道路・軌跡（同一人物の連続 2 サンプル＝線分）に沿って固定 seed で分布し、時刻は GPU で線形補間。FLOW/TRAIL は 100/300/500ms 前を 70/40/10% で残し、速度に応じた 3〜15m の尾を持つ。
 - LOD（都市 30k → 地区 150k → 街区 500k → 局所 1M）と Adaptive Point Budget（FPS で自動、移動中は 1/4）。DB モードは `/api/points`（バイナリ、bbox × 時刻 × LOD、PostGIS の密度サンプリング）。
 - 地図クリックで半径 60〜400m を高解像度化（範囲外 30%）。半径 400m 以下で 1 粒 hover。`?debug=1` / `` ` `` で Debug Panel、`?bench=1` で 100k〜1M のベンチ。
+
+## ◆ 点群ビュー
+
+- ヘッダ「◆ 点群ビュー」で、建物ファサード（PLATEAU LOD1 の計測高さ、2.6m×2.0m 面サンプリング、高さで青→水色、姫路城は金）約 90 万点、公園・森・水面・堀の面内グリッド約 14 万点、兵庫県 DSM 実測点群約 49 万点を、距離減衰つき丸点シェーダ（加算合成）で表示。LiDAR 風スキャンスイープ（姫路城中心のリング）と点サイズをパネルで調整。人流粒子は LIDAR モードに切替。
+
+## AI Decision Layer（`AI_DECISION_LAYER.md`）
+
+- Jev をリアルタイム判断レイヤーとして追加（混雑分類 Choice / 混雑スコア Score / 異常 Noul / LOD / Point Budget / Visualization Router / 注目エリア Top 5 / Point Cloud 制御）。**必須依存ではない**: `JEV_ENABLED=false`・未接続・timeout でも Local Rule Engine が同じ型で判断する。
+- Frontend → Backend API（`/api/ai/*`）→ Jev Adapter → Jev。ブラウザは Jev を直接呼ばず API Key も持たない。生 GPS・person_hash は Jev に送らない（集約値のみ）。
+- 左パネル「AI STATE」「AI ATTENTION」。優先順位は USER > AI > DEFAULT、hard safety（FPS<25）は AI より優先。AI FOLLOW は OFF / ON（提案バナー）/ AUTO。
 
 ## データ基盤（3DCityDB v5 + PostgreSQL/PostGIS）
 

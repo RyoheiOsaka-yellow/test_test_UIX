@@ -124,8 +124,9 @@ function pclWriteSeg(i, x0,y0,z0, x1,y1,z1, t0,t1, dens,stay,spd,conf, dir,seed)
 /* ---------- モード適用 ---------- */
 function pclApplyMode(){
   const m=PCL.mode; const set=(k,v)=>{ PCL.passes.forEach(p=>{ if(p.material.uniforms[k]) p.material.uniforms[k].value=v; }); if(PCL.lines.material.uniforms[k]) PCL.lines.material.uniforms[k].value=v; };
-  const lags = m==='TRAIL' ? [0,100,200,300,400,500,650] : (m==='FLOW' ? [0,100,300,500] : [0]);
-  const alphas = m==='TRAIL' ? [1,0.8,0.62,0.45,0.3,0.18,0.08] : (m==='FLOW' ? [1,0.7,0.4,0.1] : [1]);
+  let lags = m==='TRAIL' ? [0,100,200,300,400,500,650] : (m==='FLOW' ? [0,100,300,500] : [0]);
+  let alphas = m==='TRAIL' ? [1,0.8,0.62,0.45,0.3,0.18,0.08] : (m==='FLOW' ? [1,0.7,0.4,0.1] : [1]);
+  const tq=PCL.trailQ||'HIGH'; if(tq==='LOW'){ lags=lags.slice(0,1); alphas=alphas.slice(0,1); } else if(tq==='MEDIUM'){ lags=lags.slice(0,2); alphas=alphas.slice(0,2); }   // AI: trail quality
   PCL.lagsMs=lags; PCL.passes.forEach((p,i)=>{ p.visible = i<lags.length && PCL.on; p.material.uniforms.uAlpha.value = alphas[i]||0; p.material.depthWrite = (m==='PURE' && i===0); });
   set('uSoft', m==='PURE' ? 0 : 1); set('uSharp', m==='SOFT'||m==='DENSITY' ? 3.2 : m==='VOLUME' ? 2.6 : 4.0); set('uGlow', m==='PURE' ? 0 : m==='DENSITY' ? 0.25 : 0.15);
   set('uSizeNear', m==='PURE' ? 1.0 : m==='LIDAR' ? 1.0 : 1.5); set('uSizeFar', m==='PURE' ? 2.0 : m==='LIDAR' ? 1.8 : m==='DENSITY' ? 3.0 : 2.6);
@@ -133,7 +134,8 @@ function pclApplyMode(){
   set('uLidar', m==='LIDAR' ? 1 : 0); set('uPersist', m==='TRAIL' ? 3.5 : m==='FLOW' ? 2.5 : m==='LIDAR' ? 1.0 : 1.5);
   const zm = m==='VOLUME' ? (PCL.zmode==='stay' ? 2 : 1) : (PCL.zmode==='density' ? 1 : PCL.zmode==='stay' ? 2 : 0); set('uZMode', zm); set('uZScale', PCL.zScale);
   set('uColorMode', {density:0, speed:1, stay:2, direction:3}[PCL.color] ?? 0);
-  PCL.lines.visible = PCL.on && (m==='FLOW' || m==='TRAIL');
+  PCL.lines.visible = PCL.on && (m==='FLOW' || m==='TRAIL') && (PCL.trailQ||'HIGH')!=='LOW';
+  if((PCL.softQ||'HIGH')==='LOW'){ set('uGlow', 0); set('uSharp', 4.5); }   // AI: soft point quality
   PCL.heat = (m==='DENSITY'); if(typeof HEATV!=='undefined' && HEATV.uni){ HEATV.uni.uOpacity.value = PCL.heat ? 0.32 : 0.82; }
   if(typeof setHeatV==='function'){ if(PCL.heat && !HEATV.on){ setHeatV(true); PCL.heatAuto=true; } else if(!PCL.heat && PCL.heatAuto){ setHeatV(false); PCL.heatAuto=false; } }
   if(typeof fineCloud!=='undefined'){ fineCloud.userData.lidar = (m==='LIDAR'); }
@@ -164,7 +166,7 @@ function pclAlive(now){   /* 現在時刻に生きている線分数（K の基�
   for(let i=0;i<PCL.count;i++){ if(t>=T[i*2]-0.2 && t<=T[i*2+1]+per) n++; } PCL.alive=n; return n;
 }
 function pclChooseK(now){
-  const lod=pclLod(); PCL.lod=lod; const target=Math.min(PCL.budget.cur, PCL.lodTarget[lod]); const alive=Math.max(1, pclAlive(now));
+  const lod=pclLod(); PCL.lod=lod; const target=Math.min(PCL.budget.cur, PCL.lodTarget[lod], PCL.aiTarget||Infinity); const alive=Math.max(1, pclAlive(now));   // AI の LOD 判断は上限として効く
   let K = PCL.count ? Math.max(1, Math.min(PCL.KMAX, Math.floor(target/alive))) : 1;
   PCL.K=K; const kEff = PCL.moving ? Math.max(1, Math.round(K*0.25)) : K;
   PCL.kEff += (kEff-PCL.kEff)*0.4; if(Math.abs(kEff-PCL.kEff)<0.6) PCL.kEff=kEff;
@@ -245,7 +247,7 @@ function pclSelect(x, z, r){
 /* ---------- ピック（十分に近いときだけ 1 点単位の hover） ---------- */
 const _pclV=new THREE.Vector3();
 function pclHover(e){
-  PCL.pick = PCL.on && ctrl.sph.radius < 400 && PCL.count>0; if(!PCL.pick) return false;
+  PCL.pick = PCL.on && ctrl.sph.radius < 400 && PCL.count>0 && PCL.pickAllowed!==false; if(!PCL.pick) return false;
   const r=el.getBoundingClientRect(); const mx=e.clientX-r.left, my=e.clientY-r.top; const t=timeState.min; let best=-1, bd=100;
   const P0=PCL.aP0, P1=PCL.aP1, T=PCL.aT;
   for(let i=0;i<PCL.count;i++){ const t0=T[i*2], t1=T[i*2+1]; if(t<t0-0.6||t>t1+0.6) continue; const f=Math.max(0,Math.min(1,(t-t0)/Math.max(1e-3,t1-t0)));
@@ -341,14 +343,14 @@ function pclSec(){
 }
 function bindPcl(){
   document.querySelectorAll('[data-pcl-on]').forEach(b=> b.onclick=()=> setPclOn(!PCL.on));
-  document.querySelectorAll('[data-pcl-mode]').forEach(b=> b.onclick=()=> setPclMode(b.dataset.pclMode));
+  document.querySelectorAll('[data-pcl-mode]').forEach(b=> b.onclick=()=>{ if(window.twinAi) twinAi.user.viz=true; setPclMode(b.dataset.pclMode); });
   document.querySelectorAll('[data-pcl-color]').forEach(b=> b.onclick=()=> setPclColor(b.dataset.pclColor));
   document.querySelectorAll('[data-pcl-zmode]').forEach(b=> b.onclick=()=> setPclZ(b.dataset.pclZmode));
   document.querySelectorAll('[data-pcl-auto]').forEach(b=> b.onclick=()=>{ PCL.budget.auto=!PCL.budget.auto; renderPanel(); });
   document.querySelectorAll('[data-pcl-debug]').forEach(b=> b.onclick=()=>{ pclDebug(!PCL.debug); renderPanel(); });
   document.querySelectorAll('[data-pcl-bench]').forEach(b=> b.onclick=()=>{ pclBench(); });
   document.querySelectorAll('[data-pcl-clearsel]').forEach(b=> b.onclick=()=> pclSelect(null));
-  const r=document.getElementById('pcl-b'); if(r) r.oninput=e=>{ PCL.budget.cur=+e.target.value; PCL.budget.auto=false; document.getElementById('pcl-b-v').value=fmt(PCL.budget.cur); };
+  const r=document.getElementById('pcl-b'); if(r) r.oninput=e=>{ if(window.twinAi) twinAi.user.budget=true; PCL.budget.cur=+e.target.value; PCL.budget.auto=false; document.getElementById('pcl-b-v').value=fmt(PCL.budget.cur); };
   const f=document.getElementById('pcl-las'); if(f) f.onchange=e=>{ const file=e.target.files[0]; if(!file) return; file.arrayBuffer().then(b=>{ try{ pclLoadLAS(b); }catch(x){ toast('LAS 読込エラー: '+x.message, 4000); } renderPanel(); }); };
 }
 addEventListener('keydown', e=>{ if(e.key==='`' && !e.target.closest('input,textarea,select')){ pclDebug(!PCL.debug); } if(e.key==='Escape' && PCL.sel) pclSelect(null); });

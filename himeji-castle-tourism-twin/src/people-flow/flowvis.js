@@ -241,7 +241,7 @@ function flowModeSec(){
   return `<div class="sec"><div class="sec-t"><b>人流 Visualization</b> — 表現モード</div><div class="row-btns" id="fm-chips">${chips}</div>${extra}</div>`;
 }
 function bindFlowVis(){
-  document.querySelectorAll('[data-fm]').forEach(b=> b.onclick=()=> setFlowMode(b.dataset.fm));
+  document.querySelectorAll('[data-fm]').forEach(b=> b.onclick=()=>{ if(window.twinAi) twinAi.user.viz=true; setFlowMode(b.dataset.fm); });   // USER > AI
   const r=document.getElementById('heat-r'); if(r) r.oninput=e=>{ CONFIG.peopleFlow.heatmapRadius=+e.target.value; document.getElementById('heat-r-v').value=e.target.value+' m'; };
   const i=document.getElementById('heat-i'); if(i) i.oninput=e=>{ CONFIG.peopleFlow.heatmapIntensity=+e.target.value; document.getElementById('heat-i-v').value='×'+(+e.target.value).toFixed(1); };
 }

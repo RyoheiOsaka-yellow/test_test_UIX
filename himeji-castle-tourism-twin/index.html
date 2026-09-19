@@ -154,6 +154,7 @@ canvas{display:block}
 #rotcue.rot::after{content:'⟳';font-size:26px;line-height:1}
 #rotcue::after{content:'✋';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#ff8a1e;font-size:20px;font-weight:700}
 /* tooltip + toast */
+.ai-sec .ai-st{font-family:var(--mono);font-size:9px;padding:1px 7px;border-radius:10px;border:1px solid var(--line);margin-left:6px}.ai-st.ok{color:#8fe3c9;border-color:#3f8f7a}.ai-st.warn{color:#ffd166;border-color:#8a6d1f}.ai-st.sub{color:var(--sub)}.ai-grid{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:11px}.ai-grid span{color:var(--sub)}.ai-grid b{font-family:var(--mono);font-weight:500;color:var(--txt)}.ai-src{font-size:8px;color:var(--sub);border:1px solid var(--line);border-radius:8px;padding:0 5px;margin-left:4px;font-family:var(--mono)}.ai-src.jev{color:#8fe3c9;border-color:#3f8f7a}.ai-src.safety{color:#ffd166}.ai-contrib{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:6px;font-size:10px;color:var(--sub)}.ai-c b{font-family:var(--mono)}.ai-att{cursor:pointer}.ai-att:hover{border-color:var(--brex)}.ai-dev{margin-top:8px;border-top:1px dashed var(--line);padding-top:6px}.ai-ab{font-size:9px}.ai-ab td,.ai-ab th{padding:2px 4px}.ai-spin{color:#8fe3c9}#ai-banner{position:fixed;top:118px;left:50%;transform:translateX(-50%);z-index:70;background:rgba(40,20,10,.94);border:1px solid #ff8a1e;color:#ffe2a3;border-radius:10px;padding:8px 14px;font-size:12px;cursor:pointer;display:none;box-shadow:0 8px 30px #0008}#ai-banner b{color:#ff8a1e;margin-right:8px}#ai-banner span{color:var(--sub);margin-left:10px;font-size:10px}
 #pcl-debug{position:fixed;left:22px;bottom:26px;z-index:60;background:rgba(8,16,22,.92);border:1px solid #2f4a55;border-radius:8px;padding:8px 10px;font:10px/1.5 'Roboto Mono',monospace;color:#bfe3dc;min-width:250px;pointer-events:none}#pcl-debug b{color:#e8f4f2}#pcl-debug>b{display:block;margin-bottom:3px;color:#76dfcb;letter-spacing:.08em}#pcl-debug div{display:flex;justify-content:space-between;gap:12px}#pcl-debug div span{color:#7f9ba3}
 #tip{position:fixed;pointer-events:none;background:rgba(11,14,20,.95);border:1px solid var(--brex);border-radius:8px;
   padding:7px 11px;font-size:11px;z-index:40;display:none;max-width:250px;line-height:1.5}
@@ -910,7 +911,8 @@ const CONFIG = window.TWIN_CONFIG = {
   camera:     { minZoom:30, maxZoom:30000, defaultPitch:0.88 },
   api:        { base:'', autoConnect:false, maxPoints:20000 },
   pointCloud: { mode:'SOFT', color:'density', budget:500000, budgetMin:200000, budgetMax:1000000, debug:false },   // 人流 Point Cloud（people-flow/pointcloud.js）
-  las:        { originXY:null },   // LAS がメートル座標のとき、シーン中心（姫路城）に当たる [E, N]。null＝重心を城に合わせる   // Human Flow API（infra/api）。base 空＝同一オリジン（API 配信時）または http://localhost:8000
+  las:        { originXY:null },
+  pcView:     { budget:900000 },   // ◆ 点群ビューのファサード点の上限   // LAS がメートル座標のとき、シーン中心（姫路城）に当たる [E, N]。null＝重心を城に合わせる   // Human Flow API（infra/api）。base 空＝同一オリジン（API 配信時）または http://localhost:8000
 };
 
 'use strict';
@@ -2766,10 +2768,10 @@ function renderPanel(){
   if(level==='wide'){
     pb.innerHTML = `
       <div class="sec"><div class="sec-t"><b>L0</b> 広域流入 — 誰が・どこから来たか</div><div class="kpi-grid" id="kpi-main"></div></div>
-      ${anaSec()}
+      ${anaSec()}${(typeof aiSec==='function')?aiSec()+aiAttentionSec():''}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ（入城者数/日・想定）</div>${scnChips()}</div>
-      ${odSec()}${tourSec()}${dbSrcSec()}${flowModeSec()}${pclSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${odSec()}${tourSec()}${(typeof pcvSec==='function')?pcvSec():''}${dbSrcSec()}${flowModeSec()}${pclSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">動線（路線・高速道路・航路・空港）— 流入シェア（クリックで視点）</div><div class="mode-list">${corridorRows()}</div></div>
       <div class="sec"><div class="sec-t">凡例 — 線種＝交通モード、帯の色＝セグメント</div>${modeLegend()}</div>
       <div class="sec"><div class="sec-t">到着ゲート（市内側）</div><div id="gate-rows"></div></div>
@@ -2778,10 +2780,10 @@ function renderPanel(){
   if(level==='city'){
     pb.innerHTML = `
       <div class="sec"><div class="sec-t"><b>L1</b> 市内回遊・滞留 — どこに・どれだけ滞留したか</div><div class="kpi-grid" id="kpi-main"></div></div>
-      ${anaSec()}
+      ${anaSec()}${(typeof aiSec==='function')?aiSec()+aiAttentionSec():''}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
-      ${odSec()}${tourSec()}${dbSrcSec()}${flowModeSec()}${pclSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${odSec()}${tourSec()}${(typeof pcvSec==='function')?pcvSec():''}${dbSrcSec()}${flowModeSec()}${pclSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">滞留ヒートマップ — 通り単位・時間連動</div>
         <div class="row-btns" id="heat-chips">
           <button class="chip ${heatMode==='off'?'active':''}" data-h="off">OFF</button>
@@ -2817,16 +2819,16 @@ function renderPanel(){
   if(level==='castle'){
     pb.innerHTML = `
       <div class="sec"><div class="sec-t"><b class="g">L2</b> 姫路城 — 城内滞留・待ち行列・入城制限</div><div class="kpi-grid" id="kpi-main"></div></div>
-      ${anaSec()}
+      ${anaSec()}${(typeof aiSec==='function')?aiSec()+aiAttentionSec():''}
       <div class="sec"><div class="sec-t">来訪者セグメント</div>${segChips()}</div>
       <div class="sec"><div class="sec-t">シナリオ</div>${scnChips()}</div>
-      ${dbSrcSec()}${flowModeSec()}${pclSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
+      ${(typeof pcvSec==='function')?pcvSec():''}${dbSrcSec()}${flowModeSec()}${pclSec()}${flowSec()}${contourSec()}${meshSec()}${trajSec()}${floorSec()}
       <div class="sec"><div class="sec-t">ゾーン別 滞留・混雑（1ドット＝${AG_SCALE}人）</div><div id="zone-rows"></div></div>
       <div class="sec"><div class="sec-t">入城料（2026年3月〜 二段階料金・想定）</div><div class="legend">
         <div class="li"><div class="sw" style="background:var(--gold)"></div>市外・海外 ¥${FEE.out.toLocaleString()}　<div class="sw" style="background:#8f9cc0"></div>姫路市民 ¥${FEE.resident.toLocaleString()}</div></div></div>
       <div class="sec"><div class="sec-t">インサイト</div><div class="hint">律速点は<b>大天守（入場制限 15,000人/日）</b>と<b>菱の門の券売</b>。桜・GWは12時前後に待ち60分超が発生。入城券の<b>時間指定枠・事前販売</b>と、待ち時間を<b>好古園・西の丸へ振り替える案内</b>が滞留分散の打ち手になります。ドラッグで地図を引っ張る・握って待ってから（⟳）ドラッグで回転。<kbd>Esc</kbd>で市内へ戻る。</div></div>`;
   }
-  bindCommon(); bindFlow3D(); bindFlowVis(); if(typeof bindDbSrc==='function') bindDbSrc(); if(typeof bindPcl==='function') bindPcl();
+  bindCommon(); bindFlow3D(); bindFlowVis(); if(typeof bindDbSrc==='function') bindDbSrc(); if(typeof bindPcl==='function') bindPcl(); if(typeof bindPcv==='function') bindPcv(); if(typeof bindAi==='function') bindAi();
   updateKPIs(); updateFlowPanels();
 }
 function updateKPIs(){
@@ -3236,7 +3238,7 @@ function loop(now){
   castleGlow.material.opacity = 0.10 + 0.05*Math.sin(now/700);
   if(level!=='wide'){ ROUTES.forEach(r=>{ if(!r.rib) return; const u=r.rib.uni; u.uTime.value += dt*0.9; const k=Math.min(1, (r.uses||0)/80); u.uAct.value = 0.10 + 0.55*k; u.uFlowW.value = 0.16 + 0.55*k; }); }
   if(now-lastKpi>500){ lastKpi=now; updateKPIs(); updateFlowPanels(); }
-  updateFlowHeads(); if(typeof pclUpdate==='function') pclUpdate(now, dt); if(typeof pclGpuBegin==='function') pclGpuBegin(); renderer.render(scene, camera); if(typeof pclGpuEnd==='function') pclGpuEnd();
+  updateFlowHeads(); if(typeof pcvTick==='function') pcvTick(now); if(typeof pclUpdate==='function') pclUpdate(now, dt); if(typeof aiTick==='function') aiTick(now); if(typeof pclGpuBegin==='function') pclGpuBegin(); renderer.render(scene, camera); if(typeof pclGpuEnd==='function') pclGpuEnd();
 }
 
 /* V9 visual refinement. Supplemental geometry is schematic, not a new survey. */
@@ -3943,7 +3945,7 @@ function flowModeSec(){
   return `<div class="sec"><div class="sec-t"><b>人流 Visualization</b> — 表現モード</div><div class="row-btns" id="fm-chips">${chips}</div>${extra}</div>`;
 }
 function bindFlowVis(){
-  document.querySelectorAll('[data-fm]').forEach(b=> b.onclick=()=> setFlowMode(b.dataset.fm));
+  document.querySelectorAll('[data-fm]').forEach(b=> b.onclick=()=>{ if(window.twinAi) twinAi.user.viz=true; setFlowMode(b.dataset.fm); });   // USER > AI
   const r=document.getElementById('heat-r'); if(r) r.oninput=e=>{ CONFIG.peopleFlow.heatmapRadius=+e.target.value; document.getElementById('heat-r-v').value=e.target.value+' m'; };
   const i=document.getElementById('heat-i'); if(i) i.oninput=e=>{ CONFIG.peopleFlow.heatmapIntensity=+e.target.value; document.getElementById('heat-i-v').value='×'+(+e.target.value).toFixed(1); };
 }
@@ -4383,8 +4385,9 @@ function pclWriteSeg(i, x0,y0,z0, x1,y1,z1, t0,t1, dens,stay,spd,conf, dir,seed)
 /* ---------- モード適用 ---------- */
 function pclApplyMode(){
   const m=PCL.mode; const set=(k,v)=>{ PCL.passes.forEach(p=>{ if(p.material.uniforms[k]) p.material.uniforms[k].value=v; }); if(PCL.lines.material.uniforms[k]) PCL.lines.material.uniforms[k].value=v; };
-  const lags = m==='TRAIL' ? [0,100,200,300,400,500,650] : (m==='FLOW' ? [0,100,300,500] : [0]);
-  const alphas = m==='TRAIL' ? [1,0.8,0.62,0.45,0.3,0.18,0.08] : (m==='FLOW' ? [1,0.7,0.4,0.1] : [1]);
+  let lags = m==='TRAIL' ? [0,100,200,300,400,500,650] : (m==='FLOW' ? [0,100,300,500] : [0]);
+  let alphas = m==='TRAIL' ? [1,0.8,0.62,0.45,0.3,0.18,0.08] : (m==='FLOW' ? [1,0.7,0.4,0.1] : [1]);
+  const tq=PCL.trailQ||'HIGH'; if(tq==='LOW'){ lags=lags.slice(0,1); alphas=alphas.slice(0,1); } else if(tq==='MEDIUM'){ lags=lags.slice(0,2); alphas=alphas.slice(0,2); }   // AI: trail quality
   PCL.lagsMs=lags; PCL.passes.forEach((p,i)=>{ p.visible = i<lags.length && PCL.on; p.material.uniforms.uAlpha.value = alphas[i]||0; p.material.depthWrite = (m==='PURE' && i===0); });
   set('uSoft', m==='PURE' ? 0 : 1); set('uSharp', m==='SOFT'||m==='DENSITY' ? 3.2 : m==='VOLUME' ? 2.6 : 4.0); set('uGlow', m==='PURE' ? 0 : m==='DENSITY' ? 0.25 : 0.15);
   set('uSizeNear', m==='PURE' ? 1.0 : m==='LIDAR' ? 1.0 : 1.5); set('uSizeFar', m==='PURE' ? 2.0 : m==='LIDAR' ? 1.8 : m==='DENSITY' ? 3.0 : 2.6);
@@ -4392,7 +4395,8 @@ function pclApplyMode(){
   set('uLidar', m==='LIDAR' ? 1 : 0); set('uPersist', m==='TRAIL' ? 3.5 : m==='FLOW' ? 2.5 : m==='LIDAR' ? 1.0 : 1.5);
   const zm = m==='VOLUME' ? (PCL.zmode==='stay' ? 2 : 1) : (PCL.zmode==='density' ? 1 : PCL.zmode==='stay' ? 2 : 0); set('uZMode', zm); set('uZScale', PCL.zScale);
   set('uColorMode', {density:0, speed:1, stay:2, direction:3}[PCL.color] ?? 0);
-  PCL.lines.visible = PCL.on && (m==='FLOW' || m==='TRAIL');
+  PCL.lines.visible = PCL.on && (m==='FLOW' || m==='TRAIL') && (PCL.trailQ||'HIGH')!=='LOW';
+  if((PCL.softQ||'HIGH')==='LOW'){ set('uGlow', 0); set('uSharp', 4.5); }   // AI: soft point quality
   PCL.heat = (m==='DENSITY'); if(typeof HEATV!=='undefined' && HEATV.uni){ HEATV.uni.uOpacity.value = PCL.heat ? 0.32 : 0.82; }
   if(typeof setHeatV==='function'){ if(PCL.heat && !HEATV.on){ setHeatV(true); PCL.heatAuto=true; } else if(!PCL.heat && PCL.heatAuto){ setHeatV(false); PCL.heatAuto=false; } }
   if(typeof fineCloud!=='undefined'){ fineCloud.userData.lidar = (m==='LIDAR'); }
@@ -4423,7 +4427,7 @@ function pclAlive(now){   /* 現在時刻に生きている線分数（K の基�
   for(let i=0;i<PCL.count;i++){ if(t>=T[i*2]-0.2 && t<=T[i*2+1]+per) n++; } PCL.alive=n; return n;
 }
 function pclChooseK(now){
-  const lod=pclLod(); PCL.lod=lod; const target=Math.min(PCL.budget.cur, PCL.lodTarget[lod]); const alive=Math.max(1, pclAlive(now));
+  const lod=pclLod(); PCL.lod=lod; const target=Math.min(PCL.budget.cur, PCL.lodTarget[lod], PCL.aiTarget||Infinity); const alive=Math.max(1, pclAlive(now));   // AI の LOD 判断は上限として効く
   let K = PCL.count ? Math.max(1, Math.min(PCL.KMAX, Math.floor(target/alive))) : 1;
   PCL.K=K; const kEff = PCL.moving ? Math.max(1, Math.round(K*0.25)) : K;
   PCL.kEff += (kEff-PCL.kEff)*0.4; if(Math.abs(kEff-PCL.kEff)<0.6) PCL.kEff=kEff;
@@ -4504,7 +4508,7 @@ function pclSelect(x, z, r){
 /* ---------- ピック（十分に近いときだけ 1 点単位の hover） ---------- */
 const _pclV=new THREE.Vector3();
 function pclHover(e){
-  PCL.pick = PCL.on && ctrl.sph.radius < 400 && PCL.count>0; if(!PCL.pick) return false;
+  PCL.pick = PCL.on && ctrl.sph.radius < 400 && PCL.count>0 && PCL.pickAllowed!==false; if(!PCL.pick) return false;
   const r=el.getBoundingClientRect(); const mx=e.clientX-r.left, my=e.clientY-r.top; const t=timeState.min; let best=-1, bd=100;
   const P0=PCL.aP0, P1=PCL.aP1, T=PCL.aT;
   for(let i=0;i<PCL.count;i++){ const t0=T[i*2], t1=T[i*2+1]; if(t<t0-0.6||t>t1+0.6) continue; const f=Math.max(0,Math.min(1,(t-t0)/Math.max(1e-3,t1-t0)));
@@ -4600,20 +4604,276 @@ function pclSec(){
 }
 function bindPcl(){
   document.querySelectorAll('[data-pcl-on]').forEach(b=> b.onclick=()=> setPclOn(!PCL.on));
-  document.querySelectorAll('[data-pcl-mode]').forEach(b=> b.onclick=()=> setPclMode(b.dataset.pclMode));
+  document.querySelectorAll('[data-pcl-mode]').forEach(b=> b.onclick=()=>{ if(window.twinAi) twinAi.user.viz=true; setPclMode(b.dataset.pclMode); });
   document.querySelectorAll('[data-pcl-color]').forEach(b=> b.onclick=()=> setPclColor(b.dataset.pclColor));
   document.querySelectorAll('[data-pcl-zmode]').forEach(b=> b.onclick=()=> setPclZ(b.dataset.pclZmode));
   document.querySelectorAll('[data-pcl-auto]').forEach(b=> b.onclick=()=>{ PCL.budget.auto=!PCL.budget.auto; renderPanel(); });
   document.querySelectorAll('[data-pcl-debug]').forEach(b=> b.onclick=()=>{ pclDebug(!PCL.debug); renderPanel(); });
   document.querySelectorAll('[data-pcl-bench]').forEach(b=> b.onclick=()=>{ pclBench(); });
   document.querySelectorAll('[data-pcl-clearsel]').forEach(b=> b.onclick=()=> pclSelect(null));
-  const r=document.getElementById('pcl-b'); if(r) r.oninput=e=>{ PCL.budget.cur=+e.target.value; PCL.budget.auto=false; document.getElementById('pcl-b-v').value=fmt(PCL.budget.cur); };
+  const r=document.getElementById('pcl-b'); if(r) r.oninput=e=>{ if(window.twinAi) twinAi.user.budget=true; PCL.budget.cur=+e.target.value; PCL.budget.auto=false; document.getElementById('pcl-b-v').value=fmt(PCL.budget.cur); };
   const f=document.getElementById('pcl-las'); if(f) f.onchange=e=>{ const file=e.target.files[0]; if(!file) return; file.arrayBuffer().then(b=>{ try{ pclLoadLAS(b); }catch(x){ toast('LAS 読込エラー: '+x.message, 4000); } renderPanel(); }); };
 }
 addEventListener('keydown', e=>{ if(e.key==='`' && !e.target.closest('input,textarea,select')){ pclDebug(!PCL.debug); } if(e.key==='Escape' && PCL.sel) pclSelect(null); });
 if(/[?&]debug=1/.test(location.search)) pclDebug(true);
 if(/[?&]bench=1/.test(location.search)) setTimeout(()=>pclBench(), 9000);
 window.twinPcl = PCL; PCL.hover = pclHover; PCL.bench_run = pclBench; PCL.select = pclSelect; PCL.setMode = setPclMode; PCL.loadLAS = pclLoadLAS;
+
+/* ================= ◆ 点群ビューの高品質化（参照: XBUILD 宇都宮 拡張モジュール19 の表現） =================
+   ・建物ファサードを 2.6m × 2.0m で面サンプリング（高さで lo→hi に着色、固定 seed の微小ジッタ）
+   ・中間帯（遠方）建物は輪郭点（低密度）、公園・森・水面・堀は面内グリッド
+   ・LiDAR 風スキャンスイープ（中心＝姫路城から広がるリングが通過した点を一瞬明るく）
+   ・距離減衰つき丸点シェーダ（加算合成、1〜7px）、青いグラデーション背景（#020a16 → #062c4e → #1272ac）
+   既存の DSM 実測点群（REAL.pc）も同じシェーダに載せ替える。追加点は実測ではない（建物形状からの補完） */
+const PCV = { sweep:true, size:1.0, built:false, mats:[], nFacade:0, nGround:0, nDsm:0, group:new THREE.Group() };
+PCV.group.visible=false; scene.add(PCV.group);
+function pcvMat(center, span){
+  const u={ uTime:{value:0}, uC:{value:new THREE.Vector2(center[0], center[1])}, uSweep:{value:1}, uSize:{value:1}, uSpan:{value:span} };
+  const m=new THREE.ShaderMaterial({ uniforms:u, vertexColors:true, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+    vertexShader:['varying vec3 vC; varying float vG; uniform float uTime,uSweep,uSize,uSpan; uniform vec2 uC;',
+      'void main(){ vC=color; vec4 mv=modelViewMatrix*vec4(position,1.0);',
+      ' float r=mod(uTime*0.11,1.0)*uSpan; float d=distance(position.xz,uC);',
+      ' vG=uSweep*exp(-abs(d-r)/(uSpan*0.02));',
+      ' gl_PointSize=clamp(uSize*(1.6+2.2*vG)*(420.0/-mv.z)*3.0,1.0,7.0); gl_Position=projectionMatrix*mv; }'].join('\n'),
+    fragmentShader:['varying vec3 vC; varying float vG; void main(){ vec2 p=gl_PointCoord-0.5; if(dot(p,p)>0.25) discard;',
+      ' gl_FragColor=vec4(vC*(0.55+1.3*vG), 0.75); }'].join('\n') });
+  PCV.mats.push(m); return m;
+}
+function pcvPoints(pos, col, mat){ const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col,3)); const p=new THREE.Points(g, mat); p.frustumCulled=false; return p; }
+function pcvInPoly(x, y, poly){ let c=false; for(let i=0, j=poly.length-1; i<poly.length; j=i++){ const xi=poly[i][0], yi=poly[i][1], xj=poly[j][0], yj=poly[j][1]; if(((yi>y)!==(yj>y)) && (x<(xj-xi)*(y-yi)/(yj-yi)+xi)) c=!c; } return c; }
+function pcvBuild(){
+  if(PCV.built) return; PCV.built=true;
+  const rnd=mulberry32(1993); const lo=new THREE.Color(0x1e5f8a), hi=new THREE.Color(0xaef3ff), gold=new THREE.Color(0xffd166), gw=new THREE.Color(0xfff6d6), tmp=new THREE.Color();
+  const pos=[], col=[]; const budget=(window.TWIN_CONFIG&&TWIN_CONFIG.pcView&&TWIN_CONFIG.pcView.budget)||900000; const R2=2600*2600;
+  /* 建物ファサード: PLATEAU LOD1（PL.ext, 計測高さ）を主に、OSM 建物（SCENE_DATA.buildings）は PLATEAU 外の補完。中心 2.6km は面サンプリング、外側は輪郭点 */
+  const plateau=(typeof PL!=='undefined' && PL.ext && PL.ext.length) ? PL.ext.filter(b=>!b.keep).map(b=>({p:b.p, h:b.h, k:b.c?'castle':'', src:'plateau'})) : [];
+  const osm = plateau.length ? SCENE_DATA.buildings.filter(b=>{ const q=b.p[0]; return (q[0]*q[0]+q[1]*q[1])>=R2; }) : SCENE_DATA.buildings;
+  for(const b of plateau.concat(osm)){
+    if(pos.length/3 > budget) break; const fp=b.p, hh=Math.max(3, b.h||8); const q=fp[0]; const near=(q[0]*q[0]+q[1]*q[1])<R2; const castle=b.k==='castle';
+    const step=castle?1.8:near?2.6:9, vstep=castle?1.5:near?2.0:4;
+    for(let i=0;i<fp.length;i++){ const a=fp[i], c=fp[(i+1)%fp.length]; const L=Math.hypot(c[0]-a[0], c[1]-a[1]); const n=Math.max(1, Math.floor(L/step));
+      for(let j=0;j<=n;j++){ const k=j/n, x=a[0]+(c[0]-a[0])*k, y=a[1]+(c[1]-a[1])*k; const base=TH(x,-y);
+        for(let h=0.6; h<hh; h+=vstep){ const r=h/hh; if(castle) tmp.copy(gold).lerp(gw, r); else tmp.copy(lo).lerp(hi, r);
+          pos.push(x+(rnd()-0.5)*0.4, base+h+(rnd()-0.5)*0.3, -y+(rnd()-0.5)*0.4); col.push(tmp.r, tmp.g, tmp.b); }
+        if(!near && !castle) break; } }
+  }
+  PCV.nFacade=pos.length/3;
+  /* 公園・森・水面・堀: 面内グリッド */
+  const gpos=[], gcol=[]; const luCol={park:0x2f8f6a, forest:0x226a52, water:0x1f5fb8, moat:0x2a78d6, edu:0x3a6d8a, retail:0x4a6d9a};
+  for(const key of Object.keys(luCol)){ const polys=SCENE_DATA.lu[key]||[]; tmp.setHex(luCol[key]); const gs = (key==='water'||key==='moat') ? 5 : 7;
+    for(const poly of polys){ if(gpos.length/3>400000) break; let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9; for(const p of poly){ if(p[0]<x0)x0=p[0]; if(p[0]>x1)x1=p[0]; if(p[1]<y0)y0=p[1]; if(p[1]>y1)y1=p[1]; }
+      if((x1-x0)*(y1-y0) > 4e6) continue;   // 巨大ポリゴンは飛ばす
+      for(let x=x0; x<=x1; x+=gs) for(let y=y0; y<=y1; y+=gs){ const jx=x+(rnd()-0.5)*gs*0.6, jy=y+(rnd()-0.5)*gs*0.6; if(!pcvInPoly(jx,jy,poly)) continue; const lift=(key==='forest')?4+rnd()*6:(key==='park')?0.6+rnd()*1.2:0.25;
+        gpos.push(jx, TH(jx,-jy)+lift, -jy); const k=(key==='forest'||key==='park')?0.7+rnd()*0.3:0.8+rnd()*0.2; gcol.push(tmp.r*k, tmp.g*k, tmp.b*k); } } }
+  PCV.nGround=gpos.length/3;
+  const mat=pcvMat([CASTLE.x, CASTLE.z], 3600);
+  PCV.group.add(pcvPoints(pos, col, mat)); PCV.group.add(pcvPoints(gpos, gcol, mat));
+  /* 既存の DSM 点群（REAL.pc）とレイヤー補完点も同じスイープ材質へ */
+  pcGroup.children.forEach(p=>{ if(p.isPoints && p.geometry.getAttribute('color')){ p.userData.pcvOrig=p.material; p.material=pcvMat([CASTLE.x, CASTLE.z], 3600); PCV.nDsm += p.geometry.getAttribute('position').count; } });
+}
+/* 既存 buildPC / setPCMode を拡張 */
+const _pcvBaseSetPC = setPCMode;
+setPCMode = function(on){
+  _pcvBaseSetPC(on);
+  if(on){ if(!PCV.built) pcvBuild(); PCV.group.visible=true; wrap.classList.add('pc-grad'); pcvHideSolids(true);
+    if(window.twinPcl && twinPcl.mode!=='LIDAR'){ PCV.prevPclMode=twinPcl.mode; twinPcl.mode='LIDAR'; pclApplyMode(); } }
+  else { PCV.group.visible=false; pcvHideSolids(false); if(window.twinPcl && PCV.prevPclMode){ twinPcl.mode=PCV.prevPclMode; PCV.prevPclMode=null; pclApplyMode(); } }
+  renderPanel();
+};
+/* 点群ビューでは PLATEAU の面（LOD1/LOD2）・土地利用面・道路面・補完ディテールを隠し、点だけにする（参照表現） */
+function pcvHideSolids(on){
+  if(typeof PL!=='undefined'){ PL.group.visible=!on; PL.lu.visible=!on && LAYER_STATE.plu; PL.road.visible=!on && LAYER_STATE.proad; }
+  if(typeof urbanDetail!=='undefined') urbanDetail.visible=!on && level!=='wide';
+  if(!on && typeof syncRefinement==='function') syncRefinement();
+}
+function pcvTick(now){ if(!pcMode) return; if(typeof PL!=='undefined') PL.group.visible=false; if(typeof urbanDetail!=='undefined') urbanDetail.visible=false; PCV.mats.forEach(m=>{ m.uniforms.uTime.value=now/1000; m.uniforms.uSweep.value=PCV.sweep?1:0; m.uniforms.uSize.value=PCV.size; }); }
+function pcvSec(){
+  if(!pcMode) return '';
+  return `<div class="sec" id="pcv-sec"><div class="sec-t"><b>◆ 点群ビュー</b> — 高密度点群${PCV.built?`（ファサード ${fmt(PCV.nFacade)} 点・地表 ${fmt(PCV.nGround)} 点${PCV.nDsm?`・DSM ${fmt(PCV.nDsm)} 点`:''}）`:''}</div>
+    <div class="row-btns"><button class="chip ${PCV.sweep?'active':''}" id="pcv-sweep">スキャンスイープ</button></div>
+    <div class="studio-label" style="margin:6px 0 4px">点サイズ <output id="pcv-sz">${PCV.size.toFixed(1)}</output></div><input type="range" id="pcv-size" min="0.5" max="2.5" step="0.1" value="${PCV.size}" style="width:100%">
+    <div class="hint" style="margin-top:6px">建物ファサードを 2.6m×2.0m で面サンプリング（高さで着色、姫路城は金）、外周は輪郭点、公園・森・水面・堀は面内グリッド。兵庫県 DSM の実測点群は同じ材質で表示。スイープは LiDAR 走査の演出（実測ではありません）。人流粒子は LIDAR モードに切替。</div></div>`;
+}
+function bindPcv(){ const s=document.getElementById('pcv-sweep'); if(s) s.onclick=()=>{ PCV.sweep=!PCV.sweep; renderPanel(); }; const r=document.getElementById('pcv-size'); if(r) r.oninput=()=>{ PCV.size=+r.value; document.getElementById('pcv-sz').value=PCV.size.toFixed(1); }; }
+window.twinPcv = PCV;
+
+/* ================= Jev AI Decision Layer — フロント側クライアント / Digital Twin State Manager =================
+   Frontend → Backend API（/api/ai/*）→ Jev Adapter → Jev。ブラウザは Jev を直接呼ばず、API Key も持たない。
+   ・Urban State（集約値のみ: camera / rendering / area / mobility / history / analysis）を作り、イベント駆動で /api/ai/evaluate に送る
+     （毎フレーム呼ばない。都市全体 2.5〜10 秒、Attention 8 秒以上、Visualization はカメラ停止時、LOD は大きな状態変化時）
+   ・優先順位 USER > AI > DEFAULT。ユーザーが表現・Budget を手で選んだら AI は上書きしない（「AI に任せる」で戻す）
+   ・Point Budget は progressive refinement（2 秒ごとに 1 段。移動中は即時に下げる）
+   ・API が落ちていても（OFFLINE）既存のローカル挙動（pointcloud.js の LOD / Budget）で動き続ける */
+const AI = {
+  enabled:true, status:'OFFLINE', bundle:null, attention:[], lastEval:0, lastAttention:0, inflight:false, err:'', log:[], reqCount:0, cacheHits:0, fallbacks:0,
+  follow:'suggest',                                   // off | suggest | auto
+  user:{viz:false, budget:false}, dev:false,
+  budgetSteps:[100000,200000,350000,500000,750000,1000000], budgetTarget:null, lastBudgetStep:0,
+  trig:{cam:null, lod:null, t:-1e9, sel:null, dens:0, fpsBand:'', dbWin:'', first:true}, minIntervalMs:2500, maxIntervalMs:10000, attentionIntervalMs:8000,
+  hist:[], binHist:new Map(), lastFollowAt:0, banner:null, applied:{viz:null, budget:null, lod:null, pc:null}, lastUserInput:0, statusFetched:0, serverStatus:null
+};
+const AI_VIS_TO_MODE = { POINTS:'point', HEATMAP:'heat', GRID:'grid', HEXAGON:'hex', FLOW:'flow', TRIPS:'trips', CONTOUR:'contour', VOLUME:'point' };
+const AI_LOD_TARGET = { LOD0:30000, LOD1:150000, LOD2:500000, LOD3:1000000, LOD4:1000000 };
+function aiBase(){ return (typeof dbBase==='function') ? dbBase() : 'http://localhost:8000'; }
+function aiMeanStd(arr){ const n=arr.length; if(!n) return [null,null]; const m=arr.reduce((a,b)=>a+b,0)/n; const v=arr.reduce((a,b)=>a+(b-m)*(b-m),0)/n; return [m, Math.sqrt(v)]; }
+/* ---------- Urban State（個人情報・person_hash・生 GPS は含めない） ---------- */
+function aiBins(){
+  const G=100, bins=new Map();
+  for(const a of agents){ if(!segByFilter(a.seg)) continue; const i=Math.floor(a.cur.x/G), j=Math.floor(a.cur.z/G); const k=i*4096+j; let b=bins.get(k); if(!b){ b={i,j,n:0,spd:0,nm:0,stay:0,ns:0}; bins.set(k,b); }
+    b.n+=AG_SCALE; if(a.state==='move'){ b.spd+=a.sp/60; b.nm++; } if(a.tStop!=null){ b.stay+=timeState.min-a.tStop; b.ns++; } }
+  return bins;
+}
+function aiSimFeatures(){
+  const bins=aiBins(); let peak=0, sum=0, n=0; bins.forEach(b=>{ sum+=b.n; n++; if(b.n>peak) peak=b.n; });
+  const people=agents.length*AG_SCALE; const avgD = n ? (sum/n)/200 : 0; const peakD=Math.min(1, peak/200);
+  const h60=(typeof anaAt==='function')?anaAt(60):null, cur=ANA.hist[ANA.hist.length-1];
+  const inflow=(cur&&h60)?(cur.arr-h60.arr)*AG_SCALE:0, outflow=(cur&&h60)?(cur.dep-h60.dep)*AG_SCALE:0;
+  let staySum=0, stayN=0; for(const a of agents){ if(a.tStop!=null){ staySum+=timeState.min-a.tStop; stayN++; } }
+  const area={meshCount:n, peopleCount:people, avgDensity:+avgD.toFixed(4), peakDensity:+peakD.toFixed(4)};
+  const mobility={avgSpeed:+(ANA.speed||0).toFixed(3), avgStayMinutes:+(stayN?staySum/stayN:0).toFixed(1), inflow, outflow, movementRatio:+(agents.length?STATS.moving/agents.length:0).toFixed(3), stayRatio:+(agents.length?1-STATS.moving/agents.length:0).toFixed(3)};
+  /* 履歴（このセッションで観測した値の平均・標準偏差） */
+  AI.hist.push({people, dens:avgD, spd:mobility.avgSpeed, stay:mobility.avgStayMinutes, inflow, outflow}); if(AI.hist.length>120) AI.hist.shift();
+  const H={}; if(AI.hist.length>=6){ const g=k=>aiMeanStd(AI.hist.map(h=>h[k])); const [pa,ps]=g('people'), [da,ds]=g('dens'), [sa,ss]=g('spd'), [ta,ts]=g('stay'), [ia,is]=g('inflow'), [oa,os]=g('outflow');
+    Object.assign(H,{buckets:AI.hist.length, peopleAvg:pa, peopleStd:ps, densityAvg:da, densityStd:ds, speedAvg:sa, speedStd:ss, stayAvg:ta, stayStd:ts, inflowAvg:ia, inflowStd:is, outflowAvg:oa, outflowStd:os}); }
+  /* Attention 候補: 人数上位 30 セル（履歴は per-bin の移動平均） */
+  const cands=[...bins.values()].sort((a,b)=>b.n-a.n).slice(0,30).map(b=>{ const cx=(b.i+0.5)*100, cz=(b.j+0.5)*100; const ll=toLL(cx,cz); const key=b.i+','+b.j; let bh=AI.binHist.get(key); if(!bh){ bh=[]; AI.binHist.set(key,bh); } bh.push(b.n); if(bh.length>60) bh.shift(); const [pa,ps]=aiMeanStd(bh);
+    return {meshId:'sim100:'+b.i+':'+b.j, name:(typeof nearPOI==='function' && nearPOI(cx,cz,160))||('G100-'+b.i+':'+b.j), lon:ll.lon, lat:ll.lat, features:{people:b.n, density:Math.min(1.5,b.n/200), speed:b.nm?b.spd/b.nm:0, stay:b.ns?b.stay/b.ns:0, inflow:0, outflow:0}, hist:{peopleAvg:pa, peopleStd:ps, densityAvg:pa/200, speedAvg:b.nm?b.spd/b.nm:0, stayAvg:b.ns?b.stay/b.ns:0}}; });
+  return {area, mobility, history:H, candidates:cands};
+}
+function aiBuildState(){
+  const P=window.twinPcl, db=(window.twinDb && twinDb.on && twinDb.health);
+  const st={ timestamp:new Date().toISOString(), simTime:(typeof clockStr==='function')?clockStr(timeState.min):null,
+    camera:{height:+ctrl.sph.radius.toFixed(0), moving:!!(P&&P.moving), pitch:+ctrl.sph.phi.toFixed(2)},
+    rendering:{fps:+((typeof PERF!=='undefined'?PERF.fps:60).toFixed(1)), gpuMs:P&&P.gpu.ms?+P.gpu.ms.toFixed(1):null, visiblePoints:P?P.stats.visible:0, loadedPoints:P?P.count:0, memoryMb:performance.memory?+(performance.memory.usedJSHeapSize/1048576).toFixed(0):null, latencyMs:(db && twinDb.stat.points)?twinDb.stat.points.ms:null},
+    analysis:{mode:(typeof FLOWVIS!=='undefined')?FLOWVIS.mode:'point', pcMode:P?P.mode:null, userOverride:AI.user.viz, level} };
+  let cands=null;
+  if(db){ st.source=twinDb.source; st.bbox=dbViewBBox(1.6); st.t=dbIso(timeState.min); }
+  else { const f=aiSimFeatures(); st.area=f.area; st.mobility=f.mobility; if(Object.keys(f.history).length) st.history=f.history; cands=f.candidates; st.source='sim'; }
+  return {state:st, candidates:cands, bbox:st.bbox, t:st.t, source:st.source};
+}
+/* ---------- State Change Trigger（この条件のときだけ再評価。それ以外は cache / 前回の判断） ---------- */
+function aiFpsBand(f){ return f<25?'critical':f<30?'low':f>55?'high':'mid'; }
+function aiShouldEval(now){
+  const T=AI.trig; const dt=now-AI.lastEval; if(dt<AI.minIntervalMs) return false;
+  const P=window.twinPcl; const cam={x:ctrl.target.x, z:ctrl.target.z, r:ctrl.sph.radius}; const reasons=[];
+  if(T.first){ reasons.push('first'); }
+  if(T.cam && !(P&&P.moving)){ const d=Math.hypot(cam.x-T.cam.x, cam.z-T.cam.z); if(d>T.cam.r*0.35) reasons.push('camera moved'); const rr=cam.r/T.cam.r; if(rr>1.35||rr<0.74) reasons.push('zoom'); }
+  if(P && T.lod!==null && P.lod!==T.lod) reasons.push('lod crossed');
+  if(Math.abs(timeState.min-T.t)>=5) reasons.push('time');
+  const selKey=P&&P.sel?`${P.sel.x.toFixed(0)},${P.sel.z.toFixed(0)}`:''; if(selKey!==T.sel) reasons.push('selection');
+  const fb=aiFpsBand(typeof PERF!=='undefined'?PERF.fps:60); if(T.fpsBand && fb!==T.fpsBand) reasons.push('fps band');
+  const dw=P&&P.dbWin?`${P.dbWin.t0}|${P.dbWin.bb}|${P.dbWin.lod}`:''; if(dw!==T.dbWin) reasons.push('new data');
+  if(dt>AI.maxIntervalMs && timeState.playing) reasons.push('periodic');
+  if(!reasons.length) return false;
+  if(P&&P.moving && !reasons.includes('fps band')) return false;   // カメラ移動中は評価しない（停止後に）
+  T.cam=cam; T.lod=P?P.lod:null; T.t=timeState.min; T.sel=selKey; T.fpsBand=fb; T.dbWin=dw; T.first=false; AI.lastReasons=reasons; return true;
+}
+/* ---------- 評価（1 リクエストで複数 Question をまとめる） ---------- */
+async function aiEvaluate(now){
+  if(AI.inflight) return; AI.inflight=true; AI.lastEval=now;
+  const req=aiBuildState(); const qs=['congestion','congestionScore','anomaly','lod','pointBudget','visualization','pointCloud']; const withAtt = now-AI.lastAttention>=AI.attentionIntervalMs; if(withAtt) qs.push('attention');
+  const body={state:req.state, questions:qs, candidates:req.candidates||undefined, bbox:req.bbox, t:req.t, source:req.source, mode:AI.dev?'both':'auto'};
+  const t0=performance.now();
+  try{
+    const ctrlr=new AbortController(); const timer=setTimeout(()=>ctrlr.abort(), 2500);
+    const r=await fetch(aiBase()+'/api/ai/evaluate', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body), signal:ctrlr.signal}); clearTimeout(timer);
+    if(!r.ok) throw new Error(r.status+' '+r.statusText);
+    const b=await r.json(); b.clientLatencyMs=Math.round(performance.now()-t0); AI.bundle=b; AI.err=''; AI.reqCount++; if(b.meta.cacheHit) AI.cacheHits++; if(b.meta.source==='local') AI.fallbacks++;
+    AI.status = b.meta.jevStatus==='mock' ? 'MOCK' : b.meta.jevStatus==='connected' ? 'CONNECTED' : b.meta.jevStatus==='disabled' ? 'DISABLED' : 'FALLBACK';
+    if(withAtt){ AI.attention=b.attention||[]; AI.lastAttention=now; }
+    AI.log.push({t:Date.now(), hash:b.meta.stateHash, latency:b.clientLatencyMs, server:b.meta.latencyMs, source:b.meta.source, cache:!!b.meta.cacheHit, reasons:AI.lastReasons, decisions:Object.fromEntries(Object.entries(b.decisions).map(([q,d])=>[q,{v:d.value,c:d.confidence,s:d.source,alt:d.alt}]))}); if(AI.log.length>50) AI.log.shift();
+    aiApply(b, now);
+  }catch(e){ AI.err=e.name==='AbortError'?'timeout':e.message; AI.status='OFFLINE'; AI.budgetTarget=null; if(window.twinPcl){ twinPcl.aiTarget=null; twinPcl.budget.auto=true; } }
+  finally{ AI.inflight=false; renderPanel(); }
+}
+/* ---------- Digital Twin State Manager: 判断を表示状態へ（USER > AI > DEFAULT） ---------- */
+function aiApply(b, now){
+  const P=window.twinPcl; const d=b.decisions||{};
+  /* LOD / Point Budget（progressive refinement は aiTick で） */
+  if(d.pointBudget && !AI.user.budget){ AI.budgetTarget=+d.pointBudget.value; AI.applied.budget=d.pointBudget.value; }
+  if(d.lod && P){ P.aiTarget=AI_LOD_TARGET[d.lod.value]||null; AI.applied.lod=d.lod.value; }
+  /* Point Cloud AI Control */
+  if(d.pointCloud && P){ const v=d.pointCloud.value||{}; P.trailQ=v.trailQuality||'HIGH'; P.softQ=v.softPointQuality||'HIGH'; P.pickAllowed=(v.pickable!==false); P.heatAI=!!v.heatmapOverlay; AI.applied.pc=v; if(typeof pclApplyMode==='function') pclApplyMode(); }
+  /* Visualization Router（USER 優先。カメラ停止時のみ。Primary + Secondary） */
+  if(d.visualization && !AI.user.viz && !(P&&P.moving) && level!=='wide'){
+    const prim=d.visualization.value, sec=d.visualization.meta&&d.visualization.meta.secondary; const key=prim+'+'+(sec||'');
+    if(AI.applied.viz!==key && d.visualization.confidence>=0.6){
+      const mode=AI_VIS_TO_MODE[prim]||'point'; if(typeof FLOWVIS!=='undefined' && FLOWVIS.mode!==mode){ setFlowMode(mode); }
+      if(P){ if(prim==='VOLUME' && P.mode!=='VOLUME') setPclMode('VOLUME'); else if(prim==='POINTS' && (P.mode==='VOLUME'||P.mode==='DENSITY')) setPclMode('SOFT'); }
+      if(typeof setHeatV==='function' && typeof HEATV!=='undefined'){ if(sec==='HEATMAP' && mode!=='heat'){ if(!HEATV.on) setHeatV(true); if(HEATV.uni) HEATV.uni.uOpacity.value=0.32; AI.heatAuto=true; } else if(AI.heatAuto && mode!=='heat'){ setHeatV(false); AI.heatAuto=false; } }
+      AI.applied.viz=key; if(typeof toast==='function') toast(`AI: 表現を ${prim}${sec?' + '+sec:''} に切替（${d.visualization.source}, 確信度 ${(d.visualization.confidence*100).toFixed(0)}%）。手動で選ぶとユーザー選択が優先されます`, 3600);
+    }
+  }
+  /* Attention → AI FOLLOW */
+  const top=AI.attention[0];
+  if(top && top.score>=AI.followScore() && AI.follow!=='off'){
+    if(AI.follow==='auto' && now-AI.lastFollowAt>20000 && now-AI.lastUserInput>5000 && !(P&&P.moving)){ aiFocus(top); AI.lastFollowAt=now; }
+    else if(AI.follow==='suggest' && (!AI.banner || AI.banner.mesh!==top.mesh_id)){ AI.banner={mesh:top.mesh_id, name:top.name, score:top.score, at:now}; aiBanner(true); }
+  } else if(AI.banner && (!top || top.score<AI.followScore())){ AI.banner=null; aiBanner(false); }
+}
+AI.followScore=()=> 85;
+function aiFocus(a){ const p=toXZ(a.lat, a.lon); flyTo(new THREE.Vector3(p.x, TH(p.x,p.z), p.z), Math.min(ctrl.sph.radius, 700), 1.0, ctrl.sph.theta, 1400); if(typeof pclSelect==='function' && window.twinPcl && twinPcl.on) pclSelect(p.x, p.z, 120); if(typeof toast==='function') toast(`AI ATTENTION: ${a.name}（${a.kind}, ${a.score.toFixed(0)}）へフォーカス`, 2800); }
+function aiBanner(on){
+  let el=document.getElementById('ai-banner'); if(!el){ el=document.createElement('div'); el.id='ai-banner'; document.body.appendChild(el); el.onclick=()=>{ const a=AI.attention.find(x=>x.mesh_id===(AI.banner&&AI.banner.mesh)); if(a) aiFocus(a); AI.banner=null; aiBanner(false); }; }
+  el.style.display = on ? 'block' : 'none'; if(on && AI.banner) el.innerHTML=`<b>High-priority flow detected</b> — ${AI.banner.name}（score ${AI.banner.score.toFixed(0)}）<span>クリックでフォーカス</span>`;
+}
+/* ---------- 毎フレーム（軽量）: progressive budget、トリガー判定 ---------- */
+function aiTick(now){
+  if(!AI.enabled) return; const P=window.twinPcl;
+  if(P && AI.budgetTarget && !AI.user.budget && AI.status!=='OFFLINE'){
+    P.budget.auto=false; const steps=AI.budgetSteps; const cur=P.budget.cur; const ci=steps.reduce((bi,s,i)=>Math.abs(s-cur)<Math.abs(steps[bi]-cur)?i:bi,0); const ti=steps.indexOf(AI.budgetTarget);
+    if(ti>=0 && ti!==ci){ const down = ti<ci; if(down || now-AI.lastBudgetStep>2000){ P.budget.cur = steps[ci+(down?-1:1)]; AI.lastBudgetStep=now; } }
+    if(P.moving && P.budget.cur>350000){ P.budget.cur=350000; }   // 移動中は即時に下げる
+  }
+  if(now-AI.statusFetched>30000){ AI.statusFetched=now; fetch(aiBase()+'/api/ai/status',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{ if(j){ AI.serverStatus=j; if(AI.status==='OFFLINE') AI.status=j.label==='DISABLED'?'DISABLED':'FALLBACK'; } }).catch(()=>{}); }
+  if(aiShouldEval(now)) aiEvaluate(now);
+}
+/* ---------- パネル: AI STATE（コンパクト）/ AI ATTENTION / Developer ---------- */
+function aiSec(){
+  const b=AI.bundle, d=b?b.decisions:{}; const g=q=>d[q]||null; const cls={CONNECTED:'ok',MOCK:'ok',FALLBACK:'warn',DISABLED:'sub',OFFLINE:'warn'}[AI.status]||'sub';
+  const an=g('anomaly'); const lvl=an&&an.meta&&an.meta.level?an.meta.level:(an?(an.value<0.5?'normal':an.value<0.7?'watch':an.value<0.85?'warning':'high'):'—');
+  const vis=g('visualization'); const visTxt=vis?`${vis.value}${vis.meta&&vis.meta.secondary?' + '+vis.meta.secondary:''}`:'—';
+  const conf=b?Math.min(...Object.values(d).map(x=>x.confidence)).toFixed(2):'—';
+  const contrib=b&&b.contributions?Object.entries(b.contributions).filter(([k,v])=>v.pct!=null).map(([k,v])=>`<span class="ai-c">${k} <b style="color:${v.pct>0?'#ff9b90':'#8fe3c9'}">${v.pct>0?'+':''}${v.pct}%</b></span>`).join(''):'';
+  const src=q=>{ const x=g(q); return x?`<small class="ai-src ${x.source.startsWith('jev')?'jev':x.source}">${x.source}</small>`:''; };
+  return `<div class="sec ai-sec"><div class="sec-t"><b>AI STATE</b> — Jev Decision Layer <span class="ai-st ${cls}">${AI.status}</span>${AI.inflight?' <span class="ai-spin">…</span>':''}</div>
+    <div class="ai-grid">
+      <span>Congestion</span><b>${g('congestion')?g('congestion').value:'—'} ${src('congestion')}</b>
+      <span>Score</span><b>${g('congestionScore')?'L'+g('congestionScore').value:'—'} ${src('congestionScore')}</b>
+      <span>Anomaly</span><b>${an?an.value.toFixed(2)+' <small>'+lvl+'</small>':'—'} ${src('anomaly')}</b>
+      <span>LOD</span><b>${g('lod')?g('lod').value:'—'} ${src('lod')}</b>
+      <span>Point Budget</span><b>${g('pointBudget')?fmt(g('pointBudget').value):'—'} ${src('pointBudget')}</b>
+      <span>Visualization</span><b>${visTxt} ${src('visualization')}</b>
+      <span>Confidence</span><b>${conf}</b>
+    </div>
+    ${contrib?`<div class="ai-contrib">${contrib}</div>`:''}
+    <div class="row-btns" style="margin-top:6px"><span class="hint" style="align-self:center">AI FOLLOW</span>${['off','suggest','auto'].map(f=>`<button class="chip ${AI.follow===f?'active':''}" data-ai-follow="${f}">${f==='off'?'OFF':f==='suggest'?'ON（提案）':'AUTO（自動移動）'}</button>`).join('')}${AI.user.viz||AI.user.budget?`<button class="chip active" data-ai-release="1">AI に任せる</button>`:''}<button class="chip ${AI.dev?'active':''}" data-ai-dev="1">Dev</button></div>
+    <div class="hint" style="margin-top:4px">${AI.status==='OFFLINE'?`API 未接続（${AI.err||'…'}）。ローカル LOD/Budget で動作中`:AI.status==='DISABLED'?'JEV_ENABLED=false: Local Rule Engine が判断（同じ型）':AI.status==='MOCK'?'Jev mock provider（Interface 検証用の決定論的応答）':AI.status==='FALLBACK'?'Jev 未接続/timeout → Local Rule Engine':'Jev 接続中'}${AI.user.viz?'・表現はユーザー選択を優先中':''}${b&&b.meta.safety&&b.meta.safety.length?'・<span style="color:#ffd166">safety: '+b.meta.safety.join(' / ')+'</span>':''}</div>
+    ${AI.dev?aiDevHTML():''}</div>`;
+}
+function aiAttentionSec(){
+  const rows=AI.attention.slice(0,5);
+  const ind=r=>({density:'Density',speed:'Speed',stay:'Stay',inflow:'Inflow',outflow:'Outflow'}[r.feature]||r.feature)+' '+(r.dir==='up'?'↑':'↓');
+  return `<div class="sec"><div class="sec-t"><b>AI ATTENTION</b> — 注目エリア Top 5${rows.length?` <small style="color:var(--sub)">${rows[0].source}</small>`:''}</div>
+    ${rows.length?rows.map(a=>`<div class="zone-row ai-att" data-ai-mesh="${a.mesh_id}" title="クリックでフォーカス"><div class="zn"><b style="color:var(--brex);font-family:var(--mono)">${String(a.rank).padStart(2,'0')}</b> ${a.name}<small>${a.kind}・${a.reasons.map(ind).join('・')||'—'}</small></div><div class="zv">${a.score.toFixed(0)}</div></div>`).join(''):'<div class="hint">評価待ち（DB モードは PostGIS の上位 30 メッシュ、シミュレーションは 100m ビン上位 30 を候補に評価）</div>'}
+    <div class="hint" style="margin-top:4px">score＝密度・履歴偏差（z）・速度低下・滞在増・流入急増の合成（Jev Score または Local）。理由は実データの変化率（生成文ではありません）</div></div>`;
+}
+function aiDevHTML(){
+  const s=AI.serverStatus; const t=s&&s.telemetry?s.telemetry:{}; const j=s&&s.jev?s.jev:{};
+  const ab=AI.log.slice(-8).reverse().map(l=>`<tr><td>${new Date(l.t).toLocaleTimeString()}</td><td>${l.latency}ms</td><td>${l.source}${l.cache?'*':''}</td>${['congestion','lod','visualization','pointBudget'].map(q=>{ const d=l.decisions[q]; if(!d) return '<td>—</td>'; const alt=d.alt?` / ${d.alt.source}:${typeof d.alt.value==='number'&&d.alt.value>1000?fmt(d.alt.value):d.alt.value}`:''; return `<td>${d.s.startsWith('jev')?'jev':d.s}:${typeof d.v==='number'&&d.v>1000?fmt(d.v):d.v}${alt}</td>`; }).join('')}</tr>`).join('');
+  return `<div class="ai-dev"><div class="sec-t">Developer — Jev latency ${j.lastLatencyMs!=null?j.lastLatencyMs+'ms':'—'} · requests ${t.requests||0} · jev calls ${t.jevCalls||0} · cache hits ${t.cacheHits||0} · fallbacks ${t.fallbacks||0} · client ${AI.reqCount} req / ${AI.cacheHits} cache · source ${AI.bundle?AI.bundle.meta.source:'—'} · hash ${AI.bundle?AI.bundle.meta.stateHash:'—'}</div>
+    <div class="tbl-wrap"><table class="db ai-ab"><thead><tr><th>time</th><th>lat</th><th>src</th><th>congestion</th><th>lod</th><th>viz</th><th>budget</th></tr></thead><tbody>${ab||'<tr><td colspan="7">—</td></tr>'}</tbody></table></div>
+    <div class="hint">A/B: 採用した判断 / もう一方（Jev ↔ Local）。Dev ON では mode=both で cache を使わず両方を評価。<button class="chip" data-ai-export="1">telemetry JSON</button></div></div>`;
+}
+function bindAi(){
+  document.querySelectorAll('[data-ai-follow]').forEach(b=> b.onclick=()=>{ AI.follow=b.dataset.aiFollow; if(AI.follow!=='suggest'){ AI.banner=null; aiBanner(false); } renderPanel(); });
+  document.querySelectorAll('[data-ai-release]').forEach(b=> b.onclick=()=>{ AI.user={viz:false, budget:false}; AI.applied.viz=null; renderPanel(); toast('表現・Budget の判断を AI に戻しました', 2200); });
+  document.querySelectorAll('[data-ai-dev]').forEach(b=> b.onclick=()=>{ AI.dev=!AI.dev; renderPanel(); });
+  document.querySelectorAll('[data-ai-mesh]').forEach(r=> r.onclick=()=>{ const a=AI.attention.find(x=>x.mesh_id===r.dataset.aiMesh); if(a) aiFocus(a); });
+  document.querySelectorAll('[data-ai-export]').forEach(b=> b.onclick=()=>{ const blob=new Blob([JSON.stringify({client:AI.log, server:AI.serverStatus}, null, 1)], {type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='jev_telemetry.json'; a.click(); });
+}
+addEventListener('pointerdown', ()=>{ AI.lastUserInput=performance.now(); });
+window.twinAi = AI; AI.evaluate = aiEvaluate; AI.build = aiBuildState; AI.focus = aiFocus;
 
 /* 初期化 */
 applyLayers();
