@@ -106,7 +106,7 @@ export const PROFILES: Record<string, InspectionProfile> = {
     jevTask: 'pcb_assembly_inspection',
     objectKey: 'circuit_board',
     attributeKey: 'component',
-    trigger: { kind: 'zone', rect: [0.25, 0.28, 0.32, 0.42], dwellSeconds: 1.5 },
+    trigger: { kind: 'zone', rect: [0.25, 0.35, 0.5, 0.45], dwellSeconds: 1.5 },
     mediaDir: 'pcb-assembly',
     detectorNote: '事前追跡（文字指定: circuit board）',
     triggerLabel: '検査ステーション',
