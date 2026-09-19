@@ -35,7 +35,7 @@ export default function App() {
   }, [controller])
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 p-2">
+    <div className="app flex h-full min-h-0 flex-col gap-2 p-2">
       {/* Top bar */}
       <header className="flex items-center gap-3">
         <div className="flex items-center gap-2 pr-2">

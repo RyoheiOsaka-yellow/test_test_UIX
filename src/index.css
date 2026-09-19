@@ -43,6 +43,15 @@ body {
   background-size: 24px 24px;
 }
 
+/* Desktop-first (1440×900+). Narrower viewports scroll the app horizontally inside #root
+   instead of breaking the grid. */
+#root {
+  overflow: auto;
+}
+.app {
+  min-width: 1280px;
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: #25313d transparent;

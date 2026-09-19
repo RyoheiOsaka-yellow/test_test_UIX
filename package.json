@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
-    "gen:detections": "node --experimental-strip-types scripts/generate-detections.mts"
+    "gen:detections": "node --experimental-strip-types scripts/generate-detections.mts",
+    "build:single": "npm run build && node scripts/build-single-html.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.470.0",

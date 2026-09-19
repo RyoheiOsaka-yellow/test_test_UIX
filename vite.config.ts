@@ -72,6 +72,7 @@ export default defineConfig(({ mode }) => {
         Boolean(env.TYPESAFE_API_KEY || process.env.TYPESAFE_API_KEY),
       ),
     },
+    base: './',
     server: { port: 5173, host: true },
   }
 })
