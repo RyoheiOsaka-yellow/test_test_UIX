@@ -161,6 +161,7 @@ function resetSim(){
   agents.length = 0; spawnAcc = 0; dayTotal = 0;
   STATS.arrived={in:0,dom:0,loc:0}; STATS.departed={}; STATS.byGate={}; STATS.atSpot={}; STATS.staying=0; STATS.castleEntered=0; STATS.dwellSum=0; STATS.dwellN=0; STATS.kaiyu=0;
   agentMesh.count = 0; trailMesh.count = 0;
+  if(typeof ANA!=='undefined'){ ANA.hist=[]; ANA.peak=0; ANA.peakT=DAY0; ANA.lastRec=-1e9; } if(typeof OD!=='undefined'){ OD.clear(); FLOWA.dirty=true; }
   trajReset();
   calcArrNorm();
 }

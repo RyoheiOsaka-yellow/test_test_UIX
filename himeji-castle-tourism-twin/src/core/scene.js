@@ -8,6 +8,7 @@
 const wrap = document.getElementById('canvas-wrap');
 const renderer = new THREE.WebGLRenderer({antialias: !/[?&]msaa=0/.test(location.search), alpha:true});   // ?msaa=0 で MSAA 無し（点群はシェーダ側 AA。POINT_CLOUD_PERFORMANCE.md）
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;   // フィルミックな階調（白飛び・黒つぶれを抑える）
 renderer.setSize(innerWidth, innerHeight);
 wrap.appendChild(renderer.domElement);
 
@@ -19,9 +20,9 @@ scene.fog = new THREE.Fog(BG_HEX, 9000, 26000);
 const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.5, 80000);
 camera.position.set(-500, 620, 620);
 
-const amb = new THREE.HemisphereLight(0xbdc8e8, 0x2a2c38, 0.85);
+const amb = new THREE.HemisphereLight(0xc8d4f0, 0x2a2c38, 1.0);
 scene.add(amb);
-const sun = new THREE.DirectionalLight(0xfff3d8, 1.1);
+const sun = new THREE.DirectionalLight(0xfff3d8, 1.35);
 sun.position.set(-600, 900, 400);
 scene.add(sun);
 
@@ -54,7 +55,7 @@ el.style.cursor = 'grab';el.style.touchAction='none';
    縦スクロール ＝ カーソル位置へズーム / 横スクロール ＝ 横に移動
    タッチ: 1本指 移動、2本指 ピンチズーム＋移動 */
 ctrl.minPhi = 0.008; ctrl.maxPhi = Math.PI/2 - 0.008;
-let primaryDragMode="rotate";   // 既定: 左ドラッグ＝地図を掴んで 3D 的に回す（横＝360 度・縦＝真上〜真横、掴んだ地点がカーソルに追従）。右ドラッグ／Shift＋ドラッグ／2 本指＝移動。ホイール＝ズーム、ダブルクリック＝フォーカス
+let primaryDragMode="pan";   // 既定: 左ドラッグ＝地図を掴んで引っ張る（慣性つき）。右ドラッグ／Shift＋ドラッグ／握って待ってから（⟳）ドラッグ＝回転・傾き（横＝360 度・縦＝真上〜真横）。ホイール＝カーソル位置へ滑らかにズーム、ダブルクリック＝フォーカス。矢印キー＝移動、Q/E＝回転、R/F＝傾き、+/-＝ズーム
 function startPrimaryDrag(x,y){if(primaryDragMode==="rotate")beginRotate(x,y);else startGrab(x,y);}
 function startSecondaryDrag(x,y){if(primaryDragMode==="rotate")startGrab(x,y);else beginRotate(x,y);}
 const _ray = new THREE.Raycaster(), _ndc = new THREE.Vector2(), _plane = new THREE.Plane(new THREE.Vector3(0,1,0), 0), _hit = new THREE.Vector3();
@@ -82,30 +83,38 @@ function pivotTo(clientX, clientY){
   clampTarget(); ctrl.apply();
 }
 /* 移動（掴んだ地面がカーソルに追従） */
-const grab = { on:false, pt:null, y:0 };
+const grab = { on:false, pt:null, y:0, vx:0, vz:0, lastT:0 };
+let panInertia = null;   // 引っ張って離したときの滑り（慣性）
 let legacyDragMode = 'orbit';
-function startGrab(x, y){ grab.y = ctrl.target.y; grab.pt = groundAt(x, y, grab.y); grab.on = true; ctrl.panning = true; ctrl.rotating = false; ctrl.px = x; ctrl.py = y; el.style.cursor = 'grabbing'; }
+function startGrab(x, y){ panInertia = null; zoomQ.k = 0; grab.vx = grab.vz = 0; grab.lastT = performance.now(); grab.y = ctrl.target.y; grab.pt = groundAt(x, y, grab.y); grab.on = true; ctrl.panning = true; ctrl.rotating = false; ctrl.px = x; ctrl.py = y; el.style.cursor = 'grabbing'; }
 function moveGrab(x, y){
   const p = grab.pt ? groundAt(x, y, grab.y) : null;
+  let mx=0, mz=0;
   if(p && grab.pt){ let dx=grab.pt.x - p.x, dz=grab.pt.z - p.z; const lim=ctrl.sph.radius*0.35, L=Math.hypot(dx,dz); if(L>lim){ dx*=lim/L; dz*=lim/L; }   // 地平線付近の暴走を抑える
-    ctrl.target.x += dx; ctrl.target.z += dz; }
+    mx=dx; mz=dz; }
   else {
     const dx = x-ctrl.px, dy = y-ctrl.py, s = ctrl.sph.radius*0.0013;
     const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd); fwd.y=0; fwd.normalize();
     const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0,1,0)).negate();
-    ctrl.target.addScaledVector(right, -dx*s).addScaledVector(fwd, dy*s);
+    mx = -right.x*dx*s + fwd.x*dy*s; mz = -right.z*dx*s + fwd.z*dy*s;
   }
+  ctrl.target.x += mx; ctrl.target.z += mz;
+  const now = performance.now(), dt = now-grab.lastT;
+  if(dt > 0){ const a = Math.min(1, dt/40); grab.vx = grab.vx*(1-a) + (mx/dt)*a; grab.vz = grab.vz*(1-a) + (mz/dt)*a; grab.lastT = now; }
   clampTarget(); ctrl.apply();
   if(grab.pt){ const q = groundAt(x, y, grab.y); if(q) grab.pt = q; }
   ctrl.px = x; ctrl.py = y;
 }
-function endGrab(){ grab.on = false; grab.pt = null; ctrl.panning = false; ctrl.rotating = false; el.style.cursor = 'grab'; }
+function endGrab(){
+  if(grab.on && performance.now()-grab.lastT < 90){ const v = Math.hypot(grab.vx, grab.vz); if(v > ctrl.sph.radius*0.00025) panInertia = { vx:grab.vx, vz:grab.vz, t:performance.now() }; }   // 勢いよく離した → 滑る
+  grab.on = false; grab.pt = null; ctrl.panning = false; ctrl.rotating = false; el.style.cursor = 'grab'; }
 /* 回転（掴んだ地点を軸に） */
 /* 地球儀を掴んで回す: 掴んだ地表の点が中心のまわりの円周上でカーソルに追従するように水平回転、縦ドラッグは傾き（真上〜真横）。離すと慣性で少し回り続ける */
 const ROT_SIGN = 1;
 const rot = { g0:null, a0:0, r0:0, vel:0, lastT:0, lastTh:0 };
 let inertia = null;
 function beginRotate(x, y){
+  panInertia = null; zoomQ.k = 0;
   grab.on = false; grab.pt = null; ctrl.panning = false; ctrl.rotating = true; ctrl.px = x; ctrl.py = y; el.style.cursor = 'grabbing'; inertia = null;
   rot.g0 = null; const g = groundAt(x, y, ctrl.target.y);
   if(g){ const r = Math.hypot(g.x-ctrl.target.x, g.z-ctrl.target.z); if(r > ctrl.sph.radius*0.06){ rot.g0 = g; rot.a0 = Math.atan2(g.z-ctrl.target.z, g.x-ctrl.target.x); rot.r0 = r; } }
@@ -151,7 +160,7 @@ function decideHold(x, y, t){
 el.addEventListener('contextmenu', e=>e.preventDefault());
 el.addEventListener('mousedown', e=>{
   if(!ctrl.enabled) return;
-  if(tween) tween = null;
+  if(tween) tween = null; panInertia = null; inertia = null;
   disarmHold();
   if(e.button===2 || e.button===1 || (e.button===0 && (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey))){ e.preventDefault(); startSecondaryDrag(e.clientX, e.clientY); }
   else if(e.button===0){ e.preventDefault(); startPrimaryDrag(e.clientX, e.clientY); if(primaryDragMode==='pan') armHold(e.clientX, e.clientY, e.timeStamp); }
@@ -183,13 +192,24 @@ el.addEventListener('wheel', e=>{
   }
   /* 横スクロール（トラックパッド2本指 横）＝ 360度回転 */
   if(Math.abs(e.deltaX) > Math.abs(e.deltaY)*1.2){ ctrl.sph.theta -= e.deltaX*0.003; ctrl.apply(); return; }
-  /* カーソル位置を中心にズーム */
-  const before = groundAt(e.clientX, e.clientY, ctrl.target.y);
-  ctrl.sph.radius *= (1 + Math.sign(e.deltaY)*0.09);
-  ctrl.apply();
-  const after = groundAt(e.clientX, e.clientY, ctrl.target.y);
-  if(before && after){ ctrl.target.x += before.x - after.x; ctrl.target.z += before.z - after.z; clampTarget(); ctrl.apply(); }
+  /* カーソル位置を中心にズーム（数フレームかけて滑らかに寄る。トラックパッドは細かい刻み、ホイールは 1 ノッチ ≈ ×1.1） */
+  panInertia = null;
+  const step = (e.deltaMode===1 ? e.deltaY*0.05 : e.deltaMode===2 ? e.deltaY*0.5 : e.deltaY*0.0022);
+  zoomQ.k += Math.max(-0.35, Math.min(0.35, Math.abs(step) < 0.03 ? Math.sign(step)*0.03 : step)); zoomQ.k = Math.max(-1.2, Math.min(1.2, zoomQ.k));
+  zoomQ.x = e.clientX; zoomQ.y = e.clientY; zoomQ.anchor = true;
 }, {passive:false});
+/* ズームの逐次適用（毎フレーム残量の一部を消化＝イージング。掴んだ地点がカーソル下に留まる） */
+const zoomQ = { k:0, x:0, y:0, anchor:true };
+function zoomStep(dt){
+  if(Math.abs(zoomQ.k) < 0.0005){ zoomQ.k = 0; return; }
+  const a = 1 - Math.exp(-dt/70); const d = zoomQ.k*a; zoomQ.k -= d;
+  const before = zoomQ.anchor ? groundAt(zoomQ.x, zoomQ.y, ctrl.target.y) : null;
+  ctrl.sph.radius *= Math.exp(d); ctrl.apply();
+  if(before){ const after = groundAt(zoomQ.x, zoomQ.y, ctrl.target.y); if(after){ ctrl.target.x += before.x - after.x; ctrl.target.z += before.z - after.z; clampTarget(); ctrl.apply(); } }
+  if(grab.on && grab.pt) grab.pt = groundAt(ctrl.px, ctrl.py, grab.y);
+}
+/* キーボード／ウィジェットからのズーム（画面中心を基準） */
+function zoomBy(k){ zoomQ.k = Math.max(-1.5, Math.min(1.5, zoomQ.k + k)); zoomQ.anchor = false; }
 /* タッチ */
 let touchD = 0, touchMid = null, touchAng = 0;
 el.addEventListener('touchstart', e=>{
@@ -239,6 +259,8 @@ function flyTo(target, radius, phi, theta, dur=1300, done){
 }
 function updateTween(now){
   if(inertia && !tween && !ctrl.rotating){ const dt = Math.min(50, now-inertia.t); inertia.t = now; ctrl.sph.theta += inertia.v*dt; inertia.v *= Math.exp(-dt/240); if(Math.abs(inertia.v) < 0.00002) inertia = null; ctrl.apply(); }
+  if(panInertia && !tween && !grab.on){ const dt = Math.min(50, now-panInertia.t); panInertia.t = now; ctrl.target.x += panInertia.vx*dt; ctrl.target.z += panInertia.vz*dt; const f = Math.exp(-dt/300); panInertia.vx *= f; panInertia.vz *= f; if(Math.hypot(panInertia.vx, panInertia.vz) < ctrl.sph.radius*0.00003) panInertia = null; clampTarget(); ctrl.apply(); }
+  if(!tween){ updateTween._z = updateTween._z||now; zoomStep(Math.min(120, now-updateTween._z)); } updateTween._z = now;
   if(!tween) return;
   let k = (now - tween.t0)/tween.dur;
   if(k>=1){ k=1; }
@@ -380,7 +402,7 @@ const LAYER_STATE = { lu:true, ped:true, poi:true, dots:true, hotel:true, rail:t
 let heatMode = 'off';  // off | all | in | dom
 
 const MAT = {
-  bldg: new THREE.MeshStandardMaterial({color:0x39415a, roughness:0.9, metalness:0.05}),
+  bldg: new THREE.MeshStandardMaterial({color:0x3e4762, roughness:0.82, metalness:0.06}),
   bldgNamed: new THREE.MeshStandardMaterial({color:0x4a5578, roughness:0.85}),
   castle: new THREE.MeshStandardMaterial({color:0xe9e4d6, roughness:0.55, metalness:0.1, emissive:0x3a2e12, emissiveIntensity:0.25}),
   castleWall: new THREE.MeshStandardMaterial({color:0x6d6a60, roughness:0.95}),

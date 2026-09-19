@@ -153,7 +153,7 @@ const mcard = document.getElementById('mcard');
 function meshClick(e){
   if(!MESH.on || !MESH.inst || !MESH.group.visible) return false;
   const hits = pick(e, [MESH.inst], false); if(!hits.length) return false;
-  const c = MESH.cells[hits[0].instanceId]; showMeshCard(c, e); if(typeof pclSelect==='function' && window.twinPcl && twinPcl.on) pclSelect(c.cx, c.cz, Math.max(c.w, c.d)*0.6); return true;
+  const c = MESH.cells[hits[0].instanceId]; if(!c||c.v<=0)return false; showMeshCard(c, e); if(typeof pclSelect==='function' && window.twinPcl && twinPcl.on) pclSelect(c.cx, c.cz, Math.max(c.w, c.d)*0.6); return true;
 }
 function showMeshCard(c, e){
   if(!mcard) return; if(c.db){ dbMeshCard(c, e); return; }
@@ -165,9 +165,9 @@ function showMeshCard(c, e){
   const top=o=>{ const e=Object.entries(o).sort((a,b)=>b[1]-a[1]); return e.length? e[0][0] : '—'; };
   const tot=Math.max(1,c.v);
   mcard.innerHTML = `<div class="bc-h"><b>${c.near||'メッシュ'}　<span style="color:var(--sub);font-weight:400">${c.code}</span></b><button class="bd-x" id="mc-close">✕</button></div>
-    <div class="bc-g"><span>Mesh ID</span><b>${c.code}</b><span>People</span><b>${fmt(c.v)} 人</b><span>Stay</span><b>${stayN? Math.round(staySum/stayN)+' min' : '—'}</b><span>Inflow（1h）</span><b>${fmt(inflow*AG_SCALE)}</b><span>Outflow（1h）</span><b>${fmt(outflow*AG_SCALE)}</b><span>Walking Speed</span><b>${nm? (spd/nm/60).toFixed(2)+' m/s' : '—'}</b><span>Peak</span><b>${c.peak? fmt(c.peak)+' 人 @ '+clockStr(c.peakT) : '—'}</b><span>Origin</span><b>${top(org).replace(/（.*?）/g,'')}</b><span>Destination</span><b>${top(dst)}</b><span>構成</span><b>海外 ${(c.seg[0]/tot*100).toFixed(0)}%・国内 ${(c.seg[1]/tot*100).toFixed(0)}%・近隣 ${(c.seg[2]/tot*100).toFixed(0)}%</b></div>
+    <div class="bc-g"><span>Mesh ID</span><b>${c.code}</b><span>People</span><b>${fmt(c.v)} 人</b><span>セル面積 / 密度</span><b>${fmt(meshArea(c))} m² / ${fmt(meshDensity(c))} 人/ha</b><span>Stay</span><b>${stayN? Math.round(staySum/stayN)+' min' : '—'}</b><span>Inflow（1h）</span><b>${fmt(inflow*AG_SCALE)}</b><span>Outflow（1h）</span><b>${fmt(outflow*AG_SCALE)}</b><span>Walking Speed</span><b>${nm? (spd/nm/60).toFixed(2)+' m/s' : '—'}</b><span>Peak</span><b>${c.peak? fmt(c.peak)+' 人 @ '+clockStr(c.peakT) : '—'}</b><span>Origin</span><b>${top(org).replace(/（.*?）/g,'')}</b><span>Destination</span><b>${top(dst)}</b><span>構成</span><b>海外 ${(c.seg[0]/tot*100).toFixed(0)}%・国内 ${(c.seg[1]/tot*100).toFixed(0)}%・近隣 ${(c.seg[2]/tot*100).toFixed(0)}%</b></div>
     <div class="bc-src">セル内の来訪者ドットから算出（synthetic）。実データでは dwell_mesh / trip_trace テーブルの集計値に置き換わります</div>`;
-  mcard.style.display='block'; mcard.style.left=Math.min(innerWidth-330, e.clientX+16)+'px'; mcard.style.top=Math.min(innerHeight-300, e.clientY+12)+'px';
+  mcard.style.display='block'; mcard.style.left=Math.max(8,Math.min(innerWidth-330, e.clientX+16))+'px'; mcard.style.top=Math.max(110,Math.min(innerHeight-420, e.clientY+12))+'px';
   document.getElementById('mc-close').onclick=()=>{ mcard.style.display='none'; };
 }
 
@@ -177,9 +177,9 @@ const CONT = { on:false, group:new THREE.Group(), lines:null, last:0, levels:[0.
 CONT.group.visible=false; scene.add(CONT.group);
 function contourBuild(now){
   if(!CONT.on || now-CONT.last<400 || !MESH.inst || MESH.kind!=='sq') return; CONT.last=now;
-  const res=MESH.res, n1=Math.ceil(MESH_RANGE.x/res), n2=Math.ceil(MESH_RANGE.z/res), W=2*n1, H=2*n2;
+  const res=Math.max(25,MESH.res), n1=Math.ceil(MESH_RANGE.x/res), n2=Math.ceil(MESH_RANGE.z/res), W=2*n1, H=2*n2;
   const F=new Float32Array(W*H); const mx=Math.max(1, MESH.max);
-  MESH.cells.forEach(c=>{ const i=c.i+n1, j=c.j+n2; if(i>=0&&i<W&&j>=0&&j<H) F[j*W+i]=Math.min(1, c.v/mx); });
+  MESH.cells.forEach(c=>{const i=Math.floor(c.cx/res)+n1,j=Math.floor(c.cz/res)+n2;if(i>=0&&i<W&&j>=0&&j<H)F[j*W+i]+=c.v;}); let peak=1;for(const v of F)peak=Math.max(peak,v);for(let k=0;k<F.length;k++)F[k]/=peak;
   /* 軽いぼかし（3x3）で滑らかに */
   const G=new Float32Array(W*H); for(let j=1;j<H-1;j++) for(let i=1;i<W-1;i++){ let s=0; for(let dj=-1;dj<=1;dj++) for(let di=-1;di<=1;di++) s+=F[(j+dj)*W+(i+di)]*((di||dj)?1:2); G[j*W+i]=s/10; }
   const pos=[], col=[]; const cc=new THREE.Color();
@@ -195,11 +195,11 @@ function contourBuild(now){
       segs.forEach(([p,q])=>{ const y1=TH(p[0],p[1])+3+li*1.5, y2=TH(q[0],q[1])+3+li*1.5; pos.push(p[0],y1,p[1], q[0],y2,q[1]); col.push(cc.r,cc.g,cc.b, cc.r,cc.g,cc.b); });
     }
   });
-  if(CONT.lines){ CONT.group.remove(CONT.lines); CONT.lines.geometry.dispose(); }
+  if(CONT.lines){ CONT.group.remove(CONT.lines); CONT.lines.geometry.dispose(); CONT.lines.material.dispose(); }
   const g=new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col,3));
   CONT.lines=new THREE.LineSegments(g, new THREE.LineBasicMaterial({vertexColors:true, transparent:true, opacity:0.95})); CONT.group.add(CONT.lines);
 }
-function setContour(on){ CONT.on=on; CONT.group.visible=on && level!=='wide'; if(on){ if(MESH.kind!=='sq') buildMesh(100,'sq'); MESH.style='2d'; meshRebuildShape(); MESH.inst.material.opacity=0.25; MESH.dirty=true; CONT.last=0; } else if(MESH.inst){ MESH.inst.material.opacity=0.86; } }
+function setContour(on){ CONT.on=on; CONT.group.visible=on && level!=='wide'; if(on){ if(MESH.kind!=='sq') buildMesh(MESH.kind==='jis'?25:MESH.res,'sq'); MESH.style='2d'; meshRebuildShape(); MESH.inst.material.opacity=0.25; MESH.dirty=true; CONT.last=0; } else if(MESH.inst){ MESH.inst.material.opacity=0.86; } }
 function contourSec(){ if(!CONT.on) return ''; return `<div class="sec"><div class="sec-t"><b>等高線</b> — 混雑エリアの輪郭（密度 ${CONT.levels.map(l=>(l*100).toFixed(0)+'%').join(' / ')}）</div><div class="grad-bar dens"></div><div class="grad-lbl"><span>低</span><span>高（ピーク比）</span></div><div class="hint" style="margin-top:6px">100m グリッドの滞在密度を 3×3 で平滑化し、等値線（marching squares）で追跡。内側の線ほど混雑。下地の面は薄く表示。</div></div>`; }
 /* ---------- 性能: FPS 計測と自動軽量化（30fps を下回り続けたら補完点群・軌跡の負荷を下げる） ---------- */
 const PERF = { frames:0, t0:performance.now(), fps:60, low:0, degraded:false };
@@ -216,9 +216,9 @@ function setFlowMode(mode){
   const wantMesh = (mode==='grid' || mode==='column' || mode==='hex' || mode==='contour');
   if(MESH.on!==wantMesh){ MESH.on=wantMesh; if(wantMesh && !MESH.inst) buildMesh(MESH.res); MESH.group.visible=wantMesh && level!=='wide'; document.getElementById('mesh-toggle').classList.toggle('active', wantMesh); }
   if(wantMesh){
-    if(mode==='hex'){ if(MESH.kind!=='hex') buildMesh(174, 'hex'); MESH.style='3d'; }
+    if(mode==='hex'){ if(MESH.kind!=='hex') buildMesh(MESH.kind==='jis'?25:MESH.res, 'hex'); MESH.style='3d'; }
     else if(mode==='contour'){ /* setContour が整える */ }
-    else { if(MESH.kind==='hex') buildMesh(100, 'sq'); MESH.style = mode==='column' ? 'column' : (MESH.style==='column'||MESH.style==='2d'&&CONT.on ? '3d' : MESH.style); }
+    else { if(MESH.kind==='hex') buildMesh(MESH.res, 'sq'); MESH.style = mode==='column' ? 'column' : (MESH.style==='column'||MESH.style==='2d'&&CONT.on ? '3d' : MESH.style); }
     meshRebuildShape(); MESH.dirty=true; }
   const wantTraj = (mode==='trips');
   if(TRAJ.on!==wantTraj){ TRAJ.on=wantTraj; TRAJ.group.visible=wantTraj && level!=='wide'; setGhost(wantTraj); document.getElementById('traj-toggle').classList.toggle('active', wantTraj); if(wantTraj) trajUpload(); }
@@ -228,7 +228,7 @@ function setFlowMode(mode){
   setContour(mode==='contour');
   document.querySelectorAll('[data-fm]').forEach(b=>b.classList.toggle('active', b.dataset.fm===mode));
   if(level==='wide' && mode!=='point') setLevel('city');
-  renderPanel();
+  renderPanel(); precisionRefresh();
 }
 function flowModeSec(){
   const chips = FLOWVIS.modes.map(([k,l])=>`<button class="chip ${FLOWVIS.mode===k?'active':''}" data-fm="${k}" title="${k}">${l}</button>`).join('');

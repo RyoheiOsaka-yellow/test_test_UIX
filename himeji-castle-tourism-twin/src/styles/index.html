@@ -238,6 +238,59 @@ button,input{touch-action:manipulation;font-family:var(--jp)}button:focus-visibl
 @media(max-width:1100px){#studio{width:192px;right:12px;padding:12px}#panel{left:12px;width:255px}#timeline{left:calc(50% + 90px);width:calc(100vw - 320px)}}
 @media(max-width:760px){#hdr{padding:10px 12px;min-height:108px;gap:7px}.brand .x{font-size:15px}.hdr-title{font-size:10px}.hdr-title small{font-size:8px}.crumb{font-size:9px}#panel{top:122px;max-height:calc(100dvh - 265px);width:245px}#studio{top:122px;right:10px;width:188px;display:none}#studio.mobile-open{display:block}#timeline{left:50%;bottom:24px;width:calc(100vw - 24px);padding:10px}#tl-marks span:nth-child(even){display:none}#view-tools{right:12px;bottom:185px;flex-direction:column}#studio{right:64px;max-height:calc(100dvh - 270px);overflow-y:auto}#map-status{left:12px;right:12px;font-size:8px}#map-status span:last-child{display:none}#enter-hint{display:none!important}}
 
+/* Precision workspace */
+#studio{width:238px;max-height:calc(100dvh - 255px);overflow-y:auto;scrollbar-width:thin;scrollbar-color:#35545d transparent}
+#panel,#studio{top:calc(var(--header-bottom,100px) + 16px)}
+.precision-tag{font-size:9px;color:#a9f4df;border:1px solid #39685e;border-radius:4px;padding:1px 5px}
+.precision-modes{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.precision-res{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.precision-modes button,.precision-res button,.precision-actions button{border:1px solid #29454f;border-radius:6px;background:#112630;color:#9fb8c2;font-size:10px;padding:9px 3px;cursor:pointer}
+.precision-modes button.active,.precision-res button.active{background:#234940;border-color:#76c9b6;color:#c6ffed;box-shadow:inset 0 1px #a9f4df20}
+.precision-modes button:hover,.precision-res button:hover,.precision-actions button:hover{background:#25424c;color:#fff}
+#precision-size{font-size:9px;color:#7eaaa8;margin-top:7px}.precision-check{display:flex;align-items:center;gap:7px;font-size:10px;color:#b4caca;margin:12px 0}.precision-check input{width:auto!important;accent-color:#82dfcf}
+#precision-stats{font:10px var(--jp);color:#a4e6d3;line-height:1.6;padding:10px 0;border-top:1px solid #29414c;font-variant-numeric:tabular-nums}.precision-actions{display:flex;gap:6px}.precision-actions button{flex:1}
+.precision-foot{font-size:9px;line-height:1.8;color:#8aa3ad;margin-top:10px}.precision-details{border-top:1px solid #29414c;margin-top:14px;padding-top:12px}.precision-details summary{cursor:pointer;color:#adc6cd;font-size:10px}
+#precision-legend{position:fixed;left:324px;bottom:148px;width:295px;padding:14px 16px;background:#091b25e8;border:1px solid #34515b;border-radius:10px;z-index:23;backdrop-filter:blur(16px);pointer-events:none}
+#precision-legend[hidden]{display:none}.precision-eyebrow{color:#9ae6d1;font-size:9px;letter-spacing:1.1px;margin-bottom:9px}.precision-eyebrow span{display:block;color:#8ca4ae;font-size:8px;letter-spacing:.4px;margin-top:4px}
+#precision-legend b{font-size:11px;font-weight:500;color:#d6e7e9}.precision-gradient{height:5px;border-radius:3px;background:linear-gradient(90deg,#2959d9,#33d9f2,#ffd84d,#ff8c26,#f23333);margin:12px 0 5px}.precision-scale{display:flex;justify-content:space-between;font-size:9px;color:#c0d2d9}
+#precision-meta,#precision-h-note{font-size:9px;color:#8faab7;line-height:1.8;margin-top:4px}#precision-h-note{font-size:8px;margin-top:0}
+#mcard{max-width:calc(100vw - 16px);max-height:calc(100dvh - 130px);overflow:auto}#tip{max-width:312px}#enter-hint{display:none!important}
+@media(max-width:1100px){#studio{width:205px}#precision-legend{left:284px;width:270px}}
+@media(max-width:760px){#studio{width:210px;max-height:calc(100dvh - 280px)}#precision-legend{left:12px;bottom:180px;width:230px;padding:10px 12px}.precision-eyebrow{margin-bottom:5px}#precision-h-note{display:none}#precision-meta{font-size:8px}#panel,#studio{top:calc(var(--header-bottom,108px) + 12px)}}
+.focus-map #precision-legend{left:20px}.focus-map #precision-controls{display:none}
+</style>
+<style>
+#precision-mobile-toggle{display:none}#panel.collapsed{visibility:hidden}
+@media(max-width:760px){#precision-mobile-toggle{display:block;position:fixed;right:12px;top:calc(var(--header-bottom,108px) + 14px);z-index:26;border:1px solid #529387;border-radius:8px;padding:9px 11px;color:#c5fff0;background:#12342fe8;font-size:11px}#studio{top:calc(var(--header-bottom,108px) + 58px);right:12px;max-height:calc(100dvh - var(--header-bottom,108px) - var(--timeline-height,180px) - 110px)}#precision-legend{bottom:calc(var(--timeline-height,180px) + 38px)}#precision-legend .precision-eyebrow span,#precision-legend #precision-meta{display:none}#precision-legend .precision-eyebrow{font-size:8px;margin-bottom:4px}#precision-legend .precision-gradient{margin-top:7px}.focus-map #precision-mobile-toggle{opacity:.6}}
+
+/* ===== ナビゲーションウィジェット / 折りたたみ / 画質 ===== */
+#nav{position:fixed;right:20px;bottom:44px;z-index:27;display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 8px 8px;width:64px;background:#0b1a24e6;border:1px solid #34515b;border-radius:14px;backdrop-filter:blur(16px);box-shadow:0 10px 32px #0006;transition:width .25s ease,padding .25s ease;user-select:none;-webkit-user-select:none}
+#nav.folded{width:26px;padding:6px 4px}#nav.folded #nav-body{display:none}
+#nav-fold{position:absolute;top:-1px;left:-1px;width:18px;height:18px;border-radius:14px 0 8px 0;border:1px solid #34515b;background:#102631;color:#9fd3c9;font-size:9px;cursor:pointer;line-height:16px;padding:0}#nav-fold:hover{color:#fff}
+#nav.folded #nav-fold{position:static;border-radius:8px;width:18px;height:22px}
+#nav-body{display:flex;flex-direction:column;align-items:center;gap:8px;width:100%}
+#nav-ring{position:relative;width:52px;height:52px;border-radius:50%;border:2px solid #3d6a6f;background:radial-gradient(circle,#123038 0 44%,#0d232c 45% 100%);cursor:grab;box-shadow:inset 0 0 0 5px #0b1a24,inset 0 0 0 6px #23414b;touch-action:none}
+#nav-ring:active{cursor:grabbing;border-color:#78dbce}
+#nav-needle{position:absolute;inset:0;transform-origin:center;transition:none;pointer-events:none}
+#nav-needle b{position:absolute;top:2px;left:50%;transform:translateX(-50%);color:#ffb15a;font-size:9px;font-weight:800;line-height:1}
+#nav-needle i{position:absolute;left:50%;top:50%;width:0;height:0;margin:-17px 0 0 -4px;border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:14px solid #ff8a1e}
+#nav-center{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#9fd3c9;pointer-events:none}
+#nav-tilt-wrap{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:8px;color:#8ca4ae;letter-spacing:.5px}
+#nav-tilt{writing-mode:vertical-lr;direction:rtl;width:14px;height:64px;accent-color:#82dfcf;cursor:pointer;margin:0}
+#nav-btns{display:grid;grid-template-columns:1fr 1fr;gap:4px;width:100%}
+#nav-btns button{height:24px;border:1px solid #35515c;border-radius:6px;background:#102631;color:#d1ebe7;cursor:pointer;font-size:13px;line-height:1;padding:0}#nav-btns button:hover{background:#28494f}#nav-btns button[aria-pressed=true]{border-color:#78dbce;color:#b9fff1}
+#view-handle,#view-tools{bottom:262px}body.tools-open #view-handle{bottom:306px}
+#studio{max-height:calc(100dvh - var(--header-bottom,100px) - 330px)}#panel-body>.sec:first-child>.sec-t{padding-right:92px}#panel{max-height:calc(100dvh - var(--header-bottom,100px) - 150px)}
+#fold-all{position:absolute;top:8px;right:38px;height:24px;padding:0 8px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--sub);font-size:10px;cursor:pointer;z-index:2}#fold-all:hover{color:var(--brex);border-color:var(--brex)}
+.sec-t.foldable{cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none;border-radius:6px;margin-left:-4px;padding-left:4px}.sec-t.foldable:hover{background:#ffffff0a}
+.fold-i{margin-left:auto;color:#6f8b96;font-size:10px;flex:none}.sec.folded>*:not(.sec-t){display:none}.sec.folded{margin-bottom:8px}.sec.folded .sec-t{margin-bottom:0}
+.studio-head span{display:flex;gap:2px}#studio.folded>*:not(.studio-head){display:none}#studio.folded{padding-bottom:10px}
+#legend-fold{position:absolute;top:6px;right:8px;width:18px;height:18px;border:0;background:transparent;color:#8ca4ae;cursor:pointer;font-size:11px;pointer-events:auto}#precision-legend{pointer-events:auto}#precision-legend.folded>*:not(#legend-fold):not(.precision-eyebrow){display:none}#precision-legend.folded{width:auto;padding:8px 34px 8px 12px}#precision-legend.folded .precision-eyebrow{margin:0}
+#hdr-fold{position:fixed;top:calc(var(--header-bottom,100px) - 1px);left:50%;transform:translateX(-50%);width:44px;height:14px;border:1px solid #253d49;border-top:0;border-radius:0 0 8px 8px;background:rgba(7,16,23,.95);color:#7c9ba8;font-size:9px;line-height:12px;cursor:pointer;z-index:31;padding:0;opacity:.7}#hdr-fold:hover{opacity:1;color:#fff}
+body.hdr-folded #hdr{min-height:0;height:10px;padding:0 22px;overflow:hidden}body.hdr-folded #hdr>*{visibility:hidden}
+#vignette{position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(ellipse at 50% 45%,transparent 52%,rgba(2,8,14,.42) 100%)}
+#panel,#studio,#timeline,#precision-legend{box-shadow:0 18px 60px #0007,0 0 0 1px #ffffff08 inset}
+.chip,.mode-btn,.studio-seg button,.precision-modes button,.precision-res button{transition:background .15s ease,border-color .15s ease,color .15s ease}
+@media(max-width:760px){#nav{right:10px;bottom:calc(var(--timeline-height,180px) + 34px);width:56px;padding:8px 6px 6px}#nav-tilt{height:48px}#view-handle,#view-tools{bottom:262px}}
 </style>
 <!--@FONTS-->
 <!--@LICENSES-->
@@ -258,13 +311,13 @@ button,input{touch-action:manipulation;font-family:var(--jp)}button:focus-visibl
     <div class="crumb" id="prop-toggle" title="提案骨子・ロードマップ・KPI">提案骨子</div>
     <div class="crumb" id="db-toggle" title="DB構成・データソース">DB構成</div>
     <div class="crumb" id="pc-toggle" title="点群/デジタルレイヤー表示">◆ 点群ビュー</div>
-    <div class="crumb" id="mesh-toggle" title="地域メッシュ（500m/250m/125m）の滞在人数を柱・面で表示">▦ メッシュ</div>
+    <div class="crumb" id="mesh-toggle" title="5〜250m の高精細メッシュで滞在人口を表示">▦ メッシュ</div>
     <div class="crumb" id="traj-toggle" title="来訪者ごとの移動軌跡を線で蓄積（時空間モードあり）">〜 軌跡</div>
     <div class="crumb" id="floor-toggle" title="大天守・駅・商業施設の階ごとの滞留（高さ方向）">≡ 階層</div>
   </div>
 </div>
 
-<div id="panel"><button id="panel-toggle" title="パネルを折りたたむ">◀</button><div id="panel-body"></div></div>
+<div id="panel"><button id="fold-all" title="全セクションを畳む／開く">全て畳む</button><button id="panel-toggle" title="パネルを折りたたむ">◀</button><div id="panel-body"></div></div>
 <button id="panel-tab">パネルを開く ▶</button>
 
 <div id="timeline">
@@ -283,7 +336,19 @@ button,input{touch-action:manipulation;font-family:var(--jp)}button:focus-visibl
 
 
 <aside id="studio" aria-label="ビジュアル設定">
- <div class="studio-head">表示のデザイン <button class="studio-close" id="studio-hide" aria-label="表示設定を閉じる">×</button></div><div class="studio-sub">VISUAL CONTROL / 01</div>
+ <div class="studio-head">表示のデザイン <span><button class="studio-close" id="studio-fold" title="表示設定を畳む" aria-label="表示設定を畳む">▾</button><button class="studio-close" id="studio-hide" aria-label="表示設定を閉じる">×</button></span></div><div class="studio-sub">PRECISION CONTROL / 02</div>
+<section id="precision-controls">
+ <div class="studio-label" style="margin-top:10px">人流の表現 <span class="precision-tag">5 m 対応</span></div>
+ <div class="precision-modes"><button data-quick-mode="grid">▦ グリッド</button><button data-quick-mode="hex">⬡ ヘックス</button><button data-quick-mode="column">▥ 柱</button><button data-quick-mode="heat">◉ ヒート</button><button data-quick-mode="point">⠿ 点群</button><button data-quick-mode="contour">≋ 等高線</button></div>
+ <label class="studio-label">メッシュの細かさ</label><div class="precision-res"><button data-quick-res="5">5m</button><button data-quick-res="10">10m</button><button data-quick-res="25">25m</button><button data-quick-res="50">50m</button><button data-quick-res="100">100m</button><button data-quick-res="250">250m</button></div>
+ <div id="precision-size">正方形の一辺 10 m</div>
+ <label class="studio-label" for="mesh-height">高さ倍率 <output id="mesh-height-value">×1.0</output></label><input id="mesh-height" type="range" min="0.2" max="3" step="0.1" value="1">
+ <label class="studio-label" for="mesh-opacity">不透明度 <output id="mesh-opacity-value">90%</output></label><input id="mesh-opacity" type="range" min="25" max="100" value="90">
+ <label class="studio-label" for="mesh-gap">セル間隔 <output id="mesh-gap-value">10%</output></label><input id="mesh-gap" type="range" min="2" max="35" value="10">
+ <label class="precision-check"><input id="mesh-lock" type="checkbox"> 色スケールを固定して比較</label>
+ <div id="precision-stats"></div><div class="precision-actions"><button id="precision-focus">集中地点へ</button><button id="precision-export">CSV 保存</button></div>
+ <div class="precision-foot">5m は集計単位です。元データの測定精度・人数は変わりません。</div>
+ </section><details class="precision-details"><summary>街・点群・再生の詳細設定</summary>
  <div class="studio-label">街の表現</div><div class="studio-seg" id="style-picks"><button data-style="solid">立体</button><button data-style="hybrid" class="active">複合</button><button data-style="cloud">点群</button></div>
  <label class="studio-label" for="cloud-density">補完点群の密度 <output id="density-value">100%</output></label><input id="cloud-density" type="range" min="25" max="100" value="100" step="25">
  <div class="studio-label">人流の表現</div><div class="studio-seg" id="flow-picks"><button data-flow="particle">粒子</button><button data-flow="trail" class="active">軌跡</button><button data-flow="route">動線</button></div>
@@ -291,12 +356,24 @@ button,input{touch-action:manipulation;font-family:var(--jp)}button:focus-visibl
  <div class="studio-label">再生速度 <span>×1＝3分/秒</span></div><div class="studio-seg" id="speed-picks"><button data-speed="1.5">×0.5</button><button data-speed="3" class="active">×1</button><button data-speed="6">×2</button><button data-speed="12">×4</button></div>
  <div class="studio-label">人流の凡例</div><div class="flow-key"><i style="background:#65beff"></i>海外　<i style="background:#62e4ab;margin-left:8px"></i>国内　<i style="background:#ef91bb;margin-left:8px"></i>近隣</div>
  <div class="studio-note">粒子1つ＝8人（想定）<br>細い尾で進行方向、点の集まりで滞留を表示。<br>街：既存地形・建物データ＋形状補完。追加点・窓表現は実測ではありません。</div>
-</aside>
+</details></aside>
+<button id="precision-mobile-toggle" aria-label="メッシュ表示設定を開く">▦ 表示設定</button>
 <button id="view-handle" title="視点ツール（V）" aria-label="視点ツールの表示切替">⋯</button>
-<nav id="view-tools" aria-label="視点操作"><button id="drag-mode" title="左ドラッグを移動／回転に切替" aria-label="左ドラッグは地図を掴んで移動。押すと回転に切替" aria-pressed="false" style="border-color:#78dbce;color:#b9fff1">回転中</button><button id="view-home" title="姫路城を中心に戻す" aria-label="姫路城を中心に戻す">戻る</button><button id="view-top" title="真上から見る" aria-label="真上から見る">2D</button><button id="view-bird" title="斜め俯瞰" aria-label="斜め俯瞰">俯瞰</button><button id="view-side" title="横方向から見る" aria-label="横方向から見る">横</button><button id="view-ground" title="地表付近から見る" aria-label="地表付近から見る">地表</button><button id="view-eye" title="建物目線（人の高さ）" aria-label="建物目線">目線</button><button id="view-near" title="大手前通りに接近" aria-label="大手前通りに接近" style="display:none">接近</button><button id="view-plus" title="拡大" aria-label="拡大">＋</button><button id="view-minus" title="縮小" aria-label="縮小">−</button><button id="view-focus" title="地図に集中 (F)" aria-label="地図に集中">集中</button><button id="view-settings" title="表示設定" aria-label="表示設定">設定</button></nav>
-<div id="map-status"><span><b id="north-arrow">↑ N</b> HIMEJI / URBAN OBSERVATORY　 ·　 <span id="render-status">準備中</span>　·　<span id="perf-fps">— fps</span></span><span>ドラッグ：掴んで回す（横＝回転・縦＝真上〜真横）　 右ドラッグ／Shift＋ドラッグ：移動　 ホイール：ズーム　 ダブルクリック：フォーカス　 V：視点ツール</span></div>
+<nav id="view-tools" aria-label="視点操作"><button id="drag-mode" title="左ドラッグを移動／回転に切替" aria-label="左ドラッグは地図を掴んで移動。押すと回転に切替" aria-pressed="false" style="border-color:#78dbce;color:#b9fff1">移動中</button><button id="view-home" title="姫路城を中心に戻す" aria-label="姫路城を中心に戻す">戻る</button><button id="view-top" title="真上から見る" aria-label="真上から見る">2D</button><button id="view-bird" title="斜め俯瞰" aria-label="斜め俯瞰">俯瞰</button><button id="view-side" title="横方向から見る" aria-label="横方向から見る">横</button><button id="view-ground" title="地表付近から見る" aria-label="地表付近から見る">地表</button><button id="view-eye" title="建物目線（人の高さ）" aria-label="建物目線">目線</button><button id="view-near" title="大手前通りに接近" aria-label="大手前通りに接近" style="display:none">接近</button><button id="view-plus" title="拡大" aria-label="拡大">＋</button><button id="view-minus" title="縮小" aria-label="縮小">−</button><button id="view-focus" title="地図に集中 (F)" aria-label="地図に集中">集中</button><button id="view-settings" title="表示設定" aria-label="表示設定">設定</button></nav>
+<div id="map-status"><span><b id="north-arrow">↑ N</b> HIMEJI / URBAN OBSERVATORY　 ·　 <span id="render-status">準備中</span>　·　<span id="perf-fps">— fps</span></span><span id="nav-hint">ドラッグ：引っ張る　右ドラッグ／握って待つ⟳：回す・傾ける　ホイール：ズーム　矢印／Q E／R T：移動・回転・傾き</span></div>
 
+<aside id="precision-legend" hidden aria-label="人流の凡例"><button id="legend-fold" title="凡例を畳む">▾</button><div class="precision-eyebrow">HUMAN FLOW <span>SIMULATION / 想定データ</span></div><b id="precision-legend-title">人口密度 / 人数 ÷ セル面積</b><div id="precision-density-key"><div class="precision-gradient"></div><div class="precision-scale"><span>0</span><span id="precision-max"></span></div></div><div id="precision-seg-key" hidden>🔵 海外　🟢 国内　🟣 近隣</div><div id="precision-meta"></div><div id="precision-h-note"></div></aside>
 <div id="rotcue"></div>
+<div id="vignette" aria-hidden="true"></div>
+<button id="hdr-fold" title="ヘッダーを畳む" aria-label="ヘッダーの表示切替">▴</button>
+<aside id="nav" aria-label="地図ナビゲーション">
+  <button id="nav-fold" title="ナビを畳む" aria-label="ナビの表示切替">▸</button>
+  <div id="nav-body">
+    <div id="nav-ring" title="掴んで回す＝方位回転　クリック＝北を上へ（N）" role="slider" aria-label="方位"><div id="nav-needle"><b>N</b><i></i></div><span id="nav-center"></span></div>
+    <div id="nav-tilt-wrap" title="俯角（上＝真上から・下＝横から）　R / T キー"><span>2D</span><input id="nav-tilt" type="range" min="0" max="100" value="55" aria-label="俯角"><span>横</span></div>
+    <div id="nav-btns"><button id="nav-plus" title="拡大（+）" aria-label="拡大">＋</button><button id="nav-minus" title="縮小（−）" aria-label="縮小">−</button><button id="nav-home" title="姫路城へ戻る（Home）" aria-label="姫路城へ戻る">⌂</button><button id="nav-mode" title="左ドラッグの役割を切替" aria-label="左ドラッグの役割を切替" aria-pressed="false">✋</button></div>
+  </div>
+</aside>
 <div id="bcard" role="dialog" aria-label="建物情報"></div>
 <div id="mcard" role="dialog" aria-label="メッシュ詳細"></div>
 <div id="tip"></div>

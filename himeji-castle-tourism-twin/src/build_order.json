@@ -16,7 +16,9 @@
   "data/api_client.js",
   "people-flow/pointcloud.js",
   "map/pcview.js",
-  "ai/ai_client.js"
+  "ai/ai_client.js",
+  "analytics/precision.js",
+  "core/navwidget.js"
  ],
  "init_anchor": "/* 初期化 */"
 }

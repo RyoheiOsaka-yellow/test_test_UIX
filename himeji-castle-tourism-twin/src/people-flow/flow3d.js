@@ -26,7 +26,7 @@ function rampC(stops, v){
 /* ---------- メッシュ（地域メッシュ JIS / 正方グリッド 50-100-250m / ヘックス ≈H3） ----------
    スタイル: 3d 柱（高さ＝人数^0.75） / 2d 面（GIS風） / column 円柱（対数段階: 100人 低・1,000人 中・5,000人 高） / hex 六角柱（大きさ＝滞留割合）
    情報軸: 高さ＝人数、色＝密度（Blue→Cyan→Yellow→Orange→Red）または主セグメント、不透明度＝信頼度（サンプル数）、サイズ＝滞留（ヘックス） */
-const MESH = { on:false, kind:'jis', res:250, style:'3d', color:'density', group:new THREE.Group(), inst:null, cells:[], byKey:new Map(), dl:0, dn:0, max:300, dirty:true, lastPaint:0, hover:-1, shapeKey:'' };
+const MESH = { on:false, kind:'sq', res:10, opacity:.90, gap:.10, lock:false, colorMax:0, epoch:0, style:'3d', color:'density', group:new THREE.Group(), inst:null, cells:[], byKey:new Map(), dl:0, dn:0, max:300, dirty:true, lastPaint:0, hover:-1, shapeKey:'' };
 MESH.group.visible=false; scene.add(MESH.group);
 const MESH_RANGE = {x:3900, z:3500};
 const MESH_HSCALE = {500:0.75, 250:1.0, 125:1.3, 100:1.4, 50:1.9, 174:1.15, 66:1.7};   // 柱の高さ係数（h = k × 人数^0.75）
@@ -35,105 +35,112 @@ const DENS_RAMP = [[0,0x2959d9],[0.25,0x33d9f2],[0.5,0xffd84d],[0.75,0xff8c26],[
 const MESH_POI = SCENE_DATA.pois.filter(p=>p.n).map(p=>({n:p.n, x:p.p[0], z:-p.p[1]}));
 const HEX_R = {174:174, 66:66};    // 六角形の外接半径 m（H3 res9 ≒ 174m、res10 ≒ 66m 相当）
 function nearPOI(cx, cz, lim){ let near='', nd=1e9; for(const p of MESH_POI){ const q=(p.x-cx)**2+(p.z-cz)**2; if(q<nd){ nd=q; near=p.n; } } return nd<lim*lim ? near : ''; }
-function buildMesh(res, kind){
-  MESH.res = res; if(kind) MESH.kind = kind; if(window.twinDb){ twinDb.meshKey=''; }
-  MESH.group.children.slice().forEach(o=>{ MESH.group.remove(o); if(o.geometry) o.geometry.dispose(); });
-  const cells=[];
+/* Precision mesh: sparse, exact aggregation. No generated samples. */
+function meshIndex(x,z){
+  if(MESH.kind==='jis'){const ll=toLL(x,z);return [Math.floor(ll.lon/MESH.dn),Math.floor(ll.lat/MESH.dl)];}
+  if(MESH.kind==='sq') return [Math.floor(x/MESH.res),Math.floor(z/MESH.res)];
+  const R=MESH.res,qf=(Math.sqrt(3)/3*x-z/3)/R,rf=2*z/(3*R);
+  let q=Math.round(qf),r=Math.round(rf),s=Math.round(-qf-rf);
+  const dq=Math.abs(q-qf),dr=Math.abs(r-rf),ds=Math.abs(s+qf+rf);
+  if(dq>dr&&dq>ds)q=-r-s;else if(dr>ds)r=-q-s;
+  return [q,r];
+}
+function meshEnsure(x,z){
+  if(!Number.isFinite(x)||!Number.isFinite(z)||Math.abs(x)>MESH_RANGE.x||Math.abs(z)>MESH_RANGE.z)return -1;
+  const [i,j]=meshIndex(x,z),key=i+','+j,old=MESH.byKey.get(key);if(old!==undefined)return old;
+  let cx,cz,w,d,code;
   if(MESH.kind==='jis'){
-    const dl = res===500?1/240:res===250?1/480:1/960, dn = res===500?1/160:res===250?1/320:1/640; MESH.dl=dl; MESH.dn=dn;
-    const sw=toLL(-MESH_RANGE.x, MESH_RANGE.z), ne=toLL(MESH_RANGE.x, -MESH_RANGE.z);
-    const j0=Math.floor(sw.lat/dl), j1=Math.floor(ne.lat/dl), i0=Math.floor(sw.lon/dn), i1=Math.floor(ne.lon/dn);
-    for(let j=j0;j<=j1;j++) for(let i=i0;i<=i1;i++){
-      const lat0=j*dl, lon0=i*dn; const a=toXZ(lat0,lon0), b=toXZ(lat0+dl,lon0+dn);
-      const cx=(a.x+b.x)/2, cz=(a.z+b.z)/2, w=b.x-a.x, d=a.z-b.z;
-      if(Math.abs(cx)>MESH_RANGE.x || Math.abs(cz)>MESH_RANGE.z) continue;
-      cells.push({i,j,cx,cz,w,d,y:TH(cx,cz),code:meshCode(lat0+dl/2,lon0+dn/2,res),v:0,stay:0,seg:[0,0,0],near:nearPOI(cx,cz,w),in:{},out:{},ag:[]});
-    }
-  } else if(MESH.kind==='sq'){
-    const n1=Math.ceil(MESH_RANGE.x/res), n2=Math.ceil(MESH_RANGE.z/res);
-    for(let j=-n2;j<n2;j++) for(let i=-n1;i<n1;i++){ const cx=(i+0.5)*res, cz=(j+0.5)*res; cells.push({i,j,cx,cz,w:res,d:res,y:TH(cx,cz),code:`G${res}-${i}:${j}`,v:0,stay:0,seg:[0,0,0],near:nearPOI(cx,cz,res),in:{},out:{},ag:[]}); }
-  } else { /* hex: pointy-top, 外接半径 R */
-    const R=HEX_R[res]||res, W=Math.sqrt(3)*R, Hh=1.5*R; const qn=Math.ceil(MESH_RANGE.x/W)+4, rn=Math.ceil(MESH_RANGE.z/Hh)+2;
-    for(let r=-rn;r<=rn;r++) for(let q=-qn-Math.ceil(r/2);q<=qn-Math.floor(r/2);q++){ const cx=W*(q+r/2), cz=Hh*r; if(Math.abs(cx)>MESH_RANGE.x || Math.abs(cz)>MESH_RANGE.z) continue; cells.push({i:q,j:r,cx,cz,w:W,d:2*R,y:TH(cx,cz),code:`H${res}-${q}:${r}`,v:0,stay:0,seg:[0,0,0],near:nearPOI(cx,cz,R),in:{},out:{},ag:[]}); }
-  }
-  MESH.cells=cells; MESH.byKey=new Map(cells.map((c,k)=>[c.i+','+c.j,k]));
-  MESH.max = MESH_MINMAX[res]||200; MESH.shapeKey=''; meshRebuildShape();
-  meshAccumulate(0); paintMesh();
+    const a=toXZ(j*MESH.dl,i*MESH.dn),b=toXZ((j+1)*MESH.dl,(i+1)*MESH.dn);
+    cx=(a.x+b.x)/2;cz=(a.z+b.z)/2;w=b.x-a.x;d=a.z-b.z;code=meshCode((j+.5)*MESH.dl,(i+.5)*MESH.dn,MESH.res);
+  }else if(MESH.kind==='hex'){
+    cx=Math.sqrt(3)*MESH.res*(i+j/2);cz=1.5*MESH.res*j;w=Math.sqrt(3)*MESH.res;d=2*MESH.res;code=`H${MESH.res}-${i}:${j}`;
+  }else{cx=(i+.5)*MESH.res;cz=(j+.5)*MESH.res;w=d=MESH.res;code=`G${MESH.res}-${i}:${j}`;}
+  const k=MESH.cells.length;
+  MESH.cells.push({i,j,cx,cz,w,d,area:MESH.kind==='hex'?3*Math.sqrt(3)/2*MESH.res*MESH.res:w*d,y:TH(cx,cz),code,v:0,stay:0,seg:[0,0,0],near:nearPOI(cx,cz,Math.max(w,45)),in:{},out:{},ag:[]});
+  MESH.byKey.set(key,k);return k;
+}
+function meshPosition(a){
+  if(a.state!=='castle')return a.cur;
+  if(a.zr===undefined)a.zr=rnd();let acc=0,zn=ZONES[ZONES.length-1];for(const zz of ZONES){acc+=zz.frac;if(a.zr<=acc){zn=zz;break;}}
+  return {x:zn.node.x+a.jx*.35,z:zn.node.z+a.jz*.35};
+}
+function buildMesh(res,kind){
+  MESH.res=res;if(kind)MESH.kind=kind;MESH.epoch=(MESH.epoch||0)+1;MESH.hover=-1;
+  if(window.twinDb)twinDb.meshKey='';
+  MESH.group.children.slice().forEach(o=>{MESH.group.remove(o);o.geometry?.dispose();o.material?.dispose();});
+  MESH.fade=[];MESH.inst=null;MESH.shapeKey='';MESH.cells=[];MESH.byKey=new Map();
+  if(MESH.kind==='jis'){MESH.dl=res===500?1/240:res===250?1/480:1/960;MESH.dn=res===500?1/160:res===250?1/320:1/640;}
+  MESH.max=1;MESH.dirty=true;
+  if(!(window.twinDb&&twinDb.on))meshAccumulate(0);else meshRebuildShape();
+  paintMesh();
 }
 function meshRebuildShape(){
-  const key = MESH.kind+'|'+(MESH.style==='column'?'col':(MESH.kind==='hex'?'hex':'box'));
-  if(key===MESH.shapeKey && MESH.inst) return; MESH.shapeKey=key;
-  if(MESH.inst){ MESH.group.remove(MESH.inst); MESH.inst.geometry.dispose(); }
-  let geo;
-  if(MESH.style==='column') geo=new THREE.CylinderGeometry(1,1,1,14,1); else if(MESH.kind==='hex') geo=new THREE.CylinderGeometry(1,1,1,6,1); else geo=new THREE.BoxGeometry(1,1,1);
-  geo.translate(0,0.5,0);
-  const mat=new THREE.MeshStandardMaterial({transparent:true, opacity:0.9, roughness:0.7, metalness:0.05});
-  const inst=new THREE.InstancedMesh(geo, mat, MESH.cells.length);
-  inst.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(MESH.cells.length*3),3);
-  inst.frustumCulled=false; inst.userData={mesh:true};
-  MESH.inst=inst; MESH.group.add(inst); MESH.dirty=true;
+  const shape=MESH.style==='column'?'col':MESH.kind==='hex'?'hex':'box';
+  const capacity=Math.max(256,2**Math.ceil(Math.log2(Math.max(1,MESH.cells.length))));
+  const key=shape+'|'+capacity;
+  if(key===MESH.shapeKey&&MESH.inst){MESH.inst.count=MESH.cells.length;return;}
+  MESH.shapeKey=key;
+  if(MESH.inst){MESH.group.remove(MESH.inst);MESH.inst.geometry.dispose();MESH.inst.material.dispose();}
+  const geo=shape==='box'?new THREE.BoxGeometry(1,1,1):new THREE.CylinderGeometry(1,1,1,shape==='hex'?6:24,1);
+  geo.translate(0,.5,0);
+  const mat=new THREE.MeshStandardMaterial({transparent:true,opacity:MESH.opacity,roughness:.55,metalness:.08,emissive:0x103d45,emissiveIntensity:.18});
+  mat.onBeforeCompile=shader=>{
+    shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vCellPosition;').replace('#include <begin_vertex>','#include <begin_vertex>\nvCellPosition=position;');
+    const edge=shape==='box'?'smoothstep(.455,.495,max(abs(vCellPosition.x),abs(vCellPosition.z)))':shape==='hex'?'smoothstep(.83,.865,max(abs(vCellPosition.x),max(abs(.5*vCellPosition.x+.8660254*vCellPosition.z),abs(.5*vCellPosition.x-.8660254*vCellPosition.z))))':'smoothstep(.91,.99,length(vCellPosition.xz))';
+    shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vCellPosition;').replace('#include <dithering_fragment>',`float rim=${edge}; float cap=smoothstep(.975,1.0,vCellPosition.y); gl_FragColor.rgb=mix(gl_FragColor.rgb,gl_FragColor.rgb*.55+vec3(.24,.37,.38),rim*cap*.65);\n#include <dithering_fragment>`);
+  };
+  mat.customProgramCacheKey=()=>shape;
+  const inst=new THREE.InstancedMesh(geo,mat,capacity);inst.count=MESH.cells.length;
+  inst.instanceMatrix.setUsage(THREE.DynamicDrawUsage);inst.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(capacity*3),3);inst.instanceColor.setUsage(THREE.DynamicDrawUsage);
+  inst.frustumCulled=false;inst.userData={mesh:true};MESH.inst=inst;MESH.group.add(inst);MESH.dirty=true;
 }
-function meshCell(x, z){
-  let key;
-  if(MESH.kind==='jis'){ const ll=toLL(x,z); key=Math.floor(ll.lon/MESH.dn)+','+Math.floor(ll.lat/MESH.dl); }
-  else if(MESH.kind==='sq'){ key=Math.floor(x/MESH.res)+','+Math.floor(z/MESH.res); }
-  else { const R=HEX_R[MESH.res]||MESH.res; const qf=(Math.sqrt(3)/3*x - z/3)/R, rf=(2/3*z)/R; let q=Math.round(qf), r=Math.round(rf), sI=Math.round(-qf-rf); const dq=Math.abs(q-qf), dr=Math.abs(r-rf), ds=Math.abs(sI-(-qf-rf)); if(dq>dr && dq>ds) q=-r-sI; else if(dr>ds) r=-q-sI; key=q+','+r; }
-  const k=MESH.byKey.get(key); return k===undefined ? -1 : k;
-}
-function agTh(){ return (window.twinDb && twinDb.on) ? 1 : AG_SCALE; }   // DB モードは実人数（1人単位）
+function meshCell(x,z){const [i,j]=meshIndex(x,z);const k=MESH.byKey.get(i+','+j);return k===undefined?-1:k;}
+function agTh(){return window.twinDb&&twinDb.on?1:AG_SCALE;}
 function meshAccumulate(dtMin){
-  if(!MESH.inst) return; if(window.twinDb && twinDb.on) return;   // DB モードは api_client がセルを埋める
-  const cells=MESH.cells, cnt=new Float32Array(cells.length*5); const tnow=timeState.min, bkt=Math.floor((tnow+360)/10);
-  cells.forEach(c=>{ c.ag=[]; });
+  if(window.twinDb&&twinDb.on)return;
+  const cells=MESH.cells,tnow=timeState.min,bkt=Math.floor((tnow+360)/10);
+  cells.forEach(c=>{c.v=0;c.stay=0;c.seg.fill(0);c.ag.length=0;});
   for(const a of agents){
-    if(!segByFilter(a.seg)) continue;
-    let x=a.cur.x, z=a.cur.z;
-    if(a.state==='castle'){ /* 城内は城内ゾーン構成比（大手門〜大天守）で分散させて集計 */
-      if(a.zr===undefined) a.zr=rnd(); let acc=0, zn=ZONES[ZONES.length-1]; for(const zz of ZONES){ acc+=zz.frac; if(a.zr<=acc){ zn=zz; break; } }
-      x=zn.node.x+a.jx*0.35; z=zn.node.z+a.jz*0.35; }
-    const k=meshCell(x,z);
-    if(a.cellKey!==MESH.shapeKey+MESH.res){ a.cellKey=MESH.shapeKey+MESH.res; a.cellK=-1; }
-    if(k!==a.cellK){ if(a.cellK>=0){ const o=cells[a.cellK]; o.out[bkt]=(o.out[bkt]||0)+1; } if(k>=0){ const c=cells[k]; c.in[bkt]=(c.in[bkt]||0)+1; } a.cellK=k; }
-    if(k<0) continue;
-    cells[k].ag.push(a);
-    cnt[k*5]+=AG_SCALE; cnt[k*5+1+SEG_KEYS.indexOf(a.seg)]+=AG_SCALE; if(a.state!=='move') cnt[k*5+4]+=AG_SCALE;
+    if(!segByFilter(a.seg))continue;const p=meshPosition(a),k=meshEnsure(p.x,p.z);
+    if(a.meshEpoch!==MESH.epoch){a.meshEpoch=MESH.epoch;a.cellK=-1;}
+    if(k!==a.cellK){if(a.cellK>=0&&cells[a.cellK]){const c=cells[a.cellK];c.out[bkt]=(c.out[bkt]||0)+1;}if(k>=0){const c=cells[k];c.in[bkt]=(c.in[bkt]||0)+1;}a.cellK=k;}
+    if(k<0)continue;const c=cells[k];c.ag.push(a);c.v+=AG_SCALE;const si=SEG_KEYS.indexOf(a.seg);if(si>=0)c.seg[si]+=AG_SCALE;if(a.state!=='move')c.stay+=AG_SCALE;
   }
-  const kf = dtMin>0 ? Math.min(1, dtMin*0.10) : 1;
-  let mx=0;
-  cells.forEach((c,k)=>{ c.v += (cnt[k*5]-c.v)*kf; for(let s=0;s<3;s++) c.seg[s] += (cnt[k*5+1+s]-c.seg[s])*kf; c.stay += (cnt[k*5+4]-c.stay)*kf; if(c.v>mx) mx=c.v; if(c.v>(c.peak||0)){ c.peak=c.v; c.peakT=tnow; } });
-  MESH.max += (Math.max(mx, MESH_MINMAX[MESH.res]||200) - MESH.max)*(dtMin>0?0.08:1);
-  MESH.dirty=true;
+  let mx=0;cells.forEach(c=>{mx=Math.max(mx,c.v);if(c.v>(c.peak||0)){c.peak=c.v;c.peakT=tnow;}});MESH.max=Math.max(1,mx);
+  meshRebuildShape();MESH.dirty=true;
 }
-const _MM=new THREE.Matrix4(), _MQ=new THREE.Quaternion(), _MS=new THREE.Vector3(), _MP=new THREE.Vector3(), _MC=new THREE.Color();
-function columnH(people){ return people<agTh() ? 0 : 60*Math.pow(Math.log2(1+people/25), 1.15); }   // 100人≈150m・1,000人≈400m・5,000人≈600m
+const _MM=new THREE.Matrix4(),_MQ=new THREE.Quaternion(),_MS=new THREE.Vector3(),_MP=new THREE.Vector3(),_MC=new THREE.Color();
+function columnH(people){return people<=0?0:12*Math.log2(1+people/8);}
+function meshArea(c){return c.area||(MESH.kind==='hex'?3*Math.sqrt(3)/2*MESH.res*MESH.res:c.w*c.d);}
+function meshDensity(c){return c.v*10000/meshArea(c);}
 function paintMesh(){
-  if(!MESH.inst || !MESH.dirty) return; MESH.dirty=false;
-  const hs=(MESH_HSCALE[MESH.res]||1.2)*((window.TWIN_CONFIG&&TWIN_CONFIG.peopleFlow.heightScale)||1), flat=MESH.style==='2d', col=MESH.style==='column', hex=MESH.kind==='hex';
-  const R=hex?(HEX_R[MESH.res]||MESH.res):0;
+  if(!MESH.inst||!MESH.dirty)return;MESH.dirty=false;
+  const flat=MESH.style==='2d',col=MESH.style==='column',hex=MESH.kind==='hex',hs=CONFIG.peopleFlow.heightScale;
+  const active=MESH.cells.filter(c=>c.v>0),dens=active.map(meshDensity).sort((a,b)=>a-b);
+  if(!MESH.lock||!MESH.colorMax)MESH.colorMax=Math.max(1,dens[Math.max(0,Math.ceil(dens.length*.95)-1)]||1);
+  let total=0;
   MESH.cells.forEach((c,k)=>{
-    const r=Math.pow(Math.min(1, c.v/MESH.max), 0.45);
-    const vh = c.db ? c.v*8 : c.v;   // DB（実人数）はシミュレーション（1ドット＝8人）と同じ高さスケールに揃える（相対値）
-    let h = flat ? 2.2 : col ? Math.max(0.9, columnH(vh)*hs/1.2) : Math.max(0.9, Math.min(700, Math.pow(vh, 0.75)*hs));
-    const stayShare = c.v>0 ? c.stay/c.v : 0;
-    let sx, sz;
-    if(col){ const rad = Math.min(c.w, c.d)*0.30; sx=sz=rad; }
-    else if(hex){ const sc = R*0.95*(flat?1:(0.62+0.38*stayShare)); sx=sz=sc; }   // 六角の大きさ＝滞留割合（サイズ＝滞在）
-    else { sx=c.w*0.9; sz=c.d*0.9; }
-    _MP.set(c.cx, c.y+0.3, c.cz); _MS.set(sx, h, sz); _MM.compose(_MP,_MQ,_MS); MESH.inst.setMatrixAt(k,_MM);
-    if(MESH.color==='seg' && c.v>=AG_SCALE){ let si=0; for(let s=1;s<3;s++) if(c.seg[s]>c.seg[si]) si=s; _MC.setHex(SEG[SEG_KEYS[si]].col).multiplyScalar(0.3+0.7*Math.pow(r,0.6)); }
-    else { _MC.copy(rampC(DENS_RAMP, r)); if(c.v<agTh()) _MC.setHex(0x1a2536); else if(c.v<agTh()*3) _MC.multiplyScalar(0.55); }   // 不透明度相当（信頼度）: サンプル少は暗く
-    if(k===MESH.hover) _MC.lerp(_WHITE, 0.45);
-    MESH.inst.setColorAt(k,_MC);
+    const r=Math.log1p(Math.min(1,meshDensity(c)/MESH.colorMax)*9)/Math.log(10);
+    const h=flat?1.4:Math.min(600,(col?columnH(c.v):Math.pow(c.v,.65)*2.8)*hs);
+    let sx,sz;if(col)sx=sz=Math.min(c.w,c.d)*.32;else if(hex)sx=sz=MESH.res*(1-MESH.gap);else{sx=c.w*(1-MESH.gap);sz=c.d*(1-MESH.gap);}
+    if(c.v<=0)sx=sz=0;
+    _MP.set(c.cx,c.y+.7,c.cz);_MS.set(sx,Math.max(.01,h),sz);_MM.compose(_MP,_MQ,_MS);MESH.inst.setMatrixAt(k,_MM);
+    if(MESH.color==='seg'&&!c.db){let si=0;for(let s=1;s<3;s++)if(c.seg[s]>c.seg[si])si=s;_MC.setHex(SEG[SEG_KEYS[si]].col);}
+    else _MC.copy(rampC(DENS_RAMP,r));
+    if(k===MESH.hover)_MC.lerp(_WHITE,.4);MESH.inst.setColorAt(k,_MC);total+=c.v;
   });
-  MESH.inst.instanceMatrix.needsUpdate=true; MESH.inst.instanceColor.needsUpdate=true;
-  MESH.inst.material.opacity = flat ? 0.86 : 0.78;
+  MESH.active=active.length;MESH.total=total;
+  MESH.inst.instanceMatrix.needsUpdate=true;MESH.inst.instanceColor.needsUpdate=true;
+  MESH.inst.material.opacity=typeof CONT!=='undefined'&&CONT.on ? .26 : MESH.opacity;
+  precisionRefresh();
 }
+
 function meshTop(n=5){ return MESH.cells.filter(c=>c.v>=agTh()).sort((a,b)=>b.v-a.v).slice(0,n); }
 function setMesh(on){
   MESH.on=on; if(on && !MESH.inst) buildMesh(MESH.res, MESH.kind);
   MESH.group.visible = on && level!=='wide';
   document.getElementById('mesh-toggle').classList.toggle('active', on);
-  if(on){ if(level==='wide') setLevel('city'); toast(`メッシュ人流: ${MESH.kind==='jis'?'地域メッシュ':MESH.kind==='sq'?'正方グリッド':'ヘックス'} ${MESH.res}m。高さ＝滞在人数（1ドット＝${AG_SCALE}人）、色＝密度。ホバーでメッシュコードと人数`, 4200); }
+  if(on){ if(level==='wide') setLevel('city'); toast(`メッシュ人流: ${MESH.kind==='jis'?'地域メッシュ':MESH.kind==='sq'?'正方グリッド':'ヘックス'} ${MESH.res}m。高さ＝滞在人数（1ドット＝${AG_SCALE}人）、色＝面積あたり人口密度。ホバーでメッシュコードと人数`, 4200); }
   renderPanel();
 }
 
@@ -282,24 +289,16 @@ function svgDonut(parts, label, R=30){
   return `<svg viewBox="0 0 ${R*2} ${R*2+14}" width="${R*2}" role="img" aria-label="${label}"><g transform="translate(${R},${R}) rotate(-90)">${parts.map(p=>{ const len=C*p[1]; const s=`<circle r="${R-7}" fill="none" stroke="${p[2]}" stroke-width="11" stroke-dasharray="${(len-1.5).toFixed(1)} ${(C-len+1.5).toFixed(1)}" stroke-dashoffset="${(-off).toFixed(1)}"/>`; off+=len; return s; }).join('')}</g><text x="${R}" y="${R+4}" text-anchor="middle" font-size="9" fill="#e8eaf2" font-family="Oswald">${(parts[0][1]*100).toFixed(0)}%</text><text x="${R}" y="${R*2+10}" text-anchor="middle" font-size="8" fill="#9eafb9">${label}</text></svg>`;
 }
 function meshSec(){
-  if(!MESH.on || (typeof CONT!=='undefined' && CONT.on)) return '';
-  const chip=(k,v,l,cls='')=>`<button class="chip ${cls} ${String(MESH[k])===String(v)?'active':''}" data-mesh="${k}:${v}">${l}</button>`;
+  if(!MESH.on)return '';
+  const chip=(k,v,l)=>`<button class="chip ${MESH[k]===v?'active':''}" data-mesh="${k}:${v}">${l}</button>`;
   const rchip=(kind,res,l)=>`<button class="chip ${MESH.kind===kind&&MESH.res===res?'active':''}" data-meshres="${kind}:${res}">${l}</button>`;
-  const donut=s=>{ const m=SCN[s].mix; return svgDonut([['海外',m.in,hx6(SEG.in.col)],['国内',m.dom,hx6(SEG.dom.col)],['近隣',m.loc,hx6(SEG.loc.col)]], s==='wkd'?'平日 海外比率':'土日祝 海外比率'); };
-  const mode = (typeof FLOWVIS!=='undefined') ? FLOWVIS.mode : 'grid';
-  const title = mode==='hex' ? 'ヘックス（H3相当）の滞在人数' : mode==='column' ? '3D カラム（人数を対数段階で立ち上げ）' : 'グリッド（正方 / 地域メッシュ）の滞在人数';
-  const resRow = mode==='hex' ? `${rchip('hex',174,'174m（≈H3 res9）')}${rchip('hex',66,'66m（≈H3 res10）')}` : `${rchip('sq',50,'50m')}${rchip('sq',100,'100m')}${rchip('sq',250,'250m')}${rchip('jis',125,'125m 6次')}${rchip('jis',250,'250m 5次')}${rchip('jis',500,'500m 4次')}`;
-  const styleRow = mode==='column' ? `${chip('color','density','色＝密度')}${chip('color','seg','色＝主セグメント')}` : `${mode==='grid'?chip('style','3d','3D 柱')+chip('style','2d','2D 面（GIS風）'):''}${chip('color','density','色＝密度')}${chip('color','seg','色＝主セグメント')}`;
-  const axes = mode==='column' ? '高さ＝人数（対数段階: 100人≈低・1,000人≈中・5,000人≈高）、色＝密度、暗い柱＝サンプル少（信頼度低）' : mode==='hex' ? '高さ＝人数、色＝密度、六角の大きさ＝滞留している人の割合（サイズ＝滞在）、暗いセル＝サンプル少' : '高さ＝人数（人数^0.75）、色＝密度（√スケール）、暗いセル＝サンプル少（信頼度）';
-  return `<div class="sec"><div class="sec-t"><b>▦ ${title}</b></div>
-      <div class="row-btns" style="margin-bottom:6px">${resRow}</div>
-      <div class="row-btns" style="margin-bottom:6px">${styleRow}</div>
-      ${MESH.color==='density' ? `<div class="grad-bar dens"></div><div class="grad-lbl"><span>0人</span><span>${fmt(MESH.max)}人以上</span></div>` : `<div class="legend"><div class="li"><div class="sw" style="background:${hx6(SEG.in.col)}"></div>海外が最多　<div class="sw" style="background:${hx6(SEG.dom.col)}"></div>国内が最多　<div class="sw" style="background:${hx6(SEG.loc.col)}"></div>近隣が最多</div></div>`}
-      <div class="sec-t" style="margin-top:10px">滞在人数 上位セル（現在時刻）</div><div id="mesh-top"></div>
-      <div class="hint" style="margin-top:6px">${axes}。1ドット＝${AG_SCALE}人。城内は城内ゾーン構成で分散集計。地域メッシュは JIS X 0410、正方グリッドはシーン原点基準、ヘックスは H3 の解像度に相当する外接半径。</div></div>
-    <div class="sec"><div class="sec-t">居住地別 来訪者数 — 平日 vs 土日祝（人/日・想定）</div>${svgPairAbs(residenceRows())}
-      <div style="display:flex;gap:14px;justify-content:center;margin-top:4px">${donut('wkd')}${donut('wke')}</div>
-      <div class="hint" style="margin-top:4px">平日 ${fmt(SCN.wkd.castle*CITY_FACTOR)}人／土日祝 ${fmt(SCN.wke.castle*CITY_FACTOR)}人（市内来訪者・観光動向調査の居住地構成から換算）</div></div>`;
+  const kind=MESH.kind==='hex'?'hex':'sq';
+  return `<div class="sec"><div class="sec-t"><b>高精細メッシュ</b> — ${MESH.res}m ${kind==='hex'?'六角形の一辺':'正方形の一辺'}</div>
+  <div class="row-btns">${[5,10,25,50,100,250].map(n=>rchip(kind,n,n+'m')).join('')}</div>
+  <div class="row-btns" style="margin-top:8px">${FLOWVIS.mode!=='column'&&FLOWVIS.mode!=='contour'?chip('style','3d','立体')+chip('style','2d','平面'):''}${chip('color','density','人口密度')}${!(window.twinDb&&twinDb.on)?chip('color','seg','来訪者属性'):''}</div>
+  <div class="hint" style="margin-top:8px">${window.twinDb&&twinDb.on?'API取得点または集計値を表示。5〜25m・六角形は取得点の再集計（最大20,000点）。母集団総数ではありません。':'シミュレーション位置をセルに集計。1ドット＝'+AG_SCALE+'人。人数のないセルは非表示。'}<br>細分化は表示・集計単位の変更です。位置データの測定精度は向上しません。${kind==='hex'?'六角形はローカル座標グリッド（H3 IDではありません）。':''}</div>
+  <details style="margin-top:10px"><summary>地域メッシュ（JIS）</summary><div class="row-btns" style="margin-top:8px">${[125,250,500].map(n=>rchip('jis',n,n+'m')).join('')}</div></details>
+  <div class="sec-t" style="margin-top:14px">滞在人数 上位セル</div><div id="mesh-top"></div></div>`;
 }
 function trajSec(){
   if(!TRAJ.on) return '';
@@ -324,13 +323,13 @@ function updateFlowPanels(){
   if(fr){ fr.innerHTML = floorStats().map(s=>`<div class="floor-b"><div class="floor-t">${s.d.n}<b>${fmt(s.tot)}人</b></div>${s.rows.slice().reverse().map(r=>`<div class="floor-r"><span>${r.fn}</span><div class="bar"><i style="width:${Math.min(100,r.load*100).toFixed(0)}%;background:${hx6(LVL_COL[r.lvl])}"></i></div><b>${fmt(r.n)}</b></div>`).join('')}<small>${s.d.note}</small></div>`).join(''); }
 }
 function bindFlow3D(){
-  document.querySelectorAll('[data-mesh]').forEach(b=> b.onclick=()=>{ const [k,v]=b.dataset.mesh.split(':'); MESH[k]=v; meshRebuildShape(); MESH.dirty=true; renderPanel(); });
-  document.querySelectorAll('[data-meshres]').forEach(b=> b.onclick=()=>{ const [kind,res]=b.dataset.meshres.split(':'); buildMesh(+res, kind); renderPanel(); });
+  document.querySelectorAll('[data-mesh]').forEach(b=> b.onclick=()=>{ const [k,v]=b.dataset.mesh.split(':'); MESH[k]=v; meshRebuildShape(); MESH.dirty=true; paintMesh(); renderPanel(); });
+  document.querySelectorAll('[data-meshres]').forEach(b=> b.onclick=()=>{ const [kind,res]=b.dataset.meshres.split(':'); precisionRes(+res, kind); });
   document.querySelectorAll('[data-traj]').forEach(b=> b.onclick=()=>{ const v=b.dataset.traj; if(v==='clear') trajReset(); else if(v==='static'||v==='anim') setTripsAnim(v==='anim'); else { TRAJ.mode=v; trajRelayout(); } renderPanel(); });
   const tr=document.getElementById('trail-r'); if(tr) tr.oninput=e=>{ TRAJ.mat.uniforms.uTrail.value=+e.target.value; document.getElementById('trail-v').value=e.target.value+' 分'; };
 }
 function updateFlow3D(dtMin, now){
-  if(MESH.on){ MESH.group.visible = level!=='wide'; if(dtMin>0 || MESH.dirty){ if(dtMin>0) meshAccumulate(dtMin); if(now-MESH.lastPaint>90){ MESH.lastPaint=now; paintMesh(); } } }
+  if(MESH.on){ MESH.group.visible=level!=='wide'; const key=timeState.min+'|'+segFilter+'|'+MESH.epoch; if(now-MESH.lastPaint>160){ MESH.lastPaint=now; if(key!==MESH.lastDataKey){MESH.lastDataKey=key;meshAccumulate(0);} paintMesh(); } }
   if(TRAJ.on){ TRAJ.group.visible = level!=='wide'; trajUpload(); }
   if(FLOORS.on){ FLOORS.group.visible = level!=='wide'; updateFloors(false); }
 }
@@ -338,9 +337,9 @@ function meshTip(e){
   if(!MESH.on || !MESH.inst || !MESH.group.visible) return false;
   const hits = pick(e, [MESH.inst], false);
   if(!hits.length){ if(MESH.hover>=0){ MESH.hover=-1; MESH.dirty=true; } return false; }
-  const k=hits[0].instanceId, c=MESH.cells[k]; if(k!==MESH.hover){ MESH.hover=k; MESH.dirty=true; }
+  const k=hits[0].instanceId, c=MESH.cells[k]; if(!c||c.v<=0)return false; if(k!==MESH.hover){ MESH.hover=k; MESH.dirty=true; }
   const tot=Math.max(1,c.v);
-  tip.style.display='block'; tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY+10)+'px';
+  tip.style.display='block'; tip.style.left=Math.max(8,Math.min(innerWidth-320,e.clientX+14))+'px'; tip.style.top=Math.max(8,Math.min(innerHeight-160,e.clientY+10))+'px';
   if(c.db){ const m=c.meta||{}; tip.innerHTML = `<span class="t-nm">${c.near||'メッシュ'}</span><span style="color:var(--sub)">｜${c.code}</span><br>人数 <b>${fmt(c.v)}人</b>${m.density!=null?`・密度 ${(+m.density).toFixed(0)}人/ha・混雑 ${(+m.congestion_index*100).toFixed(0)}%`:''}<br><span style="color:var(--sub)">${m.inflow!=null?`流入 ${fmt(m.inflow)}・流出 ${fmt(m.outflow)}・`:''}DB（${twinDb.source}）・クリックで詳細</span>`; return true; }
   tip.innerHTML = `<span class="t-nm">${c.near||'メッシュ'}</span><span style="color:var(--sub)">｜${c.code}</span><br>現在 滞在 <b>${fmt(c.v)}人</b>（海外 ${(c.seg[0]/tot*100).toFixed(0)}%・国内 ${(c.seg[1]/tot*100).toFixed(0)}%・近隣 ${(c.seg[2]/tot*100).toFixed(0)}%）<br><span style="color:var(--sub)">滞留中 ${(c.stay/tot*100).toFixed(0)}%・クリックで詳細</span>`;
   return true;
