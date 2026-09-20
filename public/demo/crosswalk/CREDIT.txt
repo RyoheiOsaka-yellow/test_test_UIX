@@ -1,0 +1,3 @@
+映像: Wikimedia Commons「Piedira pasejo en strato Respubliko (Tjumeno)」· 検出: 事前追跡（人・自転車・車両）· 危険判定: 場面解析（ゾーン + 車両接近）
+出典: https://commons.wikimedia.org/wiki/File:Piedira_pasejo_en_strato_Respubliko_(Tjumeno).webm （CC BY-SA 4.0）
+検出: YOLO11m（COCO: person / bicycle / car / motorcycle / bus / truck）+ BoT-SORT で事前計算。

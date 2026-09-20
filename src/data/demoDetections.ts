@@ -43,6 +43,8 @@ export interface BottleTrack {
   tiltDeg?: number
   /** 液体のコントラスト（低いと計測が難しい） 0..1 */
   liquidContrast?: number
+  /** 物体クラス（person / car など） */
+  cls?: string
 }
 
 export const CONVEYOR = {
@@ -386,6 +388,7 @@ export function timelineToTracks(timeline: RawDetection[], opts: TimelineOptions
       attributeConfidence >= 0.75 ? 'OK' : attributeConfidence >= 0.45 ? 'MISALIGNED' : attributeConfidence >= 0.2 ? 'AMBIGUOUS' : 'NG'
     const common = {
       id,
+      cls: first.class,
       y: first.bbox[1],
       width: first.bbox[2],
       height: first.bbox[3],

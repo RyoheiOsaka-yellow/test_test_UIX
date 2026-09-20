@@ -208,7 +208,7 @@ export function VideoInspection() {
           {isVideo &&
             (credit ??
               `${profile.objectLabel}検出: 事前追跡 · ${profile.attributeLabel}判定: ${
-                profile.trigger.kind === 'state' ? '時系列判定' : profile.measurement ? '画素解析で実測' : '疑似注入'
+                profile.trigger.kind === 'state' ? (profile.analyzer === 'crosswalk' ? '場面解析' : '時系列判定') : profile.measurement ? '画素解析で実測' : '疑似注入'
               }`)}
           <span className="text-ink-3/70">シナリオ: {scenarioText(SCENARIOS[scenario].name, profile)}</span>
         </div>

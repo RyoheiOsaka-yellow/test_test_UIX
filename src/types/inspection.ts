@@ -45,7 +45,7 @@ export interface RawDetection {
   id: number
   bbox: NormalizedBBox
   /** 'object' = 物体のみ検出（検査属性は未判定。シナリオ側で割り当て）。'capped' / 'uncapped' は互換用。 */
-  class: 'object' | 'bottle' | 'ok' | 'ng' | 'capped' | 'uncapped' | Lowercase<DetectionClass>
+  class: 'object' | 'bottle' | 'ok' | 'ng' | 'capped' | 'uncapped' | 'person' | 'car' | 'bicycle' | 'motorcycle' | 'bus' | 'truck' | Lowercase<DetectionClass>
   /** Class confidence 0..1 (confidence of the reported class). */
   confidence: number
   /** Optional: explicit bottle-presence confidence. Defaults to ~0.95. */
@@ -80,8 +80,10 @@ export interface FrameDetection {
   measurement?: MeasurementReading
   /** 骨格キーポイント（COCO 17 点 × [x, y, conf]、正規化）。人物プロファイルのみ */
   keypoints?: number[]
-  /** 人物の状態推定（転倒検知）。人物プロファイルのみ */
-  personState?: PersonStateReading
+  /** 状態解析の結果（転倒検知・横断歩道監視）。状態解析プロファイルのみ */
+  personState?: StateReading
+  /** 物体クラス（person / car など。複数クラスのプロファイルのみ） */
+  objectClass?: string
   /** Final decision, once the object crossed the gate. */
   decision?: DecisionResult
   /** Video time at which the object crossed the gate. */
@@ -109,26 +111,27 @@ export interface MeasurementReading {
   truth?: number
 }
 
-/** 転倒検知: 5 特徴量と時系列判定の結果 */
-export interface PersonStateReading {
-  state: 'NORMAL' | 'FALLING' | 'FALLEN'
-  /** 転倒スコア 0..1 */
-  fallScore: number
-  /** 床上にいる継続時間 [s]（FALLEN のとき） */
-  onGroundSeconds: number
-  features: {
-    /** 体の位置: 腰の高さ（立位時からの低下量、0..1） */
-    bodyPosition: number
-    /** 角度: 胴体の傾き [deg]（0 = 直立） */
-    torsoAngleDeg: number
-    /** 形状: 枠の縦横比 w/h */
-    aspectRatio: number
-    /** 動き: 腰の速度（枠高さ/秒） */
-    motion: number
-    /** 姿勢信頼度: キーポイント信頼度の平均 */
-    poseConfidence: number
-  }
+/** 状態解析（転倒検知・横断歩道監視など）の 1 物体分の結果 */
+export interface StateReading {
+  /** 状態コード（NORMAL / FALLING / FALLEN, WAITING / CROSSING / CLEAR など） */
+  state: string
+  stateLabel: string
+  /** 正常 / 注意 / 警報 */
+  level: 'normal' | 'watch' | 'alert'
+  /** 異常スコア 0..1 */
+  score: number
+  /** 現在の状態の継続時間 [s] */
+  holdSeconds: number
+  /** 解析の確からしさ 0..1 */
+  confidence: number
+  /** 表示用の特徴量 */
+  features: Array<{ key: string; label: string; value: number; unit?: string; digits?: number }>
+  /** 補足（例: 接近車両の追跡番号） */
+  note?: string
 }
+
+/** 互換名（転倒検知） */
+export type PersonStateReading = StateReading
 
 export interface MeasurementSpec {
   /** Jev へ送る項目名（fill_level など） */
@@ -148,8 +151,8 @@ export interface InspectionState {
   alignmentScore?: number
   /** 連続量の計測（充填量など）。あれば判断はこちらを優先する */
   measurement?: { key: string; value: number; target: number; tolerance: number; confidence: number; tiltDeg: number; truth?: number }
-  /** 人物の状態（転倒検知）。あれば判断はこちらを優先する */
-  person?: { state: 'NORMAL' | 'FALLING' | 'FALLEN'; fallScore: number; onGroundSeconds: number; poseConfidence: number; torsoAngleDeg: number; bodyPosition: number; aspectRatio: number; motion: number }
+  /** 状態解析（転倒検知・横断歩道監視）。あれば判断はこちらを優先する */
+  scene?: { state: string; level: 'normal' | 'watch' | 'alert'; score: number; holdSeconds: number; confidence: number; features: Record<string, number> }
   inspectionZone: boolean
   /** Number of prior RECHECK rounds on this object. */
   previousFailures?: number
@@ -382,6 +385,12 @@ export interface InspectionProfile {
   measurement?: MeasurementSpec
   /** 動画が無いときに描く合成映像の種類（none: 映像なしの表示） */
   syntheticFeed?: 'bottles' | 'filling' | 'none'
+  /** 状態解析の種類（trigger.kind === 'state' のとき） */
+  analyzer?: 'fall' | 'crosswalk'
+  /** 横断歩道監視: ゾーンの多角形（正規化座標） */
+  zones?: Array<{ id: string; label: string; kind: 'crosswalk' | 'waiting' | 'near' | 'road'; polygon: Array<[number, number]> }>
+  /** 物体クラスの表示名（person → 歩行者 など） */
+  classLabels?: Record<string, string>
   /** 判断コードの表示名を差し替える（例: REJECT → 転倒 警報） */
   decisionLabels?: Partial<Record<ObjectDecision, string>>
   /** KPI の見出し差し替え（検査総数 / 合格 / 不良） */

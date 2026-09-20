@@ -48,37 +48,40 @@ function MeasurementBlock({ cur, spec }: { cur: ReturnType<typeof useInspectionS
   )
 }
 
-const STATE_JA = { NORMAL: '正常', FALLING: '転倒中', FALLEN: '転倒（床上）' } as const
-const STATE_TONE = { NORMAL: 'text-green', FALLING: 'text-yellow', FALLEN: 'text-red' } as const
+const LEVEL_TONE = { normal: 'text-green', watch: 'text-yellow', alert: 'text-red' } as const
+const LEVEL_HEX = { normal: '#39ff88', watch: '#ffd52a', alert: '#ff5151' } as const
 
-/** 人物プロファイル: 5 特徴量と状態機械の出力をライブ表示 */
-function PersonBlock() {
+/** 状態解析プロファイル: 状態機械の出力と特徴量をライブ表示 */
+function StateBlock({ scoreLabel }: { scoreLabel: string }) {
   const live = useInspectionStore((s) => s.livePerson)
   const r = live?.reading
-  const f = r?.features
-  const fmt = (v: number | undefined, d = 2) => (v === undefined ? '—' : v.toFixed(d))
   return (
     <div className="border border-border-2 bg-bg/40 px-2 py-1.5">
       <div className="flex items-baseline justify-between">
         <span className="text-[10px] text-ink-2">状態（時系列判定）{live ? ` · ${live.objectId}` : ''}</span>
-        <span className={`text-[16px] font-semibold leading-none ${r ? STATE_TONE[r.state] : 'text-ink-3'}`}>
-          {r ? STATE_JA[r.state] : '—'}
-          {r?.state === 'FALLEN' && <span className="num ml-1 text-[11px]">{r.onGroundSeconds.toFixed(1)}秒</span>}
+        <span className={`text-[15px] font-semibold leading-none ${r ? LEVEL_TONE[r.level] : 'text-ink-3'}`}>
+          {r ? r.stateLabel : '—'}
+          {r && r.level !== 'normal' && <span className="num ml-1 text-[11px]">{r.holdSeconds.toFixed(1)}秒</span>}
         </span>
       </div>
       <div className="mt-1 flex items-baseline justify-between">
-        <span className="text-[10px] text-ink-2">転倒スコア</span>
-        <span className="num text-[13px]">{fmt(r?.fallScore)}</span>
+        <span className="text-[10px] text-ink-2">{scoreLabel}</span>
+        <span className="num text-[13px]">{r ? r.score.toFixed(2) : '—'}</span>
       </div>
       <div className="h-[3px] w-full bg-border-2">
-        <div className="h-full" style={{ width: `${Math.round((r?.fallScore ?? 0) * 100)}%`, background: r ? (r.state === 'FALLEN' ? '#ff5151' : r.state === 'FALLING' ? '#ffd52a' : '#39ff88') : '#25313d' }} />
+        <div className="h-full" style={{ width: `${Math.round((r?.score ?? 0) * 100)}%`, background: r ? LEVEL_HEX[r.level] : '#25313d' }} />
       </div>
       <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-[2px] text-[9.5px] text-ink-3">
-        <span className="flex justify-between">体の位置（腰の低下）<span className="num text-ink-2">{fmt(f?.bodyPosition)}</span></span>
-        <span className="flex justify-between">角度（胴の傾き）<span className="num text-ink-2">{f ? `${f.torsoAngleDeg.toFixed(0)}°` : '—'}</span></span>
-        <span className="flex justify-between">形状（縦横比）<span className="num text-ink-2">{fmt(f?.aspectRatio)}</span></span>
-        <span className="flex justify-between">動き（腰の速度）<span className="num text-ink-2">{fmt(f?.motion)}</span></span>
-        <span className="col-span-2 flex justify-between">姿勢信頼度<span className="num text-ink-2">{fmt(f?.poseConfidence)}</span></span>
+        {(r?.features ?? []).map((f) => (
+          <span key={f.key} className="flex justify-between gap-2">
+            <span className="truncate">{f.label}</span>
+            <span className="num shrink-0 text-ink-2">
+              {f.value.toFixed(f.digits ?? 2)}
+              {f.unit ?? ''}
+            </span>
+          </span>
+        ))}
+        {r?.note && <span className="col-span-2 text-ink-2">{r.note}</span>}
       </div>
     </div>
   )
@@ -105,7 +108,7 @@ export function DecisionPanel() {
       {profile.measurement && (
         <MeasurementBlock cur={cur} spec={profile.measurement} />
       )}
-      {profile.trigger.kind === 'state' && <PersonBlock />}
+      {profile.trigger.kind === 'state' && <StateBlock scoreLabel={profile.analyzer === 'crosswalk' ? '危険スコア' : '転倒スコア'} />}
       <div className={`grid grid-cols-2 gap-x-3 gap-y-1 ${profile.measurement ? 'mt-2' : ''}`}>
         <div>
           <div className="flex items-baseline justify-between">

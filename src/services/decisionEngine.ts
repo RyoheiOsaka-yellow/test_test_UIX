@@ -62,25 +62,25 @@ export function simulateObjectDecision(
   let confidence: number
   let reason: string
 
-  if (state.person) {
-    // 人物の状態（転倒検知）: 時系列判定の結果と姿勢信頼度から通報の要否を決める
-    const p = state.person
-    if (p.poseConfidence < 0.3) {
+  if (state.scene) {
+    // 状態解析（転倒検知・横断歩道監視）: 解析の水準と確からしさから通報の要否を決める
+    const p = state.scene
+    if (p.confidence < 0.3) {
       decision = 'HUMAN_REVIEW'
-      confidence = clamp01(0.5 + p.poseConfidence)
-      reason = 'POSE_UNCERTAIN'
-    } else if (p.state === 'FALLEN' && p.fallScore >= 0.6) {
+      confidence = clamp01(0.5 + p.confidence)
+      reason = 'SCENE_UNCERTAIN'
+    } else if (p.level === 'alert' && p.score >= 0.6) {
       decision = 'REJECT'
-      confidence = clamp01(0.7 + 0.3 * p.fallScore) * (0.8 + 0.2 * p.poseConfidence)
-      reason = 'FALL_CONFIRMED'
-    } else if (p.state === 'FALLING' || (p.state === 'FALLEN' && p.fallScore >= 0.4)) {
+      confidence = clamp01(0.7 + 0.3 * p.score) * (0.8 + 0.2 * p.confidence)
+      reason = 'SCENE_ALERT'
+    } else if (p.level !== 'normal' || p.score >= 0.4) {
       decision = recheckRound >= 1 ? 'HUMAN_REVIEW' : 'RECHECK'
-      confidence = clamp01(0.55 + 0.3 * p.fallScore)
-      reason = 'FALL_SUSPECTED'
+      confidence = clamp01(0.55 + 0.3 * p.score)
+      reason = 'SCENE_WATCH'
     } else {
       decision = 'PASS'
-      confidence = clamp01(0.85 + 0.15 * (1 - p.fallScore))
-      reason = 'NO_FALL'
+      confidence = clamp01(0.85 + 0.15 * (1 - p.score))
+      reason = 'SCENE_NORMAL'
     }
     if (!options.includes(decision)) decision = options.includes('HUMAN_REVIEW') ? 'HUMAN_REVIEW' : options[0]
     return { decision, confidence, reason, action: actionFor(decision) }

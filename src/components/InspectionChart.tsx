@@ -81,10 +81,11 @@ export function PassRejectChart() {
 /** 人物プロファイル: 転倒スコアの時系列（直近 60 秒） */
 function FallScoreChart() {
   const series = useInspectionStore((s) => s.liveSeries)
+  const isCrosswalk = useInspectionStore((s) => s.profile.analyzer === 'crosswalk')
   const now = useNowSecond()
   const data = useMemo(() => series.map((p) => ({ label: `-${Math.max(0, Math.round((now - p.t) / 1000))}秒`, t: p.t, スコア: p.value })), [series, now])
   return (
-    <Panel title="転倒スコア（時系列）" right={<span className="text-[9px] text-ink-3">直近60秒 · 0.6 以上で警報</span>} bodyClassName="px-1 py-1">
+    <Panel title={isCrosswalk ? '危険スコア（時系列）' : '転倒スコア（時系列）'} right={<span className="text-[9px] text-ink-3">直近60秒 · 0.6 以上で警報</span>} bodyClassName="px-1 py-1">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
           <CartesianGrid stroke="#1a242e" vertical={false} />

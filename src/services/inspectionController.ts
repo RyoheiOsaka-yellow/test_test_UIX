@@ -96,7 +96,7 @@ export class InspectionController {
       this.bus.emit(
         'SYSTEM',
         `実映像の追跡結果を読込 · ${tracks.length} 個のトラック（${profile.objectLabel}検出: 事前計算 / ${profile.attributeLabel}判定: ${
-          profile.trigger.kind === 'state' ? '5特徴量の時系列判定' : profile.measurement ? '画素解析で実測' : '疑似注入'
+          profile.trigger.kind === 'state' ? (profile.analyzer === 'crosswalk' ? '場面解析' : '5特徴量の時系列判定') : profile.measurement ? '画素解析で実測' : '疑似注入'
         }）`,
       )
     }
@@ -250,14 +250,14 @@ export class InspectionController {
       this.bus.emit(
         'ALERT',
         shouldAlert
-          ? `異常警報 · 直近60秒の不良率 ${(smoothedRejectRate * 100).toFixed(1)}%（しきい値 ${(scenario.alertRejectRate * 100).toFixed(0)}%）`
-          : `異常解除 · 不良率 ${(smoothedRejectRate * 100).toFixed(1)}%`,
+          ? `異常警報 · 直近60秒の${s.profile.kpiLabels?.reject ?? '不良'}率 ${(smoothedRejectRate * 100).toFixed(1)}%（しきい値 ${(scenario.alertRejectRate * 100).toFixed(0)}%）`
+          : `異常解除 · ${s.profile.kpiLabels?.reject ?? '不良'}率 ${(smoothedRejectRate * 100).toFixed(1)}%`,
         {
           severity: shouldAlert ? 'error' : 'ok',
           data: {
             active: shouldAlert,
             rejectRate: smoothedRejectRate,
-            message: shouldAlert ? '不良率がしきい値を超過' : '',
+            message: shouldAlert ? `${s.profile.kpiLabels?.reject ?? '不良'}率がしきい値を超過` : '',
           },
         },
       )

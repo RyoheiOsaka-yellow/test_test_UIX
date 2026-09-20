@@ -26,7 +26,7 @@ export function SystemStatus() {
       <Field label={`${profile.objectLabel}検出`} value={trackSource === 'real' ? profile.detectorNote : '合成'} mono={false} />
       <Field
         label={`${profile.attributeLabel}判定`}
-        value={profile.trigger.kind === 'state' ? '時系列判定（5特徴量）' : profile.measurement ? '実測（画素の HSV 解析）' : '疑似注入'}
+        value={profile.trigger.kind === 'state' ? (profile.analyzer === 'crosswalk' ? '場面解析（ゾーン + 車両接近）' : '時系列判定（5特徴量）') : profile.measurement ? '実測（画素の HSV 解析）' : '疑似注入'}
         mono={false}
       />
       <Field

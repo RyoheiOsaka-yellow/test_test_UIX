@@ -30,16 +30,17 @@ const LABEL_FONT = '600 11px "JetBrains Mono", "Noto Sans JP", "Hiragino Sans", 
 const TAG_FONT = '600 10.5px "JetBrains Mono", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif'
 const STAMP_FONT = '700 13px "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif'
 
-const PERSON_STATE_JA = { NORMAL: '正常', FALLING: '転倒中', FALLEN: '転倒（床上）' } as const
-const PERSON_STATE_COLOR = { NORMAL: '#39ff88', FALLING: '#ffd52a', FALLEN: '#ff5151' } as const
+const LEVEL_COLOR = { normal: '#39ff88', watch: '#ffd52a', alert: '#ff5151' } as const
+const VEHICLE_COLOR = '#31c6ff'
 
 export function labelText(d: FrameDetection, settings: OverlaySettings, profile: InspectionProfile): string {
   const parts: string[] = []
   if (settings.trackingId) parts.push(d.label)
   if (d.personState) {
-    parts.push(PERSON_STATE_JA[d.personState.state])
-    if (d.personState.state === 'FALLEN') parts.push(`${d.personState.onGroundSeconds.toFixed(1)}秒`)
-    if (settings.confidence) parts.push(`スコア ${d.personState.fallScore.toFixed(2)}`)
+    if (d.objectClass && profile.classLabels?.[d.objectClass]) parts.push(profile.classLabels[d.objectClass])
+    parts.push(d.personState.stateLabel)
+    if (d.personState.level === 'alert') parts.push(`${d.personState.holdSeconds.toFixed(1)}秒`)
+    if (settings.confidence && d.personState.score > 0) parts.push(`スコア ${d.personState.score.toFixed(2)}`)
     return parts.join(' ')
   }
   if (profile.measurement && d.measurement) {
@@ -66,7 +67,8 @@ export function drawDetection(
   const y = ny * h
   const bw = nw * w
   const bh = nh * h
-  const color = d.personState ? PERSON_STATE_COLOR[d.personState.state] : (CLASS_COLORS[d.detectionClass] ?? '#31c6ff')
+  const isVehicle = d.objectClass && ['car', 'truck', 'bus', 'motorcycle'].includes(d.objectClass)
+  const color = d.personState ? (isVehicle && d.personState.level === 'normal' ? VEHICLE_COLOR : LEVEL_COLOR[d.personState.level]) : (CLASS_COLORS[d.detectionClass] ?? '#31c6ff')
   const inspecting = d.phase === 'INSPECTING'
   // ゲート前の追跡中と、判定から2秒以上経った物体は簡略表示にして、
   // 検査中・判定直後だけを目立たせる（実映像は同時に30本以上映るため）

@@ -11,7 +11,8 @@ import type {
 import { OBJECT_DECISION_OPTIONS } from '@/types/inspection'
 import { bboxAt, currentTrigger, exitTimeOf, gateProgress, gateTimeOf, inZone, keypointsAt, type BottleTrack } from '@/data/demoDetections'
 import { FallDetector } from './fallDetector'
-import type { PersonStateReading } from '@/types/inspection'
+import { CrosswalkAnalyzer, type SceneItem } from './crosswalkAnalyzer'
+import type { StateReading } from '@/types/inspection'
 import { inspectionStore } from './inspectionStore'
 import { PROFILES, DEFAULT_PROFILE_ID } from '@/profiles'
 import { decisionJa } from '@/i18n/ja'
@@ -57,9 +58,9 @@ interface TrackRuntime {
   /** 計測プロファイル: 移動平均した最新の計測値 */
   measurement?: MeasurementReading
   measureSamples: number
-  /** 人物プロファイル: 転倒判定器と最新状態 */
+  /** 状態解析プロファイル: 転倒判定器（転倒検知）と最新状態 */
   fall?: FallDetector
-  person?: PersonStateReading
+  person?: StateReading
   personSince?: number
   /** 判定確定後に起き上がったら再度判定できるようにする */
   recoveredAt?: number
@@ -99,6 +100,8 @@ export class VideoDetectionSimulator {
   pixelSource: FramePixelSource | null = null
   private frameCounter = 0
   private lastLiveUpdate = 0
+  /** 横断歩道監視: 場面全体の解析器 */
+  private crosswalk: CrosswalkAnalyzer | null = null
 
   constructor(opts: SimulatorOptions) {
     this.bus = opts.bus
@@ -125,6 +128,7 @@ export class VideoDetectionSimulator {
       measureSamples: 0,
     }))
     this.lastLiveUpdate = 0
+    this.crosswalk = profile.analyzer === 'crosswalk' ? new CrosswalkAnalyzer(profile) : null
     this.reset(startTime, false)
   }
 
@@ -149,6 +153,7 @@ export class VideoDetectionSimulator {
       rt.measurement = undefined
       rt.measureSamples = 0
       rt.fall?.reset()
+      this.crosswalk?.reset()
       rt.person = undefined
       rt.personSince = undefined
       rt.recoveredAt = undefined
@@ -184,6 +189,15 @@ export class VideoDetectionSimulator {
     const attrLabel = this.profile.attributeLabel
     const mspec = this.profile.measurement
     this.frameCounter++
+    let sceneReadings: Map<number, StateReading> | null = null
+    if (this.crosswalk) {
+      const items: SceneItem[] = []
+      for (const rt of this.runtimes) {
+        if (rt.phase === 'EXITED' || !this.isVisible(rt, time)) continue
+        items.push({ id: rt.track.id, label: rt.label, cls: rt.track.cls ?? 'object', bbox: bboxAt(rt.track, time) })
+      }
+      sceneReadings = this.crosswalk.update(time, items)
+    }
 
     for (const rt of this.runtimes) {
       if (rt.phase === 'EXITED') continue
@@ -216,48 +230,73 @@ export class VideoDetectionSimulator {
         }
       }
 
-      // 状態遷移プロファイル（転倒検知）: 毎フレーム 5 特徴量から状態を更新する
+      // 状態解析プロファイル: 毎フレーム状態を更新する（転倒検知は物体ごと、横断歩道監視は場面全体）
       if (trigger.kind === 'state' && rt.track.source === 'real' && rt.phase !== 'ENTERING' && this.isVisible(rt, time)) {
-        if (!rt.fall) rt.fall = new FallDetector()
-        const prevState = rt.person?.state ?? 'NORMAL'
-        rt.person = rt.fall.update(time, bbox, keypointsAt(rt.track, time))
-        if (rt.person.state !== prevState) {
-          rt.personSince = time
-          if (rt.person.state === 'FALLING' && rt.phase === 'TRACKED') {
-            rt.phase = 'INSPECTING'
+        const prevState = rt.person?.state ?? ''
+        if (this.crosswalk) {
+          const reading = sceneReadings?.get(rt.track.id)
+          if (reading) rt.person = reading
+        } else {
+          if (!rt.fall) rt.fall = new FallDetector()
+          rt.person = rt.fall.update(time, bbox, keypointsAt(rt.track, time))
+        }
+        const isSubject = this.crosswalk ? CrosswalkAnalyzer.classOf(rt.track.cls) === 'pedestrian' : true
+        if (rt.person && isSubject) {
+          const r = rt.person
+          if (r.state !== prevState) {
+            rt.personSince = time
+            if (r.level !== 'normal' && rt.phase === 'TRACKED') {
+              rt.phase = 'INSPECTING'
+              const s = this.sampleReadings(rt, time)
+              rt.sampledAttribute = s.attribute
+              rt.sampledObject = s.object
+              rt.sampledAlignment = s.alignment
+              this.bus.emit('INSPECTION_STARTED', `${label} ${r.stateLabel}`, { objectId: label, videoTime: time, severity: 'warn' })
+            } else if (this.crosswalk && r.state === 'CROSSING' && rt.phase === 'TRACKED') {
+              rt.phase = 'INSPECTING'
+              this.bus.emit('INSPECTION_STARTED', `${label} 横断開始`, { objectId: label, videoTime: time })
+            } else if (r.level === 'normal' && (rt.phase === 'DECIDED' || rt.phase === 'INSPECTING')) {
+              const finishedCrossing = this.crosswalk && (r.state === 'SIDEWALK' || r.state === 'WAITING')
+              if (this.crosswalk && rt.phase === 'INSPECTING' && !rt.decisionRequested && finishedCrossing) {
+                // 危険なく横断を終えた: 安全横断として判定を確定する
+                rt.decisionRequested = true
+                const s = this.sampleReadings(rt, time)
+                rt.sampledAttribute = s.attribute
+                rt.sampledObject = s.object
+                rt.sampledAlignment = s.alignment
+                void this.runDecision(rt, time, gen)
+              } else if (!this.crosswalk) {
+                this.bus.emit('OBJECT_TRACKED', `${label} 起き上がりを確認（警報解除）`, { objectId: label, videoTime: time, severity: 'ok', data: { recovered: true } })
+                rt.phase = 'TRACKED'
+                rt.decision = undefined
+                rt.decisionTime = undefined
+                rt.decisionRequested = false
+                rt.recheckRounds = 0
+                rt.recoveredAt = time
+              } else if (rt.phase === 'DECIDED' && finishedCrossing) {
+                this.bus.emit('OBJECT_TRACKED', `${label} 横断を完了（警報解除）`, { objectId: label, videoTime: time, severity: 'ok', data: { recovered: true } })
+              }
+            }
+          }
+          if (rt.phase === 'INSPECTING' && !rt.decisionRequested && r.level === 'alert' && time - (rt.personSince ?? time) >= trigger.confirmSeconds) {
+            rt.decisionRequested = true
             const s = this.sampleReadings(rt, time)
             rt.sampledAttribute = s.attribute
             rt.sampledObject = s.object
             rt.sampledAlignment = s.alignment
-            this.bus.emit('INSPECTION_STARTED', `${label} 転倒の疑い（急な下降を検知）`, { objectId: label, videoTime: time, severity: 'warn' })
-          } else if (rt.person.state === 'NORMAL' && (rt.phase === 'DECIDED' || rt.phase === 'INSPECTING')) {
-            this.bus.emit('OBJECT_TRACKED', `${label} 起き上がりを確認（警報解除）`, { objectId: label, videoTime: time, severity: 'ok', data: { recovered: true } })
-            rt.phase = 'TRACKED'
-            rt.decision = undefined
-            rt.decisionTime = undefined
-            rt.decisionRequested = false
-            rt.recheckRounds = 0
-            rt.recoveredAt = time
+            this.bus.emit('ATTRIBUTE_CONFIDENCE', `${label} ${r.stateLabel} ${r.holdSeconds.toFixed(1)}秒 · 異常スコア ${r.score.toFixed(2)}${r.note ? ' · ' + r.note : ''}`, {
+              objectId: label,
+              videoTime: time,
+              data: { attributeConfidence: s.attribute, objectConfidence: s.object, alignment: s.alignment, scene: s.scene },
+            })
+            void this.runDecision(rt, time, gen)
           }
         }
-        if (rt.phase === 'INSPECTING' && !rt.decisionRequested && rt.person.state === 'FALLEN' && time - (rt.personSince ?? time) >= trigger.confirmSeconds) {
-          rt.decisionRequested = true
-          const s = this.sampleReadings(rt, time)
-          rt.sampledAttribute = s.attribute
-          rt.sampledObject = s.object
-          rt.sampledAlignment = s.alignment
-          this.bus.emit('ATTRIBUTE_CONFIDENCE', `${label} 床上に滞留 ${rt.person.onGroundSeconds.toFixed(1)}秒 · 転倒スコア ${rt.person.fallScore.toFixed(2)}`, {
-            objectId: label,
-            videoTime: time,
-            data: { attributeConfidence: s.attribute, objectConfidence: s.object, alignment: s.alignment, person: s.person },
-          })
-          void this.runDecision(rt, time, gen)
-        }
-        // 注目人物（転倒スコア最大）の状態を約 5 Hz でストアへ
+        // 注目物体（異常スコア最大）の状態を約 5 Hz でストアへ
         if (time - this.lastLiveUpdate > 0.2 || time < this.lastLiveUpdate) {
           const best = this.runtimes
             .filter((r) => r.person && r.phase !== 'EXITED' && r.phase !== 'ENTERING' && this.isVisible(r, time))
-            .sort((a, b) => b.person!.fallScore - a.person!.fallScore)[0]
+            .sort((a, b) => b.person!.score - a.person!.score)[0]
           if (best?.person) {
             this.lastLiveUpdate = time
             inspectionStore.updateLivePerson(best.label, best.person)
@@ -362,9 +401,9 @@ export class VideoDetectionSimulator {
 
       if (this.isPast(rt, time)) {
         rt.phase = 'EXITED'
-        const lostWhileDown = rt.person && rt.person.state !== 'NORMAL'
+        const lostWhileAbnormal = rt.person && rt.person.level !== 'normal'
         rt.person = undefined
-        this.bus.emit('OBJECT_EXITED', lostWhileDown ? `${label} 追跡終了（床上のまま見失い）` : `${label} 退出`, { objectId: label, videoTime: time, severity: lostWhileDown ? 'warn' : 'info' })
+        this.bus.emit('OBJECT_EXITED', lostWhileAbnormal ? `${label} 追跡終了（異常状態のまま見失い）` : `${label} 退出`, { objectId: label, videoTime: time, severity: lostWhileAbnormal ? 'warn' : 'info' })
       }
     }
   }
@@ -379,24 +418,22 @@ export class VideoDetectionSimulator {
     const jitter = (k: number) => smoothNoise(rt.track.seed + round * 17, time, k)
     if (currentTrigger().kind === 'state' && rt.person) {
       const p = rt.person
-      const attribute = clamp01(1 - p.fallScore) * cam + 0.5 * (1 - cam)
+      const attribute = clamp01(1 - p.score) * cam + 0.5 * (1 - cam)
       const object = clamp01((rt.track.objectConfidence + jitter(2) * 0.015 * (1 + noise)) * (0.6 + 0.4 * cam))
-      const alignment = clamp01(1 - p.features.torsoAngleDeg / 90)
+      const alignment = clamp01(1 - p.score)
       return {
         attribute,
         object,
         alignment,
         measurement: undefined as InspectionState['measurement'],
-        person: {
+        scene: {
           state: p.state,
-          fallScore: p.fallScore,
-          onGroundSeconds: p.onGroundSeconds,
-          poseConfidence: p.features.poseConfidence * cam,
-          torsoAngleDeg: p.features.torsoAngleDeg,
-          bodyPosition: p.features.bodyPosition,
-          aspectRatio: p.features.aspectRatio,
-          motion: p.features.motion,
-        } as InspectionState['person'],
+          level: p.level,
+          score: p.score,
+          holdSeconds: p.holdSeconds,
+          confidence: p.confidence * cam,
+          features: Object.fromEntries(p.features.map((f) => [f.key, f.value])),
+        } as InspectionState['scene'],
       }
     }
     const mspec = this.profile.measurement
@@ -410,7 +447,7 @@ export class VideoDetectionSimulator {
       const attribute = clamp01(1 - 0.25 * dev) * cam + 0.5 * (1 - cam)
       const object = clamp01((rt.track.objectConfidence + jitter(2) * 0.015 * (1 + noise)) * (0.6 + 0.4 * cam))
       const alignment = clamp01(1 - Math.abs(m?.tiltDeg ?? 0) / 10)
-      return { attribute, object, alignment, measurement: { key: mspec.key, value, target: mspec.target, tolerance: mspec.tolerance, confidence: mconf * cam, tiltDeg: m?.tiltDeg ?? 0, truth: rt.track.fillLevel }, person: undefined as InspectionState['person'] }
+      return { attribute, object, alignment, measurement: { key: mspec.key, value, target: mspec.target, tolerance: mspec.tolerance, confidence: mconf * cam, tiltDeg: m?.tiltDeg ?? 0, truth: rt.track.fillLevel }, scene: undefined as InspectionState['scene'] }
     }
     let attribute = rt.track.attributeConfidence + jitter(1) * 0.03 * (1 + noise * 2)
     let object = rt.track.objectConfidence + jitter(2) * 0.015 * (1 + noise)
@@ -418,7 +455,7 @@ export class VideoDetectionSimulator {
     attribute = attribute * cam + 0.5 * (1 - cam)
     object = object * (0.6 + 0.4 * cam)
     const alignment = clamp01(rt.track.alignmentScore + jitter(3) * 0.04)
-    return { attribute: clamp01(attribute), object: clamp01(object), alignment, measurement: undefined as InspectionState['measurement'], person: undefined as InspectionState['person'] }
+    return { attribute: clamp01(attribute), object: clamp01(object), alignment, measurement: undefined as InspectionState['measurement'], scene: undefined as InspectionState['scene'] }
   }
 
   private async runDecision(rt: TrackRuntime, time: number, gen: number) {
@@ -429,7 +466,7 @@ export class VideoDetectionSimulator {
       object: rt.sampledObject ?? rt.track.objectConfidence,
       alignment: rt.sampledAlignment ?? rt.track.alignmentScore,
       measurement: rt.sampledMeasurement,
-      person: rt.person ? this.sampleReadings(rt, time).person : undefined,
+      scene: rt.person ? this.sampleReadings(rt, time).scene : undefined,
     }
 
     // 判断ループ: 再検査は1回だけ再サンプリングし、その後は最終判定
@@ -440,7 +477,7 @@ export class VideoDetectionSimulator {
         attributeConfidence: readings.attribute,
         alignmentScore: readings.alignment,
         measurement: readings.measurement,
-        person: readings.person,
+        scene: readings.scene,
         inspectionZone: true,
         previousFailures,
         previousState: previousFailures > 0 ? 'recheck' : 'normal',
@@ -458,15 +495,15 @@ export class VideoDetectionSimulator {
       if (result.decision === 'RECHECK') {
         previousFailures++
         rt.recheckRounds = previousFailures
-        await new Promise((r) => setTimeout(r, readings.person ? 1000 : 260))
+        await new Promise((r) => setTimeout(r, readings.scene ? 1000 : 260))
         if (gen !== this.generation || this.isExited(rt)) return
         readings = this.sampleReadings(rt, this.lastTime, previousFailures)
         this.bus.emit(
           'ATTRIBUTE_CONFIDENCE',
           readings.measurement
             ? `${label} ${this.profile.measurement?.label} ${(readings.measurement.value * 100).toFixed(1)}%（再計測 ${previousFailures}回目）`
-            : readings.person
-              ? `${label} 経過観察 ${previousFailures}回目 · 状態 ${readings.person.state} · 転倒スコア ${readings.person.fallScore.toFixed(2)}`
+            : readings.scene
+              ? `${label} 経過観察 ${previousFailures}回目 · 状態 ${rt.person?.stateLabel ?? readings.scene.state} · 異常スコア ${readings.scene.score.toFixed(2)}`
               : `${label} ${this.profile.attributeLabel}信頼度 ${readings.attribute.toFixed(2)}（再検査 ${previousFailures}回目）`,
           {
             objectId: label,
@@ -572,8 +609,8 @@ export class VideoDetectionSimulator {
       }
       const keypoints = keypointsAt(track, time)
       if (rt.person) {
-        detectionClass = rt.person.state === 'NORMAL' ? 'OK' : 'NG'
-        classConfidence = rt.person.state === 'NORMAL' ? 1 - rt.person.fallScore : rt.person.fallScore
+        detectionClass = rt.person.level === 'normal' ? 'OK' : 'NG'
+        classConfidence = rt.person.level === 'normal' ? 1 - rt.person.score : rt.person.score
       }
 
       detections.push({
@@ -590,6 +627,7 @@ export class VideoDetectionSimulator {
         measurement: meas,
         keypoints,
         personState: rt.person,
+        objectClass: track.cls,
         decision: rt.decision,
         gateTime: rt.decisionTime,
       })

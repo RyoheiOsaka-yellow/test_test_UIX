@@ -1,4 +1,4 @@
-import type { PersonStateReading } from '@/types/inspection'
+import type { StateReading } from '@/types/inspection'
 
 /**
  * 転倒検知の時系列判定。
@@ -33,7 +33,7 @@ export class FallDetector {
   private samples: Sample[] = []
   private standingHeight = 0
   private standingHipY = 0
-  private state: PersonStateReading['state'] = 'NORMAL'
+  private state: 'NORMAL' | 'FALLING' | 'FALLEN' = 'NORMAL'
   private stateSince = 0
   private lastFallImpulse = -Infinity
   private lastTime = -Infinity
@@ -49,7 +49,7 @@ export class FallDetector {
   }
 
   /** 1 フレーム分を入力して状態を返す。keypoints は [x,y,conf]×17（正規化） */
-  update(t: number, bbox: [number, number, number, number], keypoints: number[] | undefined): PersonStateReading {
+  update(t: number, bbox: [number, number, number, number], keypoints: number[] | undefined): StateReading {
     if (t < this.lastTime - 0.25) this.reset()
     this.lastTime = t
     const kp = (i: number) => ({ x: keypoints?.[i * 3] ?? NaN, y: keypoints?.[i * 3 + 1] ?? NaN, c: keypoints?.[i * 3 + 2] ?? 0 })
@@ -107,15 +107,25 @@ export class FallDetector {
     }
     if (prev !== this.state && this.state === 'NORMAL') this.lastFallImpulse = -Infinity
 
+    const fallScore = Math.min(1, this.state === 'FALLEN' ? Math.max(score, 0.6) : score)
     return {
       state: this.state,
-      fallScore: Math.min(1, this.state === 'FALLEN' ? Math.max(score, 0.6) : score),
-      onGroundSeconds: this.state === 'FALLEN' ? t - this.stateSince : 0,
-      features: { bodyPosition, torsoAngleDeg: torsoDeg, aspectRatio: aspect, motion, poseConfidence: poseConf },
+      stateLabel: this.state === 'NORMAL' ? '正常' : this.state === 'FALLING' ? '転倒中' : '転倒（床上）',
+      level: this.state === 'FALLEN' ? 'alert' : this.state === 'FALLING' ? 'watch' : 'normal',
+      score: fallScore,
+      holdSeconds: t - this.stateSince,
+      confidence: poseConf,
+      features: [
+        { key: 'body_position', label: '体の位置（腰の低下）', value: bodyPosition },
+        { key: 'torso_angle_deg', label: '角度（胴の傾き）', value: torsoDeg, unit: '°', digits: 0 },
+        { key: 'aspect_ratio', label: '形状（縦横比）', value: aspect },
+        { key: 'motion', label: '動き（腰の速度）', value: motion },
+        { key: 'pose_confidence', label: '姿勢信頼度', value: poseConf },
+      ],
     }
   }
 
-  private set(state: PersonStateReading['state'], t: number) {
+  private set(state: 'NORMAL' | 'FALLING' | 'FALLEN', t: number) {
     this.state = state
     this.stateSince = t
   }

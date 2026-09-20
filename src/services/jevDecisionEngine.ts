@@ -42,8 +42,8 @@ export interface JevObjectRequest {
     previous_state: string
     /** 連続量の計測（充填量など）。計測プロファイルのみ */
     measurement?: { key: string; value: number; target: number; tolerance: number; confidence: number; tilt_deg: number }
-    /** 人物の状態（転倒検知）。人物プロファイルのみ */
-    person?: { state: string; fall_score: number; on_ground_seconds: number; pose_confidence: number; torso_angle_deg: number; body_position: number; aspect_ratio: number; motion: number }
+    /** 状態解析（転倒検知・横断歩道監視）。状態解析プロファイルのみ */
+    scene?: { state: string; level: string; score: number; hold_seconds: number; confidence: number; features: Record<string, number> }
   }
   options: readonly ObjectDecision[]
 }
@@ -139,17 +139,15 @@ export class JevDecisionEngine implements DecisionEngine {
               },
             }
           : {}),
-        ...(state.person
+        ...(state.scene
           ? {
-              person: {
-                state: state.person.state,
-                fall_score: round(state.person.fallScore),
-                on_ground_seconds: round(state.person.onGroundSeconds),
-                pose_confidence: round(state.person.poseConfidence),
-                torso_angle_deg: round(state.person.torsoAngleDeg),
-                body_position: round(state.person.bodyPosition),
-                aspect_ratio: round(state.person.aspectRatio),
-                motion: round(state.person.motion),
+              scene: {
+                state: state.scene.state,
+                level: state.scene.level,
+                score: round(state.scene.score),
+                hold_seconds: round(state.scene.holdSeconds),
+                confidence: round(state.scene.confidence),
+                features: Object.fromEntries(Object.entries(state.scene.features).map(([k, v]) => [k, round(v)])),
               },
             }
           : {}),

@@ -13,7 +13,8 @@
     "track:bottle": "python3 scripts/track_video.py public/demo/bottle-cap/video.mp4 public/demo/bottle-cap/detections.json --coco bottle --stride 2",
     "track:parcel": "python3 scripts/track_video_gdino.py public/demo/parcel-label/video.mp4 public/demo/parcel-label/detections.json --prompt \"cardboard box.\" --box-threshold 0.45 --stride 5",
     "track:pcb": "python3 scripts/track_video_gdino.py public/demo/pcb-assembly/video.mp4 public/demo/pcb-assembly/detections.json --prompt \"circuit board.\" --box-threshold 0.26 --text-threshold 0.2 --stride 5",
-    "track:fall": "python3 scripts/track_pose.py public/demo/fall-detection/video.mp4 public/demo/fall-detection/detections.json"
+    "track:fall": "python3 scripts/track_pose.py public/demo/fall-detection/video.mp4 public/demo/fall-detection/detections.json",
+    "track:crosswalk": "python3 scripts/track_objects.py public/demo/crosswalk/video.mp4 public/demo/crosswalk/detections.json --coco person,bicycle,car,motorcycle,bus,truck"
   },
   "dependencies": {
     "lucide-react": "^0.470.0",

@@ -4,7 +4,7 @@ import type {
   InspectionEvent,
   InspectionProfile,
   InspectionTrigger,
-  PersonStateReading,
+  StateReading,
   InspectionRecord,
   InspectionState,
   LineDecisionResult,
@@ -126,7 +126,7 @@ export interface InspectionStoreState {
   measurementMeanAbsError: number | null
   measurementSamples: number
   /** 人物プロファイル: 注目人物の最新状態（約 5 Hz でシミュレータが直接更新） */
-  livePerson: { objectId: string; reading: PersonStateReading; timestamp: number } | null
+  livePerson: { objectId: string; reading: StateReading; timestamp: number } | null
   /** 人物プロファイル: 転倒スコアの時系列（直近 60 秒） */
   liveSeries: Array<{ t: number; value: number }>
 }
@@ -345,10 +345,10 @@ export class InspectionStore {
   }
 
   /** 人物プロファイル: 注目人物の状態を直接更新（イベントログには流さない） */
-  updateLivePerson(objectId: string, reading: PersonStateReading) {
+  updateLivePerson(objectId: string, reading: StateReading) {
     const now = Date.now()
     const series = this.state.liveSeries.filter((p) => p.t >= now - 60_000)
-    series.push({ t: now, value: reading.fallScore })
+    series.push({ t: now, value: reading.score })
     this.set({ livePerson: { objectId, reading, timestamp: now }, liveSeries: series })
   }
 
