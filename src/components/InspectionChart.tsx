@@ -106,11 +106,17 @@ export function CapConfidenceChart() {
   const profile = useInspectionStore((s) => s.profile)
   const data = useMemo(() => capSeries.slice(-60).map((p) => ({ id: p.objectId, 信頼度: p.attribute, decision: p.decision, grade: p.grade })), [capSeries])
   const m = profile.measurement
+  const ripeness = m?.method === 'ripeness'
   return (
     <Panel
       title={m ? `${m.label}（実測）` : `${profile.attributeLabel}信頼度`}
       right={
-        m ? (
+        ripeness && m ? (
+          <span className="flex items-center gap-2 text-[9px] text-ink-3">
+            <span className="text-green">収穫可 ≥ {((m.target - m.tolerance) * 100).toFixed(0)}%</span>
+            <span>点の色 = グレード</span>
+          </span>
+        ) : m ? (
           <span className="flex items-center gap-2 text-[9px] text-ink-3">
             <span className="text-green">目標 {(m.target * 100).toFixed(0)}% ±{(m.tolerance * 100).toFixed(0)}</span>
           </span>
@@ -131,7 +137,12 @@ export function CapConfidenceChart() {
           <XAxis dataKey="id" tick={axisStyle} tickLine={false} axisLine={{ stroke: '#25313d' }} interval="preserveStartEnd" minTickGap={30} />
           <YAxis domain={[0, 1]} ticks={[0, 0.25, 0.5, 0.75, 1]} tick={axisStyle} tickLine={false} axisLine={false} width={40} />
           <Tooltip content={<TooltipBox />} cursor={{ stroke: '#25313d' }} />
-          {m ? (
+          {ripeness && m ? (
+            <>
+              <ReferenceLine y={m.target - m.tolerance} stroke="#39ff88" strokeOpacity={0.6} strokeDasharray="3 3" />
+              <ReferenceLine y={m.target - 2.4 * m.tolerance} stroke="#ff5151" strokeOpacity={0.4} strokeDasharray="3 3" />
+            </>
+          ) : m ? (
             <>
               <ReferenceLine y={m.target} stroke="#39ff88" strokeOpacity={0.6} />
               <ReferenceLine y={m.target + m.tolerance} stroke="#39ff88" strokeOpacity={0.4} strokeDasharray="3 3" />

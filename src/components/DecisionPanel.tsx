@@ -1,12 +1,15 @@
 import { actionJa, decisionJa, reasonJa } from '@/i18n/ja'
 import { useInspectionStore, type InspectionStoreState } from '@/services/inspectionStore'
-import { GRADE_COLORS, GRADE_LABELS_JA, GRADE_ORDER, GRADE_THRESHOLDS } from '@/services/grading'
+import { GRADE_COLORS, GRADE_ORDER, gradeLabel } from '@/services/grading'
+import { daysToHarvest, harvestText, ripenessStage } from '@/services/ripenessMeter'
 import type { DecisionResult, InspectionProfile } from '@/types/inspection'
 import { Panel, decisionColor, decisionHex, pct } from './Panel'
 
 /** 5 段階グレードの帯（A 緑 → E 赤）と異常度の位置 */
 export function GradeScale({ severity, grade, compact = false }: { severity?: number; grade?: DecisionResult['grade']; compact?: boolean }) {
-  const edges = [0, GRADE_THRESHOLDS.B, GRADE_THRESHOLDS.C, GRADE_THRESHOLDS.D, GRADE_THRESHOLDS.E, 1]
+  const t = useInspectionStore((s) => s.gradeThresholds)
+  const profile = useInspectionStore((s) => s.profile)
+  const edges = [0, t.B, t.C, t.D, t.E, 1]
   return (
     <div>
       <div className="relative flex h-[7px] w-full gap-[1px]">
@@ -25,7 +28,7 @@ export function GradeScale({ severity, grade, compact = false }: { severity?: nu
         <div className="mt-[2px] flex text-[8.5px] text-ink-3">
           {GRADE_ORDER.map((g, i) => (
             <span key={g} style={{ width: `${(edges[i + 1] - edges[i]) * 100}%`, color: grade === g ? GRADE_COLORS[g] : undefined }} className="truncate">
-              {g} {GRADE_LABELS_JA[g]}
+              {g} {gradeLabel(g, profile)}
             </span>
           ))}
         </div>
@@ -36,6 +39,7 @@ export function GradeScale({ severity, grade, compact = false }: { severity?: nu
 
 /** グレード章（大きな 1 文字 + 日本語） */
 export function GradeBadge({ grade, size = 'md' }: { grade?: DecisionResult['grade']; size?: 'sm' | 'md' }) {
+  const profile = useInspectionStore((s) => s.profile)
   const c = grade ? GRADE_COLORS[grade] : '#25313d'
   return (
     <span
@@ -43,7 +47,7 @@ export function GradeBadge({ grade, size = 'md' }: { grade?: DecisionResult['gra
       style={{ borderColor: c, color: c, background: `${c}1a` }}
     >
       <span className={size === 'md' ? 'text-[18px]' : 'text-[11px]'}>{grade ?? '—'}</span>
-      {grade && <span>{GRADE_LABELS_JA[grade]}</span>}
+      {grade && <span>{gradeLabel(grade, profile)}</span>}
     </span>
   )
 }
@@ -52,6 +56,35 @@ function Bar({ value, color }: { value: number; color: string }) {
   return (
     <div className="h-[3px] w-full bg-border-2">
       <div className="h-full transition-[width] duration-150" style={{ width: `${Math.round(value * 100)}%`, background: color }} />
+    </div>
+  )
+}
+
+/** 熟度（色づき）の実測と収穫までの目安日数 */
+function RipenessBlock({ cur, spec }: { cur: ReturnType<typeof useInspectionStore<InspectionStoreState['currentObject']>>; spec: NonNullable<InspectionProfile['measurement']> }) {
+  const m = cur?.measurement
+  const v = m?.value
+  const tone = v === undefined ? 'text-ink-3' : v >= 0.8 ? 'text-green' : v >= 0.52 ? 'text-yellow' : 'text-red'
+  const harvestable = spec.target - spec.tolerance
+  return (
+    <div className="border border-border-2 bg-bg/40 px-2 py-1.5">
+      <div className="flex items-baseline justify-between">
+        <span className="text-[10px] text-ink-2">{spec.label}（画素の色から実測）</span>
+        <span className={`num text-[20px] leading-none ${tone}`}>{v !== undefined ? `${(v * 100).toFixed(0)}%` : '—'}</span>
+      </div>
+      <div className="relative mt-1.5 h-[6px] w-full" style={{ background: 'linear-gradient(90deg, #39ff88 0%, #b6f24a 30%, #ffd52a 55%, #ff8c3a 75%, #ff5151 100%)', opacity: 0.85 }}>
+        <div className="absolute inset-y-0 w-px bg-ink" style={{ left: `${harvestable * 100}%` }} />
+        {v !== undefined && <div className="absolute -top-[2px] h-[10px] w-[2px] bg-ink" style={{ left: `calc(${v * 100}% - 1px)` }} />}
+      </div>
+      <div className="mt-1 flex items-baseline justify-between text-[9.5px] text-ink-3">
+        <span>段階 <span className="text-ink-2">{v !== undefined ? ripenessStage(v) : '—'}</span></span>
+        <span>収穫可 ≥ <span className="num text-ink-2">{(harvestable * 100).toFixed(0)}%</span></span>
+        <span>色の信頼度 <span className="num text-ink-2">{m ? pct(m.confidence) : '—'}</span></span>
+      </div>
+      <div className={`mt-1 text-[12px] font-semibold ${v !== undefined && daysToHarvest(v) === 0 ? 'text-green' : 'text-ink'}`}>
+        {v !== undefined ? harvestText(v) : '—'}
+        <span className="ml-1 text-[9px] font-normal text-ink-3">（緑 14 日 / 半熟 6 日 / 完熟 0 日の表引き）</span>
+      </div>
     </div>
   )
 }
@@ -150,9 +183,7 @@ export function DecisionPanel() {
       </div>
 
       <div className="label mt-2 mb-1">認識結果</div>
-      {profile.measurement && (
-        <MeasurementBlock cur={cur} spec={profile.measurement} />
-      )}
+      {profile.measurement && (profile.measurement.method === 'ripeness' ? <RipenessBlock cur={cur} spec={profile.measurement} /> : <MeasurementBlock cur={cur} spec={profile.measurement} />)}
       {profile.trigger.kind === 'state' && <StateBlock scoreLabel={profile.analyzer === 'crosswalk' ? '危険スコア' : '転倒スコア'} />}
       <div className={`grid grid-cols-2 gap-x-3 gap-y-1 ${profile.measurement ? 'mt-2' : ''}`}>
         <div>

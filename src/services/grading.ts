@@ -1,4 +1,4 @@
-import type { Grade, ObjectDecision } from '@/types/inspection'
+import type { Grade, InspectionProfile, ObjectDecision } from '@/types/inspection'
 
 /**
  * 5 段階グレード。判断（処置）とは別に「どの程度良いか / 悪いか」を連続量の異常度から決める。
@@ -29,15 +29,48 @@ export const GRADE_LABELS_JA: Record<Grade, string> = {
   E: '不良',
 }
 
-export const GRADE_THRESHOLDS = { B: 0.15, C: 0.3, D: 0.55, E: 0.8 } as const
+export type GradeThresholds = { B: number; C: number; D: number; E: number }
+
+/**
+ * 既定のしきい値。異常度への写像（attributeSeverity など）はこの既定値で固定し、
+ * 運用で動かすのは下の「現在のしきい値」だけにする（写像と境界を分けて考えられるように）。
+ */
+export const GRADE_THRESHOLDS: Readonly<GradeThresholds> = { B: 0.15, C: 0.3, D: 0.55, E: 0.8 }
+
+let liveThresholds: GradeThresholds = { ...GRADE_THRESHOLDS }
+
+/** 現在のしきい値（プロファイルごとに操作画面から調整できる） */
+export function getGradeThresholds(): Readonly<GradeThresholds> {
+  return liveThresholds
+}
+
+/** しきい値を設定する。順序（B < C < D < E）と最小間隔 0.03 を保つよう補正して返す */
+export function setGradeThresholds(t: Partial<GradeThresholds>): GradeThresholds {
+  const next = { ...liveThresholds, ...t }
+  const gap = 0.03
+  next.B = Math.min(Math.max(next.B, 0.03), 0.9)
+  next.C = Math.min(Math.max(next.C, next.B + gap), 0.93)
+  next.D = Math.min(Math.max(next.D, next.C + gap), 0.96)
+  next.E = Math.min(Math.max(next.E, next.D + gap), 0.98)
+  liveThresholds = { B: r3(next.B), C: r3(next.C), D: r3(next.D), E: r3(next.E) }
+  return liveThresholds
+}
+
+const r3 = (v: number) => Math.round(v * 1000) / 1000
 
 export function gradeFromSeverity(severity: number): Grade {
   const s = Math.min(1, Math.max(0, severity))
-  if (s < GRADE_THRESHOLDS.B) return 'A'
-  if (s < GRADE_THRESHOLDS.C) return 'B'
-  if (s < GRADE_THRESHOLDS.D) return 'C'
-  if (s < GRADE_THRESHOLDS.E) return 'D'
+  const t = liveThresholds
+  if (s < t.B) return 'A'
+  if (s < t.C) return 'B'
+  if (s < t.D) return 'C'
+  if (s < t.E) return 'D'
   return 'E'
+}
+
+/** グレードの表示名（プロファイルで差し替え可） */
+export function gradeLabel(grade: Grade, profile?: Pick<InspectionProfile, 'gradeLabels'> | null): string {
+  return profile?.gradeLabels?.[grade] ?? GRADE_LABELS_JA[grade]
 }
 
 /** グレードに対応する既定の処置 */
@@ -61,12 +94,13 @@ export function decisionForGrade(grade: Grade, recheckRound: number): ObjectDeci
  */
 export function optionScores(severity: number, stability: number, options: readonly ObjectDecision[]): Partial<Record<ObjectDecision, number>> {
   const s = Math.min(1, Math.max(0, severity))
+  const t = liveThresholds
   const k = 6
   const raw: Record<ObjectDecision, number> = {
-    PASS: Math.exp(-k * Math.max(0, s - 0.25)),
-    RECHECK: Math.exp(-k * Math.abs(s - 0.42)) * (1.3 - 0.6 * stability),
-    HUMAN_REVIEW: Math.exp(-k * Math.abs(s - 0.68)) * (1.2 - 0.5 * stability),
-    REJECT: Math.exp(-k * Math.max(0, 0.8 - s)),
+    PASS: Math.exp(-k * Math.max(0, s - (t.C - 0.05))),
+    RECHECK: Math.exp(-k * Math.abs(s - (t.C + t.D) / 2)) * (1.3 - 0.6 * stability),
+    HUMAN_REVIEW: Math.exp(-k * Math.abs(s - (t.D + t.E) / 2)) * (1.2 - 0.5 * stability),
+    REJECT: Math.exp(-k * Math.max(0, t.E - s)),
   }
   let sum = 0
   for (const o of options) sum += raw[o]
@@ -78,7 +112,8 @@ export function optionScores(severity: number, stability: number, options: reado
 /** 帯の境界からの余裕（0 = 境界上、1 = 帯の中央）。確信度の材料。 */
 export function marginToBoundary(severity: number): number {
   const s = Math.min(1, Math.max(0, severity))
-  const edges = [0, GRADE_THRESHOLDS.B, GRADE_THRESHOLDS.C, GRADE_THRESHOLDS.D, GRADE_THRESHOLDS.E, 1]
+  const t = liveThresholds
+  const edges = [0, t.B, t.C, t.D, t.E, 1]
   let best = 1
   for (let i = 0; i < edges.length - 1; i++) {
     if (s >= edges[i] && s < edges[i + 1]) {
@@ -160,11 +195,12 @@ export function areaSeverity(areaRatio: number): number {
  */
 export function decisionMargin(severity: number): number {
   const s = Math.min(1, Math.max(0, severity))
+  const t = liveThresholds
   let m: number
-  if (s < GRADE_THRESHOLDS.C) m = (GRADE_THRESHOLDS.C - s) / 0.15
-  else if (s < GRADE_THRESHOLDS.D) m = Math.min(s - GRADE_THRESHOLDS.C, GRADE_THRESHOLDS.D - s) / 0.125
-  else if (s < GRADE_THRESHOLDS.E) m = Math.min(s - GRADE_THRESHOLDS.D, GRADE_THRESHOLDS.E - s) / 0.125
-  else m = (s - GRADE_THRESHOLDS.E) / 0.1
+  if (s < t.C) m = (t.C - s) / Math.max(0.05, t.C / 2)
+  else if (s < t.D) m = Math.min(s - t.C, t.D - s) / Math.max(0.05, (t.D - t.C) / 2)
+  else if (s < t.E) m = Math.min(s - t.D, t.E - s) / Math.max(0.05, (t.E - t.D) / 2)
+  else m = (s - t.E) / Math.max(0.05, (1 - t.E) / 2)
   return Math.max(0, Math.min(1, m))
 }
 

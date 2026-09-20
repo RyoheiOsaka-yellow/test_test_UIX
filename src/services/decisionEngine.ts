@@ -11,8 +11,8 @@ import type {
 import { jevDecisionEngine, isJevConfigured } from './jevDecisionEngine'
 import { actionFor } from './decisionActions'
 import {
-  GRADE_THRESHOLDS,
   alignScores,
+  getGradeThresholds,
   attributeSeverity,
   composeConfidence,
   decisionForGrade,
@@ -144,7 +144,7 @@ export function simulateObjectDecision(
       reason = 'MEASUREMENT_UNCERTAIN'
     } else if (grade === 'C' && recheckRound >= 1) {
       // 再計測後も境界域: 境界に近く安定していれば合格、そうでなければ人の確認
-      const nearPass = severity < GRADE_THRESHOLDS.C + 0.06 && stability >= 0.6
+      const nearPass = severity < getGradeThresholds().C + 0.06 && stability >= 0.6
       decision = nearPass ? 'PASS' : 'HUMAN_REVIEW'
       confidence = nearPass ? 0.68 : 0.62
       reason = nearPass ? 'FILL_OK_AFTER_RECHECK' : 'FILL_MARGINAL_AFTER_RECHECK'
@@ -179,7 +179,7 @@ export function simulateObjectDecision(
     confidence = clamp01(0.55 + 0.1 * ev.stability)
     reason = 'EVIDENCE_UNSTABLE'
   } else if (grade === 'C' && recheckRound >= 1) {
-    const nearPass = severity < GRADE_THRESHOLDS.C + 0.08 && stability >= 0.5
+    const nearPass = severity < getGradeThresholds().C + 0.08 && stability >= 0.5
     decision = nearPass ? 'PASS' : 'HUMAN_REVIEW'
     confidence = nearPass ? 0.68 : 0.62
     reason = nearPass ? 'ATTR_OK_AFTER_RECHECK' : 'ATTR_AMBIGUOUS_AFTER_RECHECK'
@@ -223,6 +223,11 @@ export function simulateLineDecision(
     decision = 'WATCH'
     confidence = clamp01(0.65 + excess)
     reason = 'REJECT_RATE_ELEVATED'
+  } else if ((state.marginalRate ?? 0) >= 0.35) {
+    // 不良率はまだ基準内でも、合格の多くが「許容（B）」= 余裕小なら兆候として注視する
+    decision = 'WATCH'
+    confidence = clamp01(0.6 + 0.4 * Math.min(1, ((state.marginalRate ?? 0) - 0.35) / 0.3))
+    reason = 'MARGINAL_RATE_ELEVATED'
   } else {
     decision = 'NORMAL'
     confidence = clamp01(0.9 - Math.max(0, excess))
@@ -230,12 +235,15 @@ export function simulateLineDecision(
   }
   if (!options.includes(decision)) decision = options[0]
   // ライン全体のグレード: 不良率を異常度へ（基準率で B、0.18 で D、0.30 で E）
-  const severity = clamp01(
-    rejectRate <= normalRate ? (rejectRate / Math.max(1e-6, normalRate)) * GRADE_THRESHOLDS.B
-    : rejectRate <= 0.18 ? GRADE_THRESHOLDS.B + ((rejectRate - normalRate) / (0.18 - normalRate)) * (GRADE_THRESHOLDS.D - GRADE_THRESHOLDS.B)
-    : rejectRate <= 0.3 ? GRADE_THRESHOLDS.D + ((rejectRate - 0.18) / 0.12) * (GRADE_THRESHOLDS.E - GRADE_THRESHOLDS.D)
-    : GRADE_THRESHOLDS.E + ((rejectRate - 0.3) / 0.3) * (1 - GRADE_THRESHOLDS.E),
+  const T = getGradeThresholds()
+  let severity = clamp01(
+    rejectRate <= normalRate ? (rejectRate / Math.max(1e-6, normalRate)) * T.B
+    : rejectRate <= 0.18 ? T.B + ((rejectRate - normalRate) / (0.18 - normalRate)) * (T.D - T.B)
+    : rejectRate <= 0.3 ? T.D + ((rejectRate - 0.18) / 0.12) * (T.E - T.D)
+    : T.E + ((rejectRate - 0.3) / 0.3) * (1 - T.E),
   )
+  // 許容率が高いときはライン全体のグレードも 1 段悪い側へ寄せる（最大で C 帯まで）
+  if (reason === 'MARGINAL_RATE_ELEVATED') severity = Math.max(severity, T.C + 0.02)
   return { decision, confidence, reason, grade: gradeFromSeverity(severity) }
 }
 

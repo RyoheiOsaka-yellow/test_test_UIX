@@ -59,6 +59,8 @@ export interface JevLineRequest {
   level: 'line'
   state: {
     reject_rate: number
+    /** 直近ウィンドウのグレード B（許容）率 */
+    marginal_rate: number
     normal_rate: number
     camera_confidence: number
     line_speed_bpm: number
@@ -223,6 +225,7 @@ export class JevDecisionEngine implements DecisionEngine {
       level: 'line',
       state: {
         reject_rate: round(state.rejectRate),
+        marginal_rate: round(state.marginalRate ?? 0),
         normal_rate: round(state.normalRate),
         camera_confidence: round(state.cameraConfidence),
         line_speed_bpm: Math.round(state.lineSpeedBpm),

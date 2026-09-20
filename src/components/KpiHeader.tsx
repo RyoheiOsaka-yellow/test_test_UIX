@@ -1,17 +1,18 @@
 import { useInspectionStore } from '@/services/inspectionStore'
-import { GRADE_COLORS, GRADE_LABELS_JA, GRADE_ORDER } from '@/services/grading'
+import { GRADE_COLORS, GRADE_ORDER, gradeLabel } from '@/services/grading'
 
 /** 5 段階グレードの分布（件数バー） */
 function GradeDistribution({ grades, total }: { grades: Record<string, number>; total: number }) {
+  const profile = useInspectionStore((s) => s.profile)
   const max = Math.max(1, ...GRADE_ORDER.map((g) => grades[g] ?? 0))
   return (
     <div className="flex min-w-[200px] flex-col gap-0.5 border-r border-border-2 px-4 py-2 last:border-r-0">
-      <span className="label">グレード分布（A 良好 → E 不良）</span>
+      <span className="label">グレード分布（A {gradeLabel('A', profile)} → E {gradeLabel('E', profile)}）</span>
       <div className="flex items-end gap-2">
         {GRADE_ORDER.map((g) => {
           const n = grades[g] ?? 0
           return (
-            <div key={g} className="flex flex-col items-center gap-[2px]" title={`${g} ${GRADE_LABELS_JA[g]}: ${n} 件`}>
+            <div key={g} className="flex flex-col items-center gap-[2px]" title={`${g} ${gradeLabel(g, profile)}: ${n} 件`}>
               <span className="num text-[10px] leading-none" style={{ color: GRADE_COLORS[g] }}>{n}</span>
               <div className="flex h-[14px] w-[18px] items-end bg-border-2/60">
                 <div className="w-full" style={{ height: `${Math.round((n / max) * 100)}%`, background: GRADE_COLORS[g], minHeight: n ? 2 : 0 }} />

@@ -1,5 +1,6 @@
 import type { DecisionEngine, InspectionProfile, LineState, PlaybackRate, RawDetection, ScenarioId, VideoSource } from '@/types/inspection'
 import { DEFAULT_GATE, LINE_DECISION_OPTIONS, OBJECT_DECISION_OPTIONS } from '@/types/inspection'
+import { GRADE_THRESHOLDS, setGradeThresholds, type GradeThresholds } from './grading'
 import { SCENARIOS, scenarioText } from '@/data/scenarios'
 import { assignConditions, configureTrigger, generateTracks, timelineToTracks, type BottleTrack } from '@/data/demoDetections'
 import { PROFILES } from '@/profiles'
@@ -42,6 +43,7 @@ export class InspectionController {
     })
     this.detach = this.store.attach(this.bus)
     jevDecisionEngine.setProfile(this.store.getState().profile)
+    this.loadGradeThresholds(this.store.getState().profile.id)
     this.store.update((s) => ({
       mode: isJevConfigured() ? 'JEV_LIVE' : 'SIMULATION',
       status: { ...s.status, jev: isJevConfigured() ? 'LIVE' : 'SIMULATED' },
@@ -114,8 +116,49 @@ export class InspectionController {
     this.lastOdoTime = 0
     this.store.update(() => ({ profile, videoSource: null, trackSource: 'synthetic', anomaly: null }))
     jevDecisionEngine.setProfile(profile)
+    this.loadGradeThresholds(profile.id)
     this.bus.emit('SYSTEM', `検査プロファイル切替: ${profile.name}（${profile.lineName}）`)
     // 映像の再探索は VideoInspection が profile の変化を見て attachVideo() を呼ぶ
+  }
+
+  /** グレードしきい値（プロファイルごとに localStorage へ保存。読めなければ既定値） */
+  private loadGradeThresholds(profileId: string) {
+    let stored: Partial<GradeThresholds> | null = null
+    try {
+      const raw = localStorage.getItem(`jev.gradeThresholds.${profileId}`)
+      stored = raw ? (JSON.parse(raw) as Partial<GradeThresholds>) : null
+    } catch {
+      stored = null
+    }
+    const next = setGradeThresholds({ ...GRADE_THRESHOLDS, ...(stored ?? {}) })
+    this.store.update(() => ({ gradeThresholds: next }))
+  }
+
+  /** 操作画面からのしきい値変更。順序を保って補正し、変更をイベントログに残す */
+  setGradeThreshold(key: keyof GradeThresholds, value: number) {
+    const s = this.store.getState()
+    const before = s.gradeThresholds[key]
+    const next = setGradeThresholds({ ...s.gradeThresholds, [key]: value })
+    if (Math.abs(next[key] - before) < 1e-6) return
+    this.store.update(() => ({ gradeThresholds: next }))
+    try {
+      localStorage.setItem(`jev.gradeThresholds.${s.profile.id}`, JSON.stringify(next))
+    } catch {
+      /* 保存できなくても動作には影響しない */
+    }
+    this.bus.emit('SYSTEM', `グレードしきい値 ${key} ${before.toFixed(2)} → ${next[key].toFixed(2)}（操作者 · ${s.profile.name}）`, { severity: 'warn', data: { thresholds: next } })
+  }
+
+  resetGradeThresholds() {
+    const s = this.store.getState()
+    const next = setGradeThresholds({ ...GRADE_THRESHOLDS })
+    this.store.update(() => ({ gradeThresholds: next }))
+    try {
+      localStorage.removeItem(`jev.gradeThresholds.${s.profile.id}`)
+    } catch {
+      /* noop */
+    }
+    this.bus.emit('SYSTEM', `グレードしきい値を既定に戻しました（${s.profile.name}）`, { data: { thresholds: next } })
   }
 
   private syncClockState() {
@@ -235,6 +278,7 @@ export class InspectionController {
     const smoothedRejectRate = (stats.rejects + NORMAL_RATE * PRIOR_WEIGHT) / (stats.total + PRIOR_WEIGHT)
     const state: LineState = {
       rejectRate: smoothedRejectRate,
+      marginalRate: stats.total >= 10 ? stats.marginalRate : 0,
       normalRate: NORMAL_RATE,
       cameraConfidence: s.cameraConfidence,
       lineSpeedBpm: s.kpi.throughputBpm,

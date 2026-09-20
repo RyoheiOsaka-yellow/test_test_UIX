@@ -164,7 +164,23 @@ export function VideoInspection() {
 
         <DetectionOverlay canvasRef={canvasRef} />
         <InspectionGate visible={overlay.overlay && overlay.inspectionGate} trigger={trigger} label={trackSource === 'real' || profile.syntheticFeed ? profile.triggerLabel : '検査ゲート'} />
-        <InspectorPanel />
+        <div className="pointer-events-none absolute top-3 left-3 flex flex-col gap-1.5">
+          <InspectorPanel />
+          <div className="flex max-w-[260px] flex-col gap-0.5 text-[9.5px] leading-tight tracking-[0.06em] text-ink-3">
+            {isPlaceholder &&
+              (profile.measurement
+                ? `合成映像 · ${profile.measurement.label}は画素の HSV 解析で実測（public/demo/${profile.mediaDir}/video.mp4 を置くと実映像でも同じ計測が走ります）`
+                : profile.syntheticFeed === 'none'
+                  ? `映像なし · public/demo/${profile.mediaDir}/video.mp4 と骨格追跡結果を置くと動きます`
+                  : `動画ファイルなし · public/demo/${profile.mediaDir}/video.mp4 を置くと実映像に切り替わります`)}
+            {isVideo &&
+              (credit ??
+                `${profile.objectLabel}検出: 事前追跡 · ${profile.attributeLabel}判定: ${
+                  profile.trigger.kind === 'state' ? (profile.analyzer === 'crosswalk' ? '場面解析' : '時系列判定') : profile.measurement ? (profile.measurement.method === 'ripeness' ? '色の画素解析で実測 · 日数は表引き' : '画素解析で実測') : profile.severityFromArea ? '面積から算出' : '疑似注入'
+                }`)}
+            <span className="text-ink-3/70">シナリオ: {scenarioText(SCENARIOS[scenario].name, profile)}</span>
+          </div>
+        </div>
 
         <div className="pointer-events-none absolute top-3 right-3 flex flex-col items-end gap-1 text-[10px]">
           <div className="flex items-center gap-2 border border-border/80 bg-bg/80 px-2 py-1 text-ink-2 backdrop-blur-[2px]">
@@ -198,20 +214,6 @@ export function VideoInspection() {
           </div>
         </div>
 
-        <div className={`pointer-events-none absolute left-3 flex max-w-[260px] flex-col gap-0.5 text-[9.5px] leading-tight tracking-[0.06em] text-ink-3 ${profile.odometer ? 'top-[244px]' : 'top-[178px]'}`}>
-          {isPlaceholder &&
-            (profile.measurement
-              ? `合成映像 · ${profile.measurement.label}は画素の HSV 解析で実測（public/demo/${profile.mediaDir}/video.mp4 を置くと実映像でも同じ計測が走ります）`
-              : profile.syntheticFeed === 'none'
-                ? `映像なし · public/demo/${profile.mediaDir}/video.mp4 と骨格追跡結果を置くと動きます`
-                : `動画ファイルなし · public/demo/${profile.mediaDir}/video.mp4 を置くと実映像に切り替わります`)}
-          {isVideo &&
-            (credit ??
-              `${profile.objectLabel}検出: 事前追跡 · ${profile.attributeLabel}判定: ${
-                profile.trigger.kind === 'state' ? (profile.analyzer === 'crosswalk' ? '場面解析' : '時系列判定') : profile.measurement ? '画素解析で実測' : profile.severityFromArea ? '面積から算出' : '疑似注入'
-              }`)}
-          <span className="text-ink-3/70">シナリオ: {scenarioText(SCENARIOS[scenario].name, profile)}</span>
-        </div>
       </div>
     </div>
   )

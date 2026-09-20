@@ -1,7 +1,8 @@
 import type { FrameDetection, InspectionProfile, OverlaySettings } from '@/types/inspection'
 import { DECISION_JA, classJa } from '@/i18n/ja'
 import { SKELETON } from '@/services/fallDetector'
-import { GRADE_COLORS, GRADE_LABELS_JA } from '@/services/grading'
+import { GRADE_COLORS, gradeLabel } from '@/services/grading'
+import { harvestText } from '@/services/ripenessMeter'
 
 /**
  * 検知1件分の描画ヘルパー（バウンディングボックス + ラベル）。
@@ -42,6 +43,11 @@ export function labelText(d: FrameDetection, settings: OverlaySettings, profile:
     parts.push(d.personState.stateLabel)
     if (d.personState.level === 'alert') parts.push(`${d.personState.holdSeconds.toFixed(1)}秒`)
     if (settings.confidence && d.personState.score > 0) parts.push(`スコア ${d.personState.score.toFixed(2)}`)
+    return parts.join(' ')
+  }
+  if (profile.measurement?.method === 'ripeness' && d.measurement) {
+    parts.push(`${profile.measurement.label} ${(d.measurement.value * 100).toFixed(0)}%`)
+    if (settings.confidence) parts.push(harvestText(d.measurement.value))
     return parts.join(' ')
   }
   if (profile.measurement && d.measurement) {
@@ -159,7 +165,7 @@ export function drawDetection(
   }
 
   // 計測プロファイル: 推定した液面の線を枠内に描く
-  if (profile.measurement && d.measurement && settings.boundingBox && !compact) {
+  if (profile.measurement && profile.measurement.method !== 'ripeness' && d.measurement && settings.boundingBox && !compact) {
     const bodyTop = y + bh * 0.2
     const bodyBottom = y + bh * 0.995
     const ly = bodyBottom - d.measurement.value * (bodyBottom - bodyTop)
@@ -213,7 +219,7 @@ export function drawDetection(
     const dc = DECISION_COLORS[d.decision.decision] ?? '#31c6ff'
     const gc = GRADE_COLORS[d.decision.grade]
     const dl = profile.decisionLabels?.[d.decision.decision] ?? DECISION_JA[d.decision.decision]
-    const gradeText = compact ? d.decision.grade : `${d.decision.grade} ${GRADE_LABELS_JA[d.decision.grade]}`
+    const gradeText = compact ? d.decision.grade : `${d.decision.grade} ${gradeLabel(d.decision.grade, profile)}`
     const text = compact ? dl : `${dl} ${Math.round(d.decision.confidence * 100)}%${uncertain ? ' ?' : ''}`
     ctx.save()
     ctx.font = TAG_FONT

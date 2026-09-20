@@ -10,6 +10,7 @@ import { HumanReviewQueue } from './components/HumanReviewQueue'
 import { InspectionChart } from './components/InspectionChart'
 import { KpiHeader } from './components/KpiHeader'
 import { LineDecisionPanel } from './components/LineDecisionPanel'
+import { ThresholdPanel } from './components/ThresholdPanel'
 import { ScenarioSelector } from './components/ScenarioSelector'
 import { SystemStatus } from './components/SystemStatus'
 import { VideoInspection } from './components/VideoInspection'
@@ -97,6 +98,7 @@ export default function App() {
           <SystemStatus />
           <ScenarioSelector />
           <ControlPanel />
+          <ThresholdPanel />
         </aside>
 
         <main className="min-h-0">

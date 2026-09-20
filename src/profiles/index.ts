@@ -15,6 +15,7 @@ const COMMON_REASONS = {
   FILL_DEVIATION: '規格逸脱（人の確認）',
   EVIDENCE_UNSTABLE: '証拠が不安定（フレーム間のばらつき大）',
   SCENE_CAUTION: '注意水準（人の確認）',
+  MARGINAL_RATE_ELEVATED: '許容（B）率 上昇 — 兆候',
 }
 
 /**
@@ -276,5 +277,55 @@ PROFILES['road-scan'] = {
   kpiLabels: { total: '判定した損傷', pass: '軽微', reject: '要補修', yield: '軽微率', throughputUnit: '件/分' },
 }
 
-export const PROFILE_ORDER = ['bottle-cap', 'parcel-label', 'pcb-assembly', 'fill-level', 'fall-detection', 'crosswalk', 'road-scan'] as const
+export const PROFILE_ORDER = ['bottle-cap', 'parcel-label', 'pcb-assembly', 'fill-level', 'fall-detection', 'crosswalk', 'road-scan', 'tomato-harvest'] as const
 export const DEFAULT_PROFILE_ID = 'bottle-cap'
+
+
+PROFILES['tomato-harvest'] = {
+  id: 'tomato-harvest',
+  name: 'トマト収穫判定',
+  lineName: '温室 E 棟',
+  cameraName: 'カメラ08',
+  objectLabel: 'トマト',
+  attributeLabel: '熟度',
+  alignmentLabel: '色の一様性',
+  okLabel: '収穫可',
+  ngLabel: '未熟',
+  reasons: {
+    ...COMMON_REASONS,
+    FILL_OK: '完熟（収穫適期）',
+    FILL_OK_MARGINAL: '完熟に近い（収穫可）',
+    FILL_OK_AFTER_RECHECK: '再確認後 収穫可',
+    FILL_MARGINAL: '色づき中（再確認）',
+    FILL_MARGINAL_AFTER_RECHECK: '再確認後も色づき途中',
+    FILL_DEVIATION: '色づき始め（人の確認）',
+    UNDERFILL: '未熟（収穫見送り）',
+    OVERFILL: '過熟の疑い',
+    MEASUREMENT_UNCERTAIN: '色を判定できず',
+    ATTR_OK: '完熟',
+    ATTR_MISSING: '未熟',
+    ATTR_MISALIGNED: '色づき中',
+    ATTR_LOW_CONFIDENCE: '色の判定信頼度不足',
+    ATTR_AMBIGUOUS: '色を判定できず',
+  },
+  rejectAction: '収穫見送り（追熟待ち）',
+  misalignedScenarioName: '色づき途中の実 増加',
+  jevTask: 'tomato_harvest_readiness',
+  objectKey: 'tomato',
+  attributeKey: 'ripeness',
+  trigger: { kind: 'zone', rect: [0.06, 0.06, 0.88, 0.88], dwellSeconds: 0.8 },
+  mediaDir: 'tomato-harvest',
+  detectorNote: '事前追跡（Grounding DINO「tomato」）',
+  triggerLabel: '判定ゾーン',
+  measurement: { key: 'ripeness', label: '熟度', unit: '', target: 1, tolerance: 0.2, method: 'ripeness' },
+  syntheticFeed: 'none',
+  decisionLabels: { PASS: '収穫', RECHECK: '再確認', REJECT: '収穫見送り', HUMAN_REVIEW: '要確認' },
+  gradeLabels: { A: '収穫適期', B: '収穫可', C: '色づき中', D: '色づき始め', E: '未熟' },
+  gradeGroups: [
+    { label: '収穫可（A+B）', grades: ['A', 'B'], tone: 'text-green' },
+    { label: '追熟中（C+D）', grades: ['C', 'D'], tone: 'text-yellow' },
+    { label: '未熟（E）', grades: ['E'], tone: 'text-red' },
+  ],
+  countUnique: true,
+  kpiLabels: { total: '判定した実', pass: '収穫可', reject: '見送り', yield: '収穫可率', throughputUnit: '個/分' },
+}

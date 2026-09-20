@@ -1,0 +1,10 @@
+video.mp4
+  出典: Wikimedia Commons "Cardiologist Left her Job To Start a Tomatoes Farm.webm"
+  制作: Voice of America (Africa 54, Paul Ndiho) — 米国政府の著作物としてパブリックドメイン
+  https://commons.wikimedia.org/wiki/File:Cardiologist_Left_her_Job_To_Start_a_Tomatoes_Farm.webm
+  加工: 66–78 秒 / 174.5–178.5 秒 / 100–103.5 秒 / 199–204 秒 を切り出して連結、640x360 に再エンコード（単一 HTML の容量制限のため低ビットレート）
+
+detections.json
+  scripts/track_video_gdino.py（Grounding DINO tiny、プロンプト "tomato."、6 フレームごと検出 + IoU 追跡）で生成した事前追跡結果。
+  熟度はブラウザ側で枠内の画素を HSV 解析して実測する（src/services/ripenessMeter.ts）。
+  収穫までの日数は熟度からの表引き（緑 14 日 / 半熟 6 日 / 完熟 0 日）で、生育速度の実測ではない。

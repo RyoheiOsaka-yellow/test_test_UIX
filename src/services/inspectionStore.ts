@@ -16,6 +16,7 @@ import type {
   VideoSource,
 } from '@/types/inspection'
 import { DEFAULT_GATE } from '@/types/inspection'
+import { GRADE_THRESHOLDS, type GradeThresholds } from './grading'
 import { DEFAULT_PROFILE_ID, PROFILES } from '@/profiles'
 import type { EventBus } from './eventBus'
 
@@ -140,6 +141,10 @@ export interface InspectionStoreState {
   objectsEntered: number
   /** 走査距離 [km]（速度仮定の模擬。車載プロファイルのみ） */
   scanDistanceKm: number
+  /** 現在のグレードしきい値（プロファイルごとに操作画面から調整） */
+  gradeThresholds: GradeThresholds
+  /** 人の確認の結果をグレード別に集計（しきい値の妥当性を見るため） */
+  reviewStats: Record<Grade, { pass: number; reject: number }>
 }
 
 const MAX_EVENTS = 400
@@ -196,6 +201,8 @@ export function initialState(): InspectionStoreState {
     liveSeries: [],
     objectsEntered: 0,
     scanDistanceKm: 0,
+    gradeThresholds: { ...GRADE_THRESHOLDS },
+    reviewStats: { A: { pass: 0, reject: 0 }, B: { pass: 0, reject: 0 }, C: { pass: 0, reject: 0 }, D: { pass: 0, reject: 0 }, E: { pass: 0, reject: 0 } },
   }
 }
 
@@ -243,6 +250,8 @@ export class InspectionStore {
       overlay: s.overlay,
       status: s.status,
       demoStartedAt: s.demoStartedAt,
+      gradeThresholds: s.gradeThresholds,
+      reviewStats: s.reviewStats,
     })
   }
 
@@ -388,10 +397,16 @@ export class InspectionStore {
     if (decision === 'PASS') kpi.pass++
     else kpi.reject++
     kpi.yieldRate = kpi.totalInspected ? kpi.pass / kpi.totalInspected : 0
-    this.set({ reviewQueue: s.reviewQueue.filter((r) => r.objectId !== objectId), records, kpi })
-    bus.emit('HUMAN_OVERRIDE', `${objectId} 人の判定 → ${decision === 'PASS' ? '合格' : '不良'}`, {
+    // 人の判定をグレード別に集計する（D の多くを人が合格にしているなら D の境界を上げる余地、など）
+    const reviewStats = { ...s.reviewStats }
+    if (item.grade) {
+      const cur = reviewStats[item.grade]
+      reviewStats[item.grade] = { pass: cur.pass + (decision === 'PASS' ? 1 : 0), reject: cur.reject + (decision === 'REJECT' ? 1 : 0) }
+    }
+    this.set({ reviewQueue: s.reviewQueue.filter((r) => r.objectId !== objectId), records, kpi, reviewStats })
+    bus.emit('HUMAN_OVERRIDE', `${objectId} 人の判定 → ${decision === 'PASS' ? '合格' : '不良'}${item.grade ? `（JEV グレード ${item.grade}）` : ''}`, {
       objectId,
-      data: { decision, attributeConfidence: item.attributeConfidence },
+      data: { decision, attributeConfidence: item.attributeConfidence, grade: item.grade },
     })
   }
 
@@ -407,7 +422,8 @@ export class InspectionStore {
     const total = recent.length
     const rejects = recent.filter((r) => (r.humanOverride ?? r.decision.result) === 'REJECT').length
     const reviews = recent.filter((r) => r.decision.result === 'HUMAN_REVIEW' && !r.humanOverride).length
-    return { total, rejects, reviews, rejectRate: total ? rejects / total : 0, reviewRate: total ? reviews / total : 0 }
+    const marginal = recent.filter((r) => r.decision.grade === 'B').length
+    return { total, rejects, reviews, marginal, rejectRate: total ? rejects / total : 0, reviewRate: total ? reviews / total : 0, marginalRate: total ? marginal / total : 0 }
   }
 }
 

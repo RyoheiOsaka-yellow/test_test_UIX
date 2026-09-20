@@ -146,6 +146,8 @@ export interface MeasurementSpec {
   target: number
   /** 許容幅 0..1（±） */
   tolerance: number
+  /** 画素解析の方式（既定: 液面） */
+  method?: 'fill-level' | 'ripeness'
 }
 
 export interface InspectionState {
@@ -224,6 +226,8 @@ export interface DecisionResult {
 /** Second-level (line) decision. */
 export interface LineState {
   rejectRate: number
+  /** 直近ウィンドウでグレード B（許容 = 合格だが余裕小）だった割合。兆候の指標 */
+  marginalRate?: number
   normalRate: number
   cameraConfidence: number
   lineSpeedBpm: number
@@ -439,4 +443,10 @@ export interface InspectionProfile {
   odometer?: { kmh: number }
   /** KPI の見出し差し替え（検査総数 / 合格 / 不良） */
   kpiLabels?: { total?: string; pass?: string; reject?: string; yield?: string; throughputUnit?: string }
+  /** グレードの表示名を差し替える（例: A → 収穫適期） */
+  gradeLabels?: Partial<Record<Grade, string>>
+  /** 映像左上パネルに出すグレードのまとめ（例: 収穫可 = A+B） */
+  gradeGroups?: Array<{ label: string; grades: Grade[]; tone?: string }>
+  /** 追跡 ID による固有カウント（重複計上なし）を前面に出す */
+  countUnique?: boolean
 }

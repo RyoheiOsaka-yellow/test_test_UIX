@@ -14,7 +14,7 @@ export function InspectorPanel() {
     [profile.ngLabel, String(kpi.reject), 'text-red'],
   ]
   return (
-    <div className="pointer-events-none absolute top-3 left-3 w-[188px] border border-border/80 bg-bg/80 backdrop-blur-[2px]">
+    <div className="w-[188px] border border-border/80 bg-bg/80 backdrop-blur-[2px]">
       <div className="border-b border-border/60 px-2.5 py-1.5 font-mono text-[10px] font-semibold tracking-[0.14em] text-ink-2">
         {profile.name}
       </div>
@@ -23,6 +23,18 @@ export function InspectorPanel() {
           <div key={k} className="flex items-baseline justify-between py-[1.5px]">
             <span className="text-[10px] text-ink-3">{k}</span>
             <span className={`num text-[12px] ${c ?? 'text-ink'}`}>{v}</span>
+          </div>
+        ))}
+        {profile.countUnique && (
+          <div className="flex items-baseline justify-between py-[1.5px]">
+            <span className="text-[10px] text-ink-3">固有ID数（重複計上なし）</span>
+            <span className="num text-[12px] text-cyan">{entered}</span>
+          </div>
+        )}
+        {profile.gradeGroups?.map((g) => (
+          <div key={g.label} className="flex items-baseline justify-between py-[1.5px]">
+            <span className="text-[10px] text-ink-3">{g.label}</span>
+            <span className={`num text-[12px] ${g.tone ?? 'text-ink'}`}>{g.grades.reduce((a, k) => a + (kpi.grades[k] ?? 0), 0)}</span>
           </div>
         ))}
         {profile.odometer && (

@@ -18,7 +18,8 @@ import { PROFILES, DEFAULT_PROFILE_ID } from '@/profiles'
 import { decisionJa } from '@/i18n/ja'
 import type { EventBus } from './eventBus'
 import { measureFillLevel, type FramePixelSource } from './fillLevelMeter'
-import { GRADE_LABELS_JA, areaSeverity, attributeSeverity, gradeFromSeverity, measurementSeverity, sceneSeverity, summarizeSamples } from './grading'
+import { harvestText, measureRipeness } from './ripenessMeter'
+import { gradeLabel, areaSeverity, attributeSeverity, gradeFromSeverity, measurementSeverity, sceneSeverity, summarizeSamples } from './grading'
 import type { MeasurementReading } from '@/types/inspection'
 
 /**
@@ -219,7 +220,7 @@ export class VideoDetectionSimulator {
         const near = g ? g.p >= g.gate - g.half && g.p <= g.gate + 0.1 : inZone(bbox)
         if (near) {
           const img = this.pixelSource.crop(bbox, 40)
-          const r = img ? measureFillLevel(img) : null
+          const r = img ? (mspec.method === 'ripeness' ? measureRipeness(img) : measureFillLevel(img)) : null
           if (r) {
             const truth = rt.track.fillLevel
             if (!rt.measurement || rt.phase === 'DECIDED') {
@@ -356,7 +357,7 @@ export class VideoDetectionSimulator {
             'ATTRIBUTE_CONFIDENCE',
             s.measurement
               ? s.measurement.confidence > 0
-                ? `${label} ${mspec?.label ?? attrLabel} ${(s.measurement.value * 100).toFixed(1)}%（計測信頼度 ${s.measurement.confidence.toFixed(2)}）`
+                ? `${label} ${mspec?.label ?? attrLabel} ${(s.measurement.value * 100).toFixed(1)}%${mspec?.method === 'ripeness' ? ' · ' + harvestText(s.measurement.value) : ''}（計測信頼度 ${s.measurement.confidence.toFixed(2)}）`
                 : `${label} ${mspec?.label ?? attrLabel} 計測中`
               : this.profile.severityFromArea
                 ? `${label} ${this.profile.severityFromArea.label} ${((rt.maxArea ?? 0) * 100).toFixed(2)}% · 重症度 ${(1 - s.attribute).toFixed(2)}`
@@ -491,8 +492,9 @@ export class VideoDetectionSimulator {
     const v = s.measurement ? (s.measurement.confidence > 0 ? s.measurement.value : undefined) : s.scene ? 1 - s.scene.score : s.attribute
     if (v === undefined || !Number.isFinite(v)) return
     rt.evidence.push(v)
-    // 状態解析は値が時間とともに変わるのが正常なので、直近 0.5 秒相当だけを安定度の材料にする
-    const cap = s.scene ? 30 : 60
+    // 状態解析は値が時間とともに変わるのが正常なので、状態の継続時間に合わせた直近の窓だけを安定度の材料にする
+    // （継続 0.25〜1.5 秒 → 15〜90 フレーム）
+    const cap = s.scene ? Math.round(Math.min(1.5, Math.max(0.25, s.scene.holdSeconds)) * 60) : 60
     while (rt.evidence.length > cap) rt.evidence.shift()
   }
 
@@ -548,7 +550,7 @@ export class VideoDetectionSimulator {
       if (gen !== this.generation || this.isExited(rt)) return
 
       const engineTag = result.engine === 'jev' ? 'JEV' : 'JEV(模擬)'
-      const gradeTag = `${result.grade} ${GRADE_LABELS_JA[result.grade]}`
+      const gradeTag = `${result.grade} ${gradeLabel(result.grade, this.profile)}`
       this.bus.emit(result.decision, `${label} ${engineTag} → ${gradeTag} · ${decisionJa(result.decision, this.profile)} ${pct(result.confidence)}（証拠 ${evidence?.samples ?? 0}フレーム）`, {
         objectId: label,
         videoTime: time,
@@ -588,7 +590,7 @@ export class VideoDetectionSimulator {
 
       this.bus.emit(
         'INSPECTION_COMPLETED',
-        `${label} 判定確定 ${result.grade} ${GRADE_LABELS_JA[result.grade]} · ${decisionJa(result.decision, this.profile)}（${Math.round(result.latencyMs)}ミリ秒）`,
+        `${label} 判定確定 ${result.grade} ${gradeLabel(result.grade, this.profile)} · ${decisionJa(result.decision, this.profile)}（${Math.round(result.latencyMs)}ミリ秒）`,
         {
           objectId: label,
           videoTime: this.lastTime,
