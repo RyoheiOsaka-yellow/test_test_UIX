@@ -2,7 +2,7 @@ video.mp4
   出典: Wikimedia Commons "Potatoes Sorting Montana2026 (55252116350).webm"
   制作: USDA（米国農務省）— 米国政府の著作物としてパブリックドメイン
   https://commons.wikimedia.org/wiki/File:Potatoes_Sorting_Montana2026_(55252116350).webm
-  加工: 22–30 秒 / 39–48 秒 を切り出して連結、640x360 に再エンコード
+  加工: 22–30 秒（ベルト上面の場面）を切り出し、640x360 に再エンコード
 
 detections.json
   参照記事（Ultralytics ObjectCounter + YOLO11n + SAM 2 の 1 フレーム注釈）の手順を再現:
