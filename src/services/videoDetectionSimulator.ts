@@ -18,6 +18,7 @@ import { PROFILES, DEFAULT_PROFILE_ID } from '@/profiles'
 import { decisionJa } from '@/i18n/ja'
 import type { EventBus } from './eventBus'
 import { measureFillLevel, type FramePixelSource } from './fillLevelMeter'
+import { GRADE_LABELS_JA, areaSeverity, attributeSeverity, gradeFromSeverity, measurementSeverity, sceneSeverity, summarizeSamples } from './grading'
 import type { MeasurementReading } from '@/types/inspection'
 
 /**
@@ -66,6 +67,8 @@ interface TrackRuntime {
   recoveredAt?: number
   /** 路面損傷: これまでに観測した最大の枠面積比 */
   maxArea?: number
+  /** 検査中に集めた証拠（フレームごとの主要な読み: 属性信頼度 / 計測値 / 1−場面スコア） */
+  evidence: number[]
 }
 
 export interface SimulatorOptions {
@@ -128,6 +131,7 @@ export class VideoDetectionSimulator {
       decisionRequested: false,
       recheckRounds: 0,
       measureSamples: 0,
+      evidence: [],
     }))
     this.lastLiveUpdate = 0
     this.crosswalk = profile.analyzer === 'crosswalk' ? new CrosswalkAnalyzer(profile) : null
@@ -155,6 +159,7 @@ export class VideoDetectionSimulator {
       rt.measurement = undefined
       rt.measureSamples = 0
       rt.maxArea = undefined
+      rt.evidence = []
       rt.fall?.reset()
       this.crosswalk?.reset()
       rt.person = undefined
@@ -365,6 +370,12 @@ export class VideoDetectionSimulator {
         }
       }
 
+      // 複数フレームの証拠集め: 検査中（ゲート手前の帯・ステーション滞留・状態の確認中）は毎フレーム読みを蓄える
+      if (rt.phase === 'INSPECTING' && !rt.decisionRequested) {
+        const s = this.sampleReadings(rt, time)
+        this.pushEvidence(rt, s)
+      }
+
       if (rt.phase === 'INSPECTING' && !rt.decisionRequested && trigger.kind !== 'state') {
         let decideNow = false
         if (trigger.kind === 'gate') {
@@ -475,6 +486,35 @@ export class VideoDetectionSimulator {
     return { attribute: clamp01(attribute), object: clamp01(object), alignment, measurement: undefined as InspectionState['measurement'], scene: undefined as InspectionState['scene'] }
   }
 
+  /** 証拠の主要な読み（プロファイル種別ごと）を蓄える。直近 60 件まで */
+  private pushEvidence(rt: TrackRuntime, s: ReturnType<VideoDetectionSimulator['sampleReadings']>) {
+    const v = s.measurement ? (s.measurement.confidence > 0 ? s.measurement.value : undefined) : s.scene ? 1 - s.scene.score : s.attribute
+    if (v === undefined || !Number.isFinite(v)) return
+    rt.evidence.push(v)
+    // 状態解析は値が時間とともに変わるのが正常なので、直近 0.5 秒相当だけを安定度の材料にする
+    const cap = s.scene ? 30 : 60
+    while (rt.evidence.length > cap) rt.evidence.shift()
+  }
+
+  /** 蓄えた証拠の要約。中央値は属性プロファイルでは判断に、他では安定度の材料に使う */
+  private buildEvidence(rt: TrackRuntime, finalReading: number): InspectionState['evidence'] {
+    const sum = summarizeSamples(rt.evidence)
+    const stats = inspectionStore.windowStats(Date.now())
+    // 面積重症度は「これまでの最大面積」で決めるので、中央値ではなく最終値を代表値にする
+    const median = this.profile.severityFromArea ? finalReading : sum.median
+    return { samples: sum.samples, median, spread: sum.spread, stability: sum.stability, recentRejectRate: stats.rejectRate }
+  }
+
+  /** 生の読みから暫定の異常度（オーバーレイの色付け用） */
+  private liveSeverity(rt: TrackRuntime, attribute: number, meas: MeasurementReading | undefined, area: number): number | undefined {
+    if (rt.person) return sceneSeverity(rt.person.level, rt.person.score)
+    const mspec = this.profile.measurement
+    if (mspec) return meas && meas.confidence > 0 ? measurementSeverity(Math.abs(meas.value - mspec.target) / Math.max(1e-6, mspec.tolerance)) : undefined
+    const sev = this.profile.severityFromArea
+    if (sev) return areaSeverity(Math.max(rt.maxArea ?? 0, area) / sev.fullArea)
+    return attributeSeverity(attribute)
+  }
+
   private async runDecision(rt: TrackRuntime, time: number, gen: number) {
     const { label } = rt
     let previousFailures = 0
@@ -485,9 +525,13 @@ export class VideoDetectionSimulator {
       measurement: rt.sampledMeasurement,
       scene: rt.person ? this.sampleReadings(rt, time).scene : undefined,
     }
+    const isAttributeProfile = !this.profile.measurement && !this.profile.severityFromArea && !readings.scene
 
     // 判断ループ: 再検査は1回だけ再サンプリングし、その後は最終判定
     for (let round = 0; round < 3; round++) {
+      const evidence = this.buildEvidence(rt, readings.attribute)
+      // 属性プロファイルは複数フレームの中央値を判断と表示の代表値にする
+      if (isAttributeProfile && evidence && evidence.samples >= 3) readings = { ...readings, attribute: evidence.median }
       const state: InspectionState = {
         objectId: label,
         objectConfidence: readings.object,
@@ -495,6 +539,7 @@ export class VideoDetectionSimulator {
         alignmentScore: readings.alignment,
         measurement: readings.measurement,
         scene: readings.scene,
+        evidence,
         inspectionZone: true,
         previousFailures,
         previousState: previousFailures > 0 ? 'recheck' : 'normal',
@@ -503,7 +548,8 @@ export class VideoDetectionSimulator {
       if (gen !== this.generation || this.isExited(rt)) return
 
       const engineTag = result.engine === 'jev' ? 'JEV' : 'JEV(模擬)'
-      this.bus.emit(result.decision, `${label} ${engineTag} → ${decisionJa(result.decision, this.profile)} ${pct(result.confidence)}`, {
+      const gradeTag = `${result.grade} ${GRADE_LABELS_JA[result.grade]}`
+      this.bus.emit(result.decision, `${label} ${engineTag} → ${gradeTag} · ${decisionJa(result.decision, this.profile)} ${pct(result.confidence)}（証拠 ${evidence?.samples ?? 0}フレーム）`, {
         objectId: label,
         videoTime: time,
         data: { decision: result, state, round },
@@ -515,6 +561,7 @@ export class VideoDetectionSimulator {
         await new Promise((r) => setTimeout(r, readings.scene ? 1000 : 260))
         if (gen !== this.generation || this.isExited(rt)) return
         readings = this.sampleReadings(rt, this.lastTime, previousFailures)
+        this.pushEvidence(rt, readings)
         this.bus.emit(
           'ATTRIBUTE_CONFIDENCE',
           readings.measurement
@@ -541,7 +588,7 @@ export class VideoDetectionSimulator {
 
       this.bus.emit(
         'INSPECTION_COMPLETED',
-        `${label} 判定確定 ${decisionJa(result.decision, this.profile)}（${Math.round(result.latencyMs)}ミリ秒）`,
+        `${label} 判定確定 ${result.grade} ${GRADE_LABELS_JA[result.grade]} · ${decisionJa(result.decision, this.profile)}（${Math.round(result.latencyMs)}ミリ秒）`,
         {
           objectId: label,
           videoTime: this.lastTime,
@@ -553,7 +600,7 @@ export class VideoDetectionSimulator {
               objectId: label,
               vision: { object: readings.object, attribute: readings.attribute, alignment: readings.alignment },
               measurement: readings.measurement ? { key: readings.measurement.key, value: readings.measurement.value, target: readings.measurement.target, tolerance: readings.measurement.tolerance, truth: rt.track.fillLevel } : undefined,
-              decision: { result: result.decision, confidence: result.confidence, reason: result.reason, engine: result.engine },
+              decision: { result: result.decision, confidence: result.confidence, reason: result.reason, engine: result.engine, grade: result.grade, severity: result.severity },
               action: result.decision === 'REJECT' ? 'EJECT_SIMULATED' : result.action,
               latencyMs: result.latencyMs,
             },
@@ -636,12 +683,17 @@ export class VideoDetectionSimulator {
         classConfidence = rt.person.level === 'normal' ? 1 - rt.person.score : rt.person.score
       }
 
+      const liveSev = rt.decision ? rt.decision.severity : this.liveSeverity(rt, live.attribute, meas, bbox[2] * bbox[3])
+      const provisionalGrade = rt.decision ? rt.decision.grade : liveSev !== undefined ? gradeFromSeverity(liveSev) : undefined
+
       detections.push({
         trackId: track.id,
         label: rt.label,
         bbox,
         detectionClass,
         classConfidence,
+        provisionalGrade,
+        liveSeverity: liveSev,
         objectConfidence: live.object,
         attributeConfidence: live.attribute,
         alignmentScore: live.alignment,

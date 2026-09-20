@@ -84,6 +84,10 @@ export interface FrameDetection {
   personState?: StateReading
   /** 物体クラス（person / car など。複数クラスのプロファイルのみ） */
   objectClass?: string
+  /** 判定前の暫定グレード（検査中に色を変えるため） */
+  provisionalGrade?: Grade
+  /** 暫定の異常度 0..1 */
+  liveSeverity?: number
   /** Final decision, once the object crossed the gate. */
   decision?: DecisionResult
   /** Video time at which the object crossed the gate. */
@@ -153,6 +157,18 @@ export interface InspectionState {
   measurement?: { key: string; value: number; target: number; tolerance: number; confidence: number; tiltDeg: number; truth?: number }
   /** 状態解析（転倒検知・横断歩道監視）。あれば判断はこちらを優先する */
   scene?: { state: string; level: 'normal' | 'watch' | 'alert'; score: number; holdSeconds: number; confidence: number; features: Record<string, number> }
+  /** 複数フレームで集めた証拠（検査ゾーン内の属性サンプル） */
+  evidence?: {
+    samples: number
+    /** 属性信頼度（または計測値）の中央値 */
+    median: number
+    /** p10〜p90 の幅。大きいほど不安定 */
+    spread: number
+    /** 0..1（1 = 安定） */
+    stability: number
+    /** 直近のライン不良率（文脈） */
+    recentRejectRate: number
+  }
   inspectionZone: boolean
   /** Number of prior RECHECK rounds on this object. */
   previousFailures?: number
@@ -169,12 +185,34 @@ export const OBJECT_DECISION_OPTIONS: readonly ObjectDecision[] = [
   'HUMAN_REVIEW',
 ]
 
+/** 5 段階グレード（A 良好 → E 不良）。判断（処置）とは独立した評価軸 */
+export type Grade = 'A' | 'B' | 'C' | 'D' | 'E'
+
+/** 判断の根拠 1 件 */
+export interface EvidenceItem {
+  key: string
+  label: string
+  value: number
+  unit?: string
+  digits?: number
+  /** 異常度への寄与（0..1、表示用） */
+  weight?: number
+}
+
 export type DecisionEngineKind = 'simulation' | 'jev'
 
 export interface DecisionResult {
   decision: ObjectDecision
   /** Engine's confidence in the decision, 0..1. */
   confidence: number
+  /** 5 段階グレード */
+  grade: Grade
+  /** 異常度 0..1（グレードの元になった連続量） */
+  severity: number
+  /** 提示した選択肢ごとのスコア（合計 1）。エンジンが返せる場合のみ */
+  optionScores?: Partial<Record<ObjectDecision, number>>
+  /** 判断の根拠 */
+  evidence?: EvidenceItem[]
   /** Machine-readable reason code, e.g. CAP_MISSING, CAP_OK, JEV_UNCERTAIN. */
   reason: string
   latencyMs: number
@@ -206,6 +244,8 @@ export const LINE_DECISION_OPTIONS: readonly LineDecision[] = [
 export interface LineDecisionResult {
   decision: LineDecision
   confidence: number
+  /** ライン全体のグレード */
+  grade?: Grade
   reason: string
   latencyMs: number
   engine: DecisionEngineKind
@@ -259,7 +299,7 @@ export interface InspectionRecord {
   timestamp: string
   objectId: string
   vision: { object: number; attribute: number; alignment: number }
-  decision: { result: ObjectDecision; confidence: number; reason: string; engine: DecisionEngineKind }
+  decision: { result: ObjectDecision; confidence: number; reason: string; engine: DecisionEngineKind; grade?: Grade; severity?: number }
   /** 連続量の計測（充填量など） */
   measurement?: { key: string; value: number; target: number; tolerance: number; truth?: number }
   action: string

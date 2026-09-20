@@ -8,6 +8,7 @@ import type {
   InspectionRecord,
   InspectionState,
   LineDecisionResult,
+  Grade,
   ObjectDecision,
   OverlaySettings,
   PlaybackRate,
@@ -37,6 +38,8 @@ export interface KpiState {
   yieldRate: number
   throughputBpm: number
   decisionLatencyMs: number
+  /** 5 段階グレードの件数 */
+  grades: Record<Grade, number>
 }
 
 export interface CurrentObject {
@@ -60,6 +63,8 @@ export interface AnomalyInfo {
 
 export interface ReviewItem {
   objectId: string
+  grade?: Grade
+  severity?: number
   attributeConfidence: number
   objectConfidence: number
   jevConfidence: number
@@ -80,6 +85,8 @@ export interface CapPoint {
   objectId: string
   attribute: number
   decision: ObjectDecision
+  grade?: Grade
+  severity?: number
 }
 
 export interface LineAlert {
@@ -169,6 +176,7 @@ export function initialState(): InspectionStoreState {
       yieldRate: 0,
       throughputBpm: 0,
       decisionLatencyMs: 0,
+      grades: { A: 0, B: 0, C: 0, D: 0, E: 0 },
     },
     events: [],
     records: [],
@@ -283,8 +291,9 @@ export class InspectionStore {
       }
       case 'INSPECTION_COMPLETED': {
         const d = event.data as { decision: DecisionResult; state: InspectionState; record: InspectionRecord }
-        const kpi = { ...s.kpi }
+        const kpi = { ...s.kpi, grades: { ...s.kpi.grades } }
         kpi.totalInspected++
+        if (d.decision.grade) kpi.grades[d.decision.grade] = (kpi.grades[d.decision.grade] ?? 0) + 1
         if (d.decision.decision === 'PASS') kpi.pass++
         else if (d.decision.decision === 'REJECT') kpi.reject++
         else if (d.decision.decision === 'HUMAN_REVIEW') {
@@ -312,7 +321,7 @@ export class InspectionStore {
         patch.records = records
 
         patch.series = bump(s.series, event.timestamp, d.decision.decision)
-        const capPoint: CapPoint = { t: event.timestamp, objectId: event.objectId!, attribute: d.state.measurement ? d.state.measurement.value : d.state.attributeConfidence, decision: d.decision.decision }
+        const capPoint: CapPoint = { t: event.timestamp, objectId: event.objectId!, attribute: d.state.measurement ? d.state.measurement.value : d.state.attributeConfidence, decision: d.decision.decision, grade: d.decision.grade, severity: d.decision.severity }
         patch.capSeries = [...s.capSeries.slice(-CAP_SERIES_MAX + 1), capPoint]
 
         if (d.decision.decision === 'HUMAN_REVIEW') {
@@ -320,6 +329,8 @@ export class InspectionStore {
             ...s.reviewQueue,
             {
               objectId: event.objectId!,
+              grade: d.decision.grade,
+              severity: d.decision.severity,
               attributeConfidence: d.state.attributeConfidence,
               objectConfidence: d.state.objectConfidence,
               jevConfidence: d.decision.confidence,

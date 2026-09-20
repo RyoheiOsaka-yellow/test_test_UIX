@@ -8,6 +8,8 @@ import type {
   ObjectDecision,
 } from '@/types/inspection'
 import { actionFor } from './decisionActions'
+import { GRADE_LABELS_JA, GRADE_ORDER, GRADE_THRESHOLDS, alignScores, gradeFromSeverity, optionScores } from './grading'
+import { simulateObjectDecision } from './decisionEngine'
 
 /**
  * Jev API adapter (MODE B: REAL JEV MODE).
@@ -44,8 +46,12 @@ export interface JevObjectRequest {
     measurement?: { key: string; value: number; target: number; tolerance: number; confidence: number; tilt_deg: number }
     /** 状態解析（転倒検知・横断歩道監視）。状態解析プロファイルのみ */
     scene?: { state: string; level: string; score: number; hold_seconds: number; confidence: number; features: Record<string, number> }
+    /** 複数フレームで集めた証拠の要約 */
+    evidence?: { samples: number; median: number; spread: number; stability: number; recent_reject_rate: number }
   }
   options: readonly ObjectDecision[]
+  /** 判断とは別に返してほしい 5 段階グレードの定義（Jev はこの尺度で grade を返す） */
+  grading: { scale: readonly string[]; labels: Record<string, string>; thresholds: Record<string, number> }
 }
 
 export interface JevLineRequest {
@@ -66,6 +72,12 @@ export interface JevResponse<T extends string> {
   decision: T
   confidence: number
   reason?: string
+  /** 5 段階グレード（A〜E）。Jev が返せる場合のみ */
+  grade?: string
+  /** 異常度 0..1。Jev が返せる場合のみ */
+  severity?: number
+  /** 提示した選択肢ごとのスコア。Jev が返せる場合のみ */
+  option_scores?: Record<string, number>
 }
 
 const ENDPOINT = '/api/jev/decide'
@@ -91,8 +103,19 @@ async function postDecision<T extends string>(
       throw new Error(`Jev returned an option that was not offered: ${String(json.decision)}`)
     }
     const confidence = typeof json.confidence === 'number' ? json.confidence : 0
+    const optionScoresRaw =
+      json.option_scores && typeof json.option_scores === 'object'
+        ? Object.fromEntries(Object.entries(json.option_scores).filter(([, v]) => typeof v === 'number') as Array<[string, number]>)
+        : undefined
     return {
-      result: { decision: json.decision as T, confidence, reason: json.reason },
+      result: {
+        decision: json.decision as T,
+        confidence,
+        reason: json.reason,
+        grade: typeof json.grade === 'string' ? json.grade.toUpperCase() : undefined,
+        severity: typeof json.severity === 'number' ? json.severity : undefined,
+        option_scores: optionScoresRaw,
+      },
       latencyMs: performance.now() - started,
     }
   } finally {
@@ -151,8 +174,20 @@ export class JevDecisionEngine implements DecisionEngine {
               },
             }
           : {}),
+        ...(state.evidence
+          ? {
+              evidence: {
+                samples: state.evidence.samples,
+                median: round(state.evidence.median),
+                spread: round(state.evidence.spread),
+                stability: round(state.evidence.stability),
+                recent_reject_rate: round(state.evidence.recentRejectRate),
+              },
+            }
+          : {}),
       },
       options,
+      grading: { scale: GRADE_ORDER, labels: GRADE_LABELS_JA, thresholds: GRADE_THRESHOLDS },
     }
     const { result, latencyMs } = await postDecision(body, options)
     let decision = result.decision
@@ -161,7 +196,25 @@ export class JevDecisionEngine implements DecisionEngine {
       decision = 'HUMAN_REVIEW'
       reason = 'JEV_UNCERTAIN'
     }
-    return { decision, confidence: result.confidence, reason, latencyMs, engine: 'jev', action: actionFor(decision) }
+    // グレード・異常度・選択肢スコアは Jev が返せばそれを使い、無ければ同じ証拠からローカル規則で補う
+    const local = simulateObjectDecision(state, options)
+    const severity = typeof result.severity === 'number' ? Math.min(1, Math.max(0, result.severity)) : local.severity
+    const grade = result.grade && (GRADE_ORDER as readonly string[]).includes(result.grade) ? (result.grade as DecisionResult['grade']) : gradeFromSeverity(severity)
+    const scores = result.option_scores
+      ? alignScores(Object.fromEntries(Object.entries(result.option_scores).filter(([k]) => options.includes(k as ObjectDecision))) as Partial<Record<ObjectDecision, number>>, decision)
+      : alignScores(optionScores(severity, state.evidence?.stability ?? 0.7, options), decision)
+    return {
+      decision,
+      confidence: result.confidence,
+      reason,
+      grade,
+      severity,
+      optionScores: scores,
+      evidence: local.evidence,
+      latencyMs,
+      engine: 'jev',
+      action: actionFor(decision),
+    }
   }
 
   async decideLine(state: LineState, options: readonly LineDecision[]): Promise<LineDecisionResult> {
@@ -183,6 +236,7 @@ export class JevDecisionEngine implements DecisionEngine {
       decision: result.decision,
       confidence: result.confidence,
       reason: result.reason ?? 'JEV_DECISION',
+      grade: result.grade && (GRADE_ORDER as readonly string[]).includes(result.grade) ? (result.grade as LineDecisionResult['grade']) : undefined,
       latencyMs,
       engine: 'jev',
     }

@@ -1,4 +1,5 @@
 import { useInspectionStore } from '@/services/inspectionStore'
+import { GRADE_COLORS, GRADE_ORDER } from '@/services/grading'
 
 /** 映像左上のオーバーレイパネル: キャップ検査 */
 export function InspectorPanel() {
@@ -40,7 +41,17 @@ export function InspectorPanel() {
             </div>
           </>
         )}
-        <div className="mt-1 flex items-baseline justify-between border-t border-border/60 pt-1.5">
+        <div className="mt-1 flex items-center justify-between border-t border-border/60 pt-1.5">
+          <span className="text-[10px] text-ink-3">グレード</span>
+          <span className="flex gap-[6px]">
+            {GRADE_ORDER.map((g) => (
+              <span key={g} className="num text-[10px] leading-none" style={{ color: GRADE_COLORS[g] }}>
+                {g}<span className="text-ink-2">{kpi.grades[g] ?? 0}</span>
+              </span>
+            ))}
+          </span>
+        </div>
+        <div className="mt-1 flex items-baseline justify-between">
           <span className="text-[10px] text-ink-3">{profile.kpiLabels?.yield ?? '良品率'}</span>
           <span className="num text-[13px] text-cyan">{kpi.totalInspected ? `${(kpi.yieldRate * 100).toFixed(1)}%` : '—'}</span>
         </div>

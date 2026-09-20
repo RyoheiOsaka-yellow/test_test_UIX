@@ -1,7 +1,52 @@
 import { actionJa, decisionJa, reasonJa } from '@/i18n/ja'
 import { useInspectionStore, type InspectionStoreState } from '@/services/inspectionStore'
-import type { InspectionProfile } from '@/types/inspection'
-import { Panel, decisionColor, pct } from './Panel'
+import { GRADE_COLORS, GRADE_LABELS_JA, GRADE_ORDER, GRADE_THRESHOLDS } from '@/services/grading'
+import type { DecisionResult, InspectionProfile } from '@/types/inspection'
+import { Panel, decisionColor, decisionHex, pct } from './Panel'
+
+/** 5 段階グレードの帯（A 緑 → E 赤）と異常度の位置 */
+export function GradeScale({ severity, grade, compact = false }: { severity?: number; grade?: DecisionResult['grade']; compact?: boolean }) {
+  const edges = [0, GRADE_THRESHOLDS.B, GRADE_THRESHOLDS.C, GRADE_THRESHOLDS.D, GRADE_THRESHOLDS.E, 1]
+  return (
+    <div>
+      <div className="relative flex h-[7px] w-full gap-[1px]">
+        {GRADE_ORDER.map((g, i) => (
+          <div
+            key={g}
+            className="h-full"
+            style={{ width: `${(edges[i + 1] - edges[i]) * 100}%`, background: GRADE_COLORS[g], opacity: grade ? (grade === g ? 1 : 0.28) : 0.5 }}
+          />
+        ))}
+        {severity !== undefined && (
+          <div className="absolute -top-[2px] h-[11px] w-[2px] bg-ink" style={{ left: `calc(${Math.min(100, Math.max(0, severity * 100))}% - 1px)` }} />
+        )}
+      </div>
+      {!compact && (
+        <div className="mt-[2px] flex text-[8.5px] text-ink-3">
+          {GRADE_ORDER.map((g, i) => (
+            <span key={g} style={{ width: `${(edges[i + 1] - edges[i]) * 100}%`, color: grade === g ? GRADE_COLORS[g] : undefined }} className="truncate">
+              {g} {GRADE_LABELS_JA[g]}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** グレード章（大きな 1 文字 + 日本語） */
+export function GradeBadge({ grade, size = 'md' }: { grade?: DecisionResult['grade']; size?: 'sm' | 'md' }) {
+  const c = grade ? GRADE_COLORS[grade] : '#25313d'
+  return (
+    <span
+      className={`inline-flex items-center gap-1 border font-semibold leading-none ${size === 'md' ? 'px-2 py-1 text-[13px]' : 'px-1 py-[1px] text-[9.5px]'}`}
+      style={{ borderColor: c, color: c, background: `${c}1a` }}
+    >
+      <span className={size === 'md' ? 'text-[18px]' : 'text-[11px]'}>{grade ?? '—'}</span>
+      {grade && <span>{GRADE_LABELS_JA[grade]}</span>}
+    </span>
+  )
+}
 
 function Bar({ value, color }: { value: number; color: string }) {
   return (
@@ -104,7 +149,7 @@ export function DecisionPanel() {
         <span className="num text-[18px] text-ink">{cur?.objectId ?? '—'}</span>
       </div>
 
-      <div className="label mt-3 mb-1">認識結果</div>
+      <div className="label mt-2 mb-1">認識結果</div>
       {profile.measurement && (
         <MeasurementBlock cur={cur} spec={profile.measurement} />
       )}
@@ -135,11 +180,21 @@ export function DecisionPanel() {
         <span className="num text-[11px] text-ink-2">{cur ? pct(cur.alignment) : '—'}</span>
       </div>
 
-      <div className="label mt-3 mb-1">JEV の判断</div>
-      <div className={`text-[26px] leading-none font-semibold ${d ? decisionColor[d.decision] : cur ? 'text-yellow/80 pulse' : 'text-ink-3'}`}>
-        {d ? decisionJa(d.decision, profile) : cur ? '判断中' : '待機'}
+      <div className="label mt-2 mb-1">JEV の判断</div>
+      <div className="flex items-center justify-between gap-2">
+        <div className={`text-[26px] leading-none font-semibold ${d ? decisionColor[d.decision] : cur ? 'text-yellow/80 pulse' : 'text-ink-3'}`}>
+          {d ? decisionJa(d.decision, profile) : cur ? '判断中' : '待機'}
+        </div>
+        <GradeBadge grade={d?.grade} />
       </div>
-      <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
+      <div className="mt-1.5">
+        <div className="mb-[2px] flex items-baseline justify-between">
+          <span className="label">グレード / 異常度</span>
+          <span className="num text-[11px] text-ink-2">{d ? d.severity.toFixed(2) : '—'}</span>
+        </div>
+        <GradeScale severity={d?.severity} grade={d?.grade} />
+      </div>
+      <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-[2px]">
         <div>
           <div className="label">判断の確信度</div>
           <div className="num text-[15px]">{d ? pct(d.confidence) : '—'}</div>
@@ -158,19 +213,41 @@ export function DecisionPanel() {
         </div>
       </div>
 
-      <div className="label mt-3 mb-1">提示した選択肢</div>
-      <div className="flex flex-wrap gap-1">
-        {(['PASS', 'RECHECK', 'REJECT', 'HUMAN_REVIEW'] as const).map((o) => (
-          <span
-            key={o}
-            className={`border px-1.5 py-[1px] text-[9.5px] tracking-[0.08em] ${
-              d?.decision === o ? `${decisionColor[o]} border-current` : 'border-border text-ink-3'
-            }`}
-          >
-            {decisionJa(o, profile)}
-          </span>
-        ))}
+      <div className="label mt-2 mb-1">提示した選択肢と各スコア</div>
+      <div className="grid grid-cols-2 gap-x-2 gap-y-[3px]">
+        {(['PASS', 'RECHECK', 'REJECT', 'HUMAN_REVIEW'] as const).map((o) => {
+          const score = d?.optionScores?.[o] ?? 0
+          const chosen = d?.decision === o
+          return (
+            <div key={o} className={`border px-1.5 py-[2px] ${chosen ? 'border-current' : 'border-border'} ${chosen ? decisionColor[o] : 'text-ink-3'}`}>
+              <div className="flex items-baseline justify-between gap-1">
+                <span className="truncate text-[9.5px] tracking-[0.06em]">{decisionJa(o, profile)}</span>
+                <span className={`num shrink-0 text-[10px] ${chosen ? '' : 'text-ink-3'}`}>{d ? pct(score) : '—'}</span>
+              </div>
+              <div className="mt-[2px] h-[3px] w-full bg-border-2">
+                <div className="h-full transition-[width] duration-200" style={{ width: `${Math.round(score * 100)}%`, background: decisionHex[o], opacity: chosen ? 1 : 0.45 }} />
+              </div>
+            </div>
+          )
+        })}
       </div>
+
+      {d?.evidence && d.evidence.length > 0 && (
+        <>
+          <div className="label mt-2 mb-1">判断の根拠（証拠）</div>
+          <div className="grid grid-cols-2 gap-x-3 gap-y-[1px] text-[9.5px] text-ink-3">
+            {d.evidence.slice(0, 6).map((e) => (
+              <span key={e.key} className="flex justify-between gap-2">
+                <span className="truncate">{e.label}</span>
+                <span className="num shrink-0 text-ink-2">
+                  {e.value.toFixed(e.digits ?? 2)}
+                  {e.unit ?? ''}
+                </span>
+              </span>
+            ))}
+          </div>
+        </>
+      )}
     </Panel>
   )
 }

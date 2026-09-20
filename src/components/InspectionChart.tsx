@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useInspectionStore } from '@/services/inspectionStore'
+import { GRADE_COLORS } from '@/services/grading'
 import { Panel } from './Panel'
 
 const axisStyle = { fontFamily: 'JetBrains Mono, monospace', fontSize: 9, fill: '#5b6878' }
@@ -103,7 +104,7 @@ function FallScoreChart() {
 export function CapConfidenceChart() {
   const capSeries = useInspectionStore((s) => s.capSeries)
   const profile = useInspectionStore((s) => s.profile)
-  const data = useMemo(() => capSeries.slice(-60).map((p) => ({ id: p.objectId, 信頼度: p.attribute, decision: p.decision })), [capSeries])
+  const data = useMemo(() => capSeries.slice(-60).map((p) => ({ id: p.objectId, 信頼度: p.attribute, decision: p.decision, grade: p.grade })), [capSeries])
   const m = profile.measurement
   return (
     <Panel
@@ -118,7 +119,7 @@ export function CapConfidenceChart() {
             <span className="text-green">0.75</span>
             <span className="text-yellow">0.45</span>
             <span className="text-red">0.20</span>
-            <span>しきい値</span>
+            <span>しきい値 · 点の色 = グレード</span>
           </span>
         )
       }
@@ -151,9 +152,11 @@ export function CapConfidenceChart() {
             stroke="#31c6ff"
             strokeWidth={1.5}
             isAnimationActive={false}
-            dot={(props: { cx?: number; cy?: number; payload?: { decision: string }; index?: number }) => {
-              const c = props.payload?.decision === 'REJECT' ? '#ff5151' : props.payload?.decision === 'PASS' ? '#39ff88' : '#b38cff'
-              return <circle key={props.index} cx={props.cx} cy={props.cy} r={2.5} fill={c} stroke="#111820" strokeWidth={1} />
+            dot={(props: { cx?: number; cy?: number; payload?: { decision: string; grade?: keyof typeof GRADE_COLORS }; index?: number }) => {
+              const g = props.payload?.grade
+              const c = g ? GRADE_COLORS[g] : props.payload?.decision === 'REJECT' ? '#ff5151' : props.payload?.decision === 'PASS' ? '#39ff88' : '#b38cff'
+              const review = props.payload?.decision === 'HUMAN_REVIEW'
+              return <circle key={props.index} cx={props.cx} cy={props.cy} r={review ? 3.2 : 2.5} fill={c} stroke={review ? '#b38cff' : '#111820'} strokeWidth={review ? 1.5 : 1} />
             }}
           />
         </LineChart>

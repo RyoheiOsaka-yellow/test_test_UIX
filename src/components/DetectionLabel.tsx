@@ -1,6 +1,7 @@
 import type { FrameDetection, InspectionProfile, OverlaySettings } from '@/types/inspection'
 import { DECISION_JA, classJa } from '@/i18n/ja'
 import { SKELETON } from '@/services/fallDetector'
+import { GRADE_COLORS, GRADE_LABELS_JA } from '@/services/grading'
 
 /**
  * 検知1件分の描画ヘルパー（バウンディングボックス + ラベル）。
@@ -74,8 +75,15 @@ export function drawDetection(
   const bw = nw * w
   const bh = nh * h
   const isVehicle = d.objectClass && ['car', 'truck', 'bus', 'motorcycle'].includes(d.objectClass)
-  const color = d.personState ? (isVehicle && d.personState.level === 'normal' ? VEHICLE_COLOR : LEVEL_COLOR[d.personState.level]) : (CLASS_COLORS[d.detectionClass] ?? '#31c6ff')
+  // 色は 5 段階グレード（A 緑 / B 黄緑 / C 黄 / D 橙 / E 赤）。判定前は暫定グレード、判定後は確定グレード
+  const gradeColor = d.provisionalGrade ? GRADE_COLORS[d.provisionalGrade] : undefined
+  const color = d.personState
+    ? isVehicle && d.personState.level === 'normal'
+      ? VEHICLE_COLOR
+      : (gradeColor ?? LEVEL_COLOR[d.personState.level])
+    : (gradeColor ?? CLASS_COLORS[d.detectionClass] ?? '#31c6ff')
   const inspecting = d.phase === 'INSPECTING'
+  const uncertain = d.decision !== undefined && d.decision.confidence < 0.65
   // ゲート前の追跡中と、判定から2秒以上経った物体は簡略表示にして、
   // 検査中・判定直後だけを目立たせる（実映像は同時に30本以上映るため）
   const decidedAge = d.gateTime !== undefined ? now - d.gateTime : -1
@@ -86,7 +94,10 @@ export function drawDetection(
     ctx.strokeStyle = d.phase === 'TRACKED' ? '#31c6ff' : color
     ctx.lineWidth = inspecting ? 2 : 1
     ctx.globalAlpha = compact ? 0.55 : d.phase === 'DECIDED' ? 0.9 : 0.85
+    // 確信度 0.65 未満の判定は破線（不確実 = 人の確認へ）
+    if (uncertain) ctx.setLineDash([4, 3])
     ctx.strokeRect(x + 0.5, y + 0.5, bw, bh)
+    ctx.setLineDash([])
 
     const c = Math.min(10, bw * 0.3)
     ctx.lineWidth = compact ? 1.5 : 2.5
@@ -111,6 +122,15 @@ export function drawDetection(
     ctx.moveTo(cx - 4, cy); ctx.lineTo(cx + 4, cy)
     ctx.moveTo(cx, cy - 4); ctx.lineTo(cx, cy + 4)
     ctx.stroke()
+
+    // 異常度バー（枠の下辺）: 長さ = 異常度、色 = グレード。検査中と判定直後のみ
+    if (!compact && d.liveSeverity !== undefined && bw >= 24) {
+      ctx.globalAlpha = 0.9
+      ctx.fillStyle = 'rgba(8, 11, 16, 0.7)'
+      ctx.fillRect(x, y + bh - 3, bw, 3)
+      ctx.fillStyle = color
+      ctx.fillRect(x, y + bh - 3, bw * Math.max(0.02, Math.min(1, d.liveSeverity)), 3)
+    }
     ctx.restore()
   }
 
@@ -191,23 +211,34 @@ export function drawDetection(
 
   if (settings.jevDecision && d.decision && d.gateTime !== undefined) {
     const dc = DECISION_COLORS[d.decision.decision] ?? '#31c6ff'
+    const gc = GRADE_COLORS[d.decision.grade]
     const dl = profile.decisionLabels?.[d.decision.decision] ?? DECISION_JA[d.decision.decision]
-    const text = compact ? dl : `${dl} ${Math.round(d.decision.confidence * 100)}%`
+    const gradeText = compact ? d.decision.grade : `${d.decision.grade} ${GRADE_LABELS_JA[d.decision.grade]}`
+    const text = compact ? dl : `${dl} ${Math.round(d.decision.confidence * 100)}%${uncertain ? ' ?' : ''}`
     ctx.save()
     ctx.font = TAG_FONT
+    const gw = ctx.measureText(gradeText).width + 8
     const tw = ctx.measureText(text).width + 10
     const th = 15
     let lx = x
-    if (lx + tw > w) lx = w - tw
+    if (lx + gw + tw > w) lx = w - gw - tw
     const ly = Math.min(h - th, y + bh + 3)
+    // グレード章（塗り）
+    ctx.fillStyle = gc
+    ctx.fillRect(lx, ly, gw, th)
+    ctx.fillStyle = '#080b10'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(gradeText, lx + 4, ly + th / 2 + 0.5)
+    // 処置タグ（枠）
     ctx.strokeStyle = dc
     ctx.fillStyle = 'rgba(8, 11, 16, 0.85)'
     ctx.lineWidth = 1
-    ctx.fillRect(lx, ly, tw, th)
-    ctx.strokeRect(lx + 0.5, ly + 0.5, tw, th)
+    ctx.fillRect(lx + gw, ly, tw, th)
+    if (uncertain) ctx.setLineDash([3, 2])
+    ctx.strokeRect(lx + gw + 0.5, ly + 0.5, tw, th)
+    ctx.setLineDash([])
     ctx.fillStyle = dc
-    ctx.textBaseline = 'middle'
-    ctx.fillText(text, lx + 5, ly + th / 2 + 0.5)
+    ctx.fillText(text, lx + gw + 5, ly + th / 2 + 0.5)
     ctx.restore()
 
     // 不良判定の演出: 控えめな赤いリングと「不良」スタンプを約1.4秒

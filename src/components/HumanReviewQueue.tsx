@@ -3,6 +3,7 @@ import { reasonJa } from '@/i18n/ja'
 import { getController } from '@/services/inspectionController'
 import { useInspectionStore } from '@/services/inspectionStore'
 import { Panel, pct } from './Panel'
+import { GradeBadge } from './DecisionPanel'
 
 export function HumanReviewQueue() {
   const queue = useInspectionStore((s) => s.reviewQueue)
@@ -21,8 +22,9 @@ export function HumanReviewQueue() {
         queue.map((item) => (
           <div key={item.objectId + item.timestamp} className="flex items-center gap-2 border-b border-border-2 px-2.5 py-1.5 last:border-b-0">
             <div className="flex-1">
-              <div className="flex items-baseline gap-2">
+              <div className="flex items-center gap-2">
                 <span className="num text-[12px] text-ink">{item.objectId}</span>
+                <GradeBadge grade={item.grade} size="sm" />
                 <span className="text-[10px] text-violet">{profile.attributeLabel}? {pct(item.attributeConfidence)}</span>
               </div>
               <div className="text-[9.5px] text-ink-3">

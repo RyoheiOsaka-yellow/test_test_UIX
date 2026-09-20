@@ -10,6 +10,11 @@ const COMMON_REASONS = {
   REJECT_RATE_HIGH: '不良率 高',
   REJECT_RATE_CRITICAL: '不良率 危険域',
   CAMERA_CONFIDENCE_LOW: 'カメラ信頼度 低下',
+  ATTR_OK_MARGINAL: '正常（余裕小）',
+  FILL_OK_MARGINAL: '規格内（余裕小）',
+  FILL_DEVIATION: '規格逸脱（人の確認）',
+  EVIDENCE_UNSTABLE: '証拠が不安定（フレーム間のばらつき大）',
+  SCENE_CAUTION: '注意水準（人の確認）',
 }
 
 /**
