@@ -48,6 +48,12 @@ export function labelText(d: FrameDetection, settings: OverlaySettings, profile:
     if (settings.confidence && Math.abs(d.measurement.tiltDeg) >= 1) parts.push(`傾き ${d.measurement.tiltDeg.toFixed(0)}°`)
     return parts.join(' ')
   }
+  if (profile.severityFromArea) {
+    const area = d.bbox[2] * d.bbox[3]
+    parts.push(classJa(d.detectionClass, profile))
+    if (settings.confidence) parts.push(`${profile.severityFromArea.label} ${(area * 100).toFixed(1)}%`)
+    return parts.join(' ')
+  }
   parts.push(classJa(d.detectionClass, profile))
   if (settings.confidence) parts.push(`${Math.round(d.classConfidence * 100)}%`)
   return parts.join(' ')

@@ -96,7 +96,7 @@ export class InspectionController {
       this.bus.emit(
         'SYSTEM',
         `実映像の追跡結果を読込 · ${tracks.length} 個のトラック（${profile.objectLabel}検出: 事前計算 / ${profile.attributeLabel}判定: ${
-          profile.trigger.kind === 'state' ? (profile.analyzer === 'crosswalk' ? '場面解析' : '5特徴量の時系列判定') : profile.measurement ? '画素解析で実測' : '疑似注入'
+          profile.trigger.kind === 'state' ? (profile.analyzer === 'crosswalk' ? '場面解析' : '5特徴量の時系列判定') : profile.measurement ? '画素解析で実測' : profile.severityFromArea ? '検出枠の面積から算出' : '疑似注入'
         }）`,
       )
     }
@@ -110,6 +110,8 @@ export class InspectionController {
     this.lastLineDecision = null
     this.lineFailures = 0
     this.store.resetStatistics()
+    this.odoKm = 0
+    this.lastOdoTime = 0
     this.store.update(() => ({ profile, videoSource: null, trackSource: 'synthetic', anomaly: null }))
     jevDecisionEngine.setProfile(profile)
     this.bus.emit('SYSTEM', `検査プロファイル切替: ${profile.name}（${profile.lineName}）`)
@@ -189,9 +191,21 @@ export class InspectionController {
   }
 
   /** クロックまでシミュレーションを進める。オーバーレイの描画ループから呼ぶ。 */
+  private lastOdoTime = 0
+  private odoKm = 0
+
   tick() {
     const t = this.clock.currentTime()
     this.simulator.update(t)
+    const odo = this.store.getState().profile.odometer
+    if (odo) {
+      // 走査距離（模擬）: 再生時間 × 仮定速度。周回・シークで戻ったら差分を無視する
+      const dt = t - this.lastOdoTime
+      if (dt > 0 && dt < 1) this.odoKm += (dt / 3600) * odo.kmh
+      this.lastOdoTime = t
+      const s0 = this.store.getState()
+      if (Math.abs(s0.scanDistanceKm - this.odoKm) > 0.001) this.store.update(() => ({ scanDistanceKm: this.odoKm }))
+    }
     const cam = this.simulator.cameraConfidence(t)
     const s = this.store.getState()
     const camStatus = cam < 0.75 ? 'DEGRADED' : 'ONLINE'

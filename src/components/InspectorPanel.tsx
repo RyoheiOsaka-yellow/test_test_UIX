@@ -5,6 +5,8 @@ export function InspectorPanel() {
   const kpi = useInspectionStore((s) => s.kpi)
   const playing = useInspectionStore((s) => s.playing)
   const profile = useInspectionStore((s) => s.profile)
+  const entered = useInspectionStore((s) => s.objectsEntered)
+  const km = useInspectionStore((s) => s.scanDistanceKm)
   const rows: Array<[string, string, string?]> = [
     [profile.kpiLabels?.total ?? '処理数', String(kpi.totalInspected)],
     [profile.okLabel, String(kpi.pass), 'text-green'],
@@ -22,6 +24,22 @@ export function InspectorPanel() {
             <span className={`num text-[12px] ${c ?? 'text-ink'}`}>{v}</span>
           </div>
         ))}
+        {profile.odometer && (
+          <>
+            <div className="flex items-baseline justify-between py-[1.5px]">
+              <span className="text-[10px] text-ink-3">検出（追跡ID）</span>
+              <span className="num text-[12px] text-cyan">{entered}</span>
+            </div>
+            <div className="flex items-baseline justify-between py-[1.5px]">
+              <span className="text-[10px] text-ink-3">走査距離（{profile.odometer.kmh}km/h 仮定）</span>
+              <span className="num text-[12px] text-ink">{km.toFixed(2)} km</span>
+            </div>
+            <div className="flex items-baseline justify-between py-[1.5px]">
+              <span className="text-[10px] text-ink-3">損傷密度</span>
+              <span className="num text-[12px] text-ink">{km > 0.005 ? (entered / km).toFixed(0) : '—'} 件/km</span>
+            </div>
+          </>
+        )}
         <div className="mt-1 flex items-baseline justify-between border-t border-border/60 pt-1.5">
           <span className="text-[10px] text-ink-3">{profile.kpiLabels?.yield ?? '良品率'}</span>
           <span className="num text-[13px] text-cyan">{kpi.totalInspected ? `${(kpi.yieldRate * 100).toFixed(1)}%` : '—'}</span>

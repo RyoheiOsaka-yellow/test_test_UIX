@@ -64,6 +64,8 @@ interface TrackRuntime {
   personSince?: number
   /** 判定確定後に起き上がったら再度判定できるようにする */
   recoveredAt?: number
+  /** 路面損傷: これまでに観測した最大の枠面積比 */
+  maxArea?: number
 }
 
 export interface SimulatorOptions {
@@ -152,6 +154,7 @@ export class VideoDetectionSimulator {
       rt.ejectTime = undefined
       rt.measurement = undefined
       rt.measureSamples = 0
+      rt.maxArea = undefined
       rt.fall?.reset()
       this.crosswalk?.reset()
       rt.person = undefined
@@ -350,7 +353,9 @@ export class VideoDetectionSimulator {
               ? s.measurement.confidence > 0
                 ? `${label} ${mspec?.label ?? attrLabel} ${(s.measurement.value * 100).toFixed(1)}%（計測信頼度 ${s.measurement.confidence.toFixed(2)}）`
                 : `${label} ${mspec?.label ?? attrLabel} 計測中`
-              : `${label} ${attrLabel}信頼度 ${s.attribute.toFixed(2)}`,
+              : this.profile.severityFromArea
+                ? `${label} ${this.profile.severityFromArea.label} ${((rt.maxArea ?? 0) * 100).toFixed(2)}% · 重症度 ${(1 - s.attribute).toFixed(2)}`
+                : `${label} ${attrLabel}信頼度 ${s.attribute.toFixed(2)}`,
             {
               objectId: label,
               videoTime: time,
@@ -375,8 +380,8 @@ export class VideoDetectionSimulator {
         }
         if (decideNow) {
           rt.decisionRequested = true
-          if (mspec) {
-            // 計測プロファイルはゲート通過時点の移動平均値で判断する
+          if (mspec || this.profile.severityFromArea) {
+            // 計測プロファイルはゲート通過時点の移動平均値、面積重症度はゲート通過時点の枠面積で判断する
             const s = this.sampleReadings(rt, time)
             rt.sampledAttribute = s.attribute
             rt.sampledObject = s.object
@@ -435,6 +440,18 @@ export class VideoDetectionSimulator {
           features: Object.fromEntries(p.features.map((f) => [f.key, f.value])),
         } as InspectionState['scene'],
       }
+    }
+    const sev = this.profile.severityFromArea
+    if (sev) {
+      // 路面損傷: 検出枠の面積比（実測）から重症度を出す。面積が大きいほど属性信頼度が下がり、不良（要補修）側へ
+      const b = bboxAt(rt.track, time)
+      // 手前に来るほど枠が大きくなるので、これまでの最大面積で重症度を決める
+      rt.maxArea = Math.max(rt.maxArea ?? 0, b[2] * b[3])
+      const area = rt.maxArea
+      const severity = Math.min(1, area / sev.fullArea)
+      const attribute = clamp01(1 - severity) * cam + 0.5 * (1 - cam)
+      const object = clamp01((rt.track.objectConfidence + jitter(2) * 0.015 * (1 + noise)) * (0.6 + 0.4 * cam))
+      return { attribute, object, alignment: clamp01(1 - Math.abs(b[0] + b[2] / 2 - 0.5) * 2), measurement: undefined as InspectionState['measurement'], scene: undefined as InspectionState['scene'] }
     }
     const mspec = this.profile.measurement
     if (mspec) {
@@ -606,6 +623,12 @@ export class VideoDetectionSimulator {
       if (mspec && meas) {
         detectionClass = Math.abs(meas.value - mspec.target) <= mspec.tolerance ? 'OK' : 'NG'
         classConfidence = meas.confidence
+      }
+      const sev = this.profile.severityFromArea
+      if (sev) {
+        const area = bbox[2] * bbox[3]
+        detectionClass = area / sev.fullArea >= 0.5 ? 'NG' : 'OK'
+        classConfidence = Math.min(1, area / sev.fullArea)
       }
       const keypoints = keypointsAt(track, time)
       if (rt.person) {

@@ -233,5 +233,43 @@ PROFILES['crosswalk'] = {
   kpiLabels: { total: '横断回数', pass: '安全横断', reject: '危険警報', yield: '安全横断率', throughputUnit: '人/分' },
 }
 
-export const PROFILE_ORDER = ['bottle-cap', 'parcel-label', 'pcb-assembly', 'fill-level', 'fall-detection', 'crosswalk'] as const
+PROFILES['road-scan'] = {
+  id: 'road-scan',
+  name: '路面損傷スキャン',
+  lineName: '市道 巡回車 C',
+  cameraName: 'カメラ07（車載）',
+  objectLabel: '損傷',
+  attributeLabel: '重症度',
+  alignmentLabel: '路面位置',
+  okLabel: '軽微',
+  ngLabel: '要補修',
+  reasons: {
+    ...COMMON_REASONS,
+    ATTR_OK: '軽微（記録のみ）',
+    ATTR_OK_ALIGNMENT_LOW: '軽微（記録のみ）',
+    ATTR_OK_AFTER_RECHECK: '再計測後 軽微',
+    ATTR_AMBIGUOUS_AFTER_RECHECK: '再計測後も中程度（点検要請）',
+    ATTR_MISALIGNED: '中程度（再計測）',
+    ATTR_LOW_CONFIDENCE: '中程度（再計測）',
+    ATTR_AMBIGUOUS: '大きめ（点検要請）',
+    ATTR_MISSING: '大型（要補修）',
+  },
+  rejectAction: '補修依頼を起票',
+  misalignedScenarioName: '中程度の損傷 増加',
+  jevTask: 'road_damage_scan',
+  objectKey: 'pothole',
+  attributeKey: 'severity',
+  trigger: { kind: 'gate', axis: 'y', position: 0.62, direction: 1, zoneHalfWidth: 0.1 },
+  classLabels: { pothole: 'ポットホール' },
+  mediaDir: 'road-scan',
+  detectorNote: '事前追跡（ポットホール専用モデル）',
+  triggerLabel: '計測ライン',
+  syntheticFeed: 'none',
+  severityFromArea: { fullArea: 0.08, label: '面積比' },
+  odometer: { kmh: 20 },
+  decisionLabels: { PASS: '軽微（記録）', RECHECK: '再計測', REJECT: '要補修（起票）', HUMAN_REVIEW: '点検要請' },
+  kpiLabels: { total: '判定した損傷', pass: '軽微', reject: '要補修', yield: '軽微率', throughputUnit: '件/分' },
+}
+
+export const PROFILE_ORDER = ['bottle-cap', 'parcel-label', 'pcb-assembly', 'fill-level', 'fall-detection', 'crosswalk', 'road-scan'] as const
 export const DEFAULT_PROFILE_ID = 'bottle-cap'

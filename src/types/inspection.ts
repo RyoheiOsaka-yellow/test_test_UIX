@@ -393,6 +393,10 @@ export interface InspectionProfile {
   classLabels?: Record<string, string>
   /** 判断コードの表示名を差し替える（例: REJECT → 転倒 警報） */
   decisionLabels?: Partial<Record<ObjectDecision, string>>
+  /** 損傷の重症度を検出枠の面積から決める（路面損傷スキャン）。fullArea = 面積比がこの値で最大重症度 */
+  severityFromArea?: { fullArea: number; label: string }
+  /** 走査距離の推定（速度仮定、模擬）。GPS が無いデモ用 */
+  odometer?: { kmh: number }
   /** KPI の見出し差し替え（検査総数 / 合格 / 不良） */
   kpiLabels?: { total?: string; pass?: string; reject?: string; yield?: string; throughputUnit?: string }
 }

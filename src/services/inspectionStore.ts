@@ -129,6 +129,10 @@ export interface InspectionStoreState {
   livePerson: { objectId: string; reading: StateReading; timestamp: number } | null
   /** 人物プロファイル: 転倒スコアの時系列（直近 60 秒） */
   liveSeries: Array<{ t: number; value: number }>
+  /** 追跡を開始した物体の延べ数（検出数） */
+  objectsEntered: number
+  /** 走査距離 [km]（速度仮定の模擬。車載プロファイルのみ） */
+  scanDistanceKm: number
 }
 
 const MAX_EVENTS = 400
@@ -182,6 +186,8 @@ export function initialState(): InspectionStoreState {
     measurementSamples: 0,
     livePerson: null,
     liveSeries: [],
+    objectsEntered: 0,
+    scanDistanceKm: 0,
   }
 }
 
@@ -238,6 +244,10 @@ export class InspectionStore {
     const patch: Partial<InspectionStoreState> = { events }
 
     switch (event.type) {
+      case 'OBJECT_ENTERED': {
+        patch.objectsEntered = s.objectsEntered + 1
+        break
+      }
       case 'ATTRIBUTE_CONFIDENCE': {
         const d = event.data as { attributeConfidence: number; objectConfidence: number; alignment: number; measurement?: CurrentObject['measurement'] }
         patch.currentObject = {
