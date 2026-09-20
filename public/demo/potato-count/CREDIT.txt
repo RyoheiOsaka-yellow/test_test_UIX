@@ -1,0 +1,14 @@
+video.mp4
+  出典: Wikimedia Commons "Potatoes Sorting Montana2026 (55252116350).webm"
+  制作: USDA（米国農務省）— 米国政府の著作物としてパブリックドメイン
+  https://commons.wikimedia.org/wiki/File:Potatoes_Sorting_Montana2026_(55252116350).webm
+  加工: 22–30 秒 / 39–48 秒 を切り出して連結、640x360 に再エンコード
+
+detections.json
+  参照記事（Ultralytics ObjectCounter + YOLO11n + SAM 2 の 1 フレーム注釈）の手順を再現:
+    1. scripts/annotate_sam.py … SAM 2（tiny）で 2 フレーム（場面ごとに 1 枚）を自動セグメントし、
+       面積・凸性・土色（HSV）でジャガイモらしいマスクだけを YOLO 形式の枠にする
+    2. scripts/train_from_frames.py … その 2 枚だけで YOLO11n を学習（強い拡張つき、CPU で数分）
+    3. scripts/track_objects.py --model potato-yolo11n.pt … 学習したモデル + BoT-SORT で全フレームを追跡
+  ゼロショット検出器（YOLO-World / Grounding DINO）は密集した土色のジャガイモをほぼ検出できなかった。
+  サイズは追跡枠の √面積 を全枠の中央値で割った相対値（実測）。重量や実寸ではない。

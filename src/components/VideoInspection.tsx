@@ -176,7 +176,7 @@ export function VideoInspection() {
             {isVideo &&
               (credit ??
                 `${profile.objectLabel}検出: 事前追跡 · ${profile.attributeLabel}判定: ${
-                  profile.trigger.kind === 'state' ? (profile.analyzer === 'crosswalk' ? '場面解析' : '時系列判定') : profile.measurement ? (profile.measurement.method === 'ripeness' ? '色の画素解析で実測 · 日数は表引き' : '画素解析で実測') : profile.severityFromArea ? '面積から算出' : '疑似注入'
+                  profile.trigger.kind === 'state' ? (profile.analyzer === 'crosswalk' ? '場面解析' : '時系列判定') : profile.measurement ? (profile.measurement.method === 'ripeness' ? '色の画素解析で実測 · 日数は表引き' : profile.measurement.method === 'size' ? '追跡枠の大きさから実測（基準比）' : '画素解析で実測') : profile.severityFromArea ? '面積から算出' : '疑似注入'
                 }`)}
             <span className="text-ink-3/70">シナリオ: {scenarioText(SCENARIOS[scenario].name, profile)}</span>
           </div>

@@ -277,7 +277,7 @@ PROFILES['road-scan'] = {
   kpiLabels: { total: '判定した損傷', pass: '軽微', reject: '要補修', yield: '軽微率', throughputUnit: '件/分' },
 }
 
-export const PROFILE_ORDER = ['bottle-cap', 'parcel-label', 'pcb-assembly', 'fill-level', 'fall-detection', 'crosswalk', 'road-scan', 'tomato-harvest'] as const
+export const PROFILE_ORDER = ['bottle-cap', 'parcel-label', 'pcb-assembly', 'fill-level', 'fall-detection', 'crosswalk', 'road-scan', 'tomato-harvest', 'potato-count'] as const
 export const DEFAULT_PROFILE_ID = 'bottle-cap'
 
 
@@ -329,4 +329,53 @@ PROFILES['tomato-harvest'] = {
   countUnique: true,
   lineMonitoring: false,
   kpiLabels: { total: '判定した実', pass: '収穫可', reject: '見送り', yield: '収穫可率', throughputUnit: '個/分' },
+}
+
+PROFILES['potato-count'] = {
+  id: 'potato-count',
+  name: 'ジャガイモ計数・選別',
+  lineName: '選別ライン F',
+  cameraName: 'カメラ09',
+  objectLabel: 'ジャガイモ',
+  attributeLabel: 'サイズ',
+  alignmentLabel: '枠の見切れ',
+  okLabel: '規格内',
+  ngLabel: '規格外',
+  reasons: {
+    ...COMMON_REASONS,
+    FILL_OK: '規格内（基準サイズ）',
+    FILL_OK_MARGINAL: '規格内（境界寄り）',
+    FILL_OK_AFTER_RECHECK: '再計測後 規格内',
+    FILL_MARGINAL: 'サイズ境界（再計測）',
+    FILL_MARGINAL_AFTER_RECHECK: '再計測後も境界',
+    FILL_DEVIATION: 'サイズ逸脱（人の確認）',
+    UNDERFILL: '小玉（規格外）',
+    OVERFILL: '大玉（規格外）',
+    MEASUREMENT_UNCERTAIN: '枠が見切れて計測できず',
+    ATTR_OK: '規格内',
+    ATTR_MISSING: '規格外',
+    ATTR_MISALIGNED: 'サイズ境界',
+    ATTR_LOW_CONFIDENCE: '計測信頼度不足',
+    ATTR_AMBIGUOUS: '計測できず',
+  },
+  rejectAction: '規格外レーンへ振分',
+  misalignedScenarioName: 'サイズばらつき 増加',
+  jevTask: 'potato_count_and_size',
+  objectKey: 'potato',
+  attributeKey: 'size_ratio',
+  trigger: { kind: 'gate', axis: 'y', position: 0.55, direction: 1, zoneHalfWidth: 0.08 },
+  mediaDir: 'potato-count',
+  detectorNote: '事前追跡（Grounding DINO「potato」）',
+  triggerLabel: '計数ライン',
+  measurement: { key: 'size_ratio', label: 'サイズ', unit: '×', target: 1, tolerance: 0.25, method: 'size' },
+  syntheticFeed: 'none',
+  decisionLabels: { PASS: '規格内', RECHECK: '再計測', REJECT: '規格外', HUMAN_REVIEW: '要確認' },
+  gradeLabels: { A: '基準サイズ', B: '規格内', C: '境界', D: '逸脱', E: '規格外' },
+  gradeGroups: [
+    { label: '規格内（A+B）', grades: ['A', 'B'], tone: 'text-green' },
+    { label: '境界（C+D）', grades: ['C', 'D'], tone: 'text-yellow' },
+    { label: '規格外（E）', grades: ['E'], tone: 'text-red' },
+  ],
+  countUnique: true,
+  kpiLabels: { total: '計数（ライン通過）', pass: '規格内', reject: '規格外', yield: '規格内率', throughputUnit: '個/分' },
 }

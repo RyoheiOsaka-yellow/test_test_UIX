@@ -96,20 +96,28 @@ function MeasurementBlock({ cur, spec }: { cur: ReturnType<typeof useInspectionS
   const tone = !m ? 'text-ink-3' : Math.abs(dev) <= 1 ? 'text-green' : Math.abs(dev) <= 2 ? 'text-yellow' : 'text-red'
   const lo = spec.target - spec.tolerance
   const hi = spec.target + spec.tolerance
+  const isSize = spec.method === 'size'
+  // 表示スケール: 充填率は 0..1、相対サイズは 0..2
+  const scale = isSize ? 2 : 1
+  const fmt = (v: number) => (isSize ? `${v.toFixed(2)}×` : `${(v * 100).toFixed(1)}%`)
   return (
     <div className="border border-border-2 bg-bg/40 px-2 py-1.5">
       <div className="flex items-baseline justify-between">
-        <span className="text-[10px] text-ink-2">{spec.label}（実測）</span>
-        <span className={`num text-[20px] leading-none ${tone}`}>{m ? `${(m.value * 100).toFixed(1)}%` : '—'}</span>
+        <span className="text-[10px] text-ink-2">{spec.label}（{isSize ? '枠の大きさから実測 · 基準比' : '実測'}）</span>
+        <span className={`num text-[20px] leading-none ${tone}`}>{m ? fmt(m.value) : '—'}</span>
       </div>
       <div className="relative mt-1.5 h-[6px] w-full bg-border-2">
-        <div className="absolute inset-y-0 bg-green/25" style={{ left: `${lo * 100}%`, width: `${(hi - lo) * 100}%` }} />
-        <div className="absolute inset-y-0 w-px bg-green" style={{ left: `${spec.target * 100}%` }} />
-        {m && <div className="absolute -top-[2px] h-[10px] w-[2px] bg-cyan" style={{ left: `calc(${m.value * 100}% - 1px)` }} />}
+        <div className="absolute inset-y-0 bg-green/25" style={{ left: `${(lo / scale) * 100}%`, width: `${((hi - lo) / scale) * 100}%` }} />
+        <div className="absolute inset-y-0 w-px bg-green" style={{ left: `${(spec.target / scale) * 100}%` }} />
+        {m && <div className="absolute -top-[2px] h-[10px] w-[2px] bg-cyan" style={{ left: `calc(${Math.min(100, (m.value / scale) * 100)}% - 1px)` }} />}
       </div>
       <div className="mt-1 grid grid-cols-3 gap-x-2 text-[9.5px] text-ink-3">
-        <span>目標 <span className="num text-ink-2">{(spec.target * 100).toFixed(0)}% ±{(spec.tolerance * 100).toFixed(0)}</span></span>
-        <span>傾き <span className="num text-ink-2">{m ? `${m.tiltDeg.toFixed(1)}°` : '—'}</span></span>
+        <span>目標 <span className="num text-ink-2">{isSize ? `${spec.target.toFixed(2)}× ±${spec.tolerance.toFixed(2)}` : `${(spec.target * 100).toFixed(0)}% ±${(spec.tolerance * 100).toFixed(0)}`}</span></span>
+        {isSize ? (
+          <span>基準 <span className="num text-ink-2">全枠の中央値</span></span>
+        ) : (
+          <span>傾き <span className="num text-ink-2">{m ? `${m.tiltDeg.toFixed(1)}°` : '—'}</span></span>
+        )}
         <span>計測信頼度 <span className="num text-ink-2">{m ? pct(m.confidence) : '—'}</span></span>
         {m && typeof m.truth === 'number' && (
           <span className="col-span-3">

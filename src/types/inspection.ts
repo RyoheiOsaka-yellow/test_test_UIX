@@ -147,7 +147,7 @@ export interface MeasurementSpec {
   /** 許容幅 0..1（±） */
   tolerance: number
   /** 画素解析の方式（既定: 液面） */
-  method?: 'fill-level' | 'ripeness'
+  method?: 'fill-level' | 'ripeness' | 'size'
 }
 
 export interface InspectionState {

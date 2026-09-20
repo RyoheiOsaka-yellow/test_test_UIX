@@ -50,6 +50,10 @@ export function labelText(d: FrameDetection, settings: OverlaySettings, profile:
     if (settings.confidence) parts.push(harvestText(d.measurement.value))
     return parts.join(' ')
   }
+  if (profile.measurement?.method === 'size' && d.measurement) {
+    parts.push(`${profile.measurement.label} ${d.measurement.value.toFixed(2)}×`)
+    return parts.join(' ')
+  }
   if (profile.measurement && d.measurement) {
     parts.push(`${profile.measurement.label} ${(d.measurement.value * 100).toFixed(1)}%`)
     if (settings.confidence && Math.abs(d.measurement.tiltDeg) >= 1) parts.push(`傾き ${d.measurement.tiltDeg.toFixed(0)}°`)
@@ -165,7 +169,7 @@ export function drawDetection(
   }
 
   // 計測プロファイル: 推定した液面の線を枠内に描く
-  if (profile.measurement && profile.measurement.method !== 'ripeness' && d.measurement && settings.boundingBox && !compact) {
+  if (profile.measurement && (profile.measurement.method ?? 'fill-level') === 'fill-level' && d.measurement && settings.boundingBox && !compact) {
     const bodyTop = y + bh * 0.2
     const bodyBottom = y + bh * 0.995
     const ly = bodyBottom - d.measurement.value * (bodyBottom - bodyTop)

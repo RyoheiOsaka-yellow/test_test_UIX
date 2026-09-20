@@ -16,6 +16,7 @@
     "track:fall": "python3 scripts/track_pose.py public/demo/fall-detection/video.mp4 public/demo/fall-detection/detections.json",
     "track:crosswalk": "python3 scripts/track_objects.py public/demo/crosswalk/video.mp4 public/demo/crosswalk/detections.json --coco person,bicycle,car,motorcycle,bus,truck",
     "track:tomato": "python3 scripts/track_video_gdino.py public/demo/tomato-harvest/video.mp4 public/demo/tomato-harvest/detections.json --prompt \"tomato.\" --box-threshold 0.3 --text-threshold 0.25 --stride 6 --max-gap 0.8",
+    "track:potato": "python3 scripts/track_video_gdino.py public/demo/potato-count/video.mp4 public/demo/potato-count/detections.json --prompt \"potato.\" --box-threshold 0.3 --text-threshold 0.25 --stride 4 --max-gap 0.5 --min-seconds 0.4",
     "track:road": "python3 scripts/track_objects.py public/demo/road-scan/video.mp4 public/demo/road-scan/detections.json --model pothole-yolov8s.pt --coco pothole --conf 0.2 --imgsz 1280 --min-seconds 0.4"
   },
   "dependencies": {

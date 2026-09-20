@@ -98,6 +98,8 @@ export class VideoDetectionSimulator {
   private scenario: ScenarioDefinition | null = null
   private profile: InspectionProfile = PROFILES[DEFAULT_PROFILE_ID]
   private lastTime = -Infinity
+  /** サイズ計測: 基準の長さ（全トラックの枠の √面積 の中央値）。相対サイズ = √面積 / 基準 */
+  private sizeReference = 0.1
   private generation = 0
   /** ループ回数。周回ごとに追跡番号をずらして重複させない */
   private loopIndex = 0
@@ -121,6 +123,16 @@ export class VideoDetectionSimulator {
     this.loopIndex = 0
     const maxId = tracks.reduce((m, t) => Math.max(m, t.id), 0)
     this.idStride = Math.max(100, Math.ceil((maxId + 1) / 100) * 100)
+    if (profile.measurement?.method === 'size') {
+      const lens = tracks
+        .map((t) => {
+          const g = gateTimeOf(t)
+          const b = bboxAt(t, Number.isFinite(g) ? g : t.enterTime)
+          return Math.sqrt(Math.max(1e-6, b[2] * b[3]))
+        })
+        .sort((a, b) => a - b)
+      this.sizeReference = lens.length ? lens[Math.floor(lens.length / 2)] : 0.1
+    }
     this.runtimes = tracks.map((track) => ({
       track,
       label: '',
@@ -215,12 +227,21 @@ export class VideoDetectionSimulator {
       const cx = bbox[0] + bbox[2] / 2
 
       // 計測プロファイル: ゲート手前〜判定直後の物体は毎フレーム画素を読んで液面を求め、移動平均する
-      if (mspec && this.pixelSource && (rt.phase === 'TRACKED' || rt.phase === 'INSPECTING' || rt.phase === 'DECIDED') && this.frameCounter % 2 === 0) {
+      // （サイズ計測は画素ではなく追跡枠の大きさから求める）
+      if (mspec && (this.pixelSource || mspec.method === 'size') && (rt.phase === 'TRACKED' || rt.phase === 'INSPECTING' || rt.phase === 'DECIDED') && this.frameCounter % 2 === 0) {
         const g = trigger.kind === 'gate' ? gateProgress(bbox) : null
         const near = g ? g.p >= g.gate - g.half && g.p <= g.gate + 0.1 : inZone(bbox)
         if (near) {
-          const img = this.pixelSource.crop(bbox, 40)
-          const r = img ? (mspec.method === 'ripeness' ? measureRipeness(img) : measureFillLevel(img)) : null
+          let r: MeasurementReading | null = null
+          if (mspec.method === 'size') {
+            // 枠の √面積 を基準長で割った相対サイズ。枠が画面端にかかるときは確からしさを下げる
+            const len = Math.sqrt(Math.max(1e-6, bbox[2] * bbox[3]))
+            const clipped = bbox[0] < 0.005 || bbox[1] < 0.005 || bbox[0] + bbox[2] > 0.995 || bbox[1] + bbox[3] > 0.995
+            r = { value: len / Math.max(1e-6, this.sizeReference), confidence: clipped ? 0.4 : 0.9, tiltDeg: 0 }
+          } else if (this.pixelSource) {
+            const img = this.pixelSource.crop(bbox, 40)
+            r = img ? (mspec.method === 'ripeness' ? measureRipeness(img) : measureFillLevel(img)) : null
+          }
           if (r) {
             const truth = rt.track.fillLevel
             if (!rt.measurement || rt.phase === 'DECIDED') {
@@ -357,7 +378,7 @@ export class VideoDetectionSimulator {
             'ATTRIBUTE_CONFIDENCE',
             s.measurement
               ? s.measurement.confidence > 0
-                ? `${label} ${mspec?.label ?? attrLabel} ${(s.measurement.value * 100).toFixed(1)}%${mspec?.method === 'ripeness' ? ' · ' + harvestText(s.measurement.value) : ''}（計測信頼度 ${s.measurement.confidence.toFixed(2)}）`
+                ? `${label} ${mspec?.label ?? attrLabel} ${mspec?.method === 'size' ? `${s.measurement.value.toFixed(2)}×` : `${(s.measurement.value * 100).toFixed(1)}%`}${mspec?.method === 'ripeness' ? ' · ' + harvestText(s.measurement.value) : ''}（計測信頼度 ${s.measurement.confidence.toFixed(2)}）`
                 : `${label} ${mspec?.label ?? attrLabel} 計測中`
               : this.profile.severityFromArea
                 ? `${label} ${this.profile.severityFromArea.label} ${((rt.maxArea ?? 0) * 100).toFixed(2)}% · 重症度 ${(1 - s.attribute).toFixed(2)}`
@@ -567,7 +588,7 @@ export class VideoDetectionSimulator {
         this.bus.emit(
           'ATTRIBUTE_CONFIDENCE',
           readings.measurement
-            ? `${label} ${this.profile.measurement?.label} ${(readings.measurement.value * 100).toFixed(1)}%（再計測 ${previousFailures}回目）`
+            ? `${label} ${this.profile.measurement?.label} ${this.profile.measurement?.method === 'size' ? `${readings.measurement.value.toFixed(2)}×` : `${(readings.measurement.value * 100).toFixed(1)}%`}（再計測 ${previousFailures}回目）`
             : readings.scene
               ? `${label} 経過観察 ${previousFailures}回目 · 状態 ${rt.person?.stateLabel ?? readings.scene.state} · 異常スコア ${readings.scene.score.toFixed(2)}`
               : `${label} ${this.profile.attributeLabel}信頼度 ${readings.attribute.toFixed(2)}（再検査 ${previousFailures}回目）`,

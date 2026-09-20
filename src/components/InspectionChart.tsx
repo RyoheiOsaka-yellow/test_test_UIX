@@ -107,6 +107,8 @@ export function CapConfidenceChart() {
   const data = useMemo(() => capSeries.slice(-60).map((p) => ({ id: p.objectId, 信頼度: p.attribute, decision: p.decision, grade: p.grade })), [capSeries])
   const m = profile.measurement
   const ripeness = m?.method === 'ripeness'
+  const isSize = m?.method === 'size'
+  const yMax = isSize ? 2 : 1
   return (
     <Panel
       title={m ? `${m.label}（実測）` : `${profile.attributeLabel}信頼度`}
@@ -114,6 +116,11 @@ export function CapConfidenceChart() {
         ripeness && m ? (
           <span className="flex items-center gap-2 text-[9px] text-ink-3">
             <span className="text-green">収穫可 ≥ {((m.target - m.tolerance) * 100).toFixed(0)}%</span>
+            <span>点の色 = グレード</span>
+          </span>
+        ) : isSize && m ? (
+          <span className="flex items-center gap-2 text-[9px] text-ink-3">
+            <span className="text-green">基準比 {m.target.toFixed(2)}× ±{m.tolerance.toFixed(2)}</span>
             <span>点の色 = グレード</span>
           </span>
         ) : m ? (
@@ -135,7 +142,7 @@ export function CapConfidenceChart() {
         <LineChart data={data} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
           <CartesianGrid stroke="#1a242e" vertical={false} />
           <XAxis dataKey="id" tick={axisStyle} tickLine={false} axisLine={{ stroke: '#25313d' }} interval="preserveStartEnd" minTickGap={30} />
-          <YAxis domain={[0, 1]} ticks={[0, 0.25, 0.5, 0.75, 1]} tick={axisStyle} tickLine={false} axisLine={false} width={40} />
+          <YAxis domain={[0, yMax]} ticks={isSize ? [0, 0.5, 1, 1.5, 2] : [0, 0.25, 0.5, 0.75, 1]} tick={axisStyle} tickLine={false} axisLine={false} width={40} />
           <Tooltip content={<TooltipBox />} cursor={{ stroke: '#25313d' }} />
           {ripeness && m ? (
             <>
