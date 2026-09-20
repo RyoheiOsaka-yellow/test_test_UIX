@@ -266,7 +266,7 @@ export class InspectionController {
   /** 第2階層の判断: ライン全体。構造化した状態と明示的な選択肢を渡す。 */
   private async evaluateLine() {
     const s = this.store.getState()
-    if (!s.playing) return
+    if (!s.playing || s.profile.lineMonitoring === false) return
     const now = Date.now()
     const stats = this.store.windowStats(now)
     if (stats.total < 6) return

@@ -327,5 +327,6 @@ PROFILES['tomato-harvest'] = {
     { label: '未熟（E）', grades: ['E'], tone: 'text-red' },
   ],
   countUnique: true,
+  lineMonitoring: false,
   kpiLabels: { total: '判定した実', pass: '収穫可', reject: '見送り', yield: '収穫可率', throughputUnit: '個/分' },
 }

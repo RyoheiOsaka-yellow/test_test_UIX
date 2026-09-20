@@ -37,7 +37,7 @@ export function FactoryStatus() {
     ['ライン', status.line],
   ]
   return (
-    <div className="flex items-stretch divide-x divide-border-2 border border-border bg-panel">
+    <div className="flex items-stretch divide-x divide-border-2 whitespace-nowrap border border-border bg-panel">
       {items.map(([k, v]) => (
         <div key={k} className="flex flex-col justify-center gap-0.5 px-3 py-1">
           <span className="label">{k}</span>

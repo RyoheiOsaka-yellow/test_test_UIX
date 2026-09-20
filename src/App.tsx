@@ -49,7 +49,7 @@ export default function App() {
             </div>
           </div>
         </div>
-        <div className="flex items-stretch border border-border bg-panel" title="検査プロファイル">
+        <div className="flex shrink-0 items-stretch border border-border bg-panel" title="検査プロファイル">
           {PROFILE_ORDER.map((id) => {
             const p = PROFILES[id]
             const active = p.id === profile.id
@@ -57,7 +57,7 @@ export default function App() {
               <button
                 key={id}
                 onClick={() => controller.selectProfile(id)}
-                className={`px-2.5 py-[3px] text-[10.5px] tracking-[0.04em] transition-colors ${
+                className={`whitespace-nowrap px-2 py-[3px] text-[10.5px] tracking-[0.02em] transition-colors ${
                   active ? 'bg-cyan/12 text-cyan' : 'text-ink-2 hover:bg-panel-2 hover:text-ink'
                 } border-r border-border-2 last:border-r-0`}
               >
@@ -82,11 +82,11 @@ export default function App() {
           )}
         </div>
         {alert.active && (
-          <div className="flex items-center gap-2 border border-red/60 bg-red/10 px-2 py-[3px] text-[10px] font-semibold tracking-[0.08em] text-red">
-            <span className="dot pulse" /> 異常警報 · {alert.message} · {(alert.rejectRate * 100).toFixed(1)}%
+          <div className="flex shrink-0 items-center gap-2 whitespace-nowrap border border-red/60 bg-red/10 px-2 py-[3px] text-[10px] font-semibold tracking-[0.08em] text-red" title={alert.message}>
+            <span className="dot pulse" /> 異常警報 {(alert.rejectRate * 100).toFixed(1)}%
           </div>
         )}
-        <div className="ml-auto">
+        <div className="ml-auto shrink-0">
           <FactoryStatus />
         </div>
       </header>

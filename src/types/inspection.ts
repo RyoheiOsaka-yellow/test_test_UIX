@@ -449,4 +449,6 @@ export interface InspectionProfile {
   gradeGroups?: Array<{ label: string; grades: Grade[]; tone?: string }>
   /** 追跡 ID による固有カウント（重複計上なし）を前面に出す */
   countUnique?: boolean
+  /** false ならライン判断と異常警報を行わない（収穫判定など、不良率が異常を意味しない検査） */
+  lineMonitoring?: boolean
 }

@@ -8,6 +8,15 @@ export function LineDecisionPanel() {
   const ld = useInspectionStore((s) => s.lineDecision)
   const alert = useInspectionStore((s) => s.lineAlert)
   const profile = useInspectionStore((s) => s.profile)
+  if (profile.lineMonitoring === false) {
+    return (
+      <Panel title="ライン判断" right={<span className="text-[9px] text-ink-3">対象外</span>} bodyClassName="px-2.5 py-2">
+        <div className="text-[10px] leading-snug text-ink-3">
+          この検査では未熟の割合は異常を意味しないため、ライン判断と異常警報は行いません。収穫可の割合は KPI と映像左上のパネルで確認できます。
+        </div>
+      </Panel>
+    )
+  }
   return (
     <Panel title="ライン判断" right={<span className="text-[9px] text-ink-3">直近60秒</span>} bodyClassName="px-2.5 py-2">
       <div className="flex items-baseline justify-between">
