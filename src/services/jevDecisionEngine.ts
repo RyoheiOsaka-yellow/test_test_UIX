@@ -40,6 +40,8 @@ export interface JevObjectRequest {
     inspection_zone: boolean
     previous_failures: number
     previous_state: string
+    /** 連続量の計測（充填量など）。計測プロファイルのみ */
+    measurement?: { key: string; value: number; target: number; tolerance: number; confidence: number; tilt_deg: number }
   }
   options: readonly ObjectDecision[]
 }
@@ -123,6 +125,18 @@ export class JevDecisionEngine implements DecisionEngine {
         inspection_zone: state.inspectionZone,
         previous_failures: state.previousFailures ?? 0,
         previous_state: state.previousState ?? 'normal',
+        ...(state.measurement
+          ? {
+              measurement: {
+                key: state.measurement.key,
+                value: round(state.measurement.value),
+                target: round(state.measurement.target),
+                tolerance: round(state.measurement.tolerance),
+                confidence: round(state.measurement.confidence),
+                tilt_deg: round(state.measurement.tiltDeg),
+              },
+            }
+          : {}),
       },
       options,
     }

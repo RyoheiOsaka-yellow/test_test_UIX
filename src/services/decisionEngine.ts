@@ -62,6 +62,40 @@ export function simulateObjectDecision(
   let confidence: number
   let reason: string
 
+  if (state.measurement) {
+    // 連続量の計測（充填量など）: 目標からのずれを許容幅の倍数で評価する
+    const m = state.measurement
+    const dev = (m.value - m.target) / Math.max(1e-6, m.tolerance)
+    const ad = Math.abs(dev)
+    if (!state.inspectionZone) {
+      decision = 'RECHECK'
+      confidence = 0.5
+      reason = 'OUTSIDE_INSPECTION_ZONE'
+    } else if (m.confidence < 0.35) {
+      decision = 'HUMAN_REVIEW'
+      confidence = clamp01(0.5 + m.confidence * 0.4)
+      reason = 'MEASUREMENT_UNCERTAIN'
+    } else if (ad <= 1) {
+      decision = 'PASS'
+      confidence = clamp01((0.75 + 0.25 * (1 - ad)) * (0.7 + 0.3 * m.confidence))
+      reason = 'FILL_OK'
+    } else if (ad <= 2 && recheckRound < 1) {
+      decision = 'RECHECK'
+      confidence = clamp01(0.6 + 0.2 * (2 - ad))
+      reason = 'FILL_MARGINAL'
+    } else if (ad <= 2) {
+      decision = ad <= 1.3 ? 'PASS' : 'HUMAN_REVIEW'
+      confidence = decision === 'PASS' ? 0.68 : 0.62
+      reason = decision === 'PASS' ? 'FILL_OK_AFTER_RECHECK' : 'FILL_MARGINAL_AFTER_RECHECK'
+    } else {
+      decision = 'REJECT'
+      confidence = clamp01((0.75 + 0.25 * Math.min(1, (ad - 2) / 2)) * (0.7 + 0.3 * m.confidence))
+      reason = dev < 0 ? 'UNDERFILL' : 'OVERFILL'
+    }
+    if (!options.includes(decision)) decision = options.includes('HUMAN_REVIEW') ? 'HUMAN_REVIEW' : options[0]
+    return { decision, confidence, reason, action: actionFor(decision) }
+  }
+
   if (!state.inspectionZone) {
     decision = 'RECHECK'
     confidence = 0.5

@@ -113,5 +113,43 @@ export const PROFILES: Record<string, InspectionProfile> = {
   },
 }
 
-export const PROFILE_ORDER = ['bottle-cap', 'parcel-label', 'pcb-assembly'] as const
+PROFILES['fill-level'] = {
+  id: 'fill-level',
+  name: '充填量検査',
+  lineName: '充填ライン D',
+  cameraName: 'カメラ04',
+  objectLabel: 'ボトル',
+  attributeLabel: '充填量',
+  alignmentLabel: '液面の傾き',
+  okLabel: '規格内',
+  ngLabel: '規格外',
+  reasons: {
+    ...COMMON_REASONS,
+    FILL_OK: '充填量 規格内',
+    FILL_OK_AFTER_RECHECK: '再計測後 規格内',
+    FILL_MARGINAL: '充填量 境界域（再計測）',
+    FILL_MARGINAL_AFTER_RECHECK: '再計測後も境界域',
+    UNDERFILL: '充填不足',
+    OVERFILL: '過充填',
+    MEASUREMENT_UNCERTAIN: '液面を特定できず',
+    ATTR_OK: '充填量 規格内',
+    ATTR_MISSING: '充填不足',
+    ATTR_MISALIGNED: '充填量 境界域',
+    ATTR_LOW_CONFIDENCE: '計測信頼度不足',
+    ATTR_AMBIGUOUS: '液面を特定できず',
+  },
+  rejectAction: '排出レーンへ振分',
+  misalignedScenarioName: '充填量ばらつき',
+  jevTask: 'fill_level_inspection',
+  objectKey: 'bottle',
+  attributeKey: 'fill_level',
+  trigger: { kind: 'gate', axis: 'x', position: 0.68, direction: 1, zoneHalfWidth: 0.07 },
+  mediaDir: 'fill-level',
+  detectorNote: '合成トラック',
+  triggerLabel: '計測ゲート',
+  measurement: { key: 'fill_level', label: '充填率', unit: '%', target: 0.8, tolerance: 0.04 },
+  syntheticFeed: 'filling',
+}
+
+export const PROFILE_ORDER = ['bottle-cap', 'parcel-label', 'pcb-assembly', 'fill-level'] as const
 export const DEFAULT_PROFILE_ID = 'bottle-cap'

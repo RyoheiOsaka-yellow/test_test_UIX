@@ -74,6 +74,8 @@ export interface FrameDetection {
   centerX: number
   /** Lifecycle phase from the tracker's point of view. */
   phase: TrackPhase
+  /** 連続量の計測結果（充填量など）。計測プロファイルのみ */
+  measurement?: MeasurementReading
   /** Final decision, once the object crossed the gate. */
   decision?: DecisionResult
   /** Video time at which the object crossed the gate. */
@@ -90,11 +92,35 @@ export type TrackPhase = 'ENTERING' | 'TRACKED' | 'INSPECTING' | 'DECIDED' | 'EX
  * Structured state handed to the decision engine. Never natural language:
  * the engine is asked to choose among explicit options, not "what should we do?".
  */
+export interface MeasurementReading {
+  /** 計測値（充填率など、0..1） */
+  value: number
+  /** 計測の確からしさ 0..1 */
+  confidence: number
+  /** 傾き補正に使った液面の角度 [deg] */
+  tiltDeg: number
+  /** 合成映像のときだけ分かる真値（誤差表示用） */
+  truth?: number
+}
+
+export interface MeasurementSpec {
+  /** Jev へ送る項目名（fill_level など） */
+  key: string
+  label: string
+  unit: string
+  /** 目標値 0..1 */
+  target: number
+  /** 許容幅 0..1（±） */
+  tolerance: number
+}
+
 export interface InspectionState {
   objectId: string
   objectConfidence: number
   attributeConfidence: number
   alignmentScore?: number
+  /** 連続量の計測（充填量など）。あれば判断はこちらを優先する */
+  measurement?: { key: string; value: number; target: number; tolerance: number; confidence: number; tiltDeg: number; truth?: number }
   inspectionZone: boolean
   /** Number of prior RECHECK rounds on this object. */
   previousFailures?: number
@@ -202,6 +228,8 @@ export interface InspectionRecord {
   objectId: string
   vision: { object: number; attribute: number; alignment: number }
   decision: { result: ObjectDecision; confidence: number; reason: string; engine: DecisionEngineKind }
+  /** 連続量の計測（充填量など） */
+  measurement?: { key: string; value: number; target: number; tolerance: number; truth?: number }
   action: string
   latencyMs: number
   /** Set when a human overrode the automated decision. */
@@ -315,4 +343,8 @@ export interface InspectionProfile {
   /** 検出器の説明（表示用） */
   detectorNote: string
   triggerLabel: string
+  /** 連続量を実測するプロファイル（充填量など）。無ければ属性の有無を疑似注入する */
+  measurement?: MeasurementSpec
+  /** 動画が無いときに描く合成映像の種類 */
+  syntheticFeed?: 'bottles' | 'filling'
 }

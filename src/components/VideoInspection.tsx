@@ -8,6 +8,8 @@ import { DetectionOverlay, drawOverlay } from './DetectionOverlay'
 import { InspectionGate } from './InspectionGate'
 import { InspectorPanel } from './InspectorPanel'
 import { SyntheticFeed, drawSyntheticFeed } from './SyntheticFeed'
+import { drawSyntheticFillingFeed } from './SyntheticFillingFeed'
+import { CanvasPixelSource } from '@/services/fillLevelMeter'
 import { formatClock } from './Panel'
 
 /** 動画ソースの探索: 単一HTMLへの埋め込み → /demo/<dir>/video.mp4 → .webm → 合成映像 */
@@ -100,6 +102,9 @@ export function VideoInspection() {
     ro.observe(stage)
     resize()
 
+    // 計測プロファイル用: 画素の読み出し元（実映像なら <video>、合成なら合成キャンバス）
+    controller.simulator.pixelSource = new CanvasPixelSource(() => (source.kind === 'video' ? videoRef.current : feedRef.current))
+
     let lastClockPaint = 0
     const frame = () => {
       const t = controller.tick()
@@ -108,7 +113,8 @@ export function VideoInspection() {
       drawOverlay(ctx, w, h, sample, overlayRef.current, profileRef.current, triggerRef.current)
       if (feedCtx) {
         feedCtx.setTransform(dpr, 0, 0, dpr, 0, 0)
-        drawSyntheticFeed(feedCtx, w, h, t, controller.simulator.groundTruth(t))
+        if (profileRef.current.syntheticFeed === 'filling') drawSyntheticFillingFeed(feedCtx, w, h, t, controller.simulator.groundTruth(t))
+        else drawSyntheticFeed(feedCtx, w, h, t, controller.simulator.groundTruth(t))
       }
       if (timeRef.current) timeRef.current.textContent = `再生 ${t.toFixed(2)}秒`
       const now = performance.now()
@@ -122,6 +128,7 @@ export function VideoInspection() {
     return () => {
       cancelAnimationFrame(raf)
       ro.disconnect()
+      controller.simulator.pixelSource = null
     }
   }, [source])
 
@@ -153,7 +160,7 @@ export function VideoInspection() {
         )}
 
         <DetectionOverlay canvasRef={canvasRef} />
-        <InspectionGate visible={overlay.overlay && overlay.inspectionGate} trigger={trigger} label={trackSource === 'real' ? profile.triggerLabel : '検査ゲート'} />
+        <InspectionGate visible={overlay.overlay && overlay.inspectionGate} trigger={trigger} label={trackSource === 'real' || profile.syntheticFeed ? profile.triggerLabel : '検査ゲート'} />
         <InspectorPanel />
 
         <div className="pointer-events-none absolute top-3 right-3 flex flex-col items-end gap-1 text-[10px]">
@@ -189,7 +196,10 @@ export function VideoInspection() {
         </div>
 
         <div className="pointer-events-none absolute top-[178px] left-3 flex max-w-[260px] flex-col gap-0.5 text-[9.5px] leading-tight tracking-[0.06em] text-ink-3">
-          {isPlaceholder && `動画ファイルなし · public/demo/${profile.mediaDir}/video.mp4 を置くと実映像に切り替わります`}
+          {isPlaceholder &&
+            (profile.measurement
+              ? `合成映像 · ${profile.measurement.label}は画素の HSV 解析で実測（public/demo/${profile.mediaDir}/video.mp4 を置くと実映像でも同じ計測が走ります）`
+              : `動画ファイルなし · public/demo/${profile.mediaDir}/video.mp4 を置くと実映像に切り替わります`)}
           {isVideo && (credit ?? `${profile.objectLabel}検出: 事前追跡 · ${profile.attributeLabel}判定: 疑似注入`)}
           <span className="text-ink-3/70">シナリオ: {scenarioText(SCENARIOS[scenario].name, profile)}</span>
         </div>

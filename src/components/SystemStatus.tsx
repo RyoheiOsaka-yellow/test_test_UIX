@@ -24,7 +24,7 @@ export function SystemStatus() {
       <Field label="検査項目" value={`${profile.objectLabel}の${profile.attributeLabel}`} mono={false} />
       <Field label="認識モデル" value="試作ビジョン v0.1" mono={false} />
       <Field label={`${profile.objectLabel}検出`} value={trackSource === 'real' ? profile.detectorNote : '合成'} mono={false} />
-      <Field label={`${profile.attributeLabel}判定`} value="疑似注入" mono={false} />
+      <Field label={`${profile.attributeLabel}判定`} value={profile.measurement ? '実測（画素の HSV 解析）' : '疑似注入'} mono={false} />
       <Field
         label="判定トリガー"
         value={

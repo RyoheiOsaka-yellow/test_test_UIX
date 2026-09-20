@@ -13,6 +13,8 @@ import { bboxAt, currentTrigger, exitTimeOf, gateProgress, gateTimeOf, inZone, t
 import { PROFILES, DEFAULT_PROFILE_ID } from '@/profiles'
 import { DECISION_JA } from '@/i18n/ja'
 import type { EventBus } from './eventBus'
+import { measureFillLevel, type FramePixelSource } from './fillLevelMeter'
+import type { MeasurementReading } from '@/types/inspection'
 
 /**
  * シミュレーションモードの映像認識層。
@@ -46,8 +48,12 @@ interface TrackRuntime {
   sampledAttribute?: number
   sampledObject?: number
   sampledAlignment?: number
+  sampledMeasurement?: InspectionState['measurement']
   /** 排出ボトルがベルトから外れ始める時刻（合成トラックのみ） */
   ejectTime?: number
+  /** 計測プロファイル: 移動平均した最新の計測値 */
+  measurement?: MeasurementReading
+  measureSamples: number
 }
 
 export interface SimulatorOptions {
@@ -80,6 +86,9 @@ export class VideoDetectionSimulator {
   /** ループ回数。周回ごとに追跡番号をずらして重複させない */
   private loopIndex = 0
   private idStride = 200
+  /** 計測プロファイルで画素を読む元（映像 or 合成キャンバス）。VideoInspection が設定する */
+  pixelSource: FramePixelSource | null = null
+  private frameCounter = 0
 
   constructor(opts: SimulatorOptions) {
     this.bus = opts.bus
@@ -103,6 +112,7 @@ export class VideoDetectionSimulator {
       trackedEmitted: false,
       decisionRequested: false,
       recheckRounds: 0,
+      measureSamples: 0,
     }))
     this.reset(startTime, false)
   }
@@ -125,6 +135,8 @@ export class VideoDetectionSimulator {
       rt.sampledAttribute = undefined
       rt.zoneEnteredAt = undefined
       rt.ejectTime = undefined
+      rt.measurement = undefined
+      rt.measureSamples = 0
       rt.skipInspection = !Number.isFinite(rt.gateTime) || rt.gateTime <= time
       rt.phase = this.isPast(rt, time) ? 'EXITED' : 'ENTERING'
     }
@@ -155,12 +167,39 @@ export class VideoDetectionSimulator {
 
     const trigger = currentTrigger()
     const attrLabel = this.profile.attributeLabel
+    const mspec = this.profile.measurement
+    this.frameCounter++
 
     for (const rt of this.runtimes) {
       if (rt.phase === 'EXITED') continue
       const { label } = rt
       const bbox = bboxAt(rt.track, time)
       const cx = bbox[0] + bbox[2] / 2
+
+      // 計測プロファイル: ゲート手前〜判定直後の物体は毎フレーム画素を読んで液面を求め、移動平均する
+      if (mspec && this.pixelSource && (rt.phase === 'TRACKED' || rt.phase === 'INSPECTING' || rt.phase === 'DECIDED') && this.frameCounter % 2 === 0) {
+        const g = trigger.kind === 'gate' ? gateProgress(bbox) : null
+        const near = g ? g.p >= g.gate - g.half && g.p <= g.gate + 0.1 : inZone(bbox)
+        if (near) {
+          const img = this.pixelSource.crop(bbox, 40)
+          const r = img ? measureFillLevel(img) : null
+          if (r) {
+            const truth = rt.track.fillLevel
+            if (!rt.measurement || rt.phase === 'DECIDED') {
+              if (!rt.measurement) rt.measurement = { ...r, truth }
+            } else {
+              const a = rt.measureSamples < 4 ? 0.5 : 0.25
+              rt.measurement = {
+                value: rt.measurement.value + (r.value - rt.measurement.value) * a,
+                confidence: rt.measurement.confidence + (r.confidence - rt.measurement.confidence) * a,
+                tiltDeg: rt.measurement.tiltDeg + (r.tiltDeg - rt.measurement.tiltDeg) * a,
+                truth,
+              }
+            }
+            rt.measureSamples++
+          }
+        }
+      }
 
       if (rt.phase === 'ENTERING') {
         if (this.isPast(rt, time)) {
@@ -200,12 +239,21 @@ export class VideoDetectionSimulator {
           rt.sampledAttribute = s.attribute
           rt.sampledObject = s.object
           rt.sampledAlignment = s.alignment
+          rt.sampledMeasurement = s.measurement
           this.bus.emit('INSPECTION_STARTED', `${label} 検査開始`, { objectId: label, videoTime: time })
-          this.bus.emit('ATTRIBUTE_CONFIDENCE', `${label} ${attrLabel}信頼度 ${s.attribute.toFixed(2)}`, {
-            objectId: label,
-            videoTime: time,
-            data: { attributeConfidence: s.attribute, objectConfidence: s.object, alignment: s.alignment },
-          })
+          this.bus.emit(
+            'ATTRIBUTE_CONFIDENCE',
+            s.measurement
+              ? s.measurement.confidence > 0
+                ? `${label} ${mspec?.label ?? attrLabel} ${(s.measurement.value * 100).toFixed(1)}%（計測信頼度 ${s.measurement.confidence.toFixed(2)}）`
+                : `${label} ${mspec?.label ?? attrLabel} 計測中`
+              : `${label} ${attrLabel}信頼度 ${s.attribute.toFixed(2)}`,
+            {
+              objectId: label,
+              videoTime: time,
+              data: { attributeConfidence: s.attribute, objectConfidence: s.object, alignment: s.alignment, measurement: s.measurement },
+            },
+          )
         }
       }
 
@@ -224,6 +272,14 @@ export class VideoDetectionSimulator {
         }
         if (decideNow) {
           rt.decisionRequested = true
+          if (mspec) {
+            // 計測プロファイルはゲート通過時点の移動平均値で判断する
+            const s = this.sampleReadings(rt, time)
+            rt.sampledAttribute = s.attribute
+            rt.sampledObject = s.object
+            rt.sampledAlignment = s.alignment
+            rt.sampledMeasurement = s.measurement
+          }
           void this.runDecision(rt, time, gen)
         }
       }
@@ -255,13 +311,26 @@ export class VideoDetectionSimulator {
     const noise = this.scenario?.noise ?? 0.2
     const cam = this.cameraConfidence(time)
     const jitter = (k: number) => smoothNoise(rt.track.seed + round * 17, time, k)
+    const mspec = this.profile.measurement
+    if (mspec) {
+      // 実測値から属性信頼度を作る: 目標からのずれが許容幅の n 倍なら 1 - 0.25n
+      // 真値は決して使わない: まだ画素を読めていなければ「計測できていない」として扱う
+      const m = rt.measurement
+      const value = m ? m.value : 0
+      const mconf = m ? m.confidence : 0
+      const dev = Math.abs(value - mspec.target) / Math.max(1e-6, mspec.tolerance)
+      const attribute = clamp01(1 - 0.25 * dev) * cam + 0.5 * (1 - cam)
+      const object = clamp01((rt.track.objectConfidence + jitter(2) * 0.015 * (1 + noise)) * (0.6 + 0.4 * cam))
+      const alignment = clamp01(1 - Math.abs(m?.tiltDeg ?? 0) / 10)
+      return { attribute, object, alignment, measurement: { key: mspec.key, value, target: mspec.target, tolerance: mspec.tolerance, confidence: mconf * cam, tiltDeg: m?.tiltDeg ?? 0, truth: rt.track.fillLevel } }
+    }
     let attribute = rt.track.attributeConfidence + jitter(1) * 0.03 * (1 + noise * 2)
     let object = rt.track.objectConfidence + jitter(2) * 0.015 * (1 + noise)
     // カメラ信頼度が下がると全ての読みが 0.5（判定不能）へ寄る
     attribute = attribute * cam + 0.5 * (1 - cam)
     object = object * (0.6 + 0.4 * cam)
     const alignment = clamp01(rt.track.alignmentScore + jitter(3) * 0.04)
-    return { attribute: clamp01(attribute), object: clamp01(object), alignment }
+    return { attribute: clamp01(attribute), object: clamp01(object), alignment, measurement: undefined as InspectionState['measurement'] }
   }
 
   private async runDecision(rt: TrackRuntime, time: number, gen: number) {
@@ -271,6 +340,7 @@ export class VideoDetectionSimulator {
       attribute: rt.sampledAttribute ?? rt.track.attributeConfidence,
       object: rt.sampledObject ?? rt.track.objectConfidence,
       alignment: rt.sampledAlignment ?? rt.track.alignmentScore,
+      measurement: rt.sampledMeasurement,
     }
 
     // 判断ループ: 再検査は1回だけ再サンプリングし、その後は最終判定
@@ -280,6 +350,7 @@ export class VideoDetectionSimulator {
         objectConfidence: readings.object,
         attributeConfidence: readings.attribute,
         alignmentScore: readings.alignment,
+        measurement: readings.measurement,
         inspectionZone: true,
         previousFailures,
         previousState: previousFailures > 0 ? 'recheck' : 'normal',
@@ -300,11 +371,17 @@ export class VideoDetectionSimulator {
         await new Promise((r) => setTimeout(r, 260))
         if (gen !== this.generation || this.isExited(rt)) return
         readings = this.sampleReadings(rt, this.lastTime, previousFailures)
-        this.bus.emit('ATTRIBUTE_CONFIDENCE', `${label} ${this.profile.attributeLabel}信頼度 ${readings.attribute.toFixed(2)}（再検査 ${previousFailures}回目）`, {
-          objectId: label,
-          videoTime: this.lastTime,
-          data: { attributeConfidence: readings.attribute, objectConfidence: readings.object, alignment: readings.alignment },
-        })
+        this.bus.emit(
+          'ATTRIBUTE_CONFIDENCE',
+          readings.measurement
+            ? `${label} ${this.profile.measurement?.label} ${(readings.measurement.value * 100).toFixed(1)}%（再計測 ${previousFailures}回目）`
+            : `${label} ${this.profile.attributeLabel}信頼度 ${readings.attribute.toFixed(2)}（再検査 ${previousFailures}回目）`,
+          {
+            objectId: label,
+            videoTime: this.lastTime,
+            data: { attributeConfidence: readings.attribute, objectConfidence: readings.object, alignment: readings.alignment, measurement: readings.measurement },
+          },
+        )
         continue
       }
 
@@ -314,6 +391,7 @@ export class VideoDetectionSimulator {
       rt.sampledAttribute = readings.attribute
       rt.sampledObject = readings.object
       rt.sampledAlignment = readings.alignment
+      rt.sampledMeasurement = readings.measurement
 
       this.bus.emit(
         'INSPECTION_COMPLETED',
@@ -328,6 +406,7 @@ export class VideoDetectionSimulator {
               timestamp: new Date().toISOString(),
               objectId: label,
               vision: { object: readings.object, attribute: readings.attribute, alignment: readings.alignment },
+              measurement: readings.measurement ? { key: readings.measurement.key, value: readings.measurement.value, target: readings.measurement.target, tolerance: readings.measurement.tolerance, truth: rt.track.fillLevel } : undefined,
               decision: { result: result.decision, confidence: result.confidence, reason: result.reason, engine: result.engine },
               action: result.decision === 'REJECT' ? 'EJECT_SIMULATED' : result.action,
               latencyMs: result.latencyMs,
@@ -391,8 +470,14 @@ export class VideoDetectionSimulator {
               return { attribute: clamp01(attribute), object: clamp01(object), alignment: track.alignmentScore }
             })()
 
-      const detectionClass: DetectionClass = live.attribute >= 0.5 ? 'OK' : 'NG'
-      const classConfidence = detectionClass === 'OK' ? live.attribute : 1 - live.attribute
+      let detectionClass: DetectionClass = live.attribute >= 0.5 ? 'OK' : 'NG'
+      let classConfidence = detectionClass === 'OK' ? live.attribute : 1 - live.attribute
+      const mspec = this.profile.measurement
+      const meas = mspec ? (rt.phase === 'DECIDED' && rt.sampledMeasurement ? { value: rt.sampledMeasurement.value, confidence: rt.sampledMeasurement.confidence, tiltDeg: rt.sampledMeasurement.tiltDeg, truth: track.fillLevel } : rt.measurement) : undefined
+      if (mspec && meas) {
+        detectionClass = Math.abs(meas.value - mspec.target) <= mspec.tolerance ? 'OK' : 'NG'
+        classConfidence = meas.confidence
+      }
 
       detections.push({
         trackId: track.id,
@@ -405,6 +490,7 @@ export class VideoDetectionSimulator {
         alignmentScore: live.alignment,
         centerX: cx,
         phase: rt.phase,
+        measurement: meas,
         decision: rt.decision,
         gateTime: rt.decisionTime,
       })

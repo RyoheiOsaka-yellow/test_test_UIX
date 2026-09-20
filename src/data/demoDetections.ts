@@ -1,4 +1,4 @@
-import type { InspectionTrigger, NormalizedBBox, RawDetection, ScenarioDefinition } from '@/types/inspection'
+import type { InspectionTrigger, MeasurementSpec, NormalizedBBox, RawDetection, ScenarioDefinition } from '@/types/inspection'
 import { DEFAULT_GATE } from '@/types/inspection'
 
 /**
@@ -35,6 +35,12 @@ export interface BottleTrack {
   alignmentScore: number
   seed: number
   keyframes?: TrackKeyframe[]
+  /** 計測プロファイル（合成映像）の真値: 充填率 0..1 */
+  fillLevel?: number
+  /** 液面の傾き [deg] */
+  tiltDeg?: number
+  /** 液体のコントラスト（低いと計測が難しい） 0..1 */
+  liquidContrast?: number
 }
 
 export const CONVEYOR = {
@@ -92,6 +98,30 @@ export function createRng(seed: number): () => number {
 
 const between = (rng: () => number, lo: number, hi: number) => lo + rng() * (hi - lo)
 
+/** 計測プロファイル用の真値（充填率・傾き・液体コントラスト） */
+function measurementTruth(truth: TruthCondition, rng: () => number, m: MeasurementSpec) {
+  const tol = m.tolerance
+  let fillLevel: number
+  let liquidContrast = between(rng, 0.8, 1)
+  switch (truth) {
+    case 'OK':
+      fillLevel = m.target + between(rng, -0.6, 0.6) * tol
+      break
+    case 'MISALIGNED':
+      fillLevel = m.target + (rng() < 0.5 ? -1 : 1) * between(rng, 1.2, 1.9) * tol
+      break
+    case 'AMBIGUOUS':
+      fillLevel = m.target + between(rng, -0.8, 0.8) * tol
+      liquidContrast = between(rng, 0.08, 0.2)
+      break
+    case 'NG':
+      fillLevel = rng() < 0.7 ? m.target - between(rng, 2.6, 5) * tol : m.target + between(rng, 2.6, 3.6) * tol
+      break
+  }
+  const tiltDeg = rng() < 0.75 ? between(rng, -2, 2) : between(rng, -6, 6)
+  return { fillLevel: Math.min(0.98, Math.max(0.05, fillLevel)), tiltDeg, liquidContrast }
+}
+
 function readingsFor(truth: TruthCondition, rng: () => number) {
   switch (truth) {
     case 'OK':
@@ -116,6 +146,8 @@ function drawTruth(scenario: ScenarioDefinition, rng: () => number): TruthCondit
 export interface GenerateOptions {
   durationSeconds?: number
   seed?: number
+  /** 計測プロファイルなら真値（充填率など）も生成する */
+  measurement?: MeasurementSpec
 }
 
 /** 合成トラックを生成する（動画ファイルが無い場合）。 */
@@ -131,16 +163,18 @@ export function generateTracks(scenario: ScenarioDefinition, opts: GenerateOptio
   while (t < duration) {
     const truth = drawTruth(scenario, rng)
     const readings = readingsFor(truth, rng)
+    const m = opts.measurement
     tracks.push({
       id,
       source: 'synthetic',
       enterTime: t,
       speed: CONVEYOR.speed,
-      y: CONVEYOR.bottleY + between(rng, -0.012, 0.012),
-      width: CONVEYOR.bottleWidth * between(rng, 0.94, 1.06),
-      height: CONVEYOR.bottleHeight * between(rng, 0.97, 1.03),
+      y: (m ? 0.36 : CONVEYOR.bottleY) + between(rng, -0.012, 0.012),
+      width: (m ? 0.06 : CONVEYOR.bottleWidth) * between(rng, 0.94, 1.06),
+      height: (m ? 0.36 : CONVEYOR.bottleHeight) * between(rng, 0.97, 1.03),
       truth,
       ...readings,
+      ...(m ? measurementTruth(truth, rng, m) : {}),
       seed: Math.floor(rng() * 1e9),
     })
     id++
@@ -155,7 +189,7 @@ export function generateTracks(scenario: ScenarioDefinition, opts: GenerateOptio
     }
     t += Math.max(gap, (CONVEYOR.bottleWidth * 1.05) / CONVEYOR.speed)
   }
-  applyDemoGuarantee(tracks)
+  applyDemoGuarantee(tracks, opts.measurement)
   return tracks
 }
 
@@ -186,18 +220,20 @@ function meanConfidence(kfs: TrackKeyframe[], fallback: number) {
 }
 
 /** 最初に判定される物体は OK、3〜7.5秒で判定される1つは NG にする（デモ保証） */
-function applyDemoGuarantee(tracks: BottleTrack[]) {
+function applyDemoGuarantee(tracks: BottleTrack[], m?: MeasurementSpec) {
   const withGate = tracks
     .map((tr) => ({ tr, g: gateTimeOf(tr) }))
     .filter((x) => Number.isFinite(x.g))
     .sort((a, b) => a.g - b.g)
   const target = withGate.find((x) => x.g >= 3 && x.g <= 7.5)
   if (target && target.tr.truth !== 'NG') {
-    Object.assign(target.tr, { truth: 'NG' as const, ...readingsFor('NG', createRng(target.tr.seed)) })
+    const r = createRng(target.tr.seed)
+    Object.assign(target.tr, { truth: 'NG' as const, ...readingsFor('NG', r), ...(m ? measurementTruth('NG', r, m) : {}) })
   }
   const first = withGate.find((x) => x.g >= 0.4)
   if (first && first.tr !== target?.tr && first.tr.truth !== 'OK') {
-    Object.assign(first.tr, { truth: 'OK' as const, ...readingsFor('OK', createRng(first.tr.seed)) })
+    const r = createRng(first.tr.seed)
+    Object.assign(first.tr, { truth: 'OK' as const, ...readingsFor('OK', r), ...(m ? measurementTruth('OK', r, m) : {}) })
   }
 }
 

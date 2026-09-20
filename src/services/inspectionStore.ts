@@ -43,6 +43,7 @@ export interface CurrentObject {
   objectConfidence: number
   attributeConfidence: number
   alignment: number
+  measurement?: { key: string; value: number; target: number; tolerance: number; confidence: number; tiltDeg: number; truth?: number }
   decision?: DecisionResult
   state?: InspectionState
   updatedAt: number
@@ -120,6 +121,9 @@ export interface InspectionStoreState {
   status: FactoryStatus
   cameraConfidence: number
   demoStartedAt: number | null
+  /** 計測プロファイル（合成映像）: 計測値と真値の絶対誤差の平均 */
+  measurementMeanAbsError: number | null
+  measurementSamples: number
 }
 
 const MAX_EVENTS = 400
@@ -169,6 +173,8 @@ export function initialState(): InspectionStoreState {
     status: { camera: 'ONLINE', vision: 'IDLE', jev: 'SIMULATED', line: 'PAUSED' },
     cameraConfidence: 1,
     demoStartedAt: null,
+    measurementMeanAbsError: null,
+    measurementSamples: 0,
   }
 }
 
@@ -226,12 +232,13 @@ export class InspectionStore {
 
     switch (event.type) {
       case 'ATTRIBUTE_CONFIDENCE': {
-        const d = event.data as { attributeConfidence: number; objectConfidence: number; alignment: number }
+        const d = event.data as { attributeConfidence: number; objectConfidence: number; alignment: number; measurement?: CurrentObject['measurement'] }
         patch.currentObject = {
           objectId: event.objectId!,
           attributeConfidence: d.attributeConfidence,
           objectConfidence: d.objectConfidence,
           alignment: d.alignment,
+          measurement: d.measurement,
           decision: s.currentObject && s.currentObject.objectId === event.objectId ? s.currentObject.decision : undefined,
           updatedAt: event.timestamp,
         }
@@ -247,6 +254,7 @@ export class InspectionStore {
           attributeConfidence: d.state.attributeConfidence,
           objectConfidence: d.state.objectConfidence,
           alignment: d.state.alignmentScore ?? 1,
+          measurement: d.state.measurement,
           decision: d.decision,
           state: d.state,
           updatedAt: event.timestamp,
@@ -276,11 +284,18 @@ export class InspectionStore {
         kpi.yieldRate = kpi.totalInspected ? kpi.pass / kpi.totalInspected : 0
         patch.kpi = kpi
 
+        const rec = d.record
+        if (rec.measurement && typeof rec.measurement.truth === 'number') {
+          const err = Math.abs(rec.measurement.value - rec.measurement.truth)
+          const n = s.measurementSamples
+          patch.measurementMeanAbsError = ((s.measurementMeanAbsError ?? 0) * n + err) / (n + 1)
+          patch.measurementSamples = n + 1
+        }
         const records = s.records.length >= MAX_RECORDS ? [...s.records.slice(-MAX_RECORDS + 1), d.record] : [...s.records, d.record]
         patch.records = records
 
         patch.series = bump(s.series, event.timestamp, d.decision.decision)
-        const capPoint: CapPoint = { t: event.timestamp, objectId: event.objectId!, attribute: d.state.attributeConfidence, decision: d.decision.decision }
+        const capPoint: CapPoint = { t: event.timestamp, objectId: event.objectId!, attribute: d.state.measurement ? d.state.measurement.value : d.state.attributeConfidence, decision: d.decision.decision }
         patch.capSeries = [...s.capSeries.slice(-CAP_SERIES_MAX + 1), capPoint]
 
         if (d.decision.decision === 'HUMAN_REVIEW') {

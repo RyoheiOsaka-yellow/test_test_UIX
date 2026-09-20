@@ -32,6 +32,11 @@ const STAMP_FONT = '700 13px "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-
 export function labelText(d: FrameDetection, settings: OverlaySettings, profile: InspectionProfile): string {
   const parts: string[] = []
   if (settings.trackingId) parts.push(d.label)
+  if (profile.measurement && d.measurement) {
+    parts.push(`${profile.measurement.label} ${(d.measurement.value * 100).toFixed(1)}%`)
+    if (settings.confidence && Math.abs(d.measurement.tiltDeg) >= 1) parts.push(`傾き ${d.measurement.tiltDeg.toFixed(0)}°`)
+    return parts.join(' ')
+  }
   parts.push(classJa(d.detectionClass, profile))
   if (settings.confidence) parts.push(`${Math.round(d.classConfidence * 100)}%`)
   return parts.join(' ')
@@ -88,6 +93,29 @@ export function drawDetection(
     ctx.moveTo(cx - 4, cy); ctx.lineTo(cx + 4, cy)
     ctx.moveTo(cx, cy - 4); ctx.lineTo(cx, cy + 4)
     ctx.stroke()
+    ctx.restore()
+  }
+
+  // 計測プロファイル: 推定した液面の線を枠内に描く
+  if (profile.measurement && d.measurement && settings.boundingBox && !compact) {
+    const bodyTop = y + bh * 0.2
+    const bodyBottom = y + bh * 0.995
+    const ly = bodyBottom - d.measurement.value * (bodyBottom - bodyTop)
+    const dy = Math.tan((d.measurement.tiltDeg * Math.PI) / 180) * (bw / 2)
+    ctx.save()
+    ctx.strokeStyle = '#31c6ff'
+    ctx.lineWidth = 1.5
+    ctx.setLineDash([4, 3])
+    ctx.beginPath()
+    ctx.moveTo(x, ly + dy)
+    ctx.lineTo(x + bw, ly - dy)
+    ctx.stroke()
+    // 目標帯
+    const t0 = bodyBottom - (profile.measurement.target + profile.measurement.tolerance) * (bodyBottom - bodyTop)
+    const t1 = bodyBottom - (profile.measurement.target - profile.measurement.tolerance) * (bodyBottom - bodyTop)
+    ctx.setLineDash([])
+    ctx.fillStyle = 'rgba(57, 255, 136, 0.12)'
+    ctx.fillRect(x, t0, bw, t1 - t0)
     ctx.restore()
   }
 

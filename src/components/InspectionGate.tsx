@@ -22,13 +22,16 @@ export function InspectionGate({ visible, trigger, label }: { visible: boolean; 
   const vertical = trigger.axis === 'x'
   const style = vertical ? { left: `${trigger.position * 100}%` } : { top: `${trigger.position * 100}%` }
   const arrow = vertical ? (trigger.direction === 1 ? '→' : '←') : trigger.direction === 1 ? '↓' : '↑'
+  // 右寄りのゲートはラベルが右上のカメラ表示と重なるので下げる
+  const labelTop = vertical && trigger.position > 0.6 ? 'top-14' : 'top-2'
+  const noteTop = vertical && trigger.position > 0.6 ? 'top-20' : 'top-8'
   return (
     <div className={`pointer-events-none absolute ${vertical ? 'inset-y-0' : 'inset-x-0'}`} style={style}>
       <div className={`absolute border-dashed border-yellow/80 ${vertical ? 'inset-y-0 -left-px w-px border-l' : 'inset-x-0 -top-px h-px border-t'}`} />
-      <div className="absolute top-2 left-2 flex items-center gap-1.5 whitespace-nowrap bg-yellow px-1.5 py-[2px] text-[10px] font-semibold tracking-[0.12em] text-bg">
+      <div className={`absolute ${labelTop} left-2 flex items-center gap-1.5 whitespace-nowrap bg-yellow px-1.5 py-[2px] text-[10px] font-semibold tracking-[0.12em] text-bg`}>
         {label} {arrow}
       </div>
-      <div className="absolute top-8 left-2 whitespace-nowrap text-[9.5px] tracking-[0.1em] text-yellow/80">通過で判定 · 排出は模擬</div>
+      <div className={`absolute ${noteTop} left-2 whitespace-nowrap text-[9.5px] tracking-[0.1em] text-yellow/80`}>通過で判定 · 排出は模擬</div>
     </div>
   )
 }

@@ -1,11 +1,49 @@
 import { DECISION_JA, actionJa, reasonJa } from '@/i18n/ja'
-import { useInspectionStore } from '@/services/inspectionStore'
+import { useInspectionStore, type InspectionStoreState } from '@/services/inspectionStore'
+import type { InspectionProfile } from '@/types/inspection'
 import { Panel, decisionColor, pct } from './Panel'
 
 function Bar({ value, color }: { value: number; color: string }) {
   return (
     <div className="h-[3px] w-full bg-border-2">
       <div className="h-full transition-[width] duration-150" style={{ width: `${Math.round(value * 100)}%`, background: color }} />
+    </div>
+  )
+}
+
+function MeasurementBlock({ cur, spec }: { cur: ReturnType<typeof useInspectionStore<InspectionStoreState['currentObject']>>; spec: NonNullable<InspectionProfile['measurement']> }) {
+  const mae = useInspectionStore((s) => s.measurementMeanAbsError)
+  const m = cur?.measurement
+  const dev = m ? (m.value - spec.target) / spec.tolerance : 0
+  const tone = !m ? 'text-ink-3' : Math.abs(dev) <= 1 ? 'text-green' : Math.abs(dev) <= 2 ? 'text-yellow' : 'text-red'
+  const lo = spec.target - spec.tolerance
+  const hi = spec.target + spec.tolerance
+  return (
+    <div className="border border-border-2 bg-bg/40 px-2 py-1.5">
+      <div className="flex items-baseline justify-between">
+        <span className="text-[10px] text-ink-2">{spec.label}（実測）</span>
+        <span className={`num text-[20px] leading-none ${tone}`}>{m ? `${(m.value * 100).toFixed(1)}%` : '—'}</span>
+      </div>
+      <div className="relative mt-1.5 h-[6px] w-full bg-border-2">
+        <div className="absolute inset-y-0 bg-green/25" style={{ left: `${lo * 100}%`, width: `${(hi - lo) * 100}%` }} />
+        <div className="absolute inset-y-0 w-px bg-green" style={{ left: `${spec.target * 100}%` }} />
+        {m && <div className="absolute -top-[2px] h-[10px] w-[2px] bg-cyan" style={{ left: `calc(${m.value * 100}% - 1px)` }} />}
+      </div>
+      <div className="mt-1 grid grid-cols-3 gap-x-2 text-[9.5px] text-ink-3">
+        <span>目標 <span className="num text-ink-2">{(spec.target * 100).toFixed(0)}% ±{(spec.tolerance * 100).toFixed(0)}</span></span>
+        <span>傾き <span className="num text-ink-2">{m ? `${m.tiltDeg.toFixed(1)}°` : '—'}</span></span>
+        <span>計測信頼度 <span className="num text-ink-2">{m ? pct(m.confidence) : '—'}</span></span>
+        {m && typeof m.truth === 'number' && (
+          <span className="col-span-3">
+            真値 <span className="num text-ink-2">{(m.truth * 100).toFixed(1)}%</span> · 誤差 <span className="num text-ink-2">{((m.value - m.truth) * 100).toFixed(1)}pt</span>
+            {mae !== null && (
+              <>
+                {' '}· 平均絶対誤差 <span className="num text-ink-2">{(mae * 100).toFixed(2)}pt</span>
+              </>
+            )}
+          </span>
+        )}
+      </div>
     </div>
   )
 }
@@ -28,7 +66,10 @@ export function DecisionPanel() {
       </div>
 
       <div className="label mt-3 mb-1">認識結果</div>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+      {profile.measurement && (
+        <MeasurementBlock cur={cur} spec={profile.measurement} />
+      )}
+      <div className={`grid grid-cols-2 gap-x-3 gap-y-1 ${profile.measurement ? 'mt-2' : ''}`}>
         <div>
           <div className="flex items-baseline justify-between">
             <span className="text-[10px] text-ink-2">{profile.objectLabel}</span>

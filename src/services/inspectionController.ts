@@ -129,9 +129,10 @@ export class InspectionController {
     const real = this.realTracksByProfile.get(profile.id)
     const useReal = !!real && s.videoSource?.kind === 'video'
     // 合成トラックは常に左→右に流れるので、動画が無いときは既定ゲートに固定する
-    const trigger = useReal ? profile.trigger : DEFAULT_GATE
+    // （合成映像を前提に設計されたプロファイルは自分のトリガーを使う）
+    const trigger = useReal || profile.syntheticFeed ? profile.trigger : DEFAULT_GATE
     configureTrigger(trigger)
-    const tracks = useReal ? assignConditions(real!, scenario) : generateTracks(scenario)
+    const tracks = useReal ? assignConditions(real!, scenario) : generateTracks(scenario, { measurement: profile.measurement })
     this.simulator.load(tracks, scenario, profile, this.clock.currentTime())
     this.store.update(() => ({ scenario: id, trackSource: useReal ? 'real' : 'synthetic', trigger }))
     this.bus.emit(
