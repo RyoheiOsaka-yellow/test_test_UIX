@@ -9,9 +9,12 @@ import type {
   TrackPhase,
 } from '@/types/inspection'
 import { OBJECT_DECISION_OPTIONS } from '@/types/inspection'
-import { bboxAt, currentTrigger, exitTimeOf, gateProgress, gateTimeOf, inZone, type BottleTrack } from '@/data/demoDetections'
+import { bboxAt, currentTrigger, exitTimeOf, gateProgress, gateTimeOf, inZone, keypointsAt, type BottleTrack } from '@/data/demoDetections'
+import { FallDetector } from './fallDetector'
+import type { PersonStateReading } from '@/types/inspection'
+import { inspectionStore } from './inspectionStore'
 import { PROFILES, DEFAULT_PROFILE_ID } from '@/profiles'
-import { DECISION_JA } from '@/i18n/ja'
+import { decisionJa } from '@/i18n/ja'
 import type { EventBus } from './eventBus'
 import { measureFillLevel, type FramePixelSource } from './fillLevelMeter'
 import type { MeasurementReading } from '@/types/inspection'
@@ -54,6 +57,12 @@ interface TrackRuntime {
   /** 計測プロファイル: 移動平均した最新の計測値 */
   measurement?: MeasurementReading
   measureSamples: number
+  /** 人物プロファイル: 転倒判定器と最新状態 */
+  fall?: FallDetector
+  person?: PersonStateReading
+  personSince?: number
+  /** 判定確定後に起き上がったら再度判定できるようにする */
+  recoveredAt?: number
 }
 
 export interface SimulatorOptions {
@@ -89,6 +98,7 @@ export class VideoDetectionSimulator {
   /** 計測プロファイルで画素を読む元（映像 or 合成キャンバス）。VideoInspection が設定する */
   pixelSource: FramePixelSource | null = null
   private frameCounter = 0
+  private lastLiveUpdate = 0
 
   constructor(opts: SimulatorOptions) {
     this.bus = opts.bus
@@ -114,6 +124,7 @@ export class VideoDetectionSimulator {
       recheckRounds: 0,
       measureSamples: 0,
     }))
+    this.lastLiveUpdate = 0
     this.reset(startTime, false)
   }
 
@@ -137,6 +148,10 @@ export class VideoDetectionSimulator {
       rt.ejectTime = undefined
       rt.measurement = undefined
       rt.measureSamples = 0
+      rt.fall?.reset()
+      rt.person = undefined
+      rt.personSince = undefined
+      rt.recoveredAt = undefined
       rt.skipInspection = !Number.isFinite(rt.gateTime) || rt.gateTime <= time
       rt.phase = this.isPast(rt, time) ? 'EXITED' : 'ENTERING'
     }
@@ -201,6 +216,55 @@ export class VideoDetectionSimulator {
         }
       }
 
+      // 状態遷移プロファイル（転倒検知）: 毎フレーム 5 特徴量から状態を更新する
+      if (trigger.kind === 'state' && rt.track.source === 'real' && rt.phase !== 'ENTERING' && this.isVisible(rt, time)) {
+        if (!rt.fall) rt.fall = new FallDetector()
+        const prevState = rt.person?.state ?? 'NORMAL'
+        rt.person = rt.fall.update(time, bbox, keypointsAt(rt.track, time))
+        if (rt.person.state !== prevState) {
+          rt.personSince = time
+          if (rt.person.state === 'FALLING' && rt.phase === 'TRACKED') {
+            rt.phase = 'INSPECTING'
+            const s = this.sampleReadings(rt, time)
+            rt.sampledAttribute = s.attribute
+            rt.sampledObject = s.object
+            rt.sampledAlignment = s.alignment
+            this.bus.emit('INSPECTION_STARTED', `${label} 転倒の疑い（急な下降を検知）`, { objectId: label, videoTime: time, severity: 'warn' })
+          } else if (rt.person.state === 'NORMAL' && (rt.phase === 'DECIDED' || rt.phase === 'INSPECTING')) {
+            this.bus.emit('OBJECT_TRACKED', `${label} 起き上がりを確認（警報解除）`, { objectId: label, videoTime: time, severity: 'ok', data: { recovered: true } })
+            rt.phase = 'TRACKED'
+            rt.decision = undefined
+            rt.decisionTime = undefined
+            rt.decisionRequested = false
+            rt.recheckRounds = 0
+            rt.recoveredAt = time
+          }
+        }
+        if (rt.phase === 'INSPECTING' && !rt.decisionRequested && rt.person.state === 'FALLEN' && time - (rt.personSince ?? time) >= trigger.confirmSeconds) {
+          rt.decisionRequested = true
+          const s = this.sampleReadings(rt, time)
+          rt.sampledAttribute = s.attribute
+          rt.sampledObject = s.object
+          rt.sampledAlignment = s.alignment
+          this.bus.emit('ATTRIBUTE_CONFIDENCE', `${label} 床上に滞留 ${rt.person.onGroundSeconds.toFixed(1)}秒 · 転倒スコア ${rt.person.fallScore.toFixed(2)}`, {
+            objectId: label,
+            videoTime: time,
+            data: { attributeConfidence: s.attribute, objectConfidence: s.object, alignment: s.alignment, person: s.person },
+          })
+          void this.runDecision(rt, time, gen)
+        }
+        // 注目人物（転倒スコア最大）の状態を約 5 Hz でストアへ
+        if (time - this.lastLiveUpdate > 0.2 || time < this.lastLiveUpdate) {
+          const best = this.runtimes
+            .filter((r) => r.person && r.phase !== 'EXITED' && r.phase !== 'ENTERING' && this.isVisible(r, time))
+            .sort((a, b) => b.person!.fallScore - a.person!.fallScore)[0]
+          if (best?.person) {
+            this.lastLiveUpdate = time
+            inspectionStore.updateLivePerson(best.label, best.person)
+          }
+        }
+      }
+
       if (rt.phase === 'ENTERING') {
         if (this.isPast(rt, time)) {
           rt.phase = 'EXITED'
@@ -224,7 +288,7 @@ export class VideoDetectionSimulator {
           })
         }
         let startInspection = false
-        if (!rt.skipInspection) {
+        if (!rt.skipInspection && trigger.kind !== 'state') {
           if (trigger.kind === 'gate') {
             const g = gateProgress(bbox)
             startInspection = g.p >= g.gate - g.half
@@ -257,7 +321,7 @@ export class VideoDetectionSimulator {
         }
       }
 
-      if (rt.phase === 'INSPECTING' && !rt.decisionRequested) {
+      if (rt.phase === 'INSPECTING' && !rt.decisionRequested && trigger.kind !== 'state') {
         let decideNow = false
         if (trigger.kind === 'gate') {
           const g = gateProgress(bbox)
@@ -298,7 +362,9 @@ export class VideoDetectionSimulator {
 
       if (this.isPast(rt, time)) {
         rt.phase = 'EXITED'
-        this.bus.emit('OBJECT_EXITED', `${label} 退出`, { objectId: label, videoTime: time })
+        const lostWhileDown = rt.person && rt.person.state !== 'NORMAL'
+        rt.person = undefined
+        this.bus.emit('OBJECT_EXITED', lostWhileDown ? `${label} 追跡終了（床上のまま見失い）` : `${label} 退出`, { objectId: label, videoTime: time, severity: lostWhileDown ? 'warn' : 'info' })
       }
     }
   }
@@ -311,6 +377,28 @@ export class VideoDetectionSimulator {
     const noise = this.scenario?.noise ?? 0.2
     const cam = this.cameraConfidence(time)
     const jitter = (k: number) => smoothNoise(rt.track.seed + round * 17, time, k)
+    if (currentTrigger().kind === 'state' && rt.person) {
+      const p = rt.person
+      const attribute = clamp01(1 - p.fallScore) * cam + 0.5 * (1 - cam)
+      const object = clamp01((rt.track.objectConfidence + jitter(2) * 0.015 * (1 + noise)) * (0.6 + 0.4 * cam))
+      const alignment = clamp01(1 - p.features.torsoAngleDeg / 90)
+      return {
+        attribute,
+        object,
+        alignment,
+        measurement: undefined as InspectionState['measurement'],
+        person: {
+          state: p.state,
+          fallScore: p.fallScore,
+          onGroundSeconds: p.onGroundSeconds,
+          poseConfidence: p.features.poseConfidence * cam,
+          torsoAngleDeg: p.features.torsoAngleDeg,
+          bodyPosition: p.features.bodyPosition,
+          aspectRatio: p.features.aspectRatio,
+          motion: p.features.motion,
+        } as InspectionState['person'],
+      }
+    }
     const mspec = this.profile.measurement
     if (mspec) {
       // 実測値から属性信頼度を作る: 目標からのずれが許容幅の n 倍なら 1 - 0.25n
@@ -322,7 +410,7 @@ export class VideoDetectionSimulator {
       const attribute = clamp01(1 - 0.25 * dev) * cam + 0.5 * (1 - cam)
       const object = clamp01((rt.track.objectConfidence + jitter(2) * 0.015 * (1 + noise)) * (0.6 + 0.4 * cam))
       const alignment = clamp01(1 - Math.abs(m?.tiltDeg ?? 0) / 10)
-      return { attribute, object, alignment, measurement: { key: mspec.key, value, target: mspec.target, tolerance: mspec.tolerance, confidence: mconf * cam, tiltDeg: m?.tiltDeg ?? 0, truth: rt.track.fillLevel } }
+      return { attribute, object, alignment, measurement: { key: mspec.key, value, target: mspec.target, tolerance: mspec.tolerance, confidence: mconf * cam, tiltDeg: m?.tiltDeg ?? 0, truth: rt.track.fillLevel }, person: undefined as InspectionState['person'] }
     }
     let attribute = rt.track.attributeConfidence + jitter(1) * 0.03 * (1 + noise * 2)
     let object = rt.track.objectConfidence + jitter(2) * 0.015 * (1 + noise)
@@ -330,7 +418,7 @@ export class VideoDetectionSimulator {
     attribute = attribute * cam + 0.5 * (1 - cam)
     object = object * (0.6 + 0.4 * cam)
     const alignment = clamp01(rt.track.alignmentScore + jitter(3) * 0.04)
-    return { attribute: clamp01(attribute), object: clamp01(object), alignment, measurement: undefined as InspectionState['measurement'] }
+    return { attribute: clamp01(attribute), object: clamp01(object), alignment, measurement: undefined as InspectionState['measurement'], person: undefined as InspectionState['person'] }
   }
 
   private async runDecision(rt: TrackRuntime, time: number, gen: number) {
@@ -341,6 +429,7 @@ export class VideoDetectionSimulator {
       object: rt.sampledObject ?? rt.track.objectConfidence,
       alignment: rt.sampledAlignment ?? rt.track.alignmentScore,
       measurement: rt.sampledMeasurement,
+      person: rt.person ? this.sampleReadings(rt, time).person : undefined,
     }
 
     // 判断ループ: 再検査は1回だけ再サンプリングし、その後は最終判定
@@ -351,6 +440,7 @@ export class VideoDetectionSimulator {
         attributeConfidence: readings.attribute,
         alignmentScore: readings.alignment,
         measurement: readings.measurement,
+        person: readings.person,
         inspectionZone: true,
         previousFailures,
         previousState: previousFailures > 0 ? 'recheck' : 'normal',
@@ -359,7 +449,7 @@ export class VideoDetectionSimulator {
       if (gen !== this.generation || this.isExited(rt)) return
 
       const engineTag = result.engine === 'jev' ? 'JEV' : 'JEV(模擬)'
-      this.bus.emit(result.decision, `${label} ${engineTag} → ${DECISION_JA[result.decision]} ${pct(result.confidence)}`, {
+      this.bus.emit(result.decision, `${label} ${engineTag} → ${decisionJa(result.decision, this.profile)} ${pct(result.confidence)}`, {
         objectId: label,
         videoTime: time,
         data: { decision: result, state, round },
@@ -368,14 +458,16 @@ export class VideoDetectionSimulator {
       if (result.decision === 'RECHECK') {
         previousFailures++
         rt.recheckRounds = previousFailures
-        await new Promise((r) => setTimeout(r, 260))
+        await new Promise((r) => setTimeout(r, readings.person ? 1000 : 260))
         if (gen !== this.generation || this.isExited(rt)) return
         readings = this.sampleReadings(rt, this.lastTime, previousFailures)
         this.bus.emit(
           'ATTRIBUTE_CONFIDENCE',
           readings.measurement
             ? `${label} ${this.profile.measurement?.label} ${(readings.measurement.value * 100).toFixed(1)}%（再計測 ${previousFailures}回目）`
-            : `${label} ${this.profile.attributeLabel}信頼度 ${readings.attribute.toFixed(2)}（再検査 ${previousFailures}回目）`,
+            : readings.person
+              ? `${label} 経過観察 ${previousFailures}回目 · 状態 ${readings.person.state} · 転倒スコア ${readings.person.fallScore.toFixed(2)}`
+              : `${label} ${this.profile.attributeLabel}信頼度 ${readings.attribute.toFixed(2)}（再検査 ${previousFailures}回目）`,
           {
             objectId: label,
             videoTime: this.lastTime,
@@ -395,7 +487,7 @@ export class VideoDetectionSimulator {
 
       this.bus.emit(
         'INSPECTION_COMPLETED',
-        `${label} 検査完了 ${DECISION_JA[result.decision]}（${Math.round(result.latencyMs)}ミリ秒）`,
+        `${label} 判定確定 ${decisionJa(result.decision, this.profile)}（${Math.round(result.latencyMs)}ミリ秒）`,
         {
           objectId: label,
           videoTime: this.lastTime,
@@ -478,6 +570,11 @@ export class VideoDetectionSimulator {
         detectionClass = Math.abs(meas.value - mspec.target) <= mspec.tolerance ? 'OK' : 'NG'
         classConfidence = meas.confidence
       }
+      const keypoints = keypointsAt(track, time)
+      if (rt.person) {
+        detectionClass = rt.person.state === 'NORMAL' ? 'OK' : 'NG'
+        classConfidence = rt.person.state === 'NORMAL' ? 1 - rt.person.fallScore : rt.person.fallScore
+      }
 
       detections.push({
         trackId: track.id,
@@ -491,6 +588,8 @@ export class VideoDetectionSimulator {
         centerX: cx,
         phase: rt.phase,
         measurement: meas,
+        keypoints,
+        personState: rt.person,
         decision: rt.decision,
         gateTime: rt.decisionTime,
       })

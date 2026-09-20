@@ -95,7 +95,9 @@ export class InspectionController {
       this.realTracksByProfile.set(profile.id, tracks)
       this.bus.emit(
         'SYSTEM',
-        `実映像の追跡結果を読込 · ${tracks.length} 個のトラック（${profile.objectLabel}検出: 事前計算 / ${profile.attributeLabel}判定: 疑似注入）`,
+        `実映像の追跡結果を読込 · ${tracks.length} 個のトラック（${profile.objectLabel}検出: 事前計算 / ${profile.attributeLabel}判定: ${
+          profile.trigger.kind === 'state' ? '5特徴量の時系列判定' : profile.measurement ? '画素解析で実測' : '疑似注入'
+        }）`,
       )
     }
   }
@@ -132,7 +134,11 @@ export class InspectionController {
     // （合成映像を前提に設計されたプロファイルは自分のトリガーを使う）
     const trigger = useReal || profile.syntheticFeed ? profile.trigger : DEFAULT_GATE
     configureTrigger(trigger)
-    const tracks = useReal ? assignConditions(real!, scenario) : generateTracks(scenario, { measurement: profile.measurement })
+    const tracks = useReal
+      ? assignConditions(real!, scenario)
+      : profile.syntheticFeed === 'none'
+        ? []
+        : generateTracks(scenario, { measurement: profile.measurement })
     this.simulator.load(tracks, scenario, profile, this.clock.currentTime())
     this.store.update(() => ({ scenario: id, trackSource: useReal ? 'real' : 'synthetic', trigger }))
     this.bus.emit(

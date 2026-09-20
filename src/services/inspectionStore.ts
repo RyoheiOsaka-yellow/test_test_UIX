@@ -4,6 +4,7 @@ import type {
   InspectionEvent,
   InspectionProfile,
   InspectionTrigger,
+  PersonStateReading,
   InspectionRecord,
   InspectionState,
   LineDecisionResult,
@@ -124,6 +125,10 @@ export interface InspectionStoreState {
   /** 計測プロファイル（合成映像）: 計測値と真値の絶対誤差の平均 */
   measurementMeanAbsError: number | null
   measurementSamples: number
+  /** 人物プロファイル: 注目人物の最新状態（約 5 Hz でシミュレータが直接更新） */
+  livePerson: { objectId: string; reading: PersonStateReading; timestamp: number } | null
+  /** 人物プロファイル: 転倒スコアの時系列（直近 60 秒） */
+  liveSeries: Array<{ t: number; value: number }>
 }
 
 const MAX_EVENTS = 400
@@ -175,6 +180,8 @@ export function initialState(): InspectionStoreState {
     demoStartedAt: null,
     measurementMeanAbsError: null,
     measurementSamples: 0,
+    livePerson: null,
+    liveSeries: [],
   }
 }
 
@@ -335,6 +342,14 @@ export class InspectionStore {
         break
     }
     this.set(patch)
+  }
+
+  /** 人物プロファイル: 注目人物の状態を直接更新（イベントログには流さない） */
+  updateLivePerson(objectId: string, reading: PersonStateReading) {
+    const now = Date.now()
+    const series = this.state.liveSeries.filter((p) => p.t >= now - 60_000)
+    series.push({ t: now, value: reading.fallScore })
+    this.set({ livePerson: { objectId, reading, timestamp: now }, liveSeries: series })
   }
 
   /** Human override of a HUMAN_REVIEW decision. */

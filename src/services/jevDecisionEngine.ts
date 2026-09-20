@@ -42,6 +42,8 @@ export interface JevObjectRequest {
     previous_state: string
     /** 連続量の計測（充填量など）。計測プロファイルのみ */
     measurement?: { key: string; value: number; target: number; tolerance: number; confidence: number; tilt_deg: number }
+    /** 人物の状態（転倒検知）。人物プロファイルのみ */
+    person?: { state: string; fall_score: number; on_ground_seconds: number; pose_confidence: number; torso_angle_deg: number; body_position: number; aspect_ratio: number; motion: number }
   }
   options: readonly ObjectDecision[]
 }
@@ -134,6 +136,20 @@ export class JevDecisionEngine implements DecisionEngine {
                 tolerance: round(state.measurement.tolerance),
                 confidence: round(state.measurement.confidence),
                 tilt_deg: round(state.measurement.tiltDeg),
+              },
+            }
+          : {}),
+        ...(state.person
+          ? {
+              person: {
+                state: state.person.state,
+                fall_score: round(state.person.fallScore),
+                on_ground_seconds: round(state.person.onGroundSeconds),
+                pose_confidence: round(state.person.poseConfidence),
+                torso_angle_deg: round(state.person.torsoAngleDeg),
+                body_position: round(state.person.bodyPosition),
+                aspect_ratio: round(state.person.aspectRatio),
+                motion: round(state.person.motion),
               },
             }
           : {}),

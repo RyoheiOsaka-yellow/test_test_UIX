@@ -27,7 +27,7 @@ export function AnomalyPanel() {
         <Field label={profile.objectLabel} value={<span className="text-[13px]">{a.objectId}</span>} />
         <Field label="内容" value={<span className="text-red">{reasonJa(a.issue, profile)}</span>} mono={false} />
         <Field label="確信度" value={pct(a.confidence)} />
-        <Field label="処置" value={<span className="text-red">{DECISION_JA.REJECT}・{profile.rejectAction}</span>} mono={false} />
+        <Field label="処置" value={<span className="text-red">{profile.decisionLabels?.REJECT ?? DECISION_JA.REJECT}・{profile.rejectAction}</span>} mono={false} />
         <Field label="時刻" value={formatClock(a.timestamp)} />
       </div>
     </Panel>

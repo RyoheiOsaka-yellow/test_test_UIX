@@ -24,13 +24,19 @@ export function SystemStatus() {
       <Field label="検査項目" value={`${profile.objectLabel}の${profile.attributeLabel}`} mono={false} />
       <Field label="認識モデル" value="試作ビジョン v0.1" mono={false} />
       <Field label={`${profile.objectLabel}検出`} value={trackSource === 'real' ? profile.detectorNote : '合成'} mono={false} />
-      <Field label={`${profile.attributeLabel}判定`} value={profile.measurement ? '実測（画素の HSV 解析）' : '疑似注入'} mono={false} />
+      <Field
+        label={`${profile.attributeLabel}判定`}
+        value={profile.trigger.kind === 'state' ? '時系列判定（5特徴量）' : profile.measurement ? '実測（画素の HSV 解析）' : '疑似注入'}
+        mono={false}
+      />
       <Field
         label="判定トリガー"
         value={
           trigger.kind === 'gate'
             ? `ゲート ${trigger.axis} = ${trigger.position.toFixed(2)}`
-            : `ゾーン滞留 ${trigger.dwellSeconds.toFixed(1)}秒`
+            : trigger.kind === 'zone'
+              ? `ゾーン滞留 ${trigger.dwellSeconds.toFixed(1)}秒`
+              : `状態遷移（${trigger.confirmSeconds.toFixed(1)}秒で確定）`
         }
       />
     </Panel>

@@ -54,6 +54,8 @@ export interface RawDetection {
   attribute_confidence?: number
   /** Optional: 位置ずれスコア 0..1 */
   alignment_score?: number
+  /** Optional: 骨格キーポイント（COCO 17 点 × [x, y, conf]、正規化） */
+  keypoints?: number[]
 }
 
 /** A per-frame detection produced by the CV layer (real or simulated). */
@@ -76,6 +78,10 @@ export interface FrameDetection {
   phase: TrackPhase
   /** 連続量の計測結果（充填量など）。計測プロファイルのみ */
   measurement?: MeasurementReading
+  /** 骨格キーポイント（COCO 17 点 × [x, y, conf]、正規化）。人物プロファイルのみ */
+  keypoints?: number[]
+  /** 人物の状態推定（転倒検知）。人物プロファイルのみ */
+  personState?: PersonStateReading
   /** Final decision, once the object crossed the gate. */
   decision?: DecisionResult
   /** Video time at which the object crossed the gate. */
@@ -103,6 +109,27 @@ export interface MeasurementReading {
   truth?: number
 }
 
+/** 転倒検知: 5 特徴量と時系列判定の結果 */
+export interface PersonStateReading {
+  state: 'NORMAL' | 'FALLING' | 'FALLEN'
+  /** 転倒スコア 0..1 */
+  fallScore: number
+  /** 床上にいる継続時間 [s]（FALLEN のとき） */
+  onGroundSeconds: number
+  features: {
+    /** 体の位置: 腰の高さ（立位時からの低下量、0..1） */
+    bodyPosition: number
+    /** 角度: 胴体の傾き [deg]（0 = 直立） */
+    torsoAngleDeg: number
+    /** 形状: 枠の縦横比 w/h */
+    aspectRatio: number
+    /** 動き: 腰の速度（枠高さ/秒） */
+    motion: number
+    /** 姿勢信頼度: キーポイント信頼度の平均 */
+    poseConfidence: number
+  }
+}
+
 export interface MeasurementSpec {
   /** Jev へ送る項目名（fill_level など） */
   key: string
@@ -121,6 +148,8 @@ export interface InspectionState {
   alignmentScore?: number
   /** 連続量の計測（充填量など）。あれば判断はこちらを優先する */
   measurement?: { key: string; value: number; target: number; tolerance: number; confidence: number; tiltDeg: number; truth?: number }
+  /** 人物の状態（転倒検知）。あれば判断はこちらを優先する */
+  person?: { state: 'NORMAL' | 'FALLING' | 'FALLEN'; fallScore: number; onGroundSeconds: number; poseConfidence: number; torsoAngleDeg: number; bodyPosition: number; aspectRatio: number; motion: number }
   inspectionZone: boolean
   /** Number of prior RECHECK rounds on this object. */
   previousFailures?: number
@@ -311,6 +340,12 @@ export type InspectionTrigger =
       rect: NormalizedBBox
       dwellSeconds: number
     }
+  | {
+      /** 状態遷移: 物体（人物）の状態が異常（転倒）と確定したら判定。ゲート無し */
+      kind: 'state'
+      /** 異常状態がこの秒数続いたら判定を確定する */
+      confirmSeconds: number
+    }
 
 export const DEFAULT_GATE: InspectionTrigger = { kind: 'gate', axis: 'x', position: 0.5, direction: 1, zoneHalfWidth: 0.06 }
 
@@ -345,6 +380,10 @@ export interface InspectionProfile {
   triggerLabel: string
   /** 連続量を実測するプロファイル（充填量など）。無ければ属性の有無を疑似注入する */
   measurement?: MeasurementSpec
-  /** 動画が無いときに描く合成映像の種類 */
-  syntheticFeed?: 'bottles' | 'filling'
+  /** 動画が無いときに描く合成映像の種類（none: 映像なしの表示） */
+  syntheticFeed?: 'bottles' | 'filling' | 'none'
+  /** 判断コードの表示名を差し替える（例: REJECT → 転倒 警報） */
+  decisionLabels?: Partial<Record<ObjectDecision, string>>
+  /** KPI の見出し差し替え（検査総数 / 合格 / 不良） */
+  kpiLabels?: { total?: string; pass?: string; reject?: string; yield?: string; throughputUnit?: string }
 }

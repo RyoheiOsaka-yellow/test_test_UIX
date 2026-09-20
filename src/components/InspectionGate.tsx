@@ -19,6 +19,13 @@ export function InspectionGate({ visible, trigger, label }: { visible: boolean; 
       </div>
     )
   }
+  if (trigger.kind === 'state') {
+    return (
+      <div className="pointer-events-none absolute top-2 left-1/2 -translate-x-1/2 whitespace-nowrap bg-yellow px-1.5 py-[2px] text-[10px] font-semibold tracking-[0.12em] text-bg">
+        {label} · 全域を常時監視
+      </div>
+    )
+  }
   const vertical = trigger.axis === 'x'
   const style = vertical ? { left: `${trigger.position * 100}%` } : { top: `${trigger.position * 100}%` }
   const arrow = vertical ? (trigger.direction === 1 ? '→' : '←') : trigger.direction === 1 ? '↓' : '↑'

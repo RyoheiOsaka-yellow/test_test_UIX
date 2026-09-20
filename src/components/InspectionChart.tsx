@@ -78,6 +78,27 @@ export function PassRejectChart() {
 }
 
 /** ゲート通過時のキャップ信頼度（検査対象ごと） */
+/** 人物プロファイル: 転倒スコアの時系列（直近 60 秒） */
+function FallScoreChart() {
+  const series = useInspectionStore((s) => s.liveSeries)
+  const now = useNowSecond()
+  const data = useMemo(() => series.map((p) => ({ label: `-${Math.max(0, Math.round((now - p.t) / 1000))}秒`, t: p.t, スコア: p.value })), [series, now])
+  return (
+    <Panel title="転倒スコア（時系列）" right={<span className="text-[9px] text-ink-3">直近60秒 · 0.6 以上で警報</span>} bodyClassName="px-1 py-1">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
+          <CartesianGrid stroke="#1a242e" vertical={false} />
+          <XAxis dataKey="label" tick={axisStyle} tickLine={false} axisLine={{ stroke: '#25313d' }} interval="preserveStartEnd" minTickGap={40} />
+          <YAxis domain={[0, 1]} ticks={[0, 0.25, 0.5, 0.75, 1]} tick={axisStyle} tickLine={false} axisLine={false} width={40} />
+          <Tooltip content={<TooltipBox />} cursor={{ stroke: '#25313d' }} />
+          <ReferenceLine y={0.6} stroke="#ff5151" strokeOpacity={0.5} strokeDasharray="3 3" />
+          <Area type="monotone" dataKey="スコア" stroke="#ff5151" fill="#ff5151" fillOpacity={0.15} strokeWidth={1.5} isAnimationActive={false} dot={false} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </Panel>
+  )
+}
+
 export function CapConfidenceChart() {
   const capSeries = useInspectionStore((s) => s.capSeries)
   const profile = useInspectionStore((s) => s.profile)
@@ -141,10 +162,11 @@ export function CapConfidenceChart() {
 }
 
 export function InspectionChart() {
+  const isState = useInspectionStore((s) => s.profile.trigger.kind === 'state')
   return (
     <div className="grid h-full min-h-0 grid-cols-2 gap-2">
       <PassRejectChart />
-      <CapConfidenceChart />
+      {isState ? <FallScoreChart /> : <CapConfidenceChart />}
     </div>
   )
 }

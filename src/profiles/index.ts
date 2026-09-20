@@ -151,5 +151,42 @@ PROFILES['fill-level'] = {
   syntheticFeed: 'filling',
 }
 
-export const PROFILE_ORDER = ['bottle-cap', 'parcel-label', 'pcb-assembly', 'fill-level'] as const
+PROFILES['fall-detection'] = {
+  id: 'fall-detection',
+  name: '転倒検知',
+  lineName: '病棟 廊下 A',
+  cameraName: 'カメラ05',
+  objectLabel: '人物',
+  attributeLabel: '転倒',
+  alignmentLabel: '胴の角度',
+  okLabel: '正常',
+  ngLabel: '転倒',
+  reasons: {
+    ...COMMON_REASONS,
+    FALL_CONFIRMED: '転倒を確認（床上に滞留）',
+    FALL_SUSPECTED: '転倒の疑い（経過観察）',
+    FALL_RECOVERED: '起き上がりを確認',
+    POSE_UNCERTAIN: '姿勢を特定できず',
+    NO_FALL: '異常なし',
+    ATTR_OK: '異常なし',
+    ATTR_MISSING: '転倒を確認',
+    ATTR_MISALIGNED: '転倒の疑い',
+    ATTR_LOW_CONFIDENCE: '姿勢信頼度不足',
+    ATTR_AMBIGUOUS: '姿勢を特定できず',
+  },
+  rejectAction: '職員へ通報',
+  misalignedScenarioName: '転倒の疑い増加',
+  jevTask: 'fall_detection',
+  objectKey: 'person',
+  attributeKey: 'fall',
+  trigger: { kind: 'state', confirmSeconds: 0.5 },
+  mediaDir: 'fall-detection',
+  detectorNote: '事前追跡（骨格 17 点 + 追跡）',
+  triggerLabel: '状態監視',
+  syntheticFeed: 'none',
+  decisionLabels: { PASS: '異常なし', RECHECK: '経過観察', REJECT: '転倒 警報', HUMAN_REVIEW: '要確認' },
+  kpiLabels: { total: '判定回数', pass: '異常なし', reject: '転倒警報', yield: '異常なし率', throughputUnit: '件/分' },
+}
+
+export const PROFILE_ORDER = ['bottle-cap', 'parcel-label', 'pcb-assembly', 'fill-level', 'fall-detection'] as const
 export const DEFAULT_PROFILE_ID = 'bottle-cap'

@@ -62,6 +62,30 @@ export function simulateObjectDecision(
   let confidence: number
   let reason: string
 
+  if (state.person) {
+    // 人物の状態（転倒検知）: 時系列判定の結果と姿勢信頼度から通報の要否を決める
+    const p = state.person
+    if (p.poseConfidence < 0.3) {
+      decision = 'HUMAN_REVIEW'
+      confidence = clamp01(0.5 + p.poseConfidence)
+      reason = 'POSE_UNCERTAIN'
+    } else if (p.state === 'FALLEN' && p.fallScore >= 0.6) {
+      decision = 'REJECT'
+      confidence = clamp01(0.7 + 0.3 * p.fallScore) * (0.8 + 0.2 * p.poseConfidence)
+      reason = 'FALL_CONFIRMED'
+    } else if (p.state === 'FALLING' || (p.state === 'FALLEN' && p.fallScore >= 0.4)) {
+      decision = recheckRound >= 1 ? 'HUMAN_REVIEW' : 'RECHECK'
+      confidence = clamp01(0.55 + 0.3 * p.fallScore)
+      reason = 'FALL_SUSPECTED'
+    } else {
+      decision = 'PASS'
+      confidence = clamp01(0.85 + 0.15 * (1 - p.fallScore))
+      reason = 'NO_FALL'
+    }
+    if (!options.includes(decision)) decision = options.includes('HUMAN_REVIEW') ? 'HUMAN_REVIEW' : options[0]
+    return { decision, confidence, reason, action: actionFor(decision) }
+  }
+
   if (state.measurement) {
     // 連続量の計測（充填量など）: 目標からのずれを許容幅の倍数で評価する
     const m = state.measurement

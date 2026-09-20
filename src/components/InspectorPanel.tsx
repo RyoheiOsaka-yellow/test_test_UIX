@@ -6,7 +6,7 @@ export function InspectorPanel() {
   const playing = useInspectionStore((s) => s.playing)
   const profile = useInspectionStore((s) => s.profile)
   const rows: Array<[string, string, string?]> = [
-    ['処理数', String(kpi.totalInspected)],
+    [profile.kpiLabels?.total ?? '処理数', String(kpi.totalInspected)],
     [profile.okLabel, String(kpi.pass), 'text-green'],
     [profile.ngLabel, String(kpi.reject), 'text-red'],
   ]
@@ -23,7 +23,7 @@ export function InspectorPanel() {
           </div>
         ))}
         <div className="mt-1 flex items-baseline justify-between border-t border-border/60 pt-1.5">
-          <span className="text-[10px] text-ink-3">良品率</span>
+          <span className="text-[10px] text-ink-3">{profile.kpiLabels?.yield ?? '良品率'}</span>
           <span className="num text-[13px] text-cyan">{kpi.totalInspected ? `${(kpi.yieldRate * 100).toFixed(1)}%` : '—'}</span>
         </div>
         <div className="mt-1.5 flex items-center justify-between">

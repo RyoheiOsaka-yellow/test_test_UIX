@@ -1,5 +1,6 @@
 import type { FrameDetection, InspectionProfile, OverlaySettings } from '@/types/inspection'
 import { DECISION_JA, classJa } from '@/i18n/ja'
+import { SKELETON } from '@/services/fallDetector'
 
 /**
  * 検知1件分の描画ヘルパー（バウンディングボックス + ラベル）。
@@ -29,9 +30,18 @@ const LABEL_FONT = '600 11px "JetBrains Mono", "Noto Sans JP", "Hiragino Sans", 
 const TAG_FONT = '600 10.5px "JetBrains Mono", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif'
 const STAMP_FONT = '700 13px "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif'
 
+const PERSON_STATE_JA = { NORMAL: '正常', FALLING: '転倒中', FALLEN: '転倒（床上）' } as const
+const PERSON_STATE_COLOR = { NORMAL: '#39ff88', FALLING: '#ffd52a', FALLEN: '#ff5151' } as const
+
 export function labelText(d: FrameDetection, settings: OverlaySettings, profile: InspectionProfile): string {
   const parts: string[] = []
   if (settings.trackingId) parts.push(d.label)
+  if (d.personState) {
+    parts.push(PERSON_STATE_JA[d.personState.state])
+    if (d.personState.state === 'FALLEN') parts.push(`${d.personState.onGroundSeconds.toFixed(1)}秒`)
+    if (settings.confidence) parts.push(`スコア ${d.personState.fallScore.toFixed(2)}`)
+    return parts.join(' ')
+  }
   if (profile.measurement && d.measurement) {
     parts.push(`${profile.measurement.label} ${(d.measurement.value * 100).toFixed(1)}%`)
     if (settings.confidence && Math.abs(d.measurement.tiltDeg) >= 1) parts.push(`傾き ${d.measurement.tiltDeg.toFixed(0)}°`)
@@ -56,12 +66,12 @@ export function drawDetection(
   const y = ny * h
   const bw = nw * w
   const bh = nh * h
-  const color = CLASS_COLORS[d.detectionClass] ?? '#31c6ff'
+  const color = d.personState ? PERSON_STATE_COLOR[d.personState.state] : (CLASS_COLORS[d.detectionClass] ?? '#31c6ff')
   const inspecting = d.phase === 'INSPECTING'
   // ゲート前の追跡中と、判定から2秒以上経った物体は簡略表示にして、
   // 検査中・判定直後だけを目立たせる（実映像は同時に30本以上映るため）
   const decidedAge = d.gateTime !== undefined ? now - d.gateTime : -1
-  const compact = d.phase === 'TRACKED' || (d.phase === 'DECIDED' && decidedAge > 2)
+  const compact = !d.personState && (d.phase === 'TRACKED' || (d.phase === 'DECIDED' && decidedAge > 2))
 
   if (settings.boundingBox) {
     ctx.save()
@@ -93,6 +103,30 @@ export function drawDetection(
     ctx.moveTo(cx - 4, cy); ctx.lineTo(cx + 4, cy)
     ctx.moveTo(cx, cy - 4); ctx.lineTo(cx, cy + 4)
     ctx.stroke()
+    ctx.restore()
+  }
+
+  // 人物プロファイル: 骨格を描く
+  if (d.keypoints && settings.boundingBox) {
+    const kp = d.keypoints
+    ctx.save()
+    ctx.strokeStyle = color
+    ctx.fillStyle = color
+    ctx.lineWidth = 2
+    ctx.globalAlpha = 0.95
+    for (const [a, b] of SKELETON) {
+      if (kp[a * 3 + 2] < 0.3 || kp[b * 3 + 2] < 0.3) continue
+      ctx.beginPath()
+      ctx.moveTo(kp[a * 3] * w, kp[a * 3 + 1] * h)
+      ctx.lineTo(kp[b * 3] * w, kp[b * 3 + 1] * h)
+      ctx.stroke()
+    }
+    for (let i = 0; i < 17; i++) {
+      if (kp[i * 3 + 2] < 0.3) continue
+      ctx.beginPath()
+      ctx.arc(kp[i * 3] * w, kp[i * 3 + 1] * h, 3, 0, Math.PI * 2)
+      ctx.fill()
+    }
     ctx.restore()
   }
 
@@ -149,7 +183,8 @@ export function drawDetection(
 
   if (settings.jevDecision && d.decision && d.gateTime !== undefined) {
     const dc = DECISION_COLORS[d.decision.decision] ?? '#31c6ff'
-    const text = compact ? DECISION_JA[d.decision.decision] : `${DECISION_JA[d.decision.decision]} ${Math.round(d.decision.confidence * 100)}%`
+    const dl = profile.decisionLabels?.[d.decision.decision] ?? DECISION_JA[d.decision.decision]
+    const text = compact ? dl : `${dl} ${Math.round(d.decision.confidence * 100)}%`
     ctx.save()
     ctx.font = TAG_FONT
     const tw = ctx.measureText(text).width + 10
@@ -183,7 +218,7 @@ export function drawDetection(
       ctx.fillStyle = '#ff5151'
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
-      ctx.fillText(`不良 ${profile.rejectAction}`, x + bw / 2, y + bh / 2 - 22 - k * 10)
+      ctx.fillText(`${profile.decisionLabels?.REJECT ?? '不良'} ${profile.rejectAction}`, x + bw / 2, y + bh / 2 - 22 - k * 10)
       ctx.restore()
     } else if (d.decision.decision === 'PASS' && age >= 0 && age < 0.7) {
       const k = age / 0.7

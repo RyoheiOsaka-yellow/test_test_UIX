@@ -30,7 +30,7 @@ export function drawOverlay(
     if (trigger.kind === 'gate') {
       if (trigger.axis === 'x') ctx.fillRect((trigger.position - trigger.zoneHalfWidth) * w, 0, trigger.zoneHalfWidth * 2 * w, h)
       else ctx.fillRect(0, (trigger.position - trigger.zoneHalfWidth) * h, w, trigger.zoneHalfWidth * 2 * h)
-    } else {
+    } else if (trigger.kind === 'zone') {
       const [x, y, zw, zh] = trigger.rect
       ctx.fillRect(x * w, y * h, zw * w, zh * h)
     }

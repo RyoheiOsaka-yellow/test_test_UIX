@@ -19,6 +19,8 @@ export interface TrackKeyframe {
   t: number
   bbox: NormalizedBBox
   confidence?: number
+  /** 骨格キーポイント（[x,y,conf]×17、正規化） */
+  keypoints?: number[]
 }
 
 export interface BottleTrack {
@@ -272,6 +274,21 @@ export function bboxAt(track: BottleTrack, time: number): NormalizedBBox {
   return [cx - track.width / 2, track.y, track.width, track.height]
 }
 
+/** 時刻 time に最も近いキーフレームの骨格（補間はしない） */
+export function keypointsAt(track: BottleTrack, time: number): number[] | undefined {
+  const kfs = track.keyframes
+  if (!kfs || !kfs.length) return undefined
+  let lo = 0
+  let hi = kfs.length - 1
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1
+    if (kfs[mid].t <= time) lo = mid
+    else hi = mid
+  }
+  const k = Math.abs(kfs[lo].t - time) <= Math.abs(kfs[hi].t - time) ? kfs[lo] : kfs[hi]
+  return k.keypoints
+}
+
 /**
  * 判定が確定する時刻（ゲート型: 中心がゲートを横切る時刻 / ゾーン型: ゾーンに入ってから dwell 経過）。
  * 到達しなければ Infinity。
@@ -279,6 +296,7 @@ export function bboxAt(track: BottleTrack, time: number): NormalizedBBox {
 export function gateTimeOf(track: BottleTrack): number {
   const t = activeTrigger
   const kfs = track.keyframes
+  if (t.kind === 'state') return Infinity
   if (t.kind === 'gate') {
     if (kfs && kfs.length) {
       for (let i = 1; i < kfs.length; i++) {
@@ -384,7 +402,7 @@ export function timelineToTracks(timeline: RawDetection[], opts: TimelineOptions
         source: 'real',
         enterTime: first.time,
         speed: 0,
-        keyframes: frames.map((f) => ({ t: f.time, bbox: f.bbox, confidence: knownAttr ? f.bottle_confidence : f.confidence })),
+        keyframes: frames.map((f) => ({ t: f.time, bbox: f.bbox, confidence: knownAttr ? f.bottle_confidence : f.confidence, keypoints: f.keypoints })),
       })
       continue
     }

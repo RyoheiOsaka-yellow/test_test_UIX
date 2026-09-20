@@ -114,7 +114,10 @@ export function VideoInspection() {
       if (feedCtx) {
         feedCtx.setTransform(dpr, 0, 0, dpr, 0, 0)
         if (profileRef.current.syntheticFeed === 'filling') drawSyntheticFillingFeed(feedCtx, w, h, t, controller.simulator.groundTruth(t))
-        else drawSyntheticFeed(feedCtx, w, h, t, controller.simulator.groundTruth(t))
+        else if (profileRef.current.syntheticFeed === 'none') {
+          feedCtx.fillStyle = '#0a0e14'
+          feedCtx.fillRect(0, 0, w, h)
+        } else drawSyntheticFeed(feedCtx, w, h, t, controller.simulator.groundTruth(t))
       }
       if (timeRef.current) timeRef.current.textContent = `再生 ${t.toFixed(2)}秒`
       const now = performance.now()
@@ -199,8 +202,14 @@ export function VideoInspection() {
           {isPlaceholder &&
             (profile.measurement
               ? `合成映像 · ${profile.measurement.label}は画素の HSV 解析で実測（public/demo/${profile.mediaDir}/video.mp4 を置くと実映像でも同じ計測が走ります）`
-              : `動画ファイルなし · public/demo/${profile.mediaDir}/video.mp4 を置くと実映像に切り替わります`)}
-          {isVideo && (credit ?? `${profile.objectLabel}検出: 事前追跡 · ${profile.attributeLabel}判定: 疑似注入`)}
+              : profile.syntheticFeed === 'none'
+                ? `映像なし · public/demo/${profile.mediaDir}/video.mp4 と骨格追跡結果を置くと動きます`
+                : `動画ファイルなし · public/demo/${profile.mediaDir}/video.mp4 を置くと実映像に切り替わります`)}
+          {isVideo &&
+            (credit ??
+              `${profile.objectLabel}検出: 事前追跡 · ${profile.attributeLabel}判定: ${
+                profile.trigger.kind === 'state' ? '時系列判定' : profile.measurement ? '画素解析で実測' : '疑似注入'
+              }`)}
           <span className="text-ink-3/70">シナリオ: {scenarioText(SCENARIOS[scenario].name, profile)}</span>
         </div>
       </div>

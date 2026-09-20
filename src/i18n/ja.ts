@@ -60,5 +60,6 @@ export const EVENT_JA: Record<InspectionEventType, string> = {
 export const reasonJa = (code: string | undefined, profile: InspectionProfile) => (code ? (profile.reasons[code] ?? code) : '—')
 export const actionJa = (code: string | undefined, profile: InspectionProfile) =>
   code === 'EJECT' ? profile.rejectAction : code ? (ACTION_JA[code] ?? code) : '—'
-export const decisionJa = (d: ObjectDecision | undefined) => (d ? DECISION_JA[d] : '—')
+export const decisionJa = (d: ObjectDecision | undefined, profile?: InspectionProfile) =>
+  d ? (profile?.decisionLabels?.[d] ?? DECISION_JA[d]) : '—'
 export const lineDecisionJa = (d: LineDecision | undefined) => (d ? LINE_DECISION_JA[d] : '—')
