@@ -228,20 +228,13 @@ export class VideoDetectionSimulator {
 
       // 計測プロファイル: ゲート手前〜判定直後の物体は毎フレーム画素を読んで液面を求め、移動平均する
       // （サイズ計測は画素ではなく追跡枠の大きさから求める）
-      if (mspec && (this.pixelSource || mspec.method === 'size') && (rt.phase === 'TRACKED' || rt.phase === 'INSPECTING' || rt.phase === 'DECIDED') && this.frameCounter % 2 === 0) {
+      // （サイズ計測は画素を読まず、判定時点の枠から瞬時に求める → sizeReading）
+      if (mspec && mspec.method !== 'size' && this.pixelSource && (rt.phase === 'TRACKED' || rt.phase === 'INSPECTING' || rt.phase === 'DECIDED') && this.frameCounter % 2 === 0) {
         const g = trigger.kind === 'gate' ? gateProgress(bbox) : null
         const near = g ? g.p >= g.gate - g.half && g.p <= g.gate + 0.1 : inZone(bbox)
         if (near) {
-          let r: MeasurementReading | null = null
-          if (mspec.method === 'size') {
-            // 枠の √面積 を基準長で割った相対サイズ。枠が画面端にかかるときは確からしさを下げる
-            const len = Math.sqrt(Math.max(1e-6, bbox[2] * bbox[3]))
-            const clipped = bbox[0] < 0.005 || bbox[1] < 0.005 || bbox[0] + bbox[2] > 0.995 || bbox[1] + bbox[3] > 0.995
-            r = { value: len / Math.max(1e-6, this.sizeReference), confidence: clipped ? 0.4 : 0.9, tiltDeg: 0 }
-          } else if (this.pixelSource) {
-            const img = this.pixelSource.crop(bbox, 40)
-            r = img ? (mspec.method === 'ripeness' ? measureRipeness(img) : measureFillLevel(img)) : null
-          }
+          const img = this.pixelSource.crop(bbox, 40)
+          const r: MeasurementReading | null = img ? (mspec.method === 'ripeness' ? measureRipeness(img) : measureFillLevel(img)) : null
           if (r) {
             const truth = rt.track.fillLevel
             if (!rt.measurement || rt.phase === 'DECIDED') {
@@ -490,7 +483,7 @@ export class VideoDetectionSimulator {
     if (mspec) {
       // 実測値から属性信頼度を作る: 目標からのずれが許容幅の n 倍なら 1 - 0.25n
       // 真値は決して使わない: まだ画素を読めていなければ「計測できていない」として扱う
-      const m = rt.measurement
+      const m = mspec.method === 'size' ? this.sizeReading(rt, time) : rt.measurement
       const value = m ? m.value : 0
       const mconf = m ? m.confidence : 0
       const dev = Math.abs(value - mspec.target) / Math.max(1e-6, mspec.tolerance)
@@ -517,6 +510,14 @@ export class VideoDetectionSimulator {
     // （継続 0.25〜1.5 秒 → 15〜90 フレーム）
     const cap = s.scene ? Math.round(Math.min(1.5, Math.max(0.25, s.scene.holdSeconds)) * 60) : 60
     while (rt.evidence.length > cap) rt.evidence.shift()
+  }
+
+  /** サイズ計測: その時刻の枠の √面積 を基準長で割った相対サイズ（遠近の影響を避けるため移動平均しない） */
+  private sizeReading(rt: TrackRuntime, time: number): MeasurementReading {
+    const b = bboxAt(rt.track, time)
+    const len = Math.sqrt(Math.max(1e-6, b[2] * b[3]))
+    const clipped = b[0] < 0.005 || b[1] < 0.005 || b[0] + b[2] > 0.995 || b[1] + b[3] > 0.995
+    return { value: len / Math.max(1e-6, this.sizeReference), confidence: clipped ? 0.4 : 0.9, tiltDeg: 0 }
   }
 
   /** 蓄えた証拠の要約。中央値は属性プロファイルでは判断に、他では安定度の材料に使う */
@@ -689,7 +690,13 @@ export class VideoDetectionSimulator {
       let detectionClass: DetectionClass = live.attribute >= 0.5 ? 'OK' : 'NG'
       let classConfidence = detectionClass === 'OK' ? live.attribute : 1 - live.attribute
       const mspec = this.profile.measurement
-      const meas = mspec ? (rt.phase === 'DECIDED' && rt.sampledMeasurement ? { value: rt.sampledMeasurement.value, confidence: rt.sampledMeasurement.confidence, tiltDeg: rt.sampledMeasurement.tiltDeg, truth: track.fillLevel } : rt.measurement) : undefined
+      const meas = mspec
+        ? rt.phase === 'DECIDED' && rt.sampledMeasurement
+          ? { value: rt.sampledMeasurement.value, confidence: rt.sampledMeasurement.confidence, tiltDeg: rt.sampledMeasurement.tiltDeg, truth: track.fillLevel }
+          : mspec.method === 'size'
+            ? this.sizeReading(rt, time)
+            : rt.measurement
+        : undefined
       if (mspec && meas) {
         detectionClass = Math.abs(meas.value - mspec.target) <= mspec.tolerance ? 'OK' : 'NG'
         classConfidence = meas.confidence

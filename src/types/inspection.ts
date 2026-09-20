@@ -451,4 +451,6 @@ export interface InspectionProfile {
   countUnique?: boolean
   /** false ならライン判断と異常警報を行わない（収穫判定など、不良率が異常を意味しない検査） */
   lineMonitoring?: boolean
+  /** 同時に何十個も映る密集した対象: 判定直後の物体だけラベルを出し、他は枠だけにする */
+  denseOverlay?: boolean
 }

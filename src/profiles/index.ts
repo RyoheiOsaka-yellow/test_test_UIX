@@ -367,7 +367,8 @@ PROFILES['potato-count'] = {
   mediaDir: 'potato-count',
   detectorNote: '事前追跡（Grounding DINO「potato」）',
   triggerLabel: '計数ライン',
-  measurement: { key: 'size_ratio', label: 'サイズ', unit: '×', target: 1, tolerance: 0.25, method: 'size' },
+  measurement: { key: 'size_ratio', label: 'サイズ', unit: '×', target: 1, tolerance: 0.3, method: 'size' },
+  denseOverlay: true,
   syntheticFeed: 'none',
   decisionLabels: { PASS: '規格内', RECHECK: '再計測', REJECT: '規格外', HUMAN_REVIEW: '要確認' },
   gradeLabels: { A: '基準サイズ', B: '規格内', C: '境界', D: '逸脱', E: '規格外' },
@@ -376,6 +377,5 @@ PROFILES['potato-count'] = {
     { label: '境界（C+D）', grades: ['C', 'D'], tone: 'text-yellow' },
     { label: '規格外（E）', grades: ['E'], tone: 'text-red' },
   ],
-  countUnique: true,
   kpiLabels: { total: '計数（ライン通過）', pass: '規格内', reject: '規格外', yield: '規格内率', throughputUnit: '個/分' },
 }

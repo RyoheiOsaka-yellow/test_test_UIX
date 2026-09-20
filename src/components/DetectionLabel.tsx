@@ -97,7 +97,10 @@ export function drawDetection(
   // ゲート前の追跡中と、判定から2秒以上経った物体は簡略表示にして、
   // 検査中・判定直後だけを目立たせる（実映像は同時に30本以上映るため）
   const decidedAge = d.gateTime !== undefined ? now - d.gateTime : -1
-  const compact = !d.personState && (d.phase === 'TRACKED' || (d.phase === 'DECIDED' && decidedAge > 2))
+  // 密集した対象（ジャガイモなど）は判定直後 0.8 秒だけラベルを出す
+  const compact = profile.denseOverlay
+    ? !(d.phase === 'DECIDED' && decidedAge >= 0 && decidedAge <= 0.8)
+    : !d.personState && (d.phase === 'TRACKED' || (d.phase === 'DECIDED' && decidedAge > 2))
 
   if (settings.boundingBox) {
     ctx.save()
@@ -192,7 +195,7 @@ export function drawDetection(
   }
 
   if (compact) {
-    if (settings.trackingId) {
+    if (settings.trackingId && !profile.denseOverlay) {
       ctx.save()
       ctx.font = TAG_FONT
       ctx.fillStyle = 'rgba(49, 198, 255, 0.85)'
