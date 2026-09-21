@@ -159,5 +159,15 @@ def score():
     build_parcel_scores()
 
 
+@app.command("export-html")
+def export_html(fragment: bool = False, out: str | None = None):
+    """サーバ不要の単一 HTML（dist/jinryu-demo.html）を書き出す。--fragment は Artifact 用（head/body 無し）."""
+    from pathlib import Path
+
+    from jinryu.export_html import render
+
+    render(fragment=fragment, out=Path(out) if out else None)
+
+
 if __name__ == "__main__":
     app()

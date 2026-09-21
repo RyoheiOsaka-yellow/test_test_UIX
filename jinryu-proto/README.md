@@ -11,6 +11,10 @@
 |---|---|---|
 | ![gap](docs/img/ui_gap.jpg) | ![compare](docs/img/ui_compare.jpg) | ![report](docs/img/ui_report.jpg) |
 
+## いちばん簡単な見方（サーバ不要）
+
+`dist/jinryu-demo.html`（9MB、地図データ内蔵）をブラウザで開くだけで動きます。`make export-html` で再生成できます。
+
 ## クイックスタート（同梱デモデータで起動）
 
 ```bash

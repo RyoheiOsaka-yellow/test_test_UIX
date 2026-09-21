@@ -31,6 +31,9 @@ all: ingest build calibrate score
 demo:             ## 同梱デモバンドル (data/demo) からそのまま起動
 	JINRYU_DATA_DIR=data/demo $(RUN) uvicorn jinryu.api.main:app --port 8000
 
+export-html:      ## サーバ不要の単一 HTML デモ → dist/jinryu-demo.html
+	$(RUN) jinryu export-html
+
 test:
 	$(RUN) pytest -q
 
