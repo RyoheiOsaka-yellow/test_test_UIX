@@ -177,6 +177,12 @@ button { font-family: inherit; }
 }
 #hud-top { top: 18px; }
 #hud-sub { top: 34px; font-size: 9.5px; color: #7f9bb5; letter-spacing: .1em; }
+#hud-now {
+  position: absolute; left: 276px; top: 50px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px;
+  letter-spacing: .1em; color: #9be7ff; text-shadow: 0 0 10px rgba(0,0,0,.95);
+  transition: opacity .3s;
+}
 #hud-legend {
   position: absolute; left: 368px; bottom: 18px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9.5px;
@@ -443,11 +449,14 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
   <div id="cloud-hud">
     <div id="hud-top">4 CAMERAS // 0 TRACKED // 0 PORTALS</div>
     <div id="hud-sub">POINT CLOUD DIGITAL TWIN</div>
+    <div id="hud-now">NOW GAZING ▸ —</div>
     <div id="hud-hotspots"></div>
     <div id="hud-legend">
       <div><i style="background:#c98500"></i>CAMERA / FRUSTUM</div>
       <div><i style="background:#9bbf3a"></i>FLOOR COVERAGE</div>
       <div><i style="background:#31c5f0"></i>DETECTION / TRACKED</div>
+      <div><i style="background:linear-gradient(90deg,#0f9fba,#ffffff)"></i>GAZE RAY / 注視スプラット</div>
+      <div><i style="background:linear-gradient(90deg,#24293f,#9085e9)"></i>FLOOR 回遊ヒート</div>
       <div><i style="background:linear-gradient(90deg,#1d62c4,#20bedc,#4acd6e,#eccd37,#e23a2c);width:54px"></i>GAZE HEAT 低→高</div>
     </div>
   </div>
@@ -490,6 +499,7 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
           <label class="row"><input type="checkbox" id="ly-cheat" checked /><span class="chip" style="background:linear-gradient(90deg,#1d62c4,#4acd6e,#e23a2c)"></span>棚 視線ヒート投影（点群）</label>
           <label class="row"><input type="checkbox" id="ly-frustum" checked /><span class="chip" style="background:#c98500"></span>CCTV視錐台・床カバレッジ</label>
           <label class="row"><input type="checkbox" id="ly-detect" checked /><span class="chip" style="background:#31c5f0"></span>人物検出・トラッキング</label>
+          <label class="row"><input type="checkbox" id="ly-rays" checked /><span class="chip" style="background:linear-gradient(90deg,#0f9fba,#ffffff)"></span>視線レイ・注視スプラット</label>
           <div class="sp-radio" id="heat-window" style="margin:6px 0 2px">
             <button data-win="day" class="active">本日累計</button>
             <button data-win="recent">直近30分</button>

@@ -8,10 +8,12 @@
    ========================================================================= */
 
 const CLOUD = {
-  on: false, heat: true, frustum: true, detection: true, window: 'day',
+  on: false, heat: true, frustum: true, detection: true, rays: true, window: 'day',
   group: null, points: null, base: null, uv: null, shelfIdx: null,
   cams: [], tracked: null, trackTimer: 0, hudTimer: 0,
   detLines: null, trackLabel: null, trackRing: null,
+  gazeRays: null, splats: null, splatLife: null, splatCursor: 0,
+  heatTimer: 0, gazeRate: 0, gazeAcc: 0, rateTimer: 0, floorCanvas: null, floorTex: null, floorPlane: null,
 };
 window.CLOUD = CLOUD;
 
@@ -59,7 +61,12 @@ function shelfPointSpec(s) {
 }
 
 function buildPointCloud() {
+  // 施設切替・再構築時に追跡状態と計測レートをリセット
+  CLOUD.tracked = null; CLOUD.trackTimer = 0;
+  CLOUD.gazeAcc = 0; CLOUD.rateTimer = 0; CLOUD.gazeRate = 0;
+  if (CLOUD.splatLife) CLOUD.splatLife.fill(0);
   if (CLOUD.group) { scene.remove(CLOUD.group); disposeObject(CLOUD.group); }
+  CLOUD.trackLabel = null;
   CLOUD.group = new THREE.Group();
   CLOUD.group.visible = CLOUD.on;
   const W = STORE.floorW, D = STORE.floorD;
@@ -159,12 +166,16 @@ function buildPointCloud() {
   });
 
   // 床のスキャン点（疎・空間の手がかり）
-  const floorN = Math.round(STORE.floorW * STORE.floorD * 24);
+  const floorN = Math.round(STORE.floorW * STORE.floorD * 34);
   for (let i = 0; i < floorN; i++) {
     const g = 0.2 + cloudRng() * 0.12;
-    pos.push((cloudRng() - 0.5) * STORE.floorW, 0.004 + cloudRng() * 0.012, (cloudRng() - 0.5) * STORE.floorD);
+    const fx = (cloudRng() - 0.5) * STORE.floorW, fz = (cloudRng() - 0.5) * STORE.floorD;
+    pos.push(fx, 0.004 + cloudRng() * 0.012, fz);
     col.push(g * 0.8, g * 0.92, g * 1.18);
-    uvs.push(0, 0); sidx.push(-1);
+    // 床点は回遊ヒートを引くため、フロア内の正規化座標を uv に格納
+    uvs.push(clamp((fx + STORE.floorW / 2) / STORE.floorW, 0, 0.999),
+             clamp((fz + STORE.floorD / 2) / STORE.floorD, 0, 0.999));
+    sidx.push(-1);
   }
 
   const geo = new THREE.BufferGeometry();
@@ -203,8 +214,25 @@ function buildPointCloud() {
     color: 0xc98500, transparent: true, opacity: 0.22,
   })));
 
+  // 床の回遊ヒート（歩行の蓄積を面で表示。視線ヒート＝青→赤 と区別するためバイオレット系）
+  CLOUD.floorCanvas = document.createElement('canvas');
+  CLOUD.floorCanvas.width = heat.w; CLOUD.floorCanvas.height = heat.h;
+  if (CLOUD.floorTex) CLOUD.floorTex.dispose();
+  CLOUD.floorTex = new THREE.CanvasTexture(CLOUD.floorCanvas);
+  CLOUD.floorPlane = new THREE.Mesh(
+    new THREE.PlaneGeometry(STORE.floorW, STORE.floorD),
+    new THREE.MeshBasicMaterial({
+      map: CLOUD.floorTex, transparent: true, opacity: 0.9,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })
+  );
+  CLOUD.floorPlane.rotation.x = -Math.PI / 2;
+  CLOUD.floorPlane.position.y = 0.025;
+  CLOUD.group.add(CLOUD.floorPlane);
+
   buildCameras();
   buildDetectionLines();
+  buildGazeFx();
   scene.add(CLOUD.group);
   updateCloudColors();
 }
@@ -254,7 +282,7 @@ function buildCameras() {
       floorPts[0].x, 0.03, floorPts[0].z, floorPts[2].x, 0.03, floorPts[2].z, floorPts[3].x, 0.03, floorPts[3].z,
     ]), 3));
     const cover = new THREE.Mesh(cg, new THREE.MeshBasicMaterial({
-      color: 0x9bbf3a, transparent: true, opacity: 0.11, side: THREE.DoubleSide, depthWrite: false,
+      color: 0x9bbf3a, transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false,
     }));
     g.add(cover);
 
@@ -270,6 +298,125 @@ function buildCameras() {
     CLOUD.group.add(g);
     CLOUD.cams.push({ def, p, fwd, range: R * 2.4, cosLimit: Math.cos(0.62), frustum, cover, label, group: g });
   });
+}
+
+const SPLAT_MAX = 200, RAY_MAX = 56, RAY_DOTS = 14;
+let softTex = null;
+function softCircleTexture() {
+  if (softTex) return softTex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,1)');
+  g.addColorStop(0.35, 'rgba(255,255,255,0.6)');
+  g.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
+  softTex = new THREE.CanvasTexture(c);
+  return softTex;
+}
+function buildGazeFx() {
+  // 視線レイ（各客の頭 → 棚面の注視点）
+  const rg = new THREE.BufferGeometry();
+  rg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(RAY_MAX * 2 * 3), 3));
+  rg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(RAY_MAX * 2 * 3), 3));
+  CLOUD.gazeRays = new THREE.LineSegments(rg, new THREE.LineBasicMaterial({
+    vertexColors: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
+  CLOUD.gazeRays.frustumCulled = false;
+  CLOUD.group.add(CLOUD.gazeRays);
+
+  const rpg = new THREE.BufferGeometry();
+  rpg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(RAY_MAX * RAY_DOTS * 3), 3));
+  rpg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(RAY_MAX * RAY_DOTS * 3), 3));
+  CLOUD.rayDots = new THREE.Points(rpg, new THREE.PointsMaterial({
+    size: 0.085, map: softCircleTexture(), vertexColors: true, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+  }));
+  CLOUD.rayDots.frustumCulled = false;
+  CLOUD.group.add(CLOUD.rayDots);
+
+  // 注視スプラット（見られた瞬間に棚面へ落ちる光点。減衰して累積ヒートに溶ける）
+  const sg = new THREE.BufferGeometry();
+  sg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(SPLAT_MAX * 3), 3));
+  sg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(SPLAT_MAX * 3), 3));
+  CLOUD.splats = new THREE.Points(sg, new THREE.PointsMaterial({
+    size: 0.34, map: softCircleTexture(), vertexColors: true, transparent: true, opacity: 1.0,
+    blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+  }));
+  CLOUD.splats.frustumCulled = false;
+  CLOUD.splatLife = new Float32Array(SPLAT_MAX);
+  CLOUD.splatCursor = 0;
+  CLOUD.group.add(CLOUD.splats);
+}
+
+function spawnSplat(x, y, z, strength) {
+  const i = CLOUD.splatCursor = (CLOUD.splatCursor + 1) % SPLAT_MAX;
+  const pa = CLOUD.splats.geometry.attributes.position.array;
+  pa[i * 3] = x + (cloudRng() - 0.5) * 0.07;
+  pa[i * 3 + 1] = y + (cloudRng() - 0.5) * 0.07;
+  pa[i * 3 + 2] = z + (cloudRng() - 0.5) * 0.07;
+  CLOUD.splatLife[i] = clamp(0.85 + strength * 2.4, 0.6, 1.5);
+  CLOUD.splats.geometry.attributes.position.needsUpdate = true;
+}
+
+function updateGazeFx(realDt) {
+  const rayPos = CLOUD.gazeRays.geometry.attributes.position.array;
+  const rayCol = CLOUD.gazeRays.geometry.attributes.color.array;
+  const dotPos = CLOUD.rayDots.geometry.attributes.position.array;
+  const dotCol = CLOUD.rayDots.geometry.attributes.color.array;
+  const tNow = performance.now() / 1000;
+  let n = 0;
+  if (CLOUD.rays) {
+    for (const a of agents) {
+      if (n >= RAY_MAX) break;
+      if (a.done || !a.gazing || !a.gazeHit) continue;
+      const c = new THREE.Color(a.persona.color);
+      const isTracked = a === CLOUD.tracked;
+      const k = isTracked ? 1.5 : 0.95;
+      rayPos[n * 6] = a.x; rayPos[n * 6 + 1] = (a.eyeH || 1.6); rayPos[n * 6 + 2] = a.z;
+      rayPos[n * 6 + 3] = a.gazeHit[0]; rayPos[n * 6 + 4] = a.gazeHit[1]; rayPos[n * 6 + 5] = a.gazeHit[2];
+      rayCol[n * 6] = c.r * k * 0.18; rayCol[n * 6 + 1] = c.g * k * 0.18; rayCol[n * 6 + 2] = c.b * k * 0.18;
+      rayCol[n * 6 + 3] = c.r * k; rayCol[n * 6 + 4] = c.g * k; rayCol[n * 6 + 5] = c.b * k;
+      // 視線上を流れる光の粒（頭 → 注視点）
+      for (let d = 0; d < RAY_DOTS; d++) {
+        const base = (n * RAY_DOTS + d) * 3;
+        const flow = ((d / RAY_DOTS) + tNow * 0.55 + a.id * 0.13) % 1;
+        dotPos[base] = lerp(a.x, a.gazeHit[0], flow);
+        dotPos[base + 1] = lerp(a.eyeH || 1.6, a.gazeHit[1], flow);
+        dotPos[base + 2] = lerp(a.z, a.gazeHit[2], flow);
+        const br = (0.25 + flow * 0.95) * (isTracked ? 1.5 : 0.95);
+        dotCol[base] = clamp(c.r * br, 0, 1);
+        dotCol[base + 1] = clamp(c.g * br, 0, 1);
+        dotCol[base + 2] = clamp(c.b * br, 0, 1);
+      }
+      n++;
+      // 注視点に光を落とす（見た瞬間 → ヒートへ蓄積されるプロセスを可視化）
+      if (cloudRng() < realDt * (isTracked ? 9 : 3.4)) spawnSplat(a.gazeHit[0], a.gazeHit[1], a.gazeHit[2], a.gazeW || 0.1);
+    }
+  }
+  CLOUD.gazeRays.geometry.setDrawRange(0, n * 2);
+  CLOUD.gazeRays.geometry.attributes.position.needsUpdate = true;
+  CLOUD.gazeRays.geometry.attributes.color.needsUpdate = true;
+  CLOUD.gazeRays.visible = CLOUD.rays && n > 0;
+  CLOUD.rayDots.geometry.setDrawRange(0, n * RAY_DOTS);
+  CLOUD.rayDots.geometry.attributes.position.needsUpdate = true;
+  CLOUD.rayDots.geometry.attributes.color.needsUpdate = true;
+  CLOUD.rayDots.visible = CLOUD.rays && n > 0;
+
+  // スプラットの減衰
+  const sc = CLOUD.splats.geometry.attributes.color.array;
+  let alive = false;
+  for (let i = 0; i < SPLAT_MAX; i++) {
+    if (CLOUD.splatLife[i] <= 0) { sc[i * 3] = sc[i * 3 + 1] = sc[i * 3 + 2] = 0; continue; }
+    CLOUD.splatLife[i] = Math.max(0, CLOUD.splatLife[i] - realDt * 0.62);
+    const l = CLOUD.splatLife[i];
+    const e = Math.pow(l, 1.4);
+    sc[i * 3] = 0.75 * e; sc[i * 3 + 1] = 1.0 * e; sc[i * 3 + 2] = 1.0 * e;
+    alive = true;
+  }
+  CLOUD.splats.geometry.attributes.color.needsUpdate = true;
+  CLOUD.splats.visible = CLOUD.rays && alive;
 }
 
 function buildDetectionLines() {
@@ -318,8 +465,10 @@ function updateCloudColors() {
     return;
   }
   // 棚内の相対（どこを見たか）× 棚間の相対（どの棚が見られたか）のハイブリッド正規化
-  const shelfMax = {}, shelfTot = {}, smooth = {};
-  let globalTot = 1e-6;
+  const shelfMax = {}, shelfTot = {}, smooth = {}, liveG = {};
+  let globalTot = 1e-6, liveMax = 1e-6, floorMax = 1e-6;
+  // 床の回遊（歩行）グリッドの最大値
+  if (heat.grid) for (let i = 0; i < heat.grid.length; i++) if (heat.grid[i] > floorMax) floorMax = heat.grid[i];
   SHELVES.forEach(s => {
     const st0 = STATS.shelves[s.id];
     const g = st0 && gridFor(st0);
@@ -329,6 +478,12 @@ function updateCloudColors() {
     for (let i = 0; i < sm.length; i++) { if (sm[i] > m) m = sm[i]; sum += g[i]; }
     smooth[s.id] = sm; shelfMax[s.id] = m; shelfTot[s.id] = sum;
     if (sum > globalTot) globalTot = sum;
+    const lv = st0.gridLive;
+    if (lv) {
+      const ls = smoothGrid(lv);
+      liveG[s.id] = ls;
+      for (let i = 0; i < ls.length; i++) if (ls[i] > liveMax) liveMax = ls[i];
+    }
   });
   for (let i = 0; i < CLOUD.shelfIdx.length; i++) {
     const s = SHELVES[CLOUD.shelfIdx[i]];
@@ -336,12 +491,25 @@ function updateCloudColors() {
     const gi3 = i * 3;
     const dim = 0.72;
     const lum = (0.299 * CLOUD.base[gi3] + 0.587 * CLOUD.base[gi3 + 1] + 0.114 * CLOUD.base[gi3 + 2]) * dim;
+
+    // 床の点: 歩行の回遊ヒートに連動（バイオレット系＝視線ヒートと区別）
+    if (CLOUD.shelfIdx[i] < 0) {
+      const gx = Math.min(heat.w - 1, Math.floor(CLOUD.uv[i * 2] * heat.w));
+      const gz = Math.min(heat.h - 1, Math.floor(CLOUD.uv[i * 2 + 1] * heat.h));
+      const fv = Math.log1p(clamp(heat.grid[gz * heat.w + gx] / floorMax, 0, 1) * 24) / Math.log1p(24);
+      arr[gi3] = lerp(0.10, 0.34, fv);
+      arr[gi3 + 1] = lerp(0.12, 0.30, fv);
+      arr[gi3 + 2] = lerp(0.20, 0.46, fv);
+      continue;
+    }
+
     if (!st || !st.grid || shelfTot[s.id] <= 0) {
       arr[gi3] = lum * 0.92; arr[gi3 + 1] = lum * 0.97; arr[gi3 + 2] = lum * 1.08;
       continue;
     }
     const u = CLOUD.uv[i * 2], v = CLOUD.uv[i * 2 + 1];
-    const raw = smooth[s.id][Math.floor(v * GRID_V) * GRID_U + Math.floor(u * GRID_U)];
+    const ci = Math.floor(v * GRID_V) * GRID_U + Math.floor(u * GRID_U);
+    const raw = smooth[s.id][ci];
     const within = raw / shelfMax[s.id];                         // 棚内のどこか
     const between = Math.pow(shelfTot[s.id] / globalTot, 0.45);  // どの棚が熱いか
     const cell = within * (0.45 + 0.55 * between);
@@ -354,8 +522,35 @@ function updateCloudColors() {
       arr[gi3 + 1] = lerp(lum * 0.97, g2, k);
       arr[gi3 + 2] = lerp(lum * 1.08, b, k);
     }
+    // 「今まさに見られている」セルを白く発光させる（人の動きと連動）
+    const lg = liveG[s.id];
+    if (lg) {
+      const live = Math.pow(clamp(lg[ci] / liveMax, 0, 1), 0.8);
+      if (live > 0.02) {
+        arr[gi3] = clamp(arr[gi3] + live * 0.72, 0, 1);
+        arr[gi3 + 1] = clamp(arr[gi3 + 1] + live * 0.95, 0, 1);
+        arr[gi3 + 2] = clamp(arr[gi3 + 2] + live * 1.05, 0, 1);
+      }
+    }
   }
   colAttr.needsUpdate = true;
+}
+
+function redrawFloorHeatCloud() {
+  if (!CLOUD.floorCanvas || !heat.grid) return;
+  const ctx = CLOUD.floorCanvas.getContext('2d');
+  const img = ctx.createImageData(heat.w, heat.h);
+  let max = 1e-6;
+  for (let i = 0; i < heat.grid.length; i++) if (heat.grid[i] > max) max = heat.grid[i];
+  for (let i = 0; i < heat.grid.length; i++) {
+    const v = Math.log1p(clamp(heat.grid[i] / max, 0, 1) * 24) / Math.log1p(24);
+    img.data[i * 4] = Math.round(lerp(28, 196, v));
+    img.data[i * 4 + 1] = Math.round(lerp(18, 150, v));
+    img.data[i * 4 + 2] = Math.round(lerp(62, 255, v));
+    img.data[i * 4 + 3] = Math.round(v * 215);
+  }
+  ctx.putImageData(img, 0, 0);
+  CLOUD.floorTex.needsUpdate = true;
 }
 
 /* ---------- トラッキング ---------- */
@@ -390,7 +585,7 @@ function updateTrackLabel(a, cams) {
   if (CLOUD.trackLabel && CLOUD.trackLabel.userData.txt === txt) return;
   if (CLOUD.trackLabel) { CLOUD.group.remove(CLOUD.trackLabel); disposeObject(CLOUD.trackLabel); }
   const sp = makeLabel(txt, '#d8f4ff', 'rgba(8,14,26,0.92)');
-  sp.scale.multiplyScalar(0.5);
+  sp.scale.multiplyScalar(0.34);
   sp.userData.txt = txt;
   CLOUD.trackLabel = sp;
   CLOUD.group.add(sp);
@@ -407,7 +602,14 @@ function updateCloud(realDt) {
     if (a.bodyMesh) a.bodyMesh.visible = !CLOUD.on;
     if (a.headMesh) a.headMesh.visible = !CLOUD.on;
     if (a.ring) a.ring.visible = a.hasNovelty && !CLOUD.on;
-    if (a.detDot) a.detDot.visible = CLOUD.on && CLOUD.detection;
+    if (a.detDot) {
+      a.detDot.visible = CLOUD.on && CLOUD.detection;
+      if (a.detDot.visible) {
+        const pulse = a.gazing ? 1 + Math.sin(performance.now() / 1000 * 8 + a.id) * 0.35 : 1;
+        a.detDot.scale.setScalar(pulse);
+        a.detDot.material.color.setHex(a.gazing ? 0x9be7ff : 0x31c5f0);
+      }
+    }
   });
   if (!CLOUD.on) {
     if (CLOUD.trackLabel) CLOUD.trackLabel.visible = false;
@@ -421,6 +623,7 @@ function updateCloud(realDt) {
     c.label.visible = S.layers.labels;
   });
   if (CLOUD.detLines) CLOUD.detLines.visible = CLOUD.detection;
+  if (CLOUD.floorPlane) CLOUD.floorPlane.visible = S.layers.floorheat;
 
   // トラッキング対象の更新
   CLOUD.trackTimer += realDt;
@@ -433,7 +636,7 @@ function updateCloud(realDt) {
     updateTrackLabel(a, cams);
     if (CLOUD.trackLabel) {
       CLOUD.trackLabel.visible = true;
-      CLOUD.trackLabel.position.set(a.x, 1.95, a.z);
+      CLOUD.trackLabel.position.set(a.x, 2.05, a.z);
     }
     CLOUD.trackRing.visible = true;
     CLOUD.trackRing.position.set(a.x, 0.04, a.z);
@@ -453,11 +656,24 @@ function updateCloud(realDt) {
     CLOUD.detLines.geometry.setDrawRange(0, 0);
   }
 
-  // ヒート再投影・HUD
+  // 視線レイ・注視スプラット（毎フレーム）
+  updateGazeFx(realDt);
+
+  // ヒート再投影（人の動きに追随させるため高頻度）
+  CLOUD.heatTimer += realDt;
+  if (CLOUD.heatTimer > 0.3) { CLOUD.heatTimer = 0; updateCloudColors(); redrawFloorHeatCloud(); }
+
+  // 視線イベントのレート
+  CLOUD.rateTimer += realDt;
+  if (CLOUD.rateTimer >= 1) {
+    if (CLOUD.gazeAcc > 0) CLOUD.gazeRate = Math.round((STATS.gazeEvents - CLOUD.gazeAcc) / CLOUD.rateTimer);
+    CLOUD.gazeAcc = STATS.gazeEvents; CLOUD.rateTimer = 0;
+  }
+
+  // HUD
   CLOUD.hudTimer += realDt;
   if (CLOUD.hudTimer > 1.0) {
     CLOUD.hudTimer = 0;
-    updateCloudColors();
     const portals = Object.values(EDGES).reduce((s, e) => s + e.length, 0) / 2;
     const tracked = CLOUD.tracked && !CLOUD.tracked.done ? 1 : 0;
     const el = document.getElementById('hud-top');
@@ -465,7 +681,18 @@ function updateCloud(realDt) {
     const el2 = document.getElementById('hud-sub');
     if (el2) {
       const live = agents.filter(x => !x.done).length;
-      el2.textContent = `${STORE.label.toUpperCase()} // ${live} DETECTIONS // ${fmtNum(CLOUD.shelfIdx.length)} POINTS // ${CLOUD.window === 'recent' ? 'LAST 30 MIN' : 'TODAY'}`;
+      el2.textContent = `${STORE.label.toUpperCase()} // ${live} DETECTIONS // ${CLOUD.gazeRate} GAZE/s // ${CLOUD.window === 'recent' ? 'LAST 30 MIN' : 'TODAY'}`;
+    }
+    const el3 = document.getElementById('hud-now');
+    if (el3) {
+      const a = CLOUD.tracked;
+      if (a && !a.done && a.gazing && a.gazeShelf) {
+        const sh = shelfById[a.gazeShelf];
+        const row = Math.floor(a.gazeCell / GRID_U), colI = a.gazeCell % GRID_U;
+        const tierName = ['最下段', '下段', '中段', '中上段', '上段', '最上段'][row] || '';
+        el3.textContent = sh ? `NOW GAZING ▸ ${sh.name} / ${tierName} ${colI + 1}列目` : 'NOW GAZING ▸ —';
+        el3.style.opacity = 1;
+      } else { el3.style.opacity = 0.25; el3.textContent = 'NOW GAZING ▸ —'; }
     }
     renderHotspots();
   }
@@ -505,6 +732,8 @@ function setRenderMode(mode) {
   if (hud) hud.style.display = CLOUD.on ? 'block' : 'none';
   document.body.classList.toggle('cloud-mode', CLOUD.on);
   if (CLOUD.on) {
+    CLOUD.gazeAcc = STATS.gazeEvents; CLOUD.rateTimer = 0; CLOUD.gazeRate = 0;
+    redrawFloorHeatCloud();
     CLOUD.hudTimer = 99;
     updateCloudColors();
     const pr = STORE.camPresets.over;
@@ -521,6 +750,7 @@ document.getElementById('render-mode').addEventListener('click', e => {
 document.getElementById('ly-cheat').addEventListener('change', e => { CLOUD.heat = e.target.checked; updateCloudColors(); });
 document.getElementById('ly-frustum').addEventListener('change', e => { CLOUD.frustum = e.target.checked; });
 document.getElementById('ly-detect').addEventListener('change', e => { CLOUD.detection = e.target.checked; });
+document.getElementById('ly-rays').addEventListener('change', e => { CLOUD.rays = e.target.checked; });
 document.getElementById('heat-window').addEventListener('click', e => {
   const b = e.target.closest('button[data-win]');
   if (!b) return;

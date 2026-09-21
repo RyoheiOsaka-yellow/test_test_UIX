@@ -220,7 +220,8 @@ function freshShelfStats() {
   return {
     passes: 0, gazes: 0, gazeSec: 0, stops: 0, picks: 0, purchases: 0,
     grid: new Float32Array(GRID_U * GRID_V),          // 本日累計
-    gridRecent: new Float32Array(GRID_U * GRID_V),    // 直近（指数減衰）
+    gridRecent: new Float32Array(GRID_U * GRID_V),    // 直近30分（指数減衰）
+    gridLive: new Float32Array(GRID_U * GRID_V),      // ライブ発光（数十秒で減衰）
   };
 }
 const STATS = {
@@ -228,7 +229,7 @@ const STATS = {
   visitors: 0, adVisitors: 0, buyers: 0, revenue: 0, promoUnits: 0,
   nov: { treat: 0, ctrl: 0, treatBuy: 0, ctrlBuy: 0, treatRev: 0, ctrlRev: 0 },
   cross: { none: { n: 0, buy: 0 }, ad: { n: 0, buy: 0 }, sig: { n: 0, buy: 0 }, both: { n: 0, buy: 0 } },
-  personas: {}, balked: 0, balkedRev: 0, waitSum: 0, waitN: 0, maxQueue: 0, reg2Opened: false,
+  personas: {}, balked: 0, balkedRev: 0, waitSum: 0, waitN: 0, maxQueue: 0, reg2Opened: false, gazeEvents: 0,
   shelves: {}, buckets: [], adStoreVisits: 0, returns: 0, applied: 0,
 };
 function resetPersonaStats() {
@@ -607,11 +608,34 @@ function accumulateGaze(agent, s, w, dist) {
   const gi = Math.floor(v * GRID_V) * GRID_U + Math.floor(u * GRID_U);
   st.grid[gi] += w;
   if (st.gridRecent) st.gridRecent[gi] += w;
+  if (st.gridLive) st.gridLive[gi] += w;
+  STATS.gazeEvents++;
+
+  // 棚面上の注視点（3D座標）。最も強く見ている棚をエージェントに記録する
+  if (w > (agent.gazeW || 0)) {
+    const depth = alongX ? s.size[2] : s.size[0];
+    const face = Math.max(depth / 2 - 0.04, 0.05);
+    let hx, hy, hz;
+    if (s.kind === 'island-case') {
+      hx = s.pos[0] + (u - 0.5) * s.size[0];
+      hy = 0.82;
+      hz = s.pos[2] + (agent.z > s.pos[2] ? 0.3 : -0.3) * s.size[2];
+    } else {
+      hx = alongX ? s.pos[0] + (u - 0.5) * length : s.pos[0] + s.normal[0] * face;
+      hz = alongX ? s.pos[2] + s.normal[2] * face : s.pos[2] + (u - 0.5) * length;
+      hy = yHit;
+    }
+    agent.gazeW = w;
+    agent.gazeHit = [hx, hy, hz];
+    agent.gazeShelf = s.id;
+    agent.gazeCell = gi;
+  }
 }
 
 /* 視線・通過検知 */
 const GAZE_DIST = 2.9, GAZE_COS = Math.cos(45 * Math.PI / 180);
 function senseGaze(agent, interval) {
+  agent.gazeW = 0;
   for (const s of SHELVES) {
     if (s.promoted && !S.endcap && s.id === STORE.promoted.mainId) continue;
     const gx = s.pos[0], gz = s.pos[2];
@@ -633,6 +657,7 @@ function senseGaze(agent, interval) {
       agent['gz_' + s.id] = true; STATS.shelves[s.id].gazes++;
     }
   }
+  agent.gazing = agent.gazeW > 0;
 }
 
 /* ---------- 過去14日 scripted 日次データ ---------- */
@@ -1384,7 +1409,7 @@ function redrawHeat() {
   let max = 8;
   for (let i = 0; i < heat.grid.length; i++) if (heat.grid[i] > max) max = heat.grid[i];
   for (let i = 0; i < heat.grid.length; i++) {
-    const v = Math.pow(clamp(heat.grid[i] / max, 0, 1), 0.6);
+    const v = Math.log1p(clamp(heat.grid[i] / max, 0, 1) * 24) / Math.log1p(24);
     const [r, g, b] = heatColor(v);
     img.data[i * 4] = r; img.data[i * 4 + 1] = g; img.data[i * 4 + 2] = b;
     img.data[i * 4 + 3] = Math.round(v * 185);
@@ -1396,17 +1421,28 @@ function redrawHeat() {
 /* 棚ヒート（視線量 → 白→ブルーのティント） */
 const heatTint = new THREE.Color();
 function updateShelfHeatVisual() {
-  let max = 20;
-  SHELVES.forEach(s => { const g = STATS.shelves[s.id].gazeSec; if (g > max) max = g; });
+  let max = 20, liveNorm = 1e-6;
+  SHELVES.forEach(s => {
+    const st = STATS.shelves[s.id];
+    if (st.gazeSec > max) max = st.gazeSec;
+    const lg = st.gridLive;
+    if (lg) { let sum = 0; for (let i = 0; i < lg.length; i++) sum += lg[i]; if (sum > liveNorm) liveNorm = sum; }
+  });
   SHELVES.forEach(s => {
     const sm = shelfMeshes[s.id]; if (!sm || !sm.mesh.material) return;
     if (!sm.mesh.material.color) return;
     const v = clamp(STATS.shelves[s.id].gazeSec / max, 0, 1);
     if (S.layers.shelfheat) {
+      // 直近に見られている棚は明るく脈動させ、人の動きとヒートの連動を可視化
+      const lg = STATS.shelves[s.id].gridLive;
+      let liveSum = 0;
+      if (lg) for (let i = 0; i < lg.length; i++) liveSum += lg[i];
+      const live = clamp(liveSum / (liveNorm || 1), 0, 1);
+      const pulse = live > 0.05 ? (0.5 + 0.5 * Math.sin(performance.now() / 260)) * live * 0.45 : 0;
       heatTint.setRGB(
-        lerp(0.985, 0.31, v),
-        lerp(0.99, 0.70, v),
-        lerp(1.0, 0.82, v)
+        clamp(lerp(0.985, 0.31, v) + pulse * 0.75, 0, 1),
+        clamp(lerp(0.99, 0.70, v) + pulse, 0, 1),
+        clamp(lerp(1.0, 0.82, v) + pulse, 0, 1)
       );
       sm.mesh.material.color.copy(heatTint);
     } else {
@@ -1416,7 +1452,7 @@ function updateShelfHeatVisual() {
 }
 
 /* ---------- シミュレーションループ ---------- */
-let arrivalCarry = 0, gazeTimer = 0, heatTimer = 0, shelfHeatTimer = 0, lastWeatherBg = null, gazeDecayAcc = 0;
+let arrivalCarry = 0, gazeTimer = 0, heatTimer = 0, shelfHeatTimer = 0, lastWeatherBg = null, gazeDecayAcc = 0, gazeLiveAcc = 0;
 
 function simStep(simDt) {
   // 3Dへ出すエージェントはサンプリング（ダッシュボードは sampleFactor 倍で拡大推計）
@@ -1449,6 +1485,17 @@ function simStep(simDt) {
   for (let i = agents.length - 1; i >= 0; i--) {
     if (agents[i].done) { if (followTarget === agents[i]) followTarget = null; disposeAgent(agents[i]); agents.splice(i, 1); }
   }
+  // ライブ層の減衰（半減期 約25 sim秒 — 見た瞬間に光り、すぐ褪せる）
+  gazeLiveAcc += simDt;
+  if (gazeLiveAcc >= 3) {
+    gazeLiveAcc -= 3;
+    SHELVES.forEach(s => {
+      const g = STATS.shelves[s.id] && STATS.shelves[s.id].gridLive;
+      if (!g) return;
+      for (let i = 0; i < g.length; i++) g[i] *= 0.92;
+    });
+  }
+
   // 直近ウィンドウの指数減衰（半減期 約10分）
   gazeDecayAcc += simDt;
   if (gazeDecayAcc >= 60) {
@@ -1481,6 +1528,7 @@ function resetDayCounters() {
   STATS.cross = { none: { n: 0, buy: 0 }, ad: { n: 0, buy: 0 }, sig: { n: 0, buy: 0 }, both: { n: 0, buy: 0 } };
   resetPersonaStats();
   STATS.balked = 0; STATS.balkedRev = 0; STATS.waitSum = 0; STATS.waitN = 0; STATS.maxQueue = 0; STATS.reg2Opened = false;
+  STATS.gazeEvents = 0;
   REGS.forEach(r => { r.queue.length = 0; if (FKEY === 'conbini') r.open = r === REGS[0]; });
   resetShelfStats();
   STATS.buckets = STATS.buckets.map(() => 0);
@@ -1569,9 +1617,9 @@ function updateVisuals(realDt) {
   if (window.__cloudReady) updateCloud(realDt);
 
   heatTimer += realDt;
-  if (heatTimer > 0.5 && S.layers.floorheat) { heatTimer = 0; redrawHeat(); }
+  if (heatTimer > 0.34 && S.layers.floorheat) { heatTimer = 0; redrawHeat(); }
   shelfHeatTimer += realDt;
-  if (shelfHeatTimer > 0.8) { shelfHeatTimer = 0; updateShelfHeatVisual(); }
+  if (shelfHeatTimer > 0.12) { shelfHeatTimer = 0; updateShelfHeatVisual(); }
 
   if (camTween) {
     camTween.t += realDt * 2.2;
