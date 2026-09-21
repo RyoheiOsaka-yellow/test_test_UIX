@@ -33,14 +33,14 @@ CHAIR_A = np.array([-1.5, 1.2 - 0.25, 2.2])
 CHAIR_B = np.array([1.35, 1.2 - 0.25, 2.3])
 
 
-def build_datasets(width: int, height: int, frames: int):
+def build_datasets(width: int, height: int, frames: int, mask_tiles: int = 1):
     room1 = default_room()
     room1.move_box("chair", CHAIR_A)
     room2 = copy.deepcopy(room1)
     room2.move_box("chair", CHAIR_B)
     traj = sweep_trajectory(frames)
-    ds1 = SyntheticDataset(room1, traj, width, height, run_id="run1")
-    ds2 = SyntheticDataset(room2, traj, width, height, run_id="run2")
+    ds1 = SyntheticDataset(room1, traj, width, height, run_id="run1", mask_tiles=mask_tiles)
+    ds2 = SyntheticDataset(room2, traj, width, height, run_id="run2", mask_tiles=mask_tiles)
     return ds1, ds2
 
 
@@ -97,6 +97,8 @@ def main():
     ap.add_argument("--single-iters", type=int, default=25)
     ap.add_argument("--out", type=str, default="output")
     ap.add_argument("--only", choices=["static", "game"], default=None)
+    ap.add_argument("--tiles", type=int, default=1,
+                    help="split floor/wall masks into an NxN grid of masks (SAM-like over-segmentation)")
     args = ap.parse_args()
 
     out_dir = Path(args.out)
@@ -107,7 +109,7 @@ def main():
         print(msg, flush=True)
         log_lines.append(str(msg))
 
-    ds1, ds2 = build_datasets(args.width, args.height, args.frames)
+    ds1, ds2 = build_datasets(args.width, args.height, args.frames, mask_tiles=args.tiles)
     chair_size = np.array([0.5, 0.5, 0.5])
 
     base_config = {

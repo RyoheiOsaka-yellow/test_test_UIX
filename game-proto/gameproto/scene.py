@@ -59,8 +59,15 @@ class Room:
         self.boxes = [b for b in self.boxes if b.name != name]
 
     # ------------------------------------------------------------------ render
-    def render(self, intrinsics: np.ndarray, pose: np.ndarray, width: int, height: int):
+    def render(self, intrinsics: np.ndarray, pose: np.ndarray, width: int, height: int,
+               mask_tiles: int = 1):
         """Ray-cast the room.
+
+        ``mask_tiles`` > 1 splits the large planar instances (floor, walls,
+        ceiling) into a ``mask_tiles x mask_tiles`` pixel grid of separate
+        masks. SAM over-segments large surfaces into many pieces, and several
+        GaME rules reason per mask, so this makes the synthetic masks more
+        representative of the real setting.
 
         Returns a dict with ``color`` (H, W, 3) float32 in [0, 1], ``depth``
         (H, W) float32 metres (camera-space Z), ``instance`` (H, W) int32 ids
@@ -129,8 +136,23 @@ class Room:
 
         depth = np.where(np.isfinite(t_best), t_best, 0.0).astype(np.float32)
         color = np.clip(color, 0.0, 1.0)
-        masks = np.stack([inst == i for i in range(len(names))], axis=0)
-        masks = masks[masks.sum(axis=(1, 2)) > 0]
+        mask_list = []
+        for i in range(len(names)):
+            m = inst == i
+            if not m.any():
+                continue
+            if mask_tiles > 1 and i < 5:  # planar instances
+                for ty in range(mask_tiles):
+                    for tx in range(mask_tiles):
+                        tile = np.zeros_like(m)
+                        y0, y1 = ty * height // mask_tiles, (ty + 1) * height // mask_tiles
+                        x0, x1 = tx * width // mask_tiles, (tx + 1) * width // mask_tiles
+                        tile[y0:y1, x0:x1] = m[y0:y1, x0:x1]
+                        if tile.any():
+                            mask_list.append(tile)
+            else:
+                mask_list.append(m)
+        masks = np.stack(mask_list, axis=0)
         return {
             "color": color,
             "depth": depth,
@@ -180,8 +202,10 @@ class SyntheticDataset:
     """
 
     def __init__(self, room: Room, poses: list[np.ndarray], width: int, height: int,
-                 run_id: str = "run1", fov_x_deg: float = 70.0, start_frame: int = 0):
+                 run_id: str = "run1", fov_x_deg: float = 70.0, start_frame: int = 0,
+                 mask_tiles: int = 1):
         self.room = room
+        self.mask_tiles = mask_tiles
         self.poses = poses
         self.width, self.height = width, height
         self.intrinsics = make_intrinsics(width, height, fov_x_deg)
@@ -194,5 +218,6 @@ class SyntheticDataset:
 
     def __getitem__(self, idx: int) -> dict:
         if idx not in self._cache:
-            self._cache[idx] = self.room.render(self.intrinsics, self.poses[idx], self.width, self.height)
+            self._cache[idx] = self.room.render(self.intrinsics, self.poses[idx], self.width, self.height,
+                                                mask_tiles=self.mask_tiles)
         return self._cache[idx]
