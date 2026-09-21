@@ -1,0 +1,733 @@
+<title>GaME Playground</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=IBM+Plex+Sans+JP:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #F3F5F8; --surface: #FFFFFF; --ink: #17212B; --muted: #5B6875; --line: #D6DCE3;
+    --accent: #0E7C86; --accent-soft: #DDF1F2;
+    --stale: #E07A2C; --stale-soft: #FBE9DA; --fresh: #2E9A68; --fresh-soft: #DDF3E7;
+    --danger: #C43E3E; --map-bg: #1B2430; --map-wall: #3A4657; --map-grid: #243040; --map-text: #C8D2DE;
+    --code-bg: #EEF1F4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0F151C; --surface: #161E27; --ink: #E8EDF2; --muted: #9AA7B4; --line: #26313D;
+      --accent: #4FC3CE; --accent-soft: #123A3F; --stale: #F0904A; --stale-soft: #3E2716;
+      --fresh: #5FCF95; --fresh-soft: #163826; --danger: #E06A6A;
+      --map-bg: #0B1017; --map-wall: #2B3543; --map-grid: #16202B; --map-text: #B8C4D0; --code-bg: #1C2632;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F151C; --surface: #161E27; --ink: #E8EDF2; --muted: #9AA7B4; --line: #26313D;
+    --accent: #4FC3CE; --accent-soft: #123A3F; --stale: #F0904A; --stale-soft: #3E2716;
+    --fresh: #5FCF95; --fresh-soft: #163826; --danger: #E06A6A;
+    --map-bg: #0B1017; --map-wall: #2B3543; --map-grid: #16202B; --map-text: #B8C4D0; --code-bg: #1C2632;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "IBM Plex Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif; font-size: 15px; line-height: 1.6; padding-inline: 16px; padding-block: 0 48px; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  h1, h2, h3 { font-family: "Zen Kaku Gothic New", "IBM Plex Sans JP", sans-serif; margin: 0; line-height: 1.25; text-wrap: balance; }
+  h1 { font-size: clamp(24px, 3.4vw, 32px); font-weight: 900; }
+  h2 { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 8px; }
+  header { padding-block: 28px 16px; display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline; }
+  header p { margin: 0; color: var(--muted); max-width: 720px; }
+  code { font-family: "IBM Plex Mono", monospace; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .stage { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .canvaswrap { position: relative; width: 100%; aspect-ratio: 10 / 7; max-width: 100%; border-radius: 8px; overflow: hidden; background: var(--map-bg); touch-action: none; }
+  canvas { display: block; width: 100%; height: 100%; }
+  .caption { position: absolute; left: 12px; bottom: 12px; right: 12px; pointer-events: none; display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+  .caption .msg { background: rgba(10,14,20,0.78); color: #F2F5F8; padding: 8px 12px; border-radius: 8px; font-size: 14px; max-width: 70%; opacity: 0; transition: opacity 0.3s; }
+  .caption .msg.show { opacity: 1; }
+  .caption .mode { background: rgba(10,14,20,0.78); color: #F2F5F8; padding: 6px 10px; border-radius: 8px; font-size: 12px; letter-spacing: 0.08em; font-family: "IBM Plex Mono", monospace; }
+  .caption .mode b { color: var(--fresh); }
+  .caption .mode.static b { color: var(--stale); }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: var(--surface); color: var(--ink); padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+  .seg button:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 8px 14px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; }
+  button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.btn:disabled { opacity: 0.5; cursor: default; }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 10px; }
+  .hint kbd { font-family: "IBM Plex Mono", monospace; background: var(--code-bg); padding: 0 5px; border-radius: 4px; border: 1px solid var(--line); font-size: 12px; }
+
+  .view { margin-top: 14px; }
+  .view .rows { display: grid; grid-template-columns: 96px 1fr; gap: 6px 10px; align-items: center; font-size: 12px; color: var(--muted); }
+  .strip { height: 22px; border-radius: 4px; overflow: hidden; background: var(--map-bg); }
+  .strip canvas { height: 22px; }
+
+  .panel { display: flex; flex-direction: column; gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat .k { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .stat .v { font-family: "Zen Kaku Gothic New", sans-serif; font-size: 26px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stat .v.stale { color: var(--stale); }
+  .stat .v.fresh { color: var(--fresh); }
+  .stat .d { font-size: 12px; color: var(--muted); }
+
+  .kfs { display: flex; flex-direction: column; gap: 5px; max-height: 220px; overflow-y: auto; }
+  .kf { display: grid; grid-template-columns: 44px 1fr; gap: 8px; align-items: center; font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--muted); cursor: pointer; border-radius: 4px; padding: 2px; }
+  .kf:hover, .kf.sel { background: var(--accent-soft); }
+  .kf.ignored { opacity: 0.45; }
+  .kf .bar { height: 14px; border-radius: 3px; overflow: hidden; background: var(--map-bg); }
+  .kf .bar canvas { height: 14px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+
+  .log { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; line-height: 1.5; max-height: 190px; overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 3px; color: var(--muted); }
+  .log .add { color: var(--fresh); } .log .rm { color: var(--stale); } .log .ig { color: var(--danger); } .log .info { color: var(--ink); }
+
+  .explain { margin-top: 20px; max-width: 760px; }
+  .explain h2 { margin-top: 18px; }
+  .explain p { margin: 0 0 10px; }
+  .explain ol { padding-left: 22px; margin: 0; }
+  .explain li { margin-bottom: 6px; }
+  @media (prefers-reduced-motion: reduce) { .caption .msg { transition: none; } }
+</style>
+
+<div class="wrap">
+<header>
+  <h1>GaME Playground</h1>
+  <p>ロボットの地図は正確でも、間違っていることがある。ロボットを動かし、見ていない間に椅子を動かして、<b>静的マップ</b>と <b>GaME</b>（古い記憶を忘れられる地図）の違いを体感する。</p>
+</header>
+
+<div class="layout">
+  <div>
+    <div class="stage">
+      <div class="canvaswrap" id="stagewrap">
+        <canvas id="map" width="1000" height="700" aria-label="部屋の上面図。ロボット、実物、地図の Gaussian が描かれる"></canvas>
+        <div class="caption"><div class="msg" id="msg"></div><div class="mode" id="modeTag">MODE <b>GaME</b></div></div>
+      </div>
+      <div class="toolbar">
+        <div class="seg" role="group" aria-label="地図の方式">
+          <button id="modeStatic" aria-pressed="false">静的マップ</button>
+          <button id="modeGame" aria-pressed="true">GaME</button>
+        </div>
+        <button class="btn primary" id="play">▶ シナリオを再生</button>
+        <button class="btn" id="moveChair">椅子を反対側へ</button>
+        <button class="btn" id="resetMap">地図を消去</button>
+        <button class="btn" id="resetAll">全部リセット</button>
+      </div>
+      <div class="hint">操作: ロボットをドラッグで移動、<kbd>←</kbd><kbd>→</kbd> で旋回、<kbd>↑</kbd><kbd>↓</kbd> で前後。家具はドラッグで動かせる（ロボットが見ていない間に動かすのがポイント）。破線が現実、ぼんやりした点が地図の記憶。</div>
+      <div class="view">
+        <h2>ロボットの視点（左端が視野の左）</h2>
+        <div class="rows">
+          <div>観測（現実）</div><div class="strip"><canvas id="obsStrip" width="640" height="22"></canvas></div>
+          <div>地図の記憶</div><div class="strip"><canvas id="mapStrip" width="640" height="22"></canvas></div>
+          <div>矛盾</div><div class="strip"><canvas id="diffStrip" width="640" height="22"></canvas></div>
+        </div>
+        <div class="legend"><span><span class="sw" style="background:var(--fresh)"></span>現実にあるが地図にない（追加）</span><span><span class="sw" style="background:var(--stale)"></span>地図にあるが現実にない（古い記憶）</span></div>
+      </div>
+    </div>
+  </div>
+
+  <aside class="panel">
+    <div class="card">
+      <h2>地図の状態</h2>
+      <div class="stats">
+        <div class="stat"><div class="k">Gaussian</div><div class="v" id="sN">0</div><div class="d">地図の点の数</div></div>
+        <div class="stat"><div class="k">幽霊</div><div class="v stale" id="sGhost">0</div><div class="d">現実の面から 25 cm 以上離れた点</div></div>
+        <div class="stat"><div class="k">キーフレーム</div><div class="v" id="sKf">0</div><div class="d"><span id="sIgnored">0</span> 件を無視中</div></div>
+        <div class="stat"><div class="k">マスク済み観測</div><div class="v" id="sMasked">0%</div><div class="d">最適化から外した光線の割合</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>キーフレーム（観測の記憶）</h2>
+      <div class="kfs" id="kfs"></div>
+      <div class="legend"><span><span class="sw" style="background:var(--stale)"></span>古いと判定した観測</span><span>薄い行 = フレームごと無視</span></div>
+    </div>
+    <div class="card">
+      <h2>イベント</h2>
+      <div class="log" id="log"></div>
+    </div>
+  </aside>
+</div>
+
+<div class="explain">
+  <h2>何が起きているか</h2>
+  <p>ロボットは視野内の各方向について「どこに何色の面があるか」を観測する（RGB-D の 2 次元版）。一定距離動くたびに観測を<b>キーフレーム</b>として保存し、地図（Gaussian の集まり）を最適化する。最適化では、キーフレームが「面があった」場所の点を強め、「何もなかった」区間の点を弱める。</p>
+  <p><b>静的マップ</b>は古いキーフレームを正しい制約として使い続ける。椅子が動いた後も、昔のキーフレームが旧位置に椅子を描き直し、新位置の椅子を「そこは空だった」と消しにかかる。結果、旧位置に半透明の幽霊が残り、新位置の椅子は薄くちらつく。</p>
+  <p><b>GaME</b>は新しいキーフレームを追加するたびに 2 つの検査を行う。</p>
+  <ol>
+    <li><b>追加検出</b> — 観測が地図より手前に面を見つけたら新しい幾何とみなし、それを昔のキーフレームに再投影する。昔そこを「空」と見ていた観測にマスクを付け、大きく矛盾するフレームは丸ごと無視する。</li>
+    <li><b>削除検出</b> — 観測が「空」と言う場所に地図の点があり、色も合わなければ古い記憶として刈り込む。その点を支持していた昔の観測にもマスクを付ける。</li>
+  </ol>
+  <p>マスクされた観測は最適化から外れるので、古い記憶が地図を引き戻さない。右の「キーフレーム」欄でオレンジの区間がそのマスク。これは <a href="https://github.com/VladimirYugay/GaME">本家 GaME</a> の <code>detect_additions</code> / <code>detect_removals</code> / <code>occlusion_masks</code> / <code>ignored_frames</code> の 2 次元版で、閾値の考え方も同じにしてある。</p>
+</div>
+</div>
+
+<script>
+(() => {
+"use strict";
+// ------------------------------------------------------------------ world
+const PX = 100;                       // px per metre (canvas 1000x700 = 10 m x 7 m)
+const ROOM = { w: 10, h: 7 };
+const objects = [
+  { id: "table", name: "テーブル", x: 5.0, y: 2.5, w: 1.6, h: 0.9, color: "#9C6B3F" },
+  { id: "chair", name: "椅子", x: 2.2, y: 3.5, w: 0.6, h: 0.6, color: "#D9483B" },
+  { id: "shelf", name: "棚", x: 8.9, y: 1.4, w: 0.45, h: 1.5, color: "#2F6FCF" },
+  { id: "plant", name: "観葉植物", x: 1.1, y: 1.1, w: 0.5, h: 0.5, color: "#3C9C5A" },
+];
+const CHAIR_A = { x: 2.2, y: 3.5 }, CHAIR_B = { x: 7.5, y: 3.7 };
+const walls = [
+  { id: "wallN", x: 5, y: -0.05, w: 10, h: 0.1, color: "#8D97A5" },
+  { id: "wallS", x: 5, y: 7.05, w: 10, h: 0.1, color: "#8D97A5" },
+  { id: "wallW", x: -0.05, y: 3.5, w: 0.1, h: 7, color: "#8D97A5" },
+  { id: "wallE", x: 10.05, y: 3.5, w: 0.1, h: 7, color: "#8D97A5" },
+];
+const robot = { x: 2.4, y: 5.9, th: -1.35 };  // th: heading in radians, 0 = +x, y grows downward
+const FOV = 80 * Math.PI / 180, RAYS = 96, RANGE = 9;
+
+const rayAngle = i => -FOV / 2 + FOV * (i + 0.5) / RAYS;
+
+function castRect(o, r, dx, dy) {           // slab test, returns t or Infinity
+  const lo = [r.x - r.w / 2, r.y - r.h / 2], hi = [r.x + r.w / 2, r.y + r.h / 2];
+  const d = [dx, dy], oo = [o.x, o.y];
+  let tmin = -Infinity, tmax = Infinity;
+  for (let a = 0; a < 2; a++) {
+    if (Math.abs(d[a]) < 1e-9) { if (oo[a] < lo[a] || oo[a] > hi[a]) return Infinity; continue; }
+    let t0 = (lo[a] - oo[a]) / d[a], t1 = (hi[a] - oo[a]) / d[a];
+    if (t0 > t1) [t0, t1] = [t1, t0];
+    tmin = Math.max(tmin, t0); tmax = Math.min(tmax, t1);
+    if (tmin > tmax) return Infinity;
+  }
+  if (tmax < 1e-4) return Infinity;
+  return tmin > 1e-4 ? tmin : tmax;
+}
+
+function observe(pose) {                     // ground-truth "RGB-D" scan
+  const rays = new Array(RAYS);
+  for (let i = 0; i < RAYS; i++) {
+    const a = pose.th + rayAngle(i), dx = Math.cos(a), dy = Math.sin(a);
+    let best = RANGE, hit = null;
+    for (const s of [...walls, ...objects]) {
+      const t = castRect(pose, s, dx, dy);
+      if (t < best) { best = t; hit = s; }
+    }
+    rays[i] = { d: best, color: hit ? hit.color : null, obj: hit ? hit.id : null, hit: !!hit };
+  }
+  return rays;
+}
+
+// ------------------------------------------------------------------ map (2D Gaussians)
+let gaussians = [];       // {x, y, r, color:[r,g,b], a (opacity), born, dying}
+const MAX_G = 3600;
+const hex2rgb = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+
+function renderRay(pose, angle, subset) {   // alpha-composite Gaussians along a ray (front to back)
+  const dx = Math.cos(angle), dy = Math.sin(angle);
+  const cands = [];
+  const list = subset || gaussians;
+  for (let k = 0; k < list.length; k++) {
+    const g = list[k];
+    if (g.dying) continue;
+    const px = g.x - pose.x, py = g.y - pose.y;
+    const t = px * dx + py * dy;
+    if (t < 0.05 || t > RANGE) continue;
+    const perp = Math.abs(px * dy - py * dx);
+    if (perp > g.r) continue;
+    const w = Math.exp(-0.5 * (perp / (g.r * 0.5)) ** 2);
+    cands.push({ g, t, a: Math.min(0.99, g.a * w) });
+  }
+  cands.sort((p, q) => p.t - q.t);
+  let T = 1, col = [0, 0, 0], depth = 0, alpha = 0;
+  const contrib = [];
+  for (const c of cands) {
+    const w = c.a * T;
+    if (w < 1 / 255) { continue; }
+    col[0] += w * c.g.color[0]; col[1] += w * c.g.color[1]; col[2] += w * c.g.color[2];
+    depth += w * c.t; alpha += w; contrib.push({ g: c.g, t: c.t, w });
+    T *= (1 - c.a);
+    if (T < 0.01) break;
+  }
+  if (alpha > 1e-4) { depth /= alpha; col = col.map(v => v / alpha); }
+  return { depth: alpha > 1e-4 ? depth : RANGE, alpha, color: col, contrib };
+}
+function renderScan(pose, subset) {
+  const out = new Array(RAYS);
+  for (let i = 0; i < RAYS; i++) out[i] = renderRay(pose, pose.th + rayAngle(i), subset);
+  return out;
+}
+
+// ------------------------------------------------------------------ GaME state
+const CFG = {
+  eps: 0.18,                 // depth_change_threshold (m)
+  colorErr: 60,              // color_error_threshold (0-255 L1 mean)
+  minOpacity: 0.3,           // min_opacity
+  addCover: 0.4,             // addition_coverage_threshold (fraction of a mask's rays)
+  coverGap: 0.4,             // "saw through" gap (m) when reprojecting additions
+  covisIgnore: 0.2,          // covis_ignore_threshold: fraction of a frame's rays -> ignore frame
+  removalCoverage: 0.01,     // removal_coverage_threshold
+  occlusionIgnore: 0.2,      // occlusion_ignore_threshold: masked fraction of any object mask -> ignore
+  kfTrans: 0.5, kfRot: 18 * Math.PI / 180,
+  lr: 0.06, carve: 0.3, itersPerFrame: 3,
+  frameIgnore: 0.4,          // playground: ignore a frame only when 40% of its rays are stale (gentler than the reference)
+};
+let mode = "game";
+let keyframes = [];          // {id, pose, rays, occl: Uint8Array, ignored}
+let events = [];
+let ghostCount = 0, lastGhostT = 0;
+let flashes = [];            // {x,y,t0,kind}
+let selectedKf = null;
+
+const log = (cls, text) => { events.push({ cls, text, t: performance.now() }); if (events.length > 200) events.shift(); renderLog(); };
+
+function seedFromScan(pose, rays, force) {
+  const rendered = force ? null : renderScan(pose);
+  let n = 0;
+  for (let i = 0; i < RAYS; i++) {
+    const o = rays[i];
+    if (!o.hit) continue;
+    let need = true;
+    if (rendered) {
+      const r = rendered[i];
+      const alphaLow = r.alpha < CFG.minOpacity;
+      const depthErr = r.depth > o.d + CFG.eps;                    // map surface is farther than observed
+      const colErr = r.alpha >= CFG.minOpacity && colorL1(r.color, hex2rgb(o.color)) > CFG.colorErr;
+      need = alphaLow || depthErr || colErr;
+    }
+    if (!need) continue;
+    if (gaussians.length >= MAX_G) break;
+    const a = pose.th + rayAngle(i);
+    const spacing = o.d * FOV / RAYS;
+    gaussians.push({ x: pose.x + Math.cos(a) * o.d, y: pose.y + Math.sin(a) * o.d,
+      r: Math.max(0.09, Math.min(0.22, spacing * 0.9)), color: hex2rgb(o.color), a: 0.5, born: performance.now() });
+    n++;
+  }
+  return n;
+}
+const colorL1 = (c1, c2) => (Math.abs(c1[0] - c2[0]) + Math.abs(c1[1] - c2[1]) + Math.abs(c1[2] - c2[2])) / 3;
+
+function optimizeStep(kf) {                   // one keyframe: support hits, carve free space
+  const lr = CFG.lr;
+  for (let i = 0; i < RAYS; i++) {
+    if (mode === "game" && kf.occl[i]) continue;
+    const o = kf.rays[i];
+    const a = kf.pose.th + rayAngle(i), dx = Math.cos(a), dy = Math.sin(a);
+    const oc = o.hit ? hex2rgb(o.color) : null;
+    for (let k = 0; k < gaussians.length; k++) {
+      const g = gaussians[k];
+      if (g.dying) continue;
+      const px = g.x - kf.pose.x, py = g.y - kf.pose.y;
+      const t = px * dx + py * dy;
+      if (t < 0.05) continue;
+      const perp = Math.abs(px * dy - py * dx);
+      if (perp > g.r) continue;
+      const w = Math.exp(-0.5 * (perp / (g.r * 0.5)) ** 2);
+      if (t < o.d - CFG.eps) {                                       // observed free space in front of the hit
+        g.a = Math.max(0, g.a - lr * CFG.carve * w);
+      } else if (o.hit && Math.abs(t - o.d) <= CFG.eps) {            // supports the observed surface
+        g.a = Math.min(1, g.a + lr * 0.6 * w);
+        for (let c = 0; c < 3; c++) g.color[c] += (oc[c] - g.color[c]) * 0.15 * w;
+      }
+    }
+  }
+}
+function pruneWeak() { gaussians = gaussians.filter(g => g.dying ? performance.now() - g.dying < 650 : g.a > 0.08); }
+
+// -- covisibility: keyframes whose observed points fall inside the query frame's FOV
+function covisible(pose, exceptId) {
+  const ids = [];
+  for (const kf of keyframes) {
+    if (kf.id === exceptId) continue;
+    let score = 0;
+    for (let i = 0; i < RAYS; i += 2) {
+      const o = kf.rays[i]; if (!o.hit) continue;
+      const a = kf.pose.th + rayAngle(i);
+      const p = { x: kf.pose.x + Math.cos(a) * o.d, y: kf.pose.y + Math.sin(a) * o.d };
+      if (inFov(pose, p)) score++;
+    }
+    if (score > 0) ids.push({ id: kf.id, score });
+  }
+  return ids.sort((p, q) => p.score - q.score).map(e => keyframes.find(k => k.id === e.id));
+}
+function inFov(pose, p) {
+  const ang = Math.atan2(p.y - pose.y, p.x - pose.x);
+  let rel = ang - pose.th; rel = Math.atan2(Math.sin(rel), Math.cos(rel));
+  return Math.abs(rel) < FOV / 2 && Math.hypot(p.x - pose.x, p.y - pose.y) < RANGE;
+}
+function rayIndexFor(pose, p) {
+  const ang = Math.atan2(p.y - pose.y, p.x - pose.x);
+  let rel = ang - pose.th; rel = Math.atan2(Math.sin(rel), Math.cos(rel));
+  return Math.floor((rel + FOV / 2) / FOV * RAYS);
+}
+function maskFractionByObject(kf) {           // largest masked fraction over any object mask
+  const tot = {}, msk = {};
+  for (let i = 0; i < RAYS; i++) { const o = kf.rays[i].obj; if (!o) continue; tot[o] = (tot[o] || 0) + 1; if (kf.occl[i]) msk[o] = (msk[o] || 0) + 1; }
+  let m = 0; for (const o in tot) m = Math.max(m, (msk[o] || 0) / tot[o]);
+  return m;
+}
+function maybeIgnore(kf, reason) {
+  if (kf.ignored) return;
+  let m = 0; for (let i = 0; i < RAYS; i++) m += kf.occl[i];
+  if (m / RAYS > CFG.frameIgnore) { kf.ignored = true; log("ig", `kf${kf.id} を無視（${reason}）`); }
+}
+
+// -- additions: observed surface closer than the map -> new geometry; reproject into old keyframes
+function detectAdditions(pose, rays) {
+  const rendered = renderScan(pose);
+  const perObj = {};
+  for (let i = 0; i < RAYS; i++) {
+    const o = rays[i]; if (!o.hit) continue;
+    const r = rendered[i];
+    if (r.alpha < CFG.minOpacity) continue;
+    const e = perObj[o.obj] || (perObj[o.obj] = { add: 0, tot: 0 });
+    if (o.d < r.depth - CFG.eps) e.add++; else if (o.d < r.depth + CFG.eps) e.tot++;
+  }
+  const added = Object.keys(perObj).filter(k => perObj[k].add / Math.max(1, perObj[k].tot + perObj[k].add) > CFG.addCover && perObj[k].add >= 2);
+  if (!added.length) return;
+  log("add", `追加検出: ${added.map(objName).join("・")}`);
+  const covis = covisible(pose, -1);
+  for (const objId of added) {
+    for (const kf of covis) {
+      let hits = 0, cover = 0;
+      const marks = [];
+      for (let i = 0; i < RAYS; i++) {
+        const o = rays[i]; if (o.obj !== objId) continue;
+        const a = pose.th + rayAngle(i);
+        const p = { x: pose.x + Math.cos(a) * o.d, y: pose.y + Math.sin(a) * o.d };
+        if (!inFov(kf.pose, p)) continue;
+        const j = rayIndexFor(kf.pose, p); if (j < 0 || j >= RAYS) continue;
+        const dist = Math.hypot(p.x - kf.pose.x, p.y - kf.pose.y);
+        if (dist - CFG.coverGap > kf.rays[j].d) continue;          // occluded in that frame
+        hits++;
+        if (kf.rays[j].d > dist + CFG.coverGap) { cover++; marks.push(j); }  // that frame saw through here
+      }
+      if (!hits) continue;
+      const score = cover / hits;
+      if (score > 0.01) {
+        for (const j of marks) { kf.occl[j] = 1; if (j > 0) kf.occl[j - 1] = 1; if (j < RAYS - 1) kf.occl[j + 1] = 1; }
+        log("add", `kf${kf.id} の ${marks.length} 光線をマスク（${objName(objId)} が今ある場所を空と見ていた）`);
+      }
+      maybeIgnore(kf, `新しい${objName(objId)}と大きく矛盾`);
+    }
+  }
+}
+
+// -- removals: map points in front of the observed surface with a wrong colour -> stale
+function detectRemovals(kfCur) {
+  const pose = kfCur.pose, rays = kfCur.rays;
+  const cand = new Set();
+  for (let i = 0; i < RAYS; i++) {
+    const o = rays[i];
+    const r = renderRay(pose, pose.th + rayAngle(i));
+    const oc = o.hit ? hex2rgb(o.color) : null;
+    for (const c of r.contrib) {
+      if (c.t < o.d - CFG.eps && c.w > 0.05) {
+        const colBad = !oc || colorL1(c.g.color, oc) > CFG.colorErr;
+        if (colBad) cand.add(c.g);
+      }
+    }
+  }
+  if (cand.size < 3) return;                                          // must form a region
+  const list = [...cand];
+  const confirm = renderScan(pose, list).filter(r => r.alpha > CFG.minOpacity).length;
+  if (confirm < 2) return;
+  // propagate to covisible keyframes: where the candidates agree with an old observation, mask it
+  for (const kf of covisible(pose, kfCur.id)) {
+    const sub = renderScan(kf.pose, list);
+    let agreed = 0; const objAgree = {};
+    for (let i = 0; i < RAYS; i++) {
+      const o = kf.rays[i]; if (!o.hit) continue;
+      const r = sub[i];
+      if (r.alpha > CFG.minOpacity && Math.abs(r.depth - o.d) < CFG.eps && colorL1(r.color, hex2rgb(o.color)) < CFG.colorErr) {
+        kf.occl[i] = 1; agreed++; objAgree[o.obj] = (objAgree[o.obj] || 0) + 1;
+        // extra removal: other Gaussians that fit this old observation belong to the same stale object
+        for (const c of renderRay(kf.pose, kf.pose.th + rayAngle(i)).contrib) if (Math.abs(c.t - o.d) < CFG.eps) cand.add(c.g);
+      }
+    }
+    if (agreed) {
+      for (const obj in objAgree) {                                   // removal_coverage_threshold: mask the whole object
+        const tot = kf.rays.filter(r => r.obj === obj).length;
+        if (objAgree[obj] / tot > CFG.removalCoverage) for (let i = 0; i < RAYS; i++) if (kf.rays[i].obj === obj) kf.occl[i] = 1;
+      }
+      log("rm", `kf${kf.id} の ${agreed} 光線をマスク（消えた物体を支持していた）`);
+      maybeIgnore(kf, "物体マスクの大半が古い");
+    }
+  }
+  const now = performance.now();
+  let n = 0;
+  for (const g of cand) { if (!g.dying) { g.dying = now; n++; flashes.push({ x: g.x, y: g.y, t0: now, kind: "rm" }); } }
+  log("rm", `削除: 古い Gaussian ${n} 個を刈り込み`);
+}
+
+// ------------------------------------------------------------------ keyframe loop
+let lastKfPose = null, frameCounter = 0;
+function needKeyframe() {
+  if (!lastKfPose) return true;
+  const dt = Math.hypot(robot.x - lastKfPose.x, robot.y - lastKfPose.y);
+  let dr = robot.th - lastKfPose.th; dr = Math.abs(Math.atan2(Math.sin(dr), Math.cos(dr)));
+  return dt > CFG.kfTrans || dr > CFG.kfRot;
+}
+function addKeyframe() {
+  const pose = { x: robot.x, y: robot.y, th: robot.th };
+  const rays = observe(pose);
+  if (mode === "game" && keyframes.length > 1) detectAdditions(pose, rays);
+  const kf = { id: keyframes.length, pose, rays, occl: new Uint8Array(RAYS), ignored: false };
+  keyframes.push(kf); lastKfPose = pose;
+  const n = seedFromScan(pose, rays, gaussians.length === 0);
+  for (let it = 0; it < 6; it++) optimizeStep(kf);
+  if (mode === "game") detectRemovals(kf);
+  if (n) { log("info", `kf${kf.id}: 新しい Gaussian ${n} 個をシード`); for (let i = 0; i < RAYS; i++) { } }
+  renderKfList();
+}
+function optimizeFrame() {
+  const active = keyframes.filter(k => !(mode === "game" && k.ignored));
+  if (!active.length) return;
+  for (let it = 0; it < CFG.itersPerFrame; it++) optimizeStep(active[Math.floor(Math.random() * active.length)]);
+  if (frameCounter % 20 === 0) pruneWeak();
+}
+
+// ------------------------------------------------------------------ scenario
+let scenario = null;
+function playScenario() {
+  stopScenario();
+  const chair = objects.find(o => o.id === "chair");
+  Object.assign(chair, CHAIR_A);
+  resetMap();
+  const steps = [
+    { dur: 500, msg: "run 1: 部屋をスイープして地図を作る", at: t => setRobot(2.4, 5.9, headingTo(2.4, 5.9, 2.9, 2.0)) },
+    { dur: 7000, msg: "run 1: 左から右へ。椅子は左側に見える", at: t => { const x = 2.4 + 5.4 * ease(t); setRobot(x, 5.9, headingTo(x, 5.9, x * 0.8 + 1.1, 2.0)); } },
+    { dur: 1800, msg: "ロボットが壁を向いている間に…", at: t => setRobot(7.8, 5.9, lerpAngle(headingTo(7.8, 5.9, 7.34, 2.0), 0.35, ease(t))) },
+    { dur: 900, msg: "椅子が反対側へ動いた（カメラの外の変化）", at: t => { if (t === 0) { Object.assign(chair, CHAIR_B); flashes.push({ x: chair.x, y: chair.y, t0: performance.now(), kind: "move" }); log("info", "現実: 椅子が A → B に移動（ロボットは見ていない）"); } } },
+    { dur: 1800, msg: "run 2: もう一度スイープする", at: t => setRobot(7.8, 5.9, lerpAngle(0.35, headingTo(7.8, 5.9, 7.34, 2.0), ease(t))) },
+    { dur: 8000, msg: mode === "game" ? "run 2: GaME は旧位置を忘れ、新位置を取り込む" : "run 2: 静的マップは旧位置の幽霊を残し、新位置の椅子を消しにかかる", at: t => { const x = 7.8 - 5.4 * ease(t); setRobot(x, 5.9, headingTo(x, 5.9, x * 0.8 + 1.1, 2.0)); } },
+    { dur: 2500, msg: mode === "game" ? "結果: 幽霊はほぼ 0。静的マップに切り替えてもう一度試す" : "結果: 幽霊が残る。GaME に切り替えてもう一度試す", at: t => {} },
+  ];
+  scenario = { steps, i: 0, t0: performance.now() };
+  playBtn.textContent = "■ 停止";
+}
+function stopScenario() { scenario = null; playBtn.textContent = "▶ シナリオを再生"; showMsg(""); }
+function tickScenario(now) {
+  if (!scenario) return;
+  const s = scenario.steps[scenario.i];
+  const t = Math.min(1, (now - scenario.t0) / s.dur);
+  if (!s.started) { s.started = true; showMsg(s.msg); s.at(0); }
+  else s.at(t);
+  if (t >= 1) { s.started = false; scenario.i++; scenario.t0 = now; if (scenario.i >= scenario.steps.length) stopScenario(); }
+}
+const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const headingTo = (x, y, tx, ty) => Math.atan2(ty - y, tx - x);
+function lerpAngle(a, b, t) { let d = b - a; d = Math.atan2(Math.sin(d), Math.cos(d)); return a + d * t; }
+function setRobot(x, y, th) { robot.x = x; robot.y = y; robot.th = th; }
+
+// ------------------------------------------------------------------ interaction
+const stage = document.getElementById("map"), ctx = stage.getContext("2d");
+const stagewrap = document.getElementById("stagewrap");
+const keys = {};
+let drag = null;
+function toWorld(ev) { const r = stage.getBoundingClientRect(); return { x: (ev.clientX - r.left) / r.width * ROOM.w, y: (ev.clientY - r.top) / r.height * ROOM.h }; }
+stage.addEventListener("pointerdown", ev => {
+  const p = toWorld(ev);
+  if (Math.hypot(p.x - robot.x, p.y - robot.y) < 0.45) { drag = { kind: "robot", ox: p.x - robot.x, oy: p.y - robot.y, last: p }; }
+  else {
+    const o = objects.find(o => Math.abs(p.x - o.x) < o.w / 2 + 0.12 && Math.abs(p.y - o.y) < o.h / 2 + 0.12);
+    if (o) drag = { kind: "obj", o, ox: p.x - o.x, oy: p.y - o.y };
+  }
+  if (drag) { stopScenario(); stage.setPointerCapture(ev.pointerId); }
+});
+stage.addEventListener("pointermove", ev => {
+  if (!drag) return;
+  const p = toWorld(ev);
+  if (drag.kind === "robot") {
+    const nx = clamp(p.x - drag.ox, 0.3, ROOM.w - 0.3), ny = clamp(p.y - drag.oy, 0.3, ROOM.h - 0.3);
+    const dx = nx - robot.x, dy = ny - robot.y;
+    if (Math.hypot(dx, dy) > 0.02) robot.th = lerpAngle(robot.th, Math.atan2(dy, dx), 0.25);
+    robot.x = nx; robot.y = ny;
+  } else {
+    drag.o.x = clamp(p.x - drag.ox, drag.o.w / 2 + 0.1, ROOM.w - drag.o.w / 2 - 0.1);
+    drag.o.y = clamp(p.y - drag.oy, drag.o.h / 2 + 0.1, ROOM.h - drag.o.h / 2 - 0.1);
+  }
+});
+const endDrag = () => { drag = null; };
+stage.addEventListener("pointerup", endDrag); stage.addEventListener("pointercancel", endDrag);
+window.addEventListener("keydown", ev => { if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(ev.key)) { keys[ev.key] = true; ev.preventDefault(); stopScenario(); } });
+window.addEventListener("keyup", ev => { keys[ev.key] = false; });
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+function driveKeys(dt) {
+  if (keys.ArrowLeft) robot.th -= 1.6 * dt;
+  if (keys.ArrowRight) robot.th += 1.6 * dt;
+  const v = (keys.ArrowUp ? 1 : 0) - (keys.ArrowDown ? 1 : 0);
+  if (v) { robot.x = clamp(robot.x + Math.cos(robot.th) * v * 1.4 * dt, 0.3, ROOM.w - 0.3); robot.y = clamp(robot.y + Math.sin(robot.th) * v * 1.4 * dt, 0.3, ROOM.h - 0.3); }
+}
+
+// buttons
+const playBtn = document.getElementById("play");
+playBtn.addEventListener("click", () => scenario ? stopScenario() : playScenario());
+document.getElementById("moveChair").addEventListener("click", () => {
+  stopScenario();
+  const chair = objects.find(o => o.id === "chair");
+  const atA = Math.hypot(chair.x - CHAIR_A.x, chair.y - CHAIR_A.y) < Math.hypot(chair.x - CHAIR_B.x, chair.y - CHAIR_B.y);
+  Object.assign(chair, atA ? CHAIR_B : CHAIR_A);
+  flashes.push({ x: chair.x, y: chair.y, t0: performance.now(), kind: "move" });
+  log("info", `現実: 椅子を ${atA ? "B" : "A"} へ移動`);
+});
+document.getElementById("resetMap").addEventListener("click", () => { stopScenario(); resetMap(); });
+document.getElementById("resetAll").addEventListener("click", () => { stopScenario(); Object.assign(objects.find(o => o.id === "chair"), CHAIR_A); setRobot(2.4, 5.9, -1.35); resetMap(); });
+function resetMap() { gaussians = []; keyframes = []; lastKfPose = null; events = []; selectedKf = null; renderLog(); renderKfList(); log("info", "地図を消去した"); }
+function setMode(m) {
+  mode = m;
+  document.getElementById("modeStatic").setAttribute("aria-pressed", m === "static");
+  document.getElementById("modeGame").setAttribute("aria-pressed", m === "game");
+  const tag = document.getElementById("modeTag");
+  tag.className = "mode" + (m === "static" ? " static" : ""); tag.innerHTML = `MODE <b>${m === "game" ? "GaME" : "STATIC"}</b>`;
+  log("info", `方式を ${m === "game" ? "GaME" : "静的マップ"} に切り替え`);
+  try { localStorage.setItem("game-playground-mode", m); } catch (e) {}
+}
+document.getElementById("modeStatic").addEventListener("click", () => setMode("static"));
+document.getElementById("modeGame").addEventListener("click", () => setMode("game"));
+try { const m = localStorage.getItem("game-playground-mode"); if (m === "static" || m === "game") setMode(m); } catch (e) {}
+
+const msgEl = document.getElementById("msg");
+function showMsg(t) { msgEl.textContent = t; msgEl.classList.toggle("show", !!t); }
+const objName = id => (objects.find(o => o.id === id) || { name: id.startsWith("wall") ? "壁" : id }).name;
+
+// ------------------------------------------------------------------ drawing
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function draw(now) {
+  const W = stage.width, H = stage.height;
+  const theme = { bg: cssVar("--map-bg"), wall: cssVar("--map-wall"), grid: cssVar("--map-grid"), text: cssVar("--map-text"), stale: cssVar("--stale"), fresh: cssVar("--fresh") };
+  ctx.fillStyle = theme.bg; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = theme.grid; ctx.lineWidth = 1;
+  for (let x = 1; x < ROOM.w; x++) { ctx.beginPath(); ctx.moveTo(x * PX, 0); ctx.lineTo(x * PX, H); ctx.stroke(); }
+  for (let y = 1; y < ROOM.h; y++) { ctx.beginPath(); ctx.moveTo(0, y * PX); ctx.lineTo(W, y * PX); ctx.stroke(); }
+  // FOV wedge
+  ctx.save(); ctx.globalAlpha = 0.16; ctx.fillStyle = "#7FD7E6";
+  ctx.beginPath(); ctx.moveTo(robot.x * PX, robot.y * PX);
+  const scan = observe(robot);
+  for (let i = 0; i < RAYS; i++) { const a = robot.th + rayAngle(i); ctx.lineTo((robot.x + Math.cos(a) * scan[i].d) * PX, (robot.y + Math.sin(a) * scan[i].d) * PX); }
+  ctx.closePath(); ctx.fill(); ctx.restore();
+  // reality: dashed outlines
+  ctx.save(); ctx.setLineDash([6, 5]); ctx.lineWidth = 2;
+  for (const o of objects) {
+    ctx.strokeStyle = o.color; ctx.globalAlpha = 0.9;
+    ctx.strokeRect((o.x - o.w / 2) * PX, (o.y - o.h / 2) * PX, o.w * PX, o.h * PX);
+    ctx.globalAlpha = 0.12; ctx.fillStyle = o.color; ctx.fillRect((o.x - o.w / 2) * PX, (o.y - o.h / 2) * PX, o.w * PX, o.h * PX);
+    ctx.globalAlpha = 0.9; ctx.font = "13px 'IBM Plex Sans JP', sans-serif"; ctx.fillStyle = theme.text; ctx.textAlign = "center";
+    ctx.fillText(o.name, o.x * PX, (o.y - o.h / 2) * PX - 6);
+  }
+  ctx.restore();
+  // map gaussians
+  for (const g of gaussians) {
+    let a = g.a, r = g.r * PX, col = g.color;
+    if (g.dying) { const k = Math.min(1, (now - g.dying) / 650); a = g.a * (1 - k); r *= (1 - 0.6 * k); col = [224, 122, 44]; }
+    else if (now - g.born < 500) { const k = (now - g.born) / 500; ctx.strokeStyle = theme.fresh; ctx.globalAlpha = 1 - k; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(g.x * PX, g.y * PX, r + 6 * k, 0, Math.PI * 2); ctx.stroke(); }
+    if (a <= 0.01) continue;
+    const grd = ctx.createRadialGradient(g.x * PX, g.y * PX, 0, g.x * PX, g.y * PX, r);
+    grd.addColorStop(0, `rgba(${col[0] | 0},${col[1] | 0},${col[2] | 0},${Math.min(1, a) * 0.95})`);
+    grd.addColorStop(1, `rgba(${col[0] | 0},${col[1] | 0},${col[2] | 0},0)`);
+    ctx.globalAlpha = 1; ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(g.x * PX, g.y * PX, r, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // flashes
+  flashes = flashes.filter(f => now - f.t0 < 900);
+  for (const f of flashes) {
+    const k = (now - f.t0) / 900;
+    ctx.strokeStyle = f.kind === "move" ? "#FFFFFF" : theme.stale; ctx.globalAlpha = 1 - k; ctx.lineWidth = f.kind === "move" ? 3 : 1.5;
+    ctx.beginPath(); ctx.arc(f.x * PX, f.y * PX, (f.kind === "move" ? 30 : 8) + 40 * k, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  // keyframe poses
+  for (const kf of keyframes) {
+    const sel = selectedKf === kf.id;
+    ctx.fillStyle = kf.ignored && mode === "game" ? "rgba(224,122,44,0.55)" : "rgba(200,210,222,0.55)";
+    ctx.beginPath(); ctx.arc(kf.pose.x * PX, kf.pose.y * PX, sel ? 7 : 4, 0, Math.PI * 2); ctx.fill();
+    if (sel) { ctx.strokeStyle = "#7FD7E6"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(kf.pose.x * PX, kf.pose.y * PX);
+      for (let i = 0; i < RAYS; i++) { const a = kf.pose.th + rayAngle(i); ctx.lineTo((kf.pose.x + Math.cos(a) * kf.rays[i].d) * PX, (kf.pose.y + Math.sin(a) * kf.rays[i].d) * PX); }
+      ctx.closePath(); ctx.stroke(); }
+  }
+  // robot
+  ctx.fillStyle = "#F2F5F8"; ctx.beginPath(); ctx.arc(robot.x * PX, robot.y * PX, 14, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = theme.bg; ctx.beginPath(); ctx.arc(robot.x * PX, robot.y * PX, 6, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = "#F2F5F8"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(robot.x * PX, robot.y * PX); ctx.lineTo((robot.x + Math.cos(robot.th) * 0.32) * PX, (robot.y + Math.sin(robot.th) * 0.32) * PX); ctx.stroke();
+  // legend text
+  ctx.fillStyle = theme.text; ctx.font = "13px 'IBM Plex Sans JP', sans-serif"; ctx.textAlign = "left";
+  ctx.fillText("破線 = 現実の家具　ぼかし点 = 地図の記憶　白丸 = ロボット", 12, 20);
+  drawStrips(scan);
+}
+const obsStrip = document.getElementById("obsStrip").getContext("2d"), mapStrip = document.getElementById("mapStrip").getContext("2d"), diffStrip = document.getElementById("diffStrip").getContext("2d");
+function drawStrips(scan) {
+  const rendered = renderScan(robot);
+  const w = 640 / RAYS, bg = cssVar("--map-bg"), stale = cssVar("--stale"), fresh = cssVar("--fresh");
+  obsStrip.fillStyle = bg; obsStrip.fillRect(0, 0, 640, 22); mapStrip.fillStyle = bg; mapStrip.fillRect(0, 0, 640, 22); diffStrip.fillStyle = bg; diffStrip.fillRect(0, 0, 640, 22);
+  for (let i = 0; i < RAYS; i++) {
+    const o = scan[i], r = rendered[i];
+    const shade = d => Math.max(0.35, 1 - d / RANGE);
+    if (o.hit) { const c = hex2rgb(o.color), s = shade(o.d); obsStrip.fillStyle = `rgb(${c[0] * s | 0},${c[1] * s | 0},${c[2] * s | 0})`; obsStrip.fillRect(i * w, 0, w + 0.5, 22); }
+    if (r.alpha > 0.05) { const s = shade(r.depth), a = Math.min(1, r.alpha); mapStrip.fillStyle = `rgba(${r.color[0] * s | 0},${r.color[1] * s | 0},${r.color[2] * s | 0},${a})`; mapStrip.fillRect(i * w, 0, w + 0.5, 22); }
+    let kind = null;
+    if (r.alpha > CFG.minOpacity && o.d < r.depth - CFG.eps) kind = fresh;          // reality closer -> addition
+    else if (r.alpha > CFG.minOpacity && r.depth < o.d - CFG.eps) kind = stale;     // map closer -> stale memory
+    else if (o.hit && r.alpha <= CFG.minOpacity) kind = fresh;                        // unmapped surface
+    if (kind) { diffStrip.fillStyle = kind; diffStrip.fillRect(i * w, 4, w + 0.5, 14); }
+  }
+}
+
+// ------------------------------------------------------------------ side panel
+const kfsEl = document.getElementById("kfs"), logEl = document.getElementById("log");
+function renderKfList() {
+  kfsEl.innerHTML = "";
+  for (const kf of [...keyframes].reverse()) {
+    const row = document.createElement("div");
+    row.className = "kf" + (kf.ignored && mode === "game" ? " ignored" : "") + (selectedKf === kf.id ? " sel" : "");
+    row.innerHTML = `<span>kf${kf.id}${kf.ignored && mode === "game" ? " ✕" : ""}</span><div class="bar"><canvas width="256" height="14"></canvas></div>`;
+    const c = row.querySelector("canvas").getContext("2d");
+    c.fillStyle = cssVar("--map-bg"); c.fillRect(0, 0, 256, 14);
+    const w = 256 / RAYS;
+    for (let i = 0; i < RAYS; i++) {
+      const o = kf.rays[i]; if (o.hit) { const s = Math.max(0.35, 1 - o.d / RANGE), col = hex2rgb(o.color); c.fillStyle = `rgb(${col[0] * s | 0},${col[1] * s | 0},${col[2] * s | 0})`; c.fillRect(i * w, 0, w + 0.5, 14); }
+      if (kf.occl[i] && mode === "game") { c.fillStyle = cssVar("--stale"); c.fillRect(i * w, 3, w + 0.5, 8); }
+    }
+    row.addEventListener("click", () => { selectedKf = selectedKf === kf.id ? null : kf.id; renderKfList(); });
+    kfsEl.appendChild(row);
+  }
+}
+function renderLog() {
+  logEl.innerHTML = "";
+  for (const e of events.slice(-60)) { const d = document.createElement("div"); d.className = e.cls; d.textContent = e.text; logEl.prepend(d); }
+}
+function distToSurfaces(g) {
+  let best = Infinity;
+  for (const s of [...walls, ...objects]) {
+    const dx = Math.max(Math.abs(g.x - s.x) - s.w / 2, 0), dy = Math.max(Math.abs(g.y - s.y) - s.h / 2, 0);
+    best = Math.min(best, Math.hypot(dx, dy));
+  }
+  return best;
+}
+function updateStats(now) {
+  if (now - lastGhostT > 400) {
+    lastGhostT = now;
+    ghostCount = gaussians.filter(g => !g.dying && g.a > 0.25 && distToSurfaces(g) > 0.25).length;
+    const live = gaussians.filter(g => !g.dying).length;
+    document.getElementById("sN").textContent = live;
+    document.getElementById("sGhost").textContent = ghostCount;
+    document.getElementById("sKf").textContent = keyframes.length;
+    document.getElementById("sIgnored").textContent = mode === "game" ? keyframes.filter(k => k.ignored).length : 0;
+    let masked = 0, tot = 0;
+    for (const kf of keyframes) { tot += RAYS; for (let i = 0; i < RAYS; i++) masked += kf.occl[i]; }
+    document.getElementById("sMasked").textContent = (mode === "game" && tot ? Math.round(100 * masked / tot) : 0) + "%";
+  }
+}
+
+// ------------------------------------------------------------------ main loop
+let lastT = performance.now();
+function loop(now) {
+  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now; frameCounter++;
+  tickScenario(now);
+  driveKeys(dt);
+  if (needKeyframe()) addKeyframe();
+  optimizeFrame();
+  draw(now);
+  updateStats(now);
+  requestAnimationFrame(loop);
+}
+log("info", "ロボットを動かすか「シナリオを再生」を押す");
+requestAnimationFrame(loop);
+})();
+</script>
