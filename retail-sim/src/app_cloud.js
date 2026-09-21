@@ -8,7 +8,7 @@
    ========================================================================= */
 
 const CLOUD = {
-  on: false, heat: true, frustum: true, detection: true,
+  on: false, heat: true, frustum: true, detection: true, window: 'day',
   group: null, points: null, base: null, uv: null, shelfIdx: null,
   cams: [], tracked: null, trackTimer: 0, hudTimer: 0,
   detLines: null, trackLabel: null, trackRing: null,
@@ -71,49 +71,101 @@ function buildPointCloud() {
   CLOUD.group.add(grid);
 
   const pos = [], col = [], uvs = [], sidx = [];
-  const density = FKEY === 'depato' ? 820 : 1500;   // 点/m²（面積換算）
-  const shelfList = SHELVES;
+  const density = FKEY === 'depato' ? 1250 : 2100;   // 点/m²
+  const pushPoint = (x, y, z, c, u, v, si) => {
+    pos.push(x + (cloudRng() - 0.5) * 0.032, y + (cloudRng() - 0.5) * 0.032, z + (cloudRng() - 0.5) * 0.032);
+    col.push(c[0], c[1], c[2]); uvs.push(u, v); sidx.push(si);
+  };
+  const shade = (hex, k) => {
+    const c = new THREE.Color(hex);
+    return [clamp(c.r * k, 0, 1), clamp(c.g * k, 0, 1), clamp(c.b * k, 0, 1)];
+  };
+  // 商品ごとに色を固定するための決定的ハッシュ（同じ店舗なら同じ見え方）
+  const hash01 = (a, b) => (((a * 73856093) ^ (b * 19349663)) >>> 0) % 1000 / 1000;
 
-  shelfList.forEach((s, si) => {
-    const spec = shelfPointSpec(s);
+  SHELVES.forEach((s, si) => {
     const palette = CAT_PRODUCT_COLORS[s.cat] || CAT_PRODUCT_COLORS.food;
-    const area = spec.island ? spec.w * spec.d : spec.length * spec.height;
-    const n = Math.max(400, Math.round(area * density));
-    for (let i = 0; i < n; i++) {
-      let x, y, z, u, v;
-      if (spec.island) {
-        u = cloudRng(); v = cloudRng();
-        x = s.pos[0] + (u - 0.5) * spec.w;
-        z = s.pos[2] + (cloudRng() - 0.5) * spec.d;
-        y = spec.baseY + v * spec.height;
-      } else {
-        u = cloudRng(); v = cloudRng();
-        const along = (u - 0.5) * spec.length;
-        const inward = cloudRng() * spec.depth * 0.55;
-        y = spec.baseY + v * (spec.height - spec.baseY);
-        if (spec.alongX) {
-          x = s.pos[0] + along;
-          z = s.pos[2] + s.normal[2] * (spec.depth / 2 - inward);
-        } else {
-          x = s.pos[0] + s.normal[0] * (spec.depth / 2 - inward);
-          z = s.pos[2] + along;
+    if (s.kind === 'counter') return;
+
+    /* --- 島型ガラスケース（デパ地下）: トレー状のクラスタを並べる --- */
+    if (s.kind === 'island-case') {
+      const w = s.size[0], d = s.size[2];
+      const cols = Math.max(3, Math.round(w / 0.32)), rows = 2;
+      for (let r = 0; r < rows; r++) {
+        for (let ci = 0; ci < cols; ci++) {
+          const base = shade(palette[(ci + r * 2) % palette.length], 0.78 + hash01(ci, r) * 0.45);
+          const cx = s.pos[0] - w / 2 + (ci + 0.5) * (w / cols);
+          const cz = s.pos[2] + (r - 0.5) * d * 0.4;
+          const ph = 0.10 + hash01(ci * 3, r * 5) * 0.16;
+          const n = Math.max(40, Math.round((w / cols) * d * 0.42 * density));
+          for (let i = 0; i < n; i++) {
+            const x = cx + (cloudRng() - 0.5) * (w / cols) * 0.82;
+            const z = cz + (cloudRng() - 0.5) * d * 0.34;
+            const y = 0.52 + cloudRng() * ph;
+            pushPoint(x, y, z, base,
+              clamp((x - (s.pos[0] - w / 2)) / w, 0, 0.999), clamp((y - 0.5) / 0.55, 0, 0.999), si);
+          }
         }
       }
-      // スキャン由来のノイズ
-      x += (cloudRng() - 0.5) * 0.05; y += (cloudRng() - 0.5) * 0.05; z += (cloudRng() - 0.5) * 0.05;
-
-      let c;
-      if (cloudRng() < 0.24) {           // 什器・プライスレール由来の白点
-        const g = 0.72 + cloudRng() * 0.28;
-        c = new THREE.Color(g, g, g * 1.02);
-      } else {
-        c = new THREE.Color(palette[Math.floor(cloudRng() * palette.length)]);
-        const j = 0.72 + cloudRng() * 0.5;
-        c.r = clamp(c.r * j, 0, 1); c.g = clamp(c.g * j, 0, 1); c.b = clamp(c.b * j, 0, 1);
+      // ケース縁のハイライト
+      const nEdge = Math.round(w / 0.02);
+      for (let i = 0; i < nEdge; i++) {
+        const x = s.pos[0] - w / 2 + (i / nEdge) * w;
+        const g = 0.8 + cloudRng() * 0.2;
+        pushPoint(x, 1.03, s.pos[2] + d / 2 * 0.98, [g, g, g * 1.04], clamp((i / nEdge), 0, 0.999), 0.95, si);
       }
-      pos.push(x, y, z); col.push(c.r, c.g, c.b); uvs.push(u, v); sidx.push(si);
+      return;
+    }
+
+    /* --- 壁面什器 / ゴンドラ側面: 段 × フェイシングで商品ブロックを構成 --- */
+    const alongX = s.normal[2] !== 0;
+    const length = alongX ? s.size[0] : s.size[2];
+    const depth = s.kind === 'gondola-side' ? 0.42 : (alongX ? s.size[2] : s.size[0]);
+    const H = s.size[1];
+    const baseY = 0.12;
+    const tiers = H > 1.7 ? 4 : 3;
+    const tierH = (H - baseY) / tiers;
+    const nFace = Math.max(3, Math.round(length / 0.135));
+    const faceW = length / nFace;
+
+    for (let t2 = 0; t2 < tiers; t2++) {
+      const y0 = baseY + t2 * tierH;
+      const bandH = tierH * 0.76;
+      for (let f = 0; f < nFace; f++) {
+        const grp = Math.floor(f / 3);                       // 3フェイス同一商品（棚割準拠）
+        const base = shade(palette[(grp + t2) % palette.length], 0.76 + hash01(grp, t2) * 0.5);
+        const prodH = bandH * (0.52 + hash01(f, t2 * 7) * 0.44);
+        const alongC = -length / 2 + (f + 0.5) * faceW;
+        const n = Math.max(8, Math.round(faceW * prodH * density));
+        for (let i = 0; i < n; i++) {
+          const along = alongC + (cloudRng() - 0.5) * faceW * 0.86;
+          const y = y0 + 0.035 + cloudRng() * prodH;
+          const inward = cloudRng() * depth * 0.4;
+          const x = alongX ? s.pos[0] + along : s.pos[0] + s.normal[0] * (depth / 2 - inward);
+          const z = alongX ? s.pos[2] + s.normal[2] * (depth / 2 - inward) : s.pos[2] + along;
+          pushPoint(x, y, z, base, clamp(along / length + 0.5, 0, 0.999), clamp(y / H, 0, 0.999), si);
+        }
+      }
+      // プライスレール（段板前端の白い点列）
+      const nRail = Math.round(length / 0.018);
+      for (let i = 0; i < nRail; i++) {
+        const along = -length / 2 + (i / nRail) * length;
+        const g = 0.82 + cloudRng() * 0.18;
+        const x = alongX ? s.pos[0] + along : s.pos[0] + s.normal[0] * (depth / 2 - 0.02);
+        const z = alongX ? s.pos[2] + s.normal[2] * (depth / 2 - 0.02) : s.pos[2] + along;
+        pushPoint(x, y0 + 0.014, z, [g, g, g * 1.03], clamp(along / length + 0.5, 0, 0.999), clamp(y0 / H, 0, 0.999), si);
+      }
     }
   });
+
+  // 床のスキャン点（疎・空間の手がかり）
+  const floorN = Math.round(STORE.floorW * STORE.floorD * 24);
+  for (let i = 0; i < floorN; i++) {
+    const g = 0.2 + cloudRng() * 0.12;
+    pos.push((cloudRng() - 0.5) * STORE.floorW, 0.004 + cloudRng() * 0.012, (cloudRng() - 0.5) * STORE.floorD);
+    col.push(g * 0.8, g * 0.92, g * 1.18);
+    uvs.push(0, 0); sidx.push(-1);
+  }
 
   const geo = new THREE.BufferGeometry();
   const posArr = new Float32Array(pos);
@@ -235,6 +287,10 @@ function buildDetectionLines() {
   CLOUD.group.add(CLOUD.trackRing);
 }
 
+function gridFor(st) {
+  return (CLOUD.window === 'recent' && st.gridRecent) ? st.gridRecent : st.grid;
+}
+
 /* 3x3 平滑化（計測ノイズをならし、注目の「塊」として見せる） */
 function smoothGrid(g) {
   const sm = new Float32Array(GRID_U * GRID_V);
@@ -265,7 +321,8 @@ function updateCloudColors() {
   const shelfMax = {}, shelfTot = {}, smooth = {};
   let globalTot = 1e-6;
   SHELVES.forEach(s => {
-    const g = STATS.shelves[s.id] && STATS.shelves[s.id].grid;
+    const st0 = STATS.shelves[s.id];
+    const g = st0 && gridFor(st0);
     if (!g) { shelfMax[s.id] = 0; shelfTot[s.id] = 0; return; }
     const sm = smoothGrid(g);
     let m = 1e-6, sum = 0;
@@ -277,9 +334,10 @@ function updateCloudColors() {
     const s = SHELVES[CLOUD.shelfIdx[i]];
     const st = s && STATS.shelves[s.id];
     const gi3 = i * 3;
-    const dim = 0.62;
+    const dim = 0.72;
+    const lum = (0.299 * CLOUD.base[gi3] + 0.587 * CLOUD.base[gi3 + 1] + 0.114 * CLOUD.base[gi3 + 2]) * dim;
     if (!st || !st.grid || shelfTot[s.id] <= 0) {
-      arr[gi3] = CLOUD.base[gi3] * dim; arr[gi3 + 1] = CLOUD.base[gi3 + 1] * dim; arr[gi3 + 2] = CLOUD.base[gi3 + 2] * dim;
+      arr[gi3] = lum * 0.92; arr[gi3 + 1] = lum * 0.97; arr[gi3 + 2] = lum * 1.08;
       continue;
     }
     const u = CLOUD.uv[i * 2], v = CLOUD.uv[i * 2 + 1];
@@ -288,13 +346,13 @@ function updateCloudColors() {
     const between = Math.pow(shelfTot[s.id] / globalTot, 0.45);  // どの棚が熱いか
     const cell = within * (0.45 + 0.55 * between);
     if (cell < 0.03) {
-      arr[gi3] = CLOUD.base[gi3] * dim; arr[gi3 + 1] = CLOUD.base[gi3 + 1] * dim; arr[gi3 + 2] = CLOUD.base[gi3 + 2] * dim;
+      arr[gi3] = lum * 0.92; arr[gi3 + 1] = lum * 0.97; arr[gi3 + 2] = lum * 1.08;
     } else {
       const [r, g2, b] = heatRamp(Math.pow(cell, 0.7));
-      const k = clamp(0.6 + cell * 0.4, 0, 1);
-      arr[gi3] = lerp(CLOUD.base[gi3] * dim, r, k);
-      arr[gi3 + 1] = lerp(CLOUD.base[gi3 + 1] * dim, g2, k);
-      arr[gi3 + 2] = lerp(CLOUD.base[gi3 + 2] * dim, b, k);
+      const k = clamp(0.45 + cell * 0.8, 0, 1);
+      arr[gi3] = lerp(lum * 0.92, r, k);
+      arr[gi3 + 1] = lerp(lum * 0.97, g2, k);
+      arr[gi3 + 2] = lerp(lum * 1.08, b, k);
     }
   }
   colAttr.needsUpdate = true;
@@ -407,9 +465,32 @@ function updateCloud(realDt) {
     const el2 = document.getElementById('hud-sub');
     if (el2) {
       const live = agents.filter(x => !x.done).length;
-      el2.textContent = `${STORE.label.toUpperCase()} // ${live} DETECTIONS // ${fmtNum(CLOUD.shelfIdx.length)} POINTS // GAZE HEAT ${CLOUD.heat ? 'ON' : 'OFF'}`;
+      el2.textContent = `${STORE.label.toUpperCase()} // ${live} DETECTIONS // ${fmtNum(CLOUD.shelfIdx.length)} POINTS // ${CLOUD.window === 'recent' ? 'LAST 30 MIN' : 'TODAY'}`;
     }
+    renderHotspots();
   }
+}
+
+/* ---------- 注目ホットスポット（HUD） ---------- */
+function renderHotspots() {
+  const el = document.getElementById('hud-hotspots');
+  if (!el) return;
+  const rows = SHELVES.map(s => {
+    const st = STATS.shelves[s.id];
+    const g = st && gridFor(st);
+    let sum = 0;
+    if (g) for (let i = 0; i < g.length; i++) sum += g[i];
+    return { s, sum };
+  }).filter(r => r.sum > 0).sort((a, b) => b.sum - a.sum);
+  const total = rows.reduce((a, r) => a + r.sum, 0) || 1;
+  if (!rows.length) { el.innerHTML = ''; return; }
+  el.innerHTML = '<div style="color:#e8c37a;margin-bottom:3px">ATTENTION HOTSPOTS</div>' +
+    rows.slice(0, 4).map((r, i) => {
+      const share = r.sum / total;
+      const [cr, cg, cb] = heatRamp(1 - i * 0.26);
+      const hex = `rgb(${Math.round(cr * 255)},${Math.round(cg * 255)},${Math.round(cb * 255)})`;
+      return `<div><i style="background:${hex}"></i>${i + 1}. ${r.s.name} — ${(share * 100).toFixed(1)}%</div>`;
+    }).join('');
 }
 
 /* ---------- 表示モード切替 ---------- */
@@ -421,7 +502,7 @@ function setRenderMode(mode) {
   const sl = document.getElementById('solid-layers');
   if (sl) sl.style.display = CLOUD.on ? 'none' : '';
   const hud = document.getElementById('cloud-hud');
-  if (hud) hud.style.display = CLOUD.on ? '' : 'none';
+  if (hud) hud.style.display = CLOUD.on ? 'block' : 'none';
   document.body.classList.toggle('cloud-mode', CLOUD.on);
   if (CLOUD.on) {
     CLOUD.hudTimer = 99;
@@ -440,6 +521,14 @@ document.getElementById('render-mode').addEventListener('click', e => {
 document.getElementById('ly-cheat').addEventListener('change', e => { CLOUD.heat = e.target.checked; updateCloudColors(); });
 document.getElementById('ly-frustum').addEventListener('change', e => { CLOUD.frustum = e.target.checked; });
 document.getElementById('ly-detect').addEventListener('change', e => { CLOUD.detection = e.target.checked; });
+document.getElementById('heat-window').addEventListener('click', e => {
+  const b = e.target.closest('button[data-win]');
+  if (!b) return;
+  CLOUD.window = b.dataset.win;
+  document.querySelectorAll('#heat-window button').forEach(x => x.classList.toggle('active', x === b));
+  updateCloudColors(); renderHotspots();
+  if (selectedShelfId) drawShelfHeatMini(selectedShelfId);
+});
 
 /* ---------- 売場詳細パネルのミニ・ヒートグリッド ---------- */
 function drawShelfHeatMini(shelfId) {
@@ -453,7 +542,7 @@ function drawShelfHeatMini(shelfId) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, w, h);
   if (!st || !st.grid) return;
-  const sm = smoothGrid(st.grid);
+  const sm = smoothGrid(gridFor(st));
   let max = 1e-6;
   for (let i = 0; i < sm.length; i++) if (sm[i] > max) max = sm[i];
   const cw = w / GRID_U, ch = h / GRID_V;

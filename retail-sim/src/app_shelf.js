@@ -239,7 +239,8 @@ function renderShelfResult() {
 function renderShelfFactors() {
   const { cur } = spLift();
   const rows = [
-    ['段位置（' + SHELF_TIERS[SP.tier].name + '）', cur.tierM, COL.s1, 'ゴールデンゾーン基準'],
+    ['段位置（' + SHELF_TIERS[SP.tier].name + '）', cur.tierM, COL.s1,
+      SHELF_TIERS[SP.tier].calibrated ? '✓ AIカメラ実測で較正済み' : 'ゴールデンゾーン基準（未較正）'],
     ['横位置（' + (SP.col + 1) + '列目・動線' + (SP.flow === 'right' ? '右' : '左') + '）', cur.colM, COL.s1, '入口側ほど有利'],
     ['フェイス数 ×' + SP.faces, cur.faceM, COL.s1, '視線獲得の逓減あり'],
     ['POP: ' + cur.pop.label + '（視線）', cur.pop.g, COL.s2, ''],
@@ -310,12 +311,117 @@ function spApplyTo3D() {
   beacon(`棚割変更を3Dへ反映（視線×${PLANO.attn.toFixed(2)}・転換×${PLANO.conv.toFixed(2)}）`, 'seg-buy');
 }
 
+
+/* ---------- 実測（AIカメラ視線グリッド）とモデル係数の突合・較正 ---------- */
+const SP_TIER_MODEL0 = SHELF_TIERS.map(t => t.mult);   // 出荷時のモデル係数
+const SP_TIER_CM = SHELF_TIERS.map(t => parseFloat(String(t.height).replace(/[^0-9.]/g, '')));
+
+// 実測セルの「床からの絶対高さ」をモデル段へ最近傍割当（什器高さが棚ごとに違うため）
+function tierOfHeightCm(hcm) {
+  let bi = 0, bd = Infinity;
+  SP_TIER_CM.forEach((cm, i) => {
+    const d = Math.abs(cm - hcm);
+    if (d < bd) { bd = d; bi = i; }
+  });
+  return bi;
+}
+
+// 実測グリッドを段別の注目「密度」に集約し、平均1へ正規化
+function measuredTierProfile() {
+  const acc = new Float64Array(SHELF_TIERS.length);
+  const counts = new Float64Array(SHELF_TIERS.length);
+  let total = 0;
+  SHELVES.forEach(s => {
+    if (s.kind === 'island-case' || s.kind === 'counter') return;
+    const st = STATS.shelves[s.id];
+    if (!st || !st.grid) return;
+    const H = s.size[1];
+    for (let v = 0; v < GRID_V; v++) {
+      const hcm = ((v + 0.5) / GRID_V) * H * 100;
+      const bi = tierOfHeightCm(hcm);
+      counts[bi] += GRID_U;
+      for (let u = 0; u < GRID_U; u++) {
+        const val = st.grid[v * GRID_U + u];
+        acc[bi] += val; total += val;
+      }
+    }
+  });
+  if (total <= 0) return null;
+  const dens = Array.from(acc).map((a, i) => counts[i] > 0 ? a / counts[i] : 0);
+  const mean = dens.reduce((a, b) => a + b, 0) / dens.length || 1;
+  return { profile: dens.map(d => d / mean), totalSec: total, coverage: counts };
+}
+
+function renderShelfCalib() {
+  const el = document.getElementById('sp-calib');
+  if (!el) return;
+  const m = measuredTierProfile();
+  const modelMean = SHELF_TIERS.reduce((a, t) => a + t.mult, 0) / SHELF_TIERS.length;
+  if (!m || m.totalSec < 200) {
+    el.innerHTML = `<div class="exp-off">AIカメラの視線計測を蓄積中（現在 ${m ? Math.round(m.totalSec) : 0} 視線秒）。
+      200視線秒を超えると、段別の実測注目度とモデル係数の突合・較正が可能になります。
+      3Dビューを進めるか「デジタルツイン（点群×CCTV）」で計測状況を確認してください。</div>`;
+    return;
+  }
+  const rows = SHELF_TIERS.map((tt, i) => {
+    const model = tt.mult / modelMean;
+    const meas = m.profile[i];
+    const gap = meas - model;
+    return { name: tt.name, height: tt.height, model, meas, gap };
+  });
+  const maxV = Math.max(...rows.map(r => Math.max(r.model, r.meas)), 1.2);
+  const worst = rows.slice().sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))[0];
+  el.innerHTML = `
+    <div class="mde-text" style="margin-bottom:7px">
+      実測 = 全什器のAIカメラ視線グリッド（${GRID_U}×${GRID_V}）を段別に集約し平均1で正規化（サンプル ${fmtNum(m.totalSec)} 視線秒）。
+      モデル = 棚割シミュレーターの段係数。
+    </div>
+    ${rows.map(r => `
+      <div class="sp-factor">
+        <span class="fl">${r.name}（${r.height}）</span>
+        <span class="fb" style="height:16px;background:transparent;display:flex;flex-direction:column;gap:2px">
+          <span style="height:7px;border-radius:4px;background:${COL.s1};width:${(r.meas / maxV * 100).toFixed(1)}%"></span>
+          <span style="height:7px;border-radius:4px;background:#b6c4d4;width:${(r.model / maxV * 100).toFixed(1)}%"></span>
+        </span>
+        <span class="fv" style="width:118px">実測 ${r.meas.toFixed(2)} / モデル ${r.model.toFixed(2)}<br>
+          <span style="color:${Math.abs(r.gap) > 0.2 ? COL.warn : 'var(--text-faint)'};font-weight:400">乖離 ${r.gap >= 0 ? '+' : ''}${r.gap.toFixed(2)}</span></span>
+      </div>`).join('')}
+    <div class="legend" style="margin-top:6px">
+      <span class="li"><span class="sw" style="background:${COL.s1}"></span>実測（AIカメラ）</span>
+      <span class="li"><span class="sw" style="background:#b6c4d4"></span>モデル係数</span>
+    </div>
+    <div class="power-box" style="margin-top:9px">
+      最大乖離は <b>${worst.name}</b>（${worst.gap >= 0 ? '実測が' : 'モデルが'}${Math.abs(worst.gap).toFixed(2)} 上回る）。
+      較正するとモデル係数が実測へ70%引き寄せられ、以降の配置シミュレーションと最適化提案に反映されます。
+      ${confChip(m.totalSec > 3000 ? 'hi' : 'md')}
+      <div class="sp-btnrow" style="margin-top:7px">
+        <button id="sp-calib-apply">実測でモデルを較正</button>
+        <button id="sp-calib-reset" class="ghost">出荷時係数に戻す</button>
+      </div>
+    </div>`;
+  document.getElementById('sp-calib-apply').addEventListener('click', () => {
+    SHELF_TIERS.forEach((tt, i) => {
+      if (!m.coverage[i]) return;          // その高さ帯に計測セルが無ければ触らない
+      const target = clamp(m.profile[i] * modelMean, 0.3, 2.0);
+      tt.mult = +(clamp(lerp(tt.mult, target, 0.7), 0.3, 2.0)).toFixed(3);
+      tt.calibrated = true;
+    });
+    beacon(`棚割モデルをAIカメラ実測で較正（${fmtNum(m.totalSec)}視線秒）`, 'seg-buy');
+    renderShelfSim();
+  });
+  document.getElementById('sp-calib-reset').addEventListener('click', () => {
+    SHELF_TIERS.forEach((tt, i) => { tt.mult = SP_TIER_MODEL0[i]; tt.calibrated = false; });
+    renderShelfSim();
+  });
+}
+
 /* ---------- 描画・バインド ---------- */
 function renderShelfSim() {
   document.getElementById('sp-target').textContent = `対象: ${STORE.promoName}（¥${promotedShelf().price.toLocaleString()}）`;
   drawShelfPreview();
   renderShelfResult();
   renderShelfFactors();
+  renderShelfCalib();
   renderShelfRef();
 }
 window.renderShelfSim = renderShelfSim;

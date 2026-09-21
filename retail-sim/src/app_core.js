@@ -217,7 +217,11 @@ function nearestOf(list, x, z) {
 /* 棚面の視線グリッド（点群ヒートマップの解像度） */
 const GRID_U = 12, GRID_V = 6;
 function freshShelfStats() {
-  return { passes: 0, gazes: 0, gazeSec: 0, stops: 0, picks: 0, purchases: 0, grid: new Float32Array(GRID_U * GRID_V) };
+  return {
+    passes: 0, gazes: 0, gazeSec: 0, stops: 0, picks: 0, purchases: 0,
+    grid: new Float32Array(GRID_U * GRID_V),          // 本日累計
+    gridRecent: new Float32Array(GRID_U * GRID_V),    // 直近（指数減衰）
+  };
 }
 const STATS = {
   day: 15, simSec: 10 * 3600,
@@ -357,7 +361,7 @@ class Agent {
     this.heading = -Math.PI / 2;
     this.persona = pickPersona();
     this.eyeH = (this.persona.eyeH || 1.6) + (rng() - 0.5) * 0.09;
-    this.gazePitch = -0.08 - rng() * 0.12;
+    this.gazeTargetY = null;   // 歩行中はアイレベル付近（周辺視）
     this.speed = (0.85 + rng() * 0.35) * this.persona.speed;
     STATS.personas[this.persona.key].n++;
     this.adExposed = rng() < adExposureShare();
@@ -455,6 +459,7 @@ class Agent {
           }
         }
       }
+      this.gazeTargetY = null;
       this.nextLeg();
     }
   }
@@ -518,7 +523,9 @@ class Agent {
           const s = this.targetShelf;
           STATS.shelves[s.id].stops++;
           this.dwellShelf = s; this.state = 'dwell';
-          this.gazePitch = -0.02 - rng() * 0.72;   // 棚前では上下に視線を走らせる
+          // 注視高さ ~ N(アイレベル-0.33m, 0.31m)。ゴールデンゾーン帯に自然に集中する
+          this.gazeTargetY = clamp(
+            (this.eyeH - 0.33) + (rng() + rng() + rng() - 1.5) * 0.62, 0.25, this.eyeH + 0.28);
           this.wait = (10 + rng() * 20) * this.persona.dwell;
           if (rng() < 0.05) beacon(`客#${this.id} 「${s.name}」に立寄`, this.hasNovelty ? 'seg-nov' : '');
         } else if (this.state === 'toRegister') {
@@ -577,6 +584,8 @@ class Agent {
   }
 }
 
+function cloudSafeRand() { return rng(); }
+
 /* 棚面のどこを見たか（水平=実測ジオメトリ / 垂直=視線高さモデル）を格子に蓄積 */
 function accumulateGaze(agent, s, w, dist) {
   const st = STATS.shelves[s.id];
@@ -587,13 +596,17 @@ function accumulateGaze(agent, s, w, dist) {
   const rel = alongX ? (agent.x - s.pos[0]) : (agent.z - s.pos[2]);
   const along = rel + (alongX ? hx : hz) * dist * 0.45;
   const u = clamp(along / Math.max(length, 0.1) + 0.5, 0, 0.999);
-  const eye = agent.eyeH || 1.6;
-  const pitch = (agent.gazePitch || -0.12) + (s.kind === 'island-case' ? -0.45 : 0);
-  const yHit = eye + Math.tan(pitch) * Math.max(dist * 0.85, 0.4);
+  // 注視高さ: 棚前では「アイレベルよりやや下」に集中（ゴールデンゾーンの成立要因）。
+  // 通過中は周辺視でアイレベル付近を拾う。
+  const yHit = s.kind === 'island-case'
+    ? 0.74 + (cloudSafeRand() - 0.5) * 0.2                       // ケースは見下ろし
+    : (agent.gazeTargetY != null ? agent.gazeTargetY : (agent.eyeH || 1.6) - 0.18);
   const v = s.kind === 'island-case'
     ? clamp((yHit - 0.5) / 0.55, 0, 0.999)
     : clamp(yHit / Math.max(s.size[1], 0.5), 0, 0.999);
-  st.grid[Math.floor(v * GRID_V) * GRID_U + Math.floor(u * GRID_U)] += w;
+  const gi = Math.floor(v * GRID_V) * GRID_U + Math.floor(u * GRID_U);
+  st.grid[gi] += w;
+  if (st.gridRecent) st.gridRecent[gi] += w;
 }
 
 /* 視線・通過検知 */
@@ -1403,7 +1416,7 @@ function updateShelfHeatVisual() {
 }
 
 /* ---------- シミュレーションループ ---------- */
-let arrivalCarry = 0, gazeTimer = 0, heatTimer = 0, shelfHeatTimer = 0, lastWeatherBg = null;
+let arrivalCarry = 0, gazeTimer = 0, heatTimer = 0, shelfHeatTimer = 0, lastWeatherBg = null, gazeDecayAcc = 0;
 
 function simStep(simDt) {
   // 3Dへ出すエージェントはサンプリング（ダッシュボードは sampleFactor 倍で拡大推計）
@@ -1436,6 +1449,17 @@ function simStep(simDt) {
   for (let i = agents.length - 1; i >= 0; i--) {
     if (agents[i].done) { if (followTarget === agents[i]) followTarget = null; disposeAgent(agents[i]); agents.splice(i, 1); }
   }
+  // 直近ウィンドウの指数減衰（半減期 約10分）
+  gazeDecayAcc += simDt;
+  if (gazeDecayAcc >= 60) {
+    gazeDecayAcc -= 60;
+    SHELVES.forEach(s => {
+      const g = STATS.shelves[s.id] && STATS.shelves[s.id].gridRecent;
+      if (!g) return;
+      for (let i = 0; i < g.length; i++) g[i] *= 0.933;
+    });
+  }
+
   // レジ行列: 混雑検知で2番レジを自動開放（コンビニ）
   const totalQ = REGS.reduce((a, r) => a + r.queue.length, 0);
   if (totalQ > STATS.maxQueue) STATS.maxQueue = totalQ;

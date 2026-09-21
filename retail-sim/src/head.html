@@ -178,11 +178,17 @@ button { font-family: inherit; }
 #hud-top { top: 18px; }
 #hud-sub { top: 34px; font-size: 9.5px; color: #7f9bb5; letter-spacing: .1em; }
 #hud-legend {
-  position: absolute; left: 276px; bottom: 18px;
+  position: absolute; left: 368px; bottom: 18px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9.5px;
   letter-spacing: .1em; color: #9db4cc; line-height: 1.8; text-shadow: 0 0 8px rgba(0,0,0,.9);
 }
-#hud-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+#hud-legend i, #hud-hotspots i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+#hud-hotspots {
+  position: absolute; right: 18px; top: 18px; text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px;
+  letter-spacing: .08em; color: #cfe0f0; line-height: 1.85; text-shadow: 0 0 8px rgba(0,0,0,.95);
+}
+body.cloud-mode #shelf-detail { top: 130px; }
 body.cloud-mode #panel, body.cloud-mode #beacon, body.cloud-mode #shelf-detail, body.cloud-mode .mk {
   background: rgba(10,16,28,.92); border-color: rgba(120,160,200,.28); color: #cfe0f0;
 }
@@ -437,11 +443,12 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
   <div id="cloud-hud">
     <div id="hud-top">4 CAMERAS // 0 TRACKED // 0 PORTALS</div>
     <div id="hud-sub">POINT CLOUD DIGITAL TWIN</div>
+    <div id="hud-hotspots"></div>
     <div id="hud-legend">
       <div><i style="background:#c98500"></i>CAMERA / FRUSTUM</div>
       <div><i style="background:#9bbf3a"></i>FLOOR COVERAGE</div>
       <div><i style="background:#31c5f0"></i>DETECTION / TRACKED</div>
-      <div><i style="background:linear-gradient(90deg,#1d62c4,#4acd6e,#ec cd37,#e23a2c)"></i>GAZE HEAT (LOW→HIGH)</div>
+      <div><i style="background:linear-gradient(90deg,#1d62c4,#20bedc,#4acd6e,#eccd37,#e23a2c);width:54px"></i>GAZE HEAT 低→高</div>
     </div>
   </div>
 
@@ -483,6 +490,10 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
           <label class="row"><input type="checkbox" id="ly-cheat" checked /><span class="chip" style="background:linear-gradient(90deg,#1d62c4,#4acd6e,#e23a2c)"></span>棚 視線ヒート投影（点群）</label>
           <label class="row"><input type="checkbox" id="ly-frustum" checked /><span class="chip" style="background:#c98500"></span>CCTV視錐台・床カバレッジ</label>
           <label class="row"><input type="checkbox" id="ly-detect" checked /><span class="chip" style="background:#31c5f0"></span>人物検出・トラッキング</label>
+          <div class="sp-radio" id="heat-window" style="margin:6px 0 2px">
+            <button data-win="day" class="active">本日累計</button>
+            <button data-win="recent">直近30分</button>
+          </div>
         </div>
         <div id="solid-layers">
         <label class="row"><input type="checkbox" id="ly-shelfheat" checked /><span class="chip" style="background:linear-gradient(90deg,#dbe7f5,#1d6fb8)"></span>棚別 視線ヒート</label>
@@ -587,6 +598,11 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
       <div class="card">
         <div class="card-title">要因分解 — なぜこの数字になるか</div>
         <div class="card-body" id="sp-factors"></div>
+      </div>
+
+      <div class="card span2">
+        <div class="card-title">実測との突合 — AIカメラ計測でモデルを較正<span class="hint">段別の実測注目度 vs モデル係数</span></div>
+        <div class="card-body"><div id="sp-calib"></div></div>
       </div>
 
       <div class="card span2">
