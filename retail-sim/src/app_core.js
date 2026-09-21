@@ -293,6 +293,142 @@ function pushOutOfFixtures(a) {
   }
 }
 
+/* ==========================================================================
+   AIカメラの計測モデル（真値 ≠ 計測値）
+   ここまでのシミュレーションは「実際に何が起きたか」（真値）を生成している。
+   実機のAIカメラはそれを完全には観測できないので、次の制約を課した観測値を
+   別レイヤーとして生成し、両方をダッシュボードに並べる。
+     ・カバレッジ  … どのカメラの視錐台にも入らない位置は計測できない
+     ・遮蔽        … 什器や他の客に隠れるとフレームが落ちる
+     ・検出率      … 1フレームあたりの人物検出は100%ではない
+     ・姿勢推定誤差… 頭部の向きの推定には誤差があり、注視セルがずれる
+   ========================================================================== */
+function cctvDefs() {
+  const W = STORE.floorW, D = STORE.floorD, H = STORE.wallH;
+  const y = Math.min(H - 0.32, 2.75);
+  const ix = W / 2 - 0.45, iz = D / 2 - 0.45;
+  const range = Math.max(W, D) * 0.42;
+  const base = [
+    { name: 'FOSCAM_1', p: [-ix, y, iz], t: [-W * 0.12, 0.95, -D * 0.22], range },
+    { name: 'FOSCAM_2', p: [ix, y, iz], t: [W * 0.14, 0.95, -D * 0.20], range },
+    { name: 'FOSCAM_3', p: [-ix, y, -iz], t: [-W * 0.10, 0.95, D * 0.18], range },
+    { name: 'FOSCAM_4', p: [ix, y, -iz], t: [W * 0.12, 0.95, D * 0.16], range },
+  ];
+  return base.concat(EXTRA_CAMS);
+}
+let EXTRA_CAMS = [];                       // 増設提案を適用したときに増える
+let CAMS = [];                             // 計測用の軽量表現（Three.js非依存）
+const CAM_COS = Math.cos(0.62);            // 画角 半頂角35.5°
+const CAM_POSE_SD = 0.155;                 // 頭部姿勢推定の誤差 σ（rad, 1台・良条件）
+const CAM_RECALL = 0.93;                   // 1フレームあたりの人物検出率（良条件）
+
+function buildCams() {
+  CAMS = cctvDefs().map(def => {
+    const p = { x: def.p[0], y: def.p[1], z: def.p[2] };
+    const dx = def.t[0] - p.x, dy = def.t[1] - p.y, dz = def.t[2] - p.z;
+    const L = Math.hypot(dx, dy, dz) || 1;
+    return { name: def.name, p, fwd: { x: dx / L, y: dy / L, z: dz / L }, range: def.range * 2.4 };
+  });
+}
+
+/* 1台のカメラがその点をどれだけ良く見ているか（0=見えない, 1=画角中心で近い） */
+function camQuality(c, x, y, z, skipId) {
+  const dx = x - c.p.x, dy = y - c.p.y, dz = z - c.p.z;
+  const dist = Math.hypot(dx, dy, dz);
+  if (dist > c.range || dist < 0.2) return 0;
+  const cos = (dx * c.fwd.x + dy * c.fwd.y + dz * c.fwd.z) / dist;
+  if (cos < CAM_COS) return 0;
+  if (losBlocked(c.p.x, c.p.y, c.p.z, x, y, z, skipId)) return 0;   // 什器の陰
+  const angQ = clamp((cos - CAM_COS) / (1 - CAM_COS) * 1.8, 0.25, 1);  // 画角端は精度が落ちる
+  const dQ = clamp(1.3 - dist / c.range, 0.3, 1);                      // 遠いほど解像度が落ちる
+  return angQ * dQ;
+}
+
+buildCams();
+
+/* 増設カメラを1台足す（対象の棚が正面に入る天井位置を探して設置）。
+   計測は打ち手ではないが、打ち手の確信度を上げる前提条件なので提案対象にしている。 */
+function addCameraFor(shelfId) {
+  const s = shelfById[shelfId];
+  if (!s) return null;
+  const H = Math.min(STORE.wallH - 0.32, 2.75);
+  const tx = s.pos[0] + s.normal[0] * 0.4, tz = s.pos[2] + s.normal[2] * 0.4;
+  // 棚の正面側・通路上から見下ろす位置。什器に遮られない距離を探す
+  let best = null, bestCov = -1;
+  for (const dist of [2.6, 3.6, 4.6]) {
+    for (const off of [-1.6, 0, 1.6]) {
+      const { alongX } = shelfAxis(s);
+      const px = clamp(tx + s.normal[0] * dist + (alongX ? off : 0), -STORE.floorW / 2 + 0.4, STORE.floorW / 2 - 0.4);
+      const pz = clamp(tz + s.normal[2] * dist + (alongX ? 0 : off), -STORE.floorD / 2 + 0.4, STORE.floorD / 2 - 0.4);
+      const cam = { name: 'tmp', p: { x: px, y: H, z: pz }, range: Math.max(STORE.floorW, STORE.floorD) * 0.42 * 2.4 };
+      const dx = tx - px, dy = 1.1 - H, dz = tz - pz;
+      const L = Math.hypot(dx, dy, dz) || 1;
+      cam.fwd = { x: dx / L, y: dy / L, z: dz / L };
+      let seen = 0, n = 0;
+      for (let v = 0; v < GRID_V; v++) for (let u = 0; u < GRID_U; u++) {
+        const y = ((v + 0.5) / GRID_V) * s.size[1];
+        const p = shelfFacePoint(s, (u + 0.5) / GRID_U, y);
+        n++; if (camQuality(cam, p[0], p[1], p[2], s.id) > 0.02) seen++;
+      }
+      const cov = seen / n;
+      if (cov > bestCov) { bestCov = cov; best = { px, pz }; }
+    }
+  }
+  if (!best || bestCov <= 0) return null;
+  EXTRA_CAMS.push({
+    name: 'ADD_' + (EXTRA_CAMS.length + 1), p: [best.px, H, best.pz], t: [tx, 1.1, tz],
+    range: Math.max(STORE.floorW, STORE.floorD) * 0.42,
+  });
+  buildCams();
+  computeShelfCoverage();
+  if (window.__cloudReady && window.buildCameras) buildCameras();
+  beacon(`CCTVを1台増設（${s.name}向け・棚面カバレッジ ${Math.round(bestCov * 100)}%）`, 'seg-buy');
+  return bestCov;
+}
+window.addCameraFor = addCameraFor;
+
+/* その点を見ているカメラの台数と、合成した観測品質 */
+function observeAt(x, y, z, skipId) {
+  let n = 0, best = 0, sum = 0;
+  for (const c of CAMS) {
+    const q = camQuality(c, x, y, z, skipId);
+    if (q > 0.02) { n++; sum += q; if (q > best) best = q; }
+  }
+  return { n, q: n ? clamp(best + (sum - best) * 0.35, 0, 1.6) : 0 };
+}
+
+/* 他の客による遮蔽（カメラと対象の間に人が立つとフレームが落ちる） */
+function crowdOcclusion(a) {
+  let worst = 1;
+  for (const b of agents) {
+    if (b === a || b.done) continue;
+    const d = Math.hypot(b.x - a.x, b.z - a.z);
+    if (d < 0.85) worst = Math.min(worst, 0.55 + d * 0.5);
+  }
+  return worst;
+}
+
+/* 棚面がどれだけカメラに映っているか（什器ごと・店舗構築時に1回計算） */
+function computeShelfCoverage() {
+  SHELVES.forEach(s => {
+    const st = STATS.shelves[s.id];
+    if (!st) return;
+    let seen = 0, camSum = 0, n = 0;
+    for (let v = 0; v < GRID_V; v++) {
+      for (let u = 0; u < GRID_U; u++) {
+        const y = s.kind === 'island-case'
+          ? s.size[1] * 0.87
+          : ((v + 0.5) / GRID_V) * s.size[1];
+        const p = shelfFacePoint(s, (u + 0.5) / GRID_U, s.kind === 'island-case' ? 0.5 + (v + 0.5) / GRID_V * 0.549 : y);
+        const o = observeAt(p[0], s.kind === 'island-case' ? y : p[1], p[2], s.id);
+        n++; if (o.n > 0) { seen++; camSum += o.n; }
+      }
+    }
+    st.coverage = n ? seen / n : 0;                  // 計測できるセルの割合
+    st.camMean = seen ? camSum / seen : 0;           // 平均カメラ台数
+  });
+}
+
 /* 対人回避: 前方の他客を避けて横にずれ、詰まっていれば減速する */
 function avoidSteer(a) {
   let sx = 0, sz = 0, slow = 1;
@@ -348,6 +484,11 @@ function freshShelfStats() {
     tierTrials: new Float64Array(4),                  // その段に目当てがあった立寄の数
     tierPicks: new Float64Array(4),                   // うち手に取った数
     tierBuys: new Float64Array(4),                    // うち購買に至った数
+    // --- AIカメラ計測値（真値と分けて持つ） ---
+    gridObs: new Float32Array(GRID_U * GRID_V),
+    gazeSecObs: 0, gazesObs: 0, passesObs: 0,
+    cellHit: 0, cellTot: 0,                           // 計測セルが真のセルと一致した割合
+    coverage: 1, camMean: 0,                          // 棚面のカメラ被覆率・平均台数
     attnSum: 0, attnBuySum: 0, dwellN: 0,             // 注視効率の算出用
     grid: new Float32Array(GRID_U * GRID_V),          // 本日累計
     gridRecent: new Float32Array(GRID_U * GRID_V),    // 直近30分（指数減衰）
@@ -360,7 +501,7 @@ const STATS = {
   visitors: 0, adVisitors: 0, buyers: 0, revenue: 0, promoUnits: 0,
   nov: { treat: 0, ctrl: 0, treatBuy: 0, ctrlBuy: 0, treatRev: 0, ctrlRev: 0 },
   cross: { none: { n: 0, buy: 0 }, ad: { n: 0, buy: 0 }, sig: { n: 0, buy: 0 }, both: { n: 0, buy: 0 } },
-  personas: {}, balked: 0, balkedRev: 0, waitSum: 0, waitN: 0, maxQueue: 0, reg2Opened: false, gazeEvents: 0,
+  personas: {}, balked: 0, balkedRev: 0, waitSum: 0, waitN: 0, maxQueue: 0, reg2Opened: false, gazeEvents: 0, obsEvents: 0,
   shelves: {}, buckets: [], adStoreVisits: 0, returns: 0, applied: 0,
 };
 function resetPersonaStats() {
@@ -371,6 +512,7 @@ resetPersonaStats();
 function resetShelfStats() {
   STATS.shelves = {};
   SHELVES.forEach(s => STATS.shelves[s.id] = freshShelfStats());
+  if (CAMS.length) computeShelfCoverage();
 }
 resetShelfStats();
 for (let i = 0; i < 24; i++) STATS.buckets.push(0);
@@ -1009,6 +1151,31 @@ function accumulateGaze(s, u, y, w, agent) {
   return gi;
 }
 
+/* 同じ注視イベントを「AIカメラが観測できた形」で別レイヤーへ積む。
+   観測できなければ何も積まない＝欠測。積めても姿勢推定誤差でセルがずれる。 */
+function accumulateObserved(s, u, y, w, agent, dist, trueGi) {
+  const st = STATS.shelves[s.id];
+  st.trueSecForObs = (st.trueSecForObs || 0) + w;
+  const obs = agent.obs;
+  if (!obs || obs.n === 0) return;                      // どのカメラにも映っていない
+  if (rng() > obs.recall) return;                       // 検出漏れ（フレーム落ち）
+  // 姿勢推定誤差: 台数が増えるほど小さくなる（多視点で頭部姿勢が安定する）
+  const sd = CAM_POSE_SD / Math.sqrt(obs.n) / Math.max(obs.q, 0.25);
+  const off = sd * Math.max(dist, 0.4);                 // 棚面上の位置ズレ（m）
+  const { len } = shelfAxis(s);
+  const uo = clamp(u + gauss3() * off / Math.max(len, 0.3), 0, 0.999);
+  const hRange = s.kind === 'island-case' ? 0.55 : Math.max(s.size[1], 0.5);
+  const yo = s.kind === 'island-case'
+    ? clamp(y + gauss3() * off * 0.55, 0.5, 1.049)
+    : clamp(y + gauss3() * off, 0.02, s.size[1] * 0.99);
+  const v = s.kind === 'island-case' ? clamp((yo - 0.5) / 0.55, 0, 0.999) : clamp(yo / hRange, 0, 0.999);
+  const gi = Math.floor(v * GRID_V) * GRID_U + Math.floor(uo * GRID_U);
+  st.gridObs[gi] += w;
+  st.gazeSecObs += w;
+  st.cellTot++; if (gi === trueGi) st.cellHit++;
+  STATS.obsEvents++;
+}
+
 /* ---------- 視線検知 ----------
    実際の視覚は「中心視1点 ＋ その周囲へ急減衰する有効視野」でできている。
    ここでは注視点（fix）を1点だけ持ち、
@@ -1028,6 +1195,10 @@ function acuity(ang) {
 function senseGaze(agent, interval) {
   agent.gazeW = 0;
   const ex = agent.x, ez = agent.z, ey = agent.eyeH;
+  // このフレームでAIカメラがこの客をどう観測できているか（頭部位置で判定）
+  const o = observeAt(ex, ey, ez, null);
+  agent.obs = { n: o.n, q: o.q, recall: o.n ? clamp(CAM_RECALL * crowdOcclusion(agent) * clamp(o.q * 1.15, 0.3, 1), 0, 0.99) : 0 };
+  agent.obsConf = o.n ? clamp(0.52 + o.n * 0.11 + o.q * 0.18, 0, 0.99) : 0;
   // 視線軸（注視点がなければ頭の向き＝進行方向）
   const cp = Math.cos(agent.headPitch);
   const axX = Math.sin(agent.headYaw) * cp, axZ = Math.cos(agent.headYaw) * cp;
@@ -1041,7 +1212,10 @@ function senseGaze(agent, interval) {
     const np = shelfNearPoint(s, ex, ez);
     const d0 = Math.hypot(np.x - ex, np.z - ez);
     if (d0 > GAZE_DIST + 0.3) continue;
-    if (d0 < 2.2 && !agent.passSet[s.id]) { agent.passSet[s.id] = 1; STATS.shelves[s.id].passes++; }
+    if (d0 < 2.2 && !agent.passSet[s.id]) {
+      agent.passSet[s.id] = 1; STATS.shelves[s.id].passes++;
+      if (agent.obs.n > 0 && rng() < agent.obs.recall) STATS.shelves[s.id].passesObs++;
+    }
     // 棚の背面からは見えない
     if ((ex - np.x) * s.normal[0] + (ez - np.z) * s.normal[2] < 0) continue;
 
@@ -1091,11 +1265,13 @@ function senseGaze(agent, interval) {
     if (s.promoted && S.endcap) w *= ENDCAP_ATTENTION * PLANO.attn;
     if (w < interval * 0.004) continue;
     const gi = accumulateGaze(s, u, y, w, agent);
+    accumulateObserved(s, u, y, w, agent, vl, gi);
 
     // 「視線を獲得した」判定は注目秒ベース（0.7秒以上の停留＝fixation とみなす）
     agent.gazeMap[s.id] = (agent.gazeMap[s.id] || 0) + w;
     if (agent.gazeMap[s.id] >= 0.7 && !agent['gz_' + s.id]) {
       agent['gz_' + s.id] = true; STATS.shelves[s.id].gazes++;
+      if (agent.obs.n > 0 && rng() < agent.obs.recall) STATS.shelves[s.id].gazesObs++;
     }
     if (w > agent.gazeW) {
       agent.gazeW = w;
@@ -2110,7 +2286,7 @@ function resetDayCounters() {
   STATS.cross = { none: { n: 0, buy: 0 }, ad: { n: 0, buy: 0 }, sig: { n: 0, buy: 0 }, both: { n: 0, buy: 0 } };
   resetPersonaStats();
   STATS.balked = 0; STATS.balkedRev = 0; STATS.waitSum = 0; STATS.waitN = 0; STATS.maxQueue = 0; STATS.reg2Opened = false;
-  STATS.gazeEvents = 0;
+  STATS.gazeEvents = 0; STATS.obsEvents = 0;
   REGS.forEach(r => { r.queue.length = 0; if (FKEY === 'conbini') r.open = r === REGS[0]; });
   resetShelfStats();
   STATS.buckets = STATS.buckets.map(() => 0);
@@ -2156,6 +2332,8 @@ function loadFacility(key) {
   rebuildShelfIndex();
   buildGraph();
   buildRegs();
+  EXTRA_CAMS = [];
+  buildCams();
   selectShelf(null);
   STATS.day = 15; STATS.simSec = 10 * 3600;
   resetDayCounters();

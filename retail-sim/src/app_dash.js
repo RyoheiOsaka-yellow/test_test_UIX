@@ -573,11 +573,107 @@ function fmtClock(sec) {
 
 /* ---------- AI アクションカード ---------- */
 const actionState = {};
+/* ---------- 計測品質（真値 vs AIカメラ計測値） ---------- */
+function measurementQuality() {
+  let trueSec = 0, obsSec = 0, hit = 0, tot = 0, covW = 0, camW = 0, wsum = 0;
+  const rows = [];
+  SHELVES.forEach(s => {
+    const st = STATS.shelves[s.id];
+    if (!st) return;
+    trueSec += st.gazeSec; obsSec += st.gazeSecObs;
+    hit += st.cellHit; tot += st.cellTot;
+    covW += st.coverage * st.gazeSec; camW += st.camMean * st.gazeSec; wsum += st.gazeSec;
+    rows.push({
+      s, st,
+      capture: st.gazeSec > 5 ? st.gazeSecObs / st.gazeSec : null,
+      cell: st.cellTot > 20 ? st.cellHit / st.cellTot : null,
+      cov: st.coverage, cams: st.camMean,
+    });
+  });
+  if (!wsum) return null;
+  return {
+    trueSec, obsSec, capture: trueSec ? obsSec / trueSec : 0,
+    cell: tot ? hit / tot : 0,
+    cov: covW / wsum, cams: camW / wsum,
+    rows: rows.sort((a, b) => (a.capture || 1) * (a.cov || 1) - (b.capture || 1) * (b.cov || 1)),
+  };
+}
+
+/* 計測品質から確信度ラベルを決める（xAD の3段階表現に合わせる） */
+function measConf(capture, cov, cell) {
+  const sc = (capture || 0) * 0.4 + (cov || 0) * 0.35 + (cell || 0) * 0.25;
+  return sc >= 0.68 ? 'hi' : sc >= 0.5 ? 'md' : 'lo';
+}
+
+function renderMeasQuality() {
+  const el = document.getElementById('measq-body');
+  if (!el) return;
+  const m = measurementQuality();
+  if (!m || m.trueSec < 100) { el.innerHTML = `<div class="exp-off">計測を蓄積中…</div>`; return; }
+  const worst = m.rows.slice(0, 4);
+  el.innerHTML = `
+    <div class="mde-text" style="margin-bottom:7px">
+      シミュレーションが生成した<b>真値</b>と、設置CCTV ${CAMS.length}台が実際に観測できた<b>計測値</b>を分けて集計している。
+      AIカメラは画角外・什器や他客の陰・検出漏れで取りこぼし、頭部姿勢の推定誤差（σ≈${(CAM_POSE_SD * 57.3).toFixed(0)}°／1台・良条件）で
+      注視セルがずれる。ダッシュボードの確信度ラベルはこの計測品質から決まる。
+    </div>
+    <div class="sd-metrics" style="margin-bottom:8px">
+      <div class="sd-m"><div class="l">視線秒の捕捉率</div><div class="v">${fmtPct(m.capture, 1)}</div>
+        <div class="l" style="margin-top:2px">${fmtNum(m.obsSec * SF())} / ${fmtNum(m.trueSec * SF())}s</div></div>
+      <div class="sd-m"><div class="l">セル位置の一致率</div><div class="v">${fmtPct(m.cell, 0)}</div>
+        <div class="l" style="margin-top:2px">${GRID_U}×${GRID_V}格子</div></div>
+      <div class="sd-m"><div class="l">棚面カバレッジ</div><div class="v">${fmtPct(m.cov, 0)}</div>
+        <div class="l" style="margin-top:2px">視線加重</div></div>
+      <div class="sd-m"><div class="l">平均カメラ台数</div><div class="v">${m.cams.toFixed(1)}</div>
+        <div class="l" style="margin-top:2px">多いほど姿勢が安定</div></div>
+    </div>
+    <div class="sd-cat" style="margin:6px 0 3px">計測品質が低い売場（この4つは数字を割り引いて読む）</div>
+    <table id="measq-table" style="width:100%">
+      <thead><tr><th>売場</th><th>カバレッジ</th><th>カメラ</th><th>捕捉率</th><th>セル一致</th><th>確信度</th></tr></thead>
+      <tbody>${worst.map(r => `
+        <tr><td><span class="sname">${r.s.name}</span></td>
+          <td>${fmtPct(r.cov, 0)}</td>
+          <td>${r.cams.toFixed(1)}</td>
+          <td>${r.capture == null ? '—' : fmtPct(r.capture, 0)}</td>
+          <td>${r.cell == null ? '—' : fmtPct(r.cell, 0)}</td>
+          <td>${confChip(measConf(r.capture, r.cov, r.cell))}</td></tr>`).join('')}
+      </tbody>
+    </table>
+    <div class="sd-note" style="margin-top:5px">
+      「デジタルツイン（点群×CCTV）」の<b>ヒートの出どころ</b>を「AIカメラ計測値」へ切り替えると、
+      実機が実際に取れるヒートマップを同じ画面で確認できる。
+    </div>`;
+}
+
 function buildActions() {
   const p = computeProjection();
   const r = noveltyStatsCalc();
   const promoUnit = FKEY === 'depato' ? '個' : '個';
   const list = [];
+  // 計測できていない売場 ＝ 打ち手の前に「測れる状態」を作る必要がある
+  const mq = measurementQuality();
+  if (mq && mq.trueSec > 500) {
+    // 注目されているのにカバレッジが低い売場を優先（測る価値 × 測れていなさ）
+    const cand = mq.rows
+      .filter(r => r.cov < 0.6 && r.st.gazeSec > mq.trueSec * 0.04)
+      .map(r => ({ r, score: r.st.gazeSec * (1 - r.cov) }))
+      .sort((a, b) => b.score - a.score)[0];
+    if (cand) {
+      const r = cand.r;
+      const lostSec = Math.round(r.st.gazeSec * (1 - (r.capture || 0)) * SF());
+      list.push({
+        key: 'cam-add', priority: 'high', category: '計測',
+        title: `「${r.s.name}」向けにCCTVを1台増設`,
+        reason: `棚面カバレッジ ${fmtPct(r.cov, 0)}・平均 ${r.cams.toFixed(1)}台・セル位置一致率 ${r.cell == null ? '—' : fmtPct(r.cell, 0)}。`
+          + `視線秒の取りこぼしが ${fmtNum(lostSec)}秒/日 あり、この売場の棚割判断は現状では確信度を上げられない。`
+          + `増設すると多視点になり頭部姿勢の推定誤差が縮む（σ ∝ 1/√台数）。`
+          + `計測は打ち手ではないが、打ち手の確信度を上げる前提条件。`,
+        impact: { metric: '捕捉率', delta: Math.round((0.93 - (r.capture || 0)) * 100), ci: 4 },
+        confidence: 0.88, source: 'L0 / カバレッジ',
+        apply: () => addCameraFor(r.s.id),
+      });
+    }
+  }
   // 視線は取れているのに売れていない売場 ＝ 置き場所ではなく中身（商品・価格・POP）の問題
   const effRows = SHELVES.map(s => {
     const st = STATS.shelves[s.id];
@@ -728,7 +824,13 @@ function renderActions() {
 document.getElementById('actions').addEventListener('click', e => {
   const b = e.target.closest('button[data-act]');
   if (!b) return;
+  const prev = actionState[b.dataset.act];
   actionState[b.dataset.act] = { status: b.dataset.op, execSimSec: STATS.simSec };
+  // 実行がシミュレーション側の状態を変えるアクション（例: CCTV増設）はここで適用する
+  if (b.dataset.op === 'exec' && (!prev || prev.status !== 'exec')) {
+    const act = buildActions().find(x => x.key === b.dataset.act);
+    if (act && act.apply) { act.apply(); renderMeasQuality(); renderShelfTable(); }
+  }
   renderActions();
 });
 
@@ -956,7 +1058,7 @@ function refreshDash() {
   renderMiniKPI(); renderBeacon();
   if (selectedShelfId) renderShelfDetail();
   if (activeView === 'analytics') {
-    renderKPIs(); renderFunnel(); renderCross(); renderShelfTable(); renderNovelty(); renderStock(); renderBenchmark();
+    renderKPIs(); renderFunnel(); renderCross(); renderMeasQuality(); renderShelfTable(); renderNovelty(); renderStock(); renderBenchmark();
     renderPersona(); renderRegops();
   }
 }

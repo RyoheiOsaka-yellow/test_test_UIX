@@ -515,6 +515,11 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
             <button data-win="recent">直近30分</button>
             <button data-win="day">本日累計</button>
           </div>
+          <div class="note" style="margin:5px 0 2px">ヒートの出どころ</div>
+          <div class="sp-radio" id="heat-source" style="margin:0 0 2px">
+            <button data-src="true" class="active">真値</button>
+            <button data-src="obs">AIカメラ計測値</button>
+          </div>
           <button id="btn-reset-heat" style="width:100%;font-size:11px;padding:6px 0;border-radius:6px;cursor:pointer;background:#f2f5f9;color:var(--text-secondary);border:1px solid var(--panel-border);margin-top:2px">
             ヒートを消して描き直しを観察
           </button>
@@ -798,6 +803,11 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
       <div class="card">
         <div class="card-title" data-ccollapse>クロスメディア接触 × 販促商品購買率<span class="hint">FamilyMartVision実証（最大1.7倍）と整合</span><span class="ctgl">▾</span></div>
         <div class="card-body"><div id="cross-body"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-ccollapse>計測品質｜真値 vs AIカメラ計測値<span class="hint">この数字はどこまで信じられるか</span><span class="ctgl">▾</span></div>
+        <div class="card-body"><div id="measq-body"></div></div>
       </div>
 
       <div class="card">

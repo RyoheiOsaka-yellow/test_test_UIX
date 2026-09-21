@@ -14,6 +14,7 @@ const CLOUD = {
   detLines: null, trackLabel: null, trackRing: null,
   gazeRays: null, splats: null, splatLife: null, splatCursor: 0, cellFrames: null, rayDots: null,
   heatTimer: 0, gazeRate: 0, gazeAcc: 0, rateTimer: 0, floorCanvas: null, floorTex: null, floorPlane: null,
+  source: 'true',          // 'true'=シミュレーションの真値 / 'obs'=AIカメラ計測値
 };
 window.CLOUD = CLOUD;
 
@@ -44,18 +45,6 @@ function personaRGB(idx) {
 }
 
 /* ---------- CCTV 定義（施設寸法から生成） ---------- */
-function cctvDefs() {
-  const W = STORE.floorW, D = STORE.floorD, H = STORE.wallH;
-  const y = Math.min(H - 0.32, 2.75);
-  const ix = W / 2 - 0.45, iz = D / 2 - 0.45;
-  const range = Math.max(W, D) * 0.42;
-  return [
-    { name: 'FOSCAM_1', p: [-ix, y, iz], t: [-W * 0.12, 0.95, -D * 0.22], range },
-    { name: 'FOSCAM_2', p: [ix, y, iz], t: [W * 0.14, 0.95, -D * 0.20], range },
-    { name: 'FOSCAM_3', p: [-ix, y, -iz], t: [-W * 0.10, 0.95, D * 0.18], range },
-    { name: 'FOSCAM_4', p: [ix, y, -iz], t: [W * 0.12, 0.95, D * 0.16], range },
-  ];
-}
 
 /* ---------- 点群生成 ---------- */
 function shelfPointSpec(s) {
@@ -504,6 +493,8 @@ function buildDetectionLines() {
 }
 
 function gridFor(st) {
+  // 計測値モードでは本日累計のみ（AIカメラの観測は時間窓を分けて持っていない）
+  if (CLOUD.source === 'obs') return st.gridObs || st.grid;
   if (CLOUD.window === 'live' && st.gridLive) return st.gridLive;
   if (CLOUD.window === 'recent' && st.gridRecent) return st.gridRecent;
   return st.grid;
@@ -536,7 +527,7 @@ function updateCloudColors() {
     return;
   }
   // 棚内の相対（どこを見たか）× 棚間の相対（どの棚が見られたか）のハイブリッド正規化
-  const isLive = CLOUD.window === 'live';
+  const isLive = CLOUD.window === 'live' && CLOUD.source !== 'obs';   // 計測値は累計のみ
   const shelfMax = {}, shelfTot = {}, smooth = {}, liveG = {}, dayMax = {};
   let globalTot = 1e-6, liveMax = 1e-6, floorMax = 1e-6, liveAbsMax = 1e-6;
   // 床の回遊（歩行）グリッドの最大値
@@ -905,6 +896,19 @@ document.getElementById('ly-detect').addEventListener('change', e => { CLOUD.det
 document.getElementById('ly-rays').addEventListener('change', e => { CLOUD.rays = e.target.checked; });
 document.getElementById('btn-reset-heat').addEventListener('click', () => {
   if (window.resetHeatmaps) resetHeatmaps();
+});
+document.getElementById('heat-source').addEventListener('click', e => {
+  const b = e.target.closest('button[data-src]');
+  if (!b) return;
+  CLOUD.source = b.dataset.src;
+  document.querySelectorAll('#heat-source button').forEach(x => x.classList.toggle('active', x === b));
+  // 計測値は本日累計のみなので、窓の選択を合わせて無効化する
+  document.querySelectorAll('#heat-window button').forEach(x => {
+    x.disabled = CLOUD.source === 'obs';
+    x.style.opacity = CLOUD.source === 'obs' ? 0.4 : 1;
+  });
+  updateCloudColors(); renderHotspots();
+  if (selectedShelfId) drawShelfHeatMini(selectedShelfId);
 });
 document.getElementById('heat-window').addEventListener('click', e => {
   const b = e.target.closest('button[data-win]');
