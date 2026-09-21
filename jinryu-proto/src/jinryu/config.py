@@ -62,9 +62,21 @@ def area() -> dict[str, Any]:
     return _load_yaml(area_file())
 
 
+def _deep_merge(base: dict, over: dict) -> dict:
+    out = dict(base)
+    for k, v in over.items():
+        out[k] = _deep_merge(out[k], v) if isinstance(v, dict) and isinstance(out.get(k), dict) else v
+    return out
+
+
 @cache
 def coefficients() -> dict[str, Any]:
-    return _load_yaml("coefficients.yaml")
+    """config/coefficients.yaml に、エリア別の上書き（coefficients_<area>.yaml）を重ねて返す."""
+    base = _load_yaml("coefficients.yaml")
+    a = os.environ.get("JINRYU_AREA", "").strip()
+    if a and a != "okayama" and (CONFIG_DIR / f"coefficients_{a}.yaml").exists():
+        base = _deep_merge(base, _load_yaml(f"coefficients_{a}.yaml") or {})
+    return base
 
 
 @cache

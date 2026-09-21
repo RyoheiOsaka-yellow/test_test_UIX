@@ -55,23 +55,23 @@ osm:
   tiles_x: 5
   tiles_y: 4
 
-# 通行量調査: 福岡市「歩行者交通量等調査」（天神・博多駅・ウォーターフロント、7〜20 時の時間帯別、平日/休日）は PDF 公開。
-# 本環境から市サイトへ到達できず未取得。手入力 CSV（data/fukuoka/raw/counts_manual/*.csv）を置けば calibrate が自動で使う。
+# 通行量調査: 福岡市「歩行者交通量等調査」令和6年度の PDF を取り込み済み。
+# PDF には座標が無いため、縮尺バーと OSM 街路網への整合でアフィン変換を推定して地点に座標を付与する
+# （src/jinryu/ingest/counts_fukuoka.py）。街路 224 地点 × 平日/休日 = 436 観測を較正に使用。
+# 天神地下は縮尺バーが文字として無く座標を決められないため除外。
 counts:
   source: fukuoka_city_survey_pdf
-  sites_csv: count_sites_fukuoka.csv    # 未作成（PDF から地点を起こす）
   raw_dir: counts_fukuoka
-  months: []
-  page_ids: {}
   pdf_urls:
     - https://www.city.fukuoka.lg.jp/jutaku-toshi/kaihatsu/toshi/documents/r06_tenjin_walker.pdf
     - https://www.city.fukuoka.lg.jp/jutaku-toshi/kaihatsu/toshi/kotsuryo_nendo_hakata_walker.html
     - https://www.city.fukuoka.lg.jp/jutaku-toshi/kaihatsu/toshi/kotsuryo_nendo_wf_walker.html
 
-# 実測が無い間は岡山で較正した距離抵抗とスケールを転用する（未較正である旨を UI に表示）
+# 実測が取り込めないエリア向けの転用設定（福岡は実測で較正済みのため現在は未使用）。
+# 新しいエリアを実測なしで立ち上げるときのフォールバック。
 calibrate_transfer:
-  source: okayama_central (2026-09-21, Spearman CV 0.70)
-  half_distance_m: 900
-  scale_k: 0.3727
+  source: okayama_central (2026-09-21, Spearman CV 0.69)
+  half_distance_m: 450
+  scale_k: 0.5071
 
 basemap_pref_zoom: 11

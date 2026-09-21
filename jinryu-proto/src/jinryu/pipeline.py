@@ -63,17 +63,24 @@ def split_station_exits(stations: gpd.GeoDataFrame) -> pd.DataFrame:
 
 
 def run_build(
-    periods: list[str] | None = None, coef: dict | None = None, write: bool = True, tables: dict | None = None
+    periods: list[str] | None = None,
+    coef: dict | None = None,
+    write: bool = True,
+    tables: dict | None = None,
+    day_types: tuple[str, ...] = ("weekday", "holiday"),
+    time_bands: tuple[str, ...] = ("day", "night", "all"),
+    quiet: bool = False,
 ):
     coef = coef or config.coefficients()
     t = tables or load_tables()
     t0 = time.time()
+    echo = (lambda *a, **k: None) if quiet else typer.echo
     periods = periods or sorted(t["mesh_flow"].period.unique().tolist())
     mesh_flow = t["mesh_flow"][t["mesh_flow"].period.isin(periods)]
 
     # ① 建物配分
     bpop = downscale(mesh_flow, t["building"], coef)
-    typer.echo(f"① building_pop rows={len(bpop)}  ({time.time() - t0:.1f}s)")
+    echo(f"① building_pop rows={len(bpop)}  ({time.time() - t0:.1f}s)")
 
     # ネットワークとゾーン
     links = t["road_link"]
@@ -85,7 +92,7 @@ def run_build(
     st = st[st.passengers_per_day > 0]
 
     # ② OD 重み（全組合せ列を用意）
-    combos = [(q, d, b) for q in periods for d in ("weekday", "holiday") for b in ("day", "night", "all")]
+    combos = [(q, d, b) for q in periods for d in day_types for b in time_bands]
     gw = gateway_nodes(links, nodes, config.bbox())
     pois = t.get("poi")
     if pois is not None and len(pois):
@@ -128,7 +135,7 @@ def run_build(
         O[zi.get_indexer(zw.index), k] = zw.O.values
         D[zi.get_indexer(zw.index), k] = zw.D.values
     rep_idx = np.array([net.idx(rep[z]) for z in zone_ids])
-    typer.echo(f"② zones={len(zi)} combos={len(combos)}  ({time.time() - t0:.1f}s)")
+    echo(f"② zones={len(zi)} combos={len(combos)}  ({time.time() - t0:.1f}s)")
 
     # ③ 経路配分（確率的配分の近似: 無摂動距離で OD を作り、コスト摂動した木 draws 本に同じ荷重を載せて平均）
     L = len(links)
@@ -159,7 +166,7 @@ def run_build(
             dist_d, pred_d = shortest_tree(net_d, int(rep_idx[i]), limit=maxd * 1.5)
             accumulate(net_d, dist_d, pred_d, loads, link_flow)
     link_flow *= 2.0 / draws  # 往復・平均
-    typer.echo(f"③ assignment done: {len(origins)} origins × {draws} draws ({time.time() - t0:.1f}s)")
+    echo(f"③ assignment done: {len(origins)} origins × {draws} draws ({time.time() - t0:.1f}s)")
 
     rows = []
     for k, (q, d, b) in enumerate(combos):
@@ -194,5 +201,5 @@ def run_build(
                 ensure_ascii=False,
                 indent=2,
             )
-        typer.echo(f"saved building_pop / link_flow_synth → {p.processed}")
+        echo(f"saved building_pop / link_flow_synth → {p.processed}")
     return bpop, lf

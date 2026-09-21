@@ -21,6 +21,7 @@ dependencies = [
     "uvicorn>=0.30",
     "matplotlib>=3.9",
     "typer>=0.12",
+    "pymupdf>=1.28.2",
 ]
 
 [project.optional-dependencies]

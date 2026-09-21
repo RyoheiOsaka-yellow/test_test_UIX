@@ -68,7 +68,12 @@ def zone_weights(
         b.usage_class.isin(["residential", "mixed"]), b.building_id.map(night).fillna(0) * rate, 0.0
     )
     b["D"] = np.where(b.usage_class.isin(DEST_CLASSES), b.building_id.map(dayp).fillna(0), 0.0)
-    b.loc[b.usage_class == "mixed", "D"] *= od.get("mixed_dest_factor", 0.5)
+    # 用途別の集中係数（推定値があれば使う。無ければ mixed のみ従来の係数）
+    dw = od.get("dest_weight")
+    if dw:
+        b["D"] *= b.usage_class.map(dw).fillna(1.0).values
+    else:
+        b.loc[b.usage_class == "mixed", "D"] *= od.get("mixed_dest_factor", 0.5)
     zw = b.groupby("zone_id")[["O", "D"]].sum()
     # POI（店舗・飲食）密度による追加集中: 小規模店舗が密集するアーケード等を補う
     pw = od.get("poi_weight", 0.0)

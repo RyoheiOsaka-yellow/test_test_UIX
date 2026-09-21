@@ -100,6 +100,22 @@ sources:
     notes: "時間帯別・地点別の値がある。v0.1 では未取得（PDF→手入力CSV の口だけ用意: data/raw/counts_manual/*.csv）"
     fetched_at: null
 
+  - id: fukuoka_counts
+    areas: [fukuoka_central]
+    name: "福岡市 歩行者交通量等調査（天神地区 地上/地下・博多駅周辺・ウォーターフロント）"
+    provider: 福岡市 住宅都市局 都市計画部
+    url: https://www.city.fukuoka.lg.jp/jutaku-toshi/kaihatsu/toshi/hokousya_kotsuryo.html
+    format: "PDF（地図上に地点番号と実測値。令和6年度・3年度・平成28年度…）"
+    period: "令和6年度（2024年度）調査"
+    granularity: "地点別 7:00–20:00 の13時間計、平日・休日それぞれ1日"
+    license: 福岡市ウェブサイト利用規約（出典明示。商用利用可否は要確認）
+    credit: 福岡市「歩行者交通量等調査」を加工
+    notes: >-
+      緯度経度は PDF に含まれないため、縮尺バーから m/pt を求め、地点群が OSM 歩行可能リンクに
+      最も良く重なるようアフィン変換を推定して付与した（天神 残差中央値 5.0m、博多 4.3m、WF 3.3m）。
+      天神地下は縮尺バーが文字として無いため座標を付与できず除外。値は 13 時間計で、岡山の 24 時間計とは定義が異なる。
+    fetched_at: "2026-09-21"
+
   - id: estat_census
     name: e-Stat 国勢調査 地域メッシュ統計 / 経済センサス
     provider: 総務省統計局

@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import json
+import os
 import time
 from pathlib import Path
 
@@ -22,13 +23,21 @@ from scipy.stats import spearmanr
 from jinryu import config
 
 
+def _bearing(geom) -> float:
+    """リンクの代表方位（0〜π、向きは区別しない）."""
+    x0, y0 = geom.coords[0]
+    x1, y1 = geom.coords[-1]
+    return np.arctan2(y1 - y0, x1 - x0) % np.pi
+
+
 def match_sites_to_links(sites: gpd.GeoDataFrame, links: gpd.GeoDataFrame, max_m: float) -> pd.DataFrame:
     """調査地点 → スクリーンライン交差リンク集合.
 
-    カメラは「通行方向に直交する線」を横切る人を数えるので、地点に通行方向と直交する長さ 2×max_m の
-    スクリーンラインを置き、それと交差する歩行リンクの集合（link_ids）を対応付ける。並行する複数の歩行者リンク
-    （アーケード中心線と両側歩道など）の流量を合算でき、all-or-nothing 配分の偏りに頑健になる。
-    交差が無い地点は最寄りリンク 1 本にフォールバックする。
+    カメラ・調査員は「街路を横切る線」を通る人を数える。そこで地点ごとに、その街路と直交する
+    長さ 2×max_m のスクリーンラインを置き、交差する歩行リンクのうち<その街路と平行なもの>だけを
+    集める。平行判定を入れないと、交差点で直交する街路まで合算して数倍に膨れる。
+
+    街路の向きは、調査票に方向（南北/東西）があればそれを、無ければ最寄りリンクの方位を使う。
     """
     from shapely.geometry import LineString
 
@@ -36,28 +45,38 @@ def match_sites_to_links(sites: gpd.GeoDataFrame, links: gpd.GeoDataFrame, max_m
     s = sites.to_crs(plane)
     l_ = links[["link_id", "geometry"]].to_crs(plane)
     sidx = l_.sindex
+    bearings = l_.geometry.map(_bearing).values
+    tol = np.radians(config.coefficients()["calibrate"].get("parallel_tolerance_deg", 40))
     rows = []
     for _, r in s.iterrows():
         x, y = r.geometry.x, r.geometry.y
-        direction = str(r.get("direction", ""))
-        if "南北" in direction:  # 南北方向の通行 → 東西のスクリーンライン
-            line = LineString([(x - max_m, y), (x + max_m, y)])
+        direction = str(r.get("direction", "") or "")
+        nearest_idx = int(list(sidx.nearest(r.geometry, return_all=False)[1])[0])
+        if "南北" in direction:
+            street = np.pi / 2  # 南北に通行する街路
         elif "東西" in direction:
-            line = LineString([(x, y - max_m), (x, y + max_m)])
-        else:  # 方向不明: 十字
-            line = LineString([(x - max_m, y), (x + max_m, y), (x, y), (x, y - max_m), (x, y + max_m)])
+            street = 0.0
+        else:
+            street = float(bearings[nearest_idx])
+        # 街路に直交するスクリーンライン
+        nx, ny = -np.sin(street), np.cos(street)
+        line = LineString([(x - nx * max_m, y - ny * max_m), (x + nx * max_m, y + ny * max_m)])
         cand = l_.iloc[list(sidx.query(line, predicate="intersects"))]
+        if len(cand):
+            diff = np.abs(bearings[cand.index.values] - street)
+            diff = np.minimum(diff, np.pi - diff)
+            cand = cand[diff <= tol]
         if len(cand) == 0:
-            j = l_.iloc[list(sidx.nearest(r.geometry, max_distance=max_m, return_all=False)[1])]
-            cand = j
+            cand = l_.iloc[[nearest_idx]]
         d = cand.geometry.distance(r.geometry)
         rows.append(
             {
                 "site_id": r.site_id,
-                "link_id": cand.link_id.iloc[int(np.argmin(d.values))] if len(cand) else None,
+                "link_id": cand.link_id.iloc[int(np.argmin(d.values))],
                 "link_ids": ",".join(cand.link_id.tolist()),
                 "n_links": len(cand),
-                "match_dist_m": round(float(d.min()), 1) if len(cand) else None,
+                "street_bearing_deg": round(float(np.degrees(street)), 1),
+                "match_dist_m": round(float(d.min()), 1),
             }
         )
     return pd.DataFrame(rows)
@@ -197,7 +216,9 @@ def run_calibration(write: bool = True) -> dict:
         with open(p.processed / "calibration.json", "w", encoding="utf-8") as f:
             json.dump(calib, f, ensure_ascii=False, indent=2)
         write_eval_md(calib, best[2], p.docs)
-        typer.echo(f"saved link_flow (calibrated), calibration.json, docs/EVAL.md ({time.time() - t0:.1f}s)")
+        typer.echo(
+            f"saved link_flow (calibrated), calibration.json, {eval_paths(p.docs)[0].relative_to(config.ROOT)} ({time.time() - t0:.1f}s)"
+        )
     return calib
 
 
@@ -256,12 +277,21 @@ def _confidence_by_link(links: gpd.GeoDataFrame, sites: gpd.GeoDataFrame, coef: 
     )
 
 
+def eval_paths(docs: Path) -> tuple[Path, Path, str]:
+    """エリアごとに EVAL を分ける（docs/EVAL.md は岡山、docs/EVAL_<area>.md はそれ以外）."""
+    a = os.environ.get("JINRYU_AREA", "").strip()
+    if a and a != "okayama":
+        return docs / f"EVAL_{a}.md", docs / "eval" / f"scatter_{a}.png", f"eval/scatter_{a}.png"
+    return docs / "EVAL.md", docs / "eval" / "scatter.png", "eval/scatter.png"
+
+
 def write_eval_md(calib: dict, m: pd.DataFrame, docs: Path) -> None:
     import matplotlib
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
+    md_path, png_path, png_rel = eval_paths(docs)
     (docs / "eval").mkdir(parents=True, exist_ok=True)
     fig, ax = plt.subplots(figsize=(5.5, 5))
     floor = max(1.0, min(m["count"][m["count"] > 0].min(), m.pred[m.pred > 0].min()) * 0.5)
@@ -282,17 +312,22 @@ def write_eval_md(calib: dict, m: pd.DataFrame, docs: Path) -> None:
     ax.set_xlabel("observed (AI camera, persons/day)")
     ax.set_ylabel("estimated (calibrated)")
     ax.legend()
-    ax.set_title("Okayama central: link flow vs observed")
+    ax.set_title(f"{config.area()['area']['name']}: link flow vs observed")
     fig.tight_layout()
-    fig.savefig(docs / "eval" / "scatter.png", dpi=130)
+    fig.savefig(png_path, dpi=130)
     plt.close(fig)
 
     ch = calib["chosen"]
+    obs_src = (
+        "岡山市 AIカメラ通行量（2024年〜）の全月平均"
+        if "EVAL.md" == md_path.name
+        else "福岡市 歩行者交通量等調査 令和6年度（7:00–20:00 の13時間計、平日・休日各1日）"
+    )
     lines = [
-        "# 評価レポート（自動生成: `jinryu calibrate`）",
+        f"# 評価レポート: {config.area()['area']['name']}（自動生成: `jinryu calibrate`）",
         "",
-        f"- 基準期間: {calib['baseline_period']}（人流オープンデータ）／実測: 岡山市 AIカメラ通行量（2024年〜）の全月平均",
-        f"- 較正地点数: {m.site_id.nunique()} 箇所（街路地点のみ。地下街・入退場・広場地点は除外）× 平日/休日",
+        f"- 基準期間: {calib['baseline_period']}（人流オープンデータ）／実測: {obs_src}",
+        f"- 較正地点数: {m.site_id.nunique()} 箇所（街路地点のみ。地下街・入退場・広場地点は除外）× 平日/休日 = {len(m)} 観測",
         f"- 採用パラメータ: half_distance = {ch['half_distance_m']} m, スケール k = {ch['scale_k']}",
         "",
         "## 指標",
@@ -349,4 +384,4 @@ def write_eval_md(calib: dict, m: pd.DataFrame, docs: Path) -> None:
         "2. **経路配分が all-or-nothing**: 並行する街路（アーケード vs 車道歩道）の分担が極端になる。確率的配分（ロジット）や歩行環境ペナルティが必要。",
         "3. **発生点の粒度**: 1km メッシュの深夜人口を住宅に配分した発生量は、駅からの流入（乗降客数）に比べ粗い。商用人流（500m/100m メッシュ）でメッシュ側の解像度を上げる。",
     ]
-    (docs / "EVAL.md").write_text("\n".join(lines), encoding="utf-8")
+    md_path.write_text("\n".join(lines), encoding="utf-8")

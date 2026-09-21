@@ -100,7 +100,8 @@ assign:
 
 # 較正
 calibrate:
-  site_match_max_m: 40         # 調査地点をリンクに紐付ける最大距離
+  site_match_max_m: 40         # スクリーンライン（街路に直交）の片側長さ
+  parallel_tolerance_deg: 40   # スクリーンラインで拾うリンクを「街路と平行」に限る許容角
   exclude_site_kinds: [underground, entrance, plaza]   # 街路でない地点（地下街・入退場口・駅前広場階段）は較正から除外
   half_distance_grid: [300, 450, 600, 900, 1300]
   cv_blocks: area              # count_sites の block 列で空間ブロックCV

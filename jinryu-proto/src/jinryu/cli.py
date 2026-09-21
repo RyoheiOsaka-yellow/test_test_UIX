@@ -115,7 +115,7 @@ def ingest():
     }
     typer.echo(f"building: {summary['building']}")
 
-    sites, obs, daily = counts.build_count_tables()
+    sites, obs, daily = counts.build_count_tables_dispatch()
     sites.to_parquet(p.table("count_site"))
     obs.to_parquet(p.table("count_obs"), index=False)
     if len(daily):

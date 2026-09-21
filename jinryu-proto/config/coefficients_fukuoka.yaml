@@ -1,0 +1,37 @@
+# 福岡エリアの係数（config/coefficients.yaml を上書き）
+#
+# 福岡市「歩行者交通量等調査」217地点（平日）を教師に推定した値。
+# 目的関数は順位相関（Spearman）。地区間の転移も検証済み:
+#   天神で学習 → 博多で検証  0.349 → 0.453
+#   博多で学習 → 天神で検証  0.349 → 0.385
+# 読み取れること: 街路の歩行者量は延床面積より「店舗・飲食の密度」と駅で決まり、
+# 業務用途の集中係数は低い。距離抵抗の半減距離は約 210m と、手置き 450m よりかなり局所的。
+# 再推定: JINRYU_AREA=fukuoka JINRYU_DATA_DIR=data/fukuoka uv run python notebooks/fit_coefficients.py
+od:
+  dest_weight:
+    retail: 4.049
+    office: 0.089
+    public: 1.494
+    hotel: 4.545
+    mixed: 0.092
+    other: 1.404
+  poi_weight: 1236.4
+  station_origin_weight: 0.2741
+  residential_trip_rate:
+    weekday: 0.1004
+    holiday: 0.1175
+  external:
+    origin_factor: 0.0828
+    dest_factor: 0.0828
+  half_distance_m: 210
+assign:
+  stochastic:
+    draws: 6
+    cost_sigma: 0.5
+    seed: 42
+calibrate:
+  half_distance_grid:
+  - 150
+  - 210
+  - 300
+  - 450

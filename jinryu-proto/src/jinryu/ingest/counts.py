@@ -94,6 +94,17 @@ def read_okayama_daily(path: Path, site_map: dict[str, str]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def build_count_tables_dispatch(raw_dir=None):
+    """エリア設定の counts.source に応じた取り込み先を選ぶ."""
+    src = config.area().get("counts", {}).get("source", "")
+    if src == "fukuoka_city_survey_pdf":
+        from jinryu.ingest.counts_fukuoka import build_fukuoka_counts
+
+        sites, obs, diag = build_fukuoka_counts(raw_dir)
+        return sites, obs, diag
+    return build_count_tables(raw_dir)
+
+
 def build_count_tables(raw_dir=None) -> tuple[gpd.GeoDataFrame, pd.DataFrame, pd.DataFrame]:
     raw_dir = raw_dir or config.paths().raw / config.area().get("counts", {}).get("raw_dir", "counts_okayama")
     site_gdf = sites()
