@@ -214,7 +214,11 @@ function nearestOf(list, x, z) {
 }
 
 /* ---------- 集計ステート ---------- */
-function freshShelfStats() { return { passes: 0, gazes: 0, gazeSec: 0, stops: 0, picks: 0, purchases: 0 }; }
+/* 棚面の視線グリッド（点群ヒートマップの解像度） */
+const GRID_U = 12, GRID_V = 6;
+function freshShelfStats() {
+  return { passes: 0, gazes: 0, gazeSec: 0, stops: 0, picks: 0, purchases: 0, grid: new Float32Array(GRID_U * GRID_V) };
+}
 const STATS = {
   day: 15, simSec: 10 * 3600,
   visitors: 0, adVisitors: 0, buyers: 0, revenue: 0, promoUnits: 0,
@@ -298,15 +302,15 @@ function weatherCat(cat) { return WEATHER[S.weather].cats[cat] || 1; }
 
 /* ペルソナ（顧客セグメント軸） */
 const PERSONAS = {
-  commuter:  { key: 'commuter', label: '通勤・オフィス', color: 0x0f9fba, speed: 1.15, dwell: 0.6, stops: [1, 2], buy: 1.0, priceMult: 1.0,
+  commuter:  { key: 'commuter', eyeH: 1.63, label: '通勤・オフィス', color: 0x0f9fba, speed: 1.15, dwell: 0.6, stops: [1, 2], buy: 1.0, priceMult: 1.0,
                aff: { drink: 1.5, food: 1.25, snack: 0.8, gift: 0.6, fresh: 0.6, daily: 0.7, mag: 0.9 } },
-  homemaker: { key: 'homemaker', label: '主婦/主夫・ファミリー', color: 0xe07b39, speed: 0.85, dwell: 1.25, stops: [2, 4], buy: 1.1, priceMult: 1.0,
+  homemaker: { key: 'homemaker', eyeH: 1.56, label: '主婦/主夫・ファミリー', color: 0xe07b39, speed: 0.85, dwell: 1.25, stops: [2, 4], buy: 1.1, priceMult: 1.0,
                aff: { food: 1.4, fresh: 1.5, daily: 1.3, drink: 0.9, snack: 1.0, gift: 0.9, mag: 0.6 } },
-  student:   { key: 'student', label: '学生・若年', color: 0x7a5fd0, speed: 1.05, dwell: 1.0, stops: [1, 3], buy: 0.9, priceMult: 0.85,
+  student:   { key: 'student', eyeH: 1.66, label: '学生・若年', color: 0x7a5fd0, speed: 1.05, dwell: 1.0, stops: [1, 3], buy: 0.9, priceMult: 0.85,
                aff: { snack: 1.7, drink: 1.3, food: 1.0, mag: 1.2, gift: 0.5, fresh: 0.4, daily: 0.5 } },
-  senior:    { key: 'senior', label: 'シニア', color: 0x64748b, speed: 0.65, dwell: 1.4, stops: [2, 3], buy: 1.0, priceMult: 0.95,
+  senior:    { key: 'senior', eyeH: 1.5, label: 'シニア', color: 0x64748b, speed: 0.65, dwell: 1.4, stops: [2, 3], buy: 1.0, priceMult: 0.95,
                aff: { food: 1.2, fresh: 1.3, mag: 1.1, gift: 1.0, drink: 0.8, snack: 0.7, daily: 1.1 } },
-  inbound:   { key: 'inbound', label: 'インバウンド', color: 0x45b3a2, speed: 0.9, dwell: 1.6, stops: [2, 4], buy: 1.15, priceMult: 1.3,
+  inbound:   { key: 'inbound', eyeH: 1.6, label: 'インバウンド', color: 0x45b3a2, speed: 0.9, dwell: 1.6, stops: [2, 4], buy: 1.15, priceMult: 1.3,
                aff: { gift: 1.8, snack: 1.4, drink: 1.1, food: 1.0, fresh: 0.6, daily: 0.4, mag: 0.5 } },
 };
 function personaWeights(hour) {
@@ -352,6 +356,8 @@ class Agent {
     this.z = ent.z;
     this.heading = -Math.PI / 2;
     this.persona = pickPersona();
+    this.eyeH = (this.persona.eyeH || 1.6) + (rng() - 0.5) * 0.09;
+    this.gazePitch = -0.08 - rng() * 0.12;
     this.speed = (0.85 + rng() * 0.35) * this.persona.speed;
     STATS.personas[this.persona.key].n++;
     this.adExposed = rng() < adExposureShare();
@@ -512,6 +518,7 @@ class Agent {
           const s = this.targetShelf;
           STATS.shelves[s.id].stops++;
           this.dwellShelf = s; this.state = 'dwell';
+          this.gazePitch = -0.02 - rng() * 0.72;   // 棚前では上下に視線を走らせる
           this.wait = (10 + rng() * 20) * this.persona.dwell;
           if (rng() < 0.05) beacon(`客#${this.id} 「${s.name}」に立寄`, this.hasNovelty ? 'seg-nov' : '');
         } else if (this.state === 'toRegister') {
@@ -570,6 +577,25 @@ class Agent {
   }
 }
 
+/* 棚面のどこを見たか（水平=実測ジオメトリ / 垂直=視線高さモデル）を格子に蓄積 */
+function accumulateGaze(agent, s, w, dist) {
+  const st = STATS.shelves[s.id];
+  if (!st.grid) st.grid = new Float32Array(GRID_U * GRID_V);
+  const alongX = s.normal[2] !== 0;
+  const length = alongX ? s.size[0] : s.size[2];
+  const hx = Math.sin(agent.heading), hz = Math.cos(agent.heading);
+  const rel = alongX ? (agent.x - s.pos[0]) : (agent.z - s.pos[2]);
+  const along = rel + (alongX ? hx : hz) * dist * 0.45;
+  const u = clamp(along / Math.max(length, 0.1) + 0.5, 0, 0.999);
+  const eye = agent.eyeH || 1.6;
+  const pitch = (agent.gazePitch || -0.12) + (s.kind === 'island-case' ? -0.45 : 0);
+  const yHit = eye + Math.tan(pitch) * Math.max(dist * 0.85, 0.4);
+  const v = s.kind === 'island-case'
+    ? clamp((yHit - 0.5) / 0.55, 0, 0.999)
+    : clamp(yHit / Math.max(s.size[1], 0.5), 0, 0.999);
+  st.grid[Math.floor(v * GRID_V) * GRID_U + Math.floor(u * GRID_U)] += w;
+}
+
 /* 視線・通過検知 */
 const GAZE_DIST = 2.9, GAZE_COS = Math.cos(45 * Math.PI / 180);
 function senseGaze(agent, interval) {
@@ -588,6 +614,7 @@ function senseGaze(agent, interval) {
     let w = interval * (1 - d / GAZE_DIST);
     if (s.promoted && S.endcap) w *= ENDCAP_ATTENTION * PLANO.attn;
     STATS.shelves[s.id].gazeSec += w;
+    accumulateGaze(agent, s, w, d);
     agent.gazeMap[s.id] = (agent.gazeMap[s.id] || 0) + interval;
     if (agent.gazeMap[s.id] >= 1.0 && !agent['gz_' + s.id] && d < 2.4) {
       agent['gz_' + s.id] = true; STATS.shelves[s.id].gazes++;
@@ -1121,6 +1148,7 @@ function buildStore() {
   storeGroup.add(novStandGroup);
 
   scene.add(storeGroup);
+  if (window.__cloudReady) buildPointCloud();
 }
 
 function buildShelf(s, productBoxes, productCyls) {
@@ -1290,6 +1318,11 @@ function makeAgentMesh(agent) {
     new THREE.MeshLambertMaterial({ color: 0xf1e0cd })
   );
   head.position.y = 1.0; g.add(head);
+  agent.headMesh = head;
+  const detDot = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 8),
+    new THREE.MeshBasicMaterial({ color: 0x31c5f0 }));
+  detDot.position.y = 1.12; detDot.visible = false;
+  g.add(detDot); agent.detDot = detDot;
   const cone = new THREE.Mesh(
     new THREE.ConeGeometry(1.4, 2.7, 20, 1, true),
     new THREE.MeshBasicMaterial({ color: agent.persona.color, transparent: true, opacity: 0.07, depthWrite: false, side: THREE.DoubleSide })
@@ -1370,7 +1403,7 @@ function updateShelfHeatVisual() {
 }
 
 /* ---------- シミュレーションループ ---------- */
-let arrivalCarry = 0, gazeTimer = 0, heatTimer = 0, shelfHeatTimer = 0, lastWeatherBg = 'normal';
+let arrivalCarry = 0, gazeTimer = 0, heatTimer = 0, shelfHeatTimer = 0, lastWeatherBg = null;
 
 function simStep(simDt) {
   // 3Dへ出すエージェントはサンプリング（ダッシュボードは sampleFactor 倍で拡大推計）
@@ -1501,11 +1534,15 @@ function updateVisuals(realDt) {
   if (novStandGroup) novStandGroup.visible = S.novelty;
   if (promoGroup) promoGroup.visible = S.endcap;
   if (signageGroup) signageGroup.visible = S.signage;
-  if (lastWeatherBg !== S.weather) {
-    lastWeatherBg = S.weather;
-    scene.background = new THREE.Color(WEATHER[S.weather].bg);
-    scene.fog.color = new THREE.Color(WEATHER[S.weather].bg);
+  const wantBg = (window.CLOUD && CLOUD.on) ? 0x05070f : WEATHER[S.weather].bg;
+  if (lastWeatherBg !== wantBg) {
+    lastWeatherBg = wantBg;
+    scene.background = new THREE.Color(wantBg);
+    scene.fog.color = new THREE.Color(wantBg);
+    scene.fog.near = (window.CLOUD && CLOUD.on) ? 60 : 40;
+    scene.fog.far = (window.CLOUD && CLOUD.on) ? 170 : 95;
   }
+  if (window.__cloudReady) updateCloud(realDt);
 
   heatTimer += realDt;
   if (heatTimer > 0.5 && S.layers.floorheat) { heatTimer = 0; redrawHeat(); }

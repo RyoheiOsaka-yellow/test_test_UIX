@@ -158,7 +158,11 @@ function renderShelfDetail() {
     ${isPromo ? `<div class="sd-frow"><span class="fl">在庫</span>
       <span class="fb"><div style="width:${(stockState.units / stockState.cap * 100).toFixed(0)}%;background:${COL.s2}"></div></span>
       <span class="fv">${stockState.units}/${stockState.cap}</span></div>` : ''}
+    <div class="sd-cat" style="margin:8px 0 3px">棚面の視線ヒート（実測グリッド ${GRID_U}×${GRID_V}）</div>
+    <canvas id="sd-heat" height="74"></canvas>
+    <div class="sd-note" style="margin-bottom:6px">下=最下段／上=上段。橙破線=ゴールデンゾーン（床上85〜150cm）。</div>
     <div class="sd-note">ビーコン粒度の実測サンプル。数値は本日累計${SF() > 1 ? `（1/${SF()}サンプリング×拡大推計）` : ''}（ライブ集計・推定バッジ）。</div>`;
+  if (window.drawShelfHeatMini) drawShelfHeatMini(s.id);
 }
 window.__renderShelfDetail = renderShelfDetail;
 

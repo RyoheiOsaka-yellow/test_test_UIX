@@ -165,6 +165,40 @@ button { font-family: inherit; }
 .badge.type { border-color: rgba(213,81,129,.45); color: #b03a66; background: #fdf2f6; }
 .badge.warnb { border-color: rgba(197,48,48,.45); color: var(--status-bad); background: #fdf1f1; }
 
+/* ---- 点群デジタルツイン HUD ---- */
+#render-mode {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 12;
+  box-shadow: var(--shadow); background: rgba(255,255,255,.95);
+}
+#cloud-hud { position: absolute; inset: 0; pointer-events: none; z-index: 11; display: none; }
+#hud-top, #hud-sub {
+  position: absolute; left: 276px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px; letter-spacing: .12em; color: #e8c37a; text-shadow: 0 0 8px rgba(0,0,0,.9);
+}
+#hud-top { top: 18px; }
+#hud-sub { top: 34px; font-size: 9.5px; color: #7f9bb5; letter-spacing: .1em; }
+#hud-legend {
+  position: absolute; left: 276px; bottom: 18px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9.5px;
+  letter-spacing: .1em; color: #9db4cc; line-height: 1.8; text-shadow: 0 0 8px rgba(0,0,0,.9);
+}
+#hud-legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+body.cloud-mode #panel, body.cloud-mode #beacon, body.cloud-mode #shelf-detail, body.cloud-mode .mk {
+  background: rgba(10,16,28,.92); border-color: rgba(120,160,200,.28); color: #cfe0f0;
+}
+body.cloud-mode #panel .t, body.cloud-mode #beacon .t, body.cloud-mode #shelf-detail .t,
+body.cloud-mode .sd-name, body.cloud-mode .mk .m-value, body.cloud-mode .sd-m .v { color: #eaf4ff; }
+body.cloud-mode .row, body.cloud-mode .slider-label, body.cloud-mode #beacon-lines,
+body.cloud-mode .sd-frow, body.cloud-mode .mde-text { color: #b3c6da; }
+body.cloud-mode #panel summary, body.cloud-mode .note, body.cloud-mode .sd-cat,
+body.cloud-mode .mk .m-label, body.cloud-mode .mk .m-sub, body.cloud-mode .sd-note { color: #7f97ae; }
+body.cloud-mode #panel details { border-color: rgba(120,160,200,.18); }
+body.cloud-mode .sd-m { background: rgba(30,48,72,.6); }
+body.cloud-mode .cam-grid button, body.cloud-mode .ovl-head .tgl, body.cloud-mode .sp-radio button {
+  background: rgba(30,48,72,.7); color: #b3c6da; border-color: rgba(120,160,200,.3);
+}
+body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120,160,200,.18); }
+
 /* ---- floating overlays (3D page) ---- */
 .ovl {
   position: absolute; z-index: 10;
@@ -395,6 +429,22 @@ button { font-family: inherit; }
 <div id="page-3d">
   <div id="view3d"></div>
 
+  <div class="seg" id="render-mode">
+    <button data-rm="solid" class="active">通常表示</button>
+    <button data-rm="cloud">デジタルツイン（点群×CCTV）</button>
+  </div>
+
+  <div id="cloud-hud">
+    <div id="hud-top">4 CAMERAS // 0 TRACKED // 0 PORTALS</div>
+    <div id="hud-sub">POINT CLOUD DIGITAL TWIN</div>
+    <div id="hud-legend">
+      <div><i style="background:#c98500"></i>CAMERA / FRUSTUM</div>
+      <div><i style="background:#9bbf3a"></i>FLOOR COVERAGE</div>
+      <div><i style="background:#31c5f0"></i>DETECTION / TRACKED</div>
+      <div><i style="background:linear-gradient(90deg,#1d62c4,#4acd6e,#ec cd37,#e23a2c)"></i>GAZE HEAT (LOW→HIGH)</div>
+    </div>
+  </div>
+
   <div id="panel" class="ovl">
     <div class="ovl-head" data-collapse>
       <div><div class="t">シミュレーション設定</div><div class="sub">SCENARIO / LAYERS / CAMERA</div></div>
@@ -429,10 +479,17 @@ button { font-family: inherit; }
       </details>
       <details open>
         <summary>レイヤー表示</summary>
+        <div id="cloud-layers" style="display:none">
+          <label class="row"><input type="checkbox" id="ly-cheat" checked /><span class="chip" style="background:linear-gradient(90deg,#1d62c4,#4acd6e,#e23a2c)"></span>棚 視線ヒート投影（点群）</label>
+          <label class="row"><input type="checkbox" id="ly-frustum" checked /><span class="chip" style="background:#c98500"></span>CCTV視錐台・床カバレッジ</label>
+          <label class="row"><input type="checkbox" id="ly-detect" checked /><span class="chip" style="background:#31c5f0"></span>人物検出・トラッキング</label>
+        </div>
+        <div id="solid-layers">
         <label class="row"><input type="checkbox" id="ly-shelfheat" checked /><span class="chip" style="background:linear-gradient(90deg,#dbe7f5,#1d6fb8)"></span>棚別 視線ヒート</label>
         <label class="row"><input type="checkbox" id="ly-floorheat" checked /><span class="chip" style="background:linear-gradient(90deg,#dbe7f5,#1d6fb8)"></span>回遊ヒートマップ（床）</label>
         <label class="row"><input type="checkbox" id="ly-cones" /><span class="chip chip-outline"></span>視線コーン</label>
         <label class="row"><input type="checkbox" id="ly-trails" /><span class="chip chip-outline"></span>動線トレイル</label>
+        </div>
         <label class="row"><input type="checkbox" id="ly-labels" checked /><span class="chip chip-outline"></span>売場ラベル</label>
         <div class="note" style="margin-top:4px">
           ペルソナ凡例:
