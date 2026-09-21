@@ -25,7 +25,25 @@ JP_HOLIDAYS_EXTRA = set()  # 祝日は曜日列の '祝' 表記があれば使�
 
 
 def sites() -> gpd.GeoDataFrame:
-    df = pd.read_csv(config.paths().config / "count_sites_okayama.csv", dtype=str)
+    csv = config.paths().config / config.area().get("counts", {}).get("sites_csv", "count_sites_okayama.csv")
+    if not csv.exists():
+        return gpd.GeoDataFrame(
+            {
+                "site_id": [],
+                "sheet": [],
+                "name": [],
+                "direction": [],
+                "kind": [],
+                "block": [],
+                "lat": [],
+                "lon": [],
+                "active_from": [],
+                "note": [],
+            },
+            geometry=[],
+            crs="EPSG:4326",
+        )
+    df = pd.read_csv(csv, dtype=str)
     df["lat"] = df.lat.astype(float)
     df["lon"] = df.lon.astype(float)
     return gpd.GeoDataFrame(
@@ -77,7 +95,7 @@ def read_okayama_daily(path: Path, site_map: dict[str, str]) -> pd.DataFrame:
 
 
 def build_count_tables(raw_dir=None) -> tuple[gpd.GeoDataFrame, pd.DataFrame, pd.DataFrame]:
-    raw_dir = raw_dir or config.paths().raw / "counts_okayama"
+    raw_dir = raw_dir or config.paths().raw / config.area().get("counts", {}).get("raw_dir", "counts_okayama")
     site_gdf = sites()
     site_map = dict(zip(site_gdf.sheet, site_gdf.site_id, strict=False))
     daily = (

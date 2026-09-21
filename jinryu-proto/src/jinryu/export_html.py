@@ -44,7 +44,9 @@ def _tile_bounds(x: int, y: int, z: int) -> tuple[float, float, float, float]:
     return lon0, lat0, lon1, lat1
 
 
-def fetch_basemap(bbox, z: int = BASEMAP_ZOOM, cache: Path | None = None) -> tuple[str, list[list[float]]]:
+def fetch_basemap(
+    bbox, z: int = BASEMAP_ZOOM, cache: Path | None = None, margin: int = 1, quality: int = 72
+) -> tuple[str, list[list[float]]]:
     """地理院タイルを貼り合わせて JPEG data URI と四隅座標（MapLibre image source の順: 左上, 右上, 右下, 左下）を返す."""
     from PIL import Image
 
@@ -54,7 +56,7 @@ def fetch_basemap(bbox, z: int = BASEMAP_ZOOM, cache: Path | None = None) -> tup
         return d["uri"], d["coords"]
     x0, y1 = _tile(bbox[0], bbox[1], z)
     x1, y0 = _tile(bbox[2], bbox[3], z)
-    x0, y0, x1, y1 = x0 - 1, y0 - 1, x1 + 1, y1 + 1
+    x0, y0, x1, y1 = x0 - margin, y0 - margin, x1 + margin, y1 + margin
     w, h = (x1 - x0 + 1) * 256, (y1 - y0 + 1) * 256
     im = Image.new("RGB", (w, h), (230, 230, 230))
     s = requests.Session()
@@ -64,7 +66,7 @@ def fetch_basemap(bbox, z: int = BASEMAP_ZOOM, cache: Path | None = None) -> tup
             if r.status_code == 200:
                 im.paste(Image.open(io.BytesIO(r.content)).convert("RGB"), ((x - x0) * 256, (y - y0) * 256))
     buf = io.BytesIO()
-    im.save(buf, "JPEG", quality=72, optimize=True)
+    im.save(buf, "JPEG", quality=quality, optimize=True)
     uri = "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
     lon0, _, _, lat1 = _tile_bounds(x0, y0, z)
     _, lat0, lon1, _ = _tile_bounds(x1, y1, z)
@@ -84,6 +86,36 @@ def _ring_ints(geom, lon0: float, lat0: float, scale: float = 1e-5) -> list[int]
     for x, y in zip(xs[:-1], ys[:-1], strict=False):
         out += [int(round((x - lon0) / scale)), int(round((y - lat0) / scale))]
     return out
+
+
+def prefecture_layer(store: Store) -> dict:
+    """県全域の 1km メッシュ滞在人口（2 期間 × 平休 × 時間帯）. 中心部の建物・街路レイヤの「外側」を埋める広域ビュー用."""
+    from jinryu.adapters import get_source
+
+    src = get_source()
+    attr = src.attributes()
+    pref = config.area()["area"]["pref_code"]
+    a = attr[attr.prefcode == pref]
+    pbox = (float(a.lon_min.min()), float(a.lat_min.min()), float(a.lon_max.max()), float(a.lat_max.max()))
+    combos = [f"{q}|{d}|{b}" for q in PERIODS for d in DAY_TYPES for b in TIME_BANDS]
+    frames = {q: src.load(pbox, q) for q in PERIODS}
+    piv = {}
+    for q, df in frames.items():
+        piv[q] = df.pivot_table(
+            index="mesh_code", columns=["day_type", "time_band"], values="population", aggfunc="sum"
+        )
+    codes = sorted(set().union(*[set(p.index) for p in piv.values()]) & set(a.mesh_code))
+    ac = a.set_index("mesh_code")
+    rows = []
+    for code in codes:
+        vals = []
+        for c in combos:
+            q, d, b = c.split("|")
+            v = piv[q][(d, b)].get(code, 0.0) if (d, b) in piv[q].columns else 0.0
+            vals.append(int(v) if v == v else 0)
+        r = ac.loc[code]
+        rows.append([code, round(float(r.lon_min), 4), round(float(r.lat_min), 4), vals])
+    return {"bbox": [round(v, 4) for v in pbox], "cell": [1 / 80, 1 / 120], "combos": combos, "meshes": rows}
 
 
 def build_payload(store: Store) -> dict:
@@ -249,6 +281,8 @@ def build_payload(store: Store) -> dict:
         "gap_top": gap_top,
         "origin_mix": mix,
         "sales": s.coef["sales"],
+        "prefecture": prefecture_layer(s),
+        "pref_name": config.area()["area"].get("pref_name", ""),
         "sources": [
             {"name": x["name"], "credit": x.get("credit"), "license": x.get("license"), "url": x.get("url")}
             for x in src["sources"]
@@ -267,6 +301,12 @@ def render(fragment: bool = False, out: Path | None = None) -> Path:
     store = Store()
     payload = build_payload(store)
     uri, coords = fetch_basemap(config.bbox())
+    pref_uri, pref_coords = fetch_basemap(
+        tuple(payload["prefecture"]["bbox"]),
+        z=config.area().get("basemap_pref_zoom", 11),
+        margin=0,
+        quality=60,
+    )
     tpl = (config.ROOT / "web" / "standalone.html").read_text(encoding="utf-8")
     vendor = config.ROOT / "web" / "vendor"
     css = (vendor / "maplibre-gl.css").read_text(encoding="utf-8")
@@ -276,6 +316,8 @@ def render(fragment: bool = False, out: Path | None = None) -> Path:
         .replace("/*__VENDOR_DECK__*/", _inline_js(vendor / "deck.min.js"))
         .replace("__BASEMAP_URI__", uri)
         .replace("/*__BASEMAP_COORDS__*/", json.dumps(coords))
+        .replace("__PREF_URI__", pref_uri)
+        .replace("/*__PREF_COORDS__*/", json.dumps(pref_coords))
         .replace("/*__DATA__*/", json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
     )
     if not fragment:

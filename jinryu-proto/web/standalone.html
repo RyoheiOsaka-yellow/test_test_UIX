@@ -1,5 +1,5 @@
-<title>人流ポテンシャル 岡山</title>
-<meta name="description" content="区画に何が建てられるか・どの規制がかかるか・採算に合うかを、人流推定と法規・地価で初期判断する単体HTMLプロトタイプ（岡山市中心部）" />
+<title>人流ポテンシャル 福岡</title>
+<meta name="description" content="区画に何が建てられるか・どの規制がかかるか・採算に合うかを、人流推定と法規・地価で初期判断する単体HTMLプロトタイプ（福岡県全域＋福岡市中心部）" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" />
 <style>
 /*__MAPLIBRE_CSS__*/
@@ -72,7 +72,7 @@ details summary { cursor:pointer; color:var(--muted); font-size:12px; }
 </style>
 <!--BODY-->
 <header id="topbar">
-  <div class="brand">人流ポテンシャル評価 <small>岡山市中心部 · v0.2 スタンドアロン</small></div>
+  <div class="brand">人流ポテンシャル評価 <small id="brandSub">v0.3 スタンドアロン</small></div>
   <div class="ctl">
     <label>モード <select id="mode"><option value="realestate">不動産（事業性）</option><option value="gov">自治体（施策比較）</option></select></label>
     <label>期間 <select id="period"></select></label>
@@ -80,6 +80,7 @@ details summary { cursor:pointer; color:var(--muted); font-size:12px; }
     <label>時間帯 <select id="timeband"><option value="all">終日</option><option value="day">昼（11–14時台）</option><option value="night">深夜（1–4時台）</option></select></label>
     <label class="gov-only">比較 <select id="periodB"></select> <button class="btn" id="btnCompare">A→B 差分</button> <button class="btn ghost" id="btnCompareOff">解除</button></label>
     <label>建物の色 <select id="colorMode"><option value="usage">用途</option><option value="flow">前面通行量</option><option value="far">容積率の未消化</option><option value="year">築年</option></select></label>
+    <label><input type="checkbox" id="chkPref" checked /> 県全域メッシュ</label>
     <label><input type="checkbox" id="chkZoning" /> 用途地域</label>
     <label><input type="checkbox" id="chkLp" /> 地価公示</label>
     <label><input type="checkbox" id="chkSites" checked /> 実測地点</label>
@@ -89,9 +90,12 @@ details summary { cursor:pointer; color:var(--muted); font-size:12px; }
   <div id="map">
     <div id="mapctl">
       <button class="btn on" id="btn3d" title="2D/3D 切替">3D</button>
+      <button class="btn on" id="btnRotate" title="ドラッグで回転・傾き（もう一度押すと移動）">回転</button>
       <button class="btn ghost" id="btnBird" title="選択区画を鳥瞰">鳥瞰</button>
       <button class="btn ghost" id="btnTop" title="真上から">真上</button>
-      <button class="btn ghost" id="btnHome" title="全体">全体</button>
+      <button class="btn ghost" id="btnHome" title="中心部全体">中心部</button>
+      <button class="btn ghost" id="btnPref" title="県全域">県全域</button>
+      <div class="note" style="background:var(--panel);padding:4px 6px;border-radius:4px;font-size:10px;max-width:120px">回転モード: 左ドラッグで回転・上下で傾き、ホイールで拡大。Shift＋ドラッグで移動</div>
     </div>
   </div>
   <aside id="panel">
@@ -147,7 +151,7 @@ details summary { cursor:pointer; color:var(--muted); font-size:12px; }
       <p class="note" id="aboutCalib"></p>
       <p class="note">法規は用途地域レベルの早見表であり、地区計画・特別用途地区・防火地域・斜線/日影・接道条件は未反映です。敷地面積は登記ではなく「建築面積 ÷ 建蔽率」の想定値です。採算は入力した単価・賃料に依存する試算で、保証値ではありません。</p>
       <h3>展開</h3>
-      <p class="note">建物は PLATEAU 整備都市（200 都市超）で同じ手順が使えます。参考にしている先行例（ドイツ syte）は国内 6,200 万超の区画を評価・計画・ポートフォリオ分析に提供し、200 社超が利用しています。本プロトタイプは同じ問いを日本のオープンデータで、まず岡山市中心部 3.6km × 3.3km で成立させたものです。</p>
+      <p class="note">建物は PLATEAU 整備都市（200 都市超）で同じ手順が使えます。参考にしている先行例（ドイツ syte）は国内 6,200 万超の区画を評価・計画・ポートフォリオ分析に提供し、200 社超が利用しています。本プロトタイプは同じ問いを日本のオープンデータで成立させたもので、県全域は 1km メッシュ、中心部は建物・街路の単位で表示します。</p>
     </div>
     <div id="sources"></div>
   </aside>
@@ -158,6 +162,7 @@ details summary { cursor:pointer; color:var(--muted); font-size:12px; }
 <script>
 const DATA = /*__DATA__*/;
 const BASEMAP = { url: "__BASEMAP_URI__", coords: /*__BASEMAP_COORDS__*/ };
+const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
 </script>
 <script>
 (function () {
@@ -237,9 +242,17 @@ const BASEMAP = { url: "__BASEMAP_URI__", coords: /*__BASEMAP_COORDS__*/ };
 
   // ---- 地図 ----
   const bb = DATA.area.bbox; const center = [(bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2 - 0.002];
-  const map = new maplibregl.Map({ container: "map", style: { version: 8, sources: { base: { type: "image", url: BASEMAP.url, coordinates: BASEMAP.coords } },
-      layers: [{ id: "bg", type: "background", paint: { "background-color": "#141c26" } }, { id: "base", type: "raster", source: "base", paint: { "raster-opacity": 0.85, "raster-saturation": -0.75, "raster-brightness-max": 0.55 } }] },
-    center, zoom: 14.6, pitch: 50, bearing: -12, antialias: true, attributionControl: false, maxPitch: 75 });
+  const pb = DATA.prefecture.bbox; const prefCenter = [(pb[0] + pb[2]) / 2, (pb[1] + pb[3]) / 2];
+  const map = new maplibregl.Map({ container: "map", style: { version: 8, sources: { pref: { type: "image", url: PREFMAP.url, coordinates: PREFMAP.coords }, base: { type: "image", url: BASEMAP.url, coordinates: BASEMAP.coords } },
+      layers: [{ id: "bg", type: "background", paint: { "background-color": "#141c26" } }, { id: "pref", type: "raster", source: "pref", paint: { "raster-opacity": 0.8, "raster-saturation": -0.75, "raster-brightness-max": 0.55 } }, { id: "base", type: "raster", source: "base", paint: { "raster-opacity": 0.9, "raster-saturation": -0.75, "raster-brightness-max": 0.55 } }] },
+    center, zoom: 14.6, pitch: 50, bearing: -12, antialias: true, attributionControl: false, maxPitch: 80, minZoom: 7 });
+  // 回転モード: 左ドラッグで bearing/pitch、Shift+ドラッグで移動（既定の右ドラッグ回転も有効のまま）
+  const rot = { on: true, dragging: false, x: 0, y: 0 };
+  const cv = map.getCanvasContainer();
+  cv.addEventListener("mousedown", (e) => { if (!rot.on || e.button !== 0 || e.shiftKey) return; rot.dragging = true; rot.x = e.clientX; rot.y = e.clientY; map.dragPan.disable(); }, true);
+  window.addEventListener("mousemove", (e) => { if (!rot.dragging) return; const dx = e.clientX - rot.x, dy = e.clientY - rot.y; rot.x = e.clientX; rot.y = e.clientY; map.setBearing(map.getBearing() - dx * 0.35); map.setPitch(Math.max(0, Math.min(80, map.getPitch() - dy * 0.35))); });
+  window.addEventListener("mouseup", () => { if (!rot.dragging) return; rot.dragging = false; map.dragPan.enable(); });
+  function setRotate(on) { rot.on = on; $("btnRotate").classList.toggle("on", on); }
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-left");
   map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: "地理院タイル | © OpenStreetMap contributors | 人流: 国土交通省 人流オープンデータ（Agoop換算人口） | 建物: PLATEAU 岡山市 | 用途地域・地価公示: 国土数値情報 | 通行量: 岡山市（CC BY 4.0）" }));
   const overlay = new MapboxOverlay({ interleaved: false, layers: [] });
@@ -253,9 +266,21 @@ const BASEMAP = { url: "__BASEMAP_URI__", coords: /*__BASEMAP_COORDS__*/ };
     if (state.colorMode === "year") { if (!b.year) return [90, 90, 90, dim]; const t = Math.max(0, Math.min(1, (b.year - 1965) / 55)); return [Math.round(230 - 170 * t), Math.round(90 + 90 * t), Math.round(60 + 180 * t), dim]; }
     return [...(usageColor[b.usage] || [120, 120, 120]), dim];
   }
+  const PREF = DATA.prefecture; const cw = PREF.cell[0], ch = PREF.cell[1];
+  const prefMesh = PREF.meshes.map((m) => ({ code: m[0], ring: [[m[1], m[2]], [m[1] + cw, m[2]], [m[1] + cw, m[2] + ch], [m[1], m[2] + ch], [m[1], m[2]]], vals: m[3], lon: m[1] + cw / 2, lat: m[2] + ch / 2 }));
+  const prefK = () => PREF.combos.indexOf(`${state.period}|${state.dayType}|${state.timeBand}`);
+  const prefMax = {}; const prefMaxOf = (k) => prefMax[k] || (prefMax[k] = Math.max(1, ...prefMesh.map((m) => m.vals[k])));
+  const centralRing = [[bb[0], bb[1]], [bb[2], bb[1]], [bb[2], bb[3]], [bb[0], bb[3]], [bb[0], bb[1]]];
   function render() {
     const k = curK(), kb = cmpK(), cmp = state.compare, sel = state.selected ? bById.get(state.selected) : null;
     const layers = [];
+    if ($("chkPref").checked) { const pk = prefK(), pmax = prefMaxOf(pk), z = map.getZoom();
+      const pad = 0.012; const nearCentral = (m) => m.lon > bb[0] - pad && m.lon < bb[2] + pad && m.lat > bb[1] - pad && m.lat < bb[3] + pad;
+      const wide = z < 11.5; // 広域では 3D の柱、近づいたら薄い平面、中心部の近傍は非表示
+      layers.push(new PolygonLayer({ id: "pref-mesh", data: z >= 13 ? prefMesh.filter((m) => !nearCentral(m)) : prefMesh, pickable: true, extruded: state.is3d && wide, getPolygon: (m) => m.ring, opacity: wide ? 0.55 : 0.25,
+        getElevation: (m) => (m.vals[pk] / pmax) * 6000, getFillColor: (m) => { const v = m.vals[pk]; if (v <= 0) return [0, 0, 0, 0]; const t = Math.pow(v / pmax, 0.45); return [...pctColor(t * 100), 200]; }, stroked: false,
+        updateTriggers: { getFillColor: [pk], getElevation: [pk, state.is3d, wide], data: [z >= 13] } }));
+      layers.push(new PathLayer({ id: "central-box", data: [{ path: centralRing }], getPath: (d) => d.path, getColor: [255, 255, 255, 220], widthUnits: "pixels", getWidth: 2 })); }
     if ($("chkZoning").checked) layers.push(new PolygonLayer({ id: "zoning", data: zoning, pickable: true, filled: true, stroked: true, getPolygon: (z) => z.ring, getFillColor: (z) => [...(zoneColor[z.code] || [150, 150, 150]), 70], getLineColor: (z) => [...(zoneColor[z.code] || [150, 150, 150]), 200], lineWidthMinPixels: 1 }));
     layers.push(new PathLayer({ id: "links", data: links, pickable: true, widthUnits: "meters", widthMinPixels: 1, widthMaxPixels: 12, capRounded: true, jointRounded: true, getPath: (l) => l.path,
       getColor: (l) => { if (cmp) { const a = l.flows[k], b = l.flows[kb]; return divColor(a > 0 ? b / a : null); } const v = l.flows[k]; return v > 0 ? [...pctColor(pctOf(k, v)), 230] : [90, 90, 90, 60]; },
@@ -275,6 +300,7 @@ const BASEMAP = { url: "__BASEMAP_URI__", coords: /*__BASEMAP_COORDS__*/ };
     if (layer.id === "links") { if (state.compare) { const a = object.flows[k], b = object.flows[cmpK()]; return `${object.name || "(無名)"}\nA ${fmt(a)} → B ${fmt(b)} 人/日（×${a > 0 ? (b / a).toFixed(2) : "—"}）`; } const v = object.flows[k]; return `${object.name || "(無名)"} [${object.type}]\n推定 ${fmt(v)} 人/日（上位 ${fmt(100 - pctOf(k, v))}%）信頼度 ${object.conf}`; }
     if (layer.id === "buildings") return `${usageJa[object.usage] || object.usage} ${object.floors}F 延床 ${fmt(object.gfa)}m²\n${object.zoning || "用途地域不明"} 建蔽${object.bcr ?? "—"}% 容積${object.far ?? "—"}%${object.headroom != null ? `\n未消化延床 ${fmt(object.headroom)}m²` : ""}\n前面通行量 ${fmt(frontFlow(object, state.dayType, state.timeBand))} 人/日`;
     if (layer.id === "zoning") return `${object.name}\n建蔽率 ${object.bcr}% / 容積率 ${object.far}%`;
+    if (layer.id === "pref-mesh") return `1kmメッシュ ${object.code}\n滞在人口 ${fmt(object.vals[prefK()])} 人（${state.period}・${state.dayType === "weekday" ? "平日" : "休日"}・${state.timeBand}）`;
     if (layer.id === "lp") return `地価公示 ${object.address || ""}\n${fmt(object.price)} 円/m²（${object.use || ""}${object.change != null ? `, 前年比 ${object.change > 0 ? "+" : ""}${object.change}%` : ""}）`;
     if (layer.id === "sites") return `実測 ${object.id} ${object.name}\n${object.obsPeriod || ""} 平日平均 ${fmt(object.obsWeekday)} 人/日`;
     return null;
@@ -414,9 +440,9 @@ const BASEMAP = { url: "__BASEMAP_URI__", coords: /*__BASEMAP_COORDS__*/ };
   // ---- 初期化 ----
   const c = DATA.calibration;
   $("period").innerHTML = P.map((p) => `<option value="${p}">${p}</option>`).join(""); $("periodB").innerHTML = $("period").innerHTML; $("period").value = state.period; $("periodB").value = state.periodB;
-  const calibText = `実測 ${c.n_sites ?? "—"} 観測（街路 9 地点 × 平休）に対する順位相関 Spearman: in-sample ${c.spearman_in_sample ?? "—"} / 空間ブロック CV ${c.spearman_block_cv ?? "—"}。距離抵抗 half=${c.half_distance_m ?? "—"}m。建物 ${fmt(DATA.area.counts.buildings)} 棟・街路リンク ${fmt(DATA.area.counts.links)} 本。`;
+  const calibText = c.n_sites ? `実測 ${c.n_sites} 観測に対する順位相関 Spearman: in-sample ${c.spearman_in_sample ?? "—"} / 空間ブロック CV ${c.spearman_block_cv ?? "—"}。距離抵抗 half=${c.half_distance_m ?? "—"}m。建物 ${fmt(DATA.area.counts.buildings)} 棟・街路リンク ${fmt(DATA.area.counts.links)} 本。` : `<b>このエリアは未較正</b>: 実測通行量が未取り込みのため、岡山市中心部で較正した距離抵抗（half=${c.half_distance_m ?? "—"}m）とスケール（k=${c.scale_k ?? "—"}）を転用しています。順位（相対値）は使えますが、人/日の絶対値は目安です。建物 ${fmt(DATA.area.counts.buildings)} 棟・街路リンク ${fmt(DATA.area.counts.links)} 本。`;
   $("calib").innerHTML = calibText; $("aboutCalib").innerHTML = calibText;
-  $("legend").innerHTML = `<span class="lg" style="background:rgb(37,99,235)"></span>通行量 下位 → <span class="lg" style="background:rgb(250,204,21)"></span> → <span class="lg" style="background:rgb(220,38,38)"></span>上位（エリア内パーセンタイル、線の太さ＝通行量）<br/>建物: 高さ＝実測高さ（無ければ階数×3.5m）、色は上のセレクタで 用途／前面通行量／容積率の未消化／築年 を切替<br/>選択中の区画には、容積率いっぱいまで建てた場合の<b>最大ボリューム</b>を白い枠で重ねます<br/>○ 実測地点（岡山市 AIカメラ）、● 地価公示地点`;
+  $("legend").innerHTML = `<span class="lg" style="background:rgb(37,99,235)"></span>通行量 下位 → <span class="lg" style="background:rgb(250,204,21)"></span> → <span class="lg" style="background:rgb(220,38,38)"></span>上位（エリア内パーセンタイル、線の太さ＝通行量）<br/>建物: 高さ＝実測高さ（無ければ階数×3.5m）、色は上のセレクタで 用途／前面通行量／容積率の未消化／築年 を切替<br/>選択中の区画には、容積率いっぱいまで建てた場合の<b>最大ボリューム</b>を白い枠で重ねます<br/>○ 実測地点、● 地価公示地点<br/>県全域: 1km メッシュの滞在人口（高さ・色）。白枠が建物・街路レベルで推定している中心部`;
   $("sources").innerHTML = `<b>出典</b>: ${DATA.sources.map((s) => s.credit || s.name).join(" / ")}<br/><b>免責</b>: ${DATA.disclaimer.replace(/\n/g, " ")}`;
   function setMode(m) { state.mode = m; document.body.classList.remove("gov", "realestate"); document.body.classList.add(m); if (m !== "gov" && state.compare) { state.compare = false; render(); } }
   $("mode").onchange = (e) => setMode(e.target.value);
@@ -430,6 +456,11 @@ const BASEMAP = { url: "__BASEMAP_URI__", coords: /*__BASEMAP_COORDS__*/ };
   $("btn3d").onclick = () => { state.is3d = !state.is3d; $("btn3d").classList.toggle("on", state.is3d); map.easeTo({ pitch: state.is3d ? 50 : 0, duration: 600 }); render(); };
   $("btnTop").onclick = () => map.easeTo({ pitch: 0, bearing: 0, duration: 600 });
   $("btnHome").onclick = () => map.flyTo({ center, zoom: 14.6, pitch: state.is3d ? 50 : 0, bearing: -12 });
+  $("btnPref").onclick = () => map.flyTo({ center: prefCenter, zoom: 8.6, pitch: state.is3d ? 45 : 0, bearing: -12 });
+  $("btnRotate").onclick = () => setRotate(!rot.on);
+  $("chkPref").onchange = render;
+  map.on("zoomend", render);
+  $("brandSub").textContent = `${DATA.pref_name || ""}全域 ＋ ${DATA.area.name} · v0.3 スタンドアロン`;
   $("btnBird").onclick = () => { const b = state.selected ? bById.get(state.selected) : null; map.flyTo({ center: b ? [b.cx, b.cy] : center, zoom: b ? 17.8 : 16, pitch: 62, bearing: map.getBearing() + 30 }); };
   setMode("realestate"); renderPortfolio();
   map.on("load", render);

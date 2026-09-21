@@ -4,6 +4,7 @@ area:
   id: okayama_central
   name: 岡山市中心部（岡山駅・奉還町〜西川緑道公園〜表町〜岡山城）
   pref_code: "33"
+  pref_name: 岡山県
   city_codes: ["33101", "33102"]   # 岡山市北区 / 中区（旭川以東）
   bbox: [133.905, 34.650, 133.945, 34.680]   # lon_min, lat_min, lon_max, lat_max（約3.6km×3.3km）
   epsg_plane: 6673                            # JGD2011 平面直角座標系 第V系（岡山県）
@@ -41,6 +42,7 @@ periods:
 # PLATEAU（岡山市 2024年度, v4）。5GB zip から HTTP Range で bldg ファイルのみ抽出する
 plateau:
   package: plateau-33100-okayama-shi-2024
+  city_label: 岡山市（2024年度）
   citygml_zip_url: https://assets.cms.plateau.reearth.io/assets/7d/c0ef62-aae2-4e86-9bdc-f29a87c6ff14/33100_okayama-shi_city_2024_citygml_1_op.zip
   citygml_zip_size: 5066854291
 

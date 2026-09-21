@@ -31,8 +31,15 @@ all: ingest build calibrate score
 demo:             ## 同梱デモバンドル (data/demo) からそのまま起動
 	JINRYU_DATA_DIR=data/demo $(RUN) uvicorn jinryu.api.main:app --port 8000
 
-export-html:      ## サーバ不要の単一 HTML デモ → dist/jinryu-demo.html
-	$(RUN) jinryu export-html
+export-html:      ## サーバ不要の単一 HTML デモ → dist/jinryu-demo-<area>.html（岡山と福岡）
+	$(RUN) jinryu export-html --out dist/jinryu-demo-okayama.html
+	JINRYU_AREA=fukuoka JINRYU_DATA_DIR=data/fukuoka $(RUN) jinryu export-html --out dist/jinryu-demo-fukuoka.html
+
+fukuoka:          ## 福岡（県全域メッシュ＋福岡市中心部）のパイプライン一式
+	JINRYU_AREA=fukuoka JINRYU_DATA_DIR=data/fukuoka $(RUN) jinryu fetch
+	JINRYU_AREA=fukuoka JINRYU_DATA_DIR=data/fukuoka $(RUN) jinryu ingest
+	JINRYU_AREA=fukuoka JINRYU_DATA_DIR=data/fukuoka $(RUN) jinryu calibrate
+	JINRYU_AREA=fukuoka JINRYU_DATA_DIR=data/fukuoka $(RUN) jinryu score
 
 test:
 	$(RUN) pytest -q

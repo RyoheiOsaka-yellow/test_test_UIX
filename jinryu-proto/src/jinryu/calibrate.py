@@ -142,6 +142,8 @@ def run_calibration(write: bool = True) -> dict:
     tables = load_tables()
     sites = gpd.read_parquet(p.table("count_site"))
     obs = pd.read_parquet(p.table("count_obs"))
+    if len(sites) == 0 or len(obs) == 0:
+        return _run_transfer(tables, sites, coef, write, t0)
     match = match_sites_to_links(sites, tables["road_link"], cfg["site_match_max_m"])
     sites = sites.drop(
         columns=[c for c in ["link_id", "link_ids", "n_links", "match_dist_m"] if c in sites.columns]
@@ -196,6 +198,45 @@ def run_calibration(write: bool = True) -> dict:
             json.dump(calib, f, ensure_ascii=False, indent=2)
         write_eval_md(calib, best[2], p.docs)
         typer.echo(f"saved link_flow (calibrated), calibration.json, docs/EVAL.md ({time.time() - t0:.1f}s)")
+    return calib
+
+
+def _run_transfer(tables, sites, coef, write, t0) -> dict:
+    """実測通行量が無いエリア: 他エリアで較正した距離抵抗とスケールを転用（area.yaml: calibrate_transfer）."""
+    from jinryu.pipeline import run_build
+
+    tr = config.area().get("calibrate_transfer") or {}
+    half = tr.get("half_distance_m", coef["od"]["half_distance_m"])
+    k = tr.get("scale_k", 1.0)
+    typer.echo(
+        f"実測通行量が無いため較正はスキップ。転用パラメータ half_distance={half}m, k={k}（{tr.get('source', '未指定')}）"
+    )
+    c = json.loads(json.dumps(coef))
+    c["od"]["half_distance_m"] = half
+    p = config.paths()
+    _, lf = run_build(periods=None, coef=c, write=write, tables=tables)
+    lf["flow_calibrated"] = (lf.flow_synth * k).round(1)
+    lf["confidence"] = "low"
+    lf["nearest_site_m"] = float("nan")
+    calib = {
+        "baseline_period": config.area()["periods"]["baseline"],
+        "transfer": tr,
+        "chosen": {
+            "half_distance_m": half,
+            "scale_k": k,
+            "in_sample": {"n": 0, "spearman": None, "mape": None, "top20_hit": None},
+            "block_cv": {"blocks": [], "n": 0, "spearman": None, "mape": None, "top20_hit": None},
+        },
+        "grid": [],
+        "sites_used": [],
+        "site_matching": [],
+        "elapsed_s": round(time.time() - t0, 1),
+    }
+    if write:
+        lf.to_parquet(p.table("link_flow"), index=False)
+        with open(p.processed / "calibration.json", "w", encoding="utf-8") as f:
+            json.dump(calib, f, ensure_ascii=False, indent=2)
+        typer.echo("saved link_flow (transfer), calibration.json")
     return calib
 
 

@@ -51,9 +51,15 @@ def _load_yaml(name: str) -> dict[str, Any]:
         return yaml.safe_load(f)
 
 
+def area_file() -> str:
+    """JINRYU_AREA=fukuoka → config/area_fukuoka.yaml。未指定は config/area.yaml（岡山）."""
+    a = os.environ.get("JINRYU_AREA", "").strip()
+    return f"area_{a}.yaml" if a and a != "okayama" else "area.yaml"
+
+
 @cache
 def area() -> dict[str, Any]:
-    return _load_yaml("area.yaml")
+    return _load_yaml(area_file())
 
 
 @cache
@@ -63,7 +69,29 @@ def coefficients() -> dict[str, Any]:
 
 @cache
 def sources() -> dict[str, Any]:
-    return _load_yaml("sources.yaml")
+    """sources.yaml をエリアに合わせて整形（{plateau_city} 等の置換、areas 指定のあるものは該当エリアのみ）."""
+    import copy
+
+    raw = _load_yaml("sources.yaml")
+    a = area()["area"]
+    ctx = {
+        "plateau_city": area().get("plateau", {}).get("city_label", ""),
+        "plateau_package": area().get("plateau", {}).get("package", ""),
+        "pref_name": a.get("pref_name", ""),
+    }
+    out = copy.deepcopy(raw)
+    kept = []
+    for s in out["sources"]:
+        if s.get("areas") and a["id"] not in s["areas"]:
+            continue
+        for k, v in list(s.items()):
+            if isinstance(v, str):
+                for key, val in ctx.items():
+                    v = v.replace("{" + key + "}", str(val))
+                s[k] = v
+        kept.append(s)
+    out["sources"] = kept
+    return out
 
 
 def paths() -> Paths:

@@ -1,0 +1,77 @@
+# 対象エリア定義: 福岡市中心部（天神〜中洲〜博多駅）＋ 福岡県全域（1km メッシュの広域ビュー）
+# 使い方: JINRYU_AREA=fukuoka JINRYU_DATA_DIR=data/fukuoka make ingest build calibrate score export-html
+area:
+  id: fukuoka_central
+  name: 福岡市中心部（天神〜中洲〜博多駅）
+  pref_code: "40"
+  pref_name: 福岡県
+  city_codes: ["40131", "40132", "40133", "40134", "40135", "40136", "40137"]   # 福岡市 東・博多・中央・南・西・城南・早良
+  zoning_city_code: "40130"
+  bbox: [130.385, 33.578, 130.430, 33.605]   # 約4.2km×3.0km
+  epsg_plane: 6670                           # JGD2011 平面直角座標系 第II系（福岡県）
+  epsg_geo: 4326
+
+mesh3_codes:
+  - "50302390"
+  - "50302391"
+  - "50302392"
+  - "50302393"
+  - "50302394"
+  - "50303300"
+  - "50303301"
+  - "50303302"
+  - "50303303"
+  - "50303304"
+  - "50303310"
+  - "50303311"
+  - "50303312"
+  - "50303313"
+  - "50303314"
+  - "50303320"
+  - "50303321"
+  - "50303322"
+  - "50303323"
+  - "50303324"
+
+periods:
+  available: ["2019-10", "2019-11", "2020-10", "2021-10", "2021-11"]
+  baseline: "2019-10"
+  compare_default: ["2019-10", "2021-10"]
+
+plateau:
+  package: plateau-40130-fukuoka-shi-2024
+  city_label: 福岡市（2024年度）
+  citygml_zip_url: https://assets.cms.plateau.reearth.io/assets/c5/263250-3d72-486d-8b76-f8c62aaaca03/40130_fukuoka-shi_city_2024_citygml_2_op.zip
+  citygml_zip_size: 992977577
+
+station_exits:
+  "博多":
+    - {name: 博多口, lat: 33.58990, lon: 130.41960, share: 0.65}
+    - {name: 筑紫口, lat: 33.58960, lon: 130.42230, share: 0.35}
+  "天神":
+    - {name: 天神（西鉄・地下鉄）, lat: 33.59030, lon: 130.40100, share: 1.0}
+
+osm:
+  tiles_x: 5
+  tiles_y: 4
+
+# 通行量調査: 福岡市「歩行者交通量等調査」（天神・博多駅・ウォーターフロント、7〜20 時の時間帯別、平日/休日）は PDF 公開。
+# 本環境から市サイトへ到達できず未取得。手入力 CSV（data/fukuoka/raw/counts_manual/*.csv）を置けば calibrate が自動で使う。
+counts:
+  source: fukuoka_city_survey_pdf
+  sites_csv: count_sites_fukuoka.csv    # 未作成（PDF から地点を起こす）
+  raw_dir: counts_fukuoka
+  months: []
+  page_ids: {}
+  pdf_urls:
+    - https://www.city.fukuoka.lg.jp/jutaku-toshi/kaihatsu/toshi/documents/r06_tenjin_walker.pdf
+    - https://www.city.fukuoka.lg.jp/jutaku-toshi/kaihatsu/toshi/kotsuryo_nendo_hakata_walker.html
+    - https://www.city.fukuoka.lg.jp/jutaku-toshi/kaihatsu/toshi/kotsuryo_nendo_wf_walker.html
+
+# 実測が無い間は岡山で較正した距離抵抗とスケールを転用する（未較正である旨を UI に表示）
+calibrate_transfer:
+  source: okayama_central (2026-09-21, Spearman CV 0.70)
+  half_distance_m: 900
+  scale_k: 0.3727
+
+basemap_pref_zoom: 11

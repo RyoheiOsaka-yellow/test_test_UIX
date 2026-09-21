@@ -17,15 +17,15 @@ sources:
       - https://www.geospatial.jp/ckan/dataset/8fd79f08-00e6-4d14-9c89-e3bdca66af11/resource/85d88c3b-2c29-42ed-a97c-8d5728c1ca03/download/monthly_mdp_mesh1km_33.zip
       - https://www.geospatial.jp/ckan/dataset/8fd79f08-00e6-4d14-9c89-e3bdca66af11/resource/47ddd471-34eb-47e6-9431-6e20e1c845a1/download/monthly_fromto_city_33.zip
 
-  - id: plateau_okayama
-    name: 3D都市モデル（Project PLATEAU）岡山市（2024年度）建築物モデル LOD1
+  - id: plateau
+    name: "3D都市モデル（Project PLATEAU）{plateau_city} 建築物モデル LOD1"
     provider: 国土交通省 都市局（PLATEAU）
-    url: https://www.geospatial.jp/ckan/dataset/plateau-33100-okayama-shi-2024
+    url: https://www.geospatial.jp/ckan/dataset/{plateau_package}
     format: CityGML 2.0 (zip 5.1GB, 3次メッシュ単位の bldg ファイル)
     period: 調査年 2022（surveyYear）
     granularity: 建物単位（用途・階数・延床面積・建築面積・用途地域）
     license: PLATEAU Site Policy 3.著作権（CC BY 4.0 相当）
-    credit: 3D都市モデル（Project PLATEAU）岡山市（2024年度）（国土交通省）を加工
+    credit: "3D都市モデル（Project PLATEAU）{plateau_city}（国土交通省）を加工"
     notes: 20メッシュ分のみ HTTP Range で部分取得（約92MB圧縮／946MB展開）
     fetched_at: "2026-09-21"
 
@@ -53,7 +53,7 @@ sources:
       - https://nlftp.mlit.go.jp/ksj/gml/data/S12/S12-24/S12-24_GML.zip
 
   - id: ksj_a29
-    name: 国土数値情報 用途地域（A29-19 岡山県）
+    name: 国土数値情報 用途地域（A29-19 {pref_name}）
     provider: 国土交通省 国土政策局
     url: https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A29-v2_1.html
     format: Shapefile (Shift-JIS)
@@ -65,7 +65,7 @@ sources:
       - https://nlftp.mlit.go.jp/ksj/gml/data/A29/A29-19/A29-19_33_GML.zip
 
   - id: ksj_l01
-    name: 国土数値情報 地価公示（L01-25 岡山県）
+    name: 国土数値情報 地価公示（L01-25 {pref_name}）
     provider: 国土交通省 国土政策局
     url: https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-L01-2025.html
     format: GeoJSON
@@ -77,6 +77,7 @@ sources:
       - https://nlftp.mlit.go.jp/ksj/gml/data/L01/L01-25/L01-25_33_GML.zip
 
   - id: okayama_counts
+    areas: [okayama_central]
     name: 岡山市 市内中心部歩行者通行量データ（AIカメラ 箇所別通行量）
     provider: 岡山市 産業観光局 産業振興課
     url: https://www.city.okayama.jp/jigyosha/0000055956.html
@@ -89,6 +90,7 @@ sources:
     fetched_at: "2026-09-21"
 
   - id: okayama_survey_biennial
+    areas: [okayama_central]
     name: 岡山市商店街等通行量調査（隔年・時間帯別）
     provider: 岡山市
     url: https://www.city.okayama.jp/shisei/0000010107.html

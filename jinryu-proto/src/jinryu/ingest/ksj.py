@@ -72,7 +72,7 @@ def zoning(raw_dir=None, bbox=None) -> gpd.GeoDataFrame:
     bbox = bbox or config.bbox()
     z = next(raw_dir.glob("A29-*_GML.zip"))
     dest = _extract(z, config.paths().interim / "ksj_a29")
-    city = config.area()["area"]["city_codes"][0][:3] + "00"  # 33100 = 岡山市
+    city = config.area()["area"].get("zoning_city_code") or config.area()["area"]["city_codes"][0][:3] + "00"
     shp = list(dest.rglob(f"A29-*_{city}.shp")) or list(dest.rglob("A29-*.shp"))
     gdf = gpd.read_file(shp[0], encoding="cp932")
     gdf = gdf.to_crs(4326).cx[bbox[0] : bbox[2], bbox[1] : bbox[3]].copy()
