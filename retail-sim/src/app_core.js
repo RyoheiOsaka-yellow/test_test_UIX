@@ -19,6 +19,8 @@ function mulberry32(seed) {
 const rng = mulberry32(20260804);
 let histRng = mulberry32(910);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+// 標準正規の近似（一様3つの和）: 視線の散らばりに使う
+function gauss3() { return (rng() + rng() + rng() - 1.5) * 2; }
 const lerp = (a, b, t) => a + (b - a) * t;
 function fmtYen(v) {
   const a = Math.abs(v);
@@ -207,6 +209,21 @@ function routePoints(from, to) {
   if (pts.length > 1 && Math.hypot(pts[0].x - from.x, pts[0].z - from.z) < 0.4) pts.shift();
   return pts;
 }
+/* 什器の長手方向のどこに立つか。5m の壁面什器で全員が中央に立つと
+   棚の両端が「一度も見られない」不自然な計測になるため、
+   買いたいフェイス付近に立ち位置を分散させる。 */
+function shelfAxis(s) {
+  const alongX = s.normal[2] !== 0;
+  return { alongX, len: alongX ? s.size[0] : s.size[2] };
+}
+function approachSpot(s, frac) {
+  const { alongX, len } = shelfAxis(s);
+  const off = (frac - 0.5) * Math.max(0, len - 0.9);    // 端に寄りすぎない
+  return alongX
+    ? { x: s.approach[0] + off, z: s.approach[1] }
+    : { x: s.approach[0], z: s.approach[1] + off };
+}
+
 function nearestOf(list, x, z) {
   let best = list[0], bd = 1e9;
   list.forEach(p => { const d = (p.x - x) ** 2 + (p.z - z) ** 2; if (d < bd) { bd = d; best = p; } });
@@ -366,7 +383,7 @@ class Agent {
     this.heading = -Math.PI / 2;
     this.persona = pickPersona();
     this.eyeH = (this.persona.eyeH || 1.6) + (rng() - 0.5) * 0.09;
-    this.gazeTargetY = null;   // 歩行中はアイレベル付近（周辺視）
+    this.gazeTargetY = null; this.gazeLateral = 0; this.fixTimer = 0; this.targetFrac = null;
     this.speed = (0.85 + rng() * 0.35) * this.persona.speed;
     STATS.personas[this.persona.key].n++;
     this.adExposed = rng() < adExposureShare();
@@ -412,7 +429,9 @@ class Agent {
       const s = this.plan.shift();
       if (s.promoted && !S.endcap && s.id === STORE.promoted.mainId) { this.nextLeg(); return; }
       this.targetShelf = s;
-      this.wp = routePoints(this, { x: s.approach[0], z: s.approach[1] });
+      // 目当てのフェイスは什器の長手方向にも分布する（買いたい商品の位置）
+      this.standU = clamp(0.5 + gauss3() * 0.26, 0.06, 0.94);
+      this.wp = routePoints(this, approachSpot(s, this.standU));
       this.state = 'walk';
     } else if (!this.paid && this.basket.length) {
       this.targetShelf = null;
@@ -432,7 +451,24 @@ class Agent {
 
   dwellAt(shelf, dt) {
     this.wait -= dt;
+    // 棚前のサイドステップ: 同じ什器の別のフェイスを見に、ゆっくり横移動する
+    this.stepTimer = (this.stepTimer || 0) - dt;
+    if (this.stepTimer <= 0) {
+      this.stepTimer = 4 + rng() * 7;
+      this.standU = clamp((this.standU != null ? this.standU : 0.5) + gauss3() * 0.13, 0.06, 0.94);
+      this.standSpot = approachSpot(shelf, this.standU);
+    }
+    if (this.standSpot) {
+      const sdx = this.standSpot.x - this.x, sdz = this.standSpot.z - this.z;
+      const sd = Math.hypot(sdx, sdz);
+      if (sd > 0.06) {
+        const st = Math.min(this.speed * 0.32 * dt, sd);
+        this.x += (sdx / sd) * st; this.z += (sdz / sd) * st;
+      }
+    }
     this.faceShelf(shelf);
+    this.fixTimer = (this.fixTimer || 0) - dt;
+    if (this.fixTimer <= 0) this.sampleFixation(shelf);   // 次の注視点へ視線を移す
     if (this.wait <= 0) {
       const st = STATS.shelves[shelf.id];
       if (rng() < 0.62) {
@@ -464,13 +500,61 @@ class Agent {
           }
         }
       }
-      this.gazeTargetY = null;
+      this.targetFrac = null;
+      this.sampleWalkFixation();
       this.nextLeg();
     }
   }
 
+  /* 立寄中の注視点サンプリング（サッケード1回分）
+     棚前の視線は単一のピークではなく、4つの行動が重なった混合分布として立ち上がる。
+       ① 快適域   … アイレベルからやや下（ゴールデンゾーンが成立する主因）
+       ② 上下走査 … 什器全体を舐めるように探索する（最上段・最下段にも必ず入る）
+       ③ 目的の段 … 買う予定の商品がある段を直接見に行く（段は全段に分布）
+       ④ 下段確認 … 価格・容量・在庫を見るためにしゃがむ/見下ろす（最下段が 0 にならない要因）
+     アイトラッキング文献では最下段でも全注視の 8〜12% 程度が観測されるため、
+     ④ を明示的に持たせて「棚の下が全く見られない」状態が起きないようにしている。 */
+  sampleFixation(s) {
+    const H = (s && s.size[1]) || 1.6;
+    const E = this.eyeH || 1.6;
+    const topLimit = Math.min(H * 0.97, E + 0.34);
+    let r = rng(), y;
+    if ((r -= 0.44) < 0) {
+      y = E - 0.45 + gauss3() * 0.195;                   // ① 快適域
+    } else if ((r -= 0.25) < 0) {
+      y = 0.10 + rng() * (topLimit - 0.10);              // ② 什器全体の上下走査
+    } else if ((r -= 0.21) < 0) {
+      const tf = this.targetFrac != null ? this.targetFrac : 0.60;
+      y = tf * H + gauss3() * 0.09;                      // ③ 目当ての段
+    } else {
+      y = 0.08 + rng() * 0.47;                           // ④ 下段の確認（床上8〜55cm）
+    }
+    this.gazeTargetY = clamp(y, 0.10, H * 0.98);
+    // 横方向の走査幅は什器の長さに比例（長い什器ほど左右に広く探す）
+    const span = s ? Math.min(1.7, 0.55 + shelfAxis(s).len * 0.13) : 0.75;
+    this.gazeLateral = gauss3() * span * 0.34;
+    this.fixTimer = 1.5 + rng() * 2.3;                   // 次のサッケードまで
+  }
+
+  /* 通過中（周辺視）: アイレベルよりやや下を中心に、より広く散る */
+  sampleWalkFixation() {
+    const E = this.eyeH || 1.6;
+    const y = rng() < 0.12
+      ? 0.12 + rng() * 0.45                              // 通過中でも下段が目に入ることがある
+      : E - 0.38 + gauss3() * 0.32;
+    this.gazeTargetY = clamp(y, 0.12, E + 0.28);
+    this.gazeLateral = (rng() - 0.5) * 0.5;
+    this.fixTimer = 0.9 + rng() * 1.5;
+  }
+
+  /* 什器の中心ではなく「今見ているフェイス」を向く。
+     端に立っている客が中央を向いてしまうと、視線が棚中央に集中してしまうため。 */
   faceShelf(shelf) {
-    const dx = shelf.pos[0] - this.x, dz = shelf.pos[2] - this.z;
+    const { alongX } = shelfAxis(shelf);
+    const lat = this.gazeLateral || 0;
+    const tx = alongX ? this.x + lat : shelf.pos[0];
+    const tz = alongX ? shelf.pos[2] : this.z + lat;
+    const dx = tx - this.x, dz = tz - this.z;
     this.heading = Math.atan2(dx, dz);
   }
 
@@ -528,9 +612,12 @@ class Agent {
           const s = this.targetShelf;
           STATS.shelves[s.id].stops++;
           this.dwellShelf = s; this.state = 'dwell';
-          // 注視高さ ~ N(アイレベル-0.33m, 0.31m)。ゴールデンゾーン帯に自然に集中する
-          this.gazeTargetY = clamp(
-            (this.eyeH - 0.33) + (rng() + rng() + rng() - 1.5) * 0.62, 0.25, this.eyeH + 0.28);
+          // 目当ての商品がどの段にあるか（商品は全段に分布する）
+          const bands = [0.20, 0.45, 0.66, 0.89], bw = [0.15, 0.33, 0.34, 0.18];
+          let rb = rng(), bi = 0;
+          for (let k = 0; k < bw.length; k++) { rb -= bw[k]; if (rb <= 0) { bi = k; break; } }
+          this.targetFrac = clamp(bands[bi] + (rng() - 0.5) * 0.10, 0.08, 0.95);
+          this.sampleFixation(s);
           this.wait = (10 + rng() * 20) * this.persona.dwell;
           if (rng() < 0.05) beacon(`客#${this.id} 「${s.name}」に立寄`, this.hasNovelty ? 'seg-nov' : '');
         } else if (this.state === 'toRegister') {
@@ -552,6 +639,8 @@ class Agent {
       }
       return;
     }
+    this.fixTimer = (this.fixTimer || 0) - dt;
+    if (this.fixTimer <= 0) this.sampleWalkFixation();
     const step = Math.min(this.speed * dt, d);
     this.x += (dx / d) * step; this.z += (dz / d) * step;
     const targetHeading = Math.atan2(dx, dz);
@@ -597,15 +686,25 @@ function accumulateGaze(agent, s, w, dist) {
   if (!st.grid) st.grid = new Float32Array(GRID_U * GRID_V);
   const alongX = s.normal[2] !== 0;
   const length = alongX ? s.size[0] : s.size[2];
-  const hx = Math.sin(agent.heading), hz = Math.cos(agent.heading);
   const rel = alongX ? (agent.x - s.pos[0]) : (agent.z - s.pos[2]);
-  const along = rel + (alongX ? hx : hz) * dist * 0.45;
-  const u = clamp(along / Math.max(length, 0.1) + 0.5, 0, 0.999);
+  // 棚前に立っている間は「立ち位置＋横走査」がそのまま注視列になる。
+  // 通過中は進行方向へ視線が流れるので、向きを距離に応じて投影する。
+  let along;
+  if (agent.state === 'dwell' && agent.dwellShelf === s) {
+    along = rel + (agent.gazeLateral || 0);
+  } else {
+    const hx = Math.sin(agent.heading), hz = Math.cos(agent.heading);
+    along = rel + (alongX ? hx : hz) * dist * 0.45 + (agent.gazeLateral || 0);
+  }
+  // 什器の外へはみ出した注視点は折り返す（端の列へ張り付かせない）
+  let uf = along / Math.max(length, 0.1) + 0.5;
+  if (uf < 0) uf = -uf; else if (uf > 1) uf = 2 - uf;
+  const u = clamp(uf, 0, 0.999);
   // 注視高さ: 棚前では「アイレベルよりやや下」に集中（ゴールデンゾーンの成立要因）。
   // 通過中は周辺視でアイレベル付近を拾う。
   const yHit = s.kind === 'island-case'
-    ? 0.74 + (cloudSafeRand() - 0.5) * 0.2                       // ケースは見下ろし
-    : (agent.gazeTargetY != null ? agent.gazeTargetY : (agent.eyeH || 1.6) - 0.18);
+    ? 0.60 + cloudSafeRand() * 0.42                              // ケース内を手前から奥へ見下ろす
+    : (agent.gazeTargetY != null ? agent.gazeTargetY : (agent.eyeH || 1.6) - 0.28);
   const v = s.kind === 'island-case'
     ? clamp((yHit - 0.5) / 0.55, 0, 0.999)
     : clamp(yHit / Math.max(s.size[1], 0.5), 0, 0.999);
@@ -643,7 +742,11 @@ function senseGaze(agent, interval) {
   agent.gazeW = 0;
   for (const s of SHELVES) {
     if (s.promoted && !S.endcap && s.id === STORE.promoted.mainId) continue;
-    const gx = s.pos[0], gz = s.pos[2];
+    // 什器は線分（長手方向に広がる）として扱う。中心点で判定すると、
+    // 5m の壁面什器の端に立った客が「その棚を見ていない」ことになってしまう。
+    const ax = shelfAxis(s), half = Math.max(ax.len / 2 - 0.05, 0.05);
+    const gx = ax.alongX ? clamp(agent.x, s.pos[0] - half, s.pos[0] + half) : s.pos[0];
+    const gz = ax.alongX ? s.pos[2] : clamp(agent.z, s.pos[2] - half, s.pos[2] + half);
     const dx = gx - agent.x, dz = gz - agent.z;
     const d = Math.hypot(dx, dz);
     if (d > GAZE_DIST) continue;

@@ -316,20 +316,16 @@ function spApplyTo3D() {
 const SP_TIER_MODEL0 = SHELF_TIERS.map(t => t.mult);   // 出荷時のモデル係数
 const SP_TIER_CM = SHELF_TIERS.map(t => parseFloat(String(t.height).replace(/[^0-9.]/g, '')));
 
-// 実測セルの「床からの絶対高さ」をモデル段へ最近傍割当（什器高さが棚ごとに違うため）
-function tierOfHeightCm(hcm) {
-  let bi = 0, bd = Infinity;
-  SP_TIER_CM.forEach((cm, i) => {
-    const d = Math.abs(cm - hcm);
-    if (d < bd) { bd = d; bi = i; }
-  });
-  return bi;
-}
+/* 実測グリッドを「床上高さ → 注目密度」の関数とみなし、
+   カーネル回帰（ガウス核・バンド幅20cm）で各段の基準高さ上の密度を推定する。
+   什器高さが 1.4〜2.0m とばらつくため、最近傍のバケツ割当だと
+   低い什器の最上段が「上段」に混入して段プロファイルが歪む。平滑化で解消する。 */
+const SP_KERNEL_CM = 20;
 
-// 実測グリッドを段別の注目「密度」に集約し、平均1へ正規化
 function measuredTierProfile() {
-  const acc = new Float64Array(SHELF_TIERS.length);
-  const counts = new Float64Array(SHELF_TIERS.length);
+  const num = new Float64Array(SHELF_TIERS.length);
+  const den = new Float64Array(SHELF_TIERS.length);
+  const coverage = new Float64Array(SHELF_TIERS.length);
   let total = 0;
   SHELVES.forEach(s => {
     if (s.kind === 'island-case' || s.kind === 'counter') return;
@@ -338,18 +334,21 @@ function measuredTierProfile() {
     const H = s.size[1];
     for (let v = 0; v < GRID_V; v++) {
       const hcm = ((v + 0.5) / GRID_V) * H * 100;
-      const bi = tierOfHeightCm(hcm);
-      counts[bi] += GRID_U;
-      for (let u = 0; u < GRID_U; u++) {
-        const val = st.grid[v * GRID_U + u];
-        acc[bi] += val; total += val;
-      }
+      let rowSum = 0;
+      for (let u = 0; u < GRID_U; u++) rowSum += st.grid[v * GRID_U + u];
+      total += rowSum;
+      const dens = rowSum / GRID_U;                       // 1セルあたり視線秒
+      SP_TIER_CM.forEach((cm, i) => {
+        const w = Math.exp(-0.5 * Math.pow((hcm - cm) / SP_KERNEL_CM, 2));
+        if (w < 0.02) return;                             // 段から離れすぎた行は寄与させない
+        num[i] += w * dens; den[i] += w; coverage[i] += w * GRID_U;
+      });
     }
   });
   if (total <= 0) return null;
-  const dens = Array.from(acc).map((a, i) => counts[i] > 0 ? a / counts[i] : 0);
+  const dens = Array.from(num).map((n, i) => den[i] > 0 ? n / den[i] : 0);
   const mean = dens.reduce((a, b) => a + b, 0) / dens.length || 1;
-  return { profile: dens.map(d => d / mean), totalSec: total, coverage: counts };
+  return { profile: dens.map(d => d / mean), totalSec: total, coverage: Array.from(coverage) };
 }
 
 function renderShelfCalib() {
@@ -373,8 +372,9 @@ function renderShelfCalib() {
   const worst = rows.slice().sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))[0];
   el.innerHTML = `
     <div class="mde-text" style="margin-bottom:7px">
-      実測 = 全什器のAIカメラ視線グリッド（${GRID_U}×${GRID_V}）を段別に集約し平均1で正規化（サンプル ${fmtNum(m.totalSec)} 視線秒）。
-      モデル = 棚割シミュレーターの段係数。
+      実測 = 全什器のAIカメラ視線グリッド（${GRID_U}×${GRID_V}）を「床上高さ→注目密度」とみなし、
+      ガウス核（バンド幅 ${SP_KERNEL_CM}cm）で各段の基準高さ上の密度を推定して平均1で正規化（サンプル ${fmtNum(m.totalSec)} 視線秒）。
+      什器高さ 1.4〜2.0m のばらつきを平滑化して吸収している。モデル = 棚割シミュレーターの段係数。
     </div>
     ${rows.map(r => `
       <div class="sp-factor">
