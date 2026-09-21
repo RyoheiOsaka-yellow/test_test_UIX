@@ -351,10 +351,36 @@ function measuredTierProfile() {
   return { profile: dens.map(d => d / mean), totalSec: total, coverage: Array.from(coverage) };
 }
 
+/* 段別の実測「売上係数」。
+   段係数は本来「その段に置いたら何個売れるか」の係数。
+   本シミュレーションでは、客が探している商品がどの段にあるかが立寄ごとに
+   無作為に割り付けられる（＝段の自然実験）ので、その割付を条件にした
+   購買率の差を、段の因果効果としてそのまま推定できる。
+   注目度の按分では分子と分母が同じ量になり識別できないため、この割付を使う。 */
+function measuredTierSales() {
+  const trials = new Float64Array(SHELF_TIERS.length);
+  const buys = new Float64Array(SHELF_TIERS.length);
+  SHELVES.forEach(s => {
+    const st = STATS.shelves[s.id];
+    if (!st || !st.tierTrials) return;
+    for (let i = 0; i < SHELF_TIERS.length; i++) { trials[i] += st.tierTrials[i]; buys[i] += st.tierBuys[i]; }
+  });
+  const totalTrials = trials.reduce((a, b) => a + b, 0);
+  const totalBuys = buys.reduce((a, b) => a + b, 0);
+  if (totalBuys < 40 || Math.min(...trials) < 20) return null;
+  const conv = [];
+  for (let i = 0; i < SHELF_TIERS.length; i++) conv.push(trials[i] > 0 ? buys[i] / trials[i] : 0);
+  const mean = conv.reduce((a, b) => a + b, 0) / conv.length || 1;
+  // 二項の標準誤差（段係数の不確実性）
+  const se = conv.map((p, i) => trials[i] > 0 ? Math.sqrt(Math.max(p * (1 - p), 1e-6) / trials[i]) / mean : 0);
+  return { profile: conv.map(c => c / mean), se, conv, trials: Array.from(trials), buys: Array.from(buys), totalBuys, totalTrials };
+}
+
 function renderShelfCalib() {
   const el = document.getElementById('sp-calib');
   if (!el) return;
   const m = measuredTierProfile();
+  const ms = measuredTierSales();
   const modelMean = SHELF_TIERS.reduce((a, t) => a + t.mult, 0) / SHELF_TIERS.length;
   if (!m || m.totalSec < 200) {
     el.innerHTML = `<div class="exp-off">AIカメラの視線計測を蓄積中（現在 ${m ? Math.round(m.totalSec) : 0} 視線秒）。
@@ -365,35 +391,42 @@ function renderShelfCalib() {
   const rows = SHELF_TIERS.map((tt, i) => {
     const model = tt.mult / modelMean;
     const meas = m.profile[i];
-    const gap = meas - model;
-    return { name: tt.name, height: tt.height, model, meas, gap };
+    const sales = ms ? ms.profile[i] : null;
+    // 較正の対象は「売上係数」。実測売上が取れていればそれを使い、無ければ注目度で代用する
+    const target = sales != null ? sales : meas;
+    return { name: tt.name, height: tt.height, model, meas, sales, target, gap: target - model };
   });
-  const maxV = Math.max(...rows.map(r => Math.max(r.model, r.meas)), 1.2);
+  const maxV = Math.max(...rows.map(r => Math.max(r.model, r.meas, r.sales || 0)), 1.2);
   const worst = rows.slice().sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))[0];
   el.innerHTML = `
     <div class="mde-text" style="margin-bottom:7px">
-      実測 = 全什器のAIカメラ視線グリッド（${GRID_U}×${GRID_V}）を「床上高さ→注目密度」とみなし、
-      ガウス核（バンド幅 ${SP_KERNEL_CM}cm）で各段の基準高さ上の密度を推定して平均1で正規化（サンプル ${fmtNum(m.totalSec)} 視線秒）。
-      什器高さ 1.4〜2.0m のばらつきを平滑化して吸収している。モデル = 棚割シミュレーターの段係数。
+      <b>注目度</b> = 全什器のAIカメラ視線グリッド（${GRID_U}×${GRID_V}）を「床上高さ→注目密度」とみなし、
+      ガウス核（バンド幅 ${SP_KERNEL_CM}cm）で各段の基準高さ上の密度を推定（${fmtNum(m.totalSec)} 視線秒）。<br>
+      ${ms ? `<b>売上係数</b> = 目当ての商品がその段にあった立寄の購買率（${fmtNum(ms.totalTrials * SF())}立寄・${fmtNum(ms.totalBuys * SF())}購買）。
+              段への割付は立寄ごとに無作為なので、この差は段の因果効果として読める。較正はこちらを使う。`
+            : `<b>売上係数</b>は購買サンプル蓄積中（各段20立寄・計40購買で有効化）。当面は注目度で代用。`}
+      いずれも平均1で正規化。<b>モデル</b> = 棚割シミュレーターの段係数。
     </div>
     ${rows.map(r => `
       <div class="sp-factor">
         <span class="fl">${r.name}（${r.height}）</span>
-        <span class="fb" style="height:16px;background:transparent;display:flex;flex-direction:column;gap:2px">
-          <span style="height:7px;border-radius:4px;background:${COL.s1};width:${(r.meas / maxV * 100).toFixed(1)}%"></span>
-          <span style="height:7px;border-radius:4px;background:#b6c4d4;width:${(r.model / maxV * 100).toFixed(1)}%"></span>
+        <span class="fb" style="height:22px;background:transparent;display:flex;flex-direction:column;gap:2px">
+          <span style="height:6px;border-radius:3px;background:${COL.s2};width:${(r.meas / maxV * 100).toFixed(1)}%"></span>
+          ${r.sales != null ? `<span style="height:6px;border-radius:3px;background:${COL.s1};width:${(r.sales / maxV * 100).toFixed(1)}%"></span>` : ''}
+          <span style="height:6px;border-radius:3px;background:#b6c4d4;width:${(r.model / maxV * 100).toFixed(1)}%"></span>
         </span>
-        <span class="fv" style="width:118px">実測 ${r.meas.toFixed(2)} / モデル ${r.model.toFixed(2)}<br>
+        <span class="fv" style="width:146px">注目 ${r.meas.toFixed(2)}${r.sales != null ? ` / 売上 ${r.sales.toFixed(2)}<span style="color:var(--text-faint)">±${(1.96 * ms.se[rows.indexOf(r)]).toFixed(2)}</span>` : ''} / モデル ${r.model.toFixed(2)}<br>
           <span style="color:${Math.abs(r.gap) > 0.2 ? COL.warn : 'var(--text-faint)'};font-weight:400">乖離 ${r.gap >= 0 ? '+' : ''}${r.gap.toFixed(2)}</span></span>
       </div>`).join('')}
     <div class="legend" style="margin-top:6px">
-      <span class="li"><span class="sw" style="background:${COL.s1}"></span>実測（AIカメラ）</span>
+      <span class="li"><span class="sw" style="background:${COL.s2}"></span>注目度（AIカメラ視線）</span>
+      ${ms ? `<span class="li"><span class="sw" style="background:${COL.s1}"></span>売上係数（段別購買率・無作為割付）</span>` : ''}
       <span class="li"><span class="sw" style="background:#b6c4d4"></span>モデル係数</span>
     </div>
     <div class="power-box" style="margin-top:9px">
       最大乖離は <b>${worst.name}</b>（${worst.gap >= 0 ? '実測が' : 'モデルが'}${Math.abs(worst.gap).toFixed(2)} 上回る）。
       較正するとモデル係数が実測へ70%引き寄せられ、以降の配置シミュレーションと最適化提案に反映されます。
-      ${confChip(m.totalSec > 3000 ? 'hi' : 'md')}
+      ${confChip(ms && ms.totalBuys > 200 ? 'hi' : (m.totalSec > 3000 ? 'md' : 'lo'))}
       <div class="sp-btnrow" style="margin-top:7px">
         <button id="sp-calib-apply">実測でモデルを較正</button>
         <button id="sp-calib-reset" class="ghost">出荷時係数に戻す</button>
@@ -402,11 +435,13 @@ function renderShelfCalib() {
   document.getElementById('sp-calib-apply').addEventListener('click', () => {
     SHELF_TIERS.forEach((tt, i) => {
       if (!m.coverage[i]) return;          // その高さ帯に計測セルが無ければ触らない
-      const target = clamp(m.profile[i] * modelMean, 0.3, 2.0);
+      const target = clamp(rows[i].target * modelMean, 0.3, 2.0);
       tt.mult = +(clamp(lerp(tt.mult, target, 0.7), 0.3, 2.0)).toFixed(3);
       tt.calibrated = true;
     });
-    beacon(`棚割モデルをAIカメラ実測で較正（${fmtNum(m.totalSec)}視線秒）`, 'seg-buy');
+    beacon(ms
+      ? `棚割モデルを実測売上係数で較正（${fmtNum(ms.totalBuys * SF())}購買・${fmtNum(m.totalSec)}視線秒）`
+      : `棚割モデルをAIカメラ実測で較正（${fmtNum(m.totalSec)}視線秒）`, 'seg-buy');
     renderShelfSim();
   });
   document.getElementById('sp-calib-reset').addEventListener('click', () => {

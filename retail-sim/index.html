@@ -803,8 +803,12 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
       <div class="card">
         <div class="card-title" data-ccollapse>棚別 視線・立寄・転換<span class="hint">行クリックで3Dカメラ移動</span><span class="ctgl">▾</span></div>
         <div class="card-body">
+          <div class="mde-text" style="margin-bottom:6px">
+            <b>注視効率</b> = 1,000視線秒あたりの購買数。視線は取れているのに効率が低い売場は、
+            商品・価格・POPの問題（＝置き場所ではなく中身の問題）として切り分けられる。
+          </div>
           <table id="shelf-table">
-            <thead><tr><th>売場</th><th>通過</th><th>視線率</th><th>立寄</th><th>転換率</th><th>視線ヒート</th></tr></thead>
+            <thead><tr><th>売場</th><th>通過</th><th>視線率</th><th>立寄</th><th>転換率</th><th>注視効率</th><th>視線ヒート</th></tr></thead>
             <tbody id="shelf-tbody"></tbody>
           </table>
         </div>
@@ -1197,6 +1201,15 @@ const GRID_U = 12, GRID_V = 6;
 function freshShelfStats() {
   return {
     passes: 0, gazes: 0, gazeSec: 0, stops: 0, picks: 0, purchases: 0,
+    goldenSec: 0,                                     // ゴールデン帯（床上85〜150cm）で受けた注意秒
+    tierSec: new Float64Array(4),                     // 段別の注意秒（全視線）
+    tierDwellSec: new Float64Array(4),                // 段別の注意秒（立寄中のみ）
+    // 「目当ての商品がどの段にあったか」は無作為に割り付けられる＝段の自然実験。
+    // この割付を条件にした手取・購買の差は、段の因果効果として読める。
+    tierTrials: new Float64Array(4),                  // その段に目当てがあった立寄の数
+    tierPicks: new Float64Array(4),                   // うち手に取った数
+    tierBuys: new Float64Array(4),                    // うち購買に至った数
+    attnSum: 0, attnBuySum: 0, dwellN: 0,             // 注視効率の算出用
     grid: new Float32Array(GRID_U * GRID_V),          // 本日累計
     gridRecent: new Float32Array(GRID_U * GRID_V),    // 直近30分（指数減衰）
     gridLive: new Float32Array(GRID_U * GRID_V),      // ライブ（直近1分・人の動きに直結）
@@ -1359,6 +1372,8 @@ class Agent {
     this.hasNovelty = false; this.novGroup = null;
     this.basket = []; this.revenue = 0;
     this.gazeMap = {}; this.passSet = {};
+    this.goldenSec = {}; this.tierSec = {};            // 注意の「質」（ゴールデン帯・段別）
+    this.cmpCount = 0; this.bandSeen = null; this.lastBand = -1;   // 段をまたぐ比較サッケード
     this.state = 'plan'; this.wait = 0; this.wp = [];
     this.targetShelf = null; this.plan = [];
     this.done = false; this.walkPhase = rng() * 6.28;
@@ -1442,10 +1457,21 @@ class Agent {
     this.updateGazePose(dt);
     if (this.wait <= 0) {
       const st = STATS.shelves[shelf.id];
-      if (rng() < 0.62) {
+      // ---- この立寄で実際に「どこを何秒見たか」を購買行動へ接続する ----
+      const q = this.attentionQuality(shelf);
+      st.attnSum += q.attn; st.dwellN++;
+      // 段別の注意秒（表示用）
+      const cur = this.tierSec[shelf.id], t0 = this.dwellTier0;
+      if (cur) for (let i = 0; i < 4; i++) st.tierDwellSec[i] += Math.max(0, cur[i] - (t0 ? t0[i] : 0));
+      // 段の効果は「目当てがどの段にあったか」の無作為割付で識別する
+      const tt = this.targetTier;
+      if (tt != null) st.tierTrials[tt]++;
+      if (rng() < clamp(PICK_BASE * q.pickMult, 0.02, 0.97)) {
         st.picks++;
+        if (tt != null) st.tierPicks[tt]++;
         this.reach = 1;                                    // 商品へ手を伸ばす
         let pBuy = shelf.base * this.persona.buy * Math.sqrt(weatherCat(shelf.cat));
+        pBuy *= q.buyMult;                                 // 注意の量と質が転換に効く
         let priceMult = this.persona.priceMult;
         if (shelf === promotedShelf()) {
           pBuy *= PLANO.conv;                       // 棚割シミュレーターの反映
@@ -1462,6 +1488,8 @@ class Agent {
             stockState.missed += STORE.sampleFactor;   // 在庫内生性: 品切れ中の機会損失（実数換算）
           } else {
             st.purchases++;
+            st.attnBuySum += q.attn;
+            if (tt != null) st.tierBuys[tt]++;
             const price = shelf.price * (0.8 + rng() * 0.5) * priceMult;
             this.basket.push(shelf.id); this.revenue += price;
             if (isPromo) {
@@ -1476,6 +1504,29 @@ class Agent {
       this.sampleWalkFixation();
       this.nextLeg();
     }
+  }
+
+  /* ---- 注意の量と質を購買行動へ変換する ----
+     アイトラッキング×購買の知見にもとづく3成分:
+       ① 注視時間  … 効果は飽和する（対数）。最初の数秒が効き、それ以上は逓減
+       ② 比較行動  … 一度見た段へ戻るサッケードの回数。購買の強い予測子
+       ③ 注視位置  … 同じ秒数でもゴールデン帯（床上85〜150cm）で見たほうが手に取られやすい
+     いずれも基準点（中央値）で係数1.0になるよう正規化してあるので、
+     全体のKPI（客単価・買上率・日販）は公開統計への較正を保ったまま、
+     個々の棚では「視線を集めた棚ほど売れる」という因果が成立する。 */
+  attentionQuality(shelf) {
+    const attn = Math.max(0, (this.gazeMap[shelf.id] || 0) - (this.dwellAttn0 || 0));
+    const gold = Math.max(0, (this.goldenSec[shelf.id] || 0) - (this.dwellGold0 || 0));
+    const gShare = attn > 0.2 ? gold / attn : GOLD_REF;
+    const eng = Math.log1p(attn / ATTN_REF) / Math.LN2;              // 注視秒: 基準で1.0
+    const cmp = Math.log1p(this.cmpCount / CMP_REF) / Math.LN2;      // 比較: 基準で1.0
+    const gq = gShare - GOLD_REF;                                    // ゴールデン帯シェアの基準差
+    const reach = this.targetTier != null ? TIER_REACH[this.targetTier] : 1;
+    return {
+      attn, gShare, cmp: this.cmpCount, reach,
+      pickMult: clamp((0.372 + 0.42 * eng + 0.24 * cmp + 0.40 * gq) * reach, 0.05, 2.2),
+      buyMult:  clamp(0.6415 + 0.28 * eng + 0.10 * cmp + 0.14 * gq, 0.30, 1.7),
+    };
   }
 
   /* 立寄中の注視点サンプリング（サッケード1回分）
@@ -1502,10 +1553,17 @@ class Agent {
       y = 0.08 + rng() * 0.47;                           // ④ 下段の確認（床上8〜55cm）
     }
     this.gazeTargetY = clamp(y, 0.10, H * 0.98);
-    // 横方向の走査幅は什器の長さに比例（長い什器ほど左右に広く探す）
+    // 横方向の走査幅は什器の長さに比例（長い什器ながら左右に広く探す）
     const span = s ? Math.min(1.7, 0.55 + shelfAxis(s).len * 0.13) : 0.75;
     this.gazeLateral = gauss3() * span * 0.34;
     this.fixTimer = 1.5 + rng() * 2.3;                   // 次のサッケードまで
+    // 一度見た段へ戻るサッケード＝比較検討の証拠。購買予測で最も強い指標のひとつ
+    const band = tierOfY(this.gazeTargetY);
+    if (this.bandSeen) {
+      if (band !== this.lastBand && this.bandSeen[band]) this.cmpCount++;
+      this.bandSeen[band] = 1;
+    }
+    this.lastBand = band;
     this.setFixOn(s);
   }
 
@@ -1677,6 +1735,11 @@ class Agent {
           let rb = rng(), bi = 0;
           for (let k = 0; k < bw.length; k++) { rb -= bw[k]; if (rb <= 0) { bi = k; break; } }
           this.targetFrac = clamp(bands[bi] + (rng() - 0.5) * 0.10, 0.08, 0.95);
+          this.targetTier = tierOfY(this.targetFrac * s.size[1]);   // 段の無作為割付
+          this.cmpCount = 0; this.bandSeen = new Uint8Array(4); this.lastBand = -1;
+          this.dwellAttn0 = this.gazeMap[s.id] || 0;      // 立寄開始時点の累計注意秒
+          this.dwellGold0 = this.goldenSec[s.id] || 0;
+          this.dwellTier0 = Float64Array.from(this.tierSec[s.id] || new Float64Array(4));
           this.sampleFixation(s);
           this.wait = (10 + rng() * 20) * this.persona.dwell;
           if (rng() < 0.05) beacon(`客#${this.id} 「${s.name}」に立寄`, this.hasNovelty ? 'seg-nov' : '');
@@ -1759,8 +1822,29 @@ class Agent {
 
 function cloudSafeRand() { return rng(); }
 
+/* ゴールデンゾーン（床上85〜150cmに什器売上の8〜9割）の判定 */
+const GOLD_LO = 0.85, GOLD_HI = 1.50;
+/* 注意→購買モデルの基準点。いずれも実測分布の中央値で、ここで係数が1.0になる */
+const ATTN_REF = 21.5, CMP_REF = 2.55, GOLD_REF = 0.568, PICK_BASE = 0.639;
+/* 段の「手に取りやすさ」（人間工学的な到達コスト）。
+   見つけた後に実際に掴む段階のコストで、注目度とは独立した経路。
+   最下段は屈む必要があり、上段は腕を伸ばして棚の奥が見えない。
+   これがシミュレーション側の"真の"段効果で、棚割シミュレーターが持つ
+   通説の段係数（0.55/0.95/1.40/0.90）とは意図的に別の値にしてある。
+   段への割付は無作為なので、自然実験としてこの真値を推定できる。 */
+const TIER_REACH = [0.70, 0.95, 1.12, 0.80];
+/* 段の帰属（棚割シミュレーターの4段に合わせた床上高さ） */
+const TIER_CM4 = [30, 75, 115, 155];
+function argMax4(a) { let bi = 0; for (let i = 1; i < 4; i++) if (a[i] > a[bi]) bi = i; return bi; }
+function tierOfY(y) {
+  const hcm = y * 100;
+  let bi = 0, bd = 1e9;
+  for (let i = 0; i < 4; i++) { const d = Math.abs(TIER_CM4[i] - hcm); if (d < bd) { bd = d; bi = i; } }
+  return bi;
+}
+
 /* 棚面の格子セルへ注目秒を積む。u/v は呼び出し側が確定させる */
-function accumulateGaze(s, u, y, w, pidx) {
+function accumulateGaze(s, u, y, w, agent) {
   const st = STATS.shelves[s.id];
   if (!st.grid) st.grid = new Float32Array(GRID_U * GRID_V);
   const v = s.kind === 'island-case'
@@ -1770,8 +1854,18 @@ function accumulateGaze(s, u, y, w, pidx) {
   st.grid[gi] += w;
   if (st.gridRecent) st.gridRecent[gi] += w;
   if (st.gridLive) st.gridLive[gi] += w;
-  if (st.gridWho) st.gridWho[gi] = pidx;
+  if (st.gridWho) st.gridWho[gi] = agent.persona.pidx;
   st.gazeSec += w;
+  // 注意の「質」: ゴールデン帯か、どの段か。購買への効きを分けるために分解して持つ
+  const golden = s.kind !== 'island-case' && y >= GOLD_LO && y <= GOLD_HI;
+  if (golden) st.goldenSec += w;
+  const ti = tierOfY(s.kind === 'island-case' ? 1.0 : y);
+  st.tierSec[ti] += w;
+  if (agent) {
+    agent.goldenSec[s.id] = (agent.goldenSec[s.id] || 0) + (golden ? w : 0);
+    agent.tierSec[s.id] = agent.tierSec[s.id] || new Float64Array(4);
+    agent.tierSec[s.id][ti] += w;
+  }
   STATS.gazeEvents++;
   return gi;
 }
@@ -1857,7 +1951,7 @@ function senseGaze(agent, interval) {
     let w = interval * acuity(ang) * (1 - 0.45 * (vl / GAZE_DIST));
     if (s.promoted && S.endcap) w *= ENDCAP_ATTENTION * PLANO.attn;
     if (w < interval * 0.004) continue;
-    const gi = accumulateGaze(s, u, y, w, agent.persona.pidx);
+    const gi = accumulateGaze(s, u, y, w, agent);
 
     // 「視線を獲得した」判定は注目秒ベース（0.7秒以上の停留＝fixation とみなす）
     agent.gazeMap[s.id] = (agent.gazeMap[s.id] || 0) + w;
@@ -3213,6 +3307,15 @@ function renderShelfDetail() {
       <div class="sd-m"><div class="l">立寄→購買</div><div class="v">${fmtPct(cvr, 0)}</div></div>
       <div class="sd-m"><div class="l">累計視線時間</div><div class="v">${fmtNum(st.gazeSec * SF())}s</div></div>
     </div>
+    <div class="sd-cat" style="margin:8px 0 3px">注意の質（購買を説明する3成分）</div>
+    <div class="sd-metrics">
+      <div class="sd-m"><div class="l">1立寄の平均注視</div><div class="v">${st.dwellN ? (st.attnSum / st.dwellN).toFixed(1) : '—'}s</div></div>
+      <div class="sd-m"><div class="l">ゴールデン帯シェア</div><div class="v">${st.gazeSec > 5 ? fmtPct(st.goldenSec / st.gazeSec, 0) : '—'}</div></div>
+      <div class="sd-m"><div class="l">注視効率 /1,000s</div><div class="v">${st.gazeSec > 30 ? (st.purchases / st.gazeSec * 1000).toFixed(1) : '—'}</div></div>
+      <div class="sd-m"><div class="l">購買者の平均注視</div><div class="v">${st.purchases ? (st.attnBuySum / st.purchases).toFixed(1) : '—'}s</div></div>
+    </div>
+    <div class="sd-note" style="margin-top:4px">購買者の平均注視が全体平均を大きく上回るほど、
+      「見られること」が購買条件になっている売場。差が小さい売場は指名買いが中心。</div>
     ${isPromo ? `<div class="sd-frow"><span class="fl">在庫</span>
       <span class="fb"><div style="width:${(stockState.units / stockState.cap * 100).toFixed(0)}%;background:${COL.s2}"></div></span>
       <span class="fv">${stockState.units}/${stockState.cap}</span></div>` : ''}
@@ -3497,10 +3600,14 @@ function renderShelfTable() {
     .filter(s => !(s.promoted && !S.endcap && s.id === STORE.promoted.mainId))
     .map(s => {
       const st = STATS.shelves[s.id];
-      return { s, st, gazeRate: st.passes ? st.gazes / st.passes : 0, cvr: st.stops ? st.purchases / st.stops : 0 };
+      // 注視効率: 1,000視線秒あたりの購買数（視線という投入に対する産出）
+      const eff = st.gazeSec > 30 ? st.purchases / st.gazeSec * 1000 : null;
+      return { s, st, gazeRate: st.passes ? st.gazes / st.passes : 0, cvr: st.stops ? st.purchases / st.stops : 0, eff };
     })
     .sort((a, b) => b.st.gazeSec - a.st.gazeSec);
   const maxGaze = Math.max(...rows.map(r => r.st.gazeSec), 1);
+  const effs = rows.map(r => r.eff).filter(v => v != null).sort((a, b) => a - b);
+  const effMed = effs.length ? effs[Math.floor(effs.length / 2)] : 0;
   document.getElementById('shelf-tbody').innerHTML = rows.slice(0, 10).map(r => `
     <tr class="srow" data-shelf="${r.s.id}">
       <td><span class="sname">${r.s.promoted ? '<span class="promo-tag">販促</span>' : ''}${r.s.name}</span></td>
@@ -3508,6 +3615,7 @@ function renderShelfTable() {
       <td>${fmtPct(r.gazeRate, 0)}</td>
       <td>${fmtNum(r.st.stops * SF())}</td>
       <td>${fmtPct(r.cvr, 0)}</td>
+      <td>${r.eff == null ? '—' : `<span style="color:${r.eff < effMed * 0.6 ? COL.warn : (r.eff > effMed * 1.5 ? COL.s1 : 'inherit')}">${r.eff.toFixed(1)}</span>`}</td>
       <td><span class="heatbar" style="width:${Math.max(4, (r.st.gazeSec / maxGaze) * 56)}px"></span></td>
     </tr>`).join('');
 }
@@ -3622,6 +3730,29 @@ function buildActions() {
   const r = noveltyStatsCalc();
   const promoUnit = FKEY === 'depato' ? '個' : '個';
   const list = [];
+  // 視線は取れているのに売れていない売場 ＝ 置き場所ではなく中身（商品・価格・POP）の問題
+  const effRows = SHELVES.map(s => {
+    const st = STATS.shelves[s.id];
+    return { s, st, eff: st.gazeSec > 300 ? st.purchases / st.gazeSec * 1000 : null };
+  }).filter(r => r.eff != null);
+  if (effRows.length >= 4) {
+    const sorted = effRows.map(r => r.eff).sort((a, b) => a - b);
+    const med = sorted[Math.floor(sorted.length / 2)];
+    const worst = effRows.filter(r => r.eff < med * 0.72).sort((a, b) => b.st.gazeSec - a.st.gazeSec)[0];
+    if (worst && med > 0) {
+      const lost = Math.round((med - worst.eff) / 1000 * worst.st.gazeSec * SF() * worst.s.price * 0.35);
+      list.push({
+        key: 'attn-waste', priority: 'high', category: '売場',
+        title: `「${worst.s.name}」の注視効率が中央値の${Math.round(worst.eff / med * 100)}%`,
+        reason: `視線は ${fmtNum(worst.st.gazeSec * SF())}秒 獲得しているが、1,000視線秒あたりの購買は ${worst.eff.toFixed(1)}個（全売場中央値 ${med.toFixed(1)}個）。`
+          + `見られていないのではなく、見たうえで選ばれていない＝置き場所ではなく商品・価格・POPの問題。`
+          + `ゴールデン帯シェアは ${fmtPct(worst.st.goldenSec / Math.max(worst.st.gazeSec, 1), 0)}、`
+          + `購買者の平均注視 ${worst.st.purchases ? (worst.st.attnBuySum / worst.st.purchases).toFixed(1) : '—'}秒 vs 全体 ${worst.st.dwellN ? (worst.st.attnSum / worst.st.dwellN).toFixed(1) : '—'}秒。`,
+        impact: { metric: '粗利（円）', delta: Math.max(0, lost), ci: Math.round(Math.max(0, lost) * 0.35) },
+        confidence: worst.st.gazeSec > 2000 ? 0.79 : 0.62, source: 'L2 / 注視効率',
+      });
+    }
+  }
   if (S.budget < 70) {
     list.push({
       key: 'budget-up', priority: 'high', category: '予算',
@@ -4348,10 +4479,36 @@ function measuredTierProfile() {
   return { profile: dens.map(d => d / mean), totalSec: total, coverage: Array.from(coverage) };
 }
 
+/* 段別の実測「売上係数」。
+   段係数は本来「その段に置いたら何個売れるか」の係数。
+   本シミュレーションでは、客が探している商品がどの段にあるかが立寄ごとに
+   無作為に割り付けられる（＝段の自然実験）ので、その割付を条件にした
+   購買率の差を、段の因果効果としてそのまま推定できる。
+   注目度の按分では分子と分母が同じ量になり識別できないため、この割付を使う。 */
+function measuredTierSales() {
+  const trials = new Float64Array(SHELF_TIERS.length);
+  const buys = new Float64Array(SHELF_TIERS.length);
+  SHELVES.forEach(s => {
+    const st = STATS.shelves[s.id];
+    if (!st || !st.tierTrials) return;
+    for (let i = 0; i < SHELF_TIERS.length; i++) { trials[i] += st.tierTrials[i]; buys[i] += st.tierBuys[i]; }
+  });
+  const totalTrials = trials.reduce((a, b) => a + b, 0);
+  const totalBuys = buys.reduce((a, b) => a + b, 0);
+  if (totalBuys < 40 || Math.min(...trials) < 20) return null;
+  const conv = [];
+  for (let i = 0; i < SHELF_TIERS.length; i++) conv.push(trials[i] > 0 ? buys[i] / trials[i] : 0);
+  const mean = conv.reduce((a, b) => a + b, 0) / conv.length || 1;
+  // 二項の標準誤差（段係数の不確実性）
+  const se = conv.map((p, i) => trials[i] > 0 ? Math.sqrt(Math.max(p * (1 - p), 1e-6) / trials[i]) / mean : 0);
+  return { profile: conv.map(c => c / mean), se, conv, trials: Array.from(trials), buys: Array.from(buys), totalBuys, totalTrials };
+}
+
 function renderShelfCalib() {
   const el = document.getElementById('sp-calib');
   if (!el) return;
   const m = measuredTierProfile();
+  const ms = measuredTierSales();
   const modelMean = SHELF_TIERS.reduce((a, t) => a + t.mult, 0) / SHELF_TIERS.length;
   if (!m || m.totalSec < 200) {
     el.innerHTML = `<div class="exp-off">AIカメラの視線計測を蓄積中（現在 ${m ? Math.round(m.totalSec) : 0} 視線秒）。
@@ -4362,35 +4519,42 @@ function renderShelfCalib() {
   const rows = SHELF_TIERS.map((tt, i) => {
     const model = tt.mult / modelMean;
     const meas = m.profile[i];
-    const gap = meas - model;
-    return { name: tt.name, height: tt.height, model, meas, gap };
+    const sales = ms ? ms.profile[i] : null;
+    // 較正の対象は「売上係数」。実測売上が取れていればそれを使い、無ければ注目度で代用する
+    const target = sales != null ? sales : meas;
+    return { name: tt.name, height: tt.height, model, meas, sales, target, gap: target - model };
   });
-  const maxV = Math.max(...rows.map(r => Math.max(r.model, r.meas)), 1.2);
+  const maxV = Math.max(...rows.map(r => Math.max(r.model, r.meas, r.sales || 0)), 1.2);
   const worst = rows.slice().sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap))[0];
   el.innerHTML = `
     <div class="mde-text" style="margin-bottom:7px">
-      実測 = 全什器のAIカメラ視線グリッド（${GRID_U}×${GRID_V}）を「床上高さ→注目密度」とみなし、
-      ガウス核（バンド幅 ${SP_KERNEL_CM}cm）で各段の基準高さ上の密度を推定して平均1で正規化（サンプル ${fmtNum(m.totalSec)} 視線秒）。
-      什器高さ 1.4〜2.0m のばらつきを平滑化して吸収している。モデル = 棚割シミュレーターの段係数。
+      <b>注目度</b> = 全什器のAIカメラ視線グリッド（${GRID_U}×${GRID_V}）を「床上高さ→注目密度」とみなし、
+      ガウス核（バンド幅 ${SP_KERNEL_CM}cm）で各段の基準高さ上の密度を推定（${fmtNum(m.totalSec)} 視線秒）。<br>
+      ${ms ? `<b>売上係数</b> = 目当ての商品がその段にあった立寄の購買率（${fmtNum(ms.totalTrials * SF())}立寄・${fmtNum(ms.totalBuys * SF())}購買）。
+              段への割付は立寄ごとに無作為なので、この差は段の因果効果として読める。較正はこちらを使う。`
+            : `<b>売上係数</b>は購買サンプル蓄積中（各段20立寄・計40購買で有効化）。当面は注目度で代用。`}
+      いずれも平均1で正規化。<b>モデル</b> = 棚割シミュレーターの段係数。
     </div>
     ${rows.map(r => `
       <div class="sp-factor">
         <span class="fl">${r.name}（${r.height}）</span>
-        <span class="fb" style="height:16px;background:transparent;display:flex;flex-direction:column;gap:2px">
-          <span style="height:7px;border-radius:4px;background:${COL.s1};width:${(r.meas / maxV * 100).toFixed(1)}%"></span>
-          <span style="height:7px;border-radius:4px;background:#b6c4d4;width:${(r.model / maxV * 100).toFixed(1)}%"></span>
+        <span class="fb" style="height:22px;background:transparent;display:flex;flex-direction:column;gap:2px">
+          <span style="height:6px;border-radius:3px;background:${COL.s2};width:${(r.meas / maxV * 100).toFixed(1)}%"></span>
+          ${r.sales != null ? `<span style="height:6px;border-radius:3px;background:${COL.s1};width:${(r.sales / maxV * 100).toFixed(1)}%"></span>` : ''}
+          <span style="height:6px;border-radius:3px;background:#b6c4d4;width:${(r.model / maxV * 100).toFixed(1)}%"></span>
         </span>
-        <span class="fv" style="width:118px">実測 ${r.meas.toFixed(2)} / モデル ${r.model.toFixed(2)}<br>
+        <span class="fv" style="width:146px">注目 ${r.meas.toFixed(2)}${r.sales != null ? ` / 売上 ${r.sales.toFixed(2)}<span style="color:var(--text-faint)">±${(1.96 * ms.se[rows.indexOf(r)]).toFixed(2)}</span>` : ''} / モデル ${r.model.toFixed(2)}<br>
           <span style="color:${Math.abs(r.gap) > 0.2 ? COL.warn : 'var(--text-faint)'};font-weight:400">乖離 ${r.gap >= 0 ? '+' : ''}${r.gap.toFixed(2)}</span></span>
       </div>`).join('')}
     <div class="legend" style="margin-top:6px">
-      <span class="li"><span class="sw" style="background:${COL.s1}"></span>実測（AIカメラ）</span>
+      <span class="li"><span class="sw" style="background:${COL.s2}"></span>注目度（AIカメラ視線）</span>
+      ${ms ? `<span class="li"><span class="sw" style="background:${COL.s1}"></span>売上係数（段別購買率・無作為割付）</span>` : ''}
       <span class="li"><span class="sw" style="background:#b6c4d4"></span>モデル係数</span>
     </div>
     <div class="power-box" style="margin-top:9px">
       最大乖離は <b>${worst.name}</b>（${worst.gap >= 0 ? '実測が' : 'モデルが'}${Math.abs(worst.gap).toFixed(2)} 上回る）。
       較正するとモデル係数が実測へ70%引き寄せられ、以降の配置シミュレーションと最適化提案に反映されます。
-      ${confChip(m.totalSec > 3000 ? 'hi' : 'md')}
+      ${confChip(ms && ms.totalBuys > 200 ? 'hi' : (m.totalSec > 3000 ? 'md' : 'lo'))}
       <div class="sp-btnrow" style="margin-top:7px">
         <button id="sp-calib-apply">実測でモデルを較正</button>
         <button id="sp-calib-reset" class="ghost">出荷時係数に戻す</button>
@@ -4399,11 +4563,13 @@ function renderShelfCalib() {
   document.getElementById('sp-calib-apply').addEventListener('click', () => {
     SHELF_TIERS.forEach((tt, i) => {
       if (!m.coverage[i]) return;          // その高さ帯に計測セルが無ければ触らない
-      const target = clamp(m.profile[i] * modelMean, 0.3, 2.0);
+      const target = clamp(rows[i].target * modelMean, 0.3, 2.0);
       tt.mult = +(clamp(lerp(tt.mult, target, 0.7), 0.3, 2.0)).toFixed(3);
       tt.calibrated = true;
     });
-    beacon(`棚割モデルをAIカメラ実測で較正（${fmtNum(m.totalSec)}視線秒）`, 'seg-buy');
+    beacon(ms
+      ? `棚割モデルを実測売上係数で較正（${fmtNum(ms.totalBuys * SF())}購買・${fmtNum(m.totalSec)}視線秒）`
+      : `棚割モデルをAIカメラ実測で較正（${fmtNum(m.totalSec)}視線秒）`, 'seg-buy');
     renderShelfSim();
   });
   document.getElementById('sp-calib-reset').addEventListener('click', () => {

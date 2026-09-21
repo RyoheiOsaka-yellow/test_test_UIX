@@ -155,6 +155,15 @@ function renderShelfDetail() {
       <div class="sd-m"><div class="l">立寄→購買</div><div class="v">${fmtPct(cvr, 0)}</div></div>
       <div class="sd-m"><div class="l">累計視線時間</div><div class="v">${fmtNum(st.gazeSec * SF())}s</div></div>
     </div>
+    <div class="sd-cat" style="margin:8px 0 3px">注意の質（購買を説明する3成分）</div>
+    <div class="sd-metrics">
+      <div class="sd-m"><div class="l">1立寄の平均注視</div><div class="v">${st.dwellN ? (st.attnSum / st.dwellN).toFixed(1) : '—'}s</div></div>
+      <div class="sd-m"><div class="l">ゴールデン帯シェア</div><div class="v">${st.gazeSec > 5 ? fmtPct(st.goldenSec / st.gazeSec, 0) : '—'}</div></div>
+      <div class="sd-m"><div class="l">注視効率 /1,000s</div><div class="v">${st.gazeSec > 30 ? (st.purchases / st.gazeSec * 1000).toFixed(1) : '—'}</div></div>
+      <div class="sd-m"><div class="l">購買者の平均注視</div><div class="v">${st.purchases ? (st.attnBuySum / st.purchases).toFixed(1) : '—'}s</div></div>
+    </div>
+    <div class="sd-note" style="margin-top:4px">購買者の平均注視が全体平均を大きく上回るほど、
+      「見られること」が購買条件になっている売場。差が小さい売場は指名買いが中心。</div>
     ${isPromo ? `<div class="sd-frow"><span class="fl">在庫</span>
       <span class="fb"><div style="width:${(stockState.units / stockState.cap * 100).toFixed(0)}%;background:${COL.s2}"></div></span>
       <span class="fv">${stockState.units}/${stockState.cap}</span></div>` : ''}
@@ -439,10 +448,14 @@ function renderShelfTable() {
     .filter(s => !(s.promoted && !S.endcap && s.id === STORE.promoted.mainId))
     .map(s => {
       const st = STATS.shelves[s.id];
-      return { s, st, gazeRate: st.passes ? st.gazes / st.passes : 0, cvr: st.stops ? st.purchases / st.stops : 0 };
+      // 注視効率: 1,000視線秒あたりの購買数（視線という投入に対する産出）
+      const eff = st.gazeSec > 30 ? st.purchases / st.gazeSec * 1000 : null;
+      return { s, st, gazeRate: st.passes ? st.gazes / st.passes : 0, cvr: st.stops ? st.purchases / st.stops : 0, eff };
     })
     .sort((a, b) => b.st.gazeSec - a.st.gazeSec);
   const maxGaze = Math.max(...rows.map(r => r.st.gazeSec), 1);
+  const effs = rows.map(r => r.eff).filter(v => v != null).sort((a, b) => a - b);
+  const effMed = effs.length ? effs[Math.floor(effs.length / 2)] : 0;
   document.getElementById('shelf-tbody').innerHTML = rows.slice(0, 10).map(r => `
     <tr class="srow" data-shelf="${r.s.id}">
       <td><span class="sname">${r.s.promoted ? '<span class="promo-tag">販促</span>' : ''}${r.s.name}</span></td>
@@ -450,6 +463,7 @@ function renderShelfTable() {
       <td>${fmtPct(r.gazeRate, 0)}</td>
       <td>${fmtNum(r.st.stops * SF())}</td>
       <td>${fmtPct(r.cvr, 0)}</td>
+      <td>${r.eff == null ? '—' : `<span style="color:${r.eff < effMed * 0.6 ? COL.warn : (r.eff > effMed * 1.5 ? COL.s1 : 'inherit')}">${r.eff.toFixed(1)}</span>`}</td>
       <td><span class="heatbar" style="width:${Math.max(4, (r.st.gazeSec / maxGaze) * 56)}px"></span></td>
     </tr>`).join('');
 }
@@ -564,6 +578,29 @@ function buildActions() {
   const r = noveltyStatsCalc();
   const promoUnit = FKEY === 'depato' ? '個' : '個';
   const list = [];
+  // 視線は取れているのに売れていない売場 ＝ 置き場所ではなく中身（商品・価格・POP）の問題
+  const effRows = SHELVES.map(s => {
+    const st = STATS.shelves[s.id];
+    return { s, st, eff: st.gazeSec > 300 ? st.purchases / st.gazeSec * 1000 : null };
+  }).filter(r => r.eff != null);
+  if (effRows.length >= 4) {
+    const sorted = effRows.map(r => r.eff).sort((a, b) => a - b);
+    const med = sorted[Math.floor(sorted.length / 2)];
+    const worst = effRows.filter(r => r.eff < med * 0.72).sort((a, b) => b.st.gazeSec - a.st.gazeSec)[0];
+    if (worst && med > 0) {
+      const lost = Math.round((med - worst.eff) / 1000 * worst.st.gazeSec * SF() * worst.s.price * 0.35);
+      list.push({
+        key: 'attn-waste', priority: 'high', category: '売場',
+        title: `「${worst.s.name}」の注視効率が中央値の${Math.round(worst.eff / med * 100)}%`,
+        reason: `視線は ${fmtNum(worst.st.gazeSec * SF())}秒 獲得しているが、1,000視線秒あたりの購買は ${worst.eff.toFixed(1)}個（全売場中央値 ${med.toFixed(1)}個）。`
+          + `見られていないのではなく、見たうえで選ばれていない＝置き場所ではなく商品・価格・POPの問題。`
+          + `ゴールデン帯シェアは ${fmtPct(worst.st.goldenSec / Math.max(worst.st.gazeSec, 1), 0)}、`
+          + `購買者の平均注視 ${worst.st.purchases ? (worst.st.attnBuySum / worst.st.purchases).toFixed(1) : '—'}秒 vs 全体 ${worst.st.dwellN ? (worst.st.attnSum / worst.st.dwellN).toFixed(1) : '—'}秒。`,
+        impact: { metric: '粗利（円）', delta: Math.max(0, lost), ci: Math.round(Math.max(0, lost) * 0.35) },
+        confidence: worst.st.gazeSec > 2000 ? 0.79 : 0.62, source: 'L2 / 注視効率',
+      });
+    }
+  }
   if (S.budget < 70) {
     list.push({
       key: 'budget-up', priority: 'high', category: '予算',

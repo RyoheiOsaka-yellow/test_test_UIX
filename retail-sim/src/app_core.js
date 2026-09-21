@@ -340,6 +340,15 @@ const GRID_U = 12, GRID_V = 6;
 function freshShelfStats() {
   return {
     passes: 0, gazes: 0, gazeSec: 0, stops: 0, picks: 0, purchases: 0,
+    goldenSec: 0,                                     // ゴールデン帯（床上85〜150cm）で受けた注意秒
+    tierSec: new Float64Array(4),                     // 段別の注意秒（全視線）
+    tierDwellSec: new Float64Array(4),                // 段別の注意秒（立寄中のみ）
+    // 「目当ての商品がどの段にあったか」は無作為に割り付けられる＝段の自然実験。
+    // この割付を条件にした手取・購買の差は、段の因果効果として読める。
+    tierTrials: new Float64Array(4),                  // その段に目当てがあった立寄の数
+    tierPicks: new Float64Array(4),                   // うち手に取った数
+    tierBuys: new Float64Array(4),                    // うち購買に至った数
+    attnSum: 0, attnBuySum: 0, dwellN: 0,             // 注視効率の算出用
     grid: new Float32Array(GRID_U * GRID_V),          // 本日累計
     gridRecent: new Float32Array(GRID_U * GRID_V),    // 直近30分（指数減衰）
     gridLive: new Float32Array(GRID_U * GRID_V),      // ライブ（直近1分・人の動きに直結）
@@ -502,6 +511,8 @@ class Agent {
     this.hasNovelty = false; this.novGroup = null;
     this.basket = []; this.revenue = 0;
     this.gazeMap = {}; this.passSet = {};
+    this.goldenSec = {}; this.tierSec = {};            // 注意の「質」（ゴールデン帯・段別）
+    this.cmpCount = 0; this.bandSeen = null; this.lastBand = -1;   // 段をまたぐ比較サッケード
     this.state = 'plan'; this.wait = 0; this.wp = [];
     this.targetShelf = null; this.plan = [];
     this.done = false; this.walkPhase = rng() * 6.28;
@@ -585,10 +596,21 @@ class Agent {
     this.updateGazePose(dt);
     if (this.wait <= 0) {
       const st = STATS.shelves[shelf.id];
-      if (rng() < 0.62) {
+      // ---- この立寄で実際に「どこを何秒見たか」を購買行動へ接続する ----
+      const q = this.attentionQuality(shelf);
+      st.attnSum += q.attn; st.dwellN++;
+      // 段別の注意秒（表示用）
+      const cur = this.tierSec[shelf.id], t0 = this.dwellTier0;
+      if (cur) for (let i = 0; i < 4; i++) st.tierDwellSec[i] += Math.max(0, cur[i] - (t0 ? t0[i] : 0));
+      // 段の効果は「目当てがどの段にあったか」の無作為割付で識別する
+      const tt = this.targetTier;
+      if (tt != null) st.tierTrials[tt]++;
+      if (rng() < clamp(PICK_BASE * q.pickMult, 0.02, 0.97)) {
         st.picks++;
+        if (tt != null) st.tierPicks[tt]++;
         this.reach = 1;                                    // 商品へ手を伸ばす
         let pBuy = shelf.base * this.persona.buy * Math.sqrt(weatherCat(shelf.cat));
+        pBuy *= q.buyMult;                                 // 注意の量と質が転換に効く
         let priceMult = this.persona.priceMult;
         if (shelf === promotedShelf()) {
           pBuy *= PLANO.conv;                       // 棚割シミュレーターの反映
@@ -605,6 +627,8 @@ class Agent {
             stockState.missed += STORE.sampleFactor;   // 在庫内生性: 品切れ中の機会損失（実数換算）
           } else {
             st.purchases++;
+            st.attnBuySum += q.attn;
+            if (tt != null) st.tierBuys[tt]++;
             const price = shelf.price * (0.8 + rng() * 0.5) * priceMult;
             this.basket.push(shelf.id); this.revenue += price;
             if (isPromo) {
@@ -619,6 +643,29 @@ class Agent {
       this.sampleWalkFixation();
       this.nextLeg();
     }
+  }
+
+  /* ---- 注意の量と質を購買行動へ変換する ----
+     アイトラッキング×購買の知見にもとづく3成分:
+       ① 注視時間  … 効果は飽和する（対数）。最初の数秒が効き、それ以上は逓減
+       ② 比較行動  … 一度見た段へ戻るサッケードの回数。購買の強い予測子
+       ③ 注視位置  … 同じ秒数でもゴールデン帯（床上85〜150cm）で見たほうが手に取られやすい
+     いずれも基準点（中央値）で係数1.0になるよう正規化してあるので、
+     全体のKPI（客単価・買上率・日販）は公開統計への較正を保ったまま、
+     個々の棚では「視線を集めた棚ほど売れる」という因果が成立する。 */
+  attentionQuality(shelf) {
+    const attn = Math.max(0, (this.gazeMap[shelf.id] || 0) - (this.dwellAttn0 || 0));
+    const gold = Math.max(0, (this.goldenSec[shelf.id] || 0) - (this.dwellGold0 || 0));
+    const gShare = attn > 0.2 ? gold / attn : GOLD_REF;
+    const eng = Math.log1p(attn / ATTN_REF) / Math.LN2;              // 注視秒: 基準で1.0
+    const cmp = Math.log1p(this.cmpCount / CMP_REF) / Math.LN2;      // 比較: 基準で1.0
+    const gq = gShare - GOLD_REF;                                    // ゴールデン帯シェアの基準差
+    const reach = this.targetTier != null ? TIER_REACH[this.targetTier] : 1;
+    return {
+      attn, gShare, cmp: this.cmpCount, reach,
+      pickMult: clamp((0.372 + 0.42 * eng + 0.24 * cmp + 0.40 * gq) * reach, 0.05, 2.2),
+      buyMult:  clamp(0.6415 + 0.28 * eng + 0.10 * cmp + 0.14 * gq, 0.30, 1.7),
+    };
   }
 
   /* 立寄中の注視点サンプリング（サッケード1回分）
@@ -645,10 +692,17 @@ class Agent {
       y = 0.08 + rng() * 0.47;                           // ④ 下段の確認（床上8〜55cm）
     }
     this.gazeTargetY = clamp(y, 0.10, H * 0.98);
-    // 横方向の走査幅は什器の長さに比例（長い什器ほど左右に広く探す）
+    // 横方向の走査幅は什器の長さに比例（長い什器ながら左右に広く探す）
     const span = s ? Math.min(1.7, 0.55 + shelfAxis(s).len * 0.13) : 0.75;
     this.gazeLateral = gauss3() * span * 0.34;
     this.fixTimer = 1.5 + rng() * 2.3;                   // 次のサッケードまで
+    // 一度見た段へ戻るサッケード＝比較検討の証拠。購買予測で最も強い指標のひとつ
+    const band = tierOfY(this.gazeTargetY);
+    if (this.bandSeen) {
+      if (band !== this.lastBand && this.bandSeen[band]) this.cmpCount++;
+      this.bandSeen[band] = 1;
+    }
+    this.lastBand = band;
     this.setFixOn(s);
   }
 
@@ -820,6 +874,11 @@ class Agent {
           let rb = rng(), bi = 0;
           for (let k = 0; k < bw.length; k++) { rb -= bw[k]; if (rb <= 0) { bi = k; break; } }
           this.targetFrac = clamp(bands[bi] + (rng() - 0.5) * 0.10, 0.08, 0.95);
+          this.targetTier = tierOfY(this.targetFrac * s.size[1]);   // 段の無作為割付
+          this.cmpCount = 0; this.bandSeen = new Uint8Array(4); this.lastBand = -1;
+          this.dwellAttn0 = this.gazeMap[s.id] || 0;      // 立寄開始時点の累計注意秒
+          this.dwellGold0 = this.goldenSec[s.id] || 0;
+          this.dwellTier0 = Float64Array.from(this.tierSec[s.id] || new Float64Array(4));
           this.sampleFixation(s);
           this.wait = (10 + rng() * 20) * this.persona.dwell;
           if (rng() < 0.05) beacon(`客#${this.id} 「${s.name}」に立寄`, this.hasNovelty ? 'seg-nov' : '');
@@ -902,8 +961,29 @@ class Agent {
 
 function cloudSafeRand() { return rng(); }
 
+/* ゴールデンゾーン（床上85〜150cmに什器売上の8〜9割）の判定 */
+const GOLD_LO = 0.85, GOLD_HI = 1.50;
+/* 注意→購買モデルの基準点。いずれも実測分布の中央値で、ここで係数が1.0になる */
+const ATTN_REF = 21.5, CMP_REF = 2.55, GOLD_REF = 0.568, PICK_BASE = 0.639;
+/* 段の「手に取りやすさ」（人間工学的な到達コスト）。
+   見つけた後に実際に掴む段階のコストで、注目度とは独立した経路。
+   最下段は屈む必要があり、上段は腕を伸ばして棚の奥が見えない。
+   これがシミュレーション側の"真の"段効果で、棚割シミュレーターが持つ
+   通説の段係数（0.55/0.95/1.40/0.90）とは意図的に別の値にしてある。
+   段への割付は無作為なので、自然実験としてこの真値を推定できる。 */
+const TIER_REACH = [0.70, 0.95, 1.12, 0.80];
+/* 段の帰属（棚割シミュレーターの4段に合わせた床上高さ） */
+const TIER_CM4 = [30, 75, 115, 155];
+function argMax4(a) { let bi = 0; for (let i = 1; i < 4; i++) if (a[i] > a[bi]) bi = i; return bi; }
+function tierOfY(y) {
+  const hcm = y * 100;
+  let bi = 0, bd = 1e9;
+  for (let i = 0; i < 4; i++) { const d = Math.abs(TIER_CM4[i] - hcm); if (d < bd) { bd = d; bi = i; } }
+  return bi;
+}
+
 /* 棚面の格子セルへ注目秒を積む。u/v は呼び出し側が確定させる */
-function accumulateGaze(s, u, y, w, pidx) {
+function accumulateGaze(s, u, y, w, agent) {
   const st = STATS.shelves[s.id];
   if (!st.grid) st.grid = new Float32Array(GRID_U * GRID_V);
   const v = s.kind === 'island-case'
@@ -913,8 +993,18 @@ function accumulateGaze(s, u, y, w, pidx) {
   st.grid[gi] += w;
   if (st.gridRecent) st.gridRecent[gi] += w;
   if (st.gridLive) st.gridLive[gi] += w;
-  if (st.gridWho) st.gridWho[gi] = pidx;
+  if (st.gridWho) st.gridWho[gi] = agent.persona.pidx;
   st.gazeSec += w;
+  // 注意の「質」: ゴールデン帯か、どの段か。購買への効きを分けるために分解して持つ
+  const golden = s.kind !== 'island-case' && y >= GOLD_LO && y <= GOLD_HI;
+  if (golden) st.goldenSec += w;
+  const ti = tierOfY(s.kind === 'island-case' ? 1.0 : y);
+  st.tierSec[ti] += w;
+  if (agent) {
+    agent.goldenSec[s.id] = (agent.goldenSec[s.id] || 0) + (golden ? w : 0);
+    agent.tierSec[s.id] = agent.tierSec[s.id] || new Float64Array(4);
+    agent.tierSec[s.id][ti] += w;
+  }
   STATS.gazeEvents++;
   return gi;
 }
@@ -1000,7 +1090,7 @@ function senseGaze(agent, interval) {
     let w = interval * acuity(ang) * (1 - 0.45 * (vl / GAZE_DIST));
     if (s.promoted && S.endcap) w *= ENDCAP_ATTENTION * PLANO.attn;
     if (w < interval * 0.004) continue;
-    const gi = accumulateGaze(s, u, y, w, agent.persona.pidx);
+    const gi = accumulateGaze(s, u, y, w, agent);
 
     // 「視線を獲得した」判定は注目秒ベース（0.7秒以上の停留＝fixation とみなす）
     agent.gazeMap[s.id] = (agent.gazeMap[s.id] || 0) + w;
