@@ -1,0 +1,289 @@
+<title>GaME CPU Prototype</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=IBM+Plex+Sans+JP:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #F5F7F9;
+    --surface: #FFFFFF;
+    --ink: #17212B;
+    --muted: #5B6875;
+    --line: #D8DEE5;
+    --accent: #0E7C86;
+    --accent-soft: #DDF1F2;
+    --stale: #DF7A2C;
+    --stale-soft: #FBE9DA;
+    --fresh: #2E9A68;
+    --fresh-soft: #DDF3E7;
+    --code-bg: #EEF1F4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0F151C; --surface: #161E27; --ink: #E8EDF2; --muted: #9AA7B4; --line: #26313D;
+      --accent: #4FC3CE; --accent-soft: #123A3F; --stale: #F0904A; --stale-soft: #3E2716;
+      --fresh: #5FCF95; --fresh-soft: #163826; --code-bg: #1C2632;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F151C; --surface: #161E27; --ink: #E8EDF2; --muted: #9AA7B4; --line: #26313D;
+    --accent: #4FC3CE; --accent-soft: #123A3F; --stale: #F0904A; --stale-soft: #3E2716;
+    --fresh: #5FCF95; --fresh-soft: #163826; --code-bg: #1C2632;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "IBM Plex Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+    font-size: 16px; line-height: 1.75; padding-inline: 20px; padding-block: 0 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  .prose { max-width: 760px; }
+  h1, h2, h3 { font-family: "Zen Kaku Gothic New", "IBM Plex Sans JP", sans-serif; text-wrap: balance; line-height: 1.25; margin: 0; }
+  h1 { font-size: clamp(30px, 4.5vw, 44px); font-weight: 900; letter-spacing: -0.01em; }
+  h2 { font-size: 24px; font-weight: 700; margin-top: 64px; margin-bottom: 16px; }
+  h3 { font-size: 17px; font-weight: 700; margin-top: 28px; margin-bottom: 8px; }
+  p { margin: 0 0 14px; }
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 14px; }
+  header { padding-block: 56px 28px; border-bottom: 1px solid var(--line); }
+  header .lede { font-size: 18px; color: var(--muted); margin-top: 18px; max-width: 760px; }
+  header .links { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 20px; font-size: 14px; }
+  code, pre { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+  code { background: var(--code-bg); padding: 1px 6px; border-radius: 4px; font-size: 0.9em; }
+  pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; font-size: 13.5px; line-height: 1.6; margin: 0 0 14px; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  /* key numbers */
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 28px; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; }
+  .tile .k { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .tile .v { font-family: "Zen Kaku Gothic New", sans-serif; font-size: 34px; font-weight: 700; line-height: 1.1; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .tile .v small { font-size: 16px; font-weight: 500; color: var(--muted); margin-left: 4px; }
+  .tile .d { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .tile .d b { color: var(--ink); font-weight: 600; }
+  .tile.good .v { color: var(--fresh); }
+  @media (max-width: 640px) { .tiles { grid-template-columns: 1fr; } }
+
+  /* tables */
+  .tablewrap { overflow-x: auto; margin: 16px 0 6px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; background: var(--bg); }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.win { color: var(--fresh); font-weight: 600; }
+  td.lose { color: var(--stale); font-weight: 600; }
+
+  /* figures */
+  figure { margin: 22px 0 8px; }
+  figure img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; background: #111; image-rendering: auto; }
+  figcaption { font-size: 13.5px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+  figcaption b { color: var(--ink); font-weight: 600; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+
+  /* pipeline diagram */
+  .flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0; }
+  .step { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; font-size: 14px; }
+  .step .t { font-weight: 700; font-family: "Zen Kaku Gothic New", sans-serif; font-size: 15px; }
+  .step .s { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .step.stale { border-color: var(--stale); background: var(--stale-soft); }
+  .step.fresh { border-color: var(--fresh); background: var(--fresh-soft); }
+  @media (max-width: 760px) { .flow { grid-template-columns: 1fr; } }
+
+  .legend { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-right: 16px; }
+  .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  ul { padding-left: 22px; margin: 0 0 14px; }
+  li { margin-bottom: 8px; }
+  li b { font-weight: 600; }
+  .note { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 14.5px; margin: 16px 0; }
+  .chart { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px 6px; margin: 16px 0; }
+  .chart svg { width: 100%; height: auto; display: block; }
+  .chart text { font-family: "IBM Plex Mono", monospace; font-size: 11px; fill: var(--muted); }
+  ol { padding-left: 22px; }
+  ol li { margin-bottom: 10px; }
+  footer { margin-top: 72px; padding-top: 20px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">プロトタイプ報告 · 2026-09-21</div>
+  <h1>GaME を CPU で動かす</h1>
+  <p class="lede">CVPR 2026 の <em>GaME: Gaussian Mapping for Evolving Scenes</em> のコア（動的シーン適応とキーフレーム管理）を、CUDA・SAM・実データなしで実行できる形に移植し、「見ていない間に椅子が動いた部屋」で静的マップと比較した。</p>
+  <div class="links">
+    <a href="https://github.com/RyoheiOsaka-yellow/test_test_UIX/tree/claude/awesome-dijkstra-pi7ryl/game-proto">コード（game-proto/）</a>
+    <a href="https://github.com/VladimirYugay/GaME">本家リポジトリ</a>
+    <a href="https://arxiv.org/abs/2506.06909">arXiv 2506.06909</a>
+    <a href="https://vladimiryugay.github.io/game/">プロジェクトページ</a>
+  </div>
+</header>
+
+<section class="tiles" aria-label="主要な数値">
+  <div class="tile good">
+    <div class="k">PSNR（変化後の部屋）</div>
+    <div class="v">34.24<small>dB</small></div>
+    <div class="d">静的マップは <b>28.91 dB</b>。差 +5.3 dB</div>
+  </div>
+  <div class="tile good">
+    <div class="k">深度 L1 誤差</div>
+    <div class="v">0.0113<small>m</small></div>
+    <div class="d">静的マップは <b>0.0274 m</b>。2.4 倍改善</div>
+  </div>
+  <div class="tile good">
+    <div class="k">旧位置に残った幽霊 Gaussian</div>
+    <div class="v">2<small>個</small></div>
+    <div class="d">静的マップは <b>249 個</b>が残存</div>
+  </div>
+</section>
+
+<div class="prose">
+<h2>何を作ったか</h2>
+<p>本家の実装は CUDA ラスタライザ（diff-gaussian-rasterization / FlashSplat）、faiss-gpu、SAM マスク付きの RGB-D データセット（Flat / Aria）を前提にしていて、GPU のない環境では動かない。そこで <code>src/entities/game.py</code> のアルゴリズムを読み取り、次の 3 つを差し替えて同じ制御フローと閾値で回せるようにした。</p>
+</div>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>本家</th><th>プロトタイプ</th><th>役割</th></tr></thead>
+  <tbody>
+    <tr><td>FlashSplat CUDA ラスタライザ</td><td><code>gameproto/splat.py</code></td><td>PyTorch CPU の微分可能 3DGS レンダラ。色・深度・alpha・可視性・投影座標を返し、削除検出が使う <code>used_mask</code>（一部の Gaussian だけを描く）に対応</td></tr>
+    <tr><td>Flat / Aria + SAM マスク</td><td><code>gameproto/scene.py</code></td><td>床・壁・箱からなる合成ルームをレイキャストして RGB-D を生成。インスタンスマスクが SAM マスクの代わり。物体を run の間で動かせる</td></tr>
+    <tr><td><code>src/entities/game.py</code></td><td><code>gameproto/game.py</code></td><td>追加検出 → 共可視キーフレームへのオクルージョン伝播、削除検出 → 矛盾 Gaussian の刈り込みと伝播、オクルージョンマスク付き最適化、<code>ignored_frames</code>。<code>change_detection=False</code> で静的マップのベースラインになる</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="prose">
+<h3>GaME が各キーフレームで行うこと</h3>
+</div>
+<div class="flow">
+  <div class="step fresh"><div class="t">1. 追加検出</div><div class="s">観測深度がレンダリング深度より手前のマスクを「新しい幾何」と判定し、その領域を共可視キーフレームに再投影。古いフレームの該当領域をオクルージョンマスクに入れ、大きく重なるフレームは無視リストへ</div></div>
+  <div class="step"><div class="t">2. シードと短い最適化</div><div class="s">マップが空・遠すぎる・色が合わない画素から Gaussian を生成し、そのフレームだけで数十反復</div></div>
+  <div class="step stale"><div class="t">3. 削除検出</div><div class="s">観測面より手前にあり、かつ色も合わない Gaussian を候補にし、2D で領域を成すか確認。共可視フレームで候補と一致する領域をオクルージョンマスクに加え、候補を刈り込む</div></div>
+</div>
+<div class="prose">
+<p>最後に、無視されていないキーフレームからランダムに選んで L1（色・深度）+ 等方性正則化で最適化する。オクルージョンマスクの画素は損失から外れるので、古い観測がマップを引き戻さない。</p>
+
+<h2>実験設定</h2>
+<ul>
+  <li><b>run 1</b> — 椅子が左（A）にある部屋を、カメラが左から右へ 7 フレームでスイープ。</li>
+  <li><b>変化</b> — カメラが見ていない間に椅子を右（B）へ移動。</li>
+  <li><b>run 2</b> — 同じ軌道でもう一度スイープ。評価は run 2 の 7 視点、正解は変化後の部屋。</li>
+</ul>
+<p>解像度 80×60、各キーフレームで 25 反復（単一フレーム）+ 60 反復（サンプリング）。先頭フレームのみ 120 反復。CPU 4 コアで静的マップが約 19 分、GaME が約 9 分。<code>static</code> と <code>game</code> はコードが同一で、違いは変更検出の on/off だけ。run 1 直後の評価は両者とも 32.68 dB / 0.0116 m で完全に一致する。</p>
+
+<h2>結果</h2>
+</div>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th>system</th><th class="num">PSNR</th><th class="num">深度 L1</th><th class="num">Gaussian 数</th><th class="num">旧位置 A に残存</th><th class="num">新位置 B</th><th class="num">オクルージョンマスク</th><th class="num">所要時間</th></tr></thead>
+  <tbody>
+    <tr><td>static（変更検出なし）</td><td class="num lose">28.91 dB</td><td class="num lose">0.0274 m</td><td class="num">6648</td><td class="num lose">249</td><td class="num">220</td><td class="num">0</td><td class="num">1164 s</td></tr>
+    <tr><td>game（GaME 移植）</td><td class="num win">34.24 dB</td><td class="num win">0.0113 m</td><td class="num">6155</td><td class="num win">2</td><td class="num">121</td><td class="num">13</td><td class="num">546 s</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="chart" aria-label="視点ごとの PSNR">
+  <div style="font-size:13px;color:var(--muted);margin-bottom:6px;">run 2 の視点ごとの PSNR（dB）。視点 0〜2 は旧位置 A が見える視点、4〜6 は新位置 B が見える視点。</div>
+  <span class="legend"><span class="sw" style="background:var(--stale)"></span>static</span>
+  <span class="legend"><span class="sw" style="background:var(--fresh)"></span>game</span>
+  <svg viewBox="0 0 720 220" role="img">
+    <!-- axis: 20..40 dB mapped to y 180..20 -->
+    <g stroke="var(--line)" stroke-width="1">
+      <line x1="48" y1="180" x2="700" y2="180"/>
+      <line x1="48" y1="100" x2="700" y2="100" stroke-dasharray="3 4"/>
+      <line x1="48" y1="20" x2="700" y2="20" stroke-dasharray="3 4"/>
+    </g>
+    <text x="40" y="184" text-anchor="end">20</text>
+    <text x="40" y="104" text-anchor="end">30</text>
+    <text x="40" y="24" text-anchor="end">40</text>
+    <!-- bars: x for view i = 70 + i*92; static at x, game at x+34; height=(psnr-20)*8 -->
+    <g fill="var(--stale)">
+      <rect x="70" y="136" width="30" height="44"/><rect x="162" y="138.4" width="30" height="41.6"/><rect x="254" y="139.2" width="30" height="40.8"/>
+      <rect x="346" y="92" width="30" height="88"/><rect x="438" y="86.4" width="30" height="93.6"/><rect x="530" y="79.2" width="30" height="100.8"/><rect x="622" y="90.4" width="30" height="89.6"/>
+    </g>
+    <g fill="var(--fresh)">
+      <rect x="104" y="56.8" width="30" height="123.2"/><rect x="196" y="42.4" width="30" height="137.6"/><rect x="288" y="89.6" width="30" height="90.4"/>
+      <rect x="380" y="54.4" width="30" height="125.6"/><rect x="472" y="63.2" width="30" height="116.8"/><rect x="564" y="83.2" width="30" height="96.8"/><rect x="656" y="72.8" width="30" height="107.2"/>
+    </g>
+    <g text-anchor="middle">
+      <text x="85" y="130">25.5</text><text x="119" y="51">35.4</text>
+      <text x="177" y="133">25.2</text><text x="211" y="37">37.2</text>
+      <text x="269" y="134">25.1</text><text x="303" y="84">31.3</text>
+      <text x="361" y="87">31.0</text><text x="395" y="49">35.7</text>
+      <text x="453" y="81">31.7</text><text x="487" y="58">34.6</text>
+      <text x="545" y="74">32.6</text><text x="579" y="78">32.1</text>
+      <text x="637" y="85">31.2</text><text x="671" y="67">33.4</text>
+      <text x="102" y="200">view 0</text><text x="194" y="200">view 1</text><text x="286" y="200">view 2</text><text x="378" y="200">view 3</text><text x="470" y="200">view 4</text><text x="562" y="200">view 5</text><text x="654" y="200">view 6</text>
+    </g>
+  </svg>
+</div>
+
+<figure>
+  <img src="output/comparison.png" alt="正解、静的マップ、GaME のレンダリング比較。静的マップには旧位置に赤い幽霊椅子が残り、新位置の椅子が半透明。GaME は旧位置が消え、新位置の椅子が実体を持つ。" width="968" height="728">
+  <figcaption><b>左: 正解、中: static、右: game。</b>視点 0 で static には旧位置の赤い椅子が幽霊として残り、視点 3・6 では新位置の椅子が半透明になっている。古いキーフレームが「そこには床がある」「そこには椅子がある」と最適化を引き戻し続けるため。GaME はどちらも解消している。</figcaption>
+</figure>
+
+<figure>
+  <img src="output/depth_error.png" alt="深度誤差のヒートマップ。静的マップは旧位置の椅子の位置で 0.5 m 級の誤差、GaME は物体の輪郭にわずかな誤差のみ。" width="968" height="728">
+  <figcaption><b>深度誤差（赤 = 0.5 m 以上）。</b>static の視点 0 に見える大きな赤い塊が幽霊椅子。GaME に残るのは物体の輪郭 1 画素分の誤差だけで、これは 80×60 という解像度の限界。</figcaption>
+</figure>
+
+<figure>
+  <img src="output/sweep.gif" alt="run 2 のスイープを正解、静的マップ、GaME で並べたアニメーション" width="968" height="244">
+  <figcaption><b>run 2 スイープ（左: 正解、中: static、右: game）。</b></figcaption>
+</figure>
+
+<div class="prose">
+<h2>GaME が「古い」と判断した領域</h2>
+<p>オレンジは各キーフレームのオクルージョンマスク（最適化から外される画素）。上段が run 1、下段が run 2 のキーフレーム。</p>
+</div>
+
+<figure>
+  <img src="output/occlusion_masks.png" alt="床・壁が 1 枚のマスクの場合のオクルージョンマスク。kf0 と kf1 は旧位置の椅子だけがマスクされるが、kf2 から kf6 は床全体がマスクされる。" width="2264" height="484">
+  <figcaption><b>床・壁がそれぞれ 1 枚のマスクの場合。</b>kf0・kf1 では旧位置の椅子だけが正しくマスクされる。一方 kf2〜kf6 は床全体がマスクされている。「マスク面積の 1% 以上が矛盾したらマスク全体を除外」というルール（<code>removal_coverage_threshold</code>）が、画面の半分を占める床マスクに当たったため。</figcaption>
+</figure>
+
+<figure>
+  <img src="output/tiled/occlusion_masks.png" alt="床・壁を 3×3 に分割した場合のオクルージョンマスク。マスクは椅子が今ある床タイルだけに局在する。" width="2264" height="484">
+  <figcaption><b>床・壁を 3×3 タイルに分割（SAM の過分割を模倣）した場合。</b>除外領域が「椅子が今ある床タイル」だけに局在する。数値は変わらないが、保持される観測は大幅に増える。</figcaption>
+</figure>
+
+<div class="prose">
+<h2>観察と本家への示唆</h2>
+<ul>
+  <li><b>マスクの粒度がアルゴリズムの挙動を支配する。</b>本家のいくつかのルールはマスク単位で判断する。SAM が大きな面を細かく過分割することを暗黙に前提にしており、粗いマスクでは除外が過剰になる。実データでも SAM の設定（points per side など）が結果を左右するはず。</li>
+  <li><b>古いキーフレームはフレーム単位でかなり積極的に捨てられる。</b>椅子の移動後、run 1 の全キーフレームが <code>ignored_frames</code> に入った。きっかけは 2 つで、旧位置を見ていたフレームは椅子マスクがオクルージョンで 100% 覆われ（<code>occlusion_ignore_threshold</code> = 0.2 に対して）、新位置を床として見ていたフレームは再投影の <code>cover_score</code> が 0.2 を超えた。数値上は困らないが、論文が掲げる「情報を最大限保持する」観点では、フレームごと捨てるのではなくマスク単位で除外し続ける設計に緩める余地がある。</li>
+  <li><b>誤検知はごく少ない。</b>run 2 の最終フレームで 4 個の Gaussian が誤って削除され、run 2 のキーフレームにも小さなオクルージョンマスクが付いた。物体の輪郭画素の深度不一致が原因で、本家の 5×5 モルフォロジーが効く解像度なら抑えられる見込み。</li>
+</ul>
+
+<div class="note">両系統は run 1 直後に完全に同じ状態（32.68 dB、旧位置に 229 個）から出発し、run 2 で差が開く。差分は変更検出の有無だけなので、改善はアルゴリズムの効果として切り分けられている。</div>
+
+<h2>未移植・簡略化した点</h2>
+<ul>
+  <li>色損失は L1 のみ（DSSIM 項なし）。球面調和は 0 次（RGB 直値）。</li>
+  <li>最終の refinement（densify / opacity reset）は未移植。増分マッピングのループのみ。</li>
+  <li>本家のスケール依存定数（再投影の 1.0 m スラック、追加検出の 2.0 m ギャップ、5×5 カーネル）は部屋が 5 m 四方なので縮小して設定。</li>
+  <li>姿勢は既知（本家も現状は identity tracking）。</li>
+</ul>
+
+<h2>次の一手（効果が大きい順）</h2>
+<ol>
+  <li><b>マスク単位の除外への緩和を検証する。</b><code>ignored_frames</code> をやめてオクルージョンマスクだけで運用する variant を追加し、同じシナリオで PSNR と保持キーフレーム数を比較する。本家への改善提案の根拠になる。</li>
+  <li><b>実データに接続する。</b>Aria の HF データセットを取得し、本家のローダを CPU 版に流用して 1 シーンだけ低解像度で走らせる。合成環境との挙動差が見える。</li>
+  <li><b>ブラウザ版インタラクティブデモ。</b>この Python 実装を土台に、椅子をドラッグしてマップ更新を目で追える WebGL 版を作る。</li>
+</ol>
+
+<h2>再現手順</h2>
+<pre><code>cd game-proto
+pip install numpy scipy pillow imageio pytest
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+python -m pytest -q tests        # 13 テスト、約 100 秒
+python demo.py                   # static と game を比較、output/ に書き出し（約 30 分）
+python demo.py --only game --tiles 3 --out output/tiled   # マスク分割版（約 9 分）</code></pre>
+<p>途中経過は <code>output/log.txt</code>、数値と検出イベントは <code>output/metrics.json</code> に残る。</p>
+</div>
+
+<footer>ブランチ <code>claude/awesome-dijkstra-pi7ryl</code> の <code>game-proto/</code> に、ソース・テスト・出力画像・この報告がすべて入っている。</footer>
+</div>
