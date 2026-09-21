@@ -59,7 +59,7 @@ const S = {
   weather: 'normal',    // 天候シグナル（状態型）: hot | normal | rain
   rival: false,         // 近隣競合セール（人流流出イベント）
   speed: 3, paused: false,
-  layers: { shelfheat: true, floorheat: true, gaze: true, cones: false, trails: false, labels: true },
+  layers: { shelfheat: true, floorheat: true, gaze: true, scanpath: true, cones: false, trails: false, labels: true },
 };
 
 /* ---------- 施設定義 ---------- */
@@ -659,6 +659,7 @@ class Agent {
     this.bend = 0;                                                     // 0=直立 1=しゃがんで下段を見る
     this.gazeTargetY = null; this.gazeLateral = 0; this.fixTimer = 0; this.targetFrac = null;
     this.fix = null;                                                   // いま見ている一点（注視）
+    this.scan = []; this.scanT = 0;                                    // 注視の時系列（スキャンパス）
     this.headYaw = this.heading; this.headPitch = 0;                   // 頭部は体と独立に回る
     this.reach = 0;                                                    // 商品に手を伸ばす動作
     this.v = 0;                                                        // 実速度（加減速あり）
@@ -907,6 +908,7 @@ class Agent {
      アイトラッキング文献では最下段でも全注視の 8〜12% 程度が観測されるため、
      ④ を明示的に持たせて「棚の下が全く見られない」状態が起きないようにしている。 */
   sampleFixation(s) {
+    this.commitFixation();
     const H = (s && s.size[1]) || 1.6;
     const E = this.eyeH || 1.6;
     // --- 探索以外の相は、専用の注視パターンを持つ ---
@@ -969,6 +971,21 @@ class Agent {
     this.setFixOn(s);
   }
 
+  /* 直前の注視を継続時間つきで確定し、スキャンパスへ積む。
+     アイトラッキングの標準的な出力（注視点の順序と停留時間）と同じ形。 */
+  commitFixation() {
+    const f = this.fix;
+    if (f && f.sid) {
+      const dur = (this.clock || 0) - (this.scanT || 0);
+      if (dur > 0.05) {
+        this.scan.push({ sid: f.sid, u: f.u, y: f.y, x: f.x, z: f.z, dur,
+                         ph: this.phase || 'pass', t: Math.round(STATS.simSec) });
+        if (this.scan.length > 48) this.scan.shift();
+      }
+    }
+    this.scanT = this.clock || 0;
+  }
+
   /* 注視点を「棚面上の一点」としてワールド座標で確定させる。
      人間の中心視は常に1点であり、同時に複数の棚を注視することはない。
      これを持つことで、視線レイ・頭部の向き・計測セルが完全に一致する。 */
@@ -989,6 +1006,7 @@ class Agent {
   /* 通過中の視線: 実際の買物客は「進行方向」と「両脇の棚へのちら見」を交互に行う。
      ちら見の対象は、見える位置にある棚から1つだけ選ぶ（中心視は1点）。 */
   sampleWalkFixation() {
+    this.commitFixation();
     this.fixTimer = 0.7 + rng() * 1.3;
     const E = this.eyeH0;
     if (rng() < 0.42) {                                   // 進行方向を見る（注視棚なし）
@@ -1065,6 +1083,9 @@ class Agent {
 
   update(dt) {
     if (this.done) return;
+    // STATS.simSec は simStep の末尾で一括加算されるため、サブステップ内の
+    // 経過時間はエージェント自身の時計で測る（注視の停留時間に使う）
+    this.clock = (this.clock || 0) + dt;
     if (this.state === 'plan') { this.nextLeg(); return; }
     if (this.state === 'dwell') { this.dwellAt(this.dwellShelf, dt); return; }
     if (this.state === 'queue') {
@@ -1472,6 +1493,7 @@ function initThree() {
 
   buildStore();
   buildGazeLines();
+  buildScanPath();
   bindCamControls();
   bindPicking();
   window.addEventListener('resize', () => {
@@ -2255,6 +2277,69 @@ function updateGazeLines() {
   gazeFx.dg.attributes.color.needsUpdate = true;
 }
 
+/* ---------- スキャンパス（注視の順序）の3D描画 ----------
+   アイトラッキングの標準的な可視化。注視点を時系列で結び、
+   停留時間の長い注視ほど大きな点で描く。相ごとに色を変える。 */
+const PHASE_COL = { orient: 0x9aa9bc, scan: 0x0f9fba, compare: 0xc98500, pick: 0xd55181, pass: 0x7a8ba0 };
+let scanFx = null;
+const SCAN_MAX = 48;
+function buildScanPath() {
+  if (scanFx) { scene.remove(scanFx.group); disposeObject(scanFx.group); }
+  const group = new THREE.Group();
+  const lg = new THREE.BufferGeometry();
+  lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(SCAN_MAX * 3), 3));
+  const line = new THREE.Line(lg, new THREE.LineBasicMaterial({
+    color: 0x1b3d5c, transparent: true, opacity: 0.8, depthTest: false,
+  }));
+  line.frustumCulled = false; line.renderOrder = 998;
+  group.add(line);
+  // 注視点は小球のプール。停留時間でスケールし、相で色を変える
+  const geo = new THREE.SphereGeometry(1, 10, 8);
+  const dots = [];
+  for (let i = 0; i < SCAN_MAX; i++) {
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      color: 0x0f9fba, transparent: true, opacity: 0.85, depthTest: false,
+    }));
+    m.renderOrder = 999; m.visible = false; m.frustumCulled = false;
+    group.add(m); dots.push(m);
+  }
+  scene.add(group);
+  scanFx = { group, line, lg, dots };
+}
+
+function scanTarget() {
+  if (window.CLOUD && CLOUD.on && CLOUD.tracked && !CLOUD.tracked.done) return CLOUD.tracked;
+  if (followTarget && !followTarget.done) return followTarget;
+  return null;
+}
+
+function updateScanPath() {
+  if (!scanFx) return;
+  const a = scanTarget();
+  const on = !!(S.layers.scanpath && a && a.scan && a.scan.length >= 2);
+  scanFx.group.visible = on;
+  if (!on) return;
+  const pts = a.scan.slice(-SCAN_MAX);
+  const lp = scanFx.lg.attributes.position.array;
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    lp[i * 3] = p.x; lp[i * 3 + 1] = p.y; lp[i * 3 + 2] = p.z;
+  }
+  scanFx.lg.setDrawRange(0, pts.length);
+  scanFx.lg.attributes.position.needsUpdate = true;
+  scanFx.lg.computeBoundingSphere();
+  for (let i = 0; i < SCAN_MAX; i++) {
+    const d = scanFx.dots[i];
+    if (i >= pts.length) { d.visible = false; continue; }
+    const p = pts[i];
+    d.visible = true;
+    d.position.set(p.x, p.y, p.z);
+    d.scale.setScalar(0.022 + Math.min(0.055, p.dur * 0.011));   // 停留時間 ∝ 大きさ
+    d.material.color.setHex(PHASE_COL[p.ph] || PHASE_COL.pass);
+    d.material.opacity = 0.45 + 0.5 * (i / Math.max(pts.length - 1, 1));   // 新しいほど濃く
+  }
+}
+
 function disposeAgent(agent) {
   if (agent.reg) { const qi = agent.reg.queue.indexOf(agent); if (qi >= 0) agent.reg.queue.splice(qi, 1); }
   if (agent.mesh) { scene.remove(agent.mesh); disposeObject(agent.mesh); }
@@ -2340,6 +2425,7 @@ function simStep(simDt) {
   const sub = Math.max(1, Math.ceil(simDt / 0.5));
   const stepDt = simDt / sub;
   for (let k = 0; k < sub; k++) {
+    STATS.simSec += stepDt;        // サブステップ単位で進める（注視の時刻解像度に効く）
     agents.forEach(a => a.update(stepDt));
     gazeTimer += stepDt;
     if (gazeTimer >= 0.25) {
@@ -2402,7 +2488,6 @@ function simStep(simDt) {
     REGS[1].open = true; STATS.reg2Opened = true;
     beacon('混雑検知: レジ2番を自動開放', 'seg-buy');
   }
-  STATS.simSec += simDt;
   if (STATS.simSec >= 22 * 3600) {
     STATS.simSec = 10 * 3600;
     rolloverDay();
@@ -2644,6 +2729,7 @@ function updateVisuals(realDt) {
     scene.fog.far = (window.CLOUD && CLOUD.on) ? 170 : 95;
   }
   updateGazeLines();
+  updateScanPath();
   if (window.__cloudReady) updateCloud(realDt);
 
   heatTimer += realDt;

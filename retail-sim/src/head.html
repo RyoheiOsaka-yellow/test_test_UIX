@@ -272,6 +272,12 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
 .note { font-size: 9px; color: var(--text-faint); line-height: 1.55; margin-top: 7px; }
 
 #beacon { left: 14px; bottom: 14px; width: 330px; }
+#scanpath { left: 358px; bottom: 14px; width: 300px; }
+#scanpath canvas { width: 100%; display: block; border-radius: 7px; background: #fbfcfe; border: 1px solid var(--panel-border); }
+#scan-meta { font-size: 10px; color: var(--text-muted); line-height: 1.55; margin-top: 5px; }
+#scan-meta b { color: var(--text-primary); }
+.scan-leg { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 4px; font-size: 9px; color: var(--text-muted); }
+.scan-leg i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 3px; vertical-align: -1px; }
 #beacon .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--status-good); animation: blink 1.6s infinite; }
 @keyframes blink { 50% { opacity: .3; } }
 #beacon-lines { font-size: 10.5px; line-height: 1.6; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
@@ -529,6 +535,7 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
         <label class="row"><input type="checkbox" id="ly-shelfheat" checked /><span class="chip" style="background:linear-gradient(90deg,#dbe7f5,#1d6fb8)"></span>棚別 視線ヒート</label>
         <label class="row"><input type="checkbox" id="ly-floorheat" checked /><span class="chip" style="background:linear-gradient(90deg,#dbe7f5,#1d6fb8)"></span>回遊ヒートマップ（床）</label>
         <label class="row"><input type="checkbox" id="ly-gaze" checked /><span class="chip" style="background:linear-gradient(90deg,#f2c14b,#e8613c)"></span>視線レイ・注視点</label>
+        <label class="row"><input type="checkbox" id="ly-scanpath" checked /><span class="chip" style="background:linear-gradient(90deg,#9aa9bc,#0f9fba,#c98500,#d55181)"></span>スキャンパス（追跡中の客）</label>
         <label class="row"><input type="checkbox" id="ly-cones" /><span class="chip chip-outline"></span>視野コーン（有効視野±22°）</label>
         <label class="row"><input type="checkbox" id="ly-trails" /><span class="chip chip-outline"></span>動線トレイル</label>
         </div>
@@ -563,6 +570,17 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
       <button class="tgl">−</button>
     </div>
     <div class="ovl-body"><div id="beacon-lines"></div></div>
+  </div>
+
+  <div id="scanpath" class="ovl">
+    <div class="ovl-head" data-collapse>
+      <div class="t">スキャンパス</div><div class="sub">追跡中の客の注視順序</div>
+      <button class="tgl">−</button>
+    </div>
+    <div class="ovl-body">
+      <canvas id="cv-scan" height="150"></canvas>
+      <div id="scan-meta"></div>
+    </div>
   </div>
 
   <div id="shelf-detail" class="ovl">

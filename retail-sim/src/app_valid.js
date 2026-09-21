@@ -63,6 +63,97 @@ function validRefs() {
   ];
 }
 
+/* =========================================================================
+   スキャンパス（2D）
+   追跡中の客の注視を、いま見ている什器の正面図に時系列で描く。
+   アイトラッキングの標準的な出力そのもの:
+     ・注視点の順序（番号と線）
+     ・停留時間 ∝ 円の大きさ
+     ・棚前4相で色分け
+   ========================================================================= */
+const SCAN_PHASE = { orient: ['#9aa9bc', '定位'], scan: ['#0f9fba', '探索'], compare: ['#c98500', '比較'], pick: ['#d55181', '取得'], pass: ['#7a8ba0', '通過'] };
+
+function scanPanelTarget() {
+  if (window.CLOUD && CLOUD.on && CLOUD.tracked && !CLOUD.tracked.done) return CLOUD.tracked;
+  if (typeof followTarget !== 'undefined' && followTarget && !followTarget.done) return followTarget;
+  return null;
+}
+
+function renderScanPanel() {
+  const box = document.getElementById('scanpath');
+  const cv = document.getElementById('cv-scan');
+  const meta = document.getElementById('scan-meta');
+  if (!box || !cv || !meta) return;
+  const a = scanPanelTarget();
+  const cur = a && a.scan && a.scan.length ? a.scan[a.scan.length - 1].sid : null;
+  // いま（または直前に）見ていた什器に限定して描く
+  const pts = a && a.scan ? a.scan.filter(p => p.sid === cur).slice(-24) : [];
+  const s = cur ? shelfById[cur] : null;
+  const setup = setupCanvas(cv, 150);
+  if (!setup) return;
+  const { ctx, w, h } = setup;
+  ctx.clearRect(0, 0, w, h);
+  if (!a || !s || pts.length < 1) {
+    ctx.fillStyle = '#9aa9bc'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('追跡中の客が棚を見ると表示されます', w / 2, h / 2);
+    meta.innerHTML = '';
+    return;
+  }
+  const mL = 6, mR = 6, mT = 6, mB = 6;
+  const pw = w - mL - mR, ph = h - mT - mB;
+  const H = s.size[1];
+  const isle = s.kind === 'island-case';
+  // 棚段のガイド
+  ctx.strokeStyle = 'rgba(92,113,134,0.22)'; ctx.lineWidth = 1;
+  const tiers = H > 1.7 ? 4 : 3;
+  for (let i = 0; i <= tiers; i++) {
+    const y = mT + ph * (1 - i / tiers);
+    ctx.beginPath(); ctx.moveTo(mL, y); ctx.lineTo(mL + pw, y); ctx.stroke();
+  }
+  // ゴールデンゾーン帯（床上85〜150cm）
+  if (!isle) {
+    const gy0 = mT + ph * (1 - Math.min(1, 1.50 / H)), gy1 = mT + ph * (1 - Math.min(1, 0.85 / H));
+    ctx.fillStyle = 'rgba(201,133,0,0.10)'; ctx.fillRect(mL, gy0, pw, gy1 - gy0);
+    ctx.strokeStyle = 'rgba(201,133,0,0.45)'; ctx.setLineDash([4, 3]);
+    ctx.strokeRect(mL + 0.5, gy0 + 0.5, pw - 1, gy1 - gy0 - 1); ctx.setLineDash([]);
+  }
+  ctx.strokeStyle = 'rgba(92,113,134,0.55)'; ctx.strokeRect(mL + 0.5, mT + 0.5, pw - 1, ph - 1);
+
+  const X = p => mL + clamp(p.u, 0, 1) * pw;
+  const Y = p => mT + ph * (1 - clamp(isle ? (p.y - 0.5) / 0.55 : p.y / H, 0, 1));
+  // 注視の順序（線）
+  ctx.strokeStyle = 'rgba(27,61,92,0.5)'; ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  pts.forEach((p, i) => { const x = X(p), y = Y(p); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+  ctx.stroke();
+  // 注視点（停留時間 ∝ 半径）
+  pts.forEach((p, i) => {
+    const r = 4 + Math.min(11, p.dur * 1.5);
+    const col = (SCAN_PHASE[p.ph] || SCAN_PHASE.pass)[0];
+    ctx.beginPath(); ctx.arc(X(p), Y(p), r, 0, Math.PI * 2);
+    ctx.fillStyle = col + 'cc'; ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.2; ctx.stroke();
+    if (r >= 6) {
+      ctx.fillStyle = '#fff'; ctx.font = '700 9px sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(String(i + 1), X(p), Y(p));
+    }
+  });
+  ctx.textBaseline = 'alphabetic';
+
+  const tot = pts.reduce((x, p) => x + p.dur, 0);
+  const used = {};
+  pts.forEach(p => used[p.ph] = (used[p.ph] || 0) + p.dur);
+  meta.innerHTML = `
+    <b>#${100000 + (a.id % 9000)}</b> ${a.persona.label} ・ <b>${s.name}</b><br>
+    注視 ${pts.length}点 ／ 合計 ${tot.toFixed(1)}秒 ／ 平均停留 ${(tot / pts.length).toFixed(1)}秒
+    ${a.cmpCount ? ` ／ 比較サッケード ${a.cmpCount}回` : ''}
+    <div class="scan-leg">${Object.keys(used).map(k =>
+      `<span><i style="background:${(SCAN_PHASE[k] || SCAN_PHASE.pass)[0]}"></i>${(SCAN_PHASE[k] || SCAN_PHASE.pass)[1]} ${used[k].toFixed(1)}s</span>`).join('')}</div>
+    <div style="margin-top:3px;color:var(--text-faint)">円の大きさ＝停留時間／番号＝注視の順序／橙破線＝ゴールデンゾーン</div>`;
+}
+window.renderScanPanel = renderScanPanel;
+
 /* ---------- 内部整合性チェック（不変条件をその場で検査） ---------- */
 function runInvariants() {
   const act = agents.filter(a => !a.done);
@@ -108,6 +199,110 @@ function runInvariants() {
   SHELVES.forEach(s => { const st = STATS.shelves[s.id]; if (st && st.gazeSecObs > st.gazeSec * 1.001) over++; });
   out.push({ name: 'AIカメラ計測値 ≤ 真値', ok: over === 0, got: over + '売場', want: '0売場' });
   return out;
+}
+
+/* =========================================================================
+   データ書き出し
+   実店舗のPOS・人流データと突合できるよう、計測値を生データで出す。
+   ブラウザ内で完結（サーバー不要）。
+   ========================================================================= */
+function csvEscape(v) {
+  const s = v == null ? '' : String(v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function downloadText(name, text, mime) {
+  // Excel が UTF-8 を正しく開けるよう BOM を付ける
+  const blob = new Blob(['﻿' + text], { type: (mime || 'text/csv') + ';charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function downloadCSV(name, header, rows) {
+  downloadText(name, [header].concat(rows).map(r => r.map(csvEscape).join(',')).join('\n'));
+}
+const stamp = () => `${FKEY}_d${STATS.day}_${String(Math.floor(STATS.simSec / 3600)).padStart(2, '0')}${String(Math.floor(STATS.simSec / 60) % 60).padStart(2, '0')}`;
+
+function exportShelfSummary() {
+  const rows = SHELVES.map(s => {
+    const st = STATS.shelves[s.id];
+    const ph = st.phaseSec, phTot = ph.reduce((a, b) => a + b, 0) || 1;
+    const back = st.putBackPrice + st.putBackOther;
+    return [
+      s.id, s.name, s.cat, s.kind, s.price, s.promoted ? 1 : 0,
+      Math.round(st.passes * SF()), Math.round(st.gazes * SF()), Math.round(st.stops * SF()),
+      Math.round(st.picks * SF()), Math.round(st.purchases * SF()),
+      st.gazeSec.toFixed(1), st.gazeSecObs.toFixed(1),
+      st.gazeSec > 0 ? (st.goldenSec / st.gazeSec).toFixed(4) : '',
+      st.gazeSec > 30 ? (st.purchases / st.gazeSec * 1000).toFixed(2) : '',
+      st.dwellN ? (st.attnSum / st.dwellN).toFixed(2) : '',
+      st.purchases ? (st.attnBuySum / st.purchases).toFixed(2) : '',
+      (ph[0] / phTot).toFixed(3), (ph[1] / phTot).toFixed(3), (ph[2] / phTot).toFixed(3), (ph[3] / phTot).toFixed(3),
+      st.dwellN ? (st.candSum / st.dwellN).toFixed(2) : '',
+      st.picks ? (back / st.picks).toFixed(3) : '', back ? (st.putBackPrice / back).toFixed(3) : '',
+      st.coverage.toFixed(3), st.camMean.toFixed(2),
+      st.cellTot ? (st.cellHit / st.cellTot).toFixed(3) : '',
+    ];
+  });
+  downloadCSV(`shelf_summary_${stamp()}.csv`, [
+    'shelf_id', 'shelf_name', 'category', 'fixture_kind', 'price_yen', 'is_promoted',
+    'passes', 'gazes', 'stops', 'picks', 'purchases',
+    'gaze_sec_true', 'gaze_sec_observed', 'golden_share', 'units_per_1000_gaze_sec',
+    'attn_sec_mean', 'attn_sec_mean_buyers',
+    'phase_orient', 'phase_scan', 'phase_compare', 'phase_pick',
+    'candidates_mean', 'putback_rate', 'putback_price_share',
+    'camera_coverage', 'camera_count_mean', 'cell_accuracy',
+  ], rows);
+}
+
+function exportGazeGrid() {
+  const rows = [];
+  SHELVES.forEach(s => {
+    const st = STATS.shelves[s.id];
+    if (!st.grid) return;
+    const isle = s.kind === 'island-case';
+    for (let v = 0; v < GRID_V; v++) {
+      for (let u = 0; u < GRID_U; u++) {
+        const i = v * GRID_U + u;
+        const hcm = isle ? '' : (((v + 0.5) / GRID_V) * s.size[1] * 100).toFixed(1);
+        rows.push([s.id, s.name, u, v, hcm,
+          isle ? '' : (hcm >= 85 && hcm <= 150 ? 1 : 0),
+          st.grid[i].toFixed(3), st.gridObs[i].toFixed(3), st.gridRecent[i].toFixed(3)]);
+      }
+    }
+  });
+  downloadCSV(`gaze_grid_${stamp()}.csv`,
+    ['shelf_id', 'shelf_name', 'col_u', 'row_v', 'height_cm', 'is_golden_zone',
+     'gaze_sec_true', 'gaze_sec_observed', 'gaze_sec_last30min'], rows);
+}
+
+function exportScanpaths() {
+  const rows = [];
+  agents.filter(a => !a.done && a.scan && a.scan.length).forEach(a => {
+    a.scan.forEach((p, i) => {
+      const s = shelfById[p.sid];
+      rows.push([100000 + (a.id % 9000), a.persona.key, a.persona.label, a.eyeH0.toFixed(2),
+        i + 1, p.t, p.dur.toFixed(2), p.ph, p.sid, s ? s.name : '',
+        p.u.toFixed(4), (s ? clamp(p.y / s.size[1], 0, 1) : 0).toFixed(4), (p.y * 100).toFixed(1),
+        p.x.toFixed(3), p.y.toFixed(3), p.z.toFixed(3)]);
+    });
+  });
+  downloadCSV(`scanpaths_${stamp()}.csv`,
+    ['person_id', 'persona_key', 'persona', 'eye_height_m',
+     'fixation_index', 'sim_time_sec', 'duration_sec', 'phase', 'shelf_id', 'shelf_name',
+     'face_u', 'face_v', 'height_cm', 'world_x', 'world_y', 'world_z'], rows);
+}
+
+function exportMonteCarlo() {
+  const names = Object.keys(MC.scenarios);
+  if (!names.length) return;
+  const keys = Object.keys(MC.scenarios[names[0]].results[0]);
+  const rows = [];
+  names.forEach(nm => MC.scenarios[nm].results.forEach((r, i) => {
+    rows.push([nm, MC.scenarios[nm].settings, i + 1].concat(keys.map(k => (+r[k]).toFixed(4))));
+  }));
+  downloadCSV(`montecarlo_${stamp()}.csv`, ['scenario', 'settings', 'replication'].concat(keys), rows);
 }
 
 /* ---------- モンテカルロ ---------- */
@@ -226,6 +421,28 @@ function renderValid() {
     </div>
 
     <div class="card">
+      <div class="card-title" data-ccollapse>データ書き出し<span class="hint">実データとの突合用</span><span class="ctgl">▾</span></div>
+      <div class="card-body">
+        <div class="mde-text" style="margin-bottom:8px">
+          計測値を生データのCSVで書き出す。実店舗のPOS・人流データと突合したり、
+          外部の分析環境（R/Python/BI）へ持ち込むための導線。ブラウザ内で完結する。
+        </div>
+        <div class="sp-btnrow">
+          <button id="ex-shelf">棚別サマリ</button>
+          <button id="ex-grid">視線グリッド</button>
+          <button id="ex-scan">スキャンパス</button>
+          <button id="ex-mc" class="ghost" ${Object.keys(MC.scenarios).length ? '' : 'disabled'}>モンテカルロ結果</button>
+        </div>
+        <div class="sd-note" style="margin-top:7px">
+          <b>棚別サマリ</b>: 売場×（通過/視線/立寄/手取/購買・視線秒の真値と計測値・ゴールデン帯シェア・注視効率・4相配分・戻し率・カメラカバレッジ）<br>
+          <b>視線グリッド</b>: 売場×12×6セル×（床上高さ・ゴールデン帯フラグ・視線秒の真値/計測値/直近30分）<br>
+          <b>スキャンパス</b>: 在店客×注視順×（停留時間・相・売場・棚面UV・床上高さ・ワールド座標）<br>
+          <b>モンテカルロ結果</b>: シナリオ×反復×全KPI（反復実行を1回以上おこなうと有効）
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="card-title" data-ccollapse>反復実行（モンテカルロ）<span class="hint">効果か、乱数のブレか</span><span class="ctgl">▾</span></div>
       <div class="card-body">
         <div class="mde-text" style="margin-bottom:8px">
@@ -276,6 +493,11 @@ function renderValid() {
       </div>
     </div>`;
 
+  [['ex-shelf', exportShelfSummary], ['ex-grid', exportGazeGrid],
+   ['ex-scan', exportScanpaths], ['ex-mc', exportMonteCarlo]].forEach(([id, fn]) => {
+    const b2 = document.getElementById(id);
+    if (b2) b2.addEventListener('click', fn);
+  });
   const nEl = document.getElementById('mc-n');
   if (nEl) nEl.addEventListener('click', e => {
     const b = e.target.closest('button[data-n]');
