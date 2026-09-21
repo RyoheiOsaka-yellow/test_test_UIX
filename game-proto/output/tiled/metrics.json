@@ -1,0 +1,234 @@
+{
+  "game": {
+    "run1_psnr": 32.684200865593525,
+    "run1_depth_l1": 0.011551306134178525,
+    "run2_psnr": 34.23787562183632,
+    "run2_depth_l1": 0.011265985171000163,
+    "run2_per_frame_psnr": [
+      35.405668588511936,
+      37.16861916837601,
+      31.301941099643894,
+      35.74185857321315,
+      34.5694714421225,
+      32.096125545211294,
+      33.381444935775384
+    ],
+    "run2_per_frame_depth_l1": [
+      0.007041792074839274,
+      0.008516056537628174,
+      0.01418808937072754,
+      0.009943726857503256,
+      0.011305578549702962,
+      0.01377378781636556,
+      0.014092864990234375
+    ],
+    "num_gaussians": 6155,
+    "gaussians_in_chair_A_after_run1": 229,
+    "gaussians_in_chair_A_after_run2": 2,
+    "gaussians_in_chair_B_after_run2": 121,
+    "occlusion_masks": 13,
+    "ignored_frames": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      9
+    ],
+    "events": [
+      {
+        "frame": 3,
+        "pixels": 15,
+        "kind": "removal_occlusion"
+      },
+      {
+        "frame": 2,
+        "pixels": 119,
+        "kind": "removal_occlusion"
+      },
+      {
+        "frame": 1,
+        "pixels": 137,
+        "kind": "removal_occlusion"
+      },
+      {
+        "frame": 0,
+        "pixels": 130,
+        "kind": "removal_occlusion"
+      },
+      {
+        "frame": 7,
+        "gaussians": 236,
+        "kind": "removal_pruned"
+      },
+      {
+        "frame": 0,
+        "reason": "occlusion_coverage",
+        "kind": "ignore_frame"
+      },
+      {
+        "frame": 2,
+        "reason": "occlusion_coverage",
+        "kind": "ignore_frame"
+      },
+      {
+        "frame": 3,
+        "reason": "occlusion_coverage",
+        "kind": "ignore_frame"
+      },
+      {
+        "frame": 1,
+        "reason": "occlusion_coverage",
+        "kind": "ignore_frame"
+      },
+      {
+        "masks": [
+          21
+        ],
+        "kind": "addition_detected"
+      },
+      {
+        "frame": 6,
+        "cover_score": 0.6923076923076923,
+        "pixels": 13,
+        "kind": "addition_occlusion"
+      },
+      {
+        "frame": 6,
+        "reason": "addition_cover",
+        "kind": "ignore_frame"
+      },
+      {
+        "frame": 5,
+        "cover_score": 0.6666666666666666,
+        "pixels": 15,
+        "kind": "addition_occlusion"
+      },
+      {
+        "frame": 5,
+        "reason": "addition_cover",
+        "kind": "ignore_frame"
+      },
+      {
+        "frame": 4,
+        "cover_score": 0.6363636363636364,
+        "pixels": 22,
+        "kind": "addition_occlusion"
+      },
+      {
+        "frame": 4,
+        "reason": "addition_cover",
+        "kind": "ignore_frame"
+      },
+      {
+        "frame": 3,
+        "cover_score": 0.6923076923076923,
+        "pixels": 13,
+        "kind": "addition_occlusion"
+      },
+      {
+        "frame": 2,
+        "cover_score": 0.6363636363636364,
+        "pixels": 22,
+        "kind": "addition_occlusion"
+      },
+      {
+        "masks": [
+          21
+        ],
+        "kind": "addition_detected"
+      },
+      {
+        "frame": 6,
+        "cover_score": 0.8421052631578947,
+        "pixels": 95,
+        "kind": "addition_occlusion"
+      },
+      {
+        "frame": 5,
+        "cover_score": 0.8,
+        "pixels": 107,
+        "kind": "addition_occlusion"
+      },
+      {
+        "frame": 4,
+        "cover_score": 0.8109756097560976,
+        "pixels": 168,
+        "kind": "addition_occlusion"
+      },
+      {
+        "frame": 2,
+        "cover_score": 0.75,
+        "pixels": 12,
+        "kind": "addition_occlusion"
+      },
+      {
+        "frame": 3,
+        "cover_score": 0.7559808612440191,
+        "pixels": 209,
+        "kind": "addition_occlusion"
+      },
+      {
+        "masks": [
+          21
+        ],
+        "kind": "addition_detected"
+      },
+      {
+        "frame": 6,
+        "cover_score": 0.8268551236749117,
+        "pixels": 283,
+        "kind": "addition_occlusion"
+      },
+      {
+        "frame": 2,
+        "cover_score": 0.2,
+        "pixels": 5,
+        "kind": "addition_occlusion"
+      },
+      {
+        "frame": 9,
+        "cover_score": 0.2,
+        "pixels": 5,
+        "kind": "addition_occlusion"
+      },
+      {
+        "frame": 5,
+        "cover_score": 0.8242811501597445,
+        "pixels": 314,
+        "kind": "addition_occlusion"
+      },
+      {
+        "frame": 3,
+        "cover_score": 0.7692307692307693,
+        "pixels": 201,
+        "kind": "addition_occlusion"
+      },
+      {
+        "frame": 4,
+        "cover_score": 0.8102981029810298,
+        "pixels": 369,
+        "kind": "addition_occlusion"
+      },
+      {
+        "masks": [
+          1
+        ],
+        "kind": "addition_detected"
+      },
+      {
+        "frame": 13,
+        "gaussians": 4,
+        "kind": "removal_pruned"
+      },
+      {
+        "frame": 9,
+        "reason": "occlusion_coverage",
+        "kind": "ignore_frame"
+      }
+    ],
+    "seconds": 544.467541217804
+  }
+}
