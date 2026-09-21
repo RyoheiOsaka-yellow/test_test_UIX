@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>人流ポテンシャル評価 v0.1</title>
+<link href="/static/vendor/maplibre-gl.css" rel="stylesheet" />
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<header id="topbar">
+  <div class="brand">人流ポテンシャル評価 <span class="ver">v0.1 プロトタイプ</span></div>
+  <div class="ctl">
+    <label>モード
+      <select id="mode">
+        <option value="realestate">不動産</option>
+        <option value="gov">自治体</option>
+      </select>
+    </label>
+    <label>期間 <select id="period"></select></label>
+    <label>平休 <select id="daytype"><option value="weekday">平日</option><option value="holiday">休日</option></select></label>
+    <label>時間帯 <select id="timeband"><option value="all">終日</option><option value="day">昼（11–14時台）</option><option value="night">深夜（1–4時台）</option></select></label>
+    <label class="gov-only">比較 <select id="periodB"></select> <button id="btnCompare">A→B 差分</button> <button id="btnCompareOff" class="ghost">解除</button></label>
+    <label class="re-only"><button id="btnGap">低利用ギャップ検索</button></label>
+    <label><input type="checkbox" id="chk3d" checked /> 建物3D</label>
+    <label><input type="checkbox" id="chkSites" checked /> 実測地点</label>
+  </div>
+</header>
+<div id="main">
+  <div id="map"></div>
+  <aside id="panel">
+    <div id="panel-empty">
+      <h2>使い方</h2>
+      <p><b>不動産モード</b>: 建物をクリック → 前面道路の推定通行量・エリア内順位・時間帯プロファイル・来街者構成・簡易売上試算。<br/>「低利用ギャップ検索」で通行ポテンシャルは高いが滞在人口が低い建物を抽出。</p>
+      <p><b>自治体モード</b>: 期間 A/B を選び「差分」で施策前後の街路通行量変化を表示。街路をクリックで変化率。</p>
+      <p class="note">すべて公開統計データからの<b>推定値</b>です。出典・免責はパネル下部。</p>
+      <div id="legend"></div>
+      <div id="calib"></div>
+    </div>
+    <div id="panel-report" hidden></div>
+    <div id="panel-sources"></div>
+  </aside>
+</div>
+<!-- オフラインデモ用に同梱（maplibre-gl 4.7.1 / deck.gl 9.0.38, いずれも MIT） -->
+<script src="/static/vendor/maplibre-gl.js"></script>
+<script src="/static/vendor/deck.min.js"></script>
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>

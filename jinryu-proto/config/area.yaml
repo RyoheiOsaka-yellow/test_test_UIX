@@ -1,0 +1,65 @@
+# 対象エリア定義（v0.1：岡山市中心部 岡山駅〜表町〜岡山城）
+# 選定理由は docs/AREA_SELECTION.md を参照
+area:
+  id: okayama_central
+  name: 岡山市中心部（岡山駅・奉還町〜西川緑道公園〜表町〜岡山城）
+  pref_code: "33"
+  city_codes: ["33101", "33102"]   # 岡山市北区 / 中区（旭川以東）
+  bbox: [133.905, 34.650, 133.945, 34.680]   # lon_min, lat_min, lon_max, lat_max（約3.6km×3.3km）
+  epsg_plane: 6673                            # JGD2011 平面直角座標系 第V系（岡山県）
+  epsg_geo: 4326
+
+# 3次メッシュ（PLATEAU 建物ファイル名の先頭8桁）。bbox から自動生成した値と一致すること
+mesh3_codes:
+  - "51337772"
+  - "51337773"
+  - "51337774"
+  - "51337775"
+  - "51337782"
+  - "51337783"
+  - "51337784"
+  - "51337785"
+  - "51337792"
+  - "51337793"
+  - "51337794"
+  - "51337795"
+  - "52330702"
+  - "52330703"
+  - "52330704"
+  - "52330705"
+  - "52330712"
+  - "52330713"
+  - "52330714"
+  - "52330715"
+
+# 人流オープンデータの期間（YYYY-MM）。較正に使う基準期間と比較用期間
+periods:
+  available: ["2019-10", "2019-11", "2020-10", "2021-10", "2021-11"]
+  baseline: "2019-10"          # 較正の基準（コロナ前・秋・通行量調査と季節を合わせる）
+  compare_default: ["2019-10", "2021-10"]
+
+# PLATEAU（岡山市 2024年度, v4）。5GB zip から HTTP Range で bldg ファイルのみ抽出する
+plateau:
+  package: plateau-33100-okayama-shi-2024
+  citygml_zip_url: https://assets.cms.plateau.reearth.io/assets/7d/c0ef62-aae2-4e86-9bdc-f29a87c6ff14/33100_okayama-shi_city_2024_citygml_1_op.zip
+  citygml_zip_size: 5066854291
+
+# 駅の出口配分（駅別乗降客数は駅1点なので、複数出口を持つ駅は出口ごとに発生点を分ける。share は手置き）
+station_exits:
+  "岡山":
+    - {name: 東口（後楽園口）, lat: 34.66560, lon: 133.91860, share: 0.72}
+    - {name: 西口（運動公園口）, lat: 34.66700, lon: 133.91720, share: 0.28}
+
+# OSM: api.openstreetmap.org/api/0.6/map の 50,000 ノード制限に収めるためタイル分割
+osm:
+  tiles_x: 4
+  tiles_y: 4
+
+# 通行量調査（岡山市 AIカメラ通行量）。地点座標は config/count_sites_okayama.csv
+counts:
+  source: okayama_ai_camera
+  months: ["2024-06", "2024-10", "2024-11", "2025-06", "2025-10"]
+  page_ids:
+    "2024": "0000061406"
+    "2025": "0000070453"   # 要確認: 令和7年ページID（未確認の場合は fetch がスキップ）
+    "2026": "0000080153"

@@ -1,0 +1,47 @@
+{
+  "mesh_flow": {
+    "rows": 900,
+    "meshes": 20,
+    "periods": [
+      "2019-10",
+      "2019-11",
+      "2020-10",
+      "2021-10",
+      "2021-11"
+    ]
+  },
+  "station": 23,
+  "zoning": 64,
+  "land_price": 30,
+  "road_link": {
+    "links": 17644,
+    "nodes": 12662,
+    "km": 531.9
+  },
+  "building": {
+    "rows": 51398,
+    "usage_class": {
+      "residential": 28257,
+      "other": 13460,
+      "public": 2486,
+      "office": 2164,
+      "retail": 2074,
+      "mixed": 1824,
+      "industrial": 1003,
+      "hotel": 130
+    },
+    "gfa_estimated_share": 0.436,
+    "floors_estimated_share": 0.342,
+    "zoning_missing_share": 0.0,
+    "no_front_link_share": 0.293
+  },
+  "counts": {
+    "sites": 20,
+    "obs": 87,
+    "periods": [
+      "2024-06",
+      "2024-10"
+    ]
+  },
+  "elapsed_s": 69.0
+}

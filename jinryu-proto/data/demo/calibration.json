@@ -1,0 +1,444 @@
+{
+  "baseline_period": "2019-10",
+  "chosen": {
+    "half_distance_m": 900,
+    "scale_k": 0.3727,
+    "in_sample": {
+      "n": 18,
+      "spearman": 0.672,
+      "mape": 0.658,
+      "top20_hit": 0.75
+    },
+    "block_cv": {
+      "blocks": [
+        "ekimae",
+        "heiwacho",
+        "hokancho",
+        "omotecho"
+      ],
+      "n": 18,
+      "spearman": 0.695,
+      "mape": 0.749,
+      "top20_hit": 0.75
+    }
+  },
+  "grid": [
+    {
+      "half_distance_m": 300,
+      "scale_k": 0.6751,
+      "in_sample": {
+        "n": 18,
+        "spearman": 0.654,
+        "mape": 0.613,
+        "top20_hit": 0.75
+      },
+      "block_cv": {
+        "blocks": [
+          "ekimae",
+          "heiwacho",
+          "hokancho",
+          "omotecho"
+        ],
+        "n": 18,
+        "spearman": 0.674,
+        "mape": 0.656,
+        "top20_hit": 0.75
+      }
+    },
+    {
+      "half_distance_m": 450,
+      "scale_k": 0.4926,
+      "in_sample": {
+        "n": 18,
+        "spearman": 0.68,
+        "mape": 0.631,
+        "top20_hit": 0.75
+      },
+      "block_cv": {
+        "blocks": [
+          "ekimae",
+          "heiwacho",
+          "hokancho",
+          "omotecho"
+        ],
+        "n": 18,
+        "spearman": 0.693,
+        "mape": 0.703,
+        "top20_hit": 0.75
+      }
+    },
+    {
+      "half_distance_m": 600,
+      "scale_k": 0.426,
+      "in_sample": {
+        "n": 18,
+        "spearman": 0.67,
+        "mape": 0.644,
+        "top20_hit": 0.75
+      },
+      "block_cv": {
+        "blocks": [
+          "ekimae",
+          "heiwacho",
+          "hokancho",
+          "omotecho"
+        ],
+        "n": 18,
+        "spearman": 0.693,
+        "mape": 0.727,
+        "top20_hit": 0.75
+      }
+    },
+    {
+      "half_distance_m": 900,
+      "scale_k": 0.3727,
+      "in_sample": {
+        "n": 18,
+        "spearman": 0.672,
+        "mape": 0.658,
+        "top20_hit": 0.75
+      },
+      "block_cv": {
+        "blocks": [
+          "ekimae",
+          "heiwacho",
+          "hokancho",
+          "omotecho"
+        ],
+        "n": 18,
+        "spearman": 0.695,
+        "mape": 0.749,
+        "top20_hit": 0.75
+      }
+    },
+    {
+      "half_distance_m": 1300,
+      "scale_k": 0.3454,
+      "in_sample": {
+        "n": 18,
+        "spearman": 0.668,
+        "mape": 0.666,
+        "top20_hit": 0.75
+      },
+      "block_cv": {
+        "blocks": [
+          "ekimae",
+          "heiwacho",
+          "hokancho",
+          "omotecho"
+        ],
+        "n": 18,
+        "spearman": 0.691,
+        "mape": 0.763,
+        "top20_hit": 0.75
+      }
+    }
+  ],
+  "sites_used": [
+    {
+      "site_id": "S01",
+      "name": "表町・上之町商店街（北時計台付近）",
+      "block": "omotecho",
+      "day_type": "holiday",
+      "count": 6367.5,
+      "flow_synth": 19292.1,
+      "pred": 7190.1
+    },
+    {
+      "site_id": "S01",
+      "name": "表町・上之町商店街（北時計台付近）",
+      "block": "omotecho",
+      "day_type": "weekday",
+      "count": 4442.6,
+      "flow_synth": 16663.8,
+      "pred": 6210.5
+    },
+    {
+      "site_id": "S02",
+      "name": "表町・中之町商店街（天満屋北付近）",
+      "block": "omotecho",
+      "day_type": "holiday",
+      "count": 10830.8,
+      "flow_synth": 22623.8,
+      "pred": 8431.8
+    },
+    {
+      "site_id": "S02",
+      "name": "表町・中之町商店街（天満屋北付近）",
+      "block": "omotecho",
+      "day_type": "weekday",
+      "count": 6622.4,
+      "flow_synth": 19574.5,
+      "pred": 7295.4
+    },
+    {
+      "site_id": "S04-1",
+      "name": "表町・千日前商店街（千日前ハレノワ通り付近）",
+      "block": "omotecho",
+      "day_type": "holiday",
+      "count": 2962.9,
+      "flow_synth": 9391.9,
+      "pred": 3500.3
+    },
+    {
+      "site_id": "S04-1",
+      "name": "表町・千日前商店街（千日前ハレノワ通り付近）",
+      "block": "omotecho",
+      "day_type": "weekday",
+      "count": 1015.0,
+      "flow_synth": 7583.5,
+      "pred": 2826.4
+    },
+    {
+      "site_id": "S05",
+      "name": "岡山駅前商店街（ビックカメラ商店街入口付近）",
+      "block": "ekimae",
+      "day_type": "holiday",
+      "count": 10373.4,
+      "flow_synth": 31769.7,
+      "pred": 11840.5
+    },
+    {
+      "site_id": "S05",
+      "name": "岡山駅前商店街（ビックカメラ商店街入口付近）",
+      "block": "ekimae",
+      "day_type": "weekday",
+      "count": 7627.2,
+      "flow_synth": 29802.5,
+      "pred": 11107.3
+    },
+    {
+      "site_id": "S06-1",
+      "name": "本町（髙島屋東付近）",
+      "block": "ekimae",
+      "day_type": "holiday",
+      "count": 11219.7,
+      "flow_synth": 32242.8,
+      "pred": 12016.8
+    },
+    {
+      "site_id": "S06-1",
+      "name": "本町（髙島屋東付近）",
+      "block": "ekimae",
+      "day_type": "weekday",
+      "count": 8781.2,
+      "flow_synth": 33452.9,
+      "pred": 12467.8
+    },
+    {
+      "site_id": "S08",
+      "name": "奉還町商店街（りぶら付近）",
+      "block": "hokancho",
+      "day_type": "holiday",
+      "count": 5201.3,
+      "flow_synth": 3400.9,
+      "pred": 1267.5
+    },
+    {
+      "site_id": "S08",
+      "name": "奉還町商店街（りぶら付近）",
+      "block": "hokancho",
+      "day_type": "weekday",
+      "count": 3442.8,
+      "flow_synth": 2949.7,
+      "pred": 1099.3
+    },
+    {
+      "site_id": "S09",
+      "name": "西奉還町商店街（奉還町３丁目付近）",
+      "block": "hokancho",
+      "day_type": "holiday",
+      "count": 2702.0,
+      "flow_synth": 0.0,
+      "pred": 0.0
+    },
+    {
+      "site_id": "S09",
+      "name": "西奉還町商店街（奉還町３丁目付近）",
+      "block": "hokancho",
+      "day_type": "weekday",
+      "count": 3083.2,
+      "flow_synth": 0.0,
+      "pred": 0.0
+    },
+    {
+      "site_id": "S14",
+      "name": "平和町１（ハレまち通り平和橋付近）",
+      "block": "heiwacho",
+      "day_type": "holiday",
+      "count": 5167.9,
+      "flow_synth": 6660.1,
+      "pred": 2482.2
+    },
+    {
+      "site_id": "S14",
+      "name": "平和町１（ハレまち通り平和橋付近）",
+      "block": "heiwacho",
+      "day_type": "weekday",
+      "count": 5219.1,
+      "flow_synth": 4719.5,
+      "pred": 1758.9
+    },
+    {
+      "site_id": "S15",
+      "name": "平和町２（西川緑道公園平和橋付近）",
+      "block": "heiwacho",
+      "day_type": "holiday",
+      "count": 2628.1,
+      "flow_synth": 18063.5,
+      "pred": 6732.2
+    },
+    {
+      "site_id": "S15",
+      "name": "平和町２（西川緑道公園平和橋付近）",
+      "block": "heiwacho",
+      "day_type": "weekday",
+      "count": 2264.2,
+      "flow_synth": 16726.5,
+      "pred": 6233.9
+    }
+  ],
+  "site_matching": [
+    {
+      "site_id": "S01",
+      "link_id": "127452953_2",
+      "link_ids": "127452953_2",
+      "n_links": 1,
+      "match_dist_m": 5.4
+    },
+    {
+      "site_id": "S02",
+      "link_id": "182105246_1",
+      "link_ids": "182105246_1,182105154_1,127452953_8",
+      "n_links": 3,
+      "match_dist_m": 5.1
+    },
+    {
+      "site_id": "S03-1",
+      "link_id": "1280525560_0",
+      "link_ids": "127452953_14,182104662_2,1280525561_1,1280525560_0,173138401_18",
+      "n_links": 5,
+      "match_dist_m": 4.3
+    },
+    {
+      "site_id": "S03-2",
+      "link_id": "182104852_0",
+      "link_ids": "182104852_0",
+      "n_links": 1,
+      "match_dist_m": 22.8
+    },
+    {
+      "site_id": "S03-3",
+      "link_id": "1280525566_2",
+      "link_ids": "1316561428_0,1280525566_2,173138401_21,1280525567_1",
+      "n_links": 4,
+      "match_dist_m": 0.4
+    },
+    {
+      "site_id": "S04-1",
+      "link_id": "127452953_18",
+      "link_ids": "127452953_18",
+      "n_links": 1,
+      "match_dist_m": 3.1
+    },
+    {
+      "site_id": "S04-2",
+      "link_id": "1280525574_0",
+      "link_ids": "1280525574_0,173138401_25",
+      "n_links": 2,
+      "match_dist_m": 0.5
+    },
+    {
+      "site_id": "S05",
+      "link_id": "47019628_1",
+      "link_ids": "428894099_3,47019628_1",
+      "n_links": 2,
+      "match_dist_m": 8.7
+    },
+    {
+      "site_id": "S06-1",
+      "link_id": "494286669_9",
+      "link_ids": "494286669_9,742341024_0,734647398_2,742341023_0",
+      "n_links": 4,
+      "match_dist_m": 0.1
+    },
+    {
+      "site_id": "S06-2",
+      "link_id": "494286669_1",
+      "link_ids": "494286669_1,1497530163_0",
+      "n_links": 2,
+      "match_dist_m": 24.9
+    },
+    {
+      "site_id": "S07-1",
+      "link_id": "1497294756_8",
+      "link_ids": "1350605108_1,1350605109_0,244104725_5,734647415_1,734647409_0,741012254_6,743754654_3,1497294756_1,1497294756_8,1350605108_0,741012259_1,1497294756_7",
+      "n_links": 12,
+      "match_dist_m": 3.9
+    },
+    {
+      "site_id": "S07-2",
+      "link_id": "1350605106_4",
+      "link_ids": "1497218561_4,1497218561_3,244104725_1,1350605107_0,1350605105_0,244104725_0,1500117293_0,1350605106_4,244105508_0,1353292375_0,244104725_4,1497224020_1,1350605108_1,1350605109_0,244104725_5,1497294756_8",
+      "n_links": 16,
+      "match_dist_m": 1.0
+    },
+    {
+      "site_id": "S08",
+      "link_id": "127522920_9",
+      "link_ids": "127522920_9,167273547_0",
+      "n_links": 2,
+      "match_dist_m": 6.6
+    },
+    {
+      "site_id": "S09",
+      "link_id": "127522920_1",
+      "link_ids": "437156605_0,437156593_1,127522920_1",
+      "n_links": 3,
+      "match_dist_m": 1.8
+    },
+    {
+      "site_id": "S10",
+      "link_id": "238747999_0",
+      "link_ids": "1350605108_1,673529241_2,508841686_8,741012247_1,238747999_0,238748000_4,31895151_0,741012259_3",
+      "n_links": 8,
+      "match_dist_m": 0.9
+    },
+    {
+      "site_id": "S11",
+      "link_id": "238747999_3",
+      "link_ids": "244234629_0,238748000_3,244234630_0,1449557283_0,494286669_3,238747999_3,734647398_0,238747999_2",
+      "n_links": 8,
+      "match_dist_m": 2.2
+    },
+    {
+      "site_id": "S12",
+      "link_id": "1350605123_0",
+      "link_ids": "494283247_7,31895104_8,494286669_5,1350605123_0,494286669_3,238747999_3",
+      "n_links": 6,
+      "match_dist_m": 16.5
+    },
+    {
+      "site_id": "S13",
+      "link_id": "1448172120_0",
+      "link_ids": "730441111_5,1350605105_1,1448172120_0,760004502_0,244105511_0",
+      "n_links": 5,
+      "match_dist_m": 4.0
+    },
+    {
+      "site_id": "S14",
+      "link_id": "745706842_0",
+      "link_ids": "1313670877_0,1315246801_0,745706842_0,1313665858_2",
+      "n_links": 4,
+      "match_dist_m": 0.7
+    },
+    {
+      "site_id": "S15",
+      "link_id": "742341030_1",
+      "link_ids": "742341036_1,742341030_1,1317611088_2,753598542_1,182104596_6,756540686_3",
+      "n_links": 6,
+      "match_dist_m": 0.6
+    }
+  ],
+  "elapsed_s": 88.5
+}

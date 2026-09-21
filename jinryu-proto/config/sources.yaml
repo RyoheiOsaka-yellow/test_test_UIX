@@ -1,0 +1,118 @@
+# 使用データの出典・URL・ライセンス・取得日。API /meta/sources と UI のクレジット表示はこのファイルを参照する。
+# ※ 利用規約は着手時に一次ソースで再確認済み（2026-09-21）。商用利用可否の解釈は法務確認前提。
+sources:
+  - id: mlit_flow
+    name: 全国の人流オープンデータ（1kmメッシュ別滞在人口・市区町村単位発地別）
+    provider: 国土交通省 不動産・建設経済局（G空間情報センター）
+    url: https://www.geospatial.jp/ckan/dataset/mlit-1km-fromto
+    format: CSV (zip, 都道府県別・年月別)
+    period: 2019-01 〜 2021-12（月次）
+    granularity: 1kmメッシュ / 平日・休日・全日 × 昼(11-14時台)・深夜(1-4時台)・終日
+    license: 政府標準利用規約（第2.0版）互換 CC BY 4.0。滞在人口は株式会社Agoop 換算人口
+    credit: 「全国の人流オープンデータ」（国土交通省）を加工して作成
+    notes: 10人未満のメッシュは非出力。ページには「ユーザ登録後ログインしてダウンロード」とあるが、2026-09-21 時点で CKAN リソースURLからの直接取得が可能だった（要再確認）
+    fetched_at: "2026-09-21"
+    files:
+      - https://www.geospatial.jp/ckan/dataset/8fd79f08-00e6-4d14-9c89-e3bdca66af11/resource/83cd91e4-c4c8-4a39-91ce-299227217939/download/attribute.zip
+      - https://www.geospatial.jp/ckan/dataset/8fd79f08-00e6-4d14-9c89-e3bdca66af11/resource/85d88c3b-2c29-42ed-a97c-8d5728c1ca03/download/monthly_mdp_mesh1km_33.zip
+      - https://www.geospatial.jp/ckan/dataset/8fd79f08-00e6-4d14-9c89-e3bdca66af11/resource/47ddd471-34eb-47e6-9431-6e20e1c845a1/download/monthly_fromto_city_33.zip
+
+  - id: plateau_okayama
+    name: 3D都市モデル（Project PLATEAU）岡山市（2024年度）建築物モデル LOD1
+    provider: 国土交通省 都市局（PLATEAU）
+    url: https://www.geospatial.jp/ckan/dataset/plateau-33100-okayama-shi-2024
+    format: CityGML 2.0 (zip 5.1GB, 3次メッシュ単位の bldg ファイル)
+    period: 調査年 2022（surveyYear）
+    granularity: 建物単位（用途・階数・延床面積・建築面積・用途地域）
+    license: PLATEAU Site Policy 3.著作権（CC BY 4.0 相当）
+    credit: 3D都市モデル（Project PLATEAU）岡山市（2024年度）（国土交通省）を加工
+    notes: 20メッシュ分のみ HTTP Range で部分取得（約92MB圧縮／946MB展開）
+    fetched_at: "2026-09-21"
+
+  - id: osm
+    name: OpenStreetMap（歩行者ネットワーク・POI・建物補完）
+    provider: OpenStreetMap contributors
+    url: https://api.openstreetmap.org/api/0.6/map
+    format: OSM XML（bbox タイル）
+    period: 取得時点の最新
+    license: ODbL 1.0
+    credit: © OpenStreetMap contributors
+    notes: Overpass API は本環境から到達不可のため map API をタイル分割で使用。Geofabrik も到達不可
+    fetched_at: "2026-09-21"
+
+  - id: ksj_s12
+    name: 国土数値情報 駅別乗降客数（S12-24）
+    provider: 国土交通省 国土政策局
+    url: https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-S12-v3_3.html
+    format: GeoJSON / Shapefile
+    period: 2011〜2023 年度の年間平均日乗降客数
+    license: 国土数値情報 利用規約（政府標準利用規約 2.0 準拠）
+    credit: 「国土数値情報（駅別乗降客数データ）」（国土交通省）を加工
+    fetched_at: "2026-09-21"
+    files:
+      - https://nlftp.mlit.go.jp/ksj/gml/data/S12/S12-24/S12-24_GML.zip
+
+  - id: ksj_a29
+    name: 国土数値情報 用途地域（A29-19 岡山県）
+    provider: 国土交通省 国土政策局
+    url: https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-A29-v2_1.html
+    format: Shapefile (Shift-JIS)
+    period: 2019 年度
+    license: "国土数値情報 利用規約（条件付き公開: 出典明示）"
+    credit: 「国土数値情報（用途地域データ）」（国土交通省）を加工
+    fetched_at: "2026-09-21"
+    files:
+      - https://nlftp.mlit.go.jp/ksj/gml/data/A29/A29-19/A29-19_33_GML.zip
+
+  - id: ksj_l01
+    name: 国土数値情報 地価公示（L01-25 岡山県）
+    provider: 国土交通省 国土政策局
+    url: https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-L01-2025.html
+    format: GeoJSON
+    period: 2025 年 地価公示
+    license: 国土数値情報 利用規約
+    credit: 「国土数値情報（地価公示データ）」（国土交通省）を加工
+    fetched_at: "2026-09-21"
+    files:
+      - https://nlftp.mlit.go.jp/ksj/gml/data/L01/L01-25/L01-25_33_GML.zip
+
+  - id: okayama_counts
+    name: 岡山市 市内中心部歩行者通行量データ（AIカメラ 箇所別通行量）
+    provider: 岡山市 産業観光局 産業振興課
+    url: https://www.city.okayama.jp/jigyosha/0000055956.html
+    format: "XLSX（月別: 箇所別日別総通行量 D / 箇所別月平均通行量 M）"
+    period: 2024-04 〜（継続中。2026-06 まで確認）
+    granularity: 15箇所（5エリア）× 日別 24時間通行量、平日/休日平均、性別・年代（AI推定, 一部未公開）
+    license: クリエイティブ・コモンズ 表示 4.0 国際（岡山市オープンデータ）
+    credit: 岡山市「市内中心部歩行者通行量データ」（CC BY 4.0）を加工
+    notes: 地点座標は位置図 PDF から手動で読み取り（config/count_sites_okayama.csv）。地下街・入場退場地点は街路較正から除外
+    fetched_at: "2026-09-21"
+
+  - id: okayama_survey_biennial
+    name: 岡山市商店街等通行量調査（隔年・時間帯別）
+    provider: 岡山市
+    url: https://www.city.okayama.jp/shisei/0000010107.html
+    format: PDF（報告書）
+    period: 昭和41年〜（2年ごと）
+    license: 岡山市ウェブサイト利用規約（要確認）
+    notes: "時間帯別・地点別の値がある。v0.1 では未取得（PDF→手入力CSV の口だけ用意: data/raw/counts_manual/*.csv）"
+    fetched_at: null
+
+  - id: estat_census
+    name: e-Stat 国勢調査 地域メッシュ統計 / 経済センサス
+    provider: 総務省統計局
+    url: https://www.e-stat.go.jp/gis
+    notes: v0.1 では未使用（夜間人口・事業所の補正は v0.2）
+    fetched_at: null
+
+basemap:
+  - id: gsi_pale
+    name: 地理院タイル（淡色地図）
+    url: https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png
+    credit: 地理院タイル
+    license: 国土地理院コンテンツ利用規約（出典明示）
+
+disclaimer: |
+  本サービスの通行量・滞在人口・スコアはすべて公開統計データからの推定値です。
+  実測値ではなく、根拠データの期間（人流: 2019〜2021年、建物: 2022年調査、通行量調査: 2024年〜）が異なることに注意してください。
+  売上試算はユーザーが入力した仮定（入店率・客単価）に基づく試算であり、将来の売上を保証するものではありません。

@@ -1,0 +1,118 @@
+# 配分・OD・経路配分のパラメータ（v0.1 は手置き。calibrate が一部を上書きして data/processed/calibration.json に保存）
+
+# 建物用途コード（PLATEAU Building_usage.xml）→ 用途クラス
+usage_class:
+  "401": office        # 業務施設
+  "402": retail        # 商業施設
+  "403": hotel         # 宿泊施設
+  "404": retail        # 商業系複合施設
+  "411": residential   # 住宅
+  "412": residential   # 共同住宅
+  "413": mixed         # 店舗等併用住宅
+  "414": mixed         # 店舗等併用共同住宅
+  "415": mixed         # 作業所併用住宅
+  "421": public        # 官公庁施設
+  "422": public        # 文教厚生施設
+  "431": industrial    # 運輸倉庫施設
+  "441": industrial    # 工場
+  "451": industrial    # 農林漁業用施設
+  "452": industrial    # 供給処理施設
+  "453": other         # 防衛施設
+  "454": other         # その他
+  "461": other         # その他
+  default: other
+
+# α：用途クラス × 平休日 × 時間帯 の在館係数（延床1m²あたりの相対値）
+# time_band は人流オープンデータの区分に合わせる: day=昼(11-14時台), night=深夜(1-4時台), all=終日
+alpha:
+  weekday:
+    day:   {office: 1.00, retail: 1.20, hotel: 0.30, residential: 0.25, mixed: 0.60, public: 0.80, industrial: 0.50, other: 0.30}
+    night: {office: 0.05, retail: 0.02, hotel: 1.00, residential: 1.00, mixed: 0.70, public: 0.02, industrial: 0.05, other: 0.10}
+    all:   {office: 0.45, retail: 0.50, hotel: 0.65, residential: 0.65, mixed: 0.65, public: 0.35, industrial: 0.25, other: 0.20}
+  holiday:
+    day:   {office: 0.15, retail: 1.50, hotel: 0.60, residential: 0.60, mixed: 0.80, public: 0.30, industrial: 0.10, other: 0.30}
+    night: {office: 0.03, retail: 0.02, hotel: 1.00, residential: 1.00, mixed: 0.70, public: 0.02, industrial: 0.05, other: 0.10}
+    all:   {office: 0.10, retail: 0.65, hotel: 0.80, residential: 0.80, mixed: 0.75, public: 0.15, industrial: 0.08, other: 0.20}
+
+# β：用途地域補正（A29_004 コード）。enabled=false のときは 1.0 固定
+beta:
+  enabled: true
+  by_zone_code:
+    "9": 1.20   # 商業地域
+    "8": 1.10   # 近隣商業地域
+    "1": 0.90   # 第一種低層住居専用
+    "2": 0.90   # 第二種低層住居専用
+    default: 1.00
+
+# OD（重力モデル）
+od:
+  half_distance_m: 450        # 距離抵抗 f(d)=exp(-ln2·d/half_distance)
+  max_distance_m: 2500        # これ以上の徒歩トリップは生成しない
+  station_origin_weight: 0.5  # 駅1日乗降客数×この係数を発生量に（乗降＝乗+降なので半分が「駅から出る」）
+  station_holiday_factor: 0.75
+  residential_trip_rate:      # 夜間滞在人口あたりの日中外出トリップ率
+    weekday: 1.2
+    holiday: 1.4
+  destination_time_band: day  # 集中点の重みに使う時間帯（滞在人口 P_b）
+  mixed_dest_factor: 0.5      # 店舗併用住宅の集中重み（滞在人口のうち来訪者分とみなす割合）
+  poi_weight: 100.0           # OSM の店舗・飲食 POI 1 件あたりの追加集中重み（人/日相当）。0 で無効。実験で 0→100 で CV Spearman 0.46→0.54
+  zone_cell_m: 150            # 発生・集中点を集約するグリッドサイズ（経路配分の計算量削減）
+  external:                   # 境界効果対策: bbox 外周 1km のメッシュ人口を「境界ノード」に載せる（外部ゾーン）
+    enabled: true
+    ring_km: 1.0
+    origin_factor: 0.35       # 外周メッシュ深夜人口×トリップ率のうち、対象エリアへ入ってくる割合（手置き）
+    dest_factor: 0.35
+
+# 経路配分
+assign:
+  highway_walkable:
+    - footway
+    - pedestrian
+    - path
+    - steps
+    - living_street
+    - residential
+    - unclassified
+    - tertiary
+    - tertiary_link
+    - secondary
+    - secondary_link
+    - primary
+    - primary_link
+    - service
+    - crossing
+    - corridor
+  exclude_tags:
+    highway: [motorway, motorway_link, trunk, trunk_link, cycleway, bus_guideway, raceway, construction, proposed]
+  penalty:                     # リンク長に掛ける係数（大きいほど避けられる、1未満は選好）
+    primary: 1.15
+    secondary: 1.10
+    service: 1.20
+    steps: 1.30
+    pedestrian: 0.75           # アーケード・歩行者専用道は強く選好（実験: 0.9→0.75 で CV Spearman 0.47→0.69）
+    default: 1.00
+
+  # 確率的配分の近似: リンクコストを対数正規ノイズで揺らして複数回 all-or-nothing → 平均（draw 0 は無摂動）
+  stochastic:                # 実験では摂動を入れると Spearman が下がった（0.52→0.36〜0.40）ため v0.1 は無効（draws: 1）
+    draws: 1
+    cost_sigma: 0.15
+    seed: 42
+
+# 較正
+calibrate:
+  site_match_max_m: 40         # 調査地点をリンクに紐付ける最大距離
+  exclude_site_kinds: [underground, entrance, plaza]   # 街路でない地点（地下街・入退場口・駅前広場階段）は較正から除外
+  half_distance_grid: [300, 450, 600, 900, 1300]
+  cv_blocks: area              # count_sites の block 列で空間ブロックCV
+  target_spearman: 0.6
+
+# 秘匿・表示
+disclosure:
+  min_value: 10                # この値未満の推定値は "—" として返す
+  confidence_distance_m: [150, 400, 900]   # 較正地点からの距離で high/mid/low
+
+# 簡易売上試算の既定値（あくまで仮置き。UI で必ずユーザーが上書きする前提）
+sales:
+  capture_rate: 0.02           # 入店率
+  spend_per_customer_yen: 1200 # 客単価
+  business_days_per_month: 26

@@ -1,0 +1,10 @@
+data/raw/
+data/interim/
+data/processed/
+!data/demo/
+.venv/
+__pycache__/
+*.pyc
+.ruff_cache/
+.pytest_cache/
+notebooks/.ipynb_checkpoints/
