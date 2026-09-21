@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #070b14;
+        font-family: "Helvetica Neue", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+        color: #eef4ff;
+        -webkit-font-smoothing: antialiased;
+      }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+
+      /* ---------- Backgrounds ---------- */
+      .bg { position: absolute; inset: 0; will-change: transform, opacity; }
+      .bg-base {
+        background: radial-gradient(ellipse at 70% 20%, #101a2e 0%, #070b14 55%, #030509 100%);
+      }
+      .bg-grid {
+        background-image:
+          linear-gradient(rgba(79,209,255,0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(79,209,255,0.06) 1px, transparent 1px);
+        background-size: 80px 80px;
+        opacity: 0.7;
+      }
+      .glow {
+        position: absolute; border-radius: 50%;
+        filter: blur(130px); opacity: 0.45;
+        will-change: transform, opacity;
+      }
+      .glow-a { width: 760px; height: 760px; background: #1f6fb3; top: -260px; right: -200px; }
+      .glow-b { width: 620px; height: 620px; background: #0e8f7a; bottom: -220px; left: -160px; }
+
+      /* ---------- Scene baseline ---------- */
+      .scene {
+        position: absolute; inset: 0;
+        display: flex; align-items: center; justify-content: center; flex-direction: column;
+        will-change: opacity, transform;
+      }
+      .eyebrow {
+        font-size: 28px; letter-spacing: 10px; color: #4fd1ff;
+        text-transform: uppercase; font-weight: 500;
+      }
+      .two-col {
+        width: 1720px; display: flex; align-items: center; gap: 64px;
+      }
+      .col-text { width: 800px; flex: none; }
+      .col-map { width: 856px; flex: none; }
+
+      /* ---------- Scene 1: Hook ---------- */
+      .hook-title {
+        font-size: 150px; font-weight: 800; line-height: 1.08;
+        letter-spacing: -2px; text-align: center; margin-top: 32px;
+        background: linear-gradient(180deg, #ffffff 0%, #9fdfff 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      .hook-sub {
+        font-size: 40px; margin-top: 40px; color: #9fb3cc; font-weight: 300;
+        letter-spacing: 2px; font-style: italic;
+      }
+      .hook-bar { width: 0; height: 4px; background: #4fd1ff; margin-top: 56px; }
+
+      /* ---------- Scene 2: Problem ---------- */
+      .problem-label { font-size: 26px; letter-spacing: 10px; color: #ff8a5b; margin-bottom: 36px; }
+      .problem-title {
+        font-size: 84px; font-weight: 700; line-height: 1.2; margin-bottom: 56px;
+      }
+      .problem-list { display: flex; flex-direction: column; gap: 26px; }
+      .problem-item {
+        font-size: 34px; color: #b9c8de; font-weight: 300; line-height: 1.5;
+        padding-left: 52px; position: relative; will-change: opacity, transform;
+      }
+      .problem-item::before {
+        content: ""; position: absolute; left: 0; top: 24px;
+        width: 30px; height: 4px; background: #ff8a5b;
+      }
+      .problem-item strong { color: #eef4ff; font-weight: 600; }
+
+      /* ---------- Map panel (shared by scenes 2 & 4) ---------- */
+      .map-panel {
+        width: 856px; height: 640px; position: relative;
+        border-radius: 28px;
+        background: rgba(8, 16, 30, 0.85);
+        border: 1px solid rgba(79,209,255,0.22);
+        box-shadow: 0 30px 80px rgba(0,0,0,0.45), inset 0 0 120px rgba(79,209,255,0.05);
+        overflow: hidden;
+        will-change: opacity, transform;
+      }
+      .map-panel svg { position: absolute; left: 0; top: 0; }
+      .map-head {
+        position: absolute; top: 24px; left: 32px;
+        font-size: 20px; letter-spacing: 6px; color: rgba(79,209,255,0.8);
+      }
+      .map-tag {
+        position: absolute;
+        font-size: 20px; letter-spacing: 4px; font-weight: 600;
+        padding: 8px 16px; border-radius: 8px;
+        will-change: opacity, transform;
+      }
+      .tag-stale { background: rgba(255,138,91,0.15); color: #ff8a5b; border: 1px solid rgba(255,138,91,0.6); }
+      .tag-real { background: rgba(255,255,255,0.06); color: #eef4ff; border: 1px dashed rgba(238,244,255,0.6); }
+      .tag-new { background: rgba(125,255,179,0.14); color: #7dffb3; border: 1px solid rgba(125,255,179,0.6); }
+      .tag-mem { background: rgba(79,209,255,0.12); color: #4fd1ff; border: 1px solid rgba(79,209,255,0.6); }
+
+      /* keyframe strip (scene 4) */
+      .kf-strip {
+        position: absolute; left: 32px; right: 32px; bottom: 24px;
+        display: flex; gap: 12px; align-items: center;
+      }
+      .kf-label { font-size: 18px; letter-spacing: 5px; color: rgba(238,244,255,0.6); margin-right: 8px; }
+      .kf {
+        width: 96px; height: 60px; border-radius: 8px; position: relative;
+        background: linear-gradient(135deg, rgba(79,209,255,0.25), rgba(79,209,255,0.06));
+        border: 1px solid rgba(79,209,255,0.4);
+        will-change: opacity, transform;
+      }
+      .kf-mask {
+        position: absolute; inset: 0; border-radius: 8px;
+        background: repeating-linear-gradient(135deg, rgba(255,138,91,0.55) 0 6px, transparent 6px 14px);
+        border: 1px solid #ff8a5b; opacity: 0;
+      }
+
+      /* ---------- Scene 3: Solution ---------- */
+      .solution-title {
+        font-size: 220px; font-weight: 800; line-height: 1; letter-spacing: -6px;
+        margin: 28px 0 32px; text-align: center;
+        background: linear-gradient(135deg, #ffffff 0%, #4fd1ff 55%, #7dffb3 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      .solution-full { font-size: 54px; font-weight: 600; letter-spacing: 2px; color: #eef4ff; }
+      .solution-sub { font-size: 30px; color: #9fb3cc; font-weight: 300; letter-spacing: 6px; margin-top: 36px; }
+
+      /* ---------- Scene 4: How ---------- */
+      .how-label { font-size: 26px; letter-spacing: 10px; color: #4fd1ff; margin-bottom: 32px; }
+      .how-title { font-size: 68px; font-weight: 700; line-height: 1.25; margin-bottom: 44px; }
+      .how-card {
+        background: rgba(238,244,255,0.04);
+        border: 1px solid rgba(79,209,255,0.25);
+        border-radius: 22px; padding: 32px 36px; margin-bottom: 22px;
+        will-change: opacity, transform;
+      }
+      .how-num { font-size: 22px; color: #4fd1ff; font-weight: 600; letter-spacing: 4px; margin-bottom: 12px; }
+      .how-h { font-size: 38px; font-weight: 700; margin-bottom: 12px; line-height: 1.2; }
+      .how-p { font-size: 25px; color: #b9c8de; line-height: 1.55; font-weight: 300; }
+
+      /* ---------- Scene 5: Results ---------- */
+      .res-wrap { width: 1600px; text-align: center; }
+      .res-title { font-size: 76px; font-weight: 700; line-height: 1.2; margin: 36px 0 72px; }
+      .res-row { display: flex; justify-content: center; align-items: stretch; gap: 96px; }
+      .res-item { text-align: center; will-change: opacity, transform; }
+      .res-big {
+        font-size: 176px; font-weight: 800; line-height: 1; letter-spacing: -4px;
+        background: linear-gradient(180deg, #ffffff 0%, #7dffb3 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      .res-label { font-size: 30px; color: #b9c8de; margin-top: 18px; letter-spacing: 3px; }
+      .res-divider { width: 2px; background: rgba(79,209,255,0.3); }
+      .res-foot { font-size: 26px; color: #7f93ad; margin-top: 72px; letter-spacing: 3px; font-weight: 300; }
+
+      /* ---------- Scene 6: Takeaway ---------- */
+      .cta-title {
+        font-size: 90px; font-weight: 800; line-height: 1.25; letter-spacing: -1px; text-align: center;
+        margin: 32px 0 56px;
+        background: linear-gradient(180deg, #ffffff 0%, #9fdfff 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      .cta-links { display: flex; gap: 28px; }
+      .cta-pill {
+        padding: 22px 44px; font-size: 28px; letter-spacing: 2px;
+        border-radius: 100px; border: 1px solid rgba(79,209,255,0.5);
+        color: #eef4ff; background: rgba(79,209,255,0.08);
+        will-change: transform, opacity;
+      }
+      .cta-pill.primary { background: #4fd1ff; color: #070b14; font-weight: 600; border-color: #4fd1ff; }
+      .cta-credit { font-size: 24px; color: #7f93ad; margin-top: 48px; letter-spacing: 4px; font-weight: 300; }
+
+      /* ---------- Persistent ---------- */
+      .brand {
+        position: absolute; bottom: 48px; left: 64px;
+        font-size: 22px; letter-spacing: 8px; color: rgba(79,209,255,0.7);
+      }
+      .progress {
+        position: absolute; bottom: 0; left: 0; height: 6px;
+        background: linear-gradient(90deg, #4fd1ff, #7dffb3);
+        width: 0%;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="60"
+      data-width="1920"
+      data-height="1080"
+    >
+      <!-- Persistent backgrounds -->
+      <div class="bg bg-base clip" id="bgBase" data-start="0" data-duration="60" data-track-index="0"></div>
+      <div class="bg bg-grid clip" id="bgGrid" data-start="0" data-duration="60" data-track-index="1"></div>
+      <div class="glow glow-a clip" id="glowA" data-start="0" data-duration="60" data-track-index="2"></div>
+      <div class="glow glow-b clip" id="glowB" data-start="0" data-duration="60" data-track-index="3"></div>
+
+      <!-- Scene 1: Hook (0–8s) -->
+      <div class="scene clip" id="scene1" data-start="0" data-duration="8" data-track-index="10">
+        <div class="eyebrow" id="s1Eyebrow">CVPR 2026 · 3DGS-SLAM</div>
+        <div class="hook-title" id="s1Title">地図は正確でも、<br/>間違っていることがある。</div>
+        <div class="hook-sub" id="s1Sub">A robot's map can be accurate — and still be wrong.</div>
+        <div class="hook-bar" id="s1Bar"></div>
+      </div>
+
+      <!-- Scene 2: Problem (8–20s) -->
+      <div class="scene clip" id="scene2" data-start="8" data-duration="12" data-track-index="10">
+        <div class="two-col">
+          <div class="col-text">
+            <div class="problem-label" id="s2Label">— PROBLEM</div>
+            <div class="problem-title" id="s2Title">カメラの外で、<br/>世界は変わる。</div>
+            <div class="problem-list">
+              <div class="problem-item" id="s2I1">従来の 3DGS-SLAM は、<strong>古い観測を正しい制約</strong>として扱い続ける</div>
+              <div class="problem-item" id="s2I2">視野内の動き（短期）は研究が進んだ</div>
+              <div class="problem-item" id="s2I3"><strong>視野外の変化（長期）</strong>は、ほぼ手つかず</div>
+            </div>
+          </div>
+          <div class="col-map">
+            <div class="map-panel" id="map2">
+              <svg id="svg2" width="856" height="640" viewBox="0 0 856 640"></svg>
+              <div class="map-head">GAUSSIAN MAP · MEMORY</div>
+              <div class="map-tag tag-mem" id="m2TagMem" style="left:120px; top:300px;">MAP</div>
+              <div class="map-tag tag-stale" id="m2TagStale" style="left:120px; top:300px;">STALE</div>
+              <div class="map-tag tag-real" id="m2TagReal" style="left:596px; top:280px;">REALITY</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 3: Solution (20–28s) -->
+      <div class="scene clip" id="scene3" data-start="20" data-duration="8" data-track-index="10">
+        <div class="eyebrow" id="s3Eyebrow">— Solution</div>
+        <div class="solution-title" id="s3Title">GaME</div>
+        <div class="solution-full" id="s3Full">Gaussian Mapping for Evolving Scenes</div>
+        <div class="solution-sub" id="s3Sub">University of Amsterdam × MIT · CVPR 2026</div>
+      </div>
+
+      <!-- Scene 4: How it works (28–44s) -->
+      <div class="scene clip" id="scene4" data-start="28" data-duration="16" data-track-index="10">
+        <div class="two-col">
+          <div class="col-text">
+            <div class="how-label" id="s4Label">— HOW IT WORKS</div>
+            <div class="how-title" id="s4Title">古い記憶を、<br/>忘れられる地図へ。</div>
+            <div class="how-card" id="s4C1">
+              <div class="how-num">01 · DYNAMIC SCENE ADAPTATION</div>
+              <div class="how-h">新しい幾何を統合し、古い幾何を削除</div>
+              <div class="how-p">新観測をまず取り込み、共可視キーフレームを使って矛盾する Gaussian を地図から取り除く。</div>
+            </div>
+            <div class="how-card" id="s4C2">
+              <div class="how-num">02 · KEYFRAME MANAGEMENT</div>
+              <div class="how-h">古い観測を捨て、情報は残す</div>
+              <div class="how-p">変化した領域だけをマスクして最適化から外し、まだ正しい部分の情報は最大限保持する。</div>
+            </div>
+          </div>
+          <div class="col-map">
+            <div class="map-panel" id="map4">
+              <svg id="svg4" width="856" height="640" viewBox="0 0 856 640"></svg>
+              <div class="map-head">GAUSSIAN MAP · UPDATING</div>
+              <div class="map-tag tag-stale" id="m4TagStale" style="left:120px; top:300px;">STALE</div>
+              <div class="map-tag tag-stale" id="m4TagRemove" style="left:120px; top:300px;">REMOVED</div>
+              <div class="map-tag tag-new" id="m4TagNew" style="left:590px; top:280px;">INTEGRATED</div>
+              <div class="kf-strip" id="m4Kf">
+                <div class="kf-label">KEYFRAMES</div>
+                <div class="kf" id="kf1"><div class="kf-mask" id="kfm1"></div></div>
+                <div class="kf" id="kf2"><div class="kf-mask" id="kfm2"></div></div>
+                <div class="kf" id="kf3"><div class="kf-mask" id="kfm3"></div></div>
+                <div class="kf" id="kf4"><div class="kf-mask" id="kfm4"></div></div>
+                <div class="kf" id="kf5"><div class="kf-mask" id="kfm5"></div></div>
+                <div class="kf" id="kf6"><div class="kf-mask" id="kfm6"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scene 5: Results (44–53s) -->
+      <div class="scene clip" id="scene5" data-start="44" data-duration="9" data-track-index="10">
+        <div class="res-wrap">
+          <div class="eyebrow" id="s5Eyebrow">— Results</div>
+          <div class="res-title" id="s5Title">合成・実世界データセットの両方で、<br/>最有力ベースラインを上回る。</div>
+          <div class="res-row">
+            <div class="res-item" id="s5A">
+              <div class="res-big">+29.7<span style="font-size:96px">%</span></div>
+              <div class="res-label">PSNR 向上</div>
+            </div>
+            <div class="res-divider"></div>
+            <div class="res-item" id="s5B">
+              <div class="res-big">3<span style="font-size:96px">×</span></div>
+              <div class="res-label">L1 深度誤差 改善</div>
+            </div>
+          </div>
+          <div class="res-foot" id="s5Foot">vs. SplaTAM · DG-SLAM · MonoGS　｜　Flat（合成）· Aria（実世界）</div>
+        </div>
+      </div>
+
+      <!-- Scene 6: Takeaway (53–60s) -->
+      <div class="scene clip" id="scene6" data-start="53" data-duration="7" data-track-index="10">
+        <div class="eyebrow" id="s6Eyebrow">Takeaway</div>
+        <div class="cta-title" id="s6Title">完璧な静的地図はいらない。<br/>自分の記憶が古いと気づける地図がいる。</div>
+        <div class="cta-links">
+          <div class="cta-pill primary" id="s6L1">vladimiryugay.github.io/game</div>
+          <div class="cta-pill" id="s6L2">arXiv 2506.06909</div>
+          <div class="cta-pill" id="s6L3">github.com/VladimirYugay/GaME</div>
+        </div>
+        <div class="cta-credit" id="s6Credit">Yugay · Kersten · Carlone · Gevers · Oswald · Schmid</div>
+      </div>
+
+      <!-- Persistent brand + progress -->
+      <div class="brand clip" id="brand" data-start="0" data-duration="60" data-track-index="20">GaME · GAUSSIAN MAPPING FOR EVOLVING SCENES</div>
+      <div class="progress clip" id="progress" data-start="0" data-duration="60" data-track-index="21"></div>
+    </div>
+
+    <script>
+      // ---------------------------------------------------------------
+      // Deterministic Gaussian-splat map builder (seeded LCG, no Math.random)
+      // ---------------------------------------------------------------
+      const SVG_NS = "http://www.w3.org/2000/svg";
+
+      function lcg(seed) {
+        let s = seed >>> 0;
+        return function () {
+          s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+          return s / 4294967296;
+        };
+      }
+
+      function el(tag, attrs, parent) {
+        const n = document.createElementNS(SVG_NS, tag);
+        for (const k in attrs) n.setAttribute(k, attrs[k]);
+        if (parent) parent.appendChild(n);
+        return n;
+      }
+
+      function gradient(defs, id, color, inner) {
+        const g = el("radialGradient", { id }, defs);
+        el("stop", { offset: "0%", "stop-color": color, "stop-opacity": inner }, g);
+        el("stop", { offset: "55%", "stop-color": color, "stop-opacity": inner * 0.45 }, g);
+        el("stop", { offset: "100%", "stop-color": color, "stop-opacity": 0 }, g);
+      }
+
+      function splat(parent, x, y, rx, ry, rot, fill, opacity) {
+        return el("ellipse", {
+          cx: x, cy: y, rx, ry,
+          transform: `rotate(${rot} ${x} ${y})`,
+          fill: `url(#${fill})`, opacity,
+        }, parent);
+      }
+
+      // A cluster of splats approximating a small object (chair-like blob)
+      function cluster(parent, cx, cy, rnd, fill, count, spread, opacity) {
+        const g = el("g", {}, parent);
+        for (let i = 0; i < count; i++) {
+          const a = rnd() * Math.PI * 2;
+          const r = Math.sqrt(rnd()) * spread;
+          const x = cx + Math.cos(a) * r;
+          const y = cy + Math.sin(a) * r * 0.75;
+          const rx = 12 + rnd() * 16;
+          const ry = 7 + rnd() * 10;
+          splat(g, x, y, rx, ry, rnd() * 180, fill, opacity * (0.6 + rnd() * 0.4));
+        }
+        return g;
+      }
+
+      // Dashed outline of a chair (ground truth position in the world)
+      function chairOutline(parent, cx, cy) {
+        const g = el("g", {
+          fill: "none", stroke: "#eef4ff", "stroke-width": 2.5,
+          "stroke-dasharray": "8 8", "stroke-linecap": "round", "stroke-linejoin": "round",
+        }, parent);
+        // seat
+        el("rect", { x: cx - 44, y: cy - 8, width: 88, height: 18, rx: 6 }, g);
+        // back
+        el("rect", { x: cx - 44, y: cy - 78, width: 20, height: 74, rx: 6 }, g);
+        // legs
+        el("line", { x1: cx - 36, y1: cy + 10, x2: cx - 36, y2: cy + 44 }, g);
+        el("line", { x1: cx + 36, y1: cy + 10, x2: cx + 36, y2: cy + 44 }, g);
+        return g;
+      }
+
+      // Camera icon with FOV wedge; rotates around (cx, cy)
+      function camera(parent, cx, cy) {
+        const g = el("g", { "data-layout-allow-overflow": "" }, parent);
+        const wedge = el("path", {
+          d: `M ${cx} ${cy} L ${cx - 260} ${cy - 420} A 500 500 0 0 1 ${cx + 260} ${cy - 420} Z`,
+          fill: "url(#gWedge)", opacity: 0.9,
+        }, g);
+        el("circle", { cx, cy, r: 16, fill: "#eef4ff" }, g);
+        el("circle", { cx, cy, r: 7, fill: "#070b14" }, g);
+        return { g, wedge };
+      }
+
+      function buildMap(svgId, seed) {
+        const svg = document.getElementById(svgId);
+        const rnd = lcg(seed);
+        const defs = el("defs", {}, svg);
+        gradient(defs, "gCyan" + seed, "#4fd1ff", 0.9);
+        gradient(defs, "gDim" + seed, "#4fd1ff", 0.45);
+        gradient(defs, "gAmber" + seed, "#ff8a5b", 0.95);
+        gradient(defs, "gMint" + seed, "#7dffb3", 0.95);
+        if (!document.getElementById("gWedge")) {
+          const lg = el("linearGradient", { id: "gWedge", x1: "0", y1: "1", x2: "0", y2: "0" }, defs);
+          el("stop", { offset: "0%", "stop-color": "#4fd1ff", "stop-opacity": 0.28 }, lg);
+          el("stop", { offset: "100%", "stop-color": "#4fd1ff", "stop-opacity": 0 }, lg);
+        }
+
+        // Back wall (sparse, dim)
+        const wall = el("g", {}, svg);
+        for (let i = 0; i < 70; i++) {
+          const x = 40 + rnd() * 776;
+          const y = 70 + rnd() * 200;
+          splat(wall, x, y, 14 + rnd() * 14, 10 + rnd() * 10, rnd() * 180, "gDim" + seed, 0.35 + rnd() * 0.25);
+        }
+        // Floor (denser, flattened ellipses)
+        const floor = el("g", {}, svg);
+        for (let row = 0; row < 7; row++) {
+          for (let col = 0; col < 12; col++) {
+            const x = 60 + col * 66 + (rnd() - 0.5) * 40;
+            const y = 300 + row * 40 + (rnd() - 0.5) * 22;
+            splat(floor, x, y, 22 + rnd() * 16, 7 + rnd() * 6, (rnd() - 0.5) * 30, "gDim" + seed, 0.45 + rnd() * 0.3);
+          }
+        }
+        // Static table in the middle (never changes; correct memory)
+        const table = el("g", {}, svg);
+        for (let i = 0; i < 16; i++) {
+          const x = 350 + rnd() * 160;
+          const y = 300 + rnd() * 30;
+          splat(table, x, y, 18 + rnd() * 14, 8 + rnd() * 6, (rnd() - 0.5) * 20, "gCyan" + seed, 0.7 + rnd() * 0.3);
+        }
+        el("line", { x1: 372, y1: 330, x2: 372, y2: 400, stroke: "#4fd1ff", "stroke-width": 3, opacity: 0.6 }, table);
+        el("line", { x1: 488, y1: 330, x2: 488, y2: 400, stroke: "#4fd1ff", "stroke-width": 3, opacity: 0.6 }, table);
+
+        // Chair as remembered by the map (position A, left)
+        const chairA = cluster(svg, 175, 385, rnd, "gCyan" + seed, 34, 62, 1);
+        // Same chair, rendered as stale/outdated (amber) — overlaid on A
+        const chairAStale = cluster(svg, 175, 385, lcg(seed + 7), "gAmber" + seed, 34, 62, 1);
+        // Chair's true new position (B, right), dashed outline
+        const realB = chairOutline(svg, 640, 380);
+        // Newly integrated Gaussians at B (mint)
+        const chairB = cluster(svg, 640, 372, lcg(seed + 13), "gMint" + seed, 34, 62, 1);
+
+        const cam = camera(svg, 428, 600);
+        // Vignette-ish fade at the bottom edge for depth
+        return { chairA, chairAStale, realB, chairB, cam: cam.g };
+      }
+
+      const m2 = buildMap("svg2", 1337);
+      const m4 = buildMap("svg4", 4242);
+
+      // Initial states
+      gsap.set([m2.chairAStale, m2.realB, m2.chairB], { opacity: 0 });
+      gsap.set(m2.cam, { rotation: -32, transformOrigin: "428px 600px" });
+      gsap.set(["#m2TagStale", "#m2TagReal"], { opacity: 0 });
+
+      gsap.set(m4.chairA, { opacity: 0 });
+      gsap.set(m4.chairB, { opacity: 0, scale: 0.4, transformOrigin: "640px 372px" });
+      gsap.set(m4.cam, { rotation: 28, transformOrigin: "428px 600px" });
+      gsap.set(["#m4TagRemove", "#m4TagNew"], { opacity: 0 });
+
+      // ---------------------------------------------------------------
+      // Timeline
+      // ---------------------------------------------------------------
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+
+      // Persistent
+      tl.to("#progress", { width: "100%", duration: 60, ease: "none" }, 0);
+      tl.to("#bgGrid", { backgroundPosition: "320px 320px", duration: 60, ease: "none" }, 0);
+      tl.to("#glowA", { x: -240, y: 160, duration: 60, ease: "sine.inOut" }, 0);
+      tl.to("#glowB", { x: 200, y: -140, duration: 60, ease: "sine.inOut" }, 0);
+
+      // ===== Scene 1: Hook (0–8) =====
+      tl.from("#s1Eyebrow", { opacity: 0, y: 20, duration: 0.8 }, 0.3);
+      tl.from("#s1Title", { opacity: 0, y: 60, duration: 1.2 }, 0.6);
+      tl.from("#s1Sub", { opacity: 0, y: 24, duration: 0.9 }, 1.6);
+      tl.to("#s1Bar", { width: 320, duration: 0.9, ease: "expo.out" }, 2.0);
+      tl.to("#scene1", { opacity: 0, y: -40, duration: 0.8, ease: "power2.in" }, 7.2);
+      tl.set("#scene1", { opacity: 0 }, 8.0);
+
+      // ===== Scene 2: Problem (8–20) =====
+      tl.from("#s2Label", { opacity: 0, x: -40, duration: 0.7 }, 8.2);
+      tl.from("#s2Title", { opacity: 0, y: 40, duration: 0.9 }, 8.4);
+      tl.from("#map2", { opacity: 0, x: 60, duration: 1.0 }, 8.6);
+      // camera looks at chair A (memory formed)
+      tl.from("#m2TagMem", { opacity: 0, y: 10, duration: 0.5 }, 9.6);
+      // camera turns away from A
+      tl.to(m2.cam, { rotation: 30, duration: 1.6, ease: "power2.inOut" }, 10.6);
+      // ...while it looks away, the real chair moves to B
+      tl.to(m2.realB, { opacity: 1, duration: 0.6 }, 11.8);
+      tl.from(m2.realB, { x: -465, duration: 1.4, ease: "power2.inOut" }, 11.8);
+      tl.to("#m2TagReal", { opacity: 1, duration: 0.5 }, 12.6);
+      // the map still remembers A -> stale
+      tl.to("#m2TagMem", { opacity: 0, duration: 0.4 }, 13.4);
+      tl.to(m2.chairAStale, { opacity: 1, duration: 0.8 }, 13.4);
+      tl.to(m2.chairA, { opacity: 0.15, duration: 0.8 }, 13.4);
+      tl.to("#m2TagStale", { opacity: 1, duration: 0.5 }, 13.6);
+      tl.to("#m2TagStale", { scale: 1.06, duration: 0.5, ease: "sine.inOut", yoyo: true, repeat: 5 }, 14.1);
+      // bullets
+      tl.from("#s2I1", { opacity: 0, x: -50, duration: 0.7 }, 10.0);
+      tl.from("#s2I2", { opacity: 0, x: -50, duration: 0.7 }, 12.2);
+      tl.from("#s2I3", { opacity: 0, x: -50, duration: 0.7 }, 14.4);
+      tl.to("#scene2", { opacity: 0, y: -40, duration: 0.8, ease: "power2.in" }, 19.2);
+      tl.set("#scene2", { opacity: 0 }, 20.0);
+
+      // ===== Scene 3: Solution (20–28) =====
+      tl.from("#s3Eyebrow", { opacity: 0, y: 20, duration: 0.7 }, 20.2);
+      tl.from("#s3Title", { opacity: 0, scale: 0.85, duration: 1.1, ease: "back.out(1.4)" }, 20.5);
+      tl.from("#s3Full", { opacity: 0, y: 24, duration: 0.8 }, 21.5);
+      tl.from("#s3Sub", { opacity: 0, y: 20, duration: 0.8 }, 22.2);
+      tl.to("#scene3", { opacity: 0, y: -40, duration: 0.8, ease: "power2.in" }, 27.2);
+      tl.set("#scene3", { opacity: 0 }, 28.0);
+
+      // ===== Scene 4: How (28–44) =====
+      tl.from("#s4Label", { opacity: 0, x: -40, duration: 0.7 }, 28.2);
+      tl.from("#s4Title", { opacity: 0, y: 40, duration: 0.9 }, 28.4);
+      tl.from("#map4", { opacity: 0, x: 60, duration: 1.0 }, 28.6);
+      tl.from("#m4Kf", { opacity: 0, y: 20, duration: 0.8 }, 29.4);
+      // 01: camera revisits B -> integrate new geometry
+      tl.from("#s4C1", { opacity: 0, y: 50, duration: 0.9 }, 30.0);
+      tl.to(m4.cam, { rotation: 32, duration: 1.0, ease: "power2.inOut" }, 30.4);
+      tl.to(m4.chairB, { opacity: 1, scale: 1, duration: 1.2, ease: "back.out(1.6)" }, 31.2);
+      tl.to("#m4TagNew", { opacity: 1, duration: 0.5 }, 31.8);
+      tl.to(m4.realB, { opacity: 0.35, duration: 0.8 }, 32.4);
+      // 02: keyframe management -> mask stale keyframes that saw A
+      tl.from("#s4C2", { opacity: 0, y: 50, duration: 0.9 }, 33.6);
+      tl.to("#kfm1", { opacity: 1, duration: 0.35 }, 34.4);
+      tl.to("#kfm2", { opacity: 1, duration: 0.35 }, 34.7);
+      tl.to("#kfm4", { opacity: 1, duration: 0.35 }, 35.0);
+      // remove outdated Gaussians at A
+      tl.to("#m4TagStale", { opacity: 0, duration: 0.3 }, 35.8);
+      tl.to("#m4TagRemove", { opacity: 1, duration: 0.4 }, 35.9);
+      tl.to(m4.chairAStale, { opacity: 0, scale: 0.2, duration: 1.4, ease: "power3.in", transformOrigin: "175px 385px" }, 36.2);
+      tl.to("#m4TagRemove", { opacity: 0, y: -12, duration: 0.8 }, 38.0);
+      // map now consistent: masked keyframes fade out, new keyframe appears
+      tl.to(["#kf1", "#kf2", "#kf4"], { opacity: 0.25, duration: 0.6 }, 38.6);
+      tl.to("#scene4", { opacity: 0, y: -40, duration: 0.8, ease: "power2.in" }, 43.2);
+      tl.set("#scene4", { opacity: 0 }, 44.0);
+
+      // ===== Scene 5: Results (44–53) =====
+      tl.from("#s5Eyebrow", { opacity: 0, y: 20, duration: 0.6 }, 44.2);
+      tl.from("#s5Title", { opacity: 0, y: 30, duration: 0.8 }, 44.4);
+      tl.from("#s5A", { opacity: 0, y: 50, scale: 0.9, duration: 0.9, ease: "back.out(1.4)" }, 45.4);
+      tl.from("#s5B", { opacity: 0, y: 50, scale: 0.9, duration: 0.9, ease: "back.out(1.4)" }, 46.0);
+      tl.from("#s5Foot", { opacity: 0, y: 16, duration: 0.7 }, 46.8);
+      tl.to("#scene5", { opacity: 0, y: -40, duration: 0.8, ease: "power2.in" }, 52.2);
+      tl.set("#scene5", { opacity: 0 }, 53.0);
+
+      // ===== Scene 6: Takeaway (53–60) =====
+      tl.from("#s6Eyebrow", { opacity: 0, y: 20, duration: 0.6 }, 53.2);
+      tl.from("#s6Title", { opacity: 0, y: 50, duration: 1.0 }, 53.5);
+      tl.from("#s6L1", { opacity: 0, scale: 0.85, duration: 0.7, ease: "back.out(1.6)" }, 54.8);
+      tl.from("#s6L2", { opacity: 0, y: 20, duration: 0.6 }, 55.1);
+      tl.from("#s6L3", { opacity: 0, y: 20, duration: 0.6 }, 55.4);
+      tl.from("#s6Credit", { opacity: 0, duration: 0.8 }, 56.0);
+      tl.to("#s6L1", { scale: 1.04, duration: 0.6, ease: "sine.inOut", yoyo: true, repeat: 3 }, 56.6);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
