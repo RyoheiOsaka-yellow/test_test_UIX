@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Orion Serving Floor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap">
+</head>
+<body>
+<style>
+  :root {
+    color-scheme: light;
+    --ground: #e9ebef;
+    --frame: #f4f5f8;
+    --panel: #ffffff;
+    --ink: #1d2b45;
+    --ink-2: #3a4a6a;
+    --muted: #7a889f;
+    --faint: #b9c3d3;
+    --line: #2a3a5a;
+    --line-soft: #c8d0dd;
+    --line-faint: #e3e8f0;
+    --blue: #2f5fc4;
+    --navy: #22458f;
+    --blue-2: #4f7fd8;
+    --blue-3: #a9bde5;
+    --blue-4: #dfe7f5;
+    --teal: #2fb8c8;
+    --teal-2: #7fd6df;
+    --orange: #d9924a;
+    --orange-2: #c96e2a;
+    --red: #c9432f;
+    --green: #2f9e6e;
+    --slate: #5f6f8c;
+    --disp: "Space Mono", "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --mono: "IBM Plex Mono", "Space Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--mono); font-size: 10px; line-height: 1.4;
+    padding-block: 18px; padding-inline: 16px;
+    font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
+  }
+  .fit { width: 1200px; max-width: 100%; margin: 0 auto; position: relative; }
+  .fit .board { transform-origin: top left; }
+  .board {
+    width: 1200px; background: var(--frame); border: 1.5px solid var(--line); border-radius: 24px;
+    padding: 10px; display: grid; gap: 9px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.8) inset;
+  }
+  .u { text-transform: uppercase; letter-spacing: 0.1em; }
+  .lbl { font-size: 8.5px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--muted); font-weight: 500; }
+  .panel { border: 1.2px solid var(--line); background: var(--panel); position: relative; }
+  .ptitle { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 9px 12px 4px; }
+  .ptitle h2 { margin: 0; font-family: var(--disp); font-size: 12.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; line-height: 1.3; }
+  .ptitle h2 em { font-style: normal; color: var(--blue); }
+  .ptitle .sub { display: block; font-family: var(--mono); font-size: 8.5px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; border: 1.2px solid currentColor; padding: 3px 9px;
+    font-family: var(--disp); font-size: 9.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap; background: var(--panel);
+  }
+  .chip.blue { color: var(--blue); }
+  .chip.green { color: var(--green); }
+  .chip.red { color: var(--red); }
+  .chip.ink { color: var(--ink); }
+  .chip .dot { width: 6px; height: 6px; background: #e8b5a8; display: inline-block; }
+
+  /* header */
+  .top { display: grid; grid-template-columns: 50px 1fr auto; border: 1.2px solid var(--line); background: var(--panel); }
+  .top .mark { background: var(--blue); color: #fff; display: grid; place-items: center; font-size: 18px; border-right: 1.2px solid var(--line); }
+  .top .brand { padding: 8px 14px 7px; border-right: 1.2px solid var(--line); }
+  .top h1 { margin: 0; font-family: var(--disp); font-size: 22px; font-weight: 700; letter-spacing: 0.01em; line-height: 1.15; }
+  .top h1 span { color: var(--blue); }
+  .top .tag { margin: 3px 0 0; font-size: 8.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .top .kpis { display: flex; align-items: stretch; }
+  .kpi { padding: 8px 14px 6px; display: grid; align-content: start; gap: 2px; }
+  .kpi b { font-family: var(--disp); font-size: 15px; font-weight: 700; letter-spacing: 0.02em; }
+  .kpi b.blue { color: var(--blue); } .kpi b.green { color: var(--green); }
+  .kpi canvas { width: 100px; height: 30px; display: block; }
+  .kpi.clock { padding-right: 16px; justify-items: end; }
+  .kpi.clock b { font-size: 21px; }
+  .kpi.clock .t0 { color: var(--green); border: 1px solid var(--green); font-size: 8.5px; font-weight: 700; padding: 1px 6px; letter-spacing: 0.08em; }
+
+  /* stages */
+  .stages { display: flex; align-items: center; border: 1.2px solid var(--line); background: var(--panel); padding: 5px 12px; font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .stages .runid { display: flex; gap: 12px; padding-right: 16px; margin-right: 8px; border-right: 1px solid var(--line-soft); }
+  .stages .runid b { color: var(--ink); font-weight: 700; }
+  .stages ol { list-style: none; margin: 0; padding: 0; display: flex; flex: 1; align-items: center; }
+  .stages li { display: flex; align-items: center; flex: 1; gap: 8px; }
+  .stages li span { padding: 3px 10px; white-space: nowrap; font-weight: 700; color: var(--faint); }
+  .stages li::after { content: ""; flex: 1; border-top: 1.5px dashed var(--line-faint); }
+  .stages li:last-child::after { display: none; }
+  .stages li:last-child { flex: 0; }
+  .stages li.done span { color: var(--ink); }
+  .stages li.done::after { border-color: var(--blue); border-top-width: 2px; border-top-style: dashed; }
+  .stages li.now span { background: var(--blue); color: #fff; }
+
+  /* crew */
+  .crew { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; padding: 6px 12px 6px; }
+  .agent { border: 1.2px solid var(--line-soft); background: var(--panel); padding: 7px 8px 6px; display: grid; gap: 4px; }
+  .agent.run { border-color: var(--teal); border-width: 1.5px; background: #eaf8fa; box-shadow: 0 0 0 1px #d7f0f3; }
+  .agent.hold { border-color: var(--orange-2); }
+  .agent .ah { display: flex; justify-content: space-between; align-items: center; }
+  .agent .name { font-family: var(--disp); font-weight: 700; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; display: flex; align-items: center; gap: 5px; }
+  .agent .name i { width: 6px; height: 6px; border-radius: 50%; background: var(--faint); display: inline-block; }
+  .agent.run .name i { background: var(--teal); }
+  .agent.hold .name i { background: var(--red); }
+  .agent .st { font-size: 7.5px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; color: var(--faint); }
+  .agent.run .st { color: var(--teal); } .agent.hold .st { color: var(--red); }
+  .agent .line { font-size: 8px; color: var(--muted); letter-spacing: 0.02em; }
+  .agent .body { display: grid; grid-template-columns: 38px 1fr; gap: 6px; align-items: center; margin-top: 2px; }
+  .agent .gauge { position: relative; width: 38px; height: 38px; }
+  .agent .gauge svg { width: 38px; height: 38px; display: block; }
+  .agent .gauge b { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--disp); font-size: 11px; font-weight: 700; }
+  .agent .bars { display: flex; align-items: flex-end; gap: 2px; height: 36px; }
+  .agent .bars i { flex: 1; min-height: 2px; background: var(--c); opacity: 0.55; }
+  .agent .bars i.hi { opacity: 1; }
+  .agent .q { display: grid; grid-template-columns: 26px 1fr auto; gap: 6px; align-items: center; margin-top: 4px; }
+  .agent .q .lbl { font-size: 7px; }
+  .agent .q .dots { height: 4px; background: repeating-linear-gradient(90deg, var(--c) 0 3px, transparent 3px 5px); background-size: var(--w) 100%; background-repeat: no-repeat; position: relative; }
+  .agent .q .dots::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, var(--line-faint) 0 3px, transparent 3px 5px); z-index: -1; }
+  .agent .q b { font-family: var(--disp); font-size: 9px; font-weight: 700; }
+  .agent .po { font-size: 7px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
+  .crewfoot { display: flex; justify-content: space-between; padding: 2px 12px 8px; font-size: 7.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); font-weight: 500; }
+
+  /* lattice */
+  .lattice .stage { position: relative; height: 440px; overflow: hidden; background: #fff; }
+  .lattice canvas.bg, .lattice canvas.gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .ann { position: absolute; font-size: 8.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); pointer-events: none; font-weight: 500; }
+  .ann.box { border: 1.2px solid var(--line); background: var(--panel); padding: 7px 12px 6px 12px; min-width: 120px; }
+  .ann.box::before { content: ""; position: absolute; left: -4px; top: -4px; width: 7px; height: 7px; background: var(--blue); }
+  .ann.box .lbl { font-size: 7.5px; }
+  .ann.box b { display: block; font-family: var(--disp); font-size: 14px; font-weight: 700; color: var(--blue); margin-top: 2px; letter-spacing: 0.04em; }
+  .ann.box b.teal { color: var(--teal); }
+  .ann.box .bar { height: 2px; background: var(--blue); margin-top: 6px; width: 100%; }
+  .ann.box .bar.teal { background: var(--teal); }
+  .ann.form { border: 1.2px solid var(--blue); background: var(--panel); padding: 7px 10px; }
+  .ann.form b { display: block; font-family: var(--disp); font-size: 9.5px; font-weight: 700; color: var(--blue); margin-bottom: 2px; }
+  .ann.note { color: var(--ink); font-weight: 700; font-size: 8.5px; line-height: 1.35; }
+  .ann.tiny { color: var(--faint); font-size: 7.5px; letter-spacing: 0.14em; }
+  .ann.tiny.teal { color: var(--teal); }
+  .legend { position: absolute; left: 12px; top: 14px; display: grid; gap: 5px; font-size: 8px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; color: var(--ink); }
+  .legend .lbl { margin-bottom: 4px; font-weight: 500; }
+  .legend span { display: flex; align-items: center; gap: 7px; }
+  .legend span i { width: 8px; height: 8px; display: inline-block; }
+  .lattice .cap { position: absolute; left: 12px; right: 12px; bottom: 8px; display: flex; justify-content: space-between; font-size: 7.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); font-weight: 500; pointer-events: none; }
+  .lattice .cap b { color: var(--blue); font-weight: 700; }
+  .lattice .strip { display: grid; grid-template-columns: repeat(6, 1fr); border-top: 1.2px solid var(--line); }
+  .lattice .strip div { padding: 6px 12px 7px; border-left: 1px solid var(--line-soft); }
+  .lattice .strip div:first-child { border-left: 0; }
+  .lattice .strip .lbl { font-size: 7.5px; }
+  .lattice .strip b { display: block; font-family: var(--disp); font-size: 13px; font-weight: 700; margin-top: 1px; }
+  .lattice .strip b.blue { color: var(--blue); }
+
+  /* row 3 */
+  .row3 { display: grid; grid-template-columns: 1.02fr 1fr 1fr; gap: 9px; }
+  .pbody { padding: 4px 12px 8px; }
+  .pfoot { display: flex; justify-content: space-between; padding: 4px 12px 8px; font-size: 7.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); font-weight: 500; }
+  .pfoot .red { color: var(--red); font-weight: 700; }
+  .pfoot .teal { color: var(--teal); font-weight: 700; }
+  .pgrid { display: grid; grid-template-columns: repeat(26, 1fr); gap: 2px; }
+  .pgrid i { display: block; aspect-ratio: 1; background: var(--blue-4); }
+  .pgrid i.rent { background: transparent; border: 1px dashed var(--orange); }
+  .pbar { height: 5px; background: var(--line-faint); margin-top: 8px; position: relative; }
+  .pbar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--blue); }
+  .pbar em { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--red); }
+
+  .spec { display: grid; grid-template-columns: 1fr 88px; gap: 12px; align-items: center; }
+  .specrows { display: grid; gap: 5px; }
+  .srow { display: grid; grid-template-columns: 1fr 1fr 1fr 0.9fr 0.9fr 18px; gap: 4px; align-items: center; height: 15px; }
+  .srow i { display: block; height: 100%; background: var(--c); }
+  .srow i.d { background: transparent; border: 1px dashed var(--orange); }
+  .srow i.m { position: relative; }
+  .srow i.m::after { content: ""; position: absolute; right: -5px; top: 50%; width: 6px; height: 6px; margin-top: -3px; background: var(--ink); border-radius: 50%; }
+  .srow small { font-size: 7.5px; font-weight: 700; color: var(--muted); text-align: right; }
+  .donut { position: relative; width: 88px; height: 88px; }
+  .donut svg { width: 88px; height: 88px; display: block; }
+  .donut .c { position: absolute; inset: 0; display: grid; place-items: center; }
+  .donut .c b { font-family: var(--disp); font-size: 17px; font-weight: 700; color: var(--ink); position: relative; }
+  .donut .c b::before { content: "≡"; position: absolute; left: -9px; top: -2px; font-size: 7px; color: var(--muted); }
+  .donut .dl { position: absolute; left: 0; right: 0; bottom: -12px; text-align: center; font-size: 7px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; color: var(--ink-2); }
+
+  .knee svg { width: 100%; height: 132px; display: block; overflow: visible; }
+
+  /* row 4 */
+  .row4 { display: grid; grid-template-columns: 2.52fr 1fr; gap: 9px; }
+  .trace .tl { display: flex; justify-content: flex-end; gap: 14px; padding: 0 12px 5px; font-size: 7.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin-top: 0; }
+  .trace .tl span { display: flex; align-items: center; gap: 5px; }
+  .trace .tl i { width: 7px; height: 7px; display: inline-block; }
+  .trace .tl .stall { color: var(--orange-2); font-weight: 700; }
+  .trace .band { position: relative; height: 170px; margin: 0 12px; border: 1px solid var(--line-soft); overflow: hidden; background: var(--blue-4); }
+  .trace .band canvas { width: 100%; height: 100%; display: block; }
+  .trace .band .t { position: absolute; font-size: 7px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-2); background: rgba(255,255,255,0.85); padding: 0 3px; font-weight: 700; }
+  .log { margin: 10px 12px 10px; border-top: 1px solid var(--line-faint); padding-top: 8px; }
+  .log .lh { display: flex; align-items: center; gap: 7px; font-family: var(--disp); font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 6px; }
+  .log .lh i { width: 8px; height: 8px; background: var(--line-soft); }
+  .log ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 24px; font-size: 9.5px; }
+  .log li { display: flex; gap: 7px; color: var(--muted); }
+  .log li b { color: var(--ink); font-weight: 700; }
+  .log li .green { color: var(--green); font-weight: 700; } .log li .blue { color: var(--blue); font-weight: 700; }
+
+  .ledger .pbody { padding-top: 6px; }
+  .ledger .big { font-family: var(--disp); font-size: 34px; font-weight: 700; color: var(--red); line-height: 1; margin: 2px 0 6px; }
+  .lrow { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; padding: 5px 0 2px; }
+  .lrow .n { font-family: var(--disp); font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+  .lrow .v { font-size: 9px; font-weight: 700; color: var(--ink-2); }
+  .lrow .bar { grid-column: 1 / -1; height: 5px; background: var(--line-faint); position: relative; }
+  .lrow .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--c); }
+  .routes { margin-top: 8px; border: 1.2px solid var(--line-soft); background: #eef1f6; padding: 8px 10px 6px; }
+  .routes .name { font-family: var(--disp); font-size: 15px; font-weight: 700; color: var(--blue); letter-spacing: 0.04em; margin: 3px 0 4px; }
+  .routes .cl { display: flex; justify-content: space-between; font-size: 7px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); font-weight: 700; }
+  .routes canvas { width: 100%; height: 34px; display: block; }
+  .routes .rf { display: flex; justify-content: space-around; font-size: 7px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); font-weight: 700; margin-top: 2px; }
+
+  .foot { display: flex; justify-content: space-between; padding: 2px 10px 0; font-size: 8.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+  .foot b { color: var(--ink); font-weight: 700; } .foot .blue { color: var(--blue); font-weight: 700; }
+</style>
+
+<div class="fit" id="fit">
+<div class="board" id="board">
+  <header class="top">
+    <div class="mark" aria-hidden="true">◆</div>
+    <div class="brand">
+      <h1>ChatGPT <span>Orion 7</span> · Serving Floor</h1>
+      <p class="tag">Six agents hold the batch · the lattice folds around it</p>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><span class="lbl">Window</span><b>122K</b></div>
+      <div class="kpi"><span class="lbl">Shards</span><b class="blue">11/72</b></div>
+      <div class="kpi"><span class="lbl">Out / s</span><b class="green" id="outs">103</b></div>
+      <div class="kpi"><canvas id="hspark" width="200" height="60"></canvas></div>
+      <div class="kpi clock"><b id="clock">06:41:29</b><span class="t0">T0 140ms</span></div>
+    </div>
+  </header>
+
+  <nav class="stages" aria-label="Run stages">
+    <div class="runid"><span>Run <b>4417</b></span><span>· Batch <b>144</b></span><span>· Emitted <b>228</b></span></div>
+    <ol>
+      <li class="done"><span>01 Admit</span></li>
+      <li class="done"><span>02 Shard</span></li>
+      <li class="now"><span>03 Fold</span></li>
+      <li><span>04 Solve</span></li>
+      <li><span>05 Audit</span></li>
+      <li><span>06 Emit</span></li>
+    </ol>
+  </nav>
+
+  <section class="panel">
+    <div class="ptitle">
+      <h2>The floor crew · <em>Six agents holding the batch while you wait</em>
+        <span class="sub">Admitter → Sharder → Folder → Solver → Auditor → Emitter · One baton, one clock</span></h2>
+      <span class="chip blue">Baton · Sharder</span>
+    </div>
+    <div class="crew" id="crew"></div>
+    <div class="crewfoot"><span>One baton · six stations · the batch never stops moving</span><span>Slot 02/06 · 67ms left</span></div>
+  </section>
+
+  <section class="panel lattice">
+    <div class="ptitle">
+      <h2>The Orion lattice · <em>Shape under load</em> · Live
+        <span class="sub">Wound column → Sealed shell → Flattened oval → Open ring · The same strands, four shapes</span></h2>
+      <span class="chip ink" id="lchip"><i class="dot"></i>Sealing</span>
+    </div>
+    <div class="stage" id="stage">
+      <canvas class="bg" id="bg"></canvas>
+      <canvas class="gl" id="gl" aria-label="Rotating three-dimensional lattice of wound strands"></canvas>
+      <div class="legend">
+        <span class="lbl">Strands · 59</span>
+        <span><i style="background:var(--navy)"></i>Core winding</span>
+        <span><i style="background:var(--blue-2)"></i>Hoop</span>
+        <span><i style="background:var(--orange)"></i>Shard band</span>
+        <span><i style="background:var(--teal)"></i>Outflow</span>
+      </div>
+      <div class="ann note" style="left:222px;top:52px;text-align:center">Poles<br>closed</div>
+      <div class="ann form" style="right:14px;top:36px"><b id="form-t">Form 2/4 · Closed shell · Folding</b><span id="form-s">The strands meet at both poles and the lattice seals shut</span></div>
+      <div class="ann box" style="left:18px;top:154px"><span class="lbl">Shard 12 · Join</span><b>+1.4K tok</b><span class="bar"></span></div>
+      <div class="ann box" style="right:18px;top:154px"><span class="lbl">Axis load</span><b>0.82 norm</b><span class="bar"></span></div>
+      <div class="ann box" style="left:18px;bottom:64px"><span class="lbl">Edge flux</span><b class="teal">+18% / s</b><span class="bar teal"></span></div>
+      <div class="ann note" style="right:190px;bottom:86px">Every head<br>touches every head</div>
+      <div class="ann tiny" style="left:790px;top:46px">270</div>
+      <div class="ann tiny" style="left:400px;top:210px">180</div>
+      <div class="ann tiny" style="left:730px;bottom:80px">000</div>
+      <div class="ann tiny" style="left:520px;bottom:52px">090</div>
+      <div class="ann tiny teal" style="left:200px;bottom:110px">Scan 83%</div>
+      <div class="cap"><span>One ribbon is one path through the stack · the pale strands have already left the panel</span><b id="cap-r">698 tokens crossed the edge</b></div>
+    </div>
+    <div class="strip">
+      <div><span class="lbl">Strands</span><b>59</b></div>
+      <div><span class="lbl">Form</span><b class="blue" id="st-form">Shell</b></div>
+      <div><span class="lbl">Fold</span><b id="st-fold">0%</b></div>
+      <div><span class="lbl">Edge exits</span><b>26</b></div>
+      <div><span class="lbl">Depth span</span><b id="st-depth">1.44R</b></div>
+      <div><span class="lbl">Tokens out</span><b class="blue" id="st-tok">698</b></div>
+    </div>
+  </section>
+
+  <section class="row3">
+    <div class="panel">
+      <div class="ptitle"><h2>Page table<span class="sub">What the answer is renting right now</span></h2><span class="chip blue">Held 60%</span></div>
+      <div class="pbody"><div class="pgrid" id="pgrid"></div><div class="pbar"><i style="width:60%"></i><em style="left:84%"></em></div></div>
+      <div class="pfoot"><span>308 pages · 16 tokens each</span><span class="red">Spill 0%</span></div>
+    </div>
+    <div class="panel">
+      <div class="ptitle"><h2>Speculation<span class="sub">What the draft model got right</span></h2><span class="chip green">Taken 73%</span></div>
+      <div class="pbody">
+        <div class="spec">
+          <div class="specrows" id="specrows"></div>
+          <div class="donut">
+            <svg viewBox="0 0 88 88" aria-hidden="true">
+              <circle cx="44" cy="44" r="30" fill="none" stroke="var(--line-faint)" stroke-width="2" stroke-dasharray="2 3"></circle>
+              <circle cx="44" cy="44" r="36" fill="none" stroke="var(--line-faint)" stroke-width="6"></circle>
+              <circle cx="44" cy="44" r="36" fill="none" stroke="var(--green)" stroke-width="6" stroke-dasharray="165.1 226.2" transform="rotate(-90 44 44)"></circle>
+            </svg>
+            <div class="c"><b>73%</b></div>
+            <div class="dl">Drafts kept</div>
+          </div>
+        </div>
+      </div>
+      <div class="pfoot"><span>6 guesses per step</span><span></span></div>
+    </div>
+    <div class="panel knee">
+      <div class="ptitle"><h2>The knee<span class="sub">Where one more request starts costing</span></h2><span class="chip red">At 153</span></div>
+      <div class="pbody"><svg id="knee" viewBox="0 0 320 132" preserveAspectRatio="none" role="img" aria-label="Throughput rising then flattening past batch size 153"></svg></div>
+      <div class="pfoot"><span>Batch size →</span><span class="teal">Target 2048</span></div>
+    </div>
+  </section>
+
+  <section class="row4">
+    <div class="panel trace">
+      <div class="ptitle"><h2>■ Stack trace · <em>Every layer this answer walked through</em> · 308 passes</h2><span class="chip ink"><i class="dot"></i>Folding</span></div>
+      <div class="tl"><span>One row = one layer</span><span><i style="background:var(--navy)"></i>Shard awake</span><span class="stall">| Stall</span></div>
+      <div class="band"><canvas id="trace"></canvas><span class="t" style="left:6px;top:6px">L01</span><span class="t" style="left:6px;bottom:6px">L64</span><span class="t" style="right:6px;top:6px">Residual norm</span></div>
+      <div class="log">
+        <div class="lh"><i></i>Scheduler log · last six events</div>
+        <ul>
+          <li><b>route</b><span>shard 32 → shard 51</span></li>
+          <li><b>emit</b><span>217 tok</span><span class="green">streamed</span></li>
+          <li><b>fold</b><span>118-124</span><span class="blue">sealed</span></li>
+          <li><b>reclaim</b><span>block b421</span><span class="blue">returned</span></li>
+          <li><b>route</b><span>shard 57 → shard 22</span></li>
+          <li><b>pin</b><span>prefix 7706 · reused 5×</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="panel ledger">
+      <div class="ptitle"><h2>Recovery ledger</h2><span class="chip green">Held 89.3%</span></div>
+      <div class="pbody">
+        <span class="lbl">Blocks the scheduler took back</span>
+        <div class="big">44</div>
+        <div class="lrow"><span class="n">Preempted</span><span class="v">11</span><span class="bar"><i style="--c:var(--orange);width:69%"></i></span></div>
+        <div class="lrow"><span class="n">Spilled to host</span><span class="v">7</span><span class="bar"><i style="--c:var(--slate);width:44%"></i></span></div>
+        <div class="lrow"><span class="n">Recomputed</span><span class="v">10</span><span class="bar"><i style="--c:var(--teal);width:63%"></i></span></div>
+        <div class="lrow"><span class="n">Deadline miss</span><span class="v">16</span><span class="bar"><i style="--c:var(--red);width:100%"></i></span></div>
+        <div class="routes">
+          <span class="lbl">The routing table · rebuilt every run</span>
+          <div class="name">ROUTES.BIN</div>
+          <div class="cl"><span>Cost per answer</span><span>1.0×</span></div>
+          <canvas id="rspark" width="400" height="68"></canvas>
+          <div class="rf"><span>Shards</span><span>Cost</span><span>Stalls</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>One request buys one <b>fold of the lattice</b> · what crosses the edge is everything six agents <span class="blue">agreed to keep</span></span>
+    <span><b>ChatGPT</b> · Orion 7</span>
+  </footer>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+
+  // ---------- fit the 1200px board into narrower viewports ----------
+  const fit = $('fit'), board = $('board');
+  function refit() {
+    const w = fit.clientWidth; const s = Math.min(1, w / 1200);
+    board.style.transform = 'scale(' + s + ')';
+    fit.style.height = (board.offsetHeight * s) + 'px';
+  }
+
+  // ---------- crew ----------
+  const CREW = [
+    { n: 'Admitter', l: 'takes the batch in', st: 'wait', v: 65, c: 'var(--blue-2)', q: 847, w: 82, bars: [3, 4, 3, 5, 4, 6, 7, 5, 4, 5, 6, 7, 6, 8, 7] },
+    { n: 'Sharder', l: 'splits it across 72', st: 'run', v: 70, c: 'var(--teal)', q: 148, w: 60, bars: [3, 5, 6, 4, 5, 6, 8, 9, 7, 8, 9, 8, 6, 5, 4] },
+    { n: 'Folder', l: 'folds the lattice', st: 'wait', v: 62, c: 'var(--slate)', q: 145, w: 40, bars: [4, 5, 6, 5, 4, 6, 5, 3, 4, 3, 2, 4, 3, 5, 8] },
+    { n: 'Solver', l: 'runs the long pass', st: 'wait', v: 36, c: 'var(--orange)', q: 571, w: 30, bars: [2, 3, 6, 8, 7, 8, 6, 7, 6, 4, 3, 4, 3, 2, 5] },
+    { n: 'Auditor', l: 'checks every claim', st: 'hold', v: 62, c: 'var(--green)', q: 843, w: 22, bars: [4, 5, 6, 5, 6, 7, 6, 8, 7, 8, 9, 7, 6, 8, 9] },
+    { n: 'Emitter', l: 'hands the answer back', st: 'wait', v: 23, c: 'var(--blue-2)', q: 586, w: 10, bars: [3, 4, 3, 5, 6, 4, 5, 6, 5, 4, 5, 4, 3, 2, 1] }
+  ];
+  $('crew').innerHTML = CREW.map((a) => {
+    const max = Math.max(...a.bars), hi = a.bars.lastIndexOf(max);
+    const C = 2 * Math.PI * 15, on = (C * a.v / 100).toFixed(1);
+    return '<div class="agent ' + a.st + '" style="--c:' + a.c + '">' +
+      '<div class="ah"><span class="name"><i></i>' + a.n + '</span><span class="st">' + a.st + '</span></div>' +
+      '<div class="line">' + a.l + '</div>' +
+      '<div class="body"><div class="gauge"><svg viewBox="0 0 38 38"><circle cx="19" cy="19" r="15" fill="none" stroke="var(--line-faint)" stroke-width="3"/><circle cx="19" cy="19" r="15" fill="none" stroke="' + a.c + '" stroke-width="3" stroke-dasharray="' + on + ' ' + C.toFixed(1) + '" transform="rotate(-90 19 19)"/></svg><b>' + a.v + '</b></div>' +
+      '<div class="bars">' + a.bars.map((v, i) => '<i style="height:' + Math.round(v / max * 100) + '%"' + (i === hi ? ' class="hi"' : '') + '></i>').join('') + '</div></div>' +
+      '<div class="q"><span class="lbl">Queue</span><span class="dots" style="--w:' + a.w + '%"></span><b>' + a.q + '</b></div>' +
+      '<div class="po">Passed on</div></div>';
+  }).join('');
+
+  // ---------- page table ----------
+  (function () {
+    const r = rng(41); const cols = ['var(--blue-4)', '#c9d6ee', 'var(--blue-3)', '#7f9dd8', 'var(--blue)', 'var(--navy)'];
+    let s = '';
+    for (let i = 0; i < 26 * 8; i++) {
+      const q = r();
+      if (q < 0.07) s += '<i class="rent"></i>';
+      else { const v = q < 0.5 ? 0 : q < 0.72 ? 1 : q < 0.86 ? 2 : q < 0.94 ? 3 : q < 0.98 ? 4 : 5; s += '<i style="background:' + cols[v] + '"></i>'; }
+    }
+    $('pgrid').innerHTML = s;
+  })();
+
+  // ---------- speculation ----------
+  (function () {
+    const shades = ['#c9d6ee', '#b3c5e8', '#9db4e2', '#7f9dd8', '#5a7fcf', '#3f66c2'];
+    const lab = ['+3', '+4', '+2', '+5', '+3', '+3'];
+    $('specrows').innerHTML = shades.map((c, i) =>
+      '<div class="srow" style="--c:' + c + '"><i></i><i></i><i' + (i === 3 ? ' class="m"' : '') + '></i><i class="d"></i><i class="d"></i><small>' + lab[i] + '</small></div>'
+    ).join('');
+  })();
+
+  // ---------- the knee ----------
+  (function () {
+    const W = 320, H = 132, pl = 6, pr = 6, pt = 12, pb = 18;
+    const sx = (x) => pl + x / 300 * (W - pl - pr), sy = (y) => H - pb - y * (H - pt - pb);
+    const f = (x) => (1 - Math.exp(-x / 48)) * 0.96 - (x > 153 ? (x - 153) / 300 * 0.05 : 0);
+    let d = '', pts = [];
+    for (let x = 0; x <= 300; x += 5) { pts.push([x, f(x)]); }
+    d = pts.map((p, i) => (i ? 'L' : 'M') + sx(p[0]).toFixed(1) + ' ' + sy(p[1]).toFixed(1)).join(' ');
+    const area = d + ' L' + sx(300) + ' ' + sy(0) + ' L' + sx(0) + ' ' + sy(0) + ' Z';
+    let s = '<defs><linearGradient id="kg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7f9dd8" stop-opacity="0.55"/><stop offset="1" stop-color="#dfe7f5" stop-opacity="0.2"/></linearGradient></defs>';
+    s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + sy(1) + '" y2="' + sy(1) + '" stroke="var(--line-soft)" stroke-width="1"/>';
+    s += '<rect x="' + sx(135) + '" y="' + pt + '" width="' + (sx(210) - sx(135)) + '" height="' + (H - pt - pb) + '" fill="#cfe9ee" opacity="0.55"/>';
+    s += '<path d="' + area + '" fill="url(#kg)"/>';
+    s += '<path d="' + d + '" fill="none" stroke="var(--blue)" stroke-width="2"/>';
+    s += '<line x1="' + sx(153) + '" x2="' + sx(153) + '" y1="' + sy(f(153)) + '" y2="' + sy(0) + '" stroke="var(--red)" stroke-width="1" stroke-dasharray="3 2"/>';
+    s += '<circle cx="' + sx(153) + '" cy="' + sy(f(153)) + '" r="4" fill="none" stroke="var(--red)" stroke-width="1.2"/>';
+    s += '<text x="' + (sx(153) + 4) + '" y="' + (H - pb + 11) + '" font-size="7" fill="var(--red)" font-family="IBM Plex Mono, monospace" font-weight="700" letter-spacing="1">KNEE 153</text>';
+    s += '<line x1="' + sx(185) + '" x2="' + sx(185) + '" y1="' + sy(f(185)) + '" y2="' + sy(0) + '" stroke="var(--teal)" stroke-width="1" opacity="0.6"/>';
+    s += '<circle cx="' + sx(185) + '" cy="' + sy(f(185)) + '" r="3.5" fill="var(--orange)" stroke="#fff" stroke-width="1"/>';
+    s += '<text x="' + (sx(185) + 6) + '" y="' + (sy(f(185)) + 12) + '" font-size="7" fill="var(--orange-2)" font-family="IBM Plex Mono, monospace" font-weight="700" letter-spacing="1">1461 TOK/S</text>';
+    $('knee').innerHTML = s;
+  })();
+
+  // ---------- sparklines ----------
+  function sizeCanvas(cv) {
+    const dpr = Math.min(2, window.devicePixelRatio || 1); const r = cv.getBoundingClientRect();
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); return [r.width, r.height, dpr];
+  }
+  (function () {
+    const cv = $('hspark'), ctx = cv.getContext('2d'), r = rng(7); const n = 24, W = 200, H = 60;
+    for (let i = 0; i < n; i++) { const h = 8 + r() * 44; ctx.fillStyle = i === 9 || i === 15 ? '#7f9dd8' : '#b9cbea'; ctx.fillRect(i * (W / n) + 1, H - h, W / n - 3, h); }
+  })();
+  (function () {
+    const cv = $('rspark'), ctx = cv.getContext('2d'), r = rng(19); const W = 400, H = 68;
+    ctx.strokeStyle = '#2f9e6e'; ctx.lineWidth = 2.5; ctx.beginPath(); let v = 0.15;
+    const pts = []; for (let i = 0; i <= 40; i++) { v += (r() - 0.35) * 0.05; v = Math.max(0.1, Math.min(0.9, v)); pts.push([i / 40 * (W - 8) + 4, 8 + v * (H - 20)]); }
+    pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke();
+    ctx.fillStyle = '#2f9e6e'; ctx.beginPath(); ctx.arc(pts[40][0], pts[40][1], 4, 0, Math.PI * 2); ctx.fill();
+  })();
+
+  // ---------- stack trace ----------
+  function drawTrace() {
+    const cv = $('trace'); const [W, H, dpr] = sizeCanvas(cv); const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const r = rng(77); const cw = 6.5, ch = 6.5; const cols = Math.ceil(W / cw), rows = Math.ceil(H / ch);
+    const base = ['#ffffff', '#dfe7f5', '#c2d1ec', '#a9bde5', '#8fa9df'];
+    for (let c = 0; c < cols; c++) for (let y = 0; y < rows; y++) {
+      const st = ((c + y * 1.6) % 11) / 11; let k = st < 0.18 ? 0 : st < 0.42 ? 1 : st < 0.66 ? 2 : st < 0.86 ? 3 : 4;
+      if (r() < 0.12) k = Math.max(0, Math.min(4, k + (r() < 0.5 ? -1 : 1)));
+      ctx.fillStyle = base[k]; ctx.fillRect(c * cw, y * ch, cw - 0.6, ch - 0.6);
+    }
+    const bursts = [];
+    for (let i = 0; i < 16; i++) {
+      const c = Math.floor(r() * cols), y0 = Math.floor(r() * (rows - 6)), len = 2 + Math.floor(r() * 5), teal = r() < 0.45;
+      bursts.push(c);
+      for (let y = y0; y < y0 + len; y++) { ctx.fillStyle = (teal && y > y0 + len / 2) ? '#2fb8c8' : '#22458f'; ctx.fillRect(c * cw, y * ch, cw - 0.6, ch - 0.6); }
+      if (r() < 0.5) { const y2 = Math.floor(r() * rows); ctx.fillStyle = '#22458f'; ctx.fillRect((c + 4 + Math.floor(r() * 30)) * cw, y2 * ch, cw * 2 - 0.6, ch - 0.6); }
+    }
+    ctx.strokeStyle = 'rgba(217,146,74,0.85)'; ctx.lineWidth = 1;
+    [0.12, 0.2, 0.41, 0.51, 0.78, 0.86].forEach((p) => { const x = Math.round(p * W) + 0.5; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); });
+    ctx.strokeStyle = 'rgba(127,214,223,0.7)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, H * 0.72); ctx.lineTo(W, H * 0.72); ctx.stroke();
+    ctx.strokeStyle = '#3a4a6a'; ctx.lineWidth = 1.3; ctx.beginPath();
+    for (let x = 0; x <= W; x += 3) {
+      let y = H * 0.56 + Math.sin(x / 23) * 3 + (r() - 0.5) * 3;
+      bursts.forEach((c) => { const d = Math.abs(x - c * cw); if (d < 14) y -= (14 - d) * 1.6; });
+      x ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  // ---------- lattice: background sweeps (2D) ----------
+  const bg = $('bg'); let BW = 0, BH = 0;
+  function drawBg() {
+    const [W, H, dpr] = sizeCanvas(bg); BW = W; BH = H; const ctx = bg.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H); const r = rng(1234); const cx = W * 0.5, cy = H * 0.5;
+    // faint floor band + scan band
+    const g = ctx.createLinearGradient(0, cy + 60, 0, cy + 110); g.addColorStop(0, 'rgba(200,214,236,0)'); g.addColorStop(0.5, 'rgba(200,214,236,0.35)'); g.addColorStop(1, 'rgba(200,214,236,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, cy + 60, W, 50);
+    ctx.fillStyle = 'rgba(127,214,223,0.14)'; ctx.fillRect(W * 0.16, H * 0.72, W * 0.6, 9);
+    const sets = [
+      { n: 9, col: 'rgba(47,184,200,0.38)', w: [1, 2] },
+      { n: 9, col: 'rgba(169,189,229,0.4)', w: [0.8, 1.6] },
+      { n: 8, col: 'rgba(200,208,221,0.35)', w: [0.6, 1.2] }
+    ];
+    sets.forEach((s) => {
+      for (let i = 0; i < s.n; i++) {
+        const ox = cx + (r() - 0.5) * W * 0.5, oy = cy + (r() - 0.5) * H * 0.7;
+        const rx = W * (0.4 + r() * 0.55), ry = H * (0.15 + r() * 0.45), rot = (r() - 0.5) * 0.5;
+        ctx.beginPath(); ctx.ellipse(ox, oy, rx, ry, rot, 0, Math.PI * 2);
+        ctx.strokeStyle = s.col; ctx.lineWidth = s.w[0] + r() * (s.w[1] - s.w[0]); ctx.stroke();
+      }
+    });
+    // dotted leader from "poles closed" to the top of the sphere
+    ctx.setLineDash([2, 3]); ctx.strokeStyle = 'rgba(58,74,106,0.6)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(262, 74); ctx.lineTo(cx - 40, cy - H * 0.36); ctx.stroke(); ctx.setLineDash([]);
+    // tick marks on the right edge
+    ctx.fillStyle = 'rgba(58,74,106,0.35)'; for (let y = 8; y < H; y += 12) ctx.fillRect(W - 5, y, 3, 1);
+  }
+
+  // ---------- lattice: the sphere (three.js) ----------
+  const T = window.THREE; const gl = $('gl'); let renderer, scene, camera, group, raf = 0;
+  const FORMS = [
+    { name: 'Wound column', act: 'Winding', s: [0.74, 1.3, 0.74], short: 'Column', sub: 'The strands climb the axis and the column stands tall', fold: '12%', depth: '1.62R', chip: 'Winding' },
+    { name: 'Closed shell', act: 'Folding', s: [1, 1, 1], short: 'Shell', sub: 'The strands meet at both poles and the lattice seals shut', fold: '0%', depth: '1.44R', chip: 'Sealing' },
+    { name: 'Flattened oval', act: 'Solving', s: [1.22, 0.7, 1.22], short: 'Oval', sub: 'The long pass presses the shell flat along its axis', fold: '38%', depth: '1.05R', chip: 'Pressing' },
+    { name: 'Open ring', act: 'Emitting', s: [1.34, 0.36, 1.34], short: 'Ring', sub: 'The poles open and the answer leaves through the ring', fold: '71%', depth: '0.58R', chip: 'Opening' }
+  ];
+  function strandCurve(kind, r, axisQ) {
+    const pts = [];
+    const turns = kind === 'hoop' ? 0.75 + r() * 0.3 : kind === 'out' ? 1.2 + r() * 0.6 : 2.6 + r() * 2.4;
+    const swing = kind === 'shard' ? 0.35 + r() * 0.3 : 1.25 + r() * 0.2;
+    const wob = 0.5 + r() * 1.2, ph = r() * Math.PI * 2, lat0 = (r() - 0.5) * 1.6;
+    const rad = kind === 'out' ? 1.02 : kind === 'shard' ? 1.03 + r() * 0.03 : 0.93 + r() * 0.1;
+    const N = 220;
+    for (let i = 0; i <= N; i++) {
+      const s = i / N; const a = s * turns * Math.PI * 2 + ph;
+      let b = kind === 'hoop' ? lat0 + Math.sin(s * 6 + ph) * 0.06 : swing * Math.sin(s * wob * Math.PI * 2 + ph) * (kind === 'shard' ? 1 : 1);
+      if (kind === 'core') b = Math.max(-1.42, Math.min(1.42, b));
+      if (kind === 'out') { const k = s > 0.55 ? (s - 0.55) / 0.45 : 0; b = b * (1 - k) * 0.7; }
+      let rr = rad + Math.sin(s * 40 + ph) * 0.012;
+      if (kind === 'out' && s > 0.55) rr += Math.pow((s - 0.55) / 0.45, 1.6) * 3.2;
+      const v = new T.Vector3(Math.cos(a) * Math.cos(b) * rr, Math.sin(b) * rr, Math.sin(a) * Math.cos(b) * rr);
+      v.applyQuaternion(axisQ); pts.push(v);
+    }
+    return new T.CatmullRomCurve3(pts, false, 'catmullrom', 0.2);
+  }
+  function buildSphere() {
+    if (!T) return false;
+    try { renderer = new T.WebGLRenderer({ canvas: gl, antialias: true, alpha: true }); } catch (e) { return false; }
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); renderer.setClearColor(0x000000, 0);
+    scene = new T.Scene(); camera = new T.PerspectiveCamera(28, 1, 0.1, 100); camera.position.set(0, 0.15, 5.3); camera.lookAt(0, 0, 0);
+    scene.add(new T.HemisphereLight(0xffffff, 0x9fb0cc, 0.95));
+    const d1 = new T.DirectionalLight(0xffffff, 0.85); d1.position.set(-2.5, 3.5, 4); scene.add(d1);
+    const d2 = new T.DirectionalLight(0xdde8ff, 0.35); d2.position.set(3, -2, -3); scene.add(d2);
+    group = new T.Group(); group.rotation.z = -0.32; group.rotation.x = 0.28; scene.add(group);
+    const r = rng(2026);
+    const mats = {
+      core: new T.MeshStandardMaterial({ color: 0x22458f, roughness: 0.55, metalness: 0.08 }),
+      hoop: new T.MeshStandardMaterial({ color: 0x4f7fd8, roughness: 0.5, metalness: 0.08 }),
+      shard: new T.MeshStandardMaterial({ color: 0xd9924a, roughness: 0.5, metalness: 0.05 }),
+      out: new T.MeshStandardMaterial({ color: 0x2fb8c8, roughness: 0.45, metalness: 0.05 })
+    };
+    const plan = [['core', 30, 0.02], ['hoop', 16, 0.016], ['shard', 5, 0.021], ['out', 8, 0.0065]];
+    const up = new T.Vector3(0, 1, 0);
+    plan.forEach(([kind, n, rad]) => {
+      for (let i = 0; i < n; i++) {
+        const q = new T.Quaternion();
+        if (kind === 'shard' || r() < 0.3) { q.setFromUnitVectors(up, new T.Vector3(r() - 0.5, r() * 0.6 + 0.4, r() - 0.5).normalize()); }
+        else { q.setFromAxisAngle(new T.Vector3(r() - 0.5, 0, r() - 0.5).normalize(), (r() - 0.5) * 0.45); }
+        const curve = strandCurve(kind, r, q);
+        const geo = new T.TubeGeometry(curve, kind === 'out' ? 160 : 260, rad * (0.85 + r() * 0.4), 6, false);
+        group.add(new T.Mesh(geo, mats[kind]));
+      }
+    });
+    return true;
+  }
+  function sizeGl() {
+    if (!renderer) return; const rct = gl.getBoundingClientRect();
+    renderer.setSize(rct.width, rct.height, false); camera.aspect = rct.width / rct.height; camera.updateProjectionMatrix();
+  }
+  let formIdx = 1, formSince = 0; const HOLD = 11000, MORPH = 2600;
+  const ease = (x) => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  function applyForm(i) {
+    const f = FORMS[i];
+    $('form-t').textContent = 'Form ' + (i + 1) + '/4 · ' + f.name + ' · ' + f.act; $('form-s').textContent = f.sub;
+    $('st-form').textContent = f.short; $('st-fold').textContent = f.fold; $('st-depth').textContent = f.depth;
+    $('lchip').innerHTML = '<i class="dot"></i>' + f.chip;
+  }
+  function frame(t) {
+    if (!formSince) formSince = t;
+    const el = t - formSince;
+    if (el > HOLD + MORPH) { formSince = t; formIdx = (formIdx + 1) % 4; applyForm(formIdx); }
+    const from = FORMS[formIdx].s, to = FORMS[(formIdx + 1) % 4].s;
+    const k = el <= HOLD ? 0 : ease(Math.min(1, (el - HOLD) / MORPH));
+    group.scale.set(from[0] + (to[0] - from[0]) * k, from[1] + (to[1] - from[1]) * k, from[2] + (to[2] - from[2]) * k);
+    group.rotation.y = t * 0.00012;
+    renderer.render(scene, camera);
+    raf = reduced ? 0 : requestAnimationFrame(frame);
+  }
+
+  // ---------- clock & counters ----------
+  function tick() { const d = new Date(), p = (n) => String(n).padStart(2, '0'); $('clock').textContent = p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds()); }
+  tick(); setInterval(tick, 1000);
+  let tok = 698; setInterval(() => { tok += 1 + Math.floor(Math.random() * 3); $('st-tok').textContent = tok; $('cap-r').textContent = tok + ' tokens crossed the edge'; $('outs').textContent = 98 + Math.floor(Math.random() * 9); }, 1800);
+
+  // ---------- boot ----------
+  function boot() {
+    refit(); drawBg(); drawTrace();
+    if (buildSphere()) { sizeGl(); applyForm(formIdx); if (reduced) { group.scale.set(1, 1, 1); renderer.render(scene, camera); } else raf = requestAnimationFrame(frame); }
+    else { $('lchip').innerHTML = '<i class="dot"></i>Sealing · 2D'; }
+  }
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { refit(); drawBg(); drawTrace(); sizeGl(); if (reduced && renderer) renderer.render(scene, camera); }, 100); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && !raf && !reduced && renderer) raf = requestAnimationFrame(frame); });
+  boot();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(refit);
+})();
+</script>
+</body>
+</html>
