@@ -164,6 +164,21 @@ function renderShelfDetail() {
     </div>
     <div class="sd-note" style="margin-top:4px">購買者の平均注視が全体平均を大きく上回るほど、
       「見られること」が購買条件になっている売場。差が小さい売場は指名買いが中心。</div>
+    ${(() => {
+      const tot = st.phaseSec ? st.phaseSec.reduce((a2, b2) => a2 + b2, 0) : 0;
+      if (tot < 20) return '';
+      const mix = Array.from(st.phaseSec).map(v => v / tot);
+      const back = st.putBackPrice + st.putBackOther;
+      return `<div class="sd-cat" style="margin:8px 0 3px">棚前行動の4相</div>
+        <div class="sp-factor"><span class="fl" style="width:76px">配分</span>
+          <span class="fb" style="height:11px;background:transparent;display:flex;gap:1px">${
+            mix.map((v, i) => `<span style="height:11px;background:${PHASE_COLORS[i]};width:${(v * 100).toFixed(1)}%;border-radius:2px"></span>`).join('')}</span>
+          <span class="fv" style="width:104px">${mix.map(v => (v * 100).toFixed(0) + '%').join('/')}</span></div>
+        <div class="legend" style="margin-top:3px">${PHASE_LABELS.map((l, i) =>
+          `<span class="li"><span class="sw" style="background:${PHASE_COLORS[i]}"></span>${l}</span>`).join('')}</div>
+        <div class="sd-note" style="margin-top:4px">平均候補 ${(st.candSum / Math.max(st.dwellN, 1)).toFixed(1)}点 ／
+          手に取って戻した ${st.picks ? fmtPct(back / st.picks, 0) : '—'}（うち値札起因 ${back ? fmtPct(st.putBackPrice / back, 0) : '—'}）</div>`;
+    })()}
     ${isPromo ? `<div class="sd-frow"><span class="fl">在庫</span>
       <span class="fb"><div style="width:${(stockState.units / stockState.cap * 100).toFixed(0)}%;background:${COL.s2}"></div></span>
       <span class="fv">${stockState.units}/${stockState.cap}</span></div>` : ''}
@@ -573,6 +588,73 @@ function fmtClock(sec) {
 
 /* ---------- AI アクションカード ---------- */
 const actionState = {};
+/* ---------- 棚前行動の4相 ---------- */
+const PHASE_LABELS = ['定位', '探索', '比較', '取得'];
+const PHASE_COLORS = ['#9aa9bc', '#0f9fba', '#c98500', '#d55181'];
+
+function phaseRows() {
+  return SHELVES.map(s => {
+    const st = STATS.shelves[s.id];
+    const tot = st.phaseSec ? st.phaseSec.reduce((a, b) => a + b, 0) : 0;
+    if (tot < 30 || !st.dwellN) return null;
+    const back = st.putBackPrice + st.putBackOther;
+    return {
+      s, st, tot,
+      mix: Array.from(st.phaseSec).map(v => v / tot),
+      cands: st.candSum / st.dwellN,
+      backRate: st.picks ? back / st.picks : 0,
+      priceShare: back ? st.putBackPrice / back : 0,
+      dwellSec: tot / st.dwellN,
+    };
+  }).filter(Boolean);
+}
+
+function renderPhases() {
+  const el = document.getElementById('phase-body');
+  if (!el) return;
+  const rows = phaseRows();
+  if (!rows.length) { el.innerHTML = `<div class="exp-off">棚前行動を蓄積中…</div>`; return; }
+  const all = [0, 1, 2, 3].map(i => rows.reduce((a, r) => a + r.st.phaseSec[i], 0));
+  const allTot = all.reduce((a, b) => a + b, 0) || 1;
+  // 探索比率が高い＝見つけにくい、比較比率が高い＝迷っている
+  const scanHeavy = rows.slice().sort((a, b) => b.mix[1] - a.mix[1])[0];
+  const cmpHeavy = rows.slice().sort((a, b) => b.mix[2] - a.mix[2])[0];
+  const bar = mix => `<span class="fb" style="height:11px;background:transparent;display:flex;gap:1px">${
+    mix.map((v, i) => `<span style="height:11px;background:${PHASE_COLORS[i]};width:${(v * 100).toFixed(1)}%;border-radius:2px"></span>`).join('')}</span>`;
+  el.innerHTML = `
+    <div class="mde-text" style="margin-bottom:7px">
+      棚前の滞在は一様ではなく <b>定位 → 探索 → 比較 → 取得</b> の4相からなる。
+      相ごとに視線の散り方が違い（定位=什器全体を素早く／比較=候補SKU間を往復／取得=1点＋値札）、
+      どの相が長いかで「売れない理由」が切り分けられる。
+      <b>探索が長い＝見つけにくい</b>（視認性・棚割の問題）、<b>比較が長い＝迷っている</b>（品揃え・価格の問題）。
+    </div>
+    <div class="sp-factor"><span class="fl">全売場 平均</span>${bar(all.map(v => v / allTot))}
+      <span class="fv" style="width:112px">${all.map((v, i) => (v / allTot * 100).toFixed(0) + '%').join(' / ')}</span></div>
+    <div class="legend" style="margin:4px 0 8px">
+      ${PHASE_LABELS.map((l, i) => `<span class="li"><span class="sw" style="background:${PHASE_COLORS[i]}"></span>${l}</span>`).join('')}
+    </div>
+    <table style="width:100%">
+      <thead><tr><th>売場</th><th>相の配分</th><th>平均滞在</th><th>候補数</th><th>戻し率</th><th>うち価格起因</th></tr></thead>
+      <tbody>${rows.sort((a, b) => b.tot - a.tot).slice(0, 8).map(r => `
+        <tr><td><span class="sname">${r.s.name}</span></td>
+          <td style="min-width:110px">${bar(r.mix)}</td>
+          <td>${r.dwellSec.toFixed(1)}s</td>
+          <td>${r.cands.toFixed(1)}</td>
+          <td>${fmtPct(r.backRate, 0)}</td>
+          <td><span style="color:${r.priceShare > 0.5 ? COL.warn : 'inherit'}">${fmtPct(r.priceShare, 0)}</span></td></tr>`).join('')}
+      </tbody>
+    </table>
+    <div class="power-box" style="margin-top:8px">
+      探索比率が最も高いのは <b>${scanHeavy.s.name}</b>（${fmtPct(scanHeavy.mix[1], 0)}）— 目当てが見つけにくい可能性。
+      比較比率が最も高いのは <b>${cmpHeavy.s.name}</b>（${fmtPct(cmpHeavy.mix[2], 0)}・平均候補 ${cmpHeavy.cands.toFixed(1)}点）— 迷いが大きい売場。
+      ${confChip(allTot > 4000 ? 'hi' : 'md')}
+    </div>
+    <div class="sd-note" style="margin-top:5px">
+      戻し率 = 手に取ったが購買に至らなかった割合。その内訳（値札を見て戻した / 他の理由）は
+      取得相での価格確認をモデル化して分解している。転換率そのものは変えていない。
+    </div>`;
+}
+
 /* ---------- 計測品質（真値 vs AIカメラ計測値） ---------- */
 function measurementQuality() {
   let trueSec = 0, obsSec = 0, hit = 0, tot = 0, covW = 0, camW = 0, wsum = 0;
@@ -650,6 +732,38 @@ function buildActions() {
   const r = noveltyStatsCalc();
   const promoUnit = FKEY === 'depato' ? '個' : '個';
   const list = [];
+  // 棚前4相から「売れない理由」を切り分けて打ち手にする
+  const prs = phaseRows().filter(r => r.tot > 200);
+  if (prs.length >= 4) {
+    const back = prs.filter(r => r.st.picks > 20 && r.priceShare > 0.42 && r.backRate > 0.35)
+      .sort((a, b) => b.st.picks * b.backRate * b.priceShare - a.st.picks * a.backRate * a.priceShare)[0];
+    const scan = prs.filter(r => r.mix[1] > 0.58)
+      .sort((a, b) => b.tot * b.mix[1] - a.tot * a.mix[1])[0];
+    if (back) {
+      const lost = Math.round(back.st.picks * back.backRate * back.priceShare * SF() * back.s.price * 0.35);
+      list.push({
+        key: 'phase-price', priority: 'med', category: '価格',
+        title: `「${back.s.name}」は手に取った後の離脱が価格起因`,
+        reason: `手に取った ${fmtNum(back.st.picks * SF())}件のうち ${fmtPct(back.backRate, 0)} が戻され、`
+          + `そのうち ${fmtPct(back.priceShare, 0)} が取得相での値札確認による離脱。`
+          + `探索・比較は通過できているので、視認性や棚割ではなく価格提示（プライスカード・バンドル・期間値引）の問題。`,
+        impact: { metric: '粗利（円）', delta: Math.max(0, Math.round(lost * 0.3)), ci: Math.round(lost * 0.12) },
+        confidence: 0.71, source: 'L2 / 棚前4相',
+      });
+    }
+    if (scan) {
+      list.push({
+        key: 'phase-scan', priority: 'med', category: '売場',
+        title: `「${scan.s.name}」は探索フェーズが ${fmtPct(scan.mix[1], 0)} と長い`,
+        reason: `棚前滞在 平均${scan.dwellSec.toFixed(1)}秒のうち探索が ${fmtPct(scan.mix[1], 0)}、比較は ${fmtPct(scan.mix[2], 0)} しかない。`
+          + `＝目当てが見つからずに時間を使っており、比較検討まで到達できていない。`
+          + `カテゴリサイン・棚段の色分け・フェイス整理で「探す時間」を比較に振り替えられる。`,
+        impact: { metric: '立寄→購買', delta: 3, ci: 2 },
+        confidence: 0.66, source: 'L2 / 棚前4相',
+      });
+    }
+  }
+
   // 計測できていない売場 ＝ 打ち手の前に「測れる状態」を作る必要がある
   const mq = measurementQuality();
   if (mq && mq.trueSec > 500) {
@@ -1058,7 +1172,7 @@ function refreshDash() {
   renderMiniKPI(); renderBeacon();
   if (selectedShelfId) renderShelfDetail();
   if (activeView === 'analytics') {
-    renderKPIs(); renderFunnel(); renderCross(); renderMeasQuality(); renderShelfTable(); renderNovelty(); renderStock(); renderBenchmark();
+    renderKPIs(); renderFunnel(); renderCross(); renderPhases(); renderMeasQuality(); renderShelfTable(); renderNovelty(); renderStock(); renderBenchmark();
     renderPersona(); renderRegops();
   }
 }

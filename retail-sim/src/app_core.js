@@ -490,6 +490,9 @@ function freshShelfStats() {
     cellHit: 0, cellTot: 0,                           // 計測セルが真のセルと一致した割合
     coverage: 1, camMean: 0,                          // 棚面のカメラ被覆率・平均台数
     attnSum: 0, attnBuySum: 0, dwellN: 0,             // 注視効率の算出用
+    phaseSec: new Float64Array(4),                    // 棚前4相（定位/探索/比較/取得）の滞在秒
+    candSum: 0,                                       // 比較候補数の合計（÷dwellN で平均）
+    putBackPrice: 0, putBackOther: 0,                 // 手に取って戻した理由の内訳
     grid: new Float32Array(GRID_U * GRID_V),          // 本日累計
     gridRecent: new Float32Array(GRID_U * GRID_V),    // 直近30分（指数減衰）
     gridLive: new Float32Array(GRID_U * GRID_V),      // ライブ（直近1分・人の動きに直結）
@@ -713,8 +716,64 @@ class Agent {
     }
   }
 
+  /* ---- 棚前行動を4相に分ける ----
+     実際の棚前行動は一様な滞在ではなく、
+       ① 定位   … 到着直後。什器全体を素早く舐めてカテゴリ／目当ての位置を掴む
+       ② 探索   … 目当てを体系的に探す。ここが従来の混合分布モデル
+       ③ 比較   … 候補2〜3SKUの間を視線が往復する（購買の強い予測子）
+       ④ 取得   … 選んだ1点を注視し、値札を確認して手を伸ばす
+     相ごとに注視の散り方と滞留時間が違うため、ヒートマップの質感が
+     「ぼんやりした塊」から「数点に集中した実測らしい形」に変わる。 */
+  beginDwell(s) {
+    const H = s.size[1];
+    // 検討の深さ: 単価が高いほど比較する（価格帯で代理）。ペルソナの滞在傾向も効く
+    const delib = clamp(0.25 + Math.log10(Math.max(s.price, 60) / 150) * 0.55, 0.15, 1);
+    this.delib = delib;
+    const lat0 = gauss3() * 0.06;
+    const y0 = clamp(this.targetFrac * H, 0.10, H * 0.96);
+    this.cands = [{ lat: lat0, y: y0 }];
+    const nExtra = (rng() < delib * this.persona.dwell * 0.85 ? 1 : 0) + (rng() < delib * 0.45 ? 1 : 0);
+    for (let i = 0; i < nExtra; i++) {
+      // 競合SKUは同じ段の隣に並ぶことが多く、たまに別の段へ目が移る
+      this.cands.push({
+        lat: lat0 + gauss3() * 0.17,
+        y: clamp(y0 + (rng() < 0.28 ? gauss3() * 0.13 : gauss3() * 0.025), 0.10, H * 0.96),
+      });
+    }
+    const T = (10 + rng() * 20) * this.persona.dwell;
+    const orient = clamp(T * 0.14, 1.0, 3.5);
+    const pick = clamp(T * 0.16, 1.2, 3.2);
+    const rest = Math.max(2, T - orient - pick);
+    const cmp = this.cands.length > 1 ? rest * clamp(0.30 + delib * 0.35, 0.25, 0.70) : 0;
+    this.phaseDur = { orient, scan: rest - cmp, compare: cmp, pick };
+    this.candIdx = 0;
+    this.setPhase('orient', s);
+  }
+
+  setPhase(ph, s) {
+    this.phase = ph;
+    this.phaseT = this.phaseDur[ph] || 0;
+    this.fixTimer = 0;
+    this.sampleFixation(s);
+  }
+
+  advancePhase(s) {
+    const order = ['orient', 'scan', 'compare', 'pick'];
+    let i = order.indexOf(this.phase);
+    while (++i < order.length) {
+      if ((this.phaseDur[order[i]] || 0) > 0.05) { this.setPhase(order[i], s); return false; }
+    }
+    return true;                                   // 全相を終えた＝購買判定へ
+  }
+
   dwellAt(shelf, dt) {
-    this.wait -= dt;
+    // 相の進行
+    this.phaseT -= dt;
+    let finished = false;
+    if (this.phaseT <= 0) finished = this.advancePhase(shelf);
+    const st0 = STATS.shelves[shelf.id];
+    const pi = { orient: 0, scan: 1, compare: 2, pick: 3 }[this.phase];
+    if (pi != null && st0.phaseSec) st0.phaseSec[pi] += dt;
     // 棚前のサイドステップ: 同じ什器の別のフェイスを見に、ゆっくり横移動する
     this.stepTimer = (this.stepTimer || 0) - dt;
     if (this.stepTimer <= 0) {
@@ -736,11 +795,12 @@ class Agent {
     if (this.fixTimer <= 0) this.sampleFixation(shelf);   // 次の注視点へ視線を移す
     else if (this.fix && this.fix.sid === shelf.id) this.setFixOn(shelf);   // 横移動に注視点を追従
     this.updateGazePose(dt);
-    if (this.wait <= 0) {
+    if (finished) {
       const st = STATS.shelves[shelf.id];
       // ---- この立寄で実際に「どこを何秒見たか」を購買行動へ接続する ----
       const q = this.attentionQuality(shelf);
       st.attnSum += q.attn; st.dwellN++;
+      st.candSum += (this.cands ? this.cands.length : 1);
       // 段別の注意秒（表示用）
       const cur = this.tierSec[shelf.id], t0 = this.dwellTier0;
       if (cur) for (let i = 0; i < 4; i++) st.tierDwellSec[i] += Math.max(0, cur[i] - (t0 ? t0[i] : 0));
@@ -763,7 +823,19 @@ class Agent {
           if (this.hasNovelty) pBuy *= (1 + NOV_TRUE_LIFT);
           if (dynPricingActive()) { pBuy *= 1.3; priceMult = 0.85; }   // トライアル型 自動値下げ
         } else if (this.hasNovelty) pBuy *= 1.06;
-        if (rng() < clamp(pBuy, 0, 0.96)) {
+        const bought = rng() < clamp(pBuy, 0, 0.96);
+        if (!bought) {
+          // 手に取ったが戻した。転換率そのものは変えず、「なぜ戻したか」だけを分解する。
+          // 取得相で値札を読んでいるので、価格感度×価格帯が主因になりやすい。
+          const rel = shelf.price / Math.max(STORE.basket, 1);
+          const pPrice = clamp(0.16 + 0.32 * (Math.log1p(rel) / Math.LN2) * (2 - this.persona.priceMult)
+            + (this.cmpCount > 4 ? 0.10 : 0), 0.05, 0.88);
+          if (rng() < pPrice) {
+            st.putBackPrice++;
+            if (shelf === promotedShelf() && rng() < 0.08) beacon(`客#${this.id} 販促商品を手に取ったが値札を見て戻す`, 'seg-ad');
+          } else st.putBackOther++;
+        }
+        if (bought) {
           const isPromo = shelf === promotedShelf();
           if (isPromo && stockState.units <= 0) {
             stockState.missed += STORE.sampleFactor;   // 在庫内生性: 品切れ中の機会損失（実数換算）
@@ -821,6 +893,39 @@ class Agent {
   sampleFixation(s) {
     const H = (s && s.size[1]) || 1.6;
     const E = this.eyeH || 1.6;
+    // --- 探索以外の相は、専用の注視パターンを持つ ---
+    if (this.phase === 'orient') {
+      // 定位: 什器全体を素早く舐める。短い停留で上下に大きく飛ぶ
+      const topLimit = Math.min(H * 0.97, E + 0.34);
+      this.gazeTargetY = clamp(0.12 + rng() * (topLimit - 0.12), 0.10, H * 0.98);
+      this.gazeLateral = gauss3() * (s ? Math.min(1.9, 0.7 + shelfAxis(s).len * 0.16) * 0.42 : 0.4);
+      this.fixTimer = 0.45 + rng() * 0.55;
+      this.setFixOn(s);
+      return;
+    }
+    if (this.phase === 'compare' && this.cands && this.cands.length > 1) {
+      // 比較: 候補SKUの間を視線が往復する。これが比較サッケードの実体
+      let ni = this.candIdx;
+      while (ni === this.candIdx) ni = Math.floor(rng() * this.cands.length);
+      this.candIdx = ni;
+      this.cmpCount++;
+      const c = this.cands[ni];
+      this.gazeTargetY = clamp(c.y + gauss3() * 0.022, 0.10, H * 0.98);
+      this.gazeLateral = c.lat + gauss3() * 0.025;
+      this.fixTimer = 0.7 + rng() * 0.9;
+      this.setFixOn(s);
+      return;
+    }
+    if (this.phase === 'pick') {
+      // 取得: 選んだ1点に固定し、終盤は値札（棚板前端）へ視線を落とす
+      const c = (this.cands && this.cands[this.candIdx]) || { lat: 0, y: E - 0.45 };
+      const late = this.phaseT < (this.phaseDur.pick || 2) * 0.42;
+      this.gazeTargetY = clamp(late ? c.y - 0.075 : c.y + gauss3() * 0.018, 0.06, H * 0.98);
+      this.gazeLateral = c.lat + gauss3() * 0.018;
+      this.fixTimer = late ? 0.5 + rng() * 0.6 : 0.8 + rng() * 0.8;
+      this.setFixOn(s);
+      return;
+    }
     const topLimit = Math.min(H * 0.97, E + 0.34);
     let r = rng(), y;
     if ((r -= 0.44) < 0) {
@@ -1012,7 +1117,7 @@ class Agent {
           STATS.shelves[s.id].stops++;
           this.dwellShelf = s; this.state = 'dwell';
           // 目当ての商品がどの段にあるか（商品は全段に分布する）
-          const bands = [0.20, 0.45, 0.66, 0.89], bw = [0.15, 0.33, 0.34, 0.18];
+          const bands = [0.15, 0.44, 0.66, 0.86], bw = [0.16, 0.33, 0.34, 0.17];
           let rb = rng(), bi = 0;
           for (let k = 0; k < bw.length; k++) { rb -= bw[k]; if (rb <= 0) { bi = k; break; } }
           this.targetFrac = clamp(bands[bi] + (rng() - 0.5) * 0.10, 0.08, 0.95);
@@ -1021,8 +1126,7 @@ class Agent {
           this.dwellAttn0 = this.gazeMap[s.id] || 0;      // 立寄開始時点の累計注意秒
           this.dwellGold0 = this.goldenSec[s.id] || 0;
           this.dwellTier0 = Float64Array.from(this.tierSec[s.id] || new Float64Array(4));
-          this.sampleFixation(s);
-          this.wait = (10 + rng() * 20) * this.persona.dwell;
+          this.beginDwell(s);
           if (rng() < 0.05) beacon(`客#${this.id} 「${s.name}」に立寄`, this.hasNovelty ? 'seg-nov' : '');
         } else if (this.state === 'toRegister') {
           const reg = this.reg || REGS[0];
@@ -1106,7 +1210,7 @@ function cloudSafeRand() { return rng(); }
 /* ゴールデンゾーン（床上85〜150cmに什器売上の8〜9割）の判定 */
 const GOLD_LO = 0.85, GOLD_HI = 1.50;
 /* 注意→購買モデルの基準点。いずれも実測分布の中央値で、ここで係数が1.0になる */
-const ATTN_REF = 21.5, CMP_REF = 2.55, GOLD_REF = 0.568, PICK_BASE = 0.639;
+const ATTN_REF = 21.5, CMP_REF = 4.45, GOLD_REF = 0.568, PICK_BASE = 0.639;
 /* 段の「手に取りやすさ」（人間工学的な到達コスト）。
    見つけた後に実際に掴む段階のコストで、注目度とは独立した経路。
    最下段は屈む必要があり、上段は腕を伸ばして棚の奥が見えない。
