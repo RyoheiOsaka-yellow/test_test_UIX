@@ -16,11 +16,25 @@ function mulberry32(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-const rng = mulberry32(20260804);
+/* 乱数は差し替え可能にしておく。seed を振った反復実行（モンテカルロ）で
+   「この差はモデルの効果か、それとも乱数のブレか」を切り分けるため。 */
+const BASE_SEED = 20260804;
+let _rngCore = mulberry32(BASE_SEED);
+const rng = () => _rngCore();
+function reseed(s) { _rngCore = mulberry32(s >>> 0); }
 let histRng = mulberry32(910);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // 標準正規の近似（一様3つの和）: 視線の散らばりに使う
 function gauss3() { return (rng() + rng() + rng() - 1.5) * 2; }
+/* ポアソン乱数（Knuth法。λが大きいときは正規近似） */
+function poissonSample(lam) {
+  if (!(lam > 0)) return 0;
+  if (lam > 30) return Math.max(0, Math.round(lam + Math.sqrt(lam) * gauss3()));
+  const L = Math.exp(-lam);
+  let k = 0, p = 1;
+  do { k++; p *= rng(); } while (p > L);
+  return k - 1;
+}
 const lerp = (a, b, t) => a + (b - a) * t;
 function fmtYen(v) {
   const a = Math.abs(v);
@@ -504,7 +518,7 @@ const STATS = {
   visitors: 0, adVisitors: 0, buyers: 0, revenue: 0, promoUnits: 0,
   nov: { treat: 0, ctrl: 0, treatBuy: 0, ctrlBuy: 0, treatRev: 0, ctrlRev: 0 },
   cross: { none: { n: 0, buy: 0 }, ad: { n: 0, buy: 0 }, sig: { n: 0, buy: 0 }, both: { n: 0, buy: 0 } },
-  personas: {}, balked: 0, balkedRev: 0, waitSum: 0, waitN: 0, maxQueue: 0, reg2Opened: false, gazeEvents: 0, obsEvents: 0,
+  personas: {}, balked: 0, balkedRev: 0, waitSum: 0, waitN: 0, maxQueue: 0, reg2Opened: false, gazeEvents: 0, obsEvents: 0, vSum: 0, vN: 0,
   shelves: {}, buckets: [], adStoreVisits: 0, returns: 0, applied: 0,
 };
 function resetPersonaStats() {
@@ -843,11 +857,13 @@ class Agent {
             st.purchases++;
             st.attnBuySum += q.attn;
             if (tt != null) st.tierBuys[tt]++;
-            const price = shelf.price * (0.8 + rng() * 0.5) * priceMult;
+            // 複数個買い（同じ商品を2つ取る）。1取引あたり点数を実勢に寄せる主因
+            const qty = 1 + (rng() < MULTI_BUY_P * (this.persona.dwell > 1 ? 1.25 : 0.85) ? 1 : 0);
+            const price = shelf.price * (0.8 + rng() * 0.5) * priceMult * qty;
             this.basket.push(shelf.id); this.revenue += price;
             if (isPromo) {
-              STATS.promoUnits++;
-              stockState.units = Math.max(0, stockState.units - STORE.sampleFactor);
+              STATS.promoUnits += qty;
+              stockState.units = Math.max(0, stockState.units - STORE.sampleFactor * qty);
               if (rng() < 0.12) beacon(`客#${this.id} 販促商品を購入 ${fmtYenFull(price)}`, 'seg-buy');
             }
           }
@@ -1218,6 +1234,9 @@ const ATTN_REF = 21.5, CMP_REF = 4.45, GOLD_REF = 0.568, PICK_BASE = 0.639;
    通説の段係数（0.55/0.95/1.40/0.90）とは意図的に別の値にしてある。
    段への割付は無作為なので、自然実験としてこの真値を推定できる。 */
 const TIER_REACH = [0.70, 0.95, 1.12, 0.80];
+/* 複数個買いの発生率。JFAのレジ客単価（コンビニ748.5円）に対して
+   1取引あたりの点数が少なすぎたため、実勢に寄せるために導入した。 */
+const MULTI_BUY_P = 0.30;
 /* 段の帰属（棚割シミュレーターの4段に合わせた床上高さ） */
 const TIER_CM4 = [30, 75, 115, 155];
 function argMax4(a) { let bi = 0; for (let i = 1; i < 4; i++) if (a[i] > a[bi]) bi = i; return bi; }
@@ -2068,7 +2087,9 @@ function buildShelf(s, productBoxes, productCyls) {
 /* エージェント3D表現 */
 /* 人体は目線高さ（ペルソナ別 1.50〜1.66m）を基準に等身大で組む。
    什器（1.4〜2.0m）との相対関係が正しくないと「どこを見ているか」が目視で検証できないため。 */
+let HEADLESS = false;            // 反復実行中は3Dメッシュを作らない（高速化）
 function makeAgentMesh(agent) {
+  if (HEADLESS) return;
   const g = new THREE.Group();
   const color = agent.persona.color;
   const E = agent.eyeH0;                       // 目線高さ
@@ -2306,9 +2327,10 @@ let arrivalCarry = 0, gazeTimer = 0, heatTimer = 0, shelfHeatTimer = 0, lastWeat
 function simStep(simDt) {
   // 3Dへ出すエージェントはサンプリング（ダッシュボードは sampleFactor 倍で拡大推計）
   const perSec = arrivalRatePerMin() / 60 / STORE.sampleFactor;
-  arrivalCarry += perSec * simDt;
-  while (arrivalCarry >= 1) {
-    arrivalCarry -= 1;
+  // 来店はポアソン過程。決定的な累算だと seed を振っても来店数が1人も動かず、
+  // 「効果か乱数のブレか」を判定できなくなる（検証タブの反復実行で発覚）
+  let nArr = poissonSample(perSec * simDt);
+  while (nArr-- > 0) {
     if (agents.length < STORE.maxAgents) {
       const a = new Agent();
       makeAgentMesh(a);
@@ -2323,6 +2345,10 @@ function simStep(simDt) {
     if (gazeTimer >= 0.25) {
       const iv = gazeTimer; gazeTimer = 0;
       agents.forEach(a => { if (!a.done) senseGaze(a, iv); });
+      agents.forEach(a => {
+        if (a.done || a.v <= 0.05) return;
+        if (a.state === 'walk' || a.state === 'toRegister' || a.state === 'exit') { STATS.vSum += a.v; STATS.vN++; }
+      });
       agents.forEach(a => {
         if (a.done) return;
         const gx = Math.floor((a.x + STORE.floorW / 2) / STORE.floorW * heat.w);
@@ -2383,6 +2409,101 @@ function simStep(simDt) {
   }
 }
 
+/* ==========================================================================
+   反復実行（モンテカルロ）
+   単一 seed の1本走行では「設定を変えた効果」と「乱数のブレ」が区別できない。
+   seed を振って同じ1日を何度も回し、KPIの分布として出す。
+   実行中は3Dメッシュを作らず、終わったらライブの状態をそのまま復元する。
+   ========================================================================== */
+function snapshotSim() {
+  return {
+    shelves: STATS.shelves,
+    stats: Object.assign({}, STATS),
+    heatGrid: heat.grid ? heat.grid.slice() : null,
+    heatLive: heat.live ? heat.live.slice() : null,
+    agents: agents.slice(),
+    follow: followTarget,
+    stock: Object.assign({}, stockState),
+    carry: arrivalCarry,
+    regs: REGS.map(r => ({ open: r.open, queue: r.queue.slice() })),
+    rngState: _rngCore,
+  };
+}
+function restoreSim(s) {
+  Object.assign(STATS, s.stats);
+  STATS.shelves = s.shelves;
+  if (s.heatGrid && heat.grid) heat.grid.set(s.heatGrid);
+  if (s.heatLive && heat.live) heat.live.set(s.heatLive);
+  agents.length = 0; s.agents.forEach(a => agents.push(a));
+  followTarget = s.follow;
+  Object.assign(stockState, s.stock);
+  arrivalCarry = s.carry;
+  REGS.forEach((r, i) => { r.open = s.regs[i].open; r.queue.length = 0; s.regs[i].queue.forEach(a => r.queue.push(a)); });
+  _rngCore = s.rngState;
+}
+
+/* 1日（10:00→22:00）を最初から回して指標を返す */
+function runReplication(seed) {
+  HEADLESS = true;
+  reseed(seed);
+  agents.length = 0;                     // ライブの客は snapshot 側が持っている
+  STATS.simSec = 10 * 3600;
+  arrivalCarry = 0; gazeTimer = 0; gazeDecayAcc = 0; gazeLiveAcc = 0;
+  resetDayCounters();
+  // 22:00 ちょうどで simStep は日をまたいで集計をリセットするので、その手前で止める
+  const steps = Math.floor((22 * 3600 - 10 * 3600) / 30) - 1;
+  for (let i = 0; i < steps; i++) simStep(30);
+  const k = collectMetrics();
+  agents.length = 0;
+  HEADLESS = false;
+  return k;
+}
+
+/* 検証タブが使う「創発した指標」 */
+function collectMetrics() {
+  let gazeSec = 0, obsSec = 0, passes = 0, gazes = 0, stops = 0, picks = 0, buys = 0;
+  let gold = 0, bottomSec = 0, wallSec = 0, phase = [0, 0, 0, 0], dwellN = 0, dwellSec = 0;
+  SHELVES.forEach(s => {
+    const st = STATS.shelves[s.id];
+    if (!st) return;
+    gazeSec += st.gazeSec; obsSec += st.gazeSecObs;
+    passes += st.passes; gazes += st.gazes; stops += st.stops;
+    picks += st.picks; buys += st.purchases;
+    gold += st.goldenSec;
+    if (s.kind !== 'island-case' && s.kind !== 'counter') {
+      wallSec += st.gazeSec;
+      for (let u = 0; u < GRID_U; u++) bottomSec += st.grid[u];     // 最下行
+    }
+    for (let i = 0; i < 4; i++) phase[i] += st.phaseSec[i];
+    dwellN += st.dwellN; dwellSec += st.phaseSec.reduce((a, b) => a + b, 0);
+  });
+  const phTot = phase.reduce((a, b) => a + b, 0) || 1;
+  return {
+    売上: STATS.revenue * STORE.sampleFactor,
+    客単価: STATS.buyers ? STATS.revenue / STATS.buyers : 0,
+    来店: STATS.visitors * STORE.sampleFactor,
+    買上率: STATS.visitors ? STATS.buyers / STATS.visitors : 0,
+    視線獲得率: passes ? gazes / passes : 0,
+    立寄率: passes ? stops / passes : 0,
+    立寄購買率: stops ? buys / stops : 0,
+    注視効率: gazeSec ? buys / gazeSec * 1000 : 0,
+    歩行速度: STATS.vN ? STATS.vSum / STATS.vN : 0,
+    棚前滞在: dwellN ? dwellSec / dwellN : 0,
+    最下行シェア: wallSec ? bottomSec / wallSec : 0,
+    ゴールデンシェア: gazeSec ? gold / gazeSec : 0,
+    探索比率: phase[1] / phTot,
+    比較比率: phase[2] / phTot,
+    カメラ捕捉率: gazeSec ? obsSec / gazeSec : 0,
+    販促個数: STATS.promoUnits * STORE.sampleFactor,
+    欠品ロス: stockState.missed,
+    在庫残: stockState.units,
+  };
+}
+window.runReplication = runReplication;
+window.snapshotSim = snapshotSim;
+window.restoreSim = restoreSim;
+window.collectMetrics = collectMetrics;
+
 function resetDayCounters() {
   STATS.visitors = 0; STATS.adVisitors = 0; STATS.buyers = 0; STATS.revenue = 0; STATS.promoUnits = 0;
   STATS.adStoreVisits = 0; STATS.returns = 0; STATS.applied = 0;
@@ -2390,7 +2511,7 @@ function resetDayCounters() {
   STATS.cross = { none: { n: 0, buy: 0 }, ad: { n: 0, buy: 0 }, sig: { n: 0, buy: 0 }, both: { n: 0, buy: 0 } };
   resetPersonaStats();
   STATS.balked = 0; STATS.balkedRev = 0; STATS.waitSum = 0; STATS.waitN = 0; STATS.maxQueue = 0; STATS.reg2Opened = false;
-  STATS.gazeEvents = 0; STATS.obsEvents = 0;
+  STATS.gazeEvents = 0; STATS.obsEvents = 0; STATS.vSum = 0; STATS.vN = 0;
   REGS.forEach(r => { r.queue.length = 0; if (FKEY === 'conbini') r.open = r === REGS[0]; });
   resetShelfStats();
   STATS.buckets = STATS.buckets.map(() => 0);

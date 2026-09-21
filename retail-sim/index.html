@@ -90,11 +90,11 @@ button { font-family: inherit; }
 /* ---- pages ---- */
 #page-3d { position: fixed; top: 54px; left: 0; right: 0; bottom: 0; }
 #view3d { position: absolute; inset: 0; }
-#page-analytics, #page-shelf, #page-plan, #page-studio {
+#page-analytics, #page-shelf, #page-plan, #page-studio, #page-valid {
   position: fixed; top: 54px; left: 0; right: 0; bottom: 0; z-index: 30;
   overflow-y: auto; background: var(--bg); display: none;
 }
-#page-analytics.active, #page-shelf.active, #page-plan.active, #page-studio.active { display: block; }
+#page-analytics.active, #page-shelf.active, #page-plan.active, #page-studio.active, #page-valid.active { display: block; }
 
 /* ---- エリア・予算 / AI STUDIO ---- */
 .geo-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 14px; }
@@ -435,6 +435,7 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
     <button data-view="plan">エリア・予算</button>
     <button data-view="studio">AI STUDIO</button>
     <button data-view="analytics">分析ボード</button>
+    <button data-view="valid">検証</button>
   </div>
   <div id="clockbox">
     <span id="sim-day">DAY 15</span>
@@ -700,6 +701,16 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
   </div>
 </div>
 
+<div id="page-valid">
+  <div class="an-inner">
+    <div class="an-head">
+      <div class="an-client">モデル検証</div>
+      <div class="an-sub">MODEL VALIDATION ／ 参照レンジ突合・内部整合性・反復実行</div>
+    </div>
+    <div id="valid-body"></div>
+  </div>
+</div>
+
 <div id="page-studio">
   <div class="an-inner">
     <div class="an-head">
@@ -892,11 +903,25 @@ function mulberry32(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-const rng = mulberry32(20260804);
+/* 乱数は差し替え可能にしておく。seed を振った反復実行（モンテカルロ）で
+   「この差はモデルの効果か、それとも乱数のブレか」を切り分けるため。 */
+const BASE_SEED = 20260804;
+let _rngCore = mulberry32(BASE_SEED);
+const rng = () => _rngCore();
+function reseed(s) { _rngCore = mulberry32(s >>> 0); }
 let histRng = mulberry32(910);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 // 標準正規の近似（一様3つの和）: 視線の散らばりに使う
 function gauss3() { return (rng() + rng() + rng() - 1.5) * 2; }
+/* ポアソン乱数（Knuth法。λが大きいときは正規近似） */
+function poissonSample(lam) {
+  if (!(lam > 0)) return 0;
+  if (lam > 30) return Math.max(0, Math.round(lam + Math.sqrt(lam) * gauss3()));
+  const L = Math.exp(-lam);
+  let k = 0, p = 1;
+  do { k++; p *= rng(); } while (p > L);
+  return k - 1;
+}
 const lerp = (a, b, t) => a + (b - a) * t;
 function fmtYen(v) {
   const a = Math.abs(v);
@@ -1380,7 +1405,7 @@ const STATS = {
   visitors: 0, adVisitors: 0, buyers: 0, revenue: 0, promoUnits: 0,
   nov: { treat: 0, ctrl: 0, treatBuy: 0, ctrlBuy: 0, treatRev: 0, ctrlRev: 0 },
   cross: { none: { n: 0, buy: 0 }, ad: { n: 0, buy: 0 }, sig: { n: 0, buy: 0 }, both: { n: 0, buy: 0 } },
-  personas: {}, balked: 0, balkedRev: 0, waitSum: 0, waitN: 0, maxQueue: 0, reg2Opened: false, gazeEvents: 0, obsEvents: 0,
+  personas: {}, balked: 0, balkedRev: 0, waitSum: 0, waitN: 0, maxQueue: 0, reg2Opened: false, gazeEvents: 0, obsEvents: 0, vSum: 0, vN: 0,
   shelves: {}, buckets: [], adStoreVisits: 0, returns: 0, applied: 0,
 };
 function resetPersonaStats() {
@@ -1719,11 +1744,13 @@ class Agent {
             st.purchases++;
             st.attnBuySum += q.attn;
             if (tt != null) st.tierBuys[tt]++;
-            const price = shelf.price * (0.8 + rng() * 0.5) * priceMult;
+            // 複数個買い（同じ商品を2つ取る）。1取引あたり点数を実勢に寄せる主因
+            const qty = 1 + (rng() < MULTI_BUY_P * (this.persona.dwell > 1 ? 1.25 : 0.85) ? 1 : 0);
+            const price = shelf.price * (0.8 + rng() * 0.5) * priceMult * qty;
             this.basket.push(shelf.id); this.revenue += price;
             if (isPromo) {
-              STATS.promoUnits++;
-              stockState.units = Math.max(0, stockState.units - STORE.sampleFactor);
+              STATS.promoUnits += qty;
+              stockState.units = Math.max(0, stockState.units - STORE.sampleFactor * qty);
               if (rng() < 0.12) beacon(`客#${this.id} 販促商品を購入 ${fmtYenFull(price)}`, 'seg-buy');
             }
           }
@@ -2094,6 +2121,9 @@ const ATTN_REF = 21.5, CMP_REF = 4.45, GOLD_REF = 0.568, PICK_BASE = 0.639;
    通説の段係数（0.55/0.95/1.40/0.90）とは意図的に別の値にしてある。
    段への割付は無作為なので、自然実験としてこの真値を推定できる。 */
 const TIER_REACH = [0.70, 0.95, 1.12, 0.80];
+/* 複数個買いの発生率。JFAのレジ客単価（コンビニ748.5円）に対して
+   1取引あたりの点数が少なすぎたため、実勢に寄せるために導入した。 */
+const MULTI_BUY_P = 0.30;
 /* 段の帰属（棚割シミュレーターの4段に合わせた床上高さ） */
 const TIER_CM4 = [30, 75, 115, 155];
 function argMax4(a) { let bi = 0; for (let i = 1; i < 4; i++) if (a[i] > a[bi]) bi = i; return bi; }
@@ -2944,7 +2974,9 @@ function buildShelf(s, productBoxes, productCyls) {
 /* エージェント3D表現 */
 /* 人体は目線高さ（ペルソナ別 1.50〜1.66m）を基準に等身大で組む。
    什器（1.4〜2.0m）との相対関係が正しくないと「どこを見ているか」が目視で検証できないため。 */
+let HEADLESS = false;            // 反復実行中は3Dメッシュを作らない（高速化）
 function makeAgentMesh(agent) {
+  if (HEADLESS) return;
   const g = new THREE.Group();
   const color = agent.persona.color;
   const E = agent.eyeH0;                       // 目線高さ
@@ -3182,9 +3214,10 @@ let arrivalCarry = 0, gazeTimer = 0, heatTimer = 0, shelfHeatTimer = 0, lastWeat
 function simStep(simDt) {
   // 3Dへ出すエージェントはサンプリング（ダッシュボードは sampleFactor 倍で拡大推計）
   const perSec = arrivalRatePerMin() / 60 / STORE.sampleFactor;
-  arrivalCarry += perSec * simDt;
-  while (arrivalCarry >= 1) {
-    arrivalCarry -= 1;
+  // 来店はポアソン過程。決定的な累算だと seed を振っても来店数が1人も動かず、
+  // 「効果か乱数のブレか」を判定できなくなる（検証タブの反復実行で発覚）
+  let nArr = poissonSample(perSec * simDt);
+  while (nArr-- > 0) {
     if (agents.length < STORE.maxAgents) {
       const a = new Agent();
       makeAgentMesh(a);
@@ -3199,6 +3232,10 @@ function simStep(simDt) {
     if (gazeTimer >= 0.25) {
       const iv = gazeTimer; gazeTimer = 0;
       agents.forEach(a => { if (!a.done) senseGaze(a, iv); });
+      agents.forEach(a => {
+        if (a.done || a.v <= 0.05) return;
+        if (a.state === 'walk' || a.state === 'toRegister' || a.state === 'exit') { STATS.vSum += a.v; STATS.vN++; }
+      });
       agents.forEach(a => {
         if (a.done) return;
         const gx = Math.floor((a.x + STORE.floorW / 2) / STORE.floorW * heat.w);
@@ -3259,6 +3296,101 @@ function simStep(simDt) {
   }
 }
 
+/* ==========================================================================
+   反復実行（モンテカルロ）
+   単一 seed の1本走行では「設定を変えた効果」と「乱数のブレ」が区別できない。
+   seed を振って同じ1日を何度も回し、KPIの分布として出す。
+   実行中は3Dメッシュを作らず、終わったらライブの状態をそのまま復元する。
+   ========================================================================== */
+function snapshotSim() {
+  return {
+    shelves: STATS.shelves,
+    stats: Object.assign({}, STATS),
+    heatGrid: heat.grid ? heat.grid.slice() : null,
+    heatLive: heat.live ? heat.live.slice() : null,
+    agents: agents.slice(),
+    follow: followTarget,
+    stock: Object.assign({}, stockState),
+    carry: arrivalCarry,
+    regs: REGS.map(r => ({ open: r.open, queue: r.queue.slice() })),
+    rngState: _rngCore,
+  };
+}
+function restoreSim(s) {
+  Object.assign(STATS, s.stats);
+  STATS.shelves = s.shelves;
+  if (s.heatGrid && heat.grid) heat.grid.set(s.heatGrid);
+  if (s.heatLive && heat.live) heat.live.set(s.heatLive);
+  agents.length = 0; s.agents.forEach(a => agents.push(a));
+  followTarget = s.follow;
+  Object.assign(stockState, s.stock);
+  arrivalCarry = s.carry;
+  REGS.forEach((r, i) => { r.open = s.regs[i].open; r.queue.length = 0; s.regs[i].queue.forEach(a => r.queue.push(a)); });
+  _rngCore = s.rngState;
+}
+
+/* 1日（10:00→22:00）を最初から回して指標を返す */
+function runReplication(seed) {
+  HEADLESS = true;
+  reseed(seed);
+  agents.length = 0;                     // ライブの客は snapshot 側が持っている
+  STATS.simSec = 10 * 3600;
+  arrivalCarry = 0; gazeTimer = 0; gazeDecayAcc = 0; gazeLiveAcc = 0;
+  resetDayCounters();
+  // 22:00 ちょうどで simStep は日をまたいで集計をリセットするので、その手前で止める
+  const steps = Math.floor((22 * 3600 - 10 * 3600) / 30) - 1;
+  for (let i = 0; i < steps; i++) simStep(30);
+  const k = collectMetrics();
+  agents.length = 0;
+  HEADLESS = false;
+  return k;
+}
+
+/* 検証タブが使う「創発した指標」 */
+function collectMetrics() {
+  let gazeSec = 0, obsSec = 0, passes = 0, gazes = 0, stops = 0, picks = 0, buys = 0;
+  let gold = 0, bottomSec = 0, wallSec = 0, phase = [0, 0, 0, 0], dwellN = 0, dwellSec = 0;
+  SHELVES.forEach(s => {
+    const st = STATS.shelves[s.id];
+    if (!st) return;
+    gazeSec += st.gazeSec; obsSec += st.gazeSecObs;
+    passes += st.passes; gazes += st.gazes; stops += st.stops;
+    picks += st.picks; buys += st.purchases;
+    gold += st.goldenSec;
+    if (s.kind !== 'island-case' && s.kind !== 'counter') {
+      wallSec += st.gazeSec;
+      for (let u = 0; u < GRID_U; u++) bottomSec += st.grid[u];     // 最下行
+    }
+    for (let i = 0; i < 4; i++) phase[i] += st.phaseSec[i];
+    dwellN += st.dwellN; dwellSec += st.phaseSec.reduce((a, b) => a + b, 0);
+  });
+  const phTot = phase.reduce((a, b) => a + b, 0) || 1;
+  return {
+    売上: STATS.revenue * STORE.sampleFactor,
+    客単価: STATS.buyers ? STATS.revenue / STATS.buyers : 0,
+    来店: STATS.visitors * STORE.sampleFactor,
+    買上率: STATS.visitors ? STATS.buyers / STATS.visitors : 0,
+    視線獲得率: passes ? gazes / passes : 0,
+    立寄率: passes ? stops / passes : 0,
+    立寄購買率: stops ? buys / stops : 0,
+    注視効率: gazeSec ? buys / gazeSec * 1000 : 0,
+    歩行速度: STATS.vN ? STATS.vSum / STATS.vN : 0,
+    棚前滞在: dwellN ? dwellSec / dwellN : 0,
+    最下行シェア: wallSec ? bottomSec / wallSec : 0,
+    ゴールデンシェア: gazeSec ? gold / gazeSec : 0,
+    探索比率: phase[1] / phTot,
+    比較比率: phase[2] / phTot,
+    カメラ捕捉率: gazeSec ? obsSec / gazeSec : 0,
+    販促個数: STATS.promoUnits * STORE.sampleFactor,
+    欠品ロス: stockState.missed,
+    在庫残: stockState.units,
+  };
+}
+window.runReplication = runReplication;
+window.snapshotSim = snapshotSim;
+window.restoreSim = restoreSim;
+window.collectMetrics = collectMetrics;
+
 function resetDayCounters() {
   STATS.visitors = 0; STATS.adVisitors = 0; STATS.buyers = 0; STATS.revenue = 0; STATS.promoUnits = 0;
   STATS.adStoreVisits = 0; STATS.returns = 0; STATS.applied = 0;
@@ -3266,7 +3398,7 @@ function resetDayCounters() {
   STATS.cross = { none: { n: 0, buy: 0 }, ad: { n: 0, buy: 0 }, sig: { n: 0, buy: 0 }, both: { n: 0, buy: 0 } };
   resetPersonaStats();
   STATS.balked = 0; STATS.balkedRev = 0; STATS.waitSum = 0; STATS.waitN = 0; STATS.maxQueue = 0; STATS.reg2Opened = false;
-  STATS.gazeEvents = 0; STATS.obsEvents = 0;
+  STATS.gazeEvents = 0; STATS.obsEvents = 0; STATS.vSum = 0; STATS.vN = 0;
   REGS.forEach(r => { r.queue.length = 0; if (FKEY === 'conbini') r.open = r === REGS[0]; });
   resetShelfStats();
   STATS.buckets = STATS.buckets.map(() => 0);
@@ -4495,12 +4627,13 @@ function renderBeacon() {
 function switchView(view) {
   activeView = view;
   document.querySelectorAll('#view-seg button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-  ['analytics', 'shelf', 'plan', 'studio'].forEach(v =>
+  ['analytics', 'shelf', 'plan', 'studio', 'valid'].forEach(v =>
     document.getElementById('page-' + v).classList.toggle('active', view === v));
   if (view === 'analytics') requestAnimationFrame(() => { refreshCharts(); refreshDash(); });
   if (view === 'shelf' && window.renderShelfSim) requestAnimationFrame(() => window.renderShelfSim());
   if (view === 'plan' && window.renderPlanPage) requestAnimationFrame(() => window.renderPlanPage());
   if (view === 'studio' && window.renderStudioPage) requestAnimationFrame(() => window.renderStudioPage());
+  if (view === 'valid' && window.renderValid) requestAnimationFrame(() => window.renderValid());
 }
 
 function bindControls() {
@@ -6772,6 +6905,321 @@ window.drawShelfHeatMini = drawShelfHeatMini;
 window.__cloudReady = true;   // これ以降 core からの呼び出しを許可（TDZ回避）
 buildPointCloud();
 setRenderMode('solid');
+
+/* =========================================================================
+   モデル検証タブ
+   - 創発した指標を「公開統計」「モデル設計レンジ」と突合して範囲内かを判定
+   - 物理・幾何の不変条件をブラウザ上でその場で検査（内部整合性）
+   - seed を振った反復実行で KPI の分布を出し、
+     「設定を変えた効果」と「乱数のブレ」を切り分ける
+   ========================================================================= */
+
+/* 参照レンジ。出典が実在するものと、プロトタイプの設計レンジを区別して持つ。 */
+function validRefs() {
+  const conbini = FKEY === 'conbini';
+  return [
+    {
+      k: '客単価', label: '客単価', unit: '円', fmt: v => fmtYenFull(v),
+      lo: conbini ? 640 : 2000, hi: conbini ? 860 : 3100, kind: 'stat',
+      src: conbini ? 'JFA コンビニ統計 748.5円（2025年11月・既存店）' : '百貨店デパ地下の想定客単価 2,500円（商業動態統計の構成比から設定）',
+    },
+    {
+      k: '歩行速度', label: '店内歩行速度（平均）', unit: 'm/s', fmt: v => v.toFixed(2),
+      lo: 0.55, hi: 1.05, kind: 'stat',
+      src: '屋内・売場内の歩行は屋外（約1.3m/s）より遅く 0.6〜1.0m/s 程度',
+    },
+    {
+      k: '最下行シェア', label: '最下行の視線シェア', unit: '', fmt: v => fmtPct(v, 1),
+      lo: 0.05, hi: 0.13, kind: 'stat',
+      src: 'アイトラッキング文献の最下段 8〜12%（本モデルは12×6格子の最下行で計測）',
+    },
+    {
+      k: 'ゴールデンシェア', label: 'ゴールデン帯の視線シェア', unit: '', fmt: v => fmtPct(v, 0),
+      lo: 0.40, hi: 0.70, kind: 'stat',
+      src: 'ゴールデンゾーン 床上85〜150cm に什器売上の8〜9割（エイジス等の解説）',
+    },
+    {
+      k: 'カメラ捕捉率', label: 'AIカメラ 視線秒の捕捉率', unit: '', fmt: v => fmtPct(v, 0),
+      lo: 0.65, hi: 0.95, kind: 'design',
+      src: '実機CCTVの取りこぼし（画角外・遮蔽・検出漏れ）を踏まえた設計レンジ',
+    },
+    {
+      k: '棚前滞在', label: '棚前の平均滞在', unit: '秒', fmt: v => v.toFixed(1) + 's',
+      lo: 8, hi: 45, kind: 'design',
+      src: 'ペルソナ別の滞在係数 0.6〜1.6 × 基準10〜30秒',
+    },
+    {
+      k: '視線獲得率', label: '視線獲得率（視線/通過）', unit: '', fmt: v => fmtPct(v, 0),
+      lo: 0.25, hi: 0.85, kind: 'design',
+      src: '通過した什器のうち0.7注視秒以上を獲得した割合',
+    },
+    {
+      k: '立寄率', label: '立寄率（立寄/通過）', unit: '', fmt: v => fmtPct(v, 0),
+      lo: 0.05, hi: 0.40, kind: 'design',
+      src: '買い回り計画に基づく立寄。通過のほとんどは素通り',
+    },
+    {
+      k: '立寄購買率', label: '立寄→購買', unit: '', fmt: v => fmtPct(v, 0),
+      lo: 0.25, hi: 0.70, kind: 'design',
+      src: '手取率 0.62 × 転換率（注意の量と質で変動）',
+    },
+    {
+      k: '探索比率', label: '棚前4相のうち探索', unit: '', fmt: v => fmtPct(v, 0),
+      lo: 0.40, hi: 0.70, kind: 'design',
+      src: '定位14% / 探索 / 比較 / 取得16% の時間配分',
+    },
+  ];
+}
+
+/* ---------- 内部整合性チェック（不変条件をその場で検査） ---------- */
+function runInvariants() {
+  const act = agents.filter(a => !a.done);
+  const out = [];
+  // ① 視線レイが什器を貫通していないか
+  let through = 0, rays = 0;
+  act.forEach(a => {
+    if (!a.gazing || !a.gazeHit) return;
+    rays++;
+    if (losBlocked(a.x, a.eyeH, a.z, a.gazeHit[0], a.gazeHit[1], a.gazeHit[2], a.gazeShelf)) through++;
+  });
+  out.push({ name: '視線が什器を貫通しない', ok: through === 0, got: `${through} / ${rays} 本`, want: '0本' });
+  // ② 首の可動域
+  let maxYaw = 0;
+  act.forEach(a => {
+    let d = (a.headYaw || 0) - a.heading;
+    while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+    maxYaw = Math.max(maxYaw, Math.abs(d) * 57.3);
+  });
+  out.push({ name: '頭部の回旋が首の可動域内', ok: maxYaw <= 74.5, got: maxYaw.toFixed(1) + '°', want: '≤ 74°' });
+  // ③ 注視している棚＝最も強く計測された棚（中心視は1点）
+  let m = 0, n = 0;
+  act.forEach(a => { if (a.gazing && a.fix && a.gazeShelf) { n++; if (a.gazeShelf === a.fix.sid) m++; } });
+  out.push({ name: '注視棚＝最大計測棚', ok: n === 0 || m / n >= 0.9, got: n ? `${m} / ${n}` : '—', want: '≥ 90%' });
+  // ④ 客が什器にめり込んでいない
+  let inside = 0;
+  act.forEach(a => {
+    SHELVES.forEach(s => {
+      if (Math.abs(a.x - s.pos[0]) < s.size[0] / 2 - 0.05 && Math.abs(a.z - s.pos[2]) < s.size[2] / 2 - 0.05) inside++;
+    });
+  });
+  out.push({ name: '客が什器にめり込まない', ok: inside === 0, got: inside + '人', want: '0人' });
+  // ⑤ 視線を一度も受けていないセル
+  let dead = 0, cells = 0;
+  SHELVES.forEach(s => {
+    const st = STATS.shelves[s.id];
+    if (!st || !st.grid || s.kind === 'counter') return;
+    for (let i = 0; i < st.grid.length; i++) { cells++; if (st.grid[i] < 1e-4) dead++; }
+  });
+  out.push({ name: '視線ゼロのセルが残らない', ok: dead <= Math.max(2, cells * 0.01), got: `${dead} / ${cells}`, want: '≤ 1%' });
+  // ⑥ 計測値は真値を超えない
+  let over = 0;
+  SHELVES.forEach(s => { const st = STATS.shelves[s.id]; if (st && st.gazeSecObs > st.gazeSec * 1.001) over++; });
+  out.push({ name: 'AIカメラ計測値 ≤ 真値', ok: over === 0, got: over + '売場', want: '0売場' });
+  return out;
+}
+
+/* ---------- モンテカルロ ---------- */
+const MC = { runs: [], busy: false, n: 6, scenarios: {}, cmpKey: null };
+
+function mcStats(vals) {
+  const a = vals.slice().sort((x, y) => x - y);
+  const mean = a.reduce((s, v) => s + v, 0) / a.length;
+  const sd = Math.sqrt(a.reduce((s, v) => s + (v - mean) ** 2, 0) / Math.max(a.length - 1, 1));
+  return { mean, sd, lo: a[0], hi: a[a.length - 1], p5: a[Math.floor(a.length * 0.05)], p95: a[Math.min(a.length - 1, Math.floor(a.length * 0.95))] };
+}
+
+/* 反復を1本ずつ走らせ、その都度 UI に返す（UIが固まらないよう分割実行） */
+function mcRun(n, label, done) {
+  if (MC.busy) return;
+  MC.busy = true;
+  const snap = snapshotSim();
+  const results = [];
+  const wasPaused = S.paused;
+  S.paused = true;
+  const step = i => {
+    if (i >= n) {
+      restoreSim(snap);
+      S.paused = wasPaused;
+      MC.busy = false;
+      MC.scenarios[label] = { results, settings: scenarioLabel() };
+      renderValid();
+      if (done) done(results);
+      return;
+    }
+    results.push(runReplication(BASE_SEED + 1009 * (i + 1)));
+    const el = document.getElementById('mc-progress');
+    if (el) el.textContent = `反復実行中… ${i + 1} / ${n}（seed を振って同じ1日を回しています）`;
+    setTimeout(() => step(i + 1), 0);
+  };
+  setTimeout(() => step(0), 0);
+}
+
+function scenarioLabel() {
+  return `広告${S.budget}万 / ノベルティ${S.novelty ? Math.round(S.novRate * 100) + '%' : 'なし'}`
+    + ` / エンド${S.endcap ? '有' : '無'} / サイネージ${S.signage ? '有' : '無'}`
+    + ` / ${WEATHER[S.weather].label} / 人流${S.traffic.toFixed(1)}×${S.rival ? ' / 競合セール' : ''}`;
+}
+
+/* ---------- 描画 ---------- */
+const MC_KEYS = [
+  { k: '売上', fmt: v => fmtYen(v) },
+  { k: '来店', fmt: v => fmtNum(v) + '人' },
+  { k: '販促個数', fmt: v => fmtNum(v) + '個' },
+  { k: '欠品ロス', fmt: v => fmtNum(v) + '個' },
+  { k: '客単価', fmt: v => fmtYenFull(v) },
+  { k: '買上率', fmt: v => fmtPct(v, 1) },
+  { k: '注視効率', fmt: v => v.toFixed(1) },
+];
+
+function renderValid() {
+  const el = document.getElementById('valid-body');
+  if (!el) return;
+  const m = collectMetrics();
+  const refs = validRefs();
+  const rows = refs.map(r => {
+    const v = m[r.k];
+    const ok = v >= r.lo && v <= r.hi;
+    const pos = clamp((v - r.lo) / Math.max(r.hi - r.lo, 1e-9), -0.25, 1.25);
+    return { r, v, ok, pos };
+  });
+  const nOk = rows.filter(x => x.ok).length;
+  const inv = runInvariants();
+  const invOk = inv.filter(x => x.ok).length;
+
+  const names = Object.keys(MC.scenarios);
+  const cmp = names.length >= 2 ? mcCompare(names[names.length - 2], names[names.length - 1]) : null;
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title" data-ccollapse>参照レンジとの突合<span class="hint">${nOk} / ${rows.length} が範囲内</span><span class="ctgl">▾</span></div>
+      <div class="card-body">
+        <div class="mde-text" style="margin-bottom:8px">
+          シミュレーションから<b>創発した</b>指標（直接そう設定してはいない値）を、公開統計およびモデルの設計レンジと突合する。
+          <span style="color:${COL.s1}">●</span> は実在の公開統計に紐づく指標、
+          <span style="color:var(--text-faint)">●</span> はプロトタイプの設計レンジ。
+          範囲外が出たら、モデルか較正のどちらかが壊れている。
+        </div>
+        ${rows.map(x => `
+          <div class="sp-factor" style="align-items:flex-start">
+            <span class="fl" style="width:168px">
+              <span style="color:${x.r.kind === 'stat' ? COL.s1 : 'var(--text-faint)'}">●</span> ${x.r.label}
+            </span>
+            <span class="fb" style="height:16px;background:#eef2f7;position:relative;border-radius:8px">
+              <span style="position:absolute;left:0;top:0;bottom:0;width:100%;border-radius:8px;background:linear-gradient(90deg,#fff 0%,${x.ok ? 'rgba(20,122,85,.16)' : 'rgba(197,48,48,.12)'} 12%,${x.ok ? 'rgba(20,122,85,.16)' : 'rgba(197,48,48,.12)'} 88%,#fff 100%)"></span>
+              <span style="position:absolute;left:${(clamp(x.pos, 0, 1) * 100).toFixed(1)}%;top:1px;bottom:1px;width:3px;border-radius:2px;background:${x.ok ? COL.good : COL.bad};transform:translateX(-1.5px)"></span>
+            </span>
+            <span class="fv" style="width:150px;text-align:right">
+              <b style="color:${x.ok ? COL.good : COL.bad}">${x.r.fmt(x.v)}</b>
+              <span style="font-weight:400;color:var(--text-faint)"> / 参照 ${x.r.fmt(x.r.lo)}〜${x.r.fmt(x.r.hi)}</span>
+            </span>
+          </div>
+          <div class="sd-note" style="margin:-2px 0 6px 178px">${x.r.src}</div>`).join('')}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" data-ccollapse>内部整合性チェック<span class="hint">${invOk} / ${inv.length} 合格・その場で検査</span><span class="ctgl">▾</span></div>
+      <div class="card-body">
+        <div class="mde-text" style="margin-bottom:7px">
+          物理・幾何の不変条件を、いまこの瞬間の店内状態に対して実際に検査している（スクリーンショットではなく実行結果）。
+        </div>
+        <table style="width:100%">
+          <thead><tr><th>不変条件</th><th>実測</th><th>期待</th><th>判定</th></tr></thead>
+          <tbody>${inv.map(i => `
+            <tr><td>${i.name}</td><td>${i.got}</td><td>${i.want}</td>
+              <td><span style="color:${i.ok ? COL.good : COL.bad};font-weight:700">${i.ok ? '合格' : '不合格'}</span></td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" data-ccollapse>反復実行（モンテカルロ）<span class="hint">効果か、乱数のブレか</span><span class="ctgl">▾</span></div>
+      <div class="card-body">
+        <div class="mde-text" style="margin-bottom:8px">
+          単一 seed の1本走行では「設定を変えた効果」と「乱数のブレ」が区別できない。
+          seed を振って同じ1日（10:00→22:00）を ${MC.n} 回まわし、KPIの分布として出す。
+          実行中は3D描画を止め、終わるとライブの状態をそのまま復元する。
+        </div>
+        <div class="sp-radio" id="mc-n">
+          ${[6, 10, 16].map(n => `<button data-n="${n}" class="${MC.n === n ? 'active' : ''}">${n}反復</button>`).join('')}
+        </div>
+        <div class="sp-btnrow">
+          <button id="mc-run" ${MC.busy ? 'disabled' : ''}>いまの設定で反復実行</button>
+          <button id="mc-clear" class="ghost">結果を消去</button>
+        </div>
+        <div id="mc-progress" class="sd-note" style="margin-top:6px">${MC.busy ? '反復実行中…' : ''}</div>
+        ${names.map(nm => {
+          const sc = MC.scenarios[nm];
+          return `<div class="power-box" style="margin-top:9px">
+            <div style="font-weight:700;margin-bottom:2px">${nm}<span style="font-weight:400;color:var(--text-faint)"> ・ ${sc.results.length}反復</span></div>
+            <div class="sd-note" style="margin-bottom:5px">${sc.settings}</div>
+            ${MC_KEYS.map(mk => {
+              const st = mcStats(sc.results.map(r => r[mk.k]));
+              const cv = st.mean ? st.sd / Math.abs(st.mean) : 0;
+              return `<div class="sp-factor"><span class="fl" style="width:88px">${mk.k}</span>
+                <span class="fv" style="width:auto;text-align:left;font-weight:400">
+                  <b>${mk.fmt(st.mean)}</b>
+                  <span style="color:var(--text-faint)"> ± ${mk.fmt(st.sd)}（seedによる変動 ${fmtPct(cv, 1)}）
+                  ／ 範囲 ${mk.fmt(st.lo)}〜${mk.fmt(st.hi)}</span></span></div>`;
+            }).join('')}
+          </div>`;
+        }).join('')}
+        ${cmp ? `
+          <div class="power-box" style="margin-top:10px;border-color:${COL.s1}">
+            <div style="font-weight:700;margin-bottom:4px">シナリオ比較: ${cmp.a} → ${cmp.b}</div>
+            <div class="sd-note" style="margin-bottom:6px">
+              同じ反復数どうしの差を、2標本のt検定で評価する。
+              「seedのブレを超えた差か」がここで決まる。
+            </div>
+            ${cmp.rows.map(r => `
+              <div class="sp-factor"><span class="fl" style="width:88px">${r.k}</span>
+                <span class="fv" style="width:auto;text-align:left;font-weight:400">
+                  <b style="color:${r.sig ? (r.diff > 0 ? COL.good : COL.bad) : 'var(--text-secondary)'}">${r.diff > 0 ? '+' : ''}${fmtPct(r.rel, 1)}</b>
+                  <span style="color:var(--text-faint)"> （${r.fmt(r.diff)} ± ${r.fmt(r.ci)}・t=${r.t.toFixed(2)}）</span>
+                  ${r.sig ? confChip('hi') : `<span style="color:var(--text-faint);font-size:10px">乱数のブレの範囲内</span>`}
+                </span></div>`).join('')}
+          </div>` : (names.length === 1
+            ? `<div class="sd-note" style="margin-top:8px">設定を変えてもう一度実行すると、2つのシナリオの差を検定して比較します。</div>` : '')}
+      </div>
+    </div>`;
+
+  const nEl = document.getElementById('mc-n');
+  if (nEl) nEl.addEventListener('click', e => {
+    const b = e.target.closest('button[data-n]');
+    if (!b) return;
+    MC.n = +b.dataset.n; renderValid();
+  });
+  const runEl = document.getElementById('mc-run');
+  if (runEl) runEl.addEventListener('click', () => {
+    let nm = scenarioLabel();
+    let i = 2; const base = nm;
+    while (MC.scenarios[nm]) nm = base + ' #' + i++;
+    document.getElementById('mc-progress').textContent = '反復実行中…';
+    mcRun(MC.n, nm);
+  });
+  const clrEl = document.getElementById('mc-clear');
+  if (clrEl) clrEl.addEventListener('click', () => { MC.scenarios = {}; renderValid(); });
+}
+
+/* 2つのシナリオの差を2標本t検定で評価 */
+function mcCompare(aName, bName) {
+  const A = MC.scenarios[aName].results, B = MC.scenarios[bName].results;
+  const rows = MC_KEYS.map(mk => {
+    const a = mcStats(A.map(r => r[mk.k])), b = mcStats(B.map(r => r[mk.k]));
+    const se = Math.sqrt(a.sd ** 2 / A.length + b.sd ** 2 / B.length);
+    const diff = b.mean - a.mean;
+    const t = se > 1e-9 ? diff / se : 0;
+    return {
+      k: mk.k, fmt: mk.fmt, diff, ci: 1.96 * se, t,
+      rel: a.mean ? diff / Math.abs(a.mean) : 0,
+      sig: Math.abs(t) >= 1.96,
+    };
+  });
+  return { a: aName, b: bName, rows };
+}
+
+window.renderValid = renderValid;
 
 </script>
 </body>

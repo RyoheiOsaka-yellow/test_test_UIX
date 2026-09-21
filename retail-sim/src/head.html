@@ -90,11 +90,11 @@ button { font-family: inherit; }
 /* ---- pages ---- */
 #page-3d { position: fixed; top: 54px; left: 0; right: 0; bottom: 0; }
 #view3d { position: absolute; inset: 0; }
-#page-analytics, #page-shelf, #page-plan, #page-studio {
+#page-analytics, #page-shelf, #page-plan, #page-studio, #page-valid {
   position: fixed; top: 54px; left: 0; right: 0; bottom: 0; z-index: 30;
   overflow-y: auto; background: var(--bg); display: none;
 }
-#page-analytics.active, #page-shelf.active, #page-plan.active, #page-studio.active { display: block; }
+#page-analytics.active, #page-shelf.active, #page-plan.active, #page-studio.active, #page-valid.active { display: block; }
 
 /* ---- エリア・予算 / AI STUDIO ---- */
 .geo-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 14px; }
@@ -435,6 +435,7 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
     <button data-view="plan">エリア・予算</button>
     <button data-view="studio">AI STUDIO</button>
     <button data-view="analytics">分析ボード</button>
+    <button data-view="valid">検証</button>
   </div>
   <div id="clockbox">
     <span id="sim-day">DAY 15</span>
@@ -697,6 +698,16 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
         <div class="card-body" id="gamma-body"></div>
       </div>
     </div>
+  </div>
+</div>
+
+<div id="page-valid">
+  <div class="an-inner">
+    <div class="an-head">
+      <div class="an-client">モデル検証</div>
+      <div class="an-sub">MODEL VALIDATION ／ 参照レンジ突合・内部整合性・反復実行</div>
+    </div>
+    <div id="valid-body"></div>
   </div>
 </div>
 

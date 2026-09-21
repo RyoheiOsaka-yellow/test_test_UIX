@@ -1046,12 +1046,13 @@ function renderBeacon() {
 function switchView(view) {
   activeView = view;
   document.querySelectorAll('#view-seg button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-  ['analytics', 'shelf', 'plan', 'studio'].forEach(v =>
+  ['analytics', 'shelf', 'plan', 'studio', 'valid'].forEach(v =>
     document.getElementById('page-' + v).classList.toggle('active', view === v));
   if (view === 'analytics') requestAnimationFrame(() => { refreshCharts(); refreshDash(); });
   if (view === 'shelf' && window.renderShelfSim) requestAnimationFrame(() => window.renderShelfSim());
   if (view === 'plan' && window.renderPlanPage) requestAnimationFrame(() => window.renderPlanPage());
   if (view === 'studio' && window.renderStudioPage) requestAnimationFrame(() => window.renderStudioPage());
+  if (view === 'valid' && window.renderValid) requestAnimationFrame(() => window.renderValid());
 }
 
 function bindControls() {

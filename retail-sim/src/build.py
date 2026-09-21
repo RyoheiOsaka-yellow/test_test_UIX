@@ -11,11 +11,12 @@ shelf = (base / 'app_shelf.js').read_text()
 plan = (base / 'app_plan.js').read_text()
 studio = (base / 'app_studio.js').read_text()
 cloud = (base / 'app_cloud.js').read_text()
+valid = (base / 'app_valid.js').read_text()
 
 out = (
     head
     + '\n<script>\n' + three + '\n</script>\n'
-    + '<script>\n' + core + '\n' + dash + '\n' + shelf + '\n' + plan + '\n' + studio + '\n' + cloud + '\n</script>\n'
+    + '<script>\n' + core + '\n' + dash + '\n' + shelf + '\n' + plan + '\n' + studio + '\n' + cloud + '\n' + valid + '\n</script>\n'
     + '</body>\n</html>\n'
 )
 dest = base.parent / 'index.html'
