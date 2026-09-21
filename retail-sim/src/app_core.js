@@ -221,7 +221,8 @@ function freshShelfStats() {
     passes: 0, gazes: 0, gazeSec: 0, stops: 0, picks: 0, purchases: 0,
     grid: new Float32Array(GRID_U * GRID_V),          // 本日累計
     gridRecent: new Float32Array(GRID_U * GRID_V),    // 直近30分（指数減衰）
-    gridLive: new Float32Array(GRID_U * GRID_V),      // ライブ発光（数十秒で減衰）
+    gridLive: new Float32Array(GRID_U * GRID_V),      // ライブ（直近1分・人の動きに直結）
+    gridWho: new Uint8Array(GRID_U * GRID_V),         // そのセルを最後に見たペルソナ
   };
 }
 const STATS = {
@@ -318,6 +319,9 @@ const PERSONAS = {
   inbound:   { key: 'inbound', eyeH: 1.6, label: 'インバウンド', color: 0x45b3a2, speed: 0.9, dwell: 1.6, stops: [2, 4], buy: 1.15, priceMult: 1.3,
                aff: { gift: 1.8, snack: 1.4, drink: 1.1, food: 1.0, fresh: 0.6, daily: 0.4, mag: 0.5 } },
 };
+Object.keys(PERSONAS).forEach((k, i) => { PERSONAS[k].pidx = i; });
+const PERSONA_COLORS = Object.keys(PERSONAS).map(k => PERSONAS[k].color);
+
 function personaWeights(hour) {
   const w = {
     commuter: hour < 10 ? 2.0 : hour < 12 ? 0.8 : hour < 14 ? 2.2 : hour < 17 ? 0.7 : hour < 19.5 ? 2.0 : 1.0,
@@ -609,6 +613,7 @@ function accumulateGaze(agent, s, w, dist) {
   st.grid[gi] += w;
   if (st.gridRecent) st.gridRecent[gi] += w;
   if (st.gridLive) st.gridLive[gi] += w;
+  if (st.gridWho) st.gridWho[gi] = agent.persona.pidx;
   STATS.gazeEvents++;
 
   // 棚面上の注視点（3D座標）。最も強く見ている棚をエージェントに記録する
@@ -687,7 +692,7 @@ let renderer, scene, camera, camState;
 let storeGroup = null;
 const agents = [];
 let followTarget = null;
-const heat = { grid: null, canvas: null, tex: null, plane: null, w: 64, h: 40 };
+const heat = { grid: null, live: null, canvas: null, tex: null, plane: null, w: 64, h: 40 };
 let shelfMeshes = {}, labelSprites = [], novStandGroup = null, promoGroup = null;
 let pickMeshes = [];
 let selectedShelfId = null;
@@ -773,7 +778,7 @@ function bindCamControls() {
   }, { passive: true });
 }
 
-let camTween = null;
+let camTween = null, autoFollowTimer = 0;
 function tweenCam(to) {
   followTarget = null;
   camTween = { from: Object.assign({}, camState), to, t: 0 };
@@ -1059,6 +1064,7 @@ function buildStore() {
   // 回遊ヒートマップ
   heat.w = STORE.heatW; heat.h = STORE.heatH;
   heat.grid = new Float32Array(heat.w * heat.h);
+  heat.live = new Float32Array(heat.w * heat.h);
   heat.canvas = document.createElement('canvas');
   heat.canvas.width = heat.w; heat.canvas.height = heat.h;
   if (heat.tex) heat.tex.dispose();
@@ -1406,13 +1412,18 @@ function heatColor(v) {
 function redrawHeat() {
   const ctx = heat.canvas.getContext('2d');
   const img = ctx.createImageData(heat.w, heat.h);
-  let max = 8;
+  let max = 8, liveMax = 1e-6;
   for (let i = 0; i < heat.grid.length; i++) if (heat.grid[i] > max) max = heat.grid[i];
+  if (heat.live) for (let i = 0; i < heat.live.length; i++) if (heat.live[i] > liveMax) liveMax = heat.live[i];
   for (let i = 0; i < heat.grid.length; i++) {
     const v = Math.log1p(clamp(heat.grid[i] / max, 0, 1) * 24) / Math.log1p(24);
     const [r, g, b] = heatColor(v);
-    img.data[i * 4] = r; img.data[i * 4 + 1] = g; img.data[i * 4 + 2] = b;
-    img.data[i * 4 + 3] = Math.round(v * 185);
+    // 歩いた直後の足跡を白く重ねる（人の動きがそのまま床に描かれる）
+    const lv = heat.live ? Math.pow(clamp(heat.live[i] / liveMax, 0, 1), 0.7) : 0;
+    img.data[i * 4] = Math.round(lerp(r, 255, lv * 0.85));
+    img.data[i * 4 + 1] = Math.round(lerp(g, 255, lv * 0.85));
+    img.data[i * 4 + 2] = Math.round(lerp(b, 255, lv * 0.6));
+    img.data[i * 4 + 3] = Math.round(clamp(v * 185 + lv * 170, 0, 235));
   }
   ctx.putImageData(img, 0, 0);
   heat.tex.needsUpdate = true;
@@ -1478,32 +1489,45 @@ function simStep(simDt) {
         if (a.done) return;
         const gx = Math.floor((a.x + STORE.floorW / 2) / STORE.floorW * heat.w);
         const gz = Math.floor((a.z + STORE.floorD / 2) / STORE.floorD * heat.h);
-        if (gx >= 0 && gx < heat.w && gz >= 0 && gz < heat.h) heat.grid[gz * heat.w + gx] += iv;
+        if (gx >= 0 && gx < heat.w && gz >= 0 && gz < heat.h) {
+          heat.grid[gz * heat.w + gx] += iv;
+          if (heat.live) heat.live[gz * heat.w + gx] += iv;   // 直後だけ光る足跡
+        }
       });
     }
   }
   for (let i = agents.length - 1; i >= 0; i--) {
     if (agents[i].done) { if (followTarget === agents[i]) followTarget = null; disposeAgent(agents[i]); agents.splice(i, 1); }
   }
-  // ライブ層の減衰（半減期 約25 sim秒 — 見た瞬間に光り、すぐ褪せる）
+  // ライブ層の減衰（半減期 約20 sim秒 — 見た瞬間に光り、すぐ褪せる）
   gazeLiveAcc += simDt;
-  if (gazeLiveAcc >= 3) {
-    gazeLiveAcc -= 3;
-    SHELVES.forEach(s => {
-      const g = STATS.shelves[s.id] && STATS.shelves[s.id].gridLive;
-      if (!g) return;
-      for (let i = 0; i < g.length; i++) g[i] *= 0.92;
-    });
+  if (gazeLiveAcc >= 2) {
+    const steps = Math.floor(gazeLiveAcc / 2);
+    gazeLiveAcc -= steps * 2;
+    const fg = Math.pow(0.933, steps), ff = Math.pow(0.90, steps);
+    if (fg < 0.999) {
+      SHELVES.forEach(s => {
+        const g = STATS.shelves[s.id] && STATS.shelves[s.id].gridLive;
+        if (!g) return;
+        if (fg < 1e-4) g.fill(0); else for (let i = 0; i < g.length; i++) g[i] *= fg;
+      });
+    }
+    if (heat.live) {
+      if (ff < 1e-4) heat.live.fill(0);
+      else for (let i = 0; i < heat.live.length; i++) heat.live[i] *= ff;
+    }
   }
 
   // 直近ウィンドウの指数減衰（半減期 約10分）
   gazeDecayAcc += simDt;
   if (gazeDecayAcc >= 60) {
-    gazeDecayAcc -= 60;
+    const steps = Math.floor(gazeDecayAcc / 60);
+    gazeDecayAcc -= steps * 60;
+    const f = Math.pow(0.933, steps);
     SHELVES.forEach(s => {
       const g = STATS.shelves[s.id] && STATS.shelves[s.id].gridRecent;
       if (!g) return;
-      for (let i = 0; i < g.length; i++) g[i] *= 0.933;
+      if (f < 1e-4) g.fill(0); else for (let i = 0; i < g.length; i++) g[i] *= f;
     });
   }
 
@@ -1547,6 +1571,25 @@ function rolloverDay() {
   resetDayCounters();
   document.getElementById('sim-day').textContent = 'DAY ' + STATS.day;
 }
+
+/* 蓄積ヒートを消去して、人の動きが描き直す様子を観察できるようにする */
+function resetHeatmaps() {
+  SHELVES.forEach(s => {
+    const st = STATS.shelves[s.id];
+    if (!st) return;
+    if (st.grid) st.grid.fill(0);
+    if (st.gridRecent) st.gridRecent.fill(0);
+    if (st.gridLive) st.gridLive.fill(0);
+    if (st.gridWho) st.gridWho.fill(0);
+    st.gazeSec = 0;
+  });
+  if (heat.grid) heat.grid.fill(0);
+  if (heat.live) heat.live.fill(0);
+  if (typeof redrawHeat === 'function' && heat.canvas) redrawHeat();
+  if (window.__cloudReady) { updateCloudColors(); redrawFloorHeatCloud(); }
+  beacon('ヒートマップをリセット — ここから人の動きが描き直します', 'seg-buy');
+}
+window.resetHeatmaps = resetHeatmaps;
 
 /* ---------- 施設切替 ---------- */
 function loadFacility(key) {
@@ -1629,16 +1672,35 @@ function updateVisuals(realDt) {
     applyCam();
     if (t >= 1) camTween = null;
   } else if (followTarget && !followTarget.done) {
-    camState.tx = lerp(camState.tx, followTarget.x, realDt * 3);
-    camState.tz = lerp(camState.tz, followTarget.z, realDt * 3);
-    camState.ty = 0.6; camState.r = Math.min(camState.r, 7);
+    // 注視をやめて一定時間たったら、いま注視している別の客へ自動で乗り換える
+    if (followTarget.gazing || followTarget.state === 'dwell') autoFollowTimer = 0;
+    else autoFollowTimer += realDt;
+    if (autoFollowTimer > 2.5) { autoFollowTimer = 0; pickFollowTarget(); }
+    const ft = followTarget;
+    camState.tx = lerp(camState.tx, ft.x, realDt * 2.2);
+    camState.tz = lerp(camState.tz, ft.z, realDt * 2.2);
+    camState.ty = lerp(camState.ty, 1.2, realDt * 2);
+    const want = (window.CLOUD && CLOUD.on) ? 7.6 : 7;
+    camState.r = lerp(camState.r, want, realDt * 1.6);
+    // 客が見ている棚の側から捉える
+    if (ft.gazeHit) {
+      const want2 = Math.atan2(ft.x - ft.gazeHit[0], ft.z - ft.gazeHit[2]);
+      let d = want2 - camState.theta;
+      while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+      camState.theta += d * Math.min(1, realDt * 0.9);
+    }
     applyCam();
+  } else if (followTarget && followTarget.done) {
+    pickFollowTarget();
   }
 }
 
 function pickFollowTarget() {
   const active = agents.filter(a => !a.done);
   if (!active.length) return;
-  followTarget = active[Math.floor(rng() * active.length)];
+  const gazers = active.filter(a => a.gazing || a.state === 'dwell');
+  const pool = gazers.length ? gazers : active;
+  followTarget = pool[Math.floor(rng() * pool.length)];
+  if (window.CLOUD && CLOUD.on) CLOUD.tracked = followTarget;   // 追従対象を計測対象にも揃える
   camTween = null;
 }

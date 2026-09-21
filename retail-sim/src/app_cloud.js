@@ -8,11 +8,11 @@
    ========================================================================= */
 
 const CLOUD = {
-  on: false, heat: true, frustum: true, detection: true, rays: true, window: 'day',
+  on: false, heat: true, frustum: true, detection: true, rays: true, window: 'live',
   group: null, points: null, base: null, uv: null, shelfIdx: null,
   cams: [], tracked: null, trackTimer: 0, hudTimer: 0,
   detLines: null, trackLabel: null, trackRing: null,
-  gazeRays: null, splats: null, splatLife: null, splatCursor: 0,
+  gazeRays: null, splats: null, splatLife: null, splatCursor: 0, cellFrames: null, rayDots: null,
   heatTimer: 0, gazeRate: 0, gazeAcc: 0, rateTimer: 0, floorCanvas: null, floorTex: null, floorPlane: null,
 };
 window.CLOUD = CLOUD;
@@ -34,6 +34,13 @@ function heatRamp(t) {
     }
   }
   return [1, 0.2, 0.15];
+}
+
+const PERSONA_RGB = null;
+function personaRGB(idx) {
+  const hex = PERSONA_COLORS[idx] != null ? PERSONA_COLORS[idx] : 0x0f9fba;
+  const c = new THREE.Color(hex);
+  return [c.r, c.g, c.b];
 }
 
 /* ---------- CCTV 定義（施設寸法から生成） ---------- */
@@ -233,6 +240,7 @@ function buildPointCloud() {
   buildCameras();
   buildDetectionLines();
   buildGazeFx();
+  buildCellFrames();
   scene.add(CLOUD.group);
   updateCloudColors();
 }
@@ -300,7 +308,7 @@ function buildCameras() {
   });
 }
 
-const SPLAT_MAX = 200, RAY_MAX = 56, RAY_DOTS = 14;
+const SPLAT_MAX = 200, RAY_MAX = 56, RAY_DOTS = 14, CELL_MAX = 12;
 let softTex = null;
 function softCircleTexture() {
   if (softTex) return softTex;
@@ -419,6 +427,67 @@ function updateGazeFx(realDt) {
   CLOUD.splats.visible = CLOUD.rays && alive;
 }
 
+// 注視セルの枠（棚面の 12×6 グリッド上に、いま計測されているセルを描く）
+function buildCellFrames() {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(CELL_MAX * 8 * 3), 3));
+  g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(CELL_MAX * 8 * 3), 3));
+  CLOUD.cellFrames = new THREE.LineSegments(g, new THREE.LineBasicMaterial({
+    vertexColors: true, transparent: true, opacity: 0.95,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+  }));
+  CLOUD.cellFrames.frustumCulled = false;
+  CLOUD.group.add(CLOUD.cellFrames);
+}
+
+function cellCorners(s, cellIdx) {
+  const row = Math.floor(cellIdx / GRID_U), col = cellIdx % GRID_U;
+  const alongX = s.normal[2] !== 0;
+  const length = alongX ? s.size[0] : s.size[2];
+  const depth = s.kind === 'gondola-side' ? 0.42 : (alongX ? s.size[2] : s.size[0]);
+  const face = Math.max(depth / 2 - 0.02, 0.05);
+  const a0 = (col / GRID_U - 0.5) * length, a1 = ((col + 1) / GRID_U - 0.5) * length;
+  let y0, y1;
+  if (s.kind === 'island-case') { y0 = 0.5 + (row / GRID_V) * 0.55; y1 = 0.5 + ((row + 1) / GRID_V) * 0.55; }
+  else { y0 = (row / GRID_V) * s.size[1]; y1 = ((row + 1) / GRID_V) * s.size[1]; }
+  const px = (a) => alongX ? s.pos[0] + a : s.pos[0] + s.normal[0] * face;
+  const pz = (a) => alongX ? s.pos[2] + s.normal[2] * face : s.pos[2] + a;
+  return [
+    [px(a0), y0, pz(a0)], [px(a1), y0, pz(a1)],
+    [px(a1), y1, pz(a1)], [px(a0), y1, pz(a0)],
+  ];
+}
+
+function updateCellFrames(time) {
+  const pa = CLOUD.cellFrames.geometry.attributes.position.array;
+  const ca = CLOUD.cellFrames.geometry.attributes.color.array;
+  let n = 0;
+  for (const a of agents) {
+    if (n >= CELL_MAX) break;
+    if (a.done || !a.gazing || a.gazeCell == null || !a.gazeShelf) continue;
+    const s = shelfById[a.gazeShelf];
+    if (!s) continue;
+    const c = cellCorners(s, a.gazeCell);
+    const col = new THREE.Color(a.persona.color);
+    const pulse = 0.55 + 0.45 * Math.sin(time * 6 + a.id);
+    const k = (a === CLOUD.tracked ? 1.3 : 0.85) * pulse;
+    for (let e = 0; e < 4; e++) {
+      const p0 = c[e], p1 = c[(e + 1) % 4];
+      const base = (n * 4 + e) * 6;
+      pa[base] = p0[0]; pa[base + 1] = p0[1]; pa[base + 2] = p0[2];
+      pa[base + 3] = p1[0]; pa[base + 4] = p1[1]; pa[base + 5] = p1[2];
+      for (let q = 0; q < 2; q++) {
+        ca[base + q * 3] = col.r * k; ca[base + q * 3 + 1] = col.g * k; ca[base + q * 3 + 2] = col.b * k;
+      }
+    }
+    n++;
+  }
+  CLOUD.cellFrames.geometry.setDrawRange(0, n * 8);
+  CLOUD.cellFrames.geometry.attributes.position.needsUpdate = true;
+  CLOUD.cellFrames.geometry.attributes.color.needsUpdate = true;
+  CLOUD.cellFrames.visible = CLOUD.rays && n > 0;
+}
+
 function buildDetectionLines() {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(4 * 2 * 3), 3));
@@ -435,7 +504,9 @@ function buildDetectionLines() {
 }
 
 function gridFor(st) {
-  return (CLOUD.window === 'recent' && st.gridRecent) ? st.gridRecent : st.grid;
+  if (CLOUD.window === 'live' && st.gridLive) return st.gridLive;
+  if (CLOUD.window === 'recent' && st.gridRecent) return st.gridRecent;
+  return st.grid;
 }
 
 /* 3x3 平滑化（計測ノイズをならし、注目の「塊」として見せる） */
@@ -465,8 +536,9 @@ function updateCloudColors() {
     return;
   }
   // 棚内の相対（どこを見たか）× 棚間の相対（どの棚が見られたか）のハイブリッド正規化
-  const shelfMax = {}, shelfTot = {}, smooth = {}, liveG = {};
-  let globalTot = 1e-6, liveMax = 1e-6, floorMax = 1e-6;
+  const isLive = CLOUD.window === 'live';
+  const shelfMax = {}, shelfTot = {}, smooth = {}, liveG = {}, dayMax = {};
+  let globalTot = 1e-6, liveMax = 1e-6, floorMax = 1e-6, liveAbsMax = 1e-6;
   // 床の回遊（歩行）グリッドの最大値
   if (heat.grid) for (let i = 0; i < heat.grid.length; i++) if (heat.grid[i] > floorMax) floorMax = heat.grid[i];
   SHELVES.forEach(s => {
@@ -476,8 +548,16 @@ function updateCloudColors() {
     const sm = smoothGrid(g);
     let m = 1e-6, sum = 0;
     for (let i = 0; i < sm.length; i++) { if (sm[i] > m) m = sm[i]; sum += g[i]; }
+    // ライブ窓の下地として使う「本日累計」の棚内最大
+    if (isLive && st0.grid) {
+      const gd = smoothGrid(st0.grid);
+      let dm = 1e-6;
+      for (let i = 0; i < gd.length; i++) if (gd[i] > dm) dm = gd[i];
+      dayMax[s.id] = dm; smooth[s.id + '__day'] = gd;
+    }
     smooth[s.id] = sm; shelfMax[s.id] = m; shelfTot[s.id] = sum;
     if (sum > globalTot) globalTot = sum;
+    if (m > liveAbsMax) liveAbsMax = m;
     const lv = st0.gridLive;
     if (lv) {
       const ls = smoothGrid(lv);
@@ -510,6 +590,30 @@ function updateCloudColors() {
     const u = CLOUD.uv[i * 2], v = CLOUD.uv[i * 2 + 1];
     const ci = Math.floor(v * GRID_V) * GRID_U + Math.floor(u * GRID_U);
     const raw = smooth[s.id][ci];
+    if (isLive) {
+      // 下地 = 本日累計ヒートの地図（控えめ）
+      const dayG = smooth[s.id + '__day'];
+      const dayV = dayG ? clamp(dayG[ci] / (dayMax[s.id] || 1), 0, 1) : 0;
+      let r0 = lum * 0.5, g0 = lum * 0.55, b0 = lum * 0.66;
+      if (dayV > 0.05) {
+        const [dr, dg, db] = heatRamp(Math.pow(dayV, 0.75));
+        const dk = clamp(dayV * 0.85, 0, 0.6);
+        r0 = lerp(r0, dr, dk); g0 = lerp(g0, dg, dk); b0 = lerp(b0, db, dk);
+      }
+      // 上乗せ = いま見られているセル（見ている人のペルソナ色 → 強いほど白熱）
+      const inten = Math.pow(clamp(raw / Math.max(liveAbsMax, 1e-6), 0, 1), 0.55);
+      if (inten < 0.04) {
+        arr[gi3] = r0; arr[gi3 + 1] = g0; arr[gi3 + 2] = b0;
+      } else {
+        const pc = personaRGB(st.gridWho ? st.gridWho[ci] : 0);
+        const wh = Math.pow(inten, 2.0);
+        const kk = clamp(0.35 + inten * 0.65, 0, 1);
+        arr[gi3] = clamp(lerp(r0, lerp(pc[0], 1, wh), kk) + inten * 0.45, 0, 1);
+        arr[gi3 + 1] = clamp(lerp(g0, lerp(pc[1], 1, wh), kk) + inten * 0.5, 0, 1);
+        arr[gi3 + 2] = clamp(lerp(b0, lerp(pc[2], 1, wh), kk) + inten * 0.52, 0, 1);
+      }
+      continue;
+    }
     const within = raw / shelfMax[s.id];                         // 棚内のどこか
     const between = Math.pow(shelfTot[s.id] / globalTot, 0.45);  // どの棚が熱いか
     const cell = within * (0.45 + 0.55 * between);
@@ -523,7 +627,7 @@ function updateCloudColors() {
       arr[gi3 + 2] = lerp(lum * 1.08, b, k);
     }
     // 「今まさに見られている」セルを白く発光させる（人の動きと連動）
-    const lg = liveG[s.id];
+    const lg = isLive ? null : liveG[s.id];
     if (lg) {
       const live = Math.pow(clamp(lg[ci] / liveMax, 0, 1), 0.8);
       if (live > 0.02) {
@@ -540,14 +644,19 @@ function redrawFloorHeatCloud() {
   if (!CLOUD.floorCanvas || !heat.grid) return;
   const ctx = CLOUD.floorCanvas.getContext('2d');
   const img = ctx.createImageData(heat.w, heat.h);
-  let max = 1e-6;
+  let max = 1e-6, lmax = 1e-6;
   for (let i = 0; i < heat.grid.length; i++) if (heat.grid[i] > max) max = heat.grid[i];
+  if (heat.live) for (let i = 0; i < heat.live.length; i++) if (heat.live[i] > lmax) lmax = heat.live[i];
+  const liveOnly = CLOUD.window === 'live';
   for (let i = 0; i < heat.grid.length; i++) {
-    const v = Math.log1p(clamp(heat.grid[i] / max, 0, 1) * 24) / Math.log1p(24);
-    img.data[i * 4] = Math.round(lerp(28, 196, v));
-    img.data[i * 4 + 1] = Math.round(lerp(18, 150, v));
-    img.data[i * 4 + 2] = Math.round(lerp(62, 255, v));
-    img.data[i * 4 + 3] = Math.round(v * 215);
+    const acc = Math.log1p(clamp(heat.grid[i] / max, 0, 1) * 24) / Math.log1p(24);
+    const v = liveOnly ? acc * 0.55 : acc;
+    const lv = heat.live ? Math.pow(clamp(heat.live[i] / lmax, 0, 1), 0.45) : 0;
+    // 蓄積=バイオレット、直後の足跡=シアン〜白（人が歩いた跡がそのまま伸びる）
+    img.data[i * 4] = Math.round(lerp(lerp(28, 196, v), 210, lv));
+    img.data[i * 4 + 1] = Math.round(lerp(lerp(18, 150, v), 250, lv));
+    img.data[i * 4 + 2] = Math.round(lerp(lerp(62, 255, v), 255, lv));
+    img.data[i * 4 + 3] = Math.round(clamp(v * 190 + lv * 200, 0, 240));
   }
   ctx.putImageData(img, 0, 0);
   CLOUD.floorTex.needsUpdate = true;
@@ -627,7 +736,9 @@ function updateCloud(realDt) {
 
   // トラッキング対象の更新
   CLOUD.trackTimer += realDt;
-  if (!CLOUD.tracked || CLOUD.tracked.done || CLOUD.trackTimer > 6) {
+  if (followTarget && !followTarget.done) {
+    CLOUD.tracked = followTarget;            // カメラ追従中はその人を計測対象に
+  } else if (!CLOUD.tracked || CLOUD.tracked.done || CLOUD.trackTimer > 6) {
     CLOUD.trackTimer = 0; pickTracked();
   }
   const a = CLOUD.tracked;
@@ -656,12 +767,16 @@ function updateCloud(realDt) {
     CLOUD.detLines.geometry.setDrawRange(0, 0);
   }
 
-  // 視線レイ・注視スプラット（毎フレーム）
+  // 視線レイ・注視スプラット・注視セル枠（毎フレーム）
   updateGazeFx(realDt);
+  updateCellFrames(performance.now() / 1000);
 
   // ヒート再投影（人の動きに追随させるため高頻度）
   CLOUD.heatTimer += realDt;
-  if (CLOUD.heatTimer > 0.3) { CLOUD.heatTimer = 0; updateCloudColors(); redrawFloorHeatCloud(); }
+  if (CLOUD.heatTimer > 0.25) {
+    CLOUD.heatTimer = 0;
+    updateCloudColors(); redrawFloorHeatCloud(); renderLiveActivity();
+  }
 
   // 視線イベントのレート
   CLOUD.rateTimer += realDt;
@@ -681,7 +796,7 @@ function updateCloud(realDt) {
     const el2 = document.getElementById('hud-sub');
     if (el2) {
       const live = agents.filter(x => !x.done).length;
-      el2.textContent = `${STORE.label.toUpperCase()} // ${live} DETECTIONS // ${CLOUD.gazeRate} GAZE/s // ${CLOUD.window === 'recent' ? 'LAST 30 MIN' : 'TODAY'}`;
+      el2.textContent = `${STORE.label.toUpperCase()} // ${live} DETECTIONS // ${CLOUD.gazeRate} GAZE/s // ${CLOUD.window === 'live' ? 'LIVE (60s)' : CLOUD.window === 'recent' ? 'LAST 30 MIN' : 'TODAY'}`;
     }
     const el3 = document.getElementById('hud-now');
     if (el3) {
@@ -695,6 +810,7 @@ function updateCloud(realDt) {
       } else { el3.style.opacity = 0.25; el3.textContent = 'NOW GAZING ▸ —'; }
     }
     renderHotspots();
+    renderLiveActivity();
   }
 }
 
@@ -720,6 +836,41 @@ function renderHotspots() {
     }).join('');
 }
 
+/* ---------- LIVE ACTIVITY（誰が何をしているか＝ヒートの供給源） ---------- */
+const STATE_LABEL = {
+  plan: '入店', walk: '回遊中', dwell: '立寄', toRegister: 'レジへ',
+  queue: 'レジ待ち', pay: '会計中', exit: '退店中',
+};
+function renderLiveActivity() {
+  const el = document.getElementById('la-rows');
+  if (!el) return;
+  const live = agents.filter(a => !a.done);
+  if (!live.length) { el.innerHTML = '<div class="la-row">— 店内に検出なし —</div>'; return; }
+  const rows = live.slice()
+    .sort((a, b) => (b.gazing ? 1 : 0) - (a.gazing ? 1 : 0))
+    .slice(0, 9)
+    .map(a => {
+      const c = '#' + new THREE.Color(a.persona.color).getHexString();
+      let what = STATE_LABEL[a.state] || a.state;
+      let cls = '';
+      if (a.gazing && a.gazeShelf) {
+        const sh = shelfById[a.gazeShelf];
+        const row = Math.floor(a.gazeCell / GRID_U), colI = a.gazeCell % GRID_U;
+        const tierName = ['最下段', '下段', '中段', '中上段', '上段', '最上段'][row] || '';
+        const acc = a.gazeMap && a.gazeMap[a.gazeShelf] ? a.gazeMap[a.gazeShelf] : 0;
+        what = `注視 ▸ ${sh ? sh.name : ''} ${tierName}${colI + 1}列 +${acc.toFixed(1)}s`;
+        cls = 'la-gaze';
+      } else if (a.state === 'dwell' && a.dwellShelf) {
+        what = `立寄 ▸ ${a.dwellShelf.name}`;
+      } else if (a.state === 'queue' && a.reg) {
+        what = `レジ待ち ${a.reg.queue.indexOf(a) + 1}人目`;
+      }
+      const mark = a === CLOUD.tracked ? '▶' : ' ';
+      return `<div class="la-row ${cls}">${mark}<i style="background:${c}"></i>#${100000 + (a.id % 9000)} ${a.persona.label.slice(0, 5)} ${what}</div>`;
+    });
+  el.innerHTML = rows.join('');
+}
+
 /* ---------- 表示モード切替 ---------- */
 function setRenderMode(mode) {
   CLOUD.on = mode === 'cloud';
@@ -732,6 +883,8 @@ function setRenderMode(mode) {
   if (hud) hud.style.display = CLOUD.on ? 'block' : 'none';
   document.body.classList.toggle('cloud-mode', CLOUD.on);
   if (CLOUD.on) {
+    CLOUD.window = 'live';
+    document.querySelectorAll('#heat-window button').forEach(x => x.classList.toggle('active', x.dataset.win === 'live'));
     CLOUD.gazeAcc = STATS.gazeEvents; CLOUD.rateTimer = 0; CLOUD.gazeRate = 0;
     redrawFloorHeatCloud();
     CLOUD.hudTimer = 99;
@@ -751,6 +904,9 @@ document.getElementById('ly-cheat').addEventListener('change', e => { CLOUD.heat
 document.getElementById('ly-frustum').addEventListener('change', e => { CLOUD.frustum = e.target.checked; });
 document.getElementById('ly-detect').addEventListener('change', e => { CLOUD.detection = e.target.checked; });
 document.getElementById('ly-rays').addEventListener('change', e => { CLOUD.rays = e.target.checked; });
+document.getElementById('btn-reset-heat').addEventListener('click', () => {
+  if (window.resetHeatmaps) resetHeatmaps();
+});
 document.getElementById('heat-window').addEventListener('click', e => {
   const b = e.target.closest('button[data-win]');
   if (!b) return;

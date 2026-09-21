@@ -195,6 +195,15 @@ button { font-family: inherit; }
   letter-spacing: .08em; color: #cfe0f0; line-height: 1.85; text-shadow: 0 0 8px rgba(0,0,0,.95);
 }
 body.cloud-mode #shelf-detail { top: 130px; }
+#live-activity {
+  position: absolute; right: 18px; top: 190px; width: 300px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9.5px;
+  letter-spacing: .04em; color: #b9cde0; line-height: 1.85; text-shadow: 0 0 8px rgba(0,0,0,.95);
+}
+#live-activity .la-title { color: #e8c37a; margin-bottom: 3px; letter-spacing: .12em; }
+#live-activity i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+#live-activity .la-gaze { color: #e9f6ff; }
+#live-activity .la-row { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body.cloud-mode #panel, body.cloud-mode #beacon, body.cloud-mode #shelf-detail, body.cloud-mode .mk {
   background: rgba(10,16,28,.92); border-color: rgba(120,160,200,.28); color: #cfe0f0;
 }
@@ -451,6 +460,7 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
     <div id="hud-sub">POINT CLOUD DIGITAL TWIN</div>
     <div id="hud-now">NOW GAZING ▸ —</div>
     <div id="hud-hotspots"></div>
+    <div id="live-activity"><div class="la-title">LIVE ACTIVITY</div><div id="la-rows"></div></div>
     <div id="hud-legend">
       <div><i style="background:#c98500"></i>CAMERA / FRUSTUM</div>
       <div><i style="background:#9bbf3a"></i>FLOOR COVERAGE</div>
@@ -501,9 +511,13 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
           <label class="row"><input type="checkbox" id="ly-detect" checked /><span class="chip" style="background:#31c5f0"></span>人物検出・トラッキング</label>
           <label class="row"><input type="checkbox" id="ly-rays" checked /><span class="chip" style="background:linear-gradient(90deg,#0f9fba,#ffffff)"></span>視線レイ・注視スプラット</label>
           <div class="sp-radio" id="heat-window" style="margin:6px 0 2px">
-            <button data-win="day" class="active">本日累計</button>
+            <button data-win="live" class="active">ライブ</button>
             <button data-win="recent">直近30分</button>
+            <button data-win="day">本日累計</button>
           </div>
+          <button id="btn-reset-heat" style="width:100%;font-size:11px;padding:6px 0;border-radius:6px;cursor:pointer;background:#f2f5f9;color:var(--text-secondary);border:1px solid var(--panel-border);margin-top:2px">
+            ヒートを消して描き直しを観察
+          </button>
         </div>
         <div id="solid-layers">
         <label class="row"><input type="checkbox" id="ly-shelfheat" checked /><span class="chip" style="background:linear-gradient(90deg,#dbe7f5,#1d6fb8)"></span>棚別 視線ヒート</label>
@@ -528,7 +542,7 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
           <button data-cam="over">俯瞰</button>
           <button data-cam="entrance">入口</button>
           <button data-cam="promo">販促什器</button>
-          <button data-cam="follow">客を追従</button>
+          <button data-cam="follow">注視を自動追跡</button>
         </div>
         <div class="note">ドラッグ: 回転 ／ ホイール: ズーム ／ 右ドラッグ: 平行移動 ／ 棚クリック: 売場詳細</div>
       </details>
