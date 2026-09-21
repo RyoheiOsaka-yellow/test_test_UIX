@@ -9,24 +9,24 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <style>
 :root{
-  --bg:#f3f6f9; --panel:#ffffffee; --panel-solid:#ffffff; --ink:#15243a; --ink-2:#4a5a70; --ink-3:#7d8a9c;
+  --bg:#eef2f6; --panel:#ffffffee; --panel-solid:#ffffff; --ink:#15243a; --ink-2:#4a5a70; --ink-3:#7d8a9c;
   --line:#d9e0e8; --line-2:#c2ccd8; --accent:#1f6fb2; --accent-ink:#ffffff; --accent-soft:#e4f0fa;
-  --warn:#c9372c; --warn-soft:#fbe4e1; --ok:#1f7a4d; --code:#eef2f6;
+  --warn:#c9372c; --warn-soft:#fbe4e1; --ok:#1f7a4d;
   --sans:"BIZ UDPGothic","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
   --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
   --shadow:0 4px 18px rgba(16,32,56,.14);
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#0f1721; --panel:#141d29ee; --panel-solid:#141d29; --ink:#e6edf5; --ink-2:#aab8c9; --ink-3:#7f8ea1;
+    --bg:#0c131c; --panel:#141d29ee; --panel-solid:#141d29; --ink:#e6edf5; --ink-2:#aab8c9; --ink-3:#7f8ea1;
     --line:#26323f; --line-2:#354353; --accent:#5ea4e0; --accent-ink:#0b1a2a; --accent-soft:#1a3149;
-    --warn:#ff7b6b; --warn-soft:#3a1c18; --ok:#6fcf97; --code:#1c2733; --shadow:0 4px 18px rgba(0,0,0,.45);
+    --warn:#ff7b6b; --warn-soft:#3a1c18; --ok:#6fcf97; --shadow:0 4px 18px rgba(0,0,0,.5);
   }
 }
 :root[data-theme="dark"]{
-  --bg:#0f1721; --panel:#141d29ee; --panel-solid:#141d29; --ink:#e6edf5; --ink-2:#aab8c9; --ink-3:#7f8ea1;
+  --bg:#0c131c; --panel:#141d29ee; --panel-solid:#141d29; --ink:#e6edf5; --ink-2:#aab8c9; --ink-3:#7f8ea1;
   --line:#26323f; --line-2:#354353; --accent:#5ea4e0; --accent-ink:#0b1a2a; --accent-soft:#1a3149;
-  --warn:#ff7b6b; --warn-soft:#3a1c18; --ok:#6fcf97; --code:#1c2733; --shadow:0 4px 18px rgba(0,0,0,.45);
+  --warn:#ff7b6b; --warn-soft:#3a1c18; --ok:#6fcf97; --shadow:0 4px 18px rgba(0,0,0,.5);
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -37,35 +37,44 @@ button{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
 
-/* ---- header ---- */
+/* header */
 .top{position:absolute;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 0;display:flex;gap:10px;align-items:flex-start;pointer-events:none;z-index:5}
 .brand{pointer-events:auto;background:var(--panel);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:10px;padding:8px 14px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px}
 .brand h1{font-size:15px;margin:0;font-weight:700;letter-spacing:.02em}
 .brand h1 small{display:block;font-size:11px;color:var(--ink-3);font-weight:400;letter-spacing:.08em}
 .brand .tag{font-size:10.5px;letter-spacing:.1em;padding:2px 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-weight:700}
-.places{pointer-events:auto;display:flex;gap:6px;flex-wrap:wrap;max-width:min(720px,calc(100vw - 24px))}
+.places{pointer-events:auto;display:flex;gap:6px;flex-wrap:wrap;max-width:min(700px,calc(100vw - 24px))}
 .places button{background:var(--panel);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12.5px;box-shadow:var(--shadow);white-space:nowrap}
 .places button:hover{border-color:var(--accent);color:var(--accent)}
 .places button[aria-current="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 
-/* ---- left panel ---- */
-.panel{position:absolute;left:12px;top:calc(env(safe-area-inset-top,0px) + 70px);bottom:calc(env(safe-area-inset-bottom,0px) + 64px);width:300px;max-width:calc(100vw - 24px);background:var(--panel);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;z-index:4}
-.panel-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line)}
-.panel-head b{font-size:13px}
-.panel-body{overflow:auto;padding:6px 14px 14px;flex:1}
+/* panel */
+.panel{position:absolute;left:12px;top:calc(env(safe-area-inset-top,0px) + 70px);bottom:calc(env(safe-area-inset-bottom,0px) + 64px);width:312px;max-width:calc(100vw - 24px);background:var(--panel);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;z-index:4}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:8px 10px 8px 12px;border-bottom:1px solid var(--line);gap:6px}
+.tabs{display:flex;gap:3px;flex:1;min-width:0}
+.tabs button{border:none;background:none;padding:5px 8px;border-radius:7px;font-size:12.5px;font-weight:700;color:var(--ink-3);white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--accent-soft);color:var(--accent)}
+.panel-body{overflow:auto;padding:4px 14px 14px;flex:1;overscroll-behavior:contain}
 .panel.collapsed{bottom:auto}
 .panel.collapsed .panel-body{display:none}
-.icon-btn{width:28px;height:28px;border-radius:7px;border:1px solid var(--line);background:var(--panel-solid);display:inline-grid;place-items:center;font-size:14px}
+.icon-btn{width:28px;height:28px;flex:none;border-radius:7px;border:1px solid var(--line);background:var(--panel-solid);display:inline-grid;place-items:center;font-size:14px}
+[role=tabpanel][hidden]{display:none}
 section{padding:10px 0;border-bottom:1px solid var(--line)}
 section:last-child{border-bottom:none}
-.sec-title{display:flex;align-items:center;justify-content:space-between;font-size:11.5px;letter-spacing:.1em;color:var(--ink-3);font-weight:700;margin-bottom:6px}
+.sec-title{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;letter-spacing:.1em;color:var(--ink-3);font-weight:700;margin-bottom:6px}
 .row{display:flex;align-items:center;gap:10px;margin:6px 0}
-.row label{flex:1;display:flex;align-items:center;gap:8px}
-.row .val{min-width:52px;text-align:right;color:var(--ink-2);font-size:12px}
+.row label{flex:1;display:flex;align-items:center;gap:8px;min-width:0}
+.row .val{min-width:56px;text-align:right;color:var(--ink-2);font-size:12px;font-family:var(--mono)}
 input[type=range]{flex:1;accent-color:var(--accent);min-width:0}
 .seg{display:flex;gap:4px;flex-wrap:wrap}
 .seg button{flex:1;border:1px solid var(--line);background:var(--panel-solid);border-radius:7px;padding:5px 8px;font-size:12.5px;white-space:nowrap}
 .seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+#cloud-color{display:grid;grid-template-columns:1fr 1fr}
+#cloud-color button{flex:none}
+.seg.v{flex-direction:column}
+.seg.v button{text-align:left;padding:7px 10px;white-space:normal}
+.seg.v button b{display:block;font-size:12.5px}
+.seg.v button span{display:block;font-size:11px;opacity:.75;font-weight:400}
 .switch{appearance:none;width:34px;height:20px;border-radius:999px;background:var(--line-2);position:relative;margin:0;flex:none;cursor:pointer}
 .switch::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s}
 .switch:checked{background:var(--accent)}
@@ -74,26 +83,26 @@ input[type=range]{flex:1;accent-color:var(--accent);min-width:0}
 .legend{margin-top:8px}
 .legend-bar{height:12px;border-radius:3px;border:1px solid var(--line)}
 .legend-ticks{position:relative;height:14px;font-size:10.5px;color:var(--ink-3);margin-top:2px}
-.legend-ticks span{position:absolute;transform:translateX(-50%)}
+.legend-ticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
 .legend-ticks span:first-child{transform:none}
 .legend-ticks span:last-child{transform:translateX(-100%)}
 select{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel-solid)}
-.hint{font-size:12px;color:var(--ink-3);margin:4px 0 0}
+.hint{font-size:11.5px;color:var(--ink-3);margin:5px 0 0;line-height:1.5}
 .draft-note{font-size:12px;padding:6px 8px;border-radius:6px;background:var(--warn-soft);color:var(--warn);margin-top:6px}
 .tool-btn{width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel-solid);font-weight:700;font-size:13px}
 .tool-btn[aria-pressed="true"]{background:var(--warn);color:#fff;border-color:var(--warn)}
 
-/* ---- bottom readout ---- */
+/* readout */
 .readout{position:absolute;left:12px;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);display:flex;gap:8px;align-items:center;flex-wrap:wrap;pointer-events:none;z-index:4}
 .chip{pointer-events:auto;background:var(--panel);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12.5px;box-shadow:var(--shadow);display:flex;gap:8px;align-items:baseline}
 .chip .k{color:var(--ink-3);font-size:11px;letter-spacing:.06em}
 .chip .depth{font-size:16px;font-weight:700}
 .chip .depth.neg{color:var(--accent)}
 .chip .depth.warn{color:var(--warn)}
+.chip .src{font-size:10px;color:var(--ink-3)}
 .credit{margin-left:auto;font-size:11px;color:var(--ink-3);pointer-events:auto;background:var(--panel);padding:4px 8px;border-radius:6px;border:1px solid var(--line)}
-.credit a{color:inherit}
 
-/* ---- profile drawer ---- */
+/* profile */
 .profile{position:absolute;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 56px);width:min(560px,calc(100vw - 24px));background:var(--panel);backdrop-filter:blur(8px);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);z-index:4;padding:10px 14px 12px}
 .profile[hidden]{display:none}
 .profile-head{display:flex;align-items:center;gap:10px;margin-bottom:4px}
@@ -106,17 +115,20 @@ select{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:7px
 .profile .zero{stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3 3}
 .profile .draft{stroke:var(--warn);stroke-width:1.2;stroke-dasharray:4 3}
 .profile .line{fill:none;stroke:var(--accent);stroke-width:1.8}
-.profile .area{fill:var(--accent);opacity:.18}
-.profile .hazard{fill:var(--warn);opacity:.35}
+.profile .area{fill:var(--accent);opacity:.2}
+.profile .hazard{fill:var(--warn);opacity:.3}
+.profile .water{fill:#4a9fd8;opacity:.14}
 .profile .cursor{stroke:var(--ink);stroke-width:1}
 .profile .empty{font-size:12px;color:var(--ink-3);padding:24px 0;text-align:center}
 
-/* ---- map overrides ---- */
+/* map chrome */
 .maplibregl-ctrl-group{background:var(--panel-solid);border:1px solid var(--line);box-shadow:var(--shadow)}
 .maplibregl-ctrl-group button + button{border-top-color:var(--line)}
 .maplibregl-ctrl-scale{background:var(--panel);color:var(--ink);border-color:var(--ink-3);font-family:var(--mono);font-size:10px}
 .maplibregl-ctrl-attrib{display:none}
 .maplibregl-canvas-container.maplibregl-interactive.profiling{cursor:crosshair}
+.stat{position:absolute;right:12px;top:calc(env(safe-area-inset-top,0px) + 116px);z-index:4;background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:3px 8px;font-size:11px;font-family:var(--mono);color:var(--ink-3);box-shadow:var(--shadow)}
+.stat[hidden]{display:none}
 
 @media (max-width:640px){
   .top{flex-direction:column;gap:8px}
@@ -125,12 +137,13 @@ select{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:7px
   .brand h1 small{display:none}
   .places{flex-wrap:nowrap;overflow-x:auto;max-width:calc(100vw - 24px);padding-bottom:4px;scrollbar-width:none}
   .places::-webkit-scrollbar{display:none}
-  .panel{width:calc(100vw - 24px);top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 52px);max-height:48vh}
+  .panel{width:calc(100vw - 24px);top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 52px);max-height:50vh}
   .panel.collapsed{max-height:none}
   .profile{bottom:calc(env(safe-area-inset-bottom,0px) + 52px);left:12px;width:auto}
   .profile svg{height:130px}
   .credit{display:none}
   .maplibregl-ctrl-top-right{top:96px}
+  .stat{top:auto;bottom:calc(env(safe-area-inset-bottom,0px) + 50px);right:12px}
 }
 </style>
 </head>
@@ -145,60 +158,145 @@ select{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:7px
   <div class="places" id="places" role="group" aria-label="地点へ移動"></div>
 </div>
 
-<aside class="panel" id="panel" aria-label="レイヤーとツール">
+<div class="stat" id="stat" hidden></div>
+
+<aside class="panel" id="panel" aria-label="コントロール">
   <div class="panel-head">
-    <b>表示とツール</b>
-    <div style="display:flex;gap:6px">
-      <button class="icon-btn" id="theme-btn" type="button" title="テーマ切替" aria-label="テーマ切替">☾</button>
-      <button class="icon-btn" id="collapse-btn" type="button" title="パネル開閉" aria-label="パネル開閉">▴</button>
+    <div class="tabs" role="tablist">
+      <button type="button" role="tab" id="tab-view" aria-selected="true" aria-controls="p-view">表示</button>
+      <button type="button" role="tab" id="tab-cloud" aria-selected="false" aria-controls="p-cloud">点群</button>
+      <button type="button" role="tab" id="tab-3d" aria-selected="false" aria-controls="p-3d">3D・計測</button>
     </div>
+    <button class="icon-btn" id="theme-btn" type="button" title="テーマ切替" aria-label="テーマ切替">☾</button>
+    <button class="icon-btn" id="collapse-btn" type="button" title="パネル開閉" aria-label="パネル開閉">▴</button>
   </div>
   <div class="panel-body">
 
-    <section>
-      <div class="sec-title"><span>段彩（水深の色分け）</span><input class="switch" type="checkbox" id="relief-on" checked aria-label="段彩の表示"></div>
-      <select id="relief-range" aria-label="段彩のレンジ"></select>
-      <div class="legend"><div class="legend-bar" id="legend-bar"></div><div class="legend-ticks" id="legend-ticks"></div></div>
-      <div class="row"><label for="relief-opacity">不透明度</label><input type="range" id="relief-opacity" min="0.1" max="1" step="0.05" value="0.75"><span class="val" id="relief-opacity-val">75%</span></div>
-    </section>
+    <div role="tabpanel" id="p-view" aria-labelledby="tab-view">
+      <section>
+        <div class="sec-title"><span>描画モード</span></div>
+        <div class="seg v" id="mode-seg" role="group" aria-label="描画モード">
+          <button type="button" data-mode="raster" aria-pressed="true"><b>ラスタ</b><span>街も沿岸も面で描く</span></button>
+          <button type="button" data-mode="city" aria-pressed="false"><b>街は点群 / 沿岸はラスタ</b><span>市街を点、海底は段彩と陰影のまま</span></button>
+          <button type="button" data-mode="both" aria-pressed="false"><b>街も沿岸も点群</b><span>陸も海底もすべて点で描く</span></button>
+        </div>
+      </section>
 
-    <section>
-      <div class="sec-title"><span>陰影起伏</span><input class="switch" type="checkbox" id="hillshade-on" checked aria-label="陰影起伏の表示"></div>
-      <div class="row"><label for="hillshade-exag">強調</label><input type="range" id="hillshade-exag" min="0" max="1" step="0.05" value="0.45"><span class="val" id="hillshade-exag-val">0.45</span></div>
-    </section>
+      <section>
+        <div class="sec-title"><span>段彩（水深の色分け）</span><input class="switch" type="checkbox" id="relief-on" checked aria-label="段彩の表示"></div>
+        <select id="relief-range" aria-label="段彩のレンジ"></select>
+        <div class="legend"><div class="legend-bar" id="legend-bar"></div><div class="legend-ticks" id="legend-ticks"></div></div>
+        <div class="row"><label for="relief-opacity">不透明度</label><input type="range" id="relief-opacity" min="0.1" max="1" step="0.05" value="0.8"><span class="val" id="relief-opacity-val">80%</span></div>
+      </section>
 
-    <section>
-      <div class="sec-title"><span>等深線 · 等高線</span><input class="switch" type="checkbox" id="contour-on" aria-label="等深線の表示"></div>
-      <p class="hint">z15 以上で 1 m 間隔（5 m ごとに太線）。それ以下では 2 m / 10 m。</p>
-    </section>
+      <section>
+        <div class="sec-title"><span>陰影起伏</span><input class="switch" type="checkbox" id="hillshade-on" checked aria-label="陰影起伏の表示"></div>
+        <div class="seg" id="hs-method" role="group" aria-label="陰影の方式">
+          <button type="button" data-hs="multidirectional" aria-pressed="true">多方向</button>
+          <button type="button" data-hs="igor" aria-pressed="false">Igor</button>
+          <button type="button" data-hs="combined" aria-pressed="false">複合</button>
+          <button type="button" data-hs="standard" aria-pressed="false">標準</button>
+        </div>
+        <div class="row"><label for="hillshade-exag">強調</label><input type="range" id="hillshade-exag" min="0" max="1" step="0.05" value="0.6"><span class="val" id="hillshade-exag-val">0.60</span></div>
+        <p class="hint">多方向は、海底の砂堆や浚渫跡のようなわずかな起伏を出しやすい。</p>
+      </section>
 
-    <section>
-      <div class="sec-title"><span>3D 地形</span><input class="switch" type="checkbox" id="terrain-on" aria-label="3D 地形の表示"></div>
-      <div class="row"><label for="terrain-exag">起伏</label><input type="range" id="terrain-exag" min="1" max="8" step="0.5" value="2"><span class="val" id="terrain-exag-val">2.0×</span></div>
-      <p class="hint">右ドラッグ、または Ctrl + ドラッグで視点を傾ける。</p>
-    </section>
+      <section>
+        <div class="sec-title"><span>等深線・等高線</span><input class="switch" type="checkbox" id="contour-on" aria-label="等深線の表示"></div>
+        <p class="hint">z15 以上で 1 m 間隔（5 m ごとに太線）。それ以下は 2 m / 10 m。</p>
+      </section>
 
-    <section>
-      <div class="sec-title"><span>喫水チェック</span><input class="switch" type="checkbox" id="draft-on" aria-label="喫水チェックの表示"></div>
-      <div class="row"><label for="draft">喫水 + 余裕</label><input type="range" id="draft" min="0.5" max="15" step="0.5" value="3"><span class="val" id="draft-val">3.0 m</span></div>
-      <div class="draft-note" id="draft-note">水深 3.0 m より浅い海域を赤で示す。</div>
-    </section>
+      <section>
+        <div class="sec-title"><span>背景地図</span></div>
+        <div class="seg" id="basemap-seg" role="group" aria-label="背景地図">
+          <button type="button" data-base="pale" aria-pressed="true">淡色</button>
+          <button type="button" data-base="std" aria-pressed="false">標準</button>
+          <button type="button" data-base="photo" aria-pressed="false">写真</button>
+          <button type="button" data-base="none" aria-pressed="false">なし</button>
+        </div>
+      </section>
+    </div>
 
-    <section>
-      <div class="sec-title"><span>断面（水深プロファイル）</span></div>
-      <button class="tool-btn" id="profile-btn" type="button" aria-pressed="false">地図をクリックして線を引く</button>
-      <p class="hint">クリックで点を追加、ダブルクリックで確定。Esc で中止。</p>
-    </section>
+    <div role="tabpanel" id="p-cloud" aria-labelledby="tab-cloud" hidden>
+      <section>
+        <div class="sec-title"><span>点の着色</span></div>
+        <div class="seg" id="cloud-color" role="group" aria-label="点の着色">
+          <button type="button" data-cc="mix" aria-pressed="true">陸は写真 / 海は段彩</button>
+          <button type="button" data-cc="photo" aria-pressed="false">空中写真</button>
+          <button type="button" data-cc="ramp" aria-pressed="false">段彩</button>
+          <button type="button" data-cc="gray" aria-pressed="false">単色</button>
+        </div>
+        <p class="hint">空中写真は地理院のシームレス写真を点の色に使う。水面下は写真だと濁りで沈むので、既定では段彩に切り替える。</p>
+      </section>
 
-    <section>
-      <div class="sec-title"><span>背景地図</span></div>
-      <div class="seg" id="basemap-seg" role="group" aria-label="背景地図">
-        <button type="button" data-base="pale" aria-pressed="true">淡色</button>
-        <button type="button" data-base="std" aria-pressed="false">標準</button>
-        <button type="button" data-base="photo" aria-pressed="false">写真</button>
-        <button type="button" data-base="none" aria-pressed="false">なし</button>
-      </div>
-    </section>
+      <section>
+        <div class="sec-title"><span>点の大きさと密度</span></div>
+        <div class="row"><label for="cloud-size">大きさ</label><input type="range" id="cloud-size" min="0.4" max="2.6" step="0.1" value="1.1"><span class="val" id="cloud-size-val">1.1×</span></div>
+        <div class="row"><label for="cloud-density">密度</label><input type="range" id="cloud-density" min="0" max="2" step="1" value="1"><span class="val" id="cloud-density-val">中</span></div>
+        <p class="hint">点の大きさは画面上の格子間隔から自動で決まる。倍率で微調整する。</p>
+      </section>
+
+      <section>
+        <div class="sec-title"><span>点の陰影</span></div>
+        <div class="row"><label for="cloud-shade">強さ</label><input type="range" id="cloud-shade" min="0" max="1" step="0.05" value="0.55"><span class="val" id="cloud-shade-val">0.55</span></div>
+        <p class="hint">DEM の傾きから点ごとに陰影を付ける。写真の色のままでも起伏が読める。</p>
+      </section>
+
+      <section>
+        <div class="sec-title"><span>街（陸域）の標高</span></div>
+        <div class="seg" id="city-dem" role="group" aria-label="街の標高データ">
+          <button type="button" data-cd="10" aria-pressed="true">地理院 10 m</button>
+          <button type="button" data-cd="5" aria-pressed="false">地理院 5 m</button>
+        </div>
+        <p class="hint">沿岸の点群は ALB の 0.5 m。街は全国をカバーする地理院標高タイルを使う。5 m は未整備の区域で穴が空くことがある。</p>
+      </section>
+
+      <section>
+        <div class="sec-title"><span>高さの強調</span></div>
+        <div class="row"><label for="cloud-exag">倍率</label><input type="range" id="cloud-exag" min="1" max="6" step="0.5" value="1.5"><span class="val" id="cloud-exag-val">1.5×</span></div>
+      </section>
+    </div>
+
+    <div role="tabpanel" id="p-3d" aria-labelledby="tab-3d" hidden>
+      <section>
+        <div class="sec-title"><span>視点</span></div>
+        <div class="seg" id="pitch-seg" role="group" aria-label="視点の傾き">
+          <button type="button" data-pitch="0" aria-pressed="true">真上</button>
+          <button type="button" data-pitch="45" aria-pressed="false">45°</button>
+          <button type="button" data-pitch="72" aria-pressed="false">鳥瞰</button>
+        </div>
+        <div class="row"><label for="pitch">傾き</label><input type="range" id="pitch" min="0" max="80" step="1" value="0"><span class="val" id="pitch-val">0°</span></div>
+        <div class="row"><label for="bearing">方位</label><input type="range" id="bearing" min="-180" max="180" step="1" value="0"><span class="val" id="bearing-val">0°</span></div>
+        <div class="row"><label for="orbit-on">自動で回す</label><input class="switch" type="checkbox" id="orbit-on" aria-label="自動回転"></div>
+        <p class="hint">右ドラッグ、Ctrl + ドラッグ、2 本指でも視点を回せる。</p>
+      </section>
+
+      <section>
+        <div class="sec-title"><span>地形と空</span></div>
+        <div class="row"><label for="terrain-on">3D 地形（ラスタを立体化）</label><input class="switch" type="checkbox" id="terrain-on" aria-label="3D 地形"></div>
+        <div class="row"><label for="terrain-exag">起伏</label><input type="range" id="terrain-exag" min="1" max="8" step="0.5" value="2"><span class="val" id="terrain-exag-val">2.0×</span></div>
+        <div class="row"><label for="sky-on">空とかすみ</label><input class="switch" type="checkbox" id="sky-on" checked aria-label="空の表示"></div>
+      </section>
+
+      <section>
+        <div class="sec-title"><span>海面と潮位</span><input class="switch" type="checkbox" id="water-on" checked aria-label="海面の表示"></div>
+        <div class="row"><label for="tide">潮位</label><input type="range" id="tide" min="-2" max="2" step="0.1" value="0"><span class="val" id="tide-val">±0.0 m</span></div>
+        <div class="row"><label for="water-opacity">水の濃さ</label><input type="range" id="water-opacity" min="0" max="2" step="0.1" value="1"><span class="val" id="water-opacity-val">1.0×</span></div>
+        <p class="hint">潮位を上げ下げすると汀線が動き、干出する範囲が見える。海底の点群は水面ごしに透けて見える。</p>
+      </section>
+
+      <section>
+        <div class="sec-title"><span>喫水チェック</span><input class="switch" type="checkbox" id="draft-on" aria-label="喫水チェック"></div>
+        <div class="row"><label for="draft">喫水 + 余裕</label><input type="range" id="draft" min="0.5" max="15" step="0.5" value="3"><span class="val" id="draft-val">3.0 m</span></div>
+        <div class="draft-note" id="draft-note">潮位 ±0.0 m のとき、水深 3.0 m より浅い海域を赤で示す。</div>
+      </section>
+
+      <section>
+        <div class="sec-title"><span>断面（水深プロファイル）</span></div>
+        <button class="tool-btn" id="profile-btn" type="button" aria-pressed="false">地図をクリックして線を引く</button>
+        <p class="hint">クリックで点を追加、ダブルクリックで確定。Esc で中止。</p>
+      </section>
+    </div>
 
   </div>
 </aside>
@@ -214,9 +312,9 @@ select{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:7px
 
 <div class="readout">
   <div class="chip"><span class="k">位置</span><span class="mono" id="ro-pos">—</span></div>
-  <div class="chip"><span class="k">水深 / 標高</span><span class="depth mono" id="ro-depth">—</span></div>
+  <div class="chip"><span class="k">水深 / 標高</span><span class="depth mono" id="ro-depth">—</span><span class="src" id="ro-src"></span></div>
   <div class="chip"><span class="k">ズーム</span><span class="mono" id="ro-zoom">—</span></div>
-  <div class="credit">標高: 静岡県「VIRTUAL SHIZUOKA 中西部沿岸 点群データ」（CC BY 4.0）を dem2tiles でタイル化 · 背景: 国土地理院</div>
+  <div class="credit">海底: 静岡県「VIRTUAL SHIZUOKA 中西部沿岸 点群データ」（CC BY 4.0）を dem2tiles でタイル化 · 陸域標高と空中写真: 国土地理院</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
@@ -225,248 +323,771 @@ select{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:7px
 (() => {
 'use strict';
 
-// ---------------------------------------------------------------------------
+// ===========================================================================
 // 設定
-// ---------------------------------------------------------------------------
-const params = new URLSearchParams(location.search);
-// 標高タイルの配信元。?tiles=/tiles のように差し替えられる（ローカルの dem2tiles 出力で試すとき）。
-const TILE_BASE = params.get('tiles') || 'https://shi-works.com/raster-tiles/pref-shizuoka';
-const DEM_URL = `${TILE_BASE}/shizuoka-alb-terrarium/{z}/{x}/{y}.png`;
-const DEM_MAXZOOM = 17;      // rio-terrarium は 512 px タイル。0.5 m 格子は z17 で 0.49 m/px
-const DEM_TILESIZE = 512;
-const BOUNDS = [137.4829, 34.579, 138.6694, 35.1379]; // ALB データの範囲（z14 タイルの外接）
+// ===========================================================================
+const qs = new URLSearchParams(location.search);
+// 等高線は Web Worker からタイルを取るので、相対パスのままだと解決できない。絶対 URL に直す。
+const abs = (u) => { try { return new URL(u, location.href).href.replace(/\/$/, ''); } catch { return u; } };
+const TILE_BASE = abs(qs.get('tiles') || 'https://shi-works.com/raster-tiles/pref-shizuoka');
+const GSI_BASE  = abs(qs.get('gsi')   || 'https://cyberjapandata.gsi.go.jp/xyz');
+
+const ALB_URL = `${TILE_BASE}/shizuoka-alb-terrarium/{z}/{x}/{y}.png`;
+const ALB_MAXZOOM = 17, ALB_SIZE = 512;
+const BOUNDS = [137.4829, 34.579, 138.6694, 35.1379];   // ALB データの範囲
+const PHOTO_URL = `${GSI_BASE}/seamlessphoto/{z}/{x}/{y}.jpg`;
 const BASEMAPS = {
-  pale:  { tiles: ['https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png'], maxzoom: 18 },
-  std:   { tiles: ['https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png'], maxzoom: 18 },
-  photo: { tiles: ['https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg'], maxzoom: 18 },
+  pale:  [`${GSI_BASE}/pale/{z}/{x}/{y}.png`],
+  std:   [`${GSI_BASE}/std/{z}/{x}/{y}.png`],
+  photo: [`${GSI_BASE}/seamlessphoto/{z}/{x}/{y}.jpg`],
 };
 const PLACES = [
-  ['御前崎港', 138.222, 34.612, 15],
-  ['相良港', 138.205, 34.685, 15],
-  ['大井川河口', 138.30, 34.77, 14],
-  ['焼津港', 138.33, 34.865, 15],
-  ['用宗港', 138.37, 34.92, 15],
-  ['清水港', 138.50, 35.015, 14],
-  ['天竜川河口', 137.79, 34.65, 14],
-  ['浜名湖 今切口', 137.60, 34.68, 15],
+  ['御前崎港', 138.222, 34.612, 15.4],
+  ['相良港', 138.205, 34.685, 15.4],
+  ['大井川河口', 138.30, 34.77, 14.5],
+  ['焼津港', 138.33, 34.865, 15.2],
+  ['用宗港', 138.37, 34.92, 15.4],
+  ['清水港', 138.505, 35.015, 14.2],
+  ['天竜川河口', 137.79, 34.65, 14.2],
+  ['浜名湖 今切口', 137.605, 34.68, 15.2],
 ];
-// 段彩レンジ。stops は [標高 m, 色]。0 は FILL（データなし）なので必ず透明にする。
+
+// 段彩。sea は必ず負、land は正。点群の着色にも同じ配色を使う。
+const LAND = [[0.02,'#dcecd2'],[3,'#bfdda8'],[8,'#9ccb7d'],[15,'#c9b06a'],[25,'#a5783f'],[40,'#8a5f31']];
 const RANGES = {
-  'sea15':  { label: '海底 −15 〜 0 m', stops: [[-15,'#08306b'],[-10,'#2171b5'],[-5,'#6baed6'],[-1,'#c6dbef'],[-0.02,'#eef5fb']], land: null },
-  'sea30':  { label: '海底 −30 〜 0 m', stops: [[-30,'#081d58'],[-20,'#253494'],[-10,'#2c7fb8'],[-5,'#41b6c4'],[-1,'#c7e9b4'],[-0.02,'#f0f9e8']], land: null },
-  'both':   { label: '陸海 −15 〜 +30 m', stops: [[-15,'#08306b'],[-5,'#4292c6'],[-0.02,'#deebf7']], land: [[0.02,'#c7e9c0'],[5,'#74c476'],[15,'#a6761d'],[30,'#8c510a']] },
-  'fine':   { label: '浅場 −5 〜 0 m（0.5 m 刻み）', stops: [[-5,'#08519c'],[-4,'#2171b5'],[-3,'#4292c6'],[-2,'#6baed6'],[-1,'#9ecae1'],[-0.5,'#c6dbef'],[-0.02,'#eef5fb']], land: null },
+  sea15: { label: '海底 −15 〜 0 m', sea: [[-15,'#062a52'],[-12,'#0b3f75'],[-9,'#14589b'],[-6,'#2b78b9'],[-4,'#5099cf'],[-2.5,'#7eb8e0'],[-1.2,'#a9d2ec'],[-0.4,'#cfe7f6'],[-0.02,'#e8f3fb']] },
+  sea30: { label: '海底 −30 〜 0 m', sea: [[-30,'#041832'],[-24,'#08315f'],[-18,'#0e4a89'],[-13,'#1a66a8'],[-9,'#3184c2'],[-6,'#54a1d4'],[-3.5,'#80bde2'],[-1.5,'#aed6ee'],[-0.02,'#dcedf8']] },
+  chart: { label: '海図風（等深帯）', sea: [[-30,'#2f6fa8'],[-20.01,'#2f6fa8'],[-20,'#5a97c8'],[-10.01,'#5a97c8'],[-10,'#8fbcdd'],[-5.01,'#8fbcdd'],[-5,'#bcd9ec'],[-2.01,'#bcd9ec'],[-2,'#e2eff8'],[-0.02,'#e2eff8']] },
+  fine:  { label: '浅場 −5 〜 0 m（0.5 m 刻み）', sea: [[-5,'#08306b'],[-4.5,'#104a86'],[-4,'#17619f'],[-3.5,'#2377b6'],[-3,'#358cc6'],[-2.5,'#4d9fd2'],[-2,'#6cb2dd'],[-1.5,'#8fc5e6'],[-1,'#b0d6ee'],[-0.5,'#cfe6f5'],[-0.02,'#e9f3fb']] },
+  both:  { label: '陸海 −15 〜 +40 m', sea: [[-15,'#062a52'],[-10,'#13548f'],[-6,'#2b78b9'],[-3,'#63a8d6'],[-1,'#a9d2ec'],[-0.02,'#e8f3fb']], land: LAND },
 };
 
-// ---------------------------------------------------------------------------
-// DOM
-// ---------------------------------------------------------------------------
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = (id) => document.getElementById(id);
 const on = (id, ev, fn) => $(id).addEventListener(ev, fn);
 
-// テーマ
+// 操作の状態。点群レイヤーは毎フレームここを読む。
+const S = {
+  mode: 'raster',       // raster | city | both
+  range: 'sea15',
+  cloudColor: 'mix',    // mix | photo | ramp | gray
+  cloudSize: 1.1,
+  density: 1,           // 0 低 / 1 中 / 2 高
+  shade: 0.55,
+  cityDem: '10',        // 10 | 5
+  exag: 1.5,
+  tide: 0,
+  water: true,
+  waterOpacity: 1,
+  jitter: 0.8,
+  draft: 3,
+  draftOn: false,
+};
+
+// ===========================================================================
+// テーマ・タブ・パネル
+// ===========================================================================
 const root = document.documentElement;
 let theme = (() => { try { return localStorage.getItem('theme') || ''; } catch { return ''; } })();
-const applyTheme = () => {
+const isDark = () => theme === 'dark' || (!theme && matchMedia('(prefers-color-scheme: dark)').matches);
+function applyTheme() {
   if (theme) root.setAttribute('data-theme', theme); else root.removeAttribute('data-theme');
-  const dark = theme === 'dark' || (!theme && matchMedia('(prefers-color-scheme: dark)').matches);
-  $('theme-btn').textContent = dark ? '☀' : '☾';
-};
-applyTheme();
-on('theme-btn', 'click', () => {
-  const dark = theme === 'dark' || (!theme && matchMedia('(prefers-color-scheme: dark)').matches);
-  theme = dark ? 'light' : 'dark';
-  try { localStorage.setItem('theme', theme); } catch {}
-  applyTheme();
-});
+  $('theme-btn').textContent = isDark() ? '☀' : '☾';
+  if (styleReady) { applySky(); styleContours(); map.triggerRepaint(); }
+}
+on('theme-btn', 'click', () => { theme = isDark() ? 'light' : 'dark'; try { localStorage.setItem('theme', theme); } catch {} applyTheme(); });
+
 const setCollapsed = (c) => { $('panel').classList.toggle('collapsed', c); $('collapse-btn').textContent = c ? '▾' : '▴'; };
 on('collapse-btn', 'click', () => setCollapsed(!$('panel').classList.contains('collapsed')));
 const isNarrow = () => matchMedia('(max-width: 640px)').matches;
-if (isNarrow()) setCollapsed(true);
 
-// ---------------------------------------------------------------------------
+for (const t of document.querySelectorAll('[role=tab]')) {
+  t.addEventListener('click', () => {
+    for (const o of document.querySelectorAll('[role=tab]')) {
+      const sel = o === t;
+      o.setAttribute('aria-selected', String(sel));
+      $(o.getAttribute('aria-controls')).hidden = !sel;
+    }
+  });
+}
+function seg(id, attr, fn) {
+  for (const b of document.querySelectorAll(`#${id} button`)) {
+    b.addEventListener('click', () => {
+      for (const o of document.querySelectorAll(`#${id} button`)) o.setAttribute('aria-pressed', String(o === b));
+      fn(b.dataset[attr], b);
+    });
+  }
+}
+
+// ===========================================================================
 // 地図
-// ---------------------------------------------------------------------------
+// ===========================================================================
 const map = new maplibregl.Map({
-  container: 'map',
-  hash: true,
-  center: [138.222, 34.612],
-  zoom: 14.5,
-  minZoom: 6,
-  maxZoom: 19,
-  maxPitch: 75,
-  attributionControl: false,
+  container: 'map', hash: true,
+  center: [138.222, 34.612], zoom: 15.4, pitch: 0, bearing: 0,
+  minZoom: 6, maxZoom: 19, maxPitch: 80,
+  attributionControl: false, antialias: true,
   style: { version: 8, glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf', sources: {}, layers: [] },
 });
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 140, unit: 'metric' }), 'bottom-right');
+map.touchZoomRotate.enable({ around: 'center' });
+map.touchPitch.enable();
 
-// 等高線は maplibre-contour が DEM を自前で取って作る
-const demSource = new mlcontour.DemSource({ url: DEM_URL, encoding: 'terrarium', maxzoom: DEM_MAXZOOM, worker: true, cacheSize: 200, timeoutMs: 15000 });
+const demSource = new mlcontour.DemSource({ url: ALB_URL, encoding: 'terrarium', maxzoom: ALB_MAXZOOM, worker: true, cacheSize: 200, timeoutMs: 15000 });
 demSource.setupMaplibre(maplibregl);
 
-const rampExpr = (key) => {
+const rangeStops = (key) => { const r = RANGES[key]; return [...r.sea, ...(r.land || LAND)]; };
+function reliefExpr(key) {
   const r = RANGES[key];
-  const stops = [...r.stops, [-0.01, 'rgba(0,0,0,0)'], [0.01, 'rgba(0,0,0,0)']];
+  const stops = [...r.sea, [-0.015, 'rgba(0,0,0,0)'], [0.015, 'rgba(0,0,0,0)']];
   if (r.land) stops.push(...r.land); else stops.push([0.02, 'rgba(0,0,0,0)']);
   const e = ['interpolate', ['linear'], ['elevation']];
   for (const [v, c] of stops) e.push(v, c);
   return e;
-};
-const draftExpr = (d) => ['interpolate', ['linear'], ['elevation'],
-  -d - 0.01, 'rgba(0,0,0,0)', -d, 'rgba(201,55,44,0.55)', -0.011, 'rgba(201,55,44,0.55)', -0.01, 'rgba(0,0,0,0)'];
+}
+const draftLevel = () => S.tide - S.draft;   // この標高より高い海底が危険
+function draftExpr() {
+  const t = draftLevel();
+  return ['interpolate', ['linear'], ['elevation'],
+    t - 0.01, 'rgba(0,0,0,0)', t, 'rgba(201,55,44,0.5)',
+    S.tide - 0.03, 'rgba(201,55,44,0.5)', S.tide - 0.02, 'rgba(0,0,0,0)'];
+}
+let styleReady = false, skyOn = true;
+function applySky() {
+  if (!styleReady) return;
+  if (!skyOn) { map.setSky(undefined); return; }
+  const d = isDark();
+  map.setSky({
+    'sky-color': d ? '#0d2038' : '#8cc7fb',
+    'horizon-color': d ? '#25415f' : '#cfe4f5',
+    'fog-color': d ? '#0c131c' : '#eaf1f7',
+    'fog-ground-blend': 0.5, 'horizon-fog-blend': 0.6, 'sky-horizon-blend': 0.7,
+  });
+}
+function styleContours() {
+  const d = isDark();
+  map.setPaintProperty('contour-line', 'line-color', ['case', ['<', ['get', 'ele'], 0], d ? '#8fc3ec' : '#0b3d6b', d ? '#d6b877' : '#6b4b1a']);
+  map.setPaintProperty('contour-label', 'text-color', d ? '#cfe4f5' : '#0b3d6b');
+  map.setPaintProperty('contour-label', 'text-halo-color', d ? '#0c131c' : '#ffffff');
+}
 
 map.on('load', () => {
-  map.addSource('basemap', { type: 'raster', tiles: BASEMAPS.pale.tiles, tileSize: 256, maxzoom: 18, attribution: '国土地理院' });
+  map.addSource('basemap', { type: 'raster', tiles: BASEMAPS.pale, tileSize: 256, maxzoom: 18, attribution: '国土地理院' });
   map.addLayer({ id: 'basemap', type: 'raster', source: 'basemap', paint: { 'raster-opacity': 1 } });
-  map.addSource('dem', { type: 'raster-dem', tiles: [DEM_URL], tileSize: DEM_TILESIZE, encoding: 'terrarium', minzoom: 5, maxzoom: DEM_MAXZOOM, bounds: BOUNDS });
-  // 3D 地形は段彩・陰影と別ソースにする（同じソースを共有すると描画品質が落ちると MapLibre が警告する）
-  map.addSource('dem-terrain', { type: 'raster-dem', tiles: [DEM_URL], tileSize: DEM_TILESIZE, encoding: 'terrarium', minzoom: 5, maxzoom: DEM_MAXZOOM, bounds: BOUNDS });
-  map.addLayer({ id: 'relief', type: 'color-relief', source: 'dem', paint: { 'color-relief-color': rampExpr('sea15'), 'color-relief-opacity': 0.75 } });
-  map.addLayer({ id: 'draft', type: 'color-relief', source: 'dem', layout: { visibility: 'none' }, paint: { 'color-relief-color': draftExpr(3), 'color-relief-opacity': 1 } });
-  map.addLayer({ id: 'hillshade', type: 'hillshade', source: 'dem', paint: { 'hillshade-exaggeration': 0.45, 'hillshade-illumination-direction': 315, 'hillshade-shadow-color': '#0b2a4a', 'hillshade-highlight-color': '#ffffff', 'hillshade-accent-color': '#0b2a4a' } });
-  map.addSource('contours', { type: 'vector', maxzoom: DEM_MAXZOOM, tiles: [demSource.contourProtocolUrl({
+
+  map.addSource('dem', { type: 'raster-dem', tiles: [ALB_URL], tileSize: ALB_SIZE, encoding: 'terrarium', minzoom: 5, maxzoom: ALB_MAXZOOM, bounds: BOUNDS });
+  // 3D 地形は別ソースにする（段彩と同じソースを使うと描画品質が落ちる）
+  map.addSource('dem-terrain', { type: 'raster-dem', tiles: [ALB_URL], tileSize: ALB_SIZE, encoding: 'terrarium', minzoom: 5, maxzoom: ALB_MAXZOOM, bounds: BOUNDS });
+
+  map.addLayer({ id: 'relief', type: 'color-relief', source: 'dem', paint: { 'color-relief-color': reliefExpr(S.range), 'color-relief-opacity': 0.8 } });
+  map.addLayer({ id: 'draft', type: 'color-relief', source: 'dem', layout: { visibility: 'none' }, paint: { 'color-relief-color': draftExpr(), 'color-relief-opacity': 1 } });
+  map.addLayer({ id: 'hillshade', type: 'hillshade', source: 'dem', paint: {
+    'hillshade-method': 'multidirectional', 'hillshade-exaggeration': 0.6,
+    'hillshade-illumination-direction': 315,
+    'hillshade-shadow-color': '#08304f', 'hillshade-highlight-color': '#ffffff', 'hillshade-accent-color': '#0d3f63',
+  } });
+
+  map.addSource('contours', { type: 'vector', maxzoom: ALB_MAXZOOM, tiles: [demSource.contourProtocolUrl({
     multiplier: 1, elevationKey: 'ele', levelKey: 'level', contourLayer: 'contours', overzoom: 1,
     thresholds: { 11: [10, 50], 13: [2, 10], 15: [1, 5], 17: [0.5, 1] },
   })] });
   map.addLayer({ id: 'contour-line', type: 'line', source: 'contours', 'source-layer': 'contours', layout: { visibility: 'none' },
-    paint: { 'line-color': ['case', ['<', ['get', 'ele'], 0], '#0b3d6b', '#6b4b1a'], 'line-width': ['match', ['get', 'level'], 1, 1.4, 0.6], 'line-opacity': 0.7 } });
-  map.addLayer({ id: 'contour-label', type: 'symbol', source: 'contours', 'source-layer': 'contours', layout: { visibility: 'none', 'symbol-placement': 'line', 'text-field': ['concat', ['to-string', ['get', 'ele']], ' m'], 'text-size': 10, 'text-font': ['Open Sans Regular'] },
-    filter: ['==', ['get', 'level'], 1], paint: { 'text-color': '#0b3d6b', 'text-halo-color': '#ffffff', 'text-halo-width': 1.2 } });
-  // 断面の線と頂点
+    paint: { 'line-width': ['match', ['get', 'level'], 1, 1.4, 0.6], 'line-opacity': 0.72 } });
+  map.addLayer({ id: 'contour-label', type: 'symbol', source: 'contours', 'source-layer': 'contours',
+    layout: { visibility: 'none', 'symbol-placement': 'line', 'text-field': ['concat', ['to-string', ['get', 'ele']], ' m'], 'text-size': 10, 'text-font': ['Open Sans Regular'] },
+    filter: ['==', ['get', 'level'], 1], paint: { 'text-halo-width': 1.2 } });
+
+  styleReady = true;
+  applySky(); styleContours();
+
+  map.addLayer(cloudLayer);      // 点群と海面（カスタム 3D レイヤー）
+
   map.addSource('profile-line', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   map.addLayer({ id: 'profile-line', type: 'line', source: 'profile-line', paint: { 'line-color': '#c9372c', 'line-width': 2.5, 'line-dasharray': [2, 1] } });
-  map.addLayer({ id: 'profile-pts', type: 'circle', source: 'profile-line', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 5, 'circle-color': '#ffffff', 'circle-stroke-color': '#c9372c', 'circle-stroke-width': 2 } });
+  map.addLayer({ id: 'profile-pts', type: 'circle', source: 'profile-line', filter: ['==', ['geometry-type'], 'Point'],
+    paint: { 'circle-radius': 5, 'circle-color': '#ffffff', 'circle-stroke-color': '#c9372c', 'circle-stroke-width': 2 } });
   map.addSource('profile-cursor', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   map.addLayer({ id: 'profile-cursor', type: 'circle', source: 'profile-cursor', paint: { 'circle-radius': 6, 'circle-color': '#c9372c', 'circle-opacity': 0.9 } });
-  buildLegend('sea15');
+
+  buildLegend(); applyMode(); showZoom();
 });
 
-// ---------------------------------------------------------------------------
-// コントロール
-// ---------------------------------------------------------------------------
 const vis = (id, show) => map.getLayer(id) && map.setLayoutProperty(id, 'visibility', show ? 'visible' : 'none');
 
-// 段彩
-const sel = $('relief-range');
-for (const [k, r] of Object.entries(RANGES)) { const o = document.createElement('option'); o.value = k; o.textContent = r.label; sel.appendChild(o); }
-function buildLegend(key) {
-  const r = RANGES[key];
-  const all = [...r.stops, ...(r.land || [])];
-  const lo = all[0][0], hi = all[all.length - 1][0];
-  const grad = all.map(([v, c]) => `${c} ${((v - lo) / (hi - lo) * 100).toFixed(1)}%`).join(',');
-  $('legend-bar').style.background = `linear-gradient(90deg, ${grad})`;
-  const ticks = [...new Set(all.map(([v]) => Math.abs(v) < 0.05 ? 0 : v))];
-  $('legend-ticks').innerHTML = ticks.map((v) => `<span style="left:${((v - lo) / (hi - lo) * 100).toFixed(1)}%">${v > 0 ? '+' : ''}${v}</span>`).join('');
+// ===========================================================================
+// 点群と海面（カスタム 3D レイヤー）
+// ===========================================================================
+const EARTH_C = 40075016.686;
+const mercPerMeter = (lat) => 1 / (EARTH_C * Math.cos(lat * Math.PI / 180));
+const tile2lat = (y, z) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / 2 ** z))) * 180 / Math.PI;
+
+// DEM の復号（terrarium と 地理院数値PNG）。ok=0 はデータなし。
+const GLSL_DECODE = `
+float decodeH(vec4 c, float enc, out float ok) {
+  vec3 b = floor(c.rgb * 255.0 + 0.5);
+  ok = 1.0;
+  if (enc < 0.5) {
+    float h = b.r * 256.0 + b.g + b.b / 256.0 - 32768.0;
+    if (abs(h) < 0.002) ok = 0.0;                    // dem2tiles の FILL は 0 m
+    return h;
+  }
+  float x = b.r * 65536.0 + b.g * 256.0 + b.b;       // 地理院 数値PNG
+  if (x == 8388608.0) { ok = 0.0; return 0.0; }
+  return (x < 8388608.0 ? x : x - 16777216.0) * 0.01;
+}`;
+
+const VS_POINTS = `
+precision highp float;
+attribute float a_index;
+uniform mat4 u_matrix;
+uniform vec3 u_tile;
+uniform float u_grid;
+uniform float u_enc;
+uniform float u_mpm;
+uniform float u_exag;
+uniform float u_zoff;
+uniform float u_cellM;
+uniform vec2 u_keep;
+uniform vec2 u_rampRange;
+uniform vec2 u_viewport;
+uniform float u_sizeScale;
+uniform float u_jitter;
+uniform float u_colorMode;
+uniform float u_seaLevel;
+uniform float u_shade;
+uniform sampler2D u_dem;
+uniform sampler2D u_ramp;
+uniform sampler2D u_photo;
+varying vec4 v_color;
+${GLSL_DECODE}
+float hAt(vec2 uv, out float ok) { return decodeH(texture2D(u_dem, clamp(uv, 0.0005, 0.9995)), u_enc, ok); }
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+void main() {
+  float gi = mod(a_index, u_grid);
+  float gj = floor(a_index / u_grid);
+  vec2 uv = (vec2(gi, gj) + 0.5) / u_grid;
+  float ok; float h = hAt(uv, ok);
+  if (ok < 0.5 || h < u_keep.x || h > u_keep.y) {
+    gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; return;
+  }
+  // 規則格子のままだと画面と干渉して縞が出る。実測の点群のように少し散らす。
+  vec2 jit = (vec2(hash(vec2(gi, gj)), hash(vec2(gj, gi) + 19.0)) - 0.5) * u_jitter;
+  vec2 puv = uv + jit / u_grid;
+  vec2 merc = u_tile.xy + puv * u_tile.z;
+  float z = (h * u_exag + u_zoff) * u_mpm;
+  vec4 p0 = u_matrix * vec4(merc, z, 1.0);
+  vec4 p1 = u_matrix * vec4(merc + vec2(u_tile.z / u_grid, 0.0), z, 1.0);
+  float spacing = length((p1.xy / p1.w - p0.xy / p0.w) * u_viewport * 0.5);
+  gl_PointSize = clamp(spacing * u_sizeScale * 1.4, 1.0, 15.0);
+  gl_Position = p0;
+
+  vec3 col;
+  float t = clamp((h - u_rampRange.x) / (u_rampRange.y - u_rampRange.x), 0.0, 1.0);
+  if (u_colorMode < 0.5)      col = texture2D(u_photo, puv).rgb;
+  else if (u_colorMode < 1.5) col = texture2D(u_ramp, vec2(t, 0.5)).rgb;
+  else if (u_colorMode < 2.5) col = vec3(0.30 + 0.62 * t);
+  else col = h < u_seaLevel ? texture2D(u_ramp, vec2(t, 0.5)).rgb : texture2D(u_photo, puv).rgb;
+
+  if (u_shade > 0.001) {
+    float o1, o2, o3, o4;
+    float hl = hAt(uv + vec2(-1.0 / u_grid, 0.0), o1), hr = hAt(uv + vec2(1.0 / u_grid, 0.0), o2);
+    float hu = hAt(uv + vec2(0.0, -1.0 / u_grid), o3), hd = hAt(uv + vec2(0.0, 1.0 / u_grid), o4);
+    if (o1 * o2 * o3 * o4 > 0.5) {
+      float e = max(u_exag, 1.0);
+      vec3 n = normalize(vec3(-(hr - hl) * e, (hd - hu) * e, 2.0 * u_cellM));
+      float lam = max(dot(n, normalize(vec3(-0.55, 0.55, 0.65))), 0.0);
+      col *= mix(1.0, 0.45 + 0.95 * lam, u_shade);
+    }
+  }
+  v_color = vec4(clamp(col, 0.0, 1.0), 1.0);
+}`;
+
+const FS_POINTS = `
+precision mediump float;
+varying vec4 v_color;
+void main() {
+  vec2 d = gl_PointCoord - 0.5;
+  float r = length(d);
+  if (r > 0.5) discard;
+  float a = smoothstep(0.5, 0.34, r);
+  gl_FragColor = vec4(v_color.rgb * a, a);
+}`;
+
+const VS_WATER = `
+precision highp float;
+attribute vec2 a_corner;
+uniform mat4 u_matrix;
+uniform vec3 u_tile;
+uniform float u_mpm;
+uniform float u_tide;
+uniform float u_exag;
+varying vec2 v_uv;
+void main() {
+  v_uv = a_corner;
+  vec2 merc = u_tile.xy + a_corner * u_tile.z;
+  gl_Position = u_matrix * vec4(merc, u_tide * u_exag * u_mpm, 1.0);
+}`;
+
+const FS_WATER = `
+precision highp float;
+varying vec2 v_uv;
+uniform sampler2D u_dem;
+uniform float u_enc;
+uniform float u_tide;
+uniform vec3 u_shallow;
+uniform vec3 u_deep;
+uniform float u_opacity;
+${GLSL_DECODE}
+void main() {
+  float ok; float h = decodeH(texture2D(u_dem, v_uv), u_enc, ok);
+  if (ok < 0.5) discard;
+  float d = u_tide - h;
+  if (d <= 0.0) discard;                      // 干出している
+  vec3 col = mix(u_shallow, u_deep, clamp(d / 14.0, 0.0, 1.0));
+  float a = mix(0.10, 0.44, clamp(d / 9.0, 0.0, 1.0)) * u_opacity;
+  if (d < 0.3) { float k = d / 0.3; col = mix(vec3(1.0), col, k); a = mix(0.62 * u_opacity, a, k); }  // 汀線の白波
+  gl_FragColor = vec4(col * a, a);
+}`;
+
+function compile(gl, vsSrc, fsSrc) {
+  const mk = (type, src) => {
+    const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  };
+  const p = gl.createProgram();
+  gl.attachShader(p, mk(gl.VERTEX_SHADER, vsSrc));
+  gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fsSrc));
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const cache = {};
+  const u = new Proxy(cache, { get: (c, k) => (k in c ? c[k] : (c[k] = gl.getUniformLocation(p, k))) });
+  return { p, u };
 }
-sel.addEventListener('change', () => { map.setPaintProperty('relief', 'color-relief-color', rampExpr(sel.value)); buildLegend(sel.value); });
-on('relief-on', 'change', (e) => vis('relief', e.target.checked));
+
+let perfNow = 0;
+class TexStore {
+  constructor(spec) { this.spec = spec; this.m = new Map(); this.gl = null; }
+  get(z, x, y) {
+    const k = `${z}/${x}/${y}`;
+    const hit = this.m.get(k);
+    if (hit !== undefined) { if (hit && hit !== 'missing') hit.used = perfNow; return hit; }
+    this.m.set(k, null);
+    const img = new Image(); img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const gl = this.gl; if (!gl) return;
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      const f = this.spec.smooth ? gl.LINEAR : gl.NEAREST;
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      this.m.set(k, { tex, size: img.width, used: perfNow });
+      map.triggerRepaint();
+    };
+    img.onerror = () => { this.m.set(k, 'missing'); };
+    img.src = this.spec.url(z, x, y);
+    return null;
+  }
+  trim(gl, keep = 220) {
+    if (this.m.size <= keep * 1.5) return;
+    const live = [...this.m.entries()].filter(([, v]) => v && v !== 'missing');
+    if (live.length <= keep) return;
+    live.sort((a, b) => a[1].used - b[1].used);
+    for (const [k, v] of live.slice(0, live.length - keep)) { gl.deleteTexture(v.tex); this.m.delete(k); }
+  }
+}
+const albStore   = new TexStore({ url: (z, x, y) => ALB_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y), smooth: false });
+const gsiStore   = new TexStore({ url: (z, x, y) => `${GSI_BASE}/${z >= 15 ? 'dem5a_png' : 'dem_png'}/${z}/${x}/${y}.png`, smooth: false });
+const photoStore = new TexStore({ url: (z, x, y) => PHOTO_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y), smooth: true });
+
+function visibleTiles(z, cap, bounds) {
+  const b = map.getBounds();
+  const w = Math.max(b.getWest(), bounds ? bounds[0] : -180), e = Math.min(b.getEast(), bounds ? bounds[2] : 180);
+  const s = Math.max(b.getSouth(), bounds ? bounds[1] : -85), n = Math.min(b.getNorth(), bounds ? bounds[3] : 85);
+  if (w >= e || s >= n) return [];
+  const N = 2 ** z;
+  const xt = (lng) => Math.floor((lng + 180) / 360 * N);
+  const yt = (lat) => Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * N);
+  const x0 = Math.max(0, xt(w)), x1 = Math.min(N - 1, xt(e));
+  const y0 = Math.max(0, yt(n)), y1 = Math.min(N - 1, yt(s));
+  if ((x1 - x0 + 1) * (y1 - y0 + 1) > 6000) return [];
+  const c = map.getCenter();
+  const cx = (c.lng + 180) / 360 * N;
+  const cy = (1 - Math.log(Math.tan(c.lat * Math.PI / 180) + 1 / Math.cos(c.lat * Math.PI / 180)) / Math.PI) / 2 * N;
+  const out = [];
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) out.push({ x, y, d: (x + .5 - cx) ** 2 + (y + .5 - cy) ** 2 });
+  out.sort((a, b2) => a.d - b2.d);
+  return out.slice(0, cap);
+}
+
+const cloudLayer = {
+  id: 'cloud', type: 'custom', renderingMode: '3d',
+  gridBufs: new Map(),
+  rampRange: [-15, 40],
+  rampDirty: true,
+
+  onAdd(m, gl) {
+    this.points = compile(gl, VS_POINTS, FS_POINTS);
+    this.water = compile(gl, VS_WATER, FS_WATER);
+    albStore.gl = gsiStore.gl = photoStore.gl = gl;
+    this.quad = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.quad);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
+    this.ramp = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.ramp);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    this.blank = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, this.blank);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([170, 170, 170, 255]));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  },
+
+  grid(gl, n) {
+    let b = this.gridBufs.get(n);
+    if (b) return b;
+    const a = new Float32Array(n * n);
+    for (let i = 0; i < a.length; i++) a[i] = i;
+    b = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, b);
+    gl.bufferData(gl.ARRAY_BUFFER, a, gl.STATIC_DRAW);
+    this.gridBufs.set(n, b);
+    return b;
+  },
+
+  uploadRamp(gl) {
+    const stops = rangeStops(S.range);
+    const lo = stops[0][0], hi = stops[stops.length - 1][0];
+    const c = document.createElement('canvas'); c.width = 256; c.height = 1;
+    const g = c.getContext('2d');
+    const grad = g.createLinearGradient(0, 0, 256, 0);
+    for (const [v, col] of stops) grad.addColorStop(Math.min(1, Math.max(0, (v - lo) / (hi - lo))), col);
+    g.fillStyle = grad; g.fillRect(0, 0, 256, 1);
+    gl.bindTexture(gl.TEXTURE_2D, this.ramp);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c);
+    this.rampRange = [lo, hi];
+    this.rampDirty = false;
+  },
+
+  drawPass(gl, mat, opt) {
+    const tiles = visibleTiles(opt.z, opt.cap, opt.bounds);
+    if (!tiles.length) return 0;
+    const N = Math.min(opt.tileSize, opt.maxPx);
+    const P = this.points;
+    gl.useProgram(P.p);
+    const loc = gl.getAttribLocation(P.p, 'a_index');
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.grid(gl, N));
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 1, gl.FLOAT, false, 0, 0);
+    gl.uniformMatrix4fv(P.u.u_matrix, false, mat);
+    gl.uniform1f(P.u.u_grid, N);
+    gl.uniform1f(P.u.u_enc, opt.enc);
+    gl.uniform1f(P.u.u_exag, S.exag);
+    gl.uniform1f(P.u.u_zoff, opt.zoff || 0);
+    gl.uniform2f(P.u.u_keep, opt.keep[0], opt.keep[1]);
+    gl.uniform2f(P.u.u_rampRange, this.rampRange[0], this.rampRange[1]);
+    gl.uniform2f(P.u.u_viewport, gl.drawingBufferWidth, gl.drawingBufferHeight);
+    gl.uniform1f(P.u.u_sizeScale, S.cloudSize);
+    gl.uniform1f(P.u.u_jitter, S.jitter);
+    gl.uniform1f(P.u.u_colorMode, { photo: 0, ramp: 1, gray: 2, mix: 3 }[S.cloudColor]);
+    gl.uniform1f(P.u.u_seaLevel, S.tide);
+    gl.uniform1f(P.u.u_shade, S.shade);
+    gl.uniform1i(P.u.u_dem, 0); gl.uniform1i(P.u.u_ramp, 1); gl.uniform1i(P.u.u_photo, 2);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.ramp);
+
+    const msize = 1 / 2 ** opt.z;
+    let drawn = 0;
+    for (const t of tiles) {
+      const dem = opt.store.get(opt.z, t.x, t.y);
+      if (!dem || dem === 'missing') continue;
+      let photo = this.blank;
+      if (S.cloudColor === 'photo' || S.cloudColor === 'mix') {
+        const pz = Math.min(18, opt.z);
+        const p = photoStore.get(pz, t.x >> (opt.z - pz), t.y >> (opt.z - pz));
+        if (p && p !== 'missing') photo = p.tex; else if (!p) continue;   // 読み込み待ちは描かない
+      }
+      const lat = tile2lat(t.y + 0.5, opt.z);
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, dem.tex);
+      gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, photo);
+      gl.uniform3f(P.u.u_tile, t.x * msize, t.y * msize, msize);
+      gl.uniform1f(P.u.u_mpm, mercPerMeter(lat));
+      gl.uniform1f(P.u.u_cellM, EARTH_C * Math.cos(lat * Math.PI / 180) * msize / N);
+      gl.drawArrays(gl.POINTS, 0, N * N);
+      drawn++;
+    }
+    gl.disableVertexAttribArray(loc);
+    return drawn;
+  },
+
+  drawWater(gl, mat) {
+    const z = Math.max(10, Math.min(ALB_MAXZOOM, Math.round(map.getZoom())));
+    const tiles = visibleTiles(z, 40, BOUNDS);
+    if (!tiles.length) return;
+    const W = this.water;
+    gl.useProgram(W.p);
+    const loc = gl.getAttribLocation(W.p, 'a_corner');
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.quad);
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    gl.uniformMatrix4fv(W.u.u_matrix, false, mat);
+    gl.uniform1f(W.u.u_enc, 0);
+    gl.uniform1f(W.u.u_tide, S.tide);
+    gl.uniform1f(W.u.u_exag, S.exag);
+    gl.uniform1i(W.u.u_dem, 0);
+    const d = isDark();
+    gl.uniform3f(W.u.u_shallow, d ? 0.32 : 0.45, d ? 0.58 : 0.72, d ? 0.72 : 0.85);
+    gl.uniform3f(W.u.u_deep, d ? 0.03 : 0.04, d ? 0.16 : 0.18, d ? 0.32 : 0.34);
+    gl.uniform1f(W.u.u_opacity, S.waterOpacity);
+    const msize = 1 / 2 ** z;
+    gl.activeTexture(gl.TEXTURE0);
+    for (const t of tiles) {
+      const dem = albStore.get(z, t.x, t.y);
+      if (!dem || dem === 'missing') continue;
+      gl.bindTexture(gl.TEXTURE_2D, dem.tex);
+      gl.uniform3f(W.u.u_tile, t.x * msize, t.y * msize, msize);
+      gl.uniform1f(W.u.u_mpm, mercPerMeter(tile2lat(t.y + 0.5, z)));
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+    gl.disableVertexAttribArray(loc);
+  },
+
+  render(gl, args) {
+    perfNow = performance.now();
+    if (this.rampDirty) this.uploadRamp(gl);
+    const mat = args.defaultProjectionData.mainMatrix;
+    const cloudOn = S.mode !== 'raster';
+    if (!cloudOn && !S.water) { $('stat').hidden = true; return; }
+
+    gl.enable(gl.BLEND);
+    gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
+
+    let drawn = 0, px = [64, 128, 256][S.density] || 128;
+    if (cloudOn) {
+      gl.depthMask(true);
+      const mz = Math.round(map.getZoom());
+      // 街（陸域）: 地理院標高タイル + 空中写真。全国をカバーする
+      drawn += this.drawPass(gl, mat, {
+        store: gsiStore, z: Math.max(9, Math.min(S.cityDem === '5' ? 15 : 14, mz)),
+        tileSize: 256, enc: 1, keep: [S.tide + 0.001, 9000],
+        cap: 30, maxPx: Math.min(256, px * 2), zoff: 0.2,
+      });
+      // 沿岸: ALB 0.5 m。両方点群のときは陸側も ALB の細かい点で上書きする
+      drawn += this.drawPass(gl, mat, {
+        store: albStore, z: Math.max(11, Math.min(ALB_MAXZOOM, mz)),
+        tileSize: ALB_SIZE, enc: 0,
+        keep: S.mode === 'both' ? [-9000, 9000] : [S.tide, 9000],
+        cap: 22, bounds: BOUNDS, maxPx: px * 2, zoff: 0.35,
+      });
+    }
+    if (S.water) { gl.depthMask(false); this.drawWater(gl, mat); gl.depthMask(true); }
+
+    albStore.trim(gl); gsiStore.trim(gl); photoStore.trim(gl, 300);
+    if (cloudOn) {
+      $('stat').hidden = false;
+      $('stat').textContent = `点群 ${drawn} タイル · ${(drawn * (px * 2) ** 2 / 1e6).toFixed(1)} M 点`;
+    } else $('stat').hidden = true;
+  },
+
+  onRemove(m, gl) {
+    for (const b of this.gridBufs.values()) gl.deleteBuffer(b);
+    gl.deleteBuffer(this.quad); gl.deleteTexture(this.ramp); gl.deleteTexture(this.blank);
+  },
+};
+
+// ===========================================================================
+// コントロール
+// ===========================================================================
+function applyMode() {
+  const seaRaster = S.mode !== 'both';
+  vis('relief', $('relief-on').checked && seaRaster);
+  vis('hillshade', $('hillshade-on').checked && seaRaster);
+  vis('draft', S.draftOn && seaRaster);
+  map.triggerRepaint();
+}
+seg('mode-seg', 'mode', (m) => {
+  S.mode = m;
+  if (m !== 'raster' && map.getPitch() < 5) setPitch(52, true);
+  applyMode();
+});
+
+function buildLegend() {
+  const stops = rangeStops(S.range);
+  const lo = stops[0][0], hi = stops[stops.length - 1][0];
+  const grad = stops.map(([v, c]) => `${c} ${((v - lo) / (hi - lo) * 100).toFixed(2)}%`).join(',');
+  $('legend-bar').style.background = `linear-gradient(90deg, ${grad})`;
+  const span = hi - lo, step = span > 40 ? 10 : span > 18 ? 5 : span > 8 ? 2 : 1;
+  const ticks = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) ticks.push(Math.round(v * 10) / 10);
+  if (!ticks.length || ticks[0] - lo > step * 0.6) ticks.unshift(Math.round(lo * 10) / 10);
+  $('legend-ticks').innerHTML = ticks.map((v) =>
+    `<span style="left:${((v - lo) / span * 100).toFixed(1)}%">${v > 0 ? '+' : ''}${v}</span>`).join('');
+}
+const selRange = $('relief-range');
+for (const [k, r] of Object.entries(RANGES)) { const o = document.createElement('option'); o.value = k; o.textContent = r.label; selRange.appendChild(o); }
+selRange.addEventListener('change', () => {
+  S.range = selRange.value;
+  map.setPaintProperty('relief', 'color-relief-color', reliefExpr(S.range));
+  cloudLayer.rampDirty = true; buildLegend(); map.triggerRepaint();
+});
+on('relief-on', 'change', applyMode);
 on('relief-opacity', 'input', (e) => { const v = +e.target.value; map.setPaintProperty('relief', 'color-relief-opacity', v); $('relief-opacity-val').textContent = `${Math.round(v * 100)}%`; });
-
-// 陰影
-on('hillshade-on', 'change', (e) => vis('hillshade', e.target.checked));
+on('hillshade-on', 'change', applyMode);
+seg('hs-method', 'hs', (v) => map.setPaintProperty('hillshade', 'hillshade-method', v));
 on('hillshade-exag', 'input', (e) => { const v = +e.target.value; map.setPaintProperty('hillshade', 'hillshade-exaggeration', v); $('hillshade-exag-val').textContent = v.toFixed(2); });
-
-// 等高線
 on('contour-on', 'change', (e) => { vis('contour-line', e.target.checked); vis('contour-label', e.target.checked); });
+seg('basemap-seg', 'base', (k) => {
+  if (k === 'none') { vis('basemap', false); return; }
+  vis('basemap', true); map.getSource('basemap').setTiles(BASEMAPS[k]);
+});
 
-// 3D
+seg('cloud-color', 'cc', (v) => { S.cloudColor = v; map.triggerRepaint(); });
+on('cloud-size', 'input', (e) => { S.cloudSize = +e.target.value; $('cloud-size-val').textContent = `${S.cloudSize.toFixed(1)}×`; map.triggerRepaint(); });
+on('cloud-density', 'input', (e) => { S.density = +e.target.value; $('cloud-density-val').textContent = ['低', '中', '高'][S.density]; map.triggerRepaint(); });
+on('cloud-shade', 'input', (e) => { S.shade = +e.target.value; $('cloud-shade-val').textContent = S.shade.toFixed(2); map.triggerRepaint(); });
+seg('city-dem', 'cd', (v) => { S.cityDem = v; map.triggerRepaint(); });
+on('cloud-exag', 'input', (e) => { S.exag = +e.target.value; $('cloud-exag-val').textContent = `${S.exag.toFixed(1)}×`; map.triggerRepaint(); });
+
+function setPitch(v, fly) {
+  v = Math.max(0, Math.min(80, v));
+  if (fly) map.easeTo({ pitch: v, duration: 700 }); else map.setPitch(v);
+  $('pitch').value = v; $('pitch-val').textContent = `${Math.round(v)}°`;
+}
+seg('pitch-seg', 'pitch', (v) => setPitch(+v, true));
+on('pitch', 'input', (e) => setPitch(+e.target.value, false));
+on('bearing', 'input', (e) => map.setBearing(+e.target.value));
+map.on('move', () => {
+  const pv = map.getPitch();
+  $('pitch').value = pv; $('pitch-val').textContent = `${Math.round(pv)}°`;
+  for (const o of document.querySelectorAll('#pitch-seg button')) o.setAttribute('aria-pressed', String(Math.abs(+o.dataset.pitch - pv) < 3));
+  const b = ((map.getBearing() + 180) % 360 + 360) % 360 - 180;
+  $('bearing').value = b; $('bearing-val').textContent = `${Math.round(b)}°`;
+});
+let orbitRAF = 0;
+on('orbit-on', 'change', (e) => {
+  if (e.target.checked) {
+    const step = () => { map.setBearing(map.getBearing() + (reduceMotion ? 0.04 : 0.12)); orbitRAF = requestAnimationFrame(step); };
+    orbitRAF = requestAnimationFrame(step);
+  } else cancelAnimationFrame(orbitRAF);
+});
 on('terrain-on', 'change', (e) => {
-  if (e.target.checked) { map.setTerrain({ source: 'dem-terrain', exaggeration: +$('terrain-exag').value }); if (map.getPitch() < 30) map.easeTo({ pitch: 55, duration: 600 }); }
-  else { map.setTerrain(null); map.easeTo({ pitch: 0, duration: 400 }); }
+  if (e.target.checked) { map.setTerrain({ source: 'dem-terrain', exaggeration: +$('terrain-exag').value }); if (map.getPitch() < 25) setPitch(55, true); }
+  else map.setTerrain(null);
 });
 on('terrain-exag', 'input', (e) => { const v = +e.target.value; $('terrain-exag-val').textContent = `${v.toFixed(1)}×`; if ($('terrain-on').checked) map.setTerrain({ source: 'dem-terrain', exaggeration: v }); });
+on('sky-on', 'change', (e) => { skyOn = e.target.checked; applySky(); });
 
-// 喫水チェック
-const draftVal = () => +$('draft').value;
-on('draft-on', 'change', (e) => { vis('draft', e.target.checked); drawProfile(); });
-on('draft', 'input', () => { const d = draftVal(); $('draft-val').textContent = `${d.toFixed(1)} m`; $('draft-note').textContent = `水深 ${d.toFixed(1)} m より浅い海域を赤で示す。`; map.setPaintProperty('draft', 'color-relief-color', draftExpr(d)); updateDepthChip(); drawProfile(); });
-
-// 背景地図
-for (const b of document.querySelectorAll('#basemap-seg button')) {
-  b.addEventListener('click', () => {
-    for (const o of document.querySelectorAll('#basemap-seg button')) o.setAttribute('aria-pressed', String(o === b));
-    const key = b.dataset.base;
-    if (key === 'none') { vis('basemap', false); return; }
-    vis('basemap', true);
-    map.getSource('basemap').setTiles(BASEMAPS[key].tiles);
-  });
+function updateTideLabels() {
+  const t = S.tide;
+  $('tide-val').textContent = `${t > 0 ? '+' : t < 0 ? '−' : '±'}${Math.abs(t).toFixed(1)} m`;
+  $('draft-note').textContent = `潮位 ${t > 0 ? '+' : t < 0 ? '−' : '±'}${Math.abs(t).toFixed(1)} m のとき、水深 ${S.draft.toFixed(1)} m より浅い海域を赤で示す。`;
+  if (styleReady) map.setPaintProperty('draft', 'color-relief-color', draftExpr());
 }
+on('water-on', 'change', (e) => { S.water = e.target.checked; map.triggerRepaint(); });
+on('water-opacity', 'input', (e) => { S.waterOpacity = +e.target.value; $('water-opacity-val').textContent = `${S.waterOpacity.toFixed(1)}×`; map.triggerRepaint(); });
+on('tide', 'input', (e) => { S.tide = +e.target.value; updateTideLabels(); updateDepthChip(); drawProfile(); map.triggerRepaint(); });
+on('draft-on', 'change', (e) => { S.draftOn = e.target.checked; applyMode(); drawProfile(); });
+on('draft', 'input', (e) => { S.draft = +e.target.value; $('draft-val').textContent = `${S.draft.toFixed(1)} m`; updateTideLabels(); updateDepthChip(); drawProfile(); });
 
-// 地点
 for (const [name, lng, lat, z] of PLACES) {
   const b = document.createElement('button'); b.type = 'button'; b.textContent = name;
-  b.addEventListener('click', () => { map.flyTo({ center: [lng, lat], zoom: z, pitch: $('terrain-on').checked ? 55 : 0, duration: 1400 }); for (const o of $('places').children) o.setAttribute('aria-current', String(o === b)); });
+  b.addEventListener('click', () => {
+    map.flyTo({ center: [lng, lat], zoom: z, duration: 1500 });
+    for (const o of $('places').children) o.setAttribute('aria-current', String(o === b));
+  });
   $('places').appendChild(b);
 }
 
-// ---------------------------------------------------------------------------
-// 標高の読み取り（terrarium タイルを canvas で復号）
-// ---------------------------------------------------------------------------
-const tileCache = new Map();  // key -> ImageData | null(404) | Promise
-const tileKey = (z, x, y) => `${z}/${x}/${y}`;
-function fetchTile(z, x, y) {
-  const key = tileKey(z, x, y);
-  if (tileCache.has(key)) return tileCache.get(key);
-  const p = new Promise((resolve) => {
+// ===========================================================================
+// 標高の読み取り
+// ===========================================================================
+const decCache = new Map();
+function decodeTile(url) {
+  if (decCache.has(url)) return decCache.get(url);
+  const p = new Promise((res) => {
     const img = new Image(); img.crossOrigin = 'anonymous';
-    img.onload = () => { const c = document.createElement('canvas'); c.width = c.height = DEM_TILESIZE; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0); const d = g.getImageData(0, 0, DEM_TILESIZE, DEM_TILESIZE); tileCache.set(key, d); resolve(d); };
-    img.onerror = () => { tileCache.set(key, null); resolve(null); };
-    img.src = DEM_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y);
+    img.onload = () => {
+      const c = document.createElement('canvas'); c.width = c.height = img.width;
+      const g = c.getContext('2d', { willReadFrequently: true });
+      g.drawImage(img, 0, 0);
+      res({ data: g.getImageData(0, 0, img.width, img.width).data, size: img.width });
+    };
+    img.onerror = () => res(null);
+    img.src = url;
   });
-  tileCache.set(key, p);
+  decCache.set(url, p);
+  if (decCache.size > 160) decCache.delete(decCache.keys().next().value);
   return p;
 }
-function lngLatToTile(lng, lat, z) {
+function tileXY(lng, lat, z) {
   const n = 2 ** z;
-  const x = (lng + 180) / 360 * n;
-  const y = (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n;
-  return { x, y };
+  return { x: (lng + 180) / 360 * n, y: (1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * n };
 }
-// 戻り値: 数値（m）、null（データ範囲外 / FILL）、undefined（未取得）
-async function elevationAt(lng, lat, z) {
-  z = Math.max(8, Math.min(DEM_MAXZOOM, z));
-  const { x, y } = lngLatToTile(lng, lat, z);
+async function sampleDem(lng, lat, z, urlFn, enc) {
+  const { x, y } = tileXY(lng, lat, z);
   const tx = Math.floor(x), ty = Math.floor(y);
-  const img = await fetchTile(z, tx, ty);
-  if (!img) return null;
-  const px = Math.min(DEM_TILESIZE - 1, Math.floor((x - tx) * DEM_TILESIZE));
-  const py = Math.min(DEM_TILESIZE - 1, Math.floor((y - ty) * DEM_TILESIZE));
-  const i = (py * DEM_TILESIZE + px) * 4;
-  const r = img.data[i], g = img.data[i + 1], b = img.data[i + 2];
-  if (r === 128 && g === 0 && b === 0) return null;  // FILL_VALUE=0 = データなし
-  return r * 256 + g + b / 256 - 32768;
+  const t = await decodeTile(urlFn(z, tx, ty));
+  if (!t) return null;
+  const px = Math.min(t.size - 1, Math.floor((x - tx) * t.size));
+  const py = Math.min(t.size - 1, Math.floor((y - ty) * t.size));
+  const i = (py * t.size + px) * 4, d = t.data;
+  const r = d[i], g = d[i + 1], b = d[i + 2];
+  if (enc === 0) { if (r === 128 && g === 0 && b === 0) return null; return r * 256 + g + b / 256 - 32768; }
+  const v = (r << 16) | (g << 8) | b;
+  if (v === 8388608) return null;
+  return (v < 8388608 ? v : v - 16777216) * 0.01;
 }
-const fmtDepth = (h) => h == null ? '—' : (h < 0 ? `水深 ${(-h).toFixed(2)} m` : `標高 +${h.toFixed(2)} m`);
+const albUrlFn = (z, x, y) => ALB_URL.replace('{z}', z).replace('{x}', x).replace('{y}', y);
+const gsiUrlFn = (z, x, y) => `${GSI_BASE}/dem_png/${z}/${x}/${y}.png`;
 
-let cursorLngLat = null, cursorElev = null, roTimer = 0;
+async function elevationAt(lng, lat) {
+  if (lng >= BOUNDS[0] && lng <= BOUNDS[2] && lat >= BOUNDS[1] && lat <= BOUNDS[3]) {
+    const h = await sampleDem(lng, lat, ALB_MAXZOOM, albUrlFn, 0);
+    if (h != null) return { h, src: 'ALB 0.5 m' };
+  }
+  const h = await sampleDem(lng, lat, 14, gsiUrlFn, 1);
+  return h == null ? null : { h, src: '地理院 10 m' };
+}
+const fmtDepth = (h) => h == null ? '—' : (h < S.tide ? `水深 ${(S.tide - h).toFixed(2)} m` : `標高 ${h >= 0 ? '+' : ''}${h.toFixed(2)} m`);
+
+let cursorLngLat = null, roTimer = 0;
 async function updateDepthChip() {
   if (!cursorLngLat) return;
-  const { lng, lat } = cursorLngLat;
-  const z = Math.min(DEM_MAXZOOM, Math.round(map.getZoom()) + 1);
-  const h = await elevationAt(lng, lat, z);
-  cursorElev = h;
+  const r = await elevationAt(cursorLngLat.lng, cursorLngLat.lat);
+  const h = r ? r.h : null;
   const el = $('ro-depth');
   el.textContent = fmtDepth(h);
-  el.className = 'depth mono' + (h == null ? '' : h < 0 ? ($('draft-on').checked && h > -draftVal() ? ' warn' : ' neg') : '');
+  $('ro-src').textContent = r ? r.src : '';
+  el.className = 'depth mono' + (h == null ? '' : h < S.tide ? (S.draftOn && h > draftLevel() ? ' warn' : ' neg') : '');
 }
 map.on('mousemove', (e) => {
   cursorLngLat = e.lngLat;
   $('ro-pos').textContent = `${e.lngLat.lat.toFixed(5)}, ${e.lngLat.lng.toFixed(5)}`;
-  clearTimeout(roTimer); roTimer = setTimeout(updateDepthChip, 40);
+  clearTimeout(roTimer); roTimer = setTimeout(updateDepthChip, 45);
 });
-map.on('mouseout', () => { $('ro-pos').textContent = '—'; $('ro-depth').textContent = '—'; $('ro-depth').className = 'depth mono'; });
+map.on('mouseout', () => { $('ro-pos').textContent = '—'; $('ro-depth').textContent = '—'; $('ro-src').textContent = ''; $('ro-depth').className = 'depth mono'; });
 const showZoom = () => { $('ro-zoom').textContent = map.getZoom().toFixed(2); };
-map.on('zoom', showZoom); map.on('load', showZoom);
+map.on('zoom', showZoom);
 
-// ---------------------------------------------------------------------------
+// ===========================================================================
 // 断面ツール
-// ---------------------------------------------------------------------------
+// ===========================================================================
 let profiling = false, verts = [], samples = null;
-const setLineData = (pts, closed) => {
-  const features = pts.map((p) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: p } }));
-  if (pts.length >= 2) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: pts } });
-  map.getSource('profile-line').setData({ type: 'FeatureCollection', features });
+const setLineData = (pts) => {
+  const f = pts.map((p) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: p } }));
+  if (pts.length >= 2) f.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: pts } });
+  map.getSource('profile-line').setData({ type: 'FeatureCollection', features: f });
 };
 const haversine = (a, b) => {
   const R = 6371008.8, toR = Math.PI / 180;
@@ -494,22 +1115,21 @@ map.on('click', (e) => { if (!profiling) return; verts.push([e.lngLat.lng, e.lng
 map.on('dblclick', (e) => { if (!profiling) return; e.preventDefault(); stopProfiling(false); });
 
 async function computeProfile() {
-  // 折れ線に沿って等間隔に標本点を置き、z17 のタイルから標高を読む
   const segs = []; let total = 0;
   for (let i = 1; i < verts.length; i++) { const d = haversine(verts[i - 1], verts[i]); segs.push({ a: verts[i - 1], b: verts[i], d, s0: total }); total += d; }
-  const N = Math.min(400, Math.max(60, Math.round(total / 2)));  // 2 m 間隔、最大 400 点
+  const N = Math.min(400, Math.max(60, Math.round(total / 2)));
   const pts = [];
   for (let k = 0; k <= N; k++) {
     const s = total * k / N;
-    const seg = segs.find((g) => s <= g.s0 + g.d) || segs[segs.length - 1];
-    const t = seg.d ? (s - seg.s0) / seg.d : 0;
-    pts.push({ s, lng: seg.a[0] + (seg.b[0] - seg.a[0]) * t, lat: seg.a[1] + (seg.b[1] - seg.a[1]) * t });
+    const g = segs.find((q) => s <= q.s0 + q.d) || segs[segs.length - 1];
+    const t = g.d ? (s - g.s0) / g.d : 0;
+    pts.push({ s, lng: g.a[0] + (g.b[0] - g.a[0]) * t, lat: g.a[1] + (g.b[1] - g.a[1]) * t });
   }
   $('profile').hidden = false; $('profile-stats').textContent = '';
-  if (isNarrow()) setCollapsed(true);
   $('profile-chart').innerHTML = '<div class="empty">標高を読み取り中…</div>';
-  const hs = await Promise.all(pts.map((p) => elevationAt(p.lng, p.lat, DEM_MAXZOOM)));
-  samples = pts.map((p, i) => ({ ...p, h: hs[i] }));
+  if (isNarrow()) setCollapsed(true);
+  const hs = await Promise.all(pts.map((p) => elevationAt(p.lng, p.lat)));
+  samples = pts.map((p, i) => ({ ...p, h: hs[i] ? hs[i].h : null }));
   drawProfile();
 }
 function drawProfile() {
@@ -518,46 +1138,50 @@ function drawProfile() {
   const total = samples[samples.length - 1].s;
   if (!valid.length) { $('profile-chart').innerHTML = '<div class="empty">この線上に標高データがありません。</div>'; $('profile-stats').textContent = ''; return; }
   const hmin = Math.min(...valid.map((p) => p.h)), hmax = Math.max(...valid.map((p) => p.h));
-  const mean = valid.reduce((a, p) => a + p.h, 0) / valid.length;
-  const d = draftVal(), draftOn = $('draft-on').checked;
-  const hazard = valid.filter((p) => p.h < 0 && p.h > -d).length;
+  const wet = valid.filter((p) => p.h < S.tide);
+  const dl = draftLevel();
+  const hazard = wet.filter((p) => p.h > dl).length;
   $('profile-stats').innerHTML = `距離 <b>${total >= 1000 ? (total / 1000).toFixed(2) + ' km' : Math.round(total) + ' m'}</b>` +
-    ` 最深 <b>${hmin < 0 ? (-hmin).toFixed(1) + ' m' : '—'}</b> 最浅 <b>${hmax < 0 ? (-hmax).toFixed(1) + ' m' : '陸 +' + hmax.toFixed(1) + ' m'}</b>` +
-    ` 平均 <b>${mean.toFixed(1)} m</b>` + (draftOn ? ` <span style="color:var(--warn)">喫水 ${d} m 未満 <b style="color:var(--warn)">${Math.round(hazard / valid.length * 100)}%</b></span>` : '');
-  // SVG
+    ` 最深 <b>${wet.length ? (S.tide - hmin).toFixed(1) + ' m' : '—'}</b>` +
+    ` 最高 <b>${hmax >= S.tide ? '+' + hmax.toFixed(1) + ' m' : '—'}</b>` +
+    ` 水没 <b>${Math.round(wet.length / valid.length * 100)}%</b>` +
+    (S.draftOn && wet.length ? ` <span style="color:var(--warn)">喫水 ${S.draft} m 未満 <b style="color:var(--warn)">${Math.round(hazard / wet.length * 100)}%</b></span>` : '');
+
   const W = 560, H = 170, L = 44, R = 12, T = 12, B = 24;
-  const yLo = Math.min(hmin, draftOn ? -d : 0, -1) - 1, yHi = Math.max(hmax, 0) + 1;
+  const yLo = Math.min(hmin, S.draftOn ? dl : S.tide, S.tide - 1) - 1, yHi = Math.max(hmax, S.tide) + 1;
   const sx = (s) => L + (s / total) * (W - L - R);
   const sy = (h) => T + (yHi - h) / (yHi - yLo) * (H - T - B);
   let path = '', area = '', open = false;
-  for (const p of samples) {
-    if (p.h == null) { open = false; continue; }
+  samples.forEach((p, idx) => {
+    if (p.h == null) { open = false; return; }
     const X = sx(p.s).toFixed(1), Y = sy(p.h).toFixed(1);
     path += (open ? 'L' : 'M') + X + ' ' + Y + ' ';
-    area += (open ? 'L' : `M${X} ${sy(0).toFixed(1)} L`) + X + ' ' + Y + ' ';
+    area += (open ? 'L' : `M${X} ${sy(S.tide).toFixed(1)} L`) + X + ' ' + Y + ' ';
     open = true;
-    const nxt = samples[samples.indexOf(p) + 1];
-    if (!nxt || nxt.h == null) area += `L${X} ${sy(0).toFixed(1)} Z `;
-  }
-  const ticks = []; const step = (yHi - yLo) > 20 ? 5 : (yHi - yLo) > 8 ? 2 : 1;
-  for (let v = Math.ceil(yLo / step) * step; v <= yHi; v += step) ticks.push(v);
-  const xt = []; const xs = total > 4000 ? 1000 : total > 1500 ? 500 : total > 600 ? 200 : total > 250 ? 100 : 50;
-  for (let s = 0; s <= total; s += xs) xt.push(s);
-  let hz = '';
-  if (draftOn) { const y1 = sy(-0.01), y2 = sy(-d); hz = `<rect class="hazard" x="${L}" y="${y1.toFixed(1)}" width="${W - L - R}" height="${Math.max(0, y2 - y1).toFixed(1)}"/>`; }
+    const nxt = samples[idx + 1];
+    if (!nxt || nxt.h == null) area += `L${X} ${sy(S.tide).toFixed(1)} Z `;
+  });
+  const step = (yHi - yLo) > 20 ? 5 : (yHi - yLo) > 8 ? 2 : 1;
+  const ticks = []; for (let v = Math.ceil(yLo / step) * step; v <= yHi; v += step) ticks.push(v);
+  const xs = total > 4000 ? 1000 : total > 1500 ? 500 : total > 600 ? 200 : total > 250 ? 100 : 50;
+  const xt = []; for (let s = 0; s <= total; s += xs) xt.push(s);
+  const yTide = sy(S.tide), yBot = H - B;
+  const hz = S.draftOn ? `<rect class="hazard" x="${L}" y="${yTide.toFixed(1)}" width="${W - L - R}" height="${Math.max(0, sy(dl) - yTide).toFixed(1)}"/>` : '';
   $('profile-chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-label="水深プロファイル">
+    <rect class="water" x="${L}" y="${yTide.toFixed(1)}" width="${W - L - R}" height="${Math.max(0, yBot - yTide).toFixed(1)}"/>
     ${ticks.map((v) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${sy(v).toFixed(1)}" y2="${sy(v).toFixed(1)}"/><text class="axis" x="${L - 6}" y="${(sy(v) + 3).toFixed(1)}" text-anchor="end">${v > 0 ? '+' : ''}${v}</text>`).join('')}
     ${xt.map((s) => `<text class="axis" x="${sx(s).toFixed(1)}" y="${H - 8}" text-anchor="middle">${s >= 1000 ? (s / 1000) + 'k' : s} m</text>`).join('')}
     ${hz}
     <path class="area" d="${area}"/>
-    <line class="zero" x1="${L}" x2="${W - R}" y1="${sy(0).toFixed(1)}" y2="${sy(0).toFixed(1)}"/>
-    ${draftOn ? `<line class="draft" x1="${L}" x2="${W - R}" y1="${sy(-d).toFixed(1)}" y2="${sy(-d).toFixed(1)}"/>` : ''}
+    <line class="zero" x1="${L}" x2="${W - R}" y1="${yTide.toFixed(1)}" y2="${yTide.toFixed(1)}"/>
+    ${S.draftOn ? `<line class="draft" x1="${L}" x2="${W - R}" y1="${sy(dl).toFixed(1)}" y2="${sy(dl).toFixed(1)}"/>` : ''}
     <path class="line" d="${path}"/>
-    <line class="cursor" id="pcur" x1="-10" x2="-10" y1="${T}" y2="${H - B}" />
+    <line class="cursor" id="pcur" x1="-10" x2="-10" y1="${T}" y2="${yBot}"/>
   </svg>`;
   const svg = $('profile-chart').firstElementChild;
   svg.addEventListener('mousemove', (ev) => {
-    const r = svg.getBoundingClientRect(); const s = Math.max(0, Math.min(total, (ev.clientX - r.left) / r.width * W - L) / (W - L - R) * total);
+    const r = svg.getBoundingClientRect();
+    const s = Math.max(0, Math.min(total, ((ev.clientX - r.left) / r.width * W - L) / (W - L - R) * total));
     const p = samples.reduce((b, q) => Math.abs(q.s - s) < Math.abs(b.s - s) ? q : b);
     $('pcur').setAttribute('x1', sx(p.s)); $('pcur').setAttribute('x2', sx(p.s));
     map.getSource('profile-cursor').setData({ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] } }] });
@@ -565,6 +1189,9 @@ function drawProfile() {
   });
   svg.addEventListener('mouseleave', () => map.getSource('profile-cursor').setData({ type: 'FeatureCollection', features: [] }));
 }
+
+if (isNarrow()) setCollapsed(true);
+applyTheme(); updateTideLabels();
 })();
 </script>
 </body>
