@@ -1,0 +1,179 @@
+{
+ "counts": {
+  "mapbox": {
+   "10": 6,
+   "11": 13,
+   "12": 26,
+   "13": 57,
+   "14": 117,
+   "15": 289,
+   "16": 756,
+   "17": 2186,
+   "5": 1,
+   "6": 1,
+   "7": 2,
+   "8": 2,
+   "9": 4
+  },
+  "terrarium": {
+   "10": 6,
+   "11": 13,
+   "12": 26,
+   "13": 57,
+   "14": 117,
+   "15": 289,
+   "16": 756,
+   "17": 2186,
+   "5": 1,
+   "6": 1,
+   "7": 2,
+   "8": 2,
+   "9": 4
+  },
+  "gsidem": {
+   "10": 6,
+   "11": 13,
+   "12": 25,
+   "13": 55,
+   "14": 114,
+   "15": 276,
+   "16": 702,
+   "17": 1924,
+   "18": 5892,
+   "5": 1,
+   "6": 1,
+   "7": 2,
+   "8": 2,
+   "9": 4
+  }
+ },
+ "total": {
+  "mapbox": 3460,
+  "terrarium": 3460,
+  "gsidem": 9017
+ },
+ "mapbox_mbtiles": {
+  "metadata": {
+   "format": "png",
+   "name": "",
+   "description": "",
+   "version": "1",
+   "type": "baselayer"
+  },
+  "tiles_in_mbtiles": 3460
+ },
+ "terrarium_mbtiles": {
+  "metadata": {
+   "format": "png",
+   "name": "",
+   "description": "",
+   "version": "1",
+   "type": "baselayer"
+  },
+  "tiles_in_mbtiles": 3460
+ },
+ "z_compare_mapbox_vs_gsidem": {
+  "5": {
+   "rgb": 1,
+   "gsidem": 1,
+   "gsidem_not_in_rgb": 0,
+   "rgb_not_in_gsidem": 0
+  },
+  "6": {
+   "rgb": 1,
+   "gsidem": 1,
+   "gsidem_not_in_rgb": 0,
+   "rgb_not_in_gsidem": 0
+  },
+  "7": {
+   "rgb": 2,
+   "gsidem": 2,
+   "gsidem_not_in_rgb": 0,
+   "rgb_not_in_gsidem": 0
+  },
+  "8": {
+   "rgb": 2,
+   "gsidem": 2,
+   "gsidem_not_in_rgb": 0,
+   "rgb_not_in_gsidem": 0
+  },
+  "9": {
+   "rgb": 4,
+   "gsidem": 4,
+   "gsidem_not_in_rgb": 0,
+   "rgb_not_in_gsidem": 0
+  },
+  "10": {
+   "rgb": 6,
+   "gsidem": 6,
+   "gsidem_not_in_rgb": 0,
+   "rgb_not_in_gsidem": 0
+  },
+  "11": {
+   "rgb": 13,
+   "gsidem": 13,
+   "gsidem_not_in_rgb": 0,
+   "rgb_not_in_gsidem": 0
+  },
+  "12": {
+   "rgb": 26,
+   "gsidem": 25,
+   "gsidem_not_in_rgb": 0,
+   "rgb_not_in_gsidem": 1
+  },
+  "13": {
+   "rgb": 57,
+   "gsidem": 55,
+   "gsidem_not_in_rgb": 0,
+   "rgb_not_in_gsidem": 2
+  },
+  "14": {
+   "rgb": 117,
+   "gsidem": 114,
+   "gsidem_not_in_rgb": 0,
+   "rgb_not_in_gsidem": 3
+  },
+  "15": {
+   "rgb": 289,
+   "gsidem": 276,
+   "gsidem_not_in_rgb": 0,
+   "rgb_not_in_gsidem": 13
+  },
+  "16": {
+   "rgb": 756,
+   "gsidem": 702,
+   "gsidem_not_in_rgb": 0,
+   "rgb_not_in_gsidem": 54
+  },
+  "17": {
+   "rgb": 2186,
+   "gsidem": 1924,
+   "gsidem_not_in_rgb": 0,
+   "rgb_not_in_gsidem": 262
+  }
+ },
+ "mapbox_vs_terrarium_identical_sets": true,
+ "mapbox_png": {
+  "size": [
+   512,
+   512
+  ],
+  "mode": "RGB"
+ },
+ "terrarium_png": {
+  "size": [
+   512,
+   512
+  ],
+  "mode": "RGB"
+ },
+ "gsidem_png": {
+  "size": [
+   256,
+   256
+  ],
+  "mode": "RGB"
+ },
+ "mapbox_maxzoom_all_fill_tiles": 259,
+ "gsidem_maxzoom_all_nodata_tiles": 0
+}

@@ -1,0 +1,120 @@
+{
+ "mapbox": {
+  "per_zoom": {
+   "5": {
+    "tiles": 1,
+    "all_fill": 0
+   },
+   "6": {
+    "tiles": 1,
+    "all_fill": 0
+   },
+   "7": {
+    "tiles": 2,
+    "all_fill": 0
+   },
+   "8": {
+    "tiles": 2,
+    "all_fill": 0
+   },
+   "9": {
+    "tiles": 4,
+    "all_fill": 0
+   },
+   "10": {
+    "tiles": 6,
+    "all_fill": 0
+   },
+   "11": {
+    "tiles": 13,
+    "all_fill": 0
+   },
+   "12": {
+    "tiles": 26,
+    "all_fill": 1
+   },
+   "13": {
+    "tiles": 57,
+    "all_fill": 2
+   },
+   "14": {
+    "tiles": 117,
+    "all_fill": 3
+   },
+   "15": {
+    "tiles": 289,
+    "all_fill": 13
+   },
+   "16": {
+    "tiles": 756,
+    "all_fill": 54
+   },
+   "17": {
+    "tiles": 2186,
+    "all_fill": 259
+   }
+  },
+  "total": 3460,
+  "all_fill_total": 332,
+  "all_fill_bytes": 623828
+ },
+ "terrarium": {
+  "per_zoom": {
+   "5": {
+    "tiles": 1,
+    "all_fill": 0
+   },
+   "6": {
+    "tiles": 1,
+    "all_fill": 0
+   },
+   "7": {
+    "tiles": 2,
+    "all_fill": 0
+   },
+   "8": {
+    "tiles": 2,
+    "all_fill": 0
+   },
+   "9": {
+    "tiles": 4,
+    "all_fill": 0
+   },
+   "10": {
+    "tiles": 6,
+    "all_fill": 0
+   },
+   "11": {
+    "tiles": 13,
+    "all_fill": 0
+   },
+   "12": {
+    "tiles": 26,
+    "all_fill": 1
+   },
+   "13": {
+    "tiles": 57,
+    "all_fill": 2
+   },
+   "14": {
+    "tiles": 117,
+    "all_fill": 3
+   },
+   "15": {
+    "tiles": 289,
+    "all_fill": 13
+   },
+   "16": {
+    "tiles": 756,
+    "all_fill": 53
+   },
+   "17": {
+    "tiles": 2186,
+    "all_fill": 259
+   }
+  },
+  "total": 3460,
+  "all_fill_total": 331,
+  "all_fill_bytes": 621287
+ }
+}
