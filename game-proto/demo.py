@@ -97,6 +97,8 @@ def main():
     ap.add_argument("--single-iters", type=int, default=25)
     ap.add_argument("--out", type=str, default="output")
     ap.add_argument("--only", choices=["static", "game"], default=None)
+    ap.add_argument("--ignore-policy", choices=["frame", "mask"], default="frame",
+                    help="frame: reference behaviour (drop stale keyframes); mask: keep every keyframe, exclude only masked pixels")
     ap.add_argument("--tiles", type=int, default=1,
                     help="split floor/wall masks into an NxN grid of masks (SAM-like over-segmentation)")
     args = ap.parse_args()
@@ -121,6 +123,7 @@ def main():
         "addition_cover_depth_gap": 0.3,
         "morph_kernel": 3,
         "seed_downsample": 3,
+        "ignore_policy": args.ignore_policy,
     }
     systems = {
         "static": {**base_config, "change_detection": False},

@@ -53,6 +53,7 @@ DEFAULT_CONFIG = {
     "prune_opacity": 0.1,
     # prototype switches
     "change_detection": True,
+    "ignore_policy": "frame",         # "frame": reference behaviour (ignored_frames); "mask": never ignore whole frames
     "seed": 0,
 }
 
@@ -112,7 +113,7 @@ class GaME:
             all_masks = self.keyframes[keyframe_id]["masks"]
             ignore_mask = self.occlusion_masks[keyframe_id]
             covered = (ignore_mask & all_masks).sum(dim=(1, 2)).float() / all_masks.sum(dim=(1, 2)).clamp_min(1).float()
-            if (covered > thresh).any():
+            if (covered > thresh).any() and self.config["ignore_policy"] == "frame":
                 self.ignored_frames.add(keyframe_id)
                 self._record("ignore_frame", frame=keyframe_id, reason="occlusion_coverage")
                 active.remove(keyframe_id)
@@ -198,7 +199,8 @@ class GaME:
                         else (self.occlusion_masks[covis_id] | closed)
                     self._record("addition_occlusion", frame=covis_id, cover_score=float(cover_score),
                                  pixels=int(closed.sum()))
-                if cover_score > self.config["covis_ignore_threshold"] and covis_id not in self.ignored_frames:
+                if (cover_score > self.config["covis_ignore_threshold"] and covis_id not in self.ignored_frames
+                        and self.config["ignore_policy"] == "frame"):
                     self.ignored_frames.add(covis_id)
                     self._record("ignore_frame", frame=covis_id, reason="addition_cover")
 

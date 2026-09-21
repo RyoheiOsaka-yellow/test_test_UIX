@@ -63,9 +63,10 @@
 
   .panel { display: flex; flex-direction: column; gap: 14px; }
   .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
-  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  @media (max-width: 420px) { .stats { grid-template-columns: 1fr 1fr; } }
   .stat .k { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-  .stat .v { font-family: "Zen Kaku Gothic New", sans-serif; font-size: 26px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stat .v { font-family: "Zen Kaku Gothic New", sans-serif; font-size: 24px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
   .stat .v.stale { color: var(--stale); }
   .stat .v.fresh { color: var(--fresh); }
   .stat .d { font-size: 12px; color: var(--muted); }
@@ -109,6 +110,10 @@
           <button id="modeStatic" aria-pressed="false">静的マップ</button>
           <button id="modeGame" aria-pressed="true">GaME</button>
         </div>
+        <div class="seg" role="group" aria-label="キーフレームの無視ポリシー" title="古い観測を含むキーフレームを丸ごと捨てるか、マスクした光線だけ外すか">
+          <button id="polRef" aria-pressed="false">本家どおり無視</button>
+          <button id="polMask" aria-pressed="true">マスクのみ</button>
+        </div>
         <button class="btn primary" id="play">▶ シナリオを再生</button>
         <button class="btn" id="moveChair">椅子を反対側へ</button>
         <button class="btn" id="resetMap">地図を消去</button>
@@ -131,10 +136,12 @@
     <div class="card">
       <h2>地図の状態</h2>
       <div class="stats">
-        <div class="stat"><div class="k">Gaussian</div><div class="v" id="sN">0</div><div class="d">地図の点の数</div></div>
+        <div class="stat"><div class="k">一致率</div><div class="v fresh" id="sAgree">–</div><div class="d">固定 5 視点で地図と現実が合う光線</div></div>
         <div class="stat"><div class="k">幽霊</div><div class="v stale" id="sGhost">0</div><div class="d">現実の面から 25 cm 以上離れた点</div></div>
-        <div class="stat"><div class="k">キーフレーム</div><div class="v" id="sKf">0</div><div class="d"><span id="sIgnored">0</span> 件を無視中</div></div>
-        <div class="stat"><div class="k">マスク済み観測</div><div class="v" id="sMasked">0%</div><div class="d">最適化から外した光線の割合</div></div>
+        <div class="stat"><div class="k">Gaussian</div><div class="v" id="sN">0</div><div class="d">地図の点の数</div></div>
+        <div class="stat"><div class="k">キーフレーム</div><div class="v" id="sKf">0</div><div class="d">保存した観測</div></div>
+        <div class="stat"><div class="k">無視</div><div class="v" id="sIgnored">0</div><div class="d">丸ごと捨てたフレーム</div></div>
+        <div class="stat"><div class="k">マスク済み</div><div class="v" id="sMasked">0%</div><div class="d">最適化から外した光線</div></div>
       </div>
     </div>
     <div class="card">
@@ -267,7 +274,8 @@ const CFG = {
   occlusionIgnore: 0.2,      // occlusion_ignore_threshold: masked fraction of any object mask -> ignore
   kfTrans: 0.5, kfRot: 18 * Math.PI / 180,
   lr: 0.06, carve: 0.3, itersPerFrame: 3,
-  frameIgnore: 0.4,          // playground: ignore a frame only when 40% of its rays are stale (gentler than the reference)
+  frameIgnore: 0.4,          // "mask" policy: ignore a frame only when 40% of its rays are stale
+  ignorePolicy: "mask",      // "ref": reference behaviour (occlusion_ignore_threshold / covis_ignore_threshold on object masks)
 };
 let mode = "game";
 let keyframes = [];          // {id, pose, rays, occl: Uint8Array, ignored}
@@ -363,10 +371,16 @@ function maskFractionByObject(kf) {           // largest masked fraction over an
   let m = 0; for (const o in tot) m = Math.max(m, (msk[o] || 0) / tot[o]);
   return m;
 }
-function maybeIgnore(kf, reason) {
+function maybeIgnore(kf, reason, coverScore) {
   if (kf.ignored) return;
-  let m = 0; for (let i = 0; i < RAYS; i++) m += kf.occl[i];
-  if (m / RAYS > CFG.frameIgnore) { kf.ignored = true; log("ig", `kf${kf.id} を無視（${reason}）`); }
+  let ignore;
+  if (CFG.ignorePolicy === "ref") {
+    ignore = maskFractionByObject(kf) > CFG.occlusionIgnore || (coverScore !== undefined && coverScore > CFG.covisIgnore);
+  } else {
+    let m = 0; for (let i = 0; i < RAYS; i++) m += kf.occl[i];
+    ignore = m / RAYS > CFG.frameIgnore;
+  }
+  if (ignore) { kf.ignored = true; log("ig", `kf${kf.id} を無視（${reason}）`); }
 }
 
 // -- additions: observed surface closer than the map -> new geometry; reproject into old keyframes
@@ -405,7 +419,7 @@ function detectAdditions(pose, rays) {
         for (const j of marks) { kf.occl[j] = 1; if (j > 0) kf.occl[j - 1] = 1; if (j < RAYS - 1) kf.occl[j + 1] = 1; }
         log("add", `kf${kf.id} の ${marks.length} 光線をマスク（${objName(objId)} が今ある場所を空と見ていた）`);
       }
-      maybeIgnore(kf, `新しい${objName(objId)}と大きく矛盾`);
+      maybeIgnore(kf, `新しい${objName(objId)}と大きく矛盾`, cover >= 4 ? score : undefined);
     }
   }
 }
@@ -580,6 +594,16 @@ function setMode(m) {
   log("info", `方式を ${m === "game" ? "GaME" : "静的マップ"} に切り替え`);
   try { localStorage.setItem("game-playground-mode", m); } catch (e) {}
 }
+function setPolicy(p) {
+  CFG.ignorePolicy = p;
+  document.getElementById("polRef").setAttribute("aria-pressed", p === "ref");
+  document.getElementById("polMask").setAttribute("aria-pressed", p === "mask");
+  log("info", `キーフレームの無視: ${p === "ref" ? "本家どおり（物体マスクの 20% が古ければフレームごと無視）" : "マスクのみ（光線の 40% が古い時だけ無視）"}`);
+  try { localStorage.setItem("game-playground-policy", p); } catch (e) {}
+}
+document.getElementById("polRef").addEventListener("click", () => setPolicy("ref"));
+document.getElementById("polMask").addEventListener("click", () => setPolicy("mask"));
+try { const p = localStorage.getItem("game-playground-policy"); if (p === "ref" || p === "mask") setPolicy(p); } catch (e) {}
 document.getElementById("modeStatic").addEventListener("click", () => setMode("static"));
 document.getElementById("modeGame").addEventListener("click", () => setMode("game"));
 try { const m = localStorage.getItem("game-playground-mode"); if (m === "static" || m === "game") setMode(m); } catch (e) {}
@@ -700,9 +724,23 @@ function distToSurfaces(g) {
   }
   return best;
 }
+const EVAL_POSES = [2.4, 3.75, 5.1, 6.45, 7.8].map(x => ({ x, y: 5.9, th: headingTo(x, 5.9, x * 0.8 + 1.1, 2.0) }));
+function agreementRate() {
+  let ok = 0, tot = 0;
+  for (const pose of EVAL_POSES) {
+    const real = observe(pose), map = renderScan(pose);
+    for (let i = 0; i < RAYS; i++) {
+      const o = real[i], r = map[i]; tot++;
+      if (!o.hit) { if (r.alpha < CFG.minOpacity) ok++; continue; }
+      if (r.alpha >= CFG.minOpacity && Math.abs(r.depth - o.d) < CFG.eps && colorL1(r.color, hex2rgb(o.color)) < CFG.colorErr) ok++;
+    }
+  }
+  return tot ? ok / tot : 0;
+}
 function updateStats(now) {
   if (now - lastGhostT > 400) {
     lastGhostT = now;
+    document.getElementById("sAgree").textContent = gaussians.length ? Math.round(100 * agreementRate()) + "%" : "–";
     ghostCount = gaussians.filter(g => !g.dying && g.a > 0.25 && distToSurfaces(g) > 0.25).length;
     const live = gaussians.filter(g => !g.dying).length;
     document.getElementById("sN").textContent = live;
