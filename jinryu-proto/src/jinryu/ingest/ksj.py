@@ -92,22 +92,14 @@ def land_price(raw_dir=None, bbox=None) -> gpd.GeoDataFrame:
         member = [n for n in zf.namelist() if n.endswith(".geojson")][0]
         gdf = gpd.read_file(io.BytesIO(zf.read(member)))
     gdf = gdf.to_crs(4326).cx[bbox[0] : bbox[2], bbox[1] : bbox[3]].copy()
-    # L01 の列名は年度で変わる: 価格は L01_006 (2025版: 公示価格), 住所 L01_024 付近 → 数値列の最初を価格とみなす
-    price_col = next(
-        (
-            c
-            for c in gdf.columns
-            if c.startswith("L01_") and gdf[c].dtype.kind in "if" and gdf[c].max() > 1000
-        ),
-        None,
-    )
-    str_cols = [c for c in gdf.columns if gdf[c].dtype == object and c.startswith("L01_")]
-    addr_col = next((c for c in str_cols if gdf[c].astype(str).str.contains("岡山市").any()), None)
+    # L01-25: L01_008 = 公示価格(円/m²), L01_025 = 所在, L01_026 = 住居表示, L01_028 = 利用現況, L01_040 = 前面道路
     out = pd.DataFrame(
         {
             "point_id": [f"L01_{i}" for i in range(len(gdf))],
-            "price_yen_m2": pd.to_numeric(gdf[price_col], errors="coerce") if price_col else None,
-            "address": gdf[addr_col].astype(str) if addr_col else None,
+            "price_yen_m2": pd.to_numeric(gdf.get("L01_008"), errors="coerce"),
+            "address": gdf.get("L01_026", gdf.get("L01_025")).astype(str),
+            "current_use": gdf.get("L01_028").astype(str) if "L01_028" in gdf else None,
+            "change_pct": pd.to_numeric(gdf.get("L01_009"), errors="coerce"),
         }
     )
     return gpd.GeoDataFrame(out, geometry=gdf.geometry.values, crs="EPSG:4326").reset_index(drop=True)

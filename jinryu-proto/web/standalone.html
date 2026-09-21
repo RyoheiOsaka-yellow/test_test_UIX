@@ -1,235 +1,437 @@
 <title>人流ポテンシャル 岡山</title>
-<meta name="description" content="1kmメッシュ人流を建物・街路に再配分した通行量推定。岡山市中心部、サーバ不要の単一HTMLデモ" />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap" />
+<meta name="description" content="区画に何が建てられるか・どの規制がかかるか・採算に合うかを、人流推定と法規・地価で初期判断する単体HTMLプロトタイプ（岡山市中心部）" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" />
 <style>
 /*__MAPLIBRE_CSS__*/
 :root {
-  --bg:#101820; --panel:#172230; --panel2:#0d141c; --fg:#e8eef4; --muted:#93a1b0; --line:#2b3a4a;
-  --accent:#f2a93b; --accent-ink:#1a1206; --good:#3ecf7a; --warn:#e6c04a; --bad:#ef6b6b;
-  --font: "Noto Sans JP", -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif;
-  --mono: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+  --bg:#0e141b; --panel:#151f2a; --panel2:#0b1016; --card:#1a2632; --fg:#e9eef3; --muted:#8f9dab; --line:#273545;
+  --accent:#f0a33a; --accent-ink:#1a1206; --good:#39c97a; --warn:#e5c04a; --bad:#ef6767; --blue:#4f8ff7;
+  --font:"Noto Sans JP", -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif; --mono:"IBM Plex Mono", Menlo, Consolas, monospace;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#101820; } }
-:root[data-theme="dark"] { --bg:#101820; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0e141b; } }
+:root[data-theme="dark"] { --bg:#0e141b; }
 html, body { height:100%; margin:0; }
 body { background:var(--bg); color:var(--fg); font-family:var(--font); font-size:13px; line-height:1.5; overflow:hidden; }
 * { box-sizing:border-box; }
-#topbar { display:flex; align-items:center; gap:16px; padding:8px 16px; background:var(--panel); border-bottom:1px solid var(--line); flex-wrap:wrap; }
-.brand { font-weight:700; font-size:15px; letter-spacing:.02em; } .brand small { color:var(--muted); font-weight:400; font-size:11px; margin-left:8px; }
-.ctl { display:flex; gap:12px; flex-wrap:wrap; align-items:center; font-size:12px; color:var(--muted); }
-.ctl select, .ctl button, input.num { background:var(--panel2); color:var(--fg); border:1px solid var(--line); border-radius:4px; padding:3px 6px; font-size:12px; font-family:inherit; }
-.ctl button, button.act { cursor:pointer; background:var(--accent); color:var(--accent-ink); border:none; font-weight:700; }
-.ctl button.ghost { background:transparent; color:var(--muted); border:1px solid var(--line); font-weight:400; }
+#topbar { display:flex; align-items:center; gap:14px; padding:7px 16px; background:var(--panel); border-bottom:1px solid var(--line); flex-wrap:wrap; }
+.brand { font-weight:700; font-size:15px; letter-spacing:.02em; white-space:nowrap; } .brand small { color:var(--muted); font-weight:400; font-size:11px; margin-left:8px; }
+.ctl { display:flex; gap:10px; flex-wrap:wrap; align-items:center; font-size:12px; color:var(--muted); }
+.ctl label { display:inline-flex; align-items:center; gap:4px; }
+select, input.num, input[type=number] { background:var(--panel2); color:var(--fg); border:1px solid var(--line); border-radius:4px; padding:3px 6px; font-size:12px; font-family:inherit; }
+button { font-family:inherit; cursor:pointer; }
+.btn { background:var(--accent); color:var(--accent-ink); border:none; border-radius:4px; padding:4px 10px; font-weight:700; font-size:12px; }
+.btn.ghost { background:transparent; color:var(--muted); border:1px solid var(--line); font-weight:400; }
+.btn.on { background:var(--blue); color:#fff; }
 button:focus-visible, select:focus-visible, input:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
 #main { display:flex; height:calc(100% - 46px); }
-#map { flex:1; min-width:0; }
-#panel { width:400px; max-width:45vw; overflow:auto; background:var(--panel); border-left:1px solid var(--line); padding:14px 16px; }
-#panel h2 { font-size:15px; margin:0 0 8px; text-wrap:balance; } #panel h3 { font-size:12px; margin:14px 0 6px; color:var(--accent); text-transform:uppercase; letter-spacing:.06em; }
+#map { flex:1; min-width:0; position:relative; }
+#mapctl { position:absolute; right:12px; top:12px; display:flex; flex-direction:column; gap:6px; z-index:2; }
+#mapctl .btn { box-shadow:0 1px 4px rgba(0,0,0,.5); } #mapctl .btn.ghost { background:var(--panel); color:var(--fg); }
+#panel { width:440px; max-width:48vw; display:flex; flex-direction:column; background:var(--panel); border-left:1px solid var(--line); }
+#tabs { display:flex; border-bottom:1px solid var(--line); }
+#tabs button { flex:1; background:transparent; border:none; color:var(--muted); padding:9px 4px; font-size:12px; border-bottom:2px solid transparent; }
+#tabs button.on { color:var(--fg); border-bottom-color:var(--accent); font-weight:700; }
+.tab { display:none; overflow:auto; padding:14px 16px; flex:1; } .tab.on { display:block; }
+h2 { font-size:15px; margin:0 0 6px; text-wrap:balance; } h3 { font-size:11px; margin:16px 0 6px; color:var(--accent); text-transform:uppercase; letter-spacing:.08em; }
+h3:first-child { margin-top:4px; }
 .note { color:var(--muted); font-size:12px; }
 .kpi { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0; }
-.kpi div { background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:8px 10px; }
-.kpi .v { font-size:21px; font-weight:700; font-family:var(--mono); font-variant-numeric:tabular-nums; } .kpi .l { color:var(--muted); font-size:11px; }
-.bars { display:flex; gap:6px; align-items:flex-end; height:90px; margin:6px 0 20px; }
-.bars div { flex:1; background:#3b82f6; position:relative; min-height:2px; border-radius:2px 2px 0 0; }
+.kpi > div, .card { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:8px 10px; }
+.kpi .v { font-size:20px; font-weight:600; font-family:var(--mono); font-variant-numeric:tabular-nums; line-height:1.2; } .kpi .l { color:var(--muted); font-size:11px; margin-top:2px; }
+.scores { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:10px 0; }
+.score { border-radius:6px; padding:8px 10px; background:var(--card); border:1px solid var(--line); border-top:3px solid var(--muted); }
+.score.g { border-top-color:var(--good); } .score.y { border-top-color:var(--warn); } .score.r { border-top-color:var(--bad); }
+.score .v { font-family:var(--mono); font-size:18px; font-weight:600; } .score .l { font-size:11px; color:var(--muted); }
+.bars { display:flex; gap:6px; align-items:flex-end; height:80px; margin:6px 0 20px; }
+.bars div { flex:1; background:var(--blue); position:relative; min-height:2px; border-radius:2px 2px 0 0; }
 .bars div span { position:absolute; bottom:-16px; left:0; right:0; text-align:center; font-size:10px; color:var(--muted); }
-.bars div b { position:absolute; top:-16px; left:0; right:0; text-align:center; font-size:10px; font-family:var(--mono); }
-.mix { display:flex; height:14px; border-radius:3px; overflow:hidden; margin:4px 0; } .mix div { height:100%; }
+.bars div b { position:absolute; top:-16px; left:0; right:0; text-align:center; font-size:10px; font-family:var(--mono); font-weight:500; }
+.mix { display:flex; height:12px; border-radius:3px; overflow:hidden; margin:4px 0; } .mix div { height:100%; }
 .mixl { display:flex; gap:10px; font-size:11px; color:var(--muted); flex-wrap:wrap; } .sw { display:inline-block; width:10px; height:10px; border-radius:2px; vertical-align:middle; margin-right:3px; }
-table.t { width:100%; border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums; } table.t td, table.t th { padding:3px 4px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }
+table.t { width:100%; border-collapse:collapse; font-size:12px; font-variant-numeric:tabular-nums; } table.t td, table.t th { padding:4px 5px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; vertical-align:top; }
+table.t th { color:var(--muted); font-weight:500; font-size:11px; }
 table.t tr.row { cursor:pointer; } table.t tr.row:hover { background:#22303f; }
 .tw { overflow-x:auto; }
-input.num { width:78px; }
+input.num { width:84px; font-family:var(--mono); }
 .conf-high { color:var(--good) } .conf-mid { color:var(--warn) } .conf-low { color:var(--bad) }
-#panel-sources { margin-top:18px; border-top:1px solid var(--line); padding-top:8px; font-size:11px; color:var(--muted); }
+.ok { color:var(--good); font-weight:700 } .cond { color:var(--warn); font-weight:700 } .ng { color:var(--bad); font-weight:700 }
 .lg { display:inline-block; width:26px; height:6px; margin-right:6px; vertical-align:middle; border-radius:3px; }
-.gov-only, .re-only { display:none; } body.gov .gov-only { display:inline; } body.realestate .re-only { display:inline; }
-button.small { background:var(--accent); color:var(--accent-ink); border:none; border-radius:4px; padding:4px 10px; cursor:pointer; font-weight:700; font-family:inherit; }
-button.small.ghost { background:transparent; color:var(--muted); border:1px solid var(--line); font-weight:400; }
+.pill { display:inline-block; padding:1px 8px; border-radius:10px; font-size:11px; background:var(--panel2); border:1px solid var(--line); color:var(--muted); margin-right:4px; }
+.form { display:grid; grid-template-columns:1fr auto; gap:6px 10px; align-items:center; font-size:12px; margin:6px 0; }
+.form label { color:var(--muted); }
+.chips { display:flex; flex-wrap:wrap; gap:4px; } .chips label { border:1px solid var(--line); border-radius:12px; padding:1px 8px; font-size:11px; cursor:pointer; }
+.chips label.on { background:var(--blue); color:#fff; border-color:var(--blue); }
+.ctl label.gov-only { display:none; } body.gov .ctl label.gov-only { display:inline-flex; }
+#sources { border-top:1px solid var(--line); padding:8px 16px; font-size:10.5px; color:var(--muted); max-height:96px; overflow:auto; }
 .maplibregl-popup-content { color:#111; font-size:12px; }
 .maplibregl-ctrl-attrib { font-size:10px; }
-@media (max-width: 760px) { #main { flex-direction:column; } #panel { width:100%; max-width:none; height:45%; border-left:none; border-top:1px solid var(--line); } #map { height:55%; } }
+details summary { cursor:pointer; color:var(--muted); font-size:12px; }
+@media (max-width: 760px) { #main { flex-direction:column; } #panel { width:100%; max-width:none; height:50%; border-left:none; border-top:1px solid var(--line); } #map { height:50%; } }
 @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+@media print { #topbar, #map, #tabs, #mapctl { display:none; } #panel { width:100%; max-width:none; } .tab { display:block !important; } }
 </style>
 <!--BODY-->
 <header id="topbar">
-  <div class="brand">人流ポテンシャル評価 <small>岡山市中心部 · v0.1 スタンドアロン</small></div>
+  <div class="brand">人流ポテンシャル評価 <small>岡山市中心部 · v0.2 スタンドアロン</small></div>
   <div class="ctl">
-    <label>モード <select id="mode"><option value="realestate">不動産</option><option value="gov">自治体</option></select></label>
+    <label>モード <select id="mode"><option value="realestate">不動産（事業性）</option><option value="gov">自治体（施策比較）</option></select></label>
     <label>期間 <select id="period"></select></label>
     <label>平休 <select id="daytype"><option value="weekday">平日</option><option value="holiday">休日</option></select></label>
     <label>時間帯 <select id="timeband"><option value="all">終日</option><option value="day">昼（11–14時台）</option><option value="night">深夜（1–4時台）</option></select></label>
-    <label class="gov-only">比較 <select id="periodB"></select> <button id="btnCompare">A→B 差分</button> <button id="btnCompareOff" class="ghost">解除</button></label>
-    <label class="re-only"><button id="btnGap">低利用ギャップ検索</button></label>
-    <label><input type="checkbox" id="chk3d" checked /> 建物3D</label>
+    <label class="gov-only">比較 <select id="periodB"></select> <button class="btn" id="btnCompare">A→B 差分</button> <button class="btn ghost" id="btnCompareOff">解除</button></label>
+    <label>建物の色 <select id="colorMode"><option value="usage">用途</option><option value="flow">前面通行量</option><option value="far">容積率の未消化</option><option value="year">築年</option></select></label>
+    <label><input type="checkbox" id="chkZoning" /> 用途地域</label>
+    <label><input type="checkbox" id="chkLp" /> 地価公示</label>
     <label><input type="checkbox" id="chkSites" checked /> 実測地点</label>
   </div>
 </header>
 <div id="main">
-  <div id="map"></div>
-  <aside id="panel">
-    <div id="panel-empty">
-      <h2>使い方</h2>
-      <p><b>不動産モード</b>: 建物をクリック → 前面道路の推定通行量・エリア内順位・時間帯プロファイル・来街者構成・簡易売上試算。「低利用ギャップ検索」で通行は多いのに使われていない建物を抽出。</p>
-      <p><b>自治体モード</b>: 期間 A/B を選び「差分」で街路通行量の変化を表示。街路をクリックで A/B の値。</p>
-      <p class="note">すべて公開統計データからの<b>推定値</b>です。このファイルは単体で動作し、地図データを内蔵しています。</p>
-      <div id="legend"></div>
-      <div id="calib"></div>
+  <div id="map">
+    <div id="mapctl">
+      <button class="btn on" id="btn3d" title="2D/3D 切替">3D</button>
+      <button class="btn ghost" id="btnBird" title="選択区画を鳥瞰">鳥瞰</button>
+      <button class="btn ghost" id="btnTop" title="真上から">真上</button>
+      <button class="btn ghost" id="btnHome" title="全体">全体</button>
     </div>
-    <div id="panel-report" hidden></div>
-    <div id="panel-sources"></div>
+  </div>
+  <aside id="panel">
+    <div id="tabs">
+      <button data-tab="report" class="on">レポート</button>
+      <button data-tab="search">区画検索</button>
+      <button data-tab="portfolio">ポートフォリオ <span id="pfCount" class="pill" style="display:none">0</span></button>
+      <button data-tab="about">概要</button>
+    </div>
+    <div class="tab on" id="tab-report">
+      <div id="report-empty">
+        <h2>区画を選ぶ</h2>
+        <p class="note">地図の建物をクリックすると、その区画について <b>何が建てられるか（用途地域・建蔽率・容積率）</b>、<b>前面道路にどれだけ人が通るか（推定通行量）</b>、<b>新築・改修が採算に合うか（試算）</b> を 1 枚で表示します。</p>
+        <h3>凡例</h3>
+        <div class="note" id="legend"></div>
+        <h3>較正状況</h3>
+        <div class="note" id="calib"></div>
+      </div>
+      <div id="report" hidden></div>
+    </div>
+    <div class="tab" id="tab-search">
+      <h2>区画検索</h2>
+      <p class="note">条件に合う建物を抽出し、地図でハイライトします。既定は「通行は上位 30%、容積率の未消化が 40% 以上、商業・業務系」。</p>
+      <h3>用途地域</h3>
+      <div class="chips" id="fZones"></div>
+      <h3>条件</h3>
+      <div class="form">
+        <label for="fFlow">前面通行量 上位 %以内</label><input class="num" id="fFlow" type="number" value="30" min="1" max="100">
+        <label for="fFar">容積率の未消化 %以上</label><input class="num" id="fFar" type="number" value="40" min="0" max="100">
+        <label for="fGfa">延床 m²以上</label><input class="num" id="fGfa" type="number" value="100" min="0">
+        <label for="fYear">築年 以前（空欄で無視）</label><input class="num" id="fYear" type="number" placeholder="例 1990">
+        <label for="fUse">現況用途</label><select id="fUse"><option value="biz">商業・業務系</option><option value="all">すべて</option><option value="residential">住宅のみ</option></select>
+        <label for="fSort">並び順</label><select id="fSort"><option value="score">総合（通行×未消化）</option><option value="flow">前面通行量</option><option value="headroom">未消化延床</option><option value="gap">低利用ギャップ</option></select>
+      </div>
+      <div style="display:flex;gap:8px;margin:8px 0"><button class="btn" id="btnSearch">検索</button><button class="btn ghost" id="btnSearchClear">ハイライト解除</button></div>
+      <div id="searchResult"></div>
+    </div>
+    <div class="tab" id="tab-portfolio">
+      <h2>ポートフォリオ</h2>
+      <p class="note">レポートの「ポートフォリオに追加」で候補区画を集め、まとめて比較します。</p>
+      <div id="pf"></div>
+    </div>
+    <div class="tab" id="tab-about">
+      <h2>区画の初期判断を、公開データだけで</h2>
+      <p>開発事業者・金融機関の審査部門・仲介会社が、候補区画について <b>何が建てられるか</b>、<b>どの用途地域・法規制がかかるか</b>、<b>建設や改修が採算に合うか</b> を、現地調査や役所照会の前に机上で判断するためのエンジンです。</p>
+      <h3>この画面で答えられること</h3>
+      <table class="t"><tr><th>問い</th><th>根拠データ</th><th>出し方</th></tr>
+        <tr><td>人はどれだけ通るか</td><td>人流オープンデータ（1km）＋ PLATEAU 建物 ＋ OSM 街路 ＋ 市の実測</td><td>メッシュ人口を建物・街路に再配分し、実測で較正</td></tr>
+        <tr><td>何が建てられるか</td><td>用途地域（国土数値情報）</td><td>建築基準法 別表第二の早見表、建蔽率・容積率、高さ制限</td></tr>
+        <tr><td>採算に合うか</td><td>地価公示 ＋ 上記</td><td>想定敷地・最大延床・未消化容積から新築／改修の利回りを試算（単価は入力）</td></tr>
+        <tr><td>施策の効果は</td><td>人流の期間比較</td><td>街路ごとの変化率（自治体モード）</td></tr></table>
+      <h3>いまの精度と限界</h3>
+      <p class="note" id="aboutCalib"></p>
+      <p class="note">法規は用途地域レベルの早見表であり、地区計画・特別用途地区・防火地域・斜線/日影・接道条件は未反映です。敷地面積は登記ではなく「建築面積 ÷ 建蔽率」の想定値です。採算は入力した単価・賃料に依存する試算で、保証値ではありません。</p>
+      <h3>展開</h3>
+      <p class="note">建物は PLATEAU 整備都市（200 都市超）で同じ手順が使えます。参考にしている先行例（ドイツ syte）は国内 6,200 万超の区画を評価・計画・ポートフォリオ分析に提供し、200 社超が利用しています。本プロトタイプは同じ問いを日本のオープンデータで、まず岡山市中心部 3.6km × 3.3km で成立させたものです。</p>
+    </div>
+    <div id="sources"></div>
   </aside>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/deck.gl@9.0.38/dist.min.js"></script>
+<!-- maplibre-gl 4.7.1 / deck.gl 9.0.38（MIT）を同梱: CDN が届かない環境でも動作させる -->
+<script>/*__VENDOR_MAPLIBRE__*/</script>
+<script>/*__VENDOR_DECK__*/</script>
 <script>
 const DATA = /*__DATA__*/;
 const BASEMAP = { url: "__BASEMAP_URI__", coords: /*__BASEMAP_COORDS__*/ };
 </script>
 <script>
 (function () {
-  const { MapboxOverlay, GeoJsonLayer, PolygonLayer, PathLayer, ScatterplotLayer } = deck;
+  const { MapboxOverlay, PolygonLayer, PathLayer, ScatterplotLayer, TextLayer } = deck;
   const $ = (id) => document.getElementById(id);
   const P = DATA.area.periods;
-  const state = { mode: "realestate", period: P[0], periodB: P[P.length - 1], dayType: "weekday", timeBand: "all", compare: false };
+  const state = { mode: "realestate", period: P[0], periodB: P[P.length - 1], dayType: "weekday", timeBand: "all", compare: false, is3d: true, colorMode: "usage", selected: null, ghost: true, highlight: null, portfolio: [], fin: {} };
   const comboIdx = (q, d, b) => DATA.combos.indexOf(`${q}|${d}|${b}`);
-  const fmt = (v, d = 0) => (v == null || Number.isNaN(v) ? "—" : Number(v).toLocaleString("ja-JP", { maximumFractionDigits: d }));
-  const usageColor = { retail: [249, 115, 22], office: [59, 130, 246], residential: [148, 163, 184], mixed: [234, 179, 8], hotel: [168, 85, 247], public: [20, 184, 166], industrial: [100, 116, 139], other: [120, 120, 120] };
+  const fmt = (v, d = 0) => (v == null || Number.isNaN(v) || !isFinite(v) ? "—" : Number(v).toLocaleString("ja-JP", { maximumFractionDigits: d }));
+  const yen = (v) => (v == null || !isFinite(v) ? "—" : v >= 1e8 ? `${(v / 1e8).toFixed(2)} 億円` : v >= 1e4 ? `${fmt(v / 1e4)} 万円` : `${fmt(v)} 円`);
+  const usageColor = { retail: [249, 115, 22], office: [79, 143, 247], residential: [148, 163, 184], mixed: [234, 179, 8], hotel: [168, 85, 247], public: [20, 184, 166], industrial: [100, 116, 139], other: [120, 120, 120] };
   const usageJa = { retail: "商業", office: "業務", residential: "住宅", mixed: "店舗併用住宅", hotel: "宿泊", public: "公共", industrial: "工業・倉庫", other: "その他" };
   const pctColor = (p) => { const t = Math.max(0, Math.min(1, (p || 0) / 100)); const s = [[37, 99, 235], [34, 197, 94], [250, 204, 21], [249, 115, 22], [220, 38, 38]]; const i = Math.min(3, Math.floor(t * 4)), f = t * 4 - i; return s[i].map((c, k) => Math.round(c + (s[i + 1][k] - c) * f)); };
   const divColor = (r) => { if (r == null || !isFinite(r)) return [160, 160, 160, 120]; const t = Math.max(-1, Math.min(1, Math.log2(r))); return t < 0 ? [Math.round(255 + 200 * t), Math.round(255 + 120 * t), 255, 220] : [255, Math.round(255 - 200 * t), Math.round(255 - 220 * t), 220]; };
+  const zoneColor = { 1: [120, 200, 120], 2: [150, 210, 120], 3: [170, 220, 90], 4: [200, 225, 80], 5: [240, 220, 100], 6: [245, 200, 100], 7: [245, 180, 110], 8: [245, 150, 150], 9: [240, 90, 90], 10: [170, 150, 220], 11: [130, 170, 230], 12: [100, 140, 220], 13: [120, 200, 160] };
+
+  // ---- 法規: 建築基準法 別表第二の早見表（簡易。特定行政庁の条例・地区計画は未反映）----
+  const USES = ["住宅・共同住宅", "店舗（150m²以下）", "店舗（1,500m²以下）", "店舗（10,000m²以下）", "大規模店舗（10,000m²超）", "事務所", "ホテル・旅館", "工場（小規模）", "倉庫（営業用）", "学校・病院", "劇場・映画館", "遊戯施設（パチンコ等）"];
+  const RULES = {
+    1: ["◯", "△", "×", "×", "×", "×", "×", "×", "×", "△", "×", "×"], 2: ["◯", "◯", "×", "×", "×", "×", "×", "×", "×", "△", "×", "×"],
+    3: ["◯", "◯", "△", "×", "×", "×", "×", "×", "×", "◯", "×", "×"], 4: ["◯", "◯", "◯", "×", "×", "△", "×", "×", "×", "◯", "×", "×"],
+    5: ["◯", "◯", "◯", "△", "×", "△", "△", "△", "×", "◯", "×", "×"], 6: ["◯", "◯", "◯", "◯", "×", "◯", "◯", "△", "×", "◯", "×", "△"],
+    7: ["◯", "◯", "◯", "◯", "×", "◯", "◯", "△", "◯", "◯", "△", "◯"], 8: ["◯", "◯", "◯", "◯", "△", "◯", "◯", "△", "◯", "◯", "◯", "◯"],
+    9: ["◯", "◯", "◯", "◯", "◯", "◯", "◯", "△", "◯", "◯", "◯", "◯"], 10: ["◯", "◯", "◯", "◯", "△", "◯", "◯", "◯", "◯", "◯", "◯", "◯"],
+    11: ["◯", "◯", "◯", "△", "×", "◯", "×", "◯", "◯", "×", "×", "△"], 12: ["×", "△", "×", "×", "×", "◯", "×", "◯", "◯", "×", "×", "×"],
+    13: ["◯", "△", "×", "×", "×", "×", "×", "×", "×", "△", "×", "×"],
+  };
+  const RULE_NOTES = { 1: "第一種低層住居専用: 兼用住宅（50m²以下の店舗）のみ可。絶対高さ 10m または 12m。", 2: "第二種低層住居専用: 150m²以下の店舗可。絶対高さ 10m または 12m。", 3: "第一種中高層住居専用: 500m²以下の店舗可。", 4: "第二種中高層住居専用: 1,500m²以下の店舗・事務所可。", 5: "第一種住居: 3,000m²以下の店舗・事務所・ホテル可。", 6: "第二種住居: 10,000m²以下の店舗等、カラオケ・パチンコ可。", 7: "準住居: 道路沿道向け。倉庫・自動車修理工場・小規模劇場可。", 8: "近隣商業: 住宅と商業の混在。大規模集客施設は条件付き。", 9: "商業: ほぼすべての用途が可（危険性の大きい工場を除く）。", 10: "準工業: 環境悪化の恐れの少ない工場と住宅・商業の混在。", 11: "工業: 住宅・小規模店舗は可、学校・病院・ホテルは不可。", 12: "工業専用: 住宅不可。", 13: "田園住居: 低層住専に農業関連施設を加えたもの。" };
+  const HEIGHT_CAP_M = { 1: 10, 2: 10, 13: 10 };
+
+  // ---- 採算の既定値（仮置き。画面で上書き）----
+  const COST_NEW = { retail: 350000, office: 350000, hotel: 380000, residential: 300000, mixed: 320000, public: 350000, industrial: 250000, other: 300000 };
+  const RENT_BY_ZONE = { 9: 3200, 8: 2600, 7: 2300, 6: 2200, 5: 2100, 4: 2000, 3: 2000, 2: 1900, 1: 1900, 10: 2000, 11: 1800, 12: 1600, 13: 1800 };
+  const FIN = { reno: 120000, occ: 0.9, opex: 0.25, rentable: 0.8, renoDiscount: 0.9 };
 
   // ---- データ展開 ----
   const links = DATA.links.map((l) => { const path = []; for (let i = 0; i < l[4].length; i += 2) path.push([l[4][i], l[4][i + 1]]); return { id: l[0], name: l[1], type: l[2], conf: l[3], path, flows: l[5] }; });
   const linkById = new Map(links.map((l) => [l.id, l]));
   const bo = DATA.buildings.origin, bs = DATA.buildings.scale;
-  const buildings = DATA.buildings.items.map((b) => { const ring = []; for (let i = 0; i < b[11].length; i += 2) ring.push([bo[0] + b[11][i] * bs, bo[1] + b[11][i + 1] * bs]); ring.push(ring[0]); return { id: b[0], usage: b[1], floors: b[2], height: b[3] || b[2] * 3.5, gfa: b[4], zoning: b[5], front: b[6], popDay: b[7], popNight: b[8], gap: b[9], gfaEst: b[10], ring }; });
+  const ringOf = (arr) => { const r = []; for (let i = 0; i < arr.length; i += 2) r.push([bo[0] + arr[i] * bs, bo[1] + arr[i + 1] * bs]); r.push(r[0]); return r; };
+  const buildings = DATA.buildings.items.map((b) => { const ring = ringOf(b[11]); let cx = 0, cy = 0; for (let i = 0; i < ring.length - 1; i++) { cx += ring[i][0]; cy += ring[i][1]; } cx /= ring.length - 1; cy /= ring.length - 1;
+    const o = { id: b[0], usage: b[1], floors: b[2], height: b[3] || b[2] * 3.5, hMeasured: b[3] != null, gfa: b[4], zoning: b[5], front: b[6], popDay: b[7], popNight: b[8], gap: b[9], gfaEst: b[10], ring, zone: b[12], bcr: b[13], far: b[14], year: b[15], lpPrice: b[16], lpDist: b[17], footprint: b[18], cx, cy };
+    // 想定敷地 = 建築面積 ÷ 建蔽率、最大延床 = 敷地 × 容積率（同じ建築面積で建て替える前提）
+    o.site = o.bcr ? o.footprint / (o.bcr / 100) : null;
+    o.maxGfa = o.site && o.far ? o.site * (o.far / 100) : null;
+    const cap = HEIGHT_CAP_M[o.zone];
+    o.maxFloors = o.bcr && o.far ? Math.max(1, Math.min(o.far / o.bcr, cap ? Math.floor(cap / 3.2) : 99)) : null;
+    if (o.maxFloors && o.maxGfa) o.maxGfa = Math.min(o.maxGfa, o.footprint * o.maxFloors);
+    o.headroom = o.maxGfa ? Math.max(0, o.maxGfa - o.gfa) : null; // 未消化延床
+    o.farUse = o.maxGfa ? Math.min(1.5, o.gfa / o.maxGfa) : null; // 消化率
+    return o; });
   const bById = new Map(buildings.map((b) => [b.id, b]));
   const sites = DATA.sites.map((s) => ({ id: s[0], name: s[1], kind: s[2], block: s[3], direction: s[4], lon: s[5], lat: s[6], obsPeriod: s[7], obsWeekday: s[8] }));
-  // 組合せごとの順位（パーセンタイル）を遅延計算
+  const zoning = DATA.zoning.map((z) => ({ code: z[0], name: z[1], bcr: z[2], far: z[3], ring: ringOf(z[4]) }));
+  const lps = DATA.land_price.map((l) => ({ lon: l[0], lat: l[1], price: l[2], address: l[3], use: l[4], change: l[5] }));
   const sortedCache = {};
   const sortedFlows = (k) => sortedCache[k] || (sortedCache[k] = links.map((l) => l.flows[k]).sort((a, b) => a - b));
   const pctOf = (k, v) => { const arr = sortedFlows(k); let lo = 0, hi = arr.length; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < v) lo = m + 1; else hi = m; } return (100 * lo) / arr.length; };
   const curK = () => comboIdx(state.period, state.dayType, state.timeBand);
   const cmpK = () => comboIdx(state.periodB, state.dayType, state.timeBand);
+  const frontFlow = (b, d = "weekday", tb = "all", q = state.period) => { const l = linkById.get(b.front); return l ? l.flows[comboIdx(q, d, tb)] : 0; };
+  const frontPct = (b) => pctOf(comboIdx(state.period, "weekday", "all"), frontFlow(b));
+
+  // ---- 採算試算 ----
+  function finance(b, over) {
+    const rentBase = RENT_BY_ZONE[b.zone] || 2000; const pct = frontPct(b);
+    const f = Object.assign({ costNew: COST_NEW[b.usage] || 300000, reno: FIN.reno, rent: Math.round(rentBase * (0.8 + 0.5 * pct / 100) / 100) * 100, lp: b.lpPrice || 0, occ: FIN.occ, opex: FIN.opex }, over || {});
+    const noiFactor = 12 * f.occ * (1 - f.opex);
+    const land = b.site && f.lp ? b.site * f.lp : null;
+    const newCost = b.maxGfa ? b.maxGfa * f.costNew : null;
+    const newNoi = b.maxGfa ? b.maxGfa * FIN.rentable * f.rent * noiFactor : null;
+    const renoCost = b.gfa * f.reno;
+    const renoNoi = b.gfa * FIN.rentable * f.rent * noiFactor * FIN.renoDiscount;
+    return { f, land, newCost, newNoi, newYieldTotal: newCost && land != null ? newNoi / (newCost + land) : null, newYieldCost: newCost ? newNoi / newCost : null, renoCost, renoNoi, renoYieldCost: renoNoi / renoCost, renoYieldTotal: land != null ? renoNoi / (renoCost + land) : null, newPayback: newCost ? newCost / newNoi : null, renoPayback: renoCost / renoNoi };
+  }
+  const ratingClass = (v, g, y) => (v == null ? "" : v >= g ? "g" : v >= y ? "y" : "r");
 
   // ---- 地図 ----
-  const bb = DATA.area.bbox;
-  const map = new maplibregl.Map({
-    container: "map",
-    style: { version: 8, sources: { base: { type: "image", url: BASEMAP.url, coordinates: BASEMAP.coords } },
-      layers: [{ id: "bg", type: "background", paint: { "background-color": "#1a2430" } }, { id: "base", type: "raster", source: "base", paint: { "raster-opacity": 0.8, "raster-saturation": -0.7, "raster-brightness-max": 0.5 } }] },
-    center: [(bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2 - 0.002], zoom: 14.6, pitch: 45, bearing: -10, antialias: true, attributionControl: false,
-  });
-  map.addControl(new maplibregl.NavigationControl(), "top-left");
-  map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: "地理院タイル | © OpenStreetMap contributors | 人流: 国土交通省 人流オープンデータ（Agoop換算人口） | 建物: PLATEAU 岡山市 | 通行量: 岡山市（CC BY 4.0）" }));
+  const bb = DATA.area.bbox; const center = [(bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2 - 0.002];
+  const map = new maplibregl.Map({ container: "map", style: { version: 8, sources: { base: { type: "image", url: BASEMAP.url, coordinates: BASEMAP.coords } },
+      layers: [{ id: "bg", type: "background", paint: { "background-color": "#141c26" } }, { id: "base", type: "raster", source: "base", paint: { "raster-opacity": 0.85, "raster-saturation": -0.75, "raster-brightness-max": 0.55 } }] },
+    center, zoom: 14.6, pitch: 50, bearing: -12, antialias: true, attributionControl: false, maxPitch: 75 });
+  map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-left");
+  map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: "地理院タイル | © OpenStreetMap contributors | 人流: 国土交通省 人流オープンデータ（Agoop換算人口） | 建物: PLATEAU 岡山市 | 用途地域・地価公示: 国土数値情報 | 通行量: 岡山市（CC BY 4.0）" }));
   const overlay = new MapboxOverlay({ interleaved: false, layers: [] });
   map.addControl(overlay);
 
+  function buildingColor(b) {
+    const dim = state.highlight && !state.highlight.has(b.id) ? 45 : 200;
+    if (state.selected === b.id) return [255, 255, 255, 240];
+    if (state.colorMode === "flow") { const v = frontFlow(b); return v > 0 ? [...pctColor(frontPct(b)), dim] : [90, 90, 90, dim]; }
+    if (state.colorMode === "far") { if (b.farUse == null) return [80, 80, 80, dim]; const t = Math.max(0, Math.min(1, 1 - b.farUse)); return [Math.round(70 + 10 * t), Math.round(80 + 150 * t), Math.round(90 + 90 * t), dim]; }
+    if (state.colorMode === "year") { if (!b.year) return [90, 90, 90, dim]; const t = Math.max(0, Math.min(1, (b.year - 1965) / 55)); return [Math.round(230 - 170 * t), Math.round(90 + 90 * t), Math.round(60 + 180 * t), dim]; }
+    return [...(usageColor[b.usage] || [120, 120, 120]), dim];
+  }
   function render() {
-    const k = curK(), kb = cmpK(), cmp = state.compare;
-    const layers = [new PathLayer({
-      id: "links", data: links, pickable: true, widthUnits: "meters", widthMinPixels: 1, getPath: (l) => l.path,
+    const k = curK(), kb = cmpK(), cmp = state.compare, sel = state.selected ? bById.get(state.selected) : null;
+    const layers = [];
+    if ($("chkZoning").checked) layers.push(new PolygonLayer({ id: "zoning", data: zoning, pickable: true, filled: true, stroked: true, getPolygon: (z) => z.ring, getFillColor: (z) => [...(zoneColor[z.code] || [150, 150, 150]), 70], getLineColor: (z) => [...(zoneColor[z.code] || [150, 150, 150]), 200], lineWidthMinPixels: 1 }));
+    layers.push(new PathLayer({ id: "links", data: links, pickable: true, widthUnits: "meters", widthMinPixels: 1, widthMaxPixels: 12, capRounded: true, jointRounded: true, getPath: (l) => l.path,
       getColor: (l) => { if (cmp) { const a = l.flows[k], b = l.flows[kb]; return divColor(a > 0 ? b / a : null); } const v = l.flows[k]; return v > 0 ? [...pctColor(pctOf(k, v)), 230] : [90, 90, 90, 60]; },
-      getWidth: (l) => cmp ? 3 + Math.min(12, Math.abs(l.flows[kb] - l.flows[k]) / 400) : 1.5 + Math.sqrt(l.flows[k] || 0) / 6,
-      onClick: (info) => info.object && onLinkClick(info.object), updateTriggers: { getColor: [k, kb, cmp], getWidth: [k, kb, cmp] },
-    })];
-    if ($("chk3d").checked) layers.push(new PolygonLayer({
-      id: "buildings", data: buildings, pickable: true, extruded: true, opacity: 0.55, getPolygon: (b) => b.ring, getElevation: (b) => b.height || 6,
-      getFillColor: (b) => [...(usageColor[b.usage] || [120, 120, 120]), 200], onClick: (info) => info.object && showReport(info.object.id),
-    }));
-    if ($("chkSites").checked) layers.push(new ScatterplotLayer({
-      id: "sites", data: sites, pickable: true, radiusUnits: "meters", getRadius: 12, getPosition: (s) => [s.lon, s.lat],
-      getFillColor: (s) => (s.kind === "street" ? [255, 255, 255, 230] : [255, 255, 255, 110]), getLineColor: [0, 0, 0, 200], stroked: true, lineWidthMinPixels: 1.5, onClick: (info) => info.object && showSite(info.object),
-    }));
+      getWidth: (l) => cmp ? 2 + Math.min(8, Math.abs(l.flows[kb] - l.flows[k]) / 500) : 1 + Math.sqrt(l.flows[k] || 0) / 14,
+      onClick: (info) => info.object && onLinkClick(info.object), updateTriggers: { getColor: [k, kb, cmp], getWidth: [k, kb, cmp] } }));
+    layers.push(new PolygonLayer({ id: "buildings", data: buildings, pickable: true, extruded: state.is3d, opacity: state.is3d ? 0.6 : 0.75, getPolygon: (b) => b.ring, getElevation: (b) => b.height || 6,
+      getFillColor: buildingColor, getLineColor: [20, 26, 34, 120], stroked: !state.is3d, lineWidthMinPixels: 0.5, material: { ambient: 0.45, diffuse: 0.7, shininess: 20, specularColor: [60, 64, 70] },
+      onClick: (info) => info.object && selectBuilding(info.object.id), updateTriggers: { getFillColor: [state.colorMode, state.selected, state.highlight, k], getElevation: [state.is3d] } }));
+    if (sel && state.ghost && sel.maxFloors && state.is3d) layers.push(new PolygonLayer({ id: "ghost", data: [sel], extruded: true, wireframe: true, filled: true, getPolygon: (b) => b.ring, getElevation: (b) => b.maxFloors * 3.5, getFillColor: [255, 255, 255, 40], getLineColor: [255, 255, 255, 220], lineWidthMinPixels: 1.5 }));
+    if ($("chkLp").checked) { layers.push(new ScatterplotLayer({ id: "lp", data: lps, pickable: true, radiusUnits: "meters", getRadius: 14, getPosition: (l) => [l.lon, l.lat], getFillColor: [240, 163, 58, 230], getLineColor: [0, 0, 0, 200], stroked: true, lineWidthMinPixels: 1 }));
+      layers.push(new TextLayer({ id: "lp-text", data: lps, getPosition: (l) => [l.lon, l.lat], getText: (l) => (l.price ? `${Math.round(l.price / 1000)}千円/m²` : ""), getSize: 12, getColor: [255, 255, 255, 230], getPixelOffset: [0, -16], fontFamily: "Noto Sans JP, sans-serif", background: true, getBackgroundColor: [14, 20, 27, 200], backgroundPadding: [4, 2], characterSet: "auto" })); }
+    if ($("chkSites").checked) layers.push(new ScatterplotLayer({ id: "sites", data: sites, pickable: true, radiusUnits: "meters", getRadius: 12, getPosition: (s) => [s.lon, s.lat], getFillColor: (s) => (s.kind === "street" ? [255, 255, 255, 230] : [255, 255, 255, 110]), getLineColor: [0, 0, 0, 200], stroked: true, lineWidthMinPixels: 1.5, onClick: (info) => info.object && showSite(info.object) }));
     overlay.setProps({ layers, getTooltip: tooltip });
   }
   function tooltip({ object, layer }) {
-    if (!object) return null;
-    const k = curK();
+    if (!object) return null; const k = curK();
     if (layer.id === "links") { if (state.compare) { const a = object.flows[k], b = object.flows[cmpK()]; return `${object.name || "(無名)"}\nA ${fmt(a)} → B ${fmt(b)} 人/日（×${a > 0 ? (b / a).toFixed(2) : "—"}）`; } const v = object.flows[k]; return `${object.name || "(無名)"} [${object.type}]\n推定 ${fmt(v)} 人/日（上位 ${fmt(100 - pctOf(k, v))}%）信頼度 ${object.conf}`; }
-    if (layer.id === "buildings") return `${usageJa[object.usage] || object.usage} ${object.floors}F 延床 ${fmt(object.gfa)}m²\n滞在人口(平日昼) ${object.popDay == null ? "—(秘匿)" : fmt(object.popDay)} 人`;
+    if (layer.id === "buildings") return `${usageJa[object.usage] || object.usage} ${object.floors}F 延床 ${fmt(object.gfa)}m²\n${object.zoning || "用途地域不明"} 建蔽${object.bcr ?? "—"}% 容積${object.far ?? "—"}%${object.headroom != null ? `\n未消化延床 ${fmt(object.headroom)}m²` : ""}\n前面通行量 ${fmt(frontFlow(object, state.dayType, state.timeBand))} 人/日`;
+    if (layer.id === "zoning") return `${object.name}\n建蔽率 ${object.bcr}% / 容積率 ${object.far}%`;
+    if (layer.id === "lp") return `地価公示 ${object.address || ""}\n${fmt(object.price)} 円/m²（${object.use || ""}${object.change != null ? `, 前年比 ${object.change > 0 ? "+" : ""}${object.change}%` : ""}）`;
     if (layer.id === "sites") return `実測 ${object.id} ${object.name}\n${object.obsPeriod || ""} 平日平均 ${fmt(object.obsWeekday)} 人/日`;
     return null;
   }
 
-  // ---- パネル ----
-  function showPanel(html) { $("panel-empty").hidden = true; const r = $("panel-report"); r.hidden = false; r.innerHTML = html; const b = $("back"); if (b) b.onclick = closePanel; }
-  function closePanel() { $("panel-report").hidden = true; $("panel-empty").hidden = false; }
+  // ---- タブ ----
+  function showTab(name) { document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.tab === name)); document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t.id === `tab-${name}`)); }
+  document.querySelectorAll("#tabs button").forEach((b) => (b.onclick = () => showTab(b.dataset.tab)));
+  function showReportHtml(html) { $("report-empty").hidden = true; $("report").hidden = false; $("report").innerHTML = html; showTab("report"); const bk = $("back"); if (bk) bk.onclick = () => { state.selected = null; $("report").hidden = true; $("report-empty").hidden = false; render(); }; }
   const conf = (c) => `<span class="conf-${c}">${{ high: "高（較正地点 150m 以内）", mid: "中（400m 以内）", low: "低" }[c] || c}</span>`;
-  const linksNear = (b) => { // 前面リンク: front_link と、その両端を共有するリンクは含めない（簡易に front のみ）
-    return b.front && linkById.has(b.front) ? [linkById.get(b.front)] : []; };
+  const mark = (m) => `<span class="${m === "◯" ? "ok" : m === "△" ? "cond" : "ng"}">${m}</span>`;
 
-  function showReport(bid, sales) {
-    const b = bById.get(bid); if (!b) return;
-    const ls = linksNear(b); const q = state.period; const gov = state.mode === "gov";
-    const flowAt = (d, tb) => { const k = comboIdx(q, d, tb); return ls.length ? Math.max(...ls.map((l) => l.flows[k])) : 0; };
-    const kMain = comboIdx(q, "weekday", "all"); const vMain = flowAt("weekday", "all"); const pct = pctOf(kMain, vMain);
-    const prof = [["weekday", "day"], ["weekday", "night"], ["holiday", "day"], ["holiday", "night"]].map(([d, tb]) => ({ d, tb, v: flowAt(d, tb) }));
-    const maxv = Math.max(...prof.map((x) => x.v), 1);
+  // ---- 区画レポート ----
+  function selectBuilding(bid, fly) { state.selected = bid; state.fin = {}; const b = bById.get(bid); if (fly && b) map.flyTo({ center: [b.cx, b.cy], zoom: 17.3, pitch: 55 }); render(); showReport(bid); }
+  function showReport(bid) {
+    const b = bById.get(bid); if (!b) return; const q = state.period; const gov = state.mode === "gov";
+    const flowAt = (d, tb) => frontFlow(b, d, tb, q); const vMain = flowAt("weekday", "all"); const pct = pctOf(comboIdx(q, "weekday", "all"), vMain);
+    const prof = [["weekday", "day"], ["weekday", "night"], ["holiday", "day"], ["holiday", "night"]].map(([d, tb]) => ({ d, tb, v: flowAt(d, tb) })); const maxv = Math.max(...prof.map((x) => x.v), 1);
     const bars = prof.map((x) => `<div style="height:${Math.max(2, (100 * x.v) / maxv)}%"><b>${fmt(x.v)}</b><span>${x.d === "weekday" ? "平日" : "休日"}${x.tb === "day" ? "昼" : "深夜"}</span></div>`).join("");
-    const mix = DATA.origin_mix[q] || []; const mixColors = ["#3b82f6", "#22c55e", "#eab308", "#ef4444"];
-    const s = Object.assign({}, DATA.sales, sales || {});
-    const cust = Math.round(vMain * s.capture_rate * s.business_days_per_month), yen = Math.round(cust * s.spend_per_customer_yen);
-    const c = ls.length ? ls[0].conf : "low";
-    showPanel(`
-      <h2>${gov ? "街区レポート" : "区画レポート"} <span class="note">${q}</span></h2>
-      <div class="note">${usageJa[b.usage] || ""} ${b.floors}F / 延床 ${fmt(b.gfa)} m²${b.gfaEst ? "（推定）" : ""} / ${b.zoning || ""} / 建物ID ${b.id}</div>
+    const mix = DATA.origin_mix[q] || []; const mixColors = ["#4f8ff7", "#39c97a", "#e5c04a", "#ef6767"];
+    const link = linkById.get(b.front); const c = link ? link.conf : "low";
+    const fin = finance(b, state.fin); const f = fin.f;
+    const rules = RULES[b.zone]; const headPct = b.maxGfa ? (b.headroom / b.maxGfa) * 100 : null;
+    const inPf = state.portfolio.includes(bid);
+    const rulesRows = rules ? USES.map((u, i) => `<tr><td>${u}</td><td>${mark(rules[i])}</td></tr>`).join("") : "";
+    const rulesTable = rules ? `<details><summary>この用途地域で建てられる用途（早見表）</summary><div class="tw" style="margin-top:6px"><table class="t"><tr><th>用途</th><th>可否</th></tr>${rulesRows}</table></div><div class="note">${RULE_NOTES[b.zone] || ""} ◯ 可 / △ 規模・条件付き / × 不可。建築基準法 別表第二の要約で、条例・地区計画・防火地域・斜線/日影・接道は未反映。</div></details>` : `<div class="note">用途地域が特定できません。</div>`;
+    showReportHtml(`
+      <h2>${usageJa[b.usage] || ""} ${b.floors}F <span class="note">${b.zoning || ""}</span></h2>
+      <div class="note">延床 ${fmt(b.gfa)} m²${b.gfaEst ? "（推定）" : ""} / 建築面積 ${fmt(b.footprint)} m² / 高さ ${fmt(b.height, 1)} m${b.hMeasured ? "" : "（階数から推定）"} / 築年 ${b.year || "不明"} / ID ${b.id}</div>
+      <div class="scores">
+        <div class="score ${ratingClass(100 - pct, 70, 40)}"><div class="v">上位 ${fmt(100 - pct)}%</div><div class="l">通行ポテンシャル</div></div>
+        <div class="score ${ratingClass(headPct, 40, 15)}"><div class="v">${headPct == null ? "—" : fmt(headPct) + "%"}</div><div class="l">容積率の未消化</div></div>
+        <div class="score ${ratingClass(fin.newYieldTotal, 0.06, 0.04)}"><div class="v">${fin.newYieldTotal == null ? "—" : (fin.newYieldTotal * 100).toFixed(1) + "%"}</div><div class="l">新築 利回り（土地込）</div></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px"><button class="btn" id="pfAdd">${inPf ? "ポートフォリオから外す" : "ポートフォリオに追加"}</button><button class="btn ghost" id="ghostBtn">${state.ghost ? "最大ボリューム非表示" : "最大ボリューム表示"}</button><button class="btn ghost" id="birdBtn">鳥瞰</button><button class="btn ghost" onclick="window.print()">印刷/PDF</button></div>
+
+      <h3>人流 — 前面道路の推定通行量</h3>
       <div class="kpi">
-        <div><div class="v">${fmt(vMain)}</div><div class="l">前面道路 推定通行量（平日・終日, 人/日）</div></div>
-        <div><div class="v">上位 ${fmt(100 - pct)}%</div><div class="l">エリア内順位（パーセンタイル ${fmt(pct)}）</div></div>
+        <div><div class="v">${fmt(vMain)}</div><div class="l">平日・終日（人/日）${link ? "・" + (link.name || link.type) : ""}</div></div>
         <div><div class="v">${fmt(flowAt("holiday", "all"))}</div><div class="l">休日・終日（人/日）</div></div>
+        <div><div class="v">上位 ${fmt(100 - pct)}%</div><div class="l">エリア内順位（${fmt(links.length)} リンク中）</div></div>
         <div><div class="v">${b.popDay == null ? "—" : fmt(b.popDay)}</div><div class="l">建物滞在人口 推定（平日昼, 人）</div></div>
       </div>
-      <div class="note">信頼度: ${conf(c)}</div>
-      <h3>時間帯プロファイル</h3><div class="bars">${bars}</div>
-      <h3>来街者構成（市区町村単位・昼）</h3>
+      <div class="note">信頼度: ${conf(c)}${b.gap != null && !gov ? `／低利用ギャップ ${fmt(b.gap, 1)}` : ""}</div>
+      <div class="bars">${bars}</div>
       <div class="mix">${mix.map((x, i) => `<div style="width:${(x.share || 0) * 100}%;background:${mixColors[i]}"></div>`).join("")}</div>
       <div class="mixl">${mix.map((x, i) => `<span><span class="sw" style="background:${mixColors[i]}"></span>${x.label} ${fmt((x.share || 0) * 100, 1)}%</span>`).join("")}</div>
-      <div class="note">人流オープンデータは市区町村単位の居住地区分のみ。区画単位の構成は商用データで置換予定。</div>
-      ${gov ? "" : `
-      <h3>低利用ギャップ</h3><div>ギャップスコア <b>${fmt(b.gap, 1)}</b> <span class="note">（通行順位 − 滞在密度順位。高いほど「通行は多いのに使われていない」）</span></div>
-      <h3>簡易売上試算 <span class="note" style="text-transform:none">ユーザー入力の仮定に基づく試算</span></h3>
-      <div class="note">入店率 <input class="num" id="capture" type="number" step="0.001" value="${s.capture_rate}"> × 客単価 <input class="num" id="spend" type="number" step="100" value="${s.spend_per_customer_yen}"> 円 × 営業日 <input class="num" id="days" type="number" value="${s.business_days_per_month}"> <button class="small" id="recalc">再計算</button></div>
-      <div class="kpi"><div><div class="v">${fmt(cust)}</div><div class="l">月間来店 推計（人）</div></div><div><div class="v">¥${fmt(yen)}</div><div class="l">月商 試算</div></div></div>
-      <div class="note">推定通行量 × 入店率 × 営業日数 × 客単価。保証値ではありません。</div>`}
-      <div style="margin-top:12px"><button class="small" onclick="window.print()">印刷/PDF</button> <button class="small ghost" id="back">閉じる</button></div>`);
-    const rc = $("recalc"); if (rc) rc.onclick = () => showReport(bid, { capture_rate: +$("capture").value, spend_per_customer_yen: +$("spend").value, business_days_per_month: +$("days").value });
+      <div class="note">来街者構成は市区町村単位（人流オープンデータの区分）。</div>
+
+      <h3>法規 — 何が建てられるか</h3>
+      <div class="kpi">
+        <div><div class="v">${b.bcr ?? "—"}<span style="font-size:12px">%</span> / ${b.far ?? "—"}<span style="font-size:12px">%</span></div><div class="l">建蔽率 / 容積率（${b.zoning || "—"}）</div></div>
+        <div><div class="v">${b.maxFloors ? fmt(Math.floor(b.maxFloors)) + " F" : "—"}</div><div class="l">同じ建築面積で建て替えた場合の最大階数${HEIGHT_CAP_M[b.zone] ? `（絶対高さ ${HEIGHT_CAP_M[b.zone]}m）` : ""}</div></div>
+        <div><div class="v">${fmt(b.site)}</div><div class="l">想定敷地面積 m²（建築面積 ÷ 建蔽率）</div></div>
+        <div><div class="v">${fmt(b.maxGfa)}</div><div class="l">最大延床 m²（敷地 × 容積率）／既存 ${fmt(b.gfa)}</div></div>
+      </div>
+      ${rulesTable}
+
+      <h3>採算 — 新築・改修の試算 <span class="note" style="text-transform:none">入力値に基づく試算</span></h3>
+      <div class="form">
+        <label for="fCostNew">建築単価（円/m²）</label><input class="num" id="fCostNew" type="number" step="10000" value="${f.costNew}">
+        <label for="fReno">改修単価（円/m²）</label><input class="num" id="fReno" type="number" step="10000" value="${f.reno}">
+        <label for="fRent">想定賃料（円/m²・月）</label><input class="num" id="fRent" type="number" step="100" value="${f.rent}">
+        <label for="fLp">土地単価（円/m²）${b.lpDist != null ? `<span class="note"> 地価公示 ${fmt(b.lpDist)}m 先</span>` : ""}</label><input class="num" id="fLp" type="number" step="10000" value="${f.lp}">
+      </div>
+      <div style="margin:4px 0 8px"><button class="btn" id="recalc">再計算</button> <span class="note">稼働 ${Math.round(f.occ * 100)}%・経費率 ${Math.round(f.opex * 100)}%・レンタブル比 ${Math.round(FIN.rentable * 100)}%</span></div>
+      <div class="tw"><table class="t"><tr><th></th><th>新築（最大延床）</th><th>改修（既存延床）</th></tr>
+        <tr><td>工事費</td><td>${yen(fin.newCost)}</td><td>${yen(fin.renoCost)}</td></tr>
+        <tr><td>土地（想定敷地×単価）</td><td>${yen(fin.land)}</td><td>${yen(fin.land)}</td></tr>
+        <tr><td>年間 NOI</td><td>${yen(fin.newNoi)}</td><td>${yen(fin.renoNoi)}</td></tr>
+        <tr><td>利回り（工事費のみ）</td><td><b>${fin.newYieldCost == null ? "—" : (fin.newYieldCost * 100).toFixed(1) + "%"}</b></td><td><b>${(fin.renoYieldCost * 100).toFixed(1)}%</b></td></tr>
+        <tr><td>利回り（土地込）</td><td><b>${fin.newYieldTotal == null ? "—" : (fin.newYieldTotal * 100).toFixed(1) + "%"}</b></td><td><b>${fin.renoYieldTotal == null ? "—" : (fin.renoYieldTotal * 100).toFixed(1) + "%"}</b></td></tr>
+        <tr><td>回収年数（工事費）</td><td>${fin.newPayback == null ? "—" : fin.newPayback.toFixed(1) + " 年"}</td><td>${fin.renoPayback.toFixed(1)} 年</td></tr></table></div>
+      <div class="note">賃料の既定値は用途地域別の仮置き単価に前面通行量の順位を掛けたもの。地価公示は最寄り地点の値で、当該地の評価額ではありません。</div>
+      <div style="margin-top:12px"><button class="btn ghost" id="back">閉じる</button></div>`);
+    $("recalc").onclick = () => { state.fin = { costNew: +$("fCostNew").value, reno: +$("fReno").value, rent: +$("fRent").value, lp: +$("fLp").value }; showReport(bid); };
+    $("pfAdd").onclick = () => { togglePortfolio(bid); showReport(bid); };
+    $("ghostBtn").onclick = () => { state.ghost = !state.ghost; render(); showReport(bid); };
+    $("birdBtn").onclick = () => map.flyTo({ center: [b.cx, b.cy], zoom: 17.8, pitch: 62, bearing: map.getBearing() + 30 });
   }
   function onLinkClick(l) {
     const k = curK();
-    if (state.compare) { const kb = cmpK(), a = l.flows[k], b = l.flows[kb]; showPanel(`<h2>街路の変化 <span class="note">${state.period} → ${state.periodB}</span></h2><div class="note">${l.name || "(無名)"} / link ${l.id}</div>
+    if (state.compare) { const kb = cmpK(), a = l.flows[k], b = l.flows[kb]; showReportHtml(`<h2>街路の変化 <span class="note">${state.period} → ${state.periodB}</span></h2><div class="note">${l.name || "(無名)"} / link ${l.id}</div>
       <div class="kpi"><div><div class="v">${fmt(a)}</div><div class="l">A: ${state.period}（人/日）</div></div><div><div class="v">${fmt(b)}</div><div class="l">B: ${state.periodB}（人/日）</div></div><div><div class="v">${b - a > 0 ? "+" : ""}${fmt(b - a)}</div><div class="l">差分</div></div><div><div class="v">×${a > 0 ? (b / a).toFixed(2) : "—"}</div><div class="l">変化率</div></div></div>
-      <div class="note">${areaChangeNote()}</div><div style="margin-top:12px"><button class="small ghost" id="back">閉じる</button></div>`); }
-    else { const v = l.flows[k]; showPanel(`<h2>街路 <span class="note">${state.period}</span></h2><div class="note">${l.name || "(無名)"} [${l.type}] link ${l.id}</div>
+      <div class="note">${areaChangeNote()}</div><div style="margin-top:12px"><button class="btn ghost" id="back">閉じる</button></div>`); }
+    else { const v = l.flows[k]; showReportHtml(`<h2>街路 <span class="note">${state.period}</span></h2><div class="note">${l.name || "(無名)"} [${l.type}] link ${l.id}</div>
       <div class="kpi"><div><div class="v">${fmt(v)}</div><div class="l">推定通行量（${state.dayType === "weekday" ? "平日" : "休日"}・${state.timeBand}, 人/日）</div></div><div><div class="v">上位 ${fmt(100 - pctOf(k, v))}%</div><div class="l">エリア内順位</div></div></div>
-      <div class="note">信頼度: ${conf(l.conf)}</div><div style="margin-top:12px"><button class="small ghost" id="back">閉じる</button></div>`); }
+      <div class="note">信頼度: ${conf(l.conf)}</div><div style="margin-top:12px"><button class="btn ghost" id="back">閉じる</button></div>`); }
   }
-  function showSite(s) { showPanel(`<h2>実測地点 ${s.id}</h2><div>${s.name}（${s.direction}／${s.kind}）</div><div class="kpi"><div><div class="v">${fmt(s.obsWeekday)}</div><div class="l">実測 平日平均 24h（${s.obsPeriod || "—"}）</div></div></div><div class="note">岡山市 市内中心部歩行者通行量データ（AIカメラ, CC BY 4.0）。地下街・入退場・広場地点は較正に使っていません。</div><div style="margin-top:12px"><button class="small ghost" id="back">閉じる</button></div>`); }
+  function showSite(s) { showReportHtml(`<h2>実測地点 ${s.id}</h2><div>${s.name}（${s.direction}／${s.kind}）</div><div class="kpi"><div><div class="v">${fmt(s.obsWeekday)}</div><div class="l">実測 平日平均 24h（${s.obsPeriod || "—"}）</div></div></div><div class="note">岡山市 市内中心部歩行者通行量データ（AIカメラ, CC BY 4.0）。地下街・入退場・広場地点は較正に使っていません。</div><div style="margin-top:12px"><button class="btn ghost" id="back">閉じる</button></div>`); }
   function areaChangeNote() { const k = curK(), kb = cmpK(); let a = 0, b = 0; for (const l of links) { a += l.flows[k]; b += l.flows[kb]; } return `エリア全体の変化率: ×${a > 0 ? (b / a).toFixed(2) : "—"}（${state.dayType === "weekday" ? "平日" : "休日"}・${state.timeBand}）。2019→2021 はコロナ禍の影響が主因。施策（例: ハレまち通り 1 車線化 2022〜）の評価には 2022 年以降の人流データが必要。`; }
-  function runGap() {
-    const items = DATA.gap_top[state.period] || DATA.gap_top[P[0]];
-    const rows = items.map((x) => `<tr class="row" data-id="${x.building_id}" data-lon="${x.centroid_lon}" data-lat="${x.centroid_lat}"><td>${usageJa[x.usage_class] || x.usage_class}</td><td>${x.floors}F</td><td>${fmt(x.gfa)}</td><td>${fmt(x.front_flow)}</td><td>${fmt(x.flow_pct)}</td><td>${fmt(x.density_pct)}</td><td><b>${fmt(x.gap_score, 1)}</b></td></tr>`).join("");
-    showPanel(`<h2>低利用ギャップ検索 <span class="note">${state.period} 平日</span></h2><div class="note">前面通行量のエリア内順位（%）が高く、延床あたり滞在人口の順位（%）が低い商業・業務系建物。行クリックで地図移動＋レポート。</div>
-      <div class="tw"><table class="t"><tr><th>用途</th><th>階</th><th>延床m²</th><th>前面通行量</th><th>通行%</th><th>密度%</th><th>ギャップ</th></tr>${rows}</table></div><div style="margin-top:12px"><button class="small ghost" id="back">閉じる</button></div>`);
-    document.querySelectorAll("tr.row").forEach((tr) => tr.onclick = () => { map.flyTo({ center: [+tr.dataset.lon, +tr.dataset.lat], zoom: 17.5 }); showReport(tr.dataset.id); });
+  function runCompare() { state.compare = true; render(); showReportHtml(`<h2>施策前後の比較 <span class="note">${state.period} → ${state.periodB}</span></h2><div class="note">青＝減少、赤＝増加（線の太さ＝差分の大きさ）。街路をクリックで A/B の値。</div><div class="note" style="margin-top:8px">${areaChangeNote()}</div><div style="margin-top:12px"><button class="btn ghost" id="back">閉じる</button></div>`); }
+
+  // ---- 区画検索 ----
+  const zoneNames = [...new Set(buildings.map((b) => b.zone && b.zoning ? `${b.zone}|${b.zoning}` : null).filter(Boolean))].sort((a, b) => +a.split("|")[0] - +b.split("|")[0]);
+  $("fZones").innerHTML = zoneNames.map((z) => { const [code, name] = z.split("|"); return `<label class="${["8", "9", "10"].includes(code) ? "on" : ""}" data-code="${code}">${name}</label>`; }).join("");
+  document.querySelectorAll("#fZones label").forEach((l) => (l.onclick = () => l.classList.toggle("on")));
+  function runSearch() {
+    const zones = new Set([...document.querySelectorAll("#fZones label.on")].map((l) => +l.dataset.code));
+    const flowMax = +$("fFlow").value, farMin = +$("fFar").value, gfaMin = +$("fGfa").value, yearMax = $("fYear").value ? +$("fYear").value : null, use = $("fUse").value, sort = $("fSort").value;
+    const kAll = comboIdx(state.period, "weekday", "all");
+    const rows = [];
+    for (const b of buildings) {
+      if (zones.size && !zones.has(b.zone)) continue;
+      if (use === "biz" && !["retail", "office", "mixed", "hotel", "public"].includes(b.usage)) continue;
+      if (use === "residential" && b.usage !== "residential") continue;
+      if (b.gfa < gfaMin) continue;
+      if (yearMax && (!b.year || b.year > yearMax)) continue;
+      const v = frontFlow(b); const top = 100 - pctOf(kAll, v); if (top > flowMax) continue;
+      const head = b.maxGfa ? (b.headroom / b.maxGfa) * 100 : 0; if (head < farMin) continue;
+      rows.push({ b, top, head, v, score: (100 - top) * head });
+    }
+    rows.sort((x, y) => sort === "flow" ? y.v - x.v : sort === "headroom" ? (y.b.headroom || 0) - (x.b.headroom || 0) : sort === "gap" ? (y.b.gap || -1e9) - (x.b.gap || -1e9) : y.score - x.score);
+    const top = rows.slice(0, 60);
+    state.highlight = new Set(rows.map((r) => r.b.id)); render();
+    $("searchResult").innerHTML = `<h3>該当 ${fmt(rows.length)} 棟${rows.length > 60 ? "（上位 60 を表示）" : ""}</h3><div class="tw"><table class="t"><tr><th>用途</th><th>用途地域</th><th>階</th><th>延床</th><th>未消化</th><th>通行 上位</th><th>築年</th></tr>${top.map((r) => `<tr class="row" data-id="${r.b.id}"><td>${usageJa[r.b.usage]}</td><td>${r.b.zoning.replace("地域", "")}</td><td>${r.b.floors}F</td><td>${fmt(r.b.gfa)}</td><td>${fmt(r.head)}%</td><td>${fmt(r.top)}%</td><td>${r.b.year || "—"}</td></tr>`).join("")}</table></div>`;
+    document.querySelectorAll("#searchResult tr.row").forEach((tr) => (tr.onclick = () => selectBuilding(tr.dataset.id, true)));
   }
-  function runCompare() { state.compare = true; render(); showPanel(`<h2>施策前後の比較 <span class="note">${state.period} → ${state.periodB}</span></h2><div class="note">青＝減少、赤＝増加（線の太さ＝差分の大きさ）。街路をクリックで A/B の値。</div><div class="note" style="margin-top:8px">${areaChangeNote()}</div><div style="margin-top:12px"><button class="small ghost" id="back">閉じる</button></div>`); }
+  $("btnSearch").onclick = runSearch; $("btnSearchClear").onclick = () => { state.highlight = null; render(); };
+
+  // ---- ポートフォリオ ----
+  function togglePortfolio(bid) { const i = state.portfolio.indexOf(bid); if (i >= 0) state.portfolio.splice(i, 1); else state.portfolio.push(bid); renderPortfolio(); }
+  function renderPortfolio() {
+    const n = state.portfolio.length; const pc = $("pfCount"); pc.style.display = n ? "inline-block" : "none"; pc.textContent = n;
+    if (!n) { $("pf").innerHTML = `<div class="note">候補区画はまだありません。</div>`; return; }
+    const items = state.portfolio.map((id) => { const b = bById.get(id); const fin = finance(b); return { b, fin, top: 100 - frontPct(b) }; });
+    const sum = (f) => items.reduce((s, x) => s + (f(x) || 0), 0);
+    const totalCost = sum((x) => x.fin.newCost) + sum((x) => x.fin.land), totalNoi = sum((x) => x.fin.newNoi);
+    $("pf").innerHTML = `<div class="kpi"><div><div class="v">${n}</div><div class="l">区画</div></div><div><div class="v">${fmt(sum((x) => x.b.gfa))}</div><div class="l">既存延床 合計 m²</div></div><div><div class="v">${fmt(sum((x) => x.b.headroom))}</div><div class="l">未消化延床 合計 m²</div></div><div><div class="v">${totalCost ? (totalNoi / totalCost * 100).toFixed(1) + "%" : "—"}</div><div class="l">新築 加重利回り（土地込）／総事業費 ${yen(totalCost)}</div></div></div>
+      <div class="tw"><table class="t"><tr><th>用途</th><th>用途地域</th><th>延床</th><th>未消化</th><th>通行 上位</th><th>新築利回り</th><th>改修利回り</th><th></th></tr>${items.map((x) => `<tr class="row" data-id="${x.b.id}"><td>${usageJa[x.b.usage]} ${x.b.floors}F</td><td>${x.b.zoning.replace("地域", "")}</td><td>${fmt(x.b.gfa)}</td><td>${fmt(x.b.headroom)}</td><td>${fmt(x.top)}%</td><td>${x.fin.newYieldTotal == null ? "—" : (x.fin.newYieldTotal * 100).toFixed(1) + "%"}</td><td>${(x.fin.renoYieldCost * 100).toFixed(1)}%</td><td><button class="btn ghost" data-rm="${x.b.id}">外す</button></td></tr>`).join("")}</table></div>
+      <div style="margin-top:8px"><button class="btn" id="pfHighlight">地図でハイライト</button></div><div class="note" style="margin-top:6px">利回りは各区画の既定単価（賃料は用途地域×通行順位、建築単価は用途別の仮置き）による試算。</div>`;
+    document.querySelectorAll("#pf tr.row").forEach((tr) => (tr.onclick = (e) => { if (e.target.dataset.rm) return; selectBuilding(tr.dataset.id, true); }));
+    document.querySelectorAll("#pf [data-rm]").forEach((btn) => (btn.onclick = () => togglePortfolio(btn.dataset.rm)));
+    $("pfHighlight").onclick = () => { state.highlight = new Set(state.portfolio); render(); };
+  }
 
   // ---- 初期化 ----
   const c = DATA.calibration;
   $("period").innerHTML = P.map((p) => `<option value="${p}">${p}</option>`).join(""); $("periodB").innerHTML = $("period").innerHTML; $("period").value = state.period; $("periodB").value = state.periodB;
-  $("calib").innerHTML = `<h3>較正状況</h3><div class="note">実測 ${c.n_sites ?? "—"} 観測（街路 9 地点 × 平休）に対する Spearman: in-sample ${c.spearman_in_sample ?? "—"} / 空間ブロックCV ${c.spearman_block_cv ?? "—"}。距離抵抗 half=${c.half_distance_m ?? "—"}m。<br/>建物 ${fmt(DATA.area.counts.buildings)} 棟・街路リンク ${fmt(DATA.area.counts.links)} 本。</div>`;
-  $("legend").innerHTML = `<h3>凡例</h3><div class="note"><span class="lg" style="background:rgb(37,99,235)"></span>通行量 下位 → <span class="lg" style="background:rgb(250,204,21)"></span> → <span class="lg" style="background:rgb(220,38,38)"></span>上位（エリア内パーセンタイル、線の太さ＝通行量）<br/>建物の高さ＝階数、色＝用途（<span style="color:rgb(249,115,22)">商業</span>・<span style="color:rgb(59,130,246)">業務</span>・<span style="color:rgb(148,163,184)">住宅</span>・<span style="color:rgb(234,179,8)">店舗併用</span>・<span style="color:rgb(20,184,166)">公共</span>）<br/>○ 実測地点（岡山市 AIカメラ）</div>`;
-  $("panel-sources").innerHTML = `<b>出典</b>: ${DATA.sources.map((s) => s.credit || s.name).join(" / ")}<br/><b>免責</b>: ${DATA.disclaimer.replace(/\n/g, " ")}`;
+  const calibText = `実測 ${c.n_sites ?? "—"} 観測（街路 9 地点 × 平休）に対する順位相関 Spearman: in-sample ${c.spearman_in_sample ?? "—"} / 空間ブロック CV ${c.spearman_block_cv ?? "—"}。距離抵抗 half=${c.half_distance_m ?? "—"}m。建物 ${fmt(DATA.area.counts.buildings)} 棟・街路リンク ${fmt(DATA.area.counts.links)} 本。`;
+  $("calib").innerHTML = calibText; $("aboutCalib").innerHTML = calibText;
+  $("legend").innerHTML = `<span class="lg" style="background:rgb(37,99,235)"></span>通行量 下位 → <span class="lg" style="background:rgb(250,204,21)"></span> → <span class="lg" style="background:rgb(220,38,38)"></span>上位（エリア内パーセンタイル、線の太さ＝通行量）<br/>建物: 高さ＝実測高さ（無ければ階数×3.5m）、色は上のセレクタで 用途／前面通行量／容積率の未消化／築年 を切替<br/>選択中の区画には、容積率いっぱいまで建てた場合の<b>最大ボリューム</b>を白い枠で重ねます<br/>○ 実測地点（岡山市 AIカメラ）、● 地価公示地点`;
+  $("sources").innerHTML = `<b>出典</b>: ${DATA.sources.map((s) => s.credit || s.name).join(" / ")}<br/><b>免責</b>: ${DATA.disclaimer.replace(/\n/g, " ")}`;
   function setMode(m) { state.mode = m; document.body.classList.remove("gov", "realestate"); document.body.classList.add(m); if (m !== "gov" && state.compare) { state.compare = false; render(); } }
   $("mode").onchange = (e) => setMode(e.target.value);
-  $("period").onchange = (e) => { state.period = e.target.value; state.compare = false; render(); };
+  $("period").onchange = (e) => { state.period = e.target.value; state.compare = false; render(); if (state.selected) showReport(state.selected); };
   $("periodB").onchange = (e) => { state.periodB = e.target.value; if (state.compare) render(); };
   $("daytype").onchange = (e) => { state.dayType = e.target.value; render(); };
   $("timeband").onchange = (e) => { state.timeBand = e.target.value; render(); };
-  $("chk3d").onchange = render; $("chkSites").onchange = render;
-  $("btnGap").onclick = runGap; $("btnCompare").onclick = runCompare; $("btnCompareOff").onclick = () => { state.compare = false; render(); closePanel(); };
-  setMode("realestate");
+  $("colorMode").onchange = (e) => { state.colorMode = e.target.value; render(); };
+  ["chkZoning", "chkLp", "chkSites"].forEach((id) => ($(id).onchange = render));
+  $("btnCompare").onclick = runCompare; $("btnCompareOff").onclick = () => { state.compare = false; render(); };
+  $("btn3d").onclick = () => { state.is3d = !state.is3d; $("btn3d").classList.toggle("on", state.is3d); map.easeTo({ pitch: state.is3d ? 50 : 0, duration: 600 }); render(); };
+  $("btnTop").onclick = () => map.easeTo({ pitch: 0, bearing: 0, duration: 600 });
+  $("btnHome").onclick = () => map.flyTo({ center, zoom: 14.6, pitch: state.is3d ? 50 : 0, bearing: -12 });
+  $("btnBird").onclick = () => { const b = state.selected ? bById.get(state.selected) : null; map.flyTo({ center: b ? [b.cx, b.cy] : center, zoom: b ? 17.8 : 16, pitch: 62, bearing: map.getBearing() + 30 }); };
+  setMode("realestate"); renderPortfolio();
   map.on("load", render);
 })();
 </script>

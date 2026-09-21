@@ -13,6 +13,7 @@ import json
 import math
 from pathlib import Path
 
+import geopandas as gpd
 import pandas as pd
 import requests
 import typer
@@ -120,11 +121,37 @@ def build_payload(store: Store) -> dict:
     bp_day = s.bpop(PERIODS[0], "weekday", "day").set_index("building_id").pop_est
     bp_night = s.bpop(PERIODS[0], "weekday", "night").set_index("building_id").pop_est
     gap = s.gap_score(PERIODS[0])
-    b = s.building[s.building.in_bbox & (s.building.footprint_area >= 12)]
+    b = s.building[s.building.in_bbox & (s.building.footprint_area >= 12)].copy()
+    # 用途地域ポリゴンから建蔽率・容積率を重心で付与
+    zoning = gpd.read_parquet(s.p.table("zoning"))
+    pts = gpd.GeoDataFrame(
+        b[["building_id"]], geometry=gpd.points_from_xy(b.centroid_lon, b.centroid_lat), crs="EPSG:4326"
+    )
+    zj = gpd.sjoin(pts, zoning[["zone_code", "bcr", "far", "geometry"]], how="left", predicate="within")
+    zj = zj[~zj.index.duplicated()]
+    b["zone_code"] = pd.to_numeric(zj.zone_code.values, errors="coerce")
+    b["bcr"] = zj.bcr.values
+    b["far"] = zj.far.values
+    # 最寄りの地価公示
+    if len(s.land_price):
+        lp = s.land_price.to_crs(config.epsg_plane())
+        nj = gpd.sjoin_nearest(
+            pts.to_crs(config.epsg_plane()),
+            lp[["price_yen_m2", "geometry"]],
+            how="left",
+            distance_col="lp_dist",
+        )
+        nj = nj[~nj.index.duplicated()]
+        b["lp_price"] = nj.price_yen_m2.values
+        b["lp_dist"] = nj.lp_dist.values
+    else:
+        b["lp_price"] = float("nan")
+        b["lp_dist"] = float("nan")
     items = []
     for r in b.itertuples():
         pd_ = float(bp_day.get(r.building_id, 0.0))
         pn_ = float(bp_night.get(r.building_id, 0.0))
+        year = int(r.year_built) if str(r.year_built).isdigit() and 1800 < int(r.year_built) < 2100 else None
         items.append(
             [
                 r.building_id,
@@ -139,6 +166,32 @@ def build_payload(store: Store) -> dict:
                 (round(gap[r.building_id], 1) if r.building_id in gap else None),
                 bool(r.gfa_is_estimated),
                 _ring_ints(r.geometry, lon0, lat0),
+                (None if pd.isna(r.zone_code) else int(r.zone_code)),
+                (None if pd.isna(r.bcr) else int(r.bcr)),
+                (None if pd.isna(r.far) else int(r.far)),
+                year,
+                (None if pd.isna(r.lp_price) else int(r.lp_price)),
+                (None if pd.isna(r.lp_dist) else int(r.lp_dist)),
+                round(float(r.footprint_area)),
+            ]
+        )
+    # 用途地域ポリゴン（レイヤ表示用）
+    zpolys = []
+    for r in zoning.itertuples():
+        g = r.geometry.simplify(0.00003)
+        for gg in g.geoms if g.geom_type == "MultiPolygon" else [g]:
+            zpolys.append([int(r.zone_code), r.zone_name, int(r.bcr), int(r.far), _ring_ints(gg, lon0, lat0)])
+    # 地価公示
+    lps = []
+    for r in s.land_price.itertuples():
+        lps.append(
+            [
+                round(float(r.geometry.x), 5),
+                round(float(r.geometry.y), 5),
+                (None if pd.isna(r.price_yen_m2) else int(r.price_yen_m2)),
+                r.address,
+                getattr(r, "current_use", ""),
+                (None if pd.isna(getattr(r, "change_pct", float("nan"))) else float(r.change_pct)),
             ]
         )
     # --- sites
@@ -190,6 +243,8 @@ def build_payload(store: Store) -> dict:
         "combos": combos,
         "links": links,
         "buildings": {"origin": [lon0, lat0], "scale": 1e-5, "items": items},
+        "zoning": zpolys,
+        "land_price": lps,
         "sites": sites,
         "gap_top": gap_top,
         "origin_mix": mix,
@@ -203,14 +258,22 @@ def build_payload(store: Store) -> dict:
     }
 
 
+def _inline_js(path: Path) -> str:
+    """<script> にインラインするため、文字列中の </script を閉じタグと誤認されない形にする."""
+    return path.read_text(encoding="utf-8").replace("</script", "<\\/script")
+
+
 def render(fragment: bool = False, out: Path | None = None) -> Path:
     store = Store()
     payload = build_payload(store)
     uri, coords = fetch_basemap(config.bbox())
     tpl = (config.ROOT / "web" / "standalone.html").read_text(encoding="utf-8")
-    css = (config.ROOT / "web" / "vendor" / "maplibre-gl.css").read_text(encoding="utf-8")
+    vendor = config.ROOT / "web" / "vendor"
+    css = (vendor / "maplibre-gl.css").read_text(encoding="utf-8")
     html = (
         tpl.replace("/*__MAPLIBRE_CSS__*/", css)
+        .replace("/*__VENDOR_MAPLIBRE__*/", _inline_js(vendor / "maplibre-gl.js"))
+        .replace("/*__VENDOR_DECK__*/", _inline_js(vendor / "deck.min.js"))
         .replace("__BASEMAP_URI__", uri)
         .replace("/*__BASEMAP_COORDS__*/", json.dumps(coords))
         .replace("/*__DATA__*/", json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
