@@ -28,7 +28,13 @@ python demo.py            # 約 20 分（CPU 4 コア）。--frames / --iters �
 python -m pytest -q tests # 単体 + 統合テスト（約 2 分）
 python demo.py --only game --tiles 3 --out output/tiled                       # マスクを SAM 風に分割（約 9 分）
 python demo.py --only game --tiles 3 --ignore-policy mask --out output/mask_only   # フレームを捨てない variant
+
+python build_standalone.py   # 報告 + プレイグラウンドを 1 つの HTML にまとめる（game-prototype.html）
 ```
+
+`build_standalone.py` は `report.html` と `interactive/index.html` を 1 つの自己完結 HTML
+（`game-prototype.html`）に結合する。両者はクラス名が衝突するため CSS を `.report` / `.pg` に
+スコープし直し、画像は data URI として埋め込むのでオフラインでも開ける。
 
 `demo.py` のシナリオ:
 
