@@ -26,6 +26,8 @@ pip install torch --index-url https://download.pytorch.org/whl/cpu
 ```bash
 python demo.py            # 約 20 分（CPU 4 コア）。--frames / --iters で短縮可
 python -m pytest -q tests # 単体 + 統合テスト（約 2 分）
+python demo.py --only game --tiles 3 --out output/tiled                       # マスクを SAM 風に分割（約 9 分）
+python demo.py --only game --tiles 3 --ignore-policy mask --out output/mask_only   # フレームを捨てない variant
 ```
 
 `demo.py` のシナリオ:
@@ -62,6 +64,20 @@ run 2（椅子を A→B に移動した後の部屋）に対する評価:
 run 1 直後は両者とも 32.68 dB / 0.0116 m で完全に一致する（同じパイプラインで、差は変更検出の有無だけ）。
 `output/tiled/` は `--tiles 3` で床・壁マスクを SAM 風に分割した実験で、数値は同一だが
 オクルージョンマスクが「椅子が今ある床タイル」だけに局在する（`output/occlusion_masks.png` と比較）。
+
+### 追加実験: キーフレームを丸ごと捨てない variant（`--ignore-policy mask`）
+
+本家は古い観測を含むキーフレームを `ignored_frames` で丸ごと最適化から外す。
+`--ignore-policy mask` はフレームを捨てず、オクルージョンマスクで画素単位に除外するだけにした variant。
+
+| variant | PSNR | 深度 L1 | 旧位置 A | 新位置 B | 無視フレーム |
+| --- | --- | --- | --- | --- | --- |
+| frame（本家どおり） | 34.24 dB | 0.0113 m | 2 | 121 | 8 / 14 |
+| mask（捨てない） | 34.56 dB | 0.0108 m | 3 | 149 | 0 / 14 |
+
+精度は同等かわずかに上で、run-1 の観測をすべて保持できる（`output/mask_only/`）。
+ブラウザ版の Playground（`interactive/index.html`）でも同じ 2 ポリシーを切り替えて比較でき、
+一致率 91〜92% で同等、マスクのみは 33 フレームを 1 つも捨てなかった。
 
 ## 観察と本家に対する示唆
 

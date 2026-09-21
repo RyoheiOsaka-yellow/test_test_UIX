@@ -1,0 +1,21 @@
+===== game =====
+[run1] frame   0: +1600 seeded, -0 removed, additions=[], N=1600, occl_masks=0, ignored=[]
+[run1] frame   1: +1398 seeded, -0 removed, additions=[], N=2998, occl_masks=0, ignored=[]
+[run1] frame   2: +814 seeded, -0 removed, additions=[], N=3811, occl_masks=0, ignored=[]
+[run1] frame   3: +565 seeded, -0 removed, additions=[], N=4376, occl_masks=0, ignored=[]
+[run1] frame   4: +455 seeded, -0 removed, additions=[], N=4829, occl_masks=0, ignored=[]
+[run1] frame   5: +395 seeded, -0 removed, additions=[], N=5224, occl_masks=0, ignored=[]
+[run1] frame   6: +430 seeded, -0 removed, additions=[], N=5647, occl_masks=0, ignored=[]
+[game] after run1: PSNR 32.68 dB, depth L1 0.0116 m, N=5647, gaussians in chair@A box: 229
+[run2] frame   7: +202 seeded, -236 removed, additions=[], N=5610, occl_masks=7, ignored=[]
+[run2] frame   8: +69 seeded, -0 removed, additions=[], N=5676, occl_masks=7, ignored=[]
+[run2] frame   9: +53 seeded, -0 removed, additions=[21], N=5714, occl_masks=7, ignored=[]
+[run2] frame  10: +106 seeded, -0 removed, additions=[21], N=5809, occl_masks=7, ignored=[]
+[run2] frame  11: +145 seeded, -0 removed, additions=[21], N=5948, occl_masks=8, ignored=[]
+[run2] frame  12: +87 seeded, -0 removed, additions=[], N=6019, occl_masks=8, ignored=[]
+[run2] frame  13: +102 seeded, -0 removed, additions=[], N=6102, occl_masks=8, ignored=[]
+[game] after run2 (evaluated on the CHANGED room): PSNR 34.56 dB, depth L1 0.0108 m, N=6102, gaussians in chair@A box: 3, chair@B box: 149, occlusion masks: 8, ignored frames: [], time 581s
+
+Summary (run 2 = changed room):
+system       PSNR   depthL1     #G  chair@A  chair@B  occl   sec
+game        34.56    0.0108   6102        3      149     8   581

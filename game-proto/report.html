@@ -250,6 +250,27 @@
 </figure>
 
 <div class="prose">
+<h2>追加実験: キーフレームを丸ごと捨てない</h2>
+<p>本家は古い観測を含むキーフレームを <code>ignored_frames</code> で最適化から丸ごと外す。上の観察を受けて、フレームは捨てずにオクルージョンマスクで画素単位に除外するだけの variant（<code>--ignore-policy mask</code>）を追加して比べた。</p>
+</div>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>variant</th><th class="num">PSNR</th><th class="num">深度 L1</th><th class="num">旧位置 A に残存</th><th class="num">新位置 B</th><th class="num">無視したフレーム</th></tr></thead>
+  <tbody>
+    <tr><td>frame（本家どおり）</td><td class="num">34.24 dB</td><td class="num">0.0113 m</td><td class="num">2</td><td class="num">121</td><td class="num lose">8 / 14</td></tr>
+    <tr><td>mask（捨てない）</td><td class="num win">34.56 dB</td><td class="num win">0.0108 m</td><td class="num">3</td><td class="num">149</td><td class="num win">0 / 14</td></tr>
+  </tbody>
+</table>
+</div>
+<figure>
+  <img src="output/mask_only/occlusion_masks.png" alt="フレームを捨てない variant のオクルージョンマスク。無視されたフレームはなく、マスクは椅子の旧位置と新位置の床タイルに局在する。" width="2264" height="484">
+  <figcaption><b>フレームを捨てない variant。</b>「IGNORED」のフレームが 1 つもなく、マスクは旧位置の椅子と新位置の床タイルだけ。精度は同等かわずかに上で、run 1 の観測はすべて保持される。</figcaption>
+</figure>
+<div class="prose">
+<p>ブラウザで操作できる <a href="https://claude.ai/artifact/5Tg65CZjb86jJCk3VYiuVc">GaME Playground</a>（2 次元版）でも同じ 2 ポリシーを切り替えて比較できる。自動シナリオでは一致率が本家どおり 92%、マスクのみ 91% と同等で、マスクのみは 33 フレームを 1 つも捨てなかった（静的マップは 85%、幽霊 14 個）。</p>
+</div>
+
+<div class="prose">
 <h2>観察と本家への示唆</h2>
 <ul>
   <li><b>マスクの粒度がアルゴリズムの挙動を支配する。</b>本家のいくつかのルールはマスク単位で判断する。SAM が大きな面を細かく過分割することを暗黙に前提にしており、粗いマスクでは除外が過剰になる。実データでも SAM の設定（points per side など）が結果を左右するはず。</li>
@@ -269,7 +290,7 @@
 
 <h2>次の一手（効果が大きい順）</h2>
 <ol>
-  <li><b>マスク単位の除外への緩和を検証する。</b><code>ignored_frames</code> をやめてオクルージョンマスクだけで運用する variant を追加し、同じシナリオで PSNR と保持キーフレーム数を比較する。本家への改善提案の根拠になる。</li>
+  <li><b>マスク単位の除外を実データで検証する。</b>合成環境では「フレームを捨てない」variant が同等以上だった（上の追加実験）。Aria / Flat で同じ比較を行えば本家への改善提案の根拠になる。</li>
   <li><b>実データに接続する。</b>Aria の HF データセットを取得し、本家のローダを CPU 版に流用して 1 シーンだけ低解像度で走らせる。合成環境との挙動差が見える。</li>
   <li><b>ブラウザ版インタラクティブデモ。</b>この Python 実装を土台に、椅子をドラッグしてマップ更新を目で追える WebGL 版を作る。</li>
 </ol>
@@ -281,7 +302,8 @@ pip install torch --index-url https://download.pytorch.org/whl/cpu
 
 python -m pytest -q tests        # 13 テスト、約 100 秒
 python demo.py                   # static と game を比較、output/ に書き出し（約 30 分）
-python demo.py --only game --tiles 3 --out output/tiled   # マスク分割版（約 9 分）</code></pre>
+python demo.py --only game --tiles 3 --out output/tiled   # マスク分割版（約 9 分）
+python demo.py --only game --tiles 3 --ignore-policy mask --out output/mask_only   # フレームを捨てない variant</code></pre>
 <p>途中経過は <code>output/log.txt</code>、数値と検出イベントは <code>output/metrics.json</code> に残る。</p>
 </div>
 
