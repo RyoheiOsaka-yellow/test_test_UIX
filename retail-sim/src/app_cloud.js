@@ -708,8 +708,7 @@ function updateCloud(realDt) {
 
   agents.forEach(a => {
     if (!a.mesh) return;
-    if (a.bodyMesh) a.bodyMesh.visible = !CLOUD.on;
-    if (a.headMesh) a.headMesh.visible = !CLOUD.on;
+    if (a.bodyParts) a.bodyParts.forEach(m => m.visible = !CLOUD.on);
     if (a.ring) a.ring.visible = a.hasNovelty && !CLOUD.on;
     if (a.detDot) {
       a.detDot.visible = CLOUD.on && CLOUD.detection;

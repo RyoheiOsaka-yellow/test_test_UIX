@@ -522,7 +522,8 @@ body.cloud-mode .sd-frow .fb, body.cloud-mode .sd-fun .fb { background: rgba(120
         <div id="solid-layers">
         <label class="row"><input type="checkbox" id="ly-shelfheat" checked /><span class="chip" style="background:linear-gradient(90deg,#dbe7f5,#1d6fb8)"></span>棚別 視線ヒート</label>
         <label class="row"><input type="checkbox" id="ly-floorheat" checked /><span class="chip" style="background:linear-gradient(90deg,#dbe7f5,#1d6fb8)"></span>回遊ヒートマップ（床）</label>
-        <label class="row"><input type="checkbox" id="ly-cones" /><span class="chip chip-outline"></span>視線コーン</label>
+        <label class="row"><input type="checkbox" id="ly-gaze" checked /><span class="chip" style="background:linear-gradient(90deg,#f2c14b,#e8613c)"></span>視線レイ・注視点</label>
+        <label class="row"><input type="checkbox" id="ly-cones" /><span class="chip chip-outline"></span>視野コーン（有効視野±22°）</label>
         <label class="row"><input type="checkbox" id="ly-trails" /><span class="chip chip-outline"></span>動線トレイル</label>
         </div>
         <label class="row"><input type="checkbox" id="ly-labels" checked /><span class="chip chip-outline"></span>売場ラベル</label>
@@ -901,7 +902,7 @@ const S = {
   weather: 'normal',    // 天候シグナル（状態型）: hot | normal | rain
   rival: false,         // 近隣競合セール（人流流出イベント）
   speed: 3, paused: false,
-  layers: { shelfheat: true, floorheat: true, cones: false, trails: false, labels: true },
+  layers: { shelfheat: true, floorheat: true, gaze: true, cones: false, trails: false, labels: true },
 };
 
 /* ---------- 施設定義 ---------- */
@@ -1063,7 +1064,7 @@ function routePoints(from, to) {
   const pts = ids.map(id => ({ x: NODES[id].x, z: NODES[id].z }));
   pts.push({ x: to.x, z: to.z });
   if (pts.length > 1 && Math.hypot(pts[0].x - from.x, pts[0].z - from.z) < 0.4) pts.shift();
-  return pts;
+  return smoothPath(pts);
 }
 /* 什器の長手方向のどこに立つか。5m の壁面什器で全員が中央に立つと
    棚の両端が「一度も見られない」不自然な計測になるため、
@@ -1078,6 +1079,110 @@ function approachSpot(s, frac) {
   return alongX
     ? { x: s.approach[0] + off, z: s.approach[1] }
     : { x: s.approach[0], z: s.approach[1] + off };
+}
+
+/* 什器正面の一点（u=長手方向 0..1, y=床上高さ）をワールド座標へ */
+function shelfFacePoint(s, u, y, viewerZ) {
+  const { alongX, len } = shelfAxis(s);
+  const depth = alongX ? s.size[2] : s.size[0];
+  const face = Math.max(depth / 2 - 0.04, 0.05);
+  if (s.kind === 'island-case') {
+    // 平ケースは「天面を手前から奥へ」見る。格子の v 軸は高さではなく奥行きに対応させる
+    const dv = clamp((y - 0.5) / 0.55, 0, 0.999);          // 0=手前 1=奥
+    const sgn = viewerZ != null && viewerZ < s.pos[2] ? -1 : 1;
+    return [s.pos[0] + (u - 0.5) * s.size[0] * 0.92,
+            s.size[1] * 0.87,
+            s.pos[2] - sgn * (dv - 0.5) * s.size[2] * 0.9];
+  }
+  return alongX
+    ? [s.pos[0] + (u - 0.5) * len, y, s.pos[2] + s.normal[2] * face]
+    : [s.pos[0] + s.normal[0] * face, y, s.pos[2] + (u - 0.5) * len];
+}
+
+/* 什器上で、客から見て最も近い正面の点（長手方向にクランプ） */
+function shelfNearPoint(s, x, z) {
+  const { alongX, len } = shelfAxis(s);
+  const half = Math.max(len / 2 - 0.05, 0.05);
+  return alongX
+    ? { x: clamp(x, s.pos[0] - half, s.pos[0] + half), z: s.pos[2] }
+    : { x: s.pos[0], z: clamp(z, s.pos[2] - half, s.pos[2] + half) };
+}
+
+/* 視線の遮蔽判定。視点→注視点の線分が他の什器の箱を貫くなら「見えていない」。
+   ゴンドラ越しに反対側の棚が見えてしまう（＝計測されてしまう）のを防ぐ。 */
+function losBlocked(ax, ay, az, bx, by, bz, skipId) {
+  const dx = bx - ax, dz = bz - az;
+  for (const o of SHELVES) {
+    if (o.id === skipId) continue;
+    const hx = o.size[0] / 2 + 0.02, hz = o.size[2] / 2 + 0.02;
+    let t0 = 0, t1 = 1, out = false;
+    for (let k = 0; k < 2 && !out; k++) {
+      const d = k ? dz : dx, p0 = k ? az : ax;
+      const lo = (k ? o.pos[2] : o.pos[0]) - (k ? hz : hx);
+      const hi = (k ? o.pos[2] : o.pos[0]) + (k ? hz : hx);
+      if (Math.abs(d) < 1e-6) { if (p0 < lo || p0 > hi) out = true; continue; }
+      let ta = (lo - p0) / d, tb = (hi - p0) / d;
+      if (ta > tb) { const t = ta; ta = tb; tb = t; }
+      if (ta > t0) t0 = ta;
+      if (tb < t1) t1 = tb;
+      if (t0 > t1) out = true;
+    }
+    if (out || t0 > t1 || t1 <= 0.02 || t0 >= 0.98) continue;
+    // 交差区間の視線高さが什器天端より下なら遮られている
+    if (ay + (by - ay) * ((t0 + t1) / 2) < o.size[1] - 0.03) return true;
+  }
+  return false;
+}
+
+/* 歩行の物理パラメータ（実測レンジ: 屋内歩行 0.8〜1.4m/s、加速 0.5〜1.0m/s²、旋回 ~2rad/s） */
+const TURN_RATE = 2.4, WALK_ACC = 1.15, WALK_DEC = 1.6;
+
+/* 客が什器の中にめり込まないよう押し出す（回避ステアリングの保険） */
+const BODY_R = 0.22;
+function pushOutOfFixtures(a) {
+  for (const o of SHELVES) {
+    const hx = o.size[0] / 2 + BODY_R, hz = o.size[2] / 2 + BODY_R;
+    const dx = a.x - o.pos[0], dz = a.z - o.pos[2];
+    const ox = hx - Math.abs(dx), oz = hz - Math.abs(dz);
+    if (ox <= 0 || oz <= 0) continue;
+    if (ox < oz) a.x = o.pos[0] + Math.sign(dx || 1) * hx;
+    else a.z = o.pos[2] + Math.sign(dz || 1) * hz;
+  }
+}
+
+/* 対人回避: 前方の他客を避けて横にずれ、詰まっていれば減速する */
+function avoidSteer(a) {
+  let sx = 0, sz = 0, slow = 1;
+  const hx = Math.sin(a.heading), hz = Math.cos(a.heading);
+  for (const b of agents) {
+    if (b === a || b.done) continue;
+    const dx = b.x - a.x, dz = b.z - a.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 > 1.44 || d2 < 1e-6) continue;
+    const d = Math.sqrt(d2);
+    const fwd = (dx * hx + dz * hz) / d;
+    if (fwd < 0.1) continue;                        // 後ろ・真横は無視
+    const push = (1.2 - d) / 1.2 * fwd;
+    // 相手の左右どちら側かを見て、反対へ逃げる（日本の売場は右側通行寄り）
+    const side = dx * hz - dz * hx;
+    const s = side > 0 ? -1 : 1;
+    sx += hz * s * push * 1.15; sz += -hx * s * push * 1.15;
+    if (d < 0.75) slow = Math.min(slow, 0.34 + (d - 0.3) * 1.2);
+  }
+  return { x: sx, z: sz, slow: clamp(slow, 0.25, 1) };
+}
+
+/* 経路のコーナーを落として自然な曲線にする（Chaikin 1パス） */
+function smoothPath(pts) {
+  if (pts.length < 3) return pts;
+  const out = [pts[0]];
+  for (let i = 0; i < pts.length - 2; i++) {
+    const p = pts[i], q = pts[i + 1], r = pts[i + 2];
+    out.push({ x: p.x * 0.25 + q.x * 0.75, z: p.z * 0.25 + q.z * 0.75 });
+    out.push({ x: r.x * 0.25 + q.x * 0.75, z: r.z * 0.25 + q.z * 0.75 });
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
 }
 
 function nearestOf(list, x, z) {
@@ -1238,8 +1343,14 @@ class Agent {
     this.z = ent.z;
     this.heading = -Math.PI / 2;
     this.persona = pickPersona();
-    this.eyeH = (this.persona.eyeH || 1.6) + (rng() - 0.5) * 0.09;
+    this.eyeH0 = (this.persona.eyeH || 1.6) + (rng() - 0.5) * 0.09;   // 直立時の目線高さ
+    this.eyeH = this.eyeH0;                                            // 屈み込みを反映した実効値
+    this.bend = 0;                                                     // 0=直立 1=しゃがんで下段を見る
     this.gazeTargetY = null; this.gazeLateral = 0; this.fixTimer = 0; this.targetFrac = null;
+    this.fix = null;                                                   // いま見ている一点（注視）
+    this.headYaw = this.heading; this.headPitch = 0;                   // 頭部は体と独立に回る
+    this.reach = 0;                                                    // 商品に手を伸ばす動作
+    this.v = 0;                                                        // 実速度（加減速あり）
     this.speed = (0.85 + rng() * 0.35) * this.persona.speed;
     STATS.personas[this.persona.key].n++;
     this.adExposed = rng() < adExposureShare();
@@ -1281,6 +1392,7 @@ class Agent {
   }
 
   nextLeg() {
+    this.legT = 0; this.lastD = null;
     if (this.plan.length) {
       const s = this.plan.shift();
       if (s.promoted && !S.endcap && s.id === STORE.promoted.mainId) { this.nextLeg(); return; }
@@ -1317,18 +1429,22 @@ class Agent {
     if (this.standSpot) {
       const sdx = this.standSpot.x - this.x, sdz = this.standSpot.z - this.z;
       const sd = Math.hypot(sdx, sdz);
+      this.v = sd > 0.06 ? this.speed * 0.3 : 0;
       if (sd > 0.06) {
-        const st = Math.min(this.speed * 0.32 * dt, sd);
+        const st = Math.min(this.v * dt, sd);
         this.x += (sdx / sd) * st; this.z += (sdz / sd) * st;
       }
-    }
-    this.faceShelf(shelf);
+    } else this.v = 0;
+    this.faceShelf(shelf, dt);
     this.fixTimer = (this.fixTimer || 0) - dt;
     if (this.fixTimer <= 0) this.sampleFixation(shelf);   // 次の注視点へ視線を移す
+    else if (this.fix && this.fix.sid === shelf.id) this.setFixOn(shelf);   // 横移動に注視点を追従
+    this.updateGazePose(dt);
     if (this.wait <= 0) {
       const st = STATS.shelves[shelf.id];
       if (rng() < 0.62) {
         st.picks++;
+        this.reach = 1;                                    // 商品へ手を伸ばす
         let pBuy = shelf.base * this.persona.buy * Math.sqrt(weatherCat(shelf.cat));
         let priceMult = this.persona.priceMult;
         if (shelf === promotedShelf()) {
@@ -1390,28 +1506,101 @@ class Agent {
     const span = s ? Math.min(1.7, 0.55 + shelfAxis(s).len * 0.13) : 0.75;
     this.gazeLateral = gauss3() * span * 0.34;
     this.fixTimer = 1.5 + rng() * 2.3;                   // 次のサッケードまで
+    this.setFixOn(s);
   }
 
-  /* 通過中（周辺視）: アイレベルよりやや下を中心に、より広く散る */
+  /* 注視点を「棚面上の一点」としてワールド座標で確定させる。
+     人間の中心視は常に1点であり、同時に複数の棚を注視することはない。
+     これを持つことで、視線レイ・頭部の向き・計測セルが完全に一致する。 */
+  setFixOn(s) {
+    if (!s) { this.fix = null; return; }
+    const { alongX, len } = shelfAxis(s);
+    const rel = alongX ? (this.x - s.pos[0]) : (this.z - s.pos[2]);
+    let uf = (rel + (this.gazeLateral || 0)) / Math.max(len, 0.1) + 0.5;
+    if (uf < 0) uf = -uf; else if (uf > 1) uf = 2 - uf;
+    const u = clamp(uf, 0, 0.999);
+    const y = s.kind === 'island-case'
+      ? 0.50 + rng() * 0.549                             // 平ケースは天面を手前から奥まで見渡す
+      : clamp(this.gazeTargetY != null ? this.gazeTargetY : this.eyeH0 - 0.45, 0.08, s.size[1] * 0.98);
+    const p = shelfFacePoint(s, u, y, this.z);
+    this.fix = { sid: s.id, u, y, x: p[0], z: p[2] };
+  }
+
+  /* 通過中の視線: 実際の買物客は「進行方向」と「両脇の棚へのちら見」を交互に行う。
+     ちら見の対象は、見える位置にある棚から1つだけ選ぶ（中心視は1点）。 */
   sampleWalkFixation() {
-    const E = this.eyeH || 1.6;
-    const y = rng() < 0.12
-      ? 0.12 + rng() * 0.45                              // 通過中でも下段が目に入ることがある
-      : E - 0.38 + gauss3() * 0.32;
-    this.gazeTargetY = clamp(y, 0.12, E + 0.28);
-    this.gazeLateral = (rng() - 0.5) * 0.5;
-    this.fixTimer = 0.9 + rng() * 1.5;
+    this.fixTimer = 0.7 + rng() * 1.3;
+    const E = this.eyeH0;
+    if (rng() < 0.42) {                                   // 進行方向を見る（注視棚なし）
+      this.fix = null;
+      this.gazeTargetY = clamp(E - 0.12 + gauss3() * 0.14, 0.9, E + 0.3);
+      return;
+    }
+    const hx = Math.sin(this.heading), hz = Math.cos(this.heading);
+    let best = null, bw = 0;
+    for (const s of SHELVES) {
+      if (s.promoted && !S.endcap && s.id === STORE.promoted.mainId) continue;
+      const np = shelfNearPoint(s, this.x, this.z);
+      const dx = np.x - this.x, dz = np.z - this.z;
+      const d = Math.hypot(dx, dz);
+      if (d > GAZE_DIST || d < 0.05) continue;
+      if ((dx * hx + dz * hz) / d < -0.1) continue;                     // 背後は見ない
+      if ((this.x - np.x) * s.normal[0] + (this.z - np.z) * s.normal[2] < 0) continue;
+      if (losBlocked(this.x, E, this.z, np.x, E - 0.3, np.z, s.id)) continue;   // 什器越しは見えない
+      const w = (1 - d / GAZE_DIST) * (0.25 + (s.pop || 0.1) * 2.2) * (0.5 + rng());
+      if (w > bw) { bw = w; best = s; }
+    }
+    if (!best) { this.fix = null; this.gazeTargetY = E - 0.12; return; }
+    const H = best.size[1];
+    // 歩きながらの視線は上下走査が浅く、アイレベルよりやや下に集まる
+    const y = rng() < 0.18 ? 0.14 + rng() * 0.48 : E - 0.52 + gauss3() * 0.27;
+    this.gazeTargetY = clamp(y, 0.10, H * 0.98);
+    this.gazeLateral = gauss3() * 0.28;
+    this.setFixOn(best);
   }
 
-  /* 什器の中心ではなく「今見ているフェイス」を向く。
-     端に立っている客が中央を向いてしまうと、視線が棚中央に集中してしまうため。 */
-  faceShelf(shelf) {
-    const { alongX } = shelfAxis(shelf);
-    const lat = this.gazeLateral || 0;
-    const tx = alongX ? this.x + lat : shelf.pos[0];
-    const tz = alongX ? shelf.pos[2] : this.z + lat;
-    const dx = tx - this.x, dz = tz - this.z;
-    this.heading = Math.atan2(dx, dz);
+  /* 体の向き。棚前では通路に対して正対しつつ、頭だけがフェイスを追う。 */
+  faceShelf(shelf, dt) {
+    const want = Math.atan2(shelf.pos[0] - this.x, shelf.pos[2] - this.z);
+    let dh = want - this.heading;
+    while (dh > Math.PI) dh -= 2 * Math.PI; while (dh < -Math.PI) dh += 2 * Math.PI;
+    this.heading += clamp(dh, -2.6 * dt, 2.6 * dt);
+  }
+
+  /* 頭部・視線の姿勢を更新する。
+     ・頭は体に対して ±72° までしか回らない（それ以上は体ごと向き直る）
+     ・下段を覗き込むときは屈む（目線高さが下がり、無理な俯角にならない）
+     ・視線の向き＝計測に使う軸。身体の向きではない。 */
+  updateGazePose(dt) {
+    const f = this.fix;
+    let wantYaw = this.heading, wantPitch = 0, wantBend = 0;
+    if (f) {
+      const dx = f.x - this.x, dz = f.z - this.z;
+      const hd = Math.hypot(dx, dz) || 1e-3;
+      wantYaw = Math.atan2(dx, dz);
+      let rel = wantYaw - this.heading;
+      while (rel > Math.PI) rel -= 2 * Math.PI; while (rel < -Math.PI) rel += 2 * Math.PI;
+      if (Math.abs(rel) > 1.26) {                          // 首の可動域を超えたら体ごと回る
+        const over = Math.sign(rel) * (Math.abs(rel) - 1.26);
+        this.heading += clamp(over, -2.2 * dt, 2.2 * dt);
+      }
+      const pitch0 = Math.atan2(f.y - this.eyeH0, hd);
+      // 俯角が −42° を超える＝立ったままでは無理 → 膝と腰を折って目線を下げる
+      if (pitch0 < -0.73) wantBend = clamp((-pitch0 - 0.73) / 0.5, 0, 1);
+      wantPitch = Math.atan2(f.y - (this.eyeH0 - wantBend * 0.52), hd);
+      wantPitch = clamp(wantPitch, -1.12, 0.62);
+    }
+    let dy = wantYaw - this.headYaw;
+    while (dy > Math.PI) dy -= 2 * Math.PI; while (dy < -Math.PI) dy += 2 * Math.PI;
+    this.headYaw += clamp(dy, -5.5 * dt, 5.5 * dt);         // サッケード後の頭部回旋
+    // 首の可動域は体に対して ±74°。これを超えた向きは物理的に取れない
+    let off = this.headYaw - this.heading;
+    while (off > Math.PI) off -= 2 * Math.PI; while (off < -Math.PI) off += 2 * Math.PI;
+    this.headYaw = this.heading + clamp(off, -1.29, 1.29);
+    this.headPitch += clamp(wantPitch - this.headPitch, -3.4 * dt, 3.4 * dt);
+    this.bend += clamp(wantBend - this.bend, -1.6 * dt, 1.6 * dt);
+    this.eyeH = this.eyeH0 - this.bend * 0.52;
+    if (this.reach > 0) this.reach = Math.max(0, this.reach - dt * 0.9);
   }
 
   update(dt) {
@@ -1425,18 +1614,26 @@ class Agent {
       const dx = tx - this.x, dz = tz - this.z;
       const d = Math.hypot(dx, dz);
       if (d > 0.12) {
-        const step = Math.min(this.speed * dt, d);
+        this.v += clamp(this.speed * 0.7 - this.v, -WALK_DEC * dt, WALK_ACC * dt);
+        const step = Math.min(Math.max(this.v, 0) * dt, d);
         this.x += (dx / d) * step; this.z += (dz / d) * step;
-        this.heading = Math.atan2(dx, dz);
-      } else if (idx === 0) {
-        this.state = 'pay'; this.wait = 20 + rng() * 30;
-        STATS.waitSum += STATS.simSec - this.queueJoin; STATS.waitN++;
-        this.heading = Math.atan2(-reg.dir[0], -reg.dir[1]);
+        let dh = Math.atan2(dx, dz) - this.heading;
+        while (dh > Math.PI) dh -= 2 * Math.PI; while (dh < -Math.PI) dh += 2 * Math.PI;
+        this.heading += clamp(dh, -TURN_RATE * dt, TURN_RATE * dt);
+      } else {
+        this.v = 0;
+        if (idx === 0) {
+          this.state = 'pay'; this.wait = 20 + rng() * 30;
+          STATS.waitSum += STATS.simSec - this.queueJoin; STATS.waitN++;
+          this.heading = Math.atan2(-reg.dir[0], -reg.dir[1]);
+        }
       }
+      this.updateGazePose(dt);
       return;
     }
     if (this.state === 'pay') {
       this.wait -= dt;
+      this.v = 0; this.fix = null; this.updateGazePose(dt);
       if (this.wait <= 0) {
         if (this.reg) { const qi = this.reg.queue.indexOf(this); if (qi >= 0) this.reg.queue.splice(qi, 1); }
         this.paid = true;
@@ -1461,8 +1658,15 @@ class Agent {
     const t = this.wp[0];
     const dx = t.x - this.x, dz = t.z - this.z;
     const d = Math.hypot(dx, dz);
-    if (d < 0.18) {
+    // 到達判定。旋回半径より小さい許容半径だと的の周りを回り続けてしまうため、
+    // 「十分近い」か「通り過ぎた」か「時間がかかりすぎた」で次の点へ進む。
+    this.legT = (this.legT || 0) + dt;
+    const arriveR = Math.max(0.26, (this.v || 0) * dt * 0.95);   // 早送り時は1歩幅が大きくなる
+    const passed = this.lastD != null && d > this.lastD && d < arriveR + 0.55;
+    this.lastD = d;
+    if (d < arriveR || passed || this.legT > 26) {
       this.wp.shift();
+      this.legT = 0; this.lastD = null;
       if (!this.wp.length) {
         if (this.state === 'walk' && this.targetShelf) {
           const s = this.targetShelf;
@@ -1497,12 +1701,31 @@ class Agent {
     }
     this.fixTimer = (this.fixTimer || 0) - dt;
     if (this.fixTimer <= 0) this.sampleWalkFixation();
-    const step = Math.min(this.speed * dt, d);
-    this.x += (dx / d) * step; this.z += (dz / d) * step;
-    const targetHeading = Math.atan2(dx, dz);
+
+    // --- 進みたい方向 = 経路方向 ＋ 対人回避（目標が近いほど回避を弱める） ---
+    const av = avoidSteer(this);
+    const avW = clamp((d - 0.3) / 0.8, 0, 1);
+    let ux = dx / d + av.x * avW, uz = dz / d + av.z * avW;
+    const ul = Math.hypot(ux, uz) || 1; ux /= ul; uz /= ul;
+
+    // --- 旋回（角速度に上限。ただし遅いほどその場で向きを変えられる） ---
+    const targetHeading = Math.atan2(ux, uz);
     let dh = targetHeading - this.heading;
     while (dh > Math.PI) dh -= 2 * Math.PI; while (dh < -Math.PI) dh += 2 * Math.PI;
-    this.heading += dh * Math.min(1, dt * 6);
+    const turnCap = TURN_RATE * (1 + 1.8 * (1 - clamp(this.v / (this.speed || 1), 0, 1)));
+    this.heading += clamp(dh, -turnCap * dt, turnCap * dt);
+
+    // --- 加減速（曲がる・到着する・混む と遅くなる） ---
+    let vWant = this.speed * av.slow;
+    vWant *= 1 - Math.min(0.55, Math.abs(dh) * 0.34);
+    if (this.wp.length <= 1) vWant *= clamp(d / 0.9, 0.3, 1);
+    const a = vWant > this.v ? WALK_ACC : WALK_DEC;
+    this.v += clamp(vWant - this.v, -a * dt, a * dt);
+    const step = Math.min(Math.max(this.v, 0) * dt, d);
+    this.x += Math.sin(this.heading) * step;
+    this.z += Math.cos(this.heading) * step;
+    pushOutOfFixtures(this);
+    this.updateGazePose(dt);
 
     if (S.novelty && this.novGroup === null) {
       const dn = Math.hypot(this.x - STORE.novStand.x, this.z - STORE.novStand.z);
@@ -1536,92 +1759,119 @@ class Agent {
 
 function cloudSafeRand() { return rng(); }
 
-/* 棚面のどこを見たか（水平=実測ジオメトリ / 垂直=視線高さモデル）を格子に蓄積 */
-function accumulateGaze(agent, s, w, dist) {
+/* 棚面の格子セルへ注目秒を積む。u/v は呼び出し側が確定させる */
+function accumulateGaze(s, u, y, w, pidx) {
   const st = STATS.shelves[s.id];
   if (!st.grid) st.grid = new Float32Array(GRID_U * GRID_V);
-  const alongX = s.normal[2] !== 0;
-  const length = alongX ? s.size[0] : s.size[2];
-  const rel = alongX ? (agent.x - s.pos[0]) : (agent.z - s.pos[2]);
-  // 棚前に立っている間は「立ち位置＋横走査」がそのまま注視列になる。
-  // 通過中は進行方向へ視線が流れるので、向きを距離に応じて投影する。
-  let along;
-  if (agent.state === 'dwell' && agent.dwellShelf === s) {
-    along = rel + (agent.gazeLateral || 0);
-  } else {
-    const hx = Math.sin(agent.heading), hz = Math.cos(agent.heading);
-    along = rel + (alongX ? hx : hz) * dist * 0.45 + (agent.gazeLateral || 0);
-  }
-  // 什器の外へはみ出した注視点は折り返す（端の列へ張り付かせない）
-  let uf = along / Math.max(length, 0.1) + 0.5;
-  if (uf < 0) uf = -uf; else if (uf > 1) uf = 2 - uf;
-  const u = clamp(uf, 0, 0.999);
-  // 注視高さ: 棚前では「アイレベルよりやや下」に集中（ゴールデンゾーンの成立要因）。
-  // 通過中は周辺視でアイレベル付近を拾う。
-  const yHit = s.kind === 'island-case'
-    ? 0.60 + cloudSafeRand() * 0.42                              // ケース内を手前から奥へ見下ろす
-    : (agent.gazeTargetY != null ? agent.gazeTargetY : (agent.eyeH || 1.6) - 0.28);
   const v = s.kind === 'island-case'
-    ? clamp((yHit - 0.5) / 0.55, 0, 0.999)
-    : clamp(yHit / Math.max(s.size[1], 0.5), 0, 0.999);
-  const gi = Math.floor(v * GRID_V) * GRID_U + Math.floor(u * GRID_U);
+    ? clamp((y - 0.5) / 0.55, 0, 0.999)
+    : clamp(y / Math.max(s.size[1], 0.5), 0, 0.999);
+  const gi = Math.floor(v * GRID_V) * GRID_U + Math.floor(clamp(u, 0, 0.999) * GRID_U);
   st.grid[gi] += w;
   if (st.gridRecent) st.gridRecent[gi] += w;
   if (st.gridLive) st.gridLive[gi] += w;
-  if (st.gridWho) st.gridWho[gi] = agent.persona.pidx;
+  if (st.gridWho) st.gridWho[gi] = pidx;
+  st.gazeSec += w;
   STATS.gazeEvents++;
-
-  // 棚面上の注視点（3D座標）。最も強く見ている棚をエージェントに記録する
-  if (w > (agent.gazeW || 0)) {
-    const depth = alongX ? s.size[2] : s.size[0];
-    const face = Math.max(depth / 2 - 0.04, 0.05);
-    let hx, hy, hz;
-    if (s.kind === 'island-case') {
-      hx = s.pos[0] + (u - 0.5) * s.size[0];
-      hy = 0.82;
-      hz = s.pos[2] + (agent.z > s.pos[2] ? 0.3 : -0.3) * s.size[2];
-    } else {
-      hx = alongX ? s.pos[0] + (u - 0.5) * length : s.pos[0] + s.normal[0] * face;
-      hz = alongX ? s.pos[2] + s.normal[2] * face : s.pos[2] + (u - 0.5) * length;
-      hy = yHit;
-    }
-    agent.gazeW = w;
-    agent.gazeHit = [hx, hy, hz];
-    agent.gazeShelf = s.id;
-    agent.gazeCell = gi;
-  }
+  return gi;
 }
 
-/* 視線・通過検知 */
-const GAZE_DIST = 2.9, GAZE_COS = Math.cos(45 * Math.PI / 180);
+/* ---------- 視線検知 ----------
+   実際の視覚は「中心視1点 ＋ その周囲へ急減衰する有効視野」でできている。
+   ここでは注視点（fix）を1点だけ持ち、
+     ・中心窩（±7°）… 注視している棚のそのセルへ
+     ・有効視野（±22°）… 周辺の棚へ弱く
+   という二重ガウスの重みで配分する。さらに
+     ・什器越しは見えない（遮蔽判定）
+     ・棚の背面は見えない
+     ・無理な俯角/仰角は見えない
+   を課すことで、「どこを見られているか」を頭部姿勢から素直に復元できる形にしている。 */
+const GAZE_DIST = 2.9, GAZE_MAX_ANG = 0.92;              // 約53°で打ち切り
+function acuity(ang) {
+  return 0.74 * Math.exp(-0.5 * Math.pow(ang / 0.122, 2))   // 中心窩 σ≈7°
+       + 0.26 * Math.exp(-0.5 * Math.pow(ang / 0.384, 2));  // 有効視野 σ≈22°
+}
+
 function senseGaze(agent, interval) {
   agent.gazeW = 0;
+  const ex = agent.x, ez = agent.z, ey = agent.eyeH;
+  // 視線軸（注視点がなければ頭の向き＝進行方向）
+  const cp = Math.cos(agent.headPitch);
+  const axX = Math.sin(agent.headYaw) * cp, axZ = Math.cos(agent.headYaw) * cp;
+  const axY = Math.sin(agent.headPitch);
+  const fixSid = agent.fix ? agent.fix.sid : null;
+
   for (const s of SHELVES) {
     if (s.promoted && !S.endcap && s.id === STORE.promoted.mainId) continue;
-    // 什器は線分（長手方向に広がる）として扱う。中心点で判定すると、
-    // 5m の壁面什器の端に立った客が「その棚を見ていない」ことになってしまう。
-    const ax = shelfAxis(s), half = Math.max(ax.len / 2 - 0.05, 0.05);
-    const gx = ax.alongX ? clamp(agent.x, s.pos[0] - half, s.pos[0] + half) : s.pos[0];
-    const gz = ax.alongX ? s.pos[2] : clamp(agent.z, s.pos[2] - half, s.pos[2] + half);
-    const dx = gx - agent.x, dz = gz - agent.z;
-    const d = Math.hypot(dx, dz);
-    if (d > GAZE_DIST) continue;
-    if (d < 2.2 && !agent.passSet[s.id]) { agent.passSet[s.id] = 1; STATS.shelves[s.id].passes++; }
-    const hx = Math.sin(agent.heading), hz = Math.cos(agent.heading);
-    const cos = (dx * hx + dz * hz) / (d || 1e-6);
-    if (cos < GAZE_COS) continue;
-    const nx = s.normal[0], nz = s.normal[2];
-    if ((agent.x - gx) * nx + (agent.z - gz) * nz < 0) continue;
-    let w = interval * (1 - d / GAZE_DIST);
+    const isFix = s.id === fixSid;
+    // 什器は線分として扱う（5mの棚の端に立った客を「見ていない」と誤判定しないため）
+    const np = shelfNearPoint(s, ex, ez);
+    const d0 = Math.hypot(np.x - ex, np.z - ez);
+    if (d0 > GAZE_DIST + 0.3) continue;
+    if (d0 < 2.2 && !agent.passSet[s.id]) { agent.passSet[s.id] = 1; STATS.shelves[s.id].passes++; }
+    // 棚の背面からは見えない
+    if ((ex - np.x) * s.normal[0] + (ez - np.z) * s.normal[2] < 0) continue;
+
+    // この棚のどこを見ているか（注視棚は確定点、それ以外は視線軸に最も近い面上の点）
+    let u, y, px, py, pz;
+    if (isFix) {
+      u = agent.fix.u; y = agent.fix.y; px = agent.fix.x; py = agent.fix.y; pz = agent.fix.z;
+    } else if (s.kind === 'island-case') {
+      // 平ケースは天面（水平面）との交点。v軸は高さではなく奥行き
+      const topY = s.size[1] * 0.87;
+      const t = axY < -1e-3 ? (topY - ey) / axY : -1;
+      if (t <= 0.05 || t > GAZE_DIST * 1.6) continue;
+      const hx2 = ex + axX * t, hz2 = ez + axZ * t;
+      u = clamp((hx2 - s.pos[0]) / (s.size[0] * 0.92) + 0.5, 0, 0.999);
+      const sgn = ez < s.pos[2] ? -1 : 1;
+      const dv = clamp(0.5 - sgn * (hz2 - s.pos[2]) / (s.size[2] * 0.9), 0, 0.999);
+      y = 0.5 + dv * 0.549;
+      px = hx2; py = topY; pz = hz2;
+    } else {
+      const { alongX, len } = shelfAxis(s);
+      // 視線軸を棚の正面平面へ伸ばし、当たる位置を面上の座標へ
+      const nrm = alongX ? s.normal[2] : s.normal[0];
+      const axN = alongX ? axZ : axX;
+      const facePos = (alongX ? s.pos[2] : s.pos[0]) + nrm * (Math.max((alongX ? s.size[2] : s.size[0]) / 2 - 0.04, 0.05));
+      const e0 = alongX ? ez : ex;
+      const t = Math.abs(axN) > 1e-3 ? (facePos - e0) / axN : -1;
+      if (t <= 0.05 || t > GAZE_DIST * 1.6) continue;
+      const alongHit = (alongX ? ex + axX * t : ez + axZ * t) - (alongX ? s.pos[0] : s.pos[2]);
+      let uf = alongHit / Math.max(len, 0.1) + 0.5;
+      if (uf < 0) uf = -uf; else if (uf > 1) uf = 2 - uf;
+      u = clamp(uf, 0, 0.999);
+      y = clamp(ey + axY * t, 0.05, s.size[1] * 0.98);
+      const p = shelfFacePoint(s, u, y, ez);
+      px = p[0]; py = y; pz = p[2];
+    }
+
+    // 視線軸からの離角（中心視からのズレ）
+    const vx = px - ex, vy = py - ey, vz = pz - ez;
+    const vl = Math.hypot(vx, vy, vz) || 1e-3;
+    if (vl > GAZE_DIST) continue;
+    const ang = Math.acos(clamp((vx * axX + vy * axY + vz * axZ) / vl, -1, 1));
+    if (ang > GAZE_MAX_ANG) continue;
+    // 什器越しには見えない
+    if (losBlocked(ex, ey, ez, px, py, pz, s.id)) continue;
+
+    let w = interval * acuity(ang) * (1 - 0.45 * (vl / GAZE_DIST));
     if (s.promoted && S.endcap) w *= ENDCAP_ATTENTION * PLANO.attn;
-    STATS.shelves[s.id].gazeSec += w;
-    accumulateGaze(agent, s, w, d);
-    agent.gazeMap[s.id] = (agent.gazeMap[s.id] || 0) + interval;
-    if (agent.gazeMap[s.id] >= 1.0 && !agent['gz_' + s.id] && d < 2.4) {
+    if (w < interval * 0.004) continue;
+    const gi = accumulateGaze(s, u, y, w, agent.persona.pidx);
+
+    // 「視線を獲得した」判定は注目秒ベース（0.7秒以上の停留＝fixation とみなす）
+    agent.gazeMap[s.id] = (agent.gazeMap[s.id] || 0) + w;
+    if (agent.gazeMap[s.id] >= 0.7 && !agent['gz_' + s.id]) {
       agent['gz_' + s.id] = true; STATS.shelves[s.id].gazes++;
     }
+    if (w > agent.gazeW) {
+      agent.gazeW = w;
+      agent.gazeHit = [px, py, pz];
+      agent.gazeShelf = s.id;
+      agent.gazeCell = gi;
+    }
   }
-  agent.gazing = agent.gazeW > 0;
+  agent.gazing = agent.gazeW > interval * 0.08;
 }
 
 /* ---------- 過去14日 scripted 日次データ ---------- */
@@ -1689,6 +1939,7 @@ function initThree() {
   dir.position.set(12, 22, 10); scene.add(dir);
 
   buildStore();
+  buildGazeLines();
   bindCamControls();
   bindPicking();
   window.addEventListener('resize', () => {
@@ -2302,45 +2553,100 @@ function buildShelf(s, productBoxes, productCyls) {
 }
 
 /* エージェント3D表現 */
+/* 人体は目線高さ（ペルソナ別 1.50〜1.66m）を基準に等身大で組む。
+   什器（1.4〜2.0m）との相対関係が正しくないと「どこを見ているか」が目視で検証できないため。 */
 function makeAgentMesh(agent) {
   const g = new THREE.Group();
   const color = agent.persona.color;
-  const body = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.13, 0.16, 0.85, 10),
-    new THREE.MeshLambertMaterial({ color })
-  );
-  body.position.y = 0.43; g.add(body);
-  agent.bodyMesh = body;
-  if (agent.adExposed) {  // 広告接触はピンクリングで表示
-    const adRing = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.028, 8, 18),
-      new THREE.MeshBasicMaterial({ color: 0xd55181 }));
-    adRing.rotation.x = Math.PI / 2; adRing.position.y = 0.78; g.add(adRing);
+  const E = agent.eyeH0;                       // 目線高さ
+  const hipY = E * 0.52;                       // 股関節
+  const shoulderY = E - 0.20;
+  agent.hipY = hipY;
+  const mat = new THREE.MeshLambertMaterial({ color });
+  const dark = new THREE.MeshLambertMaterial({ color: new THREE.Color(color).multiplyScalar(0.55) });
+  const skin = new THREE.MeshLambertMaterial({ color: 0xf1e0cd });
+
+  // 上体（腰から肩まで）: 屈み込みでここが前傾する
+  const torsoPivot = new THREE.Group();
+  torsoPivot.position.y = hipY; g.add(torsoPivot);
+  agent.torsoPivot = torsoPivot;
+  const torsoH = shoulderY - hipY;
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.155, 0.135, torsoH, 12), mat);
+  torso.position.y = torsoH / 2; torso.scale.z = 0.66;   // 人体は前後に薄い
+  torsoPivot.add(torso);
+  agent.bodyMesh = torso;
+  // 肩（腕の付け根を体の外に出す）
+  const shoulder = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.052, 0.40, 8), mat);
+  shoulder.rotation.z = Math.PI / 2; shoulder.position.y = torsoH - 0.05; torsoPivot.add(shoulder);
+  // 首
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.055, 0.13, 8), skin);
+  neck.position.y = torsoH + 0.05; torsoPivot.add(neck);
+
+  // 脚（股関節から振る。屈むと膝が曲がる）
+  agent.legs = []; agent.legMeshes = [];
+  for (let i = 0; i < 2; i++) {
+    const pivot = new THREE.Group();
+    pivot.position.set((i ? 1 : -1) * 0.105, hipY, 0); g.add(pivot);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.06, hipY, 8), dark);
+    leg.position.y = -hipY / 2; pivot.add(leg);
+    const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.06, 0.25), dark);
+    shoe.position.set(0, -hipY + 0.03, 0.045); pivot.add(shoe);
+    agent.legs.push(pivot); agent.legMeshes.push(leg, shoe);
   }
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.125, 12, 10),
-    new THREE.MeshLambertMaterial({ color: 0xf1e0cd })
-  );
-  head.position.y = 1.0; g.add(head);
+  // 腕（肩から振る。商品を取るときは前へ伸ばす）
+  agent.arms = [];
+  const armL = torsoH * 1.02;
+  for (let i = 0; i < 2; i++) {
+    const pivot = new THREE.Group();
+    pivot.position.set((i ? 1 : -1) * 0.205, torsoH - 0.05, 0); torsoPivot.add(pivot);
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.042, armL, 7), mat);
+    arm.position.y = -armL / 2; pivot.add(arm);
+    const hand = new THREE.Mesh(new THREE.SphereGeometry(0.048, 8, 6), skin);
+    hand.position.y = -armL; pivot.add(hand);
+    agent.arms.push(pivot);
+  }
+
+  // 頭（体とは独立に回る。視線の向きはここ）
+  const headPivot = new THREE.Group();
+  headPivot.position.y = torsoH + 0.11; torsoPivot.add(headPivot);
+  agent.headPivot = headPivot;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.115, 14, 11), skin);
+  head.position.y = 0.09; head.scale.z = 1.12; headPivot.add(head);
   agent.headMesh = head;
+  // 顔の向き（＝視線の向き）が一目で分かるマーカー
+  const face = new THREE.Mesh(new THREE.SphereGeometry(0.052, 10, 8),
+    new THREE.MeshBasicMaterial({ color: 0x2b3a4d }));
+  face.position.set(0, 0.09, 0.098); face.scale.set(1.25, 0.72, 0.45); headPivot.add(face);
+
+  // 点群モードでは人体を隠して検出点だけにする
+  agent.bodyParts = [torso, shoulder, neck, head, face].concat(agent.legMeshes, agent.arms);
+  if (agent.adExposed) {  // 広告接触はピンクリングで表示
+    const adRing = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.028, 8, 18),
+      new THREE.MeshBasicMaterial({ color: 0xd55181 }));
+    adRing.rotation.x = Math.PI / 2; adRing.position.y = torsoH - 0.06; torsoPivot.add(adRing);
+    agent.bodyParts.push(adRing);
+  }
   const detDot = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 8),
     new THREE.MeshBasicMaterial({ color: 0x31c5f0 }));
-  detDot.position.y = 1.12; detDot.visible = false;
-  g.add(detDot); agent.detDot = detDot;
+  detDot.position.y = 0.2; detDot.visible = false;
+  headPivot.add(detDot); agent.detDot = detDot;
+  // 視野コーン＝頭の向き（有効視野 ±22°相当）
   const cone = new THREE.Mesh(
-    new THREE.ConeGeometry(1.4, 2.7, 20, 1, true),
-    new THREE.MeshBasicMaterial({ color: agent.persona.color, transparent: true, opacity: 0.07, depthWrite: false, side: THREE.DoubleSide })
+    new THREE.ConeGeometry(0.95, 2.4, 20, 1, true),
+    new THREE.MeshBasicMaterial({ color: agent.persona.color, transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide })
   );
-  cone.rotation.x = Math.PI / 2; cone.position.z = 1.35;
+  cone.rotation.x = Math.PI / 2; cone.position.z = 1.2;
   const coneHolder = new THREE.Group();
-  coneHolder.add(cone); coneHolder.position.y = 0.95; coneHolder.visible = false;
-  g.add(coneHolder); agent.coneHolder = coneHolder;
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.035, 8, 20),
+  coneHolder.add(cone); coneHolder.visible = false;
+  headPivot.add(coneHolder); agent.coneHolder = coneHolder;
+
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.25, 0.035, 8, 20),
     new THREE.MeshBasicMaterial({ color: 0xc98500 }));
   ring.rotation.x = Math.PI / 2; ring.position.y = 0.06; ring.visible = false;
   g.add(ring); agent.ring = ring;
   const dwellDot = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 8),
     new THREE.MeshBasicMaterial({ color: 0x0f9fba }));
-  dwellDot.position.y = 1.35; dwellDot.visible = false;
+  dwellDot.position.y = E + 0.28; dwellDot.visible = false;
   g.add(dwellDot); agent.dwellDot = dwellDot;
   scene.add(g);
   agent.mesh = g;
@@ -2353,6 +2659,66 @@ function makeAgentMesh(agent) {
   tLine.frustumCulled = false; tLine.visible = false;
   scene.add(tLine);
   agent.trailLine = tLine; agent.trailPos = tPos; agent.trailLen = 0;
+}
+
+/* ---------- 通常表示の視線レイ・注視点 ----------
+   「誰が、いま、棚のどこを見ているか」を1本の線と1個の点で示す。
+   線の始点は実際の目線高さ（屈んでいれば下がる）、終点は計測に使っている注視点そのもの。 */
+let gazeFx = null;
+const GAZE_FX_MAX = 80;
+function buildGazeLines() {
+  if (gazeFx) { scene.remove(gazeFx.lines); scene.remove(gazeFx.dots); disposeObject(gazeFx.lines); disposeObject(gazeFx.dots); }
+  const lg = new THREE.BufferGeometry();
+  lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(GAZE_FX_MAX * 6), 3));
+  lg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(GAZE_FX_MAX * 6), 3));
+  const lines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({
+    vertexColors: true, transparent: true, opacity: 0.88, depthWrite: false,
+  }));
+  lines.frustumCulled = false;
+  const dg = new THREE.BufferGeometry();
+  dg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(GAZE_FX_MAX * 3), 3));
+  dg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(GAZE_FX_MAX * 3), 3));
+  const dots = new THREE.Points(dg, new THREE.PointsMaterial({
+    size: 0.22, vertexColors: true, transparent: true, opacity: 1.0, depthWrite: false, sizeAttenuation: true,
+  }));
+  dots.frustumCulled = false;
+  scene.add(lines); scene.add(dots);
+  gazeFx = { lines, dots, lg, dg };
+}
+
+function updateGazeLines() {
+  if (!gazeFx) return;
+  const on = S.layers.gaze && !(window.CLOUD && CLOUD.on);
+  gazeFx.lines.visible = on; gazeFx.dots.visible = on;
+  if (!on) return;
+  const lp = gazeFx.lg.attributes.position.array, lc = gazeFx.lg.attributes.color.array;
+  const dp = gazeFx.dg.attributes.position.array, dc = gazeFx.dg.attributes.color.array;
+  let n = 0;
+  const c = new THREE.Color();
+  for (const a of agents) {
+    if (n >= GAZE_FX_MAX) break;
+    if (a.done || !a.gazing || !a.gazeHit) continue;
+    // 注視の強さ（中心視ほど濃い）で色を振る: 黄 → 橙赤
+    const t = clamp((a.gazeW || 0) / 0.2, 0, 1);
+    c.setHSL(lerp(0.13, 0.03, t), 0.85, lerp(0.62, 0.5, t));
+    lp[n * 6] = a.x; lp[n * 6 + 1] = a.eyeH; lp[n * 6 + 2] = a.z;
+    lp[n * 6 + 3] = a.gazeHit[0]; lp[n * 6 + 4] = a.gazeHit[1]; lp[n * 6 + 5] = a.gazeHit[2];
+    for (let k = 0; k < 2; k++) {
+      const f = k ? 1 : 0.45;                       // 目元は淡く、注視点側を濃く
+      lc[n * 6 + k * 3] = c.r * f + (1 - f) * 0.98; lc[n * 6 + k * 3 + 1] = c.g * f + (1 - f) * 0.86; lc[n * 6 + k * 3 + 2] = c.b * f + (1 - f) * 0.55;
+    }
+    dp[n * 3] = a.gazeHit[0]; dp[n * 3 + 1] = a.gazeHit[1]; dp[n * 3 + 2] = a.gazeHit[2];
+    dc[n * 3] = c.r; dc[n * 3 + 1] = c.g; dc[n * 3 + 2] = c.b;
+    n++;
+  }
+  for (let i = n; i < GAZE_FX_MAX; i++) {
+    lp[i * 6] = lp[i * 6 + 1] = lp[i * 6 + 2] = lp[i * 6 + 3] = lp[i * 6 + 4] = lp[i * 6 + 5] = 0;
+    dp[i * 3] = 0; dp[i * 3 + 1] = -5; dp[i * 3 + 2] = 0;
+  }
+  gazeFx.lg.attributes.position.needsUpdate = true;
+  gazeFx.lg.attributes.color.needsUpdate = true;
+  gazeFx.dg.attributes.position.needsUpdate = true;
+  gazeFx.dg.attributes.color.needsUpdate = true;
 }
 
 function disposeAgent(agent) {
@@ -2578,8 +2944,33 @@ function updateVisuals(realDt) {
     if (!a.mesh) return;
     a.mesh.position.set(a.x, 0, a.z);
     a.mesh.rotation.y = a.heading;
-    const walking = a.state === 'walk' || a.state === 'toRegister' || a.state === 'exit' || a.state === 'queue';
-    a.bodyMesh.position.y = 0.43 + (walking ? Math.abs(Math.sin(time * 7 + a.walkPhase)) * 0.035 : 0);
+    // 歩幅・ピッチを実速度に連動させる（速いほど大きく速く振る）
+    const sp = Math.max(0, a.v || 0);
+    const bend = a.bend || 0;
+    a.walkPhase = (a.walkPhase || 0) + realDt * (2.4 + sp * 4.4);
+    const swing = Math.sin(a.walkPhase) * Math.min(0.60, sp * 0.52);
+    const hipDrop = bend * 0.30;                       // しゃがむと腰が沈む
+    if (a.legs) {
+      // 歩行は前後に振り、屈むと両膝を開いて腰を落とす
+      a.legs[0].rotation.x = swing - bend * 0.42;
+      a.legs[1].rotation.x = -swing - bend * 0.42;
+      a.legs[0].position.y = a.legs[1].position.y = a.hipY - hipDrop;
+      a.legs[0].scale.y = a.legs[1].scale.y = 1 - bend * 0.30;
+    }
+    const reach = a.reach || 0;
+    if (a.arms) {
+      // 通常は脚と逆位相に腕を振り、商品を取るときは前方へ伸ばす
+      a.arms[0].rotation.x = lerp(-swing * 0.72, -1.5, reach);
+      a.arms[1].rotation.x = lerp(swing * 0.72, -0.3, reach * 0.5);
+    }
+    // 屈み込み（下段を覗く）＝腰から前傾し、全体が沈む
+    a.torsoPivot.rotation.x = bend * 0.66;
+    a.torsoPivot.position.y = a.hipY - hipDrop;
+    a.mesh.position.y = (sp > 0.05 ? Math.abs(Math.sin(a.walkPhase)) * 0.022 : 0);
+    // 頭は体と独立。視線の向きそのもの
+    let hy = (a.headYaw || a.heading) - a.heading;
+    while (hy > Math.PI) hy -= 2 * Math.PI; while (hy < -Math.PI) hy += 2 * Math.PI;
+    a.headPivot.rotation.set(-(a.headPitch || 0) - bend * 0.62, hy, 0, 'YXZ');
     a.coneHolder.visible = S.layers.cones && !a.done;
     if (a.ring) a.ring.visible = a.hasNovelty;
     if (a.dwellDot) {
@@ -2616,6 +3007,7 @@ function updateVisuals(realDt) {
     scene.fog.near = (window.CLOUD && CLOUD.on) ? 60 : 40;
     scene.fog.far = (window.CLOUD && CLOUD.on) ? 170 : 95;
   }
+  updateGazeLines();
   if (window.__cloudReady) updateCloud(realDt);
 
   heatTimer += realDt;
@@ -3504,7 +3896,7 @@ function bindControls() {
     if (S.rival) beacon('競合店セールを検知（推定人流 -15%）', 'seg-ad');
     refreshCharts(); renderActions();
   });
-  ['shelfheat', 'floorheat', 'cones', 'trails', 'labels'].forEach(k => {
+  ['shelfheat', 'floorheat', 'gaze', 'cones', 'trails', 'labels'].forEach(k => {
     $('ly-' + k).addEventListener('change', e => S.layers[k] = e.target.checked);
   });
   document.querySelectorAll('.spd-btn').forEach(b => {
@@ -5446,8 +5838,7 @@ function updateCloud(realDt) {
 
   agents.forEach(a => {
     if (!a.mesh) return;
-    if (a.bodyMesh) a.bodyMesh.visible = !CLOUD.on;
-    if (a.headMesh) a.headMesh.visible = !CLOUD.on;
+    if (a.bodyParts) a.bodyParts.forEach(m => m.visible = !CLOUD.on);
     if (a.ring) a.ring.visible = a.hasNovelty && !CLOUD.on;
     if (a.detDot) {
       a.detDot.visible = CLOUD.on && CLOUD.detection;

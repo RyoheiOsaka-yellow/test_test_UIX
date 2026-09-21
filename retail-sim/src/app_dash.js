@@ -838,7 +838,7 @@ function bindControls() {
     if (S.rival) beacon('競合店セールを検知（推定人流 -15%）', 'seg-ad');
     refreshCharts(); renderActions();
   });
-  ['shelfheat', 'floorheat', 'cones', 'trails', 'labels'].forEach(k => {
+  ['shelfheat', 'floorheat', 'gaze', 'cones', 'trails', 'labels'].forEach(k => {
     $('ly-' + k).addEventListener('change', e => S.layers[k] = e.target.checked);
   });
   document.querySelectorAll('.spd-btn').forEach(b => {
