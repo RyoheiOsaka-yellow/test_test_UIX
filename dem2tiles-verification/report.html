@@ -1,0 +1,403 @@
+<title>dem2tiles 静岡 ALB 検証</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=BIZ+UDPGothic:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#f6f8fa; --surface:#ffffff; --ink:#15243a; --ink-2:#4a5a70; --ink-3:#7d8a9c;
+  --line:#d9e0e8; --line-2:#c2ccd8;
+  --deep:#0b3d6b; --sea:#1f6fb2; --shoal:#9cc7e8; --foam:#e4f0fa;
+  --ok:#1f7a4d; --ok-bg:#e3f3ea; --note:#9a5b00; --note-bg:#fbf0d9;
+  --code-bg:#eef2f6;
+  --sans:"BIZ UDPGothic","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --head:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0f1721; --surface:#16202c; --ink:#e6edf5; --ink-2:#aab8c9; --ink-3:#7f8ea1;
+    --line:#26323f; --line-2:#354353;
+    --deep:#8fc3ec; --sea:#5ea4e0; --shoal:#2a5f8d; --foam:#16304a;
+    --ok:#6fcf97; --ok-bg:#153524; --note:#f0b95a; --note-bg:#3a2a10;
+    --code-bg:#1c2733;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0f1721; --surface:#16202c; --ink:#e6edf5; --ink-2:#aab8c9; --ink-3:#7f8ea1;
+  --line:#26323f; --line-2:#354353;
+  --deep:#8fc3ec; --sea:#5ea4e0; --shoal:#2a5f8d; --foam:#16304a;
+  --ok:#6fcf97; --ok-bg:#153524; --note:#f0b95a; --note-bg:#3a2a10;
+  --code-bg:#1c2733;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.75;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding-block:0 64px;padding-inline:20px}
+a{color:var(--sea);text-decoration-thickness:1px;text-underline-offset:3px}
+a:focus-visible,button:focus-visible{outline:2px solid var(--sea);outline-offset:2px}
+code{font-family:var(--mono);font-size:.86em;background:var(--code-bg);padding:.1em .38em;border-radius:4px}
+pre{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:var(--code-bg);border:1px solid var(--line);border-radius:6px;padding:14px 16px;overflow-x:auto;margin:14px 0}
+pre code{background:none;padding:0;font-size:inherit}
+h1,h2,h3{font-family:var(--head);text-wrap:balance;line-height:1.3;margin:0}
+h2{font-size:22px;font-weight:700;margin:56px 0 8px;padding-top:12px;border-top:2px solid var(--ink)}
+h3{font-size:17px;font-weight:700;margin:32px 0 10px;color:var(--ink)}
+p{margin:10px 0;max-width:72ch}
+ul,ol{margin:8px 0 12px;padding-left:1.4em;max-width:76ch}
+li{margin:4px 0}
+strong{font-weight:700}
+.eyebrow{font-family:var(--head);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:700}
+
+/* header */
+.masthead{padding-block:40px 28px;border-bottom:1px solid var(--line)}
+.masthead h1{font-size:clamp(26px,4vw,40px);font-weight:900;letter-spacing:-.01em;margin:8px 0 10px}
+.masthead .lede{font-size:16px;color:var(--ink-2);max-width:64ch;margin:0}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 28px;margin-top:22px;font-size:13.5px}
+.meta div{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:baseline}
+.meta dt{color:var(--ink-3);white-space:nowrap;font-family:var(--head);font-weight:700;font-size:12px;letter-spacing:.06em}
+.meta dd{margin:0;color:var(--ink);overflow-wrap:anywhere}
+
+/* verdict */
+.verdict{margin-top:28px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.v{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}
+.v .pill{font-family:var(--head);font-weight:700;font-size:11.5px;letter-spacing:.08em;padding:3px 9px;border-radius:999px;white-space:nowrap;margin-top:3px}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.note{background:var(--note-bg);color:var(--note)}
+.v b{display:block;font-family:var(--head);font-size:15px;margin-bottom:2px}
+.v span{color:var(--ink-2);font-size:13.5px;line-height:1.6}
+
+/* layout with toc */
+.body{display:grid;grid-template-columns:1fr;gap:0 48px}
+@media (min-width:1000px){
+  .body{grid-template-columns:200px minmax(0,1fr)}
+  .toc{position:sticky;top:env(safe-area-inset-top,0px);align-self:start;padding-top:56px;font-size:13px}
+}
+.toc{display:none}
+@media (min-width:1000px){.toc{display:block}}
+.toc ol{list-style:none;padding:0;margin:0;border-left:1px solid var(--line)}
+.toc li{margin:0}
+.toc a{display:block;padding:5px 0 5px 14px;color:var(--ink-2);text-decoration:none;border-left:2px solid transparent;margin-left:-1px}
+.toc a:hover{color:var(--ink);border-left-color:var(--sea)}
+.toc .sub a{padding-left:26px;font-size:12.5px;color:var(--ink-3)}
+
+/* tables */
+.tbl{overflow-x:auto;margin:14px 0;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+th{font-family:var(--head);font-weight:700;font-size:12.5px;color:var(--ink-2);background:var(--code-bg);white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+td.n,th.n{text-align:right;font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+td.k{white-space:nowrap}
+tr.sum td{font-weight:700;border-top:2px solid var(--line-2)}
+.hit{color:var(--ok);font-weight:700}
+
+/* callouts */
+.note-box{border-left:3px solid var(--note);background:var(--note-bg);padding:10px 14px;border-radius:0 6px 6px 0;margin:14px 0;max-width:76ch}
+.ok-box{border-left:3px solid var(--ok);background:var(--ok-bg);padding:10px 14px;border-radius:0 6px 6px 0;margin:14px 0;max-width:76ch}
+.finding{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:18px 20px;margin:18px 0}
+.finding h3{margin:0 0 8px;display:flex;gap:10px;align-items:baseline}
+.finding h3 .no{font-family:var(--mono);color:var(--sea);font-size:13px}
+.finding .prop{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line-2)}
+.finding .prop .eyebrow{margin-bottom:4px;color:var(--sea)}
+
+/* figures */
+.figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin:16px 0}
+figure{margin:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surface)}
+figure img{display:block;width:100%;height:auto;max-width:100%}
+figcaption{padding:8px 12px;font-size:12.5px;color:var(--ink-2);border-top:1px solid var(--line)}
+.files td:first-child{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--line);font-size:12.5px;color:var(--ink-3)}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+</style>
+
+<div class="wrap">
+<header class="masthead">
+  <div class="eyebrow">検証レポート · 2026-09-21</div>
+  <h1>dem2tiles を静岡県 中西部沿岸 ALB DEM の全 1,164 図郭で検証する</h1>
+  <p class="lede"><a href="https://github.com/shiwaku/dem2tiles">shiwaku/dem2tiles</a> を、静岡県の航空レーザ測深（ALB）グリッドデータ 1,164 図郭すべてで実行し、README の記載と 3 形式の標高タイルの正しさを確かめた。</p>
+  <dl class="meta">
+    <div><dt>dem2tiles</dt><dd><code>37c8ab4</code>（2026-09-21, Merge pull request #13 feat/publish-viewer）</dd></div>
+    <div><dt>grid2geotiff</dt><dd><code>c4ddeb7</code>（2026-09-21, Merge pull request #17 docs/split-readme）</dd></div>
+    <div><dt>入力データ</dt><dd><a href="https://www.geospatial.jp/ckan/dataset/shizuoka-2025-pointcloud-alb">VIRTUAL SHIZUOKA 静岡県 中西部沿岸 点群データ</a>「ALBデータ グリッドデータ」（グラウンドデータを 0.5 m グリッドに整理した DEM、CC BY 4.0 / ODbL）</dd></div>
+    <div><dt>実行環境</dt><dd>Ubuntu 24.04、4 vCPU、15.7 GB RAM、Docker 29.3.1（イメージ内 GDAL 3.8.4 / rasterio 1.5.1）</dd></div>
+  </dl>
+
+  <div class="verdict">
+    <div class="v"><span class="pill ok">PASS</span><div><b>全 1,164 図郭が通り、3 形式が生成された</b><span>3,460 枚、merged.tif 613 MB、222,948 × 101,654 px。README の実測値と一致。</span></div></div>
+    <div class="v"><span class="pill ok">PASS</span><div><b>復号値が元 DEM と一致する</b><span>94〜98% が 0.1 m 以内、99% 以上が 0.5 m 以内、バイアス ±0.005 m。差は急斜面のリサンプリング差のみ。</span></div></div>
+    <div class="v"><span class="pill ok">PASS</span><div><b>負の標高と無効値の扱いが仕様どおり</b><span>水面下 -14.5 m まで 3 形式で正しく符号化。数値 PNG の無効値は NoData と画素単位で完全一致。</span></div></div>
+    <div class="v"><span class="pill ok">PASS</span><div><b>再実行・部分再構築・FORCE・CRS 混在の拒否</b><span>2 回目は 2.4 秒で全スキップ。設定変更は下流だけ再構築。混在は exit 1。</span></div></div>
+    <div class="v"><span class="pill note">改善余地</span><div><b>RGB 系の空タイル 332 枚（9.6%）</b><span>z17 では 2,186 枚中 259 枚が全画素 FILL。図郭の外接矩形で列挙しているため。</span></div></div>
+    <div class="v"><span class="pill note">改善余地</span><div><b>ログの 4 分の 3 が警告と DEBUG、mbtiles の metadata が空</b><span>27,711 行中 20,764 行。bounds / minzoom / maxzoom が無い。</span></div></div>
+  </div>
+</header>
+
+<div class="body">
+<nav class="toc" aria-label="目次">
+  <ol>
+    <li><a href="#procedure">手順</a></li>
+    <li class="sub"><a href="#data">データの取得と GeoTIFF 化</a></li>
+    <li class="sub"><a href="#run">dem2tiles の実行</a></li>
+    <li><a href="#results">結果</a></li>
+    <li class="sub"><a href="#timing">所要時間</a></li>
+    <li class="sub"><a href="#size">出力の大きさと枚数</a></li>
+    <li class="sub"><a href="#decode">復号の正しさ</a></li>
+    <li class="sub"><a href="#origin">元 GeoTIFF との直接比較</a></li>
+    <li class="sub"><a href="#slope">大きな差の正体</a></li>
+    <li class="sub"><a href="#rerun">再実行と検証の挙動</a></li>
+    <li class="sub"><a href="#viewer">viewer での目視確認</a></li>
+    <li><a href="#findings">所見と提案</a></li>
+    <li><a href="#repro">再現方法</a></li>
+    <li><a href="#files">ファイル</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<h2 id="procedure">手順</h2>
+
+<h3 id="data">1. データの取得と GeoTIFF 化</h3>
+<p>ダウンロード URL は配布ページのベクトルタイル（<code>{z}/{x}/{y}.pbf</code>）の属性 <code>URL</code> に入っている。grid2geotiff に同梱の URL 一覧（<code>testdata/urllist-shizuoka-alb.txt</code>、1,164 件）が、データセットの「ファイルリスト」（<code>file_itiran_grd.txt</code>、1,164 件）と完全一致することを確認したうえで使った。</p>
+<pre><code>$ python scripts/fetch_shizuoka_alb.py --list testdata/urllist-shizuoka-alb.txt --out data/raw -j 8
+完了: data/raw  1164/1164 件  988 MB
+
+$ grid2geotiff convert data/raw -o data/out --columns 1,2,3 -j 4
+変換: 成功 1164 / 失敗 0 / 計 1164      # 43 秒、出力 124 MB</code></pre>
+<div class="tbl"><table>
+<thead><tr><th>入力の統計</th><th>値</th></tr></thead>
+<tbody>
+<tr><td class="k">座標系</td><td>1,164 件すべて EPSG:6676（図郭番号から判定）</td></tr>
+<tr><td class="k">格子間隔</td><td>1,164 件すべて 0.5 m</td></tr>
+<tr><td class="k">1/50000 図郭</td><td>ND 115 / NE 206 / OB 84 / OC 270 / OD 267 / PC 22 / PD 200</td></tr>
+<tr><td class="k">欠損率</td><td>最小 0.00% / 中央 31.22% / 最大 95.66%</td></tr>
+<tr><td class="k">標高</td><td>-14.5 〜 124.4 m（有効セルの 69% が負値 = 水面下）</td></tr>
+<tr><td class="k">有効セル</td><td>246,456,840（61.6 km²）</td></tr>
+<tr><td class="k">外接矩形</td><td>107.0 × 58.9 km</td></tr>
+</tbody></table></div>
+<p>外接矩形と有効面積は README の「1164 図郭、外接矩形 107 x 58.9 km、有効データ 61.6 km2」と一致する。</p>
+
+<h3 id="run">2. dem2tiles の実行</h3>
+<pre><code>$ docker build -t dem2tiles .
+$ docker run --rm -v $PWD/data/out:/input:ro -v $PWD/output:/output dem2tiles</code></pre>
+<div class="note-box">この検証環境は egress プロキシで TLS を再終端するため、<code>docker build</code> 内の <code>git clone</code> が CA を信頼できず失敗した。<strong>Dockerfile 本体には手を入れず</strong>、CA を追加したベースイメージ（<code>scripts/Dockerfile.ca-base</code>）を <code>ubuntu:24.04</code> の代わりに <code>FROM</code> するだけの <code>Dockerfile.ccr</code> を作ってビルドした。dem2tiles 側の問題ではない。</div>
+<p>ログ全文（警告行を除く）は <code>results/run1_full.log</code>。</p>
+<pre><code>[dem2tiles] found 1164 GeoTIFF(s) under /input
+[dem2tiles] source CRS: EPSG:6676, pixel size: 0.500000 m, centre latitude: 35.035738
+[dem2tiles] RGB_MAX_ZOOM=auto -&gt; 17 (512 px tiles)
+[dem2tiles] GSIDEM_MAX_ZOOM=auto -&gt; 18 (256 px tiles)
+[dem2tiles] merging 1164 GeoTIFF(s)
+[dem2tiles] reprojecting EPSG:6676 -&gt; EPSG:4326
+Creating output file that is 222948P x 101654L.
+[dem2tiles] replacing nodata (-9999) with 0
+[dem2tiles] building mapbox tiles (z5-17)
+tile_driver: 3460 tile(s) intersect the inputs (z5-17)
+[dem2tiles] building terrarium tiles (z5-17)
+tile_driver: 3460 tile(s) intersect the inputs (z5-17)
+[dem2tiles] building gsidem tiles (z5-18)
+[dem2tiles] done</code></pre>
+
+<h2 id="results">結果</h2>
+
+<h3 id="timing">所要時間（4 vCPU、JOBS=4）</h3>
+<p><code>output/.state/</code> のマーカーの更新時刻から求めた。</p>
+<div class="tbl"><table>
+<thead><tr><th>ステップ</th><th class="n">所要</th><th>README の記載</th></tr></thead>
+<tbody>
+<tr><td>merge + 再投影（gdalwarp）</td><td class="n">218 s</td><td>150 s</td></tr>
+<tr><td>NoData 置換（gdal_calc）</td><td class="n">210 s</td><td>–</td></tr>
+<tr><td>mapbox（rio-rgbify + mb-util）</td><td class="n">325 s</td><td>5 分</td></tr>
+<tr><td>terrarium（rio-terrarium + mb-util）</td><td class="n">332 s</td><td>5 分</td></tr>
+<tr><td>gsidem（gdal2NPtiles）</td><td class="n">510 s</td><td>–</td></tr>
+<tr class="sum"><td>合計</td><td class="n">1,595 s（26.6 分）</td><td></td></tr>
+</tbody></table></div>
+<p>再投影が README より遅いのは CPU 数の差（README の計測環境は JOBS=12 程度と推測）で、<code>TILED=YES + SPARSE_OK=TRUE</code> の効果（ストリップ型では 18 分で進まない）は再現できている。</p>
+
+<h3 id="size">出力の大きさと枚数</h3>
+<div class="tbl"><table>
+<thead><tr><th>出力</th><th class="n">枚数</th><th class="n">容量</th><th>README の記載</th></tr></thead>
+<tbody>
+<tr><td><code>merged.tif</code></td><td class="n">–</td><td class="n">585 MiB（613,365,978 B）</td><td class="hit">613 MB</td></tr>
+<tr><td><code>merged_filled.tif</code></td><td class="n">–</td><td class="n">585 MiB</td><td>–</td></tr>
+<tr><td><code>mapbox</code>（z5–17、512 px）</td><td class="n">3,460</td><td class="n">108 MiB</td><td class="hit">3,460 枚</td></tr>
+<tr><td><code>terrarium</code>（z5–17、512 px）</td><td class="n">3,460</td><td class="n">323 MiB</td><td class="hit">3,460 枚</td></tr>
+<tr><td><code>gsidem</code>（z5–18、256 px）</td><td class="n">9,017</td><td class="n">248 MiB</td><td>–</td></tr>
+<tr class="sum"><td>3 形式合計</td><td class="n"></td><td class="n">679 MiB（712 MB）</td><td class="hit">715 MB</td></tr>
+</tbody></table></div>
+<p>ズーム別の枚数は <code>results/tileset.json</code>。mapbox と terrarium のタイル集合は全ズームで同一。mbtiles の <code>tiles</code> テーブルの行数（3,460）と展開ディレクトリの枚数も一致する。</p>
+<p><code>merged.tif</code> は 512×512 ブロック・DEFLATE・NoData -9999・Float32、画素 0.0000052636°（約 0.485 m）で README の説明どおり。</p>
+<p><strong>最大ズームの自動決定:</strong> 0.5 m グリッド・緯度 35.0° で <code>RGB_MAX_ZOOM=17</code>（512 px）、<code>GSIDEM_MAX_ZOOM=18</code>（256 px）。README の表（z17 512 px = 0.485 m/px、z18 256 px = 0.485 m/px）と一致する。出力 PNG のサイズも mapbox / terrarium が 512×512、gsidem が 256×256 の RGB だった。</p>
+
+<h3 id="decode">復号の正しさ（merged.tif との比較）</h3>
+<p><code>scripts/decode_check.py</code>。各形式・各ズームからタイルを 60 枚ランダムに選び、1 枚あたり 4,096 画素の中心座標で <code>merged.tif</code>（EPSG:4326）を最近傍参照して差をとった。</p>
+<div class="tbl"><table>
+<thead><tr><th>形式</th><th class="n">ズーム</th><th class="n">有効画素</th><th class="n">平均 |d|</th><th class="n">99 パーセンタイル</th><th class="n">0.1 m 以内</th><th class="n">0.5 m 以内</th><th>復号値の範囲</th></tr></thead>
+<tbody>
+<tr><td>mapbox</td><td class="n">17</td><td class="n">126,881</td><td class="n">0.029 m</td><td class="n">0.15 m</td><td class="n">98.0%</td><td class="n">99.8%</td><td>-8.3 〜 11.7 m</td></tr>
+<tr><td>terrarium</td><td class="n">17</td><td class="n">126,881</td><td class="n">0.021 m</td><td class="n">0.14 m</td><td class="n">98.3%</td><td class="n">99.8%</td><td>-8.3 〜 11.7 m</td></tr>
+<tr><td>gsidem</td><td class="n">18</td><td class="n">139,889</td><td class="n">0.022 m</td><td class="n">0.20 m</td><td class="n">97.3%</td><td class="n">99.8%</td><td>-9.4 〜 13.0 m</td></tr>
+<tr><td>gsidem</td><td class="n">17</td><td class="n">105,665</td><td class="n">0.035 m</td><td class="n">0.35 m</td><td class="n">95.4%</td><td class="n">99.4%</td><td>-12.0 〜 68.2 m</td></tr>
+<tr><td>mapbox</td><td class="n">13</td><td class="n">15,665</td><td class="n">0.159 m</td><td class="n">2.31 m</td><td class="n">73.4%</td><td class="n">93.8%</td><td>-12.9 〜 75.7 m</td></tr>
+<tr><td>gsidem</td><td class="n">13</td><td class="n">15,608</td><td class="n">0.153 m</td><td class="n">1.83 m</td><td class="n">67.5%</td><td class="n">94.1%</td><td>-13.9 〜 69.5 m</td></tr>
+<tr><td>terrarium</td><td class="n">10</td><td class="n">254</td><td class="n">0.873 m</td><td class="n">7.23 m</td><td class="n">23.6%</td><td class="n">61.8%</td><td>-7.3 〜 9.8 m</td></tr>
+</tbody></table></div>
+<p>符号化分解能は Terrain-RGB が 0.1 m、Terrarium が 1/256 m、数値 PNG が 0.01 m なので、「0.1 m 以内」が量子化誤差の目安になる。</p>
+<p>z13 以下で差が広がるのは比較方法の限界で、欠陥ではない。z13 は 1 画素が約 8 m（元の 16×16 セル）を平均した値なのに対し、この検証は画素中心の 1 セルを最近傍で参照している。gdal2NPtiles は数値に戻してから <code>average</code> で縮小し、rio 系は bilinear で縮小するので、起伏のある場所ほど 1 セルの値との差が出る。低ズームでも復号値の範囲（-13.9 〜 75.7 m）が入力の範囲（-14.5 〜 124.4 m）に収まり、負値も保たれている。</p>
+<p><strong>無効値の対応:</strong></p>
+<ul>
+<li>gsidem z18: merged.tif が NoData の 105,871 画素すべてがタイルでも無効値 <code>x = 2^23</code>。不一致 <strong>0 画素</strong>。</li>
+<li>mapbox / terrarium z17: merged.tif が NoData の 118,879 画素のうち 198 / 209 画素（0.17%）が FILL(0) でない。データ縁で bilinear が隣接する有効画素と混ざったもの（所見 2）。</li>
+</ul>
+
+<h3 id="origin">復号の正しさ（再投影前の元 GeoTIFF との直接比較）</h3>
+<p><code>scripts/origin_check.py</code>。<code>merged.tif</code> を経由せず、タイル画素中心を EPSG:6676 に変換して図郭 GeoTIFF の VRT を直接参照した。再投影・タイル化を含めた全工程の位置ずれを見る。</p>
+<div class="tbl"><table>
+<thead><tr><th>形式</th><th class="n">ズーム</th><th class="n">有効画素</th><th class="n">平均 |d|</th><th class="n">平均バイアス</th><th class="n">0.1 m 以内</th><th class="n">0.5 m 以内</th></tr></thead>
+<tbody>
+<tr><td>mapbox</td><td class="n">17</td><td class="n">66,573</td><td class="n">0.036 m</td><td class="n">+0.001 m</td><td class="n">97.3%</td><td class="n">99.3%</td></tr>
+<tr><td>terrarium</td><td class="n">17</td><td class="n">66,573</td><td class="n">0.044 m</td><td class="n">-0.001 m</td><td class="n">94.0%</td><td class="n">99.3%</td></tr>
+<tr><td>gsidem</td><td class="n">18</td><td class="n">97,500</td><td class="n">0.041 m</td><td class="n">-0.005 m</td><td class="n">94.5%</td><td class="n">99.4%</td></tr>
+<tr><td>gsidem</td><td class="n">15</td><td class="n">36,331</td><td class="n">0.093 m</td><td class="n">-0.006 m</td><td class="n">79.2%</td><td class="n">97.5%</td></tr>
+</tbody></table></div>
+<p>平均バイアスがほぼ 0 なので、半画素ずれのような系統誤差はない。</p>
+
+<h3 id="slope">大きな差の正体</h3>
+<p><code>scripts/slope_check.py</code>。差が 0.1 m を超える画素について、元 DEM の 3×3 近傍の起伏（max − min）と比べた。差が局所起伏を超える画素だけが「リサンプリングでは説明できないずれ」になる。</p>
+<div class="tbl"><table>
+<thead><tr><th>形式</th><th class="n">ズーム</th><th class="n">内部画素</th><th class="n">|d| &gt; 0.1 m</th><th class="n">うち局所起伏を超える</th><th class="n">説明できない差の最大</th><th>局所起伏の中央値（差が大きい画素 / 全体）</th></tr></thead>
+<tbody>
+<tr><td>mapbox</td><td class="n">17</td><td class="n">38,460</td><td class="n">1,326</td><td class="n"><strong>1</strong>（0.003%）</td><td class="n">0.30 m</td><td>1.40 m / 0.20 m</td></tr>
+<tr><td>gsidem</td><td class="n">18</td><td class="n">58,993</td><td class="n">2,785</td><td class="n"><strong>1</strong>（0.002%）</td><td class="n">0.22 m</td><td>0.60 m / 0.20 m</td></tr>
+</tbody></table></div>
+<div class="ok-box">差が 0.1 m を超える画素は、元 DEM の 3×3 近傍で中央値 0.6〜1.4 m の起伏がある場所（護岸・岸壁・航路の法面）に集中している。差が局所起伏を超えた画素は各 1 つで、その差も 0.3 m 以下。<strong>タイルの値は元 DEM の隣接セルの範囲内に収まっており、リサンプリング以外のずれはない。</strong> 最大差（4.9 m）が出たタイル <code>17/115791/52070</code> などの一覧は <code>results/decode_worst_tiles.txt</code>。</div>
+
+<h3 id="rerun">再実行・部分再構築・検証の挙動</h3>
+<div class="tbl"><table>
+<thead><tr><th>操作</th><th>結果</th></tr></thead>
+<tbody>
+<tr><td class="k">同じ設定で 2 回目（1,164 図郭）</td><td>5 ステップすべて <code>up to date, skipping</code>、<strong>2.4 秒</strong>で終了（<code>results/run2_skip.log</code>）</td></tr>
+<tr><td class="k"><code>output/gsidem</code> を消して再実行</td><td>gsidem だけ再構築、他はスキップ</td></tr>
+<tr><td class="k"><code>RGB_MAX_ZOOM=16</code></td><td>mapbox と terrarium だけ z5–16 で再構築、gsidem はスキップ</td></tr>
+<tr><td class="k"><code>mapbox.mbtiles</code> だけ消す（マーカーは残る）</td><td>mapbox だけ再構築（マーカーだけでは「完了」とみなさない）</td></tr>
+<tr><td class="k"><code>FORCE=1</code></td><td>全ステップ再構築</td></tr>
+<tr><td class="k"><code>OUTPUTS=gsidem</code></td><td><code>merged_filled.tif</code> を作らず gsidem のみ生成</td></tr>
+<tr><td class="k">EPSG:6676 2 件 + EPSG:6677 1 件を混ぜる</td><td><code>probe: inputs are in more than one CRS, refusing to merge</code> で exit 1、<code>merged.vrt</code> を作らない（<code>results/mixed_crs.log</code>）</td></tr>
+</tbody></table></div>
+<p>部分再構築の 5 件は 1 図郭の出力で確認した（全量では 1 回 5〜9 分かかるため）。</p>
+
+<h3 id="viewer">viewer での目視確認</h3>
+<p>同梱の <code>viewer/</code>（MapLibre）を <code>npm run dev</code> で起動し、Playwright で 3 形式を切り替えて撮影した（<code>scripts/viewer_screenshots.mjs</code>）。背景地図（地理院最適化ベクトルタイル）は検証環境の Chromium が外部 CA を信頼できず読めていないため白地になっているが、標高タイルはローカル配信で問題なく描画される。</p>
+<div class="figs">
+<figure><img src="images/omaezaki-terrarium.png" alt="御前崎港 z14、Terrarium タイルの段彩と陰影" width="1280" height="800"><figcaption>御前崎港 z14 · Terrarium（512 px、z5–17）。段彩レンジは海底 -10〜0 m。</figcaption></figure>
+<figure><img src="images/omaezaki-z16-gsidem.png" alt="御前崎港 z16、数値 PNG タイルの段彩と陰影" width="1280" height="800"><figcaption>御前崎港 z16 · 数値 PNG（256 px、z5–18）。viewer が gsidem:// で terrarium に再符号化して表示。</figcaption></figure>
+<figure><img src="images/hamamatsu-lake-mapbox.png" alt="浜名湖 今切口 z13、Terrain-RGB タイル" width="1280" height="800"><figcaption>浜名湖 今切口 z13 · Mapbox Terrain-RGB。</figcaption></figure>
+<figure><img src="images/overview-gsidem.png" alt="全体 z10、数値 PNG タイル" width="1280" height="800"><figcaption>全体 z10 · 数値 PNG。沿岸に沿った測線状のデータ範囲。</figcaption></figure>
+</div>
+<ul>
+<li>3 形式で段彩（海底 -10〜0 m）と陰影が同じ地形を描く。防波堤・航路・泊地の水深差が読める。</li>
+<li>数値 PNG は viewer が <code>gsidem://</code> で terrarium に再符号化して表示しており、負の標高が正しく出る。</li>
+<li>3 形式のスクリーンショットは見分けがつかないほど同じ。RGB 系の FILL（0 m）はこの段彩レンジでは最上端＝ほぼ白になり、数値 PNG の無効値（透過）と同じ見た目になるため、この表示では FILL の影響は現れない（陸域を含むレンジや陰影の縁で現れる。所見 2）。</li>
+</ul>
+
+<h2 id="findings">所見と提案</h2>
+
+<div class="finding">
+<h3><span class="no">01</span>図郭の外接矩形による列挙が、空タイルを 332 枚残す</h3>
+<p><code>tile_driver.py</code> は各図郭 GeoTIFF の <code>bounds</code> からタイルを列挙する。ALB の図郭は海域側が大きく欠けている（欠損率の中央値 31%、最大 96%）ので、図郭の矩形には入るが有効画素が 1 つも届かないタイルが残る。</p>
+<div class="tbl"><table>
+<thead><tr><th class="n">ズーム</th><th class="n">RGB 系タイル</th><th class="n">うち全画素 FILL</th><th class="n">数値 PNG（NoData 保持）のタイル</th></tr></thead>
+<tbody>
+<tr><td class="n">15</td><td class="n">289</td><td class="n">13</td><td class="n">276</td></tr>
+<tr><td class="n">16</td><td class="n">756</td><td class="n">54</td><td class="n">702</td></tr>
+<tr><td class="n">17</td><td class="n">2,186</td><td class="n"><strong>259</strong></td><td class="n">1,924</td></tr>
+<tr class="sum"><td class="n">合計（z5–17）</td><td class="n">3,460</td><td class="n">332（9.6%）</td><td class="n">3,128</td></tr>
+</tbody></table></div>
+<p>容量への影響は小さい（空タイルは 1 枚 2 KB 弱、合計 0.6 MB）が、枚数と生成時間の 1 割が無駄になっている。README の「機械的に列挙すると 136,148 枚」からは十分に減っているので、これは残りの 1 割の話。</p>
+<div class="prop"><div class="eyebrow">提案</div>列挙のもとを図郭の矩形ではなく<strong>有効画素の有無</strong>にする。<code>merged.tif</code> は <code>SPARSE_OK</code> で NoData ブロックを持たないので、rasterio の <code>block_windows</code> で実ブロックの位置だけを拾えば、512 px ブロック単位のフットプリントが再投影後の座標で安価に得られる。これを <code>mercantile.tiles</code> に渡せば、gdal2NPtiles と同じ集合（z17 で 1,924 枚）に揃う。別案として、図郭ごとに <code>dataset_mask()</code> の有効範囲の外接矩形に縮めるだけでも、海域側が欠けた図郭では効く。</div>
+</div>
+
+<div class="finding">
+<h3><span class="no">02</span><code>FILL_VALUE=0</code> は水深データでは「海面」と紛れる</h3>
+<p>Terrain-RGB / Terrarium は「値なし」を表せないので NoData を <code>FILL_VALUE</code> で埋めるしかない。既定の 0 は陸域 DEM では自然だが、ALB は有効セルの 69% が負値（海底）で、FILL の 0 m は周囲の海底（-5〜-14 m）より<strong>高い</strong>。段彩ではデータの無い海域が「浅い帯」に見え、陰影では FILL との境界が崖になる。</p>
+<p>さらに、bilinear で再投影する前に置換するため（<code>merged_filled.tif</code> を作ってからタイル化）、データ縁の画素が 0 と混ざる。上の検証で RGB 系の NoData 画素の 0.17% が FILL 以外の値を持っていたのはこれで、逆に縁の有効画素も 0 側に引かれる。</p>
+<div class="prop"><div class="eyebrow">提案（どちらか、または両方）</div>
+<ul>
+<li>ALB のような水深を含むデータでは <code>FILL_VALUE</code> を<strong>データ範囲より低い値</strong>（例 <code>-100</code>）にする運用を README に書く。viewer の段彩レンジで FILL を範囲外に落とせるようになる。</li>
+<li>RGB 系を <code>merged.tif</code>（NoData 保持）からタイル化し、<strong>タイル化後に</strong> NoData 画素を FILL に置く。rio-rgbify / rio-terrarium は <code>nodata</code> を見ないので、<code>tile_driver.py</code> で <code>_encode_as_png</code> を差し替えて mask を見るのが一案。これなら縁の混色が消える。</li>
+</ul>
+現状の挙動自体は README の説明（「Terrain-RGB と Terrarium には値なしを表す方法がない」）と矛盾しないので、仕様として明記されていれば十分とも言える。</div>
+</div>
+
+<div class="finding">
+<h3><span class="no">03</span>座標系のラベル: データは「日本測地系2024」、出力は EPSG:6676（JGD2011）</h3>
+<p>データセットの説明は「日本測地系2024／平面直角座標系第8系」だが、grid2geotiff は図郭番号から JGD2011 の EPSG:6676 を付与し、dem2tiles もそれを受ける。</p>
+<p>測地成果2024 は<strong>測地系の定義を変えるものではなく、水平位置の数値は JGD2011 から引き継ぐ</strong>（<a href="https://www.gsi.go.jp/sokuchikijun/datum-main.html">国土地理院</a>）。したがって EPSG:6676 で再投影しても<strong>位置はずれない</strong>。JGD2024 の EPSG コードは 2026 年 4 月の EPSG v12.055 で登録された（<a href="https://qiita.com/tohka383/items/df184ae9860b7af4a63c">Qiita: EPSG に登録された JGD2024</a>）が、イメージ内の GDAL 3.8.4 / PROJ はまだ持っていないため、当面は EPSG:6676 のままでよい。</p>
+<div class="prop"><div class="eyebrow">提案</div>README の「入力の検証」に「JGD2024 表記のデータは JGD2011 の EPSG で扱ってよい（数値は同じ）」と一言あると、利用者が <code>--crs</code> を探さずに済む。</div>
+</div>
+
+<div class="finding">
+<h3><span class="no">04</span>ログの 4 分の 3 が警告と DEBUG</h3>
+<div class="tbl"><table>
+<thead><tr><th>種類</th><th class="n">行数</th></tr></thead>
+<tbody>
+<tr><td>全体</td><td class="n">27,711</td></tr>
+<tr><td>rasterio <code>NotGeoreferencedWarning</code>（タイル 1 枚ごとに 2 行）</td><td class="n">6,920</td></tr>
+<tr><td>mb-util の <code>DEBUG:</code> / <code>INFO:</code>（タイル 1 枚ごとに 2 行）</td><td class="n">13,844</td></tr>
+</tbody></table></div>
+<p>前者は rio-rgbify / rio-terrarium が PNG を <code>MemoryFile</code> に書くときの警告で無害。後者は mb-util がログレベルを DEBUG に固定しているため。</p>
+<div class="prop"><div class="eyebrow">提案</div><code>docker_entrypoint.sh</code> で <code>export PYTHONWARNINGS="ignore::rasterio.errors.NotGeoreferencedWarning"</code>（venv 側の python に効く）と、<code>mb-util --silent</code>（mbutil に <code>--silent</code> オプションがある）を付ける。これで進捗行だけが残り、<code>docker logs</code> が読めるようになる。</div>
+</div>
+
+<div class="finding">
+<h3><span class="no">05</span>mbtiles の metadata が空</h3>
+<p><code>mapbox.mbtiles</code> / <code>terrarium.mbtiles</code> の <code>metadata</code> は <code>format=png, name="", description="", version=1, type=baselayer</code> だけで、<code>bounds</code> / <code>minzoom</code> / <code>maxzoom</code> が無い。展開して配信するだけなら困らないが、mbtiles のまま tileserver-gl や PMTiles に渡すと範囲とズームを推定させることになる。</p>
+<div class="prop"><div class="eyebrow">提案</div><code>tile_driver.py</code> は <code>keep</code> の集合を持っているので、生成後に <code>metadata</code> へ <code>bounds</code>（<code>mercantile.bounds</code> の合併）、<code>minzoom</code>、<code>maxzoom</code>、<code>name</code>（<code>mapbox</code> / <code>terrarium</code>）を書き足せる。数行で済む。</div>
+</div>
+
+<div class="finding">
+<h3><span class="no">06</span>細かい点</h3>
+<ul>
+<li><code>probe.py</code> の <code>centre latitude</code> は<strong>先頭の 1 ファイル</strong>の中心緯度（35.036°）で、データ全体の中心（約 34.85°）ではない。ズームの決定には効かない（どちらでも z17 / z18）が、南北に長いデータでは端で 1 段ずれる可能性がある。<code>probe.py</code> は全ファイルを開いているので、全体の bounds から求めるのが自然。</li>
+<li><code>RGB_MAX_ZOOM</code> を明示したとき <code>RGB_MAX_ZOOM=auto -&gt;</code> の行が出ないので、ログからは何ズームで作ったか分からない。<code>building mapbox tiles (z5-16)</code> の行で分かるので実害はない。</li>
+<li><code>gsidem</code> の中に gdal2NPtiles のビューア（<code>leaflet.html</code> など 4 ファイル）が残る。README に書いてあるとおりだが、配信用にそのまま同期すると混ざる。</li>
+</ul>
+</div>
+
+<h2 id="repro">再現方法</h2>
+<pre><code># 1. データ
+git clone https://github.com/shiwaku/grid2geotiff &amp;&amp; pip install -e grid2geotiff
+python grid2geotiff/scripts/fetch_shizuoka_alb.py \
+    --list grid2geotiff/testdata/urllist-shizuoka-alb.txt --out data/raw -j 8
+grid2geotiff convert data/raw -o data/out --columns 1,2,3 -j 4
+
+# 2. タイル
+git clone https://github.com/shiwaku/dem2tiles &amp;&amp; docker build -t dem2tiles dem2tiles
+docker run --rm -v $PWD/data/out:/input:ro -v $PWD/output:/output dem2tiles
+
+# 3. 検証（rasterio / numpy / pillow が要る）
+python scripts/tileset_check.py output
+python scripts/decode_check.py --output output --kind gsidem --zoom 18 --samples 60
+gdalbuildvrt -input_file_list &lt;(sed 's#^/input/#data/out/#' output/input_files.txt) src6676.vrt
+python scripts/origin_check.py --output output --vrt src6676.vrt --kind mapbox --zoom 17
+python scripts/slope_check.py output src6676.vrt mapbox 17 40</code></pre>
+
+<h2 id="files">ファイル</h2>
+<p>リポジトリ <code>dem2tiles-verification/</code>（ブランチ <code>claude/keen-heisenberg-spitnf</code>）に置いた。</p>
+<div class="tbl"><table class="files">
+<thead><tr><th>パス</th><th>内容</th></tr></thead>
+<tbody>
+<tr><td>scripts/decode_check.py</td><td>3 形式の復号と merged.tif との比較</td></tr>
+<tr><td>scripts/origin_check.py</td><td>元 GeoTIFF（EPSG:6676）との直接比較</td></tr>
+<tr><td>scripts/slope_check.py</td><td>差と局所起伏の関係</td></tr>
+<tr><td>scripts/tileset_check.py</td><td>タイル集合の整合性、mbtiles metadata、空タイル</td></tr>
+<tr><td>scripts/viewer_screenshots.mjs</td><td>viewer のスクリーンショット（Playwright）</td></tr>
+<tr><td>scripts/Dockerfile.ca-base</td><td>検証環境の CA を入れたベースイメージ（dem2tiles 本体は無変更）</td></tr>
+<tr><td>results/run1_full.log</td><td>本番実行のログ（警告行を除く）</td></tr>
+<tr><td>results/run2_skip.log</td><td>2 回目（全スキップ）</td></tr>
+<tr><td>results/mixed_crs.log</td><td>座標系混在の拒否</td></tr>
+<tr><td>results/grid2geotiff_convert.log</td><td>GeoTIFF 化のログ（抜粋）</td></tr>
+<tr><td>results/tileset.json</td><td>ズーム別枚数、集合比較、mbtiles metadata</td></tr>
+<tr><td>results/allfill.json</td><td>全画素 FILL のタイル数</td></tr>
+<tr><td>results/*.jsonl</td><td>復号検証の生データ</td></tr>
+<tr><td>images/</td><td>viewer のスクリーンショット</td></tr>
+</tbody></table></div>
+
+<footer>データ: 静岡県「VIRTUAL SHIZUOKA 静岡県 中西部沿岸 点群データ」（CC BY 4.0 / ODbL）。ツール: shiwaku/dem2tiles、shiwaku/grid2geotiff（MIT）。</footer>
+</main>
+</div>
+</div>
