@@ -40,6 +40,7 @@ class RouteModel:
     ext_night: np.ndarray = field(default=None)  # (n_zone,) 外部ゾーンの夜間人口
     ext_day: np.ndarray = field(default=None)  # (n_zone,) 外部ゾーンの昼間人口
     under_len: np.ndarray = field(default=None)  # (n_zone,) 地下歩行路の長さ m（地下街の集中重み用）
+    access: sp.csr_matrix = field(default=None)  # (n_links, n_zone) ゾーン到着を沿道リンクへ配分
 
 
 def build_route_model(
@@ -175,6 +176,8 @@ def build_route_model(
             if z in zpos:
                 under_len[zpos[z]] = float(v)
 
+    access = _access_matrix(links, zones, tables.get("poi"), zpos)
+
     return RouteModel(
         links=links,
         zone_ids=zone_ids,
@@ -188,6 +191,7 @@ def build_route_model(
         ext_night=ext_night,
         ext_day=ext_day,
         under_len=under_len,
+        access=access,
     )
 
 
@@ -203,6 +207,34 @@ PARAM_NAMES = [f"dest_{c}" for c in FIT_CLASSES] + [
 DEFAULT_PARAMS = np.array([1.0, 1.0, 1.0, 1.0, 0.5, 1.0, 100.0, 0.5, 1.2, 0.35, 0.0, 450.0])
 LOWER = np.array([0.0] * 6 + [0.0, 0.05, 0.1, 0.0, 0.0, 120.0])
 UPPER = np.array([6.0] * 6 + [1500.0, 3.0, 5.0, 2.0, 400.0, 2000.0])
+
+
+def _access_matrix(links, zones, poi, zpos: dict) -> sp.csr_matrix:
+    """ゾーン到着を沿道リンクへ配分する行列 (n_links, n_zone)、列和 1.
+
+    最短経路配分はゾーン代表ノードで打ち切られるので、目的地に着いてからの最後の数十 m —
+    まさに商店街で通行量が立つ区間 — がどのリンクにも乗らない。到着人数を沿道の
+    店舗密度に比例して配分して、この取りこぼしを埋める。
+    """
+    nz = len(zpos)
+    z_of_node = dict(zip(zones.node_id, zones.zone_id, strict=False))
+    col = np.array([zpos.get(z_of_node.get(u), -1) for u in links.u])
+    w = links.length_m.values.astype(float) / 100.0
+    if poi is not None and len(poi):
+        near = gpd.sjoin_nearest(
+            poi[["geometry"]].to_crs(config.epsg_plane()),
+            links[["geometry"]].to_crs(config.epsg_plane()).reset_index(names="row"),
+            max_distance=30.0,
+            how="inner",
+        )
+        cnt = near.groupby("row").size()
+        n = np.zeros(len(links))
+        n[cnt.index.values] = cnt.values
+        w = w * (1.0 + n)
+    ok = col >= 0
+    A = sp.csr_matrix((w[ok], (np.nonzero(ok)[0], col[ok])), shape=(len(links), nz), dtype=np.float32)
+    tot = np.asarray(A.sum(axis=0)).ravel()
+    return A @ sp.diags(np.where(tot > 0, 1.0 / np.where(tot > 0, tot, 1.0), 0.0)).tocsr()
 
 
 # 絞り込み版。217 地点に対して 12 個は多すぎて、同じ当てはまりでまったく違う解が並ぶ。
@@ -228,10 +260,22 @@ def expand(x: np.ndarray) -> np.ndarray:
     return np.array([1.0, office, other, other, other, other, poi_w, st_w, 1.0, 1.0, und_w, half])
 
 
+# 到着端の配分を入れる版（絞り込み + access_weight）
+ACCESS_NAMES = [*REDUCED_NAMES, "access_weight"]
+ACCESS_DEFAULT = np.append(REDUCED_DEFAULT, 1.0)
+ACCESS_LOWER = np.append(REDUCED_LOWER, 0.0)
+ACCESS_UPPER = np.append(REDUCED_UPPER, 50.0)
+
+
+def expand_access(x: np.ndarray) -> np.ndarray:
+    """絞り込み 6 個 + 到着端係数 → link_flow の 13 個."""
+    return np.append(expand(x[:6]), float(x[6]))
+
+
 def link_flow(rm: RouteModel, params: np.ndarray, max_distance_m: float = 2500.0) -> np.ndarray:
     """係数からリンク通行量（合成値）を計算する."""
     dest = np.asarray(params[:6], dtype=float)
-    poi_w, st_w, res_rate, ext_f, und_w, half = (float(v) for v in params[6:])
+    poi_w, st_w, res_rate, ext_f, und_w, half = (float(v) for v in params[6:12])
     attract = rm.pop_by_class @ dest + poi_w * rm.poi_count + st_w * rm.station_pax + ext_f * rm.ext_day
     if und_w and rm.under_len is not None:
         attract = attract + und_w * rm.under_len
@@ -241,7 +285,10 @@ def link_flow(rm: RouteModel, params: np.ndarray, max_distance_m: float = 2500.0
     W = f * attract[None, :]
     s = W.sum(axis=1)
     T = np.where(s[:, None] > 0, origins[:, None] * W / np.where(s[:, None] > 0, s[:, None], 1.0), 0.0)
-    return 2.0 * (rm.M @ T.ravel().astype(np.float32))
+    flow = 2.0 * (rm.M @ T.ravel().astype(np.float32))
+    if len(params) > 12 and rm.access is not None and float(params[12]):
+        flow = flow + 2.0 * float(params[12]) * (rm.access @ T.sum(axis=0).astype(np.float32))
+    return flow
 
 
 def params_to_coefficients(params: np.ndarray | dict, coef: dict | None = None) -> dict:
