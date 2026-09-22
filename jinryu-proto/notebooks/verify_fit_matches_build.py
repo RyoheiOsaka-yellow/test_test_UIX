@@ -71,6 +71,8 @@ def main():
         dtype=float,
     )
 
+    # 設定の既定値に関わらず、比較する条件は明示する（fit 側は 12 個なら到着端なし）
+    base["od"]["access_weight"] = 0.0
     ok = check("到着端なし", base, params, tables)
     withacc = copy.deepcopy(base)
     withacc["od"]["access_weight"] = 3.0
