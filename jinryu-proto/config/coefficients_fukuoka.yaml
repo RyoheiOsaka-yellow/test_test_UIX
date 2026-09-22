@@ -17,7 +17,7 @@ od:
   half_distance_m: 179
   underground_weight: 50.0
   subway:
-    underground_attach: false
+    underground_attach: true
     operator_pattern: 福岡市
     max_attach_m: 400
 assign:
