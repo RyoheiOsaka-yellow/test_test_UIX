@@ -196,7 +196,7 @@ UPPER = np.array([6.0] * 6 + [1500.0, 3.0, 5.0, 2.0, 400.0, 2000.0])
 FULL_ACCESS_NAMES = [*PARAM_NAMES, "access_weight"]
 FULL_ACCESS_DEFAULT = np.append(DEFAULT_PARAMS, 1.0)
 FULL_ACCESS_LOWER = np.append(LOWER, 0.0)
-FULL_ACCESS_UPPER = np.append(UPPER, 50.0)
+FULL_ACCESS_UPPER = np.append(UPPER, 2000.0)  # 50 では学習が上限に張り付いた（掃引の最良は 300）
 
 
 # 絞り込み版。217 地点に対して 12 個は多すぎて、同じ当てはまりでまったく違う解が並ぶ。
@@ -226,7 +226,7 @@ def expand(x: np.ndarray) -> np.ndarray:
 ACCESS_NAMES = [*REDUCED_NAMES, "access_weight"]
 ACCESS_DEFAULT = np.append(REDUCED_DEFAULT, 1.0)
 ACCESS_LOWER = np.append(REDUCED_LOWER, 0.0)
-ACCESS_UPPER = np.append(REDUCED_UPPER, 50.0)
+ACCESS_UPPER = np.append(REDUCED_UPPER, 2000.0)
 
 
 def expand_access(x: np.ndarray) -> np.ndarray:
