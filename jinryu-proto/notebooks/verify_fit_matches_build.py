@@ -18,7 +18,10 @@ from jinryu.pipeline import load_tables, run_build
 
 def check(label: str, coef: dict, params: np.ndarray, tables: dict) -> bool:
     period = config.area()["periods"]["baseline"]
-    band = coef["od"]["destination_time_band"]
+    # fit.link_flow が対応するのは time_band="all"。本番は band ごとに発生量を
+    # BAND_ORIGIN_FACTOR で割り増し・割り引きするが、"all" だけは 1.0 で、
+    # 集中側も destination_time_band の滞在人口を使う（fit と同じ組み立てになる）。
+    band = "all"
     bpop, lf = run_build(
         periods=[period],
         coef=coef,
