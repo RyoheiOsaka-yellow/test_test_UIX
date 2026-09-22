@@ -62,6 +62,7 @@
 
   .tabpanel { max-width: 1180px; margin: 0 auto; }
   .tabpanel > .intro { color: var(--muted); max-width: 760px; margin: 22px 0 18px; }
+  .frame { width: 100%; border: 0; display: block; min-height: 760px; background: var(--bg); }
   .filenote {
     max-width: 1180px; margin: 56px auto 0; padding-top: 18px; border-top: 1px solid var(--line);
     font-size: 13px; color: var(--muted);
@@ -208,7 +209,7 @@
   <header>
     <div class="eyebrow">プロトタイプ一式 · 2026-09-21</div>
     <h1>GaME プロトタイプ</h1>
-    <p class="lede">CVPR 2026 の <em>GaME: Gaussian Mapping for Evolving Scenes</em> のコア（動的シーン適応とキーフレーム管理）を、CUDA・SAM・実データなしで動かせる形に移植した。ブラウザで動く 2 次元版で<b>体感</b>し、CPU 版の実験を<b>報告</b>として読む。この 1 ファイルに両方が入っている。</p>
+    <p class="lede">CVPR 2026 の <em>GaME: Gaussian Mapping for Evolving Scenes</em> のコア（動的シーン適応とキーフレーム管理）を、CUDA・SAM・実データなしで動かせる形に移植した。WebGL の 3D 版と、仕組みが見やすい 2 次元版で<b>体感</b>し、CPU 版の実験を<b>報告</b>として読む。この 1 ファイルに全部入っている。</p>
     <div class="links">
       <a href="https://github.com/RyoheiOsaka-yellow/test_test_UIX/tree/claude/awesome-dijkstra-pi7ryl/game-proto">コード（game-proto/）</a>
       <a href="https://github.com/VladimirYugay/GaME">本家リポジトリ</a>
@@ -217,12 +218,1477 @@
     </div>
   </header>
   <nav class="tabs" role="tablist" aria-label="表示の切り替え">
-    <button role="tab" id="tab-pg" data-target="pg" aria-controls="pg" aria-selected="true">体感する</button>
+    <button role="tab" id="tab-pg3" data-target="pg3" aria-controls="pg3" aria-selected="true">3D で体感する</button>
+    <button role="tab" id="tab-pg" data-target="pg" aria-controls="pg" aria-selected="false">2D で体感する</button>
     <button role="tab" id="tab-report" data-target="report" aria-controls="report" aria-selected="false">報告を読む</button>
   </nav>
 </div>
 
-<section class="tabpanel pg" id="pg" role="tabpanel" aria-labelledby="tab-pg">
+<section class="tabpanel" id="pg3" role="tabpanel" aria-labelledby="tab-pg3">
+  <iframe class="frame" id="frame3d" title="GaME 3D Playground" data-doc="<title>GaME 3D Playground</title>
+<link rel=&quot;stylesheet&quot; href=&quot;https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&amp;family=IBM+Plex+Sans+JP:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap&quot;>
+<style>
+  :root {
+    --bg: #F3F5F8; --surface: #FFFFFF; --ink: #17212B; --muted: #5B6875; --line: #D6DCE3;
+    --accent: #0E7C86; --accent-soft: #DDF1F2;
+    --stale: #DF7A2C; --stale-soft: #FBE9DA; --fresh: #2E9A68; --fresh-soft: #DDF3E7;
+    --danger: #C43E3E; --map-bg: #10161E; --code-bg: #EEF1F4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme=&quot;light&quot;]) {
+      --bg: #0F151C; --surface: #161E27; --ink: #E8EDF2; --muted: #9AA7B4; --line: #26313D;
+      --accent: #4FC3CE; --accent-soft: #123A3F; --stale: #F0904A; --stale-soft: #3E2716;
+      --fresh: #5FCF95; --fresh-soft: #163826; --danger: #E06A6A;
+      --map-bg: #080C12; --code-bg: #1C2632;
+    }
+  }
+  :root[data-theme=&quot;dark&quot;] {
+    --bg: #0F151C; --surface: #161E27; --ink: #E8EDF2; --muted: #9AA7B4; --line: #26313D;
+    --accent: #4FC3CE; --accent-soft: #123A3F; --stale: #F0904A; --stale-soft: #3E2716;
+    --fresh: #5FCF95; --fresh-soft: #163826; --danger: #E06A6A;
+    --map-bg: #080C12; --code-bg: #1C2632;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: &quot;IBM Plex Sans JP&quot;, &quot;Hiragino Kaku Gothic ProN&quot;, &quot;Yu Gothic&quot;, system-ui, sans-serif;
+    font-size: 15px; line-height: 1.6; padding-inline: 16px; padding-block: 0 48px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  h1, h2, h3 { font-family: &quot;Zen Kaku Gothic New&quot;, &quot;IBM Plex Sans JP&quot;, sans-serif; margin: 0; line-height: 1.25; text-wrap: balance; }
+  h1 { font-size: clamp(24px, 3.4vw, 32px); font-weight: 900; }
+  h2 { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 8px; }
+  header { padding-block: 28px 16px; }
+  header p { margin: 10px 0 0; color: var(--muted); max-width: 760px; }
+  code { font-family: &quot;IBM Plex Mono&quot;, monospace; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; font-size: 0.9em; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+  @media (max-width: 960px) { .layout { grid-template-columns: 1fr; } }
+
+  .stage { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .viewwrap { position: relative; width: 100%; aspect-ratio: 3 / 2; border-radius: 8px; overflow: hidden; background: var(--map-bg); touch-action: none; cursor: grab; }
+  .viewwrap.dragging { cursor: grabbing; }
+  .viewwrap canvas { display: block; width: 100%; height: 100%; }
+  .overlay { position: absolute; inset: 0; pointer-events: none; }
+  .tag {
+    position: absolute; background: rgba(8,12,18,0.8); color: #EEF3F8; border-radius: 6px;
+    padding: 4px 8px; font-size: 11px; letter-spacing: 0.06em; font-family: &quot;IBM Plex Mono&quot;, monospace;
+  }
+  .tag.mode { right: 12px; top: 12px; font-size: 12px; }
+  .tag.mode b { color: var(--fresh); }
+  .tag.mode.static b { color: var(--stale); }
+  .msg {
+    position: absolute; left: 12px; top: 12px; max-width: 62%;
+    background: rgba(8,12,18,0.8); color: #EEF3F8; padding: 8px 12px; border-radius: 8px;
+    font-size: 14px; opacity: 0; transition: opacity 0.3s;
+  }
+  .msg.show { opacity: 1; }
+  .nowebgl { position: absolute; inset: 0; display: none; place-items: center; text-align: center; padding: 24px; color: #EEF3F8; }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: var(--surface); color: var(--ink); padding: 8px 13px; font: inherit; font-weight: 600; cursor: pointer; }
+  .seg button[aria-pressed=&quot;true&quot;] { background: var(--ink); color: var(--bg); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 8px 13px; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; }
+  button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 10px; }
+  .hint kbd { font-family: &quot;IBM Plex Mono&quot;, monospace; background: var(--code-bg); padding: 0 5px; border-radius: 4px; border: 1px solid var(--line); font-size: 12px; }
+
+  .panel { display: flex; flex-direction: column; gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  @media (max-width: 420px) { .stats { grid-template-columns: 1fr 1fr; } }
+  .stat .k { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .stat .v { font-family: &quot;Zen Kaku Gothic New&quot;, sans-serif; font-size: 23px; font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .stat .v.stale { color: var(--stale); }
+  .stat .v.fresh { color: var(--fresh); }
+  .stat .d { font-size: 12px; color: var(--muted); }
+
+  .kfs { display: flex; flex-direction: column; gap: 4px; max-height: 210px; overflow-y: auto; }
+  .kf { display: grid; grid-template-columns: 42px 1fr; gap: 8px; align-items: center; font-family: &quot;IBM Plex Mono&quot;, monospace; font-size: 11px; color: var(--muted); cursor: pointer; border-radius: 4px; padding: 2px; }
+  .kf:hover, .kf.sel { background: var(--accent-soft); }
+  .kf.ignored { opacity: 0.42; }
+  .kf canvas { display: block; width: 100%; height: 18px; border-radius: 3px; background: var(--map-bg); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .sw { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+
+  .log { font-family: &quot;IBM Plex Mono&quot;, monospace; font-size: 11.5px; line-height: 1.5; max-height: 180px; overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 3px; color: var(--muted); }
+  .log .add { color: var(--fresh); } .log .rm { color: var(--stale); } .log .ig { color: var(--danger); } .log .info { color: var(--ink); }
+
+  .explain { margin-top: 22px; max-width: 780px; }
+  .explain h2 { margin-top: 20px; }
+  .explain p { margin: 0 0 10px; }
+  .explain ol, .explain ul { padding-left: 22px; margin: 0 0 10px; }
+  .explain li { margin-bottom: 6px; }
+  @media (prefers-reduced-motion: reduce) { .msg { transition: none; } }
+</style>
+
+<div class=&quot;wrap&quot;>
+<header>
+  <h1>GaME 3D Playground</h1>
+  <p>3D Gaussian の地図を WebGL で描きながら、<b>ロボットが見ていない間に家具を動かす</b>と何が起きるかを見る。左下の 2 つの小窓はロボット自身の視点で、上が<b>現実</b>、下が<b>地図の記憶</b>。静的マップでは記憶が現実に追いつかない。</p>
+</header>
+
+<div class=&quot;layout&quot;>
+  <div>
+    <div class=&quot;stage&quot;>
+      <div class=&quot;viewwrap&quot; id=&quot;viewwrap&quot;>
+        <canvas id=&quot;gl&quot; aria-label=&quot;部屋の 3D ビュー。Gaussian の地図と現実の家具が描かれる&quot;></canvas>
+        <div class=&quot;overlay&quot;>
+          <div class=&quot;msg&quot; id=&quot;msg&quot;></div>
+          <div class=&quot;tag mode&quot; id=&quot;modeTag&quot;>MODE <b>GaME</b></div>
+          <div class=&quot;tag&quot; id=&quot;labReal&quot;>ロボットの視点・現実</div>
+          <div class=&quot;tag&quot; id=&quot;labMap&quot;>ロボットの視点・地図</div>
+        </div>
+        <div class=&quot;nowebgl&quot; id=&quot;nowebgl&quot;>WebGL2 が使えないため 3D 表示を開始できません。別のブラウザでお試しください。</div>
+      </div>
+
+      <div class=&quot;toolbar&quot;>
+        <div class=&quot;seg&quot; role=&quot;group&quot; aria-label=&quot;地図の方式&quot;>
+          <button id=&quot;modeStatic&quot; aria-pressed=&quot;false&quot;>静的マップ</button>
+          <button id=&quot;modeGame&quot; aria-pressed=&quot;true&quot;>GaME</button>
+        </div>
+        <div class=&quot;seg&quot; role=&quot;group&quot; aria-label=&quot;表示&quot;>
+          <button id=&quot;viewMap&quot; aria-pressed=&quot;true&quot;>地図</button>
+          <button id=&quot;viewBoth&quot; aria-pressed=&quot;false&quot;>両方</button>
+          <button id=&quot;viewReal&quot; aria-pressed=&quot;false&quot;>現実</button>
+        </div>
+        <button class=&quot;btn primary&quot; id=&quot;play&quot;>▶ シナリオを再生</button>
+        <button class=&quot;btn&quot; id=&quot;moveChair&quot;>椅子を反対側へ</button>
+        <button class=&quot;btn&quot; id=&quot;resetMap&quot;>地図を消去</button>
+        <button class=&quot;btn&quot; id=&quot;resetAll&quot;>全部リセット</button>
+      </div>
+      <div class=&quot;hint&quot;>
+        操作: 何もない所をドラッグで<b>視点を回す</b>、ホイールでズーム。<b>家具をドラッグ</b>すると床の上を動く（ロボットが見ていない間に動かすのがポイント）。
+        <kbd>←</kbd><kbd>→</kbd> でロボットが旋回、<kbd>↑</kbd><kbd>↓</kbd> で前後。
+      </div>
+    </div>
+  </div>
+
+  <aside class=&quot;panel&quot;>
+    <div class=&quot;card&quot;>
+      <h2>地図の状態</h2>
+      <div class=&quot;stats&quot;>
+        <div class=&quot;stat&quot;><div class=&quot;k&quot;>一致率</div><div class=&quot;v fresh&quot; id=&quot;sAgree&quot;>–</div><div class=&quot;d&quot;>固定 3 視点で地図と現実が合う画素</div></div>
+        <div class=&quot;stat&quot;><div class=&quot;k&quot;>幽霊</div><div class=&quot;v stale&quot; id=&quot;sGhost&quot;>0</div><div class=&quot;d&quot;>現実の面から 20 cm 以上離れた点</div></div>
+        <div class=&quot;stat&quot;><div class=&quot;k&quot;>Gaussian</div><div class=&quot;v&quot; id=&quot;sN&quot;>0</div><div class=&quot;d&quot;>地図の点の数</div></div>
+        <div class=&quot;stat&quot;><div class=&quot;k&quot;>キーフレーム</div><div class=&quot;v&quot; id=&quot;sKf&quot;>0</div><div class=&quot;d&quot;>保存した観測</div></div>
+        <div class=&quot;stat&quot;><div class=&quot;k&quot;>無視</div><div class=&quot;v&quot; id=&quot;sIgnored&quot;>0</div><div class=&quot;d&quot;>丸ごと捨てたフレーム</div></div>
+        <div class=&quot;stat&quot;><div class=&quot;k&quot;>マスク済み</div><div class=&quot;v&quot; id=&quot;sMasked&quot;>0%</div><div class=&quot;d&quot;>最適化から外した画素</div></div>
+      </div>
+    </div>
+    <div class=&quot;card&quot;>
+      <h2>キーフレーム（観測の記憶）</h2>
+      <div class=&quot;kfs&quot; id=&quot;kfs&quot;></div>
+      <div class=&quot;legend&quot;><span><span class=&quot;sw&quot; style=&quot;background:var(--stale)&quot;></span>古いと判定した画素</span><span>薄い行 = フレームごと無視</span></div>
+    </div>
+    <div class=&quot;card&quot;>
+      <h2>イベント</h2>
+      <div class=&quot;log&quot; id=&quot;log&quot;></div>
+    </div>
+  </aside>
+</div>
+
+<div class=&quot;explain&quot;>
+  <h2>仕組み</h2>
+  <p>ロボットは 96×72 の RGB-D センサを持つ。部屋は箱の集合なので、観測はレイキャストで正確に求まる（色・距離・インスタンス ID。ID が SAM マスクの代わり）。一定距離動くと観測を<b>キーフレーム</b>として保存し、まだ地図にない画素から 3D Gaussian を生成する。</p>
+  <p>最適化は各キーフレームについて全 Gaussian を投影し、次の規則で不透明度と色を更新する。これは CPU 版の色・深度 L1 損失と同じ意味を、勾配ではなく直接の規則にしたもの。</p>
+  <ul>
+    <li>観測面より<b>手前</b>にある Gaussian → その光線は何も無かったはずなので不透明度を下げる（空間を削る）</li>
+    <li>観測面と<b>一致</b>する Gaussian → 不透明度を上げ、色を観測に寄せる</li>
+    <li>観測面より<b>奥</b> → 遮蔽されていて情報がないので触らない</li>
+  </ul>
+  <p><b>静的マップ</b>はすべてのキーフレームを永久に信じる。椅子が動いた後、昔のキーフレームが旧位置の椅子を支え続け、同時に新位置の椅子を「そこは床だった」と削り続ける。結果、旧位置に幽霊が残り、新位置の椅子は薄いままになる。</p>
+  <p><b>GaME</b> はキーフレームを足すたびに 2 つの検査を行う。</p>
+  <ol>
+    <li><b>追加検出</b> — 観測が地図より手前に面を見つけたインスタンスを新しい幾何とみなし、その 3D 点を共可視キーフレームに再投影する。昔そこを素通しで見ていた画素にマスクを立て、大きく矛盾するフレームは丸ごと無視する。</li>
+    <li><b>削除検出</b> — 観測が「空」と言う場所にあり色も合わない Gaussian を候補にし、それだけを描画して 2D で塊になることを確認してから刈り込む。その Gaussian を支持していた昔の画素にもマスクを立てる。</li>
+  </ol>
+  <p>マスクされた画素は上の最適化から外れるので、古い記憶が地図を引き戻さない。これは本家 <a href=&quot;https://github.com/VladimirYugay/GaME&quot;>GaME</a> の <code>detect_additions</code> / <code>detect_removals</code> / <code>occlusion_masks</code> / <code>ignored_frames</code> と同じ構造で、閾値も <code>configs/aria/room0.yaml</code> の値を部屋の大きさに合わせて縮めたもの。描画は WebGL2 で等方 Gaussian を深度順に並べて合成している（CPU 版が等方正則化を掛けているのに合わせた）。</p>
+</div>
+</div>
+
+<script>
+(() => {
+&quot;use strict&quot;;
+
+// =====================================================================
+// vector / matrix helpers (Y-up world, camera looks down -Z in view space)
+// =====================================================================
+const v3 = (x, y, z) => [x, y, z];
+const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+const scale = (a, s) => [a[0] * s, a[1] * s, a[2] * s];
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const len = a => Math.hypot(a[0], a[1], a[2]);
+const norm = a => { const l = len(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+const clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
+
+/** Camera basis: eye plus orthonormal right / up / forward. */
+function basis(eye, target, up = [0, 1, 0]) {
+  const f = norm(sub(target, eye));
+  let r = cross(f, up);
+  if (len(r) < 1e-6) r = [1, 0, 0];
+  r = norm(r);
+  const u = cross(r, f);
+  return { eye, r, u, f };
+}
+function viewMatrix(cam, out) {
+  const { eye, r, u, f } = cam;
+  out[0] = r[0]; out[4] = r[1]; out[8] = r[2]; out[12] = -dot(r, eye);
+  out[1] = u[0]; out[5] = u[1]; out[9] = u[2]; out[13] = -dot(u, eye);
+  out[2] = -f[0]; out[6] = -f[1]; out[10] = -f[2]; out[14] = dot(f, eye);
+  out[3] = 0; out[7] = 0; out[11] = 0; out[15] = 1;
+  return out;
+}
+function perspective(fovYdeg, aspect, near, far, out) {
+  const t = 1 / Math.tan(fovYdeg * Math.PI / 360);
+  out.fill(0);
+  out[0] = t / aspect; out[5] = t; out[11] = -1;
+  out[10] = (far + near) / (near - far); out[14] = 2 * far * near / (near - far);
+  return out;
+}
+
+// =====================================================================
+// scene: an axis-aligned room with box furniture (port of scene.py)
+// =====================================================================
+const ROOM = { x: 3.0, z: 2.0, h: 2.6 };          // half-width, half-depth, height
+const FLOOR_COLOR = [0.62, 0.58, 0.52], WALL_COLOR = [0.78, 0.80, 0.84];
+
+const furniture = [
+  { id: &quot;table&quot;, name: &quot;テーブル&quot;, c: [0.0, 0.38, -0.8], s: [1.5, 0.75, 0.9], col: [0.55, 0.36, 0.22] },
+  { id: &quot;chair&quot;, name: &quot;椅子&quot;, c: [-1.7, 0.28, -0.5], s: [0.55, 0.55, 0.55], col: [0.85, 0.25, 0.20] },
+  { id: &quot;shelf&quot;, name: &quot;棚&quot;, c: [2.35, 0.9, -1.35], s: [0.5, 1.8, 0.45], col: [0.20, 0.45, 0.80] },
+  { id: &quot;plant&quot;, name: &quot;観葉植物&quot;, c: [-2.4, 0.45, -1.5], s: [0.45, 0.9, 0.45], col: [0.24, 0.58, 0.34] },
+];
+const CHAIR_A = [-1.7, 0.28, -0.5], CHAIR_B = [1.55, 0.28, -0.35];
+
+// the room shell, as boxes so one ray routine covers everything
+const shell = [
+  { id: &quot;floor&quot;, name: &quot;床&quot;, c: [0, -0.05, 0], s: [2 * ROOM.x, 0.1, 2 * ROOM.z], col: FLOOR_COLOR },
+  { id: &quot;ceil&quot;, name: &quot;天井&quot;, c: [0, ROOM.h + 0.05, 0], s: [2 * ROOM.x, 0.1, 2 * ROOM.z], col: [0.86, 0.88, 0.91] },
+  { id: &quot;wallN&quot;, name: &quot;奥の壁&quot;, c: [0, ROOM.h / 2, -ROOM.z - 0.05], s: [2 * ROOM.x, ROOM.h, 0.1], col: WALL_COLOR },
+  { id: &quot;wallS&quot;, name: &quot;手前の壁&quot;, c: [0, ROOM.h / 2, ROOM.z + 0.05], s: [2 * ROOM.x, ROOM.h, 0.1], col: WALL_COLOR },
+  { id: &quot;wallW&quot;, name: &quot;左の壁&quot;, c: [-ROOM.x - 0.05, ROOM.h / 2, 0], s: [0.1, ROOM.h, 2 * ROOM.z], col: [0.72, 0.75, 0.79] },
+  { id: &quot;wallE&quot;, name: &quot;右の壁&quot;, c: [ROOM.x + 0.05, ROOM.h / 2, 0], s: [0.1, ROOM.h, 2 * ROOM.z], col: [0.72, 0.75, 0.79] },
+];
+const solids = () => shell.concat(furniture);
+const objName = id => (solids().find(o => o.id === id) || { name: id }).name;
+
+/** Ray/box slab test. Returns the hit distance along `d`, or Infinity. */
+function hitBox(o, box, d) {
+  let tmin = -Infinity, tmax = Infinity;
+  for (let a = 0; a < 3; a++) {
+    const lo = box.c[a] - box.s[a] / 2, hi = box.c[a] + box.s[a] / 2;
+    if (Math.abs(d[a]) < 1e-9) { if (o[a] < lo || o[a] > hi) return Infinity; continue; }
+    let t0 = (lo - o[a]) / d[a], t1 = (hi - o[a]) / d[a];
+    if (t0 > t1) { const t = t0; t0 = t1; t1 = t; }
+    if (t0 > tmin) tmin = t0;
+    if (t1 < tmax) tmax = t1;
+    if (tmin > tmax) return Infinity;
+  }
+  if (tmax < 1e-4) return Infinity;
+  return tmin > 1e-4 ? tmin : tmax;
+}
+/** Which face was hit, used for a bit of flat shading in the sensor image. */
+function faceShade(box, p) {
+  const ey = Math.abs(p[1] - (box.c[1] + box.s[1] / 2)) < 2e-3;
+  const ex = Math.abs(p[0] - (box.c[0] - box.s[0] / 2)) < 2e-3 || Math.abs(p[0] - (box.c[0] + box.s[0] / 2)) < 2e-3;
+  return ey ? 1.0 : ex ? 0.78 : 0.9;
+}
+
+// =====================================================================
+// sensor: RGB-D + instance ids by ray casting (the Flat/Aria stand-in)
+// =====================================================================
+const SW = 96, SH = 72, SFOVX = 70;
+const FX = 0.5 * SW / Math.tan(SFOVX * Math.PI / 360), FY = FX, CX = SW / 2, CY = SH / 2;
+const RANGE = 14;
+
+/** World-space ray direction for pixel (i, j); its component along `cam.f` is 1, so t == depth. */
+function rayDir(cam, i, j) {
+  const a = (i + 0.5 - CX) / FX, b = (j + 0.5 - CY) / FY;
+  return [cam.f[0] + cam.r[0] * a - cam.u[0] * b,
+          cam.f[1] + cam.r[1] * a - cam.u[1] * b,
+          cam.f[2] + cam.r[2] * a - cam.u[2] * b];
+}
+/** Project a world point into a camera. Returns [u, v, depth]. */
+function project(cam, p) {
+  const d = sub(p, cam.eye);
+  const z = dot(d, cam.f);
+  if (z <= 1e-4) return [-1, -1, z];
+  return [dot(d, cam.r) / z * FX + CX, -dot(d, cam.u) / z * FY + CY, z];
+}
+
+/** Per-pixel min/max observed depth over a 3x3 neighbourhood.
+ *  A pixel centre is up to half a pixel away from where a Gaussian actually
+ *  projects, and on a floor seen at a grazing angle half a pixel is tens of
+ *  centimetres. Comparing against the local range instead of a single sample
+ *  keeps that discretisation from carving away correct geometry. */
+function depthRange(depth) {
+  const dmin = new Float32Array(SW * SH), dmax = new Float32Array(SW * SH);
+  for (let j = 0; j < SH; j++) {
+    for (let i = 0; i < SW; i++) {
+      let lo = Infinity, hi = 0;
+      for (let dj = -1; dj <= 1; dj++) {
+        const jj = j + dj;
+        if (jj < 0 || jj >= SH) continue;
+        for (let di = -1; di <= 1; di++) {
+          const ii = i + di;
+          if (ii < 0 || ii >= SW) continue;
+          const d = depth[jj * SW + ii];
+          if (!d) continue;
+          if (d < lo) lo = d;
+          if (d > hi) hi = d;
+        }
+      }
+      const k = j * SW + i;
+      dmin[k] = lo === Infinity ? 0 : lo;
+      dmax[k] = hi;
+    }
+  }
+  return { dmin, dmax };
+}
+
+function observe(cam) {
+  const n = SW * SH;
+  const depth = new Float32Array(n), col = new Float32Array(n * 3);
+  const inst = new Int16Array(n).fill(-1);
+  const boxes = solids();
+  for (let j = 0, k = 0; j < SH; j++) {
+    for (let i = 0; i < SW; i++, k++) {
+      const d = rayDir(cam, i, j);
+      let best = RANGE, hit = null;
+      for (let b = 0; b < boxes.length; b++) {
+        const t = hitBox(cam.eye, boxes[b], d);
+        if (t < best) { best = t; hit = boxes[b]; }
+      }
+      if (!hit) { depth[k] = 0; continue; }
+      depth[k] = best;
+      inst[k] = boxes.indexOf(hit);
+      const p = [cam.eye[0] + d[0] * best, cam.eye[1] + d[1] * best, cam.eye[2] + d[2] * best];
+      const sh = faceShade(hit, p);
+      col[k * 3] = hit.col[0] * sh; col[k * 3 + 1] = hit.col[1] * sh; col[k * 3 + 2] = hit.col[2] * sh;
+    }
+  }
+  return { depth, col, inst };
+}
+
+// =====================================================================
+// the Gaussian map (port of model.py, isotropic)
+// =====================================================================
+const MAXG = 11000;
+const G = {
+  n: 0,
+  x: new Float32Array(MAXG), y: new Float32Array(MAXG), z: new Float32Array(MAXG),
+  r: new Float32Array(MAXG), a: new Float32Array(MAXG),
+  cr: new Float32Array(MAXG), cg: new Float32Array(MAXG), cb: new Float32Array(MAXG),
+  born: new Float32Array(MAXG), dying: new Float32Array(MAXG),
+  clear() { this.n = 0; },
+  push(px, py, pz, rad, r, g, b, alpha, t) {
+    if (this.n >= MAXG) return false;
+    const i = this.n++;
+    this.x[i] = px; this.y[i] = py; this.z[i] = pz; this.r[i] = rad; this.a[i] = alpha;
+    this.cr[i] = r; this.cg[i] = g; this.cb[i] = b; this.born[i] = t; this.dying[i] = 0;
+    return true;
+  },
+  /** Drop Gaussians whose `keep(i)` is false, preserving the rest in order. */
+  compact(keep) {
+    let w = 0;
+    for (let i = 0; i < this.n; i++) {
+      if (!keep(i)) continue;
+      if (w !== i) {
+        this.x[w] = this.x[i]; this.y[w] = this.y[i]; this.z[w] = this.z[i];
+        this.r[w] = this.r[i]; this.a[w] = this.a[i];
+        this.cr[w] = this.cr[i]; this.cg[w] = this.cg[i]; this.cb[w] = this.cb[i];
+        this.born[w] = this.born[i]; this.dying[w] = this.dying[i];
+      }
+      w++;
+    }
+    const removed = this.n - w;
+    this.n = w;
+    return removed;
+  },
+};
+
+// =====================================================================
+// CPU splat rasteriser used for analysis (port of splat.py, isotropic)
+// =====================================================================
+const AW = 48, AH = 36;                       // analysis resolution (half the sensor)
+const AFX = 0.5 * AW / Math.tan(SFOVX * Math.PI / 360), SCALE_A = AW / SW;
+const abuf = {
+  color: new Float32Array(AW * AH * 3), depth: new Float32Array(AW * AH),
+  alpha: new Float32Array(AW * AH), trans: new Float32Array(AW * AH),
+};
+const order = new Int32Array(MAXG), bucketCount = new Int32Array(514), bucketAt = new Int32Array(514);
+
+/** Sort indices front to back by camera depth (counting sort over 512 buckets). */
+function sortByDepth(cam, list, count, far) {
+  bucketCount.fill(0);
+  const depths = sortByDepth._d || (sortByDepth._d = new Float32Array(MAXG));
+  for (let k = 0; k < count; k++) {
+    const i = list ? list[k] : k;
+    const d = (G.x[i] - cam.eye[0]) * cam.f[0] + (G.y[i] - cam.eye[1]) * cam.f[1] + (G.z[i] - cam.eye[2]) * cam.f[2];
+    depths[k] = d;
+    bucketCount[d <= 0 ? 0 : Math.min(511, (d / far * 511) | 0) + 1]++;
+  }
+  let acc = 0;
+  for (let b = 0; b < 513; b++) { bucketAt[b] = acc; acc += bucketCount[b]; }
+  const out = sortByDepth._o || (sortByDepth._o = new Int32Array(MAXG));
+  for (let k = 0; k < count; k++) {
+    const d = depths[k];
+    const b = d <= 0 ? 0 : Math.min(511, (d / far * 511) | 0) + 1;
+    out[bucketAt[b]++] = list ? list[k] : k;
+  }
+  return out;
+}
+
+/**
+ * Render the map from `cam` at analysis resolution.
+ * `subset` (optional) restricts which Gaussians contribute, like `used_mask`.
+ */
+function cpuRender(cam, subset) {
+  abuf.color.fill(0); abuf.depth.fill(0); abuf.alpha.fill(0); abuf.trans.fill(1);
+  const count = subset ? subset.length : G.n;
+  if (!count) return abuf;
+  const sorted = sortByDepth(cam, subset, count, RANGE);
+  for (let k = 0; k < count; k++) {
+    const i = sorted[k];
+    if (G.dying[i]) continue;
+    const p = project(cam, [G.x[i], G.y[i], G.z[i]]);
+    const z = p[2];
+    if (z < 0.05 || z > RANGE) continue;
+    const cu = p[0] * SCALE_A, cv = p[1] * SCALE_A;  // sensor pixels -> analysis pixels
+    const sigma = G.r[i] * AFX / z;                 // projected 1-sigma radius, pixels
+    const rad = Math.min(14, 2.2 * sigma);
+    const u0 = Math.max(0, Math.floor(cu - rad)), u1 = Math.min(AW - 1, Math.ceil(cu + rad));
+    const v0 = Math.max(0, Math.floor(cv - rad)), v1 = Math.min(AH - 1, Math.ceil(cv + rad));
+    if (u1 < u0 || v1 < v0) continue;
+    const inv = 1 / (2 * sigma * sigma + 1e-9);
+    for (let v = v0; v <= v1; v++) {
+      const dy = v + 0.5 - cv;
+      for (let u = u0; u <= u1; u++) {
+        const dx = u + 0.5 - cu;
+        const g = Math.exp(-(dx * dx + dy * dy) * inv);
+        const al = Math.min(0.99, G.a[i] * g);
+        if (al < 0.004) continue;
+        const px = v * AW + u;
+        const T = abuf.trans[px];
+        if (T < 0.01) continue;
+        const w = al * T;
+        abuf.color[px * 3] += w * G.cr[i]; abuf.color[px * 3 + 1] += w * G.cg[i]; abuf.color[px * 3 + 2] += w * G.cb[i];
+        abuf.depth[px] += w * z; abuf.alpha[px] += w;
+        abuf.trans[px] = T * (1 - al);
+      }
+    }
+  }
+  for (let px = 0; px < AW * AH; px++) {
+    const a = abuf.alpha[px];
+    if (a > 1e-4) {
+      abuf.depth[px] /= a;
+      abuf.color[px * 3] /= a; abuf.color[px * 3 + 1] /= a; abuf.color[px * 3 + 2] /= a;
+    }
+  }
+  return abuf;
+}
+
+// =====================================================================
+// GaME (port of game.py)
+// =====================================================================
+const CFG = {
+  eps: 0.12,                 // depth_change_threshold (m)
+  colorErr: 0.16,            // color_error_threshold (mean L1 over RGB in 0..1)
+  minOpacity: 0.3,           // min_opacity
+  addCoverage: 0.35,         // addition_coverage_threshold
+  coverGap: 0.25,            // &quot;saw through&quot; gap when reprojecting an addition (m)
+  covisIgnore: 0.2,          // covis_ignore_threshold
+  removalCoverage: 0.02,     // removal_coverage_threshold
+  frameIgnore: 0.35,         // mask policy: ignore a frame once this fraction of it is stale
+  seedStride: 2,             // uniform_down_sample
+  kfTrans: 0.45, kfRot: 14 * Math.PI / 180,
+  lr: 0.09, carve: 0.35,     // support / carve rates of the optimisation rule
+  itersPerFrame: 5,          // per 1/60 s, scaled by the real frame time
+  ignorePolicy: &quot;mask&quot;,      // &quot;ref&quot; = reference behaviour (object-mask coverage)
+};
+
+let mode = &quot;game&quot;;
+let keyframes = [], events = [], ignoredCount = 0;
+let selectedKf = null, lastKfCam = null;
+
+const log = (cls, text) => {
+  events.push({ cls, text });
+  if (events.length > 160) events.shift();
+  renderLog();
+};
+
+/** Covisible keyframes, sorted by ascending overlap (like get_covisible_keyframes). */
+function covisible(cam, exceptId) {
+  const res = [];
+  for (const kf of keyframes) {
+    if (kf.id === exceptId) continue;
+    let score = 0;
+    for (let k = 0; k < SW * SH; k += 7) {
+      const d = kf.depth[k];
+      if (!d) continue;
+      const j = (k / SW) | 0, i = k % SW;
+      const dir = rayDir(kf.cam, i, j);
+      const p = [kf.cam.eye[0] + dir[0] * d, kf.cam.eye[1] + dir[1] * d, kf.cam.eye[2] + dir[2] * d];
+      const q = project(cam, p);
+      if (q[2] > 0.05 &amp;&amp; q[0] >= 0 &amp;&amp; q[0] < SW &amp;&amp; q[1] >= 0 &amp;&amp; q[1] < SH) score++;
+    }
+    if (score > 0) res.push({ kf, score });
+  }
+  return res.sort((a, b) => a.score - b.score).map(e => e.kf);
+}
+
+function maskedFraction(kf) {
+  let m = 0;
+  for (let k = 0; k < kf.occl.length; k++) m += kf.occl[k];
+  return m / kf.occl.length;
+}
+/** Largest masked fraction over any single instance mask (the reference rule). */
+function maskFractionByObject(kf) {
+  const tot = new Map(), msk = new Map();
+  for (let k = 0; k < kf.inst.length; k++) {
+    const o = kf.inst[k];
+    if (o < 0) continue;
+    tot.set(o, (tot.get(o) || 0) + 1);
+    if (kf.occl[k]) msk.set(o, (msk.get(o) || 0) + 1);
+  }
+  let best = 0;
+  for (const [o, t] of tot) best = Math.max(best, (msk.get(o) || 0) / t);
+  return best;
+}
+function maybeIgnore(kf, reason, coverScore) {
+  if (kf.ignored) return;
+  const ignore = CFG.ignorePolicy === &quot;ref&quot;
+    ? (maskFractionByObject(kf) > CFG.covisIgnore || (coverScore !== undefined &amp;&amp; coverScore > CFG.covisIgnore))
+    : maskedFraction(kf) > CFG.frameIgnore;
+  if (ignore) { kf.ignored = true; ignoredCount++; log(&quot;ig&quot;, `kf${kf.id} を無視（${reason}）`); }
+}
+
+/** detect_additions: instances the observation sees in front of the map. */
+function detectAdditions(cam, obs) {
+  const rendered = cpuRender(cam);
+  const addCount = new Map(), totCount = new Map();
+  for (let v = 0; v < AH; v++) {
+    for (let u = 0; u < AW; u++) {
+      const ap = v * AW + u;
+      if (rendered.alpha[ap] < CFG.minOpacity) continue;
+      const sk = (v * 2) * SW + (u * 2);                  // analysis pixel -> sensor pixel
+      const od = obs.depth[sk], inst = obs.inst[sk];
+      if (!od || inst < 0) continue;
+      const rd = rendered.depth[ap];
+      if (od < rd - CFG.eps) addCount.set(inst, (addCount.get(inst) || 0) + 1);
+      else if (od < rd + CFG.eps) totCount.set(inst, (totCount.get(inst) || 0) + 1);
+    }
+  }
+  const added = [];
+  for (const [inst, n] of addCount) {
+    if (n >= 3 &amp;&amp; n / (n + (totCount.get(inst) || 0)) > CFG.addCoverage) added.push(inst);
+  }
+  if (!added.length) return [];
+  log(&quot;add&quot;, `追加検出: ${added.map(i => objName(solids()[i].id)).join(&quot;・&quot;)}`);
+
+  const covis = covisible(cam, -1);
+  for (const inst of added) {
+    for (const kf of covis) {
+      let hits = 0, cover = 0;
+      const marks = [];
+      for (let k = 0; k < SW * SH; k++) {
+        if (obs.inst[k] !== inst) continue;
+        const d = obs.depth[k];
+        if (!d) continue;
+        const j = (k / SW) | 0, i = k % SW;
+        const dir = rayDir(cam, i, j);
+        const p = [cam.eye[0] + dir[0] * d, cam.eye[1] + dir[1] * d, cam.eye[2] + dir[2] * d];
+        const q = project(kf.cam, p);
+        if (q[2] <= 0.05 || q[0] < 0 || q[0] >= SW || q[1] < 0 || q[1] >= SH) continue;
+        const kk = (q[1] | 0) * SW + (q[0] | 0);
+        const kd = kf.depth[kk];
+        if (!kd || q[2] - CFG.coverGap > kd) continue;     // occluded in that frame: no information
+        hits++;
+        if (kd > q[2] + CFG.coverGap) { cover++; marks.push(kk); }  // that frame saw straight through
+      }
+      if (!hits) continue;
+      const score = cover / hits;
+      if (score > 0.01 &amp;&amp; marks.length) {
+        for (const kk of marks) {
+          kf.occl[kk] = 1;                                  // dilate a little, like the 5x5 close
+          const i = kk % SW, j = (kk / SW) | 0;
+          if (i > 0) kf.occl[kk - 1] = 1;
+          if (i < SW - 1) kf.occl[kk + 1] = 1;
+          if (j > 0) kf.occl[kk - SW] = 1;
+          if (j < SH - 1) kf.occl[kk + SW] = 1;
+        }
+        log(&quot;add&quot;, `kf${kf.id} の ${marks.length} 画素をマスク（${objName(solids()[inst].id)}が今ある場所を素通しで見ていた）`);
+      }
+      maybeIgnore(kf, `新しい${objName(solids()[inst].id)}と矛盾`, cover >= 8 ? score : undefined);
+    }
+  }
+  return added;
+}
+
+/** detect_removals: Gaussians in front of the observed surface whose colour disagrees. */
+function detectRemovals(kfCur) {
+  const cam = kfCur.cam, obs = kfCur;
+  const cand = new Set();
+  for (let i = 0; i < G.n; i++) {
+    if (G.dying[i]) continue;
+    const p = project(cam, [G.x[i], G.y[i], G.z[i]]);
+    if (p[2] < 0.05 || p[0] < 0 || p[0] >= SW || p[1] < 0 || p[1] >= SH) continue;
+    const k = (p[1] | 0) * SW + (p[0] | 0);
+    const od = obs.dmin[k];
+    if (!od) continue;
+    if (od - p[2] <= CFG.eps) continue;                     // not in front of the observation
+    const dc = (Math.abs(G.cr[i] - obs.col[k * 3]) + Math.abs(G.cg[i] - obs.col[k * 3 + 1])
+              + Math.abs(G.cb[i] - obs.col[k * 3 + 2])) / 3;
+    if (dc > CFG.colorErr) cand.add(i);
+  }
+  if (cand.size < 4) return 0;
+
+  // confirm the candidates form a visible 2D region, as the reference does
+  let list = Int32Array.from(cand);
+  const only = cpuRender(cam, list);
+  let region = 0;
+  for (let px = 0; px < AW * AH; px++) if (only.alpha[px] > CFG.minOpacity) region++;
+  if (region < 3) return 0;
+
+  // propagate: where those Gaussians match an older observation, that observation is stale too
+  for (const kf of covisible(cam, kfCur.id)) {
+    const sub = cpuRender(kf.cam, list);
+    let agreed = 0;
+    const objAgree = new Map();
+    for (let v = 0; v < AH; v++) {
+      for (let u = 0; u < AW; u++) {
+        const ap = v * AW + u;
+        if (sub.alpha[ap] <= CFG.minOpacity) continue;
+        const sk = (v * 2) * SW + (u * 2);
+        const od = kf.depth[sk];
+        if (!od || Math.abs(sub.depth[ap] - od) >= CFG.eps) continue;
+        const dc = (Math.abs(sub.color[ap * 3] - kf.col[sk * 3]) + Math.abs(sub.color[ap * 3 + 1] - kf.col[sk * 3 + 1])
+                  + Math.abs(sub.color[ap * 3 + 2] - kf.col[sk * 3 + 2])) / 3;
+        if (dc >= CFG.colorErr) continue;
+        for (let dv = 0; dv < 2; dv++) for (let du = 0; du < 2; du++) kf.occl[(v * 2 + dv) * SW + (u * 2 + du)] = 1;
+        agreed++;
+        const inst = kf.inst[sk];
+        if (inst >= 0) objAgree.set(inst, (objAgree.get(inst) || 0) + 1);
+      }
+    }
+    if (!agreed) continue;
+    for (const [inst, n] of objAgree) {                     // removal_coverage_threshold: mask the whole instance
+      let tot = 0;
+      for (let k = 0; k < kf.inst.length; k++) if (kf.inst[k] === inst) tot++;
+      if (n * 4 / Math.max(tot, 1) > CFG.removalCoverage) {
+        for (let k = 0; k < kf.inst.length; k++) if (kf.inst[k] === inst) kf.occl[k] = 1;
+        // Gaussians that fit this stale instance in that frame belong to the same removal
+        for (let i = 0; i < G.n; i++) {
+          if (G.dying[i] || cand.has(i)) continue;
+          const p = project(kf.cam, [G.x[i], G.y[i], G.z[i]]);
+          if (p[2] < 0.05 || p[0] < 0 || p[0] >= SW || p[1] < 0 || p[1] >= SH) continue;
+          const k = (p[1] | 0) * SW + (p[0] | 0);
+          if (kf.inst[k] === inst &amp;&amp; Math.abs(kf.depth[k] - p[2]) < CFG.eps) cand.add(i);
+        }
+      }
+    }
+    log(&quot;rm&quot;, `kf${kf.id} の ${agreed * 4} 画素をマスク（消えた物体を支持していた）`);
+    maybeIgnore(kf, &quot;物体マスクの大半が古い&quot;);
+  }
+
+  const now = performance.now();
+  for (const i of cand) if (!G.dying[i]) G.dying[i] = now;
+  log(&quot;rm&quot;, `削除: 古い Gaussian ${cand.size} 個を刈り込み`);
+  return cand.size;
+}
+
+/**
+ * One optimisation pass against a keyframe.
+ * Same meaning as the CPU version's colour/depth L1 with occlusion masks,
+ * written as a direct rule instead of a gradient.
+ */
+function optimizeAgainst(kf) {
+  const cam = kf.cam, lr = CFG.lr;
+  for (let i = 0; i < G.n; i++) {
+    if (G.dying[i]) continue;
+    const p = project(cam, [G.x[i], G.y[i], G.z[i]]);
+    if (p[2] < 0.05 || p[0] < 0 || p[0] >= SW || p[1] < 0 || p[1] >= SH) continue;
+    const k = (p[1] | 0) * SW + (p[0] | 0);
+    if (mode === &quot;game&quot; &amp;&amp; kf.occl[k]) continue;
+    const dlo = kf.dmin[k], dhi = kf.dmax[k];
+    if (!dlo) continue;
+    if (p[2] < dlo - CFG.eps) {
+      G.a[i] = Math.max(0, G.a[i] - lr * CFG.carve);        // observed free space: carve
+    } else if (p[2] <= dhi + CFG.eps) {
+      G.a[i] = Math.min(1, G.a[i] + lr * 0.6);              // supports the observed surface
+      G.cr[i] += (kf.col[k * 3] - G.cr[i]) * 0.2;
+      G.cg[i] += (kf.col[k * 3 + 1] - G.cg[i]) * 0.2;
+      G.cb[i] += (kf.col[k * 3 + 2] - G.cb[i]) * 0.2;
+    }
+  }
+}
+
+/** Iterations are budgeted per second, not per frame, so the map converges
+ *  the same way on a slow renderer as on a fast one. */
+function optimizeFrame(dt) {
+  const active = keyframes.filter(k => !(mode === &quot;game&quot; &amp;&amp; k.ignored));
+  if (!active.length) return;
+  const iters = clamp(Math.round(CFG.itersPerFrame * dt * 60), 1, 120);
+  for (let it = 0; it < iters; it++) {
+    optimizeAgainst(active[(Math.random() * active.length) | 0]);
+  }
+  const now = performance.now();
+  const removed = G.compact(i => (G.dying[i] ? now - G.dying[i] < 700 : G.a[i] > 0.06));
+  if (removed) mapDirty = true;
+}
+
+/** _add_gaussians: seed where the map is empty, too far, or badly coloured. */
+function seed(cam, obs) {
+  const t = performance.now();
+  const rendered = G.n ? cpuRender(cam) : null;
+  let added = 0;
+  for (let j = 0; j < SH; j += CFG.seedStride) {
+    for (let i = 0; i < SW; i += CFG.seedStride) {
+      const k = j * SW + i;
+      const d = obs.depth[k];
+      if (!d) continue;
+      if (rendered) {
+        const ap = Math.min(AH - 1, j >> 1) * AW + Math.min(AW - 1, i >> 1);
+        const alphaLow = rendered.alpha[ap] < CFG.minOpacity;
+        const tooFar = rendered.depth[ap] > d + CFG.eps;
+        const colBad = !alphaLow &amp;&amp; (Math.abs(rendered.color[ap * 3] - obs.col[k * 3])
+          + Math.abs(rendered.color[ap * 3 + 1] - obs.col[k * 3 + 1])
+          + Math.abs(rendered.color[ap * 3 + 2] - obs.col[k * 3 + 2])) / 3 > CFG.colorErr;
+        if (!(alphaLow || tooFar || colBad)) continue;
+      }
+      const dir = rayDir(cam, i, j);
+      const rad = clamp(d * (SFOVX * Math.PI / 180) / SW * CFG.seedStride * 1.1, 0.02, 0.10);
+      if (!G.push(cam.eye[0] + dir[0] * d, cam.eye[1] + dir[1] * d, cam.eye[2] + dir[2] * d,
+                  rad, obs.col[k * 3], obs.col[k * 3 + 1], obs.col[k * 3 + 2], 0.55, t)) break;
+      added++;
+    }
+  }
+  if (added) mapDirty = true;
+  return added;
+}
+
+function needKeyframe(cam) {
+  if (!lastKfCam) return true;
+  if (len(sub(cam.eye, lastKfCam.eye)) > CFG.kfTrans) return true;
+  return dot(cam.f, lastKfCam.f) < Math.cos(CFG.kfRot);
+}
+
+function addKeyframe(cam) {
+  const obs = observe(cam);
+  if (mode === &quot;game&quot; &amp;&amp; keyframes.length > 2) detectAdditions(cam, obs);
+  const kf = {
+    id: keyframes.length, cam: { eye: cam.eye.slice(), r: cam.r.slice(), u: cam.u.slice(), f: cam.f.slice() },
+    depth: obs.depth, col: obs.col, inst: obs.inst,
+    occl: new Uint8Array(SW * SH), ignored: false, thumb: null,
+  };
+  Object.assign(kf, depthRange(obs.depth));
+  keyframes.push(kf);
+  lastKfCam = kf.cam;
+  const n = seed(kf.cam, kf);
+  for (let it = 0; it < 4; it++) optimizeAgainst(kf);
+  let removed = 0;
+  if (mode === &quot;game&quot;) removed = detectRemovals(kf);
+  log(&quot;info&quot;, `kf${kf.id}: +${n} シード${removed ? ` / -${removed} 削除` : &quot;&quot;}（N=${G.n}）`);
+  renderKfList();
+}
+
+// =====================================================================
+// WebGL2 renderer
+// =====================================================================
+const canvas = document.getElementById(&quot;gl&quot;);
+const gl = canvas.getContext(&quot;webgl2&quot;, { antialias: true, alpha: false });
+if (!gl) {
+  document.getElementById(&quot;nowebgl&quot;).style.display = &quot;grid&quot;;
+  canvas.style.display = &quot;none&quot;;
+}
+
+const SPLAT_VS = `#version 300 es
+precision highp float;
+in vec2 aCorner;
+in vec3 aPos;
+in float aRad;
+in vec3 aCol;
+in float aAlpha;
+uniform mat4 uView, uProj;
+out vec2 vLocal; out vec3 vCol; out float vAlpha;
+void main() {
+  vec4 pv = uView * vec4(aPos, 1.0);
+  float z = -pv.z;
+  vec4 clip = uProj * pv;
+  float rx = uProj[0][0] * aRad / max(z, 0.05) * 2.4;
+  float ry = uProj[1][1] * aRad / max(z, 0.05) * 2.4;
+  vLocal = aCorner; vCol = aCol; vAlpha = aAlpha;
+  gl_Position = vec4(clip.xy + aCorner * vec2(rx, ry) * clip.w, clip.z, clip.w);
+}`;
+const SPLAT_FS = `#version 300 es
+precision highp float;
+in vec2 vLocal; in vec3 vCol; in float vAlpha;
+out vec4 frag;
+void main() {
+  float r2 = dot(vLocal, vLocal);
+  if (r2 > 1.0) discard;
+  float a = vAlpha * exp(-0.5 * r2 * 5.76);
+  if (a < 0.004) discard;
+  frag = vec4(vCol, a);
+}`;
+const MESH_VS = `#version 300 es
+precision highp float;
+in vec3 aPos; in vec3 aNormal; in vec3 aCol;
+uniform mat4 uView, uProj;
+out vec3 vCol; out float vShade;
+void main() {
+  vShade = 0.55 + 0.45 * max(dot(normalize(aNormal), normalize(vec3(0.4, 1.0, 0.5))), 0.0);
+  vCol = aCol;
+  gl_Position = uProj * uView * vec4(aPos, 1.0);
+}`;
+const MESH_FS = `#version 300 es
+precision highp float;
+in vec3 vCol; in float vShade;
+uniform float uAlpha;
+out vec4 frag;
+void main() { frag = vec4(vCol * vShade, uAlpha); }`;
+const LINE_VS = `#version 300 es
+precision highp float;
+in vec3 aPos; in vec3 aCol;
+uniform mat4 uView, uProj;
+out vec3 vCol;
+void main() { vCol = aCol; gl_Position = uProj * uView * vec4(aPos, 1.0); }`;
+const LINE_FS = `#version 300 es
+precision highp float;
+in vec3 vCol;
+uniform float uAlpha;
+out vec4 frag;
+void main() { frag = vec4(vCol, uAlpha); }`;
+
+function compile(vsSrc, fsSrc) {
+  const p = gl.createProgram();
+  for (const [type, src] of [[gl.VERTEX_SHADER, vsSrc], [gl.FRAGMENT_SHADER, fsSrc]]) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s) + &quot;\n&quot; + src);
+    gl.attachShader(p, s);
+  }
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const loc = {};
+  const nA = gl.getProgramParameter(p, gl.ACTIVE_ATTRIBUTES), nU = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < nA; i++) { const a = gl.getActiveAttrib(p, i); loc[a.name] = gl.getAttribLocation(p, a.name); }
+  for (let i = 0; i < nU; i++) { const u = gl.getActiveUniform(p, i); loc[u.name] = gl.getUniformLocation(p, u.name); }
+  return { p, loc };
+}
+
+let progSplat, progMesh, progLine, vaoSplat, bufInstance, meshBuf, lineBuf, meshVao, lineVao;
+let instData = new Float32Array(MAXG * 8);
+let mapDirty = true;
+const viewM = new Float32Array(16), projM = new Float32Array(16);
+
+function initGL() {
+  progSplat = compile(SPLAT_VS, SPLAT_FS);
+  progMesh = compile(MESH_VS, MESH_FS);
+  progLine = compile(LINE_VS, LINE_FS);
+
+  vaoSplat = gl.createVertexArray();
+  gl.bindVertexArray(vaoSplat);
+  const quad = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(progSplat.loc.aCorner);
+  gl.vertexAttribPointer(progSplat.loc.aCorner, 2, gl.FLOAT, false, 0, 0);
+  bufInstance = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, bufInstance);
+  gl.bufferData(gl.ARRAY_BUFFER, instData.byteLength, gl.DYNAMIC_DRAW);
+  const stride = 8 * 4;
+  const attrs = [[&quot;aPos&quot;, 3, 0], [&quot;aRad&quot;, 1, 12], [&quot;aCol&quot;, 3, 16], [&quot;aAlpha&quot;, 1, 28]];
+  for (const [name, size, off] of attrs) {
+    const l = progSplat.loc[name];
+    gl.enableVertexAttribArray(l);
+    gl.vertexAttribPointer(l, size, gl.FLOAT, false, stride, off);
+    gl.vertexAttribDivisor(l, 1);
+  }
+  gl.bindVertexArray(null);
+
+  meshVao = gl.createVertexArray(); meshBuf = gl.createBuffer();
+  gl.bindVertexArray(meshVao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, meshBuf);
+  let s = 9 * 4;
+  for (const [name, size, off] of [[&quot;aPos&quot;, 3, 0], [&quot;aNormal&quot;, 3, 12], [&quot;aCol&quot;, 3, 24]]) {
+    const l = progMesh.loc[name];
+    gl.enableVertexAttribArray(l);
+    gl.vertexAttribPointer(l, size, gl.FLOAT, false, s, off);
+  }
+  gl.bindVertexArray(null);
+
+  lineVao = gl.createVertexArray(); lineBuf = gl.createBuffer();
+  gl.bindVertexArray(lineVao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, lineBuf);
+  s = 6 * 4;
+  for (const [name, size, off] of [[&quot;aPos&quot;, 3, 0], [&quot;aCol&quot;, 3, 12]]) {
+    const l = progLine.loc[name];
+    gl.enableVertexAttribArray(l);
+    gl.vertexAttribPointer(l, size, gl.FLOAT, false, s, off);
+  }
+  gl.bindVertexArray(null);
+
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.enable(gl.SCISSOR_TEST);
+}
+
+const BOX_FACES = [
+  { n: [0, 0, 1], v: [[-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]] },
+  { n: [0, 0, -1], v: [[1, -1, -1], [-1, -1, -1], [-1, 1, -1], [1, 1, -1]] },
+  { n: [1, 0, 0], v: [[1, -1, 1], [1, -1, -1], [1, 1, -1], [1, 1, 1]] },
+  { n: [-1, 0, 0], v: [[-1, -1, -1], [-1, -1, 1], [-1, 1, 1], [-1, 1, -1]] },
+  { n: [0, 1, 0], v: [[-1, 1, 1], [1, 1, 1], [1, 1, -1], [-1, 1, -1]] },
+  { n: [0, -1, 0], v: [[-1, -1, -1], [1, -1, -1], [1, -1, 1], [-1, -1, 1]] },
+];
+const meshArr = [], lineArr = [];
+function pushBoxMesh(out, b, col) {
+  for (const f of BOX_FACES) {
+    const q = f.v.map(v => [b.c[0] + v[0] * b.s[0] / 2, b.c[1] + v[1] * b.s[1] / 2, b.c[2] + v[2] * b.s[2] / 2]);
+    for (const [a, bb, c] of [[0, 1, 2], [0, 2, 3]]) {
+      for (const p of [q[a], q[bb], q[c]]) out.push(p[0], p[1], p[2], f.n[0], f.n[1], f.n[2], col[0], col[1], col[2]);
+    }
+  }
+}
+const BOX_EDGES = [[0, 1], [1, 3], [3, 2], [2, 0], [4, 5], [5, 7], [7, 6], [6, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
+function pushBoxLines(out, b, col) {
+  const c = [];
+  for (let i = 0; i < 8; i++) {
+    c.push([b.c[0] + ((i &amp; 1) ? 1 : -1) * b.s[0] / 2, b.c[1] + ((i &amp; 2) ? 1 : -1) * b.s[1] / 2,
+            b.c[2] + ((i &amp; 4) ? 1 : -1) * b.s[2] / 2]);
+  }
+  for (const [a, bb] of BOX_EDGES) out.push(c[a][0], c[a][1], c[a][2], col[0], col[1], col[2],
+                                            c[bb][0], c[bb][1], c[bb][2], col[0], col[1], col[2]);
+}
+function pushLine(out, p, q, col) {
+  out.push(p[0], p[1], p[2], col[0], col[1], col[2], q[0], q[1], q[2], col[0], col[1], col[2]);
+}
+
+let shellVerts = 0, furnVerts = 0;
+/**
+ * Build the ground-truth meshes for one camera. Shell surfaces the camera sits
+ * outside of (the ceiling from above, the near wall from the front) are left
+ * out, so an orbiting camera always looks into the room instead of at its lid.
+ */
+function buildMesh(eye) {
+  meshArr.length = 0;
+  const centre = [0, ROOM.h / 2, 0];
+  for (const b of shell) {
+    if (dot(sub(eye, b.c), sub(centre, b.c)) <= 0) continue;
+    pushBoxMesh(meshArr, b, b.col);
+  }
+  shellVerts = meshArr.length / 9;
+  for (const b of furniture) pushBoxMesh(meshArr, b, b.col);
+  furnVerts = meshArr.length / 9 - shellVerts;
+  gl.bindBuffer(gl.ARRAY_BUFFER, meshBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(meshArr), gl.DYNAMIC_DRAW);
+}
+
+function buildStatic(robotCam) {
+  lineArr.length = 0;
+  for (const b of furniture) pushBoxLines(lineArr, b, b.col);
+  for (let x = -ROOM.x; x <= ROOM.x + 1e-6; x += 0.5) pushLine(lineArr, [x, 0.002, -ROOM.z], [x, 0.002, ROOM.z], [0.22, 0.30, 0.38]);
+  for (let z = -ROOM.z; z <= ROOM.z + 1e-6; z += 0.5) pushLine(lineArr, [-ROOM.x, 0.002, z], [ROOM.x, 0.002, z], [0.22, 0.30, 0.38]);
+  // robot body + view frustum
+  const e = robotCam.eye, col = [0.95, 0.97, 1.0];
+  pushBoxLines(lineArr, { c: [e[0], 0.6, e[2]], s: [0.34, 1.2, 0.34] }, [0.55, 0.72, 0.85]);
+  const far = 2.2;
+  for (const [i, j] of [[0, 0], [SW - 1, 0], [0, SH - 1], [SW - 1, SH - 1]]) {
+    const d = rayDir(robotCam, i, j);
+    pushLine(lineArr, e, [e[0] + d[0] * far, e[1] + d[1] * far, e[2] + d[2] * far], col);
+  }
+  const corners = [[0, 0], [SW - 1, 0], [SW - 1, SH - 1], [0, SH - 1]].map(([i, j]) => {
+    const d = rayDir(robotCam, i, j);
+    return [e[0] + d[0] * far, e[1] + d[1] * far, e[2] + d[2] * far];
+  });
+  for (let i = 0; i < 4; i++) pushLine(lineArr, corners[i], corners[(i + 1) % 4], col);
+  if (selectedKf !== null) {
+    const kf = keyframes[selectedKf];
+    if (kf) {
+      const ke = kf.cam.eye;
+      for (const [i, j] of [[0, 0], [SW - 1, 0], [0, SH - 1], [SW - 1, SH - 1]]) {
+        const d = rayDir(kf.cam, i, j);
+        pushLine(lineArr, ke, [ke[0] + d[0] * 1.6, ke[1] + d[1] * 1.6, ke[2] + d[2] * 1.6], [0.31, 0.76, 0.81]);
+      }
+    }
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, lineBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lineArr), gl.DYNAMIC_DRAW);
+}
+
+function uploadSplats(cam, now) {
+  const n = G.n;
+  if (!n) return 0;
+  const sorted = sortByDepth(cam, null, n, RANGE);
+  let w = 0;
+  for (let k = n - 1; k >= 0; k--) {                         // back to front
+    const i = sorted[k];
+    let a = G.a[i], cr = G.cr[i], cg = G.cg[i], cb = G.cb[i], r = G.r[i];
+    if (G.dying[i]) {
+      const t = Math.min(1, (now - G.dying[i]) / 700);
+      a *= (1 - t); r *= (1 - 0.4 * t); cr = 0.87; cg = 0.48; cb = 0.17;
+    } else if (now - G.born[i] < 420) {
+      const t = (now - G.born[i]) / 420;
+      cr += (0.36 - cr) * (1 - t) * 0.8; cg += (0.86 - cg) * (1 - t) * 0.8; cb += (0.58 - cb) * (1 - t) * 0.8;
+    }
+    if (a < 0.02) continue;
+    const o = w * 8;
+    instData[o] = G.x[i]; instData[o + 1] = G.y[i]; instData[o + 2] = G.z[i]; instData[o + 3] = r;
+    instData[o + 4] = cr; instData[o + 5] = cg; instData[o + 6] = cb; instData[o + 7] = a;
+    w++;
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, bufInstance);
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, instData.subarray(0, w * 8));
+  return w;
+}
+
+let viewMode = &quot;map&quot;;
+function drawViewport(cam, x, y, w, h, fovY, opts) {
+  gl.viewport(x, y, w, h);
+  gl.scissor(x, y, w, h);
+  gl.clearColor(0.043, 0.063, 0.086, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  viewMatrix(cam, viewM);
+  perspective(fovY, w / h, 0.05, 40, projM);
+
+  gl.enable(gl.DEPTH_TEST);
+  gl.depthMask(true);
+  const wantMesh = opts.shell || opts.furn > 0;
+  if (wantMesh) {
+    buildMesh(cam.eye);
+    gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
+    gl.useProgram(progMesh.p);
+    gl.uniformMatrix4fv(progMesh.loc.uView, false, viewM);
+    gl.uniformMatrix4fv(progMesh.loc.uProj, false, projM);
+    gl.bindVertexArray(meshVao);
+    if (opts.shell &amp;&amp; shellVerts) {
+      gl.uniform1f(progMesh.loc.uAlpha, 1);
+      gl.drawArrays(gl.TRIANGLES, 0, shellVerts);
+    }
+    if (opts.furn >= 1 &amp;&amp; furnVerts) {
+      gl.uniform1f(progMesh.loc.uAlpha, 1);
+      gl.drawArrays(gl.TRIANGLES, shellVerts, furnVerts);
+    }
+    gl.disable(gl.CULL_FACE);
+  }
+  if (opts.lines) {
+    gl.useProgram(progLine.p);
+    gl.uniformMatrix4fv(progLine.loc.uView, false, viewM);
+    gl.uniformMatrix4fv(progLine.loc.uProj, false, projM);
+    gl.uniform1f(progLine.loc.uAlpha, 0.75);
+    gl.bindVertexArray(lineVao);
+    gl.drawArrays(gl.LINES, 0, lineArr.length / 6);
+  }
+  if (opts.map &amp;&amp; splatCount) {
+    gl.depthMask(false);
+    gl.useProgram(progSplat.p);
+    gl.uniformMatrix4fv(progSplat.loc.uView, false, viewM);
+    gl.uniformMatrix4fv(progSplat.loc.uProj, false, projM);
+    gl.bindVertexArray(vaoSplat);
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, splatCount);
+    gl.depthMask(true);
+  }
+  if (opts.furn > 0 &amp;&amp; opts.furn < 1 &amp;&amp; furnVerts) {     // reality over the map
+    gl.depthMask(false);
+    gl.enable(gl.CULL_FACE); gl.cullFace(gl.BACK);
+    gl.useProgram(progMesh.p);
+    gl.uniformMatrix4fv(progMesh.loc.uView, false, viewM);
+    gl.uniformMatrix4fv(progMesh.loc.uProj, false, projM);
+    gl.uniform1f(progMesh.loc.uAlpha, opts.furn);
+    gl.bindVertexArray(meshVao);
+    gl.drawArrays(gl.TRIANGLES, shellVerts, furnVerts);
+    gl.disable(gl.CULL_FACE);
+    gl.depthMask(true);
+  }
+  gl.bindVertexArray(null);
+}
+
+// =====================================================================
+// cameras, input, scenario
+// =====================================================================
+const robot = { pos: [-1.7, 1.2, 1.35], yaw: 0, pitch: -0.12 };
+function robotCam() {
+  const f = [Math.sin(robot.yaw) * Math.cos(robot.pitch), Math.sin(robot.pitch), -Math.cos(robot.yaw) * Math.cos(robot.pitch)];
+  return basis(robot.pos, add(robot.pos, f));
+}
+function lookRobotAt(t) { robot.yaw = Math.atan2(t[0] - robot.pos[0], -(t[2] - robot.pos[2])); robot.pitch = Math.atan2(t[1] - robot.pos[1], Math.hypot(t[0] - robot.pos[0], t[2] - robot.pos[2])); }
+
+const orbit = { target: [0, 0.85, -0.4], yaw: 0.42, pitch: 0.52, dist: 8.4 };
+function orbitCam() {
+  const e = [
+    orbit.target[0] + orbit.dist * Math.cos(orbit.pitch) * Math.sin(orbit.yaw),
+    orbit.target[1] + orbit.dist * Math.sin(orbit.pitch),
+    orbit.target[2] + orbit.dist * Math.cos(orbit.pitch) * Math.cos(orbit.yaw),
+  ];
+  return basis(e, orbit.target);
+}
+
+const wrap = document.getElementById(&quot;viewwrap&quot;);
+let drag = null;
+function pointerRay(ev) {
+  const rect = canvas.getBoundingClientRect();
+  const nx = (ev.clientX - rect.left) / rect.width * 2 - 1;
+  const ny = 1 - (ev.clientY - rect.top) / rect.height * 2;
+  const cam = orbitCam();
+  const aspect = rect.width / rect.height, t = Math.tan(45 * Math.PI / 360);
+  const dir = norm(add(add(scale(cam.r, nx * t * aspect), scale(cam.u, ny * t)), cam.f));
+  return { o: cam.eye, d: dir };
+}
+function pickFurniture(ray) {
+  let best = Infinity, hit = null;
+  for (const b of furniture) {
+    const t = hitBox(ray.o, b, ray.d);
+    if (t < best) { best = t; hit = b; }
+  }
+  // only pick if the furniture is in front of the room shell along that ray
+  for (const b of shell) if (hitBox(ray.o, b, ray.d) < best) return null;
+  return hit;
+}
+function planeHit(ray, y) {
+  if (Math.abs(ray.d[1]) < 1e-6) return null;
+  const t = (y - ray.o[1]) / ray.d[1];
+  return t > 0 ? [ray.o[0] + ray.d[0] * t, y, ray.o[2] + ray.d[2] * t] : null;
+}
+canvas.addEventListener(&quot;pointerdown&quot;, ev => {
+  const ray = pointerRay(ev);
+  const obj = pickFurniture(ray);
+  if (obj) {
+    const p = planeHit(ray, obj.c[1]);
+    drag = { kind: &quot;obj&quot;, obj, off: p ? [obj.c[0] - p[0], obj.c[2] - p[2]] : [0, 0] };
+  } else {
+    drag = { kind: &quot;orbit&quot;, x: ev.clientX, y: ev.clientY };
+  }
+  stopScenario();
+  canvas.setPointerCapture(ev.pointerId);
+  wrap.classList.add(&quot;dragging&quot;);
+});
+canvas.addEventListener(&quot;pointermove&quot;, ev => {
+  if (!drag) return;
+  if (drag.kind === &quot;orbit&quot;) {
+    orbit.yaw -= (ev.clientX - drag.x) * 0.008;
+    orbit.pitch = clamp(orbit.pitch + (ev.clientY - drag.y) * 0.006, 0.05, 1.35);
+    drag.x = ev.clientX; drag.y = ev.clientY;
+  } else {
+    const p = planeHit(pointerRay(ev), drag.obj.c[1]);
+    if (p) {
+      drag.obj.c[0] = clamp(p[0] + drag.off[0], -ROOM.x + drag.obj.s[0] / 2, ROOM.x - drag.obj.s[0] / 2);
+      drag.obj.c[2] = clamp(p[2] + drag.off[1], -ROOM.z + drag.obj.s[2] / 2, ROOM.z - drag.obj.s[2] / 2);
+    }
+  }
+});
+const endDrag = () => { if (drag &amp;&amp; drag.kind === &quot;obj&quot;) log(&quot;info&quot;, `現実: ${drag.obj.name}を動かした`); drag = null; wrap.classList.remove(&quot;dragging&quot;); };
+canvas.addEventListener(&quot;pointerup&quot;, endDrag);
+canvas.addEventListener(&quot;pointercancel&quot;, endDrag);
+canvas.addEventListener(&quot;wheel&quot;, ev => { ev.preventDefault(); orbit.dist = clamp(orbit.dist * (1 + Math.sign(ev.deltaY) * 0.08), 3.2, 16); }, { passive: false });
+
+const keys = {};
+window.addEventListener(&quot;keydown&quot;, ev => {
+  if ([&quot;ArrowLeft&quot;, &quot;ArrowRight&quot;, &quot;ArrowUp&quot;, &quot;ArrowDown&quot;].includes(ev.key)) { keys[ev.key] = true; ev.preventDefault(); stopScenario(); }
+});
+window.addEventListener(&quot;keyup&quot;, ev => { keys[ev.key] = false; });
+function driveKeys(dt) {
+  if (keys.ArrowLeft) robot.yaw -= 1.5 * dt;
+  if (keys.ArrowRight) robot.yaw += 1.5 * dt;
+  const v = (keys.ArrowUp ? 1 : 0) - (keys.ArrowDown ? 1 : 0);
+  if (v) {
+    robot.pos[0] = clamp(robot.pos[0] + Math.sin(robot.yaw) * v * 1.5 * dt, -ROOM.x + 0.4, ROOM.x - 0.4);
+    robot.pos[2] = clamp(robot.pos[2] - Math.cos(robot.yaw) * v * 1.5 * dt, -ROOM.z + 0.4, ROOM.z - 0.4);
+  }
+}
+
+// -- scenario -----------------------------------------------------------
+const chair = () => furniture.find(o => o.id === &quot;chair&quot;);
+const ease = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+let scenario = null;
+const playBtn = document.getElementById(&quot;play&quot;), msgEl = document.getElementById(&quot;msg&quot;);
+function showMsg(t) { msgEl.textContent = t; msgEl.classList.toggle(&quot;show&quot;, !!t); }
+function sweepTo(s) {
+  const x = -1.8 + 3.6 * s;
+  robot.pos[0] = x; robot.pos[2] = 1.35;
+  lookRobotAt([x * 0.45, 0.8, -1.3]);
+}
+function playScenario() {
+  stopScenario();
+  chair().c = CHAIR_A.slice();
+  resetMap();
+  scenario = {
+    i: 0, t0: simClock,
+    steps: [
+      { dur: 600, msg: &quot;run 1: 部屋をひと通り見て地図を作る&quot;, at: () => sweepTo(0) },
+      { dur: 7500, msg: &quot;run 1: 左から右へ。椅子は左側にある&quot;, at: t => sweepTo(ease(t)) },
+      { dur: 1600, msg: &quot;ロボットが右奥を向いている間に…&quot;, at: t => { robot.pos[0] = 1.8; lookRobotAt([2.6, 0.9, -1.4 + 0.6 * ease(t)]); } },
+      { dur: 900, msg: &quot;椅子が反対側へ動いた（カメラの外の変化）&quot;, at: t => { if (t < 0.02 &amp;&amp; Math.abs(chair().c[0] - CHAIR_B[0]) > 0.1) { chair().c = CHAIR_B.slice(); log(&quot;info&quot;, &quot;現実: 椅子が A → B に移動（ロボットは見ていない）&quot;); } } },
+      { dur: 1400, msg: &quot;run 2: もう一度スイープする&quot;, at: t => { robot.pos[0] = 1.8; lookRobotAt([1.8 * 0.45 + (2.6 - 0.81) * (1 - ease(t)), 0.8, -1.3]); } },
+      { dur: 8500, msg: mode === &quot;game&quot; ? &quot;run 2: GaME は旧位置を忘れ、新位置を取り込む&quot; : &quot;run 2: 静的マップは旧位置の幽霊を残し、新位置の椅子を消しにかかる&quot;, at: t => sweepTo(1 - ease(t)) },
+      { dur: 3000, msg: mode === &quot;game&quot; ? &quot;結果: 幽霊はほぼ 0。静的マップに切り替えて試す&quot; : &quot;結果: 幽霊が残る。GaME に切り替えて試す&quot;, at: () => {} },
+    ],
+  };
+  playBtn.textContent = &quot;■ 停止&quot;;
+}
+function stopScenario() { if (scenario) { scenario = null; playBtn.textContent = &quot;▶ シナリオを再生&quot;; showMsg(&quot;&quot;); } }
+function tickScenario(now) {
+  if (!scenario) return;
+  const s = scenario.steps[scenario.i];
+  const t = Math.min(1, (now - scenario.t0) / s.dur);
+  if (!s.started) { s.started = true; showMsg(s.msg); s.at(0); } else s.at(t);
+  if (t >= 1) {
+    s.started = false; scenario.i++; scenario.t0 = now;
+    if (scenario.i >= scenario.steps.length) stopScenario();
+  }
+}
+
+// -- buttons ------------------------------------------------------------
+function resetMap() {
+  G.clear(); keyframes = []; lastKfCam = null; events = []; selectedKf = null; ignoredCount = 0;
+  mapDirty = true; renderLog(); renderKfList(); log(&quot;info&quot;, &quot;地図を消去した&quot;);
+}
+playBtn.addEventListener(&quot;click&quot;, () => scenario ? stopScenario() : playScenario());
+document.getElementById(&quot;moveChair&quot;).addEventListener(&quot;click&quot;, () => {
+  stopScenario();
+  const c = chair();
+  const atA = Math.abs(c.c[0] - CHAIR_A[0]) < Math.abs(c.c[0] - CHAIR_B[0]);
+  c.c = (atA ? CHAIR_B : CHAIR_A).slice();
+  log(&quot;info&quot;, `現実: 椅子を ${atA ? &quot;B&quot; : &quot;A&quot;} へ移動`);
+});
+document.getElementById(&quot;resetMap&quot;).addEventListener(&quot;click&quot;, () => { stopScenario(); resetMap(); });
+document.getElementById(&quot;resetAll&quot;).addEventListener(&quot;click&quot;, () => {
+  stopScenario(); chair().c = CHAIR_A.slice();
+  robot.pos = [-1.7, 1.2, 1.35]; lookRobotAt([-0.8, 0.8, -1.3]);
+  resetMap();
+});
+function setMode(m) {
+  mode = m;
+  document.getElementById(&quot;modeStatic&quot;).setAttribute(&quot;aria-pressed&quot;, String(m === &quot;static&quot;));
+  document.getElementById(&quot;modeGame&quot;).setAttribute(&quot;aria-pressed&quot;, String(m === &quot;game&quot;));
+  const tag = document.getElementById(&quot;modeTag&quot;);
+  tag.className = &quot;tag mode&quot; + (m === &quot;static&quot; ? &quot; static&quot; : &quot;&quot;);
+  tag.innerHTML = `MODE <b>${m === &quot;game&quot; ? &quot;GaME&quot; : &quot;STATIC&quot;}</b>`;
+  log(&quot;info&quot;, `方式を ${m === &quot;game&quot; ? &quot;GaME&quot; : &quot;静的マップ&quot;} に切り替え`);
+  renderKfList();
+  try { localStorage.setItem(&quot;game3d-mode&quot;, m); } catch (e) {}
+}
+document.getElementById(&quot;modeStatic&quot;).addEventListener(&quot;click&quot;, () => setMode(&quot;static&quot;));
+document.getElementById(&quot;modeGame&quot;).addEventListener(&quot;click&quot;, () => setMode(&quot;game&quot;));
+function setView(v) {
+  viewMode = v;
+  for (const [id, name] of [[&quot;viewMap&quot;, &quot;map&quot;], [&quot;viewBoth&quot;, &quot;both&quot;], [&quot;viewReal&quot;, &quot;real&quot;]]) {
+    document.getElementById(id).setAttribute(&quot;aria-pressed&quot;, String(v === name));
+  }
+  try { localStorage.setItem(&quot;game3d-view&quot;, v); } catch (e) {}
+}
+document.getElementById(&quot;viewMap&quot;).addEventListener(&quot;click&quot;, () => setView(&quot;map&quot;));
+document.getElementById(&quot;viewBoth&quot;).addEventListener(&quot;click&quot;, () => setView(&quot;both&quot;));
+document.getElementById(&quot;viewReal&quot;).addEventListener(&quot;click&quot;, () => setView(&quot;real&quot;));
+try {
+  const m = localStorage.getItem(&quot;game3d-mode&quot;); if (m === &quot;static&quot; || m === &quot;game&quot;) setMode(m);
+  const v = localStorage.getItem(&quot;game3d-view&quot;); if (v) setView(v);
+} catch (e) {}
+
+// =====================================================================
+// side panel
+// =====================================================================
+const kfsEl = document.getElementById(&quot;kfs&quot;), logEl = document.getElementById(&quot;log&quot;);
+function renderLog() {
+  logEl.innerHTML = &quot;&quot;;
+  for (const e of events.slice(-50)) {
+    const d = document.createElement(&quot;div&quot;);
+    d.className = e.cls; d.textContent = e.text;
+    logEl.prepend(d);
+  }
+}
+function kfThumb(kf, ctx) {
+  const W = 128, H = 18;
+  const img = ctx.createImageData(W, H);
+  for (let y = 0; y < H; y++) {
+    const sy = Math.min(SH - 1, ((y / H) * SH) | 0);
+    for (let x = 0; x < W; x++) {
+      const sx = Math.min(SW - 1, ((x / W) * SW) | 0);
+      const k = sy * SW + sx, o = (y * W + x) * 4;
+      let r = kf.col[k * 3] * 255, g = kf.col[k * 3 + 1] * 255, b = kf.col[k * 3 + 2] * 255;
+      if (kf.occl[k] &amp;&amp; mode === &quot;game&quot;) { r = 224; g = 122; b = 44; }
+      img.data[o] = r; img.data[o + 1] = g; img.data[o + 2] = b; img.data[o + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+function renderKfList() {
+  kfsEl.innerHTML = &quot;&quot;;
+  for (let n = keyframes.length - 1; n >= 0; n--) {
+    const kf = keyframes[n];
+    const row = document.createElement(&quot;div&quot;);
+    row.className = &quot;kf&quot; + (kf.ignored &amp;&amp; mode === &quot;game&quot; ? &quot; ignored&quot; : &quot;&quot;) + (selectedKf === kf.id ? &quot; sel&quot; : &quot;&quot;);
+    row.innerHTML = `<span>kf${kf.id}${kf.ignored &amp;&amp; mode === &quot;game&quot; ? &quot; ✕&quot; : &quot;&quot;}</span>`;
+    const c = document.createElement(&quot;canvas&quot;);
+    c.width = 128; c.height = 18;
+    kfThumb(kf, c.getContext(&quot;2d&quot;));
+    row.appendChild(c);
+    row.addEventListener(&quot;click&quot;, () => { selectedKf = selectedKf === kf.id ? null : kf.id; renderKfList(); });
+    kfsEl.appendChild(row);
+  }
+}
+
+const EVAL_XS = [-1.6, 0, 1.6];
+function agreementRate() {
+  let ok = 0, tot = 0;
+  for (const x of EVAL_XS) {
+    const cam = basis([x, 1.2, 1.35], [x * 0.45, 0.8, -1.3]);
+    const obs = observe(cam);
+    const map = cpuRender(cam);
+    for (let v = 0; v < AH; v++) {
+      for (let u = 0; u < AW; u++) {
+        const ap = v * AW + u, sk = (v * 2) * SW + (u * 2);
+        const od = obs.depth[sk];
+        tot++;
+        if (!od) { if (map.alpha[ap] < CFG.minOpacity) ok++; continue; }
+        if (map.alpha[ap] < CFG.minOpacity) continue;
+        if (Math.abs(map.depth[ap] - od) > CFG.eps) continue;
+        const dc = (Math.abs(map.color[ap * 3] - obs.col[sk * 3]) + Math.abs(map.color[ap * 3 + 1] - obs.col[sk * 3 + 1])
+                  + Math.abs(map.color[ap * 3 + 2] - obs.col[sk * 3 + 2])) / 3;
+        if (dc < CFG.colorErr) ok++;
+      }
+    }
+  }
+  return tot ? ok / tot : 0;
+}
+function distToSurface(i) {
+  const p = [G.x[i], G.y[i], G.z[i]];
+  let best = Infinity;
+  for (const b of solids()) {
+    let d = 0;
+    for (let a = 0; a < 3; a++) {
+      const e = Math.max(Math.abs(p[a] - b.c[a]) - b.s[a] / 2, 0);
+      d += e * e;
+    }
+    best = Math.min(best, Math.sqrt(d));
+  }
+  return best;
+}
+let lastStats = 0;
+function updateStats(now) {
+  if (now - lastStats < 1100) return;
+  lastStats = now;
+  let ghosts = 0, live = 0;
+  for (let i = 0; i < G.n; i++) {
+    if (G.dying[i]) continue;
+    live++;
+    if (G.a[i] > 0.3 &amp;&amp; distToSurface(i) > 0.2) ghosts++;
+  }
+  document.getElementById(&quot;sN&quot;).textContent = live;
+  document.getElementById(&quot;sGhost&quot;).textContent = ghosts;
+  document.getElementById(&quot;sKf&quot;).textContent = keyframes.length;
+  document.getElementById(&quot;sIgnored&quot;).textContent = mode === &quot;game&quot; ? keyframes.filter(k => k.ignored).length : 0;
+  let masked = 0, tot = 0;
+  for (const kf of keyframes) { tot += kf.occl.length; for (let k = 0; k < kf.occl.length; k++) masked += kf.occl[k]; }
+  document.getElementById(&quot;sMasked&quot;).textContent = (mode === &quot;game&quot; &amp;&amp; tot ? Math.round(100 * masked / tot) : 0) + &quot;%&quot;;
+  document.getElementById(&quot;sAgree&quot;).textContent = G.n ? Math.round(100 * agreementRate()) + &quot;%&quot; : &quot;–&quot;;
+}
+
+// =====================================================================
+// main loop
+// =====================================================================
+let splatCount = 0, lastT = performance.now(), insetGeom = null, frameNo = 0, insetReady = false;
+function resize() {
+  const rect = wrap.getBoundingClientRect();
+  // Cap the backing store: splatting is fill-rate bound, and past ~1.2 Mpx the
+  // frame rate costs more than the extra sharpness is worth.
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  const w = Math.max(320, Math.min(960, Math.round(rect.width * dpr)));
+  const h = Math.round(w * 2 / 3);   // the wrapper is locked to 3:2; measuring it
+                                      // would give a nonsense ratio while an
+                                      // iframe is still laying out at zero width
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  const iw = Math.round(w * 0.24), ih = Math.round(iw * 3 / 4), pad = Math.round(w * 0.014);
+  insetGeom = { iw, ih, pad, w, h, dpr };
+  const cssPad = pad / dpr, cssW = iw / dpr, cssH = ih / dpr;
+  const lr = document.getElementById(&quot;labReal&quot;), lm = document.getElementById(&quot;labMap&quot;);
+  lr.style.left = cssPad + &quot;px&quot;; lr.style.bottom = (cssPad * 2 + cssH * 2 + 4) + &quot;px&quot;;
+  lm.style.left = cssPad + &quot;px&quot;; lm.style.bottom = (cssPad + cssH + 2) + &quot;px&quot;;
+}
+window.addEventListener(&quot;resize&quot;, resize);
+
+/**
+ * The simulation runs on a fixed timestep, decoupled from the render rate: a
+ * slow GPU then draws fewer images of the same run instead of skipping
+ * keyframes and optimisation, so the map converges identically everywhere.
+ */
+const SIM_DT = 1 / 30, MAX_SUBSTEPS = 30;
+// small diagnostic hook: frames drawn, simulation sub-steps run, sim clock
+const perf = { frames: 0, sub: 0, sim: 0 };
+window.__game3d = () => ({ ...perf, n: G.n, kf: keyframes.length, real: performance.now() });
+let simAccum = 0, simClock = performance.now();
+function frame() {
+  // Not the rAF timestamp: when the compositor throttles, that clock keeps
+  // ticking at the nominal refresh rate and the simulation runs in slow motion.
+  const now = performance.now();
+  const dt = Math.min(1.0, (now - lastT) / 1000);   // allow catch-up on a slow renderer
+  lastT = now; frameNo++;
+  requestAnimationFrame(frame);
+  if (!gl) return;
+
+  // Spend at most a fixed slice of wall time on simulation per frame. On a slow
+  // renderer the demo then runs in slow motion but always completes; it never
+  // stalls in a frame that tries to catch up all at once.
+  simAccum = Math.min(simAccum + dt, MAX_SUBSTEPS * SIM_DT);
+  const budgetEnd = now + 22;
+  let steps = 0;
+  while (simAccum >= SIM_DT &amp;&amp; steps < MAX_SUBSTEPS &amp;&amp; performance.now() < budgetEnd) {
+    simAccum -= SIM_DT; simClock += SIM_DT * 1000; steps++;
+    tickScenario(simClock);
+    driveKeys(SIM_DT);
+    const rc = robotCam();
+    if (needKeyframe(rc)) addKeyframe(rc);
+    optimizeFrame(SIM_DT);
+  }
+  const rcam = robotCam();
+  perf.frames++; perf.sub += steps; perf.sim = simClock;
+  updateStats(now);
+
+  resize();
+  const { iw, ih, pad, w, h } = insetGeom;
+  buildStatic(rcam);
+  splatCount = uploadSplats(orbitCam(), now);
+
+  const MAIN = { map: { shell: false, furn: 0, map: true, lines: true },
+                 both: { shell: true, furn: 0.5, map: true, lines: true },
+                 real: { shell: true, furn: 1, map: false, lines: false } }[viewMode];
+  drawViewport(orbitCam(), 0, 0, w, h, 45, MAIN);
+
+  // robot's own two views, bottom left: reality above, the map below
+  drawViewport(rcam, pad, pad * 2 + ih, iw, ih, 2 * Math.atan(SH / (2 * FY)) * 180 / Math.PI,
+    { shell: true, furn: 1, map: false, lines: false });
+  if (frameNo % 2 === 0 || !insetReady) { splatCount = uploadSplats(rcam, now); insetReady = true; }
+  drawViewport(rcam, pad, pad, iw, ih, 2 * Math.atan(SH / (2 * FY)) * 180 / Math.PI,
+    { shell: false, furn: 0, map: true, lines: false });
+}
+
+if (gl) {
+  try {
+    initGL();
+    resize();
+    lookRobotAt([-0.8, 0.8, -1.3]);
+    log(&quot;info&quot;, &quot;ロボットを動かすか「シナリオを再生」を押す&quot;);
+    requestAnimationFrame(frame);
+  } catch (err) {
+    document.getElementById(&quot;nowebgl&quot;).style.display = &quot;grid&quot;;
+    document.getElementById(&quot;nowebgl&quot;).textContent = &quot;3D の初期化に失敗しました: &quot; + err.message;
+    canvas.style.display = &quot;none&quot;;
+  }
+}
+})();
+</script>
+"></iframe>
+</section>
+
+<section class="tabpanel pg" id="pg" role="tabpanel" aria-labelledby="tab-pg" hidden>
   <p class="intro">ロボットの地図は正確でも、間違っていることがある。ロボットを動かし、見ていない間に椅子を動かして、<b>静的マップ</b>と <b>GaME</b>（古い記憶を忘れられる地図）の違いを見る。</p>
 <div class="wrap">
 
@@ -457,6 +1923,24 @@
 </div>
 
 <div class="prose">
+<h2>ブラウザで動く 3D 版</h2>
+<p>同じアルゴリズムを WebGL2 で 3 次元に起こした <a href="#playground3d">GaME 3D Playground</a> を用意した。センサ（96×72 の RGB-D）と GaME のロジックは CPU 版と同じ構造の JavaScript で、描画だけが GPU。Gaussian は等方で、深度順に並べてアルファ合成している。家具をドラッグでき、ロボットの視点を「現実」と「地図の記憶」の 2 つの小窓で並べて見られる。</p>
+<p>自動シナリオ（椅子を見ていない間に動かす）の結果は CPU 版と同じ傾向になる。幽霊は現実のどの面からも 20 cm 以上離れた Gaussian の数。</p>
+</div>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>system</th><th class="num">一致率</th><th class="num">幽霊 Gaussian</th><th class="num">Gaussian 数</th></tr></thead>
+  <tbody>
+    <tr><td>静的マップ</td><td class="num lose">74%</td><td class="num lose">145</td><td class="num">5874</td></tr>
+    <tr><td>GaME</td><td class="num win">76%</td><td class="num win">0</td><td class="num">5344</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="prose">
+<p>3D にして分かったのは、深度の量子化が効くということ。床や壁を斜めから見ると 1 画素のずれが数十 cm の深度差になり、素朴に「観測面より手前なら空間」と判定すると正しい幾何まで削ってしまう。近傍 3×3 の深度レンジと比べる形にして解決した。本家が実データで扱う SAM マスクの境界にも同じ性質の問題があるはずで、閾値を絶対値で置くより局所的な深度の広がりに対する相対量で判定する方が安定すると思われる。</p>
+</div>
+
+<div class="prose">
 <h2>観察と本家への示唆</h2>
 <ul>
   <li><b>マスクの粒度がアルゴリズムの挙動を支配する。</b>本家のいくつかのルールはマスク単位で判断する。SAM が大きな面を細かく過分割することを暗黙に前提にしており、粗いマスクでは除外が過剰になる。実データでも SAM の設定（points per side など）が結果を左右するはず。</li>
@@ -478,7 +1962,7 @@
 <ol>
   <li><b>マスク単位の除外を実データで検証する。</b>合成環境では「フレームを捨てない」variant が同等以上だった（上の追加実験）。Aria / Flat で同じ比較を行えば本家への改善提案の根拠になる。</li>
   <li><b>実データに接続する。</b>Aria の HF データセットを取得し、本家のローダを CPU 版に流用して 1 シーンだけ低解像度で走らせる。合成環境との挙動差が見える。</li>
-  <li><b>ブラウザ版インタラクティブデモ。</b>この Python 実装を土台に、椅子をドラッグしてマップ更新を目で追える WebGL 版を作る。</li>
+  <li><b>実データでのノイズ耐性を測る。</b>合成シーンに深度ノイズとマスク境界の揺らぎを注入し、どこから「フレームごと捨てる」方が有利になるかを見る。実データに行く前の安上がりな一手。</li>
 </ol>
 
 <h2>再現手順</h2>
@@ -1108,7 +2592,7 @@ requestAnimationFrame(loop);
 (() => {
   "use strict";
   const tabs = [...document.querySelectorAll(".tabs button")];
-  function select(name, focus) {
+  let select = function (name, focus) {
     for (const t of tabs) {
       const on = t.dataset.target === name;
       t.setAttribute("aria-selected", String(on));
@@ -1116,19 +2600,33 @@ requestAnimationFrame(loop);
       if (on && focus) t.focus();
     }
     try { localStorage.setItem("game-kit-tab", name); } catch (e) {}
-  }
-  tabs.forEach(t => t.addEventListener("click", () => select(t.dataset.target)));
+  };
   document.addEventListener("click", ev => {
-    const a = ev.target.closest('a[href="#playground"]');
+    const a = ev.target.closest('a[href="#playground"], a[href="#playground3d"]');
     if (!a) return;
     ev.preventDefault();
-    select("pg", true);
-    document.getElementById("pg").scrollIntoView({ behavior: "smooth", block: "start" });
+    const target = a.getAttribute("href") === "#playground3d" ? "pg3" : "pg";
+    select(target, true);
+    document.getElementById(target).scrollIntoView({ behavior: "smooth", block: "start" });
   });
-  let start = "pg";
+  const frame = document.getElementById("frame3d");
+  function fitFrame() {
+    try { frame.style.height = frame.contentDocument.documentElement.scrollHeight + 40 + "px"; } catch (e) {}
+  }
+  frame.addEventListener("load", fitFrame);
+  window.addEventListener("resize", () => { if (!document.getElementById("pg3").hidden) fitFrame(); });
+  const origSelect = select;
+  select = function (name, focus) {
+    origSelect(name, focus);
+    if (name === "pg3" && !frame.getAttribute("srcdoc")) frame.setAttribute("srcdoc", frame.dataset.doc);
+    if (name === "pg3") setTimeout(fitFrame, 80);
+  };
+  tabs.forEach(t => t.addEventListener("click", () => select(t.dataset.target)));
+  let start = "pg3";
   if (location.hash === "#report") start = "report";
+  else if (location.hash === "#playground") start = "pg";
   else {
-    try { const s = localStorage.getItem("game-kit-tab"); if (s === "report" || s === "pg") start = s; } catch (e) {}
+    try { const s = localStorage.getItem("game-kit-tab"); if (["report", "pg", "pg3"].includes(s)) start = s; } catch (e) {}
   }
   select(start);
 })();

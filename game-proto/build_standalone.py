@@ -81,6 +81,11 @@ def scope_css(css: str, scope: str) -> str:
     return "\n".join(out)
 
 
+def escape_attr(text: str) -> str:
+    """Escape a whole document so it can live in an iframe ``srcdoc`` attribute."""
+    return text.replace("&", "&amp;").replace('"', "&quot;")
+
+
 def inline_images(body: str, base: Path) -> str:
     """Replace every local ``src="…"`` with a data URI."""
     def repl(m: re.Match) -> str:
@@ -149,6 +154,7 @@ PAGE_CSS = """
 
   .tabpanel { max-width: 1180px; margin: 0 auto; }
   .tabpanel > .intro { color: var(--muted); max-width: 760px; margin: 22px 0 18px; }
+  .frame { width: 100%; border: 0; display: block; min-height: 760px; background: var(--bg); }
   .filenote {
     max-width: 1180px; margin: 56px auto 0; padding-top: 18px; border-top: 1px solid var(--line);
     font-size: 13px; color: var(--muted);
@@ -160,7 +166,7 @@ PAGE_JS = """
 (() => {
   "use strict";
   const tabs = [...document.querySelectorAll(".tabs button")];
-  function select(name, focus) {
+  let select = function (name, focus) {
     for (const t of tabs) {
       const on = t.dataset.target === name;
       t.setAttribute("aria-selected", String(on));
@@ -168,19 +174,33 @@ PAGE_JS = """
       if (on && focus) t.focus();
     }
     try { localStorage.setItem("game-kit-tab", name); } catch (e) {}
-  }
-  tabs.forEach(t => t.addEventListener("click", () => select(t.dataset.target)));
+  };
   document.addEventListener("click", ev => {
-    const a = ev.target.closest('a[href="#playground"]');
+    const a = ev.target.closest('a[href="#playground"], a[href="#playground3d"]');
     if (!a) return;
     ev.preventDefault();
-    select("pg", true);
-    document.getElementById("pg").scrollIntoView({ behavior: "smooth", block: "start" });
+    const target = a.getAttribute("href") === "#playground3d" ? "pg3" : "pg";
+    select(target, true);
+    document.getElementById(target).scrollIntoView({ behavior: "smooth", block: "start" });
   });
-  let start = "pg";
+  const frame = document.getElementById("frame3d");
+  function fitFrame() {
+    try { frame.style.height = frame.contentDocument.documentElement.scrollHeight + 40 + "px"; } catch (e) {}
+  }
+  frame.addEventListener("load", fitFrame);
+  window.addEventListener("resize", () => { if (!document.getElementById("pg3").hidden) fitFrame(); });
+  const origSelect = select;
+  select = function (name, focus) {
+    origSelect(name, focus);
+    if (name === "pg3" && !frame.getAttribute("srcdoc")) frame.setAttribute("srcdoc", frame.dataset.doc);
+    if (name === "pg3") setTimeout(fitFrame, 80);
+  };
+  tabs.forEach(t => t.addEventListener("click", () => select(t.dataset.target)));
+  let start = "pg3";
   if (location.hash === "#report") start = "report";
+  else if (location.hash === "#playground") start = "pg";
   else {
-    try { const s = localStorage.getItem("game-kit-tab"); if (s === "report" || s === "pg") start = s; } catch (e) {}
+    try { const s = localStorage.getItem("game-kit-tab"); if (["report", "pg", "pg3"].includes(s)) start = s; } catch (e) {}
   }
   select(start);
 })();
@@ -190,9 +210,13 @@ PAGE_JS = """
 def build(out_path: Path) -> Path:
     report = read_parts(ROOT / "report.html")
     play = read_parts(ROOT / "interactive" / "index.html")
+    # The 3D demo shares element ids with the 2D one (play, log, sN, …), so it is
+    # isolated in an iframe instead of being merged into the document.
+    play3d = (ROOT / "webgl" / "index.html").read_text(encoding="utf-8")
 
     report_body = inline_images(report["body"], ROOT)
     report_body = report_body.replace("https://claude.ai/artifact/5Tg65CZjb86jJCk3VYiuVc", "#playground")
+    report_body = report_body.replace("https://claude.ai/artifact/PhkZmrfSVKf4SNk4uqLQKZ", "#playground3d")
 
     # Pause the simulation while the playground tab is hidden.
     old = '  const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now; frameCounter++;'
@@ -223,7 +247,7 @@ def build(out_path: Path) -> Path:
   <header>
     <div class="eyebrow">プロトタイプ一式 · 2026-09-21</div>
     <h1>GaME プロトタイプ</h1>
-    <p class="lede">CVPR 2026 の <em>GaME: Gaussian Mapping for Evolving Scenes</em> のコア（動的シーン適応とキーフレーム管理）を、CUDA・SAM・実データなしで動かせる形に移植した。ブラウザで動く 2 次元版で<b>体感</b>し、CPU 版の実験を<b>報告</b>として読む。この 1 ファイルに両方が入っている。</p>
+    <p class="lede">CVPR 2026 の <em>GaME: Gaussian Mapping for Evolving Scenes</em> のコア（動的シーン適応とキーフレーム管理）を、CUDA・SAM・実データなしで動かせる形に移植した。WebGL の 3D 版と、仕組みが見やすい 2 次元版で<b>体感</b>し、CPU 版の実験を<b>報告</b>として読む。この 1 ファイルに全部入っている。</p>
     <div class="links">
       <a href="https://github.com/RyoheiOsaka-yellow/test_test_UIX/tree/claude/awesome-dijkstra-pi7ryl/game-proto">コード（game-proto/）</a>
       <a href="https://github.com/VladimirYugay/GaME">本家リポジトリ</a>
@@ -232,12 +256,17 @@ def build(out_path: Path) -> Path:
     </div>
   </header>
   <nav class="tabs" role="tablist" aria-label="表示の切り替え">
-    <button role="tab" id="tab-pg" data-target="pg" aria-controls="pg" aria-selected="true">体感する</button>
+    <button role="tab" id="tab-pg3" data-target="pg3" aria-controls="pg3" aria-selected="true">3D で体感する</button>
+    <button role="tab" id="tab-pg" data-target="pg" aria-controls="pg" aria-selected="false">2D で体感する</button>
     <button role="tab" id="tab-report" data-target="report" aria-controls="report" aria-selected="false">報告を読む</button>
   </nav>
 </div>
 
-<section class="tabpanel pg" id="pg" role="tabpanel" aria-labelledby="tab-pg">
+<section class="tabpanel" id="pg3" role="tabpanel" aria-labelledby="tab-pg3">
+  <iframe class="frame" id="frame3d" title="GaME 3D Playground" data-doc="{escape_attr(play3d)}"></iframe>
+</section>
+
+<section class="tabpanel pg" id="pg" role="tabpanel" aria-labelledby="tab-pg" hidden>
   <p class="intro">ロボットの地図は正確でも、間違っていることがある。ロボットを動かし、見ていない間に椅子を動かして、<b>静的マップ</b>と <b>GaME</b>（古い記憶を忘れられる地図）の違いを見る。</p>
 {play["body"]}
 </section>

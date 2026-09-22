@@ -271,6 +271,24 @@
 </div>
 
 <div class="prose">
+<h2>ブラウザで動く 3D 版</h2>
+<p>同じアルゴリズムを WebGL2 で 3 次元に起こした <a href="https://claude.ai/artifact/PhkZmrfSVKf4SNk4uqLQKZ">GaME 3D Playground</a> を用意した。センサ（96×72 の RGB-D）と GaME のロジックは CPU 版と同じ構造の JavaScript で、描画だけが GPU。Gaussian は等方で、深度順に並べてアルファ合成している。家具をドラッグでき、ロボットの視点を「現実」と「地図の記憶」の 2 つの小窓で並べて見られる。</p>
+<p>自動シナリオ（椅子を見ていない間に動かす）の結果は CPU 版と同じ傾向になる。幽霊は現実のどの面からも 20 cm 以上離れた Gaussian の数。</p>
+</div>
+<div class="tablewrap">
+<table>
+  <thead><tr><th>system</th><th class="num">一致率</th><th class="num">幽霊 Gaussian</th><th class="num">Gaussian 数</th></tr></thead>
+  <tbody>
+    <tr><td>静的マップ</td><td class="num lose">74%</td><td class="num lose">145</td><td class="num">5874</td></tr>
+    <tr><td>GaME</td><td class="num win">76%</td><td class="num win">0</td><td class="num">5344</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="prose">
+<p>3D にして分かったのは、深度の量子化が効くということ。床や壁を斜めから見ると 1 画素のずれが数十 cm の深度差になり、素朴に「観測面より手前なら空間」と判定すると正しい幾何まで削ってしまう。近傍 3×3 の深度レンジと比べる形にして解決した。本家が実データで扱う SAM マスクの境界にも同じ性質の問題があるはずで、閾値を絶対値で置くより局所的な深度の広がりに対する相対量で判定する方が安定すると思われる。</p>
+</div>
+
+<div class="prose">
 <h2>観察と本家への示唆</h2>
 <ul>
   <li><b>マスクの粒度がアルゴリズムの挙動を支配する。</b>本家のいくつかのルールはマスク単位で判断する。SAM が大きな面を細かく過分割することを暗黙に前提にしており、粗いマスクでは除外が過剰になる。実データでも SAM の設定（points per side など）が結果を左右するはず。</li>
@@ -292,7 +310,7 @@
 <ol>
   <li><b>マスク単位の除外を実データで検証する。</b>合成環境では「フレームを捨てない」variant が同等以上だった（上の追加実験）。Aria / Flat で同じ比較を行えば本家への改善提案の根拠になる。</li>
   <li><b>実データに接続する。</b>Aria の HF データセットを取得し、本家のローダを CPU 版に流用して 1 シーンだけ低解像度で走らせる。合成環境との挙動差が見える。</li>
-  <li><b>ブラウザ版インタラクティブデモ。</b>この Python 実装を土台に、椅子をドラッグしてマップ更新を目で追える WebGL 版を作る。</li>
+  <li><b>実データでのノイズ耐性を測る。</b>合成シーンに深度ノイズとマスク境界の揺らぎを注入し、どこから「フレームごと捨てる」方が有利になるかを見る。実データに行く前の安上がりな一手。</li>
 </ol>
 
 <h2>再現手順</h2>
