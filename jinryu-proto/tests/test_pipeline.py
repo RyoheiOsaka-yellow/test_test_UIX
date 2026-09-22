@@ -64,3 +64,48 @@ def test_gravity_row_sums_to_origin():
     T = gravity_row(50.0, np.array([1.0, 2.0, 3.0]), np.array([100.0, 500.0, np.inf]), 450.0, 2500.0)
     assert abs(T.sum() - 50.0) < 1e-9
     assert T[2] == 0.0
+
+
+def test_station_nodes_attaches_subway_to_underground():
+    """地下鉄の駅だけ地下ノードに繋ぎ替え、JR の行は地上のまま残す."""
+    import geopandas as gpd
+    from shapely.geometry import LineString
+
+    from jinryu.pipeline import station_nodes
+
+    nodes = pd.DataFrame(
+        {
+            "node_id": ["surf1", "surf2", "und1", "und2"],
+            "lon": [130.4000, 130.4010, 130.40005, 130.4011],
+            "lat": [33.5900, 33.5900, 33.59003, 33.5901],
+        }
+    )
+    links = gpd.GeoDataFrame(
+        {
+            "u": ["surf1", "und1"],
+            "v": ["surf2", "und2"],
+            "level": [0, -1],
+            "geometry": [
+                LineString([(130.4000, 33.5900), (130.4010, 33.5900)]),
+                LineString([(130.40005, 33.59003), (130.4011, 33.5901)]),
+            ],
+        },
+        crs="EPSG:4326",
+    )
+    st = pd.DataFrame(
+        {
+            "station_id": ["s1", "s2"],
+            "name": ["天神", "博多"],
+            "operator": ["福岡市", "九州旅客鉄道"],
+            "line": ["1号線(空港線)", "鹿児島線"],
+            "passengers_per_day": [1000.0, 2000.0],
+            "lon": [130.4000, 130.4000],
+            "lat": [33.5900, 33.5900],
+        }
+    )
+    coef = {"od": {"subway": {"underground_attach": True, "operator_pattern": "福岡市", "max_attach_m": 400}}}
+    out = station_nodes(st, nodes, links, coef)
+    assert out.node_id.tolist() == ["und1", "surf1"]
+    # 無効時は全駅が最寄りノード
+    off = station_nodes(st, nodes, links, {"od": {"subway": {"underground_attach": False}}})
+    assert off.node_id.tolist() == ["surf1", "surf1"]

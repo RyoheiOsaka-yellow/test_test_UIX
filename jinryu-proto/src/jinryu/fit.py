@@ -17,7 +17,7 @@ import scipy.sparse as sp
 from jinryu import config
 from jinryu.assign import build_network, shortest_tree
 from jinryu.od import gateway_nodes, make_zones
-from jinryu.pipeline import split_station_exits
+from jinryu.pipeline import split_station_exits, station_nodes
 from jinryu.units.build import nearest_node
 
 # 集中側で係数を推定する用途クラス（住宅・工業は来訪先としては扱わない）
@@ -136,8 +136,7 @@ def build_route_model(
             if z in zpos:
                 poi_count[zpos[z]] = v
 
-    st = split_station_exits(tables["station"])
-    st["node_id"], _ = nearest_node(nodes, st.lon.values, st.lat.values, config.epsg_plane())
+    st = station_nodes(split_station_exits(tables["station"]), nodes, links, coef)
     st = st[st.passengers_per_day > 0].merge(zones[["node_id", "zone_id"]], on="node_id", how="left")
     station_pax = np.zeros(nz)
     for z, v in st.groupby("zone_id").passengers_per_day.sum().items():
@@ -204,6 +203,29 @@ PARAM_NAMES = [f"dest_{c}" for c in FIT_CLASSES] + [
 DEFAULT_PARAMS = np.array([1.0, 1.0, 1.0, 1.0, 0.5, 1.0, 100.0, 0.5, 1.2, 0.35, 0.0, 450.0])
 LOWER = np.array([0.0] * 6 + [0.0, 0.05, 0.1, 0.0, 0.0, 120.0])
 UPPER = np.array([6.0] * 6 + [1500.0, 3.0, 5.0, 2.0, 400.0, 2000.0])
+
+
+# 絞り込み版。217 地点に対して 12 個は多すぎて、同じ当てはまりでまったく違う解が並ぶ。
+# ・吸引側の全体倍率と発生側の全体倍率は順位に効かない（スケール k は後段の fit_scale が別に合わせる）
+#   ので、小売 = 1、住宅発生率 = 1 に固定して自由度を 2 つ落とす。
+# ・小売・オフィス以外の用途は実測で区別がつかなかったので 1 つにまとめる。
+REDUCED_NAMES = [
+    "dest_office",
+    "dest_other",
+    "poi_weight",
+    "station_weight",
+    "underground_weight",
+    "half_distance_m",
+]
+REDUCED_DEFAULT = np.array([1.0, 1.0, 20.0, 0.5, 0.0, 450.0])
+REDUCED_LOWER = np.array([0.0, 0.0, 0.0, 0.05, 0.0, 120.0])
+REDUCED_UPPER = np.array([4.0, 4.0, 400.0, 3.0, 120.0, 1200.0])
+
+
+def expand(x: np.ndarray) -> np.ndarray:
+    """絞り込んだ 6 個を link_flow が受け取る 12 個に広げる（小売・住宅発生率・外部係数を 1 に固定）."""
+    office, other, poi_w, st_w, und_w, half = (float(v) for v in x)
+    return np.array([1.0, office, other, other, other, other, poi_w, st_w, 1.0, 1.0, und_w, half])
 
 
 def link_flow(rm: RouteModel, params: np.ndarray, max_distance_m: float = 2500.0) -> np.ndarray:

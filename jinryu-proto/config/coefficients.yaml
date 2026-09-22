@@ -50,6 +50,10 @@ od:
   max_distance_m: 2500        # これ以上の徒歩トリップは生成しない
   station_origin_weight: 0.5  # 駅1日乗降客数×この係数を発生量に（乗降＝乗+降なので半分が「駅から出る」）
   station_holiday_factor: 0.75
+  subway:
+    underground_attach: false  # 地下鉄駅を地下歩行路のノードに接続する（地下街のある都市のみ）
+    operator_pattern: ""  # 事業者名の部分一致。空なら無効
+    max_attach_m: 400  # 地下ノードがこれより遠い駅は地上に接続したまま
   residential_trip_rate:      # 夜間滞在人口あたりの日中外出トリップ率
     weekday: 1.2
     holiday: 1.4

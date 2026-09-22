@@ -35,14 +35,18 @@ def split_station_exits(stations: gpd.GeoDataFrame) -> pd.DataFrame:
     ex = config.area().get("station_exits", {}) or {}
     rows = []
     for _, r in stations.iterrows():
+        base = {
+            "name": r["name"],
+            "operator": r.get("operator"),
+            "line": r.line,
+        }
         exits = ex.get(str(r["name"]))
         if exits:
             for e in exits:
                 rows.append(
                     {
                         "station_id": f"{r.station_id}:{e['name']}",
-                        "name": r["name"],
-                        "line": r.line,
+                        **base,
                         "passengers_per_day": r.passengers_per_day * e["share"],
                         "lon": e["lon"],
                         "lat": e["lat"],
@@ -52,14 +56,42 @@ def split_station_exits(stations: gpd.GeoDataFrame) -> pd.DataFrame:
             rows.append(
                 {
                     "station_id": r.station_id,
-                    "name": r["name"],
-                    "line": r.line,
+                    **base,
                     "passengers_per_day": r.passengers_per_day,
                     "lon": r.geometry.x,
                     "lat": r.geometry.y,
                 }
             )
     return pd.DataFrame(rows)
+
+
+def station_nodes(
+    st: pd.DataFrame, nodes: pd.DataFrame, links: gpd.GeoDataFrame, coef: dict | None = None
+) -> pd.DataFrame:
+    """駅の接続ノード。地下鉄駅は地下歩行路のノードに繋ぐ.
+
+    天神・博多の地下鉄駅はホームから地下街へ直結していて、乗降客は地上に出ずに地下街へ流れる。
+    最近傍ノードをそのまま使うと地上の街路に載ってしまい、地下の通行量を取りこぼす。
+    同名駅でも路線ごとに行が分かれているので、JR・西鉄の行は地上のまま残る。
+    """
+    coef = coef or config.coefficients()
+    st = st.copy()
+    st["node_id"], _ = nearest_node(nodes, st.lon.values, st.lat.values, config.epsg_plane())
+    sub = coef["od"].get("subway") or {}
+    pat = str(sub.get("operator_pattern") or "")
+    if not sub.get("underground_attach") or not pat or "level" not in links.columns:
+        return st
+    if "operator" not in st.columns:
+        return st
+    u = links[links["level"] < 0]
+    und = nodes[nodes.node_id.isin(set(u.u) | set(u.v))]
+    m = st["operator"].astype(str).str.contains(pat, na=False)
+    if und.empty or not m.any():
+        return st
+    nid, d = nearest_node(und, st.loc[m, "lon"].values, st.loc[m, "lat"].values, config.epsg_plane())
+    ok = d <= float(sub.get("max_attach_m", 400.0))
+    st.loc[st.index[m][ok], "node_id"] = nid[ok]
+    return st
 
 
 def run_build(
@@ -87,8 +119,7 @@ def run_build(
     net = build_network(links)
     nodes = t["node"]
     zones = make_zones(nodes, coef["od"]["zone_cell_m"])
-    st = split_station_exits(t["station"])
-    st["node_id"], _ = nearest_node(nodes, st.lon.values, st.lat.values, config.epsg_plane())
+    st = station_nodes(split_station_exits(t["station"]), nodes, links, coef)
     st = st[st.passengers_per_day > 0]
 
     # ② OD 重み（全組合せ列を用意）
