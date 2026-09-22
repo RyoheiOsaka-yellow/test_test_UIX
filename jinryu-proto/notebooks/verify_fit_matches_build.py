@@ -19,7 +19,7 @@ from jinryu.pipeline import load_tables, run_build
 def check(label: str, coef: dict, params: np.ndarray, tables: dict) -> bool:
     period = config.area()["periods"]["baseline"]
     band = coef["od"]["destination_time_band"]
-    _, lf = run_build(
+    bpop, lf = run_build(
         periods=[period],
         coef=coef,
         write=False,
@@ -28,7 +28,8 @@ def check(label: str, coef: dict, params: np.ndarray, tables: dict) -> bool:
         time_bands=(band,),
         quiet=True,
     )
-    rm = fit.build_route_model(tables, coef=coef, period=period, day_type="weekday")
+    # fit 側は建物別滞在人口を入力に取る（run_build は内部で作るので受け渡す）
+    rm = fit.build_route_model({**tables, "building_pop": bpop}, coef=coef, period=period, day_type="weekday")
     mine = pd.Series(fit.link_flow(rm, params), index=rm.links.link_id.values)
     theirs = lf.set_index("link_id").flow_synth
     both = pd.DataFrame({"build": theirs, "fit": mine.reindex(theirs.index)}).fillna(0.0)
