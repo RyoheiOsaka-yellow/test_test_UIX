@@ -89,20 +89,60 @@ def _road_tree(links: gpd.GeoDataFrame, step_m: float = 10.0) -> cKDTree:
     return cKDTree(np.array(pts))
 
 
-def georeference(items: PageItems, tree: cKDTree, guess_lonlat: tuple[float, float], plane_epsg: int):
-    """ページ座標 → 平面直角座標のアフィン変換を推定して (変換関数, 残差, パラメータ) を返す."""
+def _pca_axis(pts: np.ndarray) -> tuple[float, float]:
+    """点群の主軸の向き（ラジアン）と、その軸方向の広がり（標準偏差）."""
+    c = pts - pts.mean(axis=0)
+    _, sv, vt = np.linalg.svd(c, full_matrices=False)
+    ang = float(np.arctan2(vt[0, 1], vt[0, 0]))
+    spread = float(sv[0] / np.sqrt(len(pts)))
+    return ang, spread
+
+
+def georeference(
+    items: PageItems,
+    tree: cKDTree,
+    guess_lonlat: tuple[float, float],
+    plane_epsg: int,
+    target_pts: np.ndarray | None = None,
+):
+    """ページ座標 → 平面直角座標のアフィン変換を推定して (変換関数, 残差, パラメータ, 初期縮尺) を返す.
+
+    縮尺バーがあるページはそこから m/pt を決め、回転 0（北上）を初期値に平行移動だけを探索する。
+    縮尺バーが無いページ（天神地下）は、地点群と対象ネットワーク（地下リンク）の主軸・広がりを
+    合わせて縮尺と回転の初期値を作り、回転・縮尺・平行移動をまとめて最適化する。
+    """
     ticks = sorted(items.scale_ticks)
     zero = [x for m, x in ticks if m == 0]
-    if not zero or len(ticks) < 2:
-        return None  # 縮尺バーが文字として無いページ（天神地下）は座標を決められない
-    x_zero = zero[0]
-    m_max, x_max = max(ticks)
-    scale0 = m_max / (x_max - x_zero)  # m/pt
+    has_bar = bool(zero) and len(ticks) >= 2
+    pts_page = np.array([[x, y] for _, x, y in items.marks])
+    if has_bar:
+        x_zero = zero[0]
+        m_max, x_max = max(ticks)
+        scale0 = m_max / (x_max - x_zero)  # m/pt
+        rot_candidates = [0.0]
+    else:
+        if target_pts is None or len(target_pts) < 10:
+            return None
+        # 対象は調査範囲の近傍だけに絞る（全域の地下リンクを使うと広がりを過大評価して縮尺がずれる）
+        fwd0 = Transformer.from_crs(4326, plane_epsg, always_xy=True)
+        cx, cy = fwd0.transform(*guess_lonlat)
+        near = target_pts[np.hypot(target_pts[:, 0] - cx, target_pts[:, 1] - cy) < 800]
+        if len(near) < 10:
+            near = target_pts
+        target_pts = near
+        flipped = pts_page * np.array([1.0, -1.0])  # PDF は y 下向き
+        _, spread_p = _pca_axis(flipped)
+        _, spread_t = _pca_axis(target_pts)
+        scale0 = spread_t / max(spread_p, 1e-6)
+        rot_candidates = list(np.radians(np.arange(0, 360, 15)))  # 地下図は回転しているので全周を探す
 
-    pts = np.array([[x, y] for _, x, y in items.marks])
+    pts = pts_page
     centre = pts.mean(axis=0)
     fwd = Transformer.from_crs(4326, plane_epsg, always_xy=True)
-    gx, gy = fwd.transform(*guess_lonlat)
+    if target_pts is not None and not has_bar:
+        gx, gy = target_pts.mean(axis=0)
+    else:
+        gx, gy = fwd.transform(*guess_lonlat)
 
     def apply(params, query=None):
         q = pts if query is None else query
@@ -115,17 +155,35 @@ def georeference(items: PageItems, tree: cKDTree, guess_lonlat: tuple[float, flo
     def cost(params):
         return float(np.median(tree.query(apply(params))[0]))
 
+    # 縮尺バーがあるページでは縮尺と回転は既知（北上）なので固定し、平行移動だけを合わせる。
+    # 縮尺を自由にすると 1% 程度のずれで地図の端の地点が隣の街路に乗り移り、結果が不安定になる。
+    span, step = (500, 50) if has_bar else (350, 175)
+    scales = [scale0] if has_bar else [scale0 * f for f in (0.6, 0.75, 0.9, 1.0, 1.15, 1.35)]
     grid = (
-        (cost([de, dn, 0.0, scale0]), [de, dn, 0.0, scale0])
-        for de in np.arange(-500, 501, 100)
-        for dn in np.arange(-500, 501, 100)
+        (cost([de, dn, th, sc]), [de, dn, th, sc])
+        for de in np.arange(-span, span + 1, step)
+        for dn in np.arange(-span, span + 1, step)
+        for th in rot_candidates
+        for sc in scales
     )
     best = min(grid, key=lambda a: a[0])
-    res = minimize(
-        cost, best[1], method="Nelder-Mead", options={"maxiter": 6000, "xatol": 0.05, "fatol": 0.005}
-    )
-    resid = tree.query(apply(res.x))[0]
-    return apply, resid, res.x, scale0
+    if has_bar:
+        # 縮尺バーの値と北上を信用し、平行移動だけを合わせる。縮尺を自由にすると 1% 程度のずれで
+        # 地図の端の地点が隣の街路に乗り移り、取り込みのたびに結果が変わってしまう。
+        res = minimize(
+            lambda v: cost([v[0], v[1], 0.0, scale0]),
+            best[1][:2],
+            method="Nelder-Mead",
+            options={"maxiter": 4000, "xatol": 0.05, "fatol": 0.005},
+        )
+        params = np.array([res.x[0], res.x[1], 0.0, scale0])
+    else:
+        res = minimize(
+            cost, best[1], method="Nelder-Mead", options={"maxiter": 8000, "xatol": 0.05, "fatol": 0.005}
+        )
+        params = np.asarray(res.x)
+    resid = tree.query(apply(params))[0]
+    return apply, resid, params, scale0
 
 
 def build_fukuoka_counts(
@@ -136,7 +194,12 @@ def build_fukuoka_counts(
     if links is None:
         links = gpd.read_parquet(config.paths().table("road_link"))
     plane = config.epsg_plane()
-    tree = _road_tree(links.to_crs(plane))
+    lv = links["level"] if "level" in links.columns else None
+    surface = links[lv >= 0] if lv is not None else links
+    under = links[lv < 0] if lv is not None else links.iloc[0:0]
+    tree_surface = _road_tree(surface.to_crs(plane))
+    tree_under = _road_tree(under.to_crs(plane)) if len(under) else None
+    under_pts = np.array(tree_under.data) if tree_under is not None else None
     inv = Transformer.from_crs(plane, 4326, always_xy=True)
 
     transforms: dict[str, tuple] = {}
@@ -151,14 +214,17 @@ def build_fukuoka_counts(
         items = read_page(path, page)
         if len(items.marks) < MIN_MARKS:
             continue
+        tree = tree_under if kind == "underground" and tree_under is not None else tree_surface
         if code not in transforms:  # 地区ごとに1回だけ推定し、平日/休日で共有する
-            fitted = georeference(items, tree, guess, plane)
+            fitted = georeference(
+                items, tree, guess, plane, target_pts=under_pts if kind == "underground" else None
+            )
             if fitted is None:
                 if verbose:
-                    print(f"  {district}: 縮尺バーが無く座標を決められないため除外（{len(items.marks)}地点）")
+                    print(f"  {district}: 座標の手がかりが足りず除外（{len(items.marks)}地点）")
                 continue
             apply, resid, params, scale0 = fitted
-            transforms[code] = (apply, params, scale0)
+            transforms[code] = (apply, params, scale0, tree)
             diags.append(
                 {
                     "district": district,
@@ -179,7 +245,7 @@ def build_fukuoka_counts(
                 )
         if code not in transforms:
             continue
-        apply, params, _ = transforms[code]
+        apply, params, _, tree = transforms[code]
         pts = np.array([[x, y] for _, x, y in items.marks])
         world = apply(params, pts)
         lon, lat = inv.transform(world[:, 0], world[:, 1])
@@ -198,6 +264,7 @@ def build_fukuoka_counts(
                     "lat": round(float(la), 6),
                     "lon": round(float(lo), 6),
                     "active_from": OBS_PERIOD,
+                    "geo_resid_m": round(float(rs), 1),
                     "note": f"PDF地図から座標推定（最寄り街路まで {rs:.0f}m）",
                 },
             )

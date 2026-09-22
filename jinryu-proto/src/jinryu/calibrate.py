@@ -109,10 +109,16 @@ def site_flows(
 def _obs_for_calibration(obs: pd.DataFrame, sites: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     """較正に使う実測: 街路地点のみ、期間は全月平均、平日/休日別、time_band=all."""
     ok = sites[~sites.kind.isin(cfg["exclude_site_kinds"]) & sites.link_id.notna()]
+    # PDF 地図から座標を起こした地点は、ネットワークから離れすぎているものを較正から外す
+    lim = cfg.get("max_site_resid_m")
+    if lim and "geo_resid_m" in ok.columns:
+        resid = pd.to_numeric(ok.geo_resid_m, errors="coerce")
+        ok = ok[resid.isna() | (resid <= lim)]
     o = obs[
         obs.site_id.isin(ok.site_id) & (obs.time_band == "all") & obs.day_type.isin(["weekday", "holiday"])
     ]
     o = o.groupby(["site_id", "day_type"], as_index=False).agg(count=("count", "mean"), n=("n_days", "sum"))
+    o = o[o.site_id.isin(ok.site_id)]
     return o.merge(ok[["site_id", "link_id", "link_ids", "block", "name"]], on="site_id")
 
 

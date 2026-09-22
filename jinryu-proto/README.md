@@ -1,10 +1,11 @@
-# jinryu-proto — 人流ポテンシャル評価プロトタイプ v0.5
+# jinryu-proto — 人流ポテンシャル評価プロトタイプ v0.6
 
 メッシュ単位の広域人流データ（国交省 人流オープンデータ）を、PLATEAU 建物・OSM 道路リンク（地下通路を含む）という
 「意思決定の単位」に再配分し、不動産・自治体が使える言葉で返すエンジンのプロトタイプ。対象エリア: 福岡市中心部＋福岡県全域、岡山市中心部。
 
 **このエンジンが返すのはエリア内の相対順位です。** 人/日の絶対値は、根拠となる人流データが 1km メッシュのため目安として扱ってください。
-順位の一致度は実測で検証しています（福岡 436 観測に対し空間ブロック交差検証で Spearman 0.404、岡山 18 観測で 0.685）。
+順位の一致度は実測で検証しています（福岡 436 観測に対し空間ブロック交差検証で Spearman 0.365、岡山 18 観測で 0.685）。
+福岡は市の歩行者交通量調査 PDF から地上 224・地下 80 地点を自動取り込みしています（地下は表示のみで較正には未使用）。
 
 仕様: [docs/SPEC.md](docs/SPEC.md) ／ 進捗: [docs/PROGRESS.md](docs/PROGRESS.md) ／ 評価: [岡山](docs/EVAL.md)・[福岡](docs/EVAL_fukuoka.md) ／ 限界: [docs/LIMITATIONS.md](docs/LIMITATIONS.md) ／ 未決事項: [docs/QUESTIONS.md](docs/QUESTIONS.md) ／ デモ台本: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)
 

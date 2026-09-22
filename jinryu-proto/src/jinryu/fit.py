@@ -39,6 +39,7 @@ class RouteModel:
     station_pax: np.ndarray = field(default=None)  # (n_zone,) 乗降客数
     ext_night: np.ndarray = field(default=None)  # (n_zone,) 外部ゾーンの夜間人口
     ext_day: np.ndarray = field(default=None)  # (n_zone,) 外部ゾーンの昼間人口
+    under_len: np.ndarray = field(default=None)  # (n_zone,) 地下歩行路の長さ m（地下街の集中重み用）
 
 
 def build_route_model(
@@ -166,6 +167,15 @@ def build_route_model(
                         ext_night[zpos[z]] += n
                         ext_day[zpos[z]] += dd
 
+    from jinryu.od import underground_attraction
+
+    ua = underground_attraction(links, zones, 1.0)
+    under_len = np.zeros(nz)
+    if len(ua):
+        for z, v in ua.items():
+            if z in zpos:
+                under_len[zpos[z]] = float(v)
+
     return RouteModel(
         links=links,
         zone_ids=zone_ids,
@@ -178,6 +188,7 @@ def build_route_model(
         station_pax=station_pax,
         ext_night=ext_night,
         ext_day=ext_day,
+        under_len=under_len,
     )
 
 
@@ -187,18 +198,21 @@ PARAM_NAMES = [f"dest_{c}" for c in FIT_CLASSES] + [
     "station_weight",
     "resident_rate",
     "external_factor",
+    "underground_weight",
     "half_distance_m",
 ]
-DEFAULT_PARAMS = np.array([1.0, 1.0, 1.0, 1.0, 0.5, 1.0, 100.0, 0.5, 1.2, 0.35, 450.0])
-LOWER = np.array([0.0] * 6 + [0.0, 0.05, 0.1, 0.0, 120.0])
-UPPER = np.array([6.0] * 6 + [1500.0, 3.0, 5.0, 2.0, 2000.0])
+DEFAULT_PARAMS = np.array([1.0, 1.0, 1.0, 1.0, 0.5, 1.0, 100.0, 0.5, 1.2, 0.35, 0.0, 450.0])
+LOWER = np.array([0.0] * 6 + [0.0, 0.05, 0.1, 0.0, 0.0, 120.0])
+UPPER = np.array([6.0] * 6 + [1500.0, 3.0, 5.0, 2.0, 400.0, 2000.0])
 
 
 def link_flow(rm: RouteModel, params: np.ndarray, max_distance_m: float = 2500.0) -> np.ndarray:
     """係数からリンク通行量（合成値）を計算する."""
     dest = np.asarray(params[:6], dtype=float)
-    poi_w, st_w, res_rate, ext_f, half = (float(v) for v in params[6:])
+    poi_w, st_w, res_rate, ext_f, und_w, half = (float(v) for v in params[6:])
     attract = rm.pop_by_class @ dest + poi_w * rm.poi_count + st_w * rm.station_pax + ext_f * rm.ext_day
+    if und_w and rm.under_len is not None:
+        attract = attract + und_w * rm.under_len
     origins = res_rate * rm.night_pop + st_w * rm.station_pax + ext_f * res_rate * rm.ext_night
     f = np.exp(-np.log(2.0) * rm.dist / half)
     f[~np.isfinite(rm.dist) | (rm.dist > max_distance_m)] = 0.0
@@ -229,6 +243,7 @@ def params_to_coefficients(params: np.ndarray | dict, coef: dict | None = None) 
     c["od"]["residential_trip_rate"] = {"weekday": rate, "holiday": round(rate * 1.17, 4)}
     c["od"].setdefault("external", {})["origin_factor"] = round(float(params[9]), 4)
     c["od"]["external"]["dest_factor"] = round(float(params[9]), 4)
-    c["od"]["half_distance_m"] = int(round(float(params[10])))
+    c["od"]["underground_weight"] = round(float(params[10]), 3)
+    c["od"]["half_distance_m"] = int(round(float(params[11])))
     c["od"]["fitted"] = True
     return c

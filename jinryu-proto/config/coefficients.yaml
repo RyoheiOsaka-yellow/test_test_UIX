@@ -55,6 +55,8 @@ od:
     holiday: 1.4
   destination_time_band: day  # 集中点の重みに使う時間帯（滞在人口 P_b）
   mixed_dest_factor: 0.5      # 店舗併用住宅の集中重み（滞在人口のうち来訪者分とみなす割合）
+  underground_weight: 0.0     # 地下街を集中点として扱う重み（ゾーン内の地下歩行路 1m あたり）。
+                              # 地下歩行網があるエリアでのみ有効。0 だと地下街に発着が生じない
   poi_weight: 100.0           # OSM の店舗・飲食 POI 1 件あたりの追加集中重み（人/日相当）。0 で無効。実験で 0→100 で CV Spearman 0.46→0.54
   zone_cell_m: 150            # 発生・集中点を集約するグリッドサイズ（経路配分の計算量削減）
   external:                   # 境界効果対策: bbox 外周 1km のメッシュ人口を「境界ノード」に載せる（外部ゾーン）
@@ -106,6 +108,7 @@ calibrate:
   parallel_tolerance_deg: 40   # スクリーンラインで拾うリンクを「街路と平行」に限る許容角
   exclude_site_kinds: [underground, entrance, plaza]   # 街路でない地点（地下街・入退場口・駅前広場階段）は較正から除外
   half_distance_grid: [300, 450, 600, 900, 1300]
+  max_site_resid_m: 40         # PDF から座標を起こした地点のうち、街路から離れすぎるものは較正に使わない
   cv_blocks: area              # count_sites の block 列で空間ブロックCV
   target_spearman: 0.6
 

@@ -312,7 +312,7 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
   }
   function tooltip({ object, layer }) {
     if (!object) return null; const k = curK();
-    if (layer.id === "links") { const pre = object.level < 0 ? "【地下】" : "";
+    if (layer.id === "links") { const pre = object.level < 0 ? "【地下・未較正】" : "";
       if (state.compare) { const a = object.flows[k], b = object.flows[cmpK()]; return `${object.name || "(無名)"}\nA ${fmt(a)} → B ${fmt(b)} 人/日（×${a > 0 ? (b / a).toFixed(2) : "—"}）`; } const v = object.flows[k]; return `${pre}${object.name || "(無名)"} [${object.type}]\nエリア内 上位 ${fmt(100 - pctOf(k, v))}%（推定 ${fmt(v)} 人/日・目安）信頼度 ${object.conf}`; }
     if (layer.id === "buildings") return `${usageJa[object.usage] || object.usage} ${object.floors}F 延床 ${fmt(object.gfa)}m²\n${object.zoning || "用途地域不明"} 建蔽${object.bcr ?? "—"}% 容積${object.far ?? "—"}%${object.headroom != null ? `\n未消化延床 ${fmt(object.headroom)}m²` : ""}\n前面通行量 ${fmt(frontFlow(object, state.dayType, state.timeBand))} 人/日`;
     if (layer.id === "zoning") return `${object.name}\n建蔽率 ${object.bcr}% / 容積率 ${object.far}%`;
@@ -462,7 +462,7 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
   const calibText = c.n_sites ? `実測 ${c.n_sites} 観測に対する順位相関 Spearman: in-sample ${c.spearman_in_sample ?? "—"} / 空間ブロック CV ${c.spearman_block_cv ?? "—"}。距離抵抗 half=${c.half_distance_m ?? "—"}m。建物 ${fmt(DATA.area.counts.buildings)} 棟・街路リンク ${fmt(DATA.area.counts.links)} 本。` : `<b>このエリアは未較正</b>: 実測通行量が未取り込みのため、岡山市中心部で較正した距離抵抗（half=${c.half_distance_m ?? "—"}m）とスケール（k=${c.scale_k ?? "—"}）を転用しています。順位（相対値）は使えますが、人/日の絶対値は目安です。建物 ${fmt(DATA.area.counts.buildings)} 棟・街路リンク ${fmt(DATA.area.counts.links)} 本。`;
   $("calib").innerHTML = calibText;
   $("accuracyTop").innerHTML = accuracyNote(); $("aboutCalib").innerHTML = calibText;
-  $("legend").innerHTML = `<span class="lg" style="background:rgb(37,99,235)"></span>通行量 下位 → <span class="lg" style="background:rgb(250,204,21)"></span> → <span class="lg" style="background:rgb(220,38,38)"></span>上位（エリア内パーセンタイル、線の太さ＝通行量）<br/>建物: 高さ＝実測高さ（無ければ階数×3.5m）、色は上のセレクタで 用途／前面通行量／容積率の未消化／築年 を切替<br/>選択中の区画には、容積率いっぱいまで建てた場合の<b>最大ボリューム</b>を白い枠で重ねます<br/>○ 実測地点、● 地価公示地点<br/>半透明で細い線は<b>地下通路・地下街</b>（天神地下街など）。上部のチェックで表示を切替<br/>県全域: 1km メッシュの滞在人口（高さ・色）。白枠が建物・街路レベルで推定している中心部`;
+  $("legend").innerHTML = `<span class="lg" style="background:rgb(37,99,235)"></span>通行量 下位 → <span class="lg" style="background:rgb(250,204,21)"></span> → <span class="lg" style="background:rgb(220,38,38)"></span>上位（エリア内パーセンタイル、線の太さ＝通行量）<br/>建物: 高さ＝実測高さ（無ければ階数×3.5m）、色は上のセレクタで 用途／前面通行量／容積率の未消化／築年 を切替<br/>選択中の区画には、容積率いっぱいまで建てた場合の<b>最大ボリューム</b>を白い枠で重ねます<br/>○ 実測地点、● 地価公示地点<br/>半透明で細い線は<b>地下通路・地下街</b>（天神地下街など）。上部のチェックで表示を切替。<b>地下の推定値は較正していません</b>（実測は取り込み済みで地図に○表示）<br/>県全域: 1km メッシュの滞在人口（高さ・色）。白枠が建物・街路レベルで推定している中心部`;
   $("sources").innerHTML = `<b>出典</b>: ${DATA.sources.map((s) => s.credit || s.name).join(" / ")}<br/><b>免責</b>: ${DATA.disclaimer.replace(/\n/g, " ")}`;
   function setMode(m) { state.mode = m; document.body.classList.remove("gov", "realestate"); document.body.classList.add(m); if (m !== "gov" && state.compare) { state.compare = false; render(); } }
   $("mode").onchange = (e) => setMode(e.target.value);

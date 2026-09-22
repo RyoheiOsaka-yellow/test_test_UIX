@@ -41,6 +41,27 @@ def make_zones(nodes: pd.DataFrame, cell_m: float | None = None) -> pd.DataFrame
     return z[["node_id", "zone_id"]].merge(rep, on="zone_id")
 
 
+def underground_attraction(links, zones, weight: float) -> pd.Series:
+    """地下街を集中点として扱う。
+
+    地下の歩行者専用路・通路は両側が店舗であることが多く（天神地下街は約 590m に 150 店）、
+    それ自体が来訪先になる。建物ポリゴンが地上にしか無いため、建物由来の集中重みでは
+    地下街に一切トリップが発生せず、実測で数万人が通る区間の推定が 0 になっていた。
+    ここではゾーンごとの地下歩行リンク長（m）に比例した集中重みを与える。
+    """
+    if weight <= 0 or "level" not in links.columns:
+        return pd.Series(dtype=float)
+    u = links[(links["level"] < 0) & links.highway_type.isin(["pedestrian", "footway", "corridor"])]
+    if not len(u):
+        return pd.Series(dtype=float)
+    z = zones[["node_id", "zone_id"]]
+    a = u[["u", "length_m"]].rename(columns={"u": "node_id"})
+    b = u[["v", "length_m"]].rename(columns={"v": "node_id"})
+    both = pd.concat([a, b])
+    both["length_m"] *= 0.5  # 両端で半分ずつ計上
+    return both.merge(z, on="node_id", how="left").groupby("zone_id").length_m.sum() * weight
+
+
 def zone_weights(
     buildings: pd.DataFrame,
     building_pop: pd.DataFrame,
@@ -51,6 +72,7 @@ def zone_weights(
     time_band: str,
     coef: dict | None = None,
     pois: pd.DataFrame | None = None,
+    links: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """zone ごとの O（発生）と D（集中）を返す。列: zone_id, rep_node, O, D."""
     coef = coef or config.coefficients()
@@ -92,6 +114,12 @@ def zone_weights(
     st = st.merge(zones[["node_id", "zone_id"]], on="node_id", how="left")
     zw = zw.add(st.groupby("zone_id")[["O", "D"]].sum(), fill_value=0.0)
     zw["O"] *= BAND_ORIGIN_FACTOR[time_band]
+    # 地下街の集中（建物ポリゴンが地上にしか無いぶんを補う）
+    uw = od.get("underground_weight", 0.0)
+    if uw and links is not None:
+        ua = underground_attraction(links, zones, uw)
+        if len(ua):
+            zw["D"] = zw["D"].add(ua, fill_value=0.0)
     zw = zw.reset_index().merge(zones[["zone_id", "rep_node"]].drop_duplicates("zone_id"), on="zone_id")
     return zw[(zw.O > 0) | (zw.D > 0)].reset_index(drop=True)
 

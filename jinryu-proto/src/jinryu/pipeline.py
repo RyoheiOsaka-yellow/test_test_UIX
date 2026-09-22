@@ -118,7 +118,7 @@ def run_build(
         )
     zw_all = {}
     for c in combos:
-        zw = zone_weights(t["building"], bpop, st, zones, *c, coef=coef, pois=pois)
+        zw = zone_weights(t["building"], bpop, st, zones, *c, coef=coef, pois=pois, links=links)
         ext = external_zone_weights(t["mesh_flow"], gw, zones, *c, coef=coef)
         zw_all[c] = (
             pd.concat([zw, ext]).groupby(["zone_id", "rep_node"], as_index=False)[["O", "D"]].sum()

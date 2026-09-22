@@ -29,6 +29,7 @@ od:
     origin_factor: 1.232
     dest_factor: 1.232
   half_distance_m: 179
+  underground_weight: 50.0
 assign:
   stochastic:
     draws: 6
@@ -40,3 +41,8 @@ calibrate:
   - 180
   - 240
   - 320
+  exclude_site_kinds:
+  - underground
+  - entrance
+  - plaza
+  max_site_resid_m: 40
