@@ -27,12 +27,17 @@ assign:
     seed: 42
 calibrate:
   half_distance_grid:
-  - 150
   - 180
-  - 240
-  - 320
+  - 250
+  - 350
+  - 450
   exclude_site_kinds:
   - underground
   - entrance
   - plaza
   max_site_resid_m: 40
+  access_weight_grid:
+  - 0
+  - 100
+  - 300
+  - 1000

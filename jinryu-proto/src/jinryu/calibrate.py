@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import os
 import time
@@ -188,29 +189,44 @@ def run_calibration(write: bool = True) -> dict:
         f"較正地点 {cal_obs.site_id.nunique()} 箇所 × 平休日 = {len(cal_obs)} 観測（基準期間 {baseline}）"
     )
 
-    # 距離抵抗の格子探索（基準期間のみ再構築）
+    # 距離抵抗と到着端の格子探索（基準期間のみ再構築）
+    # 到着端係数は他の係数と取引させると学習地区に特化して転移しなくなるので、
+    # 最適化に任せず全観測に対する格子探索で 1 つ決める。
+    acc_grid = cfg.get("access_weight_grid") or [coef["od"].get("access_weight", 0.0)]
     results = []
     best = None
-    for half in cfg["half_distance_grid"]:
+    for half, acc in itertools.product(cfg["half_distance_grid"], acc_grid):
         c = json.loads(json.dumps(coef))
         c["od"]["half_distance_m"] = half
+        c["od"]["access_weight"] = acc
         _, lf = run_build(periods=[baseline], coef=c, write=False, tables=tables)
         m, met, k = evaluate(lf, cal_obs, baseline)
         cv = block_cv(m)
-        r = {"half_distance_m": half, "scale_k": round(k, 4), "in_sample": met, "block_cv": cv}
+        r = {
+            "half_distance_m": half,
+            "access_weight": acc,
+            "scale_k": round(k, 4),
+            "in_sample": met,
+            "block_cv": cv,
+        }
         results.append(r)
         typer.echo(
-            f"  half={half}m  spearman={met['spearman']}  cv_spearman={cv['spearman']}  mape={met['mape']}"
+            f"  half={half}m access={acc:g}  spearman={met['spearman']}  "
+            f"cv_spearman={cv['spearman']}  mape={met['mape']}"
         )
         score = (cv["spearman"] or -1, met["spearman"] or -1)
         if best is None or score > best[0]:
             best = (score, r, m)
     chosen = best[1]
-    typer.echo(f"採用: half_distance={chosen['half_distance_m']}m, k={chosen['scale_k']}")
+    typer.echo(
+        f"採用: half_distance={chosen['half_distance_m']}m, "
+        f"access_weight={chosen['access_weight']:g}, k={chosen['scale_k']}"
+    )
 
     # 採用パラメータで全期間を再構築し、較正後 link_flow を保存
     c = json.loads(json.dumps(coef))
     c["od"]["half_distance_m"] = chosen["half_distance_m"]
+    c["od"]["access_weight"] = chosen["access_weight"]
     bpop, lf = run_build(periods=None, coef=c, write=write, tables=tables)
     lf["flow_calibrated"] = (lf.flow_synth * chosen["scale_k"]).round(1)
     lf = lf.merge(_confidence_by_link(tables["road_link"], sites, coef), on="link_id", how="left")
@@ -249,6 +265,8 @@ def _run_transfer(tables, sites, coef, write, t0) -> dict:
     )
     c = json.loads(json.dumps(coef))
     c["od"]["half_distance_m"] = half
+    if "access_weight" in tr:
+        c["od"]["access_weight"] = tr["access_weight"]
     p = config.paths()
     _, lf = run_build(periods=None, coef=c, write=write, tables=tables)
     lf["flow_calibrated"] = (lf.flow_synth * k).round(1)
@@ -259,6 +277,7 @@ def _run_transfer(tables, sites, coef, write, t0) -> dict:
         "transfer": tr,
         "chosen": {
             "half_distance_m": half,
+            "access_weight": c["od"].get("access_weight", 0.0),
             "scale_k": k,
             "in_sample": {"n": 0, "spearman": None, "mape": None, "top20_hit": None},
             "block_cv": {"blocks": [], "n": 0, "spearman": None, "mape": None, "top20_hit": None},
@@ -343,7 +362,8 @@ def write_eval_md(calib: dict, m: pd.DataFrame, docs: Path) -> None:
         "",
         f"- 基準期間: {calib['baseline_period']}（人流オープンデータ）／実測: {obs_src}",
         f"- 較正地点数: {m.site_id.nunique()} 箇所（街路地点のみ。地下街・入退場・広場地点は除外）× 平日/休日 = {len(m)} 観測",
-        f"- 採用パラメータ: half_distance = {ch['half_distance_m']} m, スケール k = {ch['scale_k']}",
+        f"- 採用パラメータ: half_distance = {ch['half_distance_m']} m, "
+        f"到着端 access_weight = {ch.get('access_weight', 0):g}, スケール k = {ch['scale_k']}",
         "",
         "## 指標",
         "",
@@ -359,14 +379,15 @@ def write_eval_md(calib: dict, m: pd.DataFrame, docs: Path) -> None:
             else "**未達**（下の考察を参照）"
         ),
         "",
-        "## 距離抵抗の格子探索",
+        "## 距離抵抗と到着端の格子探索",
         "",
-        "| half_distance (m) | k | Spearman (in) | Spearman (CV) | MAPE (in) |",
-        "|---|---|---|---|---|",
+        "| half_distance (m) | access_weight | k | Spearman (in) | Spearman (CV) | MAPE (in) |",
+        "|---|---|---|---|---|---|",
     ]
     for r in calib["grid"]:
         lines.append(
-            f"| {r['half_distance_m']} | {r['scale_k']} | {r['in_sample']['spearman']} | {r['block_cv']['spearman']} | {r['in_sample']['mape']} |"
+            f"| {r['half_distance_m']} | {r.get('access_weight', 0):g} | {r['scale_k']} | "
+            f"{r['in_sample']['spearman']} | {r['block_cv']['spearman']} | {r['in_sample']['mape']} |"
         )
     lines += [
         "",
