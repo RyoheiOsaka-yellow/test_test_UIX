@@ -23,16 +23,18 @@ SPLITS = tuple(int(v) for v in os.environ.get("SPLITS", "0,1,2").split(","))
 
 
 def specs():
-    f = fit
+    """本番と同じ組み立てで測る。到着端と距離抵抗は calibrate が全観測から決めた値に固定し、
+    残り 12 個だけを学習データ内で学習する（本番は既存の学習済み係数を使うが、
+    未観測地点への当てはまりを測るには分割内で学習し直す必要がある）."""
+    f, od = fit, config.coefficients()["od"]
+    acc = float(od.get("access_weight", 0.0))
+    half = float(od["half_distance_m"])
+    lo, hi, x0 = f.FULL_ACCESS_LOWER.copy(), f.FULL_ACCESS_UPPER.copy(), f.FULL_ACCESS_DEFAULT.copy()
+    lo[12] = hi[12] = x0[12] = acc  # 到着端は固定
+    lo[11] = hi[11] = x0[11] = half  # 距離抵抗も固定
     return {
-        "FULL(12)": (f.LOWER, f.UPPER, f.DEFAULT_PARAMS, np.asarray, f.PARAM_NAMES),
-        "FULL+ACC(13)": (
-            f.FULL_ACCESS_LOWER,
-            f.FULL_ACCESS_UPPER,
-            f.FULL_ACCESS_DEFAULT,
-            np.asarray,
-            f.FULL_ACCESS_NAMES,
-        ),
+        f"本番構成(到着端{acc:g}/half{half:g})": (lo, hi, x0, np.asarray, f.FULL_ACCESS_NAMES),
+        "到着端なし(従来)": (f.LOWER, f.UPPER, f.DEFAULT_PARAMS, np.asarray, f.PARAM_NAMES),
     }
 
 
