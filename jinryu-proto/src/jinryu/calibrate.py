@@ -13,6 +13,7 @@ from __future__ import annotations
 import itertools
 import json
 import os
+import re
 import time
 from pathlib import Path
 
@@ -196,6 +197,42 @@ def choose_grid_point(results: list[dict], tol: float = 0.01) -> tuple[int, int]
     return min(near, key=lambda i: (mape_of(results[i]), i)), len(near)
 
 
+def write_back_chosen(chosen: dict) -> Path:
+    """採用した距離抵抗・到着端をエリアの係数 YAML に書き戻す.
+
+    calibration.json だけに残すと jinryu build を単体で回したときに旧設定のままになり、
+    設定と実際の出力が食い違う。転記を手作業にすると必ずずれるので自動化する。
+    YAML はコメントが説明そのものなので、safe_dump で作り直さず該当行だけ置き換える。
+    """
+    name = config.area_file().replace("area", "coefficients")
+    path = config.CONFIG_DIR / name
+    if not path.exists():  # エリア別の上書きが無ければ既定側に書く
+        path = config.CONFIG_DIR / "coefficients.yaml"
+    text = path.read_text(encoding="utf-8")
+    for key, value in (
+        ("half_distance_m", int(chosen["half_distance_m"])),
+        ("access_weight", float(chosen.get("access_weight", 0.0))),
+        ("calibrated_scale_k", float(chosen["scale_k"])),
+    ):
+        pat = re.compile(rf"^(?P<head>  {key}: )(?P<val>[^#\n]*?)(?P<gap>\s*)(?P<rest>#.*)?$", re.M)
+
+        def _swap(m, v=f"{value:g}"):
+            # コメントは説明なので残し、桁も揃えたままにする
+            gap = m["gap"] or ""
+            if m["rest"]:
+                gap = " " * max(2, len(m["val"]) + len(gap) - len(v))
+            return f"{m['head']}{v}{gap}{m['rest'] or ''}"
+
+        text, n = pat.subn(_swap, text, count=1)
+        if not n:  # まだ無いキーは od: の直後に足す（ファイル先頭が od: のこともある）
+            text, n = re.subn(r"^od:\n", f"od:\n  {key}: {value:g}\n", text, count=1, flags=re.M)
+            if not n:
+                raise ValueError(f"{path.name} に od: が無いため {key} を書けない")
+    path.write_text(text, encoding="utf-8")
+    config.coefficients.cache_clear()
+    return path
+
+
 def run_calibration(write: bool = True) -> dict:
     from jinryu.pipeline import load_tables, run_build
 
@@ -255,6 +292,9 @@ def run_calibration(write: bool = True) -> dict:
         f"access_weight={chosen['access_weight']:g}, k={chosen['scale_k']}  "
         f"(spearman_cv={chosen['block_cv']['spearman']}, mape={chosen['in_sample']['mape']})"
     )
+
+    if write:
+        typer.echo(f"採用値を {write_back_chosen(chosen).name} に書き戻した")
 
     # 採用パラメータで全期間を再構築し、較正後 link_flow を保存
     c = json.loads(json.dumps(coef))

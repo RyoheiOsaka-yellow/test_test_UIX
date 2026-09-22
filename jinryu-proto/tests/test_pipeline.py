@@ -172,3 +172,30 @@ def test_choose_grid_point_survives_missing_metrics():
 
     i, _ = choose_grid_point(_grid((None, None), (0.50, 0.8), (0.50, None)))
     assert i == 1
+
+
+def test_write_back_chosen_keeps_comments_and_adds_missing_keys(tmp_path, monkeypatch):
+    """採用値の書き戻しは、説明コメントと桁揃えを保ち、無いキーは足す."""
+    import yaml
+
+    from jinryu import calibrate, config
+
+    cfg = tmp_path / "coefficients.yaml"
+    cfg.write_text(
+        "od:\n"
+        "  half_distance_m: 179        # 距離抵抗 f(d)=exp(-ln2·d/half_distance)\n"
+        "  zone_cell_m: 150            # 集約グリッド\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(config, "CONFIG_DIR", tmp_path)
+    monkeypatch.setattr(config, "area_file", lambda: "area.yaml")
+    calibrate.write_back_chosen({"half_distance_m": 450, "access_weight": 100.0, "scale_k": 0.4383})
+
+    text = cfg.read_text(encoding="utf-8")
+    assert "# 距離抵抗 f(d)=exp(-ln2·d/half_distance)" in text
+    assert "# 集約グリッド" in text
+    od = yaml.safe_load(text)["od"]
+    assert od["half_distance_m"] == 450
+    assert od["access_weight"] == 100
+    assert od["calibrated_scale_k"] == 0.4383
+    assert od["zone_cell_m"] == 150

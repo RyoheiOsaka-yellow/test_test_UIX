@@ -46,7 +46,8 @@ beta:
 
 # OD（重力モデル）
 od:
-  half_distance_m: 450        # 距離抵抗 f(d)=exp(-ln2·d/half_distance)
+  calibrated_scale_k: 0.2655
+  half_distance_m: 350        # 距離抵抗 f(d)=exp(-ln2·d/half_distance)
   max_distance_m: 2500        # これ以上の徒歩トリップは生成しない
   station_origin_weight: 0.5  # 駅1日乗降客数×この係数を発生量に（乗降＝乗+降なので半分が「駅から出る」）
   station_holiday_factor: 0.75
@@ -62,7 +63,7 @@ od:
   underground_weight: 0.0     # 地下街を集中点として扱う重み（ゾーン内の地下歩行路 1m あたり）。
                               # 地下歩行網があるエリアでのみ有効。0 だと地下街に発着が生じない
   poi_weight: 100.0           # OSM の店舗・飲食 POI 1 件あたりの追加集中重み（人/日相当）。0 で無効。実験で 0→100 で CV Spearman 0.46→0.54
-  access_weight: 0.0          # 到着端（目的地に着いてからの歩行）を沿道リンクへ配分する係数。0 で無効
+  access_weight: 100          # 到着端（目的地に着いてからの歩行）を沿道リンクへ配分する係数。0 で無効
   zone_cell_m: 150            # 発生・集中点を集約するグリッドサイズ（経路配分の計算量削減）
   external:                   # 境界効果対策: bbox 外周 1km のメッシュ人口を「境界ノード」に載せる（外部ゾーン）
     enabled: true
