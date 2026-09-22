@@ -36,14 +36,18 @@ def check(label: str, coef: dict, params: np.ndarray, tables: dict) -> bool:
     mine = pd.Series(fit.link_flow(rm, params), index=rm.links.link_id.values)
     theirs = lf.set_index("link_id").flow_synth
     both = pd.DataFrame({"build": theirs, "fit": mine.reindex(theirs.index)}).fillna(0.0)
-    r = float(spearmanr(both.build, both.fit).correlation)
+    # 通行量がほぼ 0 のリンクは flow_synth の丸め（小数 2 桁）で順位が入れ替わるだけなので、
+    # 順位の一致は意味のある通行量があるリンクで見る。総量と最大差は全リンクで見る。
+    big = both[both.build > 1.0]
+    r = float(spearmanr(big.build, big.fit).correlation)
     pr = float(np.corrcoef(both.build, both.fit)[0, 1])
     d = (both.build - both.fit).abs()
-    ok = r > 0.9999 and pr > 0.9999
+    rel = abs(both.fit.sum() - both.build.sum()) / max(both.build.sum(), 1.0)
+    ok = r > 0.9999 and pr > 0.99999 and rel < 1e-4
     print(
-        f"{label}: spearman={r:.4f} pearson={pr:.4f}  "
-        f"合計 build={both.build.sum():,.0f} fit={both.fit.sum():,.0f}  最大差={d.max():.2f}  "
-        f"{'OK' if ok else 'ずれあり'}"
+        f"{label}: spearman={r:.5f}（通行量>1 の {len(big)} 本）pearson={pr:.5f}  "
+        f"合計 build={both.build.sum():,.0f} fit={both.fit.sum():,.0f}（差 {rel:.2e}）"
+        f"  最大差={d.max():.2f}  {'OK' if ok else 'ずれあり'}"
     )
     return ok
 

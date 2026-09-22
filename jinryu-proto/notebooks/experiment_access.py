@@ -9,6 +9,7 @@ ACCESS(7):  到着端あり（access_weight を 1 つ足すだけ）
 JINRYU_AREA=fukuoka JINRYU_DATA_DIR=data/fukuoka uv run python notebooks/experiment_access.py
 """
 
+import os
 import time
 
 import geopandas as gpd
@@ -73,6 +74,9 @@ def main():
             fit.ACCESS_NAMES,
         ),
     }
+    only = os.environ.get("AB_ONLY", "")
+    if only:
+        specs = {k: v for k, v in specs.items() if k.startswith(only)}
     rows, sols = [], []
     for label, (lo, hi, x0, to_full, names) in specs.items():
         print(f"\n=== {label}")
