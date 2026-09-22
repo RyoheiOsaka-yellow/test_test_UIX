@@ -1,9 +1,12 @@
-# jinryu-proto — 人流ポテンシャル評価プロトタイプ v0.1
+# jinryu-proto — 人流ポテンシャル評価プロトタイプ v0.5
 
-メッシュ単位の広域人流データ（国交省 人流オープンデータ）を、PLATEAU 建物・OSM 道路リンクという「意思決定の単位」に再配分し、
-不動産・自治体が使える言葉（通行量・来街者構成・施策効果）で返すエンジンのプロトタイプ。対象エリア: 岡山市中心部。
+メッシュ単位の広域人流データ（国交省 人流オープンデータ）を、PLATEAU 建物・OSM 道路リンク（地下通路を含む）という
+「意思決定の単位」に再配分し、不動産・自治体が使える言葉で返すエンジンのプロトタイプ。対象エリア: 福岡市中心部＋福岡県全域、岡山市中心部。
 
-仕様: [docs/SPEC.md](docs/SPEC.md) ／ 進捗: [docs/PROGRESS.md](docs/PROGRESS.md) ／ 評価: [docs/EVAL.md](docs/EVAL.md) ／ 未決事項: [docs/QUESTIONS.md](docs/QUESTIONS.md) ／ デモ台本: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)
+**このエンジンが返すのはエリア内の相対順位です。** 人/日の絶対値は、根拠となる人流データが 1km メッシュのため目安として扱ってください。
+順位の一致度は実測で検証しています（福岡 436 観測に対し空間ブロック交差検証で Spearman 0.404、岡山 18 観測で 0.685）。
+
+仕様: [docs/SPEC.md](docs/SPEC.md) ／ 進捗: [docs/PROGRESS.md](docs/PROGRESS.md) ／ 評価: [岡山](docs/EVAL.md)・[福岡](docs/EVAL_fukuoka.md) ／ 限界: [docs/LIMITATIONS.md](docs/LIMITATIONS.md) ／ 未決事項: [docs/QUESTIONS.md](docs/QUESTIONS.md) ／ デモ台本: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md)
 
 ![不動産モード](docs/img/ui_main.jpg)
 
@@ -48,7 +51,7 @@ src/jinryu/     adapters/（人流ソース IF）, ingest/（取得・正規化�
 web/            MapLibre + deck.gl の単一ページ UI
 data/demo/      同梱の処理済みデータ（git 管理）。data/raw, data/processed は git 管理外
 docs/           SPEC, AREA_SELECTION, PROGRESS, EVAL, QUESTIONS, LIMITATIONS, DEMO_SCRIPT
-notebooks/      パラメータ実験スクリプト
+notebooks/      パラメータ実験・係数推定スクリプト（fit_coefficients.py, experiment_underground.py）
 ```
 
 ## API（抜粋）

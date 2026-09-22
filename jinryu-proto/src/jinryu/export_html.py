@@ -146,6 +146,7 @@ def build_payload(store: Store) -> dict:
                 (conf.get(r.link_id, "low") if conf is not None else "low"),
                 coords,
                 fl,
+                int(getattr(r, "level", 0) or 0),
             ]
         )
     # --- buildings (bbox 内、極小除外)

@@ -55,7 +55,9 @@ def build_route_model(
     net = build_network(links)
     zones = make_zones(nodes, coef["od"]["zone_cell_m"])
     rep = zones.drop_duplicates("zone_id").set_index("zone_id").rep_node
-    zone_ids = sorted(rep.index)
+    # リンクを間引いたネットワークでは代表ノードが消えることがあるので、生きているゾーンだけ残す
+    alive = set(net.node_ids)
+    zone_ids = sorted(z for z in rep.index if rep[z] in alive)
     zpos = {z: i for i, z in enumerate(zone_ids)}
     rep_idx = np.array([net.idx(rep[z]) for z in zone_ids])
     nz = len(zone_ids)

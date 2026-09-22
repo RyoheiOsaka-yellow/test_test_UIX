@@ -50,6 +50,26 @@ def _parse_tiles(osm_dir):
     return nodes, ways, pois
 
 
+UNDERGROUND_WALKABLE = ("footway", "pedestrian", "corridor", "steps", "path", "living_street")
+
+
+def _level(tags: dict[str, str]) -> int:
+    """リンクの階層。0=地上、-1 以下=地下（地下街・地下通路・地下鉄コンコース）."""
+    raw = tags.get("layer") or tags.get("level")
+    if raw:
+        try:
+            v = float(str(raw).split(";")[0])
+            if v < 0:
+                return int(v)
+            if v > 0:
+                return int(v)
+        except ValueError:
+            pass
+    if tags.get("tunnel") in ("yes", "building_passage") or tags.get("location") == "underground":
+        return -1
+    return 0
+
+
 def _walkable(tags: dict[str, str], cfg: dict) -> bool:
     hw = tags.get("highway")
     if not hw or hw in cfg["exclude_tags"]["highway"]:
@@ -58,7 +78,8 @@ def _walkable(tags: dict[str, str], cfg: dict) -> bool:
         return False
     if tags.get("foot") == "no" or tags.get("access") in ("private", "no"):
         return False
-    if tags.get("tunnel") == "yes" and hw not in ("footway", "pedestrian", "corridor"):
+    # 地下（トンネル）は歩行者用に限る。階段を落とすと地下街が地上から切り離されるので含める
+    if tags.get("tunnel") == "yes" and hw not in UNDERGROUND_WALKABLE:
         return False
     return True
 
@@ -95,6 +116,11 @@ def build_network(osm_dir=None, bbox=None):
                     )
                     hw = tags.get("highway")
                     pen = cfg["penalty"].get(hw, cfg["penalty"]["default"])
+                    lvl = _level(tags)
+                    if lvl < 0:
+                        pen *= cfg["penalty"].get("underground", 1.0)
+                    if hw == "steps":  # 階段は距離以上の抵抗（地上⇄地下の乗り換え）
+                        pen *= cfg["penalty"].get("steps_extra", 1.0)
                     links.append(
                         {
                             "link_id": f"{wid}_{k}",
@@ -104,6 +130,7 @@ def build_network(osm_dir=None, bbox=None):
                             "cost_m": round(length * pen, 1),
                             "highway_type": hw,
                             "name": tags.get("name"),
+                            "level": lvl,
                             "geometry": LineString(coords),
                         }
                     )

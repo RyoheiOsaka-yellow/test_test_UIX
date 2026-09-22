@@ -43,31 +43,40 @@ def match_sites_to_links(sites: gpd.GeoDataFrame, links: gpd.GeoDataFrame, max_m
 
     plane = config.epsg_plane()
     s = sites.to_crs(plane)
-    l_ = links[["link_id", "geometry"]].to_crs(plane)
-    sidx = l_.sindex
-    bearings = l_.geometry.map(_bearing).values
+    cols = ["link_id", "geometry"] + (["level"] if "level" in links.columns else [])
+    l_ = links[cols].to_crs(plane)
+    if "level" not in l_.columns:
+        l_ = l_.assign(level=0)
+    levels = l_["level"].fillna(0).values
     tol = np.radians(config.coefficients()["calibrate"].get("parallel_tolerance_deg", 40))
     rows = []
     for _, r in s.iterrows():
         x, y = r.geometry.x, r.geometry.y
         direction = str(r.get("direction", "") or "")
-        nearest_idx = int(list(sidx.nearest(r.geometry, return_all=False)[1])[0])
+        # 地上の調査地点は地上リンクだけに対応させる（地下街の真上で流量を二重に足さないため）
+        want_under = str(r.get("kind", "")) == "underground"
+        same_level = (levels < 0) if want_under else (levels >= 0)
+        pool = l_[same_level]
+        if len(pool) == 0:
+            pool = l_
+        pool_sidx = pool.sindex
+        nearest_idx = int(list(pool_sidx.nearest(r.geometry, return_all=False)[1])[0])
         if "南北" in direction:
             street = np.pi / 2  # 南北に通行する街路
         elif "東西" in direction:
             street = 0.0
         else:
-            street = float(bearings[nearest_idx])
+            street = float(_bearing(pool.geometry.iloc[nearest_idx]))
         # 街路に直交するスクリーンライン
         nx, ny = -np.sin(street), np.cos(street)
         line = LineString([(x - nx * max_m, y - ny * max_m), (x + nx * max_m, y + ny * max_m)])
-        cand = l_.iloc[list(sidx.query(line, predicate="intersects"))]
+        cand = pool.iloc[list(pool_sidx.query(line, predicate="intersects"))]
         if len(cand):
-            diff = np.abs(bearings[cand.index.values] - street)
+            diff = np.abs(cand.geometry.map(_bearing).values - street)
             diff = np.minimum(diff, np.pi - diff)
             cand = cand[diff <= tol]
         if len(cand) == 0:
-            cand = l_.iloc[[nearest_idx]]
+            cand = pool.iloc[[nearest_idx]]
         d = cand.geometry.distance(r.geometry)
         rows.append(
             {

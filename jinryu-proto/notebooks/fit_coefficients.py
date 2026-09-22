@@ -129,18 +129,23 @@ def main():
             f"    {n:18s} {v:9.3f}   (手置き {dict(zip(fit.PARAM_NAMES, fit.DEFAULT_PARAMS, strict=False))[n]})"
         )
 
-    # 空間ブロック CV
-    preds = np.full(len(cal), -2.0)
-    for blk in [b for b in sorted(cal.cv_block.unique()) if (cal.cv_block == b).sum() >= 10]:
-        tr = cal[cal.cv_block != blk]
+    # 空間ブロック CV。フォールドごとにスケールが違うので、順位相関はフォールド内で取って加重平均する
+    # （プールしてから 1 本の Spearman を取ると、尺度差が順位を壊して実力を過小評価する）
+    folds, n_tot, acc = [], 0, 0.0
+    blocks = [b for b in sorted(cal.cv_block.unique()) if (cal.cv_block == b).sum() >= 10]
+    for blk in blocks:
+        tr, te = cal[cal.cv_block != blk], cal[cal.cv_block == blk]
         xb, _ = fit_params(rm, tr, seed=2, maxiter=35, popsize=8)
-        flow = fit.link_flow(rm, xb)
-        te = cal.cv_block == blk
-        preds[te.values] = predict(flow, cal[te])
-        print(f"  CV {blk}: 学習 {len(tr)} → 検証 {int(te.sum())}")
-    done = preds > -1
-    cv = score(preds[done], cal["count"].values[done])
-    print(f"学習後(空間ブロックCV): spearman={cv['spearman']} logRMSE={cv['logrmse']:.3f} mape={cv['mape']}")
+        s_te = score(predict(fit.link_flow(rm, xb), te), te["count"].values)
+        hand = score(predict(fit.link_flow(rm, fit.DEFAULT_PARAMS), te), te["count"].values)
+        folds.append({"block": blk, "n": len(te), "手置き": hand["spearman"], "学習後": s_te["spearman"]})
+        acc += s_te["spearman"] * len(te)
+        n_tot += len(te)
+        print(
+            f"  CV {blk}: 学習 {len(tr)} → 検証 {len(te)}  spearman 手置き {hand['spearman']} → 学習後 {s_te['spearman']}"
+        )
+    cv = {"spearman": round(acc / n_tot, 3), "folds": folds, "logrmse": None, "mape": None}
+    print(f"学習後(空間ブロックCV, フォールド内順位相関の加重平均): spearman={cv['spearman']}")
 
     out = {
         "params": dict(zip(fit.PARAM_NAMES, [round(float(v), 4) for v in x], strict=False)),

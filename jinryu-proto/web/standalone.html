@@ -53,6 +53,7 @@ table.t th { color:var(--muted); font-weight:500; font-size:11px; }
 table.t tr.row { cursor:pointer; } table.t tr.row:hover { background:#22303f; }
 .tw { overflow-x:auto; }
 input.num { width:84px; font-family:var(--mono); }
+.accuracy { border-left:3px solid var(--accent); padding:6px 10px; background:var(--panel2); border-radius:0 4px 4px 0; margin:8px 0; }
 .conf-high { color:var(--good) } .conf-mid { color:var(--warn) } .conf-low { color:var(--bad) }
 .ok { color:var(--good); font-weight:700 } .cond { color:var(--warn); font-weight:700 } .ng { color:var(--bad); font-weight:700 }
 .lg { display:inline-block; width:26px; height:6px; margin-right:6px; vertical-align:middle; border-radius:3px; }
@@ -83,6 +84,7 @@ details summary { cursor:pointer; color:var(--muted); font-size:12px; }
     <label><input type="checkbox" id="chkPref" checked /> 県全域メッシュ</label>
     <label><input type="checkbox" id="chkZoning" /> 用途地域</label>
     <label><input type="checkbox" id="chkLp" /> 地価公示</label>
+    <label><input type="checkbox" id="chkUnder" checked /> 地下通路</label>
     <label><input type="checkbox" id="chkSites" checked /> 実測地点</label>
   </div>
 </header>
@@ -95,7 +97,7 @@ details summary { cursor:pointer; color:var(--muted); font-size:12px; }
       <button class="btn ghost" id="btnTop" title="真上から">真上</button>
       <button class="btn ghost" id="btnHome" title="中心部全体">中心部</button>
       <button class="btn ghost" id="btnPref" title="県全域">県全域</button>
-      <div class="note" style="background:var(--panel);padding:4px 6px;border-radius:4px;font-size:10px;max-width:120px">回転モード: 左ドラッグで回転・上下で傾き、ホイールで拡大。Shift＋ドラッグで移動</div>
+      <div class="note" id="rotHint" style="background:var(--panel);padding:4px 6px;border-radius:4px;font-size:10px;max-width:112px;line-height:1.35;opacity:.85">左ドラッグ＝回転／傾き<br/>Shift＋ドラッグ＝移動</div>
     </div>
   </div>
   <aside id="panel">
@@ -108,7 +110,8 @@ details summary { cursor:pointer; color:var(--muted); font-size:12px; }
     <div class="tab on" id="tab-report">
       <div id="report-empty">
         <h2>区画を選ぶ</h2>
-        <p class="note">地図の建物をクリックすると、その区画について <b>何が建てられるか（用途地域・建蔽率・容積率）</b>、<b>前面道路にどれだけ人が通るか（推定通行量）</b>、<b>新築・改修が採算に合うか（試算）</b> を 1 枚で表示します。</p>
+        <p class="note">地図の建物をクリックすると、その区画について <b>何が建てられるか（用途地域・建蔽率・容積率）</b>、<b>前面道路の通行ポテンシャルがエリア内で何位か</b>、<b>新築・改修の採算がどの範囲に入るか</b> を 1 枚で表示します。</p>
+        <p class="note accuracy" id="accuracyTop"></p>
         <h3>凡例</h3>
         <div class="note" id="legend"></div>
         <h3>較正状況</h3>
@@ -143,12 +146,13 @@ details summary { cursor:pointer; color:var(--muted); font-size:12px; }
       <p>開発事業者・金融機関の審査部門・仲介会社が、候補区画について <b>何が建てられるか</b>、<b>どの用途地域・法規制がかかるか</b>、<b>建設や改修が採算に合うか</b> を、現地調査や役所照会の前に机上で判断するためのエンジンです。</p>
       <h3>この画面で答えられること</h3>
       <table class="t"><tr><th>問い</th><th>根拠データ</th><th>出し方</th></tr>
-        <tr><td>人はどれだけ通るか</td><td>人流オープンデータ（1km）＋ PLATEAU 建物 ＋ OSM 街路 ＋ 市の実測</td><td>メッシュ人口を建物・街路に再配分し、実測で較正</td></tr>
+        <tr><td>人が多いのはどの街路か</td><td>人流オープンデータ（1km）＋ PLATEAU 建物 ＋ OSM 街路（地下通路を含む）＋ 市の実測</td><td>メッシュ人口を建物・街路に再配分し、実測で較正。<b>返すのはエリア内順位</b></td></tr>
         <tr><td>何が建てられるか</td><td>用途地域（国土数値情報）</td><td>建築基準法 別表第二の早見表、建蔽率・容積率、高さ制限</td></tr>
-        <tr><td>採算に合うか</td><td>地価公示 ＋ 上記</td><td>想定敷地・最大延床・未消化容積から新築／改修の利回りを試算（単価は入力）</td></tr>
+        <tr><td>採算に合うか</td><td>地価公示 ＋ 上記</td><td>想定敷地・最大延床・未消化容積から新築／改修の利回りを<b>幅</b>で試算（単価は入力）</td></tr>
         <tr><td>施策の効果は</td><td>人流の期間比較</td><td>街路ごとの変化率（自治体モード）</td></tr></table>
       <h3>いまの精度と限界</h3>
       <p class="note" id="aboutCalib"></p>
+      <p class="note">本プロトタイプが提供するのは<b>エリア内の相対順位</b>です。人/日の絶対値は、根拠となる人流データが 1km メッシュであるため目安として扱ってください。順位の一致度は実測で検証しており、上の数値がその結果です。絶対値の精度を上げるには 100〜500m メッシュの商用人流データが必要です。</p>
       <p class="note">法規は用途地域レベルの早見表であり、地区計画・特別用途地区・防火地域・斜線/日影・接道条件は未反映です。敷地面積は登記ではなく「建築面積 ÷ 建蔽率」の想定値です。採算は入力した単価・賃料に依存する試算で、保証値ではありません。</p>
       <h3>展開</h3>
       <p class="note">建物は PLATEAU 整備都市（200 都市超）で同じ手順が使えます。参考にしている先行例（ドイツ syte）は国内 6,200 万超の区画を評価・計画・ポートフォリオ分析に提供し、200 社超が利用しています。本プロトタイプは同じ問いを日本のオープンデータで成立させたもので、県全域は 1km メッシュ、中心部は建物・街路の単位で表示します。</p>
@@ -172,6 +176,7 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
   const state = { mode: "realestate", period: P[0], periodB: P[P.length - 1], dayType: "weekday", timeBand: "all", compare: false, is3d: true, colorMode: "usage", selected: null, ghost: true, highlight: null, portfolio: [], fin: {} };
   const comboIdx = (q, d, b) => DATA.combos.indexOf(`${q}|${d}|${b}`);
   const fmt = (v, d = 0) => (v == null || Number.isNaN(v) || !isFinite(v) ? "—" : Number(v).toLocaleString("ja-JP", { maximumFractionDigits: d }));
+  const topPct = (pct) => { const t = 100 - pct; return t < 1 ? t.toFixed(1) : fmt(t); };  // 上位 0% にならないよう 1% 未満は小数表示
   const yen = (v) => (v == null || !isFinite(v) ? "—" : v >= 1e8 ? `${(v / 1e8).toFixed(2)} 億円` : v >= 1e4 ? `${fmt(v / 1e4)} 万円` : `${fmt(v)} 円`);
   const usageColor = { retail: [249, 115, 22], office: [79, 143, 247], residential: [148, 163, 184], mixed: [234, 179, 8], hotel: [168, 85, 247], public: [20, 184, 166], industrial: [100, 116, 139], other: [120, 120, 120] };
   const usageJa = { retail: "商業", office: "業務", residential: "住宅", mixed: "店舗併用住宅", hotel: "宿泊", public: "公共", industrial: "工業・倉庫", other: "その他" };
@@ -199,7 +204,8 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
   const FIN = { reno: 120000, occ: 0.9, opex: 0.25, rentable: 0.8, renoDiscount: 0.9 };
 
   // ---- データ展開 ----
-  const links = DATA.links.map((l) => { const path = []; for (let i = 0; i < l[4].length; i += 2) path.push([l[4][i], l[4][i + 1]]); return { id: l[0], name: l[1], type: l[2], conf: l[3], path, flows: l[5] }; });
+  const links = DATA.links.map((l) => { const path = []; for (let i = 0; i < l[4].length; i += 2) path.push([l[4][i], l[4][i + 1]]); return { id: l[0], name: l[1], type: l[2], conf: l[3], path, flows: l[5], level: l[6] || 0 }; });
+  const hasUnderground = links.some((l) => l.level < 0);
   const linkById = new Map(links.map((l) => [l.id, l]));
   const bo = DATA.buildings.origin, bs = DATA.buildings.scale;
   const ringOf = (arr) => { const r = []; for (let i = 0; i < arr.length; i += 2) r.push([bo[0] + arr[i] * bs, bo[1] + arr[i + 1] * bs]); r.push(r[0]); return r; };
@@ -239,6 +245,12 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
     return { f, land, newCost, newNoi, newYieldTotal: newCost && land != null ? newNoi / (newCost + land) : null, newYieldCost: newCost ? newNoi / newCost : null, renoCost, renoNoi, renoYieldCost: renoNoi / renoCost, renoYieldTotal: land != null ? renoNoi / (renoCost + land) : null, newPayback: newCost ? newCost / newNoi : null, renoPayback: renoCost / renoNoi };
   }
   const ratingClass = (v, g, y) => (v == null ? "" : v >= g ? "g" : v >= y ? "y" : "r");
+  const range = (mid, lo, hi) => (mid == null ? "—" : `${(lo * 100).toFixed(1)}–${(hi * 100).toFixed(1)}%`);
+  function accuracyNote() {
+    const c = DATA.calibration;
+    if (!c.n_sites) return "このエリアは実測による較正をしていません。順位も目安として扱ってください。";
+    return `この指標は実測 ${fmt(c.n_sites)} 観測で検証しています。<b>順位の一致度（Spearman）は ${c.spearman_block_cv ?? "—"}</b>（空間ブロック交差検証）。順位は意思決定に使えますが、人/日の絶対値は根拠データが 1km メッシュのため目安です。`;
+  }
 
   // ---- 地図 ----
   const bb = DATA.area.bbox; const center = [(bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2 - 0.002];
@@ -282,9 +294,12 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
         updateTriggers: { getFillColor: [pk], getElevation: [pk, state.is3d, wide], data: [z >= 13] } }));
       layers.push(new PathLayer({ id: "central-box", data: [{ path: centralRing }], getPath: (d) => d.path, getColor: [255, 255, 255, 220], widthUnits: "pixels", getWidth: 2 })); }
     if ($("chkZoning").checked) layers.push(new PolygonLayer({ id: "zoning", data: zoning, pickable: true, filled: true, stroked: true, getPolygon: (z) => z.ring, getFillColor: (z) => [...(zoneColor[z.code] || [150, 150, 150]), 70], getLineColor: (z) => [...(zoneColor[z.code] || [150, 150, 150]), 200], lineWidthMinPixels: 1 }));
-    layers.push(new PathLayer({ id: "links", data: links, pickable: true, widthUnits: "meters", widthMinPixels: 1, widthMaxPixels: 12, capRounded: true, jointRounded: true, getPath: (l) => l.path,
-      getColor: (l) => { if (cmp) { const a = l.flows[k], b = l.flows[kb]; return divColor(a > 0 ? b / a : null); } const v = l.flows[k]; return v > 0 ? [...pctColor(pctOf(k, v)), 230] : [90, 90, 90, 60]; },
-      getWidth: (l) => cmp ? 2 + Math.min(8, Math.abs(l.flows[kb] - l.flows[k]) / 500) : 1 + Math.sqrt(l.flows[k] || 0) / 14,
+    layers.push(new PathLayer({ id: "links", data: links, pickable: true, widthUnits: "meters", widthMinPixels: 1, widthMaxPixels: 7, capRounded: true, jointRounded: true, getPath: (l) => l.path,
+      getColor: (l) => { if (l.level < 0 && !$("chkUnder").checked) return [0, 0, 0, 0];
+        if (cmp) { const a = l.flows[k], b = l.flows[kb]; return divColor(a > 0 ? b / a : null); }
+        const v = l.flows[k]; if (v <= 0) return [90, 90, 90, 60];
+        const c = pctColor(pctOf(k, v)); return l.level < 0 ? [c[0], c[1], c[2], 150] : [...c, 230]; },
+      getWidth: (l) => cmp ? 2 + Math.min(8, Math.abs(l.flows[kb] - l.flows[k]) / 500) : (l.level < 0 ? 0.7 : 1) * (1 + Math.sqrt(l.flows[k] || 0) / 20),
       onClick: (info) => info.object && onLinkClick(info.object), updateTriggers: { getColor: [k, kb, cmp], getWidth: [k, kb, cmp] } }));
     layers.push(new PolygonLayer({ id: "buildings", data: buildings, pickable: true, extruded: state.is3d, opacity: state.is3d ? 0.6 : 0.75, getPolygon: (b) => b.ring, getElevation: (b) => b.height || 6,
       getFillColor: buildingColor, getLineColor: [20, 26, 34, 120], stroked: !state.is3d, lineWidthMinPixels: 0.5, material: { ambient: 0.45, diffuse: 0.7, shininess: 20, specularColor: [60, 64, 70] },
@@ -297,7 +312,8 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
   }
   function tooltip({ object, layer }) {
     if (!object) return null; const k = curK();
-    if (layer.id === "links") { if (state.compare) { const a = object.flows[k], b = object.flows[cmpK()]; return `${object.name || "(無名)"}\nA ${fmt(a)} → B ${fmt(b)} 人/日（×${a > 0 ? (b / a).toFixed(2) : "—"}）`; } const v = object.flows[k]; return `${object.name || "(無名)"} [${object.type}]\n推定 ${fmt(v)} 人/日（上位 ${fmt(100 - pctOf(k, v))}%）信頼度 ${object.conf}`; }
+    if (layer.id === "links") { const pre = object.level < 0 ? "【地下】" : "";
+      if (state.compare) { const a = object.flows[k], b = object.flows[cmpK()]; return `${object.name || "(無名)"}\nA ${fmt(a)} → B ${fmt(b)} 人/日（×${a > 0 ? (b / a).toFixed(2) : "—"}）`; } const v = object.flows[k]; return `${pre}${object.name || "(無名)"} [${object.type}]\nエリア内 上位 ${fmt(100 - pctOf(k, v))}%（推定 ${fmt(v)} 人/日・目安）信頼度 ${object.conf}`; }
     if (layer.id === "buildings") return `${usageJa[object.usage] || object.usage} ${object.floors}F 延床 ${fmt(object.gfa)}m²\n${object.zoning || "用途地域不明"} 建蔽${object.bcr ?? "—"}% 容積${object.far ?? "—"}%${object.headroom != null ? `\n未消化延床 ${fmt(object.headroom)}m²` : ""}\n前面通行量 ${fmt(frontFlow(object, state.dayType, state.timeBand))} 人/日`;
     if (layer.id === "zoning") return `${object.name}\n建蔽率 ${object.bcr}% / 容積率 ${object.far}%`;
     if (layer.id === "pref-mesh") return `1kmメッシュ ${object.code}\n滞在人口 ${fmt(object.vals[prefK()])} 人（${state.period}・${state.dayType === "weekday" ? "平日" : "休日"}・${state.timeBand}）`;
@@ -323,6 +339,8 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
     const mix = DATA.origin_mix[q] || []; const mixColors = ["#4f8ff7", "#39c97a", "#e5c04a", "#ef6767"];
     const link = linkById.get(b.front); const c = link ? link.conf : "low";
     const fin = finance(b, state.fin); const f = fin.f;
+    const finLo = finance(b, Object.assign({}, state.fin, { rent: Math.round(f.rent * 0.75) }));
+    const finHi = finance(b, Object.assign({}, state.fin, { rent: Math.round(f.rent * 1.25) }));
     const rules = RULES[b.zone]; const headPct = b.maxGfa ? (b.headroom / b.maxGfa) * 100 : null;
     const inPf = state.portfolio.includes(bid);
     const rulesRows = rules ? USES.map((u, i) => `<tr><td>${u}</td><td>${mark(rules[i])}</td></tr>`).join("") : "";
@@ -331,20 +349,21 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
       <h2>${usageJa[b.usage] || ""} ${b.floors}F <span class="note">${b.zoning || ""}</span></h2>
       <div class="note">延床 ${fmt(b.gfa)} m²${b.gfaEst ? "（推定）" : ""} / 建築面積 ${fmt(b.footprint)} m² / 高さ ${fmt(b.height, 1)} m${b.hMeasured ? "" : "（階数から推定）"} / 築年 ${b.year || "不明"} / ID ${b.id}</div>
       <div class="scores">
-        <div class="score ${ratingClass(100 - pct, 70, 40)}"><div class="v">上位 ${fmt(100 - pct)}%</div><div class="l">通行ポテンシャル</div></div>
+        <div class="score ${ratingClass(100 - pct, 70, 40)}"><div class="v">上位 ${topPct(pct)}%</div><div class="l">通行ポテンシャル</div></div>
         <div class="score ${ratingClass(headPct, 40, 15)}"><div class="v">${headPct == null ? "—" : fmt(headPct) + "%"}</div><div class="l">容積率の未消化</div></div>
-        <div class="score ${ratingClass(fin.newYieldTotal, 0.06, 0.04)}"><div class="v">${fin.newYieldTotal == null ? "—" : (fin.newYieldTotal * 100).toFixed(1) + "%"}</div><div class="l">新築 利回り（土地込）</div></div>
+        <div class="score ${ratingClass(fin.newYieldTotal, 0.06, 0.04)}"><div class="v" style="font-size:15px">${range(fin.newYieldTotal, finLo.newYieldTotal, finHi.newYieldTotal)}</div><div class="l">新築 利回り（土地込・幅）</div></div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px"><button class="btn" id="pfAdd">${inPf ? "ポートフォリオから外す" : "ポートフォリオに追加"}</button><button class="btn ghost" id="ghostBtn">${state.ghost ? "最大ボリューム非表示" : "最大ボリューム表示"}</button><button class="btn ghost" id="birdBtn">鳥瞰</button><button class="btn ghost" onclick="window.print()">印刷/PDF</button></div>
 
-      <h3>人流 — 前面道路の推定通行量</h3>
+      <h3>人流 — 前面道路の通行ポテンシャル</h3>
       <div class="kpi">
-        <div><div class="v">${fmt(vMain)}</div><div class="l">平日・終日（人/日）${link ? "・" + (link.name || link.type) : ""}</div></div>
-        <div><div class="v">${fmt(flowAt("holiday", "all"))}</div><div class="l">休日・終日（人/日）</div></div>
-        <div><div class="v">上位 ${fmt(100 - pct)}%</div><div class="l">エリア内順位（${fmt(links.length)} リンク中）</div></div>
-        <div><div class="v">${b.popDay == null ? "—" : fmt(b.popDay)}</div><div class="l">建物滞在人口 推定（平日昼, 人）</div></div>
+        <div><div class="v">上位 ${topPct(pct)}<span style="font-size:13px">%</span></div><div class="l">平日・終日のエリア内順位（${fmt(links.length)} リンク中）${link ? "・" + (link.name || link.type) : ""}</div></div>
+        <div><div class="v">上位 ${topPct(pctOf(comboIdx(q, "holiday", "all"), flowAt("holiday", "all")))}<span style="font-size:13px">%</span></div><div class="l">休日・終日のエリア内順位</div></div>
+        <div><div class="v" style="color:var(--muted)">${fmt(vMain)}</div><div class="l">推定通行量（平日・終日, 人/日）<b>参考値</b></div></div>
+        <div><div class="v" style="color:var(--muted)">${b.popDay == null ? "—" : fmt(b.popDay)}</div><div class="l">建物滞在人口 推定（平日昼, 人）<b>参考値</b></div></div>
       </div>
       <div class="note">信頼度: ${conf(c)}${b.gap != null && !gov ? `／低利用ギャップ ${fmt(b.gap, 1)}` : ""}</div>
+      <div class="note accuracy">${accuracyNote()}</div>
       <div class="bars">${bars}</div>
       <div class="mix">${mix.map((x, i) => `<div style="width:${(x.share || 0) * 100}%;background:${mixColors[i]}"></div>`).join("")}</div>
       <div class="mixl">${mix.map((x, i) => `<span><span class="sw" style="background:${mixColors[i]}"></span>${x.label} ${fmt((x.share || 0) * 100, 1)}%</span>`).join("")}</div>
@@ -371,10 +390,10 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
         <tr><td>工事費</td><td>${yen(fin.newCost)}</td><td>${yen(fin.renoCost)}</td></tr>
         <tr><td>土地（想定敷地×単価）</td><td>${yen(fin.land)}</td><td>${yen(fin.land)}</td></tr>
         <tr><td>年間 NOI</td><td>${yen(fin.newNoi)}</td><td>${yen(fin.renoNoi)}</td></tr>
-        <tr><td>利回り（工事費のみ）</td><td><b>${fin.newYieldCost == null ? "—" : (fin.newYieldCost * 100).toFixed(1) + "%"}</b></td><td><b>${(fin.renoYieldCost * 100).toFixed(1)}%</b></td></tr>
-        <tr><td>利回り（土地込）</td><td><b>${fin.newYieldTotal == null ? "—" : (fin.newYieldTotal * 100).toFixed(1) + "%"}</b></td><td><b>${fin.renoYieldTotal == null ? "—" : (fin.renoYieldTotal * 100).toFixed(1) + "%"}</b></td></tr>
+        <tr><td>利回り（工事費のみ）</td><td><b>${range(fin.newYieldCost, finLo.newYieldCost, finHi.newYieldCost)}</b></td><td><b>${range(fin.renoYieldCost, finLo.renoYieldCost, finHi.renoYieldCost)}</b></td></tr>
+        <tr><td>利回り（土地込）</td><td><b>${range(fin.newYieldTotal, finLo.newYieldTotal, finHi.newYieldTotal)}</b></td><td><b>${range(fin.renoYieldTotal, finLo.renoYieldTotal, finHi.renoYieldTotal)}</b></td></tr>
         <tr><td>回収年数（工事費）</td><td>${fin.newPayback == null ? "—" : fin.newPayback.toFixed(1) + " 年"}</td><td>${fin.renoPayback.toFixed(1)} 年</td></tr></table></div>
-      <div class="note">賃料の既定値は用途地域別の仮置き単価に前面通行量の順位を掛けたもの。地価公示は最寄り地点の値で、当該地の評価額ではありません。</div>
+      <div class="note">利回りは<b>幅</b>で示しています。賃料は前面通行量の順位から推定しており、その通行量自体に幅があるためです（上下は賃料 ±25% 相当）。地価公示は最寄り地点の値で、当該地の評価額ではありません。</div>
       <div style="margin-top:12px"><button class="btn ghost" id="back">閉じる</button></div>`);
     $("recalc").onclick = () => { state.fin = { costNew: +$("fCostNew").value, reno: +$("fReno").value, rent: +$("fRent").value, lp: +$("fLp").value }; showReport(bid); };
     $("pfAdd").onclick = () => { togglePortfolio(bid); showReport(bid); };
@@ -387,7 +406,7 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
       <div class="kpi"><div><div class="v">${fmt(a)}</div><div class="l">A: ${state.period}（人/日）</div></div><div><div class="v">${fmt(b)}</div><div class="l">B: ${state.periodB}（人/日）</div></div><div><div class="v">${b - a > 0 ? "+" : ""}${fmt(b - a)}</div><div class="l">差分</div></div><div><div class="v">×${a > 0 ? (b / a).toFixed(2) : "—"}</div><div class="l">変化率</div></div></div>
       <div class="note">${areaChangeNote()}</div><div style="margin-top:12px"><button class="btn ghost" id="back">閉じる</button></div>`); }
     else { const v = l.flows[k]; showReportHtml(`<h2>街路 <span class="note">${state.period}</span></h2><div class="note">${l.name || "(無名)"} [${l.type}] link ${l.id}</div>
-      <div class="kpi"><div><div class="v">${fmt(v)}</div><div class="l">推定通行量（${state.dayType === "weekday" ? "平日" : "休日"}・${state.timeBand}, 人/日）</div></div><div><div class="v">上位 ${fmt(100 - pctOf(k, v))}%</div><div class="l">エリア内順位</div></div></div>
+      <div class="kpi"><div><div class="v">${fmt(v)}</div><div class="l">推定通行量（${state.dayType === "weekday" ? "平日" : "休日"}・${state.timeBand}, 人/日）</div></div><div><div class="v">上位 ${topPct(pctOf(k, v))}%</div><div class="l">エリア内順位</div></div></div>
       <div class="note">信頼度: ${conf(l.conf)}</div><div style="margin-top:12px"><button class="btn ghost" id="back">閉じる</button></div>`); }
   }
   function showSite(s) { showReportHtml(`<h2>実測地点 ${s.id}</h2><div>${s.name}（${s.direction}／${s.kind}）</div><div class="kpi"><div><div class="v">${fmt(s.obsWeekday)}</div><div class="l">実測 平日平均 24h（${s.obsPeriod || "—"}）</div></div></div><div class="note">岡山市 市内中心部歩行者通行量データ（AIカメラ, CC BY 4.0）。地下街・入退場・広場地点は較正に使っていません。</div><div style="margin-top:12px"><button class="btn ghost" id="back">閉じる</button></div>`); }
@@ -416,7 +435,7 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
     rows.sort((x, y) => sort === "flow" ? y.v - x.v : sort === "headroom" ? (y.b.headroom || 0) - (x.b.headroom || 0) : sort === "gap" ? (y.b.gap || -1e9) - (x.b.gap || -1e9) : y.score - x.score);
     const top = rows.slice(0, 60);
     state.highlight = new Set(rows.map((r) => r.b.id)); render();
-    $("searchResult").innerHTML = `<h3>該当 ${fmt(rows.length)} 棟${rows.length > 60 ? "（上位 60 を表示）" : ""}</h3><div class="tw"><table class="t"><tr><th>用途</th><th>用途地域</th><th>階</th><th>延床</th><th>未消化</th><th>通行 上位</th><th>築年</th></tr>${top.map((r) => `<tr class="row" data-id="${r.b.id}"><td>${usageJa[r.b.usage]}</td><td>${r.b.zoning.replace("地域", "")}</td><td>${r.b.floors}F</td><td>${fmt(r.b.gfa)}</td><td>${fmt(r.head)}%</td><td>${fmt(r.top)}%</td><td>${r.b.year || "—"}</td></tr>`).join("")}</table></div>`;
+    $("searchResult").innerHTML = `<h3>該当 ${fmt(rows.length)} 棟${rows.length > 60 ? "（上位 60 を表示）" : ""}</h3><div class="tw"><table class="t"><tr><th>用途</th><th>用途地域</th><th>階</th><th>延床</th><th>未消化</th><th>通行 上位</th><th>築年</th></tr>${top.map((r) => `<tr class="row" data-id="${r.b.id}"><td>${usageJa[r.b.usage]}</td><td>${r.b.zoning.replace("地域", "")}</td><td>${r.b.floors}F</td><td>${fmt(r.b.gfa)}</td><td>${fmt(r.head)}%</td><td>${r.top < 1 ? r.top.toFixed(1) : fmt(r.top)}%</td><td>${r.b.year || "—"}</td></tr>`).join("")}</table></div>`;
     document.querySelectorAll("#searchResult tr.row").forEach((tr) => (tr.onclick = () => selectBuilding(tr.dataset.id, true)));
   }
   $("btnSearch").onclick = runSearch; $("btnSearchClear").onclick = () => { state.highlight = null; render(); };
@@ -430,7 +449,7 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
     const sum = (f) => items.reduce((s, x) => s + (f(x) || 0), 0);
     const totalCost = sum((x) => x.fin.newCost) + sum((x) => x.fin.land), totalNoi = sum((x) => x.fin.newNoi);
     $("pf").innerHTML = `<div class="kpi"><div><div class="v">${n}</div><div class="l">区画</div></div><div><div class="v">${fmt(sum((x) => x.b.gfa))}</div><div class="l">既存延床 合計 m²</div></div><div><div class="v">${fmt(sum((x) => x.b.headroom))}</div><div class="l">未消化延床 合計 m²</div></div><div><div class="v">${totalCost ? (totalNoi / totalCost * 100).toFixed(1) + "%" : "—"}</div><div class="l">新築 加重利回り（土地込）／総事業費 ${yen(totalCost)}</div></div></div>
-      <div class="tw"><table class="t"><tr><th>用途</th><th>用途地域</th><th>延床</th><th>未消化</th><th>通行 上位</th><th>新築利回り</th><th>改修利回り</th><th></th></tr>${items.map((x) => `<tr class="row" data-id="${x.b.id}"><td>${usageJa[x.b.usage]} ${x.b.floors}F</td><td>${x.b.zoning.replace("地域", "")}</td><td>${fmt(x.b.gfa)}</td><td>${fmt(x.b.headroom)}</td><td>${fmt(x.top)}%</td><td>${x.fin.newYieldTotal == null ? "—" : (x.fin.newYieldTotal * 100).toFixed(1) + "%"}</td><td>${(x.fin.renoYieldCost * 100).toFixed(1)}%</td><td><button class="btn ghost" data-rm="${x.b.id}">外す</button></td></tr>`).join("")}</table></div>
+      <div class="tw"><table class="t"><tr><th>用途</th><th>用途地域</th><th>延床</th><th>未消化</th><th>通行 上位</th><th>新築利回り</th><th>改修利回り</th><th></th></tr>${items.map((x) => `<tr class="row" data-id="${x.b.id}"><td>${usageJa[x.b.usage]} ${x.b.floors}F</td><td>${x.b.zoning.replace("地域", "")}</td><td>${fmt(x.b.gfa)}</td><td>${fmt(x.b.headroom)}</td><td>${x.top < 1 ? x.top.toFixed(1) : fmt(x.top)}%</td><td>${x.fin.newYieldTotal == null ? "—" : (x.fin.newYieldTotal * 100).toFixed(1) + "%"}</td><td>${(x.fin.renoYieldCost * 100).toFixed(1)}%</td><td><button class="btn ghost" data-rm="${x.b.id}">外す</button></td></tr>`).join("")}</table></div>
       <div style="margin-top:8px"><button class="btn" id="pfHighlight">地図でハイライト</button></div><div class="note" style="margin-top:6px">利回りは各区画の既定単価（賃料は用途地域×通行順位、建築単価は用途別の仮置き）による試算。</div>`;
     document.querySelectorAll("#pf tr.row").forEach((tr) => (tr.onclick = (e) => { if (e.target.dataset.rm) return; selectBuilding(tr.dataset.id, true); }));
     document.querySelectorAll("#pf [data-rm]").forEach((btn) => (btn.onclick = () => togglePortfolio(btn.dataset.rm)));
@@ -441,8 +460,9 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
   const c = DATA.calibration;
   $("period").innerHTML = P.map((p) => `<option value="${p}">${p}</option>`).join(""); $("periodB").innerHTML = $("period").innerHTML; $("period").value = state.period; $("periodB").value = state.periodB;
   const calibText = c.n_sites ? `実測 ${c.n_sites} 観測に対する順位相関 Spearman: in-sample ${c.spearman_in_sample ?? "—"} / 空間ブロック CV ${c.spearman_block_cv ?? "—"}。距離抵抗 half=${c.half_distance_m ?? "—"}m。建物 ${fmt(DATA.area.counts.buildings)} 棟・街路リンク ${fmt(DATA.area.counts.links)} 本。` : `<b>このエリアは未較正</b>: 実測通行量が未取り込みのため、岡山市中心部で較正した距離抵抗（half=${c.half_distance_m ?? "—"}m）とスケール（k=${c.scale_k ?? "—"}）を転用しています。順位（相対値）は使えますが、人/日の絶対値は目安です。建物 ${fmt(DATA.area.counts.buildings)} 棟・街路リンク ${fmt(DATA.area.counts.links)} 本。`;
-  $("calib").innerHTML = calibText; $("aboutCalib").innerHTML = calibText;
-  $("legend").innerHTML = `<span class="lg" style="background:rgb(37,99,235)"></span>通行量 下位 → <span class="lg" style="background:rgb(250,204,21)"></span> → <span class="lg" style="background:rgb(220,38,38)"></span>上位（エリア内パーセンタイル、線の太さ＝通行量）<br/>建物: 高さ＝実測高さ（無ければ階数×3.5m）、色は上のセレクタで 用途／前面通行量／容積率の未消化／築年 を切替<br/>選択中の区画には、容積率いっぱいまで建てた場合の<b>最大ボリューム</b>を白い枠で重ねます<br/>○ 実測地点、● 地価公示地点<br/>県全域: 1km メッシュの滞在人口（高さ・色）。白枠が建物・街路レベルで推定している中心部`;
+  $("calib").innerHTML = calibText;
+  $("accuracyTop").innerHTML = accuracyNote(); $("aboutCalib").innerHTML = calibText;
+  $("legend").innerHTML = `<span class="lg" style="background:rgb(37,99,235)"></span>通行量 下位 → <span class="lg" style="background:rgb(250,204,21)"></span> → <span class="lg" style="background:rgb(220,38,38)"></span>上位（エリア内パーセンタイル、線の太さ＝通行量）<br/>建物: 高さ＝実測高さ（無ければ階数×3.5m）、色は上のセレクタで 用途／前面通行量／容積率の未消化／築年 を切替<br/>選択中の区画には、容積率いっぱいまで建てた場合の<b>最大ボリューム</b>を白い枠で重ねます<br/>○ 実測地点、● 地価公示地点<br/>半透明で細い線は<b>地下通路・地下街</b>（天神地下街など）。上部のチェックで表示を切替<br/>県全域: 1km メッシュの滞在人口（高さ・色）。白枠が建物・街路レベルで推定している中心部`;
   $("sources").innerHTML = `<b>出典</b>: ${DATA.sources.map((s) => s.credit || s.name).join(" / ")}<br/><b>免責</b>: ${DATA.disclaimer.replace(/\n/g, " ")}`;
   function setMode(m) { state.mode = m; document.body.classList.remove("gov", "realestate"); document.body.classList.add(m); if (m !== "gov" && state.compare) { state.compare = false; render(); } }
   $("mode").onchange = (e) => setMode(e.target.value);
@@ -451,7 +471,7 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
   $("daytype").onchange = (e) => { state.dayType = e.target.value; render(); };
   $("timeband").onchange = (e) => { state.timeBand = e.target.value; render(); };
   $("colorMode").onchange = (e) => { state.colorMode = e.target.value; render(); };
-  ["chkZoning", "chkLp", "chkSites"].forEach((id) => ($(id).onchange = render));
+  ["chkZoning", "chkLp", "chkSites", "chkUnder"].forEach((id) => ($(id).onchange = render));
   $("btnCompare").onclick = runCompare; $("btnCompareOff").onclick = () => { state.compare = false; render(); };
   $("btn3d").onclick = () => { state.is3d = !state.is3d; $("btn3d").classList.toggle("on", state.is3d); map.easeTo({ pitch: state.is3d ? 50 : 0, duration: 600 }); render(); };
   $("btnTop").onclick = () => map.easeTo({ pitch: 0, bearing: 0, duration: 600 });
