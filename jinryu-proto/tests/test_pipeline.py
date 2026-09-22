@@ -111,32 +111,35 @@ def test_station_nodes_attaches_subway_to_underground():
     assert off.node_id.tolist() == ["surf1", "surf1"]
 
 
-def test_access_matrix_distributes_arrivals_along_frontage():
-    """到着人数は沿道リンクへ列和 1 で配られ、店舗の多いリンクに厚く乗る."""
+def test_access_matrix_distributes_arrivals_by_frontage_density():
+    """到着人数は列和 1 で配られ、店舗密度（100m あたりの POI 数）に比例する."""
     import geopandas as gpd
     from shapely.geometry import LineString, Point
 
     from jinryu.od import access_matrix
 
-    # 同じゾーンに同じ長さのリンクが 2 本。片方にだけ店舗が 3 つ面している
+    # 同じゾーンのリンク 2 本。長さは 2:1、店舗は 4 つ対 1 つ → 密度は 2:1
     links = gpd.GeoDataFrame(
         {
             "u": ["n1", "n1"],
             "v": ["n2", "n3"],
-            "length_m": [100.0, 100.0],
+            "length_m": [200.0, 100.0],
             "geometry": [
-                LineString([(130.4000, 33.5900), (130.4011, 33.5900)]),
+                LineString([(130.4000, 33.5900), (130.4022, 33.5900)]),
                 LineString([(130.4000, 33.5910), (130.4011, 33.5910)]),
             ],
         },
         crs="EPSG:4326",
     )
     zones = pd.DataFrame({"node_id": ["n1"], "zone_id": ["z1"]})
-    poi = gpd.GeoDataFrame(
-        {"geometry": [Point(130.4002 + 0.0002 * i, 33.59002) for i in range(3)]}, crs="EPSG:4326"
-    )
-    A = access_matrix(links, zones, poi, {"z1": 0})
-    col = np.asarray(A.todense()).ravel()
+    pts = [Point(130.4002 + 0.0004 * i, 33.59002) for i in range(4)]
+    pts.append(Point(130.4002, 33.59102))
+    poi = gpd.GeoDataFrame(geometry=pts, crs="EPSG:4326")
+    col = np.asarray(access_matrix(links, zones, poi, {"z1": 0}, radius_m=20.0).todense()).ravel()
     assert abs(col.sum() - 1.0) < 1e-6
-    # 店舗 3 つぶん重み (1+3) : 1 になる
-    assert abs(col[0] / col[1] - 4.0) < 1e-4
+    assert abs(col[0] / col[1] - 2.0) < 1e-3
+
+    # 沿道に店舗が無いゾーンは均等配分（列和 1 を保つ）
+    empty = access_matrix(links, zones, poi.iloc[:0], {"z1": 0}, radius_m=20.0)
+    ec = np.asarray(empty.todense()).ravel()
+    assert abs(ec.sum() - 1.0) < 1e-6 and abs(ec[0] - ec[1]) < 1e-6
