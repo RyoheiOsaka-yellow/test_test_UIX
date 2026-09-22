@@ -16,7 +16,7 @@ import scipy.sparse as sp
 
 from jinryu import config
 from jinryu.assign import build_network, shortest_tree
-from jinryu.od import gateway_nodes, make_zones
+from jinryu.od import access_matrix, gateway_nodes, make_zones, walk_pois
 from jinryu.pipeline import split_station_exits, station_nodes
 from jinryu.units.build import nearest_node
 
@@ -109,26 +109,9 @@ def build_route_model(
         if z in zpos:
             night_pop[zpos[z]] = v
 
-    poi = tables.get("poi")
+    poi = walk_pois(tables.get("poi"))
     poi_count = np.zeros(nz)
     if poi is not None and len(poi):
-        poi = poi[
-            poi.shop.notna()
-            | poi.amenity.isin(
-                [
-                    "restaurant",
-                    "cafe",
-                    "fast_food",
-                    "bar",
-                    "pub",
-                    "bank",
-                    "pharmacy",
-                    "clinic",
-                    "cinema",
-                    "theatre",
-                ]
-            )
-        ].copy()
         poi["node_id"], _ = nearest_node(
             nodes, poi.geometry.x.values, poi.geometry.y.values, config.epsg_plane()
         )
@@ -176,7 +159,7 @@ def build_route_model(
             if z in zpos:
                 under_len[zpos[z]] = float(v)
 
-    access = _access_matrix(links, zones, tables.get("poi"), zpos)
+    access = access_matrix(links, zones, walk_pois(tables.get("poi")), zpos)
 
     return RouteModel(
         links=links,
@@ -207,34 +190,6 @@ PARAM_NAMES = [f"dest_{c}" for c in FIT_CLASSES] + [
 DEFAULT_PARAMS = np.array([1.0, 1.0, 1.0, 1.0, 0.5, 1.0, 100.0, 0.5, 1.2, 0.35, 0.0, 450.0])
 LOWER = np.array([0.0] * 6 + [0.0, 0.05, 0.1, 0.0, 0.0, 120.0])
 UPPER = np.array([6.0] * 6 + [1500.0, 3.0, 5.0, 2.0, 400.0, 2000.0])
-
-
-def _access_matrix(links, zones, poi, zpos: dict) -> sp.csr_matrix:
-    """ゾーン到着を沿道リンクへ配分する行列 (n_links, n_zone)、列和 1.
-
-    最短経路配分はゾーン代表ノードで打ち切られるので、目的地に着いてからの最後の数十 m —
-    まさに商店街で通行量が立つ区間 — がどのリンクにも乗らない。到着人数を沿道の
-    店舗密度に比例して配分して、この取りこぼしを埋める。
-    """
-    nz = len(zpos)
-    z_of_node = dict(zip(zones.node_id, zones.zone_id, strict=False))
-    col = np.array([zpos.get(z_of_node.get(u), -1) for u in links.u])
-    w = links.length_m.values.astype(float) / 100.0
-    if poi is not None and len(poi):
-        near = gpd.sjoin_nearest(
-            poi[["geometry"]].to_crs(config.epsg_plane()),
-            links[["geometry"]].to_crs(config.epsg_plane()).reset_index(names="row"),
-            max_distance=30.0,
-            how="inner",
-        )
-        cnt = near.groupby("row").size()
-        n = np.zeros(len(links))
-        n[cnt.index.values] = cnt.values
-        w = w * (1.0 + n)
-    ok = col >= 0
-    A = sp.csr_matrix((w[ok], (np.nonzero(ok)[0], col[ok])), shape=(len(links), nz), dtype=np.float32)
-    tot = np.asarray(A.sum(axis=0)).ravel()
-    return A @ sp.diags(np.where(tot > 0, 1.0 / np.where(tot > 0, tot, 1.0), 0.0)).tocsr()
 
 
 # 絞り込み版。217 地点に対して 12 個は多すぎて、同じ当てはまりでまったく違う解が並ぶ。

@@ -8,8 +8,10 @@ T_ij = O_i × D_j f(d_ij) / Σ_j D_j f(d_ij),  f(d) = exp(-ln2 · d / half_dista
 
 from __future__ import annotations
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
+import scipy.sparse as sp
 from pyproj import Transformer
 
 from jinryu import config
@@ -187,3 +189,52 @@ def gravity_row(
     w = d * f
     s = w.sum()
     return o * w / s if s > 0 else np.zeros_like(w)
+
+
+WALK_POI_AMENITY = (
+    "restaurant",
+    "cafe",
+    "fast_food",
+    "bar",
+    "pub",
+    "bank",
+    "pharmacy",
+    "clinic",
+    "cinema",
+    "theatre",
+)
+
+
+def walk_pois(poi):
+    """歩いて立ち寄る先になる POI だけ残す。fit と本番で同じ集合を使う."""
+    if poi is None or not len(poi):
+        return poi
+    return poi[poi.shop.notna() | poi.amenity.isin(WALK_POI_AMENITY)].copy()
+
+
+def access_matrix(links, zones, poi, zpos: dict) -> sp.csr_matrix:
+    """ゾーン到着を沿道リンクへ配分する行列 (n_links, n_zone)、列和 1.
+
+    最短経路配分はゾーン代表ノードで打ち切られるので、目的地に着いてからの最後の数十 m —
+    まさに商店街で通行量が立つ区間 — がどのリンクにも乗らない。到着人数を沿道の
+    店舗密度に比例して配分して、この取りこぼしを埋める。
+    """
+    nz = len(zpos)
+    z_of_node = dict(zip(zones.node_id, zones.zone_id, strict=False))
+    col = np.array([zpos.get(z_of_node.get(u), -1) for u in links.u])
+    w = links.length_m.values.astype(float) / 100.0
+    if poi is not None and len(poi):
+        near = gpd.sjoin_nearest(
+            poi[["geometry"]].to_crs(config.epsg_plane()),
+            links[["geometry"]].to_crs(config.epsg_plane()).reset_index(names="row"),
+            max_distance=30.0,
+            how="inner",
+        )
+        cnt = near.groupby("row").size()
+        n = np.zeros(len(links))
+        n[cnt.index.values] = cnt.values
+        w = w * (1.0 + n)
+    ok = col >= 0
+    A = sp.csr_matrix((w[ok], (np.nonzero(ok)[0], col[ok])), shape=(len(links), nz), dtype=np.float32)
+    tot = np.asarray(A.sum(axis=0)).ravel()
+    return A @ sp.diags(np.where(tot > 0, 1.0 / np.where(tot > 0, tot, 1.0), 0.0)).tocsr()

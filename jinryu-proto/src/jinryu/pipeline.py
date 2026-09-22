@@ -13,7 +13,15 @@ import typer
 from jinryu import config
 from jinryu.assign import accumulate, build_network, shortest_tree
 from jinryu.downscale import downscale
-from jinryu.od import external_zone_weights, gateway_nodes, gravity_row, make_zones, zone_weights
+from jinryu.od import (
+    access_matrix,
+    external_zone_weights,
+    gateway_nodes,
+    gravity_row,
+    make_zones,
+    walk_pois,
+    zone_weights,
+)
 from jinryu.units.build import nearest_node
 
 
@@ -125,25 +133,8 @@ def run_build(
     # ② OD 重み（全組合せ列を用意）
     combos = [(q, d, b) for q in periods for d in day_types for b in time_bands]
     gw = gateway_nodes(links, nodes, config.bbox())
-    pois = t.get("poi")
+    pois = walk_pois(t.get("poi"))
     if pois is not None and len(pois):
-        pois = pois[
-            pois.shop.notna()
-            | pois.amenity.isin(
-                [
-                    "restaurant",
-                    "cafe",
-                    "fast_food",
-                    "bar",
-                    "pub",
-                    "bank",
-                    "pharmacy",
-                    "clinic",
-                    "cinema",
-                    "theatre",
-                ]
-            )
-        ].copy()
         pois["node_id"], _ = nearest_node(
             nodes, pois.geometry.x.values, pois.geometry.y.values, config.epsg_plane()
         )
@@ -183,6 +174,8 @@ def run_build(
         noisy = links.copy()
         noisy["cost_m"] = links.cost_m.values * np.exp(rng.normal(0.0, float(stoch["cost_sigma"]), size=L))
         nets.append(build_network(noisy))
+    access_w = float(coef["od"].get("access_weight", 0.0))
+    arrivals = np.zeros((len(zi), len(combos))) if access_w else None
     for i in origins:
         dist, pred = shortest_tree(net, int(rep_idx[i]), limit=maxd)
         dz = dist[rep_idx]
@@ -192,11 +185,18 @@ def run_build(
                 continue
             T = gravity_row(O[i, k], D[:, k], dz, half, maxd)
             np.add.at(loads[:, k], rep_idx, T)
+            if arrivals is not None:
+                arrivals[:, k] += T
         accumulate(net, dist, pred, loads, link_flow)
         for net_d in nets[1:]:
             dist_d, pred_d = shortest_tree(net_d, int(rep_idx[i]), limit=maxd * 1.5)
             accumulate(net_d, dist_d, pred_d, loads, link_flow)
     link_flow *= 2.0 / draws  # 往復・平均
+    if arrivals is not None:
+        # 到着端: 目的地に着いてからの歩行は代表ノードで打ち切られて経路に乗らないので、
+        # ゾーン到着人数を沿道の店舗密度に比例して配分して足す（fit.link_flow と同じ形）
+        zpos = {z: k for k, z in enumerate(zone_ids)}
+        link_flow += 2.0 * access_w * (access_matrix(links, zones, pois, zpos) @ arrivals)
     echo(f"③ assignment done: {len(origins)} origins × {draws} draws ({time.time() - t0:.1f}s)")
 
     rows = []
