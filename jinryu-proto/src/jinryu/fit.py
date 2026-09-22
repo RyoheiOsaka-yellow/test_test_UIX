@@ -192,6 +192,13 @@ LOWER = np.array([0.0] * 6 + [0.0, 0.05, 0.1, 0.0, 0.0, 120.0])
 UPPER = np.array([6.0] * 6 + [1500.0, 3.0, 5.0, 2.0, 400.0, 2000.0])
 
 
+# 12 個 + 到着端（本番候補）。link_flow がそのまま受け取れる並びなので変換は要らない。
+FULL_ACCESS_NAMES = [*PARAM_NAMES, "access_weight"]
+FULL_ACCESS_DEFAULT = np.append(DEFAULT_PARAMS, 1.0)
+FULL_ACCESS_LOWER = np.append(LOWER, 0.0)
+FULL_ACCESS_UPPER = np.append(UPPER, 50.0)
+
+
 # 絞り込み版。217 地点に対して 12 個は多すぎて、同じ当てはまりでまったく違う解が並ぶ。
 # ・吸引側の全体倍率と発生側の全体倍率は順位に効かない（スケール k は後段の fit_scale が別に合わせる）
 #   ので、小売 = 1、住宅発生率 = 1 に固定して自由度を 2 つ落とす。
