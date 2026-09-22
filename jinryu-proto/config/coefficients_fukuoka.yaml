@@ -1,5 +1,5 @@
 od:
-  calibrated_scale_k: 0.4383
+  calibrated_scale_k: 0.4196
   access_weight: 100
   dest_weight:
     retail: 5.553
