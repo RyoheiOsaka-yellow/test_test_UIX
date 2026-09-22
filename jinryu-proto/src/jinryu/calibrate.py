@@ -246,10 +246,12 @@ def run_calibration(write: bool = True) -> dict:
     if len(sites) == 0 or len(obs) == 0:
         return _run_transfer(tables, sites, coef, write, t0)
     match = match_sites_to_links(sites, tables["road_link"], cfg["site_match_max_m"])
-    # 前回の calibrate が書き戻した対応付けの列を落としてから付け直す（再実行できるように）
-    sites = sites.drop(columns=[c for c in match.columns if c != "site_id" and c in sites.columns]).merge(
-        match, on="site_id", how="left"
-    )
+    # 前回の calibrate が書き戻した対応付けの列を落としてから付け直す（再実行できるように）。
+    # 冪等性を直す前の実行が street_bearing_deg_x/_y のような残骸を残しているので、それも掃除する。
+    stale = {c for c in match.columns if c != "site_id"}
+    sites = sites.drop(
+        columns=[c for c in sites.columns if c in stale or c.rsplit("_", 1)[0] in stale]
+    ).merge(match, on="site_id", how="left")
     cal_obs = _obs_for_calibration(obs, sites, cfg)
     baseline = config.area()["periods"]["baseline"]
     typer.echo(
@@ -315,8 +317,8 @@ def run_calibration(write: bool = True) -> dict:
         "elapsed_s": round(time.time() - t0, 1),
     }
     if write:
-        lf.to_parquet(p.table("link_flow"), index=False)
-        sites.to_parquet(p.table("count_site"))
+        config.write_table(lf, p.table("link_flow"), index=False)
+        config.write_table(sites, p.table("count_site"))
         with open(p.processed / "calibration.json", "w", encoding="utf-8") as f:
             json.dump(calib, f, ensure_ascii=False, indent=2)
         write_eval_md(calib, chosen_match, p.docs)
@@ -361,7 +363,7 @@ def _run_transfer(tables, sites, coef, write, t0) -> dict:
         "elapsed_s": round(time.time() - t0, 1),
     }
     if write:
-        lf.to_parquet(p.table("link_flow"), index=False)
+        config.write_table(lf, p.table("link_flow"), index=False)
         with open(p.processed / "calibration.json", "w", encoding="utf-8") as f:
             json.dump(calib, f, ensure_ascii=False, indent=2)
         typer.echo("saved link_flow (transfer), calibration.json")

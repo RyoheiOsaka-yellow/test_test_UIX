@@ -46,6 +46,19 @@ class Paths:
         return self.processed / f"{name}.parquet"
 
 
+def write_table(df, path: Path, **kw) -> Path:
+    """parquet を原子的に書く（同じ名前の一時ファイルに書いてから置き換える）.
+
+    直接上書きすると、書いている最中に読んだプロセスが壊れたデータを掴む。
+    calibrate の直後に実験を起動して、同じ条件なのに違う結果が出たことがあった。
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.tmp")
+    df.to_parquet(tmp, **kw)
+    tmp.replace(path)
+    return path
+
+
 def _load_yaml(name: str) -> dict[str, Any]:
     with open(CONFIG_DIR / name, encoding="utf-8") as f:
         return yaml.safe_load(f)

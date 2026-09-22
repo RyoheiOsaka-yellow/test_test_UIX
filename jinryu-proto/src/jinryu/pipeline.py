@@ -216,9 +216,9 @@ def run_build(
     if write:
         p = config.paths()
         p.processed.mkdir(parents=True, exist_ok=True)
-        bpop.to_parquet(p.table("building_pop"), index=False)
-        lf.to_parquet(p.table("link_flow_synth"), index=False)
-        zones.to_parquet(p.table("zone"), index=False)
+        config.write_table(bpop, p.table("building_pop"), index=False)
+        config.write_table(lf, p.table("link_flow_synth"), index=False)
+        config.write_table(zones, p.table("zone"), index=False)
         with open(p.processed / "build_summary.json", "w", encoding="utf-8") as f:
             json.dump(
                 {
