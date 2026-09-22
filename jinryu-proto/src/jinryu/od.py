@@ -229,14 +229,25 @@ def access_matrix(links, zones, poi, zpos: dict, radius_m: float = 50.0) -> sp.c
     col = np.array([zpos.get(z_of_node.get(u), -1) for u in links.u])
     w = np.ones(len(links))
     if poi is not None and len(poi):
-        lp = links[["geometry"]].to_crs(config.epsg_plane()).reset_index(names="row")
+        # 空間結合は平面なので、階層を見ないと地下リンクが真上の地上店舗を拾ってしまう
+        # （天神では地下 257 本の沿道 POI 密度が地上の 6 倍に見えていた）。同じ階層だけ数える。
+        plane = config.epsg_plane()
+        lp = links[["geometry"]].to_crs(plane).reset_index(names="row")
         buf = gpd.GeoDataFrame(geometry=lp.buffer(radius_m), crs=lp.crs).assign(row=lp.row)
-        hit = gpd.sjoin(
-            buf, poi[["geometry"]].to_crs(config.epsg_plane()), predicate="intersects", how="inner"
-        )
-        cnt = hit.groupby("row").size()
+        l_under = np.asarray(links["level"].values) < 0 if "level" in links.columns else None
+        p_under = np.asarray(poi["level"].values) < 0 if "level" in poi.columns else None
         n = np.zeros(len(links))
-        n[cnt.index.values] = cnt.values
+        if l_under is None or p_under is None:
+            groups = [(slice(None), slice(None))]
+        else:
+            groups = [(~l_under, ~p_under), (l_under, p_under)]
+        for lsel, psel in groups:
+            b, q = buf[lsel], poi[psel]
+            if not len(b) or not len(q):
+                continue
+            hit = gpd.sjoin(b, q[["geometry"]].to_crs(plane), predicate="intersects", how="inner")
+            cnt = hit.groupby("row").size()
+            n[cnt.index.values] = cnt.values
         w = n / np.maximum(links.length_m.values, 10.0) * 100.0
     ok = col >= 0
     A = sp.csr_matrix((w[ok], (np.nonzero(ok)[0], col[ok])), shape=(len(links), nz), dtype=np.float32)

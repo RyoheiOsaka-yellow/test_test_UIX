@@ -40,6 +40,7 @@ def _parse_tiles(osm_dir):
                             "shop": tags.get("shop"),
                             "amenity": tags.get("amenity"),
                             "tourism": tags.get("tourism"),
+                            "level": _level(tags),
                         }
                     )
             else:
