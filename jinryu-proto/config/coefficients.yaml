@@ -112,7 +112,8 @@ calibrate:
   site_match_max_m: 40         # スクリーンライン（街路に直交）の片側長さ
   parallel_tolerance_deg: 40   # スクリーンラインで拾うリンクを「街路と平行」に限る許容角
   exclude_site_kinds: [underground, entrance, plaza]   # 街路でない地点（地下街・入退場口・駅前広場階段）は較正から除外
-  access_weight_grid: [0, 100, 300, 1000]  # 到着端係数の格子。0 は到着端なし
+  access_weight_grid: [0, 100, 300, 1000]   # 到着端係数の格子。0 は到着端なし
+  spearman_tolerance: 0.01     # 順位がこの差以内なら、絶対値の誤差（MAPE）が小さいほうを採る
   # 歩行者トリップの半減距離として現実的な範囲に限る。岡山は較正地点が 9 箇所しかなく、
   # 格子を 1300m まで広げると CV がノイズで最大になってしまう（福岡は 220 地点で 180-300m に収束）。
   half_distance_grid: [250, 350, 450, 600]

@@ -187,9 +187,10 @@ def run_calibration(write: bool = True) -> dict:
     if len(sites) == 0 or len(obs) == 0:
         return _run_transfer(tables, sites, coef, write, t0)
     match = match_sites_to_links(sites, tables["road_link"], cfg["site_match_max_m"])
-    sites = sites.drop(
-        columns=[c for c in ["link_id", "link_ids", "n_links", "match_dist_m"] if c in sites.columns]
-    ).merge(match, on="site_id", how="left")
+    # 前回の calibrate が書き戻した対応付けの列を落としてから付け直す（再実行できるように）
+    sites = sites.drop(columns=[c for c in match.columns if c != "site_id" and c in sites.columns]).merge(
+        match, on="site_id", how="left"
+    )
     cal_obs = _obs_for_calibration(obs, sites, cfg)
     baseline = config.area()["periods"]["baseline"]
     typer.echo(
@@ -200,8 +201,7 @@ def run_calibration(write: bool = True) -> dict:
     # 到着端係数は他の係数と取引させると学習地区に特化して転移しなくなるので、
     # 最適化に任せず全観測に対する格子探索で 1 つ決める。
     acc_grid = cfg.get("access_weight_grid") or [coef["od"].get("access_weight", 0.0)]
-    results = []
-    best = None
+    results, matches = [], []
     for half, acc in itertools.product(cfg["half_distance_grid"], acc_grid):
         c = json.loads(json.dumps(coef))
         c["od"]["half_distance_m"] = half
@@ -221,13 +221,27 @@ def run_calibration(write: bool = True) -> dict:
             f"  half={half}m access={acc:g}  spearman={met['spearman']}  "
             f"cv_spearman={cv['spearman']}  mape={met['mape']}"
         )
-        score = (cv["spearman"] or -1, met["spearman"] or -1)
-        if best is None or score > best[0]:
-            best = (score, r, m)
-    chosen = best[1]
+        matches.append(m)
+
+    # 順位が同程度なら絶対値の誤差が小さいほうを採る。436 観測で Spearman 0.001 の差は
+    # 誤差以下なのに、そこで決めると MAPE が 14% 悪い点が選ばれることがあった。
+    def sp_of(r):
+        return r["block_cv"]["spearman"] if r["block_cv"]["spearman"] is not None else -1.0
+
+    def mape_of(r):
+        return r["in_sample"]["mape"] if r["in_sample"]["mape"] is not None else 9e9
+
+    tol = float(cfg.get("spearman_tolerance", 0.01))
+    top = max(sp_of(r) for r in results) - tol
+    near = [i for i, r in enumerate(results) if sp_of(results[i]) >= top]
+    ci = min(near, key=lambda i: mape_of(results[i]))
+    chosen, chosen_match = results[ci], matches[ci]
+    if len(near) > 1:
+        typer.echo(f"  順位が最良から {tol} 以内の {len(near)} 点のうち、MAPE 最小の点を採用")
     typer.echo(
         f"採用: half_distance={chosen['half_distance_m']}m, "
-        f"access_weight={chosen['access_weight']:g}, k={chosen['scale_k']}"
+        f"access_weight={chosen['access_weight']:g}, k={chosen['scale_k']}  "
+        f"(spearman_cv={chosen['block_cv']['spearman']}, mape={chosen['in_sample']['mape']})"
     )
 
     # 採用パラメータで全期間を再構築し、較正後 link_flow を保存
@@ -242,7 +256,7 @@ def run_calibration(write: bool = True) -> dict:
         "chosen": {k_: v for k_, v in chosen.items() if k_ != "match"},
         "grid": results,
         "sites_used": chosen
-        and best[2][["site_id", "name", "block", "day_type", "count", "flow_synth", "pred"]]
+        and chosen_match[["site_id", "name", "block", "day_type", "count", "flow_synth", "pred"]]
         .round(1)
         .to_dict(orient="records"),
         "site_matching": match.to_dict(orient="records"),
@@ -253,7 +267,7 @@ def run_calibration(write: bool = True) -> dict:
         sites.to_parquet(p.table("count_site"))
         with open(p.processed / "calibration.json", "w", encoding="utf-8") as f:
             json.dump(calib, f, ensure_ascii=False, indent=2)
-        write_eval_md(calib, best[2], p.docs)
+        write_eval_md(calib, chosen_match, p.docs)
         typer.echo(
             f"saved link_flow (calibrated), calibration.json, {eval_paths(p.docs)[0].relative_to(config.ROOT)} ({time.time() - t0:.1f}s)"
         )
