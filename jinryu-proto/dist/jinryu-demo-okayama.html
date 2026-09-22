@@ -4515,7 +4515,7 @@ const PREFMAP = { url: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDA
   function accuracyNote() {
     const c = DATA.calibration;
     if (!c.n_sites) return "このエリアは実測による較正をしていません。順位も目安として扱ってください。";
-    return `この指標は実測 ${fmt(c.n_sites)} 観測で検証しています。<b>順位の一致度（Spearman）は ${c.spearman_block_cv ?? "—"}</b>（同じ市内の未観測地点を当てる想定。実測の無い別の都市へ持ち出した場合は 0.26〜0.35 に下がります）。順位は意思決定に使えますが、人/日の絶対値は根拠データが 1km メッシュのため目安です。`;
+    return `この指標は実測 ${fmt(c.n_sites)} 観測で検証しています。<b>順位の一致度（Spearman）は ${c.spearman_block_cv ?? "—"}</b>（同じ市内の未観測地点を当てる想定。実測の無い別の都市へ持ち出した場合は 0.26〜0.40 に下がります）。順位は意思決定に使えますが、人/日の絶対値は根拠データが 1km メッシュのため目安です。`;
   }
 
   // ---- 地図 ----
