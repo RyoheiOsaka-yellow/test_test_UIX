@@ -2,7 +2,8 @@
 
 - 通行量調査地点 → 最寄りリンク（距離閾値付き）
 - 合成通行量 → 実測へのスケール係数 k と距離抵抗 half_distance を格子探索でフィット（log 空間の最小二乗）
-- 空間ブロック CV（count_site.block 単位で leave-one-block-out）
+- ブロック別スケール CV（count_site.block 単位で leave-one-block-out。ただし再推定するのは
+  スケール k だけで、係数と到着端は全観測から決めた値のまま。係数の転移性能ではない）
 - 指標: Spearman 順位相関、MAPE、上位20%地点の一致率
 - 出力: data/processed/calibration.json, link_flow.parquet（較正後）, docs/EVAL.md, docs/eval/scatter.png
 """
@@ -156,7 +157,13 @@ def evaluate(link_flow: pd.DataFrame, cal_obs: pd.DataFrame, period: str) -> tup
 
 
 def block_cv(m: pd.DataFrame) -> dict:
-    """ブロック単位の leave-one-block-out。スケールを学習ブロックで推定し、除外ブロックを予測."""
+    """ブロック単位の leave-one-block-out。ただし**スケール k だけ**を学習ブロックで推定する.
+
+    係数と到着端係数は全観測から決めた値のまま固定なので、これは「係数を別の地区へ
+    持ち出せるか」を測っていない。除外ブロックの観測も係数の決定には使われている。
+    係数の転移を測るには、係数自体をフォールド内で学習し直す必要がある
+    （notebooks/experiment_fixed_access.py 参照。福岡では 0.26〜0.35）。
+    """
     preds = []
     for blk in m.block.unique():
         tr, te = m[m.block != blk], m[m.block == blk].copy()
@@ -370,7 +377,8 @@ def write_eval_md(calib: dict, m: pd.DataFrame, docs: Path) -> None:
         "| 評価 | n | Spearman | MAPE | 上位20%一致率 |",
         "|---|---|---|---|---|",
         f"| in-sample | {ch['in_sample']['n']} | {ch['in_sample']['spearman']} | {ch['in_sample']['mape']} | {ch['in_sample']['top20_hit']} |",
-        f"| 空間ブロック CV (leave-one-block-out: {', '.join(ch['block_cv']['blocks'])}) | {ch['block_cv']['n']} | {ch['block_cv']['spearman']} | {ch['block_cv']['mape']} | {ch['block_cv']['top20_hit']} |",
+        f"| ブロック別スケール CV (leave-one-block-out: {', '.join(ch['block_cv']['blocks'])}"
+        f"／再推定するのはスケール k のみ) | {ch['block_cv']['n']} | {ch['block_cv']['spearman']} | {ch['block_cv']['mape']} | {ch['block_cv']['top20_hit']} |",
         "",
         f"H1 の目標 Spearman ≥ {config.coefficients()['calibrate']['target_spearman']}: "
         + (

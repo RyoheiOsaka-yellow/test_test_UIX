@@ -249,7 +249,7 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
   function accuracyNote() {
     const c = DATA.calibration;
     if (!c.n_sites) return "このエリアは実測による較正をしていません。順位も目安として扱ってください。";
-    return `この指標は実測 ${fmt(c.n_sites)} 観測で検証しています。<b>順位の一致度（Spearman）は ${c.spearman_block_cv ?? "—"}</b>（空間ブロック交差検証）。順位は意思決定に使えますが、人/日の絶対値は根拠データが 1km メッシュのため目安です。`;
+    return `この指標は実測 ${fmt(c.n_sites)} 観測で検証しています。<b>順位の一致度（Spearman）は ${c.spearman_block_cv ?? "—"}</b>（同じ市内の未観測地点を当てる想定。実測の無い別の都市へ持ち出した場合は 0.26〜0.35 に下がります）。順位は意思決定に使えますが、人/日の絶対値は根拠データが 1km メッシュのため目安です。`;
   }
 
   // ---- 地図 ----
@@ -459,7 +459,7 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
   // ---- 初期化 ----
   const c = DATA.calibration;
   $("period").innerHTML = P.map((p) => `<option value="${p}">${p}</option>`).join(""); $("periodB").innerHTML = $("period").innerHTML; $("period").value = state.period; $("periodB").value = state.periodB;
-  const calibText = c.n_sites ? `実測 ${c.n_sites} 観測に対する順位相関 Spearman: in-sample ${c.spearman_in_sample ?? "—"} / 空間ブロック CV ${c.spearman_block_cv ?? "—"}。距離抵抗 half=${c.half_distance_m ?? "—"}m、到着端の重み ${c.access_weight ?? "—"}。建物 ${fmt(DATA.area.counts.buildings)} 棟・街路リンク ${fmt(DATA.area.counts.links)} 本。` : `<b>このエリアは未較正</b>: 実測通行量が未取り込みのため、岡山市中心部で較正した距離抵抗（half=${c.half_distance_m ?? "—"}m）とスケール（k=${c.scale_k ?? "—"}）を転用しています。順位（相対値）は使えますが、人/日の絶対値は目安です。建物 ${fmt(DATA.area.counts.buildings)} 棟・街路リンク ${fmt(DATA.area.counts.links)} 本。`;
+  const calibText = c.n_sites ? `実測 ${c.n_sites} 観測に対する順位相関 Spearman: in-sample ${c.spearman_in_sample ?? "—"} / ブロック別スケール CV ${c.spearman_block_cv ?? "—"}（フォールドごとに再推定するのはスケールのみ）。距離抵抗 half=${c.half_distance_m ?? "—"}m、到着端の重み ${c.access_weight ?? "—"}。建物 ${fmt(DATA.area.counts.buildings)} 棟・街路リンク ${fmt(DATA.area.counts.links)} 本。` : `<b>このエリアは未較正</b>: 実測通行量が未取り込みのため、岡山市中心部で較正した距離抵抗（half=${c.half_distance_m ?? "—"}m）とスケール（k=${c.scale_k ?? "—"}）を転用しています。順位（相対値）は使えますが、人/日の絶対値は目安です。建物 ${fmt(DATA.area.counts.buildings)} 棟・街路リンク ${fmt(DATA.area.counts.links)} 本。`;
   $("calib").innerHTML = calibText;
   $("accuracyTop").innerHTML = accuracyNote(); $("aboutCalib").innerHTML = calibText;
   $("legend").innerHTML = `<span class="lg" style="background:rgb(37,99,235)"></span>通行量 下位 → <span class="lg" style="background:rgb(250,204,21)"></span> → <span class="lg" style="background:rgb(220,38,38)"></span>上位（エリア内パーセンタイル、線の太さ＝通行量）<br/>建物: 高さ＝実測高さ（無ければ階数×3.5m）、色は上のセレクタで 用途／前面通行量／容積率の未消化／築年 を切替<br/>選択中の区画には、容積率いっぱいまで建てた場合の<b>最大ボリューム</b>を白い枠で重ねます<br/>○ 実測地点、● 地価公示地点<br/>半透明で細い線は<b>地下通路・地下街</b>（天神地下街など）。上部のチェックで表示を切替。<b>地下の推定値は較正していません</b>（実測は取り込み済みで地図に○表示）<br/>県全域: 1km メッシュの滞在人口（高さ・色）。白枠が建物・街路レベルで推定している中心部`;
