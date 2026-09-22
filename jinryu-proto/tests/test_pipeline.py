@@ -109,3 +109,34 @@ def test_station_nodes_attaches_subway_to_underground():
     # 無効時は全駅が最寄りノード
     off = station_nodes(st, nodes, links, {"od": {"subway": {"underground_attach": False}}})
     assert off.node_id.tolist() == ["surf1", "surf1"]
+
+
+def test_access_matrix_distributes_arrivals_along_frontage():
+    """到着人数は沿道リンクへ列和 1 で配られ、店舗の多いリンクに厚く乗る."""
+    import geopandas as gpd
+    from shapely.geometry import LineString, Point
+
+    from jinryu.od import access_matrix
+
+    # 同じゾーンに同じ長さのリンクが 2 本。片方にだけ店舗が 3 つ面している
+    links = gpd.GeoDataFrame(
+        {
+            "u": ["n1", "n1"],
+            "v": ["n2", "n3"],
+            "length_m": [100.0, 100.0],
+            "geometry": [
+                LineString([(130.4000, 33.5900), (130.4011, 33.5900)]),
+                LineString([(130.4000, 33.5910), (130.4011, 33.5910)]),
+            ],
+        },
+        crs="EPSG:4326",
+    )
+    zones = pd.DataFrame({"node_id": ["n1"], "zone_id": ["z1"]})
+    poi = gpd.GeoDataFrame(
+        {"geometry": [Point(130.4002 + 0.0002 * i, 33.59002) for i in range(3)]}, crs="EPSG:4326"
+    )
+    A = access_matrix(links, zones, poi, {"z1": 0})
+    col = np.asarray(A.todense()).ravel()
+    assert abs(col.sum() - 1.0) < 1e-6
+    # 店舗 3 つぶん重み (1+3) : 1 になる
+    assert abs(col[0] / col[1] - 4.0) < 1e-4
