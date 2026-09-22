@@ -87,6 +87,7 @@ def areas_current():
             },
             "calibration": {
                 "half_distance_m": cal.get("half_distance_m"),
+                "access_weight": cal.get("access_weight"),
                 "scale_k": cal.get("scale_k"),
                 "spearman_in_sample": (cal.get("in_sample") or {}).get("spearman"),
                 "spearman_block_cv": (cal.get("block_cv") or {}).get("spearman"),
