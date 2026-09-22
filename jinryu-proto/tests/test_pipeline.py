@@ -143,3 +143,32 @@ def test_access_matrix_distributes_arrivals_by_frontage_density():
     empty = access_matrix(links, zones, poi.iloc[:0], {"z1": 0}, radius_m=20.0)
     ec = np.asarray(empty.todense()).ravel()
     assert abs(ec.sum() - 1.0) < 1e-6 and abs(ec[0] - ec[1]) < 1e-6
+
+
+def _grid(*rows):
+    return [{"block_cv": {"spearman": s}, "in_sample": {"mape": m}} for s, m in rows]
+
+
+def test_choose_grid_point_prefers_lower_mape_among_near_ties():
+    """順位が誤差以下の差しかないなら、絶対値の誤差が小さいほうを採る."""
+    from jinryu.calibrate import choose_grid_point
+
+    # 実際に起きたケース: CV 0.515 が 2 点。in-sample の 0.001 差で MAPE 1.915 が選ばれていた
+    i, n = choose_grid_point(_grid((0.377, 1.959), (0.515, 1.682), (0.515, 1.915), (0.510, 2.161)))
+    assert (i, n) == (1, 3)  # 0.510 も 0.01 以内なので候補は 3 点
+
+
+def test_choose_grid_point_ignores_clearly_worse_ranks():
+    """順位が明確に劣る点は、MAPE が良くても採らない."""
+    from jinryu.calibrate import choose_grid_point
+
+    i, _ = choose_grid_point(_grid((0.20, 0.1), (0.60, 0.9)))
+    assert i == 1
+
+
+def test_choose_grid_point_survives_missing_metrics():
+    """指標が出せなかった点（観測が少ない等）が混ざっても落ちない."""
+    from jinryu.calibrate import choose_grid_point
+
+    i, _ = choose_grid_point(_grid((None, None), (0.50, 0.8), (0.50, None)))
+    assert i == 1

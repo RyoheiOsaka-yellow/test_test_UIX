@@ -174,6 +174,28 @@ def block_cv(m: pd.DataFrame) -> dict:
     return {"blocks": sorted(m.block.unique().tolist()), **metrics(cv["count"].values, cv.pred_cv.values)}
 
 
+def choose_grid_point(results: list[dict], tol: float = 0.01) -> tuple[int, int]:
+    """格子探索の結果から採用する点を選ぶ。返り値は (採用した添字, 候補数).
+
+    順位（ブロック別スケール CV の Spearman）が最良から tol 以内の点の中で、
+    絶対値の誤差（in-sample MAPE）が最小のものを採る。436 観測で Spearman 0.001 の
+    差は誤差以下なのに、そこで決めると MAPE が 14% 悪い点が選ばれることがあった。
+    同順なら格子の先頭（距離抵抗が短く、到着端が小さいほう）を採る。
+    """
+
+    def sp_of(r):
+        v = (r.get("block_cv") or {}).get("spearman")
+        return v if v is not None else -1.0
+
+    def mape_of(r):
+        v = (r.get("in_sample") or {}).get("mape")
+        return v if v is not None and v == v else 9e9  # nan は候補外
+
+    top = max(sp_of(r) for r in results) - tol
+    near = [i for i, r in enumerate(results) if sp_of(r) >= top]
+    return min(near, key=lambda i: (mape_of(results[i]), i)), len(near)
+
+
 def run_calibration(write: bool = True) -> dict:
     from jinryu.pipeline import load_tables, run_build
 
@@ -223,21 +245,11 @@ def run_calibration(write: bool = True) -> dict:
         )
         matches.append(m)
 
-    # 順位が同程度なら絶対値の誤差が小さいほうを採る。436 観測で Spearman 0.001 の差は
-    # 誤差以下なのに、そこで決めると MAPE が 14% 悪い点が選ばれることがあった。
-    def sp_of(r):
-        return r["block_cv"]["spearman"] if r["block_cv"]["spearman"] is not None else -1.0
-
-    def mape_of(r):
-        return r["in_sample"]["mape"] if r["in_sample"]["mape"] is not None else 9e9
-
     tol = float(cfg.get("spearman_tolerance", 0.01))
-    top = max(sp_of(r) for r in results) - tol
-    near = [i for i, r in enumerate(results) if sp_of(results[i]) >= top]
-    ci = min(near, key=lambda i: mape_of(results[i]))
+    ci, n_near = choose_grid_point(results, tol)
     chosen, chosen_match = results[ci], matches[ci]
-    if len(near) > 1:
-        typer.echo(f"  順位が最良から {tol} 以内の {len(near)} 点のうち、MAPE 最小の点を採用")
+    if n_near > 1:
+        typer.echo(f"  順位が最良から {tol} 以内の {n_near} 点のうち、MAPE 最小の点を採用")
     typer.echo(
         f"採用: half_distance={chosen['half_distance_m']}m, "
         f"access_weight={chosen['access_weight']:g}, k={chosen['scale_k']}  "
