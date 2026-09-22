@@ -5,6 +5,7 @@ area:
   name: 岡山市中心部（岡山駅・奉還町〜西川緑道公園〜表町〜岡山城）
   pref_code: "33"
   pref_name: 岡山県
+  attribution: "地理院タイル | © OpenStreetMap contributors | 人流: 国土交通省 人流オープンデータ（Agoop換算人口） | 建物: PLATEAU 岡山市 | 用途地域・地価公示: 国土数値情報 | 通行量: 岡山市（CC BY 4.0）"
   city_codes: ["33101", "33102"]   # 岡山市北区 / 中区（旭川以東）
   bbox: [133.905, 34.650, 133.945, 34.680]   # lon_min, lat_min, lon_max, lat_max（約3.6km×3.3km）
   epsg_plane: 6673                            # JGD2011 平面直角座標系 第V系（岡山県）

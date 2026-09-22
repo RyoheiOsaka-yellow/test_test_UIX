@@ -261,6 +261,7 @@ def build_payload(store: Store) -> dict:
     return {
         "area": {
             "name": config.area()["area"]["name"],
+            "attribution": config.area()["area"].get("attribution", ""),
             "bbox": list(bbox),
             "periods": list(PERIODS),
             "baseline": PERIODS[0],
