@@ -157,6 +157,14 @@ b{font-weight:700}
 .next .a::before{content:"→ ";color:var(--copper);font-weight:700}
 .warnbox{margin-top:14px;font-size:12.5px;line-height:1.6;background:var(--copper-soft);border-left:3px solid var(--copper);padding:9px 12px;border-radius:0 6px 6px 0}
 
+/* download bar (shown only inside the claude.ai viewer) */
+.dl{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px 16px;font-size:13.5px;box-shadow:var(--shadow)}
+.dl .btns{display:flex;flex-wrap:wrap;gap:8px}
+.dl button{font:inherit;font-size:13px;cursor:pointer;border-radius:6px;padding:7px 14px;border:1px solid var(--brand);background:var(--brand);color:var(--paper)}
+.dl button.sub{background:transparent;color:var(--brand-ink)}
+.dl button:disabled{opacity:.6;cursor:progress}
+.dl .msg{display:block;font-size:12.5px;color:var(--ink-2)}
+
 /* lightbox */
 .lb{position:fixed;inset:0;z-index:100;background:rgba(10,16,13,.88);display:grid;grid-template-rows:auto 1fr;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
 .lb-bar{display:flex;justify-content:flex-end;padding:10px 16px}
@@ -169,10 +177,19 @@ b{font-weight:700}
   body{background:#fff;padding:0}
   .deck{padding:0;gap:0;max-width:none}
   .pg{width:297mm;height:210mm;aspect-ratio:auto;border:0;border-radius:0;box-shadow:none;break-after:page;overflow:hidden}
+  .dl{display:none!important}
 }
 </style>
 
 <div class="deck">
+
+<div class="dl" id="dl" hidden>
+  <span><b>この資料をHTMLファイルで保存</b><span class="msg" id="dlMsg">画像入りの1ファイル。ダウンロード後はブラウザーで開けます。</span></span>
+  <span class="btns">
+    <button type="button" data-dl="FLOW_LAB_v6_guide.html" data-name="FLOW_LAB_v6_途中経過ガイド_6ページ版.html">6ページ版をダウンロード（0.7MB）</button>
+    <button type="button" class="sub" data-dl="FLOW_LAB_v6_guide_detail.html" data-name="FLOW_LAB_v6_途中経過ガイド_詳しい版.html">詳しい版をダウンロード（2.0MB）</button>
+  </span>
+</div>
 
 <!-- ========== 1 ========== -->
 <section class="pg" id="p1" aria-label="1ページ目">
@@ -371,5 +388,30 @@ b{font-weight:700}
   function closeLb(){if(lb){lb.remove();lb=null;document.body.style.overflow='';}}
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLb();});
   document.querySelectorAll('img[data-zoom]').forEach(function(img){img.addEventListener('click',function(){openLb(img)});});
+
+  // download buttons: only when the claude.ai viewer offers the downloads capability
+  if(window.claude&&typeof window.claude.use==='function'){
+    window.claude.use('downloads').then(function(dl){
+      if(!dl)return;
+      var bar=document.getElementById('dl'),msg=document.getElementById('dlMsg');
+      bar.hidden=false;
+      bar.querySelectorAll('[data-dl]').forEach(function(b){
+        b.addEventListener('click',function(){
+          b.disabled=true;msg.textContent='準備しています…';
+          fetch(b.dataset.dl).then(function(r){if(!r.ok)throw{code:'fetch'};return r.blob();})
+            .then(function(blob){return dl.save({filename:b.dataset.name,data:blob});})
+            .then(function(){msg.textContent='保存しました：'+b.dataset.name;})
+            .catch(function(e){
+              var c=e&&e.code;
+              if(c==='declined')msg.textContent='保存をキャンセルしました。';
+              else if(c==='rate_limited')msg.textContent='確認画面が開いています。閉じてからもう一度押してください。';
+              else if(c==='fetch')msg.textContent='ファイルを読み込めませんでした。ページを再読み込みしてください。';
+              else{msg.textContent='この画面では保存できません。';bar.hidden=true;}
+            })
+            .then(function(){b.disabled=false;});
+        });
+      });
+    },function(){});
+  }
 })();
 </script>
