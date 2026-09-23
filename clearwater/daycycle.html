@@ -1,8 +1,8 @@
 <!doctype html>
 <!--
   Clearwater — real-time, photoreal shallow-water rendering in a single HTML file (WebGL2, no dependencies).
-  Sunset variant: low warm sun over an open sea horizon, dusk sky with lit cloud streaks.
-  Extra URL options: ?sun=6 (sun elevation, degrees)  ?exp=0.85 (exposure). All others as in index.html.
+  Day-cycle variant: an automatic loop from dawn through day and sunset to a moonlit, starry night.
+  Extra URL options: ?hour=18 (freeze the clock at that hour)  ?cycle=150 (seconds per day). All others as in index.html.
   Based on Clearwater by Aurélien. Copyright (c) 2026 Lumaris.
   FFT ocean spectrum, refracted light caustics with dispersion, physically based Fresnel and sun glints,
   lens-diffraction glare by FFT convolution, interactive ripples.  MIT licensed — see LICENSE.
@@ -11,12 +11,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1c1424">
-<title>Clearwater — Sunset</title>
+<meta name="theme-color" content="#0b1422">
+<title>Clearwater — Day & Night</title>
 <style>
   :root { --ink: rgba(255,255,255,.86); box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
   html { scroll-padding-top:env(safe-area-inset-top,0px); }
-  html, body { margin:0; height:100%; background:#1c1424; overflow:hidden; touch-action:none; -webkit-user-select:none; user-select:none; }
+  html, body { margin:0; height:100%; background:#0b1422; overflow:hidden; touch-action:none; -webkit-user-select:none; user-select:none; }
   canvas { position:fixed; inset:0; width:100%; height:100%; display:block; cursor:grab; }
   canvas:active { cursor:grabbing; }
   #hint { position:fixed; left:50%; bottom:calc(28px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%);
@@ -343,17 +343,17 @@ uniform float uTanF, uAspect, uL, uDepth, uTime, uRipSize;
 uniform vec2 uCausShift, uRipCenter;
 
 const float IOR = 1.3335;
-const vec3 SIG_A = vec3(0.24, 0.078, 0.095);        // less red absorption than midday: keeps the low sun golden underwater
+// time of day: interpolated on the CPU from the sun elevation (see "Time of day")
+uniform vec3 uSunDir, uMoonDir;                   // true sun / moon directions; uSun is the key light (sun by day, moon by night)
+uniform vec3 uKey, uSunDisk, uMoonDisk;           // key light, sun and moon disk radiance
+uniform vec3 uZen, uMid, uMidSun, uHorSun, uHorAway, uGlow, uSkyIrr;
+uniform vec3 uCloudLit, uCloudBase, uCloudDark;
+uniform vec4 uLand;                               // headland: lit scale, backlit scale, haze tint, haze amount
+uniform float uSigAr, uCloudAmt, uStars, uCliff;
+#define SUN uKey
+#define SIG_A vec3(uSigAr, 0.074, 0.088)          // red absorption eases at low sun so sunset light stays golden underwater
 const vec3 SIG_S = vec3(0.028, 0.052, 0.068);
-const vec3 SIG_T = SIG_A + SIG_S;
-const vec3 SUN = vec3(1.0, 0.50, 0.20) * 5.4;      // low sun through a long air path: orange, dimmer
-// dusk sky palette
-const vec3 ZEN = vec3(0.045, 0.070, 0.210);        // deep blue-violet overhead
-const vec3 MID = vec3(0.42, 0.20, 0.33);           // dusty rose band
-const vec3 MID_SUN = vec3(0.82, 0.40, 0.24);       // the same band turns peach toward the sun
-const vec3 HOR_SUN = vec3(1.30, 0.50, 0.14);       // glowing horizon under the sun
-const vec3 HOR_AWAY = vec3(0.40, 0.27, 0.42);      // pink-violet horizon opposite the sun
-const vec3 GLOW = vec3(1.0, 0.55, 0.22);           // forward-scattering halo around the sun
+#define SIG_T (SIG_A + SIG_S)
 const float PI = 3.14159265359;
 
 float hash12(vec2 p){ vec3 p3 = fract(vec3(p.xyx)*.1031); p3 += dot(p3, p3.yzx+33.33); return fract((p3.x+p3.y)*p3.z); }
@@ -364,46 +364,61 @@ float ridge(float a){ // periodic headland silhouette, elevation in radians (~1.
   return 0.040 + 0.016*sin(a*2.0+0.7) + 0.011*sin(a*5.0+2.1) + 0.006*sin(a*11.0+0.3) + 0.003*sin(a*23.0+1.7);
 }
 float fbm2(vec2 p){ float v=0., a=0.5; for(int i=0;i<4;i++){ v+=a*vnoise(p); p=p*2.03+17.1; a*=0.5; } return v; }
-float sunSide(vec3 d){ return 0.5 + 0.5*dot(normalize(d.xz + 1e-5), normalize(uSun.xz)); }
-vec3 horizonCol(vec3 d){ // warm under the sun, cooling to violet away from it
+float sunSide(vec3 d){ return 0.5 + 0.5*dot(normalize(d.xz + 1e-5), normalize(uSunDir.xz + 1e-5)); }
+vec3 horizonCol(vec3 d){ // warm under the sun, cooling away from it
   float s = sunSide(d);
-  return mix(HOR_AWAY, HOR_SUN, s*s*s);
+  return mix(uHorAway, uHorSun, s*s*s);
 }
-vec3 sky(vec3 d){
+float starField(vec3 d){
+  vec2 p = d.xz/(1.0 + max(d.y, 0.0))*360.0;      // stereographic: even cell size over the dome
+  vec2 id = floor(p), f = fract(p) - 0.5;
+  float h = hash12(id);
+  vec2 of = (vec2(hash12(id + 3.7), hash12(id + 9.1)) - 0.5)*0.6;
+  float fw = fwidth(p.x) + fwidth(p.y);
+  float s = smoothstep(0.12 + fw, 0.0, length(f - of)) * step(0.975, h);
+  float mag = 0.4 + 5.0*pow(hash12(id + 5.3), 6.0);
+  return s * mag * (0.75 + 0.25*sin(uTime*(2.0 + 3.0*h) + h*60.0)) * smoothstep(1.2, 0.3, fw);
+}
+vec3 sky(vec3 d, float starK){
   float e = d.y;
-  float mu = dot(d, uSun);
+  float mu = dot(d, uSunDir);
   vec3 hor = horizonCol(d);
   float k = clamp(e, 0., 1.);
   float sd = sunSide(d);
-  vec3 c = mix(hor, mix(MID, MID_SUN, sd*sd*sd), smoothstep(0.0, 0.16, pow(k, 0.85)));
-  c = mix(c, ZEN, smoothstep(0.05, 0.50, k));
-  c += GLOW * (0.14*pow(max(mu,0.),6.) + 0.45*pow(max(mu,0.),40.) + 2.0*pow(max(mu,0.),900.));
-  // thin cloud streaks on a high deck, underlit pink and gold by the low sun
+  vec3 c = mix(hor, mix(uMid, uMidSun, sd*sd*sd), smoothstep(0.0, 0.16, pow(k, 0.85)));
+  c = mix(c, uZen, smoothstep(0.05, 0.50, k));
+  c += uGlow * (0.14*pow(max(mu,0.),6.) + 0.45*pow(max(mu,0.),40.) + 2.0*pow(max(mu,0.),900.));
+  float muM = max(dot(d, uMoonDir), 0.0);
+  c += uMoonDisk * (0.0015*pow(muM, 40.0) + 0.006*pow(muM, 600.0));   // halo around the moon
+  // thin cloud streaks on a high deck, underlit by a low sun
+  float dens = 0.0;
   if (e > 0.0) {
     vec2 cp = d.xz/(e + 0.05);
     cp = mat2(0.94, -0.34, 0.34, 0.94)*cp;
     float cd = fbm2(vec2(cp.x*0.22, cp.y*1.10) + vec2(uTime*0.004, 0.0) + 7.0);
-    float dens = smoothstep(0.48, 0.70, cd) * smoothstep(0.012, 0.07, e) * (1.0 - smoothstep(0.30, 0.65, e));
+    dens = smoothstep(0.48, 0.70, cd) * smoothstep(0.012, 0.07, e) * (1.0 - smoothstep(0.30, 0.65, e)) * uCloudAmt;
     float lit = pow(max(mu, 0.0), 6.0);
-    vec3 cc = mix(vec3(0.78, 0.34, 0.40), vec3(1.55, 0.82, 0.36), lit);
-    cc = mix(cc, vec3(0.22, 0.15, 0.24), smoothstep(0.64, 0.92, cd)*0.6); // thicker cores go dark
+    vec3 cc = mix(uCloudBase, uCloudLit, lit);
+    cc = mix(cc, uCloudDark, smoothstep(0.64, 0.92, cd)*0.6); // thicker cores go dark
     c = mix(c, cc, dens*0.85);
   }
+  // stars (outside the branch: fwidth needs uniform control flow)
+  c += vec3(0.75, 0.82, 1.0) * 0.16 * uStars * starK * starField(d) * (1.0 - dens) * smoothstep(0.0, 0.12, e);
   // distant headland: pine canopy over pale limestone, softened by ~2 km of air
   float a = atan(d.z, d.x);
   float r = ridge(a) + 0.0045*(vnoise(vec2(a*260.0, 0.0))-0.5) + 0.002*(vnoise(vec2(a*900.0, 3.0))-0.5);
-  float cosA = dot(normalize(vec2(d.x,d.z)+1e-5), normalize(vec2(uSun.x,uSun.z)));
-  float back = smoothstep(-0.3, 0.95, cosA);
-  r = mix(r, -0.02, smoothstep(0.55, 0.92, cosA));      // the sun sets over open sea, headlands frame it
+  vec2 dh = normalize(vec2(d.x,d.z)+1e-5);
+  float back = smoothstep(-0.3, 0.95, dot(dh, normalize(vec2(uSunDir.x,uSunDir.z)+1e-5)));
+  r = mix(r, -0.02, smoothstep(0.42, 0.77, -dh.y));    // open sea ahead (-z): sun and moon rise and set over water
   float u = clamp(e / max(r, 1e-3), 0.0, 1.0);
   vec2 q = vec2(a*420.0, e*420.0);
   float tex = fbm2(q);
   vec3 pine = vec3(0.045, 0.070, 0.042) * (0.6 + 0.8*tex);
   vec3 rock = vec3(0.30, 0.28, 0.23) * (0.55 + 0.7*fbm2(q*1.7+5.0));
   float cliff = smoothstep(0.42, 0.18, u + 0.25*(tex-0.5)) * smoothstep(0.35, 0.75, vnoise(vec2(a*18.0, 1.0)));
-  vec3 land = mix(pine, rock, cliff*0.35);
-  land *= mix(0.55, 0.30, back);                        // backlit by a low sun: near silhouette
-  land = mix(land, hor*0.55, 0.30 + 0.20*back);          // aerial perspective
+  vec3 land = mix(pine, rock, cliff*uCliff);
+  land *= mix(uLand.x, uLand.y, back);                  // backlit toward the sun
+  land = mix(land, hor*uLand.z, uLand.w + 0.22*back);    // aerial perspective
   float w = fwidth(e)*1.2 + 2e-4;
   c = mix(c, land, smoothstep(r+w, r-w, e) * step(-0.3, e));
   return c;
@@ -483,7 +498,7 @@ void main(){
 
   // ---- reflection ----
   vec3 rr = reflect(wd, n); rr.y = abs(rr.y);
-  vec3 refl = sky(rr) * 1.25;
+  vec3 refl = sky(rr, 0.6) * 1.25;
 
   // sun glints: GGX with slope-variance widening (LEAN-style)
   float a2 = 0.00012 + 1.2*var;
@@ -533,7 +548,7 @@ void main(){
   caus *= clamp(1.0/(1.0 + 0.12*depthHere*lap), 0.45, 3.0);
   float ao = mix(0.55, 1.0, smoothstep(0.08, 0.42, hgt));
   vec3 Esun = SUN * Ts * exp(-SIG_T*depthHere/(-sunT.y)) * caus * (-sunT.y) * mix(0.75, 1.0, ao);
-  vec3 skyIrr = vec3(0.34, 0.33, 0.47) * PI * 0.22;
+  vec3 skyIrr = uSkyIrr * PI * 0.22;
   vec3 Esky = skyIrr * exp(-(SIG_A + 0.4*SIG_S)*depthHere*1.25) * ao;
   vec3 Lfloor = alb/PI * (Esun + Esky);
 
@@ -561,14 +576,14 @@ void main(){
 
   // distant haze over the water
   float haze = 1.0 - exp(-dist*0.004);
-  float muh = max(dot(normalize(vec3(wd.x,0.0,wd.z)), uSun), 0.0);
-  vec3 hazeC = horizonCol(wd)*0.85 + GLOW*(0.24*pow(muh,6.0)+0.4*pow(muh,64.0));
+  float muh = max(dot(normalize(vec3(wd.x,0.0,wd.z)), uSunDir), 0.0);
+  vec3 hazeC = horizonCol(wd)*0.85 + uGlow*(0.24*pow(muh,6.0)+0.4*pow(muh,64.0));
   col = mix(col, hazeC*0.95, haze*0.8);
 
   // sky above horizon
-  vec3 skyc = sky(rd);
-  float mu = dot(rd, uSun);
-  skyc += SUN*6.0*smoothstep(0.99992, 0.99996, mu);
+  vec3 skyc = sky(rd, 1.0);
+  skyc += uSunDisk*smoothstep(0.99992, 0.99996, dot(rd, uSunDir));
+  skyc += uMoonDisk*smoothstep(0.99990, 0.99994, dot(rd, uMoonDir));
   float hz = smoothstep(-0.0005, 0.0015, rd.y);
   col = mix(col, skyc, hz);
 
@@ -607,7 +622,7 @@ void main(){
 const pCopy = prog(VS, HEAD+`uniform sampler2D uSrc; uniform float uK; void main(){ o = vec4(texture(uSrc,vUv).rgb*uK,1); }`, 'copy');
 const pRaw = prog(VS, HEAD+`uniform sampler2D uSrc; void main(){ o = texelFetch(uSrc, ivec2(gl_FragCoord.xy), 0); }`, 'raw');
 const pFinal = prog(VS, HEAD+`
-uniform sampler2D uHdr, uStreak, uB1, uB2; uniform float uExp, uTime, uNoPost; uniform vec2 uRes;
+uniform sampler2D uHdr, uStreak, uB1, uB2; uniform float uExp, uTime, uNoPost, uGlare; uniform vec2 uRes;
 vec3 bicubic(sampler2D t, vec2 uv){
   vec2 ts = vec2(textureSize(t,0)); vec2 p = uv*ts - 0.5; vec2 f = fract(p); p = floor(p);
   vec2 w0 = f*(-0.5+f*(1.0-0.5*f)), w1 = 1.0+f*f*(-2.5+1.5*f), w2 = f*(0.5+f*(2.0-1.5*f)), w3 = f*f*(-0.5+0.5*f);
@@ -622,7 +637,7 @@ void main(){
   vec2 cc = uv-0.5; float ca = 0.0012*dot(cc,cc)*4.0;
   vec3 c;
   c.r = texture(uHdr, uv + cc*ca).r; c.g = texture(uHdr, uv).g; c.b = texture(uHdr, uv - cc*ca).b;
-  if (uNoPost < 0.5) c += texture(uStreak, uv).rgb * 0.4;
+  if (uNoPost < 0.5) c += texture(uStreak, uv).rgb * uGlare;
   if (uNoPost < 0.5) c += texture(uB1, uv).rgb * 0.035 + bicubic(uB2, uv) * 0.035;
   if (uNoPost > 1.5) c = texture(uStreak, uv).rgb * 0.55 * 20.0;
   c *= uExp;
@@ -825,15 +840,96 @@ function post(t){
   target(null); gl.useProgram(pFinal.p);
   bindT(0,hdrRT.t); bindT(1,streakRT.t); bindT(2,b1.t); bindT(3,b2.t);
   gl.uniform1i(pFinal.u.uHdr,0); gl.uniform1i(pFinal.u.uStreak,1); gl.uniform1i(pFinal.u.uB1,2); gl.uniform1i(pFinal.u.uB2,3);
-  gl.uniform1f(pFinal.u.uExp, EXPOSURE); gl.uniform1f(pFinal.u.uNoPost, Q.get('view')==='nopost'?1:(Q.get('view')==='glare'?2:0)); gl.uniform1f(pFinal.u.uTime, t); gl.uniform2f(pFinal.u.uRes, W, H);
+  gl.uniform1f(pFinal.u.uExp, TOD.P.exp); gl.uniform1f(pFinal.u.uGlare, TOD.P.glare); gl.uniform1f(pFinal.u.uNoPost, Q.get('view')==='nopost'?1:(Q.get('view')==='glare'?2:0)); gl.uniform1f(pFinal.u.uTime, t); gl.uniform2f(pFinal.u.uRes, W, H);
   fullscreen();
 }
 
+/* ---------------- Time of day ----------------
+   One loop runs dawn -> day -> sunset -> night. The sun rises on the left, peaks ahead and sets on the right;
+   the moon follows the same arc twelve hours later. Palette keyframes are indexed by sun elevation (degrees),
+   so morning and evening share colours. ?hour=18 freezes the clock, ?cycle=150 sets seconds per day. */
+const D2R = Math.PI/180;
+const HOUR_Q = parseFloat(Q.get('hour'));
+const HOUR_FIXED = Number.isFinite(HOUR_Q) ? ((HOUR_Q % 24) + 24) % 24 : null;
+const CYCLE = Math.max(20, parseFloat(Q.get('cycle')) || 150);
+const SUN_MAX_EL = 42, MOON_MAX_EL = 20, AZ_SPAN = 30;
+const MOON_C = [0.20, 0.25, 0.36];
+let hour = HOUR_FIXED !== null ? HOUR_FIXED : 5.6;
+
+const ss = (a, b, x) => { const t = Math.min(1, Math.max(0, (x-a)/(b-a))); return t*t*(3-2*t); };
+const lerp = (a, b, t) => a + (b-a)*t;
+const dirFrom = (azDeg, elDeg) => { const az = azDeg*D2R, el = elDeg*D2R; return [Math.sin(az)*Math.cos(el), Math.sin(el), -Math.cos(az)*Math.cos(el)]; };
+function orbit(h, maxEl){
+  let dh = h - 12; if (dh > 12) dh -= 24; if (dh < -12) dh += 24;
+  return { el: maxEl*Math.sin((h-6)/24*2*Math.PI), az: AZ_SPAN*dh/6 };
+}
+// linger around sunrise, sunset and twilight; hurry through midday and deep night
+const clockRate = el => el >= 0 ? 0.5 + 1.0*ss(4, 25, el) : 0.5 + 1.7*ss(-4, -16, el);
+
+const TOD_KEYS = [
+  { el:-20, zen:[0.0016,0.0030,0.011], mid:[0.0035,0.0060,0.018], midSun:[0.0035,0.0060,0.018], horSun:[0.008,0.012,0.028], horAway:[0.008,0.012,0.028],
+    glow:[0,0,0], sun:[1.0,0.2,0.05], skyIrr:[0.012,0.016,0.032], cloudLit:[0.010,0.012,0.020], cloudBase:[0.008,0.010,0.017], cloudDark:[0.003,0.004,0.007],
+    cloudAmt:0.45, sigAr:0.40, exp:2.4, stars:1.0, land:[0.04,0.04,0.5,0.25], cliff:0.3, glare:0.6, sunDisk:0, moon:1.0, moonDisk:6.0 },
+  { el:-9, zen:[0.006,0.012,0.040], mid:[0.018,0.022,0.060], midSun:[0.050,0.035,0.065], horSun:[0.11,0.055,0.045], horAway:[0.028,0.032,0.075],
+    glow:[0.07,0.025,0.012], sun:[1.0,0.25,0.06], skyIrr:[0.03,0.035,0.075], cloudLit:[0.10,0.05,0.08], cloudBase:[0.030,0.030,0.062], cloudDark:[0.012,0.012,0.025],
+    cloudAmt:0.7, sigAr:0.38, exp:2.1, stars:0.45, land:[0.08,0.06,0.5,0.28], cliff:0.3, glare:0.5, sunDisk:0, moon:0.7, moonDisk:4.0 },
+  { el:-4, zen:[0.018,0.028,0.090], mid:[0.12,0.07,0.14], midSun:[0.35,0.14,0.12], horSun:[0.60,0.20,0.07], horAway:[0.10,0.09,0.17],
+    glow:[0.5,0.18,0.06], sun:[3.0,0.9,0.24], skyIrr:[0.10,0.10,0.18], cloudLit:[0.75,0.26,0.28], cloudBase:[0.16,0.09,0.16], cloudDark:[0.06,0.04,0.08],
+    cloudAmt:0.85, sigAr:0.32, exp:1.5, stars:0.05, land:[0.2,0.15,0.5,0.3], cliff:0.3, glare:0.4, sunDisk:5, moon:0, moonDisk:2.5 },
+  { el:0, zen:[0.035,0.05,0.16], mid:[0.36,0.15,0.26], midSun:[0.75,0.30,0.16], horSun:[1.2,0.38,0.08], horAway:[0.30,0.20,0.34],
+    glow:[1.0,0.45,0.15], sun:[4.5,1.71,0.54], skyIrr:[0.24,0.22,0.36], cloudLit:[1.4,0.55,0.25], cloudBase:[0.62,0.25,0.34], cloudDark:[0.18,0.10,0.18],
+    cloudAmt:0.9, sigAr:0.24, exp:1.0, stars:0, land:[0.4,0.25,0.5,0.3], cliff:0.3, glare:0.35, sunDisk:5, moon:0, moonDisk:1.5 },
+  { el:6, zen:[0.045,0.070,0.210], mid:[0.42,0.20,0.33], midSun:[0.82,0.40,0.24], horSun:[1.30,0.50,0.14], horAway:[0.40,0.27,0.42],
+    glow:[1.0,0.55,0.22], sun:[5.4,2.7,1.08], skyIrr:[0.34,0.33,0.47], cloudLit:[1.55,0.82,0.36], cloudBase:[0.78,0.34,0.40], cloudDark:[0.22,0.15,0.24],
+    cloudAmt:0.85, sigAr:0.24, exp:0.85, stars:0, land:[0.55,0.30,0.55,0.30], cliff:0.35, glare:0.4, sunDisk:6, moon:0, moonDisk:0.8 },
+  { el:13, zen:[0.055,0.15,0.46], mid:[0.30,0.38,0.62], midSun:[0.78,0.58,0.42], horSun:[1.15,0.74,0.40], horAway:[0.50,0.56,0.74],
+    glow:[1.0,0.68,0.36], sun:[5.6,4.0,2.35], skyIrr:[0.50,0.52,0.62], cloudLit:[1.2,0.88,0.58], cloudBase:[0.62,0.56,0.66], cloudDark:[0.30,0.27,0.34],
+    cloudAmt:0.5, sigAr:0.32, exp:0.68, stars:0, land:[0.75,0.38,0.75,0.34], cliff:0.65, glare:0.45, sunDisk:10, moon:0, moonDisk:0 },
+  { el:28, zen:[0.11,0.27,0.62], mid:[0.44,0.576,0.79], midSun:[0.52,0.62,0.80], horSun:[0.72,0.80,0.88], horAway:[0.66,0.78,0.90],
+    glow:[1.0,0.86,0.66], sun:[6.0,5.4,4.44], skyIrr:[0.62,0.70,0.78], cloudLit:[1.1,1.08,1.05], cloudBase:[0.82,0.86,0.94], cloudDark:[0.5,0.55,0.64],
+    cloudAmt:0.3, sigAr:0.40, exp:0.63, stars:0, land:[1.0,0.45,0.92,0.38], cliff:1.0, glare:0.9, sunDisk:18, moon:0, moonDisk:0 },
+];
+function palette(el){
+  const K = TOD_KEYS; let i = 0;
+  while (i < K.length-2 && el > K[i+1].el) i++;
+  const a = K[i], b = K[i+1], t = Math.min(1, Math.max(0, (el-a.el)/(b.el-a.el)));
+  const P = {};
+  for (const k in a) P[k] = Array.isArray(a[k]) ? a[k].map((v,j) => lerp(v, b[k][j], t)) : lerp(a[k], b[k], t);
+  return P;
+}
+function timeOfDay(h){
+  const sun = orbit(h, SUN_MAX_EL), moon = orbit((h+12) % 24, MOON_MAX_EL);
+  const P = palette(sun.el);
+  // key light: the sun until it is gone, then the moon once twilight has faded (both are dark at the switch).
+  // Never below 1.5 deg: the refraction/caustic maths needs light coming from above the water.
+  let key, keyC;
+  if (sun.el > -2.5){ key = dirFrom(sun.az, Math.max(sun.el, 1.5)); keyC = P.sun.map(v => v*ss(-1.5, 2.0, sun.el)); }
+  else { key = dirFrom(moon.az, Math.max(moon.el, 1.5)); keyC = MOON_C.map(v => v*P.moon*ss(-1, 8, moon.el)); }
+  const moonWarm = ss(10, 0, moon.el);
+  const moonDisk = [1.0, lerp(0.95, 0.72, moonWarm), lerp(0.85, 0.48, moonWarm)].map(v => v*P.moonDisk*ss(-1.5, 1.0, moon.el));
+  return { sun, moon, P, key, keyC, sunDir: dirFrom(sun.az, sun.el), moonDir: dirFrom(moon.az, moon.el),
+           sunDisk: P.sun.map(v => v*P.sunDisk), moonDisk };
+}
+function setTimeUniforms(u, S){
+  const P = S.P;
+  gl.uniform3fv(u.uSun, S.key); gl.uniform3fv(u.uKey, S.keyC); gl.uniform3fv(u.uSunDir, S.sunDir); gl.uniform3fv(u.uMoonDir, S.moonDir);
+  gl.uniform3fv(u.uSunDisk, S.sunDisk); gl.uniform3fv(u.uMoonDisk, S.moonDisk);
+  gl.uniform3fv(u.uZen, P.zen); gl.uniform3fv(u.uMid, P.mid); gl.uniform3fv(u.uMidSun, P.midSun);
+  gl.uniform3fv(u.uHorSun, P.horSun); gl.uniform3fv(u.uHorAway, P.horAway); gl.uniform3fv(u.uGlow, P.glow); gl.uniform3fv(u.uSkyIrr, P.skyIrr);
+  gl.uniform3fv(u.uCloudLit, P.cloudLit); gl.uniform3fv(u.uCloudBase, P.cloudBase); gl.uniform3fv(u.uCloudDark, P.cloudDark);
+  gl.uniform4fv(u.uLand, P.land); gl.uniform1f(u.uSigAr, P.sigAr); gl.uniform1f(u.uCloudAmt, P.cloudAmt); gl.uniform1f(u.uStars, P.stars); gl.uniform1f(u.uCliff, P.cliff);
+}
+// camera drifts to keep the sun (by day) or the moon (by night) in view; a drag pauses it for a while
+const AUTO_CAM = !Q.has('yaw') && !Q.has('pitch');
+let camHold = 0, camSnapped = false;
+function camTarget(S){
+  const w = ss(-5, -14, S.sun.el);
+  const pDay = lerp(-0.24, -0.50, ss(12, 38, S.sun.el));
+  return { yaw: lerp(S.sun.az, S.moon.az, w)*0.8*D2R, pitch: lerp(pDay, -0.14, w) };
+}
+let TOD = timeOfDay(hour);
+
 /* ---------------- Camera & input ---------------- */
-// sunset: sun ~6 deg above the horizon, straight ahead; ?sun=<deg> overrides the elevation
-const SUN_EL = (Math.min(60, Math.max(1, parseFloat(Q.get('sun')))) || 6)*Math.PI/180, SUN_AZ = 6*Math.PI/180;
-const EXPOSURE = Math.min(4, Math.max(0.1, parseFloat(Q.get('exp')))) || 0.85;
-const SUNV = [Math.sin(SUN_AZ)*Math.cos(SUN_EL), Math.sin(SUN_EL), -Math.cos(SUN_AZ)*Math.cos(SUN_EL)];
 const cam = { yaw: Q.has('yaw')? parseFloat(Q.get('yaw')) : 0, pitch: Q.has('pitch')? parseFloat(Q.get('pitch')) : -0.24, vy:0, vp:0, h:1.55 };
 let drag = null, lastTap = null;
 canvas.addEventListener('pointerdown', e => { canvas.setPointerCapture(e.pointerId); drag = {x:e.clientX, y:e.clientY, x0:e.clientX, y0:e.clientY, t:performance.now()}; });
@@ -847,7 +943,7 @@ canvas.addEventListener('pointermove', e => {
 });
 canvas.addEventListener('pointerup', e => {
   if (drag && Math.hypot(e.clientX-drag.x0, e.clientY-drag.y0) < 8 && performance.now()-drag.t < 350) lastTap = [e.clientX, e.clientY];
-  drag = null; hideHint();
+  drag = null; hideHint(); camHold = performance.now() + 8000;
 });
 canvas.addEventListener('pointercancel', () => drag = null);
 const $hint = document.getElementById('hint');
@@ -888,11 +984,18 @@ alloc();
 const $dbg = document.getElementById('dbg'); if (DEBUG) $dbg.hidden = false;
 let t0 = performance.now(), last = t0, acc = 0, frames = 0, ftAvg = 16, tSim = 0;
 function frame(now){
-  const dt = Math.min(0.05, (now-last)/1000); last = now;
+  const dtRaw = (now-last)/1000, dt = Math.min(0.05, dtRaw); last = now;
   tSim += dt;
   const t = FIXED_T!==null ? FIXED_T : tSim;
   if (!drag){ cam.yaw += cam.vy*0.9; cam.pitch += cam.vp*0.9; cam.vy*=0.9; cam.vp*=0.9; cam.pitch = Math.max(-1.45, Math.min(0.35, cam.pitch)); }
   if (!pebReady){ requestAnimationFrame(frame); return; }
+  if (HOUR_FIXED === null) hour = (hour + Math.min(0.25, dtRaw)*24/CYCLE*clockRate(TOD.sun.el)) % 24;   // wall time: same cycle length on slow devices
+  TOD = timeOfDay(hour);
+  if (AUTO_CAM && !drag && (now > camHold || !camSnapped)){
+    const T = camTarget(TOD), k = camSnapped ? 1 - Math.exp(-dt*0.8) : 1;
+    const dy = Math.atan2(Math.sin(T.yaw - cam.yaw), Math.cos(T.yaw - cam.yaw));
+    cam.yaw += dy*k; cam.pitch += (T.pitch - cam.pitch)*k; camSnapped = true;
+  }
   const B = camBasis(t);
 
   runFFT(t*0.9);
@@ -908,13 +1011,13 @@ function frame(now){
     stepRipples([dxT/RN, dzT/RN]); ripCenter = [ripCenter[0]+dxT*tx, ripCenter[1]+dzT*tx]; ripActive++;
   } else { ripCenter = [ripCenter[0]+dxT*tx, ripCenter[1]+dzT*tx]; }
 
-  renderCaustics(SUNV);
+  renderCaustics(TOD.key);
 
   target(hdrRT); gl.disable(gl.BLEND); gl.useProgram(pMain.p);
   bindT(0,surfRT.t); bindT(1,causRT.t); bindT(2,pebTex); bindT(3,ripN.t);
   const u = pMain.u;
   gl.uniform1i(u.uSurf,0); gl.uniform1i(u.uCaus,1); gl.uniform1i(u.uPeb,2); gl.uniform1i(u.uRip,3);
-  gl.uniform3fv(u.uCam, B.pos); gl.uniform3fv(u.uR, B.r); gl.uniform3fv(u.uU, B.u); gl.uniform3fv(u.uF, B.f); gl.uniform3fv(u.uSun, SUNV);
+  gl.uniform3fv(u.uCam, B.pos); gl.uniform3fv(u.uR, B.r); gl.uniform3fv(u.uU, B.u); gl.uniform3fv(u.uF, B.f); setTimeUniforms(u, TOD);
   gl.uniform1f(u.uTanF, Math.tan(VFOV/2)); gl.uniform1f(u.uAspect, W/H); gl.uniform1f(u.uL, L); gl.uniform1f(u.uDepth, DEPTH); gl.uniform1f(u.uTime, t);
   gl.uniform1f(u.uRipSize, RSIZE); gl.uniform2fv(u.uRipCenter, ripCenter); gl.uniform2fv(u.uCausShift, causShift);
   fullscreen();
@@ -927,7 +1030,7 @@ function frame(now){
       if (ftAvg > 21 && quality > 0.42){ quality = Math.max(0.42, quality*0.87); alloc(); frames = 0; }
       else if (ftAvg < 14.5 && quality < 1.0){ quality = Math.min(1.0, quality*1.06); alloc(); frames = 0; }
     }
-    if (DEBUG && frames%15===0) $dbg.textContent = `${(1000/ftAvg).toFixed(0)} fps · ${W}×${H} · q ${quality.toFixed(2)}`;
+    if (DEBUG && frames%15===0) $dbg.textContent = `${(1000/ftAvg).toFixed(0)} fps · ${W}×${H} · q ${quality.toFixed(2)} · ${String(Math.floor(hour)).padStart(2,'0')}:${String(Math.floor(hour%1*60)).padStart(2,'0')} · sun ${TOD.sun.el.toFixed(1)}°`;
   }
   if (FIXED_T!==null){ window.__frames = (window.__frames||0)+1; if (window.__frames < (Q.has('frames')? +Q.get('frames') : 4)) requestAnimationFrame(frame); return; }
   requestAnimationFrame(frame);
