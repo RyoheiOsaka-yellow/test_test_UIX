@@ -1,0 +1,1725 @@
+<title>Spirula Studio のしくみ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+  :root {
+    --ground: #EDF1F1;
+    --surface: #FFFFFF;
+    --ink: #0E1B24;
+    --ink-2: #4A5D69;
+    --line: #D2DBDE;
+    --accent: #0C737C;
+    --accent-soft: #D7ECEE;
+    --accent-ink: #FFFFFF;
+    --warm: #B35F14;
+    --warn-bg: #FBEBD8;
+    --warn-ink: #7A3F0B;
+    --code-bg: #E3EAEC;
+    --view-bg: #0B141B;
+    --view-bg-2: #172631;
+    --view-ink: #DCE7EA;
+    --view-ink-2: #8FA5AF;
+    --view-chip: rgba(8, 16, 22, 0.74);
+    --view-accent: #5FD0D8;
+    --view-warm: #F2A94E;
+    --font: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #0A1116;
+      --surface: #101B22;
+      --ink: #E3EBEE;
+      --ink-2: #93A6B0;
+      --line: #223340;
+      --accent: #4BC0C8;
+      --accent-soft: #12343A;
+      --accent-ink: #04191C;
+      --warm: #F0A24A;
+      --warn-bg: #2C1F12;
+      --warn-ink: #F3C58E;
+      --code-bg: #0C161C;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #0A1116;
+    --surface: #101B22;
+    --ink: #E3EBEE;
+    --ink-2: #93A6B0;
+    --line: #223340;
+    --accent: #4BC0C8;
+    --accent-soft: #12343A;
+    --accent-ink: #04191C;
+    --warm: #F0A24A;
+    --warn-bg: #2C1F12;
+    --warn-ink: #F3C58E;
+    --code-bg: #0C161C;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  code, pre, .mono { font-family: var(--mono); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .wrap {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding-inline: clamp(16px, 4vw, 40px);
+    padding-block: 32px 72px;
+    display: grid;
+    gap: 56px;
+  }
+
+  /* ---------- intro ---------- */
+  .intro { display: grid; gap: 14px; max-width: 760px; }
+  .eyebrow {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+  }
+  h1 {
+    margin: 0;
+    font-size: clamp(30px, 4.6vw, 46px);
+    line-height: 1.2;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .lede { margin: 0; font-size: 16px; color: var(--ink-2); max-width: 62ch; }
+  .links { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 4px 0 0; padding: 0; list-style: none; font-size: 14px; }
+  .links a { font-weight: 500; }
+
+  /* ---------- bench ---------- */
+  .bench { display: grid; gap: 16px; }
+  .rail-scroll { overflow-x: auto; margin-inline: -4px; padding: 4px; }
+  .rail {
+    display: flex;
+    gap: 6px;
+    min-width: max-content;
+    position: relative;
+  }
+  .rail button {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.3;
+    padding: 9px 14px 9px 10px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .rail button:hover { border-color: var(--accent); }
+  .rail .n {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: inline-grid; place-items: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--code-bg);
+    color: var(--ink-2);
+  }
+  .rail .opt { font-size: 11px; color: var(--ink-2); font-weight: 400; }
+  .rail button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .rail button[aria-selected="true"] .n { background: var(--accent-ink); color: var(--accent); }
+  .rail button[aria-selected="true"] .opt { color: var(--accent-ink); opacity: 0.8; }
+
+  .bench-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+  @media (max-width: 960px) { .bench-grid { grid-template-columns: minmax(0, 1fr); } }
+
+  .view {
+    position: relative;
+    height: clamp(360px, 46vw, 580px);
+    border-radius: 14px;
+    overflow: hidden;
+    background: radial-gradient(120% 90% at 50% 28%, var(--view-bg-2), var(--view-bg) 70%);
+    color: var(--view-ink);
+    isolation: isolate;
+  }
+  .view canvas.gl {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+    cursor: grab;
+  }
+  .view canvas.gl:active { cursor: grabbing; }
+  .thumbs {
+    position: absolute;
+    left: 14px; right: 14px;
+    display: grid;
+    gap: 8px;
+    justify-content: center;
+    align-content: center;
+  }
+  .th { margin: 0; position: relative; border-radius: 6px; overflow: hidden; background: #0F1A21; }
+  .th canvas { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; }
+  .th figcaption {
+    position: absolute; left: 4px; bottom: 4px;
+    font-family: var(--mono); font-size: 10px; line-height: 1;
+    padding: 3px 5px; border-radius: 4px;
+    background: rgba(6, 12, 16, 0.7); color: var(--view-ink);
+    white-space: nowrap;
+  }
+  .thumbs.small figcaption { display: none; }
+
+  .hud {
+    position: absolute; left: 12px; top: 12px; right: 12px;
+    display: flex; flex-wrap: wrap; gap: 6px;
+    pointer-events: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+  }
+  .hud span {
+    background: var(--view-chip);
+    padding: 5px 9px;
+    border-radius: 7px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+  .hud .key { display: inline-flex; align-items: center; gap: 6px; color: var(--view-ink-2); }
+  .hud .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .hud .hint { margin-left: auto; color: var(--view-ink-2); }
+  @media (max-width: 560px) { .hud .hint { display: none; } }
+
+  .controls {
+    position: absolute; left: 12px; right: 12px; bottom: 12px;
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  }
+  .controls:empty { display: none; }
+  .seg {
+    display: inline-flex;
+    background: var(--view-chip);
+    border-radius: 9px;
+    padding: 3px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+  .seg button, .vbtn {
+    appearance: none; border: 0;
+    font: inherit; font-size: 13px; font-weight: 500;
+    color: var(--view-ink);
+    background: transparent;
+    padding: 6px 11px;
+    border-radius: 7px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .seg button[aria-pressed="true"] { background: var(--view-accent); color: #062024; }
+  .vbtn { background: var(--view-chip); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); padding: 9px 13px; border-radius: 9px; }
+  .vbtn:hover, .seg button:hover { color: #fff; }
+  .seg button[aria-pressed="true"]:hover { color: #062024; }
+  .vbtn.primary { background: var(--view-accent); color: #062024; }
+  .scrub {
+    flex: 1 1 180px;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--view-chip);
+    border-radius: 9px;
+    padding: 6px 12px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    font-family: var(--mono); font-size: 12px; color: var(--view-ink-2);
+  }
+  .scrub input { flex: 1; accent-color: var(--view-accent); min-width: 80px; }
+  .check {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--view-chip);
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+  .check input { accent-color: var(--view-accent); margin: 0; }
+  .nogl {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    padding: 24px; margin: 0;
+    text-align: center; color: var(--view-ink-2);
+  }
+
+  /* ---------- detail ---------- */
+  .detail {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px 22px 18px;
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+  }
+  .d-step { margin: 0; font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; color: var(--ink-2); }
+  .detail h2 { margin: -6px 0 0; font-size: 24px; line-height: 1.35; font-weight: 700; text-wrap: balance; }
+  .detail h2 small { display: block; font-size: 14px; font-weight: 500; color: var(--accent); letter-spacing: 0.02em; }
+  .d-lead { margin: 0; }
+  .d-points { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; color: var(--ink-2); font-size: 14px; }
+  .d-points code, .d-lead code { font-size: 0.9em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; color: var(--ink); }
+  .io {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 6px 12px;
+    align-items: baseline;
+    font-size: 13px;
+    padding: 12px 0;
+    border-block: 1px solid var(--line);
+  }
+  .io dt { color: var(--ink-2); font-weight: 500; }
+  .io dd { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    font-family: var(--mono); font-size: 12px; line-height: 1.5;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--ink);
+  }
+  .cmd { display: grid; gap: 6px; }
+  .cmd-h { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--ink-2); font-weight: 500; }
+  .copy {
+    appearance: none; border: 1px solid var(--line); background: transparent; color: var(--ink-2);
+    font: inherit; font-size: 12px; padding: 2px 10px; border-radius: 6px; cursor: pointer;
+  }
+  .copy:hover { color: var(--ink); border-color: var(--ink-2); }
+  pre {
+    margin: 0;
+    background: var(--code-bg);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .d-gui { margin: 0; font-size: 14px; display: flex; gap: 10px; align-items: baseline; }
+  .tag {
+    flex: none;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+    padding: 1px 7px; border-radius: 4px;
+    border: 1px solid var(--line); color: var(--ink-2);
+  }
+  .d-demo { margin: 0; font-size: 13px; color: var(--ink-2); }
+  .d-nav { display: flex; justify-content: space-between; gap: 8px; padding-top: 4px; }
+  .d-nav button {
+    appearance: none; font: inherit; font-size: 14px; font-weight: 500;
+    border: 1px solid var(--line); background: transparent; color: var(--ink);
+    padding: 7px 14px; border-radius: 8px; cursor: pointer;
+  }
+  .d-nav button.next { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); margin-left: auto; }
+  .d-nav button[hidden] { display: none; }
+
+  /* ---------- sections ---------- */
+  .section { display: grid; gap: 20px; }
+  .section h2 { margin: 0; font-size: 24px; line-height: 1.35; text-wrap: balance; }
+  .section .sub { margin: -12px 0 0; color: var(--ink-2); font-size: 14px; }
+
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    margin: 0;
+    border-top: 1px solid var(--line);
+  }
+  @media (max-width: 960px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 480px) { .facts { grid-template-columns: minmax(0, 1fr); } }
+  .fact { padding: 16px 18px 18px 0; border-bottom: 1px solid var(--line); }
+  .fact dt { font-weight: 700; font-size: 16px; }
+  .fact dd { margin: 4px 0 0; color: var(--ink-2); font-size: 14px; }
+  .fact .fig { font-family: var(--mono); color: var(--accent); font-size: 13px; display: block; margin-bottom: 2px; }
+
+  .cautions { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .cautions li {
+    display: grid;
+    grid-template-columns: 9.5em minmax(0, 1fr);
+    gap: 4px 16px;
+    padding: 14px 16px;
+    background: var(--warn-bg);
+    border-radius: 10px;
+    font-size: 14px;
+  }
+  .cautions b { color: var(--warn-ink); }
+  .cautions code { font-size: 0.92em; }
+  @media (max-width: 560px) { .cautions li { grid-template-columns: minmax(0, 1fr); } }
+
+  .start { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 20px; }
+  @media (max-width: 860px) { .start { grid-template-columns: minmax(0, 1fr); } }
+  .start > div { display: grid; gap: 10px; align-content: start; }
+  .start h3 { margin: 0; font-size: 16px; }
+  .start h3 small { font-weight: 400; color: var(--ink-2); font-size: 13px; margin-left: 6px; }
+  .steps { margin: 0; padding-left: 1.4em; display: grid; gap: 6px; }
+
+  footer { color: var(--ink-2); font-size: 13px; border-top: 1px solid var(--line); padding-top: 18px; display: grid; gap: 6px; }
+  footer p { margin: 0; max-width: 80ch; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rail button { transition: none; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <p class="eyebrow">写真・動画 → 3D Gaussian Splatting → メッシュ</p>
+    <h1>Spirula Studio のしくみ</h1>
+    <p class="lede">オープンソースの3D再構成アプリ Spirula Studio が、写真や動画から3Dモデルを作るまでの7つの工程を、ブラウザで動く小さな3Dシーンで順番にたどります。題材は、砂の上に置いた巻き貝（名前の由来のトグロコウイカ＝Spirula の殻）です。</p>
+    <ul class="links">
+      <li><a href="https://github.com/harry7557558/spirula-studio" target="_blank" rel="noopener">GitHub リポジトリ</a></li>
+      <li><a href="https://github.com/harry7557558/spirula-studio/releases/" target="_blank" rel="noopener">ダウンロード（Releases）</a></li>
+      <li><a href="https://harry7557558.github.io/spirula-studio/viewer/" target="_blank" rel="noopener">公式 Web ビューア</a></li>
+    </ul>
+  </header>
+
+  <section class="bench" aria-label="工程ごとのデモ">
+    <div class="rail-scroll">
+      <div class="rail" id="rail" role="tablist" aria-label="工程"></div>
+    </div>
+    <div class="bench-grid">
+      <div class="view" id="view">
+        <canvas class="gl" id="gl" aria-label="3Dビュー。ドラッグで回転、スクロールかピンチで拡大縮小"></canvas>
+        <div class="thumbs" id="thumbs" hidden></div>
+        <div class="hud" id="hud"></div>
+        <div class="controls" id="controls"></div>
+        <p class="nogl" id="nogl" hidden>このブラウザでは WebGL2 が使えないため、3D表示を省略しています。右側の説明はそのまま読めます。</p>
+      </div>
+      <article class="detail" id="detail" role="tabpanel" aria-live="polite"></article>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="facts-h">
+    <h2 id="facts-h">ほかのツールと比べたときの強み</h2>
+    <dl class="facts">
+      <div class="fact"><dt>インストールが軽い</dt><dd>Python・PyTorch・COLMAP が要らず、アプリ1つで最後まで完結。Windows・Linux・macOS 版を配布。</dd></div>
+      <div class="fact"><dt>GPU を選ばない</dt><dd>Vulkan で NVIDIA・AMD・Intel・Apple Silicon に対応。NVIDIA 向けの CUDA 版もあり。</dd></div>
+      <div class="fact"><dt><span class="fig">8 GB → 1,000万個</span>VRAM を節約</dt><dd>量子化して学習し、8GB の VRAM で最大約1,000万個の Gaussian（SH3）を扱える。</dd></div>
+      <div class="fact"><dt>360°・魚眼</dt><dd>正距円筒（エクイレクタングラー）や魚眼の素材を、歪み補正なしでそのまま学習。</dd></div>
+      <div class="fact"><dt>色むらに強い</dt><dd>バイラテラルグリッドと PPISP で、写真ごとの露出やホワイトバランスの差を吸収。</dd></div>
+      <div class="fact"><dt>実寸スケール</dt><dd>撮影時の IMU・GPS の記録から、モデルの大きさと向きを実寸で復元。</dd></div>
+      <div class="fact"><dt>リモート学習</dt><dd>クラウドの GPU で CLI 学習し、進み具合は SSH 越しにブラウザで確認。</dd></div>
+      <div class="fact"><dt><span class="fig">13 言語</span>日本語 UI</dt><dd>GUI と CLI の両方が日本語を含む13言語に対応。</dd></div>
+    </dl>
+  </section>
+
+  <section class="section" aria-labelledby="caution-h">
+    <h2 id="caution-h">使う前に確認したいこと</h2>
+    <ul class="cautions">
+      <li><b>ライセンス GPLv3</b><span>改変して配布するとソースの公開義務が生じます。業務で使ったり自社製品に組み込んだりする場合は、先に確認が必要です。</span></li>
+      <li><b>動画の GPU デコード</b><span>ビルド時に <code>SS_ENABLE_PATENTED=ON</code> を付けた場合だけ有効です。H.264 / HEVC の特許への対応は利用者の責任で、OFF のときは外部の ffmpeg を使います。</span></li>
+      <li><b>SAM のモデル</b><span>アプリには同梱されず、初回に規約を表示してからダウンロードします。SAM 2.1 は Apache-2.0、SAM 3 は Meta 独自のライセンスです。</span></li>
+      <li><b>開発体制</b><span>ほぼ1人で開発・保守されています。Issue や PR は歓迎されていますが、返信が遅れることもあります。</span></li>
+    </ul>
+  </section>
+
+  <section class="section" aria-labelledby="start-h">
+    <h2 id="start-h">はじめ方</h2>
+    <div class="start">
+      <div>
+        <h3>GUI で使う<small>いちばん簡単</small></h3>
+        <ol class="steps">
+          <li><a href="https://github.com/harry7557558/spirula-studio/releases/" target="_blank" rel="noopener">Releases</a> から自分の OS 用をダウンロード</li>
+          <li>解凍してダブルクリックで起動</li>
+          <li>「写真や動画からデータセットを作成…」で素材を選び、「学習を開始」</li>
+        </ol>
+      </div>
+      <div>
+        <h3>CLI で使う<small>クラウド GPU など画面のない環境向け</small></h3>
+        <div class="cmd">
+          <div class="cmd-h"><span>my_scene/images/ に写真を置いた場合の例</span><button class="copy" type="button" data-copy="start-cli">コピー</button></div>
+<pre id="start-cli"><code>spirula sfm auto my_scene/ -o my_scene/   # 撮影位置を求める
+spirula geometry my_scene/                 # 深度・法線（任意）
+spirula train --data my_scene/             # 学習（ブラウザで :7007 を開くと進捗が見える）
+spirula mesh &lt;checkpoint&gt; --format glb     # メッシュ化（任意）</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>このページの3D表示は、しくみを説明するための模式図です。Spirula Studio 本体が出力したものではありません。学習のアニメーションも、実際の最適化を簡略化しています。</p>
+    <p>内容は GitHub の harry7557558/spirula-studio（2026年9月23日時点のコード・ドキュメント）をもとにまとめました。</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var reduceMotion = false;
+  try { reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+
+  /* =====================================================================
+     Stage content
+     ===================================================================== */
+  var STAGES = [
+    {
+      name: '入力', title: '素材を集める', view: 'photos',
+      lead: '被写体のまわりを歩きながら、写真を撮るか動画を回します。前後の写真が重なるように、いろいろな角度から撮るのがコツです。動画なら、ブレの少ないフレームを自動で選んで切り出します。',
+      points: [
+        '写真（JPG・PNG など）と動画（MP4・MOV・MKV、Insta360 の <code>.insv</code>）に対応',
+        '360°カメラや魚眼レンズの素材も、そのまま使えます',
+        '撮影時の IMU・GPS の記録があれば、あとで実寸の大きさと向きの復元に使います'
+      ],
+      input: ['写真', '動画'], output: ['images/'],
+      cmd: 'spirula sam extract capture.mp4',
+      gui: '「写真や動画からデータセットを作成…」でファイルを選ぶだけで始められます。',
+      demo: 'デモ：貝殻のまわりを16方向から撮った想定の写真です。何枚かには、転がってきたビーチボールが写り込んでいます。'
+    },
+    {
+      name: 'マスク', optional: true, title: '写り込みを外す', view: 'photos',
+      lead: '通行人や転がるボールのように、写真ごとに位置が変わるものは3D化の邪魔になります。Meta の画像分割 AI「SAM」で対象を見つけて動画全体で追跡し、学習に使わない領域を黒く塗ったマスク画像を作ります。',
+      points: [
+        '「person」のような言葉や、画像のクリックで対象を指定',
+        '既定では指定した物を除外。<code>--keep-prompted</code> を付けると逆に「指定した物だけ残す」',
+        'SAM 2.1 / SAM 3 のモデルは、初回に規約を表示してからダウンロード'
+      ],
+      input: ['images/'], output: ['masks/'],
+      cmd: 'spirula sam track --model <SAMモデル> --frames images/ \\\n    --text "ball" --out masks/',
+      gui: '画像をクリックして、残すもの・消すものを指定できます。',
+      demo: 'デモ：オレンジの斜線が学習から外される領域です。下のボタンで「対象だけ残す」に切り替えられます。'
+    },
+    {
+      name: 'SfM', title: '撮影位置を割り出す', view: '3d',
+      lead: '写真どうしで同じ模様（特徴点）を探して照合し、それぞれの写真をどこから・どの向きで撮ったか（カメラ姿勢）と、まばらな3D点群を同時に求めます。この工程を Structure from Motion（SfM）と呼びます。COLMAP を別に入れる必要はありません。',
+      points: [
+        '抽出 → 照合 → 復元（バンドル調整）の順に進み、写真を1枚ずつ登録していきます',
+        '特徴点の手法は SIFT・ALIKED・LoMa（難しいシーン向け）から選択',
+        '結果は COLMAP 形式（<code>sparse/0</code>）なので、ほかのツールでもそのまま読めます'
+      ],
+      input: ['images/', 'masks/'], output: ['sparse/0'],
+      cmd: 'spirula sfm auto my_scene/ -o my_scene/',
+      gui: 'データセット作成の流れの中で、自動的に実行されます。',
+      demo: 'デモ：最初の2枚から始めて、カメラ（オレンジ）を1台ずつ登録し、3D点を増やしていく様子です。表示は実際のログと同じ形式です。'
+    },
+    {
+      name: '深度・法線', optional: true, title: '形の手がかりを足す', view: 'photos',
+      lead: 'AI モデル（MoGe・Metric3D）が、写真1枚ごとに奥行き（深度）と面の向き（法線）を推定します。法線は既定で学習の手がかりに使われ、模様の少ない壁や床の形や、メッシュの仕上がりを整えます。',
+      points: [
+        '深度は近いほど暖色、法線は面の向きを色（RGB ＝ XYZ）で表しています',
+        '<code>images/</code> の隣に <code>depths/</code> と <code>normals/</code> を書き出し、学習時に自動で読み込みます',
+        '任意の工程です。できあがったデータセットにも後から追加できます'
+      ],
+      input: ['images/'], output: ['depths/', 'normals/'],
+      cmd: 'spirula geometry my_scene/',
+      gui: 'データセット画面で、深度と法線の推定を選べます。',
+      demo: 'デモ：下のボタンで深度と法線を切り替えられます。'
+    },
+    {
+      name: '学習', title: 'Gaussian で3Dを組み立てる', view: '3d',
+      lead: 'シーンを、色と不透明度を持つ無数の小さな楕円体（Gaussian）の集まりで表します。写真と同じ視点から描いて本物の写真と見比べ、差が小さくなるように位置・形・色を少しずつ直す。これを数万回くり返し、足りない所では Gaussian を分裂・複製して増やします。',
+      points: [
+        'SfM の点群を種にしてスタート。既定は 30,000 ステップ',
+        '露出やホワイトバランスのずれは、バイラテラルグリッドと PPISP で吸収',
+        '量子化により、8GB の VRAM で最大約1,000万個の Gaussian を扱えます',
+        '用途別プリセット：<code>360-camera</code>・<code>centered-object</code>・<code>hdr</code>・<code>meshing</code> など'
+      ],
+      input: ['images/', 'sparse/0', 'masks/ ほか'], output: ['スプラット (.ply)'],
+      cmd: 'spirula train --data my_scene/\nspirula train 360-camera --data my_scene/   # プリセット指定',
+      gui: 'プリセットを選んで「学習を開始」。学習中の様子を、その場で回して見られます。',
+      demo: 'デモ：学習の流れを簡略化したアニメーションです。「縮めて表示」にすると、1つ1つの楕円体が見えます。'
+    },
+    {
+      name: 'メッシュ化', optional: true, title: 'ポリゴンに変換する', view: '3d',
+      lead: '学習済みの Gaussian から表面を取り出し、ゲームエンジンや3Dソフトで扱えるポリゴンメッシュにします。色は頂点カラーとして持たせるか、テクスチャ画像に焼き込めます。',
+      points: [
+        '書き出せる形式：PLY・OBJ・glTF・GLB・STL',
+        'テクスチャ付き GLB（PNG / JPEG）にも対応',
+        'メッシュ向けの学習プリセット <code>meshing</code> を使うと、面がより整います'
+      ],
+      input: ['学習済みモデル'], output: ['.glb', '.obj', '.ply', '.stl'],
+      cmd: 'spirula mesh <checkpoint> --format glb',
+      gui: 'メッシュの画面で、形式を選んで書き出せます。',
+      demo: 'デモ：網目（ワイヤーフレーム）が三角形ポリゴンです。「クレイ」にすると形だけを確認できます。'
+    },
+    {
+      name: '閲覧・書き出し', title: '見せる・共有する', view: '3d',
+      lead: 'GUI の「レンダリング」でカメラの通り道（軌道）を置けば、そのまま動画に書き出せます。ブラウザ用のビューアもあり、インストールなしで .ply やメッシュを開けます。',
+      points: [
+        '軌道に沿って動画（MP4）や GIF を書き出し',
+        '<code>spirula train</code> の実行中は、学習の様子をブラウザで見られます（既定のポートは 7007）',
+        '.ply を SuperSplat などに上げて共有することもできます'
+      ],
+      input: ['スプラット', 'メッシュ'], output: ['MP4', 'GIF', 'Web 表示'],
+      cmd: '# リモートの GPU で学習中の様子を手元のブラウザで見る\nssh -L 7007:localhost:7007 <GPUサーバー>\n# → http://localhost:7007 を開く',
+      gui: '「レンダリング」で軌道を編集し、「写真・動画をレンダリング」で書き出します。',
+      demo: 'デモ：水色の線がカメラの軌道です。「軌道を再生」で、その視点からの映像を見られます。'
+    }
+  ];
+
+  /* =====================================================================
+     Math helpers
+     ===================================================================== */
+  var TAU = Math.PI * 2;
+  function mulberry(seed) {
+    return function () {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  var rand = mulberry(20260923);
+  function gauss() { var u = 0; while (u === 0) u = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * rand()); }
+  function clamp(x, a, b) { return x < a ? a : x > b ? b : x; }
+  function smooth(a, b, x) { var t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); }
+  function mix(a, b, t) { return a + (b - a) * t; }
+  function dot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+  function sub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+  function addv(a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; }
+  function scl(a, s) { return [a[0] * s, a[1] * s, a[2] * s]; }
+  function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
+  function norm(v) { var l = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / l, v[1] / l, v[2] / l]; }
+  function len(v) { return Math.hypot(v[0], v[1], v[2]); }
+
+  function perspective(fovy, aspect, near, far) {
+    var f = 1 / Math.tan(fovy / 2), nf = 1 / (near - far);
+    return new Float32Array([f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, (far + near) * nf, -1, 0, 0, 2 * far * near * nf, 0]);
+  }
+  function lookAt(eye, target, up) {
+    var z = norm(sub(eye, target));
+    var x = norm(cross(up, z));
+    var y = cross(z, x);
+    return new Float32Array([x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, -dot(x, eye), -dot(y, eye), -dot(z, eye), 1]);
+  }
+  function makeCam(eye, target, fovy, w, h) {
+    return {
+      view: lookAt(eye, target, [0, 1, 0]),
+      proj: perspective(fovy, w / h, 0.05, 60),
+      focal: h / (2 * Math.tan(fovy / 2)),
+      w: w, h: h, eye: eye, target: target, fovy: fovy
+    };
+  }
+
+  /* =====================================================================
+     Scene: a Spirula shell on sand, a few pebbles, and a transient ball
+     ===================================================================== */
+  var LIGHT = norm([0.45, 0.85, 0.3]);
+  function lightAt(n) { return 0.42 + 0.58 * Math.max(0, dot(n, LIGHT)); }
+
+  var SH = { a: 0.105, b: 0.125, k: 0.29, th0: 0.9, th1: 0.9 + 2.3 * TAU, yaw: -0.5, off: [0.05, 0, -0.05], lift: 0 };
+  var cy = Math.cos(SH.yaw), sy = Math.sin(SH.yaw);
+  function rotY(v) { return [cy * v[0] + sy * v[2], v[1], -sy * v[0] + cy * v[2]]; }
+  function shellLocal(th, ph) {
+    var r = SH.a * Math.exp(SH.b * th), cs = Math.cos(th), sn = Math.sin(th);
+    var T = norm([SH.b * cs - sn, SH.b * sn + cs, 0]);
+    var N = [-T[1], T[0], 0];
+    var rho = SH.k * r, cp = Math.cos(ph), sp = Math.sin(ph);
+    var n = [cp * N[0], cp * N[1], sp];
+    return { p: [r * cs + rho * n[0], r * sn + rho * n[1], rho * n[2]], n: n, T: T, t2: [-sp * N[0], -sp * N[1], cp], inward: cp };
+  }
+  (function () {
+    var minY = Infinity;
+    for (var i = 0; i <= 400; i++) {
+      for (var j = 0; j < 24; j++) {
+        var s = shellLocal(mix(SH.th0, SH.th1, i / 400), j / 24 * TAU);
+        if (s.p[1] < minY) minY = s.p[1];
+      }
+    }
+    SH.lift = 0.012 - minY;
+  })();
+  function shellWorld(th, ph) {
+    var s = shellLocal(th, ph);
+    var p = rotY(s.p);
+    return { p: [p[0] + SH.off[0], p[1] + SH.lift, p[2] + SH.off[2]], n: rotY(s.n), T: rotY(s.T), t2: rotY(s.t2), inward: s.inward };
+  }
+  function shellColor(th, ph, n, inward) {
+    var t = (th - SH.th0) / (SH.th1 - SH.th0);
+    var g = smooth(0, 0.55, t);
+    var c = [mix(0.74, 0.96, g), mix(0.56, 0.91, g), mix(0.48, 0.83, g)];
+    var s = ((th - SH.th0) / 0.36) % 1;
+    if (s < 0.085) { c[0] *= 0.76; c[1] *= 0.64; c[2] *= 0.56; }
+    var stripe = 0.97 + 0.03 * Math.sin(ph * 9);
+    var l = lightAt(n) * (1 - 0.22 * Math.max(0, inward)) * stripe;
+    return [c[0] * l, c[1] * l, c[2] * l];
+  }
+
+  var shellCenterXZ = [SH.off[0] - 0.28, SH.off[2] - 0.19];
+  var planeDir = [cy, -sy];
+  function shadowAt(x, z) {
+    var dx = x - shellCenterXZ[0], dz = z - shellCenterXZ[1];
+    var u = dx * planeDir[0] + dz * planeDir[1];
+    var v = -dx * planeDir[1] + dz * planeDir[0];
+    return 1 - 0.4 * Math.exp(-(u * u) / 0.42 - (v * v) / 0.09);
+  }
+  var SAND_R = 2.6;
+  function sandHeight(x, z) { return 0.008 * Math.sin(9 * (x * 0.82 + z * 0.57) + 1.3 * Math.sin(2.1 * z + 0.7 * x)); }
+  function sandColor(x, z) {
+    var r = Math.hypot(x, z);
+    var f = Math.sin(9 * (x * 0.82 + z * 0.57) + 1.3 * Math.sin(2.1 * z + 0.7 * x));
+    var k = 0.91 + 0.07 * f;
+    var c = [0.86 * k, 0.76 * k, 0.58 * k];
+    var e = smooth(1.6, SAND_R, r) * 0.55;
+    c = [mix(c[0], 0.5, e), mix(c[1], 0.44, e), mix(c[2], 0.36, e)];
+    var l = lightAt([0, 1, 0]) * shadowAt(x, z);
+    return [c[0] * l, c[1] * l, c[2] * l];
+  }
+
+  var PEBBLES = [
+    { c: [1.35, 0, 0.55], r: [0.16, 0.09, 0.12], col: [0.40, 0.41, 0.44] },
+    { c: [-1.25, 0, 0.95], r: [0.12, 0.07, 0.10], col: [0.58, 0.50, 0.42] },
+    { c: [0.55, 0, 1.55], r: [0.09, 0.055, 0.08], col: [0.30, 0.32, 0.36] },
+    { c: [-0.95, 0, -1.3], r: [0.14, 0.08, 0.11], col: [0.64, 0.60, 0.54] },
+    { c: [1.65, 0, -0.95], r: [0.11, 0.07, 0.10], col: [0.46, 0.39, 0.35] },
+    { c: [-1.9, 0, -0.2], r: [0.10, 0.06, 0.09], col: [0.33, 0.36, 0.39] },
+    { c: [0.25, 0, -1.9], r: [0.13, 0.075, 0.10], col: [0.53, 0.46, 0.40] }
+  ];
+  PEBBLES.forEach(function (pb) { pb.c[1] = pb.r[1] * 0.3; });
+  function pebblePoint(pb, d) {
+    var p = [pb.c[0] + pb.r[0] * d[0], pb.c[1] + pb.r[1] * d[1], pb.c[2] + pb.r[2] * d[2]];
+    var n = norm([d[0] / pb.r[0], d[1] / pb.r[1], d[2] / pb.r[2]]);
+    return { p: p, n: n };
+  }
+  var BALL_R = 0.19;
+  function ballColor(d) {
+    var seg = Math.floor(((Math.atan2(d[2], d[0]) + Math.PI) / TAU) * 6) % 6;
+    var cols = [[0.86, 0.2, 0.16], [0.95, 0.95, 0.92], [0.96, 0.76, 0.16], [0.95, 0.95, 0.92], [0.18, 0.42, 0.82], [0.95, 0.95, 0.92]];
+    var c = Math.abs(d[1]) > 0.93 ? [0.95, 0.95, 0.92] : cols[seg];
+    var l = lightAt(d);
+    return [c[0] * l, c[1] * l, c[2] * l];
+  }
+
+  // ---- splats ----
+  var SP = { pos: [], nrm: [], col: [], cov: [], grp: [], op: [] };
+  function tangentFrame(n) {
+    var a = Math.abs(n[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+    var t1 = norm(cross(n, a));
+    return [t1, cross(n, t1)];
+  }
+  function pushSplat(p, n, t1, t2, s1, s2, s3, col, grp, op) {
+    SP.pos.push(p[0], p[1], p[2]);
+    SP.nrm.push(n[0], n[1], n[2]);
+    var g = 1 + 0.05 * gauss();
+    SP.col.push(clamp(col[0] * g, 0, 1), clamp(col[1] * g, 0, 1), clamp(col[2] * g, 0, 1));
+    SP.grp.push(grp);
+    SP.op.push(op);
+    var a = s1 * s1, b = s2 * s2, c = s3 * s3;
+    SP.cov.push(
+      a * t1[0] * t1[0] + b * t2[0] * t2[0] + c * n[0] * n[0],
+      a * t1[0] * t1[1] + b * t2[0] * t2[1] + c * n[0] * n[1],
+      a * t1[0] * t1[2] + b * t2[0] * t2[2] + c * n[0] * n[2],
+      a * t1[1] * t1[1] + b * t2[1] * t2[1] + c * n[1] * n[1],
+      a * t1[1] * t1[2] + b * t2[1] * t2[2] + c * n[1] * n[2],
+      a * t1[2] * t1[2] + b * t2[2] * t2[2] + c * n[2] * n[2]
+    );
+  }
+  function rotTangents(t1, t2, ang) {
+    var c = Math.cos(ang), s = Math.sin(ang);
+    return [addv(scl(t1, c), scl(t2, s)), addv(scl(t1, -s), scl(t2, c))];
+  }
+
+  (function buildShell() {
+    var N = 10000, b2 = 2 * SH.b;
+    var e0 = Math.exp(b2 * SH.th0), e1 = Math.exp(b2 * SH.th1);
+    var area = TAU * SH.k * Math.sqrt(1 + SH.b * SH.b) * SH.a * SH.a * (e1 - e0) / b2;
+    var h = Math.sqrt(area / N);
+    for (var i = 0; i < N; i++) {
+      var th = Math.log(e0 + rand() * (e1 - e0)) / b2;
+      var ph = rand() * TAU;
+      var s = shellWorld(th, ph);
+      var col = shellColor(th, ph, s.n, s.inward);
+      pushSplat(s.p, s.n, s.T, s.t2, h * (0.72 + 0.3 * rand()), h * (0.55 + 0.2 * rand()), h * 0.12, col, 1, 0.93);
+    }
+  })();
+  (function buildSand() {
+    var N = 8500, h = Math.sqrt(Math.PI * SAND_R * SAND_R / N);
+    for (var i = 0; i < N; i++) {
+      var r = SAND_R * Math.sqrt(rand()), a = rand() * TAU;
+      var x = r * Math.cos(a), z = r * Math.sin(a);
+      var fr = rotTangents([1, 0, 0], [0, 0, 1], rand() * Math.PI);
+      pushSplat([x, sandHeight(x, z), z], [0, 1, 0], fr[0], fr[1], h * (0.62 + 0.22 * rand()), h * (0.5 + 0.18 * rand()), h * 0.1, sandColor(x, z), 0, 0.93);
+    }
+  })();
+  (function buildPebbles() {
+    PEBBLES.forEach(function (pb) {
+      var N = 190, h = 0.018;
+      for (var i = 0; i < N; i++) {
+        var d = norm([gauss(), Math.abs(gauss()) * 0.9 + 0.05, gauss()]);
+        var q = pebblePoint(pb, d);
+        var fr = tangentFrame(q.n);
+        var l = lightAt(q.n);
+        pushSplat(q.p, q.n, fr[0], fr[1], h * (0.9 + 0.3 * rand()), h * (0.7 + 0.3 * rand()), h * 0.15, [pb.col[0] * l, pb.col[1] * l, pb.col[2] * l], 0, 0.95);
+      }
+    });
+  })();
+  var NF = SP.grp.length;
+  (function buildBall() {
+    var N = 520, h = Math.sqrt(4 * Math.PI * BALL_R * BALL_R / N) * 0.75;
+    for (var i = 0; i < N; i++) {
+      var d = norm([gauss(), gauss(), gauss()]);
+      var fr = tangentFrame(d);
+      pushSplat([d[0] * BALL_R, BALL_R + d[1] * BALL_R, d[2] * BALL_R], d, fr[0], fr[1], h, h * 0.85, h * 0.12, ballColor(d), 2, 0.96);
+    }
+  })();
+  var NTOTAL = SP.grp.length;
+
+  // ---- photos (the "captured" cameras) ----
+  var PHOTO_FOV = 50 * Math.PI / 180;
+  var PHOTOS = [];
+  (function () {
+    for (var i = 0; i < 16; i++) {
+      var ring = i % 2;
+      var ang = (i / 16) * TAU + 0.35 + (rand() - 0.5) * 0.12;
+      var rad = ring ? 3.0 : 3.35;
+      var hgt = ring ? 1.95 : 0.8;
+      var eye = [rad * Math.sin(ang), hgt, rad * Math.cos(ang)];
+      var target = [(rand() - 0.5) * 0.16, 0.6 + (rand() - 0.5) * 0.1, (rand() - 0.5) * 0.16];
+      var ball = null;
+      if ([0, 2, 3, 5, 6, 8, 10, 11, 13, 15].indexOf(i) >= 0) {
+        var ba = ang + (rand() < 0.5 ? -1 : 1) * (0.35 + rand() * 0.3);
+        var br = 1.15 + rand() * 0.6;
+        ball = [br * Math.sin(ba), 0, br * Math.cos(ba)];
+      }
+      PHOTOS.push({ eye: eye, target: target, ball: ball, name: 'IMG_' + (412 + i * 3).toString().padStart(4, '0') });
+    }
+  })();
+  var REG_ORDER = [0, 1, 2, 15, 3, 14, 4, 13, 5, 12, 6, 11, 7, 10, 8, 9];
+
+  // ---- sparse SfM points & training init ----
+  var NSP = 1500;
+  var sparseSrc = [], sparsePos = new Float32Array(NSP * 3), sparseCol = new Float32Array(NSP * 3), sparseSig = new Float32Array(NSP);
+  (function () {
+    var picked = new Uint8Array(NF);
+    while (sparseSrc.length < NSP) {
+      var i = (rand() * NF) | 0;
+      if (picked[i]) continue;
+      if (SP.grp[i] === 0 && rand() < 0.45) continue;
+      picked[i] = 1;
+      sparseSrc.push(i);
+    }
+    for (var j = 0; j < NSP; j++) {
+      var s = sparseSrc[j];
+      for (var k = 0; k < 3; k++) {
+        sparsePos[3 * j + k] = SP.pos[3 * s + k] + gauss() * 0.01;
+        sparseCol[3 * j + k] = SP.col[3 * s + k];
+      }
+    }
+    for (var a = 0; a < NSP; a++) {
+      var b1 = Infinity, b2 = Infinity, b3 = Infinity;
+      for (var b = 0; b < NSP; b++) {
+        if (a === b) continue;
+        var dx = sparsePos[3 * a] - sparsePos[3 * b], dy = sparsePos[3 * a + 1] - sparsePos[3 * b + 1], dz = sparsePos[3 * a + 2] - sparsePos[3 * b + 2];
+        var d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < b1) { b3 = b2; b2 = b1; b1 = d2; } else if (d2 < b2) { b3 = b2; b2 = d2; } else if (d2 < b3) { b3 = d2; }
+      }
+      sparseSig[a] = clamp((Math.sqrt(b1) + Math.sqrt(b2) + Math.sqrt(b3)) / 3 * 0.7, 0.025, 0.22);
+    }
+  })();
+
+  var parent = new Int32Array(NF), birth = new Float32Array(NF), jitter = new Float32Array(NF * 3);
+  (function () {
+    var CELL = 0.2, grid = new Map();
+    function key(ix, iy, iz) { return ix + ',' + iy + ',' + iz; }
+    for (var j = 0; j < NSP; j++) {
+      var k = key(Math.floor(sparsePos[3 * j] / CELL), Math.floor(sparsePos[3 * j + 1] / CELL), Math.floor(sparsePos[3 * j + 2] / CELL));
+      if (!grid.has(k)) grid.set(k, []);
+      grid.get(k).push(j);
+    }
+    var srcOf = new Int32Array(NF).fill(-1);
+    sparseSrc.forEach(function (s, j) { srcOf[s] = j; });
+    for (var i = 0; i < NF; i++) {
+      if (srcOf[i] >= 0) { parent[i] = srcOf[i]; birth[i] = 0; continue; }
+      var px = SP.pos[3 * i], py = SP.pos[3 * i + 1], pz = SP.pos[3 * i + 2];
+      var cx = Math.floor(px / CELL), cyy = Math.floor(py / CELL), cz = Math.floor(pz / CELL);
+      var best = -1, bd = Infinity;
+      for (var rr = 1; rr <= 8 && best < 0; rr++) {
+        for (var x = cx - rr; x <= cx + rr; x++) for (var y = cyy - rr; y <= cyy + rr; y++) for (var z = cz - rr; z <= cz + rr; z++) {
+          var list = grid.get(key(x, y, z));
+          if (!list) continue;
+          for (var q = 0; q < list.length; q++) {
+            var j2 = list[q];
+            var dx = sparsePos[3 * j2] - px, dy = sparsePos[3 * j2 + 1] - py, dz = sparsePos[3 * j2 + 2] - pz;
+            var d2 = dx * dx + dy * dy + dz * dz;
+            if (d2 < bd) { bd = d2; best = j2; }
+          }
+        }
+      }
+      parent[i] = best < 0 ? 0 : best;
+      birth[i] = 0.02 + 0.48 * Math.pow(rand(), 1.3);
+      var sg = sparseSig[parent[i]] * 0.35;
+      jitter[3 * i] = gauss() * sg; jitter[3 * i + 1] = gauss() * sg; jitter[3 * i + 2] = gauss() * sg;
+    }
+  })();
+
+  // ---- SfM reveal: a point appears once a second camera that sees it is registered ----
+  var sparseAppear = new Float32Array(NSP);
+  var pointsAtK = new Int32Array(17);
+  var PHOTO_CAMS = PHOTOS.map(function (ph) { return makeCam(ph.eye, ph.target, PHOTO_FOV, 4, 3); });
+  (function () {
+    var regIndex = new Int32Array(16);
+    REG_ORDER.forEach(function (c, r) { regIndex[c] = r; });
+    for (var j = 0; j < NSP; j++) {
+      var p = [sparsePos[3 * j], sparsePos[3 * j + 1], sparsePos[3 * j + 2]];
+      var s = sparseSrc[j];
+      var n = [SP.nrm[3 * s], SP.nrm[3 * s + 1], SP.nrm[3 * s + 2]];
+      var seen = [];
+      for (var c = 0; c < 16; c++) {
+        var cam = PHOTO_CAMS[c], v = cam.view, pr = cam.proj;
+        var vx = v[0] * p[0] + v[4] * p[1] + v[8] * p[2] + v[12];
+        var vy = v[1] * p[0] + v[5] * p[1] + v[9] * p[2] + v[13];
+        var vz = v[2] * p[0] + v[6] * p[1] + v[10] * p[2] + v[14];
+        if (vz > -0.1) continue;
+        var nx = pr[0] * vx / -vz, ny = pr[5] * vy / -vz;
+        if (Math.abs(nx) > 0.95 || Math.abs(ny) > 0.95) continue;
+        var toCam = norm(sub(PHOTOS[c].eye, p));
+        if (Math.abs(dot(n, toCam)) < 0.12) continue;
+        if (SP.grp[s] === 1 && dot(n, toCam) < 0) continue;
+        seen.push(regIndex[c]);
+      }
+      seen.sort(function (a, b) { return a - b; });
+      sparseAppear[j] = seen.length >= 2 ? Math.max(1, seen[1]) : 99;
+    }
+    for (var k = 2; k <= 16; k++) {
+      var cnt = 0;
+      for (var q = 0; q < NSP; q++) if (sparseAppear[q] <= k - 1) cnt++;
+      pointsAtK[k] = cnt;
+    }
+  })();
+
+  /* =====================================================================
+     DOM
+     ===================================================================== */
+  var $ = function (id) { return document.getElementById(id); };
+  var railEl = $('rail'), viewEl = $('view'), canvas = $('gl'), thumbsEl = $('thumbs'), hudEl = $('hud'), controlsEl = $('controls'), detailEl = $('detail');
+
+  STAGES.forEach(function (s, i) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.id = 'tab-' + i;
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-controls', 'detail');
+    b.innerHTML = '<span class="n">' + (i + 1) + '</span>' + s.name + (s.optional ? '<span class="opt">任意</span>' : '');
+    b.addEventListener('click', function () { setStage(i); });
+    railEl.appendChild(b);
+  });
+  railEl.addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    var n = clamp(stage + (e.key === 'ArrowRight' ? 1 : -1), 0, STAGES.length - 1);
+    setStage(n);
+    $('tab-' + n).focus();
+  });
+
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function chips(list) { return list.map(function (x) { return '<span class="chip">' + esc(x) + '</span>'; }).join(''); }
+
+  function renderDetail() {
+    var s = STAGES[stage];
+    var prev = stage > 0 ? STAGES[stage - 1] : null, next = stage < STAGES.length - 1 ? STAGES[stage + 1] : null;
+    detailEl.setAttribute('aria-labelledby', 'tab-' + stage);
+    detailEl.innerHTML =
+      '<p class="d-step">工程 ' + (stage + 1) + ' / ' + STAGES.length + (s.optional ? '（任意）' : '') + '</p>' +
+      '<h2><small>' + s.name + '</small>' + s.title + '</h2>' +
+      '<p class="d-lead">' + s.lead + '</p>' +
+      '<ul class="d-points">' + s.points.map(function (p) { return '<li>' + p + '</li>'; }).join('') + '</ul>' +
+      '<dl class="io"><dt>入力</dt><dd>' + chips(s.input) + '</dd><dt>出力</dt><dd>' + chips(s.output) + '</dd></dl>' +
+      '<div class="cmd"><div class="cmd-h"><span>CLI の例</span><button class="copy" type="button" data-copy="stage-cmd">コピー</button></div>' +
+      '<pre id="stage-cmd"><code>' + esc(s.cmd) + '</code></pre></div>' +
+      '<p class="d-gui"><span class="tag">GUI</span><span>' + s.gui + '</span></p>' +
+      '<p class="d-demo">' + s.demo + '</p>' +
+      '<nav class="d-nav">' +
+      (prev ? '<button type="button" class="prev" data-go="' + (stage - 1) + '">← ' + prev.name + '</button>' : '') +
+      (next ? '<button type="button" class="next" data-go="' + (stage + 1) + '">次へ：' + next.name + ' →</button>' : '') +
+      '</nav>';
+  }
+  detailEl.addEventListener('click', function (e) {
+    var go = e.target.closest('[data-go]');
+    if (go) {
+      setStage(+go.getAttribute('data-go'));
+      if (window.innerWidth <= 960) viewEl.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+    }
+  });
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.copy');
+    if (!btn) return;
+    var pre = $(btn.getAttribute('data-copy'));
+    if (!pre) return;
+    var text = pre.textContent;
+    function selectIt() {
+      var r = document.createRange(); r.selectNodeContents(pre);
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      btn.textContent = '選択しました';
+    }
+    try {
+      navigator.clipboard.writeText(text).then(function () { btn.textContent = 'コピーしました'; }, selectIt);
+    } catch (err) { selectIt(); }
+    setTimeout(function () { btn.textContent = 'コピー'; }, 1800);
+  });
+
+  /* =====================================================================
+     WebGL
+     ===================================================================== */
+  var gl = null;
+  try { gl = canvas.getContext('webgl2', { antialias: true, alpha: true, premultipliedAlpha: true }); } catch (e) { gl = null; }
+
+  var SPLAT_VS = [
+    '#version 300 es',
+    'precision highp float; precision highp int;',
+    'layout(location=0) in vec2 aCorner;',
+    'layout(location=1) in float aIndex;',
+    'uniform highp sampler2D uData;',
+    'uniform mat4 uView; uniform mat4 uProj;',
+    'uniform vec2 uViewport; uniform float uFocal; uniform float uScaleMul;',
+    'uniform int uMode; uniform int uShowTransient; uniform vec3 uTransientOffset;',
+    'uniform vec2 uDepthRange; uniform float uReveal;',
+    'out vec4 vColor; out vec2 vQ;',
+    'vec3 turbo(float x){ x = clamp(x,0.0,1.0);',
+    '  vec4 kr=vec4(0.13572138,4.61539260,-42.66032258,132.13108234); vec4 kg=vec4(0.09140261,2.19418839,4.84296658,-14.18503333);',
+    '  vec4 kb=vec4(0.10667330,12.64194608,-60.58204836,110.36276771); vec2 kr2=vec2(-152.94239396,59.28637943);',
+    '  vec2 kg2=vec2(4.27729857,2.82956604); vec2 kb2=vec2(-89.90310912,27.34824973);',
+    '  vec4 v4=vec4(1.0,x,x*x,x*x*x); vec2 v2=v4.zw*v4.z;',
+    '  return vec3(dot(v4,kr)+dot(v2,kr2), dot(v4,kg)+dot(v2,kg2), dot(v4,kb)+dot(v2,kb2)); }',
+    'void cull(){ gl_Position = vec4(0.0,0.0,2.0,1.0); vColor = vec4(0.0); vQ = vec2(0.0); }',
+    'void main(){',
+    '  int idx = int(aIndex + 0.5); int col = (idx % 408) * 5; int row = idx / 408;',
+    '  vec4 t0 = texelFetch(uData, ivec2(col, row), 0);',
+    '  vec4 t1 = texelFetch(uData, ivec2(col+1, row), 0);',
+    '  vec4 t2 = texelFetch(uData, ivec2(col+2, row), 0);',
+    '  vec4 t3 = texelFetch(uData, ivec2(col+3, row), 0);',
+    '  vec4 t4 = texelFetch(uData, ivec2(col+4, row), 0);',
+    '  float grp = t1.w; vec3 p = t0.xyz;',
+    '  if (grp > 1.5) { if (uShowTransient == 0) { cull(); return; } p += uTransientOffset; }',
+    '  if (t0.w < 0.004 || t3.z > uReveal) { cull(); return; }',
+    '  vec4 cam = uView * vec4(p, 1.0); float d = -cam.z;',
+    '  if (d < 0.08) { cull(); return; }',
+    '  vec4 clip = uProj * cam; vec3 ndc = clip.xyz / clip.w;',
+    '  if (abs(ndc.x) > 1.3 || abs(ndc.y) > 1.3) { cull(); return; }',
+    '  float s2 = uScaleMul * uScaleMul;',
+    '  mat3 V = mat3(t2.x, t2.y, t2.z, t2.y, t2.w, t3.x, t2.z, t3.x, t3.y) * s2;',
+    '  mat3 W = mat3(uView); float id = 1.0 / d;',
+    '  mat3 J = mat3(uFocal*id, 0.0, 0.0, 0.0, uFocal*id, 0.0, uFocal*cam.x*id*id, uFocal*cam.y*id*id, 0.0);',
+    '  mat3 T = J * W; mat3 C = T * V * transpose(T);',
+    '  float a = C[0][0] + 0.3; float b = C[0][1]; float c = C[1][1] + 0.3;',
+    '  float mid = 0.5*(a+c); float rad = length(vec2(0.5*(a-c), b));',
+    '  float l1 = mid + rad; float l2 = max(mid - rad, 0.09);',
+    '  vec2 e1 = abs(b) > 1e-7 ? normalize(vec2(b, l1 - a)) : (a >= c ? vec2(1.0,0.0) : vec2(0.0,1.0));',
+    '  vec2 e2 = vec2(-e1.y, e1.x);',
+    '  vec2 off = 3.0 * (aCorner.x * min(sqrt(l1), 900.0) * e1 + aCorner.y * min(sqrt(l2), 900.0) * e2);',
+    '  gl_Position = vec4(ndc.xy + off * 2.0 / uViewport, 0.0, 1.0);',
+    '  vQ = aCorner * 3.0;',
+    '  vec3 color = t1.rgb;',
+    '  if (uMode == 1) color = grp > 1.5 ? vec3(0.0) : vec3(1.0);',
+    '  else if (uMode == 2) color = (grp > 0.5 && grp < 1.5) ? vec3(1.0) : vec3(0.0);',
+    '  else if (uMode == 3) color = turbo(1.0 - clamp((d - uDepthRange.x) / (uDepthRange.y - uDepthRange.x), 0.0, 1.0));',
+    '  else if (uMode == 4) { vec3 n = normalize(W * t4.xyz); if (dot(n, -cam.xyz) < 0.0) n = -n; color = n * 0.5 + 0.5; }',
+    '  vColor = vec4(color, t0.w);',
+    '}'
+  ].join('\n');
+  var SPLAT_FS = [
+    '#version 300 es',
+    'precision highp float;',
+    'in vec4 vColor; in vec2 vQ; out vec4 o;',
+    'void main(){ float r2 = dot(vQ, vQ); if (r2 > 9.0) discard;',
+    '  float al = min(0.99, vColor.a * exp(-0.5 * r2)); if (al < 0.004) discard;',
+    '  o = vec4(vColor.rgb * al, al); }'
+  ].join('\n');
+  var MESH_VS = [
+    '#version 300 es',
+    'layout(location=0) in vec3 aPos; layout(location=1) in vec3 aNrm; layout(location=2) in vec3 aCol;',
+    'uniform mat4 uView; uniform mat4 uProj;',
+    'out vec3 vN; out vec3 vC; out vec3 vW;',
+    'void main(){ vN = aNrm; vC = aCol; vW = aPos; gl_Position = uProj * uView * vec4(aPos, 1.0); }'
+  ].join('\n');
+  var MESH_FS = [
+    '#version 300 es',
+    'precision highp float;',
+    'in vec3 vN; in vec3 vC; in vec3 vW; uniform int uClay; uniform vec3 uLight; uniform vec3 uEye; out vec4 o;',
+    'void main(){ vec3 n = normalize(vN); if (dot(n, uEye - vW) < 0.0) n = -n;',
+    '  if (uClay == 1) { float l = 0.26 + 0.74 * max(dot(n, uLight), 0.0); o = vec4(vec3(0.80, 0.82, 0.84) * l, 1.0); }',
+    '  else { o = vec4(vC, 1.0); } }'
+  ].join('\n');
+  var LINE_VS = [
+    '#version 300 es',
+    'layout(location=0) in vec3 aPos; layout(location=1) in vec4 aCol;',
+    'uniform mat4 uView; uniform mat4 uProj; out vec4 vC;',
+    'void main(){ vC = aCol; gl_Position = uProj * uView * vec4(aPos, 1.0); }'
+  ].join('\n');
+  var LINE_FS = [
+    '#version 300 es',
+    'precision highp float; in vec4 vC; out vec4 o;',
+    'void main(){ o = vec4(vC.rgb * vC.a, vC.a); }'
+  ].join('\n');
+
+  var PROG = {}, DS = {}, MESH = null, LINES = {}, quadBuf = null;
+  var PER_ROW = 408, TEX_W = 2040;
+
+  function compile(type, src) {
+    var s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  function program(vs, fs) {
+    var p = gl.createProgram();
+    gl.attachShader(p, compile(gl.VERTEX_SHADER, vs));
+    gl.attachShader(p, compile(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    var u = {}, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+    for (var i = 0; i < n; i++) { var info = gl.getActiveUniform(p, i); u[info.name] = gl.getUniformLocation(p, info.name); }
+    return { p: p, u: u };
+  }
+
+  function makeDataset(count) {
+    var rows = Math.ceil(count / PER_ROW);
+    var ds = {
+      count: count, rows: rows,
+      data: new Float32Array(TEX_W * rows * 4),
+      pos: new Float32Array(count * 3), grp: new Uint8Array(count),
+      depth: new Float32Array(count), keys: new Uint32Array(count), order: new Float32Array(count)
+    };
+    ds.tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, ds.tex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, TEX_W, rows, 0, gl.RGBA, gl.FLOAT, null);
+    ds.idxBuf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, ds.idxBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, count * 4, gl.DYNAMIC_DRAW);
+    ds.vao = gl.createVertexArray();
+    gl.bindVertexArray(ds.vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, ds.idxBuf);
+    gl.enableVertexAttribArray(1);
+    gl.vertexAttribPointer(1, 1, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribDivisor(1, 1);
+    gl.bindVertexArray(null);
+    return ds;
+  }
+  function writeSplat(ds, i, px, py, pz, op, r, g, b, grp, cv, co, appear, nx, ny, nz) {
+    var row = (i / PER_ROW) | 0, base = (row * TEX_W + (i % PER_ROW) * 5) * 4, d = ds.data;
+    d[base] = px; d[base + 1] = py; d[base + 2] = pz; d[base + 3] = op;
+    d[base + 4] = r; d[base + 5] = g; d[base + 6] = b; d[base + 7] = grp;
+    d[base + 8] = cv[co]; d[base + 9] = cv[co + 1]; d[base + 10] = cv[co + 2]; d[base + 11] = cv[co + 3];
+    d[base + 12] = cv[co + 4]; d[base + 13] = cv[co + 5]; d[base + 14] = appear; d[base + 15] = 0;
+    d[base + 16] = nx; d[base + 17] = ny; d[base + 18] = nz; d[base + 19] = 0;
+    ds.pos[3 * i] = px; ds.pos[3 * i + 1] = py; ds.pos[3 * i + 2] = pz;
+    ds.grp[i] = grp;
+  }
+  function uploadDataset(ds) {
+    gl.bindTexture(gl.TEXTURE_2D, ds.tex);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, TEX_W, ds.rows, gl.RGBA, gl.FLOAT, ds.data);
+  }
+
+  var COUNTS = new Uint32Array(65536);
+  function sortDataset(ds, view, tOff) {
+    var n = ds.count, P = ds.pos, G = ds.grp, D = ds.depth, K = ds.keys, O = ds.order;
+    var m2 = view[2], m6 = view[6], m10 = view[10], m14 = view[14];
+    var mn = Infinity, mx = -Infinity, i;
+    for (i = 0; i < n; i++) {
+      var x = P[3 * i], y = P[3 * i + 1], z = P[3 * i + 2];
+      if (tOff && G[i] === 2) { x += tOff[0]; y += tOff[1]; z += tOff[2]; }
+      var dd = m2 * x + m6 * y + m10 * z + m14;
+      D[i] = dd;
+      if (dd < mn) mn = dd;
+      if (dd > mx) mx = dd;
+    }
+    var sc = mx > mn ? 65535 / (mx - mn) : 0;
+    COUNTS.fill(0);
+    for (i = 0; i < n; i++) { var k = ((D[i] - mn) * sc) | 0; K[i] = k; COUNTS[k]++; }
+    var acc = 0;
+    for (i = 0; i < 65536; i++) { var c = COUNTS[i]; COUNTS[i] = acc; acc += c; }
+    for (i = 0; i < n; i++) O[COUNTS[K[i]]++] = i;
+  }
+
+  function drawSplats(ds, cam, o) {
+    o = o || {};
+    var off = o.transientOffset || null;
+    sortDataset(ds, cam.view, off);
+    gl.bindBuffer(gl.ARRAY_BUFFER, ds.idxBuf);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, ds.order);
+    var P = PROG.splat, u = P.u;
+    gl.useProgram(P.p);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, ds.tex);
+    gl.uniform1i(u.uData, 0);
+    gl.uniformMatrix4fv(u.uView, false, cam.view);
+    gl.uniformMatrix4fv(u.uProj, false, cam.proj);
+    gl.uniform2f(u.uViewport, cam.w, cam.h);
+    gl.uniform1f(u.uFocal, cam.focal);
+    gl.uniform1f(u.uScaleMul, o.scale || 1);
+    gl.uniform1i(u.uMode, o.mode || 0);
+    gl.uniform1i(u.uShowTransient, off ? 1 : 0);
+    gl.uniform3f(u.uTransientOffset, off ? off[0] : 0, off ? off[1] : 0, off ? off[2] : 0);
+    gl.uniform2f(u.uDepthRange, o.near || 1, o.far || 10);
+    gl.uniform1f(u.uReveal, o.reveal == null ? 1e9 : o.reveal);
+    gl.disable(gl.DEPTH_TEST);
+    gl.depthMask(false);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.bindVertexArray(ds.vao);
+    gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, ds.count);
+    gl.bindVertexArray(null);
+  }
+
+  function makeLines(verts) {
+    var arr = new Float32Array(verts);
+    var L = { n: arr.length / 7, buf: gl.createBuffer(), vao: gl.createVertexArray() };
+    gl.bindVertexArray(L.vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, L.buf);
+    gl.bufferData(gl.ARRAY_BUFFER, arr, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 28, 0);
+    gl.enableVertexAttribArray(1);
+    gl.vertexAttribPointer(1, 4, gl.FLOAT, false, 28, 12);
+    gl.bindVertexArray(null);
+    return L;
+  }
+  function drawLines(L, cam, depthTest, count) {
+    var P = PROG.line;
+    gl.useProgram(P.p);
+    gl.uniformMatrix4fv(P.u.uView, false, cam.view);
+    gl.uniformMatrix4fv(P.u.uProj, false, cam.proj);
+    if (depthTest) { gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); } else gl.disable(gl.DEPTH_TEST);
+    gl.depthMask(false);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.bindVertexArray(L.vao);
+    gl.drawArrays(gl.LINES, 0, count == null ? L.n : count);
+    gl.bindVertexArray(null);
+  }
+  function frustumVerts(eye, target, fovy, aspect, size, col, out) {
+    var f = norm(sub(target, eye));
+    var r = norm(cross(f, [0, 1, 0]));
+    var u = cross(r, f);
+    var hh = size * Math.tan(fovy / 2), hw = hh * aspect;
+    var c = addv(eye, scl(f, size));
+    var tl = addv(addv(c, scl(r, -hw)), scl(u, hh)), tr = addv(addv(c, scl(r, hw)), scl(u, hh));
+    var bl = addv(addv(c, scl(r, -hw)), scl(u, -hh)), br = addv(addv(c, scl(r, hw)), scl(u, -hh));
+    var ap = addv(addv(c, scl(u, hh * 1.6)), [0, 0, 0]);
+    var segs = [[eye, tl], [eye, tr], [eye, bl], [eye, br], [tl, tr], [tr, br], [br, bl], [bl, tl], [addv(tl, scl(r, hw * 0.4)), ap], [ap, addv(tr, scl(r, -hw * 0.4))]];
+    segs.forEach(function (s) {
+      out.push(s[0][0], s[0][1], s[0][2], col[0], col[1], col[2], col[3]);
+      out.push(s[1][0], s[1][1], s[1][2], col[0], col[1], col[2], col[3]);
+    });
+  }
+
+  // ---- mesh ----
+  function buildMesh() {
+    var P = [], Nn = [], C = [], I = [], E = [];
+    function vert(p, n, c) { P.push(p[0], p[1], p[2]); Nn.push(n[0], n[1], n[2]); C.push(c[0], c[1], c[2]); return P.length / 3 - 1; }
+    function grid(nu, nv, fn) {
+      var base = P.length / 3;
+      for (var i = 0; i <= nu; i++) for (var j = 0; j <= nv; j++) { var v = fn(i / nu, j / nv); vert(v.p, v.n, v.c); }
+      for (i = 0; i < nu; i++) for (j = 0; j < nv; j++) {
+        var a = base + i * (nv + 1) + j, b = a + nv + 1;
+        I.push(a, b, a + 1, a + 1, b, b + 1);
+        E.push(a, b, a, a + 1, a + 1, b);
+      }
+    }
+    grid(200, 14, function (u, v) {
+      var th = mix(SH.th0, SH.th1, u), ph = v * TAU, s = shellWorld(th, ph);
+      return { p: s.p, n: s.n, c: shellColor(th, ph, s.n, s.inward) };
+    });
+    // sand disk
+    var center = vert([0, sandHeight(0, 0), 0], [0, 1, 0], sandColor(0, 0));
+    var RINGS = 16, SEG = 64, ringBase = P.length / 3;
+    for (var ri = 1; ri <= RINGS; ri++) for (var si = 0; si < SEG; si++) {
+      var rr = SAND_R * ri / RINGS, aa = si / SEG * TAU, x = rr * Math.cos(aa), z = rr * Math.sin(aa);
+      vert([x, sandHeight(x, z), z], [0, 1, 0], sandColor(x, z));
+    }
+    for (si = 0; si < SEG; si++) {
+      var s1 = ringBase + si, s2 = ringBase + (si + 1) % SEG;
+      I.push(center, s2, s1); E.push(center, s1, s1, s2);
+    }
+    for (ri = 0; ri < RINGS - 1; ri++) for (si = 0; si < SEG; si++) {
+      var a0 = ringBase + ri * SEG + si, a1 = ringBase + ri * SEG + (si + 1) % SEG;
+      var b0 = a0 + SEG, b1 = a1 + SEG;
+      I.push(a0, a1, b0, a1, b1, b0);
+      E.push(a0, b0, a1, b0, b0, b1);
+    }
+    PEBBLES.forEach(function (pb) {
+      grid(8, 14, function (u, v) {
+        var lat = mix(-0.35, Math.PI / 2, u), lon = v * TAU;
+        var d = [Math.cos(lat) * Math.cos(lon), Math.sin(lat), Math.cos(lat) * Math.sin(lon)];
+        var q = pebblePoint(pb, d), l = lightAt(q.n);
+        return { p: q.p, n: q.n, c: [pb.col[0] * l, pb.col[1] * l, pb.col[2] * l] };
+      });
+    });
+    var m = { nTri: I.length / 3, nVert: P.length / 3, nIdx: I.length };
+    m.vao = gl.createVertexArray();
+    gl.bindVertexArray(m.vao);
+    [[P, 0], [Nn, 1], [C, 2]].forEach(function (pair) {
+      var b = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, b);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(pair[0]), gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(pair[1]);
+      gl.vertexAttribPointer(pair[1], 3, gl.FLOAT, false, 0, 0);
+    });
+    var ib = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(I), gl.STATIC_DRAW);
+    gl.bindVertexArray(null);
+    function wire(col) {
+      var out = [];
+      for (var k = 0; k < E.length; k++) { var e = E[k]; out.push(P[3 * e], P[3 * e + 1], P[3 * e + 2], col[0], col[1], col[2], col[3]); }
+      return makeLines(out);
+    }
+    m.wireLight = wire([1, 1, 1, 0.28]);
+    m.wireDark = wire([0.08, 0.16, 0.2, 0.55]);
+    return m;
+  }
+  function drawMesh(cam, clay, wire) {
+    var P = PROG.mesh, u = P.u;
+    gl.useProgram(P.p);
+    gl.uniformMatrix4fv(u.uView, false, cam.view);
+    gl.uniformMatrix4fv(u.uProj, false, cam.proj);
+    gl.uniform1i(u.uClay, clay ? 1 : 0);
+    gl.uniform3f(u.uLight, LIGHT[0], LIGHT[1], LIGHT[2]);
+    gl.uniform3f(u.uEye, cam.eye[0], cam.eye[1], cam.eye[2]);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LEQUAL);
+    gl.depthMask(true);
+    gl.disable(gl.BLEND);
+    gl.enable(gl.POLYGON_OFFSET_FILL);
+    gl.polygonOffset(1, 1);
+    gl.bindVertexArray(MESH.vao);
+    gl.drawElements(gl.TRIANGLES, MESH.nIdx, gl.UNSIGNED_SHORT, 0);
+    gl.bindVertexArray(null);
+    gl.disable(gl.POLYGON_OFFSET_FILL);
+    if (wire) drawLines(clay ? MESH.wireDark : MESH.wireLight, cam, true);
+  }
+
+  // ---- fly-through path ----
+  var PATH_TARGET = [0, 0.6, 0];
+  var PATH_KEYS = [[-0.4, 0.62, 6.0], [0.6, 0.42, 4.4], [1.7, 0.22, 3.2], [2.9, 0.12, 2.6], [3.9, 0.3, 3.1]];
+  function catmull(p0, p1, p2, p3, t) {
+    var t2 = t * t, t3 = t2 * t;
+    return 0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
+  }
+  function orbitEye(yaw, pitch, dist, target) {
+    return [target[0] + dist * Math.cos(pitch) * Math.sin(yaw), target[1] + dist * Math.sin(pitch), target[2] + dist * Math.cos(pitch) * Math.cos(yaw)];
+  }
+  function pathEye(t) {
+    var n = PATH_KEYS.length - 1, x = clamp(t, 0, 1) * n, i = Math.min(n - 1, Math.floor(x)), f = x - i;
+    var k = [PATH_KEYS[Math.max(0, i - 1)], PATH_KEYS[i], PATH_KEYS[i + 1], PATH_KEYS[Math.min(n, i + 2)]];
+    var v = [0, 1, 2].map(function (c) { return catmull(k[0][c], k[1][c], k[2][c], k[3][c], f); });
+    return orbitEye(v[0], v[1], v[2], PATH_TARGET);
+  }
+
+  // ---- thumbnails ----
+  var TW = 320, TH = 240, fbo = null, pix = null;
+  var THUMB = {};
+  function renderThumb(i, mode) {
+    var ph = PHOTOS[i];
+    var cam = makeCam(ph.eye, ph.target, PHOTO_FOV, TW, TH);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.viewport(0, 0, TW, TH);
+    var bg = { color: [0.086, 0.137, 0.173], maskRemove: [1, 1, 1], maskKeep: [0, 0, 0], depth: [0.19, 0.07, 0.23], normal: [0.07, 0.08, 0.11] }[mode];
+    gl.clearColor(bg[0], bg[1], bg[2], 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    var d = len(sub(ph.eye, ph.target));
+    drawSplats(DS.final, cam, { mode: { color: 0, maskRemove: 1, maskKeep: 2, depth: 3, normal: 4 }[mode], transientOffset: ph.ball, near: d - 2.2, far: d + 2.4 });
+    gl.readPixels(0, 0, TW, TH, gl.RGBA, gl.UNSIGNED_BYTE, pix);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    var img = new ImageData(TW, TH), row = TW * 4;
+    for (var y = 0; y < TH; y++) img.data.set(pix.subarray((TH - 1 - y) * row, (TH - y) * row), y * row);
+    return img;
+  }
+  function ensureThumbs(mode) {
+    if (THUMB[mode]) return THUMB[mode];
+    var list = [];
+    for (var i = 0; i < PHOTOS.length; i++) list.push(renderThumb(i, mode));
+    THUMB[mode] = list;
+    return list;
+  }
+  function overlayMask(color, mask) {
+    var out = new ImageData(TW, TH), c = color.data, m = mask.data, o = out.data;
+    for (var y = 0; y < TH; y++) for (var x = 0; x < TW; x++) {
+      var j = (y * TW + x) * 4, w = 1 - m[j] / 255;
+      var hatch = ((x + y) % 12) < 4;
+      var tr = hatch ? 242 : 150, tg = hatch ? 150 : 88, tb = hatch ? 60 : 40;
+      o[j] = c[j] * (1 - w) + (c[j] * 0.25 + tr * 0.75) * w;
+      o[j + 1] = c[j + 1] * (1 - w) + (c[j + 1] * 0.25 + tg * 0.75) * w;
+      o[j + 2] = c[j + 2] * (1 - w) + (c[j + 2] * 0.25 + tb * 0.75) * w;
+      o[j + 3] = 255;
+    }
+    return out;
+  }
+
+  var glReady = false;
+  if (gl) {
+    try {
+      PROG.splat = program(SPLAT_VS, SPLAT_FS);
+      PROG.mesh = program(MESH_VS, MESH_FS);
+      PROG.line = program(LINE_VS, LINE_FS);
+      quadBuf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, quadBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+
+      DS.final = makeDataset(NTOTAL);
+      for (var i = 0; i < NTOTAL; i++) {
+        writeSplat(DS.final, i, SP.pos[3 * i], SP.pos[3 * i + 1], SP.pos[3 * i + 2], SP.op[i], SP.col[3 * i], SP.col[3 * i + 1], SP.col[3 * i + 2], SP.grp[i], SP.cov, 6 * i, 0, SP.nrm[3 * i], SP.nrm[3 * i + 1], SP.nrm[3 * i + 2]);
+      }
+      uploadDataset(DS.final);
+
+      DS.sparse = makeDataset(NSP);
+      var sg = 0.011 * 0.011, spCov = [sg, 0, 0, sg, 0, sg];
+      for (var j = 0; j < NSP; j++) {
+        writeSplat(DS.sparse, j, sparsePos[3 * j], sparsePos[3 * j + 1], sparsePos[3 * j + 2], 1, sparseCol[3 * j], sparseCol[3 * j + 1], sparseCol[3 * j + 2], 0, spCov, 0, sparseAppear[j], 0, 1, 0);
+      }
+      uploadDataset(DS.sparse);
+
+      DS.train = makeDataset(NF);
+
+      MESH = buildMesh();
+
+      var fr = [];
+      REG_ORDER.forEach(function (c) { frustumVerts(PHOTOS[c].eye, PHOTOS[c].target, PHOTO_FOV, 4 / 3, 0.3, [0.95, 0.66, 0.3, 0.95], fr); });
+      LINES.cams = makeLines(fr);
+      LINES.vertsPerCam = 20;
+      var pv = [];
+      for (var s = 0; s < 160; s++) {
+        var a = pathEye(s / 160), b = pathEye((s + 1) / 160);
+        pv.push(a[0], a[1], a[2], 0.37, 0.82, 0.85, 0.9, b[0], b[1], b[2], 0.37, 0.82, 0.85, 0.9);
+      }
+      PATH_KEYS.forEach(function (k) {
+        frustumVerts(orbitEye(k[0], k[1], k[2], PATH_TARGET), PATH_TARGET, 0.7, 16 / 9, 0.26, [0.37, 0.82, 0.85, 0.95], pv);
+      });
+      LINES.path = makeLines(pv);
+
+      fbo = gl.createFramebuffer();
+      var ft = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, ft);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, TW, TH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, ft, 0);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      pix = new Uint8Array(TW * TH * 4);
+      glReady = true;
+    } catch (err) {
+      console.error(err);
+      glReady = false;
+    }
+  }
+  if (!glReady) { $('nogl').hidden = false; canvas.hidden = true; }
+
+  // ---- training state ----
+  var trainCount = 0;
+  function updateTrain(t) {
+    var ds = DS.train, cv = SP.cov, tmp = [0, 0, 0, 0, 0, 0], vis = 0;
+    for (var i = 0; i < NF; i++) {
+      var b = birth[i], sp = parent[i], e = 0, op = 0;
+      if (t >= b) {
+        vis++;
+        e = smooth(b, b + 0.34, t);
+        op = Math.min(1, (t - b) / 0.025) * mix(0.75, SP.op[i], e);
+      }
+      var sx = sparsePos[3 * sp] + jitter[3 * i], syy = sparsePos[3 * sp + 1] + jitter[3 * i + 1], sz = sparsePos[3 * sp + 2] + jitter[3 * i + 2];
+      var iso = sparseSig[sp] * sparseSig[sp] * (1 - e);
+      var o6 = 6 * i;
+      tmp[0] = e * cv[o6] + iso; tmp[1] = e * cv[o6 + 1]; tmp[2] = e * cv[o6 + 2];
+      tmp[3] = e * cv[o6 + 3] + iso; tmp[4] = e * cv[o6 + 4]; tmp[5] = e * cv[o6 + 5] + iso;
+      writeSplat(ds, i,
+        mix(sx, SP.pos[3 * i], e), mix(syy, SP.pos[3 * i + 1], e), mix(sz, SP.pos[3 * i + 2], e), op,
+        mix(sparseCol[3 * sp], SP.col[3 * i], e), mix(sparseCol[3 * sp + 1], SP.col[3 * i + 1], e), mix(sparseCol[3 * sp + 2], SP.col[3 * i + 2], e),
+        SP.grp[i], tmp, 0, 0, SP.nrm[3 * i], SP.nrm[3 * i + 1], SP.nrm[3 * i + 2]);
+    }
+    uploadDataset(ds);
+    trainCount = vis;
+  }
+
+  /* =====================================================================
+     Interaction & state
+     ===================================================================== */
+  var HOME = { yaw: 0.15, pitch: 0.3, dist: 4.8 };
+  var orbit = { yaw: HOME.yaw, pitch: HOME.pitch, dist: HOME.dist, target: [0, 0.62, 0] };
+  var lastInteract = -1e9;
+  var st = {
+    mask: 'remove', maskView: 'overlay', geo: 'depth',
+    trainT: 1, trainPlaying: false, trainPlayed: false, trainFrom: 0, trainStartTime: 0, trainDirty: true, shrink: false,
+    clay: false, wire: true,
+    sfmStart: 0, sfmK: 16,
+    flyPlaying: false, flyStart: 0, flyT: 0
+  };
+  var stage = 0;
+  var pointers = new Map(), pinch0 = 0;
+
+  canvas.addEventListener('pointerdown', function (e) {
+    canvas.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pointers.size === 2) { var p = Array.from(pointers.values()); pinch0 = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]); }
+    lastInteract = performance.now();
+    if (st.flyPlaying) stopFly();
+  });
+  canvas.addEventListener('pointermove', function (e) {
+    if (!pointers.has(e.pointerId)) return;
+    var prev = pointers.get(e.pointerId);
+    var dx = e.clientX - prev[0], dy = e.clientY - prev[1];
+    pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pointers.size === 1) {
+      orbit.yaw -= dx * 0.008;
+      orbit.pitch = clamp(orbit.pitch + dy * 0.006, -0.05, 1.35);
+    } else if (pointers.size === 2) {
+      var p = Array.from(pointers.values()), d = Math.hypot(p[0][0] - p[1][0], p[0][1] - p[1][1]);
+      if (pinch0 > 0) orbit.dist = clamp(orbit.dist * pinch0 / d, 1.6, 9);
+      pinch0 = d;
+    }
+    lastInteract = performance.now();
+  });
+  function endPointer(e) { pointers.delete(e.pointerId); if (pointers.size < 2) pinch0 = 0; }
+  canvas.addEventListener('pointerup', endPointer);
+  canvas.addEventListener('pointercancel', endPointer);
+  canvas.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    orbit.dist = clamp(orbit.dist * Math.exp(e.deltaY * 0.0012), 1.6, 9);
+    lastInteract = performance.now();
+  }, { passive: false });
+  canvas.addEventListener('dblclick', function () {
+    orbit.yaw = HOME.yaw; orbit.pitch = HOME.pitch; orbit.dist = HOME.dist;
+    lastInteract = performance.now();
+  });
+
+  function seg(name, options, value) {
+    return '<div class="seg" role="group" aria-label="' + name + '">' + options.map(function (o) {
+      return '<button type="button" data-set="' + o[0] + '" aria-pressed="' + (o[0] === value) + '">' + o[1] + '</button>';
+    }).join('') + '</div>';
+  }
+  function buildControls() {
+    var h = '';
+    if (stage === 1) {
+      h = seg('マスクの方針', [['mask:remove', 'ボールを除外'], ['mask:keep', '貝殻だけ残す']], 'mask:' + st.mask) +
+          seg('表示', [['maskView:overlay', '重ねて表示'], ['maskView:mask', 'マスク画像']], 'maskView:' + st.maskView);
+    } else if (stage === 2) {
+      h = '<button type="button" class="vbtn" data-act="sfm-replay">もう一度再生</button>';
+    } else if (stage === 3) {
+      h = seg('表示する推定結果', [['geo:depth', '深度'], ['geo:normal', '法線']], 'geo:' + st.geo);
+    } else if (stage === 4) {
+      h = '<button type="button" class="vbtn primary" data-act="train-toggle" id="train-btn">' + (st.trainPlaying ? '一時停止' : '再生') + '</button>' +
+          '<label class="scrub" for="train-range"><span>0</span><input type="range" id="train-range" min="0" max="1000" step="1" value="' + Math.round(st.trainT * 1000) + '" aria-label="学習ステップ"><span>30k</span></label>' +
+          '<label class="check" for="shrink-box"><input type="checkbox" id="shrink-box"' + (st.shrink ? ' checked' : '') + '>縮めて表示</label>';
+    } else if (stage === 5) {
+      h = seg('色', [['clay:false', 'カラー'], ['clay:true', 'クレイ']], 'clay:' + st.clay) +
+          '<label class="check" for="wire-box"><input type="checkbox" id="wire-box"' + (st.wire ? ' checked' : '') + '>ワイヤーフレーム</label>';
+    } else if (stage === 6) {
+      h = '<button type="button" class="vbtn primary" data-act="fly" id="fly-btn">' + (st.flyPlaying ? '停止' : '軌道を再生') + '</button>';
+    }
+    controlsEl.innerHTML = glReady ? h : '';
+  }
+  controlsEl.addEventListener('click', function (e) {
+    var b = e.target.closest('button');
+    if (!b) return;
+    var set = b.getAttribute('data-set'), act = b.getAttribute('data-act');
+    if (set) {
+      var kv = set.split(':'), v = kv[1] === 'true' ? true : kv[1] === 'false' ? false : kv[1];
+      st[kv[0]] = v;
+      b.parentNode.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+      if (stage === 1 || stage === 3) paintThumbs();
+      updateHud();
+    } else if (act === 'sfm-replay') {
+      startSfm();
+    } else if (act === 'train-toggle') {
+      if (st.trainPlaying) { st.trainPlaying = false; }
+      else { if (st.trainT >= 0.999) st.trainT = 0; startTrain(st.trainT); }
+      b.textContent = st.trainPlaying ? '一時停止' : '再生';
+    } else if (act === 'fly') {
+      if (st.flyPlaying) stopFly(); else { st.flyPlaying = true; st.flyStart = performance.now(); }
+      b.textContent = st.flyPlaying ? '停止' : '軌道を再生';
+    }
+  });
+  controlsEl.addEventListener('input', function (e) {
+    if (e.target.id === 'train-range') {
+      st.trainPlaying = false;
+      st.trainT = +e.target.value / 1000;
+      st.trainDirty = true;
+      var b = $('train-btn'); if (b) b.textContent = '再生';
+    }
+  });
+  controlsEl.addEventListener('change', function (e) {
+    if (e.target.id === 'shrink-box') st.shrink = e.target.checked;
+    if (e.target.id === 'wire-box') st.wire = e.target.checked;
+  });
+
+  function startSfm() { st.sfmStart = performance.now(); st.sfmK = reduceMotion ? 16 : 2; }
+  function startTrain(from) { st.trainPlaying = true; st.trainFrom = from; st.trainStartTime = performance.now(); }
+  function stopFly() {
+    st.flyPlaying = false;
+    var b = $('fly-btn'); if (b) b.textContent = '軌道を再生';
+  }
+
+  // ---- thumbnails DOM ----
+  var thumbCanvases = [], thumbCaps = [];
+  PHOTOS.forEach(function (ph) {
+    var f = document.createElement('figure'); f.className = 'th';
+    var c = document.createElement('canvas'); c.width = TW; c.height = TH;
+    var cap = document.createElement('figcaption');
+    f.appendChild(c); f.appendChild(cap); thumbsEl.appendChild(f);
+    thumbCanvases.push(c); thumbCaps.push(cap);
+  });
+  function paintThumbs() {
+    if (!glReady) return;
+    var list, i;
+    if (stage === 0) {
+      list = ensureThumbs('color');
+      for (i = 0; i < 16; i++) { thumbCanvases[i].getContext('2d').putImageData(list[i], 0, 0); thumbCaps[i].textContent = PHOTOS[i].name + '.JPG'; }
+    } else if (stage === 1) {
+      var color = ensureThumbs('color'), mask = ensureThumbs(st.mask === 'remove' ? 'maskRemove' : 'maskKeep');
+      for (i = 0; i < 16; i++) {
+        thumbCanvases[i].getContext('2d').putImageData(st.maskView === 'mask' ? mask[i] : overlayMask(color[i], mask[i]), 0, 0);
+        thumbCaps[i].textContent = 'masks/' + PHOTOS[i].name + '.png';
+      }
+    } else if (stage === 3) {
+      list = ensureThumbs(st.geo);
+      for (i = 0; i < 16; i++) { thumbCanvases[i].getContext('2d').putImageData(list[i], 0, 0); thumbCaps[i].textContent = (st.geo === 'depth' ? 'depths/' : 'normals/') + PHOTOS[i].name + '.png'; }
+    }
+  }
+  function layoutThumbs() {
+    var w = viewEl.clientWidth, h = viewEl.clientHeight;
+    var top = 50, bottom = controlsEl.children.length ? 62 : 14;
+    var W = w - 28, H = h - top - bottom, gap = 8;
+    var tw = (W - gap * 3) / 4, th = tw * 0.75;
+    if (th * 4 + gap * 3 > H) { th = (H - gap * 3) / 4; tw = th / 0.75; }
+    tw = Math.max(40, Math.floor(tw));
+    thumbsEl.style.top = top + 'px';
+    thumbsEl.style.bottom = bottom + 'px';
+    thumbsEl.style.gridTemplateColumns = 'repeat(4, ' + tw + 'px)';
+    thumbsEl.classList.toggle('small', tw < 108);
+  }
+
+  // ---- HUD ----
+  var hudKey = '';
+  function fmt(n) { return n.toLocaleString('ja-JP'); }
+  function hint() { return '<span class="hint">ドラッグで回転・ホイール/ピンチで拡大</span>'; }
+  function dotKey(color, label) { return '<span class="key"><i class="dot" style="background:' + color + '"></i>' + label + '</span>'; }
+  function updateHud() {
+    var h = '';
+    if (stage === 0) h = '<span>images/ ・ 写真 16枚 ・ 4:3</span>';
+    else if (stage === 1) h = '<span>masks/ ・ 16枚 ・ ' + (st.mask === 'remove' ? '白 = 使う / 黒 = 除外' : '白 = 残す（--keep-prompted）') + '</span>' + dotKey('#F2A94E', '学習に使わない領域');
+    else if (stage === 2) h = '<span>登録: 画像 ' + st.sfmK + '/16 ・ 点 ' + fmt(pointsAtK[st.sfmK]) + '</span>' + dotKey('#F2A94E', 'カメラ') + hint();
+    else if (stage === 3) h = '<span>' + (st.geo === 'depth' ? 'depths/ ・ 近い ← 赤 … 青 → 遠い' : 'normals/ ・ RGB = 面の向き XYZ') + '</span>';
+    else if (stage === 4) h = '<span>ステップ ' + fmt(Math.round(st.trainT * 300) * 100) + ' / 30,000 ・ Gaussian ' + fmt(trainCount) + '</span>' + hint();
+    else if (stage === 5) h = '<span>頂点 ' + fmt(MESH ? MESH.nVert : 0) + ' ・ 三角形 ' + fmt(MESH ? MESH.nTri : 0) + '</span>' + hint();
+    else if (stage === 6) h = '<span>フレーム ' + Math.round(st.flyT * 240) + ' / 240 ・ 24 fps</span>' + dotKey('#5FD0D8', 'カメラ軌道') + hint();
+    if (!glReady) h = '';
+    if (h !== hudKey) { hudEl.innerHTML = h; hudKey = h; }
+  }
+
+  // ---- stage switching ----
+  function setStage(i) {
+    stage = i;
+    STAGES.forEach(function (s, k) {
+      var b = $('tab-' + k);
+      b.setAttribute('aria-selected', String(k === i));
+      b.tabIndex = k === i ? 0 : -1;
+    });
+    var tab = $('tab-' + i);
+    if (tab && tab.scrollIntoView) {
+      var rs = railEl.parentNode, tl = tab.offsetLeft, tr = tl + tab.offsetWidth;
+      if (tl < rs.scrollLeft || tr > rs.scrollLeft + rs.clientWidth) rs.scrollLeft = tl - 12;
+    }
+    renderDetail();
+    if (st.flyPlaying) stopFly();
+    buildControls();
+    var s = STAGES[i];
+    if (glReady) {
+      canvas.hidden = s.view !== '3d';
+      thumbsEl.hidden = s.view !== 'photos';
+      if (s.view === 'photos') { layoutThumbs(); paintThumbs(); }
+    }
+    if (i === 2) startSfm();
+    if (i === 4) {
+      if (!st.trainPlayed && !reduceMotion) { st.trainPlayed = true; st.trainT = 0; startTrain(0); buildControls(); }
+      st.trainDirty = true;
+    }
+    if (i === 2 || i === 4 || i === 5 || i === 6) {
+      orbit.yaw = HOME.yaw;
+      orbit.pitch = i === 2 ? 0.5 : HOME.pitch;
+      orbit.dist = i === 2 ? 6.8 : i === 6 ? 5.6 : HOME.dist;
+    }
+    updateHud();
+  }
+
+  // ---- render loop ----
+  var inView = true;
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (en) { inView = en[0].isIntersecting; }, { threshold: 0.01 }).observe(viewEl);
+  }
+  window.addEventListener('resize', function () { if (STAGES[stage].view === 'photos') layoutThumbs(); });
+
+  var lastT = performance.now();
+  function frame(now) {
+    requestAnimationFrame(frame);
+    var dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
+    if (!glReady || !inView || STAGES[stage].view !== '3d') return;
+
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = Math.max(1, Math.round(canvas.clientWidth * dpr)), h = Math.max(1, Math.round(canvas.clientHeight * dpr));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+
+    if (stage === 2 && st.sfmK < 16) {
+      st.sfmK = Math.min(16, 2 + Math.floor((now - st.sfmStart) / 330));
+    }
+    if (stage === 4) {
+      if (st.trainPlaying) {
+        st.trainT = Math.min(1, st.trainFrom + (now - st.trainStartTime) / 9000);
+        st.trainDirty = true;
+        if (st.trainT >= 1) { st.trainPlaying = false; var tb = $('train-btn'); if (tb) tb.textContent = '再生'; }
+        var rg = $('train-range'); if (rg) rg.value = Math.round(st.trainT * 1000);
+      }
+      if (st.trainDirty) { updateTrain(st.trainT); st.trainDirty = false; }
+    }
+    if (stage === 6 && st.flyPlaying) {
+      st.flyT = Math.min(1, (now - st.flyStart) / 10000);
+      if (st.flyT >= 1) stopFly();
+    }
+    if (!reduceMotion && now - lastInteract > 2500 && !(stage === 6 && st.flyPlaying) && pointers.size === 0) {
+      orbit.yaw += dt * 0.12;
+    }
+
+    var fovy = 42 * Math.PI / 180, cam;
+    if (stage === 6 && st.flyPlaying) cam = makeCam(pathEye(st.flyT), PATH_TARGET, fovy, w, h);
+    else cam = makeCam(orbitEye(orbit.yaw, orbit.pitch, orbit.dist, orbit.target), orbit.target, fovy, w, h);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, w, h);
+    gl.clearColor(0, 0, 0, 0);
+    gl.depthMask(true);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    if (stage === 2) {
+      drawSplats(DS.sparse, cam, { reveal: st.sfmK - 1 });
+      drawLines(LINES.cams, cam, false, st.sfmK * LINES.vertsPerCam);
+    } else if (stage === 4) {
+      drawSplats(DS.train, cam, { scale: st.shrink ? 0.3 : 1 });
+    } else if (stage === 5) {
+      drawMesh(cam, st.clay, st.wire);
+    } else if (stage === 6) {
+      drawSplats(DS.final, cam, {});
+      if (!st.flyPlaying) drawLines(LINES.path, cam, false);
+    }
+    updateHud();
+  }
+
+  setStage(0);
+  requestAnimationFrame(frame);
+})();
+</script>
