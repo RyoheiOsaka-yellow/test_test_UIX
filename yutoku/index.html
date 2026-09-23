@@ -1,0 +1,1752 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Yūtoku Inari Study</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Jost:wght@300;400;500&family=Shippori+Mincho:wght@500;600&display=swap">
+<style>
+:root{
+  color-scheme: light;
+  --paper:#d9d8d2;
+  --ink:#232624;
+  --ink-2:#5a5954;
+  --ink-3:#8a877f;
+  --rule:rgba(35,38,36,.16);
+  --accent:#b3432a;
+  --glass:rgba(242,240,235,.64);
+  --glass-strong:rgba(247,246,242,.9);
+  --btn:#262a28;
+  --btn-ink:#f1efe9;
+  --seg-on:#fbfaf7;
+  --shadow:0 10px 28px rgba(28,28,26,.10);
+  --grain:.075;
+  --serif:"Cormorant Garamond","Iowan Old Style",Georgia,serif;
+  --mincho:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  --sans:"Jost","Avenir Next","Helvetica Neue",Arial,"Hiragino Sans","Noto Sans JP",sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --paper:#151716; --ink:#ebe7de; --ink-2:#aca79c; --ink-3:#77736b; --rule:rgba(235,231,222,.16);
+    --accent:#e27353; --glass:rgba(27,29,28,.62); --glass-strong:rgba(30,32,31,.92);
+    --btn:#ebe7de; --btn-ink:#161817; --seg-on:#3a3e3b; --shadow:0 10px 30px rgba(0,0,0,.38); --grain:.05;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --paper:#151716; --ink:#ebe7de; --ink-2:#aca79c; --ink-3:#77736b; --rule:rgba(235,231,222,.16);
+  --accent:#e27353; --glass:rgba(27,29,28,.62); --glass-strong:rgba(30,32,31,.92);
+  --btn:#ebe7de; --btn-ink:#161817; --seg-on:#3a3e3b; --shadow:0 10px 30px rgba(0,0,0,.38); --grain:.05;
+}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased;transition:background-color .6s}
+#app{position:fixed;inset:0;overflow:hidden}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab;outline:none}
+#gl:active{cursor:grabbing}
+.scrim{position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(760px 300px at 0 0,color-mix(in srgb,var(--paper) 92%,transparent) 0%,color-mix(in srgb,var(--paper) 70%,transparent) 42%,transparent 76%),
+             radial-gradient(560px 250px at 0 100%,color-mix(in srgb,var(--paper) 82%,transparent),transparent 74%),
+             radial-gradient(520px 330px at 100% 100%,color-mix(in srgb,var(--paper) 82%,transparent),transparent 74%)}
+.brand .sub,.eyebrow,.cap-en,.site-list .en,.site-title{text-shadow:0 0 6px var(--paper),0 0 2px var(--paper)}
+.grain{position:absolute;inset:0;pointer-events:none;opacity:var(--grain);mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:1.5px solid var(--accent);outline-offset:3px}
+
+/* ---------- brand ---------- */
+.brand{position:absolute;left:calc(28px + env(safe-area-inset-left,0px));top:calc(22px + env(safe-area-inset-top,0px));pointer-events:none;max-width:calc(100% - 260px)}
+.eyebrow{font-size:9.5px;letter-spacing:.34em;text-transform:uppercase;color:var(--ink-2);margin:0}
+.brand h1{font-family:var(--serif);font-weight:500;font-size:46px;line-height:.95;margin:.3em 0 .24em;letter-spacing:-.01em}
+.brand h1 em{font-style:italic}
+.brand .sub{font-size:11px;color:var(--ink-2);letter-spacing:.05em;margin:0;display:flex;flex-wrap:wrap;gap:0 .7em}
+.brand .sub .jp{font-family:var(--mincho);letter-spacing:.08em}
+
+/* ---------- tools ---------- */
+.tools{position:absolute;right:calc(28px + env(safe-area-inset-right,0px));top:calc(22px + env(safe-area-inset-top,0px));display:flex;gap:10px;align-items:center}
+.seg{display:flex;gap:2px;padding:4px;border-radius:999px;background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:var(--shadow)}
+.seg button{width:34px;height:30px;border-radius:999px;border:0;background:transparent;color:var(--ink-2);display:grid;place-items:center;cursor:pointer;transition:background .25s,color .25s}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--seg-on);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.09)}
+.seg .sep{width:1px;margin:6px 3px;background:var(--rule)}
+.round{width:40px;height:40px;border-radius:50%;border:0;background:var(--btn);color:var(--btn-ink);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow);font-family:var(--mincho);font-size:14px;transition:transform .2s}
+.round:hover{transform:scale(1.05)}
+.round.ghost{background:var(--glass);color:var(--ink);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+svg{display:block}
+
+/* ---------- compass ---------- */
+.compass{position:absolute;left:calc(28px + env(safe-area-inset-left,0px));bottom:calc(184px + env(safe-area-inset-bottom,0px));width:34px;height:34px;border-radius:50%;border:1px solid var(--rule);display:grid;place-items:center;pointer-events:none;color:var(--ink-2)}
+.compass svg{transition:none}
+.compass b{position:absolute;top:-15px;left:50%;transform:translateX(-50%);font:500 8.5px/1 var(--sans);letter-spacing:.1em;color:var(--ink-2)}
+/* ---------- caption ---------- */
+.caption{position:absolute;left:calc(28px + env(safe-area-inset-left,0px));bottom:calc(112px + env(safe-area-inset-bottom,0px));display:flex;align-items:flex-end;gap:12px;pointer-events:none;transition:opacity .35s,transform .35s}
+.caption.swap{opacity:0;transform:translateY(6px)}
+.cap-num{font-family:var(--serif);font-style:italic;font-size:48px;line-height:.78;color:var(--accent)}
+.cap-jp{font-family:var(--mincho);font-size:15px;letter-spacing:.06em}
+.cap-en{font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-2);margin-top:5px}
+
+/* ---------- dock ---------- */
+.dock{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(38px + env(safe-area-inset-bottom,0px));width:min(600px,calc(100% - 32px));box-sizing:border-box;display:grid;grid-template-columns:auto 1fr;column-gap:18px;align-items:center;padding:11px 22px 9px 13px;border-radius:14px;background:var(--glass);-webkit-backdrop-filter:blur(14px) saturate(1.1);backdrop-filter:blur(14px) saturate(1.1);box-shadow:var(--shadow)}
+#play{grid-row:1 / span 2;width:40px;height:40px;border-radius:50%;background:var(--btn);color:var(--btn-ink);border:0;display:grid;place-items:center;cursor:pointer}
+.stages{display:grid;grid-template-columns:repeat(4,1fr)}
+.stage{background:none;border:0;text-align:left;padding:1px 0 0;color:var(--ink-3);cursor:pointer;white-space:nowrap;transition:color .3s}
+.stage small{display:block;font-size:8.5px;letter-spacing:.14em;font-variant-numeric:tabular-nums;margin-bottom:1px}
+.stage span{font-size:11.5px;letter-spacing:.02em}
+.stage i{font-style:normal}
+.stage:hover{color:var(--ink-2)}
+.stage.on{color:var(--ink)}
+.stage.on small{color:var(--accent)}
+#scrub{-webkit-appearance:none;appearance:none;width:100%;height:18px;margin:2px 0 0;background:transparent;cursor:pointer;--fill:0%}
+#scrub::-webkit-slider-runnable-track{height:1px;background:linear-gradient(to right,var(--accent) var(--fill),var(--rule) var(--fill))}
+#scrub::-moz-range-track{height:1px;background:linear-gradient(to right,var(--accent) var(--fill),var(--rule) var(--fill))}
+#scrub::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;margin-top:-5px;border-radius:50%;border:1.5px solid var(--accent);background:var(--paper);box-sizing:border-box}
+#scrub::-moz-range-thumb{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--accent);background:var(--paper);box-sizing:border-box}
+.hint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));font-size:9px;letter-spacing:.3em;color:var(--ink-3);text-transform:uppercase;white-space:nowrap;margin:0;pointer-events:none}
+
+/* ---------- sites ---------- */
+.sites{position:absolute;right:calc(28px + env(safe-area-inset-right,0px));bottom:calc(112px + env(safe-area-inset-bottom,0px));display:grid;justify-items:end;gap:8px}
+.site-title{font-size:9.5px;letter-spacing:.3em;text-transform:uppercase;color:var(--ink-2);padding-bottom:8px;border-bottom:1px solid var(--rule);min-width:190px;text-align:right;margin:0}
+.site-list{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.site-list button{background:none;border:0;cursor:pointer;color:var(--ink-2);padding:3px 0;display:flex;gap:9px;align-items:baseline;transition:color .25s}
+.site-list .jp{font-family:var(--mincho);font-size:13px;letter-spacing:.05em}
+.site-list .en{font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3)}
+.site-list button:hover,.site-list button[aria-pressed="true"]{color:var(--ink)}
+.site-list button[aria-pressed="true"] .jp::before{content:"";display:inline-block;width:14px;height:1px;background:var(--accent);vertical-align:middle;margin-right:8px}
+
+/* ---------- card ---------- */
+.card{position:absolute;right:calc(28px + env(safe-area-inset-right,0px));top:calc(84px + env(safe-area-inset-top,0px));width:min(330px,calc(100% - 32px));box-sizing:border-box;padding:18px 20px 16px;border-radius:14px;background:var(--glass-strong);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:var(--shadow);max-height:calc(100% - 330px);overflow:auto}
+.card .k{font-size:9px;letter-spacing:.28em;text-transform:uppercase;color:var(--accent);margin:0 0 6px}
+.card h2{font-family:var(--mincho);font-weight:600;font-size:21px;letter-spacing:.06em;margin:0;text-wrap:balance}
+.card h2 em{font-family:var(--serif);font-style:italic;font-weight:500;font-size:17px;letter-spacing:0;color:var(--ink-2);margin-left:.5em}
+.card p{font-size:12.5px;line-height:1.8;color:var(--ink-2);margin:10px 0 12px;font-family:var(--mincho)}
+.card dl{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;margin:0;padding-top:10px;border-top:1px solid var(--rule);font-size:11.5px}
+.card dt{color:var(--ink-3);letter-spacing:.06em}
+.card dd{margin:0;font-variant-numeric:tabular-nums}
+.card .src{font-size:10px;color:var(--ink-3);margin:12px 0 0;line-height:1.7}
+.card .src a{color:var(--ink-2)}
+.card .x{position:absolute;right:10px;top:10px;width:26px;height:26px;border:0;border-radius:50%;background:transparent;cursor:pointer;color:var(--ink-2);display:grid;place-items:center}
+.card .x:hover{background:var(--rule)}
+
+/* ---------- labels ---------- */
+.labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.tag{position:absolute;left:0;top:0;border:0;padding:0;background:none;cursor:pointer;pointer-events:auto;opacity:0;transition:opacity .45s;will-change:transform}
+.tag b{position:absolute;left:-2.5px;top:-2.5px;width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.tag::after{content:"";position:absolute;left:-.5px;bottom:2px;width:1px;height:20px;background:var(--ink);opacity:.45}
+.tag span{position:absolute;left:-9px;bottom:22px;display:flex;align-items:center;gap:6px;white-space:nowrap;padding:3px 8px 3px 3px;border-radius:999px;background:var(--glass-strong);box-shadow:0 2px 10px rgba(0,0,0,.08);font-family:var(--mincho);font-size:11.5px;letter-spacing:.05em;color:var(--ink)}
+.tag i{font-style:normal;font-family:var(--sans);font-size:9px;width:16px;height:16px;border-radius:50%;display:grid;place-items:center;background:var(--btn);color:var(--btn-ink)}
+.tag em{font-style:normal;font-family:var(--sans);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.tag:hover span,.tag:focus-visible span{box-shadow:0 0 0 1px var(--accent)}
+.noscript,.gl-error{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;font-family:var(--mincho);color:var(--ink-2)}
+
+@media (max-width:720px){
+  .brand{left:16px;top:calc(14px + env(safe-area-inset-top,0px));max-width:calc(100% - 170px)}
+  .brand h1{font-size:32px}
+  .brand .sub .en{display:none}
+  .eyebrow{font-size:8.5px;letter-spacing:.26em}
+  .tools{right:16px;top:calc(14px + env(safe-area-inset-top,0px));flex-direction:column;align-items:flex-end;gap:8px}
+  .seg button{width:30px;height:28px}
+  .round{width:36px;height:36px}
+  .caption{left:16px;bottom:calc(152px + env(safe-area-inset-bottom,0px))}
+  .compass{left:auto;right:16px;bottom:calc(154px + env(safe-area-inset-bottom,0px));width:30px;height:30px}
+  .cap-num{font-size:36px}
+  .sites{left:16px;right:16px;bottom:calc(114px + env(safe-area-inset-bottom,0px));justify-items:stretch}
+  .site-title{display:none}
+  .site-list{flex-direction:row;gap:16px;overflow-x:auto;justify-content:flex-start;padding-bottom:2px;scrollbar-width:none}
+  .site-list .en{display:none}
+  .dock{bottom:calc(32px + env(safe-area-inset-bottom,0px));padding:10px 14px 8px 10px;column-gap:12px}
+  #play{width:36px;height:36px}
+  .stage span{font-size:10.5px}
+  .stage .long{display:none}
+  .scrim{background:linear-gradient(to bottom,color-mix(in srgb,var(--paper) 90%,transparent) 0,color-mix(in srgb,var(--paper) 55%,transparent) 110px,transparent 200px),
+                    linear-gradient(to top,color-mix(in srgb,var(--paper) 95%,transparent) 0,color-mix(in srgb,var(--paper) 82%,transparent) 190px,transparent 330px)}
+  .stage small{font-size:8px}
+  .hint{font-size:8px;letter-spacing:.2em;bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+  .card{top:auto;right:16px;left:16px;width:auto;bottom:calc(196px + env(safe-area-inset-bottom,0px));max-height:34vh;padding:14px 16px 12px}
+  .card p{font-size:12px;margin:8px 0 10px}
+  .tag em{display:none}
+}
+@media (max-width:380px){ .hint{display:none} }
+@media (prefers-reduced-motion: reduce){ .caption,.tag,.round,body{transition:none} }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="gl" tabindex="0" aria-label="祐徳稲荷神社・日本庭園・祐徳博物館の3Dモデル。ドラッグで回転、ホイールでズーム"></canvas>
+  <div class="labels" id="labels" aria-label="注記"></div>
+  <div class="scrim" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <header class="brand">
+    <p class="eyebrow">An Architectural Study</p>
+    <h1>Yūtoku <em>Inari.</em></h1>
+    <p class="sub"><span class="jp">祐徳稲荷神社 · 日本庭園 · 祐徳博物館</span><span class="en">/ &nbsp;From line to landmark</span></p>
+  </header>
+
+  <nav class="tools" aria-label="表示">
+    <div class="seg" role="group" aria-label="視点">
+      <button type="button" id="vOrbit" data-view="orbit" aria-pressed="true" title="自動カメラ（3D）" aria-label="自動カメラ（3D）">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"><path d="M8 1.8 13.6 5v6L8 14.2 2.4 11V5z"/><path d="M2.4 5 8 8.1 13.6 5M8 8.1v6.1"/></svg>
+      </button>
+      <button type="button" id="vElev" data-view="elev" aria-pressed="false" title="立面（東から）" aria-label="立面（東から）">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"><path d="M1.8 13.5h12.4M3.6 13.5V8h8.8v5.5M2.2 8.2 8 4l5.8 4.2M6.6 13.5v-3h2.8v3"/></svg>
+      </button>
+      <button type="button" id="vPlan" data-view="plan" aria-pressed="false" title="平面（真上から）" aria-label="平面（真上から）">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1"><rect x="2.4" y="2.4" width="11.2" height="11.2" rx="1"/><path d="M8.6 2.4v11.2M8.6 7.6h5"/></svg>
+      </button>
+      <span class="sep" aria-hidden="true"></span>
+      <button type="button" id="labelsBtn" aria-pressed="true" title="注記の表示" aria-label="注記の表示">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"><path d="M2.4 3.6h6.4l4.8 4.4-4.8 4.4H2.4z"/><circle cx="5.4" cy="8" r=".9"/></svg>
+      </button>
+    </div>
+    <button type="button" class="round ghost" id="seasonBtn" title="季節を切り替え" aria-label="季節：春（クリックで秋）">春</button>
+    <button type="button" class="round" id="themeBtn" title="昼／夜を切り替え" aria-label="昼／夜を切り替え">
+      <svg id="icoSun" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><circle cx="8" cy="8" r="2.6"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M3.5 12.5l1.1-1.1M11.4 4.6l1.1-1.1"/></svg>
+      <svg id="icoMoon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" hidden><path d="M12.8 10.2A5.4 5.4 0 0 1 5.8 3.2a5.4 5.4 0 1 0 7 7z"/></svg>
+    </button>
+  </nav>
+
+  <div class="compass" aria-hidden="true"><svg id="needle" width="22" height="22" viewBox="0 0 22 22"><path d="M11 2.5 14 11h-6z" fill="var(--accent)"/><path d="M11 19.5 8 11h6z" fill="none" stroke="currentColor" stroke-width=".9"/></svg></div>
+  <div class="caption" id="caption" aria-live="polite">
+    <div class="cap-num" id="capNum">01</div>
+    <div><div class="cap-jp" id="capJp">線を引く</div><div class="cap-en" id="capEn">Axis · contour · outline</div></div>
+  </div>
+
+  <aside class="sites" aria-label="見どころ">
+    <p class="site-title" id="siteName">Yūtoku Inari Shrine</p>
+    <div class="site-list" role="group">
+      <button type="button" data-site="overview" aria-pressed="false"><span class="en">Overview</span><span class="jp">全景</span></button>
+      <button type="button" data-site="honden" aria-pressed="false"><span class="en">Main Hall</span><span class="jp">御本殿</span></button>
+      <button type="button" data-site="garden" aria-pressed="false"><span class="en">Garden</span><span class="jp">日本庭園</span></button>
+      <button type="button" data-site="museum" aria-pressed="false"><span class="en">Museum</span><span class="jp">祐徳博物館</span></button>
+    </div>
+  </aside>
+
+  <section class="card" id="card" hidden aria-live="polite">
+    <button type="button" class="x" id="cardClose" aria-label="閉じる"><svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" stroke-width="1.2"><path d="M2 2l8 8M10 2l-8 8"/></svg></button>
+    <p class="k" id="cardK"></p>
+    <h2 id="cardH"></h2>
+    <p id="cardP"></p>
+    <dl id="cardDl"></dl>
+    <p class="src" id="cardSrc"></p>
+  </section>
+
+  <div class="dock" role="group" aria-label="タイムライン">
+    <button type="button" id="play" aria-label="一時停止">
+      <svg id="icoPause" width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="2.4" y="1.6" width="2.3" height="8.8" rx=".5"/><rect x="7.3" y="1.6" width="2.3" height="8.8" rx=".5"/></svg>
+      <svg id="icoPlay" width="12" height="12" viewBox="0 0 12 12" fill="currentColor" hidden><path d="M3 1.6v8.8L10.4 6z"/></svg>
+      <svg id="icoReplay" width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" hidden><path d="M2.6 7a4.4 4.4 0 1 0 1.3-3.1"/><path d="M3.6 1.6v2.6h2.6"/></svg>
+    </button>
+    <div class="stages">
+      <button type="button" class="stage on" data-stage="0"><small>01</small><span>Sketch</span></button>
+      <button type="button" class="stage" data-stage="1"><small>02</small><span>Massing<i class="long"> Model</i></span></button>
+      <button type="button" class="stage" data-stage="2"><small>03</small><span>Detail<i class="long">ed Model</i></span></button>
+      <button type="button" class="stage" data-stage="3"><small>04</small><span><i class="long">Built </i>Reality</span></button>
+    </div>
+    <input id="scrub" type="range" min="0" max="4" step="0.001" value="0" aria-label="変化の進行度（線からの立ち上がり）">
+  </div>
+  <p class="hint">Drag to orbit &nbsp;·&nbsp; Click a stage &nbsp;·&nbsp; Scrub to transform</p>
+  <noscript><div class="noscript">この作品の表示には JavaScript と WebGL が必要です。</div></noscript>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* =====================================================================
+   祐徳稲荷神社・日本庭園・祐徳博物館 — from line to landmark
+   Everything is procedural. Distances are loosely in metres, but the
+   site is compressed; this is an interpretive study, not a survey.
+   ===================================================================== */
+
+// ---------- small utilities ----------
+const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const sstep = (a, b, v) => { const t = clamp((v - a) / (b - a)); return t * t * (3 - 2 * t); };
+const easeIO = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+const DEG = Math.PI / 180;
+function mulberry(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+let R = mulberry(1687);
+const rr = (a, b) => a + (b - a) * R();
+const pick = arr => arr[Math.floor(R() * arr.length) % arr.length];
+function hash2(x, z) { const s = Math.sin(x * 127.1 + z * 311.7) * 43758.5453; return s - Math.floor(s); }
+function vnoise(x, z) {
+  const xi = Math.floor(x), zi = Math.floor(z), xf = x - xi, zf = z - zi;
+  const u = xf * xf * (3 - 2 * xf), v = zf * zf * (3 - 2 * zf);
+  return lerp(lerp(hash2(xi, zi), hash2(xi + 1, zi), u), lerp(hash2(xi, zi + 1), hash2(xi + 1, zi + 1), u), v) * 2 - 1;
+}
+function fbm(x, z) { let s = 0, a = .5, f = 1; for (let i = 0; i < 4; i++) { s += a * vnoise(x * f, z * f); f *= 2.03; a *= .5; } return s; }
+function distSeg(px, pz, ax, az, bx, bz) { const dx = bx - ax, dz = bz - az; const t = clamp(((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz || 1)); const qx = ax + dx * t - px, qz = az + dz * t - pz; return Math.sqrt(qx * qx + qz * qz); }
+function distPoly(px, pz, pts) { let m = 1e9; for (let i = 0; i < pts.length - 1; i++) m = Math.min(m, distSeg(px, pz, pts[i].x, pts[i].z, pts[i + 1].x, pts[i + 1].z)); return m; }
+
+const MOBILE = matchMedia('(max-width: 720px)').matches || /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* =====================================================================
+   SITE — terrain function. West (−x) is 石壁山 (Mt. Ishikabe); the
+   shrine axis runs east–west along z = 0; 浜川 runs north–south.
+   ===================================================================== */
+const TX0 = -165, TX1 = 150, TZ0 = -130, TZ1 = 130, BASE = -9, TS = 1.25;
+const riverX = z => 39 + 3.2 * Math.sin(z / 34 + .6);
+const RHW = 5.2;
+const PONDS = [{ x: -4, z: -27, r: 8.2, ph: 1.3, d: 1.15 }, { x: 6, z: -87, r: 7.4, ph: 4.1, d: 1.0 }];
+const pondR = (p, a) => p.r * (1 + .15 * Math.sin(3 * a + p.ph) + .08 * Math.sin(5 * a + p.ph * 2.1) + .05 * Math.cos(7 * a + p.ph));
+const pondPts = (p, extra = 0, n = 48) => { const o = []; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; const r = pondR(p, a) + extra; o.push([p.x + Math.cos(a) * r, p.z + Math.sin(a) * r]); } return o; };
+const GARDEN = { x0: -24, x1: 22, z0: -106, z1: -64 };
+const STREAM = [[-19, -100.5], [-15.5, -97], [-12, -98.6], [-8, -95.2], [-4.6, -93.4], [-1.4, -90.4]].map(([x, z]) => V(x, 0, z));
+const OKU = [[-66, -15], [-72, -22], [-79, -19], [-86, -27], [-93, -23], [-100, -32], [-107, -30], [-113, -38], [-117, -42]].map(([x, z]) => V(x, 0, z));
+const PADS = [{ x: -117, z: -42, r: 5.5 }, { x: -73, z: -23.5, r: 3 }];
+
+function mountainRaw(x, z) {
+  const foot = -44 - .0021 * z * z;
+  const d = foot - x;
+  if (d <= 0) return 0;
+  let h = 18.6 * sstep(0, 14, d) + .6 * Math.max(0, d - 10) * (1 - .3 * sstep(60, 150, d));
+  h += fbm(x * .021 + 3.1, z * .021 - 1.7) * 10 * sstep(4, 34, d);
+  const shelf = sstep(24, 17, Math.abs(z)) * sstep(12.5, 15, d) * sstep(30, 25, d);
+  h = lerp(h, 19.3 + .04 * (d - 15), shelf);
+  return Math.max(0, h);
+}
+const PADH = PADS.map(p => mountainRaw(p.x, p.z));
+function mountain(x, z) {
+  let h = mountainRaw(x, z);
+  for (let i = 0; i < PADS.length; i++) { const p = PADS[i]; const dd = Math.hypot(x - p.x, z - p.z); if (dd < p.r + 5) h = lerp(h, PADH[i], sstep(p.r + 5, p.r, dd)); }
+  return h;
+}
+function hill(x, z) { const dx = (x - 112) / 27, dz = (z - 94) / 23; return 17.5 * Math.exp(-(dx * dx + dz * dz) * 1.05) * sstep(60, 74, z); }
+function gardenH(x, z) {
+  const G = GARDEN; if (x < G.x0 || x > G.x1 || z < G.z0 || z > G.z1) return 0;
+  const edge = Math.min(x - G.x0, G.x1 - x, z - G.z0, G.z1 - z);
+  let h = .55 * Math.max(0, fbm(x * .16 + 7, z * .16 - 2)) + 2.6 * Math.exp(-((x + 19.5) ** 2 + (z + 101.5) ** 2) / 16);
+  h -= .6 * sstep(1.3, .5, distPoly(x, z, STREAM));
+  return h * sstep(0, 3, edge);
+}
+function riverCut(x, z) { return -3.3 * sstep(RHW + .9, RHW - .2, Math.abs(x - riverX(z))); }
+function pondCut(x, z) {
+  let c = 0;
+  for (const p of PONDS) { const dx = x - p.x, dz = z - p.z, d = Math.hypot(dx, dz); if (d > p.r * 1.4) continue; const r = pondR(p, Math.atan2(dz, dx)); c = Math.min(c, -p.d * sstep(r, r - 2, d)); }
+  return c;
+}
+const H = (x, z) => mountain(x, z) + hill(x, z) + gardenH(x, z) + riverCut(x, z) + pondCut(x, z);
+
+/* =====================================================================
+   RENDERER / SCENE
+   ===================================================================== */
+const canvas = document.getElementById('gl');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+} catch (e) {
+  const d = document.createElement('div'); d.className = 'gl-error'; d.textContent = 'WebGL を初期化できませんでした。別のブラウザでお試しください。';
+  document.getElementById('app').appendChild(d); throw e;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio || 1, MOBILE ? 1.6 : 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 1;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(32, 1, 1, 4200);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.dampingFactor = .08;
+controls.minDistance = 16; controls.maxDistance = 1100; controls.maxPolarAngle = Math.PI * .497;
+controls.zoomSpeed = .9; controls.rotateSpeed = .6;
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), .04).texture;
+scene.environmentIntensity = .5;
+scene.fog = new THREE.Fog(0xd9d8d2, 400, 1400);
+
+/* ---------- global animation uniform: p ∈ [0,4] ---------- */
+const U_P = { value: 0 };
+const GROW_PARS = `
+attribute vec3 aAnchor; attribute vec4 aAnim; uniform float uP;
+float gEO(float t){ return 1.0 - pow(1.0 - t, 3.0); }
+float gEB(float t){ float u = t - 1.0; return 1.0 + 2.4*u*u*u + 1.4*u*u; }
+`;
+const GROW_BEGIN = `
+vec3 transformed = vec3( position );
+if ( uP <= aAnim.x ) { transformed = vec3( 0.0, -9000.0, 0.0 ); }
+else {
+  float gt = clamp( ( uP - aAnim.x - aAnim.w ) / max( aAnim.y, 1e-4 ), 0.0, 1.0 );
+  vec3 gL = transformed - aAnchor;
+  if ( aAnim.z < 0.5 ) { gL.y *= gEO( gt ); } else { gL *= max( gEB( gt ), 0.0 ); }
+  transformed = aAnchor + gL;
+}
+`;
+const MAT = {};
+function setupShader(mat, vmode) {
+  const ud = mat.userData; ud.uReal = { value: 0 }; ud.vmode = vmode || '';
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.uP = U_P; sh.uniforms.uReal = ud.uReal;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + GROW_PARS).replace('#include <begin_vertex>', GROW_BEGIN);
+    if (ud.vmode) {
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uReal;').replace('#include <color_fragment>',
+        ud.vmode === 'replace'
+          ? '#if defined( USE_COLOR )\n diffuseColor.rgb = mix( diffuseColor.rgb, vColor.rgb, uReal );\n#endif'
+          : '#if defined( USE_COLOR )\n diffuseColor.rgb *= mix( vec3( 1.0 ), vColor.rgb, uReal );\n#endif');
+    }
+  };
+  mat.customProgramCacheKey = () => 'grow' + ud.vmode;
+}
+const DEPTH = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+DEPTH.onBeforeCompile = sh => { sh.uniforms.uP = U_P; sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\n' + GROW_PARS).replace('#include <begin_vertex>', GROW_BEGIN); };
+DEPTH.customProgramCacheKey = () => 'growdepth';
+
+/* ---------- stone texture (打込接ぎ) ---------- */
+function stoneTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d');
+  g.fillStyle = '#8c877f'; g.fillRect(0, 0, 512, 512);
+  const r = mulberry(11); let y = 0;
+  while (y < 512) {
+    const h = Math.min(512 - y, 30 + r() * 26); let x = -r() * 60;
+    while (x < 512) { const w = 46 + r() * 60; const l = 206 + r() * 38; g.fillStyle = `rgb(${l},${l - 3},${l - 10})`; g.fillRect(x + 2, y + 2, w - 3, h - 3); g.fillStyle = `rgba(0,0,0,${.04 + r() * .06})`; g.fillRect(x + 2, y + h - 6, w - 3, 4); x += w; }
+    y += h;
+  }
+  const id = g.getImageData(0, 0, 512, 512); for (let i = 0; i < id.data.length; i += 4) { const n = (r() - .5) * 18; id.data[i] += n; id.data[i + 1] += n; id.data[i + 2] += n; } g.putImageData(id, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+}
+const STONE_TEX = stoneTexture();
+
+/* ---------- materials: clay (stages 2–3) → real (stage 4) ---------- */
+function M(key, clay, real, rough = .8, metal = 0, x = {}) {
+  const m = new THREE.MeshStandardMaterial({ color: clay, roughness: rough, metalness: metal, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1, ...(x.props || {}) });
+  setupShader(m, x.vmode);
+  Object.assign(m.userData, { clay: new THREE.Color(clay), real: new THREE.Color(real), autumn: x.autumn ? new THREE.Color(x.autumn) : null, delay: x.delay ?? .22, emissive: x.emissive ? new THREE.Color(x.emissive) : null, worldUV: x.worldUV || 0, glow: x.glow || 0 });
+  MAT[key] = m; return m;
+}
+const CLAY = '#f3f1ec';
+M('terrain', '#ebe9e2', '#ffffff', .96, 0, { vmode: 'replace', delay: .3 });
+M('plinth', '#e4e1d9', '#b9a88a', 1, 0, { delay: .3 });
+M('gravel', '#e8e2d4', '#d9cfba', .96, 0, { delay: .28 });
+M('paving', '#e3dfd5', '#b8b0a2', .9, 0, { delay: .28 });
+M('asphalt', '#e5e3dd', '#737570', .92, 0, { delay: .3 });
+M('paint', '#f4f2ee', '#eeeeea', .8, 0, { delay: .3 });
+M('stone', '#ece8df', '#a9a092', .92, 0, { delay: .26, worldUV: 6, props: { map: STONE_TEX } });
+M('stoneDark', '#dedad1', '#7c766b', .9, 0, { delay: .26 });
+M('rock', '#e2ded6', '#8e877a', .95, 0, { delay: .28, props: { flatShading: true } });
+M('verm', CLAY, '#c93a1f', .46, 0, { delay: 0 });
+M('vermDark', '#ebe8e2', '#9d2b19', .52, 0, { delay: .04 });
+M('copper', '#f1efea', '#6d9c8b', .55, .12, { delay: .16 });
+M('copperDk', '#e4e1da', '#4a7668', .6, .1, { delay: .16 });
+M('tile', '#ecebe6', '#4c5055', .72, 0, { delay: .2 });
+M('plaster', '#f6f5f1', '#efebe2', .88, 0, { delay: .24 });
+M('wood', '#ebe7df', '#7d5c3f', .8, 0, { delay: .24 });
+M('woodDark', '#4a4744', '#2a2320', .7, 0, { delay: .24 });
+M('lacquer', '#efede8', '#1b1714', .38, 0, { delay: .08 });
+M('gold', '#f3f1ec', '#d8a93b', .32, .85, { delay: .1 });
+M('steel', '#e8e7e3', '#8d949a', .45, .6, { delay: .3 });
+M('glass', '#f2f3f1', '#a9c4cc', .08, .2, { delay: .3, props: { transparent: true, opacity: .55, depthWrite: false } });
+M('water', '#e3e7e6', '#3e6c76', .1, .1, { delay: .22, props: { transparent: true, opacity: .72, depthWrite: false } });
+M('lantern', '#f7f5f0', '#f2e6c8', .7, 0, { delay: .2, emissive: '#ffb45c', glow: 1 });
+M('lanternR', '#f4f2ed', '#d24a2a', .6, 0, { delay: .06, emissive: '#ff6a2c', glow: .8 });
+M('mWall', '#f4f3ef', '#e9e4d9', .86, 0, { delay: .26 });
+M('mRoof', '#e8e6e1', '#3e4347', .62, 0, { delay: .2 });
+M('bark', '#e6e3dc', '#5b4a3c', .9, 0, { delay: .3 });
+M('foliage', '#f1f0eb', '#4f6f3c', .9, 0, { delay: .34, autumn: '#6a7440' });
+M('maple', '#f1f0eb', '#7ea34a', .85, 0, { delay: .34, autumn: '#c2351d' });
+M('ginkgo', '#f1f0eb', '#90ad4c', .85, 0, { delay: .34, autumn: '#e8b327' });
+M('pine', '#efeee9', '#35523a', .9, 0, { delay: .34 });
+M('azalea', '#f1f0eb', '#df5796', .85, 0, { delay: .36, autumn: '#5c7340' });
+M('hydrangea', '#f1f0eb', '#6f8fd2', .85, 0, { delay: .36, autumn: '#7e865a' });
+M('moss', '#ecebe5', '#5e7a3a', .95, 0, { delay: .32 });
+M('bamboo', '#ebe8e1', '#b09a63', .8, 0, { delay: .3 });
+M('thatch', '#ebe8e1', '#8a7654', .95, 0, { delay: .3 });
+M('noren', '#f2f0eb', '#24405f', .9, 0, { delay: .3 });
+M('norenR', '#f2f0eb', '#8f2b1b', .9, 0, { delay: .3 });
+M('norenW', '#f2f0eb', '#e9e2cf', .9, 0, { delay: .3 });
+M('carW', CLAY, '#e9e9e6', .4, .2, { delay: .3 });
+M('carS', CLAY, '#9ea4a8', .4, .5, { delay: .3 });
+M('carK', CLAY, '#26292c', .4, .3, { delay: .3 });
+M('carR', CLAY, '#a3322a', .4, .3, { delay: .3 });
+M('carB', CLAY, '#2f4f78', .4, .3, { delay: .3 });
+M('forestI', '#eeede7', '#ffffff', .9, 0, { vmode: 'tint', delay: .36 });
+M('azaleaI', '#f1f0eb', '#ffffff', .85, 0, { vmode: 'tint', delay: .38 });
+const NO_SHADOW = new Set(['water', 'glass', 'paint', 'gravel', 'paving', 'asphalt']);
+
+/* =====================================================================
+   BUILDER — every solid is registered with a start time on the
+   p-timeline and a growth mode; every edge becomes a timed pen stroke.
+   ===================================================================== */
+const BUCKETS = new Map();
+const KEEP = ['position', 'normal', 'uv', 'aAnchor', 'aAnim'];
+function worldUV(g, sc) {
+  const p = g.attributes.position, nr = g.attributes.normal, uv = g.attributes.uv;
+  for (let i = 0; i < p.count; i++) {
+    const ax = Math.abs(nr.getX(i)), ay = Math.abs(nr.getY(i)), az = Math.abs(nr.getZ(i));
+    let u, v; if (ay > ax && ay > az) { u = p.getX(i); v = p.getZ(i); } else if (ax > az) { u = p.getZ(i); v = p.getY(i); } else { u = p.getX(i); v = p.getY(i); }
+    uv.setXY(i, u / sc, v / sc);
+  }
+}
+function prepGeo(g) {
+  if (g.index) g = g.toNonIndexed();
+  if (!g.attributes.normal) g.computeVertexNormals();
+  if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+  return g;
+}
+function pushGeo(mk, g, s, d, m, anc, raw) {
+  g = prepGeo(g);
+  const n = g.attributes.position.count;
+  if (!MAT[mk]) throw new Error('unknown material ' + mk);
+  if (MAT[mk].userData.worldUV) worldUV(g, MAT[mk].userData.worldUV);
+  if (!raw) {
+    const an = new Float32Array(n * 3), am = new Float32Array(n * 4);
+    for (let i = 0; i < n; i++) { an[i * 3] = anc.x; an[i * 3 + 1] = anc.y; an[i * 3 + 2] = anc.z; am[i * 4] = s; am[i * 4 + 1] = d; am[i * 4 + 2] = m; }
+    g.setAttribute('aAnchor', new THREE.BufferAttribute(an, 3)); g.setAttribute('aAnim', new THREE.BufferAttribute(am, 4));
+  }
+  for (const k of Object.keys(g.attributes)) if (!KEEP.includes(k)) g.deleteAttribute(k);
+  g.morphAttributes = {}; g.clearGroups();
+  if (!BUCKETS.has(mk)) BUCKETS.set(mk, []);
+  BUCKETS.get(mk).push(g);
+}
+
+/* ---------- pen strokes (instanced screen-space lines) ---------- */
+const LA = [], LB = [], LT = [];
+function pushLine(a, b, t0, dur, layer, seed = R()) { LA.push(a.x, a.y, a.z); LB.push(b.x, b.y, b.z); LT.push(t0, dur, layer, seed); }
+function sketchSeg(a, b, t0, dur, layer, over = true) {
+  const L = a.distanceTo(b); if (L < 1e-3) return;
+  if (!over) { pushLine(a, b, t0, dur, layer); return; }
+  const u = b.clone().sub(a).divideScalar(L);
+  const A = a.clone().addScaledVector(u, -Math.min(L * .12, .9) * R()), B = b.clone().addScaledVector(u, Math.min(L * .12, .9) * R());
+  pushLine(A, B, t0, dur, layer);
+  if (layer === 1 && L > 2.5 && R() < .09) { const j = V(R() - .5, R() - .5, R() - .5).multiplyScalar(.18); pushLine(A.clone().add(j), B.clone().add(j), t0 + dur * .6, dur, layer, R() * .35); }
+}
+
+let S = null;
+function begin(cfg) { S = { cfg, items: [], strokes: [], M: null }; }
+function frame(x, y, z, ry = 0) { S.M = new THREE.Matrix4().makeRotationY(ry).setPosition(x, y, z); }
+function noFrame() { S.M = null; }
+const tp = p => S.M ? p.clone().applyMatrix4(S.M) : p.clone();
+function stroke(pts, layer = 1, closed = false) {
+  const P = pts.map(tp); const segs = [];
+  for (let i = 0; i < P.length - 1; i++) segs.push([P[i], P[i + 1]]);
+  if (closed && P.length > 2) segs.push([P[P.length - 1], P[0]]);
+  S.strokes.push({ layer, segs });
+}
+function add(mk, g, o = {}) {
+  if (S.M) g.applyMatrix4(S.M);
+  g.computeBoundingBox();
+  S.items.push({ mk, g, o });
+  if (o.lines === false) return g;
+  const layer = o.layer ?? 1;
+  if (o.lines === 'axis') {
+    const b = g.boundingBox, sz = b.getSize(V()), c = b.getCenter(V());
+    let a, e;
+    if (sz.y >= sz.x && sz.y >= sz.z) { a = V(c.x, b.min.y, c.z); e = V(c.x, b.max.y, c.z); }
+    else if (sz.x >= sz.z) { a = V(b.min.x, c.y, c.z); e = V(b.max.x, c.y, c.z); }
+    else { a = V(c.x, c.y, b.min.z); e = V(c.x, c.y, b.max.z); }
+    S.strokes.push({ layer, segs: [[a, e]] });
+  } else {
+    const eg = new THREE.EdgesGeometry(g, o.ea ?? 32); const p = eg.attributes.position.array;
+    for (let i = 0; i < p.length; i += 6) S.strokes.push({ layer, segs: [[V(p[i], p[i + 1], p[i + 2]), V(p[i + 3], p[i + 4], p[i + 5])]] });
+    eg.dispose();
+  }
+  return g;
+}
+function schedule(strokes, win, y0, span) {
+  if (!strokes.length || !win) return;
+  for (const st of strokes) { let my = Infinity, len = 0; for (const [a, b] of st.segs) { my = Math.min(my, a.y, b.y); len += a.distanceTo(b); } st.k = (my - y0) / span * .72 + R() * .28; st.len = Math.max(len, 1e-3); }
+  strokes.sort((p, q) => p.k - q.k);
+  const n = strokes.length;
+  for (let i = 0; i < n; i++) {
+    const st = strokes[i]; const d = clamp(.02 + st.len * .0026, .02, .1);
+    const t0 = win[0] + Math.max(0, win[1] - win[0] - d) * (i / n);
+    let acc = 0; const single = st.segs.length === 1;
+    for (const [a, b] of st.segs) { const l = a.distanceTo(b); const ts = t0 + d * (acc / st.len); acc += l; sketchSeg(a, b, ts, Math.max(.005, d * (l / st.len) * 1.25), st.layer, single && st.layer <= 1); }
+  }
+}
+function end() {
+  const { cfg, items, strokes } = S;
+  let y0 = Infinity, y1 = -Infinity;
+  for (const it of items) { y0 = Math.min(y0, it.g.boundingBox.min.y); y1 = Math.max(y1, it.g.boundingBox.max.y); }
+  if (!isFinite(y0)) { y0 = 0; y1 = 1; }
+  const span = Math.max(.5, y1 - y0);
+  for (const { mk, g, o } of items) {
+    const bb = g.boundingBox; const ph = o.ph || 'mass'; const win = cfg[ph] || cfg.mass;
+    const d = o.d ?? (ph === 'detail' ? .16 : .24);
+    let ord = o.ord ?? (bb.min.y - y0) / span; ord = clamp(ord * .8 + R() * .2);
+    const s = win[0] + Math.max(0, win[1] - win[0] - d) * ord;
+    const anc = o.anc || V((bb.min.x + bb.max.x) / 2, bb.min.y, (bb.min.z + bb.max.z) / 2);
+    pushGeo(mk, g, s, d, o.m ?? (ph === 'detail' ? 1 : 0), anc);
+  }
+  schedule(strokes.filter(s => s.layer <= 1 || s.layer === 4), cfg.sketch, y0, span);
+  schedule(strokes.filter(s => s.layer === 3), cfg.fine || [cfg.detail[0] + .08, cfg.detail[1]], y0, span);
+  S = null;
+}
+
+/* ---------- primitive helpers (base-anchored) ---------- */
+function box(w, h, d, x = 0, y = 0, z = 0) { const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y + h / 2, z); return g; }
+function cyl(r, h, x = 0, y = 0, z = 0, seg = 10, rTop) { const g = new THREE.CylinderGeometry(rTop ?? r, r, h, seg); g.translate(x, y + h / 2, z); return g; }
+function beam(a, b, w, h) {
+  const d = b.clone().sub(a), L = d.length(); const g = new THREE.BoxGeometry(L, h, w);
+  const yaw = Math.atan2(-d.z, d.x), pitch = Math.atan2(d.y, Math.hypot(d.x, d.z));
+  g.rotateZ(pitch); g.rotateY(yaw); const m = a.clone().add(b).multiplyScalar(.5); g.translate(m.x, m.y, m.z); return g;
+}
+function bentBox(len, h, d, curve) { // long along Z, ends curve up
+  const g = new THREE.BoxGeometry(d, h, len, 1, 1, 14); const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const t = p.getZ(i) / (len / 2); p.setY(i, p.getY(i) + curve * t * t); }
+  g.computeVertexNormals(); return g;
+}
+function archBox(len, h, w, rise, seg = 18) { // long along X, arched up in the middle
+  const g = new THREE.BoxGeometry(len, h, w, seg, 1, 1); const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) { const t = p.getX(i) / (len / 2); p.setY(i, p.getY(i) + rise * (1 - t * t)); }
+  g.computeVertexNormals(); return g;
+}
+function blob(r, sx = 1, sy = 1, sz = 1) { const g = new THREE.IcosahedronGeometry(r, 1); g.scale(sx, sy, sz); return g; }
+
+/* ---------- roofs: 入母屋 / 寄棟 / 切妻 with 反り and 軒反り ---------- */
+function gridGeo(ni, nj, pts, up) {
+  const pos = new Float32Array(pts.length * 3); pts.forEach((p, k) => { pos[k * 3] = p[0]; pos[k * 3 + 1] = p[1]; pos[k * 3 + 2] = p[2]; });
+  const idx = []; const A = V(), B = V(), C = V();
+  const tri = (a, b, c) => {
+    A.fromArray(pos, a * 3); B.fromArray(pos, b * 3); C.fromArray(pos, c * 3);
+    B.sub(A); C.sub(A); const n = B.cross(C); if (n.lengthSq() < 1e-10) return;
+    if (n.y * up < 0) idx.push(a, c, b); else idx.push(a, b, c);
+  };
+  for (let j = 0; j < nj - 1; j++) for (let i = 0; i < ni - 1; i++) { const a = j * ni + i, b = a + 1, c = a + ni + 1, d = a + ni; tri(a, b, c); tri(a, c, d); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+}
+function stripGeo(pts, h, out) {
+  const n = pts.length, pos = new Float32Array(n * 6);
+  pts.forEach((p, k) => { pos.set([p[0], p[1], p[2], p[0], p[1] - h, p[2]], k * 6); });
+  const idx = [], O = V(...out);
+  for (let k = 0; k < n - 1; k++) {
+    const a = k * 2, b = a + 1, c = a + 3, d = a + 2;
+    const PA = V().fromArray(pos, a * 3), PB = V().fromArray(pos, b * 3), PC = V().fromArray(pos, c * 3);
+    const nr = PB.sub(PA).cross(PC.sub(PA));
+    if (nr.dot(O) >= 0) idx.push(a, b, c, a, c, d); else idx.push(a, c, b, a, d, c);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+}
+function slab(ni, nj, G, th, edges) {
+  const top = []; for (let j = 0; j < nj; j++) for (let i = 0; i < ni; i++) top.push(G(i, j));
+  const out = [gridGeo(ni, nj, top, 1), gridGeo(ni, nj, top.map(p => [p[0], p[1] - th, p[2]]), -1)];
+  for (const e of edges) {
+    let line = [];
+    if (e.t === 'j1') for (let i = 0; i < ni; i++) line.push(top[(nj - 1) * ni + i]);
+    if (e.t === 'j0') for (let i = 0; i < ni; i++) line.push(top[i]);
+    if (e.t === 'i0') for (let j = 0; j < nj; j++) line.push(top[j * ni]);
+    if (e.t === 'i1') for (let j = 0; j < nj; j++) line.push(top[j * ni + ni - 1]);
+    if (e.r) line = line.slice(e.r[0], e.r[1] + 1);
+    if (line.length > 1) out.push(stripGeo(line, th, e.out));
+  }
+  return out;
+}
+const mergeAll = gs => mergeGeometries(gs.map(g => { g = g.index ? g.toNonIndexed() : g; for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); return g; }));
+function makeRoof(o) {
+  const W = o.W, D = o.D, Hh = o.H, a = o.a ?? .42, Lf = o.lift ?? .8, th = o.th ?? .42, sg = o.sg ?? .45;
+  const hx = W / 2, hz = D / 2, xg = Math.max(0, hx - hz * (1 - sg));
+  const prof = s => { const q = 1 - s; return Hh * (a * q + (1 - a) * q * q); };
+  const lift = (X, Z) => Lf * Math.pow(Math.min(1, Math.abs(X) / hx) * Math.min(1, Math.abs(Z) / hz), 2.4);
+  const Y = (X, Z, s) => prof(s) + lift(X, Z);
+  const nu = o.nu ?? 20;
+  const sList = []; const n1 = sg > 0 ? Math.max(2, Math.round(9 * sg)) : 0; for (let i = 0; i < n1; i++) sList.push(sg * i / n1);
+  const n2 = Math.max(2, Math.round(10 * (1 - sg))); for (let i = 0; i <= n2; i++) sList.push(sg + (1 - sg) * i / n2);
+  const js = sList.findIndex(s => s >= sg - 1e-6);
+  const geos = [], gables = [], seams = [];
+  const w = s => s < sg ? xg : xg + (hx - xg) * (sg < 1 ? (s - sg) / (1 - sg) : 0);
+  for (const sign of [1, -1]) {
+    const G = (i, j) => { const s = sList[j], u = -1 + 2 * i / nu; const X = u * w(s), Z = sign * hz * s; return [X, Y(X, Z, s), Z]; };
+    const edges = [{ t: 'j1', out: [0, 0, sign] }];
+    if (sg > 0) { edges.push({ t: 'i0', out: [-1, 0, 0], r: [0, js] }, { t: 'i1', out: [1, 0, 0], r: [0, js] }); }
+    geos.push(...slab(nu + 1, sList.length, G, th, edges));
+    if (sg < 1) {
+      const nv = 16, ns = Math.max(3, n2);
+      const G2 = (i, j) => { const sp = j / ns, sF = sg + (1 - sg) * sp; const X = sign * (xg + (hx - xg) * sp); const Z = (-1 + 2 * i / nv) * hz * sF; return [X, Y(X, Z, sF), Z]; };
+      geos.push(...slab(nv + 1, ns + 1, G2, th, [{ t: 'j1', out: [sign, 0, 0] }]));
+    }
+    if (sg > 0 && o.gables !== false) {
+      const gx = o.gableX ?? (xg - .35), yb = prof(sg) - th - .7;
+      const shp = new THREE.Shape(); shp.moveTo(-hz * sg, yb);
+      const K = 12; for (let k = 0; k <= K; k++) { const zz = -hz * sg + 2 * hz * sg * k / K, s = Math.abs(zz) / hz; shp.lineTo(zz, Y(gx, zz, s) - th - .02); }
+      shp.lineTo(hz * sg, yb); shp.closePath();
+      const eg = new THREE.ExtrudeGeometry(shp, { depth: .3, bevelEnabled: false, curveSegments: 1 });
+      eg.rotateY(-Math.PI / 2); eg.translate(sign * gx + .15, 0, 0); gables.push(eg);
+    }
+    // copper seams / tile rows (fine layer)
+    const step = o.seam ?? .75;
+    for (let X = -hx + step / 2; X < hx; X += step) {
+      const ax = Math.abs(X); if (sg >= 1 - 1e-6 && ax > xg) continue;
+      const s0 = ax <= xg ? 0 : sg + (1 - sg) * (ax - xg) / (hx - xg); if (s0 > .96) continue;
+      const pl = []; for (let k = 0; k <= 6; k++) { const s = s0 + (1 - s0) * k / 6; const Z = sign * hz * s; pl.push(V(X, Y(X, Z, s) + .05, Z)); } seams.push(pl);
+    }
+    if (sg < 1) for (let Z = -hz + step / 2; Z < hz; Z += step) {
+      const s0 = Math.max(0, (Math.abs(Z) / hz - sg) / (1 - sg)); if (s0 > .96) continue;
+      const pl = []; for (let k = 0; k <= 5; k++) { const sp = s0 + (1 - s0) * k / 5, sF = sg + (1 - sg) * sp, X = sign * (xg + (hx - xg) * sp); pl.push(V(X, Y(X, Z, sF) + .05, Z)); } seams.push(pl);
+    }
+  }
+  return { geo: mergeAll(geos), gable: gables.length ? mergeAll(gables) : null, seams, xg, H: Hh, hx, hz };
+}
+function makeKara(o) { // 唐破風: bow-shaped gable, extends along +X from x0 to x1
+  const { x0, x1, a, Hk } = o, th = o.th ?? .38, nj = 28;
+  const prof = z => Hk * Math.pow(Math.max(0, 1 - (z / a) ** 2), 2);
+  const G = (i, j) => { const x = i ? x1 : x0; const z = -a * 1.05 + 2.1 * a * j / (nj - 1); return [x, prof(z), z]; };
+  const geos = slab(2, nj, G, th, [{ t: 'i1', out: [1, 0, 0] }, { t: 'j0', out: [0, 0, -1] }, { t: 'j1', out: [0, 0, 1] }]);
+  const shp = new THREE.Shape(); shp.moveTo(-a * .96, -1.1); for (let k = 0; k <= 20; k++) { const z = -a * .96 + 1.92 * a * k / 20; shp.lineTo(z, prof(z) - th); } shp.lineTo(a * .96, -1.1); shp.closePath();
+  const fill = new THREE.ExtrudeGeometry(shp, { depth: .25, bevelEnabled: false, curveSegments: 1 }); fill.rotateY(-Math.PI / 2); fill.translate(x1 - .3, 0, 0);
+  const trim = []; for (let k = 0; k <= 20; k++) { const z = -a + 2 * a * k / 20; trim.push([x1 + .03, prof(z) + .02, z]); }
+  return { geo: mergeAll(geos), fill, trim: stripGeo(trim, .2, [1, 0, 0]), prof };
+}
+// roof placement: ridge along local X (or Z if alongZ); base (eave) at y
+function roofOn(P, cx, y, cz, alongZ, o = {}) {
+  const r = makeRoof(P);
+  const T = new THREE.Matrix4().makeRotationY(alongZ ? Math.PI / 2 : 0).setPosition(cx, y, cz);
+  add(o.mat || 'copper', r.geo.applyMatrix4(T), { ea: 35, ord: o.ord });
+  if (r.gable) add(o.gmat || 'verm', r.gable.applyMatrix4(T), { ea: 40, ord: o.ord, ph: o.gph });
+  if (o.seams !== false) for (const pl of r.seams) stroke(pl.map(p => p.applyMatrix4(T)), 3);
+  if (o.ridge !== false && r.xg > .2) {
+    add(o.rmat || 'copperDk', box(2 * r.xg + .9, .55, .7, 0, r.H - .12, 0).applyMatrix4(T), { ph: 'detail', lines: 'axis', m: 0 });
+    if (o.oni !== false) for (const s of [-1, 1]) add('gold', box(.28, 1.1, .95, s * (r.xg + .5), r.H - .1, 0).applyMatrix4(T), { ph: 'detail', lines: false });
+  }
+  return r;
+}
+function karaOn(o, y) {
+  const k = makeKara(o);
+  const T = new THREE.Matrix4().makeTranslation(0, y, 0);
+  add(o.mat || 'copper', k.geo.applyMatrix4(T), { ea: 40 });
+  add('verm', k.fill.applyMatrix4(T), { ph: 'detail', lines: false });
+  add('gold', k.trim.applyMatrix4(T), { ph: 'detail', lines: false });
+  return k;
+}
+
+/* ---------- architectural parts ---------- */
+function brackets(x0, x1, z0, z1, y, h = .7, step = .85, mk = 'verm', accent = 'gold') {
+  const sides = [[x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, x0, z1], [x0, z1, x0, z0]]; let k = 0;
+  for (const [ax, az, bx, bz] of sides) {
+    const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(L / step));
+    for (let i = 0; i < n; i++) { const t = (i + .5) / n; add(k++ % 3 === 0 ? accent : mk, box(.44, h, .44, lerp(ax, bx, t), y, lerp(az, bz, t)), { ph: 'detail', lines: false, d: .1 }); }
+  }
+  stroke([V(x0, y + h, z0), V(x1, y + h, z0), V(x1, y + h, z1), V(x0, y + h, z1)], 1, true);
+}
+function ringBeams(x0, x1, z0, z1, y, h, w, mk = 'verm', ph = 'mass') {
+  add(mk, box(x1 - x0 + w, h, w, (x0 + x1) / 2, y, z0), { lines: 'axis', ph }); add(mk, box(x1 - x0 + w, h, w, (x0 + x1) / 2, y, z1), { lines: 'axis', ph });
+  add(mk, box(w, h, z1 - z0, x0, y, (z0 + z1) / 2), { lines: 'axis', ph }); add(mk, box(w, h, z1 - z0, x1, y, (z0 + z1) / 2), { lines: 'axis', ph });
+}
+function rail(pts, y, h = 1, mk = 'verm', o = {}) { // 高欄 with 擬宝珠 at the ends
+  const yf = typeof y === 'function' ? y : () => y;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [ax, az] = pts[i], [bx, bz] = pts[i + 1]; const L = Math.hypot(bx - ax, bz - az); const n = Math.max(1, Math.round(L / (o.step ?? 1.8)));
+    let prev = null;
+    for (let k = 0; k <= n; k++) {
+      const t = k / n, x = lerp(ax, bx, t), z = lerp(az, bz, t), yy = yf(x, z);
+      if (!(k === n && i < pts.length - 2)) add(mk, box(.17, h, .17, x, yy, z), { ph: 'detail', lines: false, d: .1 });
+      const cur = V(x, yy, z);
+      if (prev) { add(mk, beam(V(prev.x, prev.y + h - .07, prev.z), V(x, yy + h - .07, z), .15, .13), { ph: 'detail', lines: false, d: .1 }); add(mk, beam(V(prev.x, prev.y + h * .42, prev.z), V(x, yy + h * .42, z), .1, .09), { ph: 'detail', lines: false, d: .1 }); stroke([V(prev.x, prev.y + h, prev.z), V(x, yy + h, z)], 1); }
+      prev = cur;
+    }
+  }
+  if (o.gold !== false) for (const [x, z] of [pts[0], pts[pts.length - 1]]) { const yy = yf(x, z); add('gold', new THREE.SphereGeometry(.17, 10, 8).translate(x, yy + h + .14, z), { ph: 'detail', lines: false }); }
+}
+function torii(x, y, z, ry, W, Ht, o = {}) { // Inari torii: vermilion with black kasagi and 根巻
+  const save = S.M; const M0 = new THREE.Matrix4().makeRotationY(ry).setPosition(x, y, z); S.M = save ? save.clone().multiply(M0) : M0;
+  const r = W * .055, ph = o.ph || 'mass';
+  for (const s of [-1, 1]) {
+    add('verm', cyl(r, Ht * .92, 0, 0, s * W / 2, 10, r * .92), { lines: 'axis', ph });
+    add('lacquer', cyl(r * 1.28, Ht * .09, 0, 0, s * W / 2, 10), { lines: false, ph: 'detail' });
+  }
+  add('verm', box(r * 1.3, Ht * .075, W * 1.24, 0, Ht * .7, 0), { lines: 'axis', ph });
+  add('verm', box(r * 1.1, Ht * .12, r * 1.3, 0, Ht * .775, 0), { lines: false, ph: 'detail' });
+  add('verm', bentBox(W * 1.42, Ht * .07, r * 2.2, Ht * .045).translate(0, Ht * .895 + Ht * .035, 0), { lines: false, ph });
+  add('lacquer', bentBox(W * 1.52, Ht * .06, r * 2.5, Ht * .05).translate(0, Ht * .965 + Ht * .03, 0), { lines: false, ph });
+  const k0 = Ht * .9;
+  stroke([V(0, k0 + Ht * .07, -W * .76), V(0, k0 + Ht * .045, -W * .4), V(0, k0 + Ht * .02, 0), V(0, k0 + Ht * .045, W * .4), V(0, k0 + Ht * .07, W * .76)], 1);
+  S.M = save;
+}
+function lantern(x, z, s = 1, y, kind = 'kasuga') { // 石灯籠
+  const save = S.M; S.M = null; y = y ?? Math.max(0, H(x, z)) + .1;
+  if (kind === 'yukimi') {
+    for (let i = 0; i < 3; i++) { const a = i / 3 * Math.PI * 2; add('stone', cyl(.1 * s, .9 * s, x + Math.cos(a) * .5 * s, y, z + Math.sin(a) * .5 * s, 6), { ph: 'detail', lines: false }); }
+    add('lantern', box(.55 * s, .5 * s, .55 * s, x, y + .9 * s, z), { ph: 'detail', lines: false });
+    add('stone', new THREE.ConeGeometry(1.25 * s, .5 * s, 6).translate(x, y + 1.65 * s, z), { ph: 'detail', ea: 40 });
+  } else {
+    add('stone', cyl(.5 * s, .3 * s, x, y, z, 6), { ph: 'detail', lines: false });
+    add('stone', cyl(.17 * s, 1.3 * s, x, y + .3 * s, z, 8), { ph: 'detail', lines: 'axis' });
+    add('stone', cyl(.45 * s, .22 * s, x, y + 1.6 * s, z, 6), { ph: 'detail', lines: false });
+    add('lantern', box(.55 * s, .55 * s, .55 * s, x, y + 1.82 * s, z), { ph: 'detail', ea: 40 });
+    add('stone', new THREE.ConeGeometry(.78 * s, .5 * s, 6).translate(x, y + 2.62 * s, z), { ph: 'detail', lines: false });
+    add('stone', new THREE.SphereGeometry(.14 * s, 8, 6).translate(x, y + 2.95 * s, z), { ph: 'detail', lines: false });
+  }
+  S.M = save;
+}
+function rock(x, z, s, y, mk = 'rock') { const g = new THREE.DodecahedronGeometry(s, 0); g.scale(rr(1, 1.5), rr(.5, .8), rr(.9, 1.3)); g.rotateY(R() * 6.28); g.translate(x, (y ?? H(x, z)) + s * .2, z); const save = S.M; S.M = null; add(mk, g, { ph: 'detail', lines: false, d: .1 }); S.M = save; }
+
+/* ---------- trees: pen = trunk strokes + crown circle; clay = blobs ---------- */
+const CN = V(Math.cos(36 * DEG), 0, Math.sin(36 * DEG));
+function circleStroke(c, r, ry = 1, layer = 1, flat = false, k = 22) {
+  let e1, e2; if (flat) { e1 = V(1, 0, 0); e2 = V(0, 0, 1); } else { e1 = V(0, 1, 0).cross(CN).normalize(); e2 = V(0, 1, 0); }
+  const pts = []; const a0 = R() * 6.28; for (let i = 0; i <= k; i++) { const a = a0 + i / k * Math.PI * 2 * 1.04; pts.push(c.clone().addScaledVector(e1, Math.cos(a) * r).addScaledVector(e2, Math.sin(a) * r * ry)); }
+  const segs = []; for (let i = 0; i < k; i++) segs.push([pts[i], pts[i + 1]]); S.strokes.push({ layer, segs });
+}
+const TREE = { camphor: [5.2, 4.3, 'foliage'], maple: [3.1, 2.5, 'maple'], ginkgo: [6.2, 3.2, 'ginkgo'], pine: [2.6, 2.3, 'pine'], broad: [3.6, 3, 'foliage'] };
+function tree(kind, x, z, s = 1, o = {}) {
+  const save = S.M; S.M = null;
+  const y = o.y ?? Math.max(0, H(x, z)) + .05; const [th0, cr0, mk] = TREE[kind]; const th = th0 * s, cr = cr0 * s;
+  add('bark', cyl(.2 * s * (kind === 'camphor' ? 1.5 : 1), th + cr * .5, x, y - .2, z, 7, .12 * s), { lines: false });
+  const e1 = V(0, 1, 0).cross(CN).normalize();
+  if (kind === 'pine') {
+    [[0, .72, 0, 1], [.7, .98, .4, .78], [-.5, 1.22, -.3, .62], [.2, 1.46, .15, .46]].forEach(([dx, ty, dz, sc], i) =>
+      add(mk, blob(cr * sc, 1, .4, 1).translate(x + dx * cr, y + th * ty + cr * .25, z + dz * cr), { ph: i < 2 ? 'mass' : 'detail', m: 1, lines: false }));
+    circleStroke(V(x, y + th * 1.1 + cr * .3, z), cr * 1.05, .45);
+  } else if (kind === 'ginkgo') {
+    add(mk, blob(cr, 1, 1.75, 1).translate(x, y + th + cr * 1.3, z), { m: 1, lines: false });
+    for (let i = 0; i < 2; i++) add(mk, blob(cr * .62).translate(x + rr(-1, 1) * cr * .6, y + th + cr * rr(.6, 1.9), z + rr(-1, 1) * cr * .6), { ph: 'detail', m: 1, lines: false });
+    circleStroke(V(x, y + th + cr * 1.3, z), cr * 1.05, 1.7);
+  } else {
+    add(mk, blob(cr, 1, .78, 1).translate(x, y + th + cr * .45, z), { m: 1, lines: false });
+    const n = kind === 'camphor' ? 4 : 3;
+    for (let i = 0; i < n; i++) { const a = i / n * 6.28 + R(); add(mk, blob(cr * rr(.5, .68), 1, .8, 1).translate(x + Math.cos(a) * cr * .62, y + th + cr * rr(.25, .85), z + Math.sin(a) * cr * .62), { ph: 'detail', m: 1, lines: false }); }
+    circleStroke(V(x, y + th + cr * .45, z), cr * 1.02, .82);
+  }
+  for (const sgn of [-1, 1]) S.strokes.push({ layer: 1, segs: [[V(x, y, z).addScaledVector(e1, sgn * .24 * s), V(x, y + th, z).addScaledVector(e1, sgn * .15 * s)]] });
+  if (o.ground !== false) circleStroke(V(x, y + .06, z), cr * .95, 1, 1, true, 18);
+  S.M = save;
+}
+function shrub(x, z, r, mk, y) { const save = S.M; S.M = null; y = y ?? H(x, z); add(mk, blob(r, 1, .55, 1).translate(x, y + r * .2, z), { ph: 'detail', m: 1, lines: false }); S.M = save; }
+
+/* =====================================================================
+   1. SKETCH-ONLY CONSTRUCTION LINES
+   ===================================================================== */
+function buildConstruction() {
+  begin({ sketch: [.0, .22], mass: [1, 1.1], detail: [2, 2.1] });
+  const L0 = (a, b) => S.strokes.push({ layer: 0, segs: [[a, b]] });
+  // plinth base rectangle
+  L0(V(TX0, BASE, TZ0), V(TX1, BASE, TZ0)); L0(V(TX1, BASE, TZ0), V(TX1, BASE, TZ1)); L0(V(TX1, BASE, TZ1), V(TX0, BASE, TZ1)); L0(V(TX0, BASE, TZ1), V(TX0, BASE, TZ0));
+  for (const [x, z] of [[TX0, TZ0], [TX1, TZ0], [TX1, TZ1], [TX0, TZ1]]) L0(V(x, BASE, z), V(x, H(x, z), z));
+  // regulating lines from the key footprints
+  for (const x of [-60, -36, 16, 84 - 17, 84 + 17]) L0(V(x, .05, -70), V(x, .05, 70));
+  for (const z of [-16, 16, -9, 9]) L0(V(-100, .05, z), V(46, .05, z));
+  for (const z of [-4.5, 4.5]) L0(V(20, .05, z), V(150, .05, z));
+  L0(V(-24, .05, -118), V(22, .05, -118)); L0(V(66, .05, -60), V(66, .05, 20));
+  // grid ticks (30 m)
+  for (let x = -150; x <= 150; x += 30) for (let z = -120; z <= 120; z += 30) { L0(V(x - .9, .05, z), V(x + .9, .05, z)); L0(V(x, .05, z - .9), V(x, .05, z + .9)); }
+  // axis of the approach (参道軸) and vertical axis of the Gohonden — accent
+  S.strokes.push({ layer: 4, segs: [[V(-80, .12, 0), V(150, .12, 0)]] });
+  S.strokes.push({ layer: 4, segs: [[V(-48, -2, 0), V(-48, 44, 0)]] });
+  end();
+}
+
+/* =====================================================================
+   2. TERRAIN — plinth model with contour lines (等高線)
+   ===================================================================== */
+let HG = null, NXg = 0, NZg = 0;
+function tColor(x, z, h, slope) {
+  const c = new THREE.Color('#a2a477');
+  const m = mountain(x, z), hl = hill(x, z);
+  if (hl > .4) c.lerp(new THREE.Color('#86a057'), sstep(.4, 3, hl));
+  if (m > .3) c.lerp(new THREE.Color('#4d6440'), sstep(.3, 5, m));
+  if (slope > .8 && m > 1) c.lerp(new THREE.Color('#877b69'), sstep(.8, 1.7, slope) * .8);
+  if (x > GARDEN.x0 && x < GARDEN.x1 && z > GARDEN.z0 && z < GARDEN.z1) c.set('#5a7838');
+  if (h < -.25) c.lerp(new THREE.Color('#5f5a4e'), sstep(-.25, -1.2, h));
+  return c;
+}
+function buildTerrain() {
+  NXg = Math.round((TX1 - TX0) / TS) + 1; NZg = Math.round((TZ1 - TZ0) / TS) + 1;
+  const n = NXg * NZg; HG = new Float32Array(n);
+  for (let j = 0; j < NZg; j++) for (let i = 0; i < NXg; i++) HG[j * NXg + i] = H(TX0 + i * TS, TZ0 + j * TS);
+  const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), an = new Float32Array(n * 3), am = new Float32Array(n * 4);
+  const delay = (x, z) => .26 * clamp(Math.hypot(x + 48, z) / 260);
+  for (let j = 0; j < NZg; j++) for (let i = 0; i < NXg; i++) {
+    const k = j * NXg + i, x = TX0 + i * TS, z = TZ0 + j * TS, h = HG[k];
+    const hx = HG[j * NXg + Math.min(NXg - 1, i + 1)] - HG[j * NXg + Math.max(0, i - 1)], hz = HG[Math.min(NZg - 1, j + 1) * NXg + i] - HG[Math.max(0, j - 1) * NXg + i];
+    const slope = Math.hypot(hx, hz) / (2 * TS);
+    pos.set([x, h, z], k * 3); an.set([x, 0, z], k * 3); am.set([1.0, .3, 0, delay(x, z)], k * 4);
+    const c = tColor(x, z, h, slope); col.set([c.r, c.g, c.b], k * 3);
+  }
+  const idx = new Uint32Array((NXg - 1) * (NZg - 1) * 6); let q = 0;
+  for (let j = 0; j < NZg - 1; j++) for (let i = 0; i < NXg - 1; i++) { const a = j * NXg + i, b = a + 1, c = a + NXg + 1, d = a + NXg; idx.set([a, d, c, a, c, b], q); q += 6; }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  g.setAttribute('aAnchor', new THREE.BufferAttribute(an, 3)); g.setAttribute('aAnim', new THREE.BufferAttribute(am, 4));
+  g.setIndex(new THREE.BufferAttribute(idx, 1)); g.computeVertexNormals();
+  MAT.terrain.vertexColors = true;
+  const mesh = new THREE.Mesh(g, MAT.terrain); mesh.receiveShadow = true; mesh.castShadow = true; mesh.customDepthMaterial = DEPTH; mesh.frustumCulled = false; scene.add(mesh);
+  // skirt (the cut edge of the site model)
+  const sides = [[TX0, TZ0, TX1, TZ0, [0, 0, -1]], [TX1, TZ0, TX1, TZ1, [1, 0, 0]], [TX1, TZ1, TX0, TZ1, [0, 0, 1]], [TX0, TZ1, TX0, TZ0, [-1, 0, 0]]];
+  for (const [ax, az, bx, bz, out] of sides) {
+    const L = Math.hypot(bx - ax, bz - az), nn = Math.round(L / TS); const P = [], A = [], Q = [];
+    for (let k = 0; k <= nn; k++) { const x = lerp(ax, bx, k / nn), z = lerp(az, bz, k / nn); P.push([x, H(x, z), z]); A.push([x, z]); }
+    const pos2 = new Float32Array((nn + 1) * 6), an2 = new Float32Array((nn + 1) * 6), am2 = new Float32Array((nn + 1) * 8);
+    for (let k = 0; k <= nn; k++) { const [x, h, z] = P[k]; pos2.set([x, h, z, x, BASE, z], k * 6); an2.set([x, 0, z, x, 0, z], k * 6); const dl = delay(x, z); am2.set([1.0, .3, 0, dl, 1.0, .3, 0, dl], k * 8); }
+    const ix = []; const O = V(...out);
+    for (let k = 0; k < nn; k++) { const a = k * 2, b = a + 1, c = a + 3, d = a + 2; const PA = V().fromArray(pos2, a * 3), PB = V().fromArray(pos2, b * 3), PC = V().fromArray(pos2, c * 3); const nr = PB.sub(PA).cross(PC.sub(PA)); if (nr.dot(O) >= 0) ix.push(a, b, c, a, c, d); else ix.push(a, c, b, a, d, c); }
+    const g2 = new THREE.BufferGeometry(); g2.setAttribute('position', new THREE.BufferAttribute(pos2, 3)); g2.setAttribute('aAnchor', new THREE.BufferAttribute(an2, 3)); g2.setAttribute('aAnim', new THREE.BufferAttribute(am2, 4)); g2.setIndex(ix); g2.computeVertexNormals();
+    pushGeo('plinth', g2, 0, 0, 0, null, true);
+  }
+  // pen: plinth top edges + river banks + contours
+  begin({ sketch: [.03, .3], mass: [1, 1.1], detail: [2, 2.1] });
+  for (const [ax, az, bx, bz] of sides) { const pts = []; const nn = 60; for (let k = 0; k <= nn; k++) { const x = lerp(ax, bx, k / nn), z = lerp(az, bz, k / nn); pts.push(V(x, H(x, z) + .05, z)); } stroke(pts, 1); }
+  for (const s of [-1, 1]) { const pts = []; for (let z = TZ0; z <= TZ1; z += 4) pts.push(V(riverX(z) + s * RHW, .3, z)); stroke(pts, 1); }
+  end();
+  // contours: marching squares, chained into polylines, drawn level by level
+  const TABLE = [[], [[3, 0]], [[0, 1]], [[3, 1]], [[1, 2]], [[3, 2], [0, 1]], [[0, 2]], [[3, 2]], [[2, 3]], [[0, 2]], [[0, 1], [2, 3]], [[1, 2]], [[1, 3]], [[0, 1]], [[3, 0]], []];
+  const levels = []; for (let L = 2.5; L < 90; L += 2.5) levels.push(L);
+  const NL = levels.length;
+  levels.forEach((L, li) => {
+    const segs = [];
+    const ep = (i1, j1, i2, j2) => { const h1 = HG[j1 * NXg + i1], h2 = HG[j2 * NXg + i2], t = (L - h1) / (h2 - h1); return V(TX0 + (i1 + (i2 - i1) * t) * TS, L + .16, TZ0 + (j1 + (j2 - j1) * t) * TS); };
+    const key = (i1, j1, i2) => (i1 + j1 * NXg) * 2 + (i2 !== i1 ? 0 : 1);
+    for (let j = 0; j < NZg - 1; j++) for (let i = 0; i < NXg - 1; i++) {
+      const code = (HG[j * NXg + i] > L ? 1 : 0) | (HG[j * NXg + i + 1] > L ? 2 : 0) | (HG[(j + 1) * NXg + i + 1] > L ? 4 : 0) | (HG[(j + 1) * NXg + i] > L ? 8 : 0);
+      if (code === 0 || code === 15) continue;
+      const E = [[i, j, i + 1, j], [i + 1, j, i + 1, j + 1], [i, j + 1, i + 1, j + 1], [i, j, i, j + 1]];
+      for (const [ea, eb] of TABLE[code]) segs.push([key(E[ea][0], E[ea][1], E[ea][2]), key(E[eb][0], E[eb][1], E[eb][2]), ep(...E[ea]), ep(...E[eb])]);
+    }
+    const adj = new Map(); segs.forEach((s, k) => { for (const kk of [s[0], s[1]]) { let l = adj.get(kk); if (!l) adj.set(kk, l = []); l.push(k); } });
+    const used = new Uint8Array(segs.length);
+    const walk = (startKey, push) => { let kk = startKey; for (;;) { const l = adj.get(kk); let nx = -1; for (const q of l) if (!used[q]) { nx = q; break; } if (nx < 0) break; used[nx] = 1; const s = segs[nx]; if (s[0] === kk) { push(s[3]); kk = s[1]; } else { push(s[2]); kk = s[0]; } } };
+    for (let k = 0; k < segs.length; k++) {
+      if (used[k]) continue; used[k] = 1;
+      const chain = [segs[k][2], segs[k][3]];
+      walk(segs[k][1], p => chain.push(p)); walk(segs[k][0], p => chain.unshift(p));
+      if (chain.length < 5) continue;
+      let len = 0; for (let i = 0; i < chain.length - 1; i++) len += chain[i].distanceTo(chain[i + 1]);
+      const t0 = .05 + .42 * (li / NL) + R() * .04, dur = clamp(.03 + len * .0012, .03, .16);
+      let acc = 0; for (let i = 0; i < chain.length - 1; i++) { const l = chain[i].distanceTo(chain[i + 1]); pushLine(chain[i], chain[i + 1], t0 + dur * acc / len, Math.max(.004, dur * l / len * 1.5), 2); acc += l; }
+    }
+  });
+}
+
+/* =====================================================================
+   3. RIVER 浜川 and 神橋
+   ===================================================================== */
+function ribbon(pts, wFn, yFn) {
+  const n = pts.length, pos = new Float32Array(n * 6);
+  for (let i = 0; i < n; i++) {
+    const p = pts[i], q = pts[Math.min(n - 1, i + 1)], o = pts[Math.max(0, i - 1)];
+    const t = V(q.x - o.x, 0, q.z - o.z).normalize(), nr = V(-t.z, 0, t.x), w = wFn(i / (n - 1)) / 2, y = yFn(p, i);
+    pos.set([p.x + nr.x * w, y, p.z + nr.z * w, p.x - nr.x * w, y, p.z - nr.z * w], i * 6);
+  }
+  const ix = []; for (let i = 0; i < n - 1; i++) { const a = i * 2; ix.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setIndex(ix); g.computeVertexNormals();
+  const nrm = g.attributes.normal; if (nrm.getY(0) < 0) { const ii = g.index.array; for (let k = 0; k < ii.length; k += 3) { const t = ii[k + 1]; ii[k + 1] = ii[k + 2]; ii[k + 2] = t; } g.computeVertexNormals(); }
+  return g;
+}
+function buildRiver() {
+  begin({ sketch: [.1, .42], mass: [1.12, 1.42], detail: [2.1, 2.5] });
+  for (const s of [-1, 1]) for (let z = TZ0; z < TZ1; z += 3) {
+    const z2 = Math.min(TZ1, z + 3);
+    add('stone', beam(V(riverX(z) + s * (RHW + .45), -1.7 + 0, z), V(riverX(z2) + s * (RHW + .45), -1.7, z2), .9, 3.95).translate(0, .15, 0), { lines: false, anc: V(riverX(z), -3.4, z), ord: (z - TZ0) / (TZ1 - TZ0) });
+  }
+  const pts = []; for (let z = TZ0; z <= TZ1; z += 2) pts.push(V(riverX(z), 0, z));
+  noFrame(); const wg = ribbon(pts, () => RHW * 2, () => -1.75);
+  add('water', wg, { lines: false, ph: 'detail', m: 0, ord: 0 });
+  for (let k = 0; k < 26; k++) { const z = rr(TZ0 + 4, TZ1 - 4); rock(riverX(z) + rr(-3.6, 3.6), z, rr(.4, .9), -2.1, 'rock'); }
+  end();
+
+  // 神橋 — vermilion arched bridge over the river
+  begin({ sketch: [.24, .5], mass: [1.26, 1.6], detail: [2.05, 2.5] });
+  const xa = 30.5, xb = 48.5, L = xb - xa, cx = (xa + xb) / 2, rise = 1.4, Wd = 5.4;
+  const ay = x => .3 + rise * (1 - ((x - cx) / (L / 2)) ** 2);
+  add('vermDark', archBox(L, .55, Wd, rise).translate(cx, .3, 0));
+  for (const s of [-1, 1]) add('verm', archBox(L - .6, .8, .35, rise).translate(cx, -.35, s * 2.3), { lines: false });
+  for (const x of [cx - 3.2, cx + 3.2]) add('stone', cyl(.7, 3.8, x, -3.4, 0, 12), { lines: 'axis' });
+  const railPts = []; for (let k = 0; k <= 10; k++) railPts.push(xa + .5 + (L - 1) * k / 10);
+  for (const s of [-1, 1]) rail(railPts.map(x => [x, s * 2.5]), (x) => ay(x) + .55, 1.05, 'verm', { step: 1.8 });
+  end();
+}
+
+/* =====================================================================
+   4. PLAZA 境内 — gravel court, 神池 with 鶴島 and 太鼓橋, lanterns, trees
+   ===================================================================== */
+function buildPlaza() {
+  const P0 = PONDS[0];
+  begin({ sketch: [.18, .62], mass: [1.2, 1.58], detail: [2.02, 2.6] });
+  const sh = new THREE.Shape([V(-42, 36), V(31, 36), V(31, -29), V(-42, -29)].map(v => new THREE.Vector2(v.x, v.y)));
+  sh.holes.push(new THREE.Path(pondPts(P0, .3).map(([x, z]) => new THREE.Vector2(x, -z))));
+  const g = new THREE.ExtrudeGeometry(sh, { depth: .1, bevelEnabled: false, curveSegments: 1 }); g.rotateX(-Math.PI / 2);
+  add('gravel', g, { lines: false, ord: 0 });
+  stroke([V(-42, .1, -36), V(31, .1, -36), V(31, .1, 29), V(-42, .1, 29)], 1, true);
+  stroke(pondPts(P0, .3).map(([x, z]) => V(x, .12, z)), 1, true);
+  add('paving', box(68, .16, 4.4, -3, 0, 0), { ord: .05 });
+  add('paving', box(5, .16, 17, -22, 0, 10.6), { ord: .05 });
+  add('paving', box(4, .16, 13, -12, 0, 8.8), { ord: .05 });
+  // 神池 water, stones, crane island, drum bridge
+  const wsh = new THREE.Shape(pondPts(P0, .1).map(([x, z]) => new THREE.Vector2(x, -z)));
+  add('water', new THREE.ShapeGeometry(wsh).rotateX(-Math.PI / 2).translate(0, -.32, 0), { lines: false, ph: 'detail', m: 0 });
+  pondPts(P0, .25, 44).forEach(([x, z]) => rock(x, z, rr(.45, .8), .02));
+  add('moss', new THREE.SphereGeometry(2.9, 20, 10, 0, 6.29, 0, Math.PI / 2).scale(1.1, .45, 1).translate(-6, -.9, -29.5), { ea: 50 });
+  tree('pine', -6.3, -29.6, .8, { y: .2, ground: false });
+  lantern(-4.8, -30.6, .5, .3, 'yukimi');
+  // 太鼓橋 (drum bridge) to the island
+  const save = S.M; frame(-6, 0, -22.6, Math.PI / 2);
+  add('verm', archBox(8.6, .35, 2.2, 1.9).translate(0, .05, 0));
+  const bp = []; for (let k = 0; k <= 8; k++) bp.push(-4 + k);
+  for (const s of [-1, 1]) rail(bp.map(x => [x, s * 1.05]), x => .4 + 1.9 * (1 - (x / 4.3) ** 2), .85, 'verm', { step: 1 });
+  S.M = save;
+  // lanterns along the axis
+  for (const x of [-31, -24, -17, -10, -3, 4, 25]) for (const s of [-1, 1]) lantern(x, s * 4.8, .95, .16);
+  // 手水舎
+  frame(6, 0, 10, 0);
+  for (const [x, z] of [[-1.6, -1.2], [1.6, -1.2], [-1.6, 1.2], [1.6, 1.2]]) add('verm', cyl(.2, 2.9, x, .1, z), { lines: 'axis' });
+  add('stone', box(2.4, .8, 1.2, 0, .1, 0));
+  roofOn({ W: 5.4, D: 4.4, H: 1.8, sg: .45, lift: .5, th: .3 }, 0, 3.0, 0, false);
+  noFrame();
+  // trees
+  tree('ginkgo', -32, -12, 1.2);
+  tree('camphor', -39, -32, 1.15); tree('camphor', -40, 25, 1.05); tree('camphor', 27, 25, 1.25); tree('camphor', 27, -32, 1.1); tree('camphor', -18, -34, .85);
+  tree('maple', -15, -18, 1); tree('maple', 8, -20, .9); tree('maple', 9, -34, 1.05); tree('maple', -33, 15, .9);
+  end();
+}
+
+/* =====================================================================
+   5. 楼門 Rōmon — modelled on 陽明門 (Nikkō) per the shrine's history
+   ===================================================================== */
+function buildRomon() {
+  begin({ sketch: [.3, .72], mass: [1.32, 1.8], detail: [2.1, 2.66] });
+  frame(16, 0, 0, 0);
+  add('stone', box(8.6, .8, 14, 0, 0, 0));
+  for (const x of [-2.7, 0, 2.7]) for (const z of [-5.1, -1.7, 1.7, 5.1]) add('verm', cyl(.34, 5.3, x, .8, z, 12), { lines: 'axis' });
+  for (const z of [-5.1, 5.1]) add('plaster', box(5.4, 4.3, .28, 0, .8, z));
+  for (const x of [-2.7, 2.7]) for (const zc of [-3.4, 3.4]) add('woodDark', box(.16, 3.8, 3.1, x, 1.0, zc), { ph: 'detail', ea: 60 });
+  ringBeams(-2.7, 2.7, -5.1, 5.1, 5.6, .55, .42);
+  brackets(-3.1, 3.1, -5.5, 5.5, 6.15, .75);
+  add('vermDark', box(9, .38, 14.4, 0, 6.9, 0));
+  rail([[-4.3, -7], [4.3, -7], [4.3, 7], [-4.3, 7], [-4.3, -7]], 7.28, .95);
+  for (const x of [-2.2, 2.2]) for (const z of [-4.2, -1.4, 1.4, 4.2]) add('verm', cyl(.28, 3.3, x, 7.28, z, 10), { lines: 'axis' });
+  add('plaster', box(4.1, 3.0, 8.1, 0, 7.3, 0), { lines: false });
+  for (const z of [-2.8, 0, 2.8]) add('woodDark', box(.12, 2.1, 1.7, 2.12, 7.75, z), { ph: 'detail', lines: false });
+  for (const z of [-2.8, 0, 2.8]) add('gold', box(.1, .35, 1.9, 2.16, 9.95, z), { ph: 'detail', lines: false });
+  ringBeams(-2.2, 2.2, -4.2, 4.2, 10.45, .45, .36);
+  brackets(-2.6, 2.6, -4.7, 4.7, 10.9, .8, .7);
+  roofOn({ W: 15.6, D: 10.6, H: 4.5, sg: .44, lift: 1.05, a: .4, th: .45 }, 0, 11.7, 0, true);
+  karaOn({ x0: 2.4, x1: 5.9, a: 3.1, Hk: 1.35, th: .35 }, 11.55);
+  // 随身 guardians in the side bays
+  for (const z of [-3.4, 3.4]) { add('vermDark', cyl(.42, 1.5, .4, .8, z, 10, .3), { ph: 'detail', lines: false }); add('woodDark', new THREE.SphereGeometry(.25, 10, 8).translate(.4, 2.55, z), { ph: 'detail', lines: false }); }
+  // 玉垣 fences flanking the gate
+  for (const s of [-1, 1]) rail([[0, s * 7.4], [0, s * 22]], .1, 1.5, 'verm', { step: 1.2, gold: false });
+  end();
+}
+
+/* =====================================================================
+   6. 神楽殿, 社務所, 参集殿
+   ===================================================================== */
+function buildHalls() {
+  // 神楽殿 (faces north, toward the axis)
+  begin({ sketch: [.28, .68], mass: [1.3, 1.74], detail: [2.08, 2.6] });
+  frame(-12, 0, 20.5, Math.PI / 2);
+  add('stone', box(8.6, .45, 11.6, 0, 0, 0));
+  add('vermDark', box(7.6, 1.0, 10.6, 0, .45, 0));
+  for (const x of [-3.3, 3.3]) for (const z of [-4.9, -1.63, 1.63, 4.9]) add('verm', cyl(.26, 3.8, x, 1.45, z), { lines: 'axis' });
+  add('plaster', box(.25, 3.3, 9.8, -3.3, 1.45, 0));
+  add('pine', box(.06, 2, 7, -3.14, 2, 0), { ph: 'detail', lines: false });
+  rail([[-3.8, -5.4], [3.8, -5.4], [3.8, 5.4], [-3.8, 5.4]], 1.45, .8);
+  ringBeams(-3.3, 3.3, -4.9, 4.9, 4.9, .45, .36);
+  brackets(-3.6, 3.6, -5.2, 5.2, 5.25, .5, .9);
+  roofOn({ W: 13.4, D: 10.6, H: 3.8, sg: .46, lift: .85, th: .42 }, 0, 5.75, 0, true);
+  for (const z of [-1.2, 1.2]) add('lanternR', new THREE.SphereGeometry(.34, 12, 10).scale(1, 1.3, 1).translate(3.5, 4.2, z), { ph: 'detail', lines: false });
+  end();
+
+  // 社務所・授与所 (faces the plaza, south)
+  begin({ sketch: [.26, .62], mass: [1.28, 1.7], detail: [2.1, 2.56] });
+  frame(-31, 0, -25, -Math.PI / 2);
+  add('stone', box(10, .5, 15, 0, 0, 0));
+  add('plaster', box(9, 3.7, 14, 0, .5, 0));
+  add('woodDark', box(.1, 1.3, 12, 4.52, 1.4, 0), { ph: 'detail', lines: false });
+  for (let z = -6; z <= 6; z += 1.5) stroke([V(4.58, 1.4, z), V(4.58, 2.7, z)], 3);
+  roofOn({ W: 17.4, D: 12.2, H: 3.2, sg: .5, lift: .5, th: .38 }, 0, 4.2, 0, true);
+  end();
+
+  // 参集殿 (assembly hall, north of the gate; the garden lies beyond it)
+  begin({ sketch: [.28, .66], mass: [1.3, 1.72], detail: [2.1, 2.6] });
+  frame(8, 0, -52, -Math.PI / 2);
+  add('stone', box(13, .5, 27, 0, 0, 0));
+  add('plaster', box(12, 7.4, 26, 0, .5, 0));
+  for (const y of [1.3, 4.9]) { add('woodDark', box(.1, 1.4, 23, 6.02, y, 0), { ph: 'detail', lines: false }); for (let z = -11; z <= 11; z += 1.4) stroke([V(6.08, y, z), V(6.08, y + 1.4, z)], 3); }
+  add('copper', box(1.6, .3, 26.6, 6.6, 3.9, 0).rotateZ(0), { ph: 'detail', ea: 45 });
+  roofOn({ W: 30, D: 16, H: 4.6, sg: .48, lift: .7, th: .45 }, 0, 7.9, 0, true);
+  // entrance porch
+  for (const z of [-2.6, 2.6]) add('verm', cyl(.22, 3.2, 8.4, .5, z), { lines: 'axis' });
+  roofOn({ W: 4.6, D: 6.6, H: 1.6, sg: 1, lift: .3, th: .3, a: .6 }, 7.9, 3.7, 0, false, { ridge: false });
+  end();
+}
+
+/* =====================================================================
+   7. 御本殿 Gohonden — 懸造 (stage on stilts) against the cliff
+   ===================================================================== */
+function buildHonden() {
+  begin({ sketch: [.46, .97], mass: [1.42, 1.98], detail: [2.18, 2.92] });
+  const DECK = 18;
+  const colX = [-36.8, -40, -43.2, -46.4, -49.6, -52.8, -56];
+  const colZ = []; for (let i = 0; i <= 8; i++) colZ.push(-15.2 + i * 3.8);
+  const G = {};
+  for (const x of colX) for (const z of colZ) {
+    const g = H(x, z); if (g > DECK - 1.6) continue; G[x + ',' + z] = g;
+    add('verm', cyl(.36, DECK - .75 - g + .4, x, g - .4, z, 10), { lines: 'axis' });
+    add('stoneDark', box(1.1, .5, 1.1, x, g - .25, z), { lines: false });
+  }
+  for (const y of [3.2, 6.4, 9.6, 12.8, 15.6]) {
+    for (const x of colX) for (let i = 0; i < colZ.length - 1; i++) { const a = G[x + ',' + colZ[i]], b = G[x + ',' + colZ[i + 1]]; if (a === undefined || b === undefined || y < a + .9 || y < b + .9) continue; add('verm', box(.24, .42, colZ[i + 1] - colZ[i] + .5, x, y, (colZ[i] + colZ[i + 1]) / 2), { lines: 'axis' }); }
+    for (const z of colZ) for (let i = 0; i < colX.length - 1; i++) { const a = G[colX[i] + ',' + z], b = G[colX[i + 1] + ',' + z]; if (a === undefined || b === undefined || y < a + .9 || y < b + .9) continue; add('verm', box(Math.abs(colX[i + 1] - colX[i]) + .5, .42, .24, (colX[i] + colX[i + 1]) / 2, y, z), { lines: 'axis' }); }
+  }
+  for (const z of colZ) add('vermDark', box(24.4, .5, .4, -48, DECK - 1.3, z), { lines: 'axis' });
+  add('vermDark', box(25, .55, 33, -48, DECK - .8, 0));
+  add('wood', box(24, .26, 32, -48, DECK - .26, 0), { lines: false });
+  rail([[-41, -16.2], [-36.1, -16.2], [-36.1, 16.2], [-41, 16.2]], DECK, 1.05);
+
+  // 拝殿 (worship hall)
+  const FY = DECK + .45;
+  add('vermDark', box(12.8, .45, 18.8, -48, DECK, 0));
+  for (const x of [-54, -50, -46, -42]) for (const z of [-9, -6, -3, 0, 3, 6, 9]) if (x === -54 || x === -42 || Math.abs(z) === 9) add('verm', cyl(.3, 4.9, x, FY, z, 10), { lines: 'axis' });
+  add('plaster', box(11.6, 4.4, 17.6, -48, FY, 0), { lines: false });
+  for (const z of [-7.5, -4.5, -1.5, 1.5, 4.5, 7.5]) {
+    add('woodDark', box(.12, 3.2, 2.5, -41.9, FY + .2, z), { ph: 'detail', lines: false });
+    for (let k = -1; k <= 1; k += .5) stroke([V(-41.82, FY + .2, z + k), V(-41.82, FY + 3.4, z + k)], 3);
+  }
+  add('gold', box(.12, .5, 17.6, -41.84, FY + 3.7, 0), { ph: 'detail', lines: false });
+  ringBeams(-54, -42, -9, 9, FY + 4.4, .5, .42);
+  brackets(-54.4, -41.6, -9.4, 9.4, FY + 4.9, .7, .8);
+  roofOn({ W: 24.8, D: 18.6, H: 6.4, sg: .46, lift: 1.15, a: .4, th: .5 }, -48, FY + 5.55, 0, true);
+  // 向拝 with 唐破風
+  for (const z of [-4.3, 4.3]) add('verm', cyl(.28, 4.3, -37.9, FY - .45, z, 10), { lines: 'axis' });
+  add('verm', box(.42, .5, 9.4, -37.9, FY + 3.85, 0), { lines: 'axis' });
+  karaOn({ x0: -42.6, x1: -37.3, a: 5.4, Hk: 2.15, th: .42 }, FY + 4.5);
+  add('gold', box(.12, .9, .9, -37.18, FY + 5.2, 0), { ph: 'detail', lines: false });
+  add('wood', box(1.2, .8, 3.2, -39.6, DECK, 0), { ph: 'detail', lines: false });
+
+  // 幣殿 and 本殿 (inner sanctuary on the rock shelf)
+  add('plaster', box(4.4, 3.8, 8, -56, FY, 0));
+  roofOn({ W: 6.2, D: 9.6, H: 2.2, sg: 1, lift: .25, a: .6, th: .35 }, -56, FY + 3.8, 0, false, { ridge: false });
+  add('stone', box(11.4, 3.2, 14.4, -63, 17.3, 0));
+  const F2 = 20.5;
+  for (const x of [-67.8, -63, -58.2]) for (const z of [-6.2, -2, 2, 6.2]) if (x !== -63 || Math.abs(z) > 5) add('verm', cyl(.3, 4.3, x, F2, z, 10), { lines: 'axis' });
+  add('plaster', box(9, 4, 11.8, -63, F2, 0), { lines: false });
+  add('woodDark', box(.12, 2.8, 5, -58.46, F2 + .3, 0), { ph: 'detail', lines: false });
+  ringBeams(-67.8, -58.2, -6.2, 6.2, F2 + 3.9, .45, .38);
+  brackets(-68.1, -57.9, -6.5, 6.5, F2 + 4.3, .6, .75);
+  roofOn({ W: 16.4, D: 13.4, H: 5.2, sg: .5, lift: .95, th: .45 }, -63, F2 + 4.85, 0, true);
+  rail([[-69.6, -8.2], [-56.8, -8.2]], F2 - .1, .9, 'verm', { gold: false }); rail([[-69.6, 8.2], [-56.8, 8.2]], F2 - .1, .9, 'verm', { gold: false });
+
+  // 回廊 (corridors) along both flanks of the stage
+  for (const sgn of [-1, 1]) {
+    for (let x = -58; x <= -40; x += 3) for (const z of [sgn * 12.2, sgn * 15.4]) add('verm', cyl(.22, 3.5, x, DECK, z, 8), { lines: 'axis' });
+    add('plaster', box(18.4, 1.05, .25, -49, DECK, sgn * 15.4), { ph: 'detail', lines: false });
+    roofOn({ W: 20.4, D: 5.6, H: 1.9, sg: 1, lift: .35, a: .55, th: .34 }, -49, DECK + 3.55, sgn * 13.8, false, { ridge: false, seams: true });
+    for (let x = -56.5; x <= -41.5; x += 3) add('lantern', box(.5, .7, .5, x, DECK + 2.3, sgn * 12.2), { ph: 'detail', lines: false });
+  }
+
+  // 石段 117 steps with a tunnel of torii
+  const shp = new THREE.Shape(); shp.moveTo(-23.5, -1); shp.lineTo(-23.5, 0); shp.lineTo(-58, 18.2); shp.lineTo(-62, 18.2); shp.lineTo(-62, -1); shp.closePath();
+  add('stone', new THREE.ExtrudeGeometry(shp, { depth: 4.2, bevelEnabled: false }).translate(0, 0, 18.4), { ea: 40, ord: .1 });
+  const N = 58, run = 34.5 / N, rise = 18.2 / N;
+  for (let i = 0; i < N; i++) { const x = -23.5 - i * run; add('paving', box(run + .04, rise * 1.6, 4.3, x - run / 2, (i + 1) * rise - rise * 1.6, 20.5), { ph: 'detail', lines: false, ord: i / N, d: .06 }); if (i % 2 === 0) stroke([V(x, (i + 1) * rise + .02, 18.4), V(x, (i + 1) * rise + .02, 22.6)], 1); }
+  for (let k = 0; k < 11; k++) { const x = -26 - k * 3.05; const y = (-23.5 - x) / 34.5 * 18.2; torii(x, y, 20.5, 0, 4.1, 4.4); }
+
+  // glass elevator (有料エレベーター)
+  const ex = -40.5, ez = -21.2;
+  add('glass', box(3.8, 21.8, 3.8, ex, 0, ez));
+  for (const [dx, dz] of [[-1.9, -1.9], [1.9, -1.9], [1.9, 1.9], [-1.9, 1.9]]) add('steel', cyl(.12, 21.8, ex + dx, 0, ez + dz, 6), { lines: false });
+  add('steel', box(4.4, .6, 4.4, ex, 21.8, ez));
+  add('steel', box(2.4, .45, 5.4, ex, DECK - .45, -18.1));
+  end();
+}
+
+/* =====================================================================
+   8. 奥の院 — path of countless torii up 石壁山 (instanced)
+   ===================================================================== */
+let OKU_PTS = [];
+function buildOkunoin() {
+  const curve = new THREE.CatmullRomCurve3(OKU, false, 'centripetal', .5);
+  const len = curve.getLength(), n = Math.floor(len / 1.55);
+  OKU_PTS = curve.getSpacedPoints(Math.floor(len / .8)).map(p => V(p.x, H(p.x, p.z), p.z));
+  begin({ sketch: [.62, .96], mass: [1.5, 1.9], detail: [2.3, 2.9] });
+  stroke(OKU_PTS.map(p => V(p.x, p.y + .12, p.z)), 1);
+  // summit shrine + lookout, and 石壁神社 part way
+  const top = OKU[OKU.length - 1], ty = H(top.x, top.z);
+  frame(top.x, ty, top.z, .4);
+  add('stone', box(7, .5, 6, 0, 0, 0)); add('plaster', box(3.2, 2.4, 3.2, -1, .5, 0));
+  for (const [x, z] of [[-2.6, -1.6], [.6, -1.6], [-2.6, 1.6], [.6, 1.6]]) add('verm', cyl(.16, 2.4, x, .5, z, 8), { lines: 'axis' });
+  roofOn({ W: 5.4, D: 4.6, H: 2, sg: .5, lift: .5, th: .3 }, -1, 2.9, 0, true);
+  rail([[2.2, -2.8], [3.4, -2.8], [3.4, 2.8], [2.2, 2.8]], .5, .9);
+  const mid = PADS[1], my = H(mid.x, mid.z);
+  frame(mid.x, my, mid.z, .6);
+  add('stone', box(4, .4, 3.4, 0, 0, 0)); add('plaster', box(2.2, 1.8, 2.2, 0, .4, 0));
+  roofOn({ W: 3.6, D: 3.2, H: 1.4, sg: .5, lift: .4, th: .25 }, 0, 2.2, 0, true, { ridge: false });
+  end();
+  // instanced torii along the path
+  const unit = { verm: [], lacquer: [] };
+  const W = 1, Ht = 1.3, r = .06;
+  for (const s of [-1, 1]) { unit.verm.push(cyl(r, Ht * .92, 0, 0, s * W / 2, 8)); unit.lacquer.push(cyl(r * 1.3, Ht * .1, 0, 0, s * W / 2, 8)); }
+  unit.verm.push(box(r * 1.3, Ht * .07, W * 1.25, 0, Ht * .7, 0)); unit.verm.push(bentBox(W * 1.42, Ht * .07, r * 2.2, Ht * .04).translate(0, Ht * .93, 0));
+  unit.lacquer.push(bentBox(W * 1.5, Ht * .06, r * 2.5, Ht * .045).translate(0, Ht * 1.0, 0));
+  for (const mk of ['verm', 'lacquer']) {
+    const geo = mergeGeometries(unit[mk].map(g => { g = prepGeo(g); return g; }));
+    for (const k of Object.keys(geo.attributes)) if (!['position', 'normal', 'uv'].includes(k)) geo.deleteAttribute(k);
+    geo.setAttribute('aAnchor', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 3), 3));
+    const anim = new Float32Array(n * 4); const im = new THREE.InstancedMesh(geo, MAT[mk], n); const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = V();
+    for (let i = 0; i < n; i++) {
+      const u = (i + .5) / n, p = curve.getPointAt(u), t = curve.getTangentAt(u);
+      const y = H(p.x, p.z); const s = 2.3 + .5 * Math.sin(i * 1.7) * .3 + (i % 9 === 0 ? .9 : 0);
+      q.setFromAxisAngle(V(0, 1, 0), Math.atan2(-t.z, t.x)); sc.set(s, s, s * 1.15);
+      m4.compose(V(p.x, y - .1, p.z), q, sc); im.setMatrixAt(i, m4);
+      anim.set([2.28 + .6 * u, .12, 1, 0], i * 4);
+    }
+    geo.setAttribute('aAnim', new THREE.InstancedBufferAttribute(anim, 4));
+    im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = DEPTH; im.frustumCulled = false; scene.add(im);
+  }
+}
+
+/* =====================================================================
+   9. 日本庭園 — c. 400 tsubo, 2005; moss, a stone-lined stream, pond
+   ===================================================================== */
+function buildGarden() {
+  const G = GARDEN, P1 = PONDS[1];
+  begin({ sketch: [.24, .72], mass: [1.3, 1.72], detail: [2.14, 2.78] });
+  // 竹垣 enclosure with a gate on the south side
+  const fence = (ax, az, bx, bz) => {
+    const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.round(L / 2.2));
+    for (let k = 0; k <= n; k++) add('wood', cyl(.09, 1.55, lerp(ax, bx, k / n), 0, lerp(az, bz, k / n), 6), { ph: 'detail', lines: false, d: .08 });
+    for (const y of [.35, .85, 1.35]) add('bamboo', beam(V(ax, y, az), V(bx, y, bz), .09, .09), { ph: 'detail', lines: false });
+    stroke([V(ax, 1.5, az), V(bx, 1.5, bz)], 1); stroke([V(ax, 0, az), V(bx, 0, bz)], 1);
+  };
+  fence(G.x0, G.z0, G.x1, G.z0); fence(G.x0, G.z0, G.x0, G.z1); fence(G.x1, G.z0, G.x1, G.z1);
+  fence(G.x0, G.z1, -2.6, G.z1); fence(2.6, G.z1, G.x1, G.z1);
+  for (const x of [-2.6, 2.6]) add('wood', cyl(.18, 3.1, x, 0, G.z1, 8), { lines: 'axis' });
+  roofOn({ W: 6.6, D: 2.6, H: 1.1, sg: 1, lift: .2, a: .6, th: .25, gables: false }, 0, 3.1, G.z1, false, { mat: 'tile', ridge: false });
+  // pond, stream, waterfall
+  const wsh = new THREE.Shape(pondPts(P1, .05).map(([x, z]) => new THREE.Vector2(x, -z)));
+  add('water', new THREE.ShapeGeometry(wsh).rotateX(-Math.PI / 2).translate(0, -.28, 0), { lines: false, ph: 'detail', m: 0 });
+  stroke(pondPts(P1, .2).map(([x, z]) => V(x, .15, z)), 1, true);
+  pondPts(P1, .25, 36).forEach(([x, z]) => rock(x, z, rr(.4, .75), H(x, z) + .1));
+  const sc = new THREE.CatmullRomCurve3(STREAM.map(p => V(p.x, 0, p.z)));
+  const sp = sc.getSpacedPoints(40);
+  add('water', ribbon(sp, () => 1.25, p => H(p.x, p.z) + .34), { lines: false, ph: 'detail', m: 0 });
+  stroke(sp.map(p => V(p.x, H(p.x, p.z) + .45, p.z)), 1);
+  sp.forEach((p, i) => { if (i % 2) return; const t = sc.getTangentAt(i / 40); const nr = V(-t.z, 0, t.x); for (const s of [-1, 1]) rock(p.x + nr.x * s * .95, p.z + nr.z * s * .95, rr(.28, .5)); });
+  const wf = STREAM[0]; add('water', new THREE.PlaneGeometry(1.1, 2.2).rotateY(Math.PI / 4).translate(wf.x - .6, H(wf.x, wf.z) + 1.4, wf.z - .6), { lines: false, ph: 'detail', m: 0 });
+  for (let k = 0; k < 7; k++) rock(wf.x - 1.5 + rr(-1.3, 1.3), wf.z - 1.5 + rr(-1.3, 1.3), rr(.7, 1.2));
+  // stone slab bridge, stepping stones, lanterns, arbor
+  const bm = sc.getPointAt(.52); add('stone', box(1.2, .22, 2.8, bm.x, H(bm.x, bm.z) + .5, bm.z).rotateY(0), { ph: 'detail', lines: false });
+  const path = new THREE.CatmullRomCurve3([V(0, 0, -64.5), V(4, 0, -70), V(13, 0, -74), V(16.5, 0, -84), V(15, 0, -95)]).getSpacedPoints(16);
+  path.forEach(p => { const save = S.M; S.M = null; add('rock', cyl(rr(.42, .55), .14, p.x + rr(-.3, .3), H(p.x, p.z) + .02, p.z, 9), { ph: 'detail', lines: false, d: .08 }); S.M = save; });
+  stroke(path.map(p => V(p.x, H(p.x, p.z) + .2, p.z)), 1);
+  lantern(-2.2, -81.6, .9, undefined, 'yukimi'); lantern(4.5, -67.5, .85); lantern(-16, -92, .75);
+  frame(15, H(15, -99.5), -99.5, .2);
+  for (const [x, z] of [[-1.6, -1.6], [1.6, -1.6], [1.6, 1.6], [-1.6, 1.6]]) add('wood', cyl(.13, 2.5, x, 0, z, 8), { lines: 'axis' });
+  add('wood', box(2.6, .45, .5, 0, 0, 1.2), { ph: 'detail', lines: false });
+  roofOn({ W: 5, D: 5, H: 2.3, sg: 0, a: .8, lift: .25, th: .32 }, 0, 2.5, 0, false, { mat: 'thatch', ridge: false, seams: false });
+  noFrame();
+  // planting: maples, pines, hydrangea along the east fence, clipped azaleas
+  for (const [x, z, s] of [[-18, -72, 1], [-8, -69.5, .85], [16, -73, .95], [-12, -103, .9], [18.5, -91, 1], [-21, -84, .9]]) tree('maple', x, z, s);
+  for (const [x, z, s] of [[-3.5, -97, 1], [11, -80.5, .85], [-19.5, -96.5, .75]]) tree('pine', x, z, s);
+  tree('camphor', -20.5, -66.8, .8);
+  for (let z = -69; z > -104; z -= 3.1) shrub(19.6, z, rr(.9, 1.2), 'hydrangea');
+  for (let k = 0; k < 16; k++) { const x = rr(G.x0 + 2, G.x1 - 3), z = rr(G.z0 + 2, G.z1 - 2); if (Math.hypot(x - P1.x, z - P1.z) < P1.r + 1.4 || distPoly(x, z, STREAM) < 1.8) continue; shrub(x, z, rr(.7, 1.3), 'azalea'); }
+  end();
+}
+
+/* =====================================================================
+   10. 門前商店街 — shops on the approach, two torii
+   ===================================================================== */
+function shop(x0, x1, side) {
+  const w = x1 - x0, cx = (x0 + x1) / 2, zc = side * 10.2, zf = side * 6.2;
+  add('stone', box(w, .3, 8.2, cx, 0, zc), { lines: false });
+  add('plaster', box(w - .2, 3.3, 8, cx, .3, zc));
+  add('woodDark', box(w - 1, 2.5, .12, cx, .45, zf - side * .02), { ph: 'detail', lines: false });
+  for (let x = x0 + .6; x < x1 - .5; x += .32) stroke([V(x, .5, zf - side * .1), V(x, 2.9, zf - side * .1)], 3);
+  add('tile', box(w + .2, .18, 1.6).rotateX(-side * .3).translate(cx, 3.62, zf - side * .5), { ph: 'mass', ea: 40 });
+  add('plaster', box(w - .2, 2.5, 7.2, cx, 3.6, zc + side * .4));
+  add('woodDark', box(w * .45, .8, .1, cx, 4.45, side * 6.97), { ph: 'detail', lines: false });
+  roofOn({ W: w + .7, D: 9.6, H: 2.3, sg: 1, a: 1, lift: 0, th: .3, seam: .55, gableX: (w - .2) / 2 }, cx, 6.1, zc, false, { mat: 'tile', gmat: 'plaster', ridge: false, gph: 'mass' });
+  add(pick(['noren', 'norenR', 'norenW', 'noren']), box(w * .5, .95, .06, cx, 2.05, zf - side * .35), { ph: 'detail', lines: false });
+  add('wood', box(w * .55, .5, .1, cx, 5.35, side * 6.93), { ph: 'detail', lines: false });
+  if (R() < .45) add('lanternR', new THREE.SphereGeometry(.3, 10, 8).scale(1, 1.3, 1).translate(x0 + .6, 2.6, zf - side * .5), { ph: 'detail', lines: false });
+}
+function buildMonzen() {
+  begin({ sketch: [.14, .58], mass: [1.22, 1.64], detail: [2.04, 2.56] });
+  add('paving', box(100, .14, 9, 97, 0, 0), { ord: 0 });
+  add('paving', box(8, .14, 25, 84, 0, -17), { ord: 0 });
+  for (const side of [1, -1]) {
+    let x = 51.5;
+    while (x < 141) {
+      const w = rr(6.4, 8.8);
+      if (side === -1 && x + w > 78 && x < 90) { x = 90; continue; }
+      shop(x, Math.min(x + w, 143), side); x += w + .5;
+    }
+  }
+  torii(50.5, 0, 0, 0, 7.6, 8.4); torii(146, 0, 0, 0, 10.4, 12.2);
+  for (const x of [60, 72, 104, 118, 132]) for (const s of [-1, 1]) lantern(x, s * 4.1, .75, .14);
+  end();
+}
+
+/* =====================================================================
+   11. 祐徳博物館 — RC single storey (1971), 633 m² after the 1974 annex
+   ===================================================================== */
+function buildMuseum() {
+  begin({ sketch: [.16, .52], mass: [1.26, 1.66], detail: [2.06, 2.56] });
+  const cx = 84, cz = -38;
+  add('stone', box(38, .8, 20, cx, 0, cz));
+  add('mWall', box(34, 5.2, 18, cx, .8, cz));
+  for (let x = cx - 15.5; x <= cx + 15.5; x += 1.25) { if (Math.abs(x - cx) < 4.6) continue; add('mWall', box(.26, 4.7, .8, x, 1, cz + 9.35), { ph: 'detail', lines: 'axis', d: .08 }); }
+  add('glass', box(8, 3.5, .3, cx, .8, cz + 9.1));
+  add('mWall', box(12, .42, 5.6, cx, 4.3, cz + 11.4));
+  for (const x of [cx - 5.4, cx + 5.4]) add('mWall', cyl(.22, 3.5, x, .8, cz + 13.8, 10), { lines: 'axis' });
+  roofOn({ W: 38.6, D: 22.6, H: 3.5, sg: .3, a: .72, lift: .35, th: .5, seam: .9 }, cx, 6.0, cz, false, { mat: 'mRoof', gmat: 'mRoof', rmat: 'mRoof', oni: false });
+  add('mWall', box(8, 4.2, 7, cx + 20.5, .8, cz - 6), {});
+  add('mRoof', box(9, .45, 8, cx + 20.5, 5, cz - 6), {});
+  add('wood', box(3.6, 1.2, .3, cx - 9, .8, cz + 12.8), { ph: 'detail', lines: false });
+  tree('pine', cx - 12, cz + 14.5, 1.05); tree('pine', cx + 12.5, cz + 14.8, .9); tree('camphor', cx - 24, cz - 2, 1.05); tree('camphor', cx + 27, cz + 8, .9); tree('maple', cx - 21, cz + 13, .9);
+  lantern(cx - 6.5, cz + 16, .8); lantern(cx + 6.5, cz + 16, .8);
+  end();
+}
+
+/* =====================================================================
+   12. 駐車場 and 東山公園 (c. 50,000 azaleas)
+   ===================================================================== */
+function buildParkParking() {
+  begin({ sketch: [.16, .56], mass: [1.24, 1.62], detail: [2.06, 2.62] });
+  add('asphalt', box(72, .12, 38, 92, 0, 37), { ord: 0 });
+  const rows = [21.5, 33.5, 40.5, 52.5];
+  rows.forEach((zr, ri) => {
+    const dir = ri % 2 ? -1 : 1;
+    for (let x = 58; x <= 126; x += 2.8) { add('paint', box(.14, .04, 5, x, .12, zr + dir * 2.5), { ph: 'detail', lines: false, d: .06 }); stroke([V(x, .14, zr), V(x, .14, zr + dir * 5)], 1); }
+    for (let x = 59.4; x < 126; x += 2.8) if (R() < .22) {
+      const mk = pick(['carW', 'carW', 'carS', 'carK', 'carR', 'carB']); const cz = zr + dir * 2.5;
+      add(mk, box(1.8, .75, 4.2, x, .25, cz), { ph: 'detail', lines: false }); add(mk, box(1.6, .6, 2.2, x, 1, cz + dir * .2), { ph: 'detail', lines: false });
+    }
+  });
+  // hill pavilion and pines
+  const hx = 112, hz = 94, hy = H(hx, hz);
+  frame(hx, hy, hz, .3);
+  for (const [x, z] of [[-1.8, -1.8], [1.8, -1.8], [1.8, 1.8], [-1.8, 1.8]]) add('verm', cyl(.14, 2.7, x, 0, z, 8), { lines: 'axis' });
+  add('stone', box(5.4, .4, 5.4, 0, -.2, 0));
+  roofOn({ W: 5.6, D: 5.6, H: 2.2, sg: 0, a: .6, lift: .4, th: .3 }, 0, 2.7, 0, false, { ridge: false });
+  noFrame();
+  for (const [x, z, s] of [[92, 76, .9], [128, 84, 1], [104, 112, .9], [134, 106, .85], [84, 98, .8]]) tree('pine', x, z, s);
+  for (const [x, z, s] of [[60, 66, 1], [140, 70, 1.1], [70, 118, 1.1]]) tree('camphor', x, z, s);
+  // switchback paths drawn only
+  const pth = []; for (let k = 0; k <= 60; k++) { const t = k / 60, a = t * Math.PI * 3.2; const r = 26 * (1 - t) + 2; const x = hx + Math.cos(a + 1) * r, z = hz + Math.sin(a + 1) * r * .85; pth.push(V(x, H(x, z) + .15, z)); } stroke(pth, 1);
+  end();
+  // azaleas — instanced, per-instance blossom colours
+  const pts = []; const Ra = mulberry(50000);
+  for (let k = 0; k < 9000 && pts.length < (MOBILE ? 380 : 620); k++) { const x = lerp(64, 148, Ra()), z = lerp(64, 128, Ra()); const h = hill(x, z); if (h < 1.1) continue; if (Math.hypot(x - hx, z - hz) < 5) continue; if (distPoly(x, z, pth) < 1.1) continue; pts.push([x, z, h]); }
+  makeInstances('azaleaI', blob(1, 1, .55, 1), pts.map(([x, z]) => ({ x, z, y: H(x, z) + .1, s: .9 + Ra() * 1.1, sy: .9 + Ra() * .4, t: 2.3 + .5 * Ra() })),
+    { spring: ['#e04f93', '#ec8fb8', '#f3ecef', '#d9453d', '#e8697a', '#c9408a'], autumn: ['#4f6b3a', '#5c7442', '#6d6a3a', '#7d5634', '#56713f'] }, Ra);
+}
+
+/* ---------- instanced vegetation ---------- */
+const INSTANCED = [];
+function makeInstances(mk, baseGeo, list, palette, rnd) {
+  let geo = prepGeo(baseGeo);
+  for (const k of Object.keys(geo.attributes)) if (!['position', 'normal', 'uv'].includes(k)) geo.deleteAttribute(k);
+  geo.setAttribute('aAnchor', new THREE.BufferAttribute(new Float32Array(geo.attributes.position.count * 3), 3));
+  const n = list.length, anim = new Float32Array(n * 4), im = new THREE.InstancedMesh(geo, MAT[mk], n), m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
+  const cS = [], cA = [];
+  list.forEach((it, i) => {
+    q.setFromAxisAngle(V(0, 1, 0), rnd() * 6.28); m4.compose(V(it.x, it.y, it.z), q, V(it.s, it.s * (it.sy || 1), it.s)); im.setMatrixAt(i, m4);
+    anim.set([it.t, .14, 1, 0], i * 4);
+    const k = Math.floor(rnd() * 1e6); cS.push(new THREE.Color(it.cs || palette.spring[k % palette.spring.length])); cA.push(new THREE.Color(it.ca || palette.autumn[k % palette.autumn.length]));
+    im.setColorAt(i, cS[i]);
+  });
+  geo.setAttribute('aAnim', new THREE.InstancedBufferAttribute(anim, 4));
+  im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = DEPTH; im.frustumCulled = false; scene.add(im);
+  INSTANCED.push({ im, cS, cA });
+  return im;
+}
+function buildForest() {
+  const Rf = mulberry(4242), pts = [];
+  const target = MOBILE ? 800 : 1500;
+  for (let k = 0; k < 30000 && pts.length < target; k++) {
+    const x = lerp(TX0 + 2, TX1 - 2, Rf()), z = lerp(TZ0 + 2, TZ1 - 2, Rf());
+    const m = mountain(x, z); if (m < 1.6) continue;
+    if (x > -74 && x < -28 && Math.abs(z) < 24) continue;
+    if (x > -64 && x < -20 && z > 16 && z < 26) continue;
+    if (distPoly(x, z, OKU_PTS) < 2.6) continue;
+    if (PADS.some(p => Math.hypot(x - p.x, z - p.z) < p.r + 1)) continue;
+    pts.push({ x, z, h: m });
+  }
+  const broad = [], cedar = [];
+  for (const p of pts) (Rf() < .34 ? cedar : broad).push(p);
+  const tt = h => 2.28 + .56 * clamp(h / 70) + Rf() * .06;
+  makeInstances('forestI', blob(1, 1, .82, 1), broad.map(p => { const s = 1.9 + Rf() * 1.8; return { x: p.x, z: p.z, y: H(p.x, p.z) + s * .55, s, sy: 1, t: tt(p.h) }; }),
+    { spring: ['#48653a', '#52703f', '#3d5835', '#5b7a44', '#6a8748', '#4a683b'], autumn: ['#a8452b', '#c7772e', '#b99a3a', '#4f6a3a', '#8a3f26', '#5a7040'] }, Rf);
+  makeInstances('forestI', new THREE.ConeGeometry(1, 3.2, 7).translate(0, 1.6, 0), cedar.map(p => { const s = 1.25 + Rf() * 1.05; return { x: p.x, z: p.z, y: H(p.x, p.z) + s * .5, s, sy: 1.15, t: tt(p.h) }; }),
+    { spring: ['#2f4a35', '#3a5540', '#34503a'], autumn: ['#2f4a35', '#3a5540', '#4a5a3a'] }, Rf);
+}
+
+/* =====================================================================
+   BUILD
+   ===================================================================== */
+buildConstruction();
+buildTerrain();
+buildRiver();
+buildPlaza();
+buildRomon();
+buildHalls();
+buildHonden();
+buildOkunoin();
+buildGarden();
+buildMonzen();
+buildMuseum();
+buildParkParking();
+buildForest();
+for (const [mk, list] of BUCKETS) {
+  const g = mergeGeometries(list, false);
+  if (!g) { console.warn('merge failed', mk); continue; }
+  const mesh = new THREE.Mesh(g, MAT[mk]);
+  mesh.castShadow = !NO_SHADOW.has(mk); mesh.receiveShadow = true; mesh.customDepthMaterial = DEPTH; mesh.frustumCulled = false;
+  if (mk === 'water' || mk === 'glass') mesh.renderOrder = 2;
+  scene.add(mesh);
+}
+
+/* ---------- the pen: instanced screen-space strokes ---------- */
+const lineU = {
+  uP: U_P, uRes: { value: new THREE.Vector2(1, 1) }, uW: { value: 1.2 }, uLA: { value: [0, 0, 0, 0, 0] },
+  uInk: { value: new THREE.Color('#232624') }, uAcc: { value: new THREE.Color('#b3432a') }, uFog: { value: new THREE.Vector2(300, 1200) }
+};
+const lineGeo = new THREE.InstancedBufferGeometry();
+lineGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, -1, 0, 1, -1, 0, 1, 1, 0, 0, 1, 0], 3));
+lineGeo.setIndex([0, 1, 2, 0, 2, 3]);
+lineGeo.setAttribute('iA', new THREE.InstancedBufferAttribute(new Float32Array(LA), 3));
+lineGeo.setAttribute('iB', new THREE.InstancedBufferAttribute(new Float32Array(LB), 3));
+lineGeo.setAttribute('iT', new THREE.InstancedBufferAttribute(new Float32Array(LT), 4));
+lineGeo.instanceCount = LT.length / 4;
+const lineMat = new THREE.ShaderMaterial({
+  uniforms: lineU, transparent: true, depthWrite: false, depthTest: true,
+  vertexShader: `
+    uniform float uP; uniform vec2 uRes; uniform float uW; uniform float uLA[5]; uniform vec2 uFog;
+    attribute vec3 iA; attribute vec3 iB; attribute vec4 iT;
+    varying float vAlpha; varying float vSide; varying float vHalf; varying float vAcc;
+    void main(){
+      vAlpha = 0.0; vSide = 0.0; vHalf = 1.0; vAcc = step(3.5, iT.z);
+      float t = clamp((uP - iT.x) / max(iT.y, 1e-4), 0.0, 1.0);
+      int L = int(iT.z + 0.5);
+      float la = uLA[L];
+      if (t <= 0.0 || la < 0.003) { gl_Position = vec4(0.0, 0.0, -2.0, 1.0); return; }
+      t = 1.0 - (1.0 - t) * (1.0 - t);
+      vec4 va = modelViewMatrix * vec4(iA, 1.0);
+      vec4 vb = modelViewMatrix * vec4(mix(iA, iB, t), 1.0);
+      float nz = -0.5 * projectionMatrix[3][2] / projectionMatrix[2][2];
+      if (va.z > nz && vb.z > nz) { gl_Position = vec4(0.0, 0.0, -2.0, 1.0); return; }
+      if (va.z > nz) va = mix(va, vb, (va.z - nz) / (va.z - vb.z));
+      else if (vb.z > nz) vb = mix(vb, va, (vb.z - nz) / (vb.z - va.z));
+      va.xyz *= 0.999; vb.xyz *= 0.999;
+      vec4 ca = projectionMatrix * va; vec4 cb = projectionMatrix * vb;
+      vec2 sa = ca.xy / ca.w * uRes * 0.5; vec2 sb = cb.xy / cb.w * uRes * 0.5;
+      vec2 d = sb - sa; float len = length(d);
+      vec2 dir = len > 1e-5 ? d / len : vec2(1.0, 0.0);
+      vec2 nrm = vec2(-dir.y, dir.x);
+      float hw = uW * (0.72 + 0.56 * iT.w) * 0.5;
+      float ext = hw + 1.0;
+      vec4 c = mix(ca, cb, position.x);
+      vec2 off = nrm * position.y * ext + dir * (position.x * 2.0 - 1.0) * hw;
+      c.xy += off / (uRes * 0.5) * c.w;
+      gl_Position = c;
+      vSide = position.y * ext; vHalf = hw;
+      float dist = -mix(va.z, vb.z, position.x);
+      vAlpha = la * (0.55 + 0.45 * iT.w) * (1.0 - 0.88 * smoothstep(uFog.x, uFog.y, dist));
+    }`,
+  fragmentShader: `
+    uniform vec3 uInk; uniform vec3 uAcc;
+    varying float vAlpha; varying float vSide; varying float vHalf; varying float vAcc;
+    void main(){
+      float aa = 1.0 - smoothstep(vHalf - 0.5, vHalf + 0.9, abs(vSide));
+      float a = vAlpha * aa;
+      if (a < 0.003) discard;
+      gl_FragColor = vec4(mix(uInk, uAcc, vAcc), a);
+      #include <colorspace_fragment>
+    }`
+});
+const lines = new THREE.Mesh(lineGeo, lineMat); lines.frustumCulled = false; lines.renderOrder = 10; scene.add(lines);
+
+/* ---------- sky dome ---------- */
+const skyU = { uTop: { value: new THREE.Color() }, uHor: { value: new THREE.Color() }, uBot: { value: new THREE.Color() } };
+const sky = new THREE.Mesh(new THREE.SphereGeometry(3000, 32, 16), new THREE.ShaderMaterial({
+  uniforms: skyU, side: THREE.BackSide, depthWrite: false, fog: false,
+  vertexShader: 'varying vec3 vW; void main(){ vW = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: 'uniform vec3 uTop, uHor, uBot; varying vec3 vW; void main(){ float h = vW.y; vec3 c = h > 0.0 ? mix(uHor, uTop, pow(smoothstep(0.0, 0.62, h), 0.8)) : mix(uHor, uBot, smoothstep(0.0, -0.2, h)); gl_FragColor = vec4(c, 1.0);\n#include <colorspace_fragment>\n}'
+}));
+sky.renderOrder = -1; sky.frustumCulled = false; scene.add(sky);
+
+/* ---------- lights ---------- */
+const hemi = new THREE.HemisphereLight(0xffffff, 0xd2cdc2, 1.5); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+sun.position.set(130, 210, 125); sun.target.position.set(-10, 0, 0); scene.add(sun, sun.target);
+sun.castShadow = true; sun.shadow.mapSize.set(MOBILE ? 2048 : 4096, MOBILE ? 2048 : 4096);
+Object.assign(sun.shadow.camera, { left: -215, right: 215, top: 200, bottom: -200, near: 20, far: 700 });
+sun.shadow.bias = -.0004; sun.shadow.normalBias = .12;
+const nightLights = [[-38, 7, 0, 1500], [-41, 24, 0, 900], [22, 7, 0, 700], [-12, 6, 16, 420], [96, 6, 0, 650], [6, 5, -30, 300], [84, 4, -24, 380]].map(([x, y, z, i]) => { const l = new THREE.PointLight(0xffb266, 0, 0, 2); l.position.set(x, y, z); l.userData.base = i; scene.add(l); return l; });
+
+/* =====================================================================
+   STATE, CAMERA DIRECTION, UI
+   ===================================================================== */
+const state = { p: REDUCED ? 4 : 0, playing: !REDUCED, seek: null, director: true, tween: null, drift: 0, labels: true, season: 'spring', theme: 'light', darkF: 0, site: null, view: 'orbit' };
+const cur = { t: V(-4, 4, 0), d: 440, az: 40, el: 44, fov: 32 };
+const DIR = [
+  { p: 0.0, t: [-4, 4, 0], d: 440, az: 40, el: 44 },
+  { p: 0.95, t: [-22, 8, 0], d: 280, az: 34, el: 36 },
+  { p: 1.9, t: [-38, 12, 0], d: 158, az: 27, el: 26 },
+  { p: 2.75, t: [-45, 16, 2], d: 94, az: 19, el: 15 },
+  { p: 3.35, t: [-44, 17, 0], d: 104, az: 7, el: 11 },
+  { p: 4.0, t: [6, 5, -16], d: 290, az: 36, el: 32 },
+];
+const VIEWS = {
+  elev: { t: [-24, 17, 0], d: 600, az: .5, el: 4, fov: 15 },
+  plan: { t: [-6, 0, -2], d: 1000, az: 90, el: 89.3, fov: 20 },
+};
+const SITES = {
+  overview: { cam: { t: [-10, 4, -2], d: 330, az: 40, el: 40 }, name: 'Yūtoku Inari Shrine', k: 'Overview · 全景', h: '祐徳稲荷神社<em>Yūtoku Inari</em>',
+    p: '貞享4年（1687）、鹿島藩主・鍋島直朝の夫人、萬子媛（祐徳院）が創建。伏見・笠間と並ぶ日本三大稲荷のひとつで、朱塗りの社殿群は「鎮西日光」と称される。',
+    dl: [['創建', '1687年'], ['参拝者', '年間 約300万人'], ['所在', '佐賀県鹿島市古枝'], ['配置', '浜川の西に社殿、東に門前町']] },
+  honden: { cam: { t: [-47, 17, 0], d: 78, az: 22, el: 13 }, name: 'Gohonden · 御本殿', k: 'Main Hall · 御本殿', h: '御本殿<em>Gohonden</em>',
+    p: '石壁山の断崖に懸造（舞台造）で建つ総漆塗りの社殿。舞台の高さは約18mで、京都・清水寺を上回る。1949年に焼失し、1957年に伊勢神宮造営局長・角南隆の設計で再建された三代目。',
+    dl: [['舞台高', '約 18 m'], ['石段', '117段（有料エレベーター併設）'], ['再建', '1957年'], ['奥の院', '本殿から約300m、鳥居の続く山道']] },
+  garden: { cam: { t: [1, 0, -86], d: 80, az: 58, el: 40 }, name: 'Japanese Garden · 日本庭園', k: 'Garden · 日本庭園', h: '日本庭園<em>Japanese Garden</em>',
+    p: '楼門の北、参集殿の奥にひらく庭。良質な苔と、力強い石で護岸した流れが特徴で、牡丹・花菖蒲・紫陽花・紅葉が季節を映す。境内の神池には鶴島と太鼓橋が架かる。',
+    dl: [['作庭', '2005年'], ['面積', '約400坪'], ['見どころ', '紫陽花・紅葉・苔']] },
+  museum: { cam: { t: [86, 3, -34], d: 74, az: 52, el: 28 }, name: 'Yūtoku Museum · 祐徳博物館', k: 'Museum · 祐徳博物館', h: '祐徳博物館<em>Yūtoku Museum</em>',
+    p: '1955年設立。1957年の佐賀産業観光博覧会の美術館を神社が引き継ぎ、1971年に鉄筋平屋へ全面改築。鹿島藩歴代藩主の鎧兜、萬子媛の遺品、鹿島錦、刀剣、陶磁器を収める。',
+    dl: [['設立', '1955年'], ['構造', '鉄筋コンクリート造 平屋'], ['建坪', '633㎡（1974年 考古収蔵庫増築）'], ['外観', '本模型では推定']] },
+};
+const SRC = '出典：<a href="https://www.yutokusan.jp/" target="_blank" rel="noopener">祐徳稲荷神社</a>、<a href="https://www.city.saga-kashima.lg.jp/main/323.html" target="_blank" rel="noopener">鹿島市</a>、<a href="https://www2.kokugakuin.ac.jp/museum/jinja/40/40_yuutoku.html" target="_blank" rel="noopener">國學院大學 神社博物館事典</a>。形状は公開資料をもとにした概念的な再構成で、実測図ではありません。';
+const LABELS = [
+  { k: 'A', jp: '御本殿', en: 'Gohonden', pos: [-48, 33, 0], t: .92, site: 'honden' },
+  { k: 'B', jp: '楼門', en: 'Rōmon gate', pos: [16, 17, 0], t: .66 },
+  { k: 'C', jp: '神楽殿', en: 'Kagura-den', pos: [-12, 10, 20.5], t: .6 },
+  { k: 'D', jp: '神池', en: 'Sacred pond', pos: [-4, 3, -27], t: .56 },
+  { k: 'E', jp: '日本庭園', en: 'Garden', pos: [0, 4, -86], t: .68, site: 'garden' },
+  { k: 'F', jp: '祐徳博物館', en: 'Museum', pos: [84, 10.5, -38], t: .5, site: 'museum' },
+  { k: 'G', jp: '門前商店街', en: 'Approach', pos: [118, 9.5, 0], t: .5 },
+  { k: 'H', jp: '東山公園', en: 'Azalea hill', pos: [112, H(112, 94) + 5, 94], t: .52 },
+  { k: 'I', jp: '奥の院', en: 'Okunoin', pos: [OKU[OKU.length - 1].x, H(OKU[OKU.length - 1].x, OKU[OKU.length - 1].z) + 6, OKU[OKU.length - 1].z], t: .95 },
+  { k: 'J', jp: '浜川・神橋', en: 'River & bridge', pos: [40, 4.5, 0], t: .42 },
+];
+const STAGES = [
+  { n: '01', jp: '線を引く', en: 'Axis · contour · outline' },
+  { n: '02', jp: 'かたちが立ち上がる', en: 'Terrain · stilts · volume' },
+  { n: '03', jp: '細部が宿る', en: 'Brackets · torii · moss' },
+  { n: '04', jp: '朱が灯る', en: 'Vermilion · copper · water' },
+];
+
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const ui = { play: $('#play'), scrub: $('#scrub'), stages: $$('.stage'), caption: $('#caption'), capNum: $('#capNum'), capJp: $('#capJp'), capEn: $('#capEn'), siteName: $('#siteName'), card: $('#card'), labels: $('#labels') };
+
+// labels
+for (const L of LABELS) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'tag';
+  b.innerHTML = `<b></b><span><i>${L.k}</i>${L.jp}<em>${L.en}</em></span>`;
+  b.setAttribute('aria-label', `${L.jp}（${L.en}）へ移動`);
+  b.addEventListener('click', () => { if (L.site) selectSite(L.site); else flyTo({ t: L.pos.map((v, i) => i === 1 ? Math.max(0, v - 6) : v), d: 70, az: cur.az, el: 24 }); });
+  ui.labels.appendChild(b); L.el = b; L.v = V(...L.pos);
+}
+
+function syncPlay() {
+  const end = state.p >= 3.999 && !state.playing;
+  $('#icoPause').toggleAttribute('hidden', !state.playing); $('#icoPlay').toggleAttribute('hidden', state.playing || end); $('#icoReplay').toggleAttribute('hidden', state.playing || !end);
+  ui.play.setAttribute('aria-label', state.playing ? '一時停止' : end ? '最初から再生' : '再生');
+}
+function play() { if (state.p >= 3.999) { state.p = 0; state.director = true; state.drift = 0; setView('orbit'); } state.seek = null; state.playing = true; syncPlay(); }
+function pause() { state.playing = false; syncPlay(); }
+ui.play.addEventListener('click', () => state.playing ? pause() : play());
+ui.stages.forEach(b => b.addEventListener('click', () => seekTo(+b.dataset.stage + 1)));
+function seekTo(target) { pause(); state.seek = { from: state.p, to: target, t: 0, dur: clamp(Math.abs(target - state.p) * .9, .4, 2.4) }; }
+ui.scrub.addEventListener('input', () => { pause(); state.seek = null; state.p = +ui.scrub.value; });
+
+function setView(v) {
+  state.view = v;
+  $$('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+}
+$$('[data-view]').forEach(b => b.addEventListener('click', () => {
+  const v = b.dataset.view; setView(v); selectSite(null, true);
+  if (v === 'orbit') { state.director = true; state.tween = null; }
+  else flyTo(VIEWS[v], v);
+}));
+$('#labelsBtn').addEventListener('click', e => { state.labels = !state.labels; e.currentTarget.setAttribute('aria-pressed', String(state.labels)); });
+$('#seasonBtn').addEventListener('click', e => {
+  state.season = state.season === 'spring' ? 'autumn' : 'spring';
+  e.currentTarget.textContent = state.season === 'spring' ? '春' : '秋';
+  e.currentTarget.setAttribute('aria-label', state.season === 'spring' ? '季節：春（クリックで秋）' : '季節：秋（クリックで春）');
+  for (const { im, cS, cA } of INSTANCED) { const arr = state.season === 'spring' ? cS : cA; arr.forEach((c, i) => im.setColorAt(i, c)); im.instanceColor.needsUpdate = true; }
+  lookDirty = true;
+});
+function readTheme() { const a = document.documentElement.getAttribute('data-theme'); if (a === 'dark' || a === 'light') return a; return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+function applyTheme() {
+  state.theme = readTheme(); const d = state.theme === 'dark';
+  $('#icoSun').toggleAttribute('hidden', d); $('#icoMoon').toggleAttribute('hidden', !d);
+  const cs = getComputedStyle(document.documentElement);
+  PAL.paper.set(cs.getPropertyValue('--paper').trim() || (d ? '#151716' : '#d9d8d2'));
+  PAL.ink.set(cs.getPropertyValue('--ink').trim() || (d ? '#ebe7de' : '#232624'));
+  PAL.acc.set(cs.getPropertyValue('--accent').trim() || '#b3432a');
+  lookDirty = true;
+}
+$('#themeBtn').addEventListener('click', () => { document.documentElement.setAttribute('data-theme', state.theme === 'dark' ? 'light' : 'dark'); applyTheme(); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+$$('[data-site]').forEach(b => b.addEventListener('click', () => selectSite(b.dataset.site)));
+$('#cardClose').addEventListener('click', () => selectSite(null, true));
+function selectSite(key, keepCam) {
+  state.site = key;
+  $$('[data-site]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.site === key)));
+  if (!key) { ui.card.hidden = true; ui.siteName.textContent = 'Yūtoku Inari Shrine'; return; }
+  const s = SITES[key];
+  ui.siteName.textContent = s.name;
+  $('#cardK').textContent = s.k; $('#cardH').innerHTML = s.h; $('#cardP').textContent = s.p;
+  $('#cardDl').innerHTML = s.dl.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
+  $('#cardSrc').innerHTML = SRC; ui.card.hidden = false;
+  if (!keepCam) { setView(null); flyTo(s.cam); }
+}
+
+// camera
+const wrapDeg = a => ((a % 360) + 540) % 360 - 180;
+function readCam() { const off = camera.position.clone().sub(controls.target); const d = off.length(); return { t: controls.target.clone(), d, az: Math.atan2(off.z, off.x) / DEG, el: Math.asin(clamp(off.y / d, -1, 1)) / DEG, fov: cur.fov }; }
+function flyTo(c) {
+  state.director = false;
+  const from = readCam(); const to = { t: V(...(c.t.isVector3 ? c.t.toArray() : c.t)), d: c.d, az: c.az, el: c.el, fov: c.fov ?? 32 };
+  to.az = from.az + wrapDeg(to.az - from.az);
+  state.tween = { from, to, t: 0, dur: 1.8 };
+}
+controls.addEventListener('start', () => {
+  if (state.director || state.tween) { const c = readCam(); Object.assign(cur, c); }
+  state.director = false; state.tween = null; if (state.view === 'orbit') setView(null);
+});
+function aspectFov(f) { const a = camera.aspect; return a < 1.35 ? Math.min(64, f * Math.pow(1.35 / a, .72)) : f; }
+function applyCam(c) {
+  const ce = Math.cos(c.el * DEG);
+  camera.position.set(c.t.x + c.d * ce * Math.cos(c.az * DEG), c.t.y + c.d * Math.sin(c.el * DEG), c.t.z + c.d * ce * Math.sin(c.az * DEG));
+  controls.target.copy(c.t); camera.fov = aspectFov(c.fov ?? 32); camera.updateProjectionMatrix(); camera.lookAt(c.t);
+}
+function directorAt(p) {
+  let i = 0; while (i < DIR.length - 2 && p > DIR[i + 1].p) i++;
+  const A = DIR[i], B = DIR[i + 1], t = easeIO(clamp((p - A.p) / (B.p - A.p)));
+  return { t: V(lerp(A.t[0], B.t[0], t), lerp(A.t[1], B.t[1], t), lerp(A.t[2], B.t[2], t)), d: lerp(A.d, B.d, t), az: lerp(A.az, B.az, t) + state.drift, el: lerp(A.el, B.el, t), fov: 32 };
+}
+Object.assign(cur, directorAt(state.p)); applyCam(cur);
+
+// keyboard
+addEventListener('keydown', e => {
+  if (e.target.closest && e.target.closest('button, input, a')) return;
+  if (e.code === 'Space') { e.preventDefault(); state.playing ? pause() : play(); }
+  else if (e.key >= '1' && e.key <= '4') seekTo(+e.key);
+  else if (e.key === 'ArrowRight') { pause(); state.p = Math.min(4, state.p + .05); }
+  else if (e.key === 'ArrowLeft') { pause(); state.p = Math.max(0, state.p - .05); }
+});
+
+/* ---------- look: palette per stage and theme ---------- */
+const PAL = { paper: new THREE.Color('#d9d8d2'), ink: new THREE.Color('#232624'), acc: new THREE.Color('#b3432a') };
+const C = h => new THREE.Color(h);
+const SKY = { dayTop: C('#9ebbd6'), dayHor: C('#ece4d6'), dayBot: C('#d3cab8'), nTop: C('#060a16'), nHor: C('#1b2131'), nBot: C('#0d0e11') };
+const tmp = { a: new THREE.Color(), b: new THREE.Color(), c: new THREE.Color() };
+let lookDirty = true, lastP = -1, lastDark = -1;
+function layerAlpha(p) {
+  return [
+    .36 * (1 - sstep(1.55, 2.25, p)),
+    lerp(lerp(.85, .44, sstep(1.25, 1.95, p)), 0, sstep(2.3, 3.35, p)) + .0,
+    lerp(.4, .17, sstep(1.2, 2.1, p)) * (1 - sstep(2.4, 3.5, p)),
+    .38 * (1 - sstep(3.05, 3.55, p)),
+    .9 * (1 - sstep(1.9, 2.6, p)),
+  ];
+}
+function updateLook() {
+  const p = state.p, dk = state.darkF;
+  if (!lookDirty && Math.abs(p - lastP) < 1e-5 && Math.abs(dk - lastDark) < 1e-4) return false;
+  lookDirty = false; lastP = p; lastDark = dk;
+  const real = sstep(3.0, 3.8, p), night = real * dk;
+  for (const k in MAT) {
+    const m = MAT[k], ud = m.userData;
+    const r = sstep(3.0 + ud.delay, 3.0 + ud.delay + .48, p);
+    const target = state.season === 'autumn' && ud.autumn ? ud.autumn : ud.real;
+    m.color.copy(ud.clay).lerp(target, r);
+    ud.uReal.value = r;
+    if (ud.emissive) { m.emissive.copy(ud.emissive); m.emissiveIntensity = r * (.15 + 2.6 * dk) * ud.glow; }
+  }
+  MAT.water.opacity = lerp(.72, .9, real); MAT.glass.opacity = lerp(.55, .38, real);
+  // sky
+  tmp.a.copy(SKY.dayTop).lerp(SKY.nTop, dk); tmp.b.copy(SKY.dayHor).lerp(SKY.nHor, dk); tmp.c.copy(SKY.dayBot).lerp(SKY.nBot, dk);
+  skyU.uTop.value.copy(PAL.paper).lerp(tmp.a, real); skyU.uHor.value.copy(PAL.paper).lerp(tmp.b, real); skyU.uBot.value.copy(PAL.paper).lerp(tmp.c, real);
+  scene.fog.color.copy(skyU.uHor.value);
+  // light
+  hemi.intensity = lerp(lerp(1.55, .6, dk), lerp(1.15, .16, dk), real);
+  hemi.color.copy(C('#ffffff')).lerp(C(dk ? '#40517a' : '#d6e4ff'), real);
+  hemi.groundColor.copy(C(dk ? '#6d6a64' : '#d2cdc2')).lerp(C(dk ? '#141414' : '#b8a888'), real);
+  sun.intensity = lerp(lerp(2.2, 1.3, dk), lerp(3.1, .42, dk), real);
+  sun.color.copy(C('#ffffff')).lerp(C(dk ? '#9db3ff' : '#ffe6c8'), real);
+  sun.shadow.intensity = lerp(.42, .85, real);
+  scene.environmentIntensity = lerp(lerp(.55, .22, dk), lerp(.42, .05, dk), real);
+  renderer.toneMappingExposure = lerp(1, 1.08, night);
+  for (const l of nightLights) l.intensity = l.userData.base * sstep(3.3, 3.9, p) * dk;
+  // pen
+  const la = layerAlpha(p); const inkBoost = dk ? 1.1 : 1;
+  lineU.uLA.value = la.map(v => Math.min(1, v * inkBoost));
+  lineU.uInk.value.copy(PAL.ink); lineU.uAcc.value.copy(PAL.acc);
+  return true;
+}
+
+/* ---------- resize ---------- */
+function resize() {
+  const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+  const pr = renderer.getPixelRatio(); lineU.uRes.value.set(w * pr, h * pr); lineU.uW.value = (MOBILE ? 1.15 : 1.2) * pr;
+}
+addEventListener('resize', resize); resize(); applyTheme();
+
+/* ---------- UI sync ---------- */
+let lastStage = -1;
+function syncUI() {
+  const p = state.p; const st = p <= 0 ? 0 : Math.min(3, Math.ceil(p - 1e-6) - 1);
+  if (st !== lastStage) {
+    lastStage = st; ui.stages.forEach((b, i) => { b.classList.toggle('on', i === st); b.setAttribute('aria-current', i === st ? 'step' : 'false'); });
+    ui.caption.classList.add('swap');
+    setTimeout(() => { const s = STAGES[st]; ui.capNum.textContent = s.n; ui.capJp.textContent = s.jp; ui.capEn.textContent = s.en; ui.caption.classList.remove('swap'); }, REDUCED ? 0 : 220);
+  }
+  if (document.activeElement !== ui.scrub) ui.scrub.value = p.toFixed(3);
+  ui.scrub.style.setProperty('--fill', (p / 4 * 100).toFixed(2) + '%');
+}
+const pv = V(), fwd = V(), needle = document.getElementById('needle');
+function syncCompass() { camera.getWorldDirection(fwd); if (Math.hypot(fwd.x, fwd.z) < 1e-4) { const u = V(0, 1, 0).applyQuaternion(camera.quaternion); fwd.set(u.x, 0, u.z); } needle.style.transform = `rotate(${(Math.atan2(-fwd.x, -fwd.z) / DEG).toFixed(1)}deg)`; }
+function syncLabels() {
+  const w = innerWidth, h = innerHeight;
+  for (const L of LABELS) {
+    const show = state.labels && state.p >= L.t;
+    pv.copy(L.v).project(camera);
+    const vis = show && pv.z < 1 && Math.abs(pv.x) < .86 && pv.y > -.62 && pv.y < .8;
+    L.el.style.opacity = vis ? '1' : '0'; L.el.style.pointerEvents = vis ? 'auto' : 'none';
+    L.el.tabIndex = vis ? 0 : -1;
+    if (vis) L.el.style.transform = `translate(${((pv.x + 1) / 2 * w).toFixed(1)}px, ${((1 - pv.y) / 2 * h).toFixed(1)}px)`;
+  }
+}
+
+/* ---------- loop ---------- */
+let last = performance.now();
+function loop(now) {
+  const dt = clamp((now - last) / 1000, 0, .05); last = now;
+  if (state.seek) { const s = state.seek; s.t += dt; const k = easeIO(clamp(s.t / s.dur)); state.p = lerp(s.from, s.to, k); if (s.t >= s.dur) state.seek = null; }
+  else if (state.playing) { state.p = Math.min(4, state.p + dt / 6); if (state.p >= 4) { state.playing = false; syncPlay(); } }
+  U_P.value = state.p;
+  const tgtDark = state.theme === 'dark' ? 1 : 0; state.darkF += (tgtDark - state.darkF) * Math.min(1, dt * (REDUCED ? 60 : 3.5)); if (Math.abs(tgtDark - state.darkF) < 1e-3) state.darkF = tgtDark;
+  // camera
+  if (state.tween) {
+    const tw = state.tween; tw.t += dt; const k = easeIO(clamp(tw.t / tw.dur));
+    cur.t.lerpVectors(tw.from.t, tw.to.t, k); cur.d = lerp(tw.from.d, tw.to.d, k); cur.az = lerp(tw.from.az, tw.to.az, k); cur.el = lerp(tw.from.el, tw.to.el, k); cur.fov = lerp(tw.from.fov, tw.to.fov, k);
+    applyCam(cur); if (tw.t >= tw.dur) state.tween = null;
+  } else if (state.director) {
+    if (!REDUCED) state.drift += dt * .8;
+    const D = directorAt(state.p), k = 1 - Math.exp(-dt * 2.4);
+    cur.t.lerp(D.t, k); cur.d = lerp(cur.d, D.d, k); cur.az = lerp(cur.az, cur.az + wrapDeg(D.az - cur.az), k); cur.el = lerp(cur.el, D.el, k); cur.fov = lerp(cur.fov, 32, k);
+    applyCam(cur);
+  } else controls.update();
+  sky.position.copy(camera.position);
+  const dist = camera.position.distanceTo(controls.target);
+  scene.fog.near = dist * 1.05; scene.fog.far = dist * 3.8; lineU.uFog.value.set(dist * 1.1, dist * 3.6);
+  const changed = updateLook();
+  if (changed) renderer.shadowMap.needsUpdate = true;
+  syncUI(); syncLabels(); syncCompass();
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+syncPlay();
+renderer.shadowMap.needsUpdate = true;
+requestAnimationFrame(loop);
+window.__yutoku = { state, setP: p => { state.p = p; state.playing = false; state.seek = null; syncPlay(); }, snap: () => { Object.assign(cur, directorAt(state.p)); applyCam(cur); }, lines: LT.length / 4 };
+</script>
+</body>
+</html>
