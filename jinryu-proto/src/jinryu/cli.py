@@ -160,13 +160,21 @@ def score():
 
 
 @app.command("export-html")
-def export_html(fragment: bool = False, out: str | None = None):
-    """サーバ不要の単一 HTML（dist/jinryu-demo.html）を書き出す。--fragment は Artifact 用（head/body 無し）."""
+def export_html(fragment: bool = False, out: str | None = None, areas: str | None = None):
+    """サーバ不要の単一 HTML（dist/jinryu-demo.html）を書き出す。--fragment は Artifact 用（head/body 無し）.
+
+    --areas fukuoka,okayama で複数エリアを 1 ファイルにまとめる（画面上部のトグルで切り替え）。
+    先頭のエリアが最初に開く。
+    """
     from pathlib import Path
 
-    from jinryu.export_html import render
+    from jinryu.export_html import render, render_multi
 
-    render(fragment=fragment, out=Path(out) if out else None)
+    if areas:
+        keys = [k.strip() for k in areas.split(",") if k.strip()]
+        render_multi(keys, Path(out) if out else Path("dist/jinryu-demo.html"), fragment=fragment)
+    else:
+        render(fragment=fragment, out=Path(out) if out else None)
 
 
 if __name__ == "__main__":

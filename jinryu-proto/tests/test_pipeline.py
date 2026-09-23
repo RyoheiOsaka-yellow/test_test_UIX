@@ -199,3 +199,35 @@ def test_write_back_chosen_keeps_comments_and_adds_missing_keys(tmp_path, monkey
     assert od["access_weight"] == 100
     assert od["calibrated_scale_k"] == 0.4383
     assert od["zone_cell_m"] == 150
+
+
+def test_write_html_combines_areas_with_toggle(tmp_path):
+    """複数エリアの部品を 1 つの HTML にまとめ、差し込み漏れが無いこと."""
+    import base64
+    import gzip
+    import json
+    import re
+
+    from jinryu.export_html import write_html
+
+    def bundle(key, label):
+        raw = json.dumps({"area": {"name": label}}).encode()
+        return {
+            "key": key,
+            "label": label,
+            "title": f"人流ポテンシャル {label}",
+            "scope": f"{label}全域",
+            "data_gz": base64.b64encode(gzip.compress(raw)).decode(),
+            "basemap": {"url": "data:image/jpeg;base64,AA==", "coords": [[0, 0]] * 4},
+            "prefmap": {"url": "data:image/jpeg;base64,AA==", "coords": [[0, 0]] * 4},
+            "stats": {"links": 1, "buildings": 1},
+        }
+
+    out = write_html([bundle("fukuoka", "福岡"), bundle("okayama", "岡山")], tmp_path / "x.html")
+    html = out.read_text(encoding="utf-8")
+    assert "<title>人流ポテンシャル 福岡・岡山</title>" in html
+    assert not re.search(r"__[A-Z_]+__", html.split("<script>", 1)[0])  # 見出し側に差し込み漏れが無い
+    assert "/*__AREAS__*/" not in html and "__TITLE__" not in html and "__DESCRIPTION__" not in html
+    areas = json.loads(re.search(r"const AREAS = (\[.*?\]);\n", html, re.S).group(1))
+    assert [a["key"] for a in areas] == ["fukuoka", "okayama"]
+    assert json.loads(gzip.decompress(base64.b64decode(areas[1]["data_gz"])))["area"]["name"] == "岡山"

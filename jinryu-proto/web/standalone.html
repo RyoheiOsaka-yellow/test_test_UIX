@@ -1,5 +1,5 @@
-<title>人流ポテンシャル 福岡</title>
-<meta name="description" content="区画に何が建てられるか・どの規制がかかるか・採算に合うかを、人流推定と法規・地価で初期判断する単体HTMLプロトタイプ（福岡県全域＋福岡市中心部）" />
+<title>__TITLE__</title>
+<meta name="description" content="__DESCRIPTION__" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" />
 <style>
 /*__MAPLIBRE_CSS__*/
@@ -11,7 +11,7 @@
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#0e141b; } }
 :root[data-theme="dark"] { --bg:#0e141b; }
 html, body { height:100%; margin:0; }
-body { background:var(--bg); color:var(--fg); font-family:var(--font); font-size:13px; line-height:1.5; overflow:hidden; }
+body { background:var(--bg); color:var(--fg); font-family:var(--font); font-size:13px; line-height:1.5; overflow:hidden; display:flex; flex-direction:column; }
 * { box-sizing:border-box; }
 #topbar { display:flex; align-items:center; gap:14px; padding:7px 16px; background:var(--panel); border-bottom:1px solid var(--line); flex-wrap:wrap; }
 .brand { font-weight:700; font-size:15px; letter-spacing:.02em; white-space:nowrap; } .brand small { color:var(--muted); font-weight:400; font-size:11px; margin-left:8px; }
@@ -22,8 +22,16 @@ button { font-family:inherit; cursor:pointer; }
 .btn { background:var(--accent); color:var(--accent-ink); border:none; border-radius:4px; padding:4px 10px; font-weight:700; font-size:12px; }
 .btn.ghost { background:transparent; color:var(--muted); border:1px solid var(--line); font-weight:400; }
 .btn.on { background:var(--blue); color:#fff; }
+.seg { display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:var(--panel2); flex:none; }
+.seg[hidden] { display:none; }
+.seg button { background:transparent; border:none; color:var(--muted); padding:4px 14px; font-size:12px; font-weight:500; }
+.seg button + button { border-left:1px solid var(--line); }
+.seg button:hover:not(.on) { color:var(--fg); }
+.seg button.on { background:var(--accent); color:var(--accent-ink); font-weight:700; }
+#areaLoading { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(14,20,27,.72); color:var(--fg); font-size:14px; z-index:50; }
+#areaLoading[hidden] { display:none; }
 button:focus-visible, select:focus-visible, input:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
-#main { display:flex; height:calc(100% - 46px); }
+#main { display:flex; flex:1 1 auto; min-height:0; }
 #map { flex:1; min-width:0; position:relative; }
 #mapctl { position:absolute; right:12px; top:12px; display:flex; flex-direction:column; gap:6px; z-index:2; }
 #mapctl .btn { box-shadow:0 1px 4px rgba(0,0,0,.5); } #mapctl .btn.ghost { background:var(--panel); color:var(--fg); }
@@ -74,6 +82,7 @@ details summary { cursor:pointer; color:var(--muted); font-size:12px; }
 <!--BODY-->
 <header id="topbar">
   <div class="brand">人流ポテンシャル評価 <small id="brandSub">v0.3 スタンドアロン</small></div>
+  <div id="areaSw" class="seg" role="group" aria-label="エリア" hidden></div>
   <div class="ctl">
     <label>モード <select id="mode"><option value="realestate">不動産（事業性）</option><option value="gov">自治体（施策比較）</option></select></label>
     <label>期間 <select id="period"></select></label>
@@ -163,13 +172,14 @@ details summary { cursor:pointer; color:var(--muted); font-size:12px; }
 <!-- maplibre-gl 4.7.1 / deck.gl 9.0.38（MIT）を同梱: CDN が届かない環境でも動作させる -->
 <script>/*__VENDOR_MAPLIBRE__*/</script>
 <script>/*__VENDOR_DECK__*/</script>
+<div id="areaLoading">読み込み中…</div>
 <script>
-const DATA = /*__DATA__*/;
-const BASEMAP = { url: "__BASEMAP_URI__", coords: /*__BASEMAP_COORDS__*/ };
-const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
+const AREAS = /*__AREAS__*/;
 </script>
 <script>
-(function () {
+// 1 エリア分の画面を組み立てる。destroy() で地図と window へのリスナを片付ける
+function boot(DATA, BASEMAP, PREFMAP, keep) {
+  const ac = new AbortController();
   const { MapboxOverlay, PolygonLayer, PathLayer, ScatterplotLayer, TextLayer } = deck;
   const $ = (id) => document.getElementById(id);
   const P = DATA.area.periods;
@@ -262,8 +272,8 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
   const rot = { on: true, dragging: false, x: 0, y: 0 };
   const cv = map.getCanvasContainer();
   cv.addEventListener("mousedown", (e) => { if (!rot.on || e.button !== 0 || e.shiftKey) return; rot.dragging = true; rot.x = e.clientX; rot.y = e.clientY; map.dragPan.disable(); }, true);
-  window.addEventListener("mousemove", (e) => { if (!rot.dragging) return; const dx = e.clientX - rot.x, dy = e.clientY - rot.y; rot.x = e.clientX; rot.y = e.clientY; map.setBearing(map.getBearing() - dx * 0.35); map.setPitch(Math.max(0, Math.min(80, map.getPitch() - dy * 0.35))); });
-  window.addEventListener("mouseup", () => { if (!rot.dragging) return; rot.dragging = false; map.dragPan.enable(); });
+  window.addEventListener("mousemove", (e) => { if (!rot.dragging) return; const dx = e.clientX - rot.x, dy = e.clientY - rot.y; rot.x = e.clientX; rot.y = e.clientY; map.setBearing(map.getBearing() - dx * 0.35); map.setPitch(Math.max(0, Math.min(80, map.getPitch() - dy * 0.35))); }, { signal: ac.signal });
+  window.addEventListener("mouseup", () => { if (!rot.dragging) return; rot.dragging = false; map.dragPan.enable(); }, { signal: ac.signal });
   function setRotate(on) { rot.on = on; $("btnRotate").classList.toggle("on", on); }
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-left");
   map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: DATA.area.attribution || "地理院タイル | © OpenStreetMap contributors" }));
@@ -462,7 +472,7 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
   const calibText = c.n_sites ? `実測 ${c.n_sites} 観測に対する順位相関 Spearman: in-sample ${c.spearman_in_sample ?? "—"} / ブロック別スケール CV ${c.spearman_block_cv ?? "—"}（フォールドごとに再推定するのはスケールのみ）。距離抵抗 half=${c.half_distance_m ?? "—"}m、到着端の重み ${c.access_weight ?? "—"}。建物 ${fmt(DATA.area.counts.buildings)} 棟・街路リンク ${fmt(DATA.area.counts.links)} 本。` : `<b>このエリアは未較正</b>: 実測通行量が未取り込みのため、岡山市中心部で較正した距離抵抗（half=${c.half_distance_m ?? "—"}m）とスケール（k=${c.scale_k ?? "—"}）を転用しています。順位（相対値）は使えますが、人/日の絶対値は目安です。建物 ${fmt(DATA.area.counts.buildings)} 棟・街路リンク ${fmt(DATA.area.counts.links)} 本。`;
   $("calib").innerHTML = calibText;
   $("accuracyTop").innerHTML = accuracyNote(); $("aboutCalib").innerHTML = calibText;
-  $("legend").innerHTML = `<span class="lg" style="background:rgb(37,99,235)"></span>通行量 下位 → <span class="lg" style="background:rgb(250,204,21)"></span> → <span class="lg" style="background:rgb(220,38,38)"></span>上位（エリア内パーセンタイル、線の太さ＝通行量）<br/>建物: 高さ＝実測高さ（無ければ階数×3.5m）、色は上のセレクタで 用途／前面通行量／容積率の未消化／築年 を切替<br/>選択中の区画には、容積率いっぱいまで建てた場合の<b>最大ボリューム</b>を白い枠で重ねます<br/>○ 実測地点、● 地価公示地点<br/>半透明で細い線は<b>地下通路・地下街</b>（天神地下街など）。上部のチェックで表示を切替。<b>地下の推定値は較正していません</b>（実測は取り込み済みで地図に○表示）<br/>県全域: 1km メッシュの滞在人口（高さ・色）。白枠が建物・街路レベルで推定している中心部`;
+  $("legend").innerHTML = `<span class="lg" style="background:rgb(37,99,235)"></span>通行量 下位 → <span class="lg" style="background:rgb(250,204,21)"></span> → <span class="lg" style="background:rgb(220,38,38)"></span>上位（エリア内パーセンタイル、線の太さ＝通行量）<br/>建物: 高さ＝実測高さ（無ければ階数×3.5m）、色は上のセレクタで 用途／前面通行量／容積率の未消化／築年 を切替<br/>選択中の区画には、容積率いっぱいまで建てた場合の<b>最大ボリューム</b>を白い枠で重ねます<br/>○ 実測地点、● 地価公示地点<br/>半透明で細い線は<b>地下通路・地下街</b>。上部のチェックで表示を切替。<b>地下の推定値は較正していません</b>（実測は取り込み済みで地図に○表示）<br/>県全域: 1km メッシュの滞在人口（高さ・色）。白枠が建物・街路レベルで推定している中心部`;
   $("sources").innerHTML = `<b>出典</b>: ${DATA.sources.map((s) => s.credit || s.name).join(" / ")}<br/><b>免責</b>: ${DATA.disclaimer.replace(/\n/g, " ")}`;
   function setMode(m) { state.mode = m; document.body.classList.remove("gov", "realestate"); document.body.classList.add(m); if (m !== "gov" && state.compare) { state.compare = false; render(); } }
   $("mode").onchange = (e) => setMode(e.target.value);
@@ -484,5 +494,70 @@ const PREFMAP = { url: "__PREF_URI__", coords: /*__PREF_COORDS__*/ };
   $("btnBird").onclick = () => { const b = state.selected ? bById.get(state.selected) : null; map.flyTo({ center: b ? [b.cx, b.cy] : center, zoom: b ? 17.8 : 16, pitch: 62, bearing: map.getBearing() + 30 }); };
   setMode("realestate"); renderPortfolio();
   map.on("load", render);
+  if (keep) map.once("load", () => applyKeep(keep));
+  return { destroy() { ac.abort(); map.remove(); } };
+}
+</script>
+<script>
+// ---- エリア切り替え（福岡・岡山など）。データは必要になったときに展開する ----
+const KEEP_IDS = ["mode", "period", "periodB", "daytype", "timeband", "colorMode", "chkPref", "chkZoning", "chkLp", "chkUnder", "chkSites"];
+function applyKeep(k) {
+  // 切り替え前の設定を戻す。change を発火させてアプリ自身の処理で状態をそろえる
+  for (const id of KEEP_IDS) {
+    const el = document.getElementById(id); if (!el || !(id in k)) continue;
+    if (el.type === "checkbox") { if (el.checked === k[id]) continue; el.checked = k[id]; }
+    else { if (el.value === k[id] || ![...el.options].some((o) => o.value === k[id])) continue; el.value = k[id]; }
+    el.dispatchEvent(new Event("change"));
+  }
+}
+(function () {
+  const PRISTINE = { top: document.getElementById("topbar").cloneNode(true), main: document.getElementById("main").cloneNode(true) };
+  const loading = document.getElementById("areaLoading");
+  let current = null, busy = false;
+  async function gunzip(b64) {
+    const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    return new Response(new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+  }
+  async function dataOf(a) {
+    if (!a.data) { a.data = JSON.parse(await gunzip(a.data_gz)); a.data_gz = null; }
+    return a.data;
+  }
+  function readKeep() {
+    const k = {};
+    for (const id of KEEP_IDS) { const el = document.getElementById(id); if (el) k[id] = el.type === "checkbox" ? el.checked : el.value; }
+    return k;
+  }
+  function renderSwitch(i) {
+    const host = document.getElementById("areaSw"); if (!host) return;
+    host.hidden = AREAS.length < 2;
+    host.innerHTML = AREAS.map((a, j) => `<button type="button" data-i="${j}" class="${j === i ? "on" : ""}" aria-pressed="${j === i}">${a.label}</button>`).join("");
+    host.onclick = (e) => { const b = e.target.closest("button[data-i]"); if (b) show(+b.dataset.i); };
+  }
+  async function show(i) {
+    if (busy || (current && current.i === i)) return;
+    busy = true;
+    loading.textContent = `${AREAS[i].label} を読み込み中…`; loading.hidden = false;
+    try {
+      if (typeof DecompressionStream === "undefined") throw new Error("このブラウザは圧縮データの展開に対応していません（Chrome・Edge・Safari・Firefox の最新版で開いてください）");
+      const keep = current ? readKeep() : null;
+      await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));  // 読み込み中の表示を先に描く
+      const DATA = await dataOf(AREAS[i]);
+      if (current) {
+        current.app.destroy();
+        document.getElementById("topbar").replaceWith(PRISTINE.top.cloneNode(true));
+        document.getElementById("main").replaceWith(PRISTINE.main.cloneNode(true));
+      }
+      current = { i, app: boot(DATA, AREAS[i].basemap, AREAS[i].prefmap, keep) };
+      renderSwitch(i);
+      document.title = AREAS[i].title;
+      try { history.replaceState(null, "", "#" + AREAS[i].key); } catch (e) { /* 埋め込み表示では URL を変えられないことがある */ }
+      loading.hidden = true;
+    } catch (e) {
+      console.error(e);
+      loading.textContent = `読み込みに失敗しました: ${e.message}`;
+    } finally { busy = false; }
+  }
+  const start = AREAS.findIndex((a) => "#" + a.key === location.hash);
+  show(start >= 0 ? start : 0);
 })();
 </script>

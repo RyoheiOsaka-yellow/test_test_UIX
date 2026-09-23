@@ -31,7 +31,8 @@ all: ingest build calibrate score
 demo:             ## 同梱デモバンドル (data/demo) からそのまま起動
 	JINRYU_DATA_DIR=data/demo $(RUN) uvicorn jinryu.api.main:app --port 8000
 
-export-html:      ## サーバ不要の単一 HTML デモ → dist/jinryu-demo-<area>.html（岡山と福岡）
+export-html:      ## サーバ不要の単一 HTML デモ → dist/jinryu-demo.html（福岡・岡山をトグルで切り替え）とエリア単体版
+	$(RUN) jinryu export-html --areas fukuoka,okayama --out dist/jinryu-demo.html
 	$(RUN) jinryu export-html --out dist/jinryu-demo-okayama.html
 	JINRYU_AREA=fukuoka JINRYU_DATA_DIR=data/fukuoka $(RUN) jinryu export-html --out dist/jinryu-demo-fukuoka.html
 

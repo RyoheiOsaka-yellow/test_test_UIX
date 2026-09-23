@@ -17,7 +17,9 @@
 
 ## いちばん簡単な見方（サーバ不要）
 
-`dist/jinryu-demo-fukuoka.html`（福岡県全域 1km メッシュ ＋ 福岡市中心部の建物・街路、12MB）または `dist/jinryu-demo-okayama.html`（岡山市中心部、実測で較正済み）をブラウザで開くだけで動きます。地図ライブラリと地図画像を内蔵しているのでオフラインでも動きます。`make export-html` で再生成できます。
+`dist/jinryu-demo.html`（福岡と岡山を 1 ファイルにまとめたもの、13MB）をブラウザで開くだけで動きます。画面上部の「福岡 / 岡山」のトグルで切り替えられ、平休・時間帯・表示レイヤーなどの設定は切り替えても引き継がれます。URL の末尾に `#okayama` を付けると岡山から開きます。エリア単体の `dist/jinryu-demo-fukuoka.html` / `dist/jinryu-demo-okayama.html`（各 8MB）もあります。地図ライブラリと地図画像を内蔵しているのでオフラインでも動きます。
+
+再生成は `uv run jinryu export-html --areas fukuoka,okayama --out dist/jinryu-demo.html`（先頭のエリアが最初に開く）。データは gzip で埋め込み、ブラウザ標準の DecompressionStream で展開するので、Chrome・Edge・Safari・Firefox の最新版で開いてください。
 
 エリアの切替は環境変数で行います: `JINRYU_AREA=fukuoka JINRYU_DATA_DIR=data/fukuoka`（設定は `config/area_fukuoka.yaml`）。福岡は市の歩行者交通量調査（PDF）を未取り込みのため、岡山で較正した係数を転用しています（UI に明記）。
 

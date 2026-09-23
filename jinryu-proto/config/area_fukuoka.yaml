@@ -3,6 +3,8 @@
 area:
   id: fukuoka_central
   name: 福岡市中心部（天神〜中洲〜博多駅）
+  key: fukuoka            # 統合 HTML のエリア切り替えで使う識別子
+  short_name: 福岡      # 切り替えボタンの表示名
   pref_code: "40"
   pref_name: 福岡県
   attribution: "地理院タイル | © OpenStreetMap contributors | 人流: 国土交通省 人流オープンデータ（Agoop換算人口） | 建物: PLATEAU 福岡市 | 用途地域・地価公示: 国土数値情報 | 通行量: 福岡市 歩行者交通量等調査"

@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import base64
+import gzip
 import io
 import json
 import math
@@ -300,7 +301,12 @@ def _inline_js(path: Path) -> str:
     return path.read_text(encoding="utf-8").replace("</script", "<\\/script")
 
 
-def render(fragment: bool = False, out: Path | None = None) -> Path:
+def build_bundle() -> dict:
+    """いま設定されているエリア 1 つ分の部品（データ・背景地図・表示名）.
+
+    データ JSON は gzip＋base64 で持ち、ブラウザ側で DecompressionStream で展開する。
+    2 エリアを 1 ファイルにすると素のままでは 22MB になるが、JSON は gzip で 1/4 になる。
+    """
     store = Store()
     payload = build_payload(store)
     uri, coords = fetch_basemap(config.bbox())
@@ -310,18 +316,41 @@ def render(fragment: bool = False, out: Path | None = None) -> Path:
         margin=0,
         quality=60,
     )
+    a = config.area()["area"]
+    label = a.get("short_name") or a["name"]
+    raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return {
+        "key": a.get("key") or a["id"],
+        "label": label,
+        "title": f"人流ポテンシャル {label}",
+        "scope": f"{a.get('pref_name', '')}全域＋{a['name']}",
+        "data_gz": base64.b64encode(gzip.compress(raw, 9, mtime=0)).decode("ascii"),
+        "basemap": {"url": uri, "coords": coords},
+        "prefmap": {"url": pref_uri, "coords": pref_coords},
+        "stats": {"links": len(payload["links"]), "buildings": len(payload["buildings"]["items"])},
+    }
+
+
+def write_html(bundles: list[dict], out: Path, fragment: bool = False) -> Path:
+    """部品を 1 つの HTML にまとめる。2 エリア以上なら画面上部に切り替えトグルが出る."""
     tpl = (config.ROOT / "web" / "standalone.html").read_text(encoding="utf-8")
     vendor = config.ROOT / "web" / "vendor"
-    css = (vendor / "maplibre-gl.css").read_text(encoding="utf-8")
+    title = "人流ポテンシャル " + "・".join(b["label"] for b in bundles)
+    desc = (
+        "区画に何が建てられるか・どの規制がかかるか・採算に合うかを、人流推定と法規・地価で"
+        f"初期判断する単体HTMLプロトタイプ（{'／'.join(b['scope'] for b in bundles)}）"
+    )
+    areas = [{k: b[k] for k in ("key", "label", "title", "data_gz", "basemap", "prefmap")} for b in bundles]
+    # <script> 内に埋めるので "</" は閉じタグと誤認されない形にする
+    areas_js = json.dumps(areas, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+    # 小さい差し込みを先に済ませ、ライブラリ本体やデータの中身と取り違えないようにする
     html = (
-        tpl.replace("/*__MAPLIBRE_CSS__*/", css)
+        tpl.replace("__TITLE__", title)
+        .replace("__DESCRIPTION__", desc)
+        .replace("/*__MAPLIBRE_CSS__*/", (vendor / "maplibre-gl.css").read_text(encoding="utf-8"))
         .replace("/*__VENDOR_MAPLIBRE__*/", _inline_js(vendor / "maplibre-gl.js"))
         .replace("/*__VENDOR_DECK__*/", _inline_js(vendor / "deck.min.js"))
-        .replace("__BASEMAP_URI__", uri)
-        .replace("/*__BASEMAP_COORDS__*/", json.dumps(coords))
-        .replace("__PREF_URI__", pref_uri)
-        .replace("/*__PREF_COORDS__*/", json.dumps(pref_coords))
-        .replace("/*__DATA__*/", json.dumps(payload, ensure_ascii=False, separators=(",", ":")))
+        .replace("/*__AREAS__*/", areas_js)
     )
     if not fragment:
         html = (
@@ -331,16 +360,66 @@ def render(fragment: bool = False, out: Path | None = None) -> Path:
         )
     else:
         html = html.replace("<!--BODY-->", "", 1)
-    out = out or (config.ROOT / "dist" / ("jinryu-demo.fragment.html" if fragment else "jinryu-demo.html"))
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")
-    typer.echo(
-        f"wrote {out} ({out.stat().st_size / 1e6:.1f} MB): links {len(payload['links'])}, buildings {len(payload['buildings']['items'])}"
+    parts = ", ".join(
+        f"{b['label']} links {b['stats']['links']} / buildings {b['stats']['buildings']}" for b in bundles
     )
+    typer.echo(f"wrote {out} ({out.stat().st_size / 1e6:.1f} MB): {parts}")
     return out
+
+
+def render(fragment: bool = False, out: Path | None = None) -> Path:
+    """いま設定されているエリアだけの HTML."""
+    out = out or (config.ROOT / "dist" / ("jinryu-demo.fragment.html" if fragment else "jinryu-demo.html"))
+    return write_html([build_bundle()], out, fragment)
+
+
+def _area_env(key: str) -> dict[str, str]:
+    """エリアの識別子 → そのエリアで動かすための環境変数.
+
+    既定エリア（config/area.yaml）は上書きなし、それ以外は config/area_<key>.yaml と data/<key>。
+    """
+    import os
+
+    env = {k: v for k, v in os.environ.items() if k not in ("JINRYU_AREA", "JINRYU_DATA_DIR")}
+    default_key = (config._load_yaml("area.yaml")["area"].get("key") or "").strip()
+    if key != default_key:
+        if not (config.CONFIG_DIR / f"area_{key}.yaml").exists():
+            raise typer.BadParameter(f"エリア {key} の設定 config/area_{key}.yaml が無い")
+        env["JINRYU_AREA"] = key
+        env["JINRYU_DATA_DIR"] = str(config.ROOT / "data" / key)
+    return env
+
+
+def render_multi(keys: list[str], out: Path, fragment: bool = False) -> Path:
+    """複数エリアを 1 つの HTML にまとめる（画面上部のトグルで切り替え）.
+
+    設定は @cache で保持されるので、エリアごとに別プロセスで部品を作ってから組み立てる。
+    """
+    import subprocess
+    import sys
+    import tempfile
+
+    bundles = []
+    with tempfile.TemporaryDirectory() as tmp:
+        for key in keys:
+            path = Path(tmp) / f"{key}.json"
+            subprocess.run(
+                [sys.executable, "-m", "jinryu.export_html", "--bundle", str(path)],
+                env=_area_env(key),
+                cwd=config.ROOT,
+                check=True,
+            )
+            bundles.append(json.loads(path.read_text(encoding="utf-8")))
+    return write_html(bundles, out, fragment)
 
 
 if __name__ == "__main__":
     import sys
 
-    render(fragment="--fragment" in sys.argv)
+    if "--bundle" in sys.argv:  # render_multi から呼ばれる: 部品だけを JSON に書く
+        dest = Path(sys.argv[sys.argv.index("--bundle") + 1])
+        dest.write_text(json.dumps(build_bundle(), ensure_ascii=False), encoding="utf-8")
+    else:
+        render(fragment="--fragment" in sys.argv)
