@@ -1,0 +1,78 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><link rel="stylesheet" href="fonts.css"><style>
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1600px;background:#f6f8fa;font-family:'Noto Sans JP',sans-serif;color:#1d2a33;padding:34px 40px}
+h1{font-size:28px;font-weight:700;letter-spacing:.04em}
+.sub{font-size:14px;color:#5b6b76;margin:6px 0 22px}
+.cols{display:grid;grid-template-columns:420px 470px 1fr;gap:26px}
+.col{background:#fff;border:1px solid #d7dee4;border-radius:14px;padding:18px 18px 16px;position:relative}
+.col h2{font-size:16px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.col h2 i{display:inline-block;width:10px;height:10px;border-radius:3px}
+.col .d{font-size:12px;color:#63727d;margin-bottom:14px}
+.box{border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.5;border:1.5px solid}
+.box b{font-size:15px;display:block;margin-bottom:2px}
+.box small{color:#50606b;font-size:12px}
+.lv{border-color:#1a9e8f;background:#e9f7f5}
+.lv b{color:#0d6f64}
+.ov{border-color:#3b7dd8;background:#eef4fd}
+.ov b{color:#1f5bb0}
+.dl{border-color:#c77c12;background:#fdf5e8}
+.dl b{color:#945a05}
+.ws{border-color:#c2386b;background:#fcedf3}
+.ws b{color:#9a1f4e}
+.arrow{display:flex;align-items:center;gap:8px;font-size:12px;color:#44535e;padding:6px 0 6px 18px}
+.arrow .a{font-size:22px;color:#1a9e8f;line-height:1}
+.arrow.back .a{color:#8b99a3}
+.stack{display:flex;flex-direction:column;gap:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chip{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:12px;background:#fff;border:1px solid #b9c7d1;margin:3px 3px 0 0}
+.flow{display:flex;align-items:center;gap:6px;font-size:12px;color:#44535e;margin:6px 0}
+.flow .a{font-size:18px;color:#c2386b}
+.foot{margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:26px}
+.foot .box{border-color:#6b7b86;background:#fff}
+.num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:10px;background:#1d2a33;color:#fff;font-size:11px;font-weight:700;margin-right:4px}
+</style></head><body>
+<h1>画面遷移・操作導線マップ</h1>
+<div class="sub">姫路城 × 姫路市 観光動態デジタルツイン（提案用アウトプットイメージ）— どのボタンから、どの画面・機能へ進むか</div>
+<div class="cols">
+ <div class="col"><h2><i style="background:#1a9e8f"></i>① 階層（ドリルダウン）</h2><div class="d">ヘッダー左の3ボタンで切替。広域 → 市内 → 城内へ掘り下げる</div>
+  <div class="box lv"><b>L0 広域流入</b>誰が・どこから来たか<br><small>方面（新幹線・新快速・高速道路・航路・空港）別の流入帯と出発地ポール</small></div>
+  <div class="arrow"><span class="a">▼</span>ヘッダー「L1」／ 分析パネル「L1 回遊」</div>
+  <div class="box lv"><b>L1 市内回遊・滞留（起動時の画面）</b>どこに・どれだけ滞留したか<br><small>駅〜大手前通り〜姫路城の滞留メッシュ、回遊先、帰路、市内消費</small></div>
+  <div class="arrow"><span class="a">▼</span>地図上の<b>&nbsp;姫路城をクリック&nbsp;</b>／ ヘッダー「L2」</div>
+  <div class="box lv"><b>L2 姫路城</b>城内滞留・待ち行列・入城制限<br><small>6ゾーンの混雑、入城待機、大天守の上限、入城料収入</small></div>
+  <div class="arrow back"><span class="a">▲</span>Esc キー ／ ヘッダー「L1」「L0」で戻る</div>
+  <div class="box" style="border-color:#9aa8b2;background:#f3f6f8;margin-top:6px"><b style="color:#394a55">全階層で共通の絞り込み</b><small>来訪者セグメント（全体／インバウンド／国内／県内・近隣）、シナリオ（平日・週末・桜・GW・紅葉・夏）、出発地・方面の絞り込みは L0〜L2 に連動</small></div>
+ </div>
+ <div class="col"><h2><i style="background:#3b7dd8"></i>② 地図に重ねる分析レイヤー</h2><div class="d">地図上の人流の見せ方を切り替える（ON/OFF・モード選択）</div>
+  <div class="stack">
+   <div class="box ov"><b>◎ OD分析</b><small>ヘッダーから ON/OFF（L0・L1）。滞留密度の山（KDE）＋ ODアーク</small></div>
+   <div class="box ov"><b>観光導線</b><small>ヘッダーから ON/OFF（L0・L1）。姫路駅ハブ→周辺6方面の送客ルート。方面クリックで視点移動</small></div>
+   <div class="box ov"><b>≡ 階層ビュー</b><small>ヘッダーから ON/OFF。大天守・駅・商業施設の階ごとの滞留</small></div>
+   <div class="box ov"><b>人流の表現（右の「地図の表示設定」）</b>
+     <span class="chip">▦ グリッド</span><span class="chip">⬡ ヘックス</span><span class="chip">▥ 柱</span><span class="chip">◉ ヒート</span><span class="chip">⠿ 点群</span><span class="chip">≋ 等高線</span><span class="chip">軌跡</span><span class="chip">OD動線</span><br>
+     <small>メッシュの細かさ 5〜250m／色（密度・来訪者属性）／市街地の表現（立体・複合・点群）</small></div>
+   <div class="box ov"><b>セル・建物・POI のクリック/ホバー</b><small>メッシュセル → 地点の詳細パネル／建物 → PLATEAU属性カード／POI・ゾーン → ツールチップ</small></div>
+  </div>
+ </div>
+ <div class="col"><h2><i style="background:#c2386b"></i>③ ダイアログ・分析ワークスペース</h2><div class="d">ヘッダー右側のボタンで開く。「✕ 閉じる」または Esc で地図に戻る</div>
+  <div class="grid2">
+   <div class="box dl"><b>分析ボード</b><small>6タブ：誰が・どこから／どこに滞留／どこへ帰った／消費・料金改定／季節・時間帯／出典・前提</small></div>
+   <div class="box dl"><b>提案骨子・DB構成</b><small>提案書の骨子（課題・ロードマップ・KPI）と来訪者DBの構成（ソース・スキーマ）</small></div>
+  </div>
+  <div class="box ws" style="margin-top:12px"><b>施策比較ワークスペース</b>
+   <div class="flow"><span class="num">1</span>案を比較（処理能力・到着分散・立寄り追加）</div>
+   <div class="flow"><span class="a">→</span><span class="num">2</span>感度分析（来訪者数・集中度・実現率を変えて検証）</div>
+   <div class="flow"><span class="a">→</span><span class="num">3</span>目標から探す（目標を満たす組合せを自動探索）</div>
+   <div class="flow"><span class="a">→</span><span class="num">4</span>時間帯と影響（終日増強 vs 時間限定）</div>
+   <div class="flow" style="margin-top:8px"><span class="a">⇒</span><b style="display:inline;font-size:13px">「地図で確認」</b>：レビューモード（現状／施策／差分）</div>
+   <div class="flow"><span class="a">⇒</span><b style="display:inline;font-size:13px">「現状と左右比較」</b>：左右3D比較（左＝現状／右＝施策後）</div>
+  </div>
+  <div class="box ws" style="margin-top:12px"><b>3エリア分析</b><small>姫路駅前・大手前通り・大手門周辺の在域人数・流入/流出・平均在域時間を現状と施策後で比較</small></div>
+ </div>
+</div>
+<div class="foot">
+ <div class="box"><b>④ タイムライン（全画面共通）</b><small>00:00〜24:00 のスライダー・再生（×0.5〜×4）・時刻選択。時刻を動かすと地図・KPI・グラフがすべて連動</small></div>
+ <div class="box"><b>⑤ 画面下のドック</b><small>「すべて畳む」で地図に集中／分析・表示・時間・凡例・上部・操作パネルを個別に表示/非表示</small></div>
+</div>
+</body></html>
