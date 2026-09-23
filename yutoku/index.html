@@ -154,6 +154,7 @@ svg{display:block}
   .brand h1,.brand .sub{max-width:calc(100vw - 160px)}
   .brand h1{font-size:32px}
   .proj{margin-top:10px}
+  .proj{flex-wrap:wrap;max-width:calc(100vw - 32px)}
   .proj button{padding:5px 8px;font-size:10.5px;letter-spacing:.02em}
   .brand .sub .en{display:none}
   .eyebrow{font-size:8.5px;letter-spacing:.26em}
@@ -199,11 +200,9 @@ svg{display:block}
       <button type="button" data-proj="karatsu" aria-pressed="false">唐津城</button>
       <button type="button" data-proj="yoshinogari" aria-pressed="false">吉野ヶ里</button>
       <button type="button" data-proj="saga" aria-pressed="false">佐賀城</button>
+      <button type="button" data-proj="arita" aria-pressed="false">有田・伊万里</button>
     </div>
-    <div class="proj era" id="era" role="group" aria-label="時代" hidden>
-      <button type="button" data-era="karatsu" aria-pressed="true">現在</button>
-      <button type="button" data-era="karatsu_edo" aria-pressed="false">江戸期</button>
-    </div>
+    <div class="proj era" id="era" role="group" aria-label="時代・地区" hidden></div>
   </header>
 
   <nav class="tools" aria-label="表示">
@@ -437,6 +436,9 @@ function stoneTexture() {
   const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
 }
 const STONE_TEX = stoneTexture();
+function canvasTex(draw) { const c = document.createElement('canvas'); c.width = c.height = 512; draw(c.getContext('2d'), mulberry(5)); const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; }
+const TONBAI_TEX = canvasTex((g, r) => { g.fillStyle = '#b2623f'; g.fillRect(0, 0, 512, 512); for (let k = 0; k < 420; k++) { const w = 22 + r() * 46, h = 10 + r() * 16, l = r(); g.fillStyle = l < .12 ? '#e9e6df' : l < .18 ? '#3f5f9a' : `rgb(${150 + r() * 50},${70 + r() * 30},${45 + r() * 20})`; g.fillRect(r() * 512, r() * 512, w, h); } });
+const BLUE_TEX = canvasTex((g, r) => { g.fillStyle = '#f5f6f7'; g.fillRect(0, 0, 512, 512); g.strokeStyle = '#2d4f9c'; g.lineWidth = 5; for (let k = 0; k < 60; k++) { g.beginPath(); const x = r() * 512, y = r() * 512, rad = 12 + r() * 30; g.arc(x, y, rad, r() * 6, r() * 6 + 3.5); g.stroke(); } g.fillStyle = '#2d4f9c'; for (let k = 0; k < 120; k++) { g.beginPath(); g.ellipse(r() * 512, r() * 512, 3 + r() * 6, 2 + r() * 3, r() * 3, 0, 6.3); g.fill(); } });
 
 /* ---------- materials: clay (stages 2–3) → real (stage 4) ---------- */
 function M(key, clay, real, rough = .8, metal = 0, x = {}) {
@@ -481,7 +483,7 @@ M('azalea', '#f1f0eb', '#df5796', .85, 0, { delay: .36, autumn: '#5c7340' });
 M('hydrangea', '#f1f0eb', '#6f8fd2', .85, 0, { delay: .36, autumn: '#7e865a' });
 M('moss', '#ecebe5', '#5e7a3a', .95, 0, { delay: .32 });
 M('bamboo', '#ebe8e1', '#b09a63', .8, 0, { delay: .3 });
-M('thatch', '#ebe8e1', '#8a7654', .95, 0, { delay: .3 });
+M('thatch', '#ebe8e1', '#86765f', .95, 0, { delay: .3 });
 M('noren', '#f2f0eb', '#24405f', .9, 0, { delay: .3 });
 M('norenR', '#f2f0eb', '#8f2b1b', .9, 0, { delay: .3 });
 M('norenW', '#f2f0eb', '#e9e2cf', .9, 0, { delay: .3 });
@@ -506,6 +508,12 @@ M('wisteria', '#f1f0eb', '#9a7fd0', .85, 0, { delay: .3, autumn: '#6f7f4a' });
 M('soil', '#e6e1d6', '#8f7456', .95, 0, { delay: .3 });
 M('pottery', '#efe9df', '#d4a57c', .7, 0, { delay: .2 });
 M('bronze', '#e8e6e0', '#56654c', .45, .6, { delay: .12 });
+M('path', '#eeebe4', '#e2dac8', .95, 0, { delay: .28 });
+M('porcelain', '#f6f5f2', '#f4f6f8', .22, .05, { delay: .1 });
+M('porcelainB', '#f6f5f2', '#ffffff', .25, .05, { delay: .1, worldUV: 1.6, props: { map: BLUE_TEX } });
+M('cobalt', '#ecebe7', '#2b4f9e', .3, .1, { delay: .1 });
+M('brick', '#ebe6de', '#9b4a31', .85, 0, { delay: .14 });
+M('tonbai', '#ece6dc', '#ffffff', .95, 0, { delay: .14, worldUV: 3, props: { map: TONBAI_TEX } });
 const NO_SHADOW = new Set(['water', 'sea', 'glass', 'paint', 'gravel', 'paving', 'asphalt']);
 
 /* =====================================================================
@@ -1903,7 +1911,7 @@ function yoshiTColor(x, z, h, slope) {
   else c.set('#9aab66');
   if (seE(x, z, ...YG.S) < .96 || seE(x, z, ...YG.K) < .95 || (x > -26 && x < 26 && z > -118 && z < -73)) c.set('#b8a37d');
   if (seE(x, z, 0, -158, 12, 8.5, 3) < 1.1) c.set('#7f9b4a');
-  if (slope > .5) c.lerp(new THREE.Color('#7d8a52'), .7);
+  if (slope > .45) c.lerp(new THREE.Color('#b39c77'), .85);
   return c;
 }
 function pitHouse(x, z, s = 1) { // 竪穴住居
@@ -1932,7 +1940,7 @@ function watchtower(x, z, ry = 0) { // 物見櫓
   for (const y of [3, 6]) { add('wood', box(3.6, .22, .22, 0, y, -2.05), { lines: 'axis' }); add('wood', box(3.6, .22, .22, 0, y, 2.05), { lines: 'axis' }); add('wood', box(.22, .22, 4.6, -1.55, y, 0), { lines: 'axis' }); add('wood', box(.22, .22, 4.6, 1.55, y, 0), { lines: 'axis' }); }
   add('wood', box(4.2, .3, 5.2, 0, 8.3, 0));
   for (const s of [-1, 1]) { add('wood', box(4.2, .9, .12, 0, 8.6, s * 2.55), { ph: 'detail', lines: false }); add('wood', box(.12, .9, 5.2, s * 2.05, 8.6, 0), { ph: 'detail', lines: false }); }
-  roofOn({ W: 6.4, D: 5.4, H: 2.3, sg: .35, a: .85, lift: .2, th: .45, seam: .45 }, 0, 10.3, 0, false, { mat: 'thatch', gmat: 'wood', ridge: false });
+  roofOn({ W: 6.2, D: 5.6, H: 3.2, sg: .75, a: .9, lift: .2, th: .45, seam: .45 }, 0, 10.3, 0, false, { mat: 'thatch', gmat: 'wood', ridge: false });
   add('wood', beam(V(2.4, 0, 3.4), V(1.2, 8.3, 1.6), .5, .16), { ph: 'detail', lines: false });
   S.M = save;
 }
@@ -1943,7 +1951,7 @@ function yGate(x, z, ry = 0, w = 5) { // gate with carved birds (鳥形)
   for (let k = -1; k <= 1; k++) { add('wood', box(.9, .35, .3, 0, 4.7, k * w / 3), { ph: 'detail', lines: false }); add('wood', box(.22, .5, .22, 0, 4.5, k * w / 3), { ph: 'detail', lines: false }); }
   S.M = save;
 }
-const STAKES = [];
+const STAKES = [], PLANKS = [];
 function palisade(pts, inward, center, o = {}) { // posts along a ring, offset toward the centre, gaps at gates
   let acc = 0;
   for (let i = 0; i < pts.length - 1; i++) {
@@ -1951,14 +1959,14 @@ function palisade(pts, inward, center, o = {}) { // posts along a ring, offset t
     for (let t = 0; t < L; t += 1.15) {
       const p = a.clone().lerp(b, t / L), dir = V(center[0] - p.x, 0, center[1] - p.z).normalize(), q = p.clone().addScaledVector(dir, inward);
       if (yGap(q.x, q.z)) continue;
-      STAKES.push({ x: q.x, z: q.z, y: H(q.x, q.z) - .2, s: 1, sy: o.h || 2.8, t: (o.t0 || 1.5) + .3 * R(), m: 0, d: .18 });
+      const tg = V(b.x - a.x, 0, b.z - a.z); PLANKS.push({ x: q.x, z: q.z, y: H(q.x, q.z) - .2, s: 1, sx: 1.22, sy: o.h || 2.8, sz: .16, ry: Math.atan2(-tg.z, tg.x), t: (o.t0 || 1.5) + .3 * R(), m: 0, d: .18 });
     }
   }
   const P = pts.map(p => { const dir = V(center[0] - p.x, 0, center[1] - p.z).normalize(), q = p.clone().addScaledVector(dir, inward); return V(q.x, H(q.x, q.z) + (o.h || 2.8), q.z); });
   S.strokes.push({ layer: 1, segs: P.slice(0, -1).map((p, i) => [p, P[i + 1]]).filter(([p]) => !yGap(p.x, p.z)) });
 }
 function buildYoshinogari() {
-  STAKES.length = 0;
+  STAKES.length = 0; PLANKS.length = 0;
   // construction
   begin({ sketch: [0, .22], mass: [1, 1.1], detail: [2, 2.1] });
   { const L0 = (a, b) => S.strokes.push({ layer: 0, segs: [[a, b]] });
@@ -1986,6 +1994,8 @@ function buildYoshinogari() {
   const sIn = seRing(...YG.S, 140), sOut = seRing(...YG.S2, 160), kr = seRing(...YG.K, 100);
   palisade(sIn, 3.4, [4, 14], { t0: 1.5 }); palisade(sOut, 3.6, [4, 14], { h: 2.4, t0: 1.45 }); palisade(kr, 3.2, [-44, -36], { t0: 1.5 });
   moatLine(sIn); moatLine(sOut); moatLine(kr);
+  const paths = [[V(0, 0, 150), V(0, 0, 131), V(-16, 0, 104), V(-26, 0, 70), V(-16, 0, 46), V(-6, 0, 20), V(-20, 0, -8), V(-8, 0, -40), V(0, 0, -62), V(0, 0, -72)], [V(-20, 0, -8), V(-30, 0, -34)], [V(-16, 0, 46), V(4, 0, 47)], [V(-26, 0, 70), V(-44, 0, 86), V(-46, 0, 120), V(-30, 0, 140)]];
+  for (const pl of paths) { const pts = new THREE.CatmullRomCurve3(pl).getSpacedPoints(Math.max(8, pl.length * 10)); add('path', ribbon(pts, () => 3.4, p => H(p.x, p.z) + .08), { lines: false, ord: 0 }); S.strokes.push({ layer: 1, segs: pts.slice(0, -1).map((p, i) => [V(p.x, H(p.x, p.z) + .2, p.z), V(pts[i + 1].x, H(pts[i + 1].x, pts[i + 1].z) + .2, pts[i + 1].z)]) }); }
   yGate(0, 132, 0, 6); yGate(0, -67, Math.PI / 2, 4); yGate(4, -17, Math.PI / 2, 4); yGate(4, 45, Math.PI / 2, 4); yGate(-31, -36, 0, 4);
   end();
   // 北内郭
@@ -1993,6 +2003,7 @@ function buildYoshinogari() {
   { const cx = 0, cz = -96, y0 = H(cx, cz); frame(cx, y0, cz, 0); // 主祭殿: 3層, 12.3 × 12.7 m, 中層床高 4.5 m
     for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) add('wood', cyl(.46, 4.8, -6.15 + i * 4.1, -.3, -6.35 + j * 4.23, 10), { lines: 'axis' });
     add('wood', box(13.4, .45, 13.8, 0, 4.5, 0));
+    rail([[-6.9, -7.1], [6.9, -7.1], [6.9, 7.1], [-6.9, 7.1], [-6.9, -7.1]], 4.95, 1, 'wood', { gold: false, step: 1.4 });
     add('wood', box(12.3, 3.8, 12.7, 0, 4.95, 0));
     for (const s of [-1, 1]) { add('woodDark', box(2.4, 2.6, .12, 0, 5.2, s * 6.41), { ph: 'detail', lines: false }); add('woodDark', box(.12, 2.2, 2.4, s * 6.21, 5.4, 0), { ph: 'detail', lines: false }); }
     roofOn({ W: 16.4, D: 16.8, H: 1.9, sg: .12, a: .85, lift: .2, th: .55, seam: .5 }, 0, 8.55, 0, false, { mat: 'thatch', ridge: false });
@@ -2029,116 +2040,9 @@ function buildYoshinogari() {
   makeInstances('forestI', blob(1, 1, .85, 1), trees.map(p => { const s = 2.2 + Rf() * 2; return { x: p.x, z: p.z, y: H(p.x, p.z) + s * .6, s, t: 2.3 + Rf() * .5 }; }),
     { spring: ['#4b6a39', '#58773f', '#3f5b35', '#66844a'], autumn: ['#a8452b', '#c7772e', '#b99a3a', '#5a7040'] }, Rf);
   const up = STAKES.filter(s => !s.tilt), tl = STAKES.filter(s => s.tilt);
-  makeInstances('houseI', cyl(.13, 1, 0, 0, 0, 5, .08), up, { spring: ['#7a5b3e', '#8a6a48', '#6d5237'], autumn: ['#7a5b3e', '#8a6a48', '#6d5237'] }, Rf);
+  if (up.length) makeInstances('houseI', cyl(.13, 1, 0, 0, 0, 5, .08), up, { spring: ['#7a5b3e', '#8a6a48', '#6d5237'], autumn: ['#7a5b3e', '#8a6a48', '#6d5237'] }, Rf);
+  makeInstances('houseI', new THREE.BoxGeometry(1, 1, 1).translate(0, .5, 0), PLANKS, { spring: ['#9a9384', '#8f887a', '#a39c8d', '#948d7f'], autumn: ['#9a9384', '#8f887a', '#a39c8d', '#948d7f'] }, Rf);
   makeInstances('houseI', cyl(.1, 1, 0, 0, 0, 5, .02).rotateZ(-.75), tl, { spring: ['#7a5b3e', '#6d5237'], autumn: ['#7a5b3e', '#6d5237'] }, Rf);
-}
-
-/* =====================================================================
-   佐賀城 SAGA CASTLE — a flat castle ringed by broad moats. 本丸御殿
-   (1838, partly rebuilt in timber 2004), 鯱の門 and 続櫓 (1838), 天守台.
-   ===================================================================== */
-const SG = { hx: 58, hz: 52, moat: 26, ox: 132, oz: 118, ow: 12 };
-function sagaH(x, z) {
-  let h = 1.2 + fbm(x * .02, z * .02) * .15;
-  const ins = Math.max(Math.abs(x) - SG.hx, Math.abs(z) - SG.hz);
-  if (ins < 0) { const de = -ins; h = 3 + 2.2 * sstep(0, 2.2, de) * sstep(8, 4.5, de); }
-  else if (ins < SG.moat) h = lerp(-2.6, 1.2, sstep(SG.moat - 3, SG.moat, ins));
-  if (x > -16 && x < -4 && z > SG.hz - 1 && z < SG.hz + SG.moat + 1) h = Math.max(h, 2.9);
-  const io = Math.max(Math.abs(x) - SG.ox, Math.abs(z) - SG.oz);
-  if (io > 0 && io < SG.ow && !(x > -14 && x < -2 && z > 0)) h = lerp(-2.4, 1.2, Math.max(sstep(2.5, 0, io), sstep(SG.ow - 2.5, SG.ow, io)));
-  return h;
-}
-function sagaTColor(x, z, h, slope) {
-  const c = new THREE.Color('#93ac5e'); const ins = Math.max(Math.abs(x) - SG.hx, Math.abs(z) - SG.hz);
-  if (ins < 0) c.set(-ins < 8 ? '#6f8f47' : '#98ae62');
-  if (h < -.5) c.set('#4f5f5b');
-  return c;
-}
-function goten(x, z, w, d, o = {}) { // one hall of the palace
-  const alongZ = d > w, L = Math.max(w, d), Sh = Math.min(w, d);
-  add('paving', box(w + 1.6, .5, d + 1.6, x, 3, z), { lines: false });
-  add('wood', box(w + 1.2, .35, d + 1.2, x, 3.5, z), { ph: 'detail', lines: false });
-  add('plaster', box(w, 3.4, d, x, 3.5, z));
-  const n = Math.max(2, Math.floor(L / 1.9));
-  for (let k = 0; k < n; k++) for (const s of [-1, 1]) {
-    const t = -L / 2 + (k + .5) * L / n;
-    if (alongZ) add('woodDark', box(.1, 2.2, L / n - .25, x + s * (w / 2 + .03), 3.55, z + t), { ph: 'detail', lines: false, d: .06 });
-    else add('woodDark', box(L / n - .25, 2.2, .1, x + t, 3.55, z + s * (d / 2 + .03)), { ph: 'detail', lines: false, d: .06 });
-  }
-  for (let k = 0; k <= n; k++) { const t = -L / 2 + k * L / n; for (const s of [-1, 1]) S.strokes.push({ layer: 3, segs: [[alongZ ? V(x + s * (w / 2 + .08), 3.55, z + t) : V(x + t, 3.55, z + s * (d / 2 + .08)), alongZ ? V(x + s * (w / 2 + .08), 5.75, z + t) : V(x + t, 5.75, z + s * (d / 2 + .08))]] }); }
-  roofOn({ W: L + 3.4, D: Sh + 3.4, H: o.h || 3.4, sg: .55, lift: .5, a: .45, th: .36, seam: .6 }, x, 6.85, z, alongZ, { mat: 'tile', gmat: 'plaster', rmat: 'tile', oni: false });
-}
-function buildSaga() {
-  begin({ sketch: [0, .22], mass: [1, 1.1], detail: [2, 2.1] });
-  { const L0 = (a, b) => S.strokes.push({ layer: 0, segs: [[a, b]] });
-    L0(V(TX0, BASE, TZ0), V(TX1, BASE, TZ0)); L0(V(TX1, BASE, TZ0), V(TX1, BASE, TZ1)); L0(V(TX1, BASE, TZ1), V(TX0, BASE, TZ1)); L0(V(TX0, BASE, TZ1), V(TX0, BASE, TZ0));
-    for (const [x, z] of [[TX0, TZ0], [TX1, TZ0], [TX1, TZ1], [TX0, TZ1]]) L0(V(x, BASE, z), V(x, H(x, z), z));
-    for (const x of [-SG.hx, SG.hx, -SG.hx - SG.moat, SG.hx + SG.moat, -10]) L0(V(x, .05, TZ0 + 10), V(x, .05, TZ1 - 10));
-    for (const z of [-SG.hz, SG.hz, -SG.hz - SG.moat, SG.hz + SG.moat]) L0(V(TX0 + 10, .05, z), V(TX1 - 10, .05, z));
-    for (let x = -150; x <= 150; x += 30) for (let z = -120; z <= 120; z += 30) { L0(V(x - .9, .05, z), V(x + .9, .05, z)); L0(V(x, .05, z - .9), V(x, .05, z + .9)); }
-    S.strokes.push({ layer: 4, segs: [[V(-10, 3.2, -60), V(-10, 3.2, 110)]] });
-    const rect = (hx, hz, y) => S.strokes.push({ layer: 1, segs: [[V(-hx, y, -hz), V(hx, y, -hz)], [V(hx, y, -hz), V(hx, y, hz)], [V(hx, y, hz), V(-hx, y, hz)], [V(-hx, y, hz), V(-hx, y, -hz)]] });
-    rect(SG.hx, SG.hz, 3.4); rect(SG.hx + SG.moat, SG.hz + SG.moat, 1.3); rect(SG.ox, SG.oz, 1.3); rect(SG.ox + SG.ow, SG.oz + SG.ow, 1.3);
-  }
-  end();
-  buildTerrain();
-  begin({ sketch: [.12, .6], mass: [1.15, 1.6], detail: [2.05, 2.5] });
-  add('water', new THREE.PlaneGeometry(TX1 - TX0, TZ1 - TZ0).rotateX(-Math.PI / 2).translate(0, -.9, 0), { lines: false, ph: 'detail', m: 0, ord: 0 });
-  // 石垣 around the 本丸 (with the gate opening), stone faces along the causeway
-  const wall = (ax, az, bx, bz) => add('stone', beam(V(ax, .5, az), V(bx, .5, bz), 1.6, 6.2), { lines: false, anc: V((ax + bx) / 2, -2.6, (az + bz) / 2) });
-  const X = SG.hx + .6, Z = SG.hz + .6;
-  for (let x = -X; x < X; x += 8) { wall(x, -Z, Math.min(X, x + 8), -Z); const x2 = Math.min(X, x + 8); if (x2 <= -22 || x >= 2) wall(x, Z, x2, Z); else { if (x < -22) wall(x, Z, -22, Z); if (x2 > 2) wall(2, Z, x2, Z); } }
-  for (let z = -Z; z < Z; z += 8) { wall(-X, z, -X, Math.min(Z, z + 8)); wall(X, z, X, Math.min(Z, z + 8)); }
-  for (const x of [-16.6, -3.4]) add('stone', beam(V(x, .2, SG.hz + 1), V(x, .2, SG.hz + SG.moat - 1), 1.2, 5.4), { lines: false });
-  add('paving', box(11, .2, SG.moat, -10, 2.8, SG.hz + SG.moat / 2), { lines: false });
-  end();
-  // 鯱の門 and 続櫓
-  begin({ sketch: [.4, .85], mass: [1.4, 1.9], detail: [2.15, 2.8] });
-  for (const x of [-18.5, -1.5]) add('stone', box(7, 3.8, 8, x, 3, SG.hz - 3));
-  for (const x of [-14.2, -5.8]) add('woodDark', cyl(.4, 3.8, x, 3, SG.hz - .4, 10), { lines: 'axis' });
-  for (const s of [-1, 1]) add('woodDark', box(4, 3.4, .25, -10 + s * 2.1, 3, SG.hz - .3), { ph: 'detail', lines: false });
-  for (let k = 0; k < 12; k++) add('steel', new THREE.SphereGeometry(.09, 6, 4).translate(-12.9 + (k % 6) * 1.1, 4 + Math.floor(k / 6) * 1.4, SG.hz - .12), { ph: 'detail', lines: false });
-  add('plaster', box(24, 3.6, 8, -10, 6.8, SG.hz - 3));
-  for (let k = 0; k < 7; k++) add('woodDark', box(1.4, 1, .1, -20 + k * 3.35, 7.9, SG.hz + 1.03), { ph: 'detail', lines: false });
-  add('woodDark', box(24.2, .9, 8.2, -10, 6.8, SG.hz - 3), { ph: 'detail', lines: false });
-  roofOn({ W: 28, D: 12, H: 3.8, sg: .5, lift: .7, a: .42, th: .4, seam: .6 }, -10, 10.3, SG.hz - 3, false, { mat: 'tile', gmat: 'plaster', rmat: 'tile', oni: false });
-  { const xg = 14 - 6 * .5; for (const s of [-1, 1]) { add('bronze', box(.5, 1.6, .9, -10 + s * (xg - .2), 13.7, SG.hz - 3), { ph: 'detail', lines: false }); add('bronze', box(.35, .7, .55, -10 + s * (xg - .55), 14.9, SG.hz - 3).rotateZ(0), { ph: 'detail', lines: false }); } }
-  yagura(12, 3, SG.hz - 3.5, 20, 6, 1);
-  // 天守台 (the keep burned in 1726 and was never rebuilt)
-  { const g = new THREE.BoxGeometry(26, 7, 26), p = g.attributes.position; for (let i = 0; i < p.count; i++) if (p.getY(i) > 0) { p.setX(i, p.getX(i) * 22 / 26); p.setZ(i, p.getZ(i) * 22 / 26); } g.computeVertexNormals(); g.translate(-40, 3 + 3.5, -34); add('stone', g, { ea: 20 }); }
-  tree('camphor', -44, -38, .8, { y: 10 }); tree('camphor', -35, -30, .7, { y: 10 });
-  end();
-  // 本丸御殿 (restored part to the south; the rest shown as footings)
-  begin({ sketch: [.46, .97], mass: [1.5, 1.98], detail: [2.2, 2.9] });
-  goten(-10, 36, 11, 9, { h: 3.8 });
-  roofOn({ W: 6.4, D: 5, H: 2.4, sg: 1, lift: .3, a: .6, th: .32, seam: .6 }, -10, 6.3, 42, true, { mat: 'tile', gmat: 'plaster', ridge: false });
-  goten(-10, 24, 15, 10);
-  goten(12, 14, 36, 11, { h: 4 });
-  goten(26, 30, 12, 14);
-  goten(-12, 6, 12, 10);
-  for (const [ax, az, bx, bz] of [[-10, 29, -10, 31], [-3, 20, -3, 14], [26, 20, 26, 23], [-10, 11, -10, 19]]) { add('wood', box(Math.abs(bx - ax) + 3, 3, Math.abs(bz - az) + 3, (ax + bx) / 2, 3.5, (az + bz) / 2), { lines: false }); roofOn({ W: Math.max(Math.abs(bx - ax), Math.abs(bz - az)) + 5, D: 5, H: 1.4, sg: 1, lift: .2, a: .6, th: .3, seam: .6 }, (ax + bx) / 2, 6.4, (az + bz) / 2, Math.abs(bz - az) > Math.abs(bx - ax), { mat: 'tile', gmat: 'plaster', ridge: false, gables: false }); }
-  for (const [x, z, w, d] of [[-8, -16, 26, 12], [22, -12, 18, 16], [0, -34, 20, 10], [30, -38, 14, 12]]) { add('paving', box(w, .25, d, x, 3, z), { ph: 'detail', lines: false }); S.strokes.push({ layer: 1, segs: [[V(x - w / 2, 3.3, z - d / 2), V(x + w / 2, 3.3, z - d / 2)], [V(x + w / 2, 3.3, z - d / 2), V(x + w / 2, 3.3, z + d / 2)], [V(x + w / 2, 3.3, z + d / 2), V(x - w / 2, 3.3, z + d / 2)], [V(x - w / 2, 3.3, z + d / 2), V(x - w / 2, 3.3, z - d / 2)]] }); }
-  add('gravel', box(40, .12, 16, -2, 3, 46), { lines: false });
-  end();
-  // context: 佐賀県庁, 県立博物館, camphor avenues, lotus in the moats
-  begin({ sketch: [.15, .55], mass: [1.2, 1.7], detail: [2.05, 2.6] });
-  add('concrete', box(22, 56, 18, 104, 1.2, -96)); add('glass', box(22.4, 3, 18.4, 104, 54, -96), { ph: 'detail' });
-  for (let y = 5; y < 54; y += 4) add('woodDark', box(22.2, .9, 18.2, 104, y, -96), { ph: 'detail', lines: false, d: .05 });
-  add('concrete', box(34, 6, 22, 104, 1.2, 36)); add('concrete', box(40, 1.2, 8, 104, 7.2, 36), { ph: 'detail' }); add('concrete', box(8, 1.2, 28, 104, 7.2, 36), { ph: 'detail' });
-  add('paving', box(10, .15, 2 * SG.oz + 30, -8, 1.2, 0), { lines: false });
-  end();
-  const Rf = mulberry(1838), trees = [], lotus = [];
-  const edge = (x0, z0, x1, z1, n) => { for (let k = 0; k < n; k++) { const t = (k + .5) / n; trees.push({ x: lerp(x0, x1, t) + (Rf() - .5) * 2, z: lerp(z0, z1, t) + (Rf() - .5) * 2, big: 1 }); } };
-  const e1 = SG.hx - 4, e2 = SG.hz - 4;
-  edge(-e1, -e2, e1, -e2, 9); edge(-e1, -e2, -e1, e2, 8); edge(e1, -e2, e1, e2, 8); edge(-e1, e2, -26, e2, 3); edge(6, e2, e1, e2, 4);
-  const f1 = SG.hx + SG.moat + 4, f2 = SG.hz + SG.moat + 4;
-  edge(-f1, -f2, f1, -f2, 14); edge(-f1, -f2, -f1, f2, 12); edge(f1, -f2, f1, 14, 8); edge(-f1, f2, -18, f2, 6); edge(4, f2, f1, f2, 6);
-  for (let k = 0; k < 80; k++) { const x = lerp(TX0 + 4, TX1 - 4, Rf()), z = lerp(TZ0 + 4, TZ1 - 4, Rf()); const io = Math.max(Math.abs(x) - SG.ox, Math.abs(z) - SG.oz); if (io < SG.ow + 3 && io > -8) continue; const ins = Math.max(Math.abs(x) - SG.hx, Math.abs(z) - SG.hz); if (ins < SG.moat + 6) continue; if (Math.hypot(x - 104, z + 96) < 20 || Math.hypot(x - 104, z - 36) < 26 || Math.abs(x + 8) < 8) continue; trees.push({ x, z, big: .8 }); }
-  makeInstances('forestI', blob(1, 1, .8, 1), trees.map(p => { const s = (3.2 + Rf() * 1.6) * p.big; return { x: p.x, z: p.z, y: H(p.x, p.z) + s * 1.3, s, t: 2.25 + Rf() * .5 }; }),
-    { spring: ['#3f5f36', '#4a6b3c', '#557742', '#3a5532'], autumn: ['#4a6b3c', '#6a7440', '#7a5a33', '#557742'] }, Rf);
-  makeInstances('forestI', cyl(.35, 1, 0, 0, 0, 6, .22), trees.map(p => { const s = (3.2 + Rf() * 1.6) * p.big; return { x: p.x, z: p.z, y: H(p.x, p.z) - .1, s: 1, sy: s * 1.2, t: 2.2 + Rf() * .4 }; }), { spring: ['#5b4a3c'], autumn: ['#5b4a3c'] }, Rf);
-  for (let k = 0; k < 2000 && lotus.length < 380; k++) { const x = lerp(-SG.hx - SG.moat, SG.hx + SG.moat, Rf()), z = lerp(-SG.hz - SG.moat, SG.hz + SG.moat, Rf()); const ins = Math.max(Math.abs(x) - SG.hx, Math.abs(z) - SG.hz); if (ins < 3 || ins > SG.moat - 4 || (z > 0 && x > -18 && x < -2)) continue; if (Math.sin(x * .07) + Math.cos(z * .09) < .3) continue; lotus.push({ x, z, y: -.86, s: .7 + Rf() * .6, sy: .08, t: 2.5 + Rf() * .3 }); }
-  makeInstances('forestI', new THREE.CylinderGeometry(1, 1, 1, 10), lotus, { spring: ['#5f8a45', '#6b9a4d', '#5a8240', '#e39ab4'], autumn: ['#8a7a45', '#7a6a3a', '#8a7440'] }, Rf);
 }
 
 /* =====================================================================
@@ -2233,6 +2137,364 @@ const KUNCHI = (() => {
   }
   return { update, route };
 })();
+
+/* =====================================================================
+   佐賀城 SAGA CASTLE — re-laid from the castle plan: a square enclosure
+   in a broad outer moat; 本丸 in the south-east, 鯱の門 on its west side
+   with the 続櫓 running north toward the 天守台 at the north-west corner.
+   ===================================================================== */
+const SG = { IX: 125, IZ: 108, OX: 158, OZ: 138, HM: [20, 100, 6, 108] };
+const SG_MOATS = [[4, 20, -6, 108], [-60, 125, -10, 6], [-60, -46, -10, 40]];
+const inR = (x, z, r) => x > r[0] && x < r[1] && z > r[2] && z < r[3];
+function sagaH(x, z) {
+  let h = 1.8 + fbm(x * .02, z * .02) * .15;
+  const io = Math.max(Math.abs(x) - SG.IX, Math.abs(z) - SG.IZ);
+  if (io > 0) {
+    const oo = Math.max(Math.abs(x) - SG.OX, Math.abs(z) - SG.OZ);
+    h = oo < 0 ? lerp(-2.6, 1.8, Math.max(sstep(2.5, 0, io), sstep(-2.5, 0, oo))) : 1.4;
+    if ((z > 40 && z < 50 && x < 0) || (x > -22 && x < -10 && z < 0)) h = Math.max(h, 1.8);
+  }
+  for (const r of SG_MOATS) if (inR(x, z, r)) { const d = Math.min(x - r[0], r[1] - x, z - r[2], r[3] - z); h = Math.min(h, lerp(1.8, -2.6, sstep(0, 2.2, d))); }
+  if (inR(x, z, SG.HM)) h = 3.0 + (x - 20 < 8 && z > 26 ? 1.6 * sstep(1, 3, x - 20) * sstep(8, 5, x - 20) : 0);
+  if (x > 3 && x < 21 && z > 57 && z < 65) h = 2.9;
+  return h;
+}
+function sagaTColor(x, z, h, slope) {
+  const c = new THREE.Color('#93ac5e');
+  if (inR(x, z, SG.HM)) c.set('#9fb466');
+  if (Math.abs(x + 15) < 5 || Math.abs(z + 40) < 4) c.set('#b9b2a4');
+  if (h < -.5) c.set('#4f5f5b');
+  return c;
+}
+function goten(x, z, w, d, o = {}) { // palace hall: brown timber, white upper walls, tile roof
+  const alongZ = d > w, L = Math.max(w, d), Sh = Math.min(w, d);
+  add('paving', box(w + 1.6, .5, d + 1.6, x, 3, z), { lines: false });
+  add('wood', box(w + 1.2, .35, d + 1.2, x, 3.5, z), { ph: 'detail', lines: false });
+  add('wood', box(w, 3.4, d, x, 3.5, z));
+  add('plaster', box(w + .04, 1.05, d + .04, x, 5.85, z), { ph: 'detail', lines: false });
+  const n = Math.max(2, Math.floor(L / 1.9));
+  for (let k = 0; k < n; k++) for (const s of [-1, 1]) {
+    const t = -L / 2 + (k + .5) * L / n;
+    if (alongZ) add('woodDark', box(.1, 1.9, L / n - .3, x + s * (w / 2 + .03), 3.7, z + t), { ph: 'detail', lines: false, d: .06 });
+    else add('woodDark', box(L / n - .3, 1.9, .1, x + t, 3.7, z + s * (d / 2 + .03)), { ph: 'detail', lines: false, d: .06 });
+  }
+  for (let k = 0; k <= n; k++) { const t = -L / 2 + k * L / n; for (const s of [-1, 1]) S.strokes.push({ layer: 3, segs: [[alongZ ? V(x + s * (w / 2 + .08), 3.55, z + t) : V(x + t, 3.55, z + s * (d / 2 + .08)), alongZ ? V(x + s * (w / 2 + .08), 5.75, z + t) : V(x + t, 5.75, z + s * (d / 2 + .08))]] }); }
+  roofOn({ W: L + 3.4, D: Sh + 3.4, H: o.h || 3.4, sg: .55, lift: .5, a: .45, th: .36, seam: .6 }, x, 6.85, z, alongZ, { mat: 'tile', gmat: 'wood', rmat: 'tile', oni: false });
+}
+function buildSaga() {
+  const [hx0, hx1, hz0, hz1] = SG.HM;
+  begin({ sketch: [0, .22], mass: [1, 1.1], detail: [2, 2.1] });
+  { const L0 = (a, b) => S.strokes.push({ layer: 0, segs: [[a, b]] });
+    L0(V(TX0, BASE, TZ0), V(TX1, BASE, TZ0)); L0(V(TX1, BASE, TZ0), V(TX1, BASE, TZ1)); L0(V(TX1, BASE, TZ1), V(TX0, BASE, TZ1)); L0(V(TX0, BASE, TZ1), V(TX0, BASE, TZ0));
+    for (const [x, z] of [[TX0, TZ0], [TX1, TZ0], [TX1, TZ1], [TX0, TZ1]]) L0(V(x, BASE, z), V(x, H(x, z), z));
+    for (const x of [-SG.IX, SG.IX, hx0, hx1, 4, -60]) L0(V(x, .05, TZ0 + 10), V(x, .05, TZ1 - 10));
+    for (const z of [-SG.IZ, SG.IZ, hz0, -10, 61]) L0(V(TX0 + 10, .05, z), V(TX1 - 10, .05, z));
+    for (let x = -150; x <= 150; x += 30) for (let z = -150; z <= 150; z += 30) { L0(V(x - .9, .05, z), V(x + .9, .05, z)); L0(V(x, .05, z - .9), V(x, .05, z + .9)); }
+    S.strokes.push({ layer: 4, segs: [[V(-60, 3.2, 61), V(100, 3.2, 61)]] });
+    const rect = (a, b, c, d, y) => S.strokes.push({ layer: 1, segs: [[V(a, y, c), V(b, y, c)], [V(b, y, c), V(b, y, d)], [V(b, y, d), V(a, y, d)], [V(a, y, d), V(a, y, c)]] });
+    rect(-SG.IX, SG.IX, -SG.IZ, SG.IZ, 1.9); rect(-SG.OX, SG.OX, -SG.OZ, SG.OZ, 1.5); rect(hx0, hx1, hz0, hz1, 3.4);
+    for (const r of SG_MOATS) rect(r[0], r[1], r[2], r[3], 1.9);
+  }
+  end();
+  buildTerrain();
+  begin({ sketch: [.12, .6], mass: [1.15, 1.6], detail: [2.05, 2.5] });
+  add('water', new THREE.PlaneGeometry(TX1 - TX0, TZ1 - TZ0).rotateX(-Math.PI / 2).translate(0, -.9, 0), { lines: false, ph: 'detail', m: 0, ord: 0 });
+  const wall = (ax, az, bx, bz) => add('stone', beam(V(ax, .5, az), V(bx, .5, bz), 1.6, 6.2), { lines: false, anc: V((ax + bx) / 2, -2.6, (az + bz) / 2) });
+  const run = (a, b, fixed, alongX) => { for (let t = a; t < b; t += 8) { const t2 = Math.min(b, t + 8); alongX ? wall(t, fixed, t2, fixed) : wall(fixed, t, fixed, t2); } };
+  run(hx0, hx1, hz0 - .6, true); run(hx0, hx1, hz1 + .6, true); run(hz0, 49, hx0 - .6, false); run(73, hz1, hx0 - .6, false);
+  for (const z of [56.4, 65.6]) add('stone', beam(V(4, .2, z), V(19, .2, z), 1.2, 5.4), { lines: false });
+  add('paving', box(15, .2, 8, 11.5, 2.8, 61), { lines: false });
+  // 天守台 (the keep burned in 1726) and the south-west corner turret base
+  { const g = new THREE.BoxGeometry(21, 11.6, 21), p = g.attributes.position; for (let i = 0; i < p.count; i++) if (p.getY(i) > 0) { p.setX(i, p.getX(i) * 17 / 21); p.setZ(i, p.getZ(i) * 17 / 21); } g.computeVertexNormals(); g.translate(28, -2.6 + 5.8, 14); add('stone', g, { ea: 20 }); }
+  add('stone', box(11, 8.6, 11, 24, -2.6, 103));
+  end();
+  // 鯱の門 (west side, facing west) and 続櫓 running north along the wall
+  begin({ sketch: [.4, .85], mass: [1.4, 1.9], detail: [2.15, 2.8] });
+  for (const z of [52.5, 69.5]) add('stone', box(8, 3.8, 7.5, 22, 3, z));
+  for (const z of [57.2, 64.8]) add('woodDark', cyl(.4, 3.8, 18.4, 3, z, 10), { lines: 'axis' });
+  for (const s of [-1, 1]) add('woodDark', box(.25, 3.4, 3.7, 18.3, 3, 61 + s * 1.95), { ph: 'detail', lines: false });
+  for (let k = 0; k < 12; k++) add('steel', new THREE.SphereGeometry(.09, 6, 4).translate(18.15, 4 + Math.floor(k / 6) * 1.4, 58.4 + (k % 6) * 1.05), { ph: 'detail', lines: false });
+  add('plaster', box(8, 3.6, 25, 22, 6.8, 61));
+  for (let k = 0; k < 7; k++) add('woodDark', box(.1, 1, 1.4, 17.97, 7.9, 51 + k * 3.35), { ph: 'detail', lines: false });
+  add('woodDark', box(8.2, .9, 25.2, 22, 6.8, 61), { ph: 'detail', lines: false });
+  roofOn({ W: 29, D: 12, H: 3.8, sg: .5, lift: .7, a: .42, th: .4, seam: .6 }, 22, 10.3, 61, true, { mat: 'tile', gmat: 'plaster', rmat: 'tile', oni: false });
+  { const xg = 14.5 - 6 * .5; for (const s of [-1, 1]) { add('bronze', box(.9, 1.6, .5, 22, 13.7, 61 + s * (xg - .2)), { ph: 'detail', lines: false }); add('bronze', box(.55, .7, .35, 22, 14.9, 61 + s * (xg - .55)), { ph: 'detail', lines: false }); } }
+  yagura(23, 3, 40, 6, 17, 2, { base: .4 });
+  end();
+  // 本丸御殿: 御玄関 (big gable porch facing the gate), 御式台, 外御書院, 御小書院, 御座間
+  begin({ sketch: [.46, .97], mass: [1.5, 1.98], detail: [2.2, 2.9] });
+  add('gravel', box(12, .12, 32, 30, 3, 61), { lines: false });
+  goten(40, 61, 10, 12, { h: 3.8 });
+  for (const z of [56, 66]) add('wood', cyl(.3, 3.6, 33.2, 3.5, z, 10), { lines: 'axis' });
+  roofOn({ W: 11, D: 15, H: 1.3, sg: .15, lift: .35, a: .5, th: .32, seam: .6 }, 36, 7.1, 61, false, { mat: 'tile', ridge: false });
+  roofOn({ W: 8, D: 9.4, H: 3.6, sg: 1, lift: .3, a: .55, th: .34, seam: .6 }, 36.4, 8.1, 61, false, { mat: 'tile', gmat: 'wood', ridge: false });
+  add('gold', box(.1, .7, 1.6, 32.2, 10.6, 61), { ph: 'detail', lines: false });
+  goten(53, 61, 12, 14);
+  goten(62, 40, 36, 11, { h: 4 });
+  goten(72, 63, 14, 12);
+  goten(76, 22, 12, 10); goten(90, 28, 10, 10);
+  for (const [ax, az, bx, bz] of [[46, 48, 46, 54], [60, 61, 65, 61], [72, 46, 72, 57], [76, 28, 76, 34], [82, 26, 85, 26]]) { const lx = Math.abs(bx - ax), lz = Math.abs(bz - az); add('wood', box(lx + 3, 3, lz + 3, (ax + bx) / 2, 3.5, (az + bz) / 2), { lines: false }); roofOn({ W: Math.max(lx, lz) + 5, D: 5, H: 1.4, sg: 1, lift: .2, a: .6, th: .3, seam: .6, gables: false }, (ax + bx) / 2, 6.4, (az + bz) / 2, lz > lx, { mat: 'tile', ridge: false }); }
+  for (const [x, z, w, d] of [[66, 90, 26, 14], [46, 94, 14, 10], [90, 78, 12, 18], [90, 52, 10, 14]]) { add('paving', box(w, .25, d, x, 3, z), { ph: 'detail', lines: false }); S.strokes.push({ layer: 1, segs: [[V(x - w / 2, 3.3, z - d / 2), V(x + w / 2, 3.3, z - d / 2)], [V(x + w / 2, 3.3, z - d / 2), V(x + w / 2, 3.3, z + d / 2)], [V(x + w / 2, 3.3, z + d / 2), V(x - w / 2, 3.3, z + d / 2)], [V(x - w / 2, 3.3, z + d / 2), V(x - w / 2, 3.3, z - d / 2)]] }); }
+  add('soil', box(20, .2, 12, 56, 3, 80), { ph: 'detail', lines: false });
+  end();
+  // context: 佐賀県庁 (北の丸), 県立博物館・美術館, avenues, camphors, lotus
+  begin({ sketch: [.15, .55], mass: [1.2, 1.7], detail: [2.05, 2.6] });
+  add('concrete', box(22, 40, 18, -40, 1.8, -70)); add('glass', box(22.4, 3, 18.4, -40, 38.6, -70), { ph: 'detail' });
+  for (let y = 5.6; y < 38; y += 4) add('woodDark', box(22.2, .9, 18.2, -40, y, -70), { ph: 'detail', lines: false, d: .05 });
+  add('concrete', box(30, 6, 20, -85, 1.8, 66)); add('concrete', box(38, 1.2, 8, -85, 7.8, 66), { ph: 'detail' }); add('concrete', box(8, 1.2, 26, -85, 7.8, 66), { ph: 'detail' });
+  add('concrete', box(26, 8, 14, 60, 1.8, -50)); add('concrete', box(18, 12, 12, -90, 1.8, -60));
+  add('paving', box(10, .15, 2 * SG.OZ + 20, -15, 1.8, 0), { lines: false }); add('paving', box(2 * SG.OX + 20, .15, 8, 0, 1.8, -40), { lines: false });
+  end();
+  const Rf = mulberry(1838), trees = [], lotus = [];
+  const edge = (x0, z0, x1, z1, n, big = 1) => { for (let k = 0; k < n; k++) { const t = (k + .5) / n; trees.push({ x: lerp(x0, x1, t) + (Rf() - .5) * 2, z: lerp(z0, z1, t) + (Rf() - .5) * 2, big }); } };
+  edge(hx0 + 5, hz0 + 4, hx1 - 3, hz0 + 4, 8); edge(hx0 + 4, 78, hx0 + 4, hz1 - 5, 4); edge(hx0 + 5, hz1 - 4, hx1, hz1 - 4, 8); edge(hx1 + 12, hz0 + 4, hx1 + 12, hz1 - 4, 9);
+  edge(-SG.IX + 4, -SG.IZ + 4, SG.IX - 4, -SG.IZ + 4, 20); edge(-SG.IX + 4, -SG.IZ + 4, -SG.IX + 4, SG.IZ - 4, 18); edge(SG.IX - 4, -SG.IZ + 4, SG.IX - 4, -14, 8); edge(-SG.IX + 4, SG.IZ - 4, 0, SG.IZ - 4, 11);
+  edge(-SG.OX - 5, -SG.OZ - 5, SG.OX + 5, -SG.OZ - 5, 22, .85); edge(-SG.OX - 5, -SG.OZ - 5, -SG.OX - 5, SG.OZ + 5, 20, .85); edge(SG.OX + 5, -SG.OZ - 5, SG.OX + 5, SG.OZ + 5, 20, .85); edge(-SG.OX - 5, SG.OZ + 5, SG.OX + 5, SG.OZ + 5, 22, .85);
+  for (let k = 0; k < 90; k++) { const x = lerp(-SG.IX + 8, SG.IX - 8, Rf()), z = lerp(-SG.IZ + 8, SG.IZ - 8, Rf()); if (inR(x, z, [hx0 - 20, SG.IX, hz0 - 20, SG.IZ])) continue; if (SG_MOATS.some(r => inR(x, z, [r[0] - 5, r[1] + 5, r[2] - 5, r[3] + 5]))) continue; if (Math.abs(x + 15) < 8 || Math.abs(z + 40) < 7 || Math.hypot(x + 40, z + 70) < 18 || Math.hypot(x + 85, z - 66) < 24 || Math.hypot(x - 60, z + 50) < 18 || Math.hypot(x + 90, z + 60) < 14) continue; trees.push({ x, z, big: .8 }); }
+  makeInstances('forestI', blob(1, 1, .8, 1), trees.map(p => { const s = (3.1 + Rf() * 1.5) * p.big; return { x: p.x, z: p.z, y: H(p.x, p.z) + s * 1.3, s, t: 2.25 + Rf() * .5 }; }),
+    { spring: ['#3f5f36', '#4a6b3c', '#557742', '#3a5532'], autumn: ['#4a6b3c', '#6a7440', '#7a5a33', '#557742'] }, Rf);
+  makeInstances('forestI', cyl(.35, 1, 0, 0, 0, 6, .22), trees.map(p => { const s = (3.1 + Rf() * 1.5) * p.big; return { x: p.x, z: p.z, y: H(p.x, p.z) - .1, s: 1, sy: s * 1.2, t: 2.2 + Rf() * .4 }; }), { spring: ['#5b4a3c'], autumn: ['#5b4a3c'] }, Rf);
+  for (let k = 0; k < 4000 && lotus.length < 520; k++) {
+    const x = lerp(-SG.OX, SG.OX, Rf()), z = lerp(-SG.OZ, SG.OZ, Rf()); const h = sagaH(x, z); if (h > -2.2) continue;
+    if (Math.sin(x * .05 + 1) + Math.cos(z * .06) < .4) continue; if (x > 0 && x < 24 && z > 54 && z < 68) continue;
+    lotus.push({ x, z, y: -.86, s: .7 + Rf() * .6, sy: .08, t: 2.5 + Rf() * .3 });
+  }
+  makeInstances('forestI', new THREE.CylinderGeometry(1, 1, 1, 10), lotus, { spring: ['#5f8a45', '#6b9a4d', '#5a8240', '#e39ab4'], autumn: ['#8a7a45', '#7a6a3a', '#8a7440'] }, Rf);
+}
+
+/* =====================================================================
+   有田内山 ARITA — the valley town where Japanese porcelain began:
+   white-walled merchant houses along the street, kiln chimneys,
+   トンバイ塀 lanes, 陶山神社 with its porcelain torii (and the JR line
+   crossing its approach), 泉山磁石場 and the great ginkgo.
+   ===================================================================== */
+const ARs = x => 4 * Math.sin(x / 60);
+const ARp = { shrine: [-40, 44, 9], stone: [-54, 84, 5] };
+let ARpadH = null;
+function aritaRaw(x, z) {
+  const sz = ARs(x), d = Math.abs(z - sz), side = z > sz ? 1 : -1;
+  let h = 2 + .015 * (x + 170);
+  h += (side > 0 ? 40 : 46) * sstep(side > 0 ? 22 : 26, 95, d) + fbm(x * .03 + side * 3, z * .03) * 7 * sstep(14, 60, d);
+  const rd = Math.abs(z - (sz + 11)); if (rd < 3.2) h -= 1.6 * sstep(3.2, 1.2, rd);
+  const qe = seE(x, z, 118, -52, 34, 26, 2.2);
+  if (qe < 1.15) { const cut = 9 + 7.5 * Math.floor(3.2 * sstep(.42, 1.05, qe)); h = Math.min(h, lerp(cut, h, sstep(1, 1.15, qe))); }
+  return h;
+}
+function aritaH(x, z) {
+  let h = aritaRaw(x, z);
+  if (!ARpadH) ARpadH = Object.values(ARp).map(([px, pz]) => aritaRaw(px, pz));
+  Object.values(ARp).forEach(([px, pz, r], i) => { const dd = Math.hypot(x - px, z - pz); if (dd < r + 6) h = lerp(h, ARpadH[i], sstep(r + 6, r, dd)); });
+  return h;
+}
+function aritaTColor(x, z, h, slope) {
+  const d = Math.abs(z - ARs(x)); const c = new THREE.Color(d < 20 ? '#b9b2a2' : '#4f6a3f');
+  if (seE(x, z, 118, -52, 34, 26, 2.2) < 1.02) c.set(slope > .6 ? '#d9d4c8' : '#e6e1d6');
+  else if (slope > 1.2) c.lerp(new THREE.Color('#877b69'), .6);
+  if (Math.abs(z - (ARs(x) + 11)) < 1.6) c.set('#6a6456');
+  return c;
+}
+function house2(x, z, ry, w, d, o = {}) { // white-walled house with a dark 焼杉 band and tile gable roof
+  const save = S.M; frame(x, o.y ?? H(x, z), z, ry);
+  const hh = o.h ?? 5.4;
+  add('stone', box(w + .6, .6, d + .6, 0, -.3, 0), { lines: false });
+  add('plaster', box(w, hh, d, 0, .3, 0));
+  add('woodDark', box(w + .03, 1.7, d + .03, 0, .3, 0), { ph: 'detail', lines: false });
+  roofOn({ W: w + 1.2, D: d + 1.4, H: 2.2, sg: 1, a: .9, lift: .15, th: .3, seam: .55, gableX: w / 2 }, 0, hh + .3, 0, false, { mat: 'tile', gmat: 'plaster', ridge: false });
+  S.M = save;
+}
+function chimney(x, z, hgt, y) {
+  const save = S.M; S.M = null; y = y ?? H(x, z);
+  const g = new THREE.BoxGeometry(1.8, hgt, 1.8), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) if (p.getY(i) > 0) { p.setX(i, p.getX(i) * .66); p.setZ(i, p.getZ(i) * .66); }
+  g.computeVertexNormals(); g.translate(x, y + hgt / 2, z);
+  add('brick', g, { lines: 'axis' }); add('brick', box(1.5, .45, 1.5, x, y + hgt - .2, z), { ph: 'detail', lines: false });
+  S.M = save;
+}
+function porcelainTorii(x, y, z, ry, W, Ht) { // 磁器製鳥居 (1888): white porcelain with blue arabesque
+  const save = S.M; const M0 = new THREE.Matrix4().makeRotationY(ry).setPosition(x, y, z); S.M = save ? save.clone().multiply(M0) : M0;
+  const r = W * .07;
+  for (const s of [-1, 1]) { add('porcelainB', cyl(r, Ht * .92, 0, 0, s * W / 2, 14, r * .9), { lines: 'axis' }); add('stone', cyl(r * 1.5, Ht * .08, 0, 0, s * W / 2, 10), { lines: false }); }
+  add('porcelainB', box(r * 1.2, Ht * .07, W * 1.2, 0, Ht * .68, 0), { lines: 'axis' });
+  add('porcelainB', bentBox(W * 1.3, Ht * .09, r * 2.2, Ht * .03).translate(0, Ht * .92, 0), { lines: false });
+  stroke([V(0, Ht * .97, -W * .66), V(0, Ht * .95, 0), V(0, Ht * .97, W * .66)], 1);
+  S.M = save;
+}
+function buildArita() {
+  ARpadH = null;
+  begin({ sketch: [0, .22], mass: [1, 1.1], detail: [2, 2.1] });
+  { const L0 = (a, b) => S.strokes.push({ layer: 0, segs: [[a, b]] });
+    L0(V(TX0, BASE, TZ0), V(TX1, BASE, TZ0)); L0(V(TX1, BASE, TZ0), V(TX1, BASE, TZ1)); L0(V(TX1, BASE, TZ1), V(TX0, BASE, TZ1)); L0(V(TX0, BASE, TZ1), V(TX0, BASE, TZ0));
+    for (const [x, z] of [[TX0, TZ0], [TX1, TZ0], [TX1, TZ1], [TX0, TZ1]]) L0(V(x, BASE, z), V(x, H(x, z), z));
+    for (let x = -150; x <= 150; x += 30) for (let z = -120; z <= 120; z += 30) { L0(V(x - .9, 2, z), V(x + .9, 2, z)); L0(V(x, 2, z - .9), V(x, 2, z + .9)); }
+    const st = []; for (let x = TX0; x <= TX1; x += 5) st.push(V(x, H(x, ARs(x)) + .2, ARs(x)));
+    S.strokes.push({ layer: 4, segs: st.slice(0, -1).map((p, i) => [p, st[i + 1]]) });
+    S.strokes.push({ layer: 4, segs: [[V(-40, 4, 8), V(-40, 30, 50)]] });
+  }
+  end();
+  buildTerrain();
+  // street, river, railway
+  begin({ sketch: [.1, .5], mass: [1.15, 1.55], detail: [2.05, 2.5] });
+  const street = []; for (let x = TX0; x <= TX1; x += 2.5) street.push(V(x, 0, ARs(x)));
+  add('paving', ribbon(street, () => 7.4, p => H(p.x, p.z) + .1), { lines: false, ord: 0 });
+  const river = []; for (let x = TX0; x <= TX1; x += 3) river.push(V(x, 0, ARs(x) + 11));
+  add('water', ribbon(river, () => 2.6, p => H(p.x, p.z) + .55), { lines: false, ph: 'detail', m: 0 });
+  for (const s of [-1, 1]) { const pts = river.map(p => V(p.x, H(p.x, p.z + s * 1.6) + .3, p.z + s * 1.6)); S.strokes.push({ layer: 1, segs: pts.slice(0, -1).map((p, i) => [p, pts[i + 1]]) }); }
+  const rail = []; for (let x = TX0; x <= TX1; x += 3) rail.push(V(x, 0, 20 + 2 * Math.sin(x / 70)));
+  add('stoneDark', ribbon(rail, () => 4.2, p => H(p.x, p.z) + .45), { lines: false });
+  for (const s of [-1, 1]) { add('steel', ribbon(rail.map(p => V(p.x, 0, p.z + s * .72)), () => .14, p => H(p.x, p.z - s * .72) + .72), { lines: false }); S.strokes.push({ layer: 1, segs: rail.slice(0, -1).map((p, i) => [V(p.x, H(p.x, p.z) + .8, p.z + s * .72), V(rail[i + 1].x, H(rail[i + 1].x, rail[i + 1].z) + .8, rail[i + 1].z + s * .72)]) }); }
+  for (let i = 0; i < rail.length; i++) { const p = rail[i]; if (i % 2) continue; add('wood', box(.5, .16, 2.6, p.x, H(p.x, p.z) + .5, p.z), { ph: 'detail', lines: false, d: .05 }); }
+  { const x0 = 58, z0 = 20 + 2 * Math.sin(58 / 70), y0 = H(x0, z0) + .7; for (const k of [0, 1]) { add('porcelain', box(19, 3.4, 2.9, x0 + k * 19.6, y0, z0)); add('cobalt', box(19.05, .5, 2.95, x0 + k * 19.6, y0 + 1.1, z0), { ph: 'detail', lines: false }); add('woodDark', box(18, .8, 2.95, x0 + k * 19.6, y0 + 2, z0), { ph: 'detail', lines: false }); } }
+  end();
+  // 内山の町並み: shops both sides of the street (white walls, tile, noren)
+  begin({ sketch: [.16, .62], mass: [1.25, 1.72], detail: [2.08, 2.62] });
+  for (const side of [1, -1]) {
+    let x = -150;
+    while (x < 106) { const w = rr(6.2, 8.4); if (side === 1 && x + w > -46 && x < -33) { x = -33; continue; } if (side === 1 && x + w > 52 && x < 98) { x = 98; continue; } const cx = x + w / 2; frame(0, H(cx, ARs(cx)) - .05, ARs(cx), 0); shop(x, x + w, side); x += w + .6; }
+  }
+  noFrame();
+  // 旧田代家西洋館 on the north slope
+  { const x = 24, z = -30, y = H(x, z); add('stone', box(14, 1.2, 10, x, y - .6, z)); add('plaster', box(12, 7, 8, x, y + .6, z)); for (let k = 0; k < 5; k++) add('wood', cyl(.18, 3, x - 5 + k * 2.5, y + .6, z + 4.6, 8), { lines: 'axis' }); add('wood', box(12.4, .3, 1.8, x, y + 3.6, z + 4.6), { ph: 'detail', lines: false }); roofOn({ W: 14.4, D: 10.4, H: 3, sg: 0, a: .9, lift: 0, th: .3, seam: .6 }, x, y + 7.6, z, false, { mat: 'tile', ridge: false }); }
+  // kiln chimneys behind the houses
+  for (const [x, z, h] of [[-120, -26, 16], [-96, 30, 13], [-70, -24, 18], [-18, -28, 15], [6, -34, 12], [38, 28, 17], [70, -24, 14], [-130, 26, 12], [90, 30, 15], [-60, 30, 13]]) chimney(x, z, h);
+  end();
+  // トンバイ塀の裏通り (north of the street)
+  begin({ sketch: [.24, .7], mass: [1.3, 1.78], detail: [2.1, 2.6] });
+  const lane = new THREE.CatmullRomCurve3([V(-70, 0, -22), V(-40, 0, -25), V(-10, 0, -22), V(18, 0, -26), V(48, 0, -23), V(72, 0, -26)]).getSpacedPoints(60);
+  add('paving', ribbon(lane, () => 3, p => H(p.x, p.z) + .1), { lines: false });
+  for (const s of [-1, 1]) for (let i = 0; i < lane.length - 1; i++) {
+    if (i % 7 === 6) continue;
+    const a = lane[i], b = lane[i + 1], t = V(b.x - a.x, 0, b.z - a.z).normalize(), nr = V(-t.z, 0, t.x).multiplyScalar(s * 2.1);
+    const A = V(a.x + nr.x, H(a.x, a.z) - .3, a.z + nr.z), B = V(b.x + nr.x, H(b.x, b.z) - .3, b.z + nr.z);
+    add('tonbai', beam(V(A.x, A.y + 1.25, A.z), V(B.x, B.y + 1.25, B.z), .5, 2.5), { lines: false });
+    add('tile', beam(V(A.x, A.y + 2.6, A.z), V(B.x, B.y + 2.6, B.z), .9, .22), { ph: 'detail', lines: false });
+    S.strokes.push({ layer: 1, segs: [[V(A.x, A.y + 2.5, A.z), V(B.x, B.y + 2.5, B.z)]] });
+  }
+  for (const [x, z, r] of [[-56, -32, .1], [-26, -34, -.05], [4, -32, .12], [36, -35, -.1], [60, -33, .06], [-48, -14, 0], [-4, -14, 0], [30, -16, .05], [-26, -15, 0]]) house2(x, z, r, rr(7, 9.5), rr(6, 7.5), { h: rr(3.4, 5.4) });
+  end();
+  // 陶山神社: stairs from the street across the railway, porcelain torii, halls on the terrace
+  begin({ sketch: [.4, .95], mass: [1.45, 1.95], detail: [2.2, 2.85] });
+  { const [sx, sz] = ARp.shrine, top = ARpadH[0], z0 = ARs(sx) + 4, y0 = H(sx, z0);
+    const zA = 24, yA = H(sx, zA); add('paving', box(4, .2, zA - z0, sx, y0, (z0 + zA) / 2), { lines: false });
+    const n = Math.max(8, Math.round((top - yA) / .32)), run = (sz - 9 - zA) / n;
+    stoneFlight(V(sx, yA, zA), V(0, 0, 1), n, run, (top - yA) / n, 3.6);
+    porcelainTorii(sx, y0 + .1, z0 + 2, Math.PI / 2, 3.9 / 1.2, 3.7);
+    porcelainTorii(sx, top, sz - 7, Math.PI / 2, 3.4, 3.3);
+    frame(sx, top, sz + 2, -Math.PI / 2);
+    add('stone', box(9, .5, 12, 0, 0, 0)); add('wood', box(7, 3.4, 10, 0, .5, 0));
+    for (const [x, z] of [[3.5, -5], [3.5, 5], [-3.5, -5], [-3.5, 5], [5.4, -2.2], [5.4, 2.2]]) add('wood', cyl(.24, 3.4, x, .5, z, 8), { lines: 'axis' });
+    roofOn({ W: 14, D: 11, H: 3.4, sg: .5, lift: .6, th: .38 }, 0, 3.9, 0, true, { gmat: 'wood' });
+    roofOn({ W: 4.4, D: 5.8, H: 1.8, sg: 1, lift: .3, a: .6, th: .3 }, 5.8, 3.4, 0, false, { gmat: 'wood', ridge: false });
+    for (const s of [-1, 1]) { add('porcelain', blob(.55, 1, 1.2, 1).translate(9.5, 1, s * 3), { ph: 'detail', lines: false }); add('porcelainB', cyl(.3, 1.6, 9.5, 0, s * 4.8, 10), { ph: 'detail', lines: false }); }
+    noFrame(); }
+  { const [lx, lz] = ARp.stone, y = ARpadH[1]; add('stone', box(4, 1.2, 4, lx, y, lz)); add('stone', box(1.6, 9.5, 1.6, lx, y + 1.2, lz)); add('stone', new THREE.ConeGeometry(1.2, 1.4, 4).rotateY(Math.PI / 4).translate(lx, y + 11.4, lz), { lines: false }); }
+  end();
+  // 泉山磁石場 and the great ginkgo
+  begin({ sketch: [.3, .8], mass: [1.35, 1.8], detail: [2.15, 2.7] });
+  for (let k = 0; k < 26; k++) { const a = R() * 6.28, rr2 = .55 + R() * .35; const x = 118 + Math.cos(a) * 34 * rr2, z = -52 + Math.sin(a) * 26 * rr2; rock(x, z, rr(.8, 2.2), undefined, 'plaster'); }
+  tree('ginkgo', 104, ARs(104) + 17, 1.9);
+  add('wood', box(4, 2.6, 3, 108, H(108, ARs(108) + 22), ARs(108) + 22));
+  end();
+  // forest on the valley sides
+  const Rf = mulberry(1616), pts = [];
+  for (let k = 0; k < 30000 && pts.length < (MOBILE ? 700 : 1300); k++) {
+    const x = lerp(TX0 + 2, TX1 - 2, Rf()), z = lerp(TZ0 + 2, TZ1 - 2, Rf()), d = Math.abs(z - ARs(x));
+    if (d < 32) continue; if (seE(x, z, 118, -52, 34, 26, 2.2) < 1.1) continue;
+    if (Math.hypot(x - ARp.shrine[0], z - ARp.shrine[1]) < 16 || Math.abs(x - ARp.shrine[0]) < 5 && z > 0 && z < 50) continue;
+    if (Math.hypot(x - ARp.stone[0], z - ARp.stone[1]) < 8) continue;
+    pts.push({ x, z });
+  }
+  makeInstances('forestI', blob(1, 1, .85, 1), pts.map(p => { const s = 2 + Rf() * 2; return { x: p.x, z: p.z, y: H(p.x, p.z) + s * .5, s, t: 2.25 + Rf() * .55 }; }),
+    { spring: ['#48653a', '#52703f', '#3d5835', '#5b7a44', '#6a8748'], autumn: ['#a8452b', '#c7772e', '#b99a3a', '#4f6a3a', '#8a3f26'] }, Rf);
+}
+
+/* =====================================================================
+   伊万里 大川内山 ŌKAWACHIYAMA — the "secret kiln village": the domain
+   kiln moved here in 1675; rocky peaks close three sides, a checkpoint
+   guards the mouth of the valley.
+   ===================================================================== */
+const OKx = z => 6 * Math.sin(z / 40);
+function okaH(x, z) {
+  const e = seE(x, z, 0, -20, 52, 110, 2.2);
+  let h = 3 + Math.max(0, 60 - z) * .075;
+  let m = sstep(.7, 1.25, e) * (1 - sstep(70, 112, z) * (1 - sstep(24, 50, Math.abs(x))));
+  const rg = 1 - Math.abs(vnoise(x * .045 + 3, z * .045 - 1)), rg2 = 1 - Math.abs(vnoise(x * .11, z * .11));
+  h += m * (58 + 34 * rg * rg + 14 * rg2 * rg2 * sstep(.95, 1.3, e));
+  const sd = Math.abs(x - OKx(z)); if (sd < 2.6) h -= 1.4 * sstep(2.6, 1, sd);
+  return h;
+}
+function okaTColor(x, z, h, slope) {
+  const e = seE(x, z, 0, -20, 52, 110, 2.2);
+  const c = new THREE.Color(e < .85 ? '#b6ae9c' : '#4f6a3f');
+  if (e > .85 && slope > .95) c.set('#8e8c86');
+  if (e < .85 && z > 70) c.set(((Math.floor(x / 8) + Math.floor(z / 6)) & 1) ? '#8ea55a' : '#97ac62');
+  if (Math.abs(x - OKx(z)) < 1.4) c.set('#6a6456');
+  return c;
+}
+function buildOkawachi() {
+  begin({ sketch: [0, .22], mass: [1, 1.1], detail: [2, 2.1] });
+  { const L0 = (a, b) => S.strokes.push({ layer: 0, segs: [[a, b]] });
+    L0(V(TX0, BASE, TZ0), V(TX1, BASE, TZ0)); L0(V(TX1, BASE, TZ0), V(TX1, BASE, TZ1)); L0(V(TX1, BASE, TZ1), V(TX0, BASE, TZ1)); L0(V(TX0, BASE, TZ1), V(TX0, BASE, TZ0));
+    for (const [x, z] of [[TX0, TZ0], [TX1, TZ0], [TX1, TZ1], [TX0, TZ1]]) L0(V(x, BASE, z), V(x, H(x, z), z));
+    for (let x = -150; x <= 150; x += 30) for (let z = -120; z <= 120; z += 30) { L0(V(x - .9, 3, z), V(x + .9, 3, z)); L0(V(x, 3, z - .9), V(x, 3, z + .9)); }
+    const ax = []; for (let z = 120; z >= -80; z -= 5) ax.push(V(OKx(z) + 7, H(OKx(z) + 7, z) + .2, z));
+    S.strokes.push({ layer: 4, segs: ax.slice(0, -1).map((p, i) => [p, ax[i + 1]]) });
+  }
+  end();
+  buildTerrain();
+  begin({ sketch: [.1, .55], mass: [1.15, 1.6], detail: [2.05, 2.55] });
+  const sp = []; for (let z = 128; z >= -95; z -= 3) sp.push(V(OKx(z), 0, z));
+  add('water', ribbon(sp, () => 2.2, p => H(p.x, p.z) + .55), { lines: false, ph: 'detail', m: 0 });
+  for (const s of [-1, 1]) { const pts = sp.map(p => V(p.x + s * 1.4, H(p.x + s * 1.4, p.z) + .3, p.z)); S.strokes.push({ layer: 1, segs: pts.slice(0, -1).map((p, i) => [p, pts[i + 1]]) }); }
+  const road = []; for (let z = 128; z >= -70; z -= 3) road.push(V(OKx(z) + 7, 0, z));
+  add('paving', ribbon(road, () => 5, p => H(p.x, p.z) + .1), { lines: false, ord: 0 });
+  for (const zz of [-30, 10]) { const br = []; for (let x = OKx(zz) + 9; x > -40; x -= 3) br.push(V(x, 0, zz + (x - OKx(zz)) * .12)); add('paving', ribbon(br, () => 3.2, p => H(p.x, p.z) + .1), { lines: false }); }
+  // 関所跡 at the mouth of the valley
+  { const z = 96, x = OKx(z) + 7, y = H(x, z); for (const s of [-1, 1]) add('woodDark', cyl(.35, 4.6, x + s * 3.4, y, z, 8), { lines: 'axis' }); add('woodDark', box(8.6, .5, .6, x, y + 4.2, z), { lines: 'axis' }); roofOn({ W: 9.6, D: 2.6, H: 1.1, sg: 1, lift: .2, a: .7, th: .25, gables: false }, x, y + 4.7, z, false, { mat: 'tile', ridge: false }); house2(x + 10, z - 2, Math.PI / 2, 8, 6, { h: 3.4 }); for (let k = -3; k <= 3; k++) if (Math.abs(k) > 1) add('wood', box(3, 1.6, .25, x + k * 3.4, y, z), { ph: 'detail', lines: false }); }
+  // 陶工橋 — bridge dressed in porcelain
+  { const z = 58, x = OKx(z), y = H(x - 4, z) + .3; frame(x, y, z, 0); add('stone', archBox(9, .5, 3.4, .9)); for (const s of [-1, 1]) { for (let k = 0; k < 4; k++) add('porcelainB', box(1.8, .9, .2, -3.2 + k * 2.13, .95 + .9 * (1 - ((-3.2 + k * 2.13) / 4.5) ** 2), s * 1.55), { ph: 'detail', lines: false }); add('stone', beam(V(-4.4, 1.5, s * 1.55), V(0, 2.4, s * 1.55), .3, .25), { lines: false }); add('stone', beam(V(0, 2.4, s * 1.55), V(4.4, 1.5, s * 1.55), .3, .25), { lines: false }); } noFrame(); }
+  end();
+  // kiln village: about thirty kiln houses along the lanes, chimneys
+  begin({ sketch: [.18, .66], mass: [1.25, 1.75], detail: [2.1, 2.66] });
+  const Rv = mulberry(31); let n = 0;
+  for (let k = 0; k < 600 && n < 34; k++) {
+    const z = lerp(-66, 84, Rv()), side = Rv() < .5 ? -1 : 1, rx = OKx(z) + 7 + side * (6.5 + Rv() * 3);
+    const x = side < 0 ? OKx(z) - 7 - Rv() * 14 : rx + Rv() * 12;
+    if (seE(x, z, 0, -20, 52, 110, 2.2) > .78) continue; if (Math.abs(x - OKx(z)) < 4.5 || Math.abs(x - OKx(z) - 7) < 4) continue;
+    if (Math.abs(z - 58) < 7 || Math.abs(z - 96) < 8 || (x < -20 && z > -40 && z < 10) || Math.hypot(x - 22, z + 24) < 7 || Math.hypot(x + 8, z + 52) < 11) continue;
+    house2(x, z, (x > OKx(z) ? -1 : 1) * Math.PI / 2 + (Rv() - .5) * .1, rr(6.5, 9.5), rr(5.5, 7.5), { h: rr(3.2, 5.6) }); n++;
+    if (Rv() < .35) chimney(x + rr(-4, 4), z + rr(-4, 4), rr(10, 15));
+  }
+  { const x = -8, z = -52, y = H(x, z); house2(x, z, Math.PI / 2, 16, 10, { h: 6.8, y }); }
+  end();
+  // 鍋島藩窯公園: a climbing kiln (登り窯) stepping up the west slope, and the 陶工無縁塔
+  begin({ sketch: [.4, .95], mass: [1.45, 1.95], detail: [2.2, 2.9] });
+  { const z = -16, x0 = -22, y0 = H(x0, z);
+    for (let k = 0; k < 7; k++) {
+      const x = x0 - k * 3.6, y = y0 + k * 1.15;
+      add('stone', box(3.8, Math.max(.4, y - H(x, z) + .6), 5, x, H(x, z) - .5, z), { lines: false });
+      add('brick', new THREE.CylinderGeometry(2.2, 2.2, 3.4, 14, 1, false, 0, Math.PI).rotateZ(Math.PI / 2).rotateY(Math.PI / 2).translate(x, y + .1, z), { ea: 40 });
+      add('woodDark', box(.12, 1, .9, x + 1.75, y + .1, z + 1.4), { ph: 'detail', lines: false });
+    }
+    const x1 = x0 - 6 * 3.6, y1 = y0 + 6 * 1.15;
+    for (const s of [-1, 1]) for (let k = 0; k <= 4; k++) { const x = lerp(x0 + 2, x1 - 2, k / 4), y = lerp(y0, y1, k / 4); add('wood', cyl(.18, 5.2, x, y - .4, z + s * 3.6, 6), { lines: 'axis' }); }
+    add('tile', beam(V(x0 + 3, y0 + 4.9, z - 3.9), V(x1 - 3, y1 + 4.9, z - 3.9), 4.4, .3).rotateX(0), { lines: false });
+    add('tile', beam(V(x0 + 3, y0 + 4.9, z + 3.9), V(x1 - 3, y1 + 4.9, z + 3.9), 4.4, .3), { lines: false });
+    S.strokes.push({ layer: 1, segs: [[V(x0 + 3, y0 + 5.6, z), V(x1 - 3, y1 + 5.6, z)]] });
+  }
+  { const x = 22, z = -24, y = H(x, z); add('stone', cyl(3.4, .8, x, y - .2, z, 16)); for (let t = 0; t < 7; t++) add('stone', cyl(3 - t * .38, 1.05, x, y + .6 + t * 1.05, z, 12, 3 - (t + 1) * .38), { lines: t === 0 ? 'axis' : false }); add('stone', new THREE.SphereGeometry(.5, 8, 6).translate(x, y + 8.3, z), { lines: false }); }
+  end();
+  // vegetation on the lower slopes, sparse on the rock faces
+  const Rf = mulberry(1675), pts = [];
+  for (let k = 0; k < 40000 && pts.length < (MOBILE ? 800 : 1500); k++) {
+    const x = lerp(TX0 + 2, TX1 - 2, Rf()), z = lerp(TZ0 + 2, TZ1 - 2, Rf()), e = seE(x, z, 0, -20, 52, 110, 2.2);
+    if (e < .86) { if (Rf() < .985) continue; }
+    const hx = H(x + 1, z) - H(x - 1, z), hz = H(x, z + 1) - H(x, z - 1); if (Math.hypot(hx, hz) / 2 > 1.05 && Rf() < .8) continue;
+    if (z > 88 && Math.abs(x) < 40) continue;
+    pts.push({ x, z });
+  }
+  makeInstances('forestI', blob(1, 1, .85, 1), pts.map(p => { const s = 1.8 + Rf() * 1.8; return { x: p.x, z: p.z, y: H(p.x, p.z) + s * .5, s, t: 2.25 + Rf() * .55 }; }),
+    { spring: ['#48653a', '#52703f', '#3d5835', '#5b7a44', '#6a8748'], autumn: ['#a8452b', '#c7772e', '#b99a3a', '#4f6a3a', '#8a3f26'] }, Rf);
+}
 
 function flushSite() {
   for (const [mk, list] of BUCKETS) {
@@ -2522,54 +2784,149 @@ const PROJ = {
     shadow: { left: -240, right: 240, top: 240, bottom: -240 }, sunT: [0, 0, -20],
     night: [[0, 8, -92, 1400], [4, 6, 14, 1100], [-44, 5, -36, 500], [0, 5, 104, 600], [0, 5, 132, 400]] },
   saga: { seed: 1838, h1: 'Saga <em>Castle.</em>', sub: '佐賀城 · 本丸御殿 · 鯱の門', title: 'Saga Castle',
-    env: () => { H = sagaH; tColor = sagaTColor; TX0 = -160; TX1 = 160; TZ0 = -140; TZ1 = 140; CENTER = [0, 20]; },
+    env: () => { H = sagaH; tColor = sagaTColor; TX0 = -172; TX1 = 172; TZ0 = -152; TZ1 = 152; CENTER = [50, 55]; },
     build: () => buildSaga(),
     DIR: [
-      { p: 0.0, t: [0, 3, 0], d: 440, az: 40, el: 46 },
-      { p: 0.95, t: [0, 4, 10], d: 300, az: 38, el: 38 },
-      { p: 1.9, t: [0, 5, 20], d: 170, az: 42, el: 28 },
-      { p: 2.75, t: [-10, 8, 48], d: 90, az: 70, el: 14 },
-      { p: 3.35, t: [0, 8, 24], d: 110, az: 82, el: 18 },
-      { p: 4.0, t: [4, 4, 4], d: 300, az: 40, el: 34 },
+      { p: 0.0, t: [10, 3, 10], d: 480, az: 140, el: 46 },
+      { p: 0.95, t: [25, 4, 30], d: 320, az: 142, el: 38 },
+      { p: 1.9, t: [45, 5, 50], d: 180, az: 145, el: 28 },
+      { p: 2.75, t: [24, 8, 61], d: 88, az: 172, el: 13 },
+      { p: 3.35, t: [48, 7, 55], d: 112, az: 150, el: 18 },
+      { p: 4.0, t: [15, 4, 20], d: 340, az: 142, el: 34 },
     ],
-    VIEWS: { elev: { t: [0, 8, 0], d: 620, az: 90, el: 3, fov: 15 }, plan: { t: [0, 0, 0], d: 1060, az: 90, el: 89.3, fov: 20 } },
+    VIEWS: { elev: { t: [40, 8, 55], d: 620, az: 180, el: 3, fov: 15 }, plan: { t: [0, 0, 0], d: 1150, az: 90, el: 89.3, fov: 20 } },
     SITES: {
-      overview: { btn: ['Overview', '全景'], cam: { t: [0, 3, 6], d: 330, az: 40, el: 40 }, name: 'Saga Castle', k: 'Overview · 全景', h: '佐賀城<em>Saga Castle</em>',
-        p: '佐賀藩主・鍋島家の居城。慶長年間に鍋島直茂・勝茂父子が整備した平城で、幅の広い堀に囲まれる。1726年の大火で天守などを焼失し、天守は再建されなかった。現在は佐賀城公園として整備されている。',
+      overview: { btn: ['Overview', '全景'], cam: { t: [10, 3, 20], d: 360, az: 140, el: 40 }, name: 'Saga Castle', k: 'Overview · 全景', h: '佐賀城<em>Saga Castle</em>',
+        p: '佐賀藩主・鍋島家の居城。幅の広い堀に囲まれた平城で、城域の南東に本丸、北に北の丸、西に西の丸・三の丸が並んだ。1726年の大火で天守などを焼失し、天守は再建されなかった。現在は佐賀城公園として整備されている。',
         dl: [['形式', '平城'], ['藩主', '鍋島家'], ['天守', '1726年に焼失'], ['現在', '佐賀城公園']] },
-      goten: { btn: ['Palace', '本丸御殿'], cam: { t: [4, 6, 22], d: 100, az: 72, el: 26 }, name: 'Honmaru Palace · 本丸御殿', k: 'Palace · 本丸御殿', h: '本丸御殿<em>Honmaru Palace</em>',
-        p: '10代藩主・鍋島直正が再建し1838年に完成した本丸御殿。発掘遺構と「御本丸差図」が一致したことから、その一部を2004年に往時の工法で木造復元し、佐賀城本丸歴史館として公開した。延床面積約2,500㎡は木造復元建物として国内最大級。',
+      goten: { btn: ['Palace', '本丸御殿'], cam: { t: [50, 6, 52], d: 100, az: 150, el: 26 }, name: 'Honmaru Palace · 本丸御殿', k: 'Palace · 本丸御殿', h: '本丸御殿<em>Honmaru Palace</em>',
+        p: '10代藩主・鍋島直正が再建し1838年に完成した本丸御殿。発掘遺構と「御本丸差図」が一致したことから、その一部（御玄関・外御書院・御座間など）を2004年に往時の工法で木造復元し、佐賀城本丸歴史館として公開した。',
         dl: [['完成', '1838年（天保9年）'], ['復元', '2004年・木造瓦葺き平屋'], ['延床面積', '約 2,500 ㎡'], ['外御書院', '東西49m × 南北15m']] },
-      shachimon: { btn: ['Shachi Gate', '鯱の門'], cam: { t: [-8, 8, 50], d: 70, az: 68, el: 12 }, name: 'Shachi-no-mon · 鯱の門', k: 'Gate · 鯱の門', h: '鯱の門と続櫓<em>Shachi-no-mon</em>',
-        p: '本丸御殿と同じ1838年に建てられた本丸の正門で、続櫓とともに国の重要文化財。屋根の両端に青銅製の鯱を載せ、門扉には1874年の佐賀の乱の弾痕が残る。',
-        dl: [['建立', '1838年'], ['指定', '国重要文化財'], ['鯱', '青銅製'], ['弾痕', '佐賀の乱（1874年）']] },
-      tenshudai: { btn: ['Keep Base', '天守台'], cam: { t: [-40, 10, -34], d: 80, az: 40, el: 28 }, name: 'Tenshu-dai · 天守台', k: 'Keep base · 天守台', h: '天守台<em>Tenshu-dai</em>',
-        p: '本丸の北西隅に残る天守の石垣。天守は1726年の火災で焼失し、以後は再建されなかった。',
+      shachimon: { btn: ['Shachi Gate', '鯱の門'], cam: { t: [22, 8, 61], d: 72, az: 175, el: 12 }, name: 'Shachi-no-mon · 鯱の門', k: 'Gate · 鯱の門', h: '鯱の門と続櫓<em>Shachi-no-mon</em>',
+        p: '1838年建立の本丸表門。二重二階の櫓門に一重二階の続櫓が北西側の石垣へ続き、ともに国の重要文化財。屋根の両端に青銅製の鯱を載せ、門扉には1874年の佐賀の乱の弾痕が残る。',
+        dl: [['建立', '1838年'], ['構造', '二重二階櫓門＋一重二階続櫓'], ['指定', '国重要文化財'], ['弾痕', '佐賀の乱（1874年）']] },
+      tenshudai: { btn: ['Keep Base', '天守台'], cam: { t: [28, 10, 14], d: 80, az: 215, el: 28 }, name: 'Tenshu-dai · 天守台', k: 'Keep base · 天守台', h: '天守台<em>Tenshu-dai</em>',
+        p: '本丸の北西隅で水堀に突き出す天守の石垣。天守は1726年の火災で焼失し、以後は再建されなかった。',
         dl: [['天守焼失', '1726年'], ['現状', '石垣のみ']] },
     },
-    SRC: '出典：<a href="https://saga-museum.jp/sagajou/about/fukugen.html" target="_blank" rel="noopener">佐賀城本丸歴史館 本丸御殿の復元</a>、<a href="https://online.bunka.go.jp/heritages/detail/212676" target="_blank" rel="noopener">文化遺産オンライン</a>。距離は圧縮した概念的な再構成です。',
+    SRC: '出典：<a href="https://saga-museum.jp/sagajou/about/fukugen.html" target="_blank" rel="noopener">佐賀城本丸歴史館 本丸御殿の復元</a>、<a href="https://online.bunka.go.jp/heritages/detail/191343" target="_blank" rel="noopener">文化遺産オンライン 鯱の門及び続櫓</a>、<a href="https://online.bunka.go.jp/heritages/detail/212676" target="_blank" rel="noopener">佐賀城本丸御殿</a>。距離は圧縮した概念的な再構成です。',
     LABELS: [
-      { k: 'A', jp: '本丸御殿', en: 'Palace', pos: [-10, 13, 30], t: .95, site: 'goten' },
-      { k: 'B', jp: '鯱の門', en: 'Shachi gate', pos: [-10, 18, 50], t: .85, site: 'shachimon' },
-      { k: 'C', jp: '続櫓', en: 'Tsuzuki turret', pos: [12, 12, 49], t: .85 },
-      { k: 'D', jp: '外御書院', en: 'Outer shoin', pos: [12, 14, 14], t: .95 },
-      { k: 'E', jp: '天守台', en: 'Keep base', pos: [-40, 18, -34], t: .7, site: 'tenshudai' },
-      { k: 'F', jp: '御堀', en: 'Moat', pos: [74, 2, 0], t: .4 },
-      { k: 'G', jp: '佐賀県庁', en: 'Prefectural office', pos: [104, 62, -96], t: .5 },
-      { k: 'H', jp: '御殿跡（遺構表示）', en: 'Footings', pos: [0, 6, -34], t: .6 },
+      { k: 'A', jp: '本丸御殿', en: 'Palace', pos: [42, 14, 61], t: .95, site: 'goten' },
+      { k: 'B', jp: '鯱の門', en: 'Shachi gate', pos: [21, 18, 61], t: .85, site: 'shachimon' },
+      { k: 'C', jp: '続櫓', en: 'Tsuzuki turret', pos: [23, 13, 40], t: .85 },
+      { k: 'D', jp: '外御書院', en: 'Outer shoin', pos: [62, 14, 40], t: .95 },
+      { k: 'E', jp: '天守台', en: 'Keep base', pos: [28, 16, 14], t: .7, site: 'tenshudai' },
+      { k: 'F', jp: '御堀', en: 'Moat', pos: [-140, 2, 0], t: .4 },
+      { k: 'G', jp: '佐賀県庁', en: 'Prefectural office', pos: [-40, 46, -70], t: .5 },
+      { k: 'H', jp: '御殿跡（遺構表示）', en: 'Footings', pos: [66, 6, 90], t: .6 },
+      { k: 'I', jp: '北の丸', en: 'Kita-no-maru', pos: [20, 5, -60], t: .4 },
+      { k: 'J', jp: '西の丸・三の丸', en: 'West baileys', pos: [-80, 5, 30], t: .4 },
     ],
     STAGES: [
       { n: '01', jp: '線を引く', en: 'Axis · moats · footprints' },
       { n: '02', jp: 'かたちが立ち上がる', en: 'Stone · halls · volume' },
       { n: '03', jp: '細部が宿る', en: 'Lattice · shachi · camphor' },
-      { n: '04', jp: '御殿が甦る', en: 'Tile · plaster · moat' },
+      { n: '04', jp: '御殿が甦る', en: 'Tile · timber · moat' },
     ],
-    shadow: { left: -220, right: 220, top: 210, bottom: -210 }, sunT: [0, 0, 0],
-    night: [[-10, 12, 58, 1000], [0, 10, 24, 1200], [20, 10, 10, 700], [-40, 14, -30, 400]] },
+    shadow: { left: -240, right: 240, top: 230, bottom: -230 }, sunT: [0, 0, 0],
+    night: [[22, 12, 61, 1000], [45, 10, 58, 1200], [62, 10, 40, 700], [28, 16, 14, 400], [-40, 30, -60, 600]] },
+  arita: { seed: 1616, h1: 'Arita <em>Uchiyama.</em>', sub: '有田内山 · 泉山磁石場 · 陶山神社', title: 'Arita Uchiyama',
+    env: () => { H = aritaH; tColor = aritaTColor; TX0 = -170; TX1 = 170; TZ0 = -120; TZ1 = 120; CENTER = [-40, 20]; },
+    build: () => buildArita(),
+    DIR: [
+      { p: 0.0, t: [0, 6, 0], d: 460, az: -62, el: 46 },
+      { p: 0.95, t: [-10, 8, 0], d: 310, az: -62, el: 38 },
+      { p: 1.9, t: [-30, 10, 8], d: 175, az: -66, el: 28 },
+      { p: 2.75, t: [-40, 14, 30], d: 82, az: -72, el: 16 },
+      { p: 3.35, t: [0, 7, 0], d: 120, az: -58, el: 20 },
+      { p: 4.0, t: [15, 10, 0], d: 330, az: -58, el: 36 },
+    ],
+    VIEWS: { elev: { t: [0, 16, 0], d: 650, az: -90, el: 4, fov: 15 }, plan: { t: [0, 0, 0], d: 1080, az: 90, el: 89.3, fov: 20 } },
+    SITES: {
+      overview: { btn: ['Overview', '全景'], cam: { t: [0, 6, 0], d: 340, az: -60, el: 40 }, name: 'Arita Uchiyama', k: 'Overview · 全景', h: '有田内山<em>Arita Uchiyama</em>',
+        p: '1616年、李参平らが泉山で陶石を見つけ、日本で初めて磁器を焼いたと伝わる有田焼発祥の地。谷あいの通りに白壁の商家と窯元が連なり、裏通りには窯の廃材でつくったトンバイ塀が続く。',
+        dl: [['起こり', '1616年 泉山で陶石発見'], ['町並み', '有田内山（重要伝統的建造物群保存地区）'], ['名物', 'トンバイ塀・磁器製鳥居']] },
+      tozan: { btn: ['Tōzan Shrine', '陶山神社'], cam: { t: [-40, 14, 32], d: 76, az: -75, el: 18 }, name: 'Tōzan Shrine · 陶山神社', k: 'Shrine · 陶山神社', h: '陶山神社<em>Tōzan Jinja</em>',
+        p: '有田焼の始まりとともに町の象徴となってきた神社。1888年に奉納された磁器製の鳥居は高さ3.7m、笠木3.9mで、全面に呉須の唐草文様が描かれる。参道をJR佐世保線が横切り、狛犬や灯籠も磁器でできている。',
+        dl: [['鳥居', '磁器製・1888年奉納'], ['寸法', '高さ3.7m・笠木3.9m'], ['珍景', '参道を横切るJR佐世保線']] },
+      izumiyama: { btn: ['Izumiyama', '泉山磁石場'], cam: { t: [118, 14, -50], d: 120, az: 72, el: 26 }, name: 'Izumiyama · 泉山磁石場', k: 'Quarry · 泉山磁石場', h: '泉山磁石場<em>Izumiyama Quarry</em>',
+        p: '有田焼の原料となる陶石を掘り出してきた採石場。山がひとつ白い岩肌となるまで掘り進められた。近くには国の天然記念物「泉山の大イチョウ」が立つ。',
+        dl: [['指定', '国史跡'], ['原料', '白磁の陶石'], ['大イチョウ', '国天然記念物']] },
+      tonbai: { btn: ['Tonbai Lane', 'トンバイ塀'], cam: { t: [0, 4, -24], d: 70, az: -60, el: 30 }, name: 'Tonbai Walls · トンバイ塀', k: 'Lane · トンバイ塀の裏通り', h: 'トンバイ塀の裏通り<em>Tonbai-bei</em>',
+        p: '登り窯を築いた耐火レンガ（トンバイ）の廃材や使い捨ての窯道具を、赤土で塗り固めてつくった塀。表通りの裏手、泉山の大イチョウ付近から続く路地に多く残る。',
+        dl: [['材料', 'トンバイ（耐火レンガ）・窯道具・赤土'], ['場所', '表通りの裏手の路地']] },
+    },
+    SRC: '出典：<a href="https://www.arita.jp/spot/post_16.html" target="_blank" rel="noopener">ありたさんぽ 泉山磁石場</a>、<a href="https://www.arita.jp/spot/post_20.html" target="_blank" rel="noopener">トンバイ塀のある裏通り</a>、<a href="https://japan-heritage.bunka.go.jp/ja/culturalproperties/result/2544/" target="_blank" rel="noopener">文化庁 陶山神社鳥居</a>。距離は圧縮した概念的な再構成です。',
+    LABELS: [
+      { k: 'A', jp: '陶山神社', en: 'Tōzan Shrine', pos: [-40, aritaH(-40, 44) + 12, 46], t: .95, site: 'tozan' },
+      { k: 'B', jp: '磁器製鳥居', en: 'Porcelain torii', pos: [-40, aritaH(-40, 10) + 7, 10], t: .9 },
+      { k: 'C', jp: 'JR佐世保線', en: 'Railway', pos: [70, aritaH(70, 20) + 8, 20], t: .5 },
+      { k: 'D', jp: '泉山磁石場', en: 'Izumiyama quarry', pos: [118, 34, -52], t: .6, site: 'izumiyama' },
+      { k: 'E', jp: '泉山の大イチョウ', en: 'Great ginkgo', pos: [104, aritaH(104, 21) + 24, 21], t: .7 },
+      { k: 'F', jp: 'トンバイ塀の裏通り', en: 'Tonbai lane', pos: [0, aritaH(0, -24) + 7, -24], t: .8, site: 'tonbai' },
+      { k: 'G', jp: '陶祖李参平之碑', en: 'Ri Sampei monument', pos: [-54, aritaH(-54, 84) + 14, 84], t: .8 },
+      { k: 'H', jp: '内山の町並み', en: 'Merchant street', pos: [-100, aritaH(-100, 0) + 12, 0], t: .6 },
+      { k: 'I', jp: '旧田代家西洋館', en: 'Western house', pos: [24, aritaH(24, -30) + 12, -30], t: .8 },
+      { k: 'J', jp: '窯の煙突', en: 'Kiln chimney', pos: [-70, aritaH(-70, -24) + 21, -24], t: .8 },
+    ],
+    STAGES: [
+      { n: '01', jp: '線を引く', en: 'Axis · street · contour' },
+      { n: '02', jp: 'かたちが立ち上がる', en: 'Valley · houses · volume' },
+      { n: '03', jp: '細部が宿る', en: 'Chimneys · torii · tonbai' },
+      { n: '04', jp: '白磁が光る', en: 'Porcelain · plaster · brick' },
+    ],
+    shadow: { left: -230, right: 230, top: 200, bottom: -200 }, sunT: [0, 0, 0],
+    night: [[-40, 30, 40, 900], [-80, 8, 2, 700], [-10, 8, 2, 700], [60, 8, 2, 700], [0, 6, -24, 500], [104, 16, 20, 400]] },
+  okawachi: { seed: 1675, h1: 'Ōkawachiyama.', sub: '伊万里 大川内山 · 秘窯の里 · 鍋島藩窯', title: 'Ōkawachiyama',
+    env: () => { H = okaH; tColor = okaTColor; TX0 = -150; TX1 = 150; TZ0 = -130; TZ1 = 130; CENTER = [0, 0]; },
+    build: () => buildOkawachi(),
+    DIR: [
+      { p: 0.0, t: [0, 20, 0], d: 470, az: 78, el: 46 },
+      { p: 0.95, t: [0, 20, -5], d: 330, az: 82, el: 38 },
+      { p: 1.9, t: [0, 15, 5], d: 190, az: 80, el: 28 },
+      { p: 2.75, t: [-30, 14, -16], d: 88, az: 60, el: 18 },
+      { p: 3.35, t: [5, 12, 40], d: 112, az: 95, el: 16 },
+      { p: 4.0, t: [0, 20, -5], d: 340, az: 84, el: 32 },
+    ],
+    VIEWS: { elev: { t: [0, 30, -20], d: 650, az: 90, el: 4, fov: 15 }, plan: { t: [0, 0, 0], d: 1060, az: 90, el: 89.3, fov: 20 } },
+    SITES: {
+      overview: { btn: ['Overview', '全景'], cam: { t: [0, 15, 0], d: 360, az: 84, el: 40 }, name: 'Ōkawachiyama', k: 'Overview · 全景', h: '大川内山<em>Ōkawachiyama</em>',
+        p: '1675年、佐賀藩は御用窯（鍋島藩窯）を有田から大川内山へ移し、明治まで将軍家や諸大名への献上品となる色鍋島・鍋島青磁を焼いた。三方を険しい岩山に囲まれた谷の入口に関所を置き、有田から連れてきた31人の陶工の技が外に漏れないよう出入りを管理した。現在も約30の窯元が並ぶ「秘窯の里」。',
+        dl: [['藩窯の移転', '1675年（延宝3年）'], ['陶工', '有田から31人'], ['窯元', '約30'], ['焼物', '色鍋島・鍋島青磁']] },
+      sekisho: { btn: ['Checkpoint', '関所跡・陶工橋'], cam: { t: [6, 6, 76], d: 92, az: 60, el: 24 }, name: 'Sekisho · 関所跡', k: 'Entrance · 関所跡・陶工橋', h: '関所跡と陶工橋<em>Checkpoint & bridge</em>',
+        p: '谷の入口に置かれた関所の跡。職人たちは厳しい監視下に置かれた。関所から入り、伊万里焼で飾られた陶工橋を渡ると窯元の町並みが始まる。',
+        dl: [['関所', '藩窯時代の出入り管理'], ['陶工橋', '伊万里焼の装飾']] },
+      kiln: { btn: ['Kiln Park', '鍋島藩窯公園'], cam: { t: [-30, 12, -16], d: 82, az: 55, el: 22 }, name: 'Nabeshima Kiln Park · 藩窯公園', k: 'Kilns · 鍋島藩窯公園', h: '鍋島藩窯公園と登り窯<em>Climbing kiln</em>',
+        p: '御用窯時代の登り窯跡が残り、清源窯・御経石窯などの古窯が復元されている。斜面に焼成室が段々に連なる登り窯は、下の焚き口から上へと順に焼き上げていく。',
+        dl: [['登り窯', '斜面に連なる焼成室'], ['復元', '清源窯・御経石窯']] },
+      village: { btn: ['Kiln Village', '窯元の町並み'], cam: { t: [6, 8, 10], d: 120, az: 95, el: 28 }, name: 'Kiln Village · 窯元', k: 'Village · 窯元の町並み', h: '窯元の町並み<em>Kiln village</em>',
+        p: '谷筋の坂道に沿って窯元のギャラリーと煙突が並ぶ。陶工の墓を集めた陶工無縁塔が、代々の職人たちを弔っている。',
+        dl: [['窯元', '約30'], ['見どころ', '煙突・坂道・陶工無縁塔']] },
+    },
+    SRC: '出典：<a href="https://imari-ookawachiyama.com/history/" target="_blank" rel="noopener">伊万里鍋島焼協同組合 大川内山の歴史</a>、<a href="https://www.asobo-saga.jp/spots/detail/6f1d92bf-01fe-44ed-aaf9-59a1c55b40d7" target="_blank" rel="noopener">あそぼーさが 秘窯の里 大川内山</a>。距離は圧縮した概念的な再構成です。',
+    LABELS: [
+      { k: 'A', jp: '関所跡', en: 'Checkpoint', pos: [OKx(96) + 7, okaH(OKx(96) + 7, 96) + 8, 96], t: .6, site: 'sekisho' },
+      { k: 'B', jp: '陶工橋', en: 'Potters\' bridge', pos: [OKx(58), okaH(OKx(58) - 4, 58) + 6, 58], t: .7 },
+      { k: 'C', jp: '登り窯', en: 'Climbing kiln', pos: [-33, okaH(-33, -16) + 13, -16], t: .9, site: 'kiln' },
+      { k: 'D', jp: '陶工無縁塔', en: 'Potters\' memorial', pos: [22, okaH(22, -24) + 12, -24], t: .9 },
+      { k: 'E', jp: '御細工屋', en: 'Workshop', pos: [-8, okaH(-8, -52) + 12, -52], t: .8 },
+      { k: 'F', jp: '窯元の町並み', en: 'Kiln village', pos: [14, okaH(14, 20) + 10, 20], t: .6, site: 'village' },
+      { k: 'G', jp: '屏風のような岩山', en: 'Rock peaks', pos: [60, okaH(60, -70) + 6, -70], t: .35 },
+    ],
+    STAGES: [
+      { n: '01', jp: '線を引く', en: 'Axis · stream · ridges' },
+      { n: '02', jp: 'かたちが立ち上がる', en: 'Valley · rock · volume' },
+      { n: '03', jp: '細部が宿る', en: 'Kilns · chimneys · bridge' },
+      { n: '04', jp: '窯の里が色づく', en: 'Porcelain · brick · rock' },
+    ],
+    shadow: { left: -220, right: 220, top: 220, bottom: -220 }, sunT: [0, 0, 0],
+    night: [[10, 8, 20, 900], [0, 8, 56, 500], [-30, 12, -16, 500], [12, 6, 92, 500], [-8, 10, -52, 400]] },
 };
 PROJ.karatsu_edo.DIR = PROJ.karatsu.DIR; PROJ.karatsu_edo.VIEWS = PROJ.karatsu.VIEWS; PROJ.karatsu_edo.SRC = K_SRC.replace('形状は', '江戸期の配置は城郭図にもとづく想定で、形状は');
 
 let DIR, VIEWS, SITES, SRC, LABELS, STAGES, curProj = null;
+const GROUPS = { karatsu: [['karatsu', '現在'], ['karatsu_edo', '江戸期']], arita: [['arita', '有田内山'], ['okawachi', '伊万里 大川内山']] };
+const groupOf = k => Object.keys(GROUPS).find(g => GROUPS[g].some(([kk]) => kk === k)) || k;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const ui = { play: $('#play'), scrub: $('#scrub'), stages: $$('.stage'), caption: $('#caption'), capNum: $('#capNum'), capJp: $('#capJp'), capEn: $('#capEn'), siteName: $('#siteName'), card: $('#card'), labels: $('#labels') };
 
@@ -2814,9 +3171,10 @@ function activate(key) {
   for (const k in PROJ) if (PROJ[k].group) PROJ[k].group.visible = k === key;
   ({ DIR, VIEWS, SITES, SRC, LABELS, STAGES } = P);
   document.getElementById('brandH').innerHTML = P.h1; document.getElementById('brandSub').textContent = P.sub;
-  $$('[data-proj]').forEach(b => b.setAttribute('aria-pressed', String(key.startsWith(b.dataset.proj))));
-  document.getElementById('era').hidden = !key.startsWith('karatsu');
-  $$('[data-era]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.era === key)));
+  const grp = groupOf(key), eraEl = document.getElementById('era');
+  $$('[data-proj]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.proj === grp)));
+  eraEl.hidden = !GROUPS[grp];
+  if (GROUPS[grp]) eraEl.innerHTML = GROUPS[grp].map(([k, l]) => `<button type="button" data-era="${k}" aria-pressed="${k === key}">${l}</button>`).join('');
   buildLabels(); buildSiteList(); selectSite(null, true);
   Object.assign(sun.shadow.camera, P.shadow); sun.shadow.camera.updateProjectionMatrix(); sun.target.position.set(...P.sunT); sun.target.updateMatrixWorld();
   nightLights.forEach((l, i) => { const d = P.night[i]; if (d) { l.position.set(d[0], d[1], d[2]); l.userData.base = d[3]; } else l.userData.base = 0; });
@@ -2826,15 +3184,15 @@ function activate(key) {
   lookDirty = true; renderer.shadowMap.needsUpdate = true;
   try { history.replaceState(null, '', '#' + key); } catch (e) { /* sandboxed frames may refuse */ }
 }
-let lastKaratsu = 'karatsu';
-$$('[data-proj], [data-era]').forEach(b => b.addEventListener('click', () => {
-  let key = b.dataset.proj || b.dataset.era; if (key === 'karatsu' && b.dataset.proj) key = lastKaratsu;
-  if (key.startsWith('karatsu')) lastKaratsu = key;
-  if (key === curProj) return;
+const lastIn = {};
+function go(key) {
+  if (!PROJ[key] || key === curProj) return; lastIn[groupOf(key)] = key;
   if (PROJ[key].group) { activate(key); return; }
   document.body.style.cursor = 'progress'; ui.capJp.textContent = 'モデルを組み立てています…';
   setTimeout(() => { activate(key); document.body.style.cursor = ''; }, 40);
-}));
+}
+$$('[data-proj]').forEach(b => b.addEventListener('click', () => { const g = b.dataset.proj; go(GROUPS[g] ? (lastIn[g] || GROUPS[g][0][0]) : g); }));
+document.getElementById('era').addEventListener('click', e => { const b = e.target.closest('[data-era]'); if (b) go(b.dataset.era); });
 { const hk = location.hash.slice(1); activate(PROJ[hk] ? hk : 'yutoku'); }
 requestAnimationFrame(loop);
 window.__yutoku = { state, setP: p => { state.p = p; state.playing = false; state.seek = null; syncPlay(); }, snap: () => { Object.assign(cur, directorAt(state.p)); applyCam(cur); }, cam: c => { state.director = false; state.tween = null; Object.assign(cur, { t: V(...c.t), d: c.d, az: c.az, el: c.el, fov: 32 }); applyCam(cur); }, project: k => activate(k), fwStep: n => { for (let i = 0; i < n; i++) FW.update(.05, true, 1); } };
