@@ -78,9 +78,13 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:1.5px solid var
 svg{display:block}
 
 .proj{pointer-events:auto;display:inline-flex;gap:2px;padding:3px;margin-top:14px;border-radius:999px;background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:var(--shadow)}
-.proj button{border:0;background:transparent;padding:6px 13px;border-radius:999px;font-family:var(--mincho);font-size:12px;letter-spacing:.06em;color:var(--ink-2);cursor:pointer;transition:background .25s,color .25s}
+.proj button{white-space:nowrap;border:0;background:transparent;padding:6px 13px;border-radius:999px;font-family:var(--mincho);font-size:12px;letter-spacing:.06em;color:var(--ink-2);cursor:pointer;transition:background .25s,color .25s}
 .proj button:hover{color:var(--ink)}
 .proj button[aria-pressed="true"]{background:var(--btn);color:var(--btn-ink)}
+.brand .era{display:flex;width:max-content;margin-top:8px}
+.brand .era[hidden]{display:none}
+.brand .era button{font-size:11px;padding:4px 11px}
+.cap-ev{font-size:10.5px;letter-spacing:.08em;color:var(--accent);margin-top:6px;font-family:var(--mincho)}
 /* ---------- compass ---------- */
 .compass{position:absolute;left:calc(28px + env(safe-area-inset-left,0px));bottom:calc(184px + env(safe-area-inset-bottom,0px));width:34px;height:34px;border-radius:50%;border:1px solid var(--rule);display:grid;place-items:center;pointer-events:none;color:var(--ink-2)}
 .compass svg{transition:none}
@@ -146,10 +150,11 @@ svg{display:block}
 .noscript,.gl-error{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;font-family:var(--mincho);color:var(--ink-2)}
 
 @media (max-width:720px){
-  .brand{left:16px;top:calc(14px + env(safe-area-inset-top,0px));max-width:calc(100% - 170px)}
+  .brand{left:16px;top:calc(14px + env(safe-area-inset-top,0px));max-width:none}
+  .brand h1,.brand .sub{max-width:calc(100vw - 160px)}
   .brand h1{font-size:32px}
   .proj{margin-top:10px}
-  .proj button{padding:5px 10px;font-size:11px}
+  .proj button{padding:5px 8px;font-size:10.5px;letter-spacing:.02em}
   .brand .sub .en{display:none}
   .eyebrow{font-size:8.5px;letter-spacing:.26em}
   .tools{right:16px;top:calc(14px + env(safe-area-inset-top,0px));flex-direction:column;align-items:flex-end;gap:8px}
@@ -190,8 +195,14 @@ svg{display:block}
     <h1 id="brandH">Yūtoku <em>Inari.</em></h1>
     <p class="sub"><span class="jp" id="brandSub">祐徳稲荷神社 · 日本庭園 · 祐徳博物館</span><span class="en">/ &nbsp;From line to landmark</span></p>
     <div class="proj" role="group" aria-label="作品を切り替え">
-      <button type="button" data-proj="yutoku" aria-pressed="true">祐徳稲荷神社</button>
+      <button type="button" data-proj="yutoku" aria-pressed="true">祐徳稲荷</button>
       <button type="button" data-proj="karatsu" aria-pressed="false">唐津城</button>
+      <button type="button" data-proj="yoshinogari" aria-pressed="false">吉野ヶ里</button>
+      <button type="button" data-proj="saga" aria-pressed="false">佐賀城</button>
+    </div>
+    <div class="proj era" id="era" role="group" aria-label="時代" hidden>
+      <button type="button" data-era="karatsu" aria-pressed="true">現在</button>
+      <button type="button" data-era="karatsu_edo" aria-pressed="false">江戸期</button>
     </div>
   </header>
 
@@ -211,7 +222,7 @@ svg{display:block}
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"><path d="M2.4 3.6h6.4l4.8 4.4-4.8 4.4H2.4z"/><circle cx="5.4" cy="8" r=".9"/></svg>
       </button>
     </div>
-    <button type="button" class="round ghost" id="seasonBtn" title="季節を切り替え" aria-label="季節：春（クリックで秋）">春</button>
+    <button type="button" class="round ghost" id="seasonBtn" title="季節を切り替え" aria-label="季節：春（クリックで夏）">春</button>
     <button type="button" class="round" id="themeBtn" title="昼／夜を切り替え" aria-label="昼／夜を切り替え">
       <svg id="icoSun" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"><circle cx="8" cy="8" r="2.6"/><path d="M8 1.6v1.6M8 12.8v1.6M1.6 8h1.6M12.8 8h1.6M3.5 3.5l1.1 1.1M11.4 11.4l1.1 1.1M3.5 12.5l1.1-1.1M11.4 4.6l1.1-1.1"/></svg>
       <svg id="icoMoon" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" hidden><path d="M12.8 10.2A5.4 5.4 0 0 1 5.8 3.2a5.4 5.4 0 1 0 7 7z"/></svg>
@@ -221,7 +232,7 @@ svg{display:block}
   <div class="compass" aria-hidden="true"><svg id="needle" width="22" height="22" viewBox="0 0 22 22"><path d="M11 2.5 14 11h-6z" fill="var(--accent)"/><path d="M11 19.5 8 11h6z" fill="none" stroke="currentColor" stroke-width=".9"/></svg></div>
   <div class="caption" id="caption" aria-live="polite">
     <div class="cap-num" id="capNum">01</div>
-    <div><div class="cap-jp" id="capJp">線を引く</div><div class="cap-en" id="capEn">Axis · contour · outline</div></div>
+    <div><div class="cap-jp" id="capJp">線を引く</div><div class="cap-en" id="capEn">Axis · contour · outline</div><div class="cap-ev" id="capEv" hidden></div></div>
   </div>
 
   <aside class="sites" aria-label="見どころ">
@@ -492,6 +503,9 @@ M('sea', '#e2e6e5', '#2c6c84', .08, .1, { delay: .22, props: { transparent: true
 M('concrete', '#e6e4de', '#bdbbb4', .85, 0, { delay: .28 });
 M('sakura', '#f2f0eb', '#f2b6c6', .85, 0, { delay: .3, autumn: '#c77a3c' });
 M('wisteria', '#f1f0eb', '#9a7fd0', .85, 0, { delay: .3, autumn: '#6f7f4a' });
+M('soil', '#e6e1d6', '#8f7456', .95, 0, { delay: .3 });
+M('pottery', '#efe9df', '#d4a57c', .7, 0, { delay: .2 });
+M('bronze', '#e8e6e0', '#56654c', .45, .6, { delay: .12 });
 const NO_SHADOW = new Set(['water', 'sea', 'glass', 'paint', 'gravel', 'paving', 'asphalt']);
 
 /* =====================================================================
@@ -1582,6 +1596,7 @@ function buildYutoku() {
    本丸 plateau, a 腰曲輪 / 二ノ曲輪 terrace, and stone walls at each step.
    ===================================================================== */
 const KC = { x: -5, z: -40, a: 58, b: 42 };
+let KEDO = false;
 const kCoast = x => x < 57 ? -46 : -50 - 5 * Math.sin((x - 95) / 38);
 const kRiverX = z => 75 + 6 * Math.sin(z / 45);
 function kE(x, z) { const dx = (x - KC.x) / KC.a, dz = (z - KC.z) / KC.b; return { e: Math.pow(dx ** 4 + dz ** 4, .25), ang: Math.atan2(dz, dx) }; }
@@ -1635,6 +1650,7 @@ function kWater() {
   begin({ sketch: [.1, .42], mass: [1.12, 1.45], detail: [2.05, 2.5] });
   add('sea', new THREE.PlaneGeometry(TX1 - TX0, TZ1 - TZ0).rotateX(-Math.PI / 2).translate((TX0 + TX1) / 2, -1.1, (TZ0 + TZ1) / 2), { lines: false, ph: 'detail', m: 0, ord: 0 });
   for (const s of [-1, 1]) for (let z = -52; z < TZ1; z += 3) { const z2 = Math.min(TZ1, z + 3); add('stone', beam(V(kRiverX(z) + s * 15.8, -1.45, z), V(kRiverX(z2) + s * 15.8, -1.45, z2), .9, 5.9), { lines: false, anc: V(kRiverX(z), -4.4, z), ord: (z + 52) / 180 }); }
+  if (!KEDO) {
   // 舞鶴橋
   add('concrete', box(44, .9, 9, 75, 3.2, -16));
   for (let x = 60; x <= 90; x += 7.5) add('concrete', box(1.4, 7.6, 6.4, x, -4.4, -16), { lines: 'axis' });
@@ -1648,6 +1664,7 @@ function kWater() {
   add('stone', beam(V(-128, -1.2, -98), V(-34, -1.2, -98), 3.4, 3.6), { lines: 'axis' });
   add('plaster', cyl(.9, 6, 84, .6, -108, 12), { ph: 'detail', lines: 'axis' }); add('orange', cyl(1, 1.4, 84, 6.6, -108, 12), { ph: 'detail', lines: false });
   for (const [x, z] of [[68, 30], [80, 44], [72, 62], [84, 12]]) add('plaster', box(1.8, .7, 5.2, x, -1.3, z).rotateY(.3), { ph: 'detail', lines: false });
+  } else for (const [x, z] of [[68, 30], [80, 44], [72, 62], [84, 12], [66, -30]]) add('wood', box(1.6, .6, 5.6, x, -1.3, z).rotateY(.3), { ph: 'detail', lines: false });
   end();
 }
 
@@ -1714,9 +1731,10 @@ function kCastle() {
   add('stone', box(10.5, 10.2, 4.6, 32, 21, -39));
   kGate(27.8, 31.2, -39, 0); kGate(-28, 31, -58.5, Math.PI / 2); kGate(-35.5, 31, -32, Math.PI);
   // 附櫓, 多聞櫓 and the restored 化粧櫓
-  yagura(6.5, 31, -57, 9, 11, 2, { base: 4 });
+  if (!KEDO) yagura(6.5, 31, -57, 9, 11, 2, { base: 4 });
   yagura(15.5, 31, -57, 9.6, 4.6, 1);
   yagura(22, 31, -24, 6.4, 6.4, 2, { base: 1.5 });
+  if (!KEDO) {
   // 斜行エレベーター (34 m climb) with its two stations
   add('steel', beam(V(-65, 1.9, -36), V(-38.5, 31.6, -36), 2.4, .5), { lines: 'axis' });
   for (let k = 1; k < 8; k++) { const t = k / 8, x = lerp(-65, -38.5, t), y = lerp(1.9, 31.6, t), g = H(x, -36); if (y - g > 1) add('steel', box(.4, y - g, .4, x, g, -36), { lines: 'axis' }); }
@@ -1745,9 +1763,12 @@ function kCastle() {
   add('gold', cyl(.12, 3.4, 0, 8.4, 0, 6), { ph: 'detail', lines: 'axis' });
   noFrame();
   add('stone', box(1, 2.2, .5, -2, 31, -30), { ph: 'detail' });
+  }
   // cherries on the 本丸 and the terrace, a few pines
+  if (!KEDO) {
   for (const [x, z, s] of [[-26, -44, 1], [-20, -30, .95], [-11, -24, 1.05], [1, -22, 1], [10, -31, .95], [-29, -36, .9], [14, -41, .9], [-19, -50, .85], [4, -46, .9], [-3, -35, .8], [26, -8, .8], [36, -24, .75]]) tree('sakura', x, z, s);
   for (const [x, z, s] of [[-31, -24, .8], [18, -48, .75], [-24, -57, .7]]) tree('pine', x, z, s);
+  }
   end();
 }
 
@@ -1758,6 +1779,7 @@ function kTenshu() { // 模擬天守 (1966): 複合式望楼型 5重5階
   for (let i = 0; i < p.count; i++) if (p.getY(i) > 0) { p.setX(i, p.getX(i) * 18 / 22); p.setZ(i, p.getZ(i) * 15 / 19); }
   g.computeVertexNormals(); g.translate(cx, 20 + 8.75, cz);
   add('stone', g, { ea: 20 });
+  if (KEDO) { add('gravel', box(17.6, .1, 14.6, cx, 37.5, cz), { lines: false }); tree('pine', cx - 5, cz + 3, .8, { y: 37.6 }); tree('pine', cx + 5, cz - 3, .7, { y: 37.6 }); end(); return; }
   const LAY = [[15.5, 13, 4.6], [13.2, 11, 4.0], [11, 9.2, 3.6], [8.8, 7.4, 3.3], [7.2, 6, 3.2]];
   let y = 37.5;
   add('stoneDark', box(16.6, .4, 14, cx, y - .3, cz), { lines: false });
@@ -1799,6 +1821,7 @@ function kTown() {
     if (x > 45 && x < 105 && z > -24 && z < -8) return false;
     if (x > 22 && x < 58 && z > -12 && z < 18) return false;
     if (x > -75 && x < -58 && z > -42 && z < -30) return false;
+    if (KEDO && ((x > -90 && x < 30 && z > -4 && z < 70) || KE_MOATS.some(m => distPoly(x, z, m) < 7.5))) return false;
     return kE(x, z).e > 1.12;
   };
   for (let i = 0; TX0 + 3 + i * G < TX1 - 3; i++) for (let j = 0; TZ0 + 3 + j * G < TZ1 - 3; j++) {
@@ -1808,7 +1831,7 @@ function kTown() {
       continue;
     }
     if (!ok(x, z) || Rt() < .1) continue;
-    const tall = Rt() < .035, w = tall ? rr(6, 9) : 3 + Rt(), d = tall ? rr(6, 9) : 3 + Rt(), h = tall ? 8 + Rt() * 12 : 2.8 + (Rt() < .55 ? 2.6 : 0);
+    const tall = !KEDO && Rt() < .035, w = tall ? rr(6, 9) : 3 + Rt(), d = tall ? rr(6, 9) : 3 + Rt(), h = tall ? 8 + Rt() * 12 : 2.8 + (Rt() < .55 ? 2.6 : 0);
     const ry = (Rt() < .5 ? 0 : Math.PI / 2) + (Rt() - .5) * .06, y = kBase(x, z) - .05;
     const t = 1.25 + .45 * clamp(Math.hypot(x + 8, z + 40) / 220) + Rt() * .05;
     bodies.push({ x: x + (Rt() - .5), z: z + (Rt() - .5), y, s: 1, sx: w, sy: h, sz: d, ry, t, m: 0, d: .2 });
@@ -1817,7 +1840,8 @@ function kTown() {
   end();
   makeInstances('houseI', new THREE.BoxGeometry(1, 1, 1).translate(0, .5, 0), bodies, { spring: ['#ebe6dc', '#ddd6c8', '#f2efe8', '#d2cabb', '#e6ddd0'], autumn: ['#ebe6dc', '#ddd6c8', '#f2efe8', '#d2cabb', '#e6ddd0'] }, Rt);
   const rg = new THREE.BoxGeometry(1, 1, 1).translate(0, .5, 0); const rp = rg.attributes.position; for (let i = 0; i < rp.count; i++) if (rp.getY(i) > .5) rp.setZ(i, 0); rg.computeVertexNormals();
-  makeInstances('houseI', rg, roofs, { spring: ['#4a4f57', '#5b6068', '#3f4a5c', '#6b5a4f', '#56606a', '#2f3b52'], autumn: ['#4a4f57', '#5b6068', '#3f4a5c', '#6b5a4f', '#56606a', '#2f3b52'] }, Rt);
+  const rp2 = KEDO ? ['#3d4146', '#474b50', '#34383d', '#55504a'] : ['#4a4f57', '#5b6068', '#3f4a5c', '#6b5a4f', '#56606a', '#2f3b52'];
+  makeInstances('houseI', rg, roofs, { spring: rp2, autumn: rp2 }, Rt);
 }
 
 function kVeg() {
@@ -1843,7 +1867,372 @@ function kVeg() {
   makeInstances('forestI', cyl(.14, 3.6, 0, 0, 0, 5), pines.map(p => ({ x: p.x, z: p.z, y: p.y, s: p.s, t: p.t })), { spring: ['#5b4a3c'], autumn: ['#5b4a3c'] }, Rf);
   makeInstances('forestI', blob(1.25, 1, .42, 1), pines.map(p => ({ x: p.x, z: p.z, y: p.y + 3.6 * p.s, s: p.s * 1.2, t: p.t + .04 })), { spring: ['#2f4a35', '#35523a', '#3b5a3e'], autumn: ['#2f4a35', '#35523a', '#3b5a3e'] }, Rf);
 }
-function buildKaratsu() { kConstruction(); buildTerrain(); kWater(); kCastle(); kTenshu(); kTown(); kVeg(); }
+function buildKaratsu() { kConstruction(); buildTerrain(); kWater(); kCastle(); kTenshu(); kTown(); kVeg(); if (KEDO) kEdoExtras(); }
+
+/* =====================================================================
+   吉野ヶ里 YOSHINOGARI — Yayoi moated settlement. North is −z.
+   Outer V-ditch (~2.5 km) around ~40 ha; double-moated 北内郭 (A-shaped)
+   and 南内郭; 倉と市; 南のムラ; 北墳丘墓 and a line of jar burials.
+   ===================================================================== */
+const seE = (x, z, cx, cz, a, b, p) => Math.pow(Math.pow(Math.abs((x - cx) / a), p) + Math.pow(Math.abs((z - cz) / b), p), 1 / p);
+function seDist(x, z, cx, cz, a, b, p) { const e = seE(x, z, cx, cz, a, b, p), gx = (seE(x + .5, z, cx, cz, a, b, p) - seE(x - .5, z, cx, cz, a, b, p)), gz = (seE(x, z + .5, cx, cz, a, b, p) - seE(x, z - .5, cx, cz, a, b, p)); return Math.abs(e - 1) / Math.max(1e-4, Math.hypot(gx, gz)); }
+function seRing(cx, cz, a, b, p, n = 160) { const o = []; for (let i = 0; i <= n; i++) { const t = i / n * Math.PI * 2, c = Math.cos(t), s = Math.sin(t); o.push(V(cx + a * Math.sign(c) * Math.pow(Math.abs(c), 2 / p), 0, cz + b * Math.sign(s) * Math.pow(Math.abs(s), 2 / p))); } return o; }
+const YG = {
+  O: [0, -15, 62, 150, 2.4], S: [4, 14, 34, 28, 3], S2: [4, 14, 40.8, 33.6, 3], K: [-44, -36, 15, 17, 3],
+  nIn: new THREE.CatmullRomCurve3([[0, -124], [15, -113], [25, -97], [29, -80], [17, -71], [-17, -71], [-29, -80], [-25, -97], [-15, -113]].map(([x, z]) => V(x, 0, z)), true).getSpacedPoints(120),
+};
+YG.nOut = YG.nIn.map(p => V(0, 0, -93).lerp(p, 1.22));
+const yGaps = [[0, 135, 6], [0, -71, 4.5], [0, -63, 4.5], [4, -14, 4.5], [4, -20, 4.5], [4, 42, 4.5], [4, 48, 4.5], [-29, -36, 4.5]];
+const yGap = (x, z) => yGaps.some(([gx, gz, r]) => Math.hypot(x - gx, z - gz) < r);
+function yoshiH(x, z) {
+  const eO = seE(x, z, ...YG.O);
+  let h = 1 + 5.5 * (1 - sstep(.92, 1.42, eO)) + fbm(x * .02, z * .02) * .7;
+  const me = seE(x, z, 0, -158, 12, 8.5, 3); if (me < 1.4) h += 4.2 * (1 - sstep(.8, 1.35, me));
+  if (yGap(x, z)) return h;
+  const cut = (d, W, D) => { if (d < W) h -= D * (1 - d / W); };
+  if (Math.abs(eO - 1) < .12) cut(seDist(x, z, ...YG.O), 4.4, 3);
+  if (x > -44 && x < 44 && z > -142 && z < -58) { cut(distPoly(x, z, YG.nIn), 2.6, 2); cut(distPoly(x, z, YG.nOut), 2.8, 2.2); }
+  if (Math.abs(seE(x, z, ...YG.S) - 1) < .2) cut(seDist(x, z, ...YG.S), 2.6, 2);
+  if (Math.abs(seE(x, z, ...YG.S2) - 1) < .2) cut(seDist(x, z, ...YG.S2), 2.8, 2.2);
+  if (Math.abs(seE(x, z, ...YG.K) - 1) < .25) cut(seDist(x, z, ...YG.K), 2.4, 1.8);
+  return h;
+}
+function yoshiTColor(x, z, h, slope) {
+  const eO = seE(x, z, ...YG.O), c = new THREE.Color();
+  if (eO > 1.08) c.set(((Math.floor(x / 9) + Math.floor(z / 7)) & 1) ? '#8ea55a' : '#97ac62');
+  else c.set('#9aab66');
+  if (seE(x, z, ...YG.S) < .96 || seE(x, z, ...YG.K) < .95 || (x > -26 && x < 26 && z > -118 && z < -73)) c.set('#b8a37d');
+  if (seE(x, z, 0, -158, 12, 8.5, 3) < 1.1) c.set('#7f9b4a');
+  if (slope > .5) c.lerp(new THREE.Color('#7d8a52'), .7);
+  return c;
+}
+function pitHouse(x, z, s = 1) { // 竪穴住居
+  const save = S.M; S.M = null; const y = H(x, z);
+  add('soil', cyl(3.4 * s, .5, x, y - .2, z, 16), { lines: false });
+  add('thatch', new THREE.ConeGeometry(3.5 * s, 4.3 * s, 14).translate(x, y + .3 + 2.15 * s, z), { lines: false, ph: 'mass', m: 0 });
+  add('thatch', box(1.2 * s, .5 * s, .8 * s, x, y + .3 + 3.9 * s, z), { ph: 'detail', lines: false });
+  add('woodDark', box(.9 * s, 1.1 * s, .3, x, y + .3, z + 3 * s), { ph: 'detail', lines: false });
+  const apex = V(x, y + .3 + 4.3 * s, z), pts = []; for (let i = 0; i <= 16; i++) { const a = i / 16 * Math.PI * 2; pts.push(V(x + Math.cos(a) * 3.5 * s, y + .35, z + Math.sin(a) * 3.5 * s)); }
+  S.strokes.push({ layer: 1, segs: pts.slice(0, -1).map((p, i) => [p, pts[i + 1]]) });
+  for (let i = 0; i < 16; i += 4) S.strokes.push({ layer: 1, segs: [[pts[i], apex]] });
+  S.M = save;
+}
+function granary(x, z, ry = 0, s = 1, tall = 1.9) { // 高床倉庫
+  const save = S.M; frame(x, H(x, z), z, ry);
+  for (const [px, pz] of [[-1.6, -1.2], [1.6, -1.2], [-1.6, 1.2], [1.6, 1.2], [0, -1.2], [0, 1.2]]) { add('wood', cyl(.17 * s, tall * s, px * s, 0, pz * s, 7), { lines: 'axis' }); add('wood', cyl(.42 * s, .08, px * s, tall * s * .75, pz * s, 10), { ph: 'detail', lines: false }); }
+  add('wood', box(3.9 * s, .28, 3.1 * s, 0, tall * s, 0));
+  add('wood', box(3.4 * s, 1.9 * s, 2.6 * s, 0, tall * s + .28, 0));
+  roofOn({ W: 5.2 * s, D: 4.8 * s, H: 2.6 * s, sg: 1, a: .85, lift: .25, th: .5, seam: .45 }, 0, tall * s + 1.9 * s + .2, 0, false, { mat: 'thatch', gmat: 'wood', ridge: false });
+  add('wood', beam(V(2.6 * s, 0, 1.6 * s), V(1.9 * s, tall * s, .6 * s), .22, .14), { ph: 'detail', lines: false });
+  S.M = save;
+}
+function watchtower(x, z, ry = 0) { // 物見櫓
+  const save = S.M; frame(x, H(x, z), z, ry);
+  for (const [px, pz] of [[-1.55, -2.05], [1.55, -2.05], [-1.55, 0], [1.55, 0], [-1.55, 2.05], [1.55, 2.05]]) add('wood', cyl(.24, 10.6, px, -.3, pz, 8), { lines: 'axis' });
+  for (const y of [3, 6]) { add('wood', box(3.6, .22, .22, 0, y, -2.05), { lines: 'axis' }); add('wood', box(3.6, .22, .22, 0, y, 2.05), { lines: 'axis' }); add('wood', box(.22, .22, 4.6, -1.55, y, 0), { lines: 'axis' }); add('wood', box(.22, .22, 4.6, 1.55, y, 0), { lines: 'axis' }); }
+  add('wood', box(4.2, .3, 5.2, 0, 8.3, 0));
+  for (const s of [-1, 1]) { add('wood', box(4.2, .9, .12, 0, 8.6, s * 2.55), { ph: 'detail', lines: false }); add('wood', box(.12, .9, 5.2, s * 2.05, 8.6, 0), { ph: 'detail', lines: false }); }
+  roofOn({ W: 6.4, D: 5.4, H: 2.3, sg: .35, a: .85, lift: .2, th: .45, seam: .45 }, 0, 10.3, 0, false, { mat: 'thatch', gmat: 'wood', ridge: false });
+  add('wood', beam(V(2.4, 0, 3.4), V(1.2, 8.3, 1.6), .5, .16), { ph: 'detail', lines: false });
+  S.M = save;
+}
+function yGate(x, z, ry = 0, w = 5) { // gate with carved birds (鳥形)
+  const save = S.M; frame(x, H(x, z), z, ry);
+  for (const s of [-1, 1]) add('wood', cyl(.28, 4.4, 0, -.3, s * w / 2, 8), { lines: 'axis' });
+  add('wood', box(.4, .4, w + 1.2, 0, 4.1, 0), { lines: 'axis' });
+  for (let k = -1; k <= 1; k++) { add('wood', box(.9, .35, .3, 0, 4.7, k * w / 3), { ph: 'detail', lines: false }); add('wood', box(.22, .5, .22, 0, 4.5, k * w / 3), { ph: 'detail', lines: false }); }
+  S.M = save;
+}
+const STAKES = [];
+function palisade(pts, inward, center, o = {}) { // posts along a ring, offset toward the centre, gaps at gates
+  let acc = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1], L = a.distanceTo(b); acc += L;
+    for (let t = 0; t < L; t += 1.15) {
+      const p = a.clone().lerp(b, t / L), dir = V(center[0] - p.x, 0, center[1] - p.z).normalize(), q = p.clone().addScaledVector(dir, inward);
+      if (yGap(q.x, q.z)) continue;
+      STAKES.push({ x: q.x, z: q.z, y: H(q.x, q.z) - .2, s: 1, sy: o.h || 2.8, t: (o.t0 || 1.5) + .3 * R(), m: 0, d: .18 });
+    }
+  }
+  const P = pts.map(p => { const dir = V(center[0] - p.x, 0, center[1] - p.z).normalize(), q = p.clone().addScaledVector(dir, inward); return V(q.x, H(q.x, q.z) + (o.h || 2.8), q.z); });
+  S.strokes.push({ layer: 1, segs: P.slice(0, -1).map((p, i) => [p, P[i + 1]]).filter(([p]) => !yGap(p.x, p.z)) });
+}
+function buildYoshinogari() {
+  STAKES.length = 0;
+  // construction
+  begin({ sketch: [0, .22], mass: [1, 1.1], detail: [2, 2.1] });
+  { const L0 = (a, b) => S.strokes.push({ layer: 0, segs: [[a, b]] });
+    L0(V(TX0, BASE, TZ0), V(TX1, BASE, TZ0)); L0(V(TX1, BASE, TZ0), V(TX1, BASE, TZ1)); L0(V(TX1, BASE, TZ1), V(TX0, BASE, TZ1)); L0(V(TX0, BASE, TZ1), V(TX0, BASE, TZ0));
+    for (const [x, z] of [[TX0, TZ0], [TX1, TZ0], [TX1, TZ1], [TX0, TZ1]]) L0(V(x, BASE, z), V(x, H(x, z), z));
+    for (const x of [-62, -29, 29, 62]) L0(V(x, .05, TZ0 + 10), V(x, .05, TZ1 - 10));
+    for (const z of [-124, -71, -14, 42, 135]) L0(V(TX0 + 10, .05, z), V(TX1 - 10, .05, z));
+    for (let x = -150; x <= 150; x += 30) for (let z = -180; z <= 150; z += 30) { L0(V(x - .9, .05, z), V(x + .9, .05, z)); L0(V(x, .05, z - .9), V(x, .05, z + .9)); }
+    S.strokes.push({ layer: 4, segs: [[V(0, 7, -175), V(0, 7, 150)]] }, { layer: 4, segs: [[V(0, 6, -96), V(0, 40, -96)]] });
+    // paddy dikes
+    for (let x = -144; x <= 144; x += 9) { const seg = []; for (let z = TZ0 + 4; z < TZ1 - 4; z += 7) if (seE(x, z, ...YG.O) > 1.12 && seE(x, z + 7, ...YG.O) > 1.12) seg.push([V(x, 1.1, z), V(x, 1.1, z + 7)]); if (seg.length) S.strokes.push({ layer: 0, segs: seg }); }
+  }
+  end();
+  buildTerrain();
+  // moats & palisades
+  begin({ sketch: [.1, .55], mass: [1.25, 1.75], detail: [2.05, 2.6] });
+  const ring = seRing(...YG.O, 220);
+  palisade(ring, 6.2, [0, -15], { h: 3, t0: 1.4 });
+  const moatLine = r => S.strokes.push({ layer: 1, segs: r.slice(0, -1).map((p, i) => [V(p.x, H(p.x, p.z) + .15, p.z), V(r[i + 1].x, H(r[i + 1].x, r[i + 1].z) + .15, r[i + 1].z)]).filter(([p]) => !yGap(p.x, p.z)) });
+  moatLine(ring);
+  // 逆茂木 (abatis) outside the outer ditch
+  for (let i = 0; i < ring.length - 1; i += 1) { const p = ring[i], dir = V(p.x, 0, p.z + 15).normalize(), q = p.clone().addScaledVector(dir, 6.5); if (yGap(q.x, q.z) || i % 2) continue; for (let k = -1; k <= 1; k++) STAKES.push({ x: q.x + dir.z * k * .6, z: q.z - dir.x * k * .6, y: H(q.x, q.z) - .1, s: 1, sy: 2.2, ry: Math.atan2(-dir.z, dir.x) + Math.PI, t: 2.1 + .4 * R(), m: 1, d: .12, tilt: true }); }
+  const nIn = [...YG.nIn, YG.nIn[0]], nOut = [...YG.nOut, YG.nOut[0]];
+  palisade(nIn, 3.4, [0, -93], { t0: 1.5 }); palisade(nOut, 3.6, [0, -93], { h: 2.4, t0: 1.45 }); moatLine(nIn); moatLine(nOut);
+  const sIn = seRing(...YG.S, 140), sOut = seRing(...YG.S2, 160), kr = seRing(...YG.K, 100);
+  palisade(sIn, 3.4, [4, 14], { t0: 1.5 }); palisade(sOut, 3.6, [4, 14], { h: 2.4, t0: 1.45 }); palisade(kr, 3.2, [-44, -36], { t0: 1.5 });
+  moatLine(sIn); moatLine(sOut); moatLine(kr);
+  yGate(0, 132, 0, 6); yGate(0, -67, Math.PI / 2, 4); yGate(4, -17, Math.PI / 2, 4); yGate(4, 45, Math.PI / 2, 4); yGate(-31, -36, 0, 4);
+  end();
+  // 北内郭
+  begin({ sketch: [.4, .97], mass: [1.45, 1.98], detail: [2.2, 2.9] });
+  { const cx = 0, cz = -96, y0 = H(cx, cz); frame(cx, y0, cz, 0); // 主祭殿: 3層, 12.3 × 12.7 m, 中層床高 4.5 m
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) add('wood', cyl(.46, 4.8, -6.15 + i * 4.1, -.3, -6.35 + j * 4.23, 10), { lines: 'axis' });
+    add('wood', box(13.4, .45, 13.8, 0, 4.5, 0));
+    add('wood', box(12.3, 3.8, 12.7, 0, 4.95, 0));
+    for (const s of [-1, 1]) { add('woodDark', box(2.4, 2.6, .12, 0, 5.2, s * 6.41), { ph: 'detail', lines: false }); add('woodDark', box(.12, 2.2, 2.4, s * 6.21, 5.4, 0), { ph: 'detail', lines: false }); }
+    roofOn({ W: 16.4, D: 16.8, H: 1.9, sg: .12, a: .85, lift: .2, th: .55, seam: .5 }, 0, 8.55, 0, false, { mat: 'thatch', ridge: false });
+    add('wood', box(9.4, 3.2, 9.8, 0, 9.4, 0));
+    roofOn({ W: 16, D: 13.4, H: 7.2, sg: .55, a: .85, lift: .3, th: .6, seam: .5 }, 0, 12.4, 0, true, { mat: 'thatch', gmat: 'wood', rmat: 'thatch', oni: false });
+    for (const s of [-1, 1]) add('wood', box(.25, 2.2, .25, 0, 19.3, s * 7.3).rotateX(s * .5), { ph: 'detail', lines: false });
+    add('wood', beam(V(0, 0, 11.5), V(0, 4.5, 7.2), 1.4, .25), { ph: 'detail', lines: false });
+    noFrame(); }
+  granary(16, -89, .2, 1.1, 2.6); granary(8, -102, 0, .8); granary(-13, -87, -.2, 1.05, 2.2);
+  for (const [x, z] of [[-15, -101], [-19, -91], [-8, -78], [6, -78], [15, -80], [-21, -81], [20, -99], [10, -112], [-10, -112], [-3, -84], [22, -85]]) pitHouse(x, z, .82);
+  for (const [x, z, r] of [[15, -113, .9], [-15, -113, -.9], [27, -81, .3], [-27, -81, -.3]]) watchtower(x * .88, lerp(-93, z, .88), r);
+  end();
+  // 南内郭, 倉と市, 南のムラ
+  begin({ sketch: [.3, .9], mass: [1.35, 1.9], detail: [2.12, 2.82] });
+  granary(4, 8, 0, 1.25, 2.4); granary(-10, 22, .3, .9);
+  for (const [a, b] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) watchtower(4 + a * 23, 14 + b * 18.5, a * b * .7);
+  const Ry = mulberry(301); let n = 0;
+  for (let k = 0; k < 300 && n < 16; k++) { const x = 4 + (Ry() * 2 - 1) * 26, z = 14 + (Ry() * 2 - 1) * 21; if (seE(x, z, ...YG.S) > .8 || Math.hypot(x - 4, z - 8) < 8 || Math.hypot(x + 10, z - 22) < 5) continue; pitHouse(x, z, .75); n++; }
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 4; j++) granary(-51 + i * 7, -46 + j * 6.8, (Ry() - .5) * .2, .9);
+  for (const [x, z] of [[-14, 96], [8, 92], [-4, 108], [14, 106], [-20, 112], [2, 120], [22, 118], [-12, 124], [18, 84], [-24, 90]]) pitHouse(x, z, .8);
+  for (const [x, z, r] of [[-8, 84, .2], [26, 98, -.3], [-26, 104, .4], [10, 128, 0]]) granary(x, z, r, .95);
+  watchtower(-2, 100, .5);
+  end();
+  // 北墳丘墓 and 甕棺墓列
+  begin({ sketch: [.5, .85], mass: [1.4, 1.8], detail: [2.3, 2.8] });
+  for (let z = -150; z <= -118; z += 2.2) for (const x of [-36, -33.6]) { const y = H(x, z); add('pottery', blob(.55, 1, 1.4, 1).rotateX(1.2).translate(x, y + .15, z), { ph: 'detail', lines: false, d: .06 }); }
+  S.strokes.push({ layer: 1, segs: [[V(-38, 6.6, -151), V(-38, 6.6, -117)], [V(-31.6, 6.6, -151), V(-31.6, 6.6, -117)]] });
+  add('stone', box(1.2, 2.2, .5, 0, H(0, -145), -145), { ph: 'detail' });
+  end();
+  // vegetation: groves outside the ring, a few trees inside
+  const Rf = mulberry(1986), trees = [];
+  for (let k = 0; k < 20000 && trees.length < (MOBILE ? 380 : 620); k++) { const x = lerp(TX0 + 3, TX1 - 3, Rf()), z = lerp(TZ0 + 3, TZ1 - 3, Rf()); const eO = seE(x, z, ...YG.O); if (eO < 1.18) continue; if (Math.abs(x) < 110 && Rf() < .92) continue; trees.push({ x, z }); }
+  for (let k = 0; k < 60; k++) { const x = lerp(-50, 50, Rf()), z = lerp(-60, 125, Rf()); if (seE(x, z, ...YG.O) > .9 || seE(x, z, ...YG.S2) < 1.15 || seE(x, z, ...YG.K) < 1.3 || (z < -55) || (z > 78)) continue; trees.push({ x, z }); }
+  makeInstances('forestI', blob(1, 1, .85, 1), trees.map(p => { const s = 2.2 + Rf() * 2; return { x: p.x, z: p.z, y: H(p.x, p.z) + s * .6, s, t: 2.3 + Rf() * .5 }; }),
+    { spring: ['#4b6a39', '#58773f', '#3f5b35', '#66844a'], autumn: ['#a8452b', '#c7772e', '#b99a3a', '#5a7040'] }, Rf);
+  const up = STAKES.filter(s => !s.tilt), tl = STAKES.filter(s => s.tilt);
+  makeInstances('houseI', cyl(.13, 1, 0, 0, 0, 5, .08), up, { spring: ['#7a5b3e', '#8a6a48', '#6d5237'], autumn: ['#7a5b3e', '#8a6a48', '#6d5237'] }, Rf);
+  makeInstances('houseI', cyl(.1, 1, 0, 0, 0, 5, .02).rotateZ(-.75), tl, { spring: ['#7a5b3e', '#6d5237'], autumn: ['#7a5b3e', '#6d5237'] }, Rf);
+}
+
+/* =====================================================================
+   佐賀城 SAGA CASTLE — a flat castle ringed by broad moats. 本丸御殿
+   (1838, partly rebuilt in timber 2004), 鯱の門 and 続櫓 (1838), 天守台.
+   ===================================================================== */
+const SG = { hx: 58, hz: 52, moat: 26, ox: 132, oz: 118, ow: 12 };
+function sagaH(x, z) {
+  let h = 1.2 + fbm(x * .02, z * .02) * .15;
+  const ins = Math.max(Math.abs(x) - SG.hx, Math.abs(z) - SG.hz);
+  if (ins < 0) { const de = -ins; h = 3 + 2.2 * sstep(0, 2.2, de) * sstep(8, 4.5, de); }
+  else if (ins < SG.moat) h = lerp(-2.6, 1.2, sstep(SG.moat - 3, SG.moat, ins));
+  if (x > -16 && x < -4 && z > SG.hz - 1 && z < SG.hz + SG.moat + 1) h = Math.max(h, 2.9);
+  const io = Math.max(Math.abs(x) - SG.ox, Math.abs(z) - SG.oz);
+  if (io > 0 && io < SG.ow && !(x > -14 && x < -2 && z > 0)) h = lerp(-2.4, 1.2, Math.max(sstep(2.5, 0, io), sstep(SG.ow - 2.5, SG.ow, io)));
+  return h;
+}
+function sagaTColor(x, z, h, slope) {
+  const c = new THREE.Color('#93ac5e'); const ins = Math.max(Math.abs(x) - SG.hx, Math.abs(z) - SG.hz);
+  if (ins < 0) c.set(-ins < 8 ? '#6f8f47' : '#98ae62');
+  if (h < -.5) c.set('#4f5f5b');
+  return c;
+}
+function goten(x, z, w, d, o = {}) { // one hall of the palace
+  const alongZ = d > w, L = Math.max(w, d), Sh = Math.min(w, d);
+  add('paving', box(w + 1.6, .5, d + 1.6, x, 3, z), { lines: false });
+  add('wood', box(w + 1.2, .35, d + 1.2, x, 3.5, z), { ph: 'detail', lines: false });
+  add('plaster', box(w, 3.4, d, x, 3.5, z));
+  const n = Math.max(2, Math.floor(L / 1.9));
+  for (let k = 0; k < n; k++) for (const s of [-1, 1]) {
+    const t = -L / 2 + (k + .5) * L / n;
+    if (alongZ) add('woodDark', box(.1, 2.2, L / n - .25, x + s * (w / 2 + .03), 3.55, z + t), { ph: 'detail', lines: false, d: .06 });
+    else add('woodDark', box(L / n - .25, 2.2, .1, x + t, 3.55, z + s * (d / 2 + .03)), { ph: 'detail', lines: false, d: .06 });
+  }
+  for (let k = 0; k <= n; k++) { const t = -L / 2 + k * L / n; for (const s of [-1, 1]) S.strokes.push({ layer: 3, segs: [[alongZ ? V(x + s * (w / 2 + .08), 3.55, z + t) : V(x + t, 3.55, z + s * (d / 2 + .08)), alongZ ? V(x + s * (w / 2 + .08), 5.75, z + t) : V(x + t, 5.75, z + s * (d / 2 + .08))]] }); }
+  roofOn({ W: L + 3.4, D: Sh + 3.4, H: o.h || 3.4, sg: .55, lift: .5, a: .45, th: .36, seam: .6 }, x, 6.85, z, alongZ, { mat: 'tile', gmat: 'plaster', rmat: 'tile', oni: false });
+}
+function buildSaga() {
+  begin({ sketch: [0, .22], mass: [1, 1.1], detail: [2, 2.1] });
+  { const L0 = (a, b) => S.strokes.push({ layer: 0, segs: [[a, b]] });
+    L0(V(TX0, BASE, TZ0), V(TX1, BASE, TZ0)); L0(V(TX1, BASE, TZ0), V(TX1, BASE, TZ1)); L0(V(TX1, BASE, TZ1), V(TX0, BASE, TZ1)); L0(V(TX0, BASE, TZ1), V(TX0, BASE, TZ0));
+    for (const [x, z] of [[TX0, TZ0], [TX1, TZ0], [TX1, TZ1], [TX0, TZ1]]) L0(V(x, BASE, z), V(x, H(x, z), z));
+    for (const x of [-SG.hx, SG.hx, -SG.hx - SG.moat, SG.hx + SG.moat, -10]) L0(V(x, .05, TZ0 + 10), V(x, .05, TZ1 - 10));
+    for (const z of [-SG.hz, SG.hz, -SG.hz - SG.moat, SG.hz + SG.moat]) L0(V(TX0 + 10, .05, z), V(TX1 - 10, .05, z));
+    for (let x = -150; x <= 150; x += 30) for (let z = -120; z <= 120; z += 30) { L0(V(x - .9, .05, z), V(x + .9, .05, z)); L0(V(x, .05, z - .9), V(x, .05, z + .9)); }
+    S.strokes.push({ layer: 4, segs: [[V(-10, 3.2, -60), V(-10, 3.2, 110)]] });
+    const rect = (hx, hz, y) => S.strokes.push({ layer: 1, segs: [[V(-hx, y, -hz), V(hx, y, -hz)], [V(hx, y, -hz), V(hx, y, hz)], [V(hx, y, hz), V(-hx, y, hz)], [V(-hx, y, hz), V(-hx, y, -hz)]] });
+    rect(SG.hx, SG.hz, 3.4); rect(SG.hx + SG.moat, SG.hz + SG.moat, 1.3); rect(SG.ox, SG.oz, 1.3); rect(SG.ox + SG.ow, SG.oz + SG.ow, 1.3);
+  }
+  end();
+  buildTerrain();
+  begin({ sketch: [.12, .6], mass: [1.15, 1.6], detail: [2.05, 2.5] });
+  add('water', new THREE.PlaneGeometry(TX1 - TX0, TZ1 - TZ0).rotateX(-Math.PI / 2).translate(0, -.9, 0), { lines: false, ph: 'detail', m: 0, ord: 0 });
+  // 石垣 around the 本丸 (with the gate opening), stone faces along the causeway
+  const wall = (ax, az, bx, bz) => add('stone', beam(V(ax, .5, az), V(bx, .5, bz), 1.6, 6.2), { lines: false, anc: V((ax + bx) / 2, -2.6, (az + bz) / 2) });
+  const X = SG.hx + .6, Z = SG.hz + .6;
+  for (let x = -X; x < X; x += 8) { wall(x, -Z, Math.min(X, x + 8), -Z); const x2 = Math.min(X, x + 8); if (x2 <= -22 || x >= 2) wall(x, Z, x2, Z); else { if (x < -22) wall(x, Z, -22, Z); if (x2 > 2) wall(2, Z, x2, Z); } }
+  for (let z = -Z; z < Z; z += 8) { wall(-X, z, -X, Math.min(Z, z + 8)); wall(X, z, X, Math.min(Z, z + 8)); }
+  for (const x of [-16.6, -3.4]) add('stone', beam(V(x, .2, SG.hz + 1), V(x, .2, SG.hz + SG.moat - 1), 1.2, 5.4), { lines: false });
+  add('paving', box(11, .2, SG.moat, -10, 2.8, SG.hz + SG.moat / 2), { lines: false });
+  end();
+  // 鯱の門 and 続櫓
+  begin({ sketch: [.4, .85], mass: [1.4, 1.9], detail: [2.15, 2.8] });
+  for (const x of [-18.5, -1.5]) add('stone', box(7, 3.8, 8, x, 3, SG.hz - 3));
+  for (const x of [-14.2, -5.8]) add('woodDark', cyl(.4, 3.8, x, 3, SG.hz - .4, 10), { lines: 'axis' });
+  for (const s of [-1, 1]) add('woodDark', box(4, 3.4, .25, -10 + s * 2.1, 3, SG.hz - .3), { ph: 'detail', lines: false });
+  for (let k = 0; k < 12; k++) add('steel', new THREE.SphereGeometry(.09, 6, 4).translate(-12.9 + (k % 6) * 1.1, 4 + Math.floor(k / 6) * 1.4, SG.hz - .12), { ph: 'detail', lines: false });
+  add('plaster', box(24, 3.6, 8, -10, 6.8, SG.hz - 3));
+  for (let k = 0; k < 7; k++) add('woodDark', box(1.4, 1, .1, -20 + k * 3.35, 7.9, SG.hz + 1.03), { ph: 'detail', lines: false });
+  add('woodDark', box(24.2, .9, 8.2, -10, 6.8, SG.hz - 3), { ph: 'detail', lines: false });
+  roofOn({ W: 28, D: 12, H: 3.8, sg: .5, lift: .7, a: .42, th: .4, seam: .6 }, -10, 10.3, SG.hz - 3, false, { mat: 'tile', gmat: 'plaster', rmat: 'tile', oni: false });
+  { const xg = 14 - 6 * .5; for (const s of [-1, 1]) { add('bronze', box(.5, 1.6, .9, -10 + s * (xg - .2), 13.7, SG.hz - 3), { ph: 'detail', lines: false }); add('bronze', box(.35, .7, .55, -10 + s * (xg - .55), 14.9, SG.hz - 3).rotateZ(0), { ph: 'detail', lines: false }); } }
+  yagura(12, 3, SG.hz - 3.5, 20, 6, 1);
+  // 天守台 (the keep burned in 1726 and was never rebuilt)
+  { const g = new THREE.BoxGeometry(26, 7, 26), p = g.attributes.position; for (let i = 0; i < p.count; i++) if (p.getY(i) > 0) { p.setX(i, p.getX(i) * 22 / 26); p.setZ(i, p.getZ(i) * 22 / 26); } g.computeVertexNormals(); g.translate(-40, 3 + 3.5, -34); add('stone', g, { ea: 20 }); }
+  tree('camphor', -44, -38, .8, { y: 10 }); tree('camphor', -35, -30, .7, { y: 10 });
+  end();
+  // 本丸御殿 (restored part to the south; the rest shown as footings)
+  begin({ sketch: [.46, .97], mass: [1.5, 1.98], detail: [2.2, 2.9] });
+  goten(-10, 36, 11, 9, { h: 3.8 });
+  roofOn({ W: 6.4, D: 5, H: 2.4, sg: 1, lift: .3, a: .6, th: .32, seam: .6 }, -10, 6.3, 42, true, { mat: 'tile', gmat: 'plaster', ridge: false });
+  goten(-10, 24, 15, 10);
+  goten(12, 14, 36, 11, { h: 4 });
+  goten(26, 30, 12, 14);
+  goten(-12, 6, 12, 10);
+  for (const [ax, az, bx, bz] of [[-10, 29, -10, 31], [-3, 20, -3, 14], [26, 20, 26, 23], [-10, 11, -10, 19]]) { add('wood', box(Math.abs(bx - ax) + 3, 3, Math.abs(bz - az) + 3, (ax + bx) / 2, 3.5, (az + bz) / 2), { lines: false }); roofOn({ W: Math.max(Math.abs(bx - ax), Math.abs(bz - az)) + 5, D: 5, H: 1.4, sg: 1, lift: .2, a: .6, th: .3, seam: .6 }, (ax + bx) / 2, 6.4, (az + bz) / 2, Math.abs(bz - az) > Math.abs(bx - ax), { mat: 'tile', gmat: 'plaster', ridge: false, gables: false }); }
+  for (const [x, z, w, d] of [[-8, -16, 26, 12], [22, -12, 18, 16], [0, -34, 20, 10], [30, -38, 14, 12]]) { add('paving', box(w, .25, d, x, 3, z), { ph: 'detail', lines: false }); S.strokes.push({ layer: 1, segs: [[V(x - w / 2, 3.3, z - d / 2), V(x + w / 2, 3.3, z - d / 2)], [V(x + w / 2, 3.3, z - d / 2), V(x + w / 2, 3.3, z + d / 2)], [V(x + w / 2, 3.3, z + d / 2), V(x - w / 2, 3.3, z + d / 2)], [V(x - w / 2, 3.3, z + d / 2), V(x - w / 2, 3.3, z - d / 2)]] }); }
+  add('gravel', box(40, .12, 16, -2, 3, 46), { lines: false });
+  end();
+  // context: 佐賀県庁, 県立博物館, camphor avenues, lotus in the moats
+  begin({ sketch: [.15, .55], mass: [1.2, 1.7], detail: [2.05, 2.6] });
+  add('concrete', box(22, 56, 18, 104, 1.2, -96)); add('glass', box(22.4, 3, 18.4, 104, 54, -96), { ph: 'detail' });
+  for (let y = 5; y < 54; y += 4) add('woodDark', box(22.2, .9, 18.2, 104, y, -96), { ph: 'detail', lines: false, d: .05 });
+  add('concrete', box(34, 6, 22, 104, 1.2, 36)); add('concrete', box(40, 1.2, 8, 104, 7.2, 36), { ph: 'detail' }); add('concrete', box(8, 1.2, 28, 104, 7.2, 36), { ph: 'detail' });
+  add('paving', box(10, .15, 2 * SG.oz + 30, -8, 1.2, 0), { lines: false });
+  end();
+  const Rf = mulberry(1838), trees = [], lotus = [];
+  const edge = (x0, z0, x1, z1, n) => { for (let k = 0; k < n; k++) { const t = (k + .5) / n; trees.push({ x: lerp(x0, x1, t) + (Rf() - .5) * 2, z: lerp(z0, z1, t) + (Rf() - .5) * 2, big: 1 }); } };
+  const e1 = SG.hx - 4, e2 = SG.hz - 4;
+  edge(-e1, -e2, e1, -e2, 9); edge(-e1, -e2, -e1, e2, 8); edge(e1, -e2, e1, e2, 8); edge(-e1, e2, -26, e2, 3); edge(6, e2, e1, e2, 4);
+  const f1 = SG.hx + SG.moat + 4, f2 = SG.hz + SG.moat + 4;
+  edge(-f1, -f2, f1, -f2, 14); edge(-f1, -f2, -f1, f2, 12); edge(f1, -f2, f1, 14, 8); edge(-f1, f2, -18, f2, 6); edge(4, f2, f1, f2, 6);
+  for (let k = 0; k < 80; k++) { const x = lerp(TX0 + 4, TX1 - 4, Rf()), z = lerp(TZ0 + 4, TZ1 - 4, Rf()); const io = Math.max(Math.abs(x) - SG.ox, Math.abs(z) - SG.oz); if (io < SG.ow + 3 && io > -8) continue; const ins = Math.max(Math.abs(x) - SG.hx, Math.abs(z) - SG.hz); if (ins < SG.moat + 6) continue; if (Math.hypot(x - 104, z + 96) < 20 || Math.hypot(x - 104, z - 36) < 26 || Math.abs(x + 8) < 8) continue; trees.push({ x, z, big: .8 }); }
+  makeInstances('forestI', blob(1, 1, .8, 1), trees.map(p => { const s = (3.2 + Rf() * 1.6) * p.big; return { x: p.x, z: p.z, y: H(p.x, p.z) + s * 1.3, s, t: 2.25 + Rf() * .5 }; }),
+    { spring: ['#3f5f36', '#4a6b3c', '#557742', '#3a5532'], autumn: ['#4a6b3c', '#6a7440', '#7a5a33', '#557742'] }, Rf);
+  makeInstances('forestI', cyl(.35, 1, 0, 0, 0, 6, .22), trees.map(p => { const s = (3.2 + Rf() * 1.6) * p.big; return { x: p.x, z: p.z, y: H(p.x, p.z) - .1, s: 1, sy: s * 1.2, t: 2.2 + Rf() * .4 }; }), { spring: ['#5b4a3c'], autumn: ['#5b4a3c'] }, Rf);
+  for (let k = 0; k < 2000 && lotus.length < 380; k++) { const x = lerp(-SG.hx - SG.moat, SG.hx + SG.moat, Rf()), z = lerp(-SG.hz - SG.moat, SG.hz + SG.moat, Rf()); const ins = Math.max(Math.abs(x) - SG.hx, Math.abs(z) - SG.hz); if (ins < 3 || ins > SG.moat - 4 || (z > 0 && x > -18 && x < -2)) continue; if (Math.sin(x * .07) + Math.cos(z * .09) < .3) continue; lotus.push({ x, z, y: -.86, s: .7 + Rf() * .6, sy: .08, t: 2.5 + Rf() * .3 }); }
+  makeInstances('forestI', new THREE.CylinderGeometry(1, 1, 1, 10), lotus, { spring: ['#5f8a45', '#6b9a4d', '#5a8240', '#e39ab4'], autumn: ['#8a7a45', '#7a6a3a', '#8a7440'] }, Rf);
+}
+
+/* =====================================================================
+   唐津城 江戸期 — no keep (only its base), 二の丸御殿, moats, gates and
+   櫓 from the castle plan: 亀頭櫓, 涼所櫓, 総締門, 水手門, 船入門, 坂口門.
+   ===================================================================== */
+const KE_MOATS = [[V(-84, 0, 2), V(-84, 0, 64), V(24, 0, 64), V(24, 0, 12)], [V(-152, 0, -46), V(-152, 0, 104), V(56, 0, 104)]];
+const karatsuEdoH = (x, z) => { let h = karatsuH(x, z); for (const m of KE_MOATS) { const d = distPoly(x, z, m); if (d < 5.5) h = Math.min(h, lerp(-3.2, h, sstep(3.2, 5.5, d))); } return h; };
+function karatsuEdoTColor(x, z, h, slope) { const c = karatsuTColor(x, z, h, slope); if (x > -79 && x < 19 && z > 6 && z < 59 && h > 0) c.set('#c9bfa4'); return c; }
+function kEdoExtras() {
+  begin({ sketch: [.3, .8], mass: [1.3, 1.85], detail: [2.1, 2.72] });
+  // 腰曲輪: waterside wall around the hill
+  for (let i = 0; i < 110; i++) { const t0 = i / 110 * Math.PI * 2, t1 = (i + 1) / 110 * Math.PI * 2; const [ax, az] = sePt(1.075, t0), [bx, bz] = sePt(1.075, t1); if (kBase((ax + bx) / 2, (az + bz) / 2) > 0) continue; add('stone', beam(V(ax, -.8, az), V(bx, -.8, bz), 1.6, 7.6), { lines: false, ord: .1 }); add('plaster', beam(V(ax, 3.9, az), V(bx, 3.9, bz), .45, 1.6), { ph: 'detail', lines: false }); add('tile', beam(V(ax, 4.85, az), V(bx, 4.85, bz), .95, .3), { ph: 'detail', lines: false }); S.strokes.push({ layer: 1, segs: [[V(ax, 3, az), V(bx, 3, bz)]] }); }
+  yagura(-30, 31, -57, 7, 7, 2, { base: 1.4 });          // 亀頭櫓
+  yagura(31, 21, -60, 6.4, 6.4, 2, { base: 1.2 });       // 涼所櫓
+  kGate(38, 21, -38, 0);                                  // 総締門
+  kGate(55, 1.2, -38, 0); kGate(46, 1.2, 8, -Math.PI / 2); kGate(-4, 1.2, 6, -Math.PI / 2); // 水手門・船入門・坂口門
+  // 二の丸: walls, 御殿 halls, gates
+  const wl = (ax, az, bx, bz) => { add('stone', beam(V(ax, .3, az), V(bx, .3, bz), 1.4, 3.2), { lines: false }); add('plaster', beam(V(ax, 2.7, az), V(bx, 2.7, bz), .45, 1.6), { ph: 'detail', lines: false }); add('tile', beam(V(ax, 3.65, az), V(bx, 3.65, bz), .95, .3), { ph: 'detail', lines: false }); S.strokes.push({ layer: 1, segs: [[V(ax, 3.8, az), V(bx, 3.8, bz)]] }); };
+  wl(-79, 6, -79, 59); wl(-79, 59, -40, 59); wl(-32, 59, 19, 59); wl(19, 59, 19, 16);
+  kGate(-36, 1.2, 59, -Math.PI / 2);
+  for (const [x, z, w, d] of [[-50, 22, 20, 10], [-50, 36, 12, 14], [-28, 30, 26, 11], [-10, 44, 14, 10], [-36, 48, 16, 8], [0, 22, 12, 9]]) { add('paving', box(w + 1.4, .45, d + 1.4, x, 1.2, z), { lines: false }); add('plaster', box(w, 3, d, x, 1.65, z)); roofOn({ W: Math.max(w, d) + 3, D: Math.min(w, d) + 3, H: 3, sg: .55, lift: .45, a: .45, th: .34, seam: .6 }, x, 4.55, z, d > w, { mat: 'tile', gmat: 'plaster', rmat: 'tile', oni: false }); }
+  for (const [x, z, s] of [[-66, 14, .9], [-62, 50, .85], [8, 36, .8], [-18, 14, .75], [14, 52, .8]]) tree('pine', x, z, s);
+  for (const [x, z, s] of [[-26, -44, 1], [-11, -24, .9], [10, -31, .85], [-3, -35, .8], [26, -8, .8], [14, -41, .8]]) tree('pine', x, z, s);
+  end();
+}
+
+/* =====================================================================
+   SEASONAL EVENTS — 夏: 九州花火大会 over 唐津湾; 秋: 唐津くんち 曳山巡行
+   ===================================================================== */
+const FW = (() => {
+  const N = 1600, pos = new Float32Array(N * 3), col = new Float32Array(N * 3), a = new Float32Array(N), vel = new Float32Array(N * 3), life = new Float32Array(N), max = new Float32Array(N);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('alpha', new THREE.BufferAttribute(a, 1));
+  const m = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { uPR: { value: 1 }, uK: { value: 1 } },
+    vertexShader: 'attribute vec3 color; attribute float alpha; varying vec3 vC; varying float vA; uniform float uPR; void main(){ vC = color; vA = alpha; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = clamp(1400.0 * uPR / -mv.z, 1.5, 9.0 * uPR); gl_Position = projectionMatrix * mv; }',
+    fragmentShader: 'varying vec3 vC; varying float vA; uniform float uK; void main(){ vec2 d = gl_PointCoord - .5; float r = length(d); if (r > .5) discard; float f = smoothstep(.5, 0.0, r); gl_FragColor = vec4(vC * f * vA * uK, 1.0); }' });
+  const pts = new THREE.Points(g, m); pts.frustumCulled = false; pts.visible = false; pts.renderOrder = 12; scene.add(pts);
+  const shells = []; const PAL2 = ['#ff5a5a', '#ffd35a', '#7fe0ff', '#b98cff', '#ff9ad5', '#9dff8a', '#ffffff'];
+  for (let s = 0; s < 8; s++) shells.push({ i0: s * 200, n: 200, phase: 'wait', t: s * .7 });
+  function launch(sh) { sh.phase = 'rise'; sh.t = 0; sh.o = V(rr(-70, 50), -1, rr(-118, -96)); sh.peak = rr(62, 96); sh.c = new THREE.Color(pick(PAL2)); sh.c2 = new THREE.Color(pick(PAL2)); }
+  function update(dt, on, k) {
+    pts.visible = on; if (!on) return; m.uniforms.uK.value = k; m.uniforms.uPR.value = renderer.getPixelRatio();
+    for (const sh of shells) {
+      sh.t += dt;
+      if (sh.phase === 'wait') { for (let i = sh.i0; i < sh.i0 + sh.n; i++) a[i] = 0; if (sh.t > 1.2) launch(sh); continue; }
+      if (sh.phase === 'rise') {
+        const u = Math.min(1, sh.t / 1.5), y = sh.o.y + (sh.peak - sh.o.y) * (1 - (1 - u) * (1 - u));
+        for (let i = sh.i0; i < sh.i0 + sh.n; i++) a[i] = 0;
+        for (let j = 0; j < 6; j++) { const i = sh.i0 + j; pos.set([sh.o.x, y - j * 1.4, sh.o.z], i * 3); col.set([1, .8, .55], i * 3); a[i] = .9 - j * .14; }
+        if (u >= 1) { sh.phase = 'burst'; sh.t = 0; const two = R() < .4;
+          for (let i = sh.i0; i < sh.i0 + sh.n; i++) { const th = R() * 6.283, ph = Math.acos(2 * R() - 1), sp = rr(15, 21); vel.set([Math.sin(ph) * Math.cos(th) * sp, Math.cos(ph) * sp, Math.sin(ph) * Math.sin(th) * sp], i * 3); pos.set([sh.o.x, sh.peak, sh.o.z], i * 3); const c = two && (i & 1) ? sh.c2 : sh.c; col.set([c.r, c.g, c.b], i * 3); max[i] = life[i] = rr(1.8, 2.6); } }
+        continue;
+      }
+      let alive = false;
+      for (let i = sh.i0; i < sh.i0 + sh.n; i++) {
+        if (life[i] <= 0) { a[i] = 0; continue; } alive = true; life[i] -= dt;
+        vel[i * 3 + 1] -= 7 * dt; for (let q = 0; q < 3; q++) { vel[i * 3 + q] *= (1 - 1.1 * dt); pos[i * 3 + q] += vel[i * 3 + q] * dt; }
+        a[i] = Math.pow(Math.max(0, life[i] / max[i]), 1.4) * (.75 + .25 * Math.sin(sh.t * 40 + i));
+      }
+      if (!alive) { sh.phase = 'wait'; sh.t = R() * .6; }
+    }
+    g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true; g.attributes.alpha.needsUpdate = true;
+  }
+  return { update };
+})();
+
+const KUNCHI = (() => {
+  const route = new THREE.CatmullRomCurve3([V(-145, 0, 20.2), V(-92.2, 0, 20.2), V(-92.2, 0, 86.2), V(-145, 0, 86.2)], true, 'catmullrom', .02);
+  const M2 = h => new THREE.MeshStandardMaterial({ color: h, roughness: .45, metalness: 0 });
+  const C = { red: M2('#c3281c'), blue: M2('#2a5aa8'), gold: new THREE.MeshStandardMaterial({ color: '#d7a632', roughness: .3, metalness: .8 }), black: M2('#1a1817'), white: M2('#f2eee4'), green: M2('#2f7a52'), silver: new THREE.MeshStandardMaterial({ color: '#c9ccd0', roughness: .3, metalness: .8 }), lamp: new THREE.MeshStandardMaterial({ color: '#fff0c8', emissive: '#ffb24a', emissiveIntensity: 0 }) };
+  const mesh = (g, m, x = 0, y = 0, z = 0) => { const o = new THREE.Mesh(g, m); o.position.set(x, y, z); o.castShadow = true; return o; };
+  const S3 = (r, sx, sy, sz) => new THREE.SphereGeometry(r, 18, 12).scale(sx, sy, sz);
+  function lion(main, trim) { const g = new THREE.Group(); g.add(mesh(S3(1.8, 1.15, .95, 1.05), main, 0, 3.6, 0)); for (let k = 0; k < 9; k++) { const a = k / 9 * Math.PI * 2; g.add(mesh(new THREE.ConeGeometry(.45, 1.4, 6), trim, Math.cos(a) * 1.75, 3.9 + Math.sin(a) * 1.2, -.9).rotateX(0)); } g.add(mesh(S3(.34, 1, 1, 1), C.gold, -.7, 4.1, 1.75)); g.add(mesh(S3(.34, 1, 1, 1), C.gold, .7, 4.1, 1.75)); g.add(mesh(new THREE.BoxGeometry(2, .5, 1.2), C.white, 0, 3, 1.5)); return g; }
+  function helmet(main, horn, extra) { const g = new THREE.Group(); g.add(mesh(new THREE.SphereGeometry(1.7, 20, 10, 0, 6.29, 0, Math.PI / 2), main, 0, 3, 0)); g.add(mesh(new THREE.CylinderGeometry(1.8, 2.6, 1.1, 20, 1, true), main, 0, 2.5, 0)); for (const s of [-1, 1]) g.add(mesh(new THREE.BoxGeometry(.18, 2.6, .5), horn, s * .8, 5.1, 1.2).rotateZ(-s * .45)); g.add(mesh(S3(.35, 1, 1, .5), horn, 0, 4, 1.65)); if (extra) g.add(mesh(S3(1.5, 1, .8, 1), extra, 0, 4.4, -.5)); return g; }
+  function fish(main, fin, upright) { const g = new THREE.Group(); const b = mesh(S3(1.3, .75, upright ? 2.2 : 1.35, upright ? 1 : 2.3), main, 0, upright ? 4.2 : 3.4, 0); g.add(b); g.add(mesh(new THREE.ConeGeometry(1, 1.8, 4).scale(.3, 1, 1), fin, 0, upright ? 6.8 : 3.4, upright ? 0 : -3.2).rotateX(upright ? 0 : -Math.PI / 2)); g.add(mesh(new THREE.BoxGeometry(.12, 1.2, 1.6), fin, 0, upright ? 4.2 : 4.7, upright ? -1 : 0)); for (const s of [-1, 1]) g.add(mesh(S3(.22, 1, 1, 1), C.black, s * .9, upright ? 5 : 3.8, upright ? .9 : 2.1)); return g; }
+  function ship(main, deco) { const g = new THREE.Group(); const hull = new THREE.BoxGeometry(2.6, 1.4, 4.6, 1, 1, 4); const p = hull.attributes.position; for (let i = 0; i < p.count; i++) { const z = p.getZ(i); if (z > 1) p.setX(i, p.getX(i) * (1 - (z - 1) * .35)); p.setY(i, p.getY(i) + (z > 0 ? z * z * .08 : 0)); } hull.computeVertexNormals(); g.add(mesh(hull, main, 0, 2.6, 0)); g.add(mesh(S3(.8, 1, 1.4, 1), deco, 0, 4.2, 2.2)); g.add(mesh(new THREE.ConeGeometry(.6, 1.6, 5), deco, 0, 5.5, 2.4)); g.add(mesh(new THREE.CylinderGeometry(.1, .1, 3.2, 6), C.black, 0, 4.6, -.6)); for (let k = 0; k < 4; k++) g.add(mesh(S3(.35, 1, 1, 1), C.gold, (k - 1.5) * .5, 3.5, -1)); return g; }
+  function turtle() { const g = new THREE.Group(); g.add(mesh(S3(1.9, 1, .6, 1.2), C.green, 0, 3, 0)); g.add(mesh(S3(.6, 1, .8, 1.2), C.green, 0, 3.2, 2.3)); g.add(mesh(new THREE.CylinderGeometry(.35, .45, 1.6, 8), C.white, 0, 4.8, -.2)); g.add(mesh(S3(.35, 1, 1, 1), C.black, 0, 5.9, -.2)); return g; }
+  function dragon() { const g = new THREE.Group(); g.add(mesh(S3(1.2, .8, 1.3, 2.2), C.white, 0, 3.6, 0)); for (const s of [-1, 1]) g.add(mesh(new THREE.BoxGeometry(2.6, .12, 1.4), C.green, s * 1.6, 4.2, -.2).rotateZ(s * .35)); g.add(mesh(new THREE.ConeGeometry(.5, 1.6, 6), C.gold, 0, 5, 2.3).rotateX(.6)); return g; }
+  const DESIGNS = [['赤獅子', () => lion(C.red, C.gold)], ['青獅子', () => lion(C.blue, C.gold)], ['亀と浦島太郎', turtle], ['源義経の兜', () => helmet(C.blue, C.gold)], ['鯛', () => fish(C.red, C.gold, false)], ['鳳凰丸', () => ship(C.red, C.gold)], ['飛龍', dragon], ['金獅子', () => lion(C.gold, C.red)], ['武田信玄の兜', () => helmet(C.red, C.gold, C.white)], ['上杉謙信の兜', () => helmet(C.black, C.gold)], ['酒呑童子と源頼光の兜', () => helmet(C.red, C.silver, C.red)], ['珠取獅子', () => lion(C.green, C.gold)], ['鯱', () => fish(C.gold, C.gold, true)], ['七宝丸', () => ship(C.black, C.gold)]];
+  const group = new THREE.Group(); group.visible = false; scene.add(group);
+  const floats = DESIGNS.map(([name, fn], i) => {
+    const f = new THREE.Group();
+    f.add(mesh(new THREE.BoxGeometry(3, .7, 4.4), C.black, 0, 1.25, 0)); f.add(mesh(new THREE.BoxGeometry(3.2, .18, 4.6), C.gold, 0, 1.65, 0));
+    for (const [x, z] of [[-1.6, -1.4], [1.6, -1.4], [-1.6, 1.4], [1.6, 1.4]]) f.add(mesh(new THREE.CylinderGeometry(.85, .85, .4, 16).rotateZ(Math.PI / 2), C.black, x, .85, z));
+    for (const s of [-1, 1]) f.add(mesh(new THREE.BoxGeometry(.3, .9, .3), C.lamp, s * 1.3, 2.1, 2.1));
+    const top = fn(); f.add(top); f.userData = { u0: i / DESIGNS.length * .42, name }; group.add(f); return f;
+  });
+  let time = 0;
+  function update(dt, on, night, grow) {
+    group.visible = on; if (!on) return; time += dt; C.lamp.emissiveIntensity = .2 + 2.4 * night;
+    for (const f of floats) { const u = ((f.userData.u0 - time * .0095) % 1 + 1) % 1, p = route.getPointAt(u), t = route.getTangentAt(u); f.position.set(p.x, karatsuH(p.x, p.z), p.z); f.rotation.y = Math.atan2(-t.x, -t.z) + Math.PI; f.scale.setScalar(Math.max(.001, grow)); }
+  }
+  return { update, route };
+})();
 
 function flushSite() {
   for (const [mk, list] of BUCKETS) {
@@ -1999,7 +2388,7 @@ const PROJ = {
     shadow: { left: -215, right: 215, top: 200, bottom: -200 }, sunT: [-10, 0, 0],
     night: [[-38, 7, 0, 1500], [-41, 24, 0, 900], [22, 7, -18, 700], [-16, 6, 20, 420], [96, 6, -18, 650], [21, 5, -30, 300], [74, 4, 52, 380]] },
   karatsu: { seed: 1602, h1: 'Karatsu <em>Castle.</em>', sub: '唐津城（舞鶴城）· 満島山 · 唐津湾', title: 'Karatsu Castle',
-    env: () => { H = karatsuH; tColor = karatsuTColor; TX0 = -170; TX1 = 170; TZ0 = -150; TZ1 = 120; CENTER = [-8, -57]; },
+    env: () => { KEDO = false; H = karatsuH; tColor = karatsuTColor; TX0 = -170; TX1 = 170; TZ0 = -150; TZ1 = 120; CENTER = [-8, -57]; },
     build: () => buildKaratsu(),
     DIR: [
       { p: 0.0, t: [0, 5, -20], d: 450, az: 38, el: 44 },
@@ -2046,7 +2435,140 @@ const PROJ = {
     ],
     shadow: { left: -230, right: 230, top: 210, bottom: -210 }, sunT: [0, 0, -20],
     night: [[-8, 40, -44, 1800], [-22, 40, -57, 1000], [6, 40, -57, 1000], [22, 36, -18, 360], [75, 7, -16, 520], [-50, 5, -30, 300], [34, 24, -10, 320]] },
+  karatsu_edo: { seed: 1602, h1: 'Karatsu <em>Castle.</em>', sub: '唐津城 江戸期の想定復元 · 二の丸御殿 · 外堀', title: 'Karatsu Castle · Edo',
+    env: () => { KEDO = true; H = karatsuEdoH; tColor = karatsuEdoTColor; TX0 = -170; TX1 = 170; TZ0 = -150; TZ1 = 120; CENTER = [-8, -57]; },
+    build: () => buildKaratsu(),
+    DIR: null, VIEWS: null,
+    SITES: {
+      overview: { btn: ['Overview', '全景'], cam: { t: [-20, 8, -10], d: 330, az: 40, el: 38 }, name: 'Karatsu Castle · Edo', k: 'Edo period · 江戸期', h: '江戸期の唐津城<em>Edo-period plan</em>',
+        p: '江戸期の唐津城には天守台はあったものの、寛永4年（1627）の幕府の記録にも天守は記されておらず、天守の存在を示す資料は見つかっていない。藩主の御殿は二の丸に置かれ、本丸・二ノ曲輪・腰曲輪・下曲輪を石垣と櫓・門が固めた。城下は外堀に囲まれた。',
+        dl: [['天守', '天守台のみ（天守の記録なし）'], ['御殿', '二の丸'], ['主な櫓', '亀頭櫓・化粧櫓・涼所櫓'], ['主な門', '総締門・水手門・船入門・坂口門']] },
+      honmaru: { btn: ['Honmaru', '本丸・天守台'], cam: { t: [-4, 30, -42], d: 110, az: 40, el: 32 }, name: 'Honmaru · 本丸', k: 'Honmaru · 本丸', h: '本丸と天守台<em>Honmaru</em>',
+        p: '満島山の頂の本丸。北端に天守台が築かれたが、上に天守が建っていた記録はない。北西隅に亀頭櫓、二ノ曲輪の北東に涼所櫓を置き、海側は腰曲輪の石垣が直接海から立ち上がる。',
+        dl: [['天守台', '石垣のみ'], ['海側', '腰曲輪の石垣']] },
+      ninomaru: { btn: ['Ninomaru', '二の丸御殿'], cam: { t: [-32, 4, 32], d: 110, az: 50, el: 36 }, name: 'Ninomaru · 二の丸御殿', k: 'Palace · 二の丸御殿', h: '二の丸御殿<em>Ninomaru palace</em>',
+        p: '城山の南の平地に置かれた藩主の御殿。坂口門で本丸側と結ばれ、周囲を堀と塀が囲む。建物の配置は城郭図をもとにした想定。',
+        dl: [['位置', '満島山の南'], ['出入口', '坂口門'], ['建物', '本模型では想定配置']] },
+      matsubara: { btn: ['Pine Coast', '虹の松原'], cam: { t: [125, 2, -44], d: 130, az: 55, el: 26 }, name: 'Niji-no-Matsubara · 虹の松原', k: 'Coast · 虹の松原', h: '虹の松原<em>Niji-no-Matsubara</em>',
+        p: '寺沢広高が防風林として保護・育成した松原。西の浜の松原とあわせて城の両翼をなし、「舞鶴城」の名の由来となった。',
+        dl: [['由来', '寺沢広高による植林・保護']] },
+    },
+    SRC: null,
+    LABELS: [
+      { k: 'A', jp: '天守台', en: 'Keep base', pos: [-8, 44, -57], t: .95, site: 'honmaru' },
+      { k: 'B', jp: '本丸', en: 'Honmaru', pos: [-16, 35, -38], t: .7 },
+      { k: 'C', jp: '二ノ曲輪', en: 'Second bailey', pos: [31, 25, -14], t: .7 },
+      { k: 'D', jp: '亀頭櫓', en: 'Kitō turret', pos: [-30, 44, -57], t: .8 },
+      { k: 'E', jp: '涼所櫓', en: 'Suzumido turret', pos: [31, 34, -60], t: .8 },
+      { k: 'F', jp: '二の丸御殿', en: 'Palace', pos: [-32, 12, 32], t: .6, site: 'ninomaru' },
+      { k: 'G', jp: '坂口門', en: 'Sakaguchi gate', pos: [-4, 9, 6], t: .6 },
+      { k: 'H', jp: '水手門', en: 'Mizute gate', pos: [55, 9, -38], t: .6 },
+      { k: 'I', jp: '船入門', en: 'Funairi gate', pos: [46, 9, 8], t: .6 },
+      { k: 'J', jp: '外堀', en: 'Outer moat', pos: [-152, 4, 40], t: .4 },
+      { k: 'K', jp: '虹の松原', en: 'Pine coast', pos: [132, 10, -45], t: .4, site: 'matsubara' },
+    ],
+    STAGES: [
+      { n: '01', jp: '線を引く', en: 'Axis · contour · moats' },
+      { n: '02', jp: 'かたちが立ち上がる', en: 'Hill · stone · volume' },
+      { n: '03', jp: '細部が宿る', en: 'Turrets · gates · pines' },
+      { n: '04', jp: '城下が息づく', en: 'Plaster · tile · sea' },
+    ],
+    shadow: { left: -230, right: 230, top: 210, bottom: -210 }, sunT: [0, 0, -20],
+    night: [[-30, 40, -50, 700], [-32, 10, 30, 900], [31, 30, -56, 500], [-4, 6, 8, 300], [-100, 6, 50, 700]] },
+  yoshinogari: { seed: 1986, h1: 'Yoshinogari <em>Site.</em>', sub: '吉野ヶ里遺跡 · 弥生時代の環濠集落', title: 'Yoshinogari Site',
+    env: () => { H = yoshiH; tColor = yoshiTColor; TX0 = -150; TX1 = 150; TZ0 = -185; TZ1 = 165; CENTER = [0, -40]; },
+    build: () => buildYoshinogari(),
+    DIR: [
+      { p: 0.0, t: [0, 4, -15], d: 470, az: 40, el: 46 },
+      { p: 0.95, t: [0, 6, -30], d: 330, az: 36, el: 38 },
+      { p: 1.9, t: [0, 8, -70], d: 170, az: 32, el: 28 },
+      { p: 2.75, t: [0, 12, -96], d: 88, az: 28, el: 16 },
+      { p: 3.35, t: [0, 13, -96], d: 96, az: 72, el: 12 },
+      { p: 4.0, t: [0, 5, -30], d: 330, az: 36, el: 34 },
+    ],
+    VIEWS: { elev: { t: [0, 10, -20], d: 700, az: .5, el: 3, fov: 15 }, plan: { t: [0, 0, -10], d: 1150, az: 90, el: 89.3, fov: 20 } },
+    SITES: {
+      overview: { btn: ['Overview', '全景'], cam: { t: [0, 4, -15], d: 360, az: 38, el: 40 }, name: 'Yoshinogari Site', k: 'Overview · 全景', h: '吉野ヶ里遺跡<em>Yoshinogari</em>',
+        p: '弥生時代（紀元前5世紀〜紀元3世紀頃）の国内最大級の環濠集落跡。V字形に掘られた外壕が約40haを囲み、その内側に北内郭・南内郭の二重環濠が築かれた。1986年からの発掘で全容が明らかになり、1991年に特別史跡、2001年に国営吉野ヶ里歴史公園として開園した。',
+        dl: [['時代', '弥生時代'], ['外壕', '総延長 約2.5km・約40ha'], ['特別史跡', '1991年'], ['復元建物', '環壕集落ゾーンに67棟']] },
+      kita: { btn: ['North Enclosure', '北内郭'], cam: { t: [0, 10, -94], d: 95, az: 30, el: 26 }, name: 'Kita-naikaku · 北内郭', k: 'Enclosure · 北内郭', h: '北内郭と主祭殿<em>Kita-naikaku</em>',
+        p: '集落の祭祀の中心とされる区画。英字の「A」に似た左右対称の二重環濠に囲まれ、3層の主祭殿（約12.3m×12.7m、中層の床高4.5m）、東祭殿、斎堂、4棟の物見櫓など20棟が復元されている。',
+        dl: [['主祭殿', '12.3m × 12.7m・3層'], ['中層床高', '4.5 m'], ['物見櫓', '4棟'], ['復元', '20棟']] },
+      minami: { btn: ['South Enclosure', '南内郭'], cam: { t: [4, 8, 14], d: 105, az: 40, el: 32 }, name: 'Minami-naikaku · 南内郭', k: 'Enclosure · 南内郭', h: '南内郭<em>Minami-naikaku</em>',
+        p: '吉野ヶ里の支配者層が暮らしたと考えられる区画。環濠と柵に囲まれ、四隅に物見櫓が立ち、竪穴住居や大型の高床建物が並ぶ。西には高床倉庫が集まる「倉と市」がある。',
+        dl: [['性格', '支配者層の居住区'], ['主な建物', '物見櫓・竪穴住居・高床建物']] },
+      funkyu: { btn: ['Burial Mound', '北墳丘墓'], cam: { t: [-10, 6, -145], d: 90, az: 40, el: 30 }, name: 'Kita-funkyūbo · 北墳丘墓', k: 'Burials · 北墳丘墓', h: '北墳丘墓と甕棺墓列<em>Burial mound</em>',
+        p: '集落の北端に築かれた、歴代の王の墓と考えられる墳丘墓。周辺には甕棺を列状に埋葬した墓地が延びる。',
+        dl: [['性格', '王墓と考えられる'], ['埋葬', '甕棺墓']] },
+    },
+    SRC: '出典：<a href="https://www.yoshinogari.jp/introduction/restore/kitanaikaku/" target="_blank" rel="noopener">吉野ヶ里歴史公園 北内郭</a>、<a href="https://www.yoshinogari.jp/information/zone/moat-encircled-village/" target="_blank" rel="noopener">環壕集落ゾーン</a>、<a href="https://online.bunka.go.jp/heritages/detail/202936" target="_blank" rel="noopener">文化遺産オンライン</a>。距離は圧縮した概念的な再構成です。',
+    LABELS: [
+      { k: 'A', jp: '主祭殿', en: 'Main ritual hall', pos: [0, 26, -96], t: .95, site: 'kita' },
+      { k: 'B', jp: '北内郭', en: 'North enclosure', pos: [-24, 12, -112], t: .6, site: 'kita' },
+      { k: 'C', jp: '南内郭', en: 'South enclosure', pos: [4, 16, 14], t: .6, site: 'minami' },
+      { k: 'D', jp: '物見櫓', en: 'Watchtower', pos: [24, 20, 30], t: .8 },
+      { k: 'E', jp: '倉と市', en: 'Granaries', pos: [-44, 14, -36], t: .7 },
+      { k: 'F', jp: '北墳丘墓', en: 'Burial mound', pos: [0, 14, -158], t: .7, site: 'funkyu' },
+      { k: 'G', jp: '甕棺墓列', en: 'Jar burials', pos: [-35, 10, -134], t: .8 },
+      { k: 'H', jp: '南のムラ', en: 'South village', pos: [0, 12, 104], t: .7 },
+      { k: 'I', jp: '外環濠', en: 'Outer ditch', pos: [62, 9, 40], t: .35 },
+    ],
+    STAGES: [
+      { n: '01', jp: '線を引く', en: 'Axis · ditches · palisades' },
+      { n: '02', jp: 'かたちが立ち上がる', en: 'Banks · thatch · volume' },
+      { n: '03', jp: '細部が宿る', en: 'Towers · granaries · stakes' },
+      { n: '04', jp: '茅葺きが色づく', en: 'Thatch · timber · paddies' },
+    ],
+    shadow: { left: -240, right: 240, top: 240, bottom: -240 }, sunT: [0, 0, -20],
+    night: [[0, 8, -92, 1400], [4, 6, 14, 1100], [-44, 5, -36, 500], [0, 5, 104, 600], [0, 5, 132, 400]] },
+  saga: { seed: 1838, h1: 'Saga <em>Castle.</em>', sub: '佐賀城 · 本丸御殿 · 鯱の門', title: 'Saga Castle',
+    env: () => { H = sagaH; tColor = sagaTColor; TX0 = -160; TX1 = 160; TZ0 = -140; TZ1 = 140; CENTER = [0, 20]; },
+    build: () => buildSaga(),
+    DIR: [
+      { p: 0.0, t: [0, 3, 0], d: 440, az: 40, el: 46 },
+      { p: 0.95, t: [0, 4, 10], d: 300, az: 38, el: 38 },
+      { p: 1.9, t: [0, 5, 20], d: 170, az: 42, el: 28 },
+      { p: 2.75, t: [-10, 8, 48], d: 90, az: 70, el: 14 },
+      { p: 3.35, t: [0, 8, 24], d: 110, az: 82, el: 18 },
+      { p: 4.0, t: [4, 4, 4], d: 300, az: 40, el: 34 },
+    ],
+    VIEWS: { elev: { t: [0, 8, 0], d: 620, az: 90, el: 3, fov: 15 }, plan: { t: [0, 0, 0], d: 1060, az: 90, el: 89.3, fov: 20 } },
+    SITES: {
+      overview: { btn: ['Overview', '全景'], cam: { t: [0, 3, 6], d: 330, az: 40, el: 40 }, name: 'Saga Castle', k: 'Overview · 全景', h: '佐賀城<em>Saga Castle</em>',
+        p: '佐賀藩主・鍋島家の居城。慶長年間に鍋島直茂・勝茂父子が整備した平城で、幅の広い堀に囲まれる。1726年の大火で天守などを焼失し、天守は再建されなかった。現在は佐賀城公園として整備されている。',
+        dl: [['形式', '平城'], ['藩主', '鍋島家'], ['天守', '1726年に焼失'], ['現在', '佐賀城公園']] },
+      goten: { btn: ['Palace', '本丸御殿'], cam: { t: [4, 6, 22], d: 100, az: 72, el: 26 }, name: 'Honmaru Palace · 本丸御殿', k: 'Palace · 本丸御殿', h: '本丸御殿<em>Honmaru Palace</em>',
+        p: '10代藩主・鍋島直正が再建し1838年に完成した本丸御殿。発掘遺構と「御本丸差図」が一致したことから、その一部を2004年に往時の工法で木造復元し、佐賀城本丸歴史館として公開した。延床面積約2,500㎡は木造復元建物として国内最大級。',
+        dl: [['完成', '1838年（天保9年）'], ['復元', '2004年・木造瓦葺き平屋'], ['延床面積', '約 2,500 ㎡'], ['外御書院', '東西49m × 南北15m']] },
+      shachimon: { btn: ['Shachi Gate', '鯱の門'], cam: { t: [-8, 8, 50], d: 70, az: 68, el: 12 }, name: 'Shachi-no-mon · 鯱の門', k: 'Gate · 鯱の門', h: '鯱の門と続櫓<em>Shachi-no-mon</em>',
+        p: '本丸御殿と同じ1838年に建てられた本丸の正門で、続櫓とともに国の重要文化財。屋根の両端に青銅製の鯱を載せ、門扉には1874年の佐賀の乱の弾痕が残る。',
+        dl: [['建立', '1838年'], ['指定', '国重要文化財'], ['鯱', '青銅製'], ['弾痕', '佐賀の乱（1874年）']] },
+      tenshudai: { btn: ['Keep Base', '天守台'], cam: { t: [-40, 10, -34], d: 80, az: 40, el: 28 }, name: 'Tenshu-dai · 天守台', k: 'Keep base · 天守台', h: '天守台<em>Tenshu-dai</em>',
+        p: '本丸の北西隅に残る天守の石垣。天守は1726年の火災で焼失し、以後は再建されなかった。',
+        dl: [['天守焼失', '1726年'], ['現状', '石垣のみ']] },
+    },
+    SRC: '出典：<a href="https://saga-museum.jp/sagajou/about/fukugen.html" target="_blank" rel="noopener">佐賀城本丸歴史館 本丸御殿の復元</a>、<a href="https://online.bunka.go.jp/heritages/detail/212676" target="_blank" rel="noopener">文化遺産オンライン</a>。距離は圧縮した概念的な再構成です。',
+    LABELS: [
+      { k: 'A', jp: '本丸御殿', en: 'Palace', pos: [-10, 13, 30], t: .95, site: 'goten' },
+      { k: 'B', jp: '鯱の門', en: 'Shachi gate', pos: [-10, 18, 50], t: .85, site: 'shachimon' },
+      { k: 'C', jp: '続櫓', en: 'Tsuzuki turret', pos: [12, 12, 49], t: .85 },
+      { k: 'D', jp: '外御書院', en: 'Outer shoin', pos: [12, 14, 14], t: .95 },
+      { k: 'E', jp: '天守台', en: 'Keep base', pos: [-40, 18, -34], t: .7, site: 'tenshudai' },
+      { k: 'F', jp: '御堀', en: 'Moat', pos: [74, 2, 0], t: .4 },
+      { k: 'G', jp: '佐賀県庁', en: 'Prefectural office', pos: [104, 62, -96], t: .5 },
+      { k: 'H', jp: '御殿跡（遺構表示）', en: 'Footings', pos: [0, 6, -34], t: .6 },
+    ],
+    STAGES: [
+      { n: '01', jp: '線を引く', en: 'Axis · moats · footprints' },
+      { n: '02', jp: 'かたちが立ち上がる', en: 'Stone · halls · volume' },
+      { n: '03', jp: '細部が宿る', en: 'Lattice · shachi · camphor' },
+      { n: '04', jp: '御殿が甦る', en: 'Tile · plaster · moat' },
+    ],
+    shadow: { left: -220, right: 220, top: 210, bottom: -210 }, sunT: [0, 0, 0],
+    night: [[-10, 12, 58, 1000], [0, 10, 24, 1200], [20, 10, 10, 700], [-40, 14, -30, 400]] },
 };
+PROJ.karatsu_edo.DIR = PROJ.karatsu.DIR; PROJ.karatsu_edo.VIEWS = PROJ.karatsu.VIEWS; PROJ.karatsu_edo.SRC = K_SRC.replace('形状は', '江戸期の配置は城郭図にもとづく想定で、形状は');
+
 let DIR, VIEWS, SITES, SRC, LABELS, STAGES, curProj = null;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const ui = { play: $('#play'), scrub: $('#scrub'), stages: $$('.stage'), caption: $('#caption'), capNum: $('#capNum'), capJp: $('#capJp'), capEn: $('#capEn'), siteName: $('#siteName'), card: $('#card'), labels: $('#labels') };
@@ -2094,9 +2616,10 @@ $$('[data-view]').forEach(b => b.addEventListener('click', () => {
 }));
 $('#labelsBtn').addEventListener('click', e => { state.labels = !state.labels; e.currentTarget.setAttribute('aria-pressed', String(state.labels)); });
 $('#seasonBtn').addEventListener('click', e => {
-  state.season = state.season === 'spring' ? 'autumn' : 'spring';
-  e.currentTarget.textContent = state.season === 'spring' ? '春' : '秋';
-  e.currentTarget.setAttribute('aria-label', state.season === 'spring' ? '季節：春（クリックで秋）' : '季節：秋（クリックで春）');
+  state.season = { spring: 'summer', summer: 'autumn', autumn: 'spring' }[state.season];
+  const J = { spring: '春', summer: '夏', autumn: '秋' }, nx = { spring: '夏', summer: '秋', autumn: '春' };
+  e.currentTarget.textContent = J[state.season];
+  e.currentTarget.setAttribute('aria-label', `季節：${J[state.season]}（クリックで${nx[state.season]}）`);
   applySeason();
   lookDirty = true;
 });
@@ -2268,11 +2791,16 @@ function loop(now) {
   scene.fog.near = dist * 1.05; scene.fog.far = dist * 3.8; lineU.uFog.value.set(dist * 1.1, dist * 3.6);
   const changed = updateLook();
   if (changed) renderer.shadowMap.needsUpdate = true;
+  { const onK = curProj && curProj.startsWith('karatsu'), rk = sstep(3.4, 3.9, state.p);
+    const fw = onK && curProj === 'karatsu' && state.season === 'summer' && rk > 0, ku = onK && state.season === 'autumn' && rk > 0;
+    FW.update(dt, fw, rk * (.35 + .65 * state.darkF)); KUNCHI.update(dt, ku, state.darkF * rk, rk);
+    const ev = fw ? '夏 · 九州花火大会（唐津湾）' : ku ? '秋 · 唐津くんち　曳山14台の巡行' : '';
+    const el = document.getElementById('capEv'); if (el.textContent !== ev) { el.textContent = ev; el.hidden = !ev; } }
   syncUI(); syncLabels(); syncCompass();
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
 }
-function applySeason() { for (const { im, cS, cA } of INSTANCED) { const arr = state.season === 'spring' ? cS : cA; arr.forEach((c, i) => im.setColorAt(i, c)); im.instanceColor.needsUpdate = true; } }
+function applySeason() { for (const { im, cS, cA } of INSTANCED) { const arr = state.season === 'autumn' ? cA : cS; arr.forEach((c, i) => im.setColorAt(i, c)); im.instanceColor.needsUpdate = true; } }
 function buildProject(key) {
   const P = PROJ[key]; P.env();
   ROOT = new THREE.Group(); ROOT.visible = false; scene.add(ROOT);
@@ -2286,7 +2814,9 @@ function activate(key) {
   for (const k in PROJ) if (PROJ[k].group) PROJ[k].group.visible = k === key;
   ({ DIR, VIEWS, SITES, SRC, LABELS, STAGES } = P);
   document.getElementById('brandH').innerHTML = P.h1; document.getElementById('brandSub').textContent = P.sub;
-  $$('[data-proj]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.proj === key)));
+  $$('[data-proj]').forEach(b => b.setAttribute('aria-pressed', String(key.startsWith(b.dataset.proj))));
+  document.getElementById('era').hidden = !key.startsWith('karatsu');
+  $$('[data-era]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.era === key)));
   buildLabels(); buildSiteList(); selectSite(null, true);
   Object.assign(sun.shadow.camera, P.shadow); sun.shadow.camera.updateProjectionMatrix(); sun.target.position.set(...P.sunT); sun.target.updateMatrixWorld();
   nightLights.forEach((l, i) => { const d = P.night[i]; if (d) { l.position.set(d[0], d[1], d[2]); l.userData.base = d[3]; } else l.userData.base = 0; });
@@ -2296,15 +2826,18 @@ function activate(key) {
   lookDirty = true; renderer.shadowMap.needsUpdate = true;
   try { history.replaceState(null, '', '#' + key); } catch (e) { /* sandboxed frames may refuse */ }
 }
-$$('[data-proj]').forEach(b => b.addEventListener('click', () => {
-  const key = b.dataset.proj; if (key === curProj) return;
+let lastKaratsu = 'karatsu';
+$$('[data-proj], [data-era]').forEach(b => b.addEventListener('click', () => {
+  let key = b.dataset.proj || b.dataset.era; if (key === 'karatsu' && b.dataset.proj) key = lastKaratsu;
+  if (key.startsWith('karatsu')) lastKaratsu = key;
+  if (key === curProj) return;
   if (PROJ[key].group) { activate(key); return; }
   document.body.style.cursor = 'progress'; ui.capJp.textContent = 'モデルを組み立てています…';
   setTimeout(() => { activate(key); document.body.style.cursor = ''; }, 40);
 }));
-activate(location.hash === '#karatsu' ? 'karatsu' : 'yutoku');
+{ const hk = location.hash.slice(1); activate(PROJ[hk] ? hk : 'yutoku'); }
 requestAnimationFrame(loop);
-window.__yutoku = { state, setP: p => { state.p = p; state.playing = false; state.seek = null; syncPlay(); }, snap: () => { Object.assign(cur, directorAt(state.p)); applyCam(cur); }, cam: c => { state.director = false; state.tween = null; Object.assign(cur, { t: V(...c.t), d: c.d, az: c.az, el: c.el, fov: 32 }); applyCam(cur); }, project: k => activate(k) };
+window.__yutoku = { state, setP: p => { state.p = p; state.playing = false; state.seek = null; syncPlay(); }, snap: () => { Object.assign(cur, directorAt(state.p)); applyCam(cur); }, cam: c => { state.director = false; state.tween = null; Object.assign(cur, { t: V(...c.t), d: c.d, az: c.az, el: c.el, fov: 32 }); applyCam(cur); }, project: k => activate(k), fwStep: n => { for (let i = 0; i < n; i++) FW.update(.05, true, 1); } };
 </script>
 </body>
 </html>
