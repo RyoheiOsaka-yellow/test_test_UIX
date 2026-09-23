@@ -300,7 +300,7 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const TX0 = -165, TX1 = 150, TZ0 = -130, TZ1 = 130, BASE = -9, TS = 1.25;
 const riverX = z => 39 + 3.2 * Math.sin(z / 34 + .6);
 const RHW = 5.2;
-const PONDS = [{ x: -4, z: -27, r: 8.2, ph: 1.3, d: 1.15 }, { x: 6, z: -87, r: 7.4, ph: 4.1, d: 1.0 }];
+const PONDS = [{ x: 21, z: -36.5, r: 6.4, ph: 1.3, d: 1.15 }, { x: 6, z: -87, r: 7.4, ph: 4.1, d: 1.0 }];
 const pondR = (p, a) => p.r * (1 + .15 * Math.sin(3 * a + p.ph) + .08 * Math.sin(5 * a + p.ph * 2.1) + .05 * Math.cos(7 * a + p.ph));
 const pondPts = (p, extra = 0, n = 48) => { const o = []; for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; const r = pondR(p, a) + extra; o.push([p.x + Math.cos(a) * r, p.z + Math.sin(a) * r]); } return o; };
 const GARDEN = { x0: -24, x1: 22, z0: -106, z1: -64 };
@@ -324,7 +324,7 @@ function mountain(x, z) {
   for (let i = 0; i < PADS.length; i++) { const p = PADS[i]; const dd = Math.hypot(x - p.x, z - p.z); if (dd < p.r + 5) h = lerp(h, PADH[i], sstep(p.r + 5, p.r, dd)); }
   return h;
 }
-function hill(x, z) { const dx = (x - 112) / 27, dz = (z - 94) / 23; return 17.5 * Math.exp(-(dx * dx + dz * dz) * 1.05) * sstep(60, 74, z); }
+function hill(x, z) { const dx = (x - 112) / 27, dz = (z - 94) / 23; return 17.5 * Math.exp(-(dx * dx + dz * dz) * 1.05) * sstep(60, 74, z) * sstep(92, 102, x); }
 function gardenH(x, z) {
   const G = GARDEN; if (x < G.x0 || x > G.x1 || z < G.z0 || z > G.z1) return 0;
   const edge = Math.min(x - G.x0, G.x1 - x, z - G.z0, G.z1 - z);
@@ -477,6 +477,7 @@ M('carR', CLAY, '#a3322a', .4, .3, { delay: .3 });
 M('carB', CLAY, '#2f4f78', .4, .3, { delay: .3 });
 M('forestI', '#eeede7', '#ffffff', .9, 0, { vmode: 'tint', delay: .36 });
 M('azaleaI', '#f1f0eb', '#ffffff', .85, 0, { vmode: 'tint', delay: .38 });
+M('chimeI', '#f4f3ef', '#ffffff', .35, 0, { vmode: 'tint', delay: .2 });
 const NO_SHADOW = new Set(['water', 'glass', 'paint', 'gravel', 'paving', 'asphalt']);
 
 /* =====================================================================
@@ -828,14 +829,15 @@ function buildConstruction() {
   L0(V(TX0, BASE, TZ0), V(TX1, BASE, TZ0)); L0(V(TX1, BASE, TZ0), V(TX1, BASE, TZ1)); L0(V(TX1, BASE, TZ1), V(TX0, BASE, TZ1)); L0(V(TX0, BASE, TZ1), V(TX0, BASE, TZ0));
   for (const [x, z] of [[TX0, TZ0], [TX1, TZ0], [TX1, TZ1], [TX0, TZ1]]) L0(V(x, BASE, z), V(x, H(x, z), z));
   // regulating lines from the key footprints
-  for (const x of [-60, -36, 16, 84 - 17, 84 + 17]) L0(V(x, .05, -70), V(x, .05, 70));
+  for (const x of [-60, -36, 12, 57, 91]) L0(V(x, .05, -70), V(x, .05, 90));
   for (const z of [-16, 16, -9, 9]) L0(V(-100, .05, z), V(46, .05, z));
-  for (const z of [-4.5, 4.5]) L0(V(20, .05, z), V(150, .05, z));
-  L0(V(-24, .05, -118), V(22, .05, -118)); L0(V(66, .05, -60), V(66, .05, 20));
+  for (const z of [-22.5, -13.5]) L0(V(0, .05, z), V(150, .05, z));
+  L0(V(-24, .05, -118), V(22, .05, -118)); L0(V(40, .05, 57), V(110, .05, 57));
   // grid ticks (30 m)
   for (let x = -150; x <= 150; x += 30) for (let z = -120; z <= 120; z += 30) { L0(V(x - .9, .05, z), V(x + .9, .05, z)); L0(V(x, .05, z - .9), V(x, .05, z + .9)); }
   // axis of the approach (参道軸) and vertical axis of the Gohonden — accent
-  S.strokes.push({ layer: 4, segs: [[V(-80, .12, 0), V(150, .12, 0)]] });
+  S.strokes.push({ layer: 4, segs: [[V(150, .12, -18), V(-2, .12, -18)], [V(-2, .12, -18), V(-26, .12, 8.8)]] });
+  S.strokes.push({ layer: 4, segs: [[V(-80, .12, 0), V(-30, .12, 0)]] });
   S.strokes.push({ layer: 4, segs: [[V(-48, -2, 0), V(-48, 44, 0)]] });
   end();
 }
@@ -950,6 +952,7 @@ function buildRiver() {
 
   // 神橋 — vermilion arched bridge over the river
   begin({ sketch: [.24, .5], mass: [1.26, 1.6], detail: [2.05, 2.5] });
+  frame(0, 0, -18, 0);
   const xa = 30.5, xb = 48.5, L = xb - xa, cx = (xa + xb) / 2, rise = 1.4, Wd = 5.4;
   const ay = x => .3 + rise * (1 - ((x - cx) / (L / 2)) ** 2);
   add('vermDark', archBox(L, .55, Wd, rise).translate(cx, .3, 0));
@@ -961,85 +964,106 @@ function buildRiver() {
 }
 
 /* =====================================================================
-   4. PLAZA 境内 — gravel court, 神池 with 鶴島 and 太鼓橋, lanterns, trees
+   4. PLAZA 境内 — per the shrine's own precinct map: the approach
+   crosses 錦波川 by 神橋, passes a 太鼓橋 and 楼門 (north of the
+   Gohonden axis), then turns south-west to the stair foot. 神池 lies
+   north of the gate; 社務所・受付・神楽殿 line the south side.
    ===================================================================== */
+const AZ = -18; // approach line (神橋 → 楼門)
+const CHAN = [[21, -30], [23, -23.5], [24.2, -18], [26, -12.5], [30, -8.5], [35, -6.5]].map(([x, z]) => V(x, 0, z));
 function buildPlaza() {
   const P0 = PONDS[0];
   begin({ sketch: [.18, .62], mass: [1.2, 1.58], detail: [2.02, 2.6] });
-  const sh = new THREE.Shape([V(-42, 36), V(31, 36), V(31, -29), V(-42, -29)].map(v => new THREE.Vector2(v.x, v.y)));
+  const sh = new THREE.Shape([V(-42, 46), V(33, 46), V(33, -32), V(-42, -32)].map(v => new THREE.Vector2(v.x, v.y)));
   sh.holes.push(new THREE.Path(pondPts(P0, .3).map(([x, z]) => new THREE.Vector2(x, -z))));
   const g = new THREE.ExtrudeGeometry(sh, { depth: .1, bevelEnabled: false, curveSegments: 1 }); g.rotateX(-Math.PI / 2);
   add('gravel', g, { lines: false, ord: 0 });
-  stroke([V(-42, .1, -36), V(31, .1, -36), V(31, .1, 29), V(-42, .1, 29)], 1, true);
+  stroke([V(-42, .1, -46), V(33, .1, -46), V(33, .1, 32), V(-42, .1, 32)], 1, true);
   stroke(pondPts(P0, .3).map(([x, z]) => V(x, .12, z)), 1, true);
-  add('paving', box(68, .16, 4.4, -3, 0, 0), { ord: .05 });
+  add('paving', box(32.5, .16, 4.4, 14.25, 0, AZ), { ord: .05 });
+  add('paving', beam(V(-2, .08, AZ), V(-24.5, .08, 6.6), 4.2, .16), { ord: .05 });
   add('paving', box(4.2, .16, 8.4, -24.4, 0, 6.6), { ord: .05 });
-  add('paving', box(4, .16, 13, -12, 0, 8.8), { ord: .05 });
-  // 神池 water, stones, crane island, drum bridge
+  add('paving', box(3.6, .16, 10, -16, 0, 14.5), { ord: .05 });
+  // 神池: water, stones, 鶴島
   const wsh = new THREE.Shape(pondPts(P0, .1).map(([x, z]) => new THREE.Vector2(x, -z)));
   add('water', new THREE.ShapeGeometry(wsh).rotateX(-Math.PI / 2).translate(0, -.32, 0), { lines: false, ph: 'detail', m: 0 });
-  pondPts(P0, .25, 44).forEach(([x, z]) => rock(x, z, rr(.45, .8), .02));
-  add('moss', new THREE.SphereGeometry(2.9, 20, 10, 0, 6.29, 0, Math.PI / 2).scale(1.1, .45, 1).translate(-6, -.9, -29.5), { ea: 50 });
-  tree('pine', -6.3, -29.6, .8, { y: .2, ground: false });
-  lantern(-4.8, -30.6, .5, .3, 'yukimi');
-  // 太鼓橋 (drum bridge) to the island
-  const save = S.M; frame(-6, 0, -22.6, Math.PI / 2);
-  add('verm', archBox(8.6, .35, 2.2, 1.9).translate(0, .05, 0));
-  const bp = []; for (let k = 0; k <= 8; k++) bp.push(-4 + k);
-  for (const s of [-1, 1]) rail(bp.map(x => [x, s * 1.05]), x => .4 + 1.9 * (1 - (x / 4.3) ** 2), .85, 'verm', { step: 1 });
-  S.M = save;
-  // lanterns along the axis
-  for (const x of [-20, -13, -6, 1, 25]) for (const s of [-1, 1]) redLantern(x, s * 3.3, .95, .16);
-  for (const x of [-10, -3]) for (const s of [-1, 1]) lantern(x, s * 6.6, .9, .1);
-  // 手水舎
-  frame(6, 0, 10, 0);
-  for (const [x, z] of [[-1.6, -1.2], [1.6, -1.2], [-1.6, 1.2], [1.6, 1.2]]) add('verm', cyl(.2, 2.9, x, .1, z), { lines: 'axis' });
-  add('stone', box(2.4, .8, 1.2, 0, .1, 0));
-  roofOn({ W: 5.4, D: 4.4, H: 1.8, sg: .45, lift: .5, th: .3 }, 0, 3.0, 0, false);
+  pondPts(P0, .25, 40).forEach(([x, z]) => rock(x, z, rr(.45, .8), .02));
+  add('moss', new THREE.SphereGeometry(2.4, 20, 10, 0, 6.29, 0, Math.PI / 2).scale(1.1, .5, 1).translate(P0.x - 1, -.9, P0.z - 1.5), { ea: 50 });
+  tree('pine', P0.x - 1.2, P0.z - 1.6, .75, { y: .2, ground: false });
+  lantern(P0.x + .4, P0.z - 2.6, .45, .25, 'yukimi');
+  // outflow from the pond to the river, stone-lined, crossed by the 太鼓橋 in front of the gate
+  const cc = new THREE.CatmullRomCurve3(CHAN).getSpacedPoints(30);
+  add('water', ribbon(cc, () => 2.2, () => .15), { lines: false, ph: 'detail', m: 0 });
+  for (const s of [-1, 1]) stroke(cc.map((p, i) => { const q = cc[Math.min(i + 1, cc.length - 1)], o = cc[Math.max(i - 1, 0)]; const t = V(q.x - o.x, 0, q.z - o.z).normalize(); return V(p.x - t.z * s * 1.2, .2, p.z + t.x * s * 1.2); }), 1);
+  cc.forEach((p, i) => { if (i % 2) return; const q = cc[Math.min(i + 1, cc.length - 1)], o = cc[Math.max(i - 1, 0)]; const t = V(q.x - o.x, 0, q.z - o.z).normalize(); for (const s of [-1, 1]) if (Math.abs(p.z - AZ) > 2.4) rock(p.x - t.z * s * 1.35, p.z + t.x * s * 1.35, rr(.3, .5), .05); });
+  frame(24.2, 0, AZ, 0);
+  add('verm', archBox(7.4, .35, 3.4, 1.5).translate(0, .1, 0));
+  for (const s of [-1, 1]) rail([-3.4, -2.2, -1.1, 0, 1.1, 2.2, 3.4].map(x => [x, s * 1.65]), x => .45 + 1.5 * (1 - (x / 3.7) ** 2), .9, 'verm', { step: 1 });
   noFrame();
+  // lantern posts and 幟 along the approach
+  for (const x of [-.5, 4.5, 29.5]) for (const s of [-1, 1]) redLantern(x, AZ + s * 3.3, .95, .16);
+  for (const t of [.12, .32, .52, .72, .9]) { const x = lerp(-2, -24.5, t), z = lerp(AZ, 6.6, t); for (const s of [-1, 1]) { redLantern(x + s * 2.4, z - s * 2.2, .9, .16); } nobori(x - 3.6, z + 3.2, 1, -Math.PI / 4); }
+  // 手水舎 between the pond and the river
+  frame(30.8, 0, -27.5, 0);
+  for (const [x, z] of [[-1.5, -1.3], [1.5, -1.3], [-1.5, 1.3], [1.5, 1.3]]) add('verm', cyl(.18, 2.8, x, .1, z), { lines: 'axis' });
+  add('stone', box(2.2, .8, 1.2, 0, .1, 0));
+  roofOn({ W: 5, D: 4.4, H: 1.7, sg: .45, lift: .5, th: .3 }, 0, 2.9, 0, false);
+  noFrame();
+  // 正面境内入口 torii and 社号標 at the north-east corner
+  torii(31, .1, -44, 0, 6.2, 7.6);
+  add('stone', box(.9, 3.4, .9, 31.5, .1, -50.5));
   // trees
   tree('ginkgo', -34, -15.5, 1.2);
-  tree('camphor', -39, -32, 1.15); tree('camphor', -40, 25, 1.05); tree('camphor', 27, 25, 1.25); tree('camphor', 27, -32, 1.1); tree('camphor', -18, -34, .85);
-  tree('maple', -15, -18, 1); tree('maple', 8, -20, .9); tree('maple', 9, -34, 1.05); tree('maple', -27.5, 19, .9);
+  tree('camphor', -47, -40, 1.1); tree('camphor', -44, 37, 1.05); tree('camphor', 27, 38, 1.2); tree('camphor', 8, -40.5, 1.0); tree('camphor', -18, -34, .85);
+  tree('maple', -15, -18, 1); tree('maple', 4, -28, .9); tree('maple', 13, -44, .95); tree('maple', -27.5, 19, .9); tree('maple', 28, -40, .8);
   end();
 }
 
 /* =====================================================================
-   5. 楼門 Rōmon — modelled on 陽明門 (Nikkō) per the shrine's history
+   5. 楼門 Rōmon — modelled on 陽明門 (Nikkō); single-storey wings either side
    ===================================================================== */
 function buildRomon() {
   begin({ sketch: [.3, .72], mass: [1.32, 1.8], detail: [2.1, 2.66] });
-  frame(16, 0, 0, 0);
+  frame(12, 0, AZ, 0);
   add('stone', box(8.6, .8, 14, 0, 0, 0));
   for (const x of [-2.7, 0, 2.7]) for (const z of [-5.1, -1.7, 1.7, 5.1]) add('verm', cyl(.34, 5.3, x, .8, z, 12), { lines: 'axis' });
   for (const z of [-5.1, 5.1]) add('plaster', box(5.4, 4.3, .28, 0, .8, z));
   for (const x of [-2.7, 2.7]) for (const zc of [-3.4, 3.4]) add('woodDark', box(.16, 3.8, 3.1, x, 1.0, zc), { ph: 'detail', ea: 60 });
+  for (const x of [-1.3, 1.3]) { add('lantern', box(.55, .8, .55, x, 4.2, 0), { ph: 'detail', lines: false }); add('gold', box(.7, .12, .7, x, 5.0, 0), { ph: 'detail', lines: false }); }
   ringBeams(-2.7, 2.7, -5.1, 5.1, 5.6, .55, .42);
+  add('teal', box(5.9, .3, 10.7, 0, 5.3, 0), { ph: 'detail', lines: false });
   brackets(-3.1, 3.1, -5.5, 5.5, 6.15, .75);
   add('vermDark', box(9, .38, 14.4, 0, 6.9, 0));
   rail([[-4.3, -7], [4.3, -7], [4.3, 7], [-4.3, 7], [-4.3, -7]], 7.28, .95);
   for (const x of [-2.2, 2.2]) for (const z of [-4.2, -1.4, 1.4, 4.2]) add('verm', cyl(.28, 3.3, x, 7.28, z, 10), { lines: 'axis' });
   add('plaster', box(4.1, 3.0, 8.1, 0, 7.3, 0), { lines: false });
   for (const z of [-2.8, 0, 2.8]) add('woodDark', box(.12, 2.1, 1.7, 2.12, 7.75, z), { ph: 'detail', lines: false });
-  for (const z of [-2.8, 0, 2.8]) add('gold', box(.1, .35, 1.9, 2.16, 9.95, z), { ph: 'detail', lines: false });
+  add('teal', box(.1, .4, 8.1, 2.16, 9.95, 0), { ph: 'detail', lines: false });
+  for (const z of [-2.8, 0, 2.8]) add('gold', box(.12, .35, 1.4, 2.2, 9.98, z), { ph: 'detail', lines: false });
   ringBeams(-2.2, 2.2, -4.2, 4.2, 10.45, .45, .36);
   brackets(-2.6, 2.6, -4.7, 4.7, 10.9, .8, .7);
   roofOn({ W: 15.6, D: 10.6, H: 4.5, sg: .44, lift: 1.05, a: .4, th: .45 }, 0, 11.7, 0, true);
   karaOn({ x0: 2.4, x1: 5.9, a: 3.1, Hk: 1.35, th: .35 }, 11.55);
-  // 随身 guardians in the side bays
   for (const z of [-3.4, 3.4]) { add('vermDark', cyl(.42, 1.5, .4, .8, z, 10, .3), { ph: 'detail', lines: false }); add('woodDark', new THREE.SphereGeometry(.25, 10, 8).translate(.4, 2.55, z), { ph: 'detail', lines: false }); }
-  // 玉垣 fences flanking the gate
-  for (const s of [-1, 1]) rail([[0, s * 7.4], [0, s * 22]], .1, 1.5, 'verm', { step: 1.2, gold: false });
+  // single-storey wings (袖)
+  for (const s of [-1, 1]) {
+    const zc = s * 10.3;
+    add('stone', box(5.6, .5, 6.4, 0, 0, zc));
+    for (const x of [-2.3, 2.3]) for (const z of [7.5, 10.3, 13.1]) add('verm', cyl(.22, 3.3, x, .5, s * z, 8), { lines: 'axis' });
+    add('plaster', box(4.2, 3, 5.4, 0, .5, zc), { lines: false });
+    for (const z of [8.9, 11.7]) add('woodDark', box(.1, 1.3, 1.9, 2.14, 1.4, s * z), { ph: 'detail', lines: false });
+    roofOn({ W: 7.8, D: 6.8, H: 2.2, sg: .5, lift: .5, th: .34 }, 0, 3.75, zc, true, { ridge: false });
+  }
   end();
 }
 
 /* =====================================================================
-   6. 神楽殿, 社務所, 参集殿
+   6. 神楽殿, 社務所, 受付, 休憩所, 岩崎社, 参集殿
    ===================================================================== */
 function buildHalls() {
-  // 神楽殿 (faces north, toward the axis)
+  // 御神楽殿 (south of the Gohonden, facing north)
   begin({ sketch: [.28, .68], mass: [1.3, 1.74], detail: [2.08, 2.6] });
-  frame(-12, 0, 20.5, Math.PI / 2);
+  frame(-16, 0, 24, Math.PI / 2);
   add('stone', box(8.6, .45, 11.6, 0, 0, 0));
   add('vermDark', box(7.6, 1.0, 10.6, 0, .45, 0));
   for (const x of [-3.3, 3.3]) for (const z of [-4.9, -1.63, 1.63, 4.9]) add('verm', cyl(.26, 3.8, x, 1.45, z), { lines: 'axis' });
@@ -1052,28 +1076,63 @@ function buildHalls() {
   for (const z of [-1.2, 1.2]) add('lanternR', new THREE.SphereGeometry(.34, 12, 10).scale(1, 1.3, 1).translate(3.5, 4.2, z), { ph: 'detail', lines: false });
   end();
 
-  // 社務所・授与所 (faces the plaza, south)
+  // 社務所 and 受付 along the river side of the court, facing north
   begin({ sketch: [.26, .62], mass: [1.28, 1.7], detail: [2.1, 2.56] });
-  frame(-31, 0, -25, -Math.PI / 2);
+  frame(7, 0, 26, Math.PI / 2);
   add('stone', box(10, .5, 15, 0, 0, 0));
   add('plaster', box(9, 3.7, 14, 0, .5, 0));
   add('woodDark', box(.1, 1.3, 12, 4.52, 1.4, 0), { ph: 'detail', lines: false });
   for (let z = -6; z <= 6; z += 1.5) stroke([V(4.58, 1.4, z), V(4.58, 2.7, z)], 3);
   roofOn({ W: 17.4, D: 12.2, H: 3.2, sg: .5, lift: .5, th: .38 }, 0, 4.2, 0, true);
+  frame(-4.5, 0, 27.5, Math.PI / 2);
+  add('stone', box(5.4, .4, 7, 0, 0, 0));
+  for (const [x, z] of [[2.2, -3], [2.2, 3], [-2.2, -3], [-2.2, 3]]) add('verm', cyl(.18, 2.8, x, .4, z, 8), { lines: 'axis' });
+  add('plaster', box(3.8, 2.4, 5.6, -.3, .4, 0), { lines: false });
+  add('woodDark', box(.1, 1.1, 4.6, 1.62, 1.1, 0), { ph: 'detail', lines: false });
+  roofOn({ W: 8.6, D: 6.6, H: 1.9, sg: .5, lift: .45, th: .3 }, 0, 3.2, 0, true, { mat: 'tile', gmat: 'verm', rmat: 'tile', oni: false });
   end();
 
-  // 参集殿 (assembly hall, north of the gate; the garden lies beyond it)
+  // 休憩所 (north of the Gohonden, beside the elevator) and 岩崎社 (below the stage to the south)
+  begin({ sketch: [.34, .72], mass: [1.34, 1.76], detail: [2.12, 2.62] });
+  frame(-37, 0, -35, 0);
+  add('stone', box(8, .5, 13, 0, 0, 0));
+  for (const x of [-3.4, 3.4]) for (const z of [-6, -2, 2, 6]) add('verm', cyl(.26, 6.6, x, .5, z, 8), { lines: 'axis' });
+  add('plaster', box(6.2, 6.2, 11.4, 0, .5, 0), { lines: false });
+  for (const y of [1.2, 4.3]) add('woodDark', box(.1, 1.4, 10, 3.14, y, 0), { ph: 'detail', lines: false });
+  add('verm', box(7.6, .3, 12.8, 0, 3.4, 0), { ph: 'detail', lines: false });
+  railLine(V(3.9, 3.7, -6.2), V(3.9, 3.7, 6.2), .8, 1.6);
+  roofOn({ W: 16, D: 10.6, H: 3.4, sg: .5, lift: .7, th: .4 }, 0, 7.1, 0, true);
+  frame(-29, 0, 32, 0);
+  add('stone', box(4.4, .5, 4, 0, 0, 0)); add('plaster', box(2.6, 2, 2.6, -.3, .5, 0));
+  for (const [x, z] of [[1.3, -1.3], [1.3, 1.3]]) add('verm', cyl(.14, 2, x, .5, z, 8), { lines: 'axis' });
+  roofOn({ W: 4.8, D: 4.2, H: 1.6, sg: .5, lift: .4, th: .25 }, 0, 2.5, 0, true, { ridge: false });
+  torii(3.6, 0, 0, 0, 2.6, 3.2);
+  end();
+
+  // 参集殿 (north of the pond; the garden lies beyond it)
   begin({ sketch: [.28, .66], mass: [1.3, 1.72], detail: [2.1, 2.6] });
-  frame(8, 0, -52, -Math.PI / 2);
+  frame(8, 0, -53, -Math.PI / 2);
   add('stone', box(13, .5, 27, 0, 0, 0));
   add('plaster', box(12, 7.4, 26, 0, .5, 0));
   for (const y of [1.3, 4.9]) { add('woodDark', box(.1, 1.4, 23, 6.02, y, 0), { ph: 'detail', lines: false }); for (let z = -11; z <= 11; z += 1.4) stroke([V(6.08, y, z), V(6.08, y + 1.4, z)], 3); }
-  add('copper', box(1.6, .3, 26.6, 6.6, 3.9, 0).rotateZ(0), { ph: 'detail', ea: 45 });
+  add('copper', box(1.6, .3, 26.6, 6.6, 3.9, 0), { ph: 'detail', ea: 45 });
   roofOn({ W: 30, D: 16, H: 4.6, sg: .48, lift: .7, th: .45 }, 0, 7.9, 0, true);
-  // entrance porch
   for (const z of [-2.6, 2.6]) add('verm', cyl(.22, 3.2, 8.4, .5, z), { lines: 'axis' });
   roofOn({ W: 4.6, D: 6.6, H: 1.6, sg: 1, lift: .3, th: .3, a: .6 }, 7.9, 3.7, 0, false, { ridge: false });
   end();
+}
+
+const CHIMES = [];
+function chimeCanopy(p0, p1, width) { // 風鈴棚: bamboo pergola over the stair hung with glass chimes
+  const d = V(p1.x - p0.x, 0, p1.z - p0.z), L = d.length(); d.normalize();
+  const side = V(-d.z, 0, d.x), hw = width / 2 + .45, Ht = 3.3, n = Math.max(1, Math.round(L / 2.4));
+  const at = (t, w, dy) => { const q = p0.clone().lerp(p1, t); return V(q.x + side.x * w, q.y + dy, q.z + side.z * w); };
+  for (let k = 0; k <= n; k++) {
+    for (const s of [-1, 1]) { const b = at(k / n, s * hw, 0); add('bamboo', cyl(.07, Ht, b.x, b.y, b.z, 5), { ph: 'detail', lines: 'axis', d: .08 }); }
+    add('bamboo', beam(at(k / n, -hw, Ht), at(k / n, hw, Ht), .08, .08), { ph: 'detail', lines: false, d: .08 });
+  }
+  for (const s of [-1, 1]) { add('bamboo', beam(at(0, s * hw, Ht), at(1, s * hw, Ht), .09, .09), { ph: 'detail', lines: false }); stroke([at(0, s * hw, Ht), at(1, s * hw, Ht)], 3); }
+  for (let t = .25; t < L; t += .5) for (let w = -hw + .35; w <= hw - .3; w += .5) { const c = at(t / L, w + rr(-.1, .1), Ht - .3 - R() * .5); CHIMES.push({ x: c.x, y: c.y, z: c.z, s: 1, sy: 1, t: 2.5 + .3 * (t / L) + R() * .05 }); }
 }
 
 function railLine(a, b, h = 1.05, step = 1.7) { // 高欄: vermilion posts, teal panels, gold rail and 擬宝珠
@@ -1217,6 +1276,27 @@ function buildHonden() {
   landing(-35.2, -32.2, 23.6, 27.2, f2.y, [[-32.2, 23.6, -32.2, 27.2], [-32.2, 27.2, -35.2, 27.2]]);
   const f3 = flight(V(-35.2, f2.y, 25.4), V(-1, 0, 0), 24, .55, .3, 3.4);
   landing(-51.8, -48.4, ZW - .4, 27.1, f3.y, [[-51.8, 27.1, -48.4, 27.1], [-51.8, 27.1, -51.8, ZW]]);
+  chimeCanopy(V(-27, .1, 8.8), f1, 3.6); chimeCanopy(V(-33.7, f1.y, 10.6), f2, 3.0); chimeCanopy(V(-35.2, f2.y, 25.4), f3, 3.4);
+
+  // 渡廊 — long corridor on stilts running south along the cliff to 若宮社
+  const WX = -54.8, WZ1 = 50;
+  for (let z = ZW + 1.4; z <= WZ1 + .1; z += 3.4) for (const x of [WX - 1.8, WX + 1.8]) {
+    const g = H(x, z); if (DECK - g < 1) continue;
+    add('verm', cyl(.26, DECK - .5 - g, x, g - .3, z, 8), { lines: 'axis' });
+    for (const y of [6.4, 11.2, 15.6]) if (y > g + .9 && x < WX) add('verm', box(3.9, .34, .22, WX, y, z), { lines: 'axis' });
+  }
+  add('vermDark', box(4.2, .5, WZ1 - ZW + 1, WX, DECK - .5, (ZW + WZ1) / 2));
+  for (let z = ZW + 1.4; z <= WZ1 + .1; z += 3.4) for (const x of [WX - 1.8, WX + 1.8]) add('verm', cyl(.2, 3, x, DECK, z, 8), { lines: 'axis' });
+  for (const x of [WX - 1.8, WX + 1.8]) add('plaster', box(.22, .9, WZ1 - ZW, x, DECK, (ZW + WZ1) / 2), { ph: 'detail', lines: false });
+  roofOn({ W: WZ1 - ZW + 2.4, D: 5.6, H: 1.9, sg: 1, lift: .3, a: .55, th: .32, gables: false }, WX, DECK + 3, (ZW + WZ1) / 2, true, { ridge: false });
+  // 若宮社 at its end
+  const WY = 54.5;
+  for (const [x, z] of [[WX - 4, WY - 3.8], [WX + 4, WY - 3.8], [WX - 4, WY + 3.8], [WX + 4, WY + 3.8], [WX, WY + 3.8]]) { const g = H(x, z); if (DECK - g > 1) add('verm', cyl(.3, DECK - .5 - g, x, g - .3, z, 8), { lines: 'axis' }); }
+  add('vermDark', box(9, .6, 8.4, WX, DECK - .6, WY));
+  add('plaster', box(4.4, 2.8, 4.4, WX - .6, DECK, WY + .4));
+  for (const [x, z] of [[WX + 2.2, WY - 2.2], [WX + 2.2, WY + 3], [WX - 3.4, WY - 2.2], [WX - 3.4, WY + 3]]) add('verm', cyl(.18, 2.8, x, DECK, z, 8), { lines: 'axis' });
+  roofOn({ W: 7.4, D: 6.8, H: 2.5, sg: .5, lift: .6, th: .32 }, WX - .6, DECK + 2.8, WY + .4, false);
+  railLine(V(WX + 4.3, DECK, WY - 4), V(WX + 4.3, DECK, WY + 4), .9, 1.6);
 
   // 授与所 in front of the stage, 幟 and lantern posts
   frame(-28.5, 0, -7.5, 0);
@@ -1227,7 +1307,7 @@ function buildHonden() {
   add('verm', box(.6, .9, 8, 2.4, .4, 0), { ph: 'detail', lines: false });
   roofOn({ W: 10.8, D: 7, H: 2.2, sg: .5, lift: .5, th: .32 }, 0, 3.35, 0, true, { mat: 'tile', gmat: 'verm', rmat: 'tile', oni: false });
   noFrame();
-  for (const [x, z] of [[-24, 11.4], [-24, 6.2], [-30.5, 12.4], [-30.5, 5.3], [-31, 14.5], [-31, 19], [-31, 23.5], [-22, -4.4], [-18, -4.4], [-14, -4.4], [-18, 4.4], [-14, 4.4]]) nobori(x, z, 1, z > 0 ? Math.PI / 2 : -Math.PI / 2);
+  for (const [x, z] of [[-24, 11.4], [-24, 6.2], [-30.5, 12.4], [-30.5, 5.3], [-31, 14.5], [-31, 19], [-31, 23.5]]) nobori(x, z, 1, z > 0 ? Math.PI / 2 : -Math.PI / 2);
 
   // glass elevator (有料エレベーター)
   const ex = -40.5, ez = -25.4;
@@ -1318,6 +1398,11 @@ function buildGarden() {
   path.forEach(p => { const save = S.M; S.M = null; add('rock', cyl(rr(.42, .55), .14, p.x + rr(-.3, .3), H(p.x, p.z) + .02, p.z, 9), { ph: 'detail', lines: false, d: .08 }); S.M = save; });
   stroke(path.map(p => V(p.x, H(p.x, p.z) + .2, p.z)), 1);
   lantern(-2.2, -81.6, .9, undefined, 'yukimi'); lantern(4.5, -67.5, .85); lantern(-16, -92, .75);
+  { const bp = sc.getPointAt(.84), bt = sc.getTangentAt(.84); frame(bp.x, H(bp.x, bp.z) + .2, bp.z, Math.atan2(-bt.x, -bt.z));
+    add('verm', archBox(3.9, .25, 1.6, .75));
+    for (const s of [-1, 1]) rail([-1.8, -.9, 0, .9, 1.8].map(x => [x, s * .76]), x => .25 + .75 * (1 - (x / 1.95) ** 2), .75, 'verm', { step: .9 });
+    noFrame(); }
+  lantern(-9.5, -77.5, 1.5);
   frame(15, H(15, -99.5), -99.5, .2);
   for (const [x, z] of [[-1.6, -1.6], [1.6, -1.6], [1.6, 1.6], [-1.6, 1.6]]) add('wood', cyl(.13, 2.5, x, 0, z, 8), { lines: 'axis' });
   add('wood', box(2.6, .45, .5, 0, 0, 1.2), { ph: 'detail', lines: false });
@@ -1351,18 +1436,22 @@ function shop(x0, x1, side) {
 }
 function buildMonzen() {
   begin({ sketch: [.14, .58], mass: [1.22, 1.64], detail: [2.04, 2.56] });
+  frame(0, 0, -18, 0);
   add('paving', box(100, .14, 9, 97, 0, 0), { ord: 0 });
-  add('paving', box(8, .14, 25, 84, 0, -17), { ord: 0 });
   for (const side of [1, -1]) {
     let x = 51.5;
     while (x < 141) {
       const w = rr(6.4, 8.8);
-      if (side === -1 && x + w > 78 && x < 90) { x = 90; continue; }
       shop(x, Math.min(x + w, 143), side); x += w + .5;
     }
   }
   torii(50.5, 0, 0, 0, 7.6, 8.4); torii(146, 0, 0, 0, 10.4, 12.2);
-  for (const x of [60, 72, 104, 118, 132]) for (const s of [-1, 1]) lantern(x, s * 4.1, .75, .14);
+  for (const x of [60, 72, 104, 118, 132]) for (const s of [-1, 1]) lantern(x, -18 + s * 4.1, .75, .14);
+  // 車御祓所 (vehicle blessing shelter) behind the north row
+  frame(62, 0, -44, 0);
+  for (const [x, z] of [[-3, -4], [3, -4], [-3, 4], [3, 4]]) add('verm', cyl(.22, 3.6, x, 0, z, 8), { lines: 'axis' });
+  add('paving', box(8, .14, 10, 0, 0, 0), { lines: false });
+  roofOn({ W: 10.6, D: 8.2, H: 2.4, sg: .5, lift: .5, th: .34 }, 0, 3.6, 0, true);
   end();
 }
 
@@ -1371,7 +1460,7 @@ function buildMonzen() {
    ===================================================================== */
 function buildMuseum() {
   begin({ sketch: [.16, .52], mass: [1.26, 1.66], detail: [2.06, 2.56] });
-  const cx = 84, cz = -38;
+  frame(74, 0, 66, Math.PI); const cx = 0, cz = 0; const lw = (x, z) => [74 - x, 66 - z];
   add('stone', box(38, .8, 20, cx, 0, cz));
   add('mWall', box(34, 5.2, 18, cx, .8, cz));
   for (let x = cx - 15.5; x <= cx + 15.5; x += 1.25) { if (Math.abs(x - cx) < 4.6) continue; add('mWall', box(.26, 4.7, .8, x, 1, cz + 9.35), { ph: 'detail', lines: 'axis', d: .08 }); }
@@ -1382,8 +1471,8 @@ function buildMuseum() {
   add('mWall', box(8, 4.2, 7, cx + 20.5, .8, cz - 6), {});
   add('mRoof', box(9, .45, 8, cx + 20.5, 5, cz - 6), {});
   add('wood', box(3.6, 1.2, .3, cx - 9, .8, cz + 12.8), { ph: 'detail', lines: false });
-  tree('pine', cx - 12, cz + 14.5, 1.05); tree('pine', cx + 12.5, cz + 14.8, .9); tree('camphor', cx - 24, cz - 2, 1.05); tree('camphor', cx + 27, cz + 8, .9); tree('maple', cx - 21, cz + 13, .9);
-  lantern(cx - 6.5, cz + 16, .8); lantern(cx + 6.5, cz + 16, .8);
+  tree('pine', ...lw(-12, 14.5), 1.05); tree('pine', ...lw(12.5, 14.8), .9); tree('camphor', ...lw(-24, -2), 1.05); tree('camphor', ...lw(27, 8), .9); tree('maple', ...lw(-21, 13), .9);
+  lantern(...lw(-6.5, 16), .8); lantern(...lw(6.5, 16), .8);
   end();
 }
 
@@ -1392,8 +1481,8 @@ function buildMuseum() {
    ===================================================================== */
 function buildParkParking() {
   begin({ sketch: [.16, .56], mass: [1.24, 1.62], detail: [2.06, 2.62] });
-  add('asphalt', box(72, .12, 38, 92, 0, 37), { ord: 0 });
-  const rows = [21.5, 33.5, 40.5, 52.5];
+  add('asphalt', box(72, .12, 34, 92, 0, 31), { ord: 0 });
+  const rows = [15.5, 27.5, 34.5, 46.5];
   rows.forEach((zr, ri) => {
     const dir = ri % 2 ? -1 : 1;
     for (let x = 58; x <= 126; x += 2.8) { add('paint', box(.14, .04, 5, x, .12, zr + dir * 2.5), { ph: 'detail', lines: false, d: .06 }); stroke([V(x, .14, zr), V(x, .14, zr + dir * 5)], 1); }
@@ -1410,13 +1499,13 @@ function buildParkParking() {
   roofOn({ W: 5.6, D: 5.6, H: 2.2, sg: 0, a: .6, lift: .4, th: .3 }, 0, 2.7, 0, false, { ridge: false });
   noFrame();
   for (const [x, z, s] of [[92, 76, .9], [128, 84, 1], [104, 112, .9], [134, 106, .85], [84, 98, .8]]) tree('pine', x, z, s);
-  for (const [x, z, s] of [[60, 66, 1], [140, 70, 1.1], [70, 118, 1.1]]) tree('camphor', x, z, s);
+  for (const [x, z, s] of [[100, 58, 1], [140, 70, 1.1], [70, 118, 1.1]]) tree('camphor', x, z, s);
   // switchback paths drawn only
   const pth = []; for (let k = 0; k <= 60; k++) { const t = k / 60, a = t * Math.PI * 3.2; const r = 26 * (1 - t) + 2; const x = hx + Math.cos(a + 1) * r, z = hz + Math.sin(a + 1) * r * .85; pth.push(V(x, H(x, z) + .15, z)); } stroke(pth, 1);
   end();
   // azaleas — instanced, per-instance blossom colours
   const pts = []; const Ra = mulberry(50000);
-  for (let k = 0; k < 9000 && pts.length < (MOBILE ? 380 : 620); k++) { const x = lerp(64, 148, Ra()), z = lerp(64, 128, Ra()); const h = hill(x, z); if (h < 1.1) continue; if (Math.hypot(x - hx, z - hz) < 5) continue; if (distPoly(x, z, pth) < 1.1) continue; pts.push([x, z, h]); }
+  for (let k = 0; k < 9000 && pts.length < (MOBILE ? 380 : 620); k++) { const x = lerp(94, 148, Ra()), z = lerp(64, 128, Ra()); const h = hill(x, z); if (h < 1.1) continue; if (Math.hypot(x - hx, z - hz) < 5) continue; if (distPoly(x, z, pth) < 1.1) continue; pts.push([x, z, h]); }
   makeInstances('azaleaI', blob(1, 1, .55, 1), pts.map(([x, z]) => ({ x, z, y: H(x, z) + .1, s: .9 + Ra() * 1.1, sy: .9 + Ra() * .4, t: 2.3 + .5 * Ra() })),
     { spring: ['#e04f93', '#ec8fb8', '#f3ecef', '#d9453d', '#e8697a', '#c9408a'], autumn: ['#4f6b3a', '#5c7442', '#6d6a3a', '#7d5634', '#56713f'] }, Ra);
 }
@@ -1448,6 +1537,7 @@ function buildForest() {
     const m = mountain(x, z); if (m < 1.6) continue;
     if (x > -74 && x < -28 && Math.abs(z) < 24) continue;
     if (x > -64 && x < -20 && z > 16 && z < 31) continue;
+    if (x > -63 && x < -46 && z > 18 && z < 64) continue;
     if (distPoly(x, z, OKU_PTS) < 2.6) continue;
     if (PADS.some(p => Math.hypot(x - p.x, z - p.z) < p.r + 1)) continue;
     pts.push({ x, z, h: m });
@@ -1477,6 +1567,9 @@ buildMonzen();
 buildMuseum();
 buildParkParking();
 buildForest();
+{ const cg = mergeGeometries([prepGeo(new THREE.SphereGeometry(.13, 8, 6)), prepGeo(new THREE.BoxGeometry(.09, .36, .015).translate(0, -.34, 0))]);
+  const pal = ['#f48fb1', '#ffd54f', '#81c784', '#64b5f6', '#e57373', '#ba68c8', '#4dd0e1', '#fff59d'];
+  makeInstances('chimeI', cg, CHIMES, { spring: pal, autumn: pal }, mulberry(77)); }
 for (const [mk, list] of BUCKETS) {
   const g = mergeGeometries(list, false);
   if (!g) { console.warn('merge failed', mk); continue; }
@@ -1584,29 +1677,30 @@ const VIEWS = {
 const SITES = {
   overview: { cam: { t: [-10, 4, -2], d: 330, az: 40, el: 40 }, name: 'Yūtoku Inari Shrine', k: 'Overview · 全景', h: '祐徳稲荷神社<em>Yūtoku Inari</em>',
     p: '貞享4年（1687）、鹿島藩主・鍋島直朝の夫人、萬子媛（祐徳院）が創建。伏見・笠間と並ぶ日本三大稲荷のひとつで、朱塗りの社殿群は「鎮西日光」と称される。',
-    dl: [['創建', '1687年'], ['参拝者', '年間 約300万人'], ['所在', '佐賀県鹿島市古枝'], ['配置', '浜川の西に社殿、東に門前町']] },
+    dl: [['創建', '1687年'], ['参拝者', '年間 約300万人'], ['所在', '佐賀県鹿島市古枝'], ['配置', '錦波川（浜川）の西に社殿、東に門前町と博物館']] },
   honden: { cam: { t: [-47, 17, 0], d: 78, az: 22, el: 13 }, name: 'Gohonden · 御本殿', k: 'Main Hall · 御本殿', h: '御本殿<em>Gohonden</em>',
     p: '石壁山の断崖に懸造（舞台造）で建つ総漆塗りの社殿。舞台の高さは約18mで、京都・清水寺を上回る。1949年に焼失し、1957年に伊勢神宮造営局長・角南隆の設計で再建された三代目。',
     dl: [['舞台高', '約 18 m'], ['石段', '117段（有料エレベーター併設）'], ['再建', '1957年'], ['奥の院', '本殿から約300m、鳥居の続く山道']] },
   garden: { cam: { t: [1, 0, -86], d: 80, az: 58, el: 40 }, name: 'Japanese Garden · 日本庭園', k: 'Garden · 日本庭園', h: '日本庭園<em>Japanese Garden</em>',
     p: '楼門の北、参集殿の奥にひらく庭。良質な苔と、力強い石で護岸した流れが特徴で、牡丹・花菖蒲・紫陽花・紅葉が季節を映す。境内の神池には鶴島と太鼓橋が架かる。',
     dl: [['作庭', '2005年'], ['面積', '約400坪'], ['見どころ', '紫陽花・紅葉・苔']] },
-  museum: { cam: { t: [86, 3, -34], d: 74, az: 52, el: 28 }, name: 'Yūtoku Museum · 祐徳博物館', k: 'Museum · 祐徳博物館', h: '祐徳博物館<em>Yūtoku Museum</em>',
+  museum: { cam: { t: [74, 3, 60], d: 80, az: -52, el: 28 }, name: 'Yūtoku Museum · 祐徳博物館', k: 'Museum · 祐徳博物館', h: '祐徳博物館<em>Yūtoku Museum</em>',
     p: '1955年設立。1957年の佐賀産業観光博覧会の美術館を神社が引き継ぎ、1971年に鉄筋平屋へ全面改築。鹿島藩歴代藩主の鎧兜、萬子媛の遺品、鹿島錦、刀剣、陶磁器を収める。',
     dl: [['設立', '1955年'], ['構造', '鉄筋コンクリート造 平屋'], ['建坪', '633㎡（1974年 考古収蔵庫増築）'], ['外観', '本模型では推定']] },
 };
 const SRC = '出典：<a href="https://www.yutokusan.jp/" target="_blank" rel="noopener">祐徳稲荷神社</a>、<a href="https://www.city.saga-kashima.lg.jp/main/323.html" target="_blank" rel="noopener">鹿島市</a>、<a href="https://www2.kokugakuin.ac.jp/museum/jinja/40/40_yuutoku.html" target="_blank" rel="noopener">國學院大學 神社博物館事典</a>。形状は公開資料をもとにした概念的な再構成で、実測図ではありません。';
 const LABELS = [
   { k: 'A', jp: '御本殿', en: 'Gohonden', pos: [-48, 38, 0], t: .92, site: 'honden' },
-  { k: 'B', jp: '楼門', en: 'Rōmon gate', pos: [16, 17, 0], t: .66 },
-  { k: 'C', jp: '神楽殿', en: 'Kagura-den', pos: [-12, 10, 20.5], t: .6 },
-  { k: 'D', jp: '神池', en: 'Sacred pond', pos: [-4, 3, -27], t: .56 },
+  { k: 'B', jp: '楼門', en: 'Rōmon gate', pos: [12, 17, -18], t: .66 },
+  { k: 'C', jp: '御神楽殿', en: 'Kagura-den', pos: [-16, 10, 24], t: .6 },
+  { k: 'D', jp: '神池', en: 'Sacred pond', pos: [21, 3, -36.5], t: .56 },
   { k: 'E', jp: '日本庭園', en: 'Garden', pos: [0, 4, -86], t: .68, site: 'garden' },
-  { k: 'F', jp: '祐徳博物館', en: 'Museum', pos: [84, 10.5, -38], t: .5, site: 'museum' },
-  { k: 'G', jp: '門前商店街', en: 'Approach', pos: [118, 9.5, 0], t: .5 },
+  { k: 'F', jp: '祐徳博物館', en: 'Museum', pos: [74, 10.5, 66], t: .5, site: 'museum' },
+  { k: 'G', jp: '門前商店街', en: 'Approach', pos: [118, 9.5, -18], t: .5 },
   { k: 'H', jp: '東山公園', en: 'Azalea hill', pos: [112, H(112, 94) + 5, 94], t: .52 },
   { k: 'I', jp: '奥の院', en: 'Okunoin', pos: [OKU[OKU.length - 1].x, H(OKU[OKU.length - 1].x, OKU[OKU.length - 1].z) + 6, OKU[OKU.length - 1].z], t: .95 },
-  { k: 'J', jp: '浜川・神橋', en: 'River & bridge', pos: [40, 4.5, 0], t: .42 },
+  { k: 'J', jp: '錦波川・神橋', en: 'River & bridge', pos: [40, 4.5, -18], t: .42 },
+  { k: 'K', jp: '渡廊・若宮社', en: 'Corridor', pos: [-54.8, 25, 42], t: .93 },
 ];
 const STAGES = [
   { n: '01', jp: '線を引く', en: 'Axis · contour · outline' },
