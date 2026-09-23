@@ -1,0 +1,519 @@
+<title>工場内シミュレーション 途中経過</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=IBM+Plex+Mono:wght@500&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap">
+<style>
+:root{
+  --ground:#e9eee6; --paper:#fbfcf8; --paper-2:#eef3ec; --ink:#1c2b25; --ink-2:#4a5b53; --muted:#74857b;
+  --line:#d4ddd1; --brand:#255a46; --brand-ink:#1d4a39; --brand-soft:#e0ebe3;
+  --copper:#a9582a; --copper-ink:#8a4520; --copper-soft:#f4e7dc;
+  --improve:#1f6fa3; --worse:#c0612b; --shot-bg:#e3eadb; --shot-frame:#c9d4c6;
+  --c-lab:#2a78d6; --c-tint:#1baf7a; --c-other:#c3cbc5; --c-gap:#eef3ec;
+  --shadow:0 1px 2px rgba(28,43,37,.06),0 10px 30px rgba(28,43,37,.08);
+  --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+  --f-body:"BIZ UDPGothic","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#101613; --paper:#18201c; --paper-2:#1f2924; --ink:#e3ebe5; --ink-2:#b4c3ba; --muted:#8c9d93;
+    --line:#2e3b34; --brand:#7cc4a0; --brand-ink:#a6dcc0; --brand-soft:#1f3329;
+    --copper:#e08a55; --copper-ink:#f0b58e; --copper-soft:#3a271b;
+    --improve:#3b8fd0; --worse:#d8703a; --shot-frame:#3a4a41;
+    --c-lab:#3987e5; --c-tint:#199e70; --c-other:#4a5650; --c-gap:#1f2924;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#101613; --paper:#18201c; --paper-2:#1f2924; --ink:#e3ebe5; --ink-2:#b4c3ba; --muted:#8c9d93;
+  --line:#2e3b34; --brand:#7cc4a0; --brand-ink:#a6dcc0; --brand-soft:#1f3329;
+  --copper:#e08a55; --copper-ink:#f0b58e; --copper-soft:#3a271b;
+  --improve:#3b8fd0; --worse:#d8703a; --shot-frame:#3a4a41;
+  --c-lab:#3987e5; --c-tint:#199e70; --c-other:#4a5650; --c-gap:#1f2924;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.7;letter-spacing:.02em;padding-inline:16px;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--f-display);margin:0;line-height:1.35;text-wrap:balance}
+p{margin:0}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:0}
+:focus-visible{outline:2px solid var(--copper);outline-offset:2px}
+
+.deck{max-width:1120px;margin:0 auto;padding-block:28px 60px;display:grid;gap:28px}
+.pg{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:6px;box-shadow:var(--shadow);padding:22px 20px 16px;display:grid;grid-template-rows:auto auto 1fr auto;gap:14px;min-width:0}
+@media (min-width:900px){.pg{aspect-ratio:297/210;padding:28px 42px 18px}}
+.pg-top{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:11.5px;color:var(--muted);letter-spacing:.12em}
+.pg-top .no{font-family:var(--f-mono);color:var(--copper);font-size:13px;letter-spacing:.05em}
+.pg h2{font-size:clamp(21px,2.6vw,28px);font-weight:900}
+.pg h2 small{display:block;font-family:var(--f-body);font-weight:400;font-size:13.5px;color:var(--ink-2);margin-top:4px;letter-spacing:.02em;line-height:1.6}
+.pg-body{min-height:0;display:grid;gap:16px;align-content:start}
+.pg-foot{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+.h3{font-family:var(--f-display);font-weight:700;font-size:15px;margin-bottom:6px}
+
+/* screenshots and overlays */
+.shot{position:relative;border:1px solid var(--shot-frame);border-radius:6px;overflow:hidden;background:var(--shot-bg);align-self:start}
+.shot img{display:block;width:100%;height:auto;cursor:zoom-in}
+.cap{font-size:12.5px;color:var(--ink-2);line-height:1.55;margin-top:5px}
+.cap b{color:var(--ink)}
+.co{position:absolute;border:2.5px solid #a9582a;border-radius:6px;background:rgba(169,88,42,.08);pointer-events:none}
+.co i{position:absolute;left:-13px;top:-13px;width:26px;height:26px;border-radius:50%;background:#a9582a;color:#fff;font:500 13px/26px var(--f-mono);text-align:center;font-style:normal;box-shadow:0 0 0 2.5px #fff}
+.pin{position:absolute;transform:translate(-50%,-100%);background:#a9582a;color:#fff;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:11px;white-space:nowrap;box-shadow:0 0 0 2px #fff;pointer-events:none;line-height:1.5}
+.pin::after{content:"";position:absolute;left:50%;bottom:-5px;transform:translateX(-50%);border:5px solid transparent;border-top-color:#a9582a;border-bottom:0}
+.pin.up{transform:translate(-50%,0)}
+.pin.up::after{bottom:auto;top:-5px;border:5px solid transparent;border-bottom-color:#a9582a;border-top:0}
+.pin.g{background:#255a46}.pin.g::after{border-top-color:#255a46}.pin.g.up::after{border-top-color:transparent;border-bottom-color:#255a46}
+.pin.l{transform:translate(-14px,-100%)}.pin.l::after{left:14px}.pin.up.l{transform:translate(-14px,0)}
+.place{position:absolute;transform:translate(-50%,-50%);font-family:var(--f-display);font-weight:700;font-size:12.5px;color:#1d4a39;background:rgba(251,252,248,.88);padding:0 7px;border-radius:4px;pointer-events:none;white-space:nowrap}
+.dist{position:absolute;transform:translate(-50%,-50%);font:500 13px/1.3 var(--f-mono);color:#fff;background:#a9582a;padding:2px 8px;border-radius:4px;pointer-events:none;white-space:nowrap}
+.ov{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.tag-t{position:absolute;left:8px;top:8px;font:500 12px/1 var(--f-mono);background:rgba(28,43,37,.82);color:#fff;padding:4px 7px;border-radius:4px}
+
+/* step heading */
+.step{display:grid;gap:6px;align-content:start;min-width:0}
+.step-h{display:flex;align-items:center;gap:8px;font-family:var(--f-display);font-weight:700;font-size:15px}
+.step-h i{font-style:normal;flex:none;width:24px;height:24px;border-radius:50%;background:var(--brand);color:var(--paper);display:grid;place-items:center;font:500 12px/1 var(--f-mono)}
+
+/* p1 */
+.p1{display:grid;gap:22px;grid-template-columns:1fr}
+@media (min-width:900px){.p1{grid-template-columns:1.9fr 1fr;align-items:start}}
+.can{display:grid;gap:10px}
+.can h3{font-size:13.5px;color:var(--muted);letter-spacing:.1em;font-weight:700}
+.can ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.can li{display:grid;grid-template-columns:26px 1fr;gap:8px;align-items:start}
+.can li::before{font-size:15px;font-weight:700;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;margin-top:1px}
+.can li.y::before{content:"✓";color:var(--paper);background:var(--brand)}
+.can li.n::before{content:"✕";color:var(--copper-ink);background:var(--copper-soft);border:1.5px solid var(--copper)}
+.can li b{display:block;font-size:15px}
+.can li span{font-size:12.5px;color:var(--ink-2)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:4px}
+.stats div{background:var(--paper-2);padding:9px 10px 7px;display:grid}
+.stats b{font-family:var(--f-mono);font-weight:500;font-size:20px;line-height:1.2}
+.stats b small{font-family:var(--f-body);font-size:12px;margin-left:2px}
+.stats span{font-size:11.5px;color:var(--ink-2)}
+.route{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:12px}
+.route .t{font-size:12.5px;color:var(--muted);margin-right:4px}
+.route a{display:inline-flex;align-items:center;gap:7px;text-decoration:none;color:var(--ink);background:var(--paper-2);border:1px solid var(--line);border-radius:20px;padding:4px 12px 4px 5px;font-size:13px}
+.route a i{font-style:normal;width:22px;height:22px;border-radius:50%;background:var(--brand);color:var(--paper);display:grid;place-items:center;font:500 11.5px/1 var(--f-mono)}
+.route a:hover{border-color:var(--brand)}
+.route .ar{color:var(--muted)}
+
+/* p2 */
+.p2g{display:grid;gap:20px;grid-template-columns:1fr}
+@media (min-width:900px){.p2g{grid-template-columns:minmax(0,1fr) 240px;align-items:start}}
+.legend6{list-style:none;margin:0;padding:0;display:grid;gap:11px}
+.legend6 li{display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:center;font-size:14px;line-height:1.4}
+.legend6 .b{width:26px;height:26px;border-radius:50%;background:#a9582a;color:#fff;font:500 13px/26px var(--f-mono);text-align:center}
+.legend6 b{display:block}
+.legend6 em{font-style:normal;color:var(--ink-2);font-size:12.5px}
+.src{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);display:grid;gap:5px;font-size:12.5px;color:var(--ink-2)}
+.src b{color:var(--ink);font-size:13px}
+
+/* p3 */
+.frames{display:grid;gap:12px;grid-template-columns:1fr}
+@media (min-width:760px){.frames{grid-template-columns:repeat(3,1fr)}}
+.tl{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 14px 8px}
+.tl-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 16px;align-items:baseline}
+.tl-legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--ink-2)}
+.tl-legend span{display:inline-flex;align-items:center;gap:5px}
+.sw{width:14px;height:12px;border-radius:2px;display:inline-block}
+.tl svg{display:block;width:100%;height:auto;margin-top:6px}
+.tl svg text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+.tl svg text.rl{font-family:var(--f-body);font-size:12px;fill:var(--ink)}
+.howto{display:grid;gap:10px;grid-template-columns:1fr;align-items:center}
+@media (min-width:860px){.howto{grid-template-columns:minmax(0,1fr) 420px}}
+.howto ol{margin:0;padding:0;list-style:none;display:flex;flex-wrap:wrap;gap:6px 8px;font-size:13px;align-items:center}
+.howto ol li{display:inline-flex;align-items:center;gap:6px}
+.howto ol li i{font-style:normal;width:20px;height:20px;border-radius:50%;background:var(--brand);color:var(--paper);display:grid;place-items:center;font:500 11px/1 var(--f-mono)}
+.howto .ar{color:var(--muted)}
+
+/* p4 */
+.ba{display:grid;gap:14px;grid-template-columns:1fr}
+@media (min-width:760px){.ba{grid-template-columns:1fr 1fr}}
+.ba .lbl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:5px}
+.ba .lbl b{font-family:var(--f-display);font-size:15px}
+.ba .lbl span{font-size:12.5px;color:var(--ink-2)}
+.p4b{display:grid;gap:18px;grid-template-columns:1fr}
+@media (min-width:900px){.p4b{grid-template-columns:200px 300px minmax(0,1fr);align-items:start}}
+.steps3{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.steps3 li{display:grid;grid-template-columns:26px 1fr;gap:8px;font-size:13.5px;line-height:1.55}
+.steps3 li i{font-style:normal;width:24px;height:24px;border-radius:50%;background:var(--brand);color:var(--paper);display:grid;place-items:center;font:500 12px/1 var(--f-mono)}
+.steps3 li b{display:block;font-size:14px}
+.steps3 li span{color:var(--ink-2);font-size:12.5px}
+.say{font-family:var(--f-display);font-weight:700;font-size:15px;line-height:1.55;margin-top:6px}
+.say em{font-style:normal;color:var(--worse)}
+
+/* p5 */
+.abc{display:grid;gap:14px;grid-template-columns:1fr}
+@media (min-width:760px){.abc{grid-template-columns:repeat(3,1fr)}}
+.abc .h{display:grid;margin-bottom:5px}
+.abc .h span{font-size:12.5px;color:var(--ink-2)}
+.abc .h b{font-family:var(--f-display);font-size:18px}
+.abc .h b.bad{color:var(--worse)} .abc .h b.good{color:var(--improve)}
+.abc .shot{max-height:150px}
+.why{display:grid;gap:26px;grid-template-columns:1fr}
+@media (min-width:900px){.why{grid-template-columns:1fr 1fr;align-items:start}}
+.hbars{display:grid;grid-template-columns:120px minmax(0,1fr);gap:4px 10px;align-items:center;font-size:13px}
+.hbars .trk{position:relative;height:22px}
+.hbars .bar{position:absolute;top:3px;height:16px;border-radius:0 4px 4px 0;background:var(--worse)}
+.hbars .bar.good{background:var(--improve);border-radius:4px 0 0 4px}
+.hbars .v{position:absolute;top:50%;transform:translateY(-50%);font:500 12.5px/1 var(--f-mono);white-space:nowrap;color:var(--ink)}
+.hbars .zero{position:absolute;top:-2px;bottom:-2px;width:1px;background:var(--ink-2);opacity:.5}
+.hbars .lab small{display:block;font-size:11px;color:var(--muted);line-height:1.2}
+.big{font-family:var(--f-display);font-size:16.5px;font-weight:700;line-height:1.5}
+.big em{font-style:normal;color:var(--worse)}
+.meter{display:grid;gap:9px;margin-top:10px}
+.meter .row{display:grid;grid-template-columns:118px 1fr;gap:10px;align-items:center;font-size:12.5px}
+.meter .trk{height:20px;background:var(--paper-2);border-radius:4px;position:relative}
+.meter .bar{position:absolute;left:0;top:0;bottom:0;border-radius:0 4px 4px 0}
+.meter .bar.need{background:var(--brand);width:100%;border-radius:4px}
+.meter .bar.max{background:var(--improve);width:5.86%}
+.meter .v{position:absolute;top:50%;transform:translateY(-50%);font:500 12.5px/1 var(--f-mono);white-space:nowrap}
+.meter .need-v{right:8px;color:var(--paper)}
+.meter .max-v{left:calc(5.86% + 8px);color:var(--ink)}
+.note-s{font-size:11.5px;color:var(--muted);margin-top:8px}
+
+/* p6 */
+.p6{display:grid;gap:26px;grid-template-columns:1fr}
+@media (min-width:900px){.p6{grid-template-columns:1.1fr 1fr;align-items:start}}
+.scn{border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.scn .r{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:12px;align-items:center;padding:9px 14px;border-top:1px solid var(--line);background:var(--paper)}
+.scn .r:first-child{border-top:0}
+.scn .r b{display:block;font-size:14px}
+.scn .r span{font-size:12px;color:var(--ink-2)}
+.scn .trk{position:relative;height:22px}
+.scn .bar{position:absolute;top:3px;height:16px}
+.scn .bar.bad{background:var(--worse);border-radius:4px 0 0 4px}
+.scn .bar.good{background:var(--improve);border-radius:0 4px 4px 0}
+.scn .zero{position:absolute;top:-4px;bottom:-4px;width:1px;background:var(--ink-2);opacity:.5}
+.scn .v{position:absolute;top:50%;transform:translateY(-50%);font:500 12px/1 var(--f-mono);white-space:nowrap}
+.next{list-style:none;margin:0;padding:0;display:grid;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.next li{display:grid;gap:2px;padding:10px 14px;border-top:1px solid var(--line);background:var(--paper)}
+.next li:first-child{border-top:0}
+.next .q{font-weight:700;font-size:14px}
+.next .a{font-size:12.5px;color:var(--ink-2)}
+.next .a::before{content:"→ ";color:var(--copper);font-weight:700}
+.road{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;border-top:1px solid var(--line);padding-top:14px}
+.road .t{font-family:var(--f-display);font-weight:700;font-size:14px;margin-right:4px}
+.road ol{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.road li{display:grid;grid-template-columns:24px auto;gap:0 8px;align-items:center;background:var(--paper-2);border:1px solid var(--line);border-radius:8px;padding:7px 12px 7px 9px}
+.road li i{grid-row:span 2;font-style:normal;width:24px;height:24px;border-radius:50%;background:var(--brand);color:var(--paper);display:grid;place-items:center;font:500 12px/1 var(--f-mono)}
+.road li b{font-size:13.5px;line-height:1.3}
+.road li span{font-size:12px;color:var(--ink-2);line-height:1.3}
+.road .ar{color:var(--muted);font-size:16px}
+.warnbox{margin-top:12px;font-size:12.5px;line-height:1.6;background:var(--copper-soft);border-left:3px solid var(--copper);padding:8px 12px;border-radius:0 6px 6px 0}
+
+/* download bar (shown only inside the claude.ai viewer) */
+.dl{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px 16px;font-size:13.5px;box-shadow:var(--shadow)}
+.dl .btns{display:flex;flex-wrap:wrap;gap:8px}
+.dl button{font:inherit;font-size:13px;cursor:pointer;border-radius:6px;padding:7px 14px;border:1px solid var(--brand);background:var(--brand);color:var(--paper)}
+.dl button.sub{background:transparent;color:var(--brand-ink)}
+.dl button:disabled{opacity:.6;cursor:progress}
+.dl .msg{display:block;font-size:12.5px;color:var(--ink-2)}
+
+/* lightbox */
+.lb{position:fixed;inset:0;z-index:100;background:rgba(10,16,13,.88);display:grid;grid-template-rows:auto 1fr;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.lb-bar{display:flex;justify-content:flex-end;padding:10px 16px}
+.lb-bar button{font:inherit;font-size:13px;background:#e8efe9;color:#1c2b25;border:0;border-radius:6px;padding:6px 14px;cursor:pointer}
+.lb-body{overflow:auto;padding:0 16px 24px;display:grid;justify-items:center;align-items:start}
+.lb-body img{max-width:min(100%,1600px);height:auto;border-radius:6px;background:#e3eadb}
+
+@media print{
+  @page{size:A4 landscape;margin:0}
+  body{background:#fff;padding:0}
+  .deck{padding:0;gap:0;max-width:none}
+  .pg{width:297mm;height:210mm;aspect-ratio:auto;border:0;border-radius:0;box-shadow:none;break-after:page;overflow:hidden}
+  .dl,.scr{display:none!important}
+  /* Chromium evaluates print media queries at ~842px, so restate the wide layouts */
+  .pg{padding:28px 42px 18px}
+  .p1{grid-template-columns:1.9fr 1fr;align-items:start}
+  .p2g{grid-template-columns:minmax(0,1fr) 240px;align-items:start}
+  .frames,.abc{grid-template-columns:repeat(3,1fr)}
+  .ba{grid-template-columns:1fr 1fr}
+  .howto{grid-template-columns:minmax(0,1fr) 420px}
+  .p4b{grid-template-columns:200px 300px minmax(0,1fr);align-items:start}
+  .why{grid-template-columns:1fr 1fr;align-items:start}
+  .p6{grid-template-columns:1.1fr 1fr;align-items:start}
+}
+</style>
+
+<div class="deck">
+
+<div class="dl" id="dl" hidden>
+  <span><b>この資料を保存</b><span class="msg" id="dlMsg">画像入りの1ファイル。ダウンロード後はブラウザーで開けます。</span></span>
+  <span class="btns">
+    <button type="button" data-dl="FLOW_LAB_v6_simulation_6p.html" data-name="工場内シミュレーション_途中経過_6ページ版.html">6ページ版（HTML）</button>
+    <button type="button" class="sub" data-dl="FLOW_LAB_v6_simulation_6p.pdf" data-name="工場内シミュレーション_途中経過_6ページ版.pdf">6ページ版（PDF）</button>
+    <button type="button" class="sub" data-dl="FLOW_LAB_v6_simulation_detail.html" data-name="工場内シミュレーション_途中経過_詳細版.html">詳細版（HTML）</button>
+  </span>
+</div>
+
+<!-- ========== 1 ========== -->
+<section class="pg" id="p1" aria-label="1ページ目">
+  <div class="pg-top"><span>ワールド化成 ｜ 工場内シミュレーション 途中経過報告</span><span class="no">01 / 06</span></div>
+  <h2>工場内の人の動きを再現し、<br>移設計画をシミュレーションで検証する<small>ワールド化成は、計測した位置データから工場内の動きを3Dで再現する「工場内シミュレーション」を構築し、<br>ワニス・調色工程を第二工場へ移す計画を検証しています。</small></h2>
+  <div class="pg-body">
+    <div class="p1">
+      <div class="shot"><img src="{{IMG:p_s05}}" {{WH:p_s05}} alt="工場内シミュレーションの画面。左に条件、中央に工場内の3Dと移動の線、右に結果" data-zoom></div>
+      <div class="can">
+        <h3>シミュレーションでできること</h3>
+        <ul>
+          <li class="y"><div><b>現状を再現する</b><span>計測した人の位置を、日付・時刻どおりに3Dで再生</span></div></li>
+          <li class="y"><div><b>移設案を試す</b><span>移設先や条件を変えて、歩く時間・距離を比べる</span></div></li>
+        </ul>
+        <h3 style="margin-top:6px">まだできないこと</h3>
+        <ul>
+          <li class="n"><div><b>生産量・必要な人数の判定</b><span>作業時間・生産量のデータがまだないため</span></div></li>
+        </ul>
+        <div class="stats">
+          <div><b class="num">80<small>万件</small></b><span>位置の記録</span></div>
+          <div><b class="num">22<small>日</small></b><span>計測 7/24〜8/31</span></div>
+          <div><b class="num">2<small>人</small></b><span>各工程の計測人数</span></div>
+        </div>
+      </div>
+    </div>
+    <nav class="route" aria-label="この資料の流れ"><span class="t">この資料の流れ</span>
+      <a href="#p2"><i>2</i>画面</a><span class="ar">›</span><a href="#p3"><i>3</i>現状を再現</a><span class="ar">›</span><a href="#p4"><i>4</i>移設案を試す</a><span class="ar">›</span><a href="#p5"><i>5</i>結果</a><span class="ar">›</span><a href="#p6"><i>6</i>次のステップ</a></nav>
+  </div>
+  <div class="pg-foot"><span>提案元：ワールド化成 ｜ 2026-09-23</span><span class="scr">画像はクリックで拡大</span></div>
+</section>
+
+<!-- ========== 2 ========== -->
+<section class="pg" id="p2" aria-label="2ページ目">
+  <div class="pg-top"><span>シミュレーションの画面</span><span class="no">02 / 06</span></div>
+  <h2>左で条件を変え、右で結果を見る<small>中央の3Dが工場内です。左上で「現状の再現」と「移設案の検証」を切り替えます。</small></h2>
+  <div class="pg-body p2g">
+    <div class="shot" data-callouts="p2"><img src="{{IMG:p_s01}}" {{WH:p_s01}} alt="番号付きで説明したシミュレーション画面" data-zoom></div>
+    <div>
+      <ol class="legend6">
+        <li><span class="b">1</span><span><b>再現／検証の切り替え</b><em>実測再生／改善案</em></span></li>
+        <li><span class="b">2</span><span><b>場所と日付</b><em>建屋・階・工程・日付</em></span></li>
+        <li><span class="b">3</span><span><b>条件を変える</b><em>移設・往来の削減など</em></span></li>
+        <li><span class="b">4</span><span><b>結果</b><em>歩く時間・距離・人数</em></span></li>
+        <li><span class="b">5</span><span><b>時間を動かす</b><em>再生・早送り</em></span></li>
+        <li><span class="b">6</span><span><b>集計表</b><em>分析一覧（2D）</em></span></li>
+      </ol>
+      <div class="src"><b>使っているデータ</b><span>位置ログ 803,503件（22日）</span><span>1F・2Fの図面資料</span><span>ワールド化成の人員計画（24名 → 22名）</span></div>
+    </div>
+  </div>
+  <div class="pg-foot"><span>提案元：ワールド化成</span><span>3Dはドラッグで回転、ホイールで拡大</span></div>
+</section>
+
+<!-- ========== 3 ========== -->
+<section class="pg" id="p3" aria-label="3ページ目">
+  <div class="pg-top"><span>① 現状を再現する（実測再生）</span><span class="no">03 / 06</span></div>
+  <h2>調色の2人は、研究棟と調色工場を何度も行き来している<small>8月4日、調色担当2人（ID 11・ID 12）の実際の位置をシミュレーションで再生した画面です。</small></h2>
+  <div class="pg-body">
+    <div class="frames">
+      <figure style="margin:0"><div class="shot"><img src="{{IMG:k_rep_1004}}" {{WH:k_rep_1004}} alt="10時04分。ID 11が研究棟、ID 12が調色工場" data-zoom>
+        <span class="tag-t">10:04</span><span class="place" style="left:10%;top:80%">研究棟</span><span class="place" style="left:82%;top:88%">調色工場</span>
+        <span class="pin up" style="left:13.7%;top:50%">ID 11</span><span class="pin up g" style="left:73.4%;top:58%">ID 12</span></div>
+        <p class="cap">ID 11は研究棟、ID 12は調色工場。</p></figure>
+      <figure style="margin:0"><div class="shot"><img src="{{IMG:k_rep_1024}}" {{WH:k_rep_1024}} alt="10時24分。ID 12が研究棟、ID 11が調色工場" data-zoom>
+        <span class="tag-t">10:24</span><span class="place" style="left:10%;top:80%">研究棟</span><span class="place" style="left:82%;top:88%">調色工場</span>
+        <span class="pin up g" style="left:18%;top:50%">ID 12</span><span class="pin up" style="left:73.4%;top:57%">ID 11</span></div>
+        <p class="cap"><b>20分後、2人の場所が入れ替わる。</b></p></figure>
+      <figure style="margin:0"><div class="shot"><img src="{{IMG:k_rep_1154}}" {{WH:k_rep_1154}} alt="11時54分。2人とも調色工場" data-zoom>
+        <span class="tag-t">11:54</span><span class="place" style="left:10%;top:80%">研究棟</span><span class="place" style="left:82%;top:88%">調色工場</span>
+        <span class="pin up" style="left:68.9%;top:58%">ID 11・12</span></div>
+        <p class="cap">2人とも調色工場。</p></figure>
+    </div>
+    <div class="tl">
+      <div class="tl-h"><span class="h3" style="margin:0">8月4日の居場所（1分ごと）</span>
+        <span class="tl-legend"><span><i class="sw" style="background:var(--c-lab)"></i>研究棟</span><span><i class="sw" style="background:var(--c-tint)"></i>調色工場</span><span><i class="sw" style="background:var(--c-other)"></i>その他の場所</span><span><i class="sw" style="background:var(--c-gap);border:1px solid var(--line)"></i>位置なし</span></span></div>
+      <div data-timeline role="img" aria-label="8月4日、ID 11とID 12の居場所の推移。研究棟と調色工場が短い間隔で入れ替わる"></div>
+      <p class="cap" style="margin-top:4px">計測3日間で、研究棟 ⇄ 調色工場の行き来は<b>246回</b>。滞在時間も調色工場24.7人時・研究棟24.4人時と<b>ほぼ半々</b>です。</p>
+    </div>
+    <div class="howto">
+      <ol aria-label="操作手順"><li><i>1</i>［実測再生］</li><span class="ar">›</span><li><i>2</i>実測日・建屋を選ぶ</li><span class="ar">›</span><li><i>3</i>［再生］（1〜300倍速）</li></ol>
+      <div class="shot"><img src="{{IMG:u_bottom}}" {{WH:u_bottom}} alt="再生バー" data-zoom></div>
+    </div>
+  </div>
+  <div class="pg-foot"><span>提案元：ワールド化成</span><span>映るのは計測した人だけ（全24人ではありません）</span></div>
+</section>
+
+<!-- ========== 4 ========== -->
+<section class="pg" id="p4" aria-label="4ページ目">
+  <div class="pg-top"><span>② 移設案を試す（改善シミュレーション）</span><span class="no">04 / 06</span></div>
+  <h2>調色を第二工場へ移すと、研究棟が遠くなる<small>同じ視点で、調色工程の移動（細い線）を移設前と移設後で比べました。</small></h2>
+  <div class="pg-body">
+    <div class="ba">
+      <figure style="margin:0"><div class="lbl"><b>移設前（現状）</b><span>調色工場 ⇄ 研究棟</span></div>
+        <div class="shot"><img src="{{IMG:k_before}}" {{WH:k_before}} alt="移設前。調色工場と研究棟が隣り合っている" data-zoom>
+          <svg class="ov" viewBox="0 0 844 380" preserveAspectRatio="none" aria-hidden="true"><line x1="676" y1="62" x2="566" y2="62" stroke="#a9582a" stroke-width="5" stroke-linecap="round"/></svg>
+          <span class="pin" style="left:66.1%;top:13%">研究棟</span><span class="pin g" style="left:80.8%;top:13%">調色工場</span><span class="dist" style="left:73.5%;top:25%">約32m</span></div></figure>
+      <figure style="margin:0"><div class="lbl"><b>移設後（ワールド化成の計画）</b><span>第二工場 ⇄ 研究棟</span></div>
+        <div class="shot"><img src="{{IMG:k_after}}" {{WH:k_after}} alt="移設後。調色が第二工場へ移り、研究棟まで長い線になる" data-zoom>
+          <svg class="ov" viewBox="0 0 844 380" preserveAspectRatio="none" aria-hidden="true"><line x1="92" y1="226" x2="552" y2="64" stroke="#a9582a" stroke-width="5" stroke-linecap="round"/></svg>
+          <span class="pin" style="left:66.1%;top:13%">研究棟</span><span class="pin g up l" style="left:10.2%;top:65%">調色の移設先（第二工場）</span><span class="dist" style="left:40%;top:44%">約120m</span></div></figure>
+    </div>
+    <div class="p4b">
+      <div class="step"><div class="step-h"><i>1</i>条件を変える</div>
+        <div class="shot"><img src="{{IMG:u_change}}" {{WH:u_change}} alt="移設のチェック、移設先の座標、研究棟との往来の削減率" data-zoom></div></div>
+      <div class="step"><div class="step-h"><i>2</i>結果を見る</div>
+        <div class="shot"><img src="{{IMG:u_result_short}}" {{WH:u_result_short}} alt="結果パネル。移動時間の短縮マイナス276分" data-zoom></div>
+        <p class="say">「短縮」が<em>マイナス</em>＝歩く時間が<em>増える</em></p></div>
+      <div>
+        <div class="h3">操作のしかた</div>
+        <ol class="steps3">
+          <li><i>1</i><div><b>［改善案］を押す</b><span>全体・1Fの表示に切り替わります</span></div></li>
+          <li><i>2</i><div><b>移設する／しないを選ぶ</b><span>移設先は数字で入力するか、3Dの丸い札をドラッグ</span></div></li>
+          <li><i>3</i><div><b>研究棟との往来を何%減らすか</b><span>0〜100%。調色 ⇄ 研究棟の移動だけに効きます</span></div></li>
+          <li><i>4</i><div><b>右の結果を見る</b><span>工程別の変化と、変化の大きい移動も表示</span></div></li>
+        </ol>
+      </div>
+    </div>
+  </div>
+  <div class="pg-foot"><span>提案元：ワールド化成</span><span>距離は部屋の中心どうしの直線 × 1.35で計算</span></div>
+</section>
+
+<!-- ========== 5 ========== -->
+<section class="pg" id="p5" aria-label="5ページ目">
+  <div class="pg-top"><span>③ シミュレーション結果</span><span class="no">05 / 06</span></div>
+  <h2>今の移設計画では、歩く時間は1日276分増える<small>生産6工程・1日あたりの合計。計測データを元にした試算です。</small></h2>
+  <div class="pg-body">
+    <div class="abc">
+      <div><div class="h"><span>A　移設しない</span><b>± 0 分</b></div><div class="shot"><img src="{{IMG:u_moveoff}}" {{WH:u_moveoff}} alt="移設しない場合の結果 0分" data-zoom></div></div>
+      <div><div class="h"><span>B　移設する（ワールド化成の計画）</span><b class="bad">276 分 増える</b></div><div class="shot"><img src="{{IMG:u_result_short}}" {{WH:u_result_short}} alt="計画どおりの結果 マイナス276分" data-zoom></div></div>
+      <div><div class="h"><span>C　Bで研究棟との往来をゼロにできたら</span><b class="good">56 分 減る</b></div><div class="shot"><img src="{{IMG:u_research100}}" {{WH:u_research100}} alt="往来ゼロの場合の結果 プラス56分" data-zoom></div></div>
+    </div>
+    <div class="why">
+      <div>
+        <div class="h3">どの工程で増えるか（B）</div>
+        <div class="hbars" data-hbars role="img" aria-label="工程別の歩く時間の増減。調色が242分増で大半を占める"></div>
+        <p class="cap">増える分の約9割は、<b>調色と研究棟の行き来が32m → 120mに遠くなる</b>ためです。</p>
+      </div>
+      <div>
+        <p class="big">研究棟との行き来を<em>8割以上</em>減らせないと、移設で歩く時間は増えます。</p>
+        <div class="meter" role="img" aria-label="2名減に必要な960分に対し、往来ゼロでも56分">
+          <div class="row"><span>2名減らすのに必要</span><div class="trk"><span class="bar need"></span><span class="v need-v">960 分/日</span></div></div>
+          <div class="row"><span>往来ゼロでも</span><div class="trk"><span class="bar max"></span><span class="v max-v">56 分/日</span></div></div>
+        </div>
+        <p style="font-size:13.5px;margin-top:10px">歩く時間を減らすだけでは、2名減の根拠になりません。</p>
+        <p class="note-s">※ 往来ゼロは最大限うまくいった場合の仮定。人数換算は「歩く時間 ÷ 8時間」の目安です。</p>
+      </div>
+    </div>
+  </div>
+  <div class="pg-foot"><span>提案元：ワールド化成</span><span>計測は各工程2人分。申告人数（24名）に換算した値</span></div>
+</section>
+
+<!-- ========== 6 ========== -->
+<section class="pg" id="p6" aria-label="6ページ目">
+  <div class="pg-top"><span>次のステップ</span><span class="no">06 / 06</span></div>
+  <h2>次に試す案と、人員まで検証するためのデータ<small>ワールド化成は、シミュレーションで次の案を比べ、必要人員・生産性まで検証できるよう拡張することを提案します。</small></h2>
+  <div class="pg-body p6">
+    <div>
+      <div class="h3">シミュレーションで比べられる案（試算）</div>
+      <div class="scn" data-scn></div>
+      <p class="cap">現状と比べた、1日あたりの歩く時間。<b>どの案も、研究棟との行き来を大きく減らせない限り増えます。</b></p>
+    </div>
+    <div>
+      <div class="h3">人員・生産性まで検証するために</div>
+      <ol class="next">
+        <li><span class="q">研究棟との行き来は減らせるか</span><span class="a">行き来の目的（検査・色の判定など）を現場で確認</span></li>
+        <li><span class="q">22名で回せるか</span><span class="a">工程ごとの作業時間（段取り・洗浄・待ち）</span></li>
+        <li><span class="q">生産量は増えるか</span><span class="a">ロットごとの生産量・作業時間</span></li>
+      </ol>
+      <div class="warnbox">数字はすべてシミュレーションの試算です。計測は各工程2人分で、全員の動きではありません。</div>
+    </div>
+    <div class="road"><span class="t">進め方（案）</span>
+      <ol><li><i>1</i><b>現場で確認する</b><span>研究棟との行き来の目的</span></li><span class="ar">›</span><li><i>2</i><b>データを受け取る</b><span>作業時間・生産量</span></li><span class="ar">›</span><li><i>3</i><b>シミュレーションを広げる</b><span>必要人員・生産性を試算（v7）</span></li></ol></div>
+  </div>
+  <div class="pg-foot"><span>提案元：ワールド化成 ｜ 詳しくは詳細版を参照</span><span class="scr">画像はクリックで拡大</span></div>
+</section>
+
+</div>
+
+<script>
+(function(){
+  var CALLOUTS = {{CALLOUTS}};
+  var TIMELINE = {{TIMELINE}};
+  document.querySelectorAll('[data-callouts]').forEach(function(box){
+    (CALLOUTS[box.dataset.callouts]||[]).forEach(function(c){
+      var d=document.createElement('span');d.className='co';
+      d.style.cssText='left:'+c.x+'%;top:'+c.y+'%;width:'+c.w+'%;height:'+c.h+'%';
+      d.innerHTML='<i>'+c.n+'</i>';box.appendChild(d);
+    });
+  });
+
+  // whereabouts timeline (SVG)
+  var NS='http://www.w3.org/2000/svg';
+  function el(n,a,t){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);if(t!=null)e.textContent=t;return e;}
+  var COL={lab:'var(--c-lab)',tint:'var(--c-tint)',other:'var(--c-other)',gap:'var(--c-gap)'};
+  var NAME={lab:'研究棟',tint:'調色工場',other:'その他の場所',gap:'位置なし'};
+  function hm(m){return Math.floor(m/60)+':'+String(m%60).padStart(2,'0');}
+  document.querySelectorAll('[data-timeline]').forEach(function(host){
+    var W=1000,L=58,R=8,rowH=20,gap=8,top=4,t0=TIMELINE.start,t1=TIMELINE.end,sx=function(m){return L+(m-t0)/(t1-t0)*(W-L-R);};
+    var H=top+TIMELINE.rows.length*(rowH+gap)+16;
+    var svg=el('svg',{viewBox:'0 0 '+W+' '+H,preserveAspectRatio:'xMidYMid meet'});
+    for(var h=8;h<=18;h++){var x=sx(h*60);svg.appendChild(el('line',{x1:x,x2:x,y1:top-2,y2:H-14,stroke:'var(--line)','stroke-width':1}));svg.appendChild(el('text',{x:x,y:H-2,'text-anchor':'middle'},h+':00'));}
+    TIMELINE.rows.forEach(function(r,i){
+      var y=top+i*(rowH+gap);
+      svg.appendChild(el('text',{x:0,y:y+rowH-5,'class':'rl'},r.label));
+      r.runs.forEach(function(s){var rect=el('rect',{x:sx(s[0]),y:y,width:Math.max(sx(s[0]+s[1])-sx(s[0])-0.4,0.6),height:rowH,fill:COL[s[2]]});rect.appendChild(el('title',{},r.label+'  '+hm(s[0])+'〜'+hm(s[0]+s[1])+'  '+NAME[s[2]]));svg.appendChild(rect);});
+    });
+    host.appendChild(svg);
+  });
+
+  // per-group bars (page 5)
+  var G=[['調色','3名',241.8],['ワニス','2名',30.5],['2B','3名',1.7],['調合','3名',1.1],['充填','10名',1.0],['仕込み','3名',-0.2]];
+  document.querySelectorAll('[data-hbars]').forEach(function(host){
+    var max=260,z=4,html='';
+    G.forEach(function(g){var v=g[2],w=Math.abs(v)/max*(100-z-14);
+      var bar=v>=0?'<span class="bar" style="left:'+z+'%;width:'+w+'%"></span><span class="v" style="left:calc('+(z+w)+'% + 6px)">+'+v.toFixed(1)+'分</span>':'<span class="bar good" style="left:'+(z-w)+'%;width:'+w+'%"></span><span class="v" style="left:calc('+z+'% + 6px)">−'+Math.abs(v).toFixed(1)+'分</span>';
+      html+='<span class="lab">'+g[0]+'<small>'+g[1]+'</small></span><span class="trk"><span class="zero" style="left:'+z+'%"></span>'+bar+'</span>';});
+    host.innerHTML=html;
+  });
+
+  // scenario bars (page 6): change vs today, minutes/day (+ = more walking)
+  var S=[['ワニスだけ移設','調色は今の場所のまま',38.3],['調色の移設先を研究棟寄りに','第二工場の西端に置いた場合',140.5],['研究棟との往来を半分に','計画どおり移設',109.8],['研究棟との往来をゼロに','計画どおり移設（上限の仮定）',-56.3]];
+  document.querySelectorAll('[data-scn]').forEach(function(host){
+    var max=200,z=30,html='';
+    S.forEach(function(s){var v=s[2],w=Math.abs(v)/max*(100-z-4);
+      var bar=v>0?'<span class="bar bad" style="left:'+z+'%;width:'+w+'%"></span><span class="v" style="left:calc('+(z+w)+'% + 5px)">'+Math.round(v)+'分増</span>':'<span class="bar good" style="left:'+(z-w)+'%;width:'+w+'%;border-radius:4px 0 0 4px"></span><span class="v" style="left:calc('+z+'% + 5px)">'+Math.round(-v)+'分減</span>';
+      html+='<div class="r"><div><b>'+s[0]+'</b><span>'+s[1]+'</span></div><div class="trk"><span class="zero" style="left:'+z+'%"></span>'+bar+'</div></div>';});
+    host.innerHTML=html;
+  });
+
+  // lightbox
+  var lb=null;
+  function openLb(img){
+    closeLb();
+    lb=document.createElement('div');lb.className='lb';lb.setAttribute('role','dialog');lb.setAttribute('aria-modal','true');lb.setAttribute('aria-label','画像の拡大表示');
+    lb.innerHTML='<div class="lb-bar"><button type="button">閉じる（Esc）</button></div><div class="lb-body"><img alt=""></div>';
+    var big=lb.querySelector('img');big.src=img.src;big.alt=img.alt;
+    var nat=img.naturalWidth||1200;big.style.width=Math.min(nat>=1400?nat/1.3:nat*1.2,1600)+'px';
+    lb.addEventListener('click',function(e){if(e.target!==big)closeLb();});
+    document.body.appendChild(lb);document.body.style.overflow='hidden';lb.querySelector('button').focus();
+  }
+  function closeLb(){if(lb){lb.remove();lb=null;document.body.style.overflow='';}}
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLb();});
+  document.querySelectorAll('img[data-zoom]').forEach(function(img){img.addEventListener('click',function(){openLb(img)});});
+
+  // download buttons: only when the claude.ai viewer offers the downloads capability
+  if(window.claude&&typeof window.claude.use==='function'){
+    window.claude.use('downloads').then(function(dl){
+      if(!dl)return;
+      var bar=document.getElementById('dl'),msg=document.getElementById('dlMsg');
+      bar.hidden=false;
+      bar.querySelectorAll('[data-dl]').forEach(function(b){
+        b.addEventListener('click',function(){
+          b.disabled=true;msg.textContent='準備しています…';
+          fetch(b.dataset.dl).then(function(r){if(!r.ok)throw{code:'fetch'};return r.blob();})
+            .then(function(blob){return dl.save({filename:b.dataset.name,data:blob});})
+            .then(function(){msg.textContent='保存しました：'+b.dataset.name;})
+            .catch(function(e){
+              var c=e&&e.code;
+              if(c==='declined')msg.textContent='保存をキャンセルしました。';
+              else if(c==='rate_limited')msg.textContent='確認画面が開いています。閉じてからもう一度押してください。';
+              else if(c==='fetch')msg.textContent='ファイルを読み込めませんでした。ページを再読み込みしてください。';
+              else{msg.textContent='この画面では保存できません。';bar.hidden=true;}
+            })
+            .then(function(){b.disabled=false;});
+        });
+      });
+    },function(){});
+  }
+})();
+</script>
