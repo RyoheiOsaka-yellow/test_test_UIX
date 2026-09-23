@@ -423,7 +423,7 @@ const STONE_TEX = stoneTexture();
 function M(key, clay, real, rough = .8, metal = 0, x = {}) {
   const m = new THREE.MeshStandardMaterial({ color: clay, roughness: rough, metalness: metal, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1, ...(x.props || {}) });
   setupShader(m, x.vmode);
-  Object.assign(m.userData, { clay: new THREE.Color(clay), real: new THREE.Color(real), autumn: x.autumn ? new THREE.Color(x.autumn) : null, delay: x.delay ?? .22, emissive: x.emissive ? new THREE.Color(x.emissive) : null, worldUV: x.worldUV || 0, glow: x.glow || 0 });
+  Object.assign(m.userData, { metal, clay: new THREE.Color(clay), real: new THREE.Color(real), autumn: x.autumn ? new THREE.Color(x.autumn) : null, delay: x.delay ?? .22, emissive: x.emissive ? new THREE.Color(x.emissive) : null, worldUV: x.worldUV || 0, glow: x.glow || 0 });
   MAT[key] = m; return m;
 }
 const CLAY = '#f3f1ec';
@@ -438,8 +438,8 @@ M('stoneDark', '#dedad1', '#7c766b', .9, 0, { delay: .26 });
 M('rock', '#e2ded6', '#8e877a', .95, 0, { delay: .28, props: { flatShading: true } });
 M('verm', CLAY, '#c93a1f', .46, 0, { delay: 0 });
 M('vermDark', '#ebe8e2', '#9d2b19', .52, 0, { delay: .04 });
-M('copper', '#f1efea', '#6d9c8b', .55, .12, { delay: .16 });
-M('copperDk', '#e4e1da', '#4a7668', .6, .1, { delay: .16 });
+M('copper', '#f1efea', '#4f665e', .55, .12, { delay: .16 });
+M('copperDk', '#e4e1da', '#33413b', .6, .1, { delay: .16 });
 M('tile', '#ecebe6', '#4c5055', .72, 0, { delay: .2 });
 M('plaster', '#f6f5f1', '#efebe2', .88, 0, { delay: .24 });
 M('wood', '#ebe7df', '#7d5c3f', .8, 0, { delay: .24 });
@@ -466,6 +466,10 @@ M('thatch', '#ebe8e1', '#8a7654', .95, 0, { delay: .3 });
 M('noren', '#f2f0eb', '#24405f', .9, 0, { delay: .3 });
 M('norenR', '#f2f0eb', '#8f2b1b', .9, 0, { delay: .3 });
 M('norenW', '#f2f0eb', '#e9e2cf', .9, 0, { delay: .3 });
+M('teal', '#ebe9e3', '#2f8a77', .6, 0, { delay: .12 });
+M('yellow', '#efede8', '#e2b12d', .5, 0, { delay: .06 });
+M('plaque', '#e6e4de', '#27488a', .5, .1, { delay: .12 });
+M('banner', '#f3f1ec', '#d3233a', .85, 0, { delay: .06 });
 M('carW', CLAY, '#e9e9e6', .4, .2, { delay: .3 });
 M('carS', CLAY, '#9ea4a8', .4, .5, { delay: .3 });
 M('carK', CLAY, '#26292c', .4, .3, { delay: .3 });
@@ -969,7 +973,7 @@ function buildPlaza() {
   stroke([V(-42, .1, -36), V(31, .1, -36), V(31, .1, 29), V(-42, .1, 29)], 1, true);
   stroke(pondPts(P0, .3).map(([x, z]) => V(x, .12, z)), 1, true);
   add('paving', box(68, .16, 4.4, -3, 0, 0), { ord: .05 });
-  add('paving', box(5, .16, 17, -22, 0, 10.6), { ord: .05 });
+  add('paving', box(4.2, .16, 8.4, -24.4, 0, 6.6), { ord: .05 });
   add('paving', box(4, .16, 13, -12, 0, 8.8), { ord: .05 });
   // 神池 water, stones, crane island, drum bridge
   const wsh = new THREE.Shape(pondPts(P0, .1).map(([x, z]) => new THREE.Vector2(x, -z)));
@@ -985,7 +989,8 @@ function buildPlaza() {
   for (const s of [-1, 1]) rail(bp.map(x => [x, s * 1.05]), x => .4 + 1.9 * (1 - (x / 4.3) ** 2), .85, 'verm', { step: 1 });
   S.M = save;
   // lanterns along the axis
-  for (const x of [-31, -24, -17, -10, -3, 4, 25]) for (const s of [-1, 1]) lantern(x, s * 4.8, .95, .16);
+  for (const x of [-20, -13, -6, 1, 25]) for (const s of [-1, 1]) redLantern(x, s * 3.3, .95, .16);
+  for (const x of [-10, -3]) for (const s of [-1, 1]) lantern(x, s * 6.6, .9, .1);
   // 手水舎
   frame(6, 0, 10, 0);
   for (const [x, z] of [[-1.6, -1.2], [1.6, -1.2], [-1.6, 1.2], [1.6, 1.2]]) add('verm', cyl(.2, 2.9, x, .1, z), { lines: 'axis' });
@@ -993,9 +998,9 @@ function buildPlaza() {
   roofOn({ W: 5.4, D: 4.4, H: 1.8, sg: .45, lift: .5, th: .3 }, 0, 3.0, 0, false);
   noFrame();
   // trees
-  tree('ginkgo', -32, -12, 1.2);
+  tree('ginkgo', -34, -15.5, 1.2);
   tree('camphor', -39, -32, 1.15); tree('camphor', -40, 25, 1.05); tree('camphor', 27, 25, 1.25); tree('camphor', 27, -32, 1.1); tree('camphor', -18, -34, .85);
-  tree('maple', -15, -18, 1); tree('maple', 8, -20, .9); tree('maple', 9, -34, 1.05); tree('maple', -33, 15, .9);
+  tree('maple', -15, -18, 1); tree('maple', 8, -20, .9); tree('maple', 9, -34, 1.05); tree('maple', -27.5, 19, .9);
   end();
 }
 
@@ -1071,14 +1076,67 @@ function buildHalls() {
   end();
 }
 
+function railLine(a, b, h = 1.05, step = 1.7) { // 高欄: vermilion posts, teal panels, gold rail and 擬宝珠
+  const n = Math.max(1, Math.round(Math.hypot(b.x - a.x, b.z - a.z) / step)); let prev = null;
+  for (let k = 0; k <= n; k++) {
+    const q = a.clone().lerp(b, k / n);
+    add('verm', box(.19, h + .1, .19, q.x, q.y, q.z), { ph: 'detail', lines: false, d: .08 });
+    if (k === 0 || k === n) add('gold', new THREE.SphereGeometry(.15, 8, 6).translate(q.x, q.y + h + .24, q.z), { ph: 'detail', lines: false });
+    if (prev) {
+      add('verm', beam(V(prev.x, prev.y + h, prev.z), V(q.x, q.y + h, q.z), .16, .14), { ph: 'detail', lines: false, d: .08 });
+      add('teal', beam(V(prev.x, prev.y + h * .5, prev.z), V(q.x, q.y + h * .5, q.z), .07, h * .6), { ph: 'detail', lines: false, d: .08 });
+      add('yellow', beam(V(prev.x, prev.y + .12, prev.z), V(q.x, q.y + .12, q.z), .12, .12), { ph: 'detail', lines: false, d: .08 });
+    }
+    prev = q;
+  }
+  S.strokes.push({ layer: 1, segs: [[V(a.x, a.y + h, a.z), V(b.x, b.y + h, b.z)]] });
+}
+function flight(p0, dir, n, run, rise, width, mk = 'paving') { // straight run of steps on vermilion stilts
+  const side = V(-dir.z, 0, dir.x), alongX = Math.abs(dir.x) > .5;
+  for (let i = 0; i < n; i++) {
+    const c = p0.clone().addScaledVector(dir, (i + .5) * run), top = p0.y + (i + 1) * rise;
+    add(mk, new THREE.BoxGeometry(alongX ? run + .02 : width, .34, alongX ? width : run + .02).translate(c.x, top - .17, c.z), { lines: false, ord: i / n, d: .08 });
+    if (i % 2 === 0) { const e = p0.clone().addScaledVector(dir, i * run); S.strokes.push({ layer: 1, segs: [[e.clone().addScaledVector(side, -width / 2).setY(top), e.clone().addScaledVector(side, width / 2).setY(top)]] }); }
+  }
+  const p1 = p0.clone().addScaledVector(dir, n * run); p1.y = p0.y + n * rise;
+  for (const s of [-1, 1]) {
+    const a = p0.clone().addScaledVector(side, s * width / 2), b = p1.clone().addScaledVector(side, s * width / 2);
+    add('verm', beam(V(a.x, a.y - .25, a.z), V(b.x, b.y - .25, b.z), .3, .55), { lines: false });
+    const np = Math.max(1, Math.round(n * run / 2.6));
+    for (let k = 0; k <= np; k++) { const q = a.clone().lerp(b, k / np), g = H(q.x, q.z); if (q.y - g > 1) add('verm', box(.3, q.y - .5 - g, .3, q.x, g, q.z), { lines: 'axis' }); }
+    railLine(a, b, 1.0, 1.6);
+  }
+  return p1;
+}
+function landing(x0, x1, z0, z1, y, rails = []) {
+  add('paving', box(x1 - x0, .4, z1 - z0, (x0 + x1) / 2, y - .4, (z0 + z1) / 2));
+  for (const [x, z] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) { const g = H(x, z); if (y - g > 1) add('verm', box(.3, y - .4 - g, .3, x, g, z), { lines: 'axis' }); }
+  for (const [ax, az, bx, bz] of rails) railLine(V(ax, y, az), V(bx, y, bz), 1.0, 1.6);
+}
+function redLantern(x, z, s = 1, y) { // 朱塗りの灯籠柱
+  const save = S.M; S.M = null; y = y ?? Math.max(0, H(x, z)) + .1;
+  add('stone', box(.7 * s, .35 * s, .7 * s, x, y, z), { ph: 'detail', lines: false });
+  add('verm', box(.22 * s, 2.6 * s, .22 * s, x, y + .35 * s, z), { ph: 'detail', lines: 'axis' });
+  add('verm', box(.74 * s, .08 * s, .74 * s, x, y + 2.9 * s, z), { ph: 'detail', lines: false });
+  add('lantern', box(.62 * s, .72 * s, .62 * s, x, y + 2.98 * s, z), { ph: 'detail', ea: 40 });
+  add('tile', new THREE.ConeGeometry(.62 * s, .42 * s, 4).rotateY(Math.PI / 4).translate(x, y + 3.9 * s, z), { ph: 'detail', lines: false });
+  S.M = save;
+}
+function nobori(x, z, s = 1, ry = 0) { // 幟
+  const save = S.M; S.M = null; const y = Math.max(0, H(x, z));
+  add('steel', cyl(.05, 6.2 * s, x, y, z, 5), { ph: 'detail', lines: 'axis', d: .08 });
+  add('banner', box(.62 * s, 4.4 * s, .04).rotateY(ry).translate(x + .36 * s * Math.cos(ry), y + 1.5 * s, z - .36 * s * Math.sin(ry)), { ph: 'detail', lines: false, d: .08 });
+  S.M = save;
+}
+
 /* =====================================================================
    7. 御本殿 Gohonden — 懸造 (stage on stilts) against the cliff
    ===================================================================== */
 function buildHonden() {
   begin({ sketch: [.46, .97], mass: [1.42, 1.98], detail: [2.18, 2.92] });
-  const DECK = 18;
+  const DECK = 18, ZW = 20.9;
   const colX = [-36.8, -40, -43.2, -46.4, -49.6, -52.8, -56];
-  const colZ = []; for (let i = 0; i <= 8; i++) colZ.push(-15.2 + i * 3.8);
+  const colZ = []; for (let i = 0; i <= 10; i++) colZ.push(-19.6 + i * 3.92);
   const G = {};
   for (const x of colX) for (const z of colZ) {
     const g = H(x, z); if (g > DECK - 1.6) continue; G[x + ',' + z] = g;
@@ -1088,13 +1146,18 @@ function buildHonden() {
   for (const y of [3.2, 6.4, 9.6, 12.8, 15.6]) {
     for (const x of colX) for (let i = 0; i < colZ.length - 1; i++) { const a = G[x + ',' + colZ[i]], b = G[x + ',' + colZ[i + 1]]; if (a === undefined || b === undefined || y < a + .9 || y < b + .9) continue; add('verm', box(.24, .42, colZ[i + 1] - colZ[i] + .5, x, y, (colZ[i] + colZ[i + 1]) / 2), { lines: 'axis' }); }
     for (const z of colZ) for (let i = 0; i < colX.length - 1; i++) { const a = G[colX[i] + ',' + z], b = G[colX[i + 1] + ',' + z]; if (a === undefined || b === undefined || y < a + .9 || y < b + .9) continue; add('verm', box(Math.abs(colX[i + 1] - colX[i]) + .5, .42, .24, (colX[i] + colX[i + 1]) / 2, y, z), { lines: 'axis' }); }
+    // gold joint fittings (飾金具) where the ties meet the posts
+    for (const k in G) { if (y < G[k] + .9) continue; const [x, z] = k.split(',').map(Number); if (x > -44 || Math.abs(z) > 17) add('yellow', box(.66, .34, .66, x, y + .02, z), { ph: 'detail', lines: false, d: .06 }); }
   }
   for (const z of colZ) add('vermDark', box(24.4, .5, .4, -48, DECK - 1.3, z), { lines: 'axis' });
-  add('vermDark', box(25, .55, 33, -48, DECK - .8, 0));
-  add('wood', box(24, .26, 32, -48, DECK - .26, 0), { lines: false });
-  rail([[-41, -16.2], [-36.1, -16.2], [-36.1, 16.2], [-41, 16.2]], DECK, 1.05);
+  add('vermDark', box(25, .55, 2 * ZW, -48, DECK - .8, 0));
+  add('teal', box(.18, .45, 2 * ZW + .2, -35.42, DECK - .78, 0), { ph: 'detail', lines: false });
+  for (const s of [-1, 1]) add('teal', box(25, .45, .18, -48, DECK - .78, s * (ZW + .02)), { ph: 'detail', lines: false });
+  add('wood', box(24, .26, 2 * ZW - .8, -48, DECK - .26, 0), { lines: false });
+  railLine(V(-36.1, DECK, -ZW + .2), V(-36.1, DECK, ZW - .2), 1.05);
+  for (const s of [-1, 1]) railLine(V(-44, DECK, s * (ZW - .2)), V(-36.1, DECK, s * (ZW - .2)), 1.05);
 
-  // 拝殿 (worship hall)
+  // 拝殿 — lower storey with a 唐破風 porch
   const FY = DECK + .45;
   add('vermDark', box(12.8, .45, 18.8, -48, DECK, 0));
   for (const x of [-54, -50, -46, -42]) for (const z of [-9, -6, -3, 0, 3, 6, 9]) if (x === -54 || x === -42 || Math.abs(z) === 9) add('verm', cyl(.3, 4.9, x, FY, z, 10), { lines: 'axis' });
@@ -1103,16 +1166,28 @@ function buildHonden() {
     add('woodDark', box(.12, 3.2, 2.5, -41.9, FY + .2, z), { ph: 'detail', lines: false });
     for (let k = -1; k <= 1; k += .5) stroke([V(-41.82, FY + .2, z + k), V(-41.82, FY + 3.4, z + k)], 3);
   }
-  add('gold', box(.12, .5, 17.6, -41.84, FY + 3.7, 0), { ph: 'detail', lines: false });
+  add('teal', box(.12, .5, 17.6, -41.84, FY + 3.7, 0), { ph: 'detail', lines: false });
   ringBeams(-54, -42, -9, 9, FY + 4.4, .5, .42);
   brackets(-54.4, -41.6, -9.4, 9.4, FY + 4.9, .7, .8);
-  roofOn({ W: 24.8, D: 18.6, H: 6.4, sg: .46, lift: 1.15, a: .4, th: .5 }, -48, FY + 5.55, 0, true);
-  // 向拝 with 唐破風
+  roofOn({ W: 26, D: 19.6, H: 4.3, sg: .3, lift: 1.1, a: .5, th: .5 }, -48, FY + 5.55, 0, true);
   for (const z of [-4.3, 4.3]) add('verm', cyl(.28, 4.3, -37.9, FY - .45, z, 10), { lines: 'axis' });
   add('verm', box(.42, .5, 9.4, -37.9, FY + 3.85, 0), { lines: 'axis' });
   karaOn({ x0: -42.6, x1: -37.3, a: 5.4, Hk: 2.15, th: .42 }, FY + 4.5);
-  add('gold', box(.12, .9, .9, -37.18, FY + 5.2, 0), { ph: 'detail', lines: false });
+  add('gold', box(.1, 1.3, 1.2, -37.2, FY + 4.7, 0), { ph: 'detail', lines: false });
+  add('plaque', box(.14, 1.1, 1.0, -37.12, FY + 4.8, 0), { ph: 'detail', lines: false });
   add('wood', box(1.2, .8, 3.2, -39.6, DECK, 0), { ph: 'detail', lines: false });
+  // upper storey (楼) with its own roof, 唐破風 and blue 扁額 — the silhouette in the photographs
+  add('plaster', box(8.4, 3.6, 11, -49, FY + 8.3, 0));
+  for (const [x, z] of [[-53.2, -5.5], [-44.8, -5.5], [-53.2, 5.5], [-44.8, 5.5], [-44.8, -1.8], [-44.8, 1.8]]) add('verm', cyl(.26, 3.6, x, FY + 8.3, z, 8), { lines: 'axis' });
+  for (const z of [-3.6, 0, 3.6]) add('woodDark', box(.12, 2.3, 2.6, -44.72, FY + 8.8, z), { ph: 'detail', lines: false });
+  add('verm', box(9.6, .4, 12.4, -49, FY + 8.1, 0), { lines: false });
+  railLine(V(-44.2, FY + 8.5, -6.1), V(-44.2, FY + 8.5, 6.1), .8, 1.5);
+  ringBeams(-53.2, -44.8, -5.5, 5.5, FY + 11.5, .4, .34);
+  brackets(-53.5, -44.5, -5.8, 5.8, FY + 11.9, .55, .7);
+  roofOn({ W: 15, D: 12.6, H: 4.5, sg: .46, lift: 1.3, a: .38, th: .45 }, -49, FY + 12.45, 0, true);
+  karaOn({ x0: -45.8, x1: -42.1, a: 3.6, Hk: 1.6, th: .36 }, FY + 12.25);
+  add('gold', box(.1, 1.4, 1.1, -43.9, FY + 10.2, 0), { ph: 'detail', lines: false });
+  add('plaque', box(.14, 1.2, .9, -43.82, FY + 10.3, 0), { ph: 'detail', lines: false });
 
   // 幣殿 and 本殿 (inner sanctuary on the rock shelf)
   add('plaster', box(4.4, 3.8, 8, -56, FY, 0));
@@ -1125,29 +1200,41 @@ function buildHonden() {
   ringBeams(-67.8, -58.2, -6.2, 6.2, F2 + 3.9, .45, .38);
   brackets(-68.1, -57.9, -6.5, 6.5, F2 + 4.3, .6, .75);
   roofOn({ W: 16.4, D: 13.4, H: 5.2, sg: .5, lift: .95, th: .45 }, -63, F2 + 4.85, 0, true);
-  rail([[-69.6, -8.2], [-56.8, -8.2]], F2 - .1, .9, 'verm', { gold: false }); rail([[-69.6, 8.2], [-56.8, 8.2]], F2 - .1, .9, 'verm', { gold: false });
 
-  // 回廊 (corridors) along both flanks of the stage
+  // side halls on the stage
   for (const sgn of [-1, 1]) {
-    for (let x = -58; x <= -40; x += 3) for (const z of [sgn * 12.2, sgn * 15.4]) add('verm', cyl(.22, 3.5, x, DECK, z, 8), { lines: 'axis' });
-    add('plaster', box(18.4, 1.05, .25, -49, DECK, sgn * 15.4), { ph: 'detail', lines: false });
-    roofOn({ W: 20.4, D: 5.6, H: 1.9, sg: 1, lift: .35, a: .55, th: .34 }, -49, DECK + 3.55, sgn * 13.8, false, { ridge: false, seams: true });
-    for (let x = -56.5; x <= -41.5; x += 3) add('lantern', box(.5, .7, .5, x, DECK + 2.3, sgn * 12.2), { ph: 'detail', lines: false });
+    for (let x = -58; x <= -44; x += 3.5) for (const z of [sgn * 15.6, sgn * 19.4]) add('verm', cyl(.24, 3.5, x, DECK, z, 8), { lines: 'axis' });
+    add('plaster', box(14.4, 2.6, .25, -51, DECK, sgn * 19.4), { ph: 'detail', lines: false });
+    roofOn({ W: 17, D: 6.4, H: 2.1, sg: .5, lift: .45, a: .5, th: .36 }, -51, DECK + 3.55, sgn * 17.5, false, { ridge: false });
+    for (let x = -56.5; x <= -45; x += 3.5) add('lantern', box(.5, .7, .5, x, DECK + 2.3, sgn * 15.6), { ph: 'detail', lines: false });
   }
 
-  // 石段 117 steps with a tunnel of torii
-  const shp = new THREE.Shape(); shp.moveTo(-23.5, -1); shp.lineTo(-23.5, 0); shp.lineTo(-58, 18.2); shp.lineTo(-62, 18.2); shp.lineTo(-62, -1); shp.closePath();
-  add('stone', new THREE.ExtrudeGeometry(shp, { depth: 4.2, bevelEnabled: false }).translate(0, 0, 18.4), { ea: 40, ord: .1 });
-  const N = 58, run = 34.5 / N, rise = 18.2 / N;
-  for (let i = 0; i < N; i++) { const x = -23.5 - i * run; add('paving', box(run + .04, rise * 1.6, 4.3, x - run / 2, (i + 1) * rise - rise * 1.6, 20.5), { ph: 'detail', lines: false, ord: i / N, d: .06 }); if (i % 2 === 0) stroke([V(x, (i + 1) * rise + .02, 18.4), V(x, (i + 1) * rise + .02, 22.6)], 1); }
-  for (let k = 0; k < 11; k++) { const x = -26 - k * 3.05; const y = (-23.5 - x) / 34.5 * 18.2; torii(x, y, 20.5, 0, 4.1, 4.4); }
+  // front stairs: torii at the foot, then up in front of the stage, turning twice
+  torii(-26, .1, 8.8, 0, 4.4, 5.2);
+  const f1 = flight(V(-27, .1, 8.8), V(-1, 0, 0), 10, .5, .3, 3.6);
+  landing(-35.4, -32, 7, 10.6, f1.y, [[-35.4, 7, -32, 7], [-35.4, 7, -35.4, 10.6]]);
+  const f2 = flight(V(-33.7, f1.y, 10.6), V(0, 0, 1), 26, .5, .3, 3.0);
+  landing(-35.2, -32.2, 23.6, 27.2, f2.y, [[-32.2, 23.6, -32.2, 27.2], [-32.2, 27.2, -35.2, 27.2]]);
+  const f3 = flight(V(-35.2, f2.y, 25.4), V(-1, 0, 0), 24, .55, .3, 3.4);
+  landing(-51.8, -48.4, ZW - .4, 27.1, f3.y, [[-51.8, 27.1, -48.4, 27.1], [-51.8, 27.1, -51.8, ZW]]);
+
+  // 授与所 in front of the stage, 幟 and lantern posts
+  frame(-28.5, 0, -7.5, 0);
+  add('stone', box(5.6, .4, 9.4, 0, 0, 0));
+  for (const [x, z] of [[-2.2, -4.3], [2.2, -4.3], [-2.2, 4.3], [2.2, 4.3], [2.2, 0]]) add('verm', cyl(.2, 3, x, .4, z, 8), { lines: 'axis' });
+  add('plaster', box(4, 2.6, 8.4, -.2, .4, 0));
+  add('woodDark', box(.1, 1.3, 7.4, 1.82, 1.2, 0), { ph: 'detail', lines: false });
+  add('verm', box(.6, .9, 8, 2.4, .4, 0), { ph: 'detail', lines: false });
+  roofOn({ W: 10.8, D: 7, H: 2.2, sg: .5, lift: .5, th: .32 }, 0, 3.35, 0, true, { mat: 'tile', gmat: 'verm', rmat: 'tile', oni: false });
+  noFrame();
+  for (const [x, z] of [[-24, 11.4], [-24, 6.2], [-30.5, 12.4], [-30.5, 5.3], [-31, 14.5], [-31, 19], [-31, 23.5], [-22, -4.4], [-18, -4.4], [-14, -4.4], [-18, 4.4], [-14, 4.4]]) nobori(x, z, 1, z > 0 ? Math.PI / 2 : -Math.PI / 2);
 
   // glass elevator (有料エレベーター)
-  const ex = -40.5, ez = -21.2;
+  const ex = -40.5, ez = -25.4;
   add('glass', box(3.8, 21.8, 3.8, ex, 0, ez));
   for (const [dx, dz] of [[-1.9, -1.9], [1.9, -1.9], [1.9, 1.9], [-1.9, 1.9]]) add('steel', cyl(.12, 21.8, ex + dx, 0, ez + dz, 6), { lines: false });
   add('steel', box(4.4, .6, 4.4, ex, 21.8, ez));
-  add('steel', box(2.4, .45, 5.4, ex, DECK - .45, -18.1));
+  add('steel', box(2.4, .45, 4.2, ex, DECK - .45, -22.6));
   end();
 }
 
@@ -1360,7 +1447,7 @@ function buildForest() {
     const x = lerp(TX0 + 2, TX1 - 2, Rf()), z = lerp(TZ0 + 2, TZ1 - 2, Rf());
     const m = mountain(x, z); if (m < 1.6) continue;
     if (x > -74 && x < -28 && Math.abs(z) < 24) continue;
-    if (x > -64 && x < -20 && z > 16 && z < 26) continue;
+    if (x > -64 && x < -20 && z > 16 && z < 31) continue;
     if (distPoly(x, z, OKU_PTS) < 2.6) continue;
     if (PADS.some(p => Math.hypot(x - p.x, z - p.z) < p.r + 1)) continue;
     pts.push({ x, z, h: m });
@@ -1510,7 +1597,7 @@ const SITES = {
 };
 const SRC = '出典：<a href="https://www.yutokusan.jp/" target="_blank" rel="noopener">祐徳稲荷神社</a>、<a href="https://www.city.saga-kashima.lg.jp/main/323.html" target="_blank" rel="noopener">鹿島市</a>、<a href="https://www2.kokugakuin.ac.jp/museum/jinja/40/40_yuutoku.html" target="_blank" rel="noopener">國學院大學 神社博物館事典</a>。形状は公開資料をもとにした概念的な再構成で、実測図ではありません。';
 const LABELS = [
-  { k: 'A', jp: '御本殿', en: 'Gohonden', pos: [-48, 33, 0], t: .92, site: 'honden' },
+  { k: 'A', jp: '御本殿', en: 'Gohonden', pos: [-48, 38, 0], t: .92, site: 'honden' },
   { k: 'B', jp: '楼門', en: 'Rōmon gate', pos: [16, 17, 0], t: .66 },
   { k: 'C', jp: '神楽殿', en: 'Kagura-den', pos: [-12, 10, 20.5], t: .6 },
   { k: 'D', jp: '神池', en: 'Sacred pond', pos: [-4, 3, -27], t: .56 },
@@ -1656,7 +1743,7 @@ function updateLook() {
     const m = MAT[k], ud = m.userData;
     const r = sstep(3.0 + ud.delay, 3.0 + ud.delay + .48, p);
     const target = state.season === 'autumn' && ud.autumn ? ud.autumn : ud.real;
-    m.color.copy(ud.clay).lerp(target, r);
+    m.color.copy(ud.clay).lerp(target, r); m.metalness = ud.metal * r;
     ud.uReal.value = r;
     if (ud.emissive) { m.emissive.copy(ud.emissive); m.emissiveIntensity = r * (.15 + 2.6 * dk) * ud.glow; }
   }
@@ -1746,7 +1833,7 @@ function loop(now) {
 syncPlay();
 renderer.shadowMap.needsUpdate = true;
 requestAnimationFrame(loop);
-window.__yutoku = { state, setP: p => { state.p = p; state.playing = false; state.seek = null; syncPlay(); }, snap: () => { Object.assign(cur, directorAt(state.p)); applyCam(cur); }, lines: LT.length / 4 };
+window.__yutoku = { state, setP: p => { state.p = p; state.playing = false; state.seek = null; syncPlay(); }, snap: () => { Object.assign(cur, directorAt(state.p)); applyCam(cur); }, cam: c => { state.director = false; state.tween = null; Object.assign(cur, { t: V(...c.t), d: c.d, az: c.az, el: c.el, fov: 32 }); applyCam(cur); }, lines: LT.length / 4 };
 </script>
 </body>
 </html>
