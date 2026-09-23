@@ -1,17 +1,14 @@
 <title>FLOW LAB 6.0 途中経過ガイド</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=IBM+Plex+Mono:wght@500&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap">
 <style>
 :root{
-  --ground:#f2f5ef; --paper:#fbfcf8; --paper-2:#eef3ec; --ink:#1c2b25; --ink-2:#465850; --muted:#6f8077;
-  --line:#d4ddd1; --line-2:#e3e9e0; --brand:#255a46; --brand-ink:#1d4a39; --brand-soft:#e0ebe3;
-  --copper:#a9582a; --copper-soft:#f4e7dc; --copper-ink:#7d3f1c;
-  --improve:#1f6fa3; --worse:#c0612b; --zero:#9aa69f;
-  --t-measure:#255a46; --t-measure-bg:#dfece3; --t-declare:#2f5f9e; --t-declare-bg:#e1eaf6;
-  --t-assume:#8a5d0c; --t-assume-bg:#f5ebd4; --t-calc:#5e4a99; --t-calc-bg:#e9e4f5; --t-none:#5f6a64; --t-none-bg:transparent;
-  --ok:#0c7a3c; --partial:#9a6a00; --todo:#6f7a74;
-  --shot-frame:#c9d4c6; --shadow:0 1px 2px rgba(28,43,37,.06),0 6px 20px rgba(28,43,37,.06);
+  --ground:#e9eee6; --paper:#fbfcf8; --paper-2:#eef3ec; --ink:#1c2b25; --ink-2:#4a5b53; --muted:#74857b;
+  --line:#d4ddd1; --brand:#255a46; --brand-ink:#1d4a39; --brand-soft:#e0ebe3;
+  --copper:#a9582a; --copper-ink:#8a4520; --copper-soft:#f4e7dc;
+  --improve:#1f6fa3; --worse:#c0612b; --shot-bg:#e3eadb; --shot-frame:#c9d4c6;
+  --shadow:0 1px 2px rgba(28,43,37,.06),0 10px 30px rgba(28,43,37,.08);
   --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
   --f-body:"BIZ UDPGothic","Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
@@ -19,847 +16,360 @@
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     color-scheme:dark;
-    --ground:#111714; --paper:#18201c; --paper-2:#1e2823; --ink:#e3ebe5; --ink-2:#b4c3ba; --muted:#8c9d93;
-    --line:#2e3b34; --line-2:#26312b; --brand:#7cc4a0; --brand-ink:#a6dcc0; --brand-soft:#1f3329;
-    --copper:#e08a55; --copper-soft:#3a271b; --copper-ink:#f0b58e;
-    --improve:#3b8fd0; --worse:#d8703a; --zero:#6d7a73;
-    --t-measure:#9bd6b6; --t-measure-bg:#1d3328; --t-declare:#9fc0ee; --t-declare-bg:#1c2940; --t-assume:#e6c078; --t-assume-bg:#382c14;
-    --t-calc:#c3b4ef; --t-calc-bg:#2a2340; --t-none:#a8b3ad; --ok:#6fd49a; --partial:#e9bd52; --todo:#96a39c;
-    --shot-frame:#3a4a41; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+    --ground:#101613; --paper:#18201c; --paper-2:#1f2924; --ink:#e3ebe5; --ink-2:#b4c3ba; --muted:#8c9d93;
+    --line:#2e3b34; --brand:#7cc4a0; --brand-ink:#a6dcc0; --brand-soft:#1f3329;
+    --copper:#e08a55; --copper-ink:#f0b58e; --copper-soft:#3a271b;
+    --improve:#3b8fd0; --worse:#d8703a; --shot-frame:#3a4a41; --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.3);
   }
 }
 :root[data-theme="dark"]{
   color-scheme:dark;
-  --ground:#111714; --paper:#18201c; --paper-2:#1e2823; --ink:#e3ebe5; --ink-2:#b4c3ba; --muted:#8c9d93;
-  --line:#2e3b34; --line-2:#26312b; --brand:#7cc4a0; --brand-ink:#a6dcc0; --brand-soft:#1f3329;
-  --copper:#e08a55; --copper-soft:#3a271b; --copper-ink:#f0b58e;
-  --improve:#3b8fd0; --worse:#d8703a; --zero:#6d7a73;
-  --t-measure:#9bd6b6; --t-measure-bg:#1d3328; --t-declare:#9fc0ee; --t-declare-bg:#1c2940; --t-assume:#e6c078; --t-assume-bg:#382c14;
-  --t-calc:#c3b4ef; --t-calc-bg:#2a2340; --t-none:#a8b3ad; --ok:#6fd49a; --partial:#e9bd52; --todo:#96a39c;
-  --shot-frame:#3a4a41; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  --ground:#101613; --paper:#18201c; --paper-2:#1f2924; --ink:#e3ebe5; --ink-2:#b4c3ba; --muted:#8c9d93;
+  --line:#2e3b34; --brand:#7cc4a0; --brand-ink:#a6dcc0; --brand-soft:#1f3329;
+  --copper:#e08a55; --copper-ink:#f0b58e; --copper-soft:#3a271b;
+  --improve:#3b8fd0; --worse:#d8703a; --shot-frame:#3a4a41; --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.3);
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:24px}
-@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{transition:none!important}}
-body{background:var(--ground);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.85;letter-spacing:.02em;margin:0;padding-inline:16px;-webkit-font-smoothing:antialiased}
-a{color:var(--brand-ink);text-underline-offset:3px}
-a:focus-visible,button:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--copper);outline-offset:2px;border-radius:3px}
-h1,h2,h3,h4{font-family:var(--f-display);text-wrap:balance;letter-spacing:.01em;line-height:1.4;margin:0}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.7;letter-spacing:.02em;padding-inline:16px;-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--f-display);margin:0;line-height:1.35;text-wrap:balance}
 p{margin:0}
-.num,td.n,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:0}
+b{font-weight:700}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:0}
+:focus-visible{outline:2px solid var(--copper);outline-offset:2px}
 
-/* page frame */
-.page{max-width:1240px;margin:0 auto;padding-block:28px 80px;display:grid;grid-template-columns:1fr;gap:28px}
-@media (min-width:1100px){.page{grid-template-columns:220px minmax(0,1fr);gap:44px}}
-.toc{display:none}
-@media (min-width:1100px){.toc{display:block;position:sticky;top:calc(env(safe-area-inset-top,0px) + 20px);align-self:start;max-height:calc(100vh - 40px);overflow:auto;font-size:13px;line-height:1.6;padding-block:8px}}
-.toc b{display:block;font-family:var(--f-display);font-size:12px;letter-spacing:.14em;color:var(--muted);margin-bottom:10px}
-.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
-.toc a{display:block;text-decoration:none;color:var(--ink-2);padding:3px 8px;border-radius:5px;border-left:2px solid transparent}
-.toc a:hover{background:var(--paper-2);color:var(--ink)}
-.toc a.on{border-left-color:var(--copper);color:var(--ink);background:var(--paper)}
-.toc .sub a{padding-left:20px;font-size:12px;color:var(--muted)}
-.toc-m{display:block}
-@media (min-width:1100px){.toc-m{display:none}}
-.toc-m details{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
-.toc-m summary{cursor:pointer;font-family:var(--f-display);font-weight:700}
-.toc-m ol{margin:8px 0 0;padding-left:1.4em;line-height:2}
+.deck{max-width:1120px;margin:0 auto;padding-block:28px 60px;display:grid;gap:28px}
+.pg{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:6px;box-shadow:var(--shadow);padding:22px 20px 16px;display:grid;grid-template-rows:auto auto 1fr auto;gap:14px;min-width:0}
+@media (min-width:900px){.pg{aspect-ratio:297/210;padding:30px 42px 20px}}
+.pg-top{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:11.5px;color:var(--muted);letter-spacing:.12em}
+.pg-top .no{font-family:var(--f-mono);color:var(--copper);font-size:13px;letter-spacing:.05em}
+.pg h2{font-size:clamp(22px,2.8vw,30px);font-weight:900}
+.pg h2 small{display:block;font-family:var(--f-body);font-weight:400;font-size:14px;color:var(--ink-2);margin-top:4px;letter-spacing:.02em}
+.pg-body{min-height:0;display:grid;gap:18px;align-content:start}
+.pg-foot{display:flex;justify-content:space-between;gap:12px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
 
-main{min-width:0}
-.sec{padding-top:56px;margin-top:56px;border-top:1px solid var(--line)}
-.sec:first-of-type{border-top:0;margin-top:0}
-.sec-head{display:grid;gap:6px;margin-bottom:22px}
-.chap{font-family:var(--f-mono);font-size:12px;color:var(--copper);letter-spacing:.12em}
-.sec h2{font-size:clamp(22px,2.6vw,28px);font-weight:900}
-.sec h3{font-size:19px;font-weight:700;margin:40px 0 12px;display:flex;gap:10px;align-items:baseline}
-.sec h3 .no{font-family:var(--f-mono);font-size:13px;color:var(--muted);font-weight:500}
-.sec h4{font-size:15px;font-weight:700;margin:22px 0 8px}
-.prose{max-width:44em;display:grid;gap:12px}
-.lead{font-size:16px;color:var(--ink-2)}
-.small{font-size:13px;color:var(--muted);line-height:1.7}
-
-/* title block */
-.masthead{display:grid;gap:18px;padding-bottom:8px}
-.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.16em;color:var(--brand-ink)}
-.masthead h1{font-size:clamp(28px,4.2vw,44px);font-weight:900;line-height:1.25}
-.masthead h1 span{display:block;font-size:.5em;font-weight:700;color:var(--ink-2);margin-top:6px}
-.titleblock{display:grid;grid-template-columns:1fr;border:1.5px solid var(--ink);border-radius:2px;background:var(--paper)}
-@media (min-width:560px){.titleblock{grid-template-columns:repeat(2,1fr)}}
-@media (min-width:860px){.titleblock{grid-template-columns:repeat(3,1fr)}}
-.titleblock div{padding:9px 12px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);display:grid;gap:2px;min-width:0}
-.titleblock dt{font-size:11px;color:var(--muted);letter-spacing:.1em}
-.titleblock dd{margin:0;font-size:13.5px;overflow-wrap:anywhere}
-
-/* key points */
-.keypoints{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:20px 22px;display:grid;gap:14px;box-shadow:var(--shadow)}
-.keypoints h2{font-size:16px;font-weight:700;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
-.keypoints ul{list-style:none;margin:0;padding:0;display:grid;gap:12px}
-.keypoints li{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start;padding-top:12px;border-top:1px solid var(--line-2)}
-.keypoints li:first-child{border-top:0;padding-top:0}
-.keypoints li b{font-weight:700}
-.kp-fig{font-family:var(--f-mono);font-size:22px;font-weight:500;line-height:1.2;min-width:5.2em;color:var(--ink)}
-.kp-fig.bad{color:var(--worse)}
-.kp-fig small{display:block;font-family:var(--f-body);font-size:11px;color:var(--muted);font-weight:400;letter-spacing:.04em}
-
-/* evidence tags */
-.tag{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;line-height:1;padding:4px 7px 4px 6px;border-radius:4px;white-space:nowrap;font-weight:700;vertical-align:1px;letter-spacing:.04em;border:1px solid transparent}
-.tag::before{font-size:9px}
-.tag.m{color:var(--t-measure);background:var(--t-measure-bg)} .tag.m::before{content:"●"}
-.tag.d{color:var(--t-declare);background:var(--t-declare-bg)} .tag.d::before{content:"◆"}
-.tag.a{color:var(--t-assume);background:var(--t-assume-bg)} .tag.a::before{content:"▲"}
-.tag.c{color:var(--t-calc);background:var(--t-calc-bg)} .tag.c::before{content:"■"}
-.tag.n{color:var(--t-none);background:var(--t-none-bg);border:1px dashed var(--t-none)} .tag.n::before{content:"○"}
-.legend-tags{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:12.5px;color:var(--ink-2)}
-.legend-tags span.item{display:inline-flex;gap:6px;align-items:center}
-
-/* notes */
-.note{border-left:3px solid var(--brand);background:var(--brand-soft);padding:12px 16px;border-radius:0 8px 8px 0;font-size:14px;max-width:48em}
-.note.warn{border-left-color:var(--copper);background:var(--copper-soft);color:var(--ink)}
-.note b.h{display:block;font-family:var(--f-display);margin-bottom:2px;color:var(--brand-ink)}
-.note.warn b.h{color:var(--copper-ink)}
-
-/* tables */
-.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--paper);max-width:100%}
-table{border-collapse:collapse;width:100%;font-size:13.5px;line-height:1.65}
-th{font-family:var(--f-display);font-weight:700;text-align:left;font-size:12.5px;color:var(--ink-2);background:var(--paper-2);padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
-td{padding:10px 12px;border-bottom:1px solid var(--line-2);vertical-align:top}
-tr:last-child td{border-bottom:0}
-td.n,th.n{text-align:right;white-space:nowrap}
-td.lab{font-weight:700;white-space:nowrap}
-.minw{min-width:720px}
-td .tag{margin:1px 0}
-
-/* status list */
-.status{display:grid;gap:0;margin:0;padding:0;border:1px solid var(--line);border-radius:10px;background:var(--paper);overflow:hidden}
-.status li{list-style:none;display:grid;grid-template-columns:92px 1fr;gap:4px 14px;padding:11px 16px;border-top:1px solid var(--line-2);align-items:baseline}
-.status li:first-child{border-top:0}
-@media (min-width:760px){.status li{grid-template-columns:92px minmax(0,17em) 1fr}}
-.status ul{margin:0;padding:0}
-.st{font-size:12px;font-weight:700;display:inline-flex;gap:5px;align-items:center;white-space:nowrap}
-.st.ok{color:var(--ok)} .st.ok::before{content:"✓";font-size:14px}
-.st.part{color:var(--partial)} .st.part::before{content:"△";font-size:12px}
-.st.todo{color:var(--todo)} .st.todo::before{content:"—";font-size:13px}
-.status .what{font-weight:700}
-.status .det{font-size:13px;color:var(--ink-2);grid-column:2/-1}
-@media (min-width:760px){.status .det{grid-column:auto}}
-
-/* facts row */
-.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-@media (min-width:760px){.facts{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.facts div{background:var(--paper);padding:12px 14px;display:grid;gap:2px;align-content:start}
-.facts b{font-family:var(--f-mono);font-size:20px;font-weight:500;line-height:1.3}
-.facts span{font-size:12.5px;color:var(--ink-2);line-height:1.55}
-
-/* figures */
-figure{margin:0;display:grid;gap:10px;align-content:start;min-width:0}
-.shot{position:relative;border:1px solid var(--shot-frame);border-radius:8px;overflow:hidden;background:#e3eadb;box-shadow:var(--shadow)}
+/* screenshots */
+.shot{position:relative;border:1px solid var(--shot-frame);border-radius:6px;overflow:hidden;background:var(--shot-bg);align-self:start}
 .shot img{display:block;width:100%;height:auto;cursor:zoom-in}
-figcaption{font-size:13px;color:var(--ink-2);line-height:1.65;max-width:52em}
-figcaption b{color:var(--ink)}
-.wide{margin-inline:0}
-.fig-grid{display:grid;gap:18px;grid-template-columns:1fr}
-@media (min-width:760px){.fig-grid.two{grid-template-columns:1fr 1fr}.fig-grid.three{grid-template-columns:repeat(3,1fr)}}
-.clip{max-height:560px}
-.clip::after{content:"";position:absolute;inset:auto 0 0 0;height:90px;background:linear-gradient(to bottom,rgba(227,234,219,0),rgba(227,234,219,.96));pointer-events:none}
-.zoom-hint{position:absolute;right:10px;bottom:10px;z-index:2;font-size:12px;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:20px;padding:4px 12px;cursor:zoom-in;font-family:var(--f-body)}
-.panel-row{display:grid;gap:18px;grid-template-columns:1fr;align-items:start}
-@media (min-width:760px){.panel-row{grid-template-columns:minmax(0,300px) minmax(0,1fr)}}
-.panel-row .shot{max-width:320px}
-.panel-pair{display:grid;gap:18px;grid-template-columns:1fr;align-items:start}
-@media (min-width:700px){.panel-pair{grid-template-columns:repeat(2,minmax(0,1fr))}}
-.panel-pair .shot{max-width:340px}
+.cap{font-size:13px;color:var(--ink-2);line-height:1.55;margin-top:6px}
+.cap b{color:var(--ink)}
 
-/* callouts */
-.co{position:absolute;border:2px solid var(--copper);border-radius:5px;background:rgba(169,88,42,.07);pointer-events:none}
-.co i{position:absolute;left:-11px;top:-11px;width:22px;height:22px;border-radius:50%;background:#a9582a;color:#fff;font:700 12px/22px var(--f-mono);text-align:center;font-style:normal;box-shadow:0 0 0 2px #fff}
-.co-list{list-style:none;margin:0;padding:0;display:grid;gap:6px 22px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));font-size:13.5px}
-.co-list li{display:grid;grid-template-columns:24px 1fr;gap:8px;align-items:baseline}
-.co-list .b{width:22px;height:22px;border-radius:50%;background:#a9582a;color:#fff;font:700 12px/22px var(--f-mono);text-align:center}
-.co-list em{font-style:normal;color:var(--ink-2);font-size:12.5px}
+/* step label */
+.step{display:grid;gap:7px;align-content:start;min-width:0}
+.step-h{display:flex;align-items:center;gap:9px;font-family:var(--f-display);font-weight:700;font-size:16px}
+.step-h i{font-style:normal;flex:none;width:26px;height:26px;border-radius:50%;background:var(--brand);color:var(--paper);display:grid;place-items:center;font:500 13px/1 var(--f-mono)}
 
-/* steps */
-.steps{list-style:none;counter-reset:s;margin:0;padding:0;display:grid;gap:10px;max-width:48em}
-.steps>li{counter-increment:s;display:grid;grid-template-columns:30px minmax(0,1fr);overflow-wrap:anywhere;gap:12px;align-items:start}
-.steps>li::before{content:counter(s);font-family:var(--f-mono);font-weight:500;font-size:13px;width:26px;height:26px;border-radius:50%;border:1.5px solid var(--brand);color:var(--brand-ink);display:grid;place-items:center;margin-top:1px}
-.bul{margin:0;padding-left:1.2em;display:grid;gap:6px;max-width:48em}
-.bul li::marker{color:var(--copper)}
+/* callouts on screenshot */
+.co{position:absolute;border:2.5px solid #a9582a;border-radius:6px;background:rgba(169,88,42,.08);pointer-events:none}
+.co i{position:absolute;left:-13px;top:-13px;width:26px;height:26px;border-radius:50%;background:#a9582a;color:#fff;font:500 13px/26px var(--f-mono);text-align:center;font-style:normal;box-shadow:0 0 0 2.5px #fff}
+.pin{position:absolute;transform:translate(-50%,-100%);background:#a9582a;color:#fff;font-size:12px;font-weight:700;padding:3px 9px;border-radius:12px;white-space:nowrap;box-shadow:0 0 0 2px #fff;pointer-events:none}
+.pin::after{content:"";position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);border:6px solid transparent;border-top-color:#a9582a;border-bottom:0}
+.place{position:absolute;transform:translate(-50%,-50%);font-family:var(--f-display);font-weight:700;font-size:13px;color:#1d4a39;background:rgba(251,252,248,.85);padding:1px 8px;border-radius:4px;pointer-events:none}
 
-/* screen map */
-.map{display:grid;gap:14px;grid-template-columns:1fr;align-items:stretch}
-@media (min-width:860px){.map{grid-template-columns:minmax(0,1fr) 210px minmax(0,1fr)}}
-.scr{background:var(--paper);border:1.5px solid var(--ink-2);border-radius:10px;padding:14px 16px;display:grid;gap:8px;align-content:start}
-.scr.legacy{border-style:dashed;border-color:var(--muted)}
-.scr h4{margin:0;font-size:15px}
-.scr .sub{font-size:12px;color:var(--muted)}
-.scr .chips{display:flex;flex-wrap:wrap;gap:6px}
-.scr .chips span{font-size:12px;border:1px solid var(--line);background:var(--paper-2);border-radius:5px;padding:2px 8px}
-.links{display:grid;gap:8px;align-content:center;font-size:12px;color:var(--ink-2)}
-.links div{display:grid;gap:2px;justify-items:center;text-align:center;border-top:1px solid var(--line);padding-top:6px}
-.links div:first-child{border-top:0;padding-top:0}
-.links .arr{font-family:var(--f-mono);font-size:16px;color:var(--copper);line-height:1.2}
-.btnname{display:inline-block;font-size:12px;border:1px solid var(--line);background:var(--paper);border-radius:5px;padding:0 7px;line-height:1.7;font-family:var(--f-body);margin:1px 2px}
+/* p1 */
+.p1{display:grid;gap:22px;grid-template-columns:1fr}
+@media (min-width:900px){.p1{grid-template-columns:2fr 1fr;align-items:start}}
+.route{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-top:1px solid var(--line);padding-top:14px}
+.route .t{font-size:12.5px;color:var(--muted);margin-right:4px}
+.route a{display:inline-flex;align-items:center;gap:7px;text-decoration:none;color:var(--ink);background:var(--paper-2);border:1px solid var(--line);border-radius:20px;padding:4px 12px 4px 5px;font-size:13px}
+.route a i{font-style:normal;width:22px;height:22px;border-radius:50%;background:var(--brand);color:var(--paper);display:grid;place-items:center;font:500 11.5px/1 var(--f-mono)}
+.route a:hover{border-color:var(--brand)}
+.route .ar{color:var(--muted)}
+.can{display:grid;gap:10px}
+.can h3{font-size:14px;color:var(--muted);letter-spacing:.1em;font-weight:700}
+.can ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.can li{display:grid;grid-template-columns:26px 1fr;gap:8px;align-items:start}
+.can li::before{font-size:15px;font-weight:700;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;margin-top:1px}
+.can li.y::before{content:"✓";color:var(--paper);background:var(--brand)}
+.can li.n::before{content:"✕";color:var(--copper-ink);background:var(--copper-soft);border:1.5px solid var(--copper)}
+.can li b{display:block;font-size:15.5px}
+.can li span{font-size:13px;color:var(--ink-2)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:6px}
+.stats div{background:var(--paper-2);padding:10px 10px 8px;display:grid;gap:0}
+.stats b{font-family:var(--f-mono);font-weight:500;font-size:21px;line-height:1.2}
+.stats b small{font-family:var(--f-body);font-size:12px;margin-left:2px}
+.stats span{font-size:11.5px;color:var(--ink-2)}
 
-/* calendar */
-.cal-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:14px 14px 10px}
-.cal{display:grid;grid-template-columns:118px repeat(22,minmax(30px,1fr));gap:3px;min-width:860px;font-size:12px}
-.cal .hd{font-family:var(--f-mono);font-size:10.5px;color:var(--muted);text-align:center;line-height:1.25;padding-bottom:4px}
-.cal .hd.mon{color:var(--ink-2)}
-.cal .rl{font-size:12.5px;display:flex;align-items:center;gap:6px;padding-right:6px;white-space:nowrap}
-.cal .rl small{font-family:var(--f-mono);color:var(--muted);font-size:11px}
-.cal .c{height:30px;border-radius:4px;background:var(--paper-2)}
-.cal .c.on{background:var(--brand);color:var(--paper);display:grid;place-items:center;font-family:var(--f-mono);font-size:11.5px;cursor:default}
-.cal .c.on.one{background:transparent;border:2px solid var(--brand);color:var(--brand-ink)}
-.cal .c.on.short{background:transparent;border:2px dashed var(--muted);color:var(--muted)}
-.cal .sep{grid-column:1/-1;height:1px;background:var(--line);margin:3px 0}
-.cal-legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--ink-2);margin-top:10px}
-.cal-legend span{display:inline-flex;align-items:center;gap:6px}
-.sw{width:18px;height:14px;border-radius:3px;display:inline-block}
+/* p2 legend */
+.p2g{display:grid;gap:20px;grid-template-columns:1fr}
+@media (min-width:900px){.p2g{grid-template-columns:minmax(0,1fr) 230px;align-items:start}.p2g .legend6{grid-template-columns:1fr!important;gap:14px}}
+.legend6 li span b{display:block}
+.legend6{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr;gap:8px 20px}
+@media (min-width:640px){.legend6{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:900px){.legend6{grid-template-columns:repeat(3,1fr)}}
+.legend6 li{display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:center;font-size:14px}
+.legend6 .b{width:26px;height:26px;border-radius:50%;background:#a9582a;color:#fff;font:500 13px/26px var(--f-mono);text-align:center}
+.legend6 em{font-style:normal;color:var(--ink-2);font-size:12.5px;margin-left:4px}
 
-/* KPI strip */
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.kpis div{background:var(--paper);padding:14px 16px;display:grid;gap:4px;align-content:start}
-.kpis .k{font-size:12.5px;color:var(--ink-2);display:flex;justify-content:space-between;gap:8px;align-items:center}
-.kpis .v{font-family:var(--f-mono);font-size:24px;font-weight:500;line-height:1.25}
-.kpis .v.bad{color:var(--worse)}
-.kpis .v small{font-size:13px;color:var(--muted);font-family:var(--f-body)}
-.kpis .s{font-size:12px;color:var(--muted);line-height:1.55}
+/* p3 / p4 grids */
+.two{display:grid;gap:22px;grid-template-columns:1fr}
+@media (min-width:900px){.two{grid-template-columns:290px minmax(0,1fr);align-items:start}.p4g{grid-template-columns:250px minmax(0,1fr)}}
+.res{display:grid;gap:14px;grid-template-columns:1fr;align-items:center}
+@media (min-width:700px){.res{grid-template-columns:330px minmax(0,1fr)}}
+.res .say{font-family:var(--f-display);font-weight:700;font-size:17px;line-height:1.55}
+.res .say em{font-style:normal;color:var(--worse)}
+.stack{display:grid;gap:16px;align-content:start;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:12.5px}
+.chips .t{font-weight:700;margin-right:4px;font-size:13px}
+.chips span.c{background:var(--brand-soft);color:var(--brand-ink);border-radius:5px;padding:2px 9px;white-space:nowrap}
+.chips span.c b{margin-right:5px}
+.memo{font-size:12.5px;color:var(--copper-ink);background:var(--copper-soft);border-radius:6px;padding:6px 10px;display:inline-block}
 
-/* charts */
-.chart{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:18px 18px 12px;display:grid;gap:12px}
-.chart h4{margin:0;font-size:15px}
-.chart .sub{font-size:12.5px;color:var(--ink-2);margin-top:-6px}
-.bars{display:grid;grid-template-columns:38% minmax(0,1fr);gap:0 12px;align-items:center;font-size:13px}
-@media (min-width:700px){.bars{grid-template-columns:230px minmax(0,1fr)}}
-.bars .lab{padding:7px 0;line-height:1.35;border-top:1px solid var(--line-2)}
-.bars .lab small{display:block;font-size:11px;color:var(--muted)}
-.bars .trk{position:relative;height:40px;border-top:1px solid var(--line-2)}
-.bars .lab.first,.bars .trk.first{border-top:0}
-.bars .bar{position:absolute;top:11px;height:18px;border-radius:0 4px 4px 0;outline:none}
-.bars .bar.neg{border-radius:4px 0 0 4px;background:var(--worse)}
-.bars .bar.pos{background:var(--improve)}
-.bars .bar.zero{background:var(--zero);width:2px!important;border-radius:1px}
-.bars .bar:hover,.bars .bar:focus-visible{filter:brightness(1.12);box-shadow:0 0 0 2px var(--paper),0 0 0 3.5px currentColor}
-.bars .val{position:absolute;top:10px;font-family:var(--f-mono);font-size:12.5px;white-space:nowrap;color:var(--ink);pointer-events:none}
-.bars .axis0{position:absolute;top:0;bottom:0;width:1px;background:var(--ink-2);opacity:.5}
-.bars .grid{position:absolute;top:0;bottom:0;width:1px;background:var(--line-2)}
-.bars .target{position:absolute;top:-2px;bottom:-2px;border-left:2px dashed var(--brand)}
-.axisrow{display:grid;grid-template-columns:38% minmax(0,1fr);gap:0 12px;font-size:11px;color:var(--muted);font-family:var(--f-mono);margin-top:-8px}
-@media (min-width:700px){.axisrow{grid-template-columns:230px minmax(0,1fr)}}
-.axisrow .ticks{position:relative;height:18px;border-top:1px solid var(--line)}
-.axisrow .ticks span{position:absolute;top:2px;transform:translateX(-50%);white-space:nowrap}
-.chart-legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--ink-2)}
-.chart-legend span{display:inline-flex;align-items:center;gap:6px}
-.chart details{font-size:13px}
-.chart summary{cursor:pointer;color:var(--ink-2)}
-.tip{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:var(--paper);font-size:12.5px;line-height:1.6;padding:8px 11px;border-radius:7px;max-width:280px;box-shadow:0 6px 18px rgba(0,0,0,.2);opacity:0;transition:opacity .12s}
-.tip.show{opacity:1}
-.tip b{font-family:var(--f-display)}
+/* p5 */
+.abc{display:grid;gap:14px;grid-template-columns:1fr}
+@media (min-width:760px){.abc{grid-template-columns:repeat(3,1fr)}}
+.abc .h{display:grid;gap:0;margin-bottom:6px}
+.abc .h span{font-size:12.5px;color:var(--ink-2)}
+.abc .h b{font-family:var(--f-display);font-size:18px}
+.abc .h b.bad{color:var(--worse)} .abc .h b.good{color:var(--improve)}
+.abc .shot{max-height:150px}
+.why{display:grid;gap:22px;grid-template-columns:1fr}
+@media (min-width:900px){.why{grid-template-columns:.82fr 1fr;align-items:start}}
+.big{font-family:var(--f-display);font-size:17px;font-weight:700;line-height:1.5}
+.big em{font-style:normal;color:var(--worse)}
+.meter{display:grid;gap:9px;margin-top:4px}
+.meter .row{display:grid;grid-template-columns:118px 1fr;gap:10px;align-items:center;font-size:12.5px}
+.meter .trk{height:20px;background:var(--paper-2);border-radius:4px;position:relative}
+.meter .bar{position:absolute;left:0;top:0;bottom:0;border-radius:0 4px 4px 0}
+.meter .bar.need{background:var(--brand);width:100%;border-radius:4px}
+.meter .bar.max{background:var(--improve);width:5.86%}
+.meter .v{position:absolute;top:50%;transform:translateY(-50%);font-family:var(--f-mono);font-size:12.5px;white-space:nowrap}
+.meter .need-v{right:8px;color:var(--paper)}
+.meter .max-v{left:calc(5.86% + 8px);color:var(--ink)}
+.kpi83{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;border-top:1px solid var(--line);padding-top:12px;margin-top:4px}
+.kpi83 b{font-family:var(--f-mono);font-weight:500;font-size:34px;color:var(--copper);line-height:1}
+.kpi83 span{font-size:13.5px}
+.note-s{font-size:11.5px;color:var(--muted)}
 
-/* formula */
-.formula{font-family:var(--f-mono);font-size:12.5px;line-height:1.9;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:16px 18px;overflow-x:auto;white-space:pre;color:var(--ink)}
-.formula .cm{color:var(--muted)}
-
-.check{list-style:none;margin:0;padding:0;display:grid;gap:8px;max-width:50em}
-.check li{display:grid;grid-template-columns:22px 1fr;gap:8px}
-.check li::before{content:"";width:14px;height:14px;border:1.5px solid var(--ink-2);border-radius:3px;margin-top:5px}
-.stages{display:grid;gap:12px;grid-template-columns:1fr}
-@media (min-width:860px){.stages{grid-template-columns:repeat(3,1fr)}}
-.stage{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;gap:8px;align-content:start;font-size:13.5px}
-.stage .chap{font-size:11.5px}
-.stage h4{margin:0}
-dl.gloss{display:grid;grid-template-columns:1fr;gap:0;margin:0;border:1px solid var(--line);border-radius:10px;background:var(--paper);overflow:hidden}
-dl.gloss div{display:grid;grid-template-columns:1fr;gap:2px 18px;padding:11px 16px;border-top:1px solid var(--line-2)}
-dl.gloss div:first-child{border-top:0}
-@media (min-width:700px){dl.gloss div{grid-template-columns:10em 1fr}}
-dl.gloss dt{font-weight:700}
-dl.gloss dd{margin:0;font-size:14px;color:var(--ink-2)}
-footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted);display:grid;gap:4px}
+/* p6 */
+.p6{display:grid;gap:24px;grid-template-columns:1fr}
+@media (min-width:900px){.p6{grid-template-columns:1.9fr 1fr;align-items:start}}
+.tabs{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:640px){.tabs{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.tabs figure{margin:0;display:grid;gap:5px;align-content:start}
+.tabs figcaption{font-size:12.5px;line-height:1.45}
+.tabs figcaption b{display:block;font-size:13px}
+.tabs .open{background:var(--brand-soft);border-radius:6px;padding:10px;display:grid;gap:6px;align-content:center}
+.next{list-style:none;margin:0;padding:0;display:grid;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.next li{display:grid;gap:2px;padding:10px 14px;border-top:1px solid var(--line);background:var(--paper)}
+.next li:first-child{border-top:0}
+.next .q{font-weight:700;font-size:14.5px}
+.next .a{font-size:13px;color:var(--ink-2)}
+.next .a::before{content:"→ ";color:var(--copper);font-weight:700}
+.warnbox{margin-top:14px;font-size:12.5px;line-height:1.6;background:var(--copper-soft);border-left:3px solid var(--copper);padding:9px 12px;border-radius:0 6px 6px 0}
 
 /* lightbox */
-.lb{position:fixed;inset:0;z-index:100;background:rgba(10,16,13,.86);display:grid;grid-template-rows:auto 1fr;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
-.lb-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;color:#e8efe9;font-size:13px}
-.lb-bar button{font:inherit;background:#e8efe9;color:#1c2b25;border:0;border-radius:6px;padding:6px 14px;cursor:pointer}
+.lb{position:fixed;inset:0;z-index:100;background:rgba(10,16,13,.88);display:grid;grid-template-rows:auto 1fr;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+.lb-bar{display:flex;justify-content:flex-end;padding:10px 16px}
+.lb-bar button{font:inherit;font-size:13px;background:#e8efe9;color:#1c2b25;border:0;border-radius:6px;padding:6px 14px;cursor:pointer}
 .lb-body{overflow:auto;padding:0 16px 24px;display:grid;justify-items:center;align-items:start}
-.lb-body img{width:auto;max-width:min(100%,1600px);height:auto;border-radius:6px;background:#e3eadb}
+.lb-body img{max-width:min(100%,1600px);height:auto;border-radius:6px;background:#e3eadb}
+
+@media print{
+  @page{size:A4 landscape;margin:0}
+  body{background:#fff;padding:0}
+  .deck{padding:0;gap:0;max-width:none}
+  .pg{width:297mm;height:210mm;aspect-ratio:auto;border:0;border-radius:0;box-shadow:none;break-after:page;overflow:hidden}
+}
 </style>
 
-<div class="page">
-<nav class="toc" aria-label="目次">
-  <b>CONTENTS</b>
-  <ol id="tocList">
-    <li><a href="#sum">要点</a></li>
-    <li><a href="#s1">1　途中経過</a></li>
-    <li class="sub"><a href="#s1-1">1.1 目的と到達点</a></li>
-    <li class="sub"><a href="#s1-2">1.2 データと確かさ</a></li>
-    <li class="sub"><a href="#s1-3">1.3 観測カレンダー</a></li>
-    <li><a href="#s2">2　画面の全体像と起動</a></li>
-    <li><a href="#s3">3　内部3Dの操作</a></li>
-    <li class="sub"><a href="#s3-1">3.1 画面構成</a></li>
-    <li class="sub"><a href="#s3-2">3.2 実測再生</a></li>
-    <li class="sub"><a href="#s3-3">3.3 改善案</a></li>
-    <li><a href="#s4">4　分析一覧（2D）の操作</a></li>
-    <li class="sub"><a href="#s4-6">4.6 保存・読込</a></li>
-    <li class="sub"><a href="#s4-7">4.7 仮設備を編集</a></li>
-    <li><a href="#s5">5　何が把握できるか</a></li>
-    <li class="sub"><a href="#s5-2">5.2 初期条件での結果</a></li>
-    <li class="sub"><a href="#s5-3">5.3 仮定への依存</a></li>
-    <li class="sub"><a href="#s5-4">5.4 計算ロジック</a></li>
-    <li><a href="#s6">6　検討の進め方</a></li>
-    <li><a href="#s7">7　まだ分からないこと</a></li>
-    <li><a href="#s8">8　v7への引継ぎ</a></li>
-    <li><a href="#s9">付録　用語</a></li>
-  </ol>
-</nav>
+<div class="deck">
 
-<main>
-<header class="masthead">
-  <div class="eyebrow">FLOW LAB 6.0 ／ 工場動線プロトタイプ</div>
-  <h1>途中経過・操作マニュアル<span>何ができて、どう操作し、何が読み取れるか</span></h1>
-  <p class="lead" style="max-width:44em">ワニス・調色工程を第二工場へ移す案が、人の移動負荷と生産性にどう影響するかを検討するためのプロトタイプ（v6）について、現在の到達点・操作方法・画面から読み取れること／まだ読み取れないことを1冊にまとめました。スクリーンショットはすべて実際のHTMLを起動して取得したものです。</p>
-  <dl class="titleblock">
-    <div><dt>文書</dt><dd>途中経過・操作マニュアル（引継ぎMDの図解版）</dd></div>
-    <div><dt>対象ファイル</dt><dd class="mono" style="font-size:12.5px">FLOW_LAB_Factory_v6_Internal_Simulation.html</dd></div>
-    <div><dt>版</dt><dd>内部3D 6.0 ／ 分析一覧 5.0</dd></div>
-    <div><dt>更新日</dt><dd class="mono">2026-09-23</dd></div>
-    <div><dt>元データ</dt><dd>位置ログ <span class="mono">803,503</span>件・<span class="mono">2026-07-24〜08-31</span></dd></div>
-    <div><dt>画面キャプチャ</dt><dd>Chromiumで起動・<span class="mono">1600×900</span>表示</dd></div>
-  </dl>
-  <div class="toc-m"><details><summary>目次</summary><ol>
-    <li><a href="#s1">途中経過</a></li><li><a href="#s2">画面の全体像と起動</a></li><li><a href="#s3">内部3Dの操作</a></li><li><a href="#s4">分析一覧（2D）の操作</a></li><li><a href="#s5">何が把握できるか</a></li><li><a href="#s6">検討の進め方</a></li><li><a href="#s7">まだ分からないこと</a></li><li><a href="#s8">v7への引継ぎ</a></li><li><a href="#s9">用語</a></li></ol></details></div>
-</header>
-
-<section id="sum" class="sec" style="padding-top:32px;margin-top:0;border-top:0">
-  <div class="keypoints">
-    <h2>要点 <span class="legend-tags" aria-label="根拠の区分">
-      <span class="item"><span class="tag m">実測</span></span><span class="item"><span class="tag d">申告</span></span><span class="item"><span class="tag a">仮定</span></span><span class="item"><span class="tag c">計算</span></span><span class="item"><span class="tag n">未取得</span></span></span></h2>
-    <ul>
-      <li><div class="kp-fig">v6<small>到達点</small></div><div><b>位置ログの実測再生と、移動時間の条件付き推計まで完成。</b>工程の作業時間・生産量・ロットなどはまだ入っておらず、生産性や必要人員は判定できません。<span class="tag n">未取得</span></div></li>
-      <li><div class="kp-fig bad">+276<small>分/日の増加</small></div><div><b>初期条件（ワニス・調色を第二工場へ）では、移動時間は減らずに増える。</b>現状1,494分 → 移設後1,770分。増加分の約9割は<b>調色 ⇄ 研究棟の往来</b>（観測246回）が遠くなることによります。<span class="tag c">計算</span></div></li>
-      <li><div class="kp-fig">83%<small>損益分岐</small></div><div><b>調色 ⇄ 研究棟の往来を約83%以上減らせないと、移設で移動時間は増える。</b>往来を100%減らせると仮定しても短縮は約56分/日。2名削減に相当する960分/日の約6%です。<span class="tag c">計算</span> <span class="tag a">仮定</span></div></li>
-      <li><div class="kp-fig">2 ID<small>各工程の観測</small></div><div><b>工程ごとの観測は2人・2〜4日。</b>結果は2人の平均を申告人数（例：充填10名）へ外挿したモデル値です。研究棟との往来の目的確認と、生産量・作業時間の取得が次の判断材料になります。<span class="tag m">実測</span> <span class="tag d">申告</span></div></li>
-    </ul>
-    <p class="small">タグは数値・項目の根拠を示します：<b>実測</b>＝位置ログから集計／<b>申告</b>＝提供された文章・資料の値／<b>仮定</b>＝検討のために置いた条件／<b>計算</b>＝それらを組み合わせたモデル値／<b>未取得</b>＝データがなく判定できない。</p>
-  </div>
-</section>
-
-<!-- ============ 1 ============ -->
-<section id="s1" class="sec">
-  <div class="sec-head"><span class="chap">CHAPTER 1</span><h2>途中経過</h2></div>
-
-  <h3 id="s1-1"><span class="no">1.1</span>目的と到達点</h3>
-  <div class="prose">
-    <p>目的は、工場内の人の動線を可視化し、ワニス工程と調色工程を第二工場へ移す案などが<b>移動負荷と生産性</b>にどう影響するかを検討することです。最終的には「何を変えると、移動時間・工程負荷・必要人員・生産量がどう変わるか」を、<b>データと仮定の区別が分かる3D画面</b>で推計することを目指しています。</p>
-  </div>
-  <ul class="status" style="margin-top:18px">
-    <li><span class="st ok">完了</span><span class="what">位置ログの取込と品質確認</span><span class="det">803,503行・22暦日・45 ID日。無効位置・座標飛び・通信断を処理済み</span></li>
-    <li><span class="st ok">完了</span><span class="what">1F／2Fゾーンの概略配置</span><span class="det">図面画像を読み取った矩形で3D化。測量済みCAD図面ではない</span></li>
-    <li><span class="st ok">完了</span><span class="what">日付別の実測再生（内部3D）</span><span class="det">圧縮済み146,227区間のトラックを時刻指定・倍速で再生</span></li>
-    <li><span class="st ok">完了</span><span class="what">工程間移動の集計と移動時間の推計</span><span class="det">移設・往来削減・移動頻度・歩行条件を変えて変更前後を比較</span></li>
-    <li><span class="st ok">完了</span><span class="what">2D分析一覧・条件の保存・比較CSV</span><span class="det">5タブ構成。保存は内部3Dと分析一覧で別々（4.6）</span></li>
-    <li><span class="st part">一部</span><span class="what">人員計画・工数の入力</span><span class="det">計画人員と直接作業工数の「仮入力欄」のみ。2名をどの工程から減らすかは未確定</span></li>
-    <li><span class="st todo">未着手</span><span class="what">生産量・ロット・作業時間の取込</span><span class="det">データ未提供</span></li>
-    <li><span class="st todo">未着手</span><span class="what">実通路による経路距離</span><span class="det">現状は代表点間の直線距離 × 迂回係数</span></li>
-    <li><span class="st todo">未着手</span><span class="what">生産性・必要人員の推計</span><span class="det">v7の目標（8章）</span></li>
-  </ul>
-  <div class="note warn" style="margin-top:16px"><b class="h">読み違えやすい点</b>右パネルの「人数換算」は<b>移動時間 ÷ 8時間</b>の理論値です。削減できる人員や、生産量が増えることを実証した値ではありません。</div>
-
-  <h3 id="s1-2"><span class="no">1.2</span>使っているデータと確かさ</h3>
-  <div class="tbl"><table class="minw">
-    <thead><tr><th>種類</th><th>内容</th><th>根拠</th><th>この版での扱い</th></tr></thead>
-    <tbody>
-      <tr><td class="lab">位置の実測</td><td><span class="mono" style="font-size:12.5px">ワールド化成①〜④.xlsx</span><br>時刻・匿名ID・所属工程・座標・階・エリアなど</td><td><span class="tag m">実測</span></td><td>日時指定の位置、滞在、安定したエリア間遷移を集計・再生</td></tr>
-      <tr><td class="lab">図面資料</td><td><span class="mono" style="font-size:12.5px">トラッキングNavi レイアウト 1f 2f.xlsx</span></td><td><span class="tag d">申告</span></td><td>1F／2Fのゾーン配置を画像から読み取り、概略矩形として3Dに配置</td></tr>
-      <tr><td class="lab">人員・構想</td><td>ワニス2・仕込み3・調合3・充填10・2B 3・調色3（計24名）。ワニスと調色を第二工場へ移し、生産人員2名減を計画</td><td><span class="tag d">申告</span></td><td>現状24名・目標22名の入力値。どの工程から2名減らすかは未確定</td></tr>
-      <tr><td class="lab">フォークリフト</td><td>専任2名。生産人員が必要時に運転する場合あり</td><td><span class="tag d">申告</span></td><td>別情報として記録。車両稼働・荷量は位置ログから確定できないため、24名へ単純加算しない</td></tr>
-      <tr><td class="lab">操業実績</td><td>生産量・品種・ロット・作業時間・稼働率・品質実績</td><td><span class="tag n">未取得</span></td><td>未提供。生産性や必要人員の成立判定には使えない</td></tr>
-    </tbody></table></div>
-
-  <h4>前処理とデータ品質 <span class="tag m">実測</span></h4>
-  <div class="facts">
-    <div><b>803,503</b><span>取込行数。②と④は先頭行もデータとして取込</span></div>
-    <div><b>215</b><span>無効な位置（座標0,0・階やエリア欠損など）を除外</span></div>
-    <div><b>6,221</b><span>見かけ速度3m/秒超の座標飛び区間を距離計算から除外</span></div>
-    <div><b>3区間 / 442秒</b><span>30秒超の欠測。再生では移動としてつながない</span></div>
-    <div><b>1,049</b><span>階の切替を検知した区間。階段の利用回数とは別物</span></div>
-    <div><b>36 ID日</b><span>生産6工程の計算に使う、4時間以上観測されたID日</span></div>
-  </div>
-
-  <h3 id="s1-3"><span class="no">1.3</span>観測カレンダー — どの日に、どの工程を測ったか</h3>
-  <div class="prose"><p>工程ごとに<b>2 ID を2〜4日ずつ、別々の日に</b>観測しています。全工程がそろった日はありません。そのため内部3Dの実測再生では、<b>見たい工程が観測された日</b>を選ぶ必要があります（例：調色なら 8/3〜8/5）。</p></div>
-  <div class="cal-wrap" style="margin-top:14px"><div class="cal" id="cal" role="table" aria-label="工程別・日別の観測ID数"></div>
-    <div class="cal-legend"><span><i class="sw" style="background:var(--brand)"></i>2 ID観測</span><span><i class="sw" style="border:2px solid var(--brand)"></i>1 ID観測</span><span><i class="sw" style="border:2px dashed var(--muted)"></i>4時間未満（集計対象外）</span><span>セルにカーソルを合わせると観測時間を表示</span></div>
-  </div>
-  <p class="small" style="margin-top:10px;max-width:52em">観測時間は1 IDあたり1日5.3〜16.1時間で、勤務8時間より長い日もあります。モデルは「計測日平均」を使い、8時間換算はしていません。物流・生産管理・管理は生産6工程の人員計算の対象外です。</p>
-</section>
-
-<!-- ============ 2 ============ -->
-<section id="s2" class="sec">
-  <div class="sec-head"><span class="chap">CHAPTER 2</span><h2>画面の全体像と起動</h2></div>
-  <div class="prose"><p>1つのHTMLファイルの中に、役割の違う3つの画面があります。主に使うのは<b>内部3D</b>と<b>分析一覧</b>で、旧3Dは概念的な設備レイアウト用の別モデルです。</p></div>
-  <div class="map" style="margin-top:18px">
-    <div class="scr"><h4>内部3D</h4><span class="sub">工場内部 · 実測再生と改善シミュレーション（起動直後）</span>
-      <div class="chips"><span>実測再生</span><span>改善案</span></div>
-      <span class="small">位置ログの再生と、移設案の移動時間の比較を3Dで行う。3章</span></div>
-    <div class="links">
-      <div><span class="arr">→</span><span class="btnname">分析一覧</span></div>
-      <div><span class="arr">←</span><span class="btnname">内部3D・稼働シミュレーション</span></div>
-    </div>
-    <div class="scr"><h4>分析一覧（2D）</h4><span class="sub">加須工場 生産性・動線検討</span>
-      <div class="chips"><span>全体像</span><span>実測動線</span><span>移設比較</span><span>人員計画</span><span>元資料・集計方法</span></div>
-      <span class="small">集計表・平面図・工程別の比較を読む。4章</span></div>
-  </div>
-  <div class="map" style="margin-top:14px">
-    <div class="scr legacy"><h4>旧3D（仮設備の編集）</h4><span class="sub">外観精緻化モデル v4.1 · 概念モデル</span>
-      <span class="small">設備の位置・形状は従来の仮配置。位置ログの座標とは別モデル。4.7</span></div>
-    <div class="links">
-      <div><span class="arr">←</span><span class="btnname">仮設備を編集</span>（内部3Dから）</div>
-      <div><span class="arr">←</span><span class="btnname">従来3Dを開く</span>（分析一覧から）</div>
-      <div><span class="arr">→</span><span class="btnname">生産性・動線検討</span>（分析一覧へ）</div>
-    </div>
-    <div></div>
-  </div>
-
-  <h4 style="margin-top:28px">起動手順</h4>
-  <ol class="steps">
-    <li><div><span class="mono" style="font-size:13px">FLOW_LAB_Factory_v6_Internal_Simulation.html</span>（約12.5MB）をブラウザーで開く。集計・再生データはファイルに内蔵されています。</div></li>
-    <li><div>3D描画用のThree.jsを <span class="mono" style="font-size:13px">cdn.jsdelivr.net</span> から読み込むため、表示にはこの取得ができるネットワーク環境が必要です。20秒以内に読み込めないと「3D表示の読み込みを完了できませんでした」と表示されます。</div></li>
-    <li><div>起動すると<b>内部3D・実測再生</b>が開きます（初期表示：2026-07-30／第一ペイント／1F／9:00）。</div></li>
-  </ol>
-</section>
-
-<!-- ============ 3 ============ -->
-<section id="s3" class="sec">
-  <div class="sec-head"><span class="chap">CHAPTER 3</span><h2>内部3Dの操作</h2></div>
-
-  <h3 id="s3-1"><span class="no">3.1</span>画面構成</h3>
-  <figure class="wide">
-    <div class="shot" data-callouts="s01"><img src="{{IMG:s01_replay_start}}" {{WH:s01_replay_start}} alt="内部3Dの起動直後の画面。左に表示・再生と何を変えるか、中央に3D、右に何が変わるか、下にタイムライン" data-zoom></div>
-    <figcaption><b>起動直後の内部3D（実測再生）。</b>左＝表示条件と改善条件、中央＝3D、右＝計算結果、下＝時刻。画像はクリックで拡大できます。</figcaption>
-  </figure>
-  <ol class="co-list" id="coList" style="margin-top:14px">
-    <li><span class="b">1</span><span><b>モード切替</b> <em>実測再生／改善案</em></span></li>
-    <li><span class="b">2</span><span><b>建屋・階</b> <em>表示範囲。階は1F+2F／1F／2F</em></span></li>
-    <li><span class="b">3</span><span><b>工程フィルター</b> <em>表示する工程。右の全体合計の母集団は変わらない</em></span></li>
-    <li><span class="b">4</span><span><b>実測日・視点を合わせる</b> <em>再生する日付と、カメラの合わせ直し</em></span></li>
-    <li><span class="b">5</span><span><b>何を変えるか</b> <em>移設・配置点・往来削減率・工程条件・換算の仮定</em></span></li>
-    <li><span class="b">6</span><span><b>何が変わるか</b> <em>移動時間・距離・人員・工数・工程別・根拠の移動</em></span></li>
-    <li><span class="b">7</span><span><b>再生・倍速</b> <em>1／10／30／60／120／300倍速</em></span></li>
-    <li><span class="b">8</span><span><b>タイムライン</b> <em>ドラッグで時刻を指定（実測再生のみ）</em></span></li>
-    <li><span class="b">9</span><span><b>条件を保存・読込</b> <em>JSONの書き出しと読み込み（4.6）</em></span></li>
-    <li><span class="b">10</span><span><b>分析一覧</b> <em>2Dの集計画面へ移動（4章）</em></span></li>
-    <li><span class="b">11</span><span><b>仮設備を編集</b> <em>旧3Dへ移動。概念モデル（4.7）</em></span></li>
-  </ol>
-
-  <h3 id="s3-2"><span class="no">3.2</span>実測再生 — 観測された人の位置を時刻で追う</h3>
-  <ol class="steps">
-    <li><div>①で<b>「実測再生」</b>を選ぶ（起動直後はこの状態）。</div></li>
-    <li><div>④で<b>実測日</b>を選ぶ。日ごとに観測された工程が違うため、見たい工程の日を<a href="#s1-3">観測カレンダー</a>で確認します。</div></li>
-    <li><div>②で<b>建屋</b>（工場内部 全体／第一ペイント／第二ペイント／ワニス工場／調色工場／研究棟／一般倉庫）と<b>階</b>を選び、<b>「視点を合わせる」</b>を押す。</div></li>
-    <li><div>⑦の<b>「再生」</b>と倍速、または⑧の<b>タイムライン</b>で時刻を動かす。3D上はドラッグで回転、ホイールで拡大縮小。</div></li>
-    <li><div>時計の横の<b>「この表示 ○ ID・位置有効 ○ ID」</b>で、画面に出ている人数とその時刻に位置が取れている人数を確認する。</div></li>
-  </ol>
-  <div class="fig-grid two" style="margin-top:22px">
-    <figure>
-      <div class="shot"><img src="{{IMG:z1_replay_zoom}}" {{WH:z1_replay_zoom}} alt="研究棟にいる調色のIDと、調色工場にいる調色のIDを拡大表示" data-zoom></div>
-      <figcaption><b>2026-08-04 10:30（1F・拡大）。</b>左の研究棟に調色の「ID 12」、右の調色工場に「ID 11」と工程札「調色 3名」。調色と研究棟の往来はこの2人の観測から数えています。</figcaption>
-    </figure>
-    <figure>
-      <div class="shot"><img src="{{IMG:s02_replay_all_0804}}" {{WH:s02_replay_all_0804}} alt="建屋を工場内部全体、階を1F+2Fにした実測再生画面" data-zoom></div>
-      <figcaption><b>建屋「工場内部 全体」・階「1F + 2F」。</b>床の濃淡は選択日の観測滞在時間。2Fは見やすさのため10m持ち上げて表示しています。</figcaption>
-    </figure>
-  </div>
-  <figure style="margin-top:18px">
-    <div class="shot" style="max-width:920px"><img src="{{IMG:s04_bottom}}" {{WH:s04_bottom}} alt="再生バー。時計、表示ID数、再生ボタン、倍速、タイムライン" data-zoom></div>
-    <figcaption><b>再生バー。</b>時計・表示中のID数・再生／停止・倍速・タイムライン。下段は選択日のデータ範囲（この例は2026-07-29の00:00:00〜18:40:54 JST）。</figcaption>
-  </figure>
-  <div class="fig-grid two" style="margin-top:18px;align-items:start">
-    <figure>
-      <div class="shot"><img src="{{IMG:z2_replay_2f}}" {{WH:z2_replay_2f}} alt="第一ペイントの1Fと、持ち上げて表示した2F" data-zoom></div>
-      <figcaption><b>第一ペイント・1F + 2F（2026-07-29）。</b>上の板が2F。10mの間隔は表示上のもので実際の階高ではありません。</figcaption>
-    </figure>
-    <div class="note" style="align-self:start"><b class="h">画面の読み方</b>
-      <ul class="bul" style="margin-top:6px">
-        <li>人形は、その日時に位置が観測されたIDだけ。全24人を配置した稼働アニメーションではありません。</li>
-        <li>工程札の人数は申告・計画の人員で、その時刻の在室人数ではありません。</li>
-        <li>通信断の間は非表示。欠測を移動としてつなぎません。</li>
-        <li>建屋・階・日付は<b>表示条件</b>です。右パネルの比較計算（全適格ID日）は変わりません。</li>
+<!-- ========== 1 ========== -->
+<section class="pg" id="p1" aria-label="1ページ目">
+  <div class="pg-top"><span>FLOW LAB 6.0 ｜ 途中経過レポート</span><span class="no">01 / 06</span></div>
+  <h2>工場の「人の動き」を見える化して、<br>移設案を比べるツール<small>ワニス・調色を第二工場へ移したら、歩く時間はどう変わる？ を確かめるためのものです。</small></h2>
+  <div class="pg-body">
+  <div class="p1">
+    <div class="shot"><img src="{{IMG:p_s01}}" {{WH:p_s01}} alt="ツールの画面。左に操作パネル、中央に工場の3D、右に結果" data-zoom></div>
+    <div class="can">
+      <h3>いまできること</h3>
+      <ul>
+        <li class="y"><div><b>実際の動きを再生する</b><span>計測した人の位置を、日付・時刻ごとに3Dで表示</span></div></li>
+        <li class="y"><div><b>移設したときの歩く時間を比べる</b><span>移設先や条件を変えて、移設前と比べる</span></div></li>
       </ul>
+      <h3 style="margin-top:8px">まだできないこと</h3>
+      <ul>
+        <li class="n"><div><b>生産量・必要な人数の判定</b><span>作業時間・生産量のデータがまだないため</span></div></li>
+      </ul>
+      <div class="stats">
+        <div><b class="num">80<small>万件</small></b><span>位置の記録</span></div>
+        <div><b class="num">22<small>日</small></b><span>計測期間 7/24〜8/31</span></div>
+        <div><b class="num">2<small>人</small></b><span>各工程で計測した人数</span></div>
+      </div>
     </div>
   </div>
-
-  <h3 id="s3-3"><span class="no">3.3</span>改善案 — 条件を変えて移動時間を比べる</h3>
-  <ol class="steps">
-    <li><div>①で<b>「改善案」</b>に切り替える。建屋は「工場内部 全体」、階は「1F」に自動で切り替わります。</div></li>
-    <li><div>「何を変えるか」で<b>ワニス／調色の移設</b>のオン・オフを切り替える。<b>初期値は両方オン</b>です。まず両方オフにして差が0になることを確かめてからオンにすると、比較の基準を取り違えません。</div></li>
-    <li><div>移設先の代表点を<b>x／y（m）</b>で入力するか、3D上の丸い工程札をドラッグする。第二工場の範囲（x 169.3〜214.5、y 11.6〜75.4）に制限されます。</div></li>
-    <li><div><b>「調色 ↔ 研究棟の往来削減率（仮説）」</b>を0〜100%（5%刻み）で動かす。調色 ⇄ 研究棟の移動回数だけに効きます。</div></li>
-    <li><div>工程別の条件（<b>移動頻度・計画人員・直接作業など移動以外の工数</b>）は、先に工程フィルターで工程を選んでから入力する。</div></li>
-    <li><div><b>「換算の仮定」</b>を開くと、歩行速度・迂回係数・階移動時間・1日の時間・目標人員を変えられます。「条件を初期値に戻す」もここにあります。</div></li>
-    <li><div>右の<b>「何が変わるか」</b>で結果を読み、「根拠となる移動と変更」の<b>「3Dで強調」</b>で、その移動を3D上で強調表示する。</div></li>
-  </ol>
-  <div class="note warn" style="margin-top:16px"><b class="h">入力時の注意</b>工程フィルターが「すべて」のまま工程条件を入力すると、<b>調色工程</b>が編集対象になります。直接作業工数は<b>空欄＝不明</b>、<b>0＝ゼロと仮定</b>で意味が違います。計画人員を減らすだけでは必要な作業量は減りません。</div>
-
-  <figure class="wide" style="margin-top:22px">
-    <div class="shot" data-callouts="s05"><img src="{{IMG:s05_plan_default}}" {{WH:s05_plan_default}} alt="改善案モードの画面。3D上に工程間のフロー線と移設先の工程札" data-zoom></div>
-    <figcaption><b>改善案モード（初期条件）。</b>①条件 ②結果 ③工程別の変化。3D上の動く点・線は変更後の流れを説明する表示で、便数や同時稼働人数の再現ではありません。</figcaption>
-  </figure>
-
-  <div class="panel-pair" style="margin-top:22px">
-    <figure>
-      <div class="shot"><img src="{{IMG:c02b_left_change}}" {{WH:c02b_left_change}} alt="左パネル：何を変えるか、工程条件、換算の仮定" data-zoom></div>
-      <figcaption><b>左パネル「何を変えるか」</b>（換算の仮定を開いた状態）。初期値：60m/分・迂回係数1.35・階移動1分・8時間/人日・目標22名。</figcaption>
-    </figure>
-    <figure>
-      <div class="shot"><img src="{{IMG:c03a_right_result}}" {{WH:c03a_right_result}} alt="右パネル：何が変わるか" data-zoom></div>
-      <figcaption><b>右パネル「何が変わるか」。</b>移動時間の短縮（負値＝増加）、水平直線距離、計画人員と目標、工数、工程別の変化。</figcaption>
-    </figure>
+  <nav class="route" aria-label="この資料の流れ"><span class="t">この資料の流れ</span>
+    <a href="#p2"><i>2</i>画面の見方</a><span class="ar">›</span><a href="#p3"><i>3</i>実際の動きを見る</a><span class="ar">›</span><a href="#p4"><i>4</i>移設したら？を試す</a><span class="ar">›</span><a href="#p5"><i>5</i>分かったこと</a><span class="ar">›</span><a href="#p6"><i>6</i>これから</a></nav>
   </div>
-
-  <h4 style="margin-top:28px">同じ画面で条件だけを変えた例</h4>
-  <div class="fig-grid three">
-    <figure><div class="shot"><img src="{{IMG:r_plan_moveoff}}" {{WH:r_plan_moveoff}} alt="移設オフの結果：短縮0分" data-zoom></div><figcaption><b>A 移設を両方オフ</b> → 0.0分。比較の基準が現状と一致することの確認。</figcaption></figure>
-    <figure><div class="shot"><img src="{{IMG:r_plan_default}}" {{WH:r_plan_default}} alt="初期条件の結果：マイナス276分" data-zoom></div><figcaption><b>B 初期条件（両方移設・往来削減0%）</b> → −276.0分（移動時間が増える）。</figcaption></figure>
-    <figure><div class="shot"><img src="{{IMG:r_plan_research100}}" {{WH:r_plan_research100}} alt="往来100%削減の結果：プラス56.3分" data-zoom></div><figcaption><b>C Bに往来100%削減を仮定</b> → +56.3分。100%は上限の仮定で、実現可能とは確認されていません。</figcaption></figure>
-  </div>
-
-  <div class="fig-grid two" style="margin-top:22px">
-    <figure>
-      <div class="shot"><img src="{{IMG:z4_plan_second}}" {{WH:z4_plan_second}} alt="第二ペイント付近に置かれたワニスと調色の移設先の工程札とフロー線" data-zoom></div>
-      <figcaption><b>第二工場付近の拡大。</b>手前の丸い工程札（調色・ワニス）が移設先の代表点で、ドラッグで動かせます。細い線と点は工程間の移動フロー。</figcaption>
-    </figure>
-    <figure>
-      <div class="shot"><img src="{{IMG:c03b_right_edges}}" {{WH:c03b_right_edges}} alt="根拠となる移動と変更の一覧" data-zoom style="max-height:520px;object-fit:cover;object-position:top"></div>
-      <figcaption><b>「根拠となる移動と変更」。</b>工程・出発→到着ごとに観測回数、ID日数、1日あたり回数、短縮分。「3Dで強調」で3D上に表示します。</figcaption>
-    </figure>
-  </div>
+  <div class="pg-foot"><span>FLOW LAB 6.0 途中経過ガイド ｜ 2026-09-23</span><span>画像はクリックで拡大</span></div>
 </section>
 
-<!-- ============ 4 ============ -->
-<section id="s4" class="sec">
-  <div class="sec-head"><span class="chap">CHAPTER 4</span><h2>分析一覧（2D）の操作</h2></div>
-  <div class="prose"><p>内部3Dの<span class="btnname">分析一覧</span>から開く2Dの集計画面です。上部に<span class="btnname">検討設定を保存</span><span class="btnname">設定を読込</span><span class="btnname">内部3D・稼働シミュレーション</span>（3Dへ戻る）<span class="btnname">従来3Dを開く</span>、右に<span class="btnname">比較CSV</span><span class="btnname">仮定を初期値へ</span>があります。タブで5つの画面を切り替えます。</p></div>
-
-  <h3 id="s4-1"><span class="no">4.1</span>全体像</h3>
-  <figure>
-      <div class="shot clip"><img src="{{IMG:d01_dash}}" {{WH:d01_dash}} alt="分析一覧 全体像タブ" data-zoom><button class="zoom-hint" type="button" data-open>全体を表示</button></div>
-      <figcaption><b>全体像タブ。</b>人員（現状24名・目標22名）、位置ログ件数、同じ生産量に必要な1人あたりの向上（9.1%）、資料配置図の上に滞在の濃淡と上位12のエリア間移動、比較テーマ、実測から見えた確認点（調色 ⇄ 研究棟 246回）、工程別の観測対象の対応表。</figcaption>
-    </figure>
-
-  <h3 id="s4-2"><span class="no">4.2</span>実測動線</h3>
-  <figure>
-    <div class="shot clip"><img src="{{IMG:d02_dash}}" {{WH:d02_dash}} alt="分析一覧 実測動線タブ。工程を調色にして位置軌跡を重ねた状態" data-zoom><button class="zoom-hint" type="button" data-open>全体を表示</button></div>
-    <figcaption><b>実測動線タブ（工程＝調色、「位置軌跡を重ねる」オン）。</b>対象日・工程・階で絞り込み、ログ件数・観測時間・安定滞在の移動回数・階切替を表示。滞在エリア表では調色の滞在が<b>調色工場 24.7人時・研究棟 24.4人時</b>とほぼ同じで、研究棟が第二の作業場になっていることが読み取れます。下部に出発→到着ごとの観測回数と代表点間の直線距離。</figcaption>
-  </figure>
-
-  <h3 id="s4-3"><span class="no">4.3</span>移設比較</h3>
-  <figure>
-    <div class="shot clip"><img src="{{IMG:d03_dash}}" {{WH:d03_dash}} alt="分析一覧 移設比較タブ" data-zoom><button class="zoom-hint" type="button" data-open>全体を表示</button></div>
-    <figcaption><b>移設比較タブ。</b>距離指標（49.42 → 61.69 km/日）、短縮時間の試算（−276.0分/日）、2名削減に相当する時間（960分/日）。平面図上の移設先の点、座標・迂回係数・速度・実現率・時間の入力、工程別の変化（m/日）、変化の大きい移動の一覧。</figcaption>
-  </figure>
-  <div class="note" style="margin-top:12px"><b class="h">内部3Dとの関係</b>分析一覧の移設条件は内部3Dの条件とは別に保持されます。初期値は同じで結果も一致しますが、片方で変えた条件はもう片方に自動では反映されません。</div>
-
-  <h3 id="s4-4"><span class="no">4.4</span>人員計画</h3>
-  <figure>
-    <div class="shot"><img src="{{IMG:d04_dash}}" {{WH:d04_dash}} alt="分析一覧 人員計画タブ" data-zoom></div>
-    <figcaption><b>人員計画タブ。</b>工程ごとの現状・計画人数を入力し、合計と目標22名の差を表示。工場全体の条件（目標生産人員・フォーク担当・1名の時間）と、まだ計算できない項目（生産量/人時、kg/バッチ、工程別稼働率など）。初期状態は削減配分が未指定のため計画24名のままです。</figcaption>
-  </figure>
-
-  <h3 id="s4-5"><span class="no">4.5</span>元資料・集計方法</h3>
-  <figure>
-    <div class="shot clip"><img src="{{IMG:d05_dash}}" {{WH:d05_dash}} alt="分析一覧 元資料・集計方法タブ" data-zoom><button class="zoom-hint" type="button" data-open>全体を表示</button></div>
-    <figcaption><b>元資料・集計方法タブ。</b>取り込んだ資料と行数、1F（26エリア・60ビーコン）／2F（11エリア・12ビーコン）の元資料画像、集計方法とデータ確認結果。レイアウト表示日は2026/07/30で、7/24〜29のログに同じ配置を適用できるかは未確認と明記されています。</figcaption>
-  </figure>
-
-  <h3 id="s4-6"><span class="no">4.6</span>保存・読込 — 画面ごとに別々</h3>
-  <div class="tbl"><table class="minw">
-    <thead><tr><th>ボタン</th><th>場所</th><th>保存・読込されるもの</th><th>注意</th></tr></thead>
-    <tbody>
-      <tr><td class="lab"><span class="btnname">条件を保存</span></td><td>内部3D 上部</td><td>内部3Dの条件＋分析一覧の条件を含むJSON<br><span class="mono small">factory-internal-simulation.json</span></td><td>—</td></tr>
-      <tr><td class="lab"><span class="btnname">読込</span></td><td>内部3D 上部</td><td>JSONのうち<b>内部3D用の条件だけ</b>を適用</td><td>分析一覧側の条件は反映されない</td></tr>
-      <tr><td class="lab"><span class="btnname">検討設定を保存</span> <span class="btnname">設定を読込</span></td><td>分析一覧 上部</td><td>分析一覧の設定<br><span class="mono small">factory-productivity-plan.json</span></td><td>内部3Dとは自動同期しない</td></tr>
-      <tr><td class="lab"><span class="btnname">比較CSV</span></td><td>分析一覧 右上</td><td>工程別の現状／移設の距離指標と短縮（m/日）</td><td>物の搬送便数ではない</td></tr>
-      <tr><td class="lab"><span class="btnname">配置を書出</span> <span class="btnname">読込</span></td><td>旧3D 右下</td><td>設備などの配置を含むJSON（別用途）</td><td>位置ログのモデルとは別</td></tr>
-    </tbody></table></div>
-  <p class="small" style="margin-top:10px;max-width:52em">ファイル名だけで両画面に同じ設定が入ったと判断せず、読み込んだ後に画面の条件を確認してください。</p>
-
-  <h3 id="s4-7"><span class="no">4.7</span>仮設備を編集（旧3D）</h3>
-  <figure>
-    <div class="shot"><img src="{{IMG:l01_legacy}}" {{WH:l01_legacy}} alt="旧3D画面。第一ペイント工場内の設備の概念配置" data-zoom></div>
-    <figcaption><b>旧3D（外観精緻化モデル v4.1）で第一ペイント工場を開いた状態。</b>設備ワークスペース・BIM表示・図面モード・稼働再生などがある、以前からの概念的な設備レイアウト画面です。右上の<span class="btnname">生産性・動線検討</span>で分析一覧へ戻れます。</figcaption>
-  </figure>
-  <div class="note warn" style="margin-top:12px"><b class="h">位置ログとは別モデル</b>設備の位置・形状は従来の仮配置で、位置ログから設備の実稼働を復元したものではありません。「評価指標（SLP）」や「全体移動工数」、フォークリフトのアニメーションも仮定値による試算で、内部3Dの結果とは比較できません。</div>
-</section>
-
-<!-- ============ 5 ============ -->
-<section id="s5" class="sec">
-  <div class="sec-head"><span class="chap">CHAPTER 5</span><h2>何が把握できるか</h2></div>
-
-  <h3 id="s5-1"><span class="no">5.1</span>表示と指標の読み方</h3>
-  <div class="tbl"><table class="minw">
-    <thead><tr><th>表示・指標</th><th>根拠</th><th>分かること</th><th>解釈上の注意</th></tr></thead>
-    <tbody>
-      <tr><td class="lab">日時別の作業者位置</td><td><span class="tag m">実測</span></td><td>観測IDがその時刻にいた場所、欠測</td><td>観測対象外の従業員は現れない。作業の開始・完了は示さない</td></tr>
-      <tr><td class="lab">エリア別滞在と工程間の往来</td><td><span class="tag m">実測</span></td><td>どこに滞在・往来が集中するか、往来回数</td><td>人の移動であり、材料の搬送回数やフォークリフト走行ではない</td></tr>
-      <tr><td class="lab">変更前／後の移動距離・移動分</td><td><span class="tag c">計算</span></td><td>配置・頻度・歩行条件を置いたときの相対差</td><td>エリア中心間の直線 × 迂回係数のモデル値。実通路の距離・実歩行時間ではない</td></tr>
-      <tr><td class="lab">工程別の移動負荷</td><td><span class="tag c">計算</span></td><td>どの工程・どの移動（出発→到着）が変化を支配するか</td><td>2人の観測から申告人数へ外挿している</td></tr>
-      <tr><td class="lab">理論的な人数換算</td><td><span class="tag c">計算</span></td><td>節約した移動分 ÷ 1日の勤務分</td><td>工程間で空き時間を融通できる・労務を削減できるという証拠ではない</td></tr>
-      <tr><td class="lab">計画人数と目標</td><td><span class="tag d">申告</span></td><td>入力した計画人数の合計と目標22名の差</td><td>人数を減らすだけでは工程処理能力や生産達成は証明できない</td></tr>
-      <tr><td class="lab">工程別の工数超過</td><td><span class="tag a">仮定</span> <span class="tag n">未取得</span></td><td><b>全6工程</b>に直接作業などの仮工数を入れた場合の負荷と容量の差</td><td>未入力なら「不明」。入力値も実測されるまでは仮定</td></tr>
-    </tbody></table></div>
-
-  <h3 id="s5-2"><span class="no">5.2</span>初期条件での結果 <span class="tag c" style="margin-left:4px">計算</span></h3>
-  <p class="small" style="max-width:52em">初期条件：現状・計画24名、目標22名、8時間/日、60m/分、迂回係数1.35、階移動1分、ワニス・調色の移設<b>オン</b>、調色 ⇄ 研究棟の往来削減<b>0%</b>、工程別の移動頻度1倍。</p>
-  <div class="kpis" style="margin-top:12px">
-    <div><span class="k">移動時間（6工程合計）</span><span class="v bad">276<small> 分/計測日 増加</small></span><span class="s">現状 1,494分 → 移設後 1,770分。アプリ上の表示は「短縮 −276.0分」</span></div>
-    <div><span class="k">水平直線距離</span><span class="v">49.4 → 61.7<small> km</small></span><span class="s">計測日あたり。特定の日に実際に歩いた距離ではない</span></div>
-    <div><span class="k">人数換算</span><span class="v bad">−0.575<small> 人日</small></span><span class="s">移動時間の変化 ÷ 480分</span></div>
-    <div><span class="k">2名削減に必要な工数</span><span class="v">960<small> 分/日</small></span><span class="s">2名 × 8時間 × 60分。1人あたり生産性 +9.1%</span></div>
+<!-- ========== 2 ========== -->
+<section class="pg" id="p2" aria-label="2ページ目">
+  <div class="pg-top"><span>画面の見方</span><span class="no">02 / 06</span></div>
+  <h2>画面は「左で変える → 右で結果」<small>HTMLファイルをブラウザーで開くと、この画面が出ます（インターネット接続が必要）。</small></h2>
+  <div class="pg-body p2g">
+    <div class="shot" data-callouts="p2"><img src="{{IMG:p_s01}}" {{WH:p_s01}} alt="番号付きで説明した画面" data-zoom></div>
+    <ol class="legend6">
+      <li><span class="b">1</span><span><b>見方を切り替え</b><em>実測再生／改善案</em></span></li>
+      <li><span class="b">2</span><span><b>場所と日付を選ぶ</b><em>建屋・階・工程・日付</em></span></li>
+      <li><span class="b">3</span><span><b>条件を変える</b><em>移設する／しない など</em></span></li>
+      <li><span class="b">4</span><span><b>結果を見る</b><em>歩く時間・距離・人数</em></span></li>
+      <li><span class="b">5</span><span><b>時間を動かす</b><em>再生・早送り</em></span></li>
+      <li><span class="b">6</span><span><b>集計表を見る</b><em>分析一覧（6ページ）</em></span></li>
+    </ol>
   </div>
+  <div class="pg-foot"><span>FLOW LAB 6.0 途中経過ガイド</span><span>3Dはドラッグで回転、ホイールで拡大</span></div>
+</section>
 
-  <div class="chart" style="margin-top:18px" id="chartGroups">
-    <h4>工程別：移設による移動時間の変化</h4>
-    <p class="sub">分/計測日。右（青）＝短縮、左（橙）＝増加。初期条件。</p>
-    <div class="bars" data-chart="groups"></div>
-    <div class="chart-legend"><span><i class="sw" style="background:var(--improve)"></i>短縮（改善）</span><span><i class="sw" style="background:var(--worse)"></i>増加（悪化）</span></div>
+<!-- ========== 3 ========== -->
+<section class="pg" id="p3" aria-label="3ページ目">
+  <div class="pg-top"><span>使い方 ①　実測再生</span><span class="no">03 / 06</span></div>
+  <h2>実際の動きを見る<small>計測した日の、人の位置を時刻どおりに再生します。</small></h2>
+  <div class="pg-body">
+    <div class="two">
+      <div class="step">
+        <div class="step-h"><i>1</i>日付と場所を選ぶ</div>
+        <div class="shot"><img src="{{IMG:u_left_replay}}" {{WH:u_left_replay}} alt="左パネル。実測再生、建屋、階、工程、実測日" data-zoom></div>
+        <p class="cap">「実測再生」を選び、<b>実測日</b>と<b>建屋・階</b>を選んで「視点を合わせる」。</p>
+      </div>
+      <div class="stack">
+        <div class="step">
+          <div class="step-h"><i>2</i>再生する</div>
+          <div class="shot"><img src="{{IMG:u_bottom}}" {{WH:u_bottom}} alt="再生バー" data-zoom></div>
+          <p class="cap"><b>再生</b>を押すか、バーをドラッグ。速さは1〜300倍。</p>
+        </div>
+        <div class="step">
+          <div class="step-h"><i>3</i>人の動きを見る</div>
+          <div class="shot"><img src="{{IMG:p_z1}}" {{WH:p_z1}} alt="研究棟と調色工場にいる調色担当の2人" data-zoom>
+            <span class="place" style="left:26%;top:44%">研究棟</span><span class="place" style="left:77%;top:70%">調色工場</span>
+            <span class="pin" style="left:46.3%;top:33%">計測した人</span><span class="pin" style="left:74%;top:38%">計測した人</span></div>
+          <p class="cap">例：8/4 10:30。調色担当の2人が<b>研究棟</b>と<b>調色工場</b>にいる。</p>
+        </div>
+      </div>
+    </div>
+    <div class="chips"><span class="t">測った日</span>
+      <span class="c"><b>ワニス</b>7/24〜29</span><span class="c"><b>仕込み</b>7/29〜30</span><span class="c"><b>調合</b>7/31・8/18〜20</span><span class="c"><b>調色</b>8/3〜5</span><span class="c"><b>2B</b>8/24〜26</span><span class="c"><b>充填</b>8/27〜31</span></div>
+    <div><span class="memo">工程ごとに測った日が違います。映るのは計測した人だけ（全24人ではありません）。</span></div>
   </div>
+  <div class="pg-foot"><span>FLOW LAB 6.0 途中経過ガイド</span><span>計測は各工程2人 × 2〜4日</span></div>
+</section>
 
-  <h4 style="margin-top:26px">変化の大きい移動（初期条件）</h4>
-  <div class="tbl"><table class="minw">
-    <thead><tr><th>工程</th><th>出発 → 到着</th><th class="n">観測回数</th><th class="n">代表点間の直線距離</th><th class="n">短縮（分/計測日）</th></tr></thead>
-    <tbody>
-      <tr><td>調色</td><td>研究棟 → 調色工場</td><td class="n">128</td><td class="n">32.2 → 120.1 m</td><td class="n">−126.6</td></tr>
-      <tr><td>調色</td><td>調色工場 → 研究棟</td><td class="n">118</td><td class="n">32.2 → 120.1 m</td><td class="n">−116.7</td></tr>
-      <tr><td>ワニス</td><td>駐車場 → ワニス工場</td><td class="n">25</td><td class="n">34.4 → 110.5 m</td><td class="n">−12.2</td></tr>
-      <tr><td>ワニス</td><td>ワニス工場 → 駐車場</td><td class="n">19</td><td class="n">34.4 → 110.5 m</td><td class="n">−9.3</td></tr>
-      <tr><td>ワニス</td><td>事務所 → ワニス工場</td><td class="n">17</td><td class="n">25.3 → 80.1 m</td><td class="n">−6.0</td></tr>
-      <tr><td>ワニス</td><td>ワニス工場 → 事務所</td><td class="n">17</td><td class="n">25.3 → 80.1 m</td><td class="n">−6.0</td></tr>
-      <tr><td>調色</td><td>調色工場 → 一般倉庫</td><td class="n">5</td><td class="n">153.4 → 56.0 m</td><td class="n">+5.5</td></tr>
-    </tbody></table></div>
-  <p class="small" style="margin-top:10px;max-width:52em">観測回数は観測期間の合計（調色は6 ID日）。短縮は申告人数へ換算した計測日あたりの値で、アプリの表示と同じく<b>負の値＝移動時間が増える</b>ことを示します。調色 ⇄ 研究棟の2行だけで −243分と、全体 −276分の約88%を占めます。</p>
-
-  <h3 id="s5-3"><span class="no">5.3</span>結論はどの仮定に依存するか</h3>
-  <div class="prose"><p>同じ計算モデルで条件を1つずつ変えた試算です。<b>どの条件なら結論が変わるか</b>を見ると、何を現場で確かめるべきかが分かります。</p></div>
-  <div class="chart" style="margin-top:16px" id="chartScen">
-    <h4>シナリオ別：移動時間の短縮と、2名削減に必要な960分</h4>
-    <p class="sub">分/計測日。右（青）＝短縮、左（橙）＝増加。破線＝2名削減に相当する960分/日。</p>
-    <div class="bars" data-chart="scen"></div>
-    <div class="axisrow"><span></span><div class="ticks" data-ticks="scen"></div></div>
-    <div class="chart-legend"><span><i class="sw" style="background:var(--improve)"></i>短縮</span><span><i class="sw" style="background:var(--worse)"></i>増加</span><span><i class="sw" style="border-left:2px dashed var(--brand);border-radius:0;width:10px"></i>960分/日（2名 × 8時間）</span></div>
-    <details><summary>表で見る</summary><div class="tbl" style="margin-top:8px"><table><thead><tr><th>シナリオ</th><th class="n">移設後の移動時間</th><th class="n">短縮</th><th class="n">人数換算</th></tr></thead><tbody id="scenTable"></tbody></table></div></details>
+<!-- ========== 4 ========== -->
+<section class="pg" id="p4" aria-label="4ページ目">
+  <div class="pg-top"><span>使い方 ②　改善案</span><span class="no">04 / 06</span></div>
+  <h2>「移設したら？」を試す<small>条件を変えると、右の結果がすぐ変わります。</small></h2>
+  <div class="pg-body two p4g">
+    <div class="stack">
+      <div class="step">
+        <div class="step-h"><i>1</i>「改善案」を押す</div>
+        <div class="shot" style="max-width:190px"><img src="{{IMG:u_mode_plan}}" {{WH:u_mode_plan}} alt="改善案ボタン" data-zoom></div>
+      </div>
+      <div class="step">
+        <div class="step-h"><i>2</i>条件を変える</div>
+        <div class="shot"><img src="{{IMG:u_change}}" {{WH:u_change}} alt="移設のチェック、移設先の座標、研究棟との往来の削減率" data-zoom></div>
+        <p class="cap"><b>移設する／しない</b>、移設先の位置、<b>研究棟との往来を何%減らすか</b>。</p>
+      </div>
+    </div>
+    <div class="stack">
+      <div class="step">
+        <div class="step-h"><i>3</i>結果を見る</div>
+        <div class="res">
+          <div class="shot"><img src="{{IMG:u_result_short}}" {{WH:u_result_short}} alt="結果パネル。移動時間の短縮マイナス276分" data-zoom></div>
+          <p class="say">「短縮」が<em>マイナス</em>なら、<br>歩く時間が<em>増える</em>という意味です。</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-h"><i>+</i>3Dで移設先を動かす</div>
+        <div class="shot"><img src="{{IMG:p_z4b}}" {{WH:p_z4b}} alt="第二工場付近の3D。移設先の丸い札と移動の線" data-zoom>
+          <span class="pin" style="left:32.4%;top:77%">調色の移設先</span><span class="pin" style="left:58.8%;top:63%">ワニスの移設先</span></div>
+        <p class="cap">丸い札をドラッグすると移設先が変わります。線は工程間の行き来。</p>
+      </div>
+    </div>
   </div>
-  <ul class="bul" style="margin-top:16px">
-    <li><b>悪化の大半は調色の移設。</b>ワニスだけの移設では38分増、調色だけでは243分増。</li>
-    <li><b>配置点を動かしても悪化は残る。</b>第二工場内で最も有利な位置（西端・研究棟寄り）に置いても141分増。</li>
-    <li><b>損益分岐は往来削減 約83%。</b>50%削減でも110分増。研究棟との往来を<b>何のために、どこまで減らせるか</b>が結論を左右します。</li>
-    <li><b>上限の仮定でも960分には届かない。</b>往来100%削減＋最適配置で短縮69分（960分の約7%）。移動の短縮だけで2名削減は説明できません。</li>
-    <li><b>歩行条件には左右されない。</b>迂回係数1.2〜1.5、歩行速度50〜70m/分の範囲では237〜331分の増加で、向きは変わりません。</li>
-  </ul>
-  <p class="small" style="margin-top:12px;max-width:52em">本節の数値は、本資料の作成時にツール内の計算関数を使い、初期条件から該当項目だけを変えて算出した参考試算です <span class="tag c">計算</span>。「最も有利な位置」は第二工場の範囲を格子状に探索した結果で、必要面積・設備干渉・安全上の制約は考慮していません <span class="tag a">仮定</span>。</p>
-
-  <h3 id="s5-4"><span class="no">5.4</span>計算ロジック</h3>
-  <div class="prose"><p>集計単位は、工程ごとの<b>4時間以上観測されたID日</b>。連続した有効位置では直前のエリアに滞在秒数を割り当て、30秒以上の安定滞在から次の安定エリアへ120秒以内に移った場合を<b>エリア間移動（出発→到着）</b>として数えます。</p></div>
-  <pre class="formula" style="margin-top:14px"><span class="cm">// 工程 g、エリア間移動 e について</span>
-現状の推計移動回数/計測日 = 観測回数 ÷ その工程の適格ID日数 × その工程の現状人数
-配置案の推計移動回数     = 現状の推計回数 × 工程別移動頻度倍率
-                          × [調色⇄研究棟なら (1 − 往来削減率)、その他は 1]
-1回の推計移動分          = エリア中心間の平面直線距離 × 迂回係数 ÷ 歩行速度
-                          + 異なる階なら階移動の加算分
-変更前／後の移動分        = Σ 推計移動回数 × それぞれの配置での1回の推計移動分
-移動分の改善量           = 変更前 − 変更後            <span class="cm">// 負なら悪化</span>
-理論的な人数換算          = 移動分の改善量 ÷ (1日の時間 × 60)
-
-工程別の計画負荷          = 現状1名あたりの移動以外の作業分 × 現状人数 + 変更後の推計移動分
-工程別の計画容量          = 計画人数 × 1日の時間 × 60
-工程別の不足分            = max(0, 計画負荷 − 計画容量)
-全体の不足分              = Σ 工程別の不足分          <span class="cm">// 他工程の余剰で相殺しない</span></pre>
-  <div class="note warn" style="margin-top:14px"><b class="h">まだ計算に入っていないこと</b>移設しても移動回数そのものは自動では変わりません（変わるのは距離。回数を変えるのは移動頻度と往来削減率だけ）。人員を変えても実測人数を学び直しません。壁・扉・階段の経路探索をしていないため、配置替えで生じる新しい中継動線・作業方式・工程間の干渉は計算外です。</div>
+  <div class="pg-foot"><span>FLOW LAB 6.0 途中経過ガイド</span><span>工程別の条件は、先に工程を選んでから入力</span></div>
 </section>
 
-<!-- ============ 6 ============ -->
-<section id="s6" class="sec">
-  <div class="sec-head"><span class="chap">CHAPTER 6</span><h2>検討の進め方</h2></div>
-  <ol class="steps">
-    <li><div><b>実測を見る。</b>実測再生と分析一覧で日付・工程を絞り、ワニス・調色・第二工場・研究棟の往来先と滞在を確認する。観測が各工程2人という標本の限界も同時に確認する。</div></li>
-    <li><div><b>移設だけを比べる。</b>改善案で移設をオフ／オンだけ切り替え、移動分の差と悪化する移動を比べる。初期値は移設オンなので注意。</div></li>
-    <li><div><b>仮説の幅を見る。</b>調色 ⇄ 研究棟の往来削減率を0%・中間・100%に動かし、結論がどの仮説に依存するかを見る。100%は上限の仮定で、現場で承認された案ではない。</div></li>
-    <li><div><b>感度を見る。</b>工程別頻度と移設位置を動かす。別工程の省力化を、自動的に調色やワニスの余力へ振り替えない。</div></li>
-    <li><div><b>人員の内訳を明示する。</b>計画人員を各工程へ割り当て、24 → 22名の内訳を示す。直接作業などの工数に根拠がない間は、不足分は「未判定」として扱う。</div></li>
-    <li><div><b>記録する。</b>シナリオごとに仮定・観測期間・比較結果・現場での確認事項を記録する。改善分が大きくなる設定だけを採用しない。</div></li>
-  </ol>
-</section>
-
-<!-- ============ 7 ============ -->
-<section id="s7" class="sec">
-  <div class="sec-head"><span class="chap">CHAPTER 7</span><h2>まだ分からないこと・次に集めるデータ</h2></div>
-  <div class="tbl"><table class="minw">
-    <thead><tr><th>判断したいこと</th><th>現状の不足</th><th>次に集めるもの</th></tr></thead>
-    <tbody>
-      <tr><td class="lab">生産量・生産性がどう変わるか</td><td>位置だけでは完成品数量も良品率も分からない</td><td>日付・シフト・製品・ロット別の投入量、完成量、良品量、稼働時間</td></tr>
-      <tr><td class="lab">22名でも製造計画を満たせるか</td><td>直接作業・段取り・洗浄・待機などの工数と工程能力が未取得</td><td>工程別の作業内訳、開始・終了時刻、標準時間・実績時間、技能の兼務、応援のルール</td></tr>
-      <tr><td class="lab">搬送・フォークリフトの改善</td><td>人の移動は荷物の移動ではない</td><td>入出庫・払出・運搬指示、品目・重量、台車・フォークの走行／待機・積み降ろし、専任／兼務の勤務実績</td></tr>
-      <tr><td class="lab">移設後の実移動距離</td><td>代表点の直線距離で概算している</td><td>最新CAD図、通行可否、扉・階段・エレベーター、動線幅、危険物・安全上の制約</td></tr>
-      <tr><td class="lab">研究棟への往来を減らせるか</td><td>往来の理由・検査工程との依存関係が未確認</td><td>サンプリング、調色判定、品質検査、承認、再調整の実務フローと所要時間</td></tr>
-      <tr><td class="lab">推計の信頼幅</td><td>各工程2人の観測で全員を代表する保証がない</td><td>別日・別シフト・繁忙／閑散・品種別の追加観測と現場照合</td></tr>
-    </tbody></table></div>
-  <div class="note" style="margin-top:16px"><b class="h">根拠の表示ルール（今後の版でも維持）</b>「実測」「申告」「仮定」「計算結果」「未取得」を画面上でも分ける。未知の直接作業をゼロ扱いしない。移設案で生産量が何％増えるかを、現段階で作り込んだ数字として表示しない。</div>
-</section>
-
-<!-- ============ 8 ============ -->
-<section id="s8" class="sec">
-  <div class="sec-head"><span class="chap">CHAPTER 8</span><h2>次の開発（v7）への引継ぎ</h2></div>
-  <div class="prose"><p>v7の目的は、動線変更から<b>生産性と必要人員を根拠データ付きで推計</b>することです。現行の実測再生・3D画面・分析画面・外観・保存機能を維持し、モデルの入出力を一貫させます。着手前に、添付HTML・Excel・引継ぎMDから実測値・申告値・仮定値・未取得値を棚卸しします。</p></div>
-  <div class="stages" style="margin-top:16px">
-    <div class="stage"><span class="chap">STAGE 1</span><h4>データの受け皿</h4><p>工程・日・シフト・ロット・品目単位で生産量・良品量・直接作業・段取り・洗浄・待機・搬送を入力／CSV取込するスキーマを定義。未入力は unknown として保持し、架空値で埋めない。2画面のシナリオ設定を同一スキーマに統合し、保存・読込で再現する。</p></div>
-    <div class="stage"><span class="chap">STAGE 2</span><h4>能力と人員の計算</h4><p>移動時間の推計に工程工数・設備能力・勤務制約を加え、品目別の計画生産量・律速工程・計画人数の不足時間を計算。削減は「どの工程から何人か」を明示し、工程間の余剰を無条件に相殺しない。搬送量・車両稼働を人の位置ログから自動生成しない。</p></div>
-    <div class="stage"><span class="chap">STAGE 3</span><h4>実通路と照合</h4><p>通路のノード・通行制約による経路距離へ更新し、移設位置・扉・階段・運搬方法の影響を評価。ロット実績がそろうまで生産量予測は「判定不可」とし、そろったら過去日で照合して誤差と不確かさを示す。</p></div>
+<!-- ========== 5 ========== -->
+<section class="pg" id="p5" aria-label="5ページ目">
+  <div class="pg-top"><span>分かったこと</span><span class="no">05 / 06</span></div>
+  <h2>今の移設案では、歩く時間はむしろ増える<small>6工程・1日あたりの合計。計測データを元にした試算です。</small></h2>
+  <div class="pg-body">
+    <div class="abc">
+      <div><div class="h"><span>A　移設しない</span><b>± 0 分</b></div><div class="shot"><img src="{{IMG:u_moveoff}}" {{WH:u_moveoff}} alt="移設しない場合の結果 0分" data-zoom></div></div>
+      <div><div class="h"><span>B　移設する（今の案）</span><b class="bad">276 分 増える</b></div><div class="shot"><img src="{{IMG:u_result_short}}" {{WH:u_result_short}} alt="今の案の結果 マイナス276分" data-zoom></div></div>
+      <div><div class="h"><span>C　Bで研究棟との往来をゼロにできたら</span><b class="good">56 分 減る</b></div><div class="shot"><img src="{{IMG:u_research100}}" {{WH:u_research100}} alt="往来ゼロの場合の結果 プラス56分" data-zoom></div></div>
+    </div>
+    <div class="why">
+      <div class="step">
+        <div class="shot"><img src="{{IMG:u_map_move}}" {{WH:u_map_move}} alt="平面図。研究棟から第二工場の調色移設先まで長い線" data-zoom>
+          <span class="pin" style="left:42%;top:80%">研究棟</span><span class="pin" style="left:87%;top:49%">調色の移設先</span></div>
+        <p class="cap"><b>増える理由の約9割：</b>調色と研究棟の行き来（計測中246回）が <b class="num">32m → 120m</b> と遠くなるため。</p>
+      </div>
+      <div class="stack" style="gap:12px">
+        <p class="big">研究棟との行き来を<em>8割以上</em>減らせないと、移設で歩く時間は増えます。</p>
+        <div class="meter" role="img" aria-label="2名減に必要な960分に対し、往来ゼロでも56分">
+          <div class="row"><span>2名減らすのに必要</span><div class="trk"><span class="bar need"></span><span class="v need-v">960 分/日</span></div></div>
+          <div class="row"><span>往来ゼロでも</span><div class="trk"><span class="bar max"></span><span class="v max-v">56 分/日</span></div></div>
+        </div>
+        <p style="font-size:13.5px">歩く時間を減らすだけでは、2名減の根拠になりません。</p>
+        <p class="note-s">※ 往来ゼロは最大限うまくいった場合の仮定です。人数換算は「歩く時間 ÷ 8時間」の目安です。</p>
+      </div>
+    </div>
   </div>
-  <h4 style="margin-top:26px">受入確認</h4>
-  <ul class="check">
-    <li>条件が同じなら変更前後の差は0になる</li>
-    <li>直接作業工数の空欄と0が区別される</li>
-    <li>調色 ⇄ 研究棟の往来削減は該当する移動だけに作用する</li>
-    <li>計画人数だけを変えても必要工数は消えない</li>
-    <li>保存 → 読込で両画面の結果が一致する</li>
-    <li>日時の表示フィルターと全期間の推計母集団が混同されない</li>
-    <li>実際のブラウザー画面でUIと3D描画を確認する</li>
-  </ul>
-  <h4 style="margin-top:26px">作業用の構成</h4>
-  <div class="prose small"><p>完成品は単一HTML。作業環境では、モデル <span class="mono">work/sim/core.js</span>、内部3D <span class="mono">work/sim/view.js</span>、構築 <span class="mono">work/sim/build.py</span>、データ <span class="mono">work/data/analytics.json</span>・<span class="mono">replay.json</span> に分かれています。受け渡しでは<b>HTMLと元Excelを優先</b>し、必要なら開発ソースも渡します。<span class="mono">test_core.mjs</span>・<span class="mono">test_runtime.mjs</span> は計算・実行の確認用で、実機の稼働妥当性やブラウザーの目視確認までは保証しません。</p></div>
+  <div class="pg-foot"><span>FLOW LAB 6.0 途中経過ガイド</span><span>歩く距離は部屋の中心どうしの直線 × 1.35で計算</span></div>
 </section>
 
-<!-- ============ 9 ============ -->
-<section id="s9" class="sec">
-  <div class="sec-head"><span class="chap">APPENDIX</span><h2>用語</h2></div>
-  <dl class="gloss">
-    <div><dt>ID日</dt><dd>1つの匿名IDの1日分の観測。「2 ID × 3日」なら6 ID日。</dd></div>
-    <div><dt>適格ID日</dt><dd>4時間以上観測されたID日。生産6工程の計算に使うのは36 ID日。</dd></div>
-    <div><dt>エリア間移動（OD）</dt><dd>30秒以上の安定滞在から、次の安定エリアへ120秒以内に移った移動。出発（Origin）→到着（Destination）。</dd></div>
-    <div><dt>代表点</dt><dd>各エリアの中心点。移設先は第二工場内の指定座標。距離はこの点どうしの直線で測る。</dd></div>
-    <div><dt>迂回係数</dt><dd>直線距離を実際の歩行距離に近づけるための倍率（初期値1.35）。</dd></div>
-    <div><dt>計測日換算</dt><dd>観測したID日の平均を申告人数へ掛けた1日あたりの値。8時間勤務への換算はしていない。</dd></div>
-    <div><dt>人数換算（人日）</dt><dd>移動時間の差 ÷（1日の時間 × 60）。理論値で、削減可能人数ではない。</dd></div>
-    <div><dt>Tracking Navi 座標</dt><dd>元資料のレイアウトに合わせたメートル座標。第二工場の移設範囲は x 169.3〜214.5、y 11.6〜75.4。</dd></div>
-  </dl>
-  <footer class="end">
-    <span>出典：FLOW_LAB_Factory_v6_Manual_Claude_Handoff.md（2026-09-23）、FLOW_LAB_Factory_v6_Internal_Simulation.html。</span>
-    <span>画面キャプチャと5.3の試算は、同HTMLをChromiumで起動し、画面操作と内蔵の計算関数から取得しました。</span>
-  </footer>
+<!-- ========== 6 ========== -->
+<section class="pg" id="p6" aria-label="6ページ目">
+  <div class="pg-top"><span>集計画面とこれから</span><span class="no">06 / 06</span></div>
+  <h2>表で確かめる、次に集めるもの<small>「分析一覧」では、同じデータを表と平面図で見られます。</small></h2>
+  <div class="pg-body p6">
+    <div class="tabs">
+      <div class="open"><b style="font-size:13px">開き方</b><div class="shot"><img src="{{IMG:u_topbtn}}" {{WH:u_topbtn}} alt="右上のボタン。分析一覧" data-zoom></div><span style="font-size:12.5px">右上の［分析一覧］</span></div>
+      <figure><div class="shot"><img src="{{IMG:t_d01}}" {{WH:t_d01}} alt="全体像タブ" data-zoom></div><figcaption><b>全体像</b>人数・件数などの全体</figcaption></figure>
+      <figure><div class="shot"><img src="{{IMG:t_d02}}" {{WH:t_d02}} alt="実測動線タブ" data-zoom></div><figcaption><b>実測動線</b>どこにいて、どこへ動いたか</figcaption></figure>
+      <figure><div class="shot"><img src="{{IMG:t_d03}}" {{WH:t_d03}} alt="移設比較タブ" data-zoom></div><figcaption><b>移設比較</b>移設前後の距離と時間</figcaption></figure>
+      <figure><div class="shot"><img src="{{IMG:t_d04}}" {{WH:t_d04}} alt="人員計画タブ" data-zoom></div><figcaption><b>人員計画</b>工程ごとの人数の割り振り</figcaption></figure>
+      <figure><div class="shot"><img src="{{IMG:t_d05}}" {{WH:t_d05}} alt="元資料・集計方法タブ" data-zoom></div><figcaption><b>元資料・集計方法</b>データの出どころ</figcaption></figure>
+    </div>
+    <div>
+      <h3 style="font-size:16px;margin-bottom:10px">まだ分からないこと</h3>
+      <ol class="next">
+        <li><span class="q">生産量は増えるか</span><span class="a">ロットごとの生産量・作業時間</span></li>
+        <li><span class="q">22名で回せるか</span><span class="a">工程ごとの作業時間（段取り・洗浄・待ち）</span></li>
+        <li><span class="q">研究棟との行き来は減らせるか</span><span class="a">行き来の目的（検査・色の判定など）を現場で確認</span></li>
+      </ol>
+      <div class="warnbox">数字はすべて試算です。計測は各工程2人分で、全員の動きではありません。</div>
+    </div>
+  </div>
+  <div class="pg-foot"><span>FLOW LAB 6.0 途中経過ガイド ｜ 詳しい版：FLOW_LAB_v6_guide_detail.html</span><span>画像はクリックで拡大</span></div>
 </section>
-</main>
+
 </div>
-<div class="tip" id="tip" role="tooltip"></div>
 
 <script>
 (function(){
   var CALLOUTS = {{CALLOUTS}};
-  // --- callouts on screenshots
   document.querySelectorAll('[data-callouts]').forEach(function(box){
     (CALLOUTS[box.dataset.callouts]||[]).forEach(function(c){
-      if(c.missing) return;
-      var h = Math.min(c.h, 87.6 - c.y); if (h < 1) h = c.h;
-      var d = document.createElement('span'); d.className='co';
-      d.style.cssText='left:'+(c.x-0.4)+'%;top:'+(c.y-0.6)+'%;width:'+(c.w+0.8)+'%;height:'+(h+1.2)+'%';
-      d.innerHTML='<i>'+c.n+'</i>'; d.title=c.label; box.appendChild(d);
+      var d=document.createElement('span');d.className='co';
+      d.style.cssText='left:'+c.x+'%;top:'+c.y+'%;width:'+c.w+'%;height:'+c.h+'%';
+      d.innerHTML='<i>'+c.n+'</i>';box.appendChild(d);
     });
   });
-
-  // --- tooltip helper
-  var tip=document.getElementById('tip');
-  function showTip(e,html){tip.innerHTML=html;tip.classList.add('show');moveTip(e);}
-  function moveTip(e){var r=e.target.getBoundingClientRect?e.target.getBoundingClientRect():null;var x=(e.clientX!=null&&e.clientX)?e.clientX:(r?r.left+r.width/2:0);var y=(e.clientY!=null&&e.clientY)?e.clientY:(r?r.top:0);var w=tip.offsetWidth,h=tip.offsetHeight;var L=Math.min(Math.max(8,x+14),innerWidth-w-8);var T=y-h-12;if(T<8)T=y+18;tip.style.left=L+'px';tip.style.top=T+'px';}
-  function hideTip(){tip.classList.remove('show');}
-  function bindTip(el,html){el.addEventListener('mouseenter',function(e){showTip(e,html)});el.addEventListener('mousemove',moveTip);el.addEventListener('mouseleave',hideTip);el.addEventListener('focus',function(e){showTip(e,html)});el.addEventListener('blur',hideTip);}
-
-  // --- observation calendar
-  var days=['07-24','07-27','07-28','07-29','07-30','07-31','08-03','08-04','08-05','08-06','08-07','08-17','08-18','08-19','08-20','08-21','08-24','08-25','08-26','08-27','08-28','08-31'];
-  var rows=[
-    ['ワニス','2名',{'07-24':[10.0,10.1],'07-27':[11.0,10.9],'07-28':[9.7,16.1],'07-29':[7.9]}],
-    ['仕込み','3名',{'07-29':[10.8,10.8],'07-30':[8.9,10.5]}],
-    ['調合','3名',{'07-31':[9.1],'08-18':[5.9,5.3],'08-19':[9.8,9.8],'08-20':[9.7,9.8]}],
-    ['調色','3名',{'08-03':[9.3,9.3],'08-04':[10.6,10.6],'08-05':[10.2,10.2]}],
-    ['2B','3名',{'08-24':[11.0,11.0],'08-25':[11.1,11.1],'08-26':[11.8,11.8]}],
-    ['充填','10名',{'08-27':[11.2,11.2],'08-28':[11.8,11.8],'08-31':[9.9,9.9]}],
-    null,
-    ['物流','—',{'08-06':[9.7,9.7],'08-07':[9.7,9.7],'08-17':[8.7,8.7]}],
-    ['生産管理','—',{'08-21':[10.1,10.1]}],
-    ['管理','—',{'07-30':['s0.7']}]
-  ];
-  var cal=document.getElementById('cal');
-  if(cal){
-    var html='<div class="hd" role="columnheader"></div>';
-    days.forEach(function(d,i){var p=d.split('-');var showM=i===0||days[i-1].slice(0,2)!==p[0];html+='<div class="hd'+(showM?' mon':'')+'" role="columnheader">'+(showM?(+p[0])+'/':'')+'<br>'+(+p[1])+'</div>';});
-    rows.forEach(function(r){
-      if(!r){html+='<div class="sep" aria-hidden="true"></div>';return;}
-      html+='<div class="rl" role="rowheader">'+r[0]+' <small>'+r[1]+'</small></div>';
-      days.forEach(function(d){var v=r[2][d];
-        if(!v){html+='<div class="c" role="cell"></div>';return;}
-        if(typeof v[0]==='string'){html+='<div class="c on short" role="cell" tabindex="0" data-tip="<b>'+r[0]+' · 2026-'+d+'</b><br>1 ID · '+v[0].slice(1)+'時間<br>4時間未満のため集計対象外">1</div>';return;}
-        var cls=v.length===1?' one':'';html+='<div class="c on'+cls+'" role="cell" tabindex="0" data-tip="<b>'+r[0]+' · 2026-'+d+'</b><br>'+v.length+' ID · '+v.map(function(x){return x.toFixed(1)+'時間'}).join(' / ')+'">'+v.length+'</div>';});
-    });
-    cal.innerHTML=html;
-    cal.querySelectorAll('[data-tip]').forEach(function(c){bindTip(c,c.dataset.tip)});
-  }
-
-  // --- bar charts
-  var fmt=function(v){var s=Math.abs(v).toLocaleString('ja-JP',{maximumFractionDigits:1,minimumFractionDigits:1});return (v>0?'+':v<0?'−':'')+s;};
-  var DATA={
-    groups:{min:-260,max:40,rows:[
-      ['調色','3名 · 6 ID日',-241.8,'現状 163.0分 → 移設後 404.8分'],
-      ['ワニス','2名 · 7 ID日',-30.5,'現状 87.4分 → 移設後 117.9分'],
-      ['2B（第二・中ロット仕込み）','3名 · 6 ID日',-1.7,'現状 109.6分 → 移設後 111.3分'],
-      ['調合','3名 · 7 ID日',-1.1,'現状 247.3分 → 移設後 248.4分'],
-      ['充填','10名 · 6 ID日',-1.0,'現状 623.4分 → 移設後 624.4分'],
-      ['仕込み（ペイント仕込み）','3名 · 4 ID日',0.2,'現状 263.8分 → 移設後 263.6分']]},
-    scen:{min:-300,max:1000,target:960,ticks:[-300,0,300,600,960],rows:[
-      ['移設なし','基準の確認',0,1494.5,0],
-      ['ワニスだけ移設','初期配置',-38.3,1532.8,-0.080],
-      ['調色だけ移設','初期配置',-243.4,1737.9,-0.507],
-      ['両方移設（初期条件）','往来削減0%',-276.0,1770.4,-0.575],
-      ['両方移設・最も有利な配置','往来削減0%',-140.5,1635.0,-0.293],
-      ['両方移設・往来50%削減','初期配置',-109.8,1604.3,-0.229],
-      ['両方移設・往来100%削減','上限の仮定・初期配置',56.3,1438.1,0.117],
-      ['両方移設・往来100%削減','上限の仮定・最も有利な配置',68.9,1425.6,0.144]]}
-  };
-  function pct(v,s){return (v-s.min)/(s.max-s.min)*100;}
-  document.querySelectorAll('[data-chart]').forEach(function(el){
-    var key=el.dataset.chart,s=DATA[key],z=pct(0,s),out='';
-    s.rows.forEach(function(r,i){
-      var v=r[2],first=i===0?' first':'';
-      var a=pct(Math.min(v,0),s),b=pct(Math.max(v,0),s),w=Math.max(b-a,0);
-      var cls=v===0?'zero':v>0?'pos':'neg';
-      var lab=v>0?'<span class="val" style="left:calc('+b+'% + 6px)">'+fmt(v)+'</span>':v<0?(a<18?'<span class="val" style="left:calc('+b+'% + 6px)">'+fmt(v)+'</span>':'<span class="val" style="right:calc('+(100-a)+'% + 6px)">'+fmt(v)+'</span>'):'<span class="val" style="left:calc('+z+'% + 8px)">0.0</span>';
-      var grid=(s.ticks||[]).map(function(t){return t===0?'':'<span class="grid" style="left:'+pct(t,s)+'%"></span>'}).join('');
-      var tgt=s.target?'<span class="target" style="left:'+pct(s.target,s)+'%"></span>':'';
-      out+='<div class="lab'+first+'">'+r[0]+'<small>'+r[1]+'</small></div><div class="trk'+first+'">'+grid+tgt+'<span class="axis0" style="left:'+z+'%"></span><span class="bar '+cls+'" tabindex="0" role="img" aria-label="'+r[0]+' '+r[1]+' '+fmt(v)+'分" style="left:'+a+'%;width:'+w+'%" data-i="'+i+'"></span>'+lab+'</div>';
-    });
-    el.innerHTML=out;
-    el.querySelectorAll('.bar').forEach(function(b){var r=s.rows[+b.dataset.i];var v=r[2];var html=key==='groups'?('<b>'+r[0]+'</b><br>移動時間 '+(v<0?'+':'−')+Math.abs(v).toFixed(1)+'分/計測日（'+(v<0?'増加':'短縮')+'）<br>'+r[3]):('<b>'+r[0]+'</b>（'+r[1]+'）<br>短縮 '+fmt(v)+'分/計測日<br>移設後 '+r[3].toLocaleString('ja-JP',{minimumFractionDigits:1,maximumFractionDigits:1})+'分（現状 1,494.5分）<br>人数換算 '+fmt(r[4])+'人日'+(v>0?'<br>960分の '+(v/960*100).toFixed(1)+'%':''));bindTip(b,html);});
-  });
-  document.querySelectorAll('[data-ticks]').forEach(function(el){var s=DATA[el.dataset.ticks];el.innerHTML=s.ticks.map(function(t){return '<span style="left:'+pct(t,s)+'%">'+(t>0?'+':t<0?'−':'')+Math.abs(t)+'</span>'}).join('');});
-  var st=document.getElementById('scenTable');
-  if(st) st.innerHTML=DATA.scen.rows.map(function(r){return '<tr><td>'+r[0]+'<br><span class="small">'+r[1]+'</span></td><td class="n">'+r[3].toLocaleString('ja-JP',{minimumFractionDigits:1,maximumFractionDigits:1})+' 分</td><td class="n">'+fmt(r[2])+' 分</td><td class="n">'+fmt(r[4])+' 人日</td></tr>'}).join('');
-
-  // --- lightbox
   var lb=null;
   function openLb(img){
     closeLb();
     lb=document.createElement('div');lb.className='lb';lb.setAttribute('role','dialog');lb.setAttribute('aria-modal','true');lb.setAttribute('aria-label','画像の拡大表示');
-    lb.innerHTML='<div class="lb-bar"><span></span><button type="button">閉じる（Esc）</button></div><div class="lb-body"><img alt=""></div>';
-    lb.querySelector('span').textContent=img.alt||'';
+    lb.innerHTML='<div class="lb-bar"><button type="button">閉じる（Esc）</button></div><div class="lb-body"><img alt=""></div>';
     var big=lb.querySelector('img');big.src=img.src;big.alt=img.alt;
-    var nat=img.naturalWidth||1600;big.style.width=Math.min(nat>=1800?nat/1.25:nat,1600)+'px';
-    lb.addEventListener('click',function(e){if(e.target===lb||e.target.classList.contains('lb-body')||e.target.tagName==='BUTTON')closeLb();});
+    var nat=img.naturalWidth||1200;big.style.width=Math.min(nat>=1400?nat/1.3:nat*1.2,1600)+'px';
+    lb.addEventListener('click',function(e){if(e.target!==big)closeLb();});
     document.body.appendChild(lb);document.body.style.overflow='hidden';lb.querySelector('button').focus();
   }
   function closeLb(){if(lb){lb.remove();lb=null;document.body.style.overflow='';}}
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closeLb();});
   document.querySelectorAll('img[data-zoom]').forEach(function(img){img.addEventListener('click',function(){openLb(img)});});
-  document.querySelectorAll('[data-open]').forEach(function(b){b.addEventListener('click',function(){openLb(b.parentNode.querySelector('img'))});});
-
-  // --- TOC highlight
-  var links=[].slice.call(document.querySelectorAll('#tocList a'));
-  var targets=links.map(function(a){return document.querySelector(a.getAttribute('href'))}).filter(Boolean);
-  function onScroll(){var y=scrollY+120,cur=null;targets.forEach(function(t){if(t.getBoundingClientRect().top+scrollY<=y)cur=t;});links.forEach(function(a){a.classList.toggle('on',cur&&a.getAttribute('href')==='#'+cur.id);});}
-  addEventListener('scroll',onScroll,{passive:true});onScroll();
 })();
 </script>
