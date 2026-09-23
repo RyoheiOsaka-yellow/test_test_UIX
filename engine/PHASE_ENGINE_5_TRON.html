@@ -1,0 +1,335 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Engine // TRON</title><style>
+:root{--a:#27c8ff;--b:#ff3d8a}
+*{box-sizing:border-box}body{margin:0;background:#000;color:#cfeeff;font:12px system-ui,sans-serif;overflow:hidden}canvas{display:block;width:100vw;height:100vh;touch-action:none}
+aside{position:fixed;right:24px;top:24px;width:252px;max-height:calc(100vh - 48px);overflow:auto;padding:20px;background:linear-gradient(180deg,#04111bd9,#01060bd9);border:1px solid color-mix(in srgb,var(--a) 45%,transparent);border-radius:3px;backdrop-filter:blur(14px);box-shadow:0 0 30px color-mix(in srgb,var(--a) 18%,transparent),inset 0 0 24px color-mix(in srgb,var(--a) 7%,transparent);scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--a) 40%,transparent) transparent}
+aside::before{content:"";position:absolute;left:-1px;top:-1px;width:44px;height:2px;background:var(--a);box-shadow:0 0 12px var(--a)}
+.head{display:flex;justify-content:space-between;align-items:center;padding-bottom:14px;border-bottom:1px solid color-mix(in srgb,var(--a) 25%,transparent);font:11px ui-monospace,monospace;letter-spacing:3px;color:var(--a);text-shadow:0 0 8px color-mix(in srgb,var(--a) 70%,transparent)}.dot{color:var(--a)}
+.sec{margin:22px 0 0;font:10px ui-monospace,monospace;letter-spacing:3px;color:var(--a);display:flex;align-items:center;gap:8px}.sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,color-mix(in srgb,var(--a) 45%,transparent),transparent)}
+label{display:flex;justify-content:space-between;color:#86b3c6;margin:16px 0 8px;font-size:11px}label span{font-family:ui-monospace,monospace;color:#cdefff}
+select,button,.upload{width:100%;background:#061520b3;border:1px solid color-mix(in srgb,var(--a) 30%,transparent);border-radius:2px;color:#d6f4ff;padding:10px;font:11px system-ui;cursor:pointer;transition:border-color .15s,box-shadow .15s}select{margin-top:14px}
+input[type=range]{width:100%;height:3px;accent-color:var(--a);margin:4px 0}
+button:hover,.upload:hover,select:hover{border-color:var(--a);box-shadow:0 0 12px color-mix(in srgb,var(--a) 40%,transparent),inset 0 0 10px color-mix(in srgb,var(--a) 15%,transparent)}
+.row{display:flex;gap:7px;margin-top:10px}.row>*{flex:1}.upload{display:block;text-align:center;margin-top:12px}.note{font-size:10px;color:#6f93a5;line-height:1.8;margin:12px 0 0}
+.stats{font:10px ui-monospace,monospace;color:color-mix(in srgb,var(--a) 70%,#fff);margin-top:16px;display:flex;justify-content:space-between}
+.checks{display:grid;grid-template-columns:1fr 1fr;column-gap:16px}.check{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:11px;color:#8fb8ca}.check label{margin:0}.check input{accent-color:var(--a)}
+#show{position:fixed;right:18px;bottom:18px;width:auto;display:none}body.hide aside,body.hide #hud{display:none}body.hide #show{display:block}#error{display:none;position:absolute;inset:40% 20%;color:#cbd3db}
+#hud{position:fixed;left:28px;top:26px;pointer-events:none;font:10px ui-monospace,monospace;letter-spacing:.28em;color:var(--a);text-shadow:0 0 10px color-mix(in srgb,var(--a) 60%,transparent)}
+#hud .ttl{font-size:15px;letter-spacing:.42em;color:#e8fbff}#hud .ttl b{color:var(--a);font-weight:400}#hud .sub{opacity:.7;margin-top:6px}
+#hud .big{font-size:30px;letter-spacing:.06em;margin-top:18px;color:#e8fbff}#hud .big small{font-size:10px;letter-spacing:.3em;margin-left:8px;color:var(--a)}
+#hud .cyl{display:flex;gap:6px;margin-top:12px}#hud .cyl i{--f:0;position:relative;width:34px;height:18px;border:1px solid color-mix(in srgb,var(--a) 45%,transparent);display:grid;place-items:center;font-style:normal;font-size:9px;letter-spacing:0;color:#e8fbff}
+#hud .cyl i::before{content:"";position:absolute;inset:0;background:var(--b);opacity:var(--f);box-shadow:0 0 16px var(--b);z-index:-1}
+@media(max-width:650px){aside{width:190px;right:10px;top:10px;padding:13px;max-height:55vh}label{margin-top:12px}.note{font-size:9px}#hud{left:14px;top:14px}#hud .ttl{font-size:11px;letter-spacing:.25em}#hud .sub,#hud .cyl{display:none}#hud .big{font-size:20px;margin-top:8px}}
+</style><canvas id="view" aria-label="発光演出付きで連動して動く4気筒エンジンの3Dモデル"></canvas><div id="error"></div>
+<div id="hud"><div class="ttl">PHASE<b>//</b>ENGINE</div><div class="sub">GRID SECTOR 04 · I4 DOHC 16V</div><div class="big"><span id="rpm">120</span><small>RPM</small></div><div class="cyl"><i>1</i><i>2</i><i>3</i><i>4</i></div><div class="sub">FIRING ORDER 1-3-4-2</div></div>
+<aside><div class="head"><span>ENGINE / CONTROL</span><span class="dot" id="state">●</span></div><select id="mode" aria-label="表示モード"><option value="cut">カットモデル</option><option value="full">外装モデル</option><option value="explode">分解モデル</option><option value="auto">自動分解・再構成</option></select><label for="speed">回転速度 <span id="speedV">120 rpm</span></label><input id="speed" type="range" min="15" max="360" step="1" value="120"><label for="spread">分解量 <span id="spreadV">35%</span></label><input id="spread" type="range" min="0" max="1" step=".01" value=".35"><label for="light">照明 <span id="lightV">100%</span></label><input id="light" type="range" min=".4" max="1.8" step=".01" value="1"><div class="check"><label for="orbit">視点の自動回転</label><input id="orbit" type="checkbox"></div>
+<div class="sec">GRID / FX</div><select id="theme" aria-label="発光カラー"><option value="legacy">LEGACY — シアン</option><option value="ares">ARES — レッド</option><option value="clu">CLU — アンバー</option><option value="ghost">GHOST — ホワイト</option></select><label for="glow">グロー <span id="glowV">100%</span></label><input id="glow" type="range" min="0" max="2" step=".01" value="1"><label for="neonK">ネオン発光 <span id="neonKV">100%</span></label><input id="neonK" type="range" min="0" max="2" step=".01" value="1"><div class="checks"><div class="check"><label for="fxFloor">グリッド床</label><input id="fxFloor" type="checkbox" checked></div><div class="check"><label for="fxScan">スキャン</label><input id="fxScan" type="checkbox" checked></div><div class="check"><label for="fxStream">エネルギー流</label><input id="fxStream" type="checkbox" checked></div><div class="check"><label for="fxBurn">燃焼発光</label><input id="fxBurn" type="checkbox" checked></div></div>
+<div class="sec">VIEW</div><div class="row"><button id="pause">一時停止</button><button id="reset">視点リセット</button></div><div class="row"><button id="front">正面</button><button id="side">側面</button><button id="top">俯瞰</button></div><div class="row"><button id="crankView">クランク拡大</button><button id="turboView">補機拡大</button></div><div class="row"><button id="valveView">動弁系拡大</button></div><label class="upload" for="music">＋ 音楽を読み込む</label><input id="music" type="file" accept="audio/*" hidden><div class="row"><button id="audioToggle">音源停止</button><button id="hide">パネルを隠す</button></div><div class="row"><button id="export">Blender用 .py を保存</button></div><p id="audioInfo" class="note">ドラッグ：回転 / ホイール・ピンチ：拡大<br>音源：端末内で解析 / H：パネル切替<br>点火順 1-3-4-2 に同期して燃焼・吸排気が発光<br>機構表現用の概念モデル・回転数は演出値</p><div class="stats"><span id="parts">— PARTS</span><span id="fps">— FPS</span></div></aside><button id="show">操作パネル</button><script>
+'use strict';
+const $=s=>document.getElementById(s),canvas=$('view');
+function fail(msg,detail){$('error').style.display='block';$('error').textContent=msg;throw Error(detail||msg)}
+const gl=canvas.getContext('webgl2',{antialias:false,alpha:false,depth:false,stencil:false,preserveDrawingBuffer:true,powerPreference:'high-performance'});
+if(!gl)fail('WebGL2を利用できません。最新のブラウザでハードウェアアクセラレーションを有効にして開いてください。');
+
+// Render targets: HDR (half float) when the device can render to it, otherwise RGBA8 with Reinhard encoding.
+function tex(w,h,fmt){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texStorage2D(gl.TEXTURE_2D,1,fmt,w,h);for(const[k,v]of[[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]])gl.texParameteri(gl.TEXTURE_2D,k,v);return t}
+function rbuf(samples,fmt,w,h){const r=gl.createRenderbuffer();gl.bindRenderbuffer(gl.RENDERBUFFER,r);if(samples)gl.renderbufferStorageMultisample(gl.RENDERBUFFER,samples,fmt,w,h);else gl.renderbufferStorage(gl.RENDERBUFFER,fmt,w,h);return r}
+function fbo(color,depth){const f=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,f);if(color instanceof WebGLTexture)gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,color,0);else if(color)gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,color);if(depth)gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.RENDERBUFFER,depth);const ok=gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE;gl.bindFramebuffer(gl.FRAMEBUFFER,null);if(!ok)gl.deleteFramebuffer(f);return ok?f:null}
+let HDR=false;if(gl.getExtension('EXT_color_buffer_float')||gl.getExtension('EXT_color_buffer_half_float')){const t=tex(4,4,gl.RGBA16F),f=fbo(t);HDR=!!f;if(f)gl.deleteFramebuffer(f);gl.deleteTexture(t)}
+const FMT=HDR?gl.RGBA16F:gl.RGBA8;let SAMPLES=[...(gl.getInternalformatParameter(gl.RENDERBUFFER,FMT,gl.SAMPLES)||[])].find(s=>s<=4)||0;
+
+// ---------- Shaders ----------
+const HEAD=`#version 300 es
+precision highp float;
+#define HDR ${HDR?1:0}
+vec3 enc(vec3 c){
+#if HDR
+return c;
+#else
+return c/(1.+c);
+#endif
+}
+vec3 dec(vec3 c){
+#if HDR
+return c;
+#else
+return c/max(1.-c,vec3(1e-3));
+#endif
+}
+`;
+const INST=`layout(location=0)in vec3 p;layout(location=1)in vec3 n;layout(location=2)in float u;layout(location=3)in vec4 i0;layout(location=4)in vec4 i1;layout(location=5)in vec4 i2;layout(location=6)in vec4 i3;uniform mat4 vp;`;
+// Instance matrices carry three effect values in their unused bottom row: x = intensity, y = flow phase, z = flow amount.
+const VS_SCENE=`#version 300 es
+${INST}out vec3 P,N,F;out float U;
+void main(){vec3 a=i0.xyz,b=i1.xyz,c=i2.xyz;P=mat3(a,b,c)*p+i3.xyz;N=mat3(a/dot(a,a),b/dot(b,b),c/dot(c,c))*n;U=u;F=vec3(i0.w,i1.w,i2.w);gl_Position=vp*vec4(P,1.);}`;
+const VS_SHADOW=`#version 300 es
+${INST}void main(){gl_Position=vp*vec4(mat3(i0.xyz,i1.xyz,i2.xyz)*p+i3.xyz,1.);}`;
+const FS_SHADOW=`#version 300 es
+precision mediump float;void main(){}`;
+const FS_SCENE=HEAD+`in vec3 P,N,F;in float U;out vec4 o;
+uniform vec3 eye,base,cA,cB,cC;uniform float kind,metal,rough,edge,emitK,emitSel,umode,time,illum,neon,scanY,scanK,rimK;uniform mat4 lightVP;uniform highp sampler2DShadow shadowMap;
+vec3 ec(){return emitSel<.5?cA:emitSel<1.5?cB:cC;}
+float shade(){vec4 q=lightVP*vec4(P,1.);vec3 s=q.xyz/q.w*.5+.5;if(s.x<0.||s.x>1.||s.y<0.||s.y>1.)return 1.;float r=0.;for(int x=-1;x<=1;x++)for(int y=-1;y<=1;y++)r+=texture(shadowMap,vec3(s.xy+vec2(x,y)/2048.,s.z-.0012));return mix(.16,1.,r/9.);}
+vec3 brdf(vec3 n,vec3 v,vec3 l,vec3 radiance,vec3 base,float r,float m){vec3 h=normalize(v+l);float nv=max(dot(n,v),.001),nl=max(dot(n,l),0.),nh=max(dot(n,h),0.),hv=max(dot(h,v),0.);float a=r*r,aa=a*a;float d=aa/(3.14159*pow(nh*nh*(aa-1.)+1.,2.));float k=(r+1.)*(r+1.)/8.;float g=nv/(nv*(1.-k)+k)*nl/(nl*(1.-k)+k);vec3 f0=mix(vec3(.04),base,m),f=f0+(1.-f0)*pow(1.-hv,5.);return ((1.-f)*(1.-m)*base/3.14159+d*g*f/(4.*nv*max(nl,.001)))*radiance*nl;}
+// Synthetic studio: overhead softboxes, neon wall bars and a horizon line for chrome to reflect.
+vec3 env(vec3 r,float ro){float w=.015+ro*.3,k=1./(1.+ro*7.);vec3 c=mix(vec3(.001,.0018,.003),vec3(.003,.006,.01),smoothstep(-.4,.6,r.y));
+ if(r.y>.05){vec2 q=r.xz/r.y;float up=smoothstep(.05,.3,r.y);
+  c+=vec3(3.2,3.4,3.7)*k*smoothstep(.08+w,.08,abs(q.y-.3))*smoothstep(2.6+w*5.,2.6,abs(q.x))*up;
+  c+=cA*1.1*k*smoothstep(.04+w,.04,abs(q.y+.5))*smoothstep(2.+w*5.,2.,abs(q.x))*up;
+  c+=cC*1.2*k*smoothstep(.03+w,.03,abs(q.x-.9))*smoothstep(1.4+w*4.,1.4,abs(q.y))*up;}
+ float az=atan(r.z,r.x);for(int i=0;i<5;i++){float a=-3.+float(i)*1.3,d=abs(mod(az-a+3.14159,6.28318)-3.14159);c+=(i==4?cA*.8:cC*.6)*k*smoothstep(.025+w,.025,d)*smoothstep(.7,.3,abs(r.y-.05));}
+ return c+cA*.25*k*exp(-pow((r.y+.03)/(.01+w*.4),2.));}
+void main(){float fw=max(fwidth(U),1e-5),el=(1.-smoothstep(.6,1.9,(1.-U)/fw))*(1.-smoothstep(.1,.3,fw));
+ vec3 n=normalize(N),v=normalize(eye-P);if(!gl_FrontFacing)n=-n;float nv=clamp(dot(n,v),0.,1.);vec3 r=reflect(-v,n),col;
+ if(kind>3.5){float f=pow(1.-nv,3.);col=cA*(f*.6+.01)*emitK*neon+env(r,.04)*f*.25;if(umode>.5&&umode<1.5)col+=cA*el*1.3*neon;o=vec4(enc(col),1.);return;}
+ if(kind>2.5){col=mix(ec(),cC,pow(nv,4.))*emitK*F.x*neon*pow(nv,1.5);o=vec4(enc(col),1.);return;}
+ if(kind>1.5){o=vec4(enc(ec()*emitK*F.x*neon),1.);return;}
+ if(kind>.5){vec3 e=ec()*emitK*F.x*neon;o=vec4(enc(e*(.4+.8*pow(nv,.8))+env(r,.1)*.04),1.);return;}
+ vec3 f0=mix(vec3(.04),base,metal),fr=f0+(max(vec3(1.-rough),f0)-f0)*pow(1.-nv,5.)*(.35+.65*metal);
+ col=env(r,rough)*fr*illum+base*(1.-metal)*(.006+.02*max(n.y,0.))*illum;
+ col+=brdf(n,v,normalize(vec3(-.6,1.,1.2)),vec3(1.7,1.8,2.)*illum,base,rough,metal)*shade();
+ col+=brdf(n,v,normalize(vec3(1.,.35,-.9)),cA*.9*illum,base,rough,metal);
+ col+=brdf(n,v,normalize(vec3(-1.,-.15,-.2)),cB*.35*illum,base,rough,metal);
+ col+=cA*pow(1.-nv,4.)*rimK*neon;
+ if(umode>.5&&umode<1.5)col+=cA*F.x*neon*(U>1.5?2.4:edge*el*2.2*(.75+.25*sin(dot(P,vec3(1.3,.7,.9))*2.-time*3.)));
+ if(umode>1.5&&abs(F.z)>0.){float g;if(F.x>1.5)g=smoothstep(.07,0.,abs(fract(U*(F.x-2.)*2.5-time*F.y)-.5))*1.4;else{float x=U-F.y;g=exp(-x*x*160.)*2.6+.04;}col+=(F.z>0.?cB:cA)*g*abs(F.z)*neon;}
+ if(scanK>0.){float d=P.y-scanY;col+=cA*scanK*neon*(exp(-d*d*700.)*5.+(d>0.?exp(-d*1.6)*(.01+.35*pow(abs(sin(P.y*12.566)),60.)):0.));}
+ o=vec4(enc(col),1.);}`;
+const VS_FLOOR=`#version 300 es
+layout(location=0)in vec3 p;uniform mat4 vp;out vec3 P;void main(){P=p;gl_Position=vp*vec4(p,1.);}`;
+// Tron grid: 1 m minor / 5 m major lines, concentric rings under the engine and ripples on every ignition.
+const FS_FLOOR=HEAD+`in vec3 P;out vec4 o;uniform vec3 cA,cB;uniform float neon;uniform vec4 rip;
+float line(float x,float s,float wd){float w=fwidth(x)/s,g=abs(fract(x/s-.5)-.5)-wd/s;return (1.-smoothstep(0.,w*1.3,g))*smoothstep(.5,.08,w);}
+void main(){vec2 q=P.xz;float r=length(q),fade=exp(-r*.05),near=exp(-r*r*.02);
+ fade=exp(-r*.075);vec3 c=cA*(max(line(q.x,1.,.002),line(q.y,1.,.002))*.06+max(line(q.x,5.,.008),line(q.y,5.,.008))*.22)*fade;
+ c+=cA*line(r,1.5,.004)*.4*near;
+ for(int i=0;i<4;i++){float t=rip[i];if(t<0.||t>5.)continue;float R=2.4+t*5.;c+=cB*exp(-pow((r-R)/.07,2.))*exp(-t*.9)*.9*fade;}
+ c+=cA*.01*near+vec3(.0004,.0008,.0015);o=vec4(enc(c*neon),1.);}`;
+const VS_FULL=`#version 300 es
+out vec2 v;void main(){vec2 p=vec2(float((gl_VertexID<<1)&2),float(gl_VertexID&2));v=p;gl_Position=vec4(p*2.-1.,0.,1.);}`;
+// Bloom: 13-tap downsample with Karis average + soft threshold on the first level, tent upsample back up.
+const FS_DOWN=HEAD+`in vec2 v;out vec4 o;uniform sampler2D src;uniform vec2 tx;uniform float first,thr;
+vec3 s(float x,float y){return dec(texture(src,v+vec2(x,y)*tx).rgb);}float lum(vec3 c){return dot(c,vec3(.2126,.7152,.0722));}
+void main(){vec3 a=s(-2.,2.),b=s(0.,2.),c=s(2.,2.),d=s(-2.,0.),e=s(0.,0.),f=s(2.,0.),g=s(-2.,-2.),h=s(0.,-2.),i=s(2.,-2.),j=s(-1.,1.),k=s(1.,1.),l=s(-1.,-1.),m=s(1.,-1.),r;
+ if(first>.5){vec3 g0=(a+b+d+e)*.25,g1=(b+c+e+f)*.25,g2=(d+e+g+h)*.25,g3=(e+f+h+i)*.25,g4=(j+k+l+m)*.25;float w0=.125/(1.+lum(g0)),w1=.125/(1.+lum(g1)),w2=.125/(1.+lum(g2)),w3=.125/(1.+lum(g3)),w4=.5/(1.+lum(g4));
+  r=(g0*w0+g1*w1+g2*w2+g3*w3+g4*w4)/(w0+w1+w2+w3+w4);float br=max(r.r,max(r.g,r.b)),kn=thr*.5,sf=clamp(br-thr+kn,0.,2.*kn);sf=sf*sf/(4.*kn+1e-4);r*=max(sf,br-thr)/max(br,1e-4);}
+ else r=e*.125+(a+c+g+i)*.03125+(b+d+f+h)*.0625+(j+k+l+m)*.125;
+ o=vec4(enc(max(r,0.)),1.);}`;
+const FS_UP=HEAD+`in vec2 v;out vec4 o;uniform sampler2D src,base;uniform vec2 tx;
+vec3 s(float x,float y){return dec(texture(src,v+vec2(x,y)*tx).rgb);}
+void main(){vec3 r=(s(-1.,1.)+s(1.,1.)+s(-1.,-1.)+s(1.,-1.)+2.*(s(0.,1.)+s(0.,-1.)+s(-1.,0.)+s(1.,0.))+4.*s(0.,0.))/16.;o=vec4(enc(dec(texture(base,v).rgb)+r*.85),1.);}`;
+const FS_COMP=HEAD+`in vec2 v;out vec4 o;uniform sampler2D scene,bloom;uniform float bloomK,time;
+vec3 aces(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}
+void main(){vec2 d=v-.5;float r2=dot(d,d);vec2 ca=d*r2*.006;
+ vec3 c=vec3(dec(texture(scene,v+ca).rgb).r,dec(texture(scene,v).rgb).g,dec(texture(scene,v-ca).rgb).b)+dec(texture(bloom,v).rgb)*bloomK;
+ c=aces(c*.95)*(1.-smoothstep(.1,.6,r2)*.5);c=pow(c,vec3(1./2.2));
+ c+=(fract(sin(dot(gl_FragCoord.xy+fract(time)*91.,vec2(12.9898,78.233)))*43758.5453)-.5)*(2./255.);o=vec4(c,1.);}`;
+function shader(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))fail('描画の初期化に失敗しました。別のブラウザでお試しください。',gl.getShaderInfoLog(s));return s}
+function program(vs,fs){const p=gl.createProgram();gl.attachShader(p,shader(gl.VERTEX_SHADER,vs));gl.attachShader(p,shader(gl.FRAGMENT_SHADER,fs));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))fail('描画の初期化に失敗しました。別のブラウザでお試しください。',gl.getProgramInfoLog(p));const u={};for(let i=0;i<gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);i++){const a=gl.getActiveUniform(p,i);u[a.name.replace(/\[0\]$/,'')]=gl.getUniformLocation(p,a.name)}return{p,u}}
+const SCENE=program(VS_SCENE,FS_SCENE),SHADOW=program(VS_SHADOW,FS_SHADOW),FLOOR=program(VS_FLOOR,FS_FLOOR),DOWN=program(VS_FULL,FS_DOWN),UP=program(VS_FULL,FS_UP),COMP=program(VS_FULL,FS_COMP);
+
+// ---------- Geometry ----------
+const TAU=Math.PI*2,PI=Math.PI,add=(a,b)=>a.map((v,i)=>v+b[i]),sub=(a,b)=>a.map((v,i)=>v-b[i]),mul=(a,s)=>a.map(v=>v*s),dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0),cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],norm=a=>mul(a,1/(Math.hypot(...a)||1));
+function matmul(a,b){let r=new Float32Array(16);for(let c=0;c<4;c++)for(let row=0;row<4;row++)for(let k=0;k<4;k++)r[c*4+row]+=a[k*4+row]*b[c*4+k];return r}
+function camera(eye,target,aspect){let z=norm(sub(eye,target)),x=norm(cross([0,1,0],z)),y=cross(z,x),v=[x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-dot(x,eye),-dot(y,eye),-dot(z,eye),1],f=1/Math.tan(.60/2),near=.1,far=220;return matmul([f/aspect,0,0,0,0,f,0,0,(innerWidth>650?.25:0),0,(far+near)/(near-far),-1,0,0,2*far*near/(near-far),0],v)}
+// Vertices are position, normal and one scalar U: 0..1 toward a feature edge (umode 1, drawn as neon trim; 2 marks a laser-cut face) or 0..1 along a pipe (umode 2, carries flow pulses).
+// Pipe flow: fx 1 = single pulse at phase fy, fx 2 = dashes moving at speed fy; |fz| is the amount, sign picks accent (+) or primary (-).
+const meshes={};function mesh(name,verts,umode=0){let m=meshes[name]||(meshes[name]={name,b:gl.createBuffer()});gl.bindBuffer(gl.ARRAY_BUFFER,m.b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(verts),gl.DYNAMIC_DRAW);return Object.assign(m,{verts,count:verts.length/7,umode})}
+function tri(out,a,b,c,na,nb,nc,ua=0,ub=ua,uc=ua){let n=na||norm(cross(sub(b,a),sub(c,a)));out.push(...a,...(na||n),ua,...b,...(nb||n),ub,...c,...(nc||n),uc)}
+function cylinder(name,N=64){let v=[];for(let i=0;i<N;i++){let a=i*TAU/N,b=(i+1)*TAU/N,ca=Math.cos(a),sa=Math.sin(a),cb=Math.cos(b),sb=Math.sin(b),na=[ca,0,sa],nb=[cb,0,sb];for(const[y0,y1,u0,u1]of[[-.5,0,1,0],[0,.5,0,1]]){let A=[ca,y0,sa],B=[cb,y0,sb],C=[cb,y1,sb],D=[ca,y1,sa];tri(v,A,D,C,na,na,nb,u0,u1,u1);tri(v,A,C,B,na,nb,nb,u0,u1,u0)}tri(v,[0,.5,0],[cb,.5,sb],[ca,.5,sa],[0,1,0],[0,1,0],[0,1,0],0,1,1);tri(v,[0,-.5,0],[ca,-.5,sa],[cb,-.5,sb],[0,-1,0],[0,-1,0],[0,-1,0],0,1,1)}return mesh(name,v,1)}
+function tube(name,start=0,end=TAU){let v=[],N=72;for(let i=0;i<N;i++){let a=start+(end-start)*i/N,b=start+(end-start)*(i+1)/N;for(let r of[1,.91]){let sg=r===1?1:-1,na=[sg*Math.cos(a),0,sg*Math.sin(a)],nb=[sg*Math.cos(b),0,sg*Math.sin(b)];for(const[y0,y1,u0,u1]of[[-.5,0,1,0],[0,.5,0,1]]){let A=[r*Math.cos(a),y0,r*Math.sin(a)],B=[r*Math.cos(b),y0,r*Math.sin(b)],C=[B[0],y1,B[2]],D=[A[0],y1,A[2]];tri(v,A,D,C,na,na,nb,u0,u1,u1);tri(v,A,C,B,na,nb,nb,u0,u1,u0)}}for(let y of[-.5,.5]){let A=[Math.cos(a),y,Math.sin(a)],B=[Math.cos(b),y,Math.sin(b)],C=[.91*B[0],y,.91*B[2]],D=[.91*A[0],y,.91*A[2]];tri(v,A,B,C,0,0,0,1);tri(v,A,C,D,0,0,0,1)}}
+ if(end-start<TAU-1e-6)for(const a of[start,end]){let o=[Math.cos(a),0,Math.sin(a)],A=[o[0],-.5,o[2]],B=[o[0],.5,o[2]],C=[.91*o[0],.5,.91*o[2]],D=[.91*o[0],-.5,.91*o[2]];tri(v,A,B,C,0,0,0,2);tri(v,A,C,D,0,0,0,2)}return mesh(name,v,1)}
+function torus(name,tr=.045,a0=0,a1=TAU,N=64,M=12){let v=[],pt=(a,b)=>[(1+tr*Math.cos(b))*Math.cos(a),tr*Math.sin(b),(1+tr*Math.cos(b))*Math.sin(a)],no=(a,b)=>[Math.cos(b)*Math.cos(a),Math.sin(b),Math.cos(b)*Math.sin(a)];for(let i=0;i<N;i++)for(let j=0;j<M;j++){let a=a0+(a1-a0)*i/N,b=j*TAU/M,c=a0+(a1-a0)*(i+1)/N,d=(j+1)*TAU/M;tri(v,pt(a,b),pt(c,b),pt(c,d),no(a,b),no(c,b),no(c,d));tri(v,pt(a,b),pt(c,d),pt(a,d),no(a,b),no(c,d),no(a,d))}return mesh(name,v)}
+let vv=[],q=[[-.5,-.5,-.5],[.5,-.5,-.5],[.5,.5,-.5],[-.5,.5,-.5],[-.5,-.5,.5],[.5,-.5,.5],[.5,.5,.5],[-.5,.5,.5]];for(let f of[[0,3,2,1],[4,5,6,7],[0,4,7,3],[1,2,6,5],[3,7,6,2],[0,1,5,4]]){tri(vv,q[f[0]],q[f[1]],q[f[2]]);tri(vv,q[f[0]],q[f[2]],q[f[3]])}mesh('box',vv);cylinder('cyl');cylinder('cylLo',20);cylinder('hex',6);tube('tube');tube('cut',Math.PI,TAU);torus('torus');torus('torusLo',.045,0,TAU,28,7);torus('thin',.02,0,TAU,72,6);torus('arc',.012,0,1.1,24,6);
+// Rounded casting primitives and a turned piston with machined ring grooves.
+function roundedBox(name='rounded',S=10){let out=[],r=.08;for(let ax=0;ax<3;ax++)for(let sign of[-1,1])for(let i=0;i<S;i++)for(let j=0;j<S;j++){let pts=[],ns=[],us=[];for(let [u,v]of[[i,j],[i+1,j],[i+1,j+1],[i,j+1]]){let p=[0,0,0];p[ax]=sign*.5;p[(ax+1)%3]=u/S-.5;p[(ax+2)%3]=v/S-.5;let c=p.map(x=>Math.max(-.5+r,Math.min(.5-r,x))),n=norm(sub(p,c));pts.push(add(c,mul(n,r)));ns.push(n);us.push(Math.max(Math.abs(u/S-.5),Math.abs(v/S-.5))*2)}if(sign<0){pts.reverse();ns.reverse();us.reverse()}tri(out,pts[0],pts[1],pts[2],ns[0],ns[1],ns[2],us[0],us[1],us[2]);tri(out,pts[0],pts[2],pts[3],ns[0],ns[2],ns[3],us[0],us[2],us[3])}mesh(name,out,1)}roundedBox();roundedBox('roundedLo',3);
+function lathe(name,profile,N=64){let out=[];for(let j=0;j<profile.length-1;j++){let [r0,y0]=profile[j],[r1,y1]=profile[j+1],len=Math.hypot(y1-y0,r1-r0);for(let i=0;i<N;i++){let a=i*TAU/N,b=(i+1)*TAU/N,A=[r0*Math.cos(a),y0,r0*Math.sin(a)],B=[r0*Math.cos(b),y0,r0*Math.sin(b)],C=[r1*Math.cos(b),y1,r1*Math.sin(b)],D=[r1*Math.cos(a),y1,r1*Math.sin(a)],na=[(y1-y0)*Math.cos(a)/len,(r0-r1)/len,(y1-y0)*Math.sin(a)/len],nb=[(y1-y0)*Math.cos(b)/len,(r0-r1)/len,(y1-y0)*Math.sin(b)/len];tri(out,A,D,C,na,na,nb);tri(out,A,C,B,na,nb,nb)}}mesh(name,out)}
+lathe('piston',[[.84,-.5],[.97,-.46],[1,-.35],[1,.19],[.96,.20],[.96,.24],[1,.25],[1,.31],[.96,.32],[.96,.36],[1,.37],[1,.43],[.96,.44],[.96,.47],[.99,.48],[.95,.5],[.65,.5],[.52,.46],[0,.46]]);
+let springVertices=[];function springPoint(i,j){let a=i*TAU*5.3/96,b=j*TAU/8,n=[Math.cos(a)*Math.cos(b),Math.sin(b),Math.sin(a)*Math.cos(b)];return {p:[.085*Math.cos(a)+.013*n[0],i*.256/96+.013*n[1],.085*Math.sin(a)+.013*n[2]],n}}for(let i=0;i<96;i++)for(let j=0;j<8;j++){let a=springPoint(i,j),b=springPoint(i+1,j),c=springPoint(i+1,j+1),d=springPoint(i,j+1);tri(springVertices,a.p,b.p,c.p,a.n,b.n,c.n);tri(springVertices,a.p,c.p,d.p,a.n,c.n,d.n)}mesh('spring',springVertices);
+// Cam lobe: base circle plus a smooth 133° lobe. The follower lift below is read from this same profile.
+const camR=a=>{a=Math.abs(Math.atan2(Math.sin(a),Math.cos(a)));return .72+.46*Math.pow(Math.cos(Math.min(a*1.35,PI/2)),2)};
+function camMesh(){let v=[],N=144,P=(r,t,y)=>[r*Math.cos(t),y,r*Math.sin(t)];for(let i=0;i<N;i++){let a=i*TAU/N,b=(i+1)*TAU/N,ra=camR(a),rb=camR(b);for(const[y0,y1,u0,u1]of[[-.5,0,1,0],[0,.5,0,1]]){let A=P(ra,a,y0),B=P(rb,b,y0),C=P(rb,b,y1),D=P(ra,a,y1);tri(v,A,D,C,0,0,0,u0,u1,u1);tri(v,A,C,B,0,0,0,u0,u1,u0)}tri(v,[0,.5,0],P(rb,b,.5),P(ra,a,.5),0,0,0,0,1,1);tri(v,[0,-.5,0],P(ra,a,-.5),P(rb,b,-.5),0,0,0,0,1,1)}mesh('cam',v,1)}camMesh();
+let pipeIndex=0,pipeCache=new Map();
+// Cast and molded housings: shaped sections, domed end caps and turbine volute.
+function extrudeSection(name,raw){let profile=[],pu=[];for(let i=0;i<raw.length;i++){let a=raw[(i+raw.length-1)%raw.length],b=raw[i],c=raw[(i+1)%raw.length],d=raw[(i+2)%raw.length];for(let k=0;k<6;k++){let t=k/6;profile.push(b.map((v,j)=>.5*(2*v+(-a[j]+c[j])*t+(2*a[j]-5*v+4*c[j]-d[j])*t*t+(-a[j]+3*v-3*c[j]+d[j])*t*t*t)));pu.push(k?0:1)}}let v=[],N=profile.length,normal=i=>{let a=profile[(i+N-1)%N],b=profile[(i+1)%N];return norm([0,-(b[1]-a[1]),b[0]-a[0]])};for(let i=0;i<N;i++){let j=(i+1)%N,A=[-.5,...profile[i]],B=[.5,...profile[i]],C=[.5,...profile[j]],D=[-.5,...profile[j]],na=normal(i),nb=normal(j);tri(v,A,B,C,na,na,nb,pu[i],pu[i],pu[j]);tri(v,A,C,D,na,nb,nb,pu[i],pu[j],pu[j]);tri(v,[-.5,0,0],D,A,0,0,0,0,1,1);tri(v,[.5,0,0],B,C,0,0,0,0,1,1)}mesh(name,v,1)}
+extrudeSection('cover',[[-.34,-.52],[-.34,.5],[-.20,.61],[.12,.57],[.34,.40],[.41,.18],[.39,-.22],[.24,-.49],[.04,-.59]]);
+extrudeSection('sump',[[-.42,-.35],[-.42,.35],[-.24,.53],[.40,.65],[.50,.60],[.50,-.60],[.35,-.65],[-.2,-.52]]);
+extrudeSection('headcast',[[-.5,-.55],[-.5,.51],[-.31,.65],[.12,.63],[.21,.53],[.50,.48],[.5,-.52],[.14,-.63],[-.25,-.63]]);
+let sphereV=[];function spoint(a,b){return[Math.sin(a)*Math.cos(b),Math.cos(a),Math.sin(a)*Math.sin(b)]}for(let i=0;i<20;i++)for(let j=0;j<32;j++){let a=i*Math.PI/20,b=(i+1)*Math.PI/20,c=j*TAU/32,d=(j+1)*TAU/32,A=spoint(a,c),B=spoint(b,c),C=spoint(b,d),D=spoint(a,d);tri(sphereV,A,C,B,A,C,B);tri(sphereV,A,D,C,A,D,C)}mesh('dome',sphereV);
+let vol=[];function volP(i,j){let a=i*TAU/80,r=.40+.15*i/80,t=.12+.1*i/80,b=j*TAU/12;return[(r+t*Math.cos(b))*Math.cos(a),(r+t*Math.cos(b))*Math.sin(a),t*Math.sin(b)]}for(let i=0;i<80;i++)for(let j=0;j<12;j++){let a=volP(i,j),b=volP(i+1,j),c=volP(i+1,j+1),d=volP(i,j+1);tri(vol,a,b,c);tri(vol,a,c,d)}mesh('volute',vol);
+// Recessed six-point socket fastener: chamfer, socket wall and recessed floor.
+lathe('socket',[[0,-.5],[.94,-.5],[1,-.36],[1,.30],[.91,.5],[.43,.5],[.38,.40],[.38,.03],[0,.03]],6);
+// A stepped end plate with rounded asymmetric counterweight outline.
+extrudeSection('counterweight',[[.1,-.31],[.22,-.29],[.27,-.13],[.22,.18],[.03,.36],[-.32,.33],[-.43,.16],[-.40,-.21],[-.24,-.35]]);
+// Continuous machined tooth crown with axial chamfers and a through bore; U traces the tooth outline on both faces.
+function toothedWheel(){let out=[],N=192,r=i=>[.865,.865,.92,1,1,.92][((i%N)+N)%N%6],pt=(i,y,k=1)=>[r(i)*k*Math.cos(i*TAU/N),y,r(i)*k*Math.sin(i*TAU/N)];for(let i=0;i<N;i++){for(let [y0,y1,k0,k1,u0,u1]of[[-.5,-.37,.974,1,1,0],[-.37,.37,1,1,0,0],[.37,.5,1,.974,0,1]]){let A=pt(i,y0,k0),B=pt(i+1,y0,k0),C=pt(i+1,y1,k1),D=pt(i,y1,k1);tri(out,A,D,C,0,0,0,u0,u1,u1);tri(out,A,C,B,0,0,0,u0,u1,u0)}for(let y of[-.5,.5]){let A=pt(i,y,.974),B=pt(i+1,y,.974),C=[.24*Math.cos((i+1)*TAU/N),y,.24*Math.sin((i+1)*TAU/N)],D=[.24*Math.cos(i*TAU/N),y,.24*Math.sin(i*TAU/N)];if(y>0){tri(out,A,D,C,0,0,0,1,0,0);tri(out,A,C,B,0,0,0,1,0,1)}else{tri(out,A,B,C,0,0,0,1,1,0);tri(out,A,C,D,0,0,0,1,0,0)}}let A=[.24*Math.cos(i*TAU/N),-.5,.24*Math.sin(i*TAU/N)],B=[.24*Math.cos((i+1)*TAU/N),-.5,.24*Math.sin((i+1)*TAU/N)],C=[B[0],.5,B[2]],D=[A[0],.5,A[2]];tri(out,A,B,C);tri(out,A,C,D)}mesh('gear',out,1)}toothedWheel();
+// Real ventilation openings in the cylindrical accessory housing.
+function ventShell(){let v=[],N=96,R=.94;for(let i=0;i<N;i++){let a=i*TAU/N,b=(i+1)*TAU/N;for(let [y0,y1]of[[-.5,-.37],[-.37,.31],[.31,.5]]){if(y0===-.37&&i%8>2)continue;for(let r of[1,R]){let A=[r*Math.cos(a),y0,r*Math.sin(a)],B=[r*Math.cos(b),y0,r*Math.sin(b)],C=[B[0],y1,B[2]],D=[A[0],y1,A[2]],n=[Math.cos(a)*(r===1?1:-1),0,Math.sin(a)*(r===1?1:-1)],m=[Math.cos(b)*(r===1?1:-1),0,Math.sin(b)*(r===1?1:-1)];tri(v,A,D,C,n,n,m);tri(v,A,C,B,n,m,m)}}}mesh('vents',v)}ventShell();
+
+// ---------- Materials ----------
+// kind 0 lit PBR (edge = neon trim strength), 1 opaque neon, 2 additive hologram, 3 additive plasma volume, 4 hologram glass shell.
+const MAT=[];function mat(name,c,kind,o={}){const m={name,c,kind,metal:0,rough:.4,edge:0,emit:0,k:1,...o,id:MAT.length};MAT.push(m);return m}
+const silver=mat('chrome',[.72,.75,.8],0,{metal:1,rough:.12}),steel=mat('gunmetal',[.2,.23,.27],0,{metal:1,rough:.3,edge:.3}),dark=mat('obsidian',[.02,.025,.03],0,{rough:.14,edge:1}),black=mat('rubber',[.008,.009,.01],0,{rough:.62,edge:.1}),ceramic=mat('ceramic',[.75,.76,.78],0,{rough:.3}),
+ neon=mat('neon',[.1,.7,1],1,{k:3.2}),neonB=mat('neon_accent',[1,.2,.5],1,{emit:1,k:3}),neonW=mat('neon_hot',[.8,.95,1],1,{emit:2,k:6}),coil=mat('stator',[1,.3,.1],1,{emit:1,k:.8}),
+ holo=mat('hologram',[.1,.7,1],2,{k:2.2}),plasma=mat('plasma',[1,.3,.5],3,{emit:1,k:3}),glass=mat('glass',[.02,.025,.03],4,{k:.28});
+const THEMES={legacy:{a:[.08,.62,1],b:[1,.16,.42],c:[.75,.93,1],css:['#27c8ff','#ff3d8a']},ares:{a:[1,.07,.03],b:[1,.42,.06],c:[1,.82,.76],css:['#ff3b2f','#ff9a2e']},clu:{a:[1,.36,.03],b:[.08,.6,1],c:[1,.9,.72],css:['#ff8a1f','#27c8ff']},ghost:{a:[.62,.78,1],b:[.2,.62,1],c:[1,1,1],css:['#bfe3ff','#4fb0ff']}};
+let theme=THEMES.legacy,objects=[];
+function part(name,pos,scale,m=silver,axis=[0,1,0],twist=0,fx=1,fy=0,fz=0){if(name==='rounded'&&Math.max(...scale)<.35)name='roundedLo';else if(name==='torus'&&scale[0]<.2)name='torusLo';else if(name==='cyl'&&Math.max(scale[0],scale[2])<.1)name='cylLo';let y=norm(axis),x=norm(cross(y,Math.abs(y[1])>.99?[0,0,1]:[0,1,0])),z=cross(x,y),xx=add(mul(x,Math.cos(twist)),mul(z,Math.sin(twist))),zz=sub(mul(z,Math.cos(twist)),mul(x,Math.sin(twist)));objects.push({name,mat:m,m:[...mul(xx,scale[0]),fx,...mul(y,scale[1]),fy,...mul(zz,scale[2]),fz,...pos,1]})}
+const box=(p,s,m=steel,g=1)=>part('rounded',p,s,m,undefined,0,g),cy=(p,r,h,m=silver,axis=[0,1,0],g=1)=>part('cyl',p,[r,h,r],m,axis,0,g),ring=(p,r,m=silver,axis=[0,1,0],g=1)=>part('torus',p,[r,r,r],m,axis,0,g);
+function rod(a,b,r,m=silver){cy(mul(add(a,b),.5),r,Math.hypot(...sub(b,a)),m,sub(b,a))}
+function bolt(p,axis=[0,1,0],r=.058){cy(add(p,mul(axis,-.034)),r*1.35,.018,steel,axis);part('socket',p,[r,.065,r],silver,axis)}
+function pipe(points,r=.08,m=black,fx=1,fy=0,fz=0){let id='pipe'+pipeIndex++,key=JSON.stringify([points,r]);if(pipeCache.get(id)!==key){let path=[],steps=10;for(let j=0;j<points.length-1;j++){let a=points[Math.max(0,j-1)],b=points[j],c=points[j+1],d=points[Math.min(points.length-1,j+2)];for(let k=0;k<steps;k++){let t=k/steps;path.push(b.map((v,i)=>.5*(2*v+(-a[i]+c[i])*t+(2*a[i]-5*v+4*c[i]-d[i])*t*t+(-a[i]+3*v-3*c[i]+d[i])*t*t*t)))}}path.push(points[points.length-1]);let len=[0];for(let j=1;j<path.length;j++)len.push(len[j-1]+Math.hypot(...sub(path[j],path[j-1])));let total=len[len.length-1]||1,out=[],rings=[];for(let j=0;j<path.length;j++){let y=norm(sub(path[Math.min(j+1,path.length-1)],path[Math.max(0,j-1)])),x=norm(cross(Math.abs(y[1])>.95?[1,0,0]:[0,1,0],y)),z=cross(x,y);rings.push(Array.from({length:12},(_,k)=>{let n=add(mul(x,Math.cos(k*TAU/12)),mul(z,Math.sin(k*TAU/12)));return{p:add(path[j],mul(n,r)),n}}))}for(let j=0;j<rings.length-1;j++){let u0=len[j]/total,u1=len[j+1]/total;for(let k=0;k<12;k++){let a=rings[j][k],b=rings[j][(k+1)%12],c=rings[j+1][(k+1)%12],d=rings[j+1][k];tri(out,a.p,b.p,c.p,a.n,b.n,c.n,u0,u0,u1);tri(out,a.p,c.p,d.p,a.n,c.n,d.n,u0,u1,u1)}}mesh(id,out,2).len=total;pipeCache.set(id,key)}part(id,[0,0,0],[1,1,1],m,undefined,0,fx===2?2+meshes[id].len:fx,fy,fz)}
+function gear(p,r,angle,g=1){part('gear',p,[r,.13,r],steel,[1,0,0],angle);ring(p,r*.71,neon,[1,0,0],.55*g);cy(p,r*.23,.20,steel,[1,0,0]);for(let i=0;i<6;i++){let a=i*TAU/6+angle,pp=[p[0]+.067,p[1]+Math.cos(a)*r*.48,p[2]+Math.sin(a)*r*.48];cy(pp,r*.09,.012,black,[1,0,0]);ring(pp,r*.092,silver,[1,0,0]);bolt([p[0]+.086,p[1]+Math.cos(a)*r*.30,p[2]+Math.sin(a)*r*.30],[1,0,0],r*.045)}}
+function crankWeight(p,a){let c=Math.cos(a),s=Math.sin(a);objects.push({name:'counterweight',mat:steel,m:[.13,0,0,1,0,c,s,0,0,-s,c,0,...p,1]})}
+// Support-function envelope of pulleys/sprockets given as [y, z, radius]; returns points in the plane x.
+function wrap(centers,n,x){let pts=[];for(let j=0;j<n;j++){let a=j/n*TAU,d=[Math.cos(a),Math.sin(a)],best=centers.reduce((p,c)=>c[0]*d[0]+c[1]*d[1]+c[2]>p[0]*d[0]+p[1]*d[1]+p[2]?c:p);pts.push([x,best[0]+d[0]*best[2],best[1]+d[1]*best[2]])}return pts}
+// Four-stroke timing per cylinder (crank angle t, firing order 1-3-4-2): c = 0 at ignition TDC.
+const FIRE=[0,3*PI,PI,2*PI],CYC=4*PI;
+function stroke(t,i){const c=((t-FIRE[i])%CYC+CYC)%CYC;return{c,burn:c<PI?Math.exp(-c*2.2):0,spark:c>CYC-.3?1-(CYC-c)/.3:c<.1?1:0,exh:c>=PI&&c<2*PI?(c-PI)/PI:-1,intk:c>=2*PI&&c<3*PI?(c-2*PI)/PI:-1}}
+const FX={floor:true,scan:true,stream:true,burn:true};let clock=0,energy=0,S=[0,1,2,3].map(i=>stroke(0,i));
+
+function build(t,e,full){objects=[];pipeIndex=0;const X=[-1.65,-.55,.55,1.65],shaftY=-1.5,head=1.68+e*1.3,pulse=.8+.2*Math.sin(clock*2.4)+energy*.9,burnFX=FX.burn&&e<.02;S=X.map((_,i)=>stroke(t,i));
+// Structural casting, machined flange ribs and a neon seam under the sump rail.
+part('sump',[0,-2.20-e*.55,0],[4.62,.67,1.43],dark);box([0,-2.01-e*.4,0],[4.85,.1,1.85],silver);for(let i=0;i<12;i++)box([-2.2+i*.4,-2.34-e*.55,0],[.045,.12,1.62],steel);for(let z of[-.94,.94])box([0,-2.075-e*.4,z],[4.7,.016,.016],neon,.8*pulse);
+box([0,.12,-.66-e*.35],[4.8,2.65,.18],steel);for(let i=0;i<5;i++){let x=-2.2+i*1.1;box([x,-.6,-.65],[.15,1.9,.36],silver);for(let z of[-.78,.78]){bolt([x,-1.96-e*.4,z]);bolt([x,1.49+e*.7,z])}}
+box([0,1.42+e*.7,-.38],[4.85,.16,.8],silver);if(full)box([0,.12,.68],[4.8,2.65,.17],steel);
+// Crankshaft along X, four slider-crank linkages.
+cy([0,shaftY,0],.145,5.45,silver,[1,0,0]);for(let i=0;i<5;i++){let x=-2.2+i*1.1;cy([x,shaftY,0],.26,.20,steel,[1,0,0]);box([x,shaftY-.25,-.05],[.26,.28,.72],dark);bolt([x,shaftY-.37,.33],[0,-1,0])}
+X.forEach((x,i)=>{let s=S[i],phase=t+(i===1||i===2?Math.PI:0),r=.42,L=1.27,ky=shaftY+r*Math.cos(phase),kz=r*Math.sin(phase),py=ky+Math.sqrt(L*L-kz*kz),xx=x*(1+e*.13);
+for(let side of[-1,1]){rod([x+side*.2,shaftY,0],[x+side*.2,ky,kz],.19,steel);crankWeight([x+side*.25,shaftY,0],phase)}cy([x,ky,kz],.14,.55,silver,[1,0,0]);let ra=[x,ky,kz],rb=[xx,py,0];part('rounded',mul(add(ra,rb),.5),[.105,Math.hypot(...sub(rb,ra)),.16],silver,sub(rb,ra));rod([x-.075,ky,kz],[xx-.075,py,0],.027,silver);rod([x+.075,ky,kz],[xx+.075,py,0],.027,silver);rod([x,ky,kz+.065],[xx,py,.065],.038,steel);cy([x,ky,kz],.21,.16,silver,[1,0,0]);cy([xx,py,0],.11,.88,steel,[0,0,1]);
+// Piston with valve reliefs; ring pack flares with the combustion pulse.
+let pistonY=py+.30,crown=pistonY+.29,roof=1.46+e*.6;part('piston',[xx,pistonY,0],[.43,.58,.43],silver);cy([xx,pistonY+.297,0],.365,.01,steel);for(let dx of[-.13,.13])for(let dz of[-.19,.19])cy([xx+dx,pistonY+.302,dz],.1,.006,dark);for(let j=0;j<3;j++){cy([xx,pistonY+.13+j*.063,0],.437,.023,dark);ring([xx,pistonY+.11+j*.063,0],.432,neon,undefined,(.3+s.burn*2.6)*pulse)}for(let z of[-1,1])cy([xx,pistonY-.13,z*.425],.085,.015,black,[0,0,1]);
+part(full?'tube':'cut',[xx,.65+e*.6,0],[.505,1.68,.505],steel);for(let j=0;j<2;j++)part(full?'tube':'cut',[xx,.05+j*1.15+e*.6,0],[.53,.045,.53],neon,undefined,0,.55*pulse);
+if(burnFX&&!full){if(s.burn>.01)part('cyl',[xx,(crown+roof)/2,0],[.425,roof-crown,.425],plasma,undefined,0,s.burn);if(s.spark>0)part('dome',[xx,roof-.03,0],[.045,.045,.045],neonW,undefined,0,s.spark*3)}
+// Four-valve DOHC train: two lobes per cam per cylinder, bucket followers riding the actual lobe profile, springs compress with lift.
+for(let z of[-.32,.32]){let intake=z<0,th=(s.c-(intake?2.5:1.5)*PI)/2-PI/2,camY=head+.47,lift=(camR(-PI/2-th)-.72)*.17,tip=camY-.72*.17-lift-.093,seat=head-.08,ret=tip-.1;
+ for(let dx of[-.13,.13]){let vx=xx+dx;part('cam',[vx,camY,z],[.17,.1,.17],steel,[1,0,0],th);cy([vx,tip+.045,z],.1,.09,silver);cy([vx,tip-.4,z],.03,.8,silver);cy([vx,tip-.8,z],.12,.04,silver);cy([vx,ret,z],.1,.035,steel);part('spring',[vx,seat,z],[1,(ret-seat)/.256,1],silver);if(lift>.004)ring([vx,tip-.8,z],.12,intake?neon:neonB,undefined,lift/.078*1.6)}
+ bolt([xx-.28,head+.3,z])}
+// Intake runners (pulse toward the port on the intake stroke), injector rail, fasteners.
+let zz=-.94-e*.6,ip=s.intk<0?0:1.1-s.intk*1.3;pipe([[xx,head-.36,-.42],[xx,head-.28,zz],[xx,head+.24,zz-.34],[xx,head+.50,zz-.38]],.12,dark,1,ip,s.intk<0?0:-1.2);for(let j=0;j<3;j++)ring([xx,head+.22+j*.075,zz-.34],.126,steel);cy([xx,head+.75,0],.068,.27,black);cy([xx,head+.9,0],.09,.065,neonB,undefined,s.intk<0?.25:1.6);pipe([[xx,head+.94,0],[xx,head+1.03,-.25],[xx+.12,head+.85,-.57]],.025,black,2,2,-.35);
+});
+// Camshafts, cam sprockets with VVT phasers, bearing caps.
+for(let z of[-.32,.32]){cy([0,head+.47,z],.073,4.7,silver,[1,0,0]);gear([2.5+e*.4,head+.47,z],.31,t*.5,pulse);let px=2.66+e*.4;cy([px,head+.47,z],.2,.1,dark,[1,0,0]);ring([px+.055,head+.47,z],.15,neon,[1,0,0],pulse);for(let k=0;k<3;k++){let a=t*.5+k*TAU/3;bolt([px+.06,head+.47+Math.cos(a)*.1,z+Math.sin(a)*.1],[1,0,0],.022)}for(let k=0;k<5;k++){let x=-2.2+k*1.1;box([x,head+.47,z],[.16,.19,.25],steel);for(let dz of[-.085,.085])bolt([x,head+.57,z+dz],undefined,.028)}}
+// Dense cylinder-head casting. In the cutaway the cam cover turns into a hologram shell so the valve train shows through.
+part('headcast',[0,head-.12,-.26-e*.18],[4.8,.65,full?1.05:.58],silver);
+part('cover',[0,head+.84,-.15-e*.30],[4.82,.80,full?1.21:.91],full?dark:glass);
+if(full)box([0,head+.54,-.12-e*.25],[4.92,.055,1.25],dark);else{let gz=-.12-e*.25;for(let z of[-.6,.6])box([0,head+.54,gz+z],[4.9,.022,.022],neon,.8*pulse);for(let x of[-2.45,2.45])box([x,head+.54,gz],[.022,.022,1.22],neon,.8*pulse)}
+for(let x of X){part('dome',[x,head+.84,-.11-e*.3],[.55,.37,.45],full?dark:glass);box([x,head+.67,.46-e*.15],[.28,.30,.24],black);bolt([x+.19,head+.85,.43-e*.15],undefined,.045);box([x,head+.88,.40-e*.15],[.16,.09,.18],steel)}
+for(let i=0;i<11;i++){let x=-2.25+i*.45;bolt([x,head+.58,-.69-e*.25]);if(i%2===0)bolt([x,head+.58,.49-e*.15]);box([x,head+.28,-.57],[.035,.26,.13],steel)}
+cy([-1.28,head+1.20,-.13-e*.3],.20,.07,black);ring([-1.28,head+1.24,-.13-e*.3],.17,neonB,undefined,.6);box([-1.28,head+1.27,-.13-e*.3],[.27,.05,.06],dark);
+cy([0,head+.65,-1.43-e*.6],.19,4.2,dark,[1,0,0]);cy([0,head+.87,-.6],.045,4.3,silver,[1,0,0]);
+// Flywheel, timing wheels and accessories.
+let end=2.75+e*.85;gear([end,shaftY,0],.83,t,pulse);cy([end+.07,shaftY,0],.60,.12,dark,[1,0,0]);ring([end+.14,shaftY,0],.56,neonW,[1,0,0],.45*pulse);gear([end,-.7,-.85],.36,-t*1.4,pulse);cy([-2.58-e*.5,shaftY,0],.65,.28,steel,[1,0,0]);for(let j=0;j<4;j++)ring([-2.43-e*.5-j*.07,shaftY,0],.65,dark,[1,0,0]);
+let ax=-2.4-e*.65;part('vents',[ax,-1.53,1.02],[.35,.68,.35],silver,[1,0,0]);cy([ax,-1.53,1.02],.295,.53,dark,[1,0,0]);for(let i=0;i<14;i++){let a=i*TAU/14;rod([ax-.34,-1.53+.32*Math.cos(a),1.02+.32*Math.sin(a)],[ax+.34,-1.53+.32*Math.cos(a),1.02+.32*Math.sin(a)],.025,steel)}gear([ax-.42,-1.53,1.02],.24,t*1.8,pulse);
+for(let side of[-1,1]){let x=side*2.28;pipe([[x,head+.6,-1.4-e*.6],[x+side*.28,head+.4,-1.4],[x+side*.3,.5,-1],[x+side*.2,-.8,-.85]],.13,black,2,.5,-.45);for(let j=0;j<3;j++)ring([x+side*.3,.56+j*.09,-1],.14,silver)}
+// Four tubular exhaust branches curve toward a common collector; a hot pulse runs down each on its exhaust stroke.
+X.forEach((x,i)=>{let s=S[i],z=.76+e*.7;pipe([[x,1.02+e*.7,.4],[x,1.02+e*.7,z],[x,.65,z+.14],[x*.5,-.02,z+.27],[0,-.36,z+.3]],.092,steel,1,s.exh<0?0:s.exh*1.3-.1,s.exh<0?0:1.4);cy([x,1.02+e*.7,.62+e*.3],.145,.10,silver,[0,0,1]);for(let dx of[-.16,.16])bolt([x+dx,1.02+e*.7,.66+e*.3],[0,0,1],.035)});
+let ex=Math.max(...S.map(s=>s.exh));pipe([[0,-.36,1.08+e*.7],[.55,-.35,1.16+e*.7],[1.10,-.15,1.30+e*.7],[1.72,.19,1.35+e*.7]],.17,steel,1,ex<0?0:ex*1.4-.3,ex<0?0:1.1);
+// Wiring and oil service details.
+pipe([[-2,head+.97,0],[-2.48,head+.8,.5],[-2.55,.4,.63],[-2.5,-.75,.7]],.035,black,2,1.5,-.5);cy([-1.9,-1.75,.92],.18,.43,dark);ring([1.92,-.75,.88],.12,neonB,[0,0,1],.8);rod([1.92,-.85,.88],[1.92,-1.72,.55],.023,silver);
+// Cast end housing, inspection plugs and mounting ears.
+for(let side of[-1,1]){let x=side*(2.33+e*.18);box([x,-.18,-.42],[.14,2.43,.48],steel);for(let y of[-1.12,-.4,.3,1.08]){cy([x+side*.08,y,-.37],.115,.07,dark,[1,0,0]);bolt([x+side*.13,y,-.37],[side,0,0],.065)}box([x+side*.22,-1.3,-.61],[.48,.17,.38],steel);cy([x+side*.35,-1.19,-.61],.083,.012,black)}
+for(let x of X){cy([x,.58,-.782-e*.35],.20,.015,dark,[0,0,1]);ring([x,.58,-.794-e*.35],.205,silver,[0,0,1]);for(let z of[-.59,.59]){box([x,1.23+e*.7,z],[.68,.32,.16],steel);for(let dx of[-.26,.26])bolt([x+dx,1.43+e*.7,z],undefined,.045)}}
+// Spark plug insulators with coil-on-plug packs; each pack's status ring flashes at its own ignition.
+X.forEach((x,i)=>{cy([x,head+.8,.02],.048,.22,ceramic);for(let j=0;j<5;j++)ring([x,head+.71+j*.032,.02],.051,silver);cy([x,head+1.24,.02],.085,.64,dark);ring([x,head+1.47,.02],.088,neon,undefined,.35+S[i].spark*3+S[i].burn*1.5);box([x,head+1.6,.02],[.22,.1,.27],black);box([x+.12,head+1.6,.13],[.07,.06,.1],steel)});
+// Harmonic balancer, water pump and alternator on one multi-rib belt; bright ribs travel with the belt.
+let bx=-2.82-e*.65,wp=[.28,.12,.34];cy([bx,shaftY,0],.59,.13,dark,[1,0,0]);for(let j=0;j<5;j++)ring([bx-.045+j*.022,shaftY,0],.596,steel,[1,0,0]);
+cy([bx,wp[0],wp[1]],wp[2],.12,dark,[1,0,0]);for(let j=0;j<4;j++)ring([bx-.04+j*.027,wp[0],wp[1]],wp[2]+.004,steel,[1,0,0]);cy([bx+.19,wp[0],wp[1]],.17,.26,steel,[1,0,0]);ring([bx-.07,wp[0],wp[1]],.22,neon,[1,0,0],.6*pulse);for(let k=0;k<4;k++){let a=t*.61/wp[2]+k*TAU/4;bolt([bx-.07,wp[0]+.13*Math.cos(a),wp[1]+.13*Math.sin(a)],[-1,0,0],.03)}
+let belt=wrap([[shaftY,0,.61],[-1.53,1.02,.26],wp],200,bx),bs=0;for(let j=0;j<belt.length;j++){let a=belt[j],b=belt[(j+1)%belt.length],d=sub(b,a),len=Math.hypot(...d),lit=((bs-.61*t)%1.1+1.1)%1.1<.07;part('box',mul(add(a,b),.5),[.12,len+.001,.023],lit?neon:black,d,0,lit?1.2*pulse:1);bs+=len}
+// Ribbed oil filter, service plug and circumferential fasteners.
+cy([1.58,-1.72,-1.02],.25,.62,dark);ring([1.58,-1.38,-1.02],.255,silver);for(let j=0;j<12;j++){let a=j*TAU/12;rod([1.58+.24*Math.cos(a),-1.96,-1.02+.24*Math.sin(a)],[1.58+.24*Math.cos(a),-1.51,-1.02+.24*Math.sin(a)],.018,steel)}bolt([1.87,-2.44-e*.55,.48],[0,-1,0],.10);
+
+// Core casting: recessed freeze plugs, diagonal webs, threaded bosses and split line.
+for(let x of X){part('headcast',[x,.48,-.49-e*.18],[.98,1.63,.62],steel);for(let k=0;k<2;k++){let yy=.08+k*.71;cy([x,yy,-.91-e*.18],.20,.04,silver,[0,0,1]);cy([x,yy,-.936-e*.18],.16,.012,dark,[0,0,1])}for(let dx of[-.48,.48]){rod([x+dx,-1.12,-.75],[x+dx*.78,.81,-.68],.045,silver);cy([x+dx,1.19,-.61],.085,.19,silver);bolt([x+dx,1.3,-.61],undefined,.05)}}
+for(let side of[-1,1]){let xx=side*2.36;part('headcast',[xx,.10,-.19],[.22,2.7,1.19],steel);for(let yy of[-.93,-.13,.72,1.30])for(let zz of[-.64,.36]){cy([xx+side*.1,yy,zz],.1,.09,silver,[1,0,0]);bolt([xx+side*.16,yy,zz],[side,0,0],.055)}}
+// Rounded intake plenum and four ribbed molded runners on the rear.
+part('dome',[-.15,head+.47,-1.19-e*.55],[2.18,.38,.34],black);
+X.forEach((x,i)=>{let s=S[i];pipe([[x,head-.42,-.58],[x,head-.36,-1.11-e*.55],[x,head+.02,-1.43-e*.55],[x-.12,head+.40,-1.34-e*.55]],.18,black,1,s.intk<0?0:1.1-s.intk*1.3,s.intk<0?0:-1);for(let j=0;j<5;j++)ring([x,head-.24+j*.07,-1.38-e*.55],.19,dark);box([x+.20,head+.2,-1.25-e*.55],[.15,.13,.23],steel)});
+// Turbocharger: spiral volute, shaft housing, glowing compressor wheel, throat and clamp bolts.
+let turbo=[1.78+e*.6,.43,1.40+e*.60];part('volute',turbo,[.75,.75,.75],silver);cy(add(turbo,[0,0,-.21]),.27,.5,steel,[0,0,1]);ring(add(turbo,[0,0,.04]),.305,neon,[0,0,1],pulse);part('tube',add(turbo,[0,0,.23]),[.28,.30,.28],silver,[0,0,1]);cy(add(turbo,[0,0,.07]),.24,.018,black,[0,0,1]);cy(add(turbo,[0,0,.10]),.07,.08,silver,[0,0,1]);for(let j=0;j<11;j++){let a=j*TAU/11+t*2;part('rounded',add(turbo,[.15*Math.cos(a),.15*Math.sin(a),.115]),[.025,.19,.08],neon,[Math.cos(a+.6),Math.sin(a+.6),0],0,.3+energy)}ring(add(turbo,[0,0,.385]),.282,neon,[0,0,1],.8*pulse);for(let j=0;j<8;j++){let a=j*TAU/8;bolt(add(turbo,[.37*Math.cos(a),.37*Math.sin(a),.13]),[0,0,1],.042)}pipe([add(turbo,[.35,.16,0]),add(turbo,[.65,.25,-.1]),[2.37+e*.6,1.38,1.08+e*.6],[2.04+e*.6,1.86,1.08+e*.6]],.15,black,2,1.2,-.8);
+// Throttle body, butterfly plate, actuating motor and gasket seam.
+let intake=[1.80+e*.6,1.87,1.17+e*.6];part('tube',intake,[.36,.42,.36],silver,[0,0,1]);ring(add(intake,[0,0,.22]),.372,silver,[0,0,1]);cy(add(intake,[0,0,-.18]),.31,.01,black,[0,0,1]);cy(intake,.30,.025,dark,[0,.38,.92]);rod(add(intake,[0,-.32,0]),add(intake,[0,.32,0]),.027,silver);box(add(intake,[-.42,.02,-.04]),[.25,.49,.28],black);for(let dx of[-.32,.32])for(let dy of[-.32,.32])bolt(add(intake,[dx,dy,.18]),[0,0,1],.04);
+// Braided oil feed, drain and pressure control canister.
+pipe([[2.22+e*.6,.22,1.22+e*.6],[2.27,-.43,.94],[1.85,-1.15,.76]],.047,steel,2,.8,.5);cy([2.37+e*.6,.83,1.29+e*.6],.16,.35,dark,[1,0,0]);ring([2.37+e*.6,.83,1.29+e*.6],.162,neonB,[1,0,0],.8);rod([2.23+e*.6,.83,1.29+e*.6],[1.92+e*.6,.60,1.41+e*.6],.023,silver);pipe([[1.7,.85,1.48],[1.4,1.17,.97],[1.13,1.66,.72]],.025,black,2,1.6,-.4);
+// Front coolant manifold, hose clamps, thermostat, sensor wiring.
+part('dome',[-2.15,.71,.78],[.32,.29,.28],silver);pipe([[-2.15,.71,.91],[-2.38,1.16,1.06],[-2.28,2.28,.97],[-1.88,2.65,.67]],.145,black,2,.5,-.45);for(let yy of[1.19,1.29,1.96,2.06]){ring([-2.37,yy,1.04],.154,silver);box([-2.21,yy,1.04],[.065,.05,.1],steel)}box([-2.22,.57,1.01],[.13,.13,.21],black);pipe([[-2.22,.56,1.12],[-2.01,.21,1.06],[-1.87,-.57,.92],[-1.76,-1.5,.87]],.025,black,2,1.8,-.4);
+// Alternator ventilation, end face screws, cast support bracket and starter motor.
+for(let j=0;j<12;j++){let a=j*TAU/12;bolt([ax-.36,-1.53+.28*Math.cos(a),1.02+.28*Math.sin(a)],[-1,0,0],.026)}box([ax+.32,-1.72,.63],[.22,.31,.58],steel);rod([ax+.30,-1.6,.86],[-1.88,-1.17,.58],.1,silver);cy([1.8,-1.44,-1.13],.25,.72,dark,[1,0,0]);cy([1.8,-1.13,-1.13],.13,.44,steel,[1,0,0]);bolt([2.17,-1.4,-1.13],[1,0,0],.07);
+// Looms, branch connectors and clamps: routed rather than randomly placed; data pulses stream along them.
+for(let j=0;j<3;j++)pipe([[-2.26,head+.60,.53+j*.038],[-1.65,head+.58,.55+j*.038],[-.55,head+.60,.56+j*.038],[.55,head+.61,.55+j*.038],[1.72,head+.58,.50+j*.038],[2.18,1.65,.54+j*.038],[2.22,.93,.60+j*.038]],.016,black,2,2.2+j*.4,-.7);
+for(let x of X){pipe([[x,head+.94,.39],[x+.17,head+.75,.52],[x+.18,head+.60,.60]],.036,black);for(let j=0;j<8;j++)ring([x+.17,head+.64+j*.018,.55],.042,steel);box([x+.18,head+.64,.61],[.09,.08,.08],dark)}
+// Timing chain follows the convex envelope of crank and both cam sprockets; lit links travel with it, guide rails trace the straight runs.
+let chain=wrap([[-1.5,0,.85],[head+.47,-.32,.33],[head+.47,.32,.33]],150,end+.17),cs=0;for(let j=0;j<chain.length;j++){let a=chain[j],b=chain[(j+1)%chain.length],len=Math.hypot(...sub(b,a)),steps=Math.max(1,Math.ceil(len/.065));for(let k=0;k<steps;k++){let p=add(a,mul(sub(b,a),(k+.5)/steps)),lit=((cs+len*(k+.5)/steps-.165*t)%.95+.95)%.95<.07;part('rounded',p,[.09,len/steps,.038],lit?neon:steel,sub(b,a),0,lit?1.4*pulse:1)}if(len>.4){let o=[0,Math.cos((j+.5)/150*TAU),Math.sin((j+.5)/150*TAU)];part('rounded',add(mul(add(a,b),.5),mul(o,.075)),[.13,len*.78,.05],dark,sub(b,a))}cs+=len}
+
+// Assembly seams, retaining saddles and serviceable hydraulic unions.
+for(let side of[-1,1]){let z=side*.59;box([0,head-.43,z],[4.73,.021,.032],neon,.6*pulse);for(let x of[-2.12,-1.06,0,1.06,2.12]){box([x,head-.35,z],[.13,.21,.10],steel);bolt([x,head-.25,z],undefined,.035)}}
+for(let x of[-1.75,-.65,.45,1.55]){box([x,head+.58,.60],[.12,.038,.19],steel);bolt([x,head+.61,.70],undefined,.025);box([x,head+.54,.55],[.085,.09,.05],black)}
+for(let p of[[2.22+e*.6,.22,1.22+e*.6],[1.85,-1.15,.76],[1.13,1.66,.72]]){part('hex',p,[.075,.12,.075],silver);cy(add(p,[0,.08,0]),.041,.045,steel);ring(add(p,[0,.025,0]),.053,black)}
+for(let x of[-1.7,-.55,.6,1.7]){box([x,-2.02-e*.4,.84],[.19,.08,.1],silver);bolt([x,-1.96-e*.4,.84],undefined,.047)}
+
+// Big-end caps and cap bolts follow the crank throw instead of floating near it.
+X.forEach((x,i)=>{let a=t+(i===1||i===2?Math.PI:0),yy=shaftY+.42*Math.cos(a),zz=.42*Math.sin(a);for(let side of[-1,1]){bolt([x+side*.13,yy-.16,zz],[0,-1,0],.045);ring([x+side*.087,yy,zz],.158,neon,[1,0,0],.45*pulse)}let py=yy+Math.sqrt(1.27*1.27-zz*zz);for(let side of[-1,1]){ring([x*(1+e*.13),py,side*.441],.061,steel,[0,0,1])}});
+// Cross-ribbed bearing saddles, split-line bolts and gussets.
+for(let x of[-2.2,-1.1,0,1.1,2.2]){for(let z of[-.49,.49]){box([x,shaftY-.22,z],[.29,.22,.20],silver);bolt([x,shaftY-.09,z],undefined,.051);rod([x,-1.76,z],[x+.14,-1.91,z*.5],.047,steel)}ring([x+.106,shaftY,0],.26,neon,[1,0,0],.5*pulse);ring([x-.106,shaftY,0],.26,neon,[1,0,0],.5*pulse)}
+// Machined port flange plates; the gasket glows while that port is exhausting.
+X.forEach((x,i)=>{let h=S[i].exh<0?.15:1.6*(1-S[i].exh*.6);part('rounded',[x,1.03+e*.7,.645+e*.3],[.47,.38,.068],silver);cy([x,1.03+e*.7,.691+e*.3],.14,.014,neonB,[0,0,1],h);part('tube',[x,1.03+e*.7,.713+e*.3],[.14,.054,.14],steel,[0,0,1]);for(let side of[-1,1]){rod([x+side*.175,.96+e*.7,.66+e*.3],[x+side*.175,.96+e*.7,.81+e*.3],.025,steel);bolt([x+side*.175,.96+e*.7,.785+e*.3],[0,0,1],.047)}});
+// Alternator stator winding glows through the real vent openings.
+for(let j=0;j<24;j++){let a=j*TAU/24,p=[ax,-1.53+.284*Math.cos(a),1.02+.284*Math.sin(a)];part('rounded',p,[.32,.07,.046],coil,[1,0,0],a,.6+.4*Math.sin(t*1.8*3+j)+energy)}for(let side of[-1,1])ring([ax+side*.30,-1.53,1.02],.31,steel,[1,0,0]);
+// Turbo volute parting seam, band clamp, welded outlet collar and feed union.
+ring(add(turbo,[0,0,.21]),.31,steel,[0,0,1]);for(let j=0;j<18;j++){let a=j*TAU/18;cy(add(turbo,[.295*Math.cos(a),.295*Math.sin(a),.216]),.012,.020,silver,[0,0,1])}part('hex',add(turbo,[-.18,.47,0]),[.071,.12,.071],steel);cy(add(turbo,[-.18,.56,0]),.042,.075,silver);pipe([add(turbo,[-.18,.60,0]),[1.16+e*.6,1.18,1.12+e*.6],[1.03,1.48,.72]],.026,steel,2,1,.4);
+// Ribbed wiring conduit, connector latch tabs and stamped retaining brackets.
+for(let x of X){for(let j=0;j<4;j++)box([x-.045+j*.03,head+.72,.605],[.013,.042,.13],steel);box([x+.15,head+.87,.545],[.075,.027,.06],silver);bolt([x+.16,head+.85,.56],undefined,.019)}
+// Cooling jacket relief channels and raised bosses on the rear casting.
+for(let x of X)for(let side of[-1,1]){let xx=x+side*.29;box([xx,.22,-1.012-e*.18],[.041,1.37,.035],silver);pipe([[xx,-.31,-1.015-e*.18],[xx+side*.12,.08,-1.015-e*.18],[xx,.75,-1.015-e*.18]],.016,dark)}
+// Energy field: rotating HUD arcs at both shaft ends and a stream of rings flowing out along the crank axis.
+if(FX.stream)for(let side of[-1,1]){let x0=side>0?end+.55:bx-.45;part('thin',[x0,shaftY,0],[1.18,1.18,1.18],holo,[1,0,0],0,.22);for(let k=0;k<2;k++){let R=1.42+k*.26;for(let q=0;q<4;q++)part('arc',[x0+side*(k+1)*.05,shaftY,0],[R,R,R],holo,[1,0,0],q*TAU/4+clock*(k?-.3:.22)+side,.32)}
+ for(let k=0;k<16;k++){let f=((k+time*.04)%16)/16,r=.36-.16*f;part('thin',[x0+side*(1.1+f*12),shaftY,0],[r,r,r],holo,[1,0,0],0,Math.pow(Math.sin(PI*Math.min(1,f*1.25)),.8)*(1-f*.6)*.9)}}
+}
+
+// ---------- Rendering ----------
+let groups=[];const groupBuffers=new Map();
+function prepareInstances(){let map=new Map();for(let o of objects){let key=o.name+'|'+o.mat.id,g=map.get(key);if(!g)map.set(key,g={key,name:o.name,mat:o.mat,data:[]});g.data.push(...o.m)}groups=[...map.values()].sort((a,b)=>a.mat.kind-b.mat.kind);for(let g of groups){if(!groupBuffers.has(g.key))groupBuffers.set(g.key,gl.createBuffer());g.buffer=groupBuffers.get(g.key);g.n=g.data.length/16;gl.bindBuffer(gl.ARRAY_BUFFER,g.buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(g.data),gl.DYNAMIC_DRAW)}}
+const vao=gl.createVertexArray(),emptyVAO=gl.createVertexArray(),floorVAO=gl.createVertexArray();gl.bindVertexArray(vao);for(let i=0;i<7;i++)gl.enableVertexAttribArray(i);for(let i=3;i<7;i++)gl.vertexAttribDivisor(i,1);
+const FLOOR_Y=-3.4;gl.bindVertexArray(floorVAO);gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-90,FLOOR_Y,-90,90,FLOOR_Y,-90,90,FLOOR_Y,90,-90,FLOOR_Y,-90,90,FLOOR_Y,90,-90,FLOOR_Y,90]),gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,0,0);gl.bindVertexArray(null);
+function drawGroups(pr,test){gl.bindVertexArray(vao);const u=pr.u;for(let g of groups){if(!test(g.mat))continue;let m=meshes[g.name],t=g.mat;gl.bindBuffer(gl.ARRAY_BUFFER,m.b);gl.vertexAttribPointer(0,3,gl.FLOAT,false,28,0);gl.vertexAttribPointer(1,3,gl.FLOAT,false,28,12);gl.vertexAttribPointer(2,1,gl.FLOAT,false,28,24);gl.bindBuffer(gl.ARRAY_BUFFER,g.buffer);for(let i=0;i<4;i++)gl.vertexAttribPointer(3+i,4,gl.FLOAT,false,64,i*16);if(pr===SCENE){gl.uniform1f(u.kind,t.kind);gl.uniform3fv(u.base,t.c);gl.uniform1f(u.metal,t.metal);gl.uniform1f(u.rough,t.rough);gl.uniform1f(u.edge,t.edge);gl.uniform1f(u.emitK,t.k);gl.uniform1f(u.emitSel,t.emit);gl.uniform1f(u.umode,m.umode)}gl.drawArraysInstanced(gl.TRIANGLES,0,m.count,g.n)}}
+// Shadow map: hardware-compared depth texture from the key light.
+const SH=2048,shadowTex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,shadowTex);gl.texStorage2D(gl.TEXTURE_2D,1,gl.DEPTH_COMPONENT24,SH,SH);for(const[k,v]of[[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE],[gl.TEXTURE_COMPARE_MODE,gl.COMPARE_REF_TO_TEXTURE],[gl.TEXTURE_COMPARE_FUNC,gl.LEQUAL]])gl.texParameteri(gl.TEXTURE_2D,k,v);
+const shadowFB=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,shadowFB);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.TEXTURE_2D,shadowTex,0);gl.drawBuffers([gl.NONE]);gl.readBuffer(gl.NONE);gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+const lightEye=[-7.2,12,14.4],lz=norm(lightEye),lx=norm(cross([0,1,0],lz)),ly=cross(lz,lx),lv=[lx[0],ly[0],lz[0],0,lx[1],ly[1],lz[1],0,lx[2],ly[2],lz[2],0,0,0,-Math.hypot(...lightEye),1],lightMatrix=matmul([1/7,0,0,0,0,1/7,0,0,0,0,-2/40,0,0,0,-1,1],lv);
+let W=0,H=0,RT=null;
+function setupTargets(){if(RT){for(const t of RT.tex)gl.deleteTexture(t);for(const r of RT.rb)gl.deleteRenderbuffer(r);for(const f of RT.fb)gl.deleteFramebuffer(f)}W=canvas.width;H=canvas.height;RT={tex:[],rb:[],fb:[],down:[],up:[]};const T=(w,h)=>{let t=tex(w,h,FMT);RT.tex.push(t);return t},R=(s,f)=>{let r=rbuf(s,f,W,H);RT.rb.push(r);return r},F=(c,d)=>{let f=fbo(c,d);if(f)RT.fb.push(f);return f};
+ const ms=Math.min(SAMPLES,W*H>4.5e6?2:4);RT.scene=T(W,H);RT.sceneFB=F(RT.scene);RT.msFB=ms?F(R(ms,FMT),R(ms,gl.DEPTH_COMPONENT24)):null;if(!RT.msFB){SAMPLES=0;gl.deleteFramebuffer(RT.sceneFB);RT.fb=RT.fb.filter(f=>f!==RT.sceneFB);RT.sceneFB=F(RT.scene,R(0,gl.DEPTH_COMPONENT24))}
+ for(let w=W>>1,h=H>>1,i=0;i<7&&w>=8&&h>=8;i++,w>>=1,h>>=1){let d=T(w,h),u=T(w,h);RT.down.push({t:d,f:F(d),w,h});RT.up.push({t:u,f:F(u),w,h})}}
+function resize(){let d=Math.min(devicePixelRatio||1,1.5);canvas.width=Math.round(innerWidth*d);canvas.height=Math.round(innerHeight*d);setupTargets()}addEventListener('resize',resize);resize();
+function fullscreen(pr,target,w,h,tex){gl.bindFramebuffer(gl.FRAMEBUFFER,target);gl.viewport(0,0,w,h);gl.useProgram(pr.p);tex.forEach((t,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,t)});gl.drawArrays(gl.TRIANGLES,0,3)}
+
+let yaw=.66,pitch=.33,distance=15.0,time=0,last=0,paused=false,frames=0,fpsStamp=0,analyser,audio,audioCtx,audioURL,bins,drag=false,lastX,lastY,points=new Map(),pinch=0,ripples=[-1,-1,-1,-1],scanStart=0;const target=[0,.20,0],cells=[...document.querySelectorAll('#hud .cyl i')];
+function frame(now){requestAnimationFrame(frame);let dt=Math.min(.04,(now-last)/1000);last=now;clock+=dt;if(analyser&&audio&&!audio.paused){analyser.getByteFrequencyData(bins);let v=0;for(let i=0;i<22;i++)v+=bins[i];energy+=(v/22/255-energy)*.12}else energy*=.94;
+ let prev=time;if(!paused){time+=dt*+$('speed').value/60*TAU*(1+energy*.3);if($('orbit').checked&&!drag)yaw+=dt*.11}for(let i=0;i<4;i++)if(stroke(time,i).c<stroke(prev,i).c&&time>prev){ripples.pop();ripples.unshift(clock)}
+ let mode=$('mode').value,e=mode==='explode'?+$('spread').value:mode==='auto'?(Math.sin(time*.035-1)+1)*.5*+$('spread').value:0,neonK=+$('neonK').value*(1+energy*.8);build(time,e,mode==='full');prepareInstances();
+ // Shadow pass (opaque parts only).
+ gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.disable(gl.BLEND);gl.bindFramebuffer(gl.FRAMEBUFFER,shadowFB);gl.viewport(0,0,SH,SH);gl.clear(gl.DEPTH_BUFFER_BIT);gl.useProgram(SHADOW.p);gl.uniformMatrix4fv(SHADOW.u.vp,false,lightMatrix);drawGroups(SHADOW,m=>m.kind<2);
+ // Scene pass into the (multisampled) HDR target.
+ gl.bindFramebuffer(gl.FRAMEBUFFER,RT.msFB||RT.sceneFB);gl.viewport(0,0,W,H);gl.clearColor(0,0,0,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+ let eye=[Math.sin(yaw)*Math.cos(pitch)*distance+target[0],Math.sin(pitch)*distance+target[1],Math.cos(yaw)*Math.cos(pitch)*distance+target[2]],vp=camera(eye,target,W/H),sp=(clock-scanStart)%9/9,u=SCENE.u;
+ gl.useProgram(SCENE.p);gl.uniformMatrix4fv(u.vp,false,vp);gl.uniformMatrix4fv(u.lightVP,false,lightMatrix);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,shadowTex);gl.uniform1i(u.shadowMap,0);gl.uniform3fv(u.eye,eye);gl.uniform3fv(u.cA,theme.a);gl.uniform3fv(u.cB,theme.b);gl.uniform3fv(u.cC,theme.c);gl.uniform1f(u.time,clock);gl.uniform1f(u.illum,+$('light').value+energy*.12);gl.uniform1f(u.neon,neonK);gl.uniform1f(u.rimK,.12);gl.uniform1f(u.scanY,sp<.5?4.2-sp*16:-99);gl.uniform1f(u.scanK,FX.scan?.55:0);
+ drawGroups(SCENE,m=>m.kind<2);
+ if(FX.floor){gl.useProgram(FLOOR.p);gl.uniformMatrix4fv(FLOOR.u.vp,false,vp);gl.uniform3fv(FLOOR.u.cA,theme.a);gl.uniform3fv(FLOOR.u.cB,theme.b);gl.uniform1f(FLOOR.u.neon,neonK);gl.uniform4fv(FLOOR.u.rip,ripples.map(r=>r<0?-1:clock-r));gl.bindVertexArray(floorVAO);gl.drawArrays(gl.TRIANGLES,0,6)}
+ gl.useProgram(SCENE.p);gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.depthMask(false);drawGroups(SCENE,m=>m.kind>=2);gl.depthMask(true);gl.disable(gl.BLEND);gl.disable(gl.DEPTH_TEST);
+ if(RT.msFB){gl.bindFramebuffer(gl.READ_FRAMEBUFFER,RT.msFB);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,RT.sceneFB);gl.blitFramebuffer(0,0,W,H,0,0,W,H,gl.COLOR_BUFFER_BIT,gl.NEAREST);gl.bindFramebuffer(gl.READ_FRAMEBUFFER,null)}
+ // Bloom chain, then tone-mapped composite.
+ gl.bindVertexArray(emptyVAO);let src=RT.scene,sw=W,sh=H;gl.useProgram(DOWN.p);gl.uniform1i(DOWN.u.src,0);gl.uniform1f(DOWN.u.thr,1.);RT.down.forEach((d,i)=>{gl.useProgram(DOWN.p);gl.uniform2f(DOWN.u.tx,1/sw,1/sh);gl.uniform1f(DOWN.u.first,i?0:1);fullscreen(DOWN,d.f,d.w,d.h,[src]);src=d.t;sw=d.w;sh=d.h});
+ let bloom=RT.down[RT.down.length-1];gl.useProgram(UP.p);gl.uniform1i(UP.u.src,0);gl.uniform1i(UP.u.base,1);for(let i=RT.down.length-2;i>=0;i--){gl.useProgram(UP.p);gl.uniform2f(UP.u.tx,1/bloom.w,1/bloom.h);fullscreen(UP,RT.up[i].f,RT.up[i].w,RT.up[i].h,[bloom.t,RT.down[i].t]);bloom=RT.up[i]}
+ gl.useProgram(COMP.p);gl.uniform1i(COMP.u.scene,0);gl.uniform1i(COMP.u.bloom,1);gl.uniform1f(COMP.u.bloomK,+$('glow').value*.09*(1+energy*.5));gl.uniform1f(COMP.u.time,clock);fullscreen(COMP,null,W,H,[RT.scene,bloom.t]);
+ S.forEach((s,i)=>cells[i].style.setProperty('--f',Math.min(1,s.burn*1.4+s.spark).toFixed(2)));
+ frames++;if(now-fpsStamp>700){$('fps').textContent=Math.round(frames*1000/(now-fpsStamp))+' FPS';$('parts').textContent=objects.length+' PARTS';$('rpm').textContent=Math.round(+$('speed').value*(1+energy*.3));frames=0;fpsStamp=now}}
+requestAnimationFrame(frame);
+
+// ---------- UI ----------
+for(let id of['speed','spread','light','glow','neonK'])$(id).oninput=()=>{$(id+'V').textContent=id==='speed'?$(id).value+' rpm':Math.round($(id).value*100)+'%';if(id==='spread'&&['cut','full'].includes($('mode').value))$('mode').value='explode'};
+$('mode').addEventListener('change',()=>scanStart=clock);function applyTheme(){scanStart=clock;theme=THEMES[$('theme').value];document.documentElement.style.setProperty('--a',theme.css[0]);document.documentElement.style.setProperty('--b',theme.css[1])}$('theme').onchange=applyTheme;applyTheme();
+for(const[id,k]of[['fxFloor','floor'],['fxScan','scan'],['fxStream','stream'],['fxBurn','burn']])$(id).onchange=()=>FX[k]=$(id).checked;
+$('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'再生':'一時停止';$('state').style.color=paused?'#dbb976':''};$('reset').onclick=()=>{yaw=.66;pitch=.33;distance=15.0;target.splice(0,3,0,.20,0)};$('crankView').onclick=()=>{target.splice(0,3,0,-1.10,.15);yaw=.46;pitch=.20;distance=7.4};$('turboView').onclick=()=>{target.splice(0,3,1.6,.68,1.05);yaw=.55;pitch=.13;distance=6.6};$('valveView').onclick=()=>{target.splice(0,3,-.4,2.05,0);yaw=.38;pitch=.42;distance=6.2};$('front').onclick=()=>{yaw=0;pitch=.05};$('side').onclick=()=>{yaw=Math.PI/2;pitch=.1};$('top').onclick=()=>{yaw=.4;pitch=1.3};function hide(){document.body.classList.toggle('hide')}$('hide').onclick=$('show').onclick=hide;addEventListener('keydown',e=>{if(e.key.toLowerCase()==='h')hide()});canvas.onpointerdown=e=>{points.set(e.pointerId,[e.clientX,e.clientY]);drag=true;lastX=e.clientX;lastY=e.clientY;pinch=0;canvas.setPointerCapture(e.pointerId)};canvas.onpointermove=e=>{if(!points.has(e.pointerId))return;points.set(e.pointerId,[e.clientX,e.clientY]);if(points.size===2){let p=[...points.values()],d=Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]);if(pinch)distance=Math.max(4,Math.min(34,distance*pinch/d));pinch=d}else{yaw-=(e.clientX-lastX)*.006;pitch=Math.max(-1.4,Math.min(1.4,pitch+(e.clientY-lastY)*.006))}lastX=e.clientX;lastY=e.clientY};canvas.onpointerup=canvas.onpointercancel=e=>{points.delete(e.pointerId);drag=points.size>0;pinch=0};canvas.addEventListener('wheel',e=>{e.preventDefault();distance=Math.max(4,Math.min(34,distance*Math.exp(e.deltaY*.001)))},{passive:false});
+$('music').onchange=async e=>{let f=e.target.files[0];if(!f)return;try{if(audio)audio.pause();if(audioURL)URL.revokeObjectURL(audioURL);if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)();analyser=audioCtx.createAnalyser();analyser.fftSize=512;bins=new Uint8Array(analyser.frequencyBinCount);analyser.connect(audioCtx.destination)}audio=new Audio();audioURL=URL.createObjectURL(f);audio.src=audioURL;audio.loop=true;audioCtx.createMediaElementSource(audio).connect(analyser);await audioCtx.resume();await audio.play();$('audioInfo').textContent=f.name+' / 低域 → 回転速度・発光・グロー';$('audioToggle').textContent='音源停止'}catch(e){$('audioInfo').textContent='音源を再生できません。MP3 / WAVでお試しください。'}};$('audioToggle').onclick=()=>{if(!audio)return;if(audio.paused){audio.play().catch(()=>{});$('audioToggle').textContent='音源停止'}else{audio.pause();$('audioToggle').textContent='音源再生'}};
+// Blender export: static snapshot of the solid parts; neon materials become emission shaders in the current theme colour.
+$('export').onclick=()=>{const solid=objects.filter(o=>o.mat.kind<2||o.mat.kind===4),used=new Set(solid.map(o=>o.name)),data={meshes:Object.fromEntries(Object.entries(meshes).filter(([k])=>used.has(k)).map(([k,m])=>[k,m.verts.filter((_,i)=>i%7<3)])),parts:solid.map(o=>({name:o.name,m:o.m.map((v,i)=>i===3||i===7||i===11?0:v),color:o.mat.c,metal:o.mat.metal,rough:o.mat.rough,emit:o.mat.kind===1?[theme.a,theme.b,theme.c][o.mat.emit]:null,mat:o.mat.name}))};let py=`# Engine static snapshot. Blender > Scripting > Run Script.\nimport bpy, json\nfrom mathutils import Matrix\ndata=json.loads(r'''${JSON.stringify(data)}''')\nscene=bpy.data.scenes.new('Engine snapshot')\nbpy.context.window.scene=scene\ncache={}\nfor name,arr in data['meshes'].items():\n    verts=[arr[i:i+3] for i in range(0,len(arr),3)]\n    faces=[(i,i+1,i+2) for i in range(0,len(verts),3)]\n    mesh=bpy.data.meshes.new(name)\n    mesh.from_pydata(verts,[],faces)\n    mesh.update()\n    cache[name]=mesh\nmaterials={}\nfor i,p in enumerate(data['parts']):\n    key=p['mat']\n    if key not in materials:\n        mat=bpy.data.materials.new(key)\n        mat.diffuse_color=(*p['color'],1)\n        mat.use_nodes=True\n        bs=mat.node_tree.nodes.get('Principled BSDF')\n        bs.inputs['Base Color'].default_value=(*p['color'],1)\n        bs.inputs['Metallic'].default_value=p['metal']\n        bs.inputs['Roughness'].default_value=p['rough']\n        if p['emit']:\n            for k in ('Emission Color','Emission'):\n                if k in bs.inputs:\n                    bs.inputs[k].default_value=(*p['emit'],1)\n                    break\n            if 'Emission Strength' in bs.inputs: bs.inputs['Emission Strength'].default_value=8\n        materials[key]=mat\n    obj=bpy.data.objects.new(p['name']+'_'+str(i),cache[p['name']].copy())\n    scene.collection.objects.link(obj)\n    m=p['m']\n    obj.matrix_world=Matrix([[m[c*4+r] for c in range(4)] for r in range(4)])\n    obj.data.materials.append(materials[key])\n# Source coordinates use Y up. Rotate all parts into Blender Z up.\nfrom math import pi\nrot=Matrix.Rotation(pi/2,4,'X')\nfor obj in list(scene.objects): obj.matrix_world=rot @ obj.matrix_world\nprint('Static engine snapshot imported. Save As to retain it.')\n`;let u=URL.createObjectURL(new Blob([py],{type:'text/x-python'})),a=document.createElement('a');a.href=u;a.download='Engine_snapshot_blender.py';a.click();setTimeout(()=>URL.revokeObjectURL(u),5000)};
+</script></html>
