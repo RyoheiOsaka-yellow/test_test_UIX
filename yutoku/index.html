@@ -77,6 +77,10 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:1.5px solid var
 .round.ghost{background:var(--glass);color:var(--ink);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
 svg{display:block}
 
+.proj{pointer-events:auto;display:inline-flex;gap:2px;padding:3px;margin-top:14px;border-radius:999px;background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:var(--shadow)}
+.proj button{border:0;background:transparent;padding:6px 13px;border-radius:999px;font-family:var(--mincho);font-size:12px;letter-spacing:.06em;color:var(--ink-2);cursor:pointer;transition:background .25s,color .25s}
+.proj button:hover{color:var(--ink)}
+.proj button[aria-pressed="true"]{background:var(--btn);color:var(--btn-ink)}
 /* ---------- compass ---------- */
 .compass{position:absolute;left:calc(28px + env(safe-area-inset-left,0px));bottom:calc(184px + env(safe-area-inset-bottom,0px));width:34px;height:34px;border-radius:50%;border:1px solid var(--rule);display:grid;place-items:center;pointer-events:none;color:var(--ink-2)}
 .compass svg{transition:none}
@@ -144,6 +148,8 @@ svg{display:block}
 @media (max-width:720px){
   .brand{left:16px;top:calc(14px + env(safe-area-inset-top,0px));max-width:calc(100% - 170px)}
   .brand h1{font-size:32px}
+  .proj{margin-top:10px}
+  .proj button{padding:5px 10px;font-size:11px}
   .brand .sub .en{display:none}
   .eyebrow{font-size:8.5px;letter-spacing:.26em}
   .tools{right:16px;top:calc(14px + env(safe-area-inset-top,0px));flex-direction:column;align-items:flex-end;gap:8px}
@@ -181,8 +187,12 @@ svg{display:block}
 
   <header class="brand">
     <p class="eyebrow">An Architectural Study</p>
-    <h1>Yūtoku <em>Inari.</em></h1>
-    <p class="sub"><span class="jp">祐徳稲荷神社 · 日本庭園 · 祐徳博物館</span><span class="en">/ &nbsp;From line to landmark</span></p>
+    <h1 id="brandH">Yūtoku <em>Inari.</em></h1>
+    <p class="sub"><span class="jp" id="brandSub">祐徳稲荷神社 · 日本庭園 · 祐徳博物館</span><span class="en">/ &nbsp;From line to landmark</span></p>
+    <div class="proj" role="group" aria-label="作品を切り替え">
+      <button type="button" data-proj="yutoku" aria-pressed="true">祐徳稲荷神社</button>
+      <button type="button" data-proj="karatsu" aria-pressed="false">唐津城</button>
+    </div>
   </header>
 
   <nav class="tools" aria-label="表示">
@@ -216,12 +226,7 @@ svg{display:block}
 
   <aside class="sites" aria-label="見どころ">
     <p class="site-title" id="siteName">Yūtoku Inari Shrine</p>
-    <div class="site-list" role="group">
-      <button type="button" data-site="overview" aria-pressed="false"><span class="en">Overview</span><span class="jp">全景</span></button>
-      <button type="button" data-site="honden" aria-pressed="false"><span class="en">Main Hall</span><span class="jp">御本殿</span></button>
-      <button type="button" data-site="garden" aria-pressed="false"><span class="en">Garden</span><span class="jp">日本庭園</span></button>
-      <button type="button" data-site="museum" aria-pressed="false"><span class="en">Museum</span><span class="jp">祐徳博物館</span></button>
-    </div>
+    <div class="site-list" id="siteList" role="group"></div>
   </aside>
 
   <section class="card" id="card" hidden aria-live="polite">
@@ -297,7 +302,8 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
    SITE — terrain function. West (−x) is 石壁山 (Mt. Ishikabe); the
    shrine axis runs east–west along z = 0; 浜川 runs north–south.
    ===================================================================== */
-const TX0 = -165, TX1 = 150, TZ0 = -130, TZ1 = 130, BASE = -9, TS = 1.25;
+let TX0 = -165, TX1 = 150, TZ0 = -130, TZ1 = 130, CENTER = [-48, 0];
+const BASE = -9, TS = 1.25;
 const riverX = z => 39 + 3.2 * Math.sin(z / 34 + .6);
 const RHW = 5.2;
 const PONDS = [{ x: 21, z: -36.5, r: 6.4, ph: 1.3, d: 1.15 }, { x: 6, z: -87, r: 7.4, ph: 4.1, d: 1.0 }];
@@ -338,7 +344,8 @@ function pondCut(x, z) {
   for (const p of PONDS) { const dx = x - p.x, dz = z - p.z, d = Math.hypot(dx, dz); if (d > p.r * 1.4) continue; const r = pondR(p, Math.atan2(dz, dx)); c = Math.min(c, -p.d * sstep(r, r - 2, d)); }
   return c;
 }
-const H = (x, z) => mountain(x, z) + hill(x, z) + gardenH(x, z) + riverCut(x, z) + pondCut(x, z);
+const yutokuH = (x, z) => mountain(x, z) + hill(x, z) + gardenH(x, z) + riverCut(x, z) + pondCut(x, z);
+let H = yutokuH;
 
 /* =====================================================================
    RENDERER / SCENE
@@ -359,6 +366,7 @@ renderer.toneMapping = THREE.NeutralToneMapping;
 renderer.toneMappingExposure = 1;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(32, 1, 1, 4200);
+let ROOT = scene;
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true; controls.dampingFactor = .08;
 controls.minDistance = 16; controls.maxDistance = 1100; controls.maxPolarAngle = Math.PI * .497;
@@ -478,7 +486,13 @@ M('carB', CLAY, '#2f4f78', .4, .3, { delay: .3 });
 M('forestI', '#eeede7', '#ffffff', .9, 0, { vmode: 'tint', delay: .36 });
 M('azaleaI', '#f1f0eb', '#ffffff', .85, 0, { vmode: 'tint', delay: .38 });
 M('chimeI', '#f4f3ef', '#ffffff', .35, 0, { vmode: 'tint', delay: .2 });
-const NO_SHADOW = new Set(['water', 'glass', 'paint', 'gravel', 'paving', 'asphalt']);
+M('houseI', '#efede8', '#ffffff', .85, 0, { vmode: 'tint', delay: .26 });
+M('orange', '#f1efea', '#d5582b', .5, 0, { delay: 0 });
+M('sea', '#e2e6e5', '#2c6c84', .08, .1, { delay: .22, props: { transparent: true, opacity: .72, depthWrite: false } });
+M('concrete', '#e6e4de', '#bdbbb4', .85, 0, { delay: .28 });
+M('sakura', '#f2f0eb', '#f2b6c6', .85, 0, { delay: .3, autumn: '#c77a3c' });
+M('wisteria', '#f1f0eb', '#9a7fd0', .85, 0, { delay: .3, autumn: '#6f7f4a' });
+const NO_SHADOW = new Set(['water', 'sea', 'glass', 'paint', 'gravel', 'paving', 'asphalt']);
 
 /* =====================================================================
    BUILDER — every solid is registered with a start time on the
@@ -720,8 +734,8 @@ function karaOn(o, y) {
   const k = makeKara(o);
   const T = new THREE.Matrix4().makeTranslation(0, y, 0);
   add(o.mat || 'copper', k.geo.applyMatrix4(T), { ea: 40 });
-  add('verm', k.fill.applyMatrix4(T), { ph: 'detail', lines: false });
-  add('gold', k.trim.applyMatrix4(T), { ph: 'detail', lines: false });
+  add(o.fill || 'verm', k.fill.applyMatrix4(T), { ph: 'detail', lines: false });
+  add(o.trim || 'gold', k.trim.applyMatrix4(T), { ph: 'detail', lines: false });
   return k;
 }
 
@@ -793,7 +807,7 @@ function circleStroke(c, r, ry = 1, layer = 1, flat = false, k = 22) {
   const pts = []; const a0 = R() * 6.28; for (let i = 0; i <= k; i++) { const a = a0 + i / k * Math.PI * 2 * 1.04; pts.push(c.clone().addScaledVector(e1, Math.cos(a) * r).addScaledVector(e2, Math.sin(a) * r * ry)); }
   const segs = []; for (let i = 0; i < k; i++) segs.push([pts[i], pts[i + 1]]); S.strokes.push({ layer, segs });
 }
-const TREE = { camphor: [5.2, 4.3, 'foliage'], maple: [3.1, 2.5, 'maple'], ginkgo: [6.2, 3.2, 'ginkgo'], pine: [2.6, 2.3, 'pine'], broad: [3.6, 3, 'foliage'] };
+const TREE = { sakura: [3.0, 3.0, 'sakura'], camphor: [5.2, 4.3, 'foliage'], maple: [3.1, 2.5, 'maple'], ginkgo: [6.2, 3.2, 'ginkgo'], pine: [2.6, 2.3, 'pine'], broad: [3.6, 3, 'foliage'] };
 function tree(kind, x, z, s = 1, o = {}) {
   const save = S.M; S.M = null;
   const y = o.y ?? Math.max(0, H(x, z)) + .05; const [th0, cr0, mk] = TREE[kind]; const th = th0 * s, cr = cr0 * s;
@@ -846,7 +860,8 @@ function buildConstruction() {
    2. TERRAIN — plinth model with contour lines (等高線)
    ===================================================================== */
 let HG = null, NXg = 0, NZg = 0;
-function tColor(x, z, h, slope) {
+let tColor = (...a) => yutokuTColor(...a);
+function yutokuTColor(x, z, h, slope) {
   const c = new THREE.Color('#a2a477');
   const m = mountain(x, z), hl = hill(x, z);
   if (hl > .4) c.lerp(new THREE.Color('#86a057'), sstep(.4, 3, hl));
@@ -861,7 +876,7 @@ function buildTerrain() {
   const n = NXg * NZg; HG = new Float32Array(n);
   for (let j = 0; j < NZg; j++) for (let i = 0; i < NXg; i++) HG[j * NXg + i] = H(TX0 + i * TS, TZ0 + j * TS);
   const pos = new Float32Array(n * 3), col = new Float32Array(n * 3), an = new Float32Array(n * 3), am = new Float32Array(n * 4);
-  const delay = (x, z) => .26 * clamp(Math.hypot(x + 48, z) / 260);
+  const delay = (x, z) => .26 * clamp(Math.hypot(x - CENTER[0], z - CENTER[1]) / 260);
   for (let j = 0; j < NZg; j++) for (let i = 0; i < NXg; i++) {
     const k = j * NXg + i, x = TX0 + i * TS, z = TZ0 + j * TS, h = HG[k];
     const hx = HG[j * NXg + Math.min(NXg - 1, i + 1)] - HG[j * NXg + Math.max(0, i - 1)], hz = HG[Math.min(NZg - 1, j + 1) * NXg + i] - HG[Math.max(0, j - 1) * NXg + i];
@@ -876,7 +891,7 @@ function buildTerrain() {
   g.setAttribute('aAnchor', new THREE.BufferAttribute(an, 3)); g.setAttribute('aAnim', new THREE.BufferAttribute(am, 4));
   g.setIndex(new THREE.BufferAttribute(idx, 1)); g.computeVertexNormals();
   MAT.terrain.vertexColors = true;
-  const mesh = new THREE.Mesh(g, MAT.terrain); mesh.receiveShadow = true; mesh.castShadow = true; mesh.customDepthMaterial = DEPTH; mesh.frustumCulled = false; scene.add(mesh);
+  const mesh = new THREE.Mesh(g, MAT.terrain); mesh.receiveShadow = true; mesh.castShadow = true; mesh.customDepthMaterial = DEPTH; mesh.frustumCulled = false; ROOT.add(mesh);
   // skirt (the cut edge of the site model)
   const sides = [[TX0, TZ0, TX1, TZ0, [0, 0, -1]], [TX1, TZ0, TX1, TZ1, [1, 0, 0]], [TX1, TZ1, TX0, TZ1, [0, 0, 1]], [TX0, TZ1, TX0, TZ0, [-1, 0, 0]]];
   for (const [ax, az, bx, bz, out] of sides) {
@@ -1359,7 +1374,7 @@ function buildOkunoin() {
       anim.set([2.28 + .6 * u, .12, 1, 0], i * 4);
     }
     geo.setAttribute('aAnim', new THREE.InstancedBufferAttribute(anim, 4));
-    im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = DEPTH; im.frustumCulled = false; scene.add(im);
+    im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = DEPTH; im.frustumCulled = false; ROOT.add(im);
   }
 }
 
@@ -1519,13 +1534,13 @@ function makeInstances(mk, baseGeo, list, palette, rnd) {
   const n = list.length, anim = new Float32Array(n * 4), im = new THREE.InstancedMesh(geo, MAT[mk], n), m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
   const cS = [], cA = [];
   list.forEach((it, i) => {
-    q.setFromAxisAngle(V(0, 1, 0), rnd() * 6.28); m4.compose(V(it.x, it.y, it.z), q, V(it.s, it.s * (it.sy || 1), it.s)); im.setMatrixAt(i, m4);
-    anim.set([it.t, .14, 1, 0], i * 4);
+    q.setFromAxisAngle(V(0, 1, 0), it.ry ?? rnd() * 6.28); m4.compose(V(it.x, it.y, it.z), q, V(it.sx ?? it.s, it.s * (it.sy || 1), it.sz ?? it.s)); im.setMatrixAt(i, m4);
+    anim.set([it.t, it.d ?? .14, it.m ?? 1, 0], i * 4);
     const k = Math.floor(rnd() * 1e6); cS.push(new THREE.Color(it.cs || palette.spring[k % palette.spring.length])); cA.push(new THREE.Color(it.ca || palette.autumn[k % palette.autumn.length]));
     im.setColorAt(i, cS[i]);
   });
   geo.setAttribute('aAnim', new THREE.InstancedBufferAttribute(anim, 4));
-  im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = DEPTH; im.frustumCulled = false; scene.add(im);
+  im.castShadow = true; im.receiveShadow = true; im.customDepthMaterial = DEPTH; im.frustumCulled = false; ROOT.add(im);
   INSTANCED.push({ im, cS, cA });
   return im;
 }
@@ -1552,31 +1567,294 @@ function buildForest() {
 }
 
 /* =====================================================================
-   BUILD
+   BUILD — each study is built into its own group; 唐津城 lazily on first view
    ===================================================================== */
-buildConstruction();
-buildTerrain();
-buildRiver();
-buildPlaza();
-buildRomon();
-buildHalls();
-buildHonden();
-buildOkunoin();
-buildGarden();
-buildMonzen();
-buildMuseum();
-buildParkParking();
-buildForest();
-{ const cg = mergeGeometries([prepGeo(new THREE.SphereGeometry(.13, 8, 6)), prepGeo(new THREE.BoxGeometry(.09, .36, .015).translate(0, -.34, 0))]);
+function buildYutoku() {
+  buildConstruction(); buildTerrain(); buildRiver(); buildPlaza(); buildRomon(); buildHalls(); buildHonden();
+  buildOkunoin(); buildGarden(); buildMonzen(); buildMuseum(); buildParkParking(); buildForest();
+  const cg = mergeGeometries([prepGeo(new THREE.SphereGeometry(.13, 8, 6)), prepGeo(new THREE.BoxGeometry(.09, .36, .015).translate(0, -.34, 0))]);
   const pal = ['#f48fb1', '#ffd54f', '#81c784', '#64b5f6', '#e57373', '#ba68c8', '#4dd0e1', '#fff59d'];
-  makeInstances('chimeI', cg, CHIMES, { spring: pal, autumn: pal }, mulberry(77)); }
-for (const [mk, list] of BUCKETS) {
-  const g = mergeGeometries(list, false);
-  if (!g) { console.warn('merge failed', mk); continue; }
-  const mesh = new THREE.Mesh(g, MAT[mk]);
-  mesh.castShadow = !NO_SHADOW.has(mk); mesh.receiveShadow = true; mesh.customDepthMaterial = DEPTH; mesh.frustumCulled = false;
-  if (mk === 'water' || mk === 'glass') mesh.renderOrder = 2;
-  scene.add(mesh);
+  makeInstances('chimeI', cg, CHIMES, { spring: pal, autumn: pal }, mulberry(77));
+}
+/* =====================================================================
+   唐津城 KARATSU CASTLE — 満島山 at the mouth of 松浦川, 唐津湾 to the north.
+   North is −z (the sea); the castle hill is a superellipse with the
+   本丸 plateau, a 腰曲輪 / 二ノ曲輪 terrace, and stone walls at each step.
+   ===================================================================== */
+const KC = { x: -5, z: -40, a: 58, b: 42 };
+const kCoast = x => x < 57 ? -46 : -50 - 5 * Math.sin((x - 95) / 38);
+const kRiverX = z => 75 + 6 * Math.sin(z / 45);
+function kE(x, z) { const dx = (x - KC.x) / KC.a, dz = (z - KC.z) / KC.b; return { e: Math.pow(dx ** 4 + dz ** 4, .25), ang: Math.atan2(dz, dx) }; }
+const kEo = ang => .72 + .14 * Math.pow(Math.max(0, Math.cos(ang - Math.PI / 4)), 3);
+function kBase(x, z) {
+  const c = kCoast(x); let h = lerp(-5, 1.2, sstep(c - 7, c + 5, z));
+  if (z > c - 8) h = Math.min(h, lerp(-4.2, h, sstep(15, 18.5, Math.abs(x - kRiverX(z)))));
+  const di = Math.hypot((x - 72) / 17, (z + 126) / 13); if (di < 1.6) h = Math.max(h, 26 * Math.exp(-di * di * 1.4) - 5);
+  return h;
+}
+function kHill(x, z) {
+  const { e, ang } = kE(x, z); if (e > 1.15) return -99;
+  if (e < .55) return 31;
+  if (e < .566) return lerp(31, 21, sstep(.55, .566, e));
+  const eo = kEo(ang);
+  if (e < eo) return 21;
+  if (e < eo + .016) return lerp(21, 15, sstep(eo, eo + .016, e));
+  const t = sstep(eo + .016, 1.1, e);
+  return lerp(15, -6, t) + fbm(x * .05 + 9, z * .05) * 2.2 * (1 - t) * t * 4;
+}
+const karatsuH = (x, z) => Math.max(kBase(x, z), kHill(x, z));
+function karatsuTColor(x, z, h, slope) {
+  const c = new THREE.Color('#b8b2a2');
+  const hb = kBase(x, z), hh = kHill(x, z), onHill = hh > hb + .3;
+  if (!onHill && hb > -1.5 && z < kCoast(x) + 9) c.set('#dccb9c');
+  if (onHill) { c.set(slope < .3 ? (h > 30.5 ? '#cfc6ad' : '#bdb391') : '#4d6440'); if (slope > 1.1) c.lerp(new THREE.Color('#877b69'), .6); }
+  if (Math.hypot((x - 72) / 17, (z + 126) / 13) < 1.15 && h > -.5) c.set('#4d6440');
+  if (h < -1) c.set('#56666a');
+  return c;
+}
+const dirAng = th => Math.atan2(Math.sign(Math.sin(th)) * Math.sqrt(Math.abs(Math.sin(th))), Math.sign(Math.cos(th)) * Math.sqrt(Math.abs(Math.cos(th))));
+function sePt(e, th) { const c = Math.cos(th), s = Math.sin(th); return [KC.x + KC.a * e * Math.sign(c) * Math.sqrt(Math.abs(c)), KC.z + KC.b * e * Math.sign(s) * Math.sqrt(Math.abs(s))]; }
+
+function kConstruction() {
+  begin({ sketch: [0, .22], mass: [1, 1.1], detail: [2, 2.1] });
+  const L0 = (a, b) => S.strokes.push({ layer: 0, segs: [[a, b]] });
+  L0(V(TX0, BASE, TZ0), V(TX1, BASE, TZ0)); L0(V(TX1, BASE, TZ0), V(TX1, BASE, TZ1)); L0(V(TX1, BASE, TZ1), V(TX0, BASE, TZ1)); L0(V(TX0, BASE, TZ1), V(TX0, BASE, TZ0));
+  for (const [x, z] of [[TX0, TZ0], [TX1, TZ0], [TX1, TZ1], [TX0, TZ1]]) L0(V(x, BASE, z), V(x, H(x, z), z));
+  for (const x of [-8, -37, 27, 58, 92]) L0(V(x, .05, TZ0 + 10), V(x, .05, TZ1 - 10));
+  for (const z of [-63, -57, -17, -46]) L0(V(TX0 + 10, .05, z), V(TX1 - 10, .05, z));
+  for (let x = -150; x <= 150; x += 30) for (let z = -120; z <= 120; z += 30) { L0(V(x - .9, .05, z), V(x + .9, .05, z)); L0(V(x, .05, z - .9), V(x, .05, z + .9)); }
+  S.strokes.push({ layer: 4, segs: [[V(-8, .12, -130), V(-8, .12, 60)]] });
+  S.strokes.push({ layer: 4, segs: [[V(-8, 18, -57), V(-8, 80, -57)]] });
+  const west = [], east = []; for (let x = TX0; x <= 56; x += 4) west.push(V(x, .3, kCoast(x))); for (let x = 92; x <= TX1; x += 4) east.push(V(x, .3, kCoast(x)));
+  S.strokes.push({ layer: 1, segs: west.slice(0, -1).map((p, i) => [p, west[i + 1]]) }, { layer: 1, segs: east.slice(0, -1).map((p, i) => [p, east[i + 1]]) });
+  for (const s of [-1, 1]) { const pts = []; for (let z = -50; z <= TZ1; z += 4) pts.push(V(kRiverX(z) + s * 16.4, .3, z)); S.strokes.push({ layer: 1, segs: pts.slice(0, -1).map((p, i) => [p, pts[i + 1]]) }); }
+  end();
+}
+
+function kWater() {
+  begin({ sketch: [.1, .42], mass: [1.12, 1.45], detail: [2.05, 2.5] });
+  add('sea', new THREE.PlaneGeometry(TX1 - TX0, TZ1 - TZ0).rotateX(-Math.PI / 2).translate((TX0 + TX1) / 2, -1.1, (TZ0 + TZ1) / 2), { lines: false, ph: 'detail', m: 0, ord: 0 });
+  for (const s of [-1, 1]) for (let z = -52; z < TZ1; z += 3) { const z2 = Math.min(TZ1, z + 3); add('stone', beam(V(kRiverX(z) + s * 15.8, -1.45, z), V(kRiverX(z2) + s * 15.8, -1.45, z2), .9, 5.9), { lines: false, anc: V(kRiverX(z), -4.4, z), ord: (z + 52) / 180 }); }
+  // 舞鶴橋
+  add('concrete', box(44, .9, 9, 75, 3.2, -16));
+  for (let x = 60; x <= 90; x += 7.5) add('concrete', box(1.4, 7.6, 6.4, x, -4.4, -16), { lines: 'axis' });
+  for (const s of [-1, 1]) add('concrete', box(44, .9, .22, 75, 4.1, -16 + s * 4.4), { lines: 'axis' });
+  for (let x = 56; x <= 94; x += 9.5) for (const s of [-1, 1]) add('steel', cyl(.08, 5, x, 4.1, -16 + s * 4.3, 5), { ph: 'detail', lines: false });
+  // railway bridge upstream
+  add('steel', box(46, .8, 5, 75, 4.6, 96));
+  for (let x = 58; x <= 92; x += 5.6) add('concrete', box(1, 9, 3.6, x, -4.4, 96), { lines: 'axis' });
+  // breakwaters and a harbour light
+  add('stone', beam(V(93, -1.2, -54), V(84, -1.2, -108), 3.4, 3.6), { lines: 'axis' });
+  add('stone', beam(V(-128, -1.2, -98), V(-34, -1.2, -98), 3.4, 3.6), { lines: 'axis' });
+  add('plaster', cyl(.9, 6, 84, .6, -108, 12), { ph: 'detail', lines: 'axis' }); add('orange', cyl(1, 1.4, 84, 6.6, -108, 12), { ph: 'detail', lines: false });
+  for (const [x, z] of [[68, 30], [80, 44], [72, 62], [84, 12]]) add('plaster', box(1.8, .7, 5.2, x, -1.3, z).rotateY(.3), { ph: 'detail', lines: false });
+  end();
+}
+
+function stoneFlight(p0, dir, n, run, rise, width) {
+  const side = V(-dir.z, 0, dir.x), alongX = Math.abs(dir.x) > .5;
+  for (let i = 0; i < n; i++) {
+    const c = p0.clone().addScaledVector(dir, (i + .5) * run), top = p0.y + (i + 1) * rise, g = Math.min(H(c.x, c.z), top - .5) - .4;
+    add('stone', new THREE.BoxGeometry(alongX ? run + .02 : width, top - g, alongX ? width : run + .02).translate(c.x, (top + g) / 2, c.z), { lines: false, ord: i / n, d: .06 });
+    if (i % 3 === 0) { const e = p0.clone().addScaledVector(dir, i * run); S.strokes.push({ layer: 1, segs: [[e.clone().addScaledVector(side, -width / 2).setY(top), e.clone().addScaledVector(side, width / 2).setY(top)]] }); }
+  }
+  const p1 = p0.clone().addScaledVector(dir, n * run); p1.y = p0.y + n * rise;
+  for (const s of [-1, 1]) S.strokes.push({ layer: 1, segs: [[p0.clone().addScaledVector(side, s * width / 2), p1.clone().addScaledVector(side, s * width / 2)]] });
+  return p1;
+}
+function yagura(x, y, z, w, d, floors, o = {}) { // white 櫓 with tile roofs
+  frame(x, y, z, o.ry || 0);
+  const b = o.base ?? 1.2;
+  add('stone', box(w + 1.4, b, d + 1.4, 0, 0, 0));
+  let yy = b, ww = w, dd = d;
+  for (let f = 0; f < floors; f++) {
+    const h = f === 0 ? 3.6 : 3.1, top = f === floors - 1;
+    add('plaster', box(ww, h, dd, 0, yy, 0));
+    const nw = Math.max(1, Math.floor(ww / 2.6)), nd = Math.max(1, Math.floor(dd / 2.6));
+    for (let k = 0; k < nw; k++) for (const s of [-1, 1]) add('woodDark', box(.9, .9, .1, -ww / 2 + (k + .5) * ww / nw, yy + h * .42, s * (dd / 2 + .02)), { ph: 'detail', lines: false, d: .06 });
+    for (let k = 0; k < nd; k++) for (const s of [-1, 1]) add('woodDark', box(.1, .9, .9, s * (ww / 2 + .02), yy + h * .42, -dd / 2 + (k + .5) * dd / nd), { ph: 'detail', lines: false, d: .06 });
+    const L = Math.max(ww, dd), Sh = Math.min(ww, dd);
+    roofOn(top ? { W: L + 2.6, D: Sh + 2.6, H: 2.4, sg: .5, lift: .6, a: .45, th: .32, seam: .6 } : { W: L + 2.4, D: Sh + 2.4, H: 1.6, sg: .1, lift: .4, a: .55, th: .3, seam: .6 }, 0, yy + h - .1, 0, dd > ww, { mat: 'tile', gmat: 'plaster', rmat: 'tile', oni: false, ridge: top });
+    yy += h + .9; ww *= .76; dd *= .76;
+  }
+  noFrame();
+}
+function kGate(x, y, z, ry) { // 薬医門-style gate
+  frame(x, y, z, ry);
+  for (const s of [-1, 1]) add('woodDark', cyl(.28, 4, 0, 0, s * 2.1, 8), { lines: 'axis' });
+  add('woodDark', box(.5, .5, 5, 0, 3.6, 0), { lines: 'axis' });
+  for (const s of [-1, 1]) add('woodDark', box(.12, 3.3, 2, .1, 0, s * 1.05), { ph: 'detail', lines: false });
+  roofOn({ W: 6.6, D: 3.8, H: 1.5, sg: 1, lift: .3, a: .7, th: .3, seam: .6 }, 0, 4.1, 0, true, { mat: 'tile', gmat: 'plaster', ridge: false });
+  noFrame();
+}
+function kCastle() {
+  begin({ sketch: [.28, .8], mass: [1.25, 1.82], detail: [2.1, 2.72] });
+  const pts = []; for (let i = 0; i < 96; i++) pts.push(sePt(.545, i / 96 * Math.PI * 2));
+  add('gravel', new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x, -z))), { depth: .12, bevelEnabled: false, curveSegments: 1 }).rotateX(-Math.PI / 2).translate(0, 31, 0), { lines: false, ord: .7 });
+  // 石垣: plateau ring (本丸) and terrace ring (腰曲輪・二ノ曲輪), which rises straight out of the sea on the north
+  const gaps = [[27, -39, 4.4], [-28, -58.5, 2.6], [-35.5, -32, 2.6], [-37, -36, 3.2]];
+  const N = 132;
+  for (let i = 0; i < N; i++) {
+    const t0 = i / N * Math.PI * 2, t1 = (i + 1) / N * Math.PI * 2;
+    { const [ax, az] = sePt(.55, t0), [bx, bz] = sePt(.55, t1), mx = (ax + bx) / 2, mz = (az + bz) / 2;
+      if (!gaps.some(([gx, gz, r]) => Math.hypot(mx - gx, mz - gz) < r)) {
+        add('stone', beam(V(ax, 25.9, az), V(bx, 25.9, bz), 1.6, 10.9), { lines: false, ord: .45 });
+        S.strokes.push({ layer: 1, segs: [[V(ax, 31.4, az), V(bx, 31.4, bz)]] });
+        if (mz > -50 && i % 2 === 0 && !(mx > 14 && mz > -30 && mz < -16)) { add('plaster', beam(V(ax, 31.95, az), V(bx, 31.95, bz), .45, 1.7), { ph: 'detail', lines: false, d: .08 }); add('tile', beam(V(ax, 32.95, az), V(bx, 32.95, bz), .95, .3), { ph: 'detail', lines: false, d: .08 }); }
+      } }
+    { const eA = kEo(dirAng(t0)), eB = kEo(dirAng(t1)); const [ax, az] = sePt(eA, t0), [bx, bz] = sePt(eB, t1);
+      const [ox, oz] = sePt(Math.min(1.12, (eA + eB) / 2 + .07), (t0 + t1) / 2); const bot = Math.min(19.5, karatsuH(ox, oz) - 1.2);
+      add('stone', beam(V(ax, (21.4 + bot) / 2, az), V(bx, (21.4 + bot) / 2, bz), 1.5, 21.4 - bot), { lines: false, ord: .2 });
+      S.strokes.push({ layer: 1, segs: [[V(ax, 21.45, az), V(bx, 21.45, bz)]] }); }
+  }
+  // approach: stairs from the south foot to 二ノ曲輪, along the terrace, and up to the 大手門 platform
+  stoneFlight(V(30, 1.2, 12), V(0, 0, -1), 55, .333, .364, 3.4);
+  add('paving', beam(V(30, 21.06, -6.6), V(33.5, 21.06, -21.6), 3, .12), { lines: false });
+  stoneFlight(V(33.5, 21.2, -22), V(0, 0, -1), 30, .5, .333, 3);
+  add('stone', box(10.5, 10.2, 4.6, 32, 21, -39));
+  kGate(27.8, 31.2, -39, 0); kGate(-28, 31, -58.5, Math.PI / 2); kGate(-35.5, 31, -32, Math.PI);
+  // 附櫓, 多聞櫓 and the restored 化粧櫓
+  yagura(6.5, 31, -57, 9, 11, 2, { base: 4 });
+  yagura(15.5, 31, -57, 9.6, 4.6, 1);
+  yagura(22, 31, -24, 6.4, 6.4, 2, { base: 1.5 });
+  // 斜行エレベーター (34 m climb) with its two stations
+  add('steel', beam(V(-65, 1.9, -36), V(-38.5, 31.6, -36), 2.4, .5), { lines: 'axis' });
+  for (let k = 1; k < 8; k++) { const t = k / 8, x = lerp(-65, -38.5, t), y = lerp(1.9, 31.6, t), g = H(x, -36); if (y - g > 1) add('steel', box(.4, y - g, .4, x, g, -36), { lines: 'axis' }); }
+  add('glass', box(3, 2.6, 2.4, lerp(-65, -38.5, .42), lerp(1.9, 31.6, .42) + .25, -36), { ph: 'detail' });
+  add('mWall', box(5.4, 3.4, 6, -67.8, 1.2, -36)); add('mWall', box(4, 3.2, 5, -36.6, 31, -36));
+  // 二ノ曲輪: small shrine with torii, the well, and the wisteria trellis (藤棚)
+  frame(31, 21, -12.5, -Math.PI / 4);
+  add('stone', box(4.4, .5, 4, 0, 0, 0)); add('wood', box(2.6, 2, 2.6, -.3, .5, 0));
+  roofOn({ W: 4.8, D: 4.2, H: 1.6, sg: .5, lift: .4, th: .25 }, -.3, 2.5, 0, true, { ridge: false });
+  torii(3.6, 0, 0, 0, 2.6, 3.2);
+  noFrame();
+  add('stone', cyl(.95, .8, 27, 21, -9.5, 14)); add('wood', box(2.4, .2, .2, 27, 22.6, -9.5), { ph: 'detail', lines: false });
+  frame(34.5, 21, -18, -Math.PI / 4);
+  for (const [x, z] of [[-3, -2], [3, -2], [-3, 2], [3, 2], [0, -2], [0, 2]]) add('wood', cyl(.14, 2.6, x, 0, z, 6), { lines: 'axis' });
+  for (let x = -3; x <= 3; x += 1) add('wood', box(.12, .12, 4.4, x, 2.6, 0), { ph: 'detail', lines: false });
+  for (const z of [-2, 2]) add('wood', box(6.4, .16, .16, 0, 2.55, z), { lines: 'axis' });
+  const Rw = mulberry(88); for (let k = 0; k < 26; k++) add('wisteria', blob(.34, 1, 2.3, 1).translate(-2.8 + Rw() * 5.6, 1.85 - Rw() * .3, -1.8 + Rw() * 3.6), { ph: 'detail', m: 1, lines: false, d: .1 });
+  noFrame();
+  // 多宝塔 at the foot of the stairs
+  frame(49, 1.2, -4, -.4);
+  add('stone', box(5.2, .6, 5.2, 0, 0, 0)); add('verm', box(3.8, 2.8, 3.8, 0, .6, 0));
+  roofOn({ W: 6.6, D: 6.6, H: 1.3, sg: 0, a: .7, lift: .5, th: .3 }, 0, 3.3, 0, false, { mat: 'tile', ridge: false });
+  add('plaster', new THREE.SphereGeometry(1.5, 16, 8, 0, 6.29, 0, Math.PI / 2).scale(1, .6, 1).translate(0, 4.4, 0), { lines: false });
+  add('verm', cyl(1.2, 1.8, 0, 5, 0, 12), { lines: 'axis' });
+  roofOn({ W: 5.4, D: 5.4, H: 1.9, sg: 0, a: .7, lift: .5, th: .3 }, 0, 6.8, 0, false, { mat: 'tile', ridge: false });
+  add('gold', cyl(.12, 3.4, 0, 8.4, 0, 6), { ph: 'detail', lines: 'axis' });
+  noFrame();
+  add('stone', box(1, 2.2, .5, -2, 31, -30), { ph: 'detail' });
+  // cherries on the 本丸 and the terrace, a few pines
+  for (const [x, z, s] of [[-26, -44, 1], [-20, -30, .95], [-11, -24, 1.05], [1, -22, 1], [10, -31, .95], [-29, -36, .9], [14, -41, .9], [-19, -50, .85], [4, -46, .9], [-3, -35, .8], [26, -8, .8], [36, -24, .75]]) tree('sakura', x, z, s);
+  for (const [x, z, s] of [[-31, -24, .8], [18, -48, .75], [-24, -57, .7]]) tree('pine', x, z, s);
+  end();
+}
+
+function kTenshu() { // 模擬天守 (1966): 複合式望楼型 5重5階
+  begin({ sketch: [.5, .97], mass: [1.5, 1.98], detail: [2.2, 2.9] });
+  const cx = -8, cz = -57;
+  const g = new THREE.BoxGeometry(22, 17.5, 19); const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) if (p.getY(i) > 0) { p.setX(i, p.getX(i) * 18 / 22); p.setZ(i, p.getZ(i) * 15 / 19); }
+  g.computeVertexNormals(); g.translate(cx, 20 + 8.75, cz);
+  add('stone', g, { ea: 20 });
+  const LAY = [[15.5, 13, 4.6], [13.2, 11, 4.0], [11, 9.2, 3.6], [8.8, 7.4, 3.3], [7.2, 6, 3.2]];
+  let y = 37.5;
+  add('stoneDark', box(16.6, .4, 14, cx, y - .3, cz), { lines: false });
+  LAY.forEach(([w, d, h], i) => {
+    const top = i === LAY.length - 1, ww = top ? w - 1.6 : w, dd = top ? d - 1.6 : d;
+    add('plaster', box(ww, h, dd, cx, y, cz));
+    const nw = Math.max(2, Math.floor(ww / 2.4)), nd = Math.max(2, Math.floor(dd / 2.4)), wh = top ? 1.9 : 1.05, wy = y + (top ? .6 : h * .42);
+    for (let k = 0; k < nw; k++) for (const s of [-1, 1]) add('woodDark', box(1.0, wh, .1, cx - ww / 2 + (k + .5) * ww / nw, wy, cz + s * (dd / 2 + .02)), { ph: 'detail', lines: false, d: .06 });
+    for (let k = 0; k < nd; k++) for (const s of [-1, 1]) add('woodDark', box(.1, wh, 1.0, cx + s * (ww / 2 + .02), wy, cz - dd / 2 + (k + .5) * dd / nd), { ph: 'detail', lines: false, d: .06 });
+    for (const s of [-1, 1]) S.strokes.push({ layer: 3, segs: [[V(cx - ww / 2, wy + wh / 2, cz + s * (dd / 2 + .05)), V(cx + ww / 2, wy + wh / 2, cz + s * (dd / 2 + .05))]] });
+    if (!top) {
+      const yr = y + h - .1;
+      roofOn({ W: w + 2.8, D: d + 2.8, H: 1.9, sg: .12, lift: .5, a: .55, th: .32, seam: .55 }, cx, yr, cz, false, { mat: 'tile', ridge: false });
+      if (i === 0) for (const s of [-1, 1]) roofOn({ W: 4.4, D: 7.8, H: 2.7, sg: 1, lift: .2, a: .7, th: .3, seam: .55 }, cx, yr + .55, cz + s * (d / 2 + .2), true, { mat: 'tile', gmat: 'plaster', ridge: false });
+      if (i === 1) {
+        frame(cx, 0, cz, -Math.PI / 2); karaOn({ x0: d / 2 - .6, x1: d / 2 + 1.7, a: 2.7, Hk: 1.15, th: .3, mat: 'tile', fill: 'plaster', trim: 'tile' }, yr + .15); noFrame();
+        for (const s of [-1, 1]) roofOn({ W: 3.6, D: 6, H: 2.2, sg: 1, lift: .2, a: .7, th: .28, seam: .55 }, cx + s * (w / 2 + .2), yr + .45, cz, false, { mat: 'tile', gmat: 'plaster', ridge: false });
+      }
+      if (i === 2) for (const s of [-1, 1]) roofOn({ W: 3.8, D: 6.2, H: 2.3, sg: 1, lift: .2, a: .7, th: .28, seam: .55 }, cx, yr + .45, cz + s * (d / 2 + .2), true, { mat: 'tile', gmat: 'plaster', ridge: false });
+      y += h + 1.05;
+    } else {
+      add('woodDark', box(w + .6, .3, d + .6, cx, y - .15, cz), { lines: false });
+      rail([[-w / 2 - .2, -d / 2 - .2], [w / 2 + .2, -d / 2 - .2], [w / 2 + .2, d / 2 + .2], [-w / 2 - .2, d / 2 + .2], [-w / 2 - .2, -d / 2 - .2]].map(([a, b]) => [cx + a, cz + b]), y + .15, .95, 'orange', { gold: false, step: 1.2 });
+      roofOn({ W: w + 3.4, D: d + 3.4, H: 3.4, sg: .5, lift: .9, a: .4, th: .34, seam: .55 }, cx, y + h - .05, cz, false, { mat: 'tile', gmat: 'plaster', rmat: 'tile', oni: false });
+      const rt = y + h - .05 + 3.4, xg = (w + 3.4) / 2 - (d + 3.4) / 2 * .5;
+      for (const s of [-1, 1]) { add('lacquer', box(.28, .8, .42, cx + s * (xg - .1), rt - .15, cz), { ph: 'detail', lines: false }); add('lacquer', box(.2, .3, .3, cx + s * (xg - .25), rt + .55, cz).rotateZ(s * .5), { ph: 'detail', lines: false }); }
+    }
+  });
+  end();
+}
+
+function kTown() {
+  begin({ sketch: [.1, .5], mass: [1.2, 1.7], detail: [2, 2.5] });
+  const Rt = mulberry(1608), bodies = [], roofs = [], G = 4.4;
+  const ok = (x, z) => {
+    const hb = kBase(x, z); if (hb < 1.1 || kHill(x, z) > hb + .2) return false;
+    if (x > 57 && z < kCoast(x) + 19) return false; if (x <= 57 && z < -31) return false;
+    if (Math.abs(x - kRiverX(z)) < 21) return false;
+    if (x > 45 && x < 105 && z > -24 && z < -8) return false;
+    if (x > 22 && x < 58 && z > -12 && z < 18) return false;
+    if (x > -75 && x < -58 && z > -42 && z < -30) return false;
+    return kE(x, z).e > 1.12;
+  };
+  for (let i = 0; TX0 + 3 + i * G < TX1 - 3; i++) for (let j = 0; TZ0 + 3 + j * G < TZ1 - 3; j++) {
+    const x = TX0 + 3 + i * G, z = TZ0 + 3 + j * G;
+    if (i % 3 === 2 || j % 3 === 2) { // streets, drawn only
+      if (i % 3 === 2 && j % 3 !== 2 && ok(x, z) && ok(x, z + G)) S.strokes.push({ layer: 0, segs: [[V(x, 1.3, z - G / 2), V(x, 1.3, z + G / 2)]] });
+      continue;
+    }
+    if (!ok(x, z) || Rt() < .1) continue;
+    const tall = Rt() < .035, w = tall ? rr(6, 9) : 3 + Rt(), d = tall ? rr(6, 9) : 3 + Rt(), h = tall ? 8 + Rt() * 12 : 2.8 + (Rt() < .55 ? 2.6 : 0);
+    const ry = (Rt() < .5 ? 0 : Math.PI / 2) + (Rt() - .5) * .06, y = kBase(x, z) - .05;
+    const t = 1.25 + .45 * clamp(Math.hypot(x + 8, z + 40) / 220) + Rt() * .05;
+    bodies.push({ x: x + (Rt() - .5), z: z + (Rt() - .5), y, s: 1, sx: w, sy: h, sz: d, ry, t, m: 0, d: .2 });
+    roofs.push({ x: bodies[bodies.length - 1].x, z: bodies[bodies.length - 1].z, y: y + h, s: 1, sx: w * 1.1, sy: tall ? .3 : .9 + Rt() * .6, sz: d * 1.1, ry, t: t + .1, m: 0, d: .16 });
+  }
+  end();
+  makeInstances('houseI', new THREE.BoxGeometry(1, 1, 1).translate(0, .5, 0), bodies, { spring: ['#ebe6dc', '#ddd6c8', '#f2efe8', '#d2cabb', '#e6ddd0'], autumn: ['#ebe6dc', '#ddd6c8', '#f2efe8', '#d2cabb', '#e6ddd0'] }, Rt);
+  const rg = new THREE.BoxGeometry(1, 1, 1).translate(0, .5, 0); const rp = rg.attributes.position; for (let i = 0; i < rp.count; i++) if (rp.getY(i) > .5) rp.setZ(i, 0); rg.computeVertexNormals();
+  makeInstances('houseI', rg, roofs, { spring: ['#4a4f57', '#5b6068', '#3f4a5c', '#6b5a4f', '#56606a', '#2f3b52'], autumn: ['#4a4f57', '#5b6068', '#3f4a5c', '#6b5a4f', '#56606a', '#2f3b52'] }, Rt);
+}
+
+function kVeg() {
+  const Rf = mulberry(1966), pts = [];
+  for (let k = 0; k < 40000 && pts.length < (MOBILE ? 520 : 950); k++) {
+    const x = lerp(-72, 62, Rf()), z = lerp(-92, 14, Rf()), { e, ang } = kE(x, z);
+    if (e < kEo(ang) + .035 || e > 1.09) continue;
+    const h = karatsuH(x, z); if (h < .6) continue;
+    if (x > 26 && x < 35 && z > -8 && z < 14) continue;
+    if (x < -35 && z > -40 && z < -32) continue;
+    if (Math.hypot(x - 49, z + 4) < 5) continue;
+    pts.push({ x, z, h });
+  }
+  for (let k = 0; k < 2000 && pts.length < (MOBILE ? 620 : 1100); k++) { const x = lerp(55, 89, Rf()), z = lerp(-140, -112, Rf()); if (Math.hypot((x - 72) / 17, (z + 126) / 13) > .95) continue; const h = karatsuH(x, z); if (h > .5) pts.push({ x, z, h }); }
+  makeInstances('forestI', blob(1, 1, .82, 1), pts.map(p => { const s = 1.8 + Rf() * 1.6; return { x: p.x, z: p.z, y: p.h + s * .5, s, sy: 1, t: 2.24 + .5 * clamp(p.h / 30) + Rf() * .05 }; }),
+    { spring: ['#48653a', '#52703f', '#3d5835', '#5b7a44', '#6a8748', '#4a683b'], autumn: ['#a8452b', '#c7772e', '#b99a3a', '#4f6a3a', '#8a3f26', '#5a7040'] }, Rf);
+  const pines = [];
+  for (let k = 0; k < (MOBILE ? 420 : 760); k++) {
+    const east = k % 5 !== 0; let x, z;
+    if (east) { x = lerp(96, 168, Rf()); const c = kCoast(x); z = lerp(c + 5, c + 17, Rf()); } else { x = lerp(-168, -64, Rf()); z = lerp(-41, -33, Rf()); }
+    pines.push({ x, z, y: Math.max(1.2, karatsuH(x, z)), s: 1 + Rf() * .5, t: 2.3 + Rf() * .4 });
+  }
+  makeInstances('forestI', cyl(.14, 3.6, 0, 0, 0, 5), pines.map(p => ({ x: p.x, z: p.z, y: p.y, s: p.s, t: p.t })), { spring: ['#5b4a3c'], autumn: ['#5b4a3c'] }, Rf);
+  makeInstances('forestI', blob(1.25, 1, .42, 1), pines.map(p => ({ x: p.x, z: p.z, y: p.y + 3.6 * p.s, s: p.s * 1.2, t: p.t + .04 })), { spring: ['#2f4a35', '#35523a', '#3b5a3e'], autumn: ['#2f4a35', '#35523a', '#3b5a3e'] }, Rf);
+}
+function buildKaratsu() { kConstruction(); buildTerrain(); kWater(); kCastle(); kTenshu(); kTown(); kVeg(); }
+
+function flushSite() {
+  for (const [mk, list] of BUCKETS) {
+    const g = mergeGeometries(list, false);
+    if (!g) { console.warn('merge failed', mk); continue; }
+    const mesh = new THREE.Mesh(g, MAT[mk]);
+    mesh.castShadow = !NO_SHADOW.has(mk); mesh.receiveShadow = true; mesh.customDepthMaterial = DEPTH; mesh.frustumCulled = false;
+    if (mk === 'water' || mk === 'glass' || mk === 'sea') mesh.renderOrder = 2;
+    ROOT.add(mesh);
+  }
+  BUCKETS.clear();
 }
 
 /* ---------- the pen: instanced screen-space strokes ---------- */
@@ -1584,13 +1862,6 @@ const lineU = {
   uP: U_P, uRes: { value: new THREE.Vector2(1, 1) }, uW: { value: 1.2 }, uLA: { value: [0, 0, 0, 0, 0] },
   uInk: { value: new THREE.Color('#232624') }, uAcc: { value: new THREE.Color('#b3432a') }, uFog: { value: new THREE.Vector2(300, 1200) }
 };
-const lineGeo = new THREE.InstancedBufferGeometry();
-lineGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, -1, 0, 1, -1, 0, 1, 1, 0, 0, 1, 0], 3));
-lineGeo.setIndex([0, 1, 2, 0, 2, 3]);
-lineGeo.setAttribute('iA', new THREE.InstancedBufferAttribute(new Float32Array(LA), 3));
-lineGeo.setAttribute('iB', new THREE.InstancedBufferAttribute(new Float32Array(LB), 3));
-lineGeo.setAttribute('iT', new THREE.InstancedBufferAttribute(new Float32Array(LT), 4));
-lineGeo.instanceCount = LT.length / 4;
 const lineMat = new THREE.ShaderMaterial({
   uniforms: lineU, transparent: true, depthWrite: false, depthTest: true,
   vertexShader: `
@@ -1637,7 +1908,17 @@ const lineMat = new THREE.ShaderMaterial({
       #include <colorspace_fragment>
     }`
 });
-const lines = new THREE.Mesh(lineGeo, lineMat); lines.frustumCulled = false; lines.renderOrder = 10; scene.add(lines);
+function flushLines() {
+  const lineGeo = new THREE.InstancedBufferGeometry();
+  lineGeo.setAttribute('position', new THREE.Float32BufferAttribute([0, -1, 0, 1, -1, 0, 1, 1, 0, 0, 1, 0], 3));
+  lineGeo.setIndex([0, 1, 2, 0, 2, 3]);
+  lineGeo.setAttribute('iA', new THREE.InstancedBufferAttribute(new Float32Array(LA), 3));
+  lineGeo.setAttribute('iB', new THREE.InstancedBufferAttribute(new Float32Array(LB), 3));
+  lineGeo.setAttribute('iT', new THREE.InstancedBufferAttribute(new Float32Array(LT), 4));
+  lineGeo.instanceCount = LT.length / 4;
+  const lines = new THREE.Mesh(lineGeo, lineMat); lines.frustumCulled = false; lines.renderOrder = 10; ROOT.add(lines);
+  const n = LT.length / 4; LA.length = 0; LB.length = 0; LT.length = 0; return n;
+}
 
 /* ---------- sky dome ---------- */
 const skyU = { uTop: { value: new THREE.Color() }, uHor: { value: new THREE.Color() }, uBot: { value: new THREE.Color() } };
@@ -1662,7 +1943,7 @@ const nightLights = [[-38, 7, 0, 1500], [-41, 24, 0, 900], [22, 7, 0, 700], [-12
    ===================================================================== */
 const state = { p: REDUCED ? 4 : 0, playing: !REDUCED, seek: null, director: true, tween: null, drift: 0, labels: true, season: 'spring', theme: 'light', darkF: 0, site: null, view: 'orbit' };
 const cur = { t: V(-4, 4, 0), d: 440, az: 40, el: 44, fov: 32 };
-const DIR = [
+const Y_DIR = [
   { p: 0.0, t: [-4, 4, 0], d: 440, az: 40, el: 44 },
   { p: 0.95, t: [-22, 8, 0], d: 280, az: 34, el: 36 },
   { p: 1.9, t: [-38, 12, 0], d: 158, az: 27, el: 26 },
@@ -1670,26 +1951,26 @@ const DIR = [
   { p: 3.35, t: [-44, 17, 0], d: 104, az: 7, el: 11 },
   { p: 4.0, t: [6, 5, -16], d: 290, az: 36, el: 32 },
 ];
-const VIEWS = {
+const Y_VIEWS = {
   elev: { t: [-24, 17, 0], d: 600, az: .5, el: 4, fov: 15 },
   plan: { t: [-6, 0, -2], d: 1000, az: 90, el: 89.3, fov: 20 },
 };
-const SITES = {
-  overview: { cam: { t: [-10, 4, -2], d: 330, az: 40, el: 40 }, name: 'Yūtoku Inari Shrine', k: 'Overview · 全景', h: '祐徳稲荷神社<em>Yūtoku Inari</em>',
+const Y_SITES = {
+  overview: { btn: ['Overview', '全景'], cam: { t: [-10, 4, -2], d: 330, az: 40, el: 40 }, name: 'Yūtoku Inari Shrine', k: 'Overview · 全景', h: '祐徳稲荷神社<em>Yūtoku Inari</em>',
     p: '貞享4年（1687）、鹿島藩主・鍋島直朝の夫人、萬子媛（祐徳院）が創建。伏見・笠間と並ぶ日本三大稲荷のひとつで、朱塗りの社殿群は「鎮西日光」と称される。',
     dl: [['創建', '1687年'], ['参拝者', '年間 約300万人'], ['所在', '佐賀県鹿島市古枝'], ['配置', '錦波川（浜川）の西に社殿、東に門前町と博物館']] },
-  honden: { cam: { t: [-47, 17, 0], d: 78, az: 22, el: 13 }, name: 'Gohonden · 御本殿', k: 'Main Hall · 御本殿', h: '御本殿<em>Gohonden</em>',
+  honden: { btn: ['Main Hall', '御本殿'], cam: { t: [-47, 17, 0], d: 78, az: 22, el: 13 }, name: 'Gohonden · 御本殿', k: 'Main Hall · 御本殿', h: '御本殿<em>Gohonden</em>',
     p: '石壁山の断崖に懸造（舞台造）で建つ総漆塗りの社殿。舞台の高さは約18mで、京都・清水寺を上回る。1949年に焼失し、1957年に伊勢神宮造営局長・角南隆の設計で再建された三代目。',
     dl: [['舞台高', '約 18 m'], ['石段', '117段（有料エレベーター併設）'], ['再建', '1957年'], ['奥の院', '本殿から約300m、鳥居の続く山道']] },
-  garden: { cam: { t: [1, 0, -86], d: 80, az: 58, el: 40 }, name: 'Japanese Garden · 日本庭園', k: 'Garden · 日本庭園', h: '日本庭園<em>Japanese Garden</em>',
+  garden: { btn: ['Garden', '日本庭園'], cam: { t: [1, 0, -86], d: 80, az: 58, el: 40 }, name: 'Japanese Garden · 日本庭園', k: 'Garden · 日本庭園', h: '日本庭園<em>Japanese Garden</em>',
     p: '楼門の北、参集殿の奥にひらく庭。良質な苔と、力強い石で護岸した流れが特徴で、牡丹・花菖蒲・紫陽花・紅葉が季節を映す。境内の神池には鶴島と太鼓橋が架かる。',
     dl: [['作庭', '2005年'], ['面積', '約400坪'], ['見どころ', '紫陽花・紅葉・苔']] },
-  museum: { cam: { t: [74, 3, 60], d: 80, az: -52, el: 28 }, name: 'Yūtoku Museum · 祐徳博物館', k: 'Museum · 祐徳博物館', h: '祐徳博物館<em>Yūtoku Museum</em>',
+  museum: { btn: ['Museum', '祐徳博物館'], cam: { t: [74, 3, 60], d: 80, az: -52, el: 28 }, name: 'Yūtoku Museum · 祐徳博物館', k: 'Museum · 祐徳博物館', h: '祐徳博物館<em>Yūtoku Museum</em>',
     p: '1955年設立。1957年の佐賀産業観光博覧会の美術館を神社が引き継ぎ、1971年に鉄筋平屋へ全面改築。鹿島藩歴代藩主の鎧兜、萬子媛の遺品、鹿島錦、刀剣、陶磁器を収める。',
     dl: [['設立', '1955年'], ['構造', '鉄筋コンクリート造 平屋'], ['建坪', '633㎡（1974年 考古収蔵庫増築）'], ['外観', '本模型では推定']] },
 };
-const SRC = '出典：<a href="https://www.yutokusan.jp/" target="_blank" rel="noopener">祐徳稲荷神社</a>、<a href="https://www.city.saga-kashima.lg.jp/main/323.html" target="_blank" rel="noopener">鹿島市</a>、<a href="https://www2.kokugakuin.ac.jp/museum/jinja/40/40_yuutoku.html" target="_blank" rel="noopener">國學院大學 神社博物館事典</a>。形状は公開資料をもとにした概念的な再構成で、実測図ではありません。';
-const LABELS = [
+const Y_SRC = '出典：<a href="https://www.yutokusan.jp/" target="_blank" rel="noopener">祐徳稲荷神社</a>、<a href="https://www.city.saga-kashima.lg.jp/main/323.html" target="_blank" rel="noopener">鹿島市</a>、<a href="https://www2.kokugakuin.ac.jp/museum/jinja/40/40_yuutoku.html" target="_blank" rel="noopener">國學院大學 神社博物館事典</a>。形状は公開資料をもとにした概念的な再構成で、実測図ではありません。';
+const Y_LABELS = [
   { k: 'A', jp: '御本殿', en: 'Gohonden', pos: [-48, 38, 0], t: .92, site: 'honden' },
   { k: 'B', jp: '楼門', en: 'Rōmon gate', pos: [12, 17, -18], t: .66 },
   { k: 'C', jp: '御神楽殿', en: 'Kagura-den', pos: [-16, 10, 24], t: .6 },
@@ -1702,23 +1983,92 @@ const LABELS = [
   { k: 'J', jp: '錦波川・神橋', en: 'River & bridge', pos: [40, 4.5, -18], t: .42 },
   { k: 'K', jp: '渡廊・若宮社', en: 'Corridor', pos: [-54.8, 25, 42], t: .93 },
 ];
-const STAGES = [
+const Y_STAGES = [
   { n: '01', jp: '線を引く', en: 'Axis · contour · outline' },
   { n: '02', jp: 'かたちが立ち上がる', en: 'Terrain · stilts · volume' },
   { n: '03', jp: '細部が宿る', en: 'Brackets · torii · moss' },
   { n: '04', jp: '朱が灯る', en: 'Vermilion · copper · water' },
 ];
 
+
+const K_SRC = '出典：<a href="https://www.city.karatsu.lg.jp/page/1041.html" target="_blank" rel="noopener">唐津市 唐津城の紹介</a>、<a href="https://www.city.karatsu.lg.jp/page/4527.html" target="_blank" rel="noopener">唐津城のみどころ</a>、<a href="https://ja.wikipedia.org/wiki/%E5%94%90%E6%B4%A5%E5%9F%8E" target="_blank" rel="noopener">Wikipedia</a>。形状は公開資料と写真をもとにした概念的な再構成で、実測図ではありません。';
+const PROJ = {
+  yutoku: { seed: 1687, h1: 'Yūtoku <em>Inari.</em>', sub: '祐徳稲荷神社 · 日本庭園 · 祐徳博物館', title: 'Yūtoku Inari Shrine',
+    env: () => { H = yutokuH; tColor = yutokuTColor; TX0 = -165; TX1 = 150; TZ0 = -130; TZ1 = 130; CENTER = [-48, 0]; },
+    build: () => buildYutoku(), DIR: Y_DIR, VIEWS: Y_VIEWS, SITES: Y_SITES, SRC: Y_SRC, LABELS: Y_LABELS, STAGES: Y_STAGES,
+    shadow: { left: -215, right: 215, top: 200, bottom: -200 }, sunT: [-10, 0, 0],
+    night: [[-38, 7, 0, 1500], [-41, 24, 0, 900], [22, 7, -18, 700], [-16, 6, 20, 420], [96, 6, -18, 650], [21, 5, -30, 300], [74, 4, 52, 380]] },
+  karatsu: { seed: 1602, h1: 'Karatsu <em>Castle.</em>', sub: '唐津城（舞鶴城）· 満島山 · 唐津湾', title: 'Karatsu Castle',
+    env: () => { H = karatsuH; tColor = karatsuTColor; TX0 = -170; TX1 = 170; TZ0 = -150; TZ1 = 120; CENTER = [-8, -57]; },
+    build: () => buildKaratsu(),
+    DIR: [
+      { p: 0.0, t: [0, 5, -20], d: 450, az: 38, el: 44 },
+      { p: 0.95, t: [-5, 15, -35], d: 300, az: 34, el: 36 },
+      { p: 1.9, t: [-8, 28, -50], d: 175, az: 30, el: 26 },
+      { p: 2.75, t: [-8, 46, -57], d: 88, az: 38, el: 13 },
+      { p: 3.35, t: [-8, 47, -57], d: 100, az: 72, el: 9 },
+      { p: 4.0, t: [5, 12, -45], d: 300, az: 32, el: 30 },
+    ],
+    VIEWS: { elev: { t: [-5, 30, -45], d: 620, az: .5, el: 4, fov: 15 }, plan: { t: [0, 0, -15], d: 1060, az: 90, el: 89.3, fov: 20 } },
+    SITES: {
+      overview: { btn: ['Overview', '全景'], cam: { t: [0, 8, -30], d: 330, az: 35, el: 38 }, name: 'Karatsu Castle', k: 'Overview · 全景', h: '唐津城<em>Karatsu Castle</em>',
+        p: '慶長7年（1602）から7年をかけ、寺沢広高が松浦川河口の満島山に築いた連郭式平山城（海城）。東西に延びる松原を鶴の翼に見立てて「舞鶴城」と呼ばれる。築城にあたり満島山を東唐津から切り離し、松浦川の流れを付け替えた。',
+        dl: [['築城', '1602〜1608年'], ['築城者', '寺沢広高'], ['形式', '連郭式平山城（海城）'], ['選定', '続日本100名城（2017年）']] },
+      tenshu: { btn: ['Keep', '天守閣'], cam: { t: [-8, 48, -57], d: 80, az: 62, el: 14 }, name: 'Tenshu · 天守閣', k: 'Keep · 天守閣', h: '天守閣<em>Tenshu</em>',
+        p: '1966年に文化観光施設として建てられた鉄筋コンクリート造の模擬天守。江戸期には天守は無かったとされる。2017年に館内を改装し、最上階の望楼から唐津湾と虹の松原を一望できる。',
+        dl: [['竣工', '1966年'], ['構造', 'RC造 5重5階地下1階'], ['形式', '複合式望楼型'], ['史実', '江戸期は天守なしとされる']] },
+      honmaru: { btn: ['Honmaru', '本丸・二ノ曲輪'], cam: { t: [8, 26, -32], d: 105, az: 40, el: 32 }, name: 'Honmaru · 本丸', k: 'Precinct · 本丸・二ノ曲輪', h: '本丸・二ノ曲輪<em>Honmaru</em>',
+        p: '麓から本丸（上段広場）までの高低差は約34m。有料の斜行エレベーターと石段で上る。4月は城を囲む桜、4〜5月は唐津市の花・藤が見ごろ。本丸には化粧櫓や北門・西門、二ノ曲輪には社や井戸が残る。',
+        dl: [['高低差', '約 34 m'], ['石段', '藤棚まで177段'], ['見ごろ', '桜 4月・藤 4〜5月']] },
+      matsubara: { btn: ['Pine Coast', '虹の松原'], cam: { t: [125, 2, -44], d: 130, az: 55, el: 26 }, name: 'Niji-no-Matsubara · 虹の松原', k: 'Coast · 虹の松原', h: '虹の松原<em>Niji-no-Matsubara</em>',
+        p: '寺沢広高が防風林として保護・育成した松原で、日本三大松原のひとつ。西の浜の松原とあわせて城の両翼をなし、「舞鶴城」の名の由来となった。',
+        dl: [['由来', '寺沢広高による植林・保護'], ['位置', '唐津湾沿い、松浦川の東'], ['別名との関係', '両翼の松原 ＝ 舞鶴']] },
+    },
+    SRC: K_SRC,
+    LABELS: [
+      { k: 'A', jp: '天守閣', en: 'Keep', pos: [-8, 72, -57], t: .95, site: 'tenshu' },
+      { k: 'B', jp: '本丸', en: 'Honmaru', pos: [-16, 35, -38], t: .7, site: 'honmaru' },
+      { k: 'C', jp: '二ノ曲輪', en: 'Second bailey', pos: [31, 25, -14], t: .7 },
+      { k: 'D', jp: '化粧櫓', en: 'Turret', pos: [22, 44, -24], t: .78 },
+      { k: 'E', jp: '斜行エレベーター', en: 'Incline lift', pos: [-52, 20, -36], t: .72 },
+      { k: 'F', jp: '舞鶴橋', en: 'Bridge', pos: [75, 7, -16], t: .42 },
+      { k: 'G', jp: '松浦川', en: 'Matsuura River', pos: [76, 3, 40], t: .38 },
+      { k: 'H', jp: '虹の松原', en: 'Pine coast', pos: [132, 10, -45], t: .4, site: 'matsubara' },
+      { k: 'I', jp: '西の浜', en: 'West beach', pos: [-118, 5, -46], t: .4 },
+      { k: 'J', jp: '高島', en: 'Takashima', pos: [72, 26, -126], t: .45 },
+      { k: 'K', jp: '唐津湾', en: 'Karatsu Bay', pos: [-40, 2, -118], t: .3 },
+    ],
+    STAGES: [
+      { n: '01', jp: '線を引く', en: 'Axis · contour · coastline' },
+      { n: '02', jp: 'かたちが立ち上がる', en: 'Hill · stone · volume' },
+      { n: '03', jp: '細部が宿る', en: 'Gables · windows · pines' },
+      { n: '04', jp: '白壁が映える', en: 'Plaster · tile · sea' },
+    ],
+    shadow: { left: -230, right: 230, top: 210, bottom: -210 }, sunT: [0, 0, -20],
+    night: [[-8, 40, -44, 1800], [-22, 40, -57, 1000], [6, 40, -57, 1000], [22, 36, -18, 360], [75, 7, -16, 520], [-50, 5, -30, 300], [34, 24, -10, 320]] },
+};
+let DIR, VIEWS, SITES, SRC, LABELS, STAGES, curProj = null;
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const ui = { play: $('#play'), scrub: $('#scrub'), stages: $$('.stage'), caption: $('#caption'), capNum: $('#capNum'), capJp: $('#capJp'), capEn: $('#capEn'), siteName: $('#siteName'), card: $('#card'), labels: $('#labels') };
 
-// labels
-for (const L of LABELS) {
-  const b = document.createElement('button'); b.type = 'button'; b.className = 'tag';
-  b.innerHTML = `<b></b><span><i>${L.k}</i>${L.jp}<em>${L.en}</em></span>`;
-  b.setAttribute('aria-label', `${L.jp}（${L.en}）へ移動`);
-  b.addEventListener('click', () => { if (L.site) selectSite(L.site); else flyTo({ t: L.pos.map((v, i) => i === 1 ? Math.max(0, v - 6) : v), d: 70, az: cur.az, el: 24 }); });
-  ui.labels.appendChild(b); L.el = b; L.v = V(...L.pos);
+// labels and site list are rebuilt for each study
+function buildLabels() {
+  ui.labels.textContent = '';
+  for (const L of LABELS) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'tag';
+    b.innerHTML = `<b></b><span><i>${L.k}</i>${L.jp}<em>${L.en}</em></span>`;
+    b.setAttribute('aria-label', `${L.jp}（${L.en}）へ移動`);
+    b.addEventListener('click', () => { if (L.site) selectSite(L.site); else flyTo({ t: L.pos.map((v, i) => i === 1 ? Math.max(0, v - 6) : v), d: 70, az: cur.az, el: 24 }); });
+    ui.labels.appendChild(b); L.el = b; L.v = V(...L.pos);
+  }
+}
+function buildSiteList() {
+  const box = document.getElementById('siteList'); box.textContent = '';
+  for (const [key, st] of Object.entries(SITES)) {
+    const b = document.createElement('button'); b.type = 'button'; b.dataset.site = key; b.setAttribute('aria-pressed', 'false');
+    b.innerHTML = `<span class="en">${st.btn[0]}</span><span class="jp">${st.btn[1]}</span>`;
+    b.addEventListener('click', () => selectSite(key)); box.appendChild(b);
+  }
 }
 
 function syncPlay() {
@@ -1747,7 +2097,7 @@ $('#seasonBtn').addEventListener('click', e => {
   state.season = state.season === 'spring' ? 'autumn' : 'spring';
   e.currentTarget.textContent = state.season === 'spring' ? '春' : '秋';
   e.currentTarget.setAttribute('aria-label', state.season === 'spring' ? '季節：春（クリックで秋）' : '季節：秋（クリックで春）');
-  for (const { im, cS, cA } of INSTANCED) { const arr = state.season === 'spring' ? cS : cA; arr.forEach((c, i) => im.setColorAt(i, c)); im.instanceColor.needsUpdate = true; }
+  applySeason();
   lookDirty = true;
 });
 function readTheme() { const a = document.documentElement.getAttribute('data-theme'); if (a === 'dark' || a === 'light') return a; return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
@@ -1764,12 +2114,11 @@ $('#themeBtn').addEventListener('click', () => { document.documentElement.setAtt
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
-$$('[data-site]').forEach(b => b.addEventListener('click', () => selectSite(b.dataset.site)));
 $('#cardClose').addEventListener('click', () => selectSite(null, true));
 function selectSite(key, keepCam) {
   state.site = key;
   $$('[data-site]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.site === key)));
-  if (!key) { ui.card.hidden = true; ui.siteName.textContent = 'Yūtoku Inari Shrine'; return; }
+  if (!key) { ui.card.hidden = true; ui.siteName.textContent = PROJ[curProj].title; return; }
   const s = SITES[key];
   ui.siteName.textContent = s.name;
   $('#cardK').textContent = s.k; $('#cardH').innerHTML = s.h; $('#cardP').textContent = s.p;
@@ -1802,7 +2151,6 @@ function directorAt(p) {
   const A = DIR[i], B = DIR[i + 1], t = easeIO(clamp((p - A.p) / (B.p - A.p)));
   return { t: V(lerp(A.t[0], B.t[0], t), lerp(A.t[1], B.t[1], t), lerp(A.t[2], B.t[2], t)), d: lerp(A.d, B.d, t), az: lerp(A.az, B.az, t) + state.drift, el: lerp(A.el, B.el, t), fov: 32 };
 }
-Object.assign(cur, directorAt(state.p)); applyCam(cur);
 
 // keyboard
 addEventListener('keydown', e => {
@@ -1841,7 +2189,7 @@ function updateLook() {
     ud.uReal.value = r;
     if (ud.emissive) { m.emissive.copy(ud.emissive); m.emissiveIntensity = r * (.15 + 2.6 * dk) * ud.glow; }
   }
-  MAT.water.opacity = lerp(.72, .9, real); MAT.glass.opacity = lerp(.55, .38, real);
+  MAT.water.opacity = lerp(.72, .9, real); MAT.sea.opacity = lerp(.7, .92, real); MAT.glass.opacity = lerp(.55, .38, real);
   // sky
   tmp.a.copy(SKY.dayTop).lerp(SKY.nTop, dk); tmp.b.copy(SKY.dayHor).lerp(SKY.nHor, dk); tmp.c.copy(SKY.dayBot).lerp(SKY.nBot, dk);
   skyU.uTop.value.copy(PAL.paper).lerp(tmp.a, real); skyU.uHor.value.copy(PAL.paper).lerp(tmp.b, real); skyU.uBot.value.copy(PAL.paper).lerp(tmp.c, real);
@@ -1924,10 +2272,39 @@ function loop(now) {
   renderer.render(scene, camera);
   requestAnimationFrame(loop);
 }
-syncPlay();
-renderer.shadowMap.needsUpdate = true;
+function applySeason() { for (const { im, cS, cA } of INSTANCED) { const arr = state.season === 'spring' ? cS : cA; arr.forEach((c, i) => im.setColorAt(i, c)); im.instanceColor.needsUpdate = true; } }
+function buildProject(key) {
+  const P = PROJ[key]; P.env();
+  ROOT = new THREE.Group(); ROOT.visible = false; scene.add(ROOT);
+  R = mulberry(P.seed); P.build(); flushSite(); P.lines = flushLines();
+  P.group = ROOT; ROOT = scene; applySeason();
+}
+function activate(key) {
+  const P = PROJ[key]; curProj = key;
+  if (!P.group) buildProject(key);
+  P.env();
+  for (const k in PROJ) if (PROJ[k].group) PROJ[k].group.visible = k === key;
+  ({ DIR, VIEWS, SITES, SRC, LABELS, STAGES } = P);
+  document.getElementById('brandH').innerHTML = P.h1; document.getElementById('brandSub').textContent = P.sub;
+  $$('[data-proj]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.proj === key)));
+  buildLabels(); buildSiteList(); selectSite(null, true);
+  Object.assign(sun.shadow.camera, P.shadow); sun.shadow.camera.updateProjectionMatrix(); sun.target.position.set(...P.sunT); sun.target.updateMatrixWorld();
+  nightLights.forEach((l, i) => { const d = P.night[i]; if (d) { l.position.set(d[0], d[1], d[2]); l.userData.base = d[3]; } else l.userData.base = 0; });
+  lastStage = -1; state.drift = 0; state.director = true; state.tween = null; setView('orbit');
+  state.p = REDUCED ? 4 : 0; state.playing = !REDUCED; state.seek = null; syncPlay();
+  Object.assign(cur, directorAt(state.p)); applyCam(cur);
+  lookDirty = true; renderer.shadowMap.needsUpdate = true;
+  try { history.replaceState(null, '', '#' + key); } catch (e) { /* sandboxed frames may refuse */ }
+}
+$$('[data-proj]').forEach(b => b.addEventListener('click', () => {
+  const key = b.dataset.proj; if (key === curProj) return;
+  if (PROJ[key].group) { activate(key); return; }
+  document.body.style.cursor = 'progress'; ui.capJp.textContent = 'モデルを組み立てています…';
+  setTimeout(() => { activate(key); document.body.style.cursor = ''; }, 40);
+}));
+activate(location.hash === '#karatsu' ? 'karatsu' : 'yutoku');
 requestAnimationFrame(loop);
-window.__yutoku = { state, setP: p => { state.p = p; state.playing = false; state.seek = null; syncPlay(); }, snap: () => { Object.assign(cur, directorAt(state.p)); applyCam(cur); }, cam: c => { state.director = false; state.tween = null; Object.assign(cur, { t: V(...c.t), d: c.d, az: c.az, el: c.el, fov: 32 }); applyCam(cur); }, lines: LT.length / 4 };
+window.__yutoku = { state, setP: p => { state.p = p; state.playing = false; state.seek = null; syncPlay(); }, snap: () => { Object.assign(cur, directorAt(state.p)); applyCam(cur); }, cam: c => { state.director = false; state.tween = null; Object.assign(cur, { t: V(...c.t), d: c.d, az: c.az, el: c.el, fov: 32 }); applyCam(cur); }, project: k => activate(k) };
 </script>
 </body>
 </html>
