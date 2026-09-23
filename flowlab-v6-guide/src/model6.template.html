@@ -1,4 +1,4 @@
-<title>工場内シミュレーション 途中経過</title>
+<title>加須工場 3Dモデル 途中経過</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=IBM+Plex+Mono:wght@500&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap">
@@ -236,6 +236,56 @@ p{margin:0}
   .why{grid-template-columns:1fr 1fr;align-items:start}
   .p6{grid-template-columns:1.1fr 1fr;align-items:start}
 }
+
+/* ---- 3D model pages ---- */
+.m1{display:grid;gap:22px;grid-template-columns:1fr}
+@media (min-width:900px){.m1{grid-template-columns:2.2fr 1fr;align-items:start}}
+.m2,.m3{display:grid;gap:20px;grid-template-columns:1fr}
+@media (min-width:900px){.m2,.m3{grid-template-columns:1.65fr 1fr;align-items:start}}
+.side{display:grid;gap:8px;align-content:start}
+.ticks{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.ticks li{font-size:12.5px;color:var(--ink-2);padding-left:14px;position:relative;line-height:1.5}
+.ticks li::before{content:"";position:absolute;left:0;top:.6em;width:6px;height:6px;border-radius:50%;background:var(--brand)}
+.ticks li b{display:block;color:var(--ink);font-size:13.5px}
+.four{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:760px){.four{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.four figure{margin:0;display:grid;gap:4px;align-content:start}
+.four figcaption{font-size:12.5px;font-weight:700}
+.flowline{display:flex;flex-wrap:wrap;gap:6px 5px;align-items:center}
+.flowline span{font-size:12.5px;background:var(--brand-soft);color:var(--brand-ink);border-radius:5px;padding:3px 8px;font-weight:700}
+.flowline i{font-style:normal;color:var(--muted);font-size:12px}
+.feats{display:grid;gap:14px 16px;grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:760px){.feats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.feats figure{margin:0;display:grid;gap:5px;align-content:start}
+.feats figcaption{font-size:12px;color:var(--ink-2);line-height:1.5}
+.feats figcaption b{display:block;color:var(--ink);font-size:13.5px}
+.m5{display:grid;gap:20px;grid-template-columns:1fr}
+@media (min-width:900px){.m5{grid-template-columns:1.1fr 1fr;align-items:start}}
+.lbl2{font-family:var(--f-display);font-weight:700;font-size:13.5px;margin-bottom:5px}
+.frames2{display:grid;gap:10px;grid-template-columns:1fr 1fr}
+.m6{display:grid;gap:14px;grid-template-columns:1fr}
+@media (min-width:760px){.m6{grid-template-columns:1fr 1fr;align-items:start}}
+.mv{display:grid;grid-template-columns:auto minmax(0,1fr) 34px;gap:5px 10px;align-items:center;font-size:12.5px}
+.mv i{display:block;height:14px;width:var(--w);background:var(--c-lab);border-radius:0 3px 3px 0;min-width:3px}
+.mv i.o{background:var(--c-other)}
+.mv b{font-family:var(--f-mono);font-weight:500;text-align:right}
+.nums{display:grid;grid-template-columns:1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+@media (min-width:760px){.nums{grid-template-columns:repeat(3,1fr)}.nums div{border-top:0!important;border-left:1px solid var(--line)}.nums div:first-child{border-left:0}}
+.nums div{padding:8px 12px;border-top:1px solid var(--line);display:grid;gap:2px;background:var(--paper)}
+.nums div:first-child{border-top:0}
+.nums b{font-family:var(--f-mono);font-weight:500;font-size:23px;line-height:1.1}
+.nums b small{font-family:var(--f-body);font-size:12px;margin-left:2px}
+.nums b.bad{color:var(--worse)}.nums b.good{color:var(--improve)}
+.nums span{font-size:11.5px;color:var(--ink-2);line-height:1.45}
+@media print{
+  .m1{grid-template-columns:2.2fr 1fr}
+  .m2,.m3{grid-template-columns:1.65fr 1fr}
+  .four{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .feats{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .m5{grid-template-columns:1.1fr 1fr}
+  .m6{grid-template-columns:1fr 1fr}
+  .nums{grid-template-columns:repeat(3,1fr)}.nums div{border-top:0!important;border-left:1px solid var(--line)}.nums div:first-child{border-left:0}
+}
 </style>
 
 <div class="deck">
@@ -243,182 +293,175 @@ p{margin:0}
 <div class="dl" id="dl" hidden>
   <span><b>この資料を保存</b><span class="msg" id="dlMsg">画像入りの1ファイル。ダウンロード後はブラウザーで開けます。</span></span>
   <span class="btns">
-    <button type="button" data-dl="FLOW_LAB_v6_simulation_6p.html" data-name="工場内シミュレーション_途中経過_6ページ版.html">6ページ版（HTML）</button>
-    <button type="button" class="sub" data-dl="FLOW_LAB_v6_simulation_6p.pdf" data-name="工場内シミュレーション_途中経過_6ページ版.pdf">6ページ版（PDF）</button>
-    <button type="button" class="sub" data-dl="FLOW_LAB_v6_simulation_detail.html" data-name="工場内シミュレーション_途中経過_詳細版.html">詳細版（HTML）</button>
+    <button type="button" data-dl="FLOW_LAB_3D_model_6p.html" data-name="加須工場3Dモデル_途中経過_6ページ版.html">6ページ版（HTML）</button>
+    <button type="button" class="sub" data-dl="FLOW_LAB_3D_model_6p.pdf" data-name="加須工場3Dモデル_途中経過_6ページ版.pdf">6ページ版（PDF）</button>
+    <button type="button" class="sub" data-dl="FLOW_LAB_3D_model_detail.html" data-name="加須工場3Dモデル_途中経過_詳細版.html">詳細版（HTML）</button>
   </span>
 </div>
 
 <!-- ========== 1 ========== -->
 <section class="pg" id="p1" aria-label="1ページ目">
-  <div class="pg-top"><span>ワールド化成 ｜ 工場内シミュレーション 途中経過報告</span><span class="no">01 / 06</span></div>
-  <h2>工場内の人の動きを再現し、<br>移設計画をシミュレーションで検証する<small>ワールド化成は、計測した位置データから工場内の動きを3Dで再現する「工場内シミュレーション」を構築し、<br>ワニス・調色工程を第二工場へ移す計画を検証しています。</small></h2>
+  <div class="pg-top"><span>ワールド化成 ｜ 加須工場 3Dモデル 途中経過報告</span><span class="no">01 / 06</span></div>
+  <h2>工場を、敷地から設備・配管まで3Dで再現する<small>ワールド化成は、加須工場の敷地・建屋・工場内部の設備までを3Dモデルにし、<br>実測の動線データと組み合わせて、配置と生産性の検討に使えるようにしています。</small></h2>
   <div class="pg-body">
-    <div class="p1">
-      <div class="shot"><img src="{{IMG:p_s05}}" {{WH:p_s05}} alt="工場内シミュレーションの画面。左に条件、中央に工場内の3Dと移動の線、右に結果" data-zoom></div>
+    <div class="m1">
+      <div class="shot"><img src="{{IMG:m_hero}}" {{WH:m_hero}} alt="加須工場の3Dモデル。敷地全体と建屋を斜め上から見た画面" data-zoom></div>
       <div class="can">
-        <h3>シミュレーションでできること</h3>
+        <h3>3Dモデルに入っているもの</h3>
         <ul>
-          <li class="y"><div><b>現状を再現する</b><span>計測した人の位置を、日付・時刻どおりに3Dで再生</span></div></li>
-          <li class="y"><div><b>移設案を試す</b><span>移設先や条件を変えて、歩く時間・距離を比べる</span></div></li>
-        </ul>
-        <h3 style="margin-top:6px">まだできないこと</h3>
-        <ul>
-          <li class="n"><div><b>生産量・必要な人数の判定</b><span>作業時間・生産量のデータがまだないため</span></div></li>
+          <li class="y"><div><b>敷地と建屋の外観</b><span>16の建屋・タンク・池・構内道路（敷地 260×185m）</span></div></li>
+          <li class="y"><div><b>工場内部の設備</b><span>10建屋の内部。タンク・ミル・充填機・原料・製品まで</span></div></li>
+          <li class="y"><div><b>配管・ダクト・電気</b><span>BIM表示で系統ごとに確認、干渉も自動チェック</span></div></li>
+          <li class="y"><div><b>実測の動線分析</b><span>作業者の位置データを重ねて集計（5・6ページ）</span></div></li>
         </ul>
         <div class="stats">
+          <div><b class="num">16</b><span>建屋・要素</span></div>
+          <div><b class="num">10</b><span>内部を再現した建屋</span></div>
           <div><b class="num">80<small>万件</small></b><span>位置の記録</span></div>
-          <div><b class="num">22<small>日</small></b><span>計測 7/24〜8/31</span></div>
-          <div><b class="num">2<small>人</small></b><span>各工程の計測人数</span></div>
         </div>
       </div>
     </div>
     <nav class="route" aria-label="この資料の流れ"><span class="t">この資料の流れ</span>
-      <a href="#p2"><i>2</i>画面</a><span class="ar">›</span><a href="#p3"><i>3</i>現状を再現</a><span class="ar">›</span><a href="#p4"><i>4</i>移設案を試す</a><span class="ar">›</span><a href="#p5"><i>5</i>結果</a><span class="ar">›</span><a href="#p6"><i>6</i>次のステップ</a></nav>
+      <a href="#p2"><i>2</i>敷地と外観</a><span class="ar">›</span><a href="#p3"><i>3</i>工場内部</a><span class="ar">›</span><a href="#p4"><i>4</i>3Dでできること</a><span class="ar">›</span><a href="#p5"><i>5</i>動線分析</a><span class="ar">›</span><a href="#p6"><i>6</i>移設の検証と次の一手</a></nav>
   </div>
-  <div class="pg-foot"><span>提案元：ワールド化成 ｜ 2026-09-23</span><span class="scr">画像はクリックで拡大</span></div>
+  <div class="pg-foot"><span>提案元：ワールド化成 ｜ 2026-09-23</span><span>設備の位置・寸法は推定（図面・設備仕様で更新できます）</span></div>
 </section>
 
 <!-- ========== 2 ========== -->
 <section class="pg" id="p2" aria-label="2ページ目">
-  <div class="pg-top"><span>シミュレーションの画面</span><span class="no">02 / 06</span></div>
-  <h2>左で条件を変え、右で結果を見る<small>中央の3Dが工場内です。左上で「現状の再現」と「移設案の検証」を切り替えます。</small></h2>
-  <div class="pg-body p2g">
-    <div class="shot" data-callouts="p2"><img src="{{IMG:p_s01}}" {{WH:p_s01}} alt="番号付きで説明したシミュレーション画面" data-zoom></div>
-    <div>
-      <ol class="legend6">
-        <li><span class="b">1</span><span><b>再現／検証の切り替え</b><em>実測再生／改善案</em></span></li>
-        <li><span class="b">2</span><span><b>場所と日付</b><em>建屋・階・工程・日付</em></span></li>
-        <li><span class="b">3</span><span><b>条件を変える</b><em>移設・往来の削減など</em></span></li>
-        <li><span class="b">4</span><span><b>結果</b><em>歩く時間・距離・人数</em></span></li>
-        <li><span class="b">5</span><span><b>時間を動かす</b><em>再生・早送り</em></span></li>
-        <li><span class="b">6</span><span><b>集計表</b><em>分析一覧（2D）</em></span></li>
-      </ol>
-      <div class="src"><b>使っているデータ</b><span>位置ログ 803,503件（22日）</span><span>1F・2Fの図面資料</span><span>ワールド化成の人員計画（24名 → 22名）</span></div>
+  <div class="pg-top"><span>① 敷地と外観</span><span class="no">02 / 06</span></div>
+  <h2>敷地全体を、どの角度からでも確かめられる<small>正門・出荷倉庫・屋外タンクなど、見たい場所へボタン一つで移動。昼と夕景の見え方も切り替えられます。</small></h2>
+  <div class="pg-body">
+    <div class="m2">
+      <div class="shot"><img src="{{IMG:m_site_ui}}" {{WH:m_site_ui}} alt="3Dモデルの画面。左に外観の操作パネル、中央に敷地の3D、下に視点ボタン" data-zoom>
+        <span class="pin up l" style="left:41%;top:94%">視点ボタン</span><span class="pin l" style="left:2%;top:23%">外観パネル</span></div>
+      <div class="side">
+        <div class="h3">画面でできること</div>
+        <ul class="ticks">
+          <li><b>視点を切り替える</b>全景・正門・出荷倉庫・タンク・昼／夕景</li>
+          <li><b>回す・寄る</b>左ドラッグで回転、ホイールで拡大</li>
+          <li><b>建屋の中へ入る</b>建屋をダブルクリック</li>
+          <li><b>画像で保存</b>［📷 保存］で画面をPNGに</li>
+        </ul>
+        <div class="src"><b>モデルの前提</b><span>建屋の配置・寸法は推定の概念モデル</span><span>図面・設備仕様で更新できます</span></div>
+      </div>
+    </div>
+    <div class="four">
+      <figure><div class="shot"><img src="{{IMG:m_gate}}" {{WH:m_gate}} alt="正門から見た工場" data-zoom></div><figcaption>正門・受付</figcaption></figure>
+      <figure><div class="shot"><img src="{{IMG:m_wh}}" {{WH:m_wh}} alt="出荷倉庫" data-zoom></div><figcaption>出荷倉庫</figcaption></figure>
+      <figure><div class="shot"><img src="{{IMG:m_tanks}}" {{WH:m_tanks}} alt="屋外タンク" data-zoom></div><figcaption>屋外タンク</figcaption></figure>
+      <figure><div class="shot"><img src="{{IMG:m_sunset}}" {{WH:m_sunset}} alt="夕景の工場" data-zoom></div><figcaption>夕景（照明の見え方）</figcaption></figure>
     </div>
   </div>
-  <div class="pg-foot"><span>提案元：ワールド化成</span><span>3Dはドラッグで回転、ホイールで拡大</span></div>
+  <div class="pg-foot"><span>提案元：ワールド化成</span><span>敷地 260×185m・16建屋</span></div>
 </section>
 
 <!-- ========== 3 ========== -->
 <section class="pg" id="p3" aria-label="3ページ目">
-  <div class="pg-top"><span>① 現状を再現する（実測再生）</span><span class="no">03 / 06</span></div>
-  <h2>調色の2人は、研究棟と調色工場を何度も行き来している<small>8月4日、調色担当2人（ID 11・ID 12）の実際の位置をシミュレーションで再生した画面です。</small></h2>
+  <div class="pg-top"><span>② 工場内部</span><span class="no">03 / 06</span></div>
+  <h2>建屋の中まで、設備を一つずつ再現<small>第一ペイント工場では、原料から製品までの工程ラインを38の設備・開口で再現しています。</small></h2>
   <div class="pg-body">
-    <div class="frames">
-      <figure style="margin:0"><div class="shot"><img src="{{IMG:k_rep_1004}}" {{WH:k_rep_1004}} alt="10時04分。ID 11が研究棟、ID 12が調色工場" data-zoom>
-        <span class="tag-t">10:04</span><span class="place" style="left:10%;top:80%">研究棟</span><span class="place" style="left:82%;top:88%">調色工場</span>
-        <span class="pin up" style="left:13.7%;top:50%">ID 11</span><span class="pin up g" style="left:73.4%;top:58%">ID 12</span></div>
-        <p class="cap">ID 11は研究棟、ID 12は調色工場。</p></figure>
-      <figure style="margin:0"><div class="shot"><img src="{{IMG:k_rep_1024}}" {{WH:k_rep_1024}} alt="10時24分。ID 12が研究棟、ID 11が調色工場" data-zoom>
-        <span class="tag-t">10:24</span><span class="place" style="left:10%;top:80%">研究棟</span><span class="place" style="left:82%;top:88%">調色工場</span>
-        <span class="pin up g" style="left:18%;top:50%">ID 12</span><span class="pin up" style="left:73.4%;top:57%">ID 11</span></div>
-        <p class="cap"><b>20分後、2人の場所が入れ替わる。</b></p></figure>
-      <figure style="margin:0"><div class="shot"><img src="{{IMG:k_rep_1154}}" {{WH:k_rep_1154}} alt="11時54分。2人とも調色工場" data-zoom>
-        <span class="tag-t">11:54</span><span class="place" style="left:10%;top:80%">研究棟</span><span class="place" style="left:82%;top:88%">調色工場</span>
-        <span class="pin up" style="left:68.9%;top:58%">ID 11・12</span></div>
-        <p class="cap">2人とも調色工場。</p></figure>
+    <div class="m3">
+      <div class="shot"><img src="{{IMG:m_p1_close}}" {{WH:m_p1_close}} alt="第一ペイント工場の内部。分散ミル・ディスパー槽・調合槽などの設備と名称" data-zoom></div>
+      <div class="side">
+        <div class="h3">第一ペイント工場の工程ライン</div>
+        <div class="flowline"><span>原料</span><i>→</i><span>分散ミル</span><i>→</i><span>ディスパー槽</span><i>→</i><span>調合槽</span><i>→</i><span>KVタンク</span><i>→</i><span>充填</span><i>→</i><span>製品</span></div>
+        <div class="stats" style="margin-top:12px">
+          <div><b class="num">38</b><span>設備・開口</span></div>
+          <div><b class="num">20</b><span>配管の接続（仮）</span></div>
+          <div><b class="num">13<small>m</small></b><span>建屋高さ（推定）</span></div>
+        </div>
+        <p class="cap" style="margin-top:10px">設備はドラッグで動かせ、動線と工数がすぐ再計算されます。<b>位置・寸法は推定の仮配置</b>で、図面・設備仕様・現地確認で更新できます。</p>
+      </div>
     </div>
-    <div class="tl">
-      <div class="tl-h"><span class="h3" style="margin:0">8月4日の居場所（1分ごと）</span>
-        <span class="tl-legend"><span><i class="sw" style="background:var(--c-lab)"></i>研究棟</span><span><i class="sw" style="background:var(--c-tint)"></i>調色工場</span><span><i class="sw" style="background:var(--c-other)"></i>その他の場所</span><span><i class="sw" style="background:var(--c-gap);border:1px solid var(--line)"></i>位置なし</span></span></div>
-      <div data-timeline role="img" aria-label="8月4日、ID 11とID 12の居場所の推移。研究棟と調色工場が短い間隔で入れ替わる"></div>
-      <p class="cap" style="margin-top:4px">計測3日間で、研究棟 ⇄ 調色工場の行き来は<b>246回</b>。滞在時間も調色工場24.7人時・研究棟24.4人時と<b>ほぼ半々</b>です。</p>
-    </div>
-    <div class="howto">
-      <ol aria-label="操作手順"><li><i>1</i>［実測再生］</li><span class="ar">›</span><li><i>2</i>実測日・建屋を選ぶ</li><span class="ar">›</span><li><i>3</i>［再生］（1〜300倍速）</li></ol>
-      <div class="shot"><img src="{{IMG:u_bottom}}" {{WH:u_bottom}} alt="再生バー" data-zoom></div>
+    <div class="four">
+      <figure><div class="shot"><img src="{{IMG:m_paint2}}" {{WH:m_paint2}} alt="第二ペイント工場の内部" data-zoom></div><figcaption>第二ペイント工場</figcaption></figure>
+      <figure><div class="shot"><img src="{{IMG:m_tint}}" {{WH:m_tint}} alt="調色工場の内部" data-zoom></div><figcaption>調色工場</figcaption></figure>
+      <figure><div class="shot"><img src="{{IMG:m_varnish}}" {{WH:m_varnish}} alt="ワニス工場の内部" data-zoom></div><figcaption>ワニス工場</figcaption></figure>
+      <figure><div class="shot"><img src="{{IMG:m_lab}}" {{WH:m_lab}} alt="研究棟の内部" data-zoom></div><figcaption>研究棟</figcaption></figure>
     </div>
   </div>
-  <div class="pg-foot"><span>提案元：ワールド化成</span><span>映るのは計測した人だけ（全24人ではありません）</span></div>
+  <div class="pg-foot"><span>提案元：ワールド化成</span><span>ほかに出荷倉庫・原料倉庫・危険物倉庫などの内部も再現</span></div>
 </section>
 
 <!-- ========== 4 ========== -->
 <section class="pg" id="p4" aria-label="4ページ目">
-  <div class="pg-top"><span>② 移設案を試す（改善シミュレーション）</span><span class="no">04 / 06</span></div>
-  <h2>調色を第二工場へ移すと、研究棟が遠くなる<small>同じ視点で、調色工程の移動（細い線）を移設前と移設後で比べました。</small></h2>
+  <div class="pg-top"><span>③ 3Dでできること</span><span class="no">04 / 06</span></div>
+  <h2>配管・設備・動線を、3Dの上で確かめる<small>現場に行かなくても、配置や経路の問題を画面で見つけられます。</small></h2>
   <div class="pg-body">
-    <div class="ba">
-      <figure style="margin:0"><div class="lbl"><b>移設前（現状）</b><span>調色工場 ⇄ 研究棟</span></div>
-        <div class="shot"><img src="{{IMG:k_before}}" {{WH:k_before}} alt="移設前。調色工場と研究棟が隣り合っている" data-zoom>
-          <svg class="ov" viewBox="0 0 844 380" preserveAspectRatio="none" aria-hidden="true"><line x1="676" y1="62" x2="566" y2="62" stroke="#a9582a" stroke-width="5" stroke-linecap="round"/></svg>
-          <span class="pin" style="left:66.1%;top:13%">研究棟</span><span class="pin g" style="left:80.8%;top:13%">調色工場</span><span class="dist" style="left:73.5%;top:25%">約32m</span></div></figure>
-      <figure style="margin:0"><div class="lbl"><b>移設後（ワールド化成の計画）</b><span>第二工場 ⇄ 研究棟</span></div>
-        <div class="shot"><img src="{{IMG:k_after}}" {{WH:k_after}} alt="移設後。調色が第二工場へ移り、研究棟まで長い線になる" data-zoom>
-          <svg class="ov" viewBox="0 0 844 380" preserveAspectRatio="none" aria-hidden="true"><line x1="92" y1="226" x2="552" y2="64" stroke="#a9582a" stroke-width="5" stroke-linecap="round"/></svg>
-          <span class="pin" style="left:66.1%;top:13%">研究棟</span><span class="pin g up l" style="left:10.2%;top:65%">調色の移設先（第二工場）</span><span class="dist" style="left:40%;top:44%">約120m</span></div></figure>
-    </div>
-    <div class="p4b">
-      <div class="step"><div class="step-h"><i>1</i>条件を変える</div>
-        <div class="shot"><img src="{{IMG:u_change}}" {{WH:u_change}} alt="移設のチェック、移設先の座標、研究棟との往来の削減率" data-zoom></div></div>
-      <div class="step"><div class="step-h"><i>2</i>結果を見る</div>
-        <div class="shot"><img src="{{IMG:u_result_short}}" {{WH:u_result_short}} alt="結果パネル。移動時間の短縮マイナス276分" data-zoom></div>
-        <p class="say">「短縮」が<em>マイナス</em>＝歩く時間が<em>増える</em></p></div>
-      <div>
-        <div class="h3">操作のしかた</div>
-        <ol class="steps3">
-          <li><i>1</i><div><b>［改善案］を押す</b><span>全体・1Fの表示に切り替わります</span></div></li>
-          <li><i>2</i><div><b>移設する／しないを選ぶ</b><span>移設先は数字で入力するか、3Dの丸い札をドラッグ</span></div></li>
-          <li><i>3</i><div><b>研究棟との往来を何%減らすか</b><span>0〜100%。調色 ⇄ 研究棟の移動だけに効きます</span></div></li>
-          <li><i>4</i><div><b>右の結果を見る</b><span>工程別の変化と、変化の大きい移動も表示</span></div></li>
-        </ol>
-      </div>
+    <div class="feats">
+      <figure><div class="shot"><img src="{{IMG:m_mep}}" {{WH:m_mep}} alt="天井の配管とダクト" data-zoom></div><figcaption><b>配管・ダクト（BIM表示）</b>給気・排気・消火・圧空・電気などを設備まで表示</figcaption></figure>
+      <figure><div class="shot"><img src="{{IMG:m_clash_ui}}" {{WH:m_clash_ui}} alt="干渉チェックの結果一覧" data-zoom></div><figcaption><b>干渉チェック</b>配管どうしのぶつかりを自動で見つけて一覧に</figcaption></figure>
+      <figure><div class="shot"><img src="{{IMG:m_section}}" {{WH:m_section}} alt="設備の断面表示" data-zoom></div><figcaption><b>設備の詳細・断面</b>寸法・保守の余白・内部構造を確認</figcaption></figure>
+      <figure><div class="shot"><img src="{{IMG:m_walk}}" {{WH:m_walk}} alt="作業者の目線で見た工場内部" data-zoom></div><figcaption><b>作業者の目線</b>高さ1.65mの目線で通路を歩いて確認</figcaption></figure>
+      <figure><div class="shot"><img src="{{IMG:m_draw}}" {{WH:m_draw}} alt="図面モードの工場内部" data-zoom></div><figcaption><b>図面モード</b>白図の表示で配置を見やすく</figcaption></figure>
+      <figure><div class="shot"><img src="{{IMG:m_play}}" {{WH:m_play}} alt="フォークリフトの稼働再生と混雑表示" data-zoom></div><figcaption><b>稼働再生・混雑表示</b>フォークリフト・トラック便の動きと通行の多い場所</figcaption></figure>
     </div>
   </div>
-  <div class="pg-foot"><span>提案元：ワールド化成</span><span>距離は部屋の中心どうしの直線 × 1.35で計算</span></div>
+  <div class="pg-foot"><span>提案元：ワールド化成</span><span>物流の動き・指標は想定した便数による試算です</span></div>
 </section>
 
 <!-- ========== 5 ========== -->
 <section class="pg" id="p5" aria-label="5ページ目">
-  <div class="pg-top"><span>③ シミュレーション結果</span><span class="no">05 / 06</span></div>
-  <h2>今の移設計画では、歩く時間は1日276分増える<small>生産6工程・1日あたりの合計。計測データを元にした試算です。</small></h2>
-  <div class="pg-body">
-    <div class="abc">
-      <div><div class="h"><span>A　移設しない</span><b>± 0 分</b></div><div class="shot"><img src="{{IMG:u_moveoff}}" {{WH:u_moveoff}} alt="移設しない場合の結果 0分" data-zoom></div></div>
-      <div><div class="h"><span>B　移設する（ワールド化成の計画）</span><b class="bad">276 分 増える</b></div><div class="shot"><img src="{{IMG:u_result_short}}" {{WH:u_result_short}} alt="計画どおりの結果 マイナス276分" data-zoom></div></div>
-      <div><div class="h"><span>C　Bで研究棟との往来をゼロにできたら</span><b class="good">56 分 減る</b></div><div class="shot"><img src="{{IMG:u_research100}}" {{WH:u_research100}} alt="往来ゼロの場合の結果 プラス56分" data-zoom></div></div>
-    </div>
-    <div class="why">
-      <div>
-        <div class="h3">どの工程で増えるか（B）</div>
-        <div class="hbars" data-hbars role="img" aria-label="工程別の歩く時間の増減。調色が242分増で大半を占める"></div>
-        <p class="cap">増える分の約9割は、<b>調色と研究棟の行き来が32m → 120mに遠くなる</b>ためです。</p>
+  <div class="pg-top"><span>④ 実測データの動線分析</span><span class="no">05 / 06</span></div>
+  <h2>実測データを重ねると、工程間の行き来が見える<small>作業者の位置データ（22日間・80万件）を平面図と3Dで再生。調色担当の2人は、研究棟と調色工場を3日で246回行き来していました。</small></h2>
+  <div class="pg-body m5">
+    <figure style="margin:0"><div class="lbl2">分析一覧（2D）：調色担当の位置の軌跡</div>
+      <div class="shot"><img src="{{IMG:m_map2d}}" {{WH:m_map2d}} alt="平面図上の調色担当の位置の軌跡。調色工場と研究棟の間に線が集中" data-zoom>
+        <span class="pin" style="left:28.7%;top:76%">調色工場</span><span class="pin g" style="left:42%;top:76%">研究棟</span></div>
+      <p class="cap">線は計測された移動。調色工場と研究棟の間に集中しています。</p></figure>
+    <div class="stack">
+      <div class="lbl2">3Dで再生：8月4日、2人の場所が入れ替わる</div>
+      <div class="frames2">
+        <div class="shot"><img src="{{IMG:k_rep_1004}}" {{WH:k_rep_1004}} alt="10時04分。ID 11が研究棟、ID 12が調色工場" data-zoom>
+          <span class="tag-t">10:04</span><span class="place" style="left:10%;top:80%">研究棟</span><span class="place" style="left:80%;top:88%">調色工場</span>
+          <span class="pin up" style="left:13.7%;top:50%">ID 11</span><span class="pin up g" style="left:73.4%;top:58%">ID 12</span></div>
+        <div class="shot"><img src="{{IMG:k_rep_1024}}" {{WH:k_rep_1024}} alt="10時24分。ID 12が研究棟、ID 11が調色工場" data-zoom>
+          <span class="tag-t">10:24</span><span class="place" style="left:10%;top:80%">研究棟</span><span class="place" style="left:80%;top:88%">調色工場</span>
+          <span class="pin up g" style="left:18%;top:50%">ID 12</span><span class="pin up" style="left:73.4%;top:57%">ID 11</span></div>
       </div>
-      <div>
-        <p class="big">研究棟との行き来を<em>8割以上</em>減らせないと、移設で歩く時間は増えます。</p>
-        <div class="meter" role="img" aria-label="2名減に必要な960分に対し、往来ゼロでも56分">
-          <div class="row"><span>2名減らすのに必要</span><div class="trk"><span class="bar need"></span><span class="v need-v">960 分/日</span></div></div>
-          <div class="row"><span>往来ゼロでも</span><div class="trk"><span class="bar max"></span><span class="v max-v">56 分/日</span></div></div>
-        </div>
-        <p style="font-size:13.5px;margin-top:10px">歩く時間を減らすだけでは、2名減の根拠になりません。</p>
-        <p class="note-s">※ 往来ゼロは最大限うまくいった場合の仮定。人数換算は「歩く時間 ÷ 8時間」の目安です。</p>
+      <div class="tl">
+        <div class="tl-h"><span class="h3" style="margin:0;font-size:13.5px">8月4日の居場所（1分ごと）</span>
+          <span class="tl-legend"><span><i class="sw" style="background:var(--c-lab)"></i>研究棟</span><span><i class="sw" style="background:var(--c-tint)"></i>調色工場</span><span><i class="sw" style="background:var(--c-other)"></i>その他</span></span></div>
+        <div data-timeline role="img" aria-label="8月4日、ID 11とID 12の居場所の推移。研究棟と調色工場が短い間隔で入れ替わる"></div>
+      </div>
+      <p class="cap">滞在時間も調色工場24.7人時・研究棟24.4人時と<b>ほぼ半々</b>（計測3日間）。</p>
+      <div class="lbl2" style="margin-top:6px">調色担当の移動回数（計測3日間・上位）</div>
+      <div class="mv" role="img" aria-label="研究棟から調色工場128回、調色工場から研究棟118回が突出">
+        <span>研究棟 → 調色工場</span><i style="--w:100%"></i><b>128</b>
+        <span>調色工場 → 研究棟</span><i style="--w:92.2%"></i><b>118</b>
+        <span>研究棟 → 駐車場</span><i style="--w:10.9%" class="o"></i><b>14</b>
+        <span>駐車場 → 事務所</span><i style="--w:7%" class="o"></i><b>9</b>
+        <span>調色工場 → 一般倉庫</span><i style="--w:3.9%" class="o"></i><b>5</b>
       </div>
     </div>
   </div>
-  <div class="pg-foot"><span>提案元：ワールド化成</span><span>計測は各工程2人分。申告人数（24名）に換算した値</span></div>
+  <div class="pg-foot"><span>提案元：ワールド化成</span><span>計測は各工程2人 × 2〜4日。映るのは計測した人だけです</span></div>
 </section>
 
 <!-- ========== 6 ========== -->
 <section class="pg" id="p6" aria-label="6ページ目">
-  <div class="pg-top"><span>次のステップ</span><span class="no">06 / 06</span></div>
-  <h2>次に試す案と、人員まで検証するためのデータ<small>ワールド化成は、シミュレーションで次の案を比べ、必要人員・生産性まで検証できるよう拡張することを提案します。</small></h2>
-  <div class="pg-body p6">
-    <div>
-      <div class="h3">シミュレーションで比べられる案（試算）</div>
-      <div class="scn" data-scn></div>
-      <p class="cap">現状と比べた、1日あたりの歩く時間。<b>どの案も、研究棟との行き来を大きく減らせない限り増えます。</b></p>
+  <div class="pg-top"><span>⑤ 移設の検証と次の一手</span><span class="no">06 / 06</span></div>
+  <h2>調色を第二工場へ移すと、歩く時間は1日276分増える<small>ワニス・調色を第二工場へ移す計画を試算すると、研究棟との行き来が32m → 120mに遠くなります（試算）。</small></h2>
+  <div class="pg-body">
+    <div class="m6">
+      <figure style="margin:0"><div class="lbl2">移設前（現状）</div>
+        <div class="shot"><img src="{{IMG:k_before}}" {{WH:k_before}} alt="移設前。調色工場と研究棟が隣り合っている" data-zoom>
+          <svg class="ov" viewBox="0 0 844 380" preserveAspectRatio="none" aria-hidden="true"><line x1="676" y1="62" x2="566" y2="62" stroke="#a9582a" stroke-width="6" stroke-linecap="round"/></svg>
+          <span class="pin" style="left:66.1%;top:13%">研究棟</span><span class="pin g" style="left:80.8%;top:13%">調色工場</span><span class="dist" style="left:73.5%;top:27%">約32m</span></div></figure>
+      <figure style="margin:0"><div class="lbl2">移設後（計画）</div>
+        <div class="shot"><img src="{{IMG:k_after}}" {{WH:k_after}} alt="移設後。調色が第二工場へ移り、研究棟まで長い線になる" data-zoom>
+          <svg class="ov" viewBox="0 0 844 380" preserveAspectRatio="none" aria-hidden="true"><line x1="92" y1="226" x2="552" y2="64" stroke="#a9582a" stroke-width="6" stroke-linecap="round"/></svg>
+          <span class="pin" style="left:66.1%;top:13%">研究棟</span><span class="pin g up l" style="left:10.2%;top:65%">調色の移設先</span><span class="dist" style="left:40%;top:44%">約120m</span></div></figure>
     </div>
-    <div>
-      <div class="h3">人員・生産性まで検証するために</div>
-      <ol class="next">
-        <li><span class="q">研究棟との行き来は減らせるか</span><span class="a">行き来の目的（検査・色の判定など）を現場で確認</span></li>
-        <li><span class="q">22名で回せるか</span><span class="a">工程ごとの作業時間（段取り・洗浄・待ち）</span></li>
-        <li><span class="q">生産量は増えるか</span><span class="a">ロットごとの生産量・作業時間</span></li>
-      </ol>
-      <div class="warnbox">数字はすべてシミュレーションの試算です。計測は各工程2人分で、全員の動きではありません。</div>
-    </div>
-    <div class="road"><span class="t">進め方（案）</span>
-      <ol><li><i>1</i><b>現場で確認する</b><span>研究棟との行き来の目的</span></li><span class="ar">›</span><li><i>2</i><b>データを受け取る</b><span>作業時間・生産量</span></li><span class="ar">›</span><li><i>3</i><b>シミュレーションを広げる</b><span>必要人員・生産性を試算（v7）</span></li></ol></div>
+    <div class="nums">
+        <div><b class="num bad">+276<small>分/日</small></b><span>移設後の歩く時間（6工程）</span></div>
+        <div><b class="num">83<small>%</small></b><span>研究棟との行き来を83%以上減らせないと、移設で歩く時間は増える</span></div>
+        <div><b class="num good">56<small>分/日</small></b><span>行き来をゼロにできても、2名減に必要な960分の約6%</span></div>
+      </div>
+    <div class="road"><span class="t">次の一手（提案）</span>
+      <ol><li><i>1</i><b>現場で確認する</b><span>研究棟との行き来の目的（検査・色の判定など）</span></li><span class="ar">›</span><li><i>2</i><b>データを受け取る</b><span>工程ごとの作業時間・ロット別の生産量</span></li><span class="ar">›</span><li><i>3</i><b>3Dモデルを更新する</b><span>設備の実測配置・図面を反映し、必要人員・生産性まで試算</span></li></ol></div>
+    <div class="warnbox">数字は計測データ（各工程2人分）を元にした試算です。歩く距離は部屋の中心どうしの直線 × 1.35で計算しています。</div>
   </div>
   <div class="pg-foot"><span>提案元：ワールド化成 ｜ 詳しくは詳細版を参照</span><span class="scr">画像はクリックで拡大</span></div>
 </section>

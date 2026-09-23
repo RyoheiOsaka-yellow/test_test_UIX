@@ -19,7 +19,7 @@ async function fontRoute(page) {
   const p = await browser.newPage({ viewport: { width: 1200, height: 900 } });
   p.on('pageerror', e => console.log('PAGEERR 6p', e.message));
   await fontRoute(p);
-  await p.goto('file://' + DIR + 'FLOW_LAB_v6_simulation_6p.html', { waitUntil: 'networkidle' });
+  await p.goto('file://' + DIR + 'FLOW_LAB_3D_model_6p.html', { waitUntil: 'networkidle' });
   await p.evaluate(() => document.fonts.ready); await p.waitForTimeout(800);
   if (mode === 'check') {
     const pgs = await p.$$('.pg');
@@ -30,25 +30,25 @@ async function fontRoute(page) {
     }
   } else {
     await p.emulateMedia({ media: 'print' });
-    await p.pdf({ path: DIR + 'FLOW_LAB_v6_simulation_6p.pdf', preferCSSPageSize: true, printBackground: true });
+    await p.pdf({ path: DIR + 'FLOW_LAB_3D_model_6p.pdf', preferCSSPageSize: true, printBackground: true });
     console.log('pdf 6p done');
   }
   // detail
   const d = await browser.newPage({ viewport: { width: 1360, height: 900 } });
   d.on('pageerror', e => console.log('PAGEERR detail', e.message));
   await fontRoute(d);
-  await d.goto('file://' + DIR + 'FLOW_LAB_v6_simulation_detail.html', { waitUntil: 'networkidle' });
+  await d.goto('file://' + DIR + 'FLOW_LAB_3D_model_detail.html', { waitUntil: 'networkidle' });
   await d.evaluate(() => document.fonts.ready); await d.waitForTimeout(800);
   if (mode === 'check') {
-    for (const id of ['s2', 's3-3', 's4-3', 's5-5', 'sa']) {
+    for (const id of ['s1', 's3', 's3-3', 's4-3', 's4-4', 's5', 'sa']) {
       const el = await d.$('#' + id); const b = await el.boundingBox();
       await d.screenshot({ path: `${SP}/prev/d_${id}.png`, fullPage: true, clip: { x: 0, y: b.y - 10, width: 1360, height: 1300 } });
     }
     const m = await browser.newPage({ viewport: { width: 390, height: 844 } }); await m.route(/^https?:\/\//, r => r.abort());
-    for (const f of ['FLOW_LAB_v6_simulation_6p.html', 'FLOW_LAB_v6_simulation_detail.html']) { await m.goto('file://' + DIR + f); await m.waitForTimeout(500); console.log('mobile', f, await m.evaluate(() => [document.documentElement.scrollWidth, innerWidth])); }
+    for (const f of ['FLOW_LAB_3D_model_6p.html', 'FLOW_LAB_3D_model_detail.html']) { await m.goto('file://' + DIR + f); await m.waitForTimeout(500); console.log('mobile', f, await m.evaluate(() => [document.documentElement.scrollWidth, innerWidth])); }
   } else {
     await d.emulateMedia({ media: 'print' });
-    await d.pdf({ path: DIR + 'FLOW_LAB_v6_simulation_detail.pdf', preferCSSPageSize: true, printBackground: true });
+    await d.pdf({ path: DIR + 'FLOW_LAB_3D_model_detail.pdf', preferCSSPageSize: true, printBackground: true });
     console.log('pdf detail done');
   }
   await browser.close();

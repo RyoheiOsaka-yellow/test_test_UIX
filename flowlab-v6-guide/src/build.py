@@ -7,9 +7,9 @@
 - {{TIMELINE}}  -> 1-minute whereabouts of the two 調色 IDs on 2026-08-04 (capture/timeline_0804.json)
 
 Outputs:
-  ../FLOW_LAB_v6_simulation_6p.html      6-page summary (sim6.template.html)
-  ../FLOW_LAB_v6_simulation_detail.html  detailed version (simdetail.template.html)
-  argv[1] (optional)                     6-page summary as a page fragment for publishing as an Artifact
+  ../FLOW_LAB_3D_model_6p.html      6-page summary (model6.template.html)
+  ../FLOW_LAB_3D_model_detail.html  detailed version (modeldetail.template.html)
+  argv[1] (optional)                6-page summary as a page fragment for publishing as an Artifact
 """
 import base64
 import json
@@ -77,6 +77,6 @@ def build(template, out, keys, frag=None):
         print(frag, f"{frag.stat().st_size / 1e6:.2f} MB")
 
 
-# 6-page summary (main) and the detailed version
-build("sim6.template.html", SRC.parent / "FLOW_LAB_v6_simulation_6p.html", ("p2",), sys.argv[1] if len(sys.argv) > 1 else None)
-build("simdetail.template.html", SRC.parent / "FLOW_LAB_v6_simulation_detail.html", ("s01", "s05"))
+# 6-page summary (3D model first, flow analysis attached) and the detailed version
+build("model6.template.html", SRC.parent / "FLOW_LAB_3D_model_6p.html", (), sys.argv[1] if len(sys.argv) > 1 else None)
+build("modeldetail.template.html", SRC.parent / "FLOW_LAB_3D_model_detail.html", ("s01", "s05"))

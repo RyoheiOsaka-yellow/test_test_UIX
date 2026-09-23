@@ -1,4 +1,4 @@
-<title>工場内シミュレーション 詳細版</title>
+<title>加須工場 3Dモデル 詳細版</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@500;700;900&display=swap">
@@ -328,9 +328,9 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
   body{background:#fff;padding:0;font-size:10pt}
   .toc,.toc-m,.zoom-hint,.tip{display:none!important}
   .page{display:block;max-width:none;padding:0}
-  .sec{break-before:page;margin-top:0;padding-top:0;border-top:0}
+  .sec{break-before:auto;margin-top:26px;padding-top:20px}
   #sum{break-before:auto}
-  figure,.chart,.kpis,.facts,.tbl,tr,.note,.stage,.status li,.flow>div,.tl,.co-list,.keypoints,.titleblock,dl.gloss div,.steps>li{break-inside:avoid}
+  figure,.chart,.kpis,.facts,tr,.note,.stage,.status li,.flow>div,.tl,.co-list,.keypoints,.titleblock,dl.gloss div,.steps>li{break-inside:avoid}
   h3,h4{break-after:avoid}
   .shot,.keypoints{box-shadow:none}
   .clip{max-height:none}.clip::after{display:none}
@@ -339,6 +339,21 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
   .formula{white-space:pre-wrap;font-size:9pt}
   a{color:inherit;text-decoration:none}
 }
+
+/* ---- 3D model detail additions ---- */
+.partband{margin:64px 0 0;padding:18px 22px;border-radius:10px;background:var(--brand);color:var(--paper);display:grid;gap:2px}
+.partband span{font-family:var(--f-mono);font-size:12px;letter-spacing:.16em;opacity:.8}
+.partband b{font-family:var(--f-display);font-size:24px;font-weight:900}
+.partband em{font-style:normal;font-size:13.5px;opacity:.9}
+.partband+.sec{border-top:0;margin-top:0}
+.toc .part{font-size:11px;color:var(--muted);letter-spacing:.08em;margin:10px 0 2px 8px}
+.chiplist{display:flex;flex-wrap:wrap;gap:6px}
+.chiplist span{font-size:13px;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:3px 10px}
+.flowline{display:flex;flex-wrap:wrap;gap:6px 5px;align-items:center}
+.flowline span{font-size:13px;background:var(--brand-soft);color:var(--brand-ink);border-radius:5px;padding:3px 9px;font-weight:700}
+.flowline i{font-style:normal;color:var(--muted);font-size:12px}
+.pin.l{transform:translate(-14px,-100%)}.pin.l::after{left:14px}.pin.up.l{transform:translate(-14px,0)}
+@media print{.partband{break-before:page;margin-top:0}.partband+.sec{break-before:auto}.fig-grid{break-inside:auto}thead{display:table-header-group}}
 </style>
 
 <div class="page">
@@ -346,43 +361,42 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
   <b>CONTENTS</b>
   <ol id="tocList">
     <li><a href="#sum">要点</a></li>
+    <li class="part">第1部　工場3Dモデル</li>
     <li><a href="#s1">1　概要</a></li>
-    <li><a href="#s2">2　シミュレーションの仕組み</a></li>
-    <li class="sub"><a href="#s2-2">2.2 データと確かさ</a></li>
-    <li class="sub"><a href="#s2-3">2.3 観測カレンダー</a></li>
-    <li class="sub"><a href="#s2-5">2.5 計算モデル</a></li>
-    <li><a href="#s3">3　現状の再現（実測再生）</a></li>
-    <li class="sub"><a href="#s3-1">3.1 画面構成</a></li>
-    <li class="sub"><a href="#s3-3">3.3 再生で見えたこと</a></li>
-    <li><a href="#s4">4　改善シミュレーション</a></li>
-    <li class="sub"><a href="#s4-2">4.2 変えられる条件</a></li>
-    <li class="sub"><a href="#s4-3">4.3 移設前と移設後</a></li>
-    <li><a href="#s5">5　シミュレーション結果</a></li>
-    <li class="sub"><a href="#s5-3">5.3 工程別・移動別</a></li>
-    <li class="sub"><a href="#s5-5">5.5 仮定への依存</a></li>
-    <li><a href="#s6">6　検証の進め方</a></li>
-    <li><a href="#s7">7　まだ分からないこと</a></li>
-    <li><a href="#s8">8　次のステップ</a></li>
-    <li><a href="#sa">付録A　2D集計画面・旧3D</a></li>
+    <li><a href="#s2">2　敷地と外観</a></li>
+    <li><a href="#s3">3　工場内部</a></li>
+    <li class="sub"><a href="#s3-3">3.3 設備台帳と配置検証</a></li>
+    <li><a href="#s4">4　3Dモデルの機能と操作</a></li>
+    <li class="sub"><a href="#s4-3">4.3 画面で見る機能</a></li>
+    <li class="part">第2部　実測データの動線分析</li>
+    <li><a href="#s5">5　動線分析の仕組み</a></li>
+    <li><a href="#s6">6　現状の再現（実測再生）</a></li>
+    <li><a href="#s7">7　移設シミュレーション</a></li>
+    <li><a href="#s8">8　試算の結果</a></li>
+    <li><a href="#s9">9　検証の進め方</a></li>
+    <li class="part">第3部　これから</li>
+    <li><a href="#s10">10　まだ分からないこと</a></li>
+    <li><a href="#s11">11　次のステップ</a></li>
+    <li><a href="#sa">付録A　2D集計画面</a></li>
     <li><a href="#sb">付録B　用語</a></li>
   </ol>
 </nav>
 
 <main>
 <header class="masthead">
-  <div class="eyebrow">ワールド化成 ／ 工場内シミュレーション（FLOW LAB 6.0）</div>
-  <h1>工場内シミュレーション 途中経過報告<span>ワニス・調色工程の第二工場移設計画の検証（詳細版）</span></h1>
-  <p class="lead" style="max-width:44em">ワールド化成は、工場内で計測した人の位置データから動きを3Dで再現する「工場内シミュレーション」を構築しました。本書は、このシミュレーションの仕組み・操作方法・現時点の検証結果と、次のステップをまとめたものです。画面はすべて実際のシミュレーションを起動して取得しています。</p>
+  <div class="eyebrow">ワールド化成 ／ 加須工場 3Dモデル（FLOW LAB 3D）</div>
+  <h1>加須工場 3Dモデル 途中経過報告<span>敷地・建屋・設備の3Dモデルと、実測データによる動線分析（詳細版）</span></h1>
+  <p class="lead" style="max-width:44em">ワールド化成は、加須工場の敷地・建屋・工場内部の設備までを3Dモデルにしました。さらに、作業者の位置データを重ねて工程間の動きを分析し、ワニス・調色工程を第二工場へ移す計画を試算しています。本書は、3Dモデルの内容と操作、動線分析の結果、次のステップをまとめたものです。画面はすべて実際のモデルを起動して取得しています。</p>
   <dl class="titleblock">
     <div><dt>提案元</dt><dd>ワールド化成</dd></div>
-    <div><dt>対象</dt><dd>工場内シミュレーション（FLOW LAB 6.0 内部3D）</dd></div>
+    <div><dt>対象</dt><dd>加須工場 3Dモデル（FLOW LAB 3D 4.1）と動線分析（FLOW LAB 6.0）</dd></div>
     <div><dt>更新日</dt><dd class="mono">2026-09-23</dd></div>
-    <div><dt>検証する計画</dt><dd>ワニス・調色を第二工場へ移設／生産人員 24名 → 22名</dd></div>
-    <div><dt>元データ</dt><dd>位置ログ <span class="mono">803,503</span>件・<span class="mono">2026-07-24〜08-31</span></dd></div>
+    <div><dt>モデルの範囲</dt><dd>敷地 260×185m・16建屋・内部10建屋</dd></div>
+    <div><dt>実測データ</dt><dd>位置ログ <span class="mono">803,503</span>件・<span class="mono">2026-07-24〜08-31</span></dd></div>
     <div><dt>画面キャプチャ</dt><dd>Chromiumで起動・<span class="mono">1600×900</span>表示</dd></div>
   </dl>
   <div class="toc-m"><details><summary>目次</summary><ol>
-    <li><a href="#s1">概要</a></li><li><a href="#s2">シミュレーションの仕組み</a></li><li><a href="#s3">現状の再現</a></li><li><a href="#s4">改善シミュレーション</a></li><li><a href="#s5">シミュレーション結果</a></li><li><a href="#s6">検証の進め方</a></li><li><a href="#s7">まだ分からないこと</a></li><li><a href="#s8">次のステップ</a></li><li><a href="#sa">付録</a></li></ol></details></div>
+    <li><a href="#s1">概要</a></li><li><a href="#s2">敷地と外観</a></li><li><a href="#s3">工場内部</a></li><li><a href="#s4">3Dモデルの機能と操作</a></li><li><a href="#s5">動線分析の仕組み</a></li><li><a href="#s6">現状の再現</a></li><li><a href="#s7">移設シミュレーション</a></li><li><a href="#s8">試算の結果</a></li><li><a href="#s10">まだ分からないこと</a></li><li><a href="#s11">次のステップ</a></li><li><a href="#sa">付録</a></li></ol></details></div>
 </header>
 
 <section id="sum" class="sec" style="padding-top:32px;margin-top:0;border-top:0">
@@ -390,45 +404,194 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
     <h2>要点 <span class="legend-tags" aria-label="根拠の区分">
       <span class="item"><span class="tag m">実測</span></span><span class="item"><span class="tag d">申告</span></span><span class="item"><span class="tag a">仮定</span></span><span class="item"><span class="tag c">計算</span></span><span class="item"><span class="tag n">未取得</span></span></span></h2>
     <ul>
-      <li><div class="kp-fig">v6<small>到達点</small></div><div><b>ワールド化成の工場内シミュレーションは、現状の再現と、移設案の移動時間の比較までできています。</b>作業時間・生産量はまだ入っておらず、必要人員や生産性は判定できません。<span class="tag n">未取得</span></div></li>
-      <li><div class="kp-fig bad">+276<small>分/日の増加</small></div><div><b>移設計画どおりにワニス・調色を第二工場へ移すと、歩く時間は減らずに増えます。</b>現状1,494分 → 移設後1,770分。増加の約9割は<b>調色 ⇄ 研究棟の行き来</b>（観測246回）が遠くなることによります。<span class="tag c">計算</span></div></li>
-      <li><div class="kp-fig">83%<small>損益分岐</small></div><div><b>研究棟との行き来を約83%以上減らせないと、移設で歩く時間は増えます。</b>行き来をゼロにできると仮定しても短縮は約56分/日で、2名減に相当する960分/日の約6%です。<span class="tag c">計算</span> <span class="tag a">仮定</span></div></li>
-      <li><div class="kp-fig">3点<small>次の確認</small></div><div><b>ワールド化成は、①研究棟との行き来の目的 ②工程別の作業時間 ③ロット別の生産量の3点を確認し、シミュレーションを人員・生産性まで広げることを提案します。</b><span class="tag n">未取得</span></div></li>
+      <li><div class="kp-fig">3D<small>モデルの範囲</small></div><div><b>ワールド化成の3Dモデルは、敷地と16建屋の外観、10建屋の内部設備、配管・ダクト・電気の系統までを再現しています。</b>建屋の中に入り、設備を選んで寸法や断面を確かめ、配置を動かして動線を比べられます。</div></li>
+      <li><div class="kp-fig">推定<small>設備の配置</small></div><div><b>設備の位置・寸法は推定の仮配置です（第一ペイント工場は38件すべて実測確認前）。</b>図面・設備仕様・現地確認で更新できる作りにしています。<span class="tag a">仮定</span></div></li>
+      <li><div class="kp-fig bad">+276<small>分/日の増加</small></div><div><b>実測データでは、調色担当が研究棟と調色工場を3日で246回行き来していました。</b>移設計画どおり調色を第二工場へ移すと、歩く時間は1日276分増える試算です。研究棟との行き来を約83%以上減らせない限り増えます。<span class="tag m">実測</span> <span class="tag c">計算</span></div></li>
+      <li><div class="kp-fig">3点<small>次の一手</small></div><div><b>ワールド化成は、①研究棟との行き来の目的 ②工程別の作業時間・生産量 ③設備の実測配置を確認し、3Dモデル上で必要人員・生産性まで試算できるようにすることを提案します。</b><span class="tag n">未取得</span></div></li>
     </ul>
-    <p class="small">タグは根拠を示します：<b>実測</b>＝位置ログから集計／<b>申告</b>＝提供された文章・資料の値／<b>仮定</b>＝検討のために置いた条件／<b>計算</b>＝シミュレーションのモデル値／<b>未取得</b>＝データがなく判定できない。</p>
+    <p class="small">タグは根拠を示します：<b>実測</b>＝位置ログから集計／<b>申告</b>＝提供された文章・資料の値／<b>仮定</b>＝検討のために置いた条件・推定／<b>計算</b>＝モデルによる試算／<b>未取得</b>＝データがなく判定できない。</p>
   </div>
 </section>
+
+<div class="partband" id="part1"><span>PART 1</span><b>工場3Dモデル</b><em>敷地・建屋・設備・配管を3Dで再現したモデル</em></div>
 
 <!-- ============ 1 ============ -->
 <section id="s1" class="sec">
   <div class="sec-head"><span class="chap">CHAPTER 1</span><h2>概要</h2></div>
   <h3 id="s1-1"><span class="no">1.1</span>目的</h3>
   <div class="prose">
-    <p>ワールド化成は、ワニス工程と調色工程を第二工場へ移し、生産人員を24名から22名にする計画を検討しています <span class="tag d">申告</span>。この計画が<b>工場内の人の移動と生産性</b>にどう影響するかを、実測データに基づいて確かめるため、工場内シミュレーションを構築しました。</p>
-    <p>最終的には「何を変えると、移動時間・工程負荷・必要人員・生産量がどう変わるか」を、実測と仮定の区別が分かる形で試算できるようにすることを目指しています。</p>
+    <p>ワールド化成は、工場の配置・動線・設備を<b>一つの画面で確かめ、改善案を比べられる土台</b>として、加須工場の3Dモデルを構築しました。現場に行かなくても、建屋の位置関係、工場内の工程ライン、配管の経路、物流の流れを同じ3D上で確認できます。</p>
+    <p>そのうえで、作業者の位置データ（実測）を集計・再生する動線分析を加え、ワニス・調色工程を第二工場へ移す計画が工場内の移動にどう影響するかを試算しています。</p>
   </div>
-  <figure class="wide" style="margin-top:20px">
-    <div class="shot"><img src="{{IMG:k_hero}}" {{WH:k_hero}} alt="工場内シミュレーションの3D。建屋の床区画と、工程間の移動を示す線" data-zoom></div>
-    <figcaption><b>工場内シミュレーションの3D（改善案・全工程）。</b>床の区画は図面資料から読み取った建屋・エリア、細い線と点は工程間の移動の流れです。</figcaption>
+  <figure class="wide" style="margin-top:18px">
+    <div class="shot"><img src="{{IMG:m_hero}}" {{WH:m_hero}} alt="加須工場の3Dモデル。敷地全体を斜め上から見た画面" data-zoom></div>
+    <figcaption><b>加須工場の3Dモデル（敷地全景）。</b>建屋・屋外タンク・池・構内道路・植栽まで配置しています。</figcaption>
   </figure>
-  <h3 id="s1-2"><span class="no">1.2</span>シミュレーションの到達点</h3>
+  <h3 id="s1-2"><span class="no">1.2</span>2つの画面</h3>
+  <div class="map">
+    <div class="scr"><h4>工場3Dモデル（FLOW LAB 3D）</h4><span class="sub">第1部</span>
+      <div class="chips"><span>敷地・外観</span><span>工場内部</span><span>BIM・配管</span><span>稼働再生</span></div>
+      <span class="small">建屋と設備を3Dで再現。設備の配置を動かし、動線と工数を比べる。</span></div>
+    <div class="links">
+      <div><span class="arr">→</span><span class="btnname">生産性・動線検討</span></div>
+      <div><span class="arr">←</span><span class="btnname">仮設備を編集</span></div>
+    </div>
+    <div class="scr"><h4>動線分析（FLOW LAB 6.0）</h4><span class="sub">第2部</span>
+      <div class="chips"><span>分析一覧（2D）</span><span>実測再生</span><span>移設シミュレーション</span></div>
+      <span class="small">作業者の位置データを集計・再生し、移設の効果を試算する。</span></div>
+  </div>
+  <h3 id="s1-3"><span class="no">1.3</span>到達点</h3>
   <ul class="status">
-    <li><span class="st ok">完了</span><span class="what">計測データの取込と品質確認</span><span class="det">803,503行・22暦日・45 ID日。無効位置・座標飛び・通信断を処理済み</span></li>
-    <li><span class="st ok">完了</span><span class="what">工場内の3Dモデル（1F・2F）</span><span class="det">図面資料を読み取った区画で構成。測量済みCAD図面ではない</span></li>
-    <li><span class="st ok">完了</span><span class="what">現状の再現（実測再生）</span><span class="det">圧縮済み146,227区間の軌跡を、日付・時刻・倍速を指定して再生</span></li>
-    <li><span class="st ok">完了</span><span class="what">改善シミュレーション（移動時間）</span><span class="det">移設・往来削減・移動頻度・歩行条件を変えて、移設前と比較</span></li>
-    <li><span class="st part">一部</span><span class="what">人員・工数の入力</span><span class="det">計画人員と直接作業工数の仮入力欄のみ。2名をどの工程から減らすかは未確定</span></li>
+    <li><span class="st ok">完了</span><span class="what">敷地と16建屋の外観</span><span class="det">正門・出荷倉庫・屋外タンク・池・構内道路を含む。視点切替・昼／夕景</span></li>
+    <li><span class="st ok">完了</span><span class="what">10建屋の内部と設備</span><span class="det">第一ペイント工場は38の設備・開口で工程ラインを再現</span></li>
+    <li><span class="st ok">完了</span><span class="what">配管・ダクト・電気の系統</span><span class="det">BIM表示、系統レイヤー、単線系統図、干渉チェック</span></li>
+    <li><span class="st ok">完了</span><span class="what">物流の稼働再生と評価指標</span><span class="det">想定した便数によるフォークリフト・トラック便の再生と試算</span></li>
+    <li><span class="st ok">完了</span><span class="what">実測データの動線分析</span><span class="det">位置ログの取込・再生と、移設による移動時間の試算（第2部）</span></li>
+    <li><span class="st part">一部</span><span class="what">設備の実測配置</span><span class="det">現在は推定の仮配置（実測確認 0件）。図面・仕様で更新できる</span></li>
     <li><span class="st todo">未着手</span><span class="what">生産量・作業時間の取込</span><span class="det">データ未提供</span></li>
-    <li><span class="st todo">未着手</span><span class="what">実際の通路による経路距離</span><span class="det">現状は代表点間の直線距離 × 迂回係数</span></li>
-    <li><span class="st todo">未着手</span><span class="what">必要人員・生産性のシミュレーション</span><span class="det">次の版（v7）の目標（8章）</span></li>
+    <li><span class="st todo">未着手</span><span class="what">必要人員・生産性の試算</span><span class="det">次の段階（11章）</span></li>
   </ul>
-  <div class="note warn" style="margin-top:16px"><b class="h">読み違えやすい点</b>結果パネルの「人数換算」は<b>移動時間 ÷ 8時間</b>の理論値です。減らせる人数や、生産量が増えることを示す値ではありません。</div>
 </section>
 
 <!-- ============ 2 ============ -->
 <section id="s2" class="sec">
-  <div class="sec-head"><span class="chap">CHAPTER 2</span><h2>シミュレーションの仕組み</h2></div>
-  <h3 id="s2-1"><span class="no">2.1</span>全体の流れ</h3>
+  <div class="sec-head"><span class="chap">CHAPTER 2</span><h2>敷地と外観</h2></div>
+  <figure class="wide">
+    <div class="shot"><img src="{{IMG:m_site_ui}}" {{WH:m_site_ui}} alt="3Dモデルの画面。左に外観パネル、中央に敷地の3D、上にツールバー、下に視点ボタン" data-zoom>
+      <span class="pin up l" style="left:40.5%;top:94%">視点ボタン</span><span class="pin l" style="left:1.5%;top:20%">外観パネル</span><span class="pin l" style="left:1.5%;top:1.2%;transform:translate(-4px,0)">ツールバー</span></div>
+    <figcaption><b>起動直後の3Dモデル（敷地全体）。</b>上＝ツールバー、左＝外観パネル（設備ワークスペース）、下＝視点ボタン。</figcaption>
+  </figure>
+  <div class="fig-grid two" style="margin-top:18px">
+    <figure><div class="shot"><img src="{{IMG:m_gate}}" {{WH:m_gate}} alt="正門から見た工場" data-zoom></div><figcaption><b>正門・受付</b></figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_wh}}" {{WH:m_wh}} alt="出荷倉庫" data-zoom></div><figcaption><b>出荷倉庫</b></figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_tanks}}" {{WH:m_tanks}} alt="屋外タンク" data-zoom></div><figcaption><b>屋外タンク</b></figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_sunset}}" {{WH:m_sunset}} alt="夕景の工場" data-zoom></div><figcaption><b>夕景</b>（照明の見え方）</figcaption></figure>
+  </div>
+  <h3 id="s2-1"><span class="no">2.1</span>配置している建屋・要素（16）</h3>
+  <div class="chiplist">
+    <span>正門</span><span>事務所</span><span>第一ペイント工場</span><span>第二ペイント工場</span><span>ワニス工場</span><span>調色工場</span><span>研究棟</span><span>出荷倉庫 A〜E</span><span>倉庫</span><span>原料倉庫</span><span>新危険物倉庫</span><span>危険物倉庫A</span><span>危険物倉庫B</span><span>屋外貯蔵タンク OT-1〜5</span><span>屋外タンク OT-7/8</span><span>池</span>
+  </div>
+  <h3 id="s2-2"><span class="no">2.2</span>外観パネルの操作</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>操作</th><th>内容</th></tr></thead>
+    <tbody>
+      <tr><td class="lab">視点ボタン</td><td>全景・正門・出荷倉庫・タンクへ移動。昼・夕景の切替</td></tr>
+      <tr><td class="lab">光の設定</td><td>昼の質感確認／夕景の灯り確認</td></tr>
+      <tr><td class="lab">表示の切替</td><td>建屋名を重ねる・植栽・周辺の参考建物・外観を広く表示</td></tr>
+      <tr><td class="lab">ゆっくり自動回転／画像を保存</td><td>敷地を回しながら見せる、画面をPNGで保存</td></tr>
+      <tr><td class="lab">建屋をダブルクリック</td><td>建屋の中へ入る（3章）</td></tr>
+    </tbody></table></div>
+  <p class="small" style="margin-top:10px;max-width:52em">建屋の配置・寸法は推定の概念モデルです <span class="tag a">仮定</span>。図面・設備仕様で更新できます。</p>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3" class="sec">
+  <div class="sec-head"><span class="chap">CHAPTER 3</span><h2>工場内部</h2></div>
+  <h3 id="s3-1"><span class="no">3.1</span>第一ペイント工場 — 工程ラインの再現</h3>
+  <figure class="wide">
+    <div class="shot"><img src="{{IMG:m_p1_ui}}" {{WH:m_p1_ui}} alt="第一ペイント工場の内部。左に空間パネル、右に評価指標とミニマップ" data-zoom></div>
+    <figcaption><b>第一ペイント工場（38.0 × 58.0 m、建屋高さ推定13.0 m）。</b>左＝空間パネル（柱・梁・外壁・屋根・点検デッキ・工程区画・物流経路の表示切替）、右＝評価指標とミニマップ。</figcaption>
+  </figure>
+  <div class="flowline" style="margin-top:16px"><span>原料</span><i>→</i><span>分散ミル</span><i>→</i><span>ディスパー槽</span><i>→</i><span>調合槽</span><i>→</i><span>KVタンク</span><i>→</i><span>充填</span><i>→</i><span>製品</span></div>
+  <figure class="wide" style="margin-top:16px">
+    <div class="shot"><img src="{{IMG:m_p1_close}}" {{WH:m_p1_close}} alt="第一ペイント工場の設備を近くから見た画面。設備名のラベル付き" data-zoom></div>
+    <figcaption><b>設備の拡大。</b>分散ミル・ディスパー槽・調合槽・KVタンク・充填ライン・原料・製品などに名称を表示しています。</figcaption>
+  </figure>
+  <h3 id="s3-2"><span class="no">3.2</span>ほかの建屋の内部</h3>
+  <div class="fig-grid two">
+    <figure><div class="shot"><img src="{{IMG:m_paint2}}" {{WH:m_paint2}} alt="第二ペイント工場の内部" data-zoom></div><figcaption><b>第二ペイント工場</b></figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_tint}}" {{WH:m_tint}} alt="調色工場の内部" data-zoom></div><figcaption><b>調色工場</b></figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_varnish}}" {{WH:m_varnish}} alt="ワニス工場の内部" data-zoom></div><figcaption><b>ワニス工場</b></figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_lab}}" {{WH:m_lab}} alt="研究棟の内部" data-zoom></div><figcaption><b>研究棟</b></figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_whGen}}" {{WH:m_whGen}} alt="出荷倉庫の内部" data-zoom></div><figcaption><b>出荷倉庫 A〜E</b></figcaption></figure>
+    <div class="note" style="align-self:start"><b class="h">内部を再現した10建屋</b>第一ペイント工場・第二ペイント工場・ワニス工場・調色工場・研究棟・出荷倉庫・倉庫・危険物倉庫（新・A・B）。</div>
+  </div>
+
+  <h3 id="s3-3"><span class="no">3.3</span>設備台帳と配置検証（設備ワークスペース）</h3>
+  <div class="prose"><p>左の設備ワークスペースでは、建屋ごとに設備の一覧・寸法・接続・配置の確認点を扱えます。第一ペイント工場の38件の内訳は次のとおりです。</p></div>
+  <div class="tbl" style="margin-top:12px"><table>
+    <thead><tr><th>区分</th><th class="n">件数</th><th>主な設備</th></tr></thead>
+    <tbody>
+      <tr><td class="lab">搬入・搬出</td><td class="n">3</td><td>搬入口、搬出口、荷物用EV</td></tr>
+      <tr><td class="lab">原料</td><td class="n">6</td><td>原料袋（KC-1000・ソフトン・酸化チタン）、フレコン、溶剤ドラム、顔料フレコン</td></tr>
+      <tr><td class="lab">分散・調合</td><td class="n">10</td><td>分散ミル M-1〜M-3、ディスパー槽 T-41/43/47/48、調合槽 T-203/208/220</td></tr>
+      <tr><td class="lab">貯槽</td><td class="n">4</td><td>KVタンク KV-2/4/6/8</td></tr>
+      <tr><td class="lab">充填</td><td class="n">3</td><td>SS-2000充填ライン 1・2、缶充填機</td></tr>
+      <tr><td class="lab">缶・製品・保管</td><td class="n">10</td><td>銀缶（充填待ち）、製品、製品ドラム、IBCコンテナ、ネステナー</td></tr>
+      <tr><td class="lab">その他</td><td class="n">2</td><td>天井ホイスト、消火栓</td></tr>
+    </tbody></table></div>
+  <div class="fig-grid two" style="margin-top:18px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+    <figure><div class="shot"><img src="{{IMG:m_ws_ledger}}" {{WH:m_ws_ledger}} alt="設備台帳タブ" data-zoom></div><figcaption><b>設備台帳</b>38件。ID・名称・「推定・仮配置」の区分</figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_ws_detail}}" {{WH:m_ws_detail}} alt="設備詳細タブ" data-zoom></div><figcaption><b>設備詳細</b>例：分散ミル M-1（幅3.38m・奥行2.50m・高さ3.13m・保守余白0.80m）</figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_ws_conn}}" {{WH:m_ws_conn}} alt="接続・動線タブ" data-zoom></div><figcaption><b>接続・動線</b>工程順から作った仮の配管接続20件（延長391m）</figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_ws_check}}" {{WH:m_ws_check}} alt="配置検証タブ" data-zoom></div><figcaption><b>配置検証</b>設備の重なり2件・実測未確認38件・工程間経路40本</figcaption></figure>
+  </div>
+  <div class="note warn" style="margin-top:14px"><b class="h">推定配置の扱い</b>設備の位置・寸法は推定の仮配置で、実測確認済みは0件です <span class="tag a">仮定</span>。配管接続も工程順から作った仮接続で、口径・系統・配管高さは現場仕様との照合が必要です。保守余白は初期値0.8mで、法規への適合判定は含みません。</div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s4" class="sec">
+  <div class="sec-head"><span class="chap">CHAPTER 4</span><h2>3Dモデルの機能と操作</h2></div>
+  <h3 id="s4-1"><span class="no">4.1</span>ツールバー</h3>
+  <div class="tbl"><table class="minw">
+    <thead><tr><th>ボタン</th><th>できること</th><th>使える場所</th></tr></thead>
+    <tbody>
+      <tr><td class="lab"><span class="btnname">俯瞰</span><span class="btnname">斜め</span><span class="btnname">視点</span></td><td>カメラの角度を切り替える</td><td>敷地・建屋内</td></tr>
+      <tr><td class="lab"><span class="btnname">移動モード</span></td><td>建屋をドラッグして配置を変える</td><td>敷地</td></tr>
+      <tr><td class="lab"><span class="btnname">混雑表示</span></td><td>通行の多い場所を色で表示</td><td>敷地・建屋内</td></tr>
+      <tr><td class="lab"><span class="btnname">基準を記録</span><span class="btnname">基準を重ねる</span></td><td>今の配置を基準として記録し、変更後の配置に重ねて比べる</td><td>敷地・建屋内</td></tr>
+      <tr><td class="lab"><span class="btnname">自動最適化 β</span></td><td>動かせる設備を、重ならない範囲で移動距離が短くなる位置へ動かす</td><td>建屋内</td></tr>
+      <tr><td class="lab"><span class="btnname">生産性分析</span></td><td>搬送負荷の大きい動線、フォーク／徒歩の工数、必要フォークリフト台数、年間物流コストの試算と改善提案。建屋内では搬入出口の最適化も</td><td>敷地・建屋内</td></tr>
+      <tr><td class="lab"><span class="btnname">設備ワークスペース</span></td><td>外観・空間・接続・動線・設備台帳・設備詳細・配置検証のパネル</td><td>敷地・建屋内</td></tr>
+      <tr><td class="lab"><span class="btnname">詳細部品</span><span class="btnname">保守余白</span><span class="btnname">名称</span></td><td>設備の細部、保守スペース、名称ラベルの表示</td><td>建屋内（保守余白）</td></tr>
+      <tr><td class="lab"><span class="btnname">BIM表示</span></td><td>給気・還気・排気・消火・プロセス・圧空・電気などの系統をレイヤーで表示</td><td>敷地・建屋内</td></tr>
+      <tr><td class="lab"><span class="btnname">干渉チェック</span></td><td>系統どうしのぶつかりを自動で検出し一覧表示</td><td>BIM表示中</td></tr>
+      <tr><td class="lab"><span class="btnname">図面モード</span></td><td>白図の表示</td><td>敷地・建屋内</td></tr>
+      <tr><td class="lab"><span class="btnname">系統図</span></td><td>表示中の配管・ダクトから単線系統図を自動作成</td><td>BIM表示中</td></tr>
+      <tr><td class="lab"><span class="btnname">影</span><span class="btnname">▶ ガイドツアー</span><span class="btnname">📷 保存</span></td><td>日射の影、主要機能の自動案内、画面のPNG保存</td><td>敷地・建屋内</td></tr>
+      <tr><td class="lab"><span class="btnname">▶ 稼働再生</span></td><td>敷地：フォークリフト・トラック便の搬送／建屋内：作業者が工程間を歩く様子</td><td>敷地・建屋内</td></tr>
+      <tr><td class="lab"><span class="btnname">全景</span><span class="btnname">作業者視点</span><span class="btnname">設備断面</span></td><td>建屋内の見方。作業者視点は目線1.65m、設備断面は選んだ設備の内部構造</td><td>建屋内</td></tr>
+      <tr><td class="lab"><span class="btnname">配置を書出</span><span class="btnname">読込</span></td><td>設備などの配置をJSONで保存・復元</td><td>敷地・建屋内</td></tr>
+    </tbody></table></div>
+
+  <h3 id="s4-2"><span class="no">4.2</span>マウス・キー操作</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>操作</th><th>内容</th></tr></thead>
+    <tbody>
+      <tr><td class="lab">左ドラッグ／右ドラッグ／ホイール</td><td>回転／移動／拡大・縮小</td></tr>
+      <tr><td class="lab">ダブルクリック</td><td>建屋の中に入る</td></tr>
+      <tr><td class="lab">建屋内で設備をクリック・ドラッグ</td><td>選択・移動。<span class="mono">R</span> 回転、<span class="mono">Del</span> 削除、矢印キーで微調整</td></tr>
+      <tr><td class="lab">キー</td><td><span class="mono">B</span> BIM ／ <span class="mono">P</span> 再生 ／ <span class="mono">M</span> 移動 ／ <span class="mono">C</span> 混雑 ／ <span class="mono">T</span> ツアー ／ <span class="mono">O</span> 自動回転 ／ <span class="mono">1〜3</span> 視点 ／ <span class="mono">Esc</span> 戻る</td></tr>
+      <tr><td class="lab">作業者視点</td><td><span class="mono">WASD</span> で移動、<span class="mono">←→</span> で旋回、<span class="mono">Esc</span> で戻る</td></tr>
+    </tbody></table></div>
+
+  <h3 id="s4-3"><span class="no">4.3</span>画面で見る機能</h3>
+  <div class="fig-grid two">
+    <figure><div class="shot"><img src="{{IMG:m_bim_ui}}" {{WH:m_bim_ui}} alt="敷地全体のBIM表示。屋上機器と屋外配管ラック" data-zoom></div><figcaption><b>BIM表示（敷地）。</b>建屋を透過し、屋上機器と屋外の配管ラックを表示。左上が系統レイヤー。</figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_mep}}" {{WH:m_mep}} alt="第一ペイント工場の天井の配管とダクト" data-zoom></div><figcaption><b>天井の配管・ダクト（建屋内）。</b>給気・還気・排気・消火などの系統が設備の位置までつながります。</figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_clash_ui}}" {{WH:m_clash_ui}} alt="干渉チェックの結果一覧" data-zoom></div><figcaption><b>干渉チェック。</b>系統どうしのぶつかりを検出し、右上に一覧表示。</figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_sch}}" {{WH:m_sch}} alt="配管・ダクトの単線系統図" data-zoom></div><figcaption><b>単線系統図。</b>3Dの表示中の系統から自動で作成。行をクリックすると3Dの表示と連動。</figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_section_ui}}" {{WH:m_section_ui}} alt="分散ミルを選んだ設備断面の画面" data-zoom></div><figcaption><b>設備詳細と断面。</b>設備を選ぶと寸法・保守余白を表示し、内部構造の説明モデルを見られます。</figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_walk}}" {{WH:m_walk}} alt="作業者の目線で見た工場内部" data-zoom></div><figcaption><b>作業者視点。</b>目線1.65mで通路を歩き、設備の見え方や通路幅を確認。</figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_draw}}" {{WH:m_draw}} alt="図面モードの工場内部" data-zoom></div><figcaption><b>図面モード（建屋内）。</b>白図の表示で配置を確認。</figcaption></figure>
+    <figure><div class="shot"><img src="{{IMG:m_play_ui}}" {{WH:m_play_ui}} alt="敷地の稼働再生と混雑表示" data-zoom></div><figcaption><b>稼働再生・混雑表示（敷地）。</b>フォークリフトとトラック便の搬送を再生し、通行の多い場所を色で表示。</figcaption></figure>
+  </div>
+  <h3 id="s4-4"><span class="no">4.4</span>3Dモデルの指標</h3>
+  <div class="fig-grid two" style="align-items:start">
+    <figure><div class="shot" style="max-width:340px"><img src="{{IMG:m_ana}}" {{WH:m_ana}} alt="生産性分析パネル" data-zoom></div><figcaption><b>生産性分析（敷地）。</b>搬送負荷の大きい建屋間の動線、搬送9.5時間/日、必要フォークリフト（概算）2台、年間物流コスト（概算）917万円、改善提案（動線の重心へ建屋を寄せる）など。</figcaption></figure>
+    <div class="stack" style="display:grid;gap:14px">
+      <figure><div class="shot" style="max-width:340px"><img src="{{IMG:m_stats_p1}}" {{WH:m_stats_p1}} alt="評価指標パネル" data-zoom></div><figcaption><b>評価指標（SLP、第一ペイント工場）。</b>搬送距離・共有通路・最長動線・全体の移動工数。配置を動かすとすぐ再計算。</figcaption></figure>
+      <div class="note warn"><b class="h">指標の前提</b>3Dモデルの指標は、想定した便数・速度（フォークリフト7km/h・徒歩4km/h）と推定配置による<b>比較用の試算</b>です <span class="tag a">仮定</span> <span class="tag c">計算</span>。未到達の搬送・荷役・待ちは含みません。第2部の実測データによる動線分析とは別のモデルで、値を直接比べることはできません。</div>
+    </div>
+  </div>
+</section>
+
+<div class="partband" id="part2"><span>PART 2</span><b>実測データの動線分析</b><em>作業者の位置データで工場内の動きを集計・再生し、移設計画を試算</em></div>
+
+<section id="s5" class="sec">
+  <div class="sec-head"><span class="chap">CHAPTER 5</span><h2>動線分析の仕組み</h2></div>
+  <div class="prose" style="margin-bottom:8px"><p>3Dモデル（第1部）の設備配置は推定ですが、作業者の動きは<b>実測の位置データ</b>から分析しています。動線分析は3Dモデルとは別の画面（FLOW LAB 6.0）で、エリア区画の3Dに人の位置を再生し、移設したときの移動時間を試算します。</p></div>
+  <h3 id="s5-1"><span class="no">5.1</span>全体の流れ</h3>
   <div class="flow">
     <div><b><i>1</i>計測する</b><span>Tracking Naviで記録した作業者の位置データ。22日間で803,503件。</span><div class="tags"><span class="tag m">実測</span></div></div>
     <div><b><i>2</i>整える</b><span>無効な位置・座標飛び・通信断を除き、エリアごとの滞在と移動に変換。</span><div class="tags"><span class="tag m">実測</span></div></div>
@@ -436,7 +599,7 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
     <div><b><i>4</i>条件を変えて比べる</b><span>移設先・往来・歩行条件を変え、移動時間と距離を移設前と比較。</span><div class="tags"><span class="tag a">仮定</span><span class="tag c">計算</span></div></div>
   </div>
 
-  <h3 id="s2-2"><span class="no">2.2</span>使っているデータと確かさ</h3>
+  <h3 id="s5-2"><span class="no">5.2</span>使っているデータと確かさ</h3>
   <div class="tbl"><table class="minw">
     <thead><tr><th>種類</th><th>内容</th><th>根拠</th><th>シミュレーションでの扱い</th></tr></thead>
     <tbody>
@@ -456,22 +619,22 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
     <div><b>36 ID日</b><span>生産6工程の計算に使う、4時間以上観測されたID日</span></div>
   </div>
 
-  <h3 id="s2-3"><span class="no">2.3</span>観測カレンダー — どの日に、どの工程を測ったか</h3>
+  <h3 id="s5-3"><span class="no">5.3</span>観測カレンダー — どの日に、どの工程を測ったか</h3>
   <div class="prose"><p>工程ごとに<b>2 IDを2〜4日ずつ、別々の日に</b>計測しています。全工程がそろった日はないため、再生では見たい工程が計測された日を選びます（例：調色は8/3〜8/5）。</p></div>
   <div class="cal-wrap" style="margin-top:14px"><div class="cal" id="cal" role="table" aria-label="工程別・日別の観測ID数"></div>
     <div class="cal-legend"><span><i class="sw" style="background:var(--brand)"></i>2 ID観測</span><span><i class="sw" style="border:2px solid var(--brand)"></i>1 ID観測</span><span><i class="sw" style="border:2px dashed var(--muted)"></i>4時間未満（集計対象外）</span><span>セルにカーソルを合わせると観測時間を表示</span></div>
   </div>
-  <p class="small" style="margin-top:10px;max-width:52em">観測時間は1 IDあたり1日5.3〜16.1時間で、勤務8時間より長い日もあります。シミュレーションは「計測日平均」を使い、8時間換算はしていません。物流・生産管理・管理は生産6工程の人員計算の対象外です。</p>
+  <p class="small" style="margin-top:10px;max-width:52em">観測時間は1 IDあたり1日5.3〜16.1時間で、勤務8時間より長い日もあります。動線分析は「計測日平均」を使い、8時間換算はしていません。物流・生産管理・管理は生産6工程の人員計算の対象外です。</p>
 
-  <h3 id="s2-4"><span class="no">2.4</span>3Dモデルの前提</h3>
+  <h3 id="s5-4"><span class="no">5.4</span>3Dモデルの前提</h3>
   <ul class="bul">
     <li>床の区画は図面資料（1F：26エリア・60ビーコン、2F：11エリア・12ビーコン）を読み取った矩形です。壁・扉・通路は再現していません <span class="tag a">仮定</span>。</li>
-    <li>各エリアの<b>代表点</b>（中心）どうしの直線距離に<b>迂回係数</b>を掛けて歩く距離とします。移設先はワールド化成の計画に沿って第二工場内の代表点に置き換えます。</li>
+    <li>各エリアの<b>代表点</b>（中心）どうしの直線距離に<b>迂回係数</b>を掛けて歩く距離とします。移設先は移設計画に沿って第二工場内の代表点に置き換えます。</li>
     <li>1F+2F表示では2Fを10m持ち上げて表示します（見やすさのための間隔で、実際の階高ではありません）。</li>
     <li>レイアウトの表示日は2026/07/30。7/24〜29のログにも同じ配置を当てはめています（適用可否は未確認）。</li>
   </ul>
 
-  <h3 id="s2-5"><span class="no">2.5</span>計算モデル</h3>
+  <h3 id="s5-5"><span class="no">5.5</span>計算モデル</h3>
   <div class="prose"><p>集計単位は、工程ごとの<b>4時間以上観測されたID日</b>。連続した有効な位置では直前のエリアに滞在秒数を割り当て、30秒以上の安定滞在から次の安定エリアへ120秒以内に移った場合を<b>エリア間の移動（出発→到着）</b>として数えます。</p></div>
   <pre class="formula" style="margin-top:14px"><span class="cm">// 工程 g、エリア間の移動 e について</span>
 現状の推計移動回数/計測日 = 観測回数 ÷ その工程の適格ID日数 × その工程の現状人数
@@ -490,13 +653,12 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
   <div class="note warn" style="margin-top:14px"><b class="h">まだ計算に入っていないこと</b>移設しても移動回数そのものは自動では変わりません（変わるのは距離。回数を変えるのは移動頻度と往来削減率だけ）。人員を変えても実測人数を学び直しません。壁・扉・階段の経路探索をしていないため、配置替えで生じる新しい動線・作業方式・工程間の干渉は計算外です。</div>
 </section>
 
-<!-- ============ 3 ============ -->
-<section id="s3" class="sec">
-  <div class="sec-head"><span class="chap">CHAPTER 3</span><h2>現状の再現（実測再生）</h2></div>
-  <h3 id="s3-1"><span class="no">3.1</span>画面構成</h3>
+<section id="s6" class="sec">
+  <div class="sec-head"><span class="chap">CHAPTER 6</span><h2>現状の再現（実測再生）</h2></div>
+  <h3 id="s6-1"><span class="no">6.1</span>画面構成</h3>
   <figure class="wide">
-    <div class="shot" data-callouts="s01"><img src="{{IMG:s01_replay_start}}" {{WH:s01_replay_start}} alt="シミュレーションの起動直後の画面。左に表示・再生と何を変えるか、中央に3D、右に何が変わるか、下にタイムライン" data-zoom></div>
-    <figcaption><b>起動直後の画面（実測再生）。</b>左＝表示条件と改善条件、中央＝工場内の3D、右＝シミュレーション結果、下＝時刻。画像はクリックで拡大できます。</figcaption>
+    <div class="shot" data-callouts="s01"><img src="{{IMG:s01_replay_start}}" {{WH:s01_replay_start}} alt="動線分析の起動直後の画面。左に表示・再生と何を変えるか、中央に3D、右に何が変わるか、下にタイムライン" data-zoom></div>
+    <figcaption><b>動線分析の画面（実測再生）。</b>左＝表示条件と改善条件、中央＝エリア区画の3D、右＝試算の結果、下＝時刻。画像はクリックで拡大できます。</figcaption>
   </figure>
   <ol class="co-list" style="margin-top:14px">
     <li><span class="b">1</span><span><b>モード切替</b> <em>実測再生（現状の再現）／改善案（移設の検証）</em></span></li>
@@ -509,19 +671,19 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
     <li><span class="b">8</span><span><b>タイムライン</b> <em>ドラッグで時刻を指定（実測再生のみ）</em></span></li>
     <li><span class="b">9</span><span><b>条件を保存・読込</b> <em>条件をJSONで書き出し・読み込み</em></span></li>
     <li><span class="b">10</span><span><b>分析一覧</b> <em>2Dの集計画面へ（付録A）</em></span></li>
-    <li><span class="b">11</span><span><b>仮設備を編集</b> <em>旧3Dへ。概念モデル（付録A）</em></span></li>
+    <li><span class="b">11</span><span><b>仮設備を編集</b> <em>3Dモデルへ（第1部）</em></span></li>
   </ol>
 
-  <h3 id="s3-2"><span class="no">3.2</span>操作手順</h3>
+  <h3 id="s6-2"><span class="no">6.2</span>操作手順</h3>
   <ol class="steps">
-    <li><div>ブラウザーでHTMLを開く（Three.jsを <span class="mono" style="font-size:13px">cdn.jsdelivr.net</span> から読み込むため、インターネット接続が必要）。起動すると実測再生が開きます。</div></li>
-    <li><div>④で<b>実測日</b>を選ぶ。見たい工程の計測日は<a href="#s2-3">観測カレンダー</a>で確認します。</div></li>
+    <li><div>3Dモデルの［生産性・動線検討］→［内部3D・稼働シミュレーション］で開く（Three.jsを <span class="mono" style="font-size:13px">cdn.jsdelivr.net</span> から読み込むため、インターネット接続が必要）。HTMLを開いた直後もこの画面です。</div></li>
+    <li><div>④で<b>実測日</b>を選ぶ。見たい工程の計測日は<a href="#s5-3">観測カレンダー</a>で確認します。</div></li>
     <li><div>②で<b>建屋</b>（工場内部 全体／第一ペイント／第二ペイント／ワニス工場／調色工場／研究棟／一般倉庫）と<b>階</b>を選び、「視点を合わせる」を押す。</div></li>
     <li><div>⑦の<b>「再生」</b>と倍速、または⑧の<b>タイムライン</b>で時刻を動かす。3Dはドラッグで回転、ホイールで拡大縮小。</div></li>
     <li><div>時計の横の<b>「この表示 ○ ID・位置有効 ○ ID」</b>で、表示中の人数を確認する。</div></li>
   </ol>
 
-  <h3 id="s3-3"><span class="no">3.3</span>再生で見えたこと — 調色担当は研究棟と調色工場を行き来している</h3>
+  <h3 id="s6-3"><span class="no">6.3</span>再生で見えたこと — 調色担当は研究棟と調色工場を行き来している</h3>
   <div class="prose"><p>8月4日の調色担当2人（ID 11・ID 12）を再生すると、2人が<b>研究棟と調色工場を短い間隔で入れ替わりながら</b>作業していることが分かります <span class="tag m">実測</span>。</p></div>
   <div class="frames" style="margin-top:16px">
     <figure><div class="shot"><img src="{{IMG:k_rep_1004}}" {{WH:k_rep_1004}} alt="10時04分。ID 11が研究棟、ID 12が調色工場" data-zoom>
@@ -544,7 +706,7 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
   </div>
   <p class="small" style="margin-top:10px;max-width:52em">計測3日間（8/3〜8/5）で、研究棟 ⇄ 調色工場の安定した行き来は<b>246回</b>（研究棟→調色工場128回、逆118回）。滞在時間も調色工場24.7人時・研究棟24.4人時とほぼ半々です <span class="tag m">実測</span>。検査・色の判定など、行き来の目的は未確認です <span class="tag n">未取得</span>。</p>
 
-  <h3 id="s3-4"><span class="no">3.4</span>画面の読み方</h3>
+  <h3 id="s6-4"><span class="no">6.4</span>画面の読み方</h3>
   <div class="fig-grid two" style="align-items:start">
     <figure>
       <div class="shot"><img src="{{IMG:s02_replay_all_0804}}" {{WH:s02_replay_all_0804}} alt="建屋を工場内部全体、階を1F+2Fにした実測再生画面" data-zoom></div>
@@ -561,20 +723,19 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
   </div>
 </section>
 
-<!-- ============ 4 ============ -->
-<section id="s4" class="sec">
-  <div class="sec-head"><span class="chap">CHAPTER 4</span><h2>改善シミュレーション（移設の検証）</h2></div>
-  <h3 id="s4-1"><span class="no">4.1</span>操作手順</h3>
+<section id="s7" class="sec">
+  <div class="sec-head"><span class="chap">CHAPTER 7</span><h2>移設シミュレーション</h2></div>
+  <h3 id="s7-1"><span class="no">7.1</span>操作手順</h3>
   <ol class="steps">
     <li><div>①で<b>「改善案」</b>に切り替える。建屋は「工場内部 全体」、階は「1F」に自動で切り替わります。</div></li>
-    <li><div>「何を変えるか」で<b>ワニス／調色の移設</b>を選ぶ。<b>初期値は両方オン</b>（ワールド化成の計画どおり）。まず両方オフにして差が0になることを確かめると、比較の基準を取り違えません。</div></li>
+    <li><div>「何を変えるか」で<b>ワニス／調色の移設</b>を選ぶ。<b>初期値は両方オン</b>（移設計画どおり）。まず両方オフにして差が0になることを確かめると、比較の基準を取り違えません。</div></li>
     <li><div>移設先の代表点を<b>x／y（m）</b>で入力するか、3D上の丸い工程札をドラッグする。</div></li>
     <li><div><b>「調色 ↔ 研究棟の往来削減率」</b>を0〜100%で動かす。</div></li>
     <li><div>工程別の条件は、先に工程フィルターで工程を選んでから入力する。「換算の仮定」で歩行条件も変えられます。</div></li>
     <li><div>右の<b>「何が変わるか」</b>で結果を読み、「根拠となる移動と変更」の<b>「3Dで強調」</b>で該当する移動を3D上に表示する。</div></li>
   </ol>
 
-  <h3 id="s4-2"><span class="no">4.2</span>変えられる条件</h3>
+  <h3 id="s7-2"><span class="no">7.2</span>変えられる条件</h3>
   <div class="tbl"><table class="minw">
     <thead><tr><th>条件</th><th>場所</th><th>範囲</th><th>初期値</th><th>何に効くか</th></tr></thead>
     <tbody>
@@ -593,24 +754,24 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
     </tbody></table></div>
   <div class="note warn" style="margin-top:14px"><b class="h">入力時の注意</b>工程フィルターが「すべて」のまま工程条件を入力すると、<b>調色工程</b>が編集対象になります。直接作業工数は<b>空欄＝不明</b>、<b>0＝ゼロと仮定</b>で意味が違います。計画人員を減らすだけでは必要な作業量は減りません。</div>
 
-  <h3 id="s4-3"><span class="no">4.3</span>移設前と移設後 — 同じ視点で比べる</h3>
+  <h3 id="s7-3"><span class="no">7.3</span>移設前と移設後 — 同じ視点で比べる</h3>
   <div class="prose"><p>工程フィルターを「調色」にし、同じカメラ位置で移設前と移設後を比べました。調色の代表点が第二工場へ移ると、研究棟への線が長くなります。</p></div>
   <div class="ba" style="margin-top:16px">
     <figure><div class="lbl"><b>移設前（現状）</b><span>調色工場 ⇄ 研究棟</span></div>
       <div class="shot"><img src="{{IMG:k_before}}" {{WH:k_before}} alt="移設前。調色工場と研究棟が隣り合っている" data-zoom>
         <svg class="ov" viewBox="0 0 844 380" preserveAspectRatio="none" aria-hidden="true"><line x1="676" y1="62" x2="566" y2="62" stroke="#a9582a" stroke-width="5" stroke-linecap="round"/></svg>
         <span class="pin" style="left:66.1%;top:13%">研究棟</span><span class="pin g" style="left:80.8%;top:13%">調色工場</span><span class="dist" style="left:73.5%;top:25%">約32m</span></div></figure>
-    <figure><div class="lbl"><b>移設後（ワールド化成の計画）</b><span>第二工場 ⇄ 研究棟</span></div>
+    <figure><div class="lbl"><b>移設後（移設計画）</b><span>第二工場 ⇄ 研究棟</span></div>
       <div class="shot"><img src="{{IMG:k_after}}" {{WH:k_after}} alt="移設後。調色が第二工場へ移り、研究棟まで長い線になる" data-zoom>
         <svg class="ov" viewBox="0 0 844 380" preserveAspectRatio="none" aria-hidden="true"><line x1="92" y1="226" x2="552" y2="64" stroke="#a9582a" stroke-width="5" stroke-linecap="round"/></svg>
         <span class="pin" style="left:66.1%;top:13%">研究棟</span><span class="pin g up l" style="left:10.2%;top:65%">調色の移設先（第二工場）</span><span class="dist" style="left:40%;top:44%">約120m</span></div></figure>
   </div>
   <p class="small" style="margin-top:8px">橙色の線と距離は本書で加えた注記です（代表点間の直線距離）。</p>
 
-  <h3 id="s4-4"><span class="no">4.4</span>条件と結果のパネル</h3>
+  <h3 id="s7-4"><span class="no">7.4</span>条件と結果のパネル</h3>
   <figure class="wide">
     <div class="shot" data-callouts="s05"><img src="{{IMG:s05_plan_default}}" {{WH:s05_plan_default}} alt="改善案モードの画面。3D上に工程間の移動の線と移設先の工程札" data-zoom></div>
-    <figcaption><b>改善案モード（初期条件＝ワールド化成の計画）。</b>①条件 ②結果 ③工程別の変化。3D上の動く点・線は移動の流れを説明する表示で、便数や同時稼働人数の再現ではありません。</figcaption>
+    <figcaption><b>改善案モード（初期条件＝移設計画）。</b>①条件 ②結果 ③工程別の変化。3D上の動く点・線は移動の流れを説明する表示で、便数や同時稼働人数の再現ではありません。</figcaption>
   </figure>
   <div class="panel-pair" style="margin-top:20px">
     <figure>
@@ -634,10 +795,9 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
   </div>
 </section>
 
-<!-- ============ 5 ============ -->
-<section id="s5" class="sec">
-  <div class="sec-head"><span class="chap">CHAPTER 5</span><h2>シミュレーション結果</h2></div>
-  <h3 id="s5-1"><span class="no">5.1</span>ワールド化成の計画どおりの場合 <span class="tag c" style="margin-left:4px">計算</span></h3>
+<section id="s8" class="sec">
+  <div class="sec-head"><span class="chap">CHAPTER 8</span><h2>試算の結果</h2></div>
+  <h3 id="s8-1"><span class="no">8.1</span>移設計画どおりの場合 <span class="tag c" style="margin-left:4px">計算</span></h3>
   <p class="small" style="max-width:52em">初期条件：現状・計画24名、目標22名、8時間/日、60m/分、迂回係数1.35、階移動1分、ワニス・調色の移設<b>オン</b>、調色 ⇄ 研究棟の往来削減<b>0%</b>、工程別の移動頻度1倍。</p>
   <div class="kpis" style="margin-top:12px">
     <div><span class="k">歩く時間（6工程合計）</span><span class="v bad">276<small> 分/計測日 増加</small></span><span class="s">現状 1,494分 → 移設後 1,770分。画面上は「短縮 −276.0分」</span></div>
@@ -646,14 +806,14 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
     <div><span class="k">2名減に必要な工数</span><span class="v">960<small> 分/日</small></span><span class="s">2名 × 8時間 × 60分。1人あたり生産性 +9.1%</span></div>
   </div>
 
-  <h3 id="s5-2"><span class="no">5.2</span>条件だけを変えた3つの結果</h3>
+  <h3 id="s8-2"><span class="no">8.2</span>条件だけを変えた3つの結果</h3>
   <div class="fig-grid three">
     <figure><div class="shot"><img src="{{IMG:r_plan_moveoff}}" {{WH:r_plan_moveoff}} alt="移設オフの結果：短縮0分" data-zoom></div><figcaption><b>A 移設しない</b> → 0.0分。比較の基準が現状と一致することの確認。</figcaption></figure>
     <figure><div class="shot"><img src="{{IMG:r_plan_default}}" {{WH:r_plan_default}} alt="計画どおりの結果：マイナス276分" data-zoom></div><figcaption><b>B 計画どおり移設（往来削減0%）</b> → −276.0分（歩く時間が増える）。</figcaption></figure>
     <figure><div class="shot"><img src="{{IMG:r_plan_research100}}" {{WH:r_plan_research100}} alt="往来100%削減の結果：プラス56.3分" data-zoom></div><figcaption><b>C Bで研究棟との往来をゼロと仮定</b> → +56.3分。上限の仮定で、実現可能とは確認されていません。</figcaption></figure>
   </div>
 
-  <h3 id="s5-3"><span class="no">5.3</span>工程別・移動別に見る</h3>
+  <h3 id="s8-3"><span class="no">8.3</span>工程別・移動別に見る</h3>
   <div class="chart" id="chartGroups">
     <h4>工程別：移設による移動時間の変化</h4>
     <p class="sub">分/計測日。右（青）＝短縮、左（橙）＝増加。計画どおりの初期条件。</p>
@@ -674,7 +834,7 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
     </tbody></table></div>
   <p class="small" style="margin-top:10px;max-width:52em">観測回数は計測期間の合計（調色は6 ID日）。短縮は申告人数へ換算した計測日あたりの値で、<b>負の値＝歩く時間が増える</b>ことを示します。調色 ⇄ 研究棟の2行だけで −243分と、全体 −276分の約88%を占めます。</p>
 
-  <h3 id="s5-4"><span class="no">5.4</span>指標の読み方</h3>
+  <h3 id="s8-4"><span class="no">8.4</span>指標の読み方</h3>
   <div class="tbl"><table class="minw">
     <thead><tr><th>表示・指標</th><th>根拠</th><th>分かること</th><th>解釈上の注意</th></tr></thead>
     <tbody>
@@ -687,8 +847,8 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
       <tr><td class="lab">工程別の工数超過</td><td><span class="tag a">仮定</span> <span class="tag n">未取得</span></td><td><b>全6工程</b>に直接作業などの仮工数を入れた場合の負荷と容量の差</td><td>未入力なら「不明」。入力値も実測されるまでは仮定</td></tr>
     </tbody></table></div>
 
-  <h3 id="s5-5"><span class="no">5.5</span>結論はどの仮定に依存するか</h3>
-  <div class="prose"><p>同じシミュレーションで条件を1つずつ変えた試算です。<b>どの条件なら結論が変わるか</b>を見ると、何を現場で確かめるべきかが分かります。</p></div>
+  <h3 id="s8-5"><span class="no">8.5</span>結論はどの仮定に依存するか</h3>
+  <div class="prose"><p>同じ計算モデルで条件を1つずつ変えた試算です。<b>どの条件なら結論が変わるか</b>を見ると、何を現場で確かめるべきかが分かります。</p></div>
   <div class="chart" style="margin-top:16px" id="chartScen">
     <h4>シナリオ別：移動時間の短縮と、2名減に必要な960分</h4>
     <p class="sub">分/計測日。右（青）＝短縮、左（橙）＝増加。破線＝2名減に相当する960分/日。</p>
@@ -704,12 +864,11 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
     <li><b>上限の仮定でも960分には届かない。</b>往来ゼロ＋最も有利な配置で短縮69分（960分の約7%）。移動の短縮だけで2名減は説明できません。</li>
     <li><b>歩行条件には左右されない。</b>迂回係数1.2〜1.5、歩行速度50〜70m/分の範囲では237〜331分の増加で、向きは変わりません。</li>
   </ul>
-  <p class="small" style="margin-top:12px;max-width:52em">本節の数値は、シミュレーション内の計算機能を使い、初期条件から該当項目だけを変えて算出した参考試算です <span class="tag c">計算</span>。「最も有利な位置」は第二工場の範囲を格子状に探索した結果で、必要面積・設備干渉・安全上の制約は考慮していません <span class="tag a">仮定</span>。</p>
+  <p class="small" style="margin-top:12px;max-width:52em">本節の数値は、動線分析の計算機能を使い、初期条件から該当項目だけを変えて算出した参考試算です <span class="tag c">計算</span>。「最も有利な位置」は第二工場の範囲を格子状に探索した結果で、必要面積・設備干渉・安全上の制約は考慮していません <span class="tag a">仮定</span>。</p>
 </section>
 
-<!-- ============ 6 ============ -->
-<section id="s6" class="sec">
-  <div class="sec-head"><span class="chap">CHAPTER 6</span><h2>検証の進め方</h2></div>
+<section id="s9" class="sec">
+  <div class="sec-head"><span class="chap">CHAPTER 9</span><h2>検証の進め方</h2></div>
   <ol class="steps">
     <li><div><b>現状を見る。</b>実測再生で日付・工程を絞り、ワニス・調色・第二工場・研究棟の往来と滞在を確認する。計測が各工程2人という限界も同時に確認する。</div></li>
     <li><div><b>移設だけを比べる。</b>改善案で移設をオフ／オンだけ切り替え、移動分の差と増える移動を比べる。初期値は移設オンなので注意。</div></li>
@@ -720,9 +879,9 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
   </ol>
 </section>
 
-<!-- ============ 7 ============ -->
-<section id="s7" class="sec">
-  <div class="sec-head"><span class="chap">CHAPTER 7</span><h2>まだ分からないこと・次に集めるデータ</h2></div>
+<div class="partband" id="part3"><span>PART 3</span><b>これから</b><em>まだ分からないことと、次のステップ</em></div>
+<section id="s10" class="sec">
+  <div class="sec-head"><span class="chap">CHAPTER 10</span><h2>まだ分からないこと・次に集めるデータ</h2></div>
   <div class="tbl"><table class="minw">
     <thead><tr><th>判断したいこと</th><th>現状の不足</th><th>次に集めるもの</th></tr></thead>
     <tbody>
@@ -736,54 +895,50 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
   <div class="note" style="margin-top:16px"><b class="h">根拠の表示ルール（今後の版でも維持）</b>「実測」「申告」「仮定」「計算結果」「未取得」を画面上でも分ける。未知の直接作業をゼロ扱いしない。移設案で生産量が何％増えるかを、現段階で作り込んだ数字として表示しない。</div>
 </section>
 
-<!-- ============ 8 ============ -->
-<section id="s8" class="sec">
-  <div class="sec-head"><span class="chap">CHAPTER 8</span><h2>次のステップ（ワールド化成の提案）</h2></div>
-  <div class="prose"><p>ワールド化成は、工場内シミュレーションを<b>移動時間の比較</b>から<b>必要人員・生産性の試算</b>まで広げることを提案します。現行の実測再生・3D画面・保存機能は維持し、次の3段階で進めます。</p></div>
+
+<section id="s11" class="sec">
+  <div class="sec-head"><span class="chap">CHAPTER 11</span><h2>次のステップ（ワールド化成の提案）</h2></div>
+  <div class="prose"><p>ワールド化成は、3Dモデルと実測の動線分析をつなぎ、<b>配置の検討から必要人員・生産性の試算まで</b>を一つの流れで行えるようにすることを提案します。</p></div>
   <div class="stages" style="margin-top:16px">
-    <div class="stage"><span class="chap">STAGE 1</span><h4>データの受け皿</h4><p>工程・日・シフト・ロット・品目単位で、生産量・良品量・直接作業・段取り・洗浄・待機・搬送を入力／CSV取込できるようにする。未入力は「不明」として保持し、架空の値で埋めない。2画面の条件設定を1つにまとめ、保存・読込で再現できるようにする。</p></div>
-    <div class="stage"><span class="chap">STAGE 2</span><h4>能力と人員のシミュレーション</h4><p>移動時間の推計に工程工数・設備能力・勤務条件を加え、品目別の計画生産量・律速工程・人員の不足時間を計算する。削減は「どの工程から何人か」を明示し、工程間の余剰を無条件に相殺しない。搬送量・車両稼働を人の位置ログから作らない。</p></div>
-    <div class="stage"><span class="chap">STAGE 3</span><h4>実際の通路と照合</h4><p>通路・扉・階段を使った経路距離に更新し、移設位置・運搬方法の影響を評価する。ロット実績がそろうまで生産量の予測は「判定不可」とし、そろったら過去日で照合して誤差と不確かさを示す。</p></div>
+    <div class="stage"><span class="chap">STEP 1</span><h4>現場で確認する</h4><p>調色と研究棟の行き来の目的（サンプリング・色の判定・品質検査・承認など）と所要時間を確認する。移設計画の成否を左右する最大の条件です。</p></div>
+    <div class="stage"><span class="chap">STEP 2</span><h4>データを受け取る</h4><p>工程別の作業時間（段取り・洗浄・待ちを含む）、ロット別の生産量、設備の図面・仕様。3Dモデルの推定配置を実測配置に置き換え、工数の根拠にします。</p></div>
+    <div class="stage"><span class="chap">STEP 3</span><h4>3Dモデル上で試算する</h4><p>実測配置の3Dモデルに動線分析と工程工数を結び付け、移設案ごとの移動時間・工程負荷・必要人員・生産量を比べる。データがそろうまで生産量の予測は「判定不可」とします。</p></div>
   </div>
-  <h4 style="margin-top:26px">受入確認</h4>
+  <h4 style="margin-top:26px">受入確認（次の版）</h4>
   <ul class="check">
     <li>条件が同じなら移設前後の差は0になる</li>
     <li>直接作業工数の空欄と0が区別される</li>
     <li>調色 ⇄ 研究棟の往来削減は該当する移動だけに作用する</li>
     <li>計画人数だけを変えても必要工数は消えない</li>
     <li>保存 → 読込で両画面の結果が一致する</li>
-    <li>日時の表示フィルターと全期間の推計母集団が混同されない</li>
+    <li>3Dモデルの設備配置と、動線分析のエリア区画が同じ座標でそろう</li>
     <li>実際のブラウザー画面でUIと3D描画を確認する</li>
   </ul>
-  <h4 style="margin-top:26px">開発用の構成</h4>
-  <div class="prose small"><p>完成品は単一HTML。作業環境では、モデル <span class="mono">work/sim/core.js</span>、内部3D <span class="mono">work/sim/view.js</span>、構築 <span class="mono">work/sim/build.py</span>、データ <span class="mono">work/data/analytics.json</span>・<span class="mono">replay.json</span> に分かれています。受け渡しでは<b>HTMLと元Excelを優先</b>します。<span class="mono">test_core.mjs</span>・<span class="mono">test_runtime.mjs</span> は計算・実行の確認用で、実機の稼働妥当性やブラウザーの目視確認までは保証しません。</p></div>
 </section>
 
-<!-- ============ A ============ -->
 <section id="sa" class="sec">
-  <div class="sec-head"><span class="chap">APPENDIX A</span><h2>2D集計画面・旧3D（参考）</h2></div>
-  <div class="prose"><p>シミュレーション画面右上の<span class="btnname">分析一覧</span>から、同じデータを表と平面図で確認できます。移設条件は内部3Dとは別に保持され、自動では同期しません。</p></div>
+  <div class="sec-head"><span class="chap">APPENDIX A</span><h2>2D集計画面（分析一覧）</h2></div>
+  <div class="prose"><p>3Dモデルの<span class="btnname">生産性・動線検討</span>、または動線分析の<span class="btnname">分析一覧</span>から開く集計画面です。同じ実測データを表と平面図で確認できます。移設条件は動線分析の画面とは別に保持され、自動では同期しません。</p></div>
   <div class="thumbs" style="margin-top:16px">
     <figure><div class="shot"><img src="{{IMG:t_d01}}" {{WH:t_d01}} alt="全体像タブ" data-zoom></div><figcaption><b>全体像</b>人員・件数・確認点・計測対象の対応</figcaption></figure>
     <figure><div class="shot"><img src="{{IMG:t_d02}}" {{WH:t_d02}} alt="実測動線タブ" data-zoom></div><figcaption><b>実測動線</b>滞在エリアとエリア間の移動一覧</figcaption></figure>
     <figure><div class="shot"><img src="{{IMG:t_d03}}" {{WH:t_d03}} alt="移設比較タブ" data-zoom></div><figcaption><b>移設比較</b>平面図上の移設先と工程別の距離</figcaption></figure>
     <figure><div class="shot"><img src="{{IMG:t_d04}}" {{WH:t_d04}} alt="人員計画タブ" data-zoom></div><figcaption><b>人員計画</b>工程ごとの現状・計画人数</figcaption></figure>
     <figure><div class="shot"><img src="{{IMG:t_d05}}" {{WH:t_d05}} alt="元資料・集計方法タブ" data-zoom></div><figcaption><b>元資料・集計方法</b>取込資料と処理条件</figcaption></figure>
-    <figure><div class="shot"><img src="{{IMG:l01_legacy}}" {{WH:l01_legacy}} alt="旧3D画面" data-zoom></div><figcaption><b>旧3D（仮設備を編集）</b>設備は従来の仮配置。位置ログとは別モデル</figcaption></figure>
   </div>
   <h4 style="margin-top:24px">保存・読込</h4>
   <div class="tbl"><table class="minw">
     <thead><tr><th>ボタン</th><th>場所</th><th>保存・読込されるもの</th><th>注意</th></tr></thead>
     <tbody>
-      <tr><td class="lab"><span class="btnname">条件を保存</span></td><td>シミュレーション 上部</td><td>シミュレーションの条件＋分析一覧の条件を含むJSON</td><td>—</td></tr>
-      <tr><td class="lab"><span class="btnname">読込</span></td><td>シミュレーション 上部</td><td>JSONのうち<b>シミュレーション用の条件だけ</b>を適用</td><td>分析一覧側は反映されない</td></tr>
-      <tr><td class="lab"><span class="btnname">検討設定を保存</span> <span class="btnname">設定を読込</span></td><td>分析一覧 上部</td><td>分析一覧の設定</td><td>シミュレーションとは自動同期しない</td></tr>
+      <tr><td class="lab"><span class="btnname">条件を保存</span></td><td>動線分析 上部</td><td>動線分析の条件＋分析一覧の条件を含むJSON</td><td>—</td></tr>
+      <tr><td class="lab"><span class="btnname">読込</span></td><td>動線分析 上部</td><td>JSONのうち<b>動線分析用の条件だけ</b>を適用</td><td>分析一覧側は反映されない</td></tr>
+      <tr><td class="lab"><span class="btnname">検討設定を保存</span> <span class="btnname">設定を読込</span></td><td>分析一覧 上部</td><td>分析一覧の設定</td><td>動線分析とは自動同期しない</td></tr>
       <tr><td class="lab"><span class="btnname">比較CSV</span></td><td>分析一覧 右上</td><td>工程別の現状／移設の距離指標と短縮（m/日）</td><td>物の搬送便数ではない</td></tr>
-      <tr><td class="lab"><span class="btnname">配置を書出</span> <span class="btnname">読込</span></td><td>旧3D 右下</td><td>設備などの配置を含むJSON（別用途）</td><td>位置ログのモデルとは別</td></tr>
+      <tr><td class="lab"><span class="btnname">配置を書出</span> <span class="btnname">読込</span></td><td>3Dモデル 右下</td><td>設備などの配置を含むJSON（別用途）</td><td>位置ログのモデルとは別</td></tr>
     </tbody></table></div>
 </section>
 
-<!-- ============ B ============ -->
+
 <section id="sb" class="sec">
   <div class="sec-head"><span class="chap">APPENDIX B</span><h2>用語</h2></div>
   <dl class="gloss">
@@ -794,11 +949,14 @@ footer.end{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);fon
     <div><dt>迂回係数</dt><dd>直線距離を実際の歩行距離に近づけるための倍率（初期値1.35）。</dd></div>
     <div><dt>計測日換算</dt><dd>計測したID日の平均を申告人数へ掛けた1日あたりの値。8時間勤務への換算はしていない。</dd></div>
     <div><dt>人数換算（人日）</dt><dd>移動時間の差 ÷（1日の時間 × 60）。理論値で、削減可能人数ではない。</dd></div>
+    <div><dt>BIM／MEP</dt><dd>建物の設備（Mechanical・Electrical・Plumbing）を系統ごとに扱う表示。給気・排気・消火・圧空・電気など。</dd></div>
+    <div><dt>SLP指標</dt><dd>3Dモデルの配置評価（搬送距離・動線交差・最長動線・移動工数）。想定便数による比較用の試算。</dd></div>
+    <div><dt>保守余白</dt><dd>設備のまわりに確保する保守スペース（初期値0.8m）。</dd></div>
     <div><dt>第二工場</dt><dd>第二ペイント棟。移設先の範囲は Tracking Navi 座標で x 169.3〜214.5、y 11.6〜75.4（m）。</dd></div>
   </dl>
   <footer class="end">
     <span>提案元：ワールド化成 ｜ 出典：FLOW_LAB_Factory_v6_Manual_Claude_Handoff.md（2026-09-23）、FLOW_LAB_Factory_v6_Internal_Simulation.html</span>
-    <span>画面キャプチャと5.5の試算は、同HTMLをChromiumで起動し、画面操作と内蔵の計算機能から取得しました。</span>
+    <span>画面キャプチャと8.5の試算は、同HTMLをChromiumで起動し、画面操作と内蔵の計算機能から取得しました。</span>
   </footer>
 </section>
 </main>
