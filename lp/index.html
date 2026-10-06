@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Claude Code 個別指導 | 現役エンジニアと 1 対 1 で</title>
+    <meta
+      name="description"
+      content="エージェント時代の開発を、現役エンジニアと。あなたの現場のコードで、1 対 1 で Claude Code を使いこなすための個別指導。週 1 回・60 分・全 4 回。"
+    />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono:wght@400&family=Noto+Sans+JP:wght@400;700&display=swap"
+    />
+    <style>
+      :root {
+        color-scheme: light;
+
+        /* Color — only measured pairings are used for text:
+           #020617 on #ffffff, and #ffffff on #020617. */
+        --color-text: #020617;
+        --color-bg: #ffffff;
+        --color-primary: #020617;
+        --color-on-primary: #ffffff;
+        --color-surface: #020617;
+        --color-border: #020617;
+        --color-accent: #15803d; /* decoration only: rules, dots, icons */
+
+        /* Typography — Kaio is used when installed; otherwise Inter for Latin
+           and Noto Sans JP for Japanese glyphs. */
+        --font-display: Kaio, "Inter", "Noto Sans JP", Arial, sans-serif;
+        --font-body: "Inter Var", "Inter", "Noto Sans JP", Arial, sans-serif;
+        --font-mono: "JetBrains Mono", "Noto Sans JP", ui-monospace, monospace;
+
+        --text-display: 70px;
+        --text-display-narrow: 46px;
+        --text-h3: 24px;
+        --text-lead: 16px;
+        --text-body: 14px;
+
+        /* Spacing scale */
+        --space-2: 2px;
+        --space-4: 4px;
+        --space-6: 6px;
+        --space-8: 8px;
+        --space-12: 12px;
+        --space-16: 16px;
+        --space-24: 24px;
+        --space-46: 46px;
+        --space-48: 48px;
+
+        /* Radius */
+        --radius-sm: 2px;
+        --radius-md: 3px;
+        --radius-lg: 6px;
+        --radius-xl: 8px;
+        --radius-pill: 9999px;
+
+        --shadow-elevated: rgba(32, 0, 36, 0.11) 0px 0px 0px 1px,
+          rgba(32, 0, 36, 0.01) 0px 1px 1.5px 0px, rgba(32, 0, 36, 0.02) 0px 2px 3px 0px,
+          rgba(32, 0, 36, 0.03) 0px 4px 6px 0px, rgba(32, 0, 36, 0.04) 0px 8px 12px 0px,
+          rgba(32, 0, 36, 0.05) 0px 16px 24px 0px, rgba(32, 0, 36, 0.06) 0px 24px 36px 0px,
+          rgba(32, 0, 36, 0.07) 0px 36px 54px 0px, rgba(32, 0, 36, 0.08) 0px 54px 81px 0px;
+
+        --duration-fast: 100ms;
+        --duration-base: 200ms;
+        --duration-slow: 400ms;
+        --easing: ease-in-out;
+
+        --container: 1120px;
+        --gutter: var(--space-16);
+        --section-gap: var(--space-48);
+      }
+
+      @media (min-width: 600px) {
+        :root { --gutter: var(--space-24); }
+      }
+      @media (min-width: 992px) {
+        :root {
+          --gutter: var(--space-48);
+          --section-gap: calc(var(--space-48) * 2);
+        }
+      }
+
+      *,
+      *::before,
+      *::after { box-sizing: border-box; }
+
+      html {
+        -webkit-text-size-adjust: 100%;
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        background: var(--color-bg);
+        color: var(--color-text);
+        font-family: var(--font-body);
+        font-size: var(--text-body);
+        font-weight: 400;
+        line-height: 1.5;
+        letter-spacing: -0.16px;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+      }
+
+      h1, h2, h3, p, ul, ol, figure { margin: 0; }
+      ul, ol { padding: 0; list-style: none; }
+      a { color: inherit; }
+
+      :focus-visible {
+        outline: 2px solid var(--color-text);
+        outline-offset: 2px;
+      }
+
+      .skip-link {
+        position: absolute;
+        left: var(--space-16);
+        top: -100px;
+        z-index: 100;
+        padding: var(--space-12) var(--space-16);
+        background: var(--color-primary);
+        color: var(--color-on-primary);
+        border-radius: var(--radius-md);
+        font-weight: 700;
+        text-decoration: none;
+      }
+      .skip-link:focus { top: var(--space-8); }
+
+      .container {
+        width: 100%;
+        max-width: calc(var(--container) + var(--gutter) * 2);
+        margin-inline: auto;
+        padding-inline: var(--gutter);
+      }
+
+      /* ---------- Type ---------- */
+      .display {
+        font-family: var(--font-display);
+        font-size: var(--text-display-narrow);
+        font-weight: 700;
+        /* Measured line-height is 1; Japanese glyphs fill the full em box,
+           so lines need a little air to avoid touching. */
+        line-height: 1.15;
+        letter-spacing: -0.02em;
+        word-break: keep-all;
+        overflow-wrap: anywhere;
+      }
+      @media (max-width: 599px) {
+        /* Japanese glyphs are ~1em wide, so 46px fits only ~7 per line on a
+           phone; scale with the viewport so 9-character phrases stay whole. */
+        .display { font-size: clamp(30px, 9.6vw, var(--text-display-narrow)); }
+      }
+      @media (min-width: 992px) {
+        .display { font-size: var(--text-display); }
+      }
+
+      .h3 {
+        font-family: var(--font-display);
+        font-size: var(--text-h3);
+        font-weight: 700;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+      }
+
+      .lead {
+        font-size: var(--text-lead);
+        line-height: 1.7;
+      }
+
+      .prose { line-height: 1.7; }
+
+      .mono {
+        font-family: var(--font-mono);
+        letter-spacing: 0.56px;
+      }
+
+      .eyebrow {
+        display: flex;
+        align-items: center;
+        gap: var(--space-8);
+        margin-bottom: var(--space-16);
+        font-weight: 700;
+        letter-spacing: 0.56px;
+      }
+      .eyebrow::before {
+        content: "";
+        flex: none;
+        width: var(--space-24);
+        height: var(--space-2);
+        background: var(--color-accent);
+      }
+
+      .jp-keep { word-break: keep-all; overflow-wrap: anywhere; }
+
+      /* ---------- Buttons ---------- */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-8);
+        min-height: 44px;
+        padding: var(--space-12) var(--space-16);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        font: inherit;
+        font-size: var(--text-body);
+        line-height: 1.5;
+        text-decoration: none;
+        cursor: pointer;
+        transition:
+          background-color var(--duration-fast) var(--easing),
+          color var(--duration-fast) var(--easing),
+          transform var(--duration-fast) var(--easing);
+      }
+      .btn:active { transform: translateY(1px); }
+
+      .btn-primary {
+        background: var(--color-primary);
+        color: var(--color-on-primary);
+        font-weight: 700;
+      }
+      .btn-primary:hover {
+        background: var(--color-bg);
+        color: var(--color-text);
+      }
+
+      .btn-secondary {
+        background: var(--color-bg);
+        color: var(--color-text);
+        font-weight: 400;
+      }
+      .btn-secondary:hover {
+        background: var(--color-primary);
+        color: var(--color-on-primary);
+      }
+
+      .btn-arrow {
+        width: 16px;
+        height: 16px;
+        transition: transform var(--duration-fast) var(--easing);
+      }
+      .btn:hover .btn-arrow { transform: translateX(2px); }
+
+      /* ---------- Navigation ---------- */
+      .site-nav {
+        background: var(--color-bg);
+        border-bottom: 1px solid var(--color-border);
+      }
+      .nav-inner {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-areas:
+          "brand cta"
+          "links links";
+        align-items: center;
+        column-gap: var(--space-16);
+        padding-block: var(--space-12) 0;
+      }
+      .brand {
+        grid-area: brand;
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        font-weight: 700;
+        letter-spacing: 0.56px;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .nav-cta { grid-area: cta; white-space: nowrap; }
+      .nav-inner > nav { grid-area: links; }
+      .nav-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0 var(--space-16);
+        margin-top: var(--space-4);
+      }
+      .nav-links a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        text-decoration: underline;
+        text-decoration-color: transparent;
+        text-decoration-thickness: 2px;
+        text-underline-offset: 6px;
+        transition: text-decoration-color var(--duration-fast) var(--easing);
+      }
+      .nav-links a:hover { text-decoration-color: var(--color-accent); }
+      .label-short { display: none; }
+      @media (max-width: 599px) {
+        .label-long { display: none; }
+        .label-short { display: inline; }
+      }
+
+      @media (min-width: 992px) {
+        html { scroll-padding-top: 77px; }
+        .site-nav {
+          position: sticky;
+          top: 0;
+          z-index: 10;
+        }
+        .nav-inner {
+          grid-template-columns: auto 1fr auto;
+          grid-template-areas: "brand links cta";
+          gap: var(--space-24);
+          padding-block: var(--space-16);
+        }
+        .nav-links {
+          justify-content: flex-end;
+          margin-top: 0;
+          gap: var(--space-24);
+        }
+      }
+
+      /* ---------- Sections ---------- */
+      .section { padding-top: var(--section-gap); }
+
+      .section-header {
+        padding-block: var(--space-16);
+        border-bottom: 1px solid var(--color-border);
+        margin-bottom: var(--space-24);
+      }
+      .section-header .eyebrow { margin-bottom: var(--space-16); }
+      .section-lead {
+        margin-top: var(--space-16);
+        max-width: 640px;
+      }
+      @media (min-width: 992px) {
+        .section-header { margin-bottom: var(--space-48); }
+      }
+      .section-header.section-header--flush { margin-bottom: 0; }
+
+      /* ---------- Hero ---------- */
+      .hero { padding-top: var(--section-gap); }
+      .hero-grid {
+        display: grid;
+        gap: var(--space-48);
+        align-items: center;
+      }
+      .hero-copy .display { margin-bottom: var(--space-24); }
+      .hero-copy .lead { max-width: 520px; }
+      .br-wide { display: none; }
+      @media (min-width: 768px) {
+        .br-wide { display: inline; }
+      }
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-12);
+        margin-top: var(--space-24);
+      }
+      .hero-points {
+        display: grid;
+        gap: var(--space-8);
+        margin-top: var(--space-24);
+      }
+      .hero-points li,
+      .check-list li {
+        display: flex;
+        align-items: center;
+        gap: var(--space-8);
+      }
+      .icon-check {
+        flex: none;
+        width: 16px;
+        height: 16px;
+        color: var(--color-accent);
+      }
+      @media (max-width: 599px) {
+        .hero-actions .btn { flex: 1 1 100%; }
+      }
+      @media (min-width: 992px) {
+        .hero-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); }
+      }
+
+      /* Terminal panel — a deliberate dark panel (#ffffff on #020617). */
+      .terminal {
+        background: var(--color-surface);
+        color: var(--color-on-primary);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-elevated);
+        overflow: hidden;
+      }
+      .terminal-bar {
+        display: flex;
+        align-items: center;
+        gap: var(--space-8);
+        padding: var(--space-12) var(--space-16);
+        border-bottom: 1px solid var(--color-on-primary);
+      }
+      .terminal-bar .dot {
+        width: var(--space-8);
+        height: var(--space-8);
+        border: 1px solid var(--color-on-primary);
+        border-radius: var(--radius-pill);
+      }
+      .terminal-bar .mono { margin-left: var(--space-8); }
+      .terminal-body {
+        display: grid;
+        gap: var(--space-4);
+        padding: var(--space-24);
+        word-break: break-word;
+      }
+      .terminal-body .gap { height: var(--space-12); }
+      .t-line { display: flex; gap: var(--space-8); }
+      .t-line > span:first-child { flex: none; }
+      .t-step { padding-left: var(--space-16); align-items: baseline; }
+      .t-dot {
+        flex: none;
+        width: var(--space-8);
+        height: var(--space-8);
+        border-radius: var(--radius-pill);
+        background: var(--color-accent);
+        transform: translateY(-1px);
+      }
+      .terminal figcaption {
+        padding: var(--space-12) var(--space-16);
+        border-top: 1px solid var(--color-on-primary);
+      }
+
+      /* ---------- Problem ---------- */
+      .problem-list li {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: baseline;
+        gap: var(--space-16);
+        padding-block: var(--space-24);
+        border-bottom: 1px solid var(--color-border);
+      }
+      .problem-bridge {
+        margin-top: var(--space-24);
+        font-weight: 700;
+      }
+      @media (min-width: 768px) {
+        .problem-list li { gap: var(--space-48); }
+      }
+
+      /* ---------- Cards ---------- */
+      .card {
+        background: var(--color-bg);
+        color: var(--color-text);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        padding: var(--space-24);
+      }
+      .card-grid {
+        display: grid;
+        gap: var(--space-16);
+      }
+      @media (min-width: 992px) {
+        .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-24); }
+      }
+      .feature .num { display: block; margin-bottom: var(--space-16); }
+      .feature .h3 { margin-bottom: var(--space-12); }
+
+      /* ---------- Format ---------- */
+      .stats {
+        display: grid;
+        gap: var(--space-16);
+      }
+      @media (min-width: 600px) {
+        .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      }
+      @media (min-width: 992px) {
+        .stats { gap: var(--space-24); }
+      }
+      .stat {
+        display: flex;
+        flex-direction: column-reverse;
+        gap: var(--space-12);
+      }
+      .stat-value {
+        font-family: var(--font-display);
+        font-size: var(--text-display-narrow);
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: -0.02em;
+      }
+      .stat-value small {
+        font-size: var(--text-h3);
+        letter-spacing: 0;
+        margin-left: var(--space-2);
+      }
+      @media (min-width: 992px) {
+        .stat-value { font-size: var(--text-display); }
+      }
+
+      /* ---------- Flow ---------- */
+      .steps {
+        display: grid;
+        gap: var(--space-24);
+        counter-reset: step;
+      }
+      @media (min-width: 600px) {
+        .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (min-width: 992px) {
+        .steps { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      }
+      .step {
+        padding-top: var(--space-16);
+        border-top: 1px solid var(--color-border);
+      }
+      .step .num { display: block; margin-bottom: var(--space-12); }
+      .step-title {
+        margin-bottom: var(--space-8);
+        font-size: var(--text-lead);
+        font-weight: 700;
+      }
+
+      /* ---------- Apply (dark panel) ---------- */
+      .section-dark {
+        margin-top: var(--section-gap);
+        padding-bottom: var(--section-gap);
+        background: var(--color-surface);
+        color: var(--color-on-primary);
+      }
+      .section-dark :focus-visible { outline-color: var(--color-on-primary); }
+      .section-dark .card :focus-visible { outline-color: var(--color-text); }
+      .apply-grid {
+        display: grid;
+        gap: var(--space-48);
+        align-items: start;
+      }
+      @media (min-width: 992px) {
+        .apply-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 440px); }
+      }
+      .apply-copy .display { margin-bottom: var(--space-24); }
+      .check-list {
+        display: grid;
+        gap: var(--space-8);
+        margin-top: var(--space-24);
+      }
+      .section-dark .icon-check { color: var(--color-on-primary); }
+
+      .form { display: grid; gap: var(--space-16); }
+      .form .h3 { margin-bottom: var(--space-8); }
+      .field { display: grid; gap: var(--space-8); }
+      .field label { font-weight: 700; }
+      .field .optional { font-weight: 400; }
+      .input {
+        width: 100%;
+        min-height: 44px;
+        padding: var(--space-12) var(--space-16);
+        background: var(--color-bg);
+        color: var(--color-text);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        font: inherit;
+        font-size: var(--text-body);
+        line-height: 1.5;
+        transition: box-shadow var(--duration-base) var(--easing);
+      }
+      .input:hover { box-shadow: inset 0 0 0 1px var(--color-border); }
+      select.input {
+        appearance: none;
+        padding-right: var(--space-48);
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none' stroke='%23020617' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right var(--space-16) center;
+      }
+      textarea.input { min-height: 120px; resize: vertical; }
+      .form .btn { width: 100%; margin-top: var(--space-8); }
+      .form-status:empty { display: none; }
+      .form-status {
+        padding: var(--space-12) var(--space-16);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+      }
+
+      /* ---------- Footer ---------- */
+      .site-footer {
+        padding-block: var(--space-24);
+        border-top: 1px solid var(--color-border);
+      }
+      .footer-inner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-8) var(--space-24);
+      }
+      .footer-inner .brand { min-height: 0; }
+
+      @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        *,
+        *::before,
+        *::after {
+          transition-duration: 0.01ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">本文へスキップ</a>
+
+    <header class="site-nav">
+      <div class="container nav-inner">
+        <a class="brand" href="#top">CLAUDE CODE × 個別指導</a>
+        <nav aria-label="ページ内">
+          <ul class="nav-links">
+            <li><a href="#problem">よくある悩み</a></li>
+            <li><a href="#features">3 つの柱</a></li>
+            <li><a href="#format">受講形式</a></li>
+            <li><a href="#flow">受講の流れ</a></li>
+          </ul>
+        </nav>
+        <a class="btn btn-primary nav-cta" href="#apply"><span class="label-long">無料カウンセリング</span><span class="label-short">無料相談</span></a>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- Hero -->
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <div class="container hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow">For Engineers</p>
+            <h1 class="display" id="hero-title">Claude&nbsp;Code&nbsp;を、<br class="br-wide" /><wbr />もっと深く。</h1>
+            <p class="lead jp-keep">
+              エージェント時代の開発を、<wbr />現役エンジニアと。<br />
+              あなたの現場のコードで、<wbr />1&nbsp;対&nbsp;1&nbsp;で伴走します。
+            </p>
+            <div class="hero-actions">
+              <a class="btn btn-primary" href="#apply">
+                無料カウンセリングを予約
+                <svg class="btn-arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h10M9 4l4 4-4 4" /></svg>
+              </a>
+              <a class="btn btn-secondary" href="#format">受講形式を見る</a>
+            </div>
+            <ul class="hero-points">
+              <li>
+                <svg class="icon-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" /></svg>
+                現役エンジニアとのマンツーマン
+              </li>
+              <li>
+                <svg class="icon-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" /></svg>
+                あなたのリポジトリを題材に実演
+              </li>
+              <li>
+                <svg class="icon-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" /></svg>
+                セッション後も Slack で質問し放題
+              </li>
+            </ul>
+          </div>
+
+          <figure class="terminal">
+            <div class="terminal-bar" aria-hidden="true">
+              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+              <span class="mono">~/your-repo</span>
+            </div>
+            <div class="terminal-body mono" role="img" aria-label="Claude Code のセッション例：認証まわりの整理を依頼し、計画を立てて、テストを通すまでの流れ">
+              <p class="t-line"><span>$</span><span>claude</span></p>
+              <p class="t-line"><span>&gt;</span><span>認証まわりを整理して、テストも通したい</span></p>
+              <p class="gap"></p>
+              <p>計画を立てました:</p>
+              <p class="t-line t-step"><span class="t-dot"></span><span>src/auth/ の依存関係を調査</span></p>
+              <p class="t-line t-step"><span class="t-dot"></span><span>サブエージェントでテストを並列実行</span></p>
+              <p class="t-line t-step"><span class="t-dot"></span><span>差分をまとめてレビュー</span></p>
+              <p class="gap"></p>
+              <p class="t-line"><span class="t-dot" style="transform: translateY(6px)"></span><span>12 files changed · all tests passed</span></p>
+            </div>
+            <figcaption class="jp-keep">画面共有で、<wbr />あなたのリポジトリを<wbr />一緒に触ります。</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- Problem -->
+      <section class="section" id="problem" aria-labelledby="problem-title">
+        <div class="container">
+          <header class="section-header section-header--flush">
+            <p class="eyebrow">よくある悩み</p>
+            <h2 class="display" id="problem-title">使ってはいるけど、<br class="br-wide" /><wbr />本当に<wbr />使いこなせてる？</h2>
+          </header>
+          <ul class="problem-list">
+            <li>
+              <span class="mono" aria-hidden="true">01</span>
+              <p class="h3 jp-keep">プロンプトが<wbr />思った通りに<wbr />伝わらない</p>
+            </li>
+            <li>
+              <span class="mono" aria-hidden="true">02</span>
+              <p class="h3 jp-keep">大規模リファクタで<wbr />途中から崩れる</p>
+            </li>
+            <li>
+              <span class="mono" aria-hidden="true">03</span>
+              <p class="h3 jp-keep">サブエージェント・MCP の<wbr />運用が分からない</p>
+            </li>
+          </ul>
+          <p class="problem-bridge lead jp-keep">その悩み、ツールではなく<wbr />「使い方の設計」で<wbr />解決できます。</p>
+        </div>
+      </section>
+
+      <!-- Solution / Features -->
+      <section class="section" id="features" aria-labelledby="features-title">
+        <div class="container">
+          <header class="section-header">
+            <p class="eyebrow">Solution — 3 つの柱</p>
+            <h2 class="display" id="features-title">Claude&nbsp;Code <wbr />個別指導</h2>
+            <p class="section-lead lead jp-keep">あなたの現場のコードで、<wbr />1&nbsp;対&nbsp;1&nbsp;で。<wbr />明日からの開発に<wbr />そのまま持ち帰れる形で教えます。</p>
+          </header>
+          <div class="card-grid">
+            <article class="card feature">
+              <span class="num mono" aria-hidden="true">01</span>
+              <h3 class="h3">設計から伴走</h3>
+              <p class="prose">サブエージェント、MCP、フック設計まで。実装に直結する設計レビュー。</p>
+            </article>
+            <article class="card feature">
+              <span class="num mono" aria-hidden="true">02</span>
+              <h3 class="h3">現場の課題で実演</h3>
+              <p class="prose">あなたのリポジトリで、その場でリファクタ。動く成果物を一緒に作る。</p>
+            </article>
+            <article class="card feature">
+              <span class="num mono" aria-hidden="true">03</span>
+              <h3 class="h3">非同期サポート</h3>
+              <p class="prose">セッション後も Slack で質問し放題。詰まったらすぐ解決。</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- Format -->
+      <section class="section" id="format" aria-labelledby="format-title">
+        <div class="container">
+          <header class="section-header">
+            <p class="eyebrow">受講形式</p>
+            <h2 class="display" id="format-title">週&nbsp;1&nbsp;回・<wbr />60&nbsp;分・<wbr />全&nbsp;4&nbsp;回</h2>
+          </header>
+          <ul class="stats">
+            <li class="card stat">
+              <span>マンツーマン</span>
+              <span class="stat-value">1:1</span>
+            </li>
+            <li class="card stat">
+              <span>1 セッションあたり</span>
+              <span class="stat-value">60<small>分</small></span>
+            </li>
+            <li class="card stat">
+              <span>フルパッケージ</span>
+              <span class="stat-value">4<small>回</small></span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Flow -->
+      <section class="section" id="flow" aria-labelledby="flow-title">
+        <div class="container">
+          <header class="section-header">
+            <p class="eyebrow">受講の流れ</p>
+            <h2 class="display" id="flow-title">申し込みから、<wbr />修了まで。</h2>
+          </header>
+          <ol class="steps">
+            <li class="step">
+              <span class="num mono" aria-hidden="true">STEP 01</span>
+              <h3 class="step-title">無料カウンセリング</h3>
+              <p class="prose">現在の使い方と課題、目指したいゴールを伺います。</p>
+            </li>
+            <li class="step">
+              <span class="num mono" aria-hidden="true">STEP 02</span>
+              <h3 class="step-title">事前準備</h3>
+              <p class="prose">題材にするリポジトリや、取り組みたいタスクを共有いただきます。</p>
+            </li>
+            <li class="step">
+              <span class="num mono" aria-hidden="true">STEP 03</span>
+              <h3 class="step-title">セッション（全 4 回）</h3>
+              <p class="prose">週 1 回・60 分。画面共有で、設計レビューと実装を一緒に進めます。</p>
+            </li>
+            <li class="step">
+              <span class="num mono" aria-hidden="true">STEP 04</span>
+              <h3 class="step-title">非同期サポート</h3>
+              <p class="prose">セッション後も Slack で質問し放題。詰まったらすぐ解決。</p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- Apply -->
+      <section class="section section-dark" id="apply" aria-labelledby="apply-title">
+        <div class="container apply-grid">
+          <div class="apply-copy">
+            <p class="eyebrow">Apply Now</p>
+            <h2 class="display" id="apply-title">次の現場は、<wbr />あなたの番だ。</h2>
+            <p class="lead jp-keep">まずは無料カウンセリングで、<wbr />あなたの課題を<wbr />聞かせてください。</p>
+            <ul class="check-list">
+              <li>
+                <svg class="icon-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" /></svg>
+                現在の使い方と課題をヒアリング
+              </li>
+              <li>
+                <svg class="icon-check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" /></svg>
+                4 回のセッションの進め方をご提案
+              </li>
+            </ul>
+          </div>
+
+          <!-- TODO: 送信先が決まったら form の action（と method）を設定する。未設定の間は送信しない。 -->
+          <form class="card form" id="apply-form" method="post" aria-labelledby="form-title">
+            <h3 class="h3" id="form-title">無料カウンセリング予約</h3>
+            <div class="field">
+              <label for="f-name">お名前</label>
+              <input class="input" id="f-name" name="name" type="text" autocomplete="name" required />
+            </div>
+            <div class="field">
+              <label for="f-email">メールアドレス</label>
+              <input class="input" id="f-email" name="email" type="email" autocomplete="email" inputmode="email" required />
+            </div>
+            <div class="field">
+              <label for="f-usage">Claude Code の利用状況</label>
+              <select class="input" id="f-usage" name="usage" required>
+                <option value="" selected disabled>選択してください</option>
+                <option value="not-yet">まだ使っていない</option>
+                <option value="trying">個人で試している</option>
+                <option value="daily">業務で日常的に使っている</option>
+                <option value="team">チームへの展開を検討中</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="f-message">相談したいこと <span class="optional">（任意）</span></label>
+              <textarea class="input" id="f-message" name="message" rows="4"></textarea>
+            </div>
+            <button class="btn btn-primary" type="submit">無料カウンセリングを予約する</button>
+            <p class="form-status" id="form-status" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <a class="brand" href="#top">CLAUDE CODE × 個別指導</a>
+        <span class="mono">claude-code-tutor.example.com</span>
+        <small>© 2026 CLAUDE CODE × 個別指導</small>
+      </div>
+    </footer>
+
+    <script>
+      (function () {
+        var form = document.getElementById("apply-form");
+        var status = document.getElementById("form-status");
+        form.addEventListener("submit", function (event) {
+          if (form.getAttribute("action")) return;
+          event.preventDefault();
+          status.textContent = "送信先がまだ設定されていないため、送信できません。";
+        });
+      })();
+    </script>
+  </body>
+</html>
