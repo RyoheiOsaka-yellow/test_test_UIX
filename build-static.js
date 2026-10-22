@@ -14,13 +14,13 @@ const ROUTES = [
     desc: '株式会社YELLOWは、大学・研究機関・企業の技術シーズを社会へ橋渡しする会社です。人流分析、スポーツDX、そして研究と現場のあいだの運用レイヤーを担います。群馬県高崎市。',
     en: { title: 'YELLOW Inc. — Research as material.',
           desc: 'YELLOW bridges technology seeds from universities, research institutions, and companies into society — mobility analytics, sports DX, and the operational layer between research and real-world use.' } },
-  { id: 'xinteractive', dir: 'xinteractive', title: 'xINTERACTIVE｜研究を現場で動く体験として実装する — 株式会社YELLOW',
-    desc: 'スタジアム、商業施設、街区。研究の成果を来場者が触れて動く体験として実装し、運用まで伴走します。スポーツ庁SOIP採択事業。株式会社YELLOWのプロダクト xINTERACTIVE。',
-    en: { title: 'xINTERACTIVE — Implementing research as experiences that run on site | YELLOW Inc.',
-          desc: 'Stadiums, commercial facilities and districts — implementing research as hands-on experiences and supporting them through operation.' },
-    service: { name: 'xINTERACTIVE', alt: 'スポーツDX、体験設計・実装・運用支援',
-               desc: '研究の成果を、来場者が触れて動く体験として実装するプロダクト。',
-               offers: ['スポーツDX', '市場への展開'] } },
+  { id: 'xinteractive', dir: 'xinteractive', title: 'xINTERACTIVE｜Web・什器・広告・エンタメでYELLOWの技術を活用する — 株式会社YELLOW',
+    desc: 'Web、什器、広告、エンターテインメント。YELLOWの技術 — リアルタイム3D、シミュレーション、空間データ — を人が実際に触れる領域で活用し、体験の設計から実装、現場運用まで手がけます。株式会社YELLOWのプロダクト xINTERACTIVE。',
+    en: { title: 'xINTERACTIVE — YELLOW\'s technology in web, retail fixtures, advertising and entertainment | YELLOW Inc.',
+          desc: 'Web experiences, retail fixtures, advertising and entertainment — applying YELLOW\'s real-time 3D, simulation and spatial data where people actually meet it, from design to on-site operation.' },
+    service: { name: 'xINTERACTIVE', alt: 'Web・什器・広告・エンタメ領域での技術活用',
+               desc: 'YELLOWの技術を、Web、什器、広告、エンターテインメントの領域で活用するプロダクト。',
+               offers: ['Web・什器', '広告・エンタメ'] } },
   { id: 'xad', dir: 'xad', title: 'xAD｜人流・行動データから届け方を設計する — 株式会社YELLOW',
     desc: '交通手段別・時間別・経路別の来訪動態をデータとして捕捉し、混雑緩和や導線設計に落とし込みます。公的プログラムへの採択支援まで。SOIP×いわきFC。株式会社YELLOWのプロダクト xAD。',
     en: { title: 'xAD — Designing how a message lands, from mobility and behaviour data | YELLOW Inc.',
@@ -426,8 +426,8 @@ fs.writeFileSync(DIST + 'llms.txt', `# 株式会社YELLOW（YELLOW Inc.）
 株式会社YELLOWは、研究水準の手法と、その現場での実装をつなぐレイヤーを担う。
 事業は3つのプロダクトに整理されている。
 
-- **xINTERACTIVE（動かす）**: 研究の成果を、来場者が触れて動く体験として実装する。
-  内訳は「スポーツDX」と「市場への展開」。スタジアム、商業施設、街区が対象。
+- **xINTERACTIVE（動かす）**: YELLOWの技術を、Web、什器、広告、エンターテインメントの領域で活用する。
+  内訳は「Web・什器」と「広告・エンタメ」。体験の設計から実装、現場運用まで。
 - **xAD（届ける）**: 人流と行動のデータから、伝えるべき相手と場所と時間を割り出す。
   内訳は「人流・行動データ分析」と「公的プログラムへの採択」。交通手段別・時間別・
   経路別の来訪動態を捕捉し、混雑緩和や導線設計に落とし込む。
@@ -438,7 +438,7 @@ fs.writeFileSync(DIST + 'llms.txt', `# 株式会社YELLOW（YELLOW Inc.）
 ## 主なページ
 
 - [ホーム](${ORIGIN}/): 会社概要、3プロダクト、実績、採用、お問い合わせ
-- [xINTERACTIVE](${ORIGIN}/xinteractive/): スポーツDXと体験実装
+- [xINTERACTIVE](${ORIGIN}/xinteractive/): Web・什器・広告・エンタメでの技術活用
 - [xAD](${ORIGIN}/xad/): 人流・行動データ分析
 - [xBUILD](${ORIGIN}/xbuild/): 技術シーズの社会実装
 - [プライバシーポリシー](${ORIGIN}/privacy/)

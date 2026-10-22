@@ -28,7 +28,7 @@
       "fish"
     ],
     "xinteractive-cap01": [
-      "fixtures"
+      "zerosum"
     ],
     "xinteractive-cap02": [
       "clearwater"
@@ -40,7 +40,7 @@
     "home-xad": "#0d0d10",
     "home-careers": "#000000",
     "xinteractive-hero": "#0b0f1d",
-    "xinteractive-cap01": "#eceada",
+    "xinteractive-cap01": "#ecebe8",
     "xinteractive-cap02": "#0b1422"
   },
   "settle": {
@@ -63,8 +63,8 @@
     "xad-logo",
     "radiance",
     "fish",
-    "fixtures",
-    "clearwater"
+    "clearwater",
+    "zerosum"
   ],
   "reveal": {
     "home-xbuild": "fade",

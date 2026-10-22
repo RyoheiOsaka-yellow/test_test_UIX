@@ -1,0 +1,2 @@
+/* 埋め込み用: 操作はできないのでカーソルだけ戻す（表示の調整は patch.json 側） */
+html, body, canvas { cursor: default !important; }

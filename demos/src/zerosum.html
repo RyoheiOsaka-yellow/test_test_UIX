@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>topological zero-sum game</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #ecebe8; }
+  canvas { display: block; cursor: grab; touch-action: none; }
+  canvas:active { cursor: grabbing; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script>
+// topological zero-sum game — thirty formulas
+//
+// 30 種類の数理モデル(数式)がランダムに切り替わりながら
+// インスタレーションを駆動する。数式は左上に注記され、
+// その方程式が実際に数値積分されて動きを作る。
+//   ・ストレンジアトラクタ 10種 / 確率過程 2種 / カオス写像 5種
+//   ・パラメトリック曲線 5種 / ネットワーク上の力学系 8種
+// 紙とインクは独立したリズムで反転する(短いフラッシュ〜長い暗転)。
+// ドラッグ: 回転 / ホイール・ピンチ: ズーム / n: 次の数式 / i: 反転
+// URL に ?f=番号 で開始する数式を指定できる。
+
+(() => {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  let W = 0, H = 0, DPR = 1;
+  let tNow = 0;
+
+  // ---- テーマ(紙とインク) ----
+  // 数式が切り替わるたびに紙の色も切り替わり、そのシーンの間は維持される。
+  // 黒(白インク)だけはストロボのように一瞬だけ挟まる。
+  const THEMES = {
+    light:  { paper: [236, 235, 232], ink: [55, 54, 52] },
+    black:  { paper: [21, 20, 19],    ink: [228, 226, 221] },
+    red:    { paper: [198, 52, 38],   ink: [242, 236, 228] },
+    green:  { paper: [28, 122, 79],   ink: [238, 235, 228] },
+    blue:   { paper: [38, 78, 196],   ink: [238, 236, 230] },
+    yellow: { paper: [240, 198, 34],  ink: [48, 44, 38] },
+  };
+  const PAPERS = ['light', 'yellow', 'red', 'blue', 'green'];
+  let scenePaper = 'light';   // 現在のシーンの紙
+  let themeName = 'light';    // 実際に表示中の紙(ストロボ中は 'black')
+  let strobeUntil = 0;
+  let nextStrobeAt = 6 + Math.random() * 8;
+  const cur = { paper: [...THEMES.light.paper], ink: [...THEMES.light.ink] };
+  let inkBoost = 1;   // 色紙の上では細い線が沈むので、インクを少し濃くする
+  function inkStr(a) {
+    return `rgba(${cur.ink[0]|0},${cur.ink[1]|0},${cur.ink[2]|0},${Math.min(a * inkBoost, 1)})`;
+  }
+
+  // シーンごとの紙を選ぶ(直前と同じ色は避ける。35% は生成りに戻る)
+  function pickScenePaper() {
+    let p;
+    do {
+      p = Math.random() < 0.35 ? 'light' : PAPERS[1 + ((Math.random() * 4) | 0)];
+    } while (p === scenePaper);
+    scenePaper = p;
+    themeName = p;
+  }
+  function startStrobe(t) {
+    themeName = 'black';
+    strobeUntil = t + 0.1 + Math.random() * 0.25;   // 黒は本当に一瞬
+  }
+  function updateTheme(t) {
+    if (themeName === 'black' && scenePaper !== 'black') {
+      if (t > strobeUntil) {
+        themeName = scenePaper;
+        nextStrobeAt = t + 5 + Math.random() * 10;
+      }
+    } else if (t > nextStrobeAt) {
+      startStrobe(t);
+    }
+  }
+
+  // ---- 擬似乱数 ----
+  let seed = (Math.random() * 1e9) | 0;
+  function rnd() {
+    seed = (seed * 1664525 + 1013904223) | 0;
+    return ((seed >>> 0) / 4294967296);
+  }
+  function nrnd() {
+    const u = Math.max(Math.random(), 1e-9), v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+  function hash01(n) { const s = Math.sin(n) * 43758.5453; return s - Math.floor(s); }
+
+  // ---- グラフ(ネットワーク系の数式で使う) ----
+  const N = 26;
+  const K_NEIGHBOR = 3;
+  const WORLD = 220;
+  const nodes = [];
+  for (let i = 0; i < N; i++) {
+    const nc = 4;
+    const ca = ((i % nc) / nc) * Math.PI * 2 + rnd();
+    const cr = WORLD * 0.55;
+    nodes.push({
+      id: i,
+      bx: Math.cos(ca) * cr * (0.3 + rnd() * 0.7) + (rnd() - 0.5) * WORLD * 0.7,
+      by: (rnd() - 0.5) * WORLD * 1.1 + (rnd() - 0.5) * WORLD * 0.7,
+      bz: Math.sin(ca) * cr * (0.3 + rnd() * 0.7) + (rnd() - 0.5) * WORLD * 0.7,
+      p1: rnd() * Math.PI * 2, p2: rnd() * Math.PI * 2, p3: rnd() * Math.PI * 2,
+      f1: 0.05 + rnd() * 0.06, f2: 0.04 + rnd() * 0.06, f3: 0.05 + rnd() * 0.05,
+      amp: 18 + rnd() * 26,
+      labeled: rnd() < 0.55,
+      jr: rnd() * Math.PI * 2,
+      x: 0, y: 0, z: 0, sx: 0, sy: 0, sc: 1,
+    });
+  }
+  const edges = [];
+  const edgeSet = new Set();
+  function addEdge(a, b) {
+    if (a === b) return;
+    const key = a < b ? a + '-' + b : b + '-' + a;
+    if (edgeSet.has(key)) return;
+    edgeSet.add(key);
+    edges.push({ a, b, w: (rnd() * 2 - 1) * 1.4, born: 0, key });
+  }
+  const d2 = (p, q) => (p.bx - q.bx) ** 2 + (p.by - q.by) ** 2 + (p.bz - q.bz) ** 2;
+  for (let i = 0; i < N; i++) {
+    const order = nodes.map((n, j) => [d2(nodes[i], n), j])
+      .sort((u, v) => u[0] - v[0]).slice(1, K_NEIGHBOR + 1);
+    for (const [, j] of order) addEdge(i, j);
+  }
+  for (let e = 0; e < 8; e++) addEdge((rnd() * N) | 0, (rnd() * N) | 0);
+
+  // ---- リサイズ ----
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * DPR; canvas.height = H * DPR;
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ---- カメラ(自動回転 + ドラッグ/ズーム) ----
+  let userYaw = 0, userPitch = 0, zoom = 1;
+  let dragging = false, lastPX = 0, lastPY = 0;
+  canvas.addEventListener('pointerdown', (e) => {
+    dragging = true; lastPX = e.clientX; lastPY = e.clientY;
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    userYaw += (e.clientX - lastPX) * 0.006;
+    userPitch += (e.clientY - lastPY) * 0.006;
+    userPitch = Math.max(-1.3, Math.min(1.3, userPitch));
+    lastPX = e.clientX; lastPY = e.clientY;
+  });
+  canvas.addEventListener('pointerup', () => { dragging = false; });
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    zoom = Math.max(0.45, Math.min(2.6, zoom * Math.exp(-e.deltaY * 0.0012)));
+  }, { passive: false });
+
+  let rcy = 1, rsy = 0, rcp = 1, rsp = 0, rscale = 1;
+  const CAMZ = 640;
+  function setRotation(t) {
+    const yaw = t * 0.09 + userYaw;
+    const pitch = 0.35 + Math.sin(t * 0.045) * 0.15 + userPitch;
+    rcy = Math.cos(yaw); rsy = Math.sin(yaw);
+    rcp = Math.cos(pitch); rsp = Math.sin(pitch);
+    rscale = Math.min(W, H) * 0.95 * zoom;
+  }
+  function projPoint(x0, y0, z0, out) {
+    let x = x0 * rcy + z0 * rsy;
+    let z = -x0 * rsy + z0 * rcy;
+    let y = y0 * rcp - z * rsp;
+    z = y0 * rsp + z * rcp;
+    const pers = CAMZ / (CAMZ + Math.max(z, -500));
+    out[0] = W / 2 + (x * pers * rscale) / 640;
+    out[1] = H / 2 + (y * pers * rscale) / 640;
+    out[2] = pers;
+    return out;
+  }
+  const tmpP = [0, 0, 0];
+  function projectNodes(t) {
+    for (const n of nodes) {
+      const x0 = n.bx + Math.sin(t * n.f1 + n.p1) * n.amp;
+      const y0 = n.by + Math.sin(t * n.f2 + n.p2) * n.amp;
+      const z0 = n.bz + Math.sin(t * n.f3 + n.p3) * n.amp;
+      n.x = x0; n.y = y0; n.z = z0;
+      projPoint(x0, y0, z0, tmpP);
+      n.sx = tmpP[0]; n.sy = tmpP[1]; n.sc = tmpP[2];
+    }
+  }
+
+  // ---- 鉛筆の線: 短い区間に割り、手ぶれの揺らぎを加えた細い2度描き ----
+  function sketchLine(x1, y1, x2, y2, sd, alpha, lw) {
+    lw = lw || 0.45;
+    const dx = x2 - x1, dy = y2 - y1;
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len, ny = dx / len;
+    const segs = Math.max(2, Math.min(9, Math.round(len / 30)));
+    for (let pass = 0; pass < 2; pass++) {
+      ctx.strokeStyle = inkStr(pass === 0 ? alpha : alpha * 0.3);
+      ctx.lineWidth = pass === 0 ? lw : lw * 0.8;
+      ctx.beginPath();
+      for (let i = 0; i <= segs; i++) {
+        const f = i / segs;
+        const taper = Math.sin(Math.PI * f);   // 端点は正確に留める
+        const j = (hash01(sd * 7.13 + i * 3.71 + pass * 13.7) - 0.5) *
+                  (1.5 + Math.sin(tNow * 0.6 + sd + i) * 0.4) * taper;
+        const px = x1 + dx * f + nx * (j + pass * 0.5);
+        const py = y1 + dy * f + ny * (j + pass * 0.5);
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    }
+  }
+
+  // ---- 鉛筆の円 ----
+  function sketchCircle(x, y, r, alpha, jr) {
+    ctx.strokeStyle = inkStr(alpha);
+    ctx.lineWidth = 0.55;
+    ctx.beginPath();
+    const steps = 14;
+    for (let i = 0; i <= steps; i++) {
+      const a = jr + (i / steps) * Math.PI * 2;
+      const rr = r * (1 + 0.08 * Math.sin(a * 3 + jr * 5));
+      const px = x + Math.cos(a) * rr;
+      const py = y + Math.sin(a) * rr;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+
+  // ---- 残像 ----
+  const GHOSTS = 7;
+  const history = [];
+  let lastSnap = 0;
+  let frameSegments = [];
+  function snapshot(t) {
+    if (t - lastSnap < 0.35) return;
+    lastSnap = t;
+    history.push(frameSegments);
+    if (history.length > GHOSTS) history.shift();
+  }
+  function drawGhosts() {
+    for (let h = 0; h < history.length; h++) {
+      const segs = history[h];
+      const alpha = 0.01 + (h / history.length) * 0.04;
+      ctx.strokeStyle = inkStr(alpha);
+      ctx.lineWidth = 0.4;
+      ctx.beginPath();
+      for (const s of segs) { ctx.moveTo(s[0], s[1]); ctx.lineTo(s[2], s[3]); }
+      ctx.stroke();
+    }
+  }
+
+  // ---- 注釈 ----
+  const WORDS = ['LINK ESTABLISHED', 'FLUX BALANCED', 'SUM CONSTRAINT OK', 'TOPOLOGY SHIFT',
+                 'EDGE REWIRE PENDING', 'LOCAL MINIMUM', 'PAYOFF TRANSFER', 'NASH DRIFT'];
+  function drawLabel(n, valueText) {
+    const x = n.sx + 8 * n.sc + 2;
+    const y = n.sy - 4;
+    ctx.font = '7px "Courier New", monospace';
+    ctx.fillStyle = inkStr(0.5);
+    ctx.fillText(
+      `NODE_${String(n.id).padStart(2, '0')}  <${n.x | 0},${n.y | 0},${n.z | 0}>`, x, y);
+    ctx.fillStyle = inkStr(0.26);
+    ctx.fillText(valueText, x, y + 8);
+    ctx.fillText(WORDS[(n.id * 7 + ((performance.now() / 8000) | 0)) % WORDS.length], x, y + 15);
+  }
+
+  // ---- グラフのエッジ繋ぎ替え ----
+  let lastRewire = 0;
+  function rewire(t) {
+    if (t - lastRewire < 5) return;
+    lastRewire = t;
+    const idx = (Math.random() * edges.length) | 0;
+    edgeSet.delete(edges[idx].key);
+    let a = (Math.random() * N) | 0, b = (Math.random() * N) | 0, tries = 0;
+    while ((a === b || edgeSet.has(a < b ? a + '-' + b : b + '-' + a)) && tries++ < 20) {
+      a = (Math.random() * N) | 0; b = (Math.random() * N) | 0;
+    }
+    const key = a < b ? a + '-' + b : b + '-' + a;
+    edgeSet.add(key);
+    edges[idx] = { a, b, w: (Math.random() * 2 - 1) * 1.4, born: t, key };
+  }
+
+  // ==========================================================
+  //  30 の数式
+  //  fam: 'ode'(+noise で SDE) / 'map' / 'curve' / 'graph'
+  // ==========================================================
+  const MODELS = [
+    // ---- ストレンジアトラクタ (連立常微分方程式) ----
+    { t: 'LORENZ SYSTEM', fam: 'ode', h: .004, sub: 5, scale: 8, c: [0, 0, 27],
+      eq: ['dx/dt = σ(y − x)', 'dy/dt = x(ρ − z) − y', 'dz/dt = xy − βz', 'σ=10  ρ=28  β=8/3'],
+      f: (p, d) => { d[0] = 10 * (p[1] - p[0]); d[1] = p[0] * (28 - p[2]) - p[1]; d[2] = p[0] * p[1] - 8 / 3 * p[2]; } },
+    { t: 'RÖSSLER SYSTEM', fam: 'ode', h: .02, sub: 4, scale: 13, c: [0, 0, 3],
+      eq: ['dx/dt = −y − z', 'dy/dt = x + ay', 'dz/dt = b + z(x − c)', 'a=0.2  b=0.2  c=5.7'],
+      f: (p, d) => { d[0] = -p[1] - p[2]; d[1] = p[0] + .2 * p[1]; d[2] = .2 + p[2] * (p[0] - 5.7); } },
+    { t: 'THOMAS ATTRACTOR', fam: 'ode', h: .05, sub: 4, scale: 42, c: [0, 0, 0],
+      eq: ['dx/dt = sin y − bx', 'dy/dt = sin z − by', 'dz/dt = sin x − bz', 'b = 0.208'],
+      f: (p, d) => { const b = .208; d[0] = Math.sin(p[1]) - b * p[0]; d[1] = Math.sin(p[2]) - b * p[1]; d[2] = Math.sin(p[0]) - b * p[2]; } },
+    { t: 'HALVORSEN ATTRACTOR', fam: 'ode', h: .008, sub: 5, scale: 16, c: [0, 0, 0], start: [-5, 0, 0],
+      eq: ['dx/dt = −ax − 4y − 4z − y²', '(x → y → z cyclic)', 'a = 1.89'],
+      f: (p, d) => { const a = 1.89; d[0] = -a * p[0] - 4 * p[1] - 4 * p[2] - p[1] * p[1]; d[1] = -a * p[1] - 4 * p[2] - 4 * p[0] - p[2] * p[2]; d[2] = -a * p[2] - 4 * p[0] - 4 * p[1] - p[0] * p[0]; } },
+    { t: 'AIZAWA ATTRACTOR', fam: 'ode', h: .01, sub: 5, scale: 110, c: [0, 0, .7], start: [.1, 0, 0],
+      eq: ['dx/dt = (z−b)x − dy', 'dy/dt = dx + (z−b)y', 'dz/dt = c + az − z³/3', '        − (x²+y²)(1+ez) + fzx³'],
+      f: (p, d) => { const a = .95, b = .7, c = .6, dd = 3.5, e = .25, f = .1;
+        d[0] = (p[2] - b) * p[0] - dd * p[1]; d[1] = dd * p[0] + (p[2] - b) * p[1];
+        d[2] = c + a * p[2] - p[2] ** 3 / 3 - (p[0] ** 2 + p[1] ** 2) * (1 + e * p[2]) + f * p[2] * p[0] ** 3; } },
+    { t: 'CHEN SYSTEM', fam: 'ode', h: .0015, sub: 6, scale: 7, c: [0, 0, 22],
+      eq: ['dx/dt = a(y − x)', 'dy/dt = (c−a)x − xz + cy', 'dz/dt = xy − bz', 'a=35  b=3  c=28'],
+      f: (p, d) => { const a = 35, b = 3, c = 28; d[0] = a * (p[1] - p[0]); d[1] = (c - a) * p[0] - p[0] * p[2] + c * p[1]; d[2] = p[0] * p[1] - b * p[2]; } },
+    { t: 'DADRAS SYSTEM', fam: 'ode', h: .004, sub: 6, scale: 14, c: [0, 0, 0],
+      eq: ['dx/dt = y − px + oyz', 'dy/dt = ry − xz + z', 'dz/dt = cxy − ez', 'p=3 o=2.7 r=1.7 c=2 e=9'],
+      f: (p, d) => { d[0] = p[1] - 3 * p[0] + 2.7 * p[1] * p[2]; d[1] = 1.7 * p[1] - p[0] * p[2] + p[2]; d[2] = 2 * p[0] * p[1] - 9 * p[2]; } },
+    { t: 'NOSÉ–HOOVER OSCILLATOR', fam: 'ode', h: .008, sub: 6, scale: 30, c: [0, 0, 0], start: [1, 0, 0],
+      eq: ['dx/dt = y', 'dy/dt = −x + yz', 'dz/dt = 1 − y²'],
+      f: (p, d) => { d[0] = p[1]; d[1] = -p[0] + p[1] * p[2]; d[2] = 1 - p[1] * p[1]; } },
+    { t: 'FOUR-WING ATTRACTOR', fam: 'ode', h: .02, sub: 5, scale: 55, c: [0, 0, 0], start: [1.3, -.18, .01],
+      eq: ['dx/dt = ax + yz', 'dy/dt = bx + cy − xz', 'dz/dt = −z − xy', 'a=0.2  b=0.01  c=−0.4'],
+      f: (p, d) => { d[0] = .2 * p[0] + p[1] * p[2]; d[1] = .01 * p[0] - .4 * p[1] - p[0] * p[2]; d[2] = -p[2] - p[0] * p[1]; } },
+    { t: 'RUCKLIDGE SYSTEM', fam: 'ode', h: .01, sub: 5, scale: 16, c: [0, 0, 7], start: [1, 0, 4.5],
+      eq: ['dx/dt = −κx + λy − yz', 'dy/dt = x', 'dz/dt = −z + y²', 'κ=2  λ=6.7'],
+      f: (p, d) => { d[0] = -2 * p[0] + 6.7 * p[1] - p[1] * p[2]; d[1] = p[0]; d[2] = -p[2] + p[1] * p[1]; } },
+
+    // ---- 確率過程 (確率微分方程式) ----
+    { t: 'WIENER PROCESS / BROWNIAN MOTION', fam: 'ode', h: .02, sub: 3, scale: 130, c: [0, 0, 0],
+      noise: 1.0, box: 1.4, particles: 3,
+      eq: ['dX_t = σ dW_t', '⟨|X_t|²⟩ = 3σ²t   (diffusion)', 'reflected at |x| = L'],
+      f: (p, d) => { d[0] = 0; d[1] = 0; d[2] = 0; } },
+    { t: 'ORNSTEIN–UHLENBECK PROCESS', fam: 'ode', h: .02, sub: 3, scale: 110, c: [0, 0, 0],
+      noise: 1.1, particles: 3,
+      eq: ['dX_t = −θX_t dt + σ dW_t', 'stationary: X ∼ N(0, σ²/2θ)', 'θ=0.8  σ=1.1'],
+      f: (p, d) => { d[0] = -.8 * p[0]; d[1] = -.8 * p[1]; d[2] = -.8 * p[2]; } },
+
+    // ---- カオス写像 (点描) ----
+    { t: 'DE JONG ATTRACTOR', fam: 'map', scale: 92, c: [0, 0],
+      eq: ['x′ = sin(ay) − cos(bx)', 'y′ = sin(cx) − cos(dy)', 'a=−2.24 b=0.43 c=−0.65 d=−2.43'],
+      next: (x, y, o) => { o[0] = Math.sin(-2.24 * y) - Math.cos(.43 * x); o[1] = Math.sin(-.65 * x) - Math.cos(-2.43 * y); } },
+    { t: 'CLIFFORD ATTRACTOR', fam: 'map', scale: 82, c: [0, 0],
+      eq: ['x′ = sin(ay) + c·cos(ax)', 'y′ = sin(bx) + d·cos(by)', 'a=−1.4 b=1.6 c=1.0 d=0.7'],
+      next: (x, y, o) => { o[0] = Math.sin(-1.4 * y) + Math.cos(-1.4 * x); o[1] = Math.sin(1.6 * x) + .7 * Math.cos(1.6 * y); } },
+    { t: 'IKEDA MAP', fam: 'map', scale: 75, c: [.6, 0],
+      eq: ['t = 0.4 − 6/(1+x²+y²)', 'x′ = 1 + u(x cos t − y sin t)', 'y′ = u(x sin t + y cos t)', 'u = 0.9'],
+      next: (x, y, o) => { const tt = .4 - 6 / (1 + x * x + y * y);
+        o[0] = 1 + .9 * (x * Math.cos(tt) - y * Math.sin(tt)); o[1] = .9 * (x * Math.sin(tt) + y * Math.cos(tt)); } },
+    { t: 'HÉNON MAP', fam: 'map', scale: 150, c: [.25, 0],
+      eq: ['x′ = 1 − ax² + y', 'y′ = bx', 'a=1.4  b=0.3'],
+      next: (x, y, o) => { o[0] = 1 - 1.4 * x * x + y; o[1] = .3 * x; } },
+    { t: 'GUMOWSKI–MIRA MAP', fam: 'map', scale: 19, c: [0, 0],
+      eq: ['f(x) = μx + 2(1−μ)x²/(1+x²)', 'x′ = y + a(1−by²)y + f(x)', 'y′ = −x + f(x′)', 'a=0.008 b=0.05 μ=−0.7'],
+      next: (x, y, o) => { const f = v => -.7 * v + 2 * 1.7 * v * v / (1 + v * v);
+        o[0] = y + .008 * (1 - .05 * y * y) * y + f(x); o[1] = -x + f(o[0]); } },
+
+    // ---- パラメトリック曲線 ----
+    { t: '3D LISSAJOUS CURVE', fam: 'curve', scale: 150, speed: .9,
+      eq: ['x = sin(3t + π/2)', 'y = sin(4t)', 'z = sin(5t)'],
+      pt: (u, o) => { o[0] = Math.sin(3 * u + Math.PI / 2); o[1] = Math.sin(4 * u); o[2] = Math.sin(5 * u); } },
+    { t: 'TORUS KNOT (p,q) = (3,5)', fam: 'curve', scale: 68, speed: .55,
+      eq: ['x = (R + cos qφ) cos pφ', 'y = (R + cos qφ) sin pφ', 'z = sin qφ', 'R=2  p=3  q=5'],
+      pt: (u, o) => { const R = 2; o[0] = (R + Math.cos(5 * u)) * Math.cos(3 * u); o[1] = (R + Math.cos(5 * u)) * Math.sin(3 * u); o[2] = Math.sin(5 * u); } },
+    { t: 'FOURIER EPICYCLES', fam: 'curve', scale: 62, speed: .8, fourier: true,
+      eq: ['z(t) = Σₖ cₖ e^{ikωt}   k=1..5', 'random coefficients cₖ'],
+      pt: null },
+    { t: 'ROSE CURVE r = cos(kθ)', fam: 'curve', scale: 140, speed: .7,
+      eq: ['r = cos(5θ)', 'x = r cos θ,  y = r sin θ', 'z = 0.35 sin(3θ)'],
+      pt: (u, o) => { const r = Math.cos(5 * u); o[0] = r * Math.cos(u); o[1] = r * Math.sin(u); o[2] = .35 * Math.sin(3 * u); } },
+    { t: 'SPHERICAL SPIRAL', fam: 'curve', scale: 150, speed: 1.1,
+      eq: ['θ = t,   φ = 0.18t', 'x = cos θ cos φ', 'y = sin θ cos φ', 'z = sin φ'],
+      pt: (u, o) => { const ph = Math.sin(u * .18) * Math.PI / 2 * .9;
+        o[0] = Math.cos(u) * Math.cos(ph); o[1] = Math.sin(u) * Math.cos(ph); o[2] = Math.sin(ph); } },
+
+    // ---- ネットワーク上の力学系 ----
+    { t: 'REPLICATOR DYNAMICS / ZERO-SUM GAME', fam: 'graph', g: 'replicator',
+      eq: ['dx_i/dt = x_i [ (Ax)_i − x·Ax ]', 'A = −Aᵀ  ⇒  x·Ax = 0'] },
+    { t: 'KURAMOTO SYNCHRONIZATION', fam: 'graph', g: 'kuramoto',
+      eq: ['dθ_i/dt = ω_i + (K/N) Σ_j sin(θ_j − θ_i)', 'r e^{iψ} = (1/N) Σ_j e^{iθ_j}'] },
+    { t: 'HEAT EQUATION ON A GRAPH', fam: 'graph', g: 'heat',
+      eq: ['du/dt = −L u', 'L = D − A   (graph Laplacian)'] },
+    { t: 'WAVE EQUATION ON A GRAPH', fam: 'graph', g: 'wave',
+      eq: ['d²u/dt² = −c² L u − γ du/dt', 'c²=4  γ=0.12'] },
+    { t: 'SIS EPIDEMIC MODEL', fam: 'graph', g: 'sis',
+      eq: ['dp_i/dt = β Σ_j A_ij p_j (1−p_i) − γ p_i', 'β=0.35  γ=0.3'] },
+    { t: 'NOISY CONSENSUS DYNAMICS', fam: 'graph', g: 'consensus',
+      eq: ['dx = −L x dt + σ dW', 'σ = 0.9'] },
+    { t: 'ANTISYMMETRIC LOTKA–VOLTERRA', fam: 'graph', g: 'lv',
+      eq: ['dx_i/dt = x_i Σ_j W_ij x_j', 'W = −Wᵀ   (conservative)'] },
+    { t: 'MASTER EQUATION / RANDOM WALK', fam: 'graph', g: 'master',
+      eq: ['dp_i/dt = Σ_j [W_ij p_j − W_ji p_i]', 'Σ_i p_i = 1'] },
+  ];
+
+  // ==========================================================
+  //  数式の状態管理
+  // ==========================================================
+  let modeIndex = 0;
+  let modeStart = 0;
+  let modeDuration = 15;
+  let M = null;          // 現在のモデル
+  let mState = null;     // 現在のモデルの状態
+
+  const urlF = parseInt(new URLSearchParams(location.search).get('f'), 10);
+  if (!isNaN(urlF) && urlF >= 0 && urlF < MODELS.length) modeIndex = urlF;
+  else modeIndex = (Math.random() * MODELS.length) | 0;
+
+  function pickDuration() {
+    const r = Math.random();
+    return r < 0.15 ? 5 + Math.random() * 3
+         : r < 0.75 ? 10 + Math.random() * 8
+         : 18 + Math.random() * 12;
+  }
+
+  function initModel(idx, t) {
+    modeIndex = idx;
+    M = MODELS[idx];
+    modeStart = t;
+    modeDuration = pickDuration();
+    pickScenePaper();
+    history.length = 0;
+    const s = mState = {};
+    if (M.fam === 'ode') {
+      const np = M.particles || 3;
+      const st = M.start || [1, 1, 1];
+      s.parts = [];
+      for (let i = 0; i < np; i++) {
+        s.parts.push({ p: [st[0] + i * .02, st[1], st[2]], trail: [] });
+      }
+    } else if (M.fam === 'map') {
+      s.x = .1; s.y = .1; s.pts = [];
+    } else if (M.fam === 'curve') {
+      s.u = 0; s.trail = [];
+      if (M.fourier) {
+        s.co = [];
+        for (let k = 1; k <= 5; k++) {
+          s.co.push({ k, a: (0.4 + Math.random()) / k, p1: Math.random() * 6.28, p2: Math.random() * 6.28, p3: Math.random() * 6.28, b: (0.3 + Math.random() * .5) / k });
+        }
+      }
+    } else if (M.fam === 'graph') {
+      initGraphModel(M.g, s);
+    }
+  }
+
+  function nextModel(t) {
+    let idx = (Math.random() * MODELS.length) | 0;
+    if (idx === modeIndex) idx = (idx + 1) % MODELS.length;
+    initModel(idx, t);
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'i') startStrobe(tNow);
+    if (e.key === 'n') nextModel(tNow);
+  });
+
+  // ---- グラフ系モデルの初期化と1ステップ ----
+  function graphLap(u, out) {
+    out.fill(0);
+    for (const e of edges) {
+      const d = u[e.a] - u[e.b];
+      out[e.a] += d; out[e.b] -= d;
+    }
+  }
+  function initGraphModel(g, s) {
+    s.u = new Array(N).fill(0);
+    s.v = new Array(N).fill(0);
+    s.tmp = new Array(N).fill(0);
+    if (g === 'replicator') { s.u = s.u.map(() => (0.5 + rnd()) / N); const c = s.u.reduce((a, b) => a + b, 0); s.u = s.u.map(x => x / c); }
+    if (g === 'kuramoto') { s.u = s.u.map(() => Math.random() * 6.28); s.w = nodes.map(() => nrnd() * .7); s.K = .3; s.r = 0; }
+    if (g === 'heat' || g === 'consensus') s.u = s.u.map(() => nrnd() * 1.6);
+    if (g === 'wave') { s.u[0] = 5; s.u[7 % N] = -5; }
+    if (g === 'sis') { s.u = s.u.map(() => rnd() * .1); s.u[(rnd() * N) | 0] = .9; }
+    if (g === 'lv') s.u = s.u.map(() => .5 + rnd());
+    if (g === 'master') { s.u[(rnd() * N) | 0] = 1; }
+    s.kick = 0;
+  }
+  function stepGraphModel(g, s, dt, tm) {
+    const u = s.u, v = s.v, tmp = s.tmp;
+    if (g === 'replicator') {
+      tmp.fill(0);
+      for (const e of edges) { tmp[e.a] += e.w * u[e.b]; tmp[e.b] -= e.w * u[e.a]; }
+      let mean = 0;
+      for (let i = 0; i < N; i++) mean += u[i] * tmp[i];
+      for (let i = 0; i < N; i++) u[i] = Math.max(u[i] + u[i] * (tmp[i] - mean) * dt * 1.6, 1e-5);
+      const c = u.reduce((a, b) => a + b, 0);
+      for (let i = 0; i < N; i++) u[i] /= c;
+      s.live = [`Σx = ${c.toFixed(4)}   x·Ax = ${mean.toExponential(1)}`];
+    } else if (g === 'kuramoto') {
+      s.K = .2 + 1.9 * (.5 + .5 * Math.sin(tm * .26 - Math.PI / 2));
+      tmp.fill(0);
+      for (const e of edges) { const sn = Math.sin(u[e.b] - u[e.a]); tmp[e.a] += sn; tmp[e.b] -= sn; }
+      for (let i = 0; i < N; i++) u[i] += (s.w[i] + (s.K / K_NEIGHBOR) * tmp[i]) * dt * 2;
+      let re = 0, im = 0;
+      for (let i = 0; i < N; i++) { re += Math.cos(u[i]); im += Math.sin(u[i]); }
+      s.r = Math.hypot(re, im) / N;
+      s.live = [`K = ${s.K.toFixed(2)}   r = ${s.r.toFixed(3)}`,
+                `sync ${'█'.repeat(Math.round(s.r * 16)).padEnd(16, '░')}`];
+    } else if (g === 'heat') {
+      graphLap(u, tmp);
+      for (let i = 0; i < N; i++) u[i] -= tmp[i] * dt * 2;
+      s.kick += dt;
+      if (s.kick > 3.5) { s.kick = 0; const i = (Math.random() * N) | 0, j = (Math.random() * N) | 0; u[i] += 3; u[j] -= 3; }
+      let E = 0; for (let i = 0; i < N; i++) E += u[i] * tmp[i];
+      s.live = [`dirichlet energy uᵀLu = ${Math.max(E, 0).toFixed(3)} ↓`];
+    } else if (g === 'wave') {
+      graphLap(u, tmp);
+      for (let i = 0; i < N; i++) { v[i] += (-4 * tmp[i] - .12 * v[i]) * dt * 2; u[i] += v[i] * dt * 2; }
+      s.kick += dt;
+      if (s.kick > 4) { s.kick = 0; u[(Math.random() * N) | 0] += 4.5; }
+      s.live = [`c² = 4   γ = 0.12`];
+    } else if (g === 'sis') {
+      tmp.fill(0);
+      for (const e of edges) { tmp[e.a] += u[e.b]; tmp[e.b] += u[e.a]; }
+      for (let i = 0; i < N; i++) {
+        u[i] += (.35 * tmp[i] * (1 - u[i]) - .3 * u[i]) * dt * 2;
+        u[i] = Math.min(Math.max(u[i], 0), 1);
+      }
+      const avg = u.reduce((a, b) => a + b, 0) / N;
+      if (avg < .01) u[(Math.random() * N) | 0] = .9;
+      s.live = [`prevalence ⟨p⟩ = ${avg.toFixed(3)}`];
+    } else if (g === 'consensus') {
+      graphLap(u, tmp);
+      const sq = Math.sqrt(dt);
+      for (let i = 0; i < N; i++) u[i] += -tmp[i] * dt * 2 + .9 * sq * nrnd();
+      const avg = u.reduce((a, b) => a + b, 0) / N;
+      let varr = 0; for (let i = 0; i < N; i++) varr += (u[i] - avg) ** 2;
+      s.live = [`disagreement = ${(varr / N).toFixed(3)}`];
+    } else if (g === 'lv') {
+      tmp.fill(0);
+      for (const e of edges) { tmp[e.a] += e.w * u[e.b]; tmp[e.b] -= e.w * u[e.a]; }
+      for (let i = 0; i < N; i++) u[i] = Math.min(Math.max(u[i] + u[i] * tmp[i] * dt * .9, .02), 3.2);
+      s.live = [`Σ log x (conserved-ish) = ${u.reduce((a, b) => a + Math.log(b), 0).toFixed(2)}`];
+    } else if (g === 'master') {
+      tmp.fill(0);
+      for (const e of edges) {
+        const bias = .4 * Math.tanh(e.w);
+        tmp[e.a] += (1 - bias) * u[e.b] - (1 + bias) * u[e.a];
+        tmp[e.b] += (1 + bias) * u[e.a] - (1 - bias) * u[e.b];
+      }
+      for (let i = 0; i < N; i++) u[i] = Math.max(u[i] + tmp[i] * dt * 1.4, 0);
+      const c = u.reduce((a, b) => a + b, 0);
+      for (let i = 0; i < N; i++) u[i] /= c;
+      s.live = [`Σp = 1.000000   max p = ${Math.max(...u).toFixed(3)}`];
+    }
+  }
+  function graphRadius(g, s, i) {
+    const u = s.u[i];
+    if (g === 'replicator') return 2.5 + 25 * Math.sqrt(u);
+    if (g === 'kuramoto') return 4.5 + 1.8 * Math.sin(u);
+    if (g === 'sis') return 3 + 9 * u;
+    if (g === 'master') return 2.5 + 24 * Math.sqrt(u);
+    if (g === 'lv') return 2 + 4 * u;
+    return 4.5 + 1.6 * Math.max(-2.2, Math.min(2.2, u));
+  }
+  function graphLabelVal(g, s, i) {
+    if (g === 'kuramoto') return `θ ${(((s.u[i] % 6.283) + 6.283) % 6.283).toFixed(2)}  ω ${s.w[i].toFixed(2)}`;
+    if (g === 'replicator' || g === 'master') return `p ${s.u[i].toFixed(3)}`;
+    return `u ${s.u[i].toFixed(2)}`;
+  }
+
+  // ---- 各ファミリーの描画 ----
+  const lp1 = [0, 0, 0], lp2 = [0, 0, 0];
+
+  function drawGraphScene(t, dt, tm) {
+    projectNodes(t);
+    stepGraphModel(M.g, mState, dt, tm);
+    rewire(t);
+    for (const e of edges) {
+      const na = nodes[e.a], nb = nodes[e.b];
+      const depth = (na.sc + nb.sc) / 2;
+      const age = Math.min((t - e.born) / 1.5, 1);
+      let alpha = (0.10 + depth * 0.22) * age;
+      if (M.g === 'kuramoto') alpha *= .35 + .85 * (.5 + .5 * Math.cos(mState.u[e.a] - mState.u[e.b]));
+      sketchLine(na.sx, na.sy, nb.sx, nb.sy, e.a * 31 + e.b, alpha, 0.45);
+      frameSegments.push([na.sx, na.sy, nb.sx, nb.sy]);
+    }
+    for (const n of nodes) {
+      let r = Math.min(Math.max(graphRadius(M.g, mState, n.id), 1.2), 14) * n.sc;
+      sketchCircle(n.sx, n.sy, r, 0.2 + n.sc * 0.36, n.jr + t * 0.02);
+      if (M.g === 'kuramoto') {
+        const a = mState.u[n.id];
+        sketchLine(n.sx, n.sy, n.sx + Math.cos(a) * (r + 4), n.sy + Math.sin(a) * (r + 4), n.id * 7, .28 + n.sc * .2, .45);
+      }
+      if (n.labeled && n.sc > 0.82) drawLabel(n, graphLabelVal(M.g, mState, n.id));
+    }
+    return mState.live || [];
+  }
+
+  function drawTrail(trail, S, cx, cy, cz, headLabel, pi) {
+    if (trail.length < 2) return;
+    ctx.lineWidth = 0.5;
+    for (let i = 1; i < trail.length; i++) {
+      const q0 = trail[i - 1], q1 = trail[i];
+      projPoint((q0[0] - cx) * S, -(q0[2] - cz) * S, (q0[1] - cy) * S, lp1);
+      projPoint((q1[0] - cx) * S, -(q1[2] - cz) * S, (q1[1] - cy) * S, lp2);
+      const fade = i / trail.length;
+      ctx.strokeStyle = inkStr((0.04 + fade * 0.36) * (0.5 + lp2[2] * 0.5));
+      ctx.beginPath();
+      ctx.moveTo(lp1[0], lp1[1]);
+      ctx.lineTo(lp2[0], lp2[1]);
+      ctx.stroke();
+      if (i % 8 === 0) frameSegments.push([lp1[0], lp1[1], lp2[0], lp2[1]]);
+    }
+    const h = trail[trail.length - 1];
+    projPoint((h[0] - cx) * S, -(h[2] - cz) * S, (h[1] - cy) * S, lp1);
+    sketchCircle(lp1[0], lp1[1], 4 * lp1[2], 0.5, pi * 2.1 + tNow * 0.02);
+    if (headLabel) {
+      ctx.font = '7px "Courier New", monospace';
+      ctx.fillStyle = inkStr(0.5);
+      ctx.fillText(headLabel, lp1[0] + 8, lp1[1] - 3);
+    }
+  }
+
+  function drawOdeScene(dt) {
+    const s = mState;
+    const steps = Math.max(1, Math.min(M.sub * 3, Math.round(M.sub * dt * 60)));
+    const d = [0, 0, 0];
+    for (let pi = 0; pi < s.parts.length; pi++) {
+      const part = s.parts[pi];
+      const p = part.p;
+      for (let k = 0; k < steps; k++) {
+        M.f(p, d);
+        p[0] += d[0] * M.h; p[1] += d[1] * M.h; p[2] += d[2] * M.h;
+        if (M.noise) {
+          const sq = M.noise * Math.sqrt(M.h);
+          p[0] += sq * nrnd(); p[1] += sq * nrnd(); p[2] += sq * nrnd();
+          if (M.box) for (let a = 0; a < 3; a++) {
+            if (p[a] > M.box) p[a] = 2 * M.box - p[a];
+            if (p[a] < -M.box) p[a] = -2 * M.box - p[a];
+          }
+        }
+        if (!isFinite(p[0]) || Math.abs(p[0]) + Math.abs(p[1]) + Math.abs(p[2]) > 1e5) {
+          const st = M.start || [1, 1, 1];
+          p[0] = st[0] + Math.random() * .1; p[1] = st[1]; p[2] = st[2];
+          part.trail.length = 0;
+        }
+        part.trail.push([p[0], p[1], p[2]]);
+      }
+      while (part.trail.length > 1900) part.trail.shift();
+      const label = pi === 0 ? `ORBIT_0  <${p[0].toFixed(1)}, ${p[1].toFixed(1)}, ${p[2].toFixed(1)}>` : null;
+      drawTrail(part.trail, M.scale, M.c[0], M.c[1], M.c[2], label, pi);
+    }
+    return [`${s.parts.length} orbits, Δx(0) = 0.02`];
+  }
+
+  function drawMapScene() {
+    const s = mState;
+    const o = [0, 0];
+    for (let k = 0; k < 160; k++) {
+      M.next(s.x, s.y, o);
+      s.x = o[0]; s.y = o[1];
+      if (!isFinite(s.x) || Math.abs(s.x) > 1e4) { s.x = .1 + Math.random() * .1; s.y = .1; continue; }
+      s.pts.push([s.x, s.y]);
+    }
+    while (s.pts.length > 5200) s.pts.shift();
+    const S = M.scale, cx = M.c[0], cy = M.c[1];
+    for (let i = 0; i < s.pts.length; i++) {
+      const q = s.pts[i];
+      projPoint((q[0] - cx) * S, -(q[1] - cy) * S, 0, lp1);
+      const a = 0.05 + (i / s.pts.length) * 0.3;
+      ctx.fillStyle = inkStr(a * (0.5 + lp1[2] * 0.5));
+      ctx.fillRect(lp1[0], lp1[1], 0.8, 0.8);
+    }
+    return [`${s.pts.length} points on the plane z=0`];
+  }
+
+  function curvePoint(u, o) {
+    if (M.fourier) {
+      const co = mState.co;
+      o[0] = 0; o[1] = 0; o[2] = 0;
+      for (const c of co) {
+        o[0] += c.a * Math.cos(c.k * u + c.p1);
+        o[1] += c.a * Math.sin(c.k * u + c.p2);
+        o[2] += c.b * Math.sin(c.k * u + c.p3);
+      }
+    } else M.pt(u, o);
+  }
+  function drawCurveScene(dt) {
+    const s = mState;
+    const o = [0, 0, 0];
+    for (let k = 0; k < 4; k++) {
+      s.u += M.speed * dt / 4;
+      curvePoint(s.u, o);
+      s.trail.push([o[0], o[1], o[2]]);
+    }
+    while (s.trail.length > 1500) s.trail.shift();
+    drawTrail(s.trail, M.scale, 0, 0, 0, `t = ${s.u.toFixed(1)}`, 0);
+    return [];
+  }
+
+  // ---- 数式の表示 ----
+  function drawEquations(live) {
+    const x = 18;
+    let y = 30;
+    ctx.font = '8px "Courier New", monospace';
+    ctx.fillStyle = inkStr(0.42);
+    ctx.fillText(`FORMULA ${String(modeIndex + 1).padStart(2, '0')}/${MODELS.length} — ${M.t}`, x, y);
+    y += 18;
+    ctx.font = '12px "Courier New", monospace';
+    ctx.fillStyle = inkStr(0.55);
+    for (const line of M.eq) { ctx.fillText(line, x, y); y += 17; }
+    ctx.font = '8px "Courier New", monospace';
+    ctx.fillStyle = inkStr(0.36);
+    y += 2;
+    for (const line of live) { ctx.fillText(line, x, y); y += 11; }
+  }
+
+  // ---- メインループ ----
+  let prev = performance.now();
+  initModel(modeIndex, prev / 1000);
+  function frame(now) {
+    const dt = Math.min((now - prev) / 1000, 0.1);
+    prev = now;
+    const t = now / 1000;
+    tNow = t;
+    const tm = t - modeStart;
+    if (tm > modeDuration) nextModel(t);
+
+    updateTheme(t);
+    const target = THEMES[themeName];
+    // 黒ストロボは瞬時のカット、紙の色替えは少しだけ柔らかく
+    const k = Math.min(dt * (themeName === 'black' ? 30 : 6), 1);
+    for (let i = 0; i < 3; i++) {
+      cur.paper[i] += (target.paper[i] - cur.paper[i]) * k;
+      cur.ink[i] += (target.ink[i] - cur.ink[i]) * k;
+    }
+    inkBoost += ((themeName === 'light' ? 1 : 1.4) - inkBoost) * k;
+
+    ctx.fillStyle = `rgb(${cur.paper[0]|0},${cur.paper[1]|0},${cur.paper[2]|0})`;
+    ctx.fillRect(0, 0, W, H);
+    drawGhosts();
+
+    setRotation(t);
+    frameSegments = [];
+
+    let live = [];
+    if (M.fam === 'graph') live = drawGraphScene(t, dt, t - modeStart);
+    else if (M.fam === 'ode') live = drawOdeScene(dt);
+    else if (M.fam === 'map') live = drawMapScene();
+    else if (M.fam === 'curve') live = drawCurveScene(dt);
+
+    snapshot(t);
+    drawEquations(live);
+
+    ctx.font = '8px "Courier New", monospace';
+    ctx.fillStyle = inkStr(0.4);
+    ctx.fillText('TOPOLOGICAL ZERO-SUM GAME', 16, H - 28);
+    ctx.fillText('[drag] rotate  [wheel] zoom  [n] next  [i] invert', 16, H - 17);
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

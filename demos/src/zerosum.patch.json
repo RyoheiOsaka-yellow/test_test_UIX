@@ -1,0 +1,26 @@
+[
+ [
+  "const PAPERS = ['light', 'yellow', 'red', 'blue', 'green'];",
+  "const PAPERS = ['light', 'yellow'];"
+ ],
+ [
+  "p = Math.random() < 0.35 ? 'light' : PAPERS[1 + ((Math.random() * 4) | 0)];",
+  "p = Math.random() < 0.5 ? 'light' : 'yellow';"
+ ],
+ [
+  "let nextStrobeAt = 6 + Math.random() * 8;",
+  "let nextStrobeAt = Infinity;"
+ ],
+ [
+  "nextStrobeAt = t + 5 + Math.random() * 10;",
+  "nextStrobeAt = Infinity;"
+ ],
+ [
+  "    let y = 30;\n    ctx.font = '8px \"Courier New\", monospace';",
+  "    let y = 150;\n    ctx.font = '8px \"Courier New\", monospace';"
+ ],
+ [
+  "    ctx.fillText('TOPOLOGICAL ZERO-SUM GAME', 16, H - 28);\n    ctx.fillText('[drag] rotate  [wheel] zoom  [n] next  [i] invert', 16, H - 17);\n",
+  ""
+ ]
+]
