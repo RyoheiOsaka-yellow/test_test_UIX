@@ -1,0 +1,3 @@
+/* 埋め込み用: 操作ヒントを消す（カメラは真上固定・昼で固定は patch.json 側） */
+#hint, #dbg { display: none !important; }
+html, body, canvas { cursor: default !important; }

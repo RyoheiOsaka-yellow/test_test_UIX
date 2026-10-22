@@ -503,6 +503,26 @@ Header set Access-Control-Allow-Origin "*"
 </IfModule>
 `);
 
+// 使われていない動画を公開物から外す。デモに置き換わったパネルの <video> は
+// data-video 属性（元に戻すための控え）だけが残り、ブラウザが読むことはない。
+// 実際に <video data-src> で参照されているファイルだけを残す
+{
+  const used = new Set();
+  const walk = dir => { for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) walk(p);
+    else if (e.name === 'index.html') for (const m of fs.readFileSync(p, 'utf8').matchAll(/<video[^>]*data-src="\/assets\/video\/([^"]+)"/g)) used.add(m[1]);
+  } };
+  walk(DIST);
+  const vdir = DIST + 'assets/video/';
+  let freed = 0, kept = 0;
+  if (fs.existsSync(vdir)) for (const f of fs.readdirSync(vdir)) {
+    if (used.has(f)) { kept++; continue; }
+    freed += fs.statSync(vdir + f).size; fs.unlinkSync(vdir + f);
+  }
+  console.log('動画: 参照されている ' + kept + ' 本を残し、未使用 ' + (freed / 1048576).toFixed(1) + 'MB を外しました');
+}
+
 console.log('\nrobots.txt / sitemap.xml / llms.txt / 404.html / og.png / .htaccess / _headers / assets を出力');
 console.log('dist 合計:', (execSizeMB(DIST)).toFixed(1) + 'MB');
 

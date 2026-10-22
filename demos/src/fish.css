@@ -1,0 +1,14 @@
+/* 埋め込み用: 解説・スライダー・HUDを隠し、水槽だけを全面に敷く。配色はサイトに合わせて暗い側 */
+:root {
+  --bg: #0b0f1d; --grid: rgba(122,148,255,0.07); --grid-major: rgba(122,148,255,0.14);
+  --ink: #e7ebf7; --muted: #939cba; --accent: #7a94ff; --accent-soft: rgba(122,148,255,0.12);
+  --warm: #ff7a5c; --panel: #0b0f1d; --panel-edge: #0b0f1d; --code-bg: #0e1428;
+  --water-top: rgba(122,148,255,0.05); --water-bottom: rgba(122,148,255,0.12);
+  --fish-s: 0.7; --fish-l: 0.66;
+}
+body { background: #0b0f1d !important; }
+main { max-width: none !important; padding: 0 !important; margin: 0 !important; }
+main > :not(.stage) { display: none !important; }
+.stage { position: fixed !important; inset: 0 !important; border: 0 !important; border-radius: 0 !important; }
+.stage canvas { width: 100% !important; height: 100% !important; object-fit: cover; cursor: default !important; }
+.hud, .hint { display: none !important; }

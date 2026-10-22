@@ -1,0 +1,6 @@
+/* 埋め込み用: 編集UI（ヘッダー・パネル・ツールバー）を隠し、3Dビューだけを全面に敷く */
+header, aside, .toolbar, #tooltip { display: none !important; }
+html, body, main { height: 100% !important; }
+main { display: block !important; }
+#viewport { position: fixed !important; inset: 0 !important; width: 100% !important; height: 100% !important; }
+html, body { cursor: default !important; background: #eceada !important; }

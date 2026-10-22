@@ -1,0 +1,14 @@
+[
+ [
+  "const AUTO_CAM = !Q.has('yaw') && !Q.has('pitch');",
+  "const AUTO_CAM = false;"
+ ],
+ [
+  "pitch: Q.has('pitch')? parseFloat(Q.get('pitch')) : -0.24, vy:0, vp:0, h:1.55",
+  "pitch: -1.45, vy:0, vp:0, h:2.6"
+ ],
+ [
+  "const HOUR_FIXED = Number.isFinite(HOUR_Q) ? ((HOUR_Q % 24) + 24) % 24 : null;",
+  "const HOUR_FIXED = 11.0;"
+ ]
+]
