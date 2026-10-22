@@ -1,0 +1,6 @@
+[
+ [
+  "applyCam(0);\nrequestAnimationFrame(loop);",
+  "setLevel('arena', false); FRAME_HOOKS.push(function(dt){ if(!cam.fly && !cam.pov){ cam.yaw += dt*0.035; cam.tyaw = cam.yaw; applyCam(0); } });\napplyCam(0);\nrequestAnimationFrame(loop);"
+ ]
+]

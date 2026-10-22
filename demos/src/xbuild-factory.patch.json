@@ -1,0 +1,6 @@
+[
+ [
+  "scene:simGroup};\nsimOpen();",
+  "scene:simGroup};\nsetTimeout(function(){ try{ var b=siteCtx.items.find(function(i){return i.id==='paint1';}); if(b) enterBuilding(b); if(!bimMode) bimBtn.onclick(); playing=false; autoOrbit=true; camGoal.pitch=0.92; camGoal.dist*=0.9; }catch(e){ console.error('bg-init',e); } }, 400);"
+ ]
+]

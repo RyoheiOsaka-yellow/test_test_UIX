@@ -11,9 +11,9 @@ const ORIGIN = 'https://yellow.technology';   // ★ドメイン確定時はこ�
 
 const ROUTES = [
   { id: 'home', dir: '', title: '株式会社YELLOW｜研究を、素材として。',
-    desc: '株式会社YELLOWは、大学・研究機関・企業の技術シーズを社会へ橋渡しする会社です。人流分析、スポーツDX、そして研究と現場のあいだの運用レイヤーを担います。群馬県高崎市。',
+    desc: '株式会社YELLOWは、大学・研究機関・企業の技術シーズを社会へ橋渡しする会社です。Web・什器・エンタメのインタラクティブな体験、販促・広告のダッシュボードとAIプロトタイピング、産業領域の分析と開発を手がけます。群馬県高崎市。',
     en: { title: 'YELLOW Inc. — Research as material.',
-          desc: 'YELLOW bridges technology seeds from universities, research institutions, and companies into society — mobility analytics, sports DX, and the operational layer between research and real-world use.' } },
+          desc: 'YELLOW bridges technology seeds from universities, research institutions, and companies into society — interactive experiences for web, retail and entertainment, promotion and advertising dashboards with AI prototyping, and analysis and development for industry.' } },
   { id: 'xinteractive', dir: 'xinteractive', title: 'xINTERACTIVE｜Web・什器・広告・エンタメでYELLOWの技術を活用する — 株式会社YELLOW',
     desc: 'Web、什器、広告、エンターテインメント。YELLOWの技術 — リアルタイム3D、シミュレーション、空間データ — を人が実際に触れる領域で活用し、体験の設計から実装、現場運用まで手がけます。株式会社YELLOWのプロダクト xINTERACTIVE。',
     en: { title: 'xINTERACTIVE — YELLOW\'s technology in web, retail fixtures, advertising and entertainment | YELLOW Inc.',
@@ -28,13 +28,13 @@ const ROUTES = [
     service: { name: 'xAD', alt: '販促・広告ダッシュボード、マーケティング戦略、AIプロトタイピング',
                desc: '販促や広告をダッシュボードで可視化してマーケティング戦略を提供し、同時にAIでのプロトタイピングも行うプロダクト。',
                offers: ['ダッシュボードと戦略', 'AIプロトタイピング'] } },
-  { id: 'xbuild', dir: 'xbuild', title: 'xBUILD｜技術シーズを製品・設備・システムとして立ち上げる — 株式会社YELLOW',
-    desc: '大学・研究機関・企業の技術シーズを発掘し、試作から検証、現場で稼働する形まで一貫して設計・実装します。TOLIC加盟、一般社団法人BtoR参画。株式会社YELLOWのプロダクト xBUILD。',
-    en: { title: 'xBUILD — Turning technology seeds into products, facilities and systems | YELLOW Inc.',
-          desc: 'Sourcing technology seeds from universities and research institutions, then designing and implementing them through prototyping and validation into systems that run in the field.' },
-    service: { name: 'xBUILD', alt: '技術シーズの社会実装（研究開発・技術移転）',
-               desc: '技術シーズを、製品・設備・システムとして立ち上げるプロダクト。',
-               offers: ['技術シーズの発掘', '研究開発の支援'] } },
+  { id: 'xbuild', dir: 'xbuild', title: 'xBUILD｜工業・産業から衛星データまで、産業領域の分析と開発 — 株式会社YELLOW',
+    desc: '工場・設備・施設をデジタルツインとして再現し、生産ラインや機械から点群、衛星データまでを分析。その結果を動かすツールやシステムを開発します。株式会社YELLOWのプロダクト xBUILD。',
+    en: { title: 'xBUILD — Analysis and development across industry, from factories to satellite data | YELLOW Inc.',
+          desc: 'Modelling factories, equipment and facilities as digital twins, analysing how they run — from production lines to point clouds and satellite data — and building the systems that put the findings to work.' },
+    service: { name: 'xBUILD', alt: '産業領域の分析と開発（デジタルツイン・システム開発）',
+               desc: '工業・産業から衛星データまで、産業領域の分析と開発を行うプロダクト。',
+               offers: ['産業領域の分析', '産業領域の開発'] } },
   { id: 'privacy', dir: 'privacy', title: 'プライバシーポリシー — 株式会社YELLOW',
     desc: '株式会社YELLOWのウェブサイトにおける個人情報の取り扱いについて定めています。',
     en: { title: 'Privacy Policy — YELLOW Inc.', desc: 'How YELLOW Inc. handles personal information on this website.' },
@@ -51,14 +51,14 @@ const ORG_LD = {
   alternateName: 'YELLOW Inc.',
   url: ORIGIN + '/',
   logo: { '@type': 'ImageObject', url: ORIGIN + '/og.png', width: 1200, height: 630 },
-  email: 't.iwabuchi@yellow.technology',
+  email: 'info@yellow.technology',
   foundingDate: '2022',
-  description: '大学・研究機関・企業の技術シーズを社会へ橋渡しする会社。人流分析、スポーツDX、研究と現場のあいだの運用レイヤーを担う。',
+  description: '大学・研究機関・企業の技術シーズを社会へ橋渡しする会社。Web・什器・エンタメのインタラクティブな体験、販促・広告のダッシュボードとAIプロトタイピング、産業領域の分析と開発を手がける。',
   address: {
     '@type': 'PostalAddress', addressCountry: 'JP', addressRegion: '群馬県',
     addressLocality: '高崎市', streetAddress: '白銀町9番地 白銀ビル3F',
   },
-  knowsAbout: ['技術シーズの社会実装', '人流データ分析', 'スポーツDX', '産学連携', '公的プログラムの採択支援', '3Dモデリング', '点群データ'],
+  knowsAbout: ['技術シーズの社会実装', 'インタラクティブコンテンツ', 'デジタルサイネージ・什器', '販促・広告のデータ分析', 'AIプロトタイピング', 'デジタルツイン', '3Dモデリング', '点群データ', '産学連携'],
   member: [
     { '@type': 'Person', name: '大坂 亮平', jobTitle: '共同創業者' },
     { '@type': 'Person', name: '岩渕 知弘', jobTitle: '共同創業者' },
@@ -222,6 +222,8 @@ base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
       })(LIB_SRC, LIB_DST);
       const LIB_MAP = {
         'https://cdnjs.cloudflare.com/ajax/libs/three.js/0.180.0/three.module.min.js': './lib/three/three.module.min.js',
+        'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js': './lib/three/three.module.min.js',
+        'https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/': './lib/three/addons/',
       };
       for (const f of fs.readdirSync(DEMO_DIR)) {
         if (!f.endsWith('.html')) continue;
@@ -370,7 +372,7 @@ const CASES = buildCases({ DIST, ORIGIN, base, ORG_ID: ORIGIN + '/#organization'
 for (const [u, n] of CASES.sizes) console.log(u.padEnd(30), (n / 1024).toFixed(0).padStart(4) + 'KB');
 
 // ── 3. 付随ファイル
-for (const f of ['og.png', '404.html']) fs.copyFileSync(REPO + f, DIST + f);
+for (const f of ['og.png', '404.html', 'contact.php']) fs.copyFileSync(REPO + f, DIST + f);
 fs.cpSync(REPO + 'assets', DIST + 'assets', { recursive: true });
 
 fs.writeFileSync(DIST + 'robots.txt', `# 株式会社YELLOW
@@ -430,16 +432,16 @@ fs.writeFileSync(DIST + 'llms.txt', `# 株式会社YELLOW（YELLOW Inc.）
   内訳は「Web・什器」と「広告・エンタメ」。体験の設計から実装、現場運用まで。
 - **xAD（届ける）**: 販促や広告の動きをダッシュボードで可視化し、マーケティング戦略を設計して提供する。
   同時にAIでのプロトタイピングも行う。内訳は「ダッシュボードと戦略」と「AIプロトタイピング」。
-- **xBUILD（つくる）**: 技術シーズを、製品・設備・システムとして立ち上げる。
-  内訳は「技術シーズの発掘」と「研究開発の支援」。ライフサイエンス機器の集積拠点
-  TOLIC への加盟を通じ、国内有数の開発パイプラインに接続している。
+- **xBUILD（つくる）**: 工業・産業から衛星データまで、産業領域の分析と開発を行う。
+  工場・設備・施設をデジタルツインとして再現し、現場で稼働するシステムまで開発する。
+  内訳は「産業領域の分析」と「産業領域の開発」。TOLIC 加盟。
 
 ## 主なページ
 
 - [ホーム](${ORIGIN}/): 会社概要、3プロダクト、実績、採用、お問い合わせ
 - [xINTERACTIVE](${ORIGIN}/xinteractive/): Web・什器・広告・エンタメでの技術活用
 - [xAD](${ORIGIN}/xad/): 販促・広告ダッシュボード、戦略、AIプロトタイピング
-- [xBUILD](${ORIGIN}/xbuild/): 技術シーズの社会実装
+- [xBUILD](${ORIGIN}/xbuild/): 産業領域の分析と開発（デジタルツイン）
 - [プライバシーポリシー](${ORIGIN}/privacy/)
 - [利用規約](${ORIGIN}/terms/)
 
@@ -467,7 +469,7 @@ ${CASES.cases.map(c => `- [${c.title}](${ORIGIN}/cases/${c.key}/): ${c.lead}`).j
 - 事業領域: 技術シーズの社会実装
 - 共同創業者: 大坂 亮平（研究運営、産学連携の組成・構造設計）／
   岩渕 知弘（技術シーズ系ベンチャーの市場展開、官公庁のイノベーション・プログラム対応）
-- お問い合わせ: t.iwabuchi@yellow.technology
+- お問い合わせ: info@yellow.technology
 `);
 
 // XServer(Apache) 用

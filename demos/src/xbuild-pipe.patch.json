@@ -1,0 +1,6 @@
+[
+ [
+  "$('#loading').style.display='none';",
+  "$('#loading').style.display='none';setTimeout(function(){ try{ var b=document.getElementById('autoRotate'); if(b && !b.classList.contains('on')) b.click(); }catch(e){} },800);"
+ ]
+]

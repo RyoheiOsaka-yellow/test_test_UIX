@@ -1,0 +1,3 @@
+body > :not(#app){display:none!important}
+#app > :not(canvas){display:none!important}
+html,body{overflow:hidden;background:#0d1117}
