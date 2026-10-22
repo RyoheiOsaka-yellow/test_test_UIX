@@ -67,25 +67,90 @@ const CSS = `/* ═════════════════════�
 
 `;
 
-function casePageHtml(c, prod) {
-  const shots = c.imgs.slice(0, 6).map(im =>
-    `        <figure><img src="${im.src}" alt="${esc(im.alt)}" loading="lazy" decoding="async"></figure>`).join('\n');
-  const body = c.sections.map(s => {
-    let out = `        <h2>${esc(s.heading)}</h2>\n`;
-    for (const p of s.paras) out += `        <p>${esc(p)}</p>\n`;
-    if (s.items.length) out += '        <ul>\n' + s.items.map(i => `          <li>${esc(i)}</li>`).join('\n') + '\n        </ul>\n';
+/* ─────────────────────────────────────────────────────────────
+   事例ページは英語を既定に、日本語は言語切替で出す。
+   本文は cases.json（日本語）と cases.en.json（英語）を同じ構造で持ち、
+   各要素に data-i18n を振って、ページごとに辞書（JA/EN）を差し込む。
+   ───────────────────────────────────────────────────────────── */
+const EN = JSON.parse(fs.readFileSync(path.join(__dirname, 'cases.en.json'), 'utf8'));
+
+// 見出し・仕様項目名は全事例で共通
+const HEAD_JA = ['案件背景', 'できること', '活用シーン'];
+const HEAD_EN = ['Background', 'What it does', 'Use cases'];
+const SPEC_JA = ['対象', 'データソース', '主要指標', 'レイヤー・機能', '想定シナリオ', '提供形態'];
+const SPEC_EN = ['Scope', 'Data sources', 'Key metrics', 'Layers & features', 'Scenario', 'Delivery'];
+
+// 共通ラベル
+const COMMON = {
+  cs_idx_back:  ['← ホームへ戻る', '← Back to home'],
+  cs_idx_tag:   ['Cases', 'Cases'],
+  cs_idx_title: ['実装した事例。', 'What we have built.'],
+  cs_idx_lede:  ['工場のレイアウト検証から駅構内の3Dモデリング、点群データの活用、店頭販促のシミュレーションまで。いずれもブラウザで動くデモを公開しています。',
+                 'From factory layout studies and 3D modelling of station interiors to point-cloud data and in-store promotion simulation. Every case has a working demo that runs in the browser.'],
+  cs_back_list: ['← 事例一覧へ戻る', '← All cases'],
+  cs_open_demo: ['デモを開く ↗', 'Open demo ↗'],
+  cs_spec_h:    ['仕様', 'Specifications'],
+  cs_nav_list:  ['← 事例一覧', '← All cases'],
+  cs_nav_contact: ['お問い合わせ →', 'Contact →'],
+  cs_about_xbuild: ['xBUILD について →', 'About xBUILD →'],
+  cs_about_xad: ['xAD について →', 'About xAD →'],
+  cs_about_xinteractive: ['xINTERACTIVE について →', 'About xINTERACTIVE →'],
+};
+
+// 事例ごとの辞書を組む。戻り値: { ja:{key:text}, en:{key:text}, k(name)→key }
+function dictFor(c, i) {
+  const e = EN[c.key];
+  if (!e) throw new Error('cases.en.json に ' + c.key + ' がありません');
+  const p = 'cs_' + String(i).padStart(2, '0') + '_';
+  const ja = {}, en = {};
+  const put = (name, j, g) => { ja[p + name] = j; en[p + name] = g; return p + name; };
+  put('title', c.title, e.title); put('eyebrow', c.eyebrow, e.eyebrow);
+  put('tags', c.tags, e.tags); put('lead', c.lead, e.lead);
+  if (c.sections.length !== e.sections.length) throw new Error(c.key + ': sections の数が日英で違います');
+  c.sections.forEach((s, si) => {
+    const es = e.sections[si];
+    const hi = HEAD_JA.indexOf(s.heading);
+    if (hi === -1) throw new Error(c.key + ': 未知の見出し ' + s.heading);
+    put('h' + si, s.heading, HEAD_EN[hi]);
+    if (s.paras.length !== es.paras.length || s.items.length !== es.items.length)
+      throw new Error(c.key + ': section ' + si + ' の段落/項目数が日英で違います');
+    s.paras.forEach((t, pi) => put('p' + si + '_' + pi, t, es.paras[pi]));
+    s.items.forEach((t, ii) => put('i' + si + '_' + ii, t, es.items[ii]));
+  });
+  if (c.spec.length !== e.spec.length) throw new Error(c.key + ': spec の行数が日英で違います');
+  c.spec.forEach(([k, v], ri) => {
+    const ki = SPEC_JA.indexOf(k);
+    if (ki === -1) throw new Error(c.key + ': 未知の仕様項目 ' + k);
+    put('sk' + ri, k, SPEC_EN[ki]); put('sv' + ri, v, e.spec[ri]);
+  });
+  if (c.imgs.length !== e.alts.length) throw new Error(c.key + ': 画像の数と alts の数が違います');
+  return { ja, en, p, e };
+}
+
+function casePageHtml(c, prod, d) {
+  const e = d.e, p = d.p;
+  const shots = c.imgs.slice(0, 6).map((im, k) =>
+    `        <figure><img src="${im.src}" alt="${esc(e.alts[k])}" loading="lazy" decoding="async"></figure>`).join('\n');
+  const body = c.sections.map((s, si) => {
+    const es = e.sections[si];
+    let out = `        <h2 data-i18n="${p}h${si}">${esc(HEAD_EN[HEAD_JA.indexOf(s.heading)])}</h2>\n`;
+    es.paras.forEach((t, pi) => { out += `        <p data-i18n="${p}p${si}_${pi}">${esc(t)}</p>\n`; });
+    if (es.items.length) out += '        <ul>\n' + es.items.map((t, ii) => `          <li data-i18n="${p}i${si}_${ii}">${esc(t)}</li>`).join('\n') + '\n        </ul>\n';
     return out;
   }).join('');
-  const spec = c.spec.map(([k, v]) => `          <tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join('\n');
+  const spec = c.spec.map(([k, v], ri) =>
+    `          <tr><th data-i18n="${p}sk${ri}">${esc(SPEC_EN[SPEC_JA.indexOf(k)])}</th><td data-i18n="${p}sv${ri}">${esc(e.spec[ri])}</td></tr>`).join('\n');
+  const about = prod ? `<a href="/${prod.id}/" data-i18n="cs_about_${prod.id}">${esc(COMMON['cs_about_' + prod.id][1])}</a>`
+                     : `<a href="/#contact" data-i18n="cs_nav_contact">${COMMON.cs_nav_contact[1]}</a>`;
 
   return `<div class="page active" id="page-case">
-  <section class="case" lang="ja">
+  <section class="case">
     <div class="case__wrap">
-      <a class="back" href="/cases/">← 事例一覧へ戻る</a>
-      <p class="case__eyebrow">${esc(c.eyebrow)}</p>
-      <h1 class="case__title">${esc(c.title)}</h1>
-      <p class="case__lead">${esc(c.lead)}</p>
-      ${c.demo ? `<p><a class="case__demo" href="${esc(c.demo)}" target="_blank" rel="noopener">デモを開く ↗</a></p>` : ''}
+      <a class="back" href="/cases/" data-i18n="cs_back_list">${COMMON.cs_back_list[1]}</a>
+      <p class="case__eyebrow" data-i18n="${p}eyebrow">${esc(e.eyebrow)}</p>
+      <h1 class="case__title" data-i18n="${p}title">${esc(e.title)}</h1>
+      <p class="case__lead" data-i18n="${p}lead">${esc(e.lead)}</p>
+      ${c.demo ? `<p><a class="case__demo" href="${esc(c.demo)}" target="_blank" rel="noopener" data-i18n="cs_open_demo">${COMMON.cs_open_demo[1]}</a></p>` : ''}
 
       <div class="case__shots">
 ${shots}
@@ -95,7 +160,7 @@ ${shots}
         <div>
 ${body}        </div>
         <aside>
-          <h2>仕様</h2>
+          <h2 data-i18n="cs_spec_h">${COMMON.cs_spec_h[1]}</h2>
           <table class="case__spec"><tbody>
 ${spec}
           </tbody></table>
@@ -103,8 +168,8 @@ ${spec}
       </div>
 
       <nav class="case__nav">
-        <a href="/cases/">← 事例一覧</a>
-        ${prod ? `<a href="/${prod.id}/">${prod.label} について →</a>` : '<a href="/#contact">お問い合わせ →</a>'}
+        <a href="/cases/" data-i18n="cs_nav_list">${COMMON.cs_nav_list[1]}</a>
+        ${about}
       </nav>
     </div>
   </section>
@@ -112,26 +177,26 @@ ${spec}
 `;
 }
 
-function indexPageHtml(cases) {
-  const cards = cases.map(c => {
-    const prod = productOf(c.eyebrow);
+function indexPageHtml(cases, dicts) {
+  const cards = cases.map((c, i) => {
+    const prod = productOf(c.eyebrow), d = dicts[i];
     return `      <a class="ccard" href="/cases/${c.key}/">
-        <div class="ccard__img"><img src="${c.imgs[0] ? c.imgs[0].src : ''}" alt="${esc(c.title)}" loading="lazy" decoding="async"></div>
+        <div class="ccard__img"><img src="${c.imgs[0] ? c.imgs[0].src : ''}" alt="${esc(d.e.title)}" loading="lazy" decoding="async"></div>
         <div class="ccard__body">
-          <div class="ccard__tag">${esc(prod ? prod.label : (c.tags || '事例'))}</div>
-          <h2 class="ccard__t">${esc(c.title)}</h2>
-          <p class="ccard__d">${esc(c.lead)}</p>
+          <div class="ccard__tag"${prod ? '' : ` data-i18n="${d.p}tags"`}>${esc(prod ? prod.label : d.e.tags)}</div>
+          <h2 class="ccard__t" data-i18n="${d.p}title">${esc(d.e.title)}</h2>
+          <p class="ccard__d" data-i18n="${d.p}lead">${esc(d.e.lead)}</p>
         </div>
       </a>`;
   }).join('\n');
 
   return `<div class="page active" id="page-cases">
-  <section class="cases" lang="ja">
+  <section class="cases">
     <div class="cases__head">
-      <a class="back" href="/">← ホームへ戻る</a>
-      <p class="eyebrow">Cases</p>
-      <h1 class="title" style="font-size:clamp(26px,3.6vw,48px)">実装した事例。</h1>
-      <p class="lede">工場のレイアウト検証から駅構内の3Dモデリング、点群データの活用、店頭販促のシミュレーションまで。いずれもブラウザで動くデモを公開しています。</p>
+      <a class="back" href="/" data-i18n="cs_idx_back">${COMMON.cs_idx_back[1]}</a>
+      <p class="eyebrow" data-i18n="cs_idx_tag">${COMMON.cs_idx_tag[1]}</p>
+      <h1 class="title" style="font-size:clamp(26px,3.6vw,48px)" data-i18n="cs_idx_title">${COMMON.cs_idx_title[1]}</h1>
+      <p class="lede" data-i18n="cs_idx_lede">${COMMON.cs_idx_lede[1]}</p>
     </div>
     <div class="cases__grid">
 ${cards}
@@ -142,7 +207,8 @@ ${cards}
 }
 
 module.exports = function buildCases({ DIST, ORIGIN, base, ORG_ID }) {
-  const cases = JSON.parse(fs.readFileSync('/home/user/test_test_UIX/cases.json', 'utf8'));
+  const cases = JSON.parse(fs.readFileSync(path.join(__dirname, 'cases.json'), 'utf8'));
+  const dicts = cases.map((c, i) => dictFor(c, i));
 
   // 共通CSSを注入
   let withCss = base.replace('/* 法務ページ（プライバシーポリシー・利用規約） */', CSS + '/* 法務ページ（プライバシーポリシー・利用規約） */');
@@ -151,8 +217,21 @@ module.exports = function buildCases({ DIST, ORIGIN, base, ORG_ID }) {
   const pageRe = /<div class="page(?: active)?" id="page-[a-z]+">[\s\S]*?(?=\n<\/main>)/;
   if (!pageRe.test(withCss)) throw new Error('cases: page block not found');
 
+  // 辞書（JA/EN）をページに差し込む。キーはハイフンを含みうるので引用符付きで書く
+  const JA_ANCHOR = '    meta_title: "株式会社YELLOW",', EN_ANCHOR = '    meta_title: "YELLOW Inc.';
+  if (!withCss.includes(JA_ANCHOR) || !withCss.includes(EN_ANCHOR)) throw new Error('cases: 辞書のアンカーが見つかりません');
+  const lines = o => Object.entries(o).map(([k, v]) => '    ' + JSON.stringify(k) + ': ' + JSON.stringify(v) + ',\n').join('');
+  function withDict(h, ja, en) {
+    return h.replace(JA_ANCHOR, lines(ja) + JA_ANCHOR).replace(EN_ANCHOR, lines(en) + EN_ANCHOR);
+  }
+  const commonJa = {}, commonEn = {};
+  for (const [k, [j, g]] of Object.entries(COMMON)) { commonJa[k] = j; commonEn[k] = g; }
+
   function emit(dir, inner, meta) {
-    let h = withCss.replace(pageRe, inner);
+    // meta.page … window.__PAGE の値。title/description は辞書側で言語ごとに切り替わる
+    const ja = { ...commonJa, ...meta.ja, ['meta_title_' + meta.page]: meta.titleJa, ['meta_desc_' + meta.page]: meta.descJa };
+    const en = { ...commonEn, ...meta.en, ['meta_title_' + meta.page]: meta.title,   ['meta_desc_' + meta.page]: meta.desc };
+    let h = withDict(withCss, ja, en).replace(pageRe, inner);
     h = h.replace(/<title>[^<]*<\/title>/, '<title>' + esc(meta.title) + '</title>');
     h = h.replace(/(<meta name="description" id="metaDesc" content=")[^"]*(")/, '$1' + esc(meta.desc) + '$2');
     h = h.replace(/<link rel="canonical" href="[^"]*">/, '<link rel="canonical" href="' + meta.url + '">');
@@ -162,7 +241,7 @@ module.exports = function buildCases({ DIST, ORIGIN, base, ORG_ID }) {
     if (meta.image) h = h.replace(/<meta property="og:image" content="[^"]*">/, '<meta property="og:image" content="' + ORIGIN + meta.image + '">');
     h = h.replace(/<script type="application\/ld\+json">[\s\S]*?<\/script>/, '<script type="application/ld+json">\n' + meta.ld + '\n</script>');
     h = h.replace('<link rel="preconnect" href="https://fonts.googleapis.com">',
-      '<script>window.__PAGE=null;window.__TITLE_FIXED=true;</script>\n<link rel="preconnect" href="https://fonts.googleapis.com">');
+      '<script>window.__PAGE=' + JSON.stringify(meta.page) + ';</script>\n<link rel="preconnect" href="https://fonts.googleapis.com">');
     // ハッシュルーターのリンクを実URLへ（これが無いと事例ページから事業・法務へ飛べない）
     h = h.replace(/href="#\/xbuild"/g, 'href="/xbuild/"')
          .replace(/href="#\/xad"/g, 'href="/xad/"')
@@ -185,63 +264,70 @@ module.exports = function buildCases({ DIST, ORIGIN, base, ORG_ID }) {
     '@context': 'https://schema.org',
     '@graph': [{
       '@type': 'CollectionPage', '@id': listUrl + '#webpage', url: listUrl,
-      name: '事例 — 株式会社YELLOW', inLanguage: 'ja',
+      name: 'Cases — YELLOW Inc.', inLanguage: ['en', 'ja'],
       about: { '@id': ORG_ID },
       mainEntity: {
         '@type': 'ItemList', numberOfItems: cases.length,
         itemListElement: cases.map((c, i) => ({
-          '@type': 'ListItem', position: i + 1, name: c.title,
+          '@type': 'ListItem', position: i + 1, name: dicts[i].e.title,
           url: ORIGIN + '/cases/' + c.key + '/',
         })),
       },
     }, {
       '@type': 'BreadcrumbList',
       itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'ホーム', item: ORIGIN + '/' },
-        { '@type': 'ListItem', position: 2, name: '事例', item: listUrl },
+        { '@type': 'ListItem', position: 1, name: 'Home', item: ORIGIN + '/' },
+        { '@type': 'ListItem', position: 2, name: 'Cases', item: listUrl },
       ],
     }],
   }, null, 2);
 
   const sizes = [];
-  sizes.push(['/cases/', emit('cases', indexPageHtml(cases), {
-    title: '事例 — 株式会社YELLOW',
-    desc: '工場のレイアウト検証、駅構内の3Dモデリング、点群データの活用、店頭販促シミュレーションなど、株式会社YELLOWが実装した' + cases.length + '件の事例。いずれもブラウザで動くデモを公開しています。',
+  const idxJa = {}, idxEn = {};
+  dicts.forEach(d => { for (const k of ['title', 'lead', 'tags']) { idxJa[d.p + k] = d.ja[d.p + k]; idxEn[d.p + k] = d.en[d.p + k]; } });
+  sizes.push(['/cases/', emit('cases', indexPageHtml(cases, dicts), {
+    page: 'cases', ja: idxJa, en: idxEn,
+    title: 'Cases — YELLOW Inc.',
+    titleJa: '事例 — 株式会社YELLOW',
+    desc: 'Factory layout studies, 3D modelling of station interiors, point-cloud data, in-store promotion simulation and more: ' + cases.length + ' cases implemented by YELLOW Inc., each with a working browser demo.',
+    descJa: '工場のレイアウト検証、駅構内の3Dモデリング、点群データの活用、店頭販促シミュレーションなど、株式会社YELLOWが実装した' + cases.length + '件の事例。いずれもブラウザで動くデモを公開しています。',
     url: listUrl, ld: listLd, image: cases[0] && cases[0].imgs[0] && cases[0].imgs[0].src,
   })]);
 
-  for (const c of cases) {
-    const prod = productOf(c.eyebrow);
+  cases.forEach((c, i) => {
+    const prod = productOf(c.eyebrow), d = dicts[i];
     const url = ORIGIN + '/cases/' + c.key + '/';
     const ld = JSON.stringify({
       '@context': 'https://schema.org',
       '@graph': [{
         '@type': ['CreativeWork', 'WebPage'], '@id': url + '#webpage', url,
-        name: c.title, headline: c.title, description: c.lead, inLanguage: 'ja',
+        name: d.e.title, headline: d.e.title, description: d.e.lead, inLanguage: ['en', 'ja'],
         creator: { '@id': ORG_ID }, publisher: { '@id': ORG_ID },
-        image: c.imgs.slice(0, 3).map(i => ORIGIN + i.src),
+        image: c.imgs.slice(0, 3).map(im => ORIGIN + im.src),
         about: prod ? { '@type': 'Service', name: prod.label, url: ORIGIN + '/' + prod.id + '/' } : undefined,
         mainEntityOfPage: url,
-        ...(c.demo ? { workExample: { '@type': 'WebApplication', url: c.demo, name: c.title + ' デモ', applicationCategory: 'BusinessApplication', operatingSystem: 'Web' } } : {}),
+        ...(c.demo ? { workExample: { '@type': 'WebApplication', url: c.demo, name: d.e.title + ' demo', applicationCategory: 'BusinessApplication', operatingSystem: 'Web' } } : {}),
       }, {
         '@type': 'BreadcrumbList',
         itemListElement: [
-          { '@type': 'ListItem', position: 1, name: 'ホーム', item: ORIGIN + '/' },
-          { '@type': 'ListItem', position: 2, name: '事例', item: ORIGIN + '/cases/' },
-          { '@type': 'ListItem', position: 3, name: c.title, item: url },
+          { '@type': 'ListItem', position: 1, name: 'Home', item: ORIGIN + '/' },
+          { '@type': 'ListItem', position: 2, name: 'Cases', item: ORIGIN + '/cases/' },
+          { '@type': 'ListItem', position: 3, name: d.e.title, item: url },
         ],
       }],
     }, null, 2);
-
-    sizes.push(['/cases/' + c.key + '/', emit(path.join('cases', c.key), casePageHtml(c, prod), {
-      title: c.title + ' — 事例 | 株式会社YELLOW',
-      desc: c.lead.slice(0, 118),
+    sizes.push(['/cases/' + c.key + '/', emit(path.join('cases', c.key), casePageHtml(c, prod, d), {
+      page: 'case_' + c.key.replace(/-/g, '_'), ja: d.ja, en: d.en,
+      title: d.e.title + ' — Cases | YELLOW Inc.',
+      titleJa: c.title + ' — 事例 | 株式会社YELLOW',
+      desc: d.e.lead.slice(0, 160),
+      descJa: c.lead.slice(0, 118),
       url, ld, image: c.imgs[0] && c.imgs[0].src,
     })]);
-  }
+  });
 
   // 画像をコピー
-  fs.cpSync('/home/user/test_test_UIX/assets/case', path.join(DIST, 'assets/case'), { recursive: true });
+  fs.cpSync(path.join(__dirname, 'assets/case'), path.join(DIST, 'assets/case'), { recursive: true });
 
   return { cases, sizes };
 };
