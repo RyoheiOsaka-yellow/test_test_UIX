@@ -1,0 +1,10 @@
+[
+ [
+  "run();\ngo(\"brief\");",
+  "run(); go(\"screen\");"
+ ],
+ [
+  ":root:not([data-theme=\"light\"]){",
+  ":root[data-theme=\"dark\"]{"
+ ]
+]

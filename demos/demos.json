@@ -21,9 +21,15 @@
     "xbuild-hero": [],
     "xbuild-cap01": [],
     "xbuild-cap02": [],
-    "xad-hero": [],
-    "xad-cap01": [],
-    "xad-cap02": [],
+    "xad-hero": [
+      "xad-store"
+    ],
+    "xad-cap01": [
+      "xad-studio"
+    ],
+    "xad-cap02": [
+      "xad-logoai"
+    ],
     "xinteractive-hero": [
       "fish"
     ],
@@ -41,7 +47,10 @@
     "home-careers": "#000000",
     "xinteractive-hero": "#0b0f1d",
     "xinteractive-cap01": "#ecebe8",
-    "xinteractive-cap02": "#0b1422"
+    "xinteractive-cap02": "#0b1422",
+    "xad-hero": "#e9eef5",
+    "xad-cap01": "#f5f5f7",
+    "xad-cap02": "#edeae1"
   },
   "settle": {
     "home-hero": 900,
@@ -51,11 +60,17 @@
     "home-careers": 900,
     "xinteractive-hero": 900,
     "xinteractive-cap01": 1500,
-    "xinteractive-cap02": 1500
+    "xinteractive-cap02": 1500,
+    "xad-hero": 2500,
+    "xad-cap01": 1500,
+    "xad-cap02": 1200
   },
   "theme": {
     "home-xinteractive": "light",
-    "xinteractive-cap01": "light"
+    "xinteractive-cap01": "light",
+    "xad-hero": "light",
+    "xad-cap01": "light",
+    "xad-cap02": "light"
   },
   "keep": [
     "inkwhite",
@@ -64,7 +79,10 @@
     "radiance",
     "fish",
     "clearwater",
-    "zerosum"
+    "zerosum",
+    "xad-store",
+    "xad-studio",
+    "xad-logoai"
   ],
   "reveal": {
     "home-xbuild": "fade",
@@ -73,14 +91,18 @@
     "home-hero": "fade",
     "xinteractive-hero": "fade",
     "xinteractive-cap01": "fade",
-    "xinteractive-cap02": "fade"
+    "xinteractive-cap02": "fade",
+    "xad-hero": "fade",
+    "xad-cap01": "fade",
+    "xad-cap02": "fade"
   },
   "mobile": {
     "_": "スマホでの手加減。dpr=描画解像度の上限 / skip=スマホでは動かさないデモ（ポスターのまま）",
     "dpr": 1.25,
     "skip": [
       "clearwater",
-      "hicity"
+      "hicity",
+      "xad-store"
     ]
   }
 }

@@ -1,0 +1,18 @@
+[
+ [
+  "  if (!S3D.pov) {\n    ctx.font = \"400 11px",
+  "  if (false) {\n    ctx.font = \"400 11px"
+ ],
+ [
+  "  ctx.fillText(fitText(info, W - 24 - legendW - 12), 12, 20);\n",
+  "\n"
+ ],
+ [
+  "\n  ctx.fillText(fitText(hint, W - 24), 12, H - 12);\n",
+  "\n"
+ ],
+ [
+  "setupViewToggle();\n  setup3DControls();",
+  "setupViewToggle();\n  setup3DControls();\n  (function(){ const b=document.querySelector('.view-tab[data-view=\"3d\"]'); if(b) b.click(); S3D.yaw=0.85; S3D.pitch=0.38; S3D.dist=9.5;\n    (function spin(){ if(S3D.active && !S3D.dragging){ S3D.yaw += 0.0018; try{ render3D(); }catch(e){} } requestAnimationFrame(spin); })(); })();"
+ ]
+]

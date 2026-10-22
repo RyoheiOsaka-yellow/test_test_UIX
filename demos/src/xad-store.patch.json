@@ -1,0 +1,22 @@
+[
+ [
+  "trails: false, labels: true },",
+  "trails: false, labels: false },"
+ ],
+ [
+  "  if (activeView === '3d') {\n    updateVisuals(realDt);",
+  "  if (activeView === '3d') {\n    if (!camTween && !followTarget) { camState.theta += realDt * 0.03; applyCam(); }\n    updateVisuals(realDt);"
+ ],
+ [
+  "  sign.position.set(STORE.doors[0].x, H + 1.0, D / 2 + 0.3);\n  storeGroup.add(sign);",
+  "  sign.visible = false;"
+ ],
+ [
+  "novStandGroup.add(novLabel);",
+  "novLabel.visible = false;"
+ ],
+ [
+  "over: { theta: -0.5, phi: 0.9, r: 17, tx: 0, ty: 0, tz: 0.6 }",
+  "over: { theta: -0.5, phi: 0.9, r: 14, tx: 0, ty: 0, tz: 0.6 }"
+ ]
+]

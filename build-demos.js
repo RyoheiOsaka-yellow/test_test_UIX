@@ -16,7 +16,7 @@
      ・何度実行しても同じ結果になる（前回の分は元の <video> に戻してからやり直す）
 
    demos/src/ に置ける補助ファイル（どちらも任意）:
-     <id>.css        … デモ側の <style> の末尾に足す上書き。HUDを隠す等
+     <id>.css        … デモ文書の末尾に <style> として足す上書き。HUDを隠す等
      <id>.patch.json … [["置換前","置換後"], ...] の文字列置換。粒子数を落とす等
    ═══════════════════════════════════════════════════════════════════════ */
 'use strict';
@@ -70,9 +70,9 @@ function prepare(id) {
 
   // 外側の器はこちらで組み立てるので落とす
   s = s.replace(/<!doctype[^>]*>/gi, '')
-       .replace(/<\/?html[^>]*>/gi, '')
-       .replace(/<\/?head[^>]*>/gi, '')
-       .replace(/<\/?body[^>]*>/gi, '')
+       .replace(/<\/?html(?=[\s>\/])[^>]*>/gi, '')
+       .replace(/<\/?head(?=[\s>\/])[^>]*>/gi, '')   // <header> を巻き込まない
+       .replace(/<\/?body(?=[\s>\/])[^>]*>/gi, '')
        .replace(/<meta\s+charset[^>]*>/gi, '')
        .replace(/<meta\s+name=["']viewport["'][^>]*>/gi, '')
        .replace(/<title>[\s\S]*?<\/title>/gi, '')
@@ -92,9 +92,8 @@ function prepare(id) {
   const cs = SRCDIR + id + '.css';
   if (fs.existsSync(cs)) {
     const css = fs.readFileSync(cs, 'utf8');
-    const i = s.lastIndexOf('</style>');
-    if (i !== -1) s = s.slice(0, i) + '\n' + css + '\n' + s.slice(i);
-    else s = '<style>\n' + css + '\n</style>\n' + s;
+    // 文書の末尾に独立した <style> として足す（JS文字列内の </style> に紛れ込まず、後勝ちで必ず効く）
+    s = s + '\n<style>\n' + css + '\n</style>';
   }
 
   // 外部読み込みがあると、公開時に読めない/遅くなる可能性があるので知らせる
@@ -281,6 +280,7 @@ if (used.length) {
     '  linear-gradient(to top,rgba(255,255,255,.9) 0%,rgba(255,255,255,.45) 34%,rgba(255,255,255,.03) 66%),',
     '  linear-gradient(to right,rgba(255,255,255,.5) 0%,rgba(255,255,255,0) 55%);}',
     '.panel--light .title,.panel--light .lede{color:#0b0d10;}',
+    '.panel--light .prodhero__sub,.panel--light .back{color:#0b0d10;}',
     '.panel--light .eyebrow{color:rgba(10,12,16,.72);}',
     '.panel--light .eyebrow .nt,.panel--light .title .nt{color:#0b0d10;}',
     '.panel--light .panel__idx{color:rgba(10,12,16,.55);}',

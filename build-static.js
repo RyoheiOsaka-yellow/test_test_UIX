@@ -21,13 +21,13 @@ const ROUTES = [
     service: { name: 'xINTERACTIVE', alt: 'Web・什器・広告・エンタメ領域での技術活用',
                desc: 'YELLOWの技術を、Web、什器、広告、エンターテインメントの領域で活用するプロダクト。',
                offers: ['Web・什器', '広告・エンタメ'] } },
-  { id: 'xad', dir: 'xad', title: 'xAD｜人流・行動データから届け方を設計する — 株式会社YELLOW',
-    desc: '交通手段別・時間別・経路別の来訪動態をデータとして捕捉し、混雑緩和や導線設計に落とし込みます。公的プログラムへの採択支援まで。SOIP×いわきFC。株式会社YELLOWのプロダクト xAD。',
-    en: { title: 'xAD — Designing how a message lands, from mobility and behaviour data | YELLOW Inc.',
-          desc: 'Capturing visitor dynamics by mode, time and route, then turning them into congestion relief and circulation design.' },
-    service: { name: 'xAD', alt: '人流・行動データ分析、公的プログラム採択支援',
-               desc: '人流と行動のデータから、伝えるべき相手と場所と時間を割り出すプロダクト。',
-               offers: ['人流・行動データ分析', '公的プログラムへの採択'] } },
+  { id: 'xad', dir: 'xad', title: 'xAD｜販促・広告をダッシュボードで可視化し、戦略とAIプロトタイプを届ける — 株式会社YELLOW',
+    desc: '店頭・デジタル・メディアにまたがる販促や広告の動きをダッシュボードで可視化し、マーケティング戦略を設計して提供。同時にAIでのプロトタイピングも行い、試せるかたちで届けます。株式会社YELLOWのプロダクト xAD。',
+    en: { title: 'xAD — Promotion and advertising dashboards, marketing strategy and AI prototyping | YELLOW Inc.',
+          desc: 'Visualising promotion and advertising on dashboards, turning them into marketing strategy, and prototyping the ideas with AI at the same time.' },
+    service: { name: 'xAD', alt: '販促・広告ダッシュボード、マーケティング戦略、AIプロトタイピング',
+               desc: '販促や広告をダッシュボードで可視化してマーケティング戦略を提供し、同時にAIでのプロトタイピングも行うプロダクト。',
+               offers: ['ダッシュボードと戦略', 'AIプロトタイピング'] } },
   { id: 'xbuild', dir: 'xbuild', title: 'xBUILD｜技術シーズを製品・設備・システムとして立ち上げる — 株式会社YELLOW',
     desc: '大学・研究機関・企業の技術シーズを発掘し、試作から検証、現場で稼働する形まで一貫して設計・実装します。TOLIC加盟、一般社団法人BtoR参画。株式会社YELLOWのプロダクト xBUILD。',
     en: { title: 'xBUILD — Turning technology seeds into products, facilities and systems | YELLOW Inc.',
@@ -428,9 +428,8 @@ fs.writeFileSync(DIST + 'llms.txt', `# 株式会社YELLOW（YELLOW Inc.）
 
 - **xINTERACTIVE（動かす）**: YELLOWの技術を、Web、什器、広告、エンターテインメントの領域で活用する。
   内訳は「Web・什器」と「広告・エンタメ」。体験の設計から実装、現場運用まで。
-- **xAD（届ける）**: 人流と行動のデータから、伝えるべき相手と場所と時間を割り出す。
-  内訳は「人流・行動データ分析」と「公的プログラムへの採択」。交通手段別・時間別・
-  経路別の来訪動態を捕捉し、混雑緩和や導線設計に落とし込む。
+- **xAD（届ける）**: 販促や広告の動きをダッシュボードで可視化し、マーケティング戦略を設計して提供する。
+  同時にAIでのプロトタイピングも行う。内訳は「ダッシュボードと戦略」と「AIプロトタイピング」。
 - **xBUILD（つくる）**: 技術シーズを、製品・設備・システムとして立ち上げる。
   内訳は「技術シーズの発掘」と「研究開発の支援」。ライフサイエンス機器の集積拠点
   TOLIC への加盟を通じ、国内有数の開発パイプラインに接続している。
@@ -439,7 +438,7 @@ fs.writeFileSync(DIST + 'llms.txt', `# 株式会社YELLOW（YELLOW Inc.）
 
 - [ホーム](${ORIGIN}/): 会社概要、3プロダクト、実績、採用、お問い合わせ
 - [xINTERACTIVE](${ORIGIN}/xinteractive/): Web・什器・広告・エンタメでの技術活用
-- [xAD](${ORIGIN}/xad/): 人流・行動データ分析
+- [xAD](${ORIGIN}/xad/): 販促・広告ダッシュボード、戦略、AIプロトタイピング
 - [xBUILD](${ORIGIN}/xbuild/): 技術シーズの社会実装
 - [プライバシーポリシー](${ORIGIN}/privacy/)
 - [利用規約](${ORIGIN}/terms/)
