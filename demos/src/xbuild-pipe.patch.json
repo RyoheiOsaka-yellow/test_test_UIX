@@ -1,6 +1,6 @@
 [
  [
   "$('#loading').style.display='none';",
-  "$('#loading').style.display='none';setTimeout(function(){ try{ var b=document.getElementById('autoRotate'); if(b && !b.classList.contains('on')) b.click(); }catch(e){} },800);"
+  "$('#loading').style.display='none';(function(){ function on(){ try{ var b=document.getElementById('autoRotate'); if(b && !b.classList.contains('on')) b.click(); }catch(e){} } if(window.__YGO) setTimeout(on,800); else window.addEventListener('ydemo-go', function(){ setTimeout(on,300); }); })();"
  ]
 ]

@@ -114,15 +114,26 @@ function prepare(id) {
     + 'Object.defineProperty(window,"devicePixelRatio",{configurable:true,get:function(){return cap;}});'
     + '}catch(e){}})();<\/script>\n' + s;
 
+  /* 「動き出してよい」合図（ydemo-go）の受け口。
+     ポスター→デモの切り替えを目立たせないため、カメラ等の動きは親から合図が来るまで止めておく
+     （デモ側は window.__YGO を見るか 'ydemo-go' イベントを待つ）。
+     単体で開いたときは即座に、iframe 内で合図が来ないときは 12 秒で自動的に動き出す。
+     ?hold=1 を付けて開くと止まったまま（ポスター撮影用） */
+  s = '<script>(function(){var hold=/[?&]hold=1/.test(location.search);window.__YGO=false;'
+    + 'function go(){if(window.__YGO)return;window.__YGO=true;try{window.dispatchEvent(new Event("ydemo-go"))}catch(e){}}'
+    + 'window.__ygo=go;window.addEventListener("message",function(e){if(e.data==="ydemo-go")go()});'
+    + 'if(!hold){if(window===window.parent)go();else setTimeout(go,12000)}})();<\/script>\n' + s;
+
   /* 「もう普通に描けている」ことを親に知らせる合図を仕込む。
      読み込み完了(load)だけを合図にすると、まだ何も描いていない板を先に出してしまい、
      あとから絵が飛び込む＝ちらつきになる。
      組み立て中のデモも1コマずつ譲りながら進む（重い処理→コマ間隔がバラバラ）ので、
      コマ数だけでは足りない。ここでは「短い間隔のコマが続けて出ている」=描画ループに
-     入った状態を待つ。遅い端末ほど自然に長く待つことになる */
+     入った状態を待つ。遅い端末ほど自然に長く待つことになる
+     デモが window.__YREADY=false を立てている間は（組み立て中など）合図を出さない */
   s += '\n<script>(function(){var last=0,run=0,n=0;function t(ts){n++;'
      + 'var dt=last?ts-last:9999;last=ts;if(dt<120)run++;else run=0;'
-     + 'if((run>=10&&n>=15)||n>=240){try{parent.postMessage("ydemo-ready","*")}catch(e){}return}'
+     + 'if(((run>=10&&n>=15)||n>=240)&&window.__YREADY!==false){try{parent.postMessage("ydemo-ready","*")}catch(e){}return}'
      + 'requestAnimationFrame(t)}requestAnimationFrame(t)})();<\/script>\n';
 
   return s;
@@ -273,6 +284,10 @@ if (used.length) {
     '/* デモが実際に動く環境では、ポスター静止画を最初から見せない。',
     '   ホストがデモと同じ背景を持ち、そこへデモの立ち上がり演出が描かれる */',
     '.panel__embed.is-live{background:#000;}',
+    '/* fade 指定のスロットは、ポスターをデモと同じ箱（縦118%・同じ視差）に敷く。',
+    '   高さ基準で等倍に合わせるので、現れたデモと絵の大きさ・位置がそのまま一致する',
+    '   （ポスターは横2:1で撮る。デモ側の縦画角が一定なら縦合わせで一致する） */',
+    '.panel__embed[data-reveal="fade"]{background-image:var(--bg);background-size:auto 100%;background-position:center;background-repeat:no-repeat;}',
     ...placeholderRules,
     '/* 白背景デモ用: デモが動くときだけ、そのパネルの文字を黒系に反転する',
     '   （デモが動かない環境ではポスター写真のまま白文字が維持される） */',
@@ -403,6 +418,10 @@ if (used.length) {
   '      if (shown || !painted || !waited) return;',
   '      shown = true;',
   '      requestAnimationFrame(function () { f.classList.add(\'is-on\'); });',
+  '      // 重ね終わってから「動いてよい」と伝える（ポスターと同じ絵で現れ、そこから動き出す）',
+  '      setTimeout(function () {',
+  '        try { f.contentWindow.postMessage(\'ydemo-go\', \'*\'); } catch (e) {}',
+  '      }, slot.fade ? 1500 : 1000);',
   '      if (old) setTimeout(function () {',
   '        if (old.parentNode) old.parentNode.removeChild(old);',
   '      }, hold);',

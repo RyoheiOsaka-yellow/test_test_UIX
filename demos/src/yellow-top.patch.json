@@ -1,0 +1,18 @@
+[
+ [
+  "function updateIntro(now) {\n  if (introDone) return;\n",
+  "function updateIntro(now) {\n  if (introDone) return;\n  // 親の合図まで基本姿勢で静止（ポスターと同じ絵）。合図後にそのまま自律モーションへ\n  if (!window.__YGO) { model.scale.y = 1; return; }\n  finishIntro(); return;\n"
+ ],
+ [
+  "    model.scale.y = 0.012;\n",
+  "    model.scale.y = 1;\n"
+ ],
+ [
+  "const clock = new THREE.Clock();",
+  "window.__YREADY = false;  // 組み立てが終わるまで親に「描けた」と言わない\nconst clock = new THREE.Clock();"
+ ],
+ [
+  "    canvas.classList.add(\"show\");\n",
+  "    canvas.classList.add(\"show\");\n    window.__YREADY = true;\n"
+ ]
+]

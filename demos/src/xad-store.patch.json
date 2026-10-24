@@ -5,7 +5,7 @@
  ],
  [
   "  if (activeView === '3d') {\n    updateVisuals(realDt);",
-  "  if (activeView === '3d') {\n    if (!camTween && !followTarget) { camState.theta += realDt * 0.03; applyCam(); }\n    updateVisuals(realDt);"
+  "  if (activeView === '3d') {\n    if (window.__YGO && !camTween && !followTarget) { camState.theta += realDt * 0.03; applyCam(); }\n    updateVisuals(realDt);"
  ],
  [
   "  sign.position.set(STORE.doors[0].x, H + 1.0, D / 2 + 0.3);\n  storeGroup.add(sign);",

@@ -13,6 +13,6 @@
  ],
  [
   "setupViewToggle();\n  setup3DControls();",
-  "setupViewToggle();\n  setup3DControls();\n  (function(){ const b=document.querySelector('.view-tab[data-view=\"3d\"]'); if(b) b.click(); S3D.yaw=0.85; S3D.pitch=0.38; S3D.dist=9.5;\n    (function spin(){ if(S3D.active && !S3D.dragging){ S3D.yaw += 0.0018; try{ render3D(); }catch(e){} } requestAnimationFrame(spin); })(); })();"
+  "setupViewToggle();\n  setup3DControls();\n  (function(){ const b=document.querySelector('.view-tab[data-view=\"3d\"]'); if(b) b.click(); S3D.yaw=0.85; S3D.pitch=0.38; S3D.dist=9.5;\n    (function spin(){ if(window.__YGO && S3D.active && !S3D.dragging){ S3D.yaw += 0.0018; try{ render3D(); }catch(e){} } requestAnimationFrame(spin); })(); })();"
  ]
 ]
