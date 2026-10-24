@@ -103,18 +103,24 @@ export function buildStructure(data) {
       });
     }
 
-    // piers
+    // piers: detected positions (scan-to-BIM) when provided, otherwise a regular spacing
     const spacing = road.kind === 'expressway' ? 44 : road.kind === 'ramp' ? 34 : 40;
-    for (let s = 12; s < L - 6; s += spacing) {
-      const p = samplePath(path, s);
+    const roadIndex = data.roads.indexOf(road);
+    const detected = data.piers ? data.piers.filter((q) => q.road === roadIndex) : null;
+    const pierSites = detected ? detected.map((q) => { let bs = 0, bd = 1e9; for (let s = 0; s < L; s += 2) { const pp = samplePath(path, s); const d = Math.hypot(pp.x - q.x, pp.z - q.z); if (d < bd) { bd = d; bs = s; } } return { s: bs, x: q.x, z: q.z, round: q.round, colW: q.colW, colL: q.colL }; })
+      : Array.from({ length: Math.max(0, Math.floor((L - 18) / spacing) + 1) }, (_, i) => ({ s: 12 + i * spacing }));
+    for (const site of pierSites) {
+      const s = site.s;
+      const p0 = samplePath(path, s);
+      const p = site.x != null ? { ...p0, x: site.x, z: site.z } : p0;
       if (p.y < 3.6) continue;
-      if (nearPier(p.x, p.z, 11)) continue;
+      if (!detected && nearPier(p.x, p.z, 11)) continue;
       regPier(p);
       pierNo++;
       const tag = `P-${String(pierNo).padStart(3, '0')}`;
       const capBottom = p.y - DECK_T - GIRDER_D - CAP_H;
-      const round = road.kind !== 'expressway';
-      const colW = round ? 2.5 : 2.6, colL = round ? 2.5 : 3.6;
+      const round = site.round != null ? site.round : road.kind !== 'expressway';
+      const colW = site.colW || (round ? 2.5 : 2.6), colL = site.colL || (round ? 2.5 : 3.6);
       const lean = hashStr('lean' + tag) % 17 === 3 ? 0.068 : 0; // 橋脚の傾き（施工誤差）
       const pierPhase = phaseOf(tag);
       const col = add({

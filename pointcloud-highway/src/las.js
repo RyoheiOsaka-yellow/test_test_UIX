@@ -33,8 +33,9 @@ export function recordLayout(format) {
   return { cls: 16, clsMask: 0xff, rgb: f === 7 || f === 8 || f === 10 ? 30 : -1 };
 }
 
-// ASPRS classification → viewer classes (see synth.js CLS)
-const CLS_MAP = { 2: 2, 3: 3, 4: 3, 5: 5, 6: 6, 7: 18, 9: 9, 10: 11, 11: 11, 13: 25, 14: 25, 15: 29, 17: 17, 18: 18 };
+// ASPRS classification → viewer classes (see synth.js CLS). Codes 20–31 are this viewer's own
+// extended classes (markings, parapets, piers, girders, …) and survive a LAS round trip unchanged.
+const CLS_MAP = { 2: 2, 3: 3, 4: 3, 5: 5, 6: 6, 7: 18, 9: 9, 10: 11, 11: 11, 13: 25, 14: 25, 15: 29, 17: 17, 18: 18, 20: 20, 21: 21, 22: 22, 23: 23, 24: 24, 25: 25, 26: 26, 27: 27, 28: 28, 29: 29, 30: 30 };
 
 /**
  * Decode point records into viewer arrays.
@@ -154,6 +155,64 @@ export function estimateNormals(pos, n, { targetPerCell = 24 } = {}) {
   return { normals: out, cell, spacing: Math.sqrt(area / n) };
 }
 
+/**
+ * k-nearest-neighbour PCA normals (hash grid, radius-limited). Much sharper on walls and edges
+ * than the cell PCA above; used when the cloud is small enough (see LAS_WORKER_BODY).
+ */
+export function estimateNormalsKnn(pos, n, { k = 14, progress = () => {} } = {}) {
+  let minx = Infinity, miny = Infinity, minz = Infinity, maxx = -Infinity, maxy = -Infinity, maxz = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+    if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y; if (z < minz) minz = z; if (z > maxz) maxz = z;
+  }
+  const area = Math.max(1, (maxx - minx) * (maxz - minz));
+  const spacing = Math.sqrt(area / n);
+  const cell = Math.max(0.1, spacing * 2.2);
+  const nx = Math.ceil((maxx - minx) / cell) + 1, ny = Math.ceil((maxy - miny) / cell) + 1, nz = Math.ceil((maxz - minz) / cell) + 1;
+  const cellOf = new Uint32Array(n), counts = new Uint32Array(nx * ny * nz + 1);
+  for (let i = 0; i < n; i++) {
+    const c = (((pos[i * 3 + 1] - miny) / cell) | 0) * nx * nz + (((pos[i * 3 + 2] - minz) / cell) | 0) * nx + (((pos[i * 3] - minx) / cell) | 0);
+    cellOf[i] = c; counts[c + 1]++;
+  }
+  for (let c = 0; c < nx * ny * nz; c++) counts[c + 1] += counts[c];
+  const cursor = counts.slice(0, -1), sorted = new Uint32Array(n);
+  for (let i = 0; i < n; i++) sorted[cursor[cellOf[i]]++] = i;
+  const out = new Int8Array(n * 3);
+  const r2max = (cell * 1.5) ** 2;
+  const cand = new Float64Array(2048 * 2); // [dist2, index] pairs
+  for (let i = 0; i < n; i++) {
+    const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+    const cx = ((x - minx) / cell) | 0, cy = ((y - miny) / cell) | 0, cz = ((z - minz) / cell) | 0;
+    let m = 0;
+    for (let dy = -1; dy <= 1; dy++) { const yy = cy + dy; if (yy < 0 || yy >= ny) continue;
+      for (let dz = -1; dz <= 1; dz++) { const zz = cz + dz; if (zz < 0 || zz >= nz) continue;
+        for (let dx = -1; dx <= 1; dx++) { const xx = cx + dx; if (xx < 0 || xx >= nx) continue;
+          const c = yy * nx * nz + zz * nx + xx;
+          for (let q = counts[c]; q < counts[c + 1] && m < 2048; q++) {
+            const j = sorted[q]; if (j === i) continue;
+            const d2 = (pos[j * 3] - x) ** 2 + (pos[j * 3 + 1] - y) ** 2 + (pos[j * 3 + 2] - z) ** 2;
+            if (d2 < r2max) { cand[m * 2] = d2; cand[m * 2 + 1] = j; m++; }
+          }
+        }
+      }
+    }
+    if (m < 4) continue;
+    // partial selection of the k nearest (m is small)
+    const kk = Math.min(k, m);
+    for (let a = 0; a < kk; a++) { let best = a; for (let b = a + 1; b < m; b++) if (cand[b * 2] < cand[best * 2]) best = b; if (best !== a) { const t0 = cand[a * 2], t1 = cand[a * 2 + 1]; cand[a * 2] = cand[best * 2]; cand[a * 2 + 1] = cand[best * 2 + 1]; cand[best * 2] = t0; cand[best * 2 + 1] = t1; } }
+    let sx = x, sy = y, sz = z;
+    for (let a = 0; a < kk; a++) { const j = cand[a * 2 + 1]; sx += pos[j * 3]; sy += pos[j * 3 + 1]; sz += pos[j * 3 + 2]; }
+    const cnt = kk + 1, mx = sx / cnt, my = sy / cnt, mz = sz / cnt;
+    let a = 0, b = 0, d = 0, e = 0, f = 0, g = 0;
+    const acc = (px, py, pz) => { const ux = px - mx, uy = py - my, uz = pz - mz; a += ux * ux; b += ux * uy; d += ux * uz; e += uy * uy; f += uy * uz; g += uz * uz; };
+    acc(x, y, z); for (let q = 0; q < kk; q++) { const j = cand[q * 2 + 1]; acc(pos[j * 3], pos[j * 3 + 1], pos[j * 3 + 2]); }
+    const v = smallestEigenvector(a / cnt, b / cnt, d / cnt, e / cnt, f / cnt, g / cnt);
+    out[i * 3] = v[0] * 127; out[i * 3 + 1] = v[1] * 127; out[i * 3 + 2] = v[2] * 127;
+    if ((i & 0x3ffff) === 0) progress(i / n);
+  }
+  return { normals: out, spacing, cell };
+}
+
 // smallest eigenvector of the symmetric 3x3 matrix [[a,b,d],[b,e,f],[d,f,g]] via a few Jacobi sweeps
 function smallestEigenvector(a, b, d, e, f, g) {
   let A = [[a, b, d], [b, e, f], [d, f, g]];
@@ -187,7 +246,8 @@ function smallestEigenvector(a, b, d, e, f, g) {
 
 /** Write a LAS 1.2 point-format-2 file (XYZ, intensity, classification, RGB) from viewer arrays. */
 export function writeLas({ n, pos, inten, cls, rgb }, { offset = [0, 0, 0] } = {}) {
-  const INV = { 2: 2, 3: 3, 5: 5, 6: 6, 26: 6, 9: 9, 11: 11, 17: 17, 20: 11, 21: 17, 22: 17, 23: 17, 27: 17, 24: 1, 25: 14, 29: 15, 30: 1, 18: 7 };
+  // standard ASPRS codes where they exist, this viewer's extended codes (20–31) otherwise
+  const INV = { 2: 2, 3: 3, 5: 5, 6: 6, 9: 9, 11: 11, 17: 17, 18: 18, 20: 20, 21: 21, 22: 22, 23: 23, 24: 24, 25: 25, 26: 26, 27: 27, 28: 28, 29: 29, 30: 30 };
   const headerSize = 227, recLen = 26;
   const buf = new ArrayBuffer(headerSize + n * recLen);
   const dv = new DataView(buf), u8 = new Uint8Array(buf);
@@ -227,7 +287,8 @@ self.onmessage = async (ev) => {
     if (isLaz) { importScripts('${LAZPERF_URL}laz-perf.js'); r = await parseLaz(buf, { maxPoints, progress }); }
     else r = parseLas(buf, { maxPoints, progress });
     self.postMessage({ type: 'progress', p: 0.75 });
-    const { normals, spacing, cell } = estimateNormals(r.pos, r.n);
+    // k-NN PCA for clouds up to 3 M points, grid-cell PCA beyond (time-bounded)
+    const { normals, spacing, cell } = r.n <= 2.5e6 ? estimateNormalsKnn(r.pos, r.n, { progress: (p) => self.postMessage({ type: 'progress', p: 0.75 + p * 0.25 }) }) : estimateNormals(r.pos, r.n);
     const out = { type: 'done', n: r.n, pos: r.pos, inten: r.inten, cls: r.cls, dev: r.dev, elem: r.elem, nrm: normals, rgb: r.rgb, header: r.header, stride: r.stride, spacing, cell, local: r.local };
     self.postMessage(out, [r.pos.buffer, r.inten.buffer, r.cls.buffer, r.dev.buffer, r.elem.buffer, normals.buffer].concat(r.rgb ? [r.rgb.buffer] : []));
   } catch (err) { self.postMessage({ type: 'error', message: String(err && err.message || err) }); }

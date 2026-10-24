@@ -49,7 +49,9 @@
   .small { font-size: 11px; line-height: 1.5; margin: 6px 0; }
   .filebtn { display: block; text-align: center; background: #1a1f2b; border: 1px solid var(--panel-border); border-radius: 6px; padding: 7px 10px; cursor: pointer; }
   .filebtn:hover { background: #242a39; }
-  body.las-mode #sec-bim, body.las-mode #sec-4d, body.las-mode #drive, body.las-mode .presets [data-preset=bim], body.las-mode .presets [data-preset=scan2bim] { display: none; }
+  body.no-bim #sec-bim, body.no-bim #sec-4d, body.no-bim #drive, body.no-bim .presets [data-preset=bim], body.no-bim .presets [data-preset=scan2bim] { display: none; }
+  .las-only { display: none; }
+  body.las-mode .las-only { display: block; }
   .muted { color: var(--muted); }
   #props { position: fixed; top: 56px; right: 12px; width: 320px; max-height: calc(100% - 68px); overflow-y: auto; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; backdrop-filter: blur(14px); z-index: 4; scrollbar-width: thin; }
   #props .head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--panel-border); position: sticky; top: 0; background: rgba(12,14,20,0.95); }
@@ -123,6 +125,7 @@
   <div class="stats">
     <span>点数 <b id="stat-points">—</b></span>
     <span>BIM 要素 <b id="stat-elements">—</b></span>
+    <span>描画 <b id="stat-drawn">—</b></span>
     <span>合成 <b id="stat-time">—</b></span>
     <span><b id="stat-fps">— fps</b></span>
   </div>
@@ -169,6 +172,9 @@
     <div class="row"><label>強度ゲイン</label><input id="gain" type="range" min="0.5" max="2" step="0.05" value="1.0" style="width:120px"></div>
     <div class="row"><label>点密度（再合成）</label>
       <select id="density" style="width:120px"><option value="0.2">低 ≈3M</option><option value="0.4" selected>標準 ≈6M</option><option value="0.6">高 ≈9M</option><option value="1">最高 ≈15M</option></select>
+    </div>
+    <div class="row"><label>描画予算（LOD）</label>
+      <select id="budget" style="width:120px"><option value="3000000">3M 点</option><option value="8000000" selected>8M 点</option><option value="16000000">16M 点</option><option value="40000000">無制限</option></select>
     </div>
     <div class="row check"><input id="surfel" type="checkbox" checked><label for="surfel">サーフェル（法線に沿った楕円スプラット）</label></div>
     <div class="row"><label>法線陰影</label><input id="shade" type="range" min="0" max="1" step="0.05" value="0.5" style="width:120px"></div>
@@ -220,7 +226,10 @@
     <label class="filebtn" for="las-file">📂 LAS / LAZ を開く…</label>
     <input id="las-file" type="file" accept=".las,.laz" hidden>
     <p class="muted small">LAS 1.0–1.4（PF 0–10）と LAZ（laz-perf でブラウザ内展開）。画面へのドラッグ＆ドロップも可。1,600 万点を超える場合は間引きます。法線はグリッド PCA で推定し、サーフェル表示に使います。</p>
-    <button id="las-export" style="width:100%">⬇ 表示中の点群を LAS で書き出す</button>
+    <button id="s2b-run" class="las-only" style="width:100%; margin-top:4px">🏗 点群から構造モデルを自動生成（Scan-to-BIM）</button>
+    <p class="muted small las-only">高架床版の線形・幅員・高さ（高さ帯ごとのラスタ→細線化）、橋脚（鉛直クラスタ、円形／矩形断面を当てはめ）、建物（外接矩形）を抽出し、各点を最寄り部材に対応付けて設計面との偏差を mm で計算します。</p>
+    <pre id="s2b-log" class="muted small" style="white-space:pre-wrap; max-height:120px; overflow:auto; margin:0"></pre>
+    <button id="las-export" style="width:100%; margin-top:6px">⬇ 表示中の点群を LAS で書き出す</button>
     <p class="muted small">LAS 1.2 / PF2（XYZ・強度・分類・現在の配色 RGB）。CloudCompare や Autodesk ReCap で開けます。</p>
   </div>
 </aside>
@@ -537,18 +546,24 @@ function buildStructure(data) {
       });
     }
 
-    // piers
+    // piers: detected positions (scan-to-BIM) when provided, otherwise a regular spacing
     const spacing = road.kind === 'expressway' ? 44 : road.kind === 'ramp' ? 34 : 40;
-    for (let s = 12; s < L - 6; s += spacing) {
-      const p = samplePath(path, s);
+    const roadIndex = data.roads.indexOf(road);
+    const detected = data.piers ? data.piers.filter((q) => q.road === roadIndex) : null;
+    const pierSites = detected ? detected.map((q) => { let bs = 0, bd = 1e9; for (let s = 0; s < L; s += 2) { const pp = samplePath(path, s); const d = Math.hypot(pp.x - q.x, pp.z - q.z); if (d < bd) { bd = d; bs = s; } } return { s: bs, x: q.x, z: q.z, round: q.round, colW: q.colW, colL: q.colL }; })
+      : Array.from({ length: Math.max(0, Math.floor((L - 18) / spacing) + 1) }, (_, i) => ({ s: 12 + i * spacing }));
+    for (const site of pierSites) {
+      const s = site.s;
+      const p0 = samplePath(path, s);
+      const p = site.x != null ? { ...p0, x: site.x, z: site.z } : p0;
       if (p.y < 3.6) continue;
-      if (nearPier(p.x, p.z, 11)) continue;
+      if (!detected && nearPier(p.x, p.z, 11)) continue;
       regPier(p);
       pierNo++;
       const tag = `P-${String(pierNo).padStart(3, '0')}`;
       const capBottom = p.y - DECK_T - GIRDER_D - CAP_H;
-      const round = road.kind !== 'expressway';
-      const colW = round ? 2.5 : 2.6, colL = round ? 2.5 : 3.6;
+      const round = site.round != null ? site.round : road.kind !== 'expressway';
+      const colW = site.colW || (round ? 2.5 : 2.6), colL = site.colL || (round ? 2.5 : 3.6);
       const lean = hashStr('lean' + tag) % 17 === 3 ? 0.068 : 0; // 橋脚の傾き（施工誤差）
       const pierPhase = phaseOf(tag);
       const col = add({
@@ -1375,8 +1390,9 @@ export function recordLayout(format) {
   return { cls: 16, clsMask: 0xff, rgb: f === 7 || f === 8 || f === 10 ? 30 : -1 };
 }
 
-// ASPRS classification → viewer classes (see synth.js CLS)
-const CLS_MAP = { 2: 2, 3: 3, 4: 3, 5: 5, 6: 6, 7: 18, 9: 9, 10: 11, 11: 11, 13: 25, 14: 25, 15: 29, 17: 17, 18: 18 };
+// ASPRS classification → viewer classes (see synth.js CLS). Codes 20–31 are this viewer's own
+// extended classes (markings, parapets, piers, girders, …) and survive a LAS round trip unchanged.
+const CLS_MAP = { 2: 2, 3: 3, 4: 3, 5: 5, 6: 6, 7: 18, 9: 9, 10: 11, 11: 11, 13: 25, 14: 25, 15: 29, 17: 17, 18: 18, 20: 20, 21: 21, 22: 22, 23: 23, 24: 24, 25: 25, 26: 26, 27: 27, 28: 28, 29: 29, 30: 30 };
 
 /**
  * Decode point records into viewer arrays.
@@ -1496,6 +1512,64 @@ export function estimateNormals(pos, n, { targetPerCell = 24 } = {}) {
   return { normals: out, cell, spacing: Math.sqrt(area / n) };
 }
 
+/**
+ * k-nearest-neighbour PCA normals (hash grid, radius-limited). Much sharper on walls and edges
+ * than the cell PCA above; used when the cloud is small enough (see LAS_WORKER_BODY).
+ */
+export function estimateNormalsKnn(pos, n, { k = 14, progress = () => {} } = {}) {
+  let minx = Infinity, miny = Infinity, minz = Infinity, maxx = -Infinity, maxy = -Infinity, maxz = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+    if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y; if (z < minz) minz = z; if (z > maxz) maxz = z;
+  }
+  const area = Math.max(1, (maxx - minx) * (maxz - minz));
+  const spacing = Math.sqrt(area / n);
+  const cell = Math.max(0.1, spacing * 2.2);
+  const nx = Math.ceil((maxx - minx) / cell) + 1, ny = Math.ceil((maxy - miny) / cell) + 1, nz = Math.ceil((maxz - minz) / cell) + 1;
+  const cellOf = new Uint32Array(n), counts = new Uint32Array(nx * ny * nz + 1);
+  for (let i = 0; i < n; i++) {
+    const c = (((pos[i * 3 + 1] - miny) / cell) | 0) * nx * nz + (((pos[i * 3 + 2] - minz) / cell) | 0) * nx + (((pos[i * 3] - minx) / cell) | 0);
+    cellOf[i] = c; counts[c + 1]++;
+  }
+  for (let c = 0; c < nx * ny * nz; c++) counts[c + 1] += counts[c];
+  const cursor = counts.slice(0, -1), sorted = new Uint32Array(n);
+  for (let i = 0; i < n; i++) sorted[cursor[cellOf[i]]++] = i;
+  const out = new Int8Array(n * 3);
+  const r2max = (cell * 1.5) ** 2;
+  const cand = new Float64Array(2048 * 2); // [dist2, index] pairs
+  for (let i = 0; i < n; i++) {
+    const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+    const cx = ((x - minx) / cell) | 0, cy = ((y - miny) / cell) | 0, cz = ((z - minz) / cell) | 0;
+    let m = 0;
+    for (let dy = -1; dy <= 1; dy++) { const yy = cy + dy; if (yy < 0 || yy >= ny) continue;
+      for (let dz = -1; dz <= 1; dz++) { const zz = cz + dz; if (zz < 0 || zz >= nz) continue;
+        for (let dx = -1; dx <= 1; dx++) { const xx = cx + dx; if (xx < 0 || xx >= nx) continue;
+          const c = yy * nx * nz + zz * nx + xx;
+          for (let q = counts[c]; q < counts[c + 1] && m < 2048; q++) {
+            const j = sorted[q]; if (j === i) continue;
+            const d2 = (pos[j * 3] - x) ** 2 + (pos[j * 3 + 1] - y) ** 2 + (pos[j * 3 + 2] - z) ** 2;
+            if (d2 < r2max) { cand[m * 2] = d2; cand[m * 2 + 1] = j; m++; }
+          }
+        }
+      }
+    }
+    if (m < 4) continue;
+    // partial selection of the k nearest (m is small)
+    const kk = Math.min(k, m);
+    for (let a = 0; a < kk; a++) { let best = a; for (let b = a + 1; b < m; b++) if (cand[b * 2] < cand[best * 2]) best = b; if (best !== a) { const t0 = cand[a * 2], t1 = cand[a * 2 + 1]; cand[a * 2] = cand[best * 2]; cand[a * 2 + 1] = cand[best * 2 + 1]; cand[best * 2] = t0; cand[best * 2 + 1] = t1; } }
+    let sx = x, sy = y, sz = z;
+    for (let a = 0; a < kk; a++) { const j = cand[a * 2 + 1]; sx += pos[j * 3]; sy += pos[j * 3 + 1]; sz += pos[j * 3 + 2]; }
+    const cnt = kk + 1, mx = sx / cnt, my = sy / cnt, mz = sz / cnt;
+    let a = 0, b = 0, d = 0, e = 0, f = 0, g = 0;
+    const acc = (px, py, pz) => { const ux = px - mx, uy = py - my, uz = pz - mz; a += ux * ux; b += ux * uy; d += ux * uz; e += uy * uy; f += uy * uz; g += uz * uz; };
+    acc(x, y, z); for (let q = 0; q < kk; q++) { const j = cand[q * 2 + 1]; acc(pos[j * 3], pos[j * 3 + 1], pos[j * 3 + 2]); }
+    const v = smallestEigenvector(a / cnt, b / cnt, d / cnt, e / cnt, f / cnt, g / cnt);
+    out[i * 3] = v[0] * 127; out[i * 3 + 1] = v[1] * 127; out[i * 3 + 2] = v[2] * 127;
+    if ((i & 0x3ffff) === 0) progress(i / n);
+  }
+  return { normals: out, spacing, cell };
+}
+
 // smallest eigenvector of the symmetric 3x3 matrix [[a,b,d],[b,e,f],[d,f,g]] via a few Jacobi sweeps
 function smallestEigenvector(a, b, d, e, f, g) {
   let A = [[a, b, d], [b, e, f], [d, f, g]];
@@ -1529,7 +1603,8 @@ function smallestEigenvector(a, b, d, e, f, g) {
 
 /** Write a LAS 1.2 point-format-2 file (XYZ, intensity, classification, RGB) from viewer arrays. */
 export function writeLas({ n, pos, inten, cls, rgb }, { offset = [0, 0, 0] } = {}) {
-  const INV = { 2: 2, 3: 3, 5: 5, 6: 6, 26: 6, 9: 9, 11: 11, 17: 17, 20: 11, 21: 17, 22: 17, 23: 17, 27: 17, 24: 1, 25: 14, 29: 15, 30: 1, 18: 7 };
+  // standard ASPRS codes where they exist, this viewer's extended codes (20–31) otherwise
+  const INV = { 2: 2, 3: 3, 5: 5, 6: 6, 9: 9, 11: 11, 17: 17, 18: 18, 20: 20, 21: 21, 22: 22, 23: 23, 24: 24, 25: 25, 26: 26, 27: 27, 28: 28, 29: 29, 30: 30 };
   const headerSize = 227, recLen = 26;
   const buf = new ArrayBuffer(headerSize + n * recLen);
   const dv = new DataView(buf), u8 = new Uint8Array(buf);
@@ -1569,12 +1644,938 @@ self.onmessage = async (ev) => {
     if (isLaz) { importScripts('${LAZPERF_URL}laz-perf.js'); r = await parseLaz(buf, { maxPoints, progress }); }
     else r = parseLas(buf, { maxPoints, progress });
     self.postMessage({ type: 'progress', p: 0.75 });
-    const { normals, spacing, cell } = estimateNormals(r.pos, r.n);
+    // k-NN PCA for clouds up to 3 M points, grid-cell PCA beyond (time-bounded)
+    const { normals, spacing, cell } = r.n <= 2.5e6 ? estimateNormalsKnn(r.pos, r.n, { progress: (p) => self.postMessage({ type: 'progress', p: 0.75 + p * 0.25 }) }) : estimateNormals(r.pos, r.n);
     const out = { type: 'done', n: r.n, pos: r.pos, inten: r.inten, cls: r.cls, dev: r.dev, elem: r.elem, nrm: normals, rgb: r.rgb, header: r.header, stride: r.stride, spacing, cell, local: r.local };
     self.postMessage(out, [r.pos.buffer, r.inten.buffer, r.cls.buffer, r.dev.buffer, r.elem.buffer, normals.buffer].concat(r.rgb ? [r.rgb.buffer] : []));
   } catch (err) { self.postMessage({ type: 'error', message: String(err && err.message || err) }); }
 };
 `;
+</script>
+<script type="text/plain" id="s2b-src">// Pure geometry helpers shared by the main thread and the synthesis worker (no three.js).
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function gauss(rnd) {
+  // Box-Muller
+  const u = 1 - rnd(), v = rnd();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+function hashStr(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+/** Centripetal Catmull-Rom resampling of a 3D polyline at ~ds spacing. Returns array of [x,y,z]. */
+function resample(pts, ds) {
+  if (pts.length < 2) return pts.map((p) => p.slice());
+  // remove duplicate consecutive points
+  const P = [pts[0]];
+  for (let i = 1; i < pts.length; i++) {
+    const a = P[P.length - 1], b = pts[i];
+    if (Math.hypot(b[0] - a[0], b[2] - a[2]) > 0.05) P.push(b);
+  }
+  if (P.length < 2) return P;
+  if (P.length === 2) return lerpLine(P[0], P[1], ds);
+  const out = [];
+  const n = P.length;
+  const get = (i) => P[Math.min(Math.max(i, 0), n - 1)];
+  for (let i = 0; i < n - 1; i++) {
+    const p0 = get(i - 1), p1 = get(i), p2 = get(i + 1), p3 = get(i + 2);
+    const segLen = Math.hypot(p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]);
+    const steps = Math.max(1, Math.round(segLen / ds));
+    // centripetal parametrisation
+    const t0 = 0;
+    const t1 = t0 + Math.max(1e-3, Math.sqrt(dist(p0, p1)));
+    const t2 = t1 + Math.max(1e-3, Math.sqrt(dist(p1, p2)));
+    const t3 = t2 + Math.max(1e-3, Math.sqrt(dist(p2, p3)));
+    for (let s = 0; s < steps; s++) {
+      const t = t1 + ((t2 - t1) * s) / steps;
+      out.push(catmull(p0, p1, p2, p3, t0, t1, t2, t3, t));
+    }
+  }
+  out.push(P[n - 1].slice());
+  return out;
+}
+
+function dist(a, b) {
+  return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+}
+
+function lerpLine(a, b, ds) {
+  const L = dist(a, b);
+  const steps = Math.max(1, Math.round(L / ds));
+  const out = [];
+  for (let s = 0; s <= steps; s++) {
+    const t = s / steps;
+    out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]);
+  }
+  return out;
+}
+
+function catmull(p0, p1, p2, p3, t0, t1, t2, t3, t) {
+  const r = [0, 0, 0];
+  for (let k = 0; k < 3; k++) {
+    const A1 = ((t1 - t) / (t1 - t0)) * p0[k] + ((t - t0) / (t1 - t0)) * p1[k];
+    const A2 = ((t2 - t) / (t2 - t1)) * p1[k] + ((t - t1) / (t2 - t1)) * p2[k];
+    const A3 = ((t3 - t) / (t3 - t2)) * p2[k] + ((t - t2) / (t3 - t2)) * p3[k];
+    const B1 = ((t2 - t) / (t2 - t0)) * A1 + ((t - t0) / (t2 - t0)) * A2;
+    const B2 = ((t3 - t) / (t3 - t1)) * A2 + ((t - t1) / (t3 - t1)) * A3;
+    r[k] = ((t2 - t) / (t2 - t1)) * B1 + ((t - t1) / (t2 - t1)) * B2;
+  }
+  return r;
+}
+
+/** Build a path with frames: {x,y,z, tx,tz, nx,nz, s} where (tx,tz) is the horizontal tangent
+ *  and (nx,nz) the left-hand normal; s is the arc length. */
+function framePath(pts) {
+  const out = [];
+  let s = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)];
+    let tx = b[0] - a[0], tz = b[2] - a[2];
+    const L = Math.hypot(tx, tz) || 1;
+    tx /= L; tz /= L;
+    if (i > 0) s += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][2] - pts[i - 1][2]);
+    out.push({ x: pts[i][0], y: pts[i][1], z: pts[i][2], tx, tz, nx: -tz, nz: tx, s });
+  }
+  return out;
+}
+
+function pathLength(path) {
+  return path.length ? path[path.length - 1].s : 0;
+}
+
+/** Interpolate a framed path at arc length s. */
+function samplePath(path, s) {
+  if (s <= 0) return path[0];
+  if (s >= path[path.length - 1].s) return path[path.length - 1];
+  let lo = 0, hi = path.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (path[mid].s <= s) lo = mid; else hi = mid;
+  }
+  const a = path[lo], b = path[hi];
+  const t = (s - a.s) / Math.max(1e-6, b.s - a.s);
+  const tx = a.tx + (b.tx - a.tx) * t, tz = a.tz + (b.tz - a.tz) * t;
+  const L = Math.hypot(tx, tz) || 1;
+  return {
+    x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, z: a.z + (b.z - a.z) * t,
+    tx: tx / L, tz: tz / L, nx: -tz / L, nz: tx / L, s,
+  };
+}
+
+function polygonArea(poly) {
+  let a = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i], q = poly[(i + 1) % poly.length];
+    a += p[0] * q[1] - q[0] * p[1];
+  }
+  return Math.abs(a) / 2;
+}
+
+function polygonBBox(poly) {
+  let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+  for (const [x, z] of poly) {
+    if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z;
+  }
+  return [x0, z0, x1, z1];
+}
+
+function pointInPolygon(x, z, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0], zi = poly[i][1], xj = poly[j][0], zj = poly[j][1];
+    if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+function polygonCentroid(poly) {
+  let x = 0, z = 0;
+  for (const p of poly) { x += p[0]; z += p[1]; }
+  return [x / poly.length, z / poly.length];
+}
+
+/** Simple 2D occupancy raster covering the crop rectangle at 1 m resolution. */
+class Raster {
+  constructor(w, h, res = 1) {
+    this.res = res;
+    this.w = Math.ceil(w / res); this.h = Math.ceil(h / res);
+    this.ox = -w / 2; this.oz = -h / 2;
+    this.data = new Uint8Array(this.w * this.h);
+  }
+  idx(x, z) {
+    const i = Math.floor((x - this.ox) / this.res), j = Math.floor((z - this.oz) / this.res);
+    if (i < 0 || j < 0 || i >= this.w || j >= this.h) return -1;
+    return j * this.w + i;
+  }
+  get(x, z) { const k = this.idx(x, z); return k < 0 ? 255 : this.data[k]; }
+  set(x, z, v) { const k = this.idx(x, z); if (k >= 0) this.data[k] = v; }
+  fillPolygon(poly, v) {
+    const [x0, z0, x1, z1] = polygonBBox(poly);
+    for (let z = z0; z <= z1; z += this.res)
+      for (let x = x0; x <= x1; x += this.res)
+        if (pointInPolygon(x + this.res / 2, z + this.res / 2, poly)) this.set(x, z, v);
+  }
+  fillDisc(x, z, r, v) {
+    for (let dz = -r; dz <= r; dz += this.res)
+      for (let dx = -r; dx <= r; dx += this.res)
+        if (dx * dx + dz * dz <= r * r) this.set(x + dx, z + dz, v);
+  }
+}
+
+// Parametric structural model derived from the site dataset. It is the single source of truth
+// for both the LiDAR synthesis (worker) and the BIM overlay (main thread), so element ids match.
+
+const DECK_T = 0.3;      // 床版厚
+const GIRDER_D = 2.2;    // 桁高
+const RAIL_H = 1.1;      // 壁高欄高さ
+const RAIL_T = 0.35;     // 壁高欄厚
+const CAP_H = 1.8;       // 橋脚横梁高さ
+const CAP_L = 2.4;       // 横梁奥行（橋軸方向）
+const FOOT_D = 2.0;      // フーチング厚
+
+const CATEGORY = {
+  deck: { ifc: 'IfcSlab', revit: '床', color: 0x4fb3ff, seq: 4 },
+  girder: { ifc: 'IfcBeam', revit: '構造フレーム', color: 0xffa94d, seq: 3 },
+  railing: { ifc: 'IfcRailing', revit: '手すり', color: 0x7ee787, seq: 5 },
+  column: { ifc: 'IfcColumn', revit: '構造柱', color: 0xc792ea, seq: 1 },
+  cap: { ifc: 'IfcBeam', revit: '構造フレーム（横梁）', color: 0xffd166, seq: 2 },
+  footing: { ifc: 'IfcFooting', revit: '構造基礎', color: 0x8d99ae, seq: 0 },
+  gantry: { ifc: 'IfcMember', revit: '一般モデル（門型標識柱）', color: 0xf2f2f2, seq: 6 },
+  pole: { ifc: 'IfcMember', revit: '一般モデル（照明柱）', color: 0xdddddd, seq: 6 },
+  building: { ifc: 'IfcBuilding', revit: 'マス（概念形状）', color: 0x5fd3d3, seq: 7 },
+};
+
+function routeName(road) {
+  if (road.name) return road.name;
+  if (road.ref) return `首都高速 ${road.ref}号`;
+  return road.hw === 'motorway_link' ? '首都高速 連結路' : '一般道';
+}
+
+function levelName(y, layerHeight) {
+  if (y < 1.5) return 'GL ±0';
+  const l = Math.max(1, Math.round(y / layerHeight));
+  return `Deck L${l} +${y.toFixed(1)}`;
+}
+
+/** Build all elements. Returns { elements, decks, piers, ... } */
+function buildStructure(data) {
+  const elements = [];
+  const LH = data.site.layerHeight;
+  const add = (e) => { e.id = elements.length; elements.push(e); return e; };
+  const pierHash = new Map();
+  const nearPier = (x, z, r) => {
+    const cx = Math.floor(x / 20), cz = Math.floor(z / 20);
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+      const list = pierHash.get(`${cx + i},${cz + j}`);
+      if (!list) continue;
+      for (const p of list) if (Math.hypot(p.x - x, p.z - z) < r) return true;
+    }
+    return false;
+  };
+  const regPier = (p) => {
+    const k = `${Math.floor(p.x / 20)},${Math.floor(p.z / 20)}`;
+    if (!pierHash.has(k)) pierHash.set(k, []);
+    pierHash.get(k).push(p);
+  };
+
+  let pierNo = 0, gantryNo = 0, poleNo = 0;
+  const phaseOf = (seedStr) => {
+    const h = hashStr(seedStr) % 100;
+    return h < 70 ? '既設（1980 供用）' : h < 90 ? '既設（1995 増設）' : '更新（2024 補修）';
+  };
+
+  for (const road of data.roads) {
+    const pts = resample(road.pts, 2.0);
+    const path = framePath(pts);
+    const L = pathLength(path);
+    if (L < 4) continue;
+    const route = routeName(road);
+    const isExpress = road.kind === 'expressway' || road.kind === 'ramp';
+    if (!road.elevated) continue; // at-grade roads are sampled as pavement only
+
+    const yMean = path.reduce((s, p) => s + p.y, 0) / path.length;
+    const level = levelName(yMean, LH);
+    const phase = phaseOf(road.id);
+    const seqBase = hashStr(road.id) % 1000; // construction order along network
+
+    // as-built deviation injection (施工誤差・経年変形の疑似再現)
+    const settle = hashStr('settle' + road.id) % 23 === 5 ? -0.042 : 0;
+
+    const w = road.width;
+    const girderWTop = Math.max(3, w - 1.0), girderWBot = Math.max(2.5, w - 3.2);
+    const deck = add({
+      type: 'deck', tag: `D-${road.id.slice(-4)}`, path, width: w, thick: DECK_T, route, level, phase,
+      family: 'RC床版', typeName: `t=${(DECK_T * 1000) | 0} W=${(w * 1000) | 0}`,
+      material: 'コンクリート 30N/mm²', road, length: L, seq: seqBase,
+      asBuilt: { dx: 0, dy: settle, dz: 0 },
+    });
+    add({
+      type: 'girder', tag: `G-${road.id.slice(-4)}`, path, wTop: girderWTop, wBot: girderWBot, depth: GIRDER_D,
+      route, level, phase, family: isExpress ? '鋼製箱桁' : 'PC箱桁',
+      typeName: `W${(girderWTop * 1000) | 0}×D${(GIRDER_D * 1000) | 0}`,
+      material: isExpress ? 'SM490Y 鋼材' : 'PC コンクリート 50N/mm²', road, length: L, seq: seqBase, parent: deck.id,
+      asBuilt: { dx: 0, dy: settle, dz: 0 },
+    });
+    for (const side of [-1, 1]) {
+      const bow = hashStr('bow' + road.id + side) % 11 === 2 ? 0.032 * side : 0;
+      add({
+        type: 'railing', tag: `R-${road.id.slice(-4)}${side < 0 ? 'L' : 'R'}`, path, side, offset: side * (w / 2 - RAIL_T / 2),
+        h: RAIL_H, t: RAIL_T, route, level, phase, family: '壁高欄', typeName: `H${(RAIL_H * 1000) | 0} 剛性防護柵`,
+        material: 'コンクリート 30N/mm²', road, length: L, seq: seqBase, parent: deck.id,
+        asBuilt: { dx: bow, dy: settle, dz: 0 },
+      });
+    }
+
+    // piers: detected positions (scan-to-BIM) when provided, otherwise a regular spacing
+    const spacing = road.kind === 'expressway' ? 44 : road.kind === 'ramp' ? 34 : 40;
+    const roadIndex = data.roads.indexOf(road);
+    const detected = data.piers ? data.piers.filter((q) => q.road === roadIndex) : null;
+    const pierSites = detected ? detected.map((q) => { let bs = 0, bd = 1e9; for (let s = 0; s < L; s += 2) { const pp = samplePath(path, s); const d = Math.hypot(pp.x - q.x, pp.z - q.z); if (d < bd) { bd = d; bs = s; } } return { s: bs, x: q.x, z: q.z, round: q.round, colW: q.colW, colL: q.colL }; })
+      : Array.from({ length: Math.max(0, Math.floor((L - 18) / spacing) + 1) }, (_, i) => ({ s: 12 + i * spacing }));
+    for (const site of pierSites) {
+      const s = site.s;
+      const p0 = samplePath(path, s);
+      const p = site.x != null ? { ...p0, x: site.x, z: site.z } : p0;
+      if (p.y < 3.6) continue;
+      if (!detected && nearPier(p.x, p.z, 11)) continue;
+      regPier(p);
+      pierNo++;
+      const tag = `P-${String(pierNo).padStart(3, '0')}`;
+      const capBottom = p.y - DECK_T - GIRDER_D - CAP_H;
+      const round = site.round != null ? site.round : road.kind !== 'expressway';
+      const colW = site.colW || (round ? 2.5 : 2.6), colL = site.colL || (round ? 2.5 : 3.6);
+      const lean = hashStr('lean' + tag) % 17 === 3 ? 0.068 : 0; // 橋脚の傾き（施工誤差）
+      const pierPhase = phaseOf(tag);
+      const col = add({
+        type: 'column', tag, x: p.x, z: p.z, tx: p.tx, tz: p.tz, yBot: 0, yTop: capBottom, round, colW, colL,
+        route, level: 'GL ±0', phase: pierPhase, family: round ? 'RC円柱橋脚' : 'RC小判形橋脚',
+        typeName: round ? `φ${(colW * 1000) | 0}` : `${(colW * 1000) | 0}×${(colL * 1000) | 0}`,
+        material: 'コンクリート 40N/mm²', road, seq: seqBase + s / 1000, parent: deck.id,
+        asBuilt: { dx: lean * p.nx, dy: 0, dz: lean * p.nz },
+      });
+      add({
+        type: 'cap', tag: `${tag}-C`, x: p.x, z: p.z, tx: p.tx, tz: p.tz, yBot: capBottom, h: CAP_H, w: w + 1.4, l: CAP_L,
+        route, level, phase: pierPhase, family: 'RC横梁', typeName: `W${((w + 1.4) * 1000) | 0}×H${(CAP_H * 1000) | 0}`,
+        material: 'コンクリート 40N/mm²', road, seq: seqBase + s / 1000, parent: col.id,
+        asBuilt: { dx: lean * p.nx, dy: 0, dz: lean * p.nz },
+      });
+      add({
+        type: 'footing', tag: `${tag}-F`, x: p.x, z: p.z, tx: p.tx, tz: p.tz, yBot: -FOOT_D, h: FOOT_D, w: colW + 3, l: colL + 3,
+        route, level: 'GL -2.0', phase: pierPhase, family: 'RCフーチング', typeName: `${((colW + 3) * 1000) | 0}×${((colL + 3) * 1000) | 0}×${(FOOT_D * 1000) | 0}`,
+        material: 'コンクリート 30N/mm²', road, seq: seqBase + s / 1000, parent: col.id, asBuilt: { dx: 0, dy: 0, dz: 0 },
+      });
+    }
+
+    if (!isExpress) continue;
+    // lighting poles along the left edge every 40 m, sign gantries on mainlines every ~220 m
+    for (let s = 20; s < L - 10; s += 40) {
+      const p = samplePath(path, s);
+      poleNo++;
+      add({
+        type: 'pole', tag: `LP-${String(poleNo).padStart(3, '0')}`, x: p.x + p.nx * (w / 2 - 0.4), z: p.z + p.nz * (w / 2 - 0.4),
+        y: p.y, h: 10, tx: p.tx, tz: p.tz, nx: p.nx, nz: p.nz, route, level, phase, family: '照明柱', typeName: 'H10000 テーパーポール',
+        material: '溶融亜鉛めっき鋼', road, seq: seqBase + 1, parent: deck.id, asBuilt: { dx: 0, dy: 0, dz: 0 },
+      });
+    }
+    if (road.kind === 'expressway') {
+      for (let s = 110; s < L - 20; s += 220) {
+        const p = samplePath(path, s);
+        gantryNo++;
+        add({
+          type: 'gantry', tag: `SG-${String(gantryNo).padStart(2, '0')}`, x: p.x, z: p.z, y: p.y, w: w + 1.2, h: 5.6,
+          tx: p.tx, tz: p.tz, nx: p.nx, nz: p.nz, route, level, phase, family: '門型標識柱', typeName: `W${((w + 1.2) * 1000) | 0}×H5600`,
+          material: '溶融亜鉛めっき鋼', road, seq: seqBase + 1, parent: deck.id, asBuilt: { dx: 0, dy: 0, dz: 0 },
+        });
+      }
+    }
+  }
+
+  for (const b of data.buildings) {
+    const area = polygonArea(b.pts);
+    const c = polygonCentroid(b.pts);
+    add({
+      type: 'building', tag: `B-${b.id.slice(-5)}`, footprint: b.pts, h: b.h, levels: b.levels, cx: c[0], cz: c[1], area,
+      route: '', level: 'GL ±0', phase: '既存建物', family: 'マス', typeName: b.use ? `建物（${b.use}）` : '建物',
+      material: '—', name: b.name, seq: -1, asBuilt: { dx: 0, dy: 0, dz: 0 },
+    });
+  }
+  // 4D construction sequence: category order (footing → column → cap → girder → deck → railing →
+  // furniture), progressing through the network within each category. Buildings are context (-1).
+  for (const e of elements) if (e.type !== 'building') e.seq = CATEGORY[e.type].seq * 1000 + (((e.seq % 1000) + 1000) % 1000);
+  return { elements };
+}
+
+/** Rough axis-aligned bounds for an element (used for selection stats / camera focus). */
+function elementBounds(e) {
+  const bb = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+  const grow = (x, y, z) => {
+    if (x < bb[0]) bb[0] = x; if (y < bb[1]) bb[1] = y; if (z < bb[2]) bb[2] = z;
+    if (x > bb[3]) bb[3] = x; if (y > bb[4]) bb[4] = y; if (z > bb[5]) bb[5] = z;
+  };
+  switch (e.type) {
+    case 'deck': case 'girder': case 'railing': {
+      const hw = e.type === 'deck' ? e.width / 2 : e.type === 'girder' ? e.wTop / 2 : e.t;
+      const off = e.type === 'railing' ? e.offset : 0;
+      const yLo = e.type === 'deck' ? -e.thick : e.type === 'girder' ? -DECK_T - e.depth : 0;
+      const yHi = e.type === 'railing' ? e.h : 0;
+      for (const p of e.path) {
+        grow(p.x + p.nx * (off - hw), p.y + yLo, p.z + p.nz * (off - hw));
+        grow(p.x + p.nx * (off + hw), p.y + yHi, p.z + p.nz * (off + hw));
+      }
+      break;
+    }
+    case 'column': grow(e.x - e.colL, e.yBot, e.z - e.colL); grow(e.x + e.colL, e.yTop, e.z + e.colL); break;
+    case 'cap': grow(e.x - e.w / 2, e.yBot, e.z - e.w / 2); grow(e.x + e.w / 2, e.yBot + e.h, e.z + e.w / 2); break;
+    case 'footing': grow(e.x - e.w / 2, e.yBot, e.z - e.w / 2); grow(e.x + e.w / 2, e.yBot + e.h, e.z + e.w / 2); break;
+    case 'pole': grow(e.x - 1, e.y, e.z - 1); grow(e.x + 1, e.y + e.h, e.z + 1); break;
+    case 'gantry': grow(e.x - e.w / 2, e.y, e.z - e.w / 2); grow(e.x + e.w / 2, e.y + e.h, e.z + e.w / 2); break;
+    case 'building': for (const [x, z] of e.footprint) { grow(x, 0, z); grow(x, e.h, z); } break;
+  }
+  return bb;
+}
+
+/** Revit-style property sheet for an element. */
+function elementProperties(e, extra = {}) {
+  const cat = CATEGORY[e.type];
+  const dims = [];
+  let volume = 0;
+  switch (e.type) {
+    case 'deck': dims.push(['延長', `${e.length.toFixed(1)} m`], ['幅員', `${e.width.toFixed(2)} m`], ['厚さ', `${(e.thick * 1000) | 0} mm`]); volume = e.length * e.width * e.thick; break;
+    case 'girder': dims.push(['延長', `${e.length.toFixed(1)} m`], ['上フランジ幅', `${e.wTop.toFixed(2)} m`], ['下フランジ幅', `${e.wBot.toFixed(2)} m`], ['桁高', `${(e.depth * 1000) | 0} mm`]); volume = e.length * ((e.wTop + e.wBot) / 2) * e.depth; break;
+    case 'railing': dims.push(['延長', `${e.length.toFixed(1)} m`], ['高さ', `${(e.h * 1000) | 0} mm`], ['厚さ', `${(e.t * 1000) | 0} mm`]); volume = e.length * e.h * e.t; break;
+    case 'column': dims.push(['柱高', `${(e.yTop - e.yBot).toFixed(2)} m`], ['断面', e.typeName]); volume = (e.round ? Math.PI * (e.colW / 2) ** 2 : e.colW * e.colL) * (e.yTop - e.yBot); break;
+    case 'cap': dims.push(['幅', `${e.w.toFixed(2)} m`], ['奥行', `${e.l.toFixed(2)} m`], ['高さ', `${(e.h * 1000) | 0} mm`]); volume = e.w * e.l * e.h; break;
+    case 'footing': dims.push(['平面', `${e.w.toFixed(1)} × ${e.l.toFixed(1)} m`], ['厚さ', `${(e.h * 1000) | 0} mm`]); volume = e.w * e.l * e.h; break;
+    case 'pole': dims.push(['高さ', `${e.h} m`]); break;
+    case 'gantry': dims.push(['スパン', `${e.w.toFixed(2)} m`], ['高さ', `${e.h} m`]); break;
+    case 'building': dims.push(['建物高さ', `${e.h.toFixed(1)} m`], ['階数', `${e.levels} F`], ['建築面積', `${e.area.toFixed(0)} m²`]); volume = e.area * e.h; break;
+  }
+  const dev = extra.meanDev ?? 0;
+  const absDev = Math.abs(dev);
+  const rating = absDev < 10 ? 'A（健全）' : absDev < 25 ? 'B（経過観察）' : absDev < 45 ? 'C（要調査）' : 'D（要対策）';
+  return [
+    ['識別情報', [
+      ['要素 ID', String(100000 + e.id)],
+      ['マーク', e.tag],
+      ['カテゴリ', cat.revit],
+      ['IFC クラス', cat.ifc],
+      ['ファミリ', e.family],
+      ['タイプ', e.typeName],
+      ...(e.name ? [['名称', e.name]] : []),
+    ]],
+    ['拘束', [
+      ['レベル', e.level],
+      ['路線', e.route || '—'],
+      ['フェーズ', e.phase],
+    ]],
+    ['寸法', [...dims, ...(volume ? [['体積', `${volume.toFixed(1)} m³`]] : [])]],
+    ['材料と仕上げ', [['構造材料', e.material]]],
+    ['点群照合 (Scan-to-BIM)', [
+      ['点数', extra.count != null ? extra.count.toLocaleString() : '—'],
+      ['平均偏差', extra.meanDev != null ? `${dev >= 0 ? '+' : ''}${dev.toFixed(1)} mm` : '—'],
+      ['最大偏差', extra.maxDev != null ? `${extra.maxDev.toFixed(0)} mm` : '—'],
+      ['被覆率', extra.coverage != null ? `${extra.coverage.toFixed(0)} %` : '—'],
+      ['健全度', extra.meanDev != null ? rating : '—'],
+    ]],
+  ];
+}
+
+// Scan-to-BIM: derive a structural model from a point cloud alone (no survey data needed).
+//   1. elevated deck surfaces → 2D rasters per height band → thinning → centreline polylines
+//      with width (distance transform) and height (mean z) → "roads" for buildStructure
+//   2. pier shafts → vertical point columns under the decks → pier positions
+//   3. buildings → oriented bounding rectangles of building-classified components
+//   4. every point is assigned to the nearest fitted element and its signed distance to the
+//      design surface is stored as deviation (mm) → real Scan-to-BIM heat map + per-element stats
+
+
+const NO_ELEM = 65535;
+const C = { ground: 2, building: 6, deck: 17, marking: 20, railing: 21, column: 22, girder: 23, road: 11 };
+
+// ---------------------------------------------------------------- raster helpers
+class Grid {
+  constructor(minx, minz, w, h, res) { this.minx = minx; this.minz = minz; this.res = res; this.w = Math.ceil(w / res) + 2; this.h = Math.ceil(h / res) + 2; }
+  ix(x) { return Math.floor((x - this.minx) / this.res) + 1; }
+  iz(z) { return Math.floor((z - this.minz) / this.res) + 1; }
+  x(i) { return this.minx + (i - 1 + 0.5) * this.res; }
+  z(j) { return this.minz + (j - 1 + 0.5) * this.res; }
+}
+
+function dilate(mask, w, h) {
+  const out = new Uint8Array(mask.length);
+  for (let j = 1; j < h - 1; j++) for (let i = 1; i < w - 1; i++) {
+    const k = j * w + i;
+    if (mask[k] || mask[k - 1] || mask[k + 1] || mask[k - w] || mask[k + w] || mask[k - w - 1] || mask[k - w + 1] || mask[k + w - 1] || mask[k + w + 1]) out[k] = 1;
+  }
+  return out;
+}
+function erode(mask, w, h) {
+  const out = new Uint8Array(mask.length);
+  for (let j = 1; j < h - 1; j++) for (let i = 1; i < w - 1; i++) {
+    const k = j * w + i;
+    if (mask[k] && mask[k - 1] && mask[k + 1] && mask[k - w] && mask[k + w]) out[k] = 1;
+  }
+  return out;
+}
+/** Zhang-Suen thinning → 1-pixel skeleton. */
+function thin(mask, w, h) {
+  const m = Uint8Array.from(mask);
+  let changed = true;
+  const n = new Uint8Array(8);
+  let active = [];
+  for (let j = 1; j < h - 1; j++) for (let i = 1; i < w - 1; i++) if (m[j * w + i]) active.push(j * w + i);
+  while (changed) {
+    changed = false;
+    for (let pass = 0; pass < 2; pass++) {
+      const del = [];
+      for (const k of active) {
+        if (!m[k]) continue;
+        n[0] = m[k - w]; n[1] = m[k - w + 1]; n[2] = m[k + 1]; n[3] = m[k + w + 1]; n[4] = m[k + w]; n[5] = m[k + w - 1]; n[6] = m[k - 1]; n[7] = m[k - w - 1];
+        let B = 0, A = 0;
+        for (let q = 0; q < 8; q++) { B += n[q]; if (n[q] === 0 && n[(q + 1) % 8] === 1) A++; }
+        if (B < 2 || B > 6 || A !== 1) continue;
+        if (pass === 0 ? n[0] * n[2] * n[4] !== 0 || n[2] * n[4] * n[6] !== 0 : n[0] * n[2] * n[6] !== 0 || n[0] * n[4] * n[6] !== 0) continue;
+        del.push(k);
+      }
+      for (const k of del) m[k] = 0;
+      if (del.length) { changed = true; active = active.filter((k) => m[k]); }
+    }
+  }
+  return m;
+}
+/** Distance (in cells) to the nearest non-mask cell, by BFS from the boundary. */
+function distanceTransform(mask, w, h) {
+  const d = new Float32Array(mask.length).fill(1e9);
+  const q = new Int32Array(mask.length * 2); let qh = 0, qt = 0;
+  for (let k = 0; k < mask.length; k++) {
+    if (mask[k]) continue;
+    const i = k % w, j = (k / w) | 0;
+    const nearMask = (i > 0 && mask[k - 1]) || (i < w - 1 && mask[k + 1]) || (j > 0 && mask[k - w]) || (j < h - 1 && mask[k + w]);
+    if (nearMask) { d[k] = 0; q[qt++] = k; }
+  }
+  while (qh < qt) {
+    const k = q[qh++], i = k % w, j = (k / w) | 0;
+    for (const [di, dj, c] of [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.414], [-1, 1, 1.414], [1, -1, 1.414], [-1, -1, 1.414]]) {
+      const ii = i + di, jj = j + dj;
+      if (ii < 0 || jj < 0 || ii >= w || jj >= h) continue;
+      const kk = jj * w + ii;
+      if (mask[kk] && d[kk] > d[k] + c) { d[kk] = d[k] + c; q[qt++ % q.length] = kk; }
+    }
+  }
+  return d;
+}
+/** Trace a skeleton into polylines (lists of cell indices) between endpoints / junctions. */
+function tracePolylines(sk, w, h) {
+  const deg = new Uint8Array(sk.length);
+  const nb = (k) => { const out = []; const i = k % w, j = (k / w) | 0; for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { if (!di && !dj) continue; const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= w || jj >= h) continue; const kk = jj * w + ii; if (sk[kk]) out.push(kk); } return out; };
+  for (let k = 0; k < sk.length; k++) if (sk[k]) deg[k] = nb(k).length;
+  const used = new Uint8Array(sk.length);
+  const lines = [];
+  const walk = (start, next) => {
+    const line = [start]; used[start] = 1;
+    let prev = start, cur = next;
+    while (cur >= 0 && !used[cur]) {
+      line.push(cur); used[cur] = 1;
+      if (deg[cur] !== 2) break;
+      const ns = nb(cur).filter((k) => k !== prev && !used[k]);
+      prev = cur; cur = ns.length ? ns[0] : -1;
+    }
+    return line;
+  };
+  for (let k = 0; k < sk.length; k++) {
+    if (!sk[k] || used[k] || deg[k] === 2) continue;
+    for (const n of nb(k)) if (!used[n]) { const l = walk(k, n); used[k] = 1; if (l.length > 2) lines.push(l); }
+    used[k] = 1;
+  }
+  for (let k = 0; k < sk.length; k++) if (sk[k] && !used[k]) { const l = walk(k, nb(k)[0] ?? -1); if (l.length > 2) lines.push(l); } // loops
+  return lines;
+}
+
+// ---------------------------------------------------------------- 1. decks
+function extractDecks(cloud, { res = 1, bandH = 2.0, minLen = 10, minHeight = 3.5, maxHeight = 45, log = () => {} } = {}) {
+  const { n, pos, cls, nrm } = cloud;
+  const classified = cls.some((c) => c === C.deck);
+  let minx = Infinity, minz = Infinity, maxx = -Infinity, maxz = -Infinity, maxy = 0;
+  for (let i = 0; i < n; i++) { const x = pos[i * 3], z = pos[i * 3 + 2], y = pos[i * 3 + 1]; if (x < minx) minx = x; if (x > maxx) maxx = x; if (z < minz) minz = z; if (z > maxz) maxz = z; if (y > maxy) maxy = y; }
+  const g = new Grid(minx, minz, maxx - minx, maxz - minz, res);
+  const nb = Math.ceil(Math.min(maxy, maxHeight) / bandH) + 1;
+  // candidate deck points → per-band rasters (count, sum y)
+  const bands = Array.from({ length: nb }, () => new Map()); // cell → [count, sumY]
+  const bandOf = (y) => Math.floor(y / bandH);
+  let cand = 0, cellsTotal = 0;
+  for (let i = 0; i < n; i++) {
+    const y = pos[i * 3 + 1];
+    if (y < minHeight || y > maxHeight) continue;
+    const c = cls[i];
+    let ok;
+    if (classified) ok = c === C.deck || c === C.marking;
+    else ok = nrm ? Math.abs(nrm[i * 3 + 1]) > 95 && c !== C.building : true;
+    if (!ok) continue;
+    cand++;
+    const b = bandOf(y), k = g.iz(pos[i * 3 + 2]) * g.w + g.ix(pos[i * 3]);
+    const m = bands[b]; let cell = m.get(k);
+    if (!cell) { cell = [0, 0]; m.set(k, cell); cellsTotal++; }
+    cell[0]++; cell[1] += y;
+  }
+  log(`deck candidates: ${cand} points in ${cellsTotal} cells, ${nb} height bands`);
+  const minPts = Math.max(2, Math.round(cand / Math.max(1, cellsTotal) * 0.15));
+  const segments = []; // { pts:[[x,y,z]...], width, bandLo, bandHi }
+  for (let b = 0; b < nb; b++) {
+    const mask = new Uint8Array(g.w * g.h);
+    let any = 0;
+    for (const [k, c] of bands[b]) if (c[0] >= minPts) { mask[k] = 1; any++; }
+    // neighbouring bands overlap by one band so ramps are not cut at band edges
+    if (b + 1 < nb) for (const [k, c] of bands[b + 1]) if (c[0] >= minPts) mask[k] = 1;
+    if (any < 20) continue;
+    // work on the band's bounding sub-rectangle (plus margin) — thinning on the full grid is far too slow
+    let i0 = g.w, i1 = 0, j0 = g.h, j1 = 0;
+    for (let k = 0; k < mask.length; k++) if (mask[k]) { const i = k % g.w, j = (k / g.w) | 0; if (i < i0) i0 = i; if (i > i1) i1 = i; if (j < j0) j0 = j; if (j > j1) j1 = j; }
+    i0 = Math.max(0, i0 - 4); j0 = Math.max(0, j0 - 4); i1 = Math.min(g.w - 1, i1 + 4); j1 = Math.min(g.h - 1, j1 + 4);
+    const sw = i1 - i0 + 1, sh = j1 - j0 + 1;
+    const sub = new Uint8Array(sw * sh);
+    for (let j = 0; j < sh; j++) for (let i = 0; i < sw; i++) sub[j * sw + i] = mask[(j + j0) * g.w + i + i0];
+    const closed = erode(dilate(dilate(sub, sw, sh), sw, sh), sw, sh);
+    const dist = distanceTransform(closed, sw, sh);
+    const m = erode(closed, sw, sh);
+    const sk = thin(m, sw, sh);
+    const lines = tracePolylines(sk, sw, sh);
+    for (const line of lines) {
+      if (line.length * res < minLen) continue;
+      const pts = [], widths = [];
+      for (const kk of line) {
+        const i = (kk % sw) + i0, j = ((kk / sw) | 0) + j0, k = j * g.w + i;
+        // height: mean of candidate points in this cell (this band or the next)
+        let sy = 0, sc = 0;
+        for (const bb of [b, b + 1]) { const c = bands[bb] && bands[bb].get(k); if (c) { sy += c[1]; sc += c[0]; } }
+        if (!sc) continue;
+        pts.push([g.x(i), sy / sc, g.z(j)]);
+        widths.push(dist[kk] * 2 * res);
+      }
+      if (pts.length < 4) continue;
+      // smooth heights and positions (moving average), width = median of the central 60 %
+      const sm = pts.map((p, i) => { let sx = 0, sy = 0, sz = 0, c = 0; for (let q = -3; q <= 3; q++) { const pp = pts[i + q]; if (pp) { sx += pp[0]; sy += pp[1]; sz += pp[2]; c++; } } return [sx / c, sy / c, sz / c]; });
+      const ws = widths.slice().sort((a, b) => a - b);
+      const width = Math.max(4, Math.min(32, ws[Math.floor(ws.length * 0.5)] + res * 0.5));
+      segments.push({ pts: sm, width, band: b });
+    }
+  }
+  // merge segments whose ends meet (same corridor split by band edges or junction nodes)
+  const near = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]) < 4.5 && Math.abs(a[1] - b[1]) < 2.5;
+  const dirAt = (pts, atEnd) => { const n = Math.min(4, pts.length - 1); const a = atEnd ? pts[pts.length - 1 - n] : pts[n], b = atEnd ? pts[pts.length - 1] : pts[0]; const dx = b[0] - a[0], dz = b[2] - a[2], L = Math.hypot(dx, dz) || 1; return [dx / L, dz / L]; };
+  let merged = true;
+  const endHash = () => { const h = new Map(); segments.forEach((sg, j) => { for (const p of [sg.pts[0], sg.pts[sg.pts.length - 1]]) { const k = `${Math.floor(p[0] / 5)},${Math.floor(p[2] / 5)}`; if (!h.has(k)) h.set(k, new Set()); h.get(k).add(j); } }); return h; };
+  const candidatesNear = (h, p) => { const out = new Set(); for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const l = h.get(`${Math.floor(p[0] / 5) + di},${Math.floor(p[2] / 5) + dj}`); if (l) for (const j of l) out.add(j); } return out; };
+  while (merged) {
+    merged = false;
+    const h = endHash();
+    for (let i = 0; i < segments.length && !merged; i++) {
+      const A = segments[i];
+      let best = null, bestCos = 0.5; // require a reasonably straight continuation (< 60°)
+      const cand = new Set([...candidatesNear(h, A.pts[0]), ...candidatesNear(h, A.pts[A.pts.length - 1])]);
+      for (const j of cand) {
+        if (i === j) continue;
+        const B = segments[j];
+        const a0 = A.pts[0], a1 = A.pts[A.pts.length - 1], b0 = B.pts[0], b1 = B.pts[B.pts.length - 1];
+        const cands = [];
+        if (near(a1, b0)) cands.push([dirAt(A.pts, true), dirAt(B.pts, false), () => A.pts.concat(B.pts.slice(1))]);
+        if (near(a1, b1)) cands.push([dirAt(A.pts, true), dirAt(B.pts.slice().reverse(), false), () => A.pts.concat(B.pts.slice(0, -1).reverse())]);
+        if (near(a0, b1)) cands.push([dirAt(B.pts, true), dirAt(A.pts, false), () => B.pts.concat(A.pts.slice(1))]);
+        if (near(a0, b0)) cands.push([dirAt(B.pts.slice().reverse(), true), dirAt(A.pts, false), () => B.pts.slice().reverse().concat(A.pts.slice(1))]);
+        for (const [d1, d2, join] of cands) { const cos = d1[0] * d2[0] + d1[1] * d2[1]; if (cos > bestCos) { bestCos = cos; best = { j, join }; } }
+      }
+      if (best) {
+        const B = segments[best.j], la = A.pts.length, lb = B.pts.length;
+        segments[i] = { pts: best.join(), width: (A.width * la + B.width * lb) / (la + lb), band: A.band };
+        segments.splice(best.j, 1); merged = true;
+      }
+    }
+  }
+  // dedupe: drop a segment that lies almost entirely within 3 m of a longer one at similar height
+  segments.sort((a, b) => b.pts.length - a.pts.length);
+  const kept = [], occ = new Map();
+  const okey = (p) => `${Math.floor(p[0] / 3)},${Math.floor(p[2] / 3)}`;
+  const isCovered = (p) => { for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const l = occ.get(`${Math.floor(p[0] / 3) + di},${Math.floor(p[2] / 3) + dj}`); if (l && l.some((q) => Math.hypot(q[0] - p[0], q[2] - p[2]) < 3 && Math.abs(q[1] - p[1]) < 1.5)) return true; } return false; };
+  for (const s of segments) {
+    let covered = 0;
+    for (const p of s.pts) if (isCovered(p)) covered++;
+    if (covered / s.pts.length < 0.6) { kept.push(s); for (const p of s.pts) { const k = okey(p); if (!occ.has(k)) occ.set(k, []); occ.get(k).push(p); } }
+  }
+  log(`decks: ${kept.length} corridors, ${kept.reduce((a, s) => a + s.pts.length, 0)} m total`);
+  return kept.map((s, i) => ({
+    id: `scan${i}`, hw: s.width > 9 ? 'motorway' : 'motorway_link', kind: s.width > 9 ? 'expressway' : 'ramp', elevated: true,
+    layer: Math.max(1, Math.round(s.pts.reduce((a, p) => a + p[1], 0) / s.pts.length / 5.6)), width: Math.round(s.width * 10) / 10,
+    lanes: Math.max(1, Math.round((s.width - 1.5) / 3.4)), oneway: true, name: '', ref: '', pts: resample(s.pts, 4).map((p) => [p[0], p[1], p[2]]),
+  }));
+}
+
+// ---------------------------------------------------------------- 2. piers
+function extractPiers(cloud, roads, { res = 1, log = () => {} } = {}) {
+  const { n, pos, cls, nrm } = cloud;
+  const classified = cls.some((c) => c === C.column);
+  const cells = new Map(); // key → {c, sx, sz, miny, maxy, idx[]}
+  let minx = Infinity, minz = Infinity, maxx = -Infinity, maxz = -Infinity;
+  for (let i = 0; i < n; i++) { const x = pos[i * 3], z = pos[i * 3 + 2]; if (x < minx) minx = x; if (x > maxx) maxx = x; if (z < minz) minz = z; if (z > maxz) maxz = z; }
+  const g = new Grid(minx, minz, maxx - minx, maxz - minz, res);
+  for (let i = 0; i < n; i++) {
+    const y = pos[i * 3 + 1];
+    if (y < 1.0 || y > 40) continue;
+    const ok = classified ? cls[i] === C.column : nrm && Math.abs(nrm[i * 3 + 1]) < 35 && cls[i] !== C.building;
+    if (!ok) continue;
+    const k = g.iz(pos[i * 3 + 2]) * g.w + g.ix(pos[i * 3]);
+    let s = cells.get(k);
+    if (!s) { s = { c: 0, sx: 0, sz: 0, miny: 1e9, maxy: -1e9, idx: [] }; cells.set(k, s); }
+    s.c++; s.sx += pos[i * 3]; s.sz += pos[i * 3 + 2]; if (y < s.miny) s.miny = y; if (y > s.maxy) s.maxy = y; if (s.idx.length < 400) s.idx.push(i);
+  }
+  // cells with a tall vertical extent and enough points → connected components → pier centroids
+  const strong = new Set();
+  for (const [k, s] of cells) if (s.maxy - s.miny > 4 && s.c >= 12) strong.add(k);
+  const seen = new Set(), piers = [];
+  for (const k0 of strong) {
+    if (seen.has(k0)) continue;
+    const comp = []; const stack = [k0]; seen.add(k0);
+    while (stack.length) {
+      const k = stack.pop(); comp.push(k);
+      const i = k % g.w, j = (k / g.w) | 0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const kk = (j + dj) * g.w + i + di; if (strong.has(kk) && !seen.has(kk)) { seen.add(kk); stack.push(kk); } }
+    }
+    let sx = 0, sz = 0, c = 0, top = -1e9, bot = 1e9; const idx = [];
+    for (const k of comp) { const s = cells.get(k); sx += s.sx; sz += s.sz; c += s.c; if (s.maxy > top) top = s.maxy; if (s.miny < bot) bot = s.miny; idx.push(...s.idx); }
+    if (comp.length > 40) continue; // too wide for a pier (building wall)
+    piers.push({ x: sx / c, z: sz / c, yTop: top, yBot: bot, cells: comp.length, points: c, idx });
+  }
+  // attach each pier to the nearest deck corridor (frame direction, deck height)
+  const paths = roads.map((r) => framePath(resample(r.pts, 2)));
+  const out = [];
+  for (const p of piers) {
+    let best = null, bd = 1e9;
+    paths.forEach((path, ri) => { for (const q of path) { const d = Math.hypot(q.x - p.x, q.z - p.z); if (d < bd) { bd = d; best = { q, ri }; } } });
+    if (!best || bd > roads[best.ri].width / 2 + 4) continue;
+    if (p.yTop < best.q.y - DECK_T - GIRDER_D - 6 || p.yTop > best.q.y + 1.0) continue; // shaft must reach the girder
+    // section fit: circle (median radius) vs rectangle aligned with the deck (95 % extents); keep the better residual
+    const { tx, tz } = best.q, nx = -tz, nz = tx;
+    const rs = [], us = [], vs = [];
+    for (const i of p.idx) { const dx = pos[i * 3] - p.x, dz = pos[i * 3 + 2] - p.z; rs.push(Math.hypot(dx, dz)); us.push(Math.abs(dx * tx + dz * tz)); vs.push(Math.abs(dx * nx + dz * nz)); }
+    const srt = (a) => a.slice().sort((q1, q2) => q1 - q2);
+    const R = srt(rs)[rs.length >> 1];
+    const U = srt(us)[Math.floor(us.length * 0.95)], V = srt(vs)[Math.floor(vs.length * 0.95)];
+    let resC = 0, resR = 0;
+    for (let k = 0; k < rs.length; k++) { resC += Math.abs(rs[k] - R); resR += Math.abs(Math.max(us[k] - U, vs[k] - V)); }
+    const round = resC <= resR * 1.15;
+    out.push({ x: p.x, z: p.z, tx, tz, road: best.ri, deckY: best.q.y, width: roads[best.ri].width, points: p.points, round, colW: round ? Math.round(R * 2 * 20) / 20 : Math.round(V * 2 * 20) / 20, colL: round ? Math.round(R * 2 * 20) / 20 : Math.round(U * 2 * 20) / 20 });
+  }
+  log(`piers: ${out.length} detected (${piers.length} vertical clusters)`);
+  return out;
+}
+
+// ---------------------------------------------------------------- 3. buildings (oriented boxes)
+function extractBuildings(cloud, { res = 2, log = () => {} } = {}) {
+  const { n, pos, cls } = cloud;
+  if (!cls.some((c) => c === C.building)) return [];
+  let minx = Infinity, minz = Infinity, maxx = -Infinity, maxz = -Infinity;
+  for (let i = 0; i < n; i++) { const x = pos[i * 3], z = pos[i * 3 + 2]; if (x < minx) minx = x; if (x > maxx) maxx = x; if (z < minz) minz = z; if (z > maxz) maxz = z; }
+  const g = new Grid(minx, minz, maxx - minx, maxz - minz, res);
+  const mask = new Uint8Array(g.w * g.h), hmax = new Float32Array(g.w * g.h);
+  const cnt = new Uint16Array(g.w * g.h);
+  for (let i = 0; i < n; i++) {
+    if (cls[i] !== C.building) continue;
+    const k = g.iz(pos[i * 3 + 2]) * g.w + g.ix(pos[i * 3]);
+    cnt[k]++; const y = pos[i * 3 + 1]; if (y > hmax[k]) hmax[k] = y;
+  }
+  for (let k = 0; k < mask.length; k++) if (cnt[k] >= 3) mask[k] = 1;
+  const seen = new Uint8Array(mask.length), out = [];
+  for (let k0 = 0; k0 < mask.length; k0++) {
+    if (!mask[k0] || seen[k0]) continue;
+    const comp = [], stack = [k0]; seen[k0] = 1;
+    while (stack.length) {
+      const k = stack.pop(); comp.push(k);
+      const i = k % g.w, j = (k / g.w) | 0;
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= g.w || jj >= g.h) continue; const kk = jj * g.w + ii; if (mask[kk] && !seen[kk]) { seen[kk] = 1; stack.push(kk); } }
+    }
+    if (comp.length < 3) continue;
+    // PCA-oriented bounding rectangle of the component cells
+    let sx = 0, sz = 0; for (const k of comp) { sx += g.x(k % g.w); sz += g.z((k / g.w) | 0); }
+    const cx = sx / comp.length, cz = sz / comp.length;
+    let a = 0, b = 0, d = 0; for (const k of comp) { const x = g.x(k % g.w) - cx, z = g.z((k / g.w) | 0) - cz; a += x * x; b += x * z; d += z * z; }
+    const th = 0.5 * Math.atan2(2 * b, a - d), ux = Math.cos(th), uz = Math.sin(th);
+    let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9, h = 0; const hs = [];
+    for (const k of comp) { const x = g.x(k % g.w) - cx, z = g.z((k / g.w) | 0) - cz; const u = x * ux + z * uz, v = -x * uz + z * ux; if (u < u0) u0 = u; if (u > u1) u1 = u; if (v < v0) v0 = v; if (v > v1) v1 = v; hs.push(hmax[k]); }
+    hs.sort((p, q) => p - q); h = hs[Math.floor(hs.length * 0.9)];
+    const hr = res / 2; u0 -= hr; u1 += hr; v0 -= hr; v1 += hr;
+    const corner = (u, v) => [cx + u * ux - v * uz, cz + u * uz + v * ux];
+    const pts = [corner(u0, v0), corner(u1, v0), corner(u1, v1), corner(u0, v1)].map(([x, z]) => [Math.round(x * 10) / 10, Math.round(z * 10) / 10]);
+    if (h < 3 || polygonArea(pts) < 20) continue;
+    out.push({ id: `b${out.length}`, h: Math.round(h * 10) / 10, levels: Math.max(1, Math.round(h / 3.4)), name: '', use: '', pts });
+  }
+  log(`buildings: ${out.length} footprints`);
+  return out;
+}
+
+// ---------------------------------------------------------------- 4. assignment + deviation
+/**
+ * Assign points to fitted elements and compute signed deviation (mm) to the design surface.
+ * Writes cloud.elem and cloud.dev in place. Returns per-element stats.
+ */
+function assignAndDeviate(cloud, elements, { log = () => {}, refineWidths = true } = {}) {
+  const { n, pos, cls, elem, dev } = cloud;
+  elem.fill(NO_ELEM); dev.fill(128);
+  if (refineWidths) refineDeckWidths(cloud, elements, log);
+  // spatial hash of deck path samples (cell 6 m) → nearest corridor lookup
+  const CELL = 6, hash = new Map();
+  const decks = elements.filter((e) => e.type === 'deck');
+  const railByDeck = new Map();
+  for (const e of elements) if (e.type === 'railing') { if (!railByDeck.has(e.parent)) railByDeck.set(e.parent, []); railByDeck.get(e.parent).push(e); }
+  const girderByDeck = new Map(); for (const e of elements) if (e.type === 'girder') girderByDeck.set(e.parent, e);
+  for (const e of decks) for (let i = 0; i < e.path.length; i++) {
+    const p = e.path[i], k = `${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`;
+    if (!hash.has(k)) hash.set(k, []);
+    hash.get(k).push([e, i]);
+  }
+  const columns = elements.filter((e) => e.type === 'column');
+  const colHash = new Map();
+  for (const c of columns) { const k = `${Math.floor(c.x / 10)},${Math.floor(c.z / 10)}`; if (!colHash.has(k)) colHash.set(k, []); colHash.get(k).push(c); }
+  const stats = new Map();
+  const acc = (id, d) => { let s = stats.get(id); if (!s) { s = { count: 0, sum: 0, maxAbs: 0 }; stats.set(id, s); } s.count++; s.sum += d; if (Math.abs(d) > s.maxAbs) s.maxAbs = Math.abs(d); };
+  let assigned = 0;
+  for (let i = 0; i < n; i++) {
+    const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+    const c = cls[i];
+    if (c === C.building || c === C.ground || c === C.road || y < 0.5) continue;
+    // nearest deck sample within 3x3 cells
+    let best = null, bd = 1e9;
+    const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      const list = hash.get(`${cx + di},${cz + dj}`); if (!list) continue;
+      for (const [e, idx] of list) { const p = e.path[idx]; const d = (p.x - x) ** 2 + (p.z - z) ** 2 + (p.y - y) ** 2 * 0.15; if (d < bd) { bd = d; best = [e, idx]; } }
+    }
+    let hit = null, dmm = 0;
+    if (best) {
+      const e = best[0], p = e.path[best[1]];
+      // refine with the two neighbouring samples (local segment projection)
+      const q = e.path[Math.min(e.path.length - 1, best[1] + 1)], r = e.path[Math.max(0, best[1] - 1)];
+      const seg = p === q ? [r, p] : [p, q];
+      const [a, b] = seg; const tx = b.x - a.x, tz = b.z - a.z, L2 = tx * tx + tz * tz || 1;
+      const t = Math.max(0, Math.min(1, ((x - a.x) * tx + (z - a.z) * tz) / L2));
+      const px = a.x + tx * t, pz = a.z + tz * t, py = a.y + (b.y - a.y) * t;
+      const nx = -tz / Math.sqrt(L2), nz = tx / Math.sqrt(L2);
+      const v = (x - px) * nx + (z - pz) * nz, dy = y - py, hw = e.width / 2;
+      const av = Math.abs(v);
+      if (av > hw - RAIL_T - 0.35 && av < hw + 0.45 && dy > 0.06 && dy < RAIL_H + 1.3) {                                    // parapet: lateral deviation of the nearer face
+        const rails = railByDeck.get(e.id) || [];
+        const rail = rails.find((rr) => Math.sign(rr.side) === Math.sign(v)) || rails[0];
+        if (rail) { hit = rail; dmm = (av >= hw - RAIL_T / 2 ? av - hw : av - (hw - RAIL_T)) * 1000; }
+      } else if (av <= hw - RAIL_T + 0.1 && dy > -0.3 && dy < 0.3) { hit = e; dmm = dy * 1000; }                          // deck surface: vertical deviation
+      else if (Math.abs(v) < hw + 0.3 && dy < -0.2 && dy > -(DECK_T + GIRDER_D + 0.6)) {                                 // girder
+        const gd = girderByDeck.get(e.id);
+        if (gd) {
+          if (dy < -(DECK_T + GIRDER_D - 0.35)) { hit = gd; dmm = (dy + DECK_T + GIRDER_D) * 1000; }                        // soffit: vertical deviation
+          else { const f = Math.min(1, Math.max(0, (-dy - DECK_T) / gd.depth)); const expect = gd.wTop / 2 + (gd.wBot / 2 - gd.wTop / 2) * f; if (Math.abs(Math.abs(v) - expect) < 0.5) { hit = gd; dmm = (Math.abs(v) - expect) * 1000; } }
+        }
+      }
+    }
+    if (!hit && (c === C.column || c === 27 || !cls.some)) { /* fallthrough */ }
+    if (!hit && y > 0.5) {
+      const list = []; const kx = Math.floor(x / 10), kz = Math.floor(z / 10);
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const l = colHash.get(`${kx + di},${kz + dj}`); if (l) list.push(...l); }
+      for (const col of list) {
+        if (y < col.yBot - 0.5 || y > col.yTop + 0.3) continue;
+        let sd;
+        if (col.round) sd = Math.hypot(x - col.x, z - col.z) - col.colW / 2;
+        else { const u = (x - col.x) * col.tx + (z - col.z) * col.tz, v = -(x - col.x) * col.tz + (z - col.z) * col.tx; const du = Math.abs(u) - col.colL / 2, dv = Math.abs(v) - col.colW / 2; sd = Math.max(du, dv); }
+        if (sd < 0.45 && sd > -0.6) { hit = col; dmm = sd * 1000; break; }
+      }
+    }
+    if (hit) { elem[i] = hit.id; const dd = Math.max(-127, Math.min(127, Math.round(dmm))); dev[i] = 128 + dd; acc(hit.id, dmm); assigned++; }
+  }
+  log(`assigned ${assigned.toLocaleString()} / ${n.toLocaleString()} points to ${stats.size} elements`);
+  const out = {};
+  for (const [id, s] of stats) out[id] = { count: s.count, meanDev: s.sum / s.count, maxDev: s.maxAbs };
+  return out;
+}
+
+/**
+ * Refit each fitted corridor to the measured points: per 10 m bin along the path, the lateral
+ * centre is the mid-point between the two parapet medians, the height is the median pavement
+ * height, and the width follows the parapet spacing. Paths and dependent elements are updated.
+ */
+function refineDeckWidths(cloud, elements, log) {
+  const { n, pos, cls } = cloud;
+  const decks = elements.filter((e) => e.type === 'deck');
+  const CELL = 6, hash = new Map();
+  for (const e of decks) for (let i = 0; i < e.path.length; i++) { const p = e.path[i], k = `${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`; if (!hash.has(k)) hash.set(k, []); hash.get(k).push([e, i]); }
+  const BIN = 10;
+  const bins = new Map(); // deckId → Map(binIndex → {L:[], R:[], H:[]})
+  for (let i = 0; i < n; i++) {
+    const y = pos[i * 3 + 1]; if (y < 3) continue;
+    const c = cls[i]; if (c === C.building || c === C.ground || c === C.road) continue;
+    const x = pos[i * 3], z = pos[i * 3 + 2];
+    let best = null, bd = 1e9; const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const l = hash.get(`${cx + di},${cz + dj}`); if (!l) continue; for (const [e, idx] of l) { const p = e.path[idx]; const d = (p.x - x) ** 2 + (p.z - z) ** 2 + (p.y - y) ** 2 * 0.15; if (d < bd) { bd = d; best = [e, idx]; } } }
+    if (!best) continue;
+    const e = best[0], p = e.path[best[1]], dy = y - p.y;
+    const v = (x - p.x) * p.nx + (z - p.z) * p.nz, av = Math.abs(v), hw = e.width / 2;
+    if (av > hw + 3) continue;
+    let m = bins.get(e.id); if (!m) { m = new Map(); bins.set(e.id, m); }
+    const b = Math.floor(p.s / BIN); let bb = m.get(b); if (!bb) { bb = { L: [], R: [], H: [] }; m.set(b, bb); }
+    if (dy > 0.3 && dy < RAIL_H && av > 1) (v < 0 ? bb.L : bb.R).push(av);
+    else if (Math.abs(dy) < 0.6 && av < hw - 0.6) bb.H.push(dy);
+  }
+  const med = (a) => { if (a.length < 8) return null; a.sort((p, q) => p - q); return a[a.length >> 1]; };
+  let refined = 0;
+  for (const e of decks) {
+    const m = bins.get(e.id); if (!m) continue;
+    // per-bin corrections, then interpolate along the path (holes filled from neighbours)
+    const nb = Math.floor(e.path[e.path.length - 1].s / BIN) + 1;
+    const lat = new Array(nb).fill(null), ver = new Array(nb).fill(null), wid = new Array(nb).fill(null);
+    for (const [b, bb] of m) { const l = med(bb.L), r = med(bb.R), h = med(bb.H); if (l != null && r != null) { lat[b] = (r - l) / 2; wid[b] = (r + l) / 2 * 2 + RAIL_T; } if (h != null) ver[b] = h; }
+    const fill = (arr) => { const idx = arr.map((v, i) => (v == null ? -1 : i)).filter((i) => i >= 0); if (!idx.length) return null; return arr.map((v, i) => { if (v != null) return v; let lo = -1, hi = -1; for (const j of idx) { if (j < i) lo = j; else { hi = j; break; } } if (lo < 0) return arr[hi]; if (hi < 0) return arr[lo]; return arr[lo] + (arr[hi] - arr[lo]) * ((i - lo) / (hi - lo)); }); };
+    const latF = fill(lat), verF = fill(ver), widF = fill(wid);
+    if (!latF && !verF) continue;
+    refined++;
+    const smooth = (arr) => arr.map((v, i) => { let s = 0, c = 0; for (let q = -1; q <= 1; q++) if (arr[i + q] != null) { s += arr[i + q]; c++; } return s / c; });
+    const latS = latF && smooth(latF), verS = verF && smooth(verF);
+    for (const p of e.path) {
+      const b = Math.min(nb - 1, Math.floor(p.s / BIN));
+      if (latS) { p.x += p.nx * latS[b]; p.z += p.nz * latS[b]; }
+      if (verS) p.y += verS[b];
+    }
+    if (widF) {
+      const ws = widF.slice().sort((a, b) => a - b), w = Math.round(ws[ws.length >> 1] * 100) / 100;
+      for (const el of elements) if (el === e || el.parent === e.id) {
+        if (el.type === 'deck') { el.width = w; el.typeName = `t=${(el.thick * 1000) | 0} W=${(w * 1000) | 0}`; }
+        if (el.type === 'girder') { el.wTop = Math.max(3, w - 1.0); el.wBot = Math.max(2.5, w - 3.2); el.typeName = `W${(el.wTop * 1000) | 0}×D${(el.depth * 1000) | 0}`; }
+        if (el.type === 'railing') el.offset = el.side * (w / 2 - RAIL_T / 2);
+        if (el.type === 'cap') { el.w = w + 1.4; el.typeName = `W${((w + 1.4) * 1000) | 0}×H${(el.h * 1000) | 0}`; }
+      }
+    }
+  }
+  log(`corridors refitted to parapets / pavement: ${refined} / ${decks.length}`);
+}
+
+/** Full pipeline: cloud → { data (roads/buildings/piers), log } ready for buildStructure. */
+function scanToBim(cloud, opts = {}) {
+  const lines = [];
+  const log = (m) => { lines.push(m); if (opts.log) opts.log(m); };
+  let t = performance.now();
+  const roads = extractDecks(cloud, { log }); log(`  (decks ${((performance.now() - t) / 1000).toFixed(1)} s)`); t = performance.now();
+  const piers = extractPiers(cloud, roads, { log }); log(`  (piers ${((performance.now() - t) / 1000).toFixed(1)} s)`); t = performance.now();
+  const buildings = extractBuildings(cloud, { log }); log(`  (buildings ${((performance.now() - t) / 1000).toFixed(1)} s)`);
+  const data = { site: { layerHeight: 5.6, cropM: [0, 0], drive: {} }, roads, buildings, water: [], parks: [], rail: [], piers };
+  return { data, log: lines };
+}
 </script>
 <script type="module">
 import * as THREE from 'three';
@@ -1583,6 +2584,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 const WORKER_URL = URL.createObjectURL(new Blob([document.getElementById('worker-src').textContent], { type: 'text/javascript' }));
 window.__LAS_SRC__ = document.getElementById('las-src').textContent;
+window.__S2B_SRC__ = document.getElementById('s2b-src').textContent;
 
 // ===== src/geom.js =====
 // Pure geometry helpers shared by the main thread and the synthesis worker (no three.js).
@@ -1874,18 +2876,24 @@ function buildStructure(data) {
       });
     }
 
-    // piers
+    // piers: detected positions (scan-to-BIM) when provided, otherwise a regular spacing
     const spacing = road.kind === 'expressway' ? 44 : road.kind === 'ramp' ? 34 : 40;
-    for (let s = 12; s < L - 6; s += spacing) {
-      const p = samplePath(path, s);
+    const roadIndex = data.roads.indexOf(road);
+    const detected = data.piers ? data.piers.filter((q) => q.road === roadIndex) : null;
+    const pierSites = detected ? detected.map((q) => { let bs = 0, bd = 1e9; for (let s = 0; s < L; s += 2) { const pp = samplePath(path, s); const d = Math.hypot(pp.x - q.x, pp.z - q.z); if (d < bd) { bd = d; bs = s; } } return { s: bs, x: q.x, z: q.z, round: q.round, colW: q.colW, colL: q.colL }; })
+      : Array.from({ length: Math.max(0, Math.floor((L - 18) / spacing) + 1) }, (_, i) => ({ s: 12 + i * spacing }));
+    for (const site of pierSites) {
+      const s = site.s;
+      const p0 = samplePath(path, s);
+      const p = site.x != null ? { ...p0, x: site.x, z: site.z } : p0;
       if (p.y < 3.6) continue;
-      if (nearPier(p.x, p.z, 11)) continue;
+      if (!detected && nearPier(p.x, p.z, 11)) continue;
       regPier(p);
       pierNo++;
       const tag = `P-${String(pierNo).padStart(3, '0')}`;
       const capBottom = p.y - DECK_T - GIRDER_D - CAP_H;
-      const round = road.kind !== 'expressway';
-      const colW = round ? 2.5 : 2.6, colL = round ? 2.5 : 3.6;
+      const round = site.round != null ? site.round : road.kind !== 'expressway';
+      const colW = site.colW || (round ? 2.5 : 2.6), colL = site.colL || (round ? 2.5 : 3.6);
       const lean = hashStr('lean' + tag) % 17 === 3 ? 0.068 : 0; // 橋脚の傾き（施工誤差）
       const pierPhase = phaseOf(tag);
       const col = add({
@@ -2779,6 +3787,7 @@ function createPointMaterial(lut, visTex) {
       uOpacity: { value: 1 },
       uSurfel: { value: 1 },   // 1 = normal-oriented elliptical splats
       uHasRgb: { value: 0 },
+      uLodScale: { value: 1 },
       uShade: { value: 0.5 },  // normal-based shading amount
     },
     vertexShader: /* glsl */ `
@@ -2793,7 +3802,7 @@ function createPointMaterial(lut, visTex) {
       uniform float uClsMask[32];
       uniform float uSpacing[32];
       uniform float uTanHalfFov;
-      uniform float uShade;
+      uniform float uShade, uLodScale;
       varying vec3 vColor;
       varying vec3 vNv;
       varying float vSize;
@@ -2835,7 +3844,7 @@ function createPointMaterial(lut, visTex) {
         float dist = max(1.0, -mvPosition.z);
         // distance-attenuated size, and a splat that covers the nominal sample spacing so surfaces close up
         float px = uSize * uViewportH / dist * 0.45;
-        float splat = uSpacing[ci] * 0.62 * uViewportH / (2.0 * uTanHalfFov * dist) * uSize * 0.5;
+        float splat = uSpacing[ci] * uLodScale * 0.62 * uViewportH / (2.0 * uTanHalfFov * dist) * uSize * 0.5;
         px = clamp(max(px, min(splat, uMaxPx * 1.7)), uMinPx, uMaxPx * 1.7) * (1.0 + sel * 0.8);
         vSize = px;
         gl_PointSize = px * uPixelRatio;
@@ -3402,8 +4411,9 @@ function recordLayout(format) {
   return { cls: 16, clsMask: 0xff, rgb: f === 7 || f === 8 || f === 10 ? 30 : -1 };
 }
 
-// ASPRS classification → viewer classes (see synth.js CLS)
-const CLS_MAP = { 2: 2, 3: 3, 4: 3, 5: 5, 6: 6, 7: 18, 9: 9, 10: 11, 11: 11, 13: 25, 14: 25, 15: 29, 17: 17, 18: 18 };
+// ASPRS classification → viewer classes (see synth.js CLS). Codes 20–31 are this viewer's own
+// extended classes (markings, parapets, piers, girders, …) and survive a LAS round trip unchanged.
+const CLS_MAP = { 2: 2, 3: 3, 4: 3, 5: 5, 6: 6, 7: 18, 9: 9, 10: 11, 11: 11, 13: 25, 14: 25, 15: 29, 17: 17, 18: 18, 20: 20, 21: 21, 22: 22, 23: 23, 24: 24, 25: 25, 26: 26, 27: 27, 28: 28, 29: 29, 30: 30 };
 
 /**
  * Decode point records into viewer arrays.
@@ -3523,6 +4533,64 @@ function estimateNormals(pos, n, { targetPerCell = 24 } = {}) {
   return { normals: out, cell, spacing: Math.sqrt(area / n) };
 }
 
+/**
+ * k-nearest-neighbour PCA normals (hash grid, radius-limited). Much sharper on walls and edges
+ * than the cell PCA above; used when the cloud is small enough (see LAS_WORKER_BODY).
+ */
+function estimateNormalsKnn(pos, n, { k = 14, progress = () => {} } = {}) {
+  let minx = Infinity, miny = Infinity, minz = Infinity, maxx = -Infinity, maxy = -Infinity, maxz = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+    if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y; if (z < minz) minz = z; if (z > maxz) maxz = z;
+  }
+  const area = Math.max(1, (maxx - minx) * (maxz - minz));
+  const spacing = Math.sqrt(area / n);
+  const cell = Math.max(0.1, spacing * 2.2);
+  const nx = Math.ceil((maxx - minx) / cell) + 1, ny = Math.ceil((maxy - miny) / cell) + 1, nz = Math.ceil((maxz - minz) / cell) + 1;
+  const cellOf = new Uint32Array(n), counts = new Uint32Array(nx * ny * nz + 1);
+  for (let i = 0; i < n; i++) {
+    const c = (((pos[i * 3 + 1] - miny) / cell) | 0) * nx * nz + (((pos[i * 3 + 2] - minz) / cell) | 0) * nx + (((pos[i * 3] - minx) / cell) | 0);
+    cellOf[i] = c; counts[c + 1]++;
+  }
+  for (let c = 0; c < nx * ny * nz; c++) counts[c + 1] += counts[c];
+  const cursor = counts.slice(0, -1), sorted = new Uint32Array(n);
+  for (let i = 0; i < n; i++) sorted[cursor[cellOf[i]]++] = i;
+  const out = new Int8Array(n * 3);
+  const r2max = (cell * 1.5) ** 2;
+  const cand = new Float64Array(2048 * 2); // [dist2, index] pairs
+  for (let i = 0; i < n; i++) {
+    const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+    const cx = ((x - minx) / cell) | 0, cy = ((y - miny) / cell) | 0, cz = ((z - minz) / cell) | 0;
+    let m = 0;
+    for (let dy = -1; dy <= 1; dy++) { const yy = cy + dy; if (yy < 0 || yy >= ny) continue;
+      for (let dz = -1; dz <= 1; dz++) { const zz = cz + dz; if (zz < 0 || zz >= nz) continue;
+        for (let dx = -1; dx <= 1; dx++) { const xx = cx + dx; if (xx < 0 || xx >= nx) continue;
+          const c = yy * nx * nz + zz * nx + xx;
+          for (let q = counts[c]; q < counts[c + 1] && m < 2048; q++) {
+            const j = sorted[q]; if (j === i) continue;
+            const d2 = (pos[j * 3] - x) ** 2 + (pos[j * 3 + 1] - y) ** 2 + (pos[j * 3 + 2] - z) ** 2;
+            if (d2 < r2max) { cand[m * 2] = d2; cand[m * 2 + 1] = j; m++; }
+          }
+        }
+      }
+    }
+    if (m < 4) continue;
+    // partial selection of the k nearest (m is small)
+    const kk = Math.min(k, m);
+    for (let a = 0; a < kk; a++) { let best = a; for (let b = a + 1; b < m; b++) if (cand[b * 2] < cand[best * 2]) best = b; if (best !== a) { const t0 = cand[a * 2], t1 = cand[a * 2 + 1]; cand[a * 2] = cand[best * 2]; cand[a * 2 + 1] = cand[best * 2 + 1]; cand[best * 2] = t0; cand[best * 2 + 1] = t1; } }
+    let sx = x, sy = y, sz = z;
+    for (let a = 0; a < kk; a++) { const j = cand[a * 2 + 1]; sx += pos[j * 3]; sy += pos[j * 3 + 1]; sz += pos[j * 3 + 2]; }
+    const cnt = kk + 1, mx = sx / cnt, my = sy / cnt, mz = sz / cnt;
+    let a = 0, b = 0, d = 0, e = 0, f = 0, g = 0;
+    const acc = (px, py, pz) => { const ux = px - mx, uy = py - my, uz = pz - mz; a += ux * ux; b += ux * uy; d += ux * uz; e += uy * uy; f += uy * uz; g += uz * uz; };
+    acc(x, y, z); for (let q = 0; q < kk; q++) { const j = cand[q * 2 + 1]; acc(pos[j * 3], pos[j * 3 + 1], pos[j * 3 + 2]); }
+    const v = smallestEigenvector(a / cnt, b / cnt, d / cnt, e / cnt, f / cnt, g / cnt);
+    out[i * 3] = v[0] * 127; out[i * 3 + 1] = v[1] * 127; out[i * 3 + 2] = v[2] * 127;
+    if ((i & 0x3ffff) === 0) progress(i / n);
+  }
+  return { normals: out, spacing, cell };
+}
+
 // smallest eigenvector of the symmetric 3x3 matrix [[a,b,d],[b,e,f],[d,f,g]] via a few Jacobi sweeps
 function smallestEigenvector(a, b, d, e, f, g) {
   let A = [[a, b, d], [b, e, f], [d, f, g]];
@@ -3556,7 +4624,8 @@ function smallestEigenvector(a, b, d, e, f, g) {
 
 /** Write a LAS 1.2 point-format-2 file (XYZ, intensity, classification, RGB) from viewer arrays. */
 function writeLas({ n, pos, inten, cls, rgb }, { offset = [0, 0, 0] } = {}) {
-  const INV = { 2: 2, 3: 3, 5: 5, 6: 6, 26: 6, 9: 9, 11: 11, 17: 17, 20: 11, 21: 17, 22: 17, 23: 17, 27: 17, 24: 1, 25: 14, 29: 15, 30: 1, 18: 7 };
+  // standard ASPRS codes where they exist, this viewer's extended codes (20–31) otherwise
+  const INV = { 2: 2, 3: 3, 5: 5, 6: 6, 9: 9, 11: 11, 17: 17, 18: 18, 20: 20, 21: 21, 22: 22, 23: 23, 24: 24, 25: 25, 26: 26, 27: 27, 28: 28, 29: 29, 30: 30 };
   const headerSize = 227, recLen = 26;
   const buf = new ArrayBuffer(headerSize + n * recLen);
   const dv = new DataView(buf), u8 = new Uint8Array(buf);
@@ -3596,12 +4665,590 @@ self.onmessage = async (ev) => {
     if (isLaz) { importScripts('${LAZPERF_URL}laz-perf.js'); r = await parseLaz(buf, { maxPoints, progress }); }
     else r = parseLas(buf, { maxPoints, progress });
     self.postMessage({ type: 'progress', p: 0.75 });
-    const { normals, spacing, cell } = estimateNormals(r.pos, r.n);
+    // k-NN PCA for clouds up to 3 M points, grid-cell PCA beyond (time-bounded)
+    const { normals, spacing, cell } = r.n <= 2.5e6 ? estimateNormalsKnn(r.pos, r.n, { progress: (p) => self.postMessage({ type: 'progress', p: 0.75 + p * 0.25 }) }) : estimateNormals(r.pos, r.n);
     const out = { type: 'done', n: r.n, pos: r.pos, inten: r.inten, cls: r.cls, dev: r.dev, elem: r.elem, nrm: normals, rgb: r.rgb, header: r.header, stride: r.stride, spacing, cell, local: r.local };
     self.postMessage(out, [r.pos.buffer, r.inten.buffer, r.cls.buffer, r.dev.buffer, r.elem.buffer, normals.buffer].concat(r.rgb ? [r.rgb.buffer] : []));
   } catch (err) { self.postMessage({ type: 'error', message: String(err && err.message || err) }); }
 };
 `;
+
+// ===== src/scan2bim.js =====
+// Scan-to-BIM: derive a structural model from a point cloud alone (no survey data needed).
+//   1. elevated deck surfaces → 2D rasters per height band → thinning → centreline polylines
+//      with width (distance transform) and height (mean z) → "roads" for buildStructure
+//   2. pier shafts → vertical point columns under the decks → pier positions
+//   3. buildings → oriented bounding rectangles of building-classified components
+//   4. every point is assigned to the nearest fitted element and its signed distance to the
+//      design surface is stored as deviation (mm) → real Scan-to-BIM heat map + per-element stats
+
+
+const NO_ELEM = 65535;
+const C = { ground: 2, building: 6, deck: 17, marking: 20, railing: 21, column: 22, girder: 23, road: 11 };
+
+// ---------------------------------------------------------------- raster helpers
+class Grid {
+  constructor(minx, minz, w, h, res) { this.minx = minx; this.minz = minz; this.res = res; this.w = Math.ceil(w / res) + 2; this.h = Math.ceil(h / res) + 2; }
+  ix(x) { return Math.floor((x - this.minx) / this.res) + 1; }
+  iz(z) { return Math.floor((z - this.minz) / this.res) + 1; }
+  x(i) { return this.minx + (i - 1 + 0.5) * this.res; }
+  z(j) { return this.minz + (j - 1 + 0.5) * this.res; }
+}
+
+function dilate(mask, w, h) {
+  const out = new Uint8Array(mask.length);
+  for (let j = 1; j < h - 1; j++) for (let i = 1; i < w - 1; i++) {
+    const k = j * w + i;
+    if (mask[k] || mask[k - 1] || mask[k + 1] || mask[k - w] || mask[k + w] || mask[k - w - 1] || mask[k - w + 1] || mask[k + w - 1] || mask[k + w + 1]) out[k] = 1;
+  }
+  return out;
+}
+function erode(mask, w, h) {
+  const out = new Uint8Array(mask.length);
+  for (let j = 1; j < h - 1; j++) for (let i = 1; i < w - 1; i++) {
+    const k = j * w + i;
+    if (mask[k] && mask[k - 1] && mask[k + 1] && mask[k - w] && mask[k + w]) out[k] = 1;
+  }
+  return out;
+}
+/** Zhang-Suen thinning → 1-pixel skeleton. */
+function thin(mask, w, h) {
+  const m = Uint8Array.from(mask);
+  let changed = true;
+  const n = new Uint8Array(8);
+  let active = [];
+  for (let j = 1; j < h - 1; j++) for (let i = 1; i < w - 1; i++) if (m[j * w + i]) active.push(j * w + i);
+  while (changed) {
+    changed = false;
+    for (let pass = 0; pass < 2; pass++) {
+      const del = [];
+      for (const k of active) {
+        if (!m[k]) continue;
+        n[0] = m[k - w]; n[1] = m[k - w + 1]; n[2] = m[k + 1]; n[3] = m[k + w + 1]; n[4] = m[k + w]; n[5] = m[k + w - 1]; n[6] = m[k - 1]; n[7] = m[k - w - 1];
+        let B = 0, A = 0;
+        for (let q = 0; q < 8; q++) { B += n[q]; if (n[q] === 0 && n[(q + 1) % 8] === 1) A++; }
+        if (B < 2 || B > 6 || A !== 1) continue;
+        if (pass === 0 ? n[0] * n[2] * n[4] !== 0 || n[2] * n[4] * n[6] !== 0 : n[0] * n[2] * n[6] !== 0 || n[0] * n[4] * n[6] !== 0) continue;
+        del.push(k);
+      }
+      for (const k of del) m[k] = 0;
+      if (del.length) { changed = true; active = active.filter((k) => m[k]); }
+    }
+  }
+  return m;
+}
+/** Distance (in cells) to the nearest non-mask cell, by BFS from the boundary. */
+function distanceTransform(mask, w, h) {
+  const d = new Float32Array(mask.length).fill(1e9);
+  const q = new Int32Array(mask.length * 2); let qh = 0, qt = 0;
+  for (let k = 0; k < mask.length; k++) {
+    if (mask[k]) continue;
+    const i = k % w, j = (k / w) | 0;
+    const nearMask = (i > 0 && mask[k - 1]) || (i < w - 1 && mask[k + 1]) || (j > 0 && mask[k - w]) || (j < h - 1 && mask[k + w]);
+    if (nearMask) { d[k] = 0; q[qt++] = k; }
+  }
+  while (qh < qt) {
+    const k = q[qh++], i = k % w, j = (k / w) | 0;
+    for (const [di, dj, c] of [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, 1.414], [-1, 1, 1.414], [1, -1, 1.414], [-1, -1, 1.414]]) {
+      const ii = i + di, jj = j + dj;
+      if (ii < 0 || jj < 0 || ii >= w || jj >= h) continue;
+      const kk = jj * w + ii;
+      if (mask[kk] && d[kk] > d[k] + c) { d[kk] = d[k] + c; q[qt++ % q.length] = kk; }
+    }
+  }
+  return d;
+}
+/** Trace a skeleton into polylines (lists of cell indices) between endpoints / junctions. */
+function tracePolylines(sk, w, h) {
+  const deg = new Uint8Array(sk.length);
+  const nb = (k) => { const out = []; const i = k % w, j = (k / w) | 0; for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { if (!di && !dj) continue; const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= w || jj >= h) continue; const kk = jj * w + ii; if (sk[kk]) out.push(kk); } return out; };
+  for (let k = 0; k < sk.length; k++) if (sk[k]) deg[k] = nb(k).length;
+  const used = new Uint8Array(sk.length);
+  const lines = [];
+  const walk = (start, next) => {
+    const line = [start]; used[start] = 1;
+    let prev = start, cur = next;
+    while (cur >= 0 && !used[cur]) {
+      line.push(cur); used[cur] = 1;
+      if (deg[cur] !== 2) break;
+      const ns = nb(cur).filter((k) => k !== prev && !used[k]);
+      prev = cur; cur = ns.length ? ns[0] : -1;
+    }
+    return line;
+  };
+  for (let k = 0; k < sk.length; k++) {
+    if (!sk[k] || used[k] || deg[k] === 2) continue;
+    for (const n of nb(k)) if (!used[n]) { const l = walk(k, n); used[k] = 1; if (l.length > 2) lines.push(l); }
+    used[k] = 1;
+  }
+  for (let k = 0; k < sk.length; k++) if (sk[k] && !used[k]) { const l = walk(k, nb(k)[0] ?? -1); if (l.length > 2) lines.push(l); } // loops
+  return lines;
+}
+
+// ---------------------------------------------------------------- 1. decks
+function extractDecks(cloud, { res = 1, bandH = 2.0, minLen = 10, minHeight = 3.5, maxHeight = 45, log = () => {} } = {}) {
+  const { n, pos, cls, nrm } = cloud;
+  const classified = cls.some((c) => c === C.deck);
+  let minx = Infinity, minz = Infinity, maxx = -Infinity, maxz = -Infinity, maxy = 0;
+  for (let i = 0; i < n; i++) { const x = pos[i * 3], z = pos[i * 3 + 2], y = pos[i * 3 + 1]; if (x < minx) minx = x; if (x > maxx) maxx = x; if (z < minz) minz = z; if (z > maxz) maxz = z; if (y > maxy) maxy = y; }
+  const g = new Grid(minx, minz, maxx - minx, maxz - minz, res);
+  const nb = Math.ceil(Math.min(maxy, maxHeight) / bandH) + 1;
+  // candidate deck points → per-band rasters (count, sum y)
+  const bands = Array.from({ length: nb }, () => new Map()); // cell → [count, sumY]
+  const bandOf = (y) => Math.floor(y / bandH);
+  let cand = 0, cellsTotal = 0;
+  for (let i = 0; i < n; i++) {
+    const y = pos[i * 3 + 1];
+    if (y < minHeight || y > maxHeight) continue;
+    const c = cls[i];
+    let ok;
+    if (classified) ok = c === C.deck || c === C.marking;
+    else ok = nrm ? Math.abs(nrm[i * 3 + 1]) > 95 && c !== C.building : true;
+    if (!ok) continue;
+    cand++;
+    const b = bandOf(y), k = g.iz(pos[i * 3 + 2]) * g.w + g.ix(pos[i * 3]);
+    const m = bands[b]; let cell = m.get(k);
+    if (!cell) { cell = [0, 0]; m.set(k, cell); cellsTotal++; }
+    cell[0]++; cell[1] += y;
+  }
+  log(`deck candidates: ${cand} points in ${cellsTotal} cells, ${nb} height bands`);
+  const minPts = Math.max(2, Math.round(cand / Math.max(1, cellsTotal) * 0.15));
+  const segments = []; // { pts:[[x,y,z]...], width, bandLo, bandHi }
+  for (let b = 0; b < nb; b++) {
+    const mask = new Uint8Array(g.w * g.h);
+    let any = 0;
+    for (const [k, c] of bands[b]) if (c[0] >= minPts) { mask[k] = 1; any++; }
+    // neighbouring bands overlap by one band so ramps are not cut at band edges
+    if (b + 1 < nb) for (const [k, c] of bands[b + 1]) if (c[0] >= minPts) mask[k] = 1;
+    if (any < 20) continue;
+    // work on the band's bounding sub-rectangle (plus margin) — thinning on the full grid is far too slow
+    let i0 = g.w, i1 = 0, j0 = g.h, j1 = 0;
+    for (let k = 0; k < mask.length; k++) if (mask[k]) { const i = k % g.w, j = (k / g.w) | 0; if (i < i0) i0 = i; if (i > i1) i1 = i; if (j < j0) j0 = j; if (j > j1) j1 = j; }
+    i0 = Math.max(0, i0 - 4); j0 = Math.max(0, j0 - 4); i1 = Math.min(g.w - 1, i1 + 4); j1 = Math.min(g.h - 1, j1 + 4);
+    const sw = i1 - i0 + 1, sh = j1 - j0 + 1;
+    const sub = new Uint8Array(sw * sh);
+    for (let j = 0; j < sh; j++) for (let i = 0; i < sw; i++) sub[j * sw + i] = mask[(j + j0) * g.w + i + i0];
+    const closed = erode(dilate(dilate(sub, sw, sh), sw, sh), sw, sh);
+    const dist = distanceTransform(closed, sw, sh);
+    const m = erode(closed, sw, sh);
+    const sk = thin(m, sw, sh);
+    const lines = tracePolylines(sk, sw, sh);
+    for (const line of lines) {
+      if (line.length * res < minLen) continue;
+      const pts = [], widths = [];
+      for (const kk of line) {
+        const i = (kk % sw) + i0, j = ((kk / sw) | 0) + j0, k = j * g.w + i;
+        // height: mean of candidate points in this cell (this band or the next)
+        let sy = 0, sc = 0;
+        for (const bb of [b, b + 1]) { const c = bands[bb] && bands[bb].get(k); if (c) { sy += c[1]; sc += c[0]; } }
+        if (!sc) continue;
+        pts.push([g.x(i), sy / sc, g.z(j)]);
+        widths.push(dist[kk] * 2 * res);
+      }
+      if (pts.length < 4) continue;
+      // smooth heights and positions (moving average), width = median of the central 60 %
+      const sm = pts.map((p, i) => { let sx = 0, sy = 0, sz = 0, c = 0; for (let q = -3; q <= 3; q++) { const pp = pts[i + q]; if (pp) { sx += pp[0]; sy += pp[1]; sz += pp[2]; c++; } } return [sx / c, sy / c, sz / c]; });
+      const ws = widths.slice().sort((a, b) => a - b);
+      const width = Math.max(4, Math.min(32, ws[Math.floor(ws.length * 0.5)] + res * 0.5));
+      segments.push({ pts: sm, width, band: b });
+    }
+  }
+  // merge segments whose ends meet (same corridor split by band edges or junction nodes)
+  const near = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]) < 4.5 && Math.abs(a[1] - b[1]) < 2.5;
+  const dirAt = (pts, atEnd) => { const n = Math.min(4, pts.length - 1); const a = atEnd ? pts[pts.length - 1 - n] : pts[n], b = atEnd ? pts[pts.length - 1] : pts[0]; const dx = b[0] - a[0], dz = b[2] - a[2], L = Math.hypot(dx, dz) || 1; return [dx / L, dz / L]; };
+  let merged = true;
+  const endHash = () => { const h = new Map(); segments.forEach((sg, j) => { for (const p of [sg.pts[0], sg.pts[sg.pts.length - 1]]) { const k = `${Math.floor(p[0] / 5)},${Math.floor(p[2] / 5)}`; if (!h.has(k)) h.set(k, new Set()); h.get(k).add(j); } }); return h; };
+  const candidatesNear = (h, p) => { const out = new Set(); for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const l = h.get(`${Math.floor(p[0] / 5) + di},${Math.floor(p[2] / 5) + dj}`); if (l) for (const j of l) out.add(j); } return out; };
+  while (merged) {
+    merged = false;
+    const h = endHash();
+    for (let i = 0; i < segments.length && !merged; i++) {
+      const A = segments[i];
+      let best = null, bestCos = 0.5; // require a reasonably straight continuation (< 60°)
+      const cand = new Set([...candidatesNear(h, A.pts[0]), ...candidatesNear(h, A.pts[A.pts.length - 1])]);
+      for (const j of cand) {
+        if (i === j) continue;
+        const B = segments[j];
+        const a0 = A.pts[0], a1 = A.pts[A.pts.length - 1], b0 = B.pts[0], b1 = B.pts[B.pts.length - 1];
+        const cands = [];
+        if (near(a1, b0)) cands.push([dirAt(A.pts, true), dirAt(B.pts, false), () => A.pts.concat(B.pts.slice(1))]);
+        if (near(a1, b1)) cands.push([dirAt(A.pts, true), dirAt(B.pts.slice().reverse(), false), () => A.pts.concat(B.pts.slice(0, -1).reverse())]);
+        if (near(a0, b1)) cands.push([dirAt(B.pts, true), dirAt(A.pts, false), () => B.pts.concat(A.pts.slice(1))]);
+        if (near(a0, b0)) cands.push([dirAt(B.pts.slice().reverse(), true), dirAt(A.pts, false), () => B.pts.slice().reverse().concat(A.pts.slice(1))]);
+        for (const [d1, d2, join] of cands) { const cos = d1[0] * d2[0] + d1[1] * d2[1]; if (cos > bestCos) { bestCos = cos; best = { j, join }; } }
+      }
+      if (best) {
+        const B = segments[best.j], la = A.pts.length, lb = B.pts.length;
+        segments[i] = { pts: best.join(), width: (A.width * la + B.width * lb) / (la + lb), band: A.band };
+        segments.splice(best.j, 1); merged = true;
+      }
+    }
+  }
+  // dedupe: drop a segment that lies almost entirely within 3 m of a longer one at similar height
+  segments.sort((a, b) => b.pts.length - a.pts.length);
+  const kept = [], occ = new Map();
+  const okey = (p) => `${Math.floor(p[0] / 3)},${Math.floor(p[2] / 3)}`;
+  const isCovered = (p) => { for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) { const l = occ.get(`${Math.floor(p[0] / 3) + di},${Math.floor(p[2] / 3) + dj}`); if (l && l.some((q) => Math.hypot(q[0] - p[0], q[2] - p[2]) < 3 && Math.abs(q[1] - p[1]) < 1.5)) return true; } return false; };
+  for (const s of segments) {
+    let covered = 0;
+    for (const p of s.pts) if (isCovered(p)) covered++;
+    if (covered / s.pts.length < 0.6) { kept.push(s); for (const p of s.pts) { const k = okey(p); if (!occ.has(k)) occ.set(k, []); occ.get(k).push(p); } }
+  }
+  log(`decks: ${kept.length} corridors, ${kept.reduce((a, s) => a + s.pts.length, 0)} m total`);
+  return kept.map((s, i) => ({
+    id: `scan${i}`, hw: s.width > 9 ? 'motorway' : 'motorway_link', kind: s.width > 9 ? 'expressway' : 'ramp', elevated: true,
+    layer: Math.max(1, Math.round(s.pts.reduce((a, p) => a + p[1], 0) / s.pts.length / 5.6)), width: Math.round(s.width * 10) / 10,
+    lanes: Math.max(1, Math.round((s.width - 1.5) / 3.4)), oneway: true, name: '', ref: '', pts: resample(s.pts, 4).map((p) => [p[0], p[1], p[2]]),
+  }));
+}
+
+// ---------------------------------------------------------------- 2. piers
+function extractPiers(cloud, roads, { res = 1, log = () => {} } = {}) {
+  const { n, pos, cls, nrm } = cloud;
+  const classified = cls.some((c) => c === C.column);
+  const cells = new Map(); // key → {c, sx, sz, miny, maxy, idx[]}
+  let minx = Infinity, minz = Infinity, maxx = -Infinity, maxz = -Infinity;
+  for (let i = 0; i < n; i++) { const x = pos[i * 3], z = pos[i * 3 + 2]; if (x < minx) minx = x; if (x > maxx) maxx = x; if (z < minz) minz = z; if (z > maxz) maxz = z; }
+  const g = new Grid(minx, minz, maxx - minx, maxz - minz, res);
+  for (let i = 0; i < n; i++) {
+    const y = pos[i * 3 + 1];
+    if (y < 1.0 || y > 40) continue;
+    const ok = classified ? cls[i] === C.column : nrm && Math.abs(nrm[i * 3 + 1]) < 35 && cls[i] !== C.building;
+    if (!ok) continue;
+    const k = g.iz(pos[i * 3 + 2]) * g.w + g.ix(pos[i * 3]);
+    let s = cells.get(k);
+    if (!s) { s = { c: 0, sx: 0, sz: 0, miny: 1e9, maxy: -1e9, idx: [] }; cells.set(k, s); }
+    s.c++; s.sx += pos[i * 3]; s.sz += pos[i * 3 + 2]; if (y < s.miny) s.miny = y; if (y > s.maxy) s.maxy = y; if (s.idx.length < 400) s.idx.push(i);
+  }
+  // cells with a tall vertical extent and enough points → connected components → pier centroids
+  const strong = new Set();
+  for (const [k, s] of cells) if (s.maxy - s.miny > 4 && s.c >= 12) strong.add(k);
+  const seen = new Set(), piers = [];
+  for (const k0 of strong) {
+    if (seen.has(k0)) continue;
+    const comp = []; const stack = [k0]; seen.add(k0);
+    while (stack.length) {
+      const k = stack.pop(); comp.push(k);
+      const i = k % g.w, j = (k / g.w) | 0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const kk = (j + dj) * g.w + i + di; if (strong.has(kk) && !seen.has(kk)) { seen.add(kk); stack.push(kk); } }
+    }
+    let sx = 0, sz = 0, c = 0, top = -1e9, bot = 1e9; const idx = [];
+    for (const k of comp) { const s = cells.get(k); sx += s.sx; sz += s.sz; c += s.c; if (s.maxy > top) top = s.maxy; if (s.miny < bot) bot = s.miny; idx.push(...s.idx); }
+    if (comp.length > 40) continue; // too wide for a pier (building wall)
+    piers.push({ x: sx / c, z: sz / c, yTop: top, yBot: bot, cells: comp.length, points: c, idx });
+  }
+  // attach each pier to the nearest deck corridor (frame direction, deck height)
+  const paths = roads.map((r) => framePath(resample(r.pts, 2)));
+  const out = [];
+  for (const p of piers) {
+    let best = null, bd = 1e9;
+    paths.forEach((path, ri) => { for (const q of path) { const d = Math.hypot(q.x - p.x, q.z - p.z); if (d < bd) { bd = d; best = { q, ri }; } } });
+    if (!best || bd > roads[best.ri].width / 2 + 4) continue;
+    if (p.yTop < best.q.y - DECK_T - GIRDER_D - 6 || p.yTop > best.q.y + 1.0) continue; // shaft must reach the girder
+    // section fit: circle (median radius) vs rectangle aligned with the deck (95 % extents); keep the better residual
+    const { tx, tz } = best.q, nx = -tz, nz = tx;
+    const rs = [], us = [], vs = [];
+    for (const i of p.idx) { const dx = pos[i * 3] - p.x, dz = pos[i * 3 + 2] - p.z; rs.push(Math.hypot(dx, dz)); us.push(Math.abs(dx * tx + dz * tz)); vs.push(Math.abs(dx * nx + dz * nz)); }
+    const srt = (a) => a.slice().sort((q1, q2) => q1 - q2);
+    const R = srt(rs)[rs.length >> 1];
+    const U = srt(us)[Math.floor(us.length * 0.95)], V = srt(vs)[Math.floor(vs.length * 0.95)];
+    let resC = 0, resR = 0;
+    for (let k = 0; k < rs.length; k++) { resC += Math.abs(rs[k] - R); resR += Math.abs(Math.max(us[k] - U, vs[k] - V)); }
+    const round = resC <= resR * 1.15;
+    out.push({ x: p.x, z: p.z, tx, tz, road: best.ri, deckY: best.q.y, width: roads[best.ri].width, points: p.points, round, colW: round ? Math.round(R * 2 * 20) / 20 : Math.round(V * 2 * 20) / 20, colL: round ? Math.round(R * 2 * 20) / 20 : Math.round(U * 2 * 20) / 20 });
+  }
+  log(`piers: ${out.length} detected (${piers.length} vertical clusters)`);
+  return out;
+}
+
+// ---------------------------------------------------------------- 3. buildings (oriented boxes)
+function extractBuildings(cloud, { res = 2, log = () => {} } = {}) {
+  const { n, pos, cls } = cloud;
+  if (!cls.some((c) => c === C.building)) return [];
+  let minx = Infinity, minz = Infinity, maxx = -Infinity, maxz = -Infinity;
+  for (let i = 0; i < n; i++) { const x = pos[i * 3], z = pos[i * 3 + 2]; if (x < minx) minx = x; if (x > maxx) maxx = x; if (z < minz) minz = z; if (z > maxz) maxz = z; }
+  const g = new Grid(minx, minz, maxx - minx, maxz - minz, res);
+  const mask = new Uint8Array(g.w * g.h), hmax = new Float32Array(g.w * g.h);
+  const cnt = new Uint16Array(g.w * g.h);
+  for (let i = 0; i < n; i++) {
+    if (cls[i] !== C.building) continue;
+    const k = g.iz(pos[i * 3 + 2]) * g.w + g.ix(pos[i * 3]);
+    cnt[k]++; const y = pos[i * 3 + 1]; if (y > hmax[k]) hmax[k] = y;
+  }
+  for (let k = 0; k < mask.length; k++) if (cnt[k] >= 3) mask[k] = 1;
+  const seen = new Uint8Array(mask.length), out = [];
+  for (let k0 = 0; k0 < mask.length; k0++) {
+    if (!mask[k0] || seen[k0]) continue;
+    const comp = [], stack = [k0]; seen[k0] = 1;
+    while (stack.length) {
+      const k = stack.pop(); comp.push(k);
+      const i = k % g.w, j = (k / g.w) | 0;
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= g.w || jj >= g.h) continue; const kk = jj * g.w + ii; if (mask[kk] && !seen[kk]) { seen[kk] = 1; stack.push(kk); } }
+    }
+    if (comp.length < 3) continue;
+    // PCA-oriented bounding rectangle of the component cells
+    let sx = 0, sz = 0; for (const k of comp) { sx += g.x(k % g.w); sz += g.z((k / g.w) | 0); }
+    const cx = sx / comp.length, cz = sz / comp.length;
+    let a = 0, b = 0, d = 0; for (const k of comp) { const x = g.x(k % g.w) - cx, z = g.z((k / g.w) | 0) - cz; a += x * x; b += x * z; d += z * z; }
+    const th = 0.5 * Math.atan2(2 * b, a - d), ux = Math.cos(th), uz = Math.sin(th);
+    let u0 = 1e9, u1 = -1e9, v0 = 1e9, v1 = -1e9, h = 0; const hs = [];
+    for (const k of comp) { const x = g.x(k % g.w) - cx, z = g.z((k / g.w) | 0) - cz; const u = x * ux + z * uz, v = -x * uz + z * ux; if (u < u0) u0 = u; if (u > u1) u1 = u; if (v < v0) v0 = v; if (v > v1) v1 = v; hs.push(hmax[k]); }
+    hs.sort((p, q) => p - q); h = hs[Math.floor(hs.length * 0.9)];
+    const hr = res / 2; u0 -= hr; u1 += hr; v0 -= hr; v1 += hr;
+    const corner = (u, v) => [cx + u * ux - v * uz, cz + u * uz + v * ux];
+    const pts = [corner(u0, v0), corner(u1, v0), corner(u1, v1), corner(u0, v1)].map(([x, z]) => [Math.round(x * 10) / 10, Math.round(z * 10) / 10]);
+    if (h < 3 || polygonArea(pts) < 20) continue;
+    out.push({ id: `b${out.length}`, h: Math.round(h * 10) / 10, levels: Math.max(1, Math.round(h / 3.4)), name: '', use: '', pts });
+  }
+  log(`buildings: ${out.length} footprints`);
+  return out;
+}
+
+// ---------------------------------------------------------------- 4. assignment + deviation
+/**
+ * Assign points to fitted elements and compute signed deviation (mm) to the design surface.
+ * Writes cloud.elem and cloud.dev in place. Returns per-element stats.
+ */
+function assignAndDeviate(cloud, elements, { log = () => {}, refineWidths = true } = {}) {
+  const { n, pos, cls, elem, dev } = cloud;
+  elem.fill(NO_ELEM); dev.fill(128);
+  if (refineWidths) refineDeckWidths(cloud, elements, log);
+  // spatial hash of deck path samples (cell 6 m) → nearest corridor lookup
+  const CELL = 6, hash = new Map();
+  const decks = elements.filter((e) => e.type === 'deck');
+  const railByDeck = new Map();
+  for (const e of elements) if (e.type === 'railing') { if (!railByDeck.has(e.parent)) railByDeck.set(e.parent, []); railByDeck.get(e.parent).push(e); }
+  const girderByDeck = new Map(); for (const e of elements) if (e.type === 'girder') girderByDeck.set(e.parent, e);
+  for (const e of decks) for (let i = 0; i < e.path.length; i++) {
+    const p = e.path[i], k = `${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`;
+    if (!hash.has(k)) hash.set(k, []);
+    hash.get(k).push([e, i]);
+  }
+  const columns = elements.filter((e) => e.type === 'column');
+  const colHash = new Map();
+  for (const c of columns) { const k = `${Math.floor(c.x / 10)},${Math.floor(c.z / 10)}`; if (!colHash.has(k)) colHash.set(k, []); colHash.get(k).push(c); }
+  const stats = new Map();
+  const acc = (id, d) => { let s = stats.get(id); if (!s) { s = { count: 0, sum: 0, maxAbs: 0 }; stats.set(id, s); } s.count++; s.sum += d; if (Math.abs(d) > s.maxAbs) s.maxAbs = Math.abs(d); };
+  let assigned = 0;
+  for (let i = 0; i < n; i++) {
+    const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+    const c = cls[i];
+    if (c === C.building || c === C.ground || c === C.road || y < 0.5) continue;
+    // nearest deck sample within 3x3 cells
+    let best = null, bd = 1e9;
+    const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      const list = hash.get(`${cx + di},${cz + dj}`); if (!list) continue;
+      for (const [e, idx] of list) { const p = e.path[idx]; const d = (p.x - x) ** 2 + (p.z - z) ** 2 + (p.y - y) ** 2 * 0.15; if (d < bd) { bd = d; best = [e, idx]; } }
+    }
+    let hit = null, dmm = 0;
+    if (best) {
+      const e = best[0], p = e.path[best[1]];
+      // refine with the two neighbouring samples (local segment projection)
+      const q = e.path[Math.min(e.path.length - 1, best[1] + 1)], r = e.path[Math.max(0, best[1] - 1)];
+      const seg = p === q ? [r, p] : [p, q];
+      const [a, b] = seg; const tx = b.x - a.x, tz = b.z - a.z, L2 = tx * tx + tz * tz || 1;
+      const t = Math.max(0, Math.min(1, ((x - a.x) * tx + (z - a.z) * tz) / L2));
+      const px = a.x + tx * t, pz = a.z + tz * t, py = a.y + (b.y - a.y) * t;
+      const nx = -tz / Math.sqrt(L2), nz = tx / Math.sqrt(L2);
+      const v = (x - px) * nx + (z - pz) * nz, dy = y - py, hw = e.width / 2;
+      const av = Math.abs(v);
+      if (av > hw - RAIL_T - 0.35 && av < hw + 0.45 && dy > 0.06 && dy < RAIL_H + 1.3) {                                    // parapet: lateral deviation of the nearer face
+        const rails = railByDeck.get(e.id) || [];
+        const rail = rails.find((rr) => Math.sign(rr.side) === Math.sign(v)) || rails[0];
+        if (rail) { hit = rail; dmm = (av >= hw - RAIL_T / 2 ? av - hw : av - (hw - RAIL_T)) * 1000; }
+      } else if (av <= hw - RAIL_T + 0.1 && dy > -0.3 && dy < 0.3) { hit = e; dmm = dy * 1000; }                          // deck surface: vertical deviation
+      else if (Math.abs(v) < hw + 0.3 && dy < -0.2 && dy > -(DECK_T + GIRDER_D + 0.6)) {                                 // girder
+        const gd = girderByDeck.get(e.id);
+        if (gd) {
+          if (dy < -(DECK_T + GIRDER_D - 0.35)) { hit = gd; dmm = (dy + DECK_T + GIRDER_D) * 1000; }                        // soffit: vertical deviation
+          else { const f = Math.min(1, Math.max(0, (-dy - DECK_T) / gd.depth)); const expect = gd.wTop / 2 + (gd.wBot / 2 - gd.wTop / 2) * f; if (Math.abs(Math.abs(v) - expect) < 0.5) { hit = gd; dmm = (Math.abs(v) - expect) * 1000; } }
+        }
+      }
+    }
+    if (!hit && (c === C.column || c === 27 || !cls.some)) { /* fallthrough */ }
+    if (!hit && y > 0.5) {
+      const list = []; const kx = Math.floor(x / 10), kz = Math.floor(z / 10);
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const l = colHash.get(`${kx + di},${kz + dj}`); if (l) list.push(...l); }
+      for (const col of list) {
+        if (y < col.yBot - 0.5 || y > col.yTop + 0.3) continue;
+        let sd;
+        if (col.round) sd = Math.hypot(x - col.x, z - col.z) - col.colW / 2;
+        else { const u = (x - col.x) * col.tx + (z - col.z) * col.tz, v = -(x - col.x) * col.tz + (z - col.z) * col.tx; const du = Math.abs(u) - col.colL / 2, dv = Math.abs(v) - col.colW / 2; sd = Math.max(du, dv); }
+        if (sd < 0.45 && sd > -0.6) { hit = col; dmm = sd * 1000; break; }
+      }
+    }
+    if (hit) { elem[i] = hit.id; const dd = Math.max(-127, Math.min(127, Math.round(dmm))); dev[i] = 128 + dd; acc(hit.id, dmm); assigned++; }
+  }
+  log(`assigned ${assigned.toLocaleString()} / ${n.toLocaleString()} points to ${stats.size} elements`);
+  const out = {};
+  for (const [id, s] of stats) out[id] = { count: s.count, meanDev: s.sum / s.count, maxDev: s.maxAbs };
+  return out;
+}
+
+/**
+ * Refit each fitted corridor to the measured points: per 10 m bin along the path, the lateral
+ * centre is the mid-point between the two parapet medians, the height is the median pavement
+ * height, and the width follows the parapet spacing. Paths and dependent elements are updated.
+ */
+function refineDeckWidths(cloud, elements, log) {
+  const { n, pos, cls } = cloud;
+  const decks = elements.filter((e) => e.type === 'deck');
+  const CELL = 6, hash = new Map();
+  for (const e of decks) for (let i = 0; i < e.path.length; i++) { const p = e.path[i], k = `${Math.floor(p.x / CELL)},${Math.floor(p.z / CELL)}`; if (!hash.has(k)) hash.set(k, []); hash.get(k).push([e, i]); }
+  const BIN = 10;
+  const bins = new Map(); // deckId → Map(binIndex → {L:[], R:[], H:[]})
+  for (let i = 0; i < n; i++) {
+    const y = pos[i * 3 + 1]; if (y < 3) continue;
+    const c = cls[i]; if (c === C.building || c === C.ground || c === C.road) continue;
+    const x = pos[i * 3], z = pos[i * 3 + 2];
+    let best = null, bd = 1e9; const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const l = hash.get(`${cx + di},${cz + dj}`); if (!l) continue; for (const [e, idx] of l) { const p = e.path[idx]; const d = (p.x - x) ** 2 + (p.z - z) ** 2 + (p.y - y) ** 2 * 0.15; if (d < bd) { bd = d; best = [e, idx]; } } }
+    if (!best) continue;
+    const e = best[0], p = e.path[best[1]], dy = y - p.y;
+    const v = (x - p.x) * p.nx + (z - p.z) * p.nz, av = Math.abs(v), hw = e.width / 2;
+    if (av > hw + 3) continue;
+    let m = bins.get(e.id); if (!m) { m = new Map(); bins.set(e.id, m); }
+    const b = Math.floor(p.s / BIN); let bb = m.get(b); if (!bb) { bb = { L: [], R: [], H: [] }; m.set(b, bb); }
+    if (dy > 0.3 && dy < RAIL_H && av > 1) (v < 0 ? bb.L : bb.R).push(av);
+    else if (Math.abs(dy) < 0.6 && av < hw - 0.6) bb.H.push(dy);
+  }
+  const med = (a) => { if (a.length < 8) return null; a.sort((p, q) => p - q); return a[a.length >> 1]; };
+  let refined = 0;
+  for (const e of decks) {
+    const m = bins.get(e.id); if (!m) continue;
+    // per-bin corrections, then interpolate along the path (holes filled from neighbours)
+    const nb = Math.floor(e.path[e.path.length - 1].s / BIN) + 1;
+    const lat = new Array(nb).fill(null), ver = new Array(nb).fill(null), wid = new Array(nb).fill(null);
+    for (const [b, bb] of m) { const l = med(bb.L), r = med(bb.R), h = med(bb.H); if (l != null && r != null) { lat[b] = (r - l) / 2; wid[b] = (r + l) / 2 * 2 + RAIL_T; } if (h != null) ver[b] = h; }
+    const fill = (arr) => { const idx = arr.map((v, i) => (v == null ? -1 : i)).filter((i) => i >= 0); if (!idx.length) return null; return arr.map((v, i) => { if (v != null) return v; let lo = -1, hi = -1; for (const j of idx) { if (j < i) lo = j; else { hi = j; break; } } if (lo < 0) return arr[hi]; if (hi < 0) return arr[lo]; return arr[lo] + (arr[hi] - arr[lo]) * ((i - lo) / (hi - lo)); }); };
+    const latF = fill(lat), verF = fill(ver), widF = fill(wid);
+    if (!latF && !verF) continue;
+    refined++;
+    const smooth = (arr) => arr.map((v, i) => { let s = 0, c = 0; for (let q = -1; q <= 1; q++) if (arr[i + q] != null) { s += arr[i + q]; c++; } return s / c; });
+    const latS = latF && smooth(latF), verS = verF && smooth(verF);
+    for (const p of e.path) {
+      const b = Math.min(nb - 1, Math.floor(p.s / BIN));
+      if (latS) { p.x += p.nx * latS[b]; p.z += p.nz * latS[b]; }
+      if (verS) p.y += verS[b];
+    }
+    if (widF) {
+      const ws = widF.slice().sort((a, b) => a - b), w = Math.round(ws[ws.length >> 1] * 100) / 100;
+      for (const el of elements) if (el === e || el.parent === e.id) {
+        if (el.type === 'deck') { el.width = w; el.typeName = `t=${(el.thick * 1000) | 0} W=${(w * 1000) | 0}`; }
+        if (el.type === 'girder') { el.wTop = Math.max(3, w - 1.0); el.wBot = Math.max(2.5, w - 3.2); el.typeName = `W${(el.wTop * 1000) | 0}×D${(el.depth * 1000) | 0}`; }
+        if (el.type === 'railing') el.offset = el.side * (w / 2 - RAIL_T / 2);
+        if (el.type === 'cap') { el.w = w + 1.4; el.typeName = `W${((w + 1.4) * 1000) | 0}×H${(el.h * 1000) | 0}`; }
+      }
+    }
+  }
+  log(`corridors refitted to parapets / pavement: ${refined} / ${decks.length}`);
+}
+
+/** Full pipeline: cloud → { data (roads/buildings/piers), log } ready for buildStructure. */
+function scanToBim(cloud, opts = {}) {
+  const lines = [];
+  const log = (m) => { lines.push(m); if (opts.log) opts.log(m); };
+  let t = performance.now();
+  const roads = extractDecks(cloud, { log }); log(`  (decks ${((performance.now() - t) / 1000).toFixed(1)} s)`); t = performance.now();
+  const piers = extractPiers(cloud, roads, { log }); log(`  (piers ${((performance.now() - t) / 1000).toFixed(1)} s)`); t = performance.now();
+  const buildings = extractBuildings(cloud, { log }); log(`  (buildings ${((performance.now() - t) / 1000).toFixed(1)} s)`);
+  const data = { site: { layerHeight: 5.6, cropM: [0, 0], drive: {} }, roads, buildings, water: [], parks: [], rail: [], piers };
+  return { data, log: lines };
+}
+
+// ===== src/lod.js =====
+// Level-of-detail point cloud: points are bucketed into ground cells, each cell holds its points
+// sorted by a random LOD rank so that the first 1/64, 1/16, 1/4 or all of them form nested
+// subsamples. Per frame each visible cell draws the fraction that projects to ~1 px spacing,
+// under a global point budget. Attribute arrays stay in one global set; cells use subarray views.
+
+const FRACTIONS = [1 / 64, 1 / 16, 1 / 4, 1];
+
+function buildLod(m, material, { cell = 64 } = {}) {
+  const n = m.n, pos = m.pos;
+  let minx = Infinity, minz = Infinity, maxx = -Infinity, maxz = -Infinity;
+  for (let i = 0; i < n; i++) { const x = pos[i * 3], z = pos[i * 3 + 2]; if (x < minx) minx = x; if (x > maxx) maxx = x; if (z < minz) minz = z; if (z > maxz) maxz = z; }
+  const nx = Math.max(1, Math.ceil((maxx - minx) / cell)), nz = Math.max(1, Math.ceil((maxz - minz) / cell));
+  const cellOf = new Uint32Array(n), level = new Uint8Array(n);
+  const counts = new Uint32Array(nx * nz * 4);
+  let h = 0x9e3779b9;
+  for (let i = 0; i < n; i++) {
+    const ix = Math.min(nx - 1, ((pos[i * 3] - minx) / cell) | 0), iz = Math.min(nz - 1, ((pos[i * 3 + 2] - minz) / cell) | 0);
+    const c = iz * nx + ix;
+    h = (Math.imul(h ^ (i + 1), 0x85ebca6b) ^ (h >>> 13)) >>> 0;
+    const r = h / 4294967296;
+    const l = r < FRACTIONS[0] ? 0 : r < FRACTIONS[1] ? 1 : r < FRACTIONS[2] ? 2 : 3;
+    cellOf[i] = c; level[i] = l; counts[c * 4 + l]++;
+  }
+  // prefix sums → write offsets per (cell, level)
+  const start = new Uint32Array(nx * nz * 4 + 1);
+  for (let k = 0; k < counts.length; k++) start[k + 1] = start[k] + counts[k];
+  const cursor = start.slice(0, -1);
+  const order = new Uint32Array(n);
+  for (let i = 0; i < n; i++) order[cursor[cellOf[i] * 4 + level[i]]++] = i;
+  // permute all attribute arrays
+  const permute = (arr, comp) => { if (!arr) return arr; const out = new arr.constructor(arr.length); for (let i = 0; i < n; i++) { const s = order[i]; for (let k = 0; k < comp; k++) out[i * comp + k] = arr[s * comp + k]; } return out; };
+  const out = { ...m, pos: permute(m.pos, 3), inten: permute(m.inten, 1), cls: permute(m.cls, 1), dev: permute(m.dev, 1), elem: permute(m.elem, 1), nrm: permute(m.nrm, 3), rgb: permute(m.rgb, 3), order };
+  const group = new THREE.Group();
+  const cells = [];
+  for (let c = 0; c < nx * nz; c++) {
+    const off = start[c * 4], total = start[c * 4 + 4] - off;
+    if (!total) continue;
+    const cum = [start[c * 4 + 1] - off, start[c * 4 + 2] - off, start[c * 4 + 3] - off, total];
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(out.pos.subarray(off * 3, (off + total) * 3), 3));
+    geo.setAttribute('intensity', new THREE.BufferAttribute(out.inten.subarray(off, off + total), 1, true));
+    geo.setAttribute('cls', new THREE.BufferAttribute(out.cls.subarray(off, off + total), 1, false));
+    geo.setAttribute('dev', new THREE.BufferAttribute(out.dev.subarray(off, off + total), 1, true));
+    geo.setAttribute('elem', new THREE.BufferAttribute(out.elem.subarray(off, off + total), 1, false));
+    geo.setAttribute('normal', new THREE.BufferAttribute(out.nrm.subarray(off * 3, (off + total) * 3), 3, true));
+    if (out.rgb) geo.setAttribute('rgb', new THREE.BufferAttribute(out.rgb.subarray(off * 3, (off + total) * 3), 3, true));
+    geo.computeBoundingSphere();
+    const points = new THREE.Points(geo, material);
+    points.frustumCulled = false; // we cull ourselves
+    const sphere = geo.boundingSphere.clone();
+    const area = Math.max(1, Math.min(cell * cell, Math.PI * sphere.radius * sphere.radius));
+    const cellObj = { points, offset: off, total, cum, sphere, spacing: Math.sqrt(area / total), lodScale: 1, drawn: 0 };
+    points.onBeforeRender = () => { material.uniforms.uLodScale.value = cellObj.lodScale; material.uniformsNeedUpdate = true; };
+    group.add(points);
+    cells.push(cellObj);
+  }
+  const frustum = new THREE.Frustum(), mat = new THREE.Matrix4();
+  const stats = { drawn: 0, cellsVisible: 0 };
+  function update(camera, viewportH, budget = 8e6, targetPx = 1.0) {
+    mat.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    frustum.setFromProjectionMatrix(mat);
+    const tanHalf = Math.tan((camera.fov / 2) * Math.PI / 180);
+    let sum = 0, vis = 0;
+    const want = new Float32Array(cells.length);
+    for (let i = 0; i < cells.length; i++) {
+      const c = cells[i];
+      if (!frustum.intersectsSphere(c.sphere)) { want[i] = 0; c.points.visible = false; continue; }
+      const d = Math.max(1, camera.position.distanceTo(c.sphere.center) - c.sphere.radius);
+      const px = (c.spacing * viewportH) / (2 * tanHalf * d);
+      const f = Math.min(1, Math.max(FRACTIONS[0], (px / targetPx) ** 2));
+      want[i] = f; vis++; sum += f * c.total;
+    }
+    const scale = sum > budget ? budget / sum : 1;
+    let drawn = 0;
+    for (let i = 0; i < cells.length; i++) {
+      const c = cells[i];
+      if (!want[i]) continue;
+      const f = Math.max(FRACTIONS[0], want[i] * scale);
+      let L = 0; while (L < 3 && FRACTIONS[L] < f) L++;
+      const count = c.cum[L];
+      c.points.visible = count > 0;
+      c.points.geometry.setDrawRange(0, count);
+      c.lodScale = 1 / Math.sqrt(count / c.total);
+      c.drawn = count; drawn += count;
+    }
+    stats.drawn = drawn; stats.cellsVisible = vis;
+    return stats;
+  }
+  function dispose() { for (const c of cells) c.points.geometry.dispose(); }
+  return { group, cells, update, dispose, cloud: out, objects: cells.map((c) => c.points), stats };
+}
 
 // ===== src/main.js =====
 
@@ -3640,9 +5287,9 @@ const state = {
   site: 'hakozaki', density: 0.4, mode: 0, row: 'lidar', heightMix: 0.15, pointSize: 2.0, gain: 1.0,
   showCloud: true, showBim: false, bimStyle: 'wire', showBuildingsBim: false, showLevels: false, showGrid: false,
   section: false, phase: 1, phasePlaying: false, devRange: 50, selected: -1, measuring: false, edl: true,
-  clsHidden: new Set(), isolateRoute: null, surfel: true, shade: 0.5, las: null,
+  clsHidden: new Set(), isolateRoute: null, surfel: true, shade: 0.5, las: null, budget: 8e6,
 };
-let data = null, elements = [], points = null, bim = null, levels = null, grids = null, cloud = null, seqRange = [0, 1];
+let data = null, elements = [], points = null, lod = null, bim = null, levels = null, grids = null, cloud = null, seqRange = [0, 1];
 
 function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -3700,20 +5347,17 @@ function rebuildCloud() {
 
 /** Build the Points object from attribute arrays (synthesised or imported). */
 function installCloud(m) {
-  cloud = m;
-  if (points) { scene.remove(points); points.geometry.dispose(); }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(m.pos, 3));
-  geo.setAttribute('intensity', new THREE.BufferAttribute(m.inten, 1, true));
-  geo.setAttribute('cls', new THREE.BufferAttribute(m.cls, 1, false));
-  geo.setAttribute('dev', new THREE.BufferAttribute(m.dev, 1, true));
-  geo.setAttribute('elem', new THREE.BufferAttribute(m.elem, 1, false));
-  geo.setAttribute('normal', new THREE.BufferAttribute(m.nrm || new Int8Array(m.n * 3), 3, true));
-  if (m.rgb) geo.setAttribute('rgb', new THREE.BufferAttribute(m.rgb, 3, true));
+  if (lod) { scene.remove(lod.group); lod.dispose(); lod = null; }
+  if (!m.nrm) m.nrm = new Int8Array(m.n * 3);
+  // ground-cell size: ~24 cells across the extent, at least 20 m
+  let ex0 = Infinity, ex1 = -Infinity, ez0 = Infinity, ez1 = -Infinity;
+  for (let i = 0; i < m.pos.length; i += 3) { const x = m.pos[i], z = m.pos[i + 2]; if (x < ex0) ex0 = x; if (x > ex1) ex1 = x; if (z < ez0) ez0 = z; if (z > ez1) ez1 = z; }
+  const cell = Math.max(20, Math.max(ex1 - ex0, ez1 - ez0) / 24);
+  lod = buildLod(m, pointMat, { cell });
+  cloud = lod.cloud; // attribute arrays reordered by cell/LOD rank; element ids and classes travel with the points
+  for (const c of lod.cells) c.points.userData.cell = c;
   pointMat.uniforms.uHasRgb.value = m.rgb ? 1 : 0;
-  geo.computeBoundingSphere();
-  points = new THREE.Points(geo, pointMat);
-  points.frustumCulled = false;
+  points = lod.group;
   points.visible = state.showCloud;
   scene.add(points);
   let hMin = Infinity, hMax = -Infinity;
@@ -3722,13 +5366,66 @@ function installCloud(m) {
   $('stat-points').textContent = m.n.toLocaleString();
   renderLegend();
 }
+/** Push updated per-point arrays (elem / dev after scan-to-BIM) to the GPU. */
+function refreshCloudAttributes() {
+  for (const c of lod.cells) { for (const name of ['elem', 'dev']) { const a = c.points.geometry.getAttribute(name); if (a) a.needsUpdate = true; } }
+}
 
 // ---------------------------------------------------------------- real scans (LAS / LAZ)
-async function lasWorkerSource() {
-  let src = window.__LAS_SRC__;
-  if (!src) src = await (await fetch(new URL('./las.js', import.meta.url))).text();
-  return src.replace(/^export\s+(?=(const|let|function|class|async))/gm, '') + '\n' + LAS_WORKER_BODY;
+/** Source of a classic worker built from plain-script versions of our modules (embedded in the single-file build). */
+async function workerSource(embeddedKey, modules, body) {
+  let src = window[embeddedKey];
+  if (!src) {
+    const parts = [];
+    for (const name of modules) parts.push((await (await fetch(new URL(`./${name}.js`, import.meta.url))).text()).replace(/^import\s[^;]*;\s*$/gm, ''));
+    src = parts.join('\n');
+  }
+  return src.replace(/^export\s+(?=(const|let|function|class|async))/gm, '') + '\n' + body;
 }
+const lasWorkerSource = () => workerSource('__LAS_SRC__', ['las'], LAS_WORKER_BODY);
+const S2B_BODY = `
+self.onmessage = (ev) => {
+  const cloud = ev.data;
+  try {
+    const log = [];
+    const { data } = scanToBim(cloud, { log: (m) => { log.push(m); self.postMessage({ type: 'log', m }); } });
+    const elements = buildStructure(data).elements;
+    const stats = assignAndDeviate(cloud, elements, { log: (m) => { log.push(m); self.postMessage({ type: 'log', m }); } });
+    self.postMessage({ type: 'done', data, elements, stats, elem: cloud.elem, dev: cloud.dev, log }, [cloud.elem.buffer, cloud.dev.buffer]);
+  } catch (err) { self.postMessage({ type: 'error', message: String(err && err.stack || err) }); }
+};
+`;
+async function runScanToBim() {
+  if (!cloud) return;
+  overlay.classList.remove('hidden');
+  setProgress(0.05, 'Scan-to-BIM: 高架の線形・橋脚・建物を点群から抽出中…');
+  const url = URL.createObjectURL(new Blob([await workerSource('__S2B_SRC__', ['geom', 'structure', 'scan2bim'], S2B_BODY)], { type: 'text/javascript' }));
+  const worker = new Worker(url);
+  const payload = { n: cloud.n, pos: cloud.pos.slice(), cls: cloud.cls.slice(), nrm: cloud.nrm.slice(), elem: new Uint16Array(cloud.n), dev: new Uint8Array(cloud.n) };
+  const res = await new Promise((resolve, reject) => {
+    worker.onmessage = (ev) => { const d = ev.data; if (d.type === 'log') setProgress(0.3, d.m); else if (d.type === 'error') reject(new Error(d.message)); else resolve(d); };
+    worker.onerror = (e) => reject(new Error(e.message || 'worker error'));
+    worker.postMessage(payload, [payload.pos.buffer, payload.cls.buffer, payload.nrm.buffer, payload.elem.buffer, payload.dev.buffer]);
+  }).finally(() => { worker.terminate(); URL.revokeObjectURL(url); });
+  // adopt the fitted model
+  cloud.elem.set(res.elem); cloud.dev.set(res.dev); refreshCloudAttributes();
+  elements = res.elements;
+  const ex = points ? new THREE.Box3().setFromObject(points) : null;
+  data = { ...res.data, site: { ...res.data.site, name: state.las ? state.las.name : 'scan', nameJa: '', cropM: ex ? [ex.max.x - ex.min.x, ex.max.z - ex.min.z] : [1000, 1000], layerHeight: 5.6, drive: {} } };
+  rebuildBim(); rebuildAnnotations();
+  director.route = buildDriveRoute(data);
+  $('drive-name').textContent = director.route ? `抽出線形（${(director.route.length / 1000).toFixed(1)} km）` : '—';
+  document.body.classList.remove('no-bim');
+  $('show-bim').checked = true; state.showBim = true; bim.group.visible = true;
+  $('bim-style').value = 'wire'; state.bimStyle = 'wire'; applyBimStyle();
+  overlay.classList.add('hidden');
+  const counts = {}; for (const e of elements) counts[e.type] = (counts[e.type] || 0) + 1;
+  const assigned = res.elem.reduce((a, v) => a + (v !== NO_ELEM ? 1 : 0), 0);
+  $('s2b-log').textContent = res.log.join('\n');
+  toast(`Scan-to-BIM 完了: 床版 ${counts.deck || 0}・橋脚 ${counts.column || 0}・建物 ${counts.building || 0} を抽出、${assigned.toLocaleString()} 点を部材に対応付け`, 7000);
+  applyPreset('scan2bim');
+}
+$('s2b-run').addEventListener('click', () => runScanToBim().catch((err) => { overlay.classList.add('hidden'); toast(`Scan-to-BIM 失敗: ${err.message}`, 8000); console.error(err); }));
 async function loadLasFile(file) {
   overlay.classList.remove('hidden');
   setProgress(0.02, `${file.name} を読み込み中…`);
@@ -3754,7 +5451,8 @@ async function loadLasFile(file) {
   if (levels) { scene.remove(levels); levels.traverse((o) => o.element && o.element.remove()); levels = null; }
   if (grids) { scene.remove(grids); grids.traverse((o) => o.element && o.element.remove()); grids = null; }
   director.route = null; director.setMode('orbit'); setActiveView(null);
-  document.body.classList.add('las-mode');
+  document.body.classList.add('las-mode', 'no-bim');
+  $('s2b-log').textContent = '';
   installCloud(m);
   applySpacing();
   const h = m.header;
@@ -3763,8 +5461,8 @@ async function loadLasFile(file) {
   $('stat-time').textContent = `${(m.spacing).toFixed(2)} m/pt`;
   $('drive-name').textContent = '—（実測データでは利用不可）';
   // fit camera and section box to the data
-  const bb = points.geometry.boundingSphere;
-  const c = bb.center.clone(), r = bb.radius;
+  const box = new THREE.Box3().setFromObject(points);
+  const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() / 2;
   director.flyTo(c.clone().add(new THREE.Vector3(-0.6, 0.55, 0.75).normalize().multiplyScalar(r * 1.9)), c, 10);
   controls.maxDistance = r * 8;
   sectionBox.min.set(c.x - r, c.y - r, c.z - r); sectionBox.max.set(c.x + r, c.y + r, c.z + r); sectionBox.update();
@@ -3941,7 +5639,7 @@ canvas.addEventListener('pointerup', (e) => {
   pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   raycaster.setFromCamera(pointer, camera);
   if (state.measuring) {
-    const hit = points && points.visible ? raycaster.intersectObject(points, false)[0] : null;
+    const hit = lod && points.visible ? raycaster.intersectObjects(lod.objects, false)[0] : null;
     if (hit) { measure.addPoint(hit.point); toast(measure.pending ? '2 点目をクリック' : `計測: ${(measure.items.at(-1).d).toFixed(3)} m`); }
     return;
   }
@@ -3950,9 +5648,9 @@ canvas.addEventListener('pointerup', (e) => {
     const hit = raycaster.intersectObject(bim.faces, false)[0];
     if (hit) id = elementAtFace(bim.ranges, hit.faceIndex);
   }
-  if (id < 0 && points && points.visible) {
-    const hit = raycaster.intersectObject(points, false)[0];
-    if (hit) { const el = cloud.elem[hit.index]; if (el !== NO_ELEM) id = el; }
+  if (id < 0 && lod && points.visible) {
+    const hit = raycaster.intersectObjects(lod.objects, false)[0];
+    if (hit) { const el = cloud.elem[hit.object.userData.cell.offset + hit.index]; if (el !== NO_ELEM) id = el; }
   }
   if (id >= 0) select(id); else clearSelection();
 });
@@ -4068,7 +5766,8 @@ $('phase').addEventListener('input', (e) => { state.phase = +e.target.value / 10
 $('phase-play').addEventListener('click', () => { state.phasePlaying = !state.phasePlaying; $('phase-play').textContent = state.phasePlaying ? '⏸ 停止' : '▶ 再生'; if (state.phasePlaying && state.phase >= 1) state.phase = 0; });
 $('measure').addEventListener('click', () => { state.measuring = !state.measuring; $('measure').classList.toggle('active', state.measuring); canvas.style.cursor = state.measuring ? 'crosshair' : ''; toast(state.measuring ? '計測モード：点群上の 2 点をクリック（Esc で解除）' : '計測モード終了'); if (!state.measuring) measure.pending = null; });
 $('measure-clear').addEventListener('click', () => measure.clear());
-$('site').addEventListener('change', (e) => { state.site = e.target.value; state.isolateRoute = null; state.las = null; document.body.classList.remove('las-mode'); controls.maxDistance = 3500; loadSite(state.site); });
+$('site').addEventListener('change', (e) => { state.site = e.target.value; state.isolateRoute = null; state.las = null; document.body.classList.remove('las-mode', 'no-bim'); controls.maxDistance = 3500; loadSite(state.site); });
+$('budget').addEventListener('change', (e) => { state.budget = +e.target.value; });
 $('isolate-reset').addEventListener('click', () => isolateRoute(null));
 $('panel-toggle').addEventListener('click', () => document.body.classList.toggle('panel-collapsed'));
 $('props-close').addEventListener('click', clearSelection);
@@ -4086,11 +5785,13 @@ function applyPreset(name) {
 
 // ---------------------------------------------------------------- loop
 let last = performance.now(), frames = 0, fpsT = last;
+const _dbSize = new THREE.Vector2();
 function loop(now) {
   requestAnimationFrame(loop);
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   if (state.phasePlaying) { state.phase = Math.min(1, state.phase + dt * 0.06); $('phase').value = state.phase * 100; applyPhase(); if (state.phase >= 1) { state.phasePlaying = false; $('phase-play').textContent = '▶ 再生'; } }
   director.update(dt);
+  if (lod && points.visible) { const st = lod.update(camera, renderer.getDrawingBufferSize(_dbSize).y, state.budget); if ((frames & 15) === 0) $('stat-drawn').textContent = st.drawn.toLocaleString(); }
   if (grids && state.showGrid) { const cp = camera.position; for (const o of grids.children) if (o.element) { const d = cp.distanceTo(o.position); o.element.style.display = d < 420 ? '' : 'none'; o.element.style.opacity = d < 300 ? 1 : 1 - (d - 300) / 120; } }
   if (director.mode === 'drive') $('drive-progress').style.width = `${director.progress * 100}%`;
   edl.render(scene);
@@ -4100,7 +5801,7 @@ function loop(now) {
 }
 
 // debugging / automation hooks
-window.__app = { select, clearSelection, zoomTo, applyPreset, isolateRoute, loadLasFile, exportLas, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
+window.__app = { select, clearSelection, zoomTo, applyPreset, isolateRoute, loadLasFile, exportLas, runScanToBim, get lod() { return lod; }, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
 
 resize();
 applySpacing(); applyMode(); applyClsMask(); applySection(); clearSelection();

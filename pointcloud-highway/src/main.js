@@ -11,6 +11,7 @@ import { buildDriveRoute, Director } from './camera.js';
 import { Measure } from './measure.js';
 import { buildLevels, buildGridBubbles, SectionBox } from './annotations.js';
 import { LAS_WORKER_BODY, writeLas } from './las.js';
+import { buildLod } from './lod.js';
 
 const $ = (id) => document.getElementById(id);
 const NO_ELEM = 65535;
@@ -47,9 +48,9 @@ const state = {
   site: 'hakozaki', density: 0.4, mode: 0, row: 'lidar', heightMix: 0.15, pointSize: 2.0, gain: 1.0,
   showCloud: true, showBim: false, bimStyle: 'wire', showBuildingsBim: false, showLevels: false, showGrid: false,
   section: false, phase: 1, phasePlaying: false, devRange: 50, selected: -1, measuring: false, edl: true,
-  clsHidden: new Set(), isolateRoute: null, surfel: true, shade: 0.5, las: null,
+  clsHidden: new Set(), isolateRoute: null, surfel: true, shade: 0.5, las: null, budget: 8e6,
 };
-let data = null, elements = [], points = null, bim = null, levels = null, grids = null, cloud = null, seqRange = [0, 1];
+let data = null, elements = [], points = null, lod = null, bim = null, levels = null, grids = null, cloud = null, seqRange = [0, 1];
 
 function resize() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -108,20 +109,17 @@ function rebuildCloud() {
 
 /** Build the Points object from attribute arrays (synthesised or imported). */
 function installCloud(m) {
-  cloud = m;
-  if (points) { scene.remove(points); points.geometry.dispose(); }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(m.pos, 3));
-  geo.setAttribute('intensity', new THREE.BufferAttribute(m.inten, 1, true));
-  geo.setAttribute('cls', new THREE.BufferAttribute(m.cls, 1, false));
-  geo.setAttribute('dev', new THREE.BufferAttribute(m.dev, 1, true));
-  geo.setAttribute('elem', new THREE.BufferAttribute(m.elem, 1, false));
-  geo.setAttribute('normal', new THREE.BufferAttribute(m.nrm || new Int8Array(m.n * 3), 3, true));
-  if (m.rgb) geo.setAttribute('rgb', new THREE.BufferAttribute(m.rgb, 3, true));
+  if (lod) { scene.remove(lod.group); lod.dispose(); lod = null; }
+  if (!m.nrm) m.nrm = new Int8Array(m.n * 3);
+  // ground-cell size: ~24 cells across the extent, at least 20 m
+  let ex0 = Infinity, ex1 = -Infinity, ez0 = Infinity, ez1 = -Infinity;
+  for (let i = 0; i < m.pos.length; i += 3) { const x = m.pos[i], z = m.pos[i + 2]; if (x < ex0) ex0 = x; if (x > ex1) ex1 = x; if (z < ez0) ez0 = z; if (z > ez1) ez1 = z; }
+  const cell = Math.max(20, Math.max(ex1 - ex0, ez1 - ez0) / 24);
+  lod = buildLod(m, pointMat, { cell });
+  cloud = lod.cloud; // attribute arrays reordered by cell/LOD rank; element ids and classes travel with the points
+  for (const c of lod.cells) c.points.userData.cell = c;
   pointMat.uniforms.uHasRgb.value = m.rgb ? 1 : 0;
-  geo.computeBoundingSphere();
-  points = new THREE.Points(geo, pointMat);
-  points.frustumCulled = false;
+  points = lod.group;
   points.visible = state.showCloud;
   scene.add(points);
   let hMin = Infinity, hMax = -Infinity;
@@ -130,13 +128,66 @@ function installCloud(m) {
   $('stat-points').textContent = m.n.toLocaleString();
   renderLegend();
 }
+/** Push updated per-point arrays (elem / dev after scan-to-BIM) to the GPU. */
+function refreshCloudAttributes() {
+  for (const c of lod.cells) { for (const name of ['elem', 'dev']) { const a = c.points.geometry.getAttribute(name); if (a) a.needsUpdate = true; } }
+}
 
 // ---------------------------------------------------------------- real scans (LAS / LAZ)
-async function lasWorkerSource() {
-  let src = window.__LAS_SRC__;
-  if (!src) src = await (await fetch(new URL('./las.js', import.meta.url))).text();
-  return src.replace(/^export\s+(?=(const|let|function|class|async))/gm, '') + '\n' + LAS_WORKER_BODY;
+/** Source of a classic worker built from plain-script versions of our modules (embedded in the single-file build). */
+async function workerSource(embeddedKey, modules, body) {
+  let src = window[embeddedKey];
+  if (!src) {
+    const parts = [];
+    for (const name of modules) parts.push((await (await fetch(new URL(`./${name}.js`, import.meta.url))).text()).replace(/^import\s[^;]*;\s*$/gm, ''));
+    src = parts.join('\n');
+  }
+  return src.replace(/^export\s+(?=(const|let|function|class|async))/gm, '') + '\n' + body;
 }
+const lasWorkerSource = () => workerSource('__LAS_SRC__', ['las'], LAS_WORKER_BODY);
+const S2B_BODY = `
+self.onmessage = (ev) => {
+  const cloud = ev.data;
+  try {
+    const log = [];
+    const { data } = scanToBim(cloud, { log: (m) => { log.push(m); self.postMessage({ type: 'log', m }); } });
+    const elements = buildStructure(data).elements;
+    const stats = assignAndDeviate(cloud, elements, { log: (m) => { log.push(m); self.postMessage({ type: 'log', m }); } });
+    self.postMessage({ type: 'done', data, elements, stats, elem: cloud.elem, dev: cloud.dev, log }, [cloud.elem.buffer, cloud.dev.buffer]);
+  } catch (err) { self.postMessage({ type: 'error', message: String(err && err.stack || err) }); }
+};
+`;
+async function runScanToBim() {
+  if (!cloud) return;
+  overlay.classList.remove('hidden');
+  setProgress(0.05, 'Scan-to-BIM: 高架の線形・橋脚・建物を点群から抽出中…');
+  const url = URL.createObjectURL(new Blob([await workerSource('__S2B_SRC__', ['geom', 'structure', 'scan2bim'], S2B_BODY)], { type: 'text/javascript' }));
+  const worker = new Worker(url);
+  const payload = { n: cloud.n, pos: cloud.pos.slice(), cls: cloud.cls.slice(), nrm: cloud.nrm.slice(), elem: new Uint16Array(cloud.n), dev: new Uint8Array(cloud.n) };
+  const res = await new Promise((resolve, reject) => {
+    worker.onmessage = (ev) => { const d = ev.data; if (d.type === 'log') setProgress(0.3, d.m); else if (d.type === 'error') reject(new Error(d.message)); else resolve(d); };
+    worker.onerror = (e) => reject(new Error(e.message || 'worker error'));
+    worker.postMessage(payload, [payload.pos.buffer, payload.cls.buffer, payload.nrm.buffer, payload.elem.buffer, payload.dev.buffer]);
+  }).finally(() => { worker.terminate(); URL.revokeObjectURL(url); });
+  // adopt the fitted model
+  cloud.elem.set(res.elem); cloud.dev.set(res.dev); refreshCloudAttributes();
+  elements = res.elements;
+  const ex = points ? new THREE.Box3().setFromObject(points) : null;
+  data = { ...res.data, site: { ...res.data.site, name: state.las ? state.las.name : 'scan', nameJa: '', cropM: ex ? [ex.max.x - ex.min.x, ex.max.z - ex.min.z] : [1000, 1000], layerHeight: 5.6, drive: {} } };
+  rebuildBim(); rebuildAnnotations();
+  director.route = buildDriveRoute(data);
+  $('drive-name').textContent = director.route ? `抽出線形（${(director.route.length / 1000).toFixed(1)} km）` : '—';
+  document.body.classList.remove('no-bim');
+  $('show-bim').checked = true; state.showBim = true; bim.group.visible = true;
+  $('bim-style').value = 'wire'; state.bimStyle = 'wire'; applyBimStyle();
+  overlay.classList.add('hidden');
+  const counts = {}; for (const e of elements) counts[e.type] = (counts[e.type] || 0) + 1;
+  const assigned = res.elem.reduce((a, v) => a + (v !== NO_ELEM ? 1 : 0), 0);
+  $('s2b-log').textContent = res.log.join('\n');
+  toast(`Scan-to-BIM 完了: 床版 ${counts.deck || 0}・橋脚 ${counts.column || 0}・建物 ${counts.building || 0} を抽出、${assigned.toLocaleString()} 点を部材に対応付け`, 7000);
+  applyPreset('scan2bim');
+}
+$('s2b-run').addEventListener('click', () => runScanToBim().catch((err) => { overlay.classList.add('hidden'); toast(`Scan-to-BIM 失敗: ${err.message}`, 8000); console.error(err); }));
 async function loadLasFile(file) {
   overlay.classList.remove('hidden');
   setProgress(0.02, `${file.name} を読み込み中…`);
@@ -162,7 +213,8 @@ async function loadLasFile(file) {
   if (levels) { scene.remove(levels); levels.traverse((o) => o.element && o.element.remove()); levels = null; }
   if (grids) { scene.remove(grids); grids.traverse((o) => o.element && o.element.remove()); grids = null; }
   director.route = null; director.setMode('orbit'); setActiveView(null);
-  document.body.classList.add('las-mode');
+  document.body.classList.add('las-mode', 'no-bim');
+  $('s2b-log').textContent = '';
   installCloud(m);
   applySpacing();
   const h = m.header;
@@ -171,8 +223,8 @@ async function loadLasFile(file) {
   $('stat-time').textContent = `${(m.spacing).toFixed(2)} m/pt`;
   $('drive-name').textContent = '—（実測データでは利用不可）';
   // fit camera and section box to the data
-  const bb = points.geometry.boundingSphere;
-  const c = bb.center.clone(), r = bb.radius;
+  const box = new THREE.Box3().setFromObject(points);
+  const c = box.getCenter(new THREE.Vector3()), r = box.getSize(new THREE.Vector3()).length() / 2;
   director.flyTo(c.clone().add(new THREE.Vector3(-0.6, 0.55, 0.75).normalize().multiplyScalar(r * 1.9)), c, 10);
   controls.maxDistance = r * 8;
   sectionBox.min.set(c.x - r, c.y - r, c.z - r); sectionBox.max.set(c.x + r, c.y + r, c.z + r); sectionBox.update();
@@ -349,7 +401,7 @@ canvas.addEventListener('pointerup', (e) => {
   pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
   raycaster.setFromCamera(pointer, camera);
   if (state.measuring) {
-    const hit = points && points.visible ? raycaster.intersectObject(points, false)[0] : null;
+    const hit = lod && points.visible ? raycaster.intersectObjects(lod.objects, false)[0] : null;
     if (hit) { measure.addPoint(hit.point); toast(measure.pending ? '2 点目をクリック' : `計測: ${(measure.items.at(-1).d).toFixed(3)} m`); }
     return;
   }
@@ -358,9 +410,9 @@ canvas.addEventListener('pointerup', (e) => {
     const hit = raycaster.intersectObject(bim.faces, false)[0];
     if (hit) id = elementAtFace(bim.ranges, hit.faceIndex);
   }
-  if (id < 0 && points && points.visible) {
-    const hit = raycaster.intersectObject(points, false)[0];
-    if (hit) { const el = cloud.elem[hit.index]; if (el !== NO_ELEM) id = el; }
+  if (id < 0 && lod && points.visible) {
+    const hit = raycaster.intersectObjects(lod.objects, false)[0];
+    if (hit) { const el = cloud.elem[hit.object.userData.cell.offset + hit.index]; if (el !== NO_ELEM) id = el; }
   }
   if (id >= 0) select(id); else clearSelection();
 });
@@ -476,7 +528,8 @@ $('phase').addEventListener('input', (e) => { state.phase = +e.target.value / 10
 $('phase-play').addEventListener('click', () => { state.phasePlaying = !state.phasePlaying; $('phase-play').textContent = state.phasePlaying ? '⏸ 停止' : '▶ 再生'; if (state.phasePlaying && state.phase >= 1) state.phase = 0; });
 $('measure').addEventListener('click', () => { state.measuring = !state.measuring; $('measure').classList.toggle('active', state.measuring); canvas.style.cursor = state.measuring ? 'crosshair' : ''; toast(state.measuring ? '計測モード：点群上の 2 点をクリック（Esc で解除）' : '計測モード終了'); if (!state.measuring) measure.pending = null; });
 $('measure-clear').addEventListener('click', () => measure.clear());
-$('site').addEventListener('change', (e) => { state.site = e.target.value; state.isolateRoute = null; state.las = null; document.body.classList.remove('las-mode'); controls.maxDistance = 3500; loadSite(state.site); });
+$('site').addEventListener('change', (e) => { state.site = e.target.value; state.isolateRoute = null; state.las = null; document.body.classList.remove('las-mode', 'no-bim'); controls.maxDistance = 3500; loadSite(state.site); });
+$('budget').addEventListener('change', (e) => { state.budget = +e.target.value; });
 $('isolate-reset').addEventListener('click', () => isolateRoute(null));
 $('panel-toggle').addEventListener('click', () => document.body.classList.toggle('panel-collapsed'));
 $('props-close').addEventListener('click', clearSelection);
@@ -494,11 +547,13 @@ function applyPreset(name) {
 
 // ---------------------------------------------------------------- loop
 let last = performance.now(), frames = 0, fpsT = last;
+const _dbSize = new THREE.Vector2();
 function loop(now) {
   requestAnimationFrame(loop);
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   if (state.phasePlaying) { state.phase = Math.min(1, state.phase + dt * 0.06); $('phase').value = state.phase * 100; applyPhase(); if (state.phase >= 1) { state.phasePlaying = false; $('phase-play').textContent = '▶ 再生'; } }
   director.update(dt);
+  if (lod && points.visible) { const st = lod.update(camera, renderer.getDrawingBufferSize(_dbSize).y, state.budget); if ((frames & 15) === 0) $('stat-drawn').textContent = st.drawn.toLocaleString(); }
   if (grids && state.showGrid) { const cp = camera.position; for (const o of grids.children) if (o.element) { const d = cp.distanceTo(o.position); o.element.style.display = d < 420 ? '' : 'none'; o.element.style.opacity = d < 300 ? 1 : 1 - (d - 300) / 120; } }
   if (director.mode === 'drive') $('drive-progress').style.width = `${director.progress * 100}%`;
   edl.render(scene);
@@ -508,7 +563,7 @@ function loop(now) {
 }
 
 // debugging / automation hooks
-window.__app = { select, clearSelection, zoomTo, applyPreset, isolateRoute, loadLasFile, exportLas, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
+window.__app = { select, clearSelection, zoomTo, applyPreset, isolateRoute, loadLasFile, exportLas, runScanToBim, get lod() { return lod; }, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
 
 resize();
 applySpacing(); applyMode(); applyClsMask(); applySection(); clearSelection();

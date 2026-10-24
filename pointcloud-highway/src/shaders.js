@@ -38,6 +38,7 @@ export function createPointMaterial(lut, visTex) {
       uOpacity: { value: 1 },
       uSurfel: { value: 1 },   // 1 = normal-oriented elliptical splats
       uHasRgb: { value: 0 },
+      uLodScale: { value: 1 },
       uShade: { value: 0.5 },  // normal-based shading amount
     },
     vertexShader: /* glsl */ `
@@ -52,7 +53,7 @@ export function createPointMaterial(lut, visTex) {
       uniform float uClsMask[32];
       uniform float uSpacing[32];
       uniform float uTanHalfFov;
-      uniform float uShade;
+      uniform float uShade, uLodScale;
       varying vec3 vColor;
       varying vec3 vNv;
       varying float vSize;
@@ -94,7 +95,7 @@ export function createPointMaterial(lut, visTex) {
         float dist = max(1.0, -mvPosition.z);
         // distance-attenuated size, and a splat that covers the nominal sample spacing so surfaces close up
         float px = uSize * uViewportH / dist * 0.45;
-        float splat = uSpacing[ci] * 0.62 * uViewportH / (2.0 * uTanHalfFov * dist) * uSize * 0.5;
+        float splat = uSpacing[ci] * uLodScale * 0.62 * uViewportH / (2.0 * uTanHalfFov * dist) * uSize * 0.5;
         px = clamp(max(px, min(splat, uMaxPx * 1.7)), uMinPx, uMaxPx * 1.7) * (1.0 + sel * 0.8);
         vSize = px;
         gl_PointSize = px * uPixelRatio;

@@ -18,7 +18,7 @@ function flatten(src, { keepThree = true } = {}) {
   return { src, imports };
 }
 
-const order = ['geom', 'structure', 'synth', 'colormaps', 'shaders', 'edl', 'bim', 'camera', 'measure', 'annotations', 'las', 'main'];
+const order = ['geom', 'structure', 'synth', 'colormaps', 'shaders', 'edl', 'bim', 'camera', 'measure', 'annotations', 'las', 'scan2bim', 'lod', 'main'];
 const importSet = new Set();
 let bundle = '';
 for (const name of order) {
@@ -46,10 +46,12 @@ let html = read('index.html');
 html = html.replace('<script type="module" src="./src/main.js"></script>', `${dataTags}
 <script type="text/plain" id="worker-src">${safe(workerSrc)}</script>
 <script type="text/plain" id="las-src">${safe(read('src/las.js'))}</script>
+<script type="text/plain" id="s2b-src">${safe(['geom', 'structure', 'scan2bim'].map((n) => flatten(read(`src/${n}.js`), { keepThree: false }).src).join('\n'))}</script>
 <script type="module">
 ${[...importSet].join('\n')}
 const WORKER_URL = URL.createObjectURL(new Blob([document.getElementById('worker-src').textContent], { type: 'text/javascript' }));
 window.__LAS_SRC__ = document.getElementById('las-src').textContent;
+window.__S2B_SRC__ = document.getElementById('s2b-src').textContent;
 ${safe(bundle)}
 </script>`);
 html = html.replace('<title>LiDAR × BIM 都市高速</title>', '<title>LiDAR × BIM 都市高速（単体ファイル版）</title>');
