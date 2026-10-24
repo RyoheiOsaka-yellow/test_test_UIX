@@ -110,9 +110,9 @@ let base = fs.readFileSync(REPO + 'yellow_spacex_v8.html', 'utf8');
 // 1a. showPage を「この文書に無いページなら何もしない」よう寛容にする
 {
   const o = `function showPage(name, scrollTo, restoreY) {
-  if (PAGES.indexOf(name) === -1) name = 'home';`;
+  // 事業ページのほか、組み込みの事例ページ（page-cases / page-case-<key>）も扱う
+  if (!document.getElementById('page-' + name)) name = 'home';`;
   const n = `function showPage(name, scrollTo, restoreY) {
-  if (PAGES.indexOf(name) === -1) name = 'home';
   // 静的ビルドでは各文書が自分のページしか持たない。無ければ何もしない
   if (!document.getElementById('page-' + name)) {
     if (scrollTo) {
@@ -237,22 +237,16 @@ base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
   }
 }
 
-// 1g. ナビに「事例」を追加（実績の隣）
+// 1g. 1枚HTMLに組み込まれている事例ページ（#/cases, #/case/<key>）を外し、実 URL のリンクへ
+//     （公開版は /cases/ と /cases/<key>/ を cases-append.js が別ページとして生成する）
 {
-  const o = '<a class="hdr__link" href="#record"  data-i18n="nav_record">Record</a>';
-  if (!base.includes(o)) throw new Error('nav anchor');
-  base = base.replace(o, '<a class="hdr__link" href="/cases/" data-i18n="nav_cases">Cases</a>\n    ' + o);
-  base = base.replace(/(    nav_work: "事業",)/, '    nav_cases: "事例", nav_cases_view: "事例を見る →",\n$1');
-  base = base.replace(/(    nav_work: "Work",)/, '    nav_cases: "Cases", nav_cases_view: "View cases →",\n$1');
-  // 全画面メニューにも
-  const m = '<a class="menu__item" href="#record"';
-  if (base.includes(m)) base = base.replace(m, '<a class="menu__item" href="/cases/" data-i18n="nav_cases" style="--dl:.10s">Cases</a>\n    ' + m);
-  // ドロップダウンの「事業の一覧へ」の隣に事例導線
-  // （飛び先は先頭の事業セクション。並び替えで変わりうるので id は決め打ちしない）
-  const d = base.match(/<a class="drop__all" href="#[a-z]+" data-i18n="drop_all">/);
-  if (!d) throw new Error('drop__all anchor');
-  base = base.replace(d[0],
-    '<a class="drop__all" href="/cases/" style="display:block;margin-bottom:10px" data-i18n="nav_cases_view">View cases →</a>\n            ' + d[0]);
+  base = require('./build-cases-inline.js').strip(base);
+  base = base.replace(/href="#\/case\/([a-z0-9-]+)"/g, 'href="/cases/$1/"')
+             .replace(/href="#\/cases"/g, 'href="/cases/"');
+  if (!/nav_cases:/.test(base)) {
+    base = base.replace(/(    nav_work: "事業",)/, '    nav_cases: "事例", nav_cases_view: "事例を見る →",\n$1');
+    base = base.replace(/(    nav_work: "Work",)/, '    nav_cases: "Cases", nav_cases_view: "View cases →",\n$1');
+  }
 }
 
 // 1h. 旧サイトのアンカー(#case-01 等)で来た人を新URLへ送る

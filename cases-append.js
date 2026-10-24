@@ -334,3 +334,6 @@ module.exports = function buildCases({ DIST, ORIGIN, base, ORG_ID }) {
 
   return { cases, sizes };
 };
+
+// 1枚HTMLへの組み込み（build-cases-inline.js）で使う部品
+module.exports.parts = { CSS, COMMON, dictFor, casePageHtml, indexPageHtml, productOf, esc };

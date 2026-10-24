@@ -213,3 +213,12 @@ HTML ファイルをそのまま送っていただければ、こちらで
 - `hicity-crop.py <半径 m> <out>` … 都市データ全体を中心からの半径で切る（最初の 4km 切り詰めに使用）。
 - いずれも元ファイルを入力に取り、出力を `demos/src/<id>.html` に置いてからビルドする。
   描画が変わっていないかは、ポスターと hold 状態の描画を重ねて平均色差で確認する（5/255 前後なら同じ絵）。
+
+## 1枚HTMLの事例ページ（build-cases-inline.js）
+
+- `node build-demos.js` のたびに、cases.json / cases.en.json から事例一覧（`#/cases`）と各詳細（`#/case/<key>`）を
+  1枚HTMLに組み込む。トップの RECORD カードやナビの「事例」はこのルートを指す。
+- 画像は各事例の1枚目だけ `assets/case/_thumb/`（`node demos/tools/case-thumbs.js` で生成、幅 800px）を
+  data URI で埋め込む。単体で開いても表示される。
+- 公開用（build-static.js）はこの組み込みを外し、`/cases/`・`/cases/<key>/` の実ページを生成する。
+  リンクも実 URL に書き換わる。

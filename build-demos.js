@@ -584,7 +584,8 @@ if (used.length) {
   h = h.slice(0, i) + JS + h.slice(i);
 }
 
-/* ───────── 7. 書き出し ───────── */
+/* ───────── 7. 事例ページを組み込んで書き出し ───────── */
+h = require('./build-cases-inline.js').inline(h);
 fs.writeFileSync(TARGET, h);
 
 console.log('');
