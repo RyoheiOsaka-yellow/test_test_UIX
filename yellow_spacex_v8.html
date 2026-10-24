@@ -189,6 +189,14 @@ html[lang="en"] .lede{line-height:1.85;}
   .newslist a{grid-template-columns:1fr;gap:6px;}
   .newslist__go{display:none;}
 }
+/* FAQ（トップ） */
+.faq{max-width:62em;border-top:1px solid var(--line-s);}
+.faq__item{border-bottom:1px solid var(--line-s);}
+.faq__item summary{cursor:pointer;list-style:none;padding:20px 2px;font-size:15px;font-weight:500;line-height:1.7;display:flex;justify-content:space-between;gap:20px;}
+.faq__item summary::-webkit-details-marker{display:none;}
+.faq__item summary::after{content:"+";color:var(--grey-d);font-weight:300;flex:none;}
+.faq__item[open] summary::after{content:"−";}
+.faq__item p{font-size:13px;line-height:2.05;font-weight:300;color:rgba(255,255,255,.74);margin:0 0 22px;max-width:46em;}
 /* HOME-SECTIONS CSS END */
 /* CASES-INLINE CSS START */
 /* ═══════════════════════════════════════════════════════════
@@ -1105,6 +1113,7 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
 
 
 
+
 <!-- HOME-SECTIONS START -->
 <!-- ═══════════════════ CASES（トップ） ═══════════════════ -->
 <section class="sec" id="selected-cases">
@@ -1171,6 +1180,22 @@ body.ph .card__img img{filter:grayscale(1) contrast(1.08) brightness(.94);}
     </ul>
   </div>
   <p class="sec__more rv" data-d="3"><a class="btn" href="#/news" data-i18n="nw_all">All news →</a></p>
+</section>
+
+<!-- ═══════════════════ FAQ（トップ） ═══════════════════ -->
+<section class="sec" id="faq">
+  <div class="sec__head">
+    <p class="eyebrow rv" data-i18n="faq_tag">FAQ</p>
+    <h2 class="title rv" data-d="1" data-i18n="faq_title">Questions.</h2>
+    <p class="lede rv" data-d="2" data-i18n="faq_lede">About the company, the products, the cases and how to get in touch.</p>
+  </div>
+  <div class="faq rv" data-d="2">
+    <details class="faq__item"><summary data-i18n="faq_about_q">What does YELLOW Inc. do?</summary><p data-i18n="faq_about_a">YELLOW brings technology seeds from universities, research institutions and companies into society. Founded in 2022 and based in Takasaki, Gunma, we work through three products: xINTERACTIVE, xAD and xBUILD, covering interactive experiences, promotion and advertising analytics, and analysis and development for industry.</p></details>
+    <details class="faq__item"><summary data-i18n="faq_products_q">What is the difference between xINTERACTIVE, xAD and xBUILD?</summary><p data-i18n="faq_products_a">xINTERACTIVE puts YELLOW's technology to work as experiences in web, retail fixtures, advertising and entertainment. xAD visualises promotion and advertising on dashboards, designs the marketing strategy and prototypes it with AI at the same time. xBUILD analyses industrial data such as factories, equipment, mobility and satellite data, and develops the systems that run on site.</p></details>
+    <details class="faq__item"><summary data-i18n="faq_sectors_q">Which sectors have you worked in?</summary><p data-i18n="faq_sectors_a">Factory relocation simulation and 3D modelling of equipment in manufacturing; point-cloud data and 3D station interiors in construction and real estate; simulation of commercial facilities and in-store promotion; and mobility-data analysis with local governments and sports commissions. See the cases page for details.</p></details>
+    <details class="faq__item"><summary data-i18n="faq_demos_q">Can I try the demos from the cases?</summary><p data-i18n="faq_demos_a">Most cases have a working demo that runs in the browser. Open it from the case page with &quot;Open demo&quot;; nothing needs to be installed.</p></details>
+    <details class="faq__item"><summary data-i18n="faq_contact_q">How do I get in touch or request a quote?</summary><p data-i18n="faq_contact_a">Use the contact form or email info@yellow.technology. We welcome enquiries from universities, research institutions, public bodies and companies.</p></details>
+  </div>
 </section>
 <!-- HOME-SECTIONS END -->
 
@@ -54002,6 +54027,19 @@ var I18N = {
     "nw_tolic_2025_title": "東北ライフサイエンス・インストルメンツ・クラスター（TOLIC）に加盟",
     "nw_tolic_2025_text": "研究機器の開発・製造が集まる国内有数の拠点に企業会員として加盟しました。",
     "nw_tolic_2025_tag": "加盟",
+    "faq_tag": "FAQ",
+    "faq_title": "よくある質問。",
+    "faq_lede": "会社、プロダクト、事例、ご相談の流れについて。",
+    "faq_about_q": "株式会社YELLOWはどのような会社ですか？",
+    "faq_about_a": "大学・研究機関・企業が持つ技術シーズを社会に実装する会社です。群馬県高崎市に本社を置き、2022年に設立しました。xINTERACTIVE、xAD、xBUILD の3つのプロダクトで、体験の制作から販促・広告の分析、産業領域の分析・開発までを手がけます。",
+    "faq_products_q": "xINTERACTIVE・xAD・xBUILD の違いは何ですか？",
+    "faq_products_a": "xINTERACTIVE は Web・什器・広告・エンターテインメントの領域でYELLOWの技術を体験として届けるプロダクトです。xAD は販促や広告をダッシュボードで可視化してマーケティング戦略を設計し、同時にAIでプロトタイピングするプロダクトです。xBUILD は工場や設備、人流、衛星データなど産業領域のデータを分析し、現場で動くシステムまで開発するプロダクトです。",
+    "faq_sectors_q": "どのような業種の実績がありますか？",
+    "faq_sectors_a": "製造業の工場移転シミュレーションや設備の3Dモデリング、建設・不動産の点群データや駅構内の3D化、商業施設や店頭販促のシミュレーション、自治体やスポーツコミッションと取り組む人流データの分析などがあります。詳しくは事例ページをご覧ください。",
+    "faq_demos_q": "事例のデモは実際に触れますか？",
+    "faq_demos_a": "多くの事例で、ブラウザで動くデモを公開しています。各事例ページの「デモを開く」から、インストールなしでご覧いただけます。",
+    "faq_contact_q": "相談や見積もりはどこから依頼できますか？",
+    "faq_contact_a": "お問い合わせフォーム、またはメール（info@yellow.technology）からご連絡ください。大学・研究機関、自治体、企業のいずれからのご相談も受け付けています。",
     "cs_00_title": "栃木県スポーツコミッション「人流データを活用した県内周遊事業」",
     "cs_00_lead": "栃木県スポーツコミッションが実施する「人流データを活用した県内周遊事業」に参画（2026年10月）。宇都宮ブレックス・栃木SC・栃木ホンダヒートのホームゲーム観戦者の属性や移動経路を人流データから分析・可視化し、スポーツ観戦を起点とした県内周遊の促進に向けた施策検討につなげます。",
     "cs_00_tags": "スポーツ・地域",
@@ -54789,6 +54827,19 @@ var I18N = {
     "nw_tolic_2025_title": "Joined the Tohoku Life Science Instruments Cluster (TOLIC)",
     "nw_tolic_2025_text": "Corporate membership of one of Japan's leading hubs for research-instrument development and manufacturing.",
     "nw_tolic_2025_tag": "Membership",
+    "faq_tag": "FAQ",
+    "faq_title": "Questions.",
+    "faq_lede": "About the company, the products, the cases and how to get in touch.",
+    "faq_about_q": "What does YELLOW Inc. do?",
+    "faq_about_a": "YELLOW brings technology seeds from universities, research institutions and companies into society. Founded in 2022 and based in Takasaki, Gunma, we work through three products: xINTERACTIVE, xAD and xBUILD, covering interactive experiences, promotion and advertising analytics, and analysis and development for industry.",
+    "faq_products_q": "What is the difference between xINTERACTIVE, xAD and xBUILD?",
+    "faq_products_a": "xINTERACTIVE puts YELLOW's technology to work as experiences in web, retail fixtures, advertising and entertainment. xAD visualises promotion and advertising on dashboards, designs the marketing strategy and prototypes it with AI at the same time. xBUILD analyses industrial data such as factories, equipment, mobility and satellite data, and develops the systems that run on site.",
+    "faq_sectors_q": "Which sectors have you worked in?",
+    "faq_sectors_a": "Factory relocation simulation and 3D modelling of equipment in manufacturing; point-cloud data and 3D station interiors in construction and real estate; simulation of commercial facilities and in-store promotion; and mobility-data analysis with local governments and sports commissions. See the cases page for details.",
+    "faq_demos_q": "Can I try the demos from the cases?",
+    "faq_demos_a": "Most cases have a working demo that runs in the browser. Open it from the case page with \"Open demo\"; nothing needs to be installed.",
+    "faq_contact_q": "How do I get in touch or request a quote?",
+    "faq_contact_a": "Use the contact form or email info@yellow.technology. We welcome enquiries from universities, research institutions, public bodies and companies.",
     "cs_00_title": "Tochigi Prefecture Sports Commission: prefecture-wide travel from mobility data",
     "cs_00_lead": "YELLOW has joined the Tochigi Prefecture Sports Commission's programme to promote prefecture-wide travel using mobility data (October 2026). We analyse and visualise the demographics and routes of fans attending home games of the Utsunomiya Brex, Tochigi SC and Tochigi Honda Heat, and feed the findings into measures that turn match days into trips around the prefecture.",
     "cs_00_tags": "Sports & regions",

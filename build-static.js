@@ -63,7 +63,15 @@ const ORG_LD = {
     { '@type': 'Person', name: '大坂 亮平', jobTitle: '共同創業者' },
     { '@type': 'Person', name: '岩渕 知弘', jobTitle: '共同創業者' },
   ],
+  founder: [
+    { '@type': 'Person', name: '大坂 亮平', alternateName: 'Ryohei Osaka', jobTitle: '代表取締役' },
+    { '@type': 'Person', name: '岩渕 知弘', alternateName: 'Tomohiro Iwabuchi', jobTitle: '代表取締役' },
+  ],
+  contactPoint: [{ '@type': 'ContactPoint', contactType: 'sales', email: 'info@yellow.technology', availableLanguage: ['ja', 'en'], url: ORIGIN + '/#contact' }],
+  sameAs: ['https://prtimes.jp/main/html/searchrlp/company_id/157998'],
+  areaServed: { '@type': 'Country', name: '日本' },
 };
+const FAQ = JSON.parse(fs.readFileSync(REPO + 'faq.json', 'utf8'));
 
 function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
@@ -90,6 +98,12 @@ function ldFor(r) {
         '@type': 'OfferCatalog', name: r.service.name + ' の提供内容',
         itemListElement: r.service.offers.map(o => ({ '@type': 'Offer', itemOffered: { '@type': 'Service', name: o } })),
       },
+    });
+  }
+  if (r.id === 'home') {
+    graph.push({
+      '@type': 'FAQPage', '@id': url + '#faq',
+      mainEntity: FAQ.map(f => ({ '@type': 'Question', name: f.en.q, acceptedAnswer: { '@type': 'Answer', text: f.en.a } })),
     });
   }
   if (r.dir) {
@@ -450,7 +464,7 @@ Allow: /
 Sitemap: ${ORIGIN}/sitemap.xml
 `);
 
-const today = '2026-08-13';
+const today = new Date().toISOString().slice(0, 10);   // ビルド日
 fs.writeFileSync(DIST + 'sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${ROUTES.map(r => `  <url>
@@ -578,4 +592,11 @@ function execSizeMB(dir) {
     }
   })(dir);
   return t / 1048576;
+}
+
+// ── 4. 仕上げ（SEO / AIO）: 日本語版ページ、hreflang、RSS、サイトマップ、llms-full.txt
+{
+  const finalize = require('./seo-append.js');
+  const r = finalize({ DIST, ORIGIN, newsItems: NEWS_ITEMS, cases: CASES.cases, routes: ROUTES, today });
+  console.log('日本語版ページ ' + r.ja + ' 件（/ja/）、hreflang・RSS・画像つきサイトマップ・llms-full.txt を出力');
 }

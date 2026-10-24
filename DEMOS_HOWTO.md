@@ -232,3 +232,13 @@ HTML ファイルをそのまま送っていただければ、こちらで
   1枚HTML用のサムネイルは `node demos/tools/case-thumbs.js` で assets/news/_thumb/ に作る。どちらも `node build-demos.js` で 1枚HTML に組み込まれ、
   公開版（build-static.js）はトップのセクションをそのまま使い、一覧ページを別に生成する。
 - 旧 RECORD セクションは廃止。旧リンク `#record` は `/#selected-cases` へ振り分ける。
+
+## SEO / AIO（build-static.js の仕上げ）
+
+- 各ページの日本語版を `/ja/` 配下に生成（辞書で日本語を焼き込み、title・description・canonical・og も日本語）。
+  英日の各ページに hreflang（en / ja / x-default）を相互に付ける。サイトマップは英日 62 件＋画像つき。
+- トップに FAQ（faq.json、日英）を置き、FAQPage の構造化データを出す。Organization には代表者・連絡先・
+  PR TIMES の企業ページ（sameAs）を追加。お知らせの記事は og:type=article と公開日を持つ。
+- `/news/feed.xml`（RSS）、`/llms.txt`（要約）、`/llms-full.txt`（事例・お知らせ・事業の全文）を出力。
+  robots.txt は主要な AI クローラを明示的に許可している。
+- 言語の切り替えはページ内で行う（URL は変えない）。保存した言語があれば /ja/ でも英語のまま開く。

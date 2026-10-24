@@ -78,7 +78,7 @@ function featuredCardsHtml(cases, dicts) {
   }).join('\n');
 }
 
-function homeSectionsHtml(cases, dicts, news) {
+function homeSectionsHtml(cases, dicts, news, faq) {
   return `<!-- ═══════════════════ CASES（トップ） ═══════════════════ -->
 <section class="sec" id="selected-cases">
   <div class="sec__head">
@@ -95,7 +95,38 @@ ${featuredCardsHtml(cases, dicts)}
 
 <!-- ═══════════════════ NEWS（トップ） ═══════════════════ -->
 ${NEWS.homeSectionHtml(news)}
+
+<!-- ═══════════════════ FAQ（トップ） ═══════════════════ -->
+${faqSectionHtml(faq)}
 `;
+}
+
+const FAQ_COMMON = { faq_tag: ['FAQ', 'FAQ'], faq_title: ['よくある質問。', 'Questions.'], faq_lede: ['会社、プロダクト、事例、ご相談の流れについて。', 'About the company, the products, the cases and how to get in touch.'] };
+const FAQ_CSS = `/* FAQ（トップ） */
+.faq{max-width:62em;border-top:1px solid var(--line-s);}
+.faq__item{border-bottom:1px solid var(--line-s);}
+.faq__item summary{cursor:pointer;list-style:none;padding:20px 2px;font-size:15px;font-weight:500;line-height:1.7;display:flex;justify-content:space-between;gap:20px;}
+.faq__item summary::-webkit-details-marker{display:none;}
+.faq__item summary::after{content:"+";color:var(--grey-d);font-weight:300;flex:none;}
+.faq__item[open] summary::after{content:"−";}
+.faq__item p{font-size:13px;line-height:2.05;font-weight:300;color:rgba(255,255,255,.74);margin:0 0 22px;max-width:46em;}`;
+function faqSectionHtml(faq) {
+  return `<section class="sec" id="faq">
+  <div class="sec__head">
+    <p class="eyebrow rv" data-i18n="faq_tag">${FAQ_COMMON.faq_tag[1]}</p>
+    <h2 class="title rv" data-d="1" data-i18n="faq_title">${FAQ_COMMON.faq_title[1]}</h2>
+    <p class="lede rv" data-d="2" data-i18n="faq_lede">${FAQ_COMMON.faq_lede[1]}</p>
+  </div>
+  <div class="faq rv" data-d="2">
+${faq.map(f => `    <details class="faq__item"><summary data-i18n="faq_${f.id}_q">${esc(f.en.q)}</summary><p data-i18n="faq_${f.id}_a">${esc(f.en.a)}</p></details>`).join('\n')}
+  </div>
+</section>`;
+}
+function faqDict(faq) {
+  const ja = {}, en = {};
+  for (const [k, [j, g]] of Object.entries(FAQ_COMMON)) { ja[k] = j; en[k] = g; }
+  faq.forEach(f => { ja['faq_' + f.id + '_q'] = f.ja.q; en['faq_' + f.id + '_q'] = f.en.q; ja['faq_' + f.id + '_a'] = f.ja.a; en['faq_' + f.id + '_a'] = f.en.a; });
+  return { ja, en };
 }
 
 function inline(h) {
@@ -103,9 +134,10 @@ function inline(h) {
   const cases = JSON.parse(fs.readFileSync(REPO + 'cases.json', 'utf8'));
   const dicts = cases.map((c, i) => dictFor(c, i));
   const news = NEWS.load();
+  const faq = JSON.parse(fs.readFileSync(REPO + 'faq.json', 'utf8'));
 
   // ── トップのセクション（初回は旧 RECORD セクションを置き換える）
-  const home = S_HOME + '\n' + toHash(homeSectionsHtml(cases, dicts, news)) + E_HOME;
+  const home = S_HOME + '\n' + toHash(homeSectionsHtml(cases, dicts, news, faq)) + E_HOME;
   const recStart = h.indexOf('<!-- ═══════════════════ RECORD ═══════════════════ -->');
   const coStart = h.indexOf('<!-- ═══════════════════ COMPANY');
   if (recStart !== -1 && coStart > recStart) {
@@ -117,10 +149,10 @@ function inline(h) {
   // そのCSS（公開用でも残す）
   const cssAnchor = '/* 法務ページ（プライバシーポリシー・利用規約） */';
   if (!h.includes(cssAnchor)) throw new Error('cases-inline: CSS anchor');
-  h = h.replace(cssAnchor, S_HCSS + '\n' + NEWS.CSS + '\n' + E_HCSS + '\n' + cssAnchor);
+  h = h.replace(cssAnchor, S_HCSS + '\n' + NEWS.CSS + '\n' + FAQ_CSS + '\n' + E_HCSS + '\n' + cssAnchor);
   // その辞書（公開用でも残す）: お知らせ全件＋見出し＋トップに出す事例のタイトル等
-  const nd = NEWS.dict(news);
-  const hja = { ...nd.ja }, hen = { ...nd.en };
+  const nd = NEWS.dict(news), fd = faqDict(faq);
+  const hja = { ...nd.ja, ...fd.ja }, hen = { ...nd.en, ...fd.en };
   cases.forEach((c, i) => { if (!c.home) return; const d = dicts[i]; for (const k of ['title', 'lead', 'tags']) { hja[d.p + k] = d.ja[d.p + k]; hen[d.p + k] = d.en[d.p + k]; } });
   if (!h.includes(JA_ANCHOR) || !h.includes(EN_ANCHOR)) throw new Error('cases-inline: 辞書のアンカー');
   h = h.replace(JA_ANCHOR, S_HDICT + '\n' + lines(hja) + E_HDICT + '\n' + JA_ANCHOR)
