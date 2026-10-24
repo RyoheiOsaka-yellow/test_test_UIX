@@ -117,7 +117,7 @@ function prepare(id) {
   /* 「動き出してよい」合図（ydemo-go）の受け口。
      ポスター→デモの切り替えを目立たせないため、カメラ等の動きは親から合図が来るまで止めておく
      （デモ側は window.__YGO を見るか 'ydemo-go' イベントを待つ）。
-     単体で開いたときは即座に、iframe 内で合図が来ないときは 12 秒で自動的に動き出す。
+     単体で開いたときは即座に動き出す。iframe 内では ydemo-ready を送ったあと 20 秒待っても合図が来ない場合だけ自分で動き出す。
      ?hold=1 を付けて開くと止まったまま（ポスター撮影用） */
   /* 乱数を固定する（demos.json の seed に挙げたデモ）。
      初期配置や色がランダムなデモは、止めた状態の絵が毎回変わりポスターと一致しないので、
@@ -128,7 +128,7 @@ function prepare(id) {
   s = '<script>(function(){var hold=/[?&]hold=1/.test(location.search);window.__YGO=false;'
     + 'function go(){if(window.__YGO)return;window.__YGO=true;try{window.dispatchEvent(new Event("ydemo-go"))}catch(e){}}'
     + 'window.__ygo=go;window.addEventListener("message",function(e){if(e.data==="ydemo-go")go()});'
-    + 'if(!hold){if(window===window.parent)go();else setTimeout(go,12000)}})();<\/script>\n' + s;
+    + 'if(!hold&&window===window.parent)go()})();<\/script>\n' + s;
 
   /* 「もう普通に描けている」ことを親に知らせる合図を仕込む。
      読み込み完了(load)だけを合図にすると、まだ何も描いていない板を先に出してしまい、
@@ -136,10 +136,13 @@ function prepare(id) {
      組み立て中のデモも1コマずつ譲りながら進む（重い処理→コマ間隔がバラバラ）ので、
      コマ数だけでは足りない。ここでは「短い間隔のコマが続けて出ている」=描画ループに
      入った状態を待つ。遅い端末ほど自然に長く待つことになる
-     デモが window.__YREADY=false を立てている間は（組み立て中など）合図を出さない */
+     デモが window.__YREADY=false を立てている間は（組み立て中など）合図を出さない
+     合図を出したあと 20 秒たっても親から ydemo-go が来なければ自分で動き出す（保険）。
+     読み込み直後からの固定タイマーだと、重いデモ＋長い settle で「見せる前に動き出す」ことがあった */
   s += '\n<script>(function(){var last=0,run=0,n=0;function t(ts){n++;'
      + 'var dt=last?ts-last:9999;last=ts;if(dt<120)run++;else run=0;'
-     + 'if(((run>=10&&n>=15)||n>=240)&&window.__YREADY!==false){try{parent.postMessage("ydemo-ready","*")}catch(e){}return}'
+     + 'if(((run>=10&&n>=15)||n>=240)&&window.__YREADY!==false){try{parent.postMessage("ydemo-ready","*")}catch(e){}'
+     + 'if(window!==window.parent&&!/[?&]hold=1/.test(location.search))setTimeout(function(){if(window.__ygo)window.__ygo()},20000);return}'
      + 'requestAnimationFrame(t)}requestAnimationFrame(t)})();<\/script>\n';
 
   return s;
