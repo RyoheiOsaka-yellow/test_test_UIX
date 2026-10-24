@@ -7,7 +7,7 @@ export class EDL {
     this.renderer = renderer;
     this.camera = camera;
     this.enabled = true;
-    this.strength = 0.45;
+    this.strength = 0.55;
     this.radius = 1.2;
     const size = renderer.getDrawingBufferSize(new THREE.Vector2());
     this.target = new THREE.WebGLRenderTarget(size.x, size.y, { depthTexture: new THREE.DepthTexture(size.x, size.y, THREE.UnsignedIntType) });

@@ -21,9 +21,9 @@ export function createPointMaterial(lut, visTex) {
       uVis: { value: visTex },
       uMode: { value: 0 },          // 0 lidar(intensity×height) 1 elevation 2 intensity 3 class 4 deviation 5 realistic
       uRow: { value: 0 },           // colormap row for modes 0/1
-      uSize: { value: 1.4 },
-      uMinPx: { value: 1.5 },
-      uMaxPx: { value: 4.5 },
+      uSize: { value: 2.0 },
+      uMinPx: { value: 1.8 },
+      uMaxPx: { value: 5.0 },
       uHMin: { value: -2 },
       uHMax: { value: 40 },
       uHeightMix: { value: 0.3 },

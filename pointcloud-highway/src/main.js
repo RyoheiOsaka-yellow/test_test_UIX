@@ -43,7 +43,7 @@ const bimFaceMat = createBimFaceMaterial(visTex);
 const bimEdgeMat = createBimEdgeMaterial(visTex);
 
 const state = {
-  site: 'hakozaki', density: 0.5, mode: 0, row: 'lidar', heightMix: 0.15, pointSize: 1.6, gain: 1.0,
+  site: 'hakozaki', density: 0.4, mode: 0, row: 'lidar', heightMix: 0.15, pointSize: 2.0, gain: 1.0,
   showCloud: true, showBim: false, bimStyle: 'wire', showBuildingsBim: false, showLevels: false, showGrid: false,
   section: false, phase: 1, phasePlaying: false, devRange: 50, selected: -1, measuring: false, edl: true,
   clsHidden: new Set(), isolateRoute: null,
@@ -281,15 +281,15 @@ function select(id) {
 }
 function expectedPoints(e) {
   switch (e.type) {
-    case 'deck': return e.length * e.width * 4.5;
-    case 'girder': return e.length * (e.depth * 1.3 * 2 + e.wBot * 0.7);
-    case 'railing': return e.length * (e.h * 2 * 3.2 + 9);
-    case 'column': return (e.round ? Math.PI * e.colW : 2 * (e.colW + e.colL)) * (e.yTop - e.yBot) * 3.2;
-    case 'cap': return 2 * (e.w + e.l) * e.h * 2.6;
-    case 'footing': return 2 * (e.w + e.l) * e.h * 2.6;
-    case 'pole': return e.h * 9 + 22;
-    case 'gantry': return e.h * 28 + e.w * 26 + 110;
-    case 'building': return e.area * 0.13 + e.h * 20;
+    case 'deck': return e.length * e.width * 11;
+    case 'girder': return e.length * (e.depth * 2.2 * 2 + e.wBot * 1.0 + 2.4);
+    case 'railing': return e.length * (e.h * 2 * 6.5 + 18 + 5);
+    case 'column': return (e.round ? Math.PI * e.colW : 2 * (e.colW + e.colL)) * (e.yTop - e.yBot) * 7;
+    case 'cap': return 2 * (e.w + e.l) * e.h * 5;
+    case 'footing': return 2 * (e.w + e.l) * e.h * 5;
+    case 'pole': return e.h * 12 + 30;
+    case 'gantry': return e.h * 36 + e.w * 34 + 160;
+    case 'building': return e.area * 0.4 + e.h * 40;
     default: return 0;
   }
 }
