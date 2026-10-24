@@ -1,3 +1,17 @@
-#topbar,.ovl,#render-mode,#mini-kpi,#tooltip,#cloud-hud,.live-activity,#loading{display:none!important}
+/* 背景デモ用レイアウト
+   - iframe はパネルより 18% 高く、上下に約 9% はみ出して置かれる（パララックス）。
+     そのぶん上下に ~80px 余白を取り、サイトのヘッダー（上 76px）と左下の見出しに重ねない。
+   - 左上: 設定（畳む）＋ AIカメラ LOG ／ 右上: ホットスポット・計測値・ライブ ／ 右下: 凡例・KPI */
+#topbar,#loading,#tooltip,#scanpath,#render-mode{display:none!important}
 #page-3d{top:0!important}
-html,body{overflow:hidden;background:#e9eef5}
+html,body{overflow:hidden;background:#05070f}
+#panel{top:170px!important;left:14px!important}
+#beacon{top:236px!important;bottom:auto!important;left:14px!important;width:330px!important}
+#hud-hotspots{top:170px!important}
+#hud-top,#hud-sub,#hud-now{left:auto!important;right:18px!important;text-align:right}
+#hud-top{top:272px!important}
+#hud-sub{top:288px!important}
+#hud-now{top:304px!important}
+#live-activity{top:336px!important}
+body.cloud-mode #hud-legend{left:auto;right:18px;bottom:190px}
+#mini-kpi{bottom:100px!important}

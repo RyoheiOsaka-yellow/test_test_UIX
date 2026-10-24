@@ -1,6 +1,10 @@
 [
  [
   "$('#loading').style.display='none';",
-  "$('#loading').style.display='none';(function(){ function on(){ try{ var b=document.getElementById('autoRotate'); if(b && !b.classList.contains('on')) b.click(); }catch(e){} } if(window.__YGO) setTimeout(on,800); else window.addEventListener('ydemo-go', function(){ setTimeout(on,300); }); })();"
+  "$('#loading').style.display='none';(function(){ window.__YAUTO=true; var C={ready:false,t0:null,t1:null,d0:0,d1:0,lastE:-1}; function fitBoth(){ try{ var e0=state.explode; setExplode(0); fitVisible(undefined,true); C.t0=controls.target.clone(); C.d0=camera.position.distanceTo(controls.target)*0.92; setExplode(100); fitVisible(undefined,true); C.t1=controls.target.clone(); C.d1=camera.position.distanceTo(controls.target)*0.88; setExplode(e0); C.ready=true; C.lastE=-1; placeCam(); }catch(e){ console.error('fitBoth',e); } } function placeCam(){ if(!C.ready) return; var e=state.explode/100; e=e*e*(3-2*e); if(Math.abs(e-C.lastE)<1e-4) return; C.lastE=e; var dir=camera.position.clone().sub(controls.target).normalize(); var tgt=C.t0.clone().lerp(C.t1,e); var d=C.d0+(C.d1-C.d0)*e; controls.target.copy(tgt); camera.position.copy(tgt).addScaledVector(dir,d); needsRender=true; } (function camLoop(){ requestAnimationFrame(camLoop); placeCam(); })(); var T_OUT=6000, T_HOLD=4500, T_IN=5000, T_REST=3500; function cycle(){ animation={from:state.explode,to:100,start:performance.now(),duration:T_OUT}; state.playing=true; setTimeout(function(){ animation={from:state.explode,to:0,start:performance.now(),duration:T_IN}; state.playing=true; }, T_OUT+T_HOLD); } function on(){ try{ var b=document.getElementById('autoRotate'); if(b && !b.classList.contains('on')) b.click(); if(!C.ready) fitBoth(); cycle(); setInterval(cycle, T_OUT+T_HOLD+T_IN+T_REST); }catch(e){ console.error('auto-explode',e); } } setTimeout(fitBoth, 400); if(window.__YGO) setTimeout(on,800); else window.addEventListener('ydemo-go', function(){ setTimeout(on,300); }); })();"
+ ],
+ [
+  "if(k===1){animation=null;state.playing=false;$('#playExplode').textContent='▶';fitVisible();}",
+  "if(k===1){animation=null;state.playing=false;$('#playExplode').textContent='▶';if(!window.__YAUTO)fitVisible();}"
  ]
 ]

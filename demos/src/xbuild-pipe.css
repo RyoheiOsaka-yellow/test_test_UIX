@@ -1,2 +1,4 @@
-#loading,#toast{display:none!important}
+header,nav.toolbar,.workspace>:not(.center),.bottom,footer,#loading,#toast,.hud,.viewbuttons,.stagehint,.labelbar,.sectionbar,#labels,#labelLines,#tooltip,.legend,.axis,.xbar{display:none!important}
+.workspace{display:flex!important;grid-template-columns:none!important}
+.center{flex:1 1 auto!important;min-height:0}
 html,body{overflow:hidden}
