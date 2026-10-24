@@ -78,8 +78,8 @@ export function createPointMaterial(lut, visTex) {
         float dist = max(1.0, -mvPosition.z);
         // distance-attenuated size, and a splat that covers the nominal sample spacing so surfaces close up
         float px = uSize * uViewportH / dist * 0.45;
-        float splat = uSpacing[ci] * 0.95 * uViewportH / (2.0 * uTanHalfFov * dist) * uSize * 0.5;
-        px = clamp(max(px, min(splat, uMaxPx * 2.6)), uMinPx, uMaxPx * 2.6) * (1.0 + sel * 0.8);
+        float splat = uSpacing[ci] * 0.62 * uViewportH / (2.0 * uTanHalfFov * dist) * uSize * 0.5;
+        px = clamp(max(px, min(splat, uMaxPx * 1.7)), uMinPx, uMaxPx * 1.7) * (1.0 + sel * 0.8);
         vSize = px;
         gl_PointSize = px * uPixelRatio;
       }

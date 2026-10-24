@@ -45,8 +45,8 @@ class Cloud {
 
 // nominal surface densities (points / m²) at density = 1
 export const DENS = {
-  deck: 11, arterial: 4.5, street: 2.6, marking: 16, sidewalk: 3.2, kerb: 8, railFace: 6.5, railTop: 18,
-  girderSide: 2.2, girderBot: 1.0, column: 7, cap: 5, wall: 0.55, roof: 0.4, floorSlab: 0.09, ground: 0.55, grass: 0.4,
+  deck: 11, arterial: 4.5, street: 4.0, marking: 16, sidewalk: 3.2, kerb: 8, railFace: 6.5, railTop: 18,
+  girderSide: 2.2, girderBot: 1.0, column: 7, cap: 5, wall: 0.55, roof: 0.4, floorSlab: 0.09, ground: 0.8, grass: 0.4,
 };
 
 export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
