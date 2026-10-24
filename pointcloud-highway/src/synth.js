@@ -22,16 +22,17 @@ class Cloud {
   constructor(cap) { this.n = 0; this.cap = cap; this.alloc(); }
   alloc() {
     this.pos = new Float32Array(this.cap * 3); this.inten = new Uint8Array(this.cap); this.cls = new Uint8Array(this.cap);
-    this.dev = new Uint8Array(this.cap); this.elem = new Uint16Array(this.cap);
+    this.dev = new Uint8Array(this.cap); this.elem = new Uint16Array(this.cap); this.nrm = new Int8Array(this.cap * 3);
   }
-  push(x, y, z, i, c, d, e) {
+  push(x, y, z, i, c, d, e, nx = 0, ny = 0, nz = 0) {
     if (this.n >= this.cap) {
-      const o = this; const old = { pos: o.pos, inten: o.inten, cls: o.cls, dev: o.dev, elem: o.elem };
+      const o = this; const old = { pos: o.pos, inten: o.inten, cls: o.cls, dev: o.dev, elem: o.elem, nrm: o.nrm };
       this.cap = Math.ceil(this.cap * 1.6); this.alloc();
-      this.pos.set(old.pos); this.inten.set(old.inten); this.cls.set(old.cls); this.dev.set(old.dev); this.elem.set(old.elem);
+      this.pos.set(old.pos); this.inten.set(old.inten); this.cls.set(old.cls); this.dev.set(old.dev); this.elem.set(old.elem); this.nrm.set(old.nrm);
     }
     const k = this.n++;
     this.pos[k * 3] = x; this.pos[k * 3 + 1] = y; this.pos[k * 3 + 2] = z;
+    this.nrm[k * 3] = nx * 127; this.nrm[k * 3 + 1] = ny * 127; this.nrm[k * 3 + 2] = nz * 127;
     this.inten[k] = i < 0 ? 0 : i > 1 ? 255 : (i * 255) | 0;
     this.cls[k] = c;
     const dv = 128 + d;
@@ -39,7 +40,7 @@ class Cloud {
     this.elem[k] = e;
   }
   finish() {
-    return { n: this.n, pos: this.pos.slice(0, this.n * 3), inten: this.inten.slice(0, this.n), cls: this.cls.slice(0, this.n), dev: this.dev.slice(0, this.n), elem: this.elem.slice(0, this.n) };
+    return { n: this.n, pos: this.pos.slice(0, this.n * 3), inten: this.inten.slice(0, this.n), cls: this.cls.slice(0, this.n), dev: this.dev.slice(0, this.n), elem: this.elem.slice(0, this.n), nrm: this.nrm.slice(0, this.n * 3) };
   }
 }
 
@@ -68,14 +69,19 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
     const mag = dy !== 0 ? dy : Math.hypot(dx, dz) * (e.type === 'railing' ? Math.sign(e.asBuilt.dx) : 1);
     return { dx, dy, dz, mm: mag * 1000 + gauss(rnd) * 2.5 };
   };
+  // current surface normal for emitted points (0,0,0 = none → rendered as a disc)
+  let cn0 = 0, cn1 = 0, cn2 = 0;
+  const N = (x, y, z) => { cn0 = x; cn1 = y; cn2 = z; };
+  const UP = () => N(0, 1, 0);
   const emitE = (e, x, y, z, i, c, u = 0) => {
     const d = devAt(e, x, y, z, u);
-    cloud.push(x + d.dx + jit(), y + d.dy + jit(), z + d.dz + jit(), i + (rnd() - 0.5) * 0.06, c, d.mm, e.id);
+    cloud.push(x + d.dx + jit(), y + d.dy + jit(), z + d.dz + jit(), i + (rnd() - 0.5) * 0.06, c, d.mm, e.id, cn0, cn1, cn2);
   };
-  const emit = (x, y, z, i, c) => cloud.push(x + jit(), y + jit(), z + jit(), i + (rnd() - 0.5) * 0.06, c, gauss(rnd) * 2.5, NO_ELEM);
+  const emit = (x, y, z, i, c) => cloud.push(x + jit(), y + jit(), z + jit(), i + (rnd() - 0.5) * 0.06, c, gauss(rnd) * 2.5, NO_ELEM, cn0, cn1, cn2);
   // generic helpers (unassigned points)
-  const vline = (x, z, y0, y1, perM, inten, cls, r = 0.08) => { for (let k = 0, n = (y1 - y0) * perM * D; k < n; k++) emit(x + (rnd() - 0.5) * r, y0 + rnd() * (y1 - y0), z + (rnd() - 0.5) * r, inten, cls); };
+  const vline = (x, z, y0, y1, perM, inten, cls, r = 0.08) => { N(0, 0, 0); for (let k = 0, n = (y1 - y0) * perM * D; k < n; k++) emit(x + (rnd() - 0.5) * r, y0 + rnd() * (y1 - y0), z + (rnd() - 0.5) * r, inten, cls); };
   const seg = (ax, ay, az, bx, by, bz, perM, inten, cls, r = 0.05, sag = 0) => {
+    N(0, 0, 0);
     const L = Math.hypot(bx - ax, by - ay, bz - az);
     for (let k = 0, n = L * perM * D; k < n; k++) { const t = rnd(); emit(ax + (bx - ax) * t + (rnd() - 0.5) * r, ay + (by - ay) * t - sag * 4 * t * (1 - t), az + (bz - az) * t + (rnd() - 0.5) * r, inten, cls); }
   };
@@ -84,11 +90,11 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
     const area = 2 * (l * h + w * h) + (top ? l * w : 0);
     for (let k = 0, n = area * dens * D; k < n; k++) {
       const f = rnd() * area; let u, v, y;
-      if (f < l * h) { u = (rnd() - 0.5) * l; v = -w / 2; y = rnd() * h; }
-      else if (f < 2 * l * h) { u = (rnd() - 0.5) * l; v = w / 2; y = rnd() * h; }
-      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; }
-      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; }
-      else { u = (rnd() - 0.5) * l; v = (rnd() - 0.5) * w; y = h; }
+      if (f < l * h) { u = (rnd() - 0.5) * l; v = -w / 2; y = rnd() * h; N(-nx, 0, -nz); }
+      else if (f < 2 * l * h) { u = (rnd() - 0.5) * l; v = w / 2; y = rnd() * h; N(nx, 0, nz); }
+      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(-tx, 0, -tz); }
+      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(tx, 0, tz); }
+      else { u = (rnd() - 0.5) * l; v = (rnd() - 0.5) * w; y = h; UP(); }
       emit(cx + tx * u + nx * v, cy + y, cz + tz * u + nz * v, inten, cls);
     }
   };
@@ -108,9 +114,9 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
     for (let k = 0; k < m; k++) {
       const face = rnd();
       let u = (rnd() - 0.5) * len, vv = (rnd() - 0.5) * wid, h = hgt, inten = 0.55;
-      if (face < 0.4) { h = hgt * (truck ? 1 : 0.86 + 0.14 * Math.cos((u / len) * 3)); }
-      else if (face < 0.8) { vv = (rnd() < 0.5 ? -1 : 1) * wid / 2; h = rnd() * hgt; if (!truck && h > hgt * 0.55) { if (rnd() < 0.7) continue; inten = 0.2; } }
-      else { u = (rnd() < 0.5 ? -1 : 1) * len / 2; h = rnd() * hgt; if (h > hgt * 0.6 && rnd() < 0.5) continue; }
+      if (face < 0.4) { h = hgt * (truck ? 1 : 0.86 + 0.14 * Math.cos((u / len) * 3)); UP(); }
+      else if (face < 0.8) { const sd = rnd() < 0.5 ? -1 : 1; vv = sd * wid / 2; h = rnd() * hgt; N(p.nx * sd, 0, p.nz * sd); if (!truck && h > hgt * 0.55) { if (rnd() < 0.7) continue; inten = 0.2; } }
+      else { const sd = rnd() < 0.5 ? -1 : 1; u = sd * len / 2; h = rnd() * hgt; N(p.tx * sd, 0, p.tz * sd); if (h > hgt * 0.6 && rnd() < 0.5) continue; }
       const x = cx + p.tx * u + p.nx * vv, z = cz + p.tz * u + p.nz * vv;
       if (e) emitE(e, x, cy + h, z, inten + rnd() * 0.15, CLS.vehicle); else emit(x, cy + h, z, inten + rnd() * 0.15, CLS.vehicle);
     }
@@ -137,6 +143,7 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
     const lanes = Math.max(1, road.lanes);
     const laneW = (w - 0.9) / lanes;
     const put = (x, y, z, i, c, u) => (e ? emitE(e, x, y, z, i, c, u) : emit(x, y, z, i, c));
+    UP();
     for (let k = 1; k < path.length; k++) {
       const a = path[k - 1], b = path[k];
       const ds = b.s - a.s;
@@ -164,6 +171,7 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
       }
     }
     // lane arrows every 80 m, expansion joints every 40 m (elevated)
+    UP();
     if (road.kind !== 'street') {
       for (let s = 40; s < L - 10; s += 80) {
         const p = samplePath(path, s);
@@ -188,12 +196,14 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
       for (const side of [-1, 1]) {
         for (let k = 1; k < path.length; k++) {
           const a = path[k - 1], b = path[k], ds = b.s - a.s;
+          UP();
           for (let q = 0, n = cnt(ds * 2.8 * DENS.sidewalk * D); q < n; q++) {
             const t = rnd(), v = side * (w / 2 + 0.25 + rnd() * 2.8);
             const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
             const nx = a.nx + (b.nx - a.nx) * t, nz = a.nz + (b.nz - a.nz) * t;
             emit(x + nx * v, 0.15, z + nz * v, 0.24 + rnd() * 0.08, CLS.ground);
           }
+          N(-a.nx * side, 0.3, -a.nz * side);
           for (let q = 0, m = ds * DENS.kerb * D; q < m; q++) {
             const t = rnd(), v = side * (w / 2 + 0.12);
             const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
@@ -201,6 +211,7 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
             emit(x + nx * v, 0.08 + rnd() * 0.07, z + nz * v, 0.45, CLS.ground);
           }
           // guard rail (white, retro-reflective) with posts every 2 m
+          N(-a.nx * side, 0, -a.nz * side);
           for (let q = 0, m = ds * 7 * D; q < m; q++) {
             const t = rnd(), v = side * (w / 2 + 0.5);
             const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
@@ -212,6 +223,7 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
       for (const s0 of [9, L - 9]) {
         if (L < 40) continue;
         const p = samplePath(path, s0), dir = s0 < L / 2 ? -1 : 1;
+        UP();
         // zebra crossing: stripes 0.45 m wide, 0.9 m pitch, 4 m long
         for (let k = 0, n = w * 4 * 9 * D; k < n; k++) {
           const u = rnd() * 4 - 2, v = (rnd() - 0.5) * (w + 2);
@@ -237,6 +249,7 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
     for (let k = 0, n = 110 * r * D; k < n; k++) {
       const u = rnd() * 2 - 1, th = rnd() * Math.PI * 2, rr = r * Math.cbrt(0.45 + 0.55 * rnd());
       const sq = Math.sqrt(1 - u * u);
+      N(sq * Math.cos(th), u, sq * Math.sin(th));
       emit(x + rr * sq * Math.cos(th), hc + rr * u * 0.8, z + rr * sq * Math.sin(th), 0.25 + rnd() * 0.22, CLS.highVeg);
     }
     vline(x, z, 0, hc - r * 0.5, 12, 0.3, CLS.highVeg, 0.3);
@@ -252,7 +265,77 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
     for (const p of path) mask.fillDisc(p.x, p.z, road.width / 2 + (road.kind === 'street' ? 0.6 : 3.2), 3);
     pavement(path, road, false, null);
     const w = road.width;
+    // vending machines at the building line
+    for (let s = 12 + rnd() * 30, step = road.kind === 'arterial' ? 45 : 60; s < L - 4; s += step) {
+      if (rnd() > 0.55) continue;
+      const side = rnd() < 0.5 ? -1 : 1, p = samplePath(path, s), v = side * (w / 2 + (road.kind === 'arterial' ? 3.2 : 0.55));
+      const px = p.x + p.nx * v, pz = p.z + p.nz * v;
+      boxU(px, 0, pz, p.tx, p.tz, 1.0, 0.75, 1.85, 12, 0.45, CLS.furniture);
+      N(-p.nx * side, 0, -p.nz * side); // bright front panel facing the road
+      for (let k = 0, n = 1.0 * 1.85 * 14 * D; k < n; k++) emit(px + p.tx * (rnd() - 0.5) * 1.0 - p.nx * side * 0.38, 0.3 + rnd() * 1.5, pz + p.tz * (rnd() - 0.5) * 1.0 - p.nz * side * 0.38, 0.72, CLS.furniture);
+    }
     if (road.kind === 'arterial') {
+      // planting strips (hedges) along both kerbs, 10 m runs with 2.5 m gaps; median planter on wide roads
+      const hedge = (v, s0, s1, hw, hh) => {
+        for (let s = s0; s < s1; s += 12.5) {
+          const e1 = Math.min(s1, s + 10);
+          for (let k = 0, n = (e1 - s) * (hw + 2 * hh) * 4 * D; k < n; k++) {
+            const p = samplePath(path, s + rnd() * (e1 - s)), f = rnd() * (hw + 2 * hh);
+            let vv, y;
+            if (f < hw) { vv = v + (rnd() - 0.5) * hw; y = hh; UP(); }
+            else { const sd = f < hw + hh ? -1 : 1; vv = v + sd * hw / 2; y = rnd() * hh; N(p.nx * sd, 0.2, p.nz * sd); }
+            emit(p.x + p.nx * vv, y + (rnd() - 0.5) * 0.15, p.z + p.nz * vv, 0.28 + rnd() * 0.12, CLS.lowVeg);
+          }
+        }
+      };
+      if (L > 40) for (const side of [-1, 1]) if (hashStr(road.id + side) % 3 !== 0) hedge(side * (w / 2 + 1.05), 14, L - 14, 0.9, 0.8);
+      if (road.lanes >= 4 && L > 80) for (let s = 12; s < L - 12; s += 68) hedge(0, s, Math.min(L - 12, s + 60), 1.2, 0.9);
+      // bus stops every ~260 m (sign pole, shelter roof + back panel, bench)
+      for (let s = 130 + (hashStr('bus' + road.id) % 90); s < L - 10; s += 260) {
+        const side = (Math.floor(s / 260) % 2) * 2 - 1, p = samplePath(path, s), v = side * (w / 2 + 1.2);
+        const px = p.x + p.nx * v, pz = p.z + p.nz * v;
+        vline(px, pz, 0, 3.2, 14, 0.55, CLS.furniture, 0.12);
+        N(p.tx, 0, p.tz);
+        for (let k = 0, n = 40 * D; k < n; k++) { const r = Math.sqrt(rnd()) * 0.35, th = rnd() * 6.283; emit(px + p.nx * Math.cos(th) * r, 3.4 + Math.sin(th) * r, pz + p.nz * Math.cos(th) * r, 0.8, CLS.furniture); }
+        const sx = px + p.tx * 4, sz = pz + p.tz * 4, sv = side * 0.9;
+        boxU(sx + p.nx * sv, 2.55, sz + p.nz * sv, p.tx, p.tz, 4.2, 1.8, 0.15, 10, 0.5, CLS.furniture);
+        for (const u of [-1.9, 1.9]) vline(sx + p.tx * u + p.nx * (sv + side * 0.8), sz + p.tz * u + p.nz * (sv + side * 0.8), 0, 2.55, 14, 0.5, CLS.furniture, 0.1);
+        N(p.nx * side, 0, p.nz * side);
+        for (let k = 0, n = 4.2 * 2.2 * 2.2 * D; k < n; k++) emit(sx + p.tx * (rnd() - 0.5) * 4.2 + p.nx * (sv + side * 0.85), 0.3 + rnd() * 2.2, sz + p.tz * (rnd() - 0.5) * 4.2 + p.nz * (sv + side * 0.85), 0.3, CLS.furniture);
+        boxU(sx + p.nx * (sv + side * 0.5), 0.45, sz + p.nz * (sv + side * 0.5), p.tx, p.tz, 1.8, 0.4, 0.06, 20, 0.5, CLS.furniture);
+      }
+      // regulatory road signs (retro-reflective discs) every ~70 m, alternating sides
+      for (let s = 30 + (hashStr('sign' + road.id) % 40); s < L - 6; s += 70) {
+        const side = (Math.floor(s / 70) % 2) * 2 - 1, p = samplePath(path, s), v = side * (w / 2 + 0.4);
+        const px = p.x + p.nx * v, pz = p.z + p.nz * v;
+        vline(px, pz, 0, 2.9, 14, 0.5, CLS.furniture, 0.1);
+        N(p.tx, 0, p.tz);
+        for (let k = 0, n = 44 * D; k < n; k++) { const r = Math.sqrt(rnd()) * 0.3, th = rnd() * 6.283; emit(px + p.nx * Math.cos(th) * r, 3.05 + Math.sin(th) * r, pz + p.nz * Math.cos(th) * r, 0.9, CLS.furniture); }
+      }
+      // pedestrian overpass across wide arterials
+      if (road.lanes >= 4 && L > 160) {
+        const p = samplePath(path, L / 2), span = w + 6, dh = 5.2;
+        for (const [u0, u1, y0, y1] of [[-1.2, 1.2, dh, dh]]) {
+          for (let k = 0, n = span * 2.4 * 7 * D; k < n; k++) { const v = (rnd() - 0.5) * span, u = u0 + rnd() * (u1 - u0); UP(); emit(p.x + p.nx * v + p.tx * u, y0 + 0.02, p.z + p.nz * v + p.tz * u, 0.42, CLS.furniture); N(0, -1, 0); emit(p.x + p.nx * v + p.tx * u, y0 - 0.5, p.z + p.nz * v + p.tz * u, 0.35, CLS.furniture); }
+        }
+        for (const u of [-1.2, 1.2]) { // handrails with posts
+          N(p.tx * Math.sign(u), 0, p.tz * Math.sign(u));
+          for (let k = 0, n = span * 2 * 3.5 * D; k < n; k++) { const v = (rnd() - 0.5) * span; emit(p.x + p.nx * v + p.tx * u, dh + rnd() * 1.1, p.z + p.nz * v + p.tz * u, 0.4, CLS.furniture); }
+          for (let v = -span / 2; v <= span / 2; v += 2) vline(p.x + p.nx * v + p.tx * u, p.z + p.nz * v + p.tz * u, dh, dh + 1.1, 10, 0.5, CLS.furniture, 0.06);
+        }
+        for (const sd of [-1, 1]) { // stair ramps on each sidewalk, running along the road
+          const vb = sd * (span / 2 - 1.2);
+          for (let k = 0, n = 8 * 2.4 * 7 * D; k < n; k++) {
+            const u = 1.2 + rnd() * 8, v = vb + (rnd() - 0.5) * 2.4, y = dh * (1 - (u - 1.2) / 8);
+            N(-p.tx * 0.55, 0.83, -p.tz * 0.55);
+            emit(p.x + p.nx * v + p.tx * u, y + 0.02, p.z + p.nz * v + p.tz * u, 0.42, CLS.furniture);
+          }
+          N(p.nx * sd, 0, p.nz * sd);
+          for (let k = 0, n = 8 * 1.1 * 3 * D; k < n; k++) { const u = 1.2 + rnd() * 8, y = dh * (1 - (u - 1.2) / 8); emit(p.x + p.nx * (vb + sd * 1.2) + p.tx * u, y + 0.3 + rnd() * 0.9, p.z + p.nz * (vb + sd * 1.2) + p.tz * u, 0.4, CLS.furniture); }
+          vline(p.x + p.nx * vb, p.z + p.nz * vb, 0, dh - 0.5, 14, 0.45, CLS.furniture, 0.45);
+          vline(p.x + p.nx * (vb - sd * 3), p.z + p.nz * (vb - sd * 3), 0, dh - 0.5, 14, 0.45, CLS.furniture, 0.45);
+        }
+      }
       // street trees and street lights
       for (let s = 7; s < L; s += 14) for (const side of [-1, 1]) {
         if (rnd() > 0.55) continue;
@@ -286,11 +369,11 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
     const area = 2 * (l * h + w * h) + (top ? l * w : 0);
     for (let k = 0, n = area * dens * D; k < n; k++) {
       const f = rnd() * area; let u, v, y;
-      if (f < l * h) { u = (rnd() - 0.5) * l; v = -w / 2; y = rnd() * h; }
-      else if (f < 2 * l * h) { u = (rnd() - 0.5) * l; v = w / 2; y = rnd() * h; }
-      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; }
-      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; }
-      else { u = (rnd() - 0.5) * l; v = (rnd() - 0.5) * w; y = h; }
+      if (f < l * h) { u = (rnd() - 0.5) * l; v = -w / 2; y = rnd() * h; N(-nx, 0, -nz); }
+      else if (f < 2 * l * h) { u = (rnd() - 0.5) * l; v = w / 2; y = rnd() * h; N(nx, 0, nz); }
+      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(-tx, 0, -tz); }
+      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(tx, 0, tz); }
+      else { u = (rnd() - 0.5) * l; v = (rnd() - 0.5) * w; y = h; UP(); }
       emitE(e, cx + tx * u + nx * v, cy + y, cz + tz * u + nz * v, inten, cls);
     }
   };
@@ -304,10 +387,12 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
           const a = path[k - 1], b = path[k], ds = b.s - a.s;
           for (let q = 0, n = ds * e.depth * DENS.girderSide * D; q < n; q++) {
             const t = rnd(), f = rnd(), side = rnd() < 0.5 ? -1 : 1;
+            N(a.nx * side, 0.25, a.nz * side);
             const v = side * (e.wTop / 2 + (e.wBot / 2 - e.wTop / 2) * f);
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t - DECK_T - f * e.depth, z = a.z + (b.z - a.z) * t;
             emitE(e, x + a.nx * v, y, z + a.nz * v, 0.36 + rnd() * 0.08 + (f < 0.08 ? 0.12 : 0), CLS.girder, a.s / L);
           }
+          N(0, -1, 0);
           for (let q = 0, n = ds * e.wBot * DENS.girderBot * D; q < n; q++) {
             const t = rnd(), v = (rnd() - 0.5) * e.wBot;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t - DECK_T - e.depth, z = a.z + (b.z - a.z) * t;
@@ -329,17 +414,20 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
         for (let k = 1; k < path.length; k++) {
           const a = path[k - 1], b = path[k], ds = b.s - a.s;
           for (let q = 0, n = ds * e.h * 2 * DENS.railFace * D; q < n; q++) {
-            const t = rnd(), f = rnd();
-            const v = e.offset + (rnd() < 0.5 ? -1 : 1) * e.t / 2;
+            const t = rnd(), f = rnd(), sd = rnd() < 0.5 ? -1 : 1;
+            N(a.nx * sd, 0, a.nz * sd);
+            const v = e.offset + sd * e.t / 2;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + f * e.h, z = a.z + (b.z - a.z) * t;
             emitE(e, x + a.nx * v, y, z + a.nz * v, 0.5 + f * 0.12, CLS.railing, (a.s + ds * t) / L);
           }
+          UP();
           for (let q = 0, n = ds * DENS.railTop * D; q < n; q++) {
             const t = rnd(), v = e.offset + (rnd() - 0.5) * e.t;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + e.h, z = a.z + (b.z - a.z) * t;
             emitE(e, x + a.nx * v, y, z + a.nz * v, 0.86 + rnd() * 0.12, CLS.railing, (a.s + ds * t) / L);
           }
           // drainage kerb line on the carriageway side
+          N(-a.nx * e.side, 0.5, -a.nz * e.side);
           for (let q = 0, n = ds * 5 * D; q < n; q++) {
             const t = rnd(), v = e.offset - e.side * (e.t / 2 + 0.25);
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + 0.05, z = a.z + (b.z - a.z) * t;
@@ -347,6 +435,7 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
           }
           if (fence) {
             // fence on top of the parapet: posts every 2 m, top rail, sparse mesh
+            N(a.nx * e.side, 0, a.nz * e.side);
             for (let q = 0, n = ds * 1.0 * 1.4 * D; q < n; q++) {
               const t = rnd(), x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + e.h + rnd() * 1.0, z = a.z + (b.z - a.z) * t;
               emitE(e, x + a.nx * e.offset, y, z + a.nz * e.offset, 0.3 + rnd() * 0.1, CLS.railing, (a.s + ds * t) / L);
@@ -359,6 +448,7 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
         }
         if (fence) for (let s = 1; s < L; s += 2) {
           const p = samplePath(path, s);
+          N(0, 0, 0);
           for (let k = 0, n = 9 * D; k < n; k++) emitE(e, p.x + p.nx * e.offset, p.y + e.h + rnd() * 1.0, p.z + p.nz * e.offset, 0.5, CLS.railing, s / L);
         }
         break;
@@ -368,6 +458,7 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
         if (e.round) {
           for (let k = 0, n = Math.PI * e.colW * h * DENS.column * D; k < n; k++) {
             const th = rnd() * Math.PI * 2, y = e.yBot + rnd() * h;
+            N(Math.cos(th), 0, Math.sin(th));
             emitE(e, e.x + Math.cos(th) * e.colW / 2, y, e.z + Math.sin(th) * e.colW / 2, 0.4 + rnd() * 0.08 + (y < 1.2 ? 0.1 : 0), CLS.column);
           }
         } else boxFaces(e, e.x, e.yBot, e.z, e.tx, e.tz, -e.tz, e.tx, e.colL, e.colW, h, DENS.column, 0.42, CLS.column);
@@ -376,11 +467,13 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
       case 'cap': boxFaces(e, e.x, e.yBot, e.z, e.tx, e.tz, -e.tz, e.tx, e.l, e.w, e.h, DENS.cap, 0.46, CLS.cap); break;
       case 'footing': break; // underground: no returns
       case 'pole': {
+        N(0, 0, 0);
         for (let k = 0, n = e.h * 12 * D; k < n; k++) emitE(e, e.x + (rnd() - 0.5) * 0.25, e.y + rnd() * e.h, e.z + (rnd() - 0.5) * 0.25, 0.6, CLS.pole);
         for (let k = 0, n = 30 * D; k < n; k++) { const u = rnd() * 2.4; emitE(e, e.x - e.nx * u, e.y + e.h - 0.3 + u * 0.1, e.z - e.nz * u, 0.7, CLS.pole); }
         break;
       }
       case 'gantry': {
+        N(0, 0, 0);
         for (const side of [-1, 1]) {
           const px = e.x + e.nx * side * e.w / 2, pz = e.z + e.nz * side * e.w / 2;
           for (let k = 0, n = e.h * 18 * D; k < n; k++) emitE(e, px + (rnd() - 0.5) * 0.4, e.y + rnd() * e.h, pz + (rnd() - 0.5) * 0.4, 0.62, CLS.gantry);
@@ -389,6 +482,7 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
           const v = (rnd() - 0.5) * e.w, zig = Math.abs(((v * 2) % 2.4) - 1.2) * 0.9;
           emitE(e, e.x + e.nx * v + (rnd() - 0.5) * 0.3, e.y + e.h - 1.2 + zig, e.z + e.nz * v + (rnd() - 0.5) * 0.3, 0.6, CLS.gantry);
         }
+        N(-e.tx, 0, -e.tz);
         for (let k = 0, n = 160 * D; k < n; k++) {
           const v = (rnd() - 0.5) * 3.6, y = e.y + e.h - 1.1 + (rnd() - 0.5) * 2.2;
           emitE(e, e.x + e.nx * v - e.tx * 0.3, y, e.z + e.nz * v - e.tz * 0.3, 0.9 + rnd() * 0.1, CLS.gantry);
@@ -415,6 +509,7 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
       const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
       if (L < 0.5) continue;
       const nxw = (b[1] - a[1]) / L, nzw = -(b[0] - a[0]) / L; // outward-ish normal (sign irrelevant)
+      N(nxw, 0, nzw);
       for (let k = 0, n = L * h * wallD * 1.6 * D; k < n; k++) {
         const t = rnd(), y = rnd() * h;
         const vis = 0.3 + 0.7 * Math.exp(-y / 50);
@@ -430,10 +525,18 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
         emitE(e, a[0] + (b[0] - a[0]) * t, y, a[1] + (b[1] - a[1]) * t, inten, CLS.building);
       }
       // vertical corner line
+      N(0, 0, 0);
       for (let k = 0, n = h * 6 * D; k < n; k++) emitE(e, a[0], rnd() * h, a[1], 0.5 + rnd() * 0.08, CLS.building);
       // roof parapet (1 m) + balconies
+      N(nxw, 0, nzw);
       for (let k = 0, n = L * 4 * D; k < n; k++) { const t = rnd(); emitE(e, a[0] + (b[0] - a[0]) * t, h + rnd() * 1.0, a[1] + (b[1] - a[1]) * t, 0.45, CLS.building); }
+      // projecting shop sign (袖看板) on commercial facades
+      if (shopfront && h > 8 && L > 6 && (hb + i) % 5 === 0) {
+        const t = 0.3 + rnd() * 0.4, sy = 4 + rnd() * Math.max(1, h - 8);
+        boxU(a[0] + (b[0] - a[0]) * t + nxw * 0.55, sy, a[1] + (b[1] - a[1]) * t + nzw * 0.55, -nzw, nxw, 0.7, 0.25, 2.6, 14, 0.78, CLS.furniture);
+      }
       if (residential && !big) {
+        UP();
         for (let lv = 1; lv < e.levels; lv++) {
           const y = lv * floorH;
           for (let k = 0, n = L * 1.2 * 2.2 * D; k < n; k++) {
@@ -447,6 +550,7 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
     const [x0, z0, x1, z1] = polygonBBox(poly);
     const bw = x1 - x0, bh = z1 - z0;
     const roofN = Math.min(e.area, 12000) * DENS.roof * D;
+    UP();
     for (let tries = 0, got = 0; got < roofN && tries < roofN * 4; tries++) {
       const x = x0 + rnd() * bw, z = z0 + rnd() * bh;
       if (!pointInPolygon(x, z, poly)) continue;
@@ -461,12 +565,25 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
         const kind = rnd();
         if (kind < 0.5) boxFaces(e, cx, h, cz, 1, 0, 0, 1, 2 + rnd() * 3, 1.5 + rnd() * 2, 1.5 + rnd() * 1.5, 2.5, 0.4, CLS.building, true);
         else if (kind < 0.8) boxFaces(e, cx, h, cz, 1, 0, 0, 1, 3 + rnd() * 2, 3 + rnd() * 2, 2.8, 2.5, 0.42, CLS.building, true); // stair bulkhead
-        else { const r = 0.9 + rnd() * 0.6; for (let k = 0, n = 2 * Math.PI * r * 2.2 * 4 * D; k < n; k++) { const th = rnd() * 6.283; emitE(e, cx + Math.cos(th) * r, h + 0.6 + rnd() * 2.2, cz + Math.sin(th) * r, 0.5, CLS.building); } }
+        else { const r = 0.9 + rnd() * 0.6; for (let k = 0, n = 2 * Math.PI * r * 2.2 * 4 * D; k < n; k++) { const th = rnd() * 6.283; N(Math.cos(th), 0, Math.sin(th)); emitE(e, cx + Math.cos(th) * r, h + 0.6 + rnd() * 2.2, cz + Math.sin(th) * r, 0.5, CLS.building); } }
+      }
+      // rooftop billboard on larger buildings
+      if (e.area > 500 && hb % 7 === 0) {
+        let bi = 0, bl = 0;
+        for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; const L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L > bl) { bl = L; bi = i; } }
+        const a = poly[bi], b = poly[(bi + 1) % poly.length];
+        const tx = (b[0] - a[0]) / bl, tz = (b[1] - a[1]) / bl, nxw = tz, nzw = -tx;
+        const cx = (a[0] + b[0]) / 2 - nxw * 2.5, cz = (a[1] + b[1]) / 2 - nzw * 2.5;
+        const inside = pointInPolygon(cx, cz, poly) ? 1 : -1;
+        const px = (a[0] + b[0]) / 2 - nxw * 2.5 * inside, pz = (a[1] + b[1]) / 2 - nzw * 2.5 * inside;
+        boxU(px, h + 1.5, pz, tx, tz, Math.min(8, bl * 0.6), 0.15, 3.2, 7, 0.7, CLS.furniture);
+        for (const u of [-1, 1]) vline(px + tx * u * Math.min(3.5, bl * 0.25), pz + tz * u * Math.min(3.5, bl * 0.25), h, h + 1.6, 12, 0.45, CLS.furniture, 0.15);
       }
     }
     // interior floor slabs seen through glazing (denser near the facade)
     if (!big && e.levels > 2) {
       const perLevel = Math.min(e.area, 2500) * DENS.floorSlab * (glassy ? 1.6 : 1) * D;
+      UP();
       for (let lv = 1; lv < e.levels; lv++) {
         const y = lv * floorH + 0.15;
         const vis = 0.3 + 0.7 * Math.exp(-y / 50);
@@ -482,6 +599,7 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
   progress(0.86);
 
   // ---------- ground, water, parks, parking lots ----------
+  UP();
   for (let k = 0, n = cw * ch * DENS.ground * D; k < n; k++) {
     const x = (rnd() - 0.5) * cw, z = (rnd() - 0.5) * ch;
     const m = mask.get(x, z);
@@ -502,6 +620,7 @@ export function synthesize(data, { density = 1, seed = 1 } = {}, progress = () =
     for (let i = -2; i <= 2; i++) if (rnd() < 0.7) vehicle({ ...frame, x: x + frame.nx * i * 2.6, z: z + frame.nz * i * 2.6 }, 0, false, null, true);
     for (let i = -3; i <= 3; i++) vline(x + frame.nx * i * 2.6 + tx * 4.2, z + frame.nz * i * 2.6 + tz * 4.2, 0, 0.8, 10, 0.5, CLS.furniture, 0.1);
   }
+  UP();
   for (const poly of data.water) {
     const [x0, z0, x1, z1] = polygonBBox(poly);
     for (let k = 0, n = (x1 - x0) * (z1 - z0) * 0.035 * D; k < n; k++) {

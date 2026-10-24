@@ -36,18 +36,25 @@ export function createPointMaterial(lut, visTex) {
       uSpacing: { value: new Float32Array(32).fill(0.5) }, // nominal sample spacing (m) per class → splat radius
       uTanHalfFov: { value: 0.4877 },
       uOpacity: { value: 1 },
+      uSurfel: { value: 1 },   // 1 = normal-oriented elliptical splats
+      uHasRgb: { value: 0 },
+      uShade: { value: 0.5 },  // normal-based shading amount
     },
     vertexShader: /* glsl */ `
       attribute float intensity;
       attribute float cls;
       attribute float dev;
       attribute float elem;
+      attribute vec3 rgb;
+      uniform float uHasRgb;
       uniform sampler2D uLut;
       uniform float uMode, uRow, uSize, uMinPx, uMaxPx, uHMin, uHMax, uHeightMix, uGain, uSelected, uDevRange, uViewportH, uPixelRatio;
       uniform float uClsMask[32];
       uniform float uSpacing[32];
       uniform float uTanHalfFov;
+      uniform float uShade;
       varying vec3 vColor;
+      varying vec3 vNv;
       varying float vSize;
       varying float vHide;
       #include <clipping_planes_pars_vertex>
@@ -71,9 +78,18 @@ export function createPointMaterial(lut, visTex) {
           bool structural = ci == 17 || ci == 20 || ci == 21 || ci == 22 || ci == 23 || ci == 27 || ci == 29 || ci == 25;
           c = structural ? lut(${ROWS.deviation}.0, 0.5 + devMm / (2.0 * uDevRange)) : vec3(0.16, 0.17, 0.2);
         }
-        else c = lut(${ROWS.realistic}.0, (cls + 0.5) / 32.0) * (0.55 + 0.9 * I);
+        else c = uHasRgb > 0.5 ? rgb : lut(${ROWS.realistic}.0, (cls + 0.5) / 32.0) * (0.55 + 0.9 * I);
         float sel = step(abs(elem - uSelected), 0.5);
         c = mix(c, vec3(1.0, 0.72, 0.18), sel * (uMode > 3.5 && uMode < 4.5 ? 0.0 : 0.9));
+        // surfel normal in view space (zero when the point has no normal → disc, unshaded)
+        vec3 nv = vec3(0.0);
+        if (dot(normal, normal) > 0.05) {
+          nv = normalize(normalMatrix * normal);
+          if (nv.z < 0.0) nv = -nv; // orientation is ambiguous: face the camera
+          float lam = 0.45 + 0.55 * abs(dot(nv, normalize(vec3(0.35, 0.75, 0.6))));
+          c *= mix(1.0, lam, uShade);
+        }
+        vNv = nv;
         vColor = c;
         float dist = max(1.0, -mvPosition.z);
         // distance-attenuated size, and a splat that covers the nominal sample spacing so surfaces close up
@@ -85,17 +101,26 @@ export function createPointMaterial(lut, visTex) {
       }
     `,
     fragmentShader: /* glsl */ `
-      uniform float uOpacity;
+      uniform float uOpacity, uSurfel;
       varying vec3 vColor;
       varying float vSize;
       varying float vHide;
+      varying vec3 vNv;
       #include <clipping_planes_pars_fragment>
       void main() {
         #include <clipping_planes_fragment>
         if (vHide > 0.5) discard;
         if (vSize > 2.5) {
           vec2 d = gl_PointCoord - 0.5;
-          if (dot(d, d) > 0.25) discard;
+          vec2 a = vec2(vNv.x, -vNv.y); // projected normal (PointCoord y points down)
+          float la = length(a);
+          if (uSurfel > 0.5 && la > 0.03) {
+            // ellipse: the disc on the tangent plane foreshortens along the projected normal by |n.z|
+            a /= la;
+            float cosv = max(abs(vNv.z), 0.18);
+            float u = dot(d, a) / cosv, v = dot(d, vec2(-a.y, a.x));
+            if (u * u + v * v > 0.25) discard;
+          } else if (dot(d, d) > 0.25) discard;
         }
         gl_FragColor = vec4(vColor, uOpacity);
       }

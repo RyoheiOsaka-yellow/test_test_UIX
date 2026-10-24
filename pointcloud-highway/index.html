@@ -46,6 +46,10 @@
   .presets button { text-align: left; font-size: 12px; padding: 7px 9px; }
   .presets button small { display: block; color: var(--muted); font-size: 10.5px; margin-top: 2px; }
   .sub { margin-left: 22px; }
+  .small { font-size: 11px; line-height: 1.5; margin: 6px 0; }
+  .filebtn { display: block; text-align: center; background: #1a1f2b; border: 1px solid var(--panel-border); border-radius: 6px; padding: 7px 10px; cursor: pointer; }
+  .filebtn:hover { background: #242a39; }
+  body.las-mode #sec-bim, body.las-mode #sec-4d, body.las-mode #drive, body.las-mode .presets [data-preset=bim], body.las-mode .presets [data-preset=scan2bim] { display: none; }
   .muted { color: var(--muted); }
   #props { position: fixed; top: 56px; right: 12px; width: 320px; max-height: calc(100% - 68px); overflow-y: auto; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; backdrop-filter: blur(14px); z-index: 4; scrollbar-width: thin; }
   #props .head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--panel-border); position: sticky; top: 0; background: rgba(12,14,20,0.95); }
@@ -166,9 +170,11 @@
     <div class="row"><label>点密度（再合成）</label>
       <select id="density" style="width:120px"><option value="0.2">低 ≈3M</option><option value="0.4" selected>標準 ≈6M</option><option value="0.6">高 ≈9M</option><option value="1">最高 ≈15M</option></select>
     </div>
+    <div class="row check"><input id="surfel" type="checkbox" checked><label for="surfel">サーフェル（法線に沿った楕円スプラット）</label></div>
+    <div class="row"><label>法線陰影</label><input id="shade" type="range" min="0" max="1" step="0.05" value="0.5" style="width:120px"></div>
     <div class="row check"><input id="edl" type="checkbox" checked><label for="edl">Eye-Dome Lighting（輪郭強調）</label><input id="edl-strength" type="range" min="0" max="1.5" step="0.05" value="0.55" style="width:70px"></div>
   </div>
-  <div class="sec">
+  <div class="sec" id="sec-bim">
     <h2>レイヤー（BIM / Revit 風）</h2>
     <div class="row check"><input id="show-cloud" type="checkbox" checked><label for="show-cloud">点群（as-built スキャン）</label></div>
     <div class="row check"><input id="show-bim" type="checkbox"><label for="show-bim">BIM 構造モデル（設計）</label></div>
@@ -185,7 +191,7 @@
       <div class="row"><label>Z</label><input id="sz0" type="range" step="2"><input id="sz1" type="range" step="2"></div>
     </div>
   </div>
-  <div class="sec">
+  <div class="sec" id="sec-4d">
     <h2>4D 施工シミュレーション</h2>
     <input id="phase" type="range" min="0" max="100" step="0.5" value="100">
     <div class="row"><span class="muted" id="phase-label">竣工（全要素）</span><button id="phase-play">▶ 再生</button></div>
@@ -208,6 +214,14 @@
       <button id="measure">📏 計測（mm）</button>
       <button id="measure-clear">計測クリア</button>
     </div>
+  </div>
+  <div class="sec">
+    <h2>実測データ（LAS / LAZ）</h2>
+    <label class="filebtn" for="las-file">📂 LAS / LAZ を開く…</label>
+    <input id="las-file" type="file" accept=".las,.laz" hidden>
+    <p class="muted small">LAS 1.0–1.4（PF 0–10）と LAZ（laz-perf でブラウザ内展開）。画面へのドラッグ＆ドロップも可。1,600 万点を超える場合は間引きます。法線はグリッド PCA で推定し、サーフェル表示に使います。</p>
+    <button id="las-export" style="width:100%">⬇ 表示中の点群を LAS で書き出す</button>
+    <p class="muted small">LAS 1.2 / PF2（XYZ・強度・分類・現在の配色 RGB）。CloudCompare や Autodesk ReCap で開けます。</p>
   </div>
 </aside>
 

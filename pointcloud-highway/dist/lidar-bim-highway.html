@@ -46,6 +46,10 @@
   .presets button { text-align: left; font-size: 12px; padding: 7px 9px; }
   .presets button small { display: block; color: var(--muted); font-size: 10.5px; margin-top: 2px; }
   .sub { margin-left: 22px; }
+  .small { font-size: 11px; line-height: 1.5; margin: 6px 0; }
+  .filebtn { display: block; text-align: center; background: #1a1f2b; border: 1px solid var(--panel-border); border-radius: 6px; padding: 7px 10px; cursor: pointer; }
+  .filebtn:hover { background: #242a39; }
+  body.las-mode #sec-bim, body.las-mode #sec-4d, body.las-mode #drive, body.las-mode .presets [data-preset=bim], body.las-mode .presets [data-preset=scan2bim] { display: none; }
   .muted { color: var(--muted); }
   #props { position: fixed; top: 56px; right: 12px; width: 320px; max-height: calc(100% - 68px); overflow-y: auto; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; backdrop-filter: blur(14px); z-index: 4; scrollbar-width: thin; }
   #props .head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--panel-border); position: sticky; top: 0; background: rgba(12,14,20,0.95); }
@@ -166,9 +170,11 @@
     <div class="row"><label>点密度（再合成）</label>
       <select id="density" style="width:120px"><option value="0.2">低 ≈3M</option><option value="0.4" selected>標準 ≈6M</option><option value="0.6">高 ≈9M</option><option value="1">最高 ≈15M</option></select>
     </div>
+    <div class="row check"><input id="surfel" type="checkbox" checked><label for="surfel">サーフェル（法線に沿った楕円スプラット）</label></div>
+    <div class="row"><label>法線陰影</label><input id="shade" type="range" min="0" max="1" step="0.05" value="0.5" style="width:120px"></div>
     <div class="row check"><input id="edl" type="checkbox" checked><label for="edl">Eye-Dome Lighting（輪郭強調）</label><input id="edl-strength" type="range" min="0" max="1.5" step="0.05" value="0.55" style="width:70px"></div>
   </div>
-  <div class="sec">
+  <div class="sec" id="sec-bim">
     <h2>レイヤー（BIM / Revit 風）</h2>
     <div class="row check"><input id="show-cloud" type="checkbox" checked><label for="show-cloud">点群（as-built スキャン）</label></div>
     <div class="row check"><input id="show-bim" type="checkbox"><label for="show-bim">BIM 構造モデル（設計）</label></div>
@@ -185,7 +191,7 @@
       <div class="row"><label>Z</label><input id="sz0" type="range" step="2"><input id="sz1" type="range" step="2"></div>
     </div>
   </div>
-  <div class="sec">
+  <div class="sec" id="sec-4d">
     <h2>4D 施工シミュレーション</h2>
     <input id="phase" type="range" min="0" max="100" step="0.5" value="100">
     <div class="row"><span class="muted" id="phase-label">竣工（全要素）</span><button id="phase-play">▶ 再生</button></div>
@@ -208,6 +214,14 @@
       <button id="measure">📏 計測（mm）</button>
       <button id="measure-clear">計測クリア</button>
     </div>
+  </div>
+  <div class="sec">
+    <h2>実測データ（LAS / LAZ）</h2>
+    <label class="filebtn" for="las-file">📂 LAS / LAZ を開く…</label>
+    <input id="las-file" type="file" accept=".las,.laz" hidden>
+    <p class="muted small">LAS 1.0–1.4（PF 0–10）と LAZ（laz-perf でブラウザ内展開）。画面へのドラッグ＆ドロップも可。1,600 万点を超える場合は間引きます。法線はグリッド PCA で推定し、サーフェル表示に使います。</p>
+    <button id="las-export" style="width:100%">⬇ 表示中の点群を LAS で書き出す</button>
+    <p class="muted small">LAS 1.2 / PF2（XYZ・強度・分類・現在の配色 RGB）。CloudCompare や Autodesk ReCap で開けます。</p>
   </div>
 </aside>
 
@@ -694,16 +708,17 @@ class Cloud {
   constructor(cap) { this.n = 0; this.cap = cap; this.alloc(); }
   alloc() {
     this.pos = new Float32Array(this.cap * 3); this.inten = new Uint8Array(this.cap); this.cls = new Uint8Array(this.cap);
-    this.dev = new Uint8Array(this.cap); this.elem = new Uint16Array(this.cap);
+    this.dev = new Uint8Array(this.cap); this.elem = new Uint16Array(this.cap); this.nrm = new Int8Array(this.cap * 3);
   }
-  push(x, y, z, i, c, d, e) {
+  push(x, y, z, i, c, d, e, nx = 0, ny = 0, nz = 0) {
     if (this.n >= this.cap) {
-      const o = this; const old = { pos: o.pos, inten: o.inten, cls: o.cls, dev: o.dev, elem: o.elem };
+      const o = this; const old = { pos: o.pos, inten: o.inten, cls: o.cls, dev: o.dev, elem: o.elem, nrm: o.nrm };
       this.cap = Math.ceil(this.cap * 1.6); this.alloc();
-      this.pos.set(old.pos); this.inten.set(old.inten); this.cls.set(old.cls); this.dev.set(old.dev); this.elem.set(old.elem);
+      this.pos.set(old.pos); this.inten.set(old.inten); this.cls.set(old.cls); this.dev.set(old.dev); this.elem.set(old.elem); this.nrm.set(old.nrm);
     }
     const k = this.n++;
     this.pos[k * 3] = x; this.pos[k * 3 + 1] = y; this.pos[k * 3 + 2] = z;
+    this.nrm[k * 3] = nx * 127; this.nrm[k * 3 + 1] = ny * 127; this.nrm[k * 3 + 2] = nz * 127;
     this.inten[k] = i < 0 ? 0 : i > 1 ? 255 : (i * 255) | 0;
     this.cls[k] = c;
     const dv = 128 + d;
@@ -711,7 +726,7 @@ class Cloud {
     this.elem[k] = e;
   }
   finish() {
-    return { n: this.n, pos: this.pos.slice(0, this.n * 3), inten: this.inten.slice(0, this.n), cls: this.cls.slice(0, this.n), dev: this.dev.slice(0, this.n), elem: this.elem.slice(0, this.n) };
+    return { n: this.n, pos: this.pos.slice(0, this.n * 3), inten: this.inten.slice(0, this.n), cls: this.cls.slice(0, this.n), dev: this.dev.slice(0, this.n), elem: this.elem.slice(0, this.n), nrm: this.nrm.slice(0, this.n * 3) };
   }
 }
 
@@ -740,14 +755,19 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     const mag = dy !== 0 ? dy : Math.hypot(dx, dz) * (e.type === 'railing' ? Math.sign(e.asBuilt.dx) : 1);
     return { dx, dy, dz, mm: mag * 1000 + gauss(rnd) * 2.5 };
   };
+  // current surface normal for emitted points (0,0,0 = none → rendered as a disc)
+  let cn0 = 0, cn1 = 0, cn2 = 0;
+  const N = (x, y, z) => { cn0 = x; cn1 = y; cn2 = z; };
+  const UP = () => N(0, 1, 0);
   const emitE = (e, x, y, z, i, c, u = 0) => {
     const d = devAt(e, x, y, z, u);
-    cloud.push(x + d.dx + jit(), y + d.dy + jit(), z + d.dz + jit(), i + (rnd() - 0.5) * 0.06, c, d.mm, e.id);
+    cloud.push(x + d.dx + jit(), y + d.dy + jit(), z + d.dz + jit(), i + (rnd() - 0.5) * 0.06, c, d.mm, e.id, cn0, cn1, cn2);
   };
-  const emit = (x, y, z, i, c) => cloud.push(x + jit(), y + jit(), z + jit(), i + (rnd() - 0.5) * 0.06, c, gauss(rnd) * 2.5, NO_ELEM);
+  const emit = (x, y, z, i, c) => cloud.push(x + jit(), y + jit(), z + jit(), i + (rnd() - 0.5) * 0.06, c, gauss(rnd) * 2.5, NO_ELEM, cn0, cn1, cn2);
   // generic helpers (unassigned points)
-  const vline = (x, z, y0, y1, perM, inten, cls, r = 0.08) => { for (let k = 0, n = (y1 - y0) * perM * D; k < n; k++) emit(x + (rnd() - 0.5) * r, y0 + rnd() * (y1 - y0), z + (rnd() - 0.5) * r, inten, cls); };
+  const vline = (x, z, y0, y1, perM, inten, cls, r = 0.08) => { N(0, 0, 0); for (let k = 0, n = (y1 - y0) * perM * D; k < n; k++) emit(x + (rnd() - 0.5) * r, y0 + rnd() * (y1 - y0), z + (rnd() - 0.5) * r, inten, cls); };
   const seg = (ax, ay, az, bx, by, bz, perM, inten, cls, r = 0.05, sag = 0) => {
+    N(0, 0, 0);
     const L = Math.hypot(bx - ax, by - ay, bz - az);
     for (let k = 0, n = L * perM * D; k < n; k++) { const t = rnd(); emit(ax + (bx - ax) * t + (rnd() - 0.5) * r, ay + (by - ay) * t - sag * 4 * t * (1 - t), az + (bz - az) * t + (rnd() - 0.5) * r, inten, cls); }
   };
@@ -756,11 +776,11 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     const area = 2 * (l * h + w * h) + (top ? l * w : 0);
     for (let k = 0, n = area * dens * D; k < n; k++) {
       const f = rnd() * area; let u, v, y;
-      if (f < l * h) { u = (rnd() - 0.5) * l; v = -w / 2; y = rnd() * h; }
-      else if (f < 2 * l * h) { u = (rnd() - 0.5) * l; v = w / 2; y = rnd() * h; }
-      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; }
-      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; }
-      else { u = (rnd() - 0.5) * l; v = (rnd() - 0.5) * w; y = h; }
+      if (f < l * h) { u = (rnd() - 0.5) * l; v = -w / 2; y = rnd() * h; N(-nx, 0, -nz); }
+      else if (f < 2 * l * h) { u = (rnd() - 0.5) * l; v = w / 2; y = rnd() * h; N(nx, 0, nz); }
+      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(-tx, 0, -tz); }
+      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(tx, 0, tz); }
+      else { u = (rnd() - 0.5) * l; v = (rnd() - 0.5) * w; y = h; UP(); }
       emit(cx + tx * u + nx * v, cy + y, cz + tz * u + nz * v, inten, cls);
     }
   };
@@ -780,9 +800,9 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     for (let k = 0; k < m; k++) {
       const face = rnd();
       let u = (rnd() - 0.5) * len, vv = (rnd() - 0.5) * wid, h = hgt, inten = 0.55;
-      if (face < 0.4) { h = hgt * (truck ? 1 : 0.86 + 0.14 * Math.cos((u / len) * 3)); }
-      else if (face < 0.8) { vv = (rnd() < 0.5 ? -1 : 1) * wid / 2; h = rnd() * hgt; if (!truck && h > hgt * 0.55) { if (rnd() < 0.7) continue; inten = 0.2; } }
-      else { u = (rnd() < 0.5 ? -1 : 1) * len / 2; h = rnd() * hgt; if (h > hgt * 0.6 && rnd() < 0.5) continue; }
+      if (face < 0.4) { h = hgt * (truck ? 1 : 0.86 + 0.14 * Math.cos((u / len) * 3)); UP(); }
+      else if (face < 0.8) { const sd = rnd() < 0.5 ? -1 : 1; vv = sd * wid / 2; h = rnd() * hgt; N(p.nx * sd, 0, p.nz * sd); if (!truck && h > hgt * 0.55) { if (rnd() < 0.7) continue; inten = 0.2; } }
+      else { const sd = rnd() < 0.5 ? -1 : 1; u = sd * len / 2; h = rnd() * hgt; N(p.tx * sd, 0, p.tz * sd); if (h > hgt * 0.6 && rnd() < 0.5) continue; }
       const x = cx + p.tx * u + p.nx * vv, z = cz + p.tz * u + p.nz * vv;
       if (e) emitE(e, x, cy + h, z, inten + rnd() * 0.15, CLS.vehicle); else emit(x, cy + h, z, inten + rnd() * 0.15, CLS.vehicle);
     }
@@ -809,6 +829,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     const lanes = Math.max(1, road.lanes);
     const laneW = (w - 0.9) / lanes;
     const put = (x, y, z, i, c, u) => (e ? emitE(e, x, y, z, i, c, u) : emit(x, y, z, i, c));
+    UP();
     for (let k = 1; k < path.length; k++) {
       const a = path[k - 1], b = path[k];
       const ds = b.s - a.s;
@@ -836,6 +857,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       }
     }
     // lane arrows every 80 m, expansion joints every 40 m (elevated)
+    UP();
     if (road.kind !== 'street') {
       for (let s = 40; s < L - 10; s += 80) {
         const p = samplePath(path, s);
@@ -860,12 +882,14 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       for (const side of [-1, 1]) {
         for (let k = 1; k < path.length; k++) {
           const a = path[k - 1], b = path[k], ds = b.s - a.s;
+          UP();
           for (let q = 0, n = cnt(ds * 2.8 * DENS.sidewalk * D); q < n; q++) {
             const t = rnd(), v = side * (w / 2 + 0.25 + rnd() * 2.8);
             const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
             const nx = a.nx + (b.nx - a.nx) * t, nz = a.nz + (b.nz - a.nz) * t;
             emit(x + nx * v, 0.15, z + nz * v, 0.24 + rnd() * 0.08, CLS.ground);
           }
+          N(-a.nx * side, 0.3, -a.nz * side);
           for (let q = 0, m = ds * DENS.kerb * D; q < m; q++) {
             const t = rnd(), v = side * (w / 2 + 0.12);
             const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
@@ -873,6 +897,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
             emit(x + nx * v, 0.08 + rnd() * 0.07, z + nz * v, 0.45, CLS.ground);
           }
           // guard rail (white, retro-reflective) with posts every 2 m
+          N(-a.nx * side, 0, -a.nz * side);
           for (let q = 0, m = ds * 7 * D; q < m; q++) {
             const t = rnd(), v = side * (w / 2 + 0.5);
             const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
@@ -884,6 +909,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       for (const s0 of [9, L - 9]) {
         if (L < 40) continue;
         const p = samplePath(path, s0), dir = s0 < L / 2 ? -1 : 1;
+        UP();
         // zebra crossing: stripes 0.45 m wide, 0.9 m pitch, 4 m long
         for (let k = 0, n = w * 4 * 9 * D; k < n; k++) {
           const u = rnd() * 4 - 2, v = (rnd() - 0.5) * (w + 2);
@@ -909,6 +935,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     for (let k = 0, n = 110 * r * D; k < n; k++) {
       const u = rnd() * 2 - 1, th = rnd() * Math.PI * 2, rr = r * Math.cbrt(0.45 + 0.55 * rnd());
       const sq = Math.sqrt(1 - u * u);
+      N(sq * Math.cos(th), u, sq * Math.sin(th));
       emit(x + rr * sq * Math.cos(th), hc + rr * u * 0.8, z + rr * sq * Math.sin(th), 0.25 + rnd() * 0.22, CLS.highVeg);
     }
     vline(x, z, 0, hc - r * 0.5, 12, 0.3, CLS.highVeg, 0.3);
@@ -924,7 +951,77 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     for (const p of path) mask.fillDisc(p.x, p.z, road.width / 2 + (road.kind === 'street' ? 0.6 : 3.2), 3);
     pavement(path, road, false, null);
     const w = road.width;
+    // vending machines at the building line
+    for (let s = 12 + rnd() * 30, step = road.kind === 'arterial' ? 45 : 60; s < L - 4; s += step) {
+      if (rnd() > 0.55) continue;
+      const side = rnd() < 0.5 ? -1 : 1, p = samplePath(path, s), v = side * (w / 2 + (road.kind === 'arterial' ? 3.2 : 0.55));
+      const px = p.x + p.nx * v, pz = p.z + p.nz * v;
+      boxU(px, 0, pz, p.tx, p.tz, 1.0, 0.75, 1.85, 12, 0.45, CLS.furniture);
+      N(-p.nx * side, 0, -p.nz * side); // bright front panel facing the road
+      for (let k = 0, n = 1.0 * 1.85 * 14 * D; k < n; k++) emit(px + p.tx * (rnd() - 0.5) * 1.0 - p.nx * side * 0.38, 0.3 + rnd() * 1.5, pz + p.tz * (rnd() - 0.5) * 1.0 - p.nz * side * 0.38, 0.72, CLS.furniture);
+    }
     if (road.kind === 'arterial') {
+      // planting strips (hedges) along both kerbs, 10 m runs with 2.5 m gaps; median planter on wide roads
+      const hedge = (v, s0, s1, hw, hh) => {
+        for (let s = s0; s < s1; s += 12.5) {
+          const e1 = Math.min(s1, s + 10);
+          for (let k = 0, n = (e1 - s) * (hw + 2 * hh) * 4 * D; k < n; k++) {
+            const p = samplePath(path, s + rnd() * (e1 - s)), f = rnd() * (hw + 2 * hh);
+            let vv, y;
+            if (f < hw) { vv = v + (rnd() - 0.5) * hw; y = hh; UP(); }
+            else { const sd = f < hw + hh ? -1 : 1; vv = v + sd * hw / 2; y = rnd() * hh; N(p.nx * sd, 0.2, p.nz * sd); }
+            emit(p.x + p.nx * vv, y + (rnd() - 0.5) * 0.15, p.z + p.nz * vv, 0.28 + rnd() * 0.12, CLS.lowVeg);
+          }
+        }
+      };
+      if (L > 40) for (const side of [-1, 1]) if (hashStr(road.id + side) % 3 !== 0) hedge(side * (w / 2 + 1.05), 14, L - 14, 0.9, 0.8);
+      if (road.lanes >= 4 && L > 80) for (let s = 12; s < L - 12; s += 68) hedge(0, s, Math.min(L - 12, s + 60), 1.2, 0.9);
+      // bus stops every ~260 m (sign pole, shelter roof + back panel, bench)
+      for (let s = 130 + (hashStr('bus' + road.id) % 90); s < L - 10; s += 260) {
+        const side = (Math.floor(s / 260) % 2) * 2 - 1, p = samplePath(path, s), v = side * (w / 2 + 1.2);
+        const px = p.x + p.nx * v, pz = p.z + p.nz * v;
+        vline(px, pz, 0, 3.2, 14, 0.55, CLS.furniture, 0.12);
+        N(p.tx, 0, p.tz);
+        for (let k = 0, n = 40 * D; k < n; k++) { const r = Math.sqrt(rnd()) * 0.35, th = rnd() * 6.283; emit(px + p.nx * Math.cos(th) * r, 3.4 + Math.sin(th) * r, pz + p.nz * Math.cos(th) * r, 0.8, CLS.furniture); }
+        const sx = px + p.tx * 4, sz = pz + p.tz * 4, sv = side * 0.9;
+        boxU(sx + p.nx * sv, 2.55, sz + p.nz * sv, p.tx, p.tz, 4.2, 1.8, 0.15, 10, 0.5, CLS.furniture);
+        for (const u of [-1.9, 1.9]) vline(sx + p.tx * u + p.nx * (sv + side * 0.8), sz + p.tz * u + p.nz * (sv + side * 0.8), 0, 2.55, 14, 0.5, CLS.furniture, 0.1);
+        N(p.nx * side, 0, p.nz * side);
+        for (let k = 0, n = 4.2 * 2.2 * 2.2 * D; k < n; k++) emit(sx + p.tx * (rnd() - 0.5) * 4.2 + p.nx * (sv + side * 0.85), 0.3 + rnd() * 2.2, sz + p.tz * (rnd() - 0.5) * 4.2 + p.nz * (sv + side * 0.85), 0.3, CLS.furniture);
+        boxU(sx + p.nx * (sv + side * 0.5), 0.45, sz + p.nz * (sv + side * 0.5), p.tx, p.tz, 1.8, 0.4, 0.06, 20, 0.5, CLS.furniture);
+      }
+      // regulatory road signs (retro-reflective discs) every ~70 m, alternating sides
+      for (let s = 30 + (hashStr('sign' + road.id) % 40); s < L - 6; s += 70) {
+        const side = (Math.floor(s / 70) % 2) * 2 - 1, p = samplePath(path, s), v = side * (w / 2 + 0.4);
+        const px = p.x + p.nx * v, pz = p.z + p.nz * v;
+        vline(px, pz, 0, 2.9, 14, 0.5, CLS.furniture, 0.1);
+        N(p.tx, 0, p.tz);
+        for (let k = 0, n = 44 * D; k < n; k++) { const r = Math.sqrt(rnd()) * 0.3, th = rnd() * 6.283; emit(px + p.nx * Math.cos(th) * r, 3.05 + Math.sin(th) * r, pz + p.nz * Math.cos(th) * r, 0.9, CLS.furniture); }
+      }
+      // pedestrian overpass across wide arterials
+      if (road.lanes >= 4 && L > 160) {
+        const p = samplePath(path, L / 2), span = w + 6, dh = 5.2;
+        for (const [u0, u1, y0, y1] of [[-1.2, 1.2, dh, dh]]) {
+          for (let k = 0, n = span * 2.4 * 7 * D; k < n; k++) { const v = (rnd() - 0.5) * span, u = u0 + rnd() * (u1 - u0); UP(); emit(p.x + p.nx * v + p.tx * u, y0 + 0.02, p.z + p.nz * v + p.tz * u, 0.42, CLS.furniture); N(0, -1, 0); emit(p.x + p.nx * v + p.tx * u, y0 - 0.5, p.z + p.nz * v + p.tz * u, 0.35, CLS.furniture); }
+        }
+        for (const u of [-1.2, 1.2]) { // handrails with posts
+          N(p.tx * Math.sign(u), 0, p.tz * Math.sign(u));
+          for (let k = 0, n = span * 2 * 3.5 * D; k < n; k++) { const v = (rnd() - 0.5) * span; emit(p.x + p.nx * v + p.tx * u, dh + rnd() * 1.1, p.z + p.nz * v + p.tz * u, 0.4, CLS.furniture); }
+          for (let v = -span / 2; v <= span / 2; v += 2) vline(p.x + p.nx * v + p.tx * u, p.z + p.nz * v + p.tz * u, dh, dh + 1.1, 10, 0.5, CLS.furniture, 0.06);
+        }
+        for (const sd of [-1, 1]) { // stair ramps on each sidewalk, running along the road
+          const vb = sd * (span / 2 - 1.2);
+          for (let k = 0, n = 8 * 2.4 * 7 * D; k < n; k++) {
+            const u = 1.2 + rnd() * 8, v = vb + (rnd() - 0.5) * 2.4, y = dh * (1 - (u - 1.2) / 8);
+            N(-p.tx * 0.55, 0.83, -p.tz * 0.55);
+            emit(p.x + p.nx * v + p.tx * u, y + 0.02, p.z + p.nz * v + p.tz * u, 0.42, CLS.furniture);
+          }
+          N(p.nx * sd, 0, p.nz * sd);
+          for (let k = 0, n = 8 * 1.1 * 3 * D; k < n; k++) { const u = 1.2 + rnd() * 8, y = dh * (1 - (u - 1.2) / 8); emit(p.x + p.nx * (vb + sd * 1.2) + p.tx * u, y + 0.3 + rnd() * 0.9, p.z + p.nz * (vb + sd * 1.2) + p.tz * u, 0.4, CLS.furniture); }
+          vline(p.x + p.nx * vb, p.z + p.nz * vb, 0, dh - 0.5, 14, 0.45, CLS.furniture, 0.45);
+          vline(p.x + p.nx * (vb - sd * 3), p.z + p.nz * (vb - sd * 3), 0, dh - 0.5, 14, 0.45, CLS.furniture, 0.45);
+        }
+      }
       // street trees and street lights
       for (let s = 7; s < L; s += 14) for (const side of [-1, 1]) {
         if (rnd() > 0.55) continue;
@@ -958,11 +1055,11 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     const area = 2 * (l * h + w * h) + (top ? l * w : 0);
     for (let k = 0, n = area * dens * D; k < n; k++) {
       const f = rnd() * area; let u, v, y;
-      if (f < l * h) { u = (rnd() - 0.5) * l; v = -w / 2; y = rnd() * h; }
-      else if (f < 2 * l * h) { u = (rnd() - 0.5) * l; v = w / 2; y = rnd() * h; }
-      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; }
-      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; }
-      else { u = (rnd() - 0.5) * l; v = (rnd() - 0.5) * w; y = h; }
+      if (f < l * h) { u = (rnd() - 0.5) * l; v = -w / 2; y = rnd() * h; N(-nx, 0, -nz); }
+      else if (f < 2 * l * h) { u = (rnd() - 0.5) * l; v = w / 2; y = rnd() * h; N(nx, 0, nz); }
+      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(-tx, 0, -tz); }
+      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(tx, 0, tz); }
+      else { u = (rnd() - 0.5) * l; v = (rnd() - 0.5) * w; y = h; UP(); }
       emitE(e, cx + tx * u + nx * v, cy + y, cz + tz * u + nz * v, inten, cls);
     }
   };
@@ -976,10 +1073,12 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
           const a = path[k - 1], b = path[k], ds = b.s - a.s;
           for (let q = 0, n = ds * e.depth * DENS.girderSide * D; q < n; q++) {
             const t = rnd(), f = rnd(), side = rnd() < 0.5 ? -1 : 1;
+            N(a.nx * side, 0.25, a.nz * side);
             const v = side * (e.wTop / 2 + (e.wBot / 2 - e.wTop / 2) * f);
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t - DECK_T - f * e.depth, z = a.z + (b.z - a.z) * t;
             emitE(e, x + a.nx * v, y, z + a.nz * v, 0.36 + rnd() * 0.08 + (f < 0.08 ? 0.12 : 0), CLS.girder, a.s / L);
           }
+          N(0, -1, 0);
           for (let q = 0, n = ds * e.wBot * DENS.girderBot * D; q < n; q++) {
             const t = rnd(), v = (rnd() - 0.5) * e.wBot;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t - DECK_T - e.depth, z = a.z + (b.z - a.z) * t;
@@ -1001,17 +1100,20 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
         for (let k = 1; k < path.length; k++) {
           const a = path[k - 1], b = path[k], ds = b.s - a.s;
           for (let q = 0, n = ds * e.h * 2 * DENS.railFace * D; q < n; q++) {
-            const t = rnd(), f = rnd();
-            const v = e.offset + (rnd() < 0.5 ? -1 : 1) * e.t / 2;
+            const t = rnd(), f = rnd(), sd = rnd() < 0.5 ? -1 : 1;
+            N(a.nx * sd, 0, a.nz * sd);
+            const v = e.offset + sd * e.t / 2;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + f * e.h, z = a.z + (b.z - a.z) * t;
             emitE(e, x + a.nx * v, y, z + a.nz * v, 0.5 + f * 0.12, CLS.railing, (a.s + ds * t) / L);
           }
+          UP();
           for (let q = 0, n = ds * DENS.railTop * D; q < n; q++) {
             const t = rnd(), v = e.offset + (rnd() - 0.5) * e.t;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + e.h, z = a.z + (b.z - a.z) * t;
             emitE(e, x + a.nx * v, y, z + a.nz * v, 0.86 + rnd() * 0.12, CLS.railing, (a.s + ds * t) / L);
           }
           // drainage kerb line on the carriageway side
+          N(-a.nx * e.side, 0.5, -a.nz * e.side);
           for (let q = 0, n = ds * 5 * D; q < n; q++) {
             const t = rnd(), v = e.offset - e.side * (e.t / 2 + 0.25);
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + 0.05, z = a.z + (b.z - a.z) * t;
@@ -1019,6 +1121,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
           }
           if (fence) {
             // fence on top of the parapet: posts every 2 m, top rail, sparse mesh
+            N(a.nx * e.side, 0, a.nz * e.side);
             for (let q = 0, n = ds * 1.0 * 1.4 * D; q < n; q++) {
               const t = rnd(), x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + e.h + rnd() * 1.0, z = a.z + (b.z - a.z) * t;
               emitE(e, x + a.nx * e.offset, y, z + a.nz * e.offset, 0.3 + rnd() * 0.1, CLS.railing, (a.s + ds * t) / L);
@@ -1031,6 +1134,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
         }
         if (fence) for (let s = 1; s < L; s += 2) {
           const p = samplePath(path, s);
+          N(0, 0, 0);
           for (let k = 0, n = 9 * D; k < n; k++) emitE(e, p.x + p.nx * e.offset, p.y + e.h + rnd() * 1.0, p.z + p.nz * e.offset, 0.5, CLS.railing, s / L);
         }
         break;
@@ -1040,6 +1144,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
         if (e.round) {
           for (let k = 0, n = Math.PI * e.colW * h * DENS.column * D; k < n; k++) {
             const th = rnd() * Math.PI * 2, y = e.yBot + rnd() * h;
+            N(Math.cos(th), 0, Math.sin(th));
             emitE(e, e.x + Math.cos(th) * e.colW / 2, y, e.z + Math.sin(th) * e.colW / 2, 0.4 + rnd() * 0.08 + (y < 1.2 ? 0.1 : 0), CLS.column);
           }
         } else boxFaces(e, e.x, e.yBot, e.z, e.tx, e.tz, -e.tz, e.tx, e.colL, e.colW, h, DENS.column, 0.42, CLS.column);
@@ -1048,11 +1153,13 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       case 'cap': boxFaces(e, e.x, e.yBot, e.z, e.tx, e.tz, -e.tz, e.tx, e.l, e.w, e.h, DENS.cap, 0.46, CLS.cap); break;
       case 'footing': break; // underground: no returns
       case 'pole': {
+        N(0, 0, 0);
         for (let k = 0, n = e.h * 12 * D; k < n; k++) emitE(e, e.x + (rnd() - 0.5) * 0.25, e.y + rnd() * e.h, e.z + (rnd() - 0.5) * 0.25, 0.6, CLS.pole);
         for (let k = 0, n = 30 * D; k < n; k++) { const u = rnd() * 2.4; emitE(e, e.x - e.nx * u, e.y + e.h - 0.3 + u * 0.1, e.z - e.nz * u, 0.7, CLS.pole); }
         break;
       }
       case 'gantry': {
+        N(0, 0, 0);
         for (const side of [-1, 1]) {
           const px = e.x + e.nx * side * e.w / 2, pz = e.z + e.nz * side * e.w / 2;
           for (let k = 0, n = e.h * 18 * D; k < n; k++) emitE(e, px + (rnd() - 0.5) * 0.4, e.y + rnd() * e.h, pz + (rnd() - 0.5) * 0.4, 0.62, CLS.gantry);
@@ -1061,6 +1168,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
           const v = (rnd() - 0.5) * e.w, zig = Math.abs(((v * 2) % 2.4) - 1.2) * 0.9;
           emitE(e, e.x + e.nx * v + (rnd() - 0.5) * 0.3, e.y + e.h - 1.2 + zig, e.z + e.nz * v + (rnd() - 0.5) * 0.3, 0.6, CLS.gantry);
         }
+        N(-e.tx, 0, -e.tz);
         for (let k = 0, n = 160 * D; k < n; k++) {
           const v = (rnd() - 0.5) * 3.6, y = e.y + e.h - 1.1 + (rnd() - 0.5) * 2.2;
           emitE(e, e.x + e.nx * v - e.tx * 0.3, y, e.z + e.nz * v - e.tz * 0.3, 0.9 + rnd() * 0.1, CLS.gantry);
@@ -1087,6 +1195,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
       if (L < 0.5) continue;
       const nxw = (b[1] - a[1]) / L, nzw = -(b[0] - a[0]) / L; // outward-ish normal (sign irrelevant)
+      N(nxw, 0, nzw);
       for (let k = 0, n = L * h * wallD * 1.6 * D; k < n; k++) {
         const t = rnd(), y = rnd() * h;
         const vis = 0.3 + 0.7 * Math.exp(-y / 50);
@@ -1102,10 +1211,18 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
         emitE(e, a[0] + (b[0] - a[0]) * t, y, a[1] + (b[1] - a[1]) * t, inten, CLS.building);
       }
       // vertical corner line
+      N(0, 0, 0);
       for (let k = 0, n = h * 6 * D; k < n; k++) emitE(e, a[0], rnd() * h, a[1], 0.5 + rnd() * 0.08, CLS.building);
       // roof parapet (1 m) + balconies
+      N(nxw, 0, nzw);
       for (let k = 0, n = L * 4 * D; k < n; k++) { const t = rnd(); emitE(e, a[0] + (b[0] - a[0]) * t, h + rnd() * 1.0, a[1] + (b[1] - a[1]) * t, 0.45, CLS.building); }
+      // projecting shop sign (袖看板) on commercial facades
+      if (shopfront && h > 8 && L > 6 && (hb + i) % 5 === 0) {
+        const t = 0.3 + rnd() * 0.4, sy = 4 + rnd() * Math.max(1, h - 8);
+        boxU(a[0] + (b[0] - a[0]) * t + nxw * 0.55, sy, a[1] + (b[1] - a[1]) * t + nzw * 0.55, -nzw, nxw, 0.7, 0.25, 2.6, 14, 0.78, CLS.furniture);
+      }
       if (residential && !big) {
+        UP();
         for (let lv = 1; lv < e.levels; lv++) {
           const y = lv * floorH;
           for (let k = 0, n = L * 1.2 * 2.2 * D; k < n; k++) {
@@ -1119,6 +1236,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     const [x0, z0, x1, z1] = polygonBBox(poly);
     const bw = x1 - x0, bh = z1 - z0;
     const roofN = Math.min(e.area, 12000) * DENS.roof * D;
+    UP();
     for (let tries = 0, got = 0; got < roofN && tries < roofN * 4; tries++) {
       const x = x0 + rnd() * bw, z = z0 + rnd() * bh;
       if (!pointInPolygon(x, z, poly)) continue;
@@ -1133,12 +1251,25 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
         const kind = rnd();
         if (kind < 0.5) boxFaces(e, cx, h, cz, 1, 0, 0, 1, 2 + rnd() * 3, 1.5 + rnd() * 2, 1.5 + rnd() * 1.5, 2.5, 0.4, CLS.building, true);
         else if (kind < 0.8) boxFaces(e, cx, h, cz, 1, 0, 0, 1, 3 + rnd() * 2, 3 + rnd() * 2, 2.8, 2.5, 0.42, CLS.building, true); // stair bulkhead
-        else { const r = 0.9 + rnd() * 0.6; for (let k = 0, n = 2 * Math.PI * r * 2.2 * 4 * D; k < n; k++) { const th = rnd() * 6.283; emitE(e, cx + Math.cos(th) * r, h + 0.6 + rnd() * 2.2, cz + Math.sin(th) * r, 0.5, CLS.building); } }
+        else { const r = 0.9 + rnd() * 0.6; for (let k = 0, n = 2 * Math.PI * r * 2.2 * 4 * D; k < n; k++) { const th = rnd() * 6.283; N(Math.cos(th), 0, Math.sin(th)); emitE(e, cx + Math.cos(th) * r, h + 0.6 + rnd() * 2.2, cz + Math.sin(th) * r, 0.5, CLS.building); } }
+      }
+      // rooftop billboard on larger buildings
+      if (e.area > 500 && hb % 7 === 0) {
+        let bi = 0, bl = 0;
+        for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; const L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L > bl) { bl = L; bi = i; } }
+        const a = poly[bi], b = poly[(bi + 1) % poly.length];
+        const tx = (b[0] - a[0]) / bl, tz = (b[1] - a[1]) / bl, nxw = tz, nzw = -tx;
+        const cx = (a[0] + b[0]) / 2 - nxw * 2.5, cz = (a[1] + b[1]) / 2 - nzw * 2.5;
+        const inside = pointInPolygon(cx, cz, poly) ? 1 : -1;
+        const px = (a[0] + b[0]) / 2 - nxw * 2.5 * inside, pz = (a[1] + b[1]) / 2 - nzw * 2.5 * inside;
+        boxU(px, h + 1.5, pz, tx, tz, Math.min(8, bl * 0.6), 0.15, 3.2, 7, 0.7, CLS.furniture);
+        for (const u of [-1, 1]) vline(px + tx * u * Math.min(3.5, bl * 0.25), pz + tz * u * Math.min(3.5, bl * 0.25), h, h + 1.6, 12, 0.45, CLS.furniture, 0.15);
       }
     }
     // interior floor slabs seen through glazing (denser near the facade)
     if (!big && e.levels > 2) {
       const perLevel = Math.min(e.area, 2500) * DENS.floorSlab * (glassy ? 1.6 : 1) * D;
+      UP();
       for (let lv = 1; lv < e.levels; lv++) {
         const y = lv * floorH + 0.15;
         const vis = 0.3 + 0.7 * Math.exp(-y / 50);
@@ -1154,6 +1285,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
   progress(0.86);
 
   // ---------- ground, water, parks, parking lots ----------
+  UP();
   for (let k = 0, n = cw * ch * DENS.ground * D; k < n; k++) {
     const x = (rnd() - 0.5) * cw, z = (rnd() - 0.5) * ch;
     const m = mask.get(x, z);
@@ -1174,6 +1306,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     for (let i = -2; i <= 2; i++) if (rnd() < 0.7) vehicle({ ...frame, x: x + frame.nx * i * 2.6, z: z + frame.nz * i * 2.6 }, 0, false, null, true);
     for (let i = -3; i <= 3; i++) vline(x + frame.nx * i * 2.6 + tx * 4.2, z + frame.nz * i * 2.6 + tz * 4.2, 0, 0.8, 10, 0.5, CLS.furniture, 0.1);
   }
+  UP();
   for (const poly of data.water) {
     const [x0, z0, x1, z1] = polygonBBox(poly);
     for (let k = 0, n = (x1 - x0) * (z1 - z0) * 0.035 * D; k < n; k++) {
@@ -1204,8 +1337,244 @@ self.onmessage = (ev) => {
   const { data, options } = ev.data;
   const t0 = performance.now();
   const out = synthesize(data, options, (p) => self.postMessage({ type: 'progress', p }));
-  self.postMessage({ type: 'done', ms: performance.now() - t0, ...out }, [out.pos.buffer, out.inten.buffer, out.cls.buffer, out.dev.buffer, out.elem.buffer]);
+  self.postMessage({ type: 'done', ms: performance.now() - t0, ...out }, [out.pos.buffer, out.inten.buffer, out.cls.buffer, out.dev.buffer, out.elem.buffer, out.nrm.buffer]);
 };
+</script>
+<script type="text/plain" id="las-src">// LAS / LAZ reader and LAS writer (plain script: no imports, so it can also run inside a classic
+// worker that loads laz-perf via importScripts). Produces the same attribute set as the synthesiser:
+// positions (y-up, local metres), intensity, classification, deviation (=0), element id (none), normals.
+const LAZPERF_URL = 'https://cdn.jsdelivr.net/npm/laz-perf@0.0.6/lib/web/';
+
+export function readLasHeader(buf) {
+  const dv = new DataView(buf);
+  const sig = String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3));
+  if (sig !== 'LASF') throw new Error('LAS ファイルではありません（署名 LASF がありません）');
+  const vMajor = dv.getUint8(24), vMinor = dv.getUint8(25);
+  const headerSize = dv.getUint16(94, true);
+  const offsetToPoints = dv.getUint32(96, true);
+  const formatByte = dv.getUint8(104);
+  const compressed = (formatByte & 0x80) !== 0;
+  const format = formatByte & 0x3f;
+  const recordLength = dv.getUint16(105, true);
+  let count = dv.getUint32(107, true);
+  if (vMajor === 1 && vMinor >= 4 && headerSize >= 375) {
+    const c64 = dv.getBigUint64(247, true);
+    if (c64 > 0n) count = Number(c64);
+  }
+  const scale = [dv.getFloat64(131, true), dv.getFloat64(139, true), dv.getFloat64(147, true)];
+  const offset = [dv.getFloat64(155, true), dv.getFloat64(163, true), dv.getFloat64(171, true)];
+  const max = [dv.getFloat64(179, true), dv.getFloat64(195, true), dv.getFloat64(211, true)];
+  const min = [dv.getFloat64(187, true), dv.getFloat64(203, true), dv.getFloat64(219, true)];
+  return { version: `${vMajor}.${vMinor}`, headerSize, offsetToPoints, format, compressed, recordLength, count, scale, offset, min, max };
+}
+
+/** Byte offsets of fields inside a point record for each point data format. */
+export function recordLayout(format) {
+  const f = format;
+  if (f <= 5) return { cls: 15, clsMask: 0x1f, rgb: f === 2 ? 20 : f === 3 || f === 5 ? 28 : -1 };
+  return { cls: 16, clsMask: 0xff, rgb: f === 7 || f === 8 || f === 10 ? 30 : -1 };
+}
+
+// ASPRS classification → viewer classes (see synth.js CLS)
+const CLS_MAP = { 2: 2, 3: 3, 4: 3, 5: 5, 6: 6, 7: 18, 9: 9, 10: 11, 11: 11, 13: 25, 14: 25, 15: 29, 17: 17, 18: 18 };
+
+/**
+ * Decode point records into viewer arrays.
+ * getRecord(i, dv) must return the byte offset of record i inside the DataView dv.
+ */
+export function decodeRecords(header, dv, getRecord, { maxPoints = 16e6, progress = () => {} } = {}) {
+  const n = header.count, stride = Math.max(1, Math.ceil(n / maxPoints));
+  const m = Math.floor(n / stride);
+  const lay = recordLayout(header.format);
+  const [sx, sy, sz] = header.scale, [ox, oy, oz] = header.offset;
+  // local frame: centre of the bounding box in XY, min Z at 0; LAS Z-up → viewer Y-up
+  const cx = (header.min[0] + header.max[0]) / 2, cy = (header.min[1] + header.max[1]) / 2, z0 = header.min[2];
+  const pos = new Float32Array(m * 3), inten = new Uint8Array(m), cls = new Uint8Array(m), dev = new Uint8Array(m).fill(128), elem = new Uint16Array(m).fill(65535);
+  const hasRgb = lay.rgb >= 0;
+  const rgb = hasRgb ? new Uint8Array(m * 3) : null;
+  const rawI = new Uint16Array(m);
+  let maxI = 0;
+  for (let k = 0; k < m; k++) {
+    const o = getRecord(k * stride, dv);
+    pos[k * 3] = dv.getInt32(o, true) * sx + ox - cx;
+    pos[k * 3 + 1] = dv.getInt32(o + 8, true) * sz + oz - z0;
+    pos[k * 3 + 2] = -(dv.getInt32(o + 4, true) * sy + oy - cy);
+    const I = dv.getUint16(o + 12, true); rawI[k] = I; if (I > maxI) maxI = I;
+    const c = dv.getUint8(o + lay.cls) & lay.clsMask;
+    cls[k] = CLS_MAP[c] ?? 1;
+    if (hasRgb) { rgb[k * 3] = dv.getUint16(o + lay.rgb, true) >> 8; rgb[k * 3 + 1] = dv.getUint16(o + lay.rgb + 2, true) >> 8; rgb[k * 3 + 2] = dv.getUint16(o + lay.rgb + 4, true) >> 8; }
+    if ((k & 0xfffff) === 0) progress(k / m);
+  }
+  // intensity: normalise to the 99th percentile so a few saturated returns do not flatten the rest
+  const hist = new Uint32Array(1024);
+  const div = Math.max(1, maxI) / 1023;
+  for (let k = 0; k < m; k++) hist[(rawI[k] / div) | 0]++;
+  let acc = 0, p99 = 1023;
+  for (let b = 0; b < 1024; b++) { acc += hist[b]; if (acc >= m * 0.99) { p99 = b; break; } }
+  const iScale = 255 / Math.max(1, p99 * div);
+  for (let k = 0; k < m; k++) inten[k] = Math.min(255, rawI[k] * iScale);
+  // if the file carries no classification at all, colour by RGB luminance as intensity fallback
+  return { n: m, pos, inten, cls, dev, elem, rgb, stride, local: { cx, cy, z0 } };
+}
+
+/** Parse an uncompressed LAS buffer. */
+export function parseLas(buf, opts) {
+  const header = readLasHeader(buf);
+  if (header.compressed) throw new Error('LAZ 圧縮ファイルです: parseLaz を使用してください');
+  const dv = new DataView(buf);
+  const base = header.offsetToPoints, len = header.recordLength;
+  const out = decodeRecords(header, dv, (i) => base + i * len, opts);
+  return { header, ...out };
+}
+
+/** Decode a LAZ buffer with laz-perf (must be loaded: `createLazPerf` global or passed module). */
+export async function parseLaz(buf, opts = {}) {
+  const header = readLasHeader(buf);
+  const create = opts.createLazPerf || (typeof createLazPerf !== 'undefined' ? createLazPerf : null);
+  if (!create) throw new Error('laz-perf が読み込まれていません');
+  const LazPerf = await create({ locateFile: (f) => LAZPERF_URL + f });
+  const bytes = new Uint8Array(buf);
+  const filePtr = LazPerf._malloc(bytes.length);
+  LazPerf.HEAPU8.set(bytes, filePtr);
+  const laszip = new LazPerf.LASZip();
+  laszip.open(filePtr, bytes.length);
+  const count = laszip.getCount(), recLen = laszip.getPointLength();
+  header.count = count; header.recordLength = recLen; header.format = laszip.getPointFormat();
+  // decode all records sequentially into one contiguous buffer, then reuse the LAS decoder
+  const all = new ArrayBuffer(count * recLen);
+  const allU8 = new Uint8Array(all);
+  const recPtr = LazPerf._malloc(recLen);
+  for (let i = 0; i < count; i++) {
+    laszip.getPoint(recPtr);
+    allU8.set(LazPerf.HEAPU8.subarray(recPtr, recPtr + recLen), i * recLen);
+    if ((i & 0x7ffff) === 0 && opts.progress) opts.progress((i / count) * 0.5);
+  }
+  laszip.delete(); LazPerf._free(recPtr); LazPerf._free(filePtr);
+  const dv = new DataView(all);
+  const out = decodeRecords(header, dv, (i) => i * recLen, { ...opts, progress: (p) => opts.progress && opts.progress(0.5 + p * 0.5) });
+  return { header, ...out };
+}
+
+/**
+ * Grid-cell PCA normals: points are binned into cubic cells sized for ~24 points per cell, the
+ * covariance of each cell gives its normal (smallest eigenvector), assigned to all points in it.
+ * Sign is irrelevant for surfel rendering. Returns Int8 normals (x127).
+ */
+export function estimateNormals(pos, n, { targetPerCell = 24 } = {}) {
+  let minx = Infinity, miny = Infinity, minz = Infinity, maxx = -Infinity, maxy = -Infinity, maxz = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+    if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y; if (z < minz) minz = z; if (z > maxz) maxz = z;
+  }
+  const area = Math.max(1, (maxx - minx) * (maxz - minz));
+  const cell = Math.max(0.15, Math.min(4, Math.sqrt((area * targetPerCell) / n) * 1.1));
+  const nx = Math.ceil((maxx - minx) / cell) + 1, ny = Math.ceil((maxy - miny) / cell) + 1, nz = Math.ceil((maxz - minz) / cell) + 1;
+  const key = new Uint32Array(n);
+  const stats = new Map(); // key → Float64Array(10): count, sx, sy, sz, sxx, sxy, sxz, syy, syz, szz
+  for (let i = 0; i < n; i++) {
+    const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+    const k = (((y - miny) / cell) | 0) * nx * nz + (((z - minz) / cell) | 0) * nx + (((x - minx) / cell) | 0);
+    key[i] = k;
+    let s = stats.get(k);
+    if (!s) { s = new Float64Array(10); stats.set(k, s); }
+    s[0]++; s[1] += x; s[2] += y; s[3] += z; s[4] += x * x; s[5] += x * y; s[6] += x * z; s[7] += y * y; s[8] += y * z; s[9] += z * z;
+  }
+  const normals = new Map();
+  for (const [k, s] of stats) {
+    const c = s[0];
+    if (c < 5) continue;
+    const mx = s[1] / c, my = s[2] / c, mz = s[3] / c;
+    const a = s[4] / c - mx * mx, b = s[5] / c - mx * my, d = s[6] / c - mx * mz, e = s[7] / c - my * my, f = s[8] / c - my * mz, g = s[9] / c - mz * mz;
+    normals.set(k, smallestEigenvector(a, b, d, e, f, g));
+  }
+  const out = new Int8Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const v = normals.get(key[i]);
+    if (!v) continue;
+    out[i * 3] = v[0] * 127; out[i * 3 + 1] = v[1] * 127; out[i * 3 + 2] = v[2] * 127;
+  }
+  return { normals: out, cell, spacing: Math.sqrt(area / n) };
+}
+
+// smallest eigenvector of the symmetric 3x3 matrix [[a,b,d],[b,e,f],[d,f,g]] via a few Jacobi sweeps
+function smallestEigenvector(a, b, d, e, f, g) {
+  let A = [[a, b, d], [b, e, f], [d, f, g]];
+  let V = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  for (let sweep = 0; sweep < 8; sweep++) {
+    for (let p = 0; p < 3; p++) for (let q = p + 1; q < 3; q++) {
+      if (Math.abs(A[p][q]) < 1e-12) continue;
+      const theta = (A[q][q] - A[p][p]) / (2 * A[p][q]);
+      const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+      const c = 1 / Math.sqrt(t * t + 1), s = t * c;
+      for (let k = 0; k < 3; k++) {
+        const akp = A[k][p], akq = A[k][q];
+        A[k][p] = c * akp - s * akq; A[k][q] = s * akp + c * akq;
+      }
+      for (let k = 0; k < 3; k++) {
+        const apk = A[p][k], aqk = A[q][k];
+        A[p][k] = c * apk - s * aqk; A[q][k] = s * apk + c * aqk;
+      }
+      for (let k = 0; k < 3; k++) {
+        const vkp = V[k][p], vkq = V[k][q];
+        V[k][p] = c * vkp - s * vkq; V[k][q] = s * vkp + c * vkq;
+      }
+    }
+  }
+  let mi = 0;
+  for (let i = 1; i < 3; i++) if (A[i][i] < A[mi][mi]) mi = i;
+  const v = [V[0][mi], V[1][mi], V[2][mi]];
+  const L = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / L, v[1] / L, v[2] / L];
+}
+
+/** Write a LAS 1.2 point-format-2 file (XYZ, intensity, classification, RGB) from viewer arrays. */
+export function writeLas({ n, pos, inten, cls, rgb }, { offset = [0, 0, 0] } = {}) {
+  const INV = { 2: 2, 3: 3, 5: 5, 6: 6, 26: 6, 9: 9, 11: 11, 17: 17, 20: 11, 21: 17, 22: 17, 23: 17, 27: 17, 24: 1, 25: 14, 29: 15, 30: 1, 18: 7 };
+  const headerSize = 227, recLen = 26;
+  const buf = new ArrayBuffer(headerSize + n * recLen);
+  const dv = new DataView(buf), u8 = new Uint8Array(buf);
+  u8.set([76, 65, 83, 70], 0); // LASF
+  dv.setUint8(24, 1); dv.setUint8(25, 2);
+  u8.set(new TextEncoder().encode('LiDAR x BIM synth'.padEnd(32, '\0')), 26);
+  u8.set(new TextEncoder().encode('pointcloud-highway'.padEnd(32, '\0')), 58);
+  dv.setUint16(94, headerSize, true); dv.setUint32(96, headerSize, true); dv.setUint32(100, 0, true);
+  dv.setUint8(104, 2); dv.setUint16(105, recLen, true); dv.setUint32(107, n, true);
+  const sc = 0.001;
+  dv.setFloat64(131, sc, true); dv.setFloat64(139, sc, true); dv.setFloat64(147, sc, true);
+  dv.setFloat64(155, offset[0], true); dv.setFloat64(163, offset[1], true); dv.setFloat64(171, offset[2], true);
+  let minx = Infinity, miny = Infinity, minz = Infinity, maxx = -Infinity, maxy = -Infinity, maxz = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const X = pos[i * 3], Y = -pos[i * 3 + 2], Z = pos[i * 3 + 1]; // viewer y-up → LAS z-up
+    const o = headerSize + i * recLen;
+    dv.setInt32(o, Math.round(X / sc), true); dv.setInt32(o + 4, Math.round(Y / sc), true); dv.setInt32(o + 8, Math.round(Z / sc), true);
+    dv.setUint16(o + 12, inten[i] * 257, true);
+    dv.setUint8(o + 14, 0x11); // return 1 of 1
+    dv.setUint8(o + 15, INV[cls[i]] ?? 1);
+    if (rgb) { dv.setUint16(o + 20, rgb[i * 3] * 257, true); dv.setUint16(o + 22, rgb[i * 3 + 1] * 257, true); dv.setUint16(o + 24, rgb[i * 3 + 2] * 257, true); }
+    if (X < minx) minx = X; if (X > maxx) maxx = X; if (Y < miny) miny = Y; if (Y > maxy) maxy = Y; if (Z < minz) minz = Z; if (Z > maxz) maxz = Z;
+  }
+  dv.setFloat64(179, maxx + offset[0], true); dv.setFloat64(187, minx + offset[0], true);
+  dv.setFloat64(195, maxy + offset[1], true); dv.setFloat64(203, miny + offset[1], true);
+  dv.setFloat64(211, maxz + offset[2], true); dv.setFloat64(219, minz + offset[2], true);
+  return buf;
+}
+
+/** Body of the classic worker that decodes a file (LAS or LAZ) and estimates normals. */
+export const LAS_WORKER_BODY = `
+self.onmessage = async (ev) => {
+  const { buf, isLaz, maxPoints } = ev.data;
+  try {
+    const progress = (p) => self.postMessage({ type: 'progress', p: p * 0.7 });
+    let r;
+    if (isLaz) { importScripts('${LAZPERF_URL}laz-perf.js'); r = await parseLaz(buf, { maxPoints, progress }); }
+    else r = parseLas(buf, { maxPoints, progress });
+    self.postMessage({ type: 'progress', p: 0.75 });
+    const { normals, spacing, cell } = estimateNormals(r.pos, r.n);
+    const out = { type: 'done', n: r.n, pos: r.pos, inten: r.inten, cls: r.cls, dev: r.dev, elem: r.elem, nrm: normals, rgb: r.rgb, header: r.header, stride: r.stride, spacing, cell, local: r.local };
+    self.postMessage(out, [r.pos.buffer, r.inten.buffer, r.cls.buffer, r.dev.buffer, r.elem.buffer, normals.buffer].concat(r.rgb ? [r.rgb.buffer] : []));
+  } catch (err) { self.postMessage({ type: 'error', message: String(err && err.message || err) }); }
+};
+`;
 </script>
 <script type="module">
 import * as THREE from 'three';
@@ -1213,6 +1582,7 @@ import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 const WORKER_URL = URL.createObjectURL(new Blob([document.getElementById('worker-src').textContent], { type: 'text/javascript' }));
+window.__LAS_SRC__ = document.getElementById('las-src').textContent;
 
 // ===== src/geom.js =====
 // Pure geometry helpers shared by the main thread and the synthesis worker (no three.js).
@@ -1676,16 +2046,17 @@ class Cloud {
   constructor(cap) { this.n = 0; this.cap = cap; this.alloc(); }
   alloc() {
     this.pos = new Float32Array(this.cap * 3); this.inten = new Uint8Array(this.cap); this.cls = new Uint8Array(this.cap);
-    this.dev = new Uint8Array(this.cap); this.elem = new Uint16Array(this.cap);
+    this.dev = new Uint8Array(this.cap); this.elem = new Uint16Array(this.cap); this.nrm = new Int8Array(this.cap * 3);
   }
-  push(x, y, z, i, c, d, e) {
+  push(x, y, z, i, c, d, e, nx = 0, ny = 0, nz = 0) {
     if (this.n >= this.cap) {
-      const o = this; const old = { pos: o.pos, inten: o.inten, cls: o.cls, dev: o.dev, elem: o.elem };
+      const o = this; const old = { pos: o.pos, inten: o.inten, cls: o.cls, dev: o.dev, elem: o.elem, nrm: o.nrm };
       this.cap = Math.ceil(this.cap * 1.6); this.alloc();
-      this.pos.set(old.pos); this.inten.set(old.inten); this.cls.set(old.cls); this.dev.set(old.dev); this.elem.set(old.elem);
+      this.pos.set(old.pos); this.inten.set(old.inten); this.cls.set(old.cls); this.dev.set(old.dev); this.elem.set(old.elem); this.nrm.set(old.nrm);
     }
     const k = this.n++;
     this.pos[k * 3] = x; this.pos[k * 3 + 1] = y; this.pos[k * 3 + 2] = z;
+    this.nrm[k * 3] = nx * 127; this.nrm[k * 3 + 1] = ny * 127; this.nrm[k * 3 + 2] = nz * 127;
     this.inten[k] = i < 0 ? 0 : i > 1 ? 255 : (i * 255) | 0;
     this.cls[k] = c;
     const dv = 128 + d;
@@ -1693,7 +2064,7 @@ class Cloud {
     this.elem[k] = e;
   }
   finish() {
-    return { n: this.n, pos: this.pos.slice(0, this.n * 3), inten: this.inten.slice(0, this.n), cls: this.cls.slice(0, this.n), dev: this.dev.slice(0, this.n), elem: this.elem.slice(0, this.n) };
+    return { n: this.n, pos: this.pos.slice(0, this.n * 3), inten: this.inten.slice(0, this.n), cls: this.cls.slice(0, this.n), dev: this.dev.slice(0, this.n), elem: this.elem.slice(0, this.n), nrm: this.nrm.slice(0, this.n * 3) };
   }
 }
 
@@ -1722,14 +2093,19 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     const mag = dy !== 0 ? dy : Math.hypot(dx, dz) * (e.type === 'railing' ? Math.sign(e.asBuilt.dx) : 1);
     return { dx, dy, dz, mm: mag * 1000 + gauss(rnd) * 2.5 };
   };
+  // current surface normal for emitted points (0,0,0 = none → rendered as a disc)
+  let cn0 = 0, cn1 = 0, cn2 = 0;
+  const N = (x, y, z) => { cn0 = x; cn1 = y; cn2 = z; };
+  const UP = () => N(0, 1, 0);
   const emitE = (e, x, y, z, i, c, u = 0) => {
     const d = devAt(e, x, y, z, u);
-    cloud.push(x + d.dx + jit(), y + d.dy + jit(), z + d.dz + jit(), i + (rnd() - 0.5) * 0.06, c, d.mm, e.id);
+    cloud.push(x + d.dx + jit(), y + d.dy + jit(), z + d.dz + jit(), i + (rnd() - 0.5) * 0.06, c, d.mm, e.id, cn0, cn1, cn2);
   };
-  const emit = (x, y, z, i, c) => cloud.push(x + jit(), y + jit(), z + jit(), i + (rnd() - 0.5) * 0.06, c, gauss(rnd) * 2.5, NO_ELEM);
+  const emit = (x, y, z, i, c) => cloud.push(x + jit(), y + jit(), z + jit(), i + (rnd() - 0.5) * 0.06, c, gauss(rnd) * 2.5, NO_ELEM, cn0, cn1, cn2);
   // generic helpers (unassigned points)
-  const vline = (x, z, y0, y1, perM, inten, cls, r = 0.08) => { for (let k = 0, n = (y1 - y0) * perM * D; k < n; k++) emit(x + (rnd() - 0.5) * r, y0 + rnd() * (y1 - y0), z + (rnd() - 0.5) * r, inten, cls); };
+  const vline = (x, z, y0, y1, perM, inten, cls, r = 0.08) => { N(0, 0, 0); for (let k = 0, n = (y1 - y0) * perM * D; k < n; k++) emit(x + (rnd() - 0.5) * r, y0 + rnd() * (y1 - y0), z + (rnd() - 0.5) * r, inten, cls); };
   const seg = (ax, ay, az, bx, by, bz, perM, inten, cls, r = 0.05, sag = 0) => {
+    N(0, 0, 0);
     const L = Math.hypot(bx - ax, by - ay, bz - az);
     for (let k = 0, n = L * perM * D; k < n; k++) { const t = rnd(); emit(ax + (bx - ax) * t + (rnd() - 0.5) * r, ay + (by - ay) * t - sag * 4 * t * (1 - t), az + (bz - az) * t + (rnd() - 0.5) * r, inten, cls); }
   };
@@ -1738,11 +2114,11 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     const area = 2 * (l * h + w * h) + (top ? l * w : 0);
     for (let k = 0, n = area * dens * D; k < n; k++) {
       const f = rnd() * area; let u, v, y;
-      if (f < l * h) { u = (rnd() - 0.5) * l; v = -w / 2; y = rnd() * h; }
-      else if (f < 2 * l * h) { u = (rnd() - 0.5) * l; v = w / 2; y = rnd() * h; }
-      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; }
-      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; }
-      else { u = (rnd() - 0.5) * l; v = (rnd() - 0.5) * w; y = h; }
+      if (f < l * h) { u = (rnd() - 0.5) * l; v = -w / 2; y = rnd() * h; N(-nx, 0, -nz); }
+      else if (f < 2 * l * h) { u = (rnd() - 0.5) * l; v = w / 2; y = rnd() * h; N(nx, 0, nz); }
+      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(-tx, 0, -tz); }
+      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(tx, 0, tz); }
+      else { u = (rnd() - 0.5) * l; v = (rnd() - 0.5) * w; y = h; UP(); }
       emit(cx + tx * u + nx * v, cy + y, cz + tz * u + nz * v, inten, cls);
     }
   };
@@ -1762,9 +2138,9 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     for (let k = 0; k < m; k++) {
       const face = rnd();
       let u = (rnd() - 0.5) * len, vv = (rnd() - 0.5) * wid, h = hgt, inten = 0.55;
-      if (face < 0.4) { h = hgt * (truck ? 1 : 0.86 + 0.14 * Math.cos((u / len) * 3)); }
-      else if (face < 0.8) { vv = (rnd() < 0.5 ? -1 : 1) * wid / 2; h = rnd() * hgt; if (!truck && h > hgt * 0.55) { if (rnd() < 0.7) continue; inten = 0.2; } }
-      else { u = (rnd() < 0.5 ? -1 : 1) * len / 2; h = rnd() * hgt; if (h > hgt * 0.6 && rnd() < 0.5) continue; }
+      if (face < 0.4) { h = hgt * (truck ? 1 : 0.86 + 0.14 * Math.cos((u / len) * 3)); UP(); }
+      else if (face < 0.8) { const sd = rnd() < 0.5 ? -1 : 1; vv = sd * wid / 2; h = rnd() * hgt; N(p.nx * sd, 0, p.nz * sd); if (!truck && h > hgt * 0.55) { if (rnd() < 0.7) continue; inten = 0.2; } }
+      else { const sd = rnd() < 0.5 ? -1 : 1; u = sd * len / 2; h = rnd() * hgt; N(p.tx * sd, 0, p.tz * sd); if (h > hgt * 0.6 && rnd() < 0.5) continue; }
       const x = cx + p.tx * u + p.nx * vv, z = cz + p.tz * u + p.nz * vv;
       if (e) emitE(e, x, cy + h, z, inten + rnd() * 0.15, CLS.vehicle); else emit(x, cy + h, z, inten + rnd() * 0.15, CLS.vehicle);
     }
@@ -1791,6 +2167,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     const lanes = Math.max(1, road.lanes);
     const laneW = (w - 0.9) / lanes;
     const put = (x, y, z, i, c, u) => (e ? emitE(e, x, y, z, i, c, u) : emit(x, y, z, i, c));
+    UP();
     for (let k = 1; k < path.length; k++) {
       const a = path[k - 1], b = path[k];
       const ds = b.s - a.s;
@@ -1818,6 +2195,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       }
     }
     // lane arrows every 80 m, expansion joints every 40 m (elevated)
+    UP();
     if (road.kind !== 'street') {
       for (let s = 40; s < L - 10; s += 80) {
         const p = samplePath(path, s);
@@ -1842,12 +2220,14 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       for (const side of [-1, 1]) {
         for (let k = 1; k < path.length; k++) {
           const a = path[k - 1], b = path[k], ds = b.s - a.s;
+          UP();
           for (let q = 0, n = cnt(ds * 2.8 * DENS.sidewalk * D); q < n; q++) {
             const t = rnd(), v = side * (w / 2 + 0.25 + rnd() * 2.8);
             const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
             const nx = a.nx + (b.nx - a.nx) * t, nz = a.nz + (b.nz - a.nz) * t;
             emit(x + nx * v, 0.15, z + nz * v, 0.24 + rnd() * 0.08, CLS.ground);
           }
+          N(-a.nx * side, 0.3, -a.nz * side);
           for (let q = 0, m = ds * DENS.kerb * D; q < m; q++) {
             const t = rnd(), v = side * (w / 2 + 0.12);
             const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
@@ -1855,6 +2235,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
             emit(x + nx * v, 0.08 + rnd() * 0.07, z + nz * v, 0.45, CLS.ground);
           }
           // guard rail (white, retro-reflective) with posts every 2 m
+          N(-a.nx * side, 0, -a.nz * side);
           for (let q = 0, m = ds * 7 * D; q < m; q++) {
             const t = rnd(), v = side * (w / 2 + 0.5);
             const x = a.x + (b.x - a.x) * t, z = a.z + (b.z - a.z) * t;
@@ -1866,6 +2247,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       for (const s0 of [9, L - 9]) {
         if (L < 40) continue;
         const p = samplePath(path, s0), dir = s0 < L / 2 ? -1 : 1;
+        UP();
         // zebra crossing: stripes 0.45 m wide, 0.9 m pitch, 4 m long
         for (let k = 0, n = w * 4 * 9 * D; k < n; k++) {
           const u = rnd() * 4 - 2, v = (rnd() - 0.5) * (w + 2);
@@ -1891,6 +2273,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     for (let k = 0, n = 110 * r * D; k < n; k++) {
       const u = rnd() * 2 - 1, th = rnd() * Math.PI * 2, rr = r * Math.cbrt(0.45 + 0.55 * rnd());
       const sq = Math.sqrt(1 - u * u);
+      N(sq * Math.cos(th), u, sq * Math.sin(th));
       emit(x + rr * sq * Math.cos(th), hc + rr * u * 0.8, z + rr * sq * Math.sin(th), 0.25 + rnd() * 0.22, CLS.highVeg);
     }
     vline(x, z, 0, hc - r * 0.5, 12, 0.3, CLS.highVeg, 0.3);
@@ -1906,7 +2289,77 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     for (const p of path) mask.fillDisc(p.x, p.z, road.width / 2 + (road.kind === 'street' ? 0.6 : 3.2), 3);
     pavement(path, road, false, null);
     const w = road.width;
+    // vending machines at the building line
+    for (let s = 12 + rnd() * 30, step = road.kind === 'arterial' ? 45 : 60; s < L - 4; s += step) {
+      if (rnd() > 0.55) continue;
+      const side = rnd() < 0.5 ? -1 : 1, p = samplePath(path, s), v = side * (w / 2 + (road.kind === 'arterial' ? 3.2 : 0.55));
+      const px = p.x + p.nx * v, pz = p.z + p.nz * v;
+      boxU(px, 0, pz, p.tx, p.tz, 1.0, 0.75, 1.85, 12, 0.45, CLS.furniture);
+      N(-p.nx * side, 0, -p.nz * side); // bright front panel facing the road
+      for (let k = 0, n = 1.0 * 1.85 * 14 * D; k < n; k++) emit(px + p.tx * (rnd() - 0.5) * 1.0 - p.nx * side * 0.38, 0.3 + rnd() * 1.5, pz + p.tz * (rnd() - 0.5) * 1.0 - p.nz * side * 0.38, 0.72, CLS.furniture);
+    }
     if (road.kind === 'arterial') {
+      // planting strips (hedges) along both kerbs, 10 m runs with 2.5 m gaps; median planter on wide roads
+      const hedge = (v, s0, s1, hw, hh) => {
+        for (let s = s0; s < s1; s += 12.5) {
+          const e1 = Math.min(s1, s + 10);
+          for (let k = 0, n = (e1 - s) * (hw + 2 * hh) * 4 * D; k < n; k++) {
+            const p = samplePath(path, s + rnd() * (e1 - s)), f = rnd() * (hw + 2 * hh);
+            let vv, y;
+            if (f < hw) { vv = v + (rnd() - 0.5) * hw; y = hh; UP(); }
+            else { const sd = f < hw + hh ? -1 : 1; vv = v + sd * hw / 2; y = rnd() * hh; N(p.nx * sd, 0.2, p.nz * sd); }
+            emit(p.x + p.nx * vv, y + (rnd() - 0.5) * 0.15, p.z + p.nz * vv, 0.28 + rnd() * 0.12, CLS.lowVeg);
+          }
+        }
+      };
+      if (L > 40) for (const side of [-1, 1]) if (hashStr(road.id + side) % 3 !== 0) hedge(side * (w / 2 + 1.05), 14, L - 14, 0.9, 0.8);
+      if (road.lanes >= 4 && L > 80) for (let s = 12; s < L - 12; s += 68) hedge(0, s, Math.min(L - 12, s + 60), 1.2, 0.9);
+      // bus stops every ~260 m (sign pole, shelter roof + back panel, bench)
+      for (let s = 130 + (hashStr('bus' + road.id) % 90); s < L - 10; s += 260) {
+        const side = (Math.floor(s / 260) % 2) * 2 - 1, p = samplePath(path, s), v = side * (w / 2 + 1.2);
+        const px = p.x + p.nx * v, pz = p.z + p.nz * v;
+        vline(px, pz, 0, 3.2, 14, 0.55, CLS.furniture, 0.12);
+        N(p.tx, 0, p.tz);
+        for (let k = 0, n = 40 * D; k < n; k++) { const r = Math.sqrt(rnd()) * 0.35, th = rnd() * 6.283; emit(px + p.nx * Math.cos(th) * r, 3.4 + Math.sin(th) * r, pz + p.nz * Math.cos(th) * r, 0.8, CLS.furniture); }
+        const sx = px + p.tx * 4, sz = pz + p.tz * 4, sv = side * 0.9;
+        boxU(sx + p.nx * sv, 2.55, sz + p.nz * sv, p.tx, p.tz, 4.2, 1.8, 0.15, 10, 0.5, CLS.furniture);
+        for (const u of [-1.9, 1.9]) vline(sx + p.tx * u + p.nx * (sv + side * 0.8), sz + p.tz * u + p.nz * (sv + side * 0.8), 0, 2.55, 14, 0.5, CLS.furniture, 0.1);
+        N(p.nx * side, 0, p.nz * side);
+        for (let k = 0, n = 4.2 * 2.2 * 2.2 * D; k < n; k++) emit(sx + p.tx * (rnd() - 0.5) * 4.2 + p.nx * (sv + side * 0.85), 0.3 + rnd() * 2.2, sz + p.tz * (rnd() - 0.5) * 4.2 + p.nz * (sv + side * 0.85), 0.3, CLS.furniture);
+        boxU(sx + p.nx * (sv + side * 0.5), 0.45, sz + p.nz * (sv + side * 0.5), p.tx, p.tz, 1.8, 0.4, 0.06, 20, 0.5, CLS.furniture);
+      }
+      // regulatory road signs (retro-reflective discs) every ~70 m, alternating sides
+      for (let s = 30 + (hashStr('sign' + road.id) % 40); s < L - 6; s += 70) {
+        const side = (Math.floor(s / 70) % 2) * 2 - 1, p = samplePath(path, s), v = side * (w / 2 + 0.4);
+        const px = p.x + p.nx * v, pz = p.z + p.nz * v;
+        vline(px, pz, 0, 2.9, 14, 0.5, CLS.furniture, 0.1);
+        N(p.tx, 0, p.tz);
+        for (let k = 0, n = 44 * D; k < n; k++) { const r = Math.sqrt(rnd()) * 0.3, th = rnd() * 6.283; emit(px + p.nx * Math.cos(th) * r, 3.05 + Math.sin(th) * r, pz + p.nz * Math.cos(th) * r, 0.9, CLS.furniture); }
+      }
+      // pedestrian overpass across wide arterials
+      if (road.lanes >= 4 && L > 160) {
+        const p = samplePath(path, L / 2), span = w + 6, dh = 5.2;
+        for (const [u0, u1, y0, y1] of [[-1.2, 1.2, dh, dh]]) {
+          for (let k = 0, n = span * 2.4 * 7 * D; k < n; k++) { const v = (rnd() - 0.5) * span, u = u0 + rnd() * (u1 - u0); UP(); emit(p.x + p.nx * v + p.tx * u, y0 + 0.02, p.z + p.nz * v + p.tz * u, 0.42, CLS.furniture); N(0, -1, 0); emit(p.x + p.nx * v + p.tx * u, y0 - 0.5, p.z + p.nz * v + p.tz * u, 0.35, CLS.furniture); }
+        }
+        for (const u of [-1.2, 1.2]) { // handrails with posts
+          N(p.tx * Math.sign(u), 0, p.tz * Math.sign(u));
+          for (let k = 0, n = span * 2 * 3.5 * D; k < n; k++) { const v = (rnd() - 0.5) * span; emit(p.x + p.nx * v + p.tx * u, dh + rnd() * 1.1, p.z + p.nz * v + p.tz * u, 0.4, CLS.furniture); }
+          for (let v = -span / 2; v <= span / 2; v += 2) vline(p.x + p.nx * v + p.tx * u, p.z + p.nz * v + p.tz * u, dh, dh + 1.1, 10, 0.5, CLS.furniture, 0.06);
+        }
+        for (const sd of [-1, 1]) { // stair ramps on each sidewalk, running along the road
+          const vb = sd * (span / 2 - 1.2);
+          for (let k = 0, n = 8 * 2.4 * 7 * D; k < n; k++) {
+            const u = 1.2 + rnd() * 8, v = vb + (rnd() - 0.5) * 2.4, y = dh * (1 - (u - 1.2) / 8);
+            N(-p.tx * 0.55, 0.83, -p.tz * 0.55);
+            emit(p.x + p.nx * v + p.tx * u, y + 0.02, p.z + p.nz * v + p.tz * u, 0.42, CLS.furniture);
+          }
+          N(p.nx * sd, 0, p.nz * sd);
+          for (let k = 0, n = 8 * 1.1 * 3 * D; k < n; k++) { const u = 1.2 + rnd() * 8, y = dh * (1 - (u - 1.2) / 8); emit(p.x + p.nx * (vb + sd * 1.2) + p.tx * u, y + 0.3 + rnd() * 0.9, p.z + p.nz * (vb + sd * 1.2) + p.tz * u, 0.4, CLS.furniture); }
+          vline(p.x + p.nx * vb, p.z + p.nz * vb, 0, dh - 0.5, 14, 0.45, CLS.furniture, 0.45);
+          vline(p.x + p.nx * (vb - sd * 3), p.z + p.nz * (vb - sd * 3), 0, dh - 0.5, 14, 0.45, CLS.furniture, 0.45);
+        }
+      }
       // street trees and street lights
       for (let s = 7; s < L; s += 14) for (const side of [-1, 1]) {
         if (rnd() > 0.55) continue;
@@ -1940,11 +2393,11 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     const area = 2 * (l * h + w * h) + (top ? l * w : 0);
     for (let k = 0, n = area * dens * D; k < n; k++) {
       const f = rnd() * area; let u, v, y;
-      if (f < l * h) { u = (rnd() - 0.5) * l; v = -w / 2; y = rnd() * h; }
-      else if (f < 2 * l * h) { u = (rnd() - 0.5) * l; v = w / 2; y = rnd() * h; }
-      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; }
-      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; }
-      else { u = (rnd() - 0.5) * l; v = (rnd() - 0.5) * w; y = h; }
+      if (f < l * h) { u = (rnd() - 0.5) * l; v = -w / 2; y = rnd() * h; N(-nx, 0, -nz); }
+      else if (f < 2 * l * h) { u = (rnd() - 0.5) * l; v = w / 2; y = rnd() * h; N(nx, 0, nz); }
+      else if (f < 2 * l * h + w * h) { u = -l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(-tx, 0, -tz); }
+      else if (f < 2 * (l * h + w * h)) { u = l / 2; v = (rnd() - 0.5) * w; y = rnd() * h; N(tx, 0, tz); }
+      else { u = (rnd() - 0.5) * l; v = (rnd() - 0.5) * w; y = h; UP(); }
       emitE(e, cx + tx * u + nx * v, cy + y, cz + tz * u + nz * v, inten, cls);
     }
   };
@@ -1958,10 +2411,12 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
           const a = path[k - 1], b = path[k], ds = b.s - a.s;
           for (let q = 0, n = ds * e.depth * DENS.girderSide * D; q < n; q++) {
             const t = rnd(), f = rnd(), side = rnd() < 0.5 ? -1 : 1;
+            N(a.nx * side, 0.25, a.nz * side);
             const v = side * (e.wTop / 2 + (e.wBot / 2 - e.wTop / 2) * f);
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t - DECK_T - f * e.depth, z = a.z + (b.z - a.z) * t;
             emitE(e, x + a.nx * v, y, z + a.nz * v, 0.36 + rnd() * 0.08 + (f < 0.08 ? 0.12 : 0), CLS.girder, a.s / L);
           }
+          N(0, -1, 0);
           for (let q = 0, n = ds * e.wBot * DENS.girderBot * D; q < n; q++) {
             const t = rnd(), v = (rnd() - 0.5) * e.wBot;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t - DECK_T - e.depth, z = a.z + (b.z - a.z) * t;
@@ -1983,17 +2438,20 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
         for (let k = 1; k < path.length; k++) {
           const a = path[k - 1], b = path[k], ds = b.s - a.s;
           for (let q = 0, n = ds * e.h * 2 * DENS.railFace * D; q < n; q++) {
-            const t = rnd(), f = rnd();
-            const v = e.offset + (rnd() < 0.5 ? -1 : 1) * e.t / 2;
+            const t = rnd(), f = rnd(), sd = rnd() < 0.5 ? -1 : 1;
+            N(a.nx * sd, 0, a.nz * sd);
+            const v = e.offset + sd * e.t / 2;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + f * e.h, z = a.z + (b.z - a.z) * t;
             emitE(e, x + a.nx * v, y, z + a.nz * v, 0.5 + f * 0.12, CLS.railing, (a.s + ds * t) / L);
           }
+          UP();
           for (let q = 0, n = ds * DENS.railTop * D; q < n; q++) {
             const t = rnd(), v = e.offset + (rnd() - 0.5) * e.t;
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + e.h, z = a.z + (b.z - a.z) * t;
             emitE(e, x + a.nx * v, y, z + a.nz * v, 0.86 + rnd() * 0.12, CLS.railing, (a.s + ds * t) / L);
           }
           // drainage kerb line on the carriageway side
+          N(-a.nx * e.side, 0.5, -a.nz * e.side);
           for (let q = 0, n = ds * 5 * D; q < n; q++) {
             const t = rnd(), v = e.offset - e.side * (e.t / 2 + 0.25);
             const x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + 0.05, z = a.z + (b.z - a.z) * t;
@@ -2001,6 +2459,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
           }
           if (fence) {
             // fence on top of the parapet: posts every 2 m, top rail, sparse mesh
+            N(a.nx * e.side, 0, a.nz * e.side);
             for (let q = 0, n = ds * 1.0 * 1.4 * D; q < n; q++) {
               const t = rnd(), x = a.x + (b.x - a.x) * t, y = a.y + (b.y - a.y) * t + e.h + rnd() * 1.0, z = a.z + (b.z - a.z) * t;
               emitE(e, x + a.nx * e.offset, y, z + a.nz * e.offset, 0.3 + rnd() * 0.1, CLS.railing, (a.s + ds * t) / L);
@@ -2013,6 +2472,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
         }
         if (fence) for (let s = 1; s < L; s += 2) {
           const p = samplePath(path, s);
+          N(0, 0, 0);
           for (let k = 0, n = 9 * D; k < n; k++) emitE(e, p.x + p.nx * e.offset, p.y + e.h + rnd() * 1.0, p.z + p.nz * e.offset, 0.5, CLS.railing, s / L);
         }
         break;
@@ -2022,6 +2482,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
         if (e.round) {
           for (let k = 0, n = Math.PI * e.colW * h * DENS.column * D; k < n; k++) {
             const th = rnd() * Math.PI * 2, y = e.yBot + rnd() * h;
+            N(Math.cos(th), 0, Math.sin(th));
             emitE(e, e.x + Math.cos(th) * e.colW / 2, y, e.z + Math.sin(th) * e.colW / 2, 0.4 + rnd() * 0.08 + (y < 1.2 ? 0.1 : 0), CLS.column);
           }
         } else boxFaces(e, e.x, e.yBot, e.z, e.tx, e.tz, -e.tz, e.tx, e.colL, e.colW, h, DENS.column, 0.42, CLS.column);
@@ -2030,11 +2491,13 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       case 'cap': boxFaces(e, e.x, e.yBot, e.z, e.tx, e.tz, -e.tz, e.tx, e.l, e.w, e.h, DENS.cap, 0.46, CLS.cap); break;
       case 'footing': break; // underground: no returns
       case 'pole': {
+        N(0, 0, 0);
         for (let k = 0, n = e.h * 12 * D; k < n; k++) emitE(e, e.x + (rnd() - 0.5) * 0.25, e.y + rnd() * e.h, e.z + (rnd() - 0.5) * 0.25, 0.6, CLS.pole);
         for (let k = 0, n = 30 * D; k < n; k++) { const u = rnd() * 2.4; emitE(e, e.x - e.nx * u, e.y + e.h - 0.3 + u * 0.1, e.z - e.nz * u, 0.7, CLS.pole); }
         break;
       }
       case 'gantry': {
+        N(0, 0, 0);
         for (const side of [-1, 1]) {
           const px = e.x + e.nx * side * e.w / 2, pz = e.z + e.nz * side * e.w / 2;
           for (let k = 0, n = e.h * 18 * D; k < n; k++) emitE(e, px + (rnd() - 0.5) * 0.4, e.y + rnd() * e.h, pz + (rnd() - 0.5) * 0.4, 0.62, CLS.gantry);
@@ -2043,6 +2506,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
           const v = (rnd() - 0.5) * e.w, zig = Math.abs(((v * 2) % 2.4) - 1.2) * 0.9;
           emitE(e, e.x + e.nx * v + (rnd() - 0.5) * 0.3, e.y + e.h - 1.2 + zig, e.z + e.nz * v + (rnd() - 0.5) * 0.3, 0.6, CLS.gantry);
         }
+        N(-e.tx, 0, -e.tz);
         for (let k = 0, n = 160 * D; k < n; k++) {
           const v = (rnd() - 0.5) * 3.6, y = e.y + e.h - 1.1 + (rnd() - 0.5) * 2.2;
           emitE(e, e.x + e.nx * v - e.tx * 0.3, y, e.z + e.nz * v - e.tz * 0.3, 0.9 + rnd() * 0.1, CLS.gantry);
@@ -2069,6 +2533,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
       const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
       if (L < 0.5) continue;
       const nxw = (b[1] - a[1]) / L, nzw = -(b[0] - a[0]) / L; // outward-ish normal (sign irrelevant)
+      N(nxw, 0, nzw);
       for (let k = 0, n = L * h * wallD * 1.6 * D; k < n; k++) {
         const t = rnd(), y = rnd() * h;
         const vis = 0.3 + 0.7 * Math.exp(-y / 50);
@@ -2084,10 +2549,18 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
         emitE(e, a[0] + (b[0] - a[0]) * t, y, a[1] + (b[1] - a[1]) * t, inten, CLS.building);
       }
       // vertical corner line
+      N(0, 0, 0);
       for (let k = 0, n = h * 6 * D; k < n; k++) emitE(e, a[0], rnd() * h, a[1], 0.5 + rnd() * 0.08, CLS.building);
       // roof parapet (1 m) + balconies
+      N(nxw, 0, nzw);
       for (let k = 0, n = L * 4 * D; k < n; k++) { const t = rnd(); emitE(e, a[0] + (b[0] - a[0]) * t, h + rnd() * 1.0, a[1] + (b[1] - a[1]) * t, 0.45, CLS.building); }
+      // projecting shop sign (袖看板) on commercial facades
+      if (shopfront && h > 8 && L > 6 && (hb + i) % 5 === 0) {
+        const t = 0.3 + rnd() * 0.4, sy = 4 + rnd() * Math.max(1, h - 8);
+        boxU(a[0] + (b[0] - a[0]) * t + nxw * 0.55, sy, a[1] + (b[1] - a[1]) * t + nzw * 0.55, -nzw, nxw, 0.7, 0.25, 2.6, 14, 0.78, CLS.furniture);
+      }
       if (residential && !big) {
+        UP();
         for (let lv = 1; lv < e.levels; lv++) {
           const y = lv * floorH;
           for (let k = 0, n = L * 1.2 * 2.2 * D; k < n; k++) {
@@ -2101,6 +2574,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     const [x0, z0, x1, z1] = polygonBBox(poly);
     const bw = x1 - x0, bh = z1 - z0;
     const roofN = Math.min(e.area, 12000) * DENS.roof * D;
+    UP();
     for (let tries = 0, got = 0; got < roofN && tries < roofN * 4; tries++) {
       const x = x0 + rnd() * bw, z = z0 + rnd() * bh;
       if (!pointInPolygon(x, z, poly)) continue;
@@ -2115,12 +2589,25 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
         const kind = rnd();
         if (kind < 0.5) boxFaces(e, cx, h, cz, 1, 0, 0, 1, 2 + rnd() * 3, 1.5 + rnd() * 2, 1.5 + rnd() * 1.5, 2.5, 0.4, CLS.building, true);
         else if (kind < 0.8) boxFaces(e, cx, h, cz, 1, 0, 0, 1, 3 + rnd() * 2, 3 + rnd() * 2, 2.8, 2.5, 0.42, CLS.building, true); // stair bulkhead
-        else { const r = 0.9 + rnd() * 0.6; for (let k = 0, n = 2 * Math.PI * r * 2.2 * 4 * D; k < n; k++) { const th = rnd() * 6.283; emitE(e, cx + Math.cos(th) * r, h + 0.6 + rnd() * 2.2, cz + Math.sin(th) * r, 0.5, CLS.building); } }
+        else { const r = 0.9 + rnd() * 0.6; for (let k = 0, n = 2 * Math.PI * r * 2.2 * 4 * D; k < n; k++) { const th = rnd() * 6.283; N(Math.cos(th), 0, Math.sin(th)); emitE(e, cx + Math.cos(th) * r, h + 0.6 + rnd() * 2.2, cz + Math.sin(th) * r, 0.5, CLS.building); } }
+      }
+      // rooftop billboard on larger buildings
+      if (e.area > 500 && hb % 7 === 0) {
+        let bi = 0, bl = 0;
+        for (let i = 0; i < poly.length; i++) { const a = poly[i], b = poly[(i + 1) % poly.length]; const L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L > bl) { bl = L; bi = i; } }
+        const a = poly[bi], b = poly[(bi + 1) % poly.length];
+        const tx = (b[0] - a[0]) / bl, tz = (b[1] - a[1]) / bl, nxw = tz, nzw = -tx;
+        const cx = (a[0] + b[0]) / 2 - nxw * 2.5, cz = (a[1] + b[1]) / 2 - nzw * 2.5;
+        const inside = pointInPolygon(cx, cz, poly) ? 1 : -1;
+        const px = (a[0] + b[0]) / 2 - nxw * 2.5 * inside, pz = (a[1] + b[1]) / 2 - nzw * 2.5 * inside;
+        boxU(px, h + 1.5, pz, tx, tz, Math.min(8, bl * 0.6), 0.15, 3.2, 7, 0.7, CLS.furniture);
+        for (const u of [-1, 1]) vline(px + tx * u * Math.min(3.5, bl * 0.25), pz + tz * u * Math.min(3.5, bl * 0.25), h, h + 1.6, 12, 0.45, CLS.furniture, 0.15);
       }
     }
     // interior floor slabs seen through glazing (denser near the facade)
     if (!big && e.levels > 2) {
       const perLevel = Math.min(e.area, 2500) * DENS.floorSlab * (glassy ? 1.6 : 1) * D;
+      UP();
       for (let lv = 1; lv < e.levels; lv++) {
         const y = lv * floorH + 0.15;
         const vis = 0.3 + 0.7 * Math.exp(-y / 50);
@@ -2136,6 +2623,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
   progress(0.86);
 
   // ---------- ground, water, parks, parking lots ----------
+  UP();
   for (let k = 0, n = cw * ch * DENS.ground * D; k < n; k++) {
     const x = (rnd() - 0.5) * cw, z = (rnd() - 0.5) * ch;
     const m = mask.get(x, z);
@@ -2156,6 +2644,7 @@ function synthesize(data, { density = 1, seed = 1 } = {}, progress = () => {}) {
     for (let i = -2; i <= 2; i++) if (rnd() < 0.7) vehicle({ ...frame, x: x + frame.nx * i * 2.6, z: z + frame.nz * i * 2.6 }, 0, false, null, true);
     for (let i = -3; i <= 3; i++) vline(x + frame.nx * i * 2.6 + tx * 4.2, z + frame.nz * i * 2.6 + tz * 4.2, 0, 0.8, 10, 0.5, CLS.furniture, 0.1);
   }
+  UP();
   for (const poly of data.water) {
     const [x0, z0, x1, z1] = polygonBBox(poly);
     for (let k = 0, n = (x1 - x0) * (z1 - z0) * 0.035 * D; k < n; k++) {
@@ -2288,18 +2777,25 @@ function createPointMaterial(lut, visTex) {
       uSpacing: { value: new Float32Array(32).fill(0.5) }, // nominal sample spacing (m) per class → splat radius
       uTanHalfFov: { value: 0.4877 },
       uOpacity: { value: 1 },
+      uSurfel: { value: 1 },   // 1 = normal-oriented elliptical splats
+      uHasRgb: { value: 0 },
+      uShade: { value: 0.5 },  // normal-based shading amount
     },
     vertexShader: /* glsl */ `
       attribute float intensity;
       attribute float cls;
       attribute float dev;
       attribute float elem;
+      attribute vec3 rgb;
+      uniform float uHasRgb;
       uniform sampler2D uLut;
       uniform float uMode, uRow, uSize, uMinPx, uMaxPx, uHMin, uHMax, uHeightMix, uGain, uSelected, uDevRange, uViewportH, uPixelRatio;
       uniform float uClsMask[32];
       uniform float uSpacing[32];
       uniform float uTanHalfFov;
+      uniform float uShade;
       varying vec3 vColor;
+      varying vec3 vNv;
       varying float vSize;
       varying float vHide;
       #include <clipping_planes_pars_vertex>
@@ -2323,9 +2819,18 @@ function createPointMaterial(lut, visTex) {
           bool structural = ci == 17 || ci == 20 || ci == 21 || ci == 22 || ci == 23 || ci == 27 || ci == 29 || ci == 25;
           c = structural ? lut(${ROWS.deviation}.0, 0.5 + devMm / (2.0 * uDevRange)) : vec3(0.16, 0.17, 0.2);
         }
-        else c = lut(${ROWS.realistic}.0, (cls + 0.5) / 32.0) * (0.55 + 0.9 * I);
+        else c = uHasRgb > 0.5 ? rgb : lut(${ROWS.realistic}.0, (cls + 0.5) / 32.0) * (0.55 + 0.9 * I);
         float sel = step(abs(elem - uSelected), 0.5);
         c = mix(c, vec3(1.0, 0.72, 0.18), sel * (uMode > 3.5 && uMode < 4.5 ? 0.0 : 0.9));
+        // surfel normal in view space (zero when the point has no normal → disc, unshaded)
+        vec3 nv = vec3(0.0);
+        if (dot(normal, normal) > 0.05) {
+          nv = normalize(normalMatrix * normal);
+          if (nv.z < 0.0) nv = -nv; // orientation is ambiguous: face the camera
+          float lam = 0.45 + 0.55 * abs(dot(nv, normalize(vec3(0.35, 0.75, 0.6))));
+          c *= mix(1.0, lam, uShade);
+        }
+        vNv = nv;
         vColor = c;
         float dist = max(1.0, -mvPosition.z);
         // distance-attenuated size, and a splat that covers the nominal sample spacing so surfaces close up
@@ -2337,17 +2842,26 @@ function createPointMaterial(lut, visTex) {
       }
     `,
     fragmentShader: /* glsl */ `
-      uniform float uOpacity;
+      uniform float uOpacity, uSurfel;
       varying vec3 vColor;
       varying float vSize;
       varying float vHide;
+      varying vec3 vNv;
       #include <clipping_planes_pars_fragment>
       void main() {
         #include <clipping_planes_fragment>
         if (vHide > 0.5) discard;
         if (vSize > 2.5) {
           vec2 d = gl_PointCoord - 0.5;
-          if (dot(d, d) > 0.25) discard;
+          vec2 a = vec2(vNv.x, -vNv.y); // projected normal (PointCoord y points down)
+          float la = length(a);
+          if (uSurfel > 0.5 && la > 0.03) {
+            // ellipse: the disc on the tangent plane foreshortens along the projected normal by |n.z|
+            a /= la;
+            float cosv = max(abs(vNv.z), 0.18);
+            float u = dot(d, a) / cosv, v = dot(d, vec2(-a.y, a.x));
+            if (u * u + v * v > 0.25) discard;
+          } else if (dot(d, d) > 0.25) discard;
         }
         gl_FragColor = vec4(vColor, uOpacity);
       }
@@ -2852,6 +3366,243 @@ class SectionBox {
   }
 }
 
+// ===== src/las.js =====
+// LAS / LAZ reader and LAS writer (plain script: no imports, so it can also run inside a classic
+// worker that loads laz-perf via importScripts). Produces the same attribute set as the synthesiser:
+// positions (y-up, local metres), intensity, classification, deviation (=0), element id (none), normals.
+const LAZPERF_URL = 'https://cdn.jsdelivr.net/npm/laz-perf@0.0.6/lib/web/';
+
+function readLasHeader(buf) {
+  const dv = new DataView(buf);
+  const sig = String.fromCharCode(dv.getUint8(0), dv.getUint8(1), dv.getUint8(2), dv.getUint8(3));
+  if (sig !== 'LASF') throw new Error('LAS ファイルではありません（署名 LASF がありません）');
+  const vMajor = dv.getUint8(24), vMinor = dv.getUint8(25);
+  const headerSize = dv.getUint16(94, true);
+  const offsetToPoints = dv.getUint32(96, true);
+  const formatByte = dv.getUint8(104);
+  const compressed = (formatByte & 0x80) !== 0;
+  const format = formatByte & 0x3f;
+  const recordLength = dv.getUint16(105, true);
+  let count = dv.getUint32(107, true);
+  if (vMajor === 1 && vMinor >= 4 && headerSize >= 375) {
+    const c64 = dv.getBigUint64(247, true);
+    if (c64 > 0n) count = Number(c64);
+  }
+  const scale = [dv.getFloat64(131, true), dv.getFloat64(139, true), dv.getFloat64(147, true)];
+  const offset = [dv.getFloat64(155, true), dv.getFloat64(163, true), dv.getFloat64(171, true)];
+  const max = [dv.getFloat64(179, true), dv.getFloat64(195, true), dv.getFloat64(211, true)];
+  const min = [dv.getFloat64(187, true), dv.getFloat64(203, true), dv.getFloat64(219, true)];
+  return { version: `${vMajor}.${vMinor}`, headerSize, offsetToPoints, format, compressed, recordLength, count, scale, offset, min, max };
+}
+
+/** Byte offsets of fields inside a point record for each point data format. */
+function recordLayout(format) {
+  const f = format;
+  if (f <= 5) return { cls: 15, clsMask: 0x1f, rgb: f === 2 ? 20 : f === 3 || f === 5 ? 28 : -1 };
+  return { cls: 16, clsMask: 0xff, rgb: f === 7 || f === 8 || f === 10 ? 30 : -1 };
+}
+
+// ASPRS classification → viewer classes (see synth.js CLS)
+const CLS_MAP = { 2: 2, 3: 3, 4: 3, 5: 5, 6: 6, 7: 18, 9: 9, 10: 11, 11: 11, 13: 25, 14: 25, 15: 29, 17: 17, 18: 18 };
+
+/**
+ * Decode point records into viewer arrays.
+ * getRecord(i, dv) must return the byte offset of record i inside the DataView dv.
+ */
+function decodeRecords(header, dv, getRecord, { maxPoints = 16e6, progress = () => {} } = {}) {
+  const n = header.count, stride = Math.max(1, Math.ceil(n / maxPoints));
+  const m = Math.floor(n / stride);
+  const lay = recordLayout(header.format);
+  const [sx, sy, sz] = header.scale, [ox, oy, oz] = header.offset;
+  // local frame: centre of the bounding box in XY, min Z at 0; LAS Z-up → viewer Y-up
+  const cx = (header.min[0] + header.max[0]) / 2, cy = (header.min[1] + header.max[1]) / 2, z0 = header.min[2];
+  const pos = new Float32Array(m * 3), inten = new Uint8Array(m), cls = new Uint8Array(m), dev = new Uint8Array(m).fill(128), elem = new Uint16Array(m).fill(65535);
+  const hasRgb = lay.rgb >= 0;
+  const rgb = hasRgb ? new Uint8Array(m * 3) : null;
+  const rawI = new Uint16Array(m);
+  let maxI = 0;
+  for (let k = 0; k < m; k++) {
+    const o = getRecord(k * stride, dv);
+    pos[k * 3] = dv.getInt32(o, true) * sx + ox - cx;
+    pos[k * 3 + 1] = dv.getInt32(o + 8, true) * sz + oz - z0;
+    pos[k * 3 + 2] = -(dv.getInt32(o + 4, true) * sy + oy - cy);
+    const I = dv.getUint16(o + 12, true); rawI[k] = I; if (I > maxI) maxI = I;
+    const c = dv.getUint8(o + lay.cls) & lay.clsMask;
+    cls[k] = CLS_MAP[c] ?? 1;
+    if (hasRgb) { rgb[k * 3] = dv.getUint16(o + lay.rgb, true) >> 8; rgb[k * 3 + 1] = dv.getUint16(o + lay.rgb + 2, true) >> 8; rgb[k * 3 + 2] = dv.getUint16(o + lay.rgb + 4, true) >> 8; }
+    if ((k & 0xfffff) === 0) progress(k / m);
+  }
+  // intensity: normalise to the 99th percentile so a few saturated returns do not flatten the rest
+  const hist = new Uint32Array(1024);
+  const div = Math.max(1, maxI) / 1023;
+  for (let k = 0; k < m; k++) hist[(rawI[k] / div) | 0]++;
+  let acc = 0, p99 = 1023;
+  for (let b = 0; b < 1024; b++) { acc += hist[b]; if (acc >= m * 0.99) { p99 = b; break; } }
+  const iScale = 255 / Math.max(1, p99 * div);
+  for (let k = 0; k < m; k++) inten[k] = Math.min(255, rawI[k] * iScale);
+  // if the file carries no classification at all, colour by RGB luminance as intensity fallback
+  return { n: m, pos, inten, cls, dev, elem, rgb, stride, local: { cx, cy, z0 } };
+}
+
+/** Parse an uncompressed LAS buffer. */
+function parseLas(buf, opts) {
+  const header = readLasHeader(buf);
+  if (header.compressed) throw new Error('LAZ 圧縮ファイルです: parseLaz を使用してください');
+  const dv = new DataView(buf);
+  const base = header.offsetToPoints, len = header.recordLength;
+  const out = decodeRecords(header, dv, (i) => base + i * len, opts);
+  return { header, ...out };
+}
+
+/** Decode a LAZ buffer with laz-perf (must be loaded: `createLazPerf` global or passed module). */
+async function parseLaz(buf, opts = {}) {
+  const header = readLasHeader(buf);
+  const create = opts.createLazPerf || (typeof createLazPerf !== 'undefined' ? createLazPerf : null);
+  if (!create) throw new Error('laz-perf が読み込まれていません');
+  const LazPerf = await create({ locateFile: (f) => LAZPERF_URL + f });
+  const bytes = new Uint8Array(buf);
+  const filePtr = LazPerf._malloc(bytes.length);
+  LazPerf.HEAPU8.set(bytes, filePtr);
+  const laszip = new LazPerf.LASZip();
+  laszip.open(filePtr, bytes.length);
+  const count = laszip.getCount(), recLen = laszip.getPointLength();
+  header.count = count; header.recordLength = recLen; header.format = laszip.getPointFormat();
+  // decode all records sequentially into one contiguous buffer, then reuse the LAS decoder
+  const all = new ArrayBuffer(count * recLen);
+  const allU8 = new Uint8Array(all);
+  const recPtr = LazPerf._malloc(recLen);
+  for (let i = 0; i < count; i++) {
+    laszip.getPoint(recPtr);
+    allU8.set(LazPerf.HEAPU8.subarray(recPtr, recPtr + recLen), i * recLen);
+    if ((i & 0x7ffff) === 0 && opts.progress) opts.progress((i / count) * 0.5);
+  }
+  laszip.delete(); LazPerf._free(recPtr); LazPerf._free(filePtr);
+  const dv = new DataView(all);
+  const out = decodeRecords(header, dv, (i) => i * recLen, { ...opts, progress: (p) => opts.progress && opts.progress(0.5 + p * 0.5) });
+  return { header, ...out };
+}
+
+/**
+ * Grid-cell PCA normals: points are binned into cubic cells sized for ~24 points per cell, the
+ * covariance of each cell gives its normal (smallest eigenvector), assigned to all points in it.
+ * Sign is irrelevant for surfel rendering. Returns Int8 normals (x127).
+ */
+function estimateNormals(pos, n, { targetPerCell = 24 } = {}) {
+  let minx = Infinity, miny = Infinity, minz = Infinity, maxx = -Infinity, maxy = -Infinity, maxz = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+    if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y; if (z < minz) minz = z; if (z > maxz) maxz = z;
+  }
+  const area = Math.max(1, (maxx - minx) * (maxz - minz));
+  const cell = Math.max(0.15, Math.min(4, Math.sqrt((area * targetPerCell) / n) * 1.1));
+  const nx = Math.ceil((maxx - minx) / cell) + 1, ny = Math.ceil((maxy - miny) / cell) + 1, nz = Math.ceil((maxz - minz) / cell) + 1;
+  const key = new Uint32Array(n);
+  const stats = new Map(); // key → Float64Array(10): count, sx, sy, sz, sxx, sxy, sxz, syy, syz, szz
+  for (let i = 0; i < n; i++) {
+    const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+    const k = (((y - miny) / cell) | 0) * nx * nz + (((z - minz) / cell) | 0) * nx + (((x - minx) / cell) | 0);
+    key[i] = k;
+    let s = stats.get(k);
+    if (!s) { s = new Float64Array(10); stats.set(k, s); }
+    s[0]++; s[1] += x; s[2] += y; s[3] += z; s[4] += x * x; s[5] += x * y; s[6] += x * z; s[7] += y * y; s[8] += y * z; s[9] += z * z;
+  }
+  const normals = new Map();
+  for (const [k, s] of stats) {
+    const c = s[0];
+    if (c < 5) continue;
+    const mx = s[1] / c, my = s[2] / c, mz = s[3] / c;
+    const a = s[4] / c - mx * mx, b = s[5] / c - mx * my, d = s[6] / c - mx * mz, e = s[7] / c - my * my, f = s[8] / c - my * mz, g = s[9] / c - mz * mz;
+    normals.set(k, smallestEigenvector(a, b, d, e, f, g));
+  }
+  const out = new Int8Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const v = normals.get(key[i]);
+    if (!v) continue;
+    out[i * 3] = v[0] * 127; out[i * 3 + 1] = v[1] * 127; out[i * 3 + 2] = v[2] * 127;
+  }
+  return { normals: out, cell, spacing: Math.sqrt(area / n) };
+}
+
+// smallest eigenvector of the symmetric 3x3 matrix [[a,b,d],[b,e,f],[d,f,g]] via a few Jacobi sweeps
+function smallestEigenvector(a, b, d, e, f, g) {
+  let A = [[a, b, d], [b, e, f], [d, f, g]];
+  let V = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  for (let sweep = 0; sweep < 8; sweep++) {
+    for (let p = 0; p < 3; p++) for (let q = p + 1; q < 3; q++) {
+      if (Math.abs(A[p][q]) < 1e-12) continue;
+      const theta = (A[q][q] - A[p][p]) / (2 * A[p][q]);
+      const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+      const c = 1 / Math.sqrt(t * t + 1), s = t * c;
+      for (let k = 0; k < 3; k++) {
+        const akp = A[k][p], akq = A[k][q];
+        A[k][p] = c * akp - s * akq; A[k][q] = s * akp + c * akq;
+      }
+      for (let k = 0; k < 3; k++) {
+        const apk = A[p][k], aqk = A[q][k];
+        A[p][k] = c * apk - s * aqk; A[q][k] = s * apk + c * aqk;
+      }
+      for (let k = 0; k < 3; k++) {
+        const vkp = V[k][p], vkq = V[k][q];
+        V[k][p] = c * vkp - s * vkq; V[k][q] = s * vkp + c * vkq;
+      }
+    }
+  }
+  let mi = 0;
+  for (let i = 1; i < 3; i++) if (A[i][i] < A[mi][mi]) mi = i;
+  const v = [V[0][mi], V[1][mi], V[2][mi]];
+  const L = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / L, v[1] / L, v[2] / L];
+}
+
+/** Write a LAS 1.2 point-format-2 file (XYZ, intensity, classification, RGB) from viewer arrays. */
+function writeLas({ n, pos, inten, cls, rgb }, { offset = [0, 0, 0] } = {}) {
+  const INV = { 2: 2, 3: 3, 5: 5, 6: 6, 26: 6, 9: 9, 11: 11, 17: 17, 20: 11, 21: 17, 22: 17, 23: 17, 27: 17, 24: 1, 25: 14, 29: 15, 30: 1, 18: 7 };
+  const headerSize = 227, recLen = 26;
+  const buf = new ArrayBuffer(headerSize + n * recLen);
+  const dv = new DataView(buf), u8 = new Uint8Array(buf);
+  u8.set([76, 65, 83, 70], 0); // LASF
+  dv.setUint8(24, 1); dv.setUint8(25, 2);
+  u8.set(new TextEncoder().encode('LiDAR x BIM synth'.padEnd(32, '\0')), 26);
+  u8.set(new TextEncoder().encode('pointcloud-highway'.padEnd(32, '\0')), 58);
+  dv.setUint16(94, headerSize, true); dv.setUint32(96, headerSize, true); dv.setUint32(100, 0, true);
+  dv.setUint8(104, 2); dv.setUint16(105, recLen, true); dv.setUint32(107, n, true);
+  const sc = 0.001;
+  dv.setFloat64(131, sc, true); dv.setFloat64(139, sc, true); dv.setFloat64(147, sc, true);
+  dv.setFloat64(155, offset[0], true); dv.setFloat64(163, offset[1], true); dv.setFloat64(171, offset[2], true);
+  let minx = Infinity, miny = Infinity, minz = Infinity, maxx = -Infinity, maxy = -Infinity, maxz = -Infinity;
+  for (let i = 0; i < n; i++) {
+    const X = pos[i * 3], Y = -pos[i * 3 + 2], Z = pos[i * 3 + 1]; // viewer y-up → LAS z-up
+    const o = headerSize + i * recLen;
+    dv.setInt32(o, Math.round(X / sc), true); dv.setInt32(o + 4, Math.round(Y / sc), true); dv.setInt32(o + 8, Math.round(Z / sc), true);
+    dv.setUint16(o + 12, inten[i] * 257, true);
+    dv.setUint8(o + 14, 0x11); // return 1 of 1
+    dv.setUint8(o + 15, INV[cls[i]] ?? 1);
+    if (rgb) { dv.setUint16(o + 20, rgb[i * 3] * 257, true); dv.setUint16(o + 22, rgb[i * 3 + 1] * 257, true); dv.setUint16(o + 24, rgb[i * 3 + 2] * 257, true); }
+    if (X < minx) minx = X; if (X > maxx) maxx = X; if (Y < miny) miny = Y; if (Y > maxy) maxy = Y; if (Z < minz) minz = Z; if (Z > maxz) maxz = Z;
+  }
+  dv.setFloat64(179, maxx + offset[0], true); dv.setFloat64(187, minx + offset[0], true);
+  dv.setFloat64(195, maxy + offset[1], true); dv.setFloat64(203, miny + offset[1], true);
+  dv.setFloat64(211, maxz + offset[2], true); dv.setFloat64(219, minz + offset[2], true);
+  return buf;
+}
+
+/** Body of the classic worker that decodes a file (LAS or LAZ) and estimates normals. */
+const LAS_WORKER_BODY = `
+self.onmessage = async (ev) => {
+  const { buf, isLaz, maxPoints } = ev.data;
+  try {
+    const progress = (p) => self.postMessage({ type: 'progress', p: p * 0.7 });
+    let r;
+    if (isLaz) { importScripts('${LAZPERF_URL}laz-perf.js'); r = await parseLaz(buf, { maxPoints, progress }); }
+    else r = parseLas(buf, { maxPoints, progress });
+    self.postMessage({ type: 'progress', p: 0.75 });
+    const { normals, spacing, cell } = estimateNormals(r.pos, r.n);
+    const out = { type: 'done', n: r.n, pos: r.pos, inten: r.inten, cls: r.cls, dev: r.dev, elem: r.elem, nrm: normals, rgb: r.rgb, header: r.header, stride: r.stride, spacing, cell, local: r.local };
+    self.postMessage(out, [r.pos.buffer, r.inten.buffer, r.cls.buffer, r.dev.buffer, r.elem.buffer, normals.buffer].concat(r.rgb ? [r.rgb.buffer] : []));
+  } catch (err) { self.postMessage({ type: 'error', message: String(err && err.message || err) }); }
+};
+`;
+
 // ===== src/main.js =====
 
 
@@ -2889,7 +3640,7 @@ const state = {
   site: 'hakozaki', density: 0.4, mode: 0, row: 'lidar', heightMix: 0.15, pointSize: 2.0, gain: 1.0,
   showCloud: true, showBim: false, bimStyle: 'wire', showBuildingsBim: false, showLevels: false, showGrid: false,
   section: false, phase: 1, phasePlaying: false, devRange: 50, selected: -1, measuring: false, edl: true,
-  clsHidden: new Set(), isolateRoute: null,
+  clsHidden: new Set(), isolateRoute: null, surfel: true, shade: 0.5, las: null,
 };
 let data = null, elements = [], points = null, bim = null, levels = null, grids = null, cloud = null, seqRange = [0, 1];
 
@@ -2937,22 +3688,7 @@ function rebuildCloud() {
       const m = ev.data;
       if (m.type === 'progress') { setProgress(0.1 + m.p * 0.8, 'LiDAR 点群を合成中…'); return; }
       worker.terminate();
-      cloud = m;
-      if (points) { scene.remove(points); points.geometry.dispose(); }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(m.pos, 3));
-      geo.setAttribute('intensity', new THREE.BufferAttribute(m.inten, 1, true));
-      geo.setAttribute('cls', new THREE.BufferAttribute(m.cls, 1, false));
-      geo.setAttribute('dev', new THREE.BufferAttribute(m.dev, 1, true));
-      geo.setAttribute('elem', new THREE.BufferAttribute(m.elem, 1, false));
-      geo.computeBoundingSphere();
-      points = new THREE.Points(geo, pointMat);
-      points.frustumCulled = false;
-      points.visible = state.showCloud;
-      scene.add(points);
-      let hMax = 0; for (let i = 1; i < m.pos.length; i += 3) if (m.pos[i] > hMax) hMax = m.pos[i];
-      pointMat.uniforms.uHMin.value = -2; pointMat.uniforms.uHMax.value = Math.min(hMax, 60);
-      $('stat-points').textContent = m.n.toLocaleString();
+      installCloud(m);
       $('stat-time').textContent = `${(m.ms / 1000).toFixed(1)} s`;
       setProgress(0.95, 'GPU へ転送中…');
       overlay.classList.add('hidden');
@@ -2961,6 +3697,107 @@ function rebuildCloud() {
     worker.postMessage({ data, options: { density: state.density, seed: 1 } });
   });
 }
+
+/** Build the Points object from attribute arrays (synthesised or imported). */
+function installCloud(m) {
+  cloud = m;
+  if (points) { scene.remove(points); points.geometry.dispose(); }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(m.pos, 3));
+  geo.setAttribute('intensity', new THREE.BufferAttribute(m.inten, 1, true));
+  geo.setAttribute('cls', new THREE.BufferAttribute(m.cls, 1, false));
+  geo.setAttribute('dev', new THREE.BufferAttribute(m.dev, 1, true));
+  geo.setAttribute('elem', new THREE.BufferAttribute(m.elem, 1, false));
+  geo.setAttribute('normal', new THREE.BufferAttribute(m.nrm || new Int8Array(m.n * 3), 3, true));
+  if (m.rgb) geo.setAttribute('rgb', new THREE.BufferAttribute(m.rgb, 3, true));
+  pointMat.uniforms.uHasRgb.value = m.rgb ? 1 : 0;
+  geo.computeBoundingSphere();
+  points = new THREE.Points(geo, pointMat);
+  points.frustumCulled = false;
+  points.visible = state.showCloud;
+  scene.add(points);
+  let hMin = Infinity, hMax = -Infinity;
+  for (let i = 1; i < m.pos.length; i += 3) { if (m.pos[i] > hMax) hMax = m.pos[i]; if (m.pos[i] < hMin) hMin = m.pos[i]; }
+  pointMat.uniforms.uHMin.value = Math.max(hMin, -2); pointMat.uniforms.uHMax.value = Math.min(hMax, state.las ? hMax : 60);
+  $('stat-points').textContent = m.n.toLocaleString();
+  renderLegend();
+}
+
+// ---------------------------------------------------------------- real scans (LAS / LAZ)
+async function lasWorkerSource() {
+  let src = window.__LAS_SRC__;
+  if (!src) src = await (await fetch(new URL('./las.js', import.meta.url))).text();
+  return src.replace(/^export\s+(?=(const|let|function|class|async))/gm, '') + '\n' + LAS_WORKER_BODY;
+}
+async function loadLasFile(file) {
+  overlay.classList.remove('hidden');
+  setProgress(0.02, `${file.name} を読み込み中…`);
+  const buf = await file.arrayBuffer();
+  const isLaz = /\.laz$/i.test(file.name) || (new Uint8Array(buf)[104] & 0x80) !== 0;
+  const url = URL.createObjectURL(new Blob([await lasWorkerSource()], { type: 'text/javascript' }));
+  const worker = new Worker(url);
+  const m = await new Promise((resolve, reject) => {
+    worker.onmessage = (ev) => {
+      const d = ev.data;
+      if (d.type === 'progress') setProgress(0.05 + d.p * 0.9, d.p < 0.7 ? (isLaz ? 'LAZ を展開中（laz-perf）…' : 'LAS を解析中…') : '法線を推定中…');
+      else if (d.type === 'error') reject(new Error(d.message));
+      else resolve(d);
+    };
+    worker.onerror = (e) => reject(new Error(e.message || 'worker error'));
+    worker.postMessage({ buf, isLaz, maxPoints: 16e6 }, [buf]);
+  }).finally(() => { worker.terminate(); URL.revokeObjectURL(url); });
+  // switch the viewer into "real scan" mode: no structural model, cloud only
+  state.las = { name: file.name, header: m.header, spacing: m.spacing, cell: m.cell, stride: m.stride, local: m.local };
+  state.isolateRoute = null; clearSelection(); measure.clear();
+  elements = [];
+  if (bim) { scene.remove(bim.group); bim.faceGeo.dispose(); bim.edgeGeo.dispose(); bim = null; }
+  if (levels) { scene.remove(levels); levels.traverse((o) => o.element && o.element.remove()); levels = null; }
+  if (grids) { scene.remove(grids); grids.traverse((o) => o.element && o.element.remove()); grids = null; }
+  director.route = null; director.setMode('orbit'); setActiveView(null);
+  document.body.classList.add('las-mode');
+  installCloud(m);
+  applySpacing();
+  const h = m.header;
+  $('site-name').textContent = `${file.name}（LAS ${h.version} / PF${h.format}${m.stride > 1 ? ` / 1:${m.stride} 間引き` : ''}）`;
+  $('stat-elements').textContent = '—';
+  $('stat-time').textContent = `${(m.spacing).toFixed(2)} m/pt`;
+  $('drive-name').textContent = '—（実測データでは利用不可）';
+  // fit camera and section box to the data
+  const bb = points.geometry.boundingSphere;
+  const c = bb.center.clone(), r = bb.radius;
+  director.flyTo(c.clone().add(new THREE.Vector3(-0.6, 0.55, 0.75).normalize().multiplyScalar(r * 1.9)), c, 10);
+  controls.maxDistance = r * 8;
+  sectionBox.min.set(c.x - r, c.y - r, c.z - r); sectionBox.max.set(c.x + r, c.y + r, c.z + r); sectionBox.update();
+  const cfg = [['sx0', c.x - r, c.x + r, c.x - r], ['sx1', c.x - r, c.x + r, c.x + r], ['sy0', c.y - r, c.y + r, c.y - r], ['sy1', c.y - r, c.y + r, c.y + r], ['sz0', c.z - r, c.z + r, c.z - r], ['sz1', c.z - r, c.z + r, c.z + r]];
+  for (const [id, lo, hi, v] of cfg) { const sl = $(id); sl.min = lo; sl.max = hi; sl.value = v; }
+  overlay.classList.add('hidden');
+  const clsSet = new Set(m.cls);
+  toast(`${m.n.toLocaleString()} 点を読み込みました（分類 ${clsSet.size} 種、平均点間隔 ${m.spacing.toFixed(2)} m）`, 5000);
+  if (!clsSet.has(2) && !clsSet.has(6)) $('mode').value = m.rgb ? '5' : '2', $('mode').dispatchEvent(new Event('change'));
+}
+function exportLas() {
+  if (!cloud) return;
+  // colour from the LiDAR colormap (mode 0 formula) so CloudCompare / ReCap show the same look
+  const lutData = lut.image.data, row = ROWS[state.row] ?? 0, n = cloud.n;
+  const rgb = new Uint8Array(n * 3);
+  const hMin = pointMat.uniforms.uHMin.value, hMax = pointMat.uniforms.uHMax.value;
+  for (let i = 0; i < n; i++) {
+    const I = Math.min(1, (cloud.inten[i] / 255) * state.gain), hN = Math.min(1, Math.max(0, (cloud.pos[i * 3 + 1] - hMin) / (hMax - hMin)));
+    const t = 0.09 + 0.91 * Math.min(1, (I * (1 - state.heightMix) + hN * state.heightMix) * 1.08);
+    const k = (row * 256 + Math.min(255, Math.max(0, Math.round(t * 255)))) * 4;
+    rgb[i * 3] = lutData[k]; rgb[i * 3 + 1] = lutData[k + 1]; rgb[i * 3 + 2] = lutData[k + 2];
+  }
+  const buf = writeLas({ n, pos: cloud.pos, inten: cloud.inten, cls: cloud.cls, rgb }, { offset: state.las ? [state.las.local.cx, state.las.local.cy, state.las.local.z0] : [0, 0, 0] });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([buf], { type: 'application/octet-stream' }));
+  a.download = (state.las ? state.las.name.replace(/\.la[sz]$/i, '') : `${state.site}-synth`) + '.las';
+  document.body.appendChild(a); a.click(); a.remove();
+  toast(`LAS 1.2 (PF2) を書き出しました: ${(buf.byteLength / 1e6).toFixed(0)} MB、${n.toLocaleString()} 点`, 5000);
+}
+$('las-file').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) loadLasFile(f).catch((err) => { overlay.classList.add('hidden'); toast(`読み込み失敗: ${err.message}`, 6000); }); e.target.value = ''; });
+$('las-export').addEventListener('click', exportLas);
+canvas.addEventListener('dragover', (e) => { e.preventDefault(); });
+canvas.addEventListener('drop', (e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && /\.la[sz]$/i.test(f.name)) loadLasFile(f).catch((err) => { overlay.classList.add('hidden'); toast(`読み込み失敗: ${err.message}`, 6000); }); });
 
 function rebuildBim() {
   if (bim) { scene.remove(bim.group); bim.faceGeo.dispose(); bim.edgeGeo.dispose(); }
@@ -2975,7 +3812,7 @@ function rebuildBim() {
   bim = { ...b, group, faces, edges };
   $('stat-elements').textContent = elements.length.toLocaleString();
   const seqs = elements.filter((e) => e.seq >= 0).map((e) => e.seq);
-  seqRange = [Math.min(...seqs), Math.max(...seqs)];
+  seqRange = seqs.length ? [Math.min(...seqs), Math.max(...seqs)] : [0, 1];
   applyBimStyle();
   applyPhase();
 }
@@ -3001,6 +3838,7 @@ function applySpacing() {
   sp[CLS.railing] = s(DENS.railFace); sp[CLS.girder] = s(DENS.girderSide); sp[CLS.column] = s(DENS.column); sp[CLS.cap] = s(DENS.cap);
   sp[CLS.building] = s(DENS.wall * 0.8, 1.0); sp[CLS.floor] = s(DENS.floorSlab, 1.4); sp[CLS.ground] = s(DENS.ground, 1.3); sp[CLS.lowVeg] = s(DENS.grass, 1.3);
   sp[CLS.highVeg] = 0.45; sp[CLS.vehicle] = s(6); sp[CLS.pole] = 0.12; sp[CLS.furniture] = 0.12; sp[CLS.gantry] = 0.1; sp[CLS.water] = 1.5; sp[CLS.noise] = 0.1;
+  if (state.las) sp.fill(Math.min(2.5, Math.max(0.03, state.las.spacing * 1.1)));
   pointMat.uniforms.uTanHalfFov.value = Math.tan((camera.fov / 2) * Math.PI / 180);
 }
 function applyMode() {
@@ -3010,6 +3848,8 @@ function applyMode() {
   pointMat.uniforms.uSize.value = state.pointSize;
   pointMat.uniforms.uGain.value = state.gain;
   pointMat.uniforms.uDevRange.value = state.devRange;
+  pointMat.uniforms.uSurfel.value = state.surfel ? 1 : 0;
+  pointMat.uniforms.uShade.value = state.shade;
   $('row-group').style.display = state.mode <= 1 ? '' : 'none';
   $('mix-group').style.display = state.mode === 0 ? '' : 'none';
   $('dev-group').style.display = state.mode === 4 ? '' : 'none';
@@ -3190,7 +4030,7 @@ function setActiveView(name) { document.querySelectorAll('[data-view]').forEach(
 document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => {
   const v = b.dataset.view;
   setActiveView(v);
-  if (v === 'drive') { director.setMode('drive'); return; }
+  if (v === 'drive') { if (!director.route) { toast('走行ルートがありません（実測データでは利用不可）'); setActiveView(null); return; } director.setMode('drive'); return; }
   if (v === 'fly') { director.setMode('flyover'); return; }
   director.setMode('orbit');
   let d = VIEWS[v];
@@ -3211,8 +4051,10 @@ $('row').addEventListener('change', (e) => { state.row = e.target.value; applyMo
 $('mix').addEventListener('input', (e) => { state.heightMix = +e.target.value; applyMode(); });
 $('psize').addEventListener('input', (e) => { state.pointSize = +e.target.value; applyMode(); });
 $('gain').addEventListener('input', (e) => { state.gain = +e.target.value; applyMode(); });
+$('surfel').addEventListener('change', (e) => { state.surfel = e.target.checked; applyMode(); });
+$('shade').addEventListener('input', (e) => { state.shade = +e.target.value; applyMode(); });
 $('devrange').addEventListener('change', (e) => { state.devRange = +e.target.value; applyMode(); });
-$('density').addEventListener('change', async (e) => { state.density = +e.target.value; applySpacing(); await rebuildCloud(); applyPhase(); });
+$('density').addEventListener('change', async (e) => { state.density = +e.target.value; applySpacing(); if (state.las) return; await rebuildCloud(); applyPhase(); });
 $('edl').addEventListener('change', (e) => { state.edl = e.target.checked; edl.enabled = state.edl; });
 $('edl-strength').addEventListener('input', (e) => { edl.strength = +e.target.value; });
 $('show-cloud').addEventListener('change', (e) => { state.showCloud = e.target.checked; if (points) points.visible = state.showCloud; });
@@ -3226,7 +4068,7 @@ $('phase').addEventListener('input', (e) => { state.phase = +e.target.value / 10
 $('phase-play').addEventListener('click', () => { state.phasePlaying = !state.phasePlaying; $('phase-play').textContent = state.phasePlaying ? '⏸ 停止' : '▶ 再生'; if (state.phasePlaying && state.phase >= 1) state.phase = 0; });
 $('measure').addEventListener('click', () => { state.measuring = !state.measuring; $('measure').classList.toggle('active', state.measuring); canvas.style.cursor = state.measuring ? 'crosshair' : ''; toast(state.measuring ? '計測モード：点群上の 2 点をクリック（Esc で解除）' : '計測モード終了'); if (!state.measuring) measure.pending = null; });
 $('measure-clear').addEventListener('click', () => measure.clear());
-$('site').addEventListener('change', (e) => { state.site = e.target.value; state.isolateRoute = null; loadSite(state.site); });
+$('site').addEventListener('change', (e) => { state.site = e.target.value; state.isolateRoute = null; state.las = null; document.body.classList.remove('las-mode'); controls.maxDistance = 3500; loadSite(state.site); });
 $('isolate-reset').addEventListener('click', () => isolateRoute(null));
 $('panel-toggle').addEventListener('click', () => document.body.classList.toggle('panel-collapsed'));
 $('props-close').addEventListener('click', clearSelection);
@@ -3258,7 +4100,7 @@ function loop(now) {
 }
 
 // debugging / automation hooks
-window.__app = { select, clearSelection, zoomTo, applyPreset, isolateRoute, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
+window.__app = { select, clearSelection, zoomTo, applyPreset, isolateRoute, loadLasFile, exportLas, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
 
 resize();
 applySpacing(); applyMode(); applyClsMask(); applySection(); clearSelection();

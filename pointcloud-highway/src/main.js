@@ -10,6 +10,7 @@ import { buildBIM, elementAtFace } from './bim.js';
 import { buildDriveRoute, Director } from './camera.js';
 import { Measure } from './measure.js';
 import { buildLevels, buildGridBubbles, SectionBox } from './annotations.js';
+import { LAS_WORKER_BODY, writeLas } from './las.js';
 
 const $ = (id) => document.getElementById(id);
 const NO_ELEM = 65535;
@@ -46,7 +47,7 @@ const state = {
   site: 'hakozaki', density: 0.4, mode: 0, row: 'lidar', heightMix: 0.15, pointSize: 2.0, gain: 1.0,
   showCloud: true, showBim: false, bimStyle: 'wire', showBuildingsBim: false, showLevels: false, showGrid: false,
   section: false, phase: 1, phasePlaying: false, devRange: 50, selected: -1, measuring: false, edl: true,
-  clsHidden: new Set(), isolateRoute: null,
+  clsHidden: new Set(), isolateRoute: null, surfel: true, shade: 0.5, las: null,
 };
 let data = null, elements = [], points = null, bim = null, levels = null, grids = null, cloud = null, seqRange = [0, 1];
 
@@ -95,22 +96,7 @@ function rebuildCloud() {
       const m = ev.data;
       if (m.type === 'progress') { setProgress(0.1 + m.p * 0.8, 'LiDAR 点群を合成中…'); return; }
       worker.terminate();
-      cloud = m;
-      if (points) { scene.remove(points); points.geometry.dispose(); }
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.BufferAttribute(m.pos, 3));
-      geo.setAttribute('intensity', new THREE.BufferAttribute(m.inten, 1, true));
-      geo.setAttribute('cls', new THREE.BufferAttribute(m.cls, 1, false));
-      geo.setAttribute('dev', new THREE.BufferAttribute(m.dev, 1, true));
-      geo.setAttribute('elem', new THREE.BufferAttribute(m.elem, 1, false));
-      geo.computeBoundingSphere();
-      points = new THREE.Points(geo, pointMat);
-      points.frustumCulled = false;
-      points.visible = state.showCloud;
-      scene.add(points);
-      let hMax = 0; for (let i = 1; i < m.pos.length; i += 3) if (m.pos[i] > hMax) hMax = m.pos[i];
-      pointMat.uniforms.uHMin.value = -2; pointMat.uniforms.uHMax.value = Math.min(hMax, 60);
-      $('stat-points').textContent = m.n.toLocaleString();
+      installCloud(m);
       $('stat-time').textContent = `${(m.ms / 1000).toFixed(1)} s`;
       setProgress(0.95, 'GPU へ転送中…');
       overlay.classList.add('hidden');
@@ -119,6 +105,107 @@ function rebuildCloud() {
     worker.postMessage({ data, options: { density: state.density, seed: 1 } });
   });
 }
+
+/** Build the Points object from attribute arrays (synthesised or imported). */
+function installCloud(m) {
+  cloud = m;
+  if (points) { scene.remove(points); points.geometry.dispose(); }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(m.pos, 3));
+  geo.setAttribute('intensity', new THREE.BufferAttribute(m.inten, 1, true));
+  geo.setAttribute('cls', new THREE.BufferAttribute(m.cls, 1, false));
+  geo.setAttribute('dev', new THREE.BufferAttribute(m.dev, 1, true));
+  geo.setAttribute('elem', new THREE.BufferAttribute(m.elem, 1, false));
+  geo.setAttribute('normal', new THREE.BufferAttribute(m.nrm || new Int8Array(m.n * 3), 3, true));
+  if (m.rgb) geo.setAttribute('rgb', new THREE.BufferAttribute(m.rgb, 3, true));
+  pointMat.uniforms.uHasRgb.value = m.rgb ? 1 : 0;
+  geo.computeBoundingSphere();
+  points = new THREE.Points(geo, pointMat);
+  points.frustumCulled = false;
+  points.visible = state.showCloud;
+  scene.add(points);
+  let hMin = Infinity, hMax = -Infinity;
+  for (let i = 1; i < m.pos.length; i += 3) { if (m.pos[i] > hMax) hMax = m.pos[i]; if (m.pos[i] < hMin) hMin = m.pos[i]; }
+  pointMat.uniforms.uHMin.value = Math.max(hMin, -2); pointMat.uniforms.uHMax.value = Math.min(hMax, state.las ? hMax : 60);
+  $('stat-points').textContent = m.n.toLocaleString();
+  renderLegend();
+}
+
+// ---------------------------------------------------------------- real scans (LAS / LAZ)
+async function lasWorkerSource() {
+  let src = window.__LAS_SRC__;
+  if (!src) src = await (await fetch(new URL('./las.js', import.meta.url))).text();
+  return src.replace(/^export\s+(?=(const|let|function|class|async))/gm, '') + '\n' + LAS_WORKER_BODY;
+}
+async function loadLasFile(file) {
+  overlay.classList.remove('hidden');
+  setProgress(0.02, `${file.name} を読み込み中…`);
+  const buf = await file.arrayBuffer();
+  const isLaz = /\.laz$/i.test(file.name) || (new Uint8Array(buf)[104] & 0x80) !== 0;
+  const url = URL.createObjectURL(new Blob([await lasWorkerSource()], { type: 'text/javascript' }));
+  const worker = new Worker(url);
+  const m = await new Promise((resolve, reject) => {
+    worker.onmessage = (ev) => {
+      const d = ev.data;
+      if (d.type === 'progress') setProgress(0.05 + d.p * 0.9, d.p < 0.7 ? (isLaz ? 'LAZ を展開中（laz-perf）…' : 'LAS を解析中…') : '法線を推定中…');
+      else if (d.type === 'error') reject(new Error(d.message));
+      else resolve(d);
+    };
+    worker.onerror = (e) => reject(new Error(e.message || 'worker error'));
+    worker.postMessage({ buf, isLaz, maxPoints: 16e6 }, [buf]);
+  }).finally(() => { worker.terminate(); URL.revokeObjectURL(url); });
+  // switch the viewer into "real scan" mode: no structural model, cloud only
+  state.las = { name: file.name, header: m.header, spacing: m.spacing, cell: m.cell, stride: m.stride, local: m.local };
+  state.isolateRoute = null; clearSelection(); measure.clear();
+  elements = [];
+  if (bim) { scene.remove(bim.group); bim.faceGeo.dispose(); bim.edgeGeo.dispose(); bim = null; }
+  if (levels) { scene.remove(levels); levels.traverse((o) => o.element && o.element.remove()); levels = null; }
+  if (grids) { scene.remove(grids); grids.traverse((o) => o.element && o.element.remove()); grids = null; }
+  director.route = null; director.setMode('orbit'); setActiveView(null);
+  document.body.classList.add('las-mode');
+  installCloud(m);
+  applySpacing();
+  const h = m.header;
+  $('site-name').textContent = `${file.name}（LAS ${h.version} / PF${h.format}${m.stride > 1 ? ` / 1:${m.stride} 間引き` : ''}）`;
+  $('stat-elements').textContent = '—';
+  $('stat-time').textContent = `${(m.spacing).toFixed(2)} m/pt`;
+  $('drive-name').textContent = '—（実測データでは利用不可）';
+  // fit camera and section box to the data
+  const bb = points.geometry.boundingSphere;
+  const c = bb.center.clone(), r = bb.radius;
+  director.flyTo(c.clone().add(new THREE.Vector3(-0.6, 0.55, 0.75).normalize().multiplyScalar(r * 1.9)), c, 10);
+  controls.maxDistance = r * 8;
+  sectionBox.min.set(c.x - r, c.y - r, c.z - r); sectionBox.max.set(c.x + r, c.y + r, c.z + r); sectionBox.update();
+  const cfg = [['sx0', c.x - r, c.x + r, c.x - r], ['sx1', c.x - r, c.x + r, c.x + r], ['sy0', c.y - r, c.y + r, c.y - r], ['sy1', c.y - r, c.y + r, c.y + r], ['sz0', c.z - r, c.z + r, c.z - r], ['sz1', c.z - r, c.z + r, c.z + r]];
+  for (const [id, lo, hi, v] of cfg) { const sl = $(id); sl.min = lo; sl.max = hi; sl.value = v; }
+  overlay.classList.add('hidden');
+  const clsSet = new Set(m.cls);
+  toast(`${m.n.toLocaleString()} 点を読み込みました（分類 ${clsSet.size} 種、平均点間隔 ${m.spacing.toFixed(2)} m）`, 5000);
+  if (!clsSet.has(2) && !clsSet.has(6)) $('mode').value = m.rgb ? '5' : '2', $('mode').dispatchEvent(new Event('change'));
+}
+function exportLas() {
+  if (!cloud) return;
+  // colour from the LiDAR colormap (mode 0 formula) so CloudCompare / ReCap show the same look
+  const lutData = lut.image.data, row = ROWS[state.row] ?? 0, n = cloud.n;
+  const rgb = new Uint8Array(n * 3);
+  const hMin = pointMat.uniforms.uHMin.value, hMax = pointMat.uniforms.uHMax.value;
+  for (let i = 0; i < n; i++) {
+    const I = Math.min(1, (cloud.inten[i] / 255) * state.gain), hN = Math.min(1, Math.max(0, (cloud.pos[i * 3 + 1] - hMin) / (hMax - hMin)));
+    const t = 0.09 + 0.91 * Math.min(1, (I * (1 - state.heightMix) + hN * state.heightMix) * 1.08);
+    const k = (row * 256 + Math.min(255, Math.max(0, Math.round(t * 255)))) * 4;
+    rgb[i * 3] = lutData[k]; rgb[i * 3 + 1] = lutData[k + 1]; rgb[i * 3 + 2] = lutData[k + 2];
+  }
+  const buf = writeLas({ n, pos: cloud.pos, inten: cloud.inten, cls: cloud.cls, rgb }, { offset: state.las ? [state.las.local.cx, state.las.local.cy, state.las.local.z0] : [0, 0, 0] });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([buf], { type: 'application/octet-stream' }));
+  a.download = (state.las ? state.las.name.replace(/\.la[sz]$/i, '') : `${state.site}-synth`) + '.las';
+  document.body.appendChild(a); a.click(); a.remove();
+  toast(`LAS 1.2 (PF2) を書き出しました: ${(buf.byteLength / 1e6).toFixed(0)} MB、${n.toLocaleString()} 点`, 5000);
+}
+$('las-file').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) loadLasFile(f).catch((err) => { overlay.classList.add('hidden'); toast(`読み込み失敗: ${err.message}`, 6000); }); e.target.value = ''; });
+$('las-export').addEventListener('click', exportLas);
+canvas.addEventListener('dragover', (e) => { e.preventDefault(); });
+canvas.addEventListener('drop', (e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f && /\.la[sz]$/i.test(f.name)) loadLasFile(f).catch((err) => { overlay.classList.add('hidden'); toast(`読み込み失敗: ${err.message}`, 6000); }); });
 
 function rebuildBim() {
   if (bim) { scene.remove(bim.group); bim.faceGeo.dispose(); bim.edgeGeo.dispose(); }
@@ -133,7 +220,7 @@ function rebuildBim() {
   bim = { ...b, group, faces, edges };
   $('stat-elements').textContent = elements.length.toLocaleString();
   const seqs = elements.filter((e) => e.seq >= 0).map((e) => e.seq);
-  seqRange = [Math.min(...seqs), Math.max(...seqs)];
+  seqRange = seqs.length ? [Math.min(...seqs), Math.max(...seqs)] : [0, 1];
   applyBimStyle();
   applyPhase();
 }
@@ -159,6 +246,7 @@ function applySpacing() {
   sp[CLS.railing] = s(DENS.railFace); sp[CLS.girder] = s(DENS.girderSide); sp[CLS.column] = s(DENS.column); sp[CLS.cap] = s(DENS.cap);
   sp[CLS.building] = s(DENS.wall * 0.8, 1.0); sp[CLS.floor] = s(DENS.floorSlab, 1.4); sp[CLS.ground] = s(DENS.ground, 1.3); sp[CLS.lowVeg] = s(DENS.grass, 1.3);
   sp[CLS.highVeg] = 0.45; sp[CLS.vehicle] = s(6); sp[CLS.pole] = 0.12; sp[CLS.furniture] = 0.12; sp[CLS.gantry] = 0.1; sp[CLS.water] = 1.5; sp[CLS.noise] = 0.1;
+  if (state.las) sp.fill(Math.min(2.5, Math.max(0.03, state.las.spacing * 1.1)));
   pointMat.uniforms.uTanHalfFov.value = Math.tan((camera.fov / 2) * Math.PI / 180);
 }
 function applyMode() {
@@ -168,6 +256,8 @@ function applyMode() {
   pointMat.uniforms.uSize.value = state.pointSize;
   pointMat.uniforms.uGain.value = state.gain;
   pointMat.uniforms.uDevRange.value = state.devRange;
+  pointMat.uniforms.uSurfel.value = state.surfel ? 1 : 0;
+  pointMat.uniforms.uShade.value = state.shade;
   $('row-group').style.display = state.mode <= 1 ? '' : 'none';
   $('mix-group').style.display = state.mode === 0 ? '' : 'none';
   $('dev-group').style.display = state.mode === 4 ? '' : 'none';
@@ -348,7 +438,7 @@ function setActiveView(name) { document.querySelectorAll('[data-view]').forEach(
 document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => {
   const v = b.dataset.view;
   setActiveView(v);
-  if (v === 'drive') { director.setMode('drive'); return; }
+  if (v === 'drive') { if (!director.route) { toast('走行ルートがありません（実測データでは利用不可）'); setActiveView(null); return; } director.setMode('drive'); return; }
   if (v === 'fly') { director.setMode('flyover'); return; }
   director.setMode('orbit');
   let d = VIEWS[v];
@@ -369,8 +459,10 @@ $('row').addEventListener('change', (e) => { state.row = e.target.value; applyMo
 $('mix').addEventListener('input', (e) => { state.heightMix = +e.target.value; applyMode(); });
 $('psize').addEventListener('input', (e) => { state.pointSize = +e.target.value; applyMode(); });
 $('gain').addEventListener('input', (e) => { state.gain = +e.target.value; applyMode(); });
+$('surfel').addEventListener('change', (e) => { state.surfel = e.target.checked; applyMode(); });
+$('shade').addEventListener('input', (e) => { state.shade = +e.target.value; applyMode(); });
 $('devrange').addEventListener('change', (e) => { state.devRange = +e.target.value; applyMode(); });
-$('density').addEventListener('change', async (e) => { state.density = +e.target.value; applySpacing(); await rebuildCloud(); applyPhase(); });
+$('density').addEventListener('change', async (e) => { state.density = +e.target.value; applySpacing(); if (state.las) return; await rebuildCloud(); applyPhase(); });
 $('edl').addEventListener('change', (e) => { state.edl = e.target.checked; edl.enabled = state.edl; });
 $('edl-strength').addEventListener('input', (e) => { edl.strength = +e.target.value; });
 $('show-cloud').addEventListener('change', (e) => { state.showCloud = e.target.checked; if (points) points.visible = state.showCloud; });
@@ -384,7 +476,7 @@ $('phase').addEventListener('input', (e) => { state.phase = +e.target.value / 10
 $('phase-play').addEventListener('click', () => { state.phasePlaying = !state.phasePlaying; $('phase-play').textContent = state.phasePlaying ? '⏸ 停止' : '▶ 再生'; if (state.phasePlaying && state.phase >= 1) state.phase = 0; });
 $('measure').addEventListener('click', () => { state.measuring = !state.measuring; $('measure').classList.toggle('active', state.measuring); canvas.style.cursor = state.measuring ? 'crosshair' : ''; toast(state.measuring ? '計測モード：点群上の 2 点をクリック（Esc で解除）' : '計測モード終了'); if (!state.measuring) measure.pending = null; });
 $('measure-clear').addEventListener('click', () => measure.clear());
-$('site').addEventListener('change', (e) => { state.site = e.target.value; state.isolateRoute = null; loadSite(state.site); });
+$('site').addEventListener('change', (e) => { state.site = e.target.value; state.isolateRoute = null; state.las = null; document.body.classList.remove('las-mode'); controls.maxDistance = 3500; loadSite(state.site); });
 $('isolate-reset').addEventListener('click', () => isolateRoute(null));
 $('panel-toggle').addEventListener('click', () => document.body.classList.toggle('panel-collapsed'));
 $('props-close').addEventListener('click', clearSelection);
@@ -416,7 +508,7 @@ function loop(now) {
 }
 
 // debugging / automation hooks
-window.__app = { select, clearSelection, zoomTo, applyPreset, isolateRoute, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
+window.__app = { select, clearSelection, zoomTo, applyPreset, isolateRoute, loadLasFile, exportLas, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
 
 resize();
 applySpacing(); applyMode(); applyClsMask(); applySection(); clearSelection();
