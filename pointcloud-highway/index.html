@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>LiDAR × BIM 都市高速</title>
+<meta name="description" content="実在の都市高速ジャンクション（OpenStreetMap 由来の線形）を LiDAR 風点群として合成し、BIM/Revit 的な構造要素・レベル・通り芯・断面ボックス・4D・Scan-to-BIM 偏差を重ねて見る 3D シミュレーション" />
+<style>
+  :root {
+    --bg: #000; --panel: rgba(12, 14, 20, 0.82); --panel-border: rgba(255,255,255,0.08); --text: #e6e9ef; --muted: #8a93a6;
+    --accent: #5cc8ff; --accent2: #ffb347; --font: "Inter", "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", system-ui, sans-serif; --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #000; } }
+  :root[data-theme="dark"] { --bg: #000; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 13px; overflow: hidden; }
+  #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+  #labels > div { pointer-events: none; }
+  header { position: fixed; top: 0; left: 0; right: 0; height: 48px; display: flex; align-items: center; gap: 14px; padding: 0 14px; background: linear-gradient(180deg, rgba(0,0,0,0.75), rgba(0,0,0,0)); z-index: 5; pointer-events: none; }
+  header > * { pointer-events: auto; }
+  header h1 { font-size: 14px; font-weight: 600; margin: 0; letter-spacing: 0.02em; display: flex; align-items: center; gap: 8px; }
+  header h1 b { color: var(--accent); font-weight: 700; }
+  header .site { color: var(--muted); font-size: 12px; }
+  header .stats { margin-left: auto; display: flex; gap: 14px; font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  header .stats b { color: var(--text); font-weight: 500; }
+  select, button, input[type=range] { font: inherit; color: var(--text); }
+  select { background: #151924; border: 1px solid var(--panel-border); border-radius: 6px; padding: 5px 8px; width: 100%; }
+  button { background: #1a1f2b; border: 1px solid var(--panel-border); border-radius: 6px; padding: 6px 10px; cursor: pointer; transition: background .15s, border-color .15s; }
+  button:hover { background: #242a39; }
+  button.active { background: rgba(92,200,255,0.18); border-color: var(--accent); color: var(--accent); }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  input[type=checkbox] { accent-color: var(--accent); }
+  #panel { position: fixed; top: 56px; left: 12px; width: 292px; max-height: calc(100% - 68px); overflow-y: auto; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; backdrop-filter: blur(14px); z-index: 4; padding: 6px 0 10px; scrollbar-width: thin; }
+  body.panel-collapsed #panel { display: none; }
+  #panel-toggle { position: fixed; top: 10px; left: 12px; z-index: 6; width: 30px; height: 30px; padding: 0; display: none; }
+  .sec { padding: 8px 14px; border-bottom: 1px solid var(--panel-border); }
+  .sec:last-child { border-bottom: none; }
+  .sec h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 4px 0 8px; font-weight: 600; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0; }
+  .row label { flex: 1; }
+  .row .val { font-family: var(--mono); font-size: 11px; color: var(--muted); min-width: 52px; text-align: right; }
+  .row.check { justify-content: flex-start; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .presets button { text-align: left; font-size: 12px; padding: 7px 9px; }
+  .presets button small { display: block; color: var(--muted); font-size: 10.5px; margin-top: 2px; }
+  .sub { margin-left: 22px; }
+  .muted { color: var(--muted); }
+  #props { position: fixed; top: 56px; right: 12px; width: 320px; max-height: calc(100% - 68px); overflow-y: auto; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; backdrop-filter: blur(14px); z-index: 4; scrollbar-width: thin; }
+  #props .head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--panel-border); position: sticky; top: 0; background: rgba(12,14,20,0.95); }
+  #props .head h2 { font-size: 13px; margin: 0; font-weight: 600; }
+  #props.empty .head button { visibility: hidden; }
+  #props-body { padding: 10px 14px 14px; }
+  .type-card { display: flex; gap: 10px; align-items: center; background: #151924; border: 1px solid var(--panel-border); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; }
+  .type-card i { width: 26px; height: 26px; border-radius: 6px; flex: none; }
+  .type-card b { display: block; font-weight: 600; }
+  .type-card span { color: var(--muted); font-size: 11.5px; }
+  .note { background: rgba(255,179,71,0.12); border: 1px solid rgba(255,179,71,0.35); color: var(--accent2); border-radius: 6px; padding: 6px 8px; font-size: 12px; margin-bottom: 8px; }
+  details { border: 1px solid var(--panel-border); border-radius: 8px; margin: 6px 0; overflow: hidden; }
+  summary { cursor: pointer; padding: 6px 10px; background: #151924; font-weight: 600; font-size: 12px; list-style: none; }
+  summary::before { content: "▾ "; color: var(--muted); }
+  details:not([open]) summary::before { content: "▸ "; }
+  details table { width: 100%; border-collapse: collapse; }
+  details td { padding: 5px 10px; border-top: 1px solid var(--panel-border); font-size: 12px; vertical-align: top; }
+  details td:first-child { color: var(--muted); width: 44%; }
+  details td:last-child { font-family: var(--mono); font-size: 11.5px; }
+  .props-actions { display: flex; gap: 6px; margin-top: 8px; }
+  .props-actions button { flex: 1; }
+  #legend { position: fixed; left: 12px; bottom: 12px; width: 292px; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px; backdrop-filter: blur(14px); padding: 10px 14px; z-index: 4; }
+  body.panel-collapsed #legend { display: none; }
+  .legend-title { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  #legend .bar { height: 10px; border-radius: 5px; }
+  #legend .ticks { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10.5px; color: var(--muted); margin-top: 4px; }
+  #legend .hint { font-size: 10.5px; color: var(--muted); margin-top: 6px; }
+  .swatches { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; }
+  .sw { display: flex; align-items: center; gap: 6px; font-size: 11px; cursor: pointer; padding: 2px 0; }
+  .sw i { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+  .sw.off { opacity: 0.35; text-decoration: line-through; }
+  #drive { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); width: min(520px, 60vw); background: var(--panel); border: 1px solid var(--panel-border); border-radius: 10px; padding: 8px 12px; z-index: 4; font-size: 11.5px; color: var(--muted); }
+  #drive .track { height: 4px; background: #222838; border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  #drive .track i { display: block; height: 100%; width: 0; background: var(--accent); }
+  #isolate-banner { position: fixed; top: 60px; right: 344px; background: rgba(255,179,71,0.14); border: 1px solid rgba(255,179,71,0.5); color: var(--accent2); border-radius: 8px; padding: 6px 10px; font-size: 12px; display: flex; gap: 10px; align-items: center; z-index: 5; }
+  #isolate-banner button { padding: 3px 8px; font-size: 11px; }
+  #toast { position: fixed; top: 60px; left: 50%; transform: translateX(-50%) translateY(-10px); background: rgba(20,24,34,0.95); border: 1px solid var(--panel-border); border-radius: 8px; padding: 8px 14px; font-size: 12.5px; opacity: 0; transition: opacity .2s, transform .2s; z-index: 7; pointer-events: none; white-space: nowrap; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; z-index: 20; transition: opacity .3s; }
+  #overlay.hidden { opacity: 0; pointer-events: none; }
+  #overlay .box { width: 320px; height: 6px; background: #1a1f2b; border-radius: 3px; overflow: hidden; }
+  #bar { height: 100%; width: 0; background: linear-gradient(90deg, #440154, #21918c, #fde725); transition: width .2s; }
+  #overlay h3 { margin: 0; font-weight: 600; font-size: 15px; }
+  #overlay p { margin: 0; color: var(--muted); font-size: 12px; }
+  /* CSS2D annotations */
+  .level-tag { font-family: var(--mono); font-size: 11px; color: #9fd0ff; white-space: nowrap; transform: translate(10px, -50%); border-bottom: 1px solid #6fb7ff; padding: 0 4px 1px; }
+  .level-tag .tri { margin-right: 4px; }
+  .level-tag small { margin-left: 8px; color: #6fb7ff; }
+  .grid-bubble { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid #cfd8e3; background: rgba(0,0,0,0.6); color: #e8eef5; font-family: var(--mono); font-size: 9.5px; display: flex; align-items: center; justify-content: center; }
+  .dim-label { background: rgba(0,0,0,0.75); border: 1px solid #ffd54f; color: #ffe082; font-family: var(--mono); font-size: 11.5px; padding: 3px 7px; border-radius: 4px; white-space: nowrap; transform: translateY(-18px); text-align: center; }
+  .dim-label b { font-size: 13px; }
+  .dim-label span { display: block; color: #c7b16a; font-size: 10px; }
+  @media (max-width: 900px) {
+    #panel-toggle { display: block; }
+    #panel { top: 48px; left: 10px; width: calc(100vw - 20px); max-height: 55vh; }
+    #props { left: 10px; right: 10px; width: auto; top: auto; bottom: 10px; max-height: 45vh; }
+    #legend { display: none; }
+    #drive { display: none; }
+    header .stats { display: none; }
+    header h1 { margin-left: 36px; font-size: 12px; }
+    header .site { display: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="labels"></div>
+
+<header>
+  <h1><b>LiDAR × BIM</b> 都市高速 点群シミュレーション <span class="site" id="site-name">—</span></h1>
+  <div class="stats">
+    <span>点数 <b id="stat-points">—</b></span>
+    <span>BIM 要素 <b id="stat-elements">—</b></span>
+    <span>合成 <b id="stat-time">—</b></span>
+    <span><b id="stat-fps">— fps</b></span>
+  </div>
+</header>
+<button id="panel-toggle" title="パネル">☰</button>
+
+<aside id="panel">
+  <div class="sec">
+    <h2>対象地（OpenStreetMap 実線形）</h2>
+    <select id="site">
+      <option value="hakozaki">首都高 箱崎JCT（6号・7号・9号・C1）</option>
+      <option value="ohashi">首都高 大橋JCT（3号・C2）</option>
+    </select>
+  </div>
+  <div class="sec">
+    <h2>プリセット</h2>
+    <div class="presets grid2">
+      <button data-preset="lidar" class="active">LiDAR 点群<small>参考画像の再現</small></button>
+      <button data-preset="mono">モノクロ スキャン<small>反射強度のみ</small></button>
+      <button data-preset="bim">BIM 重畳<small>カテゴリ色・レベル・通り芯</small></button>
+      <button data-preset="scan2bim">Scan-to-BIM<small>設計との偏差ヒートマップ</small></button>
+      <button data-preset="xray">X-ray 都市<small>建物マス + magma</small></button>
+    </div>
+  </div>
+  <div class="sec">
+    <h2>点群 表示</h2>
+    <div class="row"><label>着色モード</label></div>
+    <select id="mode">
+      <option value="0">LiDAR（反射強度 × 高さ）</option>
+      <option value="1">標高</option>
+      <option value="2">反射強度（モノクロ）</option>
+      <option value="3">分類（Classification）</option>
+      <option value="4">Scan-to-BIM 偏差</option>
+      <option value="5">疑似カラー</option>
+    </select>
+    <div id="row-group" class="row"><label>カラーマップ</label>
+      <select id="row" style="width:140px"><option value="lidar">LiDAR（紫→シアン→黄）</option><option value="viridis">viridis</option><option value="magma">magma</option><option value="inferno">inferno</option><option value="plasma">plasma</option><option value="turbo">turbo</option></select>
+    </div>
+    <div id="mix-group" class="row"><label>高さの寄与</label><input id="mix" type="range" min="0" max="1" step="0.05" value="0.15" style="width:120px"></div>
+    <div id="dev-group" class="row"><label>偏差レンジ</label>
+      <select id="devrange" style="width:120px"><option value="20">±20 mm</option><option value="50" selected>±50 mm</option><option value="100">±100 mm</option></select>
+    </div>
+    <div class="row"><label>点サイズ</label><input id="psize" type="range" min="0.3" max="3" step="0.1" value="1.6" style="width:120px"></div>
+    <div class="row"><label>強度ゲイン</label><input id="gain" type="range" min="0.5" max="2" step="0.05" value="1.0" style="width:120px"></div>
+    <div class="row"><label>点密度（再合成）</label>
+      <select id="density" style="width:120px"><option value="0.25">低 ≈1.2M</option><option value="0.5" selected>標準 ≈2.5M</option><option value="0.75">高 ≈3.8M</option><option value="1">最高 ≈5M</option></select>
+    </div>
+    <div class="row check"><input id="edl" type="checkbox" checked><label for="edl">Eye-Dome Lighting（輪郭強調）</label><input id="edl-strength" type="range" min="0" max="1.5" step="0.05" value="0.45" style="width:70px"></div>
+  </div>
+  <div class="sec">
+    <h2>レイヤー（BIM / Revit 風）</h2>
+    <div class="row check"><input id="show-cloud" type="checkbox" checked><label for="show-cloud">点群（as-built スキャン）</label></div>
+    <div class="row check"><input id="show-bim" type="checkbox"><label for="show-bim">BIM 構造モデル（設計）</label></div>
+    <div class="row sub"><label>表示スタイル</label>
+      <select id="bim-style" style="width:140px"><option value="wire">ワイヤーフレーム</option><option value="shaded">半透明シェーディング</option><option value="category">カテゴリ色</option></select>
+    </div>
+    <div class="row check sub"><input id="show-bldg" type="checkbox"><label for="show-bldg">建物マス（IfcBuilding）も表示</label></div>
+    <div class="row check"><input id="show-levels" type="checkbox"><label for="show-levels">レベル（GL / Deck L1–L5）</label></div>
+    <div class="row check"><input id="show-grid" type="checkbox"><label for="show-grid">通り芯バブル（橋脚 P-xxx）</label></div>
+    <div class="row check"><input id="section" type="checkbox"><label for="section">断面ボックス</label></div>
+    <div id="section-sliders" class="sub">
+      <div class="row"><label>X</label><input id="sx0" type="range" step="2"><input id="sx1" type="range" step="2"></div>
+      <div class="row"><label>Y</label><input id="sy0" type="range" step="0.5"><input id="sy1" type="range" step="0.5"></div>
+      <div class="row"><label>Z</label><input id="sz0" type="range" step="2"><input id="sz1" type="range" step="2"></div>
+    </div>
+  </div>
+  <div class="sec">
+    <h2>4D 施工シミュレーション</h2>
+    <input id="phase" type="range" min="0" max="100" step="0.5" value="100">
+    <div class="row"><span class="muted" id="phase-label">竣工（全要素）</span><button id="phase-play">▶ 再生</button></div>
+  </div>
+  <div class="sec">
+    <h2>カメラ</h2>
+    <div class="grid3">
+      <button data-view="iso" class="active">鳥瞰</button>
+      <button data-view="top">平面</button>
+      <button data-view="north">北側</button>
+      <button data-view="low">橋脚見上げ</button>
+      <button data-view="drive">ランプ走行</button>
+      <button data-view="fly">フライオーバー</button>
+    </div>
+    <div class="row"><label>走行速度</label><input id="speed" type="range" min="20" max="120" step="5" value="60" style="width:100px"><span class="val" id="speed-val">60 km/h</span></div>
+  </div>
+  <div class="sec">
+    <h2>ツール</h2>
+    <div class="grid2">
+      <button id="measure">📏 計測（mm）</button>
+      <button id="measure-clear">計測クリア</button>
+    </div>
+  </div>
+</aside>
+
+<aside id="props" class="empty">
+  <div class="head"><h2 id="props-title">プロパティ</h2><button id="props-close">✕</button></div>
+  <div id="props-body"></div>
+</aside>
+
+<div id="legend"></div>
+<div id="drive">走行ルート: <span id="drive-name">—</span><div class="track"><i id="drive-progress"></i></div></div>
+<div id="toast"></div>
+<div id="isolate-banner" style="display:none"><span>分離表示: <b id="isolate-name"></b></span><button id="isolate-reset">解除</button></div>
+
+<div id="overlay">
+  <h3>LiDAR × BIM 都市高速 点群シミュレーション</h3>
+  <p id="overlay-text">読み込み中…</p>
+  <div class="box"><div id="bar"></div></div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

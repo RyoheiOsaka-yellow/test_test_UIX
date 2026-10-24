@@ -1,0 +1,20 @@
+{
+  "hakozaki": {
+    "name": "Hakozaki JCT",
+    "nameJa": "首都高速 箱崎ジャンクション（東京都中央区）",
+    "center": [35.6838, 139.7870],
+    "bbox": [139.778, 35.676, 139.796, 35.690],
+    "cropM": [1500, 1300],
+    "layerHeight": 5.6,
+    "drive": { "ref": "6", "nameMatch": "向島線" }
+  },
+  "ohashi": {
+    "name": "Ohashi JCT",
+    "nameJa": "首都高速 大橋ジャンクション（東京都目黒区）",
+    "center": [35.6516, 139.6878],
+    "bbox": [139.679, 35.645, 139.696, 35.659],
+    "cropM": [1300, 1200],
+    "layerHeight": 5.6,
+    "drive": { "ref": "3", "nameMatch": "渋谷線" }
+  }
+}
