@@ -25,6 +25,6 @@
  ],
  [
   "buildPointCloud();\nsetRenderMode('solid');",
-  "buildPointCloud();\nsetRenderMode('cloud');   // 起動時からデジタルツイン（点群×CCTV）表示\n(function(){ ['scanpath','panel'].forEach(function(id){ var el=document.getElementById(id); if(el){ el.classList.add('collapsed'); var t=el.querySelector('.tgl'); if(t) t.textContent='+'; } }); })();   // 設定・スキャンパスは畳んで見出しと重ねない\n(function(){ function on(){ document.body.classList.add('ygo'); } if(window.__YGO) on(); else window.addEventListener('ydemo-go', on); })();   // 合図が来たらパネルを出す"
+  "buildPointCloud();\nsetRenderMode('cloud');   // 起動時からデジタルツイン（点群×CCTV）表示\nwindow.__YREADY=false; (function waitTween(){ if(camTween) requestAnimationFrame(waitTween); else setTimeout(function(){ window.__YREADY=true; }, 100); })();   // カメラが定位置に着くまで「描けた」合図を出さない\n(function(){ ['scanpath','panel'].forEach(function(id){ var el=document.getElementById(id); if(el){ el.classList.add('collapsed'); var t=el.querySelector('.tgl'); if(t) t.textContent='+'; } }); })();   // 設定・スキャンパスは畳んで見出しと重ねない\n(function(){ function on(){ document.body.classList.add('ygo'); } if(window.__YGO) on(); else window.addEventListener('ydemo-go', on); })();   // 合図が来たらパネルを出す"
  ]
 ]

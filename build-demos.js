@@ -141,7 +141,7 @@ function prepare(id) {
      読み込み直後からの固定タイマーだと、重いデモ＋長い settle で「見せる前に動き出す」ことがあった */
   s += '\n<script>(function(){var last=0,run=0,n=0;function t(ts){n++;'
      + 'var dt=last?ts-last:9999;last=ts;if(dt<120)run++;else run=0;'
-     + 'if(((run>=10&&n>=15)||n>=240)&&window.__YREADY!==false){try{parent.postMessage("ydemo-ready","*")}catch(e){}'
+     + 'if(((run>=6&&n>=10)||n>=240)&&window.__YREADY!==false){try{parent.postMessage("ydemo-ready","*")}catch(e){}'
      + 'if(window!==window.parent&&!/[?&]hold=1/.test(location.search))setTimeout(function(){if(window.__ygo)window.__ygo()},20000);return}'
      + 'requestAnimationFrame(t)}requestAnimationFrame(t)})();<\/script>\n';
 
@@ -234,7 +234,7 @@ for (const [slot, ids] of Object.entries(conf.slots || {})) {
   const theme = (conf.theme || {})[slot];
   const keepAll = list.every(id => (conf.keep || []).indexOf(id) !== -1);
   const reveal = (conf.reveal || {})[slot];   // "fade": ポスターの上に読み込み完了後フェードで重ねる
-  const settle = (conf.settle || {})[slot];   // 描画が育つのを待つ時間(ms)。既定 900
+  const settle = (conf.settle || {})[slot];   // 描画が育つのを待つ時間(ms)。既定 300
   const host = '<div class="panel__embed" data-slot="' + slot + '"'
              + (theme ? ' data-theme="' + theme + '"' : '')
              + (keepAll ? ' data-keep="1"' : '')
@@ -315,8 +315,8 @@ if (used.length) {
     '  pointer-events:none;opacity:0;transition:opacity .9s ease;',
     '}',
     '.panel__embed iframe.is-on{opacity:1;}',
-    '/* reveal:fade はポスターを見せたまま、準備できた実描画を1.4秒かけて重ねる */',
-    '.panel__embed[data-reveal="fade"] iframe{transition-duration:1.4s;}',
+    '/* reveal:fade はポスターを見せたまま、準備できた実描画を1秒かけて重ねる */',
+    '.panel__embed[data-reveal="fade"] iframe{transition-duration:1s;}',
     '/* スマホでもデモは動かす。動かない環境（WebGL2なし・省データ等）はJS側の判定でポスターのまま */',
     '@media (prefers-reduced-motion:reduce){ .panel__embed{display:none;} }',
     MK.cssB].join('\n') + '\n';
@@ -324,6 +324,9 @@ if (used.length) {
   if (i === -1) throw new Error('</style> がありません');
   h = h.slice(0, i) + CSS + h.slice(i);
 }
+
+/* 他ページのヒーローで使うデモ（先読みの対象） */
+const prefetchList = Object.keys(conf.slots).filter(k => /-hero$/.test(k)).map(k => (conf.slots[k] || [])[0]).filter(Boolean);
 
 /* ───────── 6. マウント用 JS ───────── */
 if (used.length) {
@@ -365,7 +368,7 @@ if (used.length) {
   '     そこで load からさらに settle だけ待ってから見せる。これをしないと、まだ何も描いて',
   '     いない白/黒の板が先に出てきて、あとから絵が飛び込む＝ちらつきに見える。',
   '     インクのように「育つ」デモは、育つまでの時間を demos.json の settle で長めに取る */',
-  '  var SETTLE_MS = 900;',
+  '  var SETTLE_MS = 300;',
   '  function needsOk(id) {',
   '    if (NEEDS[id] === \'webgpu\') return gpuOk;',
   '    if (SMALL && MOBILE_SKIP.indexOf(id) !== -1) return false;',
@@ -431,7 +434,7 @@ if (used.length) {
   '      // 静止画がそのまま動き出したように見える（重ね終わってから動かすと「止まってから動く」感じが残る）',
   '      setTimeout(function () {',
   '        try { f.contentWindow.postMessage(\'ydemo-go\', \'*\'); } catch (e) {}',
-  '      }, 120);',
+  '      }, 60);',
   '      if (old) setTimeout(function () {',
   '        if (old.parentNode) old.parentNode.removeChild(old);',
   '      }, hold);',
@@ -440,7 +443,7 @@ if (used.length) {
   '    f.addEventListener(\'load\', function () {',
   '      setTimeout(function () { waited = true; tryShow(); }, slot.settle);',
   '      // 合図が来ないデモ（描画を持たない等）でも取り残さないための保険',
-  '      setTimeout(function () { painted = true; tryShow(); }, slot.settle + 4000);',
+  '      setTimeout(function () { painted = true; tryShow(); }, slot.settle + 6000);',
   '    });',
   '    slot.el.appendChild(f);',
   '  }',
@@ -542,6 +545,22 @@ if (used.length) {
   '  window.addEventListener(\'scroll\', onScroll2, { passive: true });',
   '  window.addEventListener(\'resize\', onScroll2, { passive: true });',
   '  embedParallax();',
+  '',
+  '  /* 公開版（外部ファイル）のとき: 他ページのヒーローのデモを、このページが落ち着いてから裏で先読みしておく。',
+  '     次のページを開いたとき、読み込み待ちなしで動き出す */',
+  '  var base0 = hosts[0].getAttribute(\'data-demo-base\');',
+  '  if (base0 && !SMALL && !(navigator.connection && navigator.connection.saveData)) {',
+  '    var PRE = ' + JSON.stringify(prefetchList) + ';',
+  '    var have = {};',
+  '    for (var h0 = 0; h0 < hosts.length; h0++) have[hosts[h0].getAttribute(\'data-demo\').split(\',\')[0].trim()] = 1;',
+  '    setTimeout(function () {',
+  '      for (var p0 = 0; p0 < PRE.length; p0++) {',
+  '        if (have[PRE[p0]]) continue;',
+  '        var ln = document.createElement(\'link\'); ln.rel = \'prefetch\'; ln.as = \'document\';',
+  '        ln.href = base0 + PRE[p0] + \'.html\'; document.head.appendChild(ln);',
+  '      }',
+  '    }, 6000);',
+  '  }',
   '  }',                                                    // boot() ここまで',
   '',
   '  /* WebGPU は「navigator.gpu がある」だけでは動かない環境がある（アダプタ無効など）。',
