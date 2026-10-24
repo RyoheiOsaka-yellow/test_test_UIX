@@ -38,13 +38,15 @@ function toHash(html) {
   return html
     .replace(/href="\/cases\/([a-z0-9-]+)\/"/g, 'href="#/case/$1"')
     .replace(/href="\/cases\/"/g, 'href="#/cases"')
+    .replace(/href="\/news\/([a-z0-9-]+)\/"/g, 'href="#/news/$1"')
     .replace(/href="\/news\/"/g, 'href="#/news"')
     .replace(/href="\/(xbuild|xad|xinteractive)\/"/g, 'href="#/$1"')
     .replace(/href="\/#contact"/g, 'href="#contact"')
     .replace(/href="\/"/g, 'href="#top"');
 }
 
-function thumbFile(src) { return 'assets/case/_thumb/' + path.basename(src).replace(/\.[a-z]+$/, '') + '.webp'; }
+function thumbFile(src) { return (src.indexOf('/assets/news/') === 0 ? 'assets/news/_thumb/' : 'assets/case/_thumb/') + path.basename(src).replace(/\.[a-z]+$/, '') + '.webp'; }
+function newsThumbFile(src) { return 'assets/news/_thumb/' + path.basename(src).replace(/\.[a-z]+$/, '') + '.webp'; }
 function thumbDataUri(src) {
   const t = REPO + thumbFile(src);
   return fs.existsSync(t) ? 'data:image/webp;base64,' + fs.readFileSync(t).toString('base64') : null;
@@ -54,6 +56,7 @@ function thumbSrcMap() {
   const cases = JSON.parse(fs.readFileSync(REPO + 'cases.json', 'utf8'));
   const m = {};
   cases.forEach(c => { if (c.imgs[0]) m[c.key] = '/' + (fs.existsSync(REPO + thumbFile(c.imgs[0].src)) ? thumbFile(c.imgs[0].src) : c.imgs[0].src.replace(/^\//, '')); });
+  NEWS.images(NEWS.load()).forEach(im => { m[im.key] = im.src; });   // お知らせの画像は実ファイルそのまま
   return m;
 }
 
@@ -139,7 +142,16 @@ function inline(h) {
       .replace('<div class="page active" id="page-case">', '<div class="page" id="page-case-' + c.key + '">');
   });
   pages += NEWS.pageHtml(news).replace('<div class="page active" id="page-news">', '<div class="page" id="page-news">');
-  pages = toHash(pages).replace(/src="__CASEIMG__([a-z0-9-]+)__"/g, 'src="' + BLANK + '" data-case-img="$1"');
+  // お知らせの記事ページ（画像は assets/news/_thumb のサムネイルを埋め込む）
+  NEWS.images(news).forEach(im => {
+    const t = REPO + newsThumbFile(im.src);
+    if (fs.existsSync(t)) IMG[im.key] = 'data:image/webp;base64,' + fs.readFileSync(t).toString('base64');
+  });
+  news.filter(NEWS.hasArticle).forEach(n => {
+    pages += NEWS.articleHtml(n, s => (IMG['news:' + path.basename(s)] ? '__CASEIMG__news:' + path.basename(s) + '__' : s.replace(/^\//, '')))
+      .replace('<div class="page active" id="page-news-' + n.id + '">', '<div class="page" id="page-news-' + n.id + '">');
+  });
+  pages = toHash(pages).replace(/src="__CASEIMG__([a-z0-9:.-]+)__"/g, 'src="' + BLANK + '" data-case-img="$1"');
   pages += '<script>window.__CASE_IMG=' + JSON.stringify(IMG) + ';'
     + '(function(){var M=window.__CASE_IMG,n=document.querySelectorAll("[data-case-img]");'
     + 'for(var i=0;i<n.length;i++){var u=M[n[i].getAttribute("data-case-img")];if(u)n[i].src=u;}})();</script>\n';

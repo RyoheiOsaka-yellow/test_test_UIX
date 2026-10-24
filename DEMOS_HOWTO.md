@@ -227,6 +227,8 @@ HTML ファイルをそのまま送っていただければ、こちらで
 
 - トップの事例カードは cases.json で `"home": true` を付けた事例（先頭4件、cases.json の並び順）。
 - お知らせは news.json（日英・日付・関連する事例 key・プレスリリース URL）。トップには最新4件、
-  `#/news`（公開版 `/news/`）に全件。どちらも `node build-demos.js` で 1枚HTML に組み込まれ、
+  `#/news`（公開版 `/news/`）に全件。`sections`（見出し・段落・箇条書き・注記・画像とキャプション）を持つ項目は
+  記事ページ（`#/news/<id>`、公開版 `/news/<id>/`）になり、一覧からはそこへ飛ぶ。画像は assets/news/ か assets/case/ に置き、
+  1枚HTML用のサムネイルは `node demos/tools/case-thumbs.js` で assets/news/_thumb/ に作る。どちらも `node build-demos.js` で 1枚HTML に組み込まれ、
   公開版（build-static.js）はトップのセクションをそのまま使い、一覧ページを別に生成する。
 - 旧 RECORD セクションは廃止。旧リンク `#record` は `/#selected-cases` へ振り分ける。

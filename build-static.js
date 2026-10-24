@@ -244,10 +244,11 @@ base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
   base = INL.strip(base);
   base = base.replace(/href="#\/case\/([a-z0-9-]+)"/g, 'href="/cases/$1/"')
              .replace(/href="#\/cases"/g, 'href="/cases/"')
+             .replace(/href="#\/news\/([a-z0-9-]+)"/g, 'href="/news/$1/"')
              .replace(/href="#\/news"/g, 'href="/news/"');
   // トップの事例カードの画像: 1枚HTMLでは読み込み時に data URI を配るが、公開用は実ファイルを指す
   const TH = INL.thumbSrcMap();
-  base = base.replace(/src="[^"]*" data-case-img="([a-z0-9-]+)"/g, (m, k) => TH[k] ? 'src="' + TH[k] + '" data-case-img="' + k + '"' : m);
+  base = base.replace(/src="[^"]*" data-case-img="([a-z0-9:.-]+)"/g, (m, k) => TH[k] ? 'src="' + TH[k] + '" data-case-img="' + k + '"' : m);
   if (!/nav_cases:/.test(base)) {
     base = base.replace(/(    nav_work: "事業",)/, '    nav_cases: "事例", nav_cases_view: "事例を見る →",\n$1');
     base = base.replace(/(    nav_work: "Work",)/, '    nav_cases: "Cases", nav_cases_view: "View cases →",\n$1');
@@ -382,14 +383,38 @@ const newsLd = JSON.stringify({
     { '@type': 'ListItem', position: 1, name: 'Home', item: ORIGIN + '/' },
     { '@type': 'ListItem', position: 2, name: 'News', item: newsUrl } ] }],
 }, null, 2);
-const CASES = buildCases({ DIST, ORIGIN, base, ORG_ID: ORIGIN + '/#organization', extra: [{
+const NEWS_PAGES = [{
   dir: 'news', url: '/news/', inner: NEWS.pageHtml(NEWS_ITEMS),
   meta: { page: 'news', ja: {}, en: {},
     title: 'News — YELLOW Inc.', titleJa: 'お知らせ — 株式会社YELLOW',
     desc: 'Announcements from YELLOW Inc.: programmes, memberships and press releases.',
     descJa: '株式会社YELLOWのお知らせ。採択、加盟、プレスリリースなど。',
     url: newsUrl, ld: newsLd },
-}] });
+}];
+NEWS_ITEMS.filter(NEWS.hasArticle).forEach(n => {
+  const url = ORIGIN + '/news/' + n.id + '/';
+  const imgs = [];
+  (n.sections || []).forEach(s => (s.imgs || []).forEach(im => imgs.push(ORIGIN + im.src)));
+  const ld = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@graph': [{
+      '@type': 'NewsArticle', '@id': url + '#article', url, mainEntityOfPage: url,
+      headline: n.en.title, alternativeHeadline: n.en.sub || undefined, description: n.en.text,
+      datePublished: n.date, dateModified: n.date, inLanguage: ['en', 'ja'],
+      image: imgs.slice(0, 3), author: { '@id': ORIGIN + '/#organization' }, publisher: { '@id': ORIGIN + '/#organization' },
+      ...(n.press ? { sameAs: n.press, isBasedOn: n.press } : {}),
+      ...(n.case ? { about: { '@type': 'CreativeWork', url: ORIGIN + '/cases/' + n.case + '/' } } : {}),
+    }, { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: ORIGIN + '/' },
+      { '@type': 'ListItem', position: 2, name: 'News', item: newsUrl },
+      { '@type': 'ListItem', position: 3, name: n.en.title, item: url } ] }],
+  }, null, 2);
+  NEWS_PAGES.push({ dir: 'news/' + n.id, url: '/news/' + n.id + '/', inner: NEWS.articleHtml(n),
+    meta: { page: 'news_' + n.id.replace(/-/g, '_'), ja: {}, en: {},
+      title: n.en.title + ' — News | YELLOW Inc.', titleJa: n.ja.title + ' — お知らせ | 株式会社YELLOW',
+      desc: n.en.text.slice(0, 160), descJa: n.ja.text.slice(0, 118), url, ld, image: imgs[0] ? imgs[0].replace(ORIGIN, '') : undefined } });
+});
+const CASES = buildCases({ DIST, ORIGIN, base, ORG_ID: ORIGIN + '/#organization', extra: NEWS_PAGES });
 for (const [u, n] of CASES.sizes) console.log(u.padEnd(30), (n / 1024).toFixed(0).padStart(4) + 'KB');
 
 // ── 3. 付随ファイル
@@ -435,6 +460,7 @@ ${ROUTES.map(r => `  <url>
   </url>`).join('\n')}
   <url><loc>${ORIGIN}/cases/</loc><lastmod>${today}</lastmod><priority>0.9</priority></url>
   <url><loc>${ORIGIN}/news/</loc><lastmod>${today}</lastmod><priority>0.8</priority></url>
+${NEWS_ITEMS.filter(NEWS.hasArticle).map(n => `  <url><loc>${ORIGIN}/news/${n.id}/</loc><lastmod>${n.date}</lastmod><priority>0.6</priority></url>`).join('\n')}
 ${CASES.cases.map(c => `  <url><loc>${ORIGIN}/cases/${c.key}/</loc><lastmod>${today}</lastmod><priority>0.7</priority></url>`).join('\n')}
 </urlset>
 `);
@@ -475,7 +501,7 @@ ${CASES.cases.map(c => `- [${c.title}](${ORIGIN}/cases/${c.key}/): ${c.lead}`).j
 
 ## お知らせ
 
-${NEWS_ITEMS.map(n => `- **${NEWS.label(n)}** ${n.ja.title}: ${n.ja.text}` + (n.case ? ` → ${ORIGIN}/cases/${n.case}/` : '') + (n.press ? ` （プレスリリース: ${n.press}）` : '')).join('\n')}
+${NEWS_ITEMS.map(n => `- **${NEWS.label(n)}** ${n.ja.title}: ${n.ja.text}` + (NEWS.hasArticle(n) ? ` → ${ORIGIN}/news/${n.id}/` : (n.case ? ` → ${ORIGIN}/cases/${n.case}/` : '')) + (n.press ? ` （プレスリリース: ${n.press}）` : '')).join('\n')}
 
 ## 会社情報
 

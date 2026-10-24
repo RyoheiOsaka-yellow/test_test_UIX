@@ -6,14 +6,208 @@
   "press": "https://prtimes.jp/main/html/rd/p/000000002.000157998.html",
   "ja": {
    "tag": "プレスリリース",
-   "title": "栃木県スポーツコミッション「人流データを活用した県内周遊事業」に参画",
-   "text": "宇都宮ブレックス・栃木SC・栃木ホンダヒートのホームゲーム観戦者の属性や移動経路を人流データから分析・可視化し、スポーツ観戦を起点とした県内周遊の促進につなげます。"
+   "title": "YELLOW、栃木県スポーツコミッションが実施する「人流データを活用した県内周遊事業」に参画",
+   "text": "宇都宮ブレックス・栃木SC・栃木ホンダヒートのホームゲーム観戦者の属性や移動経路を人流データから分析・可視化し、スポーツ観戦を起点とした県内周遊の促進につなげます。",
+   "sub": "～人流データの分析・可視化を通じて、スポーツ観戦を起点とした地域周遊と地域活性化を支援～"
   },
   "en": {
    "tag": "Press release",
-   "title": "Joining the Tochigi Prefecture Sports Commission programme on prefecture-wide travel from mobility data",
-   "text": "We analyse and visualise the demographics and routes of fans at Utsunomiya Brex, Tochigi SC and Tochigi Honda Heat home games, and feed the findings into measures that turn match days into trips around the prefecture."
-  }
+   "title": "YELLOW joins the Tochigi Prefecture Sports Commission's programme on prefecture-wide travel from mobility data",
+   "text": "We analyse and visualise the demographics and routes of fans at Utsunomiya Brex, Tochigi SC and Tochigi Honda Heat home games, and feed the findings into measures that turn match days into trips around the prefecture.",
+   "sub": "Supporting regional travel and revitalisation from match days, through the analysis and visualisation of mobility data"
+  },
+  "logo": {
+   "src": "/assets/news/tochigi-sports-commission-logo.webp",
+   "ja": "栃木県スポーツコミッション",
+   "en": "Tochigi Prefecture Sports Commission"
+  },
+  "sections": [
+   {
+    "ja": {
+     "h": "",
+     "paras": [
+      "株式会社YELLOW（本社：群馬県高崎市、代表取締役：大坂亮平、岩渕知弘、以下「YELLOW」）は、栃木県スポーツコミッションが実施する「人流データを活用した県内周遊事業」に参画することをお知らせいたします。",
+      "本事業では、人流データを活用して県内プロスポーツチームのホームゲーム観戦者の属性や移動経路などを分析・可視化し、スポーツ観戦をきっかけとした県内周遊の促進に向けた施策検討につなげます。",
+      "YELLOWは、データや技術を活用した課題解決と、研究・技術シーズの社会実装に向けた事業開発支援を通じて、スポーツと地域をつなぐ新たな価値の創出を目指します。"
+     ],
+     "items": []
+    },
+    "en": {
+     "h": "",
+     "paras": [
+      "YELLOW Inc. (Takasaki, Gunma; representative directors Ryohei Osaka and Tomohiro Iwabuchi) is pleased to announce that it has joined the \"programme on prefecture-wide travel from mobility data\" run by the Tochigi Prefecture Sports Commission.",
+      "The programme uses mobility data to analyse and visualise the demographics and routes of fans attending home games of the prefecture's professional teams, and feeds the findings into measures that turn match days into trips around the prefecture.",
+      "Through data-driven problem solving and business development that brings research and technology seeds into society, YELLOW aims to create new value that connects sport with its region."
+     ],
+     "items": []
+    },
+    "imgs": []
+   },
+   {
+    "ja": {
+     "h": "本事業の背景と目的",
+     "paras": [
+      "プロスポーツは、試合観戦だけでなく、飲食、買い物、観光など、地域内での消費や交流を生み出す可能性を持っています。",
+      "一方、観戦者が試合の前後にどのような場所を訪れ、どのように移動しているのかを把握することは、地域周遊を促進する施策を検討するうえで重要です。",
+      "本事業では、人流データを活用して県内プロスポーツチームのホームゲーム観戦者の属性や移動経路などを分析・可視化し、観戦者の行動傾向を把握します。",
+      "こうした分析結果を施策検討に活用することで、スポーツ観戦と地域の商業・観光資源などを結びつけ、県内周遊の促進や交流人口の拡大、地域経済の活性化を目指します。"
+     ],
+     "items": []
+    },
+    "en": {
+     "h": "Background and aims",
+     "paras": [
+      "Professional sport generates more than a match: eating, shopping and sightseeing around the venue.",
+      "To design measures that spread that activity across the region, it is important to know where spectators go before and after the game and how they move.",
+      "In this programme we use mobility data to analyse and visualise the demographics and routes of fans at the home games of the prefecture's professional teams, and understand their behaviour.",
+      "By using the findings in planning, the aim is to connect match days with local retail and tourism, increase travel within the prefecture and the exchange population, and energise the regional economy."
+     ],
+     "items": []
+    },
+    "imgs": []
+   },
+   {
+    "ja": {
+     "h": "事業概要",
+     "paras": [
+      "事業名：人流データを活用した県内周遊事業",
+      "実施主体：栃木県スポーツコミッション",
+      "主な対象チーム：宇都宮ブレックス、栃木SC、栃木ホンダヒート",
+      "主な取り組み："
+     ],
+     "items": [
+      "人流データを活用したスポーツ観戦者の属性（性別、年齢層、推定居住エリア等）や移動傾向の分析",
+      "観戦者の移動経路や地域内での行動傾向の可視化",
+      "分析結果に基づく県内周遊促進に向けた施策検討",
+      "スポーツ観戦と地域の商業・観光資源などを結びつける可能性の検討"
+     ],
+     "notes": [
+      "※具体的な対象試合、実施時期および施策内容については、関係機関との調整により決定します。",
+      "※分析に使用する位置情報データは、利用者より許諾を得て取得・統計加工されたものであり、個人を識別・特定する情報は含まれず、プライバシーに配慮して運用されます。"
+     ]
+    },
+    "en": {
+     "h": "Programme outline",
+     "paras": [
+      "Programme: prefecture-wide travel from mobility data",
+      "Run by: Tochigi Prefecture Sports Commission",
+      "Main teams: Utsunomiya Brex, Tochigi SC, Tochigi Honda Heat",
+      "Main activities:"
+     ],
+     "items": [
+      "Analysis of spectator demographics (gender, age group, estimated home area) and travel patterns from mobility data",
+      "Visualisation of spectator routes and behaviour within the region",
+      "Planning of measures to promote prefecture-wide travel based on the findings",
+      "Exploring ways to link match days with local retail and tourism"
+     ],
+     "notes": [
+      "The matches covered, timing and specific measures will be decided in consultation with the organisations involved.",
+      "The location data used is collected with user consent and statistically processed; it contains no information that identifies individuals and is handled with privacy in mind."
+     ]
+    },
+    "imgs": [
+     {
+      "src": "/assets/case/tochigi-sports-flow-02.webp",
+      "ja": "とちぎん・ブレックスアリーナ宇都宮",
+      "en": "Tochigin Brex Arena Utsunomiya"
+     },
+     {
+      "src": "/assets/case/tochigi-sports-flow-03.webp",
+      "ja": "ホンダヒート・グリーンスタジアム",
+      "en": "Honda Heat Green Stadium"
+     },
+     {
+      "src": "/assets/case/tochigi-sports-flow-04.webp",
+      "ja": "カンセキスタジアムとちぎ",
+      "en": "Kanseki Stadium Tochigi"
+     }
+    ]
+   },
+   {
+    "ja": {
+     "h": "株式会社YELLOWの役割",
+     "paras": [
+      "人流データの分析・可視化を通じて、スポーツ観戦者の移動傾向や地域周遊の実態把握を支援します。また、分析結果を関係機関と共有し、データに基づく施策検討に活用することで、スポーツを起点とした地域活性化の可能性を探ります。",
+      "YELLOWは、技術やデータを分析するだけでなく、得られた知見を具体的な事業や施策につなげることを重視しています。行政、スポーツチーム、企業などとの連携を通じて、データ活用による地域課題の解決と新たな価値の創出を推進してまいります。"
+     ],
+     "items": []
+    },
+    "en": {
+     "h": "YELLOW's role",
+     "paras": [
+      "Through the analysis and visualisation of mobility data, YELLOW helps establish how spectators move and how travel around the region actually happens. The findings are shared with the organisations involved and used in data-based planning, to explore how sport can drive regional revitalisation.",
+      "YELLOW places weight not only on analysing technology and data but on turning the insight into concrete projects and measures. Working with local government, sports teams and companies, we promote data-driven solutions to regional challenges and the creation of new value."
+     ],
+     "items": []
+    },
+    "imgs": [
+     {
+      "src": "/assets/case/tochigi-sports-flow-01.webp",
+      "ja": "県全域の地形・交通・観光地点を実データで3D化し、入込数・宿泊・消費額・来訪圏を同一のデジタルツイン上で分析。",
+      "en": "The whole prefecture's terrain, transport and attractions in 3D from real data; visitor numbers, overnight stays, spending and catchment analysed on one digital twin."
+     },
+     {
+      "src": "/assets/case/tochigi-sports-flow-05.webp",
+      "ja": "戦略KPIの進捗と目標へのギャップまで一つの画面で追えます。",
+      "en": "Progress against strategic KPIs and the gap to targets, on a single screen."
+     }
+    ]
+   },
+   {
+    "ja": {
+     "h": "今後の展望",
+     "paras": [
+      "YELLOWは、研究・技術シーズの発掘から実証・検証、事業戦略の立案、社会実装に向けた取り組みまでを通じて、技術やデータが実際の現場で活用される仕組みづくりを支援しています。",
+      "本事業においても、人流データから得られる知見をスポーツ観戦者の周遊促進に向けた施策検討につなげ、スポーツと地域の商業・観光資源などを結びつける取り組みの可能性を探ってまいります。",
+      "今後も、行政、スポーツチーム、研究機関、企業など多様な主体との連携を通じて、データに基づく課題解決と地域の持続的な発展に貢献してまいります。"
+     ],
+     "items": []
+    },
+    "en": {
+     "h": "Outlook",
+     "paras": [
+      "From finding research and technology seeds to trials, business strategy and implementation, YELLOW helps build the arrangements that let technology and data work in the field.",
+      "In this programme too, we will turn the insight from mobility data into measures that encourage spectators to travel, and explore how sport can be linked with the region's retail and tourism.",
+      "We will continue to work with local government, sports teams, research institutions and companies on data-driven solutions and the sustainable development of regions."
+     ],
+     "items": []
+    },
+    "imgs": []
+   },
+   {
+    "ja": {
+     "h": "株式会社YELLOWについて",
+     "paras": [
+      "株式会社YELLOWは、研究シーズの開発や事業戦略の立案・実行を通じて、技術やアイデアの社会実装と新たな事業の創出を支援する会社です。",
+      "研究・技術シーズの事業化支援をはじめ、企業・研究機関・行政などとの連携による事業開発、実証・検証、事業戦略の立案から実行までを一貫して支援しています。",
+      "データや技術を活用した課題解決にも取り組み、スポーツや地域産業をはじめとするさまざまな領域で、新たな価値の創出と持続的な事業の発展を目指しています。"
+     ],
+     "items": [
+      "会社名：株式会社YELLOW",
+      "本社：群馬県高崎市白銀町9番地 白銀ビル3階",
+      "代表取締役：岩渕知弘、大坂亮平",
+      "事業内容：研究シーズ開発、事業戦略立案・実行支援、事業開発支援",
+      "本件に関するお問い合わせ：広報部 info@yellow.technology"
+     ]
+    },
+    "en": {
+     "h": "About YELLOW Inc.",
+     "paras": [
+      "YELLOW Inc. supports the social implementation of technology and ideas, and the creation of new businesses, through the development of research seeds and the planning and execution of business strategy.",
+      "We provide end-to-end support, from commercialising research and technology seeds to business development with companies, research institutions and government, trials and verification, and strategy from planning through execution.",
+      "We also work on data- and technology-driven problem solving, aiming to create new value and sustainable businesses in sport, regional industry and other fields."
+     ],
+     "items": [
+      "Company: YELLOW Inc.",
+      "Head office: Shirogane Bldg. 3F, 9 Shirogane-cho, Takasaki, Gunma",
+      "Representative directors: Tomohiro Iwabuchi, Ryohei Osaka",
+      "Business: research-seed development, business strategy planning and execution support, business development support",
+      "Enquiries about this release: Public Relations, info@yellow.technology"
+     ]
+    },
+    "imgs": []
+   }
+  ]
  },
  {
   "id": "wellnexus-2026-03",
