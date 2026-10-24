@@ -89,6 +89,7 @@ const COMMON = {
                  'From factory layout studies and 3D modelling of station interiors to point-cloud data and in-store promotion simulation. Every case has a working demo that runs in the browser.'],
   cs_back_list: ['← 事例一覧へ戻る', '← All cases'],
   cs_open_demo: ['デモを開く ↗', 'Open demo ↗'],
+  cs_open_press: ['プレスリリースを読む ↗', 'Read the press release ↗'],
   cs_spec_h:    ['仕様', 'Specifications'],
   cs_nav_list:  ['← 事例一覧', '← All cases'],
   cs_nav_contact: ['お問い合わせ →', 'Contact →'],
@@ -151,6 +152,7 @@ function casePageHtml(c, prod, d) {
       <h1 class="case__title" data-i18n="${p}title">${esc(e.title)}</h1>
       <p class="case__lead" data-i18n="${p}lead">${esc(e.lead)}</p>
       ${c.demo ? `<p><a class="case__demo" href="${esc(c.demo)}" target="_blank" rel="noopener" data-i18n="cs_open_demo">${COMMON.cs_open_demo[1]}</a></p>` : ''}
+      ${c.press ? `<p><a class="case__demo" href="${esc(c.press)}" target="_blank" rel="noopener" data-i18n="cs_open_press">${COMMON.cs_open_press[1]}</a></p>` : ''}
 
       <div class="case__shots">
 ${shots}
@@ -307,6 +309,7 @@ module.exports = function buildCases({ DIST, ORIGIN, base, ORG_ID }) {
         about: prod ? { '@type': 'Service', name: prod.label, url: ORIGIN + '/' + prod.id + '/' } : undefined,
         mainEntityOfPage: url,
         ...(c.demo ? { workExample: { '@type': 'WebApplication', url: c.demo, name: d.e.title + ' demo', applicationCategory: 'BusinessApplication', operatingSystem: 'Web' } } : {}),
+        ...(c.press ? { subjectOf: { '@type': 'NewsArticle', url: c.press, headline: d.e.title } } : {}),
       }, {
         '@type': 'BreadcrumbList',
         itemListElement: [
