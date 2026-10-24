@@ -125,5 +125,10 @@
       "xbuild-factory",
       "xbuild-arena"
     ]
-  }
+  },
+  "seed": [
+    "fish",
+    "zerosum",
+    "inkwhite"
+  ]
 }

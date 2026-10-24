@@ -1,11 +1,11 @@
 [
  [
   "const PAPERS = ['light', 'yellow', 'red', 'blue', 'green'];",
-  "const PAPERS = ['light', 'yellow'];"
+  "const PAPERS = ['yellow'];"
  ],
  [
-  "p = Math.random() < 0.35 ? 'light' : PAPERS[1 + ((Math.random() * 4) | 0)];",
-  "p = Math.random() < 0.5 ? 'light' : 'yellow';"
+  "    do {\n      p = Math.random() < 0.35 ? 'light' : PAPERS[1 + ((Math.random() * 4) | 0)];\n    } while (p === scenePaper);",
+  "    p = 'yellow';   // 紙は黄色固定（同色を避ける do-while は無限ループになるので外す）"
  ],
  [
   "let nextStrobeAt = 6 + Math.random() * 8;",
@@ -25,6 +25,6 @@
  ],
  [
   "  function frame(now) {\n    const dt = Math.min((now - prev) / 1000, 0.1);",
-  "  function frame(nowReal) {\n    // 親の合図（ydemo-go）までは時計を止め、ポスターと同じ絵のまま待つ\n    if (frame.__l === undefined) { frame.__l = nowReal; frame.__v = nowReal; }\n    if (window.__YGO) frame.__v += nowReal - frame.__l;\n    frame.__l = nowReal;\n    const now = frame.__v;\n    const dt = Math.min((now - prev) / 1000, 0.1);"
+  "  function frame(nowReal) {\n    // 親の合図（ydemo-go）までは時計を止め、ポスターと同じ絵で待つ。\n    // 止める前に少しだけ進めて、自然な「途中の状態」にしておく（その間は親に「描けた」と言わない）\n    if (frame.__l === undefined) { frame.__l = nowReal; frame.__v = nowReal; frame.__pre = 0; window.__YREADY = false; }\n    if (window.__YGO) { frame.__v += nowReal - frame.__l; window.__YREADY = true; }\n    else if (frame.__pre < 10000) { frame.__v += 100; frame.__pre += 100; if (frame.__pre >= 6000) window.__YREADY = true; }\n    frame.__l = nowReal;\n    const now = frame.__v;\n    const dt = Math.min((now - prev) / 1000, 0.1);"
  ]
 ]

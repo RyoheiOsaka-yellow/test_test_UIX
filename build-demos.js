@@ -119,6 +119,12 @@ function prepare(id) {
      （デモ側は window.__YGO を見るか 'ydemo-go' イベントを待つ）。
      単体で開いたときは即座に、iframe 内で合図が来ないときは 12 秒で自動的に動き出す。
      ?hold=1 を付けて開くと止まったまま（ポスター撮影用） */
+  /* 乱数を固定する（demos.json の seed に挙げたデモ）。
+     初期配置や色がランダムなデモは、止めた状態の絵が毎回変わりポスターと一致しないので、
+     決まった乱数列で毎回同じ絵になるようにする */
+  if ((conf.seed || []).includes(id)) {
+    s = '<script>(function(){var x=0x9E3779B9;Math.random=function(){x=(x+0x6D2B79F5)|0;var t=Math.imul(x^(x>>>15),1|x);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};})();<\/script>\n' + s;
+  }
   s = '<script>(function(){var hold=/[?&]hold=1/.test(location.search);window.__YGO=false;'
     + 'function go(){if(window.__YGO)return;window.__YGO=true;try{window.dispatchEvent(new Event("ydemo-go"))}catch(e){}}'
     + 'window.__ygo=go;window.addEventListener("message",function(e){if(e.data==="ydemo-go")go()});'
@@ -418,10 +424,11 @@ if (used.length) {
   '      if (shown || !painted || !waited) return;',
   '      shown = true;',
   '      requestAnimationFrame(function () { f.classList.add(\'is-on\'); });',
-  '      // 重ね終わってから「動いてよい」と伝える（ポスターと同じ絵で現れ、そこから動き出す）',
+  '      // 重なり始めと同時に「動いてよい」と伝える。最初の絵はポスターと同じなので、',
+  '      // 静止画がそのまま動き出したように見える（重ね終わってから動かすと「止まってから動く」感じが残る）',
   '      setTimeout(function () {',
   '        try { f.contentWindow.postMessage(\'ydemo-go\', \'*\'); } catch (e) {}',
-  '      }, slot.fade ? 1500 : 1000);',
+  '      }, 120);',
   '      if (old) setTimeout(function () {',
   '        if (old.parentNode) old.parentNode.removeChild(old);',
   '      }, hold);',

@@ -1,6 +1,6 @@
 [
  [
   "function tick(now) {\n  if (!document.hidden) {",
-  "function tick(nowReal) {\n  // 親の合図（ydemo-go）までは時計を止め、ポスターと同じ絵のまま待つ\n  if (tick.__l === undefined) { tick.__l = nowReal; tick.__v = nowReal; }\n  if (window.__YGO) tick.__v += nowReal - tick.__l;\n  tick.__l = nowReal;\n  const now = tick.__v;\n  if (!document.hidden) {"
+  "function tick(nowReal) {\n  // 親の合図（ydemo-go）までは時計を止め、ポスターと同じ絵で待つ。\n  // 止める前に少しだけ進めて、自然な「途中の状態」にしておく（その間は親に「描けた」と言わない）\n  if (tick.__l === undefined) { tick.__l = nowReal; tick.__v = nowReal; tick.__pre = 0; window.__YREADY = false; }\n  if (window.__YGO) { tick.__v += nowReal - tick.__l; window.__YREADY = true; }\n  else if (tick.__pre < 5000) { tick.__v += 33; tick.__pre += 33; if (tick.__pre >= 5000) window.__YREADY = true; }\n  tick.__l = nowReal;\n  const now = tick.__v;\n  if (!document.hidden) {"
  ]
 ]
