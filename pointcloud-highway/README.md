@@ -96,3 +96,12 @@ node tools/build_data.mjs hakozaki map.xml    # 取得済み XML から変換
 | 計測ボタン → 2 点クリック | 距離計測。Esc で解除 |
 | ランプ走行 | 首都高本線を連結した約 2.5 km を車載視点で走行 |
 | 凡例の分類をクリック | 分類ごとの表示／非表示 |
+
+## 単体 HTML（ダウンロード配布用）
+
+```bash
+node tools/build_single.mjs   # → dist/lidar-bim-highway.html（約 1.6 MB）
+```
+
+全モジュール・両対象地のデータ・Worker を 1 ファイルに埋め込んであり、ダブルクリック（`file://`）で開けます。
+Three.js のみ CDN から読むため、インターネット接続は必要です。
