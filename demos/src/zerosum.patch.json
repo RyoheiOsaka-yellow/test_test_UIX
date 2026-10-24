@@ -22,5 +22,9 @@
  [
   "    ctx.fillText('TOPOLOGICAL ZERO-SUM GAME', 16, H - 28);\n    ctx.fillText('[drag] rotate  [wheel] zoom  [n] next  [i] invert', 16, H - 17);\n",
   ""
+ ],
+ [
+  "  function frame(now) {\n    const dt = Math.min((now - prev) / 1000, 0.1);",
+  "  function frame(nowReal) {\n    // 親の合図（ydemo-go）までは時計を止め、ポスターと同じ絵のまま待つ\n    if (frame.__l === undefined) { frame.__l = nowReal; frame.__v = nowReal; }\n    if (window.__YGO) frame.__v += nowReal - frame.__l;\n    frame.__l = nowReal;\n    const now = frame.__v;\n    const dt = Math.min((now - prev) / 1000, 0.1);"
  ]
 ]

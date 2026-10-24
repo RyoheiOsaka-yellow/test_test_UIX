@@ -18,5 +18,9 @@
  [
   "over: { theta: -0.5, phi: 0.9, r: 17, tx: 0, ty: 0, tz: 0.6 }",
   "over: { theta: -0.5, phi: 0.9, r: 14, tx: 0, ty: 0, tz: 0.6 }"
+ ],
+ [
+  "  if (!S.paused) simStep(realDt * S.speed);",
+  "  if (!S.paused && window.__YGO) simStep(realDt * S.speed);   // 親の合図まで店内の動きも止める"
  ]
 ]

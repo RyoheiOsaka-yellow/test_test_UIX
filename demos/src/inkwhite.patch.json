@@ -1,0 +1,6 @@
+[
+ [
+  "function tick(now) {\n  if (!document.hidden) {",
+  "function tick(nowReal) {\n  // 親の合図（ydemo-go）までは時計を止め、ポスターと同じ絵のまま待つ\n  if (tick.__l === undefined) { tick.__l = nowReal; tick.__v = nowReal; }\n  if (window.__YGO) tick.__v += nowReal - tick.__l;\n  tick.__l = nowReal;\n  const now = tick.__v;\n  if (!document.hidden) {"
+ ]
+]

@@ -2,5 +2,13 @@
  [
   "applyCam(0);\nrequestAnimationFrame(loop);",
   "setLevel('arena', false); FRAME_HOOKS.push(function(dt){ if(window.__YGO && !cam.fly && !cam.pov){ cam.yaw += dt*0.035; cam.tyaw = cam.yaw; applyCam(0); } });\napplyCam(0);\nrequestAnimationFrame(loop);"
+ ],
+ [
+  "    if (!seatReveal.done) setTimeout(startSeatReveal, 420);   // 初回入場時に自動再生",
+  "    if (!seatReveal.done) { if (window.__YGO) setTimeout(startSeatReveal, 420); else window.addEventListener('ydemo-go', function () { setTimeout(startSeatReveal, 300); }, { once: true }); }   // 親の合図の後に再生"
+ ],
+ [
+  "  const dtMin = timeState.play ? dt * timeState.speed : dt * 0.6;",
+  "  const dtMin = timeState.play ? dt * timeState.speed : (window.__YGO ? dt * 0.6 : 0);"
  ]
 ]

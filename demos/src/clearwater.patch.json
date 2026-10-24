@@ -10,5 +10,9 @@
  [
   "const HOUR_FIXED = Number.isFinite(HOUR_Q) ? ((HOUR_Q % 24) + 24) % 24 : null;",
   "const HOUR_FIXED = 11.0;"
+ ],
+ [
+  "function frame(now){\n  const dtRaw = (now-last)/1000",
+  "function frame(nowReal){\n  // 親の合図（ydemo-go）までは時計を止め、ポスターと同じ絵のまま待つ\n  if (frame.__l === undefined) { frame.__l = nowReal; frame.__v = nowReal; }\n  if (window.__YGO) frame.__v += nowReal - frame.__l;\n  frame.__l = nowReal;\n  const now = frame.__v;\n  const dtRaw = (now-last)/1000"
  ]
 ]
