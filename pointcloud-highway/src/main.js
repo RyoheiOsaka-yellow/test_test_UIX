@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { buildStructure, elementBounds, elementProperties, CATEGORY } from './structure.js';
-import { CLS, CLS_INFO } from './synth.js';
+import { CLS, CLS_INFO, DENS } from './synth.js';
 import { buildLut, cssGradient } from './colormaps.js';
 import { createPointMaterial, createBimFaceMaterial, createBimEdgeMaterial, createVisibilityTexture } from './shaders.js';
 import { EDL } from './edl.js';
@@ -150,6 +150,17 @@ function rebuildAnnotations() {
 function setGroupVisible(g, v) { g.visible = v; g.traverse((o) => { o.visible = v; }); }
 
 // ---------------------------------------------------------------- display modes
+/** Nominal sample spacing per class (m) for the current density → splat radius in the shader. */
+function applySpacing() {
+  const D = state.density, sp = pointMat.uniforms.uSpacing.value;
+  const s = (d, cap = 1.2) => Math.min(cap, 1 / Math.sqrt(d * D));
+  sp.fill(0.5);
+  sp[CLS.deck] = s(DENS.deck); sp[CLS.road] = s(DENS.arterial * 0.8); sp[CLS.marking] = 0.22 / Math.sqrt(D) * 0.6;
+  sp[CLS.railing] = s(DENS.railFace); sp[CLS.girder] = s(DENS.girderSide); sp[CLS.column] = s(DENS.column); sp[CLS.cap] = s(DENS.cap);
+  sp[CLS.building] = s(DENS.wall * 0.8, 1.0); sp[CLS.floor] = s(DENS.floorSlab, 1.4); sp[CLS.ground] = s(DENS.ground, 1.3); sp[CLS.lowVeg] = s(DENS.grass, 1.3);
+  sp[CLS.highVeg] = 0.45; sp[CLS.vehicle] = s(6); sp[CLS.pole] = 0.12; sp[CLS.furniture] = 0.12; sp[CLS.gantry] = 0.1; sp[CLS.water] = 1.5; sp[CLS.noise] = 0.1;
+  pointMat.uniforms.uTanHalfFov.value = Math.tan((camera.fov / 2) * Math.PI / 180);
+}
 function applyMode() {
   pointMat.uniforms.uMode.value = state.mode;
   pointMat.uniforms.uRow.value = ROWS[state.row] ?? 0;
@@ -359,7 +370,7 @@ $('mix').addEventListener('input', (e) => { state.heightMix = +e.target.value; a
 $('psize').addEventListener('input', (e) => { state.pointSize = +e.target.value; applyMode(); });
 $('gain').addEventListener('input', (e) => { state.gain = +e.target.value; applyMode(); });
 $('devrange').addEventListener('change', (e) => { state.devRange = +e.target.value; applyMode(); });
-$('density').addEventListener('change', async (e) => { state.density = +e.target.value; await rebuildCloud(); applyPhase(); });
+$('density').addEventListener('change', async (e) => { state.density = +e.target.value; applySpacing(); await rebuildCloud(); applyPhase(); });
 $('edl').addEventListener('change', (e) => { state.edl = e.target.checked; edl.enabled = state.edl; });
 $('edl-strength').addEventListener('input', (e) => { edl.strength = +e.target.value; });
 $('show-cloud').addEventListener('change', (e) => { state.showCloud = e.target.checked; if (points) points.visible = state.showCloud; });
@@ -408,5 +419,5 @@ function loop(now) {
 window.__app = { select, clearSelection, zoomTo, applyPreset, isolateRoute, get elements() { return elements; }, get cloud() { return cloud; }, camera, controls, director, state };
 
 resize();
-applyMode(); applyClsMask(); applySection(); clearSelection();
+applySpacing(); applyMode(); applyClsMask(); applySection(); clearSelection();
 loadSite(state.site).then(() => { requestAnimationFrame(loop); toast('ドラッグで回転・ホイールでズーム・クリックで要素選択', 5000); });

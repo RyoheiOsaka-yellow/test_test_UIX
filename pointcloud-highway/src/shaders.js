@@ -33,6 +33,8 @@ export function createPointMaterial(lut, visTex) {
       uViewportH: { value: 800 },
       uPixelRatio: { value: 1 },
       uClsMask: { value: new Float32Array(32).fill(1) },
+      uSpacing: { value: new Float32Array(32).fill(0.5) }, // nominal sample spacing (m) per class → splat radius
+      uTanHalfFov: { value: 0.4877 },
       uOpacity: { value: 1 },
     },
     vertexShader: /* glsl */ `
@@ -43,6 +45,8 @@ export function createPointMaterial(lut, visTex) {
       uniform sampler2D uLut;
       uniform float uMode, uRow, uSize, uMinPx, uMaxPx, uHMin, uHMax, uHeightMix, uGain, uSelected, uDevRange, uViewportH, uPixelRatio;
       uniform float uClsMask[32];
+      uniform float uSpacing[32];
+      uniform float uTanHalfFov;
       varying vec3 vColor;
       varying float vSize;
       varying float vHide;
@@ -71,8 +75,11 @@ export function createPointMaterial(lut, visTex) {
         float sel = step(abs(elem - uSelected), 0.5);
         c = mix(c, vec3(1.0, 0.72, 0.18), sel * (uMode > 3.5 && uMode < 4.5 ? 0.0 : 0.9));
         vColor = c;
-        float px = uSize * uViewportH / max(1.0, -mvPosition.z) * 0.45;
-        px = clamp(px, uMinPx, uMaxPx) * (1.0 + sel * 0.8);
+        float dist = max(1.0, -mvPosition.z);
+        // distance-attenuated size, and a splat that covers the nominal sample spacing so surfaces close up
+        float px = uSize * uViewportH / dist * 0.45;
+        float splat = uSpacing[ci] * 0.95 * uViewportH / (2.0 * uTanHalfFov * dist) * uSize * 0.5;
+        px = clamp(max(px, min(splat, uMaxPx * 2.6)), uMinPx, uMaxPx * 2.6) * (1.0 + sel * 0.8);
         vSize = px;
         gl_PointSize = px * uPixelRatio;
       }
