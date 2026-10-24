@@ -222,3 +222,11 @@ HTML ファイルをそのまま送っていただければ、こちらで
   data URI で埋め込む。単体で開いても表示される。
 - 公開用（build-static.js）はこの組み込みを外し、`/cases/`・`/cases/<key>/` の実ページを生成する。
   リンクも実 URL に書き換わる。
+
+## トップの「Selected Cases」と「News」
+
+- トップの事例カードは cases.json で `"home": true` を付けた事例（先頭4件、cases.json の並び順）。
+- お知らせは news.json（日英・日付・関連する事例 key・プレスリリース URL）。トップには最新4件、
+  `#/news`（公開版 `/news/`）に全件。どちらも `node build-demos.js` で 1枚HTML に組み込まれ、
+  公開版（build-static.js）はトップのセクションをそのまま使い、一覧ページを別に生成する。
+- 旧 RECORD セクションは廃止。旧リンク `#record` は `/#selected-cases` へ振り分ける。

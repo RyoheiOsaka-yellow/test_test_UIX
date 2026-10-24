@@ -208,7 +208,7 @@ ${cards}
 `;
 }
 
-module.exports = function buildCases({ DIST, ORIGIN, base, ORG_ID }) {
+module.exports = function buildCases({ DIST, ORIGIN, base, ORG_ID, extra }) {
   const cases = JSON.parse(fs.readFileSync(path.join(__dirname, 'cases.json'), 'utf8'));
   const dicts = cases.map((c, i) => dictFor(c, i));
 
@@ -331,6 +331,8 @@ module.exports = function buildCases({ DIST, ORIGIN, base, ORG_ID }) {
 
   // 画像をコピー
   fs.cpSync(path.join(__dirname, 'assets/case'), path.join(DIST, 'assets/case'), { recursive: true });
+
+  for (const x of (extra || [])) sizes.push([x.url, emit(x.dir, x.inner, x.meta)]);
 
   return { cases, sizes };
 };

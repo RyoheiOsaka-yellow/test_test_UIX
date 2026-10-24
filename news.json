@@ -1,0 +1,79 @@
+[
+ {
+  "id": "tochigi-2026-10",
+  "date": "2026-10-23",
+  "case": "tochigi-sports-flow",
+  "press": "https://prtimes.jp/main/html/rd/p/000000002.000157998.html",
+  "ja": {
+   "tag": "プレスリリース",
+   "title": "栃木県スポーツコミッション「人流データを活用した県内周遊事業」に参画",
+   "text": "宇都宮ブレックス・栃木SC・栃木ホンダヒートのホームゲーム観戦者の属性や移動経路を人流データから分析・可視化し、スポーツ観戦を起点とした県内周遊の促進につなげます。"
+  },
+  "en": {
+   "tag": "Press release",
+   "title": "Joining the Tochigi Prefecture Sports Commission programme on prefecture-wide travel from mobility data",
+   "text": "We analyse and visualise the demographics and routes of fans at Utsunomiya Brex, Tochigi SC and Tochigi Honda Heat home games, and feed the findings into measures that turn match days into trips around the prefecture."
+  }
+ },
+ {
+  "id": "wellnexus-2026-03",
+  "date": "2026-03-01",
+  "case": "wellnexus-kamakura-2026",
+  "ja": {
+   "tag": "オープンイノベーション",
+   "title": "WELLNEXUS 鎌倉 2026 のファイナリスト7社に選出",
+   "text": "スピック・鎌倉インターナショナルFC主催のコンテストでファイナリストに選出され、最終審査会に登壇しました。"
+  },
+  "en": {
+   "tag": "Open innovation",
+   "title": "Named one of seven finalists in WELLNEXUS Kamakura 2026",
+   "text": "Selected as a finalist in the contest hosted by Spic and Kamakura International FC, and presented at the final judging session."
+  }
+ },
+ {
+  "id": "btor-2025-12",
+  "date": "2025-12-01",
+  "case": "btor-association",
+  "ja": {
+   "tag": "参画",
+   "title": "一般社団法人BtoR に企業会員として参画",
+   "text": "TOLICが設立した、助成金申請と採択事業の管理を支える組織に参画しました。"
+  },
+  "en": {
+   "tag": "Participation",
+   "title": "Joined the BtoR association as a corporate member",
+   "text": "BtoR, founded by TOLIC, supports grant applications and manages awarded programmes."
+  }
+ },
+ {
+  "id": "soip-2025-08",
+  "date": "2025-08-01",
+  "case": "soip-iwaki-fc",
+  "ja": {
+   "tag": "公的プログラム",
+   "title": "スポーツ庁「スポーツオープンイノベーション推進事業（SOIP）」に採択",
+   "text": "いわきFCとともに、人流データ分析によるスタジアムアクセスの改善と地域価値の創造に取り組みます。"
+  },
+  "en": {
+   "tag": "Public programme",
+   "title": "Selected for the Japan Sports Agency's Sports Open Innovation Platform (SOIP)",
+   "text": "Together with Iwaki FC, we work on improving stadium access and creating regional value through mobility data analysis."
+  }
+ },
+ {
+  "id": "tolic-2025",
+  "date": "2025-01-01",
+  "dateLabel": "2025",
+  "case": "tolic-membership",
+  "ja": {
+   "tag": "加盟",
+   "title": "東北ライフサイエンス・インストルメンツ・クラスター（TOLIC）に加盟",
+   "text": "研究機器の開発・製造が集まる国内有数の拠点に企業会員として加盟しました。"
+  },
+  "en": {
+   "tag": "Membership",
+   "title": "Joined the Tohoku Life Science Instruments Cluster (TOLIC)",
+   "text": "Corporate membership of one of Japan's leading hubs for research-instrument development and manufacturing."
+  }
+ }
+]

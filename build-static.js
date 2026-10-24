@@ -240,9 +240,14 @@ base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
 // 1g. 1枚HTMLに組み込まれている事例ページ（#/cases, #/case/<key>）を外し、実 URL のリンクへ
 //     （公開版は /cases/ と /cases/<key>/ を cases-append.js が別ページとして生成する）
 {
-  base = require('./build-cases-inline.js').strip(base);
+  const INL = require('./build-cases-inline.js');
+  base = INL.strip(base);
   base = base.replace(/href="#\/case\/([a-z0-9-]+)"/g, 'href="/cases/$1/"')
-             .replace(/href="#\/cases"/g, 'href="/cases/"');
+             .replace(/href="#\/cases"/g, 'href="/cases/"')
+             .replace(/href="#\/news"/g, 'href="/news/"');
+  // トップの事例カードの画像: 1枚HTMLでは読み込み時に data URI を配るが、公開用は実ファイルを指す
+  const TH = INL.thumbSrcMap();
+  base = base.replace(/src="[^"]*" data-case-img="([a-z0-9-]+)"/g, (m, k) => TH[k] ? 'src="' + TH[k] + '" data-case-img="' + k + '"' : m);
   if (!/nav_cases:/.test(base)) {
     base = base.replace(/(    nav_work: "事業",)/, '    nav_cases: "事例", nav_cases_view: "事例を見る →",\n$1');
     base = base.replace(/(    nav_work: "Work",)/, '    nav_cases: "Cases", nav_cases_view: "View cases →",\n$1');
@@ -257,7 +262,7 @@ base = base.replace(/data-src="assets\/video\//g, 'data-src="/assets/video/');
 /* 旧サイトのアンカーで来た訪問者を対応するページへ送る（フラグメントはサーバに届かないためJSで処理） */
 (function () {
   var M = ${JSON.stringify(map)};
-  M['about'] = '/#company'; M['profile'] = '/#company'; M['intro'] = '/';
+  M['about'] = '/#company'; M['profile'] = '/#company'; M['intro'] = '/'; M['record'] = '/#selected-cases';
   var k = (location.hash || '').replace('#', '');
   if (k && M[k] && location.pathname === '/') location.replace(M[k]);
 })();
@@ -332,7 +337,7 @@ for (const r of ROUTES) {
        .replace(/href="#\/terms"/g, 'href="/terms/"');
   if (r.id !== 'home') {
     h = h.replace(/<a class="back" href="#top"/g, '<a class="back" href="/"');
-    h = h.replace(/href="#(contact|record|company|careers|xbuild|xad|xinteractive|hero)"/g, 'href="/#$1"');
+    h = h.replace(/href="#(contact|record|selected-cases|news|company|careers|xbuild|xad|xinteractive|hero)"/g, 'href="/#$1"');
     h = h.replace(/<a href="#top" class="hdr__logo">/g, '<a href="/" class="hdr__logo">');
     h = h.replace(/<a class="ft__logo-link" href="#top">/g, '<a class="ft__logo-link" href="/">');
   }
@@ -362,7 +367,29 @@ for (const r of ROUTES) {
 
 // ── 2.5 事例ページ（現行サイトから移植した17件）
 const buildCases = require('./cases-append.js');
-const CASES = buildCases({ DIST, ORIGIN, base, ORG_ID: ORIGIN + '/#organization' });
+const NEWS = require('./news-append.js');
+const NEWS_ITEMS = NEWS.load();
+const newsUrl = ORIGIN + '/news/';
+const newsLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@graph': [{
+    '@type': 'CollectionPage', '@id': newsUrl + '#webpage', url: newsUrl, name: 'News — YELLOW Inc.', inLanguage: ['en', 'ja'],
+    about: { '@id': ORIGIN + '/#organization' },
+    mainEntity: { '@type': 'ItemList', numberOfItems: NEWS_ITEMS.length,
+      itemListElement: NEWS_ITEMS.map((n, i) => ({ '@type': 'ListItem', position: i + 1,
+        item: { '@type': 'NewsArticle', headline: n.en.title, datePublished: n.date, url: n.case ? ORIGIN + '/cases/' + n.case + '/' : n.press, publisher: { '@id': ORIGIN + '/#organization' } } })) },
+  }, { '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Home', item: ORIGIN + '/' },
+    { '@type': 'ListItem', position: 2, name: 'News', item: newsUrl } ] }],
+}, null, 2);
+const CASES = buildCases({ DIST, ORIGIN, base, ORG_ID: ORIGIN + '/#organization', extra: [{
+  dir: 'news', url: '/news/', inner: NEWS.pageHtml(NEWS_ITEMS),
+  meta: { page: 'news', ja: {}, en: {},
+    title: 'News — YELLOW Inc.', titleJa: 'お知らせ — 株式会社YELLOW',
+    desc: 'Announcements from YELLOW Inc.: programmes, memberships and press releases.',
+    descJa: '株式会社YELLOWのお知らせ。採択、加盟、プレスリリースなど。',
+    url: newsUrl, ld: newsLd },
+}] });
 for (const [u, n] of CASES.sizes) console.log(u.padEnd(30), (n / 1024).toFixed(0).padStart(4) + 'KB');
 
 // ── 3. 付随ファイル
@@ -407,6 +434,7 @@ ${ROUTES.map(r => `  <url>
     <priority>${r.dir === '' ? '1.0' : (r.service ? '0.8' : '0.3')}</priority>
   </url>`).join('\n')}
   <url><loc>${ORIGIN}/cases/</loc><lastmod>${today}</lastmod><priority>0.9</priority></url>
+  <url><loc>${ORIGIN}/news/</loc><lastmod>${today}</lastmod><priority>0.8</priority></url>
 ${CASES.cases.map(c => `  <url><loc>${ORIGIN}/cases/${c.key}/</loc><lastmod>${today}</lastmod><priority>0.7</priority></url>`).join('\n')}
 </urlset>
 `);
@@ -432,7 +460,9 @@ fs.writeFileSync(DIST + 'llms.txt', `# 株式会社YELLOW（YELLOW Inc.）
 
 ## 主なページ
 
-- [ホーム](${ORIGIN}/): 会社概要、3プロダクト、実績、採用、お問い合わせ
+- [ホーム](${ORIGIN}/): 会社概要、3プロダクト、事例、お知らせ、採用、お問い合わせ
+- [事例](${ORIGIN}/cases/): 実装した事例の一覧
+- [お知らせ](${ORIGIN}/news/): 採択・加盟・プレスリリース
 - [xINTERACTIVE](${ORIGIN}/xinteractive/): Web・什器・広告・エンタメでの技術活用
 - [xAD](${ORIGIN}/xad/): 販促・広告ダッシュボード、戦略、AIプロトタイピング
 - [xBUILD](${ORIGIN}/xbuild/): 産業領域の分析と開発（デジタルツイン）
@@ -443,17 +473,9 @@ fs.writeFileSync(DIST + 'llms.txt', `# 株式会社YELLOW（YELLOW Inc.）
 
 ${CASES.cases.map(c => `- [${c.title}](${ORIGIN}/cases/${c.key}/): ${c.lead}`).join('\n')}
 
-## 実績（公開記録）
+## お知らせ
 
-- **SOIP × いわきFC**（2025.08）: スポーツ庁「スポーツオープンイノベーション推進事業」
-  に採択。いわきFC・LocationMind とともに、人流データ分析によるスタジアムアクセス
-  改善と地域価値創造を推進。
-- **TOLIC 加盟**（2025）: 東北ライフサイエンス・インストルメンツ・クラスターに
-  企業会員として加盟。
-- **一般社団法人BtoR 参画**（2025.12）: TOLICが設立した法人に企業会員として参画。
-  助成金申請と採択事業の管理を支える。
-- **WELLNEXUS 鎌倉 2026**（2026.03）: スピック・鎌倉インターナショナルFC主催の
-  コンテストでファイナリスト7社に選出。
+${NEWS_ITEMS.map(n => `- **${NEWS.label(n)}** ${n.ja.title}: ${n.ja.text}` + (n.case ? ` → ${ORIGIN}/cases/${n.case}/` : '') + (n.press ? ` （プレスリリース: ${n.press}）` : '')).join('\n')}
 
 ## 会社情報
 
